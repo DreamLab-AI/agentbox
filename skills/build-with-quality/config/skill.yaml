@@ -2,19 +2,140 @@
 # "Build with Quality" - Optimal project building with integrated quality engineering
 
 name: build-with-quality
-version: 1.1.0
+version: 3.4.0
 description: |
   Combined Claude Code V3 and Agentic QE skill for optimal project building
   with integrated quality engineering. Provides 111+ specialized agents,
   unified learning (SONA + ReasoningBank), and comprehensive quality gates.
 
-  New in v1.1.0:
+  New in v3.4.0:
+  - AG-UI Protocol: Real-time agent-to-UI event streaming (599 tests)
+  - A2A Protocol: Agent-to-agent discovery via JSON-RPC 2.0 (987 tests)
+  - A2UI Protocol: Declarative UI generation with WCAG 2.2 (608 tests)
+  - 12 DDD domains enabled by default
+  - 68 auto-generated agent cards
+  - QX Partner Agent for quality experience analysis
+  - HNSW vector indexing for O(log n) experience replay
+  - Guidance Control Plane integration for extended autonomy
+
+  Previous (v1.1.0):
   - Copy-paste activation prompt (BUILD-WITH-QUALITY-PROMPT.md)
   - 5 complete usage examples (USAGE-EXAMPLES.md)
   - Dual execution modes (MCP tools + CLI fallback)
   - Consensus mechanisms (BFT, CRDT, Raft, Weighted Voting)
   - Agent coordination protocol with hooks
   - Degraded mode documentation
+
+# Interoperability Protocols (v3.4.0)
+protocols:
+  ag_ui:
+    enabled: true
+    description: "Agent-to-UI streaming (Anthropic)"
+    version: "1.0.0"
+    transports: [sse, websocket]
+    event_types: 19
+    tests_passing: 599
+    features:
+      - lifecycle_events
+      - text_streaming
+      - tool_execution
+      - state_synchronization
+      - json_patch_sync
+
+  a2a:
+    enabled: true
+    description: "Agent-to-Agent interoperability (Google)"
+    version: "1.0.0"
+    protocol: json-rpc-2.0
+    discovery: rfc8615  # /.well-known/agent.json
+    authentication: oauth2
+    agent_cards: 68
+    tests_passing: 987
+    features:
+      - agent_discovery
+      - task_invocation
+      - push_notifications
+      - capability_negotiation
+
+  a2ui:
+    enabled: true
+    description: "Declarative UI generation"
+    version: "1.0.0"
+    components: 31  # 23 standard + 8 QE-specific
+    accessibility: wcag_2.2_aa
+    data_binding: rfc6901  # JSON Pointers
+    tests_passing: 608
+    qe_components:
+      - qe-coverage-report
+      - qe-test-results
+      - qe-security-dashboard
+      - qe-accessibility-report
+      - qe-chaos-results
+      - qe-defect-prediction
+      - qe-quality-score
+      - qe-testability-matrix
+
+# 12 DDD Domains (All Enabled by Default in v3.4.0)
+ddd_domains:
+  test_generation:
+    enabled: true
+    description: "AI-powered test synthesis"
+    agents: [unit-test-generator, integration-test-generator, e2e-test-generator]
+
+  coverage_analysis:
+    enabled: true
+    description: "O(log n) coverage gap detection with HNSW"
+    agents: [coverage-analyzer, mutation-tester]
+
+  security_compliance:
+    enabled: true
+    description: "SAST/DAST integration"
+    agents: [sast-scanner, dast-scanner, security-tester]
+
+  accessibility:
+    enabled: true
+    description: "WCAG 2.2 validation"
+    agents: [visual-accessibility-agent, accessibility-auditor]
+
+  requirements_validation:
+    enabled: true
+    description: "Specification verification"
+    agents: [requirements-validator, spec-analyzer]
+
+  code_intelligence:
+    enabled: true
+    description: "Knowledge graph building"
+    agents: [code-analyzer, knowledge-extractor]
+
+  quality_assessment:
+    enabled: true
+    description: "Quality scoring"
+    agents: [quality-assessor, testability-scorer]
+
+  defect_intelligence:
+    enabled: true
+    description: "ML-powered defect prediction (F1 > 0.8)"
+    agents: [defect-predictor, bug-risk-analyzer]
+
+  visual_accessibility:
+    enabled: true
+    description: "UI/UX compliance checking"
+    agents: [visual-regression-tester, contrast-analyzer]
+
+  chaos_resilience:
+    enabled: true
+    description: "Fault tolerance validation"
+    agents: [chaos-engineer, resilience-validator]
+
+  contract_testing:
+    enabled: true
+    description: "API compatibility verification"
+    agents: [contract-tester, schema-validator]
+
+  cross_project_transfer:
+    enabled: true
+    description: "Pattern learning and reuse"
+    agents: [pattern-extractor, knowledge-transferer]
 
 # Capabilities provided by this skill
 capabilities:
@@ -359,6 +480,22 @@ execution:
 
 # Integration points
 integrations:
+  guidance_control_plane:
+    enabled: true
+    description: "Governance for 10x-100x extended autonomy"
+    modules:
+      - compiler         # CLAUDE.md → constitution + shards
+      - retriever        # Intent classification → relevant rules
+      - gates            # 4 enforcement gates
+      - proof            # Hash-chained cryptographic envelopes
+      - trust            # Per-agent trust accumulation
+      - adversarial      # Prompt injection, memory poisoning detection
+    benefits:
+      autonomy_duration: "10x-100x longer"
+      destructive_actions: "50-90% reduction"
+      memory_corruption: "70-90% reduction"
+      prompt_injection: "80-95% reduction"
+
   mcp:
     enabled: true
     tools: 175+
@@ -375,3 +512,8 @@ integrations:
     cross_domain_bridge: true
     correlation: true
     replay: true
+
+  protocols:
+    ag_ui: true    # Agent-to-UI streaming
+    a2a: true      # Agent-to-Agent interop
+    a2ui: true     # Declarative UI generation
