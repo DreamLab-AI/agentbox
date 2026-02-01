@@ -76,9 +76,11 @@
           extensions = [ "rust-src" "clippy" "rustfmt" ];
         };
 
-        # PostgreSQL client (for RuVector connection)
+        # RuVector - PostgreSQL + pgvector (custom vector memory store)
+        # NOT standard PostgreSQL - includes HNSW indexing for 150x-12,500x faster search
         dbPackages = with pkgs; [
-          postgresql_16
+          # PostgreSQL 16 with pgvector extension
+          (postgresql_16.withPackages (p: [ p.pgvector ]))
         ];
 
         # Media processing (CLI only)
@@ -124,6 +126,56 @@
           ++ browserPackages
           ++ servicePackages;
 
+        # RuVector initialization script (skills entrypoint)
+        ruvectorInit = pkgs.writeShellScriptBin "ruvector-init" ''
+          #!${pkgs.bash}/bin/bash
+          # RuVector PostgreSQL + pgvector initialization
+          # NOT standard PostgreSQL - custom vector memory store
+          set -e
+
+          export PGDATA="''${PGDATA:-/var/lib/postgresql/data}"
+          export RUVECTOR_DB="''${RUVECTOR_DB:-ruvector}"
+          export RUVECTOR_USER="''${RUVECTOR_USER:-ruvector}"
+          export RUVECTOR_PASSWORD="''${RUVECTOR_PASSWORD:-ruvector_secure_pass}"
+
+          echo "=== RuVector Memory Store Initialization ==="
+
+          # Create postgres user if needed
+          if ! id -u postgres &>/dev/null; then
+            useradd -r -d /var/lib/postgresql -s /bin/false postgres 2>/dev/null || true
+          fi
+
+          # Initialize data directory if needed
+          if [ ! -d "$PGDATA" ] || [ ! -f "$PGDATA/PG_VERSION" ]; then
+            echo "Initializing PostgreSQL data directory..."
+            mkdir -p "$PGDATA"
+            chown postgres:postgres "$PGDATA"
+            chmod 700 "$PGDATA"
+            su -s /bin/sh postgres -c "${pkgs.postgresql_16}/bin/initdb -D $PGDATA --encoding=UTF8 --locale=C.UTF-8"
+
+            # Configure for vector workloads
+            cat >> "$PGDATA/postgresql.conf" << 'PGCONF'
+listen_addresses = 'localhost'
+max_connections = 100
+shared_buffers = 256MB
+work_mem = 64MB
+maintenance_work_mem = 128MB
+wal_level = minimal
+max_wal_senders = 0
+max_parallel_workers_per_gather = 4
+max_parallel_workers = 8
+PGCONF
+
+            cat > "$PGDATA/pg_hba.conf" << 'HBACONF'
+local   all   postgres   trust
+local   all   all        trust
+host    all   all        127.0.0.1/32   md5
+HBACONF
+          fi
+
+          echo "✓ RuVector PostgreSQL configured"
+        '';
+
         # Create entrypoint script
         entrypoint = pkgs.writeShellScriptBin "entrypoint" ''
           #!${pkgs.bash}/bin/bash
@@ -134,6 +186,11 @@
           echo "Node.js: $(node --version)"
           echo "Python: $(python3 --version)"
           echo "Rust: $(rustc --version)"
+
+          # Initialize RuVector PostgreSQL data directory
+          if [ -x ${ruvectorInit}/bin/ruvector-init ]; then
+            ${ruvectorInit}/bin/ruvector-init
+          fi
 
           # Start supervisord if available
           if [ -f /etc/supervisord.conf ]; then
@@ -190,7 +247,7 @@
 
           copyToRoot = pkgs.buildEnv {
             name = "root";
-            paths = [ entrypoint ];
+            paths = [ entrypoint ruvectorInit ];
             pathsToLink = [ "/bin" ];
           };
 
@@ -268,7 +325,7 @@
 
           copyToRoot = pkgs.buildEnv {
             name = "root";
-            paths = [ entrypoint ];
+            paths = [ entrypoint ruvectorInit ];
             pathsToLink = [ "/bin" ];
           };
 
@@ -329,7 +386,7 @@
 
           copyToRoot = pkgs.buildEnv {
             name = "root";
-            paths = [ entrypoint ];
+            paths = [ entrypoint ruvectorInit ];
             pathsToLink = [ "/bin" ];
           };
 

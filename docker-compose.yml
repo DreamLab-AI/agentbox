@@ -1,0 +1,93 @@
+# Agentbox Docker Compose Configuration
+# Minimal agentic container with RuVector memory store
+
+services:
+  agentbox:
+    image: agentbox:runtime-${ARCH:-aarch64-linux}
+    container_name: agentbox
+    hostname: agentbox
+    restart: unless-stopped
+
+    # Resource limits (Oracle Cloud ARM free tier compatible)
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 24G
+        reservations:
+          cpus: '1'
+          memory: 4G
+
+    ports:
+      - "22:22"       # SSH
+      - "8080:8080"   # code-server (optional)
+      - "9090:9090"   # Management API
+      # 5432 (PostgreSQL) and 9600 (Z.AI) are internal only
+
+    environment:
+      # API Keys (required for full functionality)
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+
+      # Optional API Keys
+      - GOOGLE_GEMINI_API_KEY=${GOOGLE_GEMINI_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+
+      # RuVector Configuration (internal PostgreSQL)
+      - RUVECTOR_USE_EXTERNAL=false
+      - RUVECTOR_HOST=localhost
+      - RUVECTOR_PORT=5432
+      - RUVECTOR_USER=ruvector
+      - RUVECTOR_PASSWORD=${RUVECTOR_PASSWORD:-ruvector_secure_pass}
+      - RUVECTOR_DB=ruvector
+
+      # Management API
+      - MANAGEMENT_API_PORT=9090
+      - MANAGEMENT_API_KEY=${MANAGEMENT_API_KEY:-change-this-secret-key}
+
+      # Runtime
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+
+    volumes:
+      # Persistent PostgreSQL data (RuVector memory store)
+      - ruvector-data:/var/lib/postgresql/data
+
+      # Workspace (mount your project here)
+      - ./workspace:/workspace
+
+      # Optional: Mount host SSH keys (read-only)
+      # - ~/.ssh:/home/devuser/.ssh:ro
+
+      # Optional: Mount Claude credentials
+      # - ~/.claude:/home/devuser/.claude
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9090/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    # Security
+    security_opt:
+      - no-new-privileges:true
+
+  # Desktop variant (uncomment to use VNC)
+  # agentbox-desktop:
+  #   image: agentbox:desktop-${ARCH:-aarch64-linux}
+  #   container_name: agentbox-desktop
+  #   ports:
+  #     - "22:22"
+  #     - "5901:5901"  # VNC (use SSH tunnel for security)
+  #     - "8080:8080"
+  #     - "9090:9090"
+  #   volumes:
+  #     - ruvector-data:/var/lib/postgresql/data
+  #     - ./workspace:/workspace
+  #   environment:
+  #     - ENABLE_VNC=false  # Start with: supervisorctl start vnc:*
+
+volumes:
+  ruvector-data:
+    name: agentbox-ruvector-data
