@@ -35,24 +35,43 @@ agentbox/
 ## Build Commands
 
 ```bash
-# Build runtime image
+# Build runtime image (headless)
 nix build .#runtime
 
 # Build PostgreSQL image
 nix build .#postgres
 
-# Build full combined image
+# Build full combined image (headless)
 nix build .#full
+
+# Build desktop image (with VNC via SSH tunnel)
+nix build .#desktop
 
 # Development shell
 nix develop
 ```
+
+## VNC Remote Desktop
+
+The desktop image includes minimal VNC support via SSH tunnel:
+
+```bash
+# Start VNC services
+supervisorctl start vnc:*
+
+# Connect via SSH tunnel
+ssh -L 5901:localhost:5901 devuser@host
+# Then: vnc://localhost:5901
+```
+
+Components: Xvfb + x11vnc + openbox (~150MB overhead)
 
 ## Ports
 
 | Port | Service |
 |------|---------|
 | 22 | SSH |
+| 5901 | VNC (localhost via SSH tunnel) |
 | 8080 | code-server (optional) |
 | 9090 | Management API |
 | 9500 | MCP TCP |

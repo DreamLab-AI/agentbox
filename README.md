@@ -32,9 +32,10 @@ git clone https://github.com/DreamLab-AI/agentbox.git
 cd agentbox
 
 # Build for your architecture
-nix build .#runtime      # Runtime image
+nix build .#runtime      # Runtime image (headless)
 nix build .#postgres     # PostgreSQL image
-nix build .#full         # Combined image
+nix build .#full         # Combined image (headless)
+nix build .#desktop      # Desktop image (with VNC)
 
 # Load into Docker
 docker load < result
@@ -64,6 +65,30 @@ nix develop
 # All tools available: node, python, rust, etc.
 ```
 
+### VNC Remote Desktop (Optional)
+
+For GUI access via SSH tunnel (secure, minimal overhead):
+
+```bash
+# Build desktop image with VNC support
+nix build .#desktop
+
+# Run container
+docker run -d --name agentbox -p 22:22 agentbox:desktop-aarch64-linux
+
+# Start VNC services inside container
+docker exec agentbox supervisorctl start vnc:*
+
+# Create SSH tunnel from your local machine
+ssh -L 5901:localhost:5901 devuser@<container-host>
+
+# Connect VNC client to localhost:5901
+# macOS: open vnc://localhost:5901
+# Linux: vncviewer localhost:5901
+```
+
+The desktop uses openbox (minimal WM, ~2MB) with xterm and pcmanfm.
+
 ## Architecture
 
 ```
@@ -90,6 +115,7 @@ nix develop
 | Port | Service | Description |
 |------|---------|-------------|
 | 22 | SSH | Secure shell access |
+| 5901 | VNC | Remote desktop (localhost via SSH tunnel) |
 | 8080 | code-server | Web IDE (optional) |
 | 9090 | Management API | Container management |
 | 9500 | MCP TCP | MCP protocol |

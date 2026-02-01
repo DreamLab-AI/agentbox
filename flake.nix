@@ -99,6 +99,21 @@
           procps
         ];
 
+        # Minimal VNC/X11 for remote desktop via SSH tunnel
+        # Lightweight: ~150MB total, no full DE
+        vncPackages = with pkgs; [
+          xorg.xorgserver     # Xvfb virtual framebuffer
+          x11vnc              # VNC server
+          openbox             # Minimal window manager (~2MB)
+          xterm               # Basic terminal
+          xorg.xauth
+          xorg.xinit
+          xorg.xset
+          # Optional lightweight apps
+          pcmanfm             # File manager
+          feh                 # Image viewer
+        ];
+
         # All packages combined
         allPackages = basePackages
           ++ nodePackages
@@ -277,11 +292,81 @@
           };
         };
 
+        # Desktop image - runtime + minimal VNC desktop via SSH tunnel
+        # Access: ssh -L 5901:localhost:5901 user@host, then vnc://localhost:5901
+        desktopImage = n2c.buildImage {
+          name = "agentbox";
+          tag = "desktop-${system}";
+
+          maxLayers = 125;
+
+          layers = [
+            # Layer 1: Base + Node + Python
+            (n2c.buildLayer {
+              deps = basePackages ++ nodePackages ++ pythonPackages;
+            })
+
+            # Layer 2: Rust + DB + Media
+            (n2c.buildLayer {
+              deps = [ rustToolchain ] ++ dbPackages ++ mediaPackages;
+            })
+
+            # Layer 3: Browser automation
+            (n2c.buildLayer {
+              deps = browserPackages;
+            })
+
+            # Layer 4: Services
+            (n2c.buildLayer {
+              deps = servicePackages;
+            })
+
+            # Layer 5: VNC/X11 minimal desktop (~150MB)
+            (n2c.buildLayer {
+              deps = vncPackages;
+            })
+          ];
+
+          copyToRoot = pkgs.buildEnv {
+            name = "root";
+            paths = [ entrypoint ];
+            pathsToLink = [ "/bin" ];
+          };
+
+          config = {
+            Entrypoint = [ "${entrypoint}/bin/entrypoint" ];
+            Env = [
+              "PATH=/bin:/usr/bin:${pkgs.lib.makeBinPath (allPackages ++ vncPackages)}"
+              "NODE_ENV=production"
+              "PYTHONDONTWRITEBYTECODE=1"
+              "RUST_BACKTRACE=1"
+              "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+              "DISPLAY=:1"
+            ];
+            WorkingDir = "/workspace";
+            ExposedPorts = {
+              "22/tcp" = {};     # SSH (tunnel VNC through this)
+              "5901/tcp" = {};   # VNC (localhost only via SSH tunnel)
+              "8080/tcp" = {};   # code-server
+              "9090/tcp" = {};   # Management API
+              "9600/tcp" = {};   # Z.AI (internal)
+            };
+            Labels = {
+              "org.opencontainers.image.title" = "Agentbox Desktop";
+              "org.opencontainers.image.description" = "Minimal agentic container with VNC desktop via SSH tunnel";
+              "org.opencontainers.image.source" = "https://github.com/DreamLab-AI/agentbox";
+              "org.opencontainers.image.version" = "1.0.0";
+              "org.opencontainers.image.architecture" = system;
+            };
+          };
+        };
+
       in {
         packages = {
           runtime = runtimeImage;
           postgres = postgresImage;
           full = fullImage;
+          desktop = desktopImage;
           default = runtimeImage;
         };
 
