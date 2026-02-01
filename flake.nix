@@ -54,27 +54,120 @@
           gnumake
           gcc
           pkg-config
+
+          # Additional utilities for skills
+          unzip
+          zip
+          gzip
+          xz
+          htop
+          ncdu
+
+          # Git utilities
+          gh  # GitHub CLI for github-* skills
+          git-lfs
+
+          # Text processing
+          pandoc  # For docs-alignment skill
         ];
 
-        # Node.js runtime
+        # Node.js runtime with skills dependencies
         nodePackages = with pkgs; [
           nodejs_20
           nodePackages.npm
           nodePackages.pnpm
+          nodePackages.yarn
+          nodePackages.typescript
+          nodePackages.typescript-language-server
+
+          # Build tools for skills
+          nodePackages.esbuild
+          nodePackages.prettier
         ];
 
-        # Python runtime
+        # Python runtime with skills dependencies
         pythonPackages = with pkgs; [
           python312
           python312Packages.pip
           python312Packages.virtualenv
           python312Packages.setuptools
+          python312Packages.wheel
+
+          # HTTP & Networking (skills: web-summary, perplexity-research, host-webserver-debug)
+          python312Packages.requests
+          python312Packages.httpx
+          python312Packages.aiohttp
+          python312Packages.aiofiles
+          python312Packages.urllib3
+          python312Packages.websockets
+
+          # Data Processing (skills: jupyter-notebooks, pytorch-ml)
+          python312Packages.pandas
+          python312Packages.numpy
+          python312Packages.pydantic
+
+          # Jupyter (skills: jupyter-notebooks)
+          python312Packages.jupyter
+          python312Packages.jupyterlab
+          python312Packages.notebook
+          python312Packages.ipykernel
+          python312Packages.nbformat
+
+          # CLI & Output (skills: build-with-quality, verification-quality)
+          python312Packages.rich
+          python312Packages.tabulate
+          python312Packages.colorama
+
+          # Parsing & Templating (skills: docs-alignment, latex-documents)
+          python312Packages.pyyaml
+          python312Packages.jinja2
+          python312Packages.markdown
+          python312Packages.beautifulsoup4
+          python312Packages.lxml
+          python312Packages.jsonschema
+          python312Packages.chardet
+
+          # Git & Docker (skills: github-*, docker-manager)
+          python312Packages.gitpython
+          python312Packages.docker
+
+          # AI/ML SDKs (skills: build-with-quality, reasoningbank-*)
+          python312Packages.anthropic
+          python312Packages.tiktoken
+
+          # Web Scraping (skills: web-summary)
+          python312Packages.youtube-transcript-api
+
+          # Validation
+          python312Packages.validators
+
+          # Browser Automation (skills: playwright, host-webserver-debug)
+          python312Packages.playwright
+
+          # Type Checking
+          python312Packages.typing-extensions
+          python312Packages.types-requests
         ];
 
-        # Rust toolchain (minimal, no GPU)
+        # Rust toolchain (minimal, no GPU) with WASM support
         rustToolchain = pkgs.rust-bin.stable.latest.minimal.override {
           extensions = [ "rust-src" "clippy" "rustfmt" ];
+          targets = [ "wasm32-unknown-unknown" ];  # WASM target for wasm-js skill
         };
+
+        # WASM tools (skills: wasm-js, rust-development)
+        wasmPackages = with pkgs; [
+          wasm-pack      # Rust to WASM build tool
+          wasm-bindgen-cli
+          binaryen       # WASM optimizer (wasm-opt)
+        ];
+
+        # Runtime packages (installed via npm/pip at startup, not in nix store):
+        # - ruvector (npm): Standalone vector database with HNSW indexing
+        # - @modelcontextprotocol/sdk (npm): MCP SDK for Claude integration
+        # - claude-flow (npm): V3 swarm orchestration
+        # - mcp (pip): MCP Python SDK
+        # These are auto-installed by skills-entrypoint.sh or on first use via npx
 
         # RuVector - Standalone vector database (NO PostgreSQL required)
         # Uses embedded redb storage with HNSW indexing
@@ -123,6 +216,7 @@
           ++ nodePackages
           ++ pythonPackages
           ++ [ rustToolchain ]
+          ++ wasmPackages
           ++ dbPackages
           ++ mediaPackages
           ++ browserPackages
@@ -180,17 +274,22 @@
               deps = [ rustToolchain ];
             })
 
-            # Layer 5: Database client (~50MB)
+            # Layer 5: WASM tools (~30MB)
+            (n2c.buildLayer {
+              deps = wasmPackages;
+            })
+
+            # Layer 6: Database client (~10MB)
             (n2c.buildLayer {
               deps = dbPackages;
             })
 
-            # Layer 6: Media tools (~50MB)
+            # Layer 7: Media tools (~50MB)
             (n2c.buildLayer {
               deps = mediaPackages;
             })
 
-            # Layer 7: Services (~20MB)
+            # Layer 8: Services (~20MB)
             (n2c.buildLayer {
               deps = servicePackages;
             })
