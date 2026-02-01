@@ -1,5 +1,5 @@
 # Agentbox Docker Compose Configuration
-# Minimal agentic container with RuVector memory store
+# Minimal agentic container with RuVector standalone vector database
 
 services:
   agentbox:
@@ -22,7 +22,8 @@ services:
       - "22:22"       # SSH
       - "8080:8080"   # code-server (optional)
       - "9090:9090"   # Management API
-      # 5432 (PostgreSQL) and 9600 (Z.AI) are internal only
+      - "9700:9700"   # RuVector API
+      # 9600 (Z.AI) is internal only
 
     environment:
       # API Keys (required for full functionality)
@@ -33,13 +34,11 @@ services:
       - GOOGLE_GEMINI_API_KEY=${GOOGLE_GEMINI_API_KEY:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
 
-      # RuVector Configuration (internal PostgreSQL)
-      - RUVECTOR_USE_EXTERNAL=false
-      - RUVECTOR_HOST=localhost
-      - RUVECTOR_PORT=5432
-      - RUVECTOR_USER=ruvector
-      - RUVECTOR_PASSWORD=${RUVECTOR_PASSWORD:-ruvector_secure_pass}
-      - RUVECTOR_DB=ruvector
+      # RuVector Configuration (standalone - NO PostgreSQL)
+      # Uses embedded redb storage with HNSW indexing
+      - RUVECTOR_DATA_DIR=/var/lib/ruvector
+      - RUVECTOR_PORT=9700
+      - RUVECTOR_LOG_LEVEL=info
 
       # Management API
       - MANAGEMENT_API_PORT=9090
@@ -50,8 +49,8 @@ services:
       - LOG_LEVEL=info
 
     volumes:
-      # Persistent PostgreSQL data (RuVector memory store)
-      - ruvector-data:/var/lib/postgresql/data
+      # Persistent RuVector data (embedded redb storage)
+      - ruvector-data:/var/lib/ruvector
 
       # Workspace (mount your project here)
       - ./workspace:/workspace
@@ -82,8 +81,9 @@ services:
   #     - "5901:5901"  # VNC (use SSH tunnel for security)
   #     - "8080:8080"
   #     - "9090:9090"
+  #     - "9700:9700"  # RuVector API
   #   volumes:
-  #     - ruvector-data:/var/lib/postgresql/data
+  #     - ruvector-data:/var/lib/ruvector
   #     - ./workspace:/workspace
   #   environment:
   #     - ENABLE_VNC=false  # Start with: supervisorctl start vnc:*

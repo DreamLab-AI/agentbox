@@ -76,11 +76,13 @@
           extensions = [ "rust-src" "clippy" "rustfmt" ];
         };
 
-        # RuVector - PostgreSQL + pgvector (custom vector memory store)
-        # NOT standard PostgreSQL - includes HNSW indexing for 150x-12,500x faster search
+        # RuVector - Standalone vector database (NO PostgreSQL required)
+        # Uses embedded redb storage with HNSW indexing
+        # Run via: npx ruvector (npm package)
+        # Features: 150x-12,500x faster search, GNN layers, self-learning
         dbPackages = with pkgs; [
-          # PostgreSQL 16 with pgvector extension
-          (postgresql_16.withPackages (p: [ p.pgvector ]))
+          # SQLite for lightweight session/state storage
+          sqlite
         ];
 
         # Media processing (CLI only)
@@ -126,56 +128,6 @@
           ++ browserPackages
           ++ servicePackages;
 
-        # RuVector initialization script (skills entrypoint)
-        ruvectorInit = pkgs.writeShellScriptBin "ruvector-init" ''
-          #!${pkgs.bash}/bin/bash
-          # RuVector PostgreSQL + pgvector initialization
-          # NOT standard PostgreSQL - custom vector memory store
-          set -e
-
-          export PGDATA="''${PGDATA:-/var/lib/postgresql/data}"
-          export RUVECTOR_DB="''${RUVECTOR_DB:-ruvector}"
-          export RUVECTOR_USER="''${RUVECTOR_USER:-ruvector}"
-          export RUVECTOR_PASSWORD="''${RUVECTOR_PASSWORD:-ruvector_secure_pass}"
-
-          echo "=== RuVector Memory Store Initialization ==="
-
-          # Create postgres user if needed
-          if ! id -u postgres &>/dev/null; then
-            useradd -r -d /var/lib/postgresql -s /bin/false postgres 2>/dev/null || true
-          fi
-
-          # Initialize data directory if needed
-          if [ ! -d "$PGDATA" ] || [ ! -f "$PGDATA/PG_VERSION" ]; then
-            echo "Initializing PostgreSQL data directory..."
-            mkdir -p "$PGDATA"
-            chown postgres:postgres "$PGDATA"
-            chmod 700 "$PGDATA"
-            su -s /bin/sh postgres -c "${pkgs.postgresql_16}/bin/initdb -D $PGDATA --encoding=UTF8 --locale=C.UTF-8"
-
-            # Configure for vector workloads
-            cat >> "$PGDATA/postgresql.conf" << 'PGCONF'
-listen_addresses = 'localhost'
-max_connections = 100
-shared_buffers = 256MB
-work_mem = 64MB
-maintenance_work_mem = 128MB
-wal_level = minimal
-max_wal_senders = 0
-max_parallel_workers_per_gather = 4
-max_parallel_workers = 8
-PGCONF
-
-            cat > "$PGDATA/pg_hba.conf" << 'HBACONF'
-local   all   postgres   trust
-local   all   all        trust
-host    all   all        127.0.0.1/32   md5
-HBACONF
-          fi
-
-          echo "✓ RuVector PostgreSQL configured"
-        '';
-
         # Create entrypoint script
         entrypoint = pkgs.writeShellScriptBin "entrypoint" ''
           #!${pkgs.bash}/bin/bash
@@ -187,10 +139,9 @@ HBACONF
           echo "Python: $(python3 --version)"
           echo "Rust: $(rustc --version)"
 
-          # Initialize RuVector PostgreSQL data directory
-          if [ -x ${ruvectorInit}/bin/ruvector-init ]; then
-            ${ruvectorInit}/bin/ruvector-init
-          fi
+          # RuVector runs standalone via npx - no PostgreSQL required
+          # Memory store uses embedded redb with HNSW indexing
+          # Start with: npx ruvector serve (or via supervisord)
 
           # Start supervisord if available
           if [ -f /etc/supervisord.conf ]; then
@@ -247,7 +198,7 @@ HBACONF
 
           copyToRoot = pkgs.buildEnv {
             name = "root";
-            paths = [ entrypoint ruvectorInit ];
+            paths = [ entrypoint ];
             pathsToLink = [ "/bin" ];
           };
 
@@ -260,6 +211,9 @@ HBACONF
               "RUST_BACKTRACE=1"
               "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
               "NIX_SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+              # RuVector standalone configuration
+              "RUVECTOR_DATA_DIR=/var/lib/ruvector"
+              "RUVECTOR_PORT=9700"
             ];
             WorkingDir = "/workspace";
             ExposedPorts = {
@@ -267,45 +221,14 @@ HBACONF
               "8080/tcp" = {};  # code-server
               "9090/tcp" = {};  # Management API
               "9600/tcp" = {};  # Z.AI (internal)
+              "9700/tcp" = {};  # RuVector API
             };
             Labels = {
               "org.opencontainers.image.title" = "Agentbox";
-              "org.opencontainers.image.description" = "Minimal agentic container for Claude Flow V3";
+              "org.opencontainers.image.description" = "Minimal agentic container for Claude Flow V3 with RuVector";
               "org.opencontainers.image.source" = "https://github.com/DreamLab-AI/agentbox";
               "org.opencontainers.image.version" = "1.0.0";
               "org.opencontainers.image.architecture" = system;
-            };
-          };
-        };
-
-        # PostgreSQL image - RuVector memory store
-        postgresImage = n2c.buildImage {
-          name = "agentbox";
-          tag = "postgres-${system}";
-
-          layers = [
-            (n2c.buildLayer {
-              deps = with pkgs; [
-                coreutils
-                bash
-                postgresql_16
-                cacert
-              ];
-            })
-          ];
-
-          config = {
-            Entrypoint = [ "${pkgs.postgresql_16}/bin/postgres" ];
-            Env = [
-              "PGDATA=/var/lib/postgresql/data"
-              "POSTGRES_USER=ruvector"
-              "POSTGRES_DB=ruvector"
-            ];
-            ExposedPorts = {
-              "5432/tcp" = {};
-            };
-            Volumes = {
-              "/var/lib/postgresql/data" = {};
             };
           };
         };
@@ -325,7 +248,7 @@ HBACONF
 
           copyToRoot = pkgs.buildEnv {
             name = "root";
-            paths = [ entrypoint ruvectorInit ];
+            paths = [ entrypoint ];
             pathsToLink = [ "/bin" ];
           };
 
@@ -337,14 +260,16 @@ HBACONF
               "PYTHONDONTWRITEBYTECODE=1"
               "RUST_BACKTRACE=1"
               "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+              "RUVECTOR_DATA_DIR=/var/lib/ruvector"
+              "RUVECTOR_PORT=9700"
             ];
             WorkingDir = "/workspace";
             ExposedPorts = {
               "22/tcp" = {};
-              "5432/tcp" = {};
               "8080/tcp" = {};
               "9090/tcp" = {};
               "9600/tcp" = {};
+              "9700/tcp" = {};  # RuVector API
             };
           };
         };
@@ -386,7 +311,7 @@ HBACONF
 
           copyToRoot = pkgs.buildEnv {
             name = "root";
-            paths = [ entrypoint ruvectorInit ];
+            paths = [ entrypoint ];
             pathsToLink = [ "/bin" ];
           };
 
@@ -399,6 +324,8 @@ HBACONF
               "RUST_BACKTRACE=1"
               "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
               "DISPLAY=:1"
+              "RUVECTOR_DATA_DIR=/var/lib/ruvector"
+              "RUVECTOR_PORT=9700"
             ];
             WorkingDir = "/workspace";
             ExposedPorts = {
@@ -407,10 +334,11 @@ HBACONF
               "8080/tcp" = {};   # code-server
               "9090/tcp" = {};   # Management API
               "9600/tcp" = {};   # Z.AI (internal)
+              "9700/tcp" = {};   # RuVector API
             };
             Labels = {
               "org.opencontainers.image.title" = "Agentbox Desktop";
-              "org.opencontainers.image.description" = "Minimal agentic container with VNC desktop via SSH tunnel";
+              "org.opencontainers.image.description" = "Minimal agentic container with RuVector and VNC desktop";
               "org.opencontainers.image.source" = "https://github.com/DreamLab-AI/agentbox";
               "org.opencontainers.image.version" = "1.0.0";
               "org.opencontainers.image.architecture" = system;
@@ -421,7 +349,6 @@ HBACONF
       in {
         packages = {
           runtime = runtimeImage;
-          postgres = postgresImage;
           full = fullImage;
           desktop = desktopImage;
           default = runtimeImage;
@@ -440,8 +367,12 @@ HBACONF
             echo ""
             echo "Build commands:"
             echo "  nix build .#runtime  - Build runtime image"
-            echo "  nix build .#postgres - Build postgres image"
             echo "  nix build .#full     - Build full image"
+            echo "  nix build .#desktop  - Build desktop image with VNC"
+            echo ""
+            echo "RuVector (standalone vector database):"
+            echo "  npx ruvector serve   - Start RuVector server"
+            echo "  npx ruvector --help  - Show all commands"
             echo ""
           '';
         };

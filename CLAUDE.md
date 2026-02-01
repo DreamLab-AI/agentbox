@@ -38,9 +38,6 @@ agentbox/
 # Build runtime image (headless)
 nix build .#runtime
 
-# Build PostgreSQL image
-nix build .#postgres
-
 # Build full combined image (headless)
 nix build .#full
 
@@ -50,6 +47,23 @@ nix build .#desktop
 # Development shell
 nix develop
 ```
+
+## RuVector Vector Database
+
+Standalone Rust-native vector database - NO PostgreSQL required:
+
+```bash
+# Start RuVector server
+npx ruvector serve --port 9700 --data-dir /var/lib/ruvector
+
+# Start RuVector MCP server
+npx ruvector mcp --port 9701
+
+# CLI operations
+npx ruvector --help
+```
+
+Features: HNSW indexing (150x-12,500x faster), GNN layers, self-learning, MCP integration.
 
 ## VNC Remote Desktop
 
@@ -76,6 +90,8 @@ Components: Xvfb + x11vnc + openbox (~150MB overhead)
 | 9090 | Management API |
 | 9500 | MCP TCP |
 | 9600 | Z.AI (internal) |
+| 9700 | RuVector API |
+| 9701 | RuVector MCP (optional) |
 
 ## Claude Flow V3 Integration
 

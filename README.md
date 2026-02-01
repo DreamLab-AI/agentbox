@@ -33,7 +33,6 @@ cd agentbox
 
 # Build for your architecture
 nix build .#runtime      # Runtime image (headless)
-nix build .#postgres     # PostgreSQL image
 nix build .#full         # Combined image (headless)
 nix build .#desktop      # Desktop image (with VNC)
 
@@ -115,49 +114,53 @@ The desktop uses openbox (minimal WM, ~2MB) with xterm and pcmanfm.
 | Port | Service | Description |
 |------|---------|-------------|
 | 22 | SSH | Secure shell access |
-| 5432 | RuVector | PostgreSQL + pgvector (internal) |
 | 5901 | VNC | Remote desktop (localhost via SSH tunnel) |
 | 8080 | code-server | Web IDE (optional) |
 | 9090 | Management API | Container management |
 | 9500 | MCP TCP | MCP protocol |
 | 9600 | Z.AI | Claude API proxy (internal) |
+| 9700 | RuVector | Vector database API |
 
-## RuVector Memory Store
+## RuVector Vector Database
 
-RuVector is a **custom PostgreSQL drop-in replacement** optimized for AI agent memory:
+RuVector is a **standalone Rust-native vector database** - NO PostgreSQL required:
 
-- **NOT standard PostgreSQL** - includes pgvector extension for vector operations
+- **Embedded redb storage** - No external database dependencies
 - **HNSW Indexing** - 150x-12,500x faster vector similarity search
+- **GNN Layers** - Graph neural network operations
+- **Self-Learning** - ReasoningBank pattern recognition
 - **384-dimensional embeddings** - all-MiniLM-L6-v2 compatible
-- **Built-in tables**: memory_entries, reasoning_patterns, sona_trajectories, session_state
+- **MCP Integration** - Native Claude Code/Flow support
 
-### Schema
+### Features
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    RuVector Tables                          │
+│                    RuVector Capabilities                     │
 ├─────────────────────────────────────────────────────────────┤
-│  memory_entries      │ Main vector memory storage           │
-│  reasoning_patterns  │ ReasoningBank pattern learning       │
-│  sona_trajectories   │ Reinforcement learning trajectories  │
-│  session_state       │ Agent session persistence            │
-│  patterns            │ General pattern storage              │
-│  projects            │ Project identification               │
-│  routing_history     │ Agent routing decisions              │
+│  Vector Storage     │ High-performance HNSW-indexed vectors │
+│  Pattern Learning   │ ReasoningBank adaptive patterns       │
+│  GNN Operations     │ GCN, GraphSAGE, GAT, GIN layers       │
+│  Hybrid Search      │ Vector + keyword semantic search      │
+│  MCP Protocol       │ Claude Code/Flow native integration   │
+│  Multi-tenancy      │ Namespace isolation for agents        │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Connection
+### Usage
 
 ```bash
-# Environment variable (auto-exported)
+# Environment variables (auto-exported)
 source /etc/profile.d/ruvector.sh
 
-# Direct connection
-psql "$RUVECTOR_PG_CONNINFO"
+# Start RuVector server
+npx ruvector serve --port 9700 --data-dir /var/lib/ruvector
 
-# Or use DATABASE_URL
-psql postgresql://ruvector:ruvector_secure_pass@localhost:5432/ruvector
+# Start RuVector MCP server (for Claude integration)
+npx ruvector mcp --port 9701
+
+# CLI operations
+npx ruvector --help
 ```
 
 ## Skills
