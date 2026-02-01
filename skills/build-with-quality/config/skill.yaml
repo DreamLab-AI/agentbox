@@ -1,0 +1,377 @@
+# Claude Code V3 + Agentic QE Combined Skill Configuration
+# "Build with Quality" - Optimal project building with integrated quality engineering
+
+name: build-with-quality
+version: 1.1.0
+description: |
+  Combined Claude Code V3 and Agentic QE skill for optimal project building
+  with integrated quality engineering. Provides 111+ specialized agents,
+  unified learning (SONA + ReasoningBank), and comprehensive quality gates.
+
+  New in v1.1.0:
+  - Copy-paste activation prompt (BUILD-WITH-QUALITY-PROMPT.md)
+  - 5 complete usage examples (USAGE-EXAMPLES.md)
+  - Dual execution modes (MCP tools + CLI fallback)
+  - Consensus mechanisms (BFT, CRDT, Raft, Weighted Voting)
+  - Agent coordination protocol with hooks
+  - Degraded mode documentation
+
+# Capabilities provided by this skill
+capabilities:
+  development:
+    - architecture_planning
+    - code_generation
+    - code_review
+    - security_review
+    - deployment_automation
+
+  quality_engineering:
+    - ai_test_generation
+    - coverage_analysis_olog_n  # O(log n) HNSW-powered
+    - defect_prediction_f1_gt_0.8
+    - mutation_testing
+    - chaos_testing
+    - contract_validation
+    - visual_regression
+    - accessibility_audit_wcag
+
+  learning:
+    - sona_optimization
+    - reasoning_bank_patterns
+    - cross_project_transfer
+    - dream_cycles
+    - q_learning_coverage
+
+# Swarm configuration
+swarm:
+  topology: hierarchical-mesh
+  max_agents: 100
+
+  domains:
+    - name: development
+      source: claude-code-v3
+      max_concurrent: 4
+      agents:
+        - architect
+        - coder
+        - reviewer
+        - browser-agent
+        - deployer
+
+    - name: quality
+      source: agentic-qe
+      max_concurrent: 4
+      agents:
+        - test-strategist
+        - unit-test-generator
+        - integration-test-generator
+        - e2e-test-generator
+        - coverage-analyzer
+        - mutation-tester
+        - defect-predictor
+        - flaky-test-hunter
+        - chaos-engineer
+        - resilience-validator
+
+    - name: security
+      source: mixed
+      max_concurrent: 2
+      agents:
+        - security-architect      # claude-code-v3
+        - security-implementer    # claude-code-v3
+        - security-tester         # claude-code-v3
+        - sast-scanner            # agentic-qe
+        - dast-scanner            # agentic-qe
+        - compliance-auditor      # agentic-qe
+
+    - name: learning
+      source: shared
+      max_concurrent: 2
+      agents:
+        - sona-optimizer
+        - memory-indexer
+        - trajectory-tracker
+        - reasoning-bank-manager
+        - q-learning-optimizer
+        - cross-project-transfer
+
+    - name: coordination
+      source: shared
+      max_concurrent: 1
+      agents:
+        - unified-coordinator
+        - event-bridge
+        - mcp-coordinator
+
+# Learning configuration
+learning:
+  sona:
+    mode: balanced  # real-time | balanced | research | edge | batch
+    latency_target_ms: 18
+    quality_target: 0.75
+    memory_budget_mb: 50
+
+  reasoning_bank:
+    enabled: true
+    confidence_tiers:
+      bronze: 0.70
+      silver: 0.80
+      gold: 0.90
+      platinum: 0.95
+
+  dream_cycles:
+    enabled: true
+    interval_ms: 30000
+    consolidation_batch_size: 100
+
+  q_learning:
+    enabled: true
+    coverage_optimization: true
+    state_dimensions: 12
+    learning_rate: 0.01
+    discount_factor: 0.99
+    exploration_rate: 0.1
+    algorithms:
+      - q-learning
+      - dqn
+      - double-dqn
+
+# Model routing (TinyDancer)
+model_routing:
+  strategy: tinydancer
+  flash_attention: true
+  token_reduction_target: 0.75
+
+  tiers:
+    haiku:
+      complexity_range: [0, 20]
+      tasks:
+        - syntax-fix
+        - simple-test
+        - type-annotation
+        - comment-addition
+
+    sonnet:
+      complexity_range: [20, 70]
+      tasks:
+        - implementation
+        - test-generation
+        - bug-fix
+        - review
+        - coverage-analysis
+
+    opus:
+      complexity_range: [70, 100]
+      tasks:
+        - architecture
+        - security-scan
+        - chaos-test
+        - defect-prediction
+
+  escalation:
+    confidence_threshold: 0.6
+    multi_model_voting_threshold: 0.85
+
+# Quality gates
+quality_gates:
+  coverage:
+    minimum: 85
+    critical_paths: 95
+    new_code: 100
+
+  security:
+    scan_required: true
+    critical_vulnerabilities: 0
+    high_vulnerabilities: 0
+    compliance_minimum: 90
+
+  accessibility:
+    level: AA  # A | AA | AAA
+    color_contrast: 85
+    keyboard_navigation: 80
+
+  chaos:
+    enabled: true
+    network_resilience: 70
+    resource_exhaustion: 75
+    graceful_degradation: 80
+
+  contracts:
+    enabled: true
+    schema_validation: required
+    backward_compatibility: required
+
+  defect_prediction:
+    threshold: 0.3
+    f1_target: 0.8
+
+# Workflow hooks
+hooks:
+  pre_build:
+    - analyze_requirements
+    - retrieve_similar_patterns
+    - select_optimal_topology
+
+  during_development:
+    - parallel_test_generation
+    - continuous_coverage_analysis
+    - real_time_defect_prediction
+    - security_scan
+
+  pre_deployment:
+    - quality_gate_enforcement
+    - contract_validation
+    - chaos_resilience_check
+    - accessibility_audit
+
+  post_deployment:
+    - pattern_persistence
+    - learning_consolidation
+    - cross_project_transfer
+    - metrics_collection
+
+# Performance targets
+performance:
+  vector_search_latency_ms: 3     # HNSW: 150x faster than linear
+  attention_speedup: 2.49         # Flash Attention minimum
+  coordination_latency_ms: 100
+  startup_time_ms: 500
+  token_reduction: 0.75
+
+# Development Methodologies
+methodologies:
+  ddd:
+    enabled: true
+    strategic_design:
+      - identify_subdomains
+      - define_bounded_contexts
+      - establish_ubiquitous_language
+      - create_context_map
+    tactical_patterns:
+      - aggregate
+      - entity
+      - value_object
+      - domain_event
+      - repository
+      - domain_service
+      - factory
+    guidelines:
+      - keep_aggregates_small
+      - reference_by_id_only
+      - validate_invariants_in_root
+      - immutable_value_objects
+      - domain_events_for_cross_aggregate
+
+  adr:
+    enabled: true
+    output_directory: docs/adr
+    template: standard  # standard | madr | nygard
+    required_sections:
+      - status
+      - context
+      - decision
+      - consequences
+    categories:
+      - architecture
+      - technology
+      - patterns
+      - operations
+      - security
+
+  tdd:
+    enabled: true
+    enforce_cycle: true  # Must complete red-green-refactor
+    phases:
+      red:
+        - write_failing_test_first
+        - verify_test_fails
+        - test_one_thing_only
+      green:
+        - write_minimum_code
+        - all_tests_must_pass
+        - no_premature_optimization
+      refactor:
+        - improve_while_green
+        - remove_duplication
+        - improve_naming
+        - extract_abstractions
+    commit_policy: after_green  # Commit after each green phase
+    naming_convention: should_X_when_Y
+
+# Consensus mechanisms
+consensus:
+  code_review:
+    algorithm: weighted_voting
+    threshold: 0.7
+    voters:
+      - reviewer (weight: 1.0)
+      - security-architect (weight: 0.8)
+      - coder (weight: 0.5)
+
+  quality_gates:
+    algorithm: byzantine_fault_tolerant
+    threshold: 0.67  # 2/3 majority
+    participants:
+      - coverage-analyzer
+      - defect-predictor
+      - security-tester
+      - compliance-auditor
+
+  pattern_storage:
+    algorithm: crdt
+    merge_strategy: conflict_free
+    replication: eventual_consistency
+
+  architecture_decisions:
+    algorithm: raft
+    leader_election: true
+    log_replication: true
+
+# Execution modes
+execution:
+  modes:
+    - name: mcp_tools
+      preferred: true
+      detection: mcp__claude-flow__swarm_init available
+      tools:
+        - mcp__claude-flow__swarm_init
+        - mcp__claude-flow__agent_spawn
+        - mcp__claude-flow__task_orchestrate
+        - mcp__claude-flow__memory_usage
+        - mcp__claude-flow__swarm_status
+
+    - name: cli_commands
+      preferred: false
+      detection: fallback when MCP not available
+      commands:
+        - npx claude-flow@alpha swarm init
+        - npx claude-flow@alpha agent spawn
+        - npx claude-flow@alpha task orchestrate
+        - npx claude-flow@alpha memory store
+        - npx claude-flow@alpha swarm status
+
+  agent_coordination:
+    hooks:
+      pre_task: npx claude-flow@alpha hooks pre-task --description "[task]"
+      post_edit: npx claude-flow@alpha hooks post-edit --file "[file]"
+      notification: npx claude-flow@alpha hooks notification --message "[msg]"
+      post_task: npx claude-flow@alpha hooks post-task --task-id "[id]"
+
+# Integration points
+integrations:
+  mcp:
+    enabled: true
+    tools: 175+
+
+  claude_code_cli:
+    enabled: true
+    commands:
+      - skill:build-with-quality
+      - skill:analyze
+      - skill:test
+      - skill:deploy
+
+  event_bus:
+    cross_domain_bridge: true
+    correlation: true
+    replay: true

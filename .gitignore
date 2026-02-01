@@ -1,66 +1,96 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-debug_log.txt
-claude-flow
-.roomodes
-CLAUDE.md
-workspace
-JavaScriptSolidServer
-webxr.long-type*
-qdrant_data/
-whelk-rs/
-.swarm/
-screenshots/
+# Nix
+result
+result-*
+.direnv/
 
-# Dependencies
-node_modules
-client/node_modules
+# Node.js
+node_modules/
+npm-debug.log*
+.npm
 .pnpm-store/
-memory/workspace
-client/public/models
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+*.egg-info/
+.eggs/
+*.egg
+.venv/
 venv/
 
-data/pages
-multi-agent-docker/gui-based-tools-docker/blender-4.5.1-linux-x64.tar.xz
-multi-agent-docker/mcp-logs/
-multi-agent-docker/.venv/
-multi-agent-docker/pbr_outputs/
-multi-agent-docker/workspace/
-#multi-agent-docker/gui-based-tools-docker/tessellating-pbr-generator/src/
-multi-agent-docker/.git
-# docs/archive
+# Rust
+target/
+*.rlib
 
-# .claude
-.npm
-.yarn
+# IDE
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+*.swp
+*.swo
+*~
 
+# OS
+.DS_Store
+Thumbs.db
 
-# Build output
-dist
-dist-ssr
+# Logs
+*.log
+logs/
+debug_log.txt
+
+# Environment
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Build artifacts
+dist/
+build/
+out/
+*.tar
+*.tar.gz
 *.local
-build
-out
-/codebase.txt
 
-# Data directories
-data/markdown/
-data/old_markdown/
-data/runtime/
-data/public/dist/
-data/metadata/metadata.json
-data/metadata/layout.json
-data/metadata/graph.json
+# Test artifacts
+coverage/
+.nyc_output/
 
-# Documentation and assets
-docs/*.gif
-docs/*.png
+# Temporary
+tmp/
+temp/
+*.tmp
+.cache/
+.temp/
+
+# Databases
+*.db
+*.db-journal
+*.db-wal
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+
+# Claude Flow
+.claude-flow/
+.multi-agent/
+.hive-mind/
+.swarm/
+claude-flow
+claude-flow.bat
+claude-flow.ps1
+hive-mind-prompt-*.txt
+agentdb.db*
+
+# MCP
+.mcp.json
+mcp-logs/
+
+# Media (keep repo light)
 *.mp4
 *.webm
 *.mov
@@ -70,127 +100,22 @@ docs/*.png
 *.gltf
 *.hdr
 *.exr
+*.gif
+*.jpg
+*.jpeg
+*.png
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-!.vscode/settings.json
-.idea
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-.DS_Store
-*.pem
-
-# Environment and configuration
-.env
-.env.*
-!.env.example
-!.env_template
-settings.local.toml
-certs
-
-# TypeScript
-*.tsbuildinfo
-auto-imports.d.ts
-components.d.ts
-
-# Testing and coverage
-coverage
-.nyc_output
-
-# Cache and temporary
-.cache
-.temp
-.eslintcache
-.stylelintcache
-*.tmp
-*.temp
-.tmp
-.temp
-
-# Rust/Cargo
-target/
-**/*.rs.bk
-Cargo.lock
-
-# CUDA PTX files (compiled GPU kernels)
+# CUDA (not used but keep for safety)
 *.ptx
-**/*.ptx
-
-# Platform and deployment
-.vercel
-.netlify
-.cloudflare
-
-# Debug and profiling
-chrome-profiler-events*.json
-speed-measure-plugin*.json
-
-# Generated files
-generated
-optimized-output.gif
 
 # Docker
 .docker/
 docker-compose.override.yml
 
-# AI and tools
-.aider*
-.hypothesis/
-__pycache__/
-*.pyc
+# Certificates
+certs/
+*.pem
 
-# Project specific
-scripts/local/
-client/visualisation/effects/custom/
-.qodo
-
-# Claude Flow generated files
-.claude/settings.local.json
-.mcp.json
-claude-flow.config.json
-.multi-agent/
-.hive-mind/
-memory/claude-flow-data.json
-memory/sessions/*
-!memory/sessions/README.md
-memory/agents/*
-!memory/agents/README.md
-coordination/memory_bank/*
-coordination/subtasks/*
-coordination/orchestration/*
-*.db
-*.db-journal
-*.db-wal
-*.sqlite
-*.sqlite-journal
-*.sqlite-wal
-claude-flow
-claude-flow.bat
-claude-flow.ps1
-hive-mind-prompt-*.txt
-agentdb.db
-agentdb.db-shm
-.mcp.json
-
-
-# Claude Flow metrics directories
-.claude-flow/
-**/.claude-flow/
-multi-agent-docker/gui-tools-assets/blender-*.tar.xz
-.claude/
-
-# ComfyUI storage (models, input, output - too large for git)
-multi-agent-docker/comfyui/storage-models/
-multi-agent-docker/comfyui/storage-input/
-multi-agent-docker/comfyui/storage-output/
-multi-agent-docker/ComfyUIDocker/storage-models/
-.swarm/memory.db-shm
-.swarm/memory.db-shm
-.swarm/memory.db-shm
-.swarm/memory.db-shm
-.swarm/memory.db-shm
-.env.local
+# Generated
+generated/
+screenshots/

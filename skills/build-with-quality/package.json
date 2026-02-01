@@ -1,0 +1,61 @@
+{
+  "name": "@claude-flow/build-with-quality-skill",
+  "version": "1.1.0",
+  "description": "Combined Claude Code V3 + Agentic QE skill for optimal project building with integrated quality engineering",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./memory": {
+      "import": "./dist/memory/index.js",
+      "types": "./dist/memory/index.d.ts"
+    },
+    "./coordination": {
+      "import": "./dist/coordination/index.js",
+      "types": "./dist/coordination/index.d.ts"
+    },
+    "./agents": {
+      "import": "./dist/agents/index.js",
+      "types": "./dist/agents/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc --noEmit",
+    "validate": "npm run lint && npm run typecheck && npm run test"
+  },
+  "keywords": [
+    "claude-code",
+    "agentic-qe",
+    "quality-engineering",
+    "multi-agent",
+    "test-generation",
+    "ai-testing",
+    "swarm-coordination"
+  ],
+  "author": "Claude Code V3 QE Skill",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0",
+    "eslint": "^8.55.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0"
+  }
+}
