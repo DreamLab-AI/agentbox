@@ -105,11 +105,37 @@ npx claude-flow@v3alpha swarm init --topology hierarchical-mesh
 npx claude-flow@v3alpha swarm status
 ```
 
-## Essential Skills (54)
+## Guidance Control Plane
+
+Governance backbone for extended autonomy (10x-100x longer agent runs):
+
+```bash
+# Initialize guidance hooks
+npx @claude-flow/guidance init
+
+# Compile CLAUDE.md into constitution + shards
+npx @claude-flow/guidance compile
+
+# Check enforcement gates
+npx @claude-flow/guidance check-gates
+```
+
+Key capabilities:
+- **Compile**: CLAUDE.md → constitution + task-scoped shards
+- **Retrieve**: Intent classification → relevant rules at task start
+- **Enforce**: 4 gates (destructive ops, tool allowlist, diff size, secrets)
+- **Prove**: Hash-chained cryptographic envelopes for audit
+- **Trust**: Per-agent trust accumulation with decay and tiers
+- **Adversarial**: Prompt injection, memory poisoning detection
+
+Impact: 50-90% reduction in destructive actions, 70-90% reduction in memory corruption.
+
+## Essential Skills (55)
 
 ### Core Development
-- build-with-quality, verification-quality, pair-programming
+- build-with-quality (v3.4.0), verification-quality, pair-programming
 - rust-development, docker-manager, docker-orchestrator
+- guidance-control-plane
 
 ### Claude Flow V3
 - v3-cli-modernization, v3-core-implementation, v3-ddd-architecture

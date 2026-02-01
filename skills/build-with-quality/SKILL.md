@@ -1,11 +1,13 @@
 ---
 skill: build-with-quality
-version: 1.1.0
-description: Unified Claude Code V3 + Agentic QE meta-skill for optimal project building with 111+ specialized agents, unified learning (SONA + ReasoningBank), TinyDancer model routing (75% token reduction), and comprehensive quality gates. Supersedes agentic-qe, reasoningbank-*, and pair-programming skills.
+version: 3.4.0
+description: Unified Claude Code V3 + Agentic QE meta-skill with AG-UI/A2A/A2UI protocol interoperability, 111+ specialized agents, unified learning (SONA + ReasoningBank), TinyDancer model routing (75% token reduction), and comprehensive quality gates. Supersedes agentic-qe, reasoningbank-*, and pair-programming skills.
 author: Claude Flow
-tags: [meta-skill, development, qa, tdd, adr, ddd, agents, quality-gates, sona, hnsw, coverage, security, accessibility, chaos-testing]
+tags: [meta-skill, development, qa, tdd, adr, ddd, agents, quality-gates, sona, hnsw, coverage, security, accessibility, chaos-testing, ag-ui, a2a, a2ui, interoperability]
 mcp_server: false
 supersedes: [agentic-qe, reasoningbank-intelligence, reasoningbank-agentdb, pair-programming]
+protocols: [AG-UI, A2A, A2UI]
+agentic_qe_version: 3.4.0
 ---
 
 # Build with Quality - Unified Meta-Skill
@@ -86,6 +88,83 @@ mcp__claude-flow__task_orchestrate { task: "[PROJECT]", strategy: "parallel" }
 - **Chaos Testing**: Network resilience (70%), resource exhaustion (75%), graceful degradation (80%)
 - **Contract Validation**: Schema validation, backward compatibility
 - **Defect Prediction**: ML-powered with F1 > 0.8
+
+### AI Interoperability Protocols (v3.4.0)
+
+Three major protocols enable seamless integration with the broader AI ecosystem:
+
+#### AG-UI Protocol (Anthropic - Agent-to-UI)
+Real-time event streaming between QE agents and frontend interfaces.
+- **19 event types**: Lifecycle, text, tool execution, state synchronization
+- **Transport layers**: SSE and WebSocket
+- **State sync**: JSON Patch-based state synchronization
+- **599 tests passing**
+
+```typescript
+// AG-UI event streaming
+import { AGUIAdapter } from '@agentic-qe/adapters/ag-ui';
+
+const adapter = new AGUIAdapter();
+adapter.on('tool.execution.start', (event) => {
+  console.log(`Tool ${event.toolName} started`);
+});
+```
+
+#### A2A Protocol (Google - Agent-to-Agent)
+External agent discovery and collaboration via JSON-RPC 2.0.
+- **RFC 8615**: Well-known endpoint for agent discovery
+- **OAuth 2.0**: Authentication and push notifications
+- **68 agent cards**: Auto-generated from QE agent documentation
+- **987 tests passing**
+
+```typescript
+// A2A agent discovery
+import { A2AClient } from '@agentic-qe/adapters/a2a';
+
+const client = new A2AClient();
+const agents = await client.discover('/.well-known/agent.json');
+const result = await client.invokeTask(agents[0], {
+  task: 'analyze-coverage',
+  params: { path: '/src' }
+});
+```
+
+#### A2UI Protocol (Declarative UI Generation)
+Rich, interactive UI components through declarative JSON.
+- **23 standard components** + 8 QE-specific components
+- **WCAG 2.2 Level AA**: Accessibility compliance
+- **RFC 6901**: JSON Pointers for data binding
+- **Template system**: Coverage, test results, security, accessibility reports
+- **608 tests passing**
+
+```typescript
+// A2UI declarative component
+import { A2UIRenderer } from '@agentic-qe/adapters/a2ui';
+
+const renderer = new A2UIRenderer();
+const ui = renderer.render({
+  type: 'qe-coverage-report',
+  data: { path: '/src', threshold: 85 },
+  accessibility: { level: 'AA' }
+});
+```
+
+### 12 DDD Domains (All Enabled by Default)
+
+| Domain | Purpose |
+|--------|---------|
+| test-generation | AI-powered test synthesis |
+| coverage-analysis | O(log n) gap detection |
+| security-compliance | SAST/DAST integration |
+| accessibility | WCAG validation |
+| requirements-validation | Spec verification |
+| code-intelligence | Knowledge graph building |
+| quality-assessment | Quality scoring |
+| defect-intelligence | ML-powered prediction |
+| visual-accessibility | UI/UX compliance |
+| chaos-resilience | Fault tolerance |
+| contract-testing | API compatibility |
+| cross-project-transfer | Pattern reuse |
 
 ### Development Methodologies
 
@@ -285,6 +364,7 @@ npx claude-flow@alpha agent spawn --type tdd-refactor-phase
 ## Related Skills (Complementary)
 
 These skills work **alongside** build-with-quality:
+- `guidance-control-plane` - Governance enforcement for extended autonomy (10x-100x longer runs)
 - `sparc-methodology` - Higher-level orchestration framework
 - `swarm-orchestration` / `swarm-advanced` - Lower-level swarm primitives
 - `verification-quality` - Truth scoring and rollback (complementary)
