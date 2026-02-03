@@ -69,6 +69,9 @@
 
           # Text processing
           pandoc  # For docs-alignment skill
+
+          # Cloud CLIs (skills: github-*, cloud deployments)
+          google-cloud-sdk  # gcloud, gsutil, bq commands
         ];
 
         # Node.js runtime with skills dependencies
@@ -162,11 +165,26 @@
           binaryen       # WASM optimizer (wasm-opt)
         ];
 
-        # Runtime packages (installed via npm/pip at startup, not in nix store):
-        # - ruvector (npm): Standalone vector database with HNSW indexing
-        # - @modelcontextprotocol/sdk (npm): MCP SDK for Claude integration
-        # - claude-flow (npm): V3 swarm orchestration
-        # - mcp (pip): MCP Python SDK
+        # Runtime packages (installed via npm at startup or on first use via npx):
+        # Core:
+        # - @claude-flow/cli@latest: V3 swarm orchestration
+        # - ruvector: Standalone vector database with HNSW indexing
+        # - @anthropic-ai/claude-code@latest: Claude Code CLI
+        #
+        # Browser Automation:
+        # - agent-browser@latest: Vercel Labs AI-optimized browser (primary)
+        # - @claude-flow/browser@latest: Claude Flow browser MCP
+        #
+        # Agentic Ecosystem:
+        # - agentic-flow@latest: Multi-agent flow orchestration
+        # - agentic-qe@latest: Testing framework (51 agents, 12 domains)
+        # - agentic-jujutsu@latest: Quantum-resistant git operations
+        #
+        # Utilities:
+        # - claude-usage-cli@latest: Usage tracking
+        # - gemini-flow: Google Gemini integration
+        # - agentdb@latest: Agent memory database
+        #
         # These are auto-installed by skills-entrypoint.sh or on first use via npx
 
         # RuVector - Standalone vector database (NO PostgreSQL required)
@@ -227,15 +245,69 @@
           #!${pkgs.bash}/bin/bash
           set -e
 
-          echo "=== Agentbox Container Starting ==="
+          echo "========================================"
+          echo "  AGENTBOX - Minimal Agentic Container"
+          echo "========================================"
+          echo ""
+
+          echo "[1/5] System Information"
           echo "Architecture: $(uname -m)"
           echo "Node.js: $(node --version)"
           echo "Python: $(python3 --version)"
           echo "Rust: $(rustc --version)"
+          echo ""
 
-          # RuVector runs standalone via npx - no PostgreSQL required
-          # Memory store uses embedded redb with HNSW indexing
-          # Start with: npx ruvector serve (or via supervisord)
+          # Create required directories
+          echo "[2/5] Setting up directories..."
+          mkdir -p /home/devuser/{workspace,agents,.claude/skills,.config,.cache,logs}
+          mkdir -p /var/lib/ruvector /var/log/supervisor
+
+          # Clone 610+ Claude subagents if not present
+          echo "[3/5] Setting up Claude subagents..."
+          AGENTS_DIR=/home/devuser/agents
+          export AGENTS_DIR
+          if [ ! -f "$AGENTS_DIR/doc-planner.md" ] && [ -d "$AGENTS_DIR" ]; then
+            echo "Cloning 610+ Claude subagents..."
+            cd "$AGENTS_DIR"
+            ${pkgs.git}/bin/git clone --depth 1 https://github.com/ChrisRoyse/610ClaudeSubagents.git temp-agents 2>/dev/null || true
+            if [ -d "temp-agents/agents" ]; then
+              mv temp-agents/agents/*.md . 2>/dev/null || true
+              rm -rf temp-agents
+              echo "✓ $(ls -1 $AGENTS_DIR/*.md 2>/dev/null | wc -l) agent templates available"
+            fi
+          else
+            echo "✓ Agent templates already present: $(ls -1 $AGENTS_DIR/*.md 2>/dev/null | wc -l) agents"
+          fi
+
+          # Initialize AISP if available
+          echo "[4/5] Initializing AISP 5.1 Platinum..."
+          if [ -f /opt/aisp/cli.js ]; then
+            ln -sf /opt/aisp/cli.js /usr/local/bin/aisp 2>/dev/null || true
+            echo "✓ AISP CLI available at /usr/local/bin/aisp"
+          fi
+
+          # Install runtime npm packages (first run only)
+          echo "[5/5] Checking runtime packages..."
+          if [ ! -f /home/devuser/.npm_packages_installed ]; then
+            echo "Installing Claude Flow ecosystem (first run)..."
+            npm install -g @claude-flow/cli@latest agent-browser@latest 2>/dev/null || true
+            touch /home/devuser/.npm_packages_installed
+            echo "✓ Runtime packages installed"
+          else
+            echo "✓ Runtime packages already installed"
+          fi
+
+          echo ""
+          echo "========================================"
+          echo "  Agentbox Ready"
+          echo "========================================"
+          echo ""
+          echo "Quick commands:"
+          echo "  npx @claude-flow/cli@latest --help  - Claude Flow V3"
+          echo "  npx ruvector serve                  - Start RuVector"
+          echo "  agent-browser --help                - Browser automation"
+          echo "  aisp validate <file>                - AISP validation"
+          echo ""
 
           # Start supervisord if available
           if [ -f /etc/supervisord.conf ]; then
@@ -313,6 +385,10 @@
               # RuVector standalone configuration
               "RUVECTOR_DATA_DIR=/var/lib/ruvector"
               "RUVECTOR_PORT=9700"
+              # Agent templates directory (610+ Claude subagents)
+              "AGENTS_DIR=/home/devuser/agents"
+              # Workspace
+              "WORKSPACE=/home/devuser/workspace"
             ];
             WorkingDir = "/workspace";
             ExposedPorts = {

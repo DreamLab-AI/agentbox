@@ -47,6 +47,7 @@ debug_log.txt
 .env.local
 .env.*.local
 !.env.example
+!.env.template
 
 # Build artifacts
 dist/

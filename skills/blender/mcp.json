@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "blender": {
+      "command": "blender",
+      "args": ["-b", "-P", "${HOME}/.claude/skills/blender/scripts/headless_start.py"],
+      "env": {
+        "BLENDER_WS_HOST": "127.0.0.1",
+        "BLENDER_WS_PORT": "8765"
+      }
+    }
+  }
+}

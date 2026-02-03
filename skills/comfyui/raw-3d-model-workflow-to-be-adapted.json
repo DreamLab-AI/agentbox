@@ -1,0 +1,519 @@
+{
+  "28": {
+    "inputs": {
+      "mask": [
+        "66",
+        1
+      ]
+    },
+    "class_type": "InvertMask",
+    "_meta": {
+      "title": "InvertMask"
+    }
+  },
+  "35": {
+    "inputs": {
+      "sparse_structure": [
+        "52",
+        0
+      ],
+      "seed": 42,
+      "stage2_inference_steps": 25,
+      "stage2_cfg_strength": 5,
+      "use_stage2_distillation": true,
+      "merge_mask_with_image": true,
+      "auto_resize_mask": true,
+      "slat_generator": [
+        "44",
+        2
+      ],
+      "image": [
+        "63",
+        0
+      ],
+      "mask": [
+        "28",
+        0
+      ]
+    },
+    "class_type": "SAM3DSLATGen",
+    "_meta": {
+      "title": "SAM3D SLAT Gen"
+    }
+  },
+  "37": {
+    "inputs": {
+      "slat": [
+        "35",
+        0
+      ],
+      "seed": 42,
+      "save_ply": true,
+      "slat_decoder_gs": [
+        "44",
+        3
+      ],
+      "image": [
+        "63",
+        0
+      ],
+      "mask": [
+        "66",
+        1
+      ]
+    },
+    "class_type": "SAM3DGaussianDecode",
+    "_meta": {
+      "title": "SAM3D Gaussian Decode"
+    }
+  },
+  "44": {
+    "inputs": {
+      "model_tag": "hf",
+      "compile": false,
+      "use_gpu_cache": true,
+      "hf_token": "",
+      "dtype": "bfloat16"
+    },
+    "class_type": "LoadSAM3DModel",
+    "_meta": {
+      "title": "Load SAM3D Model"
+    }
+  },
+  "45": {
+    "inputs": {
+      "slat": [
+        "35",
+        0
+      ],
+      "seed": 42,
+      "save_glb": true,
+      "simplify": 0.95,
+      "slat_decoder_mesh": [
+        "44",
+        4
+      ],
+      "image": [
+        "63",
+        0
+      ],
+      "mask": [
+        "28",
+        0
+      ]
+    },
+    "class_type": "SAM3DMeshDecode",
+    "_meta": {
+      "title": "SAM3D Mesh Decode"
+    }
+  },
+  "47": {
+    "inputs": {
+      "glb_path": [
+        "45",
+        0
+      ],
+      "ply_path": [
+        "37",
+        0
+      ],
+      "seed": 42,
+      "with_mesh_postprocess": true,
+      "with_texture_baking": true,
+      "texture_mode": "fast",
+      "texture_size": 1024,
+      "simplify": 0.95,
+      "rendering_engine": "nvdiffrast",
+      "embedders": [
+        "44",
+        5
+      ],
+      "image": [
+        "63",
+        0
+      ],
+      "mask": [
+        "66",
+        1
+      ]
+    },
+    "class_type": "SAM3DTextureBake",
+    "_meta": {
+      "title": "SAM3D Texture Bake"
+    }
+  },
+  "48": {
+    "inputs": {
+      "model_file": [
+        "47",
+        0
+      ],
+      "image": ""
+    },
+    "class_type": "Preview3D",
+    "_meta": {
+      "title": "Preview 3D"
+    }
+  },
+  "52": {
+    "inputs": {
+      "seed": 42,
+      "pointmap_path": [
+        "59",
+        1
+      ],
+      "stage1_inference_steps": 25,
+      "stage1_cfg_strength": 7,
+      "use_stage1_distillation": true,
+      "merge_mask_with_image": true,
+      "auto_resize_mask": true,
+      "ss_generator": [
+        "44",
+        1
+      ],
+      "image": [
+        "63",
+        0
+      ],
+      "mask": [
+        "28",
+        0
+      ],
+      "intrinsics": [
+        "59",
+        0
+      ]
+    },
+    "class_type": "SAM3DSparseGen",
+    "_meta": {
+      "title": "SAM3D Sparse Gen"
+    }
+  },
+  "53": {
+    "inputs": {
+      "mask": [
+        "59",
+        3
+      ]
+    },
+    "class_type": "MaskPreview",
+    "_meta": {
+      "title": "MaskPreview"
+    }
+  },
+  "54": {
+    "inputs": {
+      "file_path": [
+        "59",
+        2
+      ],
+      "preview": ""
+    },
+    "class_type": "SAM3D_PreviewPointCloud",
+    "_meta": {
+      "title": "SAM3D Preview Point Cloud"
+    }
+  },
+  "55": {
+    "inputs": {
+      "preview": "",
+      "source": [
+        "52",
+        1
+      ]
+    },
+    "class_type": "PreviewAny",
+    "_meta": {
+      "title": "Preview Any"
+    }
+  },
+  "57": {
+    "inputs": {
+      "glb_path": [
+        "47",
+        0
+      ],
+      "pointmap_path": [
+        "59",
+        1
+      ],
+      "enable_icp": true,
+      "enable_render_opt": true,
+      "intrinsics": [
+        "59",
+        0
+      ],
+      "pose": [
+        "52",
+        1
+      ],
+      "mask": [
+        "66",
+        1
+      ]
+    },
+    "class_type": "SAM3D_PoseOptimization",
+    "_meta": {
+      "title": "SAM3D Pose Optimization"
+    }
+  },
+  "58": {
+    "inputs": {
+      "model_file": [
+        "57",
+        0
+      ],
+      "image": ""
+    },
+    "class_type": "Preview3D",
+    "_meta": {
+      "title": "Preview 3D"
+    }
+  },
+  "59": {
+    "inputs": {
+      "depth_model": [
+        "44",
+        0
+      ],
+      "image": [
+        "63",
+        0
+      ]
+    },
+    "class_type": "SAM3D_DepthEstimate",
+    "_meta": {
+      "title": "SAM3D Depth Estimate"
+    }
+  },
+  "62": {
+    "inputs": {
+      "images": [
+        "63",
+        0
+      ]
+    },
+    "class_type": "PreviewImage",
+    "_meta": {
+      "title": "Preview Image"
+    }
+  },
+  "63": {
+    "inputs": {
+      "target_width": 1024,
+      "target_height": 1024,
+      "padding_color": "white",
+      "interpolation": "area",
+      "image": [
+        "82",
+        0
+      ]
+    },
+    "class_type": "ResizeAndPadImage",
+    "_meta": {
+      "title": "ResizeAndPadImage"
+    }
+  },
+  "66": {
+    "inputs": {
+      "width": 1024,
+      "height": 1024,
+      "scale_by": 1,
+      "upscale_method": "nearest-exact",
+      "resize_mode": "stretch",
+      "pad_color": "#FFFFFF",
+      "crop_position": "center",
+      "divisible_by": 2,
+      "device": "cpu",
+      "image": [
+        "82",
+        0
+      ]
+    },
+    "class_type": "AILab_ImageMaskResize",
+    "_meta": {
+      "title": "Image Mask Resize (RMBG) 🖼️🎭"
+    }
+  },
+  "68": {
+    "inputs": {
+      "model": [
+        "86",
+        0
+      ],
+      "conditioning": [
+        "73",
+        0
+      ]
+    },
+    "class_type": "BasicGuider",
+    "_meta": {
+      "title": "BasicGuider"
+    }
+  },
+  "73": {
+    "inputs": {
+      "guidance": 4,
+      "conditioning": [
+        "85",
+        0
+      ]
+    },
+    "class_type": "FluxGuidance",
+    "_meta": {
+      "title": "FluxGuidance"
+    }
+  },
+  "74": {
+    "inputs": {
+      "sampler_name": "euler"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "KSamplerSelect"
+    }
+  },
+  "78": {
+    "inputs": {
+      "vae_name": "flux2-vae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  },
+  "79": {
+    "inputs": {
+      "width": 1248,
+      "height": 832,
+      "batch_size": 1
+    },
+    "class_type": "EmptyFlux2LatentImage",
+    "_meta": {
+      "title": "Empty Flux 2 Latent"
+    }
+  },
+  "80": {
+    "inputs": {
+      "noise": [
+        "87",
+        0
+      ],
+      "guider": [
+        "68",
+        0
+      ],
+      "sampler": [
+        "74",
+        0
+      ],
+      "sigmas": [
+        "94",
+        0
+      ],
+      "latent_image": [
+        "79",
+        0
+      ]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "SamplerCustomAdvanced"
+    }
+  },
+  "82": {
+    "inputs": {
+      "samples": [
+        "80",
+        0
+      ],
+      "vae": [
+        "78",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "85": {
+    "inputs": {
+      "text": [
+        "93",
+        0
+      ],
+      "clip": [
+        "90",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Positive Prompt)"
+    }
+  },
+  "86": {
+    "inputs": {
+      "unet_name": "flux2_dev_fp8mixed.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model"
+    }
+  },
+  "87": {
+    "inputs": {
+      "noise_seed": 1006254006610247
+    },
+    "class_type": "RandomNoise",
+    "_meta": {
+      "title": "RandomNoise"
+    }
+  },
+  "89": {
+    "inputs": {
+      "filename_prefix": "Flux2",
+      "images": [
+        "82",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  },
+  "90": {
+    "inputs": {
+      "clip_name": "mistral_3_small_flux2_bf16.safetensors",
+      "type": "flux2",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Load CLIP"
+    }
+  },
+  "93": {
+    "inputs": {
+      "value": "a slightly rusty buick truck three quarter front view. neutral lighting, one broken headlight"
+    },
+    "class_type": "PrimitiveString",
+    "_meta": {
+      "title": "Prompt"
+    }
+  },
+  "94": {
+    "inputs": {
+      "steps": 1248,
+      "width": 832,
+      "height": 832
+    },
+    "class_type": "Flux2Scheduler",
+    "_meta": {
+      "title": "Flux2Scheduler"
+    }
+  }
+}
