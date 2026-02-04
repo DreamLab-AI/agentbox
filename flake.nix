@@ -202,10 +202,20 @@
           imagemagick
         ];
 
-        # Browser automation (headless)
+        # Browser automation (headless + visible via VNC)
+        # agent-browser and playwright are installed via npm at runtime
         browserPackages = with pkgs; [
-          chromium
-          playwright-driver
+          chromium              # Primary browser
+          playwright-driver    # Playwright browser binaries
+
+          # Dependencies for browser automation
+          at-spi2-atk          # Accessibility (for element refs)
+          cups                 # Printing (browser dependency)
+          mesa                 # OpenGL (software rendering)
+          libdrm               # DRM (display rendering)
+          alsa-lib             # Audio (browser dependency)
+          nss                  # Network security
+          nspr                 # Netscape portable runtime
         ];
 
         # Process management
@@ -214,19 +224,44 @@
           procps
         ];
 
-        # Minimal VNC/X11 for remote desktop via SSH tunnel
-        # Lightweight: ~150MB total, no full DE
+        # VNC/X11 stack for remote desktop and browser automation
+        # Access: ssh -L 5901:localhost:5901 user@host, then vnc://localhost:5901
+        # ~200MB total footprint
         vncPackages = with pkgs; [
+          # X11 core
           xorg.xorgserver     # Xvfb virtual framebuffer
-          x11vnc              # VNC server
-          openbox             # Minimal window manager (~2MB)
-          xterm               # Basic terminal
           xorg.xauth
           xorg.xinit
           xorg.xset
-          # Optional lightweight apps
-          pcmanfm             # File manager
+          xorg.xdpyinfo       # Display info (used by agent-browser)
+          xorg.xprop          # Window properties
+          xorg.xwininfo       # Window info
+          xorg.setxkbmap      # Keyboard layout
+          xkeyboard_config    # Keyboard config data
+
+          # VNC server
+          x11vnc              # VNC server (lightweight)
+
+          # Window manager (minimal)
+          openbox             # Minimal WM (~2MB)
+          tint2               # Taskbar/panel
+
+          # Terminals
+          xterm               # Basic terminal
+          xfce.xfce4-terminal # Better terminal with tabs
+
+          # Fonts (required for browser rendering)
+          dejavu_fonts
+          liberation_ttf
+          noto-fonts
+          fontconfig
+
+          # Utilities
+          xdotool             # X11 automation (click, type, etc.)
+          xclip               # Clipboard
+          scrot               # Screenshots
           feh                 # Image viewer
+          pcmanfm             # File manager
         ];
 
         # All packages combined
@@ -250,7 +285,7 @@
           echo "========================================"
           echo ""
 
-          echo "[1/5] System Information"
+          echo "[1/7] System Information"
           echo "Architecture: $(uname -m)"
           echo "Node.js: $(node --version)"
           echo "Python: $(python3 --version)"
@@ -258,12 +293,13 @@
           echo ""
 
           # Create required directories
-          echo "[2/5] Setting up directories..."
+          echo "[2/7] Setting up directories..."
           mkdir -p /home/devuser/{workspace,agents,.claude/skills,.config,.cache,logs}
-          mkdir -p /var/lib/ruvector /var/log/supervisor
+          mkdir -p /var/lib/ruvector /var/log/supervisor /tmp/screenshots
+          mkdir -p /run/user/1000 && chmod 700 /run/user/1000
 
           # Clone 610+ Claude subagents if not present
-          echo "[3/5] Setting up Claude subagents..."
+          echo "[3/7] Setting up Claude subagents..."
           AGENTS_DIR=/home/devuser/agents
           export AGENTS_DIR
           if [ ! -f "$AGENTS_DIR/doc-planner.md" ] && [ -d "$AGENTS_DIR" ]; then
@@ -280,22 +316,69 @@
           fi
 
           # Initialize AISP if available
-          echo "[4/5] Initializing AISP 5.1 Platinum..."
+          echo "[4/7] Initializing AISP 5.1 Platinum..."
           if [ -f /opt/aisp/cli.js ]; then
             ln -sf /opt/aisp/cli.js /usr/local/bin/aisp 2>/dev/null || true
             echo "✓ AISP CLI available at /usr/local/bin/aisp"
           fi
 
           # Install runtime npm packages (first run only)
-          echo "[5/5] Checking runtime packages..."
+          echo "[5/7] Checking runtime packages..."
           if [ ! -f /home/devuser/.npm_packages_installed ]; then
             echo "Installing Claude Flow ecosystem (first run)..."
-            npm install -g @claude-flow/cli@latest agent-browser@latest 2>/dev/null || true
+            npm install -g @claude-flow/cli@latest agent-browser@latest playwright 2>/dev/null || true
+            npx playwright install chromium 2>/dev/null || true
             touch /home/devuser/.npm_packages_installed
             echo "✓ Runtime packages installed"
           else
             echo "✓ Runtime packages already installed"
           fi
+
+          # Clean stale X lock files and set up VNC if packages present
+          echo "[6/7] Setting up VNC/X11 environment..."
+          rm -f /tmp/.X*-lock /tmp/.X11-unix/X* 2>/dev/null || true
+
+          # Check if VNC packages are available (desktop image)
+          if command -v Xvfb >/dev/null 2>&1; then
+            echo "VNC stack detected - starting X11 services..."
+            export DISPLAY=:1
+
+            # Start Xvfb (4K virtual framebuffer)
+            Xvfb :1 -screen 0 4096x4096x24 -ac +extension GLX +render -noreset &
+            sleep 2
+
+            # Start window manager
+            if command -v openbox >/dev/null 2>&1; then
+              DISPLAY=:1 openbox &
+            fi
+
+            # Start VNC server (localhost only - MUST use SSH tunnel)
+            if command -v x11vnc >/dev/null 2>&1; then
+              x11vnc -display :1 -rfbport 5901 -forever -shared -nopw -xkb -localhost &
+              echo "✓ VNC server running on localhost:5901 (SSH tunnel required)"
+            fi
+
+            # Create browser start script
+            cat > /home/devuser/start-browser.sh << 'BROWSERSCRIPT'
+#!/bin/bash
+export DISPLAY=:1
+chromium --no-sandbox --remote-debugging-port=9222 \
+  --user-data-dir=/home/devuser/.config/chromium-automation \
+  --window-size=1920,1080 \
+  --disable-gpu \
+  --disable-software-rasterizer "$@" &
+echo "Browser started with CDP on port 9222"
+echo "Connect with: agent-browser open <url>"
+BROWSERSCRIPT
+            chmod +x /home/devuser/start-browser.sh
+            echo "✓ Browser automation ready (run ~/start-browser.sh)"
+          else
+            echo "✓ Headless mode (no VNC packages)"
+          fi
+
+          # Final setup
+          echo "[7/7] Finalizing..."
+          cd /home/devuser/workspace
 
           echo ""
           echo "========================================"
@@ -303,11 +386,18 @@
           echo "========================================"
           echo ""
           echo "Quick commands:"
+          echo "  agent-browser --help                - AI browser automation"
+          echo "  ~/start-browser.sh                  - Start visible browser (VNC)"
           echo "  npx @claude-flow/cli@latest --help  - Claude Flow V3"
           echo "  npx ruvector serve                  - Start RuVector"
-          echo "  agent-browser --help                - Browser automation"
           echo "  aisp validate <file>                - AISP validation"
           echo ""
+          if command -v x11vnc >/dev/null 2>&1; then
+            echo "VNC Access:"
+            echo "  ssh -L 5901:localhost:5901 user@host"
+            echo "  Then: vnc://localhost:5901"
+            echo ""
+          fi
 
           # Start supervisord if available
           if [ -f /etc/supervisord.conf ]; then
@@ -504,16 +594,17 @@
             ];
             WorkingDir = "/workspace";
             ExposedPorts = {
-              "22/tcp" = {};     # SSH (tunnel VNC through this)
-              "5901/tcp" = {};   # VNC (localhost only via SSH tunnel)
+              "22/tcp" = {};     # SSH (tunnel all services through this)
+              # VNC 5901 is localhost only - use SSH tunnel
               "8080/tcp" = {};   # code-server
               "9090/tcp" = {};   # Management API
+              "9222/tcp" = {};   # Chrome DevTools Protocol (localhost via tunnel)
               "9600/tcp" = {};   # Z.AI (internal)
               "9700/tcp" = {};   # RuVector API
             };
             Labels = {
               "org.opencontainers.image.title" = "Agentbox Desktop";
-              "org.opencontainers.image.description" = "Minimal agentic container with RuVector and VNC desktop";
+              "org.opencontainers.image.description" = "Minimal agentic container with RuVector and VNC desktop (SSH tunnel required)";
               "org.opencontainers.image.source" = "https://github.com/DreamLab-AI/agentbox";
               "org.opencontainers.image.version" = "1.0.0";
               "org.opencontainers.image.architecture" = system;

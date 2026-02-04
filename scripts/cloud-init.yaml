@@ -1,0 +1,149 @@
+#cloud-config
+# Agentbox Cloud-Init - Fully Automated ARM Instance Setup
+# This runs automatically on first boot
+
+package_update: true
+package_upgrade: true
+
+packages:
+  - git
+  - tmux
+  - htop
+  - jq
+  - curl
+  - wget
+  - unzip
+  - python3
+  - python3-pip
+  - nodejs
+  - npm
+
+write_files:
+  # Agentbox setup script
+  - path: /opt/agentbox/setup.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      set -e
+
+      echo "=== Agentbox Automated Setup ==="
+      export HOME=/home/opc
+      export USER=opc
+      cd $HOME
+
+      # Install Docker
+      echo "[1/8] Installing Docker..."
+      sudo dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+      sudo dnf install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+      sudo systemctl enable --now docker
+      sudo usermod -aG docker opc
+
+      # Install VNC stack
+      echo "[2/8] Installing VNC desktop..."
+      sudo dnf install -y xorg-x11-server-Xvfb x11vnc openbox xterm
+
+      # Install Chromium
+      echo "[3/8] Installing Chromium..."
+      sudo dnf install -y chromium
+
+      # Install Node.js LTS
+      echo "[4/8] Setting up Node.js..."
+      curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash -
+      sudo dnf install -y nodejs
+
+      # Install agent-browser globally
+      echo "[5/8] Installing agent-browser..."
+      sudo npm install -g agent-browser playwright
+      sudo npx playwright install chromium
+
+      # Setup VNC service
+      echo "[6/8] Configuring VNC service..."
+      cat << 'VNC_SERVICE' | sudo tee /etc/systemd/system/xvfb.service
+      [Unit]
+      Description=Xvfb Virtual Framebuffer
+      After=network.target
+
+      [Service]
+      Type=simple
+      User=opc
+      Environment=DISPLAY=:1
+      ExecStart=/usr/bin/Xvfb :1 -screen 0 4096x4096x24 -ac +extension GLX +render -noreset
+      Restart=always
+
+      [Install]
+      WantedBy=multi-user.target
+      VNC_SERVICE
+
+      cat << 'X11VNC_SERVICE' | sudo tee /etc/systemd/system/x11vnc.service
+      [Unit]
+      Description=x11vnc VNC Server
+      After=xvfb.service
+      Requires=xvfb.service
+
+      [Service]
+      Type=simple
+      User=opc
+      Environment=DISPLAY=:1
+      ExecStart=/usr/bin/x11vnc -display :1 -rfbport 5901 -forever -shared -nopw -xkb
+      Restart=always
+
+      [Install]
+      WantedBy=multi-user.target
+      X11VNC_SERVICE
+
+      cat << 'OPENBOX_SERVICE' | sudo tee /etc/systemd/system/openbox.service
+      [Unit]
+      Description=Openbox Window Manager
+      After=x11vnc.service
+      Requires=xvfb.service
+
+      [Service]
+      Type=simple
+      User=opc
+      Environment=DISPLAY=:1
+      Environment=HOME=/home/opc
+      ExecStart=/usr/bin/openbox
+      Restart=always
+
+      [Install]
+      WantedBy=multi-user.target
+      OPENBOX_SERVICE
+
+      sudo systemctl daemon-reload
+      sudo systemctl enable --now xvfb x11vnc openbox
+
+      # Setup browser with remote debugging
+      echo "[7/8] Configuring browser automation..."
+      mkdir -p $HOME/.config/chromium
+      cat << 'BROWSER_SCRIPT' > $HOME/start-browser.sh
+      #!/bin/bash
+      export DISPLAY=:1
+      chromium-browser --no-sandbox --remote-debugging-port=9222 \
+        --user-data-dir=$HOME/.config/chromium-automation \
+        --window-size=1920,1080 &
+      BROWSER_SCRIPT
+      chmod +x $HOME/start-browser.sh
+
+      # Configure firewall
+      echo "[8/8] Configuring firewall..."
+      sudo firewall-cmd --permanent --add-port=22/tcp
+      sudo firewall-cmd --permanent --add-port=5901/tcp
+      sudo firewall-cmd --permanent --add-port=8080/tcp
+      sudo firewall-cmd --permanent --add-port=9090/tcp
+      sudo firewall-cmd --permanent --add-port=9222/tcp
+      sudo firewall-cmd --reload
+
+      # Create workspace
+      mkdir -p $HOME/workspace $HOME/.claude
+
+      # Install Claude Flow
+      npm install -g @claude-flow/cli@latest
+
+      # Mark setup complete
+      touch $HOME/.agentbox-setup-complete
+      echo "=== Agentbox Setup Complete ==="
+      echo "VNC: vnc://$(curl -s ifconfig.me):5901"
+      echo "SSH: ssh opc@$(curl -s ifconfig.me)"
+
+runcmd:
+  - /opt/agentbox/setup.sh 2>&1 | tee /var/log/agentbox-setup.log
