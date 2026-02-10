@@ -1,25 +1,55 @@
 # Agentbox Docker Compose Configuration
-# Minimal agentic container with RuVector standalone vector database
+# Adapted for local Ollama LLM on AMD Strix Halo (gfx1151)
+# Uses Vulkan backend (ROCm HIP segfaults on gfx1151)
 
 services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+    devices:
+      - /dev/kfd:/dev/kfd
+      - /dev/dri:/dev/dri
+    group_add:
+      - video
+      - "988"  # render group (numeric, not available by name in container)
+    security_opt:
+      - seccomp=unconfined
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+      - OLLAMA_VULKAN=1
+      - OLLAMA_FLASH_ATTENTION=true
+      - OLLAMA_KV_CACHE_TYPE=q8_0
+      - OLLAMA_CONTEXT_LENGTH=8192
+
   agentbox:
-    image: agentbox:runtime-${ARCH:-aarch64-linux}
+    image: agentbox:runtime-x86_64-linux
     container_name: agentbox
     hostname: agentbox
     restart: unless-stopped
+    depends_on:
+      - ollama
 
-    # Resource limits (Oracle Cloud ARM free tier compatible)
+    # Strix Halo: 16 Zen5 cores, 64GB unified memory
     deploy:
       resources:
         limits:
-          cpus: '4'
-          memory: 24G
+          cpus: '12'
+          memory: 16G
         reservations:
-          cpus: '1'
+          cpus: '2'
           memory: 4G
 
+    # Allow agentbox to reach Ollama via Docker network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
     ports:
-      - "22:22"       # SSH
+      - "2222:22"     # SSH (remapped to avoid conflict)
       - "8080:8080"   # code-server (optional)
       - "9090:9090"   # Management API
       - "9700:9700"   # RuVector API
@@ -30,12 +60,16 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - GITHUB_TOKEN=${GITHUB_TOKEN:-}
 
+      # Ollama as OpenAI-compatible backend
+      - OPENAI_API_KEY=ollama
+      - OPENAI_BASE_URL=http://host.docker.internal:11434/v1
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - OLLAMA_MODEL=qwen2.5:32b-instruct
+
       # Optional API Keys
       - GOOGLE_GEMINI_API_KEY=${GOOGLE_GEMINI_API_KEY:-}
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
 
       # RuVector Configuration (standalone - NO PostgreSQL)
-      # Uses embedded redb storage with HNSW indexing
       - RUVECTOR_DATA_DIR=/var/lib/ruvector
       - RUVECTOR_PORT=9700
       - RUVECTOR_LOG_LEVEL=info
@@ -55,11 +89,8 @@ services:
       # Workspace (mount your project here)
       - ./workspace:/workspace
 
-      # Optional: Mount host SSH keys (read-only)
-      # - ~/.ssh:/home/devuser/.ssh:ro
-
-      # Optional: Mount Claude credentials
-      # - ~/.claude:/home/devuser/.claude
+      # Mount host Claude credentials (if available)
+      # - ~/.claude:/home/devuser/.claude:ro
 
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9090/health"]
@@ -68,26 +99,11 @@ services:
       retries: 3
       start_period: 60s
 
-    # Security
     security_opt:
       - no-new-privileges:true
 
-  # Desktop variant (uncomment to use VNC)
-  # agentbox-desktop:
-  #   image: agentbox:desktop-${ARCH:-aarch64-linux}
-  #   container_name: agentbox-desktop
-  #   ports:
-  #     - "22:22"
-  #     - "5901:5901"  # VNC (use SSH tunnel for security)
-  #     - "8080:8080"
-  #     - "9090:9090"
-  #     - "9700:9700"  # RuVector API
-  #   volumes:
-  #     - ruvector-data:/var/lib/ruvector
-  #     - ./workspace:/workspace
-  #   environment:
-  #     - ENABLE_VNC=false  # Start with: supervisorctl start vnc:*
-
 volumes:
+  ollama:
+    name: ollama
   ruvector-data:
     name: agentbox-ruvector-data

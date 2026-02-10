@@ -75,17 +75,17 @@
         ];
 
         # Node.js runtime with skills dependencies
-        nodePackages = with pkgs; [
+        nodeEnvPackages = with pkgs; [
           nodejs_20
-          nodePackages.npm
-          nodePackages.pnpm
-          nodePackages.yarn
-          nodePackages.typescript
-          nodePackages.typescript-language-server
+          pkgs.nodePackages.npm
+          pnpm
+          pkgs.nodePackages.yarn
+          pkgs.nodePackages.typescript
+          pkgs.nodePackages.typescript-language-server
 
           # Build tools for skills
-          nodePackages.esbuild
-          nodePackages.prettier
+          esbuild
+          pkgs.nodePackages.prettier
         ];
 
         # Python runtime with skills dependencies
@@ -220,7 +220,7 @@
 
         # Process management
         servicePackages = with pkgs; [
-          supervisor
+          python3Packages.supervisor
           procps
         ];
 
@@ -266,7 +266,7 @@
 
         # All packages combined
         allPackages = basePackages
-          ++ nodePackages
+          ++ nodeEnvPackages
           ++ pythonPackages
           ++ [ rustToolchain ]
           ++ wasmPackages
@@ -274,6 +274,12 @@
           ++ mediaPackages
           ++ browserPackages
           ++ servicePackages;
+
+        # Package config files into /etc
+        configFiles = pkgs.runCommand "agentbox-config" {} ''
+          mkdir -p $out/etc
+          cp ${./config/supervisord-nix.conf} $out/etc/supervisord.conf
+        '';
 
         # Create entrypoint script
         entrypoint = pkgs.writeShellScriptBin "entrypoint" ''
@@ -401,10 +407,12 @@ BROWSERSCRIPT
 
           # Start supervisord if available
           if [ -f /etc/supervisord.conf ]; then
-            exec ${pkgs.supervisor}/bin/supervisord -c /etc/supervisord.conf -n
+            mkdir -p /var/run /var/log/supervisor /tmp
+            export SLEEP_CMD="${pkgs.coreutils}/bin/sleep"
+            exec ${pkgs.python3Packages.supervisor}/bin/supervisord -c /etc/supervisord.conf -n
           else
-            # Fallback to shell
-            exec ${pkgs.bash}/bin/bash
+            # Fallback: keep container alive
+            exec ${pkgs.coreutils}/bin/sleep infinity
           fi
         '';
 
@@ -423,7 +431,7 @@ BROWSERSCRIPT
 
             # Layer 2: Node.js runtime (~100MB)
             (n2c.buildLayer {
-              deps = nodePackages;
+              deps = nodeEnvPackages;
             })
 
             # Layer 3: Python runtime (~150MB)
@@ -459,8 +467,8 @@ BROWSERSCRIPT
 
           copyToRoot = pkgs.buildEnv {
             name = "root";
-            paths = [ entrypoint ];
-            pathsToLink = [ "/bin" ];
+            paths = [ entrypoint configFiles ];
+            pathsToLink = [ "/bin" "/etc" ];
           };
 
           config = {
@@ -550,7 +558,7 @@ BROWSERSCRIPT
           layers = [
             # Layer 1: Base + Node + Python
             (n2c.buildLayer {
-              deps = basePackages ++ nodePackages ++ pythonPackages;
+              deps = basePackages ++ nodeEnvPackages ++ pythonPackages;
             })
 
             # Layer 2: Rust + DB + Media
