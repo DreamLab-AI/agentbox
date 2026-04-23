@@ -361,7 +361,7 @@ python -m spacy download en_core_web_sm
 ## 📋 File Structure
 
 ```
-multi-agent-docker/skills/wardley-maps/
+<agentbox>/skills/wardley-maps/
 ├── tools/
 │   ├── wardley_mapper.py              # MCP main entry (210 lines)
 │   ├── advanced_nlp_parser.py         # NLP engine (545 lines)

@@ -52,7 +52,7 @@ echo "" >> "$REPORT_FILE"
 
 # Check if major components are documented
 MAJOR_COMPONENTS=(
-    "multi-agent-docker"
+    "agentbox"
     "claude-flow"
     "cuda"
     "comfyui"

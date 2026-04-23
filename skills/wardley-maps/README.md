@@ -56,7 +56,7 @@ Whether you have structured data, unstructured text, business descriptions, tech
 
 ### Method 2: Interactive CLI Mode
 ```bash
-cd multi-agent-docker/skills/wardley-maps/tools
+cd <agentbox>/skills/wardley-maps/tools
 python3 quick_map.py
 # Follow the prompts to create your map
 ```

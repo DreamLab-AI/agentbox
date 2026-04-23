@@ -1,6 +1,6 @@
 # ADR-001: Nix Flake Build Architecture
 
-**Status:** Accepted, Updated for Agentbox 2.0  
+**Status:** Accepted (updated 2026-04-23)  
 **Date:** 2024-12-01  
 **Updated:** 2026-04-23  
 **Author:** Agentbox Team
@@ -14,7 +14,7 @@ Agentbox needs:
 - generated runtime configuration instead of static monoliths
 - a clean path from repo state to container image state
 
-The original Nix work replaced a monolithic Dockerfile. Agentbox 2.0 extends that by making the manifest part of the build contract.
+The original Nix work replaced a monolithic Dockerfile. The current architecture extends that by making the manifest part of the build contract.
 
 ## Decision
 
@@ -38,7 +38,7 @@ This remains the right approach because it gives:
 - explicit ownership of optional runtime dependencies
 - an upgrade path away from giant static images
 
-## Agentbox 2.0 Specific Consequences
+## Consequences under the manifest-driven architecture
 
 ### Positive
 

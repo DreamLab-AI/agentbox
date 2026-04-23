@@ -106,11 +106,11 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -r multi-agent-docker/skills/docs-alignment/scripts/requirements.txt
+          pip install -r <agentbox>/skills/docs-alignment/scripts/requirements.txt
 
       - name: Run documentation alignment
         run: |
-          python multi-agent-docker/skills/docs-alignment/scripts/docs_alignment.py \
+          python <agentbox>/skills/docs-alignment/scripts/docs_alignment.py \
             --project-root . \
             --output-dir ./doc-reports
 
@@ -128,8 +128,8 @@ documentation-check:
   stage: test
   image: python:3.11
   script:
-    - pip install -r multi-agent-docker/skills/docs-alignment/scripts/requirements.txt
-    - python multi-agent-docker/skills/docs-alignment/scripts/docs_alignment.py --project-root .
+    - pip install -r <agentbox>/skills/docs-alignment/scripts/requirements.txt
+    - python <agentbox>/skills/docs-alignment/scripts/docs_alignment.py --project-root .
   artifacts:
     paths:
       - docs/DOCUMENTATION_ISSUES.md

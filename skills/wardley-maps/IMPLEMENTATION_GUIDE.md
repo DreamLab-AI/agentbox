@@ -11,7 +11,7 @@ python -m spacy download en_core_web_sm
 
 ### 2. Verify Installation
 ```bash
-cd multi-agent-docker/skills/wardley-maps/tools
+cd <agentbox>/skills/wardley-maps/tools
 python3 -c "from advanced_nlp_parser import AdvancedNLPParser; print('✓ NLP Parser ready')"
 python3 -c "from heuristics_engine import get_heuristics_engine; print('✓ Heuristics Engine ready')"
 python3 -c "from strategic_analyzer import StrategicAnalyzer; print('✓ Strategic Analyzer ready')"

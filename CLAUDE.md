@@ -4,7 +4,7 @@ This file documents the current repo architecture. It is not a generic Claude Co
 
 ## Current State
 
-Agentbox is in a 2.0 migration state:
+Agentbox is in active development:
 
 - build composition is driven by `agentbox.toml`
 - the runtime is sovereign/profile-based

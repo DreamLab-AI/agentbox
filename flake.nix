@@ -347,6 +347,18 @@ priority=31
 stdout_logfile=/var/log/nostr-bridge.log
 stderr_logfile=/var/log/nostr-bridge.error.log
 ''}
+${lib.optionalString ((sovereignCfg.enabled or false) && (sovereignCfg.https_bridge or false)) ''
+
+[program:https-bridge]
+command=${pkgs.nodejs_20}/bin/node /opt/agentbox/https-bridge/https-proxy.js
+directory=/opt/agentbox/https-bridge
+environment=HOME="/workspace",MANAGEMENT_API_PORT="%(ENV_MANAGEMENT_API_PORT)s"
+autostart=true
+autorestart=true
+priority=32
+stdout_logfile=/var/log/https-bridge.log
+stderr_logfile=/var/log/https-bridge.error.log
+''}
 ${lib.optionalString (browserCfg.playwright or false) ''
 
 [program:playwright-mcp]

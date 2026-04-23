@@ -88,4 +88,4 @@ Optional:
 
 ## License
 
-Part of multi-agent-docker project.
+Part of the agentbox skills ecosystem.

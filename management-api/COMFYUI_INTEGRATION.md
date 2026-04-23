@@ -34,7 +34,7 @@ ComfyUI workflow management has been successfully integrated into the Management
 
 ### 1. Install Dependencies
 ```bash
-cd /home/devuser/workspace/project/multi-agent-docker/multi-agent-docker/management-api
+cd <agentbox>/management-api
 npm install
 ```
 

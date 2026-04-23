@@ -1,6 +1,6 @@
 # Quick Start
 
-This guide reflects the current Agentbox 2.0 runtime.
+This guide reflects the current Agentbox runtime.
 
 ## Recommended Path
 

@@ -64,4 +64,4 @@ Health endpoints that do not require auth:
 ## Notes
 
 - Older documentation that mentions pm2, CachyOS workstation assumptions, or bearer-only auth is obsolete.
-- The management API is part of the Agentbox 2.0 sovereign runtime, not a standalone workstation control plane.
+- The management API is part of the agentbox runtime, not a standalone workstation control plane.

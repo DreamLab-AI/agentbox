@@ -10,7 +10,7 @@ description: >
   to Quest. Complements wasm-js (WASM compute), game-dev (full studio),
   and unreal-engine (UE5 automation).
 version: 1.0.0
-author: VisionClaw-Agents
+author: agentbox-skills
 tags:
   - meta-quest
   - webxr

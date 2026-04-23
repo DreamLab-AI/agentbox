@@ -120,3 +120,11 @@ certs/
 # Generated
 generated/
 screenshots/
+
+# Hardened skill directory rules (prevent build artefacts)
+skills/**/node_modules/
+skills/**/target/
+skills/**/dist/
+skills/**/__pycache__/
+skills/**/.DS_Store
+skills/**/backups/

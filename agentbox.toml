@@ -6,6 +6,7 @@ vector_db = "ruvector-embedded"
 enabled = true
 solid_pod = true
 nostr_bridge = true
+https_bridge = false
 
 [desktop]
 enabled = false

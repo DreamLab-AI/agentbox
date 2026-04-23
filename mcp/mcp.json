@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "version": "2.0.0",
-  "description": "MCP Server Registry for Agentic Workstation - Modernized Skills",
+  "description": "MCP Server Registry for Agentbox",
   "mcpServers": {
     "claude-flow": {
       "command": "node",
@@ -97,9 +97,9 @@
       "features": ["viewport_screenshots", "polyhaven", "sketchfab", "hyper3d_rodin", "hunyuan3d", "code_execution"]
     }
   },
-  "visionflow": {
+  "external_bridge": {
     "tcp_bridge": {
-      "host": "agentic-workstation",
+      "host": "external-mcp-bridge",
       "port": 9500,
       "protocol": "json-rpc"
     },
@@ -146,14 +146,14 @@
       "description": "ComfyUI AI image generation"
     },
     "neo4j": {
-      "bolt_url": "bolt://visionflow-neo4j:7687",
-      "http_url": "http://visionflow-neo4j:7474",
+      "bolt_url": "bolt://external-neo4j:7687",
+      "http_url": "http://external-neo4j:7474",
       "network": "docker_ragflow",
       "description": "Neo4j graph database"
     },
     "jss": {
-      "url": "http://visionflow-jss:3030",
-      "ws_url": "ws://visionflow-jss:3030/.notifications",
+      "url": "http://external-jss:3030",
+      "ws_url": "ws://external-jss:3030/.notifications",
       "network": "docker_ragflow",
       "description": "JavaScript Solid Server for Solid Protocol pods"
     },

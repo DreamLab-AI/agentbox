@@ -1,0 +1,41 @@
+name: Contract tests
+
+on:
+  pull_request:
+    paths:
+      - 'management-api/adapters/**'
+      - 'management-api/package.json'
+      - 'tests/contract/**'
+      - 'agentbox/schemas/adapter-contracts/**'
+      - '.github/workflows/contract-tests.yml'
+
+jobs:
+  contract:
+    name: Adapter contract suites
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 20 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: management-api/package-lock.json
+
+      - name: Install dependencies
+        working-directory: management-api
+        run: npm ci
+
+      - name: Run contract test suites
+        working-directory: management-api
+        run: npx jest ../tests/contract/ --testPathPattern='\.contract\.spec\.js$' --ci --forceExit
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: contract-test-results
+          path: management-api/coverage/
+          retention-days: 14

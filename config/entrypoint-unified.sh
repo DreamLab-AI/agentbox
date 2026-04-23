@@ -2,7 +2,7 @@
 set -euo pipefail
 
 echo "========================================"
-echo "  AGENTBOX 2.0"
+echo "  AGENTBOX"
 echo "  Modular Sovereign Agent Environment"
 echo "========================================"
 echo ""
@@ -26,6 +26,27 @@ mkdir -p \
   /var/log/supervisor \
   /var/run \
   /tmp/screenshots
+
+# Auto-generate management key if unset or still the legacy sentinel value
+MGMT_KEY_FILE="$WORKSPACE/profiles/default/mgmt-key"
+_legacy_sentinel="change-this-secret-key"
+if [ -z "${MANAGEMENT_API_KEY:-}" ] || [ "${MANAGEMENT_API_KEY:-}" = "$_legacy_sentinel" ]; then
+  if [ -f "$MGMT_KEY_FILE" ]; then
+    MANAGEMENT_API_KEY="$(cat "$MGMT_KEY_FILE")"
+  else
+    mkdir -p "$(dirname "$MGMT_KEY_FILE")"
+    if command -v openssl >/dev/null 2>&1; then
+      MANAGEMENT_API_KEY="$(openssl rand -hex 32)"
+    else
+      MANAGEMENT_API_KEY="$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+    fi
+    printf '%s' "$MANAGEMENT_API_KEY" > "$MGMT_KEY_FILE"
+    chmod 0600 "$MGMT_KEY_FILE"
+    echo "[bootstrap] Generated management API key -> $MGMT_KEY_FILE"
+  fi
+  export MANAGEMENT_API_KEY
+fi
+unset _legacy_sentinel
 
 if [ "${ENABLE_DESKTOP:-false}" = "true" ]; then
   mkdir -p /tmp/.X11-unix

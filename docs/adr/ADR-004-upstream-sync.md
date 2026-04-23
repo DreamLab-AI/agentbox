@@ -1,6 +1,6 @@
 # ADR-004: Upstream Sync Boundaries
 
-**Status:** Accepted, Updated for Agentbox 2.0  
+**Status:** Accepted (updated 2026-04-23)  
 **Date:** 2026-02-03  
 **Updated:** 2026-04-23  
 **Author:** Agentbox Team
@@ -9,7 +9,7 @@
 
 Agentbox inherited ideas, assets, and some structure from older upstream containers and adjacent agent environments.
 
-That remains useful, but Agentbox 2.0 now has a different architecture:
+That remains useful, but Agentbox now has a different architecture:
 
 - manifest-driven Nix build
 - sovereign runtime bootstrap
@@ -23,7 +23,7 @@ Blind upstream syncing is no longer safe.
 
 Sync upstream selectively, not mechanically.
 
-Only port upstream changes that fit the Agentbox 2.0 architecture.
+Only port upstream changes that fit the current agentbox architecture.
 
 ## What May Be Synced
 

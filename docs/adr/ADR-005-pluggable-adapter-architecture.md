@@ -168,6 +168,32 @@ Every adapter dispatch is instrumented:
 
 Each adapter slot publishes a **contract version** as `MAJOR.MINOR.PATCH`. Breaking changes bump `MAJOR`. Backward-compat additions bump `MINOR`. Same-wire-format fixes bump `PATCH`.
 
+### Handshake sequence
+
+```mermaid
+sequenceDiagram
+    participant Host as Host orchestrator
+    participant API as agentbox /v1/meta
+    participant EP as External adapter endpoint
+    participant Probe as LocalFallbackProbe
+
+    Host->>API: GET /v1/meta
+    API-->>Host: { image_hash, manifest_checksum,<br/>federation_mode: "client",<br/>adapter_contract_versions: {...} }
+    Host->>Host: compare versions vs registry<br/>(intersect SemVer ranges)
+    alt MAJOR mismatch
+        Host--xAPI: abort session start
+    end
+    loop for each external slot
+        Host->>EP: GET /probe/origin
+        EP-->>Host: signed Ed25519 token<br/>{ endpoint_id, issued_at, session_nonce }
+        Host->>Probe: verify signature
+        alt verification fails
+            Host--xEP: quarantine session
+        end
+    end
+    Host->>API: FederationSessionStarted<br/>(handshake record attached)
+```
+
 ### Version handshake
 
 At management-api startup:

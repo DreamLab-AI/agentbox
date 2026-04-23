@@ -1,0 +1,17 @@
+title = "Gitleaks Config"
+useDefault = true
+
+[allowlist]
+files = [
+  "(?:^|/)\.env\.example$",
+  "(?:^|/)\.env\.template$"
+]
+
+paths = [
+  "(?:^|/)\.env\.example$",
+  "(?:^|/)\.env\.template$"
+]
+
+regexes = [
+  "AKIA.*EXAMPLE"
+]

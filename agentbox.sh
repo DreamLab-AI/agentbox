@@ -34,6 +34,8 @@ Commands:
   ${GREEN}ip${NC}               Show instance IP
   ${GREEN}setup${NC}            Run initial setup on instance
   ${GREEN}start-browser${NC}    Start visible browser on remote (for agent-browser)
+  ${GREEN}backup${NC}           Backup named volumes and config to a tarball
+  ${GREEN}restore${NC}          Restore named volumes and config from a tarball
 
 Options:
   -i, --ip IP      Override instance IP
@@ -44,6 +46,10 @@ Examples:
   $0 vnc                    # Start VNC tunnel, then connect to vnc://localhost:5901
   $0 all                    # Start all tunnels
   $0 provision --loop       # Keep trying until capacity available
+  $0 backup                 # Create timestamped backup in ./backups/
+  $0 backup --out /tmp/snap.tgz --include-secrets
+  $0 restore ./backups/agentbox-backup-20260101T000000Z.tgz
+  $0 restore ./backups/agentbox-backup-20260101T000000Z.tgz --force
 
 EOF
 }
@@ -154,6 +160,268 @@ cmd_start_browser() {
     echo "Then:    agent-browser open https://example.com"
 }
 
+# ---------------------------------------------------------------------------
+# backup / restore helpers
+# ---------------------------------------------------------------------------
+
+# Dump a single named Docker volume into a tar stream via a throw-away alpine
+# helper container.  Caller receives the stream on stdout.
+_volume_tar() {
+    local volume_name="$1"
+    docker run --rm \
+        -v "${volume_name}:/data:ro" \
+        alpine:3.20 \
+        tar -C /data -cf - .
+}
+
+# Restore a tar stream (from stdin) into a named Docker volume.
+_volume_untar() {
+    local volume_name="$1"
+    docker run --rm -i \
+        -v "${volume_name}:/data" \
+        alpine:3.20 \
+        sh -c 'tar -C /data -xf -'
+}
+
+# Return 0 if the agentbox.toml solid_pod adapter is local-jss, 1 otherwise.
+_solid_is_local() {
+    local toml="${SCRIPT_DIR}/agentbox.toml"
+    [[ -f "$toml" ]] && grep -qE '^\s*pods\s*=\s*"local-jss"' "$toml"
+}
+
+cmd_backup() {
+    local out="" include_secrets=0
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --out)       out="$2";        shift 2 ;;
+            --include-secrets) include_secrets=1; shift ;;
+            *) echo -e "${RED}Unknown backup option: $1${NC}"; exit 1 ;;
+        esac
+    done
+
+    local timestamp
+    timestamp=$(date -u +%Y%m%dT%H%M%SZ)
+
+    if [[ -z "$out" ]]; then
+        mkdir -p "${SCRIPT_DIR}/backups"
+        out="${SCRIPT_DIR}/backups/agentbox-backup-${timestamp}.tgz"
+    fi
+
+    local work
+    work=$(mktemp -d)
+    trap 'rm -rf "$work"' EXIT
+
+    echo -e "${CYAN}Backing up agentbox volumes and config...${NC}"
+
+    # -- ruvector-data (always) -----------------------------------------------
+    echo -e "  ${GREEN}+${NC} ruvector-data"
+    mkdir -p "${work}/volumes/ruvector-data"
+    _volume_tar agentbox-ruvector-data | tar -C "${work}/volumes/ruvector-data" -xf - 2>/dev/null || true
+
+    # -- solid-data (only when pods = local-jss) ------------------------------
+    local solid_included=0
+    if _solid_is_local; then
+        echo -e "  ${GREEN}+${NC} solid-data"
+        mkdir -p "${work}/volumes/solid-data"
+        _volume_tar agentbox-solid-data | tar -C "${work}/volumes/solid-data" -xf - 2>/dev/null || true
+        solid_included=1
+    fi
+
+    # -- sovereign-identities (only with --include-secrets) -------------------
+    local secrets_included=0
+    if [[ "$include_secrets" -eq 1 ]]; then
+        echo -e "  ${YELLOW}+${NC} sovereign-identities (secrets included)"
+        mkdir -p "${work}/volumes/sovereign-identities"
+        _volume_tar agentbox-sovereign-identities | tar -C "${work}/volumes/sovereign-identities" -xf - 2>/dev/null || true
+        secrets_included=1
+    fi
+
+    # -- agentbox.toml --------------------------------------------------------
+    if [[ -f "${SCRIPT_DIR}/agentbox.toml" ]]; then
+        echo -e "  ${GREEN}+${NC} agentbox.toml"
+        cp "${SCRIPT_DIR}/agentbox.toml" "${work}/agentbox.toml"
+    fi
+
+    # -- supervisord.conf from running container (best-effort) ----------------
+    if docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^agentbox$'; then
+        echo -e "  ${GREEN}+${NC} supervisord.conf"
+        docker cp agentbox:/etc/supervisord.conf "${work}/supervisord.conf" 2>/dev/null || true
+    fi
+
+    # -- workspace/profiles (bind-mount path) — exclude secrets by default ---
+    local profiles_dir="${SCRIPT_DIR}/workspace/profiles"
+    if [[ -d "$profiles_dir" ]]; then
+        echo -e "  ${GREEN}+${NC} workspace/profiles (mgmt-keys $([ "$include_secrets" -eq 1 ] && echo 'INCLUDED' || echo 'excluded'))"
+        if [[ "$include_secrets" -eq 1 ]]; then
+            cp -a "$profiles_dir" "${work}/profiles"
+        else
+            # Exclude key/pem/env/mgmt-key files
+            rsync -a \
+                --exclude='*.key' \
+                --exclude='*.pem' \
+                --exclude='*.env' \
+                --exclude='mgmt-key' \
+                "${profiles_dir}/" "${work}/profiles/" 2>/dev/null || \
+            tar -C "${profiles_dir}" \
+                --exclude='*.key' --exclude='*.pem' --exclude='*.env' --exclude='mgmt-key' \
+                -cf - . | tar -C "${work}/profiles" -xf - 2>/dev/null || true
+        fi
+    fi
+
+    # -- MANIFEST.json --------------------------------------------------------
+    local file_count total_size
+    file_count=$(find "${work}" -type f | wc -l)
+    total_size=$(du -sh "${work}" 2>/dev/null | cut -f1 || echo "unknown")
+
+    cat > "${work}/MANIFEST.json" <<EOF
+{
+  "version": "1",
+  "timestamp": "${timestamp}",
+  "include_secrets": ${include_secrets},
+  "solid_included": ${solid_included},
+  "contents": {
+    "ruvector_data": true,
+    "solid_data": ${solid_included},
+    "sovereign_identities": ${secrets_included},
+    "agentbox_toml": $([ -f "${work}/agentbox.toml" ] && echo true || echo false),
+    "supervisord_conf": $([ -f "${work}/supervisord.conf" ] && echo true || echo false),
+    "profiles": $([ -d "${work}/profiles" ] && echo true || echo false)
+  },
+  "exclusions": {
+    "default": ["*.key", "*.pem", "*.env", "mgmt-key", "sovereign-identities"],
+    "secrets_flag_required": ["sovereign-identities", "mgmt-key"]
+  }
+}
+EOF
+
+    # Recount after manifest is written
+    file_count=$(find "${work}" -type f | wc -l)
+
+    # -- pack -----------------------------------------------------------------
+    tar -C "${work}" -czf "${out}" .
+
+    local archive_size
+    archive_size=$(du -sh "${out}" 2>/dev/null | cut -f1 || echo "unknown")
+
+    echo ""
+    echo -e "${GREEN}Backup complete${NC}"
+    echo -e "  Archive : ${out}"
+    echo -e "  Files   : ${file_count}"
+    echo -e "  Size    : ${archive_size}"
+    echo -e "  Secrets : $([ "$include_secrets" -eq 1 ] && echo 'INCLUDED' || echo 'excluded (use --include-secrets to include)')"
+
+    trap - EXIT
+    rm -rf "$work"
+}
+
+cmd_restore() {
+    local tarfile="" force=0
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --force) force=1; shift ;;
+            -*)      echo -e "${RED}Unknown restore option: $1${NC}"; exit 1 ;;
+            *)       tarfile="$1"; shift ;;
+        esac
+    done
+
+    if [[ -z "$tarfile" ]]; then
+        echo -e "${RED}Usage: $0 restore <tarfile> [--force]${NC}"
+        exit 1
+    fi
+
+    if [[ ! -f "$tarfile" ]]; then
+        echo -e "${RED}Archive not found: ${tarfile}${NC}"
+        exit 1
+    fi
+
+    local work
+    work=$(mktemp -d)
+    trap 'rm -rf "$work"' EXIT
+
+    # -- unpack ---------------------------------------------------------------
+    echo -e "${CYAN}Unpacking archive...${NC}"
+    tar -C "${work}" -xzf "${tarfile}"
+
+    # -- validate manifest ----------------------------------------------------
+    if [[ ! -f "${work}/MANIFEST.json" ]]; then
+        echo -e "${RED}Invalid archive: missing MANIFEST.json${NC}"
+        exit 1
+    fi
+
+    local manifest_ts manifest_version
+    manifest_version=$(jq -r '.version // "unknown"' "${work}/MANIFEST.json")
+    manifest_ts=$(jq -r '.timestamp // "unknown"'   "${work}/MANIFEST.json")
+
+    echo -e "  Manifest version : ${manifest_version}"
+    echo -e "  Backup timestamp : ${manifest_ts}"
+    echo ""
+
+    # -- confirm --------------------------------------------------------------
+    if [[ "$force" -eq 0 ]]; then
+        echo -e "${YELLOW}WARNING: This will overwrite the following named volumes:${NC}"
+        jq -r '
+          .contents | to_entries[]
+          | select(.value == true)
+          | "  - " + .key
+        ' "${work}/MANIFEST.json"
+        echo ""
+        printf "Proceed? [y/N] "
+        read -r answer
+        case "$answer" in
+            y|Y|yes|YES) ;;
+            *) echo "Aborted."; exit 0 ;;
+        esac
+    fi
+
+    # -- stop stack -----------------------------------------------------------
+    echo -e "${CYAN}Stopping stack...${NC}"
+    docker compose -f "${SCRIPT_DIR}/docker-compose.yml" down 2>/dev/null || true
+
+    # -- restore volumes ------------------------------------------------------
+    if [[ -d "${work}/volumes/ruvector-data" ]]; then
+        echo -e "  ${GREEN}*${NC} Restoring ruvector-data"
+        docker volume create agentbox-ruvector-data 2>/dev/null || true
+        tar -C "${work}/volumes/ruvector-data" -cf - . | _volume_untar agentbox-ruvector-data
+    fi
+
+    if [[ -d "${work}/volumes/solid-data" ]]; then
+        echo -e "  ${GREEN}*${NC} Restoring solid-data"
+        docker volume create agentbox-solid-data 2>/dev/null || true
+        tar -C "${work}/volumes/solid-data" -cf - . | _volume_untar agentbox-solid-data
+    fi
+
+    if [[ -d "${work}/volumes/sovereign-identities" ]]; then
+        echo -e "  ${YELLOW}*${NC} Restoring sovereign-identities"
+        docker volume create agentbox-sovereign-identities 2>/dev/null || true
+        tar -C "${work}/volumes/sovereign-identities" -cf - . | _volume_untar agentbox-sovereign-identities
+    fi
+
+    # -- restore agentbox.toml ------------------------------------------------
+    if [[ -f "${work}/agentbox.toml" ]]; then
+        echo -e "  ${GREEN}*${NC} Restoring agentbox.toml"
+        cp "${work}/agentbox.toml" "${SCRIPT_DIR}/agentbox.toml"
+    fi
+
+    # -- restore profiles (bind mount) ----------------------------------------
+    if [[ -d "${work}/profiles" ]]; then
+        local profiles_dest="${SCRIPT_DIR}/workspace/profiles"
+        echo -e "  ${GREEN}*${NC} Restoring workspace/profiles"
+        mkdir -p "${profiles_dest}"
+        rsync -a "${work}/profiles/" "${profiles_dest}/" 2>/dev/null || \
+        tar -C "${work}/profiles" -cf - . | tar -C "${profiles_dest}" -xf -
+    fi
+
+    # -- restart stack --------------------------------------------------------
+    echo -e "${CYAN}Restarting stack...${NC}"
+    docker compose -f "${SCRIPT_DIR}/docker-compose.yml" up -d
+
+    echo ""
+    echo -e "${GREEN}Restore complete.${NC}"
+
+    trap - EXIT
+    rm -rf "$work"
+}
+
 cmd_setup() {
     check_ip
     echo -e "${CYAN}Running initial setup on agentbox...${NC}"
@@ -229,6 +497,8 @@ SETUP_EOF
 }
 
 # Parse arguments
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 while [[ $# -gt 0 ]]; do
     case $1 in
         -i|--ip)
@@ -239,7 +509,7 @@ while [[ $# -gt 0 ]]; do
             usage
             exit 0
             ;;
-        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser)
+        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser|backup|restore)
             CMD="$1"
             shift
             break
@@ -265,5 +535,7 @@ case "${CMD:-}" in
     provision)     cmd_provision "$@" ;;
     setup)         cmd_setup ;;
     start-browser) cmd_start_browser ;;
+    backup)        cmd_backup "$@" ;;
+    restore)       cmd_restore "$@" ;;
     *)             usage ;;
 esac

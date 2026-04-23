@@ -8,10 +8,10 @@ MCP bridge for DeepSeek special model reasoning, connecting Claude Code (devuser
 
 ```bash
 # Copy to container
-docker cp skills/deepseek-reasoning agentic-workstation:/home/devuser/.claude/skills/
+docker cp skills/deepseek-reasoning <host-container>:/home/devuser/.claude/skills/
 
 # Set permissions
-docker exec agentic-workstation bash -c "
+docker exec <host-container> bash -c "
   chmod +x /home/devuser/.claude/skills/deepseek-reasoning/mcp-server/server.js
   chmod +x /home/devuser/.claude/skills/deepseek-reasoning/tools/deepseek_client.js
   chown -R devuser:devuser /home/devuser/.claude/skills/deepseek-reasoning
@@ -54,9 +54,9 @@ stderr_logfile=/var/log/deepseek-reasoning-mcp.error.log
 ### 4. Start Service
 
 ```bash
-docker exec agentic-workstation supervisorctl reread
-docker exec agentic-workstation supervisorctl add deepseek-reasoning-mcp
-docker exec agentic-workstation supervisorctl start deepseek-reasoning-mcp
+docker exec <host-container> supervisorctl reread
+docker exec <host-container> supervisorctl add deepseek-reasoning-mcp
+docker exec <host-container> supervisorctl start deepseek-reasoning-mcp
 ```
 
 ## Usage from Claude Code
@@ -91,14 +91,14 @@ Test individual components:
 
 ```bash
 # Test client directly as deepseek-user
-docker exec -u deepseek-user agentic-workstation node \
+docker exec -u deepseek-user <host-container> node \
   /home/devuser/.claude/skills/deepseek-reasoning/tools/deepseek_client.js \
   --tool deepseek_reason \
   --params '{"query":"What is 2+2?","format":"steps"}'
 
 # Test MCP server
 echo '{"method":"tools/list","params":{},"id":1}' | \
-docker exec -i agentic-workstation \
+docker exec -i <host-container> \
   /home/devuser/.claude/skills/deepseek-reasoning/mcp-server/server.js
 ```
 
@@ -180,33 +180,33 @@ Result: Production-ready implementation with tests
 ### MCP server won't start
 ```bash
 # Check logs
-docker exec agentic-workstation tail -f /var/log/deepseek-reasoning-mcp.error.log
+docker exec <host-container> tail -f /var/log/deepseek-reasoning-mcp.error.log
 
 # Verify Node.js
-docker exec agentic-workstation which node
+docker exec <host-container> which node
 
 # Check permissions
-docker exec agentic-workstation ls -la /home/devuser/.claude/skills/deepseek-reasoning/
+docker exec <host-container> ls -la /home/devuser/.claude/skills/deepseek-reasoning/
 ```
 
 ### "sudo: deepseek-user: command not found"
 ```bash
 # Verify deepseek-user exists
-docker exec agentic-workstation id deepseek-user
+docker exec <host-container> id deepseek-user
 
 # Check sudo config
-docker exec agentic-workstation grep deepseek-user /etc/sudoers
+docker exec <host-container> grep deepseek-user /etc/sudoers
 ```
 
 ### API errors
 ```bash
 # Test endpoint directly
-docker exec -u deepseek-user agentic-workstation curl \
+docker exec -u deepseek-user <host-container> curl \
   https://api.deepseek.com/v3.2_speciale_expires_on_20251215/v1/models \
   -H "Authorization: Bearer sk-d76e012d700a4cd3983f93c056aafee0"
 
 # Verify config
-docker exec agentic-workstation cat /home/deepseek-user/.config/deepseek/config.json
+docker exec <host-container> cat /home/deepseek-user/.config/deepseek/config.json
 ```
 
 ## Performance

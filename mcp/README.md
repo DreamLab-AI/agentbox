@@ -4,7 +4,7 @@ This directory contains MCP-related runtime assets and legacy bridge code.
 
 ## Current State
 
-Agentbox 2.0 does not treat the old local TCP and WebSocket bridge layer as the primary architecture anymore.
+Agentbox does not treat the old local TCP and WebSocket bridge layer as the primary architecture anymore.
 
 The current direction is:
 

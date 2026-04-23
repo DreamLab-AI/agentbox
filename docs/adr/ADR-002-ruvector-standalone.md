@@ -1,6 +1,6 @@
 # ADR-002: RuVector As Embedded Search Layer
 
-**Status:** Accepted, Reframed for Agentbox 2.0  
+**Status:** Accepted (reframed 2026-04-23)  
 **Date:** 2025-01-15  
 **Updated:** 2026-04-23  
 **Author:** Agentbox Team
@@ -9,7 +9,7 @@
 
 Agentbox originally moved away from PostgreSQL + pgvector toward embedded RuVector for a lighter local vector/search layer.
 
-Agentbox 2.0 keeps RuVector, but the storage story has changed:
+Agentbox keeps RuVector, but the storage story has changed:
 
 - durable state is intended to live in Solid-style pod storage
 - RuVector is now the embedded local retrieval/index layer
@@ -43,7 +43,7 @@ Do not treat it as the canonical durable source of truth for sovereign memory.
 
 ## Current Architectural Meaning
 
-In Agentbox 2.0:
+In the current architecture:
 
 - Solid-style pod storage is the durable memory direction
 - RuVector is the embedded search/index direction

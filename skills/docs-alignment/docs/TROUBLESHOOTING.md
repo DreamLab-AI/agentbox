@@ -10,7 +10,7 @@
 
 **Solution**:
 ```bash
-cd multi-agent-docker/skills/docs-alignment
+cd <agentbox>/skills/docs-alignment
 pip install -r scripts/requirements.txt
 ```
 

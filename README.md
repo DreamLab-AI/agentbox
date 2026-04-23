@@ -1,10 +1,10 @@
-# Agentbox 2.0
+# Agentbox
 
 Agentbox is a modular, Nix-built container runtime for multi-agent development. The current architecture is driven by [`agentbox.toml`](agentbox.toml), uses embedded RuVector for local vector search, bootstraps a sovereign identity plus Solid-style pod storage, and provisions stack-specific profiles that all share the same mounted projects and skills tree.
 
 ## Architecture
 
-Agentbox 2.0 is built around six decisions:
+Agentbox is built around six decisions:
 
 1. Declarative build composition through `agentbox.toml`
 2. Sovereign identity bootstrapping with Nostr-style keys
@@ -14,6 +14,33 @@ Agentbox 2.0 is built around six decisions:
 6. **Standalone or federated**: agentbox runs with local fallbacks out of the box, or drops into a host container mesh via external adapters — manifest switch, one codepath
 
 Full product spec in [PRD-001](docs/prd/PRD-001-capabilities-and-adapters.md).
+
+### Architecture at a glance
+
+```mermaid
+flowchart TB
+    subgraph build["build time"]
+        M[agentbox.toml] -->|fromTOML| F[flake.nix]
+        F --> I[content-addressed image]
+    end
+
+    subgraph runtime["runtime"]
+        I --> C[docker compose]
+        C --> S[supervisord<br/>generated from manifest]
+        S --> API[management-api :9090]
+        S --> MCP[MCP servers]
+        S --> DESK[Hyprland desktop<br/>optional]
+    end
+
+    subgraph adapters["adapter dispatch"]
+        API --> AD{resolve [adapters]}
+        MCP --> AD
+        AD -->|standalone| LOC[local fallbacks<br/>sqlite · JSS · RuVector · JSONL]
+        AD -->|client| EXT[external mesh<br/>beads · pods · memory · events · orchestrator]
+    end
+
+    O[agentbox config validate] -.->|JSON Schema| M
+```
 
 The active runtime flow is:
 

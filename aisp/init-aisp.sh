@@ -60,10 +60,11 @@ if command -v claude-flow &> /dev/null; then
     echo "[AISP] ✓ Registered with claude-flow memory namespace 'aisp'"
 fi
 
-# Validate the AISP specification itself
-if [ -f "/home/devuser/workspace/project/multi-agent-docker/aisp.md" ]; then
-    echo "[AISP] Validating local aisp.md specification..."
-    node "$AISP_DIR/cli.js" validate /home/devuser/workspace/project/multi-agent-docker/aisp.md >> "$AISP_LOG" 2>&1 || true
+# Validate the AISP specification itself (location operator-configurable via AISP_SPEC_PATH)
+AISP_SPEC_PATH="${AISP_SPEC_PATH:-$AISP_DIR/aisp.md}"
+if [ -f "$AISP_SPEC_PATH" ]; then
+    echo "[AISP] Validating AISP spec at $AISP_SPEC_PATH..."
+    node "$AISP_DIR/cli.js" validate "$AISP_SPEC_PATH" >> "$AISP_LOG" 2>&1 || true
 fi
 
 echo "[AISP] ✓ AISP 5.1 Platinum initialized successfully"

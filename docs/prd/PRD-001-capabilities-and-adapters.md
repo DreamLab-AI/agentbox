@@ -102,7 +102,63 @@ cuda = false
 
 Validation runs in three places: the TUI (`scripts/start-agentbox.sh`), the flake eval (`builtins.fromTOML` + assertions), and a standalone `agentbox config validate` CLI.
 
+## 3a. Manifest → build → runtime (how it fits together)
+
+```mermaid
+flowchart LR
+    A[agentbox.toml<br/>manifest] -->|builtins.fromTOML| B[flake.nix<br/>evaluator]
+    B --> C[nix build .#runtime]
+    C --> D[content-addressed<br/>image]
+    D --> E[docker compose up]
+    E --> F[supervisord<br/>generated from manifest]
+    F --> G[management-api<br/>:9090]
+    F --> H[adapter dispatch<br/>layer]
+    H --> I{resolve [adapters]}
+    I -->|local-*| J[in-container<br/>fallback]
+    I -->|external| K[host-mesh<br/>endpoint]
+    I -->|off| L[AdapterDisabled]
+    A -.-> M[agentbox config validate<br/>JSON Schema + semantic rules]
+    M -.->|fail fast| B
+```
+
 ## 4. Adapters
+
+### 4.1 Five-slot architecture
+
+```mermaid
+flowchart TB
+    subgraph consumer["management-api consumers"]
+        ME[MCP endpoints]
+        BR[/v1/briefs routes/]
+        AE[/v1/agent-events/]
+    end
+
+    subgraph dispatch["adapter dispatch layer"]
+        RES[resolver<br/>reads agentbox.toml]
+    end
+
+    subgraph slots["five adapter slots"]
+        direction LR
+        B[beads<br/>receipts]
+        P[pods<br/>storage]
+        M[memory<br/>vector]
+        E[events<br/>sink]
+        O[orchestrator<br/>spawn channel]
+    end
+
+    subgraph impls["implementation classes per slot"]
+        direction LR
+        L[local-*<br/>in-container]
+        X[external<br/>host mesh]
+        F[off<br/>AdapterDisabled]
+    end
+
+    consumer --> dispatch
+    dispatch --> slots
+    B & P & M & E & O --> L & X & F
+```
+
+### 4.2 Summary
 
 Every integration point is one interface with three minimum implementations: **local** (in-container fallback), **external** (federate with some sibling service), **off** (disable the feature). See ADR-005 for the detailed contract.
 
@@ -115,6 +171,33 @@ Every integration point is one interface with three minimum implementations: **l
 | `orchestrator` | Agent spawn & monitor channel | Local process-manager + stdio streaming | `docker exec -i` stdio protocol + HTTP `/v1/agent-events` for remote orchestrators |
 
 The runtime reads `[adapters]` at boot, dispatches to the chosen implementations, and exposes all five over both HTTP and stdio so external orchestrators can drive agentbox from any language.
+
+### 4.3 Standalone vs federated at a glance
+
+```mermaid
+flowchart LR
+    subgraph standalone["federation.mode = standalone"]
+        direction TB
+        S_AB[agentbox container]
+        S_AB --> S_B[local sqlite beads]
+        S_AB --> S_P[local JSS pods]
+        S_AB --> S_M[embedded RuVector]
+        S_AB --> S_E[local JSONL events]
+        S_AB --> S_O[local process manager]
+    end
+
+    subgraph federated["federation.mode = client"]
+        direction TB
+        F_AB[agentbox container] -->|over docker network| F_HOST[host mesh]
+        F_HOST --> F_B[beads service<br/>external adapter]
+        F_HOST --> F_P[pod server<br/>external adapter]
+        F_HOST --> F_M[ruvector-postgres<br/>external adapter]
+        F_HOST --> F_E[event bus<br/>external adapter]
+        F_HOST --> F_O[orchestrator<br/>stdio bridge]
+    end
+```
+
+One codepath. One test harness. Two deployment shapes.
 
 ## 5. Built-in capabilities (manifest-gated)
 

@@ -1,0 +1,76 @@
+# Agentbox documentation
+
+Navigation hub. Start here.
+
+## What is this?
+
+Agentbox is a Nix-declarative container runtime for hosting software agents (Claude Code, ruflo, and similar) with their skills and toolchains. See [`../README.md`](../README.md) for the product pitch and [`prd/PRD-001-capabilities-and-adapters.md`](prd/PRD-001-capabilities-and-adapters.md) for the full spec.
+
+## I want to...
+
+| Goal | Read |
+|---|---|
+| Build and boot agentbox in ten minutes | [`guides/quick-start.md`](guides/quick-start.md) |
+| Understand the architecture at a glance | [`../README.md`](../README.md) §Architecture |
+| Read the product spec (what agentbox does and doesn't do) | [`prd/PRD-001-capabilities-and-adapters.md`](prd/PRD-001-capabilities-and-adapters.md) |
+| Understand the pluggable adapter pattern | [`adr/ADR-005-pluggable-adapter-architecture.md`](adr/ADR-005-pluggable-adapter-architecture.md) |
+| Back up or restore local state | [`guides/backup-restore.md`](guides/backup-restore.md) |
+| Write a new Claude Skill | [`../skills/skill-builder/SKILL.md`](../skills/skill-builder/SKILL.md) |
+
+## Documents by type
+
+### Product requirements (PRD)
+
+| # | Document | Summary |
+|---|---|---|
+| PRD-001 | [Capabilities and adapters](prd/PRD-001-capabilities-and-adapters.md) | Agentbox as a standalone product — manifest-gated features, five-slot adapter architecture, observability, secrets lifecycle, runtime layout |
+
+### Architecture decisions (ADR)
+
+| # | Document | Decision |
+|---|---|---|
+| ADR-001 | [Nix flake build](adr/ADR-001-nixos-flakes.md) | Manifest-driven Nix flake replaces the monolithic Dockerfile; reproducible via `flake.lock` |
+| ADR-002 | [RuVector as embedded retrieval](adr/ADR-002-ruvector-standalone.md) | Embedded RuVector is a local retrieval cache, not a source of truth |
+| ADR-003 | [Guidance control plane](adr/ADR-003-guidance-control-plane.md) | Enforcement gates for autonomous agents — destructive ops, memory writes, trust escalation |
+| ADR-004 | [Upstream sync boundaries](adr/ADR-004-upstream-sync.md) | Skills and assets sync selectively, not mechanically |
+| ADR-005 | [Pluggable adapter architecture](adr/ADR-005-pluggable-adapter-architecture.md) | Five-slot adapters (beads, pods, memory, events, orchestrator) × three implementation classes per slot (local-*, external, off) |
+
+### Guides
+
+| Document | Audience |
+|---|---|
+| [Quick start](guides/quick-start.md) | First-time operator — from clone to running stack |
+| [Backup & restore](guides/backup-restore.md) | Operators running agentbox in production; what gets backed up, what doesn't, secrets handling |
+
+## Mental model
+
+```mermaid
+flowchart LR
+    M[agentbox.toml] --> F[flake.nix]
+    F --> I[image]
+    I --> R[runtime]
+    R --> AD[adapter dispatch]
+    AD --> L[local fallbacks]
+    AD --> E[external endpoints]
+```
+
+Three claims drive every design decision:
+
+1. **The manifest is the contract.** Everything the image does traces back to `agentbox.toml`. No Dockerfile edits, no bespoke scripts.
+2. **Adapters are the integration surface.** Durable state is pluggable. Agentbox never hardcodes "the database" or "the task store".
+3. **Standalone is first-class.** Every feature works without any external service. Federated mode adds capability; it doesn't gate the baseline.
+
+## Reading order for new contributors
+
+1. [`../README.md`](../README.md) — 5 minutes, product pitch + architecture
+2. [`guides/quick-start.md`](guides/quick-start.md) — build and run
+3. [`prd/PRD-001-capabilities-and-adapters.md`](prd/PRD-001-capabilities-and-adapters.md) — spec
+4. [`adr/ADR-005-pluggable-adapter-architecture.md`](adr/ADR-005-pluggable-adapter-architecture.md) — adapter deep-dive
+5. The other ADRs in order — they explain how we got here
+
+## Conventions
+
+- **File size limit.** Docs stay under 500 lines per file; heavier material lives in siblings (`REFERENCE.md`, `EXAMPLES.md`).
+- **Diagrams as code.** Mermaid blocks inside markdown. No binary images in docs.
+- **Cross-refs are relative.** Every link is a relative path so the docs tree is portable.
+- **Status tags.** ADRs carry `Status:` at the top; PRDs carry a version changelog block.

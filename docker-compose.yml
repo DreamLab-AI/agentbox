@@ -1,4 +1,4 @@
-# Agentbox 2.0 compose stack
+# Agentbox compose stack
 
 services:
   ollama:
@@ -30,7 +30,14 @@ services:
     hostname: agentbox
     restart: unless-stopped
     depends_on:
-      - ollama
+      ollama:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9090/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
@@ -46,7 +53,7 @@ services:
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:32b-instruct}
       - GOOGLE_GEMINI_API_KEY=${GOOGLE_GEMINI_API_KEY:-}
-      - MANAGEMENT_API_KEY=${MANAGEMENT_API_KEY:-change-this-secret-key}
+      - MANAGEMENT_API_KEY=${MANAGEMENT_API_KEY:-}
       - MANAGEMENT_API_AUTH_MODE=${MANAGEMENT_API_AUTH_MODE:-hybrid}
       - NOSTR_RELAYS=${NOSTR_RELAYS:-wss://relay.damus.io,wss://relay.primal.net}
       - AGENTBOX_AGENT_ID=${AGENTBOX_AGENT_ID:-agentbox-core}

@@ -9,6 +9,7 @@ const cors = require('@fastify/cors');
 const rateLimit = require('@fastify/rate-limit');
 const websocket = require('@fastify/websocket');
 const { createAuthMiddleware } = require('./middleware/auth');
+const contractVersions = require('./adapters/contract-versions');
 const logger = require('./utils/logger');
 const ProcessManager = require('./utils/process-manager');
 const SystemMonitor = require('./utils/system-monitor');
@@ -77,8 +78,13 @@ const authMiddleware = createAuthMiddleware(API_KEY, {
 });
 
 app.addHook('onRequest', async (request, reply) => {
-  // Skip auth for health check endpoints and metrics
-  if (request.url === '/health' || request.url === '/ready' || request.url === '/metrics') {
+  // Skip auth for health check endpoints, meta, and metrics
+  if (
+    request.url === '/health' ||
+    request.url === '/ready' ||
+    request.url === '/metrics' ||
+    request.url === '/v1/meta'
+  ) {
     return;
   }
 
@@ -162,6 +168,67 @@ app.register(require('./routes/agent-events'), {
   prefix: '',
   logger,
   metrics
+});
+
+// Health endpoint (public — no auth required)
+app.get('/health', {
+  schema: {
+    description: 'Liveness health check',
+    tags: ['monitoring'],
+    response: {
+      200: {
+        type: 'object',
+        properties: {
+          status: { type: 'string' },
+          uptime: { type: 'number' },
+          image_hash: { type: ['string', 'null'] },
+          manifest_checksum: { type: ['string', 'null'] }
+        }
+      }
+    }
+  }
+}, async (request, reply) => {
+  return {
+    status: 'ok',
+    uptime: process.uptime(),
+    image_hash: process.env.AGENTBOX_IMAGE_HASH || null,
+    manifest_checksum: process.env.AGENTBOX_MANIFEST_CHECKSUM || null
+  };
+});
+
+// Meta endpoint (public — no auth required, ADR-005 §Contract versioning)
+app.get('/v1/meta', {
+  schema: {
+    description: 'Image and adapter contract metadata',
+    tags: ['monitoring'],
+    response: {
+      200: {
+        type: 'object',
+        properties: {
+          image_hash: { type: ['string', 'null'] },
+          manifest_checksum: { type: ['string', 'null'] },
+          federation_mode: { type: ['string', 'null'] },
+          adapter_contract_versions: {
+            type: 'object',
+            properties: {
+              beads: { type: 'string' },
+              pods: { type: 'string' },
+              memory: { type: 'string' },
+              events: { type: 'string' },
+              orchestrator: { type: 'string' }
+            }
+          }
+        }
+      }
+    }
+  }
+}, async (request, reply) => {
+  return {
+    image_hash: process.env.AGENTBOX_IMAGE_HASH || null,
+    manifest_checksum: process.env.AGENTBOX_MANIFEST_CHECKSUM || null,
+    federation_mode: process.env.AGENTBOX_FEDERATION_MODE || null,
+    adapter_contract_versions: contractVersions
+  };
 });
 
 // Metrics endpoint
