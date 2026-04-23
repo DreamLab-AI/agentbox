@@ -4,13 +4,16 @@ Agentbox is a modular, Nix-built container runtime for multi-agent development. 
 
 ## Architecture
 
-Agentbox 2.0 is built around five decisions:
+Agentbox 2.0 is built around six decisions:
 
 1. Declarative build composition through `agentbox.toml`
 2. Sovereign identity bootstrapping with Nostr-style keys
-3. Solid-style file-backed pod storage under `/var/lib/solid`
-4. Embedded RuVector for local indexing and retrieval
+3. **Pluggable adapter architecture** for durable state (see [ADR-005](docs/adr/ADR-005-pluggable-adapter-architecture.md)): beads, pods, memory, events, orchestrator — each slot resolves to one of `local-*`, `external`, or `off`
+4. Embedded RuVector for local indexing and retrieval (per-session cache, not a durable source of truth)
 5. Profile isolation with shared mounts instead of Linux pseudo-users
+6. **Standalone or federated**: agentbox runs with local fallbacks out of the box, or drops into a host container mesh via external adapters — manifest switch, one codepath
+
+Full product spec in [PRD-001](docs/prd/PRD-001-capabilities-and-adapters.md).
 
 The active runtime flow is:
 
@@ -42,14 +45,16 @@ Disabled features should incur no image or runtime overhead.
 Current top-level sections:
 
 - `[core]`
-- `[sovereign_mesh]`
-- `[desktop]`
-- `[skills.browser]`
-- `[skills.media]`
-- `[skills.spatial_and_3d]`
-- `[skills.data_science]`
-- `[skills.docs]`
-- `[toolchains]`
+- `[federation]` — `mode = "standalone" | "client"`
+- `[adapters]` — one choice per durable-state slot (beads, pods, memory, events, orchestrator)
+- `[gpu]` — unified backend key (`none`, `ollama-rocm`, `ollama-cuda`, `local-cuda`)
+- `[sovereign_mesh]` — Nostr client, NIP-98 auth, optional JSS Rust backend
+- `[desktop]` — Hyprland/Wayland (default when enabled) with X11/openbox fallback
+- `[observability]` — metrics port, OTLP endpoint, log level
+- `[providers.<name>]` — per-provider API-key gates
+- `[skills.*]` — feature flags for the 96-skill corpus
+- `[toolchains]` — claude, claude_code, ruflo, claude_flow, agentic_qe, gemini_cli, code_server, cuda
+- `[integrations.*]` — optional external network joins (e.g. ragflow, external memory, external ComfyUI)
 
 Example:
 
@@ -123,10 +128,13 @@ Compose mounts:
 
 Default ports exposed by the compose stack:
 
-- `9090` management API
+- `9090` management API (includes `/v1/meta` handshake endpoint, `/metrics` proxy, `/v1/agent-events`)
+- `9091` Prometheus metrics (direct, configurable via `[observability].metrics_port`)
 - `9700` RuVector
-- `8484` Solid-style pod service
-- `8888` Jupyter, when enabled
+- `8484` Solid-style pod service (only when `[adapters.pods] = "local-jss"`)
+- `5901` VNC (only when `[desktop].enabled = true`)
+- `8080` code-server (only when `[toolchains.code_server] = true`)
+- `8888` Jupyter (only when `[skills.data_science].jupyter = true`)
 
 Optional services are generated from the manifest. That includes:
 
@@ -203,13 +211,34 @@ The authoritative skill catalog is:
 
 This is the progressive-disclosure index the profiles reference at boot.
 
+## Observability
+
+Agentbox ships with metrics, traces, and structured logs on by default. Configure via `[observability]`:
+
+```toml
+[observability]
+metrics_port = 9091
+otlp_endpoint = ""          # e.g. "http://otel-collector:4317"
+log_level = "info"
+```
+
+`agentbox.sh health --json` returns a machine-readable view: per-service uptime, per-adapter resolution + health, session count. Non-zero exit when anything is unhealthy.
+
 ## Current Caveats
 
 - The running Docker container on this host may still be an older image if you have not rebuilt and relaunched the stack.
-- [`config/supervisord.conf`](config/supervisord.conf) is legacy reference material; the active runtime path generates supervisor configuration from `flake.nix`.
+- `config/supervisord.conf` is legacy reference material (scheduled for removal in M1 per PRD-001) — the active runtime path generates supervisor configuration from `flake.nix`.
 - Some external CLIs such as `agentic-qe`, `nagual-qe`, and `codebase-memory-mcp` are installed best-effort at runtime rather than vendored in the repo.
 - QGIS support currently wires a placeholder standalone service until the real MCP adapter is added.
+- `nostr-bridge.js` is a 31-line stub until M3; production-grade Nostr client wiring is a P1 deliverable.
 
 ## Status
 
-The repo is mid-migration from the old monolithic container model to the new Agentbox 2.0 sovereign/runtime model. The canonical docs are this README, [`docs/guides/quick-start.md`](docs/guides/quick-start.md), and [`CLAUDE.md`](CLAUDE.md).
+Agentbox is mid-migration to a fully adapter-driven runtime. Canonical docs:
+
+- **Product spec**: [`docs/prd/PRD-001-capabilities-and-adapters.md`](docs/prd/PRD-001-capabilities-and-adapters.md)
+- **Adapter architecture**: [`docs/adr/ADR-005-pluggable-adapter-architecture.md`](docs/adr/ADR-005-pluggable-adapter-architecture.md)
+- **Repo conventions**: [`CLAUDE.md`](CLAUDE.md)
+- **Quick start**: [`docs/guides/quick-start.md`](docs/guides/quick-start.md)
+
+Agentbox was extracted from a larger host project during a 2026-04 radical-upgrade sprint; the host's integration wiring lives with that project, not here.

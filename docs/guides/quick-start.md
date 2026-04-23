@@ -28,29 +28,65 @@ Edit [`agentbox.toml`](../../agentbox.toml) before building.
 
 Key sections:
 
-- `sovereign_mesh`
-- `skills.*`
-- `toolchains`
-- `desktop`
+- `[federation]` — `mode = "standalone"` (default) or `"client"`
+- `[adapters]` — one per durable-state slot (beads, pods, memory, events, orchestrator)
+- `[sovereign_mesh]` — Nostr identity + NIP-98 auth
+- `[skills.*]` — 96-skill catalogue gates
+- `[toolchains]` — core CLIs (claude, ruflo, claude_flow, agentic_qe, gemini_cli, etc.)
+- `[gpu]` — `none` | `ollama-rocm` | `ollama-cuda` | `local-cuda`
+- `[desktop]` — Hyprland/Wayland (default) or X11/openbox
+- `[observability]` — metrics port, OTLP endpoint, log level
+- `[providers.*]` — per-provider API-key gates
 
-Minimal example:
+Minimal example (standalone, local fallbacks for everything):
 
 ```toml
+[federation]
+mode = "standalone"
+
+[adapters]
+beads = "local-sqlite"
+pods = "local-jss"
+memory = "embedded-ruvector"
+events = "local-jsonl"
+orchestrator = "local-process-manager"
+
 [sovereign_mesh]
 enabled = true
-solid_pod = true
-nostr_bridge = true
 
 [skills.browser]
-agent_browser = true
 playwright = true
 
 [toolchains]
 claude = true
+claude_code = true
 ruflo = true
 agentic_qe = true
-rust = true
+
+[gpu]
+backend = "none"
 ```
+
+Federated example (drops into a host container mesh):
+
+```toml
+[federation]
+mode = "client"
+external_url = "http://host-orchestrator:7070"
+
+[adapters]
+beads = "external"
+pods = "external"
+memory = "external-pg"
+events = "external"
+orchestrator = "stdio-bridge"
+
+[integrations.ruvector_external]
+enabled = true
+conninfo = "postgresql://ruvector@ruvector-postgres:5432/ruvector"
+```
+
+Always run `agentbox config validate` after editing — it checks semantic rules (e.g. `gaussian_splatting = true` requires `gpu.backend = "local-cuda"`) before the build.
 
 ## 2. Build The Image
 
@@ -110,8 +146,10 @@ From the host:
 
 ```bash
 curl http://localhost:9090/health
+curl http://localhost:9090/v1/meta        # adapter contract versions + image hash
+curl http://localhost:9091/metrics        # Prometheus — scrape this
 curl http://localhost:9700/health
-curl http://localhost:8484/health
+curl http://localhost:8484/health         # only when [adapters.pods] = "local-jss"
 ```
 
 From inside the container:
