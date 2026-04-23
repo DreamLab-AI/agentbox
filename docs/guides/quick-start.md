@@ -2,7 +2,27 @@
 
 This guide reflects the current Agentbox 2.0 runtime.
 
+## Recommended Path
+
+Use the interactive launcher unless you specifically want to edit files by hand:
+
+```bash
+./scripts/start-agentbox.sh
+```
+
+The launcher can:
+
+- present checkbox-based feature selection
+- update `agentbox.toml`
+- create `.env` from `.env.example`
+- prompt for key environment values
+- check/install missing prerequisites interactively
+- optionally build the image
+- optionally start the Docker stack
+
 ## 1. Configure The Build
+
+Manual path:
 
 Edit [`agentbox.toml`](../../agentbox.toml) before building.
 
@@ -47,6 +67,8 @@ nix build .#full
 ```
 
 ## 3. Configure Environment
+
+Manual path:
 
 ```bash
 cp .env.example .env

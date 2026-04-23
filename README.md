@@ -84,6 +84,26 @@ To load the image into Docker:
 docker load < result
 ```
 
+## Interactive Startup
+
+Use the interactive launcher if you want checkbox-based feature selection and guided startup:
+
+```bash
+./scripts/start-agentbox.sh
+```
+
+The launcher will:
+
+- read the current `agentbox.toml`
+- present selectable feature checkboxes
+- write the updated manifest
+- create `.env` from `.env.example` if needed
+- offer interactive `.env` value prompts
+- check for missing UI/runtime prerequisites
+- offer to install missing prerequisites interactively
+- optionally build the image
+- optionally start `docker compose up -d`
+
 ## Run
 
 ```bash
