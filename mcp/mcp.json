@@ -73,13 +73,11 @@
       "args": ["/home/devuser/.claude/skills/comfyui/mcp-server/server.js"],
       "type": "stdio",
       "env": {
-        "COMFYUI_URL": "http://comfyui:8188",
-        "COMFYUI_WS_URL": "ws://comfyui:8188/ws",
         "COMFYUI_OUTPUT_DIR": "/tmp/comfyui-outputs",
         "ZAI_URL": "http://localhost:9600/chat",
         "DISPLAY": ":1"
       },
-      "description": "AI image and video generation with ComfyUI workflows (docker_ragflow network)",
+      "description": "AI image and video generation with ComfyUI. COMFYUI_URL and COMFYUI_WS_URL are resolved from the image environment (set by flake.nix from agentbox.toml integrations.comfyui_external or builtin path).",
       "protocol": "mcp-sdk",
       "version": "1.0.0"
     },
@@ -143,7 +141,7 @@
       "url": "http://comfyui:8188",
       "ws_url": "ws://comfyui:8188/ws",
       "network": "docker_ragflow",
-      "description": "ComfyUI AI image generation"
+      "description": "ComfyUI AI image generation (external deployment reference; override via integrations.comfyui_external in agentbox.toml)"
     },
     "neo4j": {
       "bolt_url": "bolt://external-neo4j:7687",

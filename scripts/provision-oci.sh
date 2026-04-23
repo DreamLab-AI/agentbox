@@ -1,7 +1,7 @@
 #!/bin/bash
-# Oracle Cloud ARM Instance Provisioner
-# Automatically retries until capacity is available
-# Usage: ./provision-oci.sh [--loop] [--interval 60]
+# Target: Oracle Cloud Infrastructure (ARM)
+# Automatically retries until capacity is available.
+# Usage: ./provision-oci.sh [--loop] [--interval 60] [--ocpus N] [--memory GB]
 
 set -euo pipefail
 
@@ -85,7 +85,6 @@ try_launch() {
     local AD="$1"
     log "Attempting launch in $AD with ${OCPUS} OCPU, ${MEMORY_GB}GB RAM..."
 
-    # Generate user data for cloud-init
     USER_DATA=$(generate_user_data)
 
     RESULT=$($OCI_CMD compute instance launch \

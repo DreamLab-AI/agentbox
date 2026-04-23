@@ -121,9 +121,56 @@ Backend semantics:
 - **`none`** — no GPU; ollama service is not emitted in compose; no extra packages.
 - **`ollama-rocm`** — ROCm/Vulkan via `/dev/kfd` + `/dev/dri`; no Nix CUDA packages; ollama sidecar included.
 - **`ollama-cuda`** — NVIDIA CUDA via container runtime; CUDA stays in the sidecar image; `composeDeviceReservations` set; `nixPackages` empty.
-- **`local-cuda`** — CUDA toolchain baked into the agentbox Nix image; enables `gaussian_splatting` and in-container CUDA workloads; `nixPackages` includes `cudaPackages.*`; `supervisorExtraEnv` exposes `CUDA_VISIBLE_DEVICES`.
+- **`local-cuda`** — CUDA toolchain baked into the agentbox Nix image; enables `gaussian_splatting` and in-container CUDA workloads; base `nixPackages` includes `cudaPackages.*` (CUDA 12.x alias); `supervisorExtraEnv` exposes `CUDA_VISIBLE_DEVICES`.  When `[toolchains].cuda = true` is also set, the extended CUDA 13.1 package set is added (see §3.3.1 below).
 
 Both the flake evaluator (build-time) and the compose generator (A1 agent) consume the same dispatch function, ensuring the two outputs remain consistent with a single manifest change.
+
+The dispatch function signature is:
+
+```nix
+dispatchGpuBackend :: string -> bool -> attrset
+# dispatchGpuBackend backend toolchainsCudaEnabled
+```
+
+`toolchainsCudaEnabled` is read from `agentboxConfig.toolchains.cuda` (default `false`). Passing `true` with any backend other than `"local-cuda"` is a hard Nix eval error (mirrors validator rule E019).
+
+### 3.3.1 `[toolchains].cuda` — CUDA 13.1 toolchain gate
+
+`[toolchains].cuda = true` is the opt-in gate for the full CUDA 13.1 development toolchain. It is **separate** from the GPU backend: `[gpu].backend` controls runtime GPU access; `[toolchains].cuda` controls which CUDA development libraries are compiled into the image.
+
+**Constraints:**
+
+- Requires `[gpu].backend = "local-cuda"` (validator rule E019: `E019 [toolchains.cuda]=true requires [gpu.backend]="local-cuda"`).
+- x86_64-linux only. On aarch64 the extended package list is an empty list (`lib.optionals stdenv.isx86_64`); the build succeeds but no CUDA libraries are added.
+- Default is `false`. The default `runtime` image does not include CUDA libraries.
+- Compressed image size target: < 25 GB (§8). The CUDA test suites are not included; only the five runtime/development packages listed below.
+
+**Packages added when `[toolchains].cuda = true` + `[gpu].backend = "local-cuda"` on x86_64:**
+
+| Nix attribute | Contents |
+|---|---|
+| `cudaPackages_13_1.cudatoolkit` | Compiler, headers, runtime libraries |
+| `cudaPackages_13_1.cudnn` | Deep neural network primitives |
+| `cudaPackages_13_1.cutensor` | Tensor linear-algebra routines |
+| `cudaPackages_13_1.libcublas` | BLAS routines for CUDA |
+| `cudaPackages_13_1.libcufft` | Fast Fourier transform for CUDA |
+
+> **Note on nixpkgs version:** `cudaPackages_13_1` was introduced in nixpkgs after 2026-03. If the pinned nixpkgs rev pre-dates that, update `flake.lock` (`nix flake update nixpkgs`) or pin to the nearest available `cudaPackages_*` set that satisfies ≥12.x.
+
+### 3.3.2 CUDA build variant flake output
+
+`nix build .#cuda-runtime` produces an OCI image (`agentbox:cuda-runtime-<system>`) identical to `runtime` but with the CUDA 13.1 toolchain baked in via `cudaCfg.nixPackages`. The variant calls `dispatchGpuBackend "local-cuda" true` unconditionally — it does not read `agentbox.toml`. This makes the variant composable: load it, pass `--runtime nvidia`, and the toolchain is present regardless of the manifest used at runtime.
+
+```bash
+# Build the CUDA variant
+nix build .#cuda-runtime
+
+# Load into Docker
+docker load < result
+
+# Run (requires nvidia-container-toolkit on host)
+docker run --rm --runtime nvidia --gpus all agentbox:cuda-runtime-x86_64-linux nvidia-smi
+```
 
 ## 3a. Manifest → build → runtime (how it fits together)
 
@@ -136,7 +183,7 @@ flowchart LR
     E --> F[supervisord<br/>generated from manifest]
     F --> G[management-api<br/>:9090]
     F --> H[adapter dispatch<br/>layer]
-    H --> I{resolve [adapters]}
+    H --> I{"resolve [adapters]"}
     I -->|local-*| J[in-container<br/>fallback]
     I -->|external| K[host-mesh<br/>endpoint]
     I -->|off| L[AdapterDisabled]
@@ -152,8 +199,8 @@ flowchart LR
 flowchart TB
     subgraph consumer["management-api consumers"]
         ME[MCP endpoints]
-        BR[/v1/briefs routes/]
-        AE[/v1/agent-events/]
+        BR["/v1/briefs routes"]
+        AE["/v1/agent-events"]
     end
 
     subgraph dispatch["adapter dispatch layer"]

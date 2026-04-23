@@ -1,0 +1,56 @@
+# E001: adapter set to "external" but federation.mode is not "client"
+[core]
+orchestration = "ruflo-v3"
+vector_db = "ruvector-embedded"
+
+[federation]
+mode = "standalone"
+
+[adapters]
+beads        = "external"
+pods         = "local-jss"
+memory       = "embedded-ruvector"
+events       = "local-jsonl"
+orchestrator = "local-process-manager"
+
+[gpu]
+backend = "none"
+
+[desktop]
+enabled = false
+
+[sovereign_mesh]
+enabled = true
+
+[observability]
+metrics_port = 9091
+log_level    = "info"
+
+[toolchains]
+claude = true
+ruflo  = true
+
+[skills.browser]
+agent_browser = true
+playwright    = true
+
+[skills.media]
+ffmpeg      = true
+imagemagick = true
+
+[skills.spatial_and_3d]
+blender = false
+
+[skills.data_science]
+pytorch = false
+
+[skills.docs]
+latex = true
+
+[skills.ontology]
+enabled = false
+
+[providers.anthropic]
+enabled  = false
+env_var  = "ANTHROPIC_API_KEY"
+optional_env_vars = []

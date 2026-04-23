@@ -6,7 +6,55 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Dat
 
 ## [Unreleased]
 
+### M4 — 3DGS stack: COLMAP + METIS + LichtFeld Studio (P3.2) (2026-04-23)
+
+**3D Gaussian Splatting stack gate (P3.2)**:
+
+- `lib/3dgs-stack.nix` — new library exporting `makeGaussianSplattingPackages { system }`: returns `[ colmap metis lichtfeld-studio ]` on x86_64-linux; gracefully returns empty list (with `lib.warn`) on aarch64 so the flake still evaluates; each derivation enables CUDA where applicable
+- `colmap`: `pkgs.colmap.overrideAttrs` with `-DCUDA_ENABLED=ON`; pins to nixpkgs unstable colmap 3.10 (nixpkgs commit `da32c79e`, 2025-03-18)
+- `metis`: `pkgs.metis` 5.1.0 from nixpkgs (CPU-only graph partitioner; no CUDA component)
+- `lichtfeld-studio`: `stdenv.mkDerivation` with `fetchFromGitHub`; upstream repo URL unconfirmed — `rev` and `sha256` stubbed with `# TODO: resolve upstream repo and pin rev` comments; build structure (CMake, CUDA flags, `opencv`/`eigen`/`glfw` inputs) is complete and will build once the SHA is filled in
+- `flake.nix`: imports `lib/3dgs-stack.nix`; `gauss3dPackages` bound via `lib.optionals (spatialCfg.gaussian_splatting or false)`; appended to `spatialPackages`; new `packages.${system}.gaussian-splatting` output builds a `cuda-runtime`-based image with the 3DGS stack layered on top (`nix build .#gaussian-splatting`)
+- `tests/3dgs/reconstruction-smoke.sh`: reads `gaussian_splatting` gate from `agentbox.toml`; exits 77 when disabled; 4 TAP assertions — colmap on PATH, `colmap feature_extractor --help` responds, gpmetis/metis on PATH, fixture PNG has correct magic bytes
+- `tests/3dgs/fixtures/sample-256.png`: minimal 256x256 solid-grey RGB PNG for smoke test
+- `docs/guides/3dgs.md` (≤60 lines): prerequisites, tool table, pipeline steps, output paths, CUDA arch note
+- Gating: validator rule E006 already enforces `gaussian_splatting=true → gpu.backend="local-cuda"`; no new validator changes required
+
+### M4 — CUDA 13.1 toolchain + cuda-runtime image variant + ComfyUI switches (2026-04-23)
+
+**ComfyUI built-in / external switches (P3.5)**:
+
+- `agentbox.toml`: `skills.media.comfyui_builtin` (was the old monolithic `comfyui_integration`); new `[integrations.comfyui_external]` section with `enabled`, `url`, `ws_url` — mirrors the pattern of other external integrations
+- `schema/agentbox.toml.schema.json`: `skills.media.comfyui_builtin` only; `integrations.comfyui_external` added as typed object; old `comfyui_integration` / `comfyui_external` keys under `skills.media` removed
+- Validator E007 updated: now checks `skills.media.comfyui_builtin` vs `integrations.comfyui_external.enabled` (cross-section rule); `KNOWN_SKILLS` cleaned to remove retired keys
+- `flake.nix` built-in path: `fetchFromGitHub` pins ComfyUI v0.3.27; `comfyuiPythonEnv` wraps torch/torchvision/transformers/safetensors and friends; `[program:comfyui-builtin]` supervisor block added, binds to `127.0.0.1:8188`; external path: `COMFYUI_URL` + `COMFYUI_WS_URL` baked into `imageEnv` from manifest values (or 127.0.0.1 defaults for built-in)
+- `mcp/mcp.json` `comfyui` server block: hardcoded URL literals removed; server now inherits `COMFYUI_URL` / `COMFYUI_WS_URL` from the container environment
+- `docs/guides/comfyui.md` (57 lines): both paths, mutual exclusion, remote-instance config, port collision note
+
+### M4 — CUDA 13.1 toolchain + cuda-runtime image variant (2026-04-23)
+
+**CUDA 13.1 toolchain gate (P3.1)**:
+
+- `lib/gpu-backend.nix` `local-cuda` branch now accepts `toolchainsCudaEnabled` parameter; when `true` and on x86_64, appends `cudaPackages_13_1.{cudatoolkit,cudnn,cutensor,libcublas,libcufft}` to `nixPackages` via `lib.optionals stdenv.isx86_64`
+- `dispatchGpuBackend` signature extended to `backend -> toolchainsCudaEnabled`; Nix eval-time assertion enforces `toolchainsCudaEnabled → backend="local-cuda"` (mirrors E019)
+- `flake.nix` threads `toolchainCfg.cuda or false` into the dispatch call; fixes pre-existing stray semicolon in `allPackages` concatenation
+- New `packages.${system}.cuda-runtime` flake output — `runtime`-based image with CUDA 13.1 baked in; `nix build .#cuda-runtime`
+- Validator rule E019 added to `scripts/agentbox-config-validate.js`: `[toolchains.cuda]=true` without `[gpu.backend]="local-cuda"` emits `E019 [toolchains.cuda]=true requires [gpu.backend]="local-cuda"`
+- 2 E019 tests in `tests/config/semantic-rules.test.js` (invalid + valid)
+- Smoke test `tests/cuda/nvidia-smi-smoke.sh`: skips (exit 77) if CUDA not enabled or docker unavailable; asserts `docker exec agentbox nvidia-smi` exits 0; requires host NVIDIA driver + nvidia-container-toolkit
+- PRD-001 §3.3 updated: dispatch signature, §3.3.1 (`[toolchains].cuda` gate), §3.3.2 (CUDA build variant)
+- Default `[toolchains].cuda = false` unchanged; default `runtime` image unaffected
+
 ### M3 — ecosystem + manifest-driven compose (2026-04-23)
+
+**Skills as content-addressed Nix input (D.9)** — seam in place; remote extract deferred:
+- `flake.nix` now declares `inputs.skills` as a `path:./skills` flake input (`flake = false`)
+- `outputs` receives `skills` and binds it to `skillsTree`; `appRoot` copies from `skillsTree` rather than the hardcoded `./skills` path
+- Operationally a no-op: path-type inputs are file-system equivalent to the previous `${./skills}` reference
+- Migration seam established: switching to `github:DreamLab-AI/agentbox-skills/main` + `nix flake lock --update-input skills` is the sole change required once the upstream repo is created
+- `tests/flake/skills-input.sh` — smoke test verifying the input is declared; skip-77 when nix absent
+- `docs/guides/skills-upgrade.md` — full migration guide (current path state, future remote state, step-by-step extract)
+- Full extract (Path A) is a future milestone pending creation of `DreamLab-AI/agentbox-skills`; `skills/` remains the committed source of truth until then
 
 **Compose-from-manifest (D.1)** — `flake.nix` now emits `docker-compose.yml` content from `agentbox.toml`:
 - New `composeText` generator in `flake.nix` mirrors the existing `supervisorText` pattern
@@ -47,6 +95,17 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Dat
 - `tests/cli/smoke.sh` asserts `gemini --help` + `gemini --version` when toolchain installed
 - v0.38.2 brings 1M context, Chapters narrative flow, Context Compression, worktree support (April 2026 release)
 - No daemon mode needed — CLI runs interactively
+
+**Blender & TeX Live verification (P3.3 + P3.4)**:
+- Blender: `pkgs.blender` from nixpkgs-unstable (4.x stable; 5.0.1+ available via overlay)
+  - `[skills.spatial_and_3d].blender` controls gated inclusion in `spatialPackages`
+  - `tests/toolchains/blender-present.sh` — verifies `blender --version` exits 0 when enabled; skips (exit 77) if disabled
+  - `docs/guides/blender.md` (22 lines) — version details, MCP server path, custom package workflow
+- TeX Live: `pkgs.texliveFull` from nixpkgs-unstable (~7K packages)
+  - `[skills.docs].latex` controls gated inclusion; includes biber for bibliography
+  - Alternative: `scheme-full` (equivalent), `scheme-medium` (3K packages), `scheme-small` (400 packages) for space-constrained builds
+  - `tests/toolchains/latex-present.sh` — verifies `pdflatex --version` + `biber` when enabled; skips (exit 77) if disabled
+  - `docs/guides/latex.md` (47 lines) — covered packages, custom package addition, downsizing strategy
 
 **claude-zai GLM-5 upgrade (P2.4)**:
 - `claude-zai/claude-config.json` model: `glm-4.6` → `glm-5`

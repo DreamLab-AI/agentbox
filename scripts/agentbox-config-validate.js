@@ -159,12 +159,16 @@ if (skills.spatial_and_3d && skills.spatial_and_3d.gaussian_splatting === true) 
   }
 }
 
-// E007: skills.media.comfyui_builtin and skills.media.comfyui_external MUST NOT both be true.
-if (skills.media && skills.media.comfyui_builtin === true && skills.media.comfyui_external === true) {
-  errors.push({
-    code: 'E007',
-    message: 'E007: skills.media.comfyui_builtin and skills.media.comfyui_external cannot both be true'
-  });
+// E007: skills.media.comfyui_builtin and integrations.comfyui_external.enabled MUST NOT both be true.
+{
+  const builtinOn = skills.media && skills.media.comfyui_builtin === true;
+  const externalOn = integrations.comfyui_external && integrations.comfyui_external.enabled === true;
+  if (builtinOn && externalOn) {
+    errors.push({
+      code: 'E007',
+      message: 'E007: skills.media.comfyui_builtin and integrations.comfyui_external.enabled are mutually exclusive — enable only one'
+    });
+  }
 }
 
 // E008: gpu.backend="local-cuda" on aarch64 raises an error.
@@ -242,7 +246,7 @@ if (desktop.enabled === true) {
 // validate against the set of keys in the schema's skills sub-sections.
 const KNOWN_SKILLS = new Set([
   'playwright', 'qe_browser', 'agent_browser',
-  'ffmpeg', 'imagemagick', 'comfyui_builtin', 'comfyui_external', 'comfyui_integration',
+  'ffmpeg', 'imagemagick', 'comfyui_builtin',
   'blender', 'qgis', 'gaussian_splatting',
   'pytorch', 'jupyter',
   'latex', 'mermaid', 'report_builder',
@@ -326,6 +330,21 @@ if (sovereignMesh.jss_rust_backend === true) {
       code: 'E015',
       message: 'E015: sovereign_mesh.jss_rust_backend is true but "jss-rust" input is not pinned in flake.lock'
     });
+  }
+}
+
+// E019: [toolchains].cuda=true requires [gpu].backend="local-cuda"
+// Having a CUDA toolchain without a CUDA-capable GPU backend is a misconfiguration
+// that would produce a broken image (CUDA libraries present but no GPU access path).
+{
+  const toolchains = manifest.toolchains || {};
+  if (toolchains.cuda === true) {
+    if (gpu.backend !== 'local-cuda') {
+      errors.push({
+        code: 'E019',
+        message: `E019 [toolchains.cuda]=true requires [gpu.backend]="local-cuda"`
+      });
+    }
   }
 }
 

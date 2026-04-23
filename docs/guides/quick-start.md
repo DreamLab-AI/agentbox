@@ -10,15 +10,39 @@ Use the interactive launcher unless you specifically want to edit files by hand:
 ./scripts/start-agentbox.sh
 ```
 
-The launcher can:
+The launcher is a section-by-section wizard (whiptail TUI, plain-text fallback when
+whiptail is absent). It walks through every manifest section in order and validates
+your choices after each one — you cannot advance past validation errors.
 
-- present checkbox-based feature selection
-- update `agentbox.toml`
-- create `.env` from `.env.example`
-- prompt for key environment values
-- check/install missing prerequisites interactively
-- optionally build the image
-- optionally start the Docker stack
+Sections covered:
+
+1. **Federation** — `standalone` (self-contained, local fallbacks) or `client` (federated with host mesh). If `client`, prompts for `external_url`.
+2. **Adapters** — one radio menu per slot: `beads`, `pods`, `memory`, `events`, `orchestrator`. Each shows the schema-exact enum values for that slot.
+3. **GPU backend** — `none` / `ollama-rocm` / `ollama-cuda` / `local-cuda`. The wizard auto-detects `nvidia-smi` and `rocm-smi` and pre-selects the appropriate default.
+4. **Desktop** — enable toggle, stack radio (`hyprland-wayland` / `x11-openbox`), resolution input.
+5. **Toolchains** — scrollable checklist of all 11 toolchain flags.
+6. **Skills** — five grouped checklists: browser, media, spatial+3D, data science, docs+ontology.
+7. **Providers** — checklist to enable providers; for each enabled provider a redacted password field collects the API key and writes it to `.env`.
+8. **Observability** — `metrics_port` input, `otlp_endpoint` input, `log_level` radio.
+9. **Integrations** — ComfyUI external, RuVector external (only when `adapters.memory=external-pg`), RagFlow (only when the `docker_ragflow` network is detected).
+10. **Sovereign mesh** — full checklist of Nostr/pod/bridge/telegram flags.
+11. **Summary + action** — read-only summary of the full manifest, confirmation prompt, then a choice: save only / build image / build+start / start stack.
+
+After each section the wizard runs `scripts/agentbox-config-validate.js` against the
+in-progress manifest. Any E001–E019 errors appear in a message box and the section
+loops for correction before you can proceed.
+
+The configuration is written atomically — staged in a temp file, validated, then
+moved into place. You are asked to confirm before the file is overwritten.
+
+**Validate-only mode** (CI / pre-commit use):
+
+```bash
+./scripts/start-agentbox.sh --validate-only
+```
+
+Runs the validator against the existing `agentbox.toml` and exits with the validator's
+exit code (0 = clean, 1 = errors). No TUI is opened.
 
 ## 1. Configure The Build
 

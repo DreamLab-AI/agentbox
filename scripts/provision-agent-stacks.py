@@ -100,7 +100,7 @@ def build_profile(name: str, config: dict) -> None:
             [
                 f"# {name}",
                 "",
-                "Provisioned stack profile for Agentbox 2.0.",
+                "Provisioned stack profile for Agentbox.",
                 "",
                 f"Shared external projects mount: {SHARED_PROJECTS_ROOT}",
                 f"Shared workspace mount: {WORKSPACE}",

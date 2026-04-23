@@ -1,0 +1,84 @@
+[core]
+orchestration = "ruflo-v3"
+vector_db = "ruvector-embedded"
+
+[federation]
+mode = "standalone"
+
+[adapters]
+beads        = "local-sqlite"
+pods         = "local-jss"
+memory       = "embedded-ruvector"
+events       = "local-jsonl"
+orchestrator = "local-process-manager"
+
+[gpu]
+backend = "none"
+
+[desktop]
+enabled    = false
+stack      = "hyprland-wayland"
+resolution = "1920x1080"
+
+[sovereign_mesh]
+enabled              = true
+solid_pod            = true
+nostr_bridge         = true
+https_bridge         = false
+publish_agent_events = false
+telegram_mirror      = false
+jss_rust_backend     = false
+
+[observability]
+metrics_port = 9091
+log_level    = "info"
+
+[providers.anthropic]
+enabled  = false
+env_var  = "ANTHROPIC_API_KEY"
+optional_env_vars = []
+
+[toolchains]
+claude          = true
+claude_code     = false
+ruflo           = true
+claude_flow     = true
+agentic_qe      = true
+nagual_qe       = true
+gemini_cli      = false
+code_server     = false
+codebase_memory = true
+rust            = true
+cuda            = false
+
+[skills.browser]
+agent_browser = true
+playwright    = true
+qe_browser    = false
+
+[skills.media]
+ffmpeg          = true
+imagemagick     = true
+comfyui_builtin = false
+
+[skills.spatial_and_3d]
+blender            = false
+qgis               = false
+gaussian_splatting = false
+
+[skills.data_science]
+pytorch = false
+jupyter = false
+
+[skills.docs]
+latex          = true
+mermaid        = true
+report_builder = true
+
+[skills.ontology]
+enabled = false
+
+[integrations.comfyui_external]
+enabled = false
+url    = "http://comfyui:8188"
+ws_url = "ws://comfyui:8188/ws"

@@ -32,7 +32,7 @@ Remote operator commands:
   ${GREEN}api${NC}              Open Management API tunnel (localhost:9090)
   ${GREEN}all${NC}              Open all tunnels (VNC, code-server, API, CDP)
   ${GREEN}status${NC}           Check instance status
-  ${GREEN}provision${NC}        Provision new instance (loops until capacity)
+  ${GREEN}provision${NC}        Provision new instance [--target oci|fly|hetzner|bare] (default: oci)
   ${GREEN}ip${NC}               Show instance IP
   ${GREEN}setup${NC}            Run initial setup on instance
   ${GREEN}start-browser${NC}    Start visible browser on remote (for agent-browser)
@@ -56,7 +56,9 @@ Examples:
   $0 ssh                    # Connect via SSH
   $0 vnc                    # Start VNC tunnel, then connect to vnc://localhost:5901
   $0 all                    # Start all tunnels
-  $0 provision --loop       # Keep trying until capacity available
+  $0 provision --loop                   # OCI (default), keep retrying
+  $0 provision --target oci --loop     # Explicit OCI target
+  $0 provision --target bare --host ubuntu@192.168.1.10
   $0 backup                 # Create timestamped backup in ./backups/
   $0 backup --out /tmp/snap.tgz --include-secrets
   $0 restore ./backups/agentbox-backup-20260101T000000Z.tgz
@@ -163,13 +165,34 @@ cmd_ip() {
 }
 
 cmd_provision() {
-    SCRIPT_DIR="$(dirname "$0")"
-    if [[ -f "$SCRIPT_DIR/scripts/provision-oci.sh" ]]; then
-        exec "$SCRIPT_DIR/scripts/provision-oci.sh" "$@"
-    else
-        echo -e "${RED}Provisioning script not found${NC}"
+    local target="oci"
+    local passthrough=()
+
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --target) target="$2"; shift 2 ;;
+            *) passthrough+=("$1"); shift ;;
+        esac
+    done
+
+    local provisioner="$SCRIPT_DIR/scripts/provision-${target}.sh"
+
+    case "$target" in
+        oci|fly|hetzner|bare) ;;
+        *)
+            echo -e "${RED}Unknown provisioning target: ${target}${NC}"
+            echo "Available targets: oci, fly, hetzner, bare"
+            echo "Usage: $0 provision [--target <target>] [target-specific options]"
+            exit 1
+            ;;
+    esac
+
+    if [[ ! -f "$provisioner" ]]; then
+        echo -e "${RED}Provisioner not found: ${provisioner}${NC}"
         exit 1
     fi
+
+    exec "$provisioner" "${passthrough[@]+"${passthrough[@]}"}"
 }
 
 cmd_start_browser() {

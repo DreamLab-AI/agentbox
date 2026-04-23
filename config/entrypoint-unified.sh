@@ -1,12 +1,43 @@
 #!/usr/bin/env bash
+# ROLE: Container bootstrap + runtime dependency installer.
+#
+# Runs in two stages:
+#   Stage A (phases 1-5): one-shot container bootstrap — directories, management
+#                         key, sovereign identity, workspace defaults, supervisord.
+#   Stage B (phases 6-8): supervisord [program:bootstrap] — Node/npm skill deps,
+#                         optional CLI toolchains, profile.d env hints.
+#
+# Stage selection: supervisord's [program:bootstrap] block sets
+#   environment=AGENTBOX_BOOTSTRAP_STAGE="B"
+# so when the script is re-invoked as that supervised program, we skip phases
+# 1-5 (already done) and execute phases 6-8 directly.
+#
+# Do NOT source this file; it must be exec'd.
+
 set -euo pipefail
 
-echo "========================================"
-echo "  AGENTBOX"
-echo "  Modular Sovereign Agent Environment"
-echo "========================================"
-echo ""
+# Stage dispatch — when running as the supervisord bootstrap program, skip to B.
+if [ "${AGENTBOX_BOOTSTRAP_STAGE:-A}" = "B" ]; then
+  echo "[bootstrap] Stage B — installing runtime dependencies"
+  # Jump to Stage B by sourcing the Stage B function block below; we achieve
+  # this by defining stage_b() and running it, then exiting cleanly so
+  # supervisord records a successful one-shot.
+  STAGE_B_MODE=1
+else
+  STAGE_B_MODE=0
+  echo "========================================"
+  echo "  AGENTBOX"
+  echo "  Modular Sovereign Agent Environment"
+  echo "========================================"
+  echo "  Date: $(date -Iseconds)"
+  echo ""
+fi
 
+if [ "$STAGE_B_MODE" = "0" ]; then
+
+# ---------------------------------------------------------------------------
+# Phase 1 — Environment defaults + runtime directory creation
+# ---------------------------------------------------------------------------
 export WORKSPACE="${WORKSPACE:-/workspace}"
 export AGENTBOX_CONFIG="${AGENTBOX_CONFIG:-/etc/agentbox.toml}"
 export RUVECTOR_DATA_DIR="${RUVECTOR_DATA_DIR:-/var/lib/ruvector}"
@@ -16,7 +47,7 @@ export RUVECTOR_PORT="${RUVECTOR_PORT:-9700}"
 export SOLID_POD_PORT="${SOLID_POD_PORT:-8484}"
 export SHARED_PROJECTS_ROOT="${SHARED_PROJECTS_ROOT:-/projects}"
 
-echo "[1/5] Preparing runtime directories..."
+echo "[1/8] Preparing runtime directories..."
 mkdir -p \
   "$WORKSPACE" \
   "$SHARED_PROJECTS_ROOT" \
@@ -25,9 +56,14 @@ mkdir -p \
   /var/lib/agentbox/identities \
   /var/log/supervisor \
   /var/run \
-  /tmp/screenshots
+  /tmp/screenshots \
+  "$WORKSPACE/.cache/ms-playwright"
 
-# Auto-generate management key if unset or still the legacy sentinel value
+chmod 755 "$RUVECTOR_DATA_DIR"
+
+# ---------------------------------------------------------------------------
+# Phase 2 — Management API key auto-generation
+# ---------------------------------------------------------------------------
 MGMT_KEY_FILE="$WORKSPACE/profiles/default/mgmt-key"
 _legacy_sentinel="change-this-secret-key"
 if [ -z "${MANAGEMENT_API_KEY:-}" ] || [ "${MANAGEMENT_API_KEY:-}" = "$_legacy_sentinel" ]; then
@@ -53,15 +89,21 @@ if [ "${ENABLE_DESKTOP:-false}" = "true" ]; then
   chmod 1777 /tmp/.X11-unix
 fi
 
-echo "[2/5] Bootstrapping sovereign mesh identity..."
+# ---------------------------------------------------------------------------
+# Phase 3 — Sovereign mesh identity bootstrap
+# ---------------------------------------------------------------------------
+echo "[2/8] Bootstrapping sovereign mesh identity..."
 python3 /opt/agentbox/scripts/sovereign-bootstrap.py
 
-echo "[3/5] Ensuring workspace defaults..."
+# ---------------------------------------------------------------------------
+# Phase 4 — Workspace defaults (agents dir, zellij config, README)
+# ---------------------------------------------------------------------------
+echo "[3/8] Ensuring workspace defaults..."
 if [ ! -d "$WORKSPACE/agents" ]; then
   mkdir -p "$WORKSPACE/agents"
 fi
 
-# Shell profile setup
+# Shell profile seeding
 if [ -f /etc/bash.bashrc ]; then
   if ! grep -q "source.*agentbox-aliases" /etc/bash.bashrc 2>/dev/null; then
     echo "source /opt/agentbox/config/agentbox-aliases.sh" >> /etc/bash.bashrc
@@ -85,9 +127,6 @@ for layout in /opt/agentbox/config/zellij/layouts/*.kdl; do
   fi
 done
 
-echo "[4/5] Provisioning agent stacks..."
-python3 /opt/agentbox/scripts/provision-agent-stacks.py
-
 if [ ! -f "$WORKSPACE/README.agentbox.md" ]; then
   cat > "$WORKSPACE/README.agentbox.md" <<'EOF'
 # Agentbox Workspace
@@ -100,5 +139,96 @@ Runtime state is mounted under:
 EOF
 fi
 
-echo "[5/5] Starting supervisord..."
+# ---------------------------------------------------------------------------
+# Phase 5 — Agent stack provisioning, then hand off to supervisord
+# ---------------------------------------------------------------------------
+echo "[4/8] Provisioning agent stacks..."
+python3 /opt/agentbox/scripts/provision-agent-stacks.py
+
+echo "[5/8] Starting supervisord..."
 exec supervisord -c /etc/supervisord.conf -n
+
+fi  # end STAGE_B_MODE=0 block — Stage A exits via exec above
+
+# ---------------------------------------------------------------------------
+# Stage B — supervisord [program:bootstrap] enters here (AGENTBOX_BOOTSTRAP_STAGE=B)
+# Re-exports critical env that Phase-1 would have set (since Stage A lives in
+# the PID-1 supervisord process and its env is inherited by children).
+# ---------------------------------------------------------------------------
+export WORKSPACE="${WORKSPACE:-/workspace}"
+export RUVECTOR_DATA_DIR="${RUVECTOR_DATA_DIR:-/var/lib/ruvector}"
+export SOLID_POD_ROOT="${SOLID_POD_ROOT:-/var/lib/solid}"
+export RUVECTOR_PORT="${RUVECTOR_PORT:-9700}"
+export AGENTBOX_CONFIG="${AGENTBOX_CONFIG:-/etc/agentbox.toml}"
+export SHARED_PROJECTS_ROOT="${SHARED_PROJECTS_ROOT:-/projects}"
+
+# ---------------------------------------------------------------------------
+# Phase 6 — Service Node dependency installation
+# ---------------------------------------------------------------------------
+echo "[6/8] Installing service dependencies..."
+
+_install_node_deps() {
+  local dir="$1"
+  if [ -f "$dir/package.json" ] && [ ! -d "$dir/node_modules" ]; then
+    echo "[AGENTBOX] Installing Node dependencies in $dir"
+    npm install --prefix "$dir" --omit=dev >/dev/null 2>&1 || true
+  fi
+}
+
+_install_node_deps /opt/agentbox/management-api
+_install_node_deps /opt/agentbox/mcp
+_install_node_deps /opt/agentbox/skills/openai-codex/mcp-server
+_install_node_deps /opt/agentbox/skills/lazy-fetch/mcp-server
+if [ "${ENABLE_PLAYWRIGHT:-false}" = "true" ]; then
+  _install_node_deps /opt/agentbox/skills/playwright/mcp-server
+fi
+
+# ---------------------------------------------------------------------------
+# Phase 7 — Optional runtime CLI toolchains (feature-gated)
+# ---------------------------------------------------------------------------
+echo "[7/8] Installing runtime CLI tools..."
+
+npx --yes ruvector --version >/dev/null 2>&1 || npm install -g ruvector >/dev/null 2>&1 || true
+
+if [ "${ENABLE_CLAUDE_FLOW:-false}" = "true" ]; then
+  npm install -g @claude-flow/cli >/dev/null 2>&1 || true
+fi
+if [ "${ENABLE_RUFLO:-false}" = "true" ]; then
+  npm install -g ruflo >/dev/null 2>&1 || true
+fi
+if [ "${ENABLE_AGENTIC_QE:-false}" = "true" ]; then
+  npm install -g agentic-qe >/dev/null 2>&1 || true
+  aqe init --auto >/dev/null 2>&1 || true
+fi
+if [ "${ENABLE_NAGUAL_QE:-false}" = "true" ]; then
+  npm install -g nagual-qe >/dev/null 2>&1 || true
+fi
+if [ "${ENABLE_CODEBASE_MEMORY:-false}" = "true" ]; then
+  npm install -g codebase-memory-mcp >/dev/null 2>&1 || true
+fi
+if [ "${ENABLE_AGENT_BROWSER:-false}" = "true" ]; then
+  npx --yes agent-browser --help >/dev/null 2>&1 || npm install -g agent-browser >/dev/null 2>&1 || true
+fi
+if [ "${ENABLE_PLAYWRIGHT:-false}" = "true" ]; then
+  npm install -g playwright >/dev/null 2>&1 || true
+  npx playwright install chromium >/dev/null 2>&1 || true
+fi
+if [ "${ENABLE_MERMAID:-false}" = "true" ]; then
+  npm install -g @mermaid-js/mermaid-cli >/dev/null 2>&1 || true
+fi
+
+# ---------------------------------------------------------------------------
+# Phase 8 — Publish environment hints to profile.d
+# ---------------------------------------------------------------------------
+echo "[8/8] Publishing environment hints..."
+cat > /etc/profile.d/agentbox-runtime.sh <<EOF
+export WORKSPACE="$WORKSPACE"
+export RUVECTOR_DATA_DIR="$RUVECTOR_DATA_DIR"
+export RUVECTOR_PORT="$RUVECTOR_PORT"
+export SOLID_POD_ROOT="${SOLID_POD_ROOT:-/var/lib/solid}"
+export AGENTBOX_CONFIG="${AGENTBOX_CONFIG:-/etc/agentbox.toml}"
+export SKILLS_TREE="${SKILLS_TREE:-/opt/agentbox/skills}"
+export SHARED_PROJECTS_ROOT="${SHARED_PROJECTS_ROOT:-/projects}"
+EOF
+
+echo "[AGENTBOX] Runtime bootstrap complete"

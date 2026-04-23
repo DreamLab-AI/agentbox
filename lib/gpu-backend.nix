@@ -5,7 +5,9 @@
 # Usage (from flake.nix or the compose generator):
 #
 #   gpuCfg = (import ./lib/gpu-backend.nix { inherit lib pkgs; })
-#              .dispatchGpuBackend (agentboxConfig.gpu.backend or "none");
+#              .dispatchGpuBackend
+#                (agentboxConfig.gpu.backend or "none")
+#                (agentboxConfig.toolchains.cuda or false);
 #
 # The returned attrset has a stable shape regardless of which branch is
 # selected.  Consumers must handle null values (e.g. composeDeviceReservations
@@ -115,8 +117,48 @@ let
     # local-cuda — CUDA toolchain baked into the Nix image.
     # Enables gaussian_splatting and direct CUDA workloads inside the
     # agentbox container.  The ollama sidecar also gets CUDA access.
+    #
+    # Base packages: CUDA 12.x from the default cudaPackages alias in
+    # nixos-unstable (currently tracks 12.x; updated as nixpkgs advances).
+    #
+    # [toolchains].cuda = true augments this with the full CUDA 13.1
+    # toolchain (cudaPackages_13_1).  If cudaPackages_13_1 is not yet
+    # available in the pinned nixpkgs rev, fall back to cudaPackages and
+    # leave a comment — the attribute set is guarded by lib.optionals so
+    # an evaluation error surfaces immediately rather than silently omitting
+    # packages.
+    #
+    # NOTE: aarch64 does not support CUDA; the extended package list is
+    # wrapped in lib.optionals stdenv.isx86_64 so cross-arch builds remain
+    # clean.
     # ----------------------------------------------------------------
-    "local-cuda" = {
+    "local-cuda" = { toolchainsCudaEnabled ? false }:
+    let
+      # Base CUDA 12.x packages — always included when backend=local-cuda.
+      baseCudaPackages = with pkgs; [
+        # CUDA 12.x toolchain available in nixos-unstable as cudaPackages
+        cudaPackages.cudatoolkit
+        cudaPackages.cuda_nvcc
+        cudaPackages.libcublas
+        cudaPackages.libcufft
+        cudaPackages.libcurand
+      ];
+
+      # Extended CUDA 13.1 packages — only when [toolchains].cuda = true.
+      # cudaPackages_13_1 was introduced in nixpkgs after 2026-03; if the
+      # pinned rev pre-dates that, update flake.lock or use cudaPackages_12_x.
+      # All five packages are x86_64-only; aarch64 skips this list entirely.
+      extendedCudaPackages = lib.optionals (toolchainsCudaEnabled && pkgs.stdenv.isx86_64) (
+        with pkgs.cudaPackages_13_1; [
+          cudatoolkit
+          cudnn
+          cutensor
+          libcublas
+          libcufft
+        ]
+      );
+    in
+    {
       devicesNeeded = noDevices;                 # handled by reservations
       runtimeClass  = "nvidia";
       envVars = {
@@ -127,14 +169,7 @@ let
         OLLAMA_CONTEXT_LENGTH      = "8192";
         OLLAMA_HOST                = "0.0.0.0:11434";
       };
-      nixPackages = with pkgs; [
-        # CUDA 12.x toolchain available in nixos-unstable as cudaPackages
-        cudaPackages.cudatoolkit
-        cudaPackages.cuda_nvcc
-        cudaPackages.libcublas
-        cudaPackages.libcufft
-        cudaPackages.libcurand
-      ];
+      nixPackages = baseCudaPackages ++ extendedCudaPackages;
       composeDeviceReservations = {
         driver       = "nvidia";
         count        = "all";
@@ -150,14 +185,25 @@ let
 
 in
 {
-  # dispatchGpuBackend :: string -> attrset
+  # dispatchGpuBackend :: string -> bool -> attrset
   #
   # Returns the canonical GPU backend descriptor for the given enum value.
+  # toolchainsCudaEnabled corresponds to [toolchains].cuda in agentbox.toml.
   # Throws a descriptive error on unrecognised values so manifest mistakes
   # surface at eval time rather than silently producing a broken image.
-  dispatchGpuBackend = backend:
-    backends.${backend} or (
-      throw "agentbox: [gpu].backend \"${backend}\" is not recognised. "
-          + "Valid values: none, ollama-rocm, ollama-cuda, local-cuda."
-    );
+  dispatchGpuBackend = backend: toolchainsCudaEnabled:
+    let
+      resolved =
+        if backend == "local-cuda"
+        then backends."local-cuda" { inherit toolchainsCudaEnabled; }
+        else backends.${backend} or (
+          throw "agentbox: [gpu].backend \"${backend}\" is not recognised. "
+              + "Valid values: none, ollama-rocm, ollama-cuda, local-cuda."
+        );
+    in
+    # Enforce the cross-constraint at Nix eval time: toolchains.cuda=true
+    # requires gpu.backend="local-cuda" (mirrors validator rule E019).
+    if toolchainsCudaEnabled && backend != "local-cuda"
+    then throw "agentbox: [toolchains].cuda=true requires [gpu].backend=\"local-cuda\" (E019)"
+    else resolved;
 }

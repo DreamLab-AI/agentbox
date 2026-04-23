@@ -33,7 +33,7 @@ flowchart TB
     end
 
     subgraph adapters["adapter dispatch"]
-        API --> AD{resolve [adapters]}
+        API --> AD{"resolve [adapters]"}
         MCP --> AD
         AD -->|standalone| LOC[local fallbacks<br/>sqlite · JSS · RuVector · JSONL]
         AD -->|client| EXT[external mesh<br/>beads · pods · memory · events · orchestrator]

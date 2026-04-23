@@ -168,13 +168,8 @@
             "imagemagick": { "type": "boolean" },
             "comfyui_builtin": {
               "type": "boolean",
-              "description": "Mutually exclusive with comfyui_external (E007)."
-            },
-            "comfyui_external": {
-              "type": "boolean",
-              "description": "Mutually exclusive with comfyui_builtin (E007)."
-            },
-            "comfyui_integration": { "type": "boolean" }
+              "description": "Install ComfyUI as a built-in supervisor service on localhost:8188. Mutually exclusive with integrations.comfyui_external.enabled (E007)."
+            }
           }
         },
         "spatial_and_3d": {
@@ -284,6 +279,25 @@
           "properties": {
             "enabled": { "type": "boolean" },
             "network": { "type": "string" }
+          }
+        },
+        "comfyui_external": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Point agentbox at a pre-existing ComfyUI instance. Mutually exclusive with skills.media.comfyui_builtin (E007).",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "When true, skip the built-in supervisor block and inject COMFYUI_URL / COMFYUI_WS_URL env vars."
+            },
+            "url": {
+              "type": "string",
+              "description": "HTTP base URL of the external ComfyUI instance."
+            },
+            "ws_url": {
+              "type": "string",
+              "description": "WebSocket URL of the external ComfyUI instance."
+            }
           }
         }
       }

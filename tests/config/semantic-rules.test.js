@@ -219,7 +219,7 @@ describe('E007: comfyui_builtin and comfyui_external cannot both be true', () =>
   test('invalid: both comfyui_builtin and comfyui_external true', () => {
     const m = baseValid();
     m.skills.media.comfyui_builtin = true;
-    m.skills.media.comfyui_external = true;
+    m.integrations = { comfyui_external: { enabled: true, url: 'http://comfyui:8188' } };
     const r = runValidator(m);
     expect(r.exitCode).not.toBe(0);
     expect(stderrContains(r, 'E007')).toBe(true);
@@ -228,7 +228,7 @@ describe('E007: comfyui_builtin and comfyui_external cannot both be true', () =>
   test('valid: only comfyui_builtin true', () => {
     const m = baseValid();
     m.skills.media.comfyui_builtin = true;
-    m.skills.media.comfyui_external = false;
+    m.integrations = { comfyui_external: { enabled: false, url: 'http://comfyui:8188' } };
     const r = runValidator(m);
     expect(stderrContains(r, 'E007')).toBe(false);
   });
@@ -438,6 +438,28 @@ describe('E015: jss_rust_backend requires jss-rust pinned in flake.lock', () => 
     m.sovereign_mesh.jss_rust_backend = false;
     const r = runValidator(m);
     expect(stderrContains(r, 'E015')).toBe(false);
+  });
+});
+
+// ─── E019 ─────────────────────────────────────────────────────────────────────
+describe('E019: [toolchains.cuda]=true requires [gpu.backend]="local-cuda"', () => {
+  test('invalid: toolchains.cuda=true with gpu.backend=none', () => {
+    const m = baseValid();
+    m.toolchains.cuda = true;
+    m.gpu.backend = 'none';
+    const r = runValidator(m);
+    expect(r.exitCode).not.toBe(0);
+    expect(stderrContains(r, 'E019')).toBe(true);
+    expect(r.stderr).toMatch(/E019 \[toolchains\.cuda\]=true requires \[gpu\.backend\]="local-cuda"/);
+  });
+
+  test('valid: toolchains.cuda=true with gpu.backend=local-cuda', () => {
+    const m = baseValid();
+    m.toolchains.cuda = true;
+    m.gpu.backend = 'local-cuda';
+    const r = runValidator(m);
+    // E008 may fire on non-x86_64 but E019 must not fire
+    expect(stderrContains(r, 'E019')).toBe(false);
   });
 });
 

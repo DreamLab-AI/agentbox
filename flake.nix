@@ -1,14 +1,24 @@
 {
-  description = "Agentbox 2.0 - Modular sovereign multi-agent container";
+  description = "Agentbox — modular sovereign multi-agent container";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     nix2container.url = "github:nlewo/nix2container";
     rust-overlay.url = "github:oxalica/rust-overlay";
+
+    # D.9: skills corpus as a content-addressed Nix input.
+    # Currently a path-type input (file-system equivalent to ./skills).
+    # Future: flip to fetchFromGitHub once DreamLab-AI/agentbox-skills exists:
+    #   skills.url = "github:DreamLab-AI/agentbox-skills/main";
+    # Then run: nix flake lock --update-input skills
+    skills = {
+      url = "path:./skills";
+      flake = false;
+    };
   };
 
-  outputs = { self, nixpkgs, flake-utils, nix2container, rust-overlay }:
+  outputs = { self, nixpkgs, flake-utils, nix2container, rust-overlay, skills }:
     flake-utils.lib.eachSystem [ "x86_64-linux" "aarch64-linux" ] (system:
       let
         pkgs = import nixpkgs {
@@ -34,7 +44,14 @@
 
         # GPU backend dispatch — single source of truth for GPU concerns.
         gpuLib = import ./lib/gpu-backend.nix { inherit lib pkgs; };
-        gpuCfg = gpuLib.dispatchGpuBackend (agentboxConfig.gpu.backend or "none");
+        gpuCfg = gpuLib.dispatchGpuBackend
+                   (agentboxConfig.gpu.backend or "none")
+                   (toolchainCfg.cuda or false);
+
+        # 3DGS stack — gated by gaussian_splatting + local-cuda (E006).
+        gs3dLib = import ./lib/3dgs-stack.nix { inherit lib pkgs; };
+        gauss3dPackages = lib.optionals (spatialCfg.gaussian_splatting or false)
+          (gs3dLib.makeGaussianSplattingPackages { inherit system; });
 
         boolEnv = value: if value then "true" else "false";
 
@@ -136,9 +153,53 @@
           nspr
         ]);
 
+        # ComfyUI built-in: fetch upstream source and wrap with a Python env.
+        # Included only when skills.media.comfyui_builtin = true.
+        # Bump the rev + hash intentionally via a PR when upgrading.
+        comfyuiRev  = "v0.3.27";
+        comfyuiHash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+        _comfyuiGuard =
+          if mediaCfg.comfyui_builtin or false
+             && comfyuiHash == "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+          then throw ''
+            flake.nix: skills.media.comfyui_builtin is enabled but the ComfyUI source hash
+            is still the placeholder. To build the built-in ComfyUI path:
+              1. Run: nix-prefetch-url --unpack https://github.com/comfyanonymous/ComfyUI/archive/${comfyuiRev}.tar.gz
+              2. Replace comfyuiHash in flake.nix with the returned sha256.
+            Alternatively: set skills.media.comfyui_builtin = false and use
+            [integrations.comfyui_external] to point at a running ComfyUI instance.
+          ''
+          else null;
+        comfyuiSrc = pkgs.fetchFromGitHub {
+          owner = "comfyanonymous";
+          repo  = "ComfyUI";
+          rev   = comfyuiRev;
+          hash  = comfyuiHash;
+        };
+
+        comfyuiPythonEnv = pkgs.python312.withPackages (ps: with ps; [
+          torch
+          torchvision
+          torchaudio
+          aiohttp
+          einops
+          transformers
+          safetensors
+          pyyaml
+          pillow
+          scipy
+          tqdm
+          psutil
+        ]);
+
+        comfyuiPackages = lib.optionals (mediaCfg.comfyui_builtin or false) [
+          comfyuiPythonEnv
+        ];
+
         mediaPackages = with pkgs;
           lib.optionals (mediaCfg.ffmpeg or false) [ ffmpeg ]
-          ++ lib.optionals (mediaCfg.imagemagick or false) [ imagemagick ];
+          ++ lib.optionals (mediaCfg.imagemagick or false) [ imagemagick ]
+          ++ comfyuiPackages;
 
         spatialPackages =
           lib.optionals (spatialCfg.qgis or false) [
@@ -147,7 +208,9 @@
           ]
           ++ lib.optionals (spatialCfg.blender or false) [
             pkgs.blender
-          ];
+          ]
+          # 3DGS stack: only when gaussian_splatting=true (requires local-cuda via E006)
+          ++ gauss3dPackages;
 
         dataSciencePackages =
           lib.optionals (dataScienceCfg.pytorch or false) [
@@ -207,14 +270,18 @@
           ++ dataSciencePackages
           ++ docsPackages
           ++ desktopPackages
-          ++ geminiCliPackages;
+          ++ geminiCliPackages
           ++ gpuCfg.nixPackages;
+
+        # D.9: skillsTree is sourced from inputs.skills (path-type input).
+        # Switching to a remote upstream is a one-line inputs change + flake.lock regen.
+        skillsTree = skills;
 
         appRoot = pkgs.runCommand "agentbox-app-root" {} ''
           mkdir -p $out/opt/agentbox
           cp -r ${./management-api} $out/opt/agentbox/management-api
           cp -r ${./mcp} $out/opt/agentbox/mcp
-          cp -r ${./skills} $out/opt/agentbox/skills
+          cp -r ${skillsTree} $out/opt/agentbox/skills
           cp -r ${./scripts} $out/opt/agentbox/scripts
           cp -r ${./config} $out/opt/agentbox/config
           cp -r ${./docs} $out/opt/agentbox/docs
@@ -307,7 +374,8 @@ serverurl=unix:///var/run/supervisor.sock
 supervisor.rpcinterface_factory = supervisor.rpcinterface:make_main_rpcinterface
 
 [program:bootstrap]
-command=/opt/agentbox/scripts/skills-entrypoint.sh
+command=/opt/agentbox/config/entrypoint-unified.sh
+environment=AGENTBOX_BOOTSTRAP_STAGE="B"
 autostart=true
 autorestart=false
 startsecs=0
@@ -397,6 +465,18 @@ ${lib.optionalString (spatialCfg.qgis or false) "\n${qgisServiceBlock}"}
 ${lib.optionalString (spatialCfg.blender or false) "\n${blenderServiceBlock}"}
 ${lib.optionalString (dataScienceCfg.jupyter or false) "\n${jupyterServiceBlock}"}
 ${lib.optionalString (desktopCfg.enabled or false) "\n${desktopBlocks}"}
+${lib.optionalString (mediaCfg.comfyui_builtin or false) ''
+
+[program:comfyui-builtin]
+command=${comfyuiPythonEnv}/bin/python3 ${comfyuiSrc}/main.py --listen 127.0.0.1 --port 8188
+directory=${comfyuiSrc}
+environment=HOME="/workspace",COMFYUI_OUTPUT_DIR="/workspace/comfyui-outputs"
+autostart=true
+autorestart=true
+priority=220
+stdout_logfile=/var/log/comfyui-builtin.log
+stderr_logfile=/var/log/comfyui-builtin.error.log
+''}
         '';
 
         # ---------------------------------------------------------------------------
@@ -607,7 +687,7 @@ ${ragflowNetworkDecl}
           "RUVECTOR_PORT=9700"
           "MANAGEMENT_API_PORT=9090"
           "MANAGEMENT_API_AUTH_MODE=hybrid"
-          "MANAGEMENT_API_KEY=change-this-secret-key"
+          "MANAGEMENT_API_KEY="
           "SOVEREIGN_MESH_ENABLED=${boolEnv (sovereignCfg.enabled or false)}"
           "SOLID_POD_ENABLED=${boolEnv (sovereignCfg.solid_pod or false)}"
           "SOLID_POD_ROOT=/var/lib/solid"
@@ -622,6 +702,20 @@ ${ragflowNetworkDecl}
           "ENABLE_QE_BROWSER=${boolEnv (browserCfg.qe_browser or false)}"
           "ENABLE_FFMPEG=${boolEnv (mediaCfg.ffmpeg or false)}"
           "ENABLE_IMAGEMAGICK=${boolEnv (mediaCfg.imagemagick or false)}"
+          "ENABLE_COMFYUI_BUILTIN=${boolEnv (mediaCfg.comfyui_builtin or false)}"
+          "ENABLE_COMFYUI_EXTERNAL=${boolEnv (comfyuiExtCfg.enabled or false)}"
+          # When external path is active, publish URLs so the MCP server can pick them up.
+          # Built-in path always listens on localhost:8188 — MCP server should use 127.0.0.1.
+          "COMFYUI_URL=${
+            if (comfyuiExtCfg.enabled or false)
+            then (comfyuiExtCfg.url or "http://comfyui:8188")
+            else "http://127.0.0.1:8188"
+          }"
+          "COMFYUI_WS_URL=${
+            if (comfyuiExtCfg.enabled or false)
+            then (comfyuiExtCfg.ws_url or "ws://comfyui:8188/ws")
+            else "ws://127.0.0.1:8188/ws"
+          }"
           "ENABLE_QGIS=${boolEnv (spatialCfg.qgis or false)}"
           "ENABLE_BLENDER=${boolEnv (spatialCfg.blender or false)}"
           "ENABLE_PYTORCH=${boolEnv (dataScienceCfg.pytorch or false)}"
@@ -688,7 +782,7 @@ ${ragflowNetworkDecl}
               ExposedPorts = commonPorts // sovereignPorts // desktopPorts // dataSciencePorts;
               Labels = {
                 "org.opencontainers.image.title" = "Agentbox";
-                "org.opencontainers.image.description" = "Agentbox 2.0 modular sovereign agent environment";
+                "org.opencontainers.image.description" = "Agentbox modular sovereign agent environment";
                 "org.opencontainers.image.source" = "https://github.com/DreamLab-AI/agentbox";
                 "org.opencontainers.image.version" = "2.0.0";
                 "org.opencontainers.image.architecture" = system;
@@ -711,6 +805,57 @@ ${ragflowNetworkDecl}
           };
           default = mkImage { tag = "runtime-${system}"; };
 
+          # cuda-runtime — runtime image with CUDA 13.1 toolchain baked in.
+          # Only meaningful on x86_64-linux; aarch64 builds succeed but the
+          # CUDA packages are omitted (lib.optionals stdenv.isx86_64 in
+          # lib/gpu-backend.nix).
+          #
+          # Prerequisite: agentbox.toml must set
+          #   [gpu]  backend = "local-cuda"
+          #   [toolchains] cuda = true
+          # to activate the extended cudaPackages_13_1 set.  Building this
+          # output with the default agentbox.toml (backend="none") will
+          # produce an image identical to `runtime` — use a cuda-specific
+          # manifest overlay instead.
+          #
+          # Build:  nix build .#cuda-runtime
+          # Load:   docker load < result
+          cuda-runtime =
+            let
+              cudaLib = import ./lib/gpu-backend.nix { inherit lib pkgs; };
+              cudaCfg = cudaLib.dispatchGpuBackend "local-cuda" true;
+            in
+            mkImage {
+              tag          = "cuda-runtime-${system}";
+              extraPackages = cudaCfg.nixPackages;
+              maxLayers    = 110;
+            };
+
+          # gaussian-splatting — CUDA runtime image with the 3DGS stack layered on top.
+          #
+          # Prerequisites in agentbox.toml:
+          #   [gpu]               backend = "local-cuda"
+          #   [skills.spatial_and_3d]  gaussian_splatting = true
+          #
+          # E006 must pass (validated by scripts/agentbox-config-validate.js).
+          # On aarch64 the 3DGS derivations degrade to empty dirs; the image
+          # builds but the tools will not be present.
+          #
+          # Build:  nix build .#gaussian-splatting
+          # Load:   docker load < result
+          gaussian-splatting =
+            let
+              cudaLib  = import ./lib/gpu-backend.nix { inherit lib pkgs; };
+              cudaCfg  = cudaLib.dispatchGpuBackend "local-cuda" true;
+              gs3dDrvs = (import ./lib/3dgs-stack.nix { inherit lib pkgs; })
+                           .makeGaussianSplattingPackages { inherit system; };
+            in
+            mkImage {
+              tag           = "gaussian-splatting-${system}";
+              extraPackages = cudaCfg.nixPackages ++ gs3dDrvs;
+              maxLayers     = 115;
+            };
+
           # Emit the manifest-driven compose file.
           # Usage: nix build .#compose && cat result/docker-compose.yml
           compose = pkgs.runCommand "agentbox-compose" {} ''
@@ -726,7 +871,7 @@ ${ragflowNetworkDecl}
           ];
 
           shellHook = ''
-            echo "Agentbox 2.0 development shell"
+            echo "Agentbox development shell"
             echo "Manifest: agentbox.toml"
             echo "Build runtime: nix build .#runtime"
             echo "Build desktop: nix build .#desktop"
