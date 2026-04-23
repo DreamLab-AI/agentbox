@@ -7,7 +7,7 @@ package_upgrade: true
 
 packages:
   - git
-  - tmux
+  - zellij
   - htop
   - jq
   - curl
@@ -55,6 +55,19 @@ write_files:
       echo "[5/8] Installing agent-browser..."
       sudo npm install -g agent-browser playwright
       sudo npx playwright install chromium
+
+      echo "[5.5/8] Configuring Zellij..."
+      mkdir -p $HOME/.config/zellij
+      cat << 'ZELLIJ_CONFIG' > $HOME/.config/zellij/config.kdl
+      default_layout "compact"
+      default_mode "locked"
+      mouse_mode true
+      scroll_buffer_size 10000
+      simplified_ui true
+      show_startup_tips false
+      ZELLIJ_CONFIG
+      echo 'alias t="zellij"' >> $HOME/.bashrc
+      echo 'alias zl="zellij"' >> $HOME/.bashrc
 
       # Setup VNC service
       echo "[6/8] Configuring VNC service..."

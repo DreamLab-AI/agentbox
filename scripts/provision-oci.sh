@@ -71,7 +71,7 @@ generate_user_data() {
         cat << 'CLOUD_INIT' | base64 -w0
 #cloud-config
 package_update: true
-packages: [docker, git, nodejs, npm, tmux, htop]
+packages: [docker, git, nodejs, npm, zellij, htop]
 runcmd:
   - systemctl enable --now docker
   - usermod -aG docker opc

@@ -11,6 +11,14 @@ author: Claude Flow Team
 
 Master the advanced Hive Mind collective intelligence system for sophisticated multi-agent coordination using queen-led architecture, Byzantine consensus, and collective memory.
 
+## When Not To Use
+
+- For simple swarm orchestration without queen-led consensus -- use the swarm-advanced skill instead
+- For cloud-based swarm deployment and workflow automation -- use the flow-nexus-swarm skill instead
+- For full development + quality engineering pipelines -- use the build-with-quality skill instead
+- For SPARC methodology orchestration -- use the sparc-methodology skill instead
+- For GitHub-specific multi-agent coordination on PRs -- use the github-code-review skill instead
+
 ## Overview
 
 The Hive Mind system represents the pinnacle of multi-agent coordination in Claude Flow, implementing a queen-led hierarchical architecture where a strategic queen coordinator directs specialized worker agents through collective decision-making and shared memory.
@@ -40,7 +48,7 @@ The Hive Mind system represents the pinnacle of multi-agent coordination in Clau
 - **PostgreSQL persistence with pgvector** (production) or SQLite (local fallback)
 - HNSW indexing for 150x-12,500x faster vector search
 - Memory consolidation and association
-- Access pattern tracking and optimization
+- Access pattern tracking and optimisation
 
 **RuVector PostgreSQL Backend**:
 ```bash
@@ -271,9 +279,9 @@ npx claude-flow hive-mind spawn "Analyze repo quality" --objective "owner/repo"
 npx claude-flow hive-mind spawn "Review PR #123" --queen-type tactical
 ```
 
-## Performance Optimization
+## Performance Optimisation
 
-### Memory Optimization
+### Memory Optimisation
 
 The collective memory system includes advanced optimizations:
 
@@ -282,7 +290,7 @@ The collective memory system includes advanced optimizations:
 - Memory pressure handling (default: 50MB)
 - Automatic eviction of least-used entries
 
-**Database Optimization**
+**Database Optimisation**
 - WAL (Write-Ahead Logging) mode
 - 64MB cache size
 - 256MB memory mapping
@@ -313,7 +321,7 @@ const insights = hiveMind.getPerformanceInsights();
 **Parallel Processing**
 - Batch agent spawning (5 agents per batch)
 - Concurrent task orchestration
-- Async operation optimization
+- Async operation optimisation
 - Non-blocking task assignment
 
 **Benchmarks**
@@ -361,7 +369,7 @@ Hive Mind integrates with Claude Flow hooks for automation:
 **Pre-Task Hooks**
 - Auto-assign agents by file type
 - Validate objective complexity
-- Optimize topology selection
+- Optimise topology selection
 - Cache search patterns
 
 **Post-Task Hooks**
@@ -390,7 +398,7 @@ npx claude-flow hive-mind spawn "Research ML frameworks" --queen-type strategic
 npx claude-flow hive-mind spawn "Build authentication" --queen-type tactical
 ```
 
-**Adaptive Queens** - For optimization and dynamic tasks
+**Adaptive Queens** - For optimisation and dynamic tasks
 ```bash
 npx claude-flow hive-mind spawn "Optimize performance" --queen-type adaptive
 ```
@@ -692,16 +700,21 @@ npx claude-flow hive-mind spawn "Review PR #456" \
 
 ### Advanced
 1. Byzantine fault tolerance
-2. Memory optimization
+2. Memory optimisation
 3. Custom worker types
 4. Multi-hive coordination
 5. Neural pattern training
 6. Session export/import
 7. Performance tuning
 
+## When Not To Use
+
+- **Do not use for general swarm coordination without consensus requirements** (use `swarm-advanced` instead) -- If you only need topology-based agent coordination (mesh, hierarchical, star, ring) without formal voting or Byzantine fault tolerance, swarm-advanced is simpler and more appropriate.
+- **Do not use for development methodology workflows** (use `sparc-methodology` instead) -- If you need a structured development lifecycle (specification, architecture, TDD, review, deployment) rather than consensus-driven coordination, SPARC provides 17 specialized development modes.
+
 ## Related Skills
 
-- `swarm-orchestration`: Basic swarm coordination
+- `swarm-advanced`: General swarm coordination (no consensus required)
 - `consensus-mechanisms`: Distributed decision making
 - `memory-systems`: Advanced memory management
 - `sparc-methodology`: Structured development workflow
@@ -712,7 +725,7 @@ npx claude-flow hive-mind spawn "Review PR #456" \
 - [Hive Mind Documentation](https://github.com/ruvnet/claude-flow/docs/hive-mind)
 - [Collective Intelligence Patterns](https://github.com/ruvnet/claude-flow/docs/patterns)
 - [Byzantine Consensus](https://github.com/ruvnet/claude-flow/docs/consensus)
-- [Memory Optimization](https://github.com/ruvnet/claude-flow/docs/memory)
+- [Memory Optimisation](https://github.com/ruvnet/claude-flow/docs/memory)
 
 ---
 

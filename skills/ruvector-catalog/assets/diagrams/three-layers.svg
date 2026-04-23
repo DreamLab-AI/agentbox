@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" width="640" height="300">
+  <defs>
+    <style>
+      text { font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace; fill: #e2e8f0; }
+      .bg { fill: #1e293b; rx: 12; }
+      .layer { fill: #334155; rx: 8; stroke: #475569; stroke-width: 1; }
+      .num { font-size: 24px; font-weight: bold; fill: #3b82f6; }
+      .title { font-size: 14px; font-weight: bold; fill: #f1f5f9; }
+      .body { font-size: 11px; fill: #94a3b8; }
+      .head { font-size: 16px; font-weight: bold; fill: #f1f5f9; }
+    </style>
+  </defs>
+  <rect class="bg" x="0" y="0" width="640" height="300"/>
+  <text class="head" x="200" y="30">RUVECTOR CATALOG v3.5</text>
+  <rect class="layer" x="20" y="50" width="600" height="70"/>
+  <text class="num" x="40" y="85">1</text>
+  <text class="title" x="70" y="78">RECOMMEND</text>
+  <text class="body" x="70" y="98">&quot;I need X&quot; &amp;#8594; Here&apos;s the component, npm export, and code example</text>
+  <rect class="layer" x="20" y="130" width="600" height="70"/>
+  <text class="num" x="40" y="165">2</text>
+  <text class="title" x="70" y="158">MIGRATE</text>
+  <text class="body" x="70" y="178">&quot;You&apos;re using aging tech&quot; &amp;#8594; Replace with Y, DELETE old code/data/docs</text>
+  <rect class="layer" x="20" y="210" width="600" height="70"/>
+  <text class="num" x="40" y="245">3</text>
+  <text class="title" x="70" y="238">ACCESS</text>
+  <text class="body" x="70" y="258">&quot;How do I use it?&quot; &amp;#8594; npm / WASM build / NAPI. Never say &quot;not available&quot;</text>
+</svg>

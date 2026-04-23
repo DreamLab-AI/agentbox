@@ -11,6 +11,14 @@ author: Claude Flow Team
 
 Master advanced swarm patterns for distributed research, development, and testing workflows. This skill covers comprehensive orchestration strategies using both MCP tools and CLI commands.
 
+## When Not To Use
+
+- For queen-led hierarchical coordination with Byzantine consensus -- use the hive-mind-advanced skill instead
+- For cloud-based swarm deployment with Flow Nexus platform -- use the flow-nexus-swarm skill instead
+- For sequential pipeline processing where output chains between steps -- use the stream-chain skill instead
+- For full development + quality engineering with 111+ agents -- use the build-with-quality skill instead
+- For GitHub-specific PR review coordination -- use the github-code-review skill instead
+
 ## Quick Start
 
 ### Prerequisites
@@ -800,7 +808,7 @@ mcp__claude-flow__trigger_setup({
 })
 ```
 
-### Performance Optimization
+### Performance Optimisation
 
 ```javascript
 // Topology optimization
@@ -882,16 +890,16 @@ mcp__claude-flow__trend_analysis({
 
 ### 4. Memory Management
 
-- Use namespaces to organize memory
+- Use namespaces to organise memory
 - Set appropriate TTL values
 - Create regular backups
 - Implement state snapshots for checkpoints
 
-### 5. Monitoring and Optimization
+### 5. Monitoring and Optimisation
 
 - Monitor swarm health regularly
-- Collect and analyze metrics
-- Optimize topology based on performance
+- Collect and analyse metrics
+- Optimise topology based on performance
 - Use neural patterns to learn from success
 
 ### 6. Error Recovery
@@ -927,7 +935,7 @@ mcp__claude-flow__swarm_init({ topology: "star", maxAgents: 5 })
 // Parallel scan → Vulnerability analysis → Penetration test → Report
 ```
 
-### Example 4: Performance Optimization
+### Example 4: Performance Optimisation
 ```javascript
 // Identify and fix performance bottlenecks
 mcp__claude-flow__swarm_init({ topology: "mesh", maxAgents: 4 })
@@ -949,13 +957,18 @@ mcp__claude-flow__swarm_init({ topology: "mesh", maxAgents: 4 })
 **Solution**: Verify namespaces, check TTL settings, ensure backup configuration
 
 **Issue**: Performance degradation
-**Solution**: Optimize topology, reduce agent count, analyze bottlenecks
+**Solution**: Optimise topology, reduce agent count, analyze bottlenecks
+
+## When Not To Use
+
+- **Do not use this skill for structured development workflows** (use `sparc-methodology` instead) -- SPARC provides a systematic Specification-Pseudocode-Architecture-Refinement-Completion methodology with 17 specialized modes, TDD integration, and development-specific orchestration patterns that go beyond raw swarm coordination.
+- **Do not use this skill when you need Byzantine fault-tolerant consensus** (use `hive-mind-advanced` instead) -- Hive Mind provides queen-led hierarchical architecture with formal consensus mechanisms (majority, weighted, Byzantine), persistent collective memory with PostgreSQL/pgvector, and structured decision-making protocols.
 
 ## Related Skills
 
 - `sparc-methodology` - Systematic development workflow
 - `github-integration` - Repository management and automation
-- `neural-patterns` - AI-powered coordination optimization
+- `neural-patterns` - AI-powered coordination optimisation
 - `memory-management` - Cross-session state persistence
 
 ## References
@@ -963,7 +976,7 @@ mcp__claude-flow__swarm_init({ topology: "mesh", maxAgents: 4 })
 - [Claude Flow Documentation](https://github.com/ruvnet/claude-flow)
 - [Swarm Orchestration Guide](https://github.com/ruvnet/claude-flow/wiki/swarm)
 - [MCP Tools Reference](https://github.com/ruvnet/claude-flow/wiki/mcp)
-- [Performance Optimization](https://github.com/ruvnet/claude-flow/wiki/performance)
+- [Performance Optimisation](https://github.com/ruvnet/claude-flow/wiki/performance)
 
 ---
 

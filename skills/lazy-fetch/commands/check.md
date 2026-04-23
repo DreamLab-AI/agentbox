@@ -1,0 +1,1 @@
+Run `lazy check` to validate the project — tests, types, lint, and plan progress. If there are failures, analyze them and suggest fixes.

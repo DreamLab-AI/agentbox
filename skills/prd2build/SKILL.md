@@ -16,6 +16,14 @@ arguments:
 
 **One command. Complete documentation. No complexity.**
 
+## When Not To Use
+
+- For existing documentation validation and alignment -- use the docs-alignment skill instead
+- For full code implementation with quality gates and testing -- use the build-with-quality skill instead
+- For SPARC-phase orchestration across development stages -- use the sparc-methodology skill instead
+- For LaTeX report generation with charts and bibliography -- use the report-builder skill instead
+- For simple feature implementation without formal documentation -- just write code directly
+
 ---
 
 ## What This Does
@@ -132,7 +140,7 @@ Generate docs/ddd/:
 - aggregates.md (aggregate roots, consistency boundaries)
 - entities.md (domain entities with identity)
 - value-objects.md (immutable value objects)
-- domain-events.md (event catalog with triggers)
+- domain-events.md (event catalogue with triggers)
 - sagas.md (long-running processes, compensating transactions)
 - repositories.md (repository interfaces)
 - services.md (domain and application services)
@@ -436,7 +444,7 @@ docs/
 │   ├── aggregates.md                   # Aggregate roots
 │   ├── entities.md                     # Domain entities
 │   ├── value-objects.md                # Value objects
-│   ├── domain-events.md                # Event catalog
+│   ├── domain-events.md                # Event catalogue
 │   ├── sagas.md                        # Process managers
 │   ├── repositories.md                 # Repository interfaces
 │   ├── services.md                     # Domain/application services

@@ -1,0 +1,16 @@
+# EchoLoop – dependencies
+# Install: pip install -r requirements.txt
+
+# Audio capture
+sounddevice>=0.4.6
+numpy>=1.24
+
+# Local transcription (faster-whisper)
+faster-whisper>=1.0.0
+
+# Deepgram (optional cloud transcription)
+httpx>=0.27
+
+# LLM providers (install whichever you use)
+anthropic>=0.40
+openai>=1.50

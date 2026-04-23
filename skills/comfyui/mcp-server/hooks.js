@@ -5,8 +5,8 @@
  * for coordination, memory management, and session tracking.
  *
  * Usage:
- *   claude-flow hooks pre-task --description "ComfyUI workflow"
- *   claude-flow hooks post-task --task-id "workflow-123"
+ *   npx claude-flow@alpha hooks pre-task --description "ComfyUI workflow"
+ *   npx claude-flow@alpha hooks post-task --task-id "workflow-123"
  */
 
 const { v4: uuidv4 } = require('uuid');
@@ -48,7 +48,7 @@ class HooksManager {
       const memoryData = JSON.stringify(value);
 
       execSync(
-        `claude-flow hooks memory-store --key "${key}" --value '${memoryData}' --namespace "${namespace}"`,
+        `npx claude-flow@alpha hooks memory-store --key "${key}" --value '${memoryData}' --namespace "${namespace}"`,
         { stdio: 'pipe' }
       );
 
@@ -67,7 +67,7 @@ class HooksManager {
       const { execSync } = require('child_process');
 
       const result = execSync(
-        `claude-flow hooks memory-retrieve --key "${key}" --namespace "${namespace}"`,
+        `npx claude-flow@alpha hooks memory-retrieve --key "${key}" --namespace "${namespace}"`,
         { stdio: 'pipe', encoding: 'utf-8' }
       );
 
@@ -85,7 +85,7 @@ class HooksManager {
     try {
       const { execSync } = require('child_process');
       execSync(
-        `claude-flow hooks notify --message "${message}" --level "${level}"`,
+        `npx claude-flow@alpha hooks notify --message "${message}" --level "${level}"`,
         { stdio: 'pipe' }
       );
     } catch (error) {
@@ -153,7 +153,7 @@ async function preWorkflow(context) {
   try {
     const { execSync } = require('child_process');
     execSync(
-      `claude-flow hooks pre-task --description "ComfyUI Workflow ${workflowId}"`,
+      `npx claude-flow@alpha hooks pre-task --description "ComfyUI Workflow ${workflowId}"`,
       { stdio: 'pipe' }
     );
   } catch (error) {
@@ -236,7 +236,7 @@ async function postWorkflow(context, result) {
   try {
     const { execSync } = require('child_process');
     execSync(
-      `claude-flow hooks post-task --task-id "${workflowId}" --success ${result.success}`,
+      `npx claude-flow@alpha hooks post-task --task-id "${workflowId}" --success ${result.success}`,
       { stdio: 'pipe' }
     );
   } catch (error) {
@@ -417,7 +417,7 @@ async function sessionEnd(sessionId, exportMetrics = true) {
     try {
       const { execSync } = require('child_process');
       execSync(
-        `claude-flow hooks session-end --session-id "${sessionId}" --export-metrics true`,
+        `npx claude-flow@alpha hooks session-end --session-id "${sessionId}" --export-metrics true`,
         { stdio: 'pipe' }
       );
     } catch (error) {
@@ -449,7 +449,7 @@ async function sessionRestore(sessionId) {
   try {
     const { execSync } = require('child_process');
     execSync(
-      `claude-flow hooks session-restore --session-id "${sessionId}"`,
+      `npx claude-flow@alpha hooks session-restore --session-id "${sessionId}"`,
       { stdio: 'pipe' }
     );
   } catch (error) {
@@ -498,7 +498,7 @@ async function registerHooks() {
 
     // Register hook handlers
     execSync(
-      `claude-flow hooks register --service "comfyui" --handlers "preWorkflow,postWorkflow,onProgress,onError"`,
+      `npx claude-flow@alpha hooks register --service "comfyui" --handlers "preWorkflow,postWorkflow,onProgress,onError"`,
       { stdio: 'pipe' }
     );
 

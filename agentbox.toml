@@ -1,0 +1,44 @@
+[core]
+orchestration = "ruflo-v3"
+vector_db = "ruvector-embedded"
+
+[sovereign_mesh]
+enabled = true
+solid_pod = true
+nostr_bridge = true
+
+[desktop]
+enabled = false
+resolution = "1920x1080"
+
+[skills.browser]
+agent_browser = true
+playwright = true
+qe_browser = false
+
+[skills.media]
+ffmpeg = true
+imagemagick = true
+comfyui_integration = false
+
+[skills.spatial_and_3d]
+qgis = false
+blender = false
+
+[skills.data_science]
+pytorch = false
+jupyter = false
+
+[skills.docs]
+latex = true
+report_builder = true
+mermaid = true
+
+[toolchains]
+claude = true
+ruflo = true
+claude_flow = true
+agentic_qe = true
+nagual_qe = true
+codebase_memory = true
+rust = true

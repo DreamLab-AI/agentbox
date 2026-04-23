@@ -1,0 +1,43 @@
+# Experiment loop: inspired by Karpathy's AutoResearch
+# Try an idea, validate, keep or discard
+name: experiment
+description: Try an experimental change with automatic rollback on failure
+input: What to experiment with
+
+steps:
+  - name: gather-context
+    type: gather
+    task: "${input}"
+
+  - name: create-branch
+    type: run
+    command: "git checkout -b experiment/$(date +%s) 2>/dev/null || true"
+
+  - name: snapshot-before
+    type: run
+    command: "git add -A && git commit -m 'checkpoint: before experiment' --allow-empty 2>/dev/null || true"
+
+  - name: implement-experiment
+    type: prompt
+    prompt: "Implement this experiment: ${input}. Make the minimal change needed to test the idea. Keep it reversible."
+
+  - name: typecheck
+    type: run
+    command: "bash hooks/detect-check.sh 2>&1"
+    gate:
+      on_fail: stop
+
+  - name: run-tests
+    type: run
+    command: "bash hooks/detect-test.sh 2>&1"
+    gate:
+      on_fail: stop
+
+  - name: evaluate
+    type: prompt
+    prompt: "The experiment '${input}' passed validation. Evaluate: Is this change worth keeping? Consider complexity added vs. value gained. Recommend: keep, iterate, or discard."
+
+  - name: remember-result
+    type: remember
+    key: "experiment-${input}"
+    value: "Tried: ${input} — see experiment branch for results"

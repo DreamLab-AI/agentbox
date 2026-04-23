@@ -5,7 +5,7 @@ description: >
   Logseq and Obsidian. Uses Z.AI service (port 9600) for cost-effective summarization.
   Supports markdown, plain text, and note-taking formats.
 version: 2.0.0
-author: turbo-flow-claude
+author: agentbox-claude
 mcp_server: true
 protocol: fastmcp
 entry_point: mcp-server/server.py
@@ -25,6 +25,13 @@ URL content summarization and topic extraction via FastMCP, using Z.AI service f
 - Generate semantic topic links for note-taking (Logseq, Obsidian)
 - Create short, medium, or long summaries
 - Extract key concepts from text
+
+## When Not To Use
+
+- For interactive browser automation (clicking, filling forms, scraping) -- use the browser or playwright skills instead
+- For multi-URL comparison or structured data extraction from URLs -- use the gemini-url-context skill instead
+- For broad web search across many sources with citations -- use the perplexity-research skill instead
+- For content you already have as local text -- process it directly without the web summary pipeline
 
 ## Architecture
 

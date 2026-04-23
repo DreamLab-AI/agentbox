@@ -1,0 +1,46 @@
+{
+  "name": "@ruvector/catalog",
+  "version": "3.0.0",
+  "description": "Technology recommender for the RuVector monorepo — semantic search, RVBP generation, problem-solution mapping, and industry vertical overlays",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "ruvector-catalog": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "bun test",
+    "lint": "tsc --noEmit",
+    "start": "bun src/cli.ts",
+    "build-catalog": "bun scripts/build-catalog.ts",
+    "benchmark": "bun tests/benchmark.test.ts"
+  },
+  "files": [
+    "dist/",
+    "catalog.json",
+    "templates/",
+    "SKILL.md",
+    "VERSION"
+  ],
+  "keywords": [
+    "ruvector",
+    "catalog",
+    "vector-search",
+    "hnsw",
+    "technology-recommender",
+    "claude-code",
+    "skill",
+    "problem-solution",
+    "verticals"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ruvnet/ruvector"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.4.0"
+  }
+}

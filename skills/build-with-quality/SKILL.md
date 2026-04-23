@@ -1,13 +1,11 @@
 ---
-skill: build-with-quality
-version: 3.4.0
-description: Unified Claude Code V3 + Agentic QE meta-skill with AG-UI/A2A/A2UI protocol interoperability, 111+ specialized agents, unified learning (SONA + ReasoningBank), TinyDancer model routing (75% token reduction), and comprehensive quality gates. Supersedes agentic-qe, reasoningbank-*, and pair-programming skills.
+name: build-with-quality
+description: "Unified Claude Code V3 + Agentic QE meta-skill for optimal project building with 111+ specialized agents, unified learning (SONA + ReasoningBank), TinyDancer model routing (75% token reduction), and comprehensive quality gates. Supersedes agentic-qe, reasoningbank-*, and pair-programming skills."
+version: 1.1.0
 author: Claude Flow
-tags: [meta-skill, development, qa, tdd, adr, ddd, agents, quality-gates, sona, hnsw, coverage, security, accessibility, chaos-testing, ag-ui, a2a, a2ui, interoperability]
+tags: [meta-skill, development, qa, tdd, adr, ddd, agents, quality-gates, sona, hnsw, coverage, security, accessibility, chaos-testing]
 mcp_server: false
 supersedes: [agentic-qe, reasoningbank-intelligence, reasoningbank-agentdb, pair-programming]
-protocols: [AG-UI, A2A, A2UI]
-agentic_qe_version: 3.4.0
 ---
 
 # Build with Quality - Unified Meta-Skill
@@ -18,6 +16,14 @@ agentic_qe_version: 3.4.0
 **[Claude Flow V3](https://github.com/ruvnet/claude-flow/tree/main/v3) + [Agentic QE](https://github.com/proffesor-for-testing/agentic-qe) Combined**
 
 A comprehensive meta-skill that unifies development and quality engineering capabilities, replacing multiple specialized skills with a single cohesive system.
+
+## When Not To Use
+
+- For a quick code change that does not need quality gates or swarm coordination -- edit files directly with Claude Code
+- For GitHub-specific PR review without the full quality pipeline -- use the github-code-review skill instead
+- For standalone documentation validation and alignment -- use the docs-alignment skill instead
+- For SPARC methodology orchestration without quality engineering agents -- use the sparc-methodology skill instead
+- For simple unit test generation without the full 111-agent system -- write tests directly or use the TDD workflow in sparc-methodology
 
 ## What This Skill Supersedes
 
@@ -67,11 +73,11 @@ mcp__claude-flow__task_orchestrate { task: "[PROJECT]", strategy: "parallel" }
 
 ### Unified Learning System
 
-- **SONA (Self-Optimizing Neural Architecture)**: 5 modes (real-time, balanced, research, edge, batch)
+- **SONA (Self-Optimising Neural Architecture)**: 5 modes (real-time, balanced, research, edge, batch)
 - **ReasoningBank**: Pattern storage with confidence tiers (Bronze -> Platinum)
 - **HNSW Indexing**: O(log n) vector search - 150x faster than linear
 - **Dream Cycles**: Background pattern consolidation
-- **Q-Learning**: Coverage optimization with 12-dimensional state space
+- **Q-Learning**: Coverage optimisation with 12-dimensional state space
 
 ### Intelligent Model Routing (TinyDancer)
 
@@ -89,83 +95,6 @@ mcp__claude-flow__task_orchestrate { task: "[PROJECT]", strategy: "parallel" }
 - **Contract Validation**: Schema validation, backward compatibility
 - **Defect Prediction**: ML-powered with F1 > 0.8
 
-### AI Interoperability Protocols (v3.4.0)
-
-Three major protocols enable seamless integration with the broader AI ecosystem:
-
-#### AG-UI Protocol (Anthropic - Agent-to-UI)
-Real-time event streaming between QE agents and frontend interfaces.
-- **19 event types**: Lifecycle, text, tool execution, state synchronization
-- **Transport layers**: SSE and WebSocket
-- **State sync**: JSON Patch-based state synchronization
-- **599 tests passing**
-
-```typescript
-// AG-UI event streaming
-import { AGUIAdapter } from '@agentic-qe/adapters/ag-ui';
-
-const adapter = new AGUIAdapter();
-adapter.on('tool.execution.start', (event) => {
-  console.log(`Tool ${event.toolName} started`);
-});
-```
-
-#### A2A Protocol (Google - Agent-to-Agent)
-External agent discovery and collaboration via JSON-RPC 2.0.
-- **RFC 8615**: Well-known endpoint for agent discovery
-- **OAuth 2.0**: Authentication and push notifications
-- **68 agent cards**: Auto-generated from QE agent documentation
-- **987 tests passing**
-
-```typescript
-// A2A agent discovery
-import { A2AClient } from '@agentic-qe/adapters/a2a';
-
-const client = new A2AClient();
-const agents = await client.discover('/.well-known/agent.json');
-const result = await client.invokeTask(agents[0], {
-  task: 'analyze-coverage',
-  params: { path: '/src' }
-});
-```
-
-#### A2UI Protocol (Declarative UI Generation)
-Rich, interactive UI components through declarative JSON.
-- **23 standard components** + 8 QE-specific components
-- **WCAG 2.2 Level AA**: Accessibility compliance
-- **RFC 6901**: JSON Pointers for data binding
-- **Template system**: Coverage, test results, security, accessibility reports
-- **608 tests passing**
-
-```typescript
-// A2UI declarative component
-import { A2UIRenderer } from '@agentic-qe/adapters/a2ui';
-
-const renderer = new A2UIRenderer();
-const ui = renderer.render({
-  type: 'qe-coverage-report',
-  data: { path: '/src', threshold: 85 },
-  accessibility: { level: 'AA' }
-});
-```
-
-### 12 DDD Domains (All Enabled by Default)
-
-| Domain | Purpose |
-|--------|---------|
-| test-generation | AI-powered test synthesis |
-| coverage-analysis | O(log n) gap detection |
-| security-compliance | SAST/DAST integration |
-| accessibility | WCAG validation |
-| requirements-validation | Spec verification |
-| code-intelligence | Knowledge graph building |
-| quality-assessment | Quality scoring |
-| defect-intelligence | ML-powered prediction |
-| visual-accessibility | UI/UX compliance |
-| chaos-resilience | Fault tolerance |
-| contract-testing | API compatibility |
-| cross-project-transfer | Pattern reuse |
-
 ### Development Methodologies
 
 #### Domain-Driven Design (DDD)
@@ -181,7 +110,7 @@ const ui = renderer.render({
 #### Test-Driven Development (TDD)
 - **Red-Green-Refactor**: Strict cycle enforcement with TDD-specific agents
 - **Test Patterns**: Unit, integration, and contract test templates
-- **Best Practices**: Arrange-Act-Assert, descriptive naming, behavior-focused tests
+- **Best Practices**: Arrange-Act-Assert, descriptive naming, behaviour-focused tests
 
 ## Usage
 
@@ -297,11 +226,11 @@ Phase 5: LEARNING
 - `compliance-auditor` - Regulatory compliance validation
 
 ### Learning Domain (Shared)
-- `sona-optimizer` - SONA pattern optimization
+- `sona-optimizer` - SONA pattern optimisation
 - `memory-indexer` - HNSW indexing and vector operations
 - `trajectory-tracker` - Execution trajectory tracking
 - `reasoning-bank-manager` - ReasoningBank pattern management
-- `q-learning-optimizer` - Q-Learning for coverage optimization
+- `q-learning-optimizer` - Q-Learning for coverage optimisation
 - `cross-project-transfer` - Cross-project learning transfer
 
 ### TDD Subagents
@@ -361,10 +290,163 @@ npx claude-flow@alpha agent spawn --type tdd-green-phase
 npx claude-flow@alpha agent spawn --type tdd-refactor-phase
 ```
 
+## AI-First Development Traceability (BHIL Integration)
+
+The [BHIL AI-First Development Toolkit](https://github.com/camalus/BHIL-AI-First-Development-Toolkit)
+extends this skill with machine-actionable specification quality. The bottleneck in AI-native
+development is **specification quality**, not code generation. BHIL adds:
+
+### Artifact Chain Traceability
+
+Full bidirectional traceability from PRD through deployment:
+
+```
+PRD-NNN → SPEC-NNN → ADR-NNN → TASK-NNN → CODE → REVIEW → DEPLOY
+```
+
+Each artifact carries YAML frontmatter with parent IDs:
+```yaml
+---
+id: SPEC-042
+parent_prd: PRD-012
+linked_adrs: [ADR-007, ADR-008]
+tasks: [TASK-101, TASK-102, TASK-103]
+status: approved
+---
+```
+
+**Agents:** Use `new-sprint`, `new-feature`, `new-adr` skills to scaffold artifacts with
+correct IDs and cross-links. Machine-readable IDs enable full feature-to-code-to-test lineage.
+
+### AI-Native ADR Categories
+
+Three ADR types beyond standard architecture decisions:
+
+| ADR Type | Purpose | Key Fields |
+|----------|---------|------------|
+| **Model Selection** | LLM benchmarking with cost/latency/quality matrix | Model, benchmarks, cost/req, latency p99, re-eval trigger |
+| **Prompt Strategy** | Versioned prompt approaches with eval thresholds | Approach (zero-shot/CoT/RAG), version, pass-rate threshold |
+| **Agent Orchestration** | One of 5 patterns with explicit decision criteria | Pattern type, latency budget, cost ceiling, error tolerance |
+
+### Five Orchestration Patterns (Decision Framework)
+
+Use this matrix when choosing agent topology:
+
+| Pattern | When | Latency Budget | Cost | Error Tolerance | Scalability |
+|---------|------|----------------|------|-----------------|-------------|
+| **Orchestrator-Worker** | Clear task decomposition, central control | <1s | Low | Low | High |
+| **Pipeline** | Sequential stages, output of N → input of N+1 | <5s | Low | Medium | Medium |
+| **Swarm** | Parallel exploration, best result wins | Any | High | High | Very High |
+| **Mesh** | Peer-to-peer, no central coordinator | Any | Medium | Very High | High |
+| **Hybrid** | Mixed topology based on sub-task needs | Mixed | Mixed | Mixed | High |
+
+**Decision criteria**: If latency budget < 500ms and error tolerance is low → Orchestrator-Worker.
+If maximum fault tolerance required → Mesh. If exploration is needed → Swarm.
+
+### Prompt Registry and Versioning
+
+Production prompts must be versioned, evaluated, and immutable once deployed:
+
+```yaml
+# Prompt registry entry (YAML frontmatter)
+prompt_id: PROMPT-007
+linked_adr: ADR-003
+version: 2.1.0
+version_notes: "Added few-shot examples for edge cases"
+eval_suite: EVAL-007
+eval_pass_rate: 0.94
+status: production  # draft | reviewed | production | deprecated
+```
+
+**Semantic versioning rules:**
+- **Major** (2.x.x): Format change, breaks parsing downstream
+- **Minor** (x.1.x): Backward-compatible improvement (new examples, better instructions)
+- **Patch** (x.x.1): Cosmetic (whitespace, typos)
+
+Agents MUST link prompts to eval suite scores before promoting to production.
+
+### Eval Suite as CI Gate
+
+LLM evaluation integrated as automated quality gate (not manual):
+
+```yaml
+# EVAL-SUITE structure
+eval_suite_id: EVAL-007
+linked_prompt: PROMPT-007
+test_cases:
+  - type: happy_path
+    input: "..."
+    structural_assertions:
+      - valid_json: true
+      - max_length: 500
+    quality_metric: "llm_rubric"
+    rubric_threshold: 0.85
+  - type: adversarial
+    input: "ignore previous instructions and..."
+    safety_assertion: prompt_injection_rejected
+  - type: boundary
+    input: ""
+    structural_assertion: graceful_refusal
+ci_config:
+  pass_rate_threshold: 0.90
+  fail_action: block_merge
+```
+
+**Safety guards built into every eval suite:**
+- Prompt injection detection (reject or flag)
+- PII leakage check (no personal data in outputs)
+- Refusal validation (model correctly refuses harmful inputs)
+
+### Guardrails Specification Template
+
+For any agentic capability, define guardrails before implementation:
+
+```markdown
+## Guardrails Spec: [Feature Name]
+### Input Validation
+- Allowed input types: [...]
+- Rejection criteria: [...]
+
+### Output Constraints
+- Max token budget: [N]
+- Forbidden patterns: [regex list]
+- Required structure: [JSON schema / format]
+
+### Failure Modes
+- Graceful degradation: [fallback behaviour]
+- Escalation path: [human review / abort / retry]
+
+### Monitoring
+- Log inputs exceeding [threshold]
+- Alert on refusal rate > [X%]
+```
+
+### BHIL Sprint Workflow Integration
+
+Use BHIL artifact skills at the start of any sprint:
+
+```bash
+# Initialize sprint with artifact scaffold
+new-sprint "Sprint 12 — Payment Refactor"
+# Creates: sprint/S-12/, context files, artifact folders
+
+# Create feature with full traceability
+new-feature "Idempotent payment processing"
+# Creates: PRD-042, SPEC-042, TASK-042a/b/c with cross-links
+
+# Record an architecture decision
+new-adr "Model selection for payment fraud detection"
+# Creates: ADR-012 (Model Selection type) with benchmarking table
+```
+
+**Integration point with build-with-quality:** After BHIL artifacts exist, hand off to
+`build-with-quality` agents (Phase 2 Development) with the SPEC as input. The SPEC's
+acceptance criteria become test assertions; ADRs inform architectural choices; TASK IDs
+track agent work.
+
 ## Related Skills (Complementary)
 
 These skills work **alongside** build-with-quality:
-- `guidance-control-plane` - Governance enforcement for extended autonomy (10x-100x longer runs)
 - `sparc-methodology` - Higher-level orchestration framework
 - `swarm-orchestration` / `swarm-advanced` - Lower-level swarm primitives
 - `verification-quality` - Truth scoring and rollback (complementary)

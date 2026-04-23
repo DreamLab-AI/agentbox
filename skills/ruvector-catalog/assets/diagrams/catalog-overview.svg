@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 340" width="680" height="340">
+  <defs>
+    <style>
+      text { font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace; fill: #e2e8f0; }
+      .bg { fill: #1e293b; rx: 12; }
+      .card { fill: #334155; rx: 8; }
+      .accent { fill: #3b82f6; rx: 6; }
+      .label { font-size: 13px; fill: #94a3b8; }
+      .title { font-size: 14px; font-weight: bold; fill: #f1f5f9; }
+      .body { font-size: 12px; fill: #cbd5e1; }
+      .highlight { font-size: 12px; fill: #60a5fa; }
+      .arrow { stroke: #3b82f6; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#3b82f6"/>
+    </marker>
+  </defs>
+  <rect class="bg" x="0" y="0" width="680" height="340"/>
+  <text class="label" x="40" y="40">&quot;I need to search documents by meaning, not keywords&quot;</text>
+  <line class="arrow" x1="340" y1="52" x2="340" y2="85"/>
+  <rect class="accent" x="200" y="90" width="280" height="110"/>
+  <text class="title" x="260" y="118">RuVector Catalog</text>
+  <text class="body" x="225" y="142">What to use</text>
+  <text class="body" x="225" y="162">How to access it</text>
+  <text class="body" x="225" y="182">What to replace &amp; delete</text>
+  <line class="arrow" x1="340" y1="205" x2="340" y2="238"/>
+  <rect class="card" x="40" y="243" width="600" height="80"/>
+  <text class="highlight" x="60" y="268">Use AdaptiveEmbedder (npm) + RvfDatabase (@ruvector/rvf)</text>
+  <text class="body" x="60" y="288">for 384D HNSW search. Replace your JSON index + OpenAI</text>
+  <text class="body" x="60" y="308">embeddings. Delete embeddings.json and the API key.</text>
+</svg>

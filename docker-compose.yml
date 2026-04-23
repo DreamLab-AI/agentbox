@@ -1,6 +1,4 @@
-# Agentbox Docker Compose Configuration
-# Adapted for local Ollama LLM on AMD Strix Halo (gfx1151)
-# Uses Vulkan backend (ROCm HIP segfaults on gfx1151)
+# Agentbox 2.0 compose stack
 
 services:
   ollama:
@@ -12,7 +10,7 @@ services:
       - /dev/dri:/dev/dri
     group_add:
       - video
-      - "988"  # render group (numeric, not available by name in container)
+      - "988"
     security_opt:
       - seccomp=unconfined
     ports:
@@ -33,72 +31,32 @@ services:
     restart: unless-stopped
     depends_on:
       - ollama
-
-    # Strix Halo: 16 Zen5 cores, 64GB unified memory
-    deploy:
-      resources:
-        limits:
-          cpus: '12'
-          memory: 16G
-        reservations:
-          cpus: '2'
-          memory: 4G
-
-    # Allow agentbox to reach Ollama via Docker network
     extra_hosts:
       - "host.docker.internal:host-gateway"
-
     ports:
-      - "2222:22"     # SSH (remapped to avoid conflict)
-      - "8080:8080"   # code-server (optional)
-      - "9090:9090"   # Management API
-      - "9700:9700"   # RuVector API
-      # 9600 (Z.AI) is internal only
-
+      - "9090:9090"
+      - "9700:9700"
+      - "8484:8484"
+      - "8888:8888"
     environment:
-      # API Keys (required for full functionality)
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - GITHUB_TOKEN=${GITHUB_TOKEN:-}
-
-      # Ollama as OpenAI-compatible backend
-      - OPENAI_API_KEY=ollama
-      - OPENAI_BASE_URL=http://host.docker.internal:11434/v1
-      - OLLAMA_BASE_URL=http://host.docker.internal:11434
-      - OLLAMA_MODEL=qwen2.5:32b-instruct
-
-      # Optional API Keys
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-ollama}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-http://host.docker.internal:11434/v1}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:32b-instruct}
       - GOOGLE_GEMINI_API_KEY=${GOOGLE_GEMINI_API_KEY:-}
-
-      # RuVector Configuration (standalone - NO PostgreSQL)
-      - RUVECTOR_DATA_DIR=/var/lib/ruvector
-      - RUVECTOR_PORT=9700
-      - RUVECTOR_LOG_LEVEL=info
-
-      # Management API
-      - MANAGEMENT_API_PORT=9090
       - MANAGEMENT_API_KEY=${MANAGEMENT_API_KEY:-change-this-secret-key}
-
-      # Runtime
-      - NODE_ENV=production
-      - LOG_LEVEL=info
-
+      - MANAGEMENT_API_AUTH_MODE=${MANAGEMENT_API_AUTH_MODE:-hybrid}
+      - NOSTR_RELAYS=${NOSTR_RELAYS:-wss://relay.damus.io,wss://relay.primal.net}
+      - AGENTBOX_AGENT_ID=${AGENTBOX_AGENT_ID:-agentbox-core}
     volumes:
-      # Persistent RuVector data (embedded redb storage)
-      - ruvector-data:/var/lib/ruvector
-
-      # Workspace (mount your project here)
+      - ./agentbox.toml:/etc/agentbox.toml:ro
       - ./workspace:/workspace
-
-      # Mount host Claude credentials (if available)
-      # - ~/.claude:/home/devuser/.claude:ro
-
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9090/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-
+      - ./projects:/projects
+      - ruvector-data:/var/lib/ruvector
+      - solid-data:/var/lib/solid
+      - sovereign-identities:/var/lib/agentbox/identities
     security_opt:
       - no-new-privileges:true
 
@@ -107,3 +65,7 @@ volumes:
     name: ollama
   ruvector-data:
     name: agentbox-ruvector-data
+  solid-data:
+    name: agentbox-solid-data
+  sovereign-identities:
+    name: agentbox-sovereign-identities

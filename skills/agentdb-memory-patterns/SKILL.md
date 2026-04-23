@@ -5,105 +5,21 @@ description: "Implement persistent memory patterns for AI agents using AgentDB. 
 
 # AgentDB Memory Patterns
 
-## What This Skill Does
+For AgentDB architecture and performance overview, see [AgentDB Overview](../agentdb-advanced/docs/agentdb-overview.md).
 
-Provides memory management patterns for AI agents using AgentDB's persistent storage and ReasoningBank integration. Enables agents to remember conversations, learn from interactions, and maintain context across sessions.
+## What This Skill Covers
 
-**Performance**: 150x-12,500x faster than traditional solutions with 100% backward compatibility.
+Memory management patterns for AI agents: session memory, long-term storage, pattern learning, hierarchical memory organisation, memory consolidation, and ReasoningBank migration. For CLI setup, API initialisation, and common operations, see the [AgentDB Overview](../agentdb-advanced/docs/agentdb-overview.md).
 
-## Prerequisites
+**Additional Prerequisites**: Understanding of agent architectures.
 
-- Node.js 18+
-- AgentDB v1.0.7+ (via agentic-flow or standalone)
-- Understanding of agent architectures
+## When Not To Use
 
-## Quick Start with CLI
-
-### Initialize AgentDB
-
-```bash
-# Initialize vector database
-npx agentdb@latest init ./agents.db
-
-# Or with custom dimensions
-npx agentdb@latest init ./agents.db --dimension 768
-
-# Use preset configurations
-npx agentdb@latest init ./agents.db --preset large
-
-# In-memory database for testing
-npx agentdb@latest init ./memory.db --in-memory
-```
-
-### Start MCP Server for Claude Code
-
-```bash
-# Start MCP server (integrates with Claude Code)
-npx agentdb@latest mcp
-
-# Add to Claude Code (one-time setup)
-claude mcp add agentdb npx agentdb@latest mcp
-```
-
-### Create Learning Plugin
-
-```bash
-# Interactive plugin wizard
-npx agentdb@latest create-plugin
-
-# Use template directly
-npx agentdb@latest create-plugin -t decision-transformer -n my-agent
-
-# Available templates:
-# - decision-transformer (sequence modeling RL)
-# - q-learning (value-based learning)
-# - sarsa (on-policy TD learning)
-# - actor-critic (policy gradient)
-# - curiosity-driven (exploration-based)
-```
-
-## Quick Start with API
-
-```typescript
-import { createAgentDBAdapter } from 'agentic-flow/reasoningbank';
-
-// Initialize with default configuration
-const adapter = await createAgentDBAdapter({
-  dbPath: '.agentdb/reasoningbank.db',
-  enableLearning: true,      // Enable learning plugins
-  enableReasoning: true,      // Enable reasoning agents
-  quantizationType: 'scalar', // binary | scalar | product | none
-  cacheSize: 1000,            // In-memory cache
-});
-
-// Store interaction memory
-const patternId = await adapter.insertPattern({
-  id: '',
-  type: 'pattern',
-  domain: 'conversation',
-  pattern_data: JSON.stringify({
-    embedding: await computeEmbedding('What is the capital of France?'),
-    pattern: {
-      user: 'What is the capital of France?',
-      assistant: 'The capital of France is Paris.',
-      timestamp: Date.now()
-    }
-  }),
-  confidence: 0.95,
-  usage_count: 1,
-  success_count: 1,
-  created_at: Date.now(),
-  last_used: Date.now(),
-});
-
-// Retrieve context with reasoning
-const context = await adapter.retrieveWithReasoning(queryEmbedding, {
-  domain: 'conversation',
-  k: 10,
-  useMMR: true,              // Maximal Marginal Relevance
-  synthesizeContext: true,    // Generate rich context
-});
-```
+- For distributed multi-database setups or QUIC sync -- use the agentdb-advanced skill instead
+- For reinforcement learning and training plugins -- use the agentdb-learning skill instead
+- For pure vector search performance tuning (quantisation, HNSW) -- use the agentdb-vector-search skill instead
+- For non-persistent, session-only state that does not need vector search -- standard in-memory data structures suffice
+- For unified development and quality engineering workflows -- use the build-with-quality skill which includes memory management
 
 ## Memory Patterns
 
@@ -183,48 +99,7 @@ await memory.consolidate({
 });
 ```
 
-## CLI Operations
-
-### Query Database
-
-```bash
-# Query with vector embedding
-npx agentdb@latest query ./agents.db "[0.1,0.2,0.3,...]"
-
-# Top-k results
-npx agentdb@latest query ./agents.db "[0.1,0.2,0.3]" -k 10
-
-# With similarity threshold
-npx agentdb@latest query ./agents.db "0.1 0.2 0.3" -t 0.75
-
-# JSON output
-npx agentdb@latest query ./agents.db "[...]" -f json
-```
-
-### Import/Export Data
-
-```bash
-# Export vectors to file
-npx agentdb@latest export ./agents.db ./backup.json
-
-# Import vectors from file
-npx agentdb@latest import ./backup.json
-
-# Get database statistics
-npx agentdb@latest stats ./agents.db
-```
-
-### Performance Benchmarks
-
-```bash
-# Run performance benchmarks
-npx agentdb@latest benchmark
-
-# Results show:
-# - Pattern Search: 150x faster (100µs vs 15ms)
-# - Batch Insert: 500x faster (2ms vs 1s)
-# - Large-scale Query: 12,500x faster (8ms vs 100s)
-```
+For CLI query, import/export, and benchmark operations, see [AgentDB Overview](../agentdb-advanced/docs/agentdb-overview.md#common-cli-operations).
 
 ## Integration with ReasoningBank
 
@@ -257,48 +132,7 @@ const result = await adapter.retrieveWithReasoning(queryEmbedding, {
 });
 ```
 
-## Learning Plugins
-
-### Available Algorithms (9 Total)
-
-1. **Decision Transformer** - Sequence modeling RL (recommended)
-2. **Q-Learning** - Value-based learning
-3. **SARSA** - On-policy TD learning
-4. **Actor-Critic** - Policy gradient with baseline
-5. **Active Learning** - Query selection
-6. **Adversarial Training** - Robustness
-7. **Curriculum Learning** - Progressive difficulty
-8. **Federated Learning** - Distributed learning
-9. **Multi-task Learning** - Transfer learning
-
-### List and Manage Plugins
-
-```bash
-# List available plugins
-npx agentdb@latest list-plugins
-
-# List plugin templates
-npx agentdb@latest list-templates
-
-# Get plugin info
-npx agentdb@latest plugin-info <name>
-```
-
-## Reasoning Agents (4 Modules)
-
-1. **PatternMatcher** - Find similar patterns with HNSW indexing
-2. **ContextSynthesizer** - Generate rich context from multiple sources
-3. **MemoryOptimizer** - Consolidate similar patterns, prune low-quality
-4. **ExperienceCurator** - Quality-based experience filtering
-
-## Best Practices
-
-1. **Enable quantization**: Use scalar/binary for 4-32x memory reduction
-2. **Use caching**: 1000 pattern cache for <1ms retrieval
-3. **Batch operations**: 500x faster than individual inserts
-4. **Train regularly**: Update learning models with new experiences
-5. **Enable reasoning**: Automatic context synthesis and optimization
-6. **Monitor metrics**: Use `stats` command to track performance
+For learning plugins and RL algorithms, see the [agentdb-learning](../agentdb-learning/SKILL.md) skill. For performance tuning and quantization, see the [agentdb-vector-search](../agentdb-vector-search/SKILL.md) skill.
 
 ## Troubleshooting
 
@@ -323,17 +157,6 @@ npx agentdb@latest stats ./agents.db
 npx agentdb@latest migrate --source .swarm/memory.db
 ```
 
-## Performance Characteristics
-
-- **Vector Search**: <100µs (HNSW indexing)
-- **Pattern Retrieval**: <1ms (with cache)
-- **Batch Insert**: 2ms for 100 patterns
-- **Memory Efficiency**: 4-32x reduction with quantization
-- **Backward Compatibility**: 100% compatible with ReasoningBank API
-
 ## Learn More
 
-- GitHub: https://github.com/ruvnet/agentic-flow/tree/main/packages/agentdb
-- Documentation: node_modules/agentic-flow/docs/AGENTDB_INTEGRATION.md
-- MCP Integration: `npx agentdb@latest mcp` for Claude Code
-- Website: https://agentdb.ruv.io
+For performance benchmarks, see [AgentDB Overview](../agentdb-advanced/docs/agentdb-overview.md#performance-claims). For general links, see [AgentDB Overview](../agentdb-advanced/docs/agentdb-overview.md#links).

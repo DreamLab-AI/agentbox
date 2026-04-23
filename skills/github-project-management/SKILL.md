@@ -34,6 +34,14 @@ estimated_time: 30-45 minutes
 
 # GitHub Project Management
 
+## When Not To Use
+
+- For PR-level code review with security and performance agents -- use the github-code-review skill instead
+- For release versioning, changelogs, and deployment pipelines -- use the github-release-management skill instead
+- For GitHub Actions workflow creation and CI/CD setup -- use the github-workflow-automation skill instead
+- For cross-repository coordination and package sync -- use the github-multi-repo skill instead
+- For general task orchestration outside GitHub -- use the swarm-advanced or flow-nexus-swarm skills instead
+
 ## Overview
 
 A comprehensive skill for managing GitHub projects using AI swarm coordination. This skill combines intelligent issue management, automated project board synchronization, and swarm-based coordination for efficient project delivery.
@@ -1055,7 +1063,7 @@ npx ruv-swarm github debt-swarm 456 \
 - Use memory for progress coordination
 - Regular automated progress updates
 
-### 2. Board Organization
+### 2. Board Organisation
 - Clear column definitions with consistent naming
 - Systematic labeling strategy across repositories
 - Regular board grooming and maintenance
@@ -1073,7 +1081,7 @@ npx ruv-swarm github debt-swarm 456 \
 - Regular team reviews and retrospectives
 - Active feedback loops for improvement
 
-### 5. Smart Labeling and Organization
+### 5. Smart Labeling and Organisation
 - Consistent labeling strategy across repositories
 - Priority-based issue sorting and assignment
 - Milestone integration for project coordination
@@ -1099,7 +1107,7 @@ npx ruv-swarm github board-diagnose \
   --show-conflicts
 ```
 
-### Performance Optimization
+### Performance Optimisation
 
 ```bash
 # Optimize board performance
@@ -1178,11 +1186,18 @@ npx ruv-swarm github effectiveness \
 
 ## Integration with Other Skills
 
+## When Not To Use
+
+- **Do not use for code review** (use `github-code-review` instead) -- If you need to review pull request diffs, run security/performance analysis on code changes, or coordinate multi-agent PR reviews.
+- **Do not use for release orchestration** (use `github-release-management` instead) -- If you need version management, changelog generation, deployment pipelines, or rollback mechanisms.
+- **Do not use for CI/CD automation** (use `github-workflow-automation` instead) -- If you need to create, optimise, or debug GitHub Actions workflow files and CI/CD pipelines.
+- **Do not use for cross-repository coordination** (use `github-multi-repo` instead) -- If you need to synchronize packages, dependencies, or changes across multiple repositories.
+
 ### Seamless Integration With:
-- `github-pr-workflow` - Link issues to pull requests automatically
+- `github-code-review` - Link issues to pull request reviews
 - `github-release-management` - Coordinate release issues and milestones
-- `sparc-orchestrator` - Complex project coordination workflows
-- `sparc-tester` - Automated testing workflows for issues
+- `github-workflow-automation` - CI/CD pipeline management
+- `github-multi-repo` - Cross-repository coordination
 
 ---
 

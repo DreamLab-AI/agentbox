@@ -1,0 +1,1 @@
+Run `lazy gather $ARGUMENTS` to find all relevant files and symbols for this task. Then read the most important files it identifies so you have full context.

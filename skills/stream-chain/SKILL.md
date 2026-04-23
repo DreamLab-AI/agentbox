@@ -19,6 +19,13 @@ Stream-Chain provides two powerful modes for orchestrating multi-agent workflows
 
 Each step in a chain receives the complete output from the previous step, enabling sophisticated multi-agent coordination through streaming data flow.
 
+## When Not To Use
+
+- For parallel multi-agent swarm orchestration -- use the swarm-advanced skill instead (stream-chain is sequential)
+- For GitHub-specific CI/CD pipelines -- use the github-workflow-automation skill instead
+- For cloud-based workflow automation with Flow Nexus -- use the flow-nexus-swarm skill instead
+- For simple single-step tasks that do not need chaining -- run the task directly
+
 ---
 
 ## Quick Start
@@ -132,7 +139,7 @@ claude-flow stream-chain run \
 
 ## Predefined Pipelines (`pipeline`)
 
-Execute battle-tested workflows optimized for common development tasks.
+Execute battle-tested workflows optimised for common development tasks.
 
 ### Syntax
 
@@ -199,9 +206,9 @@ claude-flow stream-chain pipeline test
 - Regression test creation
 - Quality assurance
 
-#### 4. Optimize Pipeline
+#### 4. Optimise Pipeline
 
-Performance optimization with profiling and implementation.
+Performance optimisation with profiling and implementation.
 
 ```bash
 claude-flow stream-chain pipeline optimize
@@ -209,12 +216,12 @@ claude-flow stream-chain pipeline optimize
 
 **Workflow Steps:**
 1. **Profiling**: Identify performance bottlenecks
-2. **Strategy**: Analyze and suggest optimization approaches
-3. **Implementation**: Provide optimized code
+2. **Strategy**: Analyze and suggest optimisation approaches
+3. **Implementation**: Provide optimised code
 
 **Use Cases:**
 - Performance improvement
-- Resource optimization
+- Resource optimisation
 - Scalability enhancement
 - Latency reduction
 
@@ -246,7 +253,7 @@ claude-flow stream-chain pipeline refactor --timeout 60 --verbose
 claude-flow stream-chain pipeline test --debug
 ```
 
-#### Comprehensive Optimization
+#### Comprehensive Optimisation
 
 ```bash
 claude-flow stream-chain pipeline optimize --timeout 90 --verbose

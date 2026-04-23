@@ -1,0 +1,1 @@
+Run `lazy read` to get the current project state — git status, plan progress, and stored memory. Show me the output.

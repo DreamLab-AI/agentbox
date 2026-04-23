@@ -1,0 +1,3 @@
+# Dependencies are managed by uv via pyproject.toml in /home/devuser/workspace/qgis-mcp
+# The launcher shim (server.py) auto-delegates to the nkarasiak/qgis-mcp server.
+# No pip install needed -- uv handles everything.

@@ -5,7 +5,7 @@ description: >
   Efficiently fetches, summarizes, and extracts information from up to 20 URLs
   per request with grounding metadata and source citations.
 version: 1.0.0
-author: turbo-flow-claude
+author: agentbox-claude
 mcp_server: true
 protocol: fastmcp
 entry_point: mcp-server/server.py
@@ -26,6 +26,14 @@ Leverage Google's Gemini 2.5 Flash model to expand, summarize, and analyze web c
 - **Document Extraction**: Extract structured data from web pages
 - **Research Aggregation**: Gather information from multiple sources
 - **Content Grounding**: Get AI responses grounded in specific web sources
+
+## When Not To Use
+
+- For YouTube video transcript extraction -- use the web-summary skill instead (Gemini does not support YouTube)
+- For broad web search across many sources -- use the perplexity-research skill instead
+- For browser automation, form filling, or interactive page navigation -- use the browser or playwright skills instead
+- For summarising content you already have as text -- no URL expansion tool is needed; process it directly
+- For pages behind paywalls or requiring authentication -- Gemini URL Context cannot access restricted content
 
 ## Architecture
 

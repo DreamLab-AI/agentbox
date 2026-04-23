@@ -1,19 +1,25 @@
 ---
-name: "AgentDB Vector Search"
-description: "Implement semantic vector search with AgentDB for intelligent document retrieval, similarity matching, and context-aware querying. Use when building RAG systems, semantic search engines, or intelligent knowledge bases."
+name: "AgentDB Vector Search & Performance"
+description: "Implement and optimise semantic vector search with AgentDB. Covers HNSW indexing (150x faster), quantization (4-32x memory reduction), caching strategies, batch operations, and sub-millisecond search. Use when building RAG systems, optimising search speed, or scaling to millions of vectors."
 ---
 
 # AgentDB Vector Search
 
-## What This Skill Does
+For AgentDB architecture and performance overview, see [AgentDB Overview](../agentdb-advanced/docs/agentdb-overview.md).
 
-Implements vector-based semantic search using AgentDB's high-performance vector database with **150x-12,500x faster** operations than traditional solutions. Features HNSW indexing, quantization, and sub-millisecond search (<100µs).
+## What This Skill Covers
 
-## Prerequisites
+Semantic vector search, RAG pipelines, similarity matching, quantization tuning, HNSW parameter tuning, caching strategies, batch operations, and MCP server integration. Also includes all content previously in the deprecated agentdb-optimisation skill.
 
-- Node.js 18+
-- AgentDB v1.0.7+ (via agentic-flow or standalone)
-- OpenAI API key (for embeddings) or custom embedding model
+**Additional Prerequisites**: OpenAI API key (for embeddings) or custom embedding model.
+
+## When Not To Use
+
+- For distributed multi-database or QUIC sync features -- use the agentdb-advanced skill instead
+- For reinforcement learning algorithms and training plugins -- use the agentdb-learning skill instead
+- For agent conversation memory and session patterns -- use the agentdb-memory-patterns skill instead
+- For full-text search without vector embeddings -- a standard database with FTS is simpler
+- For cloud-managed vector search (Pinecone, Weaviate) -- this skill is specific to local AgentDB
 
 ## Quick Start with CLI
 
@@ -194,56 +200,7 @@ claude mcp add agentdb npx agentdb@latest mcp
 # - agentdb_stats: Database statistics
 ```
 
-## Performance Benchmarks
-
-```bash
-# Run comprehensive benchmarks
-npx agentdb@latest benchmark
-
-# Results:
-# ✅ Pattern Search: 150x faster (100µs vs 15ms)
-# ✅ Batch Insert: 500x faster (2ms vs 1s for 100 vectors)
-# ✅ Large-scale Query: 12,500x faster (8ms vs 100s at 1M vectors)
-# ✅ Memory Efficiency: 4-32x reduction with quantization
-```
-
-## Quantization Options
-
-AgentDB provides multiple quantization strategies for memory efficiency:
-
-### Binary Quantization (32x reduction)
-```typescript
-const adapter = await createAgentDBAdapter({
-  quantizationType: 'binary',  // 768-dim → 96 bytes
-});
-```
-
-### Scalar Quantization (4x reduction)
-```typescript
-const adapter = await createAgentDBAdapter({
-  quantizationType: 'scalar',  // 768-dim → 768 bytes
-});
-```
-
-### Product Quantization (8-16x reduction)
-```typescript
-const adapter = await createAgentDBAdapter({
-  quantizationType: 'product',  // 768-dim → 48-96 bytes
-});
-```
-
-## Distance Metrics
-
-```bash
-# Cosine similarity (default, best for most use cases)
-npx agentdb@latest query ./db.sqlite "[...]" -m cosine
-
-# Euclidean distance (L2 norm)
-npx agentdb@latest query ./db.sqlite "[...]" -m euclidean
-
-# Dot product (for normalized vectors)
-npx agentdb@latest query ./db.sqlite "[...]" -m dot
-```
+For full performance benchmarks, quantization comparison table, and distance metric details, see [AgentDB Overview](../agentdb-advanced/docs/agentdb-overview.md#performance-claims).
 
 ## Advanced Features
 
@@ -320,20 +277,8 @@ npx agentdb@latest stats ./vectors.db
 # - Index status
 ```
 
-## Performance Characteristics
-
-- **Vector Search**: <100µs (HNSW indexing)
-- **Pattern Retrieval**: <1ms (with cache)
-- **Batch Insert**: 2ms for 100 vectors
-- **Memory Efficiency**: 4-32x reduction with quantization
-- **Scalability**: Handles 1M+ vectors efficiently
-- **Latency**: Sub-millisecond for most operations
-
 ## Learn More
 
-- GitHub: https://github.com/ruvnet/agentic-flow/tree/main/packages/agentdb
-- Documentation: node_modules/agentic-flow/docs/AGENTDB_INTEGRATION.md
-- MCP Integration: `npx agentdb@latest mcp` for Claude Code
-- Website: https://agentdb.ruv.io
 - CLI Help: `npx agentdb@latest --help`
 - Command Help: `npx agentdb@latest help <command>`
+- See [AgentDB Overview](../agentdb-advanced/docs/agentdb-overview.md#links) for general links.

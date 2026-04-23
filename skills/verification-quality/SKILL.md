@@ -19,6 +19,14 @@ This skill provides a comprehensive verification and quality assurance system th
 - **CI/CD Integration**: Export capabilities for continuous integration pipelines
 - **Real-time Monitoring**: Live dashboards and watch modes for ongoing verification
 
+## When Not To Use
+
+- For full development pipelines with 111+ agents and quality gates -- use the build-with-quality skill instead
+- For swarm performance profiling and bottleneck detection -- use the performance-analysis skill instead
+- For GitHub PR code review with specialised agents -- use the github-code-review skill instead
+- For test generation and coverage analysis without truth scoring -- use the TDD workflow in sparc-methodology
+- For simple linting or formatting checks -- run your project's lint/format tools directly
+
 ## Prerequisites
 
 - Claude Flow installed (`npx claude-flow@alpha`)
@@ -204,7 +212,7 @@ The verification system evaluates:
 4. **Performance**
    - Algorithmic complexity
    - Memory usage patterns
-   - Database query optimization
+   - Database query optimisation
    - Bundle size impact
 
 5. **Documentation**

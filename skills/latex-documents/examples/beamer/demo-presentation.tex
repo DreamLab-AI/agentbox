@@ -1,0 +1,462 @@
+\documentclass{beamer}
+\usetheme[sidebar,rule]{Amurmaple}
+
+% Packages
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\usepackage{listings}
+\usepackage{tikz}
+
+% Code settings
+\lstset{
+  basicstyle=\ttfamily\footnotesize,
+  backgroundcolor=\color{gray!10},
+  frame=single
+}
+
+% Metadata
+\title{AmurMaple Theme Demo}
+\subtitle{Showcase of All Features}
+\author{Demo Author}
+\institute{Example University}
+\date{\today}
+\mail{demo@example.com}
+\webpage{https://example.com}
+
+\begin{document}
+
+% Title
+\frame{\titlepage}
+
+% TOC
+\begin{frame}{Table of Contents}
+  \tableofcontents
+\end{frame}
+
+% Color Variants
+\section{Theme Color Variants}
+
+\sepframe
+
+\begin{frame}{Available Color Schemes}
+  The AmurMaple theme supports four color variants:
+
+  \begin{itemize}
+    \item \textbf{Red} (default): \texttt{\textbackslash usetheme\{Amurmaple\}}
+    \item \textbf{Blue}: \texttt{\textbackslash usetheme[amurmapleblue]\{Amurmaple\}}
+    \item \textbf{Green}: \texttt{\textbackslash usetheme[amurmaplegreen]\{Amurmaple\}}
+    \item \textbf{Black}: \texttt{\textbackslash usetheme[amurmapleblack]\{Amurmaple\}}
+  \end{itemize}
+
+  \bigskip
+
+  \begin{block}{Current Theme}
+    This presentation uses the default \textcolor{structure}{Red} variant with sidebar and rule options.
+  \end{block}
+\end{frame}
+
+% Theme Options
+\section{Theme Options}
+
+\sepframe
+
+\begin{frame}{Available Options}
+  \framesection{Navigation}
+
+  \begin{itemize}
+    \item \texttt{sidebar} - Add sidebar navigation (currently active)
+    \item \texttt{sidebarwidth=<dim>} - Set sidebar width (default: 58pt)
+    \item \texttt{toplogo} - Place logo at top of sidebar
+  \end{itemize}
+
+  \framesection{Visual}
+
+  \begin{itemize}
+    \item \texttt{rule} - Add decorative rule (currently active)
+    \item \texttt{rulecolor=<color>} - Set rule color
+    \item \texttt{nogauge} - Disable progress gauge
+    \item \texttt{leftframetitle} - Left-align frame titles
+  \end{itemize}
+
+  \framesection{Advanced}
+
+  \begin{itemize}
+    \item \texttt{delaunay} - Decorative Delaunay triangulation (LuaLaTeX only)
+    \item \texttt{nomail} - Disable email display
+  \end{itemize}
+\end{frame}
+
+% Block Types
+\section{Block Types}
+
+\sepframe
+
+\begin{frame}{Standard Blocks}
+  \begin{block}{Standard Block}
+    This is a standard block for general content.
+  \end{block}
+
+  \begin{alertblock}{Alert Block}
+    This is an alert block for warnings or important information.
+  \end{alertblock}
+
+  \begin{exampleblock}{Example Block}
+    This is an example block for code examples or case studies.
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}{Mathematical Environments}
+  \begin{theorem}[Pythagorean Theorem]
+    In a right triangle, $a^2 + b^2 = c^2$ where $c$ is the hypotenuse.
+  \end{theorem}
+
+  \begin{definition}[Limit]
+    We say $\lim_{x \to a} f(x) = L$ if for every $\varepsilon > 0$,
+    there exists $\delta > 0$ such that $|f(x) - L| < \varepsilon$
+    whenever $0 < |x - a| < \delta$.
+  \end{definition}
+
+  \begin{corollary}
+    For any real number $x$, we have $\sin^2(x) + \cos^2(x) = 1$.
+  \end{corollary}
+\end{frame}
+
+\begin{frame}{Custom Environments}
+  \begin{information}[Important Note]
+    This is an information box for highlighting key facts.
+  \end{information}
+
+  \begin{remark}[Technical Detail]
+    This is a remark box for additional context or technical notes.
+  \end{remark}
+\end{frame}
+
+% Overlays
+\section{Overlays and Animations}
+
+\sepframe
+
+\begin{frame}{Step-by-Step Reveals}
+  Key points revealed one at a time:
+
+  \begin{itemize}
+    \item<1-> First point appears on slide 1
+    \item<2-> Second point appears on slide 2
+    \item<3-> Third point appears on slide 3
+    \item<4-> Fourth point appears on slide 4
+  \end{itemize}
+
+  \onslide<5->{
+    \begin{block}{Final Note}
+      All items are now visible!
+    \end{block}
+  }
+\end{frame}
+
+\begin{frame}{Highlighting with Overlays}
+  \begin{itemize}
+    \item<1-| alert@1> This item is highlighted on first slide
+    \item<2-| alert@2> This item is highlighted on second slide
+    \item<3-| alert@3> This item is highlighted on third slide
+    \item<4-> This item appears normally
+  \end{itemize}
+\end{frame}
+
+% Columns
+\section{Layouts and Columns}
+
+\sepframe
+
+\begin{frame}{Two-Column Layout}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \framesection{Left Column}
+      \begin{itemize}
+        \item First point
+        \item Second point
+        \item Third point
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \framesection{Right Column}
+      \begin{enumerate}
+        \item Numbered item 1
+        \item Numbered item 2
+        \item Numbered item 3
+      \end{enumerate}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Mixed Content Columns}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Code Example}
+        \begin{lstlisting}[language=Python]
+def hello():
+    print("Hello!")
+        \end{lstlisting}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{exampleblock}{Output}
+        \texttt{Hello!}
+      \end{exampleblock}
+
+      \bigskip
+
+      Function prints a greeting message to the console.
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% Mathematics
+\section{Mathematical Typesetting}
+
+\sepframe
+
+\begin{frame}{Mathematical Equations}
+  \framesection{Inline Math}
+
+  The quadratic formula is $x = \frac{-b \pm \sqrt{b^2-4ac}}{2a}$.
+
+  \framesection{Display Math}
+
+  \[
+    \int_{-\infty}^{\infty} e^{-x^2} dx = \sqrt{\pi}
+  \]
+
+  \framesection{Aligned Equations}
+
+  \begin{align}
+    E &= mc^2 \\
+    F &= ma \\
+    p &= mv
+  \end{align}
+\end{frame}
+
+\begin{frame}{Matrix Operations}
+  \[
+    \begin{bmatrix}
+      a_{11} & a_{12} & a_{13} \\
+      a_{21} & a_{22} & a_{23} \\
+      a_{31} & a_{32} & a_{33}
+    \end{bmatrix}
+    \begin{bmatrix}
+      x_1 \\ x_2 \\ x_3
+    \end{bmatrix}
+    =
+    \begin{bmatrix}
+      b_1 \\ b_2 \\ b_3
+    \end{bmatrix}
+  \]
+
+  \bigskip
+
+  Solving systems of linear equations in matrix form.
+\end{frame>
+
+% Special Commands
+\section{Special Commands}
+
+\sepframe
+
+\begin{frame}{Frame Section Command}
+  The \texttt{\textbackslash framesection\{\}} command creates subsections within frames:
+
+  \framesection{First Subsection}
+  Content for the first subsection goes here.
+
+  \framesection{Second Subsection}
+  Content for the second subsection goes here.
+
+  \framesection{Third Subsection}
+  Content for the third subsection goes here.
+\end{frame}
+
+\begin{frame}{Box Alert}
+  Regular text with \boxalert{highlighted alert text} inline.
+
+  \bigskip
+
+  Use \texttt{\textbackslash boxalert\{\}} for inline emphasis.
+
+  \bigskip
+
+  Multiple uses: \boxalert{Alert 1} and \boxalert{Alert 2} and \boxalert{Alert 3}.
+\end{frame}
+
+% Abstract and Quotations
+\section{Text Environments}
+
+\sepframe
+
+\begin{frame}{Abstract Environment}
+  \begin{abstract}
+    This is an abstract environment designed for presentation summaries.
+    It features bordered styling that makes it stand out from regular content.
+    Use it at the beginning of academic presentations to provide an overview.
+  \end{abstract}
+\end{frame}
+
+\begin{frame}{Quotation Environment}
+  \begin{quotation}[Albert Einstein]
+    Imagination is more important than knowledge. For knowledge is limited,
+    whereas imagination embraces the entire world, stimulating progress,
+    giving birth to evolution.
+  \end{quotation}
+
+  \bigskip
+
+  \begin{quotation}
+    Anonymous quotations are also supported without the optional author parameter.
+  \end{quotation}
+\end{frame}
+
+% Lists
+\section{List Styles}
+
+\sepframe
+
+\begin{frame}{Itemized Lists}
+  \begin{itemize}
+    \item First level item
+    \item Another first level item
+    \begin{itemize}
+      \item Second level item
+      \item Another second level item
+      \begin{itemize}
+        \item Third level item
+      \end{itemize}
+    \end{itemize}
+    \item Back to first level
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Enumerated Lists}
+  \begin{enumerate}
+    \item First numbered item
+    \item Second numbered item
+    \begin{enumerate}
+      \item Sub-item a
+      \item Sub-item b
+      \item Sub-item c
+    \end{enumerate}
+    \item Third numbered item
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}{Description Lists}
+  \begin{description}
+    \item[Term 1] Definition of the first term goes here with details.
+    \item[Term 2] Definition of the second term with more information.
+    \item[Term 3] Definition of the third term and its explanation.
+  \end{description}
+\end{frame>
+
+% Code Listings
+\section{Code Listings}
+
+\sepframe
+
+\begin{frame}[fragile]{Python Code}
+  \begin{lstlisting}[language=Python]
+def fibonacci(n):
+    """Generate Fibonacci sequence up to n"""
+    a, b = 0, 1
+    result = []
+    while a < n:
+        result.append(a)
+        a, b = b, a + b
+    return result
+
+# Generate first 10 Fibonacci numbers
+print(fibonacci(100))
+  \end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]{JavaScript Code}
+  \begin{lstlisting}[language=JavaScript]
+// React component example
+function Counter() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <div>
+      <p>Count: {count}</p>
+      <button onClick={() => setCount(count + 1)}>
+        Increment
+      </button>
+    </div>
+  );
+}
+  \end{lstlisting}
+\end{frame}
+
+% Graphics
+\section{Graphics and TikZ}
+
+\sepframe
+
+\begin{frame}{Simple TikZ Diagram}
+  \begin{center}
+    \begin{tikzpicture}
+      \draw[thick, ->] (0,0) -- (4,0) node[anchor=north] {$x$};
+      \draw[thick, ->] (0,0) -- (0,3) node[anchor=east] {$y$};
+
+      \draw[domain=0:3.5, smooth, variable=\x, blue, thick]
+        plot ({\x}, {0.5*\x*\x});
+
+      \node[blue] at (2,2.5) {$f(x) = \frac{1}{2}x^2$};
+    \end{tikzpicture}
+  \end{center}
+\end{frame}
+
+% Navigation
+\section{Navigation Features}
+
+\sepframe
+
+\begin{frame}{Page Numbers and Progress}
+  \begin{itemize}
+    \item Page numbers shown at bottom: current/total
+    \item Progress gauge in sidebar (if enabled)
+    \item Appendix pages numbered separately with Roman numerals
+    \item Short title and author in sidebar
+  \end{itemize}
+
+  \begin{block}{Navigation Tips}
+    \begin{itemize}
+      \item Use sidebar for section navigation
+      \item Click on section titles to jump to sections
+      \item Progress gauge shows completion percentage
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+% Summary
+\section{Summary}
+
+\sepframe
+
+\begin{frame}{AmurMaple Features Summary}
+  \begin{enumerate}
+    \item Four color variants (red, blue, green, black)
+    \item Multiple layout options (sidebar, frame title alignment)
+    \item Rich block types and environments
+    \item Overlay and animation support
+    \item Flexible column layouts
+    \item Beautiful mathematical typesetting
+    \item Code listing integration
+    \item Custom commands and environments
+    \item Professional navigation
+    \item Comprehensive theming options
+  \end{enumerate}
+\end{frame}
+
+% Thank you
+\thanksframe{Thank you!\\ \small Explore the AmurMaple theme for your presentations}
+
+\end{document}

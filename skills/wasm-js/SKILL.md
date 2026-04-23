@@ -1,10 +1,11 @@
+---
+name: "WASM-JS Interop"
+description: "High-performance WebAssembly graphics with JavaScript interoperability. Use when building performance-critical web graphics, real-time animations, computational geometry, or hybrid JS/WASM architectures."
+---
+
 # WASM-JS Interop Skill
 
 High-performance WebAssembly graphics with JavaScript interoperability for web applications.
-
-## Overview
-
-This skill provides patterns and templates for creating performant WASM graphics modules that integrate seamlessly with JavaScript/TypeScript web applications. Derived from the DreamLab AI Voronoi hero project.
 
 ## When to Use This Skill
 
@@ -13,39 +14,47 @@ This skill provides patterns and templates for creating performant WASM graphics
 - **Canvas/WebGL rendering** with WASM computation backend
 - **Hybrid JS/WASM** architectures where JS handles DOM, WASM handles math
 
+## When Not To Use
+
+- For general Rust development without WebAssembly graphics -- use the rust-development skill instead
+- For server-side CUDA GPU compute -- use the cuda skill instead
+- For non-graphical WASM modules (data processing, crypto) -- the rust-development skill with wasm32 target is sufficient
+- For browser automation and testing -- use the playwright or browser skills instead
+- For UI component design guidelines -- use the ui-ux-pro-max skill instead
+
 ## Architecture Pattern
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                 React/JS Application                 │
-│  - DOM manipulation, event handling                  │
-│  - requestAnimationFrame loop                        │
-│  - Canvas context management                         │
-└──────────────────────┬──────────────────────────────┘
-                       │ wasm-bindgen bridge
-                       ▼
-┌─────────────────────────────────────────────────────┐
-│                 Rust WASM Module                     │
-│  - Computational geometry (Delaunay, Voronoi)        │
-│  - Noise generation (Simplex, Perlin)                │
-│  - Particle/mote physics                             │
-│  - Returns Float32Array for JS rendering             │
-└─────────────────────────────────────────────────────┘
++-----------------------------------------------------+
+|                 React/JS Application                 |
+|  - DOM manipulation, event handling                  |
+|  - requestAnimationFrame loop                        |
+|  - Canvas context management                         |
++---------------------------+--------------------------+
+                            | wasm-bindgen bridge
+                            v
++-----------------------------------------------------+
+|                 Rust WASM Module                     |
+|  - Computational geometry (Delaunay, Voronoi)        |
+|  - Noise generation (Simplex, Perlin)                |
+|  - Particle/mote physics                             |
+|  - Returns Float32Array for JS rendering             |
++-----------------------------------------------------+
 ```
 
-## Key Lessons Learned
+## Key Patterns
 
-### 1. WASM Boundary Optimization
+### WASM Boundary Optimisation
 - Minimize cross-boundary calls (batch operations)
 - Return typed arrays (Float32Array) instead of objects
 - Let JS handle DOM/Canvas, WASM handles computation
 
-### 2. Memory Management
+### Memory Management
 - Use `wasm-bindgen` with `#[wasm_bindgen]` attributes
 - Typed arrays share memory without copying
 - Clean up resources with explicit deallocation
 
-### 3. Build Configuration
+### Build Configuration
 ```toml
 # Cargo.toml
 [lib]
@@ -61,7 +70,7 @@ opt-level = "z"
 lto = true
 ```
 
-### 4. Integration Pattern
+### Integration Pattern
 ```typescript
 // Lazy-load WASM module
 const wasmModule = await import('./pkg/my_wasm_module');
@@ -77,19 +86,6 @@ for (let i = 0; i < positions.length; i += 4) {
 }
 ctx.stroke();
 ```
-
-## Project Templates
-
-### Voronoi/Delaunay Graphics
-- Golden ratio seed placement (Vogel's model)
-- Bowyer-Watson Delaunay triangulation
-- Simplex noise for organic animation
-- Bronze/gold color palette
-
-### Particle Systems
-- Light motes traveling along edges
-- Physics simulation in WASM
-- Rendering batched to JS
 
 ## Build Commands
 
@@ -115,31 +111,14 @@ wasm-pack build --target web --release
 | Memory overhead | <10MB | ~4MB |
 | Cross-boundary calls | <100/frame | ~20/frame |
 
-## Toolchain Requirements
+## Project Templates
 
-**Already installed in Turbo Flow container:**
-- `rustup` with stable toolchain
-- `wasm32-unknown-unknown` target
-- `rustfmt`, `clippy`, `rust-analyzer`
-
-**Install wasm-pack on first use:**
-```bash
-cargo install wasm-pack
-```
-
-## Files in This Skill
-
-- `SKILL.md` - This documentation
-- `templates/voronoi-graphics/` - Voronoi/Delaunay template with React integration
-  - `Cargo.toml` - Rust project configuration
-  - `src/lib.rs` - WASM module implementation
-  - `integration.tsx` - React component example
-  - `build.sh` - Build script
+- `templates/voronoi-graphics/` - Golden ratio seed placement, Bowyer-Watson Delaunay triangulation, Simplex noise animation
 
 ## Related Skills
 
 - `rust-development` - Rust toolchain and patterns
-- `performance-analysis` - Profiling and optimization
+- `performance-analysis` - Profiling and optimisation
 - `playwright` - Visual testing of graphics output
 
 ## References
@@ -147,4 +126,3 @@ cargo install wasm-pack
 - [wasm-bindgen Guide](https://rustwasm.github.io/wasm-bindgen/)
 - [Rust and WebAssembly Book](https://rustwasm.github.io/docs/book/)
 - [Delaunay Triangulation Algorithm](https://en.wikipedia.org/wiki/Bowyer%E2%80%93Watson_algorithm)
-- [Golden Angle (Vogel's Model)](https://en.wikipedia.org/wiki/Golden_angle)

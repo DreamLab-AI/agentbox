@@ -14,7 +14,7 @@ graph LR
         UP1[Dockerfile.unified]
         UP2[docker-compose.yml]
         UP3[skills/]
-        UP4[turbo-flow-aliases.sh]
+        UP4[agentbox-aliases.sh]
         UP5[aisp/]
     end
 
@@ -22,7 +22,7 @@ graph LR
         DOWN1[flake.nix]
         DOWN2[NixOS Layers]
         DOWN3[skills/]
-        DOWN4[config/turbo-flow-aliases.sh]
+        DOWN4[config/agentbox-aliases.sh]
         DOWN5[aisp/]
     end
 
@@ -182,7 +182,7 @@ graph TB
 
 **Note:** Skills requiring external services (blender, comfyui, cuda) are included for API compatibility but require external resources.
 
-### 4. Turbo Flow Aliases v11
+### 4. Agentbox Aliases v11
 
 120+ shell aliases and 8 functions for rapid agentic workflows.
 
@@ -356,7 +356,7 @@ ls $AGENTS_DIR/*.md | wc -l
 # Expected: 610+
 
 # Verify aliases
-source /etc/profile.d/turbo-flow-aliases.sh
+source /etc/profile.d/agentbox-aliases.sh
 type cf-doctor
 # Expected: function definition
 
@@ -373,7 +373,7 @@ aisp --help
 
 1. **Quarterly Review** — Compare upstream Dockerfile.unified with flake.nix
 2. **Skill Sync** — Port skills that don't require GPU/heavy dependencies
-3. **Alias Sync** — Keep turbo-flow-aliases.sh version-matched
+3. **Alias Sync** — Keep agentbox-aliases.sh version-matched
 4. **AISP Sync** — Mirror /opt/aisp/ changes directly
 5. **Runtime Packages** — Update versions in entrypoint comments
 

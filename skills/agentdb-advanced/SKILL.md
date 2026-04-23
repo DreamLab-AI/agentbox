@@ -5,18 +5,20 @@ description: "Master advanced AgentDB features including QUIC synchronization, m
 
 # AgentDB Advanced Features
 
-## What This Skill Does
+For AgentDB architecture, performance benchmarks, and common API patterns, see [AgentDB Overview](./docs/agentdb-overview.md).
 
-Covers advanced AgentDB capabilities for distributed systems, multi-database coordination, custom distance metrics, hybrid search (vector + metadata), QUIC synchronization, and production deployment patterns. Enables building sophisticated AI systems with sub-millisecond cross-node communication and advanced search capabilities.
+## What This Skill Covers
 
-**Performance**: <1ms QUIC sync, hybrid search with filters, custom distance metrics.
+QUIC synchronization for distributed systems, multi-database coordination, custom distance metrics, hybrid search (vector + metadata), MMR diversity, context synthesis, and production deployment patterns.
 
-## Prerequisites
+**Additional Prerequisites**: Understanding of distributed systems (for QUIC sync), vector search fundamentals.
 
-- Node.js 18+
-- AgentDB v1.0.7+ (via agentic-flow)
-- Understanding of distributed systems (for QUIC sync)
-- Vector search fundamentals
+## When Not To Use
+
+- For basic vector search or single-database setups -- use the agentdb-vector-search skill instead
+- For simple agent memory patterns (session, long-term) -- use the agentdb-memory-patterns skill instead
+- For performance tuning without distributed features -- use the agentdb-vector-search skill instead
+- For non-AgentDB vector databases (pgvector, Pinecone, Weaviate) -- this skill is AgentDB-specific
 
 ---
 
@@ -455,7 +457,7 @@ npx agentdb@latest import ./backup.json.gz --decompress
 npx agentdb@latest merge ./db1.sqlite ./db2.sqlite ./merged.sqlite
 ```
 
-### Database Optimization
+### Database Optimisation
 
 ```bash
 # Vacuum database (reclaim space)
@@ -470,30 +472,15 @@ npx agentdb@latest reindex ./vectors.db
 
 ---
 
-## Environment Variables
+## QUIC Environment Variables
 
 ```bash
-# AgentDB configuration
-AGENTDB_PATH=.agentdb/reasoningbank.db
-AGENTDB_ENABLED=true
-
-# Performance tuning
-AGENTDB_QUANTIZATION=binary     # binary|scalar|product|none
-AGENTDB_CACHE_SIZE=2000
-AGENTDB_HNSW_M=16
-AGENTDB_HNSW_EF=100
-
-# Learning plugins
-AGENTDB_LEARNING=true
-
-# Reasoning agents
-AGENTDB_REASONING=true
-
-# QUIC synchronization
 AGENTDB_QUIC_SYNC=true
 AGENTDB_QUIC_PORT=4433
 AGENTDB_QUIC_PEERS=host1:4433,host2:4433
 ```
+
+For common AgentDB environment variables, see [AgentDB Overview](./docs/agentdb-overview.md#environment-variables).
 
 ---
 
@@ -536,12 +523,99 @@ const result = await adapter.retrieveWithReasoning(queryEmbedding, {
 
 ---
 
+## Reinforcement Learning Plugins
+
+*RL capabilities merged from agentdb-learning. Use to build self-improving agents trained through experience.*
+
+### Quick Start
+
+```bash
+# Interactive wizard
+npx agentdb@latest create-plugin
+
+# Use specific template (recommended: decision-transformer)
+npx agentdb@latest create-plugin -t decision-transformer -n my-agent
+
+# Preview without creating
+npx agentdb@latest create-plugin -t q-learning --dry-run
+```
+
+### Available Algorithms (9 Total)
+
+| Algorithm | Type | Best For |
+|-----------|------|----------|
+| **Decision Transformer** *(recommended)* | Offline RL | Logged experience, imitation learning, safe training |
+| **Q-Learning** | Value-Based (Off-Policy) | Discrete actions, navigation, resource allocation |
+| **SARSA** | Value-Based (On-Policy) | Safety-critical, risk-sensitive tasks |
+| **Actor-Critic** | Policy Gradient | Continuous control, continuous/discrete action spaces |
+| **Active Learning** | Query-Based | Human-in-the-loop, label-efficient training |
+| **Adversarial Training** | Robustness | Security, adversarial defence, safety testing |
+| **Curriculum Learning** | Progressive Difficulty | Complex multi-stage tasks, hard exploration |
+| **Federated Learning** | Distributed | Privacy-preserving, multi-agent collaborative training |
+| **Multi-Task Learning** | Transfer | Task families, domain adaptation, meta-learning |
+
+### Training API
+
+```typescript
+import { createAgentDBAdapter } from 'agentic-flow/reasoningbank';
+
+const adapter = await createAgentDBAdapter({
+  dbPath: '.agentdb/learning.db',
+  enableLearning: true,
+  enableReasoning: true,
+  cacheSize: 1000,
+});
+
+// Store experiences during agent execution
+await adapter.insertPattern({
+  id: '',
+  type: 'experience',
+  domain: 'task-domain',
+  pattern_data: JSON.stringify({
+    embedding: await computeEmbedding('state-action-reward'),
+    pattern: {
+      state: [0.1, 0.2, 0.3],
+      action: 2,
+      reward: 1.0,
+      next_state: [0.15, 0.25, 0.35],
+      done: false,
+    },
+  }),
+  confidence: 0.9,
+  usage_count: 1,
+  success_count: 1,
+  created_at: Date.now(),
+  last_used: Date.now(),
+});
+
+// Train
+const metrics = await adapter.train({ epochs: 50, batchSize: 32 });
+console.log('Loss:', metrics.loss, '| Duration:', metrics.duration, 'ms');
+```
+
+### Decision Transformer Config (Recommended)
+
+```json
+{
+  "algorithm": "decision-transformer",
+  "model_size": "base",
+  "context_length": 20,
+  "embed_dim": 128,
+  "n_heads": 8,
+  "n_layers": 6
+}
+```
+
+**When RL is NOT what you need**: For production ML training with PyTorch use `pytorch-ml`;
+for cloud sandbox training use `flow-nexus-neural`; for CUDA kernels use `cuda`.
+
+---
+
 ## Learn More
 
 - **QUIC Protocol**: docs/quic-synchronization.pdf
 - **Hybrid Search**: docs/hybrid-search-guide.md
-- **GitHub**: https://github.com/ruvnet/agentic-flow/tree/main/packages/agentdb
-- **Website**: https://agentdb.ruv.io
+- See [AgentDB Overview](./docs/agentdb-overview.md#links) for general links.
 
 ---
 

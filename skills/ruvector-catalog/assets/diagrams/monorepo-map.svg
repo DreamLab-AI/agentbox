@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 420" width="680" height="420">
+  <defs>
+    <style>
+      text { font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace; fill: #e2e8f0; }
+      .bg { fill: #1e293b; rx: 12; }
+      .domain { fill: #334155; rx: 6; stroke: #475569; stroke-width: 1; }
+      .head { font-size: 15px; font-weight: bold; fill: #f1f5f9; }
+      .domain-title { font-size: 11px; font-weight: bold; fill: #60a5fa; }
+      .item { font-size: 10px; fill: #cbd5e1; }
+      .stat { font-size: 11px; fill: #86efac; }
+      .statbox { fill: #14532d; rx: 6; }
+    </style>
+  </defs>
+  <rect class="bg" x="0" y="0" width="680" height="420"/>
+  <text class="head" x="150" y="25">RUVECTOR: 1.58M LINES, 113 CRATES</text>
+  <rect class="domain" x="15" y="40" width="155" height="100"/>
+  <text class="domain-title" x="25" y="58">SEARCH &amp; INDEXING</text>
+  <text class="item" x="25" y="75">ruvector-core (HNSW)</text>
+  <text class="item" x="25" y="90">RVF format (19 crates)</text>
+  <text class="item" x="25" y="105">ruvector-filter</text>
+  <text class="item" x="25" y="120">micro-hnsw-wasm (11KB)</text>
+  <rect class="domain" x="180" y="40" width="155" height="100"/>
+  <text class="domain-title" x="190" y="58">INTELLIGENCE</text>
+  <text class="item" x="190" y="75">sona (3-loop learning)</text>
+  <text class="item" x="190" y="90">AdaptiveEmbedder (LoRA)</text>
+  <text class="item" x="190" y="105">ruvector-gnn (GCN, GAT)</text>
+  <text class="item" x="190" y="120">ReasoningBank (HNSW)</text>
+  <rect class="domain" x="345" y="40" width="155" height="100"/>
+  <text class="domain-title" x="355" y="58">GRAPH</text>
+  <text class="item" x="355" y="75">ruvector-graph (Cypher)</text>
+  <text class="item" x="355" y="90">ruvector-mincut</text>
+  <text class="item" x="355" y="105">ruvector-solver (8 algs)</text>
+  <text class="item" x="355" y="120">rvlite (SQL+SPARQL)</text>
+  <rect class="domain" x="510" y="40" width="155" height="100"/>
+  <text class="domain-title" x="520" y="58">ATTENTION (50+)</text>
+  <text class="item" x="520" y="75">FlashAttention-3</text>
+  <text class="item" x="520" y="90">Mamba S5 (linear)</text>
+  <text class="item" x="520" y="105">MoE (sparse routing)</text>
+  <text class="item" x="520" y="120">Sheaf, PDE, Hyperbolic</text>
+  <rect class="domain" x="15" y="155" width="155" height="100"/>
+  <text class="domain-title" x="25" y="173">VISION</text>
+  <text class="item" x="25" y="190">ruvector-cnn (MobileNet)</text>
+  <text class="item" x="25" y="205">ruvector-cnn-wasm</text>
+  <text class="item" x="25" y="220">512D image embeddings</text>
+  <text class="item" x="25" y="235">SimCLR contrastive</text>
+  <rect class="domain" x="180" y="155" width="155" height="100"/>
+  <text class="domain-title" x="190" y="173">BIO-INSPIRED</text>
+  <text class="item" x="190" y="190">Spiking NN (LIF)</text>
+  <text class="item" x="190" y="205">Hopfield (Modern)</text>
+  <text class="item" x="190" y="220">HDC (10K-bit)</text>
+  <text class="item" x="190" y="235">Dendritic computation</text>
+  <rect class="domain" x="345" y="155" width="155" height="100"/>
+  <text class="domain-title" x="355" y="173">MATH</text>
+  <text class="item" x="355" y="190">Wasserstein / Sinkhorn</text>
+  <text class="item" x="355" y="205">TDA (persistent homology)</text>
+  <text class="item" x="355" y="220">Fisher / K-FAC</text>
+  <text class="item" x="355" y="235">Tropical algebra</text>
+  <rect class="domain" x="510" y="155" width="155" height="100"/>
+  <text class="domain-title" x="520" y="173">LLM INFERENCE</text>
+  <text class="item" x="520" y="190">ruvllm (BitNet, QAT)</text>
+  <text class="item" x="520" y="205">Metal / CUDA / WebGPU</text>
+  <text class="item" x="520" y="220">GGUF, MicroLoRA</text>
+  <text class="item" x="520" y="235">Continuous batching</text>
+  <rect class="domain" x="15" y="270" width="155" height="70"/>
+  <text class="domain-title" x="25" y="288">DISTRIBUTED</text>
+  <text class="item" x="25" y="305">ruvector-raft (consensus)</text>
+  <text class="item" x="25" y="320">ruvector-replication</text>
+  <rect class="domain" x="180" y="270" width="155" height="70"/>
+  <text class="domain-title" x="190" y="288">QUANTUM</text>
+  <text class="item" x="190" y="305">ruQu (VQE, Grover)</text>
+  <text class="item" x="190" y="320">QAOA, Surface Code</text>
+  <rect class="statbox" x="345" y="270" width="320" height="70"/>
+  <text class="stat" x="365" y="293">+ 30 WASM crates (buildable)</text>
+  <text class="stat" x="365" y="313">+ 56 npm packages + 42 examples</text>
+  <text class="stat" x="365" y="333">+ 131 ADRs</text>
+  <rect class="statbox" x="15" y="360" width="650" height="45"/>
+  <text class="stat" x="140" y="388">2,535 Rust source files | Verified 2026-03-30 | Commit ff5acfb2</text>
+</svg>

@@ -1,0 +1,39 @@
+{
+  "$schema": "https://ruvector.dev/schema/v1.json",
+  "version": "1.0.0",
+  "description": "Shared RuVector PostgreSQL configuration for all skills",
+  "backend": "postgresql",
+  "postgresql": {
+    "host": "ruvector-postgres",
+    "port": 5432,
+    "database": "ruvector",
+    "user": "ruvector",
+    "password": "ruvector",
+    "ssl": false,
+    "poolSize": 10,
+    "connectionString": "host=ruvector-postgres port=5432 user=ruvector password=ruvector dbname=ruvector"
+  },
+  "sqlite": {
+    "enabled": false,
+    "fallback": false
+  },
+  "hnsw": {
+    "enabled": true,
+    "dimensions": 384,
+    "efConstruction": 200,
+    "efSearch": 100,
+    "m": 16
+  },
+  "embedding": {
+    "model": "all-MiniLM-L6-v2",
+    "dimensions": 384
+  },
+  "tables": {
+    "memory_entries": "memory_entries",
+    "patterns": "patterns",
+    "reasoning_patterns": "reasoning_patterns",
+    "sona_trajectories": "sona_trajectories",
+    "session_state": "session_state",
+    "projects": "projects"
+  }
+}

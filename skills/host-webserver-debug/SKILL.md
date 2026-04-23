@@ -5,7 +5,7 @@ description: >
   taking screenshots with Playwright, and analyzing with Chrome DevTools.
   Solves cross-origin security issues when accessing host development servers.
 version: 1.0.0
-author: turbo-flow-claude
+author: agentbox-claude
 mcp_server: true
 protocol: mcp-sdk
 entry_point: mcp-server/server.js
@@ -25,6 +25,13 @@ triggers:
 # Host Webserver Debug Skill
 
 Debug web applications running on the Docker host from inside containers.
+
+## When Not To Use
+
+- For general browser automation, form filling, or web scraping -- use the browser or playwright skills instead
+- For summarising web page content -- use the web-summary or gemini-url-context skills instead
+- For API testing without a browser -- use curl or httpx directly
+- For debugging applications that are not running on the Docker host -- use standard debugging tools
 
 ## Installation
 
@@ -318,5 +325,5 @@ tail -f /var/log/https-bridge.log
 ## Related Skills
 
 - **playwright**: Browser automation and testing
-- **chrome-devtools**: Advanced browser debugging
-- **docker-manager**: Container management
+- **chrome-cdp**: Advanced browser debugging via Chrome DevTools Protocol
+- **browser-automation**: Unified browser tool selection

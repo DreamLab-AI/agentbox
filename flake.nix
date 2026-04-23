@@ -1,5 +1,5 @@
 {
-  description = "Agentbox - Minimal Agentic Container for ARM64 and x86_64";
+  description = "Agentbox 2.0 - Modular sovereign multi-agent container";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -17,14 +17,35 @@
           config.allowUnfree = true;
         };
 
+        lib = pkgs.lib;
         n2c = nix2container.packages.${system}.nix2container;
 
-        # Common packages for all images
+        agentboxConfig = builtins.fromTOML (builtins.readFile ./agentbox.toml);
+        coreCfg = agentboxConfig.core or {};
+        sovereignCfg = agentboxConfig.sovereign_mesh or {};
+        desktopCfg = agentboxConfig.desktop or {};
+        skillsCfg = agentboxConfig.skills or {};
+        toolchainCfg = agentboxConfig.toolchains or {};
+        browserCfg = skillsCfg.browser or {};
+        mediaCfg = skillsCfg.media or {};
+        spatialCfg = skillsCfg.spatial_and_3d or {};
+        dataScienceCfg = skillsCfg.data_science or {};
+        docsCfg = skillsCfg.docs or {};
+
+        boolEnv = value: if value then "true" else "false";
+
         basePackages = with pkgs; [
-          # Core utilities
-          coreutils
           bash
-          zsh
+          coreutils
+          cacert
+          curl
+          wget
+          git
+          git-lfs
+          gh
+          jq
+          ripgrep
+          fd
           gnugrep
           gnused
           gawk
@@ -32,603 +53,455 @@
           which
           less
           file
-
-          # Network utilities
-          curl
-          wget
-          cacert
-          openssh
-
-          # Development tools
-          git
-          jq
-          ripgrep
-          fd
-          bat
           tree
-          tmux
+          zellij
           vim
           nano
-
-          # Build essentials
-          gnumake
-          gcc
-          pkg-config
-
-          # Additional utilities for skills
           unzip
           zip
           gzip
           xz
           htop
           ncdu
-
-          # Git utilities
-          gh  # GitHub CLI for github-* skills
-          git-lfs
-
-          # Text processing
-          pandoc  # For docs-alignment skill
-
-          # Cloud CLIs (skills: github-*, cloud deployments)
-          google-cloud-sdk  # gcloud, gsutil, bq commands
+          procps
+          openssh
+          gnumake
+          gcc
+          clang
+          cmake
+          pkg-config
+          uv
+          pandoc
         ];
 
-        # Node.js runtime with skills dependencies
         nodeEnvPackages = with pkgs; [
           nodejs_20
-          pkgs.nodePackages.npm
+          nodePackages.npm
+          nodePackages.yarn
           pnpm
-          pkgs.nodePackages.yarn
-          pkgs.nodePackages.typescript
-          pkgs.nodePackages.typescript-language-server
-
-          # Build tools for skills
-          esbuild
-          pkgs.nodePackages.prettier
         ];
 
-        # Python runtime with skills dependencies
-        pythonPackages = with pkgs; [
+        pythonBasePackages = with pkgs; [
           python312
           python312Packages.pip
           python312Packages.virtualenv
-          python312Packages.setuptools
-          python312Packages.wheel
-
-          # HTTP & Networking (skills: web-summary, perplexity-research, host-webserver-debug)
+          python312Packages.supervisor
           python312Packages.requests
           python312Packages.httpx
           python312Packages.aiohttp
           python312Packages.aiofiles
-          python312Packages.urllib3
-          python312Packages.websockets
-
-          # Data Processing (skills: jupyter-notebooks, pytorch-ml)
-          python312Packages.pandas
-          python312Packages.numpy
-          python312Packages.pydantic
-
-          # Jupyter (skills: jupyter-notebooks)
-          python312Packages.jupyter
-          python312Packages.jupyterlab
-          python312Packages.notebook
-          python312Packages.ipykernel
-          python312Packages.nbformat
-
-          # CLI & Output (skills: build-with-quality, verification-quality)
-          python312Packages.rich
-          python312Packages.tabulate
-          python312Packages.colorama
-
-          # Parsing & Templating (skills: docs-alignment, latex-documents)
           python312Packages.pyyaml
-          python312Packages.jinja2
-          python312Packages.markdown
-          python312Packages.beautifulsoup4
-          python312Packages.lxml
-          python312Packages.jsonschema
-          python312Packages.chardet
-
-          # Git & Docker (skills: github-*, docker-manager)
-          python312Packages.gitpython
-          python312Packages.docker
-
-          # AI/ML SDKs (skills: build-with-quality, reasoningbank-*)
-          python312Packages.anthropic
-          python312Packages.tiktoken
-
-          # Web Scraping (skills: web-summary)
-          python312Packages.youtube-transcript-api
-
-          # Validation
-          python312Packages.validators
-
-          # Browser Automation (skills: playwright, host-webserver-debug)
-          python312Packages.playwright
-
-          # Type Checking
-          python312Packages.typing-extensions
-          python312Packages.types-requests
+          python312Packages.pydantic
+          python312Packages.rich
+          python312Packages.ecdsa
+          python312Packages.numpy
+          python312Packages.pandas
+          python312Packages.matplotlib
+          python312Packages.seaborn
+          python312Packages.pymupdf
         ];
 
-        # Rust toolchain (minimal, no GPU) with WASM support
         rustToolchain = pkgs.rust-bin.stable.latest.minimal.override {
           extensions = [ "rust-src" "clippy" "rustfmt" ];
-          targets = [ "wasm32-unknown-unknown" ];  # WASM target for wasm-js skill
+          targets = [ "wasm32-unknown-unknown" ];
         };
 
-        # WASM tools (skills: wasm-js, rust-development)
         wasmPackages = with pkgs; [
-          wasm-pack      # Rust to WASM build tool
+          wasm-pack
           wasm-bindgen-cli
-          binaryen       # WASM optimizer (wasm-opt)
+          binaryen
         ];
 
-        # Runtime packages (installed via npm at startup or on first use via npx):
-        # Core:
-        # - @claude-flow/cli@latest: V3 swarm orchestration
-        # - ruvector: Standalone vector database with HNSW indexing
-        # - @anthropic-ai/claude-code@latest: Claude Code CLI
-        #
-        # Browser Automation:
-        # - agent-browser@latest: Vercel Labs AI-optimized browser (primary)
-        # - @claude-flow/browser@latest: Claude Flow browser MCP
-        #
-        # Agentic Ecosystem:
-        # - agentic-flow@latest: Multi-agent flow orchestration
-        # - agentic-qe@latest: Testing framework (51 agents, 12 domains)
-        # - agentic-jujutsu@latest: Quantum-resistant git operations
-        #
-        # Utilities:
-        # - claude-usage-cli@latest: Usage tracking
-        # - gemini-flow: Google Gemini integration
-        # - agentdb@latest: Agent memory database
-        #
-        # These are auto-installed by skills-entrypoint.sh or on first use via npx
-
-        # RuVector - Standalone vector database (NO PostgreSQL required)
-        # Uses embedded redb storage with HNSW indexing
-        # Run via: npx ruvector (npm package)
-        # Features: 150x-12,500x faster search, GNN layers, self-learning
         dbPackages = with pkgs; [
-          # SQLite for lightweight session/state storage
           sqlite
         ];
 
-        # Media processing (CLI only)
-        mediaPackages = with pkgs; [
-          ffmpeg
-          imagemagick
-        ];
+        browserPackages = lib.optionals (browserCfg.agent_browser or false || browserCfg.playwright or false || browserCfg.qe_browser or false) (with pkgs; [
+          chromium
+          playwright-driver
+          at-spi2-atk
+          cups
+          mesa
+          libdrm
+          alsa-lib
+          nss
+          nspr
+        ]);
 
-        # Browser automation (headless + visible via VNC)
-        # agent-browser and playwright are installed via npm at runtime
-        browserPackages = with pkgs; [
-          chromium              # Primary browser
-          playwright-driver    # Playwright browser binaries
+        mediaPackages = with pkgs;
+          lib.optionals (mediaCfg.ffmpeg or false) [ ffmpeg ]
+          ++ lib.optionals (mediaCfg.imagemagick or false) [ imagemagick ];
 
-          # Dependencies for browser automation
-          at-spi2-atk          # Accessibility (for element refs)
-          cups                 # Printing (browser dependency)
-          mesa                 # OpenGL (software rendering)
-          libdrm               # DRM (display rendering)
-          alsa-lib             # Audio (browser dependency)
-          nss                  # Network security
-          nspr                 # Netscape portable runtime
-        ];
+        spatialPackages =
+          lib.optionals (spatialCfg.qgis or false) [
+            pkgs.qgis
+            pkgs.libsForQt5.pyqt5
+          ]
+          ++ lib.optionals (spatialCfg.blender or false) [
+            pkgs.blender
+          ];
 
-        # Process management
-        servicePackages = with pkgs; [
-          python3Packages.supervisor
-          procps
-        ];
+        dataSciencePackages =
+          lib.optionals (dataScienceCfg.pytorch or false) [
+            pkgs.python312Packages.pytorch
+          ]
+          ++ lib.optionals (dataScienceCfg.jupyter or false) [
+            pkgs.python312Packages.numpy
+            pkgs.python312Packages.pandas
+            pkgs.python312Packages.jupyter
+            pkgs.python312Packages.jupyterlab
+            pkgs.python312Packages.notebook
+            pkgs.python312Packages.ipykernel
+          ];
 
-        # VNC/X11 stack for remote desktop and browser automation
-        # Access: ssh -L 5901:localhost:5901 user@host, then vnc://localhost:5901
-        # ~200MB total footprint
-        vncPackages = with pkgs; [
-          # X11 core
-          xorg.xorgserver     # Xvfb virtual framebuffer
+        docsPackages =
+          lib.optionals ((docsCfg.latex or false) || (docsCfg.report_builder or false)) [
+            pkgs.texliveFull
+            pkgs.biber
+          ];
+
+        desktopPackages = lib.optionals (desktopCfg.enabled or false) (with pkgs; [
+          xorg.xorgserver
           xorg.xauth
           xorg.xinit
           xorg.xset
-          xorg.xdpyinfo       # Display info (used by agent-browser)
-          xorg.xprop          # Window properties
-          xorg.xwininfo       # Window info
-          xorg.setxkbmap      # Keyboard layout
-          xkeyboard_config    # Keyboard config data
-
-          # VNC server
-          x11vnc              # VNC server (lightweight)
-
-          # Window manager (minimal)
-          openbox             # Minimal WM (~2MB)
-          tint2               # Taskbar/panel
-
-          # Terminals
-          xterm               # Basic terminal
-          xfce.xfce4-terminal # Better terminal with tabs
-
-          # Fonts (required for browser rendering)
+          xorg.xdpyinfo
+          xorg.xprop
+          xorg.xwininfo
+          xorg.setxkbmap
+          xkeyboard_config
+          x11vnc
+          openbox
+          tint2
+          xterm
+          xfce.xfce4-terminal
           dejavu_fonts
           liberation_ttf
           noto-fonts
           fontconfig
+          xdotool
+          xclip
+          scrot
+          feh
+          pcmanfm
+        ]);
 
-          # Utilities
-          xdotool             # X11 automation (click, type, etc.)
-          xclip               # Clipboard
-          scrot               # Screenshots
-          feh                 # Image viewer
-          pcmanfm             # File manager
-        ];
-
-        # All packages combined
-        allPackages = basePackages
+        allPackages =
+          basePackages
           ++ nodeEnvPackages
-          ++ pythonPackages
+          ++ pythonBasePackages
           ++ [ rustToolchain ]
           ++ wasmPackages
           ++ dbPackages
-          ++ mediaPackages
           ++ browserPackages
-          ++ servicePackages;
+          ++ mediaPackages
+          ++ spatialPackages
+          ++ dataSciencePackages
+          ++ docsPackages
+          ++ desktopPackages;
 
-        # Package config files into /etc
+        appRoot = pkgs.runCommand "agentbox-app-root" {} ''
+          mkdir -p $out/opt/agentbox
+          cp -r ${./management-api} $out/opt/agentbox/management-api
+          cp -r ${./mcp} $out/opt/agentbox/mcp
+          cp -r ${./skills} $out/opt/agentbox/skills
+          cp -r ${./scripts} $out/opt/agentbox/scripts
+          cp -r ${./config} $out/opt/agentbox/config
+          cp -r ${./docs} $out/opt/agentbox/docs
+          cp -r ${./aisp} $out/opt/agentbox/aisp
+          cp ${./agentbox.toml} $out/opt/agentbox/agentbox.toml
+          chmod +x $out/opt/agentbox/config/entrypoint-unified.sh
+          find $out/opt/agentbox/scripts -type f -name '*.sh' -exec chmod +x {} +
+          find $out/opt/agentbox/scripts -type f -name '*.py' -exec chmod +x {} +
+          find $out/opt/agentbox/mcp/servers -type f -name '*.js' -exec chmod +x {} +
+        '';
+
+        qgisServiceBlock = ''
+[program:qgis-mcp]
+command=${pkgs.python312}/bin/python3 -u /opt/agentbox/scripts/qgis_mcp_standalone.py
+directory=/opt/agentbox/scripts
+autostart=true
+autorestart=true
+priority=230
+stdout_logfile=/var/log/qgis-mcp.log
+stderr_logfile=/var/log/qgis-mcp.error.log
+        '';
+
+        blenderServiceBlock = ''
+[program:blender-mcp]
+command=${pkgs.python312}/bin/python3 -u /opt/agentbox/skills/blender/addon/server.py
+directory=/opt/agentbox/skills/blender/addon
+environment=HOME="/workspace"
+autostart=true
+autorestart=true
+priority=231
+stdout_logfile=/var/log/blender-mcp.log
+stderr_logfile=/var/log/blender-mcp.error.log
+        '';
+
+        jupyterServiceBlock = ''
+[program:jupyter-lab]
+command=${pkgs.python312Packages.jupyterlab}/bin/jupyter-lab --ip=0.0.0.0 --port=8888 --no-browser --ServerApp.token=
+directory=/workspace
+environment=HOME="/workspace"
+autostart=true
+autorestart=true
+priority=232
+stdout_logfile=/var/log/jupyter-lab.log
+stderr_logfile=/var/log/jupyter-lab.error.log
+        '';
+
+        desktopBlocks = ''
+[program:xvfb]
+command=${pkgs.xorg.xorgserver}/bin/Xvfb :1 -screen 0 ${(desktopCfg.resolution or "1920x1080")}x24 -ac +extension GLX +render -noreset
+autostart=true
+autorestart=true
+priority=40
+stdout_logfile=/var/log/xvfb.log
+stderr_logfile=/var/log/xvfb.error.log
+
+[program:openbox]
+command=${pkgs.openbox}/bin/openbox
+environment=DISPLAY=":1",HOME="/workspace"
+autostart=true
+autorestart=true
+priority=41
+stdout_logfile=/var/log/openbox.log
+stderr_logfile=/var/log/openbox.error.log
+
+[program:x11vnc]
+command=${pkgs.x11vnc}/bin/x11vnc -display :1 -rfbport 5901 -localhost -forever -shared -nopw -xkb
+environment=DISPLAY=":1",HOME="/workspace"
+autostart=true
+autorestart=true
+priority=42
+stdout_logfile=/var/log/x11vnc.log
+stderr_logfile=/var/log/x11vnc.error.log
+        '';
+
+        supervisorText = ''
+[supervisord]
+nodaemon=true
+logfile=/var/log/supervisord.log
+pidfile=/var/run/supervisord.pid
+childlogdir=/var/log/supervisor
+
+[unix_http_server]
+file=/var/run/supervisor.sock
+chmod=0766
+
+[supervisorctl]
+serverurl=unix:///var/run/supervisor.sock
+
+[rpcinterface:supervisor]
+supervisor.rpcinterface_factory = supervisor.rpcinterface:make_main_rpcinterface
+
+[program:bootstrap]
+command=/opt/agentbox/scripts/skills-entrypoint.sh
+autostart=true
+autorestart=false
+startsecs=0
+priority=5
+stdout_logfile=/var/log/bootstrap.log
+stderr_logfile=/var/log/bootstrap.error.log
+
+[program:ruvector]
+command=${pkgs.nodejs_20}/bin/npx --yes ruvector serve --port %(ENV_RUVECTOR_PORT)s --data-dir %(ENV_RUVECTOR_DATA_DIR)s
+environment=HOME="/workspace",RUVECTOR_DATA_DIR="%(ENV_RUVECTOR_DATA_DIR)s",RUVECTOR_PORT="%(ENV_RUVECTOR_PORT)s"
+autostart=true
+autorestart=true
+priority=10
+stdout_logfile=/var/log/ruvector.log
+stderr_logfile=/var/log/ruvector.error.log
+
+[program:management-api]
+command=${pkgs.nodejs_20}/bin/node /opt/agentbox/management-api/server.js
+directory=/opt/agentbox/management-api
+environment=HOME="/workspace",MANAGEMENT_API_PORT="%(ENV_MANAGEMENT_API_PORT)s",MANAGEMENT_API_KEY="%(ENV_MANAGEMENT_API_KEY)s",MANAGEMENT_API_AUTH_MODE="%(ENV_MANAGEMENT_API_AUTH_MODE)s"
+autostart=true
+autorestart=true
+priority=20
+stdout_logfile=/var/log/management-api.log
+stderr_logfile=/var/log/management-api.error.log
+${lib.optionalString (sovereignCfg.enabled or false) ''
+
+[program:solid-pod]
+command=${pkgs.python312}/bin/python3 -u /opt/agentbox/scripts/solid-pod-server.py
+directory=/opt/agentbox/scripts
+environment=HOME="/workspace",SOLID_POD_ROOT="%(ENV_SOLID_POD_ROOT)s",SOLID_POD_PORT="%(ENV_SOLID_POD_PORT)s",SOLID_REQUIRE_NIP98="%(ENV_SOLID_REQUIRE_NIP98)s"
+autostart=true
+autorestart=true
+priority=30
+stdout_logfile=/var/log/solid-pod.log
+stderr_logfile=/var/log/solid-pod.error.log
+''}
+${lib.optionalString ((sovereignCfg.enabled or false) && (sovereignCfg.nostr_bridge or false)) ''
+
+[program:nostr-bridge]
+command=${pkgs.nodejs_20}/bin/node /opt/agentbox/mcp/servers/nostr-bridge.js
+directory=/opt/agentbox/mcp/servers
+environment=HOME="/workspace",NOSTR_RELAYS="%(ENV_NOSTR_RELAYS)s",NOSTR_BRIDGE_PORT="%(ENV_NOSTR_BRIDGE_PORT)s",MANAGEMENT_API_PORT="%(ENV_MANAGEMENT_API_PORT)s"
+autostart=true
+autorestart=true
+priority=31
+stdout_logfile=/var/log/nostr-bridge.log
+stderr_logfile=/var/log/nostr-bridge.error.log
+''}
+${lib.optionalString (browserCfg.playwright or false) ''
+
+[program:playwright-mcp]
+command=${pkgs.nodejs_20}/bin/node /opt/agentbox/skills/playwright/mcp-server/server.js
+directory=/opt/agentbox/skills/playwright/mcp-server
+environment=HOME="/workspace",PLAYWRIGHT_BROWSERS_PATH="/workspace/.cache/ms-playwright"
+autostart=true
+autorestart=true
+priority=200
+stdout_logfile=/var/log/playwright-mcp.log
+stderr_logfile=/var/log/playwright-mcp.error.log
+''}
+${lib.optionalString (mediaCfg.imagemagick or false) ''
+
+[program:imagemagick-mcp]
+command=${pkgs.python312}/bin/python3 -u /opt/agentbox/skills/imagemagick/mcp-server/server.py
+directory=/opt/agentbox/skills/imagemagick/mcp-server
+environment=HOME="/workspace"
+autostart=true
+autorestart=true
+priority=210
+stdout_logfile=/var/log/imagemagick-mcp.log
+stderr_logfile=/var/log/imagemagick-mcp.error.log
+''}
+${lib.optionalString (spatialCfg.qgis or false) "\n${qgisServiceBlock}"}
+${lib.optionalString (spatialCfg.blender or false) "\n${blenderServiceBlock}"}
+${lib.optionalString (dataScienceCfg.jupyter or false) "\n${jupyterServiceBlock}"}
+${lib.optionalString (desktopCfg.enabled or false) "\n${desktopBlocks}"}
+        '';
+
         configFiles = pkgs.runCommand "agentbox-config" {} ''
           mkdir -p $out/etc
-          cp ${./config/supervisord-nix.conf} $out/etc/supervisord.conf
+          cp ${pkgs.writeText "supervisord.conf" supervisorText} $out/etc/supervisord.conf
+          cp ${./agentbox.toml} $out/etc/agentbox.toml
         '';
 
-        # Create entrypoint script
         entrypoint = pkgs.writeShellScriptBin "entrypoint" ''
-          #!${pkgs.bash}/bin/bash
-          set -e
-
-          echo "========================================"
-          echo "  AGENTBOX - Minimal Agentic Container"
-          echo "========================================"
-          echo ""
-
-          echo "[1/7] System Information"
-          echo "Architecture: $(uname -m)"
-          echo "Node.js: $(node --version)"
-          echo "Python: $(python3 --version)"
-          echo "Rust: $(rustc --version)"
-          echo ""
-
-          # Create required directories
-          echo "[2/7] Setting up directories..."
-          mkdir -p /home/devuser/{workspace,agents,.claude/skills,.config,.cache,logs}
-          mkdir -p /var/lib/ruvector /var/log/supervisor /tmp/screenshots
-          mkdir -p /run/user/1000 && chmod 700 /run/user/1000
-
-          # Clone 610+ Claude subagents if not present
-          echo "[3/7] Setting up Claude subagents..."
-          AGENTS_DIR=/home/devuser/agents
-          export AGENTS_DIR
-          if [ ! -f "$AGENTS_DIR/doc-planner.md" ] && [ -d "$AGENTS_DIR" ]; then
-            echo "Cloning 610+ Claude subagents..."
-            cd "$AGENTS_DIR"
-            ${pkgs.git}/bin/git clone --depth 1 https://github.com/ChrisRoyse/610ClaudeSubagents.git temp-agents 2>/dev/null || true
-            if [ -d "temp-agents/agents" ]; then
-              mv temp-agents/agents/*.md . 2>/dev/null || true
-              rm -rf temp-agents
-              echo "✓ $(ls -1 $AGENTS_DIR/*.md 2>/dev/null | wc -l) agent templates available"
-            fi
-          else
-            echo "✓ Agent templates already present: $(ls -1 $AGENTS_DIR/*.md 2>/dev/null | wc -l) agents"
-          fi
-
-          # Initialize AISP if available
-          echo "[4/7] Initializing AISP 5.1 Platinum..."
-          if [ -f /opt/aisp/cli.js ]; then
-            ln -sf /opt/aisp/cli.js /usr/local/bin/aisp 2>/dev/null || true
-            echo "✓ AISP CLI available at /usr/local/bin/aisp"
-          fi
-
-          # Install runtime npm packages (first run only)
-          echo "[5/7] Checking runtime packages..."
-          if [ ! -f /home/devuser/.npm_packages_installed ]; then
-            echo "Installing Claude Flow ecosystem (first run)..."
-            npm install -g @claude-flow/cli@latest agent-browser@latest playwright 2>/dev/null || true
-            npx playwright install chromium 2>/dev/null || true
-            touch /home/devuser/.npm_packages_installed
-            echo "✓ Runtime packages installed"
-          else
-            echo "✓ Runtime packages already installed"
-          fi
-
-          # Clean stale X lock files and set up VNC if packages present
-          echo "[6/7] Setting up VNC/X11 environment..."
-          rm -f /tmp/.X*-lock /tmp/.X11-unix/X* 2>/dev/null || true
-
-          # Check if VNC packages are available (desktop image)
-          if command -v Xvfb >/dev/null 2>&1; then
-            echo "VNC stack detected - starting X11 services..."
-            export DISPLAY=:1
-
-            # Start Xvfb (4K virtual framebuffer)
-            Xvfb :1 -screen 0 4096x4096x24 -ac +extension GLX +render -noreset &
-            sleep 2
-
-            # Start window manager
-            if command -v openbox >/dev/null 2>&1; then
-              DISPLAY=:1 openbox &
-            fi
-
-            # Start VNC server (localhost only - MUST use SSH tunnel)
-            if command -v x11vnc >/dev/null 2>&1; then
-              x11vnc -display :1 -rfbport 5901 -forever -shared -nopw -xkb -localhost &
-              echo "✓ VNC server running on localhost:5901 (SSH tunnel required)"
-            fi
-
-            # Create browser start script
-            cat > /home/devuser/start-browser.sh << 'BROWSERSCRIPT'
-#!/bin/bash
-export DISPLAY=:1
-chromium --no-sandbox --remote-debugging-port=9222 \
-  --user-data-dir=/home/devuser/.config/chromium-automation \
-  --window-size=1920,1080 \
-  --disable-gpu \
-  --disable-software-rasterizer "$@" &
-echo "Browser started with CDP on port 9222"
-echo "Connect with: agent-browser open <url>"
-BROWSERSCRIPT
-            chmod +x /home/devuser/start-browser.sh
-            echo "✓ Browser automation ready (run ~/start-browser.sh)"
-          else
-            echo "✓ Headless mode (no VNC packages)"
-          fi
-
-          # Final setup
-          echo "[7/7] Finalizing..."
-          cd /home/devuser/workspace
-
-          echo ""
-          echo "========================================"
-          echo "  Agentbox Ready"
-          echo "========================================"
-          echo ""
-          echo "Quick commands:"
-          echo "  agent-browser --help                - AI browser automation"
-          echo "  ~/start-browser.sh                  - Start visible browser (VNC)"
-          echo "  npx @claude-flow/cli@latest --help  - Claude Flow V3"
-          echo "  npx ruvector serve                  - Start RuVector"
-          echo "  aisp validate <file>                - AISP validation"
-          echo ""
-          if command -v x11vnc >/dev/null 2>&1; then
-            echo "VNC Access:"
-            echo "  ssh -L 5901:localhost:5901 user@host"
-            echo "  Then: vnc://localhost:5901"
-            echo ""
-          fi
-
-          # Start supervisord if available
-          if [ -f /etc/supervisord.conf ]; then
-            mkdir -p /var/run /var/log/supervisor /tmp
-            export SLEEP_CMD="${pkgs.coreutils}/bin/sleep"
-            exec ${pkgs.python3Packages.supervisor}/bin/supervisord -c /etc/supervisord.conf -n
-          else
-            # Fallback: keep container alive
-            exec ${pkgs.coreutils}/bin/sleep infinity
-          fi
+          exec ${pkgs.bash}/bin/bash /opt/agentbox/config/entrypoint-unified.sh
         '';
 
-        # Runtime image - main agentic workload
-        runtimeImage = n2c.buildImage {
-          name = "agentbox";
-          tag = "runtime-${system}";
+        imageEnv = [
+          "PATH=/bin:/usr/bin:${pkgs.lib.makeBinPath allPackages}"
+          "NODE_ENV=production"
+          "PYTHONDONTWRITEBYTECODE=1"
+          "RUST_BACKTRACE=1"
+          "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+          "NIX_SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+          "AGENTBOX_CONFIG=/etc/agentbox.toml"
+          "AGENTBOX_VERSION=2.0.0"
+          "AGENTBOX_ORCHESTRATION=${coreCfg.orchestration or "ruflo-v3"}"
+          "RUVECTOR_BACKEND=${coreCfg.vector_db or "ruvector-embedded"}"
+          "RUVECTOR_DATA_DIR=/var/lib/ruvector"
+          "RUVECTOR_PORT=9700"
+          "MANAGEMENT_API_PORT=9090"
+          "MANAGEMENT_API_AUTH_MODE=hybrid"
+          "MANAGEMENT_API_KEY=change-this-secret-key"
+          "SOVEREIGN_MESH_ENABLED=${boolEnv (sovereignCfg.enabled or false)}"
+          "SOLID_POD_ENABLED=${boolEnv (sovereignCfg.solid_pod or false)}"
+          "SOLID_POD_ROOT=/var/lib/solid"
+          "SOLID_POD_PORT=8484"
+          "SOLID_REQUIRE_NIP98=${boolEnv (sovereignCfg.enabled or false)}"
+          "NOSTR_BRIDGE_ENABLED=${boolEnv (sovereignCfg.nostr_bridge or false)}"
+          "NOSTR_BRIDGE_PORT=9740"
+          "NOSTR_RELAYS=wss://relay.damus.io,wss://relay.primal.net"
+          "ENABLE_DESKTOP=${boolEnv (desktopCfg.enabled or false)}"
+          "ENABLE_AGENT_BROWSER=${boolEnv (browserCfg.agent_browser or false)}"
+          "ENABLE_PLAYWRIGHT=${boolEnv (browserCfg.playwright or false)}"
+          "ENABLE_QE_BROWSER=${boolEnv (browserCfg.qe_browser or false)}"
+          "ENABLE_FFMPEG=${boolEnv (mediaCfg.ffmpeg or false)}"
+          "ENABLE_IMAGEMAGICK=${boolEnv (mediaCfg.imagemagick or false)}"
+          "ENABLE_QGIS=${boolEnv (spatialCfg.qgis or false)}"
+          "ENABLE_BLENDER=${boolEnv (spatialCfg.blender or false)}"
+          "ENABLE_PYTORCH=${boolEnv (dataScienceCfg.pytorch or false)}"
+          "ENABLE_JUPYTER=${boolEnv (dataScienceCfg.jupyter or false)}"
+          "ENABLE_LATEX=${boolEnv (docsCfg.latex or false)}"
+          "ENABLE_REPORT_BUILDER=${boolEnv (docsCfg.report_builder or false)}"
+          "ENABLE_MERMAID=${boolEnv (docsCfg.mermaid or false)}"
+          "ENABLE_CLAUDE=${boolEnv (toolchainCfg.claude or false)}"
+          "ENABLE_RUFLO=${boolEnv (toolchainCfg.ruflo or false)}"
+          "ENABLE_CLAUDE_FLOW=${boolEnv (toolchainCfg.claude_flow or false)}"
+          "ENABLE_AGENTIC_QE=${boolEnv (toolchainCfg.agentic_qe or false)}"
+          "ENABLE_NAGUAL_QE=${boolEnv (toolchainCfg.nagual_qe or false)}"
+          "ENABLE_CODEBASE_MEMORY=${boolEnv (toolchainCfg.codebase_memory or false)}"
+          "ENABLE_RUST_TOOLCHAIN=${boolEnv (toolchainCfg.rust or false)}"
+          "WORKSPACE=/workspace"
+          "SHARED_PROJECTS_ROOT=/projects"
+          "AGENTBOX_AGENT_ID=agentbox-core"
+          "CLAUDE_CONFIG_DIR=/workspace/.claude"
+          "SKILLS_TREE=/opt/agentbox/skills"
+        ];
 
-          maxLayers = 100;
-
-          layers = [
-            # Layer 1: Base utilities (~50MB)
-            (n2c.buildLayer {
-              deps = basePackages;
-            })
-
-            # Layer 2: Node.js runtime (~100MB)
-            (n2c.buildLayer {
-              deps = nodeEnvPackages;
-            })
-
-            # Layer 3: Python runtime (~150MB)
-            (n2c.buildLayer {
-              deps = pythonPackages;
-            })
-
-            # Layer 4: Rust toolchain (~200MB)
-            (n2c.buildLayer {
-              deps = [ rustToolchain ];
-            })
-
-            # Layer 5: WASM tools (~30MB)
-            (n2c.buildLayer {
-              deps = wasmPackages;
-            })
-
-            # Layer 6: Database client (~10MB)
-            (n2c.buildLayer {
-              deps = dbPackages;
-            })
-
-            # Layer 7: Media tools (~50MB)
-            (n2c.buildLayer {
-              deps = mediaPackages;
-            })
-
-            # Layer 8: Services (~20MB)
-            (n2c.buildLayer {
-              deps = servicePackages;
-            })
-          ];
-
-          copyToRoot = pkgs.buildEnv {
-            name = "root";
-            paths = [ entrypoint configFiles ];
-            pathsToLink = [ "/bin" "/etc" ];
-          };
-
-          config = {
-            Entrypoint = [ "${entrypoint}/bin/entrypoint" ];
-            Env = [
-              "PATH=/bin:/usr/bin:${pkgs.lib.makeBinPath allPackages}"
-              "NODE_ENV=production"
-              "PYTHONDONTWRITEBYTECODE=1"
-              "RUST_BACKTRACE=1"
-              "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
-              "NIX_SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
-              # RuVector standalone configuration
-              "RUVECTOR_DATA_DIR=/var/lib/ruvector"
-              "RUVECTOR_PORT=9700"
-              # Agent templates directory (610+ Claude subagents)
-              "AGENTS_DIR=/home/devuser/agents"
-              # Workspace
-              "WORKSPACE=/home/devuser/workspace"
-            ];
-            WorkingDir = "/workspace";
-            ExposedPorts = {
-              "22/tcp" = {};    # SSH
-              "8080/tcp" = {};  # code-server
-              "9090/tcp" = {};  # Management API
-              "9600/tcp" = {};  # Z.AI (internal)
-              "9700/tcp" = {};  # RuVector API
-            };
-            Labels = {
-              "org.opencontainers.image.title" = "Agentbox";
-              "org.opencontainers.image.description" = "Minimal agentic container for Claude Flow V3 with RuVector";
-              "org.opencontainers.image.source" = "https://github.com/DreamLab-AI/agentbox";
-              "org.opencontainers.image.version" = "1.0.0";
-              "org.opencontainers.image.architecture" = system;
-            };
-          };
+        commonPorts = {
+          "9090/tcp" = {};
+          "9700/tcp" = {};
         };
 
-        # Full image - combined runtime + services
-        fullImage = n2c.buildImage {
-          name = "agentbox";
-          tag = "full-${system}";
-
-          maxLayers = 120;
-
-          layers = [
-            (n2c.buildLayer {
-              deps = allPackages;
-            })
-          ];
-
-          copyToRoot = pkgs.buildEnv {
-            name = "root";
-            paths = [ entrypoint ];
-            pathsToLink = [ "/bin" ];
-          };
-
-          config = {
-            Entrypoint = [ "${entrypoint}/bin/entrypoint" ];
-            Env = [
-              "PATH=/bin:/usr/bin:${pkgs.lib.makeBinPath allPackages}"
-              "NODE_ENV=production"
-              "PYTHONDONTWRITEBYTECODE=1"
-              "RUST_BACKTRACE=1"
-              "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
-              "RUVECTOR_DATA_DIR=/var/lib/ruvector"
-              "RUVECTOR_PORT=9700"
-            ];
-            WorkingDir = "/workspace";
-            ExposedPorts = {
-              "22/tcp" = {};
-              "8080/tcp" = {};
-              "9090/tcp" = {};
-              "9600/tcp" = {};
-              "9700/tcp" = {};  # RuVector API
-            };
-          };
+        sovereignPorts = lib.optionalAttrs (sovereignCfg.enabled or false) {
+          "8484/tcp" = {};
         };
 
-        # Desktop image - runtime + minimal VNC desktop via SSH tunnel
-        # Access: ssh -L 5901:localhost:5901 user@host, then vnc://localhost:5901
-        desktopImage = n2c.buildImage {
-          name = "agentbox";
-          tag = "desktop-${system}";
-
-          maxLayers = 125;
-
-          layers = [
-            # Layer 1: Base + Node + Python
-            (n2c.buildLayer {
-              deps = basePackages ++ nodeEnvPackages ++ pythonPackages;
-            })
-
-            # Layer 2: Rust + DB + Media
-            (n2c.buildLayer {
-              deps = [ rustToolchain ] ++ dbPackages ++ mediaPackages;
-            })
-
-            # Layer 3: Browser automation
-            (n2c.buildLayer {
-              deps = browserPackages;
-            })
-
-            # Layer 4: Services
-            (n2c.buildLayer {
-              deps = servicePackages;
-            })
-
-            # Layer 5: VNC/X11 minimal desktop (~150MB)
-            (n2c.buildLayer {
-              deps = vncPackages;
-            })
-          ];
-
-          copyToRoot = pkgs.buildEnv {
-            name = "root";
-            paths = [ entrypoint ];
-            pathsToLink = [ "/bin" ];
-          };
-
-          config = {
-            Entrypoint = [ "${entrypoint}/bin/entrypoint" ];
-            Env = [
-              "PATH=/bin:/usr/bin:${pkgs.lib.makeBinPath (allPackages ++ vncPackages)}"
-              "NODE_ENV=production"
-              "PYTHONDONTWRITEBYTECODE=1"
-              "RUST_BACKTRACE=1"
-              "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
-              "DISPLAY=:1"
-              "RUVECTOR_DATA_DIR=/var/lib/ruvector"
-              "RUVECTOR_PORT=9700"
-            ];
-            WorkingDir = "/workspace";
-            ExposedPorts = {
-              "22/tcp" = {};     # SSH (tunnel all services through this)
-              # VNC 5901 is localhost only - use SSH tunnel
-              "8080/tcp" = {};   # code-server
-              "9090/tcp" = {};   # Management API
-              "9222/tcp" = {};   # Chrome DevTools Protocol (localhost via tunnel)
-              "9600/tcp" = {};   # Z.AI (internal)
-              "9700/tcp" = {};   # RuVector API
-            };
-            Labels = {
-              "org.opencontainers.image.title" = "Agentbox Desktop";
-              "org.opencontainers.image.description" = "Minimal agentic container with RuVector and VNC desktop (SSH tunnel required)";
-              "org.opencontainers.image.source" = "https://github.com/DreamLab-AI/agentbox";
-              "org.opencontainers.image.version" = "1.0.0";
-              "org.opencontainers.image.architecture" = system;
-            };
-          };
+        desktopPorts = lib.optionalAttrs (desktopCfg.enabled or false) {
+          "5901/tcp" = {};
+          "9222/tcp" = {};
         };
 
-      in {
+        dataSciencePorts = lib.optionalAttrs (dataScienceCfg.jupyter or false) {
+          "8888/tcp" = {};
+        };
+
+        mkImage = { tag, extraPackages ? [], maxLayers ? 100 }:
+          n2c.buildImage {
+            name = "agentbox";
+            inherit tag maxLayers;
+            layers = [
+              (n2c.buildLayer { deps = basePackages; })
+              (n2c.buildLayer { deps = nodeEnvPackages ++ pythonBasePackages; })
+              (n2c.buildLayer { deps = [ rustToolchain ] ++ wasmPackages ++ dbPackages; })
+              (n2c.buildLayer { deps = mediaPackages ++ browserPackages ++ spatialPackages ++ dataSciencePackages ++ docsPackages ++ desktopPackages ++ extraPackages; })
+            ];
+            copyToRoot = pkgs.buildEnv {
+              name = "agentbox-root";
+              paths = [ entrypoint configFiles appRoot ];
+              pathsToLink = [ "/bin" "/etc" "/opt" ];
+            };
+            config = {
+              Entrypoint = [ "${entrypoint}/bin/entrypoint" ];
+              Env = imageEnv;
+              WorkingDir = "/workspace";
+              ExposedPorts = commonPorts // sovereignPorts // desktopPorts // dataSciencePorts;
+              Labels = {
+                "org.opencontainers.image.title" = "Agentbox";
+                "org.opencontainers.image.description" = "Agentbox 2.0 modular sovereign agent environment";
+                "org.opencontainers.image.source" = "https://github.com/DreamLab-AI/agentbox";
+                "org.opencontainers.image.version" = "2.0.0";
+                "org.opencontainers.image.architecture" = system;
+              };
+            };
+          };
+      in
+      {
         packages = {
-          runtime = runtimeImage;
-          full = fullImage;
-          desktop = desktopImage;
-          default = runtimeImage;
+          runtime = mkImage { tag = "runtime-${system}"; };
+          full = mkImage {
+            tag = "full-${system}";
+            maxLayers = 120;
+            extraPackages = allPackages;
+          };
+          desktop = mkImage {
+            tag = "desktop-${system}";
+            maxLayers = 125;
+            extraPackages = desktopPackages;
+          };
+          default = mkImage { tag = "runtime-${system}"; };
         };
 
-        # Development shell
         devShells.default = pkgs.mkShell {
           buildInputs = allPackages ++ [
             pkgs.nix
@@ -636,18 +509,10 @@ BROWSERSCRIPT
           ];
 
           shellHook = ''
-            echo "Agentbox development environment"
-            echo "Architecture: ${system}"
-            echo ""
-            echo "Build commands:"
-            echo "  nix build .#runtime  - Build runtime image"
-            echo "  nix build .#full     - Build full image"
-            echo "  nix build .#desktop  - Build desktop image with VNC"
-            echo ""
-            echo "RuVector (standalone vector database):"
-            echo "  npx ruvector serve   - Start RuVector server"
-            echo "  npx ruvector --help  - Show all commands"
-            echo ""
+            echo "Agentbox 2.0 development shell"
+            echo "Manifest: agentbox.toml"
+            echo "Build runtime: nix build .#runtime"
+            echo "Build desktop: nix build .#desktop"
           '';
         };
       });

@@ -1,0 +1,78 @@
+name: Auto-update catalog from upstream ruvector
+
+on:
+  schedule:
+    - cron: '0 6 * * *'      # Daily at 6am UTC
+  workflow_dispatch:           # Manual trigger via GitHub UI
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check-and-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Check upstream for changes
+        id: check
+        run: |
+          cd ruvector
+          git fetch origin main
+          LOCAL=$(git rev-parse HEAD)
+          REMOTE=$(git rev-parse origin/main)
+          echo "local=$LOCAL" >> "$GITHUB_OUTPUT"
+          echo "remote=$REMOTE" >> "$GITHUB_OUTPUT"
+          if [ "$LOCAL" = "$REMOTE" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Upstream unchanged ($LOCAL)"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Upstream changed: $LOCAL -> $REMOTE"
+          fi
+
+      - name: Update submodule
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          git submodule update --remote ruvector
+          echo "Updated ruvector to $(cd ruvector && git rev-parse --short HEAD)"
+
+      - name: Rebuild catalog
+        if: steps.check.outputs.changed == 'true'
+        run: bun scripts/build-catalog.ts
+
+      - name: Run tests
+        if: steps.check.outputs.changed == 'true'
+        run: bun test
+
+      - name: Create pull request
+        if: steps.check.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          title: "Update catalog from ruvnet/ruvector"
+          body: |
+            Upstream ruvector changed.
+
+            **Previous commit**: `${{ steps.check.outputs.local }}`
+            **New commit**: `${{ steps.check.outputs.remote }}`
+
+            This PR updates the ruvector submodule and rebuilds the catalog index.
+            All tests passed.
+
+            **Review checklist:**
+            - [ ] Check if new crates need a new problem-solution section header in SKILL.md
+            - [ ] Check if new capabilities need industry vertical mappings
+            - [ ] Verify benchmark regression tests still pass
+          branch: auto-update-catalog
+          commit-message: "Update catalog from upstream ruvnet/ruvector"

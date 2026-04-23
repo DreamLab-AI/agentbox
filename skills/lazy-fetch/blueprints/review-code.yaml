@@ -1,0 +1,27 @@
+# Review code: check quality, find issues, suggest improvements
+name: review-code
+description: Review recent changes for quality, bugs, and improvements
+input: What to review (file, feature, or 'recent changes')
+
+steps:
+  - name: gather-context
+    type: gather
+    task: "${input}"
+
+  - name: check-diff
+    type: run
+    command: "git diff --stat HEAD~3 2>/dev/null || git diff --stat 2>/dev/null || echo 'No git history'"
+
+  - name: typecheck
+    type: run
+    command: "bash hooks/detect-check.sh 2>&1"
+    gate:
+      on_fail: skip
+
+  - name: review
+    type: prompt
+    prompt: "Review the code for: ${input}. Check for: bugs, security issues, performance problems, readability, missing error handling. Be specific — cite file:line for each issue."
+
+  - name: suggest
+    type: prompt
+    prompt: "Based on your review of ${input}, suggest concrete improvements. Prioritize by impact. Skip cosmetic issues."

@@ -1,0 +1,13 @@
+# Ontology Enrich Skill Dependencies
+
+# Layer 0: Core ontology library (relative path for local development)
+../ontology-core
+
+# API client
+requests>=2.31.0
+
+# Environment management
+python-dotenv>=1.0.0
+
+# Logging
+coloredlogs>=15.0.1

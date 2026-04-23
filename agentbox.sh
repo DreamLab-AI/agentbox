@@ -175,7 +175,7 @@ sudo systemctl enable --now docker
 sudo usermod -aG docker $USER
 
 # Install development tools
-sudo dnf install -y git nodejs npm python3-pip tmux htop
+sudo dnf install -y git nodejs npm python3-pip zellij htop
 
 # Install VNC stack
 echo "Installing VNC desktop..."

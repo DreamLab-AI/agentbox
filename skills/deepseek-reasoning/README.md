@@ -24,7 +24,7 @@ Already configured in `/home/deepseek-user/.config/deepseek/config.json`:
 
 ```json
 {
-  "apiKey": "sk-[your deepseek api key]",
+  "apiKey": "sk-d76e012d700a4cd3983f93c056aafee0",
   "availableEndpoints": {
     "special": "https://api.deepseek.com/v3.2_speciale_expires_on_20251215"
   },
@@ -203,7 +203,7 @@ docker exec agentic-workstation grep deepseek-user /etc/sudoers
 # Test endpoint directly
 docker exec -u deepseek-user agentic-workstation curl \
   https://api.deepseek.com/v3.2_speciale_expires_on_20251215/v1/models \
-  -H "Authorization: Bearer sk-[your deepseek api key]"
+  -H "Authorization: Bearer sk-d76e012d700a4cd3983f93c056aafee0"
 
 # Verify config
 docker exec agentic-workstation cat /home/deepseek-user/.config/deepseek/config.json

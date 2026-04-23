@@ -1,0 +1,12 @@
+{
+  "version": "1.0.0",
+  "lastSync": "2026-03-30T22:30:00Z",
+  "diagrams": [
+    {"id": "catalog-overview", "sourceFile": "README.md", "svgFile": "assets/diagrams/catalog-overview.svg", "lastConverted": "2026-03-30T22:30:00Z"},
+    {"id": "discovery-problem", "sourceFile": "README.md", "svgFile": "assets/diagrams/discovery-problem.svg", "lastConverted": "2026-03-30T22:30:00Z"},
+    {"id": "three-layers", "sourceFile": "README.md", "svgFile": "assets/diagrams/three-layers.svg", "lastConverted": "2026-03-30T22:30:00Z"},
+    {"id": "access-paths", "sourceFile": "README.md", "svgFile": "assets/diagrams/access-paths.svg", "lastConverted": "2026-03-30T22:30:00Z"},
+    {"id": "migration-flow", "sourceFile": "README.md", "svgFile": "assets/diagrams/migration-flow.svg", "lastConverted": "2026-03-30T22:30:00Z"},
+    {"id": "monorepo-map", "sourceFile": "README.md", "svgFile": "assets/diagrams/monorepo-map.svg", "lastConverted": "2026-03-30T22:30:00Z"}
+  ]
+}

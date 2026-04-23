@@ -1,21 +1,25 @@
 ---
 name: "AgentDB Learning Plugins"
-description: "Create and train AI learning plugins with AgentDB's 9 reinforcement learning algorithms. Includes Decision Transformer, Q-Learning, SARSA, Actor-Critic, and more. Use when building self-learning agents, implementing RL, or optimizing agent behavior through experience."
+description: "Create and train AI learning plugins with AgentDB's 9 reinforcement learning algorithms. Includes Decision Transformer, Q-Learning, SARSA, Actor-Critic, and more. Use when building self-learning agents, implementing RL, or optimising agent behaviour through experience."
 ---
 
 # AgentDB Learning Plugins
 
-## What This Skill Does
+For AgentDB architecture and performance overview, see [AgentDB Overview](../agentdb-advanced/docs/agentdb-overview.md).
 
-Provides access to 9 reinforcement learning algorithms via AgentDB's plugin system. Create, train, and deploy learning plugins for autonomous agents that improve through experience. Includes offline RL (Decision Transformer), value-based learning (Q-Learning), policy gradients (Actor-Critic), and advanced techniques.
+## What This Skill Covers
 
-**Performance**: Train models 10-100x faster with WASM-accelerated neural inference.
+9 reinforcement learning algorithms via AgentDB's plugin system: create, train, and deploy learning plugins for autonomous agents that improve through experience. Train models 10-100x faster with WASM-accelerated neural inference.
 
-## Prerequisites
+**Additional Prerequisites**: Basic understanding of reinforcement learning (recommended).
 
-- Node.js 18+
-- AgentDB v1.0.7+ (via agentic-flow)
-- Basic understanding of reinforcement learning (recommended)
+## When Not To Use
+
+- For standard vector search without learning -- use the agentdb-vector-search skill instead
+- For production ML model training with PyTorch or TensorFlow -- use the pytorch-ml skill instead
+- For distributed neural network training in cloud sandboxes -- use the flow-nexus-neural skill instead
+- For simple agent memory storage without RL -- use the agentdb-memory-patterns skill instead
+- For CUDA-accelerated GPU kernel development -- use the cuda skill instead
 
 ---
 
@@ -236,12 +240,12 @@ npx agentdb@latest create-plugin -t actor-critic -n ac-agent
 
 **Type**: Robustness Enhancement
 **Best For**: Safety, robustness to perturbations
-**Strengths**: Improves model robustness, adversarial defense
+**Strengths**: Improves model robustness, adversarial defence
 
 **Use Cases**:
 - Security applications
 - Robust decision-making
-- Adversarial defense
+- Adversarial defence
 - Safety testing
 
 ### 7. Curriculum Learning
@@ -416,7 +420,7 @@ await adapter.train({
 
 ---
 
-## Performance Optimization
+## Performance Optimisation
 
 ### Batch Training
 
@@ -534,9 +538,7 @@ await adapter.retrieveWithReasoning(queryEmbedding, {
 ## Learn More
 
 - **Algorithm Papers**: See docs/algorithms/ for detailed papers
-- **GitHub**: https://github.com/ruvnet/agentic-flow/tree/main/packages/agentdb
-- **MCP Integration**: `npx agentdb@latest mcp`
-- **Website**: https://agentdb.ruv.io
+- See [AgentDB Overview](../agentdb-advanced/docs/agentdb-overview.md#links) for general links.
 
 ---
 

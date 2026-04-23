@@ -1,29 +1,30 @@
 ---
 name: playwright
 description: >
-  FALLBACK browser automation. Use @claude-flow/browser as PRIMARY.
   Browser automation, web scraping, and visual testing with Playwright on Display :1.
   Use for navigating web pages, clicking elements, filling forms, taking screenshots,
   executing JavaScript, and visual verification of web applications. Visual access
   available via VNC on port 5901.
 version: 2.0.0
-author: turbo-flow-claude
+author: agentbox-claude
 mcp_server: true
 protocol: mcp-sdk
 entry_point: mcp-server/server.js
-priority: 10
 dependencies:
   - chromium
   - playwright
 ---
 
-# Playwright Skill (FALLBACK)
-
-> **NOTE**: This is a FALLBACK browser skill. Use `@claude-flow/browser` as the PRIMARY browser system.
-> It offers 59 MCP tools, 93% context reduction, trajectory learning, and swarm coordination.
-> Only use Playwright when @claude-flow/browser is unavailable or you need Playwright-specific APIs.
+# Playwright Skill
 
 Browser automation and visual testing via MCP SDK, with direct browser control on Display :1.
+
+## When Not To Use
+
+- For lightweight browser automation with AI-optimised snapshots -- use the browser skill instead (smaller context, faster)
+- For summarising web page content without interaction -- use the web-summary or gemini-url-context skills instead
+- For debugging host web servers from inside Docker -- use the host-webserver-debug skill instead
+- For API testing that does not require a real browser -- use curl or httpx directly
 
 ## Installation
 
@@ -132,7 +133,7 @@ Browser is visible via VNC:
 # Connect with VNC client
 vncviewer localhost:5901
 
-# Password: turboflow
+# Password: agentbox
 ```
 
 ## VisionFlow Integration

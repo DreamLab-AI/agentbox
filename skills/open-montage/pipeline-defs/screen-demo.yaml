@@ -1,0 +1,197 @@
+name: screen-demo
+version: "2.0"
+description: >
+  Screen recording pipeline. Takes raw screen capture (app demo, browser walkthrough,
+  coding tutorial) and produces a polished demo video with callouts, zoom crops,
+  subtitles, and cleaned audio. EP orchestration adds quality gates for legibility,
+  audio clarity, and pacing.
+category: screen_recording
+stability: production
+default_checkpoint_policy: guided
+
+orchestration:
+  mode: executive-producer
+  skill: pipelines/screen-demo/executive-producer
+  budget_default_usd: 1.00
+  max_revisions_per_stage: 3
+  max_send_backs: 3
+  max_wall_time_minutes: 10
+
+required_skills:
+  - pipelines/screen-demo/executive-producer
+  - pipelines/screen-demo/idea-director
+  - pipelines/screen-demo/script-director
+  - pipelines/screen-demo/scene-director
+  - pipelines/screen-demo/asset-director
+  - pipelines/screen-demo/edit-director
+  - pipelines/screen-demo/compose-director
+  - pipelines/screen-demo/publish-director
+  - meta/reviewer
+  - meta/checkpoint-protocol
+
+compatible_playbooks:
+  - clean-professional
+  - minimalist-diagram
+
+stages:
+  - name: idea
+    skill: pipelines/screen-demo/idea-director
+    produces:
+      - brief
+    tools_available: []
+    checkpoint_required: true
+    human_approval_default: true
+    review_focus:
+      - Brief accurately describes what the screen recording demonstrates
+      - Target platform and duration are realistic
+      - Callout strategy identified (what to highlight)
+    success_criteria:
+      - Schema-valid brief artifact
+      - Brief references the provided screen recording footage
+
+  - name: script
+    skill: pipelines/screen-demo/script-director
+    required_artifacts_in:
+      - brief
+    produces:
+      - script
+    required_tools:
+      - transcriber
+    optional_tools:
+      - scene_detect
+      - audio_enhance
+    tools_available:
+      - transcriber
+      - scene_detect
+    checkpoint_required: true
+    human_approval_default: true
+    review_focus:
+      - Transcription captures any voiceover accurately
+      - Key UI actions are annotated with timestamps
+      - Sections align with logical workflow steps
+    success_criteria:
+      - Schema-valid script artifact
+      - Script sections have timestamps from transcript or manual annotation
+
+  - name: scene_plan
+    skill: pipelines/screen-demo/scene-director
+    required_artifacts_in:
+      - script
+    optional_artifacts_in:
+      - brief
+    produces:
+      - scene_plan
+    required_tools: []
+    optional_tools:
+      - frame_sampler
+    tools_available:
+      - frame_sampler
+    checkpoint_required: true
+    human_approval_default: true
+    review_focus:
+      - Zoom-crop regions identified for key UI moments
+      - Callout overlay positions don't obscure important UI
+      - Pacing allows viewer to follow the workflow
+    success_criteria:
+      - Schema-valid scene_plan artifact
+      - Every key workflow step has a corresponding scene
+
+  - name: assets
+    skill: pipelines/screen-demo/asset-director
+    required_artifacts_in:
+      - scene_plan
+    optional_artifacts_in:
+      - script
+    produces:
+      - asset_manifest
+    required_tools:
+      - subtitle_gen
+    optional_tools:
+      - tts_selector
+      - image_selector
+      - diagram_gen
+      - audio_enhance
+    tools_available:
+      - subtitle_gen
+      - tts_selector
+      - image_selector
+      - diagram_gen
+      - audio_enhance
+    checkpoint_required: true
+    human_approval_default: false
+    review_focus:
+      - Subtitle file exists and matches speech timing
+      - Reusable callout overlays (arrows, highlights, masks) are prepared
+      - Audio cleaned of keyboard noise and background hum
+    success_criteria:
+      - Schema-valid asset_manifest artifact
+      - All referenced asset files exist on disk
+
+  - name: edit
+    skill: pipelines/screen-demo/edit-director
+    required_artifacts_in:
+      - scene_plan
+      - asset_manifest
+    optional_artifacts_in:
+      - script
+    produces:
+      - edit_decisions
+    tools_available: []
+    checkpoint_required: true
+    human_approval_default: false
+    review_focus:
+      - Zoom-crop notes are smooth and minimal (no constant motion)
+      - Dead time (loading, typing pauses) trimmed or sped up
+      - Callout timing matches narration
+    success_criteria:
+      - Schema-valid edit_decisions artifact
+      - All cuts reference valid source files and assets
+
+  - name: compose
+    skill: pipelines/screen-demo/compose-director
+    required_artifacts_in:
+      - edit_decisions
+      - asset_manifest
+    optional_artifacts_in:
+      - scene_plan
+    produces:
+      - render_report
+    required_tools:
+      - video_compose
+      - audio_mixer
+    optional_tools:
+      - video_trimmer
+      - audio_enhance
+    tools_available:
+      - video_compose
+      - audio_mixer
+      - video_trimmer
+      - audio_enhance
+    checkpoint_required: true
+    human_approval_default: false
+    review_focus:
+      - Output video is playable and crisp at target resolution
+      - UI text remains readable after crops and scaling
+      - Audio is clear with no keyboard/click noise
+    success_criteria:
+      - Schema-valid render_report artifact
+      - Output file exists and passes ffprobe validation
+
+  - name: publish
+    skill: pipelines/screen-demo/publish-director
+    required_artifacts_in:
+      - render_report
+    optional_artifacts_in:
+      - brief
+    produces:
+      - publish_log
+    tools_available: []
+    checkpoint_required: true
+    human_approval_default: true
+    review_focus:
+      - Metadata includes relevant software/tool keywords
+      - Chapter markers align with workflow steps
+      - Export package is complete
+    success_criteria:
+      - Schema-valid publish_log artifact
+      - Export directory contains video, metadata, and thumbnail concept

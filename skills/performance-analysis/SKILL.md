@@ -1,15 +1,23 @@
 ---
 name: performance-analysis
 version: 1.0.0
-description: Comprehensive performance analysis, bottleneck detection, and optimization recommendations for Claude Flow swarms
+description: Comprehensive performance analysis, bottleneck detection, and optimisation recommendations for Claude Flow swarms
 category: monitoring
-tags: [performance, bottleneck, optimization, profiling, metrics, analysis]
+tags: [performance, bottleneck, optimisation, profiling, metrics, analysis]
 author: Claude Flow Team
 ---
 
 # Performance Analysis Skill
 
-Comprehensive performance analysis suite for identifying bottlenecks, profiling swarm operations, generating detailed reports, and providing actionable optimization recommendations.
+Comprehensive performance analysis suite for identifying bottlenecks, profiling swarm operations, generating detailed reports, and providing actionable optimisation recommendations.
+
+## When Not To Use
+
+- For CUDA GPU kernel profiling and optimisation -- use the cuda skill instead
+- For full development pipelines with quality gates and testing -- use the build-with-quality skill instead
+- For truth scoring and automatic rollback of bad changes -- use the verification-quality skill instead
+- For general swarm orchestration without performance focus -- use the swarm-advanced skill instead
+- For AgentDB vector search performance tuning -- use the agentdb-vector-search skill instead
 
 ## Overview
 
@@ -17,7 +25,7 @@ This skill consolidates all performance analysis capabilities:
 - **Bottleneck Detection**: Identify performance bottlenecks across communication, processing, memory, and network
 - **Performance Profiling**: Real-time monitoring and historical analysis of swarm operations
 - **Report Generation**: Create comprehensive performance reports in multiple formats
-- **Optimization Recommendations**: AI-powered suggestions for improving performance
+- **Optimisation Recommendations**: AI-powered suggestions for improving performance
 
 ## Quick Start
 
@@ -248,7 +256,7 @@ npx claude-flow analysis performance-report [options]
 4. **Bottleneck Analysis**
    - Identified bottlenecks
    - Impact assessment
-   - Optimization priorities
+   - Optimisation priorities
 
 5. **Comparative Analysis** (when --compare used)
    - Performance trends
@@ -322,26 +330,26 @@ npx claude-flow analysis performance-report \
 3. **Low Priority**: Increase agent concurrency to 8 (20% improvement)
 ```
 
-### 4. Optimization Recommendations
+### 4. Optimisation Recommendations
 
 #### Automatic Fixes
 When using `--fix`, the following optimizations may be applied:
 
-**1. Topology Optimization**
+**1. Topology Optimisation**
 - Switch to more efficient topology (mesh → hierarchical)
 - Adjust communication patterns
 - Reduce coordination overhead
-- Optimize message routing
+- Optimise message routing
 
 **2. Caching Enhancement**
 - Enable memory caching
-- Optimize cache strategies
+- Optimise cache strategies
 - Preload common patterns
 - Implement cache warming
 
 **3. Concurrency Tuning**
 - Adjust agent counts
-- Optimize parallel execution
+- Optimise parallel execution
 - Balance workload distribution
 - Implement load balancing
 
@@ -351,8 +359,8 @@ When using `--fix`, the following optimizations may be applied:
 - Reduce wait times
 - Implement fair scheduling
 
-**5. Resource Optimization**
-- Optimize memory usage
+**5. Resource Optimisation**
+- Optimise memory usage
 - Reduce I/O operations
 - Batch API calls
 - Implement connection pooling
@@ -487,7 +495,7 @@ analyzePerformance().catch(console.error);
 - Track improvements over time
 - Use for capacity planning
 
-### 5. Continuous Optimization
+### 5. Continuous Optimisation
 - Learn from each analysis
 - Build performance budgets
 - Establish baselines
@@ -535,7 +543,7 @@ npx claude-flow bottleneck detect --fix
 
 ## Integration with Other Skills
 
-- **swarm-orchestration**: Use performance data to optimize topology
+- **swarm-orchestration**: Use performance data to optimise topology
 - **memory-management**: Improve cache strategies based on analysis
 - **task-coordination**: Adjust scheduling based on bottlenecks
 - **neural-training**: Train patterns from performance data
@@ -543,8 +551,8 @@ npx claude-flow bottleneck detect --fix
 ## Related Commands
 
 - `npx claude-flow swarm monitor` - Real-time monitoring
-- `npx claude-flow token usage` - Token optimization analysis
-- `npx claude-flow cache manage` - Cache optimization
+- `npx claude-flow token usage` - Token optimisation analysis
+- `npx claude-flow cache manage` - Cache optimisation
 - `npx claude-flow agent metrics` - Agent performance metrics
 - `npx claude-flow task status` - Task execution analysis
 

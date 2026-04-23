@@ -1,0 +1,35 @@
+{
+  "name": "lazy-fetch",
+  "version": "0.1.0",
+  "description": "CLI companion for Claude Code — context, persistence, process tracking. Minimum effort, maximum result.",
+  "type": "module",
+  "bin": {
+    "lazy": "./dist/cli.js",
+    "lazy-mcp": "./dist/mcp-server.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "prepare": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/cli.js",
+    "mcp": "node dist/mcp-server.js",
+    "test": "bash test.sh",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "claude-code",
+    "agentic",
+    "cli"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "typescript": "^6.0.2"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "yaml": "^2.8.3",
+    "zod": "^4.3.6"
+  }
+}

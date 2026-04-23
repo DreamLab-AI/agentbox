@@ -1,0 +1,1 @@
+Run `lazy done $ARGUMENTS` to mark this task as completed. Then run `lazy status` to show the updated plan.

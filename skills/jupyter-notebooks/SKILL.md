@@ -1,15 +1,9 @@
 ---
 name: Jupyter Notebooks
 description: Comprehensive Jupyter notebook operations - create, execute, and analyze notebooks with full cell manipulation
-version: 1.0.0
-mcp_server: true
-protocol: mcp-sdk
-entry_point: server.js
 ---
 
 # Jupyter Notebooks Skill
-
-> **KNOWN LIMITATION**: The current implementation executes each cell in a **fresh Python process**. Variables and state do NOT persist between cells. This is suitable for independent code snippets but NOT for traditional notebook workflows where cells share state. For complex data science workflows requiring kernel persistence, consider using JupyterLab directly.
 
 This skill provides complete Jupyter notebook interaction capabilities through MCP server integration, enabling notebook-based data science and research workflows.
 
@@ -35,6 +29,14 @@ Use this skill when you need to:
 - Prototype code interactively
 - Create tutorial or educational notebooks
 - Document analysis procedures with code + narrative
+
+## When Not To Use
+
+- For production code implementation that does not need interactive exploration -- write files directly with Claude Code
+- For LaTeX document preparation and professional typesetting -- use the latex-documents or report-builder skills instead
+- For GPU kernel development and CUDA programming -- use the cuda skill instead
+- For deploying trained models to production -- use the pytorch-ml or flow-nexus-neural skills instead
+- For non-Python data processing pipelines -- use the stream-chain skill or appropriate language-specific tooling
 
 ## Prerequisites
 
@@ -136,7 +138,7 @@ Notebooks can be exported to:
 
 ## Best Practices
 
-1. **Cell Organization**: Keep cells focused on single tasks
+1. **Cell Organisation**: Keep cells focused on single tasks
 2. **Markdown Documentation**: Use markdown cells for explanations
 3. **Restart & Run All**: Test full execution before sharing
 4. **Version Control**: Use nbdime for notebook diffs
@@ -187,8 +189,8 @@ The skill provides detailed error messages for:
 
 - **pytorch-ml** - Deep learning workflows
 - **latex-documents** - Scientific paper generation
-- **data-visualization** - Advanced plotting
-- **cuda-development** - GPU programming
+- **report-builder** - Advanced plotting and report generation
+- **cuda** - GPU programming
 
 ## Technical Details
 

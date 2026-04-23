@@ -25,6 +25,14 @@ related_skills:
 
 Intelligent release automation and orchestration using AI swarms for comprehensive software releases - from changelog generation to multi-platform deployment with rollback capabilities.
 
+## When Not To Use
+
+- For PR-level code review and quality analysis -- use the github-code-review skill instead
+- For GitHub Actions workflow authoring and CI/CD pipeline setup -- use the github-workflow-automation skill instead
+- For cross-repository coordination and package sync -- use the github-multi-repo skill instead
+- For issue triage, sprint planning, and project boards -- use the github-project-management skill instead
+- For non-GitHub release pipelines or cloud deployment orchestration -- use the flow-nexus-swarm or swarm-advanced skills instead
+
 ## Quick Start
 
 ### Simple Release Flow
@@ -275,7 +283,7 @@ npx claude-flow github release-build \
 **Features:**
 - Cross-platform compilation
 - Parallel build execution
-- Artifact optimization and compression
+- Artifact optimisation and compression
 - Dependency bundling
 - Build caching and reuse
 
@@ -1003,11 +1011,11 @@ npx claude-flow@alpha github version-sync \
 - **Deployment**: 2-5 minutes per target
 - **Complete Pipeline**: 15-30 minutes
 
-### Optimization Tips
+### Optimisation Tips
 1. **Parallel Execution**: Use swarm coordination for concurrent tasks
 2. **Caching**: Enable build and dependency caching
 3. **Incremental Builds**: Only rebuild changed components
-4. **Test Optimization**: Run critical tests first, full suite in parallel
+4. **Test Optimisation**: Run critical tests first, full suite in parallel
 
 ### Success Metrics
 - **Release Frequency**: Target weekly minor releases
@@ -1025,11 +1033,18 @@ npx claude-flow@alpha github version-sync \
 - [Claude Flow SPARC Guide](../../docs/sparc-methodology.md)
 - [Swarm Coordination Patterns](../../docs/swarm-patterns.md)
 
+## When Not To Use
+
+- **Do not use for code review** (use `github-code-review` instead) -- If you need to review PR diffs for security, performance, or style issues rather than managing the release lifecycle.
+- **Do not use for issue tracking or sprint planning** (use `github-project-management` instead) -- If your focus is issue triage, project boards, or agile workflows rather than versioning and deployment.
+- **Do not use for CI/CD pipeline creation** (use `github-workflow-automation` instead) -- If you need to write or optimise GitHub Actions workflow YAML files rather than orchestrate a release through an existing pipeline.
+- **Do not use for cross-repository synchronization** (use `github-multi-repo` instead) -- If you need to coordinate dependency updates, structure alignment, or package synchronization across multiple repositories (though multi-repo releases are supported here).
+
 ### Related Skills
-- **github-pr-management**: PR review and merge automation
+- **github-code-review**: PR review and quality analysis
 - **github-workflow-automation**: CI/CD workflow orchestration
-- **multi-repo-coordination**: Cross-repository synchronization
-- **deployment-orchestration**: Advanced deployment strategies
+- **github-multi-repo**: Cross-repository synchronization
+- **github-project-management**: Issue tracking and sprint planning
 
 ### Support & Community
 - Issues: https://github.com/ruvnet/claude-flow/issues

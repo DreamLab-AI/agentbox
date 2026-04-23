@@ -30,6 +30,14 @@ Comprehensive media processing with FFmpeg 8.0 for video/audio transcoding, edit
 - Apply filters and effects
 - Analyze media properties
 
+## When Not To Use
+
+- For still image processing (resize, crop, format conversion, filters) -- use the imagemagick skill instead
+- For AI-generated images or videos from text prompts -- use the comfyui skill instead
+- For 3D rendering and scene creation -- use the blender skill instead
+- For creating diagrams or charts as images -- use the mermaid-diagrams or report-builder skills instead
+- For browser-based video playback testing -- use the playwright or browser skills instead
+
 ## Basic Commands
 
 ### Info and Analysis
@@ -188,7 +196,7 @@ ffmpeg -i input.mp4 \
   youtube.mp4
 ```
 
-### Web Optimization
+### Web Optimisation
 ```bash
 ffmpeg -i input.mp4 \
   -c:v libx264 -crf 23 -preset faster \
@@ -265,8 +273,7 @@ ffmpeg -err_detect ignore_err -i corrupted.mp4 -c copy repaired.mp4
 
 ## Related Skills
 
-- jupyter-notebooks - Analyze with Python
-- docker-manager - Batch processing in containers
+- **jupyter-notebooks** - Analyze media with Python
 
 ## Notes
 

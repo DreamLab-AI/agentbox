@@ -72,7 +72,9 @@ app.addHook('onResponse', async (request, reply) => {
 });
 
 // Authentication middleware (applies to all routes except health checks)
-const authMiddleware = createAuthMiddleware(API_KEY);
+const authMiddleware = createAuthMiddleware(API_KEY, {
+  authMode: process.env.MANAGEMENT_API_AUTH_MODE || 'hybrid'
+});
 
 app.addHook('onRequest', async (request, reply) => {
   // Skip auth for health check endpoints and metrics
@@ -232,7 +234,7 @@ app.get('/', {
       }
     },
     documentation: '/docs',
-    authentication: 'X-API-Key header required (except /health, /ready, /metrics)'
+    authentication: 'Authorization: Bearer <token> or Authorization: Nostr <base64-event> (except /health, /ready, /metrics)'
   });
 });
 

@@ -1,0 +1,44 @@
+# AutoResearch-inspired self-improvement loop
+# Runs one iteration: pick improvement, implement, validate, keep or discard
+name: improve
+description: Pick one improvement, implement it, validate, keep or discard (AutoResearch pattern)
+input: Improvement area or 'auto' to pick from program.md
+
+steps:
+  - name: read-program
+    type: run
+    command: "cat program.md | head -60"
+
+  - name: read-codebase
+    type: run
+    command: "wc -l src/*.ts | tail -1 && echo '---' && node dist/cli.js help 2>&1 | head -5"
+
+  - name: checkpoint
+    type: run
+    command: "git add -A && git stash push -m 'pre-improve' 2>/dev/null || true"
+
+  - name: pick-and-implement
+    type: prompt
+    prompt: "Read program.md for the improvement list. Pick ONE high-priority improvement and implement it. The input hint is: ${input}. Make the minimal change needed. Only modify src/, hooks/, or blueprints/ files."
+
+  - name: build
+    type: run
+    command: "bash hooks/detect-check.sh 2>&1"
+    gate:
+      on_fail: stop
+
+  - name: verify-cli
+    type: run
+    command: "node dist/cli.js help 2>&1 | head -3"
+    gate:
+      on_fail: stop
+
+  - name: verify-commands
+    type: run
+    command: "node dist/cli.js status 2>&1 && node dist/cli.js recall 2>&1"
+    gate:
+      on_fail: stop
+
+  - name: evaluate
+    type: prompt
+    prompt: "The improvement passed all validation. Review what was changed. Is this worth keeping? Consider: does it make lazy fetch simpler, more useful, or more reliable? If yes, commit with 'git commit -m improve: <description>'. If no, discard with 'git checkout -- src/'."

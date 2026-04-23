@@ -1,0 +1,254 @@
+{
+  "title": "Microservices Architecture",
+  "description": "A typical microservices architecture with API gateway, authentication, and multiple services",
+  "version": "1.0.0",
+  "fitToScreen": true,
+  "items": [
+    {
+      "id": "user",
+      "name": "User",
+      "description": "End user accessing the system",
+      "icon": "isoflow__person",
+      "position": { "x": 0, "y": 0 }
+    },
+    {
+      "id": "web-app",
+      "name": "Web Application",
+      "description": "Frontend web application",
+      "icon": "isoflow__web_app",
+      "position": { "x": 2, "y": 0 }
+    },
+    {
+      "id": "mobile-app",
+      "name": "Mobile App",
+      "description": "Mobile application",
+      "icon": "isoflow__mobile",
+      "position": { "x": 2, "y": 2 }
+    },
+    {
+      "id": "gateway",
+      "name": "API Gateway",
+      "description": "Central API gateway for routing and rate limiting",
+      "icon": "isoflow__gateway",
+      "position": { "x": 4, "y": 1 }
+    },
+    {
+      "id": "auth",
+      "name": "Auth Service",
+      "description": "Authentication and authorization service",
+      "icon": "isoflow__authentication",
+      "position": { "x": 6, "y": 0 }
+    },
+    {
+      "id": "users-svc",
+      "name": "Users Service",
+      "description": "User management microservice",
+      "icon": "isoflow__api",
+      "position": { "x": 6, "y": 2 }
+    },
+    {
+      "id": "orders-svc",
+      "name": "Orders Service",
+      "description": "Order processing microservice",
+      "icon": "isoflow__microservice",
+      "position": { "x": 6, "y": 4 }
+    },
+    {
+      "id": "notifications",
+      "name": "Notifications",
+      "description": "Notification service for emails and push",
+      "icon": "isoflow__notification",
+      "position": { "x": 8, "y": 0 }
+    },
+    {
+      "id": "queue",
+      "name": "Message Queue",
+      "description": "Async message queue for inter-service communication",
+      "icon": "isoflow__queue",
+      "position": { "x": 8, "y": 2 }
+    },
+    {
+      "id": "users-db",
+      "name": "Users DB",
+      "description": "PostgreSQL database for user data",
+      "icon": "isoflow__database",
+      "position": { "x": 8, "y": 4 }
+    },
+    {
+      "id": "orders-db",
+      "name": "Orders DB",
+      "description": "PostgreSQL database for orders",
+      "icon": "isoflow__database",
+      "position": { "x": 8, "y": 6 }
+    },
+    {
+      "id": "cache",
+      "name": "Redis Cache",
+      "description": "Redis for caching and sessions",
+      "icon": "isoflow__redis",
+      "position": { "x": 10, "y": 3 }
+    },
+    {
+      "id": "monitoring",
+      "name": "Monitoring",
+      "description": "System monitoring and alerting",
+      "icon": "isoflow__monitoring",
+      "position": { "x": 10, "y": 1 }
+    }
+  ],
+  "connectors": [
+    {
+      "id": "c1",
+      "from": "user",
+      "to": "web-app",
+      "color": "blue",
+      "showArrow": true
+    },
+    {
+      "id": "c2",
+      "from": "user",
+      "to": "mobile-app",
+      "color": "blue",
+      "showArrow": true
+    },
+    {
+      "id": "c3",
+      "from": "web-app",
+      "to": "gateway",
+      "color": "blue",
+      "showArrow": true,
+      "labels": [
+        { "id": "l1", "text": "HTTPS", "position": 50 }
+      ]
+    },
+    {
+      "id": "c4",
+      "from": "mobile-app",
+      "to": "gateway",
+      "color": "blue",
+      "showArrow": true
+    },
+    {
+      "id": "c5",
+      "from": "gateway",
+      "to": "auth",
+      "color": "green",
+      "showArrow": true,
+      "labels": [
+        { "id": "l2", "text": "JWT", "position": 50 }
+      ]
+    },
+    {
+      "id": "c6",
+      "from": "gateway",
+      "to": "users-svc",
+      "color": "blue",
+      "showArrow": true
+    },
+    {
+      "id": "c7",
+      "from": "gateway",
+      "to": "orders-svc",
+      "color": "blue",
+      "showArrow": true
+    },
+    {
+      "id": "c8",
+      "from": "auth",
+      "to": "notifications",
+      "color": "purple",
+      "style": "DASHED",
+      "showArrow": true
+    },
+    {
+      "id": "c9",
+      "from": "users-svc",
+      "to": "queue",
+      "color": "orange",
+      "showArrow": true
+    },
+    {
+      "id": "c10",
+      "from": "orders-svc",
+      "to": "queue",
+      "color": "orange",
+      "showArrow": true
+    },
+    {
+      "id": "c11",
+      "from": "users-svc",
+      "to": "users-db",
+      "color": "teal",
+      "showArrow": true
+    },
+    {
+      "id": "c12",
+      "from": "orders-svc",
+      "to": "orders-db",
+      "color": "teal",
+      "showArrow": true
+    },
+    {
+      "id": "c13",
+      "from": "users-svc",
+      "to": "cache",
+      "color": "red",
+      "style": "DASHED",
+      "showArrow": true
+    },
+    {
+      "id": "c14",
+      "from": "orders-svc",
+      "to": "cache",
+      "color": "red",
+      "style": "DASHED",
+      "showArrow": true
+    },
+    {
+      "id": "c15",
+      "from": "queue",
+      "to": "notifications",
+      "color": "purple",
+      "showArrow": true
+    },
+    {
+      "id": "c16",
+      "from": "monitoring",
+      "to": "gateway",
+      "color": "gray",
+      "style": "DOTTED"
+    },
+    {
+      "id": "c17",
+      "from": "monitoring",
+      "to": "queue",
+      "color": "gray",
+      "style": "DOTTED"
+    }
+  ],
+  "colors": [
+    { "id": "blue", "value": "#4A90D9" },
+    { "id": "green", "value": "#7CB342" },
+    { "id": "orange", "value": "#FF9800" },
+    { "id": "red", "value": "#E53935" },
+    { "id": "purple", "value": "#9C27B0" },
+    { "id": "gray", "value": "#78909C" },
+    { "id": "teal", "value": "#00ACC1" }
+  ],
+  "icons": [],
+  "rectangles": [
+    {
+      "id": "backend-zone",
+      "from": { "x": 5, "y": -1 },
+      "to": { "x": 11, "y": 7 },
+      "color": "gray"
+    }
+  ],
+  "textBoxes": [
+    {
+      "id": "zone-label",
+      "text": "Backend Services",
+      "position": { "x": 7, "y": -2 }
+    }
+  ]
+}

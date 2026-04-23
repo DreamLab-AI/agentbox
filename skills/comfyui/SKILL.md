@@ -7,6 +7,42 @@ description: AI image and video generation using ComfyUI node-based workflow sys
 
 This skill enables Claude to interact with ComfyUI for AI image/video generation, workflow management, and distributed GPU compute via Salad Cloud API.
 
+## CRITICAL: Docker Container Architecture
+
+**ComfyUI runs in an EXTERNAL Docker container**, not locally. When calling from Claude Code (which runs in its own container):
+
+| Scenario | Endpoint | Notes |
+|----------|----------|-------|
+| From Claude Code container | `http://comfyui:8188` | Docker network hostname |
+| From host machine | `http://localhost:8188` | Port exposed to host |
+| Container IP (fallback) | `http://172.18.0.X:8188` | Check with `ping comfyui` |
+
+### Key Networking Rules
+
+1. **NEVER use `localhost:8188`** from inside Claude Code container - it won't work
+2. **Use Docker hostname**: `http://comfyui:8188`
+3. **Cannot access container filesystem** - must use API endpoints
+4. **Output retrieval**: Use `/view?filename=...&type=output` API, not filesystem paths
+
+### Check Container Status
+
+```bash
+# From Claude Code container
+ping -c1 comfyui  # Should show IP like 172.18.0.X
+curl -s http://comfyui:8188/system_stats | jq '.devices[0].name'
+
+# From host
+sudo docker ps --filter "name=comfyui"
+sudo docker logs comfyui --tail 20
+```
+
+### Volume Mounts (Reference Only)
+
+The comfyui container has these mounts (accessible from host, NOT from Claude Code):
+- Output: `/mnt/mldata/.../comfyui/storage-output` → `/root/ComfyUI/output`
+- Input: `/mnt/mldata/.../comfyui/storage-input` → `/root/ComfyUI/input`
+- Models: `/mnt/mldata/.../comfyui/storage-models` → `/root/ComfyUI/models`
+
 ## Capabilities
 
 - Generate images using text prompts (text2img)
@@ -27,6 +63,202 @@ Use this skill when you need to:
 - Batch process image generation tasks
 - Fine-tune or use LoRA models with FLUX/SD
 - Generate AI videos from text or images
+
+## When Not To Use
+
+- For 2D image manipulation (resize, crop, convert formats) -- use the imagemagick skill instead
+- For 3D modelling and scene creation -- use the blender skill instead
+- For video transcoding, editing, or audio extraction -- use the ffmpeg-processing skill instead
+- For diagrams, flowcharts, or architecture visuals -- use the mermaid-diagrams skill instead
+- For ML model training (classification, NLP, time series) -- use the pytorch-ml or flow-nexus-neural skills instead
+
+---
+
+## Quick Start: Generate an Image with FLUX 2
+
+### Step 1: Check ComfyUI is Running
+
+```bash
+# External Docker container (use comfyui hostname, NOT localhost)
+curl -s "http://comfyui:8188/system_stats" | python3 -c "
+import sys,json
+d=json.load(sys.stdin)
+print('ComfyUI:', d['system']['comfyui_version'])
+for dev in d.get('devices', []):
+    print(f\"GPU: {dev.get('name')} - {dev.get('vram_free',0)//(1024**3)}GB free\")
+"
+```
+
+### Step 2: Create and Submit FLUX 2 Workflow
+
+```bash
+# Create workflow JSON
+cat > /tmp/flux2_workflow.json << 'EOF'
+{
+  "68": {
+    "inputs": {"model": ["86", 0], "conditioning": ["73", 0]},
+    "class_type": "BasicGuider"
+  },
+  "73": {
+    "inputs": {"guidance": 4, "conditioning": ["85", 0]},
+    "class_type": "FluxGuidance"
+  },
+  "74": {
+    "inputs": {"sampler_name": "euler"},
+    "class_type": "KSamplerSelect"
+  },
+  "78": {
+    "inputs": {"vae_name": "flux2-vae.safetensors"},
+    "class_type": "VAELoader"
+  },
+  "79": {
+    "inputs": {"width": 1024, "height": 768, "batch_size": 1},
+    "class_type": "EmptyFlux2LatentImage"
+  },
+  "80": {
+    "inputs": {
+      "noise": ["87", 0], "guider": ["68", 0],
+      "sampler": ["74", 0], "sigmas": ["94", 0],
+      "latent_image": ["79", 0]
+    },
+    "class_type": "SamplerCustomAdvanced"
+  },
+  "82": {
+    "inputs": {"samples": ["80", 0], "vae": ["78", 0]},
+    "class_type": "VAEDecode"
+  },
+  "85": {
+    "inputs": {"text": ["93", 0], "clip": ["90", 0]},
+    "class_type": "CLIPTextEncode"
+  },
+  "86": {
+    "inputs": {
+      "unet_name": "flux2_dev_fp8mixed.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader"
+  },
+  "87": {
+    "inputs": {"noise_seed": 42},
+    "class_type": "RandomNoise"
+  },
+  "89": {
+    "inputs": {"filename_prefix": "Generated", "images": ["82", 0]},
+    "class_type": "SaveImage"
+  },
+  "90": {
+    "inputs": {
+      "clip_name": "mistral_3_small_flux2_bf16.safetensors",
+      "type": "flux2",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader"
+  },
+  "93": {
+    "inputs": {"value": "YOUR PROMPT HERE"},
+    "class_type": "PrimitiveString"
+  },
+  "94": {
+    "inputs": {"steps": 25, "width": 1024, "height": 768},
+    "class_type": "Flux2Scheduler"
+  }
+}
+EOF
+
+# Edit the prompt (node 93)
+sed -i 's/YOUR PROMPT HERE/A stunning landscape at golden hour, cinematic lighting/' /tmp/flux2_workflow.json
+
+# Submit workflow
+WORKFLOW=$(cat /tmp/flux2_workflow.json)
+RESPONSE=$(curl -s -X POST "http://host.docker.internal:8188/prompt" \
+  -H "Content-Type: application/json" \
+  -d "{\"prompt\": $WORKFLOW}")
+PROMPT_ID=$(echo "$RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['prompt_id'])")
+echo "Submitted: $PROMPT_ID"
+```
+
+### Step 3: Monitor Generation Progress
+
+```bash
+# Poll until complete (typically 15-30 seconds for FLUX 2)
+while true; do
+  curl -s "http://host.docker.internal:8188/history/$PROMPT_ID" > /tmp/hist.json
+  STATUS=$(python3 -c "
+import json
+d=json.load(open('/tmp/hist.json'))
+data=d.get('$PROMPT_ID',{})
+print(data.get('status',{}).get('status_str','pending'))
+")
+  echo "Status: $STATUS"
+  [ "$STATUS" = "success" ] && break
+  [ "$STATUS" = "error" ] && { echo "Failed!"; break; }
+  sleep 5
+done
+```
+
+### Step 4: Download the Generated Image
+
+```bash
+# Get filename from history
+FILENAME=$(python3 -c "
+import json
+d=json.load(open('/tmp/hist.json'))
+outputs=d.get('$PROMPT_ID',{}).get('outputs',{})
+for nid,out in outputs.items():
+    if 'images' in out:
+        print(out['images'][0]['filename'])
+        break
+")
+
+# Download image
+curl -s "http://host.docker.internal:8188/view?filename=$FILENAME&type=output" -o ./generated_image.png
+echo "Saved: generated_image.png"
+```
+
+### One-Liner Quick Generation
+
+```bash
+# All-in-one: Generate and download
+PROMPT="A dreamlike mountain lake at dawn with fog"
+cat > /tmp/wf.json << EOF
+{"68":{"inputs":{"model":["86",0],"conditioning":["73",0]},"class_type":"BasicGuider"},"73":{"inputs":{"guidance":4,"conditioning":["85",0]},"class_type":"FluxGuidance"},"74":{"inputs":{"sampler_name":"euler"},"class_type":"KSamplerSelect"},"78":{"inputs":{"vae_name":"flux2-vae.safetensors"},"class_type":"VAELoader"},"79":{"inputs":{"width":1024,"height":768,"batch_size":1},"class_type":"EmptyFlux2LatentImage"},"80":{"inputs":{"noise":["87",0],"guider":["68",0],"sampler":["74",0],"sigmas":["94",0],"latent_image":["79",0]},"class_type":"SamplerCustomAdvanced"},"82":{"inputs":{"samples":["80",0],"vae":["78",0]},"class_type":"VAEDecode"},"85":{"inputs":{"text":["93",0],"clip":["90",0]},"class_type":"CLIPTextEncode"},"86":{"inputs":{"unet_name":"flux2_dev_fp8mixed.safetensors","weight_dtype":"default"},"class_type":"UNETLoader"},"87":{"inputs":{"noise_seed":$RANDOM},"class_type":"RandomNoise"},"89":{"inputs":{"filename_prefix":"Quick","images":["82",0]},"class_type":"SaveImage"},"90":{"inputs":{"clip_name":"mistral_3_small_flux2_bf16.safetensors","type":"flux2","device":"default"},"class_type":"CLIPLoader"},"93":{"inputs":{"value":"$PROMPT"},"class_type":"PrimitiveString"},"94":{"inputs":{"steps":25,"width":1024,"height":768},"class_type":"Flux2Scheduler"}}
+EOF
+PID=$(curl -s -X POST "http://host.docker.internal:8188/prompt" -H "Content-Type: application/json" -d "{\"prompt\": $(cat /tmp/wf.json)}" | python3 -c "import sys,json;print(json.load(sys.stdin)['prompt_id'])")
+echo "Generating... $PID"
+sleep 30
+FN=$(curl -s "http://host.docker.internal:8188/history/$PID" | python3 -c "import sys,json;d=json.load(sys.stdin);o=d.get('$PID',{}).get('outputs',{});print([i['filename'] for v in o.values() for i in v.get('images',[])][0] if o else '')")
+[ -n "$FN" ] && curl -s "http://host.docker.internal:8188/view?filename=$FN&type=output" -o output.png && echo "Saved: output.png"
+```
+
+### VRAM Management
+
+```bash
+# Free GPU memory before generation (if OOM errors)
+curl -s -X POST "http://host.docker.internal:8188/free" \
+  -H "Content-Type: application/json" \
+  -d '{"unload_models": true, "free_memory": true}'
+```
+
+### Available Models (Current Setup)
+
+| Component | Model File | Notes |
+|-----------|-----------|-------|
+| UNET | `flux2_dev_fp8mixed.safetensors` | FLUX 2 Dev FP8 |
+| CLIP | `mistral_3_small_flux2_bf16.safetensors` | Mistral 3 Small |
+| VAE | `flux2-vae.safetensors` | FLUX 2 VAE |
+
+### Key Workflow Nodes for FLUX 2
+
+| Node | Class | Purpose |
+|------|-------|---------|
+| 93 | `PrimitiveString` | Your text prompt |
+| 79 | `EmptyFlux2LatentImage` | Resolution (width/height) |
+| 94 | `Flux2Scheduler` | Steps count |
+| 73 | `FluxGuidance` | Guidance scale (default: 4) |
+| 87 | `RandomNoise` | Seed for reproducibility |
+| 89 | `SaveImage` | Output filename prefix |
+
+---
 
 ## Prerequisites
 
@@ -229,9 +461,115 @@ endpoints = sdk.inference_endpoints.list_inference_endpoints(
 )
 ```
 
+## Python Helper: ComfyUI Image Generator
+
+```python
+#!/usr/bin/env python3
+"""
+ComfyUI FLUX 2 Image Generator
+Usage: python comfyui_generate.py "your prompt here" [output.png]
+"""
+import json
+import time
+import sys
+import urllib.request
+import urllib.error
+
+COMFYUI_URL = "http://comfyui:8188"  # Docker network hostname
+
+def generate_image(prompt: str, output_path: str = "output.png",
+                   width: int = 1024, height: int = 768,
+                   steps: int = 25, guidance: float = 4.0,
+                   seed: int = None) -> str:
+    """Generate image using FLUX 2 and save to file."""
+
+    if seed is None:
+        import random
+        seed = random.randint(0, 2**32)
+
+    workflow = {
+        "68": {"inputs": {"model": ["86", 0], "conditioning": ["73", 0]}, "class_type": "BasicGuider"},
+        "73": {"inputs": {"guidance": guidance, "conditioning": ["85", 0]}, "class_type": "FluxGuidance"},
+        "74": {"inputs": {"sampler_name": "euler"}, "class_type": "KSamplerSelect"},
+        "78": {"inputs": {"vae_name": "flux2-vae.safetensors"}, "class_type": "VAELoader"},
+        "79": {"inputs": {"width": width, "height": height, "batch_size": 1}, "class_type": "EmptyFlux2LatentImage"},
+        "80": {"inputs": {"noise": ["87", 0], "guider": ["68", 0], "sampler": ["74", 0], "sigmas": ["94", 0], "latent_image": ["79", 0]}, "class_type": "SamplerCustomAdvanced"},
+        "82": {"inputs": {"samples": ["80", 0], "vae": ["78", 0]}, "class_type": "VAEDecode"},
+        "85": {"inputs": {"text": ["93", 0], "clip": ["90", 0]}, "class_type": "CLIPTextEncode"},
+        "86": {"inputs": {"unet_name": "flux2_dev_fp8mixed.safetensors", "weight_dtype": "default"}, "class_type": "UNETLoader"},
+        "87": {"inputs": {"noise_seed": seed}, "class_type": "RandomNoise"},
+        "89": {"inputs": {"filename_prefix": "Generated", "images": ["82", 0]}, "class_type": "SaveImage"},
+        "90": {"inputs": {"clip_name": "mistral_3_small_flux2_bf16.safetensors", "type": "flux2", "device": "default"}, "class_type": "CLIPLoader"},
+        "93": {"inputs": {"value": prompt}, "class_type": "PrimitiveString"},
+        "94": {"inputs": {"steps": steps, "width": width, "height": height}, "class_type": "Flux2Scheduler"}
+    }
+
+    # Submit workflow
+    data = json.dumps({"prompt": workflow}).encode()
+    req = urllib.request.Request(f"{COMFYUI_URL}/prompt", data=data,
+                                  headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req) as resp:
+        result = json.loads(resp.read())
+    prompt_id = result["prompt_id"]
+    print(f"Submitted: {prompt_id}")
+
+    # Wait for completion
+    while True:
+        with urllib.request.urlopen(f"{COMFYUI_URL}/history/{prompt_id}") as resp:
+            history = json.loads(resp.read())
+
+        data = history.get(prompt_id, {})
+        status = data.get("status", {}).get("status_str", "pending")
+
+        if status == "success":
+            outputs = data.get("outputs", {})
+            for node_out in outputs.values():
+                if "images" in node_out:
+                    filename = node_out["images"][0]["filename"]
+                    # Download image
+                    img_url = f"{COMFYUI_URL}/view?filename={filename}&type=output"
+                    urllib.request.urlretrieve(img_url, output_path)
+                    print(f"Saved: {output_path}")
+                    return output_path
+        elif status == "error":
+            raise RuntimeError("Generation failed")
+
+        time.sleep(2)
+
+if __name__ == "__main__":
+    prompt = sys.argv[1] if len(sys.argv) > 1 else "A beautiful sunset over mountains"
+    output = sys.argv[2] if len(sys.argv) > 2 else "output.png"
+    generate_image(prompt, output)
+```
+
+Save as `/home/devuser/.claude/skills/comfyui/generate.py` for quick access.
+
 ## ComfyUI Workflow JSON Structure
 
-### Basic FLUX Workflow
+### FLUX 2 Workflow (Recommended)
+
+Uses separate loaders for UNET, CLIP, and VAE with `SamplerCustomAdvanced`:
+
+```json
+{
+  "68": {"inputs": {"model": ["86", 0], "conditioning": ["73", 0]}, "class_type": "BasicGuider"},
+  "73": {"inputs": {"guidance": 4, "conditioning": ["85", 0]}, "class_type": "FluxGuidance"},
+  "74": {"inputs": {"sampler_name": "euler"}, "class_type": "KSamplerSelect"},
+  "78": {"inputs": {"vae_name": "flux2-vae.safetensors"}, "class_type": "VAELoader"},
+  "79": {"inputs": {"width": 1024, "height": 768, "batch_size": 1}, "class_type": "EmptyFlux2LatentImage"},
+  "80": {"inputs": {"noise": ["87", 0], "guider": ["68", 0], "sampler": ["74", 0], "sigmas": ["94", 0], "latent_image": ["79", 0]}, "class_type": "SamplerCustomAdvanced"},
+  "82": {"inputs": {"samples": ["80", 0], "vae": ["78", 0]}, "class_type": "VAEDecode"},
+  "85": {"inputs": {"text": ["93", 0], "clip": ["90", 0]}, "class_type": "CLIPTextEncode"},
+  "86": {"inputs": {"unet_name": "flux2_dev_fp8mixed.safetensors", "weight_dtype": "default"}, "class_type": "UNETLoader"},
+  "87": {"inputs": {"noise_seed": 42}, "class_type": "RandomNoise"},
+  "89": {"inputs": {"filename_prefix": "Output", "images": ["82", 0]}, "class_type": "SaveImage"},
+  "90": {"inputs": {"clip_name": "mistral_3_small_flux2_bf16.safetensors", "type": "flux2", "device": "default"}, "class_type": "CLIPLoader"},
+  "93": {"inputs": {"value": "your prompt here"}, "class_type": "PrimitiveString"},
+  "94": {"inputs": {"steps": 25, "width": 1024, "height": 768}, "class_type": "Flux2Scheduler"}
+}
+```
+
+### Legacy FLUX 1 Workflow (CheckpointLoaderSimple)
 ```json
 {
   "6": {
@@ -518,301 +856,10 @@ Performance benchmarks in `benchmark/` subdirectories:
 - `sd3.5-medium-comfyui/benchmark/` - RTX 3090/4090 comparisons
 - `ltx-video-2b-v0.9.1-comfyui/benchmark/` - Video generation benchmarks
 
-## MCP Server Tools
-
-The ComfyUI skill includes an MCP server at `mcp-server/` that provides autonomous workflow tools:
-
-### Available Tools
-
-| Tool | Description |
-|------|-------------|
-| `workflow_submit` | Submit ComfyUI workflow JSON for execution |
-| `workflow_status` | Check job status by ID |
-| `workflow_cancel` | Cancel a running job |
-| `model_list` | List available models (checkpoints, loras, vae) |
-| `image_generate` | Convenience text2img with FLUX |
-| `video_generate` | Video generation (AnimateDiff) |
-| `display_capture` | Screenshot display :1 for visual feedback |
-| `output_list` | List generated outputs |
-| `chat_workflow` | Natural language to workflow via LLM |
-
-### MCP Server Setup
-
-```bash
-cd /home/devuser/.claude/skills/comfyui/mcp-server
-npm install
-npm start
-```
-
-### MCP Configuration
-
-Add to your MCP configuration:
-```json
-{
-  "comfyui": {
-    "command": "node",
-    "args": ["/home/devuser/.claude/skills/comfyui/mcp-server/server.js"],
-    "env": {
-      "COMFYUI_URL": "http://localhost:8188"
-    }
-  }
-}
-```
-
-### Visual Display Monitoring
-
-The skill can capture ComfyUI's UI on display :1 using Playwright for visual feedback to Claude. Use `display_capture` tool to get screenshots.
-
-### LLM Workflow Generation
-
-Use `chat_workflow` to generate ComfyUI workflows from natural language:
-```
-chat_workflow: "Create an anime portrait with blue hair and golden eyes"
-```
-
-This uses the Z.AI service (port 9600) or Anthropic API to generate valid workflow JSON.
-
-## Text-to-3D Pipeline (FLUX2 → SAM3D)
-
-This skill supports text-to-3D generation using FLUX2 for image generation followed by SAM3D for 3D reconstruction.
-
-### GPU Memory Management (RTX A6000 48GB Reference)
-
-**Critical**: FLUX2 and SAM3D cannot run concurrently. Restart container between phases for best results.
-
-| Phase | VRAM Used | Time | Notes |
-|-------|-----------|------|-------|
-| FLUX2 1536x1024 | ~37GB | ~3min | High-res landscape |
-| FLUX2 1024x1536 | ~37GB | ~3min | High-res portrait |
-| FLUX2 1248x832 | ~33GB | ~2.5min | Standard landscape |
-| SAM3D Full Pipeline | ~25GB | ~2.5min | With 4K textures |
-| SAM3D Basic | ~20GB | ~1.5min | Without texture bake |
-
-```bash
-# After FLUX2, free GPU memory (may not fully clear)
-curl -X POST http://localhost:8188/free \
-  -H "Content-Type: application/json" \
-  -d '{"unload_models": true, "free_memory": true}'
-
-# For guaranteed clean slate, restart container
-docker restart comfyui
-```
-
-### FLUX2 Image Generation Workflow (High Quality)
-
-Optimized for maximum quality 3D object generation:
-
-```json
-{
-  "86": {
-    "inputs": {"unet_name": "flux2_dev_fp8mixed.safetensors", "weight_dtype": "default"},
-    "class_type": "UNETLoader"
-  },
-  "90": {
-    "inputs": {"clip_name": "mistral_3_small_flux2_bf16.safetensors", "type": "flux2", "device": "default"},
-    "class_type": "CLIPLoader"
-  },
-  "78": {
-    "inputs": {"vae_name": "flux2-vae.safetensors"},
-    "class_type": "VAELoader"
-  },
-  "79": {
-    "inputs": {"width": 1536, "height": 1024, "batch_size": 1},
-    "class_type": "EmptyFlux2LatentImage",
-    "_meta": {"title": "High-Res Landscape (or 1024x1536 for portrait)"}
-  },
-  "95": {
-    "inputs": {"value": "Highly detailed [object], full subject visible, intricate textures and fine details, centered on pure clean white studio background, isolated subject, no shadows, sharp focus throughout, 8K quality"},
-    "class_type": "PrimitiveString"
-  },
-  "94": {
-    "inputs": {"scheduler": "simple", "steps": 32, "denoise": 1, "model": ["86", 0]},
-    "class_type": "BasicScheduler",
-    "_meta": {"title": "32 steps for quality (28 minimum)"}
-  },
-  "73": {
-    "inputs": {"guidance": 4, "conditioning": ["85", 0]},
-    "class_type": "FluxGuidance"
-  },
-  "89": {
-    "inputs": {"filename_prefix": "HiRes_3D", "images": ["82", 0]},
-    "class_type": "SaveImage"
-  }
-}
-```
-
-### SAM3D Full Pipeline (High Quality with 4K Textures + Gaussian)
-
-After FLUX2 image generation (copy image to input folder first):
-
-```json
-{
-  "4": {
-    "inputs": {"image": "generated_image.png", "upload": "image"},
-    "class_type": "LoadImage"
-  },
-  "28": {
-    "inputs": {"mask": ["4", 1]},
-    "class_type": "InvertMask"
-  },
-  "44": {
-    "inputs": {"model_tag": "hf", "compile": false, "use_gpu_cache": true, "dtype": "bfloat16"},
-    "class_type": "LoadSAM3DModel"
-  },
-  "59": {
-    "inputs": {"depth_model": ["44", 0], "image": ["4", 0]},
-    "class_type": "SAM3D_DepthEstimate"
-  },
-  "52": {
-    "inputs": {
-      "ss_generator": ["44", 1], "image": ["4", 0], "mask": ["28", 0],
-      "intrinsics": ["59", 0], "pointmap_path": ["59", 1],
-      "seed": 42, "stage1_inference_steps": 30, "stage1_cfg_strength": 7.5
-    },
-    "class_type": "SAM3DSparseGen",
-    "_meta": {"title": "30 steps, cfg 7.5 for quality"}
-  },
-  "35": {
-    "inputs": {
-      "slat_generator": ["44", 2], "image": ["4", 0], "mask": ["28", 0],
-      "sparse_structure": ["52", 0], "seed": 42,
-      "stage2_inference_steps": 30, "stage2_cfg_strength": 5.5
-    },
-    "class_type": "SAM3DSLATGen",
-    "_meta": {"title": "30 steps, cfg 5.5 for quality"}
-  },
-  "45": {
-    "inputs": {
-      "slat_decoder_mesh": ["44", 4], "image": ["4", 0], "mask": ["28", 0],
-      "slat": ["35", 0], "seed": 42, "save_glb": true, "simplify": 0.97
-    },
-    "class_type": "SAM3DMeshDecode",
-    "_meta": {"title": "simplify 0.97 preserves detail"}
-  },
-  "46": {
-    "inputs": {
-      "slat_decoder_gs": ["44", 3], "image": ["4", 0], "mask": ["28", 0],
-      "slat": ["35", 0], "seed": 42, "save_ply": true
-    },
-    "class_type": "SAM3DGaussianDecode",
-    "_meta": {"title": "Gaussian splat output (PLY)"}
-  },
-  "47": {
-    "inputs": {
-      "embedders": ["44", 5], "image": ["4", 0], "mask": ["28", 0],
-      "glb_path": ["45", 0], "ply_path": ["46", 0], "seed": 42,
-      "with_mesh_postprocess": false, "with_texture_baking": true,
-      "texture_mode": "opt", "texture_size": 4096, "simplify": 0.97,
-      "rendering_engine": "pytorch3d"
-    },
-    "class_type": "SAM3DTextureBake",
-    "_meta": {"title": "4K texture with gradient descent optimization"}
-  },
-  "48": {
-    "inputs": {"model_file": ["47", 0]},
-    "class_type": "Preview3D"
-  }
-}
-```
-
-### SAM3D Output Files
-
-```
-sam3d_inference_X/
-├── gaussian.ply      # 3DGS splats (full Gaussian output, ~70MB)
-├── mesh.glb          # Textured mesh with 4K UV map (~35MB)
-├── pointcloud.ply    # Point cloud representation
-├── metadata.json     # Generation metadata
-├── pointmap.pt       # Depth estimation data
-├── slat.pt           # SLAT latent
-└── sparse_structure.pt
-```
-
-### SAM3D Node Reference
-
-| Node | Description | Time | Output Index |
-|------|-------------|------|--------------|
-| `LoadSAM3DModel` | Load all SAM3D sub-models | ~30s | 0=depth, 1=sparse, 2=slat, 3=gs, 4=mesh, 5=embedders |
-| `SAM3D_DepthEstimate` | MoGe depth estimation | ~5s | 0=intrinsics, 1=pointmap_path |
-| `SAM3DSparseGen` | Stage 1: Sparse voxel structure | ~5s | 0=sparse_structure_path |
-| `SAM3DSLATGen` | Stage 2: SLAT diffusion | ~60-90s | 0=slat_path |
-| `SAM3DMeshDecode` | Decode SLAT to vertex-colored mesh | ~15s | 0=glb_filepath |
-| `SAM3DGaussianDecode` | Decode SLAT to Gaussian splats | ~15s | 0=ply_filepath |
-| `SAM3DTextureBake` | Bake Gaussian to UV texture | ~60s | 0=glb_filepath, 1=ply_filepath |
-| `SAM3DExportMesh` | Export to OBJ/GLB/PLY | <1s | - |
-
-### SAM3DTextureBake Settings
-
-| Parameter | Recommended | Range | Effect |
-|-----------|-------------|-------|--------|
-| `texture_size` | **4096** | 512-4096 | Higher = more detail (16x more at 4096 vs 1024) |
-| `texture_mode` | **"opt"** | opt/fast | opt = gradient descent (~60s), fast = nearest (~5s) |
-| `simplify` | **0.97** | 0.90-0.98 | Higher = preserve more mesh detail |
-| `with_mesh_postprocess` | false | bool | false = preserve full detail |
-| `rendering_engine` | pytorch3d | pytorch3d/nvdiffrast | nvdiffrast faster but needs CUDA compile |
-
-### End-to-End Python Script
-
-```python
-import requests
-import json
-import time
-import socket
-
-COMFYUI_URL = "http://192.168.0.51:8188"
-
-def wait_for_completion(prompt_id):
-    while True:
-        history = requests.get(f"{COMFYUI_URL}/history/{prompt_id}").json()
-        status = history.get(prompt_id, {}).get("status", {})
-        if status.get("completed"):
-            return history[prompt_id].get("outputs", {})
-        if status.get("status_str") == "error":
-            raise Exception(f"Workflow failed: {status.get('messages')}")
-        time.sleep(5)
-
-# Phase 1: FLUX2 Image Generation
-print("Phase 1: Generating reference image...")
-flux2_workflow = json.load(open("flux2_workflow.json"))
-response = requests.post(f"{COMFYUI_URL}/prompt", json={"prompt": flux2_workflow})
-outputs = wait_for_completion(response.json()["prompt_id"])
-image_filename = outputs["89"]["images"][0]["filename"]
-print(f"Generated: {image_filename}")
-
-# Free GPU memory
-print("Freeing GPU memory...")
-requests.post(f"{COMFYUI_URL}/free", json={"unload_models": True, "free_memory": True})
-time.sleep(5)
-
-# Phase 2: SAM3D Reconstruction
-print("Phase 2: SAM3D 3D reconstruction...")
-sam3d_workflow = json.load(open("sam3d_workflow.json"))
-sam3d_workflow["4"]["inputs"]["image"] = image_filename
-response = requests.post(f"{COMFYUI_URL}/prompt", json={"prompt": sam3d_workflow})
-outputs = wait_for_completion(response.json()["prompt_id"])
-mesh_path = outputs["48"]["result"][0]
-print(f"Generated mesh: {mesh_path}")
-
-# Phase 3: Blender validation (if BlenderMCP running)
-try:
-    s = socket.socket()
-    s.settimeout(5)
-    s.connect(('localhost', 9876))
-    s.sendall(json.dumps({
-        "type": "import_model",
-        "params": {"filepath": mesh_path, "name": "GeneratedMesh"}
-    }).encode())
-    print(f"Blender import: {s.recv(4096).decode()}")
-    s.close()
-except:
-    print("BlenderMCP not available - skipping validation")
-```
-
 ## References
 
 - ComfyUI: https://github.com/comfyanonymous/ComfyUI
 - ComfyUI API: https://github.com/SaladTechnologies/comfyui-api
 - Salad Recipes: https://github.com/SaladTechnologies/salad-recipes
 - Salad Cloud SDK: https://portal.salad.com
-- SAM3D Objects: https://github.com/PozzettiAndrea/ComfyUI-SAM3DObjects
 - Local Recipes: /home/devuser/salad-recipes/src/

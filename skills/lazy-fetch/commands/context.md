@@ -1,0 +1,1 @@
+Run `lazy context $ARGUMENTS` to show the repo map or search for files, content, and symbols matching the query.

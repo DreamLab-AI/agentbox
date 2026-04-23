@@ -1,0 +1,12 @@
+{
+  "name": "terracraft-pipeline",
+  "version": "1.0.0",
+  "private": true,
+  "description": "TerraCraft headless pipeline modules for agent-driven Minecraft world generation",
+  "dependencies": {
+    "archiver": "^7.0.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -20,6 +20,14 @@ This skill provides a comprehensive hook system that automatically manages devel
 - **Neural Training**: Continuous learning from successful patterns
 - **MCP Integration**: Seamless coordination with swarm tools
 
+## When Not To Use
+
+- For one-off swarm orchestration without persistent hooks -- use the swarm-advanced skill instead
+- For full development pipelines with quality gates -- use the build-with-quality skill instead
+- For GitHub-specific CI/CD workflow authoring -- use the github-workflow-automation skill instead
+- For standalone performance profiling and bottleneck detection -- use the performance-analysis skill instead
+- For agent memory and pattern storage without hooks -- use the agentdb-memory-patterns skill instead
+
 ## Prerequisites
 
 **Required:**
@@ -133,10 +141,10 @@ Examples:
 **Features:**
 - Automatic agent spawning based on task analysis
 - Memory loading for context continuity
-- Topology optimization for task structure
+- Topology optimisation for task structure
 - Complexity estimation and time prediction
 
-**pre-search** - Prepare and optimize search operations
+**pre-search** - Prepare and optimise search operations
 ```bash
 npx claude-flow hook pre-search --query <query>
 
@@ -151,7 +159,7 @@ Examples:
 
 **Features:**
 - Cache checking for faster results
-- Query optimization
+- Query optimisation
 - Search pattern improvement
 
 #### Post-Operation Hooks
@@ -377,7 +385,7 @@ Examples:
 - Save current context and progress
 - Export session metrics (duration, commands, tokens, files)
 - Generate work summary with decisions and next steps
-- Cleanup temporary files and optimize storage
+- Cleanup temporary files and optimise storage
 
 **notify** - Custom notifications with swarm status
 ```bash
@@ -1144,7 +1152,7 @@ npx claude-flow hook validate-config
 ### Best Practices
 
 1. **Configure Hooks Early** - Set up during project initialization
-2. **Use Memory Keys Strategically** - Organize with clear namespaces
+2. **Use Memory Keys Strategically** - Organise with clear namespaces
 3. **Enable Auto-Formatting** - Maintain code consistency
 4. **Train Patterns Continuously** - Learn from successful operations
 5. **Monitor Performance** - Track hook execution times
@@ -1152,7 +1160,7 @@ npx claude-flow hook validate-config
 7. **Document Custom Hooks** - Maintain hook documentation
 8. **Set Appropriate Timeouts** - Prevent hanging operations
 9. **Handle Errors Gracefully** - Use continueOnError when appropriate
-10. **Review Metrics Regularly** - Optimize based on usage patterns
+10. **Review Metrics Regularly** - Optimise based on usage patterns
 
 ### Troubleshooting
 
@@ -1166,7 +1174,7 @@ npx claude-flow hook validate-config
 #### Hook Timeouts
 - Increase timeout values in configuration
 - Make hooks asynchronous for heavy operations
-- Optimize hook logic
+- Optimise hook logic
 - Check network connectivity for MCP tools
 
 #### Memory Issues

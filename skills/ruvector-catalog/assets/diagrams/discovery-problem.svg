@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 320" width="620" height="320">
+  <defs>
+    <style>
+      text { font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace; fill: #e2e8f0; }
+      .bg { fill: #1e293b; rx: 12; }
+      .red { fill: #991b1b; rx: 6; }
+      .green { fill: #166534; rx: 6; }
+      .title { font-size: 15px; font-weight: bold; fill: #f1f5f9; }
+      .label { font-size: 13px; fill: #94a3b8; }
+      .body { font-size: 12px; fill: #cbd5e1; }
+      .bad { font-size: 12px; fill: #fca5a5; }
+      .good { font-size: 12px; fill: #86efac; }
+    </style>
+  </defs>
+  <rect class="bg" x="0" y="0" width="620" height="320"/>
+  <text class="title" x="200" y="30">THE DISCOVERY PROBLEM</text>
+  <text class="label" x="30" y="60">Developer: &quot;I need image search&quot;</text>
+  <rect class="red" x="20" y="80" width="280" height="110"/>
+  <text class="bad" x="35" y="105">Without catalog:</text>
+  <text class="body" x="35" y="128">Reads npm docs &amp;#8594; no CNN export</text>
+  <text class="bad" x="35" y="148">Concludes &quot;not available&quot; &amp;#8592; WRONG</text>
+  <text class="bad" x="35" y="168">Uses OpenAI Vision instead &amp;#8592; $$$</text>
+  <rect class="green" x="320" y="80" width="280" height="110"/>
+  <text class="good" x="335" y="105">With catalog:</text>
+  <text class="body" x="335" y="128">Catalog: ruvector-cnn exists</text>
+  <text class="body" x="335" y="148">Build from submodule (90s)</text>
+  <text class="good" x="335" y="168">512D MobileNet embeddings &amp;#8592; FREE</text>
+  <text class="label" x="30" y="225">The monorepo is too large for any AI agent to search</text>
+  <text class="label" x="30" y="245">effectively. The catalog maps every capability to its</text>
+  <text class="label" x="30" y="265">access path so features are never missed.</text>
+</svg>

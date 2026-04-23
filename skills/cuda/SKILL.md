@@ -2,8 +2,8 @@
 skill: cuda
 name: cuda
 version: 1.0.0
-description: AI-powered CUDA development assistant with 4 specialist agents, kernel optimization, compilation, and GPU profiling
-tags: [cuda, gpu, nvidia, optimization, kernel, parallel-computing, nvcc, profiling, debugging]
+description: AI-powered CUDA development assistant with 4 specialist agents, kernel optimisation, compilation, and GPU profiling
+tags: [cuda, gpu, nvidia, optimisation, kernel, parallel-computing, nvcc, profiling, debugging]
 mcp_server: true
 entry_point: mcp-server/server.py
 protocol: stdio
@@ -17,15 +17,23 @@ compatibility:
 
 AI-powered CUDA development assistant integrating 4 specialist agents with comprehensive GPU development tools.
 
+## When Not To Use
+
+- For high-level PyTorch model training that does not need custom kernels -- use the pytorch-ml skill instead
+- For distributed neural network training in cloud sandboxes -- use the flow-nexus-neural skill instead
+- For general Rust or C++ systems programming without GPU involvement -- use the rust-development skill instead
+- For WebAssembly-based compute without GPU -- use the wasm-js skill instead
+- For CPU-only performance profiling of swarm operations -- use the performance-analysis skill instead
+
 ## Overview
 
 The CUDA skill brings professional CUDA development capabilities to Claude Code through:
 
 - **4 AI Specialist Agents**: General, Optimizer, Debugger, Analyzer
 - **CUDA Compilation**: nvcc integration with auto-architecture detection
-- **Kernel Analysis**: Pattern detection and optimization opportunities
+- **Kernel Analysis**: Pattern detection and optimisation opportunities
 - **GPU Profiling**: Performance measurement and bottleneck identification
-- **Code Generation**: Create optimized kernels from specifications
+- **Code Generation**: Create optimised kernels from specifications
 
 ## Specialist Agents
 
@@ -38,7 +46,7 @@ cuda_general "Create a parallel reduction kernel for sum"
 ```
 
 ### 2. Optimizer Agent
-**When to use**: Performance optimization, memory coalescing, shared memory
+**When to use**: Performance optimisation, memory coalescing, shared memory
 
 ```bash
 # Example: Optimize existing kernel
@@ -68,7 +76,7 @@ cuda_analyze --file my_kernel.cu --report-format markdown
 - `cuda_read_kernel` - Read and parse existing kernel code
 - `cuda_write_kernel` - Write/modify kernel files
 - `cuda_compile` - Compile CUDA code with nvcc
-- `cuda_analyze` - Deep analysis for optimization opportunities
+- `cuda_analyze` - Deep analysis for optimisation opportunities
 
 ### GPU Management
 - `cuda_gpu_status` - Get GPU info via nvidia-smi
@@ -79,7 +87,7 @@ cuda_analyze --file my_kernel.cu --report-format markdown
 ### Agent Routing
 - `cuda_route_query` - Route to appropriate specialist agent
 - `cuda_general_assist` - General CUDA assistant
-- `cuda_optimize_code` - Optimization specialist
+- `cuda_optimize_code` - Optimisation specialist
 - `cuda_debug_code` - Debugging specialist
 - `cuda_analyze_quality` - Code analysis specialist
 
@@ -119,7 +127,7 @@ print(torch.cuda.device_count())  # 3
 claude "Use rightnow-cuda to create a vector addition kernel with error checking"
 ```
 
-### 2. Optimize Matrix Multiplication
+### 2. Optimise Matrix Multiplication
 ```bash
 claude "Use rightnow-cuda optimizer to optimize my matmul.cu for A6000 GPU"
 ```
@@ -153,7 +161,7 @@ claude "Use rightnow-cuda analyzer to review my convolution kernel and suggest i
 
 ## Tool Examples
 
-### Create Optimized Kernel
+### Create Optimised Kernel
 ```json
 {
   "tool": "cuda_create_kernel",
@@ -213,7 +221,7 @@ claude "Use rightnow-cuda analyzer to review my convolution kernel and suggest i
 }
 ```
 
-## Performance Optimization Checklist
+## Performance Optimisation Checklist
 
 The analyzer checks for:
 
@@ -295,9 +303,9 @@ cuda_debug --file kernel.cu --verbose
 
 ## Best Practices
 
-1. **Always profile before optimizing** - Use cuda_profile to identify bottlenecks
-2. **Start with analyzer** - Run cuda_analyze before manual optimization
-3. **Test incrementally** - Verify correctness after each optimization
+1. **Always profile before optimising** - Use cuda_profile to identify bottlenecks
+2. **Start with analyser** - Run cuda_analyze before manual optimisation
+3. **Test incrementally** - Verify correctness after each optimisation
 4. **Use appropriate agent** - Route complex tasks to specialist agents
 5. **Leverage GPU detection** - Let auto_arch detect compute capability
 

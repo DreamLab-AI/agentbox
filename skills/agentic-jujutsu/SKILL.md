@@ -19,6 +19,13 @@ Use **agentic-jujutsu** when you need:
 - ✅ Pattern recognition and intelligent suggestions
 - ✅ Multi-agent coordination without blocking
 
+## When Not To Use
+
+- For standard Git operations without multi-agent coordination -- use Git directly
+- For GitHub PR workflows, issue tracking, or release management -- use the github-code-review or github-release-management skills instead
+- For general agent memory and pattern storage without version control -- use the agentdb-memory-patterns skill instead
+- For CI/CD pipeline automation -- use the github-workflow-automation skill instead
+
 ## RuVector PostgreSQL (Learning Memory)
 
 **ReasoningBank patterns are stored in centralized PostgreSQL:**
@@ -214,7 +221,7 @@ const userOps = jj.getUserOperations(20);
 
 ## Advanced Use Cases
 
-### Use Case 1: Adaptive Workflow Optimization
+### Use Case 1: Adaptive Workflow Optimisation
 
 Learn and improve deployment workflows:
 

@@ -1,0 +1,47 @@
+# Add a feature: full loop from research to documentation
+name: add-feature
+description: Implement a new feature with the full development loop
+input: Feature description
+
+steps:
+  - name: gather-context
+    type: gather
+    task: "${input}"
+
+  - name: research
+    type: prompt
+    prompt: "Research what's needed for: ${input}. Look at the existing codebase structure, similar patterns, and dependencies. Summarize your findings."
+
+  - name: plan-approach
+    type: prompt
+    prompt: "Plan the implementation of: ${input}. List the files to create/modify, the approach, and any edge cases to handle."
+
+  - name: checkpoint
+    type: run
+    command: "git add -A && git stash push -m 'pre-feature' 2>/dev/null || true"
+
+  - name: implement
+    type: prompt
+    prompt: "Implement: ${input}. Follow the plan. Write clean, minimal code."
+
+  - name: typecheck
+    type: run
+    command: "bash hooks/detect-check.sh 2>&1"
+    gate:
+      on_fail: retry
+      max_retries: 2
+
+  - name: run-tests
+    type: run
+    command: "bash hooks/detect-test.sh 2>&1"
+    gate:
+      on_fail: skip
+
+  - name: document
+    type: prompt
+    prompt: "Document the feature: ${input}. Update any relevant docs, add inline comments only where logic is non-obvious."
+
+  - name: remember-feature
+    type: remember
+    key: "feature-${input}"
+    value: "Added: ${input}"

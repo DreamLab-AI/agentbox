@@ -11,6 +11,14 @@ Executes research queries against the Perplexity AI API to get real-time web inf
 
 **Capabilities**: Real-time web search, citation tracking, UK market focus, structured research outputs.
 
+## When Not To Use
+
+- For expanding and analysing specific known URLs -- use the gemini-url-context skill instead
+- For YouTube video transcript summarisation -- use the web-summary skill instead
+- For interactive browser automation (clicking, filling forms) -- use the browser or playwright skills instead
+- For information already available in the codebase or local files -- search locally first
+- For multi-step reasoning or planning tasks -- use the deepseek-reasoning skill instead
+
 ## Prerequisites
 
 - Python 3.8+
@@ -44,7 +52,7 @@ Use this skill when you need to:
 
 When activated, this skill will:
 
-1. **Construct Optimized Query**: Format your research request with context, task, focus, and deliverable structure
+1. **Construct Optimised Query**: Format your research request with context, task, focus, and deliverable structure
 2. **Call Perplexity API**: Use `llama-3.1-sonar-huge-128k-online` model for comprehensive research
 3. **Extract Citations**: Capture source URLs and references
 4. **Format Results**: Present findings with structured citations
@@ -221,7 +229,7 @@ RESEARCH_PROMPTS = {
 When you invoke this skill, Claude will:
 
 1. **Load API credentials** from `.env` file
-2. **Construct optimized prompt** based on your query
+2. **Construct optimised prompt** based on your query
 3. **Execute Perplexity API call** with appropriate model
 4. **Parse response** and extract citations
 5. **Format results** as markdown with sources
@@ -279,7 +287,7 @@ response = requests.post(API_URL, headers=headers, json=payload, timeout=180)
 
 ## Best Practices
 
-### Prompt Optimization
+### Prompt Optimisation
 - Include date context (November 2025)
 - Specify region (UK market)
 - Request structured output (tables, comparisons)
@@ -430,7 +438,7 @@ model = "llama-3.1-sonar-huge-128k-online"  # Update as needed
 
 ## Related Skills
 
-- `perplexity-prompt-generator`: Generate optimized prompts for Perplexity
+- `perplexity-prompt-generator`: Generate optimised prompts for Perplexity
 - `skill-builder`: Create custom research skills
 - `verification-quality`: Validate research results with truth scoring
 

@@ -1,0 +1,5 @@
+# Development / testing dependencies
+-r requirements.txt
+
+pytest>=8.0
+pynput>=1.7

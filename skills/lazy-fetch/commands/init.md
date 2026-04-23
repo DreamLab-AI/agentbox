@@ -1,0 +1,1 @@
+Run `lazy init` to initialize the .lazy/ directory in the current project. Then run `lazy read` to show the initial state.

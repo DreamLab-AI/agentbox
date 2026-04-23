@@ -1,0 +1,113 @@
+{
+  "templates": {
+    "e-commerce": {
+      "name": "E-Commerce Platform",
+      "components": [
+        {"name": "Customer Experience", "visibility": 0.95, "evolution": 0.7},
+        {"name": "Product Catalog", "visibility": 0.85, "evolution": 0.75},
+        {"name": "Shopping Cart", "visibility": 0.80, "evolution": 0.8},
+        {"name": "Payment Processing", "visibility": 0.75, "evolution": 0.85},
+        {"name": "Order Management", "visibility": 0.65, "evolution": 0.7},
+        {"name": "Inventory System", "visibility": 0.55, "evolution": 0.65},
+        {"name": "Recommendation Engine", "visibility": 0.70, "evolution": 0.4},
+        {"name": "Customer Data", "visibility": 0.40, "evolution": 0.6},
+        {"name": "Analytics Platform", "visibility": 0.35, "evolution": 0.7},
+        {"name": "Cloud Infrastructure", "visibility": 0.10, "evolution": 0.9}
+      ],
+      "dependencies": [
+        ["Customer Experience", "Product Catalog"],
+        ["Customer Experience", "Shopping Cart"],
+        ["Shopping Cart", "Payment Processing"],
+        ["Shopping Cart", "Order Management"],
+        ["Order Management", "Inventory System"],
+        ["Recommendation Engine", "Customer Data"],
+        ["Customer Data", "Analytics Platform"],
+        ["Analytics Platform", "Cloud Infrastructure"]
+      ]
+    },
+    "saas-b2b": {
+      "name": "SaaS B2B Platform",
+      "components": [
+        {"name": "User Interface", "visibility": 0.95, "evolution": 0.65},
+        {"name": "API Gateway", "visibility": 0.85, "evolution": 0.75},
+        {"name": "Authentication", "visibility": 0.75, "evolution": 0.8},
+        {"name": "Core Business Logic", "visibility": 0.65, "evolution": 0.45},
+        {"name": "Multi-tenancy", "visibility": 0.55, "evolution": 0.6},
+        {"name": "Data Storage", "visibility": 0.35, "evolution": 0.75},
+        {"name": "Billing System", "visibility": 0.60, "evolution": 0.7},
+        {"name": "Analytics Engine", "visibility": 0.50, "evolution": 0.5},
+        {"name": "Integration Hub", "visibility": 0.70, "evolution": 0.6},
+        {"name": "DevOps Pipeline", "visibility": 0.25, "evolution": 0.7},
+        {"name": "Cloud Platform", "visibility": 0.10, "evolution": 0.9}
+      ],
+      "dependencies": [
+        ["User Interface", "API Gateway"],
+        ["API Gateway", "Authentication"],
+        ["API Gateway", "Core Business Logic"],
+        ["Core Business Logic", "Multi-tenancy"],
+        ["Multi-tenancy", "Data Storage"],
+        ["Core Business Logic", "Analytics Engine"],
+        ["User Interface", "Billing System"],
+        ["Integration Hub", "API Gateway"],
+        ["DevOps Pipeline", "Cloud Platform"],
+        ["Data Storage", "Cloud Platform"]
+      ]
+    },
+    "ai-startup": {
+      "name": "AI/ML Startup",
+      "components": [
+        {"name": "AI Application", "visibility": 0.95, "evolution": 0.3},
+        {"name": "Model Serving API", "visibility": 0.80, "evolution": 0.5},
+        {"name": "Custom ML Models", "visibility": 0.65, "evolution": 0.25},
+        {"name": "Training Pipeline", "visibility": 0.50, "evolution": 0.4},
+        {"name": "Feature Engineering", "visibility": 0.45, "evolution": 0.35},
+        {"name": "Data Collection", "visibility": 0.40, "evolution": 0.6},
+        {"name": "Data Labeling", "visibility": 0.35, "evolution": 0.3},
+        {"name": "Model Monitoring", "visibility": 0.55, "evolution": 0.4},
+        {"name": "ML Frameworks", "visibility": 0.30, "evolution": 0.7},
+        {"name": "GPU Infrastructure", "visibility": 0.15, "evolution": 0.75},
+        {"name": "Cloud Compute", "visibility": 0.10, "evolution": 0.9}
+      ],
+      "dependencies": [
+        ["AI Application", "Model Serving API"],
+        ["Model Serving API", "Custom ML Models"],
+        ["Custom ML Models", "Training Pipeline"],
+        ["Training Pipeline", "Feature Engineering"],
+        ["Feature Engineering", "Data Collection"],
+        ["Data Collection", "Data Labeling"],
+        ["Model Serving API", "Model Monitoring"],
+        ["Training Pipeline", "ML Frameworks"],
+        ["ML Frameworks", "GPU Infrastructure"],
+        ["GPU Infrastructure", "Cloud Compute"]
+      ]
+    },
+    "marketplace": {
+      "name": "Marketplace Platform",
+      "components": [
+        {"name": "Buyer Experience", "visibility": 0.95, "evolution": 0.7},
+        {"name": "Seller Dashboard", "visibility": 0.90, "evolution": 0.65},
+        {"name": "Search & Discovery", "visibility": 0.85, "evolution": 0.6},
+        {"name": "Matching Algorithm", "visibility": 0.65, "evolution": 0.35},
+        {"name": "Trust & Safety", "visibility": 0.70, "evolution": 0.5},
+        {"name": "Payment Platform", "visibility": 0.60, "evolution": 0.75},
+        {"name": "Review System", "visibility": 0.75, "evolution": 0.7},
+        {"name": "Messaging System", "visibility": 0.70, "evolution": 0.65},
+        {"name": "Transaction Data", "visibility": 0.35, "evolution": 0.6},
+        {"name": "Fraud Detection", "visibility": 0.40, "evolution": 0.45},
+        {"name": "Infrastructure", "visibility": 0.10, "evolution": 0.85}
+      ],
+      "dependencies": [
+        ["Buyer Experience", "Search & Discovery"],
+        ["Search & Discovery", "Matching Algorithm"],
+        ["Buyer Experience", "Trust & Safety"],
+        ["Seller Dashboard", "Payment Platform"],
+        ["Trust & Safety", "Review System"],
+        ["Buyer Experience", "Messaging System"],
+        ["Seller Dashboard", "Messaging System"],
+        ["Payment Platform", "Transaction Data"],
+        ["Transaction Data", "Fraud Detection"],
+        ["Matching Algorithm", "Infrastructure"]
+      ]
+    }
+  }
+}

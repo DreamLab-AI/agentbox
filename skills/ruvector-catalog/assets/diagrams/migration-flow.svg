@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 400" width="680" height="400">
+  <defs>
+    <style>
+      text { font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace; fill: #e2e8f0; }
+      .bg { fill: #1e293b; rx: 12; }
+      .head { font-size: 15px; font-weight: bold; fill: #f1f5f9; }
+      .col-head { font-size: 11px; font-weight: bold; fill: #94a3b8; text-decoration: underline; }
+      .detect { font-size: 10px; fill: #fca5a5; }
+      .replace { font-size: 10px; fill: #86efac; }
+      .delete { font-size: 10px; fill: #fbbf24; }
+      .arrow-text { font-size: 12px; fill: #3b82f6; }
+      .check { font-size: 11px; fill: #cbd5e1; }
+      .warn { font-size: 11px; fill: #f97316; font-weight: bold; }
+      .checkbg { fill: #334155; rx: 8; }
+    </style>
+  </defs>
+  <rect class="bg" x="0" y="0" width="680" height="400"/>
+  <text class="head" x="230" y="25">MIGRATION: OLD &amp;#8594; NEW</text>
+  <text class="col-head" x="30" y="50">DETECT</text>
+  <text class="arrow-text" x="210" y="50">&amp;#8594;</text>
+  <text class="col-head" x="250" y="50">REPLACE</text>
+  <text class="arrow-text" x="450" y="50">&amp;#8594;</text>
+  <text class="col-head" x="490" y="50">DELETE</text>
+  <text class="detect" x="30" y="75">OPENAI_API_KEY</text>
+  <text class="replace" x="250" y="75">AdaptiveEmbedder</text>
+  <text class="delete" x="490" y="75">API keys</text>
+  <text class="detect" x="30" y="95">embeddings.json</text>
+  <text class="replace" x="250" y="95">RvfDatabase</text>
+  <text class="delete" x="490" y="95">JSON files</text>
+  <text class="detect" x="30" y="115">pinecone.init()</text>
+  <text class="replace" x="250" y="115">VectorDb + RVF</text>
+  <text class="delete" x="490" y="115">Cloud SDK</text>
+  <text class="detect" x="30" y="135">O(n) cosine loop</text>
+  <text class="replace" x="250" y="135">HNSW O(log n)</text>
+  <text class="delete" x="490" y="135">Loop code</text>
+  <text class="detect" x="30" y="155">No image search</text>
+  <text class="replace" x="250" y="155">ruvector-cnn-wasm</text>
+  <text class="delete" x="490" y="155">(add, don&apos;t delete)</text>
+  <text class="detect" x="30" y="175">Custom RRF merge</text>
+  <text class="replace" x="250" y="175">differentiableSearch</text>
+  <text class="delete" x="490" y="175">RRF code</text>
+  <text class="detect" x="30" y="195">No doc relationships</text>
+  <text class="replace" x="250" y="195">buildGraph()</text>
+  <text class="delete" x="490" y="195">(add, don&apos;t delete)</text>
+  <text class="detect" x="30" y="215">Manual anomaly checks</text>
+  <text class="replace" x="250" y="215">CoherenceMonitor</text>
+  <text class="delete" x="490" y="215">(add, don&apos;t delete)</text>
+  <text class="detect" x="30" y="235">Basic attention</text>
+  <text class="replace" x="250" y="235">FlashAttention-3</text>
+  <text class="delete" x="490" y="235">Old attention</text>
+  <text class="detect" x="30" y="255">No verification</text>
+  <text class="replace" x="250" y="255">ruvector-verified</text>
+  <text class="delete" x="490" y="255">(add, don&apos;t delete)</text>
+  <rect class="checkbg" x="20" y="275" width="640" height="110"/>
+  <text class="warn" x="35" y="298">SUNSET CHECKLIST — Steps 5-11 are where migrations FAIL:</text>
+  <text class="check" x="35" y="318">Install &amp;#8594; Write code &amp;#8594; Verify &amp;#8594; DELETE dependency &amp;#8594; DELETE code files</text>
+  <text class="check" x="35" y="338">&amp;#8594; DELETE data files &amp;#8594; UPDATE imports &amp;#8594; REMOVE env vars &amp;#8594; UPDATE docs</text>
+  <text class="check" x="35" y="358">&amp;#8594; UPDATE scripts &amp;#8594; TypeScript clean &amp;#8594; Build pass &amp;#8594; Grep clean &amp;#8594; Deploy</text>
+</svg>

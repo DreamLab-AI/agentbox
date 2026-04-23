@@ -1,0 +1,40 @@
+# Ontology Enrich Configuration
+
+perplexity:
+  model: "llama-3.1-sonar-large-128k-online"
+  temperature: 0.2
+  max_tokens: 2000
+  uk_english: true
+
+  # Rate limiting
+  requests_per_minute: 10
+  retry_on_limit: true
+  max_retries: 3
+  backoff_factor: 2.0
+
+validation:
+  # OWL2 validation strictness
+  strict_owl2: true
+
+  # Content requirements
+  require_citations: true
+  min_definition_length: 50
+  min_citations: 1
+
+  # Automatic rollback
+  auto_rollback: true
+  preserve_all_fields: true
+
+links:
+  # Link validation
+  knowledge_graph_root: "mainKnowledgeGraph/pages"
+
+  # Auto-fix settings
+  auto_fix_threshold: 0.8
+  suggest_alternatives: true
+  min_similarity: 0.5
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/enrichment.log"

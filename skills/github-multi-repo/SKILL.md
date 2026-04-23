@@ -11,7 +11,7 @@ requires:
 capabilities:
   - cross-repository coordination
   - package synchronization
-  - architecture optimization
+  - architecture optimisation
   - template management
   - distributed workflows
 ---
@@ -20,18 +20,26 @@ capabilities:
 
 ## Overview
 
-Advanced multi-repository coordination system that combines swarm intelligence, package synchronization, and repository architecture optimization. This skill enables organization-wide automation, cross-project collaboration, and scalable repository management.
+Advanced multi-repository coordination system that combines swarm intelligence, package synchronisation, and repository architecture optimisation. This skill enables organisation-wide automation, cross-project collaboration, and scalable repository management.
+
+## When Not To Use
+
+- For single-repository code review -- use the github-code-review skill instead
+- For release management within a single repository -- use the github-release-management skill instead
+- For GitHub Actions workflow authoring -- use the github-workflow-automation skill instead
+- For issue tracking and sprint planning -- use the github-project-management skill instead
+- For cloud-based swarm deployment unrelated to GitHub repos -- use the flow-nexus-swarm skill instead
 
 ## Core Capabilities
 
-### 🔄 Multi-Repository Swarm Coordination
+### Multi-Repository Swarm Coordination
 Cross-repository AI swarm orchestration for distributed development workflows.
 
-### 📦 Package Synchronization
+### Package Synchronisation
 Intelligent dependency resolution and version alignment across multiple packages.
 
 ### 🏗️ Repository Architecture
-Structure optimization and template management for scalable projects.
+Structure optimisation and template management for scalable projects.
 
 ### 🔗 Integration Management
 Cross-package integration testing and deployment coordination.
@@ -62,7 +70,7 @@ npx claude-flow skill run github-multi-repo sync \
   --update-docs
 ```
 
-### Optimize Architecture
+### Optimise Architecture
 ```bash
 # Analyze and optimize repository structure
 npx claude-flow skill run github-multi-repo optimize \
@@ -606,7 +614,7 @@ npx claude-flow skill run github-multi-repo lib-update \
   --run-tests
 ```
 
-### 3. Organization-Wide Changes
+### 3. Organisation-Wide Changes
 ```bash
 npx claude-flow skill run github-multi-repo org-policy \
   --policy "add-security-headers" \
@@ -698,7 +706,7 @@ npx claude-flow skill run github-multi-repo health-check \
 
 ## Best Practices
 
-### 1. Repository Organization
+### 1. Repository Organisation
 - Clear repository roles and boundaries
 - Consistent naming conventions
 - Documented dependencies
@@ -726,7 +734,7 @@ npx claude-flow skill run github-multi-repo health-check \
 - Integration test automation
 - Performance regression detection
 
-## Performance Optimization
+## Performance Optimisation
 
 ### Caching Strategy
 ```bash
@@ -849,16 +857,23 @@ npx claude-flow skill run github-multi-repo cross-team \
 
 ## Integration Points
 
+## When Not To Use
+
+- **Do not use for single-repository code review** (use `github-code-review` instead) -- If you only need to review a PR within one repository, the code-review skill provides deeper per-PR analysis with specialized agents.
+- **Do not use for release orchestration** (use `github-release-management` instead) -- If you need changelog generation, version bumping, staged deployment, or rollback for a single project's release cycle.
+- **Do not use for CI/CD pipeline management** (use `github-workflow-automation` instead) -- If you need to create or optimise GitHub Actions workflows within a single repository.
+- **Do not use for issue tracking or project boards** (use `github-project-management` instead) -- If your focus is sprint planning, issue triage, or board automation rather than cross-repository synchronization.
+
 ### Related Skills
-- `github-workflow` - GitHub workflow automation
-- `github-pr` - Pull request management
-- `sparc-architect` - Architecture design
-- `sparc-optimizer` - Performance optimization
+- `github-code-review` - Single-repo PR review
+- `github-release-management` - Release orchestration
+- `github-workflow-automation` - CI/CD pipelines
+- `github-project-management` - Issue and sprint management
 
 ### Related Commands
 - `/github sync-coordinator` - Cross-repo synchronization
 - `/github release-manager` - Coordinated releases
-- `/github repo-architect` - Repository optimization
+- `/github repo-architect` - Repository optimisation
 - `/sparc architect` - Detailed architecture design
 
 ## Support and Resources

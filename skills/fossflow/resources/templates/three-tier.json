@@ -1,0 +1,274 @@
+{
+  "title": "Three-Tier Architecture",
+  "description": "Classic three-tier web application architecture with load balancing",
+  "version": "1.0.0",
+  "fitToScreen": true,
+  "items": [
+    {
+      "id": "users",
+      "name": "Users",
+      "description": "End users",
+      "icon": "isoflow__person",
+      "position": { "x": 0, "y": 2 }
+    },
+    {
+      "id": "cdn",
+      "name": "CDN",
+      "description": "Content Delivery Network",
+      "icon": "isoflow__cdn",
+      "position": { "x": 2, "y": 2 }
+    },
+    {
+      "id": "lb",
+      "name": "Load Balancer",
+      "description": "Application load balancer",
+      "icon": "isoflow__load_balancer",
+      "position": { "x": 4, "y": 2 }
+    },
+    {
+      "id": "web1",
+      "name": "Web Server 1",
+      "description": "Web/presentation tier",
+      "icon": "isoflow__server",
+      "position": { "x": 6, "y": 0 }
+    },
+    {
+      "id": "web2",
+      "name": "Web Server 2",
+      "description": "Web/presentation tier",
+      "icon": "isoflow__server",
+      "position": { "x": 6, "y": 2 }
+    },
+    {
+      "id": "web3",
+      "name": "Web Server 3",
+      "description": "Web/presentation tier",
+      "icon": "isoflow__server",
+      "position": { "x": 6, "y": 4 }
+    },
+    {
+      "id": "app1",
+      "name": "App Server 1",
+      "description": "Application/logic tier",
+      "icon": "isoflow__api",
+      "position": { "x": 8, "y": 1 }
+    },
+    {
+      "id": "app2",
+      "name": "App Server 2",
+      "description": "Application/logic tier",
+      "icon": "isoflow__api",
+      "position": { "x": 8, "y": 3 }
+    },
+    {
+      "id": "cache",
+      "name": "Session Cache",
+      "description": "Redis session store",
+      "icon": "isoflow__redis",
+      "position": { "x": 10, "y": 0 }
+    },
+    {
+      "id": "db-primary",
+      "name": "Primary DB",
+      "description": "Primary PostgreSQL database",
+      "icon": "isoflow__database",
+      "position": { "x": 10, "y": 2 }
+    },
+    {
+      "id": "db-replica",
+      "name": "Replica DB",
+      "description": "Read replica database",
+      "icon": "isoflow__database",
+      "position": { "x": 10, "y": 4 }
+    },
+    {
+      "id": "backup",
+      "name": "Backup Storage",
+      "description": "Database backups",
+      "icon": "isoflow__backup",
+      "position": { "x": 12, "y": 3 }
+    }
+  ],
+  "connectors": [
+    {
+      "id": "c1",
+      "from": "users",
+      "to": "cdn",
+      "color": "blue",
+      "showArrow": true
+    },
+    {
+      "id": "c2",
+      "from": "cdn",
+      "to": "lb",
+      "color": "blue",
+      "showArrow": true
+    },
+    {
+      "id": "c3",
+      "from": "lb",
+      "to": "web1",
+      "color": "green",
+      "showArrow": true
+    },
+    {
+      "id": "c4",
+      "from": "lb",
+      "to": "web2",
+      "color": "green",
+      "showArrow": true
+    },
+    {
+      "id": "c5",
+      "from": "lb",
+      "to": "web3",
+      "color": "green",
+      "showArrow": true
+    },
+    {
+      "id": "c6",
+      "from": "web1",
+      "to": "app1",
+      "color": "orange",
+      "showArrow": true
+    },
+    {
+      "id": "c7",
+      "from": "web2",
+      "to": "app1",
+      "color": "orange",
+      "showArrow": true
+    },
+    {
+      "id": "c8",
+      "from": "web2",
+      "to": "app2",
+      "color": "orange",
+      "showArrow": true
+    },
+    {
+      "id": "c9",
+      "from": "web3",
+      "to": "app2",
+      "color": "orange",
+      "showArrow": true
+    },
+    {
+      "id": "c10",
+      "from": "app1",
+      "to": "cache",
+      "color": "red",
+      "style": "DASHED",
+      "showArrow": true
+    },
+    {
+      "id": "c11",
+      "from": "app2",
+      "to": "cache",
+      "color": "red",
+      "style": "DASHED",
+      "showArrow": true
+    },
+    {
+      "id": "c12",
+      "from": "app1",
+      "to": "db-primary",
+      "color": "teal",
+      "showArrow": true,
+      "labels": [
+        { "id": "l1", "text": "Write", "position": 50 }
+      ]
+    },
+    {
+      "id": "c13",
+      "from": "app2",
+      "to": "db-primary",
+      "color": "teal",
+      "showArrow": true
+    },
+    {
+      "id": "c14",
+      "from": "app1",
+      "to": "db-replica",
+      "color": "purple",
+      "style": "DASHED",
+      "showArrow": true,
+      "labels": [
+        { "id": "l2", "text": "Read", "position": 50 }
+      ]
+    },
+    {
+      "id": "c15",
+      "from": "app2",
+      "to": "db-replica",
+      "color": "purple",
+      "style": "DASHED",
+      "showArrow": true
+    },
+    {
+      "id": "c16",
+      "from": "db-primary",
+      "to": "db-replica",
+      "color": "gray",
+      "style": "DOTTED",
+      "labels": [
+        { "id": "l3", "text": "Replication", "position": 50 }
+      ]
+    },
+    {
+      "id": "c17",
+      "from": "db-primary",
+      "to": "backup",
+      "color": "gray",
+      "style": "DOTTED",
+      "showArrow": true
+    }
+  ],
+  "colors": [
+    { "id": "blue", "value": "#4A90D9" },
+    { "id": "green", "value": "#7CB342" },
+    { "id": "orange", "value": "#FF9800" },
+    { "id": "red", "value": "#E53935" },
+    { "id": "purple", "value": "#9C27B0" },
+    { "id": "gray", "value": "#78909C" },
+    { "id": "teal", "value": "#00ACC1" }
+  ],
+  "icons": [],
+  "rectangles": [
+    {
+      "id": "presentation-tier",
+      "from": { "x": 5, "y": -1 },
+      "to": { "x": 7, "y": 5 },
+      "color": "green"
+    },
+    {
+      "id": "logic-tier",
+      "from": { "x": 7, "y": 0 },
+      "to": { "x": 9, "y": 4 },
+      "color": "orange"
+    },
+    {
+      "id": "data-tier",
+      "from": { "x": 9, "y": -1 },
+      "to": { "x": 13, "y": 5 },
+      "color": "teal"
+    }
+  ],
+  "textBoxes": [
+    {
+      "id": "t1",
+      "text": "Presentation",
+      "position": { "x": 6, "y": -2 }
+    },
+    {
+      "id": "t2",
+      "text": "Logic",
+      "position": { "x": 8, "y": -1 }
+    },
+    {
+      "id": "t3",
+      "text": "Data",
+      "position": { "x": 11, "y": -2 }
+    }
+  ]
+}

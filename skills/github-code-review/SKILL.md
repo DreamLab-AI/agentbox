@@ -22,7 +22,15 @@ capabilities:
 
 > **AI-Powered Code Review**: Deploy specialized review agents to perform comprehensive, intelligent code reviews that go beyond traditional static analysis.
 
-## 🎯 Quick Start
+## When Not To Use
+
+- For full project development with quality gates, TDD, and coverage analysis -- use the build-with-quality skill instead
+- For release versioning, changelog generation, and deployment orchestration -- use the github-release-management skill instead
+- For GitHub Actions workflow creation and CI/CD pipeline setup -- use the github-workflow-automation skill instead
+- For cross-repository synchronisation and architecture management -- use the github-multi-repo skill instead
+- For sprint planning, issue triage, and project board management -- use the github-project-management skill instead
+
+## Quick Start
 
 ### Simple Review
 ```bash
@@ -211,7 +219,7 @@ fi
 
 ### Performance Review Agent
 
-**Focus:** Analyze performance impact and optimization opportunities
+**Focus:** Analyse performance impact and optimisation opportunities
 
 ```bash
 # Run performance analysis
@@ -965,7 +973,7 @@ npx ruv-swarm github export-metrics \
 - ✅ Reference documentation and best practices
 - ✅ Maintain respectful, constructive tone
 
-### 3. Performance Optimization
+### 3. Performance Optimisation
 - ✅ Cache analysis results to avoid redundant work
 - ✅ Use incremental reviews for large PRs
 - ✅ Enable parallel agent execution
@@ -1112,10 +1120,18 @@ npx ruv-swarm github review-init --pr 123 --parallel --cache-results
 
 ## 📖 Additional Resources
 
+## When Not To Use
+
+- **Do not use for release management** (use `github-release-management` instead) -- If you need version bumping, changelog generation, deployment orchestration, or rollback management, those are release-management concerns.
+- **Do not use for CI/CD automation** (use `github-workflow-automation` instead) -- If you need to create, optimise, or manage GitHub Actions pipelines, workflow templates, or self-healing CI, use the workflow automation skill.
+- **Do not use for issue tracking or sprint planning** (use `github-project-management` instead) -- If your focus is issue triage, project boards, sprint management, or agile workflows rather than reviewing code in PRs.
+- **Do not use for cross-repository coordination** (use `github-multi-repo` instead) -- If you need to synchronize changes, dependencies, or deployments across multiple repositories.
+
 ### Related Skills
-- `github-pr-manager` - Comprehensive PR lifecycle management
-- `github-workflow-automation` - Automate GitHub workflows
-- `swarm-coordination` - Advanced swarm orchestration
+- `github-release-management` - Version management and deployment orchestration
+- `github-workflow-automation` - CI/CD pipeline management
+- `github-project-management` - Issue tracking and sprint planning
+- `github-multi-repo` - Cross-repository coordination
 
 ### Documentation
 - [GitHub CLI Documentation](https://cli.github.com/manual/)

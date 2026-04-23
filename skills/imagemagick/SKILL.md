@@ -3,10 +3,10 @@ name: imagemagick
 description: >
   Process and manipulate images with format conversion (PNG→JPG→WebP→GIF),
   resizing, cropping, filtering, batch operations, and image metadata extraction.
-  Use for thumbnail generation, image optimization, format conversion, watermarks,
+  Use for thumbnail generation, image optimisation, format conversion, watermarks,
   and bulk image processing tasks.
 version: 2.0.0
-author: turbo-flow-claude
+author: agentbox-claude
 mcp_server: true
 protocol: fastmcp
 entry_point: mcp-server/server.py
@@ -21,13 +21,21 @@ Comprehensive image processing using ImageMagick via FastMCP protocol.
 ## When to Use This Skill
 
 - Convert between image formats (PNG, JPG, WebP, GIF, TIFF, BMP, SVG, PDF)
-- Resize images for web optimization or thumbnails
+- Resize images for web optimisation or thumbnails
 - Crop images to specific regions
 - Apply filters and effects (blur, sharpen, colorize)
 - Batch process multiple images
 - Create image montages and composites
 - Extract image metadata
 - Add watermarks and overlays
+
+## When Not To Use
+
+- For AI-generated images from text prompts -- use the comfyui skill instead
+- For video or audio processing (transcode, cut, merge) -- use the ffmpeg-processing skill instead
+- For 3D modelling and rendering -- use the blender skill instead
+- For diagrams, flowcharts, or data visualisations -- use the mermaid-diagrams or report-builder skills instead
+- For browser screenshots of web pages -- use the playwright or browser skills instead
 
 ## Tools
 

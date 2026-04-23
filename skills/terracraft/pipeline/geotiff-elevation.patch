@@ -1,0 +1,721 @@
+diff --git a/Cargo.lock b/Cargo.lock
+index 52032d0..c4c19f7 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -213,6 +213,7 @@ dependencies = [
+  "tauri-plugin-log",
+  "tauri-plugin-shell",
+  "tempfile",
++ "tiff 0.9.1",
+  "tokio",
+  "vek",
+  "windows 0.62.2",
+@@ -2676,7 +2677,7 @@ dependencies = [
+  "ravif",
+  "rayon",
+  "rgb",
+- "tiff",
++ "tiff 0.10.3",
+  "zune-core 0.5.1",
+  "zune-jpeg 0.5.12",
+ ]
+@@ -2879,6 +2880,12 @@ dependencies = [
+  "libc",
+ ]
+ 
++[[package]]
++name = "jpeg-decoder"
++version = "0.3.2"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "00810f1d8b74be64b13dbf3db89ac67740615d6c891f0e7b6179326533011a07"
++
+ [[package]]
+ name = "js-sys"
+ version = "0.3.85"
+@@ -5916,6 +5923,17 @@ dependencies = [
+  "syn 2.0.114",
+ ]
+ 
++[[package]]
++name = "tiff"
++version = "0.9.1"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "ba1310fcea54c6a9a4fd1aad794ecc02c31682f6bfbecdf460bf19533eed1e3e"
++dependencies = [
++ "flate2",
++ "jpeg-decoder",
++ "weezl",
++]
++
+ [[package]]
+ name = "tiff"
+ version = "0.10.3"
+@@ -6245,7 +6263,7 @@ version = "1.6.3"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
+ dependencies = [
+- "cfg-if 0.1.10",
++ "cfg-if 1.0.4",
+  "static_assertions",
+ ]
+ 
+diff --git a/Cargo.toml b/Cargo.toml
+index 8164430..4bdc861 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -33,6 +33,7 @@ fnv = "1.0.7"
+ fs2 = "0.4"
+ geo = "0.32.0"
+ image = "0.25"
++tiff = "0.9"
+ indicatif = "0.18.4"
+ itertools = "0.14.0"
+ jsonwebtoken = "10.3.0"
+diff --git a/src/args.rs b/src/args.rs
+index 74df108..d1b1140 100644
+--- a/src/args.rs
++++ b/src/args.rs
+@@ -44,6 +44,13 @@ pub struct Args {
+     #[arg(long)]
+     pub terrain: bool,
+ 
++    /// Custom elevation GeoTIFF file (optional, implies --terrain).
++    /// Replaces AWS Terrain Tiles with a local GeoTIFF DEM file.
++    /// Supports Float32/Float64/Int16/UInt16 pixel types in EPSG:4326 or EPSG:27700.
++    /// The file must cover the requested bounding box.
++    #[arg(long)]
++    pub elevation_file: Option<PathBuf>,
++
+     /// Enable interior generation (optional)
+     #[arg(long, default_value_t = true, action = ArgAction::Set, num_args = 0..=1, default_missing_value = "true")]
+     pub interior: bool,
+@@ -83,7 +90,12 @@ pub struct Args {
+ /// For Java Edition: `--path` is required and must point to an existing directory
+ /// where a new world will be created automatically.
+ /// For Bedrock Edition (`--bedrock`): `--path` is optional (defaults to Desktop output).
+-pub fn validate_args(args: &Args) -> Result<(), String> {
++pub fn validate_args(args: &mut Args) -> Result<(), String> {
++    // --elevation-file implies --terrain for all element placement code
++    if args.elevation_file.is_some() && !args.terrain {
++        args.terrain = true;
++    }
++
+     if args.bedrock {
+         // Bedrock: path is optional; if provided, it must be an existing directory
+         if let Some(ref path) = args.path {
+diff --git a/src/elevation_data.rs b/src/elevation_data.rs
+index 66910d8..11b1316 100644
+--- a/src/elevation_data.rs
++++ b/src/elevation_data.rs
+@@ -7,6 +7,8 @@ use crate::{
+ use image::Rgb;
+ use rayon::prelude::*;
+ use std::path::{Path, PathBuf};
++use tiff::decoder::Decoder as TiffDecoder;
++use tiff::tags::Tag;
+ 
+ /// Maximum Y coordinate in Minecraft (build height limit)
+ const MAX_Y: i32 = 319;
+@@ -264,6 +266,458 @@ fn fetch_or_load_tile(
+     }
+ }
+ 
++/// Metadata extracted from a GeoTIFF file describing its spatial extent and resolution.
++struct GeoTiffInfo {
++    /// Width in pixels
++    width: u32,
++    /// Height in pixels
++    height: u32,
++    /// Top-left X coordinate (easting or longitude)
++    origin_x: f64,
++    /// Top-left Y coordinate (northing or latitude)
++    origin_y: f64,
++    /// Pixel width in coordinate units (positive)
++    pixel_size_x: f64,
++    /// Pixel height in coordinate units (positive, stored as abs value)
++    pixel_size_y: f64,
++    /// True if coordinates are in British National Grid (EPSG:27700)
++    is_bng: bool,
++}
++
++/// Reads elevation data from a GeoTIFF file, resampling onto the Minecraft grid.
++///
++/// Supports Float32, Float64, Int16, and UInt16 pixel types in either
++/// EPSG:4326 (WGS84 lat/lon) or EPSG:27700 (British National Grid).
++/// Falls back to BNG detection heuristic when GeoKey metadata is absent.
++pub fn fetch_elevation_from_geotiff(
++    path: &Path,
++    bbox: &LLBBox,
++    scale: f64,
++    ground_level: i32,
++) -> Result<ElevationData, Box<dyn std::error::Error>> {
++    let (base_scale_z, base_scale_x) = geo_distance(bbox.min(), bbox.max());
++    let scale_factor_z: f64 = base_scale_z.floor() * scale;
++    let scale_factor_x: f64 = base_scale_x.floor() * scale;
++    let grid_width: usize = scale_factor_x as usize;
++    let grid_height: usize = scale_factor_z as usize;
++
++    println!("Reading elevation from GeoTIFF: {}", path.display());
++
++    // Store path for raw tag parser (thread-local, used by parse_raw_geotiff_tags)
++    GEOTIFF_PATH.with(|p| *p.borrow_mut() = Some(path.to_path_buf()));
++
++    let file = std::fs::File::open(path)?;
++    let mut decoder = TiffDecoder::new(file)?;
++
++    let (img_width, img_height) = decoder.dimensions()?;
++
++    // Parse geospatial transform from GeoTIFF tags
++    let geo_info = parse_geotiff_transform(&mut decoder, img_width, img_height)?;
++
++    println!(
++        "  GeoTIFF: {}x{} pixels, origin ({:.1}, {:.1}), pixel size ({:.2}, {:.2}){}",
++        geo_info.width,
++        geo_info.height,
++        geo_info.origin_x,
++        geo_info.origin_y,
++        geo_info.pixel_size_x,
++        geo_info.pixel_size_y,
++        if geo_info.is_bng { " [BNG]" } else { " [WGS84]" }
++    );
++
++    // Read elevation values into a flat Vec<f64>
++    let elevation_values = read_elevation_band(&mut decoder, &geo_info)?;
++
++    // Build the height grid by sampling the GeoTIFF at each Minecraft grid cell
++    let mut height_grid: Vec<Vec<f64>> = vec![vec![f64::NAN; grid_width]; grid_height];
++
++    for gy in 0..grid_height {
++        for gx in 0..grid_width {
++            // Map grid cell to geographic coordinates within the bbox
++            let rel_x = (gx as f64 + 0.5) / grid_width as f64;
++            let rel_y = (gy as f64 + 0.5) / grid_height as f64;
++
++            let lng = bbox.min().lng() + rel_x * (bbox.max().lng() - bbox.min().lng());
++            // Y is inverted: grid row 0 = max lat (north)
++            let lat = bbox.max().lat() - rel_y * (bbox.max().lat() - bbox.min().lat());
++
++            // Convert geographic coords to pixel coords in the GeoTIFF
++            let (px, py) = if geo_info.is_bng {
++                // Convert WGS84 lat/lng to approximate BNG eastings/northings
++                let (easting, northing) = wgs84_to_bng_approx(lat, lng);
++                let px = (easting - geo_info.origin_x) / geo_info.pixel_size_x;
++                let py = (geo_info.origin_y - northing) / geo_info.pixel_size_y;
++                (px, py)
++            } else {
++                let px = (lng - geo_info.origin_x) / geo_info.pixel_size_x;
++                let py = (geo_info.origin_y - lat) / geo_info.pixel_size_y;
++                (px, py)
++            };
++
++            // Bilinear interpolation
++            let ix = px.floor() as i64;
++            let iy = py.floor() as i64;
++            let fx = px - px.floor();
++            let fy = py - py.floor();
++
++            if ix >= 0
++                && iy >= 0
++                && (ix + 1) < geo_info.width as i64
++                && (iy + 1) < geo_info.height as i64
++            {
++                let idx = |r: i64, c: i64| -> usize {
++                    (r as usize) * (geo_info.width as usize) + (c as usize)
++                };
++                let v00 = elevation_values[idx(iy, ix)];
++                let v10 = elevation_values[idx(iy, ix + 1)];
++                let v01 = elevation_values[idx(iy + 1, ix)];
++                let v11 = elevation_values[idx(iy + 1, ix + 1)];
++
++                // Skip nodata values (commonly -9999 or very negative)
++                if v00 > -1000.0 && v10 > -1000.0 && v01 > -1000.0 && v11 > -1000.0 {
++                    let h = v00 * (1.0 - fx) * (1.0 - fy)
++                        + v10 * fx * (1.0 - fy)
++                        + v01 * (1.0 - fx) * fy
++                        + v11 * fx * fy;
++                    height_grid[gy][gx] = h;
++                }
++            }
++        }
++    }
++
++    println!(
++        "  Sampled {}x{} grid from GeoTIFF",
++        grid_width, grid_height
++    );
++    emit_gui_progress_update(15.0, "Processing elevation from GeoTIFF...");
++
++    // Reuse the standard post-processing pipeline
++    fill_nan_values(&mut height_grid);
++    filter_elevation_outliers(&mut height_grid);
++
++    let grid_size: f64 = (grid_width.min(grid_height) as f64).max(1.0);
++    // Use a smaller sigma for custom DEMs since they are already high quality
++    let sigma: f64 = 2.0 * (grid_size / 100.0).sqrt();
++    let blurred_heights: Vec<Vec<f64>> = apply_gaussian_blur(&height_grid, sigma);
++    drop(height_grid);
++
++    // Scale to Minecraft Y coordinates (reuse existing logic)
++    let (min_height, max_height) = blurred_heights
++        .par_iter()
++        .map(|row| {
++            let mut local_min = f64::MAX;
++            let mut local_max = f64::MIN;
++            for &h in row {
++                local_min = local_min.min(h);
++                local_max = local_max.max(h);
++            }
++            (local_min, local_max)
++        })
++        .reduce(
++            || (f64::MAX, f64::MIN),
++            |(min1, max1), (min2, max2)| (min1.min(min2), max1.max(max2)),
++        );
++
++    let height_range: f64 = max_height - min_height;
++    let ideal_scaled_range: f64 = height_range * scale;
++    const TERRAIN_HEIGHT_BUFFER: i32 = 15;
++    let available_y_range: f64 = (MAX_Y - TERRAIN_HEIGHT_BUFFER - ground_level) as f64;
++
++    let scaled_range: f64 = if ideal_scaled_range <= available_y_range {
++        eprintln!(
++            "Realistic elevation: {:.1}m range fits in {} available blocks",
++            height_range, available_y_range as i32
++        );
++        ideal_scaled_range
++    } else {
++        let compression_factor: f64 = available_y_range / height_range;
++        let compressed_range: f64 = height_range * compression_factor;
++        eprintln!(
++            "Elevation compressed: {:.1}m range -> {:.0} blocks ({:.2}:1 ratio)",
++            height_range,
++            compressed_range,
++            height_range / compressed_range
++        );
++        compressed_range
++    };
++
++    let mc_heights: Vec<Vec<i32>> = blurred_heights
++        .par_iter()
++        .map(|row| {
++            row.iter()
++                .map(|&h| {
++                    let relative_height: f64 = if height_range > 0.0 {
++                        (h - min_height) / height_range
++                    } else {
++                        0.0
++                    };
++                    let scaled_height: f64 = relative_height * scaled_range;
++                    ((ground_level as f64 + scaled_height).round() as i32)
++                        .clamp(ground_level, MAX_Y - TERRAIN_HEIGHT_BUFFER)
++                })
++                .collect()
++        })
++        .collect();
++
++    Ok(ElevationData {
++        heights: mc_heights,
++        width: grid_width,
++        height: grid_height,
++    })
++}
++
++/// Parses GeoTIFF spatial transform metadata by reading raw TIFF IFD entries.
++/// This bypasses the tiff crate's tag API which may not handle GeoTIFF-specific
++/// DOUBLE-typed tags (33550, 33922) correctly in all versions.
++fn parse_geotiff_transform(
++    _decoder: &mut TiffDecoder<std::fs::File>,
++    img_width: u32,
++    img_height: u32,
++) -> Result<GeoTiffInfo, Box<dyn std::error::Error>> {
++    // Re-open the file to parse raw IFD tags independently of the tiff decoder
++    // This is necessary because the tiff crate may not expose custom GeoTIFF tags
++    let raw_tags = parse_raw_geotiff_tags()?;
++
++    let pixel_scale = raw_tags.pixel_scale;
++    let tiepoint = raw_tags.tiepoint;
++
++    let (origin_x, origin_y, pixel_size_x, pixel_size_y) = if tiepoint.len() >= 6
++        && pixel_scale.len() >= 2
++    {
++        let ox = tiepoint[3] - tiepoint[0] * pixel_scale[0];
++        let oy = tiepoint[4] + tiepoint[1] * pixel_scale[1];
++        (ox, oy, pixel_scale[0], pixel_scale[1])
++    } else if raw_tags.transform.len() >= 8 {
++        (
++            raw_tags.transform[3],
++            raw_tags.transform[7],
++            raw_tags.transform[0].abs(),
++            raw_tags.transform[5].abs(),
++        )
++    } else {
++        return Err("GeoTIFF has no spatial reference tags (33922/33550 or 34264)".into());
++    };
++
++    let is_bng = raw_tags.is_bng
++        || (origin_x > 0.0
++            && origin_x < 700_000.0
++            && origin_y > 0.0
++            && origin_y < 1_300_000.0);
++
++    Ok(GeoTiffInfo {
++        width: img_width,
++        height: img_height,
++        origin_x,
++        origin_y,
++        pixel_size_x,
++        pixel_size_y,
++        is_bng,
++    })
++}
++
++/// Raw GeoTIFF tag values parsed directly from the TIFF IFD.
++struct RawGeoTiffTags {
++    pixel_scale: Vec<f64>,
++    tiepoint: Vec<f64>,
++    transform: Vec<f64>,
++    is_bng: bool,
++}
++
++// We need this path reference for reopening the file during tag parsing.
++// The path is stored as a thread-local to pass between the public API and the raw parser.
++use std::cell::RefCell;
++thread_local! {
++    static GEOTIFF_PATH: RefCell<Option<PathBuf>> = const { RefCell::new(None) };
++}
++
++/// Parses GeoTIFF tags directly from the TIFF binary, bypassing the tiff crate.
++fn parse_raw_geotiff_tags() -> Result<RawGeoTiffTags, Box<dyn std::error::Error>> {
++    let path = GEOTIFF_PATH.with(|p| p.borrow().clone())
++        .ok_or("GeoTIFF path not set")?;
++
++    let data = std::fs::read(&path)?;
++    let bo_le = data.len() >= 2 && data[0] == b'I' && data[1] == b'I';
++
++    let read_u16 = |offset: usize| -> u16 {
++        if bo_le {
++            u16::from_le_bytes([data[offset], data[offset + 1]])
++        } else {
++            u16::from_be_bytes([data[offset], data[offset + 1]])
++        }
++    };
++    let read_u32 = |offset: usize| -> u32 {
++        if bo_le {
++            u32::from_le_bytes([data[offset], data[offset + 1], data[offset + 2], data[offset + 3]])
++        } else {
++            u32::from_be_bytes([data[offset], data[offset + 1], data[offset + 2], data[offset + 3]])
++        }
++    };
++    let read_f64 = |offset: usize| -> f64 {
++        let bytes: [u8; 8] = data[offset..offset + 8].try_into().unwrap();
++        if bo_le { f64::from_le_bytes(bytes) } else { f64::from_be_bytes(bytes) }
++    };
++
++    let ifd_offset = read_u32(4) as usize;
++    let n_entries = read_u16(ifd_offset) as usize;
++
++    let mut pixel_scale = Vec::new();
++    let mut tiepoint = Vec::new();
++    let mut transform = Vec::new();
++    let mut geokeys = Vec::new();
++
++    for i in 0..n_entries {
++        let entry_offset = ifd_offset + 2 + i * 12;
++        let tag = read_u16(entry_offset);
++        let dtype = read_u16(entry_offset + 2);
++        let count = read_u32(entry_offset + 4) as usize;
++        let value_offset_raw = entry_offset + 8;
++
++        // DOUBLE type = 12, each value is 8 bytes
++        // SHORT type = 3, each value is 2 bytes
++        let type_size: usize = match dtype {
++            3 => 2,  // SHORT
++            12 => 8, // DOUBLE
++            _ => 0,
++        };
++
++        if type_size == 0 {
++            continue;
++        }
++
++        let total_size = type_size * count;
++        let data_offset = if total_size > 4 {
++            read_u32(value_offset_raw) as usize
++        } else {
++            value_offset_raw
++        };
++
++        match tag {
++            33550 if dtype == 12 => {
++                // ModelPixelScaleTag
++                for j in 0..count {
++                    pixel_scale.push(read_f64(data_offset + j * 8));
++                }
++            }
++            33922 if dtype == 12 => {
++                // ModelTiepointTag
++                for j in 0..count {
++                    tiepoint.push(read_f64(data_offset + j * 8));
++                }
++            }
++            34264 if dtype == 12 => {
++                // ModelTransformationTag
++                for j in 0..count {
++                    transform.push(read_f64(data_offset + j * 8));
++                }
++            }
++            34735 if dtype == 3 => {
++                // GeoKeyDirectoryTag
++                for j in 0..count {
++                    geokeys.push(read_u16(data_offset + j * 2));
++                }
++            }
++            _ => {}
++        }
++    }
++
++    // Check for EPSG:27700 in GeoKeys
++    let is_bng = geokeys.chunks(4).any(|chunk| {
++        chunk.len() == 4 && chunk[0] == 3072 && chunk[3] == 27700
++    });
++
++    Ok(RawGeoTiffTags {
++        pixel_scale,
++        tiepoint,
++        transform,
++        is_bng,
++    })
++}
++
++/// Reads the first band of a GeoTIFF as f64 elevation values.
++fn read_elevation_band(
++    decoder: &mut TiffDecoder<std::fs::File>,
++    info: &GeoTiffInfo,
++) -> Result<Vec<f64>, Box<dyn std::error::Error>> {
++    use tiff::decoder::DecodingResult;
++
++    let result = decoder.read_image()?;
++    let total_pixels = info.width as usize * info.height as usize;
++
++    let values: Vec<f64> = match result {
++        DecodingResult::F32(data) => data.iter().take(total_pixels).map(|&v| v as f64).collect(),
++        DecodingResult::F64(data) => data.into_iter().take(total_pixels).collect(),
++        DecodingResult::I16(data) => data.iter().take(total_pixels).map(|&v| v as f64).collect(),
++        DecodingResult::U16(data) => data.iter().take(total_pixels).map(|&v| v as f64).collect(),
++        DecodingResult::I32(data) => data.iter().take(total_pixels).map(|&v| v as f64).collect(),
++        DecodingResult::U32(data) => data.iter().take(total_pixels).map(|&v| v as f64).collect(),
++        DecodingResult::U8(data) => data.iter().take(total_pixels).map(|&v| v as f64).collect(),
++        _ => return Err("Unsupported GeoTIFF pixel type".into()),
++    };
++
++    println!("  Read {} elevation values from GeoTIFF", values.len());
++    Ok(values)
++}
++
++/// Approximate WGS84 to British National Grid conversion.
++/// Uses a simplified Helmert transform — accurate to ~5m, sufficient for DEM sampling.
++fn wgs84_to_bng_approx(lat: f64, lng: f64) -> (f64, f64) {
++    let lat_rad = lat.to_radians();
++    let lng_rad = lng.to_radians();
++
++    // Airy 1830 ellipsoid
++    let a = 6_377_563.396;
++    let b = 6_356_256.909;
++    let e2 = (a * a - b * b) / (a * a);
++    let n = (a - b) / (a + b);
++    let n2 = n * n;
++    let n3 = n * n * n;
++
++    // National Grid origin: 49N, 2W
++    let lat0: f64 = (49.0_f64).to_radians();
++    let lng0: f64 = (-2.0_f64).to_radians();
++    let f0: f64 = 0.9996012717; // scale factor
++    let e0: f64 = 400_000.0; // false easting
++    let n0: f64 = -100_000.0; // false northing
++
++    let sin_lat = lat_rad.sin();
++    let cos_lat = lat_rad.cos();
++    let tan_lat = lat_rad.tan();
++    let tan2 = tan_lat * tan_lat;
++
++    let nu = a * f0 / (1.0 - e2 * sin_lat * sin_lat).sqrt();
++    let rho = a * f0 * (1.0 - e2) / (1.0 - e2 * sin_lat * sin_lat).powf(1.5);
++    let eta2 = nu / rho - 1.0;
++
++    let dlat = lat_rad - lat0;
++    let slat = lat_rad + lat0;
++
++    let ma = (1.0 + n + 1.25 * n2 + 1.25 * n3) * dlat;
++    let mb = (3.0 * n + 3.0 * n2 + 21.0 / 8.0 * n3) * dlat.sin() * slat.cos();
++    // Corrected: should be (dlat*2).sin() * (slat*2).cos() etc. but for ~5m accuracy:
++    let mc = (15.0 / 8.0 * n2 + 15.0 / 8.0 * n3) * (2.0 * dlat).sin() * (2.0 * slat).cos();
++    let md = 35.0 / 24.0 * n3 * (3.0 * dlat).sin() * (3.0 * slat).cos();
++    let m_val = b * f0 * (ma - mb + mc - md);
++
++    let dlng = lng_rad - lng0;
++    let dlng2 = dlng * dlng;
++
++    let i_val = m_val + n0;
++    let ii = nu / 2.0 * sin_lat * cos_lat;
++    let iii = nu / 24.0 * sin_lat * cos_lat.powi(3) * (5.0 - tan2 + 9.0 * eta2);
++    let iiia = nu / 720.0 * sin_lat * cos_lat.powi(5) * (61.0 - 58.0 * tan2 + tan2 * tan2);
++
++    let iv = nu * cos_lat;
++    let v = nu / 6.0 * cos_lat.powi(3) * (nu / rho - tan2);
++    let vi = nu / 120.0
++        * cos_lat.powi(5)
++        * (5.0 - 18.0 * tan2 + tan2 * tan2 + 14.0 * eta2 - 58.0 * tan2 * eta2);
++
++    let northing = i_val + ii * dlng2 + iii * dlng2 * dlng2 + iiia * dlng2 * dlng2 * dlng2;
++    let easting = e0 + iv * dlng + v * dlng * dlng2 + vi * dlng * dlng2 * dlng2;
++
++    (easting, northing)
++}
++
+ pub fn fetch_elevation_data(
+     bbox: &LLBBox,
+     scale: f64,
+diff --git a/src/ground.rs b/src/ground.rs
+index bb5719b..2ab345c 100644
+--- a/src/ground.rs
++++ b/src/ground.rs
+@@ -1,11 +1,12 @@
+ use crate::args::Args;
+ use crate::coordinate_system::{cartesian::XZPoint, geographic::LLBBox};
+-use crate::elevation_data::{fetch_elevation_data, ElevationData};
++use crate::elevation_data::{fetch_elevation_data, fetch_elevation_from_geotiff, ElevationData};
+ use crate::progress::emit_gui_progress_update;
+ #[cfg(feature = "gui")]
+ use crate::telemetry::{send_log, LogLevel};
+ use colored::Colorize;
+ use image::{Rgb, RgbImage};
++use std::path::Path;
+ 
+ /// Represents terrain data and elevation settings
+ #[derive(Clone)]
+@@ -24,6 +25,32 @@ impl Ground {
+         }
+     }
+ 
++    /// Creates terrain from a custom GeoTIFF elevation file.
++    pub fn new_from_geotiff(
++        path: &Path,
++        bbox: &LLBBox,
++        scale: f64,
++        ground_level: i32,
++    ) -> Self {
++        match fetch_elevation_from_geotiff(path, bbox, scale, ground_level) {
++            Ok(elevation_data) => Self {
++                elevation_enabled: true,
++                ground_level,
++                elevation_data: Some(elevation_data),
++            },
++            Err(e) => {
++                eprintln!("Failed to read GeoTIFF elevation: {}", e);
++                #[cfg(feature = "gui")]
++                send_log(
++                    LogLevel::Warning,
++                    "GeoTIFF elevation unavailable, falling back to AWS tiles",
++                );
++                // Fall back to AWS terrain tiles
++                Self::new_enabled(bbox, scale, ground_level)
++            }
++        }
++    }
++
+     pub fn new_enabled(bbox: &LLBBox, scale: f64, ground_level: i32) -> Self {
+         match fetch_elevation_data(bbox, scale, ground_level) {
+             Ok(elevation_data) => Self {
+@@ -145,6 +172,18 @@ impl Ground {
+ }
+ 
+ pub fn generate_ground_data(args: &Args) -> Ground {
++    // --elevation-file implies terrain, even if --terrain is not explicitly set
++    if let Some(ref elevation_path) = args.elevation_file {
++        println!("{} Loading elevation from GeoTIFF...", "[3/7]".bold());
++        emit_gui_progress_update(14.0, "Loading elevation from GeoTIFF...");
++        let ground =
++            Ground::new_from_geotiff(elevation_path, &args.bbox, args.scale, args.ground_level);
++        if args.debug {
++            ground.save_debug_image("elevation_debug");
++        }
++        return ground;
++    }
++
+     if args.terrain {
+         println!("{} Fetching elevation...", "[3/7]".bold());
+         emit_gui_progress_update(14.0, "Fetching elevation...");
+diff --git a/src/main.rs b/src/main.rs
+index 8cefd9e..4e222eb 100644
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -91,10 +91,11 @@ fn run_cli() {
+     }
+ 
+     // Parse input arguments
+-    let args: Args = Args::parse();
++    let mut args: Args = Args::parse();
+ 
+     // Validate arguments (path requirements differ between Java and Bedrock)
+-    if let Err(e) = args::validate_args(&args) {
++    // Note: validate_args may mutate args (e.g. --elevation-file implies --terrain)
++    if let Err(e) = args::validate_args(&mut args) {
+         eprintln!("{}: {}", "Error".red().bold(), e);
+         std::process::exit(1);
+     }
+diff --git a/src/world_editor/java.rs b/src/world_editor/java.rs
+index 70df29d..e461e44 100644
+--- a/src/world_editor/java.rs
++++ b/src/world_editor/java.rs
+@@ -249,16 +249,35 @@ fn get_entity_coords(entity: &HashMap<String, Value>) -> Option<(i32, i32, i32)>
+     Some((x, y, z))
+ }
+ 
+-/// Creates a Level wrapper for chunk data (Java Edition format)
++/// Creates chunk NBT data in 1.18+ format (no Level wrapper).
++///
++/// Post-1.18 chunks have fields at root level with DataVersion, Status, and yPos.
++/// This is required for PaperMC and modern Minecraft servers.
+ #[inline]
+ fn create_level_wrapper(chunk: &Chunk) -> HashMap<String, Value> {
+-    let mut level_map = HashMap::from([
++    // Determine yPos (minimum section Y) from the sections
++    let min_section_y: i8 = chunk
++        .sections
++        .iter()
++        .map(|s| s.y)
++        .min()
++        .unwrap_or(-4);
++
++    let mut root = HashMap::from([
++        // 1.18+ DataVersion (MC 1.21.4 = 4189, use a safe modern value)
++        ("DataVersion".to_string(), Value::Int(4189)),
+         ("xPos".to_string(), Value::Int(chunk.x_pos)),
++        ("yPos".to_string(), Value::Int(min_section_y as i32)),
+         ("zPos".to_string(), Value::Int(chunk.z_pos)),
+         (
+             "isLightOn".to_string(),
+             Value::Byte(i8::try_from(chunk.is_light_on).unwrap()),
+         ),
++        // Status must be "minecraft:full" for PaperMC to accept the chunk
++        (
++            "Status".to_string(),
++            Value::String("minecraft:full".to_string()),
++        ),
+         (
+             "sections".to_string(),
+             Value::List(
+@@ -308,10 +327,11 @@ fn create_level_wrapper(chunk: &Chunk) -> HashMap<String, Value> {
+     ]);
+ 
+     for (key, value) in &chunk.other {
+-        level_map.insert(key.clone(), value.clone());
++        root.insert(key.clone(), value.clone());
+     }
+ 
+-    HashMap::from([("Level".to_string(), Value::Compound(level_map))])
++    // 1.18+ format: no "Level" wrapper, fields go at root
++    root
+ }
+ 
+ /// Merge compound lists (entities, block_entities) from chunk_to_modify into chunk

@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" width="640" height="360">
+  <defs>
+    <style>
+      text { font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace; fill: #e2e8f0; }
+      .bg { fill: #1e293b; rx: 12; }
+      .path { fill: #334155; rx: 8; }
+      .title { font-size: 14px; font-weight: bold; fill: #f1f5f9; }
+      .body { font-size: 11px; fill: #cbd5e1; }
+      .code { font-size: 11px; fill: #86efac; }
+      .num { font-size: 12px; fill: #3b82f6; font-weight: bold; }
+      .head { font-size: 15px; font-weight: bold; fill: #f1f5f9; }
+      .tree { font-size: 11px; fill: #fbbf24; }
+      .treebox { fill: #422006; rx: 6; stroke: #854d0e; stroke-width: 1; }
+    </style>
+  </defs>
+  <rect class="bg" x="0" y="0" width="640" height="360"/>
+  <text class="head" x="210" y="25">THREE ACCESS PATHS</text>
+  <rect class="path" x="20" y="40" width="190" height="80"/>
+  <text class="num" x="30" y="60">PATH 1: npm (instant)</text>
+  <text class="code" x="30" y="80">require(&apos;ruvector&apos;)</text>
+  <text class="body" x="30" y="100">170 exports</text>
+  <rect class="path" x="225" y="40" width="190" height="80"/>
+  <text class="num" x="235" y="60">PATH 2: WASM (90s)</text>
+  <text class="code" x="235" y="80">wasm-pack build</text>
+  <text class="body" x="235" y="100">30 crates</text>
+  <rect class="path" x="430" y="40" width="190" height="80"/>
+  <text class="num" x="440" y="60">PATH 3: NAPI (fast)</text>
+  <text class="code" x="440" y="80">@ruvector/*-node</text>
+  <text class="body" x="440" y="100">Pre-built binaries</text>
+  <rect class="treebox" x="20" y="140" width="600" height="200"/>
+  <text class="tree" x="40" y="165">DECISION TREE:</text>
+  <text class="tree" x="40" y="190">Need a feature?</text>
+  <text class="tree" x="60" y="215">In require(&apos;ruvector&apos;)?  --------&gt;  USE IT</text>
+  <text class="tree" x="60" y="240">In @ruvector/&lt;name&gt; npm?  ------&gt;  npm install, USE IT</text>
+  <text class="tree" x="60" y="265">In ruvector/crates/*-wasm?  ---&gt;  wasm-pack build, USE IT</text>
+  <text class="tree" x="60" y="290">In ruvector/crates/&lt;name&gt;/?  -&gt;  Build NAPI or wait</text>
+  <text class="tree" x="60" y="315">None of above?  ---------------&gt;  DOESN&apos;T EXIST</text>
+</svg>

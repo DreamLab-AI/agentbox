@@ -19,6 +19,14 @@ author: Claude Flow
 
 SPARC (Specification, Pseudocode, Architecture, Refinement, Completion) is a systematic development methodology integrated with Claude Flow's multi-agent orchestration capabilities. It provides 17 specialized modes for comprehensive software development, from initial research through deployment and monitoring.
 
+## When Not To Use
+
+- For full quality engineering with 111+ agents, coverage gates, and defect prediction -- use the build-with-quality skill instead
+- For GitHub-specific code review swarms on PRs -- use the github-code-review skill instead
+- For queen-led hive-mind consensus patterns -- use the hive-mind-advanced skill instead
+- For PRD-to-documentation generation without the full SPARC methodology -- use the prd2build skill instead
+- For simple single-file code changes that do not need multi-phase orchestration -- edit directly
+
 ## Table of Contents
 
 1. [Core Philosophy](#core-philosophy)
@@ -140,7 +148,7 @@ mcp__claude-flow__sparc_mode {
 Specialized swarm management for complex multi-agent workflows.
 
 **Capabilities**:
-- Topology optimization (mesh, hierarchical, ring, star)
+- Topology optimisation (mesh, hierarchical, ring, star)
 - Agent lifecycle management
 - Dynamic scaling based on workload
 - Fault tolerance and recovery
@@ -161,7 +169,7 @@ Parallel task execution for high-throughput operations.
 
 **Capabilities**:
 - Concurrent file operations
-- Batch processing optimization
+- Batch processing optimisation
 - Resource pooling
 - Load balancing
 - Progress aggregation
@@ -184,7 +192,7 @@ Autonomous code generation with batch file operations.
 - ES2022+ standards
 - TypeScript type safety
 - Comprehensive error handling
-- Performance optimization
+- Performance optimisation
 - Security best practices
 
 **Usage**:
@@ -243,7 +251,7 @@ Test-driven development with comprehensive testing.
 - Test-first development
 - Red-green-refactor cycle
 - Test suite design
-- Coverage optimization (target: 90%+)
+- Coverage optimisation (target: 90%+)
 - Continuous testing
 
 **TDD Workflow**:
@@ -364,10 +372,10 @@ Code and data analysis with pattern recognition.
 - Data pattern recognition
 
 #### `optimizer`
-Performance optimization and bottleneck resolution.
+Performance optimisation and bottleneck resolution.
 
 **Capabilities**:
-- Algorithm optimization
+- Algorithm optimisation
 - Database query tuning
 - Caching strategy design
 - Bundle size reduction
@@ -382,7 +390,7 @@ UI/UX design with accessibility focus.
 
 **Capabilities**:
 - Interface design
-- User experience optimization
+- User experience optimisation
 - Accessibility compliance (WCAG 2.1)
 - Design system creation
 - Responsive layout design
@@ -415,7 +423,7 @@ Systematic debugging and issue resolution.
 - Root cause analysis
 - Fix implementation
 - Regression prevention
-- Debug logging optimization
+- Debug logging optimisation
 
 #### `tester`
 Comprehensive testing beyond TDD.
@@ -758,7 +766,7 @@ npx claude-flow@alpha hooks post-task --task-id "task-123"
 - README with setup instructions
 - Changelog for version tracking
 
-### 6. File Organization
+### 6. File Organisation
 
 **Never save to root folder**:
 
@@ -951,7 +959,7 @@ npx claude-flow sparc run tester "regression tests for bug #456"
 npx claude-flow sparc run reviewer "validate bug fix"
 ```
 
-### Workflow 3: Performance Optimization
+### Workflow 3: Performance Optimisation
 
 ```bash
 # Step 1: Profile performance
@@ -1063,6 +1071,11 @@ mcp__claude-flow__token_usage {
 - **90%+** test coverage standard
 
 ---
+
+## When Not To Use
+
+- **Do not use for raw swarm coordination primitives** (use `swarm-advanced` instead) -- If you need to spin up a quick mesh/star/ring swarm without following a structured development lifecycle, swarm-advanced provides topology patterns, load balancing, and fault tolerance without methodology overhead.
+- **Do not use when you only need consensus mechanisms** (use `hive-mind-advanced` instead) -- If your primary need is Byzantine fault-tolerant voting, queen-led hierarchical decision-making, or persistent collective memory without a full development workflow, use hive-mind-advanced.
 
 ## Support and Resources
 

@@ -1,105 +1,81 @@
-#!/bin/bash
-# Agentbox Skills Entrypoint Script
-# Initializes RuVector standalone vector database (NO PostgreSQL required)
-#
-# RuVector is a Rust-native vector database with:
-# - Embedded redb storage (no external DB needed)
-# - HNSW indexing for 150x-12,500x faster similarity search
-# - GNN layers for graph neural network operations
-# - Self-learning capabilities
-# - MCP integration for Claude Code/Flow
+#!/usr/bin/env bash
+set -euo pipefail
 
-set -e
-
-echo "=== Agentbox Skills Initialization ==="
-echo "Architecture: $(uname -m)"
+echo "=== Agentbox Runtime Bootstrap ==="
 echo "Date: $(date -Iseconds)"
 
-# ============================================================================
-# Configuration
-# ============================================================================
-
+export WORKSPACE="${WORKSPACE:-/workspace}"
+export SHARED_PROJECTS_ROOT="${SHARED_PROJECTS_ROOT:-/projects}"
 export RUVECTOR_DATA_DIR="${RUVECTOR_DATA_DIR:-/var/lib/ruvector}"
 export RUVECTOR_PORT="${RUVECTOR_PORT:-9700}"
-export RUVECTOR_LOG_LEVEL="${RUVECTOR_LOG_LEVEL:-info}"
 
-# ============================================================================
-# Phase 1: Data Directory Setup
-# ============================================================================
-
-echo "[1/3] Setting up RuVector data directory..."
-
-# Create data directory with proper permissions
-if [ ! -d "$RUVECTOR_DATA_DIR" ]; then
-    echo "  Creating $RUVECTOR_DATA_DIR..."
-    mkdir -p "$RUVECTOR_DATA_DIR"
-fi
-
-# Set ownership to devuser (RuVector runs as devuser)
-chown -R devuser:devuser "$RUVECTOR_DATA_DIR" 2>/dev/null || true
+mkdir -p "$WORKSPACE" "$RUVECTOR_DATA_DIR" "$WORKSPACE/.cache/ms-playwright"
+mkdir -p "$SHARED_PROJECTS_ROOT"
 chmod 755 "$RUVECTOR_DATA_DIR"
 
-echo "  Data directory: $RUVECTOR_DATA_DIR"
+install_node_deps() {
+  local dir="$1"
+  if [ -f "$dir/package.json" ] && [ ! -d "$dir/node_modules" ]; then
+    echo "Installing Node dependencies in $dir"
+    npm install --prefix "$dir" --omit=dev >/dev/null 2>&1 || true
+  fi
+}
 
-# ============================================================================
-# Phase 2: Install RuVector npm package (if not present)
-# ============================================================================
-
-echo "[2/3] Checking RuVector installation..."
-
-# Check if ruvector is available via npm
-if command -v npx &> /dev/null; then
-    # Check if package is cached
-    if npx --yes ruvector --version &>/dev/null 2>&1; then
-        echo "  RuVector npm package available"
-    else
-        echo "  Installing ruvector npm package..."
-        npm install -g ruvector 2>/dev/null || true
-    fi
-else
-    echo "  Warning: npx not available, RuVector must be started manually"
+echo "[1/3] Installing service dependencies..."
+install_node_deps /opt/agentbox/management-api
+install_node_deps /opt/agentbox/mcp
+install_node_deps /opt/agentbox/skills/openai-codex/mcp-server
+install_node_deps /opt/agentbox/skills/lazy-fetch/mcp-server
+if [ "${ENABLE_PLAYWRIGHT:-false}" = "true" ]; then
+  install_node_deps /opt/agentbox/skills/playwright/mcp-server
 fi
 
-# ============================================================================
-# Phase 3: Export Environment and Verify
-# ============================================================================
+echo "[2/3] Installing runtime CLI tools..."
+npx --yes ruvector --version >/dev/null 2>&1 || npm install -g ruvector >/dev/null 2>&1 || true
 
-echo "[3/3] Exporting RuVector configuration..."
+if [ "${ENABLE_CLAUDE_FLOW:-false}" = "true" ]; then
+  npm install -g @claude-flow/cli >/dev/null 2>&1 || true
+fi
 
-# Export connection info for skills
-cat > /tmp/ruvector-env.sh << ENVFILE
-# RuVector Environment (source this file)
-# Standalone vector database - NO PostgreSQL required
+if [ "${ENABLE_RUFLO:-false}" = "true" ]; then
+  npm install -g ruflo >/dev/null 2>&1 || true
+fi
+
+if [ "${ENABLE_AGENTIC_QE:-false}" = "true" ]; then
+  npm install -g agentic-qe >/dev/null 2>&1 || true
+  aqe init --auto >/dev/null 2>&1 || true
+fi
+
+if [ "${ENABLE_NAGUAL_QE:-false}" = "true" ]; then
+  npm install -g nagual-qe >/dev/null 2>&1 || true
+fi
+
+if [ "${ENABLE_CODEBASE_MEMORY:-false}" = "true" ]; then
+  npm install -g codebase-memory-mcp >/dev/null 2>&1 || true
+fi
+
+if [ "${ENABLE_AGENT_BROWSER:-false}" = "true" ]; then
+  npx --yes agent-browser --help >/dev/null 2>&1 || npm install -g agent-browser >/dev/null 2>&1 || true
+fi
+
+if [ "${ENABLE_PLAYWRIGHT:-false}" = "true" ]; then
+  npm install -g playwright >/dev/null 2>&1 || true
+  npx playwright install chromium >/dev/null 2>&1 || true
+fi
+
+if [ "${ENABLE_MERMAID:-false}" = "true" ]; then
+  npm install -g @mermaid-js/mermaid-cli >/dev/null 2>&1 || true
+fi
+
+echo "[3/3] Publishing environment hints..."
+cat > /etc/profile.d/agentbox-runtime.sh <<EOF
+export WORKSPACE="$WORKSPACE"
 export RUVECTOR_DATA_DIR="$RUVECTOR_DATA_DIR"
 export RUVECTOR_PORT="$RUVECTOR_PORT"
-export RUVECTOR_LOG_LEVEL="$RUVECTOR_LOG_LEVEL"
-export RUVECTOR_API_URL="http://localhost:$RUVECTOR_PORT"
+export SOLID_POD_ROOT="${SOLID_POD_ROOT:-/var/lib/solid}"
+export AGENTBOX_CONFIG="${AGENTBOX_CONFIG:-/etc/agentbox.toml}"
+export SKILLS_TREE="${SKILLS_TREE:-/opt/agentbox/skills}"
+export SHARED_PROJECTS_ROOT="${SHARED_PROJECTS_ROOT:-/projects}"
+EOF
 
-# Legacy compatibility (for apps expecting DATABASE_URL)
-# RuVector doesn't need this, but some apps check for it
-export RUVECTOR_BACKEND="redb"
-ENVFILE
-
-# Copy to standard locations if writable
-cp /tmp/ruvector-env.sh /etc/profile.d/ruvector.sh 2>/dev/null || true
-cp /tmp/ruvector-env.sh /home/devuser/.ruvector-env 2>/dev/null && \
-    chown devuser:devuser /home/devuser/.ruvector-env 2>/dev/null || true
-
-echo ""
-echo "=== RuVector Initialization Complete ==="
-echo ""
-echo "Configuration:"
-echo "  Data directory: $RUVECTOR_DATA_DIR"
-echo "  API port:       $RUVECTOR_PORT"
-echo "  Backend:        redb (embedded)"
-echo ""
-echo "To start RuVector manually:"
-echo "  npx ruvector serve --port $RUVECTOR_PORT --data-dir $RUVECTOR_DATA_DIR"
-echo ""
-echo "To start RuVector MCP server:"
-echo "  npx ruvector mcp --port 9701"
-echo ""
-echo "Environment exported to:"
-echo "  /etc/profile.d/ruvector.sh"
-echo "  /home/devuser/.ruvector-env"
-echo ""
+echo "Runtime bootstrap complete"

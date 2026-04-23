@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "lazy-fetch": {
+      "command": "node",
+      "args": ["${SKILL_PATH}/mcp-server/dist/mcp-server.js"],
+      "env": {
+        "LAZY_ROOT": "${PROJECT_DIR}",
+        "NODE_ENV": "production"
+      },
+      "type": "stdio"
+    }
+  },
+  "installCommands": [
+    "cd ${SKILL_PATH}/mcp-server && npm install --production"
+  ],
+  "dependencies": {
+    "system": ["nodejs"],
+    "npm": ["@modelcontextprotocol/sdk", "yaml", "zod"]
+  }
+}

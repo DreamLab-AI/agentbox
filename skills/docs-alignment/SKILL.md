@@ -55,6 +55,14 @@ This skill deploys a **specialized 15-agent swarm** to comprehensively modernise
 - Maintenance playbooks
 - Contribution guidelines
 
+## When Not To Use
+
+- For writing a single markdown document or README -- just write markdown directly
+- For LaTeX report generation with charts and bibliography -- use the report-builder skill instead
+- For creating diagrams from text -- use the mermaid-diagrams skill instead
+- For API documentation generation from code -- use code-level doc generation tools directly
+- For general code quality and testing workflows -- use the build-with-quality skill instead
+
 ## Prerequisites
 
 - **Python 3.10+** with pip

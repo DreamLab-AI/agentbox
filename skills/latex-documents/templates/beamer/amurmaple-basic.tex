@@ -1,0 +1,111 @@
+\documentclass{beamer}
+\usetheme{Amurmaple}
+
+% Theme color variants (uncomment one to change):
+% \usetheme[amurmapleblue]{Amurmaple}    % Blue variant
+% \usetheme[amurmapleblack]{Amurmaple}   % Black variant
+% \usetheme[amurmaplegreen]{Amurmaple}   % Green variant
+% Default is AmurmapleRed
+
+% Other theme options:
+% \usetheme[sidebar]{Amurmaple}          % Add sidebar navigation
+% \usetheme[leftframetitle]{Amurmaple}   % Left-aligned frame titles
+% \usetheme[nogauge]{Amurmaple}          % Disable progress gauge
+% \usetheme[rule]{Amurmaple}             % Add decorative rule
+
+% Required packages
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+
+% Optional: Bibliography
+% \usepackage[backend=biber,style=ieee]{biblatex}
+% \addbibresource{references.bib}
+
+% Presentation metadata
+\title{Your Presentation Title}
+\subtitle{Optional Subtitle}
+\author{Your Name}
+\institute{Your Institution}
+\date{\today}
+
+% Optional: Add email and webpage
+\mail{your.email@example.com}
+\webpage{https://example.com}
+
+% Optional: Add logo
+% \logo{\includegraphics[height=1cm]{logo.png}}
+
+\begin{document}
+
+% Title slide
+\begin{frame}
+  \titlepage
+\end{frame}
+
+% Table of Contents
+\begin{frame}{Table of Contents}
+  \tableofcontents
+\end{frame}
+
+% Introduction section
+\section{Introduction}
+
+\begin{frame}{Introduction}
+  \begin{itemize}
+    \item First main point
+    \item Second main point
+    \item Third main point
+  \end{itemize}
+\end{frame}
+
+% Methods section
+\section{Methods}
+
+\begin{frame}{Methodology}
+  \framesection{Approach}
+
+  \begin{enumerate}
+    \item First step of the methodology
+    \item Second step of the methodology
+    \item Third step of the methodology
+  \end{enumerate}
+\end{frame}
+
+% Results section
+\section{Results}
+
+\begin{frame}{Results}
+  \begin{block}{Key Finding}
+    This is an important result that deserves highlighting.
+  \end{block}
+
+  \begin{alertblock}{Alert}
+    This is something that needs attention.
+  \end{alertblock}
+
+  \begin{exampleblock}{Example}
+    This is an example or case study.
+  \end{exampleblock}
+\end{frame}
+
+% Conclusion section
+\section{Conclusion}
+
+\begin{frame}{Conclusions}
+  \begin{enumerate}
+    \item First conclusion drawn from the work
+    \item Second conclusion drawn from the work
+    \item Future work and directions
+  \end{enumerate}
+\end{frame}
+
+% Optional: Bibliography
+% \begin{frame}[allowframebreaks]{References}
+%   \printbibliography
+% \end{frame}
+
+% Thank you slide
+\thanksframe{Thank you for your attention!}
+
+\end{document}

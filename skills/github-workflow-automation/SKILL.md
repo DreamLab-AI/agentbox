@@ -24,9 +24,17 @@ progressive_disclosure: true
 
 # GitHub Workflow Automation Skill
 
+## When Not To Use
+
+- For PR-level code review with specialised agents -- use the github-code-review skill instead
+- For release versioning, changelogs, and deployment orchestration -- use the github-release-management skill instead
+- For cross-repository package synchronisation -- use the github-multi-repo skill instead
+- For issue tracking and sprint planning -- use the github-project-management skill instead
+- For non-GitHub workflow automation or cloud swarm orchestration -- use the flow-nexus-swarm skill instead
+
 ## Overview
 
-This skill provides comprehensive GitHub Actions automation with AI swarm coordination. It integrates intelligent CI/CD pipelines, workflow orchestration, and repository management to create self-organizing, adaptive GitHub workflows.
+This skill provides comprehensive GitHub Actions automation with AI swarm coordination. It integrates intelligent CI/CD pipelines, workflow orchestration, and repository management to create self-organising, adaptive GitHub workflows.
 
 ## Quick Start
 
@@ -68,7 +76,7 @@ gh run view <run-id> --json jobs,conclusion | \
 **GitHub workflow orchestration and coordination**
 - **Coordination Mode**: Hierarchical
 - **Max Parallel Operations**: 10
-- **Batch Optimized**: Yes
+- **Batch Optimised**: Yes
 - **Best For**: Complex GitHub workflows, multi-repo coordination
 
 ```bash
@@ -116,15 +124,15 @@ npx claude-flow@alpha github release-manager \
 ```
 
 #### 5. repo-architect
-**Repository structure and organization**
-- **Structure Optimization**: Yes
+**Repository structure and organisation**
+- **Structure Optimisation**: Yes
 - **Multi-repo Support**: Yes
 - **Template Management**: Advanced
 
 ```bash
 # Optimize repository structure
 npx claude-flow@alpha github repo-architect \
-  "Restructure monorepo with optimal organization"
+  "Restructure monorepo with optimal organisation"
 ```
 
 #### 6. code-reviewer
@@ -367,7 +375,7 @@ jobs:
 ### 📊 Monitoring & Analytics
 
 <details>
-<summary>Workflow Analysis & Optimization</summary>
+<summary>Workflow Analysis & Optimisation</summary>
 
 #### Workflow Analytics
 ```bash
@@ -379,7 +387,7 @@ npx ruv-swarm actions analytics \
   --suggest-improvements
 ```
 
-#### Cost Optimization
+#### Cost Optimisation
 ```bash
 # Optimize GitHub Actions costs
 npx ruv-swarm actions cost-optimize \
@@ -481,7 +489,7 @@ npx ruv-swarm actions recommend \
   --industry-best-practices
 ```
 
-#### Automated Optimization
+#### Automated Optimisation
 ```bash
 # Continuously optimize workflows
 npx ruv-swarm actions auto-optimize \
@@ -601,7 +609,7 @@ npx claude-flow@alpha hooks post-task \
 
 ## Best Practices
 
-### 🏗️ Workflow Organization
+### 🏗️ Workflow Organisation
 
 <details>
 <summary>Structure Your GitHub Workflows</summary>
@@ -709,7 +717,7 @@ permissions:
 
 </details>
 
-### ⚡ Performance Optimization
+### ⚡ Performance Optimisation
 
 <details>
 <summary>Maximize Workflow Performance</summary>
@@ -743,7 +751,7 @@ jobs:
     fi
 ```
 
-#### 4. Optimize Parallel Execution
+#### 4. Optimise Parallel Execution
 ```yaml
 strategy:
   matrix:
@@ -943,7 +951,7 @@ npx ruv-swarm actions generate-workflow [options]
   --create-optimal-pipeline Generate optimized workflow
 ```
 
-#### Optimization
+#### Optimisation
 ```bash
 npx ruv-swarm actions optimize [options]
   --workflow <path>        Path to workflow file
@@ -1035,12 +1043,19 @@ echo "✅ GitHub workflow automation setup complete"
 
 </details>
 
+## When Not To Use
+
+- **Do not use for code review** (use `github-code-review` instead) -- If you need to review pull request diffs with specialized AI agents for security, performance, and architecture analysis rather than managing CI/CD workflows.
+- **Do not use for release management** (use `github-release-management` instead) -- If you need version bumping, changelog generation, staged deployment, or rollback orchestration rather than workflow YAML creation.
+- **Do not use for issue tracking or sprint planning** (use `github-project-management` instead) -- If your focus is issue triage, project boards, or agile ceremonies rather than GitHub Actions pipelines.
+- **Do not use for cross-repository coordination** (use `github-multi-repo` instead) -- If you need to synchronize dependencies, packages, or structural changes across multiple repositories.
+
 ## Related Skills
 
-- `github-pr-enhancement` - Advanced PR management
-- `release-coordination` - Release automation
-- `swarm-coordination` - Multi-agent orchestration
-- `ci-cd-optimization` - Pipeline optimization
+- `github-code-review` - PR review and quality analysis
+- `github-release-management` - Release automation and deployment
+- `github-project-management` - Issue tracking and sprint planning
+- `github-multi-repo` - Cross-repository coordination
 
 ## Support & Documentation
 

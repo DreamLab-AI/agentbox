@@ -1,221 +1,213 @@
 ---
 name: browser
-description: >
-  AI-optimized web browser automation using agent-browser (Vercel Labs).
-  Features element refs (@e1, @e2) for 93% context reduction, CDP connection
-  to visible Chrome, and efficient DOM snapshots. RECOMMENDED for agentic work.
+description: Web browser automation with AI-optimised snapshots for claude-flow agents
 version: 1.0.0
-author: agentbox
-priority: 1
-dependencies:
-  - agent-browser
-  - chromium
-  - playwright
+triggers:
+  - /browser
+  - browse
+  - web automation
+  - scrape
+  - navigate
+  - screenshot
+tools:
+  - browser/open
+  - browser/snapshot
+  - browser/click
+  - browser/fill
+  - browser/screenshot
+  - browser/close
 ---
 
-# Browser Skill (agent-browser)
+# Browser Automation Skill
 
-Fast, AI-optimized browser automation using [agent-browser](https://github.com/vercel-labs/agent-browser) from Vercel Labs.
+Web browser automation using agent-browser with AI-optimised snapshots. Reduces context by 93% using element refs (@e1, @e2) instead of full DOM.
 
-## Why agent-browser
+## When Not To Use
 
-| Feature | agent-browser | Playwright | Chrome DevTools |
-|---------|---------------|------------|-----------------|
-| Context Reduction | 93% (element refs) | ~0% | ~0% |
-| Token Efficiency | Optimized snapshots | Verbose DOM | Verbose |
-| Session Persistence | Cookies/storage saved | Manual | Manual |
-| CLI Integration | Native | Requires wrapper | Requires wrapper |
-| Install Size | ~15MB | ~200MB | ~50MB |
+- For choosing between browser tools -- use the browser-automation meta skill for guided selection
+- For full Playwright API access with visual testing on Display :1 -- use the playwright skill instead
+- For inspecting live Chromium sessions via CDP -- use the chrome-cdp skill instead
+- For fetching and summarising web page content without interaction -- use the web-summary or gemini-url-context skills instead
+- For API testing or HTTP requests that do not require a browser -- use curl or httpx directly
+- For scraping JavaScript-heavy pages that need Playwright's full API -- use the playwright skill instead
 
-## Quick Start
+## Core Workflow
 
 ```bash
-# Verify installation
-agent-browser --version
+# 1. Navigate to page
+agent-browser open <url>
 
-# Basic workflow
-agent-browser open "https://example.com"
-agent-browser snapshot -i        # Interactive elements with @refs
-agent-browser click @e1          # Click using element ref
-agent-browser screenshot /tmp/page.png
-agent-browser close
+# 2. Get accessibility tree with element refs
+agent-browser snapshot -i    # -i = interactive elements only
+
+# 3. Interact using refs from snapshot
+agent-browser click @e2
+agent-browser fill @e3 "text"
+
+# 4. Re-snapshot after page changes
+agent-browser snapshot -i
 ```
 
-## Commands Reference
+## Quick Reference
 
 ### Navigation
-```bash
-agent-browser open <url>         # Navigate to URL
-agent-browser back               # Go back
-agent-browser forward            # Go forward
-agent-browser reload             # Reload page
-agent-browser close              # Close browser
-```
+| Command | Description |
+|---------|-------------|
+| `open <url>` | Navigate to URL |
+| `back` | Go back |
+| `forward` | Go forward |
+| `reload` | Reload page |
+| `close` | Close browser |
 
-### Snapshots (AI-Optimized)
-```bash
-agent-browser snapshot           # Full DOM tree
-agent-browser snapshot -i        # Interactive elements only (RECOMMENDED)
-agent-browser snapshot --json    # JSON output for processing
-```
+### Snapshots (AI-Optimised)
+| Command | Description |
+|---------|-------------|
+| `snapshot` | Full accessibility tree |
+| `snapshot -i` | Interactive elements only (buttons, links, inputs) |
+| `snapshot -c` | Compact (remove empty elements) |
+| `snapshot -d 3` | Limit depth to 3 levels |
+| `screenshot [path]` | Capture screenshot (base64 if no path) |
 
 ### Interaction
+| Command | Description |
+|---------|-------------|
+| `click <sel>` | Click element |
+| `fill <sel> <text>` | Clear and fill input |
+| `type <sel> <text>` | Type with key events |
+| `press <key>` | Press key (Enter, Tab, etc.) |
+| `hover <sel>` | Hover element |
+| `select <sel> <val>` | Select dropdown option |
+| `check/uncheck <sel>` | Toggle checkbox |
+| `scroll <dir> [px]` | Scroll page |
+
+### Get Info
+| Command | Description |
+|---------|-------------|
+| `get text <sel>` | Get text content |
+| `get html <sel>` | Get innerHTML |
+| `get value <sel>` | Get input value |
+| `get attr <sel> <attr>` | Get attribute |
+| `get title` | Get page title |
+| `get url` | Get current URL |
+
+### Wait
+| Command | Description |
+|---------|-------------|
+| `wait <selector>` | Wait for element |
+| `wait <ms>` | Wait milliseconds |
+| `wait --text "text"` | Wait for text |
+| `wait --url "pattern"` | Wait for URL |
+| `wait --load networkidle` | Wait for load state |
+
+### Sessions
+| Command | Description |
+|---------|-------------|
+| `--session <name>` | Use isolated session |
+| `session list` | List active sessions |
+
+## Selectors
+
+### Element Refs (Recommended)
 ```bash
-agent-browser click @e1          # Click element by ref
-agent-browser fill @e2 "text"    # Fill input field
-agent-browser type @e3 "chars"   # Type character by character
-agent-browser press Enter        # Press keyboard key
-agent-browser hover @e4          # Hover over element
-agent-browser select @e5 "opt"   # Select dropdown option
-agent-browser check @e6          # Check checkbox
-agent-browser uncheck @e7        # Uncheck checkbox
-agent-browser scroll down        # Scroll page
+# Get refs from snapshot
+agent-browser snapshot -i
+# Output: button "Submit" [ref=e2]
+
+# Use ref to interact
+agent-browser click @e2
+```
+
+### CSS Selectors
+```bash
+agent-browser click "#submit"
+agent-browser fill ".email-input" "test@test.com"
+```
+
+### Semantic Locators
+```bash
+agent-browser find role button click --name "Submit"
+agent-browser find label "Email" fill "test@test.com"
+agent-browser find testid "login-btn" click
+```
+
+## Examples
+
+### Login Flow
+```bash
+agent-browser open https://example.com/login
+agent-browser snapshot -i
+agent-browser fill @e2 "user@example.com"
+agent-browser fill @e3 "password123"
+agent-browser click @e4
+agent-browser wait --url "**/dashboard"
+```
+
+### Form Submission
+```bash
+agent-browser open https://example.com/contact
+agent-browser snapshot -i
+agent-browser fill @e1 "John Doe"
+agent-browser fill @e2 "john@example.com"
+agent-browser fill @e3 "Hello, this is my message"
+agent-browser click @e4
+agent-browser wait --text "Thank you"
 ```
 
 ### Data Extraction
 ```bash
-agent-browser get text @e1       # Get element text
-agent-browser get value @e2      # Get input value
-agent-browser get-title          # Get page title
-agent-browser get-url            # Get current URL
-agent-browser screenshot <path>  # Capture screenshot
-agent-browser pdf <path>         # Generate PDF
-```
-
-### JavaScript Execution
-```bash
-agent-browser eval "document.title"
-agent-browser eval "Array.from(document.querySelectorAll('a')).map(a => a.href)"
-```
-
-### State Management
-```bash
-agent-browser cookies            # List cookies
-agent-browser storage            # List localStorage
-```
-
-## Visible Browser Mode (VNC)
-
-For agentic work that requires visual feedback, run Chrome with remote debugging:
-
-```bash
-# Start visible browser on VNC desktop
-export DISPLAY=:1
-chromium --no-sandbox --remote-debugging-port=9222 \
-  --user-data-dir=$HOME/.config/chromium-automation &
-
-# Connect agent-browser via CDP
-CHROME_CDP_URL=http://localhost:9222 agent-browser open "https://example.com"
-```
-
-VNC connection: `vnc://localhost:5901`
-
-## Programmatic Usage (Node.js)
-
-```javascript
-const { chromium } = require('playwright');
-
-(async () => {
-  // Connect to visible browser via CDP
-  const browser = await chromium.connectOverCDP('http://localhost:9222');
-  const page = browser.contexts()[0].pages()[0];
-
-  // Navigate and interact
-  await page.goto('https://example.com');
-  await page.click('text="Login"');
-  await page.fill('#email', 'user@example.com');
-
-  // For iframe content (like Oracle Cloud Console)
-  const frames = page.frames();
-  for (const frame of frames) {
-    const text = await frame.textContent('body');
-    if (text.includes('Target Content')) {
-      await frame.click('text="Button"');
-      break;
-    }
-  }
-
-  await browser.close();
-})();
-```
-
-## Oracle Cloud Example
-
-This pattern was used successfully to complete Oracle Cloud API key setup:
-
-```bash
-# 1. Start visible browser
-export DISPLAY=:1
-chromium --no-sandbox --remote-debugging-port=9222 &
-
-# 2. Navigate to Oracle Console
-agent-browser open "https://cloud.oracle.com"
-
-# 3. Get interactive snapshot to find elements
+agent-browser open https://example.com/products
 agent-browser snapshot -i
-
-# 4. Click and interact using refs
-agent-browser click @e5
-
-# 5. For complex UIs with iframes, use Playwright CDP:
-node -e '
-const { chromium } = require("playwright");
-(async () => {
-  const browser = await chromium.connectOverCDP("http://localhost:9222");
-  const page = browser.contexts()[0].pages()[0];
-
-  // Search all frames for content
-  for (const frame of page.frames()) {
-    try {
-      if (await frame.textContent("body").includes("Add API key")) {
-        await frame.click("text=\"Add API key\"");
-        break;
-      }
-    } catch (e) {}
-  }
-  await browser.close();
-})();
-'
+# Iterate through product refs
+agent-browser get text @e1  # Product name
+agent-browser get text @e2  # Price
+agent-browser get attr @e3 href  # Link
 ```
 
-## Environment Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `DISPLAY` | `:1` | X11 display for visible browser |
-| `CHROME_CDP_URL` | - | Chrome DevTools Protocol URL |
-| `BROWSER_HEADLESS` | `false` | Run headless mode |
-
-## Troubleshooting
-
-### Browser not visible on VNC
+### Multi-Session (Swarm)
 ```bash
-# Check X server
-xdpyinfo -display :1
+# Session 1: Navigator
+agent-browser --session nav open https://example.com
+agent-browser --session nav state save auth.json
 
-# Start browser with correct display
-DISPLAY=:1 chromium --no-sandbox &
+# Session 2: Scraper (uses same auth)
+agent-browser --session scrape state load auth.json
+agent-browser --session scrape open https://example.com/data
+agent-browser --session scrape snapshot -i
 ```
 
-### Element refs not found
+## Integration with Claude Flow
+
+### MCP Tools
+All browser operations are available as MCP tools with `browser/` prefix:
+- `browser/open`
+- `browser/snapshot`
+- `browser/click`
+- `browser/fill`
+- `browser/screenshot`
+- etc.
+
+### Memory Integration
 ```bash
-# Refresh snapshot
-agent-browser snapshot -i
+# Store successful patterns
+npx @claude-flow/cli memory store --namespace browser-patterns --key "login-flow" --value "snapshot->fill->click->wait"
 
-# Try CSS selector as fallback
-agent-browser click "button.submit"
+# Retrieve before similar task
+npx @claude-flow/cli memory search --query "login automation"
 ```
 
-### Iframe content not accessible
-Use Playwright CDP connection to iterate through frames (see Oracle Cloud example above).
-
-## Service Management
-
+### Hooks
 ```bash
-# Start/stop visible browser
-supervisorctl start chromium-visible
-supervisorctl stop chromium-visible
+# Pre-browse hook (get context)
+npx @claude-flow/cli hooks pre-edit --file "browser-task.ts"
 
-# Check status
-supervisorctl status chromium-visible
+# Post-browse hook (record success)
+npx @claude-flow/cli hooks post-task --task-id "browse-1" --success true
 ```
+
+## Tips
+
+1. **Always use snapshots** - They're optimised for AI with refs
+2. **Prefer `-i` flag** - Gets only interactive elements, smaller output
+3. **Use refs, not selectors** - More reliable, deterministic
+4. **Re-snapshot after navigation** - Page state changes
+5. **Use sessions for parallel work** - Each session is isolated

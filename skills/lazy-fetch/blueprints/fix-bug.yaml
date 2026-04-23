@@ -1,0 +1,45 @@
+name: fix-bug
+description: Find and fix a bug with automated validation
+input: Bug description
+
+steps:
+  - name: gather-context
+    type: gather
+    task: "${input}"
+
+  - name: checkpoint-before
+    type: run
+    command: "git stash push -m 'pre-fix-${input}' 2>/dev/null || true"
+
+  - name: analyze-bug
+    type: prompt
+    prompt: >
+      Analyze this bug: ${input}.
+      Look at the gathered context files and identify the root cause.
+      Be specific — cite file paths and line numbers.
+
+  - name: implement-fix
+    type: prompt
+    prompt: >
+      Implement the fix for: ${input}.
+      Make minimal changes — fix the bug, nothing else.
+      Do not refactor surrounding code.
+
+  - name: typecheck
+    type: run
+    command: "bash hooks/detect-check.sh 2>&1"
+    gate:
+      on_fail: retry
+      max_retries: 2
+
+  - name: run-tests
+    type: run
+    command: "bash hooks/detect-test.sh 2>&1"
+    gate:
+      on_fail: retry
+      max_retries: 2
+
+  - name: remember-fix
+    type: remember
+    key: "fix-${input}"
+    value: "Fixed: ${input}"
