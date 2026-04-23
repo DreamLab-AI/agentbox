@@ -3,37 +3,101 @@
 /**
  * Contract test suite — memory adapter slot
  *
- * Parameterised over embedded-ruvector, external-pg, off implementation classes.
- * M1: placeholder stubs give ≥1 real passing assertion per impl.
+ * M2: real implementations. Promoted assertions marked [M2].
  *
  * See ADR-005 §Contract test harness and §Service-level objectives.
  */
 
 const { assertMethodShape, assertContractVersion, assertOffClassThrows } =
   require('./fixtures/shared-assertions');
+const { AdapterDisabled } = require('../../management-api/adapters/errors');
 
-const { MemoryAdapterPlaceholder: EmbeddedStub, AdapterDisabled } =
-  require('../../management-api/adapters/memory/placeholder');
-const { MemoryAdapterPlaceholder: ExternalPgStub } =
-  require('../../management-api/adapters/memory/placeholder');
-const { MemoryAdapterPlaceholder: OffStub, AdapterDisabled: OffAdapterDisabled } =
-  require('../../management-api/adapters/memory/placeholder');
+const { EmbeddedRuvectorMemoryAdapter } = require('../../management-api/adapters/memory/embedded-ruvector');
+const { ExternalPgMemoryAdapter }       = require('../../management-api/adapters/memory/external-pg');
+const { OffMemoryAdapter }              = require('../../management-api/adapters/memory/off');
 
 const REQUIRED_METHODS = ['store', 'search', 'retrieve', 'del'];
 
+// ---------------------------------------------------------------------------
+// Minimal pg client stub
+// ---------------------------------------------------------------------------
+function makePgStub() {
+  const tables = new Map(); // `${key}::${namespace}` -> {key, namespace, value, stored_at}
+
+  return {
+    query: async (sql, params) => {
+      const s = sql.replace(/\s+/g, ' ').trim();
+
+      if (s.startsWith('CREATE TABLE')) return { rows: [], rowCount: 0 };
+
+      if (s.startsWith('INSERT INTO memory_entries')) {
+        const [key, namespace, value] = params;
+        tables.set(`${key}::${namespace}`, { key, namespace, value, stored_at: new Date() });
+        return { rows: [], rowCount: 1 };
+      }
+
+      if (s.startsWith('SELECT key, value, namespace, stored_at FROM memory_entries WHERE key')) {
+        const [key, namespace] = params;
+        const row = tables.get(`${key}::${namespace}`);
+        return { rows: row ? [row] : [] };
+      }
+
+      if (s.startsWith('SELECT key, value, namespace, stored_at,')) {
+        // search
+        const [pattern, namespace, limit] = params;
+        const term = pattern.replace(/%/g, '').toLowerCase();
+        const results = [];
+        for (const row of tables.values()) {
+          if (row.namespace === namespace && row.value.toLowerCase().includes(term)) {
+            results.push({ ...row, score: '1.0' });
+          }
+        }
+        return { rows: results.slice(0, limit) };
+      }
+
+      if (s.startsWith('DELETE FROM memory_entries')) {
+        const [key, namespace] = params;
+        const existed = tables.delete(`${key}::${namespace}`);
+        return { rows: [], rowCount: existed ? 1 : 0 };
+      }
+
+      if (s.startsWith('SELECT key FROM memory_entries WHERE namespace')) {
+        const [namespace] = params;
+        const keys = [];
+        for (const row of tables.values()) {
+          if (row.namespace === namespace) keys.push({ key: row.key });
+        }
+        return { rows: keys };
+      }
+
+      return { rows: [], rowCount: 0 };
+    },
+  };
+}
+
 const IMPLS = [
-  { label: 'embedded-ruvector', Factory: EmbeddedStub   },
-  { label: 'external-pg',       Factory: ExternalPgStub  },
-  { label: 'off',               Factory: OffStub          },
+  {
+    label: 'embedded-ruvector',
+    makeAdapter: () => new EmbeddedRuvectorMemoryAdapter(),
+    isReal: true,
+  },
+  {
+    label: 'external-pg',
+    makeAdapter: () => new ExternalPgMemoryAdapter({ client: makePgStub() }),
+    isReal: true,
+  },
+  {
+    label: 'off',
+    makeAdapter: () => new OffMemoryAdapter(),
+    isReal: false,
+  },
 ];
 
-for (const { label, Factory } of IMPLS) {
+for (const { label, makeAdapter, isReal } of IMPLS) {
   describe(`memory :: ${label}`, () => {
 
     let adapter;
-    beforeEach(() => { adapter = new Factory(); });
-
-    // --- Passing assertions (M1) ---
+    beforeEach(() => { adapter = makeAdapter(); });
 
     it('exposes all required interface methods', () => {
       assertMethodShape(adapter, REQUIRED_METHODS);
@@ -47,29 +111,62 @@ for (const { label, Factory } of IMPLS) {
       assertContractVersion(adapter, 'memory');
     });
 
-    // --- Pending: off-class discipline ---
-
     if (label === 'off') {
       it('raises AdapterDisabled on every method', async () => {
-        await assertOffClassThrows(adapter, REQUIRED_METHODS, OffAdapterDisabled);
+        await assertOffClassThrows(adapter, REQUIRED_METHODS, AdapterDisabled);
       });
     }
 
-    // --- Pending: behavioural equivalence ---
+    if (isReal) {
+      it('[M2] store persists a value and returns the assigned key', async () => {
+        const start = Date.now();
+        const result = await adapter.store('k1', 'hello world', 'test-ns');
+        expect(Date.now() - start).toBeLessThan(1000);
+        expect(result).toHaveProperty('key', 'k1');
+        expect(result).toHaveProperty('namespace', 'test-ns');
+        expect(result).toHaveProperty('stored_at');
+      });
 
-    it.todo('store persists a value and returns the assigned key');
-    it.todo('search returns ranked results for a semantic query');
-    it.todo('retrieve returns the value previously stored under a key');
-    it.todo('del removes the entry and retrieve subsequently returns null');
+      it('[M2] retrieve returns the value previously stored under a key', async () => {
+        await adapter.store('k2', 'stored-value', 'test-ns');
+        const start = Date.now();
+        const entry = await adapter.retrieve('k2', 'test-ns');
+        expect(Date.now() - start).toBeLessThan(1000);
+        expect(entry).not.toBeNull();
+        expect(entry.value).toBe('stored-value');
+      });
 
-    // --- Pending: SLO compliance ---
+      it('[M2] del removes the entry and retrieve subsequently returns null', async () => {
+        await adapter.store('k3', 'to-delete', 'test-ns');
+        const start = Date.now();
+        const delResult = await adapter.del('k3', 'test-ns');
+        expect(Date.now() - start).toBeLessThan(1000);
+        expect(delResult.deleted).toBe(true);
+        const gone = await adapter.retrieve('k3', 'test-ns');
+        expect(gone).toBeNull();
+      });
 
+      it('[M2] retrieve returns null (not an error) for unknown keys', async () => {
+        const result = await adapter.retrieve('nonexistent-key-xyz', 'test-ns');
+        expect(result).toBeNull();
+      });
+
+      it('[M2] search returns ranked results for a semantic query', async () => {
+        await adapter.store('doc1', 'the quick brown fox', 'search-ns');
+        await adapter.store('doc2', 'lazy dog sleeping', 'search-ns');
+        const start = Date.now();
+        const { results } = await adapter.search('fox', { namespace: 'search-ns', limit: 10 });
+        expect(Date.now() - start).toBeLessThan(1000);
+        expect(Array.isArray(results)).toBe(true);
+        // At least one result should reference 'fox' content
+        const keys = results.map(r => r.key);
+        expect(keys).toContain('doc1');
+      });
+    }
+
+    // Pending
     it.todo('store (with embedding) p95 latency is under 500 ms at 10 req/s');
     it.todo('search p95 latency is under 250 ms at 50 req/s');
-
-    // --- Pending: error shape ---
-
-    it.todo('retrieve returns null (not an error) for unknown keys');
     it.todo('search throws a typed EmbeddingError when the embedding model is unavailable');
   });
 }

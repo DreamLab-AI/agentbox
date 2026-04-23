@@ -143,6 +143,26 @@ cp .env.example .env
 docker compose up -d
 ```
 
+### Local lifecycle via `agentbox.sh`
+
+`agentbox.sh` bundles the most common dev-loop operations so you do not have to compose Nix and Docker commands by hand:
+
+| Command | What it does |
+|---------|--------------|
+| `./agentbox.sh up` | `docker compose up -d`, then polls `http://localhost:9090/health` for up to 60 s and prints a port summary. |
+| `./agentbox.sh up --build` | Runs `nix build .#runtime && docker load < result` first, then starts and polls. |
+| `./agentbox.sh down` | `docker compose down`. |
+| `./agentbox.sh down --volumes` | Same but with `-v`; prompts for confirmation before removing volumes. |
+| `./agentbox.sh build` | `nix build .#runtime` (default). Does **not** load the image; prints the result path. |
+| `./agentbox.sh build --variant desktop\|full` | Build an alternate variant without loading it. |
+| `./agentbox.sh rebuild` | `down` + `build --variant runtime` + `up --build` chained — one command for a full dev-loop iteration. |
+| `./agentbox.sh logs` | `docker compose logs -f --tail 100` for all services. |
+| `./agentbox.sh logs <service>` | `docker exec agentbox supervisorctl tail -f <service>`, falling back to compose logs if the container is not up. |
+| `./agentbox.sh shell` | `docker exec -it agentbox bash`. |
+| `./agentbox.sh shell <profile>` | Opens the Zellij agentbox layout inside `/workspace/profiles/<profile>` (falls back to bash if Zellij is absent). |
+| `./agentbox.sh health` | Fetches `http://localhost:9090/health`, pretty-prints per-service status via `jq`, and exits non-zero if any service is `degraded` or `failed`. |
+| `./agentbox.sh health --json` | Emits raw JSON to stdout; always exits 0. |
+
 Compose mounts:
 
 - `./workspace -> /workspace`

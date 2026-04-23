@@ -126,11 +126,40 @@ Most relevant variables:
 
 ## 4. Start The Stack
 
+The preferred boot path uses `agentbox.sh up`, which starts the stack and blocks until the management API health endpoint responds (or times out after 60 s):
+
+```bash
+./agentbox.sh up
+```
+
+If you just rebuilt the Nix image and need to load it before starting:
+
+```bash
+./agentbox.sh up --build
+```
+
+Direct compose is also fine for simple cases, but you will need to poll health manually:
+
 ```bash
 docker compose up -d
 ```
 
+For a full dev-loop iteration (stop existing stack, rebuild image, restart):
+
+```bash
+./agentbox.sh rebuild
+```
+
 ## 5. Verify Host-Level Container State
+
+Use `agentbox.sh health` to get a per-service status summary:
+
+```bash
+./agentbox.sh health          # pretty-print; exits non-zero if any service is degraded
+./agentbox.sh health --json   # raw JSON; always exits 0
+```
+
+Low-level Docker commands for deeper inspection:
 
 ```bash
 docker compose ps
@@ -138,7 +167,7 @@ docker logs --tail 100 agentbox
 docker inspect --format '{{json .State.Health}}' agentbox
 ```
 
-If the container is using an older image or an older entrypoint, rebuild and recreate it.
+If the container is using an older image or an older entrypoint, use `agentbox.sh rebuild` to rebuild and recreate it.
 
 ## 6. Verify Runtime Services
 

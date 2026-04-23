@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# agentbox — top-level CLI dispatcher
+# Subcommand structure mirrors Git: agentbox <noun> <verb> [args...]
+# Only "config validate" is implemented; all other subcommands exit with
+# "not implemented yet".
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+noun="${1:-}"
+verb="${2:-}"
+
+case "${noun}" in
+  config)
+    case "${verb}" in
+      validate)
+        shift 2 || true
+        exec node "${SCRIPT_DIR}/agentbox-config-validate.js" "$@"
+        ;;
+      *)
+        echo "agentbox config: unknown verb '${verb}'. Available: validate" >&2
+        exit 1
+        ;;
+    esac
+    ;;
+  "")
+    echo "Usage: agentbox <noun> <verb> [args...]" >&2
+    echo "Available nouns: config" >&2
+    exit 1
+    ;;
+  *)
+    echo "agentbox: '${noun}' not implemented yet" >&2
+    exit 1
+    ;;
+esac

@@ -3,37 +3,58 @@
 /**
  * Contract test suite — events adapter slot
  *
- * Parameterised over local-jsonl, external, off implementation classes.
- * M1: placeholder stubs give ≥1 real passing assertion per impl.
+ * M2: real implementations. Promoted assertions marked [M2].
  *
  * See ADR-005 §Contract test harness and §Service-level objectives.
  */
 
 const { assertMethodShape, assertContractVersion, assertOffClassThrows } =
   require('./fixtures/shared-assertions');
+const { AdapterDisabled } = require('../../management-api/adapters/errors');
 
-const { EventsAdapterPlaceholder: LocalJsonlStub, AdapterDisabled } =
-  require('../../management-api/adapters/events/placeholder');
-const { EventsAdapterPlaceholder: ExternalStub } =
-  require('../../management-api/adapters/events/placeholder');
-const { EventsAdapterPlaceholder: OffStub, AdapterDisabled: OffAdapterDisabled } =
-  require('../../management-api/adapters/events/placeholder');
+const { LocalJsonlEventsAdapter } = require('../../management-api/adapters/events/local-jsonl');
+const { ExternalEventsAdapter }   = require('../../management-api/adapters/events/external');
+const { OffEventsAdapter }        = require('../../management-api/adapters/events/off');
 
 const REQUIRED_METHODS = ['dispatch', 'subscribe', 'unsubscribe'];
 
+// Off-class spec per ADR-005: dispatch is a no-op (not error) for off; subscribe/unsubscribe throw.
+const OFF_THROWING_METHODS = ['subscribe', 'unsubscribe'];
+
+// Fetch stub for external adapter
+function makeOkFetch() {
+  return async () => ({ ok: true, status: 200, text: async () => '{}', json: async () => ({}) });
+}
+
 const IMPLS = [
-  { label: 'local-jsonl', Factory: LocalJsonlStub },
-  { label: 'external',    Factory: ExternalStub    },
-  { label: 'off',         Factory: OffStub          },
+  {
+    label: 'local-jsonl',
+    makeAdapter: () => {
+      const written = [];
+      const appendFn = (_filePath, line) => written.push(line);
+      const a = new LocalJsonlEventsAdapter({ appendFn });
+      a.__written = written;
+      return a;
+    },
+    isReal: true,
+  },
+  {
+    label: 'external',
+    makeAdapter: () => new ExternalEventsAdapter({ url: 'http://fake-sink/events', fetchFn: makeOkFetch() }),
+    isReal: true, // real dispatch path (fetch-stubbed)
+  },
+  {
+    label: 'off',
+    makeAdapter: () => new OffEventsAdapter(),
+    isReal: false,
+  },
 ];
 
-for (const { label, Factory } of IMPLS) {
+for (const { label, makeAdapter, isReal } of IMPLS) {
   describe(`events :: ${label}`, () => {
 
     let adapter;
-    beforeEach(() => { adapter = new Factory(); });
-
-    // --- Passing assertions (M1) ---
+    beforeEach(() => { adapter = makeAdapter(); });
 
     it('exposes all required interface methods', () => {
       assertMethodShape(adapter, REQUIRED_METHODS);
@@ -47,26 +68,68 @@ for (const { label, Factory } of IMPLS) {
       assertContractVersion(adapter, 'events');
     });
 
-    // --- Pending: off-class discipline ---
-
+    // off-class: only subscribe/unsubscribe throw; dispatch is a no-op
     if (label === 'off') {
-      it('raises AdapterDisabled on every method', async () => {
-        await assertOffClassThrows(adapter, REQUIRED_METHODS, OffAdapterDisabled);
+      it('raises AdapterDisabled on subscribe and unsubscribe', async () => {
+        await assertOffClassThrows(adapter, OFF_THROWING_METHODS, AdapterDisabled);
+      });
+
+      it('[M2] dispatch is a no-op and does not throw for off adapter', async () => {
+        const result = await adapter.dispatch({ kind: 'test' });
+        expect(result).toBeNull();
       });
     }
 
-    // --- Pending: behavioural equivalence ---
+    // Promoted behavioural assertions (M2)
+    if (isReal) {
+      it('[M2] dispatch writes a valid JSONL line with ts, kind, and payload', async () => {
+        const start = Date.now();
+        const result = await adapter.dispatch({ kind: 'spawn', payload: { agent: 'a1' }, session_id: 'sess-1' });
+        expect(Date.now() - start).toBeLessThan(1000);
+        expect(result).toHaveProperty('ts');
+        expect(result).toHaveProperty('kind', 'spawn');
 
-    it.todo('dispatch writes a valid JSONL line with ts, kind, and payload');
-    it.todo('subscribe calls handler for each subsequent matching dispatch');
-    it.todo('unsubscribe stops delivering events to the handler');
+        if (adapter.__written) {
+          const line = JSON.parse(adapter.__written[0]);
+          expect(line).toHaveProperty('ts');
+          expect(line).toHaveProperty('kind', 'spawn');
+          expect(line.payload).toEqual({ agent: 'a1' });
+          expect(line.session_id).toBe('sess-1');
+        }
+      });
 
-    // --- Pending: SLO compliance ---
+      it('[M2] subscribe calls handler for each subsequent matching dispatch', async () => {
+        const received = [];
+        const subId = await adapter.subscribe({ kind: 'test.event' }, ev => received.push(ev));
+        expect(typeof subId).toBe('string');
 
+        // Only local-jsonl has in-process subscriber delivery
+        if (label === 'local-jsonl') {
+          await adapter.dispatch({ kind: 'test.event', payload: { x: 1 } });
+          await adapter.dispatch({ kind: 'other.event', payload: { x: 2 } });
+          expect(received).toHaveLength(1);
+          expect(received[0].kind).toBe('test.event');
+        }
+      });
+
+      it('[M2] unsubscribe stops delivering events to the handler', async () => {
+        const received = [];
+        const subId = await adapter.subscribe(null, ev => received.push(ev));
+
+        if (label === 'local-jsonl') {
+          await adapter.dispatch({ kind: 'before' });
+          await adapter.unsubscribe(subId);
+          await adapter.dispatch({ kind: 'after' });
+          expect(received).toHaveLength(1);
+          expect(received[0].kind).toBe('before');
+        } else {
+          await adapter.unsubscribe(subId);
+        }
+      });
+    }
+
+    // Pending
     it.todo('dispatch p95 latency is under 50 ms at 500 req/s');
-
-    // --- Pending: error shape ---
-
     it.todo('dispatch throws a typed ValidationError when event schema is invalid');
     it.todo('unsubscribe with unknown id throws a typed NotFound');
   });

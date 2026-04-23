@@ -4,6 +4,8 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 # Instance configuration - updated by provision-oci.sh
 AGENTBOX_IP=""
 AGENTBOX_USER="opc"
@@ -22,7 +24,7 @@ ${CYAN}Agentbox - Oracle Cloud ARM Instance Manager${NC}
 
 Usage: $0 <command> [options]
 
-Commands:
+Remote operator commands:
   ${GREEN}ssh${NC}              Connect via SSH
   ${GREEN}vnc${NC}              Open VNC tunnel (localhost:5901)
   ${GREEN}browser${NC}          Open browser tunnels (VNC + Chrome DevTools)
@@ -37,6 +39,15 @@ Commands:
   ${GREEN}backup${NC}           Backup named volumes and config to a tarball
   ${GREEN}restore${NC}          Restore named volumes and config from a tarball
 
+Local lifecycle commands:
+  ${GREEN}up${NC}               Start the Docker stack [--build: nix build + docker load first]
+  ${GREEN}down${NC}             Stop the Docker stack [--volumes: also remove volumes (confirms)]
+  ${GREEN}build${NC}            Build the Nix image [--variant runtime|desktop|full]
+  ${GREEN}rebuild${NC}          Full dev-loop cycle: down + build + up --build
+  ${GREEN}logs${NC}             Follow logs [service: supervisorctl tail, else compose logs]
+  ${GREEN}shell${NC}            Open shell in container [profile: zellij layout in that profile]
+  ${GREEN}health${NC}           Show service health [--json: raw JSON output]
+
 Options:
   -i, --ip IP      Override instance IP
   -h, --help       Show this help
@@ -50,6 +61,18 @@ Examples:
   $0 backup --out /tmp/snap.tgz --include-secrets
   $0 restore ./backups/agentbox-backup-20260101T000000Z.tgz
   $0 restore ./backups/agentbox-backup-20260101T000000Z.tgz --force
+  $0 up                     # Start stack, poll health, print summary
+  $0 up --build             # Nix build + docker load, then start
+  $0 down                   # Stop stack
+  $0 down --volumes         # Stop stack and remove volumes (destructive, confirms)
+  $0 build --variant full   # Build the full image without loading it
+  $0 rebuild                # down + build + up (dev-loop iteration)
+  $0 logs                   # Follow all service logs
+  $0 logs management-api    # Follow a specific service via supervisorctl
+  $0 shell                  # bash in the agentbox container
+  $0 shell ruflo-orchestrator  # zellij layout for a profile
+  $0 health                 # Pretty-print service health
+  $0 health --json          # Raw JSON health response
 
 EOF
 }
@@ -422,6 +445,237 @@ cmd_restore() {
     rm -rf "$work"
 }
 
+# ---------------------------------------------------------------------------
+# local lifecycle commands
+# ---------------------------------------------------------------------------
+
+HEALTH_URL="http://localhost:9090/health"
+COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.yml"
+
+cmd_up() {
+    local do_build=0
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --build) do_build=1; shift ;;
+            -h|--help) echo "Usage: $0 up [--build]"; return 0 ;;
+            *) echo -e "${RED}Unknown option: $1${NC}"; exit 1 ;;
+        esac
+    done
+
+    if [[ "$do_build" -eq 1 ]]; then
+        echo -e "${CYAN}Building Nix runtime image...${NC}"
+        nix build .#runtime
+        echo -e "${CYAN}Loading image into Docker...${NC}"
+        docker load < result
+    fi
+
+    echo -e "${CYAN}Starting Docker stack...${NC}"
+    docker compose -f "${COMPOSE_FILE}" up -d
+
+    # Poll health endpoint up to 60s
+    local deadline=$(( $(date +%s) + 60 ))
+    local ready=0
+    echo -e "${CYAN}Waiting for health endpoint at ${HEALTH_URL}...${NC}"
+    while [[ $(date +%s) -lt $deadline ]]; do
+        if curl -sf "${HEALTH_URL}" >/dev/null 2>&1; then
+            ready=1
+            break
+        fi
+        sleep 2
+    done
+
+    if [[ "$ready" -eq 0 ]]; then
+        echo -e "${RED}ERROR: Health check timed out after 60s (${HEALTH_URL}).${NC}"
+        echo "Check logs with: $0 logs"
+        exit 1
+    fi
+
+    echo ""
+    echo -e "${GREEN}Stack is up.${NC}"
+    echo -e "  ${GREEN}Management API :${NC} http://localhost:9090"
+    echo -e "  ${GREEN}Prometheus     :${NC} http://localhost:9091/metrics"
+    echo -e "  ${GREEN}Logs           :${NC} $0 logs"
+    echo -e "  ${GREEN}Shell          :${NC} $0 shell"
+}
+
+cmd_down() {
+    local remove_volumes=0
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --volumes) remove_volumes=1; shift ;;
+            -h|--help) echo "Usage: $0 down [--volumes]"; return 0 ;;
+            *) echo -e "${RED}Unknown option: $1${NC}"; exit 1 ;;
+        esac
+    done
+
+    if [[ "$remove_volumes" -eq 1 ]]; then
+        echo -e "${YELLOW}WARNING: --volumes will permanently delete all named volumes.${NC}"
+        printf "Proceed? [y/N] "
+        read -r answer
+        case "$answer" in
+            y|Y|yes|YES) ;;
+            *) echo "Aborted."; exit 0 ;;
+        esac
+    fi
+
+    local flags=""
+    [[ "$remove_volumes" -eq 1 ]] && flags="-v"
+
+    echo -e "${CYAN}Stopping Docker stack...${NC}"
+    # shellcheck disable=SC2086
+    docker compose -f "${COMPOSE_FILE}" down $flags
+
+    echo ""
+    echo -e "${GREEN}Stack stopped.${NC}"
+    [[ "$remove_volumes" -eq 1 ]] && echo -e "  ${YELLOW}Named volumes removed.${NC}"
+}
+
+cmd_build() {
+    local variant="runtime"
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --variant) variant="$2"; shift 2 ;;
+            -h|--help) echo "Usage: $0 build [--variant runtime|desktop|full]"; return 0 ;;
+            *) echo -e "${RED}Unknown option: $1${NC}"; exit 1 ;;
+        esac
+    done
+
+    case "$variant" in
+        runtime|desktop|full) ;;
+        *) echo -e "${RED}Unknown variant: ${variant}. Use runtime, desktop, or full.${NC}"; exit 1 ;;
+    esac
+
+    echo -e "${CYAN}Building Nix image variant: ${variant}...${NC}"
+    nix build ".#${variant}"
+
+    local result_path
+    result_path=$(readlink -f result 2>/dev/null || echo "./result")
+
+    echo ""
+    echo -e "${GREEN}Build complete.${NC}"
+    echo -e "  Variant : ${variant}"
+    echo -e "  Result  : ${result_path}"
+    echo ""
+    echo "To load into Docker:"
+    echo "  docker load < result"
+    echo "Or use: $0 up --build"
+}
+
+cmd_rebuild() {
+    if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+        echo "Usage: $0 rebuild"
+        echo "Equivalent to: down + build --variant runtime + up --build"
+        return 0
+    fi
+
+    echo -e "${CYAN}=== Rebuild: stopping stack ===${NC}"
+    cmd_down
+
+    echo -e "${CYAN}=== Rebuild: building runtime image ===${NC}"
+    cmd_build --variant runtime
+
+    echo -e "${CYAN}=== Rebuild: starting stack ===${NC}"
+    cmd_up --build
+}
+
+cmd_logs() {
+    local service="${1:-}"
+    if [[ "$service" == "-h" || "$service" == "--help" ]]; then
+        echo "Usage: $0 logs [service]"
+        return 0
+    fi
+
+    if [[ -z "$service" ]]; then
+        docker compose -f "${COMPOSE_FILE}" logs -f --tail 100
+        return
+    fi
+
+    # Try supervisorctl inside the running container first
+    if docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^agentbox$'; then
+        echo -e "${CYAN}Following supervisorctl log for: ${service}${NC}"
+        docker exec agentbox supervisorctl tail -f "${service}" 2>/dev/null && return
+        echo -e "${YELLOW}supervisorctl unavailable for '${service}', falling back to compose logs...${NC}"
+    fi
+
+    docker compose -f "${COMPOSE_FILE}" logs -f "${service}"
+}
+
+cmd_shell() {
+    local profile="${1:-}"
+    if [[ "$profile" == "-h" || "$profile" == "--help" ]]; then
+        echo "Usage: $0 shell [profile]"
+        return 0
+    fi
+
+    if [[ -z "$profile" ]]; then
+        docker exec -it agentbox bash
+        return
+    fi
+
+    # Try zellij layout for the profile; fall back to bash in the profile directory
+    if docker exec agentbox which zellij >/dev/null 2>&1; then
+        docker exec -it agentbox bash -c \
+            "cd /workspace/profiles/${profile} && exec zellij --layout agentbox"
+    else
+        echo -e "${YELLOW}zellij not found in container; opening bash in profile directory.${NC}"
+        docker exec -it agentbox bash -c "cd /workspace/profiles/${profile} && exec bash"
+    fi
+}
+
+cmd_health() {
+    local as_json=0
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --json) as_json=1; shift ;;
+            -h|--help) echo "Usage: $0 health [--json]"; return 0 ;;
+            *) echo -e "${RED}Unknown option: $1${NC}"; exit 1 ;;
+        esac
+    done
+
+    local response
+    response=$(curl -sf "${HEALTH_URL}" 2>/dev/null) || {
+        echo -e "${RED}ERROR: Could not reach ${HEALTH_URL}${NC}"
+        echo "Is the stack running? Try: $0 up"
+        exit 1
+    }
+
+    if [[ "$as_json" -eq 1 ]]; then
+        printf '%s\n' "$response"
+        exit 0
+    fi
+
+    # Pretty-print; fall back gracefully if jq is absent
+    if command -v jq >/dev/null 2>&1; then
+        local degraded
+        degraded=$(printf '%s' "$response" | jq -r '
+            .services // {} | to_entries[] |
+            select(.value.status == "degraded" or .value.status == "failed") |
+            .key
+        ' 2>/dev/null || true)
+
+        echo -e "${CYAN}Agentbox service health${NC}"
+        printf '%s' "$response" | jq -r '
+            .services // {} | to_entries[] |
+            "  \(.key): \(.value.status)"
+        ' 2>/dev/null | while IFS= read -r line; do
+            if printf '%s' "$line" | grep -qE '(degraded|failed)'; then
+                echo -e "${RED}${line}${NC}"
+            else
+                echo -e "${GREEN}${line}${NC}"
+            fi
+        done
+
+        if [[ -n "$degraded" ]]; then
+            echo ""
+            echo -e "${RED}Degraded/failed services: ${degraded}${NC}"
+            exit 1
+        fi
+    else
+        echo -e "${YELLOW}Note: jq not found; showing raw response.${NC}"
+        printf '%s\n' "$response"
+    fi
+}
+
 cmd_setup() {
     check_ip
     echo -e "${CYAN}Running initial setup on agentbox...${NC}"
@@ -497,8 +751,6 @@ SETUP_EOF
 }
 
 # Parse arguments
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-
 while [[ $# -gt 0 ]]; do
     case $1 in
         -i|--ip)
@@ -509,7 +761,7 @@ while [[ $# -gt 0 ]]; do
             usage
             exit 0
             ;;
-        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser|backup|restore)
+        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser|backup|restore|up|down|build|rebuild|logs|shell|health)
             CMD="$1"
             shift
             break
@@ -537,5 +789,12 @@ case "${CMD:-}" in
     start-browser) cmd_start_browser ;;
     backup)        cmd_backup "$@" ;;
     restore)       cmd_restore "$@" ;;
+    up)            cmd_up "$@" ;;
+    down)          cmd_down "$@" ;;
+    build)         cmd_build "$@" ;;
+    rebuild)       cmd_rebuild "$@" ;;
+    logs)          cmd_logs "$@" ;;
+    shell)         cmd_shell "$@" ;;
+    health)        cmd_health "$@" ;;
     *)             usage ;;
 esac

@@ -1,0 +1,35 @@
+{
+  "name": "agentbox",
+  "version": "0.1.0",
+  "description": "agentbox manifest validator and CLI tools",
+  "private": true,
+  "scripts": {
+    "validate": "node scripts/agentbox-config-validate.js",
+    "test:config": "jest tests/config/semantic-rules.test.js --testEnvironment node"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "roots": [
+      "<rootDir>/tests/config"
+    ],
+    "testMatch": [
+      "**/*.test.js"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/"
+    ],
+    "watchPathIgnorePatterns": [
+      "/node_modules/",
+      "/management-api/"
+    ],
+    "modulePathIgnorePatterns": [
+      "<rootDir>/management-api/"
+    ]
+  },
+  "devDependencies": {
+    "@iarna/toml": "^2.2.5",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "jest": "^29.7.0"
+  }
+}

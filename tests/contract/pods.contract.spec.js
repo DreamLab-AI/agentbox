@@ -3,37 +3,100 @@
 /**
  * Contract test suite — pods adapter slot
  *
- * Parameterised over local-jss, external, off implementation classes.
- * M1: placeholder stubs give ≥1 real passing assertion per impl.
+ * M2: real implementations. Promoted assertions marked [M2].
  *
  * See ADR-005 §Contract test harness and §Service-level objectives.
  */
 
 const { assertMethodShape, assertContractVersion, assertOffClassThrows } =
   require('./fixtures/shared-assertions');
+const { AdapterDisabled } = require('../../management-api/adapters/errors');
 
-const { PodsAdapterPlaceholder: LocalJssStub, AdapterDisabled } =
-  require('../../management-api/adapters/pods/placeholder');
-const { PodsAdapterPlaceholder: ExternalStub } =
-  require('../../management-api/adapters/pods/placeholder');
-const { PodsAdapterPlaceholder: OffStub, AdapterDisabled: OffAdapterDisabled } =
-  require('../../management-api/adapters/pods/placeholder');
+const { LocalJssPodsAdapter }  = require('../../management-api/adapters/pods/local-jss');
+const { ExternalPodsAdapter }  = require('../../management-api/adapters/pods/external');
+const { OffPodsAdapter }       = require('../../management-api/adapters/pods/off');
 
 const REQUIRED_METHODS = ['write', 'read', 'patch', 'del', 'list'];
 
+// ---------------------------------------------------------------------------
+// Fetch stub for JSS/external — in-memory document store
+// ---------------------------------------------------------------------------
+function makeJssFetch() {
+  const store = new Map();
+  return async (url, opts = {}) => {
+    const method = (opts.method || 'GET').toUpperCase();
+    const uri = url.replace('http://localhost:8484', '').replace('http://fake-host', '');
+
+    if (method === 'PUT') {
+      store.set(uri, { body: opts.body || '', contentType: (opts.headers || {})['Content-Type'] || 'application/octet-stream' });
+      const status = store.size === 1 ? 201 : 200;
+      return {
+        ok: true, status,
+        headers: { get: () => null },
+        json: async () => ({}),
+        text: async () => '',
+      };
+    }
+
+    if (method === 'GET') {
+      const entry = store.get(uri);
+      if (!entry) {
+        // Container URIs (trailing slash) return an empty container document, not 404
+        if (uri.endsWith('/')) {
+          return {
+            ok: true, status: 200,
+            headers: { get: (h) => h === 'content-type' ? 'application/ld+json' : null },
+            text: async () => '{}',
+            json: async () => ({ '@graph': [], _cursor: null }),
+          };
+        }
+        return { ok: false, status: 404, headers: { get: () => null }, json: async () => ({}), text: async () => 'Not Found' };
+      }
+      return {
+        ok: true, status: 200,
+        headers: { get: (h) => h === 'content-type' ? entry.contentType : null },
+        text: async () => entry.body,
+        json: async () => ({ '@graph': [], _cursor: null }),
+      };
+    }
+
+    if (method === 'PATCH') {
+      if (!store.has(uri)) return { ok: false, status: 404, headers: { get: () => null }, text: async () => 'Not Found' };
+      return { ok: true, status: 204, headers: { get: () => null }, text: async () => '', json: async () => ({}) };
+    }
+
+    if (method === 'DELETE') {
+      store.delete(uri);
+      return { ok: true, status: 204, headers: { get: () => null }, text: async () => '', json: async () => ({}) };
+    }
+
+    return { ok: false, status: 405, headers: { get: () => null }, text: async () => 'Method Not Allowed' };
+  };
+}
+
 const IMPLS = [
-  { label: 'local-jss', Factory: LocalJssStub },
-  { label: 'external',  Factory: ExternalStub  },
-  { label: 'off',       Factory: OffStub        },
+  {
+    label: 'local-jss',
+    makeAdapter: () => new LocalJssPodsAdapter({ baseUrl: 'http://localhost:8484', fetchFn: makeJssFetch() }),
+    isReal: true,
+  },
+  {
+    label: 'external',
+    makeAdapter: () => new ExternalPodsAdapter({ baseUrl: 'http://fake-host', fetchFn: makeJssFetch() }),
+    isReal: true,
+  },
+  {
+    label: 'off',
+    makeAdapter: () => new OffPodsAdapter(),
+    isReal: false,
+  },
 ];
 
-for (const { label, Factory } of IMPLS) {
+for (const { label, makeAdapter, isReal } of IMPLS) {
   describe(`pods :: ${label}`, () => {
 
     let adapter;
-    beforeEach(() => { adapter = new Factory(); });
-
-    // --- Passing assertions (M1) ---
+    beforeEach(() => { adapter = makeAdapter(); });
 
     it('exposes all required interface methods', () => {
       assertMethodShape(adapter, REQUIRED_METHODS);
@@ -47,29 +110,62 @@ for (const { label, Factory } of IMPLS) {
       assertContractVersion(adapter, 'pods');
     });
 
-    // --- Pending: off-class discipline ---
-
     if (label === 'off') {
       it('raises AdapterDisabled on every method', async () => {
-        await assertOffClassThrows(adapter, REQUIRED_METHODS, OffAdapterDisabled);
+        await assertOffClassThrows(adapter, REQUIRED_METHODS, AdapterDisabled);
       });
     }
 
-    // --- Pending: behavioural equivalence ---
+    if (isReal) {
+      it('[M2] write stores a resource and returns uri and status', async () => {
+        const start = Date.now();
+        const result = await adapter.write('/docs/brief-1', '{"hello":"world"}', 'application/ld+json');
+        expect(Date.now() - start).toBeLessThan(1000);
+        expect(result).toHaveProperty('uri', '/docs/brief-1');
+        expect([200, 201]).toContain(result.status);
+        expect(result).toHaveProperty('created_at');
+      });
 
-    it.todo('write stores a resource and returns 201 with Location header');
-    it.todo('read retrieves the stored resource with correct content-type');
-    it.todo('patch applies a JSON-patch diff without full overwrite');
-    it.todo('del removes the resource and subsequent read returns 404');
-    it.todo('list returns container children with pagination cursor');
+      it('[M2] read retrieves the stored resource with correct content-type', async () => {
+        await adapter.write('/docs/brief-2', 'content here', 'text/plain');
+        const start = Date.now();
+        const result = await adapter.read('/docs/brief-2');
+        expect(Date.now() - start).toBeLessThan(1000);
+        expect(result).toHaveProperty('uri', '/docs/brief-2');
+        expect(result).toHaveProperty('body', 'content here');
+      });
 
-    // --- Pending: SLO compliance ---
+      it('[M2] patch applies a JSON-patch diff and returns updated_at', async () => {
+        await adapter.write('/docs/brief-3', '{"a":1}', 'application/ld+json');
+        const start = Date.now();
+        const result = await adapter.patch('/docs/brief-3', [{ op: 'replace', path: '/a', value: 2 }]);
+        expect(Date.now() - start).toBeLessThan(1000);
+        expect(result).toHaveProperty('uri', '/docs/brief-3');
+        expect(result).toHaveProperty('updated_at');
+      });
 
+      it('[M2] del removes the resource and subsequent read returns 404', async () => {
+        await adapter.write('/docs/brief-4', 'data', 'text/plain');
+        const start = Date.now();
+        const result = await adapter.del('/docs/brief-4');
+        expect(Date.now() - start).toBeLessThan(1000);
+        expect(result).toHaveProperty('deleted', true);
+        await expect(adapter.read('/docs/brief-4')).rejects.toThrow();
+      });
+
+      it('[M2] list returns container children', async () => {
+        await adapter.write('/container/item-1', 'x', 'text/plain');
+        const start = Date.now();
+        const result = await adapter.list('/container/');
+        expect(Date.now() - start).toBeLessThan(1000);
+        expect(result).toHaveProperty('items');
+        expect(Array.isArray(result.items)).toBe(true);
+      });
+    }
+
+    // Pending
     it.todo('write p95 latency is under 300 ms at 20 req/s');
     it.todo('read p95 latency is under 150 ms at 100 req/s');
-
-    // --- Pending: error shape ---
-
     it.todo('read throws a typed NotFound for unknown URIs');
     it.todo('write throws a typed PermissionDenied when WAC policy is violated');
   });

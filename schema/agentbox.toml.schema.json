@@ -1,0 +1,305 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/DreamLab-AI/agentbox/schema/agentbox.toml.schema.json",
+  "title": "agentbox manifest",
+  "description": "JSON Schema for agentbox.toml — the manifest-driven configuration for the agentbox container.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "core": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "orchestration": {
+          "type": "string",
+          "description": "Agent orchestrator implementation.",
+          "examples": ["ruflo-v3"]
+        },
+        "vector_db": {
+          "type": "string",
+          "description": "Local retrieval engine.",
+          "examples": ["ruvector-embedded"]
+        }
+      }
+    },
+    "federation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["standalone", "client"],
+          "description": "Deployment shape: standalone (all local fallbacks) or client (federated with host mesh)."
+        },
+        "external_url": {
+          "type": "string",
+          "description": "Base URL of the host mesh. Required when mode=client."
+        }
+      }
+    },
+    "adapters": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Five-slot adapter configuration. Each slot resolves to one of three implementation classes.",
+      "properties": {
+        "beads": {
+          "type": "string",
+          "enum": ["local-sqlite", "external", "off"],
+          "description": "Structured agent-work receipts adapter."
+        },
+        "pods": {
+          "type": "string",
+          "enum": ["local-jss", "external", "off"],
+          "description": "Durable linked-data storage adapter."
+        },
+        "memory": {
+          "type": "string",
+          "enum": ["embedded-ruvector", "external-pg", "off"],
+          "description": "Vector memory adapter."
+        },
+        "events": {
+          "type": "string",
+          "enum": ["local-jsonl", "external", "off"],
+          "description": "Agent lifecycle event sink adapter."
+        },
+        "orchestrator": {
+          "type": "string",
+          "enum": ["local-process-manager", "stdio-bridge", "off"],
+          "description": "Agent spawn and monitor channel adapter."
+        }
+      }
+    },
+    "gpu": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "backend": {
+          "type": "string",
+          "enum": ["none", "ollama-rocm", "ollama-cuda", "local-cuda"],
+          "description": "GPU backend selection."
+        }
+      }
+    },
+    "desktop": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable desktop environment."
+        },
+        "stack": {
+          "type": "string",
+          "enum": ["hyprland-wayland", "x11-openbox"],
+          "description": "Desktop stack selection."
+        },
+        "resolution": {
+          "type": "string",
+          "description": "Display resolution, e.g. 1920x1080.",
+          "pattern": "^[0-9]+x[0-9]+$"
+        }
+      }
+    },
+    "observability": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "metrics_port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "description": "Port for the Prometheus /metrics endpoint. Default 9091."
+        },
+        "otlp_endpoint": {
+          "type": "string",
+          "description": "OpenTelemetry OTLP exporter endpoint. Empty = traces dropped."
+        },
+        "log_level": {
+          "type": "string",
+          "enum": ["trace", "debug", "info", "warn", "error"],
+          "description": "Structured log verbosity."
+        }
+      }
+    },
+    "providers": {
+      "type": "object",
+      "description": "API-provider credential gates. Each key is a provider name.",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether this provider is active."
+          },
+          "env_var": {
+            "type": "string",
+            "description": "Name of the environment variable holding the API key."
+          }
+        }
+      }
+    },
+    "skills": {
+      "type": "object",
+      "description": "Feature flags for manifest-gated skills.",
+      "additionalProperties": false,
+      "properties": {
+        "browser": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "playwright": { "type": "boolean" },
+            "qe_browser": { "type": "boolean" },
+            "agent_browser": { "type": "boolean" }
+          }
+        },
+        "media": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "ffmpeg": { "type": "boolean" },
+            "imagemagick": { "type": "boolean" },
+            "comfyui_builtin": {
+              "type": "boolean",
+              "description": "Mutually exclusive with comfyui_external (E007)."
+            },
+            "comfyui_external": {
+              "type": "boolean",
+              "description": "Mutually exclusive with comfyui_builtin (E007)."
+            },
+            "comfyui_integration": { "type": "boolean" }
+          }
+        },
+        "spatial_and_3d": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "blender": { "type": "boolean" },
+            "qgis": { "type": "boolean" },
+            "gaussian_splatting": {
+              "type": "boolean",
+              "description": "Requires gpu.backend=local-cuda (E006)."
+            }
+          }
+        },
+        "data_science": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pytorch": { "type": "boolean" },
+            "jupyter": { "type": "boolean" }
+          }
+        },
+        "docs": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "latex": { "type": "boolean" },
+            "mermaid": { "type": "boolean" },
+            "report_builder": { "type": "boolean" }
+          }
+        },
+        "ontology": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Logseq OWL2 DL tools."
+            }
+          }
+        }
+      }
+    },
+    "toolchains": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "claude": { "type": "boolean" },
+        "claude_code": { "type": "boolean" },
+        "ruflo": { "type": "boolean" },
+        "claude_flow": { "type": "boolean" },
+        "agentic_qe": { "type": "boolean" },
+        "nagual_qe": { "type": "boolean" },
+        "codebase_memory": { "type": "boolean" },
+        "rust": { "type": "boolean" },
+        "gemini_cli": { "type": "boolean" },
+        "code_server": { "type": "boolean" },
+        "cuda": { "type": "boolean" }
+      }
+    },
+    "integrations": {
+      "type": "object",
+      "description": "Integration-specific configuration sections.",
+      "additionalProperties": false,
+      "properties": {
+        "ruvector_external": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "conninfo": {
+              "type": "string",
+              "description": "PostgreSQL DSN for external RuVector. Required when adapters.memory=external-pg (E002)."
+            }
+          }
+        },
+        "external_orchestrator": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "protocol": {
+              "type": "string",
+              "enum": ["stdio", "http", "mcp"],
+              "description": "Wire protocol for external orchestrator."
+            }
+          }
+        },
+        "external_events": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Required when adapters.events=external (E005).",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "url": { "type": "string" },
+            "relay_urls": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Nostr relay URL list."
+            },
+            "mcp_endpoint": { "type": "string" }
+          }
+        },
+        "external_network": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "network": { "type": "string" }
+          }
+        }
+      }
+    },
+    "sovereign_mesh": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Nostr identity, NIP-98 auth, inter-agent messaging, and optional daemons.",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "solid_pod": { "type": "boolean" },
+        "nostr_bridge": { "type": "boolean" },
+        "https_bridge": { "type": "boolean" },
+        "publish_agent_events": { "type": "boolean" },
+        "telegram_mirror": {
+          "type": "boolean",
+          "description": "Requires CTM_BOT_TOKEN and CTM_TELEGRAM_CHAT_ID env vars (E014)."
+        },
+        "jss_rust_backend": {
+          "type": "boolean",
+          "description": "Requires jss-rust Nix input pinned in flake.lock (E015)."
+        }
+      }
+    }
+  }
+}

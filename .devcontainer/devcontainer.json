@@ -1,0 +1,34 @@
+{
+  "name": "agentbox",
+  "image": "nixpkgs/nix-flakes:latest",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/common-utils:2": {}
+  },
+  "onCreateCommand": "nix build .#runtime && echo '✅ agentbox runtime image ready'",
+  "postAttachCommand": "echo '🚀 Agentbox dev container ready'; echo '   Start with: agentbox.sh up' || echo '   Or: source config/agentbox-aliases.sh && zstack'",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "tamasfe.even-better-toml",
+        "mkhl.direnv",
+        "bbenoist.Nix",
+        "jnoortheen.nix-ide"
+      ]
+    }
+  },
+  "remoteUser": "devuser",
+  "forwardPorts": [9090, 9091, 5901, 8080, 8484, 9700, 8888],
+  "portsAttributes": {
+    "9090": {"label": "Management API"},
+    "9091": {"label": "Agent Portal"},
+    "5901": {"label": "VNC"},
+    "8080": {"label": "HTTP"},
+    "8484": {"label": "Solid POD"},
+    "9700": {"label": "RuVector"},
+    "8888": {"label": "Jupyter"}
+  },
+  "mounts": [],
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localEnv:PWD},target=/workspace,type=bind,consistency=cached"
+}

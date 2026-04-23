@@ -135,27 +135,34 @@ alias gh-issuel="gh issue list"
 alias gh-repo="gh repo view --web"
 
 # === ZELLIJ - WORKSPACES ===
+alias z="zellij"
+alias zattach="zellij attach"
+alias zls="zellij list-sessions"
+alias zkill="zellij kill-session"
 alias t="zellij"
 alias zl="zellij"
 alias zn="zellij --session"
 alias za="zellij attach"
-alias zls="zellij list-sessions"
 alias zka="zellij kill-all-sessions"
 alias zk="zellij kill-session"
 alias zr="zellij run --"
 alias zrf="zellij run --floating --"
 
 # === ZELLIJ - QUICK LAYOUTS ===
+alias zstack="zellij --layout /opt/agentbox/config/zellij/layouts/agentbox.kdl"
 alias zdev="zellij --layout compact"
 alias zmon="zellij --layout compact --session monitor"
 alias zflo="zellij action toggle-floating-panes"
 alias zsync="zellij action toggle-active-sync-tab"
 alias zren="zellij action rename-session"
-alias zstack="/opt/agentbox/scripts/zellij-stack.sh"
 alias zclaude="/opt/agentbox/scripts/zellij-stack.sh claude-core"
 alias zruflo="/opt/agentbox/scripts/zellij-stack.sh ruflo-orchestrator"
 alias zqe="/opt/agentbox/scripts/zellij-stack.sh qe-fleet"
 alias zdocs="/opt/agentbox/scripts/zellij-stack.sh docs-latex"
+
+# === TMUX COMPATIBILITY ===
+alias tmux-attach="zellij attach"
+alias tmux-ls="zellij list-sessions"
 
 # === SUPERVISORD ===
 alias svc="sudo /opt/venv/bin/supervisorctl"

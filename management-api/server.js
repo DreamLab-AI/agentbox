@@ -10,11 +10,16 @@ const rateLimit = require('@fastify/rate-limit');
 const websocket = require('@fastify/websocket');
 const { createAuthMiddleware } = require('./middleware/auth');
 const contractVersions = require('./adapters/contract-versions');
+const { resolveAdapters, SLOTS } = require('./adapters/index');
+const { loadManifest, ManifestNotFound } = require('./adapters/manifest-loader');
 const logger = require('./utils/logger');
 const ProcessManager = require('./utils/process-manager');
 const SystemMonitor = require('./utils/system-monitor');
 const ComfyUIManager = require('./utils/comfyui-manager');
 const metrics = require('./utils/metrics');
+const observabilityMetrics = require('./observability/metrics');
+const { startMetricsServer, shutdownMetricsServer } = require('./observability/metrics-server');
+const { initTracing, shutdown: shutdownTracing } = require('./observability/tracing');
 
 // Configuration
 const PORT = process.env.MANAGEMENT_API_PORT || 9090;
@@ -37,6 +42,11 @@ const app = fastify({
 const processManager = new ProcessManager(logger);
 const systemMonitor = new SystemMonitor(logger);
 const comfyuiManager = new ComfyUIManager(logger, metrics);
+
+// Adapter health state — populated during startup
+// Values: "healthy" | "degraded" | "off"
+const adapterHealth = { beads: 'off', pods: 'off', memory: 'off', events: 'off', orchestrator: 'off' };
+let resolvedAdapters = null;
 
 // Middleware: CORS
 app.register(cors, {
@@ -182,7 +192,8 @@ app.get('/health', {
           status: { type: 'string' },
           uptime: { type: 'number' },
           image_hash: { type: ['string', 'null'] },
-          manifest_checksum: { type: ['string', 'null'] }
+          manifest_checksum: { type: ['string', 'null'] },
+          adapters: { type: 'object' }
         }
       }
     }
@@ -192,7 +203,8 @@ app.get('/health', {
     status: 'ok',
     uptime: process.uptime(),
     image_hash: process.env.AGENTBOX_IMAGE_HASH || null,
-    manifest_checksum: process.env.AGENTBOX_MANIFEST_CHECKSUM || null
+    manifest_checksum: process.env.AGENTBOX_MANIFEST_CHECKSUM || null,
+    adapters: { ...adapterHealth }
   };
 });
 
@@ -217,17 +229,23 @@ app.get('/v1/meta', {
               events: { type: 'string' },
               orchestrator: { type: 'string' }
             }
-          }
+          },
+          adapter_impls: { type: 'object' }
         }
       }
     }
   }
 }, async (request, reply) => {
+  const adapterImpls = {};
+  for (const slot of SLOTS) {
+    adapterImpls[slot] = resolvedAdapters ? resolvedAdapters[slot]._implName : 'unknown';
+  }
   return {
     image_hash: process.env.AGENTBOX_IMAGE_HASH || null,
     manifest_checksum: process.env.AGENTBOX_MANIFEST_CHECKSUM || null,
     federation_mode: process.env.AGENTBOX_FEDERATION_MODE || null,
-    adapter_contract_versions: contractVersions
+    adapter_contract_versions: contractVersions,
+    adapter_impls: adapterImpls
   };
 });
 
@@ -329,6 +347,33 @@ async function closeGracefully(signal) {
   // Cleanup old tasks
   processManager.cleanup();
 
+  // Shutdown observability
+  await shutdownMetricsServer();
+  await shutdownTracing();
+
+  // Disconnect all adapters with a 5s total timeout
+  if (resolvedAdapters) {
+    const disconnectOps = SLOTS.map(async (slot) => {
+      const adapter = resolvedAdapters[slot];
+      if (typeof adapter.disconnect !== 'function') return;
+      try {
+        await adapter.disconnect();
+        logger.info({ slot }, 'Adapter disconnected');
+      } catch (err) {
+        logger.error({ slot, err: err.message }, 'Adapter disconnect error (ignored)');
+      }
+    });
+
+    try {
+      await Promise.race([
+        Promise.allSettled(disconnectOps),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('disconnect timeout')), 5000))
+      ]);
+    } catch {
+      logger.warn('Adapter disconnect did not complete within 5 s, continuing shutdown');
+    }
+  }
+
   await app.close();
   process.exit(0);
 }
@@ -344,6 +389,75 @@ setInterval(() => {
 // Start server
 async function start() {
   try {
+    // ── Adapter resolution ──────────────────────────────────────────────
+    let manifest;
+    try {
+      manifest = loadManifest();
+      logger.info({ path: process.env.AGENTBOX_MANIFEST_PATH || '/etc/agentbox.toml' }, 'Manifest loaded');
+    } catch (err) {
+      if (err.name === 'ManifestNotFound') {
+        logger.warn({ err: err.message }, 'Manifest not found — using all-off adapter defaults');
+        manifest = {};
+      } else {
+        throw err;
+      }
+    }
+
+    resolvedAdapters = resolveAdapters(manifest);
+    app.decorate('adapters', resolvedAdapters);
+
+    // ── Connect adapters (10 s total timeout) ───────────────────────────
+    const connectOps = SLOTS.map(async (slot) => {
+      const adapter = resolvedAdapters[slot];
+      if (typeof adapter.connect !== 'function') {
+        adapterHealth[slot] = adapter.enabled === false ? 'off' : 'healthy';
+        return;
+      }
+      try {
+        await adapter.connect();
+        adapterHealth[slot] = 'healthy';
+        logger.info({ slot, impl: adapter._implName }, 'Adapter connected');
+      } catch (err) {
+        if (slot === 'orchestrator') {
+          logger.error({ slot, impl: adapter._implName, err: err.message }, 'Orchestrator adapter failed to connect — FATAL');
+          process.exit(1);
+        }
+        logger.warn({ slot, impl: adapter._implName, err: err.message }, 'Adapter connect failed — falling back to off');
+        adapterHealth[slot] = 'degraded';
+        // Replace with off impl so callers get AdapterDisabled rather than broken state
+        try {
+          const { resolveAdapters: re } = require('./adapters/index');
+          const offManifest = { adapters: { [slot]: 'off' } };
+          const offSlot = re(offManifest)[slot];
+          offSlot._implName = 'off';
+          offSlot._slot = slot;
+          resolvedAdapters[slot] = offSlot;
+          app.adapters[slot] = offSlot;
+        } catch (_) {
+          // If even off fails, leave degraded adapter in place
+        }
+      }
+    });
+
+    try {
+      await Promise.race([
+        Promise.all(connectOps),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('connect timeout')), 10000))
+      ]);
+    } catch (err) {
+      if (err.message === 'connect timeout') {
+        logger.warn('Adapter connect phase exceeded 10 s — continuing with partially connected adapters');
+      } else {
+        throw err;
+      }
+    }
+
+    // ── Observability ───────────────────────────────────────────────────
+    initTracing();
+    observabilityMetrics.setBuildInfo();
+    await startMetricsServer();
+
+    // ── HTTP server ─────────────────────────────────────────────────────
     await app.listen({ port: PORT, host: HOST });
     logger.info(`Management API server listening on http://${HOST}:${PORT}`);
     logger.info('API Key authentication enabled');

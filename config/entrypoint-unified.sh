@@ -61,6 +61,18 @@ if [ ! -d "$WORKSPACE/agents" ]; then
   mkdir -p "$WORKSPACE/agents"
 fi
 
+# Shell profile setup
+if [ -f /etc/bash.bashrc ]; then
+  if ! grep -q "source.*agentbox-aliases" /etc/bash.bashrc 2>/dev/null; then
+    echo "source /opt/agentbox/config/agentbox-aliases.sh" >> /etc/bash.bashrc
+  fi
+fi
+if [ -f /etc/zsh/zshrc ]; then
+  if ! grep -q "source.*agentbox-aliases" /etc/zsh/zshrc 2>/dev/null; then
+    echo "source /opt/agentbox/config/agentbox-aliases.sh" >> /etc/zsh/zshrc
+  fi
+fi
+
 mkdir -p "$WORKSPACE/.config/zellij"
 if [ ! -f "$WORKSPACE/.config/zellij/config.kdl" ]; then
   cp /opt/agentbox/config/zellij.kdl "$WORKSPACE/.config/zellij/config.kdl"
