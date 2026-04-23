@@ -14,7 +14,10 @@ RUN useradd -m -s /bin/bash claude && \
 # Install Claude Code globally
 # NOTE: Native installer available via curl -fsSL https://claude.ai/install.sh | bash
 # Using npm for Docker system-wide installation (native installer targets ~/.local/bin)
-RUN npm install -g @anthropic-ai/claude-code@latest
+# SECURITY: @anthropic-ai/claude-code is pinned to 2.1.47.
+# If upstream ships a malicious release, this pin blocks auto-upgrade.
+# Rotate via a PR only; do not auto-update.
+RUN npm install -g @anthropic-ai/claude-code@2.1.47
 
 # Create app directory
 WORKDIR /app

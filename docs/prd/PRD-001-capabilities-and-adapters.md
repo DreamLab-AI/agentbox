@@ -102,6 +102,29 @@ cuda = false
 
 Validation runs in three places: the TUI (`scripts/start-agentbox.sh`), the flake eval (`builtins.fromTOML` + assertions), and a standalone `agentbox config validate` CLI.
 
+### 3.3 GPU backend dispatch
+
+`[gpu].backend` is the single manifest key that drives all GPU-related decisions. It is consumed by a central dispatch table in `lib/gpu-backend.nix` which returns a canonical attrset:
+
+| Field | Type | Purpose |
+|---|---|---|
+| `devicesNeeded` | `[string]` | `/dev/…:/dev/…` entries passed to the ollama container |
+| `runtimeClass` | `string` | `""` (default OCI) or `"nvidia"` |
+| `envVars` | `attrset` | Env vars injected into the ollama container |
+| `nixPackages` | `[drv]` | Nix derivations added to the agentbox image at build time |
+| `composeDeviceReservations` | `attrset \| null` | Compose `deploy.resources.reservations.devices` block; `null` for non-NVIDIA paths |
+| `supervisorExtraEnv` | `attrset` | Env vars merged into supervisord `[program:*]` blocks that need GPU access |
+| `ollamaEnabled` | `bool` | When `false`, the compose generator must omit the ollama service entirely |
+
+Backend semantics:
+
+- **`none`** — no GPU; ollama service is not emitted in compose; no extra packages.
+- **`ollama-rocm`** — ROCm/Vulkan via `/dev/kfd` + `/dev/dri`; no Nix CUDA packages; ollama sidecar included.
+- **`ollama-cuda`** — NVIDIA CUDA via container runtime; CUDA stays in the sidecar image; `composeDeviceReservations` set; `nixPackages` empty.
+- **`local-cuda`** — CUDA toolchain baked into the agentbox Nix image; enables `gaussian_splatting` and in-container CUDA workloads; `nixPackages` includes `cudaPackages.*`; `supervisorExtraEnv` exposes `CUDA_VISIBLE_DEVICES`.
+
+Both the flake evaluator (build-time) and the compose generator (A1 agent) consume the same dispatch function, ensuring the two outputs remain consistent with a single manifest change.
+
 ## 3a. Manifest → build → runtime (how it fits together)
 
 ```mermaid

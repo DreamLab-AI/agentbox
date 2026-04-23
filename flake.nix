@@ -32,6 +32,10 @@
         dataScienceCfg = skillsCfg.data_science or {};
         docsCfg = skillsCfg.docs or {};
 
+        # GPU backend dispatch — single source of truth for GPU concerns.
+        gpuLib = import ./lib/gpu-backend.nix { inherit lib pkgs; };
+        gpuCfg = gpuLib.dispatchGpuBackend (agentboxConfig.gpu.backend or "none");
+
         boolEnv = value: if value then "true" else "false";
 
         basePackages = with pkgs; [
@@ -80,6 +84,10 @@
           nodePackages.yarn
           pnpm
         ];
+
+        geminiCliPackages = lib.optionals (toolchainCfg.gemini_cli or false) (with pkgs; [
+          nodejs_20
+        ]);
 
         pythonBasePackages = with pkgs; [
           python312
@@ -198,7 +206,9 @@
           ++ spatialPackages
           ++ dataSciencePackages
           ++ docsPackages
-          ++ desktopPackages;
+          ++ desktopPackages
+          ++ geminiCliPackages;
+          ++ gpuCfg.nixPackages;
 
         appRoot = pkgs.runCommand "agentbox-app-root" {} ''
           mkdir -p $out/opt/agentbox
@@ -389,10 +399,193 @@ ${lib.optionalString (dataScienceCfg.jupyter or false) "\n${jupyterServiceBlock}
 ${lib.optionalString (desktopCfg.enabled or false) "\n${desktopBlocks}"}
         '';
 
+        # ---------------------------------------------------------------------------
+        # composeText: manifest-driven docker-compose.yml generator.
+        # Mirrors the supervisorText pattern.  lib.generators.toYAML is
+        # available in nixpkgs-unstable but its YAML quoting of multiline
+        # strings is non-deterministic across nixpkgs revisions, so we use
+        # explicit string interpolation throughout for full determinism.
+        # NOTE: gpuCfg is already bound above (GPU agent A2) as the structured
+        # result of gpuLib.dispatchGpuBackend. We read the raw backend string
+        # directly from the manifest here to avoid rebinding that name.
+        # ---------------------------------------------------------------------------
+        gpuBackendKey   = agentboxConfig.gpu.backend    or "none";
+        integrationsCfg = agentboxConfig.integrations or {};
+        ragflowCfg      = integrationsCfg.ragflow           or {};
+        ruvectorExtCfg  = integrationsCfg.ruvector_external or {};
+        comfyuiExtCfg   = integrationsCfg.comfyui_external  or {};
+        observCfg       = agentboxConfig.observability or {};
+        adaptersCfg     = agentboxConfig.adapters     or {};
+
+        # True when the GPU backend is anything other than "none".
+        gpuEnabled = gpuBackendKey != "none";
+
+        # Derive compose-level runtime string from backend key.
+        # The GPU agent (A2) owns the full translation table; we only need
+        # whether we emit a runtime: line and which device mounts to add.
+        gpuRuntime =
+          if gpuBackendKey == "local-cuda" then "nvidia"
+          else if gpuBackendKey == "local-rocm" then "rocm"
+          else "none";
+
+        # AMD ROCm device mounts (used when backend = local-rocm)
+        rocmDevices = ''
+      devices:
+        - /dev/kfd:/dev/kfd
+        - /dev/dri:/dev/dri
+      group_add:
+        - video
+        - "988"
+      security_opt:
+        - seccomp=unconfined'';
+
+        # NVIDIA runtime mount (used when backend = local-cuda)
+        cudaRuntime = ''
+      runtime: nvidia
+      environment:
+        - NVIDIA_VISIBLE_DEVICES=all
+        - NVIDIA_DRIVER_CAPABILITIES=compute,utility'';
+
+        # Ollama service block – only emitted when gpuEnabled.
+        ollamaServiceBlock = lib.optionalString gpuEnabled ''
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+${if gpuRuntime == "rocm" then rocmDevices
+  else if gpuRuntime == "nvidia" then "    runtime: nvidia"
+  else ""}
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+${lib.optionalString (gpuRuntime == "nvidia") ''      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility''}      - OLLAMA_VULKAN=${if gpuRuntime == "rocm" then "1" else "0"}
+      - OLLAMA_FLASH_ATTENTION=true
+      - OLLAMA_KV_CACHE_TYPE=q8_0
+      - OLLAMA_CONTEXT_LENGTH=8192
+'';
+
+        # Ports for the agentbox service.
+        # Always: management-api (9090), ruvector (9700)
+        # Sovereign: solid-pod (8484)
+        # Desktop:  VNC (5901)
+        # Jupyter:  8888
+        # code_server: 8080
+        agentboxPorts =
+          ''      - "9090:9090"''
+          + "\n      - \"9700:9700\""
+          + lib.optionalString (sovereignCfg.enabled or false)
+              "\n      - \"8484:8484\""
+          + lib.optionalString (dataScienceCfg.jupyter or false)
+              "\n      - \"8888:8888\""
+          + lib.optionalString (desktopCfg.enabled or false)
+              "\n      - \"5901:5901\""
+          + lib.optionalString ((toolchainCfg.code_server or false))
+              "\n      - \"8080:8080\"";
+
+        # agentbox depends_on block.
+        agentboxDependsOn = lib.optionalString gpuEnabled ''
+    depends_on:
+      ollama:
+        condition: service_started'';
+
+        # External network declaration for ragflow integration.
+        ragflowNetworkDecl = lib.optionalString (ragflowCfg.enabled or false) ''
+  docker_ragflow:
+    external: true'';
+
+        # agentbox network attachment block.
+        agentboxNetworks = lib.optionalString (ragflowCfg.enabled or false) ''
+    networks:
+      - default
+      - docker_ragflow'';
+
+        # Extra hosts that let containers reach the Docker host.
+        agentboxExtraHosts = ''
+    extra_hosts:
+      - "host.docker.internal:host-gateway"'';
+
+        # DNS alias for ragflow when integration enabled.
+        agentboxDnsAliases = lib.optionalString (ragflowCfg.enabled or false) ''
+    hostname: agentbox
+    dns:
+      - 127.0.0.11'';
+
+        # Volumes list for agentbox service.
+        agentboxVolumes =
+          ''      - ./agentbox.toml:/etc/agentbox.toml:ro''
+          + "\n      - ./workspace:/workspace"
+          + "\n      - ./projects:/projects"
+          + "\n      - ruvector-data:/var/lib/ruvector"
+          + "\n      - solid-data:/var/lib/solid"
+          + "\n      - sovereign-identities:/var/lib/agentbox/identities";
+
+        # Top-level volumes block.
+        topLevelVolumes =
+          lib.optionalString gpuEnabled "  ollama:\n    name: ollama\n"
+          + ''  ruvector-data:
+    name: agentbox-ruvector-data
+  solid-data:
+    name: agentbox-solid-data
+  sovereign-identities:
+    name: agentbox-sovereign-identities'';
+
+        # Full compose document.
+        composeText = ''
+# AUTO-GENERATED from agentbox.toml via flake.nix — do not edit by hand.
+# Run: nix build .#compose
+
+services:
+${ollamaServiceBlock}
+  agentbox:
+    image: agentbox:runtime-${system}
+    container_name: agentbox
+    hostname: agentbox
+    restart: unless-stopped
+${agentboxDependsOn}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9090/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+${agentboxExtraHosts}
+    ports:
+${agentboxPorts}
+    environment:
+      - ANTHROPIC_API_KEY=''${ANTHROPIC_API_KEY:-}
+      - GITHUB_TOKEN=''${GITHUB_TOKEN:-}
+      - OPENAI_API_KEY=''${OPENAI_API_KEY:-ollama}
+      - OPENAI_BASE_URL=''${OPENAI_BASE_URL:-http://host.docker.internal:11434/v1}
+      - OLLAMA_BASE_URL=''${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - OLLAMA_MODEL=''${OLLAMA_MODEL:-qwen2.5:32b-instruct}
+      - GOOGLE_GEMINI_API_KEY=''${GOOGLE_GEMINI_API_KEY:-}
+      - GEMINI_API_KEY=''${GEMINI_API_KEY:-}
+      - MANAGEMENT_API_KEY=''${MANAGEMENT_API_KEY:-}
+      - MANAGEMENT_API_AUTH_MODE=''${MANAGEMENT_API_AUTH_MODE:-hybrid}
+      - NOSTR_RELAYS=''${NOSTR_RELAYS:-wss://relay.damus.io,wss://relay.primal.net}
+      - AGENTBOX_AGENT_ID=''${AGENTBOX_AGENT_ID:-agentbox-core}
+    volumes:
+${agentboxVolumes}
+    security_opt:
+      - no-new-privileges:true
+${agentboxNetworks}
+
+volumes:
+${topLevelVolumes}
+${lib.optionalString (ragflowCfg.enabled or false) ''
+networks:
+${ragflowNetworkDecl}
+''}        '';
+
         configFiles = pkgs.runCommand "agentbox-config" {} ''
-          mkdir -p $out/etc
+          mkdir -p $out/etc/agentbox
           cp ${pkgs.writeText "supervisord.conf" supervisorText} $out/etc/supervisord.conf
           cp ${./agentbox.toml} $out/etc/agentbox.toml
+          cp ${pkgs.writeText "docker-compose.yml" composeText} $out/etc/agentbox/docker-compose.yml
         '';
 
         entrypoint = pkgs.writeShellScriptBin "entrypoint" ''
@@ -443,12 +636,17 @@ ${lib.optionalString (desktopCfg.enabled or false) "\n${desktopBlocks}"}
           "ENABLE_NAGUAL_QE=${boolEnv (toolchainCfg.nagual_qe or false)}"
           "ENABLE_CODEBASE_MEMORY=${boolEnv (toolchainCfg.codebase_memory or false)}"
           "ENABLE_RUST_TOOLCHAIN=${boolEnv (toolchainCfg.rust or false)}"
+          "ENABLE_GEMINI_CLI=${boolEnv (toolchainCfg.gemini_cli or false)}"
           "WORKSPACE=/workspace"
           "SHARED_PROJECTS_ROOT=/projects"
           "AGENTBOX_AGENT_ID=agentbox-core"
           "CLAUDE_CONFIG_DIR=/workspace/.claude"
           "SKILLS_TREE=/opt/agentbox/skills"
-        ];
+          "GPU_BACKEND=${agentboxConfig.gpu.backend or "none"}"
+        ]
+        # Merge GPU-specific env vars (e.g. CUDA_VISIBLE_DEVICES for local-cuda)
+        # into the image environment using "KEY=VALUE" string form.
+        ++ lib.mapAttrsToList (k: v: "${k}=${v}") gpuCfg.supervisorExtraEnv;
 
         commonPorts = {
           "9090/tcp" = {};
@@ -512,6 +710,13 @@ ${lib.optionalString (desktopCfg.enabled or false) "\n${desktopBlocks}"}
             extraPackages = desktopPackages;
           };
           default = mkImage { tag = "runtime-${system}"; };
+
+          # Emit the manifest-driven compose file.
+          # Usage: nix build .#compose && cat result/docker-compose.yml
+          compose = pkgs.runCommand "agentbox-compose" {} ''
+            mkdir -p $out
+            cp ${pkgs.writeText "docker-compose.yml" composeText} $out/docker-compose.yml
+          '';
         };
 
         devShells.default = pkgs.mkShell {

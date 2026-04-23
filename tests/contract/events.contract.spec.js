@@ -128,9 +128,41 @@ for (const { label, makeAdapter, isReal } of IMPLS) {
       });
     }
 
-    // Pending
+    // Promoted typed-error and additional behavioural assertions (M2)
+    if (isReal) {
+      it('[M2] dispatch throws a typed ValidationError when event.kind is missing', async () => {
+        await expect(adapter.dispatch({ payload: { x: 1 } })).rejects.toMatchObject({
+          name: 'ValidationError',
+          code: 'VALIDATION_ERROR',
+        });
+      });
+
+      it('[M2] unsubscribe with an unknown id throws a typed NotFound', async () => {
+        await expect(adapter.unsubscribe('no-such-subscription-id')).rejects.toMatchObject({
+          name: 'NotFound',
+          code: 'NOT_FOUND',
+        });
+      });
+
+      it('[M2] dispatch returns ts and kind on success', async () => {
+        const result = await adapter.dispatch({ kind: 'agent.heartbeat' });
+        expect(result).toHaveProperty('ts');
+        expect(result).toHaveProperty('kind', 'agent.heartbeat');
+      });
+
+      it('[M2] subscribe returns a string subscription id', async () => {
+        const id = await adapter.subscribe(null, () => {});
+        expect(typeof id).toBe('string');
+        expect(id.length).toBeGreaterThan(0);
+      });
+
+      it('[M2] unsubscribe on a valid id resolves without error', async () => {
+        const id = await adapter.subscribe(null, () => {});
+        await expect(adapter.unsubscribe(id)).resolves.toBeFalsy();
+      });
+    }
+
+    // Pending (require production env)
     it.todo('dispatch p95 latency is under 50 ms at 500 req/s');
-    it.todo('dispatch throws a typed ValidationError when event schema is invalid');
-    it.todo('unsubscribe with unknown id throws a typed NotFound');
   });
 }

@@ -51,6 +51,7 @@ Agentbox is a Nix-declarative container runtime for hosting software agents (Cla
 | Metrics | Prometheus endpoint on `[observability].metrics_port` (default `9091`); see [ADR-005 §Observability](adr/ADR-005-pluggable-adapter-architecture.md) |
 | Health | `curl http://localhost:9090/health` — reports per-adapter health |
 | Version handshake | `curl http://localhost:9090/v1/meta` — image hash, manifest checksum, adapter contract versions |
+| Gemini CLI | `@google/gemini-cli@0.38.2` — enable via `[toolchains.gemini_cli = true]` in manifest; use `zgemini` or `gemini` (requires `GEMINI_API_KEY`) |
 | Zellij layout | [`../config/zellij/layouts/agentbox.kdl`](../config/zellij/layouts/agentbox.kdl) — 11 tabs |
 | Dev container | [`../.devcontainer/README.md`](../.devcontainer/README.md) |
 

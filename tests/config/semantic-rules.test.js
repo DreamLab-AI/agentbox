@@ -257,21 +257,45 @@ describe('E008: gpu.backend=local-cuda is x86_64 only', () => {
   });
 });
 
-// ─── E009 ─────────────────────────────────────────────────────────────────────
-describe('E009: enabled provider requires its credentials env var', () => {
-  test('invalid: provider enabled but env var missing', () => {
+// ─── E009 (legacy — superseded by E017) ───────────────────────────────────────
+// E009 no longer fires; existing callers that checked E009 should migrate to E017.
+
+// ─── E017 ─────────────────────────────────────────────────────────────────────
+describe('E017: enabled provider requires its env_var to be present in the environment', () => {
+  test('invalid: provider enabled but env var missing (empty string)', () => {
     const m = baseValid();
-    m.providers = { anthropic: { enabled: true, env_var: 'ANTHROPIC_API_KEY_TEST_E009' } };
-    const r = runValidator(m, { ANTHROPIC_API_KEY_TEST_E009: '' });
+    m.providers = { anthropic: { enabled: true, env_var: 'ANTHROPIC_API_KEY_TEST_E017', optional_env_vars: [] } };
+    const r = runValidator(m, { ANTHROPIC_API_KEY_TEST_E017: '' });
     expect(r.exitCode).not.toBe(0);
-    expect(stderrContains(r, 'E009')).toBe(true);
+    expect(stderrContains(r, 'E017')).toBe(true);
+    expect(r.stderr).toMatch(/anthropic/);
+    expect(r.stderr).toMatch(/ANTHROPIC_API_KEY_TEST_E017/);
   });
 
-  test('valid: provider enabled and env var present', () => {
+  test('valid: provider enabled and env var is non-empty', () => {
     const m = baseValid();
-    m.providers = { anthropic: { enabled: true, env_var: 'ANTHROPIC_API_KEY_TEST_E009' } };
-    const r = runValidator(m, { ANTHROPIC_API_KEY_TEST_E009: 'sk-test-dummy' });
-    expect(stderrContains(r, 'E009')).toBe(false);
+    m.providers = { openai: { enabled: true, env_var: 'OPENAI_API_KEY_TEST_E017', optional_env_vars: ['OPENAI_BASE_URL'] } };
+    const r = runValidator(m, { OPENAI_API_KEY_TEST_E017: 'sk-test-real-looking-value' });
+    expect(stderrContains(r, 'E017')).toBe(false);
+  });
+});
+
+// ─── E018 ─────────────────────────────────────────────────────────────────────
+describe('E018: enabled provider env_var must not contain a placeholder value', () => {
+  test('invalid: env var set to placeholder "change-this"', () => {
+    const m = baseValid();
+    m.providers = { gemini: { enabled: true, env_var: 'GEMINI_KEY_TEST_E018', optional_env_vars: [] } };
+    const r = runValidator(m, { GEMINI_KEY_TEST_E018: 'change-this' });
+    expect(r.exitCode).not.toBe(0);
+    expect(stderrContains(r, 'E018')).toBe(true);
+    expect(r.stderr).toMatch(/gemini/);
+  });
+
+  test('valid: env var set to a non-placeholder value', () => {
+    const m = baseValid();
+    m.providers = { perplexity: { enabled: true, env_var: 'PERPLEXITY_KEY_TEST_E018', optional_env_vars: [] } };
+    const r = runValidator(m, { PERPLEXITY_KEY_TEST_E018: 'pplx-abc123realkey' });
+    expect(stderrContains(r, 'E018')).toBe(false);
   });
 });
 
@@ -414,6 +438,33 @@ describe('E015: jss_rust_backend requires jss-rust pinned in flake.lock', () => 
     m.sovereign_mesh.jss_rust_backend = false;
     const r = runValidator(m);
     expect(stderrContains(r, 'E015')).toBe(false);
+  });
+});
+
+// ─── skills.ontology gate ─────────────────────────────────────────────────────
+describe('skills.ontology gate: enabled defaults to false and parses cleanly', () => {
+  test('valid: skills.ontology.enabled=false (default off)', () => {
+    const m = baseValid();
+    m.skills.ontology = { enabled: false };
+    const r = runValidator(m);
+    expect(r.exitCode).toBe(0);
+    expect(r.stderr).toBe('');
+  });
+
+  test('valid: skills.ontology.enabled=true parses without errors', () => {
+    const m = baseValid();
+    m.skills.ontology = { enabled: true };
+    const r = runValidator(m);
+    // No validator error for a boolean-true gate
+    expect(stderrContains(r, 'E016')).toBe(false);
+  });
+
+  test('invalid: unknown key inside skills.ontology triggers E016', () => {
+    const m = baseValid();
+    m.skills.ontology = { enabled: false, unknown_key: true };
+    const r = runValidator(m);
+    expect(r.exitCode).not.toBe(0);
+    expect(stderrContains(r, 'E016')).toBe(true);
   });
 });
 

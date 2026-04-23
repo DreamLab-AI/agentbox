@@ -403,6 +403,21 @@ async function start() {
       }
     }
 
+    // ── Provider env-var visibility check ──────────────────────────────
+    // Warn for every enabled provider whose primary env var is not set.
+    // Does not abort boot — env vars may arrive via secret manager after start.
+    const manifestProviders = manifest.providers || {};
+    for (const [providerName, provConf] of Object.entries(manifestProviders)) {
+      if (!provConf || provConf.enabled !== true) continue;
+      const envVar = provConf.env_var || `${providerName.toUpperCase()}_API_KEY`;
+      if (!process.env[envVar]) {
+        logger.warn(
+          { provider: providerName, env_var: envVar },
+          `Provider "${providerName}" is enabled but env var "${envVar}" is not set — provider will be non-functional`
+        );
+      }
+    }
+
     resolvedAdapters = resolveAdapters(manifest);
     app.decorate('adapters', resolvedAdapters);
 

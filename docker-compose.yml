@@ -1,37 +1,13 @@
-# Agentbox compose stack
+# AUTO-GENERATED from agentbox.toml via flake.nix — do not edit by hand.
+# Run: nix build .#compose
 
 services:
-  ollama:
-    image: ollama/ollama:latest
-    container_name: ollama
-    restart: unless-stopped
-    devices:
-      - /dev/kfd:/dev/kfd
-      - /dev/dri:/dev/dri
-    group_add:
-      - video
-      - "988"
-    security_opt:
-      - seccomp=unconfined
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama:/root/.ollama
-    environment:
-      - OLLAMA_HOST=0.0.0.0:11434
-      - OLLAMA_VULKAN=1
-      - OLLAMA_FLASH_ATTENTION=true
-      - OLLAMA_KV_CACHE_TYPE=q8_0
-      - OLLAMA_CONTEXT_LENGTH=8192
 
   agentbox:
     image: agentbox:runtime-x86_64-linux
     container_name: agentbox
     hostname: agentbox
     restart: unless-stopped
-    depends_on:
-      ollama:
-        condition: service_started
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9090/health"]
       interval: 30s
@@ -44,7 +20,6 @@ services:
       - "9090:9090"
       - "9700:9700"
       - "8484:8484"
-      - "8888:8888"
     environment:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - GITHUB_TOKEN=${GITHUB_TOKEN:-}
@@ -68,8 +43,6 @@ services:
       - no-new-privileges:true
 
 volumes:
-  ollama:
-    name: ollama
   ruvector-data:
     name: agentbox-ruvector-data
   solid-data:

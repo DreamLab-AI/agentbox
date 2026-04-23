@@ -169,11 +169,67 @@ for (const { label, makeAdapter, isReal } of IMPLS) {
       });
     }
 
-    // --- Pending ---
+    // --- Promoted typed-error assertions (M2) ---
+
+    // local-sqlite has deterministic NotFound/AlreadyClaimed; external fetch-stub
+    // returns 500 for unknown paths (not 404), so typed-error probes run local only.
+    if (label === 'local-sqlite') {
+      it('[M2] show throws a typed NotFound for an unknown id', async () => {
+        await expect(adapter.show('does-not-exist-xyz')).rejects.toMatchObject({
+          name: 'NotFound',
+          code: 'NOT_FOUND',
+        });
+      });
+
+      it('[M2] claim throws a typed AlreadyClaimed when another actor holds the bead', async () => {
+        const epic = await adapter.createEpic({ title: 'Contested' });
+        await adapter.claim(epic.id, 'agent-a');
+        await expect(adapter.claim(epic.id, 'agent-b')).rejects.toMatchObject({
+          name: 'AlreadyClaimed',
+          code: 'ALREADY_CLAIMED',
+        });
+      });
+
+      it('[M2] createChild throws a typed NotFound when parent_id is unknown', async () => {
+        await expect(
+          adapter.createChild({ title: 'Orphan', parent_id: 'no-such-epic' })
+        ).rejects.toMatchObject({ name: 'NotFound', code: 'NOT_FOUND' });
+      });
+
+      it('[M2] close is idempotent — closing an already-closed bead returns closed status', async () => {
+        const epic = await adapter.createEpic({ title: 'Idempotent Close' });
+        await adapter.close(epic.id, 'done');
+        const second = await adapter.close(epic.id, 'done-again');
+        expect(second.status).toBe('closed');
+      });
+
+      it('[M2] getReady with no filter returns all unclaimed open beads', async () => {
+        const epic = await adapter.createEpic({ title: 'E-global' });
+        await adapter.createChild({ title: 'C-ready', parent_id: epic.id });
+        const ready = await adapter.getReady();
+        expect(Array.isArray(ready)).toBe(true);
+        expect(ready.length).toBeGreaterThanOrEqual(1);
+      });
+
+      it('[M2] createEpic assigns unique ids across multiple calls', async () => {
+        const e1 = await adapter.createEpic({ title: 'X' });
+        const e2 = await adapter.createEpic({ title: 'X' });
+        expect(e1.id).not.toBe(e2.id);
+      });
+
+      it('[M2] claim followed by close produces closed status with original actor', async () => {
+        const epic = await adapter.createEpic({ title: 'Lifecycle' });
+        const claimed = await adapter.claim(epic.id, 'worker-1');
+        expect(claimed.actor).toBe('worker-1');
+        const closed = await adapter.close(epic.id, 'success');
+        expect(closed.status).toBe('closed');
+        expect(closed.id).toBe(epic.id);
+      });
+    }
+
+    // --- Pending (require production env or network) ---
 
     it.todo('createEpic p95 latency is under 200 ms at 50 req/s');
     it.todo('getReady p95 latency is under 100 ms at 200 req/s');
-    it.todo('createEpic throws a typed NotFound when epic id is unknown');
-    it.todo('claim throws a typed AlreadyClaimed when another actor holds the bead');
   });
 }

@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Secure MCP server scripts with authentication and rate limiting",
   "dependencies": {
+    "nostr-tools": "^2.23.3",
     "ws": "^8.18.3"
   },
   "scripts": {

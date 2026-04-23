@@ -127,14 +127,21 @@
       "additionalProperties": {
         "type": "object",
         "additionalProperties": false,
+        "required": ["enabled", "env_var"],
         "properties": {
           "enabled": {
             "type": "boolean",
-            "description": "Whether this provider is active."
+            "description": "Whether this provider is active. When true, env_var must be set in the environment (E017)."
           },
           "env_var": {
             "type": "string",
-            "description": "Name of the environment variable holding the API key."
+            "description": "Name of the environment variable holding the primary API key or token."
+          },
+          "optional_env_vars": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Names of optional supplementary env vars (e.g. base URL overrides).",
+            "default": []
           }
         }
       }

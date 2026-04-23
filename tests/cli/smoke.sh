@@ -40,6 +40,15 @@ check "health --help"           bash "$SCRIPT" health --help
 check "backup in usage"         bash -c "bash '$SCRIPT' --help | grep -q backup"
 check "restore in usage"        bash -c "bash '$SCRIPT' --help | grep -q restore"
 
+# Gemini CLI toolchain check (when enabled, gemini --help should work)
+if command -v gemini &>/dev/null; then
+    check "gemini --help"           gemini --help
+    check "gemini --version"        gemini --version
+else
+    echo "  SKIP  gemini --help (toolchain not installed)"
+    echo "  SKIP  gemini --version (toolchain not installed)"
+fi
+
 echo ""
 echo "Results: ${PASS} passed, ${FAIL} failed"
 [[ "$FAIL" -eq 0 ]]

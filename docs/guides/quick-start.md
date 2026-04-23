@@ -33,7 +33,7 @@ Key sections:
 - `[sovereign_mesh]` — Nostr identity + NIP-98 auth
 - `[skills.*]` — 96-skill catalogue gates
 - `[toolchains]` — core CLIs (claude, ruflo, claude_flow, agentic_qe, gemini_cli, etc.)
-- `[gpu]` — `none` | `ollama-rocm` | `ollama-cuda` | `local-cuda`
+- `[gpu]` — `none` (default, no ollama sidecar) | `ollama-rocm` (ROCm/Vulkan via `/dev/kfd`+`/dev/dri`) | `ollama-cuda` (NVIDIA container runtime, sidecar only) | `local-cuda` (CUDA baked into image; required for `gaussian_splatting`)
 - `[desktop]` — Hyprland/Wayland (default) or X11/openbox
 - `[observability]` — metrics port, OTLP endpoint, log level
 - `[providers.*]` — per-provider API-key gates
@@ -88,6 +88,17 @@ conninfo = "postgresql://ruvector@ruvector-postgres:5432/ruvector"
 
 Always run `agentbox config validate` after editing — it checks semantic rules (e.g. `gaussian_splatting = true` requires `gpu.backend = "local-cuda"`) before the build.
 
+### Ontology skill gate (prepared placeholder)
+
+```toml
+[skills.ontology]
+enabled = false   # default — ontology-core + ontology-enrich are not loaded
+```
+
+Set `enabled = true` to load the `ontology-core` and `ontology-enrich` skills into the agent's skill surface. These skills target Logseq OWL2 DL TBox workflows and are opt-in because they carry specific domain assumptions (Logseq graph conventions, OWL2 DL reasoner tooling). When `enabled = false` (the default) neither skill is registered and no extra tooling is pulled into the image.
+
+This gate is a **prepared placeholder** — the MCP server and associated tooling for ontology operations will be fleshed out in a future milestone. Enabling the flag now has no runtime effect beyond advertising the skills in the manifest; downstream agents that check the manifest before loading skills will respect it once the implementation lands.
+
 ## 2. Build The Image
 
 ```bash
@@ -110,19 +121,34 @@ Manual path:
 cp .env.example .env
 ```
 
-Fill in at least the keys and endpoints you need.
+Provider API keys are gated by `[providers.*]` sections in `agentbox.toml`.
+Only set the env vars for providers you have enabled — the validator (E017) will
+warn at boot for any enabled provider whose env var is missing.
 
-Most relevant variables:
+1. In `agentbox.toml`, set `enabled = true` for each provider you want:
 
-- `ANTHROPIC_API_KEY`
-- `OPENAI_API_KEY`
-- `GOOGLE_GEMINI_API_KEY`
-- `PERPLEXITY_API_KEY`
-- `MANAGEMENT_API_KEY`
-- `AGENTBOX_AGENT_ID`
-- `NOSTR_RELAYS`
-- `WORKSPACE`
-- `SHARED_PROJECTS_ROOT`
+   ```toml
+   [providers.anthropic]
+   enabled = true
+   env_var = "ANTHROPIC_API_KEY"
+   ```
+
+2. In `.env`, fill in the corresponding value:
+
+   ```
+   ANTHROPIC_API_KEY=sk-ant-...
+   ```
+
+Infrastructure vars (always required regardless of providers):
+
+- `MANAGEMENT_API_KEY` — API key for the management HTTP API
+- `AGENTBOX_AGENT_ID` — stable identity label for this instance
+- `NOSTR_RELAYS` — comma-separated Nostr relay URLs
+- `WORKSPACE` — shared workspace mount path
+- `SHARED_PROJECTS_ROOT` — shared projects mount path
+
+For the full provider reference, optional overrides, and instructions for adding
+new providers see [`docs/guides/providers.md`](providers.md).
 
 ## 4. Start The Stack
 

@@ -10,10 +10,12 @@
   },
   "jest": {
     "roots": [
-      "<rootDir>/tests/contract"
+      "<rootDir>/tests/contract",
+      "<rootDir>/tests/sovereign"
     ],
     "testMatch": [
-      "**/*.contract.spec.js"
+      "**/*.contract.spec.js",
+      "**/*.test.js"
     ],
     "testEnvironment": "node",
     "rootDir": "..",

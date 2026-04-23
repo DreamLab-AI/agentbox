@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * agentbox config validate
- * Validates agentbox.toml against the JSON Schema and 16 semantic rules (E001-E016).
+ * Validates agentbox.toml against the JSON Schema and 18 semantic rules (E001-E018).
  * Exit 0 = clean. Non-zero = errors. Errors on stderr, one per line: "E### message"
  */
 
@@ -179,14 +179,32 @@ if (gpu.backend === 'local-cuda') {
   }
 }
 
-// E009: every enabled providers.<name> section requires its credentials env-var at boot-time check.
+// E009: reserved — previously used for provider env-var check; superseded by E017.
+
+// E017: every enabled providers.<name> section MUST have its env_var present in the environment.
+// E018: an enabled provider's env_var value must not be a placeholder literal.
+const PLACEHOLDER_RE = /^(change[-_]?this|your[-_]?key[-_]?here|sk[-_]?xxx+|AKIA[A-Z0-9]{12}EXAMPLE|<[^>]+>|PLACEHOLDER|TODO)$/i;
+
 for (const [name, provConf] of Object.entries(providers)) {
-  if (provConf && provConf.enabled === true) {
-    const envVar = provConf.env_var || `${name.toUpperCase()}_API_KEY`;
-    if (!process.env[envVar]) {
+  if (!provConf || provConf.enabled !== true) continue;
+
+  const envVar = provConf.env_var || `${name.toUpperCase()}_API_KEY`;
+  const envValue = process.env[envVar];
+
+  // E017 — must be set (non-empty)
+  if (!envValue) {
+    errors.push({
+      code: 'E017',
+      message: `E017: provider "${name}" is enabled but env var "${envVar}" is not set`
+    });
+  } else if (PLACEHOLDER_RE.test(envValue.trim())) {
+    // E018 — value looks like a placeholder; warn (still an error exit) unless this is .env.example
+    const manifestFile = path.resolve(manifestPath);
+    const isEnvExample = manifestFile.endsWith('.env.example');
+    if (!isEnvExample) {
       errors.push({
-        code: 'E009',
-        message: `E009: provider "${name}" is enabled but env var "${envVar}" is not set`
+        code: 'E018',
+        message: `E018: provider "${name}" env var "${envVar}" contains a placeholder value — replace it with a real credential`
       });
     }
   }
@@ -312,6 +330,7 @@ if (sovereignMesh.jss_rust_backend === true) {
 }
 
 // E016 is handled by AJV schema validation above (additionalProperties: false at every section).
+// E017 and E018 are handled in the providers loop above.
 
 // ─── output ───────────────────────────────────────────────────────────────────
 if (errors.length === 0) {

@@ -2,10 +2,21 @@
  * Hybrid authentication middleware.
  * Supports legacy bearer tokens and NIP-98-style Nostr HTTP auth envelopes.
  *
- * NIP-98 verification here is structural and freshness-based; it does not yet
- * verify Schnorr signatures. That keeps the management API ready for sovereign
- * auth headers without breaking existing local flows.
+ * When nostr-tools is installed (sovereign_mesh.nostr_bridge = true in
+ * agentbox.toml), NIP-98 events are fully verified including Schnorr
+ * signature via NostrBridge.verifyNip98().  When the bridge module is absent
+ * the middleware falls back to structural + freshness checks only, preserving
+ * behaviour for configurations that do not enable sovereign mesh.
  */
+
+// Attempt to load the Nostr bridge for full Schnorr verification.
+// Soft-require: if nostr-tools is not installed, nostrBridge is null and the
+// structural fallback below is used instead.
+let nostrBridge = null;
+try {
+  const { NostrBridge } = require('../../mcp/servers/nostr-bridge');
+  nostrBridge = NostrBridge;
+} catch { /* sovereign_mesh not enabled or nostr-tools not installed */ }
 
 function decodeBase64Json(value) {
   const decoded = Buffer.from(value, 'base64').toString('utf8');
@@ -24,6 +35,28 @@ function verifyNip98Header(header, request) {
     return null;
   }
 
+  const requestUrl = `${request.protocol || 'http'}://${request.hostname}${request.url}`;
+
+  // Full path: delegate to NostrBridge for Schnorr signature verification.
+  if (nostrBridge) {
+    const result = nostrBridge.verifyNip98(header, request.method, requestUrl);
+    if (!result.valid) return null;
+    // Re-decode the event to return the full event object in the result, as
+    // the auth result consumers may inspect event.tags or event.pubkey.
+    let event;
+    try {
+      event = decodeBase64Json(header.slice('Nostr '.length).trim());
+    } catch {
+      return null;
+    }
+    return {
+      mode: 'nip98',
+      pubkey: result.pubkey,
+      event,
+    };
+  }
+
+  // Structural-only fallback (nostr-tools not installed).
   const encoded = header.slice('Nostr '.length).trim();
   if (!encoded) {
     return null;
@@ -47,7 +80,6 @@ function verifyNip98Header(header, request) {
 
   const methodTag = getTag(event, 'method');
   const urlTag = getTag(event, 'u');
-  const requestUrl = `${request.protocol || 'http'}://${request.hostname}${request.url}`;
 
   if (methodTag !== request.method) {
     return null;

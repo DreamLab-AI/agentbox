@@ -118,10 +118,48 @@ for (const { label, makeAdapter, isReal } of IMPLS) {
       });
     }
 
-    // Pending
+    // Promoted typed-error and additional behavioural assertions (M2)
+    if (isReal) {
+      it('[M2] spawnAgent throws a typed SpawnError when spec.command is missing', async () => {
+        await expect(adapter.spawnAgent({})).rejects.toMatchObject({
+          name: 'SpawnError',
+          code: 'SPAWN_ERROR',
+        });
+      });
+
+      it('[M2] terminateAgent throws a typed NotFound for an unknown agentId', async () => {
+        await expect(adapter.terminateAgent('no-such-agent-xyz')).rejects.toMatchObject({
+          name: 'NotFound',
+          code: 'NOT_FOUND',
+        });
+      });
+
+      it('[M2] listAgents returns empty agents array when none have been spawned', async () => {
+        const { agents } = await adapter.listAgents();
+        expect(Array.isArray(agents)).toBe(true);
+        // Fresh adapter from beforeEach — no agents yet
+        expect(agents).toHaveLength(0);
+      });
+
+      it('[M2] spawnAgent result has string agentId', async () => {
+        const result = await adapter.spawnAgent({ command: 'echo', args: [] });
+        expect(typeof result.agentId).toBe('string');
+        expect(result.agentId.length).toBeGreaterThan(0);
+      });
+
+      it('[M2] terminateAgent — repeated terminate on same agent returns terminated status', async () => {
+        const { agentId } = await adapter.spawnAgent({ command: 'echo', args: [] });
+        const first = await adapter.terminateAgent(agentId);
+        expect(first.status).toBe('terminated');
+        // Second terminate: local-process-manager has the agent in map (status=terminated),
+        // stdio-bridge same. Both should still return terminated (not throw).
+        const second = await adapter.terminateAgent(agentId);
+        expect(second.status).toBe('terminated');
+      });
+    }
+
+    // Pending (require production env)
     it.todo('spawnAgent p95 latency is under 2 s at 2 req/s');
     it.todo('streamEvent delivers each event within 20 ms p95');
-    it.todo('spawnAgent throws a typed SpawnError when the process cannot start');
-    it.todo('terminateAgent throws a typed NotFound for unknown agentId');
   });
 }

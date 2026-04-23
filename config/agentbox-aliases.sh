@@ -181,6 +181,11 @@ alias profile-ruflo="cd /workspace/profiles/ruflo-orchestrator"
 alias profile-qe="cd /workspace/profiles/qe-fleet"
 alias profile-docs="cd /workspace/profiles/docs-latex"
 
+# === GEMINI CLI (@google/gemini-cli v0.38.2) ===
+alias zgemini='zellij action launch-or-focus-plugin -- gemini'
+alias gemini-help="gemini --help"
+alias gemini-version="gemini --version"
+
 # === GEMINI FLOW ===
 alias gf="gemini-flow"
 alias gf-init="gemini-flow init --protocols a2a,mcp --topology hierarchical"

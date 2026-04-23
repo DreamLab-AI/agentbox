@@ -164,7 +164,43 @@ for (const { label, makeAdapter, isReal } of IMPLS) {
       });
     }
 
-    // Pending
+    // Promoted additional behavioural assertions (M2)
+    if (isReal) {
+      it('[M2] store is idempotent — re-storing same key overwrites and returns updated stored_at', async () => {
+        await adapter.store('idem-key', 'first-value', 'idem-ns');
+        const second = await adapter.store('idem-key', 'second-value', 'idem-ns');
+        expect(second.key).toBe('idem-key');
+        const retrieved = await adapter.retrieve('idem-key', 'idem-ns');
+        expect(retrieved.value).toBe('second-value');
+      });
+
+      it('[M2] namespace isolation — key in ns-a is not visible in ns-b', async () => {
+        await adapter.store('shared-key', 'ns-a-value', 'ns-a');
+        const fromNsB = await adapter.retrieve('shared-key', 'ns-b');
+        expect(fromNsB).toBeNull();
+      });
+
+      it('[M2] search returns empty results for a namespace with no entries', async () => {
+        const { results } = await adapter.search('anything', { namespace: 'empty-ns-xyz' });
+        expect(Array.isArray(results)).toBe(true);
+        expect(results).toHaveLength(0);
+      });
+
+      it('[M2] del returns deleted=false when key does not exist', async () => {
+        const result = await adapter.del('never-stored-key-xyz', 'test-ns');
+        expect(result.deleted).toBe(false);
+      });
+
+      it('[M2] search respects limit — returns at most limit results', async () => {
+        for (let i = 0; i < 5; i++) {
+          await adapter.store(`limit-doc-${i}`, `fox quick brown ${i}`, 'limit-ns');
+        }
+        const { results } = await adapter.search('fox', { namespace: 'limit-ns', limit: 2 });
+        expect(results.length).toBeLessThanOrEqual(2);
+      });
+    }
+
+    // Pending (require production env or ONNX pipeline)
     it.todo('store (with embedding) p95 latency is under 500 ms at 10 req/s');
     it.todo('search p95 latency is under 250 ms at 50 req/s');
     it.todo('search throws a typed EmbeddingError when the embedding model is unavailable');

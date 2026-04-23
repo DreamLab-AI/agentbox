@@ -35,6 +35,62 @@ latex = true
 report_builder = true
 mermaid = true
 
+[skills.ontology]
+enabled = false
+
+[providers.anthropic]
+enabled = false
+env_var = "ANTHROPIC_API_KEY"
+optional_env_vars = []
+
+[providers.openai]
+enabled = false
+env_var = "OPENAI_API_KEY"
+optional_env_vars = ["OPENAI_BASE_URL"]
+
+[providers.gemini]
+enabled = false
+env_var = "GOOGLE_GEMINI_API_KEY"
+optional_env_vars = []
+
+[providers.deepseek]
+enabled = false
+env_var = "DEEPSEEK_API_KEY"
+optional_env_vars = ["DEEPSEEK_BASE_URL"]
+
+[providers.perplexity]
+enabled = false
+env_var = "PERPLEXITY_API_KEY"
+optional_env_vars = []
+
+[providers.openrouter]
+enabled = false
+env_var = "OPENROUTER_API_KEY"
+optional_env_vars = []
+
+[providers.context7]
+enabled = false
+env_var = "CONTEXT7_API_KEY"
+optional_env_vars = []
+
+[providers.brave]
+enabled = false
+env_var = "BRAVE_API_KEY"
+optional_env_vars = []
+
+[providers.github]
+enabled = false
+env_var = "GITHUB_TOKEN"
+optional_env_vars = []
+
+[providers.zai]
+enabled = false
+env_var = "ZAI_API_KEY"
+optional_env_vars = ["ZAI_ANTHROPIC_API_KEY", "ZAI_URL"]
+
+[gpu]
+backend = "none"
+
 [toolchains]
 claude = true
 ruflo = true
@@ -43,3 +99,4 @@ agentic_qe = true
 nagual_qe = true
 codebase_memory = true
 rust = true
+gemini_cli = false

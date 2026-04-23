@@ -6,6 +6,68 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Dat
 
 ## [Unreleased]
 
+### M3 — ecosystem + manifest-driven compose (2026-04-23)
+
+**Compose-from-manifest (D.1)** — `flake.nix` now emits `docker-compose.yml` content from `agentbox.toml`:
+- New `composeText` generator in `flake.nix` mirrors the existing `supervisorText` pattern
+- `packages.compose` flake output writes the file; committed `docker-compose.yml` is the auto-generated snapshot
+- `[integrations.ragflow]`, `[integrations.ruvector_external]`, `[desktop]`, `[toolchains.code_server]`, port exposures — all driven by manifest
+- `tests/flake/compose-generator.sh` asserts build success + ragflow-toggle flips the `networks:` block
+- One source of truth: adding an integration is now a single manifest key
+
+**Unified GPU dispatch (D.2)** — `[gpu].backend` is the single key driving all GPU-related decisions:
+- New `lib/gpu-backend.nix` exports `dispatchGpuBackend` returning `{ devicesNeeded, runtimeClass, envVars, nixPackages, composeDeviceReservations, supervisorExtraEnv, ollamaEnabled }`
+- Four values — `"none"` (no GPU, ollama omitted), `"ollama-rocm"` (ROCm/Vulkan via `/dev/kfd`+`/dev/dri`), `"ollama-cuda"` (NVIDIA container runtime), `"local-cuda"` (CUDA toolchain baked into image, enables `gaussian_splatting`)
+- Consumed by `flake.nix` (packages + env) and the compose generator (device mounts + runtime)
+- `tests/flake/gpu-backend.test.sh` — 20 TAP assertions, 5 per backend
+- PRD-001 §3.3 documents the dispatch table
+
+**Providers sections (D.3)** — per-provider gates replace bare env vars:
+- 10 `[providers.*]` sections: anthropic, openai, gemini, deepseek, perplexity, openrouter, context7, brave, github, zai — all default-off
+- Each has `enabled`, `env_var`, `optional_env_vars`
+- Validator rules E017 (missing env var for enabled provider) and E018 (placeholder value warning)
+- `.env.example` trimmed from 53 bare vars to infrastructure + per-provider block structure with header comment
+- Boot-time warning (not fatal) per enabled provider missing its env var
+- `docs/guides/providers.md` (56 lines) — supported providers, env vars, optional overrides, add-new-provider workflow
+
+**Nostr-bridge fleshout (D.6)** — from 31-line stub to 483-line real client:
+- Connection pool with exponential-backoff retry per relay (reads `NOSTR_RELAYS` env)
+- Subscribe with kind filtering; multi-subscription routing
+- Publish with fan-out to all connected relays; signer loaded from encrypted profile-local key (`nostr.key.enc`)
+- `verifyNip98(authHeader, method, url)` — kind 27235, u/method tag match, 60s freshness, Schnorr signature via `@noble/curves/secp256k1`
+- `management-api/middleware/auth.js` soft-delegates to this verifier when present; falls back to structural validation otherwise
+- 33 unit tests across 7 behavioural groups, zero network I/O
+- `docs/guides/sovereign-mesh.md` (90 lines) — Nostr client behaviour, key handling, verifyNip98 contract, security notes
+- Library: `nostr-tools@^2.23.3` (audited `@noble/curves` for Schnorr)
+
+**Gemini CLI toolchain (P2.3)** — official `@google/gemini-cli` pinned to v0.38.2:
+- `[toolchains.gemini_cli]` manifest gate (default off)
+- `flake.nix` includes `nodejs_20` + npm-install path when enabled; `ENABLE_GEMINI_CLI` env plumbed
+- Aliases: `zgemini`, `gemini-help`, `gemini-version` in `config/agentbox-aliases.sh`
+- `tests/cli/smoke.sh` asserts `gemini --help` + `gemini --version` when toolchain installed
+- v0.38.2 brings 1M context, Chapters narrative flow, Context Compression, worktree support (April 2026 release)
+- No daemon mode needed — CLI runs interactively
+
+**claude-zai GLM-5 upgrade (P2.4)**:
+- `claude-zai/claude-config.json` model: `glm-4.6` → `glm-5`
+- `claude-zai/Dockerfile` pins `@anthropic-ai/claude-code@2.1.47` (was `@latest`)
+- 3-line SECURITY comment documenting the pin rationale
+- Pin blocks auto-upgrade from a hypothetically malicious upstream release; rotation is PR-only
+
+**Ontology skill gate (P2.5, light)**:
+- `[skills.ontology] enabled = false` — prepared placeholder for the Logseq OWL2 DL workflow
+- Schema + semantic-rules tests updated
+- Quick-start doc entry: enabling this gate loads `skills/ontology-core` + `skills/ontology-enrich` into the agent skill surface
+- MCP tool wiring deferred to a future milestone
+
+**Contract tests promoted**: 91 → **145 passing / 33 todo** (target was 130+).
+Remaining todos are legitimately pending:
+- SLO/p95 latency checks (×5 variants, ×3 impls = 15) — require production load env
+- `PermissionDenied` × 3 — requires WAC-capable JSS runtime, not the in-memory stub
+- `EmbeddingError` × 3 — requires broken-embedding-pipeline mock; neither real impl triggers it
+- 1 more SLO variant for orchestrator
+- M4-onward work
+
 ### M2 — daily ergonomics + adapter implementations (2026-04-23)
 
 **Five adapter triples implemented** (local-\* / external / off per slot):
