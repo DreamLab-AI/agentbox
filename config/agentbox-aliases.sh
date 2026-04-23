@@ -166,16 +166,13 @@ alias svc-stop="sudo /opt/venv/bin/supervisorctl stop"
 alias svc-tail="sudo /opt/venv/bin/supervisorctl tail -f"
 alias svc-log="sudo /opt/venv/bin/supervisorctl tail"
 
-# === POSTGRESQL (RuVector Storage) ===
-alias pg="sudo -u postgres psql"
-alias pg-rv="sudo -u postgres psql -d ruvector"
-alias pg-status="pg_isready"
-
-# === USER SWITCHING (Container-specific) ===
-alias as-gemini="sudo -u gemini-user -i"
-alias as-openai="sudo -u openai-user -i"
-alias as-zai="sudo -u zai-user -i"
-alias as-deepseek="sudo -u deepseek-user -i"
+# === SOVEREIGN / PROFILE HELPERS ===
+alias pod-root="cd /var/lib/solid/pods"
+alias profiles="cd /workspace/profiles"
+alias profile-claude="cd /workspace/profiles/claude-core"
+alias profile-ruflo="cd /workspace/profiles/ruflo-orchestrator"
+alias profile-qe="cd /workspace/profiles/qe-fleet"
+alias profile-docs="cd /workspace/profiles/docs-latex"
 
 # === GEMINI FLOW ===
 alias gf="gemini-flow"
@@ -199,14 +196,14 @@ alias ptx-compile="nvcc -ptx"
 # === HELPER FUNCTIONS ===
 generate-claude-md() { claude "Read the .specify/ directory and generate an optimal CLAUDE.md for this project based on the specs, plan, and constitution."; }
 
-turbo-init() {
+agentbox-init() {
     echo "🚀 Initializing Agentbox workspace..."
     specify init . --ai claude 2>/dev/null || echo "⚠️ spec-kit init skipped"
     npx -y @claude-flow/cli@latest init --force 2>/dev/null || echo "⚠️ claude-flow init skipped"
     echo "✅ Workspace ready! Run: claude"
 }
 
-turbo-help() {
+agentbox-help() {
     echo "🚀 Agentbox Quick Reference"
     echo "─────────────────────────────"
     echo "claude          Start Claude Code"
@@ -226,7 +223,8 @@ turbo-help() {
     echo "pal             Start PAL multi-model server"
     echo "n8n-mcp         n8n workflow MCP"
     echo "svc-status      Service status"
-    echo "pg-rv           PostgreSQL ruvector DB"
+    echo "profiles        Open provisioned stack profiles"
+    echo "pod-root        Open sovereign pod storage root"
     echo "gh-pr           GitHub create PR"
 }
 
@@ -256,5 +254,8 @@ agent-list() {
 # === PATH ===
 export PATH="$HOME/.local/bin:$HOME/.cargo/bin:/usr/local/bin:$PATH"
 
+alias turbo-init="agentbox-init"
+alias turbo-help="agentbox-help"
+
 echo "✅ Agentbox aliases v11 loaded! (120+ aliases, 8 functions)"
-echo "   Run 'turbo-help' for quick reference"
+echo "   Run 'agentbox-help' for quick reference"

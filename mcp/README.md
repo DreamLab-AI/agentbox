@@ -1,99 +1,53 @@
-# MCP Infrastructure
+# MCP In Agentbox
 
-Core infrastructure for Model Context Protocol (MCP) server management and integration.
+This directory contains MCP-related runtime assets and legacy bridge code.
 
-## Directory Structure
+## Current State
 
-```
-mcp-infrastructure/
-├── servers/           # MCP protocol bridges and gateways
-│   ├── mcp-tcp-server.js      # TCP bridge for MCP
-│   ├── mcp-gateway.js         # MCP gateway/router
-│   ├── mcp-ws-relay.js        # WebSocket relay
-│   └── mcp-server.js          # Core MCP server
-├── auth/              # Authentication and security
-│   ├── auth-middleware.js     # Authentication middleware
-│   └── secure-client-example.js  # Secure client template
-├── monitoring/        # Health checks and status
-│   ├── health-check.js        # Health monitoring
-│   ├── health-check.sh
-│   └── check-setup-status.sh
-├── scripts/           # Automation and utilities
-│   ├── automated-setup.sh
-│   ├── init-claude-flow-agents.sh
-│   └── claude-flow-tcp-proxy.js
-├── config/            # Configuration templates
-├── logging/           # Logging utilities
-├── mcp.json           # MCP server registry
-└── package.json       # Node.js dependencies
-```
+Agentbox 2.0 does not treat the old local TCP and WebSocket bridge layer as the primary architecture anymore.
 
-## Components
+The current direction is:
 
-### MCP Servers
-- **mcp-tcp-server.js**: TCP-based MCP protocol bridge
-- **mcp-gateway.js**: Central gateway for routing MCP requests
-- **mcp-ws-relay.js**: WebSocket relay for remote MCP access
-- **mcp-server.js**: Full-featured MCP server implementation
+- manifest-gated skill/runtime services
+- direct stdio MCP servers where appropriate
+- sovereign auth alignment
+- a Nostr bridge path for decentralized coordination scaffolding
 
-### Authentication
-- **auth-middleware.js**: JWT/token-based authentication
-- **secure-client-example.js**: Reference implementation for secure clients
+## What Is Here
 
-### Monitoring
-- **health-check.js**: Service health monitoring
-- **check-setup-status.sh**: Verify installation and configuration
+- `mcp.json`: MCP registry and server definitions
+- `servers/`: bridge and server code, including legacy TCP/WS components and the new `nostr-bridge.js`
+- `auth/`: MCP-side auth helpers
+- `monitoring/`: health and setup checks
+- `scripts/`: older setup and bridge utilities
 
-### Scripts
-- **automated-setup.sh**: Automated MCP infrastructure setup
-- **init-claude-flow-agents.sh**: Initialize Claude Flow agents
-- **claude-flow-tcp-proxy.js**: TCP proxy for Claude Flow
+## Important Distinction
 
-## Configuration
+These files are not all equally current.
 
-**mcp.json**: Complete registry of MCP servers including:
-- claude-flow
-- ruv-swarm
-- blender-mcp
-- qgis-mcp
-- kicad-mcp
-- ngspice-mcp
-- imagemagick-mcp
-- pbr-generator-mcp
-- playwright-visual
-- playwright
-- web-summary
+### Current / relevant
 
-## Usage
+- `mcp.json`
+- `servers/nostr-bridge.js`
+- auth helpers that still support current runtime flows
 
-### Install Dependencies
-```bash
-cd mcp-infrastructure
-npm install
-```
+### Legacy / compatibility-oriented
 
-### Start MCP TCP Server
-```bash
-node servers/mcp-tcp-server.js
-```
+- `servers/mcp-tcp-server.js`
+- `servers/mcp-ws-relay.js`
+- scripts and docs built around the older local bridge model
 
-### Start MCP Gateway
-```bash
-node servers/mcp-gateway.js
-```
+## Architectural Guidance
 
-### Run Health Checks
-```bash
-node monitoring/health-check.js
-```
+When updating MCP infrastructure for Agentbox:
 
-## Integration
+- prefer manifest-gated services
+- prefer direct per-skill MCP wiring over global bridge complexity
+- do not assume local TCP/WS bridge topology is the canonical control path
+- align new auth work with the sovereign runtime direction
 
-These components are used by the skill-specific MCP implementations in:
-- `/skills/*/tools/` - Individual skill MCP clients
+## Related Files
 
-The infrastructure provides:
-1. Protocol bridges (TCP, WebSocket)
-2. Authentication layer
-3. Health monitoring
-4. Configuration templates
+- [`../skills/mcp.json`](../skills/mcp.json)
+- [`../scripts/skills-entrypoint.sh`](../scripts/skills-entrypoint.sh)
+- [`../mcp/servers/nostr-bridge.js`](servers/nostr-bridge.js)

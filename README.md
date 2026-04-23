@@ -1,19 +1,57 @@
 # Agentbox 2.0
 
-Agentbox 2.0 is a Nix-built, modular container for multi-agent workloads. The image is now driven by [`agentbox.toml`](agentbox.toml), trims unused tooling out of the image graph, and boots into a sovereign runtime built around embedded RuVector, file-backed Solid-style pod storage, Nostr-oriented coordination scaffolding, and profile-aware stack provisioning for Claude, Ruflo, QE, docs, and Rust workflows.
+Agentbox is a modular, Nix-built container runtime for multi-agent development. The current architecture is driven by [`agentbox.toml`](agentbox.toml), uses embedded RuVector for local vector search, bootstraps a sovereign identity plus Solid-style pod storage, and provisions stack-specific profiles that all share the same mounted projects and skills tree.
 
-## What Changed
+## Architecture
 
-- `flake.nix` now reads `agentbox.toml` with `builtins.fromTOML` and composes package layers from feature flags.
-- `supervisord.conf` is generated from the manifest, so disabled skills do not consume image size or runtime slots.
-- Legacy pseudo-users are removed from the startup path. The entrypoint now boots a single sovereign identity and creates pod storage plus ACL baselines.
-- Repo services are copied into the image under `/opt/agentbox`, fixing broken supervisor paths in the old image layout.
-- Runtime provisioning now creates `/workspace/profiles/*` stacks with the full progressive-disclosure skills tree mounted into each profile.
-- `zellij` replaces `tmux` as the terminal workspace layer, which fits the Rust-first, remote, terminal-native container better than WezTerm or Hermes IDE.
+Agentbox 2.0 is built around five decisions:
 
-## Manifest
+1. Declarative build composition through `agentbox.toml`
+2. Sovereign identity bootstrapping with Nostr-style keys
+3. Solid-style file-backed pod storage under `/var/lib/solid`
+4. Embedded RuVector for local indexing and retrieval
+5. Profile isolation with shared mounts instead of Linux pseudo-users
 
-Edit [`agentbox.toml`](agentbox.toml) to control build composition:
+The active runtime flow is:
+
+1. `flake.nix` reads `agentbox.toml`
+2. package groups and supervisor services are generated from the manifest
+3. the entrypoint bootstraps identity and pod storage
+4. runtime tooling is installed on first boot where needed
+5. stack profiles are created under `/workspace/profiles`
+
+## Repository Layout
+
+- [`flake.nix`](flake.nix) builds the runtime, full, and desktop images
+- [`agentbox.toml`](agentbox.toml) controls feature gating and toolchains
+- [`config/entrypoint-unified.sh`](config/entrypoint-unified.sh) performs runtime bootstrap
+- [`scripts/sovereign-bootstrap.py`](scripts/sovereign-bootstrap.py) generates identity and pod ACL state
+- [`scripts/provision-agent-stacks.py`](scripts/provision-agent-stacks.py) creates isolated stack profiles with shared mounts
+- [`config/agentbox-aliases.sh`](config/agentbox-aliases.sh) provides shell aliases
+- [`config/zellij.kdl`](config/zellij.kdl) and [`config/zellij/layouts`](config/zellij/layouts) define terminal workspace defaults
+
+## Feature Gating
+
+The build is controlled by `agentbox.toml`. Enabled features get both:
+
+- their Nix packages
+- their supervisor/runtime wiring
+
+Disabled features should incur no image or runtime overhead.
+
+Current top-level sections:
+
+- `[core]`
+- `[sovereign_mesh]`
+- `[desktop]`
+- `[skills.browser]`
+- `[skills.media]`
+- `[skills.spatial_and_3d]`
+- `[skills.data_science]`
+- `[skills.docs]`
+- `[toolchains]`
+
+Example:
 
 ```toml
 [sovereign_mesh]
@@ -24,10 +62,12 @@ nostr_bridge = true
 [skills.browser]
 agent_browser = true
 playwright = true
+qe_browser = false
 
-[skills.spatial_and_3d]
-qgis = false
-blender = false
+[skills.docs]
+latex = true
+report_builder = true
+mermaid = true
 ```
 
 ## Build
@@ -38,48 +78,48 @@ nix build .#desktop
 nix build .#full
 ```
 
-## Terminal Workspace
+To load the image into Docker:
 
-`zellij` is the default multiplexer in the container.
-
-- `t` or `zl`: start Zellij
-- `zn <name>`: start or create a named session
-- `za <name>`: attach to a session
-- `zls`: list sessions
-- `zstack <stack>`: launch an Agentbox stack layout
-- `zruflo`, `zqe`, `zdocs`, `zclaude`: shortcuts for the main stack layouts
-
-Default config is shipped at `/opt/agentbox/config/zellij.kdl` and copied into `/workspace/.config/zellij/config.kdl` on boot.
-Stack layouts are seeded into `/workspace/.config/zellij/layouts/`.
+```bash
+docker load < result
+```
 
 ## Run
 
 ```bash
+cp .env.example .env
 docker compose up -d
 ```
 
-The default stack exposes:
+Compose mounts:
+
+- `./workspace -> /workspace`
+- `./projects -> /projects`
+- RuVector volume -> `/var/lib/ruvector`
+- Solid pod volume -> `/var/lib/solid`
+- sovereign identity volume -> `/var/lib/agentbox/identities`
+
+## Runtime Services
+
+Default ports exposed by the compose stack:
 
 - `9090` management API
 - `9700` RuVector
 - `8484` Solid-style pod service
-- `8888` Jupyter when enabled in `agentbox.toml`
+- `8888` Jupyter, when enabled
 
-## Sovereign Runtime
+Optional services are generated from the manifest. That includes:
 
-On boot Agentbox:
+- Playwright MCP
+- ImageMagick MCP
+- QGIS placeholder MCP block
+- Blender MCP block
+- Nostr bridge
+- desktop stack services
 
-1. Reads `/etc/agentbox.toml`
-2. Generates a Nostr identity for `AGENTBOX_AGENT_ID` if one does not exist
-3. Creates pod storage under `/var/lib/solid/pods/<npub>/`
-4. Writes baseline ACL metadata and runtime identity exports
-5. Starts only the services enabled by the manifest
+## Profiles And Shared Context
 
-Identity material is stored under `/var/lib/agentbox/identities`. Pod data lives under `/var/lib/solid`.
-
-## Provisioned Stacks
-
-At boot Agentbox materializes these stack profiles under `/workspace/profiles/`:
+On boot Agentbox creates stack profiles under `/workspace/profiles`:
 
 - `claude-core`
 - `ruflo-orchestrator`
@@ -91,14 +131,65 @@ At boot Agentbox materializes these stack profiles under `/workspace/profiles/`:
 Each profile gets:
 
 - its own `.env`
-- `.claude/settings.json`
-- the full skills tree symlinked at `.claude/skills`
-- `projects -> /projects` so every isolated profile sees the same mounted external repos
-- `workspace -> /workspace` so every isolated profile sees the same shared internal workspace
-- a pointer to `skills/SKILL-DIRECTORY.md` for progressive disclosure
+- its own `.claude/settings.json`
+- the same shared skills tree via `.claude/skills -> /opt/agentbox/skills`
+- the same mounted external projects via `projects -> /projects`
+- the same shared workspace via `workspace -> /workspace`
+- a progressive-disclosure pointer to `skills/SKILL-DIRECTORY.md`
+- an associated Zellij layout path
 
-## Notes
+This is the intended replacement for the old `gemini-user` / `openai-user` / `zai-user` model.
 
-- The NIP-98 middleware path is now accepted by the management API, but signature verification is still scaffold-level rather than production-complete.
-- The bundled Solid service is a lightweight file-backed pod server to establish the architecture and storage model; swapping in the real `solid-pod-rs` binary is the next hardening step.
-- `qgis` support now has a generated service hook, but the current repo only includes a placeholder standalone server until a concrete MCP adapter is added.
+## Terminal Workspace
+
+Zellij replaces tmux in the current runtime.
+
+Useful commands:
+
+- `t` or `zl` starts Zellij
+- `zn <name>` starts a named session
+- `za <name>` attaches to a named session
+- `zls` lists sessions
+- `zstack <stack>` opens an Agentbox layout
+- `zclaude`, `zruflo`, `zqe`, `zdocs` open the main stack layouts
+
+Seeded config locations:
+
+- `/workspace/.config/zellij/config.kdl`
+- `/workspace/.config/zellij/layouts/*.kdl`
+
+## Sovereign Mesh
+
+When sovereign mode is enabled:
+
+- an identity is created for `AGENTBOX_AGENT_ID`
+- key material is stored under `/var/lib/agentbox/identities`
+- pod state is stored under `/var/lib/solid/pods/<npub>/`
+- baseline ACL metadata is written per pod
+- the management API accepts bearer auth and scaffold-level NIP-98 envelopes
+
+Important limitation:
+
+- the bundled Solid service is currently a lightweight file-backed compatibility server, not the final `solid-pod-rs` integration
+- NIP-98 handling is scaffold-level and not yet full signature verification
+
+## Skills
+
+The skills tree is mounted into every provisioned profile from `/opt/agentbox/skills`.
+
+The authoritative skill catalog is:
+
+- [`skills/SKILL-DIRECTORY.md`](skills/SKILL-DIRECTORY.md)
+
+This is the progressive-disclosure index the profiles reference at boot.
+
+## Current Caveats
+
+- The running Docker container on this host may still be an older image if you have not rebuilt and relaunched the stack.
+- [`config/supervisord.conf`](config/supervisord.conf) is legacy reference material; the active runtime path generates supervisor configuration from `flake.nix`.
+- Some external CLIs such as `agentic-qe`, `nagual-qe`, and `codebase-memory-mcp` are installed best-effort at runtime rather than vendored in the repo.
+- QGIS support currently wires a placeholder standalone service until the real MCP adapter is added.
+
+## Status
+
+The repo is mid-migration from the old monolithic container model to the new Agentbox 2.0 sovereign/runtime model. The canonical docs are this README, [`docs/guides/quick-start.md`](docs/guides/quick-start.md), and [`CLAUDE.md`](CLAUDE.md).
