@@ -75,6 +75,68 @@ const comfyuiManager = new ComfyUIManager(logger, metrics);
 const adapterHealth = { beads: 'off', pods: 'off', memory: 'off', events: 'off', orchestrator: 'off' };
 let resolvedAdapters = null;
 
+// ADR-010 — /health/pods probes the solid-pod-rs server and the did:nostr
+// resolver. Delegates to the adapter's impl for non-intrusive checks.
+async function probePodHealth() {
+  const podsAdapter = resolvedAdapters && resolvedAdapters.pods;
+  if (!podsAdapter) {
+    return { status: 'unknown', reason: 'adapter not resolved' };
+  }
+  const impl = podsAdapter._implName || 'unknown';
+  if (impl === 'off') return { status: 'off', impl };
+
+  const baseUrl = (podsAdapter._base || process.env.SOLID_POD_BASE_URL || 'http://127.0.0.1:8484').replace(/\/$/, '');
+  const result = {
+    impl,
+    base_url: baseUrl,
+    solid_pod_rs_health: 'unknown',
+    did_nostr_resolves:  'unknown',
+    writable_storage:    'unknown',
+  };
+
+  try {
+    const res = await fetch(`${baseUrl}/health`, { method: 'GET' });
+    result.solid_pod_rs_health = res.ok ? 'ok' : `http_${res.status}`;
+  } catch (err) {
+    result.solid_pod_rs_health = `unreachable: ${err.code || err.message}`;
+  }
+
+  const npub = process.env.AGENTBOX_NPUB;
+  if (impl === 'local-solid-rs' && npub) {
+    try {
+      const res = await fetch(`${baseUrl}/did:nostr:${npub}`, {
+        headers: { Accept: 'application/did+ld+json, application/ld+json, */*' },
+      });
+      result.did_nostr_resolves = res.ok ? 'ok' : `http_${res.status}`;
+    } catch (err) {
+      result.did_nostr_resolves = `unreachable: ${err.code || err.message}`;
+    }
+  } else if (impl !== 'local-solid-rs') {
+    result.did_nostr_resolves = 'n/a (requires local-solid-rs)';
+  }
+
+  try {
+    const root = process.env.AGENTBOX_RELAY_POD_BRIDGE === 'false'
+      ? null
+      : (process.env.SOLID_POD_ROOT || '/var/lib/solid');
+    if (root) {
+      fs.accessSync(root, fs.constants.W_OK);
+      result.writable_storage = 'ok';
+    } else {
+      result.writable_storage = 'bridge-disabled';
+    }
+  } catch (err) {
+    result.writable_storage = `denied: ${err.code || err.message}`;
+  }
+
+  const allGreen =
+    result.solid_pod_rs_health === 'ok' &&
+    (result.did_nostr_resolves === 'ok' || result.did_nostr_resolves === 'n/a (requires local-solid-rs)') &&
+    (result.writable_storage === 'ok' || result.writable_storage === 'bridge-disabled');
+  result.status = allGreen ? 'ready' : 'degraded';
+  return result;
+}
+
 // Middleware: CORS
 app.register(cors, {
   origin: true,
@@ -350,6 +412,29 @@ app.get('/health', {
     note: 'This endpoint is for human inspection only. Use /ready for orchestrator readiness probes.'
   };
 });
+
+// Pod health endpoint (public — no auth required, ADR-010 §Observability).
+// Probes the solid-pod-rs server's /health, the did:nostr resolver, and the
+// writable mount. Degraded on any failure.
+app.get('/health/pods', {
+  schema: {
+    description: 'Solid pod (solid-pod-rs) health + did:nostr probe',
+    tags: ['monitoring'],
+    response: {
+      200: {
+        type: 'object',
+        properties: {
+          status:               { type: 'string' },
+          impl:                 { type: 'string' },
+          base_url:             { type: 'string' },
+          solid_pod_rs_health:  { type: 'string' },
+          did_nostr_resolves:   { type: 'string' },
+          writable_storage:     { type: 'string' },
+        }
+      }
+    }
+  }
+}, async (request, reply) => probePodHealth());
 
 // Meta endpoint (public — no auth required, ADR-005 §Contract versioning)
 app.get('/v1/meta', {

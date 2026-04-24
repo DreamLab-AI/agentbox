@@ -12,9 +12,10 @@ const { assertMethodShape, assertContractVersion, assertOffClassThrows } =
   require('./fixtures/shared-assertions');
 const { AdapterDisabled } = require('../../management-api/adapters/errors');
 
-const { LocalJssPodsAdapter }  = require('../../management-api/adapters/pods/local-jss');
-const { ExternalPodsAdapter }  = require('../../management-api/adapters/pods/external');
-const { OffPodsAdapter }       = require('../../management-api/adapters/pods/off');
+const { LocalJssPodsAdapter }      = require('../../management-api/adapters/pods/local-jss');
+const { LocalSolidRsPodsAdapter }  = require('../../management-api/adapters/pods/local-solid-rs');
+const { ExternalPodsAdapter }      = require('../../management-api/adapters/pods/external');
+const { OffPodsAdapter }           = require('../../management-api/adapters/pods/off');
 
 const REQUIRED_METHODS = ['write', 'read', 'patch', 'del', 'list'];
 
@@ -74,25 +75,61 @@ function makeJssFetch() {
   };
 }
 
+// solid-pod-rs aware fetch stub — advertises Accept-Patch (N3) and Link rel=next
+// so the LocalSolidRsPodsAdapter capability probe returns realistic values.
+function makeSolidRsFetch() {
+  const base = makeJssFetch();
+  return async (url, opts = {}) => {
+    const method = (opts.method || 'GET').toUpperCase();
+    if (method === 'OPTIONS' && url.endsWith('/')) {
+      return {
+        ok: true, status: 204,
+        headers: {
+          get: (h) => {
+            if (h === 'accept-patch') return 'text/n3, application/sparql-update, application/json-patch+json';
+            if (h === 'accept-post')  return 'text/turtle, application/ld+json';
+            return null;
+          }
+        },
+        text: async () => '', json: async () => ({}),
+      };
+    }
+    return base(url, opts);
+  };
+}
+
 const IMPLS = [
+  {
+    label: 'local-solid-rs',
+    makeAdapter: () => new LocalSolidRsPodsAdapter({
+      baseUrl: 'http://127.0.0.1:8484',
+      fetchFn: makeSolidRsFetch(),
+      probeCapabilities: false, // deterministic: exercise explicitly where needed
+    }),
+    isReal: true,
+    firstClass: true,
+  },
   {
     label: 'local-jss',
     makeAdapter: () => new LocalJssPodsAdapter({ baseUrl: 'http://localhost:8484', fetchFn: makeJssFetch() }),
     isReal: true,
+    firstClass: false,
   },
   {
     label: 'external',
     makeAdapter: () => new ExternalPodsAdapter({ baseUrl: 'http://fake-host', fetchFn: makeJssFetch() }),
     isReal: true,
+    firstClass: false,
   },
   {
     label: 'off',
     makeAdapter: () => new OffPodsAdapter(),
     isReal: false,
+    firstClass: false,
   },
 ];
 
-for (const { label, makeAdapter, isReal } of IMPLS) {
+for (const { label, makeAdapter, isReal, firstClass } of IMPLS) {
   describe(`pods :: ${label}`, () => {
 
     let adapter;
@@ -196,6 +233,37 @@ for (const { label, makeAdapter, isReal } of IMPLS) {
         // content-type may include charset suffix; check prefix
         expect(contentType || '').toMatch(/text\/html|text\/plain|application/);
       });
+    }
+
+    // ADR-010 first-class-impl assertions (solid-pod-rs only).
+    if (firstClass) {
+      it('[ADR-010] reports impl tag "local-solid-rs"', () => {
+        expect(adapter.impl).toBe('local-solid-rs');
+      });
+
+      it('[ADR-010] probeCapabilities surfaces Accept-Patch dialects', async () => {
+        await adapter.probeCapabilities();
+        expect(adapter._capabilities.acceptPatch).toMatch(/n3|sparql|json-patch/);
+      });
+
+      it('[ADR-010] patch with format="n3" routes through N3 when advertised', async () => {
+        await adapter.write('/n3/doc', '<> <http://x> "v1".', 'text/n3');
+        const probed = await adapter.probeCapabilities();
+        expect(probed.acceptPatch).toMatch(/n3/);
+        const out = await adapter.patch('/n3/doc', '@prefix ex:<http://x#>. <> ex:says "hi".', { format: 'n3' });
+        expect(out.format).toBe('n3');
+      });
+
+      // Follow-ups requiring a running solid-pod-rs instance; stubbed as todos
+      // so they surface in CI reports and get wired when the live test harness lands.
+      it.todo('[ADR-010] did:nostr:<npub> resolves to a Tier 1 DID document with alsoKnownAs');
+      it.todo('[ADR-010] quota: write past quota_default_bytes returns 413');
+      it.todo('[ADR-010] rate-limit: 21st req/sec per connection returns 429 when rate_limit_per_sec=20');
+      it.todo('[ADR-010] WAC 2.0: acl:default inheritance propagates from container to child');
+      it.todo('[ADR-010] notifications: PUT triggers WebSocket notification within 200 ms p95');
+      it.todo('[ADR-010] webhook-signing: outbound notification carries RFC 9421 Ed25519 signature');
+      it.todo('[ADR-010] ETag: If-Match with stale ETag returns 412');
+      it.todo('[ADR-010] cold-start: supervisord → first 200 on OPTIONS / within 4 s');
     }
 
     // Pending (require production env or WAC-capable runtime)

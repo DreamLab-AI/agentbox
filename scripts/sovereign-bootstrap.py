@@ -97,15 +97,20 @@ def ensure_acl(pod_root, identity):
     ]:
         (pod_dir / relative).mkdir(parents=True, exist_ok=True)
 
+    # ADR-010 Sprint 6 absorption: WAC subject is the did:nostr DID, not the
+    # raw npub. solid-pod-rs resolves did:nostr:<npub> via its interop::did_nostr
+    # module, and the same key is the one the relay accepts under NIP-42.
+    did = f"did:nostr:{identity['npub']}"
     acl = {
-        "owner": identity["npub"],
+        "@context": "http://www.w3.org/ns/auth/acl#",
+        "owner": did,
         "rules": [
             {
-                "subject": identity["npub"],
-                "read": True,
-                "write": True,
-                "append": True,
-                "control": True,
+                "@type": "Authorization",
+                "agent": did,
+                "mode": ["Read", "Write", "Append", "Control"],
+                "accessTo": "./",
+                "default": "./",
             }
         ],
     }
@@ -113,10 +118,36 @@ def ensure_acl(pod_root, identity):
     write_json(
         pod_dir / "profile.json",
         {
-            "id": identity["npub"],
+            "@context": "https://www.w3.org/ns/solid/terms#",
+            "id": did,
             "webId": f"http://localhost:{os.getenv('SOLID_POD_PORT', '8484')}/pods/{identity['npub']}/profile.json",
+            "alsoKnownAs": [did],
         },
     )
+    # Tier 1 + Tier 3 DID document — consumed by solid-pod-rs's did-nostr
+    # resolver at GET /did:nostr:<npub>. alsoKnownAs cross-references the pod
+    # profile URI so downstream clients can traverse in either direction.
+    did_doc = {
+        "@context": [
+            "https://www.w3.org/ns/did/v1",
+            "https://w3id.org/security/suites/secp256k1-2019/v1",
+        ],
+        "id": did,
+        "verificationMethod": [
+            {
+                "id": f"{did}#key-0",
+                "type": "SchnorrSecp256k1VerificationKey2022",
+                "controller": did,
+                "publicKeyHex": identity["public_key_hex"],
+            }
+        ],
+        "authentication": [f"{did}#key-0"],
+        "assertionMethod":  [f"{did}#key-0"],
+        "alsoKnownAs": [
+            f"http://localhost:{os.getenv('SOLID_POD_PORT', '8484')}/pods/{identity['npub']}/profile.json"
+        ],
+    }
+    write_json(pod_dir / "did-nostr.json", did_doc)
 
 
 def write_runtime_env(identity, run_root):
@@ -129,6 +160,7 @@ def write_runtime_env(identity, run_root):
                 f"export AGENTBOX_NPUB={identity['npub']}",
                 f"export AGENTBOX_NSEC={identity['nsec']}",
                 f"export AGENTBOX_PUBKEY_HEX={identity['public_key_hex']}",
+                f"export AGENTBOX_DID=did:nostr:{identity['npub']}",
                 "",
             ]
         ),

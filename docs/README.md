@@ -34,7 +34,8 @@ You have a machine, you want agentbox running on it, ideally with as little fuss
 
 | Sovereign data stack — key parts of the DreamLab-AI ecosystem | |
 |---|---|
-| [Solid pod (solid-pod-rs)](user/solid-pod.md) | First-party Rust Solid Protocol 0.11 server — durable storage, WAC, NIP-98, atomic-rename |
+| [**Sovereign stack — end to end**](user/sovereign-stack.md) | **Start here.** One-page walkthrough of identity → pod → relay → privacy-filter with verifiable commands |
+| [Solid pod (solid-pod-rs)](user/solid-pod.md) | First-party Rust Solid Protocol 0.11 server — durable storage, WAC 2.0, did:nostr, atomic-rename, quota, rate-limit |
 | [Nostr relay](user/nostr-relay.md) | External-agent messaging over an embedded Nostr relay with pod-inbox bridge |
 | [Privacy filter](user/privacy-filter.md) | Local PII redaction sidecar (openai/privacy-filter) as adapter middleware |
 
