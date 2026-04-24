@@ -1,0 +1,146 @@
+# release.yml
+#
+# Creates a GitHub Release when a v* tag is pushed. Extracts the matching
+# section from CHANGELOG.md as the release body, attaches the runtime-image
+# manifest digest, the SBOMs from the most recent image-scan run, and the
+# contract-test artefacts.
+#
+# This runs *after* build-multi-arch.yml has pushed the tag's multi-arch
+# manifest to GHCR — we depend on that job via workflow_run.
+
+name: Release
+
+on:
+  workflow_run:
+    workflows: ["Build and publish multi-arch image"]
+    types: [completed]
+    branches-ignore: ['**']  # only tag pushes trigger build-multi-arch on v* refs
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (e.g. v2.1.0)'
+        required: true
+
+permissions:
+  contents: write
+  packages: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    if: >-
+      (github.event.workflow_run.conclusion == 'success' &&
+       startsWith(github.event.workflow_run.head_branch, 'refs/tags/v')) ||
+      github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Resolve tag
+        id: tag
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            tag="${{ inputs.tag }}"
+          else
+            # workflow_run head_branch for tag pushes is 'refs/tags/<tag>'
+            tag="${GITHUB_REF_NAME:-${{ github.event.workflow_run.head_branch }}}"
+            tag="${tag#refs/tags/}"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ steps.tag.outputs.tag }}
+
+      - name: Extract release body from CHANGELOG.md
+        id: body
+        run: |
+          set -euo pipefail
+          tag="${{ steps.tag.outputs.tag }}"
+          # Strip leading 'v' to match [1.2.3] style CHANGELOG headers.
+          version="${tag#v}"
+          tmp=$(mktemp)
+          awk -v v="$version" '
+            BEGIN { inside = 0 }
+            /^## \[/ {
+              if ($0 ~ "\\[" v "\\]" || $0 ~ "\\[" v "]") { inside = 1; next }
+              else if (inside) { exit }
+            }
+            inside { print }
+          ' CHANGELOG.md > "$tmp"
+          if [ ! -s "$tmp" ]; then
+            echo "No CHANGELOG section found for $tag; falling back to auto-generated notes."
+            echo "auto_generated=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "auto_generated=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "body_path=$tmp"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download image-scan artefacts (if present)
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          pattern: image-scan-*
+          merge-multiple: true
+          path: release-assets/
+
+      - name: Prepare release notes footer
+        id: footer
+        run: |
+          set -euo pipefail
+          cat > release-footer.md <<EOF
+
+          ## Container image
+
+          Published to GitHub Container Registry:
+
+          \`\`\`sh
+          docker pull ghcr.io/dreamlab-ai/agentbox:${{ steps.tag.outputs.tag }}
+          \`\`\`
+
+          Multi-arch manifest with linux/amd64 and linux/arm64. Image scan
+          report, CycloneDX and SPDX SBOMs attached as release assets.
+
+          ## Verify
+
+          \`\`\`sh
+          # Manifest digest
+          docker buildx imagetools inspect \\
+            ghcr.io/dreamlab-ai/agentbox:${{ steps.tag.outputs.tag }}
+
+          # Boot probe (after docker compose up)
+          curl -sf http://localhost:9090/ready | jq
+          \`\`\`
+
+          Full spec: [ADR-007](docs/reference/adr/ADR-007-runtime-contract-and-container-hardening.md).
+          EOF
+
+      - name: Compose final release notes
+        run: |
+          set -euo pipefail
+          if [ "${{ steps.body.outputs.auto_generated }}" = "true" ]; then
+            echo "Release ${{ steps.tag.outputs.tag }}" > release-notes.md
+            echo "" >> release-notes.md
+          else
+            cat "${{ steps.body.outputs.body_path }}" > release-notes.md
+          fi
+          cat release-footer.md >> release-notes.md
+
+      - name: Create / update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: agentbox ${{ steps.tag.outputs.tag }}
+          body_path: release-notes.md
+          files: |
+            release-assets/*
+          generate_release_notes: ${{ steps.body.outputs.auto_generated == 'true' }}
+          draft: false
+          prerelease: ${{ contains(steps.tag.outputs.tag, '-alpha') || contains(steps.tag.outputs.tag, '-beta') || contains(steps.tag.outputs.tag, '-rc') }}

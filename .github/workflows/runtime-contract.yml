@@ -1,0 +1,96 @@
+# runtime-contract.yml
+#
+# Runs the runtime-contract suite at tests/runtime-contract/RC-*.sh. These
+# are the boot-time + runtime invariants that ADR-006 (immutable bootstrap)
+# and ADR-007 (runtime contract and hardening) enforce — e.g. "no installer
+# runs at boot", "every supervised program has a log path", "/ready returns
+# 503 before the sentinel is written".
+#
+# The runtime-contract tests are self-contained bash scripts that exercise
+# the flake output, the supervisord config, the manifest, and the runtime
+# helpers. They do NOT require a running container; they assert against
+# the generated artefacts.
+
+name: Runtime contract
+
+on:
+  pull_request:
+    paths:
+      - 'flake.nix'
+      - 'agentbox.toml'
+      - 'config/**'
+      - 'scripts/**'
+      - 'tests/runtime-contract/**'
+      - '.github/workflows/runtime-contract.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'flake.nix'
+      - 'agentbox.toml'
+      - 'config/**'
+      - 'scripts/**'
+      - 'tests/runtime-contract/**'
+
+concurrency:
+  group: runtime-contract-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  rc-shell:
+    name: RC shell assertions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 20 LTS (for validator)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Node deps
+        run: npm ci
+
+      - name: Discover RC tests
+        id: discover
+        run: |
+          set -euo pipefail
+          mapfile -t RC < <(find tests/runtime-contract -maxdepth 2 -name 'RC-*.sh' -type f | sort)
+          echo "Found ${#RC[@]} RC tests"
+          printf '%s\n' "${RC[@]}"
+          {
+            echo 'tests<<EOF'
+            printf '%s\n' "${RC[@]}"
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run every RC test
+        if: steps.discover.outputs.tests != ''
+        run: |
+          set -euo pipefail
+          fail=0
+          while IFS= read -r rc; do
+            [ -z "$rc" ] && continue
+            echo "::group::$(basename "$rc")"
+            if bash "$rc"; then
+              echo "PASS: $rc"
+            else
+              echo "::error file=$rc::RC test failed"
+              fail=$((fail + 1))
+            fi
+            echo "::endgroup::"
+          done <<< "${{ steps.discover.outputs.tests }}"
+          if [ "$fail" -gt 0 ]; then
+            echo "::error::${fail} RC test(s) failed"
+            exit 1
+          fi

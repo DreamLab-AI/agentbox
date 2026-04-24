@@ -5,9 +5,19 @@ on:
     paths:
       - 'management-api/adapters/**'
       - 'management-api/package.json'
+      - 'management-api/package-lock.json'
+      - 'mcp/nostr-bridge/**'
+      - 'scripts/opf-router.py'
       - 'tests/contract/**'
       - 'agentbox/schemas/adapter-contracts/**'
       - '.github/workflows/contract-tests.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'management-api/adapters/**'
+      - 'mcp/nostr-bridge/**'
+      - 'tests/contract/**'
 
 jobs:
   contract:

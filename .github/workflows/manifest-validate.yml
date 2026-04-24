@@ -1,0 +1,112 @@
+# manifest-validate.yml
+#
+# Runs the agentbox manifest validator on every PR that touches the manifest,
+# the schema, the validator itself, or the TUI helpers. This is the same
+# validator the TUI invokes on every section transition and the flake
+# evaluator runs at build time (see scripts/agentbox-config-validate.js,
+# ADR-005 §Validator, ADR-007 §4a).
+#
+# Also round-trips the manifest through the TUI read/write helpers so
+# wizard edits preserve every manifest block (regression guard for the
+# class of bugs where a new [section] gets silently dropped from the
+# canonical output).
+
+name: Manifest validate
+
+on:
+  pull_request:
+    paths:
+      - 'agentbox.toml'
+      - 'schema/**'
+      - 'scripts/agentbox-config-validate.*'
+      - 'scripts/tui-read-manifest.py'
+      - 'scripts/tui-write-manifest.py'
+      - 'tests/config/**'
+      - 'tests/tui/**'
+      - '.github/workflows/manifest-validate.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'agentbox.toml'
+      - 'schema/**'
+      - 'scripts/agentbox-config-validate.*'
+
+concurrency:
+  group: manifest-validate-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: agentbox config validate + TUI round-trip
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 20 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Node deps
+        run: npm ci
+
+      - name: Run validator against the shipped manifest
+        run: node scripts/agentbox-config-validate.js agentbox.toml
+
+      - name: Round-trip every test fixture through read+write+validate
+        run: |
+          set -euo pipefail
+          for fixture in tests/tui/fixtures/valid-*.toml; do
+            [ -f "$fixture" ] || continue
+            echo "== round-trip $fixture =="
+            state=$(mktemp --suffix=.json)
+            out=$(mktemp --suffix=.toml)
+            python3 scripts/tui-read-manifest.py "$fixture"  "$state"
+            python3 scripts/tui-write-manifest.py "$state"    "$out"
+            node scripts/agentbox-config-validate.js "$out"
+            rm -f "$state" "$out"
+          done
+
+      - name: Assert invalid fixtures fail with the expected code
+        run: |
+          set -euo pipefail
+          for invalid in tests/tui/fixtures/invalid-*.toml; do
+            [ -f "$invalid" ] || continue
+            code=$(basename "$invalid" .toml | sed 's/^invalid-//' | tr 'a-z' 'A-Z')
+            echo "== $invalid must emit $code =="
+            if node scripts/agentbox-config-validate.js "$invalid" 2>&1 | grep -q "$code"; then
+              echo "OK: $code surfaced"
+            else
+              echo "FAIL: expected $code in stderr from $invalid"
+              node scripts/agentbox-config-validate.js "$invalid" || true
+              exit 1
+            fi
+          done
+
+      - name: Assert JSON Schema is well-formed
+        run: python3 -c "import json; json.load(open('schema/agentbox.toml.schema.json'))"
+
+      - name: Assert all W-codes are routed to warnings (advisory, not fatal)
+        run: |
+          set -euo pipefail
+          # W021 is the intentional exception — blocking warning.
+          grep -E "code: 'W[0-9]+'" scripts/agentbox-config-validate.js | \
+            grep -v "'W021'" | \
+            while read -r line; do
+              if echo "$line" | grep -q "errors\.push"; then
+                echo "FAIL: $line — non-W021 W-code pushed to errors"
+                exit 1
+              fi
+            done
+          echo "OK: all advisory W-codes use warnings.push"

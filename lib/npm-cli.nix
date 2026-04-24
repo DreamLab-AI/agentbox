@@ -136,16 +136,17 @@ in
 
         # Resolve the entry-point from package.json "bin" field.
         # We use node to parse it so we handle both string and object forms.
-        # JS empty-string literals are written as ''' inside this Nix multi-
-        # line string; Nix's indented-string grammar treats '' as the string
-        # terminator, so '''  →  JS ''.
+        # Empty-string literals are written via [].join() to sidestep Nix
+        # indented-string quote-escape rules and the outer shell quoting
+        # around node -e.
         entry=$(${pkgs.nodejs_20}/bin/node -e "
           const p = require('./package.json');
           const b = p.bin;
-          if (!b) { process.stdout.write(''''); process.exit(0); }
+          const EMPTY = [].join();
+          if (!b) { process.stdout.write(EMPTY); process.exit(0); }
           if (typeof b === 'string') { process.stdout.write(b); process.exit(0); }
           const key = ${lib.escapeShellArg (builtins.toJSON bin)};
-          process.stdout.write(b[key] || Object.values(b)[0] || '''');
+          process.stdout.write(b[key] || Object.values(b)[0] || EMPTY);
         " 2>/dev/null || true)
 
         if [ -z "$entry" ]; then

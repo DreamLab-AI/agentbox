@@ -47,14 +47,17 @@ let
   # When upstream tags v0.5.0 this flips to a tag ref.
   rev     = "7f8bc89";
 
-  # Source fetch. srcHash is lib.fakeHash until an operator runs the prefetch
-  # step — matches the repo's prevailing "fail at realisation with an
-  # actionable hint" pattern from lib/npm-services.nix.
-  srcHash = lib.fakeHash;
+  # Prefetched 2026-04-24 against rev 7f8bc89.
+  # Refresh via:
+  #   nix-prefetch-url --unpack --type sha256 \
+  #     https://github.com/DreamLab-AI/solid-pod-rs/archive/<new-rev>.tar.gz
+  #   nix hash convert --hash-algo sha256 --to sri <base32>
+  srcHash = "sha256-h8UOzgqTnrPkDSEfrpC+0bhNVCrYizNniVFGW6YAFPs=";
 
-  # Cargo lockfile hash — same pattern. Two hashes because buildRustPackage
-  # needs one for the source tree and one for the resolved Cargo dependency
-  # graph.
+  # Cargo vendor hash — buildRustPackage's `cargoHash`. Will be surfaced
+  # on first build if the default is wrong; paste the "got:" hash here.
+  # Currently fakeHash because computing cargo vendor requires running
+  # the full buildRustPackage once to resolve dependencies.
   cargoHash = lib.fakeHash;
 
   src = pkgs.fetchFromGitHub {

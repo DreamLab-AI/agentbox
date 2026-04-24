@@ -93,16 +93,53 @@ done
 
 ## CI workflows
 
+### PR gates
+
 | Workflow | Trigger | Runs |
 |---|---|---|
-| `contract-tests.yml` | PR | Jest contract + integration + observability |
-| `tui-tests.yml` | PR | pytest TUI |
-| `secret-scan.yml` | PR | gitleaks + canary |
-| `flake-check.yml` | PR | `nix flake check --no-build` on amd64 + arm64 |
-| `build-multi-arch.yml` | push to main, release | Nix build + GHCR publish (both arches) |
-| `nix-flake-update.yml` | Mon 06:00 UTC | `nix flake update` → PR |
+| [`contract-tests.yml`](../../.github/workflows/contract-tests.yml) | PR + push to main | Jest contract suite across every adapter impl (incl. relay-consumer + opf-router paths) |
+| [`tui-tests.yml`](../../.github/workflows/tui-tests.yml) | PR | pytest TUI round-trip fixtures |
+| [`manifest-validate.yml`](../../.github/workflows/manifest-validate.yml) | PR + push | `agentbox config validate`, fixture round-trip through TUI read/write, expected-error-code assertions, W-code advisory-vs-error audit |
+| [`flake-check.yml`](../../.github/workflows/flake-check.yml) | PR | `nix flake check --no-build` on amd64 + arm64 + eval of `.#runtime` and `.#compose` derivations |
+| [`runtime-contract.yml`](../../.github/workflows/runtime-contract.yml) | PR + push | Discovers and runs every `tests/runtime-contract/RC-*.sh` |
+| [`shellcheck.yml`](../../.github/workflows/shellcheck.yml) | PR + push | ShellCheck at `error` severity (blocking) and `warning` severity (informational) |
+| [`secret-scan.yml`](../../.github/workflows/secret-scan.yml) | PR + push | gitleaks + canary |
+| [`ci.yml`](../../.github/workflows/ci.yml) | PR + push | Aggregate status check — configure as the sole required status in branch protection |
 
-Failure in any PR workflow blocks merge.
+### Post-merge and scheduled
+
+| Workflow | Trigger | Runs |
+|---|---|---|
+| [`build-multi-arch.yml`](../../.github/workflows/build-multi-arch.yml) | push to main, `v*` tag, manual | Nix build + GHCR publish on both arches; closure + compressed size captured to Actions summary; runs the PRD-001 §8 size-ceiling guard |
+| [`image-scan.yml`](../../.github/workflows/image-scan.yml) | after `build-multi-arch.yml` succeeds, manual | Trivy HIGH/CRITICAL gate, full-severity informational run, CycloneDX + SPDX SBOM uploads, SARIF posted to the Security tab |
+| [`release.yml`](../../.github/workflows/release.yml) | after `build-multi-arch.yml` on `v*` tag | Extracts matching CHANGELOG section, attaches image-scan artefacts (SBOMs), publishes the GitHub Release; pre-release flag inferred from tag |
+| [`docs-ci.yml`](../../.github/workflows/docs-ci.yml) | PR + push touching `docs/` | Link validation, frontmatter, Mermaid lint, ASCII-diagram detection, UK English, structure; 90% quality gate |
+| [`nix-flake-update.yml`](../../.github/workflows/nix-flake-update.yml) | Mondays 06:00 UTC, manual | `nix flake update` → PR if `flake.lock` changed |
+
+Failure in any PR-gate workflow blocks merge. `ci.yml` aggregates the gate into a single status for branch protection rules.
+
+### Cachix binary cache
+
+`build-multi-arch.yml` and `flake-check.yml` consult a Cachix binary cache when `CACHIX_AUTH_TOKEN` is set in repository secrets. The cache name comes from the `CACHIX_CACHE_NAME` repo variable (default `dreamlab-ai`). Missing secret → no warning; the build falls back to cold compilation. To enable:
+
+1. Create a Cachix cache at <https://app.cachix.org>.
+2. Add the write token as `CACHIX_AUTH_TOKEN` in repository secrets.
+3. (Optional) set `CACHIX_CACHE_NAME` repo variable if the cache name differs from `dreamlab-ai`.
+
+### Prefetching hashes
+
+When `package-lock.json` changes in any npm-service directory, the matching `npmDepsHash` in `flake.nix` needs refreshing. Same for the `solid-pod-rs` `srcHash` in `lib/solid-pod-rs.nix` when the pinned rev bumps.
+
+```sh
+# Refresh every fakeHash in one pass; idempotent, safe to re-run.
+./scripts/prefetch-hashes.sh
+
+# Just one service:
+./scripts/prefetch-hashes.sh --service management-api
+
+# Preview without writing:
+./scripts/prefetch-hashes.sh --dry-run
+```
 
 ## Runtime-contract test matrix
 
