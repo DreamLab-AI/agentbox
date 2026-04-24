@@ -24,6 +24,8 @@ Agentbox is a Nix-declarative container runtime for hosting software agents (Cla
 | # | Document | Summary |
 |---|---|---|
 | PRD-001 | [Capabilities and adapters](prd/PRD-001-capabilities-and-adapters.md) | Agentbox as a standalone product — manifest-gated features, five-slot adapter architecture, observability, secrets lifecycle, runtime layout |
+| PRD-002 | [Immutable runtime bootstrap](prd/PRD-002-immutable-runtime-bootstrap.md) | Removes mutable dependency installation from startup; boot becomes an immutable realization of the built image |
+| PRD-003 | [Runtime contract and container hardening](prd/PRD-003-runtime-contract-and-container-hardening.md) | Defines the operator/runtime contract for image selection, readiness, observability wiring, and hardened container defaults |
 
 ### Architecture decisions (ADR)
 
@@ -34,6 +36,15 @@ Agentbox is a Nix-declarative container runtime for hosting software agents (Cla
 | ADR-003 | [Guidance control plane](adr/ADR-003-guidance-control-plane.md) | Enforcement gates for autonomous agents — destructive ops, memory writes, trust escalation |
 | ADR-004 | [Upstream sync boundaries](adr/ADR-004-upstream-sync.md) | Skills and assets sync selectively, not mechanically |
 | ADR-005 | [Pluggable adapter architecture](adr/ADR-005-pluggable-adapter-architecture.md) | Five-slot adapters (beads, pods, memory, events, orchestrator) × three implementation classes per slot (local-*, external, off) |
+| ADR-006 | [Immutable runtime bootstrap](adr/ADR-006-immutable-runtime-bootstrap.md) | Startup may realize instance state but may not resolve software dependencies or mutate the packaged application tree |
+| ADR-007 | [Runtime contract and container hardening](adr/ADR-007-runtime-contract-and-container-hardening.md) | Image selection, probe semantics, observability binding, and container boundary become one explicit operator contract |
+
+### Domain design (DDD)
+
+| # | Document | Focus |
+|---|---|---|
+| DDD-001 | [Immutable Bootstrap Domain](ddd/DDD-001-immutable-bootstrap-domain.md) | Models packaged artifact validation and the legal startup mutation boundary |
+| DDD-002 | [Runtime Contract Domain](ddd/DDD-002-runtime-contract-domain.md) | Models image reference resolution, readiness, observability bindings, and the hardened container boundary |
 
 ### Guides
 
