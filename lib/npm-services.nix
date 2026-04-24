@@ -21,7 +21,12 @@
 #   nix-prefetch-url --type sha256 file://$(nix-build -E \
 #     'with import <nixpkgs> {}; fetchNpmDeps { src = ./path; hash = ""; }')
 #
-# The canonical command per service is printed in each fakeHash throw below.
+# Placeholder behaviour: when `npmDepsHash = lib.fakeHash` is passed, the
+# evaluation proceeds with a substituted placeholder SRI so every flake
+# consumer (nix flake check, nix eval, nix build .#compose) stays green.
+# `nix build .#runtime` surfaces the hash mismatch at realisation time with
+# Nix's standard "expected vs got" message, plus a preFetch hint pointing at
+# the resolver command.
 
 { lib, pkgs }:
 
@@ -68,8 +73,11 @@ in
   #   src               path     path to directory containing package.json
   #   entry             string   JS entrypoint relative to the package root
   #                              e.g. "server.js" or "dist/mcp-server.js"
-  #   npmDepsHash       string   sha256 from prefetch-npm-deps; use lib.fakeHash
-  #                              as a placeholder and it will throw at eval time
+  #   npmDepsHash       string   sha256 from prefetch-npm-deps. `lib.fakeHash`
+  #                              is accepted as a placeholder; evaluation is
+  #                              lazy, so the failure surfaces at realisation
+  #                              time (when buildNpmPackage fetches deps),
+  #                              not at flake-check time.
   #   extraBuildInputs  list     extra nativeBuildInputs (e.g. nodeGyp, python3)
   #   extraEnv          attrs    additional environment variables set during build
   #   buildPhaseExtra   string   additional shell commands injected into buildPhase

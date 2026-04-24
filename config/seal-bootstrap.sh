@@ -44,19 +44,33 @@ _required_programs() {
     echo ""
     return
   fi
-  # Extract [program:name] blocks that contain AGENTBOX_REQUIRED_FOR_READINESS=true
+  # Extract [program:name] blocks that contain AGENTBOX_REQUIRED_FOR_READINESS=true.
+  # Emit each qualifying program name exactly once, on block transition (or
+  # EOF). Earlier versions of this function used a pattern-action rule at the
+  # bottom which emitted prog on every line after the marker was seen, causing
+  # duplicates that made the seal loop poll the same program multiple times.
   awk '
+    function emit() {
+      if (in_block && required && prog != "") print prog
+    }
     /^\[program:/ {
+      emit()
       prog = $0
       sub(/^\[program:/, "", prog)
       sub(/\].*/, "", prog)
       in_block = 1
       required = 0
+      next
+    }
+    /^\[/ && !/^\[program:/ {
+      emit()
+      in_block = 0
+      prog = ""
+      required = 0
+      next
     }
     in_block && /AGENTBOX_REQUIRED_FOR_READINESS.*true/ { required = 1 }
-    /^\[/ && !/^\[program:/ { in_block = 0 }
-    END {}
-    in_block && required { print prog }
+    END { emit() }
   ' "$_SUPERVISORD_CONF"
 }
 
