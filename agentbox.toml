@@ -105,3 +105,4 @@ nagual_qe = true
 codebase_memory = true
 rust = true
 gemini_cli = false
+codex = false      # OpenAI Codex Rust-native CLI (github.com/openai/codex)

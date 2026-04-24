@@ -6,6 +6,22 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Dat
 
 ## [Unreleased]
 
+### OpenAI Codex Rust CLI + version-tracking system (2026-04-24)
+
+**Codex integration**:
+- New `lib/codex-binary.nix` — Nix derivation fetching OpenAI's official pre-built musl tarball from `github.com/openai/codex/releases/tag/rust-v0.124.0`, pinned per-arch (x86_64 and aarch64 linux sha256 recorded). Static binary, zero runtime deps beyond the container's glibc-less base.
+- `[toolchains.codex]` manifest gate (default off) plumbed through `agentbox.toml`, JSON schema, `flake.nix` (`codexPackages` appended to `allPackages` when enabled), and `ENABLE_CODEX` env var.
+- Shell aliases `zcodex`, `codex-help`, `codex-version` in `config/agentbox-aliases.sh`.
+- `tests/cli/smoke.sh` asserts `codex --help` + `codex --version` when the toolchain is installed; skips cleanly otherwise.
+- README Agent-surface table gains a Codex row.
+
+**Upstream version tracking**:
+- `renovate.json` — base config (`config:recommended` + semantic commits + dependency dashboard). Custom regex managers for the Codex version, ComfyUI rev, Gemini CLI version, and gitleaks-action version. Security-sensitive packages (`@anthropic-ai/claude-code`, `nostr-tools`, `@noble/curves`) locked to manual review.
+- `.github/workflows/nix-flake-update.yml` — weekly (Mon 06:00 UTC) `nix flake update` + `nix flake check --no-build` validation, auto-opens a PR. Also `workflow_dispatch`-able.
+- `scripts/check-upstream-releases.sh` — human dashboard that queries `gh` / `npm` / `curl` and prints a colourised pinned-vs-latest table for every tracked dependency. Not CI; operator tool.
+- `docs/guides/version-tracking.md` (~100 lines) — the three update channels, bumping Codex worked example, how to add a new tracked ecosystem, rollback.
+- README Operations & dev-ergonomics table gains a version-tracking row.
+
 ### Platform compatibility (2026-04-24)
 
 - **Flake systems extended** — `eachSystem` now includes `x86_64-darwin` and `aarch64-darwin` alongside the two Linux targets. macOS users get `nix build .#compose` and `nix develop` natively.

@@ -186,6 +186,12 @@ alias zgemini='zellij action launch-or-focus-plugin -- gemini'
 alias gemini-help="gemini --help"
 alias gemini-version="gemini --version"
 
+# === OPENAI CODEX RUST CLI (github.com/openai/codex rust-v0.124.0) ===
+# Enabled via [toolchains.codex] = true in agentbox.toml.
+alias zcodex='codex'
+alias codex-help='codex --help'
+alias codex-version='codex --version'
+
 # === GEMINI FLOW ===
 alias gf="gemini-flow"
 alias gf-init="gemini-flow init --protocols a2a,mcp --topology hierarchical"

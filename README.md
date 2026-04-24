@@ -26,6 +26,7 @@ One TOML manifest, one Nix flake, one codepath — works standalone or plugs int
 |---|---|---|
 | **Claude Code + ruflo + agentic-qe** | Baked into the default `runtime` image | Pre-installed CLIs, shell aliases (`zclaude`, `zruflo`, `zqe`) |
 | **Official `@google/gemini-cli`** | v0.38.2 pinned via `flake.lock` under `[toolchains.gemini_cli]` | 1M context, Chapters narrative flow, Context Compression, worktree support |
+| **OpenAI Codex Rust CLI** | rust-v0.124.0 pinned per-arch via `[toolchains.codex]` | Static musl binary; `lib/codex-binary.nix` pins sha256 per-arch (x86_64 + aarch64); aliases `zcodex`/`codex-help`/`codex-version` |
 | **claude-zai (GLM-5 via Z.AI)** | `@anthropic-ai/claude-code@2.1.47` pinned, digest-comment in Dockerfile | Optional; SECURITY pin blocks auto-upgrade |
 | **96-skill catalogue** | Content-addressed Nix input; per-skill `SKILL.md` | Progressive disclosure pattern; `agentbox/skills/skill-builder` for authoring new ones |
 | **13 MCP servers** | stdio protocol; served via generated supervisor blocks | Includes Playwright, ImageMagick, QGIS, Blender, ComfyUI, web-summary |
@@ -72,6 +73,7 @@ Multi-arch images published to `ghcr.io/dreamlab-ai/agentbox` (`linux/amd64` + `
 | **CI: contract tests** | Jest × 5 adapter suites per PR |
 | **CI: secret scan** | Canary-verified `gitleaks` per PR |
 | **Pluggable provisioners** | `agentbox.sh provision --target oci\|fly\|hetzner\|bare` |
+| **Automated version tracking** | Renovate + `nix-flake-update.yml` weekly + `scripts/check-upstream-releases.sh` human dashboard — see [`docs/guides/version-tracking.md`](docs/guides/version-tracking.md) |
 
 ## Architecture
 

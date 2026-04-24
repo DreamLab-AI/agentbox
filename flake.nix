@@ -111,6 +111,15 @@
           nodejs_20
         ]);
 
+        # OpenAI Codex Rust-native CLI — pinned upstream release asset.
+        # See lib/codex-binary.nix for the per-arch sha256s and version bump
+        # procedure.  Binary is statically linked (musl) so no runtime deps
+        # are required beyond what the container already has.
+        codexLib = import ./lib/codex-binary.nix { inherit lib pkgs; };
+        codexPackages = lib.optionals
+          ((toolchainCfg.codex or false) && pkgs.stdenv.isLinux)
+          [ (codexLib.makeCodex system) ];
+
         pythonBasePackages = with pkgs; [
           python312
           python312Packages.pip
@@ -276,6 +285,7 @@
           ++ docsPackages
           ++ desktopPackages
           ++ geminiCliPackages
+          ++ codexPackages
           ++ gpuCfg.nixPackages;
 
         # D.9: skillsTree is sourced from inputs.skills (path-type input).
@@ -736,6 +746,7 @@ ${ragflowNetworkDecl}
           "ENABLE_CODEBASE_MEMORY=${boolEnv (toolchainCfg.codebase_memory or false)}"
           "ENABLE_RUST_TOOLCHAIN=${boolEnv (toolchainCfg.rust or false)}"
           "ENABLE_GEMINI_CLI=${boolEnv (toolchainCfg.gemini_cli or false)}"
+          "ENABLE_CODEX=${boolEnv (toolchainCfg.codex or false)}"
           "WORKSPACE=/workspace"
           "SHARED_PROJECTS_ROOT=/projects"
           "AGENTBOX_AGENT_ID=agentbox-core"

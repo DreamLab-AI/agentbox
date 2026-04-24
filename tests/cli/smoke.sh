@@ -49,6 +49,15 @@ else
     echo "  SKIP  gemini --version (toolchain not installed)"
 fi
 
+# Codex Rust CLI toolchain check (when [toolchains.codex]=true)
+if command -v codex &>/dev/null; then
+    check "codex --help"            codex --help
+    check "codex --version"         codex --version
+else
+    echo "  SKIP  codex --help (toolchain not installed)"
+    echo "  SKIP  codex --version (toolchain not installed)"
+fi
+
 echo ""
 echo "Results: ${PASS} passed, ${FAIL} failed"
 [[ "$FAIL" -eq 0 ]]

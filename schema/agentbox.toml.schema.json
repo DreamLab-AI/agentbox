@@ -226,6 +226,7 @@
         "codebase_memory": { "type": "boolean" },
         "rust": { "type": "boolean" },
         "gemini_cli": { "type": "boolean" },
+        "codex": { "type": "boolean" },
         "code_server": { "type": "boolean" },
         "cuda": { "type": "boolean" }
       }

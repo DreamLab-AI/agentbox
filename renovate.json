@@ -1,0 +1,100 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Renovate config for agentbox — tracks upstream versions across ecosystems Nix doesn't touch automatically.",
+  "extends": [
+    "config:recommended",
+    ":semanticCommits",
+    ":dependencyDashboard",
+    ":rebaseStalePrs"
+  ],
+  "timezone": "Europe/London",
+  "schedule": ["before 6am on monday"],
+  "labels": ["deps"],
+  "assigneesFromCodeOwners": true,
+  "commitMessagePrefix": "deps:",
+  "prHourlyLimit": 4,
+  "prConcurrentLimit": 10,
+  "packageRules": [
+    {
+      "description": "Group GitHub Actions together so workflow bumps land as one review.",
+      "matchManagers": ["github-actions"],
+      "groupName": "github-actions",
+      "automerge": true,
+      "automergeType": "pr",
+      "minimumReleaseAge": "3 days"
+    },
+    {
+      "description": "Node packages — auto-merge minor/patch after a 3-day cool-off.",
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true,
+      "minimumReleaseAge": "3 days"
+    },
+    {
+      "description": "Pin major bumps for npm — always manual review.",
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["major"],
+      "automerge": false,
+      "reviewersFromCodeOwners": true
+    },
+    {
+      "description": "Security-sensitive pins — never auto-merge, require two reviewers.",
+      "matchPackageNames": [
+        "@anthropic-ai/claude-code",
+        "nostr-tools",
+        "@noble/curves"
+      ],
+      "automerge": false,
+      "reviewers": ["@jjohare"]
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Track the OpenAI Codex Rust CLI version pinned in lib/codex-binary.nix.",
+      "fileMatch": ["^lib/codex-binary\\.nix$"],
+      "matchStrings": [
+        "codexVersion\\s*=\\s*\"(?<currentValue>[0-9.]+)\""
+      ],
+      "depNameTemplate": "openai/codex",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^rust-v(?<version>.*)$",
+      "versioningTemplate": "semver"
+    },
+    {
+      "customType": "regex",
+      "description": "Track ComfyUI upstream rev pinned in flake.nix.",
+      "fileMatch": ["^flake\\.nix$"],
+      "matchStrings": [
+        "comfyuiRev\\s*=\\s*\"v(?<currentValue>[0-9.]+)\""
+      ],
+      "depNameTemplate": "comfyanonymous/ComfyUI",
+      "datasourceTemplate": "github-releases"
+    },
+    {
+      "customType": "regex",
+      "description": "Track Gemini CLI version pinned in flake.nix / aliases.",
+      "fileMatch": ["^config/agentbox-aliases\\.sh$", "^flake\\.nix$"],
+      "matchStrings": [
+        "@google/gemini-cli\\s+v?(?<currentValue>[0-9.]+)",
+        "gemini_cli_version\\s*=\\s*\"(?<currentValue>[0-9.]+)\""
+      ],
+      "depNameTemplate": "@google/gemini-cli",
+      "datasourceTemplate": "npm"
+    },
+    {
+      "customType": "regex",
+      "description": "Track gitleaks-action version pinned in secret-scan.yml.",
+      "fileMatch": ["^\\.github/workflows/secret-scan\\.yml$"],
+      "matchStrings": [
+        "gitleaks/gitleaks-action@v(?<currentValue>[0-9.]+)"
+      ],
+      "depNameTemplate": "gitleaks/gitleaks-action",
+      "datasourceTemplate": "github-tags"
+    }
+  ],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 6am on monday"]
+  }
+}
