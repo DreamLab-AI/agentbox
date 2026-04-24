@@ -197,6 +197,14 @@ Rejected because agentbox is marketed as a standalone product; baseline boundary
 
 Rejected as the sole approach because the product already documents a dedicated metrics port and validates it in config. The contract should either support that path fully or remove it entirely; partial support is not acceptable.
 
+## SYS_ADMIN alternative for Chromium-based skills
+
+`[security.exceptions.playwright]` adds `SYS_ADMIN` so Chromium's user-namespace sandbox can initialise. Alternatives with different trade-offs:
+
+1. **Daemon-level user-namespace remap** (`/etc/docker/daemon.json`: `"userns-remap": "default"`). Chromium's unprivileged sandbox works without `SYS_ADMIN` inside the container. Trade-off: all containers on the host share the remapped UID range, which can conflict with volume ownership from non-remapped setups. Best fit: dedicated agentbox hosts.
+2. **`--no-sandbox` on Chromium launch**. Removes the sandbox entirely; explicitly not recommended.
+3. **Status quo — `SYS_ADMIN` exception**. Default for shared hosts. `cap_drop: [ALL]` baseline still applies, so only the one cap is present in the running container.
+
 ## Follow-ups
 
 - Add compose-generation tests for image reference and hardening fields.

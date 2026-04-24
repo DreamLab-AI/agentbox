@@ -80,7 +80,7 @@
         ruvectorPkg = mkNpmCli {
           pkgName = "ruvector";
           version = "0.2.23";
-          sha256  = lib.fakeHash;
+          sha256  = "sha256-IUSAj/MLpdBt2N/joQ1n6QM/u5gVA+1CMCO++hV+dfY=";
           bin     = "ruvector";
         };
 
@@ -89,7 +89,7 @@
         claudeFlowPkg = mkNpmCli {
           pkgName = "@claude-flow/cli";
           version = "3.5.80";
-          sha256  = lib.fakeHash;
+          sha256  = "sha256-7egZQtT2iKVXtrPWByc1zk9/TLbcDKO1nr+B+sqeQ88=";
           bin     = "claude-flow";
         };
 
@@ -98,7 +98,7 @@
         rufloPkg = mkNpmCli {
           pkgName = "ruflo";
           version = "3.5.80";
-          sha256  = lib.fakeHash;
+          sha256  = "sha256-7/e9G/Ggm+MB6TwAEnxUZ7pe9qCDp5qrm5v4fF6fq4I=";
           bin     = "ruflo";
         };
 
@@ -111,7 +111,7 @@
         agenticQePkg = mkNpmCli {
           pkgName = "agentic-qe";
           version = "3.9.15";
-          sha256  = lib.fakeHash;
+          sha256  = "sha256-9CjwZt9bbJCIxyR8qy1snrXdAIAppxMiqwg5NooukVg=";
           bin     = "aqe";
         };
 
@@ -132,7 +132,7 @@
         codebaseMemoryPkg = mkNpmCli {
           pkgName = "codebase-memory-mcp";
           version = "0.6.0";
-          sha256  = lib.fakeHash;
+          sha256  = "sha256-aZ2msekZEaO/CHAGSLiFtkyZKNZnEhCVNOyKVEf3FYk=";
           bin     = "codebase-memory-mcp";
         };
 
@@ -142,7 +142,7 @@
         agentBrowserPkg = mkNpmCli {
           pkgName  = "agent-browser";
           version  = "0.26.0";
-          sha256   = lib.fakeHash;
+          sha256   = "sha256-ikjPQRDX3CwSwcTW0l4Lq9+jFgS1N/Bd8NyDX+L4VL8=";
           bin      = "agent-browser";
           extraEnv = {
             CHROME_PATH = "${pkgs.chromium}/bin/chromium";
@@ -156,7 +156,7 @@
         playwrightCliPkg = mkNpmCli {
           pkgName  = "playwright";
           version  = "1.59.1";
-          sha256   = lib.fakeHash;
+          sha256   = "sha256-emiKclkp8jJbNFmXhFscpQrOd5jnauSbYVFvg+CDiO8=";
           bin      = "playwright";
           extraEnv = {
             PLAYWRIGHT_BROWSERS_PATH = "${pkgs.playwright-driver.browsers}";
@@ -169,7 +169,7 @@
         mermaidCliPkg = mkNpmCli {
           pkgName = "@mermaid-js/mermaid-cli";
           version = "11.12.0";
-          sha256  = lib.fakeHash;
+          sha256  = "sha256-xZ4rfsAQ16J6RbSt3N6Xl4xkSx6ZZgnjlxTqUtiSaDc=";
           bin     = "mmdc";
         };
 
@@ -237,9 +237,13 @@
           name             = "lazy-fetch-mcp";
           src              = ./skills/lazy-fetch/mcp-server;
           entry            = "dist/mcp-server.js";
+          # QE audit P0: `npx --yes tsc` attempts to fetch typescript from npm
+          # which fails in the Nix sandbox (network disabled). Provide tsc via
+          # nativeBuildInputs instead — typescript comes from nixpkgs, not npm.
+          extraBuildInputs = [ pkgs.nodePackages.typescript ];
           buildPhaseExtra  = ''
             export HOME="$TMPDIR"
-            npx --yes tsc --project tsconfig.json
+            tsc --project tsconfig.json
           '';
           # TODO: replace lib.fakeHash with the output of:
           #   nix run nixpkgs#prefetch-npm-deps -- skills/lazy-fetch/mcp-server/package-lock.json

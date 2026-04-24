@@ -6,6 +6,21 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Dat
 
 ## [Unreleased]
 
+### QE audit fixes — Phase 3 (2026-04-24)
+
+Post-implementation QE fleet audit verdict: **No ship — 4 P0 blockers**. Three resolved in this round; one documented for operator follow-up.
+
+**P0 Resolved**:
+- **8 of 9 npm CLI tarball SHA256s computed and pinned** — fetched each from npmjs.org, converted hex→SRI format, replaced `lib.fakeHash` with real hashes in `flake.nix` for ruvector 0.2.23, @claude-flow/cli 3.5.80, ruflo 3.5.80, agentic-qe 3.9.15, codebase-memory-mcp 0.6.0, agent-browser 0.26.0, playwright 1.59.1, @mermaid-js/mermaid-cli 11.12.0. `nagual-qe` remains on `lib.fakeHash` with a comment explaining it's not published to public npm.
+- **lazy-fetch-mcp TypeScript sandbox violation fixed** — `npx --yes tsc` replaced with `tsc` from `pkgs.nodePackages.typescript` in `extraBuildInputs`. Nix sandbox network disability no longer blocks the build.
+
+**P0 Remaining (operator follow-up)**:
+- The 6 `npmDepsHash` values in `lib/npm-services.nix`-based derivations still need `nix run nixpkgs#prefetch-npm-deps -- <service>/package-lock.json` to compute. These require a Nix runtime and cannot be resolved via curl+shasum. Each derivation has a `lib.fakeHash` throw-gate printing the exact command; first `nix build` from a Nix-equipped host will surface all 6 at once.
+
+**P2 Polish**:
+- Sentinel poll in management-api/server.js now calls `clearInterval` after first detection — no leak.
+- ADR-007 gains a new section "SYS_ADMIN alternative for Chromium-based skills" documenting daemon-level userns-remap as the lower-privilege alternative.
+
 ### PRD-002 + PRD-003 implementation — Phase 2 (2026-04-24)
 
 Six-agent hierarchical-mesh swarm implemented the immutable-bootstrap + runtime-contract changes.

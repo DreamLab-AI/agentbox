@@ -34,6 +34,7 @@ if (!API_KEY) {
 // Bootstrap sentinel state — updated asynchronously when the sentinel file appears.
 const BOOTSTRAP_SENTINEL = '/run/agentbox/bootstrap.done';
 const bootstrapState = { completed: false, since: null };
+let _sentinelTimer = null;
 
 function _checkSentinel() {
   fs.access(BOOTSTRAP_SENTINEL, fs.constants.F_OK, (err) => {
@@ -41,14 +42,20 @@ function _checkSentinel() {
       bootstrapState.completed = true;
       bootstrapState.since = new Date().toISOString();
       logger.info({ sentinel: BOOTSTRAP_SENTINEL }, 'Bootstrap sentinel observed — container ready');
+      // QE P2-8: clear the poll once the one-shot detection has fired.
+      if (_sentinelTimer) {
+        clearInterval(_sentinelTimer);
+        _sentinelTimer = null;
+      }
     }
   });
 }
 
 // Poll every 2 s for the sentinel (fs.watch is unreliable on some container
-// overlay filesystems; polling is deterministic and cheap).
+// overlay filesystems; polling is deterministic and cheap). Timer is cleared
+// after first detection in _checkSentinel above.
 _checkSentinel();
-setInterval(_checkSentinel, 2000);
+_sentinelTimer = setInterval(_checkSentinel, 2000);
 
 // Initialize Fastify with logger
 const app = fastify({
