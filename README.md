@@ -2,6 +2,77 @@
 
 Agentbox is a modular, Nix-built container runtime for multi-agent development. The current architecture is driven by [`agentbox.toml`](agentbox.toml), uses embedded RuVector for local vector search, bootstraps a sovereign identity plus Solid-style pod storage, and provisions stack-specific profiles that all share the same mounted projects and skills tree.
 
+## Features
+
+One TOML manifest, one Nix flake, one codepath — works standalone or plugs into a host container mesh. Every heavy capability is a manifest toggle, not a Dockerfile edit.
+
+### Core capabilities
+
+| Capability | How | Notes |
+|---|---|---|
+| **Reproducible builds** | Nix flake pinned by `flake.lock` | Two builds of the same manifest → identical `sha256` image hash |
+| **Manifest-gated composition** | `agentbox.toml` → `flake.nix` → auto-generated `docker-compose.yml` + supervisord | Enabling a feature pulls its Nix package **and** emits its supervisor block. Never both missing, never one without the other |
+| **Pluggable adapter architecture** | 5 slots (beads, pods, memory, events, orchestrator) × 3 impls each (`local-*` / `external` / `off`) | Swap storage/task backends by editing the manifest. See [ADR-005](docs/adr/ADR-005-pluggable-adapter-architecture.md) |
+| **Standalone or federated** | `[federation].mode = "standalone"` ships local fallbacks; `"client"` federates with a host mesh | One codepath. Same contract tests run against both modes |
+| **Five adapter triples shipped** | SQLite beads, JSS pods, RuVector memory, JSONL events, process-manager orchestrator | Federated variants ship too: HTTP REST / MCP / stdio-bridge |
+| **Schema-validated manifest** | JSON Schema (305 lines, draft 2020-12) + 19 semantic rules (`E001`–`E019`) | `agentbox config validate` catches errors before Nix eval |
+| **Interactive wizard** | `./scripts/start-agentbox.sh` whiptail TUI with live validation | Context-aware defaults (detects `docker_ragflow` network, `nvidia-smi`, `rocm-smi`) |
+| **Seven lifecycle verbs** | `agentbox.sh {up, down, build, rebuild, logs, shell, health}` + existing remote verbs | `up --build` chains Nix build + docker load + health-poll |
+| **Scripted backup/restore** | `agentbox.sh backup` / `restore` with MANIFEST.json archives | Secrets excluded by default; `--include-secrets` opt-in |
+
+### Agent surface
+
+| Capability | How | Notes |
+|---|---|---|
+| **Claude Code + ruflo + agentic-qe** | Baked into the default `runtime` image | Pre-installed CLIs, shell aliases (`zclaude`, `zruflo`, `zqe`) |
+| **Official `@google/gemini-cli`** | v0.38.2 pinned via `flake.lock` under `[toolchains.gemini_cli]` | 1M context, Chapters narrative flow, Context Compression, worktree support |
+| **claude-zai (GLM-5 via Z.AI)** | `@anthropic-ai/claude-code@2.1.47` pinned, digest-comment in Dockerfile | Optional; SECURITY pin blocks auto-upgrade |
+| **96-skill catalogue** | Content-addressed Nix input; per-skill `SKILL.md` | Progressive disclosure pattern; `agentbox/skills/skill-builder` for authoring new ones |
+| **13 MCP servers** | stdio protocol; served via generated supervisor blocks | Includes Playwright, ImageMagick, QGIS, Blender, ComfyUI, web-summary |
+| **Nostr identity + NIP-98 auth** | `mcp/servers/nostr-bridge.js` (483 lines) with `nostr-tools` + `@noble/curves` Schnorr | Relay pool, subscribe/publish fan-out, NIP-98 HTTP auth middleware |
+| **Solid-compatible pod storage** | Local `local-jss` adapter (port 8484) or external Solid server | Per-profile ACL metadata |
+| **Ontology tooling (Logseq OWL2)** | `[skills.ontology]` gate | Opt-in; off by default |
+
+### Observability & security
+
+| Capability | How | Notes |
+|---|---|---|
+| **Prometheus metrics** | `:9091/metrics` — per-adapter dispatch counter + histogram + health gauge | `wrapDispatch()` helper ensures every adapter call is observed |
+| **OpenTelemetry tracing** | `AGENTBOX_OTLP_ENDPOINT` env var; no-op fallback when unset | Spans named `agentbox.adapter.<slot>.<method>` |
+| **Structured JSON logs** | `pino` with consistent fields: `ts`, `slot`, `method`, `impl`, `duration_ms`, `session_id` | Written to stdout for supervisord capture |
+| **`/v1/meta` handshake** | Returns image hash, manifest checksum, five adapter contract versions | Host orchestrators verify compatibility before session start |
+| **Contract-test harness** | 145 passing / 33 todo across 5 slots × 3 impls each | Mandatory merge gate in CI |
+| **Secret scanning in CI** | `gitleaks-action@v2.3.2` + `.gitleaks.toml` + test canary | Refuses PRs with real-looking secrets |
+| **Auto-generated management key** | On first boot; persisted to profile dir mode `0600` | No more `change-this-secret-key` defaults in the image ENV |
+| **Nostr private key at rest** | Encrypted with `MANAGEMENT_API_KEY` + salt, zeroed after use | `@noble/curves` constant-time Schnorr |
+| **No docker-socket mount** | `no-new-privileges: true`, zero added caps | Container-escape surface absent |
+
+### Hardware & platform reach
+
+| Target | Build | Run | GPU backends available |
+|---|---|---|---|
+| **Linux x86_64** | Native | Native | `none`, `ollama-rocm` (AMD), `ollama-cuda` (NVIDIA), `local-cuda` |
+| **Linux aarch64** (Pi 5, Ampere, Graviton, Jetson) | Native | Native | `none`, `ollama-rocm`; `ollama-cuda` on Jetson |
+| **macOS Apple Silicon** | Compose + dev shell only | Via Docker Desktop / OrbStack / Colima | `none` (CPU) or remote GPU |
+| **macOS Intel** | Compose + dev shell only | Via Docker Desktop / OrbStack / Colima | `none` (CPU) or remote GPU |
+| **Windows 10/11** | — | Via Docker Desktop + WSL2 | `ollama-cuda` with NVIDIA CUDA in WSL2 |
+| **Remote cloud (OCI / Fly / Hetzner / bare)** | Any | `agentbox.sh provision --target <x>` | Inherits host GPU |
+
+Multi-arch images published to `ghcr.io/dreamlab-ai/agentbox` (`linux/amd64` + `linux/arm64`). Docker clients auto-select arch. Full per-host cookbook: [`docs/guides/running-on-your-host.md`](docs/guides/running-on-your-host.md). Capability matrix: [`docs/guides/platforms.md`](docs/guides/platforms.md).
+
+### Operations & developer ergonomics
+
+| Capability | How |
+|---|---|
+| **Zellij 11-tab layout** | `config/zellij/layouts/agentbox.kdl` — claude, ruflo, qe, docs, build, logs, vcs, memory, llm, agents, host-shell |
+| **tmux-compat aliases** | `tmux-attach` / `tmux-ls` redirect to Zellij for muscle memory |
+| **VS Code devcontainer** | `.devcontainer/devcontainer.json` — Nix-flakes + DinD + 7 forwarded ports |
+| **CI: flake-check on both Linux archs** | `.github/workflows/flake-check.yml` per PR |
+| **CI: multi-arch image publish** | `.github/workflows/build-multi-arch.yml` on native runners (no QEMU) |
+| **CI: contract tests** | Jest × 5 adapter suites per PR |
+| **CI: secret scan** | Canary-verified `gitleaks` per PR |
+| **Pluggable provisioners** | `agentbox.sh provision --target oci\|fly\|hetzner\|bare` |
+
 ## Architecture
 
 Agentbox is built around six decisions:
