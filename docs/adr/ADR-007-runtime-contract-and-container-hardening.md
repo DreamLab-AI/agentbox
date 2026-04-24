@@ -1,6 +1,6 @@
 # ADR-007: Runtime contract and container hardening
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-04-24
 **Author:** Agentbox team
 **Related:** PRD-003 (Runtime contract and container hardening), DDD-002 (Runtime contract domain)
@@ -24,15 +24,73 @@ Agentbox adopts a formal runtime contract made of four decisions.
 
 Compose must consume an image reference variable rather than a local-only hardcoded tag. Local builds and registry images are both first-class inputs to the same runtime path.
 
+#### Chosen mechanism: `AGENTBOX_IMAGE_REF` shell-expansion in generated compose
+
+The `flake.nix` `composeText` generator replaces the hardcoded `image: agentbox:runtime-${system}` line (current line 639) with:
+
+```yaml
+image: ${AGENTBOX_IMAGE_REF:-agentbox:runtime-<system>}
+```
+
+This is valid Docker Compose variable-substitution syntax. It preserves the local-build default (empty variable → local tag) and allows the operator to override without editing the generated file.
+
+`agentbox.sh` encodes the two workflows:
+
+- `up --build`: sets no `AGENTBOX_IMAGE_REF`; the shell-default provides the local tag.
+- `up --registry`: requires `AGENTBOX_IMAGE_REF` in the environment; fails with a clear error if absent.
+
+`agentbox.sh up` prints `using image: <resolved-ref>` in both cases before calling `docker compose up`.
+
+No alternative mechanism (e.g. a separate `.env.image` file, a separate override compose file, or an `agentbox.toml` key that re-bakes the compose) was chosen because shell-variable substitution is native to Docker Compose, requires zero extra tooling, and makes the resolved value visible to `docker compose config`.
+
 ### 2. Probes become semantically distinct
 
-- `/health` is liveness or detailed aggregate health, but not a substitute for readiness.
-- `/ready` gates startup automation and requires bootstrap completion plus required dependency availability.
-- helper scripts must wait on readiness.
+- `/health` is retained as the human-facing aggregate endpoint (per-adapter status, degraded counts, uptime). It is not used for startup automation.
+- `/ready` gates startup automation and requires ALL of: (a) `BootstrapCompleted` sentinel present, (b) required adapters connected, (c) required writable mounts accessible, (d) if sovereign_mesh.publish_agent_events=true, at least one Nostr relay reachable.
+- `/livez` is added as the minimal liveness probe: process alive, event loop responsive. No dependency checks. Used by orchestrators and `agentbox.sh up --wait-live`.
+
+#### Current state that is being fixed
+
+`management-api/routes/status.js` `GET /ready` currently returns `{ready: true, ...}` unconditionally — it checks only `processManager.getActiveTasks()` and ignores bootstrap state, adapter health, and mounts. This means the existing `/ready` endpoint is semantically equivalent to `/livez` and provides no safety guarantee.
+
+#### Readiness state machine
+
+```
+UNREADY ---(sentinel + adapters + mounts [+ relays])--> READY
+READY   ---(adapter.connect() fails post-boot)-------> UNREADY
+READY   ---(required mount non-writable)-------------> UNREADY
+READY   ---(relay lost, publish_agent_events=true)---> UNREADY
+```
+
+The `since` timestamp records UNREADY → READY. READY → UNREADY transitions are logged at warn.
+
+#### `agentbox.sh` and compose changes
+
+- `agentbox.sh up` polls `/ready` (120 s timeout), not `/health`.
+- `agentbox.sh up --wait-live` polls `/livez` (60 s timeout).
+- Compose `healthcheck.test` changes from `curl -f /health` to `curl -f /ready`.
 
 ### 3. Observability is single-source
 
 The manifest owns metrics port, OTLP endpoint, and log level. Runtime env, management-api behavior, compose exposure, and docs must all derive from that same contract.
+
+#### Broken links identified by audit
+
+| Link | Current state | Required state |
+|---|---|---|
+| `agentbox.toml [observability]` section | Does not exist | Must be added with `metrics_port`, `otlp_endpoint`, `log_level` |
+| `flake.nix` `observCfg` usage | Bound at line 512, never read | Must emit `AGENTBOX_METRICS_PORT`, `AGENTBOX_OTLP_ENDPOINT`, `AGENTBOX_LOG_LEVEL` into `imageEnv` |
+| `composeText` `agentboxPorts` | Omits metrics port | Must append `"<metrics_port>:<metrics_port>"` |
+| `commonPorts` in OCI image config | Omits metrics port | Must add `"<metrics_port>/tcp": {}` |
+| `/v1/meta` response | No `observability` field | Must add `observability: { metrics_endpoint, otlp_endpoint }` |
+| `agentbox.sh up` summary line | Hardcodes `9091` | Must read `${AGENTBOX_METRICS_PORT:-9091}` |
+| `agentbox.sh health` | Checks `/health` only | Must also verify the metrics endpoint is live |
+
+`management-api/observability/metrics-server.js` already reads `AGENTBOX_METRICS_PORT || 9091` correctly; it requires no code change, only the env var injection above.
+
+#### Invariant
+
+If `[observability].metrics_port` is set in the manifest, the generated compose must expose that port, the image must bind it, and `/v1/meta` must report the endpoint. Any mismatch is a `ContractDriftDetected` event (see DDD-002).
 
 ### 4. Container boundary is hardened by default
 
@@ -44,6 +102,67 @@ The baseline runtime moves to least privilege:
 - dropped capabilities and bounded runtime settings
 
 Feature modes that need more access must declare exceptions explicitly.
+
+### 4a. Feature-exception mechanism — manifest-driven delta blocks (Mechanism B)
+
+#### Decision
+
+The flake compose generator is the single point of compose materialisation. Feature-exception blocks are co-located with their feature flags in `agentbox.toml` under `[security.exceptions.<feature>]`. The generator conditionally emits each exception's delta fields into the affected service when the parent feature flag is enabled. This follows the same conditional-string pattern already used for `rocmDevices`, `cudaRuntime`, and `ollamaServiceBlock`.
+
+Three mechanisms were considered:
+
+| Criterion | A: compose override files | B: manifest delta blocks (chosen) | C: Docker compose profiles |
+|---|---|---|---|
+| Operator UX | Operator assembles `-f` chain | Single manifest edit; `nix build .#compose` | `--profile` flags at `docker compose up` |
+| Manifest truthfulness | No — security state distributed across N files | Yes — single file is authoritative | Partial — profile names in compose, bodies inline |
+| Compose file count | 1 base + 1 per feature | Always 1 (generated) | Always 1 (but grows) |
+| Exception auditability | Poor — operator shell history | Strong — `SecurityProfileApplied` event cites feature | Moderate — profiles visible in compose |
+| New-feature cost | New override file + docs | New TOML block + generator condition | New profile block inline in base compose |
+| Docker compatibility | Standard | Standard (generated output is plain compose) | Standard but adds CLI coupling |
+
+B is the only mechanism that keeps the manifest as the single source of truth, matches the existing generator pattern, and makes every privilege delta attributable to a named feature in a machine-readable audit event.
+
+#### Baseline compose fields emitted for non-exceptional services
+
+```yaml
+user: "1000:1000"
+read_only: true
+cap_drop:
+  - ALL
+tmpfs:
+  - /tmp:mode=1777
+  - /run:mode=755
+security_opt:
+  - no-new-privileges:true
+  - seccomp=default
+```
+
+#### Exception block structure in `agentbox.toml`
+
+```toml
+[security.exceptions.<feature-name>]
+reason                = "<human-readable justification>"
+devices               = ["<host>:<container>", ...]   # raw device mounts
+tmpfs                 = ["<path>:<options>", ...]     # additional tmpfs mounts
+writable_volumes      = ["<path>", ...]               # paths made writable
+cap_add               = ["<CAP_NAME>", ...]           # capabilities added back
+group_add             = ["<group>", ...]              # supplementary GIDs
+security_opt_override = ["<key>=<value>", ...]        # replaces matching security_opt entries
+runtime_override      = "<runtime>"                   # replaces service runtime: field
+```
+
+#### Merge rules
+
+Union for `cap_add`, `devices`, `tmpfs`, `group_add`, `writable_volumes`. Replace-by-key for `security_opt_override` (e.g. `seccomp=` key replaces baseline `seccomp=default`). `no-new-privileges:true` is preserved unless explicitly overridden. When two features conflict on the same `security_opt_override` key, the generator takes the most permissive value and emits a W021 warning.
+
+#### Validator rules
+
+- **E020** `hardening-exception-without-feature` — exception block present, parent feature not enabled. Error.
+- **W021** `exception-adds-privilege-beyond-baseline` — exception carries `cap_add`, raw `devices`, or `seccomp=unconfined`. Warning; suppressed per-manifest by `security.audit_acknowledged = true`.
+
+#### Audit trail
+
+`SecurityProfileApplied` domain event (DDD-002) is emitted at compose generation and runtime apply. Payload includes baseline, exceptions_applied (each citing `feature` and `reason`), and effective merged profile. No anonymous privilege expansion is permitted.
 
 ## Consequences
 

@@ -6,6 +6,19 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Dat
 
 ## [Unreleased]
 
+### Docs clarification — PRD-002/003 + ADR-006/007 + DDD-001/002 (2026-04-24)
+
+Consolidated findings from researcher agents R1 (packaging audit) and R3 (runtime-contract wiring) into the six clarification documents. Researchers R2, R4, and R5 did not deposit findings before the consolidation window; their subject matter (hardening exceptions mechanism, DDD coherence, runtime contract tests) was already fully authored in the documents and required only status promotion.
+
+- **PRD-002** — Draft v1 → Draft v2. §9 Phase 1 extended to 6 services (added `comfyui/mcp-server` with native-gyp note); effort corrected to ~5d Phase 1 / ~13d+2d CI total; follow-up note added for `host-webserver-debug` and `web-summary` mcp-servers as unscoped candidates. Status bumped to Draft v2 with changelog block.
+- **PRD-003** — Draft v1 → Draft v2. §5.1 `AGENTBOX_IMAGE_REF` env-var contract specified; §5.2 three-endpoint probe model (`/livez`, `/ready`, `/health`) and readiness state machine added; §5.3 seven broken links in the observability chain enumerated and fix specified; acceptance criteria enriched with named test IDs `RC-003-06` through `RC-003-10`.
+- **ADR-006** — Proposed → Accepted. Follow-ups tightened: DDD-001 and DDD-002 cross-references added; unscoped packaging candidates noted.
+- **ADR-007** — Proposed → Accepted. Observability broken-chain table added to §3; readiness state machine added to §2; DDD-002 `ContractDriftDetected` cross-reference made explicit.
+- **DDD-001** — Proposal → Accepted. Status and cross-reference header updated (PRD-002, ADR-006, DDD-002). Document was already structurally complete with four capability-class examples.
+- **DDD-002** — Proposal → Accepted. Status and cross-reference header updated (PRD-003, ADR-007, DDD-001). Document was already complete with `SecurityException` lifecycle table, `ContractDriftDetected` three-detector specification, and `ObservabilityBinding` field-level model.
+
+**Unresolved items raised to main thread** (R2/R4/R5 findings absent — see below).
+
 ### Test-coverage completion (2026-04-24)
 
 Closed the three P1 gaps from the post-M4 QE audit + audited the remaining 33 contract-test todos.

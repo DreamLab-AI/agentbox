@@ -1,8 +1,9 @@
 # DDD-001: Immutable Bootstrap Domain
 
 **Date**: 2026-04-24
-**Status**: Proposal
+**Status**: Accepted
 **Bounded Context**: Immutable Bootstrap
+**Cross-references**: PRD-002 (product requirements), ADR-006 (decision record + legal-writes table), DDD-002 (runtime contract domain — readiness depends on `BootstrapCompleted` from this domain)
 
 ---
 
@@ -48,7 +49,7 @@ RuntimeClosure
   |     +-- requiredForReadiness: boolean
   |
   +-- BootstrapPolicy
-  |     +-- allowedWrites: string[]
+  |     +-- allowedWrites: WritablePath[]   // see canonical list below
   |     +-- forbiddenOperations: string[]
   |     +-- immutableRoots: string[]
   |
@@ -61,9 +62,9 @@ RuntimeClosure
 ### Invariants
 
 1. Every readiness-critical capability must have an Artifact Probe.
-2. `/opt/agentbox` is always an immutable root.
+2. `/opt/agentbox` is always an immutable root. No write to any path under `/opt/agentbox` is permitted at any bootstrap phase, including Stage B. `node_modules` directories under `/opt/agentbox/**` must be baked into the image by the Nix build, not created at runtime.
 3. A Runtime Closure cannot be `completed` if any required Artifact Probe fails.
-4. Bootstrap Policy must forbid dependency-resolution operations.
+4. Bootstrap Policy must forbid dependency-resolution operations (`npm install`, `npm install -g`, `pnpm install`, `pip install`, `playwright install`, or any equivalent package-manager invocation).
 
 ## Entities
 
@@ -94,6 +95,48 @@ Represents how the system proves that a packaged artifact exists.
 | `BootstrapOutcome` | `{ status, failedCapabilityId, reason }` | Immutable summary of bootstrap result |
 | `MutationScope` | `{ writableRoots[], immutableRoots[] }` | Encodes the allowed startup write surface |
 | `ProbeResult` | `{ success: boolean, detail: string }` | Result of one artifact validation |
+
+### BootstrapPolicy.allowedWrites — canonical list
+
+The following write targets are explicitly permitted at bootstrap time. Any path not in this list is illegal.
+
+| Category | Path | Stage | Rationale |
+|---|---|---|---|
+| Runtime directories | `/workspace` (and subdirs) | A | Operator-visible workspace; writable by design |
+| Runtime directories | `/projects` | A | Shared projects root across profiles |
+| Runtime directories | `/var/lib/ruvector` | A | RuVector data store |
+| Runtime directories | `/var/lib/solid` | A | Solid pod storage |
+| Runtime directories | `/var/lib/agentbox/identities` | A | Sovereign identity material |
+| Runtime directories | `/var/log/supervisor` | A | Supervisor log output |
+| Runtime directories | `/var/run` | A | PID files and sockets |
+| Runtime directories | `/tmp` (and subdirs) | A | Ephemeral scratch space |
+| Identity material | `$WORKSPACE/profiles/default/mgmt-key` | A | Per-instance management API secret; generated once |
+| Shell profile seeding | `/etc/bash.bashrc` (append only, idempotent) | A | Sourcing agentbox-aliases; append is guarded by a grep check |
+| Shell profile seeding | `/etc/zsh/zshrc` (append only, idempotent) | A | Same as above for zsh |
+| Environment hints | `/etc/profile.d/agentbox-runtime.sh` | B | Login-shell env var publication; write is Stage B only |
+
+**Not permitted** (regardless of stage):
+
+- Any path under `/opt/agentbox/**`
+- Package-manager operations that create new files under any path (`npm install`, `npm install -g`, `playwright install`, etc.)
+
+### Example CapabilityArtifact — management-api service
+
+```
+CapabilityArtifact {
+  capabilityId:        "management-api"
+  entrypoint:          "/opt/agentbox/management-api/index.js"
+  requiredAssets:      [
+    "/opt/agentbox/management-api/node_modules",
+    "/opt/agentbox/management-api/adapters"
+  ]
+  probe: ArtifactProbe {
+    type:    "node-require"
+    command: "node -e \"require('/opt/agentbox/management-api/index.js')\" --dry-run"
+  }
+  requiredForReadiness: true
+}
+```
 
 ## Domain Events
 
@@ -127,6 +170,97 @@ Transitions the aggregate to `completed` only after all required probes succeed 
 | Nix Build | packaged runtime artifacts | Build -> Immutable Bootstrap | Supplies the closure that bootstrap validates |
 | Runtime Contract Domain (DDD-002) | bootstrap completion state | Immutable Bootstrap -> Runtime Contract | Readiness depends on bootstrap completion |
 | Observability | bootstrap events/logs | Immutable Bootstrap -> Observability | Emits startup evidence |
+
+## CapabilityArtifact Examples by Service Class
+
+Each concrete service type maps to one of four packaging classes, each with a distinct Nix primitive and probe strategy.
+
+### Class A — Locally-built npm service
+
+Source lives in the agentbox repo; packaged via `buildNpmPackage`; `node_modules` baked into the image.
+
+```
+CapabilityArtifact {
+  capabilityId:     "management-api"
+  entrypoint:       "/opt/agentbox/management-api/server.js"
+  requiredAssets:   ["/opt/agentbox/management-api/node_modules"]
+  probe: ArtifactProbe {
+    type:    "exec-check"
+    command: "node --check /opt/agentbox/management-api/server.js"
+    // --check parses without executing; confirms closure is importable
+  }
+  requiredForReadiness: true
+}
+// Other Class A members: mcp/nostr-bridge, openai-codex/mcp-server,
+//   lazy-fetch/mcp-server (buildPhase runs tsc first), playwright/mcp-server,
+//   comfyui/mcp-server (nativeBuildInputs: [nodeGyp python3] for sharp)
+```
+
+### Class B — Globally-installed npm CLI (feature-gated)
+
+Pre-packaged into the Nix store via `buildNpmPackage` against a pinned npm tarball; binary exposed through `imageEnv PATH`. No nixpkgs equivalent exists for any of these tools.
+
+```
+CapabilityArtifact {
+  capabilityId:     "ruflo-cli"
+  entrypoint:       "<nix-store-path>/bin/ruflo"
+  requiredAssets:   []
+  probe: ArtifactProbe {
+    type:    "exec-version"
+    command: "ruflo --version"
+    // exits 0 and emits a semver string
+  }
+  requiredForReadiness: false
+  // fatal only when toolchains.ruflo = true in manifest
+}
+// Other Class B members: @claude-flow/cli, agentic-qe, nagual-qe,
+//   codebase-memory-mcp, agent-browser, ruvector, @mermaid-js/mermaid-cli
+// Note: @mermaid-js/mermaid-cli requires PUPPETEER_SKIP_DOWNLOAD=1 +
+//   PUPPETEER_EXECUTABLE_PATH=${pkgs.chromium}/bin/chromium at build time.
+```
+
+### Class C — Skill MCP server (local npm + manifest gate)
+
+Combines Class A packaging with Class B conditionality: local source, `buildNpmPackage`, enabled only when the parent skill flag is true in agentbox.toml.
+
+```
+CapabilityArtifact {
+  capabilityId:     "playwright-mcp"
+  entrypoint:       "/opt/agentbox/skills/playwright/mcp-server/server.js"
+  requiredAssets:   [
+    "/opt/agentbox/skills/playwright/mcp-server/node_modules",
+    "<playwright-driver-browsers-path>/chromium-*/chrome-linux/chrome"
+  ]
+  probe: ArtifactProbe {
+    type:    "exec-check"
+    command: "node --check /opt/agentbox/skills/playwright/mcp-server/server.js"
+  }
+  requiredForReadiness: false
+  // requiredForReadiness: true when skills.browser.playwright = true
+}
+// Other Class C members: lazy-fetch/mcp-server, comfyui/mcp-server,
+//   openai-codex/mcp-server, host-webserver-debug/mcp-server, web-summary/mcp-server
+```
+
+### Class D — Pre-fetched browser/runtime bundle
+
+A static binary bundle sourced from a Nix derivation (`pkgs.playwright-driver.browsers`), not from npm. Already partially present in `flake.nix`; requires `imageEnv` to set `PLAYWRIGHT_BROWSERS_PATH` to the store path.
+
+```
+CapabilityArtifact {
+  capabilityId:     "playwright-browsers"
+  entrypoint:       "<pkgs.playwright-driver.browsers>/chromium-*/chrome-linux/chrome"
+  requiredAssets:   ["<pkgs.playwright-driver.browsers>"]
+  probe: ArtifactProbe {
+    type:    "path-glob"
+    command: "test -x $PLAYWRIGHT_BROWSERS_PATH/chromium-*/chrome-linux/chrome"
+  }
+  requiredForReadiness: false
+  // requiredForReadiness: true when skills.browser.playwright = true
+}
+// Other Class D candidates: Blender binary (spatial_and_3d.blender),
+//   ComfyUI model weights (not Nix-managed — operator-supplied volume mount)
+```
 
 ## Design Notes
 

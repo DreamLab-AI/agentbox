@@ -1,8 +1,15 @@
 # PRD-002: Immutable runtime bootstrap
 
-**Status:** Draft v1
+**Status:** Draft v2
 **Date:** 2026-04-24
 **Related:** PRD-001 (Capabilities and adapters), ADR-006 (Immutable runtime bootstrap), DDD-001 (Immutable bootstrap domain)
+
+### Changelog
+
+| Version | Date | Summary |
+|---|---|---|
+| Draft v1 | 2026-04-24 | Initial draft — immutable bootstrap contract, four-phase rollout |
+| Draft v2 | 2026-04-24 | R1 packaging audit integrated: `comfyui/mcp-server` added to Phase 1 with native-gyp note; effort totals corrected to ~13d+2d CI; `skills/host-webserver-debug/mcp-server` and `skills/web-summary/mcp-server` identified as unscoped candidates (noted as follow-up); Renovate hash-management step made explicit; cross-references to ADR-006 packaging table and DDD-001 invariants tightened |
 
 > **Scope.** This document specifies the product requirements for item `1`: removing mutable dependency installation from container startup so agentbox boots as an immutable, pre-packaged runtime rather than a best-effort VM-like environment.
 
@@ -99,10 +106,19 @@ Those events must be visible through logs and readiness state.
 ## 6. Acceptance criteria
 
 1. `config/entrypoint-unified.sh` contains no package-manager install or dependency download steps.
+   **Test:** `RC-002-03` (entrypoint linter) — grep scan of `config/entrypoint-unified.sh` for `npm install`, `pnpm`, `pip install`, `playwright install`, `npm install -g`, and `npx.*install`; zero matches required.
+
 2. A cold boot with egress blocked reaches readiness for a valid standalone manifest.
+   **Test:** `RC-002-01` (no-network boot) — container started with `--network none`; asserts `GET /ready` returns HTTP 200 within 60 s.
+
 3. If an enabled service artifact is missing, startup fails deterministically with a specific error.
+   **Test:** `RC-002-05` (missing-artifact fatal) — entrypoint wrapper unlinks one required binary before supervisor init; asserts supervisord exits non-zero and stderr matches `FATAL:.*missing` within 30 s.
+
 4. The application tree under `/opt/agentbox` remains immutable at runtime.
+   **Test:** `RC-002-04` (read-only app tree) — container started with `/opt/agentbox` bind-mounted read-only; asserts boot reaches readiness and no write attempt inside `/opt/agentbox` is logged.
+
 5. Feature-gated services can be started without creating `node_modules` inside the container filesystem at boot.
+   **Test:** `RC-002-02` (artifact probes) — for each binary in the feature matrix (playwright, codex, gemini-cli, claude-code, ruflo, agentic-qe, code-server, nostr-bridge), assert binary present in PATH and `--version` or `--help` exits 0; no `node_modules` directory created under `/opt/agentbox` during probe phase.
 
 ## 7. Success metrics
 
@@ -123,8 +139,27 @@ Those events must be visible through logs and readiness state.
 
 ## 9. Rollout
 
-1. Remove Stage B package installation from startup.
-2. Package currently boot-installed dependencies into image layers or explicit runtime closures.
-3. Add artifact validation for feature-gated services.
-4. Convert readiness to depend on successful immutable bootstrap completion.
+**Phase 1 — Local service packages (6 services, ~5d)**
+
+1. Add `buildNpmPackage` derivations in `flake.nix` for the six local services: `management-api`, `mcp` (nostr-bridge), `skills/openai-codex/mcp-server`, `skills/lazy-fetch/mcp-server`, `skills/playwright/mcp-server`, and `skills/comfyui/mcp-server`. Each derivation sets `src = ./<service>`, `npmDepsHash = "<prefetched-hash>"`, and `postInstall` copies the built tree into `$out/opt/agentbox/<service>`. The `lazy-fetch` derivation additionally runs `tsc` in `buildPhase` before packaging `dist/`. The `comfyui/mcp-server` derivation adds `nativeBuildInputs = [pkgs.python3 pkgs.nodeGyp]` because the `sharp` dependency has native bindings that require a gyp rebuild; gate behind `skills.media.comfyui_builtin`. Note: `skills/host-webserver-debug/mcp-server` and `skills/web-summary/mcp-server` have package-lock files and are packaging candidates; scoping to Phase 1 or later is a follow-up decision.
+2. Remove the five `_install_node_deps` calls from Phase 6 of `config/entrypoint-unified.sh`. Replace with a probe loop: for each expected `node_modules` path, `test -d "$path" || { echo "FATAL: missing closure $path"; exit 1; }`.
+3. Add `checkPhase` to each derivation: `node <entrypoint> --version` or `node -e "require('./<main>')"` — confirms the closure loads without import errors.
+4. Update `appRoot` in `flake.nix` to copy each derivation's output rather than the raw source directory, so the Nix-built `node_modules` are baked into the image layer.
+
+**Phase 2 — Global CLI toolchains (9 packages, ~9d)**
+
+5. Add `buildNpmPackage` derivations for the nine global CLIs currently installed in Phase 7: `ruvector`, `@claude-flow/cli`, `ruflo`, `agentic-qe`, `nagual-qe`, `codebase-memory-mcp`, `agent-browser`, `playwright` (CLI wrapper only — browsers handled separately), `@mermaid-js/mermaid-cli`. Pin each to the same version range currently used at runtime. Add each derivation to `allPackages` behind its existing `lib.optionals` feature gate, mirroring the `codexPackages` pattern already used for the Codex binary.
+6. Replace all nine `npm install -g` lines in Phase 7 of `config/entrypoint-unified.sh` with a single comment block explaining that these CLIs are now pre-packaged. Phase 7 becomes a no-op; remove it or reduce it to the artifact probe for each enabled CLI (`command -v ruflo || { echo "FATAL: ruflo not in PATH"; exit 1; }`).
+7. For `playwright` browsers: the `flake.nix` already includes `pkgs.playwright-driver` in `browserPackages`. Set `PLAYWRIGHT_BROWSERS_PATH=${pkgs.playwright-driver.browsers}` in `imageEnv` when `browserCfg.playwright` is true. Remove the `npx playwright install chromium` call from Phase 7.
+8. For `@mermaid-js/mermaid-cli` (depends on Chromium via Puppeteer): set `PUPPETEER_SKIP_DOWNLOAD=1` and `PUPPETEER_EXECUTABLE_PATH=${pkgs.chromium}/bin/chromium` in the derivation's build environment; add `pkgs.chromium` to `browserPackages` unconditionally when mermaid is enabled.
+
+**Phase 3 — Hash management and CI (1d)**
+
+9. Add a Renovate `customManagers` entry in `.github/renovate.json` (or create it) with `fileMatch = ["flake\\.nix"]`, `matchStrings` targeting each `npmDepsHash = "..."` line, and `datasourceTemplate = "npm"`. This keeps each hash in sync with `package-lock.json` bumps without manual `nix hash` runs.
+10. Add a `nix flake check` step to the CI pipeline that builds all derivations and runs their `checkPhase`. Gate image build on this step passing.
+
+**Phase 4 — Cleanup and acceptance (1d)**
+
+11. Delete `STAGE_B_MODE` and the Phase 6/7 function bodies from `config/entrypoint-unified.sh` once all probe replacements are in place. Stage B becomes purely: validate probes, publish `profile.d` env hints, emit `BootstrapCompleted` event.
+12. Update `docs/guides/quick-start.md` and `README.md` to remove the note about first-boot network requirement. Add a build-time note: "Run `nix build .#runtime` to produce a fully self-contained image; no network access is required at container start."
 

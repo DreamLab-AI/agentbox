@@ -72,6 +72,7 @@ Agentbox is a Nix-declarative container runtime for hosting software agents (Cla
 | Zellij layout | [`../config/zellij/layouts/agentbox.kdl`](../config/zellij/layouts/agentbox.kdl) — 11 tabs |
 | Dev container | [`../.devcontainer/README.md`](../.devcontainer/README.md) |
 | Image registry | `ghcr.io/dreamlab-ai/agentbox:latest` — Linux multi-arch (amd64 + arm64); see [guides/consuming-the-image.md](guides/consuming-the-image.md) |
+| Runtime contract tests | [`tests/runtime-contract/`](../tests/runtime-contract/README.md) — 10 tests (RC-002-01…05, RC-003-06…10) proving PRD-002 and PRD-003 acceptance criteria; run with `bash tests/runtime-contract/RC-*.sh` |
 
 ## Mental model
 
