@@ -201,8 +201,17 @@ for (const { label, makeAdapter, isReal } of IMPLS) {
     }
 
     // Pending (require production env or ONNX pipeline)
-    it.todo('store (with embedding) p95 latency is under 500 ms at 10 req/s');
-    it.todo('search p95 latency is under 250 ms at 50 req/s');
-    it.todo('search throws a typed EmbeddingError when the embedding model is unavailable');
+    // Unblock latency todos: k6 against a live embedded-ruvector instance with
+    // the ONNX model loaded; test on hardware with ONNX runtime available.
+    // Latency is dominated by the MiniLM-L6-v2 inference pass (~200 ms cold,
+    // ~50 ms warm) and cannot be measured fairly in CI on shared runners.
+    it.todo('store (with embedding) p95 latency is under 500 ms at 10 req/s — needs k6 load harness + hardware with ONNX runtime (MiniLM-L6-v2 ~200 ms cold); CI shared runners are too variable');
+    it.todo('search p95 latency is under 250 ms at 50 req/s — needs k6 load harness + ONNX runtime; same constraint as store latency');
+    // Unblock EmbeddingError: inject a broken ONNX pipeline (e.g. corrupt model
+    // weights or a mock that throws) into EmbeddedRuvectorMemoryAdapter and assert
+    // the adapter wraps the error as EmbeddingError before propagating.
+    // Blocked on: EmbeddedRuvectorMemoryAdapter exposing an injectable model path
+    // or model-loader function so tests can substitute a broken ONNX session.
+    it.todo('search throws a typed EmbeddingError when the embedding model is unavailable — blocked on EmbeddedRuvectorMemoryAdapter accepting an injectable ONNX model loader (broken model mock)');
   });
 }

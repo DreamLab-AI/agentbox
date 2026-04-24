@@ -1,0 +1,30 @@
+# Minimal valid manifest — only required sections, all defaults
+[core]
+orchestration = "ruflo-v3"
+vector_db = "ruvector-embedded"
+
+[federation]
+mode = "standalone"
+
+[adapters]
+beads        = "local-sqlite"
+pods         = "local-jss"
+memory       = "embedded-ruvector"
+events       = "local-jsonl"
+orchestrator = "local-process-manager"
+
+[gpu]
+backend = "none"
+
+[desktop]
+enabled = false
+
+[sovereign_mesh]
+enabled = true
+
+[observability]
+metrics_port = 9091
+log_level    = "info"
+
+[toolchains]
+claude = true

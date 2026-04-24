@@ -159,7 +159,14 @@ for (const { label, makeAdapter, isReal } of IMPLS) {
     }
 
     // Pending (require production env)
-    it.todo('spawnAgent p95 latency is under 2 s at 2 req/s');
-    it.todo('streamEvent delivers each event within 20 ms p95');
+    // Unblock spawnAgent latency: measure against local-process-manager spawning
+    // real child processes on dedicated hardware; the 2 s budget includes OS
+    // process creation time which is non-deterministic on shared CI VMs under load.
+    it.todo('spawnAgent p95 latency is under 2 s at 2 req/s — needs k6 load harness on dedicated hardware; OS fork latency on shared CI VMs is non-deterministic under concurrent load');
+    // Unblock streamEvent SLO: requires in-process event emission with a
+    // high-resolution timer and a long-running agent fixture; the 20 ms p95 budget
+    // is meaningful only when the agent is actively emitting — a synthetic echo
+    // agent is needed but its setup would exceed 30 s on cold CI runners.
+    it.todo('streamEvent delivers each event within 20 ms p95 — needs a long-running synthetic echo agent and high-resolution timing harness; cannot satisfy the 20 ms p95 SLO on cold CI runners without a dedicated agent fixture');
   });
 }

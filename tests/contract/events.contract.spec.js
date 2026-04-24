@@ -163,6 +163,10 @@ for (const { label, makeAdapter, isReal } of IMPLS) {
     }
 
     // Pending (require production env)
-    it.todo('dispatch p95 latency is under 50 ms at 500 req/s');
+    // Unblock: k6 against a running local-jsonl adapter at 500 VU; the 50 ms
+    // budget includes fs.appendFileSync which is synchronous and sensitive to
+    // underlying storage I/O — shared CI runners on network-backed storage will
+    // not meet this SLO deterministically.
+    it.todo('dispatch p95 latency is under 50 ms at 500 req/s — needs k6 load harness on bare-metal or SSD-backed host; fs.appendFileSync on network-attached CI storage exceeds SLO non-deterministically');
   });
 }

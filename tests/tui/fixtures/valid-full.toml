@@ -1,0 +1,131 @@
+# Full-featured valid manifest — all sections populated, desktop enabled
+[core]
+orchestration = "ruflo-v3"
+vector_db = "ruvector-embedded"
+
+[federation]
+mode = "standalone"
+external_url = ""
+
+[adapters]
+beads        = "local-sqlite"
+pods         = "local-jss"
+memory       = "embedded-ruvector"
+events       = "local-jsonl"
+orchestrator = "local-process-manager"
+
+[gpu]
+backend = "none"
+
+[desktop]
+enabled    = true
+stack      = "hyprland-wayland"
+resolution = "1920x1080"
+
+[sovereign_mesh]
+enabled              = true
+solid_pod            = true
+nostr_bridge         = true
+https_bridge         = true
+publish_agent_events = true
+telegram_mirror      = false
+jss_rust_backend     = false
+
+[observability]
+metrics_port  = 9091
+log_level     = "debug"
+
+[toolchains]
+claude          = true
+claude_code     = true
+ruflo           = true
+claude_flow     = true
+agentic_qe      = true
+nagual_qe       = true
+gemini_cli      = false
+code_server     = false
+codebase_memory = true
+rust            = true
+cuda            = false
+
+[skills.browser]
+agent_browser = true
+playwright    = true
+qe_browser    = true
+
+[skills.media]
+ffmpeg          = true
+imagemagick     = true
+comfyui_builtin = false
+
+[skills.spatial_and_3d]
+blender            = false
+qgis               = false
+gaussian_splatting = false
+
+[skills.data_science]
+pytorch = false
+jupyter = false
+
+[skills.docs]
+latex          = true
+mermaid        = true
+report_builder = true
+
+[skills.ontology]
+enabled = false
+
+[integrations.comfyui_external]
+enabled = false
+url    = "http://comfyui:8188"
+ws_url = "ws://comfyui:8188/ws"
+
+[providers.anthropic]
+enabled  = false
+env_var  = "ANTHROPIC_API_KEY"
+optional_env_vars = []
+
+[providers.openai]
+enabled  = false
+env_var  = "OPENAI_API_KEY"
+optional_env_vars = ["OPENAI_BASE_URL"]
+
+[providers.gemini]
+enabled  = false
+env_var  = "GOOGLE_GEMINI_API_KEY"
+optional_env_vars = []
+
+[providers.deepseek]
+enabled  = false
+env_var  = "DEEPSEEK_API_KEY"
+optional_env_vars = ["DEEPSEEK_BASE_URL"]
+
+[providers.perplexity]
+enabled  = false
+env_var  = "PERPLEXITY_API_KEY"
+optional_env_vars = []
+
+[providers.openrouter]
+enabled  = false
+env_var  = "OPENROUTER_API_KEY"
+optional_env_vars = []
+
+[providers.context7]
+enabled  = false
+env_var  = "CONTEXT7_API_KEY"
+optional_env_vars = []
+
+[providers.brave]
+enabled  = false
+env_var  = "BRAVE_API_KEY"
+optional_env_vars = []
+
+[providers.github]
+enabled  = false
+env_var  = "GITHUB_TOKEN"
+optional_env_vars = []
+
+[providers.zai]
+enabled  = false
+env_var  = "ZAI_API_KEY"
+optional_env_vars = ["ZAI_ANTHROPIC_API_KEY", "ZAI_URL"]

@@ -128,3 +128,4 @@ skills/**/dist/
 skills/**/__pycache__/
 skills/**/.DS_Store
 skills/**/backups/
+portfinder-*.tgz

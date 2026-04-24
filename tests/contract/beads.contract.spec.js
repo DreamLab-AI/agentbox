@@ -227,9 +227,11 @@ for (const { label, makeAdapter, isReal } of IMPLS) {
       });
     }
 
-    // --- Pending (require production env or network) ---
-
-    it.todo('createEpic p95 latency is under 200 ms at 50 req/s');
-    it.todo('getReady p95 latency is under 100 ms at 200 req/s');
+    // --- Pending (require production load harness) ---
+    // Unblock: set up k6/autocannon with a live local-sqlite instance and 50
+    // virtual users; measure p95 over a 60-second window.  These cannot run in
+    // CI without a dedicated load-test job and timing-stable hardware.
+    it.todo('createEpic p95 latency is under 200 ms at 50 req/s — needs load-test harness (k6/autocannon), stable timing environment, 60-second warm-up window');
+    it.todo('getReady p95 latency is under 100 ms at 200 req/s — needs load-test harness (k6/autocannon), stable timing environment, 60-second warm-up window');
   });
 }
