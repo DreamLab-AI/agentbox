@@ -102,7 +102,6 @@ mcp-logs/
 *.hdr
 *.exr
 *.gif
-*.jpg
 *.jpeg
 *.png
 
