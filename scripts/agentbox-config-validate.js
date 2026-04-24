@@ -75,6 +75,12 @@ const validate = ajv.compile(schema);
 const schemaValid = validate(manifest);
 
 let errors = [];
+// Advisory warnings — emitted to stderr but DO NOT cause a non-zero exit.
+// Used for direction signals (W034 deprecation, W030 open-policy nudge) that
+// document operator intent without blocking validation. W021 stays in errors
+// because the hardened baseline may be silently broken without the
+// corresponding security exception delta.
+let warnings = [];
 
 if (!schemaValid) {
   for (const err of validate.errors) {
@@ -371,9 +377,9 @@ if (sovereignMesh.jss_rust_backend === true) {
   }
 
   if (pods === 'local-jss') {
-    errors.push({
+    warnings.push({
       code: 'W034',
-      message: 'W034: adapters.pods="local-jss" — deprecated. The Python scripts/solid-pod-server.py stub does not implement LDP containers, WAC enforcement, PATCH, or full Schnorr NIP-98. Switch to local-solid-rs (first-class Rust server, ADR-010).'
+      message: 'W034: adapters.pods="local-jss" — deprecated. The Python scripts/solid-pod-server.py stub does not implement LDP containers, WAC enforcement, PATCH, or full Schnorr NIP-98. Switch to local-solid-rs (first-class Rust server, ADR-010). The stack still boots normally.'
     });
   }
 }
@@ -442,7 +448,7 @@ if (sovereignMesh.jss_rust_backend === true) {
     }
 
     if (relay.ingress_policy === 'open') {
-      errors.push({
+      warnings.push({
         code: 'W030',
         message: 'W030: sovereign_mesh.relay.ingress_policy="open" — relay will accept writes from any client; prefer "allowlist" or "signed-only"'
       });
@@ -609,8 +615,16 @@ for (const exceptionName of KNOWN_EXCEPTION_FEATURE_GATES) {
 // E017 and E018 are handled in the providers loop above.
 
 // ─── output ───────────────────────────────────────────────────────────────────
+// Warnings (W030, W034) are always printed to stderr — they are direction
+// signals. They do not affect the exit code. W021 remains in `errors`
+// because the baseline is structurally unsafe without the exception.
+for (const { code, message } of warnings) {
+  emit(code, message);
+}
+
 if (errors.length === 0) {
-  process.stdout.write(`agentbox manifest valid: ${manifestPath}\n`);
+  const suffix = warnings.length > 0 ? ` (${warnings.length} advisory warning${warnings.length === 1 ? '' : 's'})` : '';
+  process.stdout.write(`agentbox manifest valid: ${manifestPath}${suffix}\n`);
   process.exit(0);
 } else {
   for (const { code, message } of errors) {

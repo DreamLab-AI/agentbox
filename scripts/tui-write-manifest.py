@@ -51,7 +51,7 @@ lines.append("")
 lines += [
     "[adapters]",
     f'beads        = {q("adapters.beads",        "local-sqlite")}',
-    f'pods         = {q("adapters.pods",         "local-solid-rs")}',
+    f'pods         = {q("adapters.pods",         "local-jss")}',
     f'memory       = {q("adapters.memory",       "embedded-ruvector")}',
     f'events       = {q("adapters.events",       "local-jsonl")}',
     f'orchestrator = {q("adapters.orchestrator", "local-process-manager")}',
@@ -237,9 +237,10 @@ else:
         "",
     ]
 
-# solid-pod-rs: always emit when pods=local-solid-rs so operator-edited
-# defaults survive wizard round-trips (ADR-010).
-if s.get("adapters.pods", "local-solid-rs") == "local-solid-rs":
+# solid-pod-rs: always emit so operator-edited tunings survive wizard
+# round-trips regardless of the current pods setting (ADR-010). Operators
+# flipping pods = "local-solid-rs" keep their port/storage/backend choices.
+if True:
     lines += [
         "[integrations.solid_pod_rs]",
         f'port                  = {i("integrations.solid_pod_rs.port", 8484)}',

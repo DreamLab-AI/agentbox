@@ -87,16 +87,20 @@ Linking `solid-pod-rs` as a Rust crate inside `management-api` or any other agen
 
 ## Decision
 
-`local-solid-rs` is **the first-class default** implementation for the `pods` adapter slot. The `[adapters]` block in the shipped `agentbox.toml` declares:
+`local-solid-rs` is **the first-class pod implementation**. It is fully supported: schema, validator, adapter, flake derivation, contract-test matrix, and documentation all treat it as the preferred path. Agentbox's pod is a Rust Solid Protocol 0.11 server when this adapter is selected.
 
 ```toml
 [adapters]
-pods = "local-solid-rs"   # first-class default | local-jss (legacy) | external | off
+pods = "local-solid-rs"   # first-class | local-jss (shipped default) | external | off
 ```
 
-`solid-pod-rs-server` is built from `github:DreamLab-AI/solid-pod-rs` (pinned `v0.4.0-alpha.1`) through [`lib/solid-pod-rs.nix`](../../../lib/solid-pod-rs.nix), installed into the image when `adapters.pods = "local-solid-rs"`. The `[program:solid-pod]` supervisor block dispatches between two command lines: the Rust binary for `local-solid-rs`, the Python stub for `local-jss`. `external` talks HTTP to a host-provided Solid server; `off` returns `AdapterDisabled`.
+The shipped `agentbox.toml` currently defaults `pods = "local-jss"` for one reason only: `nix build .#runtime` on a fresh clone already requires operators to prefetch npm dependency hashes for `management-api` and the other `buildNpmPackage` derivations (see `lib/npm-services.nix` fakeHash pattern). Making `local-solid-rs` the shipped default would add another prefetch step (the solid-pod-rs `srcHash` + `cargoHash` in `lib/solid-pod-rs.nix`) to the first-build burden. Keeping the shipped default at `local-jss` preserves the existing prefetch surface without regressing the fresh-clone workflow.
 
-The Python stub (`scripts/solid-pod-server.py`) is retained — not removed — so operators with existing deployments using `pods = "local-jss"` are unaffected. The validator emits warning `W034` whenever `local-jss` is selected, directing operators to switch.
+Flipping the adapter is a one-line manifest edit plus an uncomment of `[security.exceptions.solid-pod-rs]`. Validator warning `W034` fires on `local-jss` as a direction signal — **advisory**, does not block validation (exit 0). The ADR documentation, the [`docs/user/solid-pod.md`](../../user/solid-pod.md) guide, and the [`docs/user/sovereign-stack.md`](../../user/sovereign-stack.md) end-to-end walkthrough all treat `local-solid-rs` as the preferred target.
+
+`solid-pod-rs-server` is built from `github:DreamLab-AI/solid-pod-rs` (pinned `main@7f8bc89`, Sprint 9) through [`lib/solid-pod-rs.nix`](../../../lib/solid-pod-rs.nix) when `adapters.pods = "local-solid-rs"`. The `[program:solid-pod]` supervisor block dispatches between two command lines: the Rust binary for `local-solid-rs`, the Python stub for `local-jss`. `external` talks HTTP to a host-provided Solid server; `off` returns `AdapterDisabled`.
+
+The Python stub (`scripts/solid-pod-server.py`) is retained — not removed — for the shipped-default path and for operators who prefer not to prefetch. The default will flip to `local-solid-rs` when either (a) upstream publishes `solid-pod-rs` to nixpkgs (mirroring the `nostr-rs-relay` story), or (b) the agentbox release pipeline precomputes the hashes and ships them in `flake.lock`.
 
 ### Configuration surface
 
@@ -173,27 +177,29 @@ The Nostr bridge currently writes directly to the filesystem under `pods/<npub>/
 
 **Decision:** keep direct filesystem writes as canonical (invariant I01 / I08 preserved via `rename(2)` atomicity). Emit a **side-channel WebSocket notification** to solid-pod-rs's Solid Notifications 0.2 channel so external subscribers still see inbox events. This preserves performance on the hot path and satisfies the observability promise.
 
-### Migration
+### Migration (one-line flip)
 
 Both implementations store under `/var/lib/solid`. `agentbox.sh backup` already captures that tree; backup/restore survives the swap without changes. For in-place migration:
 
-```sh
-# 1. Edit agentbox.toml
+```toml
+# agentbox.toml
 [adapters]
 pods = "local-solid-rs"
 
-# 2. Uncomment the solid-pod-rs security exception
 [security.exceptions.solid-pod-rs]
 writable_volumes = ["solid-data:/var/lib/solid"]
 reason = "solid-pod-rs fs-backend requires atomic-rename writable storage under /var/lib/solid"
-
-# 3. Rebuild + restart
-./agentbox.sh rebuild
 ```
+
+Then `./agentbox.sh rebuild`. On first build Nix will fail with a hash-mismatch error that prints the exact `nix-prefetch-url` and `nix hash to-sri` commands to run — identical pattern to the existing `buildNpmPackage` derivations. Paste the returned hashes into `lib/solid-pod-rs.nix` (`srcHash` and `cargoHash`) and rebuild.
 
 No data migration is required; `.meta` and `.acl` sidecars are written fresh by solid-pod-rs on first write. Legacy resources without sidecars are served with the default ACL (owner-only access).
 
-Operators who require the Python stub can keep `pods = "local-jss"`. Validator warning `W034` will fire on every run as a direction signal, but the stack boots and runs normally.
+### Validator semantics
+
+- **W034** is advisory. The validator prints it to stderr but exits 0. Operators on `local-jss` can rebuild, boot, and run indefinitely — the warning is a direction signal, not a failure.
+- **W030** (Nostr relay `open` ingress) is also advisory.
+- **W021** (missing security exception block for an active feature) remains a blocking error because the hardened baseline may be silently broken without the exception delta.
 
 ### Service-level objectives
 

@@ -47,14 +47,39 @@ closes that gap.** It ships the full Solid 0.11 surface the existing
 | Licence | AGPL-3.0-only (binary aggregation, see licensing note) | — |
 | Binary size | ≤40 MB full features, ≤200 KB minimal | — (Python stdlib) |
 
+## Shipped default and the one-line flip
+
+The shipped `agentbox.toml` sets `pods = "local-jss"`. This is not a
+statement about preference — it is a fresh-clone buildability choice. The
+existing `buildNpmPackage` services (`management-api`, MCP servers, npm
+CLIs) already require operators to prefetch dependency hashes on first
+build. Shipping `local-solid-rs` as the default adds another Rust
+derivation's `srcHash` + `cargoHash` to that burden.
+
+After your first build — or at any time you are ready to prefetch the
+Rust derivation — flip the manifest:
+
+```toml
+[adapters]
+pods = "local-solid-rs"
+
+[security.exceptions.solid-pod-rs]
+writable_volumes = ["solid-data:/var/lib/solid"]
+reason = "solid-pod-rs fs-backend requires atomic-rename writable storage"
+```
+
+Rebuild. Nix will print the exact prefetch commands on first failure; the
+pattern matches every other Rust-from-git derivation in the repo. After
+that, `local-solid-rs` is first-class in every dimension.
+
 ## When to skip this
 
 - You have a host-provided Solid server you want agentbox to federate with.
   Set `adapters.pods = "external"` and `federation.mode = "client"`.
 - You have a workload that writes nothing durable. Set `adapters.pods = "off"`.
-- You deliberately want the legacy Python stub behaviour (e.g. for a
-  regression test). Set `adapters.pods = "local-jss"`. The validator will
-  emit **W034** every run as a direction signal.
+- You are on `local-jss` (the shipped default) and have no immediate need
+  to flip. The stack boots normally; validator **W034** fires every run as
+  an advisory direction signal (not a failure — exit 0).
 
 ## Wizard flow
 
