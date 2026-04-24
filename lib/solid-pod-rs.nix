@@ -34,8 +34,18 @@
 { lib, pkgs }:
 
 let
-  version = "0.4.0-alpha.1";
-  rev     = "v${version}";
+  # Version label is "0.4.0-alpha.1+sprint-9" because upstream's tag has not
+  # moved past v0.4.0-alpha.1 but main is 8 commits ahead through Sprint 9
+  # (WAC 2.0 conditions, did:nostr, webhook signing, rate-limit, quota,
+  # operator surface). See lib/solid-pod-rs.nix commit message in agentbox
+  # for the Sprint 5-9 absorption rationale.
+  version = "0.4.0-alpha.1+sprint-9";
+
+  # Pinned to main at Sprint 9 consolidation (docs: 7f8bc89, P0 feat: 2275146).
+  # Operators running their first build will be asked by Nix to resolve the
+  # full 40-char SHA on prefetch — that is the definitive rev we lock at.
+  # When upstream tags v0.5.0 this flips to a tag ref.
+  rev     = "7f8bc89";
 
   # Source fetch. srcHash is lib.fakeHash until an operator runs the prefetch
   # step — matches the repo's prevailing "fail at realisation with an
@@ -54,11 +64,22 @@ let
     hash  = srcHash;
   };
 
+  # Default feature set is broader after Sprint 5-9 absorption:
+  # every feature below ships ON because it materially sharpens the sovereign
+  # data stack's invariants (did-nostr), closes a P0 security gap (rate-limit,
+  # quota, webhook-signing), or preserves upstream config compatibility
+  # (jss-v04, acl-origin).
   defaultFeatures = [
-    "fs-backend"
-    "nip98-schnorr"
-    "security-primitives"
-    "config-loader"
+    "fs-backend"           # atomic-rename filesystem storage (ADR-010 I01/I08)
+    "nip98-schnorr"        # BIP-340 verification matches nostr-bridge.js
+    "security-primitives"  # SSRF guard + dotfile allowlist (P0)
+    "config-loader"        # JSS-compatible config precedence
+    "acl-origin"           # origin enforcement for WAC
+    "webhook-signing"      # RFC 9421 Ed25519 signing of outbound notifications
+    "did-nostr"            # did:nostr resolver — closes the identity loop
+    "rate-limit"           # sliding-window LRU abuse guard
+    "quota"                # per-pod .quota.json sidecar storage limits
+    "jss-v04"              # JavaScriptSolidServer v0.4 config/behaviour compat
   ];
 
 in

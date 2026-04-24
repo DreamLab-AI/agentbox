@@ -4,6 +4,47 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### solid-pod-rs Sprint 5-9 absorption (2026-04-24)
+
+Upstream `main` moved 8 commits past the `v0.4.0-alpha.1` tag with
+substantial sprint work. This change absorbs it.
+
+**Pin:** `lib/solid-pod-rs.nix` rev bumped from `v0.4.0-alpha.1` to `main@7f8bc89` (Sprint 9 consolidation). Version label now reads `0.4.0-alpha.1+sprint-9`. Both `srcHash` and `cargoHash` remain `lib.fakeHash` until operator prefetch — same pattern as `lib/npm-services.nix`.
+
+**New default Cargo features** (all on; each either sharpens a sovereign-stack invariant or closes a P0 hardening gap):
+
+| Feature | Sprint | Effect |
+|---------|--------|--------|
+| `did-nostr` | 6 | `did:nostr:<npub>` resolver — Tier 1 + Tier 3, `alsoKnownAs` cross-verification. Closes the identity loop: one DID across pod WAC, relay NIP-42, and HTTP NIP-98. |
+| WAC 2.0 conditions | 6 | Richer ACL grammar (time windows, origin constraints) for `sovereign-bootstrap.py`-written `.acl.json` files. |
+| `webhook-signing` | 6 | RFC 9421 Ed25519 signing of outbound Solid Notification webhooks. |
+| `rate-limit` | 7 | Sliding-window LRU per-connection ceiling; matches `nostr-rs-relay`'s `messages_per_sec` for coherence. |
+| `quota` | 8 | Per-pod storage ceiling via atomic-write `.quota.json` sidecar; 413 on overflow. |
+| `jss-v04` | 6-9 | JavaScriptSolidServer v0.4 config/behaviour compatibility. |
+
+**New `[integrations.solid_pod_rs]` manifest keys** (all sensibly-defaulted so existing manifests keep working):
+
+```toml
+enable_did_nostr       = true
+enable_webhook_signing = true
+enable_rate_limit      = true
+enable_quota           = true
+jss_v04_compat         = true
+rate_limit_per_sec     = 20
+quota_default_bytes    = 10737418240   # 10 GiB
+```
+
+**New flake env surface** threaded into `[program:solid-pod]`: `JSS_ENABLE_DID_NOSTR`, `JSS_ENABLE_RATE_LIMIT`, `JSS_RATE_LIMIT_PER_SEC`, `JSS_ENABLE_QUOTA`, `JSS_QUOTA_DEFAULT_BYTES`, `JSS_ENABLE_WEBHOOK_SIGNING`, `JSS_V04_COMPAT`.
+
+**Docs updated:**
+- ADR-010 gains a new `## Upstream absorption log (Sprint 5-9)` section with the full delta table and implications analysis.
+- `docs/user/solid-pod.md` capabilities table expanded; new `## did:nostr — the identity loop` subsection with a concrete curl example and WAC policy example.
+- `README.md` sovereign-data-stack row updated to mention WAC 2.0, `did:nostr`, RFC 9421, quota, rate limiter.
+- `docs/developer/sovereign-mesh.md` gains `### did:nostr — the identity loop (Sprint 6 absorption)` and `### Rate limiting and quota coherence` subsections.
+- `docs/user/glossary.md` "Sovereign data stack" term updated; new `did:nostr` term.
+
+**Build cost:** closure size increase <5 MB (reqwest-eventsource, moka LRU, ed25519-dalek pulled in by the new features). First build still requires prefetch for `srcHash` and `cargoHash`.
+
 ### solid-pod-rs promoted to first-class pod server (2026-04-24)
 
 Completes the DreamLab-AI sovereign data stack. The `pods` adapter slot now

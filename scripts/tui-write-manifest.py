@@ -250,8 +250,15 @@ if s.get("adapters.pods", "local-solid-rs") == "local-solid-rs":
         f'enable_oidc           = {b("integrations.solid_pod_rs.enable_oidc")}',
         f'enable_schnorr_verify = {b("integrations.solid_pod_rs.enable_schnorr_verify")}',
         f'enable_dpop_cache     = {b("integrations.solid_pod_rs.enable_dpop_cache")}',
-        f'notifications         = {q("integrations.solid_pod_rs.notifications", "websocket")}',
-        f'log_level             = {q("integrations.solid_pod_rs.log_level", "info")}',
+        f'notifications          = {q("integrations.solid_pod_rs.notifications", "websocket")}',
+        f'log_level              = {q("integrations.solid_pod_rs.log_level", "info")}',
+        f'enable_did_nostr       = {b("integrations.solid_pod_rs.enable_did_nostr")}',
+        f'enable_webhook_signing = {b("integrations.solid_pod_rs.enable_webhook_signing")}',
+        f'enable_rate_limit      = {b("integrations.solid_pod_rs.enable_rate_limit")}',
+        f'enable_quota           = {b("integrations.solid_pod_rs.enable_quota")}',
+        f'jss_v04_compat         = {b("integrations.solid_pod_rs.jss_v04_compat")}',
+        f'rate_limit_per_sec     = {i("integrations.solid_pod_rs.rate_limit_per_sec", 20)}',
+        f'quota_default_bytes    = {i("integrations.solid_pod_rs.quota_default_bytes", 10737418240)}',
         "",
     ]
 

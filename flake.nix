@@ -505,12 +505,19 @@
         # uses fakeHash placeholders that surface prefetch commands at realisation.
         # ---------------------------------------------------------------------------
         solidPodRsLib = import ./lib/solid-pod-rs.nix { inherit lib pkgs; };
+        # Opt-in features layered on top of defaultFeatures in lib/solid-pod-rs.nix.
+        # did-nostr / webhook-signing / rate-limit / quota / jss-v04 are in the
+        # default set; opting out requires a source-level edit of that file.
         solidPodRsExtraFeatures =
           lib.optionals (solidPodRsCfg.enable_oidc or false)       [ "oidc" ]
           ++ lib.optionals (solidPodRsCfg.enable_dpop_cache or false) [ "dpop-replay-cache" ]
           ++ lib.optionals ((solidPodRsCfg.storage or "fs") == "s3") [ "s3-backend" ]
           ++ lib.optionals ((solidPodRsCfg.notifications or "websocket") != "off") [
                "solid-notifications"
+             ]
+          ++ lib.optionals ((solidPodRsCfg.notifications or "websocket") == "webhook"
+                            && (solidPodRsCfg.enable_webhook_signing or true)) [
+               "legacy-notifications"
              ];
         solidPodRsPkg =
           if solidPodRsActive
@@ -849,7 +856,7 @@ ${lib.optionalString ((sovereignCfg.enabled or false) && solidPodRsActive) ''
 [program:solid-pod]
 command=${solidPodRsPkg}/bin/solid-pod-rs-server
 directory=${solidPodRsCfg.storage_root or "/var/lib/solid"}
-environment=HOME="/workspace",JSS_HOST="${solidPodRsCfg.bind or "127.0.0.1"}",JSS_PORT="${toString (solidPodRsCfg.port or 8484)}",JSS_BASE_URL="${solidPodRsCfg.base_url or "http://127.0.0.1:8484"}",JSS_STORAGE_ROOT="${solidPodRsCfg.storage_root or "/var/lib/solid"}",JSS_LOG_LEVEL="${solidPodRsCfg.log_level or "info"}",RUST_LOG="${solidPodRsCfg.log_level or "info"}",AGENTBOX_REQUIRED_FOR_READINESS="true"
+environment=HOME="/workspace",JSS_HOST="${solidPodRsCfg.bind or "127.0.0.1"}",JSS_PORT="${toString (solidPodRsCfg.port or 8484)}",JSS_BASE_URL="${solidPodRsCfg.base_url or "http://127.0.0.1:8484"}",JSS_STORAGE_ROOT="${solidPodRsCfg.storage_root or "/var/lib/solid"}",JSS_LOG_LEVEL="${solidPodRsCfg.log_level or "info"}",RUST_LOG="${solidPodRsCfg.log_level or "info"}",JSS_ENABLE_DID_NOSTR="${boolEnv (solidPodRsCfg.enable_did_nostr or true)}",JSS_ENABLE_RATE_LIMIT="${boolEnv (solidPodRsCfg.enable_rate_limit or true)}",JSS_RATE_LIMIT_PER_SEC="${toString (solidPodRsCfg.rate_limit_per_sec or 20)}",JSS_ENABLE_QUOTA="${boolEnv (solidPodRsCfg.enable_quota or true)}",JSS_QUOTA_DEFAULT_BYTES="${toString (solidPodRsCfg.quota_default_bytes or 10737418240)}",JSS_ENABLE_WEBHOOK_SIGNING="${boolEnv (solidPodRsCfg.enable_webhook_signing or true)}",JSS_V04_COMPAT="${boolEnv (solidPodRsCfg.jss_v04_compat or true)}",AGENTBOX_REQUIRED_FOR_READINESS="true"
 autostart=true
 autorestart=true
 priority=30

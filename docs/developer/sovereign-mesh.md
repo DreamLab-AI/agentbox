@@ -127,6 +127,32 @@ The legacy Python stub at `scripts/solid-pod-server.py` is kept for
 backwards compatibility (`adapters.pods = "local-jss"`). The validator
 emits W034 against it.
 
+### `did:nostr` — the identity loop (Sprint 6 absorption)
+
+Since the Sprint 6 upstream absorption (see ADR-010 upstream-absorption
+log), the pod resolves `did:nostr:<npub>` to a Tier 1 + Tier 3 DID
+document whose `verificationMethod` is the same secp256k1 pubkey the
+relay accepts under NIP-42. The `alsoKnownAs` field cross-references the
+npub's pod profile URI, giving the bridge a single resolvable identity
+surface across every stack layer.
+
+Practical consequence for the bridge: WAC policies written by
+`sovereign-bootstrap.py` can now reference `did:nostr:<npub>` directly
+instead of the hex pubkey. When the bridge persists a verified inbound
+event, the WAC check inside `solid-pod-rs` resolves the agent DID to the
+same key the relay's NIP-42 AUTH accepted — no out-of-band identity
+correlation required.
+
+### Rate limiting and quota coherence
+
+Sprint 7 adds a pod-side sliding-window rate limiter and Sprint 8 adds
+per-pod storage quotas via `.quota.json` sidecar files. Both complement
+the relay's `messages_per_sec` ceiling and `retention_days` cleanup — a
+misbehaving external agent cannot bypass the relay ceiling by hitting
+the pod HTTP surface directly. The bridge inherits both limits
+automatically; no code changes required beyond enabling the features in
+`[integrations.solid_pod_rs]` (both default on).
+
 ## Embedded relay (ADR-009)
 
 When `[sovereign_mesh.relay].enabled = true` the bridge is joined by an

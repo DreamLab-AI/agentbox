@@ -194,10 +194,18 @@ flowchart LR
   [ADR-010](../reference/adr/ADR-010-rust-solid-pod-adoption.md).
 - **Sovereign data stack** — the coherent identity-plus-data substrate every
   agentbox container owns end-to-end: secp256k1 keypair (identity),
-  `solid-pod-rs` (durable storage + WAC), `nostr-rs-relay` (external-agent
-  messaging + pod-inbox bridge), `openai/privacy-filter` (PII governance).
-  Every layer speaks the same npub; no third-party broker. See the
+  `solid-pod-rs` (durable storage + WAC 2.0 + `did:nostr` resolver),
+  `nostr-rs-relay` (external-agent messaging + pod-inbox bridge),
+  `openai/privacy-filter` (PII governance). With Sprint 6's `did:nostr`
+  absorption, every layer references a single canonical identity:
+  `did:nostr:<npub>`. No third-party broker. See the
   [README top section](../../README.md#sovereign-data-stack).
+- **did:nostr** — the DID method (Tier 1 + Tier 3 with `alsoKnownAs`) that
+  maps a Nostr npub to a resolvable DID document. Served by `solid-pod-rs`
+  at `GET /did:nostr:<npub>` after the Sprint 6 upstream absorption
+  ([ADR-010 §Upstream absorption log](../reference/adr/ADR-010-rust-solid-pod-adoption.md#upstream-absorption-log-sprint-5-9)).
+  WAC policies can reference the DID directly; the pod validates against
+  the same key the relay accepted under NIP-42.
 - **Sovereign mesh** — the optional Nostr-based identity and event layer.
   Sovereign because each container owns its own cryptographic keypair.
 - **supervisor / supervisord** — the process manager that starts the

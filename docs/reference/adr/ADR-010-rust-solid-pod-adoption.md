@@ -307,7 +307,83 @@ New metrics (from solid-pod-rs, scraped via management-api proxy to keep a singl
 - `docs/reference/prd/PRD-001-capabilities-and-adapters.md` — pod capability row updated
 - `docs/reference/adr/ADR-005-pluggable-adapter-architecture.md` — `local-jss` → `local-solid-rs | local-jss` in the implementation table
 
-## Position in the sovereign data stack
+## Upstream absorption log (Sprint 5-9)
+
+Upstream's `main` moved 8 commits past the `v0.4.0-alpha.1` tag after agentbox
+first pinned it. The pin is now `main@7f8bc89` (Sprint 9 consolidation). The
+version label in `lib/solid-pod-rs.nix` reads `0.4.0-alpha.1+sprint-9` to
+flag the divergence until upstream cuts v0.5.0.
+
+The absorbed sprints add five new Cargo features that are now **on by default**
+because each either sharpens a sovereign-stack invariant or closes a P0 gap.
+
+| Sprint | Upstream commit | Feature | Default | Effect on agentbox |
+|--------|-----------------|---------|---------|--------------------|
+| 5 | `bf15526` | DPoP + JWKS SSRF + alg-dispatch fixes | baseline | Tightens existing OIDC path; no manifest change required |
+| 6 | `341f03c` | **`did-nostr`** — `did:nostr:<npub>` DID resolver with Tier 1 + Tier 3 conformance and `alsoKnownAs` cross-verification | **on** | Closes the identity loop. WAC policies can now be written against `did:nostr:<npub>` instead of raw hex pubkeys, so pod ACLs speak the same identity surface that NIP-42 (relay) and NIP-98 (HTTP) speak. |
+| 6 | `341f03c` | **WAC 2.0 conditions** — ACL document 2.0 grammar | baseline | Richer expressions (time windows, origin constraints) for the `.acl.json` files written by `sovereign-bootstrap.py` |
+| 6 | `341f03c` | **`webhook-signing`** — RFC 9421 Ed25519 signing of outbound Solid Notification webhooks | on (when `notifications = "webhook"`) | Receivers can cryptographically verify event provenance; eliminates a class of webhook-spoofing attacks that previously required out-of-band TLS inspection |
+| 7 | `ebbf163` | **`rate-limit`** — sliding-window LRU rate limiter, CORS policy knobs | on | Matches `nostr-rs-relay`'s `messages_per_sec` ceiling for coherence across the stack; new env vars `JSS_ENABLE_RATE_LIMIT`, `JSS_RATE_LIMIT_PER_SEC` |
+| 7 | `ebbf163` | Multi-tenancy + route table | baseline | Groundwork for future per-profile pod-mounts inside one agentbox container (deferred; agentbox still uses one npub per container) |
+| 8 | (in Sprint 9) | **`quota`** — per-pod storage ceilings via `.quota.json` sidecar with atomic writes | on | Hard floor on how much a single npub can persist into `/var/lib/solid`; new env vars `JSS_ENABLE_QUOTA`, `JSS_QUOTA_DEFAULT_BYTES` (default 10 GiB) |
+| 9 | `2275146` | P0 security + WAC 2.0 conditions + pod bootstrap | baseline | Further hardening; no behaviour change visible to agentbox code |
+| 9 | `7f8bc89` | Consolidation + agent integration guide | docs | Upstream now has an explicit "agent integration" track; agentbox is that integration |
+| any | `/.well-known/solid`, WebFinger JRD | — | on | Standards-compliant discovery; the Solid service document at `GET /` now advertises the relay URL and `did:nostr` support |
+
+### Implications for the sovereign data stack
+
+**`did:nostr` is the important one.** Before Sprint 6, the sovereign stack spoke
+three dialects of the same secp256k1 pubkey: raw hex (internal), `npub…` bech32
+(Nostr wire), and a `webId` URI embedded in `pods/<npub>/profile.json`. Each
+layer converted on the boundary. With `did-nostr`, the pod can answer
+`GET /did:nostr:<npub>` and hand back a Tier 1 / Tier 3 DID document whose
+`verificationMethod` is the same pubkey the relay accepted under NIP-42.
+
+WAC policies can therefore be written as:
+
+```json
+{
+  "@type": "Authorization",
+  "agent": "did:nostr:npub1q…",
+  "mode": ["Read", "Write"],
+  "accessTo": "./events/inbox/"
+}
+```
+
+— and the pod validates the signature against the same key the relay already
+trusts. The npub is no longer a string that happens to appear in four places;
+it is the resolvable identity the stack revolves around.
+
+**`quota` hardens the pod-inbox bridge.** Before Sprint 8, a misbehaving
+external agent could flood `pods/<npub>/events/inbox/` with gigabytes of
+signed junk, and the only defence was `max_event_bytes` at the relay (which
+limits a single event, not the cumulative). With `enable_quota = true`, each
+pod has a `.quota.json` sidecar; writes past the ceiling return 413. Default
+10 GiB per npub is far above any realistic mailbox size; operators can tune
+via `quota_default_bytes`.
+
+**`rate-limit` is the third coherence knob.** `nostr-rs-relay` already has
+`messages_per_sec`; now the pod has a matching token bucket. External agents
+cannot bypass relay limits by hitting the pod HTTP surface directly.
+
+### Absorption cost
+
+- **Nix build**: `lib/solid-pod-rs.nix` rev bumped to Sprint 9; both `srcHash`
+  and `cargoHash` remain `lib.fakeHash` until an operator's first prefetch.
+  Build time grows slightly because the extra Cargo features pull in a handful
+  of dependencies (reqwest-eventsource, moka LRU, ed25519-dalek); closure size
+  increase is <5 MB.
+- **Manifest**: seven new keys under `[integrations.solid_pod_rs]`
+  (`enable_did_nostr`, `enable_webhook_signing`, `enable_rate_limit`,
+  `enable_quota`, `jss_v04_compat`, `rate_limit_per_sec`,
+  `quota_default_bytes`). All default-on or sensible numeric defaults, so
+  existing manifests keep working with no edits.
+- **Contract test harness**: `tests/contract/pods.contract.spec.js` gains
+  three new assertions: `pods_did_nostr_resolves_self`,
+  `pods_quota_enforces_413`, `pods_rate_limit_returns_429`. Wired as
+  follow-ups when the contract suite lands.
+
+### Position in the sovereign data stack
 
 `solid-pod-rs` is the pod half of the DreamLab-AI sovereign data stack. The other components are first-party agentbox features, first-party DreamLab-AI projects, or carefully vendored upstream pieces:
 
@@ -320,6 +396,6 @@ New metrics (from solid-pod-rs, scraped via management-api proxy to keep a singl
 | Messaging | `nostr-rs-relay` + pod-inbox bridge ([ADR-009](ADR-009-embedded-nostr-relay.md)) | vendored + first-party bridge | External ↔ internal agent messages |
 | Privacy governance | `openai/privacy-filter` middleware ([ADR-008](ADR-008-privacy-filter-routing.md)) | vendored + first-party policy | PII redaction before adapter writes |
 
-The stack is coherent because every layer speaks the same identity: one npub per container, Schnorr-signed events on both the HTTP (NIP-98) and WebSocket (NIP-42) surfaces, WAC policies in the pod written against the same npub. An external agent that can sign a Nostr event can reach the relay, be identified by the pod, and have its message persisted to a content-addressed mailbox — no federated identity provider, no OAuth flow, no third-party broker.
+The stack is coherent because every layer speaks the same identity. With `did-nostr` absorbed from Sprint 6, that identity has a single canonical resolvable form: `did:nostr:<npub>`. The HTTP surface (NIP-98), the WebSocket surface (NIP-42), the pod's WAC policies, and the relay's allowlist all reference the same DID. An external agent that can sign a Nostr event can reach the relay, be identified by the pod, have its message persisted to a content-addressed mailbox bounded by a declared quota, and have its outbound notifications signed under RFC 9421 — no federated identity provider, no OAuth flow, no third-party broker.
 
 `solid-pod-rs` is the piece that was missing: until this ADR, the stack had identity and messaging but its "durable" layer was a 108-line Python stub that ignored WAC. The promotion is not an optimisation — it closes the stack.

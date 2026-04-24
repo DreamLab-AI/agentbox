@@ -28,15 +28,20 @@ closes that gap.** It ships the full Solid 0.11 surface the existing
 
 ## What you get
 
-| Capability | solid-pod-rs | Legacy Python stub |
-|------------|--------------|---------------------|
+| Capability | solid-pod-rs (Sprint 9) | Legacy Python stub |
+|------------|--------------------------|---------------------|
 | LDP resources + Basic Containers | yes | no (returns flat JSON listing) |
-| Web Access Control (WAC 2022-11-08) | deny-by-default + `acl:default` inheritance | no (accepts any authenticated request) |
+| Web Access Control — WAC 2.0 conditions (Sprint 6) | deny-by-default + `acl:default` inheritance + time windows + origin constraints | no (accepts any authenticated request) |
 | PATCH dialects | N3 Patch, SPARQL-Update, JSON Patch | none (returns 405) |
 | Content negotiation | Turtle, JSON-LD, N-Triples | `application/octet-stream` only |
 | NIP-98 HTTP auth | full Schnorr signature verification | header-prefix check only |
+| **`did:nostr` resolver (Sprint 6)** | **Tier 1 + Tier 3 with `alsoKnownAs` cross-verification** | **not supported** |
+| **RFC 9421 webhook signing (Sprint 6)** | **Ed25519 signatures on outbound Solid Notifications** | **not supported** |
+| **Rate limiting (Sprint 7)** | **sliding-window LRU, tunable per-connection ceiling** | **not supported** |
+| **Per-pod storage quota (Sprint 8)** | **`.quota.json` sidecar with atomic writes; 413 on overflow** | **not supported** |
 | Solid-OIDC with DPoP | optional feature gate | not supported |
 | Solid Notifications 0.2 | WebSocket + Webhook channels | not supported |
+| `/.well-known/solid` + WebFinger JRD | standards-compliant discovery | not supported |
 | Storage backends | filesystem (atomic rename), memory (tests), S3/MinIO/R2/B2 | filesystem only, non-atomic writes |
 | Strong ETags | SHA-256; supports If-Match, If-None-Match, range requests | none |
 | Licence | AGPL-3.0-only (binary aggregation, see licensing note) | — |
@@ -72,16 +77,24 @@ default for fresh installs).
 pods = "local-solid-rs"   # first-class default
 
 [integrations.solid_pod_rs]
-port                  = 8484
-bind                  = "127.0.0.1"
-storage               = "fs"                # fs | memory | s3
-storage_root          = "/var/lib/solid"
-base_url              = "http://127.0.0.1:8484"
-enable_oidc           = false
-enable_schnorr_verify = true                # matches nostr-bridge.js verifyNip98
-enable_dpop_cache     = false               # requires enable_oidc=true (E033)
-notifications         = "websocket"         # websocket | webhook | off
-log_level             = "info"
+port                   = 8484
+bind                   = "127.0.0.1"
+storage                = "fs"                # fs | memory | s3
+storage_root           = "/var/lib/solid"
+base_url               = "http://127.0.0.1:8484"
+enable_oidc            = false
+enable_schnorr_verify  = true                # matches nostr-bridge.js verifyNip98
+enable_dpop_cache      = false               # requires enable_oidc=true (E033)
+notifications          = "websocket"         # websocket | webhook | off
+log_level              = "info"
+# Sprint 5-9 features absorbed from upstream main:
+enable_did_nostr       = true                # did:nostr:<npub> → WebID resolver
+enable_webhook_signing = true                # RFC 9421 Ed25519 on outbound webhooks
+enable_rate_limit      = true                # sliding-window LRU
+enable_quota           = true                # per-pod storage ceiling
+jss_v04_compat         = true                # JSS v0.4 config/behaviour compat
+rate_limit_per_sec     = 20                  # per-connection token-bucket ceiling
+quota_default_bytes    = 10737418240         # 10 GiB default quota per pod
 
 [security.exceptions.solid-pod-rs]
 writable_volumes = ["solid-data:/var/lib/solid"]
@@ -117,6 +130,43 @@ Container health is aggregated into `/health/pods` on the management-api:
 ```sh
 curl -s http://localhost:9090/health/pods | jq
 ```
+
+## did:nostr — the identity loop
+
+After the Sprint 6 absorption, the pod serves a Tier 1 / Tier 3 DID document
+at `GET /did:nostr:<your-npub>`:
+
+```sh
+curl -s http://127.0.0.1:8484/did:nostr:npub1q…abcd | jq
+# {
+#   "@context": "https://www.w3.org/ns/did/v1",
+#   "id": "did:nostr:npub1q...abcd",
+#   "verificationMethod": [{
+#     "id": "did:nostr:npub1q...abcd#key-0",
+#     "type": "SchnorrSecp256k1VerificationKey2022",
+#     "controller": "did:nostr:npub1q...abcd",
+#     "publicKeyHex": "<32-byte schnorr pubkey>"
+#   }],
+#   "alsoKnownAs": [
+#     "http://127.0.0.1:8484/pods/npub1q...abcd/profile.json"
+#   ]
+# }
+```
+
+Rather than writing WAC policies against raw hex pubkeys, you can now
+reference the DID:
+
+```json
+{
+  "@type": "Authorization",
+  "agent": "did:nostr:npub1q…abcd",
+  "mode": ["Read", "Write"],
+  "accessTo": "./events/inbox/"
+}
+```
+
+The pod validates signatures against the same key the relay accepted under
+NIP-42. One identity surface across the whole sovereign data stack.
 
 ## The sovereign data stack in one picture
 
