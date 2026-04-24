@@ -122,10 +122,13 @@ in
       installPhase = ''
         runHook preInstall
 
-        # Install production dependencies (no scripts — avoids network calls
-        # and lifecycle hooks that might fail in a sandbox).
-        npm install --production --ignore-scripts --no-fund --no-audit \
-          2>/dev/null || true
+        # Install production dependencies. --ignore-scripts prevents lifecycle
+        # hooks (postinstall etc.) that could fire network calls; --no-fund
+        # and --no-audit suppress unrelated registry queries. The sandbox
+        # already blocks unexpected outbound connections, so any failure
+        # here is a real signal (network unreachable, malformed lockfile,
+        # transitive dep missing) and MUST fail the build — no `|| true`.
+        npm install --production --ignore-scripts --no-fund --no-audit --no-progress 1>&2
 
         # Install package tree under $out/lib/<pname>
         mkdir -p $out/lib/${pname}
@@ -133,13 +136,16 @@ in
 
         # Resolve the entry-point from package.json "bin" field.
         # We use node to parse it so we handle both string and object forms.
+        # JS empty-string literals are written as ''' inside this Nix multi-
+        # line string; Nix's indented-string grammar treats '' as the string
+        # terminator, so '''  →  JS ''.
         entry=$(${pkgs.nodejs_20}/bin/node -e "
           const p = require('./package.json');
           const b = p.bin;
-          if (!b) { process.stdout.write(''); process.exit(0); }
+          if (!b) { process.stdout.write(''''); process.exit(0); }
           if (typeof b === 'string') { process.stdout.write(b); process.exit(0); }
           const key = ${lib.escapeShellArg (builtins.toJSON bin)};
-          process.stdout.write(b[key] || Object.values(b)[0] || '');
+          process.stdout.write(b[key] || Object.values(b)[0] || '''');
         " 2>/dev/null || true)
 
         if [ -z "$entry" ]; then
