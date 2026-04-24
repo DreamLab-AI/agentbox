@@ -322,6 +322,124 @@
           "description": "Requires jss-rust Nix input pinned in flake.lock (E015)."
         }
       }
+    },
+    "security": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Security hardening configuration. The baseline is always applied; exceptions add minimum necessary privilege for specific features.",
+      "properties": {
+        "exceptions": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Feature-keyed privilege exceptions. Each key must correspond to an enabled feature gate (E020).",
+          "properties": {
+            "desktop": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Extra tmpfs mounts for Hyprland/wayvnc. Enabled when desktop.enabled=true.",
+              "properties": {
+                "tmpfs": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Additional tmpfs mount paths beyond the hardened baseline."
+                }
+              }
+            },
+            "gpu-rocm": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "ROCm device access. Enabled when gpu.backend=ollama-rocm.",
+              "properties": {
+                "devices": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Host device paths to expose (e.g. /dev/kfd, /dev/dri)."
+                }
+              }
+            },
+            "gpu-cuda": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "NVIDIA runtime. Enabled when gpu.backend=ollama-cuda or local-cuda.",
+              "properties": {
+                "runtime": {
+                  "type": "string",
+                  "enum": ["nvidia"],
+                  "description": "Docker runtime override."
+                },
+                "device_requests": {
+                  "type": "array",
+                  "description": "NVIDIA device_requests entries.",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "driver": { "type": "string" },
+                      "count": { "type": "integer" },
+                      "capabilities": {
+                        "type": "array",
+                        "items": { "type": "array", "items": { "type": "string" } }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "gaussian-splatting": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "3DGS compute. Inherits gpu-cuda.",
+              "properties": {
+                "inherits": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Exception names whose deltas are merged first."
+                }
+              }
+            },
+            "playwright": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Chromium sandbox capability. Enabled when skills.browser.playwright=true.",
+              "properties": {
+                "cap_add": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Linux capabilities to add (minimum: SYS_ADMIN for Chromium sandbox)."
+                },
+                "reason": {
+                  "type": "string",
+                  "description": "Human-readable justification for the privilege."
+                }
+              }
+            },
+            "code-server": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "code-server config volume. Enabled when toolchains.code_server=true.",
+              "properties": {
+                "writable_volumes": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Named volume mount strings appended to the service volumes list."
+                }
+              }
+            },
+            "telegram-mirror": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "CTM config volume. Enabled when sovereign_mesh.telegram_mirror=true.",
+              "properties": {
+                "writable_volumes": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Named volume mount strings appended to the service volumes list."
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 }

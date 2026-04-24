@@ -1,0 +1,168 @@
+# lib/npm-cli.nix
+#
+# Generic helper for packaging arbitrary npm global CLIs as Nix derivations.
+#
+# Usage:
+#   makeNpmCli {
+#     pkgName   = "ruvector";           # npm package name (may be scoped)
+#     version   = "0.2.23";             # exact semver — no ^ or ~
+#     sha256    = "sha256-…";           # nix hash of the .tgz from npm registry
+#     bin       = "ruvector";           # binary name that ends up in $out/bin
+#     extraEnv  = { CHROME_PATH = …; }; # optional env-var wrapper (default {})
+#   }
+#
+# The derivation:
+#   1. Fetches <pkgName>-<version>.tgz from registry.npmjs.org.
+#   2. Unpacks it, runs `npm install --production --ignore-scripts` to
+#      populate node_modules (so transitive deps are present).
+#   3. Creates a thin bash wrapper at $out/bin/<bin> that sets any extraEnv
+#      vars and exec's the real entry-point via `node`.
+#
+# For packages whose entry-point is a simple shebang script rather than a
+# `node` invocation, the wrapper still works because `exec node <script>`
+# re-interprets the shebang correctly.
+#
+# Hash derivation procedure (run once per version bump):
+#   nix-prefetch-url https://registry.npmjs.org/<pkg>/-/<pkg>-<ver>.tgz
+#   # For scoped packages (@scope/name):
+#   nix-prefetch-url https://registry.npmjs.org/@scope/name/-/name-<ver>.tgz
+# Convert the resulting base32 string to SRI form with:
+#   nix hash to-sri --type sha256 <base32>
+# Or fetch the sri directly:
+#   nix-prefetch-url --type sha256 <url> | xargs nix hash to-sri --type sha256
+#
+# fakeHash sentinel:
+#   When sha256 = lib.fakeHash, the derivation throws at evaluation time with
+#   a message listing the exact prefetch command. This prevents silent misbuilds.
+#
+# Version bump checklist:
+#   1. Update version = "…" in flake.nix (the caller site).
+#   2. Run the nix-prefetch-url command shown in the throw message.
+#   3. Replace lib.fakeHash with the returned SRI hash.
+#   4. Renovate custom-manager in renovate.json will detect the new version
+#      string and open a PR for future bumps.
+
+{ lib, pkgs }:
+
+let
+  # Build the registry URL for a given (possibly scoped) package name + version.
+  # npm's tarball naming convention for scoped packages:
+  #   @scope/name  →  https://registry.npmjs.org/@scope/name/-/name-<ver>.tgz
+  # (the tarball basename is always the un-scoped name)
+  registryUrl = pkgName: version:
+    let
+      isScoped = lib.hasPrefix "@" pkgName;
+      baseName  =
+        if isScoped
+        then lib.last (lib.splitString "/" pkgName)
+        else pkgName;
+      # URL-encode the leading "@" for scoped packages to satisfy fetchurl
+      encodedPkgName =
+        if isScoped
+        then lib.replaceStrings ["@"] ["%40"] pkgName
+        else pkgName;
+    in
+    "https://registry.npmjs.org/${encodedPkgName}/-/${baseName}-${version}.tgz";
+
+in
+
+{
+  makeNpmCli = { pkgName, version, sha256, bin, extraEnv ? {} }:
+    let
+      # Guard against fakeHash placeholder — bail early with actionable message.
+      _fakeHashGuard =
+        if sha256 == "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+           || sha256 == lib.fakeHash
+        then throw ''
+          lib/npm-cli.nix: sha256 for ${pkgName}@${version} is still the placeholder.
+          Run the following to obtain the correct SRI hash:
+            nix-prefetch-url ${registryUrl pkgName version}
+          then convert to SRI form:
+            nix hash to-sri --type sha256 <base32-output>
+          and replace the fakeHash in flake.nix.
+        ''
+        else null;
+
+      tarball = pkgs.fetchurl {
+        url    = registryUrl pkgName version;
+        inherit sha256;
+      };
+
+      # Safely derive a Nix pname from the package name (strip scope prefix).
+      pname = lib.replaceStrings ["@" "/"] ["" "-"]
+                (lib.removePrefix "@" pkgName);
+
+      # Build the env-var preamble for the wrapper script.
+      envPreamble = lib.concatStringsSep "\n"
+        (lib.mapAttrsToList (k: v: "export ${k}=${lib.escapeShellArg v}") extraEnv);
+
+    in
+    pkgs.stdenv.mkDerivation {
+      inherit pname version;
+
+      # Ensure hash guard evaluation happens before any build phase.
+      passthru._fakeHashGuard = _fakeHashGuard;
+
+      src = tarball;
+
+      nativeBuildInputs = [ pkgs.nodejs_20 pkgs.nodePackages.npm ];
+
+      # npm places unpacked content in a "package/" subdirectory inside the tgz.
+      # stdenv's default unpack handles .tgz, so we just need to cd into it.
+      sourceRoot = "package";
+
+      dontBuild = true;
+
+      installPhase = ''
+        runHook preInstall
+
+        # Install production dependencies (no scripts — avoids network calls
+        # and lifecycle hooks that might fail in a sandbox).
+        npm install --production --ignore-scripts --no-fund --no-audit \
+          2>/dev/null || true
+
+        # Install package tree under $out/lib/<pname>
+        mkdir -p $out/lib/${pname}
+        cp -r . $out/lib/${pname}/
+
+        # Resolve the entry-point from package.json "bin" field.
+        # We use node to parse it so we handle both string and object forms.
+        entry=$(${pkgs.nodejs_20}/bin/node -e "
+          const p = require('./package.json');
+          const b = p.bin;
+          if (!b) { process.stdout.write(''); process.exit(0); }
+          if (typeof b === 'string') { process.stdout.write(b); process.exit(0); }
+          const key = ${lib.escapeShellArg (builtins.toJSON bin)};
+          process.stdout.write(b[key] || Object.values(b)[0] || '');
+        " 2>/dev/null || true)
+
+        if [ -z "$entry" ]; then
+          # Fallback: look for bin/<bin> or index.js
+          if [ -f "bin/${bin}" ]; then
+            entry="bin/${bin}"
+          elif [ -f "bin/${bin}.js" ]; then
+            entry="bin/${bin}.js"
+          elif [ -f "cli.js" ]; then
+            entry="cli.js"
+          else
+            entry="index.js"
+          fi
+        fi
+
+        mkdir -p $out/bin
+        cat > $out/bin/${bin} <<WRAPPER
+      #!/bin/sh
+      ${envPreamble}
+      exec ${pkgs.nodejs_20}/bin/node $out/lib/${pname}/$entry "\$@"
+      WRAPPER
+        chmod +x $out/bin/${bin}
+
+        runHook postInstall
+      '';
+
+      meta = {
+        description = "npm CLI: ${pkgName} @ ${version}";
+        mainProgram  = bin;
+      };
+    };
+}

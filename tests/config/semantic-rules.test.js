@@ -61,7 +61,7 @@ function baseValid() {
     observability: { metrics_port: 9091, otlp_endpoint: '', log_level: 'info' },
     skills: {
       browser: { playwright: true, qe_browser: false },
-      media: { ffmpeg: true, imagemagick: true, comfyui_builtin: false, comfyui_external: false },
+      media: { ffmpeg: true, imagemagick: true, comfyui_builtin: false },
       spatial_and_3d: { blender: false, qgis: false, gaussian_splatting: false },
       data_science: { pytorch: false, jupyter: false },
       docs: { latex: true, mermaid: true, report_builder: true },
@@ -75,6 +75,15 @@ function baseValid() {
       https_bridge: false,
       telegram_mirror: false,
       jss_rust_backend: false
+    },
+    // playwright=true requires a security exception block (W021).
+    security: {
+      exceptions: {
+        playwright: {
+          cap_add: ['SYS_ADMIN'],
+          reason: 'chromium sandbox'
+        }
+      }
     }
   };
 }
@@ -460,6 +469,62 @@ describe('E019: [toolchains.cuda]=true requires [gpu.backend]="local-cuda"', () 
     const r = runValidator(m);
     // E008 may fire on non-x86_64 but E019 must not fire
     expect(stderrContains(r, 'E019')).toBe(false);
+  });
+});
+
+// ─── E020 ─────────────────────────────────────────────────────────────────────
+describe('E020: security exception block declared but feature gate not enabled', () => {
+  test('invalid: security.exceptions.desktop declared but desktop.enabled=false', () => {
+    const m = baseValid();
+    m.desktop = { enabled: false, stack: 'x11-openbox', resolution: '1920x1080' };
+    m.security = {
+      exceptions: {
+        desktop: { tmpfs: ['/tmp/.X11-unix', '/run/user/1000'] }
+      }
+    };
+    const r = runValidator(m);
+    expect(r.exitCode).not.toBe(0);
+    expect(stderrContains(r, 'E020')).toBe(true);
+    expect(r.stderr).toMatch(/security\.exceptions\.desktop/);
+  });
+
+  test('valid: security.exceptions.playwright declared and skills.browser.playwright=true', () => {
+    const m = baseValid();
+    m.skills.browser.playwright = true;
+    m.security = {
+      exceptions: {
+        playwright: { cap_add: ['SYS_ADMIN'], reason: 'chromium sandbox' }
+      }
+    };
+    const r = runValidator(m);
+    expect(stderrContains(r, 'E020')).toBe(false);
+  });
+});
+
+// ─── W021 ─────────────────────────────────────────────────────────────────────
+describe('W021: feature enabled but security exception block is missing', () => {
+  test('invalid: desktop.enabled=true but no security.exceptions.desktop block', () => {
+    const m = baseValid();
+    m.desktop = { enabled: true, stack: 'x11-openbox', resolution: '1920x1080' };
+    // No security.exceptions.desktop declared
+    m.security = { exceptions: {} };
+    const r = runValidator(m);
+    expect(stderrContains(r, 'W021')).toBe(true);
+    expect(r.stderr).toMatch(/security\.exceptions\.desktop/);
+  });
+
+  test('valid: desktop.enabled=true and security.exceptions.desktop is declared', () => {
+    const m = baseValid();
+    m.desktop = { enabled: true, stack: 'x11-openbox', resolution: '1920x1080' };
+    // Merge desktop exception alongside the playwright exception already in baseValid.
+    m.security = {
+      exceptions: {
+        playwright: { cap_add: ['SYS_ADMIN'], reason: 'chromium sandbox' },
+        desktop: { tmpfs: ['/tmp/.X11-unix', '/run/user/1000'] }
+      }
+    };
+    const r = runValidator(m);
+    expect(stderrContains(r, 'W021')).toBe(false);
   });
 });
 

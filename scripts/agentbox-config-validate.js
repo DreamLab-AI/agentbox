@@ -348,6 +348,86 @@ if (sovereignMesh.jss_rust_backend === true) {
   }
 }
 
+// ─── E020 / W021: security exception coherence ────────────────────────────────
+//
+// Each [security.exceptions.<name>] key must correspond to an enabled feature
+// gate (E020 error when the feature is OFF but an exception block is present).
+//
+// W021 is the inverse: a feature that has a known exception mapping is enabled
+// but no exception block is declared — the hardened baseline may be inadequate.
+//
+// Authoritative feature→exception mapping table:
+//   exception name        │ feature is active when
+//   ──────────────────────┼────────────────────────────────────────────────────
+//   desktop               │ desktop.enabled === true
+//   gpu-rocm              │ gpu.backend === "ollama-rocm"
+//   gpu-cuda              │ gpu.backend === "ollama-cuda" OR "local-cuda"
+//   gaussian-splatting    │ skills.spatial_and_3d.gaussian_splatting === true
+//   playwright            │ skills.browser.playwright === true
+//   code-server           │ toolchains.code_server === true
+//   telegram-mirror       │ sovereign_mesh.telegram_mirror === true
+
+const toolchains = manifest.toolchains || {};
+
+function isFeatureActive(exceptionName) {
+  switch (exceptionName) {
+    case 'desktop':
+      return desktop.enabled === true;
+    case 'gpu-rocm':
+      return gpu.backend === 'ollama-rocm';
+    case 'gpu-cuda':
+      return gpu.backend === 'ollama-cuda' || gpu.backend === 'local-cuda';
+    case 'gaussian-splatting':
+      return !!(skills.spatial_and_3d && skills.spatial_and_3d.gaussian_splatting === true);
+    case 'playwright':
+      return !!(skills.browser && skills.browser.playwright === true);
+    case 'code-server':
+      return toolchains.code_server === true;
+    case 'telegram-mirror':
+      return sovereignMesh.telegram_mirror === true;
+    default:
+      return false;
+  }
+}
+
+// Known exception names with documented feature gates (for W021).
+const KNOWN_EXCEPTION_FEATURE_GATES = new Set([
+  'desktop',
+  'gpu-rocm',
+  'gpu-cuda',
+  'gaussian-splatting',
+  'playwright',
+  'code-server',
+  'telegram-mirror'
+]);
+
+const security = manifest.security || {};
+const securityExceptions = (security.exceptions && typeof security.exceptions === 'object')
+  ? security.exceptions
+  : {};
+
+// E020: declared exception block but corresponding feature not enabled.
+for (const exceptionName of Object.keys(securityExceptions)) {
+  if (!isFeatureActive(exceptionName)) {
+    errors.push({
+      code: 'E020',
+      message: `E020: [security.exceptions.${exceptionName}] is declared but the corresponding feature gate is not enabled — remove the block or enable the feature`
+    });
+  }
+}
+
+// W021: feature enabled but documented exception block is missing.
+// Emitted as an error (non-zero exit) because the hardened baseline may be
+// silently broken at runtime without the exception delta applied.
+for (const exceptionName of KNOWN_EXCEPTION_FEATURE_GATES) {
+  if (isFeatureActive(exceptionName) && !securityExceptions[exceptionName]) {
+    errors.push({
+      code: 'W021',
+      message: `W021: feature corresponding to [security.exceptions.${exceptionName}] is enabled but no exception block is declared — the hardened baseline may be inadequate for this feature`
+    });
+  }
+}
+
 // E016 is handled by AJV schema validation above (additionalProperties: false at every section).
 // E017 and E018 are handled in the providers loop above.
 

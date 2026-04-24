@@ -106,3 +106,23 @@ codebase_memory = true
 rust = true
 gemini_cli = false
 codex = false      # OpenAI Codex Rust-native CLI (github.com/openai/codex)
+
+[observability]
+metrics_port = 9091
+otlp_endpoint = ""
+log_level = "info"
+
+[security]
+# Feature-specific exceptions to the hardened baseline.
+# Each key must match an enabled feature gate (validator rule E020).
+# Add the exception block when you enable the corresponding feature.
+# Reference table of all known exceptions is in docs/adr/ADR-007.md.
+#
+# Currently enabled feature exceptions (mirrors active feature gates above):
+
+[security.exceptions.playwright]
+# Required because skills.browser.playwright = true
+# Chromium needs user namespace sandbox or SYS_ADMIN cap.
+# Alternative: pass --no-sandbox to Chromium at the cost of defense-in-depth.
+cap_add = ["SYS_ADMIN"]
+reason = "chromium sandbox; SYS_ADMIN is the minimum privilege for Chromium user-ns sandbox inside a container"

@@ -40,7 +40,7 @@ Remote operator commands:
   ${GREEN}restore${NC}          Restore named volumes and config from a tarball
 
 Local lifecycle commands:
-  ${GREEN}up${NC}               Start the Docker stack [--build: nix build + docker load first]
+  ${GREEN}up${NC}               Start the Docker stack [--build: nix build + docker load first] [--registry: use AGENTBOX_IMAGE_REF from env]
   ${GREEN}down${NC}             Stop the Docker stack [--volumes: also remove volumes (confirms)]
   ${GREEN}build${NC}            Build the Nix image [--variant runtime|desktop|full]
   ${GREEN}rebuild${NC}          Full dev-loop cycle: down + build + up --build
@@ -65,6 +65,7 @@ Examples:
   $0 restore ./backups/agentbox-backup-20260101T000000Z.tgz --force
   $0 up                     # Start stack, poll health, print summary
   $0 up --build             # Nix build + docker load, then start
+  $0 up --registry          # Use AGENTBOX_IMAGE_REF from env (must be set; registry image)
   $0 down                   # Stop stack
   $0 down --volumes         # Stop stack and remove volumes (destructive, confirms)
   $0 build --variant full   # Build the full image without loading it
@@ -472,35 +473,88 @@ cmd_restore() {
 # local lifecycle commands
 # ---------------------------------------------------------------------------
 
+READY_URL="http://localhost:9090/ready"
+LIVE_URL="http://localhost:9090/livez"
 HEALTH_URL="http://localhost:9090/health"
 COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.yml"
 
 cmd_up() {
     local do_build=0
+    local do_registry=0
+    local wait_live=0
     while [[ $# -gt 0 ]]; do
         case $1 in
-            --build) do_build=1; shift ;;
-            -h|--help) echo "Usage: $0 up [--build]"; return 0 ;;
+            --build)     do_build=1;    shift ;;
+            --registry)  do_registry=1; shift ;;
+            --wait-live) wait_live=1;   shift ;;
+            -h|--help)  echo "Usage: $0 up [--build | --registry] [--wait-live]"; return 0 ;;
             *) echo -e "${RED}Unknown option: $1${NC}"; exit 1 ;;
         esac
     done
+
+    # Mutual exclusion
+    if [[ "$do_build" -eq 1 && "$do_registry" -eq 1 ]]; then
+        echo -e "${RED}ERROR: --build and --registry are mutually exclusive.${NC}"
+        echo "Use --build to compile a local image, or --registry to use a pre-pulled registry image."
+        exit 1
+    fi
 
     if [[ "$do_build" -eq 1 ]]; then
         echo -e "${CYAN}Building Nix runtime image...${NC}"
         nix build .#runtime
         echo -e "${CYAN}Loading image into Docker...${NC}"
         docker load < result
+        # Unset any pre-existing override so compose uses the default local tag
+        unset AGENTBOX_IMAGE_REF
     fi
+
+    if [[ "$do_registry" -eq 1 ]]; then
+        if [[ -z "${AGENTBOX_IMAGE_REF:-}" ]]; then
+            echo -e "${RED}ERROR: --registry requires AGENTBOX_IMAGE_REF to be set in the environment.${NC}"
+            echo "Example: export AGENTBOX_IMAGE_REF=ghcr.io/dreamlab-ai/agentbox:latest"
+            exit 1
+        fi
+    fi
+
+    # Resolve the image reference that compose will actually use, mirroring the
+    # shell-expansion default in the generated docker-compose.yml.
+    local system_tag
+    system_tag=$(docker version --format '{{.Server.Os}}/{{.Server.Arch}}' 2>/dev/null \
+                 | sed 's|linux/amd64|x86_64-linux|;s|linux/arm64|aarch64-linux|' \
+                 || echo "runtime")
+    local resolved_ref="${AGENTBOX_IMAGE_REF:-agentbox:runtime-${system_tag}}"
+    echo -e "${CYAN}using image: ${resolved_ref}${NC}"
 
     echo -e "${CYAN}Starting Docker stack...${NC}"
     docker compose -f "${COMPOSE_FILE}" up -d
 
-    # Poll health endpoint up to 60s
-    local deadline=$(( $(date +%s) + 60 ))
+    if [[ "$wait_live" -eq 1 ]]; then
+        # Quick liveness-only wait — process alive and event loop responsive
+        local live_deadline=$(( $(date +%s) + 30 ))
+        local live_ok=0
+        echo -e "${CYAN}Waiting for liveness at ${LIVE_URL}...${NC}"
+        while [[ $(date +%s) -lt $live_deadline ]]; do
+            if curl -sf "${LIVE_URL}" >/dev/null 2>&1; then
+                live_ok=1
+                break
+            fi
+            sleep 2
+        done
+        if [[ "$live_ok" -eq 0 ]]; then
+            echo -e "${RED}ERROR: Liveness check timed out after 30s (${LIVE_URL}).${NC}"
+            echo "Check logs with: $0 logs"
+            exit 1
+        fi
+        echo -e "${GREEN}Process is live.${NC}"
+        return 0
+    fi
+
+    # Full readiness wait — up to 120s (bootstrap + adapter connect can take time)
+    local deadline=$(( $(date +%s) + 120 ))
     local ready=0
-    echo -e "${CYAN}Waiting for health endpoint at ${HEALTH_URL}...${NC}"
+    echo -e "${CYAN}Waiting for /ready at ${READY_URL}...${NC}"
     while [[ $(date +%s) -lt $deadline ]]; do
-        if curl -sf "${HEALTH_URL}" >/dev/null 2>&1; then
+        if curl -sf "${READY_URL}" >/dev/null 2>&1; then
             ready=1
             break
         fi
@@ -508,13 +562,13 @@ cmd_up() {
     done
 
     if [[ "$ready" -eq 0 ]]; then
-        echo -e "${RED}ERROR: Health check timed out after 60s (${HEALTH_URL}).${NC}"
+        echo -e "${RED}ERROR: Readiness check timed out after 120s (${READY_URL}).${NC}"
         echo "Check logs with: $0 logs"
         exit 1
     fi
 
     echo ""
-    echo -e "${GREEN}Stack is up.${NC}"
+    echo -e "${GREEN}Stack is up and ready.${NC}"
     echo -e "  ${GREEN}Management API :${NC} http://localhost:9090"
     echo -e "  ${GREEN}Prometheus     :${NC} http://localhost:9091/metrics"
     echo -e "  ${GREEN}Logs           :${NC} $0 logs"
@@ -678,8 +732,8 @@ cmd_health() {
 
         echo -e "${CYAN}Agentbox service health${NC}"
         printf '%s' "$response" | jq -r '
-            .services // {} | to_entries[] |
-            "  \(.key): \(.value.status)"
+            .adapters // {} | to_entries[] |
+            "  adapter/\(.key): \(.value)"
         ' 2>/dev/null | while IFS= read -r line; do
             if printf '%s' "$line" | grep -qE '(degraded|failed)'; then
                 echo -e "${RED}${line}${NC}"
@@ -691,8 +745,29 @@ cmd_health() {
         if [[ -n "$degraded" ]]; then
             echo ""
             echo -e "${RED}Degraded/failed services: ${degraded}${NC}"
-            exit 1
         fi
+
+        # Show observability metrics endpoint from /v1/meta
+        local meta_response metrics_endpoint
+        meta_response=$(curl -sf "http://localhost:9090/v1/meta" 2>/dev/null) || true
+        if [[ -n "$meta_response" ]]; then
+            metrics_endpoint=$(printf '%s' "$meta_response" | jq -r '.observability.metrics_endpoint // empty' 2>/dev/null || true)
+            if [[ -n "$metrics_endpoint" ]]; then
+                echo ""
+                echo -e "${CYAN}Metrics endpoint: ${metrics_endpoint}${NC}"
+                # Print first 5 non-comment lines from the metrics endpoint
+                local metrics_out
+                metrics_out=$(curl -sf "${metrics_endpoint}" 2>/dev/null | grep -v '^#' | head -5 || true)
+                if [[ -n "$metrics_out" ]]; then
+                    echo -e "${YELLOW}Sample metrics (first 5 non-comment lines):${NC}"
+                    while IFS= read -r mline; do
+                        echo "  ${mline}"
+                    done <<< "$metrics_out"
+                fi
+            fi
+        fi
+
+        [[ -n "$degraded" ]] && exit 1
     else
         echo -e "${YELLOW}Note: jq not found; showing raw response.${NC}"
         printf '%s\n' "$response"

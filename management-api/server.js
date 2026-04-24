@@ -4,6 +4,7 @@
  * Provides HTTP endpoints for task management and system monitoring
  */
 
+const fs = require('fs');
 const fastify = require('fastify');
 const cors = require('@fastify/cors');
 const rateLimit = require('@fastify/rate-limit');
@@ -29,6 +30,25 @@ if (!API_KEY) {
   console.error('MANAGEMENT_API_KEY environment variable is required');
   process.exit(1);
 }
+
+// Bootstrap sentinel state — updated asynchronously when the sentinel file appears.
+const BOOTSTRAP_SENTINEL = '/run/agentbox/bootstrap.done';
+const bootstrapState = { completed: false, since: null };
+
+function _checkSentinel() {
+  fs.access(BOOTSTRAP_SENTINEL, fs.constants.F_OK, (err) => {
+    if (!err && !bootstrapState.completed) {
+      bootstrapState.completed = true;
+      bootstrapState.since = new Date().toISOString();
+      logger.info({ sentinel: BOOTSTRAP_SENTINEL }, 'Bootstrap sentinel observed — container ready');
+    }
+  });
+}
+
+// Poll every 2 s for the sentinel (fs.watch is unreliable on some container
+// overlay filesystems; polling is deterministic and cheap).
+_checkSentinel();
+setInterval(_checkSentinel, 2000);
 
 // Initialize Fastify with logger
 const app = fastify({
@@ -88,8 +108,9 @@ const authMiddleware = createAuthMiddleware(API_KEY, {
 });
 
 app.addHook('onRequest', async (request, reply) => {
-  // Skip auth for health check endpoints, meta, and metrics
+  // Skip auth for probe and observability endpoints (public, no key required)
   if (
+    request.url === '/livez' ||
     request.url === '/health' ||
     request.url === '/ready' ||
     request.url === '/metrics' ||
@@ -180,7 +201,119 @@ app.register(require('./routes/agent-events'), {
   metrics
 });
 
-// Health endpoint (public — no auth required)
+// Liveness probe — registered early, no sentinel check, event-loop-alive only.
+// Must respond in <100 ms unconditionally.
+app.get('/livez', {
+  schema: {
+    description: 'Liveness probe — returns 200 as long as the event loop is responsive',
+    tags: ['monitoring'],
+    response: {
+      200: {
+        type: 'object',
+        properties: {
+          live:   { type: 'boolean' },
+          uptime: { type: 'number' }
+        }
+      }
+    }
+  }
+}, async (request, reply) => {
+  return { live: true, uptime: process.uptime() };
+});
+
+// Readiness probe — returns 503 until ALL requirements are satisfied.
+app.get('/ready', {
+  schema: {
+    description: 'Readiness probe — 200 when all requirements met, 503 otherwise',
+    tags: ['monitoring'],
+    response: {
+      200: {
+        type: 'object',
+        properties: {
+          ready:        { type: 'boolean' },
+          since:        { type: 'string' },
+          requirements: { type: 'array', items: { type: 'string' } }
+        }
+      },
+      503: {
+        type: 'object',
+        properties: {
+          ready:   { type: 'boolean' },
+          reason:  { type: 'string' },
+          missing: { type: 'array', items: { type: 'string' } }
+        }
+      }
+    }
+  }
+}, async (request, reply) => {
+  const missing = [];
+
+  // 1. Bootstrap sentinel
+  if (!bootstrapState.completed) {
+    missing.push('bootstrap.done sentinel');
+  }
+
+  // 2. Adapter health — every non-off slot must be healthy
+  let manifest;
+  try {
+    manifest = require('./adapters/manifest-loader').loadManifest();
+  } catch (_) {
+    manifest = {};
+  }
+  const manifestAdapters = (manifest && manifest.adapters) ? manifest.adapters : {};
+  for (const [slot, impl] of Object.entries(manifestAdapters)) {
+    if (impl === 'off') continue;
+    if (adapterHealth[slot] !== 'healthy') {
+      missing.push(`adapter:${slot} not healthy (status=${adapterHealth[slot] || 'unknown'})`);
+    }
+  }
+
+  // 3. Required filesystem paths
+  const requiredPaths = ['/workspace', '/var/lib/ruvector'];
+  if (manifestAdapters.pods === 'local-jss') {
+    requiredPaths.push('/var/lib/solid');
+  }
+  await Promise.all(requiredPaths.map(async (p) => {
+    try {
+      await fs.promises.access(p, fs.constants.F_OK);
+    } catch (_) {
+      missing.push(`path not accessible: ${p}`);
+    }
+  }));
+
+  // 4. Sovereign mesh: if publish_agent_events=true, at least one Nostr relay must be reachable.
+  // Relay reachability is best-effort (TCP connect) to avoid blocking the probe beyond a short
+  // window. We skip the check if the env var is unset (no relays configured).
+  const sovereignCfg = (manifest && manifest.sovereign_mesh) ? manifest.sovereign_mesh : {};
+  if (sovereignCfg.publish_agent_events === true) {
+    const relaysRaw = process.env.NOSTR_RELAYS || '';
+    const relays = relaysRaw.split(',').map(r => r.trim()).filter(Boolean);
+    if (relays.length === 0) {
+      missing.push('sovereign_mesh.publish_agent_events=true but NOSTR_RELAYS is empty');
+    }
+    // Note: TCP reachability check of relay URLs is deferred to a dedicated health worker
+    // to keep /ready response time bounded. Declaration of relay list is sufficient here.
+  }
+
+  if (missing.length > 0) {
+    reply.code(503).send({
+      ready: false,
+      reason: `${missing.length} requirement(s) not met`,
+      missing
+    });
+    return;
+  }
+
+  return {
+    ready: true,
+    since: bootstrapState.since,
+    requirements: ['bootstrap.done', 'adapters:healthy', 'paths:accessible']
+  };
+});
+
+// Health endpoint (public — no auth required).
+// Returns aggregate per-adapter health for human consumption.
+// NOTE: This is NOT the readiness signal — use /ready for orchestrator probes.
 app.get('/health', {
   schema: {
     description: 'Liveness health check',
@@ -199,12 +332,15 @@ app.get('/health', {
     }
   }
 }, async (request, reply) => {
+  const degradedCount = Object.values(adapterHealth).filter(s => s === 'degraded').length;
   return {
-    status: 'ok',
+    status: degradedCount > 0 ? 'degraded' : 'ok',
     uptime: process.uptime(),
     image_hash: process.env.AGENTBOX_IMAGE_HASH || null,
     manifest_checksum: process.env.AGENTBOX_MANIFEST_CHECKSUM || null,
-    adapters: { ...adapterHealth }
+    adapters: { ...adapterHealth },
+    degraded_count: degradedCount,
+    note: 'This endpoint is for human inspection only. Use /ready for orchestrator readiness probes.'
   };
 });
 
@@ -240,12 +376,17 @@ app.get('/v1/meta', {
   for (const slot of SLOTS) {
     adapterImpls[slot] = resolvedAdapters ? resolvedAdapters[slot]._implName : 'unknown';
   }
+  const metricsPort = process.env.AGENTBOX_METRICS_PORT || 9091;
   return {
     image_hash: process.env.AGENTBOX_IMAGE_HASH || null,
     manifest_checksum: process.env.AGENTBOX_MANIFEST_CHECKSUM || null,
     federation_mode: process.env.AGENTBOX_FEDERATION_MODE || null,
     adapter_contract_versions: contractVersions,
-    adapter_impls: adapterImpls
+    adapter_impls: adapterImpls,
+    observability: {
+      metrics_endpoint: `http://0.0.0.0:${metricsPort}/metrics`,
+      otlp_endpoint: process.env.AGENTBOX_OTLP_ENDPOINT || null
+    }
   };
 });
 
@@ -420,6 +561,70 @@ async function start() {
 
     resolvedAdapters = resolveAdapters(manifest);
     app.decorate('adapters', resolvedAdapters);
+
+    // ── SecurityProfileApplied event (PRD-003 §5.4a) ───────────────────────
+    // Emit a structured log describing the resolved security posture so that
+    // operators can verify hardening is in effect at startup time.
+    {
+      const securityCfg = manifest.security || {};
+      const securityExceptions = securityCfg.exceptions || {};
+      const gpuBackend = manifest.gpu ? (manifest.gpu.backend || 'none') : 'none';
+      const desktopEnabled = manifest.desktop ? (manifest.desktop.enabled === true) : false;
+      const browserPlaywright = manifest.skills && manifest.skills.browser
+        ? (manifest.skills.browser.playwright === true) : false;
+      const telegramMirror = manifest.sovereign_mesh
+        ? (manifest.sovereign_mesh.telegram_mirror === true) : false;
+      const codeServer = manifest.toolchains
+        ? (manifest.toolchains.code_server === true) : false;
+      const gaussianSplatting = manifest.skills && manifest.skills.spatial_and_3d
+        ? (manifest.skills.spatial_and_3d.gaussian_splatting === true) : false;
+
+      function isExceptionActive(name) {
+        switch (name) {
+          case 'desktop':            return desktopEnabled;
+          case 'gpu-rocm':           return gpuBackend === 'ollama-rocm';
+          case 'gpu-cuda':           return gpuBackend === 'ollama-cuda' || gpuBackend === 'local-cuda';
+          case 'gaussian-splatting': return gaussianSplatting;
+          case 'playwright':         return browserPlaywright;
+          case 'code-server':        return codeServer;
+          case 'telegram-mirror':    return telegramMirror;
+          default:                   return false;
+        }
+      }
+
+      const exceptionsApplied = Object.entries(securityExceptions)
+        .filter(([name]) => isExceptionActive(name))
+        .map(([feature, delta]) => ({ feature, delta }));
+
+      const baselineTmpfs = ['/tmp', '/run', '/var/run'];
+      const exceptionTmpfs    = exceptionsApplied.flatMap(e => e.delta.tmpfs || []);
+      const exceptionCapAdd   = exceptionsApplied.flatMap(e => e.delta.cap_add || []);
+      const exceptionDevices  = exceptionsApplied.flatMap(e => e.delta.devices || []);
+      const exceptionRuntime  = exceptionsApplied.map(e => e.delta.runtime).filter(Boolean).pop() || null;
+      const exceptionWritableVolumes = exceptionsApplied.flatMap(e => e.delta.writable_volumes || []);
+
+      const effectiveProfile = {
+        user: '1000:1000',
+        readOnlyRootFs: true,
+        capDrop: ['ALL'],
+        capAdd: exceptionCapAdd,
+        tmpfs: [...new Set([...baselineTmpfs, ...exceptionTmpfs])],
+        devices: exceptionDevices,
+        runtime: exceptionRuntime,
+        writableVolumes: [
+          '/workspace', '/var/lib/ruvector', '/var/lib/solid',
+          '/var/lib/agentbox/identities', ...exceptionWritableVolumes
+        ]
+      };
+
+      logger.info({
+        event: 'SecurityProfileApplied',
+        baseline: { user: '1000:1000', readOnlyRootFs: true, capDrop: ['ALL'] },
+        exceptionsApplied,
+        effectiveProfile,
+        timestamp: new Date().toISOString()
+      }, 'Security profile resolved');
+    }
 
     // ── Connect adapters (10 s total timeout) ───────────────────────────
     const connectOps = SLOTS.map(async (slot) => {

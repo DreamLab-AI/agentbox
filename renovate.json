@@ -91,6 +91,86 @@
       ],
       "depNameTemplate": "gitleaks/gitleaks-action",
       "datasourceTemplate": "github-tags"
+    },
+    {
+      "customType": "regex",
+      "description": "Track ruvector npm CLI version pinned in flake.nix (lib/npm-cli.nix).",
+      "fileMatch": ["^flake\\.nix$"],
+      "matchStrings": [
+        "pkgName\\s*=\\s*\"ruvector\";\\s*\\n\\s*version\\s*=\\s*\"(?<currentValue>[0-9.]+)\""
+      ],
+      "depNameTemplate": "ruvector",
+      "datasourceTemplate": "npm"
+    },
+    {
+      "customType": "regex",
+      "description": "Track @claude-flow/cli npm CLI version pinned in flake.nix.",
+      "fileMatch": ["^flake\\.nix$"],
+      "matchStrings": [
+        "pkgName\\s*=\\s*\"@claude-flow/cli\";\\s*\\n\\s*version\\s*=\\s*\"(?<currentValue>[0-9.]+)\""
+      ],
+      "depNameTemplate": "@claude-flow/cli",
+      "datasourceTemplate": "npm"
+    },
+    {
+      "customType": "regex",
+      "description": "Track ruflo npm CLI version pinned in flake.nix.",
+      "fileMatch": ["^flake\\.nix$"],
+      "matchStrings": [
+        "pkgName\\s*=\\s*\"ruflo\";\\s*\\n\\s*version\\s*=\\s*\"(?<currentValue>[0-9.]+)\""
+      ],
+      "depNameTemplate": "ruflo",
+      "datasourceTemplate": "npm"
+    },
+    {
+      "customType": "regex",
+      "description": "Track agentic-qe npm CLI version pinned in flake.nix.",
+      "fileMatch": ["^flake\\.nix$"],
+      "matchStrings": [
+        "pkgName\\s*=\\s*\"agentic-qe\";\\s*\\n\\s*version\\s*=\\s*\"(?<currentValue>[0-9.]+)\""
+      ],
+      "depNameTemplate": "agentic-qe",
+      "datasourceTemplate": "npm"
+    },
+    {
+      "customType": "regex",
+      "description": "Track codebase-memory-mcp npm CLI version pinned in flake.nix.",
+      "fileMatch": ["^flake\\.nix$"],
+      "matchStrings": [
+        "pkgName\\s*=\\s*\"codebase-memory-mcp\";\\s*\\n\\s*version\\s*=\\s*\"(?<currentValue>[0-9.]+)\""
+      ],
+      "depNameTemplate": "codebase-memory-mcp",
+      "datasourceTemplate": "npm"
+    },
+    {
+      "customType": "regex",
+      "description": "Track agent-browser npm CLI version pinned in flake.nix.",
+      "fileMatch": ["^flake\\.nix$"],
+      "matchStrings": [
+        "pkgName\\s*=\\s*\"agent-browser\";\\s*\\n\\s*version\\s*=\\s*\"(?<currentValue>[0-9.]+)\""
+      ],
+      "depNameTemplate": "agent-browser",
+      "datasourceTemplate": "npm"
+    },
+    {
+      "customType": "regex",
+      "description": "Track playwright CLI version pinned in flake.nix.",
+      "fileMatch": ["^flake\\.nix$"],
+      "matchStrings": [
+        "pkgName\\s*=\\s*\"playwright\";\\s*\\n\\s*version\\s*=\\s*\"(?<currentValue>[0-9.]+)\""
+      ],
+      "depNameTemplate": "playwright",
+      "datasourceTemplate": "npm"
+    },
+    {
+      "customType": "regex",
+      "description": "Track @mermaid-js/mermaid-cli version pinned in flake.nix.",
+      "fileMatch": ["^flake\\.nix$"],
+      "matchStrings": [
+        "pkgName\\s*=\\s*\"@mermaid-js/mermaid-cli\";\\s*\\n\\s*version\\s*=\\s*\"(?<currentValue>[0-9.]+)\""
+      ],
+      "depNameTemplate": "@mermaid-js/mermaid-cli",
+      "datasourceTemplate": "npm"
     }
   ],
   "lockFileMaintenance": {

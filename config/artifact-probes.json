@@ -1,0 +1,80 @@
+[
+  {
+    "capability_id": "management-api",
+    "entrypoint_path": "/opt/agentbox/management-api/index.js",
+    "required_for_readiness": true,
+    "probe_command": "node --check /opt/agentbox/management-api/index.js"
+  },
+  {
+    "capability_id": "mcp-nostr-bridge",
+    "entrypoint_path": "/opt/agentbox/mcp/index.js",
+    "required_for_readiness": true,
+    "probe_command": "node --check /opt/agentbox/mcp/index.js"
+  },
+  {
+    "capability_id": "openai-codex-mcp",
+    "entrypoint_path": "/opt/agentbox/skills/openai-codex/mcp-server/server.js",
+    "required_for_readiness": false,
+    "probe_command": "node --check /opt/agentbox/skills/openai-codex/mcp-server/server.js"
+  },
+  {
+    "capability_id": "lazy-fetch-mcp",
+    "entrypoint_path": "/opt/agentbox/skills/lazy-fetch/mcp-server/dist/server.js",
+    "required_for_readiness": true,
+    "probe_command": "node --check /opt/agentbox/skills/lazy-fetch/mcp-server/dist/server.js"
+  },
+  {
+    "capability_id": "playwright-mcp",
+    "entrypoint_path": "/opt/agentbox/skills/playwright/mcp-server/server.js",
+    "required_for_readiness": false,
+    "probe_command": "node --check /opt/agentbox/skills/playwright/mcp-server/server.js"
+  },
+  {
+    "capability_id": "playwright-browsers",
+    "entrypoint_path": "@PLAYWRIGHT_BROWSERS_PATH@/chromium-*/chrome-linux/chrome",
+    "required_for_readiness": false,
+    "probe_command": "test -x $(echo $PLAYWRIGHT_BROWSERS_PATH/chromium-*/chrome-linux/chrome | head -n1)"
+  },
+  {
+    "capability_id": "ruflo-cli",
+    "entrypoint_path": "@NIX_STORE_BIN@/ruflo",
+    "required_for_readiness": false,
+    "probe_command": "ruflo --version"
+  },
+  {
+    "capability_id": "claude-flow-cli",
+    "entrypoint_path": "@NIX_STORE_BIN@/claude-flow",
+    "required_for_readiness": false,
+    "probe_command": "claude-flow --version"
+  },
+  {
+    "capability_id": "agentic-qe-cli",
+    "entrypoint_path": "@NIX_STORE_BIN@/aqe",
+    "required_for_readiness": false,
+    "probe_command": "aqe --version"
+  },
+  {
+    "capability_id": "nagual-qe-cli",
+    "entrypoint_path": "@NIX_STORE_BIN@/nagual-qe",
+    "required_for_readiness": false,
+    "probe_command": "nagual-qe --version"
+  },
+  {
+    "capability_id": "codebase-memory-mcp-cli",
+    "entrypoint_path": "@NIX_STORE_BIN@/codebase-memory-mcp",
+    "required_for_readiness": false,
+    "probe_command": "codebase-memory-mcp --version"
+  },
+  {
+    "capability_id": "agent-browser-cli",
+    "entrypoint_path": "@NIX_STORE_BIN@/agent-browser",
+    "required_for_readiness": false,
+    "probe_command": "agent-browser --help"
+  },
+  {
+    "capability_id": "mermaid-cli",
+    "entrypoint_path": "@NIX_STORE_BIN@/mmdc",
+    "required_for_readiness": false,
+    "probe_command": "mmdc --version"
+  }
+]

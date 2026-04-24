@@ -6,6 +6,34 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Dat
 
 ## [Unreleased]
 
+### PRD-002 + PRD-003 implementation — Phase 2 (2026-04-24)
+
+Six-agent hierarchical-mesh swarm implemented the immutable-bootstrap + runtime-contract changes.
+
+**PRD-002 (immutable bootstrap)**:
+- **6 local npm services packaged via `buildNpmPackage`** — new `lib/npm-services.nix` with `assertRealHash` throw-gate. Services: management-api, mcp/nostr-bridge, openai-codex/mcp-server, lazy-fetch/mcp-server (TypeScript build), playwright/mcp-server (browser-download suppressed), comfyui/mcp-server (native gyp for `sharp`). Wired into `flake.nix` with feature-gate conditionals; supervisord commands now use `${pkg}/bin/<name>` wrappers.
+- **9 global npm CLIs packaged via `buildNpmPackage` tarball fetch** — new `lib/npm-cli.nix`. ruvector 0.2.23, @claude-flow/cli 3.5.80, ruflo 3.5.80, agentic-qe 3.9.15, codebase-memory-mcp 0.6.0, agent-browser 0.26.0 (with `CHROME_PATH`), playwright 1.59.1 (with `PLAYWRIGHT_BROWSERS_PATH`), @mermaid-js/mermaid-cli 11.12.0 (binary `mmdc`). All versions pinned. `[program:ruvector]` supervisor block now references `${ruvectorPkg}/bin/ruvector` directly.
+- **Stage B Phase 6 rewritten** — `_install_node_deps` + 5 `npm install` calls replaced with `_probe_closure node_modules` checks. Phase 7's 9 `npm install -g` calls deleted entirely.
+- **Bootstrap sentinel + validation** — `config/seal-bootstrap.sh` as `[program:bootstrap-seal] priority=99` writes `/run/agentbox/bootstrap.done` atomically after all required-for-readiness programs are RUNNING. `config/validate-artifacts.sh` runs before supervisord with fail-fast on missing required artifacts. `config/artifact-probes.json` template — 13 capability entries across Classes A–D.
+- **10 bootstrap observability events** — `BootstrapStarted`, `ImmutableRootWritable`, `CapabilityValidated`, `OptionalArtifactMissing`, `MissingArtifactDetected`, `RuntimeClosureValidated`, `BootstrapFailed`, `BootstrapSealStarted`, `BootstrapCompleted`, `BootstrapSealTimeout`. All pino JSON, tagged `agentbox.stage: bootstrap`.
+- **15 artifact-probe scripts** — one per packaged service/CLI, skip-77 when feature disabled. `tests/bootstrap/sentinel.sh` + `tests/bootstrap/failed-artifact.sh`.
+- **Operator follow-up**: `lib.fakeHash` throw-gates in 15 derivations await `nix run nixpkgs#prefetch-npm-deps` + `nix-prefetch-url` resolutions (command strings printed in throw message). `nagual-qe` stays off (not on public npm).
+
+**PRD-003 (runtime contract + hardening)**:
+- **Image reference selection** — compose emits `image: ${AGENTBOX_IMAGE_REF:-agentbox:runtime-<system>}`. `agentbox.sh up` gains `--build`, `--registry`, `--wait-live` flags; mutually exclusive validation. `.env.example` + `docs/guides/running-on-your-host.md` §1a/1b + macOS §3a/3b + `consuming-the-image.md` §Image selection all updated.
+- **Three-endpoint probe semantics** — `/livez` (<100ms, no sentinel), `/ready` (sentinel + adapter health + path access + optional relay reachability, 503 with `{ready, reason, missing}`), `/health` retained as aggregate with `degraded_count` and `note` fields. `/v1/meta` now includes `observability: { metrics_endpoint, otlp_endpoint }`. Management-api watches sentinel asynchronously on startup. Docker Compose healthcheck changed from `/health` to `/ready`. `agentbox.sh up` timeout extended to 120s.
+- **Observability E2E** — `agentbox.toml [observability]` → `flake.nix imageEnv` (`AGENTBOX_METRICS_PORT/OTLP_ENDPOINT/LOG_LEVEL`) → compose `ports:` + `environment:` → OCI `ExposedPorts` → management-api metrics-server (no code change — already reads env). `agentbox.sh health` now discovers the metrics endpoint via `/v1/meta` and scrapes it.
+- **Hardening baseline** — `flake.nix` compose emits `user: 1000:1000`, `read_only: true`, `cap_drop: [ALL]`, `security_opt: [no-new-privileges:true, seccomp=default]`, tmpfs list `[/tmp, /run, /var/run, /var/log, /var/log/supervisor]` (last two added per regression risk surfaced by audit — supervisord needs writable /var/log).
+- **Manifest delta exception mechanism** (mechanism B) — `[security]` + `[security.exceptions.<feature>]` manifest sections with inherit/merge semantics. 7 exception mappings: desktop, gpu-rocm, gpu-cuda, gaussian-splatting (inherits gpu-cuda), playwright (SYS_ADMIN for Chromium sandbox), code-server, telegram-mirror. Additive merge for tmpfs/devices/cap_add; replace-by-key for security_opt; override for runtime.
+- **Validator rules E020 + W021** — E020 rejects orphan exception blocks (exception declared without feature enabled); W021 warns on enabled feature missing its documented exception. 4 new semantic-rules tests; suite stable at 44/44 passing.
+- **`SecurityProfileApplied` event** — management-api emits at startup with `{baseline, exceptionsApplied[{feature, reason, delta}], effectiveProfile}`.
+
+**10 runtime-contract tests** at `tests/runtime-contract/`:
+- RC-002-01..05 (immutable bootstrap): no-network boot, per-feature artifact probes, Stage B install-lint, legal-write boundary, startup-failure-on-missing-artifact
+- RC-003-06..10 (runtime contract): image reference local+registry, `/livez`-vs-`/ready` distinct, metrics port exposed-and-bound, hardening baseline docker-inspect, desktop exception additive merge
+
+**Doc updates also applied by research agents in Phase 1 commit** covering PRD-002/003 status bumps and ADR-006/007 + DDD-001/002 acceptance.
+
 ### Docs clarification — PRD-002/003 + ADR-006/007 + DDD-001/002 (2026-04-24)
 
 Consolidated findings from researcher agents R1 (packaging audit) and R3 (runtime-contract wiring) into the six clarification documents. Researchers R2, R4, and R5 did not deposit findings before the consolidation window; their subject matter (hardening exceptions mechanism, DDD coherence, runtime contract tests) was already fully authored in the documents and required only status promotion.

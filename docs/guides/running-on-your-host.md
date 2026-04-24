@@ -23,6 +23,41 @@ $EDITOR .env              # fill the [providers.*] keys you enabled
 
 No extra flags needed. All skills and GPU backends available.
 
+### 1a. Build from source and start
+
+```sh
+# Compile the Nix image, load it into Docker, and start the stack.
+./agentbox.sh up --build
+```
+
+`--build` runs `nix build .#runtime`, loads the resulting image into Docker, then
+calls `docker compose up`. `AGENTBOX_IMAGE_REF` is not consulted — the local image
+tag produced by the Nix build is used directly.
+
+### 1b. Start from a registry image
+
+```sh
+# Pull a published image, then start the stack.
+export AGENTBOX_IMAGE_REF=ghcr.io/dreamlab-ai/agentbox:latest
+docker pull "${AGENTBOX_IMAGE_REF}"
+./agentbox.sh up --registry
+```
+
+`--registry` validates that `AGENTBOX_IMAGE_REF` is set (errors if not), then
+calls `docker compose up` with that image. The generated `docker-compose.yml`
+uses `${AGENTBOX_IMAGE_REF:-agentbox:runtime-<system>}` so the override is
+consumed by compose automatically.
+
+To pin to a specific SHA (recommended for production):
+
+```sh
+export AGENTBOX_IMAGE_REF=ghcr.io/dreamlab-ai/agentbox:abc1234def5
+docker pull "${AGENTBOX_IMAGE_REF}"
+./agentbox.sh up --registry
+```
+
+`--build` and `--registry` are mutually exclusive; passing both is an error.
+
 ---
 
 ## 2. Linux aarch64 (Raspberry Pi 5 · Ampere A1 · AWS Graviton · Jetson)
@@ -71,6 +106,34 @@ cp result/docker-compose.yml .
 
 ./agentbox.sh up
 ```
+
+### 3a. Build and start (macOS — compose + locally built image)
+
+`nix build .#runtime` does not produce container images on darwin. Use the
+`compose`-only output for the manifest, and pull the published image:
+
+```sh
+# Generate the compose manifest only (no image build)
+nix build github:DreamLab-AI/agentbox#compose
+cp result/docker-compose.yml .
+
+# Pull the published multi-arch image and start the stack
+export AGENTBOX_IMAGE_REF=ghcr.io/dreamlab-ai/agentbox:latest
+docker pull "${AGENTBOX_IMAGE_REF}"
+./agentbox.sh up --registry
+```
+
+### 3b. Start from a registry image (macOS — recommended)
+
+```sh
+export AGENTBOX_IMAGE_REF=ghcr.io/dreamlab-ai/agentbox:latest
+docker pull "${AGENTBOX_IMAGE_REF}"
+./agentbox.sh up --registry
+```
+
+Both `--build` and `--registry` work identically to §1a/§1b except that
+`--build` on macOS exits with an error because `nix build .#runtime` is a
+Linux-only output. Use `--registry` on macOS.
 
 ### OrbStack (recommended — faster + lighter than Docker Desktop)
 

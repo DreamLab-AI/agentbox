@@ -36,6 +36,22 @@ fi
 if [ "$STAGE_B_MODE" = "0" ]; then
 
 # ---------------------------------------------------------------------------
+# Bootstrap observability — BootstrapStarted (PRD-002 §5.6)
+# ---------------------------------------------------------------------------
+printf '{"level":"info","time":"%s","agentbox.stage":"bootstrap","event":"BootstrapStarted"}\n' \
+  "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+
+# ---------------------------------------------------------------------------
+# Legal-write assertion — defence in depth (PRD-002 §9 Phase 3, item 4)
+# Warn if /opt/agentbox is unexpectedly writable; do NOT fail boot.
+# ---------------------------------------------------------------------------
+if touch /opt/agentbox/.write-probe 2>/dev/null; then
+  rm -f /opt/agentbox/.write-probe
+  printf '{"level":"warn","time":"%s","agentbox.stage":"bootstrap","event":"ImmutableRootWritable","message":"/opt/agentbox is mounted writable — operator config violates immutable root invariant (ADR-006)"}\n' \
+    "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+fi
+
+# ---------------------------------------------------------------------------
 # Phase 1 — Environment defaults + runtime directory creation
 # ---------------------------------------------------------------------------
 export WORKSPACE="${WORKSPACE:-/workspace}"
@@ -145,6 +161,24 @@ fi
 echo "[4/8] Provisioning agent stacks..."
 python3 /opt/agentbox/scripts/provision-agent-stacks.py
 
+# ---------------------------------------------------------------------------
+# Phase 5a — Artifact validation (must pass before supervisord starts)
+# Reads config/artifact-probes.json; exits 1 on any required-probe failure.
+# ---------------------------------------------------------------------------
+echo "[5/8] Validating runtime closure..."
+if ! bash /opt/agentbox/config/validate-artifacts.sh; then
+  printf '{"level":"fatal","time":"%s","agentbox.stage":"bootstrap","event":"BootstrapFailed","reason":"artifact validation failed — see MissingArtifactDetected events above"}\n' \
+    "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+  exit 1
+fi
+
+# ---------------------------------------------------------------------------
+# Phase 5b — Ensure /run/agentbox sentinel directory exists on tmpfs.
+# The sentinel itself is written by [program:bootstrap-seal] after supervisord
+# has confirmed required programs are RUNNING (Option A from PRD-002 §9).
+# ---------------------------------------------------------------------------
+mkdir -p /run/agentbox
+
 echo "[5/8] Starting supervisord..."
 exec supervisord -c /etc/supervisord.conf -n
 
@@ -163,59 +197,56 @@ export AGENTBOX_CONFIG="${AGENTBOX_CONFIG:-/etc/agentbox.toml}"
 export SHARED_PROJECTS_ROOT="${SHARED_PROJECTS_ROOT:-/projects}"
 
 # ---------------------------------------------------------------------------
-# Phase 6 — Service Node dependency installation
+# Phase 6 — Service closure probes (PRD-002 §9 Phase 1)
+#
+# Node dependency installation has been removed.  node_modules are baked into
+# the image by the Nix build derivations in lib/npm-services.nix.  This phase
+# now validates that those closures are present before services start.
+#
+# A missing node_modules path here is a packaging defect, not a runtime issue;
+# the failure is fatal so the operator sees it immediately rather than after a
+# service crash.
 # ---------------------------------------------------------------------------
-echo "[6/8] Installing service dependencies..."
+echo "[6/8] Validating pre-packaged service closures..."
 
-_install_node_deps() {
+_probe_closure() {
   local dir="$1"
-  if [ -f "$dir/package.json" ] && [ ! -d "$dir/node_modules" ]; then
-    echo "[AGENTBOX] Installing Node dependencies in $dir"
-    npm install --prefix "$dir" --omit=dev >/dev/null 2>&1 || true
+  if [ ! -d "$dir/node_modules" ]; then
+    printf '{"level":"fatal","time":"%s","agentbox.stage":"bootstrap","event":"MissingArtifactDetected","path":"%s","reason":"node_modules not present — rerun nix build and push the image"}\n' \
+      "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$dir" >&2
+    exit 1
   fi
 }
 
-_install_node_deps /opt/agentbox/management-api
-_install_node_deps /opt/agentbox/mcp
-_install_node_deps /opt/agentbox/skills/openai-codex/mcp-server
-_install_node_deps /opt/agentbox/skills/lazy-fetch/mcp-server
-if [ "${ENABLE_PLAYWRIGHT:-false}" = "true" ]; then
-  _install_node_deps /opt/agentbox/skills/playwright/mcp-server
+_probe_closure /opt/agentbox/management-api
+_probe_closure /opt/agentbox/mcp
+if [ "${ENABLE_CODEX:-false}" = "true" ]; then
+  _probe_closure /opt/agentbox/skills/openai-codex/mcp-server
 fi
-
-# ---------------------------------------------------------------------------
-# Phase 7 — Optional runtime CLI toolchains (feature-gated)
-# ---------------------------------------------------------------------------
-echo "[7/8] Installing runtime CLI tools..."
-
-npx --yes ruvector --version >/dev/null 2>&1 || npm install -g ruvector >/dev/null 2>&1 || true
-
-if [ "${ENABLE_CLAUDE_FLOW:-false}" = "true" ]; then
-  npm install -g @claude-flow/cli >/dev/null 2>&1 || true
-fi
-if [ "${ENABLE_RUFLO:-false}" = "true" ]; then
-  npm install -g ruflo >/dev/null 2>&1 || true
-fi
-if [ "${ENABLE_AGENTIC_QE:-false}" = "true" ]; then
-  npm install -g agentic-qe >/dev/null 2>&1 || true
-  aqe init --auto >/dev/null 2>&1 || true
-fi
-if [ "${ENABLE_NAGUAL_QE:-false}" = "true" ]; then
-  npm install -g nagual-qe >/dev/null 2>&1 || true
-fi
-if [ "${ENABLE_CODEBASE_MEMORY:-false}" = "true" ]; then
-  npm install -g codebase-memory-mcp >/dev/null 2>&1 || true
-fi
-if [ "${ENABLE_AGENT_BROWSER:-false}" = "true" ]; then
-  npx --yes agent-browser --help >/dev/null 2>&1 || npm install -g agent-browser >/dev/null 2>&1 || true
+if [ "${ENABLE_RUFLO:-false}" = "true" ] || [ "${ENABLE_CLAUDE_FLOW:-false}" = "true" ]; then
+  _probe_closure /opt/agentbox/skills/lazy-fetch/mcp-server
 fi
 if [ "${ENABLE_PLAYWRIGHT:-false}" = "true" ]; then
-  npm install -g playwright >/dev/null 2>&1 || true
-  npx playwright install chromium >/dev/null 2>&1 || true
+  _probe_closure /opt/agentbox/skills/playwright/mcp-server
 fi
-if [ "${ENABLE_MERMAID:-false}" = "true" ]; then
-  npm install -g @mermaid-js/mermaid-cli >/dev/null 2>&1 || true
+if [ "${ENABLE_COMFYUI_BUILTIN:-false}" = "true" ]; then
+  _probe_closure /opt/agentbox/skills/comfyui/mcp-server
 fi
+
+echo "[6/8] Service closures OK."
+
+# ---------------------------------------------------------------------------
+# Phase 7 — REMOVED (PRD-002 §9 Phase 2)
+# ---------------------------------------------------------------------------
+# All npm global CLIs are now Nix derivations in flake.nix:
+#   ruvector, @claude-flow/cli, ruflo, agentic-qe, nagual-qe,
+#   codebase-memory-mcp, agent-browser, playwright, @mermaid-js/mermaid-cli
+# They are present in PATH via the image closure. No runtime installs needed.
+#
+# Deferred first-run steps (run from agentbox.sh init, not here):
+#   agentic-qe: aqe init --auto (writes $HOME/.claude/agents/ templates)
+#   playwright: browsers are pre-built in PLAYWRIGHT_BROWSERS_PATH (Nix store)
+echo "[7/8] npm CLI toolchains pre-packaged in image — skipping runtime install"
 
 # ---------------------------------------------------------------------------
 # Phase 8 — Publish environment hints to profile.d

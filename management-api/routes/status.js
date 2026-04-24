@@ -58,26 +58,8 @@ async function statusRoutes(fastify, options) {
     });
   });
 
-  /**
-   * Simple health check endpoint
-   */
-  fastify.get('/health', async (request, reply) => {
-    reply.send({ status: 'healthy', timestamp: new Date().toISOString() });
-  });
-
-  /**
-   * Readiness probe
-   */
-  fastify.get('/ready', async (request, reply) => {
-    // Check if essential services are available
-    const activeTasks = processManager.getActiveTasks();
-
-    reply.send({
-      ready: true,
-      activeTasks: activeTasks.length,
-      timestamp: new Date().toISOString()
-    });
-  });
+  // NOTE: /health and /ready are registered in server.js (before auth middleware).
+  // Do not re-register them here.
 }
 
 module.exports = statusRoutes;
