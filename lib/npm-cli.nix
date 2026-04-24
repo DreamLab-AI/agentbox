@@ -111,7 +111,11 @@ in
 
       src = tarball;
 
-      nativeBuildInputs = [ pkgs.nodejs_20 pkgs.nodePackages.npm ];
+      nativeBuildInputs = [
+        pkgs.nodejs_20
+        pkgs.nodePackages.npm
+        pkgs.cacert     # provides /etc/ssl/certs/ca-bundle.crt for npm TLS
+      ];
 
       # npm places unpacked content in a "package/" subdirectory inside the tgz.
       # stdenv's default unpack handles .tgz, so we just need to cd into it.
@@ -123,12 +127,36 @@ in
         runHook preInstall
 
         # Install production dependencies. --ignore-scripts prevents lifecycle
-        # hooks (postinstall etc.) that could fire network calls; --no-fund
-        # and --no-audit suppress unrelated registry queries. The sandbox
-        # already blocks unexpected outbound connections, so any failure
-        # here is a real signal (network unreachable, malformed lockfile,
-        # transitive dep missing) and MUST fail the build — no `|| true`.
-        npm install --production --ignore-scripts --no-fund --no-audit --no-progress 1>&2
+        # hooks (postinstall etc.) that could fire their own network calls.
+        # --no-fund and --no-audit suppress unrelated registry queries.
+        #
+        # Nix sandbox defaults set HOME=/homeless-shelter (unwritable) and
+        # ship no CA trust store; both are mandatory for npm install to
+        # reach registry.npmjs.org. We point HOME at TMPDIR and export
+        # SSL_CERT_FILE from the cacert nativeBuildInput.
+        #
+        # If the sandbox has network disabled entirely (agentbox's default
+        # when builds run under `nix --option sandbox true`), this step
+        # will fail — the failure is now loud (no `|| true`) so operators
+        # see the real cause rather than silently shipping an empty
+        # node_modules tree.
+        export HOME="$TMPDIR"
+        export SSL_CERT_FILE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+        export NODE_EXTRA_CA_CERTS="$SSL_CERT_FILE"
+        # --legacy-peer-deps: npm 7+ strict peer-dep resolution rejects any
+        # over-broad peerOptional declaration (e.g. @claude-flow/aidefence
+        # declares peerOptional agentdb@">=2.0.0-alpha.1" but the root
+        # ships a newer alpha). We want the npm 6 semantics — resolve peers
+        # best-effort, don't fail on conflicts — for every CLI we package,
+        # because we are not a dependency-graph validator, we are a
+        # binary-packager.
+        npm install \
+          --production \
+          --ignore-scripts \
+          --legacy-peer-deps \
+          --no-fund \
+          --no-audit \
+          --no-progress 1>&2
 
         # Install package tree under $out/lib/<pname>
         mkdir -p $out/lib/${pname}
