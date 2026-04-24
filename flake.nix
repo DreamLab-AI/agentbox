@@ -49,6 +49,7 @@
         securityCfg = agentboxConfig.security or {};
         securityExceptions = securityCfg.exceptions or {};
         privacyFilterCfg = agentboxConfig.privacy_filter or {};
+        relayCfg = (sovereignCfg.relay or {});
 
         # GPU backend dispatch — single source of truth for GPU concerns.
         gpuLib = import ./lib/gpu-backend.nix { inherit lib pkgs; };
@@ -491,6 +492,93 @@
         # after warm-up. BF16 on GPU, BF16 on CPU, or Q4 on CPU (transformers.js
         # path is out-of-scope; this is the server path).
         # ---------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------
+        # Embedded Nostr relay (ADR-009 / PRD-004).
+        # Gate: sovereign_mesh.relay.enabled = true AND implementation in the
+        # Nix-packageable set {nostr-rs-relay, rnostr}. External / off variants
+        # do not add a package; external still publishes the supervisor block
+        # only as a bridge-side concern (no local WS process).
+        # ---------------------------------------------------------------------------
+        relayEnabled = relayCfg.enabled or false;
+        relayImpl    = relayCfg.implementation or "nostr-rs-relay";
+        relayLocal   = relayEnabled && (relayImpl == "nostr-rs-relay" || relayImpl == "rnostr");
+
+        # Fail-fast for rnostr until a reproducible nixpkgs source lands.
+        # nostr-rs-relay is in nixpkgs (v0.9.0 as of 2026-04); rnostr is not
+        # yet packaged upstream, so require the operator to vendor it.
+        _relayImplGuard =
+          if relayEnabled && relayImpl == "rnostr"
+             && !(pkgs ? rnostr)
+          then throw ''
+            flake.nix: sovereign_mesh.relay.implementation="rnostr" but pkgs.rnostr
+            is not available in the pinned nixpkgs. Either:
+              (a) set implementation = "nostr-rs-relay" in agentbox.toml, or
+              (b) vendor rnostr via a flake input (see docs/developer/sovereign-mesh.md).
+          ''
+          else null;
+
+        relayPkg =
+          if relayEnabled && relayImpl == "nostr-rs-relay" then pkgs.nostr-rs-relay
+          else if relayEnabled && relayImpl == "rnostr" then pkgs.rnostr
+          else null;
+
+        relayPackages = lib.optionals relayLocal (lib.filter (p: p != null) [ relayPkg ]);
+
+        # Render a config.toml for nostr-rs-relay from manifest fields.
+        # Consumed by the supervisor block at /etc/agentbox/nostr-relay.toml.
+        relayAllowedKinds = relayCfg.allowed_kinds or [ 1 1059 30078 27235 38000 38100 ];
+        relayAllowedKindsToml = lib.concatStringsSep ", " (map toString relayAllowedKinds);
+        relayAllowedPubkeys = relayCfg.allowed_pubkeys or [];
+        relayAllowedPubkeysToml =
+          if relayAllowedPubkeys == []
+          then ""
+          else "pubkey_whitelist = [ " + lib.concatStringsSep ", " (map (k: "\"${k}\"") relayAllowedPubkeys) + " ]\n";
+        relayNip42Auth =
+          if (relayCfg.ingress_policy or "allowlist") == "open" then "false" else "true";
+        relayConfigText = ''
+# AUTO-GENERATED from agentbox.toml — do not edit by hand.
+[info]
+name        = "agentbox-relay"
+description = "${relayCfg.info_description or "Agentbox sovereign relay"}"
+${lib.optionalString ((relayCfg.info_contact or "") != "") "contact     = \"${relayCfg.info_contact}\""}
+relay_url   = "ws://${relayCfg.bind or "127.0.0.1"}:${toString (relayCfg.port or 7777)}/"
+
+[network]
+address        = "${relayCfg.bind or "127.0.0.1"}"
+port           = ${toString (relayCfg.port or 7777)}
+remote_ip_header = "x-forwarded-for"
+ping_interval  = 300
+
+[database]
+engine         = "sqlite"
+data_directory = "${relayCfg.data_dir or "/var/lib/nostr-relay"}"
+in_memory      = false
+min_conn       = 0
+max_conn       = 16
+
+[limits]
+messages_per_sec      = ${toString (relayCfg.messages_per_sec or 5)}
+subscriptions_per_min = 60
+max_event_bytes       = ${toString (relayCfg.max_event_bytes or 131072)}
+max_ws_message_bytes  = ${toString (relayCfg.max_event_bytes or 131072)}
+max_ws_frame_bytes    = ${toString (relayCfg.max_event_bytes or 131072)}
+max_blocking_threads  = 16
+broadcast_buffer      = 16384
+event_persist_buffer  = 4096
+
+[authorization]
+${relayAllowedPubkeysToml}nip42_auth = ${relayNip42Auth}
+nip42_dms  = ${if relayCfg.allow_nip04 or false then "true" else "false"}
+
+[options]
+reject_future_seconds = 1800
+
+[retention]
+# NIP-40 expiration is honoured in-code; this is the default fallback
+# applied to events that do not declare an expiration tag.
+default_days = ${toString (relayCfg.retention_days or 30)}
+'';
+
         privacyFilterEnabled = privacyFilterCfg.enabled or false;
         privacyFilterPythonEnv = pkgs.python312.withPackages (ps: with ps; [
           transformers
@@ -542,6 +630,7 @@
           ++ dataSciencePackages
           ++ docsPackages
           ++ privacyFilterPackages
+          ++ relayPackages
           ++ desktopPackages
           ++ geminiCliPackages
           ++ codexPackages
@@ -792,6 +881,18 @@ ${lib.optionalString (spatialCfg.qgis or false) "\n${qgisServiceBlock}"}
 ${lib.optionalString (spatialCfg.blender or false) "\n${blenderServiceBlock}"}
 ${lib.optionalString (dataScienceCfg.jupyter or false) "\n${jupyterServiceBlock}"}
 ${lib.optionalString (desktopCfg.enabled or false) "\n${desktopBlocks}"}
+${lib.optionalString relayLocal ''
+
+[program:nostr-relay]
+command=${relayPkg}/bin/nostr-rs-relay --config /etc/agentbox/nostr-relay.toml
+directory=${relayCfg.data_dir or "/var/lib/nostr-relay"}
+environment=HOME="/workspace",RUST_LOG="info",AGENTBOX_REQUIRED_FOR_READINESS="false"
+autostart=true
+autorestart=true
+priority=35
+stdout_logfile=/var/log/nostr-relay.log
+stderr_logfile=/var/log/nostr-relay.error.log
+''}
 ${lib.optionalString privacyFilterEnabled ''
 
 [program:opf-router]
@@ -901,6 +1002,8 @@ ${lib.optionalString (gpuRuntime == "nvidia") ''      - NVIDIA_VISIBLE_DEVICES=a
           + "\n      - \"${metricsPort}:${metricsPort}\""
           + lib.optionalString (sovereignCfg.enabled or false)
               "\n      - \"8484:8484\""
+          + lib.optionalString (relayEnabled && (relayCfg.expose or false))
+              ("\n      - \"" + toString (relayCfg.port or 7777) + ":" + toString (relayCfg.port or 7777) + "\"")
           + lib.optionalString (dataScienceCfg.jupyter or false)
               "\n      - \"8888:8888\""
           + lib.optionalString (desktopCfg.enabled or false)
@@ -957,6 +1060,7 @@ ${lib.optionalString (gpuRuntime == "nvidia") ''      - NVIDIA_VISIBLE_DEVICES=a
               || (name == "playwright"         && (browserCfg.playwright or false))
               || (name == "code-server"        && (toolchainCfg.code_server or false))
               || (name == "telegram-mirror"    && (sovereignCfg.telegram_mirror or false))
+              || (name == "nostr-relay"        && relayEnabled)
             )
             securityExceptions;
 
@@ -1022,7 +1126,11 @@ ${lib.optionalString (gpuRuntime == "nvidia") ''      - NVIDIA_VISIBLE_DEVICES=a
   solid-data:
     name: agentbox-solid-data
   sovereign-identities:
-    name: agentbox-sovereign-identities'';
+    name: agentbox-sovereign-identities''
+          + lib.optionalString relayLocal ''
+
+  nostr-relay-data:
+    name: agentbox-nostr-relay-data'';
 
         # Full compose document.
         composeText = ''
@@ -1085,6 +1193,9 @@ ${ragflowNetworkDecl}
           cp ${pkgs.writeText "supervisord.conf" supervisorText} $out/etc/supervisord.conf
           cp ${./agentbox.toml} $out/etc/agentbox.toml
           cp ${pkgs.writeText "docker-compose.yml" composeText} $out/etc/agentbox/docker-compose.yml
+          ${lib.optionalString relayLocal ''
+          cp ${pkgs.writeText "nostr-relay.toml" relayConfigText} $out/etc/agentbox/nostr-relay.toml
+          ''}
         '';
 
         entrypoint = pkgs.writeShellScriptBin "entrypoint" ''
@@ -1169,6 +1280,17 @@ ${ragflowNetworkDecl}
           "OPF_POLICY_ORCHESTRATOR=${(privacyFilterCfg.policy or {}).orchestrator or "off"}"
           "OPF_POLICY_INBOUND=${(privacyFilterCfg.policy or {}).inbound or "soft"}"
           "OPF_POLICY_OUTBOUND=${(privacyFilterCfg.policy or {}).outbound or "soft"}"
+          # Embedded Nostr relay (ADR-009 / PRD-004) — env surface for
+          # management-api's bridge consumer and health probe.
+          "AGENTBOX_RELAY_ENABLED=${boolEnv relayEnabled}"
+          "AGENTBOX_RELAY_IMPL=${relayImpl}"
+          "AGENTBOX_RELAY_PORT=${toString (relayCfg.port or 7777)}"
+          "AGENTBOX_RELAY_BIND=${relayCfg.bind or "127.0.0.1"}"
+          "AGENTBOX_RELAY_DATA_DIR=${relayCfg.data_dir or "/var/lib/nostr-relay"}"
+          "AGENTBOX_RELAY_POLICY=${relayCfg.ingress_policy or "allowlist"}"
+          "AGENTBOX_RELAY_POD_BRIDGE=${boolEnv (relayCfg.pod_bridge or true)}"
+          "AGENTBOX_RELAY_FANOUT=${relayCfg.external_fanout or "off"}"
+          "AGENTBOX_RELAY_RETENTION_DAYS=${toString (relayCfg.retention_days or 30)}"
           # Observability — sourced from [observability] in agentbox.toml
           "AGENTBOX_METRICS_PORT=${metricsPort}"
           "AGENTBOX_OTLP_ENDPOINT=${observCfg.otlp_endpoint or ""}"

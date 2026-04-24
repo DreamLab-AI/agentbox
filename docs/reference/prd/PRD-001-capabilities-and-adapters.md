@@ -292,6 +292,7 @@ Standalone agentbox ships with these behind `agentbox.toml` gates. Only enabled 
 - **Sovereign mesh** — Nostr identity generation + NIP-98 hybrid auth middleware; client connector to Nostr relays for inter-agent messaging.
 - **Telegram mirror** (CTM) — optional daemon streaming agent activity.
 - **Privacy filter** — optional local PII redaction sidecar (openai/privacy-filter, 1.5B MoE, Apache-2.0) that sits as middleware on every ADR-005 adapter dispatch and the inbound/outbound prompt path. Policy per slot (strict/soft/off). Gated by CPU/RAM or GPU capability at build-time wizard. See [ADR-008](../adr/ADR-008-privacy-filter-routing.md).
+- **Embedded Nostr relay** — optional `nostr-rs-relay` (Apache-2.0, SQLite-backed, in nixpkgs) with an in-process bridge that persists every signature-verified event to `pods/<npub>/events/inbox/` and publishes outbox entries to configured fan-out relays. Gives external humans and agents a signed, audited path to internal agents. NIP-11/NIP-42/NIP-17. See [PRD-004](PRD-004-external-agent-messaging.md) and [ADR-009](../adr/ADR-009-embedded-nostr-relay.md).
 
 ## 6. Runtime layout
 

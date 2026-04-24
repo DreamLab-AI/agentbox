@@ -40,6 +40,38 @@ Boot succeeded (container started) but readiness check never passed. Usually one
    docker inspect agentbox --format '{{json .Mounts}}' | jq
    ```
 
+## External agent can't reach the embedded Nostr relay
+
+Walk the chain from outside in:
+
+```sh
+# 1. Manifest: expose must be true and bind must be 0.0.0.0
+grep -A4 '^\[sovereign_mesh.relay\]' agentbox.toml
+
+# 2. Compose publishes the port
+docker compose ps | grep 7777
+
+# 3. Relay is actually up inside the container
+docker exec agentbox supervisorctl status nostr-relay
+
+# 4. NIP-11 info doc responds
+curl -H 'Accept: application/nostr+json' http://<host>:7777/ | jq
+
+# 5. NIP-42 AUTH: your client finished the challenge
+docker exec agentbox tail -20 /var/log/nostr-relay.log | grep -i auth
+```
+
+If `/health/relay` returns `outbox_pending > 0` and stays there, the
+bridge's fan-out list cannot reach any external relay. Check
+`NOSTR_RELAYS` and the container's DNS.
+
+If inbound events never appear in `pods/<npub>/events/inbox/`:
+
+1. Is `pod_bridge = true`?
+2. Does the event have a `p` tag matching your container's npub?
+3. Is the event kind in `allowed_kinds`?
+4. Is the signing pubkey in `allowed_pubkeys` (or is policy `signed-only`)?
+
 ## Privacy filter `/health` reports `unavailable`
 
 The sidecar loaded but something in the model-load path failed. Usually one of:

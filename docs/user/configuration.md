@@ -241,6 +241,54 @@ jss_rust_backend = false
 
 See [sovereign-mesh (developer)](../developer/sovereign-mesh.md) for internals.
 
+### `[sovereign_mesh.relay]`
+
+Embedded Nostr relay for external-agent messaging. Gives external humans
+and agents a signed, audited path to internal agents; every accepted
+event is persisted to the pod mailbox. Specified by
+[PRD-004](../reference/prd/PRD-004-external-agent-messaging.md) /
+[ADR-009](../reference/adr/ADR-009-embedded-nostr-relay.md) /
+[DDD-003](../reference/ddd/DDD-003-sovereign-messaging-domain.md).
+
+```toml
+[sovereign_mesh.relay]
+enabled          = false
+implementation   = "nostr-rs-relay"   # nostr-rs-relay | rnostr | external | off
+port             = 7777
+bind             = "127.0.0.1"
+expose           = false
+data_dir         = "/var/lib/nostr-relay"
+ingress_policy   = "allowlist"        # allowlist | signed-only | open
+allowed_pubkeys  = []
+allowed_kinds    = [1, 1059, 30078, 27235, 38000, 38100]
+pod_bridge       = true
+external_fanout  = "off"              # bidirectional | publish-only | subscribe-only | off
+max_event_bytes  = 131072
+messages_per_sec = 5
+retention_days   = 30
+allow_nip04      = false
+info_description = "Agentbox sovereign relay"
+info_contact     = ""
+```
+
+Validator rules:
+- **E026**: `enabled=true` requires `sovereign_mesh.enabled` or `sovereign_mesh.solid_pod`.
+- **E027**: `implementation="external"` requires `federation.mode="client"` + `external_url`.
+- **E028**: `port` must not collide with RESERVED_PORTS or other services.
+- **E029**: `bind="0.0.0.0"` + `expose=false` is a wiring error.
+- **W030**: `ingress_policy="open"` is a warning (relay accepts writes from anyone).
+- **E031**: `allow_nip04=true` — legacy DMs leak metadata; prefer NIP-17.
+
+When `enabled=true`, also add:
+
+```toml
+[security.exceptions.nostr-relay]
+writable_volumes = ["nostr-relay-data:/var/lib/nostr-relay"]
+reason = "nostr-rs-relay SQLite journal and WAL require a writable durable path"
+```
+
+Novice-friendly walkthrough: [nostr-relay.md](nostr-relay.md).
+
 ## `[security]` and `[security.exceptions.<feature>]`
 
 Hardening baseline is applied unconditionally. Feature-specific privilege expansions are manifest-declared.

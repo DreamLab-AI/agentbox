@@ -121,6 +121,22 @@ state = {
     "sovereign_mesh.publish_agent_events": g("sovereign_mesh","publish_agent_events", default=False),
     "sovereign_mesh.telegram_mirror":      g("sovereign_mesh","telegram_mirror",      default=False),
     "sovereign_mesh.jss_rust_backend":     g("sovereign_mesh","jss_rust_backend",     default=False),
+    # ── sovereign_mesh.relay (PRD-004 / ADR-009) ─────────────────────────────────
+    "sovereign_mesh.relay.enabled":          g("sovereign_mesh","relay","enabled",          default=False),
+    "sovereign_mesh.relay.implementation":   g("sovereign_mesh","relay","implementation",   default="nostr-rs-relay"),
+    "sovereign_mesh.relay.port":             str(g("sovereign_mesh","relay","port",         default=7777)),
+    "sovereign_mesh.relay.bind":             g("sovereign_mesh","relay","bind",             default="127.0.0.1"),
+    "sovereign_mesh.relay.expose":           g("sovereign_mesh","relay","expose",           default=False),
+    "sovereign_mesh.relay.data_dir":         g("sovereign_mesh","relay","data_dir",         default="/var/lib/nostr-relay"),
+    "sovereign_mesh.relay.ingress_policy":   g("sovereign_mesh","relay","ingress_policy",   default="allowlist"),
+    "sovereign_mesh.relay.pod_bridge":       g("sovereign_mesh","relay","pod_bridge",       default=True),
+    "sovereign_mesh.relay.external_fanout":  g("sovereign_mesh","relay","external_fanout",  default="off"),
+    "sovereign_mesh.relay.max_event_bytes":  str(g("sovereign_mesh","relay","max_event_bytes", default=131072)),
+    "sovereign_mesh.relay.messages_per_sec": str(g("sovereign_mesh","relay","messages_per_sec",default=5)),
+    "sovereign_mesh.relay.retention_days":   str(g("sovereign_mesh","relay","retention_days", default=30)),
+    "sovereign_mesh.relay.allow_nip04":      g("sovereign_mesh","relay","allow_nip04",      default=False),
+    "sovereign_mesh.relay.info_description": g("sovereign_mesh","relay","info_description", default="Agentbox sovereign relay"),
+    "sovereign_mesh.relay.info_contact":     g("sovereign_mesh","relay","info_contact",     default=""),
 }
 
 state_path.write_text(json.dumps(state, indent=2), encoding="utf-8")

@@ -195,6 +195,30 @@ lines += [
     "",
 ]
 
+# ── sovereign_mesh.relay (PRD-004 / ADR-009) ────────────────────────────────────
+if s.get("sovereign_mesh.relay.enabled", False):
+    lines += [
+        "[sovereign_mesh.relay]",
+        f'enabled          = true',
+        f'implementation   = {q("sovereign_mesh.relay.implementation",  "nostr-rs-relay")}',
+        f'port             = {i("sovereign_mesh.relay.port",             7777)}',
+        f'bind             = {q("sovereign_mesh.relay.bind",             "127.0.0.1")}',
+        f'expose           = {b("sovereign_mesh.relay.expose")}',
+        f'data_dir         = {q("sovereign_mesh.relay.data_dir",         "/var/lib/nostr-relay")}',
+        f'ingress_policy   = {q("sovereign_mesh.relay.ingress_policy",   "allowlist")}',
+        "allowed_pubkeys  = []",
+        "allowed_kinds    = [1, 1059, 30078, 27235, 38000, 38100]",
+        f'pod_bridge       = {b("sovereign_mesh.relay.pod_bridge")}',
+        f'external_fanout  = {q("sovereign_mesh.relay.external_fanout",  "off")}',
+        f'max_event_bytes  = {i("sovereign_mesh.relay.max_event_bytes",  131072)}',
+        f'messages_per_sec = {i("sovereign_mesh.relay.messages_per_sec", 5)}',
+        f'retention_days   = {i("sovereign_mesh.relay.retention_days",   30)}',
+        f'allow_nip04      = {b("sovereign_mesh.relay.allow_nip04")}',
+        f'info_description = {q("sovereign_mesh.relay.info_description", "Agentbox sovereign relay")}',
+        f'info_contact     = {q("sovereign_mesh.relay.info_contact",     "")}',
+        "",
+    ]
+
 # ── integrations ─────────────────────────────────────────────────────────────────
 if s.get("integrations.comfyui_external.enabled", False):
     lines += [

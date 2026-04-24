@@ -383,6 +383,30 @@
         "jss_rust_backend": {
           "type": "boolean",
           "description": "Requires jss-rust Nix input pinned in flake.lock (E015)."
+        },
+        "relay": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Embedded Nostr relay. See ADR-009 and PRD-004.",
+          "properties": {
+            "enabled":          { "type": "boolean" },
+            "implementation":   { "type": "string",  "enum": ["nostr-rs-relay", "rnostr", "external", "off"] },
+            "port":             { "type": "integer", "minimum": 1, "maximum": 65535 },
+            "bind":             { "type": "string",  "description": "Loopback or 0.0.0.0. See E029." },
+            "expose":           { "type": "boolean", "description": "Publish the port in docker-compose." },
+            "data_dir":         { "type": "string" },
+            "ingress_policy":   { "type": "string",  "enum": ["allowlist", "signed-only", "open"] },
+            "allowed_pubkeys":  { "type": "array",   "items": { "type": "string" } },
+            "allowed_kinds":    { "type": "array",   "items": { "type": "integer", "minimum": 0 } },
+            "pod_bridge":       { "type": "boolean" },
+            "external_fanout":  { "type": "string",  "enum": ["bidirectional", "publish-only", "subscribe-only", "off"] },
+            "max_event_bytes":  { "type": "integer", "minimum": 1024 },
+            "messages_per_sec": { "type": "integer", "minimum": 1 },
+            "retention_days":   { "type": "integer", "minimum": 0 },
+            "allow_nip04":      { "type": "boolean", "description": "Legacy unencrypted DMs. Warned by E031." },
+            "info_description": { "type": "string" },
+            "info_contact":     { "type": "string" }
+          }
         }
       }
     },
@@ -498,6 +522,19 @@
                   "items": { "type": "string" },
                   "description": "Named volume mount strings appended to the service volumes list."
                 }
+              }
+            },
+            "nostr-relay": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Embedded Nostr relay data volume. Enabled when sovereign_mesh.relay.enabled=true.",
+              "properties": {
+                "writable_volumes": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Named volume mount strings for the SQLite database and WAL."
+                },
+                "reason": { "type": "string" }
               }
             }
           }

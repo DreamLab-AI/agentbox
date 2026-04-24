@@ -8,6 +8,34 @@ solid_pod = true
 nostr_bridge = true
 https_bridge = false
 
+# ── Embedded Nostr relay (PRD-004 / ADR-009 / DDD-003) ──────────────────────────
+# Gives external agents and humans a durable path to talk to internal agents.
+# Every signature-verified event targeting a local npub is persisted to the
+# pod mailbox at pods/<npub>/events/inbox/<id>.json. Outbound messages written
+# to events/outbox/ are signed by the sovereign identity and published to
+# the embedded relay plus (optionally) the NOSTR_RELAYS fan-out list.
+#
+# Default shape: nostr-rs-relay on loopback :7777, allowlist ingress, pod-bridge
+# on, no external fan-out (matches [federation].mode = "standalone").
+[sovereign_mesh.relay]
+enabled          = false
+implementation   = "nostr-rs-relay"   # nostr-rs-relay | rnostr | external | off
+port             = 7777
+bind             = "127.0.0.1"
+expose           = false
+data_dir         = "/var/lib/nostr-relay"
+ingress_policy   = "allowlist"        # allowlist | signed-only | open
+allowed_pubkeys  = []                  # empty = self only (own npub)
+allowed_kinds    = [1, 1059, 30078, 27235, 38000, 38100]
+pod_bridge       = true
+external_fanout  = "off"               # bidirectional | publish-only | subscribe-only | off
+max_event_bytes  = 131072
+messages_per_sec = 5
+retention_days   = 30
+allow_nip04      = false
+info_description = "Agentbox sovereign relay"
+info_contact     = ""
+
 [desktop]
 enabled = false
 resolution = "1920x1080"
@@ -162,3 +190,9 @@ log_level = "info"
 # Alternative: pass --no-sandbox to Chromium at the cost of defense-in-depth.
 cap_add = ["SYS_ADMIN"]
 reason = "chromium sandbox; SYS_ADMIN is the minimum privilege for Chromium user-ns sandbox inside a container"
+
+# Add when enabling [sovereign_mesh.relay]. The relay needs a writable path
+# under read_only:true to hold its SQLite database and WAL files.
+# [security.exceptions.nostr-relay]
+# writable_volumes = ["nostr-relay-data:/var/lib/nostr-relay"]
+# reason = "nostr-rs-relay SQLite journal and WAL require a writable durable path"

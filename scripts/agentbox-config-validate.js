@@ -333,6 +333,85 @@ if (sovereignMesh.jss_rust_backend === true) {
   }
 }
 
+// ─── E026-E031 / W030: embedded Nostr relay coherence (ADR-009) ───────────────
+//
+// E026 — sovereign_mesh.relay.enabled=true requires sovereign_mesh.enabled=true
+//        OR sovereign_mesh.solid_pod=true (pod bridging needs one of them).
+// E027 — implementation="external" requires federation.mode="client" and
+//        federation.external_url populated.
+// E028 — port must not collide with RESERVED_PORTS, observability.metrics_port,
+//        or privacy_filter.port.
+// E029 — bind="0.0.0.0" without expose=true is a wiring error (bound inside
+//        container, unreachable from host — silent hole).
+// W030 — ingress_policy="open" raises a warning (always correctable, never
+//        silent) — exits non-zero per project convention for all W-codes.
+// E031 — allow_nip04=true raises a warning (prefer NIP-17 sealed DMs).
+{
+  const relay = (sovereignMesh.relay) || {};
+  if (relay.enabled === true) {
+    if (sovereignMesh.enabled !== true && sovereignMesh.solid_pod !== true) {
+      errors.push({
+        code: 'E026',
+        message: 'E026: sovereign_mesh.relay.enabled=true requires sovereign_mesh.enabled=true or sovereign_mesh.solid_pod=true'
+      });
+    }
+
+    const impl = relay.implementation || 'nostr-rs-relay';
+    if (impl === 'external') {
+      if (federation.mode !== 'client' || !federation.external_url) {
+        errors.push({
+          code: 'E027',
+          message: 'E027: sovereign_mesh.relay.implementation="external" requires federation.mode="client" and federation.external_url'
+        });
+      }
+    }
+
+    const relayPort = relay.port;
+    const pfPort = (manifest.privacy_filter || {}).port;
+    if (relayPort !== undefined) {
+      if (RESERVED_PORTS[relayPort]) {
+        errors.push({
+          code: 'E028',
+          message: `E028: sovereign_mesh.relay.port ${relayPort} collides with ${RESERVED_PORTS[relayPort]}`
+        });
+      }
+      if (observability.metrics_port !== undefined && relayPort === observability.metrics_port) {
+        errors.push({
+          code: 'E028',
+          message: `E028: sovereign_mesh.relay.port ${relayPort} collides with observability.metrics_port`
+        });
+      }
+      if (pfPort !== undefined && relayPort === pfPort) {
+        errors.push({
+          code: 'E028',
+          message: `E028: sovereign_mesh.relay.port ${relayPort} collides with privacy_filter.port`
+        });
+      }
+    }
+
+    if (relay.bind === '0.0.0.0' && relay.expose !== true) {
+      errors.push({
+        code: 'E029',
+        message: 'E029: sovereign_mesh.relay.bind="0.0.0.0" without expose=true — bound inside container but unreachable from host'
+      });
+    }
+
+    if (relay.ingress_policy === 'open') {
+      errors.push({
+        code: 'W030',
+        message: 'W030: sovereign_mesh.relay.ingress_policy="open" — relay will accept writes from any client; prefer "allowlist" or "signed-only"'
+      });
+    }
+
+    if (relay.allow_nip04 === true) {
+      errors.push({
+        code: 'E031',
+        message: 'E031: sovereign_mesh.relay.allow_nip04=true — NIP-04 legacy DMs leak metadata; prefer NIP-17 sealed gift-wrap (kind 1059)'
+      });
+    }
+  }
+}
+
 // ─── E022-E025: privacy filter coherence (ADR-008) ────────────────────────────
 //
 // E022 — privacy_filter.enabled=true requires mode != "off".
@@ -432,6 +511,8 @@ function isFeatureActive(exceptionName) {
       return toolchains.code_server === true;
     case 'telegram-mirror':
       return sovereignMesh.telegram_mirror === true;
+    case 'nostr-relay':
+      return !!(sovereignMesh.relay && sovereignMesh.relay.enabled === true);
     default:
       return false;
   }
@@ -445,7 +526,8 @@ const KNOWN_EXCEPTION_FEATURE_GATES = new Set([
   'gaussian-splatting',
   'playwright',
   'code-server',
-  'telegram-mirror'
+  'telegram-mirror',
+  'nostr-relay'
 ]);
 
 const security = manifest.security || {};

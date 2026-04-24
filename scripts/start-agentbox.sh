@@ -681,6 +681,98 @@ section_integrations() {
 }
 
 # ════════════════════════════════════════════════════════════════════════════════
+# SECTION 9b — embedded Nostr relay (PRD-004 / ADR-009)
+# Only surfaced when sovereign_mesh.enabled OR sovereign_mesh.solid_pod (E026).
+# ════════════════════════════════════════════════════════════════════════════════
+section_nostr_relay() {
+  local sm_enabled sp_enabled
+  sm_enabled="$(state_get 'sovereign_mesh.enabled')"
+  sp_enabled="$(state_get 'sovereign_mesh.solid_pod')"
+  if [[ "${sm_enabled}" != "true" && "${sp_enabled}" != "true" ]]; then
+    state_set_bool "sovereign_mesh.relay.enabled" "false"
+    return 0
+  fi
+
+  if ! wt_yesno "Embedded Nostr relay (ADR-009)" \
+    "Run an embedded Nostr relay for external-agent messaging?\n\nThe relay gives external agents and humans a signed,\naudited path to message agents running inside the\ncontainer. Every accepted event is persisted to\npods/<npub>/events/inbox/<id>.json; every outbound\nmessage goes through outbox/.\n\nDefault: loopback :7777, allowlist ingress, pod-bridge on.\nImpl: nostr-rs-relay (Apache-2.0, SQLite-backed, in nixpkgs)."; then
+    state_set_bool "sovereign_mesh.relay.enabled" "false"
+    validate_candidate
+    return 0
+  fi
+
+  state_set_bool "sovereign_mesh.relay.enabled" "true"
+
+  # Implementation
+  local impl
+  impl="$(wt_menu "Relay — Implementation" \
+    "Which relay to embed?" \
+    12 72 4 \
+    "nostr-rs-relay" "default: SQLite, mature, in nixpkgs" \
+    "rnostr"         "LMDB + NIP-50 full-text search" \
+    "external"       "host-provided (federation.mode=client)" \
+    "off"            "disabled (you can still flip it later)")"
+  [[ -z "${impl}" ]] && impl="nostr-rs-relay"
+  state_set "sovereign_mesh.relay.implementation" "${impl}"
+
+  # Binding + expose
+  local expose_choice
+  expose_choice="$(wt_menu "Relay — Network binding" \
+    "Who can reach the relay?" \
+    11 72 3 \
+    "loopback"      "127.0.0.1 only — local mesh bridge reads" \
+    "host-expose"   "0.0.0.0 + publish port on compose (external agents can connect)" \
+    "docker-net"    "0.0.0.0 inside container, no host publish (other containers only)")"
+  case "${expose_choice}" in
+    host-expose)
+      state_set "sovereign_mesh.relay.bind" "0.0.0.0"
+      state_set_bool "sovereign_mesh.relay.expose" "true"
+      ;;
+    docker-net)
+      state_set "sovereign_mesh.relay.bind" "0.0.0.0"
+      state_set_bool "sovereign_mesh.relay.expose" "false"
+      ;;
+    *)
+      state_set "sovereign_mesh.relay.bind" "127.0.0.1"
+      state_set_bool "sovereign_mesh.relay.expose" "false"
+      ;;
+  esac
+
+  # Ingress policy
+  local policy
+  policy="$(wt_menu "Relay — Ingress policy" \
+    "How strict is write admission?" \
+    12 72 3 \
+    "allowlist"    "NIP-42 AUTH + pubkey allowlist (safest)" \
+    "signed-only"  "NIP-42 AUTH only; any valid signer" \
+    "open"         "no AUTH required (homelab; raises W030)")"
+  [[ -n "${policy}" ]] && state_set "sovereign_mesh.relay.ingress_policy" "${policy}"
+
+  # Fanout
+  local fanout
+  fanout="$(wt_menu "Relay — External fanout" \
+    "Bridge to NOSTR_RELAYS as well?" \
+    12 72 4 \
+    "off"            "embedded relay only (air-gapped mesh)" \
+    "publish-only"   "push local events out, ignore external traffic" \
+    "subscribe-only" "read external traffic, do not publish" \
+    "bidirectional"  "both directions (maximum reach)")"
+  [[ -n "${fanout}" ]] && state_set "sovereign_mesh.relay.external_fanout" "${fanout}"
+
+  # Retention
+  local retention
+  retention="$(wt_inputbox "Relay — Retention" \
+    "How many days to keep unexpired events?" \
+    9 60 "$(state_get 'sovereign_mesh.relay.retention_days')")"
+  [[ -n "${retention}" ]] && state_set "sovereign_mesh.relay.retention_days" "${retention}"
+
+  # Wizard-side security exception wiring: when relay.enabled=true we need
+  # the nostr-relay writable volume present to satisfy W021.
+  # The user keeps manual control — validate_candidate will surface W021 if
+  # they leave [security.exceptions.nostr-relay] unset.
+  validate_candidate
+}
+
+# ════════════════════════════════════════════════════════════════════════════════
 # SECTION 10 — sovereign_mesh
 # ════════════════════════════════════════════════════════════════════════════════
 section_sovereign_mesh() {
@@ -721,6 +813,7 @@ SECTIONS=(
   section_observability
   section_integrations
   section_sovereign_mesh
+  section_nostr_relay
 )
 
 for section_fn in "${SECTIONS[@]}"; do

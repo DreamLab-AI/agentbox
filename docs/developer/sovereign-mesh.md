@@ -105,8 +105,60 @@ Used by `management-api/middleware/auth.js` when the `Nostr ` prefix is detected
 
 The `events` adapter slot (see [adapters.md](adapters.md)) can be configured to dispatch to a Nostr relay as a parameterised-replaceable kind when `[sovereign_mesh].publish_agent_events = true`. This is the path by which agent lifecycle events leave the container onto the mesh. The adapter contract is satisfied by a thin wrapper over `NostrBridge.publish()`; the slot resolver selects it based on the manifest impl name. Treat this as the canonical example of a feature flag that simultaneously gates a capability (`sovereign_mesh.enabled`), a transport (`nostr_bridge`), and an adapter binding (`events = "external"` pointing at the bridge).
 
+## Embedded relay (ADR-009)
+
+When `[sovereign_mesh.relay].enabled = true` the bridge is joined by an
+embedded Nostr relay (`nostr-rs-relay` by default) running as its own
+supervisord program. The relay's SQLite database at
+`/var/lib/nostr-relay/nostr.db` holds every accepted event; the bridge
+subscribes to it over loopback WebSocket and persists verified inbound
+events to `pods/<npub>/events/inbox/<id>.json`. Outbound events written
+by internal agents to `pods/<npub>/events/outbox/` are signed and
+published through the bridge to both the embedded relay and, when
+`external_fanout` is not `off`, the `NOSTR_RELAYS` list.
+
+The bridge module for this is new (`mcp/nostr-bridge/relay-consumer.js`).
+Its contract:
+
+```js
+// Called on every inbound event id matching p-tag=local npub
+async onInbound(event) {
+  // 1. Schnorr verify (nostr-tools verifyEvent)
+  // 2. Policy check — kind in allowed_kinds? pubkey allowed?
+  // 3. Atomic write pods/<npub>/events/inbox/<id>.json (temp + rename)
+  // 4. Emit span agentbox.relay.event.persist
+  // 5. Dispatch through the events adapter slot for downstream handlers
+}
+
+// Called by the outbox flusher on a file appearing in outbox/
+async onOutboxPending(pendingFile) {
+  const unsignedEvent = readJson(pendingFile);
+  const signed = await signer.sign(unsignedEvent);
+  await publishToRelays(signed);
+  await renamePendingToFinal(pendingFile, signed.id);
+  // idempotent on restart — duplicate ids are rejected by the relay
+}
+```
+
+See [DDD-003](../reference/ddd/DDD-003-sovereign-messaging-domain.md) for
+the aggregate model and every invariant (I01-I12) that
+`tests/contract/relay.contract.spec.js` asserts.
+
+### Why not run the relay in management-api's process?
+
+Same process, same key material — superficially attractive. Rejected
+because the relay is a third-party Rust binary with its own release
+cadence, its own OTEL integration story, and its own SQLite locking
+semantics. A separate supervisor program isolates crashes and makes
+retention sweeps safe to run under process-level isolation. The bridge
+module stays in-process for the same hot-path reason that applied to
+NIP-98 verification.
+
 ## Related specs
 
 - [PRD-001 §Federation modes](../reference/prd/PRD-001-capabilities-and-adapters.md) — the standalone-vs-client distinction.
+- [PRD-004 — External agent messaging](../reference/prd/PRD-004-external-agent-messaging.md) — the relay surface.
 - [ADR-005 §Off-slot semantics](../reference/adr/ADR-005-pluggable-adapter-architecture.md) — why the `events` adapter alone has no-op `off` instead of throwing.
 - [ADR-007 §4a](../reference/adr/ADR-007-runtime-contract-and-container-hardening.md) — hardened baseline under which the bridge runs.
+- [ADR-009 — Embedded Nostr relay and pod-inbox bridge](../reference/adr/ADR-009-embedded-nostr-relay.md) — the decision and contract for the relay.
+- [DDD-003 — Sovereign messaging domain](../reference/ddd/DDD-003-sovereign-messaging-domain.md) — aggregate model and invariants.
