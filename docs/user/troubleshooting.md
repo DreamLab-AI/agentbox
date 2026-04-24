@@ -48,16 +48,29 @@ curl -sf http://localhost:9091/metrics | head -5    # 5. reachable on host
 
 First step that fails is where to fix.
 
-## `nix build` throws `lib.fakeHash` errors
+## `nix build .#runtime` fails with a hash mismatch
 
-Fifteen derivations pin `npmDepsHash` / `sha256` with `lib.fakeHash` until the first operator build resolves them. The error prints the exact command:
+Six `npmDepsHash` values in `lib/npm-services.nix` (and any still-placeholder CLI `sha256` in `lib/npm-cli.nix`) must be resolved the first time you build. **This only affects realisation**: `nix flake check`, `nix eval`, `nix build .#compose`, and CI lint all work on a fresh clone.
 
+When you run `nix build .#runtime` against an unresolved placeholder you'll see two things in the build output:
+
+- A Nix `hash mismatch` line listing `expected: sha256-AAAAAAA…=` and `got: sha256-<real>=`.
+- A `preFetch` operator hint pointing at the resolver command for the specific service or CLI.
+
+For each failing derivation, run the command the hint prints. Canonical forms:
+
+```sh
+# Local npm services (buildNpmPackage) — one per service
+nix run nixpkgs#prefetch-npm-deps -- management-api/package-lock.json
+nix run nixpkgs#prefetch-npm-deps -- mcp/package-lock.json
+# ...per service
+
+# Global npm CLIs (tarball fetch)
+nix-prefetch-url https://registry.npmjs.org/<pkg>/-/<pkg>-<ver>.tgz
+nix hash to-sri --type sha256 <base32-output>
 ```
-lib/npm-services.nix: management-api npmDepsHash is still lib.fakeHash.
-Resolve with: nix run nixpkgs#prefetch-npm-deps -- management-api/package-lock.json
-```
 
-Run it, paste the returned hash into `flake.nix`, rebuild. See [developer/version-tracking.md](../developer/version-tracking.md).
+Paste the returned hash into `lib/npm-services.nix` or `flake.nix`, rebuild. See [developer/version-tracking.md](../developer/version-tracking.md) for the full workflow.
 
 ## GPU not detected
 
