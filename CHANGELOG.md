@@ -6,6 +6,17 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Dat
 
 ## [Unreleased]
 
+### Platform compatibility (2026-04-24)
+
+- **Flake systems extended** — `eachSystem` now includes `x86_64-darwin` and `aarch64-darwin` alongside the two Linux targets. macOS users get `nix build .#compose` and `nix develop` natively.
+- **Container images gated to Linux** — `packages = lib.optionalAttrs pkgs.stdenv.isLinux { runtime / full / desktop / default / cuda-runtime / gaussian-splatting }`. The portable `compose` output stays cross-platform.
+- **CUDA eligibility tightened** — `lib/gpu-backend.nix` uses `cudaEligible = pkgs.stdenv.isLinux && pkgs.stdenv.isx86_64` (was `isx86_64` alone, which would incorrectly pass on `x86_64-darwin`).
+- **Multi-arch publishing** — `.github/workflows/build-multi-arch.yml` builds on native runners (`ubuntu-latest` + `ubuntu-24.04-arm`, GitHub's free ARM64 runners) and publishes `ghcr.io/dreamlab-ai/agentbox:<sha>` + `:latest` as a single multi-arch manifest. No QEMU.
+- **aarch64 flake-check CI** — `.github/workflows/flake-check.yml` evaluates the flake on both Linux archs per PR.
+- **Docs** — new `docs/guides/platforms.md` (full matrix incl. GPU backends per OS), new `docs/guides/consuming-the-image.md` (pull instructions), README compatibility table, `docs/README.md` Operator-reference row for the registry.
+
+**Honest summary**: Linux x86_64/aarch64 fully supported (build + run). macOS + Windows are runtime-supported via Docker Desktop pulling the published image. No Apple Silicon GPU (Metal), no Intel oneAPI, no Windows native.
+
 ### M4 — 3DGS stack: COLMAP + METIS + LichtFeld Studio (P3.2) (2026-04-23)
 
 **3D Gaussian Splatting stack gate (P3.2)**:
