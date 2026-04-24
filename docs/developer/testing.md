@@ -2,6 +2,17 @@
 
 Agentbox ships ~200 tests across nine categories. This doc covers how to run them and how to add your own.
 
+## Context in one paragraph
+
+Testing in this repo serves two distinct contracts: the **adapter contract** (every impl of every slot must satisfy the same parameterised assertions — [ADR-005 §Service-level objectives](../reference/adr/ADR-005-pluggable-adapter-architecture.md)) and the **runtime contract** (every boot must satisfy [PRD-002](../reference/prd/PRD-002-immutable-runtime-bootstrap.md) / [PRD-003](../reference/prd/PRD-003-runtime-contract-and-container-hardening.md) acceptance criteria, mapped 1:1 onto `tests/runtime-contract/RC-*.sh` scripts). Beyond those two, the suite covers validator semantics, TUI round-tripping, per-feature artifact probes, reproducibility of Nix builds, and the Nostr bridge. Read this file when you add a feature (you will almost certainly need a test in at least two categories) or when a PR fails CI and you need to know which workflow to look at.
+
+## Glossary
+
+- **Contract test** — a parameterised Jest suite under `tests/contract/<slot>.contract.spec.js` that runs the same assertions against every impl class for a slot. Adding an impl adds a row to the parameter list; the harness runs automatically.
+- **Runtime-contract test** — a bash script under `tests/runtime-contract/RC-<prd>-<nn>.sh` mapping to one PRD-002/003 acceptance criterion. TAP output, skip-77 semantics.
+- **TAP** — Test Anything Protocol; `ok N` / `not ok N` / `1..N`. All bash suites emit TAP so a single runner can aggregate them.
+- **skip-77** — the convention that a bash test exits `77` when a prerequisite (Docker, Nix, GPU, SSD) is missing; the runner treats 77 as "skipped, not failed".
+
 ## Suite layout
 
 ```
@@ -146,6 +157,38 @@ Each todo carries a one-line note citing the specific missing dependency.
 
 See [adapters.md](adapters.md) §Testing. Contract suite runs automatically once the file exists at `management-api/adapters/<slot>/<impl>.js`.
 
+### Minimum useful change — one contract assertion
+
+Say you notice the `memory` slot contract does not currently assert that `search()` tolerates an empty corpus. The smallest honest addition is one assertion inside the existing parameterised block:
+
+```js
+// tests/contract/memory.contract.spec.js
+const IMPLS = ['embedded-ruvector', 'external-pg', 'off'];
+
+describe.each(IMPLS)('memory adapter — %s', (impl) => {
+  let adapter;
+  beforeAll(async () => { adapter = await makeAdapter('memory', impl); });
+  afterAll(async () => { await adapter.disconnect(); });
+
+  test('search() on empty corpus returns [] not error', async () => {
+    if (impl === 'off') {
+      await expect(adapter.search('anything'))
+        .rejects.toThrow(/AdapterDisabled/);
+      return;
+    }
+    const results = await adapter.search('no-vectors-stored-yet');
+    expect(Array.isArray(results)).toBe(true);
+    expect(results).toHaveLength(0);
+  });
+});
+```
+
+Three properties make this a useful contract test: (1) it branches on `off` to express the disabled-slot semantics, (2) it asserts behaviour every live impl must share, (3) it fails loudly if any impl treats "empty" as an error. That is the shape to aim for when extending any slot's contract.
+
+### Why not: only unit-test the application, never the adapters directly?
+
+Unit tests of handlers with mocked adapters would catch some classes of regression but miss the one class this suite exists to catch: divergence between impls of the same slot. A handler passes against `local-sqlite` and silently breaks against `external` because the external impl has a subtly different error shape. The parameterised contract harness is the only layer where those impls are held to identical behaviour.
+
 ### New PRD acceptance test
 
 1. If PRD-002/003 AC, use next `RC-NNN-NN.sh` slot.
@@ -179,3 +222,9 @@ nix build .#compose && diff result/docker-compose.yml docker-compose.yml
 ```
 
 CI reruns all of this, but local is faster.
+
+## Related specs
+
+- [ADR-005](../reference/adr/ADR-005-pluggable-adapter-architecture.md) — defines the contract every `tests/contract/<slot>.contract.spec.js` enforces.
+- [PRD-002](../reference/prd/PRD-002-immutable-runtime-bootstrap.md) + [PRD-003](../reference/prd/PRD-003-runtime-contract-and-container-hardening.md) — acceptance criteria mapped onto `tests/runtime-contract/RC-*.sh`.
+- [DDD-001](../reference/ddd/DDD-001-immutable-bootstrap-domain.md) + [DDD-002](../reference/ddd/DDD-002-runtime-contract-domain.md) — aggregates and invariants the bootstrap/runtime suites exercise.

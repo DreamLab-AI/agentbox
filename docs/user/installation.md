@@ -2,6 +2,18 @@
 
 Three install paths, in order of preference for most users.
 
+## Why this exists
+
+Most people coming from Claude Desktop or Cursor are used to a one-click installer. Agentbox is a headless agent container (it runs as a background service, not a window), so the install step is really "get the image onto a host that runs Docker and open the right ports". The three paths below map to the three realistic starting points: you already have Docker, you want to build from source with Nix, or you want the whole thing on a cloud VM without touching local hardware.
+
+**What it solves**
+
+- One reproducible image instead of a pile of `pip install` / `npm install` / model-download steps per agent.
+- Multi-arch manifests — the same command works on Intel Linux, Apple Silicon, Raspberry Pi 5 and ARM cloud instances.
+- A single `./agentbox.sh up` entry point that handles compose, volumes and health-checking.
+
+**When to skip this**: if you only run a single agent CLI natively and do not need persistent storage, shared skills, or remote access, install that CLI directly.
+
 ## 1. Pull the published image (recommended)
 
 Works on any host with Docker. Pulls the right arch automatically.
@@ -27,7 +39,7 @@ curl -fsSL https://raw.githubusercontent.com/DreamLab-AI/agentbox/main/docker-co
 
 ## 2. Build from source (Linux x86_64 or aarch64)
 
-Requires Nix with flakes enabled.
+Requires Nix with flakes enabled. A Nix `flake` is a declarative package recipe — here it pins every dependency (toolchains, skills, adapter binaries) against a lockfile, so the image you build locally matches the image CI publishes. This is the path for contributors, or for anyone who wants to change which skills or toolchains are baked in.
 
 ```sh
 git clone https://github.com/DreamLab-AI/agentbox.git
@@ -39,7 +51,7 @@ First build takes 10–20 minutes cold, subsequent builds are cache-hot within s
 
 ## 3. Remote cloud deployment
 
-Provisions a fresh VM and brings agentbox up on it. Ideal when local hardware isn't enough.
+Provisions a fresh VM and brings agentbox up on it. Ideal when local hardware isn't enough — no GPU, not enough RAM, or you want the agents reachable from multiple machines. `./agentbox.sh provision` takes care of cloud-init, SSH, Docker install and `docker pull` so you go from a bare provider API key to a running agentbox in one command. See [provisioning.md](provisioning.md) for the target matrix.
 
 ```sh
 ./agentbox.sh provision --target oci         # Oracle Cloud Ampere (free tier)

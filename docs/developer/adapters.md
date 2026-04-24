@@ -2,6 +2,31 @@
 
 How agentbox plugs into durable state. Canonical spec: [ADR-005](../reference/adr/ADR-005-pluggable-adapter-architecture.md).
 
+## Context in one paragraph
+
+Agentbox needs durable state — somewhere to record task receipts, store artefacts, index memory vectors, append events, and spawn agent processes. But it must do that two ways without recompiling: standalone (local fallbacks, no external services required) and federated-client (plugged into a host project's existing mesh). The solution is the five-slot pluggable adapter pattern (a hexagonal-architecture port/adapter — application logic talks to a fixed interface, concrete implementations are swapped at boot). [ADR-005](../reference/adr/ADR-005-pluggable-adapter-architecture.md) is the canonical decision record; [PRD-001](../reference/prd/PRD-001-capabilities-and-adapters.md) is the product constraint that forces it. This file is for the contributor writing or modifying an implementation — the "how", not the "why".
+
+## Mental model
+
+```mermaid
+flowchart LR
+    App[management-api<br/>route handlers + MCP servers]
+    App --> Res[adapters/index.js<br/>resolver]
+    Res -->|reads| MF[agentbox.toml<br/>&#91;adapters&#93;]
+    Res -->|instantiates| Slots
+    subgraph Slots[Five slots]
+        B[beads]
+        P[pods]
+        M[memory]
+        E[events]
+        O[orchestrator]
+    end
+    B --> BI[local-sqlite.js<br/>external.js<br/>off.js]
+    M --> MI[embedded-ruvector.js<br/>external-pg.js<br/>off.js]
+```
+
+Application code never imports a concrete impl. It receives `app.adapters.<slot>` and calls methods defined by the contract. That is the whole point — the impl is swappable because the application does not know which it got.
+
 ## The shape
 
 Five slots. Three implementation classes per slot. Fifteen derivations total.
@@ -39,7 +64,13 @@ class BaseAdapter {
 }
 ```
 
-The per-slot method set is defined in ADR-005 §Service-level objectives. For `beads`, it's `{createEpic, createChild, claim, close, getReady, show, init, sync}`. Methods must return typed errors (`AdapterDisabled`, `AdapterTimeout`, etc.) from `management-api/adapters/errors.js`.
+The per-slot method set is defined in ADR-005 §Service-level objectives. For `beads` (agent-work receipts — epic/child/claim/close records tracking which agent owns which piece of work), it's `{createEpic, createChild, claim, close, getReady, show, init, sync}`. Methods must return typed errors (`AdapterDisabled`, `AdapterTimeout`, etc.) from `management-api/adapters/errors.js`.
+
+Typed errors matter because the resolver and the observability middleware (`wrapDispatch`) both branch on error class. A plain `throw new Error('oops')` bypasses the degraded-mode logic and mis-classifies spans.
+
+### Why not: auto-generated adapters from a schema?
+
+Considered during the ADR-005 radical-upgrade sprint; rejected because each slot's semantics are genuinely different (transactional beads vs append-only events vs long-lived orchestrator streams) and a uniform generator would paper over real invariants. The contract test harness (`tests/contract/<slot>.contract.spec.js`) is the enforcement mechanism instead — it runs the same assertions against every impl class for a slot.
 
 ## Resolution at boot
 
@@ -65,6 +96,37 @@ Each slot carries a semver `contractVersion`. Breaking changes bump MAJOR; addit
 At boot, the host orchestrator (when `federation.mode = "client"`) calls `/v1/meta` and compares its declared range against agentbox's version. MAJOR mismatch = fatal.
 
 Compat windows: each new MAJOR ships alongside the prior one for 60 days minimum.
+
+## Minimum useful change — a one-method `off` impl
+
+The smallest honest implementation of a slot is the `off` disabled variant. It exists to keep route handlers uniform (they always call through `app.adapters.<slot>`) and to produce typed errors the resolver understands. Every new slot needs one of these before anything else.
+
+```js
+// management-api/adapters/beads/off.js
+const BaseAdapter = require('../base');
+const { AdapterDisabled } = require('../errors');
+
+class BeadsOffAdapter extends BaseAdapter {
+  constructor(args) { super(args); this.enabled = false; }
+  async connect()    { /* no-op */ }
+  async disconnect() { /* no-op */ }
+  async health()     { return 'off'; }
+
+  async createEpic() { throw new AdapterDisabled('beads'); }
+  async createChild(){ throw new AdapterDisabled('beads'); }
+  async claim()      { throw new AdapterDisabled('beads'); }
+  async close()      { throw new AdapterDisabled('beads'); }
+  async getReady()   { throw new AdapterDisabled('beads'); }
+  async show()       { throw new AdapterDisabled('beads'); }
+  async init()       { throw new AdapterDisabled('beads'); }
+  async sync()       { throw new AdapterDisabled('beads'); }
+}
+
+module.exports = BeadsOffAdapter;
+module.exports.contractVersion = '1.0.0';
+```
+
+That is the minimum bar a new slot must clear before any `local-*` or `external` impl is written. The `events` slot is the one exception where `off` becomes a no-op dispatch rather than a throw — see [ADR-005](../reference/adr/ADR-005-pluggable-adapter-architecture.md) §Off-slot semantics.
 
 ## Writing a new impl for an existing slot
 
@@ -207,3 +269,10 @@ The contract test harness runs every assertion against every impl class. If a te
 ## Testing your new impl
 
 See [testing.md](testing.md) §"New adapter impl".
+
+## Related specs
+
+- [PRD-001 §Adapters](../reference/prd/PRD-001-capabilities-and-adapters.md) — product-level constraint.
+- [ADR-005](../reference/adr/ADR-005-pluggable-adapter-architecture.md) — slots, SLOs, resolver.
+- [ADR-008](../reference/adr/ADR-008-privacy-filter-routing.md) — privacy filter as cross-cutting middleware layered on top of every adapter dispatch.
+- [DDD-002](../reference/ddd/DDD-002-runtime-contract-domain.md) — probe contract that consumes adapter health.

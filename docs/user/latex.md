@@ -1,5 +1,17 @@
 # LaTeX & TeX Live Configuration
 
+## Why this exists
+
+Agents that write reports, academic papers or technical documentation routinely need to compile LaTeX. Shipping LaTeX inside the agentbox image — rather than leaving each skill to install its own TeX distribution — means `pdflatex`, `xelatex`, `lualatex` and `biber` are always available, always the same version, and survive container restarts. The `report_builder` skill in particular expects this toolchain present.
+
+**What it solves**
+
+- Avoiding the 1-2 GB TeX Live install per skill that wants to render a PDF.
+- Version consistency across agents that share the same image.
+- Bibliography engines (BibTeX, BibLaTeX, biber) available without extra wiring.
+
+**When to skip this**: if none of your enabled skills render PDFs, leave `latex = false`. `texliveFull` adds considerable image size; the "Downsizing" section at the bottom shows smaller schemes.
+
 ## Version
 
 Agentbox uses `pkgs.texliveFull` from nixpkgs-unstable. This provides the complete TeX Live distribution with ~7,000 packages.

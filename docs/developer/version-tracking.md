@@ -2,6 +2,16 @@
 
 Agentbox pins every upstream dependency by exact version or commit SHA. This guide explains how bumps flow through the repo.
 
+## Context in one paragraph
+
+Every input to the build is pinned to an exact version or content hash so a rebuild of the same repo state produces the same image byte-for-byte. That property — reproducibility — is load-bearing: it is how [PRD-002](../reference/prd/PRD-002-immutable-runtime-bootstrap.md) makes "immutable boot" a meaningful claim, and how [ADR-001](../reference/adr/ADR-001-nixos-flakes.md) justifies the Nix flake (a pure hermetic build descriptor — inputs + lockfile fully determine outputs) as the build graph. Upgrading a pin is therefore a first-class action: it is a PR, it runs through CI, it ships as a reviewable diff. [ADR-004](../reference/adr/ADR-004-upstream-sync.md) is the policy governing which upstreams may be synced mechanically and which require human review; the mechanics below implement that policy.
+
+## Glossary
+
+- **Renovate** — a bot that opens PRs on an interval to bump dependency versions; configured in `renovate.json`.
+- **`flake.lock`** — the Nix lockfile; each input entry carries `rev` (commit SHA) and `narHash` (content hash of the unpacked tree). A lockfile diff is the primary review artefact for Nix input bumps.
+- **Custom-manager** — a Renovate feature letting you define regex-based pins for versions that live outside package manifests (e.g. a version string in a shell script or a Nix file).
+
 ## What gets tracked
 
 | Ecosystem | Pin lives in | Updated by |
@@ -29,6 +39,10 @@ Install the Renovate GitHub App on `DreamLab-AI/agentbox`. It opens PRs Monday m
 - **Lock-file maintenance** — rewrites `package-lock.json` to pick up transitive upstream fixes without version changes.
 
 Security-sensitive packages (`@anthropic-ai/claude-code`, `nostr-tools`, `@noble/curves`) never auto-merge; human review required.
+
+### Why not: an all-auto-merge policy?
+
+Rejected for the security-sensitive set above. The crypto libraries (`nostr-tools`, `@noble/curves`) underpin the sovereign mesh ([sovereign-mesh.md](sovereign-mesh.md)) — a silent regression here compromises the auth layer. `@anthropic-ai/claude-code` executes agent-authored prompts; version drift can change sandbox behaviour subtly. For everything else, auto-merge after cool-off gives the team a background upgrade signal without paper-cut noise.
 
 ### 2. `nix-flake-update.yml`
 
@@ -80,7 +94,9 @@ Every bump is one PR. Revert with `git revert <sha>`.
 ## See also
 
 - [`skills-upgrade.md`](skills-upgrade.md) — moving skills from in-tree to a standalone Nix input.
-- [`../adr/ADR-004-upstream-sync.md`](../adr/ADR-004-upstream-sync.md) — policy for what may and may not be synced.
+- [`../reference/adr/ADR-001-nixos-flakes.md`](../reference/adr/ADR-001-nixos-flakes.md) — why Nix flakes and what reproducibility buys us.
+- [`../reference/adr/ADR-004-upstream-sync.md`](../reference/adr/ADR-004-upstream-sync.md) — policy for what may and may not be synced.
+- [`../reference/prd/PRD-002-immutable-runtime-bootstrap.md`](../reference/prd/PRD-002-immutable-runtime-bootstrap.md) — immutable-boot constraint that pinning enforces.
 - [`../../renovate.json`](../../renovate.json) — Renovate config.
 - [`../../.github/workflows/nix-flake-update.yml`](../../.github/workflows/nix-flake-update.yml) — the weekly workflow.
 - [`../../scripts/check-upstream-releases.sh`](../../scripts/check-upstream-releases.sh) — the human dashboard.

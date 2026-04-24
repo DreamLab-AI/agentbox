@@ -5,6 +5,15 @@
 **Author:** Agentbox team
 **Related:** PRD-002 (Immutable runtime bootstrap), DDD-001 (Immutable bootstrap domain)
 
+## TL;DR for newcomers
+*Skip if you already know the immutable bootstrap + sentinel pattern.*
+
+This ADR explains why agentbox startup is not allowed to resolve software dependencies, and what it is allowed to do instead. The pain point is that a Nix-built, "reproducible" container that still `npm install`s on boot is not actually reproducible: startup then depends on outbound network, upstream registries, and partial-failure tolerance, so two runs of the same image can finish with different binaries. The shape of the answer is an **immutable bootstrap contract**: boot may prepare writable state, seed identity, validate packaged artefacts, and signal completion via a sentinel — but it may not install, download, or mutate `/opt/agentbox`. You will learn the legal surface, the validation probes, and the enforcement path.
+
+**If you remember only one thing:** everything the runtime needs is baked into the image; startup only wires up state that already exists.
+
+For the deep version, keep reading.
+
 ## Context
 
 Agentbox is positioned as a reproducible Nix-built container, but its startup path still installs dependencies and optional CLIs at runtime. That creates four concrete failures:

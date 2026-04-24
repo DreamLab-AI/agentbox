@@ -2,9 +2,23 @@
 
 For contributors. If you're an operator, start at [user/quickstart.md](../user/quickstart.md).
 
+## Context in one paragraph
+
+Agentbox is the runtime container that executes autonomous coding agents. This document is the map you land on when you need to change behaviour: it explains how the manifest drives the build, how the build produces the image, and how the image boots into a hardened, observable runtime with pluggable durable-state adapters. The design is constrained by [PRD-001](../reference/prd/PRD-001-capabilities-and-adapters.md) (the product must ship standalone or federated with the same binary) and driven by three foundational ADRs — [ADR-001](../reference/adr/ADR-001-nixos-flakes.md) (Nix flake build), [ADR-005](../reference/adr/ADR-005-pluggable-adapter-architecture.md) (pluggable adapters), [ADR-006](../reference/adr/ADR-006-immutable-runtime-bootstrap.md) (immutable boot) — with [ADR-007](../reference/adr/ADR-007-runtime-contract-and-container-hardening.md) and [ADR-008](../reference/adr/ADR-008-privacy-filter-routing.md) layering hardening and cross-cutting middleware on top. Read that paragraph twice; the rest of this file is the mechanical elaboration.
+
 ## One-sentence summary
 
 Agentbox is a manifest-driven Nix-built Linux container that hosts software agents, their skills, and their toolchains, with every durable-state integration (memory, task receipts, pod storage, event sinks, agent orchestration) pluggable behind a five-slot adapter pattern.
+
+## Glossary — terms used throughout these docs
+
+- **Manifest** — `agentbox.toml`, the single source of truth for what gets built. Validated against a JSON Schema plus semantic rules E001–E020 + W021.
+- **Flake** — Nix's pure, hermetic build descriptor (`flake.nix` + `flake.lock`). Pure means identical inputs produce identical outputs byte-for-byte. Background: [ADR-001](../reference/adr/ADR-001-nixos-flakes.md).
+- **Adapter slot** — one of five fixed integration points (`beads`, `pods`, `memory`, `events`, `orchestrator`) defined in [ADR-005](../reference/adr/ADR-005-pluggable-adapter-architecture.md). Each slot has three implementation classes: `local-*`, `external`, `off`.
+- **Sovereign mesh** — the optional Nostr-based inter-agent identity and event layer detailed in [sovereign-mesh.md](sovereign-mesh.md); sovereign because each container owns its own cryptographic keypair.
+- **Bootstrap seal** — the one-shot sentinel file written at `/run/agentbox/bootstrap.done` once every required supervisord program reaches `RUNNING`. Consumed by `/ready`. See [PRD-002](../reference/prd/PRD-002-immutable-runtime-bootstrap.md).
+- **Skills corpus** — the content-addressed Nix input holding ~96 skill packages (agent playbooks), copied into the image at `/opt/agentbox/skills`. Migration path: [skills-upgrade.md](skills-upgrade.md).
+- **RuntimeClosure** — the DDD-001 aggregate that represents a validated boot outcome: manifest + artifact probes + sealed sentinel.
 
 ## The three claims
 
@@ -15,6 +29,14 @@ Every design decision traces back to one of these:
 2. **Adapters are the integration surface.** Durable state is pluggable. Agentbox never hardcodes "the database" or "the task store". Five slots (beads, pods, memory, events, orchestrator) × three implementation classes each (`local-*`, `external`, `off`) = fifteen derivations, one interface per slot. The contract test harness runs the same assertions against all three classes.
 
 3. **Boot is immutable.** The image realises the manifest; it does not construct itself at startup. No `npm install`, no `curl | bash`, no `playwright install`. If a feature is enabled in the manifest, its binaries and dependencies are in the image — artifact probes fail fast on missing closures.
+
+### Why not: run dependency install at container start?
+
+It is the default pattern for VM-style containers and it is rejected here. [PRD-002 §1](../reference/prd/PRD-002-immutable-runtime-bootstrap.md) and [ADR-006](../reference/adr/ADR-006-immutable-runtime-bootstrap.md) document the decision: deferred install makes boot non-deterministic (depends on upstream registries, network, startup timing), hides packaging regressions behind `|| true`, and breaks the "manifest is the contract" claim. The cost paid is heavier images and slower rebuilds; the benefit is that a green CI means a green boot on any host with the same image digest.
+
+### Why not: a single hardcoded backend per capability?
+
+Rejected in [ADR-005 §Context](../reference/adr/ADR-005-pluggable-adapter-architecture.md). Agentbox must run standalone (developer laptop, local SQLite + JSONL) and federated (host mesh with Postgres-backed vector memory, remote orchestrator) from the same image. Two codepaths would drift. Five slots × three impl classes × one contract test harness is the compromise.
 
 ## The layer cake
 
@@ -120,11 +142,39 @@ Bootstrap events emitted as pino JSON, tagged `agentbox.stage: bootstrap`:
 
 Full spec: [PRD-002](../reference/prd/PRD-002-immutable-runtime-bootstrap.md) + [ADR-006](../reference/adr/ADR-006-immutable-runtime-bootstrap.md) + [DDD-001](../reference/ddd/DDD-001-immutable-bootstrap-domain.md).
 
+The bootstrap seal (the sentinel file written by `[program:bootstrap-seal]`) is the join point between the supervisord (process supervisor that manages child programmes) world and the probe world. Nothing answers `/ready` with 200 until that file exists.
+
+### Bootstrap sequence (readable view)
+
+```mermaid
+sequenceDiagram
+    participant Kernel
+    participant Entry as entrypoint-unified.sh
+    participant Boot as sovereign-bootstrap.py
+    participant Sup as supervisord
+    participant Seal as bootstrap-seal
+    participant API as management-api
+
+    Kernel->>Entry: PID 1
+    Entry->>Entry: Stage A phases 0..5
+    Entry->>Boot: generate Nostr identity
+    Entry->>Sup: exec (PID 1 handoff)
+    Sup->>API: spawn (priority 10)
+    Sup->>Seal: spawn (priority 99)
+    loop until every required program RUNNING
+        Seal->>Sup: supervisorctl status
+    end
+    Seal-->>Sup: touch /run/agentbox/bootstrap.done
+    API-->>API: /ready now returns 200
+```
+
 ## Adapter dispatch
 
 See [adapters.md](adapters.md). Summary: `management-api/adapters/index.js` at startup reads `agentbox.toml`'s `[adapters]` section, resolves each slot to a concrete class from `<slot>/<impl>.js`, calls `connect()` on each with a 10 s timeout. On connect failure:
 - Non-critical slots degrade to `off` (and `/health` reports `degraded`)
 - `orchestrator` failure is fatal (`process.exit(1)`) — no agent work is possible without it
+
+The asymmetry is deliberate: losing the orchestrator means no agent can spawn, so there is no useful degraded mode. Losing memory means retrieval quality drops but the container still accepts work. This is encoded as SLO class per slot in [ADR-005 §Service-level objectives](../reference/adr/ADR-005-pluggable-adapter-architecture.md).
 
 ## Probe semantics
 
@@ -158,6 +208,10 @@ Feature-specific privilege expansions live in `[security.exceptions.<feature>]` 
 Seven current exception keys: `desktop`, `gpu-rocm`, `gpu-cuda`, `gaussian-splatting`, `playwright`, `code-server`, `telegram-mirror`.
 
 Full spec: [ADR-007 §4a](../reference/adr/ADR-007-runtime-contract-and-container-hardening.md).
+
+### Why not: run as root with default caps?
+
+Rejected in [ADR-007 §Context](../reference/adr/ADR-007-runtime-contract-and-container-hardening.md). Agentbox frequently executes agent-authored code; a compromised agent on a root-capable container owns the daemon socket and the host in practice. The hardened baseline is not defence in depth so much as it is the minimum acceptable boundary when the workload is adversarial by design. Feature exceptions layer privilege additively and require an explicit manifest key, making every escalation auditable.
 
 ## Observability chain
 

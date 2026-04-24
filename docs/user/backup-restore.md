@@ -3,6 +3,18 @@
 `agentbox.sh` ships two verbs — `backup` and `restore` — for snapshotting and
 recovering the durable state of a running agentbox stack.
 
+## Why this exists
+
+The container image is disposable — you can always rebuild it. What matters is the state your agents have accumulated: vector memory rows, Solid-style pods, Nostr identities, the `workspace/profiles/` tree. `agentbox.sh backup` bundles those volumes into a single timestamped archive with a manifest, and `restore` puts them back. Secrets are excluded by default so the archive is safe to copy to object storage.
+
+**What it solves**
+
+- Moving an agentbox setup between machines without losing agent memory.
+- Snapshotting before a risky manifest change or a major rebuild.
+- Keeping identity keys out of routine backups unless you explicitly ask for them.
+
+**When to skip this**: if you run with `adapters.memory = "external-pg"` and `pods = "external"`, your durable state already lives in the host mesh — back it up there and skip this command.
+
 ## What gets backed up
 
 | Artefact | Default | `--include-secrets` |

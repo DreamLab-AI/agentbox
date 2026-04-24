@@ -11,6 +11,15 @@
 | Draft v1 | 2026-04-24 | Initial draft — four contract problems, mechanism B for hardening exceptions |
 | Draft v2 | 2026-04-24 | R3 runtime-contract-wiring audit integrated: §5.1 `AGENTBOX_IMAGE_REF` env-var contract specified; §5.2 probe endpoints (`/livez`, `/ready`, `/health`) and readiness state machine added; §5.3 observability broken-chain diagnosed (toml missing `[observability]`, `imageEnv` missing three vars, compose missing port 9091, `/v1/meta` missing field) and seven-step fix specified; acceptance criteria mapped to named test IDs `RC-003-06` through `RC-003-10` |
 
+## TL;DR for newcomers
+*Skip if you already know the operator-facing runtime contract.*
+
+This PRD specifies what an operator must be able to trust about a running agentbox container. The pain point is four mismatches between what the docs promise and what the runtime delivers: compose hardcodes a local image tag while docs recommend GHCR, startup waits on `/health` as if it meant readiness, observability ports are half-wired across manifest and compose, and the container boundary is softer than a tool-running agent surface warrants. The shape of the answer is **one contract with four tied parts**: configurable image reference, distinct liveness/readiness/health probes, fully wired observability, and a hardened default with a documented exception mechanism. You will get the product goals, the wire format for each part, and the named acceptance tests.
+
+**If you remember only one thing:** the operator-facing runtime surface is one contract; image, probes, metrics, and security posture must all be truthful together.
+
+For the deep version, keep reading.
+
 > **Scope.** This document specifies the product requirements for items `2/3/4/5`: image reference selection, truthful health/readiness, complete observability wiring, and a hardened default container boundary.
 
 ## 1. Problem summary

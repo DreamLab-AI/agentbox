@@ -4,6 +4,15 @@
 **Date:** 2025-02-01
 **Author:** Agentbox Team
 
+## TL;DR for newcomers
+*Skip if you already know how policy-gated tool dispatch works.*
+
+This ADR explains why agentbox routes every agent tool call through a guidance control plane instead of letting agents call tools directly. The pain point is long-running autonomous agents: destructive commands, memory corruption from unchecked writes, prompt injection, and silent trust escalation. A raw tool surface gives an attacker or a confused model one step between intent and damage. The shape of the answer is **enforcement gates with a proof chain**: every dispatch passes through policy checks, is either permitted or blocked with a logged reason, and leaves a tamper-evident audit trail. You will learn the gate topology, the policy model, and how the proof chain composes with the adapter dispatch path.
+
+**If you remember only one thing:** agents never reach tools directly; every call is policy-checked and audit-logged at the guidance plane.
+
+For the deep version, keep reading.
+
 ## Context
 
 Autonomous agents operating for extended periods face challenges:

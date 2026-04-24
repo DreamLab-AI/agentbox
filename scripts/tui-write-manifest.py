@@ -94,6 +94,29 @@ if otlp:
     lines.append(f'otlp_endpoint = {json.dumps(otlp)}')
 lines.append("")
 
+# ── privacy filter (ADR-008) ────────────────────────────────────────────────────
+lines += [
+    "[privacy_filter]",
+    f'enabled = {b("privacy_filter.enabled")}',
+    f'mode    = {q("privacy_filter.mode",  "off")}',
+    f'port    = {i("privacy_filter.port",  9092)}',
+    f'dtype   = {q("privacy_filter.dtype", "bf16")}',
+    f'model   = {q("privacy_filter.model", "openai/privacy-filter")}',
+    "",
+    "[privacy_filter.policy]",
+    f'pods         = {q("privacy_filter.policy.pods",         "strict")}',
+    f'memory       = {q("privacy_filter.policy.memory",       "strict")}',
+    f'events       = {q("privacy_filter.policy.events",       "soft")}',
+    f'beads        = {q("privacy_filter.policy.beads",        "soft")}',
+    f'orchestrator = {q("privacy_filter.policy.orchestrator", "off")}',
+    f'inbound      = {q("privacy_filter.policy.inbound",      "soft")}',
+    f'outbound     = {q("privacy_filter.policy.outbound",     "soft")}',
+    "",
+    "[privacy_filter.entities]",
+    "enabled = []",
+    "",
+]
+
 # ── providers ───────────────────────────────────────────────────────────────────
 PROVIDERS = {
     "anthropic":  "ANTHROPIC_API_KEY",

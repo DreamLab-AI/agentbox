@@ -2,6 +2,16 @@
 
 Agentbox is a Linux-container product. Build and run paths vary by host OS.
 
+## Why this page exists
+
+Different hosts can do different things with the same image. Docker Desktop on macOS can pull and run agentbox, but it cannot build a Linux image from a Nix flake (the flake's container-image output is gated to Linux hosts) and it has no GPU passthrough for Apple's Metal. Linux hosts can do everything. Windows works through WSL2. The tables below replace trial-and-error with a compatibility matrix you can check before starting.
+
+**What it solves**
+
+- Knowing in advance whether `nix build .#runtime` will work on your host.
+- Avoiding the trap of enabling `local-cuda` on a machine that cannot pass through NVIDIA.
+- Picking the right escape hatch when your laptop cannot do the workload (remote provisioning).
+
 ## Build vs run
 
 | Action | Linux x86_64 | Linux aarch64 | macOS (Intel or Apple Silicon) | Windows 10/11 |

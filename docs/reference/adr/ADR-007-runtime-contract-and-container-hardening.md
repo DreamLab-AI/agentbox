@@ -5,6 +5,15 @@
 **Author:** Agentbox team
 **Related:** PRD-003 (Runtime contract and container hardening), DDD-002 (Runtime contract domain)
 
+## TL;DR for newcomers
+*Skip if you already know the four-part runtime contract.*
+
+This ADR explains what an operator is allowed to rely on when running an agentbox container: which image is selected, what "live" and "ready" each mean, where metrics and traces are exposed, and what security boundary is in force. The pain point is a split story across compose, docs, probes, and security posture — hardcoded image tags, `/health` abused as readiness, half-wired observability, and a container boundary softer than it should be for a tool-running agent. The shape of the answer is **four tied decisions**: a configurable `AGENTBOX_IMAGE_REF`, distinct `/livez` / `/ready` / `/health` probes, fully wired observability ports and env, and a hardened default profile with an explicit exception mechanism. You will learn each decision, its wire format, and its acceptance criteria.
+
+**If you remember only one thing:** the runtime surface an operator touches — image, probes, metrics, security — is one contract, not four separate settings.
+
+For the deep version, keep reading.
+
 ## Context
 
 Agentbox currently has a split operator story:

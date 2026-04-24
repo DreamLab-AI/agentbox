@@ -1,5 +1,17 @@
 # Agentbox Provisioning Guide
 
+## Why this exists
+
+`agentbox.sh provision` takes a bare cloud account and produces a running agentbox you can SSH into. Instead of writing Terraform, Ansible or cloud-init by hand, each supported cloud target is a self-contained shell script that handles VM creation, Docker install, image pull and first-boot. The common use case is "my laptop doesn't have enough RAM or a GPU" — provision a cloud host, tunnel the management API back, and carry on.
+
+**What it solves**
+
+- Running agentbox on hardware you do not own without hand-rolling cloud-init.
+- Consistent provisioning across Oracle Cloud (free ARM tier), fly.io, Hetzner and any bare SSH host.
+- Exit-code 77 (`ENOTSUP`) for unimplemented targets so CI can skip gracefully.
+
+**When to skip this**: if your host already runs Docker, pull the image directly — see [installation.md](installation.md). Provisioning is only for the "bring up a new machine from nothing" case.
+
 ## Provisioner Pattern
 
 Each target is a self-contained script in `scripts/provision-<target>.sh`.  

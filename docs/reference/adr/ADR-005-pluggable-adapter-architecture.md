@@ -6,6 +6,15 @@
 **Supersedes:** n/a
 **Related:** ADR-001 (Nix flakes), ADR-002 (RuVector embedded), PRD-001 (Capabilities and adapters)
 
+## TL;DR for newcomers
+*Skip if you already know the five-slot adapter pattern.*
+
+This ADR explains how agentbox talks to durable state — task receipts, pod storage, vector memory, event sinks, and the agent orchestrator — in a way that works identically whether it runs standalone or federates into a host mesh. The pain point it addresses is the obvious bad alternative: hardcode one backend for each service and patch a second codepath for the other shape, then spend the rest of the project fighting two sets of bugs and silent capability mismatches. The shape of the answer is a **five-slot adapter pattern** (beads, pods, memory, events, orchestrator), each declared in `agentbox.toml` and resolved at boot to one of three implementation classes: `local-*`, `external`, or `off`. You will learn the slot taxonomy, the adapter interface, the manifest contract, and the contract tests that keep all three classes behaviourally equivalent.
+
+**If you remember only one thing:** five adapter slots, three implementation classes, one contract — hardcoding a backend is never the right answer.
+
+For the deep version, keep reading.
+
 ## Context
 
 Agentbox is designed to run in two shapes without recompilation:

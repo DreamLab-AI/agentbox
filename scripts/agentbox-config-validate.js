@@ -333,6 +333,53 @@ if (sovereignMesh.jss_rust_backend === true) {
   }
 }
 
+// ─── E022-E025: privacy filter coherence (ADR-008) ────────────────────────────
+//
+// E022 — privacy_filter.enabled=true requires mode != "off".
+// E023 — privacy_filter.mode="local-gpu" requires gpu.backend != "none".
+// E024 — privacy_filter.dtype="q4" requires mode="local-cpu".
+// E025 — privacy_filter.port must not collide with RESERVED_PORTS or
+//        observability.metrics_port.
+{
+  const pf = manifest.privacy_filter || {};
+  if (pf.enabled === true) {
+    const mode = pf.mode || "off";
+    if (mode === "off") {
+      errors.push({
+        code: 'E022',
+        message: 'E022: privacy_filter.enabled=true but mode="off" — set mode to "local-gpu" or "local-cpu"'
+      });
+    }
+    if (mode === 'local-gpu' && (gpu.backend === undefined || gpu.backend === 'none')) {
+      errors.push({
+        code: 'E023',
+        message: `E023: privacy_filter.mode="local-gpu" requires gpu.backend != "none" (got "${gpu.backend || 'unset'}")`
+      });
+    }
+    if ((pf.dtype || 'bf16') === 'q4' && mode !== 'local-cpu') {
+      errors.push({
+        code: 'E024',
+        message: `E024: privacy_filter.dtype="q4" requires mode="local-cpu" (got "${mode}")`
+      });
+    }
+    const pfPort = pf.port;
+    if (pfPort !== undefined) {
+      if (RESERVED_PORTS[pfPort]) {
+        errors.push({
+          code: 'E025',
+          message: `E025: privacy_filter.port ${pfPort} collides with ${RESERVED_PORTS[pfPort]}`
+        });
+      }
+      if (observability.metrics_port !== undefined && pfPort === observability.metrics_port) {
+        errors.push({
+          code: 'E025',
+          message: `E025: privacy_filter.port ${pfPort} collides with observability.metrics_port`
+        });
+      }
+    }
+  }
+}
+
 // E019: [toolchains].cuda=true requires [gpu].backend="local-cuda"
 // Having a CUDA toolchain without a CUDA-capable GPU backend is a misconfiguration
 // that would produce a broken image (CUDA libraries present but no GPU access path).

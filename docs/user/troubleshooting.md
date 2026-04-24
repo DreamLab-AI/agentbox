@@ -1,6 +1,12 @@
 # Troubleshooting
 
-Common failure modes and what to do about them. When in doubt:
+Common failure modes and what to do about them.
+
+## Why this page exists
+
+Agentbox has multiple moving parts — a Nix-built image, a supervisor running 8-20 programs, five pluggable adapters, optional GPU passthrough, and a few HTTP endpoints. When something is wrong the signal you see (`/ready` never goes green, `docker compose up` hangs) is almost never the cause. This page lists the failure modes we actually see, in the order they are worth checking, with the one or two commands that isolate each one. Design context: [ADR-006](../reference/adr/ADR-006-immutable-runtime-bootstrap.md) (bootstrap contract) and [ADR-007](../reference/adr/ADR-007-runtime-contract-and-container-hardening.md) (probe and image contract).
+
+When in doubt:
 
 ```sh
 ./agentbox.sh health --json         # per-service status
@@ -33,6 +39,33 @@ Boot succeeded (container started) but readiness check never passed. Usually one
    ```sh
    docker inspect agentbox --format '{{json .Mounts}}' | jq
    ```
+
+## Privacy filter `/health` reports `unavailable`
+
+The sidecar loaded but something in the model-load path failed. Usually one of:
+
+1. **HuggingFace weights not cached.** First boot pulls ~3 GB into
+   `/workspace/.cache/huggingface`. If the container was rebuilt with a
+   fresh workspace volume, the cache is empty. Give it a few minutes:
+   ```sh
+   docker exec agentbox tail -f /var/log/opf-router.log
+   ```
+   Look for `model_loaded`. If you see `model_load_failed` the error
+   type is attached.
+
+2. **`mode="local-gpu"` but no CUDA in-container.** `gpu.backend=ollama-cuda`
+   puts CUDA in the ollama sidecar, not in agentbox. For the privacy-filter
+   sidecar to hit the GPU you need `gpu.backend=local-cuda`. Flip it,
+   rebuild, or drop to `mode="local-cpu"`.
+
+3. **Under-provisioned CPU host.** `local-cpu` with < 6 GB free RAM will
+   OOM during load. Run `free -h` and check MemAvailable. If you're below
+   the floor, either add RAM or set `enabled=false`.
+
+All three produce strict-mode 503s at adapter write time and
+`opf_fail_closed_total` increments. Soft-mode slots keep working (at the
+cost of unredacted writes) — look at `opf_fail_open_total` to see how
+many passed through.
 
 ## `/metrics` port not reachable
 

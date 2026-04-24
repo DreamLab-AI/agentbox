@@ -5,6 +5,15 @@
 **Updated:** 2026-04-23  
 **Author:** Agentbox Team
 
+## TL;DR for newcomers
+*Skip if you already know why embedded vector search is not a durable store.*
+
+This ADR explains the role of RuVector inside agentbox. It is the embedded local vector index — fast retrieval against container-local state, startup-time indexing, cheap semantic search — and it is explicitly **not** the canonical durable source of truth for sovereign memory. The pain point it addresses is the earlier assumption that a single embedded database could serve both transient retrieval and long-lived memory; that conflation leaks ephemeral container state into the user's durable memory surface. The shape of the answer is **RuVector as per-session cache**, with durable memory routed through the ADR-005 `memory` adapter slot (pod storage or external pgvector). You will learn where RuVector fits, what it owns, and what it deliberately does not own.
+
+**If you remember only one thing:** RuVector is the embedded retrieval cache, not the durable memory backend.
+
+For the deep version, keep reading.
+
 ## Context
 
 Agentbox originally moved away from PostgreSQL + pgvector toward embedded RuVector for a lighter local vector/search layer.

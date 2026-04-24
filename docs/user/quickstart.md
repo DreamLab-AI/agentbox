@@ -1,6 +1,21 @@
 # Quick Start
 
+New to headless agent runtimes? Start with the [glossary](glossary.md) first.
+
 This guide reflects the current Agentbox runtime.
+
+## Why this exists
+
+Agentbox is a self-contained Linux container that runs coding agents (Claude Code, Ruflo, Gemini, Codex and friends) behind a single management API. Think of it as a shared workstation for agents: one image carries the CLIs, skills, MCP servers and durable-state adapters, and you drive it from your laptop, a remote VM, or a cloud provider. Compared to running agents directly on your machine, Agentbox keeps keys, state, skill trees and model endpoints behind one switchable configuration file.
+
+**What it solves**
+
+- Agents losing their memory, beads and pod state between sessions because each CLI stashes things in its own home directory.
+- API keys leaking into shell history, Dockerfiles and git diffs instead of living in one `.env`.
+- Boot cycles spending minutes downloading npm, pip and model weights every restart — Agentbox bakes them into the image.
+- Swapping agent backends (local SQLite vs a federated host mesh) without rewriting orchestration code.
+
+**When to skip this**: if you only need a single agent CLI on a single machine and are comfortable wiring its storage and keys by hand, running the CLI natively is simpler. Agentbox earns its keep once you want more than one agent, reproducible storage, or remote deployment.
 
 ## Recommended Path
 
@@ -48,12 +63,12 @@ exit code (0 = clean, 1 = errors). No TUI is opened.
 
 Manual path:
 
-Edit [`agentbox.toml`](../../agentbox.toml) before building.
+Edit [`agentbox.toml`](../../agentbox.toml) before building. This file is the single manifest: the Nix build reads it, the compose generator reads it, and the runtime validator enforces it. Every feature you see in the wizard maps to a key here.
 
 Key sections:
 
-- `[federation]` — `mode = "standalone"` (default) or `"client"`
-- `[adapters]` — one per durable-state slot (beads, pods, memory, events, orchestrator)
+- `[federation]` — `mode = "standalone"` (default; the container is complete on its own) or `"client"` (federates with an external host mesh through adapter endpoints).
+- `[adapters]` — one per durable-state slot (beads, pods, memory, events, orchestrator). An `adapter` is the pluggable-backend pattern from [ADR-005](../reference/adr/ADR-005-pluggable-adapter-architecture.md): each slot resolves to `local-*`, `external`, or `off`, so you can run fully self-hosted or delegate to a host-mesh without changing code.
 - `[sovereign_mesh]` — Nostr identity + NIP-98 auth
 - `[skills.*]` — 96-skill catalogue gates
 - `[toolchains]` — core CLIs (claude, ruflo, claude_flow, agentic_qe, gemini_cli, etc.)
@@ -124,6 +139,8 @@ Set `enabled = true` to load the `ontology-core` and `ontology-enrich` skills in
 This gate is a **prepared placeholder** — the MCP server and associated tooling for ontology operations will be fleshed out in a future milestone. Enabling the flag now has no runtime effect beyond advertising the skills in the manifest; downstream agents that check the manifest before loading skills will respect it once the implementation lands.
 
 ## 2. Build The Image
+
+Agentbox is built with Nix (a reproducible package manager). The `flake.nix` file composes packages, skills and toolchains into a Docker image based on your manifest — no Dockerfile, no layer drift between rebuilds. `nix build .#runtime` produces an image tarball in `./result`, then `docker load` imports it.
 
 ```bash
 nix build .#runtime
@@ -220,6 +237,8 @@ docker inspect --format '{{json .State.Health}}' agentbox
 If the container is using an older image or an older entrypoint, use `agentbox.sh rebuild` to rebuild and recreate it.
 
 ## 6. Verify Runtime Services
+
+The runtime exposes a small set of HTTP endpoints for liveness, readiness and metrics. These replace the usual "did the container boot?" guesswork with concrete signals. `/ready` goes green only after every required program reaches RUNNING and the `bootstrap-seal` sentinel writes `/run/agentbox/bootstrap.done` — see [ADR-006](../reference/adr/ADR-006-immutable-runtime-bootstrap.md) for the bootstrap contract.
 
 From the host:
 

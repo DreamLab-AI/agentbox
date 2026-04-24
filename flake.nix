@@ -48,6 +48,7 @@
         docsCfg = skillsCfg.docs or {};
         securityCfg = agentboxConfig.security or {};
         securityExceptions = securityCfg.exceptions or {};
+        privacyFilterCfg = agentboxConfig.privacy_filter or {};
 
         # GPU backend dispatch — single source of truth for GPU concerns.
         gpuLib = import ./lib/gpu-backend.nix { inherit lib pkgs; };
@@ -480,6 +481,28 @@
             pkgs.biber
           ];
 
+        # ---------------------------------------------------------------------------
+        # Privacy filter (ADR-008) — local openai/privacy-filter sidecar.
+        # Gate: privacy_filter.enabled = true.
+        # The sidecar loads the HF model once at startup and exposes /classify,
+        # /redact, /health, /metrics on privacy_filter.port (default 9092, loopback).
+        # Model weights are fetched on first boot via transformers/huggingface_hub
+        # and persisted under /workspace/.cache/huggingface; no network traffic
+        # after warm-up. BF16 on GPU, BF16 on CPU, or Q4 on CPU (transformers.js
+        # path is out-of-scope; this is the server path).
+        # ---------------------------------------------------------------------------
+        privacyFilterEnabled = privacyFilterCfg.enabled or false;
+        privacyFilterPythonEnv = pkgs.python312.withPackages (ps: with ps; [
+          transformers
+          safetensors
+          tokenizers
+          torch
+          huggingface-hub
+          aiohttp
+          pyyaml
+        ]);
+        privacyFilterPackages = lib.optionals privacyFilterEnabled [ privacyFilterPythonEnv ];
+
         desktopPackages = lib.optionals (desktopCfg.enabled or false) (with pkgs; [
           xorg.xorgserver
           xorg.xauth
@@ -518,6 +541,7 @@
           ++ spatialPackages
           ++ dataSciencePackages
           ++ docsPackages
+          ++ privacyFilterPackages
           ++ desktopPackages
           ++ geminiCliPackages
           ++ codexPackages
@@ -768,6 +792,18 @@ ${lib.optionalString (spatialCfg.qgis or false) "\n${qgisServiceBlock}"}
 ${lib.optionalString (spatialCfg.blender or false) "\n${blenderServiceBlock}"}
 ${lib.optionalString (dataScienceCfg.jupyter or false) "\n${jupyterServiceBlock}"}
 ${lib.optionalString (desktopCfg.enabled or false) "\n${desktopBlocks}"}
+${lib.optionalString privacyFilterEnabled ''
+
+[program:opf-router]
+command=${privacyFilterPythonEnv}/bin/python3 -u /opt/agentbox/scripts/opf-router.py
+directory=/opt/agentbox/scripts
+environment=HOME="/workspace",HF_HOME="/workspace/.cache/huggingface",TRANSFORMERS_CACHE="/workspace/.cache/huggingface",OPF_PORT="${toString (privacyFilterCfg.port or 9092)}",OPF_MODE="${privacyFilterCfg.mode or "off"}",OPF_DTYPE="${privacyFilterCfg.dtype or "bf16"}",OPF_MODEL="${privacyFilterCfg.model or "openai/privacy-filter"}"
+autostart=true
+autorestart=true
+priority=240
+stdout_logfile=/var/log/opf-router.log
+stderr_logfile=/var/log/opf-router.error.log
+''}
 ${lib.optionalString (mediaCfg.comfyui_builtin or false) ''
 
 [program:comfyui-builtin]
@@ -1121,6 +1157,18 @@ ${ragflowNetworkDecl}
           "CLAUDE_CONFIG_DIR=/workspace/.claude"
           "SKILLS_TREE=/opt/agentbox/skills"
           "GPU_BACKEND=${agentboxConfig.gpu.backend or "none"}"
+          # Privacy filter (ADR-008) — non-empty OPF_ENABLED signals the
+          # adapter middleware to route through the opf-router sidecar.
+          "OPF_ENABLED=${boolEnv privacyFilterEnabled}"
+          "OPF_PORT=${toString (privacyFilterCfg.port or 9092)}"
+          "OPF_MODE=${privacyFilterCfg.mode or "off"}"
+          "OPF_POLICY_PODS=${(privacyFilterCfg.policy or {}).pods or "strict"}"
+          "OPF_POLICY_MEMORY=${(privacyFilterCfg.policy or {}).memory or "strict"}"
+          "OPF_POLICY_EVENTS=${(privacyFilterCfg.policy or {}).events or "soft"}"
+          "OPF_POLICY_BEADS=${(privacyFilterCfg.policy or {}).beads or "soft"}"
+          "OPF_POLICY_ORCHESTRATOR=${(privacyFilterCfg.policy or {}).orchestrator or "off"}"
+          "OPF_POLICY_INBOUND=${(privacyFilterCfg.policy or {}).inbound or "soft"}"
+          "OPF_POLICY_OUTBOUND=${(privacyFilterCfg.policy or {}).outbound or "soft"}"
           # Observability — sourced from [observability] in agentbox.toml
           "AGENTBOX_METRICS_PORT=${metricsPort}"
           "AGENTBOX_OTLP_ENDPOINT=${observCfg.otlp_endpoint or ""}"

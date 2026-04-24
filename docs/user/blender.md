@@ -1,5 +1,17 @@
 # Blender Configuration
 
+## Why this exists
+
+Blender is a 3D modelling, animation and rendering suite. Agentbox bundles a headless Blender together with an MCP server (`/opt/agentbox/skills/blender/addon/server.py`) so agents can create scenes, import meshes, drive modifiers and render frames through structured tool calls rather than GUI clicks. The MCP server starts automatically under supervisord when the skill is enabled.
+
+**What it solves**
+
+- Agents that need to produce 3D assets, diagrams or rendered stills without a human at the keyboard.
+- One pinned Blender version shared by every agent in the image.
+- An MCP transport that survives container restarts (supervisord manages the process).
+
+**When to skip this**: leave `blender = false` unless you have an agent workflow that actually drives Blender — the package is large and does nothing passively.
+
 ## Version
 
 Agentbox uses `pkgs.blender` from nixpkgs-unstable. The current pinned nixpkgs provides Blender 4.x; Blender 5.0.1+ can be added via a nixpkgs input override in `flake.nix` if needed.

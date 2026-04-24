@@ -2,6 +2,18 @@
 
 Copy-paste recipes per OS × CPU arch × GPU. For the capability matrix see [`platforms.md`](platforms.md); for the registry itself see [`consuming-the-image.md`](consuming-the-image.md).
 
+## Why this exists
+
+Agentbox is a Linux container, but most operators run it from a macOS laptop or a Windows workstation through Docker Desktop / WSL2. The recipes below handle the real-world combinations: whether Docker can reach your GPU, whether Nix can build the image on your host, and which image tag to pull. Picking the right recipe is usually the difference between `agentbox.sh up` finishing in a minute and debugging mount permissions for an hour.
+
+**What it solves**
+
+- "Docker Desktop can't see my Mac's GPU" — explicit Metal/remote-GPU guidance.
+- "Nix won't build the image on macOS" — use the pre-built multi-arch image from GHCR.
+- "Which flag do I pass to use the registry instead of a local build?" — the `--build` vs `--registry` matrix.
+
+**When to skip this**: the [quickstart](quickstart.md) covers a single Linux x86_64 workstation. Skip this page unless your host is macOS, Windows, ARM, or has a GPU to wire in.
+
 ---
 
 ## 1. Linux x86_64 (native) — first-class path

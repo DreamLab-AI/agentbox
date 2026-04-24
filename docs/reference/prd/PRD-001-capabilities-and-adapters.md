@@ -5,6 +5,15 @@
 **Repo:** [github.com/DreamLab-AI/agentbox](https://github.com/DreamLab-AI/agentbox) *(standalone repo; agentbox is pushed here when stable)*
 **Related:** ADR-001 (Nix flakes), ADR-002 (RuVector embedded), ADR-003 (Guidance control plane), ADR-004 (Upstream sync), ADR-005 (Pluggable adapter architecture)
 
+## TL;DR for newcomers
+*Skip if you already know the standalone-or-federated adapter product model.*
+
+This PRD describes what agentbox actually is as a product: a Nix-declarative container that hosts software agents, their skills, and their toolchains, driven by one manifest. The pain point it addresses is that agent containers usually ship either as "all local and useless beyond a demo" or "locked to a specific backend mesh and impossible to run alone". The shape of the answer is **manifest-gated composition plus five pluggable adapter slots** (beads, pods, memory, events, orchestrator), each resolving to `local-*`, `external`, or `off`, so the same image runs standalone or federates into a host mesh without recompilation. You will get the full capability surface, the manifest grammar, the adapter contract, and the UX commitments (reproducibility, multi-arch, security defaults).
+
+**If you remember only one thing:** one manifest, five adapters, three implementation classes — the same image is useful standalone and slots cleanly into a host mesh.
+
+For the deep version, keep reading.
+
 > **Scope.** This document specifies agentbox as a **standalone, reusable agent container**. It describes what agentbox does, how its manifest-gated feature model works, and the contract its adapters expose to external systems. Agentbox was originally extracted from a larger host project; it is designed to be dropped into any repository that wants a reproducible, manifest-driven, Nix-built agent execution container.
 
 ## 1. Product summary
@@ -282,6 +291,7 @@ Standalone agentbox ships with these behind `agentbox.toml` gates. Only enabled 
 - **Skills corpus** — 96 manifest-gated skills fetched as a content-addressed Nix input from a shared upstream tree; per-skill versioning via `nix flake lock --update-input skills`.
 - **Sovereign mesh** — Nostr identity generation + NIP-98 hybrid auth middleware; client connector to Nostr relays for inter-agent messaging.
 - **Telegram mirror** (CTM) — optional daemon streaming agent activity.
+- **Privacy filter** — optional local PII redaction sidecar (openai/privacy-filter, 1.5B MoE, Apache-2.0) that sits as middleware on every ADR-005 adapter dispatch and the inbound/outbound prompt path. Policy per slot (strict/soft/off). Gated by CPU/RAM or GPU capability at build-time wizard. See [ADR-008](../adr/ADR-008-privacy-filter-routing.md).
 
 ## 6. Runtime layout
 
@@ -378,4 +388,5 @@ Agentbox was extracted from a larger host project during a 2026-04 radical-upgra
 - `agentbox/docs/adr/ADR-003-guidance-control-plane.md`
 - `agentbox/docs/adr/ADR-004-upstream-sync.md`
 - `agentbox/docs/adr/ADR-005-pluggable-adapter-architecture.md`
+- `agentbox/docs/adr/ADR-008-privacy-filter-routing.md`
 - `agentbox/CLAUDE.md`

@@ -1,5 +1,17 @@
 # 3D Gaussian Splatting (3DGS) Stack
 
+## Why this stack exists
+
+3D Gaussian Splatting reconstructs photorealistic 3D scenes from a set of ordinary photos. Agentbox bakes the full pipeline — COLMAP (for camera pose estimation), METIS (for scene partitioning) and LichtFeld Studio (for training and viewing) — into one CUDA image so agents can run reconstructions without hand-installing C++ toolchains. The tools only assemble in one direction: photos to a trained splat scene.
+
+**What it solves**
+
+- Skipping the usual half-day of CMake, CUDA-arch and Python-env fights.
+- Keeping the 3DGS toolchain versioned alongside the rest of your agent stack.
+- A single validator rule (E006) guarantees you have the GPU toolchain before enabling the skill.
+
+**When to skip this**: if you are not doing photogrammetry or radiance-field capture, leave `gaussian_splatting = false`. The stack only builds on Linux x86_64 with NVIDIA CUDA; on aarch64 it degrades to empty derivations.
+
 ## Prerequisites
 
 Both conditions must be met before enabling this stack:

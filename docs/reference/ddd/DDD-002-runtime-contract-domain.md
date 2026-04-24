@@ -7,6 +7,15 @@
 
 ---
 
+## TL;DR for newcomers
+*Skip if you already know the runtime-contract bounded context.*
+
+This DDD captures the Runtime Contract bounded context: the part of the system that owns what an operator can trust about a live agentbox container — which image is running, whether it is live, whether it is ready, where observability lives, and what security profile is enforced. The pain point is that these concerns used to be scattered across compose, entrypoint, and ad-hoc probe code, so readiness and liveness blurred together and observability wiring could drift silently. The shape of the answer is a domain with explicit aggregates (`ImageReferencePolicy`, `ProbeSemantics`, `ObservabilityBinding`, `SecurityProfile`), a ubiquitous language for liveness vs readiness, and a consumption relationship with DDD-001 (readiness requires `BootstrapCompleted`). You will get the glossary, aggregates, invariants, and the operator-facing events emitted.
+
+**If you remember only one thing:** this domain owns the operator-visible runtime truth — image, probes, observability, security — as one coherent contract.
+
+For the deep version, keep reading.
+
 ## Domain Purpose
 
 The Runtime Contract domain defines what an operator can trust about a running agentbox container: which image is being run, whether it is live, whether it is ready, where observability is exposed, and what security boundary is in force.

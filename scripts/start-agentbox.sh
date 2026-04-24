@@ -222,6 +222,21 @@ command_exists rocm-smi   && DETECTED_GPU="ollama-rocm"
 DETECTED_RAGFLOW=false
 docker network ls 2>/dev/null | grep -q docker_ragflow && DETECTED_RAGFLOW=true
 
+# CPU / RAM capability probe for the privacy filter sidecar.
+# MoE weights (~3 GB BF16) stay resident even though only 50M params fire per
+# token, so a realistic CPU path needs ≥4 cores and ≥6 GB MemAvailable.
+DETECTED_CORES="$(nproc 2>/dev/null || echo 1)"
+DETECTED_MEM_MB=0
+if [[ -r /proc/meminfo ]]; then
+  DETECTED_MEM_MB=$(awk '/^MemAvailable:/ {printf "%d", $2/1024}' /proc/meminfo 2>/dev/null || echo 0)
+fi
+HAS_PRIVACY_CAPABLE=false
+if [[ "${DETECTED_GPU}" != "none" ]]; then
+  HAS_PRIVACY_CAPABLE=true
+elif (( DETECTED_CORES >= 4 )) && (( DETECTED_MEM_MB >= 6144 )); then
+  HAS_PRIVACY_CAPABLE=true
+fi
+
 # ── ensure whiptail available ──────────────────────────────────────────────────
 if [[ -z "${WT}" ]]; then
   ensure_command_with_install whiptail "whiptail/newt" "libnewt whiptail newt dialog" || true
@@ -306,6 +321,99 @@ section_gpu() {
     "local-cuda"   "CUDA baked into image (required for gaussian_splatting)")"
   [[ -z "${choice}" ]] && choice="${current}"
   state_set "gpu.backend" "${choice}"
+  validate_candidate
+}
+
+# ════════════════════════════════════════════════════════════════════════════════
+# SECTION 3b — privacy filter (ADR-008)
+# Skipped entirely when the host cannot realistically run the sidecar.
+# ════════════════════════════════════════════════════════════════════════════════
+section_privacy_filter() {
+  if [[ "${HAS_PRIVACY_CAPABLE}" != "true" ]]; then
+    state_set_bool "privacy_filter.enabled" "false"
+    state_set "privacy_filter.mode" "off"
+    return 0
+  fi
+
+  local cap_msg
+  if [[ "${DETECTED_GPU}" != "none" ]]; then
+    cap_msg="GPU detected (${DETECTED_GPU}) — local-gpu path available (BF16)."
+  else
+    cap_msg="No GPU. CPU path viable: ${DETECTED_CORES} cores, ${DETECTED_MEM_MB} MB free RAM."
+  fi
+
+  if ! wt_yesno "Privacy Filter (openai/privacy-filter)" \
+    "Offer a local PII redaction sidecar for adapter writes?\n\n${cap_msg}\n\nThe sidecar masks names, emails, phones, addresses, dates,\naccount numbers, URLs and secrets before agent I/O hits\ndurable state (pods, memory, events, beads) or the\ninbound/outbound prompt path.\n\nApache-2.0, 1.5B MoE (50M active), runs loopback-only."; then
+    state_set_bool "privacy_filter.enabled" "false"
+    state_set "privacy_filter.mode" "off"
+    validate_candidate
+    return 0
+  fi
+
+  state_set_bool "privacy_filter.enabled" "true"
+
+  # Mode — auto-prefer GPU when present, allow override.
+  local default_mode
+  if [[ "${DETECTED_GPU}" != "none" ]]; then default_mode="local-gpu"; else default_mode="local-cpu"; fi
+  local mode_choice
+  mode_choice="$(wt_menu "Privacy Filter — Mode" \
+    "How should the sidecar load the model?" \
+    11 72 2 \
+    "local-gpu" "CUDA/ROCm (fast; BF16)" \
+    "local-cpu" "CPU-only (BF16; ~3 GB RAM resident)")"
+  [[ -z "${mode_choice}" ]] && mode_choice="${default_mode}"
+  state_set "privacy_filter.mode" "${mode_choice}"
+
+  # dtype — q4 only meaningful on CPU.
+  local dtype_choice
+  if [[ "${mode_choice}" == "local-cpu" ]]; then
+    dtype_choice="$(wt_menu "Privacy Filter — Precision" \
+      "Inference precision (CPU)" \
+      11 72 3 \
+      "bf16" "BF16 (recommended; ~3 GB)" \
+      "f32"  "FP32 (debug; ~6 GB)" \
+      "q4"   "Q4 quantised (smallest; CPU-only)")"
+  else
+    dtype_choice="$(wt_menu "Privacy Filter — Precision" \
+      "Inference precision (GPU)" \
+      10 72 2 \
+      "bf16" "BF16 (recommended)" \
+      "f32"  "FP32 (debug)")"
+  fi
+  [[ -z "${dtype_choice}" ]] && dtype_choice="bf16"
+  state_set "privacy_filter.dtype" "${dtype_choice}"
+
+  # Policy preset — strict-everywhere | balanced (default) | custom.
+  local preset
+  preset="$(wt_menu "Privacy Filter — Policy Preset" \
+    "How aggressively should the middleware redact?\n\nstrict: reject write if redaction fails (fail-closed)\nsoft:   best-effort, log on failure (fail-open)\noff:    pass-through for that slot" \
+    14 76 3 \
+    "balanced" "pods/memory=strict, events/beads=soft, orch=off" \
+    "lockdown" "all slots = strict (fail-closed everywhere)" \
+    "custom"   "per-slot choice")"
+  [[ -z "${preset}" ]] && preset="balanced"
+
+  if [[ "${preset}" == "lockdown" ]]; then
+    for k in pods memory events beads orchestrator inbound outbound; do
+      state_set "privacy_filter.policy.${k}" "strict"
+    done
+  elif [[ "${preset}" == "custom" ]]; then
+    for slot in pods memory events beads orchestrator inbound outbound; do
+      local cur; cur="$(state_get "privacy_filter.policy.${slot}")"
+      local v
+      v="$(wt_menu "Privacy Filter — ${slot}" \
+        "Redaction policy for ${slot}\nCurrent: ${cur}" \
+        11 64 3 \
+        "strict" "fail-closed; reject on router error" \
+        "soft"   "fail-open; log-and-continue" \
+        "off"    "pass-through")"
+      [[ -n "${v}" ]] && state_set "privacy_filter.policy.${slot}" "${v}"
+    done
+  else
+    # balanced — use manifest defaults already loaded by tui-read.
+    :
+  fi
+
   validate_candidate
 }
 
@@ -605,6 +713,7 @@ SECTIONS=(
   section_federation
   section_adapters
   section_gpu
+  section_privacy_filter
   section_desktop
   section_toolchains
   section_skills

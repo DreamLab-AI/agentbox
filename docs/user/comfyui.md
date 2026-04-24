@@ -2,6 +2,18 @@
 
 Agentbox supports two mutually exclusive ComfyUI paths. Only one may be active at a time.
 
+## Why this exists
+
+ComfyUI is a node-based workflow engine for image and video generation. Agents call into it through an MCP server (Model Context Protocol — a standard way for agents to call external tools) so a single prompt can kick off a complex diffusion pipeline. Agentbox gives you two ways to connect: run ComfyUI inside the same container (`comfyui_builtin`), or point the MCP server at a ComfyUI you already run elsewhere (`comfyui_external`). Only one can be active; the validator rejects both-enabled manifests with `E007`.
+
+**What it solves**
+
+- Re-using a powerful external ComfyUI (on a GPU box or Salad Cloud) without re-deploying models.
+- Or a self-contained setup where everything runs in one container for offline use.
+- A single MCP endpoint regardless of which path you pick, so agent code does not change.
+
+**When to skip this**: if you do not need image or video generation, leave both switches off — the MCP server is present in the image but idle.
+
 ## Paths at a glance
 
 | Switch | Where | Effect |

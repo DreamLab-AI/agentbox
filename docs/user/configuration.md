@@ -2,6 +2,16 @@
 
 Every key in [`agentbox.toml`](../../agentbox.toml). This is the single source of truth — the Nix flake reads it, the compose generator reads it, the validator enforces it.
 
+## Why this file exists
+
+Instead of editing Dockerfiles, compose YAML, supervisor configs and CLI flags separately, Agentbox puts the entire build-and-runtime surface into one TOML manifest. Change a key, re-validate, rebuild if needed; everything downstream follows. Full product spec: [PRD-001](../reference/prd/PRD-001-capabilities-and-adapters.md).
+
+**What it solves**
+
+- Config drift between the image, the compose file and the runtime env.
+- "Which file do I edit to turn off the desktop?" — one answer, always.
+- Invalid combinations caught before a 10-minute Nix build (validator error codes `E001`–`E025`).
+
 After editing, run `agentbox config validate` before `agentbox.sh up`. The validator catches 20 classes of misconfiguration before `nix build` attempts.
 
 ---
@@ -24,7 +34,7 @@ external_url = ""                # Required when mode="client". Base URL of the 
 
 ## `[adapters]`
 
-Five slots. Each resolves to one of three implementation classes.
+Five slots. Each resolves to one of three implementation classes. An `adapter` is the pluggable-backend pattern from [ADR-005](../reference/adr/ADR-005-pluggable-adapter-architecture.md) — every integration that touches durable state goes through one of these slots, so you can run everything locally, federate with a host mesh, or turn the slot off entirely without changing agent code.
 
 ```toml
 [adapters]
@@ -57,6 +67,42 @@ backend = "none"    # none | ollama-rocm | ollama-cuda | local-cuda
 | `local-cuda` | NVIDIA with CUDA toolchain baked into the image (required for `gaussian_splatting`) |
 
 Validator rule **E006**: `gaussian_splatting = true` requires `backend = "local-cuda"`.
+
+## `[privacy_filter]`
+
+Local PII redaction sidecar (openai/privacy-filter, 1.5B MoE, Apache-2.0).
+Gated at wizard time — only offered when a GPU is detected or the host has
+≥ 4 cores and ≥ 6 GB of free memory.
+
+```toml
+[privacy_filter]
+enabled = false
+mode    = "off"                 # off | local-gpu | local-cpu
+port    = 9092                  # loopback-only
+dtype   = "bf16"                # bf16 | f32 | q4
+model   = "openai/privacy-filter"
+
+[privacy_filter.policy]
+pods         = "strict"         # strict | soft | off
+memory       = "strict"
+events       = "soft"
+beads        = "soft"
+orchestrator = "off"
+inbound      = "soft"
+outbound     = "soft"
+
+[privacy_filter.entities]
+enabled = []                    # empty = all eight classes
+```
+
+Validator rules:
+- **E022**: `enabled = true` requires `mode ∈ {local-gpu, local-cpu}`.
+- **E023**: `mode = "local-gpu"` requires `gpu.backend != "none"`.
+- **E024**: `dtype = "q4"` requires `mode = "local-cpu"`.
+- **E025**: `port` must not collide with `observability.metrics_port`.
+
+Full routing contract: [ADR-008](../reference/adr/ADR-008-privacy-filter-routing.md).
+Novice-friendly walkthrough: [privacy-filter.md](privacy-filter.md).
 
 ## `[desktop]`
 
@@ -259,5 +305,7 @@ The validator runs in three places:
 | Adding/removing a `[skills.*]` or `[toolchains]` | Yes — image contents change |
 | `[gpu].backend` change | Yes — device mounts and packages change |
 | `[security.exceptions]` change | Yes — compose output changes |
+| `[privacy_filter]` enable/disable | Yes — adds the sidecar python env + supervisor block |
+| `[privacy_filter.policy.*]` tweak | No — middleware re-reads env on restart |
 
 When in doubt: `./agentbox.sh rebuild`.

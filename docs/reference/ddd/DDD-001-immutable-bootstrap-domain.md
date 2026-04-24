@@ -7,6 +7,15 @@
 
 ---
 
+## TL;DR for newcomers
+*Skip if you already know the immutable-bootstrap bounded context.*
+
+This DDD captures the Immutable Bootstrap bounded context: the part of the system whose only job is to answer, truthfully, "does this image already contain everything needed to boot the declared capabilities?" The pain point this model addresses is that bootstrap responsibilities were previously smeared across entrypoint scripts, supervisor config, and ad-hoc health checks, so nothing owned the distinction between a legal startup write (prepare writable dir, seed identity) and an illegal one (install a package, mutate `/opt/agentbox`). The shape of the answer is a domain with explicit aggregates (`RuntimeClosure`, `BootstrapPolicy`, `BootstrapSession`), a ubiquitous language for artefact probes and bootstrap completion, and a single invariant: no illegal mutation, ever. You will get the glossary, aggregates, invariants, and the events this domain emits downstream.
+
+**If you remember only one thing:** this domain owns the legal-mutation boundary at boot — anything that installs, downloads, or mutates `/opt/agentbox` is illegal by construction.
+
+For the deep version, keep reading.
+
 ## Domain Purpose
 
 The Immutable Bootstrap domain ensures that agentbox startup realizes a pre-built runtime rather than assembling one. Its job is to answer one question truthfully: "Does this image already contain everything required to boot the capabilities declared by the manifest?"

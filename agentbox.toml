@@ -96,6 +96,42 @@ optional_env_vars = ["ZAI_ANTHROPIC_API_KEY", "ZAI_URL"]
 [gpu]
 backend = "none"
 
+# ── Privacy filter ──────────────────────────────────────────────────────────────
+# Local PII redaction sidecar using openai/privacy-filter (1.5B MoE, Apache-2.0).
+# See docs/reference/adr/ADR-008-privacy-filter-routing.md for the routing layer
+# contract. Gated: the wizard only offers this when a GPU is detected or the
+# host has ≥4 cores and ≥6 GB free RAM (CPU path needs all experts resident).
+#
+# mode: off       → sidecar disabled; adapter dispatch is a pass-through.
+#       local-gpu → HF transformers pipeline, BF16 on CUDA/ROCm.
+#       local-cpu → HF transformers pipeline on CPU (~3 GB BF16 weights).
+#
+# Per-slot policy values:
+#   "strict" → redact-before-persist; fail-closed if router unreachable.
+#   "soft"   → redact best-effort; fail-open with counter.
+#   "off"    → pass-through.
+[privacy_filter]
+enabled = false
+mode = "off"
+port = 9092
+dtype = "bf16"
+model = "openai/privacy-filter"
+
+[privacy_filter.policy]
+pods         = "strict"
+memory       = "strict"
+events       = "soft"
+beads        = "soft"
+orchestrator = "off"
+inbound      = "soft"
+outbound     = "soft"
+
+[privacy_filter.entities]
+# Empty list = redact all eight classes. Populate to restrict the set.
+# Allowed: account_number, private_address, private_email, private_person,
+#          private_phone, private_url, private_date, secret.
+enabled = []
+
 [toolchains]
 claude = true
 ruflo = true

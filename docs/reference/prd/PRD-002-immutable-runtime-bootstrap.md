@@ -11,6 +11,15 @@
 | Draft v1 | 2026-04-24 | Initial draft — immutable bootstrap contract, four-phase rollout |
 | Draft v2 | 2026-04-24 | R1 packaging audit integrated: `comfyui/mcp-server` added to Phase 1 with native-gyp note; effort totals corrected to ~13d+2d CI; `skills/host-webserver-debug/mcp-server` and `skills/web-summary/mcp-server` identified as unscoped candidates (noted as follow-up); Renovate hash-management step made explicit; cross-references to ADR-006 packaging table and DDD-001 invariants tightened |
 
+## TL;DR for newcomers
+*Skip if you already know the immutable-bootstrap product goals.*
+
+This PRD specifies the product requirements for making agentbox boot without any runtime dependency resolution. The pain point is that today's startup still runs `npm install`, global CLI installs, and Playwright browser downloads with `|| true` on failure — so the boot outcome depends on network, registries, and timing, even though the image is advertised as Nix-built and reproducible. The shape of the answer is a **phased migration to packaged artefacts**: every dependency that used to be resolved at startup must be baked into the image, with Nix-packaged Node modules, pinned browsers, and a validation probe that proves capabilities before readiness. You will get the product goals, scope boundaries, phase plan, effort estimates, and acceptance criteria.
+
+**If you remember only one thing:** boot must never install software; anything the runtime needs is already in the image or the boot fails loudly.
+
+For the deep version, keep reading.
+
 > **Scope.** This document specifies the product requirements for item `1`: removing mutable dependency installation from container startup so agentbox boots as an immutable, pre-packaged runtime rather than a best-effort VM-like environment.
 
 ## 1. Problem summary

@@ -1,5 +1,17 @@
 # Consuming the agentbox image
 
+## Why this page exists
+
+Most users should never build agentbox from source — CI publishes a signed, multi-arch image to GitHub Container Registry on every merge, and pulling that is an order of magnitude faster than `nix build .#runtime`. This page covers how to pick the right tag, how to pin to an immutable SHA for production, and how `AGENTBOX_IMAGE_REF` lets compose switch between a local Nix build and a registry image without editing files. Image-selection contract: [ADR-007](../reference/adr/ADR-007-runtime-contract-and-container-hardening.md).
+
+**What it solves**
+
+- Reproducibility: the SHA tag is immutable, so `:abc1234` in staging is byte-identical to `:abc1234` in production.
+- Arch portability: one pull command works on Intel and ARM without a `--platform` flag.
+- Swap between registry and local builds with one env var instead of editing compose.
+
+**When to skip this**: if you only ever work from a Nix checkout on Linux and never pull from GHCR, you can ignore `AGENTBOX_IMAGE_REF` entirely — the defaults do the right thing.
+
 ## Registry and tags
 
 | Tag | Use |

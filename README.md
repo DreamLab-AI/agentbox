@@ -109,6 +109,7 @@ Full per-host recipes: [`docs/user/running.md`](docs/user/running.md). Platform 
 | **Secret scanning** | [gitleaks](/.github/workflows/secret-scan.yml) on every PR with a canary test. |
 | **Auto-generated mgmt key** | No `change-this` defaults. First-boot key persisted at `/workspace/profiles/default/mgmt-key` (mode `0600`). |
 | **Nostr keys encrypted at rest** | `nostr.key.enc` with PBKDF2 derivation; zeroed after use. |
+| **Local PII redaction** (optional) | `openai/privacy-filter` sidecar on loopback; per-adapter-slot strict/soft/off policy; fails closed for `pods`/`memory` by default. See [ADR-008](docs/reference/adr/ADR-008-privacy-filter-routing.md) and the [privacy filter guide](docs/user/privacy-filter.md). |
 
 ### Developer ergonomics
 
@@ -188,7 +189,7 @@ Deeper reading: [`docs/developer/architecture.md`](docs/developer/architecture.m
 - [Troubleshooting](docs/user/troubleshooting.md)
 - [Consuming the image](docs/user/consuming-image.md) — GHCR registry tags
 - [Provisioning](docs/user/provisioning.md) — remote host targets
-- Feature guides: [3DGS](docs/user/3dgs.md) · [Blender](docs/user/blender.md) · [ComfyUI](docs/user/comfyui.md) · [LaTeX](docs/user/latex.md)
+- Feature guides: [3DGS](docs/user/3dgs.md) · [Blender](docs/user/blender.md) · [ComfyUI](docs/user/comfyui.md) · [LaTeX](docs/user/latex.md) · [Privacy filter](docs/user/privacy-filter.md)
 
 ### For contributors (developers)
 

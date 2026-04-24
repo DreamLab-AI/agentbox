@@ -5,6 +5,18 @@ Set `enabled = true` only for providers you actually use; the boot-time
 validator (E017) will emit a warning for every enabled provider whose
 primary `env_var` is absent from the environment.
 
+## Why this split exists
+
+Most agent CLIs hardcode a list of providers and read their keys from environment variables on startup. Agentbox keeps that contract but adds a manifest switch: you opt a provider in, the validator checks the key is present in `.env`, and disabled providers are ignored entirely. This means a single container image can ship support for ten providers while only the two you enabled actually consume keys or make network calls.
+
+**What it solves**
+
+- API keys living only in `.env` (never in the image, never in compose, never in logs).
+- Missing-key errors caught at boot instead of the first agent request.
+- One switch to disable a provider across every agent CLI that reads it.
+
+**When to skip this**: if you only ever use one provider and are happy exporting its env var manually, the default manifest already enables Anthropic — set the key and go.
+
 ## Supported Providers
 
 | Name | env_var | Optional env vars |

@@ -17,6 +17,7 @@ You have a machine, you want agentbox running on it, ideally with as little fuss
 
 | Start here | |
 |---|---|
+| [Glossary & orientation](user/glossary.md) | Zero-to-one for people new to headless agent runtimes |
 | [Quickstart](user/quickstart.md) | First boot in ten minutes |
 | [Installation](user/installation.md) | Per-OS install paths (Linux, macOS, Windows, remote) |
 | [Configuration](user/configuration.md) | `agentbox.toml` reference — every section, every key |
@@ -37,6 +38,7 @@ You have a machine, you want agentbox running on it, ideally with as little fuss
 | [Blender](user/blender.md) | Blender toolchain |
 | [ComfyUI](user/comfyui.md) | Built-in vs external ComfyUI |
 | [LaTeX](user/latex.md) | TeX Live full |
+| [Privacy filter](user/privacy-filter.md) | Local PII redaction sidecar (openai/privacy-filter) |
 
 ---
 
@@ -73,6 +75,7 @@ These are the authoritative sources of truth. Anything in `user/` or `developer/
 | ADR-005 | [Pluggable adapter architecture](reference/adr/ADR-005-pluggable-adapter-architecture.md) | Accepted | Five-slot adapters × three impl classes |
 | ADR-006 | [Immutable runtime bootstrap](reference/adr/ADR-006-immutable-runtime-bootstrap.md) | Accepted | No dependency resolution at startup |
 | ADR-007 | [Runtime contract + hardening](reference/adr/ADR-007-runtime-contract-and-container-hardening.md) | Accepted | Image ref + probes + observability + hardening as one contract |
+| ADR-008 | [Privacy filter routing](reference/adr/ADR-008-privacy-filter-routing.md) | Accepted | Local openai/privacy-filter sidecar as cross-cutting adapter middleware |
 
 ### Product requirements (PRD)
 

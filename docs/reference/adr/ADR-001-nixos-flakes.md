@@ -5,6 +5,15 @@
 **Updated:** 2026-04-23  
 **Author:** Agentbox Team
 
+## TL;DR for newcomers
+*Skip if you already know the Nix flake + manifest build pattern.*
+
+This ADR explains why agentbox's container image is built by a Nix flake driven by a single TOML manifest, instead of by a hand-maintained Dockerfile. The pain point is drift: a Dockerfile encodes "what to install" while the manifest encodes "what capabilities are present", and without a single source of truth these two disagree in subtle ways (a package lands in the image without a supervisor block, or vice versa). The shape of the answer is **manifest-driven composition**: `agentbox.toml` is read by `flake.nix`, which selects package sets and generates supervisor text in the same pass. You will learn the build flow, which files are canonical, and the consequences for reproducibility and multi-arch output.
+
+**If you remember only one thing:** `agentbox.toml` is the build contract; `flake.nix` reads it and produces both the packages and the supervisor wiring in one reproducible step.
+
+For the deep version, keep reading.
+
 ## Context
 
 Agentbox needs:

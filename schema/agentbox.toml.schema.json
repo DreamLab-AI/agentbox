@@ -303,6 +303,69 @@
         }
       }
     },
+    "privacy_filter": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Local PII redaction sidecar (openai/privacy-filter). Routing contract: docs/reference/adr/ADR-008-privacy-filter-routing.md.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable the local openai/privacy-filter sidecar and adapter middleware."
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["off", "local-gpu", "local-cpu"],
+          "description": "off disables the sidecar; local-gpu requires a CUDA/ROCm backend (E023); local-cpu runs BF16 on CPU."
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "description": "Loopback port for the opf-router sidecar. Default 9092."
+        },
+        "dtype": {
+          "type": "string",
+          "enum": ["bf16", "f32", "q4"],
+          "description": "Inference precision. q4 is CPU-only (E024)."
+        },
+        "model": {
+          "type": "string",
+          "description": "HF model id. Default openai/privacy-filter."
+        },
+        "policy": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Per-adapter-slot redaction policy. Values: strict | soft | off (E025).",
+          "properties": {
+            "pods":         { "type": "string", "enum": ["strict", "soft", "off"] },
+            "memory":       { "type": "string", "enum": ["strict", "soft", "off"] },
+            "events":       { "type": "string", "enum": ["strict", "soft", "off"] },
+            "beads":        { "type": "string", "enum": ["strict", "soft", "off"] },
+            "orchestrator": { "type": "string", "enum": ["strict", "soft", "off"] },
+            "inbound":      { "type": "string", "enum": ["strict", "soft", "off"] },
+            "outbound":     { "type": "string", "enum": ["strict", "soft", "off"] }
+          }
+        },
+        "entities": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "account_number", "private_address", "private_email",
+                  "private_person", "private_phone", "private_url",
+                  "private_date", "secret"
+                ]
+              },
+              "description": "Entity classes to redact. Empty = all eight."
+            }
+          }
+        }
+      }
+    },
     "sovereign_mesh": {
       "type": "object",
       "additionalProperties": false,
