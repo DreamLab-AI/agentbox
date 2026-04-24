@@ -1,0 +1,47 @@
+name: TUI helper tests
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/tui-read-manifest.py'
+      - 'scripts/tui-write-manifest.py'
+      - 'tests/tui/**'
+      - '.github/workflows/tui-tests.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'scripts/tui-read-manifest.py'
+      - 'scripts/tui-write-manifest.py'
+      - 'tests/tui/**'
+
+jobs:
+  tui-pytest:
+    name: pytest — TUI helper scripts
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: tests/tui/requirements.txt
+
+      - name: Set up Node 20 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install Python deps
+        run: pip install -r tests/tui/requirements.txt
+
+      - name: Install Node deps (for agentbox-config-validate.js)
+        run: npm ci
+
+      - name: Run TUI pytest suite
+        run: pytest tests/tui/test_tui_helpers.py -v --tb=short

@@ -6,6 +6,17 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Dat
 
 ## [Unreleased]
 
+### Test-coverage completion (2026-04-24)
+
+Closed the three P1 gaps from the post-M4 QE audit + audited the remaining 33 contract-test todos.
+
+- **TUI Python helpers (R8)** — `tests/tui/test_tui_helpers.py` with **23 pytest cases, 23/23 passing**. Round-trip, error paths, schema compatibility, field contracts. `tests/tui/requirements.txt` pins pytest 8.3.5. New CI workflow `.github/workflows/tui-tests.yml`. Two new fixtures: `valid-full.toml`, `valid-minimal.toml`.
+- **Nostr-bridge integration (R9)** — `tests/sovereign/nostr-bridge.integration.test.js` with **7 tests, 7/7 passing**. Real WebSocket echo servers via `portfinder` (new devDep). Covers: handshake, reconnect-after-drop, queue-flush-on-reconnect, partial-failure across two relays, exponential backoff monotonicity, teardown hygiene. Full suite <6 s.
+- **Adapter-resolver degraded-start (R7)** — `tests/integration/resolver-degraded.test.js` with **9 tests, 9/9 passing**. Degrade-to-off path for beads slot; orchestrator fatal path preserved; `AdapterDisabled` thrown after degrade; health reports `"degraded"`. Known bug surfaced: `ExternalBeadsAdapter` constructor validates `baseUrl` not `externalUrl` — key-name mismatch in `slotConfig` contract; follow-up issue.
+- **33 remaining contract todos** — all audited, none promotable via mocks. Every `.todo` now carries a one-line unblock note citing the specific external-infra dependency: k6 load harness (SLO tests), Community Solid Server with WAC (permission tests), ONNX runtime (embedding-error tests), SSD-backed CI runner (JSONL append latency). Suite stable at 138 passing / 33 todo.
+
+**New test totals**: 23 pytest + 7 Nostr integration + 9 resolver integration = **39 new test cases added**, all green.
+
 ### OpenAI Codex Rust CLI + version-tracking system (2026-04-24)
 
 **Codex integration**:

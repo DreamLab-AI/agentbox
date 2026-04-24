@@ -199,8 +199,15 @@ for (const { label, makeAdapter, isReal } of IMPLS) {
     }
 
     // Pending (require production env or WAC-capable runtime)
-    it.todo('write p95 latency is under 300 ms at 20 req/s');
-    it.todo('read p95 latency is under 150 ms at 100 req/s');
-    it.todo('write throws a typed PermissionDenied when WAC policy is violated');
+    // Unblock latency todos: k6 against a live Community Solid Server instance
+    // with network round-trip included; CI has no Solid pod service running.
+    it.todo('write p95 latency is under 300 ms at 20 req/s — needs k6 load harness + live Community Solid Server (CSS); no CSS instance in CI');
+    it.todo('read p95 latency is under 150 ms at 100 req/s — needs k6 load harness + live CSS instance; same constraint as write latency');
+    // Unblock PermissionDenied: spin up CSS with a WAC policy that denies the
+    // test agent's WebID write access to a specific resource, then confirm the
+    // adapter surfaces PermissionDenied.  Requires a running CSS instance with
+    // WAC enabled and a pre-configured ACL fixture — not feasible without a
+    // container-based service fixture in the test environment.
+    it.todo('write throws a typed PermissionDenied when WAC policy is violated — blocked on a WAC-capable CSS instance with ACL fixture; PermissionDenied is only reachable via HTTP 403 from a live server');
   });
 }
