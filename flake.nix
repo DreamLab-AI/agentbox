@@ -19,7 +19,12 @@
   };
 
   outputs = { self, nixpkgs, flake-utils, nix2container, rust-overlay, skills }:
-    flake-utils.lib.eachSystem [ "x86_64-linux" "aarch64-linux" ] (system:
+    flake-utils.lib.eachSystem [
+      "x86_64-linux"
+      "aarch64-linux"
+      "x86_64-darwin"
+      "aarch64-darwin"
+    ] (system:
       let
         pkgs = import nixpkgs {
           inherit system;
@@ -791,7 +796,11 @@ ${ragflowNetworkDecl}
           };
       in
       {
-        packages = {
+        # Container-image outputs are Linux-only.
+        # On darwin we expose only the manifest-generator (compose) and dev
+        # shell; operators use Docker Desktop to pull the published multi-arch
+        # image (see docs/guides/platforms.md).
+        packages = lib.optionalAttrs pkgs.stdenv.isLinux {
           runtime = mkImage { tag = "runtime-${system}"; };
           full = mkImage {
             tag = "full-${system}";
@@ -856,7 +865,11 @@ ${ragflowNetworkDecl}
               maxLayers     = 115;
             };
 
-          # Emit the manifest-driven compose file.
+        } // {
+          # Cross-platform outputs (Linux + darwin).
+          # `compose` generates the manifest-driven docker-compose.yml from
+          # agentbox.toml — pure text generation, no container build, so it
+          # evaluates cleanly on any system nix runs on (incl. macOS).
           # Usage: nix build .#compose && cat result/docker-compose.yml
           compose = pkgs.runCommand "agentbox-compose" {} ''
             mkdir -p $out

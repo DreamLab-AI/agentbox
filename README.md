@@ -116,6 +116,22 @@ To load the image into Docker:
 docker load < result
 ```
 
+## Platform compatibility
+
+| Target | Status | Notes |
+|---|---|---|
+| **Linux x86_64** | Native | First-class build + run; all GPU backends |
+| **Linux aarch64** | Native | Native ARM build (Oracle Ampere, AWS Graviton, Raspberry Pi 4/5); CUDA not available |
+| **macOS Intel** (`x86_64-darwin`) | Partial | `nix build .#compose` + `nix develop` supported; container images come from the published multi-arch image via Docker Desktop |
+| **macOS Apple Silicon** (`aarch64-darwin`) | Partial | Same as above; Docker Desktop pulls the `linux/arm64` variant |
+| **Windows 10/11** | Via Docker Desktop + WSL2 | Pulls the `linux/amd64` image |
+| **Nvidia GPU** | via `[gpu].backend = "ollama-cuda"` or `"local-cuda"` | Linux x86_64; limited aarch64 (Jetson) |
+| **AMD GPU** | via `[gpu].backend = "ollama-rocm"` | Linux x86_64 / aarch64 with AMD driver; Vulkan fallback covers broader hardware |
+| **Apple Silicon GPU (Metal)** | Not supported | Metal passthrough to a Linux container is not possible; use CPU or a remote GPU |
+| **Intel iGPU / oneAPI** | Not supported | No backend |
+
+Multi-arch images published to `ghcr.io/dreamlab-ai/agentbox:<tag>` — Docker automatically selects the right arch. See [`docs/guides/platforms.md`](docs/guides/platforms.md) for the full matrix and [`docs/guides/consuming-the-image.md`](docs/guides/consuming-the-image.md) for pull instructions.
+
 ## Interactive Startup
 
 Use the interactive launcher if you want checkbox-based feature selection and guided startup:

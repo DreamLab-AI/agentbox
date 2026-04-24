@@ -54,6 +54,7 @@ Agentbox is a Nix-declarative container runtime for hosting software agents (Cla
 | Gemini CLI | `@google/gemini-cli@0.38.2` — enable via `[toolchains.gemini_cli = true]` in manifest; use `zgemini` or `gemini` (requires `GEMINI_API_KEY`) |
 | Zellij layout | [`../config/zellij/layouts/agentbox.kdl`](../config/zellij/layouts/agentbox.kdl) — 11 tabs |
 | Dev container | [`../.devcontainer/README.md`](../.devcontainer/README.md) |
+| Image registry | `ghcr.io/dreamlab-ai/agentbox:latest` — Linux multi-arch (amd64 + arm64); see [guides/consuming-the-image.md](guides/consuming-the-image.md) |
 
 ## Mental model
 
