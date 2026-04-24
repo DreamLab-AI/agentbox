@@ -69,23 +69,29 @@ in
 {
   makeNpmCli = { pkgName, version, sha256, bin, extraEnv ? {} }:
     let
-      # Guard against fakeHash placeholder — bail early with actionable message.
-      _fakeHashGuard =
-        if sha256 == "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-           || sha256 == lib.fakeHash
-        then throw ''
-          lib/npm-cli.nix: sha256 for ${pkgName}@${version} is still the placeholder.
-          Run the following to obtain the correct SRI hash:
-            nix-prefetch-url ${registryUrl pkgName version}
-          then convert to SRI form:
-            nix hash to-sri --type sha256 <base32-output>
-          and replace the fakeHash in flake.nix.
-        ''
-        else null;
+      # Placeholder-detection. Returning a substituted SRI means the derivation
+      # still EVALUATES cleanly — the hash mismatch fails at realisation time
+      # with Nix's standard "expected vs got" message, and the preFetch hint
+      # below points the operator at the resolver command. Eval-time throws
+      # broke every flake consumer including nix flake check and nix eval.
+      _placeholder  = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+      isFakeHash    = sha256 == _placeholder || sha256 == lib.fakeHash;
+      effectiveHash = if isFakeHash then _placeholder else sha256;
+
+      fakeHashHint = ''
+        echo "========================================" >&2
+        echo "agentbox npm-cli: ${pkgName}@${version}" >&2
+        echo "sha256 is still the placeholder. Compute the real hash:" >&2
+        echo "  nix-prefetch-url ${registryUrl pkgName version}" >&2
+        echo "Then convert to SRI form:" >&2
+        echo "  nix hash to-sri --type sha256 <base32-output>" >&2
+        echo "And replace the fakeHash in flake.nix." >&2
+        echo "========================================" >&2
+      '';
 
       tarball = pkgs.fetchurl {
         url    = registryUrl pkgName version;
-        inherit sha256;
+        sha256 = effectiveHash;
       };
 
       # Safely derive a Nix pname from the package name (strip scope prefix).
@@ -100,8 +106,8 @@ in
     pkgs.stdenv.mkDerivation {
       inherit pname version;
 
-      # Ensure hash guard evaluation happens before any build phase.
-      passthru._fakeHashGuard = _fakeHashGuard;
+      # Operator hint emitted by fetchurl when the placeholder sha was used.
+      preFetch = lib.optionalString isFakeHash fakeHashHint;
 
       src = tarball;
 

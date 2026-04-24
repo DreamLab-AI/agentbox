@@ -673,7 +673,7 @@ stderr_logfile=/var/log/bootstrap.error.log
 
 [program:ruvector]
 command=${ruvectorPkg}/bin/ruvector serve --port %(ENV_RUVECTOR_PORT)s --data-dir %(ENV_RUVECTOR_DATA_DIR)s
-environment=HOME="/workspace",RUVECTOR_DATA_DIR="%(ENV_RUVECTOR_DATA_DIR)s",RUVECTOR_PORT="%(ENV_RUVECTOR_PORT)s"
+environment=HOME="/workspace",RUVECTOR_DATA_DIR="%(ENV_RUVECTOR_DATA_DIR)s",RUVECTOR_PORT="%(ENV_RUVECTOR_PORT)s",AGENTBOX_REQUIRED_FOR_READINESS="true"
 autostart=true
 autorestart=true
 priority=10
@@ -683,12 +683,27 @@ stderr_logfile=/var/log/ruvector.error.log
 [program:management-api]
 command=${managementApiPkg}/bin/management-api
 directory=/opt/agentbox/management-api
-environment=HOME="/workspace",MANAGEMENT_API_PORT="%(ENV_MANAGEMENT_API_PORT)s",MANAGEMENT_API_KEY="%(ENV_MANAGEMENT_API_KEY)s",MANAGEMENT_API_AUTH_MODE="%(ENV_MANAGEMENT_API_AUTH_MODE)s"
+environment=HOME="/workspace",MANAGEMENT_API_PORT="%(ENV_MANAGEMENT_API_PORT)s",MANAGEMENT_API_KEY="%(ENV_MANAGEMENT_API_KEY)s",MANAGEMENT_API_AUTH_MODE="%(ENV_MANAGEMENT_API_AUTH_MODE)s",AGENTBOX_REQUIRED_FOR_READINESS="true"
 autostart=true
 autorestart=true
 priority=20
 stdout_logfile=/var/log/management-api.log
 stderr_logfile=/var/log/management-api.error.log
+
+; Bootstrap seal — writes /run/agentbox/bootstrap.done once every program
+; tagged AGENTBOX_REQUIRED_FOR_READINESS="true" has reached RUNNING. This is
+; the signal that /ready consults. priority=99 ensures it runs last;
+; autorestart=false makes it a one-shot. If it times out the sentinel is never
+; written and /ready remains 503 (PRD-002 §9, DDD-001 BootstrapCompletion).
+[program:bootstrap-seal]
+command=/opt/agentbox/config/seal-bootstrap.sh
+autostart=true
+autorestart=false
+startsecs=0
+priority=99
+environment=SUPERVISORD_CONF="/etc/supervisord.conf",BOOTSTRAP_SEAL_TIMEOUT="120"
+stdout_logfile=/var/log/bootstrap-seal.log
+stderr_logfile=/var/log/bootstrap-seal.error.log
 ${lib.optionalString (sovereignCfg.enabled or false) ''
 
 [program:solid-pod]

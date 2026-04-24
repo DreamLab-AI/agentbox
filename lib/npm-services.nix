@@ -26,17 +26,32 @@
 { lib, pkgs }:
 
 let
-  # Guard: any derivation still using lib.fakeHash must fail loudly at
-  # evaluation time so the operator cannot accidentally build with a stub hash.
-  assertRealHash = name: hash:
+  # Guard behaviour: throwing at evaluation time breaks every flake consumer
+  # (nix flake check, nix build .#compose, nix eval, CI lint), not just the
+  # operator who forgot to prefetch. Instead we detect the fakeHash and route
+  # to a realisation-time failure so lazy evaluation consumers stay green.
+  # When buildNpmPackage actually runs and fetches deps, the placeholder SRI
+  # will mismatch and Nix will print both expected and got — same UX as any
+  # other stale hash, with our preBuildPhase adding a pointed hint.
+  fakeHashHint = name: ''
+    echo "========================================" >&2
+    echo "agentbox npm-service: ${name}" >&2
+    echo "npmDepsHash is still lib.fakeHash. Compute the real hash:" >&2
+    echo "  nix run nixpkgs#prefetch-npm-deps -- ${name}/package-lock.json" >&2
+    echo "Then replace lib.fakeHash in lib/npm-services.nix." >&2
+    echo "========================================" >&2
+  '';
+
+  # When fakeHash is passed, substitute a placeholder SRI so Nix can still
+  # evaluate the derivation. The buildNpmPackage fetch step will fail with a
+  # hash mismatch, and preBuildHook (injected below when fakeHash was used)
+  # emits the operator-friendly pointer.
+  resolvedHash = hash:
     if hash == lib.fakeHash
-    then throw ''
-      lib/npm-services.nix: npmDepsHash for "${name}" is still the placeholder.
-      Run the following command to obtain the real hash:
-        nix run nixpkgs#prefetch-npm-deps -- <repo-root>/${name}/package-lock.json
-      Then replace lib.fakeHash in lib/npm-services.nix with the result.
-    ''
+    then "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
     else hash;
+
+  isFakeHash = hash: hash == lib.fakeHash;
 
 in
 
@@ -69,7 +84,8 @@ in
     buildPhaseExtra ? "",
   }:
     let
-      checkedHash = assertRealHash name npmDepsHash;
+      effectiveHash = resolvedHash npmDepsHash;
+      needsHint     = isFakeHash npmDepsHash;
     in
     pkgs.buildNpmPackage ({
       pname   = name;
@@ -77,7 +93,11 @@ in
                            # semantically significant for image derivation tracking
       inherit src;
 
-      npmDepsHash = checkedHash;
+      npmDepsHash = effectiveHash;
+
+      # Fakehash hint: emits an operator-friendly message if the build is
+      # attempted without prefetching. Harmless on real hashes (no-op).
+      preFetch = lib.optionalString needsHint (fakeHashHint name);
 
       # Do not run npm test automatically — each service has its own test
       # runner; checkPhase below does a lightweight import check instead.
