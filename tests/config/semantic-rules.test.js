@@ -266,8 +266,33 @@ describe('E008: gpu.backend=local-cuda is x86_64 only', () => {
   });
 });
 
-// ─── E009 (legacy — superseded by E017) ───────────────────────────────────────
-// E009 no longer fires; existing callers that checked E009 should migrate to E017.
+// ─── E009 (deprecated alias → E017) ──────────────────────────────────────────
+// Resolution: E009 and E017 describe the same rule ("every enabled provider must
+// have its env_var present"). E009 was the original code used during the initial
+// provider-credential design; it was superseded and renumbered to E017 when the
+// provider loop was reimplemented (see validator line 186 comment).
+// Canonical code: E017. E009 is a deprecated alias — the validator emits E017.
+// Tests below assert the canonical E017 behaviour under the E009 semantic label.
+describe('E009 (→ E017 canonical): every enabled provider must have env_var present', () => {
+  test('invalid: enabled provider, env var unset in environment → E017 error contains provider name', () => {
+    const m = baseValid();
+    m.providers = { anthropic: { enabled: true, env_var: 'ANTHROPIC_API_KEY_TEST_E009', optional_env_vars: [] } };
+    // Pass empty string so the env var is present-but-empty (falsy → E017 fires).
+    const r = runValidator(m, { ANTHROPIC_API_KEY_TEST_E009: '' });
+    expect(r.exitCode).not.toBe(0);
+    // Canonical error code is E017 (E009 is the deprecated alias).
+    expect(stderrContains(r, 'E017')).toBe(true);
+    expect(r.stderr).toMatch(/anthropic/);
+    expect(r.stderr).toMatch(/ANTHROPIC_API_KEY_TEST_E009/);
+  });
+
+  test('valid: enabled provider, env var set to non-empty value → no E017 error', () => {
+    const m = baseValid();
+    m.providers = { anthropic: { enabled: true, env_var: 'ANTHROPIC_API_KEY_TEST_E009', optional_env_vars: [] } };
+    const r = runValidator(m, { ANTHROPIC_API_KEY_TEST_E009: 'sk-ant-real-key-value' });
+    expect(stderrContains(r, 'E017')).toBe(false);
+  });
+});
 
 // ─── E017 ─────────────────────────────────────────────────────────────────────
 describe('E017: enabled provider requires its env_var to be present in the environment', () => {
@@ -526,6 +551,137 @@ describe('W021: feature enabled but security exception block is missing', () => 
     const r = runValidator(m);
     expect(stderrContains(r, 'W021')).toBe(false);
   });
+});
+
+// ─── E020 / W021 hardening exception edge cases ───────────────────────────────
+
+// Edge case 1 (QE): key typo in security.exceptions creates a silent non-match.
+// [security.exceptions.playwrigt] (typo) with skills.browser.playwright=true:
+// E020 does NOT fire (the typo'd key "playwrigt" is unknown — not a documented
+// exception name — so isFeatureActive("playwrigt") returns false → E020 fires
+// for the orphaned typo'd block). W021 also fires because playwright is enabled
+// but its correct exception key is missing.
+describe('E020/W021 edge case: typo in exception key creates silent non-match', () => {
+  test('W021 fires for the correctly-spelled feature; E020 fires for the typo\'d orphan key', () => {
+    const m = baseValid();
+    m.skills.browser.playwright = true;
+    // Typo: "playwrigt" instead of "playwright"
+    m.security = {
+      exceptions: {
+        playwrigt: { cap_add: ['SYS_ADMIN'], reason: 'chromium sandbox (typo)' }
+      }
+    };
+    const r = runValidator(m);
+    expect(r.exitCode).not.toBe(0);
+    // W021 must fire: playwright is enabled but no correctly-spelled exception block exists.
+    expect(stderrContains(r, 'W021')).toBe(true);
+    expect(r.stderr).toMatch(/security\.exceptions\.playwright/);
+    // E020 must fire: the typo'd block "playwrigt" has no matching enabled feature.
+    expect(stderrContains(r, 'E020')).toBe(true);
+    expect(r.stderr).toMatch(/security\.exceptions\.playwrigt/);
+  });
+});
+
+// Edge case 2 (QE): multi-feature cap_add deduplication.
+// Both desktop and playwright exceptions are active. If both declare SYS_ADMIN
+// in cap_add, the validator must accept the manifest without flagging duplicates
+// (union is monotone; the compose generator deduplicates at emit time).
+// This test asserts only the validator acceptance — the Nix eval step is skipped.
+describe('E020/W021 edge case: multi-feature with overlapping cap_add accepted by validator', () => {
+  test.skip('validator accepts manifest with SYS_ADMIN in both desktop and playwright cap_add (Nix eval skipped)', () => {
+    // Skipped: compose deduplication assertion requires a real Nix eval step.
+    // Validator-only assertion is covered by the non-skipped sibling below.
+  });
+
+  test('validator accepts manifest where both desktop and playwright exceptions declare SYS_ADMIN', () => {
+    const m = baseValid();
+    m.desktop = { enabled: true, stack: 'x11-openbox', resolution: '1920x1080' };
+    m.skills.browser.playwright = true;
+    m.security = {
+      exceptions: {
+        desktop: { cap_add: ['SYS_ADMIN'], tmpfs: ['/tmp/.X11-unix:mode=1777,rw'], reason: 'test injection — desktop+playwright overlap' },
+        playwright: { cap_add: ['SYS_ADMIN'], reason: 'chromium sandbox' }
+      }
+    };
+    const r = runValidator(m);
+    // Neither E020 (orphaned block) nor W021 (missing block) should fire.
+    expect(stderrContains(r, 'E020')).toBe(false);
+    expect(stderrContains(r, 'W021')).toBe(false);
+  });
+});
+
+// Edge case 3 (QE): all 7 known exception keys fire E020 when their feature is disabled.
+// Parametrised loop over the full known-exception set.
+describe('E020 edge case: all 7 exception keys fire E020 when parent feature is disabled', () => {
+  const EXCEPTION_FIXTURES = [
+    {
+      exceptionKey: 'desktop',
+      featureName: 'desktop',
+      manifestPatch: (m) => { m.desktop = { enabled: false, stack: 'x11-openbox', resolution: '1920x1080' }; },
+      exceptionBlock: { tmpfs: ['/tmp/.X11-unix:mode=1777,rw'], reason: 'test' }
+    },
+    {
+      exceptionKey: 'gpu-rocm',
+      featureName: 'gpu-rocm',
+      manifestPatch: (m) => { m.gpu.backend = 'none'; },
+      exceptionBlock: { devices: ['/dev/kfd:/dev/kfd'], reason: 'test' }
+    },
+    {
+      exceptionKey: 'gpu-cuda',
+      featureName: 'gpu-cuda',
+      manifestPatch: (m) => { m.gpu.backend = 'none'; },
+      exceptionBlock: { runtime_override: 'nvidia', reason: 'test' }
+    },
+    {
+      exceptionKey: 'gaussian-splatting',
+      featureName: 'gaussian-splatting',
+      manifestPatch: (m) => { m.skills.spatial_and_3d.gaussian_splatting = false; },
+      exceptionBlock: { cap_add: [], reason: 'test' }
+    },
+    {
+      exceptionKey: 'playwright',
+      featureName: 'playwright',
+      // Override baseValid which has playwright=true — disable it here.
+      manifestPatch: (m) => { m.skills.browser.playwright = false; },
+      exceptionBlock: { cap_add: ['SYS_ADMIN'], reason: 'test' }
+    },
+    {
+      exceptionKey: 'code-server',
+      featureName: 'code-server',
+      manifestPatch: (m) => {
+        if (!m.toolchains) m.toolchains = {};
+        m.toolchains.code_server = false;
+      },
+      exceptionBlock: { writable_volumes: ['/workspace/.local/share/code-server'], reason: 'test' }
+    },
+    {
+      exceptionKey: 'telegram-mirror',
+      featureName: 'telegram-mirror',
+      manifestPatch: (m) => { m.sovereign_mesh.telegram_mirror = false; },
+      exceptionBlock: { writable_volumes: ['/workspace/.config/claude-telegram-mirror'], reason: 'test' }
+    }
+  ];
+
+  for (const { exceptionKey, featureName, manifestPatch, exceptionBlock } of EXCEPTION_FIXTURES) {
+    test(`E020 fires for [security.exceptions.${exceptionKey}] when ${featureName} is disabled`, () => {
+      const m = baseValid();
+      // Disable the parent feature.
+      manifestPatch(m);
+      // Declare the exception block with the feature disabled.
+      m.security = {
+        exceptions: {
+          // playwright must also be handled since baseValid enables it.
+          // Keep the playwright block from baseValid unless we're testing playwright itself.
+          ...(exceptionKey !== 'playwright' ? { playwright: { cap_add: ['SYS_ADMIN'], reason: 'chromium sandbox' } } : {}),
+          [exceptionKey]: exceptionBlock
+        }
+      };
+      const r = runValidator(m);
+      expect(r.exitCode).not.toBe(0);
+      expect(stderrContains(r, 'E020')).toBe(true);
+      expect(r.stderr).toMatch(new RegExp(`security\\.exceptions\\.${exceptionKey.replace('-', '\\-')}`));
+    });
+  }
 });
 
 // ─── skills.ontology gate ─────────────────────────────────────────────────────

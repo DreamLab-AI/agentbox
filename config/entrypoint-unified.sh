@@ -43,12 +43,21 @@ printf '{"level":"info","time":"%s","agentbox.stage":"bootstrap","event":"Bootst
 
 # ---------------------------------------------------------------------------
 # Legal-write assertion — defence in depth (PRD-002 §9 Phase 3, item 4)
-# Warn if /opt/agentbox is unexpectedly writable; do NOT fail boot.
+# If /opt/agentbox is unexpectedly writable:
+#   - default: warn and continue (operator may rely on tolerant behaviour)
+#   - AGENTBOX_STRICT_IMMUTABLE=true: emit the warning AND exit 1 (closes
+#     the PRD-002 §6 AC-A4 semantic gap for deployments that want the
+#     invariant enforced hard).
 # ---------------------------------------------------------------------------
 if touch /opt/agentbox/.write-probe 2>/dev/null; then
   rm -f /opt/agentbox/.write-probe
   printf '{"level":"warn","time":"%s","agentbox.stage":"bootstrap","event":"ImmutableRootWritable","message":"/opt/agentbox is mounted writable — operator config violates immutable root invariant (ADR-006)"}\n' \
     "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+  if [ "${AGENTBOX_STRICT_IMMUTABLE:-false}" = "true" ]; then
+    printf '{"level":"error","time":"%s","agentbox.stage":"bootstrap","event":"BootstrapFailed","reason":"ImmutableRootWritable with AGENTBOX_STRICT_IMMUTABLE=true"}\n' \
+      "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+    exit 1
+  fi
 fi
 
 # ---------------------------------------------------------------------------
