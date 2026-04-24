@@ -40,6 +40,12 @@ Agentbox is a Nix-declarative container runtime for hosting software agents (Cla
 | Document | Audience |
 |---|---|
 | [Quick start](guides/quick-start.md) | First-time operator — from clone to running stack |
+| [Running on your host](guides/running-on-your-host.md) | Copy-paste recipes per OS × arch × GPU (macOS Intel/Apple Silicon, Windows, Linux, NVIDIA, AMD) |
+| [Platform compatibility matrix](guides/platforms.md) | Build vs run support per target, GPU backend availability per OS |
+| [Consuming the image](guides/consuming-the-image.md) | Registry tags, multi-arch manifest, diagnostic single-arch tags |
+| [Providers](guides/providers.md) | `[providers.*]` manifest sections, env vars, adding new providers |
+| [Sovereign mesh](guides/sovereign-mesh.md) | Nostr client, NIP-98 auth, relay configuration, key handling |
+| [Skills upgrade path](guides/skills-upgrade.md) | Skills as Nix input; future migration to standalone skills repo |
 | [Backup & restore](guides/backup-restore.md) | Operators running agentbox in production; what gets backed up, what doesn't, secrets handling |
 
 ### Operator reference
