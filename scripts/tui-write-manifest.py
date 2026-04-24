@@ -51,7 +51,7 @@ lines.append("")
 lines += [
     "[adapters]",
     f'beads        = {q("adapters.beads",        "local-sqlite")}',
-    f'pods         = {q("adapters.pods",         "local-jss")}',
+    f'pods         = {q("adapters.pods",         "local-solid-rs")}',
     f'memory       = {q("adapters.memory",       "embedded-ruvector")}',
     f'events       = {q("adapters.events",       "local-jsonl")}',
     f'orchestrator = {q("adapters.orchestrator", "local-process-manager")}',
@@ -234,6 +234,24 @@ else:
         "enabled = false",
         'url    = "http://comfyui:8188"',
         'ws_url = "ws://comfyui:8188/ws"',
+        "",
+    ]
+
+# solid-pod-rs: always emit when pods=local-solid-rs so operator-edited
+# defaults survive wizard round-trips (ADR-010).
+if s.get("adapters.pods", "local-solid-rs") == "local-solid-rs":
+    lines += [
+        "[integrations.solid_pod_rs]",
+        f'port                  = {i("integrations.solid_pod_rs.port", 8484)}',
+        f'bind                  = {q("integrations.solid_pod_rs.bind", "127.0.0.1")}',
+        f'storage               = {q("integrations.solid_pod_rs.storage", "fs")}',
+        f'storage_root          = {q("integrations.solid_pod_rs.storage_root", "/var/lib/solid")}',
+        f'base_url              = {q("integrations.solid_pod_rs.base_url", "http://127.0.0.1:8484")}',
+        f'enable_oidc           = {b("integrations.solid_pod_rs.enable_oidc")}',
+        f'enable_schnorr_verify = {b("integrations.solid_pod_rs.enable_schnorr_verify")}',
+        f'enable_dpop_cache     = {b("integrations.solid_pod_rs.enable_dpop_cache")}',
+        f'notifications         = {q("integrations.solid_pod_rs.notifications", "websocket")}',
+        f'log_level             = {q("integrations.solid_pod_rs.log_level", "info")}',
         "",
     ]
 

@@ -99,6 +99,19 @@ Full per-host recipes: [`docs/user/running.md`](docs/user/running.md). Platform 
 | **Sovereign mesh** | Nostr identity + NIP-98 hybrid auth + `@noble/curves` Schnorr signing. Subscribe/publish relay pool. |
 | **Solid-compatible pods** | Local JSS (port 8484) or external endpoint via manifest switch. |
 
+### Sovereign data stack
+
+Agentbox ships a coherent identity-plus-data substrate. Every layer uses the same secp256k1 keypair generated at first boot; external agents reach internal agents, and internal agents persist their state, without any third-party broker.
+
+| Layer | Component | Purpose |
+|---|---|---|
+| **Identity** | [`sovereign-bootstrap.py`](scripts/sovereign-bootstrap.py) | One npub/nsec per container. Encrypted at rest (AES-256-GCM, PBKDF2). |
+| **Durable storage** | [**`solid-pod-rs`**](https://github.com/DreamLab-AI/solid-pod-rs) — **first-party, first-class default** | Rust-native Solid Protocol 0.11 server. LDP containers, WAC deny-by-default, NIP-98 with Schnorr verification, Solid Notifications 0.2, atomic-rename filesystem storage. Powers the `pods` adapter slot. See [ADR-010](docs/reference/adr/ADR-010-rust-solid-pod-adoption.md). |
+| **Messaging** | Embedded `nostr-rs-relay` on loopback `:7777` + in-process pod-inbox bridge | External ↔ internal agent messages. Every signature-verified event lands in `pods/<npub>/events/inbox/<id>.json`. NIP-42 AUTH required. See [ADR-009](docs/reference/adr/ADR-009-embedded-nostr-relay.md) / [PRD-004](docs/reference/prd/PRD-004-external-agent-messaging.md). |
+| **Privacy governance** | `openai/privacy-filter` sidecar on loopback `:9092` | PII redaction middleware on every adapter dispatch. Per-slot `strict`/`soft`/`off` policy; fails closed on `pods` and `memory` by default. See [ADR-008](docs/reference/adr/ADR-008-privacy-filter-routing.md). |
+
+**The stack is coherent because every layer speaks the same identity.** Schnorr-signed events on HTTP (NIP-98) and WebSocket (NIP-42) surfaces; WAC policies written against the same npub; content-addressed pod mailboxes keyed by Nostr event id. An external agent that can sign a Nostr event can reach the relay, be identified by the pod, and have its message persisted — no federated IdP, no OAuth, no centralised broker.
+
 ### Security posture
 
 | Capability | Summary |
@@ -109,8 +122,7 @@ Full per-host recipes: [`docs/user/running.md`](docs/user/running.md). Platform 
 | **Secret scanning** | [gitleaks](/.github/workflows/secret-scan.yml) on every PR with a canary test. |
 | **Auto-generated mgmt key** | No `change-this` defaults. First-boot key persisted at `/workspace/profiles/default/mgmt-key` (mode `0600`). |
 | **Nostr keys encrypted at rest** | `nostr.key.enc` with PBKDF2 derivation; zeroed after use. |
-| **Local PII redaction** (optional) | `openai/privacy-filter` sidecar on loopback; per-adapter-slot strict/soft/off policy; fails closed for `pods`/`memory` by default. See [ADR-008](docs/reference/adr/ADR-008-privacy-filter-routing.md) and the [privacy filter guide](docs/user/privacy-filter.md). |
-| **Sovereign Nostr relay** (optional) | Embedded `nostr-rs-relay` on loopback :7777; NIP-42 AUTH; every accepted event persisted to `pods/<npub>/events/inbox/`. External agents can address internal ones. See [ADR-009](docs/reference/adr/ADR-009-embedded-nostr-relay.md) and the [Nostr relay guide](docs/user/nostr-relay.md). |
+| **WAC on every pod write** | `solid-pod-rs` enforces `.acl.json` policies deny-by-default with `acl:default` inheritance. Not advisory — actually evaluated. |
 
 ### Developer ergonomics
 
@@ -190,7 +202,8 @@ Deeper reading: [`docs/developer/architecture.md`](docs/developer/architecture.m
 - [Troubleshooting](docs/user/troubleshooting.md)
 - [Consuming the image](docs/user/consuming-image.md) — GHCR registry tags
 - [Provisioning](docs/user/provisioning.md) — remote host targets
-- Feature guides: [3DGS](docs/user/3dgs.md) · [Blender](docs/user/blender.md) · [ComfyUI](docs/user/comfyui.md) · [LaTeX](docs/user/latex.md) · [Privacy filter](docs/user/privacy-filter.md) · [Nostr relay](docs/user/nostr-relay.md)
+- Sovereign data stack: [Solid pod (solid-pod-rs)](docs/user/solid-pod.md) · [Nostr relay](docs/user/nostr-relay.md) · [Privacy filter](docs/user/privacy-filter.md)
+- Feature guides: [3DGS](docs/user/3dgs.md) · [Blender](docs/user/blender.md) · [ComfyUI](docs/user/comfyui.md) · [LaTeX](docs/user/latex.md)
 
 ### For contributors (developers)
 

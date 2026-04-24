@@ -105,6 +105,28 @@ Used by `management-api/middleware/auth.js` when the `Nostr ` prefix is detected
 
 The `events` adapter slot (see [adapters.md](adapters.md)) can be configured to dispatch to a Nostr relay as a parameterised-replaceable kind when `[sovereign_mesh].publish_agent_events = true`. This is the path by which agent lifecycle events leave the container onto the mesh. The adapter contract is satisfied by a thin wrapper over `NostrBridge.publish()`; the slot resolver selects it based on the manifest impl name. Treat this as the canonical example of a feature flag that simultaneously gates a capability (`sovereign_mesh.enabled`), a transport (`nostr_bridge`), and an adapter binding (`events = "external"` pointing at the bridge).
 
+## Pod server (ADR-010)
+
+The `pods` adapter slot now defaults to [`solid-pod-rs`](https://github.com/DreamLab-AI/solid-pod-rs)
+— a first-party Rust Solid Protocol 0.11 server. This matters for
+`nostr-bridge` because ADR-009's pod-inbox invariants ([DDD-003 I01
+signature-before-write, I08 content-addressed by event id](../reference/ddd/DDD-003-sovereign-messaging-domain.md))
+depend on atomic-rename filesystem semantics that the previous Python stub
+did not provide. `solid-pod-rs`'s `fs-backend` uses `rename(2)` for every
+write, so a partial-write crash leaves no half-formed pod entries.
+
+The bridge continues to write directly to `/var/lib/solid/pods/<npub>/events/{inbox,outbox}/`
+on the same host volume that `solid-pod-rs` serves from. Bypassing the
+HTTP layer is intentional — it keeps the hot path fast and lets the bridge
+use `rename(2)` for I01 / I08 atomicity. `solid-pod-rs` picks up the
+resulting files on subsequent reads via its filesystem backend. When
+`integrations.solid_pod_rs.notifications != "off"`, the bridge additionally
+emits a Solid Notifications 0.2 event for external subscribers.
+
+The legacy Python stub at `scripts/solid-pod-server.py` is kept for
+backwards compatibility (`adapters.pods = "local-jss"`). The validator
+emits W034 against it.
+
 ## Embedded relay (ADR-009)
 
 When `[sovereign_mesh.relay].enabled = true` the bridge is joined by an
@@ -161,4 +183,6 @@ NIP-98 verification.
 - [ADR-005 §Off-slot semantics](../reference/adr/ADR-005-pluggable-adapter-architecture.md) — why the `events` adapter alone has no-op `off` instead of throwing.
 - [ADR-007 §4a](../reference/adr/ADR-007-runtime-contract-and-container-hardening.md) — hardened baseline under which the bridge runs.
 - [ADR-009 — Embedded Nostr relay and pod-inbox bridge](../reference/adr/ADR-009-embedded-nostr-relay.md) — the decision and contract for the relay.
-- [DDD-003 — Sovereign messaging domain](../reference/ddd/DDD-003-sovereign-messaging-domain.md) — aggregate model and invariants.
+- [ADR-010 — solid-pod-rs as first-class pod server](../reference/adr/ADR-010-rust-solid-pod-adoption.md) — the decision to adopt the Rust pod.
+- [DDD-003 — Sovereign messaging domain](../reference/ddd/DDD-003-sovereign-messaging-domain.md) — aggregate model and invariants; I01 / I08 now hold for real.
+- [licensing.md](licensing.md) — AGPL aggregation analysis for shipping `solid-pod-rs` inside an MPL-2.0 image.

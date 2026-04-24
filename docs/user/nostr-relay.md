@@ -89,6 +89,14 @@ This is the invariant that makes agentbox messaging *durable* and not
 database is transport. If the relay is wiped but the pod survives, every
 received message is still there.
 
+The pod is served by [`solid-pod-rs`](solid-pod.md) — the first-party
+Rust Solid Protocol 0.11 server ([ADR-010](../reference/adr/ADR-010-rust-solid-pod-adoption.md))
+— using an atomic-rename filesystem backend. DDD-003 invariants I01
+(signature-before-write) and I08 (content-addressed mailbox, no duplicates)
+hold as real filesystem guarantees, not hopeful prose. The sovereign
+data stack is coherent because every layer — identity, relay, pod,
+privacy filter — speaks the same npub.
+
 ## Quick test (after enabling)
 
 ```sh

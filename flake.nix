@@ -50,6 +50,10 @@
         securityExceptions = securityCfg.exceptions or {};
         privacyFilterCfg = agentboxConfig.privacy_filter or {};
         relayCfg = (sovereignCfg.relay or {});
+        adaptersCfgTop = agentboxConfig.adapters or {};
+        solidPodRsCfg  = (agentboxConfig.integrations or {}).solid_pod_rs or {};
+        podsImpl       = adaptersCfgTop.pods or "local-solid-rs";
+        solidPodRsActive = podsImpl == "local-solid-rs";
 
         # GPU backend dispatch — single source of truth for GPU concerns.
         gpuLib = import ./lib/gpu-backend.nix { inherit lib pkgs; };
@@ -493,6 +497,28 @@
         # path is out-of-scope; this is the server path).
         # ---------------------------------------------------------------------------
         # ---------------------------------------------------------------------------
+        # solid-pod-rs — first-class Solid Protocol 0.11 server (ADR-010).
+        # Gate: adapters.pods = "local-solid-rs" (the default).
+        # Source: github.com/DreamLab-AI/solid-pod-rs (AGPL-3.0-only; binary-
+        # aggregation under AGPL §5 keeps agentbox MPL-2.0 — see
+        # docs/developer/licensing.md). Derivation module in lib/solid-pod-rs.nix
+        # uses fakeHash placeholders that surface prefetch commands at realisation.
+        # ---------------------------------------------------------------------------
+        solidPodRsLib = import ./lib/solid-pod-rs.nix { inherit lib pkgs; };
+        solidPodRsExtraFeatures =
+          lib.optionals (solidPodRsCfg.enable_oidc or false)       [ "oidc" ]
+          ++ lib.optionals (solidPodRsCfg.enable_dpop_cache or false) [ "dpop-replay-cache" ]
+          ++ lib.optionals ((solidPodRsCfg.storage or "fs") == "s3") [ "s3-backend" ]
+          ++ lib.optionals ((solidPodRsCfg.notifications or "websocket") != "off") [
+               "solid-notifications"
+             ];
+        solidPodRsPkg =
+          if solidPodRsActive
+          then solidPodRsLib.makeSolidPodRs { extraFeatures = solidPodRsExtraFeatures; }
+          else null;
+        solidPodRsPackages = lib.optionals solidPodRsActive [ solidPodRsPkg ];
+
+        # ---------------------------------------------------------------------------
         # Embedded Nostr relay (ADR-009 / PRD-004).
         # Gate: sovereign_mesh.relay.enabled = true AND implementation in the
         # Nix-packageable set {nostr-rs-relay, rnostr}. External / off variants
@@ -631,6 +657,7 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           ++ docsPackages
           ++ privacyFilterPackages
           ++ relayPackages
+          ++ solidPodRsPackages
           ++ desktopPackages
           ++ geminiCliPackages
           ++ codexPackages
@@ -817,7 +844,19 @@ priority=99
 environment=SUPERVISORD_CONF="/etc/supervisord.conf",BOOTSTRAP_SEAL_TIMEOUT="120"
 stdout_logfile=/var/log/bootstrap-seal.log
 stderr_logfile=/var/log/bootstrap-seal.error.log
-${lib.optionalString (sovereignCfg.enabled or false) ''
+${lib.optionalString ((sovereignCfg.enabled or false) && solidPodRsActive) ''
+
+[program:solid-pod]
+command=${solidPodRsPkg}/bin/solid-pod-rs-server
+directory=${solidPodRsCfg.storage_root or "/var/lib/solid"}
+environment=HOME="/workspace",JSS_HOST="${solidPodRsCfg.bind or "127.0.0.1"}",JSS_PORT="${toString (solidPodRsCfg.port or 8484)}",JSS_BASE_URL="${solidPodRsCfg.base_url or "http://127.0.0.1:8484"}",JSS_STORAGE_ROOT="${solidPodRsCfg.storage_root or "/var/lib/solid"}",JSS_LOG_LEVEL="${solidPodRsCfg.log_level or "info"}",RUST_LOG="${solidPodRsCfg.log_level or "info"}",AGENTBOX_REQUIRED_FOR_READINESS="true"
+autostart=true
+autorestart=true
+priority=30
+stdout_logfile=/var/log/solid-pod.log
+stderr_logfile=/var/log/solid-pod.error.log
+''}
+${lib.optionalString ((sovereignCfg.enabled or false) && !solidPodRsActive && podsImpl == "local-jss") ''
 
 [program:solid-pod]
 command=${pkgs.python312}/bin/python3 -u /opt/agentbox/scripts/solid-pod-server.py

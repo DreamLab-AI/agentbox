@@ -20,7 +20,7 @@ The container image is disposable — you can always rebuild it. What matters is
 | Artefact | Default | `--include-secrets` |
 |---|---|---|
 | `agentbox-ruvector-data` volume (SQLite cache) | yes | yes |
-| `agentbox-solid-data` volume (local JSS pods) | only when `pods = "local-jss"` | same |
+| `solid-data` volume (Solid pod tree under `/var/lib/solid` — served by `solid-pod-rs` by default) | always when `pods ∈ {local-solid-rs, local-jss}` | same |
 | `agentbox-sovereign-identities` volume (Nostr keys) | **no** | yes |
 | `workspace/profiles/` tree (minus key files) | yes | yes (full) |
 | `agentbox.toml` | yes | yes |

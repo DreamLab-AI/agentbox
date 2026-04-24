@@ -246,7 +246,7 @@ Same codepath. `agentbox.toml` picks the impl per slot:
 # Standalone — local fallbacks
 [adapters]
 beads = "local-sqlite"
-pods = "local-jss"
+pods = "local-solid-rs"   # first-class; see ADR-010
 memory = "embedded-ruvector"
 events = "local-jsonl"
 orchestrator = "local-process-manager"

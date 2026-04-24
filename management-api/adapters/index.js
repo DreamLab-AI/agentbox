@@ -41,10 +41,21 @@ function slotConfig(slot, impl, manifest) {
       return {};
 
     case 'beads':
-    case 'pods':
     case 'events':
       if (impl === 'external') {
         return { externalUrl: fed.external_url || '' };
+      }
+      return {};
+
+    case 'pods':
+      if (impl === 'external') {
+        return { externalUrl: fed.external_url || '' };
+      }
+      if (impl === 'local-solid-rs') {
+        const sp = integrations.solid_pod_rs || {};
+        const bind = sp.bind || '127.0.0.1';
+        const port = sp.port || 8484;
+        return { baseUrl: sp.base_url || `http://${bind}:${port}` };
       }
       return {};
 

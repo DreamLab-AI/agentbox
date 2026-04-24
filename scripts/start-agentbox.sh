@@ -285,7 +285,7 @@ section_adapters() {
   )
   declare -A SLOT_VALUES=(
     [beads]="local-sqlite external off"
-    [pods]="local-jss external off"
+    [pods]="local-solid-rs local-jss external off"
     [memory]="embedded-ruvector external-pg off"
     [events]="local-jsonl external off"
     [orchestrator]="local-process-manager stdio-bridge off"

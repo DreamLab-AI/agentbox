@@ -35,7 +35,7 @@ state = {
     "federation.external_url":   g("federation", "external_url", default=""),
     # ── adapters ────────────────────────────────────────────────────────────────
     "adapters.beads":        g("adapters", "beads",        default="local-sqlite"),
-    "adapters.pods":         g("adapters", "pods",         default="local-jss"),
+    "adapters.pods":         g("adapters", "pods",         default="local-solid-rs"),
     "adapters.memory":       g("adapters", "memory",       default="embedded-ruvector"),
     "adapters.events":       g("adapters", "events",       default="local-jsonl"),
     "adapters.orchestrator": g("adapters", "orchestrator", default="local-process-manager"),
@@ -122,6 +122,17 @@ state = {
     "sovereign_mesh.telegram_mirror":      g("sovereign_mesh","telegram_mirror",      default=False),
     "sovereign_mesh.jss_rust_backend":     g("sovereign_mesh","jss_rust_backend",     default=False),
     # ── sovereign_mesh.relay (PRD-004 / ADR-009) ─────────────────────────────────
+    # ── integrations.solid_pod_rs (ADR-010) ──────────────────────────────────────
+    "integrations.solid_pod_rs.port":                  str(g("integrations","solid_pod_rs","port",                  default=8484)),
+    "integrations.solid_pod_rs.bind":                  g("integrations","solid_pod_rs","bind",                      default="127.0.0.1"),
+    "integrations.solid_pod_rs.storage":               g("integrations","solid_pod_rs","storage",                   default="fs"),
+    "integrations.solid_pod_rs.storage_root":          g("integrations","solid_pod_rs","storage_root",              default="/var/lib/solid"),
+    "integrations.solid_pod_rs.base_url":              g("integrations","solid_pod_rs","base_url",                  default="http://127.0.0.1:8484"),
+    "integrations.solid_pod_rs.enable_oidc":           g("integrations","solid_pod_rs","enable_oidc",               default=False),
+    "integrations.solid_pod_rs.enable_schnorr_verify": g("integrations","solid_pod_rs","enable_schnorr_verify",     default=True),
+    "integrations.solid_pod_rs.enable_dpop_cache":     g("integrations","solid_pod_rs","enable_dpop_cache",         default=False),
+    "integrations.solid_pod_rs.notifications":         g("integrations","solid_pod_rs","notifications",             default="websocket"),
+    "integrations.solid_pod_rs.log_level":             g("integrations","solid_pod_rs","log_level",                 default="info"),
     "sovereign_mesh.relay.enabled":          g("sovereign_mesh","relay","enabled",          default=False),
     "sovereign_mesh.relay.implementation":   g("sovereign_mesh","relay","implementation",   default="nostr-rs-relay"),
     "sovereign_mesh.relay.port":             str(g("sovereign_mesh","relay","port",         default=7777)),

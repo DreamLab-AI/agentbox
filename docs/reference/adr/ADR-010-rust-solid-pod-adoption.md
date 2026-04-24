@@ -1,17 +1,17 @@
-# ADR-010: Rust Solid pod server adoption (solid-pod-rs)
+# ADR-010: solid-pod-rs as first-class pod server
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-04-24
 **Author:** Agentbox team
 **Supersedes:** n/a
 **Related:** ADR-005 (Pluggable adapter architecture), ADR-006 (Immutable runtime bootstrap), ADR-007 (Runtime contract and container hardening), ADR-009 (Embedded Nostr relay and pod-inbox bridge), PRD-001 (Capabilities and adapters), PRD-004 (External agent messaging)
 
 ## TL;DR for newcomers
-*Skip if you already know why the Python pod stub is a liability.*
+*Skip if you already know why the DreamLab-AI sovereign data stack is shaped the way it is.*
 
-This ADR proposes replacing the 108-line Python pod server at `scripts/solid-pod-server.py` with [`solid-pod-rs`](https://github.com/DreamLab-AI/solid-pod-rs) — a Rust-native Solid Protocol 0.11 implementation (AGPL-3.0-only) recently published by DreamLab-AI. The pain point is that the Python stub only implements GET/PUT/HEAD, no WAC enforcement, no content negotiation, no LDP containers, no PATCH, and only a header-prefix check for NIP-98 — meanwhile the existing `management-api/adapters/pods/local-jss.js` client already expects full LDP semantics including JSON-patch, cursor-paginated container listing, and proper 401/403 responses. The shape of the answer is to **add a new `local-solid-rs` pod implementation alongside the existing `local-jss` label**, ship it as a binary under supervisord (not linked as a library — AGPL aggregation vs derivative rules), and deprecate the Python stub gradually. The [ADR-009 pod-inbox invariants](ADR-009-embedded-nostr-relay.md) (I01 signature-before-write, I08 content-addressed by event id) start to hold genuinely because solid-pod-rs provides atomic-rename filesystem semantics.
+[`solid-pod-rs`](https://github.com/DreamLab-AI/solid-pod-rs) is a first-party DreamLab-AI project — a Rust-native Solid Protocol 0.11 server with WAC, LDP containers, NIP-98 Schnorr auth, Solid Notifications, and atomic-rename filesystem storage. This ADR makes it the **first-class default** implementation for the agentbox `pods` adapter. Together with [`nostr-rs-relay`](ADR-009-embedded-nostr-relay.md) (external-agent messaging), the sovereign identity layer from [sovereign-bootstrap.py](../../../scripts/sovereign-bootstrap.py), and the [privacy-filter middleware](ADR-008-privacy-filter-routing.md), it forms the **sovereign data stack**: a coherent substrate for identity, messaging, durable storage, and PII governance that each agentbox container owns end-to-end. The previously shipped 108-line Python stub (`scripts/solid-pod-server.py`) is retained only as `local-jss` for backwards compatibility; the validator emits W034 against it.
 
-**If you remember only one thing:** the Rust pod closes the gap between what the adapter client already expects and what the server actually delivers.
+**If you remember only one thing:** solid-pod-rs is the pod half of the sovereign data stack. It is part of agentbox, not an external integration.
 
 For the deep version, keep reading.
 
@@ -85,16 +85,18 @@ Linking `solid-pod-rs` as a Rust crate inside `management-api` or any other agen
 
 **Decision:** use the binary only. Treat the library surface as off-limits for agentbox source.
 
-## Decision (proposed)
+## Decision
 
-Add a fourth implementation class to the `pods` adapter slot:
+`local-solid-rs` is **the first-class default** implementation for the `pods` adapter slot. The `[adapters]` block in the shipped `agentbox.toml` declares:
 
 ```toml
 [adapters]
-pods = "local-solid-rs"   # new  | local-jss (legacy) | external | off
+pods = "local-solid-rs"   # first-class default | local-jss (legacy) | external | off
 ```
 
-Ship `solid-pod-rs-server` as a pinned Nix derivation built from `github:DreamLab-AI/solid-pod-rs` at a tagged release (initially `v0.4.0-alpha.1`). Replace the `[program:solid-pod]` supervisord block's command when `local-solid-rs` is active; leave the Python stub in place for `local-jss` during a deprecation window.
+`solid-pod-rs-server` is built from `github:DreamLab-AI/solid-pod-rs` (pinned `v0.4.0-alpha.1`) through [`lib/solid-pod-rs.nix`](../../../lib/solid-pod-rs.nix), installed into the image when `adapters.pods = "local-solid-rs"`. The `[program:solid-pod]` supervisor block dispatches between two command lines: the Rust binary for `local-solid-rs`, the Python stub for `local-jss`. `external` talks HTTP to a host-provided Solid server; `off` returns `AdapterDisabled`.
+
+The Python stub (`scripts/solid-pod-server.py`) is retained — not removed — so operators with existing deployments using `pods = "local-jss"` are unaffected. The validator emits warning `W034` whenever `local-jss` is selected, directing operators to switch.
 
 ### Configuration surface
 
@@ -171,16 +173,27 @@ The Nostr bridge currently writes directly to the filesystem under `pods/<npub>/
 
 **Decision:** keep direct filesystem writes as canonical (invariant I01 / I08 preserved via `rename(2)` atomicity). Emit a **side-channel WebSocket notification** to solid-pod-rs's Solid Notifications 0.2 channel so external subscribers still see inbox events. This preserves performance on the hot path and satisfies the observability promise.
 
-### Deprecation schedule
+### Migration
 
-| Phase | Duration | Behaviour |
-|-------|----------|-----------|
-| Phase 1 (this ADR lands) | 60 days | `local-solid-rs` added; `local-jss` default unchanged; W034 warning when `local-jss` is selected on a fresh manifest; migration doc in `docs/user/pods-migration.md` |
-| Phase 2 | next release | Default flips: fresh wizard picks `local-solid-rs`; existing manifests still resolve `local-jss` without warning |
-| Phase 3 | 90 days after Phase 2 | `local-jss` still works; W034 escalates to E034 on new manifests but legacy manifests are grandfathered |
-| Phase 4 | subsequent major release | `scripts/solid-pod-server.py` removed; `local-jss` removed from schema; migration tool `agentbox.sh pods migrate-to-rs` ships |
+Both implementations store under `/var/lib/solid`. `agentbox.sh backup` already captures that tree; backup/restore survives the swap without changes. For in-place migration:
 
-Backup format: `agentbox.sh backup` already captures `/var/lib/solid` as a directory tarball. Both implementations store under the same mount; backup/restore survives the swap without changes.
+```sh
+# 1. Edit agentbox.toml
+[adapters]
+pods = "local-solid-rs"
+
+# 2. Uncomment the solid-pod-rs security exception
+[security.exceptions.solid-pod-rs]
+writable_volumes = ["solid-data:/var/lib/solid"]
+reason = "solid-pod-rs fs-backend requires atomic-rename writable storage under /var/lib/solid"
+
+# 3. Rebuild + restart
+./agentbox.sh rebuild
+```
+
+No data migration is required; `.meta` and `.acl` sidecars are written fresh by solid-pod-rs on first write. Legacy resources without sidecars are served with the default ACL (owner-only access).
+
+Operators who require the Python stub can keep `pods = "local-jss"`. Validator warning `W034` will fire on every run as a direction signal, but the stack boots and runs normally.
 
 ### Service-level objectives
 
@@ -294,6 +307,19 @@ New metrics (from solid-pod-rs, scraped via management-api proxy to keep a singl
 - `docs/reference/prd/PRD-001-capabilities-and-adapters.md` — pod capability row updated
 - `docs/reference/adr/ADR-005-pluggable-adapter-architecture.md` — `local-jss` → `local-solid-rs | local-jss` in the implementation table
 
-## Decision pending
+## Position in the sovereign data stack
 
-Accept this ADR to trigger the Phase-1 implementation (≈ 2 days of work: flake derivation, new adapter impl, validator rules, wizard section, contract-test assertions, user + licensing docs). Redirect with a new preference if the licence coupling or alpha pinning is unacceptable — alternatives section lists four other paths.
+`solid-pod-rs` is the pod half of the DreamLab-AI sovereign data stack. The other components are first-party agentbox features, first-party DreamLab-AI projects, or carefully vendored upstream pieces:
+
+| Layer | Component | Ownership | Purpose |
+|-------|-----------|-----------|---------|
+| Identity | `sovereign-bootstrap.py` + secp256k1 keypair under `/var/lib/agentbox/identities/` | agentbox first-party | Each container owns its Nostr npub/nsec pair |
+| Auth — HTTP | NIP-98 with Schnorr verification in `nostr-bridge.js` and `solid-pod-rs` | shared contract | Signed Nostr events carry HTTP requests |
+| Auth — network | NIP-42 challenge on `nostr-rs-relay` | upstream (vendored by Nix) | External agents prove pubkey possession |
+| Durable storage | **`solid-pod-rs`** — Solid Protocol 0.11, WAC, LDP, Notifications | **first-party (this ADR)** | Pods for briefs, debriefs, agent artefacts, event inbox/outbox |
+| Messaging | `nostr-rs-relay` + pod-inbox bridge ([ADR-009](ADR-009-embedded-nostr-relay.md)) | vendored + first-party bridge | External ↔ internal agent messages |
+| Privacy governance | `openai/privacy-filter` middleware ([ADR-008](ADR-008-privacy-filter-routing.md)) | vendored + first-party policy | PII redaction before adapter writes |
+
+The stack is coherent because every layer speaks the same identity: one npub per container, Schnorr-signed events on both the HTTP (NIP-98) and WebSocket (NIP-42) surfaces, WAC policies in the pod written against the same npub. An external agent that can sign a Nostr event can reach the relay, be identified by the pod, and have its message persisted to a content-addressed mailbox — no federated identity provider, no OAuth flow, no third-party broker.
+
+`solid-pod-rs` is the piece that was missing: until this ADR, the stack had identity and messaging but its "durable" layer was a 108-line Python stub that ignored WAC. The promotion is not an optimisation — it closes the stack.

@@ -186,8 +186,18 @@ flowchart LR
   the image at `/opt/agentbox/skills`. Per-skill gating via `[skills.*]`.
   Migration path: [developer/skills-upgrade.md](../developer/skills-upgrade.md).
 - **Solid pod** — a personal data store following the Solid protocol.
-  Agentbox's default is a local JavaScriptSolidServer (JSS) on port 8484;
-  the `pods` adapter can point elsewhere.
+  Agentbox's default is [`solid-pod-rs`](https://github.com/DreamLab-AI/solid-pod-rs)
+  on port 8484 — a first-party Rust Solid Protocol 0.11 server (WAC,
+  LDP containers, Schnorr NIP-98, Solid Notifications 0.2, atomic-rename
+  storage). The `pods` adapter can also federate with an external server or
+  disable storage entirely. See [solid-pod.md](solid-pod.md) and
+  [ADR-010](../reference/adr/ADR-010-rust-solid-pod-adoption.md).
+- **Sovereign data stack** — the coherent identity-plus-data substrate every
+  agentbox container owns end-to-end: secp256k1 keypair (identity),
+  `solid-pod-rs` (durable storage + WAC), `nostr-rs-relay` (external-agent
+  messaging + pod-inbox bridge), `openai/privacy-filter` (PII governance).
+  Every layer speaks the same npub; no third-party broker. See the
+  [README top section](../../README.md#sovereign-data-stack).
 - **Sovereign mesh** — the optional Nostr-based identity and event layer.
   Sovereign because each container owns its own cryptographic keypair.
 - **supervisor / supervisord** — the process manager that starts the
@@ -268,6 +278,17 @@ bespoke scripts) to message the agents inside yours. Disabled by default.
 See [nostr-relay.md](nostr-relay.md) and
 [ADR-009](../reference/adr/ADR-009-embedded-nostr-relay.md).
 
+**What is solid-pod-rs and why is it the default?**
+`solid-pod-rs` is the first-party Rust Solid Protocol 0.11 server that powers
+the `pods` adapter. It replaces the legacy 108-line Python stub that only
+implemented GET/PUT/HEAD with no WAC enforcement. With solid-pod-rs the
+`.acl.json` policies written by `sovereign-bootstrap.py` actually apply,
+LDP containers work, PATCH works (N3 / SPARQL / JSON), Solid Notifications
+fire on writes, and atomic-rename durability makes [ADR-009](../reference/adr/ADR-009-embedded-nostr-relay.md)
+pod-inbox invariants hold for real. The legacy stub stays as `local-jss`
+with W034 warnings for anyone relying on the old behaviour. See
+[solid-pod.md](solid-pod.md) and [ADR-010](../reference/adr/ADR-010-rust-solid-pod-adoption.md).
+
 **What is the difference between the sovereign mesh and the Nostr relay?**
 The sovereign mesh (`[sovereign_mesh].enabled`) gives the container its own
 Nostr keypair and a client that can publish to external relays. The embedded
@@ -286,6 +307,7 @@ inbound events *at* the container. You can run the mesh without the relay
 | Operator debugging a failure | [troubleshooting.md](troubleshooting.md) |
 | Operator setting up external-agent messaging | [nostr-relay.md](nostr-relay.md) |
 | Operator enabling PII redaction | [privacy-filter.md](privacy-filter.md) |
+| Operator tuning the Solid pod | [solid-pod.md](solid-pod.md) |
 | Contributor changing agentbox | [developer/architecture.md](../developer/architecture.md) |
 | Contributor adding an adapter | [developer/adapters.md](../developer/adapters.md) |
 | Spec reader | [reference/prd/PRD-001-capabilities-and-adapters.md](../reference/prd/PRD-001-capabilities-and-adapters.md) |

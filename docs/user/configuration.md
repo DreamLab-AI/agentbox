@@ -39,16 +39,26 @@ Five slots. Each resolves to one of three implementation classes. An `adapter` i
 ```toml
 [adapters]
 beads        = "local-sqlite"          # local-sqlite | external | off
-pods         = "local-jss"             # local-jss   | external | off
+pods         = "local-solid-rs"        # first-class | local-jss (legacy) | external | off
 memory       = "embedded-ruvector"     # embedded-ruvector | external-pg | off
 events       = "local-jsonl"           # local-jsonl | external | off
 orchestrator = "local-process-manager" # local-process-manager | stdio-bridge | off
 ```
 
+`pods = "local-solid-rs"` is the first-class default. It runs the first-party
+[`solid-pod-rs`](https://github.com/DreamLab-AI/solid-pod-rs) Rust Solid
+Protocol 0.11 server described in [ADR-010](../reference/adr/ADR-010-rust-solid-pod-adoption.md).
+See [solid-pod.md](solid-pod.md) for the operator guide and
+`[integrations.solid_pod_rs]` below for the per-feature knobs. The legacy
+`local-jss` points at the Python stub `scripts/solid-pod-server.py` and
+emits validator warning W034 on every build.
+
 Validator rules:
 - **E001**: `"external"` requires `federation.mode = "client"` + `federation.external_url`.
 - **E002**: `memory = "external-pg"` requires `[integrations.ruvector_external].conninfo`.
 - **E003**: `orchestrator = "stdio-bridge"` must not bind an HTTP port.
+- **E033**: `integrations.solid_pod_rs.enable_dpop_cache = true` requires `enable_oidc = true`.
+- **W034**: `pods = "local-jss"` emits a deprecation warning — switch to `local-solid-rs`.
 
 Full adapter contract: [ADR-005](../reference/adr/ADR-005-pluggable-adapter-architecture.md).
 

@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /**
  * agentbox config validate
- * Validates agentbox.toml against the JSON Schema and 30 semantic rules
- * (E001-E008, E010-E020, E022-E029, E031 + W021, W030; E009 reserved).
+ * Validates agentbox.toml against the JSON Schema and 33 semantic rules
+ * (E001-E008, E010-E020, E022-E029, E031, E033 + W021, W030, W034;
+ * E009, E030, E032 reserved).
  * Exit 0 = clean. Non-zero = errors. Errors on stderr, one per line: "E### message"
  *
  * Rule families:
@@ -12,6 +13,7 @@
  *   E020/W021  security.exceptions coherence (ADR-007)
  *   E022-E025  privacy filter middleware (ADR-008)
  *   E026-E029/W030/E031  embedded Nostr relay + pod-inbox bridge (ADR-009)
+ *   E033/W034  solid-pod-rs first-class pod server (ADR-010)
  */
 
 'use strict';
@@ -342,6 +344,40 @@ if (sovereignMesh.jss_rust_backend === true) {
   }
 }
 
+// ─── E032-E034 / W034: solid-pod-rs first-class pod server (ADR-010) ──────────
+//
+// E032 — adapters.pods="local-solid-rs" requires the filesystem backend to
+//        have a writable path. Emitted as W021-style exception-missing warning
+//        when [security.exceptions.solid-pod-rs] is absent.
+// E033 — integrations.solid_pod_rs.enable_dpop_cache=true requires
+//        enable_oidc=true (DPoP is OIDC-only).
+// W034 — adapters.pods="local-jss" emits a deprecation warning: the Python
+//        stub at scripts/solid-pod-server.py is retained for backward
+//        compatibility only; new deployments should pick local-solid-rs.
+{
+  const pods = (manifest.adapters || {}).pods;
+  const sp   = (manifest.integrations || {}).solid_pod_rs || {};
+
+  if (pods === 'local-solid-rs') {
+    // E032 is handled structurally by the W021 exception-coherence check
+    // (isFeatureActive('solid-pod-rs') returns true when pods=local-solid-rs,
+    // so the validator will emit W021 if the exception block is missing).
+    if (sp.enable_dpop_cache === true && sp.enable_oidc !== true) {
+      errors.push({
+        code: 'E033',
+        message: 'E033: integrations.solid_pod_rs.enable_dpop_cache=true requires enable_oidc=true (DPoP is OIDC-only)'
+      });
+    }
+  }
+
+  if (pods === 'local-jss') {
+    errors.push({
+      code: 'W034',
+      message: 'W034: adapters.pods="local-jss" — deprecated. The Python scripts/solid-pod-server.py stub does not implement LDP containers, WAC enforcement, PATCH, or full Schnorr NIP-98. Switch to local-solid-rs (first-class Rust server, ADR-010).'
+    });
+  }
+}
+
 // ─── E026-E031 / W030: embedded Nostr relay coherence (ADR-009) ───────────────
 //
 // E026 — sovereign_mesh.relay.enabled=true requires sovereign_mesh.enabled=true
@@ -522,6 +558,8 @@ function isFeatureActive(exceptionName) {
       return sovereignMesh.telegram_mirror === true;
     case 'nostr-relay':
       return !!(sovereignMesh.relay && sovereignMesh.relay.enabled === true);
+    case 'solid-pod-rs':
+      return (manifest.adapters || {}).pods === 'local-solid-rs';
     default:
       return false;
   }
@@ -536,7 +574,8 @@ const KNOWN_EXCEPTION_FEATURE_GATES = new Set([
   'playwright',
   'code-server',
   'telegram-mirror',
-  'nostr-relay'
+  'nostr-relay',
+  'solid-pod-rs'
 ]);
 
 const security = manifest.security || {};

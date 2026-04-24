@@ -49,8 +49,8 @@
         },
         "pods": {
           "type": "string",
-          "enum": ["local-jss", "external", "off"],
-          "description": "Durable linked-data storage adapter."
+          "enum": ["local-solid-rs", "local-jss", "external", "off"],
+          "description": "Durable linked-data storage adapter. local-solid-rs is the first-class default (ADR-010); local-jss is the legacy Python stub retained for migration; external federates with a host-provided Solid server."
         },
         "memory": {
           "type": "string",
@@ -245,6 +245,23 @@
               "type": "string",
               "description": "PostgreSQL DSN for external RuVector. Required when adapters.memory=external-pg (E002)."
             }
+          }
+        },
+        "solid_pod_rs": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "First-party Rust Solid Protocol 0.11 server (ADR-010). Consumed by the pods adapter when adapters.pods=local-solid-rs.",
+          "properties": {
+            "port":                  { "type": "integer", "minimum": 1, "maximum": 65535 },
+            "bind":                  { "type": "string" },
+            "storage":               { "type": "string", "enum": ["fs", "memory", "s3"] },
+            "storage_root":          { "type": "string" },
+            "base_url":              { "type": "string" },
+            "enable_oidc":           { "type": "boolean" },
+            "enable_schnorr_verify": { "type": "boolean" },
+            "enable_dpop_cache":     { "type": "boolean", "description": "Requires enable_oidc=true (E033)." },
+            "notifications":         { "type": "string", "enum": ["websocket", "webhook", "off"] },
+            "log_level":             { "type": "string", "enum": ["trace", "debug", "info", "warn", "error"] }
           }
         },
         "external_orchestrator": {
@@ -533,6 +550,19 @@
                   "type": "array",
                   "items": { "type": "string" },
                   "description": "Named volume mount strings for the SQLite database and WAL."
+                },
+                "reason": { "type": "string" }
+              }
+            },
+            "solid-pod-rs": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "solid-pod-rs filesystem backend volume. Enabled when adapters.pods=local-solid-rs (ADR-010).",
+              "properties": {
+                "writable_volumes": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Named volume mount strings for the .meta/.acl sidecars and atomic-rename temp files."
                 },
                 "reason": { "type": "string" }
               }

@@ -2,6 +2,16 @@
 orchestration = "ruflo-v3"
 vector_db = "ruvector-embedded"
 
+# ── Five-slot adapter architecture (ADR-005) ───────────────────────────────────
+# The pods default is "local-solid-rs" — the first-class first-party Solid
+# Protocol 0.11 server (github.com/DreamLab-AI/solid-pod-rs). See ADR-010.
+[adapters]
+beads        = "local-sqlite"
+pods         = "local-solid-rs"
+memory       = "embedded-ruvector"
+events       = "local-jsonl"
+orchestrator = "local-process-manager"
+
 [sovereign_mesh]
 enabled = true
 solid_pod = true
@@ -54,6 +64,22 @@ comfyui_builtin = false
 enabled = false
 url = "http://comfyui:8188"
 ws_url = "ws://comfyui:8188/ws"
+
+# ── solid-pod-rs (first-class; ADR-010) ─────────────────────────────────────────
+# First-party Rust Solid Protocol 0.11 server from github.com/DreamLab-AI.
+# Used by the pods adapter when adapters.pods = "local-solid-rs" (the default).
+# See docs/developer/licensing.md for the AGPL-3.0-only aggregation analysis.
+[integrations.solid_pod_rs]
+port                  = 8484
+bind                  = "127.0.0.1"
+storage               = "fs"                    # fs | memory | s3
+storage_root          = "/var/lib/solid"
+base_url              = "http://127.0.0.1:8484"
+enable_oidc           = false
+enable_schnorr_verify = true
+enable_dpop_cache     = false
+notifications         = "websocket"             # websocket | webhook | off
+log_level             = "info"
 
 [skills.spatial_and_3d]
 qgis = false
@@ -183,6 +209,13 @@ log_level = "info"
 # Reference table of all known exceptions is in docs/adr/ADR-007.md.
 #
 # Currently enabled feature exceptions (mirrors active feature gates above):
+
+[security.exceptions.solid-pod-rs]
+# Required because adapters.pods = "local-solid-rs" (the first-class default).
+# solid-pod-rs needs a writable path under read_only:true for its filesystem
+# backend — .meta and .acl sidecars plus atomic-rename temp files.
+writable_volumes = ["solid-data:/var/lib/solid"]
+reason = "solid-pod-rs fs-backend requires atomic-rename writable storage under /var/lib/solid"
 
 [security.exceptions.playwright]
 # Required because skills.browser.playwright = true

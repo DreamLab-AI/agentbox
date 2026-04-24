@@ -85,7 +85,7 @@ mode = "standalone"
 
 [adapters]
 beads = "local-sqlite"
-pods = "local-jss"
+pods = "local-solid-rs"                # first-class default (ADR-010); "local-jss" = legacy Python stub
 memory = "embedded-ruvector"
 events = "local-jsonl"
 orchestrator = "local-process-manager"
@@ -247,7 +247,7 @@ curl http://localhost:9090/health
 curl http://localhost:9090/v1/meta        # adapter contract versions + image hash
 curl http://localhost:9091/metrics        # Prometheus — scrape this
 curl http://localhost:9700/health
-curl http://localhost:8484/health         # only when [adapters.pods] = "local-jss"
+curl http://localhost:8484/health         # solid-pod-rs (or local-jss legacy stub)
 ```
 
 From inside the container:

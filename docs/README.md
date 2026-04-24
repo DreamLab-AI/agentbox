@@ -32,14 +32,18 @@ You have a machine, you want agentbox running on it, ideally with as little fuss
 | [Consuming the image](user/consuming-image.md) | GHCR registry tags, multi-arch manifest |
 | [Provisioning remote hosts](user/provisioning.md) | `agentbox.sh provision --target oci \| fly \| hetzner \| bare` |
 
+| Sovereign data stack — key parts of the DreamLab-AI ecosystem | |
+|---|---|
+| [Solid pod (solid-pod-rs)](user/solid-pod.md) | First-party Rust Solid Protocol 0.11 server — durable storage, WAC, NIP-98, atomic-rename |
+| [Nostr relay](user/nostr-relay.md) | External-agent messaging over an embedded Nostr relay with pod-inbox bridge |
+| [Privacy filter](user/privacy-filter.md) | Local PII redaction sidecar (openai/privacy-filter) as adapter middleware |
+
 | Feature guides | |
 |---|---|
 | [3DGS (COLMAP + METIS + LichtFeld)](user/3dgs.md) | 3D Gaussian Splatting pipeline |
 | [Blender](user/blender.md) | Blender toolchain |
 | [ComfyUI](user/comfyui.md) | Built-in vs external ComfyUI |
 | [LaTeX](user/latex.md) | TeX Live full |
-| [Privacy filter](user/privacy-filter.md) | Local PII redaction sidecar (openai/privacy-filter) |
-| [Nostr relay](user/nostr-relay.md) | External-agent messaging over an embedded Nostr relay with pod-inbox bridge |
 
 ---
 
@@ -78,6 +82,7 @@ These are the authoritative sources of truth. Anything in `user/` or `developer/
 | ADR-007 | [Runtime contract + hardening](reference/adr/ADR-007-runtime-contract-and-container-hardening.md) | Accepted | Image ref + probes + observability + hardening as one contract |
 | ADR-008 | [Privacy filter routing](reference/adr/ADR-008-privacy-filter-routing.md) | Accepted | Local openai/privacy-filter sidecar as cross-cutting adapter middleware |
 | ADR-009 | [Embedded Nostr relay](reference/adr/ADR-009-embedded-nostr-relay.md) | Accepted | nostr-rs-relay + pod-inbox bridge for external-agent messaging |
+| ADR-010 | [solid-pod-rs as first-class pod server](reference/adr/ADR-010-rust-solid-pod-adoption.md) | Accepted | First-party Rust Solid Protocol 0.11 server; default pods implementation |
 
 ### Product requirements (PRD)
 

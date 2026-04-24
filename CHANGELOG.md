@@ -4,6 +4,40 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### solid-pod-rs promoted to first-class pod server (2026-04-24)
+
+Completes the DreamLab-AI sovereign data stack. The `pods` adapter slot now
+defaults to [`solid-pod-rs`](https://github.com/DreamLab-AI/solid-pod-rs) —
+a first-party Rust Solid Protocol 0.11 server. Specified by
+[`ADR-010`](docs/reference/adr/ADR-010-rust-solid-pod-adoption.md).
+
+The stack is now coherent end-to-end: one secp256k1 keypair per container,
+Schnorr-signed events on HTTP (NIP-98) and WebSocket (NIP-42) surfaces, WAC
+policies written against the same npub, content-addressed pod mailboxes
+keyed by Nostr event id. No third-party broker.
+
+**What changed:**
+- `agentbox.toml`: new top-level `[adapters]` block with `pods = "local-solid-rs"` as the default; new `[integrations.solid_pod_rs]` block for storage/backend/auth/notifications knobs; new `[security.exceptions.solid-pod-rs]` for the `/var/lib/solid` writable volume.
+- `schema/agentbox.toml.schema.json`: `pods` enum extended with `local-solid-rs`; full schema for `[integrations.solid_pod_rs]` and the `solid-pod-rs` security exception.
+- `scripts/agentbox-config-validate.js`: new rules **E033** (DPoP requires OIDC) and **W034** (`local-jss` deprecation warning). Total semantic rule count is now 33.
+- `lib/solid-pod-rs.nix`: new Nix derivation building solid-pod-rs-server from pinned `v0.4.0-alpha.1` via `buildRustPackage`. Cargo features selected from the manifest (fs/memory/s3 backend, OIDC, DPoP cache, notifications). Preserves the upstream AGPL `LICENSE` in `$out/share/doc/solid-pod-rs/`.
+- `flake.nix`: `solidPodRsPkg` + `solidPodRsActive` gate wiring; the `[program:solid-pod]` supervisor block now dispatches between the Rust binary (`local-solid-rs`) and the retained Python stub (`local-jss`) based on the manifest. Port `8484` unchanged.
+- `management-api/adapters/pods/local-solid-rs.js`: new adapter implementation. Extends `local-jss.js` (wire protocol is identical), overrides `impl` tag, adds LDP Link-rel="next" pagination preference, N3-patch support when the server advertises `Accept-Patch: text/n3`, and capability probing via `OPTIONS /`.
+- `management-api/adapters/index.js`: `slotConfig` threads `integrations.solid_pod_rs.base_url` (or constructed bind:port) into the new adapter.
+
+**Docs (ecosystem framing):**
+- `README.md`: new "Sovereign data stack" section front-and-centre, showing identity → pod → relay → privacy-filter as a coherent substrate.
+- `docs/README.md`: dedicated "Sovereign data stack" table in the user-docs index, separate from feature guides.
+- `docs/user/solid-pod.md`: new novice-facing operator guide — why the pod matters, capabilities table against the legacy stub, wizard flow, manifest reference, verify-it's-running commands, Mermaid diagram of the four-loopback-port stack, storage-backend options, licence note.
+- `docs/developer/licensing.md`: new canonical AGPL-3.0 aggregation analysis. Documents the allowed/disallowed patterns, FSF citations, the binary-not-library rule, and what contributors must preserve when shipping.
+- `docs/reference/adr/ADR-010-rust-solid-pod-adoption.md`: flipped from Proposed → Accepted; added "Position in the sovereign data stack" table; migration paragraph replaces the four-phase deprecation schedule.
+- `docs/reference/adr/ADR-005-pluggable-adapter-architecture.md`: `pods` row + implementation layout + manifest contract updated.
+- `docs/reference/prd/PRD-001-capabilities-and-adapters.md`: capability row expanded with Solid Protocol 0.11 conformance claim.
+- `docs/user/configuration.md`: `[adapters]` block default + `[integrations.solid_pod_rs]` reference + E033/W034 validator entries.
+- `docs/user/glossary.md`: Solid-pod definition updated; new "Sovereign data stack" entry; new common-confusion Q&A for solid-pod-rs.
+- `docs/user/nostr-relay.md`: pod-is-the-inbox section explicitly cross-references the Rust pod and the atomic-rename invariants.
+- `docs/developer/sovereign-mesh.md`: new "Pod server (ADR-010)" section explaining the bridge's direct-filesystem-write contract with solid-pod-rs's fs-backend.
+
 ### External agent messaging + embedded Nostr relay (2026-04-24)
 
 Answers the open question "how do external agents reach internal ones":
