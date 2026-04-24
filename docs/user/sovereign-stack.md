@@ -201,8 +201,15 @@ The short form:
    signature (I01), checks ingress policy (I07), confirms the `p` tag
    targets a local npub (I10), and writes atomically to
    `pods/<npub>/events/inbox/<event-id>.json` (I08).
-6. If the kind is in the agent-intent range (38000-38099) and an orchestrator
-   adapter is resolved, the bridge spawns an agent to respond.
+6. If the kind is in the agent-intent range (38000-38099), the bridge writes
+   an intent marker to `pods/<npub>/events/intent-queue/<event-id>.json`
+   atomically. When the operator supplies an `intentSpec(event, context)`
+   factory to the bridge (which resolves to a valid orchestrator spec with a
+   `command`), the bridge invokes `orchestrator.spawnAgent()` with Nostr
+   context merged into `env` (`NOSTR_EVENT_ID`, `NOSTR_EVENT_KIND`,
+   `NOSTR_RECIPIENT_NPUB`, `NOSTR_EVENT_JSON`). Without an `intentSpec`, the
+   intent-queue marker is the durable record and any downstream
+   intent-handler (cron, agent loop, bespoke service) picks it up.
 7. The agent writes a response to `pods/<npub>/events/outbox/<pending-id>.json`.
 8. `relay-consumer.js` picks it up on its flush timer, signs it, publishes
    to the relay. If external fanout is enabled, it also publishes to

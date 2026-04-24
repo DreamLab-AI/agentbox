@@ -79,6 +79,14 @@ class RelayConsumer {
    * @param {string[]} [opts.relayUrls]            - Relays to subscribe; default local :7777 + NOSTR_RELAYS
    * @param {object}   [opts.adapters]             - { events, orchestrator } ADR-005 adapters
    * @param {string}   [opts.fanout="off"]         - bidirectional | publish-only | subscribe-only | off
+   * @param {Function} [opts.intentSpec]           - (event, context) => { command, args?, env?, cwd? }
+   *                                                  Produces an orchestrator.spawnAgent spec for
+   *                                                  agent-intent kinds (38000-38099). When absent,
+   *                                                  the bridge only writes the intent marker file
+   *                                                  to pods/<npub>/events/intent-queue/<id>.json
+   *                                                  and lets downstream handlers poll. The marker
+   *                                                  write is always durable regardless of whether
+   *                                                  a spec is provided.
    * @param {object}   [opts.logger=console]       - Structured logger (pino-style)
    * @param {Function} [opts.verifyEvent]          - Override for tests
    * @param {Function} [opts.now=() => Date.now()] - Clock injection for tests
@@ -95,6 +103,7 @@ class RelayConsumer {
     this._stack = opts.stack || 'default';
     this._fanout = opts.fanout || 'off';
     this._adapters = opts.adapters || {};
+    this._intentSpec = typeof opts.intentSpec === 'function' ? opts.intentSpec : null;
     this._logger = opts.logger || console;
     this._verifyEvent = opts.verifyEvent || null;
     this._now = opts.now || (() => Date.now());
@@ -232,18 +241,81 @@ class RelayConsumer {
       }
     }
 
-    // Agent-intent kinds trigger orchestrator spawn.
-    if (this._isAgentIntent(event.kind) && this._adapters.orchestrator) {
-      try {
-        this._adapters.orchestrator.spawn({
-          trigger: 'nostr-event',
-          event_id: event.id,
+    // Agent-intent kinds: always write a durable marker to the pod intent
+    // queue; conditionally spawn a responder via the orchestrator adapter
+    // when the operator supplied an intentSpec mapping.
+    if (this._isAgentIntent(event.kind)) {
+      this._writeIntentMarker(recipient, event);
+
+      if (this._intentSpec && this._adapters.orchestrator
+          && typeof this._adapters.orchestrator.spawnAgent === 'function') {
+        const context = {
+          trigger:       'nostr-event',
+          event_id:      event.id,
           recipient_npub: recipient,
-          intent_kind: event.kind,
-        });
-      } catch (err) {
-        this._logger.warn({ err, eventId: event.id }, 'orchestrator-spawn-failed');
+          intent_kind:   event.kind,
+          received_at:   new Date(this._now()).toISOString(),
+        };
+        let spec;
+        try {
+          spec = this._intentSpec(event, context);
+        } catch (err) {
+          this._logger.warn({ err, eventId: event.id }, 'intent-spec-build-failed');
+          return;
+        }
+        if (!spec || !spec.command) {
+          this._logger.warn({ eventId: event.id }, 'intent-spec-missing-command');
+          return;
+        }
+        // Merge Nostr context into spawn env so the responder has full
+        // addressing without reading files.
+        const mergedEnv = {
+          NOSTR_EVENT_ID:       event.id,
+          NOSTR_EVENT_KIND:     String(event.kind),
+          NOSTR_EVENT_PUBKEY:   event.pubkey,
+          NOSTR_RECIPIENT_NPUB: recipient,
+          NOSTR_EVENT_JSON:     JSON.stringify(event),
+          ...(spec.env || {}),
+        };
+        const finalSpec = { ...spec, env: mergedEnv };
+        Promise.resolve(this._adapters.orchestrator.spawnAgent(finalSpec))
+          .then(result => this._logger.info({
+            eventId: event.id,
+            agentId: result && result.agentId,
+          }, 'intent-responder-spawned'))
+          .catch(err => this._logger.warn({
+            err, eventId: event.id,
+          }, 'intent-responder-spawn-failed'));
       }
+    }
+  }
+
+  /**
+   * Write a durable intent marker to pods/<npub>/events/intent-queue/<id>.json.
+   * Separate from the inbox entry so downstream pollers can scan just this
+   * directory without re-filtering the full inbox. Atomic rename preserves
+   * DDD-003 I01 / I08 semantics.
+   * @private
+   */
+  _writeIntentMarker(recipient, event) {
+    const queueDir = path.join(this._podRoot, 'pods', recipient, 'events', 'intent-queue');
+    const target = path.join(queueDir, `${event.id}.json`);
+    if (fs.existsSync(target)) return;           // dedup by event id
+    try {
+      fs.mkdirSync(queueDir, { recursive: true });
+      const payload = {
+        event_id:       event.id,
+        kind:           event.kind,
+        signer_pubkey:  event.pubkey,
+        recipient_npub: recipient,
+        received_at:    new Date(this._now()).toISOString(),
+        status:         'pending',
+      };
+      const tmp = path.join(queueDir, `.${event.id}.${process.pid}.tmp`);
+      fs.writeFileSync(tmp, JSON.stringify(payload, null, 2));
+      fs.renameSync(tmp, target);
+    } catch (err) {
+      this._logger.warn({ err, eventId: event.id }, 'intent-marker-write-failed');
     }
   }
 
@@ -310,7 +382,7 @@ class RelayConsumer {
   _ensureMailboxDirs() {
     for (const npub of this._npubs) {
       const podDir = path.join(this._podRoot, 'pods', npub);
-      for (const sub of ['events/inbox', 'events/outbox']) {
+      for (const sub of ['events/inbox', 'events/outbox', 'events/intent-queue']) {
         fs.mkdirSync(path.join(podDir, sub), { recursive: true });
       }
     }
