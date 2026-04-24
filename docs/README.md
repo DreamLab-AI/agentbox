@@ -1,108 +1,109 @@
 # Agentbox documentation
 
-Navigation hub. Start here.
+Audience-tiered navigation. Pick the path that matches what you're trying to do.
 
-## What is this?
+```
+docs/
+├── user/         ← You run agentbox; you want it to work
+├── developer/    ← You change agentbox; you ship PRs
+└── reference/    ← Canonical specs (ADR / PRD / DDD)
+```
 
-Agentbox is a Nix-declarative container runtime for hosting software agents (Claude Code, ruflo, and similar) with their skills and toolchains. See [`../README.md`](../README.md) for the product pitch and [`prd/PRD-001-capabilities-and-adapters.md`](prd/PRD-001-capabilities-and-adapters.md) for the full spec.
+---
 
-## I want to...
+## User docs — for operators
 
-| Goal | Read |
+You have a machine, you want agentbox running on it, ideally with as little fuss as possible.
+
+| Start here | |
 |---|---|
-| Build and boot agentbox in ten minutes | [`guides/quick-start.md`](guides/quick-start.md) |
-| Understand the architecture at a glance | [`../README.md`](../README.md) §Architecture |
-| Read the product spec (what agentbox does and doesn't do) | [`prd/PRD-001-capabilities-and-adapters.md`](prd/PRD-001-capabilities-and-adapters.md) |
-| Understand the pluggable adapter pattern | [`adr/ADR-005-pluggable-adapter-architecture.md`](adr/ADR-005-pluggable-adapter-architecture.md) |
-| Back up or restore local state | [`guides/backup-restore.md`](guides/backup-restore.md) |
-| Write a new Claude Skill | [`../skills/skill-builder/SKILL.md`](../skills/skill-builder/SKILL.md) |
+| [Quickstart](user/quickstart.md) | First boot in ten minutes |
+| [Installation](user/installation.md) | Per-OS install paths (Linux, macOS, Windows, remote) |
+| [Configuration](user/configuration.md) | `agentbox.toml` reference — every section, every key |
+| [Running](user/running.md) | Copy-paste recipes per host × arch × GPU |
+| [Platforms](user/platforms.md) | Compatibility matrix: what works where |
+| [Troubleshooting](user/troubleshooting.md) | Common failure modes and fixes |
 
-## Documents by type
+| Day-2 operations | |
+|---|---|
+| [Providers](user/providers.md) | API-key management — `[providers.*]` manifest sections |
+| [Backup & restore](user/backup-restore.md) | `agentbox.sh backup / restore` — what's included, secrets handling |
+| [Consuming the image](user/consuming-image.md) | GHCR registry tags, multi-arch manifest |
+| [Provisioning remote hosts](user/provisioning.md) | `agentbox.sh provision --target oci \| fly \| hetzner \| bare` |
+
+| Feature guides | |
+|---|---|
+| [3DGS (COLMAP + METIS + LichtFeld)](user/3dgs.md) | 3D Gaussian Splatting pipeline |
+| [Blender](user/blender.md) | Blender toolchain |
+| [ComfyUI](user/comfyui.md) | Built-in vs external ComfyUI |
+| [LaTeX](user/latex.md) | TeX Live full |
+
+---
+
+## Developer docs — for contributors
+
+You're adding a feature, implementing an adapter, or investigating a regression.
+
+| Architecture | |
+|---|---|
+| [Architecture overview](developer/architecture.md) | How it all fits together — manifest → flake → image → runtime |
+| [Adapter pattern](developer/adapters.md) | Five slots × three classes; how to write a new impl |
+| [Sovereign mesh](developer/sovereign-mesh.md) | Nostr client + NIP-98 auth + relay pool internals |
+| [Skills upgrade path](developer/skills-upgrade.md) | Migrating from `path:./skills` to a standalone repo |
+
+| Tooling | |
+|---|---|
+| [Testing](developer/testing.md) | Suite shape, running locally, CI wiring |
+| [Version tracking](developer/version-tracking.md) | Renovate + `nix flake update` workflow |
+
+---
+
+## Reference — canonical specs
+
+These are the authoritative sources of truth. Anything in `user/` or `developer/` that conflicts with these is a bug in the docs.
+
+### Architecture decisions (ADR)
+
+| # | Document | Status | Decision |
+|---|---|---|---|
+| ADR-001 | [Nix flake build](reference/adr/ADR-001-nixos-flakes.md) | Accepted | Manifest-driven Nix flake replaces the monolithic Dockerfile |
+| ADR-002 | [RuVector as embedded retrieval](reference/adr/ADR-002-ruvector-standalone.md) | Accepted | Local retrieval cache, not a source of truth |
+| ADR-003 | [Guidance control plane](reference/adr/ADR-003-guidance-control-plane.md) | Accepted | Enforcement gates for autonomous agents |
+| ADR-004 | [Upstream sync boundaries](reference/adr/ADR-004-upstream-sync.md) | Accepted | Selective sync, not mechanical |
+| ADR-005 | [Pluggable adapter architecture](reference/adr/ADR-005-pluggable-adapter-architecture.md) | Accepted | Five-slot adapters × three impl classes |
+| ADR-006 | [Immutable runtime bootstrap](reference/adr/ADR-006-immutable-runtime-bootstrap.md) | Accepted | No dependency resolution at startup |
+| ADR-007 | [Runtime contract + hardening](reference/adr/ADR-007-runtime-contract-and-container-hardening.md) | Accepted | Image ref + probes + observability + hardening as one contract |
 
 ### Product requirements (PRD)
 
 | # | Document | Summary |
 |---|---|---|
-| PRD-001 | [Capabilities and adapters](prd/PRD-001-capabilities-and-adapters.md) | Agentbox as a standalone product — manifest-gated features, five-slot adapter architecture, observability, secrets lifecycle, runtime layout |
-| PRD-002 | [Immutable runtime bootstrap](prd/PRD-002-immutable-runtime-bootstrap.md) | Removes mutable dependency installation from startup; boot becomes an immutable realization of the built image |
-| PRD-003 | [Runtime contract and container hardening](prd/PRD-003-runtime-contract-and-container-hardening.md) | Defines the operator/runtime contract for image selection, readiness, observability wiring, and hardened container defaults |
-
-### Architecture decisions (ADR)
-
-| # | Document | Decision |
-|---|---|---|
-| ADR-001 | [Nix flake build](adr/ADR-001-nixos-flakes.md) | Manifest-driven Nix flake replaces the monolithic Dockerfile; reproducible via `flake.lock` |
-| ADR-002 | [RuVector as embedded retrieval](adr/ADR-002-ruvector-standalone.md) | Embedded RuVector is a local retrieval cache, not a source of truth |
-| ADR-003 | [Guidance control plane](adr/ADR-003-guidance-control-plane.md) | Enforcement gates for autonomous agents — destructive ops, memory writes, trust escalation |
-| ADR-004 | [Upstream sync boundaries](adr/ADR-004-upstream-sync.md) | Skills and assets sync selectively, not mechanically |
-| ADR-005 | [Pluggable adapter architecture](adr/ADR-005-pluggable-adapter-architecture.md) | Five-slot adapters (beads, pods, memory, events, orchestrator) × three implementation classes per slot (local-*, external, off) |
-| ADR-006 | [Immutable runtime bootstrap](adr/ADR-006-immutable-runtime-bootstrap.md) | Startup may realize instance state but may not resolve software dependencies or mutate the packaged application tree |
-| ADR-007 | [Runtime contract and container hardening](adr/ADR-007-runtime-contract-and-container-hardening.md) | Image selection, probe semantics, observability binding, and container boundary become one explicit operator contract |
+| PRD-001 | [Capabilities and adapters](reference/prd/PRD-001-capabilities-and-adapters.md) | Agentbox as a standalone product |
+| PRD-002 | [Immutable runtime bootstrap](reference/prd/PRD-002-immutable-runtime-bootstrap.md) | Remove mutable dep-install from startup |
+| PRD-003 | [Runtime contract + container hardening](reference/prd/PRD-003-runtime-contract-and-container-hardening.md) | Image selection + probes + observability + hardening |
 
 ### Domain design (DDD)
 
 | # | Document | Focus |
 |---|---|---|
-| DDD-001 | [Immutable Bootstrap Domain](ddd/DDD-001-immutable-bootstrap-domain.md) | Models packaged artifact validation and the legal startup mutation boundary |
-| DDD-002 | [Runtime Contract Domain](ddd/DDD-002-runtime-contract-domain.md) | Models image reference resolution, readiness, observability bindings, and the hardened container boundary |
+| DDD-001 | [Immutable bootstrap domain](reference/ddd/DDD-001-immutable-bootstrap-domain.md) | RuntimeClosure aggregate + BootstrapPolicy |
+| DDD-002 | [Runtime contract domain](reference/ddd/DDD-002-runtime-contract-domain.md) | ImageReferencePolicy + ProbeContract + ObservabilityBinding + SecurityProfile |
 
-### Guides
-
-| Document | Audience |
-|---|---|
-| [Quick start](guides/quick-start.md) | First-time operator — from clone to running stack |
-| [Running on your host](guides/running-on-your-host.md) | Copy-paste recipes per OS × arch × GPU (macOS Intel/Apple Silicon, Windows, Linux, NVIDIA, AMD) |
-| [Platform compatibility matrix](guides/platforms.md) | Build vs run support per target, GPU backend availability per OS |
-| [Consuming the image](guides/consuming-the-image.md) | Registry tags, multi-arch manifest, diagnostic single-arch tags |
-| [Providers](guides/providers.md) | `[providers.*]` manifest sections, env vars, adding new providers |
-| [Sovereign mesh](guides/sovereign-mesh.md) | Nostr client, NIP-98 auth, relay configuration, key handling |
-| [Skills upgrade path](guides/skills-upgrade.md) | Skills as Nix input; future migration to standalone skills repo |
-| [Backup & restore](guides/backup-restore.md) | Operators running agentbox in production; what gets backed up, what doesn't, secrets handling |
-
-### Operator reference
-
-| Surface | Where |
-|---|---|
-| Manifest schema | [`../schema/agentbox.toml.schema.json`](../schema/agentbox.toml.schema.json) — validated by `agentbox config validate` |
-| Local lifecycle verbs | `agentbox.sh {up, down, build, rebuild, logs, shell, health}` — see `../README.md` §Run or `agentbox.sh --help` |
-| Metrics | Prometheus endpoint on `[observability].metrics_port` (default `9091`); see [ADR-005 §Observability](adr/ADR-005-pluggable-adapter-architecture.md) |
-| Health | `curl http://localhost:9090/health` — reports per-adapter health |
-| Version handshake | `curl http://localhost:9090/v1/meta` — image hash, manifest checksum, adapter contract versions |
-| Gemini CLI | `@google/gemini-cli@0.38.2` — enable via `[toolchains.gemini_cli = true]` in manifest; use `zgemini` or `gemini` (requires `GEMINI_API_KEY`) |
-| Zellij layout | [`../config/zellij/layouts/agentbox.kdl`](../config/zellij/layouts/agentbox.kdl) — 11 tabs |
-| Dev container | [`../.devcontainer/README.md`](../.devcontainer/README.md) |
-| Image registry | `ghcr.io/dreamlab-ai/agentbox:latest` — Linux multi-arch (amd64 + arm64); see [guides/consuming-the-image.md](guides/consuming-the-image.md) |
-| Runtime contract tests | [`tests/runtime-contract/`](../tests/runtime-contract/README.md) — 10 tests (RC-002-01…05, RC-003-06…10) proving PRD-002 and PRD-003 acceptance criteria; run with `bash tests/runtime-contract/RC-*.sh` |
-
-## Mental model
-
-```mermaid
-flowchart LR
-    M[agentbox.toml] --> F[flake.nix]
-    F --> I[image]
-    I --> R[runtime]
-    R --> AD[adapter dispatch]
-    AD --> L[local fallbacks]
-    AD --> E[external endpoints]
-```
-
-Three claims drive every design decision:
-
-1. **The manifest is the contract.** Everything the image does traces back to `agentbox.toml`. No Dockerfile edits, no bespoke scripts.
-2. **Adapters are the integration surface.** Durable state is pluggable. Agentbox never hardcodes "the database" or "the task store".
-3. **Standalone is first-class.** Every feature works without any external service. Federated mode adds capability; it doesn't gate the baseline.
+---
 
 ## Reading order for new contributors
 
 1. [`../README.md`](../README.md) — 5 minutes, product pitch + architecture
-2. [`guides/quick-start.md`](guides/quick-start.md) — build and run
-3. [`prd/PRD-001-capabilities-and-adapters.md`](prd/PRD-001-capabilities-and-adapters.md) — spec
-4. [`adr/ADR-005-pluggable-adapter-architecture.md`](adr/ADR-005-pluggable-adapter-architecture.md) — adapter deep-dive
-5. The other ADRs in order — they explain how we got here
+2. [`user/quickstart.md`](user/quickstart.md) — build and run
+3. [`developer/architecture.md`](developer/architecture.md) — how it works inside
+4. [`reference/prd/PRD-001-capabilities-and-adapters.md`](reference/prd/PRD-001-capabilities-and-adapters.md) — full product spec
+5. [`reference/adr/ADR-005-pluggable-adapter-architecture.md`](reference/adr/ADR-005-pluggable-adapter-architecture.md) — adapter deep-dive
+6. The other ADRs in order — they explain how we got here
 
 ## Conventions
 
-- **File size limit.** Docs stay under 500 lines per file; heavier material lives in siblings (`REFERENCE.md`, `EXAMPLES.md`).
-- **Diagrams as code.** Mermaid blocks inside markdown. No binary images in docs.
-- **Cross-refs are relative.** Every link is a relative path so the docs tree is portable.
-- **Status tags.** ADRs carry `Status:` at the top; PRDs carry a version changelog block.
+- **Plain markdown.** No binary images in docs. Diagrams are Mermaid blocks.
+- **Relative cross-refs.** Every link is a relative path so the docs tree is portable.
+- **File size limit.** Docs stay under 500 lines; heavier material lives in siblings (`REFERENCE.md`, `EXAMPLES.md`).
+- **Status tags.** ADRs carry `Status:` at the top; PRDs carry a version block.
+- **Audience tiers are strict.** `user/` never references internal-only tooling; `developer/` never reexplains operator basics; `reference/` never loses a canonical claim to narrative drift.

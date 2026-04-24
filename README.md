@@ -1,106 +1,139 @@
+<div align="center">
+
 # Agentbox
 
-Agentbox is a modular, Nix-built container runtime for multi-agent development. The current architecture is driven by [`agentbox.toml`](agentbox.toml), uses embedded RuVector for local vector search, bootstraps a sovereign identity plus Solid-style pod storage, and provisions stack-specific profiles that all share the same mounted projects and skills tree.
+### A reproducible, manifest-driven container runtime for software agents.
+
+[![Build](https://img.shields.io/github/actions/workflow/status/DreamLab-AI/agentbox/build-multi-arch.yml?branch=main&style=flat-square&logo=github)](https://github.com/DreamLab-AI/agentbox/actions)
+[![License](https://img.shields.io/badge/License-MPL%202.0-blue?style=flat-square)](LICENSE)
+[![Nix](https://img.shields.io/badge/Nix-flakes-5277C3?style=flat-square&logo=nixos)](flake.nix)
+[![Multi-arch](https://img.shields.io/badge/arch-amd64%20%7C%20arm64-green?style=flat-square&logo=docker)](https://github.com/DreamLab-AI/agentbox/pkgs/container/agentbox)
+
+One TOML manifest. One Nix flake. One codepath. Works standalone or plugs into a host container mesh.
+
+[Quickstart](#quickstart) · [Features](#features) · [Architecture](#architecture) · [Platforms](#platforms) · [Documentation](docs/README.md) · [Contributing](#contributing)
+
+</div>
+
+---
+
+## Why Agentbox
+
+Running AI agents in a container sounds simple until you hit production. Most solutions make one of three mistakes:
+
+- **Ship a kitchen-sink image** with every possible dep pre-installed. Slow, bloated, impossible to secure.
+- **Install everything at boot** with `npm install` / `pip install` / `curl | bash`. Non-reproducible, network-dependent, fails halfway.
+- **Lock into one orchestrator**. Can't stand alone; can't integrate cleanly with a host project.
+
+Agentbox takes a different shape. A single declarative TOML manifest drives a Nix flake that builds a content-addressed container image. Every feature — GPU backend, desktop, skills, agent CLIs, durable adapters — is a manifest toggle with build-time validation. Boot is immutable: no installers, no downloads, no silent fallbacks.
+
+The result is a container you can reason about. A diff in `agentbox.toml` is a diff in what runs. A `flake.lock` pin is a byte-identical image. A manifest validator catches errors before Nix eval. A hardened baseline runs under `read_only: true`, `cap_drop: [ALL]`, non-root user, with explicit per-feature exception deltas.
+
+## Quickstart
+
+Pick one. All three paths converge on the same running container.
+
+### 1. Pull the published image (fastest)
+
+```sh
+docker pull ghcr.io/dreamlab-ai/agentbox:latest
+
+# Grab the compose file from the flake
+nix build github:DreamLab-AI/agentbox#compose
+cp result/docker-compose.yml .
+cp .env.example .env            # fill in provider keys you'll actually use
+
+./agentbox.sh up
+./agentbox.sh health
+```
+
+### 2. Build from source
+
+```sh
+git clone https://github.com/DreamLab-AI/agentbox.git
+cd agentbox
+./agentbox.sh up --build        # nix build + docker load + compose up
+```
+
+### 3. Remote cloud deployment
+
+```sh
+./agentbox.sh provision --target oci    # or fly / hetzner / bare
+./agentbox.sh all                        # tunnels SSH / VNC / code-server / API
+```
+
+Full per-host recipes: [`docs/user/running.md`](docs/user/running.md). Platform matrix: [`docs/user/platforms.md`](docs/user/platforms.md).
 
 ## Features
 
-One TOML manifest, one Nix flake, one codepath — works standalone or plugs into a host container mesh. Every heavy capability is a manifest toggle, not a Dockerfile edit.
+### Build system
 
-### Core capabilities
-
-| Capability | How | Notes |
-|---|---|---|
-| **Reproducible builds** | Nix flake pinned by `flake.lock` | Two builds of the same manifest → identical `sha256` image hash |
-| **Manifest-gated composition** | `agentbox.toml` → `flake.nix` → auto-generated `docker-compose.yml` + supervisord | Enabling a feature pulls its Nix package **and** emits its supervisor block. Never both missing, never one without the other |
-| **Pluggable adapter architecture** | 5 slots (beads, pods, memory, events, orchestrator) × 3 impls each (`local-*` / `external` / `off`) | Swap storage/task backends by editing the manifest. See [ADR-005](docs/adr/ADR-005-pluggable-adapter-architecture.md) |
-| **Standalone or federated** | `[federation].mode = "standalone"` ships local fallbacks; `"client"` federates with a host mesh | One codepath. Same contract tests run against both modes |
-| **Five adapter triples shipped** | SQLite beads, JSS pods, RuVector memory, JSONL events, process-manager orchestrator | Federated variants ship too: HTTP REST / MCP / stdio-bridge |
-| **Schema-validated manifest** | JSON Schema (305 lines, draft 2020-12) + 19 semantic rules (`E001`–`E019`) | `agentbox config validate` catches errors before Nix eval |
-| **Interactive wizard** | `./scripts/start-agentbox.sh` whiptail TUI with live validation | Context-aware defaults (detects `docker_ragflow` network, `nvidia-smi`, `rocm-smi`) |
-| **Seven lifecycle verbs** | `agentbox.sh {up, down, build, rebuild, logs, shell, health}` + existing remote verbs | `up --build` chains Nix build + docker load + health-poll |
-| **Scripted backup/restore** | `agentbox.sh backup` / `restore` with MANIFEST.json archives | Secrets excluded by default; `--include-secrets` opt-in |
-
-### Agent surface
-
-| Capability | How | Notes |
-|---|---|---|
-| **Claude Code + ruflo + agentic-qe** | Baked into the default `runtime` image | Pre-installed CLIs, shell aliases (`zclaude`, `zruflo`, `zqe`) |
-| **Official `@google/gemini-cli`** | v0.38.2 pinned via `flake.lock` under `[toolchains.gemini_cli]` | 1M context, Chapters narrative flow, Context Compression, worktree support |
-| **OpenAI Codex Rust CLI** | rust-v0.124.0 pinned per-arch via `[toolchains.codex]` | Static musl binary; `lib/codex-binary.nix` pins sha256 per-arch (x86_64 + aarch64); aliases `zcodex`/`codex-help`/`codex-version` |
-| **claude-zai (GLM-5 via Z.AI)** | `@anthropic-ai/claude-code@2.1.47` pinned, digest-comment in Dockerfile | Optional; SECURITY pin blocks auto-upgrade |
-| **96-skill catalogue** | Content-addressed Nix input; per-skill `SKILL.md` | Progressive disclosure pattern; `agentbox/skills/skill-builder` for authoring new ones |
-| **13 MCP servers** | stdio protocol; served via generated supervisor blocks | Includes Playwright, ImageMagick, QGIS, Blender, ComfyUI, web-summary |
-| **Nostr identity + NIP-98 auth** | `mcp/servers/nostr-bridge.js` (483 lines) with `nostr-tools` + `@noble/curves` Schnorr | Relay pool, subscribe/publish fan-out, NIP-98 HTTP auth middleware |
-| **Solid-compatible pod storage** | Local `local-jss` adapter (port 8484) or external Solid server | Per-profile ACL metadata |
-| **Ontology tooling (Logseq OWL2)** | `[skills.ontology]` gate | Opt-in; off by default |
-
-### Observability & security
-
-| Capability | How | Notes |
-|---|---|---|
-| **Prometheus metrics** | `:9091/metrics` — per-adapter dispatch counter + histogram + health gauge | `wrapDispatch()` helper ensures every adapter call is observed |
-| **OpenTelemetry tracing** | `AGENTBOX_OTLP_ENDPOINT` env var; no-op fallback when unset | Spans named `agentbox.adapter.<slot>.<method>` |
-| **Structured JSON logs** | `pino` with consistent fields: `ts`, `slot`, `method`, `impl`, `duration_ms`, `session_id` | Written to stdout for supervisord capture |
-| **`/v1/meta` handshake** | Returns image hash, manifest checksum, five adapter contract versions | Host orchestrators verify compatibility before session start |
-| **Contract-test harness** | 145 passing / 33 todo across 5 slots × 3 impls each | Mandatory merge gate in CI |
-| **Secret scanning in CI** | `gitleaks-action@v2.3.2` + `.gitleaks.toml` + test canary | Refuses PRs with real-looking secrets |
-| **Auto-generated management key** | On first boot; persisted to profile dir mode `0600` | No more `change-this-secret-key` defaults in the image ENV |
-| **Nostr private key at rest** | Encrypted with `MANAGEMENT_API_KEY` + salt, zeroed after use | `@noble/curves` constant-time Schnorr |
-| **No docker-socket mount** | `no-new-privileges: true`, zero added caps | Container-escape surface absent |
-
-### Hardware & platform reach
-
-| Target | Build | Run | GPU backends available |
-|---|---|---|---|
-| **Linux x86_64** | Native | Native | `none`, `ollama-rocm` (AMD), `ollama-cuda` (NVIDIA), `local-cuda` |
-| **Linux aarch64** (Pi 5, Ampere, Graviton, Jetson) | Native | Native | `none`, `ollama-rocm`; `ollama-cuda` on Jetson |
-| **macOS Apple Silicon** | Compose + dev shell only | Via Docker Desktop / OrbStack / Colima | `none` (CPU) or remote GPU |
-| **macOS Intel** | Compose + dev shell only | Via Docker Desktop / OrbStack / Colima | `none` (CPU) or remote GPU |
-| **Windows 10/11** | — | Via Docker Desktop + WSL2 | `ollama-cuda` with NVIDIA CUDA in WSL2 |
-| **Remote cloud (OCI / Fly / Hetzner / bare)** | Any | `agentbox.sh provision --target <x>` | Inherits host GPU |
-
-Multi-arch images published to `ghcr.io/dreamlab-ai/agentbox` (`linux/amd64` + `linux/arm64`). Docker clients auto-select arch. Full per-host cookbook: [`docs/guides/running-on-your-host.md`](docs/guides/running-on-your-host.md). Capability matrix: [`docs/guides/platforms.md`](docs/guides/platforms.md).
-
-### Operations & developer ergonomics
-
-| Capability | How |
+| Capability | Summary |
 |---|---|
-| **Zellij 11-tab layout** | `config/zellij/layouts/agentbox.kdl` — claude, ruflo, qe, docs, build, logs, vcs, memory, llm, agents, host-shell |
-| **tmux-compat aliases** | `tmux-attach` / `tmux-ls` redirect to Zellij for muscle memory |
-| **VS Code devcontainer** | `.devcontainer/devcontainer.json` — Nix-flakes + DinD + 7 forwarded ports |
-| **CI: flake-check on both Linux archs** | `.github/workflows/flake-check.yml` per PR |
-| **CI: multi-arch image publish** | `.github/workflows/build-multi-arch.yml` on native runners (no QEMU) |
-| **CI: contract tests** | Jest × 5 adapter suites per PR |
-| **CI: secret scan** | Canary-verified `gitleaks` per PR |
-| **Pluggable provisioners** | `agentbox.sh provision --target oci\|fly\|hetzner\|bare` |
-| **Automated version tracking** | Renovate + `nix-flake-update.yml` weekly + `scripts/check-upstream-releases.sh` human dashboard — see [`docs/guides/version-tracking.md`](docs/guides/version-tracking.md) |
+| **Reproducible builds** | Nix flake pinned by `flake.lock`. Two builds of the same manifest produce identical `sha256` image hashes. |
+| **Manifest-gated composition** | [`agentbox.toml`](agentbox.toml) drives both the Nix package set **and** the auto-generated `docker-compose.yml` + supervisor config. Never one without the other. |
+| **Multi-arch** | Native Linux `amd64` and `arm64`. Published to [`ghcr.io/dreamlab-ai/agentbox`](https://github.com/DreamLab-AI/agentbox/pkgs/container/agentbox) as a single manifest — Docker auto-selects per host. |
+| **Schema-validated config** | [`agentbox config validate`](scripts/agentbox) enforces 20 semantic rules (E001–E020 + W021) before `nix build` attempts. |
+| **Upstream tracking** | [Renovate](renovate.json) + [weekly `nix flake update`](.github/workflows/nix-flake-update.yml) + [human dashboard](scripts/check-upstream-releases.sh). |
+
+### Runtime architecture
+
+| Capability | Summary |
+|---|---|
+| **Pluggable adapters** | Five durable-state slots (beads, pods, memory, events, orchestrator) × three implementation classes each (`local-*`, `external`, `off`). Swap backends by editing the manifest. See [ADR-005](docs/reference/adr/ADR-005-pluggable-adapter-architecture.md). |
+| **Standalone or federated** | `[federation].mode = "standalone"` ships local fallbacks; `"client"` federates with a host mesh. One codepath; contract tests run against both. |
+| **Immutable bootstrap** | No package installers at boot. Every feature's runtime closure is baked into the image via `buildNpmPackage`. Artifact probes fail fast on missing binaries. See [PRD-002](docs/reference/prd/PRD-002-immutable-runtime-bootstrap.md). |
+| **Three-endpoint probes** | `/livez` (process alive), `/ready` (bootstrap sentinel + adapters + paths + relays), `/health` (aggregate). Docker healthcheck gates on `/ready`. |
+| **Observability** | Prometheus `/metrics` + OpenTelemetry OTLP + pino structured logs. One manifest key drives the whole chain. |
+
+### Agents & toolchains
+
+| Capability | Summary |
+|---|---|
+| **Claude Code + ruflo + agentic-qe** | Baked-in via pinned `buildNpmPackage` derivations. |
+| **OpenAI Codex (Rust-native)** | [`rust-v0.124.0`](https://github.com/openai/codex/releases/tag/rust-v0.124.0) static musl binary per-arch. |
+| **Google Gemini CLI** | [`@google/gemini-cli@0.38.2`](https://github.com/google-gemini/gemini-cli) — 1M context, Chapters flow. |
+| **claude-zai (GLM-5 via Z.AI)** | Digest-pinned wrapper. |
+| **96-skill catalogue** | Content-addressed Nix input from `./skills/`. Progressive disclosure pattern. Includes a skill-builder. |
+| **13 MCP servers** | Playwright, ImageMagick, QGIS, Blender, ComfyUI, web-summary, and more. |
+| **Sovereign mesh** | Nostr identity + NIP-98 hybrid auth + `@noble/curves` Schnorr signing. Subscribe/publish relay pool. |
+| **Solid-compatible pods** | Local JSS (port 8484) or external endpoint via manifest switch. |
+
+### Security posture
+
+| Capability | Summary |
+|---|---|
+| **Hardened-by-default** | `user: 1000:1000`, `read_only: true`, `cap_drop: [ALL]`, `no-new-privileges`, `seccomp=default`, explicit tmpfs list. |
+| **Feature-exception mechanism** | `[security.exceptions.<feature>]` manifest deltas — inherit/merge semantics, E020 + W021 validator rules, audit trail via `SecurityProfileApplied` event. See [ADR-007](docs/reference/adr/ADR-007-runtime-contract-and-container-hardening.md). |
+| **No DinD, no socket mount** | Zero container-escape surface in the default profile. |
+| **Secret scanning** | [gitleaks](/.github/workflows/secret-scan.yml) on every PR with a canary test. |
+| **Auto-generated mgmt key** | No `change-this` defaults. First-boot key persisted at `/workspace/profiles/default/mgmt-key` (mode `0600`). |
+| **Nostr keys encrypted at rest** | `nostr.key.enc` with PBKDF2 derivation; zeroed after use. |
+
+### Developer ergonomics
+
+| Capability | Summary |
+|---|---|
+| **Local lifecycle CLI** | `agentbox.sh {up,down,build,rebuild,logs,shell,health,backup,restore}` + remote-operator verbs. |
+| **Interactive TUI** | `scripts/start-agentbox.sh` with live schema validation. |
+| **Zellij layout** | 11-tab preset (claude/ruflo/qe/docs/build/logs/vcs/memory/llm/agents/host-shell) + tmux-compat aliases. |
+| **VS Code devcontainer** | `.devcontainer/` with Nix-flakes + DinD + forwarded ports. |
+| **Pluggable provisioners** | `agentbox.sh provision --target {oci,fly,hetzner,bare}`. |
 
 ## Architecture
-
-Agentbox is built around six decisions:
-
-1. Declarative build composition through `agentbox.toml`
-2. Sovereign identity bootstrapping with Nostr-style keys
-3. **Pluggable adapter architecture** for durable state (see [ADR-005](docs/adr/ADR-005-pluggable-adapter-architecture.md)): beads, pods, memory, events, orchestrator — each slot resolves to one of `local-*`, `external`, or `off`
-4. Embedded RuVector for local indexing and retrieval (per-session cache, not a durable source of truth)
-5. Profile isolation with shared mounts instead of Linux pseudo-users
-6. **Standalone or federated**: agentbox runs with local fallbacks out of the box, or drops into a host container mesh via external adapters — manifest switch, one codepath
-
-Full product spec in [PRD-001](docs/prd/PRD-001-capabilities-and-adapters.md).
-
-### Architecture at a glance
 
 ```mermaid
 flowchart TB
     subgraph build["build time"]
         M[agentbox.toml] -->|fromTOML| F[flake.nix]
         F --> I[content-addressed image]
+        V[agentbox config validate] -.->|JSON Schema + 20 rules| M
     end
 
     subgraph runtime["runtime"]
         I --> C[docker compose]
         C --> S[supervisord<br/>generated from manifest]
-        S --> API[management-api :9090]
+        S --> API[management-api<br/>:9090 / :9091 metrics]
         S --> MCP[MCP servers]
         S --> DESK[Hyprland desktop<br/>optional]
     end
@@ -108,273 +141,95 @@ flowchart TB
     subgraph adapters["adapter dispatch"]
         API --> AD{"resolve [adapters]"}
         MCP --> AD
-        AD -->|standalone| LOC[local fallbacks<br/>sqlite · JSS · RuVector · JSONL]
-        AD -->|client| EXT[external mesh<br/>beads · pods · memory · events · orchestrator]
+        AD -->|local-*| LOC[local fallbacks<br/>sqlite · JSS · RuVector · JSONL]
+        AD -->|external| EXT[host mesh<br/>beads · pods · memory · events · orchestrator]
+        AD -->|off| DIS[AdapterDisabled]
     end
 
-    O[agentbox config validate] -.->|JSON Schema| M
+    subgraph probes["probes"]
+        API --> LV[/livez/]
+        API --> RDY[/ready<br/>sentinel + adapters + paths/]
+        API --> HLT[/health<br/>aggregate/]
+    end
 ```
 
-The active runtime flow is:
-
-1. `flake.nix` reads `agentbox.toml`
-2. package groups and supervisor services are generated from the manifest
-3. the entrypoint bootstraps identity and pod storage
-4. runtime tooling is installed on first boot where needed
-5. stack profiles are created under `/workspace/profiles`
-
-## Repository Layout
-
-- [`flake.nix`](flake.nix) builds the runtime, full, and desktop images
-- [`agentbox.toml`](agentbox.toml) controls feature gating and toolchains
-- [`config/entrypoint-unified.sh`](config/entrypoint-unified.sh) performs runtime bootstrap
-- [`scripts/sovereign-bootstrap.py`](scripts/sovereign-bootstrap.py) generates identity and pod ACL state
-- [`scripts/provision-agent-stacks.py`](scripts/provision-agent-stacks.py) creates isolated stack profiles with shared mounts
-- [`config/agentbox-aliases.sh`](config/agentbox-aliases.sh) provides shell aliases
-- [`config/zellij.kdl`](config/zellij.kdl) and [`config/zellij/layouts`](config/zellij/layouts) define terminal workspace defaults
-
-## Feature Gating
-
-The build is controlled by `agentbox.toml`. Enabled features get both:
-
-- their Nix packages
-- their supervisor/runtime wiring
-
-Disabled features should incur no image or runtime overhead.
-
-Current top-level sections:
-
-- `[core]`
-- `[federation]` — `mode = "standalone" | "client"`
-- `[adapters]` — one choice per durable-state slot (beads, pods, memory, events, orchestrator)
-- `[gpu]` — unified backend key (`none`, `ollama-rocm`, `ollama-cuda`, `local-cuda`)
-- `[sovereign_mesh]` — Nostr client, NIP-98 auth, optional JSS Rust backend
-- `[desktop]` — Hyprland/Wayland (default when enabled) with X11/openbox fallback
-- `[observability]` — metrics port, OTLP endpoint, log level
-- `[providers.<name>]` — per-provider API-key gates
-- `[skills.*]` — feature flags for the 96-skill corpus
-- `[toolchains]` — claude, claude_code, ruflo, claude_flow, agentic_qe, gemini_cli, code_server, cuda
-- `[integrations.*]` — optional external network joins (e.g. ragflow, external memory, external ComfyUI)
-
-Example:
-
-```toml
-[sovereign_mesh]
-enabled = true
-solid_pod = true
-nostr_bridge = true
-
-[skills.browser]
-agent_browser = true
-playwright = true
-qe_browser = false
-
-[skills.docs]
-latex = true
-report_builder = true
-mermaid = true
-```
-
-## Build
-
-```bash
-nix build .#runtime
-nix build .#desktop
-nix build .#full
-```
-
-To load the image into Docker:
-
-```bash
-docker load < result
-```
-
-## Platform compatibility
-
-| Target | Status | Notes |
-|---|---|---|
-| **Linux x86_64** | Native | First-class build + run; all GPU backends |
-| **Linux aarch64** | Native | Native ARM build (Oracle Ampere, AWS Graviton, Raspberry Pi 4/5); CUDA not available |
-| **macOS Intel** (`x86_64-darwin`) | Partial | `nix build .#compose` + `nix develop` supported; container images come from the published multi-arch image via Docker Desktop |
-| **macOS Apple Silicon** (`aarch64-darwin`) | Partial | Same as above; Docker Desktop pulls the `linux/arm64` variant |
-| **Windows 10/11** | Via Docker Desktop + WSL2 | Pulls the `linux/amd64` image |
-| **Nvidia GPU** | via `[gpu].backend = "ollama-cuda"` or `"local-cuda"` | Linux x86_64; limited aarch64 (Jetson) |
-| **AMD GPU** | via `[gpu].backend = "ollama-rocm"` | Linux x86_64 / aarch64 with AMD driver; Vulkan fallback covers broader hardware |
-| **Apple Silicon GPU (Metal)** | Not supported | Metal passthrough to a Linux container is not possible; use CPU or a remote GPU |
-| **Intel iGPU / oneAPI** | Not supported | No backend |
-
-Multi-arch images published to `ghcr.io/dreamlab-ai/agentbox:<tag>` — Docker automatically selects the right arch. See [`docs/guides/platforms.md`](docs/guides/platforms.md) for the full matrix and [`docs/guides/consuming-the-image.md`](docs/guides/consuming-the-image.md) for pull instructions.
-
-## Interactive Startup
-
-Use the interactive launcher if you want checkbox-based feature selection and guided startup:
-
-```bash
-./scripts/start-agentbox.sh
-```
-
-The launcher will:
-
-- read the current `agentbox.toml`
-- present selectable feature checkboxes
-- write the updated manifest
-- create `.env` from `.env.example` if needed
-- offer interactive `.env` value prompts
-- check for missing UI/runtime prerequisites
-- offer to install missing prerequisites interactively
-- optionally build the image
-- optionally start `docker compose up -d`
-
-## Run
-
-```bash
-cp .env.example .env
-docker compose up -d
-```
-
-### Local lifecycle via `agentbox.sh`
-
-`agentbox.sh` bundles the most common dev-loop operations so you do not have to compose Nix and Docker commands by hand:
-
-| Command | What it does |
-|---------|--------------|
-| `./agentbox.sh up` | `docker compose up -d`, then polls `http://localhost:9090/health` for up to 60 s and prints a port summary. |
-| `./agentbox.sh up --build` | Runs `nix build .#runtime && docker load < result` first, then starts and polls. |
-| `./agentbox.sh down` | `docker compose down`. |
-| `./agentbox.sh down --volumes` | Same but with `-v`; prompts for confirmation before removing volumes. |
-| `./agentbox.sh build` | `nix build .#runtime` (default). Does **not** load the image; prints the result path. |
-| `./agentbox.sh build --variant desktop\|full` | Build an alternate variant without loading it. |
-| `./agentbox.sh rebuild` | `down` + `build --variant runtime` + `up --build` chained — one command for a full dev-loop iteration. |
-| `./agentbox.sh logs` | `docker compose logs -f --tail 100` for all services. |
-| `./agentbox.sh logs <service>` | `docker exec agentbox supervisorctl tail -f <service>`, falling back to compose logs if the container is not up. |
-| `./agentbox.sh shell` | `docker exec -it agentbox bash`. |
-| `./agentbox.sh shell <profile>` | Opens the Zellij agentbox layout inside `/workspace/profiles/<profile>` (falls back to bash if Zellij is absent). |
-| `./agentbox.sh health` | Fetches `http://localhost:9090/health`, pretty-prints per-service status via `jq`, and exits non-zero if any service is `degraded` or `failed`. |
-| `./agentbox.sh health --json` | Emits raw JSON to stdout; always exits 0. |
+Three claims drive every design decision:
 
-Compose mounts:
+1. **The manifest is the contract.** Everything the image does traces back to `agentbox.toml`. No Dockerfile edits, no bespoke scripts.
+2. **Adapters are the integration surface.** Durable state is pluggable. Agentbox never hardcodes "the database" or "the task store".
+3. **Boot is immutable.** The image realises the manifest; it does not construct itself at startup.
 
-- `./workspace -> /workspace`
-- `./projects -> /projects`
-- RuVector volume -> `/var/lib/ruvector`
-- Solid pod volume -> `/var/lib/solid`
-- sovereign identity volume -> `/var/lib/agentbox/identities`
+Deeper reading: [`docs/developer/architecture.md`](docs/developer/architecture.md) · [`docs/reference/prd/PRD-001-capabilities-and-adapters.md`](docs/reference/prd/PRD-001-capabilities-and-adapters.md) · [`docs/reference/adr/ADR-005-pluggable-adapter-architecture.md`](docs/reference/adr/ADR-005-pluggable-adapter-architecture.md).
 
-## Runtime Services
+## Platforms
 
-Default ports exposed by the compose stack:
+| Target | Build | Run | GPU backends |
+|---|---|---|---|
+| **Linux x86_64** | Native | Native | `none`, `ollama-rocm`, `ollama-cuda`, `local-cuda` |
+| **Linux aarch64** (Pi 5, Ampere, Graviton, Jetson) | Native | Native | `none`, `ollama-rocm`; `ollama-cuda` on Jetson |
+| **macOS Apple Silicon** | `compose` + `devShell` only | Via Docker Desktop / OrbStack / Colima | `none` (CPU) or remote GPU |
+| **macOS Intel** | `compose` + `devShell` only | Via Docker Desktop / OrbStack / Colima | `none` (CPU) or remote GPU |
+| **Windows 10/11** | — | Via Docker Desktop + WSL2 | `ollama-cuda` with NVIDIA CUDA in WSL2 |
+| **Remote** (OCI Ampere, Fly, Hetzner, bare metal) | Any | `agentbox.sh provision --target <x>` | Inherits host GPU |
 
-- `9090` management API (includes `/v1/meta` handshake endpoint, `/metrics` proxy, `/v1/agent-events`)
-- `9091` Prometheus metrics (direct, configurable via `[observability].metrics_port`)
-- `9700` RuVector
-- `8484` Solid-style pod service (only when `[adapters.pods] = "local-jss"`)
-- `5901` VNC (only when `[desktop].enabled = true`)
-- `8080` code-server (only when `[toolchains.code_server] = true`)
-- `8888` Jupyter (only when `[skills.data_science].jupyter = true`)
+**Not supported**: Apple Silicon GPU (Metal), Intel iGPU/oneAPI, Windows native binaries, 32-bit ARM. Full matrix + per-host cookbook: [`docs/user/platforms.md`](docs/user/platforms.md) · [`docs/user/running.md`](docs/user/running.md).
 
-Optional services are generated from the manifest. That includes:
+## Documentation
 
-- Playwright MCP
-- ImageMagick MCP
-- QGIS placeholder MCP block
-- Blender MCP block
-- Nostr bridge
-- desktop stack services
+### For operators (users)
 
-## Profiles And Shared Context
+- [Quickstart](docs/user/quickstart.md) — first boot in ten minutes
+- [Installation](docs/user/installation.md) — per-OS install paths
+- [Configuration](docs/user/configuration.md) — `agentbox.toml` reference
+- [Running](docs/user/running.md) — per-host × GPU recipes
+- [Platforms](docs/user/platforms.md) — compatibility matrix
+- [Providers](docs/user/providers.md) — API-key management
+- [Backup & restore](docs/user/backup-restore.md)
+- [Troubleshooting](docs/user/troubleshooting.md)
+- [Consuming the image](docs/user/consuming-image.md) — GHCR registry tags
+- [Provisioning](docs/user/provisioning.md) — remote host targets
+- Feature guides: [3DGS](docs/user/3dgs.md) · [Blender](docs/user/blender.md) · [ComfyUI](docs/user/comfyui.md) · [LaTeX](docs/user/latex.md)
 
-On boot Agentbox creates stack profiles under `/workspace/profiles`:
+### For contributors (developers)
 
-- `claude-core`
-- `ruflo-orchestrator`
-- `qe-fleet`
-- `nagual-qe`
-- `rust-builder`
-- `docs-latex`
+- [Architecture overview](docs/developer/architecture.md)
+- [Adapter pattern](docs/developer/adapters.md) — how to implement a new slot or impl
+- [Sovereign mesh](docs/developer/sovereign-mesh.md) — Nostr client internals
+- [Skills upgrade path](docs/developer/skills-upgrade.md) — migration to standalone repo
+- [Version tracking](docs/developer/version-tracking.md) — Renovate + Nix flake update
+- [Testing](docs/developer/testing.md) — suite shape, running locally, CI
 
-Each profile gets:
+### Reference (canonical specs)
 
-- its own `.env`
-- its own `.claude/settings.json`
-- the same shared skills tree via `.claude/skills -> /opt/agentbox/skills`
-- the same mounted external projects via `projects -> /projects`
-- the same shared workspace via `workspace -> /workspace`
-- a progressive-disclosure pointer to `skills/SKILL-DIRECTORY.md`
-- an associated Zellij layout path
+- **Architecture Decisions** — [ADR index](docs/reference/adr/)
+- **Product Requirements** — [PRD index](docs/reference/prd/)
+- **Domain Design** — [DDD index](docs/reference/ddd/)
 
-This is the intended replacement for the old `gemini-user` / `openai-user` / `zai-user` model.
+Nav hub with reading order: [`docs/README.md`](docs/README.md).
 
-## Terminal Workspace
+## Contributing
 
-Zellij replaces tmux in the current runtime.
+Contributions welcome. Start with:
 
-Useful commands:
+1. Read [`docs/developer/architecture.md`](docs/developer/architecture.md) and [`CLAUDE.md`](CLAUDE.md) for the conventions.
+2. Run the test suite (see [`docs/developer/testing.md`](docs/developer/testing.md)).
+3. `agentbox config validate` must pass before any PR.
+4. Never weaken the hardened baseline — feature needs must be expressed as `[security.exceptions.<name>]` deltas.
 
-- `t` or `zl` starts Zellij
-- `zn <name>` starts a named session
-- `za <name>` attaches to a named session
-- `zls` lists sessions
-- `zstack <stack>` opens an Agentbox layout
-- `zclaude`, `zruflo`, `zqe`, `zdocs` open the main stack layouts
+Issues with the hardening baseline, adapter contract, or probe semantics are usually ADR-level decisions — propose via an ADR PR before code.
 
-Seeded config locations:
+## License
 
-- `/workspace/.config/zellij/config.kdl`
-- `/workspace/.config/zellij/layouts/*.kdl`
+[MPL-2.0](LICENSE).
 
-## Sovereign Mesh
+## Acknowledgements
 
-When sovereign mode is enabled:
+Agentbox was extracted from a larger host project during a 2026-04 radical-upgrade sprint. The sovereign-mesh design leans on Nostr (`nostr-tools`, `@noble/curves`). The adapter pattern was inspired by Hexagonal Architecture and ADR-005. The skills catalogue vendors 96 skill packages under permissive licences.
 
-- an identity is created for `AGENTBOX_AGENT_ID`
-- key material is stored under `/var/lib/agentbox/identities`
-- pod state is stored under `/var/lib/solid/pods/<npub>/`
-- baseline ACL metadata is written per pod
-- the management API accepts bearer auth and scaffold-level NIP-98 envelopes
+---
 
-Important limitation:
+<div align="center">
 
-- the bundled Solid service is currently a lightweight file-backed compatibility server, not the final `solid-pod-rs` integration
-- NIP-98 handling is scaffold-level and not yet full signature verification
+[Documentation](docs/README.md) · [GitHub](https://github.com/DreamLab-AI/agentbox) · [Issues](https://github.com/DreamLab-AI/agentbox/issues) · [Releases](https://github.com/DreamLab-AI/agentbox/releases) · [Container Registry](https://github.com/DreamLab-AI/agentbox/pkgs/container/agentbox)
 
-## Skills
-
-The skills tree is mounted into every provisioned profile from `/opt/agentbox/skills`.
-
-The authoritative skill catalog is:
-
-- [`skills/SKILL-DIRECTORY.md`](skills/SKILL-DIRECTORY.md)
-
-This is the progressive-disclosure index the profiles reference at boot.
-
-## Observability
-
-Agentbox ships with metrics, traces, and structured logs on by default. Configure via `[observability]`:
-
-```toml
-[observability]
-metrics_port = 9091
-otlp_endpoint = ""          # e.g. "http://otel-collector:4317"
-log_level = "info"
-```
-
-`agentbox.sh health --json` returns a machine-readable view: per-service uptime, per-adapter resolution + health, session count. Non-zero exit when anything is unhealthy.
-
-## Current Caveats
-
-- The running Docker container on this host may still be an older image if you have not rebuilt and relaunched the stack.
-- `config/supervisord.conf` is legacy reference material (scheduled for removal in M1 per PRD-001) — the active runtime path generates supervisor configuration from `flake.nix`.
-- Some external CLIs such as `agentic-qe`, `nagual-qe`, and `codebase-memory-mcp` are installed best-effort at runtime rather than vendored in the repo.
-- QGIS support currently wires a placeholder standalone service until the real MCP adapter is added.
-- `nostr-bridge.js` is a 31-line stub until M3; production-grade Nostr client wiring is a P1 deliverable.
-
-## Status
-
-Agentbox is mid-migration to a fully adapter-driven runtime. Canonical docs:
-
-- **Product spec**: [`docs/prd/PRD-001-capabilities-and-adapters.md`](docs/prd/PRD-001-capabilities-and-adapters.md)
-- **Adapter architecture**: [`docs/adr/ADR-005-pluggable-adapter-architecture.md`](docs/adr/ADR-005-pluggable-adapter-architecture.md)
-- **Repo conventions**: [`CLAUDE.md`](CLAUDE.md)
-- **Quick start**: [`docs/guides/quick-start.md`](docs/guides/quick-start.md)
-
-Agentbox was extracted from a larger host project during a 2026-04 radical-upgrade sprint; the host's integration wiring lives with that project, not here.
+</div>
