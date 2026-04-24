@@ -1,8 +1,17 @@
 #!/usr/bin/env node
 /**
  * agentbox config validate
- * Validates agentbox.toml against the JSON Schema and 18 semantic rules (E001-E018).
+ * Validates agentbox.toml against the JSON Schema and 30 semantic rules
+ * (E001-E008, E010-E020, E022-E029, E031 + W021, W030; E009 reserved).
  * Exit 0 = clean. Non-zero = errors. Errors on stderr, one per line: "E### message"
+ *
+ * Rule families:
+ *   E001-E016  adapter + federation + provider coherence (ADR-005)
+ *   E017-E018  provider env-var presence
+ *   E019       CUDA toolchain gate (ADR-007)
+ *   E020/W021  security.exceptions coherence (ADR-007)
+ *   E022-E025  privacy filter middleware (ADR-008)
+ *   E026-E029/W030/E031  embedded Nostr relay + pod-inbox bridge (ADR-009)
  */
 
 'use strict';
@@ -76,7 +85,7 @@ if (!schemaValid) {
   }
 }
 
-// ─── semantic rules E001-E016 ─────────────────────────────────────────────────
+// ─── semantic rules (E001-E031, W021, W030; E009 reserved) ───────────────────
 const adapters = manifest.adapters || {};
 const federation = manifest.federation || {};
 const integrations = manifest.integrations || {};

@@ -77,9 +77,20 @@ flowchart LR
   produce byte-identical image hashes.
 - **DDD** — Domain-Driven Design. Used in agentbox for the canonical
   state-model specs under [`docs/reference/ddd/`](../reference/ddd/).
+- **Embedded relay** — the optional `nostr-rs-relay` supervisord program on
+  loopback `:7777`, turning the container into its own Nostr endpoint. Every
+  accepted event is persisted to the pod mailbox. Spec:
+  [ADR-009](../reference/adr/ADR-009-embedded-nostr-relay.md).
 - **Embedding** — a fixed-length numeric vector representing a piece of text,
   used for semantic search. Agentbox uses MiniLM-L6-v2 (384-dim) for the
   embedded memory adapter.
+- **Event inbox / outbox** — pod directories `events/inbox/` and `events/outbox/`
+  under `pods/<npub>/`. The bridge writes signature-verified inbound Nostr
+  events to inbox and lifts outbound messages from outbox for signing and
+  publication. The pod is the source of truth; the relay is transport.
+- **Fanout (external-fanout)** — whether the embedded relay also talks to the
+  `NOSTR_RELAYS` list. `off` keeps the mesh local; `publish-only`,
+  `subscribe-only`, and `bidirectional` vary the direction. Default `off`.
 - **Federation (standalone vs client)** — the `[federation].mode` manifest
   key. `standalone` ships a complete product with local fallbacks; `client`
   federates with a host container mesh through adapter endpoints.
@@ -97,6 +108,10 @@ flowchart LR
   some vector stores for fast approximate nearest-neighbour search. Agentbox's
   embedded memory adapter uses simpler in-process indexing; HNSW appears in
   the external pgvector path.
+- **Ingress policy** — the admission rule for writes hitting the embedded
+  Nostr relay. `allowlist` requires NIP-42 AUTH plus a pubkey on the allow
+  list (safest); `signed-only` accepts any NIP-42-authenticated signer;
+  `open` accepts anything (raises warning W030).
 - **Hypercall** — term used loosely in some agent literature for a structured
   call from agent code into the container runtime. Agentbox does not
   implement hypercalls; all agent tool invocations happen over MCP.
@@ -117,10 +132,22 @@ flowchart LR
   and the privacy filter (optional, [ADR-008](../reference/adr/ADR-008-privacy-filter-routing.md)).
 - **Nix** — the package manager and build system that composes the agentbox
   image. Pinned by `flake.lock`; no Dockerfile exists.
+- **NIP** — Nostr Implementation Possibility, the numbered specs that extend
+  the base protocol. Agentbox uses NIP-01 (core), NIP-11 (relay info),
+  NIP-17 (sealed DMs), NIP-40 (expiration / retention), NIP-42 (relay auth),
+  NIP-98 (HTTP auth).
+- **NIP-17** — sealed gift-wrap DMs (kind 1059). The recommended inbound
+  channel for external agents messaging internal ones — payloads are
+  encrypted to the recipient so relay operators cannot read them.
+- **NIP-42** — relay-to-client AUTH handshake. The relay issues a challenge,
+  the client replies with a signed event, and the relay admits the session.
+  Required for the `allowlist` and `signed-only` ingress policies.
 - **Nostr** — a simple open protocol for signed messages over relays. Agentbox
   uses it for the optional sovereign mesh: Nostr keypair as agent identity,
-  NIP-98 for HTTP auth, relay pool for inter-agent events. See
-  [developer/sovereign-mesh.md](../developer/sovereign-mesh.md).
+  NIP-98 for HTTP auth, relay pool for inter-agent events, and an optional
+  embedded relay for external-agent messaging. See
+  [developer/sovereign-mesh.md](../developer/sovereign-mesh.md) and
+  [user/nostr-relay.md](nostr-relay.md).
 - **OCI image** — Open Container Initiative image, the container format
   Docker and Podman consume. Agentbox outputs OCI images from Nix.
 - **Observability** — the always-on telemetry stack: Prometheus metrics at
@@ -132,6 +159,11 @@ flowchart LR
 - **PII** — personally identifiable information. Agentbox can optionally
   redact it through the openai/privacy-filter sidecar before writing to
   durable adapters. See [privacy-filter.md](privacy-filter.md).
+- **Pod mailbox** — the `events/inbox/` and `events/outbox/` subtrees of a
+  sovereign pod. The bridge treats them as append-only content-addressed
+  stores keyed by Nostr event id; this is the durability contract behind
+  external-agent messaging. See
+  [DDD-003](../reference/ddd/DDD-003-sovereign-messaging-domain.md).
 - **Prometheus metric** — a time-series counter, gauge or histogram scraped
   from `/metrics`. Every adapter dispatch increments a counter and records
   duration.
@@ -142,6 +174,11 @@ flowchart LR
   See [ADR-002](../reference/adr/ADR-002-ruvector-standalone.md).
 - **seccomp** — a Linux kernel feature that filters which system calls a
   process may make. Agentbox uses the Docker default profile.
+- **Sidecar** — an auxiliary process running alongside the main service,
+  typically on a loopback port. Agentbox has two optional sidecars: the
+  privacy filter (`opf-router` on :9092) and the Nostr relay
+  (`nostr-relay` on :7777). Each is gated on its own manifest block and
+  adds nothing to the image when disabled.
 - **Skill** — a self-contained package of instructions and tools an agent can
   load (e.g. `blender`, `latex`, `playwright`). Skills are progressive-
   disclosure: the agent reads the manifest, then loads only what it needs.
@@ -220,6 +257,25 @@ default; enable it via `[privacy_filter].enabled = true`. See
 [privacy-filter.md](privacy-filter.md) and
 [ADR-008](../reference/adr/ADR-008-privacy-filter-routing.md).
 
+**What is the Nostr relay for, and do I need it?**
+It is an optional embedded relay (`nostr-rs-relay`, Apache-2.0) that lets
+external humans and agents send signed, authenticated messages to internal
+agents, and gives internal agents a durable outbound path. Every accepted
+event is persisted to `pods/<npub>/events/inbox/`; every outbox entry ends
+up in the pod with a stamped event id. You need it if you federate two or
+more agentbox containers, or you want external clients (Damus, Amethyst,
+bespoke scripts) to message the agents inside yours. Disabled by default.
+See [nostr-relay.md](nostr-relay.md) and
+[ADR-009](../reference/adr/ADR-009-embedded-nostr-relay.md).
+
+**What is the difference between the sovereign mesh and the Nostr relay?**
+The sovereign mesh (`[sovereign_mesh].enabled`) gives the container its own
+Nostr keypair and a client that can publish to external relays. The embedded
+relay (`[sovereign_mesh.relay].enabled`) is the server side: it accepts
+inbound events *at* the container. You can run the mesh without the relay
+(identity only), the relay without the mesh (edge case), or both together
+(full peer).
+
 ## Where to go next
 
 | If you are a... | Go to |
@@ -228,7 +284,10 @@ default; enable it via `[privacy_filter].enabled = true`. See
 | Operator tuning the build | [configuration.md](configuration.md) |
 | Operator on a specific host | [running.md](running.md) and [platforms.md](platforms.md) |
 | Operator debugging a failure | [troubleshooting.md](troubleshooting.md) |
+| Operator setting up external-agent messaging | [nostr-relay.md](nostr-relay.md) |
+| Operator enabling PII redaction | [privacy-filter.md](privacy-filter.md) |
 | Contributor changing agentbox | [developer/architecture.md](../developer/architecture.md) |
 | Contributor adding an adapter | [developer/adapters.md](../developer/adapters.md) |
 | Spec reader | [reference/prd/PRD-001-capabilities-and-adapters.md](../reference/prd/PRD-001-capabilities-and-adapters.md) |
 | Adapter deep-dive | [reference/adr/ADR-005-pluggable-adapter-architecture.md](../reference/adr/ADR-005-pluggable-adapter-architecture.md) |
+| Sovereign messaging deep-dive | [reference/adr/ADR-009-embedded-nostr-relay.md](../reference/adr/ADR-009-embedded-nostr-relay.md) and [reference/ddd/DDD-003-sovereign-messaging-domain.md](../reference/ddd/DDD-003-sovereign-messaging-domain.md) |

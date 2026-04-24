@@ -12,7 +12,7 @@ Instead of editing Dockerfiles, compose YAML, supervisor configs and CLI flags s
 - "Which file do I edit to turn off the desktop?" — one answer, always.
 - Invalid combinations caught before a 10-minute Nix build (validator error codes `E001`–`E025`).
 
-After editing, run `agentbox config validate` before `agentbox.sh up`. The validator catches 20 classes of misconfiguration before `nix build` attempts.
+After editing, run `agentbox config validate` before `agentbox.sh up`. The validator catches 30 classes of misconfiguration (E001-E031 + W021 + W030, E009 reserved) before `nix build` attempts.
 
 ---
 

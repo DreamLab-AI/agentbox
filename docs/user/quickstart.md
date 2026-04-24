@@ -44,7 +44,7 @@ Sections covered:
 11. **Summary + action** — read-only summary of the full manifest, confirmation prompt, then a choice: save only / build image / build+start / start stack.
 
 After each section the wizard runs `scripts/agentbox-config-validate.js` against the
-in-progress manifest. Any E001–E019 errors appear in a message box and the section
+in-progress manifest. Any E001-E031 errors (or W021/W030 warnings) appear in a message box and the section
 loops for correction before you can proceed.
 
 The configuration is written atomically — staged in a temp file, validated, then

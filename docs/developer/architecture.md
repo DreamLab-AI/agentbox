@@ -12,7 +12,7 @@ Agentbox is a manifest-driven Nix-built Linux container that hosts software agen
 
 ## Glossary — terms used throughout these docs
 
-- **Manifest** — `agentbox.toml`, the single source of truth for what gets built. Validated against a JSON Schema plus semantic rules E001–E020 + W021.
+- **Manifest** — `agentbox.toml`, the single source of truth for what gets built. Validated against a JSON Schema plus 30 semantic rules (E001-E031 + W021 + W030, E009 reserved).
 - **Flake** — Nix's pure, hermetic build descriptor (`flake.nix` + `flake.lock`). Pure means identical inputs produce identical outputs byte-for-byte. Background: [ADR-001](../reference/adr/ADR-001-nixos-flakes.md).
 - **Adapter slot** — one of five fixed integration points (`beads`, `pods`, `memory`, `events`, `orchestrator`) defined in [ADR-005](../reference/adr/ADR-005-pluggable-adapter-architecture.md). Each slot has three implementation classes: `local-*`, `external`, `off`.
 - **Sovereign mesh** — the optional Nostr-based inter-agent identity and event layer detailed in [sovereign-mesh.md](sovereign-mesh.md); sovereign because each container owns its own cryptographic keypair.
@@ -44,7 +44,7 @@ Rejected in [ADR-005 §Context](../reference/adr/ADR-005-pluggable-adapter-archi
 flowchart TB
     subgraph manifest_layer["manifest"]
         M[agentbox.toml]
-        V[agentbox config validate<br/>20 semantic rules]
+        V[agentbox config validate<br/>30 semantic rules]
         V --> M
     end
 
@@ -100,7 +100,7 @@ flowchart TB
 | [`flake.nix`](../../flake.nix) | Build graph — packages, supervisor, compose |
 | [`flake.lock`](../../flake.lock) | Pinned inputs |
 | [`schema/agentbox.toml.schema.json`](../../schema/agentbox.toml.schema.json) | JSON Schema for the manifest |
-| [`scripts/agentbox-config-validate.js`](../../scripts/agentbox-config-validate.js) | Semantic rule engine (E001–E020 + W021) |
+| [`scripts/agentbox-config-validate.js`](../../scripts/agentbox-config-validate.js) | Semantic rule engine (E001-E031 + W021 + W030, E009 reserved; 30 active) |
 | [`lib/npm-services.nix`](../../lib/npm-services.nix) | 6 local service derivations |
 | [`lib/npm-cli.nix`](../../lib/npm-cli.nix) | 9 global CLI derivations |
 | [`lib/gpu-backend.nix`](../../lib/gpu-backend.nix) | GPU dispatch (none / rocm / cuda) |

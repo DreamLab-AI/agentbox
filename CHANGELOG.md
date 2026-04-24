@@ -4,6 +4,51 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### External agent messaging + embedded Nostr relay (2026-04-24)
+
+Answers the open question "how do external agents reach internal ones":
+the pod is the inbox, the relay is how the envelope gets there.
+
+**Spec trio (quality-engineered):**
+- [`PRD-004`](docs/reference/prd/PRD-004-external-agent-messaging.md) (323 lines) — actors, inbound/outbound flows, NIP-11/42/17 support matrix, four options axes, SLOs with p95/throughput/error ceilings per op.
+- [`ADR-009`](docs/reference/adr/ADR-009-embedded-nostr-relay.md) (281 lines) — decision for `nostr-rs-relay` 0.9.0 (already in nixpkgs), alternatives weighed (rnostr, separate container, HTTP-only, custom Rust), contract-test names, failure-mode recovery.
+- [`DDD-003`](docs/reference/ddd/DDD-003-sovereign-messaging-domain.md) (374 lines) — six aggregates (AgentIdentity, PodMailbox, RelayEndpoint, InboundEnvelope, OutboundEnvelope, Subscription), twelve numbered testable invariants I01-I12, anti-corruption layer, property-based test strategy.
+
+**Implementation:**
+- `[sovereign_mesh.relay]` manifest block, schema with `additionalProperties: false`, validator rules E026-E029 + W030 + E031.
+- `scripts/start-agentbox.sh` gains `section_nostr_relay` — implementation / binding / ingress-policy / external-fanout / retention prompts; only offered when sovereign_mesh is enabled.
+- `flake.nix`: `pkgs.nostr-rs-relay` derivation (zero packaging cost), manifest-rendered `/etc/agentbox/nostr-relay.toml`, gated `[program:nostr-relay]` supervisor block, new `[security.exceptions.nostr-relay]` for the writable SQLite volume, port publishing when `expose=true`, full `AGENTBOX_RELAY_*` env surface for the bridge consumer.
+- `rnostr` path guarded with `throw` + actionable message since it is not yet in the pinned nixpkgs.
+
+**Docs:**
+- [`docs/user/nostr-relay.md`](docs/user/nostr-relay.md) novice guide, configuration.md + troubleshooting.md entries, docs/README.md ADR/PRD/DDD indices, PRD-001 capability row, developer/sovereign-mesh.md extended with embedded-relay section and bridge-consumer contract.
+
+### Local PII redaction via openai/privacy-filter (2026-04-24)
+
+**Spec:**
+- [`ADR-008`](docs/reference/adr/ADR-008-privacy-filter-routing.md) — dispatch-path middleware with per-adapter-slot policy (strict/soft/off); fail-closed defaults on `pods` and `memory`.
+
+**Implementation:**
+- `[privacy_filter]` manifest block + schema + validator rules E022-E025.
+- Wizard gates on GPU presence **or** `nproc ≥ 4 AND MemAvailable ≥ 6 GB` (the MoE keeps all 128 experts resident even though only top-4 fire per token).
+- `scripts/opf-router.py`: stateless sidecar exposing `/classify`, `/redact`, `/health`, `/metrics` on loopback `:9092`.
+- `flake.nix`: `privacyFilterPythonEnv` (transformers + safetensors + torch + aiohttp) + gated `[program:opf-router]` supervisor block.
+
+**Docs:**
+- [`docs/user/privacy-filter.md`](docs/user/privacy-filter.md) with entity classes, policy presets, observability.
+
+### Novice-accessible documentation sweep (2026-04-24)
+
+Four-agent parallel swarm landed these across every doc tier:
+- `docs/user/glossary.md` — 60-second mental model, A-Z glossary (now 46 terms), common-confusions Q&A.
+- 15 `docs/user/*.md` files framed with "why this exists" / "what it solves" / "when to skip".
+- 6 `docs/developer/*.md` enriched with Context paragraphs, "Why not X" callouts anchored to ADRs, Minimum-useful-change examples.
+- 13 `docs/reference/{adr,prd,ddd}/*.md` gained `## TL;DR for newcomers` blocks (≤120 words each) without touching canonical content.
+
+### Validator rule inventory (30 rules)
+
+Active: E001-E008 (8), E010-E015 (6), E016-E020 (5), W021, E022-E025 (4, privacy filter), E026-E029 (4, Nostr relay), W030, E031. E009 reserved. The validator header docstring and every downstream reference ("20 semantic rules E001-E020", "18 semantic rules E001-E018") updated to reflect the current inventory.
+
 ### Seal-bootstrap awk dedup + docstring cleanup (2026-04-24)
 
 - **Fixed**: `config/seal-bootstrap.sh` `_required_programs()` awk emitted each qualifying program name once per line of the block after the readiness marker (verified on a test fixture: 7 dupes for ruvector, 6 for management-api). Rewrote the awk to track state in a `function emit()` invoked on block transitions and EOF. The seal loop now polls each required program exactly once per pass. Readiness behaviour was not broken — just wasteful — but the duplication would have been fragile if anything downstream consumed the list assuming uniqueness.

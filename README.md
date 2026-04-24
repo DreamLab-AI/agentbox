@@ -73,7 +73,7 @@ Full per-host recipes: [`docs/user/running.md`](docs/user/running.md). Platform 
 | **Reproducible builds** | Nix flake pinned by `flake.lock`. Two builds of the same manifest produce identical `sha256` image hashes. |
 | **Manifest-gated composition** | [`agentbox.toml`](agentbox.toml) drives both the Nix package set **and** the auto-generated `docker-compose.yml` + supervisor config. Never one without the other. |
 | **Multi-arch** | Native Linux `amd64` and `arm64`. Published to [`ghcr.io/dreamlab-ai/agentbox`](https://github.com/DreamLab-AI/agentbox/pkgs/container/agentbox) as a single manifest — Docker auto-selects per host. |
-| **Schema-validated config** | [`agentbox config validate`](scripts/agentbox) enforces 20 semantic rules (E001–E020 + W021) before `nix build` attempts. |
+| **Schema-validated config** | [`agentbox config validate`](scripts/agentbox) enforces 30 semantic rules (E001–E031 + W021 + W030, E009 reserved) before `nix build` attempts. |
 | **Upstream tracking** | [Renovate](renovate.json) + [weekly `nix flake update`](.github/workflows/nix-flake-update.yml) + [human dashboard](scripts/check-upstream-releases.sh). |
 
 ### Runtime architecture
