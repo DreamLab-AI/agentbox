@@ -26,10 +26,12 @@
       "<rootDir>/management-api/"
     ]
   },
-  "devDependencies": {
+  "dependencies": {
     "@iarna/toml": "^2.2.5",
     "ajv": "^8.17.1",
-    "ajv-formats": "^3.0.1",
+    "ajv-formats": "^3.0.1"
+  },
+  "devDependencies": {
     "jest": "^29.7.0"
   }
 }

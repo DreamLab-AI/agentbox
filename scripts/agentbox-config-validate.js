@@ -20,9 +20,38 @@
 
 const fs = require('fs');
 const path = require('path');
-const TOML = require('@iarna/toml');
-const Ajv = require('ajv/dist/2020');
-const addFormats = require('ajv-formats');
+
+// Three runtime deps from the repo's top-level package.json. When the
+// validator is invoked bare (`node scripts/agentbox-config-validate.js`)
+// without `npm ci` having run first, these requires throw MODULE_NOT_FOUND
+// and the user gets a confusing stack trace. Print an actionable bootstrap
+// hint and exit 2 (distinct from validation-failure exit 1 and clean
+// exit 0). The wrapper at scripts/agentbox-config-validate.sh handles the
+// bootstrap automatically.
+let TOML, Ajv, addFormats;
+try {
+  TOML       = require('@iarna/toml');
+  Ajv        = require('ajv/dist/2020');
+  addFormats = require('ajv-formats');
+} catch (err) {
+  if (err.code === 'MODULE_NOT_FOUND') {
+    const repoRoot = path.resolve(__dirname, '..');
+    const args = process.argv.slice(2).join(' ');
+    process.stderr.write(`
+agentbox-config-validate: missing Node deps (@iarna/toml, ajv, ajv-formats).
+
+  Quick fix — use the wrapper (auto-bootstraps on first run):
+    ./scripts/agentbox-config-validate.sh ${args}
+
+  Or install deps manually from the repo root:
+    cd ${repoRoot} && npm ci
+
+  Original error: ${err.message}
+`);
+    process.exit(2);
+  }
+  throw err;
+}
 
 // ─── paths ────────────────────────────────────────────────────────────────────
 const manifestPath = process.argv[2] || path.join(process.cwd(), 'agentbox.toml');
