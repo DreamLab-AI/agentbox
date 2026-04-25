@@ -4,6 +4,73 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Sandbox-safe npm-cli builds + nagual-qe Rust source build (2026-04-25)
+
+Building agentbox no longer requires `--option sandbox false` or live
+internet access from inside regular Nix derivations.
+
+**`lib/npm-cli.nix` — FOD `node_modules`.** The helper that packages
+global npm CLIs (ruvector, claude-flow, ruflo, agentic-qe, agent-browser,
+playwright, mermaid-cli, codebase-memory-mcp) used to call
+`npm install --production` inside a regular derivation. Sandboxed Nix
+blocks network for non-FOD builds, so the install raised
+`npm error code EAI_AGAIN` against `registry.npmjs.org`. The helper now
+splits the install into a separate fixed-output derivation whose
+`outputHash` is the new `nodeModulesHash` parameter — FODs are
+hash-verified, so the sandbox permits network access. Network never
+touches the wrapper-creation step. Stage 1 (tarball FOD) + stage 2
+(`node_modules` FOD) + stage 3 (regular wrapper derivation).
+
+Each `mkNpmCli` call in `flake.nix` now carries an explicit
+`nodeModulesHash`. Eight entries are seeded with `lib.fakeHash` and
+must be resolved on the first build of a fresh clone — see
+[`docs/user/troubleshooting.md` §"`nix build .#runtime` fails with a
+hash mismatch"](docs/user/troubleshooting.md#nix-build-runtime-fails-with-a-hash-mismatch).
+
+**`lib/nagual-qe.nix` — Rust source build.** `nagual-qe` was previously
+wired through `mkNpmCli` with `lib.fakeHash` because the upstream is
+not on npm. The actual project at
+[`proffesor-for-testing/nagual-qe`](https://github.com/proffesor-for-testing/nagual-qe)
+is a Rust crate with `Cargo.lock` at the repo root and a `nagual` binary
+exposed by `src/main.rs`. The new `lib/nagual-qe.nix` builds it via
+`buildRustPackage` with `useFetchCargoVendor + cargoHash` — the same
+hash-verified-FOD pattern used by `lib/solid-pod-rs.nix`. Default
+features `kos + onnx-embed + serve` ship by default; `tui` is excluded
+(non-interactive runtime).
+
+A `nagual-qe` symlink to the canonical `nagual` binary is installed
+under `$out/bin` so existing call-sites stay untouched:
+- `scripts/provision-agent-stacks.py` (`tools: ["nagual-qe", "agentic-qe", "aqe"]`)
+- `config/artifact-probes.json` (`@NIX_STORE_BIN@/nagual-qe`)
+- `[program:nagual-qe]` supervisor block (when added).
+
+**`scripts/prefetch-hashes.sh` — `--cli` mode + `nagual-qe` target.**
+Two new flags:
+- `--cli` — runs `nix build .#runtime` in a loop, parses each
+  `hash mismatch in fixed-output derivation` block, patches the
+  matching `nodeModulesHash` (npm CLI) or `cargoHash` (nagual-qe)
+  line, repeats until the build is clean. Up to 20 iterations.
+- `--service nagual-qe` — resolves `srcHash` against the pinned
+  upstream rev (parallel to `--service solid-pod-rs`).
+
+Dispatch logic identifies which file to patch from the FOD's `.drv`
+filename: `<pname>-with-deps-<version>` → npm CLI `nodeModulesHash`;
+anything containing `vendor` → nagual-qe `cargoHash`.
+
+**Build flow on a fresh clone:**
+```sh
+./scripts/prefetch-hashes.sh
+# 1. Resolves npmDepsHash for management-api, mcp/, mcp/consultants/,
+#    skills/*/mcp-server/ — uses nixpkgs#prefetch-npm-deps.
+# 2. Resolves srcHash for solid-pod-rs and nagual-qe.
+# 3. Iterative build loop fills in nodeModulesHash × 8 + cargoHash × 1.
+nix build .#runtime
+```
+
+No more `--option sandbox false`. No more silent failures shipping
+empty `node_modules` trees. The hardening cited in `lib/npm-cli.nix`
+header comment is now structurally enforced rather than aspirational.
+
 ### Validator audit + cleanup; QE fleet pass over E001-E041 (2026-04-25)
 
 A three-agent QE pass (tester, code-analyzer, researcher) audited every
