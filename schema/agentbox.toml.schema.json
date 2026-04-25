@@ -327,6 +327,69 @@
         }
       }
     },
+    "consultants": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Consultant-tier MCP servers (PRD-005 / ADR-011). Each enabled consultant runs as a stdio-transport MCP server registered under skills/mcp.json so the Claude / ruflo coordinator can invoke it via the consult/health/cost_estimate tools.",
+      "properties": {
+        "enabled": { "type": "boolean", "description": "Master gate. Setting any sub-consultant to enabled=true requires this to be true (E036)." },
+        "log_dir": { "type": "string", "description": "JSONL audit-log root. Default /var/lib/agentbox/consultations." },
+        "intelligence_signal": { "type": "boolean", "description": "When true, every successful consultation also writes an ADR-043 QualitySignal file to /workspace/profiles/<stack>/intelligence/data/." },
+        "codex": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "OpenAI Codex Rust CLI subprocess consultant. Requires providers.openai (E035) and toolchains.codex (E037).",
+          "properties": {
+            "enabled":    { "type": "boolean" },
+            "model":      { "type": "string" },
+            "home":       { "type": "string", "description": "CODEX_HOME path under the user-isolated openai-user account." },
+            "timeout_ms": { "type": "integer", "minimum": 1000, "maximum": 600000 }
+          }
+        },
+        "gemini": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "@google/gemini-cli subprocess consultant. Requires providers.gemini (E035) and toolchains.gemini_cli (E037).",
+          "properties": {
+            "enabled":    { "type": "boolean" },
+            "model":      { "type": "string" },
+            "home":       { "type": "string", "description": "HOME under the gemini-user isolation." },
+            "timeout_ms": { "type": "integer", "minimum": 1000, "maximum": 600000 }
+          }
+        },
+        "zai": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Z.AI / GLM via Anthropic-compatible claude-zai subprocess. Requires providers.zai (E035).",
+          "properties": {
+            "enabled":    { "type": "boolean" },
+            "model":      { "type": "string" },
+            "home":       { "type": "string", "description": "HOME under the zai-user isolation." },
+            "timeout_ms": { "type": "integer", "minimum": 1000, "maximum": 600000 }
+          }
+        },
+        "perplexity": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Perplexity HTTPS API consultant. Requires providers.perplexity (E035).",
+          "properties": {
+            "enabled":    { "type": "boolean" },
+            "model":      { "type": "string" },
+            "timeout_ms": { "type": "integer", "minimum": 1000, "maximum": 600000 }
+          }
+        },
+        "deepseek": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "DeepSeek HTTPS API consultant. Requires providers.deepseek (E035).",
+          "properties": {
+            "enabled":    { "type": "boolean" },
+            "model":      { "type": "string" },
+            "timeout_ms": { "type": "integer", "minimum": 1000, "maximum": 600000 }
+          }
+        }
+      }
+    },
     "privacy_filter": {
       "type": "object",
       "additionalProperties": false,

@@ -101,6 +101,15 @@ state = {
     "integrations.ruvector_external.enabled":      g("integrations","ruvector_external","enabled",           default=False),
     "integrations.ruvector_external.conninfo":     g("integrations","ruvector_external","conninfo",          default=""),
     # ── privacy filter (ADR-008) ─────────────────────────────────────────────────
+    # ── consultant tier (ADR-011 / PRD-005) ──────────────────────────────────────
+    "consultants.enabled":            g("consultants", "enabled",            default=False),
+    "consultants.intelligence_signal":g("consultants", "intelligence_signal",default=False),
+    "consultants.log_dir":            g("consultants", "log_dir",            default="/var/lib/agentbox/consultations"),
+    "consultants.codex.enabled":      g("consultants", "codex", "enabled",      default=False),
+    "consultants.gemini.enabled":     g("consultants", "gemini", "enabled",     default=False),
+    "consultants.zai.enabled":        g("consultants", "zai", "enabled",        default=False),
+    "consultants.perplexity.enabled": g("consultants", "perplexity", "enabled", default=False),
+    "consultants.deepseek.enabled":   g("consultants", "deepseek", "enabled",   default=False),
     "privacy_filter.enabled":            g("privacy_filter", "enabled",            default=False),
     "privacy_filter.mode":               g("privacy_filter", "mode",               default="off"),
     "privacy_filter.port":               str(g("privacy_filter", "port",           default=9092)),

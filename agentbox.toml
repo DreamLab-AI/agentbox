@@ -165,6 +165,50 @@ optional_env_vars = ["ZAI_ANTHROPIC_API_KEY", "ZAI_URL"]
 [gpu]
 backend = "none"
 
+# ── Consultant tier (PRD-005 / ADR-011) ────────────────────────────────────────
+# Five MCP servers that expose external LLM providers as named consultants
+# the Claude / ruflo coordinator can invoke explicitly. Each maps to its
+# matching [providers.*] auth block; enabling a consultant requires the
+# matching provider be enabled and its env_var set (validator E035).
+#
+# Manual call from chat: /consult <name> "<question>" (skill-router skill).
+# Automatic dispatch: subagent_type="auto-consultant" (agent template).
+#
+# Logs: /var/lib/agentbox/consultations/<name>-YYYY-MM-DD.jsonl
+# Optional ADR-043 quality signals: /workspace/profiles/<stack>/intelligence/data/
+[consultants]
+enabled = false                                 # master gate (E036)
+log_dir = "/var/lib/agentbox/consultations"
+intelligence_signal = false                     # write ADR-043 QualitySignal files
+
+[consultants.codex]
+enabled = false
+model   = "gpt-5.4"
+home    = "/home/openai-user/.codex"
+timeout_ms = 180000
+
+[consultants.gemini]
+enabled = false
+model   = "gemini-2.5-pro"
+home    = "/home/gemini-user"
+timeout_ms = 180000
+
+[consultants.zai]
+enabled = false
+model   = "glm-5"
+home    = "/home/zai-user"
+timeout_ms = 180000
+
+[consultants.perplexity]
+enabled = false
+model   = "sonar-pro"
+timeout_ms = 60000
+
+[consultants.deepseek]
+enabled = false
+model   = "deepseek-reasoner"
+timeout_ms = 120000
+
 # ── Privacy filter ──────────────────────────────────────────────────────────────
 # Local PII redaction sidecar using openai/privacy-filter (1.5B MoE, Apache-2.0).
 # See docs/reference/adr/ADR-008-privacy-filter-routing.md for the routing layer
