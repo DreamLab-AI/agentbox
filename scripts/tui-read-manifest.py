@@ -53,6 +53,7 @@ state = {
     "toolchains.agentic_qe":      g("toolchains", "agentic_qe",      default=True),
     "toolchains.nagual_qe":       g("toolchains", "nagual_qe",       default=True),
     "toolchains.gemini_cli":      g("toolchains", "gemini_cli",      default=False),
+    "toolchains.codex":           g("toolchains", "codex",           default=False),
     "toolchains.code_server":     g("toolchains", "code_server",     default=False),
     "toolchains.codebase_memory": g("toolchains", "codebase_memory", default=True),
     "toolchains.rust":            g("toolchains", "rust",            default=True),

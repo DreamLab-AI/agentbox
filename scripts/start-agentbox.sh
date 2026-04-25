@@ -325,8 +325,9 @@ section_gpu() {
 }
 
 # ════════════════════════════════════════════════════════════════════════════════
-# SECTION 3a — consultant tier (PRD-005 / ADR-011)
-# Surfaced after providers so the wizard knows which credentials are in scope.
+# SECTION 7a — consultant tier (PRD-005 / ADR-011)
+# Surfaced AFTER providers + toolchains so the dependencies the validator
+# enforces (E035 provider gate, E037 toolchain gate) are already in scope.
 # ════════════════════════════════════════════════════════════════════════════════
 section_consultants() {
   if ! wt_yesno "Consultant tier (PRD-005 / ADR-011)" \
@@ -354,6 +355,42 @@ section_consultants() {
       state_set_bool "${k}" "false"
     fi
   done
+
+  # Cascade: enabling a consultant requires its matching provider (E035) and,
+  # for the CLI-spawning consultants, its matching toolchain (E037). Set both
+  # automatically in state so the wizard's own validate_candidate pass stays
+  # green; the providers section that follows still prompts for the API key
+  # so E017 (env var present) is satisfied at boot.
+  declare -A _cons_to_provider=(
+    [consultants.codex.enabled]=providers.openai.enabled
+    [consultants.gemini.enabled]=providers.gemini.enabled
+    [consultants.zai.enabled]=providers.zai.enabled
+    [consultants.perplexity.enabled]=providers.perplexity.enabled
+    [consultants.deepseek.enabled]=providers.deepseek.enabled
+  )
+  declare -A _cons_to_toolchain=(
+    [consultants.codex.enabled]=toolchains.codex
+    [consultants.gemini.enabled]=toolchains.gemini_cli
+  )
+  local cascaded=()
+  for cons_key in "${!_cons_to_provider[@]}"; do
+    if [[ "$(state_get "${cons_key}")" == "true" ]]; then
+      local prov="${_cons_to_provider[${cons_key}]}"
+      if [[ "$(state_get "${prov}")" != "true" ]]; then
+        state_set_bool "${prov}" "true"
+        cascaded+=("${prov}")
+      fi
+      local tc="${_cons_to_toolchain[${cons_key}]:-}"
+      if [[ -n "${tc}" && "$(state_get "${tc}")" != "true" ]]; then
+        state_set_bool "${tc}" "true"
+        cascaded+=("${tc}")
+      fi
+    fi
+  done
+  if [[ ${#cascaded[@]} -gt 0 ]]; then
+    wt_msgbox "Consultant tier — cascaded dependencies" \
+      "The following gates were turned ON automatically because the\nconsultants you selected depend on them:\n\n  $(printf '%s\n  ' "${cascaded[@]}")\nYou will be prompted for any missing API keys in the\n[providers] section later in the wizard."
+  fi
 
   if wt_yesno "Consultant tier — intelligence signals" \
     "Write ADR-043 QualitySignal files for every successful consultation?\n\nThis lets the SONA learning loop absorb consultation outcomes (which\nconsultant was chosen, latency, cost, success/failure) so the\nauto-consultant classifier improves over time. Files land under\n/workspace/profiles/<stack>/intelligence/data/."; then
@@ -488,7 +525,7 @@ section_toolchains() {
 
   local raw
   raw="$(wt_checklist "Toolchains" "Select toolchains to install" \
-    22 78 11 \
+    22 78 12 \
     "toolchains.claude"          "Claude CLI"             "$(on_off toolchains.claude)" \
     "toolchains.claude_code"     "Claude Code"            "$(on_off toolchains.claude_code)" \
     "toolchains.ruflo"           "Ruflo orchestrator"     "$(on_off toolchains.ruflo)" \
@@ -496,14 +533,15 @@ section_toolchains() {
     "toolchains.agentic_qe"      "Agentic QE"             "$(on_off toolchains.agentic_qe)" \
     "toolchains.nagual_qe"       "Nagual QE"              "$(on_off toolchains.nagual_qe)" \
     "toolchains.gemini_cli"      "Gemini CLI"             "$(on_off toolchains.gemini_cli)" \
+    "toolchains.codex"           "OpenAI Codex Rust CLI"  "$(on_off toolchains.codex)" \
     "toolchains.code_server"     "code-server (VS Code)"  "$(on_off toolchains.code_server)" \
     "toolchains.codebase_memory" "Codebase Memory MCP"    "$(on_off toolchains.codebase_memory)" \
     "toolchains.rust"            "Rust toolchain"         "$(on_off toolchains.rust)" \
     "toolchains.cuda"            "CUDA toolchain"         "$(on_off toolchains.cuda)")"
 
   for key in toolchains.claude toolchains.claude_code toolchains.ruflo toolchains.claude_flow \
-             toolchains.agentic_qe toolchains.nagual_qe toolchains.gemini_cli toolchains.code_server \
-             toolchains.codebase_memory toolchains.rust toolchains.cuda; do
+             toolchains.agentic_qe toolchains.nagual_qe toolchains.gemini_cli toolchains.codex \
+             toolchains.code_server toolchains.codebase_memory toolchains.rust toolchains.cuda; do
     if echo "${raw}" | grep -qw "${key}"; then
       state_set_bool "${key}" "true"
     else
@@ -846,12 +884,12 @@ SECTIONS=(
   section_federation
   section_adapters
   section_gpu
-  section_consultants
   section_privacy_filter
   section_desktop
   section_toolchains
   section_skills
   section_providers
+  section_consultants
   section_observability
   section_integrations
   section_sovereign_mesh

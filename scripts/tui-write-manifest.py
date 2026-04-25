@@ -196,6 +196,7 @@ lines += [
     f'agentic_qe      = {b("toolchains.agentic_qe")}',
     f'nagual_qe       = {b("toolchains.nagual_qe")}',
     f'gemini_cli      = {b("toolchains.gemini_cli")}',
+    f'codex           = {b("toolchains.codex")}',
     f'code_server     = {b("toolchains.code_server")}',
     f'codebase_memory = {b("toolchains.codebase_memory")}',
     f'rust            = {b("toolchains.rust")}',
