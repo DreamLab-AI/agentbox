@@ -107,7 +107,7 @@ jupyter = false
 [skills.docs]
 latex = true
 report_builder = true
-mermaid = true
+mermaid = false
 
 [skills.ontology]
 enabled = false
