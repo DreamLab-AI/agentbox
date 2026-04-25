@@ -95,27 +95,54 @@ patch_npm_deps_hash() {
   local marker="        ${attr} = npmServicesLib.makeNpmService"
   local file="${REPO_ROOT}/flake.nix"
 
-  # Find the npmDepsHash line within the attr block and rewrite. Idempotent
-  # because we rewrite the hash value and the prefetch date comment.
-  python3 - "$file" "$attr" "$hash" "$date" <<'PY'
+  # Locate the line declaring the attr (e.g. `playwrightMcpPkg = npmServicesLib.makeNpmService`)
+  # and rewrite the FIRST `npmDepsHash = …;` line that appears after it. This avoids the
+  # nested-brace problem the original regex hit on blocks with inline `extraEnv = { … };`
+  # attrsets — Python's `re` lacks recursive matching, so we use a line-window pass instead.
+  python3 - "$file" "$attr" "$hash" "$date" "$service" <<'PY'
 import re, sys, pathlib
-file, attr, new_hash, today = sys.argv[1:5]
-src = pathlib.Path(file).read_text()
-# Locate the attr block start and the next npmDepsHash within it.
-pattern = re.compile(
-    r'(?P<pre>\s+' + re.escape(attr) + r'\s*=\s*npmServicesLib\.makeNpmService\s*\{[^\}]*?)'
-    r'(?P<hashline>(?:# [^\n]*\n\s+)*npmDepsHash\s*=\s*(?:lib\.fakeHash|"[^"]*");)',
-    re.DOTALL,
-)
-def repl(m):
-    new_line = f'# Prefetched {today}. Refresh: nix run nixpkgs#prefetch-npm-deps -- <service>/package-lock.json\n          npmDepsHash = "{new_hash}";'
-    return m.group('pre') + new_line
-new = pattern.sub(repl, src, count=1)
-if new == src:
-    print(f"WARN: no npmDepsHash rewrite applied for {attr}", file=sys.stderr)
+file, attr, new_hash, today, service = sys.argv[1:6]
+path = pathlib.Path(file)
+lines = path.read_text().splitlines(keepends=True)
+
+# Index of the line that opens the attr's makeNpmService call.
+opener_re  = re.compile(r'^\s*' + re.escape(attr) + r'\s*=\s*npmServicesLib\.makeNpmService\s*\{?')
+hash_re    = re.compile(r'^(\s*)npmDepsHash\s*=\s*(?:lib\.fakeHash|"[^"]*");')
+
+start = next((i for i, l in enumerate(lines) if opener_re.match(l)), None)
+if start is None:
+    print(f"WARN: no opener for {attr}", file=sys.stderr); sys.exit(0)
+
+# Find the next npmDepsHash line within the same block. Stop at the closing `};`
+# of this attrset (depth tracking — count `{` and `}` on each line).
+depth = 0
+target = None
+for i in range(start, len(lines)):
+    depth += lines[i].count('{') - lines[i].count('}')
+    if hash_re.match(lines[i]):
+        target = i
+        break
+    if i > start and depth <= 0:
+        break
+
+if target is None:
+    print(f"WARN: no npmDepsHash rewrite applied for {attr}", file=sys.stderr); sys.exit(0)
+
+m = hash_re.match(lines[target])
+indent = m.group(1)
+lines[target] = f'{indent}npmDepsHash = "{new_hash}";\n'
+
+# Replace any preceding `# Prefetched …` line (idempotency); otherwise insert one.
+comment = f'{indent}# Prefetched {today}. Refresh: nix run nixpkgs#prefetch-npm-deps -- {service}/package-lock.json\n'
+prev = target - 1
+prefetched_re = re.compile(r'^\s*#\s*Prefetched\b')
+if prev >= start and prefetched_re.match(lines[prev]):
+    lines[prev] = comment
 else:
-    pathlib.Path(file).write_text(new)
-    print(f"patched {attr} npmDepsHash → {new_hash}")
+    lines.insert(target, comment)
+
+path.write_text(''.join(lines))
+print(f"patched {attr} npmDepsHash → {new_hash}")
 PY
 }
 
