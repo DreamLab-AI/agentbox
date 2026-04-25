@@ -113,9 +113,9 @@ const schemaValid = validate(manifest);
 let errors = [];
 // Advisory warnings — emitted to stderr but DO NOT cause a non-zero exit.
 // Used for direction signals (e.g. W030 open-policy nudge) that
-// document operator intent without blocking validation. W021 stays in errors
-// because the hardened baseline may be silently broken without the
-// corresponding security exception delta.
+// document operator intent without blocking validation. Renamed E-codes
+// (W021→E021, E012→W012, E031→W031, E038→W038) reflect blocking vs
+// advisory semantics matching the validator's actual exit-code behaviour.
 let warnings = [];
 
 if (!schemaValid) {
@@ -129,7 +129,7 @@ if (!schemaValid) {
   }
 }
 
-// ─── semantic rules (E001-E031, W021, W030; E009 reserved) ───────────────────
+// ─── semantic rules (see header docstring for the active code surface) ───────
 const adapters = manifest.adapters || {};
 const federation = manifest.federation || {};
 const integrations = manifest.integrations || {};
@@ -247,15 +247,22 @@ const OAUTH_CAPABLE_PROVIDERS = new Set(['anthropic', 'openai', 'zai']);
 for (const [name, provConf] of Object.entries(providers)) {
   if (!provConf || provConf.enabled !== true) continue;
 
-  const envVar = provConf.env_var || `${name.toUpperCase()}_API_KEY`;
+  // env_var is `required: true` in the schema, so AJV E016 already rejects
+  // any provider block without one. The old `${NAME}_API_KEY` fallback was
+  // unreachable in practice and silently wrong for gemini (GOOGLE_GEMINI_API_KEY)
+  // and github (GITHUB_TOKEN), so it's been removed.
+  const envVar = provConf.env_var;
   const envValue = process.env[envVar];
   const authMode = provConf.auth_mode || 'api_key';
 
-  // W040 — oauth requested on a provider that doesn't support it: degrade to api_key semantics.
+  // W040 — oauth requested on a provider whose CLI has no in-container OAuth
+  // flow. The setting is silently ignored at runtime (the CLI will still need
+  // the env var) and E017 will still fire below if env_var is unset, so this
+  // is purely an advisory that the auth_mode value is dead config.
   if (authMode === 'oauth' && !OAUTH_CAPABLE_PROVIDERS.has(name)) {
     warnings.push({
       code: 'W040',
-      message: `W040: provider "${name}" has auth_mode="oauth" but no in-container OAuth CLI is wired up; falling back to env var check (E017). Supported oauth providers: ${[...OAUTH_CAPABLE_PROVIDERS].sort().join(', ')}.`
+      message: `W040: provider "${name}" has auth_mode="oauth" but no in-container OAuth CLI is wired up; the setting is ignored and ${envVar} still needs to be set (E017 will fire if it isn't). Supported oauth providers: ${[...OAUTH_CAPABLE_PROVIDERS].sort().join(', ')}.`
     });
   }
 
@@ -270,15 +277,14 @@ for (const [name, provConf] of Object.entries(providers)) {
       });
     }
   } else if (PLACEHOLDER_RE.test(envValue.trim())) {
-    // E018 — value looks like a placeholder; warn (still an error exit) unless this is .env.example
-    const manifestFile = path.resolve(manifestPath);
-    const isEnvExample = manifestFile.endsWith('.env.example');
-    if (!isEnvExample) {
-      errors.push({
-        code: 'E018',
-        message: `E018: provider "${name}" env var "${envVar}" contains a placeholder value — replace it with a real credential`
-      });
-    }
+    // E018 — value looks like a placeholder. The previous `.env.example`
+    // carve-out tested the manifest filename (which is always agentbox.toml,
+    // not .env.example) and never matched, so it's been dropped — placeholder
+    // env vars always trip E018 now.
+    errors.push({
+      code: 'E018',
+      message: `E018: provider "${name}" env var "${envVar}" contains a placeholder value — replace it with a real credential`
+    });
   }
 }
 
@@ -336,13 +342,17 @@ for (const [group, groupConf] of Object.entries(skills)) {
   }
 }
 
-// E012: federation.mode="client" with any local-* adapter raises a warning.
+// W012: federation.mode="client" with any local-* adapter is legitimate for
+// graceful-degrade testing but worth flagging. Recategorised from E012 to
+// W012 in 2026-04-25 — the docstring always called this a warning, but the
+// rule was pushing to errors[] and forcing a non-zero exit which made every
+// federated negative test cascade noise.
 if (federation.mode === 'client') {
   const localAdapters = Object.entries(adapters).filter(([, v]) => typeof v === 'string' && v.startsWith('local-')).map(([k]) => k);
   if (localAdapters.length > 0) {
-    errors.push({
-      code: 'E012',
-      message: `E012: federation.mode is "client" but adapter(s) [${localAdapters.join(', ')}] use local-* implementation; this is allowed for graceful-degrade testing but is flagged`
+    warnings.push({
+      code: 'W012',
+      message: `W012: federation.mode is "client" but adapter(s) [${localAdapters.join(', ')}] use local-* implementation; allowed for graceful-degrade testing but flagged`
     });
   }
 }
@@ -396,13 +406,14 @@ if (sovereignMesh.telegram_mirror === true) {
 // E036 — any consultants.<name>.enabled=true requires consultants.enabled=true
 //        (master gate); avoids accidentally shipping a consultant in the
 //        image while the dispatcher is off.
-// E037 — consultants.codex requires toolchains.codex; consultants.gemini
-//        requires toolchains.gemini_cli; consultants.zai requires
-//        providers.zai (already covered by E035) AND the claude-zai wrapper
-//        which is part of toolchains.claude.
-// E038 — log_dir + intelligence_signal coherence: when intelligence_signal
-//        is true, AGENTBOX_INTELLIGENCE_DIR must be set in the env at boot
-//        OR a fallback dir must exist on the writable workspace mount.
+// E037 — consultants.codex requires toolchains.codex;
+//        consultants.gemini requires toolchains.gemini_cli;
+//        consultants.zai requires toolchains.claude (the claude-zai wrapper
+//        is bundled with that toolchain — without it `claude-zai` isn't on
+//        PATH inside the container).
+//        consultants.{perplexity,deepseek} talk over raw HTTP and have no
+//        toolchain gate.
+// W038 — intelligence_signal needs a writable target dir at runtime.
 {
   const consultants = manifest.consultants || {};
   const consultantToProvider = {
@@ -415,8 +426,10 @@ if (sovereignMesh.telegram_mirror === true) {
   const consultantToToolchain = {
     codex:  'codex',
     gemini: 'gemini_cli',
-    // zai depends on the claude-zai wrapper (currently bundled with the
-    // claude toolchain); other consultants are HTTP-only.
+    // zai uses the `claude-zai` wrapper, which is a fork of claude-code
+    // bundled with toolchains.claude. perplexity and deepseek consultants
+    // talk over raw HTTP and have no toolchain gate.
+    zai:    'claude',
   };
   const tcCfg = manifest.toolchains || {};
 
@@ -456,12 +469,15 @@ if (sovereignMesh.telegram_mirror === true) {
     });
   }
 
-  // E038 — intelligence_signal needs a writable target dir
+  // W038 — intelligence_signal needs a writable target dir. Degraded-runtime
+  // condition rather than a config error: the image still builds, the
+  // consultants still answer, only the SONA-feedback signals get dropped.
+  // Recategorised from E038 to W038 in 2026-04-25.
   if (consultants.intelligence_signal === true && consultants.enabled === true) {
     if (!process.env.AGENTBOX_INTELLIGENCE_DIR && !process.env.WORKSPACE) {
-      errors.push({
-        code: 'E038',
-        message: 'E038: consultants.intelligence_signal=true but neither AGENTBOX_INTELLIGENCE_DIR nor WORKSPACE is set; signal files will be silently dropped'
+      warnings.push({
+        code: 'W038',
+        message: 'W038: consultants.intelligence_signal=true but neither AGENTBOX_INTELLIGENCE_DIR (preferred) nor WORKSPACE is set; signal files will be silently dropped at runtime'
       });
     }
   }
@@ -470,7 +486,7 @@ if (sovereignMesh.telegram_mirror === true) {
 // ─── E032-E033: solid-pod-rs first-class pod server (ADR-010) ─────────────────
 //
 // E032 — adapters.pods="local-solid-rs" requires the filesystem backend to
-//        have a writable path. Emitted as W021-style exception-missing warning
+//        have a writable path. Emitted as E021-style exception-missing error
 //        when [security.exceptions.solid-pod-rs] is absent.
 // E033 — integrations.solid_pod_rs.enable_dpop_cache=true requires
 //        enable_oidc=true (DPoP is OIDC-only).
@@ -481,9 +497,9 @@ if (sovereignMesh.telegram_mirror === true) {
   const sp   = (manifest.integrations || {}).solid_pod_rs || {};
 
   if (pods === 'local-solid-rs') {
-    // E032 is handled structurally by the W021 exception-coherence check
+    // E032 is handled structurally by the E021 exception-coherence check
     // (isFeatureActive('solid-pod-rs') returns true when pods=local-solid-rs,
-    // so the validator will emit W021 if the exception block is missing).
+    // so the validator will emit E021 if the exception block is missing).
     if (sp.enable_dpop_cache === true && sp.enable_oidc !== true) {
       errors.push({
         code: 'E033',
@@ -568,9 +584,9 @@ if (sovereignMesh.telegram_mirror === true) {
     }
 
     if (relay.allow_nip04 === true) {
-      errors.push({
-        code: 'E031',
-        message: 'E031: sovereign_mesh.relay.allow_nip04=true — NIP-04 legacy DMs leak metadata; prefer NIP-17 sealed gift-wrap (kind 1059)'
+      warnings.push({
+        code: 'W031',
+        message: 'W031: sovereign_mesh.relay.allow_nip04=true — NIP-04 legacy DMs leak metadata; prefer NIP-17 sealed gift-wrap (kind 1059) where possible'
       });
     }
   }
@@ -586,11 +602,15 @@ if (sovereignMesh.telegram_mirror === true) {
 {
   const pf = manifest.privacy_filter || {};
   if (pf.enabled === true) {
-    const mode = pf.mode || "off";
+    const explicitMode = pf.mode;
+    const mode = explicitMode || "off";
     if (mode === "off") {
+      const cause = explicitMode === undefined
+        ? 'mode is unset (defaults to "off")'
+        : 'mode="off"';
       errors.push({
         code: 'E022',
-        message: 'E022: privacy_filter.enabled=true but mode="off" — set mode to "local-gpu" or "local-cpu"'
+        message: `E022: privacy_filter.enabled=true but ${cause} — set privacy_filter.mode to "local-gpu" or "local-cpu"`
       });
     }
     if (mode === 'local-gpu' && (gpu.backend === undefined || gpu.backend === 'none')) {
@@ -638,13 +658,15 @@ if (sovereignMesh.telegram_mirror === true) {
   }
 }
 
-// ─── E020 / W021: security exception coherence ────────────────────────────────
+// ─── E020 / E021: security exception coherence ────────────────────────────────
 //
 // Each [security.exceptions.<name>] key must correspond to an enabled feature
 // gate (E020 error when the feature is OFF but an exception block is present).
 //
-// W021 is the inverse: a feature that has a known exception mapping is enabled
+// E021 is the inverse: a feature that has a known exception mapping is enabled
 // but no exception block is declared — the hardened baseline may be inadequate.
+// Renamed from W021 in 2026-04-25 to match the blocking semantic; W021 was
+// always pushed to errors[] but the W-prefix mislabelled it as advisory.
 //
 // Authoritative feature→exception mapping table:
 //   exception name        │ feature is active when
@@ -712,14 +734,14 @@ for (const exceptionName of Object.keys(securityExceptions)) {
   }
 }
 
-// W021: feature enabled but documented exception block is missing.
+// E021: feature enabled but documented exception block is missing.
 // Emitted as an error (non-zero exit) because the hardened baseline may be
 // silently broken at runtime without the exception delta applied.
 for (const exceptionName of KNOWN_EXCEPTION_FEATURE_GATES) {
   if (isFeatureActive(exceptionName) && !securityExceptions[exceptionName]) {
     errors.push({
-      code: 'W021',
-      message: `W021: feature corresponding to [security.exceptions.${exceptionName}] is enabled but no exception block is declared — the hardened baseline may be inadequate for this feature`
+      code: 'E021',
+      message: `E021: feature corresponding to [security.exceptions.${exceptionName}] is enabled but no exception block is declared — the hardened baseline may be inadequate for this feature`
     });
   }
 }
@@ -728,9 +750,8 @@ for (const exceptionName of KNOWN_EXCEPTION_FEATURE_GATES) {
 // E017 and E018 are handled in the providers loop above.
 
 // ─── output ───────────────────────────────────────────────────────────────────
-// Warnings (W030) are always printed to stderr — they are direction
-// signals. They do not affect the exit code. W021 remains in `errors`
-// because the baseline is structurally unsafe without the exception.
+// Warnings (W-codes) are always printed to stderr — they are direction
+// signals and do not affect the exit code. Errors (E-codes) cause exit 1.
 for (const { code, message } of warnings) {
   emit(code, message);
 }
