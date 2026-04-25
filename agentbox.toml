@@ -5,6 +5,14 @@ vector_db = "ruvector-embedded"
 [federation]
 mode = "standalone"
 
+=======
+# ── Five-slot adapter architecture (ADR-005) ───────────────────────────────────
+# local-solid-rs is the first-class pod implementation (ADR-010); the legacy
+# local-jss Python stub was retired 2026-04-25 and is no longer accepted by
+# the schema. Each adapter slot resolves to one of three implementation
+# classes — `local-*`, `external`, or `off` — see docs/user/configuration.md
+# for the full matrix and trade-offs.
+
 [adapters]
 beads        = "local-sqlite"
 pods         = "off"
@@ -168,6 +176,14 @@ qe_browser    = false
 ffmpeg           = false
 imagemagick      = false
 comfyui_builtin  = false
+
+[security]
+# Feature-specific exceptions to the hardened baseline.
+# Each key must match an enabled feature gate (validator rule E020).
+# Add the exception block when you enable the corresponding feature.
+# Reference table of all known exceptions is in docs/reference/adr/ADR-007-runtime-contract-and-container-hardening.md.
+#
+# Currently enabled feature exceptions (mirrors active feature gates above):
 
 [skills.spatial_and_3d]
 blender            = false

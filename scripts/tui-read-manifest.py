@@ -140,7 +140,6 @@ state = {
     "sovereign_mesh.https_bridge":         g("sovereign_mesh","https_bridge",         default=False),
     "sovereign_mesh.publish_agent_events": g("sovereign_mesh","publish_agent_events", default=False),
     "sovereign_mesh.telegram_mirror":      g("sovereign_mesh","telegram_mirror",      default=False),
-    "sovereign_mesh.jss_rust_backend":     g("sovereign_mesh","jss_rust_backend",     default=False),
     # ── sovereign_mesh.relay (PRD-004 / ADR-009) ─────────────────────────────────
     # ── integrations.solid_pod_rs (ADR-010) ──────────────────────────────────────
     "integrations.solid_pod_rs.port":                  str(g("integrations","solid_pod_rs","port",                  default=8484)),

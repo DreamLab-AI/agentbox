@@ -27,7 +27,6 @@ nostr_bridge         = true
 https_bridge         = false
 publish_agent_events = false
 telegram_mirror      = false
-jss_rust_backend     = false
 
 [observability]
 metrics_port = 9091

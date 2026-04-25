@@ -115,15 +115,18 @@ First step that fails is where to fix.
 
 ## `nix build .#runtime` fails with a hash mismatch
 
-The shipped tree carries resolved hashes for every npm service and the
-solid-pod-rs source — fresh clones build without manual prefetch. You
-hit this only after one of:
+The shipped tree carries resolved hashes for every npm service and every
+Rust source build — fresh clones build without manual prefetch. You hit
+this only after one of:
 
 - A `package-lock.json` change in any of `management-api/`, `mcp/`,
-  `skills/openai-codex/mcp-server/`, `skills/lazy-fetch/mcp-server/`,
-  `skills/playwright/mcp-server/`, `skills/comfyui/mcp-server/`.
-- A `solid-pod-rs` rev bump in `lib/solid-pod-rs.nix`.
-- Adding a new `makeNpmCli` entry in `flake.nix` with `lib.fakeHash`.
+  `mcp/consultants/`, `skills/openai-codex/mcp-server/`,
+  `skills/lazy-fetch/mcp-server/`, `skills/playwright/mcp-server/`,
+  `skills/comfyui/mcp-server/`.
+- A `solid-pod-rs` or `nagual-qe` rev bump in `lib/solid-pod-rs.nix` or
+  `lib/nagual-qe.nix`.
+- Adding a new `makeNpmCli` entry in `flake.nix` with `lib.fakeHash` for
+  either `sha256` (tarball) or `nodeModulesHash` (resolved deps tree).
 
 The error format is always the same:
 
@@ -131,7 +134,11 @@ The error format is always the same:
   and `got: sha256-<real>=` (the value you need).
 - A `preFetch` hook hint pointing at the resolver command.
 
-The fastest path is the prefetch helper:
+The fastest path is the prefetch helper. It runs in two phases — first
+the source-level hashes (npm tarballs, github tarballs), then a build
+loop that picks up FOD-level hashes (npm `node_modules` trees, Rust
+`cargoHash` for nagual-qe) by parsing each hash-mismatch error and
+patching it back in:
 
 ```sh
 # One pass — walks every fakeHash and patches it in. Idempotent.
@@ -140,10 +147,24 @@ The fastest path is the prefetch helper:
 # Single target:
 ./scripts/prefetch-hashes.sh --service management-api
 ./scripts/prefetch-hashes.sh --service solid-pod-rs
+./scripts/prefetch-hashes.sh --service nagual-qe
+
+# Resolve only npm-cli node_modules + cargoHash via build loop:
+./scripts/prefetch-hashes.sh --cli
 
 # Preview without writing:
 ./scripts/prefetch-hashes.sh --dry-run
 ```
+
+Why the build loop exists: the npm CLI helper (`lib/npm-cli.nix`) builds
+a fixed-output derivation per package whose hash is the SHA-256 of the
+resolved `node_modules` tree. There is no offline command to compute
+that ahead of time — it must run `npm install` against the registry,
+and Nix only verifies the result. The loop runs `nix build .#runtime`,
+extracts the first `hash mismatch` block, patches the corresponding
+`nodeModulesHash` or `cargoHash` line in `flake.nix` /
+`lib/nagual-qe.nix`, and re-runs until clean. Up to ~20 iterations on a
+fresh clone.
 
 Manual fallback if you don't have the helper available:
 
@@ -151,17 +172,32 @@ Manual fallback if you don't have the helper available:
 # Local npm services (buildNpmPackage)
 nix run nixpkgs#prefetch-npm-deps -- management-api/package-lock.json
 
-# solid-pod-rs source (fetchFromGitHub)
+# solid-pod-rs / nagual-qe source (fetchFromGitHub)
 nix-prefetch-url --unpack \
   https://github.com/DreamLab-AI/solid-pod-rs/archive/<rev>.tar.gz
 nix hash convert --hash-algo sha256 --to sri <base32-output>
 
-# Global npm CLIs (tarball fetch)
+# Global npm CLI tarballs
 nix-prefetch-url https://registry.npmjs.org/<pkg>/-/<pkg>-<ver>.tgz
 nix hash convert --hash-algo sha256 --to sri <base32-output>
+
+# Global npm CLI node_modules + nagual-qe cargoHash:
+# leave as lib.fakeHash, run `nix build .#runtime`, copy the
+# `got: sha256-…` value back into the corresponding source line.
 ```
 
-Paste the returned hash into `lib/npm-services.nix` or `flake.nix`, rebuild. See [developer/version-tracking.md](../developer/version-tracking.md) for the full workflow and [developer/testing.md](../developer/testing.md#prefetching-hashes) for the helper docs.
+Paste the returned hash into `lib/npm-services.nix` / `lib/nagual-qe.nix`
+/ `flake.nix`, rebuild. See [developer/version-tracking.md](../developer/version-tracking.md) for the full workflow and [developer/testing.md](../developer/testing.md#prefetching-hashes) for the helper docs.
+
+> **Why `EAI_AGAIN` from `npm install` during `nix build`?** Pre-2026-04-25
+> the `lib/npm-cli.nix` helper ran `npm install` inside a regular
+> derivation, which the Nix sandbox blocks at the network layer. The
+> failure surfaced as `npm error code EAI_AGAIN` (DNS unreachable) on
+> sandboxed hosts. The current helper splits the install into a separate
+> fixed-output derivation with `outputHash = nodeModulesHash` — FODs are
+> permitted network access because the result is hash-verified, so the
+> sandbox stays on by default. If you see `EAI_AGAIN` today you are
+> running a stale `lib/npm-cli.nix`; pull main and re-run the build.
 
 ## `docker load < result` says "invalid tar header"
 
@@ -240,8 +276,15 @@ Common ones:
 | E017 | Enabled provider's env var missing |
 | E019 | `toolchains.cuda=true` without `gpu.backend="local-cuda"` |
 | E020 | `[security.exceptions.<name>]` block declared but feature disabled |
-| W021 | Feature enabled without its usual security exception block (warning) |
+| E021 | Feature enabled without its usual security exception block (renamed from W021) |
 | E016 | Unknown manifest key — usually a typo, or a removed enum value (e.g. `pods = "local-jss"` post-2026-04-25) |
+| W012 | `federation.mode="client"` with `local-*` adapters (graceful-degrade testing — advisory) |
+| W030 | `relay.ingress_policy="open"` (advisory — prefer allowlist or signed-only) |
+| W031 | `relay.allow_nip04=true` (advisory — prefer NIP-17 sealed gift-wrap) |
+| W038 | `consultants.intelligence_signal=true` without writable target dir (degraded, not blocking) |
+| W039 | `relay.ingress_policy="allowlist"` with empty `allowed_pubkeys` |
+| W040 | Provider has `auth_mode="oauth"` but no in-container OAuth CLI |
+| W041 | `privacy_filter.enabled=false` but policy slots declare non-default values (dead config) |
 
 ## Backup / restore round-trip fails
 

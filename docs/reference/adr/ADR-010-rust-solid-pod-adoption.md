@@ -9,7 +9,7 @@
 ## TL;DR for newcomers
 *Skip if you already know why the DreamLab-AI sovereign data stack is shaped the way it is.*
 
-[`solid-pod-rs`](https://github.com/DreamLab-AI/solid-pod-rs) is a first-party DreamLab-AI project — a Rust-native Solid Protocol 0.11 server with WAC, LDP containers, NIP-98 Schnorr auth, Solid Notifications, and atomic-rename filesystem storage. This ADR makes it the **first-class default** implementation for the agentbox `pods` adapter. Together with [`nostr-rs-relay`](ADR-009-embedded-nostr-relay.md) (external-agent messaging), the sovereign identity layer from [sovereign-bootstrap.py](../../../scripts/sovereign-bootstrap.py), and the [privacy-filter middleware](ADR-008-privacy-filter-routing.md), it forms the **sovereign data stack**: a coherent substrate for identity, messaging, durable storage, and PII governance that each agentbox container owns end-to-end. The previously shipped 108-line Python stub (`scripts/solid-pod-server.py`) is retained only as `local-jss` for backwards compatibility; the validator emits W034 against it.
+[`solid-pod-rs`](https://github.com/DreamLab-AI/solid-pod-rs) is a first-party DreamLab-AI project — a Rust-native Solid Protocol 0.11 server with WAC, LDP containers, NIP-98 Schnorr auth, Solid Notifications, and atomic-rename filesystem storage. **It is the home of the JSS Rust crates** the team developed in earlier sprints: did:nostr resolution, NIP-98 Schnorr verification, signed outbound webhooks, rate-limit + quota operator surface, and JSS v0.4 wire compatibility were all absorbed under the `solid-pod-rs` name and ship today as Cargo features in `lib/solid-pod-rs.nix`. This ADR makes it the **first-class default** implementation for the agentbox `pods` adapter. Together with [`nostr-rs-relay`](ADR-009-embedded-nostr-relay.md) (external-agent messaging), the sovereign identity layer from [sovereign-bootstrap.py](../../../scripts/sovereign-bootstrap.py), and the [privacy-filter middleware](ADR-008-privacy-filter-routing.md), it forms the **sovereign data stack**: a coherent substrate for identity, messaging, durable storage, and PII governance that each agentbox container owns end-to-end. The 108-line Python stub previously shipped as `local-jss` was deleted on 2026-04-25; the schema enum no longer accepts that value.
 
 **If you remember only one thing:** solid-pod-rs is the pod half of the sovereign data stack. It is part of agentbox, not an external integration.
 
@@ -52,6 +52,36 @@ DreamLab-AI published [`solid-pod-rs`](https://github.com/DreamLab-AI/solid-pod-
 | Library surface | Framework-agnostic Rust crate; actix-web reference server binary |
 | Config | JSS-compatible env namespace (`JSS_HOST`, `JSS_PORT`, `JSS_STORAGE_ROOT`, …); JSON or TOML file; precedence compiled → file → env |
 | Licence | AGPL-3.0-only (inherited from JavaScriptSolidServer) |
+
+### JSS Rust crate lineage
+
+The `JSS_*` env namespace and the v0.4-compat feature flag are the
+visible footprint of the JSS Rust work the team developed in earlier
+sprints. That codebase was consolidated into `solid-pod-rs` rather
+than maintained as a separate `jss-rust` flake input — every JSS Rust
+capability ships as a Cargo feature in `lib/solid-pod-rs.nix`:
+
+| JSS capability | solid-pod-rs feature | Default? |
+|---|---|---|
+| did:nostr resolver | `did-nostr` | on |
+| NIP-98 HTTP auth (BIP-340 Schnorr) | `nip98-schnorr` | on |
+| Signed outbound webhooks | `webhook-signing` | on |
+| Per-pubkey rate limiting | `rate-limit` | on |
+| Per-pod byte quotas | `quota` | on |
+| JSS v0.4 wire compat | `jss-v04` | on |
+| ACL origin enforcement | `acl-origin` | on |
+| Solid-OIDC 0.1 + DPoP | `oidc`, `dpop-replay-cache` | opt-in via manifest |
+| S3 storage backend | `s3-backend` | opt-in via manifest |
+
+A placeholder `sovereign_mesh.jss_rust_backend` boolean was added in
+M4 (commit `44a59694`) anticipating a separate Rust pod input. When
+solid-pod-rs landed as the canonical implementation, the placeholder
+became dead config — the `jss-rust` flake input it gated was never
+declared. The field, its schema entry, the wizard checkbox, and
+validator rule E015 were retired on 2026-04-25 (commit `32b521ec`).
+**No JSS Rust capability was lost in that cleanup** — every feature
+above is built into the agentbox image as part of the default
+`solid-pod-rs` build.
 
 ### Why this matters for agentbox
 
@@ -124,11 +154,11 @@ log_level   = "info"
 
 ### Adapter client
 
-`management-api/adapters/pods/local-solid-rs.js` extends a private base class in `management-api/adapters/pods/local-jss.js` (the file is retained as inheritance scaffolding only — it is **not** a manifest-selectable impl after 2026-04-25). The base class encodes generic Solid HTTP client semantics (PUT/GET/PATCH/DELETE, JSON-LD container parsing, typed 401/403/404 errors). The `local-solid-rs` impl overrides `impl = "local-solid-rs"`, prefers LDP `Link: <…>; rel="next"` headers for cursor pagination, supports N3 patch via the capability probe at `OPTIONS /`, and reports the contract version explicitly.
+`management-api/adapters/pods/local-solid-rs.js` extends a private base class in `management-api/adapters/pods/_solid-http-base.js` (renamed from the old `local-jss.js` filename in commit `32b521ec`; the underscore prefix marks it as internal-only — it is **not** a manifest-selectable impl). The base class encodes generic Solid HTTP client semantics (PUT/GET/PATCH/DELETE, JSON-LD container parsing, typed 401/403/404 errors) and is shared with `external.js`. The `local-solid-rs` impl overrides `impl = "local-solid-rs"`, prefers LDP `Link: <…>; rel="next"` headers for cursor pagination, supports N3 patch via the capability probe at `OPTIONS /`, and reports the contract version explicitly.
 
 ### Validator rules
 
-- **E032** — `adapters.pods = "local-solid-rs"` requires `integrations.solid_pod_rs.storage_root` to point at a writable path. The `[security.exceptions.solid-pod-rs]` block must carry `writable_volumes = ["solid-data:/var/lib/solid"]` (raised as W021 if the exception is missing).
+- **E032** — `adapters.pods = "local-solid-rs"` requires `integrations.solid_pod_rs.storage_root` to point at a writable path. The `[security.exceptions.solid-pod-rs]` block must carry `writable_volumes = ["solid-data:/var/lib/solid"]` (raised as E021 if the exception is missing — renamed from W021 in commit `ffc686a5` to match its blocking semantic).
 - **E033** — `integrations.solid_pod_rs.enable_dpop_cache = true` without `enable_oidc = true` is an error (DPoP is OIDC-only).
 - ~~**W034**~~ retired 2026-04-25. The `local-jss` deprecation warning was removed when the schema enum dropped the value; manifests carrying it now fail E016 schema validation outright.
 

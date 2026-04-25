@@ -245,7 +245,6 @@ nostr_bridge = true
 https_bridge = false
 telegram_mirror = false
 publish_agent_events = false
-jss_rust_backend = false
 ```
 
 See [sovereign-mesh (developer)](../developer/sovereign-mesh.md) for internals.

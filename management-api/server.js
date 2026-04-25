@@ -339,16 +339,14 @@ app.get('/ready', {
 
   // 3. Required filesystem paths.
   // Any pod impl backed by the local filesystem needs its storage root
-  // accessible before /ready goes green. local-solid-rs uses the same
-  // /var/lib/solid root as local-jss by default; respect an operator
-  // override from [integrations.solid_pod_rs].storage_root when set.
+  // accessible before /ready goes green. local-solid-rs is the only
+  // local pod impl post-2026-04-25 (legacy local-jss stub retired);
+  // respect an operator override from [integrations.solid_pod_rs].storage_root.
   const requiredPaths = ['/workspace', '/var/lib/ruvector'];
   const pods = manifestAdapters.pods;
-  if (pods === 'local-jss' || pods === 'local-solid-rs') {
+  if (pods === 'local-solid-rs') {
     const sp = (manifest && manifest.integrations && manifest.integrations.solid_pod_rs) || {};
-    const solidRoot = pods === 'local-solid-rs'
-      ? (sp.storage_root || '/var/lib/solid')
-      : (process.env.SOLID_POD_ROOT || '/var/lib/solid');
+    const solidRoot = sp.storage_root || '/var/lib/solid';
     if (!requiredPaths.includes(solidRoot)) requiredPaths.push(solidRoot);
   }
   await Promise.all(requiredPaths.map(async (p) => {

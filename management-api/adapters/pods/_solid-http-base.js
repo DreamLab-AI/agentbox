@@ -1,13 +1,21 @@
 'use strict';
 
 /**
- * pods/local-jss — HTTP client to a local JavaScriptSolidServer (JSS) instance.
+ * pods/_solid-http-base — Solid-protocol HTTP client base class.
  *
- * JSS is expected at localhost:8484 by default. All resources use Solid-protocol
- * HTTP semantics: PUT to write, GET to read, PATCH for JSON-patch, DELETE to remove.
+ * Generic client for any Solid-compliant pod server (solid-pod-rs locally,
+ * any host-mesh pod externally). Wire semantics: PUT to write, GET to read,
+ * PATCH for JSON-patch, DELETE to remove. The concrete adapters
+ * (`local-solid-rs.js`, `external.js`) extend this base and supply their
+ * own base URL + impl tag.
+ *
+ * Was previously named `local-jss.js` after the legacy JavaScriptSolidServer
+ * stub (retired 2026-04-25). Renamed to reflect its actual role as a Solid
+ * HTTP base — the wire contract has always been protocol-level Solid, not
+ * JSS-specific.
  *
  * @see ADR-005 §pods slot
- * @see PRD-001 §Capabilities and adapters
+ * @see ADR-010 solid-pod-rs adoption
  */
 
 const { BaseAdapter } = require('../base');
@@ -16,14 +24,15 @@ const CONTRACT_VERSIONS = require('../contract-versions');
 
 const DEFAULT_BASE = 'http://localhost:8484';
 
-class LocalJssPodsAdapter extends BaseAdapter {
+class SolidHttpPodsAdapter extends BaseAdapter {
   /**
    * @param {object} [opts]
    * @param {string} [opts.baseUrl='http://localhost:8484']
    * @param {Function} [opts.fetchFn] - Override for tests
+   * @param {string}   [opts.impl] - Concrete impl tag (overridden by subclasses)
    */
   constructor(opts = {}) {
-    super('pods', 'local-jss', CONTRACT_VERSIONS.pods);
+    super('pods', opts.impl || 'solid-http', CONTRACT_VERSIONS.pods);
     this._base = (opts.baseUrl || DEFAULT_BASE).replace(/\/$/, '');
     this._fetch = opts.fetchFn || ((...a) => fetch(...a));
   }
@@ -121,4 +130,4 @@ class LocalJssPodsAdapter extends BaseAdapter {
   }
 }
 
-module.exports = { LocalJssPodsAdapter };
+module.exports = { SolidHttpPodsAdapter };

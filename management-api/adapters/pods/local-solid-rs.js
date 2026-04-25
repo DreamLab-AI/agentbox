@@ -7,7 +7,7 @@
  * (Turtle, JSON-LD, N-Triples), LDP container listing with Link: rel="next"
  * pagination, WAC deny-by-default enforcement, and Solid Notifications 0.2.
  *
- * Identical surface to LocalJssPodsAdapter — solid-pod-rs speaks the same
+ * Identical surface to SolidHttpPodsAdapter — solid-pod-rs speaks the same
  * protocol JSS speaks — but the server actually implements every verb the
  * adapter already expected, including proper 401/403 classes and atomic-rename
  * filesystem semantics (ADR-009 invariants I01 and I08 hold against this
@@ -18,13 +18,13 @@
  * @see DDD-003 §PodMailbox invariants
  */
 
-const { LocalJssPodsAdapter } = require('./local-jss');
+const { SolidHttpPodsAdapter } = require('./_solid-http-base');
 const { NotFound, PermissionDenied, ValidationError } = require('../errors');
 const CONTRACT_VERSIONS = require('../contract-versions');
 
 const DEFAULT_BASE = 'http://127.0.0.1:8484';
 
-class LocalSolidRsPodsAdapter extends LocalJssPodsAdapter {
+class LocalSolidRsPodsAdapter extends SolidHttpPodsAdapter {
   /**
    * @param {object} [opts]
    * @param {string} [opts.baseUrl='http://127.0.0.1:8484']
@@ -32,9 +32,7 @@ class LocalSolidRsPodsAdapter extends LocalJssPodsAdapter {
    * @param {boolean} [opts.probeCapabilities=true]  Probe OPTIONS on first use.
    */
   constructor(opts = {}) {
-    super({ ...opts, baseUrl: opts.baseUrl || DEFAULT_BASE });
-    // Override impl tag after super sets it to 'local-jss'.
-    this.impl = 'local-solid-rs';
+    super({ ...opts, baseUrl: opts.baseUrl || DEFAULT_BASE, impl: 'local-solid-rs' });
     this.contractVersion = CONTRACT_VERSIONS.pods;
 
     this._probed = false;

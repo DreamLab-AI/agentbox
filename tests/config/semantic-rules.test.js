@@ -25,18 +25,16 @@ const os = require('os');
 function runValidator(manifest, envOverrides = {}) {
   const tmp = path.join(os.tmpdir(), `agentbox-test-${Date.now()}-${Math.random().toString(36).slice(2)}.toml`);
   fs.writeFileSync(tmp, TOML.stringify(manifest), 'utf8');
-  try {
-    const result = execFileSync(process.execPath, [VALIDATOR, tmp], {
-      env: { ...process.env, ...envOverrides },
-      encoding: 'utf8',
-      stdio: ['pipe', 'pipe', 'pipe']
-    });
-    fs.unlinkSync(tmp);
-    return { exitCode: 0, stderr: '', stdout: result };
-  } catch (err) {
-    fs.unlinkSync(tmp);
-    return { exitCode: err.status || 1, stderr: err.stderr || '', stdout: err.stdout || '' };
-  }
+  // spawnSync gives us stderr on the success path too (advisory W-codes are
+  // emitted on stderr but exit 0). execFileSync would throw away stderr in
+  // that case, hiding warnings from assertions.
+  const r = require('child_process').spawnSync(process.execPath, [VALIDATOR, tmp], {
+    env: { ...process.env, ...envOverrides },
+    encoding: 'utf8',
+    stdio: ['pipe', 'pipe', 'pipe']
+  });
+  fs.unlinkSync(tmp);
+  return { exitCode: r.status || 0, stderr: r.stderr || '', stdout: r.stdout || '' };
 }
 
 function stderrContains(result, code) {
@@ -51,7 +49,7 @@ function baseValid() {
     federation: { mode: 'standalone', external_url: '' },
     adapters: {
       beads: 'local-sqlite',
-      pods: 'local-jss',
+      pods: 'local-solid-rs',
       memory: 'embedded-ruvector',
       events: 'local-jsonl',
       orchestrator: 'local-process-manager'
@@ -73,15 +71,19 @@ function baseValid() {
       solid_pod: false,
       nostr_bridge: false,
       https_bridge: false,
-      telegram_mirror: false,
-      jss_rust_backend: false
+      telegram_mirror: false
     },
-    // playwright=true requires a security exception block (W021).
+    // playwright=true and pods=local-solid-rs both require security
+    // exception blocks (E021); declare both so the baseline is silent.
     security: {
       exceptions: {
         playwright: {
           cap_add: ['SYS_ADMIN'],
           reason: 'chromium sandbox'
+        },
+        'solid-pod-rs': {
+          writable_volumes: ['/var/lib/solid'],
+          reason: 'solid-pod-rs filesystem backend (ADR-010)'
         }
       }
     }
@@ -106,7 +108,7 @@ describe('E001: external adapter requires federation.mode=client + external_url'
     m.federation.external_url = 'http://host-mesh:9090';
     // no providers enabled, no env vars needed
     const r = runValidator(m);
-    // E012 warning expected (client + local-* adapters for other slots), but not E001
+    // W012 advisory expected (client + local-* adapters for other slots), but not E001
     expect(stderrContains(r, 'E001')).toBe(false);
   });
 });
@@ -354,35 +356,34 @@ describe('E010: desktop.enabled=true forbids headless_only profiles', () => {
   });
 });
 
-// ─── E011 ─────────────────────────────────────────────────────────────────────
-describe('E011: every enabled skill must exist in the skills-corpus', () => {
-  test('invalid: unknown skill flag set to true', () => {
+// ─── E011 retired 2026-04-25 ──────────────────────────────────────────────────
+// Was: every enabled skill must exist in the skills-corpus. Unreachable in
+// practice — schema's `additionalProperties: false` already rejects unknown
+// skill keys via E016 before the semantic block runs. The hardcoded
+// KNOWN_SKILLS snapshot drifted from the actual corpus over time, producing
+// false positives. Replacement idea: consume `nix build .#skills` artefact.
+describe('E011 retired: unknown skill keys are caught by E016 (AJV)', () => {
+  test('unknown skill flag now triggers E016, not E011', () => {
     const m = baseValid();
-    // skills.browser.phantom_browser is not in KNOWN_SKILLS
     m.skills.browser.phantom_browser = true;
     const r = runValidator(m);
     expect(r.exitCode).not.toBe(0);
-    expect(stderrContains(r, 'E011')).toBe(true);
-  });
-
-  test('valid: only known skills enabled', () => {
-    const m = baseValid();
-    m.skills.browser.playwright = true;
-    const r = runValidator(m);
+    expect(stderrContains(r, 'E016')).toBe(true);
     expect(stderrContains(r, 'E011')).toBe(false);
   });
 });
 
-// ─── E012 ─────────────────────────────────────────────────────────────────────
-describe('E012: federation.mode=client with local-* adapter raises warning', () => {
-  test('invalid: client mode with local-sqlite beads', () => {
+// ─── W012 ─────────────────────────────────────────────────────────────────────
+describe('W012: federation.mode=client with local-* adapter raises advisory', () => {
+  test('client mode with local-sqlite beads emits W012', () => {
     const m = baseValid();
     m.federation.mode = 'client';
     m.federation.external_url = 'http://host:9090';
     m.adapters.beads = 'local-sqlite';
     const r = runValidator(m);
-    // E012 is a warning that produces an error code output
-    expect(stderrContains(r, 'E012')).toBe(true);
+    expect(stderrContains(r, 'W012')).toBe(true);
+    // Recategorised from E012 — exit code is 0 because W-codes are advisory.
+    expect(stderrContains(r, 'E012')).toBe(false);
   });
 
   test('valid: client mode with all external or off adapters', () => {
@@ -401,7 +402,7 @@ describe('E012: federation.mode=client with local-* adapter raises warning', () 
       external_events: { enabled: true, url: 'http://events:4000' }
     };
     const r = runValidator(m);
-    expect(stderrContains(r, 'E012')).toBe(false);
+    expect(stderrContains(r, 'W012')).toBe(false);
   });
 });
 
@@ -441,39 +442,11 @@ describe('E014: sovereign_mesh.telegram_mirror requires CTM env vars', () => {
   });
 });
 
-// ─── E015 ─────────────────────────────────────────────────────────────────────
-describe('E015: jss_rust_backend requires jss-rust pinned in flake.lock', () => {
-  test('invalid: jss_rust_backend=true without jss-rust in flake.lock', () => {
-    const m = baseValid();
-    m.sovereign_mesh.jss_rust_backend = true;
-    // Write manifest to a temp dir that has no flake.lock with jss-rust
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agentbox-e015-'));
-    const manifestFile = path.join(tmpDir, 'agentbox.toml');
-    fs.writeFileSync(manifestFile, TOML.stringify(m), 'utf8');
-    // Write a flake.lock without jss-rust
-    fs.writeFileSync(path.join(tmpDir, 'flake.lock'), JSON.stringify({ nodes: { nixpkgs: {} } }), 'utf8');
-    try {
-      const result = execFileSync(process.execPath, [VALIDATOR, manifestFile], {
-        env: { ...process.env },
-        encoding: 'utf8',
-        stdio: ['pipe', 'pipe', 'pipe']
-      });
-      fs.rmSync(tmpDir, { recursive: true });
-      // Should have exited 0 if no errors, but E015 should fire
-      expect(result).not.toContain('E015'); // if somehow valid
-    } catch (err) {
-      fs.rmSync(tmpDir, { recursive: true });
-      expect(err.stderr).toMatch(/E015/);
-    }
-  });
-
-  test('valid: jss_rust_backend=false — no E015', () => {
-    const m = baseValid();
-    m.sovereign_mesh.jss_rust_backend = false;
-    const r = runValidator(m);
-    expect(stderrContains(r, 'E015')).toBe(false);
-  });
-});
+// ─── E015 retired 2026-04-25 ──────────────────────────────────────────────────
+// Was: `sovereign_mesh.jss_rust_backend = true` requires the `jss-rust` Nix
+// flake input pinned in flake.lock. The flake input was never declared and
+// the field had no consumer; the Rust pod adoption shipped as `solid-pod-rs`
+// (ADR-010) instead. Schema property dropped, validator rule removed.
 
 // ─── E019 ─────────────────────────────────────────────────────────────────────
 describe('E019: [toolchains.cuda]=true requires [gpu.backend]="local-cuda"', () => {
@@ -526,43 +499,37 @@ describe('E020: security exception block declared but feature gate not enabled',
   });
 });
 
-// ─── W021 ─────────────────────────────────────────────────────────────────────
-describe('W021: feature enabled but security exception block is missing', () => {
+// ─── E021 ─────────────────────────────────────────────────────────────────────
+// Renamed from W021 in 2026-04-25 — the rule was always pushed to errors[]
+// (blocking) but the W- prefix mislabelled it as advisory.
+describe('E021: feature enabled but security exception block is missing', () => {
   test('invalid: desktop.enabled=true but no security.exceptions.desktop block', () => {
     const m = baseValid();
     m.desktop = { enabled: true, stack: 'x11-openbox', resolution: '1920x1080' };
     // No security.exceptions.desktop declared
     m.security = { exceptions: {} };
     const r = runValidator(m);
-    expect(stderrContains(r, 'W021')).toBe(true);
+    expect(stderrContains(r, 'E021')).toBe(true);
     expect(r.stderr).toMatch(/security\.exceptions\.desktop/);
   });
 
   test('valid: desktop.enabled=true and security.exceptions.desktop is declared', () => {
     const m = baseValid();
     m.desktop = { enabled: true, stack: 'x11-openbox', resolution: '1920x1080' };
-    // Merge desktop exception alongside the playwright exception already in baseValid.
-    m.security = {
-      exceptions: {
-        playwright: { cap_add: ['SYS_ADMIN'], reason: 'chromium sandbox' },
-        desktop: { tmpfs: ['/tmp/.X11-unix', '/run/user/1000'] }
-      }
-    };
+    // Carry the baseValid exceptions (playwright, solid-pod-rs) and add desktop.
+    m.security.exceptions.desktop = { tmpfs: ['/tmp/.X11-unix', '/run/user/1000'] };
     const r = runValidator(m);
-    expect(stderrContains(r, 'W021')).toBe(false);
+    expect(stderrContains(r, 'E021')).toBe(false);
   });
 });
 
-// ─── E020 / W021 hardening exception edge cases ───────────────────────────────
+// ─── E020 / E021 hardening exception edge cases ───────────────────────────────
 
 // Edge case 1 (QE): key typo in security.exceptions creates a silent non-match.
-// [security.exceptions.playwrigt] (typo) with skills.browser.playwright=true:
-// E020 does NOT fire (the typo'd key "playwrigt" is unknown — not a documented
-// exception name — so isFeatureActive("playwrigt") returns false → E020 fires
-// for the orphaned typo'd block). W021 also fires because playwright is enabled
-// but its correct exception key is missing.
-describe('E020/W021 edge case: typo in exception key creates silent non-match', () => {
-  test('W021 fires for the correctly-spelled feature; E020 fires for the typo\'d orphan key', () => {
+// E020 fires for the orphaned typo'd block, E021 fires because the
+// correctly-spelled exception key is missing.
+describe('E020/E021 edge case: typo in exception key creates silent non-match', () => {
+  test('E021 fires for the correctly-spelled feature; E020 fires for the typo\'d orphan key', () => {
     const m = baseValid();
     m.skills.browser.playwright = true;
     // Typo: "playwrigt" instead of "playwright"
@@ -573,8 +540,8 @@ describe('E020/W021 edge case: typo in exception key creates silent non-match', 
     };
     const r = runValidator(m);
     expect(r.exitCode).not.toBe(0);
-    // W021 must fire: playwright is enabled but no correctly-spelled exception block exists.
-    expect(stderrContains(r, 'W021')).toBe(true);
+    // E021 must fire: playwright is enabled but no correctly-spelled exception block exists.
+    expect(stderrContains(r, 'E021')).toBe(true);
     expect(r.stderr).toMatch(/security\.exceptions\.playwright/);
     // E020 must fire: the typo'd block "playwrigt" has no matching enabled feature.
     expect(stderrContains(r, 'E020')).toBe(true);
@@ -587,7 +554,7 @@ describe('E020/W021 edge case: typo in exception key creates silent non-match', 
 // in cap_add, the validator must accept the manifest without flagging duplicates
 // (union is monotone; the compose generator deduplicates at emit time).
 // This test asserts only the validator acceptance — the Nix eval step is skipped.
-describe('E020/W021 edge case: multi-feature with overlapping cap_add accepted by validator', () => {
+describe('E020/E021 edge case: multi-feature with overlapping cap_add accepted by validator', () => {
   test.skip('validator accepts manifest with SYS_ADMIN in both desktop and playwright cap_add (Nix eval skipped)', () => {
     // Skipped: compose deduplication assertion requires a real Nix eval step.
     // Validator-only assertion is covered by the non-skipped sibling below.
@@ -597,16 +564,13 @@ describe('E020/W021 edge case: multi-feature with overlapping cap_add accepted b
     const m = baseValid();
     m.desktop = { enabled: true, stack: 'x11-openbox', resolution: '1920x1080' };
     m.skills.browser.playwright = true;
-    m.security = {
-      exceptions: {
-        desktop: { cap_add: ['SYS_ADMIN'], tmpfs: ['/tmp/.X11-unix:mode=1777,rw'], reason: 'test injection — desktop+playwright overlap' },
-        playwright: { cap_add: ['SYS_ADMIN'], reason: 'chromium sandbox' }
-      }
-    };
+    // Replace the desktop+playwright entries; keep the solid-pod-rs entry from baseValid.
+    m.security.exceptions.desktop = { cap_add: ['SYS_ADMIN'], tmpfs: ['/tmp/.X11-unix:mode=1777,rw'], reason: 'test injection — desktop+playwright overlap' };
+    m.security.exceptions.playwright = { cap_add: ['SYS_ADMIN'], reason: 'chromium sandbox' };
     const r = runValidator(m);
-    // Neither E020 (orphaned block) nor W021 (missing block) should fire.
+    // Neither E020 (orphaned block) nor E021 (missing block) should fire.
     expect(stderrContains(r, 'E020')).toBe(false);
-    expect(stderrContains(r, 'W021')).toBe(false);
+    expect(stderrContains(r, 'E021')).toBe(false);
   });
 });
 
@@ -698,7 +662,6 @@ describe('skills.ontology gate: enabled defaults to false and parses cleanly', (
     const m = baseValid();
     m.skills.ontology = { enabled: true };
     const r = runValidator(m);
-    // No validator error for a boolean-true gate
     expect(stderrContains(r, 'E016')).toBe(false);
   });
 
@@ -735,5 +698,152 @@ describe('E016: unknown manifest keys are rejected (UnknownManifestKey)', () => 
     const r = runValidator(m);
     expect(r.exitCode).toBe(0);
     expect(stderrContains(r, 'E016')).toBe(false);
+  });
+});
+
+// ─── W031 ─────────────────────────────────────────────────────────────────────
+// Recategorised from E031 in 2026-04-25 — NIP-04 vs NIP-17 is a direction
+// signal, not a hard config error. NIP-04 still works on the wire.
+describe('W031: relay.allow_nip04=true is advisory, not blocking', () => {
+  test('W031 fires + exits 0', () => {
+    const m = baseValid();
+    m.sovereign_mesh.relay = { enabled: true, allow_nip04: true, ingress_policy: 'signed-only', port: 7777 };
+    m.security.exceptions['nostr-relay'] = { reason: 'embedded relay' };
+    const r = runValidator(m);
+    expect(stderrContains(r, 'W031')).toBe(true);
+    expect(r.exitCode).toBe(0);
+  });
+});
+
+// ─── W038 ─────────────────────────────────────────────────────────────────────
+// Recategorised from E038 in 2026-04-25 — runtime-degraded condition (signal
+// files dropped) rather than a build-time config error.
+describe('W038: intelligence_signal env missing is advisory', () => {
+  test('W038 fires + exits 0 when no env is set', () => {
+    const m = baseValid();
+    m.consultants = { enabled: true, intelligence_signal: true, codex: { enabled: false } };
+    const r = runValidator(m, { AGENTBOX_INTELLIGENCE_DIR: '', WORKSPACE: '' });
+    expect(stderrContains(r, 'W038')).toBe(true);
+    expect(r.exitCode).toBe(0);
+  });
+
+  test('silent when AGENTBOX_INTELLIGENCE_DIR is set', () => {
+    const m = baseValid();
+    m.consultants = { enabled: true, intelligence_signal: true, codex: { enabled: false } };
+    const r = runValidator(m, { AGENTBOX_INTELLIGENCE_DIR: '/tmp/intel' });
+    expect(stderrContains(r, 'W038')).toBe(false);
+  });
+});
+
+// ─── E028 solid-pod-rs port collision ─────────────────────────────────────────
+describe('E028: relay.port must not collide with integrations.solid_pod_rs.port', () => {
+  test('E028 fires when relay.port == solid_pod_rs.port', () => {
+    const m = baseValid();
+    m.sovereign_mesh.relay = { enabled: true, port: 8484, ingress_policy: 'signed-only' };
+    m.security.exceptions['nostr-relay'] = { reason: 'embedded relay' };
+    m.integrations = { solid_pod_rs: { port: 8484, bind: '127.0.0.1' } };
+    const r = runValidator(m);
+    expect(stderrContains(r, 'E028')).toBe(true);
+    expect(r.stderr).toMatch(/integrations\.solid_pod_rs\.port/);
+  });
+});
+
+// ─── E030 escalation: open + bidirectional ────────────────────────────────────
+describe('E030: ingress_policy=open + external_fanout=bidirectional escalates W030', () => {
+  test('E030 fires (blocking) instead of W030', () => {
+    const m = baseValid();
+    m.sovereign_mesh.relay = {
+      enabled: true,
+      port: 7777,
+      ingress_policy: 'open',
+      external_fanout: 'bidirectional'
+    };
+    m.security.exceptions['nostr-relay'] = { reason: 'embedded relay' };
+    const r = runValidator(m);
+    expect(stderrContains(r, 'E030')).toBe(true);
+    expect(stderrContains(r, 'W030')).toBe(false);
+    expect(r.exitCode).not.toBe(0);
+  });
+});
+
+// ─── W039 allowlist with empty allowed_pubkeys ────────────────────────────────
+describe('W039: ingress_policy=allowlist with empty allowed_pubkeys', () => {
+  test('W039 fires when allowed_pubkeys is empty', () => {
+    const m = baseValid();
+    m.sovereign_mesh.relay = {
+      enabled: true,
+      port: 7777,
+      ingress_policy: 'allowlist',
+      allowed_pubkeys: []
+    };
+    m.security.exceptions['nostr-relay'] = { reason: 'embedded relay' };
+    const r = runValidator(m);
+    expect(stderrContains(r, 'W039')).toBe(true);
+    expect(r.exitCode).toBe(0);
+  });
+
+  test('silent when allowed_pubkeys is non-empty', () => {
+    const m = baseValid();
+    m.sovereign_mesh.relay = {
+      enabled: true,
+      port: 7777,
+      ingress_policy: 'allowlist',
+      allowed_pubkeys: ['npub1abc...']
+    };
+    m.security.exceptions['nostr-relay'] = { reason: 'embedded relay' };
+    const r = runValidator(m);
+    expect(stderrContains(r, 'W039')).toBe(false);
+  });
+});
+
+// ─── W041 dead-config privacy policy ──────────────────────────────────────────
+describe('W041: privacy_filter.enabled=false with non-default policy slots', () => {
+  test('W041 fires when policy is set but filter is disabled', () => {
+    const m = baseValid();
+    m.privacy_filter = {
+      enabled: false,
+      mode: 'off',
+      policy: { pods: 'strict', memory: 'soft' }
+    };
+    const r = runValidator(m);
+    expect(stderrContains(r, 'W041')).toBe(true);
+    expect(r.stderr).toMatch(/pods.*memory|memory.*pods/);
+    expect(r.exitCode).toBe(0);
+  });
+
+  test('silent when all policy slots are off', () => {
+    const m = baseValid();
+    m.privacy_filter = {
+      enabled: false,
+      mode: 'off',
+      policy: { pods: 'off', memory: 'off' }
+    };
+    const r = runValidator(m);
+    expect(stderrContains(r, 'W041')).toBe(false);
+  });
+});
+
+// ─── E037 zai gate ────────────────────────────────────────────────────────────
+// Added 2026-04-25: zai consultants depend on the `claude-zai` wrapper bundled
+// with toolchains.claude. Previously zai was silently exempt from E037.
+describe('E037: consultants.zai requires toolchains.claude', () => {
+  test('E037 fires when toolchains.claude is false', () => {
+    const m = baseValid();
+    m.toolchains.claude = false;
+    m.providers = m.providers || {};
+    m.providers.zai = { enabled: true, env_var: 'ZAI_API_KEY' };
+    m.consultants = { enabled: true, zai: { enabled: true } };
+    const r = runValidator(m, { ZAI_API_KEY: 'sk-zai-test' });
+    expect(stderrContains(r, 'E037')).toBe(true);
+    expect(r.stderr).toMatch(/toolchains\.claude=true/);
+  });
+
+  test('silent when toolchains.claude is true', () => {
+    const m = baseValid();
+    m.providers = m.providers || {};
+    m.providers.zai = { enabled: true, env_var: 'ZAI_API_KEY' };
+    m.consultants = { enabled: true, zai: { enabled: true } };
+    const r = runValidator(m, { ZAI_API_KEY: 'sk-zai-test' });
+    expect(stderrContains(r, 'E037')).toBe(false);
   });
 });

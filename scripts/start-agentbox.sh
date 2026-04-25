@@ -927,18 +927,17 @@ section_sovereign_mesh() {
   local raw
   raw="$(wt_checklist "Sovereign Mesh" \
     "Nostr identity, NIP-98 auth, inter-agent messaging daemons" \
-    20 78 7 \
+    20 78 6 \
     "sovereign_mesh.enabled"              "Sovereign mesh core"            "$(on_off sovereign_mesh.enabled)" \
     "sovereign_mesh.solid_pod"            "Solid-style pod service"        "$(on_off sovereign_mesh.solid_pod)" \
     "sovereign_mesh.nostr_bridge"         "Nostr bridge scaffold"          "$(on_off sovereign_mesh.nostr_bridge)" \
     "sovereign_mesh.https_bridge"         "HTTPS bridge"                   "$(on_off sovereign_mesh.https_bridge)" \
     "sovereign_mesh.publish_agent_events" "Publish agent events to Nostr"  "$(on_off sovereign_mesh.publish_agent_events)" \
-    "sovereign_mesh.telegram_mirror"      "Telegram mirror (CTM)"          "$(on_off sovereign_mesh.telegram_mirror)" \
-    "sovereign_mesh.jss_rust_backend"     "JSS Rust backend"               "$(on_off sovereign_mesh.jss_rust_backend)")"
+    "sovereign_mesh.telegram_mirror"      "Telegram mirror (CTM)"          "$(on_off sovereign_mesh.telegram_mirror)")"
 
   for k in sovereign_mesh.enabled sovereign_mesh.solid_pod sovereign_mesh.nostr_bridge \
             sovereign_mesh.https_bridge sovereign_mesh.publish_agent_events \
-            sovereign_mesh.telegram_mirror sovereign_mesh.jss_rust_backend; do
+            sovereign_mesh.telegram_mirror; do
     echo "${raw}" | grep -qw "${k}" && state_set_bool "${k}" "true" || state_set_bool "${k}" "false"
   done
   validate_candidate

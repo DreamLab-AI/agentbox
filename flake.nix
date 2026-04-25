@@ -94,28 +94,31 @@
         # 1. ruvector — always enabled; replaces npx in [program:ruvector] supervisor block.
         #    nix-prefetch-url https://registry.npmjs.org/ruvector/-/ruvector-0.2.23.tgz
         ruvectorPkg = mkNpmCli {
-          pkgName = "ruvector";
-          version = "0.2.23";
-          sha256  = "sha256-IUSAj/MLpdBt2N/joQ1n6QM/u5gVA+1CMCO++hV+dfY=";
-          bin     = "ruvector";
+          pkgName         = "ruvector";
+          version         = "0.2.23";
+          sha256          = "sha256-IUSAj/MLpdBt2N/joQ1n6QM/u5gVA+1CMCO++hV+dfY=";
+          nodeModulesHash = lib.fakeHash;
+          bin             = "ruvector";
         };
 
         # 2. @claude-flow/cli — gated by toolchains.claude_flow.
         #    nix-prefetch-url https://registry.npmjs.org/%40claude-flow/cli/-/cli-3.5.80.tgz
         claudeFlowPkg = mkNpmCli {
-          pkgName = "@claude-flow/cli";
-          version = "3.5.80";
-          sha256  = "sha256-7egZQtT2iKVXtrPWByc1zk9/TLbcDKO1nr+B+sqeQ88=";
-          bin     = "claude-flow";
+          pkgName         = "@claude-flow/cli";
+          version         = "3.5.80";
+          sha256          = "sha256-7egZQtT2iKVXtrPWByc1zk9/TLbcDKO1nr+B+sqeQ88=";
+          nodeModulesHash = lib.fakeHash;
+          bin             = "claude-flow";
         };
 
         # 3. ruflo — gated by toolchains.ruflo.
         #    nix-prefetch-url https://registry.npmjs.org/ruflo/-/ruflo-3.5.80.tgz
         rufloPkg = mkNpmCli {
-          pkgName = "ruflo";
-          version = "3.5.80";
-          sha256  = "sha256-7/e9G/Ggm+MB6TwAEnxUZ7pe9qCDp5qrm5v4fF6fq4I=";
-          bin     = "ruflo";
+          pkgName         = "ruflo";
+          version         = "3.5.80";
+          sha256          = "sha256-7/e9G/Ggm+MB6TwAEnxUZ7pe9qCDp5qrm5v4fF6fq4I=";
+          nodeModulesHash = lib.fakeHash;
+          bin             = "ruflo";
         };
 
         # 4. agentic-qe — gated by toolchains.agentic_qe.
@@ -125,41 +128,38 @@
         #      [[ "${ENABLE_AGENTIC_QE:-false}" == "true" ]] && aqe init --auto || true
         #    nix-prefetch-url https://registry.npmjs.org/agentic-qe/-/agentic-qe-3.9.15.tgz
         agenticQePkg = mkNpmCli {
-          pkgName = "agentic-qe";
-          version = "3.9.15";
-          sha256  = "sha256-9CjwZt9bbJCIxyR8qy1snrXdAIAppxMiqwg5NooukVg=";
-          bin     = "aqe";
+          pkgName         = "agentic-qe";
+          version         = "3.9.15";
+          sha256          = "sha256-9CjwZt9bbJCIxyR8qy1snrXdAIAppxMiqwg5NooukVg=";
+          nodeModulesHash = lib.fakeHash;
+          bin             = "aqe";
         };
 
         # 5. nagual-qe — gated by toolchains.nagual_qe.
-        #    BLOCKED: not published to the public npm registry as of 2026-04-23.
-        #    Evaluation throws (fakeHash guard) if nagual_qe = true in agentbox.toml.
-        #    Keep toolchains.nagual_qe = false until package is published.
-        #    When available: nix-prefetch-url https://registry.npmjs.org/nagual-qe/-/nagual-qe-<ver>.tgz
-        nagualQePkg = mkNpmCli {
-          pkgName = "nagual-qe";
-          version = "1.0.0";
-          sha256  = lib.fakeHash;
-          bin     = "nagual-qe";
-        };
+        #    Built from source via lib/nagual-qe.nix (Rust crate, not on npm).
+        #    See that file for version/rev pinning + Cargo feature defaults.
+        #    Definition lives further down alongside solid-pod-rs (matched
+        #    Rust-build pattern).
 
         # 6. codebase-memory-mcp — gated by toolchains.codebase_memory.
         #    nix-prefetch-url https://registry.npmjs.org/codebase-memory-mcp/-/codebase-memory-mcp-0.6.0.tgz
         codebaseMemoryPkg = mkNpmCli {
-          pkgName = "codebase-memory-mcp";
-          version = "0.6.0";
-          sha256  = "sha256-aZ2msekZEaO/CHAGSLiFtkyZKNZnEhCVNOyKVEf3FYk=";
-          bin     = "codebase-memory-mcp";
+          pkgName         = "codebase-memory-mcp";
+          version         = "0.6.0";
+          sha256          = "sha256-aZ2msekZEaO/CHAGSLiFtkyZKNZnEhCVNOyKVEf3FYk=";
+          nodeModulesHash = lib.fakeHash;
+          bin             = "codebase-memory-mcp";
         };
 
         # 7. agent-browser — gated by skills.browser.agent_browser.
         #    CHROME_PATH injected via extraEnv so agent-browser finds Nix-store Chromium.
         #    nix-prefetch-url https://registry.npmjs.org/agent-browser/-/agent-browser-0.26.0.tgz
         agentBrowserPkg = mkNpmCli {
-          pkgName  = "agent-browser";
-          version  = "0.26.0";
-          sha256   = "sha256-ikjPQRDX3CwSwcTW0l4Lq9+jFgS1N/Bd8NyDX+L4VL8=";
-          bin      = "agent-browser";
+          pkgName         = "agent-browser";
+          version         = "0.26.0";
+          sha256          = "sha256-ikjPQRDX3CwSwcTW0l4Lq9+jFgS1N/Bd8NyDX+L4VL8=";
+          nodeModulesHash = lib.fakeHash;
+          bin             = "agent-browser";
           extraEnv = {
             CHROME_PATH = "${pkgs.chromium}/bin/chromium";
           };
@@ -170,10 +170,11 @@
         #    Distinct from skills/playwright/mcp-server (local project, Phase 1).
         #    nix-prefetch-url https://registry.npmjs.org/playwright/-/playwright-1.59.1.tgz
         playwrightCliPkg = mkNpmCli {
-          pkgName  = "playwright";
-          version  = "1.59.1";
-          sha256   = "sha256-emiKclkp8jJbNFmXhFscpQrOd5jnauSbYVFvg+CDiO8=";
-          bin      = "playwright";
+          pkgName         = "playwright";
+          version         = "1.59.1";
+          sha256          = "sha256-emiKclkp8jJbNFmXhFscpQrOd5jnauSbYVFvg+CDiO8=";
+          nodeModulesHash = lib.fakeHash;
+          bin             = "playwright";
           extraEnv = {
             PLAYWRIGHT_BROWSERS_PATH = "${pkgs.playwright-driver.browsers}";
           };
@@ -183,19 +184,22 @@
         #    Binary name is mmdc (upstream convention).
         #    nix-prefetch-url https://registry.npmjs.org/%40mermaid-js/mermaid-cli/-/mermaid-cli-11.12.0.tgz
         mermaidCliPkg = mkNpmCli {
-          pkgName = "@mermaid-js/mermaid-cli";
-          version = "11.12.0";
-          sha256  = "sha256-xZ4rfsAQ16J6RbSt3N6Xl4xkSx6ZZgnjlxTqUtiSaDc=";
-          bin     = "mmdc";
+          pkgName         = "@mermaid-js/mermaid-cli";
+          version         = "11.12.0";
+          sha256          = "sha256-xZ4rfsAQ16J6RbSt3N6Xl4xkSx6ZZgnjlxTqUtiSaDc=";
+          nodeModulesHash = lib.fakeHash;
+          bin             = "mmdc";
         };
 
-        # ruvector is always included; rest are feature-gated.
+        # ruvector is always included; rest are feature-gated. nagual-qe is
+        # NOT in this list — it is a Rust source build wired via nagualQePkg
+        # alongside solid-pod-rs (see further down) and added to the package
+        # set via nagualQePackages.
         npmCliAlwaysPackages = [ ruvectorPkg ];
         npmCliGatedPackages =
           lib.optionals (toolchainCfg.claude_flow or false)       [ claudeFlowPkg ]
           ++ lib.optionals (toolchainCfg.ruflo or false)           [ rufloPkg ]
           ++ lib.optionals (toolchainCfg.agentic_qe or false)      [ agenticQePkg ]
-          ++ lib.optionals (toolchainCfg.nagual_qe or false)       [ nagualQePkg ]
           ++ lib.optionals (toolchainCfg.codebase_memory or false)  [ codebaseMemoryPkg ]
           ++ lib.optionals (browserCfg.agent_browser or false)     [ agentBrowserPkg ]
           ++ lib.optionals (browserCfg.playwright or false)        [ playwrightCliPkg ]
@@ -550,6 +554,20 @@
         solidPodRsPackages = lib.optionals solidPodRsActive [ solidPodRsPkg ];
 
         # ---------------------------------------------------------------------------
+        # nagual-qe — Rust QE knowledge system (proffesor-for-testing/nagual-qe).
+        # Gate: toolchains.nagual_qe = true.
+        # Built from source — there is no npm publication. Lives next to
+        # solid-pod-rs because both are first-party Rust source builds via
+        # buildRustPackage with a hash-verified Cargo vendor FOD.
+        # ---------------------------------------------------------------------------
+        nagualQeLib = import ./lib/nagual-qe.nix { inherit lib pkgs; };
+        nagualQePkg =
+          if (toolchainCfg.nagual_qe or false)
+          then nagualQeLib.makeNagualQe { }
+          else null;
+        nagualQePackages = lib.optionals (toolchainCfg.nagual_qe or false) [ nagualQePkg ];
+
+        # ---------------------------------------------------------------------------
         # Embedded Nostr relay (ADR-009 / PRD-004).
         # Gate: sovereign_mesh.relay.enabled = true AND implementation in the
         # Nix-packageable set {nostr-rs-relay, rnostr}. External / off variants
@@ -689,6 +707,7 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           ++ privacyFilterPackages
           ++ relayPackages
           ++ solidPodRsPackages
+          ++ nagualQePackages
           ++ desktopPackages
           ++ geminiCliPackages
           ++ codexPackages
