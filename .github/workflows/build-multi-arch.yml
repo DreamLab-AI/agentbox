@@ -81,8 +81,12 @@ jobs:
           echo "size_mb=$size_mb"       >> "$GITHUB_OUTPUT"
           echo "Nix closure: ${size_mb} MB (${size_bytes} bytes)"
 
-      - name: Load image into Docker
-        run: docker load < result
+      - name: Load image into Docker (via nix2container copyToDockerDaemon)
+        # `result` is the nix2container OCI manifest JSON, not a tarball, so
+        # `docker load` cannot consume it directly. The flake's runtime
+        # output exposes a `copyToDockerDaemon` script that uses skopeo to
+        # talk to the local docker socket.
+        run: nix run .#runtime.copyToDockerDaemon
 
       - name: Record compressed image size
         id: compressed

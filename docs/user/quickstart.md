@@ -140,11 +140,11 @@ This gate is a **prepared placeholder** — the MCP server and associated toolin
 
 ## 2. Build The Image
 
-Agentbox is built with Nix (a reproducible package manager). The `flake.nix` file composes packages, skills and toolchains into a Docker image based on your manifest — no Dockerfile, no layer drift between rebuilds. `nix build .#runtime` produces an image tarball in `./result`, then `docker load` imports it.
+Agentbox is built with Nix (a reproducible package manager). The `flake.nix` file composes packages, skills and toolchains into a Docker image based on your manifest — no Dockerfile, no layer drift between rebuilds. `nix build .#runtime` produces a [nix2container](https://github.com/nlewo/nix2container) OCI manifest at `./result`; the runtime exposes a `copyToDockerDaemon` helper that loads the image into the local Docker daemon via skopeo (no intermediate tarball, no layer copies).
 
 ```bash
 nix build .#runtime
-docker load < result
+nix run .#runtime.copyToDockerDaemon
 ```
 
 Optional variants:

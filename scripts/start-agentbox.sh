@@ -868,7 +868,9 @@ case "${action}" in
   build|build-load)
     ensure_command_with_install nix "Nix with flakes" "nix" || { echo "Nix required for image build."; exit 1; }
     nix build .#runtime
-    docker load < result
+    # nix2container output is an OCI manifest JSON (not a tarball); load via
+    # the flake's copyToDockerDaemon helper which uses skopeo internally.
+    nix run .#runtime.copyToDockerDaemon
     echo "Image loaded."
     if [[ "${action}" == "build-load" ]]; then
       ensure_docker_ready && docker compose up -d && docker compose ps

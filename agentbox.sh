@@ -509,7 +509,9 @@ cmd_up() {
         echo -e "${CYAN}Building Nix runtime image...${NC}"
         nix build .#runtime
         echo -e "${CYAN}Loading image into Docker...${NC}"
-        docker load < result
+        # nix2container output is an OCI manifest JSON, not a tarball;
+        # copyToDockerDaemon uses skopeo to load directly into the daemon.
+        nix run .#runtime.copyToDockerDaemon
         # Unset any pre-existing override so compose uses the default local tag
         unset AGENTBOX_IMAGE_REF
     fi
@@ -640,7 +642,7 @@ cmd_build() {
     echo -e "  Result  : ${result_path}"
     echo ""
     echo "To load into Docker:"
-    echo "  docker load < result"
+    echo "  nix run .#runtime.copyToDockerDaemon"
     echo "Or use: $0 up --build"
 }
 

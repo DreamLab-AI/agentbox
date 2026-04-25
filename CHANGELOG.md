@@ -4,6 +4,54 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### `nix build .#runtime` now succeeds end-to-end on a clean clone (2026-04-25)
+
+Six chained defects between `nix build .#runtime` and a usable OCI image. Every one was hidden behind `|| true` in `lib/npm-cli.nix` since the helper was first written; removing that absorption (commit `133d1da4`) surfaced every defect. Each fixed in dependency order in commit `f0461f91`:
+
+1. **`lib/npm-cli.nix` — sandbox TLS + HOME.** Cold sandbox had no CA trust store and `HOME=/homeless-shelter` (deliberately unwritable). Added `pkgs.cacert` to `nativeBuildInputs`; export `HOME=$TMPDIR`, `SSL_CERT_FILE`, `NODE_EXTRA_CA_CERTS` before `npm install`.
+2. **`lib/npm-cli.nix` — peer-dep conflicts.** Upstream `@claude-flow/aidefence` declares `peerOptional agentdb@">=2.0.0-alpha.1"` against the root's alpha-3.7; `@opentelemetry/api` has `>=1.0.0 <1.8.0` vs `^1.8.0` drift. Added `--legacy-peer-deps`.
+3. **`lib/npm-cli.nix` — Nix `''` lexer trap.** JS empty-string literals (`''`) inside the `installPhase` heredoc terminated the Nix string; even the comments warning about it tripped it. Replaced every literal `''` with `[].join()` stored in `EMPTY` const. Same pattern applied in `lib/npm-services.nix`.
+4. **`lib/npm-services.nix` — same peer-dep class on `buildNpmPackage` services.** Added `npmFlags = [ "--legacy-peer-deps" ]`.
+5. **`lib/npm-services.nix` — symlink mismatch.** `postInstall` built `$out/package → $out/lib/node_modules/<nix-name>` but `buildNpmPackage` installs under the `package.json "name"` field. 5 of 6 services had names that differed (`management-api` → `agentic-flow-management-api`, `nostr-bridge` → `mcp-secure-scripts`, `lazy-fetch-mcp` → `lazy-fetch`, `playwright-mcp` → `playwright-mcp-server`, `comfyui-mcp` → `comfyui-mcp-server`). `postInstall` now reads the real name at build time via `node -e`, asserts the directory exists, and stamps the resolved store path into both the `$out/bin` wrapper and the `$out/package` symlink.
+6. **`mcp/package-lock.json` — stale lockfile.** `package.json` declared `nostr-tools ^2.23.3` but the lockfile only had `ws`. `buildNpmPackage`'s `only-if-cached` install hit `ENOTCACHED`. Regenerated lockfile with `npm install --package-lock-only --legacy-peer-deps`; re-prefetched the `npmDepsHash`.
+7. **`flake.nix` `appRoot` — read-only store copies.** `cp -r ${./mcp}` and friends arrived with the store's read-only bits, so subsequent overlay writes (node_modules, optional skill mcp-servers) hit `Permission denied`. One `chmod -R u+w $out/opt/agentbox` after the base copies, before any overlay.
+
+`nix build .#runtime --no-link -L` now produces `/nix/store/…-image-agentbox.json` in <2 min on a warm store, ~25-40 min cold. All 14 workflow YAMLs still YAML-valid.
+
+### `docker load < result` replaced with `nix run .#runtime.copyToDockerDaemon` (2026-04-25)
+
+`nix2container` outputs an OCI manifest JSON, not a `docker save` tarball — `docker load < result` returns `archive/tar: invalid tar header`. The flake's `runtime` output exposes a `copyToDockerDaemon` helper that uses skopeo to load directly into the local daemon. Fixed in:
+
+- `.github/workflows/build-multi-arch.yml`
+- `agentbox.sh` (`cmd_up --build` and `cmd_build` final-message)
+- `scripts/start-agentbox.sh` (action menu)
+- `docs/user/quickstart.md` (Build the Image step)
+- `docs/user/troubleshooting.md` (new "invalid tar header" entry)
+
+### CI/CD refresh (2026-04-25)
+
+Six new workflows + three updates + a prefetch helper. Full description in commit `0d8569f3`. Highlights:
+
+**New PR gates** (all required via the new `ci.yml` aggregate):
+- `manifest-validate.yml` — `agentbox config validate`, fixture round-trip, expected-error-code assertions, W-code advisory-vs-error audit.
+- `runtime-contract.yml` — discovers and runs every `tests/runtime-contract/RC-*.sh`.
+- `shellcheck.yml` — `error` severity blocks; `warning` informational.
+- `ci.yml` — aggregate "CI passed" status check for branch protection.
+
+**New post-merge / scheduled:**
+- `image-scan.yml` — Trivy HIGH/CRITICAL gate + full-severity SARIF + CycloneDX + SPDX SBOMs to the Security tab and artefact store.
+- `release.yml` — `v*` tag → extract CHANGELOG section + attach SBOMs + create GitHub Release; pre-release flag from `-alpha/-beta/-rc` suffix.
+
+**Updated:**
+- `build-multi-arch.yml` — Cachix TODO placeholders cleared, configurable via `CACHIX_CACHE_NAME` repo variable; closure + compressed image size captured to step summary; PRD-001 §8 5-GB compressed-size ceiling enforced; `nix run .#runtime.copyToDockerDaemon` replaces `docker load < result`.
+- `flake-check.yml` — same Cachix cleanup; adds eval of `.#runtime.drvPath` and `.#compose.drvPath` to catch derivation-level regressions `--no-build` skips.
+- `contract-tests.yml` — path triggers broadened to `mcp/nostr-bridge/`, `scripts/opf-router.py`, `management-api/package-lock.json`; push-to-main trigger added.
+
+**New helper:**
+- `scripts/prefetch-hashes.sh` (180 lines) — one-shot helper that walks every `lib.fakeHash` site, runs the appropriate `nix-prefetch-*` command, and patches the result into source. Idempotent; supports `--dry-run` and `--service` filters.
+
+**Validator improvements** (commit `133d1da4`): `W030` and `W034` now route to a separate `warnings` array — printed to stderr but exit 0 — so advisory direction signals can no longer regress into fail-closed behaviour. `W021` stays in `errors` (intentional fail-closed; documented).
+
 ### solid-pod-rs Sprint 5-9 absorption (2026-04-24)
 
 Upstream `main` moved 8 commits past the `v0.4.0-alpha.1` tag with
