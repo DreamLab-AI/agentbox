@@ -230,6 +230,52 @@ LIONDocument
 - Every `@id` in a LIONDocument is an absolute IRI or a base-relative IRI under the document's surface.
 - LIONDocuments may not redefine `@protected` terms in the inherited surface's context.
 
+### URICanonicaliser
+
+Owns the URI grammar (ADR-013). Stateless mint+resolve service used by every surface emitter and by the `/v1/uri/<urn>` resolver route.
+
+```
+URICanonicaliser
+  +-- KINDS: Map<kind, KindSpec>            // see ADR-013 §1
+  +-- mint({ kind, npub, payload, localId }) → uri
+  +-- resolveCanonical(uri, { managementApiBase, podBase }) → IRI | null
+  +-- parse(uri) → { scheme, kind, npub, local } | null
+  +-- isCanonical(uri) → boolean
+```
+
+**Consistency boundary**: stateless. Every call to `mint` is deterministic on its inputs; every call to `parse` and `isCanonical` is a pure regex match against the grammar.
+
+**Invariants**:
+
+- L13 (uniqueness) — `mint(input₁) === mint(input₂)` if and only if the inputs are deeply equal.
+- L14 (resolvability is best-effort) — `resolveCanonical` returns either an HTTPS IRI or `null`; it never raises and never blocks on I/O.
+- L15 (kinds are closed) — adding a kind is a code change to `KINDS`; an unknown kind raises `UnknownUriKind` at `mint` time and returns 404 at `/v1/uri/<urn>`.
+
+### ViewerSurface
+
+Models the S12 surface — the JSON-LD-aware browser at `/lo/*`. The viewer is one implementation among many behind a stable pane-manifest contract.
+
+```
+ViewerSurface
+  +-- impl: "local-linkedobjects" | "external" | "off"
+  +-- enabled: boolean
+  +-- mountPath: string                       // default "/lo"
+  +-- bundlePath: string                      // /opt/agentbox/browser when impl = local
+  +-- externalUrl: string | null              // when impl = external
+  +-- panesDir: filesystemPath                // built-in panes
+  +-- buildPaneManifest(opts) → PaneManifest
+  +-- buildInfo: { name, version, source, license, rev }
+  +-- sourceCodeHeader: URL                   // AGPL §13
+```
+
+**Consistency boundary**: singleton per process. Resolved at boot from `[linked_data.viewer]`. Mutations (operator adding a pane via `extra_panes`) are picked up on the next manifest request — there's no live reload of the bundle, only of the manifest.
+
+**Invariants**:
+
+- L16 (no traversal) — pane requests at `/lo/panes/<file>` reject `..`, `/`, and `\` in the file name; bundle requests resolve to a path under `bundlePath` (verified by `path.startsWith`).
+- L17 (AGPL §13 header) — every response from `/lo/*` carries a `Source-Code` HTTP header pointing at the upstream repository.
+- L18 (manifest is authoritative) — adding a pane is a one-line manifest operation; the agentbox first-party code never imports a pane directly.
+
 ## Numbered invariants
 
 Each invariant maps to a testable predicate in `tests/contract/linked-data/invariants.spec.js`.
@@ -248,6 +294,12 @@ Each invariant maps to a testable predicate in `tests/contract/linked-data/invar
 | **L10** | The encoder is a no-op when `[linked_data].enabled = false`; the dispatch path bypasses the middleware entirely. | `encoderNoOpWhenDisabled()` |
 | **L11** | Every emitted LinkedResource is valid JSON-LD 1.1 per the W3C Test Suite expand+compact tests. | `everyEmittedResourceIsValidJsonld()` |
 | **L12** | Every emitted LinkedResource satisfies `compact(expand(bytes), contextIRI) == bytes`. | `roundTripIsByteIdentical()` |
+| **L13** | `uris.mint(input₁) === uris.mint(input₂)` iff inputs are deeply equal. | `uri.uniqueness()` |
+| **L14** | `uris.resolveCanonical` returns IRI or null; never raises, never blocks on I/O. | `resolverIsPureFunction()` |
+| **L15** | Unknown kinds raise `UnknownUriKind` at mint, return 404 at `/v1/uri/<urn>`. | `unknownKindRejected()` |
+| **L16** | Pane requests reject `..` / `/` / `\` traversal. Bundle requests resolve under `bundlePath`. | `viewerRejectsTraversal()` |
+| **L17** | Every `/lo/*` response carries `Source-Code` header (AGPL §13). | `viewerSourceCodeHeader()` |
+| **L18** | Adding a pane is a one-line manifest operation; agentbox first-party code never imports panes. | `paneRegistryIsDataDriven()` |
 
 ## Domain events
 

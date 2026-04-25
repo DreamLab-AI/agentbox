@@ -286,6 +286,22 @@ publish_to_well_known = true
 [linked_data.privacy_handoff]
 order = "after"   # documentation only — the order is fixed in code (E048)
 
+# Linked-Object Viewer slot (S12 — PRD-006 §15 / ADR-013).
+# A JSON-LD-aware browser at /lo/* that renders every PRD-006 surface.
+# Default off — turning it on materialises linkedobjects/browser into
+# the image at /opt/agentbox/browser/. Pane manifest at /lo/manifest.json.
+# Validation rules: E050-E054, W053.
+[linked_data.viewer]
+mode                 = "off"     # off | local-linkedobjects | external
+mount_path           = "/lo"
+bundle_path          = "/opt/agentbox/browser"
+external_url         = ""
+sri_hash             = ""
+expose_port          = false
+extra_panes          = []
+upstream_panes_visible = true
+source_code_header   = ""        # default = upstream repo URL (AGPL §13)
+
 [toolchains]
 claude = true
 ruflo = true

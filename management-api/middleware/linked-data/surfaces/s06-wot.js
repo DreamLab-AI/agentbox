@@ -14,6 +14,7 @@
 
 const WOT_CONTEXT = 'https://www.w3.org/2019/wot/td/v1.1';
 const AGBX_CONTEXT = 'https://agentbox.dreamlab-ai.systems/ns/v1#';
+const uris = require('../../../lib/uris');
 
 module.exports = {
   id: 'S6',
@@ -36,7 +37,7 @@ module.exports = {
     const doc = {
       '@context': [WOT_CONTEXT, AGBX_CONTEXT, 'http://schema.org/'],
       '@type': ['Thing', 'Capability', 'schema:SoftwareApplication'],
-      id: `urn:agentbox:mcp:${sid}`,
+      id: uris.mint({ kind: 'mcp', localId: sid }),
       title: payload.title || sid,
       description: payload.description || `MCP server ${sid}`,
       version: payload.version || '0.0.0',

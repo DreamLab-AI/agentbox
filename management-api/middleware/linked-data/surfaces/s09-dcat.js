@@ -15,6 +15,7 @@
 const DCAT_CONTEXT = 'https://www.w3.org/ns/dcat#';
 const PROV_CONTEXT = 'http://www.w3.org/ns/prov-o#';
 const AGBX_CONTEXT = 'https://agentbox.dreamlab-ai.systems/ns/v1#';
+const uris = require('../../../lib/uris');
 
 module.exports = {
   id: 'S9',
@@ -35,9 +36,10 @@ module.exports = {
     const datasets = payload.namespaces.map((ns) => {
       if (!ns.name) throw new Error('S9 encode: every namespace must have a name');
       const ds = {
+        '@id': uris.mint({ kind: 'dataset', npub: ns.owner || agentDid, localId: ns.name }),
         '@type': 'dcat:Dataset',
         'dcterms:title': ns.name,
-        'dcterms:identifier': `urn:agentbox:memory:${ns.name}`,
+        'dcterms:identifier': uris.mint({ kind: 'memory', localId: ns.name }),
         'dcterms:modified': ns.modifiedAt || new Date().toISOString(),
       };
       if (ns.description) ds['dcterms:description'] = ns.description;

@@ -16,6 +16,7 @@
 
 const PROV_CONTEXT = 'http://www.w3.org/ns/prov-o#';
 const AGBX_CONTEXT = 'https://agentbox.dreamlab-ai.systems/ns/v1#';
+const uris = require('../../../lib/uris');
 
 module.exports = {
   id: 'S5',
@@ -30,7 +31,20 @@ module.exports = {
   contextIri: PROV_CONTEXT,
 
   async encode(payload, { agentDid }) {
-    const id = payload?.id || `urn:uuid:${_uuid()}`;
+    const id = uris.isCanonical(payload?.id)
+      ? payload.id
+      : uris.mint({
+          kind: 'activity',
+          npub: agentDid || payload?.actor,
+          payload: {
+            action: payload?.action || null,
+            slot: payload?.slot || null,
+            operation: payload?.operation || null,
+            startedAt: payload?.startedAt || payload?.timestamp || null,
+            input: payload?.input || null,
+            output: payload?.output || null,
+          },
+        });
     const startedAt = payload?.startedAt || payload?.timestamp || new Date().toISOString();
     const endedAt = payload?.endedAt || startedAt;
 
@@ -75,13 +89,3 @@ function _coerceOne(x) {
   return { '@type': 'prov:Entity', 'agbx:value': String(x) };
 }
 
-function _uuid() {
-  try { return require('crypto').randomUUID(); }
-  catch {
-    const b = require('crypto').randomBytes(16);
-    b[6] = (b[6] & 0x0f) | 0x40;
-    b[8] = (b[8] & 0x3f) | 0x80;
-    const h = b.toString('hex');
-    return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;
-  }
-}

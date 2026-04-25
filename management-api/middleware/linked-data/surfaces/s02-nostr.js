@@ -14,6 +14,7 @@
  */
 
 const CONTEXT_IRI = 'https://agentbox.dreamlab-ai.systems/ns/v1#';
+const uris = require('../../../lib/uris');
 
 module.exports = {
   id: 'S2',
@@ -47,7 +48,8 @@ module.exports = {
     const verb = (payload && payload.verb) || (payload && payload.type) || 'note';
     doc['@type'] = verbToType[verb] || 'as:Activity';
 
-    if (payload && payload.id) doc['@id'] = payload.id;
+    if (uris.isCanonical(payload && payload.id)) doc['@id'] = payload.id;
+    else if (agentDid) doc['@id'] = uris.mint({ kind: 'envelope', npub: agentDid, payload });
     if (agentDid) doc['as:actor'] = agentDid;
 
     if (payload && payload.recipient) {

@@ -772,6 +772,52 @@
               "description": "Always after. The validator rejects any other value (E048)."
             }
           }
+        },
+        "viewer": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Linked-Object Viewer slot (S12, PRD-006 §15). Mounts a JSON-LD-aware browser at /lo/* that renders every PRD-006 surface. Pane manifest at /lo/manifest.json. Default off. Validation rules: E050–E054, W053.",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": ["off", "local-linkedobjects", "external"],
+              "description": "off (default), local-linkedobjects (bundle linkedobjects/browser into the image at /opt/agentbox/browser; AGPL-3.0), external (operator-supplied URL)."
+            },
+            "mount_path": {
+              "type": "string",
+              "description": "URL prefix for the viewer surface. Default /lo. Must start with / and contain no trailing slash.",
+              "pattern": "^/[A-Za-z0-9_\\-]+$"
+            },
+            "bundle_path": {
+              "type": "string",
+              "description": "Override for the on-disk bundle root. Default /opt/agentbox/browser. Used when mode = local-linkedobjects."
+            },
+            "external_url": {
+              "type": "string",
+              "description": "External viewer URL when mode = external (E051)."
+            },
+            "sri_hash": {
+              "type": "string",
+              "description": "Optional Subresource Integrity hash for external bundles. SHA-{256,384,512}-base64 form (E052)."
+            },
+            "expose_port": {
+              "type": "boolean",
+              "description": "Whether /lo/* is reachable from outside the host. Default false (loopback only)."
+            },
+            "extra_panes": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Operator-supplied pane URLs or filesystem paths layered on top of built-in + upstream panes."
+            },
+            "upstream_panes_visible": {
+              "type": "boolean",
+              "description": "Show upstream linkedobjects/browser panes in the manifest. Default true."
+            },
+            "source_code_header": {
+              "type": "string",
+              "description": "Override for the Source-Code response header. Default = upstream repo URL (AGPL §13 compliance)."
+            }
+          }
         }
       }
     }

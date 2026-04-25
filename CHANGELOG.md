@@ -4,6 +4,103 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Viewer slot + canonical URI grammar — PRD-006 §15-§16 / ADR-013 / DDD-004 §URICanonicaliser §ViewerSurface (2026-04-25)
+
+Two aligned additions extending the linked-data work shipped earlier today:
+
+**S12 — Linked-Object Viewer.** A new federation surface mounting an
+interactive JSON-LD-aware browser at `/lo/*` so every PRD-006 emit
+surface (S1–S11) is one URL away. First implementation:
+[linkedobjects/browser](https://github.com/linkedobjects/browser)
+(Melvin Carvalho et al., AGPL-3.0), pinned via `lib/linkedobjects-browser.nix`
+to commit `8260dc5`. The slot accepts other viewer implementations
+behind the same `/lo/manifest.json` contract — operators can swap to
+an external instance without rebuilding the image. Six agentbox-specific
+built-in panes ship under `management-api/middleware/linked-data/viewer/panes/`:
+
+- `vc-pane.js` — S3 VCs and S8 payment receipts/mandates
+- `provenance-pane.js` — S5 PROV-O records and S11 agent-event streams
+- `capability-pane.js` — S6 WoT Thing Descriptions
+- `runtime-pane.js` — S11 RuntimeContract
+- `dcat-pane.js` — S9 DCAT memory namespace catalogues
+- `handoff-pane.js` — S2 agbx:HandoffClaim / RequestBriefing / DeliverArtefact
+
+The pane manifest endpoint at `/lo/manifest.json` merges three pane
+sources: upstream linkedobjects/browser panes, agentbox-built-in panes,
+and operator-supplied panes (`[linked_data.viewer].extra_panes`).
+Adding a pane is a one-line manifest operation; agentbox first-party
+code never imports a pane directly.
+
+AGPL-3.0 §13 compliance: every response from `/lo/*` carries
+`Source-Code: https://github.com/linkedobjects/browser` plus
+`X-Viewer-{Source,Version,License}` headers. Aggregation analysis
+matches the solid-pod-rs treatment in `docs/developer/licensing.md`
+— the bundle is shipped as static assets served by the management-api,
+never linked into agentbox first-party JavaScript. Agentbox stays
+MPL-2.0; the viewer remains AGPL-3.0.
+
+**ADR-013 — Canonical URI grammar.** Every `@id` value emitted by a
+PRD-006 surface now follows the canonical URI grammar:
+
+```
+identity-uri   ::= "did:nostr:" npub
+name-uri       ::= "urn:agentbox:" kind ":" [scope ":"] local
+content-hash   ::= "sha256-12-" 12HEXDIGIT
+```
+
+Two contracts: **uniqueness is unconditional** (every URI minted by
+`uris.mint()` is globally unique by construction; same payload → same
+URI, every time), **resolvability is best-effort** (the `/v1/uri/<urn>`
+resolver returns 307/404/410). Three minting rules — content-addressed
+for payload-determined resources, scope-bearing for owner-attached
+resources, stable-on-identity for static labels.
+
+The eleven surfaces (s01-s11) refactored to call `management-api/lib/uris.js`
+instead of generating IDs locally. Every `urn:uuid:*` random fallback
+removed. The pre-existing `urn:agentbox:mcp:*` and `urn:agentbox:memory:*`
+shapes from S6/S9 generalised through the new mint library.
+
+The viewer (S12) follows `@id` URIs through `/v1/uri/<urn>`, rendering
+307 results in the matching pane and 404 results as the URN literal
+with a "no representation available" badge.
+
+**Implementation:**
+
+- `lib/linkedobjects-browser.nix` — pinned commit + AGPL-3.0 attribution
+- `management-api/lib/uris.js` — canonical URI mint+resolve library
+- `management-api/middleware/linked-data/viewer/` — encoder + pane registry + manifest builder + 6 built-in panes
+- `management-api/routes/linked-objects.js` — `/lo/*` static-asset surface with AGPL §13 headers and traversal guards
+- `management-api/routes/uri-resolver.js` — `/v1/uri/<urn>` resolver + self-describing `/v1/uri` endpoint
+- `flake.nix` — viewer derivation materialised at `/opt/agentbox/browser/` when `[linked_data.viewer].mode = "local-linkedobjects"`
+- `scripts/prefetch-hashes.sh --service linkedobjects-browser` — resolves the pinned `srcHash` on first build
+
+**Schema + validator** — new `[linked_data.viewer]` section plus rules
+**E050–E054** and **W053** in `scripts/agentbox-config-validate.js`.
+
+**Documentation:**
+
+- [ADR-013](docs/reference/adr/ADR-013-canonical-uri-grammar.md) — the URI grammar decision
+- [PRD-006 §15](docs/reference/prd/PRD-006-linked-data-interfaces.md#15-viewer-slot-s12) — viewer slot product spec
+- [PRD-006 §16](docs/reference/prd/PRD-006-linked-data-interfaces.md#16-canonical-uri-grammar-adr-013-cross-reference) — URI grammar cross-reference
+- [DDD-004 §URICanonicaliser](docs/reference/ddd/DDD-004-linked-data-interchange-domain.md#uricanonicaliser) and [§ViewerSurface](docs/reference/ddd/DDD-004-linked-data-interchange-domain.md#viewersurface) plus invariants L13–L18
+- [`docs/user/uris.md`](docs/user/uris.md) — operator one-pager on the URI grammar with 12 worked examples
+- [`docs/user/browser.md`](docs/user/browser.md) — comprehensive viewer walkthrough; surface-by-surface clickable URLs; pane-authoring guide
+
+**Tests** — `tests/contract/linked-data/`:
+
+- `uris.contract.spec.js` — L13–L15 (uniqueness, pure-function resolver, closed kinds)
+- `viewer.contract.spec.js` — L16–L18 (no traversal, AGPL §13 header, data-driven manifest)
+
+**Attribution** baked into every layer:
+
+- `lib/linkedobjects-browser.nix` — module header credits Carvalho + AGPL-3.0
+- `routes/linked-objects.js` — emits `Source-Code` header per AGPL §13
+- `viewer/index.js` + `viewer/panes/*.js` — file-level attribution to upstream + Solid lineage
+- `docs/user/browser.md` + `docs/user/uris.md` — attribution sections crediting the W3C / IETF / DCMI / Schema.org sources every surface binds to
+
+In memoriam **Gregg Kellogg** (d. 2025-09-06), referenced in every spec
+this work depends on.
+
 ### Linked-Data interchange — PRD-006 / ADR-012 / DDD-004 (2026-04-25)
 
 Adopt W3C JSON-LD 1.1 as the canonical encoding at every external
