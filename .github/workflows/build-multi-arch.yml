@@ -54,21 +54,69 @@ jobs:
             experimental-features = nix-command flakes
             accept-flake-config = true
 
-      # Optional: restore Nix store from Cachix to speed up builds.
-      # Requires CACHIX_AUTH_TOKEN secret to be set in repository settings.
-      # TODO: set CACHIX_AUTH_TOKEN secret and replace the placeholder below.
-      - name: Set up Cachix
+      # Restore Nix store from Cachix when the secret is configured, otherwise
+      # skip silently. Configure via repo variable CACHIX_CACHE_NAME; default
+      # is 'dreamlab-ai'. The secret CACHIX_AUTH_TOKEN must be set for pushes
+      # to work; missing secret is tolerated (read-only cache still works).
+      - name: Set up Cachix (pull + push)
+        if: ${{ env.CACHIX_AUTH_TOKEN != '' }}
         uses: cachix/cachix-action@v15
+        env:
+          CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
         with:
-          name: agentbox          # TODO: replace with your Cachix cache name
+          name: ${{ vars.CACHIX_CACHE_NAME || 'dreamlab-ai' }}
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
-        continue-on-error: true   # allow builds to proceed even if Cachix is unconfigured
 
       - name: Build runtime image with Nix
         run: nix build .#runtime --print-build-logs
 
-      - name: Load image into Docker
-        run: docker load < result
+      - name: Record closure size
+        id: closure
+        run: |
+          set -euo pipefail
+          path=$(readlink -f result)
+          size_bytes=$(du -sb "$path" | cut -f1)
+          size_mb=$(( size_bytes / 1024 / 1024 ))
+          echo "size_bytes=$size_bytes" >> "$GITHUB_OUTPUT"
+          echo "size_mb=$size_mb"       >> "$GITHUB_OUTPUT"
+          echo "Nix closure: ${size_mb} MB (${size_bytes} bytes)"
+
+      - name: Load image into Docker (via nix2container copyToDockerDaemon)
+        # `result` is the nix2container OCI manifest JSON, not a tarball, so
+        # `docker load` cannot consume it directly. The flake's runtime
+        # output exposes a `copyToDockerDaemon` script that uses skopeo to
+        # talk to the local docker socket.
+        run: nix run .#runtime.copyToDockerDaemon
+
+      - name: Record compressed image size
+        id: compressed
+        run: |
+          set -euo pipefail
+          size=$(docker image inspect "agentbox:runtime-${{ matrix.nix_system }}" --format '{{.Size}}')
+          size_mb=$(( size / 1024 / 1024 ))
+          echo "size_bytes=$size"    >> "$GITHUB_OUTPUT"
+          echo "size_mb=$size_mb"    >> "$GITHUB_OUTPUT"
+          echo "Compressed image: ${size_mb} MB"
+          {
+            echo "### Image size (${{ matrix.arch }})"
+            echo "- Nix closure: ${{ steps.closure.outputs.size_mb }} MB"
+            echo "- Compressed:  ${size_mb} MB"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Guard against runaway image growth
+        run: |
+          set -euo pipefail
+          # PRD-001 §8 commits to base runtime under 4 GB compressed; fail
+          # if a build drifts past 5 GB to catch regressions early. The
+          # `full` / `cuda-runtime` / `gaussian-splatting` variants have
+          # their own ceilings (up to 25 GB per the CUDA image target)
+          # and are built by separate workflow runs.
+          max_mb=5120
+          actual="${{ steps.compressed.outputs.size_mb }}"
+          if [ "$actual" -gt "$max_mb" ]; then
+            echo "::error::compressed image is ${actual} MB > ceiling ${max_mb} MB (PRD-001 §8)"
+            exit 1
+          fi
 
       - name: Log in to GHCR
         uses: docker/login-action@v3

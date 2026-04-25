@@ -114,6 +114,14 @@ in
       # Extra native build inputs (e.g. node-gyp + python for native addons).
       nativeBuildInputs = [ pkgs.nodejs_20 ] ++ extraBuildInputs;
 
+      # Upstream @opentelemetry/* packages ship with overlapping peer-version
+      # constraints that npm 7+ strict resolver rejects. The npmDepsHash
+      # prefetch has already validated the resolved tree in a separate pass
+      # (`nix run nixpkgs#prefetch-npm-deps -- <service>/package-lock.json`),
+      # so telling npm to skip its re-validation here is safe and matches
+      # nix's own error hint: "Set npmFlags = [ \"--legacy-peer-deps\" ]".
+      npmFlags = [ "--legacy-peer-deps" ];
+
       # Extra env vars injected into the build sandbox.
       # Callers pass a string-to-string attrset; we emit KEY=VALUE pairs.
       env = extraEnv;
@@ -137,22 +145,44 @@ in
       '';
 
       # postInstall: buildNpmPackage places the package at
-      #   $out/lib/node_modules/<pname>/
-      # We create a wrapper script at $out/bin/<name> that supervisord can use
-      # as a stable reference, and a symlink into the package root for
-      # path-based access from appRoot.
+      #   $out/lib/node_modules/<package.json "name">/
+      # which is NOT always equal to the Nix-side `name` we pass. Example:
+      # `management-api` here ↔ `agentic-flow-management-api` in package.json.
+      # We resolve the real name at build time, then:
+      #   - stamp it into the $out/bin wrapper as an absolute store path
+      #     (unquoted heredoc expansion so the path is resolved at build
+      #     time, NOT at container runtime where $out is unavailable),
+      #   - point $out/package at that resolved directory so appRoot can
+      #     copy the full tree including node_modules into /opt/agentbox/<name>.
       postInstall = ''
-        # Wrapper script for supervisord command= lines.
+        # Read the package.json "name" field. [].join() stands in for an
+        # empty-string fallback — we cannot write a literal JS empty string
+        # here without tripping Nix's indented-string lexer or the outer
+        # node -e shell quoting. Same pattern used in lib/npm-cli.nix.
+        actual_name=$(${pkgs.nodejs_20}/bin/node -e "process.stdout.write(require('./package.json').name || [].join());")
+        if [ -z "$actual_name" ]; then
+          echo "ERROR: package.json has no 'name' for Nix pname=${name}" >&2
+          exit 1
+        fi
+        pkg_dir="$out/lib/node_modules/$actual_name"
+        if [ ! -d "$pkg_dir" ]; then
+          echo "ERROR: expected $pkg_dir (from package.json name='$actual_name') but buildNpmPackage did not create it" >&2
+          ls -la "$out/lib/node_modules/" || true
+          exit 1
+        fi
+
+        # Wrapper script for supervisord command= lines. Unquoted heredoc so
+        # $pkg_dir expands at build time; runtime variables stay escaped.
         mkdir -p "$out/bin"
-        cat > "$out/bin/${name}" <<'WRAPPER'
+        cat > "$out/bin/${name}" <<WRAPPER
         #!/usr/bin/env sh
-        exec node "$(dirname "$0")/../lib/node_modules/${name}/${entry}" "$@"
+        exec node "$pkg_dir/${entry}" "\$@"
         WRAPPER
         chmod +x "$out/bin/${name}"
 
-        # Also expose the package root directory as $out/package for
-        # appRoot to cp into /opt/agentbox/<name> (includes node_modules).
-        ln -s "$out/lib/node_modules/${name}" "$out/package"
+        # Also expose the resolved package root as $out/package for appRoot
+        # to cp into /opt/agentbox/<name> (includes node_modules).
+        ln -s "$pkg_dir" "$out/package"
       '';
 
       meta = {

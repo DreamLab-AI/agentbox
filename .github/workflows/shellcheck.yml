@@ -1,0 +1,57 @@
+# shellcheck.yml
+#
+# ShellCheck lint for every bash/sh script in the repo. Bash scripts here
+# control the wizard (start-agentbox.sh), the lifecycle CLI (agentbox.sh),
+# the provisioners (scripts/provision-*.sh), and the runtime-contract
+# assertions (tests/runtime-contract/RC-*.sh) — every one of them is an
+# attack surface when it carries unquoted variables or silent failures.
+
+name: ShellCheck
+
+on:
+  pull_request:
+    paths:
+      - '**.sh'
+      - '.github/workflows/shellcheck.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - '**.sh'
+
+concurrency:
+  group: shellcheck-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    name: ShellCheck ${{ matrix.severity }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - severity: error
+            fail_level: error
+          - severity: warning
+            fail_level: warning
+            continue_on_error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run ShellCheck (${{ matrix.severity }})
+        uses: ludeeus/action-shellcheck@2.0.0
+        with:
+          severity: ${{ matrix.severity }}
+          ignore_paths: >-
+            node_modules
+            skills/console-buddy/node_modules
+            .git
+          additional_files: >-
+            agentbox.sh
+          check_together: 'yes'
+          scandir: '.'
+        continue-on-error: ${{ matrix.continue_on_error || false }}

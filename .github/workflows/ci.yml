@@ -1,0 +1,51 @@
+# ci.yml
+#
+# Aggregate "CI passed" status check. Depends on every required PR-gate
+# workflow and exposes a single job name that branch protection can be
+# configured against. If any upstream workflow fails, `ci-passed` fails
+# with a pointer at which one.
+#
+# Required workflows consolidated:
+#   - flake-check             (Nix eval on x86_64 and aarch64)
+#   - manifest-validate       (agentbox config validate + fixture round-trips)
+#   - contract-tests          (adapter contract suites)
+#   - tui-tests               (pytest TUI helpers)
+#   - runtime-contract        (RC-*.sh suite)
+#   - shellcheck              (bash lint, error severity)
+#   - secret-scan             (gitleaks)
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  checks: read
+
+jobs:
+  ci-passed:
+    name: CI passed
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for required workflows
+        uses: lewagon/wait-on-check-action@v1.3.4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 20
+          allowed-conclusions: success,skipped
+          check-regexp: '^(Check x86_64-linux|Check aarch64-linux|agentbox config validate \+ TUI round-trip|Adapter contract suites|pytest — TUI helper scripts|RC shell assertions|ShellCheck error|gitleaks)$'
+          verbose: true
+
+      - name: CI summary
+        run: |
+          echo "All required PR-gate workflows reported success."
+          echo "Branch protection may require the 'CI passed' status."

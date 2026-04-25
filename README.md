@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="docs/agentbox.jpg" alt="Agentbox" width="420" />
+
 # Agentbox
 
 ### A reproducible, manifest-driven container runtime for software agents.

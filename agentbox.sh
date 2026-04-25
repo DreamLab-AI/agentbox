@@ -230,10 +230,14 @@ _volume_untar() {
         sh -c 'tar -C /data -xf -'
 }
 
-# Return 0 if the agentbox.toml solid_pod adapter is local-jss, 1 otherwise.
+# Return 0 iff the agentbox.toml pods adapter is backed by local storage
+# under /var/lib/solid (local-jss legacy stub or local-solid-rs first-class
+# Rust server). Both use the same volume and must be captured in backups —
+# omitting local-solid-rs was an operator-facing data-loss risk.
 _solid_is_local() {
     local toml="${SCRIPT_DIR}/agentbox.toml"
-    [[ -f "$toml" ]] && grep -qE '^\s*pods\s*=\s*"local-jss"' "$toml"
+    [[ -f "$toml" ]] && \
+      grep -qE '^\s*pods\s*=\s*"(local-jss|local-solid-rs)"' "$toml"
 }
 
 cmd_backup() {
@@ -265,7 +269,9 @@ cmd_backup() {
     mkdir -p "${work}/volumes/ruvector-data"
     _volume_tar agentbox-ruvector-data | tar -C "${work}/volumes/ruvector-data" -xf - 2>/dev/null || true
 
-    # -- solid-data (only when pods = local-jss) ------------------------------
+    # -- solid-data (when pods ∈ {local-jss, local-solid-rs}) -----------------
+    # Both the legacy Python stub and the first-class solid-pod-rs Rust
+    # server (ADR-010) store under /var/lib/solid. See docs/user/backup-restore.md.
     local solid_included=0
     if _solid_is_local; then
         echo -e "  ${GREEN}+${NC} solid-data"
@@ -503,7 +509,9 @@ cmd_up() {
         echo -e "${CYAN}Building Nix runtime image...${NC}"
         nix build .#runtime
         echo -e "${CYAN}Loading image into Docker...${NC}"
-        docker load < result
+        # nix2container output is an OCI manifest JSON, not a tarball;
+        # copyToDockerDaemon uses skopeo to load directly into the daemon.
+        nix run .#runtime.copyToDockerDaemon
         # Unset any pre-existing override so compose uses the default local tag
         unset AGENTBOX_IMAGE_REF
     fi
@@ -634,7 +642,7 @@ cmd_build() {
     echo -e "  Result  : ${result_path}"
     echo ""
     echo "To load into Docker:"
-    echo "  docker load < result"
+    echo "  nix run .#runtime.copyToDockerDaemon"
     echo "Or use: $0 up --build"
 }
 

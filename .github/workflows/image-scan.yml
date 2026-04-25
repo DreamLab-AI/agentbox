@@ -1,0 +1,115 @@
+# image-scan.yml
+#
+# Trivy CVE scan + SBOM upload for every published multi-arch image. Runs
+# after build-multi-arch.yml succeeds (via workflow_run) so the :<sha>
+# manifest is guaranteed to exist. SBOMs are uploaded as SPDX and CycloneDX;
+# the SARIF output is posted to the GitHub Security tab.
+#
+# Severity threshold: HIGH or CRITICAL fails the job. MEDIUM/LOW flow into
+# the Security tab but don't block merges.
+
+name: Image scan and SBOM
+
+on:
+  workflow_run:
+    workflows: ["Build and publish multi-arch image"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      image_ref:
+        description: 'Fully-qualified image reference (default: ghcr.io/dreamlab-ai/agentbox:latest)'
+        required: false
+        default: 'ghcr.io/dreamlab-ai/agentbox:latest'
+
+permissions:
+  contents: read
+  packages: read
+  security-events: write
+
+concurrency:
+  group: image-scan-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    name: Trivy + SBOM
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve image reference
+        id: ref
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            ref="${{ inputs.image_ref }}"
+          else
+            ref="ghcr.io/dreamlab-ai/agentbox:${{ github.event.workflow_run.head_sha }}"
+          fi
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          echo "image ref: $ref"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run Trivy — HIGH/CRITICAL (failure gate)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ steps.ref.outputs.ref }}
+          format: sarif
+          output: trivy-results.sarif
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          vuln-type: os,library
+          ignore-unfixed: true
+
+      - name: Upload SARIF to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy-${{ steps.ref.outputs.ref }}
+
+      - name: Run Trivy — ALL severities (informational)
+        if: always()
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ steps.ref.outputs.ref }}
+          format: table
+          output: trivy-full.txt
+          severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+          exit-code: '0'
+
+      - name: Generate SBOM (CycloneDX)
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ steps.ref.outputs.ref }}
+          format: cyclonedx-json
+          output-file: sbom.cyclonedx.json
+          upload-release-assets: false
+
+      - name: Generate SBOM (SPDX)
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ steps.ref.outputs.ref }}
+          format: spdx-json
+          output-file: sbom.spdx.json
+          upload-release-assets: false
+
+      - name: Upload scan artefacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-scan-${{ github.event.workflow_run.head_sha || github.sha }}
+          path: |
+            trivy-results.sarif
+            trivy-full.txt
+            sbom.cyclonedx.json
+            sbom.spdx.json
+          retention-days: 90

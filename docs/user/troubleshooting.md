@@ -115,27 +115,63 @@ First step that fails is where to fix.
 
 ## `nix build .#runtime` fails with a hash mismatch
 
-Six `npmDepsHash` values in `lib/npm-services.nix` (and any still-placeholder CLI `sha256` in `lib/npm-cli.nix`) must be resolved the first time you build. **This only affects realisation**: `nix flake check`, `nix eval`, `nix build .#compose`, and CI lint all work on a fresh clone.
+The shipped tree carries resolved hashes for every npm service and the
+solid-pod-rs source — fresh clones build without manual prefetch. You
+hit this only after one of:
 
-When you run `nix build .#runtime` against an unresolved placeholder you'll see two things in the build output:
+- A `package-lock.json` change in any of `management-api/`, `mcp/`,
+  `skills/openai-codex/mcp-server/`, `skills/lazy-fetch/mcp-server/`,
+  `skills/playwright/mcp-server/`, `skills/comfyui/mcp-server/`.
+- A `solid-pod-rs` rev bump in `lib/solid-pod-rs.nix`.
+- Adding a new `makeNpmCli` entry in `flake.nix` with `lib.fakeHash`.
 
-- A Nix `hash mismatch` line listing `expected: sha256-AAAAAAA…=` and `got: sha256-<real>=`.
-- A `preFetch` operator hint pointing at the resolver command for the specific service or CLI.
+The error format is always the same:
 
-For each failing derivation, run the command the hint prints. Canonical forms:
+- A Nix `hash mismatch` line: `expected: sha256-AAAAAAA…=` (placeholder)
+  and `got: sha256-<real>=` (the value you need).
+- A `preFetch` hook hint pointing at the resolver command.
+
+The fastest path is the prefetch helper:
 
 ```sh
-# Local npm services (buildNpmPackage) — one per service
+# One pass — walks every fakeHash and patches it in. Idempotent.
+./scripts/prefetch-hashes.sh
+
+# Single target:
+./scripts/prefetch-hashes.sh --service management-api
+./scripts/prefetch-hashes.sh --service solid-pod-rs
+
+# Preview without writing:
+./scripts/prefetch-hashes.sh --dry-run
+```
+
+Manual fallback if you don't have the helper available:
+
+```sh
+# Local npm services (buildNpmPackage)
 nix run nixpkgs#prefetch-npm-deps -- management-api/package-lock.json
-nix run nixpkgs#prefetch-npm-deps -- mcp/package-lock.json
-# ...per service
+
+# solid-pod-rs source (fetchFromGitHub)
+nix-prefetch-url --unpack \
+  https://github.com/DreamLab-AI/solid-pod-rs/archive/<rev>.tar.gz
+nix hash convert --hash-algo sha256 --to sri <base32-output>
 
 # Global npm CLIs (tarball fetch)
 nix-prefetch-url https://registry.npmjs.org/<pkg>/-/<pkg>-<ver>.tgz
-nix hash to-sri --type sha256 <base32-output>
+nix hash convert --hash-algo sha256 --to sri <base32-output>
 ```
 
-Paste the returned hash into `lib/npm-services.nix` or `flake.nix`, rebuild. See [developer/version-tracking.md](../developer/version-tracking.md) for the full workflow.
+Paste the returned hash into `lib/npm-services.nix` or `flake.nix`, rebuild. See [developer/version-tracking.md](../developer/version-tracking.md) for the full workflow and [developer/testing.md](../developer/testing.md#prefetching-hashes) for the helper docs.
+
+## `docker load < result` says "invalid tar header"
+
+`nix build .#runtime` produces a [nix2container](https://github.com/nlewo/nix2container) OCI manifest JSON at `./result`, not a `docker save` tarball — so `docker load` can't consume it directly. Use the helper the flake exposes:
+
+```sh
+nix run .#runtime.copyToDockerDaemon
+```
+
+That uses skopeo to talk to the local Docker socket and load the image with its content-addressed tag (`agentbox:runtime-x86_64-linux` or `…-aarch64-linux`). `agentbox.sh up --build` and `scripts/start-agentbox.sh` use the same path internally.
 
 ## GPU not detected
 

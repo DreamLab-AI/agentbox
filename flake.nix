@@ -29,7 +29,17 @@
         pkgs = import nixpkgs {
           inherit system;
           overlays = [ rust-overlay.overlays.default ];
-          config.allowUnfree = true;
+          config = {
+            allowUnfree = true;
+            # python3.12-ecdsa is flagged insecure upstream (timing-side-channel
+            # class; CVE class, not a concrete CVE). scripts/sovereign-bootstrap.py
+            # uses it only for local secp256k1 keypair generation + bech32
+            # encoding, not on any remote-attacker-observable path. The signing
+            # hot path (NIP-98 verify, bridge signer) uses @noble/curves via
+            # nostr-tools in management-api, which is constant-time. Tracking
+            # upstream for an ecdsa bump or nixpkgs overlay replacement.
+            permittedInsecurePackages = [ "python3.12-ecdsa-0.19.1" ];
+          };
         };
 
         lib = pkgs.lib;
@@ -212,9 +222,9 @@
           name        = "management-api";
           src         = ./management-api;
           entry       = "server.js";
-          # TODO: replace lib.fakeHash with the output of:
-          #   nix run nixpkgs#prefetch-npm-deps -- management-api/package-lock.json
-          npmDepsHash = lib.fakeHash;
+          # Prefetched 2026-04-24 against management-api/package-lock.json.
+          # Refresh via: nix run nixpkgs#prefetch-npm-deps -- management-api/package-lock.json
+          npmDepsHash = "sha256-6LSRtGKd2Sgp1FbeXnYGILKnppiQM86bb3Y+SUzoj98=";
         };
 
         # 2. mcp/nostr-bridge — sovereign_mesh service; 2 deps (nostr-tools, ws)
@@ -222,9 +232,10 @@
           name        = "nostr-bridge";
           src         = ./mcp;
           entry       = "servers/nostr-bridge.js";
-          # TODO: replace lib.fakeHash with the output of:
-          #   nix run nixpkgs#prefetch-npm-deps -- mcp/package-lock.json
-          npmDepsHash = lib.fakeHash;
+          # Prefetched 2026-04-24 after regenerating mcp/package-lock.json
+          # (the shipped lockfile predated the nostr-tools dep addition).
+          # Refresh: nix run nixpkgs#prefetch-npm-deps -- mcp/package-lock.json
+          npmDepsHash = "sha256-/+arrMvbSbUKlX6EFdoXQv5oh5p3UDgns3eGX+UG0nM=";
         };
 
         # 3. skills/openai-codex/mcp-server — gated by toolchains.codex
@@ -232,9 +243,8 @@
           name        = "openai-codex-mcp";
           src         = ./skills/openai-codex/mcp-server;
           entry       = "server.js";
-          # TODO: replace lib.fakeHash with the output of:
-          #   nix run nixpkgs#prefetch-npm-deps -- skills/openai-codex/mcp-server/package-lock.json
-          npmDepsHash = lib.fakeHash;
+          # Prefetched 2026-04-24. Refresh: nix run nixpkgs#prefetch-npm-deps -- skills/openai-codex/mcp-server/package-lock.json
+          npmDepsHash = "sha256-lDX5EgJ/41iC9NjYgJ8w5VAUP3AlgIwY5tmJE0MGgI4=";
         };
 
         # 4. skills/lazy-fetch/mcp-server — gated by toolchains.ruflo or claude_flow.
@@ -251,9 +261,8 @@
             export HOME="$TMPDIR"
             tsc --project tsconfig.json
           '';
-          # TODO: replace lib.fakeHash with the output of:
-          #   nix run nixpkgs#prefetch-npm-deps -- skills/lazy-fetch/mcp-server/package-lock.json
-          npmDepsHash = lib.fakeHash;
+          # Prefetched 2026-04-24. Refresh: nix run nixpkgs#prefetch-npm-deps -- skills/lazy-fetch/mcp-server/package-lock.json
+          npmDepsHash = "sha256-Bh72Bvdqmqnyqoleqmmofp2feMspGOu6+xnfCz3xIbY=";
         };
 
         # 5. skills/playwright/mcp-server — gated by skills.browser.playwright.
@@ -264,9 +273,8 @@
           src         = ./skills/playwright/mcp-server;
           entry       = "server.js";
           extraEnv    = { PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1"; };
-          # TODO: replace lib.fakeHash with the output of:
-          #   nix run nixpkgs#prefetch-npm-deps -- skills/playwright/mcp-server/package-lock.json
-          npmDepsHash = lib.fakeHash;
+          # Prefetched 2026-04-24. Refresh: nix run nixpkgs#prefetch-npm-deps -- skills/playwright/mcp-server/package-lock.json
+          npmDepsHash = "sha256-Ix5YV1W54KYyc5fGS1DjpyfrUlX1Qjzt6cJcPetT7wM=";
         };
 
         # 6. skills/comfyui/mcp-server — gated by skills.media.comfyui_builtin.
@@ -278,9 +286,8 @@
           entry            = "server.js";
           extraBuildInputs = [ pkgs.python3 pkgs.nodePackages.node-gyp ];
           extraEnv         = { npm_config_build_from_source = "true"; };
-          # TODO: replace lib.fakeHash with the output of:
-          #   nix run nixpkgs#prefetch-npm-deps -- skills/comfyui/mcp-server/package-lock.json
-          npmDepsHash = lib.fakeHash;
+          # Prefetched 2026-04-24. Refresh: nix run nixpkgs#prefetch-npm-deps -- skills/comfyui/mcp-server/package-lock.json
+          npmDepsHash = "sha256-3OchWVs/H+swo4KzBcicvs0+4FW8RVNDqc4DrmC81Xc=";
         };
 
         # Conditional package lists for allPackages — mirrors the lib.optionals
@@ -692,9 +699,6 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           # When sovereign_mesh is enabled, nostrBridgePkg overlays the mcp
           # directory so its node_modules are present at runtime.
           cp -r ${./mcp} $out/opt/agentbox/mcp
-          ${lib.optionalString (sovereignCfg.enabled or false) ''
-          cp -rL ${nostrBridgePkg}/package/node_modules $out/opt/agentbox/mcp/node_modules
-          ''}
 
           cp -r ${skillsTree} $out/opt/agentbox/skills
           cp -r ${./scripts} $out/opt/agentbox/scripts
@@ -702,6 +706,16 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           cp -r ${./docs} $out/opt/agentbox/docs
           cp -r ${./aisp} $out/opt/agentbox/aisp
           cp ${./agentbox.toml} $out/opt/agentbox/agentbox.toml
+
+          # `cp -r` from the Nix store preserves the read-only store bits on
+          # every copied file, which blocks the subsequent node_modules and
+          # mcp-server overlays below with "Permission denied". Make the
+          # whole copied tree writable once before any overlay runs.
+          chmod -R u+w $out/opt/agentbox
+
+          ${lib.optionalString (sovereignCfg.enabled or false) ''
+          cp -rL ${nostrBridgePkg}/package/node_modules $out/opt/agentbox/mcp/node_modules
+          ''}
 
           # Optional skills — copy derivation package trees (includes node_modules)
           # when the corresponding feature gate is enabled.
