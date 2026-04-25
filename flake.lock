@@ -88,7 +88,8 @@
         "flake-utils": "flake-utils",
         "nix2container": "nix2container",
         "nixpkgs": "nixpkgs_2",
-        "rust-overlay": "rust-overlay"
+        "rust-overlay": "rust-overlay",
+        "skills": "skills"
       }
     },
     "rust-overlay": {
@@ -108,6 +109,18 @@
         "repo": "rust-overlay",
         "type": "github"
       }
+    },
+    "skills": {
+      "flake": false,
+      "locked": {
+        "path": "./skills",
+        "type": "path"
+      },
+      "original": {
+        "path": "./skills",
+        "type": "path"
+      },
+      "parent": []
     },
     "systems": {
       "locked": {
