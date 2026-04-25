@@ -1,3 +1,5 @@
+# agentbox is being debugged today, expect it not to work, today. Or fix it yourself.
+
 <div align="center">
 
 <img src="docs/agentbox.jpg" alt="Agentbox" width="420" />
