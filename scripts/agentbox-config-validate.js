@@ -1,21 +1,26 @@
 #!/usr/bin/env node
 /**
  * agentbox config validate
- * Validates agentbox.toml against the JSON Schema and 33 semantic rules
- * (E001-E008, E010-E020, E022-E029, E031, E033 + W021, W030;
- * E009, E030, E032, E034 reserved; W034 retired 2026-04-25 with the
- * removal of the local-jss legacy stub).
- * Exit 0 = clean. Non-zero = errors. Errors on stderr, one per line: "E### message"
+ * Validates agentbox.toml against the JSON Schema and the active semantic rules.
+ * Exit 0 = clean (warnings allowed). Non-zero = errors. Each E/W code on its
+ * own stderr line: "E### message".
  *
- * Rule families:
- *   E001-E016  adapter + federation + provider coherence (ADR-005)
- *   E017-E018  provider env-var presence
- *   E019       CUDA toolchain gate (ADR-007)
- *   E020/W021  security.exceptions coherence (ADR-007)
- *   E022-E025  privacy filter middleware (ADR-008)
- *   E026-E029/W030/E031  embedded Nostr relay + pod-inbox bridge (ADR-009)
- *   E033       solid-pod-rs first-class pod server (ADR-010)
- *   E035-E038  consultant tier (ADR-011 / PRD-005)
+ * Active rule families:
+ *   E001-E014, E016         adapter + federation coherence (ADR-005)
+ *   E017-E018, W040         provider credentials + OAuth deferral
+ *   W012                    federation-mode advisory (was E012; recategorised)
+ *   E019                    CUDA toolchain gate (ADR-007)
+ *   E020, E021              security.exceptions coherence (E021 was W021)
+ *   E022-E025               privacy filter middleware (ADR-008)
+ *   E026-E029, W030, W031   embedded Nostr relay + pod-inbox bridge (ADR-009)
+ *   E033                    solid-pod-rs first-class pod server (ADR-010)
+ *   E035-E037, W038         consultant tier (ADR-011 / PRD-005)
+ *
+ * Reserved / retired codes (do not reuse):
+ *   E009                    superseded by E017
+ *   E015, W034              retired 2026-04-25 with the local-jss legacy stub
+ *   E030, E032, E034        reserved
+ *   E011                    retired — duplicated by AJV additionalProperties:false
  */
 
 'use strict';
@@ -343,11 +348,12 @@ if (federation.mode === 'client') {
 }
 
 // E013: observability.metrics_port MUST NOT collide with other known ports.
-// Known ports from the manifest: desktop VNC=5901, code-server=8080, management-api=9090.
+// Labels match what supervisorctl status / docker ps would print, so the
+// collision message names what the operator will actually find listening.
 const RESERVED_PORTS = {
-  5901: 'desktop VNC (wayvnc)',
+  5901: 'desktop VNC (x11vnc)',
   8080: 'code-server',
-  8484: 'local JSS pods',
+  8484: 'solid-pod-rs',
   9090: 'management-api'
 };
 if (observability.metrics_port !== undefined) {
@@ -376,25 +382,11 @@ if (sovereignMesh.telegram_mirror === true) {
   }
 }
 
-// E015: sovereign_mesh.jss_rust_backend=true requires the jss-rust Nix input pinned in flake.lock.
-if (sovereignMesh.jss_rust_backend === true) {
-  const flakeLockPath = path.join(path.dirname(manifestPath), 'flake.lock');
-  let flakeLockFound = false;
-  let jssRustPinned = false;
-  if (fs.existsSync(flakeLockPath)) {
-    flakeLockFound = true;
-    try {
-      const lockData = JSON.parse(fs.readFileSync(flakeLockPath, 'utf8'));
-      jssRustPinned = !!(lockData.nodes && lockData.nodes['jss-rust']);
-    } catch (_) {}
-  }
-  if (!flakeLockFound || !jssRustPinned) {
-    errors.push({
-      code: 'E015',
-      message: 'E015: sovereign_mesh.jss_rust_backend is true but "jss-rust" input is not pinned in flake.lock'
-    });
-  }
-}
+// E015 retired — `sovereign_mesh.jss_rust_backend` was a placeholder for a
+// `jss-rust` Nix flake input that was never declared. The Rust pod adoption
+// landed as solid-pod-rs (ADR-010) instead, wired through lib/solid-pod-rs.nix.
+// The schema property is gone; the field is silently ignored if old manifests
+// still contain it (caught by E016 at the schema layer).
 
 // ─── E035-E038: consultant-tier coherence (ADR-011 / PRD-005) ─────────────────
 //

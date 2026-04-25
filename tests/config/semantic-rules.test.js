@@ -51,7 +51,7 @@ function baseValid() {
     federation: { mode: 'standalone', external_url: '' },
     adapters: {
       beads: 'local-sqlite',
-      pods: 'local-jss',
+      pods: 'local-solid-rs',
       memory: 'embedded-ruvector',
       events: 'local-jsonl',
       orchestrator: 'local-process-manager'
@@ -73,15 +73,19 @@ function baseValid() {
       solid_pod: false,
       nostr_bridge: false,
       https_bridge: false,
-      telegram_mirror: false,
-      jss_rust_backend: false
+      telegram_mirror: false
     },
-    // playwright=true requires a security exception block (W021).
+    // playwright=true and pods=local-solid-rs both require security
+    // exception blocks (W021); declare both so the baseline is silent.
     security: {
       exceptions: {
         playwright: {
           cap_add: ['SYS_ADMIN'],
           reason: 'chromium sandbox'
+        },
+        'solid-pod-rs': {
+          writable_volumes: ['/var/lib/solid'],
+          reason: 'solid-pod-rs filesystem backend (ADR-010)'
         }
       }
     }
@@ -441,39 +445,11 @@ describe('E014: sovereign_mesh.telegram_mirror requires CTM env vars', () => {
   });
 });
 
-// ─── E015 ─────────────────────────────────────────────────────────────────────
-describe('E015: jss_rust_backend requires jss-rust pinned in flake.lock', () => {
-  test('invalid: jss_rust_backend=true without jss-rust in flake.lock', () => {
-    const m = baseValid();
-    m.sovereign_mesh.jss_rust_backend = true;
-    // Write manifest to a temp dir that has no flake.lock with jss-rust
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agentbox-e015-'));
-    const manifestFile = path.join(tmpDir, 'agentbox.toml');
-    fs.writeFileSync(manifestFile, TOML.stringify(m), 'utf8');
-    // Write a flake.lock without jss-rust
-    fs.writeFileSync(path.join(tmpDir, 'flake.lock'), JSON.stringify({ nodes: { nixpkgs: {} } }), 'utf8');
-    try {
-      const result = execFileSync(process.execPath, [VALIDATOR, manifestFile], {
-        env: { ...process.env },
-        encoding: 'utf8',
-        stdio: ['pipe', 'pipe', 'pipe']
-      });
-      fs.rmSync(tmpDir, { recursive: true });
-      // Should have exited 0 if no errors, but E015 should fire
-      expect(result).not.toContain('E015'); // if somehow valid
-    } catch (err) {
-      fs.rmSync(tmpDir, { recursive: true });
-      expect(err.stderr).toMatch(/E015/);
-    }
-  });
-
-  test('valid: jss_rust_backend=false — no E015', () => {
-    const m = baseValid();
-    m.sovereign_mesh.jss_rust_backend = false;
-    const r = runValidator(m);
-    expect(stderrContains(r, 'E015')).toBe(false);
-  });
-});
+// ─── E015 retired 2026-04-25 ──────────────────────────────────────────────────
+// Was: `sovereign_mesh.jss_rust_backend = true` requires the `jss-rust` Nix
+// flake input pinned in flake.lock. The flake input was never declared and
+// the field had no consumer; the Rust pod adoption shipped as `solid-pod-rs`
+// (ADR-010) instead. Schema property dropped, validator rule removed.
 
 // ─── E019 ─────────────────────────────────────────────────────────────────────
 describe('E019: [toolchains.cuda]=true requires [gpu.backend]="local-cuda"', () => {
@@ -541,13 +517,8 @@ describe('W021: feature enabled but security exception block is missing', () => 
   test('valid: desktop.enabled=true and security.exceptions.desktop is declared', () => {
     const m = baseValid();
     m.desktop = { enabled: true, stack: 'x11-openbox', resolution: '1920x1080' };
-    // Merge desktop exception alongside the playwright exception already in baseValid.
-    m.security = {
-      exceptions: {
-        playwright: { cap_add: ['SYS_ADMIN'], reason: 'chromium sandbox' },
-        desktop: { tmpfs: ['/tmp/.X11-unix', '/run/user/1000'] }
-      }
-    };
+    // Carry the baseValid exceptions (playwright, solid-pod-rs) and add desktop.
+    m.security.exceptions.desktop = { tmpfs: ['/tmp/.X11-unix', '/run/user/1000'] };
     const r = runValidator(m);
     expect(stderrContains(r, 'W021')).toBe(false);
   });
@@ -597,12 +568,9 @@ describe('E020/W021 edge case: multi-feature with overlapping cap_add accepted b
     const m = baseValid();
     m.desktop = { enabled: true, stack: 'x11-openbox', resolution: '1920x1080' };
     m.skills.browser.playwright = true;
-    m.security = {
-      exceptions: {
-        desktop: { cap_add: ['SYS_ADMIN'], tmpfs: ['/tmp/.X11-unix:mode=1777,rw'], reason: 'test injection — desktop+playwright overlap' },
-        playwright: { cap_add: ['SYS_ADMIN'], reason: 'chromium sandbox' }
-      }
-    };
+    // Replace the desktop+playwright entries; keep the solid-pod-rs entry from baseValid.
+    m.security.exceptions.desktop = { cap_add: ['SYS_ADMIN'], tmpfs: ['/tmp/.X11-unix:mode=1777,rw'], reason: 'test injection — desktop+playwright overlap' };
+    m.security.exceptions.playwright = { cap_add: ['SYS_ADMIN'], reason: 'chromium sandbox' };
     const r = runValidator(m);
     // Neither E020 (orphaned block) nor W021 (missing block) should fire.
     expect(stderrContains(r, 'E020')).toBe(false);
@@ -698,7 +666,6 @@ describe('skills.ontology gate: enabled defaults to false and parses cleanly', (
     const m = baseValid();
     m.skills.ontology = { enabled: true };
     const r = runValidator(m);
-    // No validator error for a boolean-true gate
     expect(stderrContains(r, 'E016')).toBe(false);
   });
 

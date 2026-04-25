@@ -3,12 +3,11 @@ orchestration = "ruflo-v3"
 vector_db = "ruvector-embedded"
 
 # ── Five-slot adapter architecture (ADR-005) ───────────────────────────────────
-# local-solid-rs is the first-class pod implementation (ADR-010). The shipped
-# manifest defaults to local-jss purely so a fresh `nix build .#runtime` does
-# not require prefetching the solid-pod-rs Rust derivation before it can
-# produce an image. Flip pods = "local-solid-rs" after running the prefetch
-# step documented in docs/user/solid-pod.md; the stack is fully supported and
-# first-class on that setting — validator W034 reminds you of the flip.
+# local-solid-rs is the first-class pod implementation (ADR-010); the legacy
+# local-jss Python stub was retired 2026-04-25 and is no longer accepted by
+# the schema. Each adapter slot resolves to one of three implementation
+# classes — `local-*`, `external`, or `off` — see docs/user/configuration.md
+# for the full matrix and trade-offs.
 [adapters]
 beads        = "local-sqlite"
 pods         = "local-solid-rs"
@@ -265,7 +264,7 @@ log_level = "info"
 # Feature-specific exceptions to the hardened baseline.
 # Each key must match an enabled feature gate (validator rule E020).
 # Add the exception block when you enable the corresponding feature.
-# Reference table of all known exceptions is in docs/adr/ADR-007.md.
+# Reference table of all known exceptions is in docs/reference/adr/ADR-007-runtime-contract-and-container-hardening.md.
 #
 # Currently enabled feature exceptions (mirrors active feature gates above):
 

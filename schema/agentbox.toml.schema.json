@@ -473,17 +473,13 @@
           "type": "boolean",
           "description": "Requires CTM_BOT_TOKEN and CTM_TELEGRAM_CHAT_ID env vars (E014)."
         },
-        "jss_rust_backend": {
-          "type": "boolean",
-          "description": "Requires jss-rust Nix input pinned in flake.lock (E015)."
-        },
         "relay": {
           "type": "object",
           "additionalProperties": false,
           "description": "Embedded Nostr relay. See ADR-009 and PRD-004.",
           "properties": {
             "enabled":          { "type": "boolean" },
-            "implementation":   { "type": "string",  "enum": ["nostr-rs-relay", "rnostr", "external", "off"] },
+            "implementation":   { "type": "string",  "enum": ["nostr-rs-relay", "external", "off"], "description": "Relay backend. Only nostr-rs-relay is bundled today; rnostr was dropped from the enum because no flake supervisor branch wires it up." },
             "port":             { "type": "integer", "minimum": 1, "maximum": 65535 },
             "bind":             { "type": "string",  "description": "Loopback or 0.0.0.0. See E029." },
             "expose":           { "type": "boolean", "description": "Publish the port in docker-compose." },

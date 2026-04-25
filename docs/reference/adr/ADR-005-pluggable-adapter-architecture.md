@@ -55,7 +55,7 @@ management-api/adapters/
 │   ├── external.js
 │   └── off.js
 ├── pods/
-│   ├── local-jss.js
+│   ├── local-solid-rs.js
 │   ├── external.js
 │   └── off.js
 ├── memory/
@@ -79,7 +79,7 @@ Resolution happens once at management-api startup. The chosen implementation is 
 ```toml
 [adapters]
 beads        = "local-sqlite"       # | "external" | "off"
-pods         = "local-jss"          # | "external" | "off"
+pods         = "local-solid-rs"     # | "external" | "off"
 memory       = "embedded-ruvector"  # | "external-pg" | "off"
 events       = "local-jsonl"        # | "external" | "off"
 orchestrator = "local-process-manager"  # | "stdio-bridge" | "off"
@@ -115,7 +115,7 @@ Every rule has an error code, a specific stderr message regex, and a dedicated t
 12. `E012` — `federation.mode = "client"` with any adapter set to a `local-*` implementation raises a warning (not error — legitimate use for graceful degrade testing, but flagged).
 13. `E013` — `[observability].metrics_port` MUST NOT collide with any other port assigned in the compose generator output.
 14. `E014` — `[sovereign_mesh].telegram_mirror = true` requires `CTM_BOT_TOKEN` and `CTM_TELEGRAM_CHAT_ID` env vars at boot.
-15. `E015` — `[sovereign_mesh].jss_rust_backend = true` requires the `jss-rust` Nix input to be pinned in `flake.lock`.
+15. `E015` — **retired 2026-04-25.** Was `[sovereign_mesh].jss_rust_backend = true` requires `jss-rust` Nix input pinned in `flake.lock`. The flake input was never declared and the field had no consumer; the Rust pod adoption shipped as `solid-pod-rs` (ADR-010) instead. Schema property dropped, validator rule removed, code reserved for re-use.
 16. `E016` — every manifest key consumed by the supervisord generator MUST be declared in the JSON Schema; unknown keys under known sections raise `UnknownManifestKey` (prevents typo-silence).
 
 Rule 16 closes the loop: the generator and validator share the schema, so a manifest typo (`[skills.brower]`) fails fast instead of silently disabling a feature.

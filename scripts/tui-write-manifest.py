@@ -79,7 +79,6 @@ lines += [
     f'https_bridge         = {b("sovereign_mesh.https_bridge")}',
     f'publish_agent_events = {b("sovereign_mesh.publish_agent_events")}',
     f'telegram_mirror      = {b("sovereign_mesh.telegram_mirror")}',
-    f'jss_rust_backend     = {b("sovereign_mesh.jss_rust_backend")}',
     "",
 ]
 

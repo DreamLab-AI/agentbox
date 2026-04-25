@@ -109,9 +109,9 @@ const IMPLS = [
     firstClass: true,
   },
   // local-jss row removed 2026-04-25 along with the legacy Python stub.
-  // The LocalJssPodsAdapter class is retained ONLY as the inheritance
-  // scaffolding for LocalSolidRsPodsAdapter (see local-solid-rs.js extends).
-  // It is no longer a manifest-selectable impl.
+  // The base class (renamed to SolidHttpPodsAdapter in _solid-http-base.js)
+  // is retained as inheritance scaffolding for LocalSolidRsPodsAdapter and
+  // ExternalPodsAdapter — it is not a manifest-selectable impl.
   {
     label: 'external',
     makeAdapter: () => new ExternalPodsAdapter({ baseUrl: 'http://fake-host', fetchFn: makeJssFetch() }),
