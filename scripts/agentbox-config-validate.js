@@ -235,20 +235,35 @@ if (gpu.backend === 'local-cuda') {
 
 // E017: every enabled providers.<name> section MUST have its env_var present in the environment.
 // E018: an enabled provider's env_var value must not be a placeholder literal.
+// W040: auth_mode = "oauth" is only honoured for providers whose CLI ships an OAuth flow.
 const PLACEHOLDER_RE = /^(change[-_]?this|your[-_]?key[-_]?here|sk[-_]?xxx+|AKIA[A-Z0-9]{12}EXAMPLE|<[^>]+>|PLACEHOLDER|TODO)$/i;
+const OAUTH_CAPABLE_PROVIDERS = new Set(['anthropic', 'openai', 'zai']);
 
 for (const [name, provConf] of Object.entries(providers)) {
   if (!provConf || provConf.enabled !== true) continue;
 
   const envVar = provConf.env_var || `${name.toUpperCase()}_API_KEY`;
   const envValue = process.env[envVar];
+  const authMode = provConf.auth_mode || 'api_key';
 
-  // E017 — must be set (non-empty)
-  if (!envValue) {
-    errors.push({
-      code: 'E017',
-      message: `E017: provider "${name}" is enabled but env var "${envVar}" is not set`
+  // W040 — oauth requested on a provider that doesn't support it: degrade to api_key semantics.
+  if (authMode === 'oauth' && !OAUTH_CAPABLE_PROVIDERS.has(name)) {
+    warnings.push({
+      code: 'W040',
+      message: `W040: provider "${name}" has auth_mode="oauth" but no in-container OAuth CLI is wired up; falling back to env var check (E017). Supported oauth providers: ${[...OAUTH_CAPABLE_PROVIDERS].sort().join(', ')}.`
     });
+  }
+
+  const honourOAuth = authMode === 'oauth' && OAUTH_CAPABLE_PROVIDERS.has(name);
+
+  // E017 — must be set (non-empty), unless oauth defers credentials to runtime CLI login.
+  if (!envValue) {
+    if (!honourOAuth) {
+      errors.push({
+        code: 'E017',
+        message: `E017: provider "${name}" is enabled but env var "${envVar}" is not set (set auth_mode="oauth" if this provider's CLI handles login itself)`
+      });
+    }
   } else if (PLACEHOLDER_RE.test(envValue.trim())) {
     // E018 — value looks like a placeholder; warn (still an error exit) unless this is .env.example
     const manifestFile = path.resolve(manifestPath);

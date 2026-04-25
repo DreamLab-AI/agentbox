@@ -174,15 +174,23 @@ OPTIONAL_ENV_VARS: dict[str, list[str]] = {
     "deepseek":  ["DEEPSEEK_BASE_URL"],
     "zai":       ["ZAI_ANTHROPIC_API_KEY", "ZAI_URL"],
 }
+# Providers whose CLI carries a web sign-in / OAuth flow. The wizard only
+# offers an oauth branch for these; if someone hand-edits the manifest to set
+# auth_mode="oauth" on a non-capable provider, the validator emits W040 and
+# the runtime falls back to env-var (api_key) semantics.
 for pname, env_var in PROVIDERS.items():
     enabled = s.get(f"providers.{pname}.enabled", False)
     optionals = OPTIONAL_ENV_VARS.get(pname, [])
     opt_str = json.dumps(optionals)
+    auth_mode = s.get(f"providers.{pname}.auth_mode", "api_key") or "api_key"
+    if auth_mode not in ("api_key", "oauth"):
+        auth_mode = "api_key"
     lines += [
         f"[providers.{pname}]",
         f"enabled  = {'true' if enabled else 'false'}",
         f'env_var  = "{env_var}"',
         f"optional_env_vars = {opt_str}",
+        f'auth_mode = "{auth_mode}"',
         "",
     ]
 

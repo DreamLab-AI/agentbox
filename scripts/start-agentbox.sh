@@ -18,6 +18,35 @@ CANDIDATE_TOML="${TMP_DIR}/candidate.toml"
 
 cleanup() { rm -rf "${TMP_DIR}"; }
 trap cleanup EXIT
+
+_WIZARD_PID="$$"
+abort_wizard() {
+  # Reset terminal in case whiptail left it in cbreak/no-echo mode.
+  stty sane 2>/dev/null || true
+  # If we're in a subshell (pipeline / $() / function scope inside one),
+  # exit alone won't kill the parent script. Signal the main wizard PID,
+  # whose own INT/TERM trap will re-enter abort_wizard at the top level.
+  if [[ "${BASHPID:-$$}" != "${_WIZARD_PID}" ]]; then
+    kill -TERM "${_WIZARD_PID}" 2>/dev/null || true
+    exit 130
+  fi
+  printf '\nWizard aborted by user. No changes written.\n' >&2
+  exit 130
+}
+trap abort_wizard INT TERM
+
+# _wt_run COMMAND...  — invoke a whiptail/dialog command and propagate Ctrl+C.
+# Whiptail catches SIGINT itself and exits 130; without this wrapper the parent
+# script's `|| true` would swallow it and the wizard would loop forever.
+_wt_run() {
+  local rc=0
+  "$@" || rc=$?
+  if [[ "${rc}" == "130" || "${rc}" == "143" ]]; then
+    abort_wizard
+  fi
+  return "${rc}"
+}
+
 cd "${ROOT_DIR}"
 
 # ── helpers ────────────────────────────────────────────────────────────────────
@@ -117,7 +146,7 @@ wt_menu() {
   # wt_menu TITLE PROMPT HEIGHT WIDTH LISTHEIGHT [TAG ITEM...]
   local title="$1" prompt="$2" h="$3" w="$4" lh="$5"; shift 5
   if [[ -n "${WT}" ]]; then
-    "${WT}" --title "${title}" --menu "${prompt}" "${h}" "${w}" "${lh}" "$@" 3>&1 1>&2 2>&3 || true
+    _wt_run "${WT}" --title "${title}" --menu "${prompt}" "${h}" "${w}" "${lh}" "$@" 3>&1 1>&2 2>&3 || true
   else
     echo "${prompt}" >&2
     local idx=1 first_tag=""
@@ -138,7 +167,7 @@ wt_checklist() {
   # wt_checklist TITLE PROMPT HEIGHT WIDTH LISTHEIGHT [TAG ITEM STATUS...]
   local title="$1" prompt="$2" h="$3" w="$4" lh="$5"; shift 5
   if [[ -n "${WT}" ]]; then
-    "${WT}" --title "${title}" --checklist "${prompt}" "${h}" "${w}" "${lh}" "$@" 3>&1 1>&2 2>&3 | tr -d '"' || true
+    _wt_run "${WT}" --title "${title}" --checklist "${prompt}" "${h}" "${w}" "${lh}" "$@" 3>&1 1>&2 2>&3 | tr -d '"' || true
   else
     echo "${prompt}" >&2
     local -a selected=()
@@ -155,7 +184,7 @@ wt_checklist() {
 wt_inputbox() {
   local title="$1" prompt="$2" h="$3" w="$4" init="$5"
   if [[ -n "${WT}" ]]; then
-    "${WT}" --title "${title}" --inputbox "${prompt}" "${h}" "${w}" "${init}" 3>&1 1>&2 2>&3 || echo "${init}"
+    _wt_run "${WT}" --title "${title}" --inputbox "${prompt}" "${h}" "${w}" "${init}" 3>&1 1>&2 2>&3 || echo "${init}"
   else
     read -r -p "${prompt} [${init}]: " val >&2
     echo "${val:-${init}}"
@@ -165,7 +194,7 @@ wt_inputbox() {
 wt_passwordbox() {
   local title="$1" prompt="$2" h="$3" w="$4"
   if [[ -n "${WT}" ]]; then
-    "${WT}" --title "${title}" --passwordbox "${prompt}" "${h}" "${w}" "" 3>&1 1>&2 2>&3 || true
+    _wt_run "${WT}" --title "${title}" --passwordbox "${prompt}" "${h}" "${w}" "" 3>&1 1>&2 2>&3 || true
   else
     read -r -s -p "${prompt}: " val >&2; echo >&2
     echo "${val}"
@@ -175,7 +204,7 @@ wt_passwordbox() {
 wt_yesno() {
   local title="$1" prompt="$2"
   if [[ -n "${WT}" ]]; then
-    "${WT}" --title "${title}" --yesno "${prompt}" 8 78 3>&1 1>&2 2>&3
+    _wt_run "${WT}" --title "${title}" --yesno "${prompt}" 8 78 3>&1 1>&2 2>&3
   else
     read -r -p "${prompt} [y/N]: " ans >&2
     [[ "${ans,,}" =~ ^(y|yes)$ ]]
@@ -185,7 +214,7 @@ wt_yesno() {
 wt_msgbox() {
   local title="$1" msg="$2"
   if [[ -n "${WT}" ]]; then
-    "${WT}" --title "${title}" --msgbox "${msg}" 20 78 3>&1 1>&2 2>&3 || true
+    _wt_run "${WT}" --title "${title}" --msgbox "${msg}" 20 78 3>&1 1>&2 2>&3 || true
   else
     echo -e "${msg}" >&2
   fi
@@ -643,20 +672,52 @@ section_providers() {
     [zai]="ZAI_API_KEY"
   )
 
+  # Providers whose CLI ships a web sign-in / OAuth flow. The wizard offers
+  # an "OAuth" branch for these; the validator's W040 list must stay in sync.
+  declare -A OAUTH_CAPABLE=( [anthropic]=1 [openai]=1 [zai]=1 )
+  declare -A OAUTH_HINT=(
+    [anthropic]="Run \`claude login\` inside the container after first boot.\nThe Claude Code CLI completes an OAuth handshake in your browser\nand stores the session token under /home/devuser/.claude/."
+    [openai]="Run \`codex login\` inside the container after first boot.\nThe Codex Rust CLI completes an OAuth handshake in your browser\nand stores credentials under /home/openai-user/.codex/auth.json."
+    [zai]="Run \`claude-zai login\` (or \`zai-cli login\`) inside the container\nafter first boot. The Z.AI / GLM wrapper opens a browser session\nand persists tokens under /home/zai-user/.zai/."
+  )
+
   for pname in anthropic openai gemini deepseek perplexity openrouter context7 brave github zai; do
     if echo "${raw_prov}" | grep -qw "${pname}"; then
       state_set_bool "providers.${pname}.enabled" "true"
       local env_var="${PROV_ENV[${pname}]}"
       local current_val; current_val="$(get_env_value "${env_var}")"
-      local hint="${env_var}"
-      [[ -n "${current_val}" ]] && hint="${env_var} (currently set — leave blank to keep)"
-      local secret
-      secret="$(wt_passwordbox "Provider: ${pname}" "Enter ${hint}" 9 78)"
-      if [[ -n "${secret}" ]]; then
-        set_env_value "${env_var}" "${secret}"
-      elif [[ -z "${current_val}" ]]; then
-        wt_msgbox "Provider warning" \
-          "No value entered for ${env_var}.\nProvider '${pname}' will fail E017 at boot unless added to .env manually."
+
+      # Auth-mode branch: API key vs web sign-in. Only offered for providers
+      # whose CLI actually has an OAuth flow.
+      local auth_mode="api_key"
+      if [[ -n "${OAUTH_CAPABLE[${pname}]:-}" ]]; then
+        local prev_mode; prev_mode="$(state_get providers.${pname}.auth_mode)"
+        [[ -z "${prev_mode}" ]] && prev_mode="api_key"
+        auth_mode="$(wt_menu "Provider: ${pname} — credentials" \
+          "How do you want to authenticate with ${pname}?\n\nAPI key: paste a key now; written to .env." \
+          12 78 2 \
+          "api_key" "API key (paste $(echo "${env_var}") now)" \
+          "oauth"   "Web sign-in (\`${pname}\` CLI handles login)")"
+        [[ -z "${auth_mode}" ]] && auth_mode="${prev_mode}"
+      fi
+      state_set "providers.${pname}.auth_mode" "${auth_mode}"
+
+      if [[ "${auth_mode}" == "oauth" ]]; then
+        wt_msgbox "Provider: ${pname} — web sign-in selected" \
+          "auth_mode=oauth — no API key required.\n\n$(echo -e "${OAUTH_HINT[${pname}]}")\n\nIf you also have ${env_var} in .env, the CLI will\nuse the OAuth session anyway (CLI precedence)."
+        # Don't write/clear the env var — leave any existing value alone so the
+        # user can switch back to api_key without re-typing it.
+      else
+        local hint="${env_var}"
+        [[ -n "${current_val}" ]] && hint="${env_var} (currently set — leave blank to keep)"
+        local secret
+        secret="$(wt_passwordbox "Provider: ${pname}" "Enter ${hint}" 9 78)"
+        if [[ -n "${secret}" ]]; then
+          set_env_value "${env_var}" "${secret}"
+        elif [[ -z "${current_val}" ]]; then
+          wt_msgbox "Provider warning" \
+            "No value entered for ${env_var}.\nProvider '${pname}' will fail E017 at boot unless added to .env manually,\nor change auth_mode to oauth (anthropic / openai only)."
+        fi
       fi
     else
       state_set_bool "providers.${pname}.enabled" "false"

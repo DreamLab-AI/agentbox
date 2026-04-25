@@ -40,6 +40,7 @@ Most agent CLIs hardcode a list of providers and read their keys from environmen
 enabled = true
 env_var = "ANTHROPIC_API_KEY"
 optional_env_vars = []
+auth_mode = "api_key"   # default; see "Web sign-in" below for the OAuth alternative
 ```
 
 Then in `.env`:
@@ -49,6 +50,45 @@ ANTHROPIC_API_KEY=sk-ant-...
 ```
 
 Run `agentbox config validate` to confirm no E017/E018 violations before building.
+
+## Web sign-in (OAuth) for Claude, Codex, and Z.AI
+
+Anthropic's `claude` CLI, OpenAI's `codex` Rust CLI, and Z.AI's `claude-zai`
+wrapper all ship a browser-based sign-in flow that mints a session token
+without ever touching a raw API key. If you'd rather log in interactively
+than paste a key into `.env`, set `auth_mode = "oauth"` on the provider:
+
+```toml
+[providers.anthropic]
+enabled   = true
+env_var   = "ANTHROPIC_API_KEY"   # still declared for runtime fallback
+auth_mode = "oauth"               # validator skips E017 for this provider
+
+[providers.openai]
+enabled   = true
+env_var   = "OPENAI_API_KEY"
+auth_mode = "oauth"
+```
+
+After the container boots, run the matching CLI inside it once to complete the
+OAuth handshake — the token is persisted under the user's home directory and
+re-used across restarts:
+
+| Provider | Command | Token path |
+|---|---|---|
+| `anthropic` | `claude login` (run as `devuser`) | `/home/devuser/.claude/` |
+| `openai` | `codex login` (run as `openai-user`) | `/home/openai-user/.codex/auth.json` |
+| `zai` | `claude-zai login` (run as `zai-user`) | `/home/zai-user/.zai/` |
+
+Mount these directories on a named volume if you want the session to survive
+image rebuilds; the default compose stack already does this for the standard
+profile homes.
+
+The wizard (`./scripts/start-agentbox.sh`) offers an "API key vs web sign-in"
+radio for these three providers in the providers section, so you don't have to
+edit the manifest by hand. Other providers (gemini, deepseek, perplexity, …)
+have no in-container OAuth flow yet — setting `auth_mode = "oauth"` on them
+emits validator warning **W040** and falls back to env-var (api_key) semantics.
 
 ## Adding a New Provider
 
