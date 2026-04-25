@@ -18,6 +18,35 @@ CANDIDATE_TOML="${TMP_DIR}/candidate.toml"
 
 cleanup() { rm -rf "${TMP_DIR}"; }
 trap cleanup EXIT
+
+_WIZARD_PID="$$"
+abort_wizard() {
+  # Reset terminal in case whiptail left it in cbreak/no-echo mode.
+  stty sane 2>/dev/null || true
+  # If we're in a subshell (pipeline / $() / function scope inside one),
+  # exit alone won't kill the parent script. Signal the main wizard PID,
+  # whose own INT/TERM trap will re-enter abort_wizard at the top level.
+  if [[ "${BASHPID:-$$}" != "${_WIZARD_PID}" ]]; then
+    kill -TERM "${_WIZARD_PID}" 2>/dev/null || true
+    exit 130
+  fi
+  printf '\nWizard aborted by user. No changes written.\n' >&2
+  exit 130
+}
+trap abort_wizard INT TERM
+
+# _wt_run COMMAND...  — invoke a whiptail/dialog command and propagate Ctrl+C.
+# Whiptail catches SIGINT itself and exits 130; without this wrapper the parent
+# script's `|| true` would swallow it and the wizard would loop forever.
+_wt_run() {
+  local rc=0
+  "$@" || rc=$?
+  if [[ "${rc}" == "130" || "${rc}" == "143" ]]; then
+    abort_wizard
+  fi
+  return "${rc}"
+}
+
 cd "${ROOT_DIR}"
 
 # ── helpers ────────────────────────────────────────────────────────────────────
@@ -117,7 +146,7 @@ wt_menu() {
   # wt_menu TITLE PROMPT HEIGHT WIDTH LISTHEIGHT [TAG ITEM...]
   local title="$1" prompt="$2" h="$3" w="$4" lh="$5"; shift 5
   if [[ -n "${WT}" ]]; then
-    "${WT}" --title "${title}" --menu "${prompt}" "${h}" "${w}" "${lh}" "$@" 3>&1 1>&2 2>&3 || true
+    _wt_run "${WT}" --title "${title}" --menu "${prompt}" "${h}" "${w}" "${lh}" "$@" 3>&1 1>&2 2>&3 || true
   else
     echo "${prompt}" >&2
     local idx=1 first_tag=""
@@ -138,7 +167,7 @@ wt_checklist() {
   # wt_checklist TITLE PROMPT HEIGHT WIDTH LISTHEIGHT [TAG ITEM STATUS...]
   local title="$1" prompt="$2" h="$3" w="$4" lh="$5"; shift 5
   if [[ -n "${WT}" ]]; then
-    "${WT}" --title "${title}" --checklist "${prompt}" "${h}" "${w}" "${lh}" "$@" 3>&1 1>&2 2>&3 | tr -d '"' || true
+    _wt_run "${WT}" --title "${title}" --checklist "${prompt}" "${h}" "${w}" "${lh}" "$@" 3>&1 1>&2 2>&3 | tr -d '"' || true
   else
     echo "${prompt}" >&2
     local -a selected=()
@@ -155,7 +184,7 @@ wt_checklist() {
 wt_inputbox() {
   local title="$1" prompt="$2" h="$3" w="$4" init="$5"
   if [[ -n "${WT}" ]]; then
-    "${WT}" --title "${title}" --inputbox "${prompt}" "${h}" "${w}" "${init}" 3>&1 1>&2 2>&3 || echo "${init}"
+    _wt_run "${WT}" --title "${title}" --inputbox "${prompt}" "${h}" "${w}" "${init}" 3>&1 1>&2 2>&3 || echo "${init}"
   else
     read -r -p "${prompt} [${init}]: " val >&2
     echo "${val:-${init}}"
@@ -165,7 +194,7 @@ wt_inputbox() {
 wt_passwordbox() {
   local title="$1" prompt="$2" h="$3" w="$4"
   if [[ -n "${WT}" ]]; then
-    "${WT}" --title "${title}" --passwordbox "${prompt}" "${h}" "${w}" "" 3>&1 1>&2 2>&3 || true
+    _wt_run "${WT}" --title "${title}" --passwordbox "${prompt}" "${h}" "${w}" "" 3>&1 1>&2 2>&3 || true
   else
     read -r -s -p "${prompt}: " val >&2; echo >&2
     echo "${val}"
@@ -175,7 +204,7 @@ wt_passwordbox() {
 wt_yesno() {
   local title="$1" prompt="$2"
   if [[ -n "${WT}" ]]; then
-    "${WT}" --title "${title}" --yesno "${prompt}" 8 78 3>&1 1>&2 2>&3
+    _wt_run "${WT}" --title "${title}" --yesno "${prompt}" 8 78 3>&1 1>&2 2>&3
   else
     read -r -p "${prompt} [y/N]: " ans >&2
     [[ "${ans,,}" =~ ^(y|yes)$ ]]
@@ -185,7 +214,7 @@ wt_yesno() {
 wt_msgbox() {
   local title="$1" msg="$2"
   if [[ -n "${WT}" ]]; then
-    "${WT}" --title "${title}" --msgbox "${msg}" 20 78 3>&1 1>&2 2>&3 || true
+    _wt_run "${WT}" --title "${title}" --msgbox "${msg}" 20 78 3>&1 1>&2 2>&3 || true
   else
     echo -e "${msg}" >&2
   fi
