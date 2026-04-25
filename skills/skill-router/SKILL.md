@@ -86,6 +86,26 @@ Examples:
 | Hook automation (pre/post task, session) | `hooks-automation` |
 | Lock-free multi-agent VCS (Jujutsu) | `agentic-jujutsu` |
 
+### Consultants — explicit second opinion from another LLM
+
+Use a consultant when the coordinator wants a labelled answer from a
+specific external model. The response is returned with provenance so the
+caller knows who said it. Specified by [PRD-005 / ADR-011](../../docs/reference/adr/ADR-011-consultation-mcps.md).
+
+| If the request involves... | Route to |
+|---|---|
+| Code reasoning, refactor, test gen — second opinion (OpenAI Codex CLI) | `codex` consultant via `mcp__agentbox-consultants__codex_consult` |
+| Long-document or codebase-wide analysis (1M-token Gemini) | `gemini` consultant |
+| Chinese-language reasoning, low-cost second opinion (Z.AI / GLM-5) | `zai` consultant |
+| Live-web research with citations (Perplexity) | `perplexity` consultant |
+| Math + transparent chain-of-thought (DeepSeek-reasoner) | `deepseek` consultant |
+| User says "ask <name>", "consult <name>", "second opinion from <name>" | matching consultant |
+| User says "get a second opinion" without naming | `auto-consultant` agent template (classifier picks) |
+
+Manual call form (slash-command): `/consult <name> "<question>"` (e.g.
+`/consult deepseek "verify this proof of …"`). Operator guide:
+[docs/user/consultants.md](../../docs/user/consultants.md).
+
 ### Research, Web, and Content
 | If the request involves... | Route to |
 |---|---|

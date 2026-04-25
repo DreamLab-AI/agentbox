@@ -277,6 +277,20 @@
           npmDepsHash = "sha256-Ix5YV1W54KYyc5fGS1DjpyfrUlX1Qjzt6cJcPetT7wM=";
         };
 
+        # 7. mcp/consultants — consultant tier (PRD-005 / ADR-011). Single
+        # buildNpmPackage with five bin entries; ships when consultants.enabled
+        # = true. Each individual consultant is gated separately at runtime via
+        # the manifest's [consultants.<name>].enabled flag, but they share one
+        # node_modules tree because the shared/ scaffolding is internal-only.
+        consultantsPkg = npmServicesLib.makeNpmService {
+          name        = "agentbox-consultants";
+          src         = ./mcp/consultants;
+          entry       = "shared/consultant-base.js";  # smoke-load target
+          # Prefetched 2026-04-25. Refresh:
+          #   nix run nixpkgs#prefetch-npm-deps -- mcp/consultants/package-lock.json
+          npmDepsHash = lib.fakeHash;
+        };
+
         # 6. skills/comfyui/mcp-server — gated by skills.media.comfyui_builtin.
         # sharp has native gyp bindings; python3 + nodeGyp are required to rebuild
         # it against the Nix libc.
@@ -304,7 +318,10 @@
           # playwright MCP: when skills.browser.playwright enabled
           ++ lib.optionals (browserCfg.playwright or false) [ playwrightMcpPkg ]
           # comfyui MCP: when skills.media.comfyui_builtin enabled
-          ++ lib.optionals (mediaCfg.comfyui_builtin or false) [ comfyuiMcpPkg ];
+          ++ lib.optionals (mediaCfg.comfyui_builtin or false) [ comfyuiMcpPkg ]
+          # Consultants: ship the full bundle when the master gate is on.
+          # Per-consultant runtime gating lives in [consultants.<name>].enabled.
+          ++ lib.optionals ((agentboxConfig.consultants or {}).enabled or false) [ consultantsPkg ];
 
         boolEnv = value: if value then "true" else "false";
 
@@ -734,6 +751,10 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           ${lib.optionalString (mediaCfg.comfyui_builtin or false) ''
           mkdir -p $out/opt/agentbox/skills/comfyui
           cp -rL ${comfyuiMcpPkg}/package $out/opt/agentbox/skills/comfyui/mcp-server
+          ''}
+          ${lib.optionalString ((agentboxConfig.consultants or {}).enabled or false) ''
+          mkdir -p $out/opt/agentbox/mcp
+          cp -rL ${consultantsPkg}/package $out/opt/agentbox/mcp/consultants
           ''}
 
           chmod +x $out/opt/agentbox/config/entrypoint-unified.sh

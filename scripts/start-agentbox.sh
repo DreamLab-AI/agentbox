@@ -325,6 +325,47 @@ section_gpu() {
 }
 
 # ════════════════════════════════════════════════════════════════════════════════
+# SECTION 3a — consultant tier (PRD-005 / ADR-011)
+# Surfaced after providers so the wizard knows which credentials are in scope.
+# ════════════════════════════════════════════════════════════════════════════════
+section_consultants() {
+  if ! wt_yesno "Consultant tier (PRD-005 / ADR-011)" \
+    "Enable the consultant tier?\n\nFive MCP servers expose external LLM providers as named consultants the\ncoordinator can invoke explicitly: codex (OpenAI Codex CLI), gemini\n(@google/gemini-cli), zai (Z.AI / GLM-5), perplexity (live web), and\ndeepseek (math + reasoning).\n\nManual call from chat:  /consult <name> \"<question>\"\nAuto dispatch:           subagent_type=\"auto-consultant\"\n\nLogs land in /var/lib/agentbox/consultations/<name>-YYYY-MM-DD.jsonl;\nsetting intelligence_signal=true also writes ADR-043 quality signals\nfor SONA learning."; then
+    state_set_bool "consultants.enabled" "false"
+    return 0
+  fi
+
+  state_set_bool "consultants.enabled" "true"
+
+  local raw
+  raw="$(wt_checklist "Consultant tier — providers to enable" \
+    "Pick which consultants to ship (each requires its matching\nproviders.<name>=true and the relevant CLI toolchain)" \
+    18 78 5 \
+    "consultants.codex.enabled"      "OpenAI Codex Rust CLI (toolchains.codex)"          "$([[ "$(state_get consultants.codex.enabled)" == "true" ]] && echo ON || echo OFF)" \
+    "consultants.gemini.enabled"     "@google/gemini-cli (toolchains.gemini_cli)"         "$([[ "$(state_get consultants.gemini.enabled)" == "true" ]] && echo ON || echo OFF)" \
+    "consultants.zai.enabled"        "Z.AI / GLM-5 via claude-zai (providers.zai)"        "$([[ "$(state_get consultants.zai.enabled)" == "true" ]] && echo ON || echo OFF)" \
+    "consultants.perplexity.enabled" "Perplexity (providers.perplexity)"                  "$([[ "$(state_get consultants.perplexity.enabled)" == "true" ]] && echo ON || echo OFF)" \
+    "consultants.deepseek.enabled"   "DeepSeek (providers.deepseek)"                      "$([[ "$(state_get consultants.deepseek.enabled)" == "true" ]] && echo ON || echo OFF)")"
+
+  for k in consultants.codex.enabled consultants.gemini.enabled consultants.zai.enabled consultants.perplexity.enabled consultants.deepseek.enabled; do
+    if echo "${raw}" | grep -qw "${k}"; then
+      state_set_bool "${k}" "true"
+    else
+      state_set_bool "${k}" "false"
+    fi
+  done
+
+  if wt_yesno "Consultant tier — intelligence signals" \
+    "Write ADR-043 QualitySignal files for every successful consultation?\n\nThis lets the SONA learning loop absorb consultation outcomes (which\nconsultant was chosen, latency, cost, success/failure) so the\nauto-consultant classifier improves over time. Files land under\n/workspace/profiles/<stack>/intelligence/data/."; then
+    state_set_bool "consultants.intelligence_signal" "true"
+  else
+    state_set_bool "consultants.intelligence_signal" "false"
+  fi
+
+  validate_candidate
+}
+
+# ════════════════════════════════════════════════════════════════════════════════
 # SECTION 3b — privacy filter (ADR-008)
 # Skipped entirely when the host cannot realistically run the sidecar.
 # ════════════════════════════════════════════════════════════════════════════════
@@ -805,6 +846,7 @@ SECTIONS=(
   section_federation
   section_adapters
   section_gpu
+  section_consultants
   section_privacy_filter
   section_desktop
   section_toolchains

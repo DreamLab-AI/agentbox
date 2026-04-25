@@ -94,6 +94,45 @@ if otlp:
     lines.append(f'otlp_endpoint = {json.dumps(otlp)}')
 lines.append("")
 
+# ── consultant tier (ADR-011 / PRD-005) ─────────────────────────────────────────
+# Always emit the [consultants] block so operator-edited model/home/timeout
+# overrides survive wizard round-trips.
+lines += [
+    "[consultants]",
+    f'enabled              = {b("consultants.enabled")}',
+    f'intelligence_signal  = {b("consultants.intelligence_signal")}',
+    f'log_dir              = {q("consultants.log_dir", "/var/lib/agentbox/consultations")}',
+    "",
+    "[consultants.codex]",
+    f'enabled = {b("consultants.codex.enabled")}',
+    'model      = "gpt-5.4"',
+    'home       = "/home/openai-user/.codex"',
+    'timeout_ms = 180000',
+    "",
+    "[consultants.gemini]",
+    f'enabled = {b("consultants.gemini.enabled")}',
+    'model      = "gemini-2.5-pro"',
+    'home       = "/home/gemini-user"',
+    'timeout_ms = 180000',
+    "",
+    "[consultants.zai]",
+    f'enabled = {b("consultants.zai.enabled")}',
+    'model      = "glm-5"',
+    'home       = "/home/zai-user"',
+    'timeout_ms = 180000',
+    "",
+    "[consultants.perplexity]",
+    f'enabled = {b("consultants.perplexity.enabled")}',
+    'model      = "sonar-pro"',
+    'timeout_ms = 60000',
+    "",
+    "[consultants.deepseek]",
+    f'enabled = {b("consultants.deepseek.enabled")}',
+    'model      = "deepseek-reasoner"',
+    'timeout_ms = 120000',
+    "",
+]
+
 # ── privacy filter (ADR-008) ────────────────────────────────────────────────────
 lines += [
     "[privacy_filter]",

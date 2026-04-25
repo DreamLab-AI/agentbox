@@ -4,6 +4,50 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Consultant tier — meta-router as named-MCP dispatch (2026-04-25)
+
+Five new MCP servers exposing external LLM providers as labelled consultants the coordinator (Claude Code / ruflo) can invoke explicitly. Specified by [PRD-005](docs/reference/prd/PRD-005-meta-router-consultants.md) and [ADR-011](docs/reference/adr/ADR-011-consultation-mcps.md); reasoned through in conversation against `musistudio/claude-code-router` (rejected as the meta-router because its API-rewriting layer does not fit agentbox's MCP-everywhere + per-user-CLI-isolation patterns).
+
+**The five consultants:**
+
+| Name | Backend | Why |
+|---|---|---|
+| `codex`      | OpenAI Codex Rust CLI subprocess | code reasoning, refactors, test gen |
+| `gemini`     | `@google/gemini-cli` subprocess | 1M-token context for long documents |
+| `zai`        | `claude-zai` (Z.AI / GLM-5) | Chinese-language reasoning, low cost |
+| `perplexity` | Perplexity HTTPS API | live web with citations |
+| `deepseek`   | DeepSeek HTTPS API | math + transparent chain-of-thought |
+
+**Wire contract** (every consultant): `consult / health / cost_estimate`. Identical envelope across CLI-spawn and HTTPS-direct. Full schema in PRD-005 §3.
+
+**Implementation:**
+- `mcp/consultants/` — new top-level dir, single buildNpmPackage with five bin entries; shared scaffolding under `shared/` (consultant-base.js + memory-logger.js + spawn-cli.js).
+- `mcp/consultants/<name>/server.js` — ~80 lines per consultant, all delegating to `BaseConsultant`.
+- `agentbox.toml` — new `[consultants]` master gate + `[consultants.<name>]` per-consultant blocks.
+- `schema/agentbox.toml.schema.json` — full validation shape.
+- `scripts/agentbox-config-validate.js` — new rules **E035-E038** covering provider gates, master gate, toolchain gate, and intelligence-signal env requirements.
+- `scripts/start-agentbox.sh` — new wizard section 3a; offered to operators after `[providers]` so credentials are in scope.
+- `scripts/tui-read-manifest.py` / `tui-write-manifest.py` — round-trip preservation.
+- `flake.nix` — new `consultantsPkg` derivation gated on the master gate; appRoot copies into `/opt/agentbox/mcp/consultants/`.
+
+**Dispatch surfaces:**
+- **Manual** — `skills/skill-router/SKILL.md` gains a `### Consultants` routing section. Operators write `/consult <name> "<question>"` in chat.
+- **Automatic** — new `agents/auto-consultant.md` agent template. `Task({ subagent_type: "auto-consultant", prompt: "..." })` classifies the question (code → codex, math → deepseek, "current/latest" → perplexity, Chinese chars → zai, large context → gemini) and dispatches.
+
+**Audit trail:**
+- JSONL appended to `/var/lib/agentbox/consultations/<consultant>-<YYYY-MM-DD>.jsonl` per call, atomically.
+- When `[consultants].intelligence_signal = true`, ADR-043 `QualitySignal` files also land under `/workspace/profiles/<stack>/intelligence/data/` so SONA learning loops absorb consultation verdicts.
+
+**Docs:**
+- New [docs/user/consultants.md](docs/user/consultants.md) — operator guide with enable/call/audit walkthroughs.
+- [docs/user/glossary.md](docs/user/glossary.md) — added "Consultant" and "Meta-router" terms; new "Where to go next" row.
+- [docs/README.md](docs/README.md) — sovereign-data-stack table extended with consultants row; ADR-011 + PRD-005 indexed.
+
+**What this does NOT do:**
+- Not a transparent API rewriter. We do not silently swap the model behind a Claude Code request. That layer (`claude-code-router`) stays an optional Phase-3 add-on, orthogonal to the consultant tier.
+- Not a streaming surface. Phase-3 once MCP gains stable streaming.
+- Not a fan-out / consensus tool. Each `/consult` call hits exactly one consultant. Consensus across consultants is a future PRD-005 §10 Phase-4 item.
+
 ### `nix build .#runtime` now succeeds end-to-end on a clean clone (2026-04-25)
 
 Six chained defects between `nix build .#runtime` and a usable OCI image. Every one was hidden behind `|| true` in `lib/npm-cli.nix` since the helper was first written; removing that absorption (commit `133d1da4`) surfaced every defect. Each fixed in dependency order in commit `f0461f91`:

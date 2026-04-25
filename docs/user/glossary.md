@@ -192,6 +192,20 @@ flowchart LR
   storage). The `pods` adapter can also federate with an external server or
   disable storage entirely. See [solid-pod.md](solid-pod.md) and
   [ADR-010](../reference/adr/ADR-010-rust-solid-pod-adoption.md).
+- **Consultant** — an external LLM provider (Codex, Gemini, Z.AI, Perplexity,
+  DeepSeek) exposed to the coordinator as a named MCP tool. The coordinator
+  asks `/consult deepseek "verify this proof"` and gets a labelled answer
+  with provenance: model, tokens, cost, citations. Distinct from a
+  cost-rewriting router (e.g. `claude-code-router`), which silently swaps
+  providers under the hood. See [consultants.md](consultants.md) and
+  [ADR-011](../reference/adr/ADR-011-consultation-mcps.md).
+- **Meta-router (consultant tier)** — agentbox's name for the coordinator +
+  consultant pattern: explicit dispatch (`/consult <name>` or
+  `subagent_type="auto-consultant"`), labelled response, JSONL audit trail,
+  optional ADR-043 quality signal. Specified by
+  [PRD-005](../reference/prd/PRD-005-meta-router-consultants.md). The
+  alternative — transparent API rewriting per `claude-code-router` — was
+  weighed and rejected; ADR-011 records why.
 - **Sovereign data stack** — the coherent identity-plus-data substrate every
   agentbox container owns end-to-end: secp256k1 keypair (identity),
   `solid-pod-rs` (durable storage + WAC 2.0 + `did:nostr` resolver),
@@ -313,6 +327,7 @@ inbound events *at* the container. You can run the mesh without the relay
 | Operator tuning the build | [configuration.md](configuration.md) |
 | Operator on a specific host | [running.md](running.md) and [platforms.md](platforms.md) |
 | Operator debugging a failure | [troubleshooting.md](troubleshooting.md) |
+| Operator wiring up consultants (Codex / Gemini / Z.AI / Perplexity / DeepSeek) | [consultants.md](consultants.md) |
 | Operator setting up external-agent messaging | [nostr-relay.md](nostr-relay.md) |
 | Operator enabling PII redaction | [privacy-filter.md](privacy-filter.md) |
 | Operator tuning the Solid pod | [solid-pod.md](solid-pod.md) |

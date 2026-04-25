@@ -14,6 +14,7 @@
  *   E022-E025  privacy filter middleware (ADR-008)
  *   E026-E029/W030/E031  embedded Nostr relay + pod-inbox bridge (ADR-009)
  *   E033/W034  solid-pod-rs first-class pod server (ADR-010)
+ *   E035-E038  consultant tier (ADR-011 / PRD-005)
  */
 
 'use strict';
@@ -376,6 +377,85 @@ if (sovereignMesh.jss_rust_backend === true) {
       code: 'E015',
       message: 'E015: sovereign_mesh.jss_rust_backend is true but "jss-rust" input is not pinned in flake.lock'
     });
+  }
+}
+
+// ─── E035-E038: consultant-tier coherence (ADR-011 / PRD-005) ─────────────────
+//
+// E035 — every consultants.<name>.enabled=true requires the matching
+//        providers.<provider>.enabled=true (so the credential env var is
+//        present at boot per E017).
+// E036 — any consultants.<name>.enabled=true requires consultants.enabled=true
+//        (master gate); avoids accidentally shipping a consultant in the
+//        image while the dispatcher is off.
+// E037 — consultants.codex requires toolchains.codex; consultants.gemini
+//        requires toolchains.gemini_cli; consultants.zai requires
+//        providers.zai (already covered by E035) AND the claude-zai wrapper
+//        which is part of toolchains.claude.
+// E038 — log_dir + intelligence_signal coherence: when intelligence_signal
+//        is true, AGENTBOX_INTELLIGENCE_DIR must be set in the env at boot
+//        OR a fallback dir must exist on the writable workspace mount.
+{
+  const consultants = manifest.consultants || {};
+  const consultantToProvider = {
+    codex:      'openai',
+    gemini:     'gemini',
+    zai:        'zai',
+    perplexity: 'perplexity',
+    deepseek:   'deepseek',
+  };
+  const consultantToToolchain = {
+    codex:  'codex',
+    gemini: 'gemini_cli',
+    // zai depends on the claude-zai wrapper (currently bundled with the
+    // claude toolchain); other consultants are HTTP-only.
+  };
+  const tcCfg = manifest.toolchains || {};
+
+  const subConsultants = ['codex', 'gemini', 'zai', 'perplexity', 'deepseek'];
+  let anySubEnabled = false;
+
+  for (const sub of subConsultants) {
+    const c = consultants[sub] || {};
+    if (c.enabled !== true) continue;
+    anySubEnabled = true;
+
+    // E035 — provider gate
+    const providerName = consultantToProvider[sub];
+    const provCfg = (providers[providerName] || {});
+    if (provCfg.enabled !== true) {
+      errors.push({
+        code: 'E035',
+        message: `E035: consultants.${sub}.enabled=true requires providers.${providerName}.enabled=true (so the env var is present at boot — see E017)`
+      });
+    }
+
+    // E037 — toolchain gate (only for the CLI-spawning consultants)
+    const tcName = consultantToToolchain[sub];
+    if (tcName && tcCfg[tcName] !== true) {
+      errors.push({
+        code: 'E037',
+        message: `E037: consultants.${sub}.enabled=true requires toolchains.${tcName}=true (the binary that consultants.${sub} spawns)`
+      });
+    }
+  }
+
+  // E036 — master-gate coherence
+  if (anySubEnabled && consultants.enabled !== true) {
+    errors.push({
+      code: 'E036',
+      message: 'E036: at least one consultants.<name>.enabled=true but consultants.enabled=false (set the master gate first)'
+    });
+  }
+
+  // E038 — intelligence_signal needs a writable target dir
+  if (consultants.intelligence_signal === true && consultants.enabled === true) {
+    if (!process.env.AGENTBOX_INTELLIGENCE_DIR && !process.env.WORKSPACE) {
+      errors.push({
+        code: 'E038',
+        message: 'E038: consultants.intelligence_signal=true but neither AGENTBOX_INTELLIGENCE_DIR nor WORKSPACE is set; signal files will be silently dropped'
+      });
+    }
   }
 }
 
