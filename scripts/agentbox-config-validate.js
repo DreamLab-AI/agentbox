@@ -2,8 +2,9 @@
 /**
  * agentbox config validate
  * Validates agentbox.toml against the JSON Schema and 33 semantic rules
- * (E001-E008, E010-E020, E022-E029, E031, E033 + W021, W030, W034;
- * E009, E030, E032 reserved).
+ * (E001-E008, E010-E020, E022-E029, E031, E033 + W021, W030;
+ * E009, E030, E032, E034 reserved; W034 retired 2026-04-25 with the
+ * removal of the local-jss legacy stub).
  * Exit 0 = clean. Non-zero = errors. Errors on stderr, one per line: "E### message"
  *
  * Rule families:
@@ -13,7 +14,7 @@
  *   E020/W021  security.exceptions coherence (ADR-007)
  *   E022-E025  privacy filter middleware (ADR-008)
  *   E026-E029/W030/E031  embedded Nostr relay + pod-inbox bridge (ADR-009)
- *   E033/W034  solid-pod-rs first-class pod server (ADR-010)
+ *   E033       solid-pod-rs first-class pod server (ADR-010)
  *   E035-E038  consultant tier (ADR-011 / PRD-005)
  */
 
@@ -106,7 +107,7 @@ const schemaValid = validate(manifest);
 
 let errors = [];
 // Advisory warnings — emitted to stderr but DO NOT cause a non-zero exit.
-// Used for direction signals (W034 deprecation, W030 open-policy nudge) that
+// Used for direction signals (e.g. W030 open-policy nudge) that
 // document operator intent without blocking validation. W021 stays in errors
 // because the hardened baseline may be silently broken without the
 // corresponding security exception delta.
@@ -459,16 +460,15 @@ if (sovereignMesh.jss_rust_backend === true) {
   }
 }
 
-// ─── E032-E034 / W034: solid-pod-rs first-class pod server (ADR-010) ──────────
+// ─── E032-E033: solid-pod-rs first-class pod server (ADR-010) ─────────────────
 //
 // E032 — adapters.pods="local-solid-rs" requires the filesystem backend to
 //        have a writable path. Emitted as W021-style exception-missing warning
 //        when [security.exceptions.solid-pod-rs] is absent.
 // E033 — integrations.solid_pod_rs.enable_dpop_cache=true requires
 //        enable_oidc=true (DPoP is OIDC-only).
-// W034 — adapters.pods="local-jss" emits a deprecation warning: the Python
-//        stub at scripts/solid-pod-server.py is retained for backward
-//        compatibility only; new deployments should pick local-solid-rs.
+// (W034, the local-jss deprecation warning, was retired 2026-04-25 along
+//  with the legacy stub; the schema enum no longer accepts local-jss.)
 {
   const pods = (manifest.adapters || {}).pods;
   const sp   = (manifest.integrations || {}).solid_pod_rs || {};
@@ -485,12 +485,9 @@ if (sovereignMesh.jss_rust_backend === true) {
     }
   }
 
-  if (pods === 'local-jss') {
-    warnings.push({
-      code: 'W034',
-      message: 'W034: adapters.pods="local-jss" — deprecated. The Python scripts/solid-pod-server.py stub does not implement LDP containers, WAC enforcement, PATCH, or full Schnorr NIP-98. Switch to local-solid-rs (first-class Rust server, ADR-010). The stack still boots normally.'
-    });
-  }
+  // local-jss was removed 2026-04-25; the schema enum no longer accepts it,
+  // so the AJV schema check raises E016 on any legacy manifest before this
+  // semantic block runs. Nothing to do here.
 }
 
 // ─── E026-E031 / W030: embedded Nostr relay coherence (ADR-009) ───────────────
@@ -724,7 +721,7 @@ for (const exceptionName of KNOWN_EXCEPTION_FEATURE_GATES) {
 // E017 and E018 are handled in the providers loop above.
 
 // ─── output ───────────────────────────────────────────────────────────────────
-// Warnings (W030, W034) are always printed to stderr — they are direction
+// Warnings (W030) are always printed to stderr — they are direction
 // signals. They do not affect the exit code. W021 remains in `errors`
 // because the baseline is structurally unsafe without the exception.
 for (const { code, message } of warnings) {

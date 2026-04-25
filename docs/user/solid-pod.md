@@ -24,76 +24,53 @@ by `sovereign-bootstrap.py` were decorative. Container listing returned a
 flat directory index instead of an LDP Basic Container. Atomic-rename
 durability (DDD-003 invariants I01 and I08) did not hold. **solid-pod-rs
 closes that gap.** It ships the full Solid 0.11 surface the existing
-`management-api/adapters/pods/local-jss.js` client has expected since day one.
+existing client (`management-api/adapters/pods/local-solid-rs.js`) has expected since day one.
 
 ## What you get
 
-| Capability | solid-pod-rs (Sprint 9) | Legacy Python stub |
-|------------|--------------------------|---------------------|
-| LDP resources + Basic Containers | yes | no (returns flat JSON listing) |
-| Web Access Control — WAC 2.0 conditions (Sprint 6) | deny-by-default + `acl:default` inheritance + time windows + origin constraints | no (accepts any authenticated request) |
-| PATCH dialects | N3 Patch, SPARQL-Update, JSON Patch | none (returns 405) |
-| Content negotiation | Turtle, JSON-LD, N-Triples | `application/octet-stream` only |
-| NIP-98 HTTP auth | full Schnorr signature verification | header-prefix check only |
-| **`did:nostr` resolver (Sprint 6)** | **Tier 1 + Tier 3 with `alsoKnownAs` cross-verification** | **not supported** |
-| **RFC 9421 webhook signing (Sprint 6)** | **Ed25519 signatures on outbound Solid Notifications** | **not supported** |
-| **Rate limiting (Sprint 7)** | **sliding-window LRU, tunable per-connection ceiling** | **not supported** |
-| **Per-pod storage quota (Sprint 8)** | **`.quota.json` sidecar with atomic writes; 413 on overflow** | **not supported** |
-| Solid-OIDC with DPoP | optional feature gate | not supported |
-| Solid Notifications 0.2 | WebSocket + Webhook channels | not supported |
-| `/.well-known/solid` + WebFinger JRD | standards-compliant discovery | not supported |
-| Storage backends | filesystem (atomic rename), memory (tests), S3/MinIO/R2/B2 | filesystem only, non-atomic writes |
-| Strong ETags | SHA-256; supports If-Match, If-None-Match, range requests | none |
-| Licence | AGPL-3.0-only (binary aggregation, see licensing note) | — |
-| Binary size | ≤40 MB full features, ≤200 KB minimal | — (Python stdlib) |
+| Capability | solid-pod-rs (Sprint 9) |
+|------------|--------------------------|
+| LDP resources + Basic Containers | yes |
+| Web Access Control — WAC 2.0 conditions (Sprint 6) | deny-by-default + `acl:default` inheritance + time windows + origin constraints |
+| PATCH dialects | N3 Patch, SPARQL-Update, JSON Patch |
+| Content negotiation | Turtle, JSON-LD, N-Triples |
+| NIP-98 HTTP auth | full Schnorr signature verification |
+| `did:nostr` resolver (Sprint 6) | Tier 1 + Tier 3 with `alsoKnownAs` cross-verification |
+| RFC 9421 webhook signing (Sprint 6) | Ed25519 signatures on outbound Solid Notifications |
+| Rate limiting (Sprint 7) | sliding-window LRU, tunable per-connection ceiling |
+| Per-pod storage quota (Sprint 8) | `.quota.json` sidecar with atomic writes; 413 on overflow |
+| Solid-OIDC with DPoP | optional feature gate |
+| Solid Notifications 0.2 | WebSocket + Webhook channels |
+| `/.well-known/solid` + WebFinger JRD | standards-compliant discovery |
+| Storage backends | filesystem (atomic rename), memory (tests), S3/MinIO/R2/B2 |
+| Strong ETags | SHA-256; If-Match, If-None-Match, range requests |
+| Licence | AGPL-3.0-only (binary aggregation; see [licensing.md](../developer/licensing.md)) |
+| Binary size | ≤40 MB full features, ≤200 KB minimal |
 
-## Shipped default and the one-line flip
-
-The shipped `agentbox.toml` sets `pods = "local-jss"`. This is not a
-statement about preference — it is a fresh-clone buildability choice. The
-existing `buildNpmPackage` services (`management-api`, MCP servers, npm
-CLIs) already require operators to prefetch dependency hashes on first
-build. Shipping `local-solid-rs` as the default adds another Rust
-derivation's `srcHash` + `cargoHash` to that burden.
-
-After your first build — or at any time you are ready to prefetch the
-Rust derivation — flip the manifest:
-
-```toml
-[adapters]
-pods = "local-solid-rs"
-
-[security.exceptions.solid-pod-rs]
-writable_volumes = ["solid-data:/var/lib/solid"]
-reason = "solid-pod-rs fs-backend requires atomic-rename writable storage"
-```
-
-Rebuild. Nix will print the exact prefetch commands on first failure; the
-pattern matches every other Rust-from-git derivation in the repo. After
-that, `local-solid-rs` is first-class in every dimension.
+The 2026-04-25 cleanup removed the Python `local-jss` stub entirely. There is
+no second pod implementation in agentbox; either you use `local-solid-rs`,
+you federate with `external`, or you turn the slot `off`.
 
 ## When to skip this
 
 - You have a host-provided Solid server you want agentbox to federate with.
   Set `adapters.pods = "external"` and `federation.mode = "client"`.
 - You have a workload that writes nothing durable. Set `adapters.pods = "off"`.
-- You are on `local-jss` (the shipped default) and have no immediate need
-  to flip. The stack boots normally; validator **W034** fires every run as
-  an advisory direction signal (not a failure — exit 0).
+
+If you have an old manifest with `pods = "local-jss"`, validation will fail
+with E016 (unknown enum value). Flip it to `local-solid-rs` — both the
+legacy stub and the Rust server stored under `/var/lib/solid`, so existing
+data carries across without migration.
 
 ## Wizard flow
 
 `scripts/start-agentbox.sh` asks one question for the `pods` slot. Pick from:
 
-- **`local-solid-rs`** (default, recommended) — the Rust server described here
-- `local-jss` — the legacy Python stub
+- **`local-solid-rs`** (default) — the Rust server described here
 - `external` — a host-provided Solid server (requires `federation.mode="client"` + `federation.external_url`)
 - `off` — no pod storage; consumers receive `AdapterDisabled`
 
-When you pick `local-solid-rs`, the wizard writes the default
-`[integrations.solid_pod_rs]` block and reminds you to keep
-`[security.exceptions.solid-pod-rs]` active in the manifest (already the
-default for fresh installs).
+`local-jss` is no longer offered.
 
 ## Manifest reference
 
@@ -131,7 +108,6 @@ Validator rules that watch this section:
 | Code | Condition |
 |------|-----------|
 | **E033** | `enable_dpop_cache=true` requires `enable_oidc=true` (DPoP is OIDC-only). |
-| **W034** | `adapters.pods="local-jss"` emits a deprecation warning — switch to `local-solid-rs`. |
 | **W021** | Feature active without `[security.exceptions.solid-pod-rs]` — the hardened baseline blocks writes to `/var/lib/solid` otherwise. |
 
 ## Verify it's running

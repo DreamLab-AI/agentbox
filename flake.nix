@@ -532,16 +532,16 @@
         # Opt-in features layered on top of defaultFeatures in lib/solid-pod-rs.nix.
         # did-nostr / webhook-signing / rate-limit / quota / jss-v04 are in the
         # default set; opting out requires a source-level edit of that file.
+        # Library-crate features are addressed via the solid-pod-rs/<name>
+        # dep-path so cargo enables them on the workspace member when the
+        # server crate doesn't forward them.
         solidPodRsExtraFeatures =
-          lib.optionals (solidPodRsCfg.enable_oidc or false)       [ "oidc" ]
-          ++ lib.optionals (solidPodRsCfg.enable_dpop_cache or false) [ "dpop-replay-cache" ]
-          ++ lib.optionals ((solidPodRsCfg.storage or "fs") == "s3") [ "s3-backend" ]
-          ++ lib.optionals ((solidPodRsCfg.notifications or "websocket") != "off") [
-               "solid-notifications"
-             ]
+          lib.optionals (solidPodRsCfg.enable_oidc or false)       [ "solid-pod-rs/oidc" ]
+          ++ lib.optionals (solidPodRsCfg.enable_dpop_cache or false) [ "solid-pod-rs/dpop-replay-cache" ]
+          ++ lib.optionals ((solidPodRsCfg.storage or "fs") == "s3") [ "solid-pod-rs/s3-backend" ]
           ++ lib.optionals ((solidPodRsCfg.notifications or "websocket") == "webhook"
                             && (solidPodRsCfg.enable_webhook_signing or true)) [
-               "legacy-notifications"
+               "solid-pod-rs/legacy-notifications"
              ];
         solidPodRsPkg =
           if solidPodRsActive
@@ -892,18 +892,6 @@ ${lib.optionalString ((sovereignCfg.enabled or false) && solidPodRsActive) ''
 command=${solidPodRsPkg}/bin/solid-pod-rs-server
 directory=${solidPodRsCfg.storage_root or "/var/lib/solid"}
 environment=HOME="/workspace",JSS_HOST="${solidPodRsCfg.bind or "127.0.0.1"}",JSS_PORT="${toString (solidPodRsCfg.port or 8484)}",JSS_BASE_URL="${solidPodRsCfg.base_url or "http://127.0.0.1:8484"}",JSS_STORAGE_ROOT="${solidPodRsCfg.storage_root or "/var/lib/solid"}",JSS_LOG_LEVEL="${solidPodRsCfg.log_level or "info"}",RUST_LOG="${solidPodRsCfg.log_level or "info"}",JSS_ENABLE_DID_NOSTR="${boolEnv (solidPodRsCfg.enable_did_nostr or true)}",JSS_ENABLE_RATE_LIMIT="${boolEnv (solidPodRsCfg.enable_rate_limit or true)}",JSS_RATE_LIMIT_PER_SEC="${toString (solidPodRsCfg.rate_limit_per_sec or 20)}",JSS_ENABLE_QUOTA="${boolEnv (solidPodRsCfg.enable_quota or true)}",JSS_QUOTA_DEFAULT_BYTES="${toString (solidPodRsCfg.quota_default_bytes or 10737418240)}",JSS_ENABLE_WEBHOOK_SIGNING="${boolEnv (solidPodRsCfg.enable_webhook_signing or true)}",JSS_V04_COMPAT="${boolEnv (solidPodRsCfg.jss_v04_compat or true)}",AGENTBOX_REQUIRED_FOR_READINESS="true"
-autostart=true
-autorestart=true
-priority=30
-stdout_logfile=/var/log/solid-pod.log
-stderr_logfile=/var/log/solid-pod.error.log
-''}
-${lib.optionalString ((sovereignCfg.enabled or false) && !solidPodRsActive && podsImpl == "local-jss") ''
-
-[program:solid-pod]
-command=${pkgs.python312}/bin/python3 -u /opt/agentbox/scripts/solid-pod-server.py
-directory=/opt/agentbox/scripts
-environment=HOME="/workspace",SOLID_POD_ROOT="%(ENV_SOLID_POD_ROOT)s",SOLID_POD_PORT="%(ENV_SOLID_POD_PORT)s",SOLID_REQUIRE_NIP98="%(ENV_SOLID_REQUIRE_NIP98)s"
 autostart=true
 autorestart=true
 priority=30

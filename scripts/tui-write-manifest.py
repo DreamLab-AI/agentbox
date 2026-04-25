@@ -51,7 +51,7 @@ lines.append("")
 lines += [
     "[adapters]",
     f'beads        = {q("adapters.beads",        "local-sqlite")}',
-    f'pods         = {q("adapters.pods",         "local-jss")}',
+    f'pods         = {q("adapters.pods",         "local-solid-rs")}',
     f'memory       = {q("adapters.memory",       "embedded-ruvector")}',
     f'events       = {q("adapters.events",       "local-jsonl")}',
     f'orchestrator = {q("adapters.orchestrator", "local-process-manager")}',

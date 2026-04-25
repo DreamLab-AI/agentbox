@@ -241,6 +241,7 @@ Common ones:
 | E019 | `toolchains.cuda=true` without `gpu.backend="local-cuda"` |
 | E020 | `[security.exceptions.<name>]` block declared but feature disabled |
 | W021 | Feature enabled without its usual security exception block (warning) |
+| E016 | Unknown manifest key — usually a typo, or a removed enum value (e.g. `pods = "local-jss"` post-2026-04-25) |
 
 ## Backup / restore round-trip fails
 

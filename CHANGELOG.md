@@ -4,6 +4,55 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### local-jss removed; solid-pod-rs is the only first-party pod (2026-04-25)
+
+Hard cut. The Python `local-jss` stub at `scripts/solid-pod-server.py` is
+deleted; the schema enum no longer accepts `local-jss`; W034 is retired;
+`pods = "local-solid-rs"` is the shipped default with the
+`[security.exceptions.solid-pod-rs]` block uncommented. Manifests still
+carrying `pods = "local-jss"` after the upgrade fail E016 schema validation.
+
+**Build now actually works on a fresh clone with the shipped default.**
+Three issues resolved to get there:
+
+1. **Upstream rev 7f8bc89 ships no `Cargo.lock`.** Vendored a generated
+   lockfile at [`lib/solid-pod-rs.cargo-lock`](lib/solid-pod-rs.cargo-lock)
+   (497 packages, 5231 lines). `lib/solid-pod-rs.nix` switches from
+   `cargoHash` to `cargoLock.lockFile`; `postPatch` copies the vendored
+   lock into the source tree before `cargoBuildHook`. Refresh procedure
+   documented inline in the derivation.
+2. **Workspace member path was wrong.** `buildAndTestSubdir` corrected from
+   `solid-pod-rs-server` to `crates/solid-pod-rs-server`.
+3. **Cargo features live on the LIBRARY crate, not the server.** The server
+   only forwards `tls`, `rate-limit`, `quota`, `did-nostr`,
+   `security-primitives`. Library features (`nip98-schnorr`, `acl-origin`,
+   `webhook-signing`, `config-loader`, `jss-v04`, `oidc`, `dpop-replay-cache`,
+   `s3-backend`, `legacy-notifications`) now activated via cargo's
+   `solid-pod-rs/<feature>` workspace-dep-path syntax in `defaultFeatures`
+   and `solidPodRsExtraFeatures`.
+
+`nix build .#runtime` succeeds end-to-end on a fresh clone:
+solid-pod-rs-server compiles in ~60 s on a warm cargo cache (~15 min cold,
+across 497 deps), the OCI image is assembled, `result` symlink populated,
+`/nix/store/…-solid-pod-rs-server-0.4.0-alpha.1+sprint-9/bin` is on PATH.
+
+**Files touched:**
+- `agentbox.toml`: `pods = "local-solid-rs"`, `[security.exceptions.solid-pod-rs]` uncommented.
+- `schema/agentbox.toml.schema.json`: `pods` enum drops `local-jss`.
+- `scripts/agentbox-config-validate.js`: W034 branch removed; header docstring updated; `errors`/`warnings` audit refreshed.
+- `flake.nix`: `[program:solid-pod]` legacy-Python branch removed; `solidPodRsExtraFeatures` use library-dep-path syntax.
+- `lib/solid-pod-rs.nix`: `cargoLock.lockFile` + `postPatch` lockfile copy + corrected `buildAndTestSubdir` + library-dep-path features.
+- `lib/solid-pod-rs.cargo-lock`: new vendored Cargo.lock.
+- `scripts/solid-pod-server.py`: **deleted**.
+- `scripts/tui-read-manifest.py`, `tui-write-manifest.py`: defaults flipped to `local-solid-rs`.
+- `agentbox.sh`: `_solid_is_local` simplified to match only `local-solid-rs`.
+- `tests/contract/pods.contract.spec.js`: `LocalJssPodsAdapter` import + IMPLS row removed; class file retained as private base for `LocalSolidRsPodsAdapter` inheritance.
+- `tests/tui/fixtures/{valid-full,valid-minimal,valid-standalone,invalid-e001,invalid-e019}.toml`: `pods` flipped to `local-solid-rs`.
+- ADR-005, ADR-010, PRD-001, configuration.md, solid-pod.md, glossary.md, sovereign-mesh.md, adapters.md, quickstart.md, backup-restore.md, troubleshooting.md: doc sweep removing legacy-stub references; ADR-010 Decision rewritten as "the only first-party impl".
+
+`./scripts/agentbox-config-validate.sh` on the shipped manifest:
+`agentbox manifest valid: agentbox.toml` (exit 0, no warnings).
+
 ### Consultant tier — meta-router as named-MCP dispatch (2026-04-25)
 
 Five new MCP servers exposing external LLM providers as labelled consultants the coordinator (Claude Code / ruflo) can invoke explicitly. Specified by [PRD-005](docs/reference/prd/PRD-005-meta-router-consultants.md) and [ADR-011](docs/reference/adr/ADR-011-consultation-mcps.md); reasoned through in conversation against `musistudio/claude-code-router` (rejected as the meta-router because its API-rewriting layer does not fit agentbox's MCP-everywhere + per-user-CLI-isolation patterns).
