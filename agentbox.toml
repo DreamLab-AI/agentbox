@@ -2,233 +2,76 @@
 orchestration = "ruflo-v3"
 vector_db = "ruvector-embedded"
 
-# ── Five-slot adapter architecture (ADR-005) ───────────────────────────────────
-# local-solid-rs is the first-class pod implementation (ADR-010). The shipped
-# manifest defaults to local-jss purely so a fresh `nix build .#runtime` does
-# not require prefetching the solid-pod-rs Rust derivation before it can
-# produce an image. Flip pods = "local-solid-rs" after running the prefetch
-# step documented in docs/user/solid-pod.md; the stack is fully supported and
-# first-class on that setting — validator W034 reminds you of the flip.
+[federation]
+mode = "standalone"
+
 [adapters]
 beads        = "local-sqlite"
-pods         = "local-solid-rs"
-memory       = "embedded-ruvector"
-events       = "local-jsonl"
-orchestrator = "local-process-manager"
-
-[sovereign_mesh]
-enabled = true
-solid_pod = true
-nostr_bridge = true
-https_bridge = false
-
-# ── Embedded Nostr relay (PRD-004 / ADR-009 / DDD-003) ──────────────────────────
-# Gives external agents and humans a durable path to talk to internal agents.
-# Every signature-verified event targeting a local npub is persisted to the
-# pod mailbox at pods/<npub>/events/inbox/<id>.json. Outbound messages written
-# to events/outbox/ are signed by the sovereign identity and published to
-# the embedded relay plus (optionally) the NOSTR_RELAYS fan-out list.
-#
-# Default shape: nostr-rs-relay on loopback :7777, allowlist ingress, pod-bridge
-# on, no external fan-out (matches [federation].mode = "standalone").
-[sovereign_mesh.relay]
-enabled          = false
-implementation   = "nostr-rs-relay"   # nostr-rs-relay | rnostr | external | off
-port             = 7777
-bind             = "127.0.0.1"
-expose           = false
-data_dir         = "/var/lib/nostr-relay"
-ingress_policy   = "allowlist"        # allowlist | signed-only | open
-allowed_pubkeys  = []                  # empty = self only (own npub)
-allowed_kinds    = [1, 1059, 30078, 27235, 38000, 38100]
-pod_bridge       = true
-external_fanout  = "off"               # bidirectional | publish-only | subscribe-only | off
-max_event_bytes  = 131072
-messages_per_sec = 5
-retention_days   = 30
-allow_nip04      = false
-info_description = "Agentbox sovereign relay"
-info_contact     = ""
-
-[desktop]
-enabled = false
-resolution = "1920x1080"
-
-[skills.browser]
-agent_browser = true
-playwright = true
-qe_browser = false
-
-[skills.media]
-ffmpeg = true
-imagemagick = true
-comfyui_builtin = false
-
-[integrations.comfyui_external]
-enabled = false
-url = "http://comfyui:8188"
-ws_url = "ws://comfyui:8188/ws"
-
-# ── solid-pod-rs (first-class; ADR-010) ─────────────────────────────────────────
-# First-party Rust Solid Protocol 0.11 server from github.com/DreamLab-AI.
-# Used by the pods adapter when adapters.pods = "local-solid-rs" (the default).
-# See docs/developer/licensing.md for the AGPL-3.0-only aggregation analysis.
-[integrations.solid_pod_rs]
-port                   = 8484
-bind                   = "127.0.0.1"
-storage                = "fs"                    # fs | memory | s3
-storage_root           = "/var/lib/solid"
-base_url               = "http://127.0.0.1:8484"
-enable_oidc            = false
-enable_schnorr_verify  = true
-enable_dpop_cache      = false
-notifications          = "websocket"             # websocket | webhook | off
-log_level              = "info"
-
-# Sprint 5-9 features absorbed from upstream main — all on by default because
-# they either sharpen sovereign-stack invariants (did_nostr) or close P0
-# hardening gaps (rate_limit, quota, webhook_signing).
-enable_did_nostr       = true     # did:nostr:<npub> → Solid WebID resolver
-enable_webhook_signing = true     # RFC 9421 Ed25519 outbound notification signing
-enable_rate_limit      = true     # sliding-window LRU per-connection guard
-enable_quota           = true     # per-pod storage quota via .quota.json sidecar
-jss_v04_compat         = true     # preserve JavaScriptSolidServer v0.4 semantics
-rate_limit_per_sec     = 20       # per-connection ceiling when enable_rate_limit
-quota_default_bytes    = 10737418240  # 10 GiB per pod when enable_quota
-
-[skills.spatial_and_3d]
-qgis = false
-blender = false
-
-[skills.data_science]
-pytorch = false
-jupyter = false
-
-[skills.docs]
-latex = true
-report_builder = true
-mermaid = false
-
-[skills.ontology]
-enabled = false
-
-[providers.anthropic]
-enabled = false
-env_var = "ANTHROPIC_API_KEY"
-optional_env_vars = []
-
-[providers.openai]
-enabled = false
-env_var = "OPENAI_API_KEY"
-optional_env_vars = ["OPENAI_BASE_URL"]
-
-[providers.gemini]
-enabled = false
-env_var = "GOOGLE_GEMINI_API_KEY"
-optional_env_vars = []
-
-[providers.deepseek]
-enabled = false
-env_var = "DEEPSEEK_API_KEY"
-optional_env_vars = ["DEEPSEEK_BASE_URL"]
-
-[providers.perplexity]
-enabled = false
-env_var = "PERPLEXITY_API_KEY"
-optional_env_vars = []
-
-[providers.openrouter]
-enabled = false
-env_var = "OPENROUTER_API_KEY"
-optional_env_vars = []
-
-[providers.context7]
-enabled = false
-env_var = "CONTEXT7_API_KEY"
-optional_env_vars = []
-
-[providers.brave]
-enabled = false
-env_var = "BRAVE_API_KEY"
-optional_env_vars = []
-
-[providers.github]
-enabled = false
-env_var = "GITHUB_TOKEN"
-optional_env_vars = []
-
-[providers.zai]
-enabled = false
-env_var = "ZAI_API_KEY"
-optional_env_vars = ["ZAI_ANTHROPIC_API_KEY", "ZAI_URL"]
+pods         = "off"
+memory       = "off"
+events       = "off"
+orchestrator = "off"
 
 [gpu]
 backend = "none"
 
-# ── Consultant tier (PRD-005 / ADR-011) ────────────────────────────────────────
-# Five MCP servers that expose external LLM providers as named consultants
-# the Claude / ruflo coordinator can invoke explicitly. Each maps to its
-# matching [providers.*] auth block; enabling a consultant requires the
-# matching provider be enabled and its env_var set (validator E035).
-#
-# Manual call from chat: /consult <name> "<question>" (skill-router skill).
-# Automatic dispatch: subagent_type="auto-consultant" (agent template).
-#
-# Logs: /var/lib/agentbox/consultations/<name>-YYYY-MM-DD.jsonl
-# Optional ADR-043 quality signals: /workspace/profiles/<stack>/intelligence/data/
+[desktop]
+enabled    = false
+stack      = "hyprland-wayland"
+resolution = "1920x1080"
+
+[sovereign_mesh]
+enabled              = true
+solid_pod            = true
+nostr_bridge         = true
+https_bridge         = false
+publish_agent_events = false
+telegram_mirror      = false
+jss_rust_backend     = false
+
+[observability]
+metrics_port  = 9091
+log_level     = "error"
+
 [consultants]
-enabled = false                                 # master gate (E036)
-log_dir = "/var/lib/agentbox/consultations"
-intelligence_signal = false                     # write ADR-043 QualitySignal files
+enabled              = false
+intelligence_signal  = false
+log_dir              = "/var/lib/agentbox/consultations"
 
 [consultants.codex]
 enabled = false
-model   = "gpt-5.4"
-home    = "/home/openai-user/.codex"
+model      = "gpt-5.4"
+home       = "/home/openai-user/.codex"
 timeout_ms = 180000
 
 [consultants.gemini]
 enabled = false
-model   = "gemini-2.5-pro"
-home    = "/home/gemini-user"
+model      = "gemini-2.5-pro"
+home       = "/home/gemini-user"
 timeout_ms = 180000
 
 [consultants.zai]
 enabled = false
-model   = "glm-5"
-home    = "/home/zai-user"
+model      = "glm-5"
+home       = "/home/zai-user"
 timeout_ms = 180000
 
 [consultants.perplexity]
 enabled = false
-model   = "sonar-pro"
+model      = "sonar-pro"
 timeout_ms = 60000
 
 [consultants.deepseek]
 enabled = false
-model   = "deepseek-reasoner"
+model      = "deepseek-reasoner"
 timeout_ms = 120000
 
-# ── Privacy filter ──────────────────────────────────────────────────────────────
-# Local PII redaction sidecar using openai/privacy-filter (1.5B MoE, Apache-2.0).
-# See docs/reference/adr/ADR-008-privacy-filter-routing.md for the routing layer
-# contract. Gated: the wizard only offers this when a GPU is detected or the
-# host has ≥4 cores and ≥6 GB free RAM (CPU path needs all experts resident).
-#
-# mode: off       → sidecar disabled; adapter dispatch is a pass-through.
-#       local-gpu → HF transformers pipeline, BF16 on CUDA/ROCm.
-#       local-cpu → HF transformers pipeline on CPU (~3 GB BF16 weights).
-#
-# Per-slot policy values:
-#   "strict" → redact-before-persist; fail-closed if router unreachable.
-#   "soft"   → redact best-effort; fail-open with counter.
-#   "off"    → pass-through.
 [privacy_filter]
 enabled = false
-mode = "off"
-port = 9092
-dtype = "bf16"
-model = "openai/privacy-filter"
+mode    = "off"
+port    = 9092
+dtype   = "bf16"
+model   = "openai/privacy-filter"
 
 [privacy_filter.policy]
 pods         = "strict"
@@ -240,53 +83,153 @@ inbound      = "soft"
 outbound     = "soft"
 
 [privacy_filter.entities]
-# Empty list = redact all eight classes. Populate to restrict the set.
-# Allowed: account_number, private_address, private_email, private_person,
-#          private_phone, private_url, private_date, secret.
 enabled = []
 
+[providers.anthropic]
+enabled  = true
+env_var  = "ANTHROPIC_API_KEY"
+optional_env_vars = []
+auth_mode = "oauth"
+
+[providers.openai]
+enabled  = false
+env_var  = "OPENAI_API_KEY"
+optional_env_vars = ["OPENAI_BASE_URL"]
+auth_mode = "api_key"
+
+[providers.gemini]
+enabled  = false
+env_var  = "GOOGLE_GEMINI_API_KEY"
+optional_env_vars = []
+auth_mode = "api_key"
+
+[providers.deepseek]
+enabled  = false
+env_var  = "DEEPSEEK_API_KEY"
+optional_env_vars = ["DEEPSEEK_BASE_URL"]
+auth_mode = "api_key"
+
+[providers.perplexity]
+enabled  = false
+env_var  = "PERPLEXITY_API_KEY"
+optional_env_vars = []
+auth_mode = "api_key"
+
+[providers.openrouter]
+enabled  = false
+env_var  = "OPENROUTER_API_KEY"
+optional_env_vars = []
+auth_mode = "api_key"
+
+[providers.context7]
+enabled  = false
+env_var  = "CONTEXT7_API_KEY"
+optional_env_vars = []
+auth_mode = "api_key"
+
+[providers.brave]
+enabled  = false
+env_var  = "BRAVE_API_KEY"
+optional_env_vars = []
+auth_mode = "api_key"
+
+[providers.github]
+enabled  = false
+env_var  = "GITHUB_TOKEN"
+optional_env_vars = []
+auth_mode = "api_key"
+
+[providers.zai]
+enabled  = false
+env_var  = "ZAI_API_KEY"
+optional_env_vars = ["ZAI_ANTHROPIC_API_KEY", "ZAI_URL"]
+auth_mode = "api_key"
+
 [toolchains]
-claude = true
-ruflo = true
-claude_flow = true
-agentic_qe = true
-nagual_qe = false   # upstream not on public npm — flake.nix guards with fakeHash
-codebase_memory = true
-rust = true
-gemini_cli = false
-codex = false      # OpenAI Codex Rust-native CLI (github.com/openai/codex)
+claude          = true
+claude_code     = false
+ruflo           = false
+claude_flow     = false
+agentic_qe      = false
+nagual_qe       = false
+gemini_cli      = false
+codex           = false
+code_server     = false
+codebase_memory = false
+rust            = false
+cuda            = false
 
-[observability]
-metrics_port = 9091
-otlp_endpoint = ""
-log_level = "info"
+[skills.browser]
+agent_browser = false
+playwright    = false
+qe_browser    = false
 
-[security]
-# Feature-specific exceptions to the hardened baseline.
-# Each key must match an enabled feature gate (validator rule E020).
-# Add the exception block when you enable the corresponding feature.
-# Reference table of all known exceptions is in docs/adr/ADR-007.md.
-#
-# Currently enabled feature exceptions (mirrors active feature gates above):
+[skills.media]
+ffmpeg           = false
+imagemagick      = false
+comfyui_builtin  = false
 
-# Required because adapters.pods = "local-solid-rs" is the only supported
-# implementation (ADR-010; the legacy local-jss Python stub was removed
-# 2026-04-25). solid-pod-rs needs a writable path under read_only:true
-# for its filesystem backend — .meta and .acl sidecars plus atomic-rename
-# temp files.
-[security.exceptions.solid-pod-rs]
-writable_volumes = ["solid-data:/var/lib/solid"]
-reason = "solid-pod-rs fs-backend requires atomic-rename writable storage under /var/lib/solid"
+[skills.spatial_and_3d]
+blender            = false
+qgis               = false
+gaussian_splatting = false
 
-[security.exceptions.playwright]
-# Required because skills.browser.playwright = true
-# Chromium needs user namespace sandbox or SYS_ADMIN cap.
-# Alternative: pass --no-sandbox to Chromium at the cost of defense-in-depth.
-cap_add = ["SYS_ADMIN"]
-reason = "chromium sandbox; SYS_ADMIN is the minimum privilege for Chromium user-ns sandbox inside a container"
+[skills.data_science]
+pytorch = false
+jupyter = false
 
-# Add when enabling [sovereign_mesh.relay]. The relay needs a writable path
-# under read_only:true to hold its SQLite database and WAL files.
-# [security.exceptions.nostr-relay]
-# writable_volumes = ["nostr-relay-data:/var/lib/nostr-relay"]
-# reason = "nostr-rs-relay SQLite journal and WAL require a writable durable path"
+[skills.docs]
+latex          = false
+mermaid        = false
+report_builder = false
+
+[skills.ontology]
+enabled = false
+
+[sovereign_mesh.relay]
+enabled          = true
+implementation   = "nostr-rs-relay"
+port             = 7777
+bind             = "127.0.0.1"
+expose           = false
+data_dir         = "/var/lib/nostr-relay"
+ingress_policy   = "open"
+allowed_pubkeys  = []
+allowed_kinds    = [1, 1059, 30078, 27235, 38000, 38100]
+pod_bridge       = true
+external_fanout  = "off"
+max_event_bytes  = 131072
+messages_per_sec = 5
+retention_days   = 30
+allow_nip04      = false
+info_description = "Agentbox sovereign relay"
+info_contact     = ""
+
+[integrations.comfyui_external]
+enabled = false
+url    = "http://comfyui:8188"
+ws_url = "ws://comfyui:8188/ws"
+
+[integrations.solid_pod_rs]
+port                  = 8484
+bind                  = "127.0.0.1"
+storage               = "fs"
+storage_root          = "/var/lib/solid"
+base_url              = "http://127.0.0.1:8484"
+enable_oidc           = false
+enable_schnorr_verify = true
+enable_dpop_cache     = false
+notifications          = "websocket"
+log_level              = "info"
+enable_did_nostr       = true
+enable_webhook_signing = true
+enable_rate_limit      = true
+enable_quota           = true
+jss_v04_compat         = true
+rate_limit_per_sec     = 20
+quota_default_bytes    = 10737418240
+
+[security.exceptions.nostr-relay]
+writable_volumes = ["nostr-relay-data:/var/lib/nostr-relay"]
+reason = "nostr-rs-relay SQLite journal and WAL require a writable durable path"
+
