@@ -317,4 +317,95 @@ if s.get("integrations.ragflow.enabled", False):
         "",
     ]
 
+# ── security.exceptions.* ───────────────────────────────────────────────────────
+# Mirror validator's KNOWN_EXCEPTION_FEATURE_GATES + isFeatureActive logic.
+# Every active feature that has a documented exception block gets it emitted
+# automatically with the canonical default values. Without this, the wizard's
+# own `validate_candidate` step trips W021 (missing exception block) for
+# every active feature that needs hardened-baseline relief — and W021 is
+# blocking by design.
+#
+# Operators who customise an exception block by hand (different volume name,
+# extra cap, etc.) should re-run the wizard once after editing; the wizard
+# will overwrite their customisation with the default. Hand-edits to
+# agentbox.toml that survive wizard re-runs are NOT supported for security
+# exceptions (yet) — every other section is round-tripped via state but
+# exceptions are regenerated to keep the wizard's validation pass green.
+
+_gpu_backend = s.get("gpu.backend", "none")
+
+_security_exceptions = []
+
+if s.get("desktop.enabled", False):
+    _security_exceptions += [
+        "[security.exceptions.desktop]",
+        'tmpfs = ["/tmp/.X11-unix", "/run/user/1000"]',
+        "",
+    ]
+
+if _gpu_backend == "ollama-rocm":
+    _security_exceptions += [
+        "[security.exceptions.gpu-rocm]",
+        'devices = ["/dev/kfd", "/dev/dri"]',
+        "",
+    ]
+
+if _gpu_backend in ("ollama-cuda", "local-cuda"):
+    _security_exceptions += [
+        "[security.exceptions.gpu-cuda]",
+        'runtime = "nvidia"',
+        'device_requests = [{driver = "nvidia", count = -1, capabilities = [["gpu"]]}]',
+        "",
+    ]
+
+if s.get("skills.spatial_and_3d.gaussian_splatting", False):
+    _security_exceptions += [
+        "[security.exceptions.gaussian-splatting]",
+        'inherits = ["gpu-cuda"]',
+        "",
+    ]
+
+if s.get("skills.browser.playwright", False):
+    _security_exceptions += [
+        "[security.exceptions.playwright]",
+        'cap_add = ["SYS_ADMIN"]',
+        'reason = "chromium sandbox; SYS_ADMIN is the minimum privilege for Chromium user-ns sandbox inside a container"',
+        "",
+    ]
+
+if s.get("toolchains.code_server", False):
+    _security_exceptions += [
+        "[security.exceptions.code-server]",
+        'writable_volumes = ["codeserver-config:/home/devuser/.local/share/code-server"]',
+        "",
+    ]
+
+if s.get("sovereign_mesh.telegram_mirror", False):
+    _security_exceptions += [
+        "[security.exceptions.telegram-mirror]",
+        'writable_volumes = ["ctm-config:/home/devuser/.config/claude-telegram-mirror"]',
+        "",
+    ]
+
+if s.get("sovereign_mesh.relay.enabled", False):
+    _security_exceptions += [
+        "[security.exceptions.nostr-relay]",
+        'writable_volumes = ["nostr-relay-data:/var/lib/nostr-relay"]',
+        'reason = "nostr-rs-relay SQLite journal and WAL require a writable durable path"',
+        "",
+    ]
+
+# pods=local-solid-rs always needs the writable volume; the legacy local-jss
+# was retired 2026-04-25 so this fires whenever the pods slot is chosen.
+if s.get("adapters.pods", "local-solid-rs") == "local-solid-rs":
+    _security_exceptions += [
+        "[security.exceptions.solid-pod-rs]",
+        'writable_volumes = ["solid-data:/var/lib/solid"]',
+        'reason = "solid-pod-rs fs-backend requires atomic-rename writable storage under /var/lib/solid"',
+        "",
+    ]
+
+if _security_exceptions:
+    lines += _security_exceptions
+
 output_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
