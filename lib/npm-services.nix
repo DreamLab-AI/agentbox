@@ -82,6 +82,9 @@ in
   #   extraEnv          attrs    additional environment variables set during build
   #   buildPhaseExtra   string   additional shell commands injected into buildPhase
   #                              (used for TypeScript compilation via tsc)
+  #   skipLoadCheck     bool     when true, do not `require()`/`import()` the
+  #                              entrypoint in checkPhase because module load
+  #                              has side effects (e.g. starts a server)
   makeNpmService = {
     name,
     src,
@@ -90,6 +93,7 @@ in
     extraBuildInputs ? [],
     extraEnv        ? {},
     buildPhaseExtra ? "",
+    skipLoadCheck   ? false,
   }:
     let
       effectiveHash = resolvedHash npmDepsHash;
@@ -138,9 +142,14 @@ in
       # This catches broken peer dependencies before the image layer is frozen.
       checkPhase = ''
         runHook preCheck
-        node -e "require('./${entry}')" 2>/dev/null \
-          || node --input-type=module <<<"import './${entry}'" 2>/dev/null \
-          || echo "[check] ${name}: import check skipped (ESM-only or side-effect-free module)"
+        if [ "${if skipLoadCheck then "1" else "0"}" = "1" ]; then
+          test -f "./${entry}" \
+            || { echo "[check] ${name}: missing entry ./${entry}" >&2; exit 1; }
+        else
+          node -e "require('./${entry}')" 2>/dev/null \
+            || node --input-type=module <<<"import './${entry}'" 2>/dev/null \
+            || echo "[check] ${name}: import check skipped (ESM-only or side-effect-free module)"
+        fi
         runHook postCheck
       '';
 

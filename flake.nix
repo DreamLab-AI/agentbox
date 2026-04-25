@@ -97,7 +97,7 @@
           pkgName         = "ruvector";
           version         = "0.2.23";
           sha256          = "sha256-IUSAj/MLpdBt2N/joQ1n6QM/u5gVA+1CMCO++hV+dfY=";
-          nodeModulesHash = lib.fakeHash;
+          nodeModulesHash = "sha256-rUua0WWq+oCvDkE0WAPTD9yR+V/K26ddT0zh1/8n2ds=";
           bin             = "ruvector";
         };
 
@@ -107,7 +107,7 @@
           pkgName         = "@claude-flow/cli";
           version         = "3.5.80";
           sha256          = "sha256-7egZQtT2iKVXtrPWByc1zk9/TLbcDKO1nr+B+sqeQ88=";
-          nodeModulesHash = lib.fakeHash;
+          nodeModulesHash = "sha256-Gj2qEcu5mqTq+Pl/qObg1C0D63eq6LW5bIcC4sgAQ/o=";
           bin             = "claude-flow";
         };
 
@@ -117,7 +117,7 @@
           pkgName         = "ruflo";
           version         = "3.5.80";
           sha256          = "sha256-7/e9G/Ggm+MB6TwAEnxUZ7pe9qCDp5qrm5v4fF6fq4I=";
-          nodeModulesHash = lib.fakeHash;
+          nodeModulesHash = "sha256-WEw+K1c99z93/AU8H7LxAoZCwXnRrSv/gCnidZrLRZg=";
           bin             = "ruflo";
         };
 
@@ -131,7 +131,7 @@
           pkgName         = "agentic-qe";
           version         = "3.9.15";
           sha256          = "sha256-9CjwZt9bbJCIxyR8qy1snrXdAIAppxMiqwg5NooukVg=";
-          nodeModulesHash = lib.fakeHash;
+          nodeModulesHash = "sha256-bIiH2aTz0ZEOxJVUNDlFE955jiczywwWvVpJvhLjJRw=";
           bin             = "aqe";
         };
 
@@ -147,7 +147,7 @@
           pkgName         = "codebase-memory-mcp";
           version         = "0.6.0";
           sha256          = "sha256-aZ2msekZEaO/CHAGSLiFtkyZKNZnEhCVNOyKVEf3FYk=";
-          nodeModulesHash = lib.fakeHash;
+          nodeModulesHash = "sha256-r9XtljjygaBEsRwCKKyd8KM5WWDVovz66SB0StudBE8=";
           bin             = "codebase-memory-mcp";
         };
 
@@ -158,7 +158,7 @@
           pkgName         = "agent-browser";
           version         = "0.26.0";
           sha256          = "sha256-ikjPQRDX3CwSwcTW0l4Lq9+jFgS1N/Bd8NyDX+L4VL8=";
-          nodeModulesHash = lib.fakeHash;
+          nodeModulesHash = "sha256-UH8DzadtsBJZXyrDxlVdhECqCnjLrHmu/9KQoGT0/Ds=";
           bin             = "agent-browser";
           extraEnv = {
             CHROME_PATH = "${pkgs.chromium}/bin/chromium";
@@ -173,7 +173,7 @@
           pkgName         = "playwright";
           version         = "1.59.1";
           sha256          = "sha256-emiKclkp8jJbNFmXhFscpQrOd5jnauSbYVFvg+CDiO8=";
-          nodeModulesHash = lib.fakeHash;
+          nodeModulesHash = "sha256-Tza83dU5GfNrV+MqZpfmIhBa3t0LLq1YLRgsO2St4U8=";
           bin             = "playwright";
           extraEnv = {
             PLAYWRIGHT_BROWSERS_PATH = "${pkgs.playwright-driver.browsers}";
@@ -187,7 +187,7 @@
           pkgName         = "@mermaid-js/mermaid-cli";
           version         = "11.12.0";
           sha256          = "sha256-xZ4rfsAQ16J6RbSt3N6Xl4xkSx6ZZgnjlxTqUtiSaDc=";
-          nodeModulesHash = lib.fakeHash;
+          nodeModulesHash = "sha256-2jYyZtdOYeCc0YtBLGeCY5B3IdQiYTF96Ya0VNXWhv8=";
           bin             = "mmdc";
         };
 
@@ -228,7 +228,8 @@
           entry       = "server.js";
           # Prefetched 2026-04-24 against management-api/package-lock.json.
           # Refresh via: nix run nixpkgs#prefetch-npm-deps -- management-api/package-lock.json
-          npmDepsHash = "sha256-6LSRtGKd2Sgp1FbeXnYGILKnppiQM86bb3Y+SUzoj98=";
+          # Prefetched 2026-04-25. Refresh: nix run nixpkgs#prefetch-npm-deps -- management-api/package-lock.json
+          npmDepsHash = "sha256-1xqNibe3Txjpd+n15TBhTjwwk53ZdkK1NsjP5C8Soc8=";
         };
 
         # 2. mcp/nostr-bridge — sovereign_mesh service; 2 deps (nostr-tools, ws)
@@ -292,7 +293,8 @@
           entry       = "shared/consultant-base.js";  # smoke-load target
           # Prefetched 2026-04-25. Refresh:
           #   nix run nixpkgs#prefetch-npm-deps -- mcp/consultants/package-lock.json
-          npmDepsHash = lib.fakeHash;
+          # Prefetched 2026-04-25. Refresh: nix run nixpkgs#prefetch-npm-deps -- mcp/consultants/package-lock.json
+          npmDepsHash = "sha256-ph18TjfLha5ltqsqo1d2cjrqqYS6jB+FD0DlNqyG0Hw=";
         };
 
         # 6. skills/comfyui/mcp-server — gated by skills.media.comfyui_builtin.
@@ -302,6 +304,7 @@
           name             = "comfyui-mcp";
           src              = ./skills/comfyui/mcp-server;
           entry            = "server.js";
+          skipLoadCheck    = true;
           extraBuildInputs = [ pkgs.python3 pkgs.nodePackages.node-gyp ];
           extraEnv         = { npm_config_build_from_source = "true"; };
           # Prefetched 2026-04-24. Refresh: nix run nixpkgs#prefetch-npm-deps -- skills/comfyui/mcp-server/package-lock.json
@@ -451,7 +454,7 @@
         # Included only when skills.media.comfyui_builtin = true.
         # Bump the rev + hash intentionally via a PR when upgrading.
         comfyuiRev  = "v0.3.27";
-        comfyuiHash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+        comfyuiHash = "sha256-UGM2nrxveSEPuZAFY+Os0R1z/eWzlm8viG7sobis498=";
         _comfyuiGuard =
           if mediaCfg.comfyui_builtin or false
              && comfyuiHash == "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
@@ -498,7 +501,7 @@
         spatialPackages =
           lib.optionals (spatialCfg.qgis or false) [
             pkgs.qgis
-            pkgs.libsForQt5.pyqt5
+            pkgs.python312Packages.pyqt5
           ]
           ++ lib.optionals (spatialCfg.blender or false) [
             pkgs.blender
@@ -508,7 +511,7 @@
 
         dataSciencePackages =
           lib.optionals (dataScienceCfg.pytorch or false) [
-            pkgs.python312Packages.pytorch
+            pkgs.python312Packages.torch
           ]
           ++ lib.optionals (dataScienceCfg.jupyter or false) [
             pkgs.python312Packages.numpy
@@ -690,20 +693,20 @@ default_days = ${toString (relayCfg.retention_days or 30)}
         privacyFilterPackages = lib.optionals privacyFilterEnabled [ privacyFilterPythonEnv ];
 
         desktopPackages = lib.optionals (desktopCfg.enabled or false) (with pkgs; [
-          xorg.xorgserver
-          xorg.xauth
-          xorg.xinit
-          xorg.xset
-          xorg.xdpyinfo
-          xorg.xprop
-          xorg.xwininfo
-          xorg.setxkbmap
+          xorg-server
+          xauth
+          xinit
+          xset
+          xdpyinfo
+          xprop
+          xwininfo
+          setxkbmap
           xkeyboard_config
           x11vnc
           openbox
           tint2
           xterm
-          xfce.xfce4-terminal
+          xfce4-terminal
           dejavu_fonts
           liberation_ttf
           noto-fonts
@@ -848,7 +851,7 @@ stderr_logfile=/var/log/jupyter-lab.error.log
 
         desktopBlocks = ''
 [program:xvfb]
-command=${pkgs.xorg.xorgserver}/bin/Xvfb :1 -screen 0 ${(desktopCfg.resolution or "1920x1080")}x24 -ac +extension GLX +render -noreset
+command=${pkgs.xorg-server}/bin/Xvfb :1 -screen 0 ${(desktopCfg.resolution or "1920x1080")}x24 -ac +extension GLX +render -noreset
 autostart=true
 autorestart=true
 priority=40

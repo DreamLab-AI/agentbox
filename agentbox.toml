@@ -101,7 +101,7 @@ quota_default_bytes    = 10737418240  # 10 GiB per pod when enable_quota
 [skills.spatial_and_3d]
 qgis = true
 blender = true
-gaussian_splatting = true
+gaussian_splatting = false
 
 [skills.data_science]
 pytorch = true
@@ -176,7 +176,7 @@ optional_env_vars = ["ZAI_ANTHROPIC_API_KEY", "ZAI_URL"]
 auth_mode = "api_key"
 
 [gpu]
-backend = "local-cuda"
+backend = "none"
 
 # ── Consultant tier (PRD-005 / ADR-011) ────────────────────────────────────────
 # Five MCP servers that expose external LLM providers as named consultants
@@ -312,7 +312,7 @@ rust = true
 gemini_cli = true
 codex = true
 code_server = true
-cuda = true
+cuda = false
 
 [observability]
 metrics_port = 9091
@@ -345,13 +345,6 @@ reason = "chromium sandbox; SYS_ADMIN is the minimum privilege for Chromium user
 
 [security.exceptions.desktop]
 tmpfs = ["/tmp/.X11-unix", "/run/user/1000"]
-
-[security.exceptions.gpu-cuda]
-runtime = "nvidia"
-device_requests = [{ driver = "nvidia", count = -1, capabilities = [["gpu"]] }]
-
-[security.exceptions.gaussian-splatting]
-inherits = ["gpu-cuda"]
 
 [security.exceptions.code-server]
 writable_volumes = ["codeserver-config:/home/devuser/.local/share/code-server"]

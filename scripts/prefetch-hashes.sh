@@ -70,6 +70,7 @@ export NIXPKGS_ALLOW_INSECURE=1
 npm_services=(
   "management-api"
   "mcp"
+  "mcp/consultants"
   "skills/openai-codex/mcp-server"
   "skills/lazy-fetch/mcp-server"
   "skills/playwright/mcp-server"
@@ -81,10 +82,21 @@ npm_services=(
 declare -A svc_attr=(
   ["management-api"]="managementApiPkg"
   ["mcp"]="nostrBridgePkg"
+  ["mcp/consultants"]="consultantsPkg"
   ["skills/openai-codex/mcp-server"]="codexMcpPkg"
   ["skills/lazy-fetch/mcp-server"]="lazyFetchMcpPkg"
   ["skills/playwright/mcp-server"]="playwrightMcpPkg"
   ["skills/comfyui/mcp-server"]="comfyuiMcpPkg"
+)
+
+declare -A svc_path_by_drvname=(
+  ["management-api"]="management-api"
+  ["nostr-bridge"]="mcp"
+  ["agentbox-consultants"]="mcp/consultants"
+  ["openai-codex-mcp"]="skills/openai-codex/mcp-server"
+  ["lazy-fetch-mcp"]="skills/lazy-fetch/mcp-server"
+  ["playwright-mcp"]="skills/playwright/mcp-server"
+  ["comfyui-mcp"]="skills/comfyui/mcp-server"
 )
 
 patch_npm_deps_hash() {
@@ -146,6 +158,16 @@ else:
 path.write_text(''.join(lines))
 print(f"patched {attr} npmDepsHash → {new_hash}")
 PY
+}
+
+patch_npm_deps_hash_by_drvname() {
+  local drvname="$1" hash="$2"
+  local service="${svc_path_by_drvname[$drvname]:-}"
+  [ -z "$service" ] && {
+    echo "WARN: no npm service mapping for derivation '$drvname'" >&2
+    return 1
+  }
+  patch_npm_deps_hash "$service" "$hash"
 }
 
 prefetch_npm_service() {
@@ -293,6 +315,9 @@ prefetch_via_build_loop() {
     if [[ "$fod_name" =~ ^(.+)-with-deps-([0-9A-Za-z.+-]+)$ ]]; then
       local pname="${BASH_REMATCH[1]}"
       patch_npm_cli_node_modules_hash "$pname" "$got_hash"
+    elif [[ "$fod_name" =~ ^(.+)-npm-deps$ ]]; then
+      local drv_name="${BASH_REMATCH[1]}"
+      patch_npm_deps_hash_by_drvname "$drv_name" "$got_hash"
     elif [[ "$fod_name" =~ ^(.+)-([0-9A-Za-z.+-]+)-vendor\.tar\.zst$ ]] \
       || [[ "$fod_name" =~ ^cargo-deps-(.+)-([0-9A-Za-z.+-]+)$ ]] \
       || [[ "$fod_name" =~ vendor ]]; then

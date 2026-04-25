@@ -137,6 +137,11 @@ let
       # CUDA is Linux-only; guard against darwin eval even though darwin
       # x86_64 satisfies stdenv.isx86_64, it never has cudaPackages available.
       cudaEligible = pkgs.stdenv.isLinux && pkgs.stdenv.isx86_64;
+      extendedCudaSet =
+        if pkgs ? cudaPackages_13_1 then pkgs.cudaPackages_13_1
+        else if pkgs ? cudaPackages_13_0 then pkgs.cudaPackages_13_0
+        else if pkgs ? cudaPackages_12_1 then pkgs.cudaPackages_12_1
+        else pkgs.cudaPackages;
 
       # Base CUDA 12.x packages — always included when backend=local-cuda
       # AND the platform is Linux-x86_64. On any other platform the list
@@ -150,17 +155,15 @@ let
         cudaPackages.libcurand
       ]);
 
-      # Extended CUDA 13.1 packages — only when [toolchains].cuda = true.
-      # cudaPackages_13_1 was introduced in nixpkgs after 2026-03; if the
-      # pinned rev pre-dates that, update flake.lock or use cudaPackages_12_x.
+      # Extended CUDA packages — only when [toolchains].cuda = true.
+      # Pick the newest available CUDA package set from the pinned nixpkgs
+      # rather than hardcoding a minor namespace.
       extendedCudaPackages = lib.optionals (toolchainsCudaEnabled && cudaEligible) (
-        with pkgs.cudaPackages_13_1; [
-          cudatoolkit
-          cudnn
-          cutensor
-          libcublas
-          libcufft
-        ]
+        [ extendedCudaSet.cudatoolkit ]
+        ++ lib.optionals (extendedCudaSet ? cudnn) [ extendedCudaSet.cudnn ]
+        ++ lib.optionals (extendedCudaSet ? cutensor) [ extendedCudaSet.cutensor ]
+        ++ lib.optionals (extendedCudaSet ? libcublas) [ extendedCudaSet.libcublas ]
+        ++ lib.optionals (extendedCudaSet ? libcufft) [ extendedCudaSet.libcufft ]
       );
     in
     {

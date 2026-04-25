@@ -12,7 +12,7 @@
  * binding (stdio over `docker exec -i` or HTTP/SSE).
  */
 
-const WOT_CONTEXT = 'https://www.w3.org/2019/wot/td/v1.1';
+const WOT_CONTEXT = 'https://www.w3.org/2022/wot/td/v1.1';
 const AGBX_CONTEXT = 'https://agentbox.dreamlab-ai.systems/ns/v1#';
 
 module.exports = {

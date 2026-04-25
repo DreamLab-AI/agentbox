@@ -48,7 +48,7 @@ let
       name = "activitystreams.context.jsonld";
       iri  = "https://www.w3.org/ns/activitystreams";
       url  = "https://www.w3.org/ns/activitystreams";
-      sha256 = lib.fakeHash;
+      sha256 = "sha256-WO4vSsOj1wCj1+F1/VJE2/BlD0JrweVBThw2/UPMpjQ=";
       vocabulary = "ActivityStreams 2.0";
       authors = "James M Snell, Evan Prodromou";
       status = "W3C Recommendation 2017-05-23";
@@ -60,7 +60,7 @@ let
       name = "credentials-v2.context.jsonld";
       iri  = "https://www.w3.org/ns/credentials/v2";
       url  = "https://www.w3.org/ns/credentials/v2";
-      sha256 = lib.fakeHash;
+      sha256 = "sha256-WZVc7WaX1h4D8rJVb+vlMIqxaEKEb1tYbX8fet7JJzQ=";
       vocabulary = "Verifiable Credentials Data Model 2.0";
       authors = "Manu Sporny, Dave Longley, Markus Sabadello, Orie Steele, Christopher Allen";
       status = "W3C Recommendation 2025-05-15";
@@ -72,7 +72,7 @@ let
       name = "did-v1.context.jsonld";
       iri  = "https://www.w3.org/ns/did/v1";
       url  = "https://www.w3.org/ns/did/v1";
-      sha256 = lib.fakeHash;
+      sha256 = "sha256-Tz6uVWjJxfA2oIIIj54ZIBnuBvqniXPIf/kdVCG4ja0=";
       vocabulary = "DID Core 1.0";
       authors = "Drummond Reed, Manu Sporny, Dave Longley, Christopher Allen, Ryan Grant, Markus Sabadello";
       status = "W3C Recommendation 2022-07-19";
@@ -84,7 +84,7 @@ let
       name = "schema-org.context.jsonld";
       iri  = "http://schema.org/";
       url  = "https://schema.org/docs/jsonldcontext.jsonld";
-      sha256 = lib.fakeHash;
+      sha256 = "sha256-2BZ4kLBWvHxx6zmzDLtIFkkNXmcTcbpQpaYz0bw2lho=";
       vocabulary = "Schema.org";
       authors = "Ramanathan V. Guha and the schema.org community";
       status = "Living standard, multi-vendor";
@@ -94,9 +94,9 @@ let
     # ── W3C Web of Things TD 1.1 — S6 (MCP capability descriptors) ───────────
     {
       name = "wot-td.context.jsonld";
-      iri  = "https://www.w3.org/2019/wot/td/v1.1";
-      url  = "https://www.w3.org/2019/wot/td/v1.1";
-      sha256 = lib.fakeHash;
+      iri  = "https://www.w3.org/2022/wot/td/v1.1";
+      url  = "https://www.w3.org/2022/wot/td/v1.1";
+      sha256 = "sha256-kpjdrM4dAj5YTc1LDmObqiKPufqHQ9ytbZycKdtsoGk=";
       vocabulary = "Web of Things Thing Description 1.1";
       authors = "Sebastian Käbisch, Victor Charpenay, Matthias Kovatsch, Daniel Peintner";
       status = "W3C Recommendation 2023-12-05";
@@ -107,8 +107,8 @@ let
     {
       name = "prov-o.context.jsonld";
       iri  = "http://www.w3.org/ns/prov-o#";
-      url  = "https://www.w3.org/ns/prov.jsonld";
-      sha256 = lib.fakeHash;
+      url  = "https://openprovenance.org/prov-jsonld/context.jsonld";
+      sha256 = "sha256-6wJWjYVlygFsH7MPijfgxow3CvkQiJfpvrZHEh4YRmw=";
       vocabulary = "PROV-O";
       authors = "Timothy Lebo, Satya Sahoo, Deborah McGuinness";
       status = "W3C Recommendation 2013-04-30";
@@ -120,7 +120,7 @@ let
       name = "dcat-3.context.jsonld";
       iri  = "https://www.w3.org/ns/dcat#";
       url  = "https://www.w3.org/ns/dcat3.jsonld";
-      sha256 = lib.fakeHash;
+      sha256 = "sha256-SLvVOw8/67Xna7FWmGjym4FVeQBiGLh/b4u/6eGWlh0=";
       vocabulary = "DCAT-3";
       authors = "Riccardo Albertoni, David Browning, Simon Cox, Alejandra Gonzalez Beltran, Andrea Perego, Peter Winstanley";
       status = "W3C Recommendation 2024-08-22";
@@ -132,7 +132,7 @@ let
       name = "odrl-2.context.jsonld";
       iri  = "http://www.w3.org/ns/odrl/2/";
       url  = "https://www.w3.org/ns/odrl.jsonld";
-      sha256 = lib.fakeHash;
+      sha256 = "sha256-u1WrMrxgQcbvcjy86JUQEopN+5vsYCR3ckB5GxEsi2w=";
       vocabulary = "ODRL Information Model 2.2";
       authors = "Renato Iannella, Serena Villata";
       status = "W3C Recommendation 2018-02-15";
@@ -144,7 +144,7 @@ let
       name = "skos.context.jsonld";
       iri  = "http://www.w3.org/2004/02/skos/core#";
       url  = "https://www.w3.org/2009/08/skos-reference/skos.rdf";
-      sha256 = lib.fakeHash;
+      sha256 = "sha256-55YzuNBWSBbO6KmfXJrPmg5vxyV8cgms1oTsrVOondY=";
       vocabulary = "SKOS Reference";
       authors = "Alistair Miles, Sean Bechhofer";
       status = "W3C Recommendation 2009-08-18";
@@ -156,7 +156,7 @@ let
       name = "dcterms.context.jsonld";
       iri  = "http://purl.org/dc/terms/";
       url  = "https://www.dublincore.org/specifications/dublin-core/dcmi-terms/dublin_core_terms.ttl";
-      sha256 = lib.fakeHash;
+      sha256 = "sha256-E99AEHLdcBW/nXUWLz5ByBOAdTBLe5zBqh6cFtuXZ5c=";
       vocabulary = "Dublin Core Terms";
       authors = "DCMI Usage Board";
       status = "DCMI Specification 2020-01-20";
@@ -224,17 +224,10 @@ let
     }) catalogue;
   };
 
-  indexFile = pkgs.writeTextFile {
-    name = "linked-data-contexts-index.json";
-    destination = "/index.json";
-    text = indexContent;
-  };
+  indexFile = pkgs.writeText "linked-data-contexts-index.json" indexContent;
 
 in
-  pkgs.symlinkJoin {
-    name = "agentbox-linked-data-contexts";
-    paths = (map resolveEntry catalogue) ++ [ indexFile ];
-
+  pkgs.runCommand "agentbox-linked-data-contexts" {
     passthru = {
       inherit catalogue;
       catalogueIris = map (e: e.iri) catalogue;
@@ -251,4 +244,12 @@ in
         and never performs network I/O thereafter (DDD-004 §L09).
       '';
     };
-  }
+  } ''
+    mkdir -p "$out"
+
+    ${lib.concatMapStringsSep "\n" (entry: ''
+      cp ${resolveEntry entry} "$out/${entry.name}"
+    '') catalogue}
+
+    cp ${indexFile} "$out/index.json"
+  ''
