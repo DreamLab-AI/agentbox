@@ -389,24 +389,35 @@
           ((toolchainCfg.codex or false) && pkgs.stdenv.isLinux)
           [ (codexLib.makeCodex system) ];
 
-        pythonBasePackages = with pkgs; [
-          python312
-          python312Packages.pip
-          python312Packages.virtualenv
-          python312Packages.supervisor
-          python312Packages.requests
-          python312Packages.httpx
-          python312Packages.aiohttp
-          python312Packages.aiofiles
-          python312Packages.pyyaml
-          python312Packages.pydantic
-          python312Packages.rich
-          python312Packages.ecdsa
-          python312Packages.numpy
-          python312Packages.pandas
-          python312Packages.matplotlib
-          python312Packages.seaborn
-          python312Packages.pymupdf
+        # Runtime Python environment for bootstrap scripts and local helpers.
+        # Use python.withPackages so every dep is on the interpreter's import
+        # path inside the container — listing them as standalone derivations
+        # in `allPackages` only puts them on $PATH and leaves
+        # `import ecdsa` failing with ModuleNotFoundError at bootstrap time
+        # (which crash-loops the container on first start).
+        # sovereign-bootstrap.py imports ecdsa directly; provision-agent-stacks.py
+        # imports yaml, requests, etc. — all must resolve via this interpreter.
+        pythonRuntimeEnv = pkgs.python312.withPackages (ps: with ps; [
+          pip
+          virtualenv
+          supervisor
+          requests
+          httpx
+          aiohttp
+          aiofiles
+          pyyaml
+          pydantic
+          rich
+          ecdsa
+          numpy
+          pandas
+          matplotlib
+          seaborn
+          pymupdf
+        ]);
+
+        pythonBasePackages = [
+          pythonRuntimeEnv
         ];
 
         rustToolchain = pkgs.rust-bin.stable.latest.minimal.override {
@@ -566,6 +577,18 @@
           then nagualQeLib.makeNagualQe { }
           else null;
         nagualQePackages = lib.optionals (toolchainCfg.nagual_qe or false) [ nagualQePkg ];
+
+        # ---------------------------------------------------------------------------
+        # Linked-Data context catalogue (PRD-006 / ADR-012 / DDD-004).
+        # Gate: linked_data.enabled = true.
+        # Materialises every pinned @context document into one read-only directory
+        # at /opt/agentbox/contexts/. The runtime resolver loads the index once
+        # at boot and never fetches a context document at runtime (DDD-004 §L09).
+        # ---------------------------------------------------------------------------
+        linkedDataCfg     = agentboxConfig.linked_data or {};
+        linkedDataActive  = (linkedDataCfg.enabled or false) == true;
+        linkedDataContexts = import ./lib/linked-data-contexts.nix { inherit lib pkgs; };
+        linkedDataPackages = lib.optionals linkedDataActive [ linkedDataContexts ];
 
         # ---------------------------------------------------------------------------
         # Embedded Nostr relay (ADR-009 / PRD-004).
@@ -742,6 +765,12 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           cp -r ${./docs} $out/opt/agentbox/docs
           cp -r ${./aisp} $out/opt/agentbox/aisp
           cp ${./agentbox.toml} $out/opt/agentbox/agentbox.toml
+
+          # Linked-Data context catalogue (PRD-006 / ADR-012). Always copied
+          # so [linked_data].enabled = true at runtime works without rebuild;
+          # when the master gate is off, the resolver never reads this dir.
+          mkdir -p $out/opt/agentbox/contexts
+          cp -rL ${linkedDataContexts}/. $out/opt/agentbox/contexts/
 
           # `cp -r` from the Nix store preserves the read-only store bits on
           # every copied file, which blocks the subsequent node_modules and

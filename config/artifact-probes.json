@@ -1,15 +1,15 @@
 [
   {
     "capability_id": "management-api",
-    "entrypoint_path": "/opt/agentbox/management-api/index.js",
+    "entrypoint_path": "/opt/agentbox/management-api/server.js",
     "required_for_readiness": true,
-    "probe_command": "node --check /opt/agentbox/management-api/index.js"
+    "probe_command": "node --check /opt/agentbox/management-api/server.js"
   },
   {
     "capability_id": "mcp-nostr-bridge",
-    "entrypoint_path": "/opt/agentbox/mcp/index.js",
+    "entrypoint_path": "/opt/agentbox/mcp/servers/nostr-bridge.js",
     "required_for_readiness": true,
-    "probe_command": "node --check /opt/agentbox/mcp/index.js"
+    "probe_command": "node --check /opt/agentbox/mcp/servers/nostr-bridge.js"
   },
   {
     "capability_id": "openai-codex-mcp",
@@ -19,9 +19,9 @@
   },
   {
     "capability_id": "lazy-fetch-mcp",
-    "entrypoint_path": "/opt/agentbox/skills/lazy-fetch/mcp-server/dist/server.js",
+    "entrypoint_path": "/opt/agentbox/skills/lazy-fetch/mcp-server/dist/mcp-server.js",
     "required_for_readiness": true,
-    "probe_command": "node --check /opt/agentbox/skills/lazy-fetch/mcp-server/dist/server.js"
+    "probe_command": "node --check /opt/agentbox/skills/lazy-fetch/mcp-server/dist/mcp-server.js"
   },
   {
     "capability_id": "playwright-mcp",

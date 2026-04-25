@@ -43,11 +43,13 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 dry_run=0
 target=""
 cli_only=0
+ld_only=0
 while [ $# -gt 0 ]; do
   case "$1" in
-    --dry-run)   dry_run=1; shift ;;
-    --service)   target="$2"; shift 2 ;;
-    --cli)       cli_only=1; shift ;;
+    --dry-run)     dry_run=1; shift ;;
+    --service)     target="$2"; shift 2 ;;
+    --cli)         cli_only=1; shift ;;
+    --linked-data) ld_only=1; shift ;;
     -h|--help)
       sed -n '1,40p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
@@ -379,6 +381,71 @@ if [ "$cli_only" -eq 1 ]; then
   exit $?
 fi
 
+# Linked-data context catalogue (PRD-006 / ADR-012 / lib/linked-data-contexts.nix).
+# Each entry pins a remote @context document via lib.fakeHash on first install.
+# We resolve every URL to its SRI hash by calling nix-prefetch-url and
+# converting the base32 output, then patch the catalogue file in place.
+prefetch_linked_data_contexts() {
+  local file="${REPO_ROOT}/lib/linked-data-contexts.nix"
+  if [ ! -f "$file" ]; then
+    echo "linked-data: $file not found; skipping"
+    return 0
+  fi
+
+  echo "== resolving JSON-LD context catalogue hashes =="
+  python3 - "$file" "$dry_run" <<'PY'
+import re, sys, subprocess, pathlib
+file, dry = sys.argv[1], int(sys.argv[2])
+path = pathlib.Path(file)
+src  = path.read_text().splitlines(keepends=True)
+
+entry_re = re.compile(r'^\s*url\s*=\s*"(?P<url>[^"]+)"\s*;')
+hash_re  = re.compile(r'^(\s*)sha256\s*=\s*lib\.fakeHash\s*;')
+
+i = 0
+changes = 0
+while i < len(src):
+  m = entry_re.match(src[i])
+  if m:
+    url = m.group('url')
+    # Find the next sha256 line within the next 3 lines.
+    for j in range(i+1, min(i+5, len(src))):
+      mh = hash_re.match(src[j])
+      if mh:
+        print(f"  prefetch {url}")
+        try:
+          out = subprocess.check_output(
+            ["nix-prefetch-url", "--type", "sha256", url],
+            stderr=subprocess.PIPE, text=True
+          ).strip()
+          sri = subprocess.check_output(
+            ["nix", "hash", "to-sri", "--type", "sha256", out],
+            stderr=subprocess.PIPE, text=True
+          ).strip()
+          if dry:
+            print(f"    would patch sha256 = {sri};")
+          else:
+            indent = mh.group(1)
+            src[j] = f"{indent}sha256 = \"{sri}\";\n"
+            changes += 1
+        except subprocess.CalledProcessError as e:
+          print(f"    error fetching {url}: {e.stderr}")
+        break
+  i += 1
+
+if changes and not dry:
+  path.write_text("".join(src))
+  print(f"linked-data: patched {changes} sha256 entries in {file}")
+elif changes == 0:
+  print("linked-data: no fakeHash entries to resolve")
+PY
+}
+
+if [ "$ld_only" -eq 1 ]; then
+  prefetch_linked_data_contexts
+  exit $?
+fi
+
 if [ -n "$target" ]; then
   case "$target" in
     solid-pod-rs) prefetch_solid_pod_rs ;;
@@ -393,6 +460,7 @@ for svc in "${npm_services[@]}"; do
 done
 prefetch_solid_pod_rs
 prefetch_nagual_qe
+prefetch_linked_data_contexts
 
 # After the source-level hashes are resolved, run the iterative loop so the
 # FOD-level hashes (npm CLI node_modules + nagual-qe cargoHash) are filled
