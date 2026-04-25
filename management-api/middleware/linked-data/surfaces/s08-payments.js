@@ -16,6 +16,7 @@
 const VC_CONTEXT = 'https://www.w3.org/ns/credentials/v2';
 const ODRL_CONTEXT = 'http://www.w3.org/ns/odrl/2/';
 const AGBX_CONTEXT = 'https://agentbox.dreamlab-ai.systems/ns/v1#';
+const uris = require('../../../lib/uris');
 
 module.exports = {
   id: 'S8',
@@ -43,9 +44,20 @@ module.exports = {
 };
 
 function _encodeMandate(payload, agentDid) {
-  const id = payload.id || `urn:uuid:${_uuid()}`;
   const principal = payload.principal || payload.issuer;
   if (!principal) throw new Error('S8 mandate: principal/issuer DID required');
+  const id = uris.isCanonical(payload.id)
+    ? payload.id
+    : uris.mint({
+        kind: 'mandate',
+        npub: principal,
+        payload: {
+          assignee: payload.assignee || agentDid,
+          target: payload.target || null,
+          action: payload.action || 'odrl:use',
+          constraints: payload.constraints || [],
+        },
+      });
 
   const permission = payload.permission || {};
   const mandate = {
@@ -70,9 +82,20 @@ function _encodeMandate(payload, agentDid) {
 }
 
 function _encodeReceipt(payload, agentDid) {
-  const id = payload.id || `urn:uuid:${_uuid()}`;
   const issuer = payload.issuer || agentDid;
   if (!issuer) throw new Error('S8 receipt: issuer DID required');
+  const id = uris.isCanonical(payload.id)
+    ? payload.id
+    : uris.mint({
+        kind: 'receipt',
+        npub: issuer,
+        payload: {
+          mandateId: payload.mandateId || null,
+          amount: payload.amount || null,
+          customer: payload.customer || null,
+          datePaid: payload.datePaid || null,
+        },
+      });
 
   const subject = {
     '@type': 'schema:Invoice',
@@ -100,13 +123,3 @@ function _encodeReceipt(payload, agentDid) {
   return { document: receipt, contextIri: VC_CONTEXT };
 }
 
-function _uuid() {
-  try { return require('crypto').randomUUID(); }
-  catch {
-    const b = require('crypto').randomBytes(16);
-    b[6] = (b[6] & 0x0f) | 0x40;
-    b[8] = (b[8] & 0x3f) | 0x80;
-    const h = b.toString('hex');
-    return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;
-  }
-}

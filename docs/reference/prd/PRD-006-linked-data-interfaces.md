@@ -59,6 +59,7 @@ Eleven federation surfaces are in scope. Each row pins a vocabulary, a JSON-LD f
 | **S9** | Memory namespace catalogues (RuVector → external publisher) | emit | DCAT-3 + PROV-O | Compacted | `[linked_data].memory_catalogue = "on"` |
 | **S10** | ADR / PRD / DDD machine-readable headers | emit | Dublin Core Terms + agentbox extension + SKOS | Framed | `[linked_data].architecture_docs = "on"` |
 | **S11** | `/v1/meta` + `/v1/agent-events` HTTP responses | emit | Schema.org SoftwareApplication + PROV-O | Compacted | `[linked_data].http_meta = "on"` |
+| **S12** | Operator/agent JSON-LD viewer at `/lo/*` | consume | linkedobjects/browser + agentbox panes | Compacted | `[linked_data.viewer].mode = "local-linkedobjects"` |
 
 Surface details follow.
 
@@ -199,6 +200,18 @@ Surface details follow.
 - `agbx:Capability`, `agbx:RuntimeContract`
 
 **Form:** Compacted. The endpoints simultaneously support `application/json` and `application/ld+json` via standard HTTP content negotiation.
+
+### S12 — Operator/agent JSON-LD viewer
+
+**Why:** every emit surface (S1–S11) produces JSON-LD that is rendered today only via `curl -H 'Accept: application/ld+json'`. S12 mounts a JSON-LD-aware browser at `/lo/*` (default off) so operators and agents can navigate everything pod resources, credentials, mandates, agent-event streams, MCP capability descriptors, memory catalogues, and the runtime contract — by URL, with `@type`-dispatched panes that follow links between surfaces.
+
+**Vocabulary binding:** every PRD-006 vocabulary plus the `agbx:` extension. Pane discovery is data-driven via `/lo/manifest.json`.
+
+**Form:** Compacted (the viewer reads what the surfaces emit; no re-encoding).
+
+**Implementation:** [linkedobjects/browser](https://github.com/linkedobjects/browser) (Melvin Carvalho et al., AGPL-3.0) is the first viewer implementation. The slot accepts other implementations behind the same `/lo/manifest.json` contract — operators can swap to a hosted instance via `[linked_data.viewer].mode = "external"` without rebuilding the image. See PRD-006 §15 for the full slot specification.
+
+**URI dependency:** S12 follows links via the canonical URI grammar (ADR-013); every property pointing at a `urn:agentbox:*` URI becomes navigable via the `/v1/uri/<urn>` resolver. See PRD-006 §16.
 
 ## 4. Manifest model
 
@@ -507,6 +520,126 @@ This phase makes agentbox a first-class Linked Data citizen with verifiable clai
 3. **Single-page operator doc.** [`docs/user/linked-data.md`](../../user/linked-data.md) (added under PRD-006) is the one-page walkthrough; it links to surface-specific deep-dives and the W3C source specifications.
 4. **JSON-LD playground links.** Every example in the operator and developer docs links to the [JSON-LD Playground](https://json-ld.org/playground/) with a pre-loaded fragment, mirroring the W3C spec's own conventions.
 5. **No magic strings.** `agentbox.toml` keys are descriptive; the validator's error messages cite the exact section and the precise prerequisite that failed.
+
+## 15. Viewer slot (S12)
+
+The eleven emit surfaces produce JSON-LD; S12 makes it browsable. The slot mirrors the ADR-005 adapter pattern: one abstract slot, multiple implementations, manifest-gated.
+
+### 15.1 Three implementations
+
+| Mode | Implementation | When to use |
+|---|---|---|
+| `local-linkedobjects` | [linkedobjects/browser](https://github.com/linkedobjects/browser) bundled into the image at `/opt/agentbox/browser/` | default for any operator who wants an interactive surface; ~1100 LOC vanilla JS, no deps |
+| `external` | operator-supplied URL (e.g. `https://linkedobjects.org/browser/`) | when an off-host viewer is preferred; SRI hash recommended |
+| `off` | route returns 404 | default; emit surfaces still produce JSON-LD, no UI |
+
+### 15.2 Pane manifest contract
+
+Every viewer implementation reads `/lo/manifest.json` at boot. The shape is:
+
+```json
+{
+  "agentbox":   "<image-version>",
+  "agentDid":   "did:nostr:<npub>",
+  "viewer":     { "name": "linkedobjects-browser", "version": "...", "license": "AGPL-3.0-only", "source": "..." },
+  "panes":      [PaneEntry, ...],
+  "registry":   { "<@type>": "<pane-url>", ... },
+  "deeplinks":  { "meta": "/v1/meta", "did-document": "<pod>/.well-known/did.json", ... },
+  "buildInfo":  { "name": "...", "version": "...", "rev": "..." }
+}
+```
+
+`PaneEntry` shape:
+
+```json
+{
+  "id":              "vc",
+  "label":           "Credentials",
+  "icon":            "🪪",
+  "url":             "/lo/panes/vc-pane.js",
+  "matches":         [ { "@type": "VerifiableCredential" }, ... ],
+  "agentbox-surface": "S3",
+  "source":          "built-in"   // or "operator" or "upstream"
+}
+```
+
+### 15.3 Three pane sources
+
+Panes merge in priority order:
+
+1. **Operator-supplied** via `[linked_data.viewer].extra_panes`. Each entry is a URL or a path under `/workspace/profiles/<stack>/viewer/panes/`. Operators ship custom panes without forking agentbox.
+2. **Built-in** under `management-api/middleware/linked-data/viewer/panes/`. The agentbox-specific viewers for surfaces the upstream browser does not ship: VC (S3/S8), provenance (S5/S11), capability (S6), runtime (S11), DCAT (S9), handoff (S2).
+3. **Upstream** from the linkedobjects/browser bundle: folder, profile, markdown, todo, playlist, sharing, source, home.
+
+Later sources override earlier ones by `id`.
+
+### 15.4 Public extension API
+
+Adding a pane requires zero core changes:
+
+```js
+// /workspace/profiles/<stack>/viewer/panes/billing.js
+import { html, render } from '/lo/losos/html.js';
+
+export default {
+  id: 'billing',
+  label: 'Billing',
+  icon: '💳',
+  matches: [{ '@type': 'PaymentReceipt' }],
+  canHandle(subject, store) { /* … */ },
+  render(subject, store, container, raw) { render(container, html`…`); }
+};
+```
+
+```toml
+[linked_data.viewer]
+extra_panes = ["/workspace/profiles/default/viewer/panes/billing.js"]
+```
+
+The pane manifest endpoint picks it up on the next request.
+
+### 15.5 AGPL-3.0 §13 compliance
+
+The bundled linkedobjects/browser is AGPL-3.0. Every response from `/lo/*` carries:
+
+- `Source-Code: https://github.com/linkedobjects/browser` (per AGPL §13)
+- `X-Viewer-Version: <pinned-version>`
+- `X-Viewer-Source: <upstream-tree-url>`
+- `X-Viewer-License: AGPL-3.0-only`
+
+Aggregation analysis follows the [solid-pod-rs treatment](../adr/ADR-010-rust-solid-pod-adoption.md): the browser is shipped as static assets served by the management-api, never linked into agentbox first-party JavaScript. Agentbox stays MPL-2.0.
+
+### 15.6 Validation rules
+
+| Code | Meaning |
+|---|---|
+| `E050` | viewer.mode != off requires master gate enabled |
+| `E051` | viewer.mode = "external" requires external_url |
+| `E052` | sri_hash must look like an SRI (`sha-{256\|384\|512}-<base64>`) |
+| `W053` | linked-data emits but viewer is off (advisory) |
+| `E054` | mount_path collides with a reserved management-api route |
+
+## 16. Canonical URI grammar (ADR-013 cross-reference)
+
+Every `@id` value emitted by a PRD-006 surface follows the canonical URI grammar specified in [ADR-013](../adr/ADR-013-canonical-uri-grammar.md). Two key contracts:
+
+- **Uniqueness is unconditional.** Every URI emitted by `uris.mint(...)` is globally unique by construction. Same payload → same URI, every time.
+- **Resolvability is best-effort.** The `/v1/uri/<urn>` resolver returns 307 (resolvable), 404 (unknown), or 410 (retracted). Consumers can always trust the URI as a name; they should only trust the redirect when the resolver answers 307.
+
+The viewer (S12) follows the contract: it dereferences URIs through `/v1/uri/<urn>`, renders 200 results in their pane, and renders 404 results as the URN literal with a "no representation available" badge so panes always finish rendering.
+
+The full URI grammar:
+
+```
+identity-uri   ::= "did:nostr:" npub
+name-uri       ::= "urn:agentbox:" kind ":" [scope ":"] local
+kind           ::= pod | envelope | credential | mandate | receipt
+                 | activity | event | mcp | memory | skill
+                 | adr | prd | ddd | thing | dataset | bead | meta
+content-hash   ::= "sha256-12-" 12HEXDIGIT
+```
+
+See [ADR-013 §1](../adr/ADR-013-canonical-uri-grammar.md#1-grammar) for the full grammar and [ADR-013 §3](../adr/ADR-013-canonical-uri-grammar.md#3-surface-refactor) for the per-surface mint shape.
 
 ## 13. Out-of-scope
 

@@ -594,6 +594,23 @@
         linkedDataPackages = lib.optionals linkedDataActive [ linkedDataContexts ];
 
         # ---------------------------------------------------------------------------
+        # Linked-Object Viewer (S12, PRD-006 §15).
+        # Gate: linked_data.viewer.mode = "local-linkedobjects".
+        # First-implementation viewer; the slot accepts other implementations
+        # behind the same /lo/manifest.json contract (see PRD-006 §15.4 and
+        # docs/developer/browser-panes.md).
+        # ---------------------------------------------------------------------------
+        viewerCfg          = linkedDataCfg.viewer or {};
+        viewerMode         = viewerCfg.mode or "off";
+        viewerLocalActive  = viewerMode == "local-linkedobjects";
+        linkedObjectsBrowserLib = import ./lib/linkedobjects-browser.nix { inherit lib pkgs; };
+        linkedObjectsBrowserPkg =
+          if viewerLocalActive
+          then linkedObjectsBrowserLib.makeLinkedObjectsBrowser { }
+          else null;
+        linkedObjectsBrowserPackages = lib.optionals viewerLocalActive [ linkedObjectsBrowserPkg ];
+
+        # ---------------------------------------------------------------------------
         # Embedded Nostr relay (ADR-009 / PRD-004).
         # Gate: sovereign_mesh.relay.enabled = true AND implementation in the
         # Nix-packageable set {nostr-rs-relay, rnostr}. External / off variants
@@ -774,6 +791,13 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           # when the master gate is off, the resolver never reads this dir.
           mkdir -p $out/opt/agentbox/contexts
           cp -rL ${linkedDataContexts}/. $out/opt/agentbox/contexts/
+
+          ${lib.optionalString viewerLocalActive ''
+          # Linked-Object Viewer bundle (S12, PRD-006 §15). Mounted by
+          # management-api at the operator-configured /lo prefix.
+          mkdir -p $out/opt/agentbox/browser
+          cp -rL ${linkedObjectsBrowserPkg}/. $out/opt/agentbox/browser/
+          ''}
 
           # `cp -r` from the Nix store preserves the read-only store bits on
           # every copied file, which blocks the subsequent node_modules and

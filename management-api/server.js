@@ -689,6 +689,43 @@ async function start() {
       }
     }
 
+    // ── Canonical URI resolver (ADR-013 / DDD-004 §URICanonicaliser) ────────
+    // /v1/uri/<urn> dereferences agentbox URIs. Always available — the
+    // resolver does not depend on [linked_data].enabled because URI
+    // uniqueness is unconditional; only resolvability depends on which
+    // surfaces are enabled.
+    {
+      try {
+        await app.register(require('./routes/uri-resolver'), { logger, manifest });
+        logger.debug({ event: 'uri.resolver-mounted' }, 'URI resolver ready at /v1/uri');
+      } catch (err) {
+        logger.error({ err: err.message }, 'URI resolver failed to mount');
+      }
+    }
+
+    // ── Viewer slot (S12, PRD-006 §15) ──────────────────────────────────────
+    // Resolves [linked_data.viewer] to a descriptor, mounts /lo/* with a
+    // pane manifest endpoint and the bundled linkedobjects/browser bundle.
+    // Disabled by default; the route returns 404 in the off case.
+    {
+      try {
+        const { resolveViewerImpl } = require('./middleware/linked-data/viewer');
+        const viewer = resolveViewerImpl({ manifest, logger });
+        app.decorate('linkedObjectsViewer', viewer);
+        await app.register(require('./routes/linked-objects'), { logger, viewer });
+        if (viewer.enabled) {
+          logger.info({
+            event: 'linked-data.viewer-mounted',
+            impl: viewer.impl,
+            mountPath: viewer.mountPath,
+            buildInfo: viewer.buildInfo,
+          }, 'Linked-Object Viewer ready');
+        }
+      } catch (err) {
+        logger.error({ err: err.message }, 'Linked-Object Viewer failed to boot');
+      }
+    }
+
     // ── SecurityProfileApplied event (PRD-003 §5.4a) ───────────────────────
     // Emit a structured log describing the resolved security posture so that
     // operators can verify hardening is in effect at startup time.

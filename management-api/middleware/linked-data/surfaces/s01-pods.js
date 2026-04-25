@@ -15,6 +15,7 @@
  */
 
 const CONTEXT_IRI = 'https://agentbox.dreamlab-ai.systems/ns/v1#';
+const uris = require('../../../lib/uris');
 
 module.exports = {
   id: 'S1',
@@ -43,10 +44,16 @@ module.exports = {
       ],
     };
 
-    // Identity comes from the agent if known; otherwise the pod write is
-    // anonymous and the consumer reads it as a plain Schema.org Thing.
-    if (payload && payload.id) doc['@id'] = payload.id;
-    else if (payload && payload['@id']) doc['@id'] = payload['@id'];
+    // Identity is canonical when the agent is known: caller-supplied
+    // ids are honoured if already canonical, otherwise minted.
+    const callerId = payload && (payload.id || payload['@id']);
+    if (uris.isCanonical(callerId)) {
+      doc['@id'] = callerId;
+    } else if (agentDid) {
+      doc['@id'] = uris.mint({ kind: 'pod', npub: agentDid, payload });
+    } else if (callerId) {
+      doc['@id'] = callerId;       // anonymous pod write — pass through
+    }
 
     if (payload && payload.type) doc['@type'] = payload.type;
     if (payload && payload['@type']) doc['@type'] = payload['@type'];

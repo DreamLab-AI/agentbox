@@ -18,6 +18,7 @@
  *   E033                    solid-pod-rs first-class pod server (ADR-010)
  *   E035-E037, W038         consultant tier (ADR-011 / PRD-005)
  *   E040-E049, W047, W048   linked-data interchange (ADR-012 / PRD-006 / DDD-004)
+ *   E050-E054, W053         linked-data viewer slot S12 (ADR-013-related)
  *
  * Reserved / retired codes (do not reuse):
  *   E009                    superseded by E017
@@ -917,6 +918,59 @@ if (ldEnabled) {
       code: 'E048',
       message: `E048: [linked_data.privacy_handoff].order must be "after" (the order is fixed in code; this manifest key is documentation only)`,
     });
+  }
+
+  // ── Viewer slot (S12, PRD-006 §15) ──────────────────────────────────────
+  const viewer = (linkedData.viewer || {});
+  const viewerMode = viewer.mode || 'off';
+
+  // E050: viewer.mode != off requires master gate enabled (already covered
+  // implicitly because viewer is under [linked_data], but we surface the
+  // dependency explicitly to make operator errors more readable).
+  if (viewerMode !== 'off' && !ldEnabled) {
+    errors.push({
+      code: 'E050',
+      message: `E050: [linked_data.viewer].mode = "${viewerMode}" requires [linked_data].enabled = true`,
+    });
+  }
+
+  // E051: external mode requires external_url.
+  if (viewerMode === 'external' && !viewer.external_url) {
+    errors.push({
+      code: 'E051',
+      message: 'E051: [linked_data.viewer].mode = "external" requires [linked_data.viewer].external_url',
+    });
+  }
+
+  // E052: sri_hash, when present, must look like an SRI.
+  if (viewer.sri_hash && !/^sha(256|384|512)-[A-Za-z0-9+/]+={0,2}$/.test(viewer.sri_hash)) {
+    errors.push({
+      code: 'E052',
+      message: `E052: [linked_data.viewer].sri_hash must be sha-{256|384|512}-<base64>; got "${viewer.sri_hash}"`,
+    });
+  }
+
+  // W053: any user-touching surface enabled but viewer off — operators
+  // produce JSON-LD nobody can read interactively.
+  if (viewerMode === 'off') {
+    const anyUserTouching = ldUserTouchingSurfaces.some((s) => ldGates[s] !== 'off');
+    if (anyUserTouching) {
+      warnings.push({
+        code: 'W053',
+        message: 'W053: linked-data surfaces are emitting JSON-LD but [linked_data.viewer].mode = "off"; consider mode = "local-linkedobjects" for an interactive viewer at /lo/*',
+      });
+    }
+  }
+
+  // E054: mount_path must not collide with existing routes.
+  if (viewer.mount_path) {
+    const reserved = ['/v1', '/livez', '/ready', '/health', '/metrics', '/agent-events', '/comfyui', '/tasks'];
+    if (reserved.some((r) => viewer.mount_path === r || viewer.mount_path.startsWith(r + '/'))) {
+      errors.push({
+        code: 'E054',
+        message: `E054: [linked_data.viewer].mount_path = "${viewer.mount_path}" collides with a reserved management-api route prefix`,
+      });
+    }
   }
 
   // E049: did.method = "nostr" requires the did-nostr Cargo feature.

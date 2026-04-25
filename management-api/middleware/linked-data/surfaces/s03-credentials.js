@@ -15,6 +15,7 @@
 
 const VC_CONTEXT = 'https://www.w3.org/ns/credentials/v2';
 const AGBX_CONTEXT = 'https://agentbox.dreamlab-ai.systems/ns/v1#';
+const uris = require('../../../lib/uris');
 
 module.exports = {
   id: 'S3',
@@ -34,8 +35,16 @@ module.exports = {
       throw new Error('S3 encode: payload.credentialSubject (or .subject) required');
     }
 
-    const id = payload.id ||
-      `urn:uuid:${_uuidV4()}`;
+    // Stable + content-addressed: same credentialSubject yields the
+    // same URI on every emit, which is critical for round-trip and JCS
+    // signing (PRD-006 §8.1, §8.2).
+    const id = uris.isCanonical(payload.id)
+      ? payload.id
+      : uris.mint({
+          kind: 'credential',
+          npub: payload.issuer || agentDid,
+          payload: payload.credentialSubject || payload.subject,
+        });
 
     const doc = {
       '@context': [
@@ -64,16 +73,3 @@ module.exports = {
   },
 };
 
-function _uuidV4() {
-  // RFC 4122 v4 uuid via crypto.randomUUID where available, fallback for
-  // older Node. Matches Node 16+ behaviour.
-  try {
-    return require('crypto').randomUUID();
-  } catch {
-    const b = require('crypto').randomBytes(16);
-    b[6] = (b[6] & 0x0f) | 0x40;
-    b[8] = (b[8] & 0x3f) | 0x80;
-    const h = b.toString('hex');
-    return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;
-  }
-}

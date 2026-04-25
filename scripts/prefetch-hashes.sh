@@ -471,11 +471,46 @@ if [ "$ld_only" -eq 1 ]; then
   exit $?
 fi
 
+prefetch_linkedobjects_browser() {
+  local file="${REPO_ROOT}/lib/linkedobjects-browser.nix"
+  if [ ! -f "$file" ]; then
+    echo "linkedobjects-browser: $file not found; skipping"
+    return 0
+  fi
+  echo "== resolving linkedobjects-browser srcHash =="
+  local rev
+  rev=$(grep -E '^\s*rev\s*=' "$file" | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+  if [ -z "$rev" ]; then
+    echo "  could not read rev from $file"
+    return 1
+  fi
+  local sri
+  sri=$(nix-prefetch-url --unpack "https://github.com/linkedobjects/browser/archive/${rev}.tar.gz" 2>/dev/null \
+        | xargs -r nix hash to-sri --type sha256)
+  if [ -z "$sri" ]; then
+    echo "  fetch failed"
+    return 1
+  fi
+  if [ "$dry_run" -eq 1 ]; then
+    echo "  would patch srcHash = \"$sri\";"
+    return 0
+  fi
+  python3 -c "
+import re, sys, pathlib
+p = pathlib.Path('$file')
+s = p.read_text()
+s = re.sub(r'srcHash\s*=\s*lib\.fakeHash\s*;', f'srcHash = \"$sri\";', s, count=1)
+p.write_text(s)
+print('  patched srcHash = $sri')
+"
+}
+
 if [ -n "$target" ]; then
   case "$target" in
-    solid-pod-rs) prefetch_solid_pod_rs ;;
-    nagual-qe)    prefetch_nagual_qe ;;
-    *)            prefetch_npm_service "$target" ;;
+    solid-pod-rs)         prefetch_solid_pod_rs ;;
+    nagual-qe)            prefetch_nagual_qe ;;
+    linkedobjects-browser) prefetch_linkedobjects_browser ;;
+    *)                    prefetch_npm_service "$target" ;;
   esac
   exit 0
 fi
@@ -486,6 +521,7 @@ done
 prefetch_solid_pod_rs
 prefetch_nagual_qe
 prefetch_linked_data_contexts
+prefetch_linkedobjects_browser
 
 # After the source-level hashes are resolved, run the iterative loop so the
 # FOD-level hashes (npm CLI node_modules + nagual-qe cargoHash) are filled

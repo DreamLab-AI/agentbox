@@ -13,6 +13,7 @@
  */
 
 const AGBX_CONTEXT = 'https://agentbox.dreamlab-ai.systems/ns/v1#';
+const uris = require('../../../lib/uris');
 
 module.exports = {
   id: 'S7',
@@ -28,10 +29,11 @@ module.exports = {
 
   async encode(payload) {
     if (!payload || !payload.id) throw new Error('S7 encode: payload.id required');
+    const id = uris.isCanonical(payload.id) ? payload.id : uris.mint({ kind: 'skill', localId: payload.id });
     const doc = {
       '@context': [AGBX_CONTEXT, 'http://schema.org/'],
       '@type': ['Skill', 'schema:HowTo'],
-      id: payload.id,
+      id,
       name: payload.name || payload.id,
       description: payload.description || '',
       version: payload.version || '0.0.0',

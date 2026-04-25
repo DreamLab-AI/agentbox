@@ -13,6 +13,7 @@
  */
 
 const AGBX_CONTEXT = 'https://agentbox.dreamlab-ai.systems/ns/v1#';
+const uris = require('../../../lib/uris');
 
 module.exports = {
   id: 'S11',
@@ -45,7 +46,7 @@ function _encodeMeta(payload, agentDid) {
     'schema:name': payload.imageRef || 'agentbox',
     'schema:softwareVersion': payload.version || 'unknown',
     'schema:applicationCategory': 'AgentRuntime',
-    id: payload.id || 'urn:agentbox:meta',
+    id: uris.isCanonical(payload.id) ? payload.id : uris.mint({ kind: 'meta', localId: 'runtime' }),
   };
   if (agentDid) doc.wasAttributedTo = agentDid;
   if (payload.adapters) doc['agbx:adapters'] = payload.adapters;
@@ -63,7 +64,11 @@ function _encodeAgentEvents(payload, agentDid) {
     'dcterms:publisher': agentDid || null,
     'agbx:events': events.map((e) => ({
       '@type': 'prov:Activity',
-      '@id': e.id || `urn:agentbox:event:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
+      '@id': uris.isCanonical(e.id) ? e.id : uris.mint({
+        kind: 'event',
+        npub: agentDid,
+        payload: { action: e.action || e.type || null, slot: e.slot || null, ts: e.timestamp || null, payload: e.payload || null },
+      }),
       'prov:startedAtTime': e.timestamp || new Date().toISOString(),
       'agbx:action': e.action || e.type || 'unknown',
       'agbx:slot': e.slot || null,

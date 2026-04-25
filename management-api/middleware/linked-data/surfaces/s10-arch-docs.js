@@ -14,6 +14,7 @@
  */
 
 const AGBX_CONTEXT = 'https://agentbox.dreamlab-ai.systems/ns/v1#';
+const uris = require('../../../lib/uris');
 
 module.exports = {
   id: 'S10',
@@ -35,10 +36,13 @@ module.exports = {
     const klass = classMap[payload.docClass.toLowerCase()];
     if (!klass) throw new Error(`S10 encode: unknown docClass ${payload.docClass}`);
 
+    const id = uris.isCanonical(payload.id)
+      ? payload.id
+      : uris.mint({ kind: payload.docClass.toLowerCase(), localId: payload.id });
     const doc = {
       '@context': [AGBX_CONTEXT, 'http://purl.org/dc/terms/'],
       '@type': klass,
-      id: payload.id,
+      id,
       'dcterms:title': payload.title || payload.id,
       'dcterms:date': payload.date || null,
       'agbx:status': payload.status || 'Draft',
