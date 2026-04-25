@@ -17,6 +17,7 @@
  *                           embedded Nostr relay + pod-inbox bridge (ADR-009)
  *   E033                    solid-pod-rs first-class pod server (ADR-010)
  *   E035-E037, W038         consultant tier (ADR-011 / PRD-005)
+ *   E040-E049, W047, W048   linked-data interchange (ADR-012 / PRD-006 / DDD-004)
  *
  * Reserved / retired codes (do not reuse):
  *   E009                    superseded by E017
@@ -785,6 +786,153 @@ for (const exceptionName of KNOWN_EXCEPTION_FEATURE_GATES) {
 
 // E016 is handled by AJV schema validation above (additionalProperties: false at every section).
 // E017 and E018 are handled in the providers loop above.
+
+// ─── Linked-data interchange (PRD-006 / ADR-012 / DDD-004) ───────────────────
+//
+// Rules E040–E049 enforce coherence of the [linked_data] section. The master
+// gate [linked_data].enabled is off by default; surfaces are off until the
+// operator opts in. Each rule has a matching contract test under
+// tests/contract/linked-data/.
+
+const linkedData = manifest.linked_data || {};
+const ldEnabled = linkedData.enabled === true;
+const ldGates = {
+  pods:                  linkedData.pods                  || 'off',
+  events:                linkedData.events                || 'off',
+  credentials:           linkedData.credentials           || 'off',
+  did_documents:         linkedData.did_documents         || 'off',
+  provenance:            linkedData.provenance            || 'off',
+  capability_descriptors: linkedData.capability_descriptors || 'off',
+  skill_metadata:        linkedData.skill_metadata        || 'off',
+  payments:              linkedData.payments              || 'off',
+  memory_catalogue:      linkedData.memory_catalogue      || 'off',
+  architecture_docs:     linkedData.architecture_docs     || 'off',
+  http_meta:             linkedData.http_meta             || 'off',
+};
+const ldUserTouchingSurfaces = ['pods', 'events', 'provenance', 'payments'];
+// `adapters` is already declared earlier in this file for the ADR-005
+// validations; reuse it here rather than redeclaring.
+
+// E040: any per-surface gate set on/emit requires master gate enabled.
+for (const [surfaceKey, value] of Object.entries(ldGates)) {
+  if (!ldEnabled && value !== 'off') {
+    errors.push({
+      code: 'E040',
+      message: `E040: [linked_data].${surfaceKey} = "${value}" requires [linked_data].enabled = true (master gate)`,
+    });
+  }
+}
+
+if (ldEnabled) {
+  // E041: pods surface requires the pods adapter to be local-solid-rs or external.
+  if (ldGates.pods !== 'off') {
+    if (adapters.pods !== 'local-solid-rs' && adapters.pods !== 'external') {
+      errors.push({
+        code: 'E041',
+        message: `E041: [linked_data].pods = "${ldGates.pods}" requires adapters.pods ∈ {local-solid-rs, external} (got ${adapters.pods || 'unset'})`,
+      });
+    }
+  }
+
+  // E042: events surface requires the embedded relay (or external relay reach).
+  if (ldGates.events !== 'off') {
+    const relay = sovereignMesh.relay || {};
+    if (relay.enabled !== true) {
+      errors.push({
+        code: 'E042',
+        message: `E042: [linked_data].events = "${ldGates.events}" requires [sovereign_mesh.relay].enabled = true (the encoder reads from the relay's pod-bridge channel)`,
+      });
+    }
+  }
+
+  // E043: credentials and payments require JCS canonicalisation.
+  const canon = linkedData.canonicalisation || 'jcs';
+  if ((ldGates.credentials !== 'off' || ldGates.payments !== 'off') && canon !== 'jcs') {
+    errors.push({
+      code: 'E043',
+      message: `E043: [linked_data].canonicalisation must be "jcs" when credentials or payments surface is enabled (got "${canon}")`,
+    });
+  }
+
+  // E044: did_documents requires a Solid pod (the well-known is served via solid-pod-rs).
+  if (ldGates.did_documents !== 'off') {
+    if (sovereignMesh.solid_pod !== true) {
+      errors.push({
+        code: 'E044',
+        message: `E044: [linked_data].did_documents = "${ldGates.did_documents}" requires sovereign_mesh.solid_pod = true (the DID Document is served via solid-pod-rs)`,
+      });
+    }
+  }
+
+  // E045: every operator-supplied context override must be a non-empty IRI.
+  // Real catalogue-presence verification is a Nix-eval-time check; this is
+  // the cheap manifest-level sanity check.
+  const contextAliases = linkedData.contexts || {};
+  for (const [prefix, iri] of Object.entries(contextAliases)) {
+    if (typeof iri !== 'string' || iri.length === 0) {
+      errors.push({
+        code: 'E045',
+        message: `E045: [linked_data.contexts].${prefix} must be a non-empty IRI`,
+      });
+    }
+  }
+
+  // E046: context_cache_mode = "off" requires every user-touching surface to be off.
+  if (linkedData.context_cache_mode === 'off') {
+    for (const surfaceKey of ldUserTouchingSurfaces) {
+      if (ldGates[surfaceKey] !== 'off') {
+        errors.push({
+          code: 'E046',
+          message: `E046: [linked_data].context_cache_mode = "off" is not allowed when [linked_data].${surfaceKey} = "${ldGates[surfaceKey]}" — runtime contexts must be cached`,
+        });
+        break;
+      }
+    }
+  }
+
+  // W047: fail-open + pods is dangerous (advisory).
+  if (linkedData.unknown_context_policy === 'fail-open' && ldGates.pods === 'on') {
+    warnings.push({
+      code: 'W047',
+      message: `W047: [linked_data].unknown_context_policy = "fail-open" with pods = "on" lets unverified context documents reach the pod read path; consider fail-closed`,
+    });
+  }
+
+  // W048: linked-data on without privacy filter where user-touching surfaces are enabled.
+  const pf = manifest.privacy_filter || {};
+  if (pf.enabled !== true) {
+    const anyUserTouching = ldUserTouchingSurfaces.some((s) => ldGates[s] !== 'off');
+    if (anyUserTouching) {
+      warnings.push({
+        code: 'W048',
+        message: `W048: [linked_data].enabled = true with user-touching surfaces (pods/events/provenance/payments) but [privacy_filter].enabled = false; redaction will not run before encoding`,
+      });
+    }
+  }
+
+  // E048: privacy_handoff.order must be "after" if declared.
+  const ph = linkedData.privacy_handoff || {};
+  if (ph.order !== undefined && ph.order !== 'after') {
+    errors.push({
+      code: 'E048',
+      message: `E048: [linked_data.privacy_handoff].order must be "after" (the order is fixed in code; this manifest key is documentation only)`,
+    });
+  }
+
+  // E049: did.method = "nostr" requires the did-nostr Cargo feature.
+  // The feature is on by default in lib/solid-pod-rs.nix; we only check the
+  // manifest's enable_did_nostr toggle here.
+  const didCfg = linkedData.did || {};
+  if (ldGates.did_documents !== 'off' && (didCfg.method || 'nostr') === 'nostr') {
+    const sp = (manifest.integrations || {}).solid_pod_rs || {};
+    if (sp.enable_did_nostr === false) {
+      errors.push({
+        code: 'E049',
+        message: `E049: [linked_data].did_documents requires [integrations.solid_pod_rs].enable_did_nostr = true (the did-nostr resolver Cargo feature)`,
+      });
+    }
+  }
+}
 
 // ─── output ───────────────────────────────────────────────────────────────────
 // Warnings (W-codes) are always printed to stderr — they are direction

@@ -661,6 +661,34 @@ async function start() {
     resolvedAdapters = resolveAdapters(manifest);
     app.decorate('adapters', resolvedAdapters);
 
+    // ── Linked-Data middleware (PRD-006 / ADR-012 / DDD-004) ────────────────
+    // Boot the encoder when [linked_data].enabled = true. The encoder runs
+    // strictly after the privacy filter (ADR-008) in the dispatch path; the
+    // ordering is enforced in code, not in config (DDD-004 §L08).
+    {
+      try {
+        const ld = require('./middleware/linked-data');
+        const ldEncoder = await ld.createEncoder({
+          manifest,
+          logger,
+          agentDid: process.env.AGENTBOX_AGENT_DID || null,
+        });
+        app.decorate('linkedData', ldEncoder);
+        if ((manifest.linked_data || {}).enabled === true) {
+          logger.info({
+            event: 'linked-data.middleware-booted',
+            surfaces: ldEncoder.surfaces ? Array.from(ldEncoder.surfaces.keys()) : [],
+          }, 'Linked-Data encoder ready');
+        }
+      } catch (err) {
+        if ((manifest.linked_data || {}).enabled === true) {
+          logger.error({ err: err.message }, 'Linked-Data middleware failed to boot — surfaces will be unavailable');
+        } else {
+          logger.debug({ err: err.message }, 'Linked-Data middleware not booted (master gate off)');
+        }
+      }
+    }
+
     // ── SecurityProfileApplied event (PRD-003 §5.4a) ───────────────────────
     // Emit a structured log describing the resolved security posture so that
     // operators can verify hardening is in effect at startup time.

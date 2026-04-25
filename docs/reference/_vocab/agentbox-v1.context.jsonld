@@ -1,0 +1,74 @@
+{
+  "@context": {
+    "@version": 1.1,
+    "@protected": true,
+
+    "agbx": "https://agentbox.dreamlab-ai.systems/ns/v1#",
+    "schema": "http://schema.org/",
+    "as": "https://www.w3.org/ns/activitystreams#",
+    "prov": "http://www.w3.org/ns/prov#",
+    "xsd": "http://www.w3.org/2001/XMLSchema#",
+    "skos": "http://www.w3.org/2004/02/skos/core#",
+    "dcterms": "http://purl.org/dc/terms/",
+
+    "id": "@id",
+    "type": "@type",
+
+    "HandoffClaim": "agbx:HandoffClaim",
+    "RequestBriefing": "agbx:RequestBriefing",
+    "DeliverArtefact": "agbx:DeliverArtefact",
+    "Capability": "agbx:Capability",
+    "RuntimeContract": "agbx:RuntimeContract",
+    "Skill": "agbx:Skill",
+    "ADR": "agbx:adr",
+    "PRD": "agbx:prd",
+    "DDD": "agbx:ddd",
+
+    "progressiveDisclosure": {
+      "@id": "agbx:progressiveDisclosure",
+      "@type": "xsd:boolean"
+    },
+    "invocationTrigger": {
+      "@id": "agbx:invocationTrigger",
+      "@type": "xsd:string"
+    },
+    "requires": {
+      "@id": "agbx:requires",
+      "@type": "@id"
+    },
+    "redacted": {
+      "@id": "agbx:redacted",
+      "@type": "xsd:boolean"
+    },
+    "supersedes": {
+      "@id": "dcterms:isReplacedBy",
+      "@type": "@id",
+      "@reverse": true
+    },
+    "references": {
+      "@id": "dcterms:references",
+      "@type": "@id"
+    },
+
+    "name": "schema:name",
+    "description": "schema:description",
+    "version": "schema:softwareVersion",
+    "createdAt": {
+      "@id": "dcterms:created",
+      "@type": "xsd:dateTime"
+    },
+    "modifiedAt": {
+      "@id": "dcterms:modified",
+      "@type": "xsd:dateTime"
+    },
+
+    "wasAttributedTo": {
+      "@id": "prov:wasAttributedTo",
+      "@type": "@id"
+    },
+    "wasGeneratedBy": {
+      "@id": "prov:wasGeneratedBy",
+      "@type": "@id"
+    }
+  }
+}

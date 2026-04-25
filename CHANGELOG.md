@@ -4,6 +4,89 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Linked-Data interchange — PRD-006 / ADR-012 / DDD-004 (2026-04-25)
+
+Adopt W3C JSON-LD 1.1 as the canonical encoding at every external
+interchange surface. Eleven federation surfaces (S1 pods, S2 Nostr
+envelopes, S3 Verifiable Credentials, S4 DID Documents, S5 PROV-O
+provenance, S6 WoT capability descriptors, S7 skill metadata, S8
+agentic-payment mandates and receipts, S9 DCAT memory catalogues, S10
+ADR/PRD/DDD frame frontmatter, S11 content-negotiated /v1/meta and
+/v1/agent-events) gated under a new top-level `[linked_data]` section
+in `agentbox.toml`. Default off — clone-and-build sees zero behavioural
+change. Each per-surface gate accepts `on` / `emit` / `off`.
+
+**`management-api/middleware/linked-data/`** — encoder + context
+resolver + LION linter + JCS canonicaliser + round-trip helper plus
+eleven surface modules. The encoder is the third cross-cutting
+middleware after observability (ADR-005) and the privacy filter
+(ADR-008); the order is fixed in code (DDD-004 §L08), the manifest
+key is documentation only, and the validator (E048) rejects any other
+value. Wires `jsonld@^8` (BSD-3-Clause; Digital Bazaar) for the JSON-LD
+processor.
+
+**`lib/linked-data-contexts.nix`** — build-time-pinned `@context`
+catalogue. Same FOD-everything pattern as `lib/npm-cli.nix` and
+`lib/solid-pod-rs.nix`. Materialises ActivityStreams, VC v2, DID v1,
+Schema.org, WoT TD, PROV-O, DCAT-3, ODRL 2.2, SKOS, Dublin Core Terms,
+and the first-party `agbx:` extension into one read-only directory at
+`/opt/agentbox/contexts/`. The runtime resolver loads the index once at
+boot and never performs network I/O thereafter (DDD-004 §L09).
+
+**`scripts/prefetch-hashes.sh --linked-data`** — new flag mirroring
+`--cli` + `--service`. Walks the catalogue, resolves every
+`lib.fakeHash` to a real SRI hash via `nix-prefetch-url`, patches the
+file in place. Up to 20 iterations.
+
+**Schema + validator** — new `[linked_data]` section in
+`schema/agentbox.toml.schema.json` plus rules **E040–E049** in
+`scripts/agentbox-config-validate.js`:
+
+- E040 master gate enforces per-surface gates
+- E041 pods needs local-solid-rs/external
+- E042 events needs the embedded relay
+- E043 credentials/payments need JCS
+- E044 did_documents need a Solid pod
+- E045 context override IRIs must be non-empty
+- E046 cache-mode=off blocks user-touching surfaces
+- W047 fail-open + pods=on is dangerous (advisory)
+- W048 linked-data on without privacy filter (advisory)
+- E048 privacy_handoff.order must be "after"
+- E049 did:nostr requires the did-nostr Cargo feature
+
+**Hand-authored documents (LION subset).** Linked Object Notation
+([Carvalho 2024, MIT-licensed](https://linkedobjects.github.io/)) is
+the authoring subset for skill frontmatter, ADR/PRD/DDD frontmatter,
+and human-reviewed mandates. Five rules — `@id` is a URL, `@type` is
+optional, `@context` defaults are inherited, properties are URLs or
+known terms, no `@protected` overrides. Every LION document is valid
+JSON-LD 1.1 by construction.
+
+**Documentation.** New canonical specs:
+
+- [PRD-006](docs/reference/prd/PRD-006-linked-data-interfaces.md)
+- [ADR-012](docs/reference/adr/ADR-012-jsonld-federation-grammar.md)
+- [DDD-004](docs/reference/ddd/DDD-004-linked-data-interchange-domain.md)
+
+Operator one-pager at [`docs/user/linked-data.md`](docs/user/linked-data.md);
+implementer reference at [`docs/developer/linked-data.md`](docs/developer/linked-data.md);
+`agbx:` term registry at [`docs/reference/_vocab/agbx.md`](docs/reference/_vocab/agbx.md);
+in-tree first-party context document at
+[`docs/reference/_vocab/agentbox-v1.context.jsonld`](docs/reference/_vocab/agentbox-v1.context.jsonld).
+
+**Tests.** `tests/contract/linked-data/`:
+
+- `invariants.spec.js` — DDD-004 §L01–L12
+- `jcs.spec.js` — RFC 8785 vector subset
+- `surfaces.spec.js` — per-surface smoke tests
+
+**Attribution.** Stands on the shoulders of W3C JSON-LD 1.1 (Gregg
+Kellogg in memoriam, Pierre-Antoine Champin, Dave Longley), W3C VC
+Data Model 2.0, W3C DID Core, ActivityStreams 2.0, PROV-O, Schema.org,
+Web of Things TD 1.1, DCAT-3, ODRL 2.2, SKOS, Solid Protocol, JCS
+RFC 8785, jsonld.js (Digital Bazaar), and the LION specification.
+Full bibliography in [PRD-006 §14](docs/reference/prd/PRD-006-linked-data-interfaces.md#14-acknowledgements-and-attribution).
+
 ### Sandbox-safe npm-cli builds + nagual-qe Rust source build (2026-04-25)
 
 Building agentbox no longer requires `--option sandbox false` or live

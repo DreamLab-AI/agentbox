@@ -244,6 +244,48 @@ outbound     = "soft"
 #          private_phone, private_url, private_date, secret.
 enabled = []
 
+# ── Linked-Data interchange (PRD-006 / ADR-012 / DDD-004) ──────────────────────
+# Master gate for the eleven JSON-LD federation surfaces. Default off — a
+# clone+up build sees zero behavioural change. Each per-surface gate accepts
+# on | emit | off; rules E040–E049 enforce coherence.
+#
+# Phase 1 (mechanism only): architecture_docs, skill_metadata.
+# Phase 2 (sovereign-stack): pods, events, did_documents, provenance.
+# Phase 3 (credentials):     credentials, payments, capability_descriptors,
+#                            memory_catalogue, http_meta.
+[linked_data]
+enabled                = false
+pods                   = "off"   # S1  Solid pod resource representations
+events                 = "off"   # S2  Nostr envelope payloads
+credentials            = "off"   # S3  W3C Verifiable Credentials
+did_documents          = "off"   # S4  DID Documents at /.well-known/did.json
+provenance             = "off"   # S5  PROV-O receipts (parallel to events)
+capability_descriptors = "off"   # S6  W3C WoT Thing Descriptions for MCP
+skill_metadata         = "off"   # S7  Schema.org HowTo (build-time)
+payments               = "off"   # S8  Mandates + receipts (VC + ODRL)
+memory_catalogue       = "off"   # S9  DCAT-3 namespace catalogue
+architecture_docs      = "off"   # S10 ADR/PRD/DDD frame frontmatter (build-time)
+http_meta              = "off"   # S11 Content-negotiated /v1/meta + /v1/agent-events
+default_form           = "compacted"
+context_catalogue      = "/opt/agentbox/contexts"
+context_cache_mode     = "image"        # image | bind | off (E046)
+unknown_context_policy = "fail-closed"  # fail-closed | fail-open (W047)
+canonicalisation       = "jcs"          # jcs required for credentials/payments (E043)
+round_trip_in_dispatch = true           # CI canary; turn off for hot paths
+
+[linked_data.contexts]
+# Operator overrides for context IRIs. Each value MUST resolve to a pinned
+# ContextDocument in lib/linked-data-contexts.nix (E045). Leave empty for
+# the catalogue defaults.
+
+[linked_data.did]
+method                = "nostr"
+service_endpoints     = ["pod", "relay"]
+publish_to_well_known = true
+
+[linked_data.privacy_handoff]
+order = "after"   # documentation only — the order is fixed in code (E048)
+
 [toolchains]
 claude = true
 ruflo = true

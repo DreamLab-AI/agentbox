@@ -113,6 +113,7 @@ Agentbox ships a coherent identity-plus-data substrate. Every layer uses the sam
 | **Durable storage** | [**`solid-pod-rs`**](https://github.com/DreamLab-AI/solid-pod-rs) — **first-party, first-class default** | Rust-native Solid Protocol 0.11 server. LDP containers, **WAC 2.0 conditions** (deny-by-default + time windows + origin constraints), **`did:nostr:<npub>` DID resolver**, NIP-98 with Schnorr, Solid Notifications 0.2 with **RFC 9421 Ed25519 webhook signing**, atomic-rename filesystem, per-pod quota ceiling, sliding-window rate limiter. Powers the `pods` adapter slot. See [ADR-010](docs/reference/adr/ADR-010-rust-solid-pod-adoption.md). |
 | **Messaging** | Embedded `nostr-rs-relay` on loopback `:7777` + in-process pod-inbox bridge | External ↔ internal agent messages. Every signature-verified event lands in `pods/<npub>/events/inbox/<id>.json`. NIP-42 AUTH required. See [ADR-009](docs/reference/adr/ADR-009-embedded-nostr-relay.md) / [PRD-004](docs/reference/prd/PRD-004-external-agent-messaging.md). |
 | **Privacy governance** | `openai/privacy-filter` sidecar on loopback `:9092` | PII redaction middleware on every adapter dispatch. Per-slot `strict`/`soft`/`off` policy; fails closed on `pods` and `memory` by default. See [ADR-008](docs/reference/adr/ADR-008-privacy-filter-routing.md). |
+| **Linked-Data interfaces** | JSON-LD 1.1 encoder middleware + pinned context catalogue at `/opt/agentbox/contexts/` | Eleven federation surfaces (pods, Nostr envelopes, VCs, DID Docs, PROV-O, WoT, skills, payments, DCAT, arch-docs, HTTP meta) — opt-in per surface. Encoder runs after the privacy filter. See [PRD-006](docs/reference/prd/PRD-006-linked-data-interfaces.md) / [ADR-012](docs/reference/adr/ADR-012-jsonld-federation-grammar.md) / [DDD-004](docs/reference/ddd/DDD-004-linked-data-interchange-domain.md). |
 
 **The stack is coherent because every layer speaks the same identity.** With `did-nostr` absorbed from Sprint 6, that identity has a single canonical resolvable form: `did:nostr:<npub>`. Schnorr-signed events on HTTP (NIP-98) and WebSocket (NIP-42); WAC 2.0 policies written against the DID; content-addressed pod mailboxes keyed by Nostr event id; RFC 9421 signatures on outbound webhooks. An external agent that can sign a Nostr event can reach the relay, be identified by the pod under the same DID, have its message persisted to a quota-bounded mailbox, and have replies signed — no federated IdP, no OAuth, no centralised broker.
 
@@ -206,7 +207,7 @@ Deeper reading: [`docs/developer/architecture.md`](docs/developer/architecture.m
 - [Troubleshooting](docs/user/troubleshooting.md)
 - [Consuming the image](docs/user/consuming-image.md) — GHCR registry tags
 - [Provisioning](docs/user/provisioning.md) — remote host targets
-- Sovereign data stack: [Solid pod (solid-pod-rs)](docs/user/solid-pod.md) · [Nostr relay](docs/user/nostr-relay.md) · [Privacy filter](docs/user/privacy-filter.md)
+- Sovereign data stack: [Solid pod (solid-pod-rs)](docs/user/solid-pod.md) · [Nostr relay](docs/user/nostr-relay.md) · [Privacy filter](docs/user/privacy-filter.md) · [Linked-Data interfaces](docs/user/linked-data.md)
 - Feature guides: [3DGS](docs/user/3dgs.md) · [Blender](docs/user/blender.md) · [ComfyUI](docs/user/comfyui.md) · [LaTeX](docs/user/latex.md)
 
 ### For contributors (developers)

@@ -642,6 +642,138 @@
           }
         }
       }
+    },
+    "linked_data": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Linked-Data interchange surfaces (PRD-006 / ADR-012 / DDD-004). When [linked_data].enabled = false (default), no surface emits or consumes JSON-LD and zero behaviour changes vs. the pre-PRD-006 product. Each per-surface gate accepts on | emit | off. Validation rules: E040–E049.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Master gate. When false every per-surface gate is forced off (E040)."
+        },
+        "pods": {
+          "type": "string",
+          "enum": ["on", "emit", "off"],
+          "description": "S1 — Solid pod resource representations. Requires adapters.pods ∈ {local-solid-rs, external} (E041)."
+        },
+        "events": {
+          "type": "string",
+          "enum": ["on", "emit", "off"],
+          "description": "S2 — Nostr envelope payloads. Requires [sovereign_mesh.relay].enabled = true (E042)."
+        },
+        "credentials": {
+          "type": "string",
+          "enum": ["emit", "off"],
+          "description": "S3 — W3C Verifiable Credentials. JCS canonicalisation required (E043)."
+        },
+        "did_documents": {
+          "type": "string",
+          "enum": ["emit", "off"],
+          "description": "S4 — DID Documents at /.well-known/did.json. Requires sovereign_mesh.solid_pod = true (E044)."
+        },
+        "provenance": {
+          "type": "string",
+          "enum": ["emit", "off"],
+          "description": "S5 — PROV-O receipts emitted parallel to the events adapter."
+        },
+        "capability_descriptors": {
+          "type": "string",
+          "enum": ["emit", "off"],
+          "description": "S6 — W3C WoT Thing Descriptions for MCP servers."
+        },
+        "skill_metadata": {
+          "type": "string",
+          "enum": ["emit", "off"],
+          "description": "S7 — Schema.org HowTo encoding for skills (build-time only)."
+        },
+        "payments": {
+          "type": "string",
+          "enum": ["on", "emit", "off"],
+          "description": "S8 — agentic-payment mandates and receipts (VC + ODRL). JCS canonicalisation required (E043)."
+        },
+        "memory_catalogue": {
+          "type": "string",
+          "enum": ["emit", "off"],
+          "description": "S9 — DCAT-3 memory namespace catalogue at /v1/memory/catalogue."
+        },
+        "architecture_docs": {
+          "type": "string",
+          "enum": ["emit", "off"],
+          "description": "S10 — ADR/PRD/DDD frame frontmatter (build-time only)."
+        },
+        "http_meta": {
+          "type": "string",
+          "enum": ["emit", "off"],
+          "description": "S11 — Content-negotiated JSON-LD on /v1/meta and /v1/agent-events."
+        },
+        "default_form": {
+          "type": "string",
+          "enum": ["compacted", "expanded", "flattened", "framed"],
+          "description": "Default JSON-LD form when a surface does not pin one. Default compacted."
+        },
+        "context_catalogue": {
+          "type": "string",
+          "description": "Filesystem path of the pinned context catalogue. Default /opt/agentbox/contexts."
+        },
+        "context_cache_mode": {
+          "type": "string",
+          "enum": ["image", "bind", "off"],
+          "description": "How the catalogue reaches the runtime. image (read-only image layer; default), bind (host bind-mount), off (rejected when any user-touching surface is on; E046)."
+        },
+        "unknown_context_policy": {
+          "type": "string",
+          "enum": ["fail-closed", "fail-open"],
+          "description": "What to do when an UnpinnedContextIRI appears in input. Default fail-closed (E047 warns when fail-open is paired with pods=on)."
+        },
+        "canonicalisation": {
+          "type": "string",
+          "enum": ["jcs", "none"],
+          "description": "Canonicalisation mode. jcs is required when credentials or payments surface is enabled (E043)."
+        },
+        "round_trip_in_dispatch": {
+          "type": "boolean",
+          "description": "Run the round-trip self-check on every dispatch. Default true. CI-only deployments may set false to save cycles."
+        },
+        "contexts": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Operator overrides for context IRIs. Each value MUST resolve to a pinned ContextDocument in lib/linked-data-contexts.nix (E045)."
+        },
+        "did": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "DID method controls for S4.",
+          "properties": {
+            "method": {
+              "type": "string",
+              "enum": ["nostr", "key", "web"],
+              "description": "DID method. nostr is the default sovereign method; requires the did-nostr Cargo feature (E049)."
+            },
+            "service_endpoints": {
+              "type": "array",
+              "items": { "type": "string", "enum": ["pod", "relay"] },
+              "description": "Which agentbox services to publish in the DID Document service array."
+            },
+            "publish_to_well_known": {
+              "type": "boolean",
+              "description": "Serve the DID Document at /.well-known/did.json via solid-pod-rs."
+            }
+          }
+        },
+        "privacy_handoff": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Privacy filter handoff (documentation only — the order is fixed in code).",
+          "properties": {
+            "order": {
+              "type": "string",
+              "enum": ["after"],
+              "description": "Always after. The validator rejects any other value (E048)."
+            }
+          }
+        }
+      }
     }
   }
 }
