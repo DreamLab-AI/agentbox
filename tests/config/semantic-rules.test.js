@@ -356,21 +356,19 @@ describe('E010: desktop.enabled=true forbids headless_only profiles', () => {
   });
 });
 
-// ─── E011 ─────────────────────────────────────────────────────────────────────
-describe('E011: every enabled skill must exist in the skills-corpus', () => {
-  test('invalid: unknown skill flag set to true', () => {
+// ─── E011 retired 2026-04-25 ──────────────────────────────────────────────────
+// Was: every enabled skill must exist in the skills-corpus. Unreachable in
+// practice — schema's `additionalProperties: false` already rejects unknown
+// skill keys via E016 before the semantic block runs. The hardcoded
+// KNOWN_SKILLS snapshot drifted from the actual corpus over time, producing
+// false positives. Replacement idea: consume `nix build .#skills` artefact.
+describe('E011 retired: unknown skill keys are caught by E016 (AJV)', () => {
+  test('unknown skill flag now triggers E016, not E011', () => {
     const m = baseValid();
-    // skills.browser.phantom_browser is not in KNOWN_SKILLS
     m.skills.browser.phantom_browser = true;
     const r = runValidator(m);
     expect(r.exitCode).not.toBe(0);
-    expect(stderrContains(r, 'E011')).toBe(true);
-  });
-
-  test('valid: only known skills enabled', () => {
-    const m = baseValid();
-    m.skills.browser.playwright = true;
-    const r = runValidator(m);
+    expect(stderrContains(r, 'E016')).toBe(true);
     expect(stderrContains(r, 'E011')).toBe(false);
   });
 });
@@ -734,6 +732,94 @@ describe('W038: intelligence_signal env missing is advisory', () => {
     m.consultants = { enabled: true, intelligence_signal: true, codex: { enabled: false } };
     const r = runValidator(m, { AGENTBOX_INTELLIGENCE_DIR: '/tmp/intel' });
     expect(stderrContains(r, 'W038')).toBe(false);
+  });
+});
+
+// ─── E028 solid-pod-rs port collision ─────────────────────────────────────────
+describe('E028: relay.port must not collide with integrations.solid_pod_rs.port', () => {
+  test('E028 fires when relay.port == solid_pod_rs.port', () => {
+    const m = baseValid();
+    m.sovereign_mesh.relay = { enabled: true, port: 8484, ingress_policy: 'signed-only' };
+    m.security.exceptions['nostr-relay'] = { reason: 'embedded relay' };
+    m.integrations = { solid_pod_rs: { port: 8484, bind: '127.0.0.1' } };
+    const r = runValidator(m);
+    expect(stderrContains(r, 'E028')).toBe(true);
+    expect(r.stderr).toMatch(/integrations\.solid_pod_rs\.port/);
+  });
+});
+
+// ─── E030 escalation: open + bidirectional ────────────────────────────────────
+describe('E030: ingress_policy=open + external_fanout=bidirectional escalates W030', () => {
+  test('E030 fires (blocking) instead of W030', () => {
+    const m = baseValid();
+    m.sovereign_mesh.relay = {
+      enabled: true,
+      port: 7777,
+      ingress_policy: 'open',
+      external_fanout: 'bidirectional'
+    };
+    m.security.exceptions['nostr-relay'] = { reason: 'embedded relay' };
+    const r = runValidator(m);
+    expect(stderrContains(r, 'E030')).toBe(true);
+    expect(stderrContains(r, 'W030')).toBe(false);
+    expect(r.exitCode).not.toBe(0);
+  });
+});
+
+// ─── W039 allowlist with empty allowed_pubkeys ────────────────────────────────
+describe('W039: ingress_policy=allowlist with empty allowed_pubkeys', () => {
+  test('W039 fires when allowed_pubkeys is empty', () => {
+    const m = baseValid();
+    m.sovereign_mesh.relay = {
+      enabled: true,
+      port: 7777,
+      ingress_policy: 'allowlist',
+      allowed_pubkeys: []
+    };
+    m.security.exceptions['nostr-relay'] = { reason: 'embedded relay' };
+    const r = runValidator(m);
+    expect(stderrContains(r, 'W039')).toBe(true);
+    expect(r.exitCode).toBe(0);
+  });
+
+  test('silent when allowed_pubkeys is non-empty', () => {
+    const m = baseValid();
+    m.sovereign_mesh.relay = {
+      enabled: true,
+      port: 7777,
+      ingress_policy: 'allowlist',
+      allowed_pubkeys: ['npub1abc...']
+    };
+    m.security.exceptions['nostr-relay'] = { reason: 'embedded relay' };
+    const r = runValidator(m);
+    expect(stderrContains(r, 'W039')).toBe(false);
+  });
+});
+
+// ─── W041 dead-config privacy policy ──────────────────────────────────────────
+describe('W041: privacy_filter.enabled=false with non-default policy slots', () => {
+  test('W041 fires when policy is set but filter is disabled', () => {
+    const m = baseValid();
+    m.privacy_filter = {
+      enabled: false,
+      mode: 'off',
+      policy: { pods: 'strict', memory: 'soft' }
+    };
+    const r = runValidator(m);
+    expect(stderrContains(r, 'W041')).toBe(true);
+    expect(r.stderr).toMatch(/pods.*memory|memory.*pods/);
+    expect(r.exitCode).toBe(0);
+  });
+
+  test('silent when all policy slots are off', () => {
+    const m = baseValid();
+    m.privacy_filter = {
+      enabled: false,
+      mode: 'off',
+      policy: { pods: 'off', memory: 'off' }
+    };
+    const r = runValidator(m);
+    expect(stderrContains(r, 'W041')).toBe(false);
   });
 });
 

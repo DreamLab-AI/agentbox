@@ -240,8 +240,15 @@ Common ones:
 | E017 | Enabled provider's env var missing |
 | E019 | `toolchains.cuda=true` without `gpu.backend="local-cuda"` |
 | E020 | `[security.exceptions.<name>]` block declared but feature disabled |
-| W021 | Feature enabled without its usual security exception block (warning) |
+| E021 | Feature enabled without its usual security exception block (renamed from W021) |
 | E016 | Unknown manifest key — usually a typo, or a removed enum value (e.g. `pods = "local-jss"` post-2026-04-25) |
+| W012 | `federation.mode="client"` with `local-*` adapters (graceful-degrade testing — advisory) |
+| W030 | `relay.ingress_policy="open"` (advisory — prefer allowlist or signed-only) |
+| W031 | `relay.allow_nip04=true` (advisory — prefer NIP-17 sealed gift-wrap) |
+| W038 | `consultants.intelligence_signal=true` without writable target dir (degraded, not blocking) |
+| W039 | `relay.ingress_policy="allowlist"` with empty `allowed_pubkeys` |
+| W040 | Provider has `auth_mode="oauth"` but no in-container OAuth CLI |
+| W041 | `privacy_filter.enabled=false` but policy slots declare non-default values (dead config) |
 
 ## Backup / restore round-trip fails
 

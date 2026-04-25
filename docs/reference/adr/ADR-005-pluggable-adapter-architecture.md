@@ -9,7 +9,7 @@
 ## TL;DR for newcomers
 *Skip if you already know the five-slot adapter pattern.*
 
-This ADR explains how agentbox talks to durable state — task receipts, pod storage, vector memory, event sinks, and the agent orchestrator — in a way that works identically whether it runs standalone or federates into a host mesh. The pain point it addresses is the obvious bad alternative: hardcode one backend for each service and patch a second codepath for the other shape, then spend the rest of the project fighting two sets of bugs and silent capability mismatches. The shape of the answer is a **five-slot adapter pattern** (beads, pods, memory, events, orchestrator), each declared in `agentbox.toml` and resolved at boot to one of three implementation classes: `local-*`, `external`, or `off`. You will learn the slot taxonomy, the adapter interface, the manifest contract, and the contract tests that keep all three classes behaviourally equivalent.
+This ADR explains how agentbox talks to durable state — task receipts, pod storage, vector memory, event sinks, and the agent orchestrator — in a way that works identically whether it runs standalone or federates into a host mesh. The pain point it addresses is the obvious bad alternative: hardcode one backend for each service and patch a second codepath for the other shape, then spend the rest of the project fighting two sets of bugs and silent capability mismatches. The shape of the answer is a **five-slot adapter pattern** (beads, pods, memory, events, orchestrator), each declared in `agentbox.toml` and resolved at boot to one of three implementation classes: a local class (`local-*` / `embedded-*`), a federated class (`external` / `external-pg` / `stdio-bridge`), and an `off` class. The orchestrator slot's federated class is named `stdio-bridge` rather than `external` because federation is the transport (stdio over `docker exec -i`), not a remote URL — same shape, different name. You will learn the slot taxonomy, the adapter interface, the manifest contract, and the contract tests that keep all three classes behaviourally equivalent.
 
 **If you remember only one thing:** five adapter slots, three implementation classes, one contract — hardcoding a backend is never the right answer.
 
@@ -111,12 +111,21 @@ Every rule has an error code, a specific stderr message regex, and a dedicated t
 8. `E008` — `gpu.backend = "local-cuda"` MUST resolve on the host arch (x86_64 only at time of writing); aarch64 builds with this rule set raise an error.
 9. `E009` — every enabled `[providers.<name>]` section requires its credentials env-var present at boot-time check (not build-time); missing env var is reported per-provider.
 10. `E010` — `desktop.enabled = true` forbids any profile marked `headless_only = true`; validator iterates over all profiles in `/workspace/profiles/*/profile.toml`.
-11. `E011` — every enabled skill in `[skills.*]` MUST resolve to a Nix package declared in the skills-corpus input; orphan skill flags are rejected.
-12. `E012` — `federation.mode = "client"` with any adapter set to a `local-*` implementation raises a warning (not error — legitimate use for graceful degrade testing, but flagged).
+11. `E011` — **retired 2026-04-25.** Was: every enabled skill in `[skills.*]` MUST resolve to a Nix package declared in the skills-corpus. Unreachable in practice — schema's `additionalProperties: false` already rejects unknown skill keys via E016, and the hardcoded snapshot drifted from the actual corpus. Replacement idea: consume `nix build .#skills` artefact at validate time.
+12. `W012` — `federation.mode = "client"` with any adapter set to a `local-*` implementation. Recategorised from E012 to W012 in 2026-04-25 — the docstring always called this a warning but the rule was pushed to errors[] forcing non-zero exit; now correctly advisory.
 13. `E013` — `[observability].metrics_port` MUST NOT collide with any other port assigned in the compose generator output.
 14. `E014` — `[sovereign_mesh].telegram_mirror = true` requires `CTM_BOT_TOKEN` and `CTM_TELEGRAM_CHAT_ID` env vars at boot.
 15. `E015` — **retired 2026-04-25.** Was `[sovereign_mesh].jss_rust_backend = true` requires `jss-rust` Nix input pinned in `flake.lock`. The flake input was never declared and the field had no consumer; the Rust pod adoption shipped as `solid-pod-rs` (ADR-010) instead. Schema property dropped, validator rule removed, code reserved for re-use.
 16. `E016` — every manifest key consumed by the supervisord generator MUST be declared in the JSON Schema; unknown keys under known sections raise `UnknownManifestKey` (prevents typo-silence).
+17. `E021` (renamed from W021 in 2026-04-25) — feature corresponding to a `[security.exceptions.<name>]` is enabled but no exception block is declared; the hardened baseline may be silently broken at runtime without the exception delta applied.
+18. `E028` — `sovereign_mesh.relay.port` MUST NOT collide with `RESERVED_PORTS`, `observability.metrics_port`, `privacy_filter.port`, or `integrations.solid_pod_rs.port`.
+19. `E030` — `relay.ingress_policy = "open"` combined with `external_fanout = "bidirectional"` is an unbounded ingress path; tighten ingress.
+20. `W030` — `relay.ingress_policy = "open"` (without bidirectional fan-out) is advisory; prefer `"allowlist"` or `"signed-only"`.
+21. `W031` (renamed from E031 in 2026-04-25) — `relay.allow_nip04 = true` is a NIP-04 vs NIP-17 direction signal, not a hard error.
+22. `W038` (renamed from E038 in 2026-04-25) — `consultants.intelligence_signal = true` without `AGENTBOX_INTELLIGENCE_DIR` or `WORKSPACE` set; runtime-degraded, not blocking.
+23. `W039` — `relay.ingress_policy = "allowlist"` with empty `allowed_pubkeys` accepts only the local npub — usually a copy-paste error.
+24. `W040` — provider has `auth_mode = "oauth"` but no in-container OAuth CLI is wired up; the setting is ignored and `env_var` still needs to be set.
+25. `W041` — `privacy_filter.enabled = false` but `policy.<slot>` declares non-default value(s); the policy is dead config until `enabled = true`.
 
 Rule 16 closes the loop: the generator and validator share the schema, so a manifest typo (`[skills.brower]`) fails fast instead of silently disabling a feature.
 

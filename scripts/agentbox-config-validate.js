@@ -6,21 +6,25 @@
  * own stderr line: "E### message".
  *
  * Active rule families:
- *   E001-E014, E016         adapter + federation coherence (ADR-005)
+ *   E001-E010, E013-E014, E016
+ *                           adapter + federation coherence (ADR-005)
  *   E017-E018, W040         provider credentials + OAuth deferral
  *   W012                    federation-mode advisory (was E012; recategorised)
  *   E019                    CUDA toolchain gate (ADR-007)
  *   E020, E021              security.exceptions coherence (E021 was W021)
- *   E022-E025               privacy filter middleware (ADR-008)
- *   E026-E029, W030, W031   embedded Nostr relay + pod-inbox bridge (ADR-009)
+ *   E022-E025, W041         privacy filter middleware (ADR-008)
+ *   E026-E030, W030, W031, W039
+ *                           embedded Nostr relay + pod-inbox bridge (ADR-009)
  *   E033                    solid-pod-rs first-class pod server (ADR-010)
  *   E035-E037, W038         consultant tier (ADR-011 / PRD-005)
  *
  * Reserved / retired codes (do not reuse):
  *   E009                    superseded by E017
+ *   E011                    retired 2026-04-25 — duplicated by AJV
+ *                           additionalProperties:false; replacement idea is
+ *                           to consume nix build .#skills artefact
  *   E015, W034              retired 2026-04-25 with the local-jss legacy stub
- *   E030, E032, E034        reserved
- *   E011                    retired — duplicated by AJV additionalProperties:false
+ *   E032, E034              reserved
  */
 
 'use strict';
@@ -314,33 +318,15 @@ if (desktop.enabled === true) {
   }
 }
 
-// E011: every enabled skill MUST resolve to a Nix package declared in the skills-corpus.
-// At validate-time we check that any `true` skill flag exists as a known skill name.
-// The authoritative skill list is provided by the skills-corpus Nix input; here we
-// validate against the set of keys in the schema's skills sub-sections.
-const KNOWN_SKILLS = new Set([
-  'playwright', 'qe_browser', 'agent_browser',
-  'ffmpeg', 'imagemagick', 'comfyui_builtin',
-  'blender', 'qgis', 'gaussian_splatting',
-  'pytorch', 'jupyter',
-  'latex', 'mermaid', 'report_builder',
-  'ontology'
-]);
-for (const [group, groupConf] of Object.entries(skills)) {
-  if (typeof groupConf === 'object' && groupConf !== null) {
-    for (const [skillName, flagValue] of Object.entries(groupConf)) {
-      if (flagValue === true) {
-        const key = group === 'ontology' ? 'ontology' : skillName;
-        if (!KNOWN_SKILLS.has(key)) {
-          errors.push({
-            code: 'E011',
-            message: `E011: skill "${group}.${skillName}" is enabled but is not declared in the skills-corpus`
-          });
-        }
-      }
-    }
-  }
-}
+// E011 retired 2026-04-25.
+// Was: every enabled skill must resolve to a known skill in the corpus.
+// Unreachable in practice: the schema already declares every skill key
+// under skills.* with `additionalProperties: false`, so AJV E016 catches
+// unknown skill keys before this semantic block runs. The hardcoded
+// KNOWN_SKILLS snapshot also drifted from the actual skills corpus over
+// time, producing false positives for newly-added skills. Replacement
+// idea: have the rule consume `nix build .#skills` artefact at validate
+// time. Until that lands, retire the rule rather than ship a dead check.
 
 // W012: federation.mode="client" with any local-* adapter is legitimate for
 // graceful-degrade testing but worth flagging. Recategorised from E012 to
@@ -548,6 +534,7 @@ if (sovereignMesh.telegram_mirror === true) {
 
     const relayPort = relay.port;
     const pfPort = (manifest.privacy_filter || {}).port;
+    const spPort = ((manifest.integrations || {}).solid_pod_rs || {}).port;
     if (relayPort !== undefined) {
       if (RESERVED_PORTS[relayPort]) {
         errors.push({
@@ -567,6 +554,12 @@ if (sovereignMesh.telegram_mirror === true) {
           message: `E028: sovereign_mesh.relay.port ${relayPort} collides with privacy_filter.port`
         });
       }
+      if (spPort !== undefined && relayPort === spPort) {
+        errors.push({
+          code: 'E028',
+          message: `E028: sovereign_mesh.relay.port ${relayPort} collides with integrations.solid_pod_rs.port`
+        });
+      }
     }
 
     if (relay.bind === '0.0.0.0' && relay.expose !== true) {
@@ -576,10 +569,31 @@ if (sovereignMesh.telegram_mirror === true) {
       });
     }
 
-    if (relay.ingress_policy === 'open') {
+    // W030 escalates to E030 when the relay is wide-open AND federation is
+    // bidirectional — the combination is an unbounded ingress path that the
+    // operator probably didn't intend (added 2026-04-25; closes a gap noted
+    // by the QE audit).
+    const fanout = relay.external_fanout;
+    if (relay.ingress_policy === 'open' && fanout === 'bidirectional') {
+      errors.push({
+        code: 'E030',
+        message: 'E030: sovereign_mesh.relay.ingress_policy="open" combined with external_fanout="bidirectional" creates an unbounded ingress path; tighten ingress_policy to "allowlist" or "signed-only"'
+      });
+    } else if (relay.ingress_policy === 'open') {
       warnings.push({
         code: 'W030',
         message: 'W030: sovereign_mesh.relay.ingress_policy="open" — relay will accept writes from any client; prefer "allowlist" or "signed-only"'
+      });
+    }
+
+    // W039: allowlist with empty allowed_pubkeys means the relay only accepts
+    // its own npub — operators rarely want this. Often a copy-paste error
+    // where they switched to allowlist but forgot to populate the list.
+    if (relay.ingress_policy === 'allowlist'
+        && (!Array.isArray(relay.allowed_pubkeys) || relay.allowed_pubkeys.length === 0)) {
+      warnings.push({
+        code: 'W039',
+        message: 'W039: sovereign_mesh.relay.ingress_policy="allowlist" but allowed_pubkeys is empty — only the local npub will be accepted; populate allowed_pubkeys or switch to ingress_policy="signed-only"'
       });
     }
 
@@ -626,6 +640,7 @@ if (sovereignMesh.telegram_mirror === true) {
       });
     }
     const pfPort = pf.port;
+    const spPortPf = ((manifest.integrations || {}).solid_pod_rs || {}).port;
     if (pfPort !== undefined) {
       if (RESERVED_PORTS[pfPort]) {
         errors.push({
@@ -639,6 +654,28 @@ if (sovereignMesh.telegram_mirror === true) {
           message: `E025: privacy_filter.port ${pfPort} collides with observability.metrics_port`
         });
       }
+      if (spPortPf !== undefined && pfPort === spPortPf) {
+        errors.push({
+          code: 'E025',
+          message: `E025: privacy_filter.port ${pfPort} collides with integrations.solid_pod_rs.port`
+        });
+      }
+    }
+  }
+
+  // W041 — dead-config check. privacy_filter.policy.<slot> declares fail-open
+  // / fail-closed semantics that only matter when the filter is actually
+  // running. If enabled=false but any policy slot carries a non-default value,
+  // the operator probably forgot the master gate.
+  if (pf.enabled !== true && pf.policy && typeof pf.policy === 'object') {
+    const nonDefault = Object.entries(pf.policy)
+      .filter(([_, v]) => typeof v === 'string' && v !== 'off')
+      .map(([slot]) => slot);
+    if (nonDefault.length > 0) {
+      warnings.push({
+        code: 'W041',
+        message: `W041: privacy_filter.enabled is false but policy slot(s) [${nonDefault.join(', ')}] declare non-default values; the policy is dead config until you set privacy_filter.enabled=true`
+      });
     }
   }
 }
