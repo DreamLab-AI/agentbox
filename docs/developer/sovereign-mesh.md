@@ -123,9 +123,10 @@ resulting files on subsequent reads via its filesystem backend. When
 `integrations.solid_pod_rs.notifications != "off"`, the bridge additionally
 emits a Solid Notifications 0.2 event for external subscribers.
 
-The legacy Python stub at `scripts/solid-pod-server.py` is kept for
-backwards compatibility (`adapters.pods = "local-jss"`). The validator
-emits W034 against it.
+The legacy Python stub `scripts/solid-pod-server.py` and its `local-jss`
+adapter label were removed 2026-04-25. `solid-pod-rs` is the only
+first-party pod implementation. Old manifests carrying `pods = "local-jss"`
+fail schema validation with E016.
 
 ### `did:nostr` — the identity loop (Sprint 6 absorption)
 

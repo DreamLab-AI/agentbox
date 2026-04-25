@@ -231,13 +231,12 @@ _volume_untar() {
 }
 
 # Return 0 iff the agentbox.toml pods adapter is backed by local storage
-# under /var/lib/solid (local-jss legacy stub or local-solid-rs first-class
-# Rust server). Both use the same volume and must be captured in backups —
-# omitting local-solid-rs was an operator-facing data-loss risk.
+# under /var/lib/solid (local-solid-rs first-class Rust server, ADR-010).
+# Used to decide whether the solid-data volume goes into backups.
 _solid_is_local() {
     local toml="${SCRIPT_DIR}/agentbox.toml"
     [[ -f "$toml" ]] && \
-      grep -qE '^\s*pods\s*=\s*"(local-jss|local-solid-rs)"' "$toml"
+      grep -qE '^\s*pods\s*=\s*"local-solid-rs"' "$toml"
 }
 
 cmd_backup() {
@@ -269,9 +268,8 @@ cmd_backup() {
     mkdir -p "${work}/volumes/ruvector-data"
     _volume_tar agentbox-ruvector-data | tar -C "${work}/volumes/ruvector-data" -xf - 2>/dev/null || true
 
-    # -- solid-data (when pods ∈ {local-jss, local-solid-rs}) -----------------
-    # Both the legacy Python stub and the first-class solid-pod-rs Rust
-    # server (ADR-010) store under /var/lib/solid. See docs/user/backup-restore.md.
+    # -- solid-data (when pods = local-solid-rs) ------------------------------
+    # solid-pod-rs (ADR-010) stores under /var/lib/solid. See docs/user/backup-restore.md.
     local solid_included=0
     if _solid_is_local; then
         echo -e "  ${GREEN}+${NC} solid-data"

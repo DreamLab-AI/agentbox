@@ -54,11 +54,21 @@ let
   #   nix hash convert --hash-algo sha256 --to sri <base32>
   srcHash = "sha256-h8UOzgqTnrPkDSEfrpC+0bhNVCrYizNniVFGW6YAFPs=";
 
-  # Cargo vendor hash — buildRustPackage's `cargoHash`. Will be surfaced
-  # on first build if the default is wrong; paste the "got:" hash here.
-  # Currently fakeHash because computing cargo vendor requires running
-  # the full buildRustPackage once to resolve dependencies.
-  cargoHash = lib.fakeHash;
+  # Upstream solid-pod-rs at v0.4.0-alpha.1+sprint-9 does not ship its
+  # Cargo.lock (workspace builds without it locally because cargo
+  # generate-lockfile picks the latest compat versions on first run, but
+  # that is non-deterministic and breaks Nix's hermetic build). We vendor
+  # a lockfile alongside lib/solid-pod-rs.nix instead.
+  #
+  # Refresh procedure when the rev bumps:
+  #   1. Update version + rev above and re-run `nix build .#runtime`
+  #      to fetch the new src.
+  #   2. cd $(nix eval --raw nixpkgs#hello.src) → no, easier:
+  #        nix-shell -p cargo --run 'cd $(mktemp -d) && \
+  #          cp -r /nix/store/*-solid-pod-rs-*-source/. . && \
+  #          chmod -R u+w . && cargo generate-lockfile'
+  #      then copy the resulting Cargo.lock to lib/solid-pod-rs.cargo-lock.
+  cargoLockFile = ./solid-pod-rs.cargo-lock;
 
   src = pkgs.fetchFromGitHub {
     owner = "DreamLab-AI";
@@ -67,22 +77,31 @@ let
     hash  = srcHash;
   };
 
-  # Default feature set is broader after Sprint 5-9 absorption:
-  # every feature below ships ON because it materially sharpens the sovereign
-  # data stack's invariants (did-nostr), closes a P0 security gap (rate-limit,
-  # quota, webhook-signing), or preserves upstream config compatibility
-  # (jss-v04, acl-origin).
+  # Default feature set after Sprint 5-9 absorption: every feature below
+  # ships ON because it sharpens the sovereign data stack (did-nostr),
+  # closes a P0 hardening gap (rate-limit, quota, webhook-signing), or
+  # preserves upstream config compatibility (config-loader, acl-origin).
+  #
+  # solid-pod-rs is a workspace where most of the protocol surface lives
+  # on the LIBRARY crate (`solid-pod-rs`). The server crate
+  # (`solid-pod-rs-server`) only forwards five feature names:
+  #   security-primitives, did-nostr, rate-limit, quota, tls.
+  # Library features that the server doesn't re-export must be enabled
+  # via cargo's `<workspace-member>/<feature>` syntax. fs-backend +
+  # memory-backend are part of the library's default feature set and
+  # come in automatically when the server depends on the library.
   defaultFeatures = [
-    "fs-backend"           # atomic-rename filesystem storage (ADR-010 I01/I08)
-    "nip98-schnorr"        # BIP-340 verification matches nostr-bridge.js
-    "security-primitives"  # SSRF guard + dotfile allowlist (P0)
-    "config-loader"        # JSS-compatible config precedence
-    "acl-origin"           # origin enforcement for WAC
-    "webhook-signing"      # RFC 9421 Ed25519 signing of outbound notifications
-    "did-nostr"            # did:nostr resolver — closes the identity loop
-    "rate-limit"           # sliding-window LRU abuse guard
-    "quota"                # per-pod .quota.json sidecar storage limits
-    "jss-v04"              # JavaScriptSolidServer v0.4 config/behaviour compat
+    # ── Server-crate features (forwarded pass-throughs) ──────────────
+    "security-primitives"
+    "did-nostr"
+    "rate-limit"
+    "quota"
+    # ── Library-crate features via solid-pod-rs/<feature> ────────────
+    "solid-pod-rs/nip98-schnorr"
+    "solid-pod-rs/config-loader"
+    "solid-pod-rs/acl-origin"
+    "solid-pod-rs/webhook-signing"
+    "solid-pod-rs/jss-v04"
   ];
 
 in
@@ -93,10 +112,19 @@ in
   makeSolidPodRs = { extraFeatures ? [] }:
     pkgs.rustPlatform.buildRustPackage rec {
       pname   = "solid-pod-rs-server";
-      inherit version src cargoHash;
+      inherit version src;
 
-      # The server binary lives under solid-pod-rs-server in the workspace.
-      buildAndTestSubdir = "solid-pod-rs-server";
+      # Vendored lockfile (upstream omits Cargo.lock).
+      cargoLock.lockFile = cargoLockFile;
+
+      # Copy the vendored lockfile into the source tree before configurePhase
+      # so cargo can find it relative to the workspace root.
+      postPatch = ''
+        cp ${cargoLockFile} Cargo.lock
+      '';
+
+      # The workspace member lives under crates/solid-pod-rs-server.
+      buildAndTestSubdir = "crates/solid-pod-rs-server";
 
       buildFeatures = defaultFeatures ++ extraFeatures;
 

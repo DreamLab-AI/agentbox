@@ -45,7 +45,7 @@ external_url = ""                # when mode="client", where to reach the host
 
 [adapters]
 beads = "local-sqlite"           # "local-sqlite" | "external" | "off"
-pods  = "local-jss"              # "local-jss" | "external" | "off"
+pods  = "local-solid-rs"         # "local-solid-rs" | "external" | "off"
 memory = "embedded-ruvector"     # "embedded-ruvector" | "external-pg" | "off"
 events = "local-jsonl"           # "local-jsonl" | "external" | "off"
 
@@ -244,7 +244,7 @@ Every integration point is one interface with three minimum implementations: **l
 | Adapter slot | Purpose | Local fallback | External contract |
 |---|---|---|---|
 | `beads` | Structured agent-work receipts: epic/child hierarchy, atomic claim, blocks/blocked-by dependencies, user attribution | sqlite schema implementing the same interface as the reference `bd` CLI | HTTP or stdio client to an external receipts service; MCP transport also supported |
-| `pods` | Durable pod-style storage for briefs, debriefs, agent artefacts, event inbox/outbox | First-party [`solid-pod-rs`](https://github.com/DreamLab-AI/solid-pod-rs) (Rust, Solid Protocol 0.11, WAC, NIP-98 with Schnorr, Solid Notifications 0.2, atomic-rename) on port 8484 — see [ADR-010](../adr/ADR-010-rust-solid-pod-adoption.md). Legacy Python `local-jss` stub retained with W034 deprecation warning. | HTTP/WebSocket client to an external Solid-compatible server |
+| `pods` | Durable pod-style storage for briefs, debriefs, agent artefacts, event inbox/outbox | First-party [`solid-pod-rs`](https://github.com/DreamLab-AI/solid-pod-rs) (Rust, Solid Protocol 0.11, WAC, NIP-98 with Schnorr, Solid Notifications 0.2, atomic-rename) on port 8484 — see [ADR-010](../adr/ADR-010-rust-solid-pod-adoption.md). The legacy Python `local-jss` stub was removed 2026-04-25. | HTTP/WebSocket client to an external Solid-compatible server |
 | `memory` | Vector memory for agent retrieval | Embedded RuVector (sql.js + ONNX embeddings) | Connection to an external Postgres-backed vector store (e.g. ruvector-postgres or pgvector) |
 | `events` | Agent lifecycle event sink | JSONL file under `/workspace/events/` | HTTP POST / WebSocket / Nostr event publishing (parameterised-replaceable kind) |
 | `orchestrator` | Agent spawn & monitor channel | Local process-manager + stdio streaming | `docker exec -i` stdio protocol + HTTP `/v1/agent-events` for remote orchestrators |

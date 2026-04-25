@@ -12,7 +12,6 @@ const { assertMethodShape, assertContractVersion, assertOffClassThrows } =
   require('./fixtures/shared-assertions');
 const { AdapterDisabled } = require('../../management-api/adapters/errors');
 
-const { LocalJssPodsAdapter }      = require('../../management-api/adapters/pods/local-jss');
 const { LocalSolidRsPodsAdapter }  = require('../../management-api/adapters/pods/local-solid-rs');
 const { ExternalPodsAdapter }      = require('../../management-api/adapters/pods/external');
 const { OffPodsAdapter }           = require('../../management-api/adapters/pods/off');
@@ -109,12 +108,10 @@ const IMPLS = [
     isReal: true,
     firstClass: true,
   },
-  {
-    label: 'local-jss',
-    makeAdapter: () => new LocalJssPodsAdapter({ baseUrl: 'http://localhost:8484', fetchFn: makeJssFetch() }),
-    isReal: true,
-    firstClass: false,
-  },
+  // local-jss row removed 2026-04-25 along with the legacy Python stub.
+  // The LocalJssPodsAdapter class is retained ONLY as the inheritance
+  // scaffolding for LocalSolidRsPodsAdapter (see local-solid-rs.js extends).
+  // It is no longer a manifest-selectable impl.
   {
     label: 'external',
     makeAdapter: () => new ExternalPodsAdapter({ baseUrl: 'http://fake-host', fetchFn: makeJssFetch() }),

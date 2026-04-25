@@ -35,7 +35,7 @@ state = {
     "federation.external_url":   g("federation", "external_url", default=""),
     # ── adapters ────────────────────────────────────────────────────────────────
     "adapters.beads":        g("adapters", "beads",        default="local-sqlite"),
-    "adapters.pods":         g("adapters", "pods",         default="local-jss"),
+    "adapters.pods":         g("adapters", "pods",         default="local-solid-rs"),
     "adapters.memory":       g("adapters", "memory",       default="embedded-ruvector"),
     "adapters.events":       g("adapters", "events",       default="local-jsonl"),
     "adapters.orchestrator": g("adapters", "orchestrator", default="local-process-manager"),

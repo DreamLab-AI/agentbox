@@ -23,7 +23,7 @@ The `pods` adapter slot (ADR-005 §4.1) is the durable linked-data store for bri
 
 | Class | Implementation | Reality today |
 |-------|----------------|---------------|
-| `local-jss` | HTTP client at `localhost:8484` | **Python `http.server` stub** (`scripts/solid-pod-server.py`, 108 lines). GET/PUT/HEAD only. No WAC (header prefix check only). No content negotiation. No PATCH. No LDP containers. |
+| `local-jss` (removed 2026-04-25) | HTTP client at `localhost:8484` | Was a Python `http.server` stub (`scripts/solid-pod-server.py`, 108 lines). GET/PUT/HEAD only. No WAC. No content negotiation. No PATCH. No LDP containers. Stub deleted; schema enum drops the label. |
 | `external` | HTTP client at a configured base URL | Works correctly against any Solid-compliant server |
 | `off` | `AdapterDisabled` | Works correctly |
 
@@ -87,20 +87,18 @@ Linking `solid-pod-rs` as a Rust crate inside `management-api` or any other agen
 
 ## Decision
 
-`local-solid-rs` is **the first-class pod implementation**. It is fully supported: schema, validator, adapter, flake derivation, contract-test matrix, and documentation all treat it as the preferred path. Agentbox's pod is a Rust Solid Protocol 0.11 server when this adapter is selected.
+`local-solid-rs` is **the only first-party `pods` implementation**. The legacy `local-jss` Python stub was removed on 2026-04-25; the schema enum no longer accepts it (manifests carrying it now fail E016 schema validation).
 
 ```toml
 [adapters]
-pods = "local-solid-rs"   # first-class | local-jss (shipped default) | external | off
+pods = "local-solid-rs"   # first-class | external | off
 ```
 
-The shipped `agentbox.toml` currently defaults `pods = "local-jss"` for one reason only: `nix build .#runtime` on a fresh clone already requires operators to prefetch npm dependency hashes for `management-api` and the other `buildNpmPackage` derivations (see `lib/npm-services.nix` fakeHash pattern). Making `local-solid-rs` the shipped default would add another prefetch step (the solid-pod-rs `srcHash` + `cargoHash` in `lib/solid-pod-rs.nix`) to the first-build burden. Keeping the shipped default at `local-jss` preserves the existing prefetch surface without regressing the fresh-clone workflow.
+Schema, validator, adapter, flake derivation, contract-test matrix, and documentation all treat `local-solid-rs` as **the** path; `external` federates with a host-provided Solid server; `off` returns `AdapterDisabled`. Agentbox's pod is a Rust Solid Protocol 0.11 server in every shipped configuration that uses pods at all.
 
-Flipping the adapter is a one-line manifest edit plus an uncomment of `[security.exceptions.solid-pod-rs]`. Validator warning `W034` fires on `local-jss` as a direction signal — **advisory**, does not block validation (exit 0). The ADR documentation, the [`docs/user/solid-pod.md`](../../user/solid-pod.md) guide, and the [`docs/user/sovereign-stack.md`](../../user/sovereign-stack.md) end-to-end walkthrough all treat `local-solid-rs` as the preferred target.
+`solid-pod-rs-server` is built from `github:DreamLab-AI/solid-pod-rs` (pinned `main@7f8bc89`, Sprint 9) through [`lib/solid-pod-rs.nix`](../../../lib/solid-pod-rs.nix). Because upstream at this rev does not ship a `Cargo.lock`, agentbox vendors one at [`lib/solid-pod-rs.cargo-lock`](../../../lib/solid-pod-rs.cargo-lock) (regenerated via `cargo generate-lockfile` after each rev bump; documented inline in the derivation). buildRustPackage uses `cargoLock.lockFile` against this vendored copy and `postPatch` copies it into the source tree before `cargoBuildHook` runs.
 
-`solid-pod-rs-server` is built from `github:DreamLab-AI/solid-pod-rs` (pinned `main@7f8bc89`, Sprint 9) through [`lib/solid-pod-rs.nix`](../../../lib/solid-pod-rs.nix) when `adapters.pods = "local-solid-rs"`. The `[program:solid-pod]` supervisor block dispatches between two command lines: the Rust binary for `local-solid-rs`, the Python stub for `local-jss`. `external` talks HTTP to a host-provided Solid server; `off` returns `AdapterDisabled`.
-
-The Python stub (`scripts/solid-pod-server.py`) is retained — not removed — for the shipped-default path and for operators who prefer not to prefetch. The default will flip to `local-solid-rs` when either (a) upstream publishes `solid-pod-rs` to nixpkgs (mirroring the `nostr-rs-relay` story), or (b) the agentbox release pipeline precomputes the hashes and ships them in `flake.lock`.
+`buildAndTestSubdir = "crates/solid-pod-rs-server"` builds only the server binary; library features that the server crate doesn't forward are activated via cargo's `solid-pod-rs/<feature>` workspace-dep-path syntax in `defaultFeatures`.
 
 ### Configuration surface
 
@@ -124,23 +122,15 @@ notifications = "websocket"     # websocket | webhook | off
 log_level   = "info"
 ```
 
-### Adapter client changes
+### Adapter client
 
-`management-api/adapters/pods/local-solid-rs.js` — new file, derived from `local-jss.js`. The HTTP contract is identical, so the bulk of the diff is the `impl` string. Add:
-
-- Header `Accept-Patch: application/json-patch+json, text/n3, application/sparql-update` to advertise patch dialects.
-- Capability probe on first call: `OPTIONS /` returns `Accept-Patch` and `Accept-Post`; cache capability map in the adapter for idempotency checks.
-- Cursor format: solid-pod-rs uses `Link: <…>; rel="next"` headers (LDP-paged). Update `list()` to prefer Link over the previous `_cursor` JSON-body field. Keep the fallback for `local-jss` callers during the deprecation window.
-
-`local-jss.js` **remains unchanged**. Its `_cursor` body field path still works because the Python stub returns flat JSON — it always returned `cursor: null`.
+`management-api/adapters/pods/local-solid-rs.js` extends a private base class in `management-api/adapters/pods/local-jss.js` (the file is retained as inheritance scaffolding only — it is **not** a manifest-selectable impl after 2026-04-25). The base class encodes generic Solid HTTP client semantics (PUT/GET/PATCH/DELETE, JSON-LD container parsing, typed 401/403/404 errors). The `local-solid-rs` impl overrides `impl = "local-solid-rs"`, prefers LDP `Link: <…>; rel="next"` headers for cursor pagination, supports N3 patch via the capability probe at `OPTIONS /`, and reports the contract version explicitly.
 
 ### Validator rules
 
-Adds:
-
-- **E032** — `adapters.pods = "local-solid-rs"` requires `integrations.solid_pod_rs.storage_root` to point at a writable path. The `[security.exceptions.solid-pod-rs]` block must carry `writable_volumes = ["solid-data:/var/lib/solid"]`.
+- **E032** — `adapters.pods = "local-solid-rs"` requires `integrations.solid_pod_rs.storage_root` to point at a writable path. The `[security.exceptions.solid-pod-rs]` block must carry `writable_volumes = ["solid-data:/var/lib/solid"]` (raised as W021 if the exception is missing).
 - **E033** — `integrations.solid_pod_rs.enable_dpop_cache = true` without `enable_oidc = true` is an error (DPoP is OIDC-only).
-- **W034** — `adapters.pods = "local-jss"` emits a deprecation warning once `local-solid-rs` is available (warn but don't fail, to permit the deprecation window).
+- ~~**W034**~~ retired 2026-04-25. The `local-jss` deprecation warning was removed when the schema enum dropped the value; manifests carrying it now fail E016 schema validation outright.
 
 ### Supervisor block
 
@@ -177,29 +167,22 @@ The Nostr bridge currently writes directly to the filesystem under `pods/<npub>/
 
 **Decision:** keep direct filesystem writes as canonical (invariant I01 / I08 preserved via `rename(2)` atomicity). Emit a **side-channel WebSocket notification** to solid-pod-rs's Solid Notifications 0.2 channel so external subscribers still see inbox events. This preserves performance on the hot path and satisfies the observability promise.
 
-### Migration (one-line flip)
+### Migration from local-jss (legacy)
 
-Both implementations store under `/var/lib/solid`. `agentbox.sh backup` already captures that tree; backup/restore survives the swap without changes. For in-place migration:
+Operators upgrading from a pre-2026-04-25 manifest:
 
-```toml
-# agentbox.toml
-[adapters]
-pods = "local-solid-rs"
+1. Replace `pods = "local-jss"` with `pods = "local-solid-rs"`.
+2. Ensure `[security.exceptions.solid-pod-rs]` is present with `writable_volumes = ["solid-data:/var/lib/solid"]`.
+3. `./agentbox.sh rebuild`.
 
-[security.exceptions.solid-pod-rs]
-writable_volumes = ["solid-data:/var/lib/solid"]
-reason = "solid-pod-rs fs-backend requires atomic-rename writable storage under /var/lib/solid"
-```
+Both implementations stored under `/var/lib/solid`, so `agentbox.sh backup` survives the swap without data migration. `.meta` and `.acl` sidecars are written fresh by `solid-pod-rs` on first write; legacy resources without sidecars are served with the default ACL (owner-only access).
 
-Then `./agentbox.sh rebuild`. On first build Nix will fail with a hash-mismatch error that prints the exact `nix-prefetch-url` and `nix hash to-sri` commands to run — identical pattern to the existing `buildNpmPackage` derivations. Paste the returned hashes into `lib/solid-pod-rs.nix` (`srcHash` and `cargoHash`) and rebuild.
-
-No data migration is required; `.meta` and `.acl` sidecars are written fresh by solid-pod-rs on first write. Legacy resources without sidecars are served with the default ACL (owner-only access).
+Manifests still carrying `pods = "local-jss"` after the upgrade fail validation with E016 (unknown enum value) — the schema no longer accepts it.
 
 ### Validator semantics
 
-- **W034** is advisory. The validator prints it to stderr but exits 0. Operators on `local-jss` can rebuild, boot, and run indefinitely — the warning is a direction signal, not a failure.
-- **W030** (Nostr relay `open` ingress) is also advisory.
-- **W021** (missing security exception block for an active feature) remains a blocking error because the hardened baseline may be silently broken without the exception delta.
+- **W030** (Nostr relay `open` ingress) is advisory: printed to stderr, exit 0.
+- **W021** (missing `[security.exceptions.<feature>]` block for an active feature) is a blocking error because the hardened baseline may be silently broken without the exception delta.
 
 ### Service-level objectives
 
@@ -230,7 +213,7 @@ The Python stub fails three of these immediately. The harness failure is tolerat
 
 - **Alpha upstream.** v0.4.0-alpha.1. API breakage is possible. Mitigation: pin by git rev, not semver range; track upstream's v0.5.0 (slated for Nostr integration) actively.
 - **AGPL compliance burden.** We must preserve `LICENCE`, `NOTICE`, and an AGPL source-availability pointer. Adds a `docs/developer/licensing.md` maintenance task.
-- **Two pod implementations during deprecation.** Phase 1-3 operators can land in a mixed state. Contract harness must explicitly label assertions as "requires local-solid-rs" vs "works on any impl".
+- **Hard cut on local-jss.** Operators with old manifests get an E016 on validate. The simplification is worth the migration nudge; the alternative was carrying two pod implementations indefinitely.
 - **Cargo build cost on first image build.** Adds ~5-10 minutes to the Nix build closure on a cold cache. Acceptable given agentbox already compiles `rustToolchain` and codex; incremental cost is moderate.
 - **S3 feature gate** is optional but its presence in the binary lifts the minimum image size from ~200 KB to ~40 MB (full features). We compile with `--features fs-backend,nip98-schnorr` by default.
 

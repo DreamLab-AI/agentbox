@@ -11,7 +11,7 @@ vector_db = "ruvector-embedded"
 # first-class on that setting — validator W034 reminds you of the flip.
 [adapters]
 beads        = "local-sqlite"
-pods         = "local-jss"
+pods         = "local-solid-rs"
 memory       = "embedded-ruvector"
 events       = "local-jsonl"
 orchestrator = "local-process-manager"
@@ -269,12 +269,14 @@ log_level = "info"
 #
 # Currently enabled feature exceptions (mirrors active feature gates above):
 
-# Uncomment when flipping adapters.pods = "local-solid-rs" (first-class;
-# see ADR-010). solid-pod-rs needs a writable path under read_only:true for
-# its filesystem backend — .meta and .acl sidecars plus atomic-rename temp files.
-# [security.exceptions.solid-pod-rs]
-# writable_volumes = ["solid-data:/var/lib/solid"]
-# reason = "solid-pod-rs fs-backend requires atomic-rename writable storage under /var/lib/solid"
+# Required because adapters.pods = "local-solid-rs" is the only supported
+# implementation (ADR-010; the legacy local-jss Python stub was removed
+# 2026-04-25). solid-pod-rs needs a writable path under read_only:true
+# for its filesystem backend — .meta and .acl sidecars plus atomic-rename
+# temp files.
+[security.exceptions.solid-pod-rs]
+writable_volumes = ["solid-data:/var/lib/solid"]
+reason = "solid-pod-rs fs-backend requires atomic-rename writable storage under /var/lib/solid"
 
 [security.exceptions.playwright]
 # Required because skills.browser.playwright = true

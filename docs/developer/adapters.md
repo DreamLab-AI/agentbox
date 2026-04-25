@@ -34,7 +34,7 @@ Five slots. Three implementation classes per slot. Fifteen derivations total.
 | Slot | Purpose | `local-*` | `external` | `off` |
 |---|---|---|---|---|
 | `beads` | Agent-work receipts (epic/child/claim/close) | `local-sqlite` | HTTP client | AdapterDisabled |
-| `pods` | Durable linked-data storage | `local-jss` | HTTP/WS client | AdapterDisabled |
+| `pods` | Durable linked-data storage | `local-solid-rs` (Rust, ADR-010) | HTTP/WS client to host-provided Solid server | AdapterDisabled |
 | `memory` | Vector memory for retrieval | `embedded-ruvector` | `external-pg` | AdapterDisabled |
 | `events` | Agent lifecycle event sink | `local-jsonl` | HTTP POST | No-op (per spec) |
 | `orchestrator` | Agent spawn + monitor channel | `local-process-manager` | `stdio-bridge` | AdapterDisabled (fatal) |

@@ -307,7 +307,7 @@ implemented GET/PUT/HEAD with no WAC enforcement. With solid-pod-rs the
 `.acl.json` policies written by `sovereign-bootstrap.py` actually apply,
 LDP containers work, PATCH works (N3 / SPARQL / JSON), Solid Notifications
 fire on writes, and atomic-rename durability makes [ADR-009](../reference/adr/ADR-009-embedded-nostr-relay.md)
-pod-inbox invariants hold for real. The legacy stub stays as `local-jss`
+pod-inbox invariants hold for real. The legacy `local-jss` Python stub was removed 2026-04-25
 with W034 warnings for anyone relying on the old behaviour. See
 [solid-pod.md](solid-pod.md) and [ADR-010](../reference/adr/ADR-010-rust-solid-pod-adoption.md).
 

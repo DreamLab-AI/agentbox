@@ -49,8 +49,8 @@
         },
         "pods": {
           "type": "string",
-          "enum": ["local-solid-rs", "local-jss", "external", "off"],
-          "description": "Durable linked-data storage adapter. local-solid-rs is the first-class default (ADR-010); local-jss is the legacy Python stub retained for migration; external federates with a host-provided Solid server."
+          "enum": ["local-solid-rs", "external", "off"],
+          "description": "Durable linked-data storage adapter. local-solid-rs is the first-class first-party implementation (ADR-010); external federates with a host-provided Solid server; off returns AdapterDisabled. The legacy local-jss Python stub was removed in 2026-04-25 — operators with old manifests must flip to local-solid-rs and add the [security.exceptions.solid-pod-rs] writable-volume block."
         },
         "memory": {
           "type": "string",
