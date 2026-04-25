@@ -389,24 +389,35 @@
           ((toolchainCfg.codex or false) && pkgs.stdenv.isLinux)
           [ (codexLib.makeCodex system) ];
 
-        pythonBasePackages = with pkgs; [
-          python312
-          python312Packages.pip
-          python312Packages.virtualenv
-          python312Packages.supervisor
-          python312Packages.requests
-          python312Packages.httpx
-          python312Packages.aiohttp
-          python312Packages.aiofiles
-          python312Packages.pyyaml
-          python312Packages.pydantic
-          python312Packages.rich
-          python312Packages.ecdsa
-          python312Packages.numpy
-          python312Packages.pandas
-          python312Packages.matplotlib
-          python312Packages.seaborn
-          python312Packages.pymupdf
+        # Runtime Python environment for bootstrap scripts and local helpers.
+        # Use python.withPackages so every dep is on the interpreter's import
+        # path inside the container — listing them as standalone derivations
+        # in `allPackages` only puts them on $PATH and leaves
+        # `import ecdsa` failing with ModuleNotFoundError at bootstrap time
+        # (which crash-loops the container on first start).
+        # sovereign-bootstrap.py imports ecdsa directly; provision-agent-stacks.py
+        # imports yaml, requests, etc. — all must resolve via this interpreter.
+        pythonRuntimeEnv = pkgs.python312.withPackages (ps: with ps; [
+          pip
+          virtualenv
+          supervisor
+          requests
+          httpx
+          aiohttp
+          aiofiles
+          pyyaml
+          pydantic
+          rich
+          ecdsa
+          numpy
+          pandas
+          matplotlib
+          seaborn
+          pymupdf
+        ]);
+
+        pythonBasePackages = [
+          pythonRuntimeEnv
         ];
 
         rustToolchain = pkgs.rust-bin.stable.latest.minimal.override {
