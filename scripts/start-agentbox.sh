@@ -672,20 +672,52 @@ section_providers() {
     [zai]="ZAI_API_KEY"
   )
 
+  # Providers whose CLI ships a web sign-in / OAuth flow. The wizard offers
+  # an "OAuth" branch for these; the validator's W040 list must stay in sync.
+  declare -A OAUTH_CAPABLE=( [anthropic]=1 [openai]=1 [zai]=1 )
+  declare -A OAUTH_HINT=(
+    [anthropic]="Run \`claude login\` inside the container after first boot.\nThe Claude Code CLI completes an OAuth handshake in your browser\nand stores the session token under /home/devuser/.claude/."
+    [openai]="Run \`codex login\` inside the container after first boot.\nThe Codex Rust CLI completes an OAuth handshake in your browser\nand stores credentials under /home/openai-user/.codex/auth.json."
+    [zai]="Run \`claude-zai login\` (or \`zai-cli login\`) inside the container\nafter first boot. The Z.AI / GLM wrapper opens a browser session\nand persists tokens under /home/zai-user/.zai/."
+  )
+
   for pname in anthropic openai gemini deepseek perplexity openrouter context7 brave github zai; do
     if echo "${raw_prov}" | grep -qw "${pname}"; then
       state_set_bool "providers.${pname}.enabled" "true"
       local env_var="${PROV_ENV[${pname}]}"
       local current_val; current_val="$(get_env_value "${env_var}")"
-      local hint="${env_var}"
-      [[ -n "${current_val}" ]] && hint="${env_var} (currently set — leave blank to keep)"
-      local secret
-      secret="$(wt_passwordbox "Provider: ${pname}" "Enter ${hint}" 9 78)"
-      if [[ -n "${secret}" ]]; then
-        set_env_value "${env_var}" "${secret}"
-      elif [[ -z "${current_val}" ]]; then
-        wt_msgbox "Provider warning" \
-          "No value entered for ${env_var}.\nProvider '${pname}' will fail E017 at boot unless added to .env manually."
+
+      # Auth-mode branch: API key vs web sign-in. Only offered for providers
+      # whose CLI actually has an OAuth flow.
+      local auth_mode="api_key"
+      if [[ -n "${OAUTH_CAPABLE[${pname}]:-}" ]]; then
+        local prev_mode; prev_mode="$(state_get providers.${pname}.auth_mode)"
+        [[ -z "${prev_mode}" ]] && prev_mode="api_key"
+        auth_mode="$(wt_menu "Provider: ${pname} — credentials" \
+          "How do you want to authenticate with ${pname}?\n\nAPI key: paste a key now; written to .env." \
+          12 78 2 \
+          "api_key" "API key (paste $(echo "${env_var}") now)" \
+          "oauth"   "Web sign-in (\`${pname}\` CLI handles login)")"
+        [[ -z "${auth_mode}" ]] && auth_mode="${prev_mode}"
+      fi
+      state_set "providers.${pname}.auth_mode" "${auth_mode}"
+
+      if [[ "${auth_mode}" == "oauth" ]]; then
+        wt_msgbox "Provider: ${pname} — web sign-in selected" \
+          "auth_mode=oauth — no API key required.\n\n$(echo -e "${OAUTH_HINT[${pname}]}")\n\nIf you also have ${env_var} in .env, the CLI will\nuse the OAuth session anyway (CLI precedence)."
+        # Don't write/clear the env var — leave any existing value alone so the
+        # user can switch back to api_key without re-typing it.
+      else
+        local hint="${env_var}"
+        [[ -n "${current_val}" ]] && hint="${env_var} (currently set — leave blank to keep)"
+        local secret
+        secret="$(wt_passwordbox "Provider: ${pname}" "Enter ${hint}" 9 78)"
+        if [[ -n "${secret}" ]]; then
+          set_env_value "${env_var}" "${secret}"
+        elif [[ -z "${current_val}" ]]; then
+          wt_msgbox "Provider warning" \
+            "No value entered for ${env_var}.\nProvider '${pname}' will fail E017 at boot unless added to .env manually,\nor change auth_mode to oauth (anthropic / openai only)."
+        fi
       fi
     else
       state_set_bool "providers.${pname}.enabled" "false"
