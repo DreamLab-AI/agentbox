@@ -14,7 +14,7 @@ This page is the operator's walkthrough. The companion docs:
 
 ## The URI surface in one paragraph
 
-Every agentbox JSON-LD document carries an `@id` minted through the canonical grammar (`did:nostr:<npub>` or `urn:agentbox:<kind>:[<scope>:]<local>`, [ADR-013](../reference/adr/ADR-013-canonical-uri-grammar.md)). The `/v1/uri/<urn>` resolver dereferences names to current HTTPS IRIs (best-effort: 307 when known, 404 when not). The viewer follows those redirects automatically. This means: if you can produce a URI that names something agentbox manages — a credential, an event, a pod resource, an MCP server — you can drop it into a browser address bar and get a rendered view, even when the URI is name-only and the resolver only knows the redirect target on this specific deployment. **Names are unconditional; views are best-effort. The browser handles both.**
+Every agentbox JSON-LD document carries an `@id` minted through the canonical grammar (`did:nostr:<pubkey>` or `urn:agentbox:<kind>:[<scope>:]<local>`, [ADR-013](../reference/adr/ADR-013-canonical-uri-grammar.md)). The `/v1/uri/<urn>` resolver dereferences names to current HTTPS IRIs (best-effort: 307 when known, 404 when not). The viewer follows those redirects automatically. This means: if you can produce a URI that names something agentbox manages — a credential, an event, a pod resource, an MCP server — you can drop it into a browser address bar and get a rendered view, even when the URI is name-only and the resolver only knows the redirect target on this specific deployment. **Names are unconditional; views are best-effort. The browser handles both.**
 
 ## Quickstart — turn it on
 
@@ -57,7 +57,7 @@ Then open `http://<host>:9090/lo/` and click around.
 ┌────────────────────────────────────────────────────────────┐
 │  /lo/manifest.json (Compacted JSON-LD)                     │
 │   {                                                         │
-│     "agentDid": "did:nostr:npub1...",                      │
+│     "agentDid": "did:nostr:<pubkey-hex>",                      │
 │     "panes":    [PaneEntry, ...],                          │
 │     "registry": {"<@type>": "<pane-url>"},                 │
 │     "deeplinks": {"meta": "/v1/meta", ...},                │
@@ -102,15 +102,15 @@ Each PRD-006 emit surface has a default URL operators can paste into the browser
 ### S1 — Pod resources
 
 ```
-http://<host>:9090/lo/?resource=urn:agentbox:pod:npub1...:sha256-12-deadbeef
+http://<host>:9090/lo/?resource=urn:agentbox:pod:01234567…:sha256-12-deadbeef
 ```
 
-The resolver redirects to `<pod-base>/agents/<npub>/pod/<local>`; the upstream `folder-pane` or `markdown-pane` (or our own pane if the resource carries an agentbox `@type`) renders.
+The resolver redirects to `<pod-base>/agents/<pubkey>/pod/<local>`; the upstream `folder-pane` or `markdown-pane` (or our own pane if the resource carries an agentbox `@type`) renders.
 
 ### S2 — Nostr envelope payloads
 
 ```
-http://<host>:9090/lo/?resource=urn:agentbox:envelope:npub1...:sha256-12-...
+http://<host>:9090/lo/?resource=urn:agentbox:envelope:01234567…:sha256-12-…
 ```
 
 Renders with the agentbox `handoff-pane` for `agbx:HandoffClaim` / `RequestBriefing` / `DeliverArtefact`, with the upstream `source-pane` for raw `as:Note` / `as:Activity`.
@@ -118,7 +118,7 @@ Renders with the agentbox `handoff-pane` for `agbx:HandoffClaim` / `RequestBrief
 ### S3 — Verifiable Credentials
 
 ```
-http://<host>:9090/lo/?resource=urn:agentbox:credential:npub1...:sha256-12-...
+http://<host>:9090/lo/?resource=urn:agentbox:credential:01234567…:sha256-12-…
 ```
 
 The agentbox `vc-pane` renders the issuer (clickable to S4 DID Document), validity window, credentialSubject, evidence (clickable to S8 mandate URIs), and proof block.
@@ -126,7 +126,7 @@ The agentbox `vc-pane` renders the issuer (clickable to S4 DID Document), validi
 ### S4 — DID Documents
 
 ```
-http://<host>:9090/lo/?resource=did:nostr:npub1...
+http://<host>:9090/lo/?resource=did:nostr:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
 ```
 
 The upstream `profile-pane` renders verification methods, service endpoints (clickable: pod base, relay URL), authentication methods. The DID is the agent's primary identity URI; clicking it from any other surface lands here.
@@ -158,8 +158,8 @@ The upstream `markdown-pane` renders the skill `SKILL.md` plus the Schema.org Ho
 ### S8 — Payment mandates and receipts
 
 ```
-http://<host>:9090/lo/?resource=urn:agentbox:mandate:npub1human...:sha256-12-...
-http://<host>:9090/lo/?resource=urn:agentbox:receipt:npub1agent...:sha256-12-...
+http://<host>:9090/lo/?resource=urn:agentbox:mandate:fedcba98…:sha256-12-…
+http://<host>:9090/lo/?resource=urn:agentbox:receipt:01234567…:sha256-12-…
 ```
 
 The `vc-pane` (which handles every VerifiableCredential subclass) renders ODRL Permissions, Schema.org Invoice fields, and `evidence` chains.

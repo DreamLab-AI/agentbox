@@ -90,7 +90,7 @@ log_level              = "info"
 # Sprint 5-9 features absorbed from upstream main — all on by default because
 # they either sharpen sovereign-stack invariants (did_nostr) or close P0
 # hardening gaps (rate_limit, quota, webhook_signing).
-enable_did_nostr       = true     # did:nostr:<npub> → Solid WebID resolver
+enable_did_nostr       = true     # did:nostr:<pubkey> → Solid WebID resolver (ADR-013)
 enable_webhook_signing = true     # RFC 9421 Ed25519 outbound notification signing
 enable_rate_limit      = true     # sliding-window LRU per-connection guard
 enable_quota           = true     # per-pod storage quota via .quota.json sidecar

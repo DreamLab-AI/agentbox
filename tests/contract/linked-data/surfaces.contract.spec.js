@@ -20,7 +20,7 @@ const surfaces = {
   S11: require('../../../management-api/middleware/linked-data/surfaces/s11-http-meta'),
 };
 
-const AGBX_DID = 'did:nostr:npub1agentbox0000000000000000000000000000000000';
+const AGBX_DID = 'did:nostr:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
 
 describe('Surface encoders', () => {
   test('S1 pods — produces a Compacted node', async () => {
@@ -35,7 +35,7 @@ describe('Surface encoders', () => {
 
   test('S2 nostr — encode then decode matches verb', async () => {
     const r = await surfaces.S2.encode(
-      { verb: 'handoff-claim', content: 'pass it on', recipient: 'did:nostr:npub1other' },
+      { verb: 'handoff-claim', content: 'pass it on', recipient: 'did:nostr:fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210' },
       { agentDid: AGBX_DID },
     );
     expect(r.document['@type']).toBe('HandoffClaim');
@@ -45,7 +45,7 @@ describe('Surface encoders', () => {
 
   test('S3 credentials — VC structure', async () => {
     const r = await surfaces.S3.encode(
-      { credentialSubject: { id: 'did:nostr:npub1subject', name: 'Subject' }, issuer: AGBX_DID },
+      { credentialSubject: { id: 'did:nostr:b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0', name: 'Subject' }, issuer: AGBX_DID },
       { agentDid: AGBX_DID },
     );
     expect(r.document.type).toContain('VerifiableCredential');
@@ -106,14 +106,14 @@ describe('Surface encoders', () => {
   test('S8 payments — mandate encoded', async () => {
     const r = await surfaces.S8.encode(
       {
-        kind: 'mandate', principal: 'did:nostr:npub1human',
+        kind: 'mandate', principal: 'did:nostr:cafebabecafebabecafebabecafebabecafebabecafebabecafebabecafebabe',
         assignee: AGBX_DID, target: 'urn:product:1',
         action: 'odrl:use',
       },
       { agentDid: AGBX_DID, operation: 'issue-mandate' },
     );
     expect(r.document.type).toContain('PaymentMandate');
-    expect(r.document.credentialSubject['odrl:assigner']).toBe('did:nostr:npub1human');
+    expect(r.document.credentialSubject['odrl:assigner']).toBe('did:nostr:cafebabecafebabecafebabecafebabecafebabecafebabecafebabecafebabe');
   });
 
   test('S9 DCAT — catalogue with one dataset', async () => {

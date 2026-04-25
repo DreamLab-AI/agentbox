@@ -90,7 +90,7 @@ Main operator docs:
 ### Sovereign data stack
 
 - First-party `solid-pod-rs` as the primary local pod server
-- `did:nostr:<npub>` identity loop across relay, pod, credentials, and receipts
+- `did:nostr:<pubkey>` identity loop across relay, pod, credentials, and receipts
 - Embedded Nostr relay and pod mailbox bridge
 - Local privacy-filter sidecar with per-slot strict/soft/off policies
 - Linked-data surfaces for pods, events, credentials, DID docs, provenance, capability descriptors, payments, memory catalogues, architecture docs, and HTTP meta
@@ -139,7 +139,7 @@ Main operator docs:
 
 | Layer | Summary |
 |---|---|
-| Identity | `did:nostr:<npub>` as the primary externally visible agent identifier. |
+| Identity | `did:nostr:<pubkey>` as the primary externally visible agent identifier. |
 | Pods | `solid-pod-rs` with Solid Protocol 0.11, WAC 2.0, rate limiting, quota, and webhook signing. |
 | Relay | Embedded Nostr relay plus inbox/outbox bridge. |
 | Privacy | Local `openai/privacy-filter` sidecar on adapter dispatch boundaries. |
@@ -151,7 +151,7 @@ Main operator docs:
 
 The platform now includes a real naming and browsing layer, not just emitters:
 
-- [Canonical URIs](docs/user/uris.md): two shapes, `did:nostr:<npub>` for identity and `urn:agentbox:<kind>:[<scope>:]<local>` for everything else
+- [Canonical URIs](docs/user/uris.md): two shapes, `did:nostr:<pubkey>` for identity and `urn:agentbox:<kind>:[<scope>:]<local>` for everything else
 - [URI resolver](docs/reference/adr/ADR-013-canonical-uri-grammar.md): `/v1/uri/<urn>` maps resolvable names to current representations
 - [Linked-data browser](docs/user/browser.md): `/lo/*` serves a JSON-LD-aware browser and agentbox-specific panes
 - [Linked-data surfaces](docs/user/linked-data.md): the external grammar spans pods, Nostr envelopes, VCs, DID docs, provenance, WoT, payments, DCAT, and docs metadata
@@ -242,7 +242,7 @@ Deeper reading:
 - Generate a profile and build the image
 - Start the local pod server, relay, and management API
 - Emit JSON-LD surfaces for the resources you care about
-- Resolve `did:nostr:<npub>` and `urn:agentbox:*` identifiers through the management API
+- Resolve `did:nostr:<pubkey>` and `urn:agentbox:*` identifiers through the management API
 - Browse those resources in `/lo/*`
 
 ### Runtime as a host-mesh client

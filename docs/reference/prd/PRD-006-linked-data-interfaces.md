@@ -95,7 +95,7 @@ Surface details follow.
 
 **Vocabulary binding:**
 - `https://www.w3.org/ns/credentials/v2` ([VC Data Model 2.0](https://www.w3.org/TR/vc-data-model-2.0/), Sporny + Longley + Sabadello + Steele + Allen, W3C Recommendation 2025-05-15)
-- `did:nostr:<npub>` issuer DID (S4)
+- `did:nostr:<pubkey>` issuer DID (S4)
 - `BbsBlsSignature2020` or `Ed25519Signature2020` proof suite, depending on operator config
 
 **Form:** Compacted, one credential per emit.
@@ -104,14 +104,14 @@ Surface details follow.
 
 ### S4 — DID Documents
 
-**Why:** the sovereign identity layer already mints a Nostr keypair per profile. Exposing that as a DID Document via `did:nostr:<npub>` lets external systems resolve agent identity through a standard W3C method without bespoke Nostr-aware code.
+**Why:** the sovereign identity layer already mints a Nostr keypair per profile. Exposing that as a DID Document via `did:nostr:<pubkey>` lets external systems resolve agent identity through a standard W3C method without bespoke Nostr-aware code.
 
 **Vocabulary binding:**
 - `https://www.w3.org/ns/did/v1` ([DID Core 1.0](https://www.w3.org/TR/did-core/), Reed + Sporny + Longley + Allen + Grant + Sabadello, W3C Recommendation 2022-07-19)
 - `did:nostr` method spec ([draft, DreamLab-AI / nostr-protocol](https://github.com/nostr-protocol/nips/pull/1227))
 
 **Resolution:**
-1. solid-pod-rs already implements the `did-nostr` Cargo feature ([ADR-010](../adr/ADR-010-rust-solid-pod-adoption.md)); the DID Document for `did:nostr:<npub>` is fetched at `https://<pod-base>/.well-known/did.json`.
+1. solid-pod-rs already implements the `did-nostr` Cargo feature ([ADR-010](../adr/ADR-010-rust-solid-pod-adoption.md)); the DID Document for `did:nostr:<pubkey>` is fetched at `https://<pod-base>/.well-known/did.json`.
 2. In `federation.mode = "client"`, the host orchestrator can mint DIDs into the same namespace; the agent uses its own `did:nostr` regardless.
 
 **Form:** Compacted. One DID Document per agent identity. Updated only on identity rotation (DDD-003 §AgentIdentity).
@@ -448,7 +448,7 @@ When agentbox is federated with a host orchestrator, the host MAY supply a conte
 
 ### 9.2 `federation.mode = "standalone"`
 
-In standalone mode, agentbox publishes its own context catalogue and is reachable as Linked Data without any external coordinator. An external integrator dereferences `did:nostr:<npub>` → `pod base IRI` → `pod resource representations (S1)` → `agent-event stream (S5)` and gets a complete picture without a host project ever existing. This is the strongest version of agentbox-as-product.
+In standalone mode, agentbox publishes its own context catalogue and is reachable as Linked Data without any external coordinator. An external integrator dereferences `did:nostr:<pubkey>` → `pod base IRI` → `pod resource representations (S1)` → `agent-event stream (S5)` and gets a complete picture without a host project ever existing. This is the strongest version of agentbox-as-product.
 
 ## 10. Test surface
 
@@ -540,7 +540,7 @@ Every viewer implementation reads `/lo/manifest.json` at boot. The shape is:
 ```json
 {
   "agentbox":   "<image-version>",
-  "agentDid":   "did:nostr:<npub>",
+  "agentDid":   "did:nostr:<pubkey>",
   "viewer":     { "name": "linkedobjects-browser", "version": "...", "license": "AGPL-3.0-only", "source": "..." },
   "panes":      [PaneEntry, ...],
   "registry":   { "<@type>": "<pane-url>", ... },
@@ -631,7 +631,7 @@ The viewer (S12) follows the contract: it dereferences URIs through `/v1/uri/<ur
 The full URI grammar:
 
 ```
-identity-uri   ::= "did:nostr:" npub
+identity-uri   ::= "did:nostr:" pubkey-hex
 name-uri       ::= "urn:agentbox:" kind ":" [scope ":"] local
 kind           ::= pod | envelope | credential | mandate | receipt
                  | activity | event | mcp | memory | skill

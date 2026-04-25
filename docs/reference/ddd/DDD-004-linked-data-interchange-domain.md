@@ -10,7 +10,7 @@
 ## TL;DR for newcomers
 *Skip if you already know the linked-data-interchange bounded context.*
 
-This DDD captures the Linked-Data Interchange bounded context: the part of the system that owns how agentbox-produced data appears to external integrators as W3C JSON-LD 1.1, how external JSON-LD reaches agentbox without compromising the privacy filter or the adapter contract, and how hand-authored documents stay safely round-trippable through full processing. The pain point is that the sovereign data stack already speaks the same identity (`did:nostr:<npub>`) at every layer, but the encoding at each layer was its own coordination problem — pod resources spoke RDF/Turtle, Nostr envelopes spoke ad-hoc JSON, payment receipts had no defined shape. The shape of the answer is a domain with explicit aggregates (`ContextDocument`, `ContextCatalogue`, `FederationSurface`, `EncodingPipeline`, `LinkedResource`, `LIONDocument`), twelve numbered invariants L01–L12 each mapping to a testable predicate, and a published language of domain events consumed by the `events` adapter slot.
+This DDD captures the Linked-Data Interchange bounded context: the part of the system that owns how agentbox-produced data appears to external integrators as W3C JSON-LD 1.1, how external JSON-LD reaches agentbox without compromising the privacy filter or the adapter contract, and how hand-authored documents stay safely round-trippable through full processing. The pain point is that the sovereign data stack already speaks the same identity (`did:nostr:<pubkey>`) at every layer, but the encoding at each layer was its own coordination problem — pod resources spoke RDF/Turtle, Nostr envelopes spoke ad-hoc JSON, payment receipts had no defined shape. The shape of the answer is a domain with explicit aggregates (`ContextDocument`, `ContextCatalogue`, `FederationSurface`, `EncodingPipeline`, `LinkedResource`, `LIONDocument`), twelve numbered invariants L01–L12 each mapping to a testable predicate, and a published language of domain events consumed by the `events` adapter slot.
 
 **If you remember only one thing:** the encoder runs after the privacy filter and never fetches a context at runtime — the catalogue is part of the image, the contexts are content-addressed, and the LION subset is what humans write.
 
@@ -198,7 +198,7 @@ LinkedResource
   +-- canonicalised: boolean                          // true if surface.canonicalisation = "jcs"
   +-- canonicalHash: SHA-256 | null                   // present iff canonicalised
   +-- producedAt: ISO-8601
-  +-- producedBy: did:nostr:<npub>                    // the agent identity
+  +-- producedBy: did:nostr:<pubkey>                    // the agent identity
 ```
 
 **Consistency boundary**: per dispatch. Each LinkedResource is immutable once produced; subsequent edits go through a new dispatch.
@@ -317,7 +317,7 @@ The Linked-Data Interchange domain emits the following domain events to the `eve
 | `linked-data.canonicalisation-completed` | A signed surface (S3, S8) computes a JCS hash. | `{ surfaceId, canonicalHash, payloadSize, agent }` |
 | `linked-data.lion-lint-completed` | The LION linter finishes a run. | `{ path, status, errorCount }` |
 
-Per ADR-005, every event also carries the standard observability spine: span ID, timestamp, originating agent's `did:nostr:<npub>`.
+Per ADR-005, every event also carries the standard observability spine: span ID, timestamp, originating agent's `did:nostr:<pubkey>`.
 
 ## Consistency model
 

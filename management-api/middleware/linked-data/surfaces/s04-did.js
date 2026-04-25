@@ -34,8 +34,11 @@ module.exports = {
     if (!did.startsWith('did:nostr:')) {
       throw new Error(`S4 encode: only did:nostr: methods are currently emitted (got ${did})`);
     }
-    const npub = did.slice('did:nostr:'.length);
-    const pubkeyHex = payload?.pubkeyHex || null;
+    const pubkey = did.slice('did:nostr:'.length);
+    // The DID itself is the BIP-340 x-only pubkey hex; payload.pubkeyHex
+    // is kept as an explicit input for callers that want to attach a
+    // verification method without inferring it from the DID method.
+    const pubkeyHex = payload?.pubkeyHex || pubkey;
 
     const services = [];
     const ld = manifest && manifest.linked_data && manifest.linked_data.did;
@@ -82,6 +85,6 @@ module.exports = {
     if (payload?.alsoKnownAs) doc.alsoKnownAs = payload.alsoKnownAs;
     if (payload?.controller) doc.controller = payload.controller;
 
-    return { document: doc, contextIri: DID_CONTEXT, npub };
+    return { document: doc, contextIri: DID_CONTEXT, pubkey };
   },
 };

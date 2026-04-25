@@ -50,7 +50,7 @@ module.exports = {
     if (uris.isCanonical(callerId)) {
       doc['@id'] = callerId;
     } else if (agentDid) {
-      doc['@id'] = uris.mint({ kind: 'pod', npub: agentDid, payload });
+      doc['@id'] = uris.mint({ kind: 'pod', pubkey: agentDid, payload });
     } else if (callerId) {
       doc['@id'] = callerId;       // anonymous pod write — pass through
     }

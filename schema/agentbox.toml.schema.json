@@ -268,7 +268,7 @@
             "enable_dpop_cache":     { "type": "boolean", "description": "Requires enable_oidc=true (E033)." },
             "notifications":         { "type": "string", "enum": ["websocket", "webhook", "off"] },
             "log_level":             { "type": "string", "enum": ["trace", "debug", "info", "warn", "error"] },
-            "enable_did_nostr":       { "type": "boolean", "description": "did:nostr resolver — maps did:nostr:<npub> to Solid WebIDs with alsoKnownAs cross-verification (Sprint 6 upstream)." },
+            "enable_did_nostr":       { "type": "boolean", "description": "did:nostr resolver — maps did:nostr:<pubkey> (BIP-340 x-only hex) to Solid WebIDs with alsoKnownAs cross-verification (Sprint 6 upstream)." },
             "enable_webhook_signing": { "type": "boolean", "description": "RFC 9421 Ed25519 signing of outbound Solid Notification webhooks (Sprint 6)." },
             "enable_rate_limit":      { "type": "boolean", "description": "Sliding-window LRU rate limiter (Sprint 7)." },
             "enable_quota":           { "type": "boolean", "description": "Per-pod storage quota via .quota.json sidecar (Sprint 8 P0)." },

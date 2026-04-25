@@ -50,7 +50,7 @@ function _encodeMandate(payload, agentDid) {
     ? payload.id
     : uris.mint({
         kind: 'mandate',
-        npub: principal,
+        pubkey: principal,
         payload: {
           assignee: payload.assignee || agentDid,
           target: payload.target || null,
@@ -88,7 +88,7 @@ function _encodeReceipt(payload, agentDid) {
     ? payload.id
     : uris.mint({
         kind: 'receipt',
-        npub: issuer,
+        pubkey: issuer,
         payload: {
           mandateId: payload.mandateId || null,
           amount: payload.amount || null,

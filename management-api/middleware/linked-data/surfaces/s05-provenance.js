@@ -35,7 +35,7 @@ module.exports = {
       ? payload.id
       : uris.mint({
           kind: 'activity',
-          npub: agentDid || payload?.actor,
+          pubkey: agentDid || payload?.actor,
           payload: {
             action: payload?.action || null,
             slot: payload?.slot || null,

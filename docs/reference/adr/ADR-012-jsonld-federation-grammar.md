@@ -35,7 +35,7 @@ Today the encoding situation looks like this:
 | Architecture documentation cross-references | Markdown prose links | Architecture is not machine-traversable |
 | `/v1/meta` and `/v1/agent-events` HTTP responses | Plain JSON | Linked-Data-first integrators (Solid, Inrupt, ActivityPub) need a translator |
 
-Every entry in this table is an integrator-visible surface. Each currently uses its own encoding, vocabulary, and shape. An agent that signs a Nostr event, reaches a pod, persists a credential, writes a memory entry, and authorises a payment touches **five different encodings** with five different validation regimes. The agent identity is consistent (a single `did:nostr:<npub>`); the encoding is not.
+Every entry in this table is an integrator-visible surface. Each currently uses its own encoding, vocabulary, and shape. An agent that signs a Nostr event, reaches a pod, persists a credential, writes a memory entry, and authorises a payment touches **five different encodings** with five different validation regimes. The agent identity is consistent (a single `did:nostr:<pubkey>`); the encoding is not.
 
 Three constraints shape the decision:
 
@@ -134,7 +134,7 @@ Three phases ([PRD-006 §11](../prd/PRD-006-linked-data-interfaces.md#11-phased-
 
 ### Positive
 
-- **One identity reaches the world consistently.** A `did:nostr:<npub>` signs an S1 pod resource, an S2 Nostr envelope, an S3 credential, an S4 DID Document, an S5 provenance receipt, and an S8 mandate — each is verifiable through the same chain.
+- **One identity reaches the world consistently.** A `did:nostr:<pubkey>` signs an S1 pod resource, an S2 Nostr envelope, an S3 credential, an S4 DID Document, an S5 provenance receipt, and an S8 mandate — each is verifiable through the same chain.
 - **External integrators have a known interface.** A Solid client, an ActivityPub client, a VC verifier, or a SPARQL-aware host all work against agentbox without bespoke code.
 - **The agentic-payments work pulls into VC + ODRL.** PRD-005's consultant-tier receipts and any future payment authorisations sit in a deployed cryptographic-claim ecosystem instead of a bespoke envelope.
 - **`agbx:` extensions stay small.** Most concepts agentbox needs already exist in W3C vocabularies; the rationale-required gate keeps `agbx:` from sprawling.

@@ -47,7 +47,7 @@ async function uriResolverRoutes(fastify, options) {
       reply.code(400).send({
         error: 'malformed-uri',
         message: `Not a canonical agentbox URI: ${urn}`,
-        hint: 'Expected did:nostr:<npub> or urn:agentbox:<kind>:[<scope>:]<local>',
+        hint: 'Expected did:nostr:<pubkey> or urn:agentbox:<kind>:[<scope>:]<local>',
       });
       return;
     }
@@ -86,8 +86,11 @@ async function uriResolverRoutes(fastify, options) {
       case 'credential':
       case 'mandate':
       case 'receipt':
-        if (parsed.npub) {
-          reply.redirect(307, `${podBase}/agents/${parsed.npub}/${kind}/${parsed.local}`);
+        if (parsed.pubkey) {
+          // solid-pod-rs's did-nostr feature (ADR-010) accepts both hex
+          // pubkey and bech32 npub at /agents/* — agentbox URIs always
+          // carry pubkey hex; the pod resolves the equivalence.
+          reply.redirect(307, `${podBase}/agents/${parsed.pubkey}/${kind}/${parsed.local}`);
         } else {
           reply.code(404).send({ error: 'not-resolvable', reason: 'kind requires owner scope', urn });
         }
@@ -105,7 +108,7 @@ async function uriResolverRoutes(fastify, options) {
 
       case 'memory':
       case 'dataset':
-        reply.redirect(307, `/v1/memory/${parsed.local || parsed.npub}`);
+        reply.redirect(307, `/v1/memory/${parsed.local || parsed.pubkey}`);
         return;
 
       case 'skill':
@@ -123,7 +126,7 @@ async function uriResolverRoutes(fastify, options) {
         return;
 
       case 'bead':
-        reply.redirect(307, `/v1/beads/${parsed.local || parsed.npub}`);
+        reply.redirect(307, `/v1/beads/${parsed.local || parsed.pubkey}`);
         return;
 
       default:
@@ -141,7 +144,7 @@ async function uriResolverRoutes(fastify, options) {
   fastify.get('/v1/uri', async (req, reply) => {
     reply.send({
       grammar: {
-        identity: 'did:nostr:<npub>',
+        identity: 'did:nostr:<pubkey>',
         urn: 'urn:agentbox:<kind>:[<scope>:]<local>',
         kinds: Object.fromEntries(
           Object.entries(uris.KINDS).map(([k, v]) => [

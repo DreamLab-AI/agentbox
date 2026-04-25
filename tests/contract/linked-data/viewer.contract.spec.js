@@ -57,7 +57,7 @@ describe('S12 — Viewer slot', () => {
         },
         builtInPaneFiles: [],
         mountPath: '/lo',
-        agentDid: 'did:nostr:npub1agent000000000000000000000000000000000',
+        agentDid: 'did:nostr:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
       });
       expect(manifest.deeplinks).toEqual(expect.objectContaining({
         meta: '/v1/meta',

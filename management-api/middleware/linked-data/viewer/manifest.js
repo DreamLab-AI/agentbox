@@ -55,7 +55,7 @@
  *
  *   {
  *     "agentbox":    "<image-version>",
- *     "agentDid":    "did:nostr:<npub>",     // when known
+ *     "agentDid":    "did:nostr:<pubkey>",   // when known
  *     "viewer":      { name, version, source, license },
  *     "panes":       PaneEntry[],
  *     "registry":    { "<@type>": "<pane-url>" },  // legacy LOSOS shape

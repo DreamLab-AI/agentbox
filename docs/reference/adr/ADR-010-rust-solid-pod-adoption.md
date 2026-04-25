@@ -339,7 +339,7 @@ because each either sharpens a sovereign-stack invariant or closes a P0 gap.
 | Sprint | Upstream commit | Feature | Default | Effect on agentbox |
 |--------|-----------------|---------|---------|--------------------|
 | 5 | `bf15526` | DPoP + JWKS SSRF + alg-dispatch fixes | baseline | Tightens existing OIDC path; no manifest change required |
-| 6 | `341f03c` | **`did-nostr`** — `did:nostr:<npub>` DID resolver with Tier 1 + Tier 3 conformance and `alsoKnownAs` cross-verification | **on** | Closes the identity loop. WAC policies can now be written against `did:nostr:<npub>` instead of raw hex pubkeys, so pod ACLs speak the same identity surface that NIP-42 (relay) and NIP-98 (HTTP) speak. |
+| 6 | `341f03c` | **`did-nostr`** — `did:nostr:<pubkey>` DID resolver (BIP-340 x-only hex; also accepts bech32 `npub` for Nostr-internal callers) with Tier 1 + Tier 3 conformance and `alsoKnownAs` cross-verification | **on** | Closes the identity loop. WAC policies can now be written against `did:nostr:<pubkey>` (a stable name) instead of raw hex pubkeys treated as opaque tokens, so pod ACLs speak the same identity surface that NIP-42 (relay) and NIP-98 (HTTP) speak. |
 | 6 | `341f03c` | **WAC 2.0 conditions** — ACL document 2.0 grammar | baseline | Richer expressions (time windows, origin constraints) for the `.acl.json` files written by `sovereign-bootstrap.py` |
 | 6 | `341f03c` | **`webhook-signing`** — RFC 9421 Ed25519 signing of outbound Solid Notification webhooks | on (when `notifications = "webhook"`) | Receivers can cryptographically verify event provenance; eliminates a class of webhook-spoofing attacks that previously required out-of-band TLS inspection |
 | 7 | `ebbf163` | **`rate-limit`** — sliding-window LRU rate limiter, CORS policy knobs | on | Matches `nostr-rs-relay`'s `messages_per_sec` ceiling for coherence across the stack; new env vars `JSS_ENABLE_RATE_LIMIT`, `JSS_RATE_LIMIT_PER_SEC` |
@@ -355,7 +355,7 @@ because each either sharpens a sovereign-stack invariant or closes a P0 gap.
 three dialects of the same secp256k1 pubkey: raw hex (internal), `npub…` bech32
 (Nostr wire), and a `webId` URI embedded in `pods/<npub>/profile.json`. Each
 layer converted on the boundary. With `did-nostr`, the pod can answer
-`GET /did:nostr:<npub>` and hand back a Tier 1 / Tier 3 DID document whose
+`GET /did:nostr:<pubkey>` and hand back a Tier 1 / Tier 3 DID document whose
 `verificationMethod` is the same pubkey the relay accepted under NIP-42.
 
 WAC policies can therefore be written as:
@@ -415,6 +415,6 @@ cannot bypass relay limits by hitting the pod HTTP surface directly.
 | Messaging | `nostr-rs-relay` + pod-inbox bridge ([ADR-009](ADR-009-embedded-nostr-relay.md)) | vendored + first-party bridge | External ↔ internal agent messages |
 | Privacy governance | `openai/privacy-filter` middleware ([ADR-008](ADR-008-privacy-filter-routing.md)) | vendored + first-party policy | PII redaction before adapter writes |
 
-The stack is coherent because every layer speaks the same identity. With `did-nostr` absorbed from Sprint 6, that identity has a single canonical resolvable form: `did:nostr:<npub>`. The HTTP surface (NIP-98), the WebSocket surface (NIP-42), the pod's WAC policies, and the relay's allowlist all reference the same DID. An external agent that can sign a Nostr event can reach the relay, be identified by the pod, have its message persisted to a content-addressed mailbox bounded by a declared quota, and have its outbound notifications signed under RFC 9421 — no federated identity provider, no OAuth flow, no third-party broker.
+The stack is coherent because every layer speaks the same identity. With `did-nostr` absorbed from Sprint 6, that identity has a single canonical resolvable form: `did:nostr:<pubkey>` (ADR-013). The HTTP surface (NIP-98), the WebSocket surface (NIP-42), the pod's WAC policies, and the relay's allowlist all reference the same DID. An external agent that can sign a Nostr event can reach the relay, be identified by the pod, have its message persisted to a content-addressed mailbox bounded by a declared quota, and have its outbound notifications signed under RFC 9421 — no federated identity provider, no OAuth flow, no third-party broker.
 
 `solid-pod-rs` is the piece that was missing: until this ADR, the stack had identity and messaging but its "durable" layer was a 108-line Python stub that ignored WAC. The promotion is not an optimisation — it closes the stack.

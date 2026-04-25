@@ -12,18 +12,28 @@
  *
  * The grammar is intentionally minimal:
  *
- *   did:nostr:<npub>                     — agent identity
+ *   did:nostr:<pubkey>                   — agent identity (BIP-340 x-only
+ *                                          pubkey, 64-char lowercase hex)
  *
  *   urn:agentbox:<kind>:<scope>:<local>  — opaque content-addressed names
  *     where:
  *       <kind>   ∈ pod | envelope | credential | mandate | receipt |
  *                  activity | event | mcp | memory | skill | adr | prd |
  *                  ddd | thing | dataset | bead
- *       <scope>  optional;  agent npub or another urn:agentbox: anchor
+ *       <scope>  optional; agent pubkey hex or another urn:agentbox: anchor
  *       <local>  ASCII slug or hex/base32 of a content hash
  *
  *   https://<host>/<path>                — operator-resolvable HTTPS IRIs
  *     produced by `resolveCanonical(urn)` at the management-api boundary
+ *
+ * Why pubkey hex and not bech32 npub?
+ *   The DID layer is a name service consumed by non-Nostr tooling
+ *   (W3C VC verifiers, DID resolvers, monitoring stacks). Hex pubkeys
+ *   match the broader DID ecosystem (did:ethr, did:pkh) and don't
+ *   require a bech32 decoder. The Nostr-internal layer (DDD-003,
+ *   ADR-009, pod filesystem paths under pods/<npub>/) keeps using
+ *   bech32 npub because that's the Nostr-protocol native form.
+ *   Conversion happens at the resolver boundary.
  *
  * Three rules govern minting:
  *
@@ -34,8 +44,8 @@
  *       relies on this for deterministic emit→sign→re-emit.
  *
  *   R2. SCOPE-BEARING — when the resource is owned by an agent,
- *       <scope> carries the agent's npub. e.g.
- *         urn:agentbox:credential:npub1abc:sha256-12-deadbeef
+ *       <scope> carries the agent's BIP-340 x-only pubkey hex. e.g.
+ *         urn:agentbox:credential:0123…ef:sha256-12-deadbeef
  *
  *   R3. STABLE-ON-IDENTITY — the URI of a static thing (a skill, an
  *       MCP server, an ADR) is `urn:agentbox:<kind>:<id>` where <id>
@@ -50,9 +60,11 @@
  * -----------
  * URI grammar inspired by IETF [URN syntax (RFC 8141)](https://www.rfc-editor.org/rfc/rfc8141)
  * and [W3C DID Core 1.0](https://www.w3.org/TR/did-core/) (Reed,
- * Sporny, Longley, Allen, Grant, Sabadello). The content-addressing
- * convention follows the agentbox FOD-everything pattern from
- * `lib/npm-cli.nix` and `lib/solid-pod-rs.nix`.
+ * Sporny, Longley, Allen, Grant, Sabadello). BIP-340 x-only pubkey
+ * convention from [BIP-340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki)
+ * and Nostr [NIP-01](https://github.com/nostr-protocol/nips/blob/master/01.md).
+ * The content-addressing convention follows the agentbox FOD-everything
+ * pattern from `lib/npm-cli.nix` and `lib/solid-pod-rs.nix`.
  */
 
 const crypto = require('crypto');
@@ -78,12 +90,15 @@ const KINDS = Object.freeze({
 });
 
 const URN_RE = /^urn:agentbox:([a-z]+):([^:]+(?::[^:]+)?)$/;
-// We accept any `npub1` prefix followed by lowercase ASCII alphanumeric.
-// Bech32 has a stricter charset, but the canonical-URI layer is a name
-// service, not a Schnorr verifier — strict bech32 validation belongs in
-// the cryptographic layer (DDD-003 §AgentIdentity).
-const NPUB_RE = /^npub1[a-z0-9]+$/;
-const DID_NOSTR_RE = /^did:nostr:(npub1[a-z0-9]+)$/;
+// BIP-340 x-only pubkey: 32 bytes serialised as 64 lowercase hex chars.
+// The canonical-URI layer is a name service, not a Schnorr verifier —
+// strict cryptographic validation belongs in DDD-003 §AgentIdentity.
+const PUBKEY_HEX_RE = /^[0-9a-f]{64}$/;
+const DID_NOSTR_RE = /^did:nostr:([0-9a-f]{64})$/;
+// Backward compatibility helpers: callers that supply a bech32 npub
+// (Nostr-internal form) are accepted at the parameter boundary by
+// `_normalisePubkey()`. The DID grammar itself is pubkey-only.
+const NPUB_PREFIX_RE = /^npub1[a-z0-9]+$/;
 
 class UnknownUriKind extends Error {
   constructor(kind) {
@@ -106,13 +121,18 @@ class MalformedUri extends Error {
  *
  * @param {object} opts
  * @param {string} opts.kind — one of KINDS
- * @param {string} [opts.npub] — agent npub for owner-scoped kinds
+ * @param {string} [opts.pubkey] — agent BIP-340 x-only pubkey hex
+ *   (64 lowercase hex chars) for owner-scoped kinds. A `did:nostr:`
+ *   prefix or a bech32 `npub1` value is also accepted at the boundary
+ *   and normalised — but the resulting URI always carries pubkey hex.
+ * @param {string} [opts.npub] — DEPRECATED alias for `pubkey`. Kept
+ *   for two release cycles to ease the rename. Use `pubkey`.
  * @param {*} [opts.payload] — JSON-serialisable payload for content addressing
  * @param {string} [opts.localId] — explicit local id; required when
  *   the kind is not content-addressed and not scope-bearing
  * @returns {string} a `urn:agentbox:<kind>:…` URI
  */
-function mint({ kind, npub, payload, localId } = {}) {
+function mint({ kind, pubkey, npub, payload, localId } = {}) {
   if (!(kind in KINDS)) throw new UnknownUriKind(kind);
   const spec = KINDS[kind];
 
@@ -129,15 +149,53 @@ function mint({ kind, npub, payload, localId } = {}) {
   }
 
   if (spec.ownerScope) {
-    if (!npub) throw new MalformedUri(`urn:agentbox:${kind}:${local}`, 'kind requires npub scope');
-    if (!NPUB_RE.test(npub) && !DID_NOSTR_RE.test(npub)) {
-      throw new MalformedUri(`urn:agentbox:${kind}:${local}`, `bad npub: ${npub}`);
+    const supplied = pubkey || npub;
+    if (!supplied) {
+      throw new MalformedUri(`urn:agentbox:${kind}:${local}`, 'kind requires pubkey scope');
     }
-    const npubOnly = npub.startsWith('did:nostr:') ? npub.slice('did:nostr:'.length) : npub;
-    return `urn:agentbox:${kind}:${npubOnly}:${local}`;
+    const normalised = _normalisePubkey(supplied);
+    if (!normalised) {
+      throw new MalformedUri(`urn:agentbox:${kind}:${local}`, `bad pubkey: ${supplied}`);
+    }
+    return `urn:agentbox:${kind}:${normalised}:${local}`;
   }
 
   return `urn:agentbox:${kind}:${local}`;
+}
+
+/**
+ * Normalise a caller-supplied identifier to BIP-340 x-only pubkey hex.
+ * Accepts:
+ *   - 64-char lowercase hex (already canonical)
+ *   - did:nostr:<64-char hex> (strips the prefix)
+ *   - npub1... bech32 (best-effort decode; if the bech32 decoder
+ *     isn't available, the function returns null and the caller
+ *     surfaces a MalformedUri so the operator gets a clear error)
+ * Returns the canonical 64-char hex pubkey, or null if the input is
+ * not recognisable.
+ */
+function _normalisePubkey(value) {
+  if (typeof value !== 'string') return null;
+  if (PUBKEY_HEX_RE.test(value)) return value;
+  if (value.startsWith('did:nostr:')) {
+    const tail = value.slice('did:nostr:'.length);
+    return PUBKEY_HEX_RE.test(tail) ? tail : null;
+  }
+  if (NPUB_PREFIX_RE.test(value)) {
+    // bech32 decode is best-effort; nostr-tools is available in the
+    // bundled management-api but not at the URI layer's level. We try
+    // a require() and gracefully return null if absent so the caller
+    // can fall back. Real callers should pass pubkey hex directly.
+    try {
+      const { nip19 } = require('nostr-tools');
+      const { type, data } = nip19.decode(value);
+      if (type === 'npub' && typeof data === 'string' && PUBKEY_HEX_RE.test(data)) {
+        return data;
+      }
+    } catch { /* nostr-tools not loadable here; fall through */ }
+    return null;
+  }
+  return null;
 }
 
 /**
@@ -177,16 +235,16 @@ function resolveCanonical(uri, { managementApiBase, podBase } = {}) {
 function parse(uri) {
   if (typeof uri !== 'string') return null;
   if (DID_NOSTR_RE.test(uri)) {
-    return { scheme: 'did', method: 'nostr', npub: uri.slice('did:nostr:'.length) };
+    return { scheme: 'did', method: 'nostr', pubkey: uri.slice('did:nostr:'.length) };
   }
   const m = uri.match(URN_RE);
   if (!m) return null;
   const [, kind, rest] = m;
   const parts = rest.split(':');
   if (parts.length === 1) {
-    return { scheme: 'urn', kind, npub: null, local: parts[0] };
+    return { scheme: 'urn', kind, pubkey: null, local: parts[0] };
   }
-  return { scheme: 'urn', kind, npub: parts[0], local: parts.slice(1).join(':') };
+  return { scheme: 'urn', kind, pubkey: parts[0], local: parts.slice(1).join(':') };
 }
 
 /** Boolean — is this a canonical agentbox URI? */

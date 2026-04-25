@@ -36,7 +36,7 @@ module.exports = {
     const datasets = payload.namespaces.map((ns) => {
       if (!ns.name) throw new Error('S9 encode: every namespace must have a name');
       const ds = {
-        '@id': uris.mint({ kind: 'dataset', npub: ns.owner || agentDid, localId: ns.name }),
+        '@id': uris.mint({ kind: 'dataset', pubkey: ns.owner || agentDid, localId: ns.name }),
         '@type': 'dcat:Dataset',
         'dcterms:title': ns.name,
         'dcterms:identifier': uris.mint({ kind: 'memory', localId: ns.name }),

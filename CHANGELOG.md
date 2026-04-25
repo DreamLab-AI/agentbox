@@ -4,6 +4,83 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### `did:nostr` carries pubkey hex, not bech32 npub (2026-04-25)
+
+The DID grammar in ADR-013 now specifies BIP-340 x-only pubkey hex
+(64 lowercase hex chars) as the canonical agent identifier:
+
+```
+identity-uri ::= "did:nostr:" pubkey-hex
+                 ; was: "did:nostr:" npub
+```
+
+Why pubkey hex:
+
+* Matches the broader DID ecosystem (`did:ethr`, `did:pkh`) where
+  identifiers are raw hex / chain-prefixed hex, not bech32.
+* Lets non-Nostr tooling (W3C VC verifiers, generic DID resolvers,
+  monitoring stacks) interpret an agentbox DID without bundling a
+  bech32 decoder.
+* Aligns the URN scope grammar
+  (`urn:agentbox:<kind>:<pubkey>:<local>`) with the DID grammar so a
+  monitoring tool can pivot between identity URIs and named
+  resources by string-prefix matching alone.
+
+What changed:
+
+* `management-api/lib/uris.js`:
+  - `DID_NOSTR_RE` now matches 64-char lowercase hex.
+  - `mint()` parameter renamed `npub` → `pubkey`. The deprecated
+    `npub` alias is still accepted at the boundary (with bech32
+    decoding via `nostr-tools` when available) so callers below
+    the URI layer don't break during the rename.
+  - `parse()` now returns `{ scheme, kind, pubkey, local }` instead
+    of `{ ..., npub, ... }`.
+* All eleven surface emitters (s01-pods through s11-http-meta)
+  refactored to call `uris.mint({ pubkey: ... })`.
+* `routes/uri-resolver.js`, `viewer/manifest.js`, and pane sources
+  updated to dereference the canonical `pubkey` field.
+* `server.js` `/health` diagnostic prefers `AGENTBOX_PUBKEY` and
+  falls back to `AGENTBOX_NPUB` for legacy deployments.
+
+What stays as `npub`:
+
+* Pod filesystem paths (`pods/<npub>/`) — Nostr-internal naming
+  convention from PRD-004 / DDD-003.
+* `mcp/nostr-bridge/` and DDD-003 / ADR-009 / PRD-004 references —
+  the bech32 npub is the Nostr-protocol-native identifier outside
+  the DID layer.
+* `solid-pod-rs`'s did-nostr Cargo feature accepts both pubkey hex
+  and bech32 npub at the resolver, so existing operator scripts
+  using either form continue to work.
+
+Spec updates:
+
+* [ADR-013](docs/reference/adr/ADR-013-canonical-uri-grammar.md) §1
+  grammar, §3 surface refactor table, §6 extension API.
+* [PRD-006 §16](docs/reference/prd/PRD-006-linked-data-interfaces.md#16-canonical-uri-grammar-adr-013-cross-reference)
+  cross-reference grammar.
+* [DDD-004 §URICanonicaliser](docs/reference/ddd/DDD-004-linked-data-interchange-domain.md#uricanonicaliser)
+  ubiquitous language.
+* [`docs/user/uris.md`](docs/user/uris.md) — every worked example
+  now uses pubkey hex; the "When is the pubkey scope present?"
+  section replaces the npub equivalent.
+* [`docs/user/browser.md`](docs/user/browser.md) — every clickable
+  per-surface URL uses the canonical hex form.
+* `README.md`, `CLAUDE.md`, `docs/README.md`, `docs/user/glossary.md`,
+  `docs/user/sovereign-stack.md`, `docs/user/solid-pod.md`,
+  `docs/user/linked-data.md`, `docs/developer/sovereign-mesh.md`,
+  `docs/reference/adr/ADR-010-rust-solid-pod-adoption.md`,
+  `docs/reference/adr/ADR-012-jsonld-federation-grammar.md`,
+  `schema/agentbox.toml.schema.json`, `agentbox.toml` — every
+  occurrence of `did:nostr:<npub>` replaced with `did:nostr:<pubkey>`.
+
+Tests updated to use 64-char hex pubkey fixtures across
+`tests/contract/linked-data/{uris,surfaces,viewer}.contract.spec.js`,
+including a new test asserting the deprecated `npub` parameter alias
+in `uris.mint()` still produces an identical URI to the canonical
+`pubkey` parameter.
+
 ### Viewer slot + canonical URI grammar — PRD-006 §15-§16 / ADR-013 / DDD-004 §URICanonicaliser §ViewerSurface (2026-04-25)
 
 Two aligned additions extending the linked-data work shipped earlier today:
@@ -43,7 +120,7 @@ MPL-2.0; the viewer remains AGPL-3.0.
 PRD-006 surface now follows the canonical URI grammar:
 
 ```
-identity-uri   ::= "did:nostr:" npub
+identity-uri   ::= "did:nostr:" pubkey-hex   ; BIP-340 x-only, 64 lc hex
 name-uri       ::= "urn:agentbox:" kind ":" [scope ":"] local
 content-hash   ::= "sha256-12-" 12HEXDIGIT
 ```
@@ -485,7 +562,7 @@ substantial sprint work. This change absorbs it.
 
 | Feature | Sprint | Effect |
 |---------|--------|--------|
-| `did-nostr` | 6 | `did:nostr:<npub>` resolver — Tier 1 + Tier 3, `alsoKnownAs` cross-verification. Closes the identity loop: one DID across pod WAC, relay NIP-42, and HTTP NIP-98. |
+| `did-nostr` | 6 | `did:nostr:<pubkey>` resolver — Tier 1 + Tier 3, `alsoKnownAs` cross-verification. Closes the identity loop: one DID across pod WAC, relay NIP-42, and HTTP NIP-98. |
 | WAC 2.0 conditions | 6 | Richer ACL grammar (time windows, origin constraints) for `sovereign-bootstrap.py`-written `.acl.json` files. |
 | `webhook-signing` | 6 | RFC 9421 Ed25519 signing of outbound Solid Notification webhooks. |
 | `rate-limit` | 7 | Sliding-window LRU per-connection ceiling; matches `nostr-rs-relay`'s `messages_per_sec` for coherence. |

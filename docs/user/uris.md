@@ -4,7 +4,7 @@ Every JSON-LD document agentbox emits — pod resources, Nostr envelopes, Verifi
 
 The full architectural decision is [ADR-013](../reference/adr/ADR-013-canonical-uri-grammar.md). The bounded context lives in [DDD-004 §URICanonicaliser](../reference/ddd/DDD-004-linked-data-interchange-domain.md#uricanonicaliser).
 
-> **TL;DR.** Two URI shapes: `did:nostr:<npub>` for identity, `urn:agentbox:<kind>:[<scope>:]<local>` for everything else. Uniqueness is unconditional. Resolvability is best-effort. The `/v1/uri/<urn>` endpoint dereferences the names that resolve, and tells you when one doesn't.
+> **TL;DR.** Two URI shapes: `did:nostr:<pubkey>` for identity, `urn:agentbox:<kind>:[<scope>:]<local>` for everything else. Uniqueness is unconditional. Resolvability is best-effort. The `/v1/uri/<urn>` endpoint dereferences the names that resolve, and tells you when one doesn't.
 
 ## The two contracts
 
@@ -26,8 +26,8 @@ Treating a URI as a name first, an address second, is the same model W3C [DID Co
 ```
 URI            ::= identity-uri | name-uri
 
-identity-uri   ::= "did:nostr:" npub
-                   ; the agent's sovereign identity
+identity-uri   ::= "did:nostr:" pubkey-hex
+                   ; agent's sovereign identity (BIP-340 x-only pubkey, 64 lc hex)
 
 name-uri       ::= "urn:agentbox:" kind ":" [scope ":"] local
                    ; everything else
@@ -37,8 +37,8 @@ kind           ::= pod | envelope | credential | mandate | receipt
                  | adr | prd | ddd | thing | dataset | bead | meta
                    ; closed set; new kinds are a one-line code change
 
-scope          ::= npub                    ; required for owner-scoped kinds
-                                           ; (see "When is the npub present?" below)
+scope          ::= pubkey-hex              ; required for owner-scoped kinds
+                                           ; (see "When is the pubkey scope present?" below)
 
 local          ::= content-hash | slug
 content-hash   ::= "sha256-12-" 12HEXDIGIT  ; first 12 hex chars of SHA-256
@@ -56,7 +56,7 @@ When the payload uniquely determines the resource, `<local>` is `sha256-12-<firs
 Used for: `credential`, `mandate`, `receipt`, `activity`, `event`, `pod`, `envelope`.
 
 ```
-urn:agentbox:credential:npub1agent…:sha256-12-deadbeef0000
+urn:agentbox:credential:01234567…:sha256-12-deadbeef0000
                                     └── SHA-256 of the credentialSubject
 ```
 
@@ -64,16 +64,16 @@ If you re-issue the same credential to the same subject with the same fields, yo
 
 ### R2 — Scope-bearing
 
-When the resource is owned by an agent, `<scope>` carries the owner's npub.
+When the resource is owned by an agent, `<scope>` carries the owner's BIP-340 x-only pubkey hex.
 
 Used for: every owner-scoped kind (`pod`, `envelope`, `credential`, `mandate`, `receipt`, `activity`, `event`, `dataset`, `bead`).
 
 ```
-urn:agentbox:event:npub1agent…:sha256-12-…
+urn:agentbox:event:01234567…:sha256-12-…
               kind  scope        local
 ```
 
-The npub and the kind together let monitoring tools query "all events emitted by this agent" or "all credentials issued by this agent" without scanning every name.
+The pubkey and the kind together let monitoring tools query "all events emitted by this agent" or "all credentials issued by this agent" without scanning every name.
 
 ### R3 — Stable on identity
 
@@ -90,9 +90,9 @@ urn:agentbox:meta:runtime
 
 Same skill, same MCP server, same ADR — same URI across rebuilds, deployments, federations.
 
-## When is the npub present?
+## When is the pubkey scope present?
 
-| Kind | npub present? | Why |
+| Kind | scope present? | Why |
 |---|---|---|
 | `pod` | ✓ | resources live in an agent's pod |
 | `envelope` | ✓ | Nostr envelopes are signed by an agent |
@@ -115,20 +115,20 @@ Same skill, same MCP server, same ADR — same URI across rebuilds, deployments,
 ### A Verifiable Credential the agent issued
 
 ```
-urn:agentbox:credential:npub1agent00000000000000000000000000000000:sha256-12-9f3a5b2c8e1d
+urn:agentbox:credential:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef:sha256-12-9f3a5b2c8e1d
 ```
 
 - `kind = credential`
-- `scope = npub1agent…` — the agent who issued it
+- `scope = 01234567…` — the agent who issued it (BIP-340 x-only pubkey hex)
 - `local = sha256-12-…` — content-addressed on the credentialSubject
 
 Resolvable when `[linked_data].credentials = "emit"` and `[linked_data].pods != "off"`. The resolver redirects to:
-`http://<pod-base>/agents/<npub>/credential/<local>`.
+`http://<pod-base>/agents/<pubkey>/credential/<local>`.
 
 ### A DID Document for an agent
 
 ```
-did:nostr:npub1agent00000000000000000000000000000000
+did:nostr:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
 ```
 
 Resolvable when `[linked_data].did_documents = "emit"`. The resolver redirects to:
@@ -137,7 +137,7 @@ Resolvable when `[linked_data].did_documents = "emit"`. The resolver redirects t
 ### A PROV-O activity record
 
 ```
-urn:agentbox:activity:npub1agent…:sha256-12-1e1cf2a04d77
+urn:agentbox:activity:01234567…:sha256-12-1e1cf2a04d77
 ```
 
 Content-addressed on `{ action, slot, operation, startedAt, input, output }`. Resolvable when `[linked_data].provenance = "emit"`.
@@ -177,7 +177,7 @@ Resolves to `/v1/meta`. Always one per agent.
 ### A memory namespace dataset
 
 ```
-urn:agentbox:dataset:npub1agent…:project-state
+urn:agentbox:dataset:01234567…:project-state
 ```
 
 Scoped to the agent that owns the namespace; resolvable when `[linked_data].memory_catalogue = "emit"`.
@@ -185,7 +185,7 @@ Scoped to the agent that owns the namespace; resolvable when `[linked_data].memo
 ### An agentic-payment mandate
 
 ```
-urn:agentbox:mandate:npub1human…:sha256-12-a4cf7e891b30
+urn:agentbox:mandate:fedcba98…:sha256-12-a4cf7e891b30
 ```
 
 Scoped to the human principal who signed it. Resolvable when `[linked_data].payments != "off"`.
@@ -193,7 +193,7 @@ Scoped to the human principal who signed it. Resolvable when `[linked_data].paym
 ### A retracted resource
 
 ```
-GET /v1/uri/urn%3Aagentbox%3Acredential%3Anpub1abc%3Asha256-12-…  → 410 Gone
+GET /v1/uri/urn%3Aagentbox%3Acredential%3A01234567…%3Asha256-12-…  → 410 Gone
 ```
 
 The resource was once resolvable; the resolver has positive knowledge that it has been deleted. Clients should stop trying.
@@ -201,7 +201,7 @@ The resource was once resolvable; the resolver has positive knowledge that it ha
 ### An unresolvable URI from a federated peer
 
 ```
-GET /v1/uri/urn%3Aagentbox%3Acredential%3Anpub1other%3Asha256-12-…  → 404
+GET /v1/uri/urn%3Aagentbox%3Acredential%3Acafebabe…%3Asha256-12-…  → 404
 ```
 
 Well-formed; the resolver doesn't know how to fetch it because the credential lives in another agentbox. The URI still identifies the credential uniquely; tooling can use it as a name.
@@ -246,10 +246,10 @@ const stable = (v) => v === null || typeof v !== "object"
   : Array.isArray(v)
     ? "[" + v.map(stable).join(",") + "]"
     : "{" + Object.keys(v).sort().map((k) => JSON.stringify(k) + ":" + stable(v[k])).join(",") + "}";
-const npub = "npub1agent00000000000000000000000000000000";
-const payload = { id: "did:nostr:npub1subject", name: "Subject" };
+const pubkey = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+const payload = { id: "did:nostr:b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0", name: "Subject" };
 const hash = crypto.createHash("sha256").update(stable(payload), "utf8").digest("hex").slice(0, 12);
-console.log(`urn:agentbox:credential:${npub}:sha256-12-${hash}`);
+console.log(`urn:agentbox:credential:${pubkey}:sha256-12-${hash}`);
 '
 ```
 
@@ -270,7 +270,7 @@ Without the URI grammar, the eleven JSON-LD surfaces are eleven independent emit
 - **Verifiable signatures bind a stable identifier.** A signed credential's proof block hashes a URI that doesn't change on re-emit.
 - **Federation works.** A URI minted under `local-solid-rs` keeps its identity when the operator switches to `external` pods; only the resolver's redirect target changes.
 - **Deduplication is automatic.** Re-emitting the same payload yields the same URI; external indexes don't double-count.
-- **Monitoring is uniform.** "Show me every credential this agent has ever issued" is a single SPARQL query (or a single `urn:agentbox:credential:<npub>:*` glob).
+- **Monitoring is uniform.** "Show me every credential this agent has ever issued" is a single SPARQL query (or a single `urn:agentbox:credential:<pubkey>:*` glob).
 - **The viewer can navigate.** Cross-surface links are real links, not opaque blobs.
 - **Backends are swappable.** Operators move pods, swap memory backends, change relay URLs; URIs survive.
 

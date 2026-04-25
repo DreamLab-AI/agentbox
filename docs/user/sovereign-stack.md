@@ -113,14 +113,14 @@ Validate + rebuild:
 ### 1. Identity
 
 `sovereign-bootstrap.py` runs once on first boot. It generates the
-keypair, writes the pod ACL against `did:nostr:<npub>`, and materialises
+keypair, writes the pod ACL against `did:nostr:<pubkey>`, and materialises
 the DID document that solid-pod-rs's resolver will serve.
 
 ```sh
 # What identity does this container hold?
 docker exec agentbox bash -lc 'source /run/agentbox/identity.env && env | grep AGENTBOX_'
 # AGENTBOX_NPUB=npub1...
-# AGENTBOX_DID=did:nostr:npub1...
+# AGENTBOX_DID=did:nostr:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
 # AGENTBOX_PUBKEY_HEX=...
 
 # The DID document on disk:
@@ -254,7 +254,7 @@ Useful meters:
 | External events never land in inbox | relay `ingress_policy=allowlist` and the external pubkey is not in `allowed_pubkeys`; or `p` tag is absent/malformed |
 | Outbox entries stuck at `status=pending` | `MANAGEMENT_API_KEY` unset (bridge cannot decrypt `nostr.key.enc`); or all configured relays refusing |
 | `opf_fail_closed_total` climbing on `memory` slot | `opf-router` is down or slow; inspect `/var/log/opf-router.log` |
-| `solid_pod_rs_wac_denied_total` climbing | ACL policy for the writer npub is missing or wrong; inspect `.acl.json` — remember to reference `did:nostr:<npub>`, not the raw npub |
+| `solid_pod_rs_wac_denied_total` climbing | ACL policy for the writer npub is missing or wrong; inspect `.acl.json` — remember to reference `did:nostr:<pubkey>`, not the raw npub |
 | Quota 413s | raise `integrations.solid_pod_rs.quota_default_bytes` or clean `pods/<npub>/` |
 | Rate-limit 429s on legitimate traffic | raise `rate_limit_per_sec` or move the client to a dedicated allowlist entry with higher ceiling |
 
@@ -264,7 +264,7 @@ diagnostic recipes.
 ## The coherence claim
 
 Four services. One secp256k1 key. One DID. No OAuth, no federated IdP,
-no third-party broker. `did:nostr:<npub>` is the single subject that
+no third-party broker. `did:nostr:<pubkey>` is the single subject that
 WAC, NIP-98, NIP-42, and the pod profile all reference. The pod is the
 durable source of truth; the relay is transport; the privacy filter is
 middleware; the management API orchestrates.

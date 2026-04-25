@@ -101,10 +101,16 @@ async function probePodHealth() {
     result.solid_pod_rs_health = `unreachable: ${err.code || err.message}`;
   }
 
-  const npub = process.env.AGENTBOX_NPUB;
-  if (impl === 'local-solid-rs' && npub) {
+  // ADR-013: the canonical agentbox DID grammar carries a BIP-340 x-only
+  // pubkey hex (AGENTBOX_PUBKEY). solid-pod-rs's did-nostr feature
+  // accepts both pubkey hex and bech32 npub at the resolver, so this
+  // probe prefers the canonical pubkey form when set and falls back to
+  // the legacy npub for deployments that haven't surfaced AGENTBOX_PUBKEY
+  // from sovereign-bootstrap yet.
+  const didIdentifier = process.env.AGENTBOX_PUBKEY || process.env.AGENTBOX_NPUB;
+  if (impl === 'local-solid-rs' && didIdentifier) {
     try {
-      const res = await fetch(`${baseUrl}/did:nostr:${npub}`, {
+      const res = await fetch(`${baseUrl}/did:nostr:${didIdentifier}`, {
         headers: { Accept: 'application/did+ld+json, application/ld+json, */*' },
       });
       result.did_nostr_resolves = res.ok ? 'ok' : `http_${res.status}`;

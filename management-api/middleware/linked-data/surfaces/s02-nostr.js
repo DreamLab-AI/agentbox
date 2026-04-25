@@ -49,7 +49,7 @@ module.exports = {
     doc['@type'] = verbToType[verb] || 'as:Activity';
 
     if (uris.isCanonical(payload && payload.id)) doc['@id'] = payload.id;
-    else if (agentDid) doc['@id'] = uris.mint({ kind: 'envelope', npub: agentDid, payload });
+    else if (agentDid) doc['@id'] = uris.mint({ kind: 'envelope', pubkey: agentDid, payload });
     if (agentDid) doc['as:actor'] = agentDid;
 
     if (payload && payload.recipient) {

@@ -4,12 +4,12 @@
 **Date:** 2026-04-25
 **Author:** Agentbox team
 **Supersedes:** n/a
-**Related:** PRD-006 (Linked-data interfaces — §15 viewer slot), ADR-012 (JSON-LD adoption — every surface emits `@id` values constrained by this ADR), DDD-004 (Linked-Data interchange domain — §URICanonicaliser aggregate), DDD-003 (Sovereign messaging — `did:nostr:<npub>` identity layer)
+**Related:** PRD-006 (Linked-data interfaces — §15 viewer slot), ADR-012 (JSON-LD adoption — every surface emits `@id` values constrained by this ADR), DDD-004 (Linked-Data interchange domain — §URICanonicaliser aggregate), DDD-003 (Sovereign messaging — `did:nostr:<pubkey>` identity layer)
 
 ## TL;DR for newcomers
 *Skip if you already know that URI uniqueness and URI resolvability are different contracts.*
 
-This ADR defines the agentbox URI grammar — `did:nostr:<npub>` for identity and `urn:agentbox:<kind>:[<scope>:]<local>` for everything else — plus a `/v1/uri/<urn>` resolver service. The pain point it addresses is that PRD-006's eleven surfaces were each minting `@id` values their own way (caller pass-through, `urn:uuid:*`, ad-hoc strings, randomly-generated event URNs) so the viewer (S12) could not follow links between them and external integrators could not write generic monitoring code. The shape of the answer is one shared minting library (`management-api/lib/uris.js`), called by every surface, that produces deterministic content-addressed names; one resolver route (`/v1/uri/<urn>`) that best-effort dereferences names to current HTTPS IRIs; and a documented contract that says **uniqueness is unconditional, resolvability is best-effort**. You will learn the grammar, the kinds, the resolver semantics (200/307, 404, 410), the surface-by-surface refactor, and the relationship to W3C DID Core and IETF RFC 8141.
+This ADR defines the agentbox URI grammar — `did:nostr:<pubkey>` for identity and `urn:agentbox:<kind>:[<scope>:]<local>` for everything else — plus a `/v1/uri/<urn>` resolver service. The pain point it addresses is that PRD-006's eleven surfaces were each minting `@id` values their own way (caller pass-through, `urn:uuid:*`, ad-hoc strings, randomly-generated event URNs) so the viewer (S12) could not follow links between them and external integrators could not write generic monitoring code. The shape of the answer is one shared minting library (`management-api/lib/uris.js`), called by every surface, that produces deterministic content-addressed names; one resolver route (`/v1/uri/<urn>`) that best-effort dereferences names to current HTTPS IRIs; and a documented contract that says **uniqueness is unconditional, resolvability is best-effort**. You will learn the grammar, the kinds, the resolver semantics (200/307, 404, 410), the surface-by-surface refactor, and the relationship to W3C DID Core and IETF RFC 8141.
 
 **If you remember only one thing:** every agentbox URI is unique by construction; some of them resolve, some don't, and the resolver tells you which.
 
@@ -26,7 +26,7 @@ Three observations forced the decision:
    | S1 pods | caller-supplied id, pass-through |
    | S2 nostr | caller-supplied id, pass-through |
    | S3 credentials | `urn:uuid:<random>` |
-   | S4 DID Documents | `did:nostr:<npub>` ✓ |
+   | S4 DID Documents | `did:nostr:<pubkey>` ✓ |
    | S5 provenance | `urn:uuid:<random>` |
    | S6 MCP descriptors | `urn:agentbox:mcp:<id>` ✓ |
    | S7 skills | caller-supplied id, pass-through |
@@ -37,7 +37,7 @@ Three observations forced the decision:
 
    Random URNs make every emit a different document; round-trip tests pass only because they ignore `@id` differences. JCS canonicalisation (PRD-006 §8.2) cannot sign credentials whose `@id` changes between emits; the proof block is supposed to bind a stable identifier.
 
-2. **The viewer (S12) needs to follow links.** The Linked-Object Browser dispatches by `@type` and renders properties. If a property points at `urn:uuid:abc-…`, the viewer has no path to follow; the link is a dead end. If the same property points at `urn:agentbox:credential:npub1foo:sha256-12-deadbeef`, the resolver knows to look in the pod's credentials collection.
+2. **The viewer (S12) needs to follow links.** The Linked-Object Browser dispatches by `@type` and renders properties. If a property points at `urn:uuid:abc-…`, the viewer has no path to follow; the link is a dead end. If the same property points at `urn:agentbox:credential:01234567…:sha256-12-deadbeef`, the resolver knows to look in the pod's credentials collection.
 
 3. **External monitoring needs a stable identity for every emitted thing.** "Show me every credential this agent has ever issued" is impossible when credentials are URN-UUIDs that change on every emit. With content-addressed URIs, the same credential is always the same name, even when re-emitted, even when the agent identity changes.
 
@@ -71,12 +71,12 @@ We adopt the URI grammar below, ship `management-api/lib/uris.js` as the single 
 
 ```
 URI            ::= identity-uri | name-uri
-identity-uri   ::= "did:nostr:" npub
+identity-uri   ::= "did:nostr:" pubkey-hex      ; BIP-340 x-only, 64 lc hex
 name-uri       ::= "urn:agentbox:" kind ":" [scope ":"] local
 kind           ::= "pod" | "envelope" | "credential" | "mandate" | "receipt"
                  | "activity" | "event" | "mcp" | "memory" | "skill"
                  | "adr" | "prd" | "ddd" | "thing" | "dataset" | "bead" | "meta"
-scope          ::= npub                     ; required for owner-scoped kinds
+scope          ::= pubkey-hex               ; required for owner-scoped kinds
 local          ::= content-hash | slug
 content-hash   ::= "sha256-12-" 12HEXDIGIT  ; first 12 hex chars of SHA-256
 slug           ::= [A-Za-z0-9._-]{1,96}     ; ASCII slug
@@ -86,7 +86,7 @@ Three minting rules are codified in `management-api/lib/uris.js` and enforced by
 
 - **R1 — Content-addressed.** When a payload uniquely determines the resource (`credentialSubject`, an activity fingerprint, a Nostr envelope's signed bytes), `<local>` is `sha256-12-<first 12 hex chars of SHA-256(stableStringify(payload))>`. Same input → same URI, every time.
 
-- **R2 — Scope-bearing.** When the resource is owned by an agent (every credential, every mandate, every receipt, every pod resource, every envelope, every activity), `<scope>` is the owner's npub. e.g. `urn:agentbox:credential:npub1abc:sha256-12-deadbeef`.
+- **R2 — Scope-bearing.** When the resource is owned by an agent (every credential, every mandate, every receipt, every pod resource, every envelope, every activity), `<scope>` is the owner's BIP-340 x-only pubkey hex. e.g. `urn:agentbox:credential:01234567…:sha256-12-deadbeef`.
 
 - **R3 — Stable-on-identity.** When the resource is a static thing with a public name (a skill id, an MCP server id, an ADR number), `<local>` is its public, immutable label and there is no `<scope>`. e.g. `urn:agentbox:skill:console-buddy`, `urn:agentbox:mcp:playwright`, `urn:agentbox:adr:013`.
 
@@ -113,7 +113,7 @@ Every emitter under `management-api/middleware/linked-data/surfaces/` calls `uri
 | S1 pods | `pod` | content-addressed, owner-scoped |
 | S2 nostr | `envelope` | content-addressed, owner-scoped |
 | S3 credentials | `credential` | content-addressed on `credentialSubject`, owner-scoped to issuer |
-| S4 DID Documents | identity-uri (`did:nostr:<npub>`) | not minted; passed through |
+| S4 DID Documents | identity-uri (`did:nostr:<pubkey>`) | not minted; passed through |
 | S5 provenance | `activity` | content-addressed on action+slot+operation+input+output, owner-scoped |
 | S6 MCP descriptors | `mcp` | stable on serverId |
 | S7 skills | `skill` | stable on skill id |
@@ -143,7 +143,7 @@ The resolver is always available, regardless of `[linked_data].enabled`. URI uni
 
 - `urn:agentbox:credential:…` resolves only when S3 is enabled.
 - `urn:agentbox:event:…` resolves only when S5 is enabled.
-- `did:nostr:<npub>` resolves only when S4 (DID Documents) is enabled.
+- `did:nostr:<pubkey>` resolves only when S4 (DID Documents) is enabled.
 
 The resolver responds with 404 + a hint pointing at the manifest section to enable.
 
@@ -165,7 +165,7 @@ No core changes; new surfaces and external integrators can extend the grammar wi
 - **Stable signatures.** S3 credentials and S8 payments now satisfy JCS round-trip with deterministic `@id`s. The proof block binds a meaningful identifier, not a freshly-rolled UUID.
 - **Viewer can navigate.** S12 panes can follow links between surfaces (a credential's `evidence` points at a mandate URI; the resolver finds the mandate).
 - **Deduplication is automatic.** Re-emitting the same payload yields the same URI, so external indexes don't double-count.
-- **Identity has one canonical anchor.** `did:nostr:<npub>` is the agent's identity URI everywhere. Pod resources, envelopes, credentials, and events all carry the same agent scope.
+- **Identity has one canonical anchor.** `did:nostr:<pubkey>` is the agent's identity URI everywhere. Pod resources, envelopes, credentials, and events all carry the same agent scope.
 - **Operator-friendly resolution.** A single route (`/v1/uri/`) replaces ad-hoc per-surface lookup logic. Tools that follow URIs by HTTP have one entry point.
 - **URI uniqueness survives backend swaps.** A URI minted under `local-solid-rs` keeps its identity when the operator switches to `external` pods; only the resolver's redirect target changes.
 

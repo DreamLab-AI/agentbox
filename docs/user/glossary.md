@@ -212,11 +212,11 @@ flowchart LR
   `nostr-rs-relay` (external-agent messaging + pod-inbox bridge),
   `openai/privacy-filter` (PII governance). With Sprint 6's `did:nostr`
   absorption, every layer references a single canonical identity:
-  `did:nostr:<npub>`. No third-party broker. See the
+  `did:nostr:<pubkey>`. No third-party broker. See the
   [README top section](../../README.md#sovereign-data-stack).
 - **did:nostr** — the DID method (Tier 1 + Tier 3 with `alsoKnownAs`) that
   maps a Nostr npub to a resolvable DID document. Served by `solid-pod-rs`
-  at `GET /did:nostr:<npub>` after the Sprint 6 upstream absorption
+  at `GET /did:nostr:<pubkey>` after the Sprint 6 upstream absorption
   ([ADR-010 §Upstream absorption log](../reference/adr/ADR-010-rust-solid-pod-adoption.md#upstream-absorption-log-sprint-5-9)).
   WAC policies can reference the DID directly; the pod validates against
   the same key the relay accepted under NIP-42.

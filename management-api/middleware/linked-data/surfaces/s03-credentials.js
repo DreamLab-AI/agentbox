@@ -42,7 +42,7 @@ module.exports = {
       ? payload.id
       : uris.mint({
           kind: 'credential',
-          npub: payload.issuer || agentDid,
+          pubkey: payload.issuer || agentDid,
           payload: payload.credentialSubject || payload.subject,
         });
 

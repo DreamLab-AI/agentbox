@@ -18,7 +18,7 @@
  *   // Wrap an adapter call:
  *   const result = await encoder.dispatch({
  *     slot: 'pods', operation: 'write', payload: { … },
- *     context: { agent: 'did:nostr:npub1…' },
+ *     context: { agent: 'did:nostr:<pubkey>' },
  *     adapterCall: () => adapter.write(encoded),
  *   });
  *
@@ -47,7 +47,7 @@ class LinkedDataEncoder {
    * @param {object} opts.resolver — ContextResolver instance (booted)
    * @param {Map<string, object>} opts.surfaces — slot → surface module
    * @param {object} [opts.logger]
-   * @param {string} [opts.agentDid] — `did:nostr:npub1…` of this container's agent
+   * @param {string} [opts.agentDid] — `did:nostr:<pubkey-hex>` of this container's agent
    */
   constructor({ manifest, resolver, surfaces, logger, agentDid } = {}) {
     if (!manifest) throw new Error('LinkedDataEncoder requires manifest');

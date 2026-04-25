@@ -44,7 +44,7 @@ Each gate accepts `on`, `emit`, or `off`. A surface marked `on` is bidirectional
 ## Why turn it on
 
 - An external integrator can dereference `did:nostr:<your-npub>` → DID Document → pod → resource representations and reach a complete description of the agent without bespoke code.
-- The same `did:nostr:<npub>` signs every Nostr envelope, every Verifiable Credential, every payment receipt. The chain is verifiable end-to-end.
+- The same `did:nostr:<pubkey>` signs every Nostr envelope, every Verifiable Credential, every payment receipt. The chain is verifiable end-to-end.
 - Schema.org markup means search engines and Solid clients can interpret your agent's outputs without cooperation.
 - W3C VC + ODRL gives agentic-payments mandates a deployed cryptographic-claim ecosystem instead of a bespoke envelope.
 

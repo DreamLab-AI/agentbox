@@ -131,14 +131,14 @@ fail schema validation with E016.
 ### `did:nostr` — the identity loop (Sprint 6 absorption)
 
 Since the Sprint 6 upstream absorption (see ADR-010 upstream-absorption
-log), the pod resolves `did:nostr:<npub>` to a Tier 1 + Tier 3 DID
+log), the pod resolves `did:nostr:<pubkey>` to a Tier 1 + Tier 3 DID
 document whose `verificationMethod` is the same secp256k1 pubkey the
 relay accepts under NIP-42. The `alsoKnownAs` field cross-references the
 npub's pod profile URI, giving the bridge a single resolvable identity
 surface across every stack layer.
 
 Practical consequence for the bridge: WAC policies written by
-`sovereign-bootstrap.py` can now reference `did:nostr:<npub>` directly
+`sovereign-bootstrap.py` can now reference `did:nostr:<pubkey>` directly
 instead of the hex pubkey. When the bridge persists a verified inbound
 event, the WAC check inside `solid-pod-rs` resolves the agent DID to the
 same key the relay's NIP-42 AUTH accepted — no out-of-band identity

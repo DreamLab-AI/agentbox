@@ -66,7 +66,7 @@ function _encodeAgentEvents(payload, agentDid) {
       '@type': 'prov:Activity',
       '@id': uris.isCanonical(e.id) ? e.id : uris.mint({
         kind: 'event',
-        npub: agentDid,
+        pubkey: agentDid,
         payload: { action: e.action || e.type || null, slot: e.slot || null, ts: e.timestamp || null, payload: e.payload || null },
       }),
       'prov:startedAtTime': e.timestamp || new Date().toISOString(),
