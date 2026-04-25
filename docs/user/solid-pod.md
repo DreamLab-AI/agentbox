@@ -24,7 +24,14 @@ by `sovereign-bootstrap.py` were decorative. Container listing returned a
 flat directory index instead of an LDP Basic Container. Atomic-rename
 durability (DDD-003 invariants I01 and I08) did not hold. **solid-pod-rs
 closes that gap.** It ships the full Solid 0.11 surface the existing
-existing client (`management-api/adapters/pods/local-solid-rs.js`) has expected since day one.
+client (`management-api/adapters/pods/local-solid-rs.js`) has expected since day one.
+
+solid-pod-rs is also the home of the JSS Rust crates the team built in
+earlier sprints (did:nostr, NIP-98 Schnorr, webhook signing, rate-limit,
+quota, JSS v0.4 wire compat). Those features are not a separate codebase
+to maintain — they ship as Cargo features on this single binary. The
+`JSS_*` env-var prefix you'll see in `docker exec agentbox env` is
+deliberate backwards compatibility for anyone who learned the older API.
 
 ## What you get
 

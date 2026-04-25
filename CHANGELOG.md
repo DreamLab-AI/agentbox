@@ -4,6 +4,88 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Validator audit + cleanup; QE fleet pass over E001-E041 (2026-04-25)
+
+A three-agent QE pass (tester, code-analyzer, researcher) audited every
+E0XX/W0XX rule in `scripts/agentbox-config-validate.js` against current
+repo reality. Four commits landed the consolidated findings:
+
+**P0 — dead infrastructure removed** (commit `32b521ec`)
+- `E015` retired. The rule gated a `jss-rust` flake input that was never
+  declared. The JSS Rust crate work (did:nostr, NIP-98 Schnorr, webhook
+  signing, rate-limit, quota, JSS v0.4 wire compat) had been absorbed
+  into `solid-pod-rs` as default-on Cargo features when ADR-010 landed,
+  but the placeholder field, schema entry, wizard checkbox, and
+  validator rule were never cleaned up. **No capability was lost** —
+  every JSS feature ships in the agentbox image today via
+  `lib/solid-pod-rs.nix` `defaultFeatures`. ADR-010 §"JSS Rust crate
+  lineage" documents the absorption mapping.
+- `RESERVED_PORTS[8484]` label corrected from `'local JSS pods'` to
+  `'solid-pod-rs'`; `RESERVED_PORTS[5901]` from `'wayvnc'` to `'x11vnc'`.
+  Now matches what `supervisorctl status` and `docker ps` actually print.
+- `management-api/adapters/pods/local-jss.js` renamed to
+  `_solid-http-base.js`; class `LocalJssPodsAdapter` → `SolidHttpPodsAdapter`.
+  The file is a generic Solid HTTP base shared by `local-solid-rs.js`
+  and `external.js` — the JSS-specific name was historical baggage.
+- `relay.implementation = "rnostr"` dropped from the schema enum (no
+  flake supervisor branch wires it up; was never functional).
+- `agentbox.toml` header comment block rewritten — no longer references
+  the retired `local-jss` default or W034.
+
+**P1 — severity recategorisations + logic fixes** (commit `ffc686a5`)
+- `E012 → W012`, `W021 → E021`, `E031 → W031`, `E038 → W038`. W-codes
+  exit 0 with advisory; E-codes block. The renames make the prefix
+  match the actual exit-code semantic the rule has always had.
+- `E018` `.env.example` heuristic dropped — was checking the manifest
+  filename, never matched, was suppressing nothing.
+- `E022` message distinguishes "mode is unset" from explicit `mode="off"`.
+- `E017` fallback `${NAME}_API_KEY` removed (schema makes `env_var`
+  required; fallback was unreachable and silently wrong for gemini and
+  github).
+- `W040` message rewritten to admit oauth on a non-capable provider is
+  silently ignored; no graceful "fall-back to E017" exists.
+- `E037` zai gate added — `consultants.zai` now requires
+  `toolchains.claude` (the `claude-zai` wrapper bundles with that
+  toolchain). Previously zai was silently exempt.
+
+**P2+P3 — gap rules + retired E011** (commit `1847281c`)
+- `E011` retired — duplicated by AJV `additionalProperties:false`
+  (schema layer catches unknown skill keys via E016 first); the
+  hardcoded `KNOWN_SKILLS` snapshot also drifted from the actual corpus.
+  Replacement idea preserved in the docstring (consume `nix build .#skills`
+  artefact when that pipeline lands).
+- `E028` extended: `relay.port` and `privacy_filter.port` collisions
+  with `integrations.solid_pod_rs.port` are now caught.
+- `E030` (new, blocking): `ingress_policy="open"` combined with
+  `external_fanout="bidirectional"` is an unbounded ingress hole.
+- `W039` (new, advisory): `ingress_policy="allowlist"` with empty
+  `allowed_pubkeys` accepts only the local npub — usually a
+  copy-paste error.
+- `W041` (new, advisory): `privacy_filter.policy.<slot>` declares a
+  non-default value while `privacy_filter.enabled=false` — dead
+  config until the master gate flips on. Fires on the shipped
+  manifest because the policy slots are pre-staged.
+
+**Wizard side-effects already pushed earlier** (commits `4a357a56`,
+`fede1178`, `7f031f7a`)
+- Ctrl+C aborts the configurator cleanly (signal trap + propagation
+  through subshell pipelines).
+- Web sign-in (`auth_mode = "oauth"`) for anthropic, openai, zai
+  providers — skip API-key prompt, defer to in-container `claude
+  login` / `codex login` / `claude-zai login`. New advisory `W040`
+  flags oauth on non-capable providers.
+- Validator advisory warnings (W-codes) now show in a non-blocking
+  info box instead of looping the section forever.
+- Codex consultant cascade fixed (E035/E037 chain).
+
+**Net rule surface:** 32 active codes (28 errors + 4 warnings + 4 new
+advisories). 6 retired with documented rationale. 63 jest tests pass.
+The shipped `agentbox.toml` validates clean (rc=0) with one expected
+W041 advisory on the pre-staged privacy policy.
+
+See `docs/reference/adr/ADR-005-pluggable-adapter-architecture.md` for
+the full validation rule index.
+
 ### local-jss removed; solid-pod-rs is the only first-party pod (2026-04-25)
 
 Hard cut. The Python `local-jss` stub at `scripts/solid-pod-server.py` is
