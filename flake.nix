@@ -26,25 +26,9 @@
       "aarch64-darwin"
     ] (system:
       let
-        # Pin xkeyboard-config to 2.41 — versions 2.45+ restructured the
-        # install path (share/X11/xkb → share/xkeyboard-config-2/ + symlink)
-        # which breaks Xorg/Xvnc's internal XKB rules parser in the 21.x
-        # server series. The rules file format is fine, but the server's
-        # compiled-in path resolution fails with the new symlink layout.
-        # Remove this overlay when xorg-server is updated to handle it.
-        xkbPin = final: prev: {
-          xkeyboard-config = prev.xkeyboard-config.overrideAttrs (old: rec {
-            version = "2.41";
-            src = prev.fetchurl {
-              url = "https://xorg.freedesktop.org/archive/individual/data/xkeyboard-config/xkeyboard-config-${version}.tar.xz";
-              sha256 = "sha256-8CzWuVcpXg1QI2o9sVglJWyS9n7x9zvxx3pLF57fco8=";
-            };
-          });
-        };
-
         pkgs = import nixpkgs {
           inherit system;
-          overlays = [ rust-overlay.overlays.default xkbPin ];
+          overlays = [ rust-overlay.overlays.default ];
           config = {
             allowUnfree = true;
             # python3.12-ecdsa is flagged insecure upstream (timing-side-channel
@@ -1346,6 +1330,19 @@ ${ragflowNetworkDecl}
           # for shebangs in npm wrapper scripts (buildNpmPackage outputs)
           mkdir -p /usr/bin 2>/dev/null || true
           ln -sf ${pkgs.coreutils}/bin/env /usr/bin/env 2>/dev/null || true
+
+          # XKB fix: xkeyboard-config 2.45+ uses share/xkeyboard-config-2/
+          # with a symlink at share/X11/xkb. Xorg/Xvnc's internal XKB parser
+          # fails to resolve through this symlink. Copy the real data into
+          # the path the server expects (the compiled-in path is share/X11/xkb).
+          XKB_SRC="${pkgs.xkeyboard-config}/share/xkeyboard-config-2"
+          XKB_DST="${pkgs.xkeyboard-config}/share/X11/xkb-real"
+          if [ -d "$XKB_SRC" ] && [ ! -d "$XKB_DST" ]; then
+            chmod u+w "${pkgs.xkeyboard-config}/share/X11" 2>/dev/null || true
+            rm -f "${pkgs.xkeyboard-config}/share/X11/xkb" 2>/dev/null || true
+            cp -rL "$XKB_SRC" "${pkgs.xkeyboard-config}/share/X11/xkb" 2>/dev/null || true
+          fi
+
           exec ${pkgs.bash}/bin/bash /opt/agentbox/config/entrypoint-unified.sh
         '';
 
