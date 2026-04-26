@@ -9,7 +9,7 @@ vector_db = "ruvector-embedded"
 # classes — `local-*`, `external`, or `off` — see docs/user/configuration.md
 # for the full matrix and trade-offs.
 [adapters]
-beads        = "local-sqlite"
+beads        = "off"
 pods         = "local-solid-rs"
 memory       = "embedded-ruvector"
 events       = "local-jsonl"
