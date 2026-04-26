@@ -710,15 +710,16 @@ default_days = ${toString (relayCfg.retention_days or 30)}
         privacyFilterPackages = lib.optionals privacyFilterEnabled [ privacyFilterPythonEnv ];
 
         desktopPackages = lib.optionals (desktopCfg.enabled or false) (with pkgs; [
-          xorg-server
-          xauth
-          xinit
-          xset
-          xdpyinfo
-          xprop
-          xwininfo
-          setxkbmap
-          xkeyboard_config
+          xorg.xorgserver
+          xorg.xkbcomp
+          xorg.xauth
+          xorg.xinit
+          xorg.xset
+          xorg.xdpyinfo
+          xorg.xprop
+          xorg.xwininfo
+          xorg.setxkbmap
+          xkeyboard-config
           x11vnc
           openbox
           tint2
@@ -782,6 +783,7 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           cp -r ${skillsTree} $out/opt/agentbox/skills
           cp -r ${./scripts} $out/opt/agentbox/scripts
           cp -r ${./config} $out/opt/agentbox/config
+          cp -r ${./https-bridge} $out/opt/agentbox/https-bridge
           cp -r ${./docs} $out/opt/agentbox/docs
           cp -r ${./aisp} $out/opt/agentbox/aisp
           cp ${./agentbox.toml} $out/opt/agentbox/agentbox.toml
@@ -851,7 +853,7 @@ stderr_logfile=/var/log/qgis-mcp.error.log
 
         blenderServiceBlock = ''
 [program:blender-mcp]
-command=${pkgs.python312}/bin/python3 -u /opt/agentbox/skills/blender/addon/server.py
+command=${pythonRuntimeEnv}/bin/python3 -u /opt/agentbox/skills/blender/addon/server.py
 directory=/opt/agentbox/skills/blender/addon
 environment=HOME="/workspace"
 autostart=true
@@ -875,7 +877,8 @@ stderr_logfile=/var/log/jupyter-lab.error.log
 
         desktopBlocks = ''
 [program:xvfb]
-command=${pkgs.xorg-server}/bin/Xvfb :1 -screen 0 ${(desktopCfg.resolution or "1920x1080")}x24 -ac +extension GLX +render -noreset
+command=${pkgs.xorg.xorgserver}/bin/Xvfb :1 -screen 0 ${(desktopCfg.resolution or "1920x1080")}x24 -ac +extension GLX +render -noreset -xkbdir ${pkgs.xkeyboard-config}/share/X11/xkb
+environment=PATH="${pkgs.xorg.xkbcomp}/bin:%(ENV_PATH)s",XKB_CONFIG_ROOT="${pkgs.xkeyboard-config}/share/X11/xkb"
 autostart=true
 autorestart=true
 priority=40
@@ -928,14 +931,9 @@ priority=5
 stdout_logfile=/var/log/bootstrap.log
 stderr_logfile=/var/log/bootstrap.error.log
 
-[program:ruvector]
-command=${ruvectorPkg}/bin/ruvector server --port %(ENV_RUVECTOR_PORT)s --data-dir %(ENV_RUVECTOR_DATA_DIR)s
-environment=HOME="/workspace",RUVECTOR_DATA_DIR="%(ENV_RUVECTOR_DATA_DIR)s",RUVECTOR_PORT="%(ENV_RUVECTOR_PORT)s",AGENTBOX_REQUIRED_FOR_READINESS="true"
-autostart=true
-autorestart=true
-priority=10
-stdout_logfile=/var/log/ruvector.log
-stderr_logfile=/var/log/ruvector.error.log
+# ruvector is a CLI/library tool, not a daemon — available on PATH as 'ruvector'
+# The management-api uses it via embedded-ruvector adapter (sql.js in-process)
+# or external-pg adapter (PostgreSQL connection). No supervisord service needed.
 
 [program:management-api]
 command=${managementApiPkg}/bin/management-api
@@ -1012,7 +1010,7 @@ stderr_logfile=/var/log/playwright-mcp.error.log
 ${lib.optionalString (mediaCfg.imagemagick or false) ''
 
 [program:imagemagick-mcp]
-command=${pkgs.python312}/bin/python3 -u /opt/agentbox/skills/imagemagick/mcp-server/server.py
+command=${pkgs.bash}/bin/bash -c "${pythonRuntimeEnv}/bin/pip install --quiet --target=/tmp/mcp-deps mcp 2>/dev/null; PYTHONPATH=/tmp/mcp-deps exec ${pythonRuntimeEnv}/bin/python3 -u /opt/agentbox/skills/imagemagick/mcp-server/server.py"
 directory=/opt/agentbox/skills/imagemagick/mcp-server
 environment=HOME="/workspace"
 autostart=true
