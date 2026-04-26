@@ -133,10 +133,16 @@ if [ -f /etc/bash.bashrc ]; then
   if ! grep -q "source.*agentbox-aliases" /etc/bash.bashrc 2>/dev/null; then
     echo "source /opt/agentbox/config/agentbox-aliases.sh" >> /etc/bash.bashrc
   fi
+  if ! grep -q "source.*bashrc.agentbox" /etc/bash.bashrc 2>/dev/null; then
+    echo "source /opt/agentbox/config/bashrc.agentbox" >> /etc/bash.bashrc
+  fi
 fi
 if [ -f /etc/zsh/zshrc ]; then
   if ! grep -q "source.*agentbox-aliases" /etc/zsh/zshrc 2>/dev/null; then
     echo "source /opt/agentbox/config/agentbox-aliases.sh" >> /etc/zsh/zshrc
+  fi
+  if ! grep -q "source.*bashrc.agentbox" /etc/zsh/zshrc 2>/dev/null; then
+    echo "source /opt/agentbox/config/bashrc.agentbox" >> /etc/zsh/zshrc
   fi
 fi
 

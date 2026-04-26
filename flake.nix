@@ -2,7 +2,7 @@
   description = "Agentbox — modular sovereign multi-agent container";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     nix2container.url = "github:nlewo/nix2container";
     rust-overlay.url = "github:oxalica/rust-overlay";
@@ -228,8 +228,8 @@
           entry       = "server.js";
           # Prefetched 2026-04-24 against management-api/package-lock.json.
           # Refresh via: nix run nixpkgs#prefetch-npm-deps -- management-api/package-lock.json
-          # Prefetched 2026-04-25. Refresh: nix run nixpkgs#prefetch-npm-deps -- management-api/package-lock.json
-          npmDepsHash = "sha256-1xqNibe3Txjpd+n15TBhTjwwk53ZdkK1NsjP5C8Soc8=";
+          # Prefetched 2026-04-26. Refresh: nix run nixpkgs#prefetch-npm-deps -- management-api/package-lock.json
+          npmDepsHash = "sha256-S6XkG8YM8IQGoafVkOpYw/u4fC6wf3axBBcX0WjYAAA=";
         };
 
         # 2. mcp/nostr-bridge — sovereign_mesh service; 2 deps (nostr-tools, ws)
@@ -261,7 +261,7 @@
           # QE audit P0: `npx --yes tsc` attempts to fetch typescript from npm
           # which fails in the Nix sandbox (network disabled). Provide tsc via
           # nativeBuildInputs instead — typescript comes from nixpkgs, not npm.
-          extraBuildInputs = [ pkgs.nodePackages.typescript ];
+          extraBuildInputs = [ pkgs.typescript ];
           buildPhaseExtra  = ''
             export HOME="$TMPDIR"
             tsc --project tsconfig.json
@@ -305,7 +305,7 @@
           src              = ./skills/comfyui/mcp-server;
           entry            = "server.js";
           skipLoadCheck    = true;
-          extraBuildInputs = [ pkgs.python3 pkgs.nodePackages.node-gyp ];
+          extraBuildInputs = [ pkgs.python3 pkgs.node-gyp ];
           extraEnv         = { npm_config_build_from_source = "true"; };
           # Prefetched 2026-04-24. Refresh: nix run nixpkgs#prefetch-npm-deps -- skills/comfyui/mcp-server/package-lock.json
           npmDepsHash = "sha256-3OchWVs/H+swo4KzBcicvs0+4FW8RVNDqc4DrmC81Xc=";
@@ -370,12 +370,35 @@
           pkg-config
           uv
           pandoc
+
+          # Modern CLI replacements (DX tooling for agentic engineers)
+          eza             # modern ls with git integration
+          bat             # cat with syntax highlighting
+          delta           # better git diff viewer
+          du-dust         # visual disk usage (du replacement)
+          procs           # ps replacement with colour + tree
+          sd              # sed replacement with simpler syntax
+          choose          # cut replacement, human-friendly field selection
+          tokei           # fast code statistics
+          bottom          # resource monitor (btop alternative)
+          zoxide          # smart cd that learns directories
+          starship        # cross-shell prompt (git, nix, rust, node indicators)
+          atuin           # shell history with fuzzy search + sync
+          fzf             # fuzzy finder — Ctrl-R, Ctrl-T, piping
+          direnv          # per-directory environment variables
+          nushell         # structured data shell (JSON/TOML piping)
+
+          # Dev essentials
+          yq-go           # YAML processor (jq for YAML)
+          hyperfine       # command benchmarking
+          watchexec       # file watcher + command runner
+          just            # modern make replacement
         ];
 
         nodeEnvPackages = with pkgs; [
           nodejs_20
-          nodePackages.npm
-          nodePackages.yarn
+          nodejs_20
+          yarn
           pnpm
         ];
 
@@ -718,14 +741,14 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           xorg.xprop
           xorg.xwininfo
           xorg.setxkbmap
-          xkeyboard-config
+          xkeyboard_config
           openbox
           tint2
           xterm
-          xfce4-terminal
+          xfce.xfce4-terminal
           dejavu_fonts
           liberation_ttf
-          noto-fonts
+          noto-fonts-cjk-sans
           fontconfig
           xdotool
           xclip
@@ -878,8 +901,8 @@ stderr_logfile=/var/log/jupyter-lab.error.log
         # the XKB path mismatch that breaks standalone Xvfb in nix2container.
         desktopBlocks = ''
 [program:xvnc]
-command=${pkgs.tigervnc}/bin/Xvnc :1 -geometry ${(desktopCfg.resolution or "1920x1080")} -depth 24 -SecurityTypes None -ac -xkbdir ${pkgs.xkeyboard-config}/share/X11/xkb -pn -rfbport 5901 -localhost
-environment=PATH="${pkgs.xorg.xkbcomp}/bin:%(ENV_PATH)s",XKB_CONFIG_ROOT="${pkgs.xkeyboard-config}/share/X11/xkb"
+command=${pkgs.tigervnc}/bin/Xvnc :1 -geometry ${(desktopCfg.resolution or "1920x1080")} -depth 24 -SecurityTypes None -ac -xkbdir ${pkgs.xkeyboard_config}/share/X11/xkb -pn -rfbport 5901 -localhost
+environment=PATH="${pkgs.xorg.xkbcomp}/bin:%(ENV_PATH)s",XKB_CONFIG_ROOT="${pkgs.xkeyboard_config}/share/X11/xkb"
 autostart=true
 autorestart=true
 priority=40
@@ -1358,7 +1381,7 @@ ${ragflowNetworkDecl}
           "NOSTR_BRIDGE_ENABLED=${boolEnv (sovereignCfg.nostr_bridge or false)}"
           "NOSTR_BRIDGE_PORT=9740"
           "NOSTR_RELAYS=wss://relay.damus.io,wss://relay.primal.net"
-          "XKB_CONFIG_ROOT=${pkgs.xkeyboard-config}/share/X11/xkb"
+          "XKB_CONFIG_ROOT=${pkgs.xkeyboard_config}/share/X11/xkb"
           "ENABLE_DESKTOP=${boolEnv (desktopCfg.enabled or false)}"
           "ENABLE_AGENT_BROWSER=${boolEnv (browserCfg.agent_browser or false)}"
           "ENABLE_PLAYWRIGHT=${boolEnv (browserCfg.playwright or false)}"
