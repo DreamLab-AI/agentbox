@@ -16,10 +16,10 @@ services:
       start_period: 60s
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    ports:
-      - "9090:9090"
-      - "9700:9700"
-      - "8484:8484"
+#     ports:
+#       - "9090:9090"
+#       - "9700:9700"
+#       - "8484:8484"
     environment:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - GITHUB_TOKEN=${GITHUB_TOKEN:-}
@@ -39,8 +39,6 @@ services:
       - ruvector-data:/var/lib/ruvector
       - solid-data:/var/lib/solid
       - sovereign-identities:/var/lib/agentbox/identities
-    security_opt:
-      - no-new-privileges:true
 
 volumes:
   ruvector-data:

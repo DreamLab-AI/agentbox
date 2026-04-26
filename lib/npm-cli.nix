@@ -148,7 +148,7 @@ in
 
         nativeBuildInputs = [
           pkgs.nodejs_20
-          pkgs.nodePackages.npm
+          pkgs.nodejs_20
           pkgs.cacert
         ];
 

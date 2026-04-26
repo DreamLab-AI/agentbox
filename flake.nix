@@ -107,7 +107,7 @@
           pkgName         = "@claude-flow/cli";
           version         = "3.5.80";
           sha256          = "sha256-7egZQtT2iKVXtrPWByc1zk9/TLbcDKO1nr+B+sqeQ88=";
-          nodeModulesHash = "sha256-UBbd8N7156l5soykH0g5vnt7YVepcXXjOnFhqCI3YRM=";
+          nodeModulesHash = "sha256-ljyvHQgDBD7x+M2w64lxTkqmsKueUaiEklmjFsbARIc=";
           bin             = "claude-flow";
         };
 
@@ -187,7 +187,7 @@
           pkgName         = "@mermaid-js/mermaid-cli";
           version         = "11.12.0";
           sha256          = "sha256-xZ4rfsAQ16J6RbSt3N6Xl4xkSx6ZZgnjlxTqUtiSaDc=";
-          nodeModulesHash = "sha256-CTNZuNozDa0ceiY0U1ijDpovY//ZXI+D2VeHHhK3vv4=";
+          nodeModulesHash = "sha256-yPmuT8irpdqxR3RrGcm43eT/Dnz56VURy0EWi2jZVQg=";
           bin             = "mmdc";
         };
 
@@ -375,7 +375,7 @@
           eza             # modern ls with git integration
           bat             # cat with syntax highlighting
           delta           # better git diff viewer
-          du-dust         # visual disk usage (du replacement)
+          dust         # visual disk usage (du replacement)
           procs           # ps replacement with colour + tree
           sd              # sed replacement with simpler syntax
           choose          # cut replacement, human-friendly field selection
