@@ -56,44 +56,10 @@ function verifyNip98Header(header, request) {
     };
   }
 
-  // Structural-only fallback (nostr-tools not installed).
-  const encoded = header.slice('Nostr '.length).trim();
-  if (!encoded) {
-    return null;
-  }
-
-  let event;
-  try {
-    event = decodeBase64Json(encoded);
-  } catch {
-    return null;
-  }
-
-  if (event.kind !== 27235 || typeof event.created_at !== 'number') {
-    return null;
-  }
-
-  const now = Math.floor(Date.now() / 1000);
-  if (Math.abs(now - event.created_at) > 60) {
-    return null;
-  }
-
-  const methodTag = getTag(event, 'method');
-  const urlTag = getTag(event, 'u');
-
-  if (methodTag !== request.method) {
-    return null;
-  }
-
-  if (!urlTag || !(urlTag === requestUrl || urlTag.endsWith(request.url))) {
-    return null;
-  }
-
-  return {
-    mode: 'nip98',
-    pubkey: event.pubkey || null,
-    event,
-  };
+  // FAIL CLOSED: nostr-tools is not available so Schnorr signature
+  // verification cannot be performed. Reject all NIP-98 tokens.
+  // Callers should use API key (Bearer) auth as a fallback.
+  return null;
 }
 
 function verifyBearerHeader(header, validToken) {

@@ -2,7 +2,7 @@
   description = "Agentbox — modular sovereign multi-agent container";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
     flake-utils.url = "github:numtide/flake-utils";
     nix2container.url = "github:nlewo/nix2container";
     rust-overlay.url = "github:oxalica/rust-overlay";
@@ -1330,18 +1330,6 @@ ${ragflowNetworkDecl}
           # for shebangs in npm wrapper scripts (buildNpmPackage outputs)
           mkdir -p /usr/bin 2>/dev/null || true
           ln -sf ${pkgs.coreutils}/bin/env /usr/bin/env 2>/dev/null || true
-
-          # XKB fix: xkeyboard-config 2.45+ uses share/xkeyboard-config-2/
-          # with a symlink at share/X11/xkb. Xorg/Xvnc's internal XKB parser
-          # fails to resolve through this symlink. Copy the real data into
-          # the path the server expects (the compiled-in path is share/X11/xkb).
-          XKB_SRC="${pkgs.xkeyboard-config}/share/xkeyboard-config-2"
-          XKB_DST="${pkgs.xkeyboard-config}/share/X11/xkb-real"
-          if [ -d "$XKB_SRC" ] && [ ! -d "$XKB_DST" ]; then
-            chmod u+w "${pkgs.xkeyboard-config}/share/X11" 2>/dev/null || true
-            rm -f "${pkgs.xkeyboard-config}/share/X11/xkb" 2>/dev/null || true
-            cp -rL "$XKB_SRC" "${pkgs.xkeyboard-config}/share/X11/xkb" 2>/dev/null || true
-          fi
 
           exec ${pkgs.bash}/bin/bash /opt/agentbox/config/entrypoint-unified.sh
         '';
