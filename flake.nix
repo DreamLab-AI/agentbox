@@ -929,7 +929,7 @@ stdout_logfile=/var/log/bootstrap.log
 stderr_logfile=/var/log/bootstrap.error.log
 
 [program:ruvector]
-command=${ruvectorPkg}/bin/ruvector serve --port %(ENV_RUVECTOR_PORT)s --data-dir %(ENV_RUVECTOR_DATA_DIR)s
+command=${ruvectorPkg}/bin/ruvector server --port %(ENV_RUVECTOR_PORT)s --data-dir %(ENV_RUVECTOR_DATA_DIR)s
 environment=HOME="/workspace",RUVECTOR_DATA_DIR="%(ENV_RUVECTOR_DATA_DIR)s",RUVECTOR_PORT="%(ENV_RUVECTOR_PORT)s",AGENTBOX_REQUIRED_FOR_READINESS="true"
 autostart=true
 autorestart=true
@@ -1343,6 +1343,10 @@ ${ragflowNetworkDecl}
         '';
 
         entrypoint = pkgs.writeShellScriptBin "entrypoint" ''
+          # nix2container images lack FHS paths; create /usr/bin/env
+          # for shebangs in npm wrapper scripts (buildNpmPackage outputs)
+          mkdir -p /usr/bin 2>/dev/null || true
+          ln -sf ${pkgs.coreutils}/bin/env /usr/bin/env 2>/dev/null || true
           exec ${pkgs.bash}/bin/bash /opt/agentbox/config/entrypoint-unified.sh
         '';
 
@@ -1361,7 +1365,7 @@ ${ragflowNetworkDecl}
           "RUVECTOR_PORT=9700"
           "MANAGEMENT_API_PORT=9090"
           "MANAGEMENT_API_AUTH_MODE=hybrid"
-          "MANAGEMENT_API_KEY="
+          # MANAGEMENT_API_KEY intentionally not set here — sourced from .env at runtime
           "SOVEREIGN_MESH_ENABLED=${boolEnv (sovereignCfg.enabled or false)}"
           "SOLID_POD_ENABLED=${boolEnv (sovereignCfg.solid_pod or false)}"
           "SOLID_POD_ROOT=/var/lib/solid"
@@ -1370,6 +1374,7 @@ ${ragflowNetworkDecl}
           "NOSTR_BRIDGE_ENABLED=${boolEnv (sovereignCfg.nostr_bridge or false)}"
           "NOSTR_BRIDGE_PORT=9740"
           "NOSTR_RELAYS=wss://relay.damus.io,wss://relay.primal.net"
+          "XKB_CONFIG_ROOT=${pkgs.xkeyboard-config}/share/X11/xkb"
           "ENABLE_DESKTOP=${boolEnv (desktopCfg.enabled or false)}"
           "ENABLE_AGENT_BROWSER=${boolEnv (browserCfg.agent_browser or false)}"
           "ENABLE_PLAYWRIGHT=${boolEnv (browserCfg.playwright or false)}"
