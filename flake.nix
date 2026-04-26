@@ -874,8 +874,8 @@ stderr_logfile=/var/log/qgis-mcp.error.log
 
         blenderServiceBlock = ''
 [program:blender-mcp]
-command=${pythonRuntimeEnv}/bin/python3 -u /opt/agentbox/skills/blender/addon/server.py
-directory=/opt/agentbox/skills/blender/addon
+command=${pkgs.nodejs_20}/bin/node /opt/agentbox/skills/blender/tools/blender-mcp-proxy.js
+directory=/opt/agentbox/skills/blender/tools
 environment=HOME="/workspace"
 autostart=true
 autorestart=true
@@ -996,7 +996,7 @@ ${lib.optionalString ((sovereignCfg.enabled or false) && (sovereignCfg.https_bri
 [program:https-bridge]
 command=${pkgs.nodejs_20}/bin/node /opt/agentbox/https-bridge/https-proxy.js
 directory=/opt/agentbox/https-bridge
-environment=HOME="/workspace",MANAGEMENT_API_PORT="%(ENV_MANAGEMENT_API_PORT)s"
+environment=HOME="/workspace",MANAGEMENT_API_PORT="%(ENV_MANAGEMENT_API_PORT)s",CERT_DIR="/var/lib/https-bridge/certs",SSL_KEY="/var/lib/https-bridge/certs/server.key",SSL_CERT="/var/lib/https-bridge/certs/server.crt"
 autostart=true
 autorestart=true
 priority=32
@@ -1353,6 +1353,19 @@ ${ragflowNetworkDecl}
           # for shebangs in npm wrapper scripts (buildNpmPackage outputs)
           mkdir -p /usr/bin 2>/dev/null || true
           ln -sf ${pkgs.coreutils}/bin/env /usr/bin/env 2>/dev/null || true
+          ln -sf ${pkgs.bash}/bin/sh /bin/sh 2>/dev/null || true
+
+          # Runtime directories for services that need writable state
+          mkdir -p /var/lib/nostr-relay 2>/dev/null || true
+          mkdir -p /var/lib/https-bridge/certs 2>/dev/null || true
+
+          # Pre-generate HTTPS bridge self-signed cert if missing
+          if [ ! -f /var/lib/https-bridge/certs/server.key ]; then
+            ${pkgs.openssl}/bin/openssl req -x509 -newkey rsa:2048 \
+              -keyout /var/lib/https-bridge/certs/server.key \
+              -out /var/lib/https-bridge/certs/server.crt \
+              -days 365 -nodes -subj "/CN=localhost" 2>/dev/null || true
+          fi
 
           exec ${pkgs.bash}/bin/bash /opt/agentbox/config/entrypoint-unified.sh
         '';
