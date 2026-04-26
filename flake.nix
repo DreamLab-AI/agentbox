@@ -26,9 +26,25 @@
       "aarch64-darwin"
     ] (system:
       let
+        # Pin xkeyboard-config to 2.41 — versions 2.45+ restructured the
+        # install path (share/X11/xkb → share/xkeyboard-config-2/ + symlink)
+        # which breaks Xorg/Xvnc's internal XKB rules parser in the 21.x
+        # server series. The rules file format is fine, but the server's
+        # compiled-in path resolution fails with the new symlink layout.
+        # Remove this overlay when xorg-server is updated to handle it.
+        xkbPin = final: prev: {
+          xkeyboard-config = prev.xkeyboard-config.overrideAttrs (old: rec {
+            version = "2.41";
+            src = prev.fetchurl {
+              url = "https://xorg.freedesktop.org/archive/individual/data/xkeyboard-config/xkeyboard-config-${version}.tar.xz";
+              sha256 = "sha256-gTMnoj1cvSJzMVOjkPFI1AI6cSAcsl/reMgnEQNYNGc=";
+            };
+          });
+        };
+
         pkgs = import nixpkgs {
           inherit system;
-          overlays = [ rust-overlay.overlays.default ];
+          overlays = [ rust-overlay.overlays.default xkbPin ];
           config = {
             allowUnfree = true;
             # python3.12-ecdsa is flagged insecure upstream (timing-side-channel
