@@ -971,18 +971,10 @@ priority=30
 stdout_logfile=/var/log/solid-pod.log
 stderr_logfile=/var/log/solid-pod.error.log
 ''}
-${lib.optionalString ((sovereignCfg.enabled or false) && (sovereignCfg.nostr_bridge or false)) ''
-
-[program:nostr-bridge]
-command=${nostrBridgePkg}/bin/nostr-bridge
-directory=/opt/agentbox/mcp/servers
-environment=HOME="/workspace",NOSTR_RELAYS="%(ENV_NOSTR_RELAYS)s",NOSTR_BRIDGE_PORT="%(ENV_NOSTR_BRIDGE_PORT)s",MANAGEMENT_API_PORT="%(ENV_MANAGEMENT_API_PORT)s"
-autostart=true
-autorestart=true
-priority=31
-stdout_logfile=/var/log/nostr-bridge.log
-stderr_logfile=/var/log/nostr-bridge.error.log
-''}
+# nostr-bridge is a library consumed in-process by management-api (see
+# mcp/nostr-bridge/relay-consumer.js header comment). No supervisord block.
+# The [sovereign_mesh].nostr_bridge gate tells management-api to call
+# NostrBridge.connect() at boot, not to start a separate process.
 ${lib.optionalString ((sovereignCfg.enabled or false) && (sovereignCfg.https_bridge or false)) ''
 
 [program:https-bridge]
