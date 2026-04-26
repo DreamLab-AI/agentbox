@@ -37,7 +37,7 @@
             version = "2.41";
             src = prev.fetchurl {
               url = "https://xorg.freedesktop.org/archive/individual/data/xkeyboard-config/xkeyboard-config-${version}.tar.xz";
-              sha256 = "sha256-gTMnoj1cvSJzMVOjkPFI1AI6cSAcsl/reMgnEQNYNGc=";
+              sha256 = "sha256-8CzWuVcpXg1QI2o9sVglJWyS9n7x9zvxx3pLF57fco8=";
             };
           });
         };
