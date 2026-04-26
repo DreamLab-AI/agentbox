@@ -710,17 +710,15 @@ default_days = ${toString (relayCfg.retention_days or 30)}
         privacyFilterPackages = lib.optionals privacyFilterEnabled [ privacyFilterPythonEnv ];
 
         desktopPackages = lib.optionals (desktopCfg.enabled or false) (with pkgs; [
-          xorg.xorgserver
-          xorg.xkbcomp
+          tigervnc              # Xvnc: X server + VNC in one binary (correct XKB paths)
+          xorg.xkbcomp          # runtime keymap compilation
           xorg.xauth
-          xorg.xinit
           xorg.xset
           xorg.xdpyinfo
           xorg.xprop
           xorg.xwininfo
           xorg.setxkbmap
           xkeyboard-config
-          x11vnc
           openbox
           tint2
           xterm
@@ -875,33 +873,28 @@ stdout_logfile=/var/log/jupyter-lab.log
 stderr_logfile=/var/log/jupyter-lab.error.log
         '';
 
+        # Desktop via TigerVNC Xvnc — single binary replaces Xvfb + x11vnc.
+        # Xvnc builds xkbcomp paths into its own derivation closure, avoiding
+        # the XKB path mismatch that breaks standalone Xvfb in nix2container.
         desktopBlocks = ''
-[program:xvfb]
-command=${pkgs.xorg.xorgserver}/bin/Xvfb :1 -screen 0 ${(desktopCfg.resolution or "1920x1080")}x24 -ac +extension GLX +render -noreset -xkbdir ${pkgs.xkeyboard-config}/share/X11/xkb
+[program:xvnc]
+command=${pkgs.tigervnc}/bin/Xvnc :1 -geometry ${(desktopCfg.resolution or "1920x1080")} -depth 24 -SecurityTypes None -ac -xkbdir ${pkgs.xkeyboard-config}/share/X11/xkb -pn -rfbport 5901 -localhost
 environment=PATH="${pkgs.xorg.xkbcomp}/bin:%(ENV_PATH)s",XKB_CONFIG_ROOT="${pkgs.xkeyboard-config}/share/X11/xkb"
 autostart=true
 autorestart=true
 priority=40
-stdout_logfile=/var/log/xvfb.log
-stderr_logfile=/var/log/xvfb.error.log
+stdout_logfile=/var/log/xvnc.log
+stderr_logfile=/var/log/xvnc.error.log
 
 [program:openbox]
 command=${pkgs.openbox}/bin/openbox
 environment=DISPLAY=":1",HOME="/workspace"
 autostart=true
 autorestart=true
+startsecs=3
 priority=41
 stdout_logfile=/var/log/openbox.log
 stderr_logfile=/var/log/openbox.error.log
-
-[program:x11vnc]
-command=${pkgs.x11vnc}/bin/x11vnc -display :1 -rfbport 5901 -localhost -forever -shared -nopw -xkb
-environment=DISPLAY=":1",HOME="/workspace"
-autostart=true
-autorestart=true
-priority=42
-stdout_logfile=/var/log/x11vnc.log
-stderr_logfile=/var/log/x11vnc.error.log
         '';
 
         supervisorText = ''
