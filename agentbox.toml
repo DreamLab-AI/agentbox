@@ -23,6 +23,21 @@ https_bridge = true
 publish_agent_events = true
 telegram_mirror = true
 
+# ── Operator identity (optional) ────────────────────────────────────────────────
+# The human operator's Nostr identity. When set, this pubkey is:
+#   - Added to the relay allowlist (can publish events to the embedded relay)
+#   - Granted operator-level access to management API via NIP-98
+#   - Tagged as the delegator on NIP-26 agent delegations
+#   - Used as the WebID owner in Solid pod ACLs
+# If omitted, the agentbox runs in autonomous mode (self-signed identity only).
+# The private key is NEVER stored in agentbox.toml — pass it via env var
+# OPERATOR_NOSTR_PRIVKEY or use NIP-07/NIP-46 remote signing.
+[sovereign_mesh.operator]
+pubkey_hex = ""                        # 64-char hex secp256k1 pubkey
+npub       = ""                        # bech32 npub (alternative to hex; one is sufficient)
+display_name = ""                      # human-readable name for event tags
+relay_urls = []                        # operator's preferred relays for fan-out
+
 # ── Embedded Nostr relay (PRD-004 / ADR-009 / DDD-003) ──────────────────────────
 # Gives external agents and humans a durable path to talk to internal agents.
 # Every signature-verified event targeting a local npub is persisted to the
@@ -40,7 +55,7 @@ bind             = "127.0.0.1"
 expose           = false
 data_dir         = "/var/lib/nostr-relay"
 ingress_policy   = "allowlist"        # allowlist | signed-only | open
-allowed_pubkeys  = []                  # empty = self only (own npub)
+allowed_pubkeys  = []                  # empty = self only (own npub); operator pubkey auto-added at boot
 allowed_kinds    = [1, 1059, 30078, 27235, 38000, 38100]
 pod_bridge       = true
 external_fanout  = "off"               # bidirectional | publish-only | subscribe-only | off
