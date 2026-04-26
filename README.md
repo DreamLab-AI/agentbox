@@ -2,7 +2,7 @@
 
 <div align="center">
 
-<img src="docs/agentbox.jpg" alt="Agentbox" width="420" />
+<img src="docs/agentbox.png" alt="Agentbox" width="420" />
 
 ### A manifest-driven, reproducible runtime for sovereign software agents.
 
@@ -117,35 +117,35 @@ Main operator docs:
 
 ### Build and composition
 
-| Capability | Summary |
-|---|---|
-| Reproducible builds | Nix flake + pinned hashes + content-addressed image generation. |
-| Manifest-gated composition | `agentbox.toml` controls what is built and what is run. |
-| Runtime/image parity | Compose, supervisor, image contents, and probes all come from the same manifest. |
-| Immutable bootstrap | No package-manager bootstrapping in the normal startup path. |
-| Multi-arch publishing | Local and registry workflows support `amd64` and `arm64`. |
+| Capability                 | Summary                                                                          |
+| -------------------------- | -------------------------------------------------------------------------------- |
+| Reproducible builds        | Nix flake + pinned hashes + content-addressed image generation.                  |
+| Manifest-gated composition | `agentbox.toml` controls what is built and what is run.                        |
+| Runtime/image parity       | Compose, supervisor, image contents, and probes all come from the same manifest. |
+| Immutable bootstrap        | No package-manager bootstrapping in the normal startup path.                     |
+| Multi-arch publishing      | Local and registry workflows support `amd64` and `arm64`.                    |
 
 ### Runtime architecture
 
-| Capability | Summary |
-|---|---|
-| Five-slot adapters | Durable integration seams for beads, pods, memory, events, and orchestration. |
-| Standalone or federated | Same repo and runtime can self-host or plug into a host mesh. |
-| Probe contract | `/livez`, `/ready`, and `/health` are first-class runtime signals. |
-| Observability | Structured logs, Prometheus metrics, OTLP export, and runtime metadata. |
+| Capability                 | Summary                                                                               |
+| -------------------------- | ------------------------------------------------------------------------------------- |
+| Five-slot adapters         | Durable integration seams for beads, pods, memory, events, and orchestration.         |
+| Standalone or federated    | Same repo and runtime can self-host or plug into a host mesh.                         |
+| Probe contract             | `/livez`, `/ready`, and `/health` are first-class runtime signals.              |
+| Observability              | Structured logs, Prometheus metrics, OTLP export, and runtime metadata.               |
 | Generated runtime contract | Image selection, ports, hardening, and sidecars are all derived, not hand-maintained. |
 
 ### Sovereign stack
 
-| Layer | Summary |
-|---|---|
-| Identity | `did:nostr:<pubkey>` as the primary externally visible agent identifier. |
-| Pods | `solid-pod-rs` with Solid Protocol 0.11, WAC 2.0, rate limiting, quota, and webhook signing. |
-| Relay | Embedded Nostr relay plus inbox/outbox bridge. |
-| Privacy | Local `openai/privacy-filter` sidecar on adapter dispatch boundaries. |
-| Linked data | JSON-LD 1.1 surfaces across operational and domain resources. |
-| Canonical URIs | Stable names for emitted entities with a resolver endpoint. |
-| Browser | Linked-data viewer that follows `@id` and renders resources by pane. |
+| Layer          | Summary                                                                                        |
+| -------------- | ---------------------------------------------------------------------------------------------- |
+| Identity       | `did:nostr:<pubkey>` as the primary externally visible agent identifier.                     |
+| Pods           | `solid-pod-rs` with Solid Protocol 0.11, WAC 2.0, rate limiting, quota, and webhook signing. |
+| Relay          | Embedded Nostr relay plus inbox/outbox bridge.                                                 |
+| Privacy        | Local `openai/privacy-filter` sidecar on adapter dispatch boundaries.                        |
+| Linked data    | JSON-LD 1.1 surfaces across operational and domain resources.                                  |
+| Canonical URIs | Stable names for emitted entities with a resolver endpoint.                                    |
+| Browser        | Linked-data viewer that follows `@id` and renders resources by pane.                         |
 
 ### Newer linked-data and URI work
 
@@ -160,23 +160,23 @@ This matters because the runtime now does more than expose APIs. It exposes a co
 
 ### Agent and MCP layer
 
-| Capability | Summary |
-|---|---|
-| Consultant tier | Named consultant MCPs for Codex, Gemini, Z.AI, Perplexity, and DeepSeek. |
-| MCP support | Local MCP servers and external MCP-facing capabilities. |
-| Browser automation | Playwright and agent-browser paths. |
-| Media and spatial tooling | ComfyUI, ImageMagick, FFmpeg, Blender, QGIS, and 3DGS support paths. |
-| QE/orchestration tooling | ruflo, claude-flow, agentic-qe, nagual-qe, and codebase-memory integrations. |
+| Capability                | Summary                                                                      |
+| ------------------------- | ---------------------------------------------------------------------------- |
+| Consultant tier           | Named consultant MCPs for Codex, Gemini, Z.AI, Perplexity, and DeepSeek.     |
+| MCP support               | Local MCP servers and external MCP-facing capabilities.                      |
+| Browser automation        | Playwright and agent-browser paths.                                          |
+| Media and spatial tooling | ComfyUI, ImageMagick, FFmpeg, Blender, QGIS, and 3DGS support paths.         |
+| QE/orchestration tooling  | ruflo, claude-flow, agentic-qe, nagual-qe, and codebase-memory integrations. |
 
 ### Security and operations
 
-| Capability | Summary |
-|---|---|
-| Hardened baseline | Default container privileges are minimal and explicit. |
-| Feature exception model | Security deltas are declared in the manifest rather than silently accumulated. |
-| Secret hygiene | Management keys and sovereign identity material are not shipped as default literals. |
-| Backup and restore | Runtime state can be exported and restored using the project tooling. |
-| Remote operations | Provisioning and remote operation helpers exist for OCI, Fly, Hetzner, and bare targets. |
+| Capability              | Summary                                                                                  |
+| ----------------------- | ---------------------------------------------------------------------------------------- |
+| Hardened baseline       | Default container privileges are minimal and explicit.                                   |
+| Feature exception model | Security deltas are declared in the manifest rather than silently accumulated.           |
+| Secret hygiene          | Management keys and sovereign identity material are not shipped as default literals.     |
+| Backup and restore      | Runtime state can be exported and restored using the project tooling.                    |
+| Remote operations       | Provisioning and remote operation helpers exist for OCI, Fly, Hetzner, and bare targets. |
 
 ## Architecture
 
@@ -261,13 +261,13 @@ Deeper reading:
 
 ## Platforms
 
-| Target | Build | Run | Notes |
-|---|---|---|---|
-| Linux x86_64 | Native | Native | Full support, including the richest local feature set |
-| Linux aarch64 | Native | Native | Supported, subject to feature-specific gates |
-| macOS | Compose/dev tooling | Docker Desktop/OrbStack/Colima | Usually CPU or remote-GPU paths |
-| Windows | Compose/dev tooling | Docker Desktop + WSL2 | WSL2 is the practical path |
-| Remote Linux | Native or registry | Native | OCI/Fly/Hetzner/bare workflows supported |
+| Target        | Build               | Run                            | Notes                                                 |
+| ------------- | ------------------- | ------------------------------ | ----------------------------------------------------- |
+| Linux x86_64  | Native              | Native                         | Full support, including the richest local feature set |
+| Linux aarch64 | Native              | Native                         | Supported, subject to feature-specific gates          |
+| macOS         | Compose/dev tooling | Docker Desktop/OrbStack/Colima | Usually CPU or remote-GPU paths                       |
+| Windows       | Compose/dev tooling | Docker Desktop + WSL2          | WSL2 is the practical path                            |
+| Remote Linux  | Native or registry  | Native                         | OCI/Fly/Hetzner/bare workflows supported              |
 
 See:
 
@@ -284,7 +284,7 @@ See:
 - [Configuration](docs/user/configuration.md)
 - [Running](docs/user/running.md)
 - [Providers](docs/user/providers.md)
-- [Backup & restore](docs/user/backup-restore.md)
+- [Backup &amp; restore](docs/user/backup-restore.md)
 - [Troubleshooting](docs/user/troubleshooting.md)
 
 ### Sovereign stack and linked data
