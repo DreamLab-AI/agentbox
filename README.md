@@ -2,7 +2,7 @@
 
 <div align="center">
 
-<img src="docs/agentbox.png" alt="Agentbox" width="420" />
+<img src="docs/agentbox.png" alt="Agentbox" width="1920" />
 
 ### A manifest-driven, reproducible runtime for sovereign software agents.
 
