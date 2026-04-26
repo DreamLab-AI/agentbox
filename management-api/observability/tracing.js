@@ -6,7 +6,6 @@
 const { NodeSDK } = require('@opentelemetry/sdk-node');
 const { getNodeAutoInstrumentations } = require('@opentelemetry/auto-instrumentations-node');
 const { OTLPTraceExporter } = require('@opentelemetry/exporter-trace-otlp-http');
-const { NoopTracerProvider } = require('@opentelemetry/api');
 
 let sdk = null;
 let tracerProvider = null;
@@ -14,15 +13,14 @@ let tracerProvider = null;
 /**
  * Initialize OpenTelemetry tracing
  * If AGENTBOX_OTLP_ENDPOINT is set, exports to that endpoint
- * Otherwise registers a no-op tracer
+ * Otherwise uses a no-op tracer (null provider — startSpan returns no-op)
  */
 function initTracing() {
   const endpoint = process.env.AGENTBOX_OTLP_ENDPOINT;
 
   if (!endpoint) {
-    // No-op tracer (no OTLP export)
     console.log('[tracing] AGENTBOX_OTLP_ENDPOINT not set, using no-op tracer');
-    tracerProvider = new NoopTracerProvider();
+    tracerProvider = null;
     return;
   }
 
@@ -41,7 +39,7 @@ function initTracing() {
     console.log(`[tracing] Started OpenTelemetry SDK, exporting to ${endpoint}`);
   } catch (error) {
     console.error('[tracing] Failed to initialize OpenTelemetry:', error.message);
-    tracerProvider = new NoopTracerProvider();
+    tracerProvider = null;
   }
 }
 

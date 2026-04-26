@@ -46,8 +46,13 @@ debug_log.txt
 .env
 .env.local
 .env.*.local
+.env.mad-source
 !.env.example
 !.env.template
+
+# Runtime directories (created by container)
+workspace/
+projects/
 
 # Build artifacts
 dist/

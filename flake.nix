@@ -107,7 +107,7 @@
           pkgName         = "@claude-flow/cli";
           version         = "3.5.80";
           sha256          = "sha256-7egZQtT2iKVXtrPWByc1zk9/TLbcDKO1nr+B+sqeQ88=";
-          nodeModulesHash = "sha256-Gj2qEcu5mqTq+Pl/qObg1C0D63eq6LW5bIcC4sgAQ/o=";
+          nodeModulesHash = "sha256-UBbd8N7156l5soykH0g5vnt7YVepcXXjOnFhqCI3YRM=";
           bin             = "claude-flow";
         };
 
@@ -131,7 +131,7 @@
           pkgName         = "agentic-qe";
           version         = "3.9.15";
           sha256          = "sha256-9CjwZt9bbJCIxyR8qy1snrXdAIAppxMiqwg5NooukVg=";
-          nodeModulesHash = "sha256-bIiH2aTz0ZEOxJVUNDlFE955jiczywwWvVpJvhLjJRw=";
+          nodeModulesHash = "sha256-ZaBxUp2GUu7IZWTVSMaECgfzo+5jXhBTEEXv21Y8NHs=";
           bin             = "aqe";
         };
 
@@ -187,7 +187,7 @@
           pkgName         = "@mermaid-js/mermaid-cli";
           version         = "11.12.0";
           sha256          = "sha256-xZ4rfsAQ16J6RbSt3N6Xl4xkSx6ZZgnjlxTqUtiSaDc=";
-          nodeModulesHash = "sha256-2jYyZtdOYeCc0YtBLGeCY5B3IdQiYTF96Ya0VNXWhv8=";
+          nodeModulesHash = "sha256-CTNZuNozDa0ceiY0U1ijDpovY//ZXI+D2VeHHhK3vv4=";
           bin             = "mmdc";
         };
 
