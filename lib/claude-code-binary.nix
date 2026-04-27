@@ -42,7 +42,7 @@ let
   # lib.fakeHash triggers a build-time error with the exact prefetch command.
   assets = {
     "x86_64-linux" = {
-      sha256 = lib.fakeHash;
+      sha256 = "sha256-zKQwU/BilJSVWWsRtv0bWc95ECrbE7rL5mmX5vrkHko=";
     };
     "aarch64-linux" = {
       sha256 = lib.fakeHash;
