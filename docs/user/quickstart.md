@@ -120,7 +120,7 @@ Key sections:
 - `[skills.*]` — 96-skill catalogue gates
 - `[toolchains]` — core CLIs (claude, ruflo, claude_flow, agentic_qe, gemini_cli, etc.)
 - `[gpu]` — `none` (default, no ollama sidecar) | `ollama-rocm` (ROCm/Vulkan via `/dev/kfd`+`/dev/dri`) | `ollama-cuda` (NVIDIA container runtime, sidecar only) | `local-cuda` (CUDA baked into image; required for `gaussian_splatting`)
-- `[desktop]` — Hyprland/Wayland (default) or X11/openbox
+- `[desktop]` — TigerVNC Xvnc desktop (access via SSH tunnel to port 5902)
 - `[observability]` — metrics port, OTLP endpoint, log level
 - `[providers.*]` — per-provider API-key gates
 
@@ -313,18 +313,18 @@ graph TB
     SUP --> SEAL
     API --> MET
     SEAL -->|"touches sentinel"| API
-    HOST["Host"] -->|":9090"| API
-    HOST -->|":9091"| MET
-    HOST -->|":8484"| SOLID
+    HOST["Host (localhost only)"] -->|"127.0.0.1:9190"| API
+    HOST -->|"127.0.0.1:9191"| MET
+    HOST -->|"127.0.0.1:8484"| SOLID
 ```
 
 From the host:
 
 ```bash
-curl http://localhost:9090/health
-curl http://localhost:9090/v1/meta        # adapter contract versions + image hash
-curl http://localhost:9091/metrics        # Prometheus — scrape this
-curl http://localhost:9700/health
+# Via SSH tunnel (ports are localhost-only on host)
+curl http://localhost:9190/health
+curl http://localhost:9190/v1/meta        # adapter contract versions + image hash
+curl http://localhost:9191/metrics        # Prometheus — scrape this
 curl http://localhost:8484/health         # solid-pod-rs
 ```
 
@@ -338,7 +338,82 @@ docker exec agentbox ls -la /workspace/profiles
 docker exec agentbox ls -la /projects
 ```
 
-## 7. Inspect Provisioned Profiles
+## 7. Remote Access & Security
+
+All agentbox ports bind to `127.0.0.1` on the host — they are **not** exposed to the network. Remote access uses SSH tunnels, which provides authentication and encryption without additional VNC passwords or TLS certificates.
+
+```mermaid
+graph LR
+    subgraph laptop["Your Laptop"]
+        VNC["TigerVNC Viewer<br/>localhost:5902"]
+        BROWSER["Browser<br/>localhost:9190"]
+        CLI["SSH Terminal"]
+    end
+    subgraph tunnel["SSH Tunnel (encrypted)"]
+        T1["L5902:localhost:5902"]
+        T2["L9190:localhost:9190"]
+        T3["L8180:localhost:8180"]
+    end
+    subgraph host["Host Machine"]
+        D5902["127.0.0.1:5902"]
+        D9190["127.0.0.1:9190"]
+        D8180["127.0.0.1:8180"]
+    end
+    subgraph agentbox["Agentbox Container"]
+        XVNC[":5901 Xvnc"]
+        API[":9090 Management API"]
+        CODE[":8080 Code Server"]
+    end
+    VNC --> T1 --> D5902 --> XVNC
+    BROWSER --> T2 --> D9190 --> API
+    CLI --> T3 --> D8180 --> CODE
+```
+
+### Connect via SSH tunnel
+
+Open all tunnels in one command:
+
+```bash
+ssh -L 5902:localhost:5902 \
+    -L 9190:localhost:9190 \
+    -L 8180:localhost:8180 \
+    -L 8484:localhost:8484 \
+    -N machinelearn@YOUR_HOST_IP
+```
+
+Or use the built-in helper:
+
+```bash
+./agentbox.sh all    # opens VNC + code-server + API + CDP tunnels
+./agentbox.sh vnc    # VNC tunnel only
+```
+
+### VNC desktop
+
+Once the tunnel is open, connect your VNC client to `localhost:5902`:
+
+```bash
+vncviewer localhost:5902          # TigerVNC
+open vnc://localhost:5902         # macOS Screen Sharing
+```
+
+The desktop runs TigerVNC Xvnc with `-SecurityTypes None` (no VNC password) and `-localhost` (container-internal only). Security is provided by the SSH tunnel — no unauthenticated network access is possible.
+
+### Port reference
+
+| Service | Container Port | Host Binding | Access |
+|---------|---------------|-------------|--------|
+| Management API | 9090 | 127.0.0.1:9190 | SSH tunnel, NIP-98 auth |
+| VNC Desktop | 5901 | 127.0.0.1:5902 | SSH tunnel |
+| Code Server | 8080 | 127.0.0.1:8180 | SSH tunnel |
+| Solid Pod | 8484 | 127.0.0.1:8484 | SSH tunnel, WAC auth |
+| SSH | 22 | 127.0.0.1:2223 | Direct SSH |
+| Agent Events | 9700 | 127.0.0.1:9700 | SSH tunnel |
+| Prometheus | 9091 | 127.0.0.1:9191 | SSH tunnel |
+
+All ports are localhost-only on the host. The only way in from the network is through SSH authentication to the host machine.
+
+## 8. Inspect Provisioned Profiles
 
 The runtime creates these profile roots:
 
