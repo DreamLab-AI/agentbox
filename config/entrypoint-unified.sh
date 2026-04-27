@@ -99,7 +99,12 @@ chown -R 1000:1000 \
   /var/log \
   /tmp \
   /etc \
+  /home/devuser \
   2>/dev/null || true
+
+# Claude-flow data directory (hooks write here as devuser)
+mkdir -p /home/devuser/.claude-flow/data 2>/dev/null || true
+chown -R 1000:1000 /home/devuser/.claude-flow 2>/dev/null || true
 
 # ---------------------------------------------------------------------------
 # Phase 2 — Management API key auto-generation
