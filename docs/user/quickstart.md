@@ -8,6 +8,36 @@ This guide reflects the current Agentbox runtime.
 
 Agentbox is a self-contained Linux container that runs coding agents (Claude Code, Ruflo, Gemini, Codex and friends) behind a single management API. Think of it as a shared workstation for agents: one image carries the CLIs, skills, MCP servers and durable-state adapters, and you drive it from your laptop, a remote VM, or a cloud provider. Compared to running agents directly on your machine, Agentbox keeps keys, state, skill trees and model endpoints behind one switchable configuration file.
 
+```mermaid
+graph TB
+    subgraph host["Your host machine"]
+        Laptop["Laptop / VM / Cloud"]
+    end
+    subgraph agentbox["Agentbox container"]
+        API["Management API :9090"]
+        subgraph agents["Agent CLIs"]
+            CC[Claude Code]
+            RF[Ruflo]
+            GM[Gemini]
+            CX[Codex]
+        end
+        subgraph state["Durable state adapters"]
+            BD[Beads]
+            PD[Pods]
+            MM[Memory]
+            EV[Events]
+            OR[Orchestrator]
+        end
+        SK[Skills corpus]
+        MCP[MCP servers]
+    end
+    Laptop -->|"HTTP / docker exec"| API
+    API --> agents
+    API --> state
+    agents --> SK
+    agents --> MCP
+```
+
 **What it solves**
 
 - Agents losing their memory, beads and pod state between sessions because each CLI stashes things in its own home directory.
@@ -30,6 +60,23 @@ whiptail is absent). It walks through every manifest section in order and valida
 your choices after each one — you cannot advance past validation errors.
 
 Sections covered:
+
+```mermaid
+flowchart LR
+    S1["1 Federation"] --> S2["2 Adapters"]
+    S2 --> S3["3 GPU"]
+    S3 --> S4["4 Desktop"]
+    S4 --> S5["5 Toolchains"]
+    S5 --> S6["6 Skills"]
+    S6 --> S7["7 Providers"]
+    S7 --> S8["8 Observability"]
+    S8 --> S9["9 Integrations"]
+    S9 --> S10["10 Sovereign mesh"]
+    S10 --> S11["11 Summary + action"]
+    S11 -->|"validate"| V{{"agentbox-config-validate.js"}}
+    V -->|"errors"| S1
+    V -->|"clean"| DONE["Save / Build / Start"]
+```
 
 1. **Federation** — `standalone` (self-contained, local fallbacks) or `client` (federated with host mesh). If `client`, prompts for `external_url`.
 2. **Adapters** — one radio menu per slot: `beads`, `pods`, `memory`, `events`, `orchestrator`. Each shows the schema-exact enum values for that slot.
@@ -142,6 +189,16 @@ This gate is a **prepared placeholder** — the MCP server and associated toolin
 
 Agentbox is built with Nix (a reproducible package manager). The `flake.nix` file composes packages, skills and toolchains into a Docker image based on your manifest — no Dockerfile, no layer drift between rebuilds. `nix build .#runtime` produces a [nix2container](https://github.com/nlewo/nix2container) OCI manifest at `./result`; the runtime exposes a `copyToDockerDaemon` helper that loads the image into the local Docker daemon via skopeo (no intermediate tarball, no layer copies).
 
+```mermaid
+flowchart LR
+    TOML["agentbox.toml"] --> FLAKE["flake.nix"]
+    LOCK["flake.lock<br/>pinned inputs"] --> FLAKE
+    FLAKE --> N2C["nix2container"]
+    N2C --> OCI["OCI image<br/>at ./result"]
+    OCI -->|"copyToDockerDaemon<br/>(skopeo)"| DAEMON["Local Docker daemon"]
+    DAEMON --> RUN["docker compose up"]
+```
+
 ```bash
 nix build .#runtime
 nix run .#runtime.copyToDockerDaemon
@@ -238,7 +295,28 @@ If the container is using an older image or an older entrypoint, use `agentbox.s
 
 ## 6. Verify Runtime Services
 
-The runtime exposes a small set of HTTP endpoints for liveness, readiness and metrics. These replace the usual "did the container boot?" guesswork with concrete signals. `/ready` goes green only after every required program reaches RUNNING and the `bootstrap-seal` sentinel writes `/run/agentbox/bootstrap.done` — see [ADR-006](../reference/adr/ADR-006-immutable-runtime-bootstrap.md) for the bootstrap contract.
+The runtime exposes a small set of HTTP endpoints for liveness, readiness and metrics. These replace the usual "did the container boot?" guesswork with concrete signals. `/ready` goes green only after every required programme reaches RUNNING and the `bootstrap-seal` sentinel writes `/run/agentbox/bootstrap.done` — see [ADR-006](../reference/adr/ADR-006-immutable-runtime-bootstrap.md) for the bootstrap contract.
+
+```mermaid
+graph TB
+    subgraph container["Agentbox container"]
+        SUP["supervisord (PID 1)"]
+        API["management-api :9090"]
+        SOLID["solid-pod-rs :8484"]
+        MCP["MCP servers"]
+        SEAL["bootstrap-seal"]
+        MET["metrics :9091"]
+    end
+    SUP --> API
+    SUP --> SOLID
+    SUP --> MCP
+    SUP --> SEAL
+    API --> MET
+    SEAL -->|"touches sentinel"| API
+    HOST["Host"] -->|":9090"| API
+    HOST -->|":9091"| MET
+    HOST -->|":8484"| SOLID
+```
 
 From the host:
 

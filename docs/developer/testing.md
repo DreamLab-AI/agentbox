@@ -4,7 +4,25 @@ Agentbox ships ~200 tests across nine categories. This doc covers how to run the
 
 ## Context in one paragraph
 
-Testing in this repo serves two distinct contracts: the **adapter contract** (every impl of every slot must satisfy the same parameterised assertions — [ADR-005 §Service-level objectives](../reference/adr/ADR-005-pluggable-adapter-architecture.md)) and the **runtime contract** (every boot must satisfy [PRD-002](../reference/prd/PRD-002-immutable-runtime-bootstrap.md) / [PRD-003](../reference/prd/PRD-003-runtime-contract-and-container-hardening.md) acceptance criteria, mapped 1:1 onto `tests/runtime-contract/RC-*.sh` scripts). Beyond those two, the suite covers validator semantics, TUI round-tripping, per-feature artifact probes, reproducibility of Nix builds, and the Nostr bridge. Read this file when you add a feature (you will almost certainly need a test in at least two categories) or when a PR fails CI and you need to know which workflow to look at.
+Testing in this repo serves two distinct contracts: the **adapter contract** (every impl of every slot must satisfy the same parameterised assertions — [ADR-005 §Service-level objectives](../reference/adr/ADR-005-pluggable-adapter-architecture.md)) and the **runtime contract** (every boot must satisfy [PRD-002](../reference/prd/PRD-002-immutable-runtime-bootstrap.md) / [PRD-003](../reference/prd/PRD-003-runtime-contract-and-container-hardening.md) acceptance criteria, mapped 1:1 onto `tests/runtime-contract/RC-*.sh` scripts). Beyond those two, the suite covers validator semantics, TUI round-tripping, per-feature artefact probes, reproducibility of Nix builds, and the Nostr bridge. Read this file when you add a feature (you will almost certainly need a test in at least two categories) or when a PR fails CI and you need to know which workflow to look at.
+
+```mermaid
+graph TB
+    subgraph contracts["Two core contracts"]
+        AC["Adapter contract<br/>5 slots x 3 impls<br/>parameterised Jest"]
+        RC["Runtime contract<br/>PRD-002 / PRD-003<br/>bash TAP scripts"]
+    end
+    subgraph supporting["Supporting suites"]
+        VS["Validator semantics"]
+        TUI["TUI round-trip"]
+        AP["Artefact probes"]
+        NB["Nostr bridge"]
+        RB["Reproducibility"]
+        OB["Observability"]
+    end
+    AC -->|"enforces"| ADR["ADR-005<br/>SLOs per slot"]
+    RC -->|"maps to"| PRD["PRD-002 / PRD-003<br/>acceptance criteria"]
+```
 
 ## Glossary
 
@@ -15,6 +33,29 @@ Testing in this repo serves two distinct contracts: the **adapter contract** (ev
 
 ## Suite layout
 
+```mermaid
+graph LR
+    subgraph jest["Jest (JavaScript)"]
+        CONTRACT["contract/"]
+        INTEG["integration/"]
+        SOV["sovereign/"]
+        CONFIG["config/"]
+        OBSERVE["observability/"]
+    end
+    subgraph pytest["pytest (Python)"]
+        TUITEST["tui/"]
+    end
+    subgraph bash["Bash (TAP)"]
+        RCTEST["runtime-contract/"]
+        BOOTTEST["bootstrap/"]
+        CLITEST["cli/"]
+        FLAKETEST["flake/"]
+        PROBES["artefact-probes/"]
+        SECTEST["security/"]
+        REPRO["reproducibility/"]
+    end
+```
+
 ```
 tests/
 ├── contract/              # Adapter contract tests (Jest) — 5 slots × 3 impls
@@ -23,7 +64,7 @@ tests/
 ├── runtime-contract/      # PRD-002/003 end-to-end (bash + Jest)
 ├── config/                # Validator semantic-rule tests (Jest)
 ├── tui/                   # Python TOML round-trip (pytest)
-├── artifact-probes/       # Per-feature binary-exists probes (bash)
+├── artefact-probes/       # Per-feature binary-exists probes (bash)
 ├── bootstrap/             # Entrypoint lifecycle tests (bash)
 ├── cli/                   # agentbox.sh smoke tests (bash)
 ├── flake/                 # Nix eval + generator tests (bash)
@@ -93,6 +134,36 @@ done
 
 ## CI workflows
 
+```mermaid
+flowchart TB
+    subgraph pr_gates["PR gates (block merge)"]
+        CT["contract-tests.yml"]
+        TT["tui-tests.yml"]
+        MV["manifest-validate.yml"]
+        FC["flake-check.yml"]
+        RCT["runtime-contract.yml"]
+        SC["shellcheck.yml"]
+        SS["secret-scan.yml"]
+    end
+    CI["ci.yml<br/>aggregate status"] --> CT
+    CI --> TT
+    CI --> MV
+    CI --> FC
+    CI --> RCT
+    CI --> SC
+    CI --> SS
+
+    subgraph post_merge["Post-merge / scheduled"]
+        BMA["build-multi-arch.yml"]
+        IS["image-scan.yml"]
+        REL["release.yml"]
+        DOC["docs-ci.yml"]
+        NFU["nix-flake-update.yml"]
+    end
+    BMA --> IS
+    BMA -->|"v* tag"| REL
+```
+
 ### PR gates
 
 | Workflow | Trigger | Runs |
@@ -151,7 +222,7 @@ Maps 1:1 to PRD-002/003 acceptance criteria.
 | RC-002-02 | Artifact probes | Every enabled feature's binary exists + runnable |
 | RC-002-03 | Install-lint | Zero `npm install` / `pip install` in entrypoint |
 | RC-002-04 | Legal-write boundary | `/opt/agentbox:ro` mount → boot still reaches readiness |
-| RC-002-05 | Missing-artifact fatal | Unlinking a required binary → supervisord exits non-zero |
+| RC-002-05 | Missing-artefact fatal | Unlinking a required binary → supervisord exits non-zero |
 | RC-003-06 | Image ref local + registry | Both `AGENTBOX_IMAGE_REF` cases reach `/ready` |
 | RC-003-07 | Probes distinct | Delayed-adapter: `/livez` 200 + `/ready` 503; both 200 after |
 | RC-003-08 | Metrics port chain | Manifest → compose → container → host |

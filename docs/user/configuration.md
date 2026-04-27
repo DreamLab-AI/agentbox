@@ -12,6 +12,18 @@ Instead of editing Dockerfiles, compose YAML, supervisor configs and CLI flags s
 - "Which file do I edit to turn off the desktop?" — one answer, always.
 - Invalid combinations caught before a 10-minute Nix build (validator error codes `E001`–`E025`).
 
+```mermaid
+flowchart TB
+    TOML["agentbox.toml<br/>(single manifest)"]
+    TOML -->|"read by"| NIX["flake.nix<br/>image composition"]
+    TOML -->|"read by"| COMP["compose generator<br/>docker-compose.yml"]
+    TOML -->|"read by"| SUP["supervisord generator"]
+    TOML -->|"enforced by"| VAL["agentbox-config-validate.js<br/>30 semantic rules"]
+    TOML -->|"read at boot by"| API["management-api<br/>adapter resolver"]
+    VAL -->|"E001..E031"| ERR["Errors block build"]
+    VAL -->|"W021, W030"| WARN["Warnings advise"]
+```
+
 After editing, run `agentbox config validate` before `agentbox.sh up`. The validator catches 30 classes of misconfiguration (E001-E031 + W021 + W030, E009 reserved) before `nix build` attempts.
 
 ---
@@ -35,6 +47,37 @@ external_url = ""                # Required when mode="client". Base URL of the 
 ## `[adapters]`
 
 Five slots. Each resolves to one of three implementation classes. An `adapter` is the pluggable-backend pattern from [ADR-005](../reference/adr/ADR-005-pluggable-adapter-architecture.md) — every integration that touches durable state goes through one of these slots, so you can run everything locally, federate with a host mesh, or turn the slot off entirely without changing agent code.
+
+```mermaid
+graph LR
+    subgraph slots["Five adapter slots"]
+        B["beads"]
+        P["pods"]
+        M["memory"]
+        E["events"]
+        O["orchestrator"]
+    end
+    subgraph classes["Implementation classes"]
+        L["local-*<br/>self-contained"]
+        X["external<br/>federated"]
+        OFF["off<br/>disabled"]
+    end
+    B --- L
+    B --- X
+    B --- OFF
+    P --- L
+    P --- X
+    P --- OFF
+    M --- L
+    M --- X
+    M --- OFF
+    E --- L
+    E --- X
+    E --- OFF
+    O --- L
+    O --- X
+    O --- OFF
+```
 
 ```toml
 [adapters]
@@ -82,6 +125,17 @@ Validator rule **E006**: `gaussian_splatting = true` requires `backend = "local-
 Local PII redaction sidecar (openai/privacy-filter, 1.5B MoE, Apache-2.0).
 Gated at wizard time — only offered when a GPU is detected or the host has
 ≥ 4 cores and ≥ 6 GB of free memory.
+
+```mermaid
+flowchart LR
+    REQ["Agent request"] --> PF{"Privacy filter<br/>:9092"}
+    PF -->|"strict"| REDACT["Redact PII"]
+    PF -->|"soft"| FLAG["Flag PII"]
+    PF -->|"off"| PASS["Pass through"]
+    REDACT --> ADAPTER["Adapter slot"]
+    FLAG --> ADAPTER
+    PASS --> ADAPTER
+```
 
 ```toml
 [privacy_filter]
@@ -236,6 +290,23 @@ aliases = ["agentbox"]
 ## `[sovereign_mesh]`
 
 Nostr identity + Solid pod + optional CTM mirror.
+
+```mermaid
+flowchart TB
+    subgraph agentbox["Agentbox"]
+        ID["Nostr identity<br/>(npub/nsec)"]
+        RELAY["Embedded relay<br/>:7777"]
+        BRIDGE["Pod-inbox bridge"]
+        POD["solid-pod-rs<br/>:8484"]
+        CTM["Telegram mirror<br/>(optional)"]
+    end
+    EXT["External agents<br/>/ humans"] -->|"NIP-98 signed events"| RELAY
+    RELAY -->|"accepted events"| BRIDGE
+    BRIDGE -->|"persist to mailbox"| POD
+    ID -->|"signs outbound"| RELAY
+    RELAY -->|"fanout"| EXT
+    agentbox -.->|"mirror"| CTM
+```
 
 ```toml
 [sovereign_mesh]

@@ -1,12 +1,20 @@
 # Agentbox documentation
 
-Audience-tiered navigation. Pick the path that matches what you're trying to do.
+Audience-tiered navigation. Pick the path that matches what you are trying to do.
 
-```
-docs/
-├── user/         ← You run agentbox; you want it to work
-├── developer/    ← You change agentbox; you ship PRs
-└── reference/    ← Canonical specs (ADR / PRD / DDD)
+```mermaid
+graph LR
+    subgraph docs["docs/"]
+        U["user/<br/>You run agentbox;<br/>you want it to work"]
+        D["developer/<br/>You change agentbox;<br/>you ship PRs"]
+        R["reference/<br/>Canonical specs<br/>ADR / PRD / DDD"]
+    end
+    U -.->|quickstart| QS[user/quickstart.md]
+    U -.->|config| CF[user/configuration.md]
+    D -.->|architecture| AR[developer/architecture.md]
+    D -.->|adapters| AD[developer/adapters.md]
+    R -.->|ADRs| ADR[reference/adr/]
+    R -.->|PRDs| PRD[reference/prd/]
 ```
 
 ---
@@ -54,7 +62,7 @@ You have a machine, you want agentbox running on it, ideally with as little fuss
 
 ## Developer docs — for contributors
 
-You're adding a feature, implementing an adapter, or investigating a regression.
+You are adding a feature, implementing an adapter, or investigating a regression.
 
 | Architecture | |
 |---|---|
@@ -130,4 +138,5 @@ These are the authoritative sources of truth. Anything in `user/` or `developer/
 - **Relative cross-refs.** Every link is a relative path so the docs tree is portable.
 - **File size limit.** Docs stay under 500 lines; heavier material lives in siblings (`REFERENCE.md`, `EXAMPLES.md`).
 - **Status tags.** ADRs carry `Status:` at the top; PRDs carry a version block.
-- **Audience tiers are strict.** `user/` never references internal-only tooling; `developer/` never reexplains operator basics; `reference/` never loses a canonical claim to narrative drift.
+- **Audience tiers are strict.** `user/` never references internal-only tooling; `developer/` never re-explains operator basics; `reference/` never loses a canonical claim to narrative drift.
+- **UK English.** All documentation uses British spelling (organisation, colour, initialise, behaviour, centre, analyse, etc.).
