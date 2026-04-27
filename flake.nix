@@ -901,8 +901,7 @@ stderr_logfile=/var/log/jupyter-lab.error.log
         # the XKB path mismatch that breaks standalone Xvfb in nix2container.
         desktopBlocks = ''
 [program:xvnc]
-command=${pkgs.tigervnc}/bin/Xvnc :1 -geometry ${(desktopCfg.resolution or "1920x1080")} -depth 24 -SecurityTypes None -ac -xkbdir ${pkgs.xkeyboard_config}/share/X11/xkb -pn -rfbport 5901 -localhost
-environment=PATH="${pkgs.xorg.xkbcomp}/bin:%(ENV_PATH)s",XKB_CONFIG_ROOT="${pkgs.xkeyboard_config}/share/X11/xkb"
+command=${pkgs.tigervnc}/bin/Xvnc :1 -geometry ${(desktopCfg.resolution or "1920x1080")} -depth 24 -SecurityTypes None -ac -pn -rfbport 5901 -localhost -rawkeyboard
 autostart=true
 autorestart=true
 priority=40
