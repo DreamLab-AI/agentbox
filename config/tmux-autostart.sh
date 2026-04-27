@@ -5,11 +5,11 @@
 # Replaces Zellij layouts; fish shell configs (config.fish,
 # bashrc.agentbox) are sourced automatically by fish in each window.
 
-set -e
-
 SESSION="agentbox"
-PROJECT="${WORKSPACE:-/workspace}/project"
-WORKSPACE_DIR="${WORKSPACE:-/workspace}"
+PROJECT="${HOME:-/workspace}/project"
+[ -d "$PROJECT" ] || PROJECT="${HOME:-/workspace}"
+WORKSPACE_DIR="${HOME:-/workspace}"
+FISH="$(which fish 2>/dev/null || echo fish)"
 
 # If session already exists, skip creation
 if tmux has-session -t "$SESSION" 2>/dev/null; then
@@ -19,13 +19,15 @@ fi
 
 echo "[tmux-autostart] Creating tmux session '$SESSION'..."
 
-# Source the config explicitly (entrypoint copies it to ~/.tmux.conf
-# but the tmux server may start before that completes)
+# Config
 TMUX_CONF="/opt/agentbox/config/tmux.conf"
 TMUX_ARGS=""
 if [ -f "$TMUX_CONF" ]; then
   TMUX_ARGS="-f $TMUX_CONF"
 fi
+
+# Start tmux server first (needed for detached session creation)
+tmux $TMUX_ARGS start-server 2>/dev/null || true
 
 # ============================================================================
 # Window 0: Claude — primary development shell
