@@ -8,7 +8,7 @@
 ## TL;DR for newcomers
 *Skip if you already know which upstream changes are safe to port in.*
 
-This ADR explains the boundary between agentbox and the older upstream agent containers it was extracted from. The pain point is blind syncing: those upstream repositories predate agentbox's manifest-driven build, sovereign runtime bootstrap, profile isolation, shared mounts, and Zellij workspaces, so mechanically merging their changes reintroduces architectural assumptions we deliberately left behind (pseudo-user isolation, per-home divergence, tmux-centric flows). The shape of the answer is **selective, not mechanical**: skills and agent templates that fit the progressive-disclosure tree are fair game; anything that touches the build, bootstrap, or isolation model is rejected by default. You will learn what may be synced, what never may, and how to judge borderline cases.
+This ADR explains the boundary between agentbox and the older upstream agent containers it was extracted from. The pain point is blind syncing: those upstream repositories predate agentbox's manifest-driven build, sovereign runtime bootstrap, profile isolation, shared mounts, and tmux workspaces, so mechanically merging their changes reintroduces architectural assumptions we deliberately left behind (pseudo-user isolation, per-home divergence, tmux-centric flows). The shape of the answer is **selective, not mechanical**: skills and agent templates that fit the progressive-disclosure tree are fair game; anything that touches the build, bootstrap, or isolation model is rejected by default. You will learn what may be synced, what never may, and how to judge borderline cases.
 
 **If you remember only one thing:** port skills and content; reject upstream infrastructure that conflicts with the current build and isolation model.
 
@@ -24,7 +24,7 @@ That remains useful, but Agentbox now has a different architecture:
 - sovereign runtime bootstrap
 - profile-based isolation
 - shared mounts plus shared skills tree
-- Zellij workspaces
+- tmux workspaces
 
 Blind upstream syncing is no longer safe.
 

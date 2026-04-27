@@ -332,8 +332,8 @@ From inside the container:
 
 ```bash
 docker exec agentbox supervisorctl status
-docker exec agentbox zellij --version
-docker exec agentbox /opt/agentbox/scripts/zellij-stack.sh ruflo-orchestrator
+docker exec agentbox tmux -V
+docker exec -it agentbox tmux attach -t agentbox
 docker exec agentbox ls -la /workspace/profiles
 docker exec agentbox ls -la /projects
 ```
@@ -450,7 +450,7 @@ zqe
 zdocs
 ```
 
-Those commands open the seeded Zellij layouts for the main stacks.
+Those commands open the seeded tmux windows for the main stacks.
 
 ## Troubleshooting
 

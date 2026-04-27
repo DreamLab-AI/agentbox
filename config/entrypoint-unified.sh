@@ -121,7 +121,7 @@ echo "[2/8] Bootstrapping sovereign mesh identity..."
 python3 /opt/agentbox/scripts/sovereign-bootstrap.py
 
 # ---------------------------------------------------------------------------
-# Phase 4 — Workspace defaults (agents dir, zellij config, README)
+# Phase 4 — Workspace defaults (agents dir, tmux config, README)
 # ---------------------------------------------------------------------------
 echo "[3/8] Ensuring workspace defaults..."
 if [ ! -d "$WORKSPACE/agents" ]; then
