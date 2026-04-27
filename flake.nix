@@ -403,9 +403,9 @@
           pnpm
         ];
 
-        geminiCliPackages = lib.optionals (toolchainCfg.gemini_cli or false) (with pkgs; [
-          nodejs_20
-        ]);
+        geminiCliPackages = lib.optionals (toolchainCfg.gemini_cli or false) [
+          pkgs.gemini-cli
+        ];
 
         # OpenAI Codex Rust-native CLI — pinned upstream release asset.
         # See lib/codex-binary.nix for the per-arch sha256s and version bump
@@ -415,6 +415,15 @@
         codexPackages = lib.optionals
           ((toolchainCfg.codex or false) && pkgs.stdenv.isLinux)
           [ (codexLib.makeCodex system) ];
+
+        # Anthropic Claude Code native CLI — pinned upstream release binary.
+        # See lib/claude-code-binary.nix for the per-arch sha256s and version
+        # bump procedure.  Binary is wrapped with makeBinaryWrapper to disable
+        # the auto-updater and inject runtime PATH deps (ripgrep, bubblewrap).
+        claudeCodeLib = import ./lib/claude-code-binary.nix { inherit lib pkgs; };
+        claudeCodePackages = lib.optionals
+          ((toolchainCfg.claude_code or false) && pkgs.stdenv.isLinux)
+          [ (claudeCodeLib.makeClaudeCode system) ];
 
         # Runtime Python environment for bootstrap scripts and local helpers.
         # Use python.withPackages so every dep is on the interpreter's import
@@ -778,6 +787,7 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           ++ desktopPackages
           ++ geminiCliPackages
           ++ codexPackages
+          ++ claudeCodePackages
           ++ gpuCfg.nixPackages
           # PRD-002 §9 Phase 1 — pre-packaged local npm services (immutable bootstrap)
           ++ npmServicePackages
@@ -1340,13 +1350,16 @@ ${ragflowNetworkDecl}
 ''}        '';
 
         configFiles = pkgs.runCommand "agentbox-config" {} ''
-          mkdir -p $out/etc/agentbox
+          mkdir -p $out/etc/agentbox $out/bin
           cp ${pkgs.writeText "supervisord.conf" supervisorText} $out/etc/supervisord.conf
           cp ${./agentbox.toml} $out/etc/agentbox.toml
           cp ${pkgs.writeText "docker-compose.yml" composeText} $out/etc/agentbox/docker-compose.yml
           ${lib.optionalString relayLocal ''
           cp ${pkgs.writeText "nostr-relay.toml" relayConfigText} $out/etc/agentbox/nostr-relay.toml
           ''}
+
+          # Z.AI wrapper: 'zai' invokes Claude Code against the Z.AI API endpoint.
+          ln -s /opt/agentbox/config/zai-wrapper.sh $out/bin/zai
         '';
 
         entrypoint = pkgs.writeShellScriptBin "entrypoint" ''
@@ -1425,6 +1438,7 @@ ${ragflowNetworkDecl}
           "ENABLE_REPORT_BUILDER=${boolEnv (docsCfg.report_builder or false)}"
           "ENABLE_MERMAID=${boolEnv (docsCfg.mermaid or false)}"
           "ENABLE_CLAUDE=${boolEnv (toolchainCfg.claude or false)}"
+          "ENABLE_CLAUDE_CODE=${boolEnv (toolchainCfg.claude_code or false)}"
           "ENABLE_RUFLO=${boolEnv (toolchainCfg.ruflo or false)}"
           "ENABLE_CLAUDE_FLOW=${boolEnv (toolchainCfg.claude_flow or false)}"
           "ENABLE_AGENTIC_QE=${boolEnv (toolchainCfg.agentic_qe or false)}"
