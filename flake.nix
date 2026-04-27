@@ -335,6 +335,7 @@
         basePackages = with pkgs; [
           bash
           fish
+          sudo
           coreutils
           cacert
           curl
@@ -1369,10 +1370,16 @@ ${ragflowNetworkDecl}
           sed -i 's/^[[:space:]]*//' $out/etc/passwd
 
           cat > $out/etc/group <<'GROUP'
-          root:x:0:
+          root:x:0:devuser
+          wheel:x:998:devuser
           devuser:x:1000:
           GROUP
           sed -i 's/^[[:space:]]*//' $out/etc/group
+
+          # Passwordless sudo for devuser
+          mkdir -p $out/etc/sudoers.d
+          echo "devuser ALL=(ALL) NOPASSWD: ALL" > $out/etc/sudoers.d/devuser
+          chmod 440 $out/etc/sudoers.d/devuser
 
           # Z.AI wrapper: 'zai' invokes Claude Code against the Z.AI API endpoint.
           ln -s /opt/agentbox/config/zai-wrapper.sh $out/bin/zai
@@ -1385,6 +1392,12 @@ ${ragflowNetworkDecl}
           ln -sf ${pkgs.coreutils}/bin/env /usr/bin/env 2>/dev/null || true
           ln -sf ${pkgs.bash}/bin/sh /bin/sh 2>/dev/null || true
           ln -sf ${pkgs.bash}/bin/bash /bin/bash 2>/dev/null || true
+          # sudo needs /etc/sudoers base file
+          if [ ! -f /etc/sudoers ]; then
+            echo "root ALL=(ALL) ALL" > /etc/sudoers
+            echo "#includedir /etc/sudoers.d" >> /etc/sudoers
+            chmod 440 /etc/sudoers
+          fi
           # Claude Code binary needs /lib64/ld-linux (FHS path, not Nix-patched)
           mkdir -p /lib64 2>/dev/null || true
           ln -sf ${pkgs.glibc}/lib/ld-linux-x86-64.so.2 /lib64/ld-linux-x86-64.so.2 2>/dev/null || true
