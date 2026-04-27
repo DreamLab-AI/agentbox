@@ -1369,6 +1369,9 @@ ${ragflowNetworkDecl}
           ln -sf ${pkgs.coreutils}/bin/env /usr/bin/env 2>/dev/null || true
           ln -sf ${pkgs.bash}/bin/sh /bin/sh 2>/dev/null || true
           ln -sf ${pkgs.bash}/bin/bash /bin/bash 2>/dev/null || true
+          # Claude Code binary needs /lib64/ld-linux (FHS path, not Nix-patched)
+          mkdir -p /lib64 2>/dev/null || true
+          ln -sf ${pkgs.glibc}/lib/ld-linux-x86-64.so.2 /lib64/ld-linux-x86-64.so.2 2>/dev/null || true
 
           # Runtime directories for services that need writable state
           mkdir -p /var/lib/nostr-relay 2>/dev/null || true
