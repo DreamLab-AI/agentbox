@@ -122,3 +122,6 @@ fi
 if ! command -v starship &>/dev/null; then
   export PS1='\[\033[1;36m\][agentbox]\[\033[0m\] \[\033[1;32m\]\u\[\033[0m\]:\[\033[1;34m\]\w\[\033[0m\]\$ '
 fi
+
+# Claude Code quick aliases
+alias dsp="claude --dangerously-skip-permissions"

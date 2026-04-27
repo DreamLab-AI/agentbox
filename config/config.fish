@@ -75,3 +75,6 @@ end
 
 # ── Container indicator ──────────────────────────────────────
 set -gx AGENTBOX_CONTAINER 1
+
+# Claude Code quick aliases
+alias dsp="claude --dangerously-skip-permissions"
