@@ -228,8 +228,8 @@
           entry       = "server.js";
           # Prefetched 2026-04-24 against management-api/package-lock.json.
           # Refresh via: nix run nixpkgs#prefetch-npm-deps -- management-api/package-lock.json
-          # Prefetched 2026-04-26. Refresh: nix run nixpkgs#prefetch-npm-deps -- management-api/package-lock.json
-          npmDepsHash = "sha256-S6XkG8YM8IQGoafVkOpYw/u4fC6wf3axBBcX0WjYAAA=";
+          # Prefetched 2026-04-27. Refresh: nix run nixpkgs#prefetch-npm-deps -- management-api/package-lock.json
+          npmDepsHash = "sha256-KSyQJIMlbZHm2qWaw7Djpi4tJ4Zfm9st+umvHJuwrD8=";
         };
 
         # 2. mcp/nostr-bridge — sovereign_mesh service; 2 deps (nostr-tools, ws)
