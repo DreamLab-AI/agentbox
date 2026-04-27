@@ -11,7 +11,7 @@ vector_db = "ruvector-embedded"
 [adapters]
 beads        = "off"
 pods         = "local-solid-rs"
-memory       = "embedded-ruvector"
+memory       = "external-pg"
 events       = "local-jsonl"
 orchestrator = "local-process-manager"
 
