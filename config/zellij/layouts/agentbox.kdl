@@ -1,77 +1,77 @@
 layout {
   tab name="claude" {
     pane {
-      command "bash"
+      command "fish"
       args "-c" "cd /workspace && zsh"
     }
   }
 
   tab name="ruflo" {
     pane {
-      command "bash"
+      command "fish"
       args "-c" "ruflo --help && zsh"
     }
   }
 
   tab name="qe" {
     pane {
-      command "bash"
+      command "fish"
       args "-c" "aqe fleet-status --help && zsh"
     }
   }
 
   tab name="docs" {
     pane {
-      command "bash"
+      command "fish"
       args "-c" "cd /opt/agentbox/docs && ls -la && zsh"
     }
   }
 
   tab name="build" {
     pane {
-      command "bash"
+      command "fish"
       args "-c" "cd /workspace && bash"
     }
   }
 
   tab name="logs" {
     pane {
-      command "bash"
+      command "fish"
       args "-c" "docker compose logs -f --tail 50 2>/dev/null || supervisorctl tail -f 2>/dev/null || zsh"
     }
   }
 
   tab name="vcs" {
     pane {
-      command "bash"
+      command "fish"
       args "-c" "cd /workspace && git status && zsh"
     }
   }
 
   tab name="memory" {
     pane {
-      command "bash"
+      command "fish"
       args "-c" "claude-flow memory --help && zsh"
     }
   }
 
   tab name="llm" {
     pane {
-      command "bash"
-      args "-c" "bash"
+      command "fish"
+      args "-c" "fish"
     }
   }
 
   tab name="agents" {
     pane {
-      command "bash"
+      command "fish"
       args "-c" "ls -la /opt/agentbox/skills 2>/dev/null && zsh"
     }
   }
 
   tab name="host-shell" {
     pane {
-      command "bash"
+      command "fish"
       args "-c" "echo '🖥️  Out-of-band host shell' && zsh"
     }
   }

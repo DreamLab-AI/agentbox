@@ -1,18 +1,18 @@
 layout {
     pane split_direction="vertical" {
         pane split_direction="horizontal" {
-            pane command="bash" cwd="/workspace/profiles/docs-latex" {
+            pane command="fish" cwd="/workspace/profiles/docs-latex" {
                 args "-lc" "printf '\nAgentbox: docs-latex\n\n'; exec bash"
             }
-            pane command="bash" cwd="/workspace/profiles/docs-latex" {
+            pane command="fish" cwd="/workspace/profiles/docs-latex" {
                 args "-lc" "printf '\nLaTeX / bibliography view\n\n'; exec bash"
             }
         }
         pane split_direction="horizontal" {
-            pane command="bash" cwd="/workspace/profiles/docs-latex/projects" {
+            pane command="fish" cwd="/workspace/profiles/docs-latex/projects" {
                 args "-lc" "printf '\nMounted external projects\n\n'; exec bash"
             }
-            pane command="bash" cwd="/workspace/profiles/docs-latex/workspace" {
+            pane command="fish" cwd="/workspace/profiles/docs-latex/workspace" {
                 args "-lc" "printf '\nGenerated docs / reports\n\n'; exec bash"
             }
         }

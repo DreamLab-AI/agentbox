@@ -142,6 +142,11 @@ touch /etc/profile 2>/dev/null || true
 if ! grep -q "source.*bashrc.agentbox" /etc/profile 2>/dev/null; then
   echo "source /opt/agentbox/config/bashrc.agentbox" >> /etc/profile
 fi
+# Fish shell config
+mkdir -p /etc/fish 2>/dev/null || true
+if [ -f /opt/agentbox/config/config.fish ] && ! grep -q "config.fish" /etc/fish/config.fish 2>/dev/null; then
+  echo "source /opt/agentbox/config/config.fish" >> /etc/fish/config.fish
+fi
 
 mkdir -p "$WORKSPACE/.config/zellij"
 if [ ! -f "$WORKSPACE/.config/zellij/config.kdl" ]; then

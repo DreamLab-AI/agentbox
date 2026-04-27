@@ -1,13 +1,13 @@
 layout {
     pane split_direction="vertical" {
-        pane command="bash" cwd="/workspace/profiles/claude-core" {
+        pane command="fish" cwd="/workspace/profiles/claude-core" {
             args "-lc" "printf '\nAgentbox: claude-core\n\n'; exec bash"
         }
         pane split_direction="horizontal" {
-            pane command="bash" cwd="/workspace/profiles/claude-core" {
+            pane command="fish" cwd="/workspace/profiles/claude-core" {
                 args "-lc" "printf '\nSkills index\n\n'; exec bash"
             }
-            pane command="bash" cwd="/workspace/profiles/claude-core" {
+            pane command="fish" cwd="/workspace/profiles/claude-core" {
                 args "-lc" "printf '\nShared projects\n\n'; exec bash"
             }
         }

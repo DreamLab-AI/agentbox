@@ -334,6 +334,7 @@
 
         basePackages = with pkgs; [
           bash
+          fish
           coreutils
           cacert
           curl
