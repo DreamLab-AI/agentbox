@@ -1368,6 +1368,7 @@ ${ragflowNetworkDecl}
           mkdir -p /usr/bin 2>/dev/null || true
           ln -sf ${pkgs.coreutils}/bin/env /usr/bin/env 2>/dev/null || true
           ln -sf ${pkgs.bash}/bin/sh /bin/sh 2>/dev/null || true
+          ln -sf ${pkgs.bash}/bin/bash /bin/bash 2>/dev/null || true
 
           # Runtime directories for services that need writable state
           mkdir -p /var/lib/nostr-relay 2>/dev/null || true
