@@ -2,7 +2,7 @@ layout {
   tab name="claude" focus=true {
     pane {
       command "fish"
-      args "-C" "cd /workspace/project"
+      args "-C" "cd /home/devuser/workspace/project 2>/dev/null; or cd /workspace"
     }
   }
 
@@ -44,7 +44,7 @@ layout {
   tab name="vcs" {
     pane {
       command "fish"
-      args "-C" "cd /workspace/project && git status"
+      args "-C" "cd /home/devuser/workspace/project 2>/dev/null; or cd /workspace && git status"
     }
   }
 
