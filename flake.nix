@@ -1372,6 +1372,7 @@ ${ragflowNetworkDecl}
         '';
 
         imageEnv = [
+          "HOME=/workspace"
           "PATH=/bin:/usr/bin:${pkgs.lib.makeBinPath allPackages}"
           "NODE_ENV=production"
           "PYTHONDONTWRITEBYTECODE=1"
