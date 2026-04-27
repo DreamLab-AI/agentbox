@@ -646,10 +646,13 @@ cmd_build() {
 
 cmd_rebuild() {
     if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
-        echo "Usage: $0 rebuild"
-        echo "Equivalent to: down + build --variant runtime + up --build"
+        echo "Usage: $0 rebuild [--no-cleanup]"
+        echo "Equivalent to: down + build --variant runtime + up --build + cleanup"
         return 0
     fi
+
+    local skip_cleanup=0
+    [[ "${1:-}" == "--no-cleanup" ]] && skip_cleanup=1
 
     echo -e "${CYAN}=== Rebuild: stopping stack ===${NC}"
     cmd_down
@@ -659,6 +662,11 @@ cmd_rebuild() {
 
     echo -e "${CYAN}=== Rebuild: starting stack ===${NC}"
     cmd_up --build
+
+    if [[ "$skip_cleanup" -eq 0 ]]; then
+        echo -e "${CYAN}=== Rebuild: cleaning up old images + Nix store ===${NC}"
+        bash "${SCRIPT_DIR}/scripts/post-deploy-cleanup.sh" || true
+    fi
 }
 
 cmd_logs() {
