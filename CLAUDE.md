@@ -8,7 +8,7 @@ Agentbox is in active development:
 
 - build composition is driven by `agentbox.toml`
 - the runtime is sovereign/profile-based
-- Zellij replaces tmux
+- tmux with fish shell provides the multi-tab terminal experience (MAD-style layout)
 - profile isolation replaces Linux pseudo-user isolation
 - **pluggable adapters** replace hardcoded durable-state services (see [ADR-005](docs/adr/ADR-005-pluggable-adapter-architecture.md)): beads, pods, memory, events, orchestrator — each resolves to `local-*`, `external`, or `off`
 - standalone-or-federated: `federation.mode = "standalone"` ships a complete product with local fallbacks; `federation.mode = "client"` federates with a host container mesh through adapter endpoints
@@ -24,7 +24,8 @@ Full product spec: [PRD-001](docs/prd/PRD-001-capabilities-and-adapters.md). Ada
 - [`scripts/skills-entrypoint.sh`](scripts/skills-entrypoint.sh): runtime dependency bootstrap
 - [`scripts/sovereign-bootstrap.py`](scripts/sovereign-bootstrap.py): identity generation and pod scaffolding
 - [`scripts/provision-agent-stacks.py`](scripts/provision-agent-stacks.py): stack/profile provisioning
-- [`scripts/zellij-stack.sh`](scripts/zellij-stack.sh): stack-specific terminal workspace launcher
+- [`config/tmux-autostart.sh`](config/tmux-autostart.sh): tmux session launcher (MAD-style tabs)
+- [`config/tmux.conf`](config/tmux.conf): tmux configuration (fish shell, dark theme)
 
 ## Important Rules For Changes
 

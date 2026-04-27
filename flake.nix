@@ -353,7 +353,7 @@
           less
           file
           tree
-          zellij
+          tmux
           vim
           nano
           unzip

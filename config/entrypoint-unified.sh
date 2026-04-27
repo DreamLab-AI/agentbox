@@ -161,26 +161,10 @@ if [ -f /opt/agentbox/config/i3/config ] && [ ! -f "$WORKSPACE/.config/i3/config
   cp /opt/agentbox/config/i3/config "$WORKSPACE/.config/i3/config"
 fi
 
-# Zellij config — set fish as default shell, agentbox as default layout
-# Uses HOME (/) since that's where Zellij looks for config
-mkdir -p "/.config/zellij/layouts" 2>/dev/null || true
-cp /opt/agentbox/config/zellij/layouts/*.kdl "/.config/zellij/layouts/" 2>/dev/null || true
-cat > "/.config/zellij/config.kdl" << 'ZKCFG'
-default_shell "fish"
-default_layout "agentbox"
-ZKCFG
-
-# Also copy to workspace for profile-based access
-mkdir -p "$WORKSPACE/.config/zellij/layouts" 2>/dev/null || true
-cp /opt/agentbox/config/zellij/layouts/*.kdl "$WORKSPACE/.config/zellij/layouts/" 2>/dev/null || true
-cp "/.config/zellij/config.kdl" "$WORKSPACE/.config/zellij/config.kdl" 2>/dev/null || true
-mkdir -p "$WORKSPACE/.config/zellij/layouts"
-for layout in /opt/agentbox/config/zellij/layouts/*.kdl; do
-  target="$WORKSPACE/.config/zellij/layouts/$(basename "$layout")"
-  if [ ! -f "$target" ]; then
-    cp "$layout" "$target"
-  fi
-done
+# tmux config — fish shell + dark theme status bar
+# Replaces Zellij (see config/tmux.conf, config/tmux-autostart.sh)
+cp /opt/agentbox/config/tmux.conf "$HOME/.tmux.conf" 2>/dev/null || \
+  cp /opt/agentbox/config/tmux.conf "$WORKSPACE/.tmux.conf" 2>/dev/null || true
 
 if [ ! -f "$WORKSPACE/README.agentbox.md" ]; then
   cat > "$WORKSPACE/README.agentbox.md" <<'EOF'
@@ -300,5 +284,12 @@ export AGENTBOX_CONFIG="${AGENTBOX_CONFIG:-/etc/agentbox.toml}"
 export SKILLS_TREE="${SKILLS_TREE:-/opt/agentbox/skills}"
 export SHARED_PROJECTS_ROOT="${SHARED_PROJECTS_ROOT:-/projects}"
 EOF
+
+# ---------------------------------------------------------------------------
+# Phase 8a — Start tmux session in background (MAD-style multi-tab workspace)
+# ---------------------------------------------------------------------------
+if [ -x /opt/agentbox/config/tmux-autostart.sh ]; then
+  /opt/agentbox/config/tmux-autostart.sh &
+fi
 
 echo "[AGENTBOX] Runtime bootstrap complete"
