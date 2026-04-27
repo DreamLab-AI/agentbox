@@ -148,6 +148,12 @@ if [ -f /opt/agentbox/config/config.fish ] && ! grep -q "config.fish" /etc/fish/
   echo "source /opt/agentbox/config/config.fish" >> /etc/fish/config.fish
 fi
 
+# i3 window manager config
+mkdir -p "$WORKSPACE/.config/i3" 2>/dev/null || true
+if [ -f /opt/agentbox/config/i3/config ] && [ ! -f "$WORKSPACE/.config/i3/config" ]; then
+  cp /opt/agentbox/config/i3/config "$WORKSPACE/.config/i3/config"
+fi
+
 mkdir -p "$WORKSPACE/.config/zellij"
 if [ ! -f "$WORKSPACE/.config/zellij/config.kdl" ]; then
   cp /opt/agentbox/config/zellij.kdl "$WORKSPACE/.config/zellij/config.kdl"

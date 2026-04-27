@@ -743,8 +743,9 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           xorg.xwininfo
           xorg.setxkbmap
           xkeyboard_config
-          openbox
-          tint2
+          i3                    # tiling WM — stable in Nix containers (openbox segfaults)
+          i3status              # status bar for i3
+          dmenu                 # launcher for i3
           xterm
           xfce.xfce4-terminal
           dejavu_fonts
@@ -909,15 +910,15 @@ priority=40
 stdout_logfile=/var/log/xvnc.log
 stderr_logfile=/var/log/xvnc.error.log
 
-[program:openbox]
-command=${pkgs.openbox}/bin/openbox
+[program:i3wm]
+command=${pkgs.i3}/bin/i3
 environment=DISPLAY=":1",HOME="/workspace"
 autostart=true
 autorestart=true
 startsecs=3
 priority=41
-stdout_logfile=/var/log/openbox.log
-stderr_logfile=/var/log/openbox.error.log
+stdout_logfile=/var/log/i3wm.log
+stderr_logfile=/var/log/i3wm.error.log
         '';
 
         supervisorText = ''
