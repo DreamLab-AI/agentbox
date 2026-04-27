@@ -1358,6 +1358,22 @@ ${ragflowNetworkDecl}
           cp ${pkgs.writeText "nostr-relay.toml" relayConfigText} $out/etc/agentbox/nostr-relay.toml
           ''}
 
+          # Non-root user: devuser (uid 1000, gid 1000)
+          # Supervisord (PID 1) runs as root; interactive shells run as devuser.
+          # /etc/passwd and /etc/group are seeded here; entrypoint may append at runtime.
+          cat > $out/etc/passwd <<'PASSWD'
+          root:x:0:0:root:/root:/bin/sh
+          devuser:x:1000:1000:devuser:/workspace:/bin/fish
+          PASSWD
+          # Strip leading whitespace introduced by Nix heredoc indentation
+          sed -i 's/^[[:space:]]*//' $out/etc/passwd
+
+          cat > $out/etc/group <<'GROUP'
+          root:x:0:
+          devuser:x:1000:
+          GROUP
+          sed -i 's/^[[:space:]]*//' $out/etc/group
+
           # Z.AI wrapper: 'zai' invokes Claude Code against the Z.AI API endpoint.
           ln -s /opt/agentbox/config/zai-wrapper.sh $out/bin/zai
         '';
@@ -1376,6 +1392,9 @@ ${ragflowNetworkDecl}
           # Runtime directories for services that need writable state
           mkdir -p /var/lib/nostr-relay 2>/dev/null || true
           mkdir -p /var/lib/https-bridge/certs 2>/dev/null || true
+
+          # Home directory for devuser bind mounts (e.g. /home/devuser/.claude)
+          mkdir -p /home/devuser 2>/dev/null || true
 
           # Pre-generate HTTPS bridge self-signed cert if missing
           if [ ! -f /var/lib/https-bridge/certs/server.key ]; then

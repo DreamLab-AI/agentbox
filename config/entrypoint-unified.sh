@@ -86,6 +86,21 @@ mkdir -p \
 
 chmod 755 "$RUVECTOR_DATA_DIR"
 
+# Non-root user: chown writable directories to devuser (uid 1000, gid 1000).
+# Supervisord (PID 1) stays root; interactive shells and tmux run as devuser.
+chown -R 1000:1000 \
+  "$WORKSPACE" \
+  "$SHARED_PROJECTS_ROOT" \
+  "$RUVECTOR_DATA_DIR" \
+  "$SOLID_POD_ROOT" \
+  /var/lib/agentbox \
+  /var/lib/nostr-relay \
+  /var/lib/https-bridge \
+  /var/log \
+  /tmp \
+  /etc \
+  2>/dev/null || true
+
 # ---------------------------------------------------------------------------
 # Phase 2 — Management API key auto-generation
 # ---------------------------------------------------------------------------

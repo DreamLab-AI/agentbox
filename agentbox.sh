@@ -699,18 +699,13 @@ cmd_shell() {
     fi
 
     if [[ -z "$profile" ]]; then
-        docker exec -it agentbox bash
+        docker exec -it --user 1000 agentbox bash -c \
+            'bash /opt/agentbox/config/tmux-autostart.sh 2>/dev/null; exec tmux attach -t agentbox 2>/dev/null || exec fish'
         return
     fi
 
-    # Try zellij layout for the profile; fall back to bash in the profile directory
-    if docker exec agentbox which zellij >/dev/null 2>&1; then
-        docker exec -it agentbox bash -c \
-            "cd /workspace/profiles/${profile} && exec zellij --layout agentbox"
-    else
-        echo -e "${YELLOW}zellij not found in container; opening bash in profile directory.${NC}"
-        docker exec -it agentbox bash -c "cd /workspace/profiles/${profile} && exec bash"
-    fi
+    # Fall back to fish in the profile directory as devuser
+    docker exec -it --user 1000 agentbox bash -c "cd /workspace/profiles/${profile} && exec fish"
 }
 
 cmd_health() {
