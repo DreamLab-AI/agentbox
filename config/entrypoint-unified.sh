@@ -128,22 +128,19 @@ if [ ! -d "$WORKSPACE/agents" ]; then
   mkdir -p "$WORKSPACE/agents"
 fi
 
-# Shell profile seeding
-if [ -f /etc/bash.bashrc ]; then
-  if ! grep -q "source.*agentbox-aliases" /etc/bash.bashrc 2>/dev/null; then
-    echo "source /opt/agentbox/config/agentbox-aliases.sh" >> /etc/bash.bashrc
-  fi
-  if ! grep -q "source.*bashrc.agentbox" /etc/bash.bashrc 2>/dev/null; then
-    echo "source /opt/agentbox/config/bashrc.agentbox" >> /etc/bash.bashrc
-  fi
+# Shell profile seeding — create /etc/bash.bashrc if it doesn't exist
+# (nix2container images have no FHS paths by default)
+touch /etc/bash.bashrc 2>/dev/null || true
+if ! grep -q "source.*agentbox-aliases" /etc/bash.bashrc 2>/dev/null; then
+  echo "source /opt/agentbox/config/agentbox-aliases.sh" >> /etc/bash.bashrc
 fi
-if [ -f /etc/zsh/zshrc ]; then
-  if ! grep -q "source.*agentbox-aliases" /etc/zsh/zshrc 2>/dev/null; then
-    echo "source /opt/agentbox/config/agentbox-aliases.sh" >> /etc/zsh/zshrc
-  fi
-  if ! grep -q "source.*bashrc.agentbox" /etc/zsh/zshrc 2>/dev/null; then
-    echo "source /opt/agentbox/config/bashrc.agentbox" >> /etc/zsh/zshrc
-  fi
+if ! grep -q "source.*bashrc.agentbox" /etc/bash.bashrc 2>/dev/null; then
+  echo "source /opt/agentbox/config/bashrc.agentbox" >> /etc/bash.bashrc
+fi
+# Also seed /etc/profile for login shells
+touch /etc/profile 2>/dev/null || true
+if ! grep -q "source.*bashrc.agentbox" /etc/profile 2>/dev/null; then
+  echo "source /opt/agentbox/config/bashrc.agentbox" >> /etc/profile
 fi
 
 mkdir -p "$WORKSPACE/.config/zellij"
