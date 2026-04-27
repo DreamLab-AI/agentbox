@@ -148,6 +148,13 @@ if [ -f /opt/agentbox/config/config.fish ] && ! grep -q "config.fish" /etc/fish/
   echo "source /opt/agentbox/config/config.fish" >> /etc/fish/config.fish
 fi
 
+# Claude Code config — bridge host mount to HOME
+# The host .claude/ is mounted at /home/devuser/.claude but HOME=/workspace
+# Create a symlink so Claude Code finds its OAuth tokens and settings
+if [ -d /home/devuser/.claude ] && [ ! -e "$WORKSPACE/.claude" ]; then
+  ln -sf /home/devuser/.claude "$WORKSPACE/.claude"
+fi
+
 # i3 window manager config
 mkdir -p "$WORKSPACE/.config/i3" 2>/dev/null || true
 if [ -f /opt/agentbox/config/i3/config ] && [ ! -f "$WORKSPACE/.config/i3/config" ]; then
