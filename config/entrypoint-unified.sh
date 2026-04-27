@@ -154,10 +154,19 @@ if [ -f /opt/agentbox/config/i3/config ] && [ ! -f "$WORKSPACE/.config/i3/config
   cp /opt/agentbox/config/i3/config "$WORKSPACE/.config/i3/config"
 fi
 
-mkdir -p "$WORKSPACE/.config/zellij"
-if [ ! -f "$WORKSPACE/.config/zellij/config.kdl" ]; then
-  cp /opt/agentbox/config/zellij.kdl "$WORKSPACE/.config/zellij/config.kdl"
-fi
+# Zellij config — set fish as default shell, agentbox as default layout
+# Uses HOME (/) since that's where Zellij looks for config
+mkdir -p "/.config/zellij/layouts" 2>/dev/null || true
+cp /opt/agentbox/config/zellij/layouts/*.kdl "/.config/zellij/layouts/" 2>/dev/null || true
+cat > "/.config/zellij/config.kdl" << 'ZKCFG'
+default_shell "fish"
+default_layout "agentbox"
+ZKCFG
+
+# Also copy to workspace for profile-based access
+mkdir -p "$WORKSPACE/.config/zellij/layouts" 2>/dev/null || true
+cp /opt/agentbox/config/zellij/layouts/*.kdl "$WORKSPACE/.config/zellij/layouts/" 2>/dev/null || true
+cp "/.config/zellij/config.kdl" "$WORKSPACE/.config/zellij/config.kdl" 2>/dev/null || true
 mkdir -p "$WORKSPACE/.config/zellij/layouts"
 for layout in /opt/agentbox/config/zellij/layouts/*.kdl; do
   target="$WORKSPACE/.config/zellij/layouts/$(basename "$layout")"
