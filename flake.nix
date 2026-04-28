@@ -363,8 +363,12 @@
           xz
           htop
           ncdu
+          ncurses         # provides clear, tput, reset, infocmp, tic — terminal handling
           procps
           openssh
+          inetutils       # hostname, telnet, ftp, traceroute — minimal network diagnostics
+          iproute2        # ip, ss — modern network introspection
+          iputils         # ping, ping6, tracepath — basic reachability tests
           gnumake
           gcc
           clang
