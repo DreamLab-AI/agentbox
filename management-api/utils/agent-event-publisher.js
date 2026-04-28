@@ -43,15 +43,27 @@ class AgentEventPublisher extends EventEmitter {
    */
   emitAgentAction(event) {
     const fullEvent = {
+      version: 3,
       id: this.nextEventId++,
       timestamp: Date.now(),
       type: 'agent_action',
+      direction: event.direction || 'outbound',
       ...event,
       // Ensure action_type is a number
       action_type: typeof event.action_type === 'string'
         ? AgentActionType[event.action_type.toUpperCase()] || 0
         : event.action_type || 0
     };
+
+    // Phase 1 of ADR-014 / ADR-059: optional identity attribution.
+    // When the caller provides any of these fields they are forwarded;
+    // when omitted, the envelope still validates and renders correctly.
+    //   source_urn:  did:nostr:<hex> | urn:agentbox:agent:<scope>:<local>
+    //   target_urn:  urn:visionclaw:kg:<npub>:<sha256-12-hex>  (foreign URN)
+    //   pubkey:      did:nostr hex of the agent or its operator
+    if (event.source_urn !== undefined) fullEvent.source_urn = event.source_urn;
+    if (event.target_urn !== undefined) fullEvent.target_urn = event.target_urn;
+    if (event.pubkey !== undefined)     fullEvent.pubkey     = event.pubkey;
 
     // Buffer the event
     this.eventBuffer.push(fullEvent);

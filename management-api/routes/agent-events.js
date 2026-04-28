@@ -12,6 +12,7 @@
 const { agentEventPublisher, AgentActionType } = require('../utils/agent-event-publisher');
 const { processHookEvent, getRegistryStats } = require('../hooks/agent-action-hooks');
 const { initializeAgentEventBridge, getAgentEventBridge } = require('../utils/agent-event-bridge');
+const { initializeAgentEventWsSubscriber, getAgentEventWsSubscriber } = require('../utils/agent-event-ws-subscriber');
 
 async function agentEventsRoutes(fastify, options) {
   const { logger, metrics } = options;
@@ -460,18 +461,32 @@ async function agentEventsRoutes(fastify, options) {
 
   // Initialize MCP TCP bridge on route registration
   fastify.addHook('onReady', async () => {
+    // Legacy outbound TCP bridge (deprecated by ADR-014). Disabled by
+    // default; ADR-014 Phase 2 cuts over to the WS subscriber. Keep
+    // the path alive only when explicitly opted in.
     try {
-      // Only connect if MCP TCP bridge is available
-      if (process.env.ENABLE_MCP_BRIDGE !== 'false') {
+      if (process.env.ENABLE_MCP_BRIDGE === 'true') {
         await initializeAgentEventBridge({
           logger,
           tcpHost: process.env.MCP_TCP_HOST || 'localhost',
           tcpPort: parseInt(process.env.MCP_TCP_PORT || '9500')
         });
-        logger.info('Agent event bridge connected to MCP TCP');
+        logger.info('Agent event bridge connected to MCP TCP (legacy path)');
       }
     } catch (err) {
       logger.warn(`Agent event bridge connection deferred: ${err.message}`);
+    }
+
+    // ADR-014 / ADR-059 — bidirectional WebSocket subscriber.
+    // No-op when AGENTBOX_HOST_WS_URL is absent.
+    try {
+      await initializeAgentEventWsSubscriber({ logger });
+      const sub = getAgentEventWsSubscriber();
+      if (sub && sub.url) {
+        logger.info(`Agent-events WS subscriber armed for ${sub.url}`);
+      }
+    } catch (err) {
+      logger.warn(`Agent-events WS subscriber deferred: ${err.message}`);
     }
   });
 }
