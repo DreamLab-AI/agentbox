@@ -1,0 +1,109 @@
+# docker-compose.override.yml — side-by-side with MAD (agentic-workstation)
+# Remaps ports to avoid collisions:
+#   MAD:      9090, 8080, 5901, 2222
+#   Agentbox: 9190, 8180, 5902, 2223
+#
+# Once MAD is deprecated, revert ports to standard values.
+
+services:
+  agentbox:
+    # /usr/bin/env fix is now baked into the image entrypoint (flake.nix)
+
+    # Use env file for API keys
+    env_file:
+      - .env
+
+    # Port remapping to avoid MAD collision
+    ports:
+      - "127.0.0.1:9190:9090"  # Management API — localhost only (NIP-98 auth)
+      - "127.0.0.1:9700:9700"  # Agent events — localhost only
+      - "127.0.0.1:8484:8484"  # Solid pod — localhost only (WAC pending)
+      - "127.0.0.1:5902:5901"  # VNC desktop — localhost only (SSH tunnel)
+      - "127.0.0.1:8180:8080"  # Code-server — localhost only
+      - "127.0.0.1:2223:22"    # SSH — localhost only
+      - "127.0.0.1:9191:9091"  # Prometheus metrics — localhost only
+
+    # Additional environment
+    environment:
+      # RuVector external PG
+      - RUVECTOR_PG_CONNINFO=${RUVECTOR_PG_CONNINFO:-host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=ruvector}
+      - RUVECTOR_USE_EXTERNAL=true
+      # GPU
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics
+      - CUDA_VISIBLE_DEVICES=0,1,2
+      # ComfyUI external
+      - COMFYUI_API_ENDPOINT=${COMFYUI_API_ENDPOINT:-http://192.168.2.48:3001}
+      - COMFYUI_LOCAL_ENDPOINT=${COMFYUI_LOCAL_ENDPOINT:-http://172.18.0.10:8188}
+      # Local LLM
+      - LOCAL_LLM_HOST=${LOCAL_LLM_HOST:-192.168.2.48}
+      - LOCAL_LLM_PORT=${LOCAL_LLM_PORT:-8080}
+      # Telegram
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - TELEGRAM_MIRROR=${TELEGRAM_MIRROR:-false}
+      # Display for desktop/browser
+      - DISPLAY=:1
+      # Tailscale — set authkey for headless join, or omit for interactive login
+      - TAILSCALE_AUTHKEY=${TAILSCALE_AUTHKEY:-}
+
+    # Additional volumes — match MAD mounts
+    volumes:
+      - ./agentbox.toml:/etc/agentbox.toml:ro
+      - /mnt/mldata/githubs/AR-AI-Knowledge-Graph:/home/devuser/workspace/project:rw
+      - ${HOME}/.claude:/home/devuser/.claude:rw
+      - ${HOME}/.config/claude:/home/devuser/.config/claude:rw
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ruvector-data:/var/lib/ruvector
+      - solid-data:/var/lib/solid
+      - sovereign-identities:/var/lib/agentbox/identities
+      - agentbox-workspace:/home/devuser/workspace
+      - agentbox-logs:/var/log
+      - tailscale-state:/var/lib/tailscale
+
+    # Resource provisioning — host: 376G RAM, 32 cores, 3x GPU (98G VRAM), 1.9T disk
+    deploy:
+      resources:
+        limits:
+          cpus: '24'
+          memory: 128G
+        reservations:
+          cpus: '8'
+          memory: 32G
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu, compute, utility]
+
+    # Join docker_ragflow for service discovery
+    networks:
+      - default
+      - ragflow
+
+    # Security and capabilities
+    security_opt:
+      - no-new-privileges:true
+    cap_add:
+      - SYS_ADMIN
+      - NET_ADMIN
+    shm_size: '32gb'
+
+networks:
+  ragflow:
+    external: true
+    name: docker_ragflow
+
+volumes:
+  ruvector-data:
+    name: agentbox-ruvector-data
+  solid-data:
+    name: agentbox-solid-data
+  sovereign-identities:
+    name: agentbox-sovereign-identities
+  agentbox-workspace:
+    name: agentbox-workspace
+  agentbox-logs:
+    name: agentbox-logs
+  tailscale-state:
+    name: agentbox-tailscale-state

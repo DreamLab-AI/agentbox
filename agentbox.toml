@@ -66,6 +66,23 @@ allow_nip04      = false
 info_description = "Agentbox sovereign relay"
 info_contact     = ""
 
+# ── Networking ─────────────────────────────────────────────────────────────────
+# Tailscale provides direct encrypted access to the agentbox from any device
+# on your tailnet — no port-forwarding, no SSH tunnels, no firewall rules.
+# Uses userspace networking by default (no /dev/net/tun needed).
+#
+# SECURITY WARNING: Tailscale bypasses the did:nostr identity boundary.
+# Traffic arriving over the tailnet is authenticated by Tailscale ACLs, not
+# by Nostr keypair signatures. This is convenient for dev but weakens the
+# sovereign-mesh trust model. For production deployments, prefer the
+# did:nostr + NIP-98 auth path and leave tailscale = false.
+#
+# Auth: set TAILSCALE_AUTHKEY in .env (create at https://login.tailscale.com/admin/settings/keys)
+# or omit to use interactive login via `docker exec agentbox tailscale up`.
+[networking]
+tailscale = true
+hostname = "agentbox"
+
 [desktop]
 enabled = true
 stack = "hyprland-wayland"
@@ -388,6 +405,11 @@ writable_volumes = ["codeserver-config:/home/devuser/.local/share/code-server"]
 
 [security.exceptions.telegram-mirror]
 writable_volumes = ["ctm-config:/home/devuser/.config/claude-telegram-mirror"]
+
+[security.exceptions.tailscale]
+cap_add = ["NET_ADMIN"]
+writable_volumes = ["tailscale-state:/var/lib/tailscale"]
+reason = "tailscaled needs NET_ADMIN for userspace networking socket; durable state preserves node identity across restarts"
 
 [security.exceptions.nostr-relay]
 writable_volumes = ["nostr-relay-data:/var/lib/nostr-relay"]

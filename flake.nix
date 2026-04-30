@@ -48,6 +48,7 @@
         agentboxConfig = builtins.fromTOML (builtins.readFile ./agentbox.toml);
         coreCfg = agentboxConfig.core or {};
         sovereignCfg = agentboxConfig.sovereign_mesh or {};
+        networkingCfg = agentboxConfig.networking or {};
         desktopCfg = agentboxConfig.desktop or {};
         skillsCfg = agentboxConfig.skills or {};
         toolchainCfg = agentboxConfig.toolchains or {};
@@ -566,6 +567,11 @@
             pkgs.biber
           ];
 
+        networkingPackages =
+          lib.optionals (networkingCfg.tailscale or false) [
+            pkgs.tailscale
+          ];
+
         # ---------------------------------------------------------------------------
         # Privacy filter (ADR-008) — local openai/privacy-filter sidecar.
         # Gate: privacy_filter.enabled = true.
@@ -793,6 +799,7 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           ++ geminiCliPackages
           ++ codexPackages
           ++ claudeCodePackages
+          ++ networkingPackages
           ++ gpuCfg.nixPackages
           # PRD-002 §9 Phase 1 — pre-packaged local npm services (immutable bootstrap)
           ++ npmServicePackages
@@ -1071,6 +1078,29 @@ priority=240
 stdout_logfile=/var/log/opf-router.log
 stderr_logfile=/var/log/opf-router.error.log
 ''}
+${lib.optionalString (networkingCfg.tailscale or false) ''
+
+[program:tailscaled]
+command=${pkgs.tailscale}/bin/tailscaled --state=/var/lib/tailscale/tailscaled.state --tun=userspace-networking --socket=/var/run/tailscale/tailscaled.sock
+directory=/var/lib/tailscale
+environment=HOME="/workspace"
+autostart=true
+autorestart=true
+priority=15
+stdout_logfile=/var/log/tailscaled.log
+stderr_logfile=/var/log/tailscaled.error.log
+
+[program:tailscale-up]
+command=${pkgs.bash}/bin/bash -c "sleep 2 && if [ -n \"$TAILSCALE_AUTHKEY\" ]; then ${pkgs.tailscale}/bin/tailscale up --authkey=$TAILSCALE_AUTHKEY --hostname=${networkingCfg.hostname or "agentbox"} --accept-routes --ssh 2>&1; else echo 'No TAILSCALE_AUTHKEY set — run: docker exec agentbox tailscale up'; fi"
+directory=/var/lib/tailscale
+environment=HOME="/workspace"
+autostart=true
+autorestart=false
+startsecs=0
+priority=16
+stdout_logfile=/var/log/tailscale-up.log
+stderr_logfile=/var/log/tailscale-up.error.log
+''}
 ${lib.optionalString (mediaCfg.comfyui_builtin or false) ''
 
 [program:comfyui-builtin]
@@ -1227,6 +1257,8 @@ ${lib.optionalString (gpuRuntime == "nvidia") ''      - NVIDIA_VISIBLE_DEVICES=a
               || (name == "code-server"        && (toolchainCfg.code_server or false))
               || (name == "telegram-mirror"    && (sovereignCfg.telegram_mirror or false))
               || (name == "nostr-relay"        && relayEnabled)
+              || (name == "tailscale"         && (networkingCfg.tailscale or false))
+              || (name == "solid-pod-rs"      && solidPodRsActive)
             )
             securityExceptions;
 
@@ -1450,6 +1482,8 @@ ${ragflowNetworkDecl}
           "NOSTR_BRIDGE_PORT=9740"
           "NOSTR_RELAYS=wss://relay.damus.io,wss://relay.primal.net"
           "XKB_CONFIG_ROOT=${pkgs.xkeyboard_config}/share/X11/xkb"
+          "ENABLE_TAILSCALE=${boolEnv (networkingCfg.tailscale or false)}"
+          "TAILSCALE_HOSTNAME=${networkingCfg.hostname or "agentbox"}"
           "ENABLE_DESKTOP=${boolEnv (desktopCfg.enabled or false)}"
           "ENABLE_AGENT_BROWSER=${boolEnv (browserCfg.agent_browser or false)}"
           "ENABLE_PLAYWRIGHT=${boolEnv (browserCfg.playwright or false)}"
