@@ -621,6 +621,7 @@ cmd_down() {
     echo ""
     echo -e "${GREEN}Stack stopped.${NC}"
     [[ "$remove_volumes" -eq 1 ]] && echo -e "  ${YELLOW}Named volumes removed.${NC}"
+    return 0
 }
 
 cmd_build() {
