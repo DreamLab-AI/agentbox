@@ -18,11 +18,7 @@ from mcp.server.fastmcp import FastMCP
 from pydantic import BaseModel, Field, field_validator
 
 # Initialize FastMCP server
-mcp = FastMCP(
-    "imagemagick",
-    version="2.0.0",
-    description="Process and manipulate images with format conversion, resizing, filtering, and batch operations"
-)
+mcp = FastMCP("imagemagick")
 
 # =============================================================================
 # Pydantic Models for Tool Parameters

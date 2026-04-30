@@ -903,7 +903,7 @@ stderr_logfile=/var/log/blender-mcp.error.log
 
         jupyterServiceBlock = ''
 [program:jupyter-lab]
-command=${pkgs.python312Packages.jupyterlab}/bin/jupyter-lab --ip=0.0.0.0 --port=8888 --no-browser --ServerApp.token=
+command=${pkgs.python312Packages.jupyterlab}/bin/jupyter-lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --ServerApp.token=
 directory=/workspace
 environment=HOME="/workspace"
 autostart=true

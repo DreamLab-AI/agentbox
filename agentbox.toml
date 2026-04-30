@@ -79,7 +79,7 @@ qe_browser = true
 [skills.media]
 ffmpeg = true
 imagemagick = true
-comfyui_builtin = true
+comfyui_builtin = false
 
 # ── RuVector PostgreSQL (external memory backend) ──────────────────────────────
 # Used when adapters.memory = "external-pg". Shared with the host container mesh
