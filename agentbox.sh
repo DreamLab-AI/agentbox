@@ -477,10 +477,20 @@ cmd_restore() {
 # local lifecycle commands
 # ---------------------------------------------------------------------------
 
-READY_URL="http://localhost:9090/ready"
-LIVE_URL="http://localhost:9090/livez"
-HEALTH_URL="http://localhost:9090/health"
-COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.yml"
+OVERRIDE_FILE="${SCRIPT_DIR}/docker-compose.override.yml"
+if [[ -f "$OVERRIDE_FILE" ]]; then
+    COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.yml"
+    COMPOSE_ARGS=(-f "$COMPOSE_FILE" -f "$OVERRIDE_FILE")
+    # Override remaps management-api 9090→9190 to avoid MAD collision
+    MGMT_PORT=9190
+else
+    COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.yml"
+    COMPOSE_ARGS=(-f "$COMPOSE_FILE")
+    MGMT_PORT=9090
+fi
+READY_URL="http://localhost:${MGMT_PORT}/ready"
+LIVE_URL="http://localhost:${MGMT_PORT}/livez"
+HEALTH_URL="http://localhost:${MGMT_PORT}/health"
 
 cmd_up() {
     local do_build=0
@@ -532,7 +542,7 @@ cmd_up() {
     echo -e "${CYAN}using image: ${resolved_ref}${NC}"
 
     echo -e "${CYAN}Starting Docker stack...${NC}"
-    docker compose -f "${COMPOSE_FILE}" up -d
+    docker compose "${COMPOSE_ARGS[@]}" up -d
 
     if [[ "$wait_live" -eq 1 ]]; then
         # Quick liveness-only wait — process alive and event loop responsive
@@ -606,7 +616,7 @@ cmd_down() {
 
     echo -e "${CYAN}Stopping Docker stack...${NC}"
     # shellcheck disable=SC2086
-    docker compose -f "${COMPOSE_FILE}" down $flags
+    docker compose "${COMPOSE_ARGS[@]}" down $flags
 
     echo ""
     echo -e "${GREEN}Stack stopped.${NC}"
@@ -677,7 +687,7 @@ cmd_logs() {
     fi
 
     if [[ -z "$service" ]]; then
-        docker compose -f "${COMPOSE_FILE}" logs -f --tail 100
+        docker compose "${COMPOSE_ARGS[@]}" logs -f --tail 100
         return
     fi
 
@@ -688,7 +698,7 @@ cmd_logs() {
         echo -e "${YELLOW}supervisorctl unavailable for '${service}', falling back to compose logs...${NC}"
     fi
 
-    docker compose -f "${COMPOSE_FILE}" logs -f "${service}"
+    docker compose "${COMPOSE_ARGS[@]}" logs -f "${service}"
 }
 
 cmd_shell() {
