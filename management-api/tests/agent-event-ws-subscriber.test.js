@@ -232,7 +232,7 @@ describe('AgentEventWsSubscriber.subscribeInbound', () => {
       (e) => seen.push(e)
     );
     agentEventPublisher.subscribers.forEach((cb) =>
-      cb({ direction: 'inbound', kind: 'focus', target_urn: 'urn:visionclaw:kg:npub1xyz:abc' })
+      cb({ direction: 'inbound', kind: 'focus', target_urn: 'urn:visionclaw:kg:79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798:sha256-12-deadbeef0001' })
     );
     agentEventPublisher.subscribers.forEach((cb) =>
       cb({ direction: 'inbound', kind: 'focus', target_urn: 'urn:agentbox:bead:scope:hash' })

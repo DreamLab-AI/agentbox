@@ -8,7 +8,7 @@
  * sovereign_mesh.solid_pod = true (the document is published at
  * /.well-known/did.json via solid-pod-rs).
  *
- * Builds the DID Document for `did:nostr:<npub>` — the agent's primary
+ * Builds the DID Document for `did:nostr:<hex-pubkey>` — the agent's primary
  * sovereign identifier — including verification methods (Schnorr public
  * key) and service endpoints (pod base URL, embedded relay URL).
  */

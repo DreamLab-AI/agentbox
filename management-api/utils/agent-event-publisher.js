@@ -60,7 +60,7 @@ class AgentEventPublisher extends EventEmitter {
     // When the caller provides any of these fields they are forwarded;
     // when omitted, the envelope still validates and renders correctly.
     //   source_urn:  did:nostr:<hex> | urn:agentbox:agent:<scope>:<local>
-    //   target_urn:  urn:visionclaw:kg:<npub>:<sha256-12-hex>  (foreign URN)
+    //   target_urn:  urn:visionclaw:kg:<hex-pubkey>:<sha256-12-hex>  (foreign URN)
     //   pubkey:      did:nostr hex of the agent or its operator
     if (event.source_urn !== undefined) fullEvent.source_urn = event.source_urn;
     if (event.target_urn !== undefined) fullEvent.target_urn = event.target_urn;
