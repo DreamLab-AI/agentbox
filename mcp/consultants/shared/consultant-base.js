@@ -32,6 +32,7 @@ const { StdioServerTransport } = require('@modelcontextprotocol/sdk/server/stdio
 const { ListToolsRequestSchema, CallToolRequestSchema } =
   require('@modelcontextprotocol/sdk/types.js');
 
+const crypto = require('crypto');
 const { MemoryLogger } = require('./memory-logger');
 
 const DEFAULT_TIMEOUT_MS = 120_000;
@@ -169,6 +170,11 @@ class BaseConsultant {
       throw err;
     }
 
+    const consultHash = crypto.createHash('sha256')
+      .update(`${this.name}:${args.question}`)
+      .digest('hex')
+      .slice(0, 12);
+
     const envelope = {
       ok:         true,
       consultant: this.name,
@@ -179,6 +185,10 @@ class BaseConsultant {
       citations:  Array.isArray(result.citations) ? result.citations : [],
       latency_ms: Date.now() - t0,
     };
+    envelope.consultation_urn = `urn:agentbox:activity:sha256-12-${consultHash}`;
+    envelope.source_urn = process.env.AGENTBOX_URN
+      || process.env.AGENTBOX_DID
+      || `urn:agentbox:agent:consultant-${this.name}`;
 
     this.memlog.log({
       ok:           true,
@@ -191,6 +201,7 @@ class BaseConsultant {
       cost_usd:     envelope.cost_usd,
       latency_ms:   envelope.latency_ms,
       citations:    envelope.citations.length,
+      consultation_urn: envelope.consultation_urn,
     });
 
     return envelope;

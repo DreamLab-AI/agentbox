@@ -27,6 +27,22 @@ Full product spec: [PRD-001](docs/prd/PRD-001-capabilities-and-adapters.md). Ada
 - [`config/tmux-autostart.sh`](config/tmux-autostart.sh): tmux session launcher (MAD-style tabs)
 - [`config/tmux.conf`](config/tmux.conf): tmux configuration (fish shell, dark theme)
 
+## URI/URN Scheme
+
+Grammar: `urn:agentbox:<kind>:[<scope>:]<local>` where scope is a hex pubkey.
+
+18 kinds: `pod`, `envelope`, `credential`, `mandate`, `receipt`, `activity`, `event`, `mcp`, `memory`, `skill`, `adr`, `prd`, `ddd`, `thing`, `dataset`, `bead`, `agent`, `meta`.
+
+Identity: `did:nostr:<hex-pubkey>` (shared with VisionClaw substrate).
+
+Content addressing: `sha256-12-<12 hex chars>` (same convention both sides).
+
+Minting: all URNs are minted via `management-api/lib/uris.js`. All durable identifiers MUST be minted through `uris.js`. Ad-hoc `format!()` or template-literal URNs are prohibited.
+
+Resolvability: best-effort via `/v1/uri/<urn>` (307/404/410). Canonical ref: [ADR-013](docs/adr/ADR-013-canonical-uri-grammar.md).
+
+Parallel namespace: the host project's Rust substrate uses `urn:visionclaw:<kind>:<scope>:<local>` (6 kinds: `concept`, `kg`, `bead`, `execution`, `group`) minted in `src/uri/`. The BC20 anti-corruption layer maps between the two namespaces at the federation boundary.
+
 ## Important Rules For Changes
 
 - Do not reintroduce Linux pseudo-user isolation as the primary model.

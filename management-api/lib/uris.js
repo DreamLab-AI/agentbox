@@ -86,6 +86,7 @@ const KINDS = Object.freeze({
   thing:      { ownerScope: false, contentAddressed: false, resolvableSurface: 'things' },
   dataset:    { ownerScope: true,  contentAddressed: false, resolvableSurface: 'memory' },
   bead:       { ownerScope: true,  contentAddressed: false, resolvableSurface: 'beads' },
+  agent:      { ownerScope: false, contentAddressed: false, resolvableSurface: 'agents' },
   meta:       { ownerScope: false, contentAddressed: false, resolvableSurface: 'meta' },
 });
 

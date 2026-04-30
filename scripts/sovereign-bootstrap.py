@@ -66,7 +66,11 @@ def write_json(path, payload):
 def ensure_identity(agent_id, identity_root):
     identity_file = identity_root / f"{agent_id}.json"
     if identity_file.exists():
-      return json.loads(identity_file.read_text(encoding="utf-8"))
+      identity = json.loads(identity_file.read_text(encoding="utf-8"))
+      if "x_only_pubkey_hex" not in identity:
+          identity["x_only_pubkey_hex"] = identity["public_key_hex"][:64]
+          write_json(identity_file, identity)
+      return identity
 
     signing_key = SigningKey.generate(curve=SECP256k1)
     verifying_key = signing_key.get_verifying_key()
@@ -78,6 +82,7 @@ def ensure_identity(agent_id, identity_root):
         "created_at": int(time.time()),
         "private_key_hex": private_bytes.hex(),
         "public_key_hex": public_bytes.hex(),
+        "x_only_pubkey_hex": public_bytes[:32].hex(),
         "nsec": bech32_encode("nsec", private_bytes),
         "npub": bech32_encode("npub", public_bytes),
     }
@@ -98,9 +103,10 @@ def ensure_acl(pod_root, identity):
         (pod_dir / relative).mkdir(parents=True, exist_ok=True)
 
     # ADR-010 Sprint 6 absorption: WAC subject is the did:nostr DID, not the
-    # raw npub. solid-pod-rs resolves did:nostr:<npub> via its interop::did_nostr
-    # module, and the same key is the one the relay accepts under NIP-42.
-    did = f"did:nostr:{identity['npub']}"
+    # raw npub. ADR-013 mandates did:nostr:<hex-pubkey> (BIP-340 x-only,
+    # 64 lowercase hex chars) rather than bech32 npub so that non-Nostr
+    # DID resolvers and W3C VC verifiers don't need a bech32 decoder.
+    did = f"did:nostr:{identity['x_only_pubkey_hex']}"
     acl = {
         "@context": "http://www.w3.org/ns/auth/acl#",
         "owner": did,
@@ -125,8 +131,8 @@ def ensure_acl(pod_root, identity):
         },
     )
     # Tier 1 + Tier 3 DID document — consumed by solid-pod-rs's did-nostr
-    # resolver at GET /did:nostr:<npub>. alsoKnownAs cross-references the pod
-    # profile URI so downstream clients can traverse in either direction.
+    # resolver at GET /did:nostr:<hex-pubkey>. alsoKnownAs cross-references
+    # the pod profile URI so downstream clients can traverse in either direction.
     did_doc = {
         "@context": [
             "https://www.w3.org/ns/did/v1",
@@ -160,7 +166,9 @@ def write_runtime_env(identity, run_root):
                 f"export AGENTBOX_NPUB={identity['npub']}",
                 f"export AGENTBOX_NSEC={identity['nsec']}",
                 f"export AGENTBOX_PUBKEY_HEX={identity['public_key_hex']}",
-                f"export AGENTBOX_DID=did:nostr:{identity['npub']}",
+                f"export AGENTBOX_X_ONLY_PUBKEY_HEX={identity['x_only_pubkey_hex']}",
+                f"export AGENTBOX_DID=did:nostr:{identity['x_only_pubkey_hex']}",
+                f"export AGENTBOX_URN=urn:agentbox:agent:{identity['agent_id']}",
                 "",
             ]
         ),
