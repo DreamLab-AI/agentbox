@@ -6,6 +6,7 @@
  */
 
 const EventEmitter = require('events');
+const uris = require('../lib/uris');
 
 // Agent action types matching the Rust binary protocol
 const AgentActionType = {
@@ -64,6 +65,17 @@ class AgentEventPublisher extends EventEmitter {
     if (event.source_urn !== undefined) fullEvent.source_urn = event.source_urn;
     if (event.target_urn !== undefined) fullEvent.target_urn = event.target_urn;
     if (event.pubkey !== undefined)     fullEvent.pubkey     = event.pubkey;
+
+    // Auto-populate identity fields from environment when not supplied
+    // by the caller, so every event carries attribution by default.
+    if (!fullEvent.source_urn) {
+      fullEvent.source_urn = process.env.AGENTBOX_URN
+        || process.env.AGENTBOX_DID
+        || null;
+    }
+    if (!fullEvent.pubkey) {
+      fullEvent.pubkey = process.env.AGENTBOX_DID || null;
+    }
 
     // Buffer the event
     this.eventBuffer.push(fullEvent);
@@ -218,6 +230,8 @@ class AgentEventPublisher extends EventEmitter {
           )?.toLowerCase() || 'query',
           timestamp: event.timestamp,
           duration_ms: event.duration_ms,
+          source_urn: event.source_urn || null,
+          pubkey: event.pubkey || null,
           metadata: event.metadata || {}
         },
         timestamp: new Date().toISOString()

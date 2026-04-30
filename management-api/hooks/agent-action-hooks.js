@@ -88,6 +88,7 @@ const hookHandlers = {
       target_node_id: getNodeId(taskId || 'task-queue'),
       action_type: AgentActionType.CREATE,
       duration_ms: 50,
+      source_urn: data.source_urn,
       metadata: {
         hook: 'pre-task',
         taskId,
@@ -106,6 +107,7 @@ const hookHandlers = {
       target_node_id: getNodeId(taskId || 'task-queue'),
       action_type: success ? AgentActionType.UPDATE : AgentActionType.DELETE,
       duration_ms: 100,
+      source_urn: data.source_urn,
       metadata: {
         hook: 'post-task',
         taskId,
@@ -129,6 +131,7 @@ const hookHandlers = {
       target_node_id: getNodeId(filePath),
       action_type: actionType,
       duration_ms: 150,
+      source_urn: data.source_urn,
       metadata: {
         hook: 'pre-edit',
         filePath,
@@ -147,6 +150,7 @@ const hookHandlers = {
       target_node_id: getNodeId(filePath),
       action_type: success ? AgentActionType.UPDATE : AgentActionType.QUERY,
       duration_ms: 200,
+      source_urn: data.source_urn,
       metadata: {
         hook: 'post-edit',
         filePath,
@@ -165,6 +169,7 @@ const hookHandlers = {
       target_node_id: getNodeId('shell'),
       action_type: AgentActionType.TRANSFORM,
       duration_ms: 50,
+      source_urn: data.source_urn,
       metadata: {
         hook: 'pre-command',
         command: command?.substring(0, 50)
@@ -182,6 +187,7 @@ const hookHandlers = {
       target_node_id: getNodeId('shell'),
       action_type: exitCode === 0 ? AgentActionType.UPDATE : AgentActionType.DELETE,
       duration_ms: 100,
+      source_urn: data.source_urn,
       metadata: {
         hook: 'post-command',
         command: command?.substring(0, 50),
@@ -200,6 +206,7 @@ const hookHandlers = {
       target_node_id: getAgentId(agent || 'worker'),
       action_type: AgentActionType.LINK,
       duration_ms: 75,
+      source_urn: data.source_urn,
       metadata: {
         hook: 'route',
         task: task?.substring(0, 100),
@@ -218,6 +225,7 @@ const hookHandlers = {
       target_node_id: getAgentId(agentId || agentType),
       action_type: AgentActionType.CREATE,
       duration_ms: 200,
+      source_urn: data.source_urn,
       metadata: {
         hook: 'agent-spawn',
         agentId,
@@ -236,6 +244,7 @@ const hookHandlers = {
       target_node_id: getAgentId(parent || 'coordinator'),
       action_type: AgentActionType.DELETE,
       duration_ms: 100,
+      source_urn: data.source_urn,
       metadata: {
         hook: 'agent-terminate',
         agentId,
@@ -258,6 +267,7 @@ const hookHandlers = {
       target_node_id: getNodeId(`memory:${key}`),
       action_type: actionType,
       duration_ms: 50,
+      source_urn: data.source_urn,
       metadata: {
         hook: 'memory-access',
         key,
@@ -276,6 +286,7 @@ const hookHandlers = {
       target_node_id: getNodeId(target || 'unknown'),
       action_type: mapActionType(action || 'query'),
       duration_ms: duration || 100,
+      source_urn: data.source_urn,
       metadata: {
         hook: 'action',
         ...metadata
@@ -285,20 +296,44 @@ const hookHandlers = {
 };
 
 /**
+ * Derive a source_urn for the hook event.
+ *
+ * Priority: explicit source_urn on the event → mint from agent_name →
+ * mint from agent_id → AGENTBOX_URN env → null.
+ */
+function deriveSourceUrn(data) {
+  if (data.source_urn) return data.source_urn;
+
+  const agentName = data.agent_name || data.agentId || data.agent;
+  if (agentName) {
+    return `urn:agentbox:agent:${String(agentName).replace(/[^A-Za-z0-9._-]/g, '_')}`;
+  }
+
+  return process.env.AGENTBOX_URN || null;
+}
+
+/**
  * Process incoming hook event
  */
 function processHookEvent(hookName, data) {
+  // Inject identity attribution so every handler carries it.
+  const enriched = {
+    ...data,
+    source_urn: deriveSourceUrn(data)
+  };
+
   const handler = hookHandlers[hookName];
   if (handler) {
-    return handler(data);
+    return handler(enriched);
   }
 
   // Fallback to generic action handler
   return hookHandlers['action']({
-    source: data.agent || data.source,
-    target: data.target || data.taskId || data.filePath,
+    source: enriched.agent || enriched.source,
+    target: enriched.target || enriched.taskId || enriched.filePath,
     action: hookName,
-    metadata: data
+    source_urn: enriched.source_urn,
+    metadata: enriched
   });
 }
 
@@ -317,6 +352,7 @@ function getRegistryStats() {
 module.exports = {
   hookHandlers,
   processHookEvent,
+  deriveSourceUrn,
   getAgentId,
   getNodeId,
   mapActionType,
