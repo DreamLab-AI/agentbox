@@ -8,9 +8,20 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
 import { EnhancedMemory } from '../memory/enhanced-memory.js';
 // Use the same memory system that npx commands use - singleton instance
 import { memoryStore } from '../memory/fallback-store.js';
+
+// ADR-063: URN-traced memory entries via canonical URI grammar (ADR-013)
+const _require = createRequire(import.meta.url);
+let urisMint = null;
+try {
+  const uris = _require('../../management-api/lib/uris.js');
+  urisMint = uris.mint;
+} catch {
+  // uris.js not loadable — URN minting degrades to null (non-fatal)
+}
 
 // Initialize agent tracker
 await import('./implementations/agent-tracker.js').catch(() => {
@@ -2133,6 +2144,15 @@ class ClaudeFlowMCPServer {
     try {
       switch (args.action) {
         case 'store':
+          // ADR-063: mint URN for every memory entry
+          let memoryUrn = null;
+          if (urisMint) {
+            try {
+              const ns = args.namespace || 'default';
+              memoryUrn = urisMint({ kind: 'memory', localId: `${ns}.${args.key}` });
+            } catch { /* degrade gracefully */ }
+          }
+
           const storeResult = await this.memoryStore.store(args.key, args.value, {
             namespace: args.namespace || 'default',
             ttl: args.ttl,
@@ -2140,11 +2160,12 @@ class ClaudeFlowMCPServer {
               sessionId: this.sessionId,
               storedBy: 'mcp-server',
               type: 'knowledge',
+              urn: memoryUrn,
             },
           });
 
           console.error(
-            `[${new Date().toISOString()}] INFO [claude-flow-mcp] Stored in shared memory: ${args.key} (namespace: ${args.namespace || 'default'})`,
+            `[${new Date().toISOString()}] INFO [claude-flow-mcp] Stored in shared memory: ${args.key} (namespace: ${args.namespace || 'default'}${memoryUrn ? ', urn: ' + memoryUrn : ''})`,
           );
 
           return {
@@ -2155,6 +2176,7 @@ class ClaudeFlowMCPServer {
             stored: true,
             size: storeResult.size || args.value.length,
             id: storeResult.id,
+            urn: memoryUrn,
             storage_type: this.memoryStore.isUsingFallback() ? 'in-memory' : 'sqlite',
             timestamp: new Date().toISOString(),
           };
@@ -2163,6 +2185,15 @@ class ClaudeFlowMCPServer {
           const value = await this.memoryStore.retrieve(args.key, {
             namespace: args.namespace || 'default',
           });
+
+          // ADR-063: reconstruct URN for retrieved entry
+          let retrieveUrn = null;
+          if (urisMint && value !== null) {
+            try {
+              const ns = args.namespace || 'default';
+              retrieveUrn = urisMint({ kind: 'memory', localId: `${ns}.${args.key}` });
+            } catch { /* degrade gracefully */ }
+          }
 
           console.error(
             `[${new Date().toISOString()}] INFO [claude-flow-mcp] Retrieved from shared memory: ${args.key} (found: ${value !== null})`,
@@ -2174,6 +2205,7 @@ class ClaudeFlowMCPServer {
             key: args.key,
             value: value,
             found: value !== null,
+            urn: retrieveUrn,
             namespace: args.namespace || 'default',
             storage_type: this.memoryStore.isUsingFallback() ? 'in-memory' : 'sqlite',
             timestamp: new Date().toISOString(),
@@ -2185,6 +2217,17 @@ class ClaudeFlowMCPServer {
             limit: 100,
           });
 
+          // ADR-063: annotate listed entries with URNs
+          const ns = args.namespace || 'default';
+          const annotated = urisMint
+            ? entries.map(e => {
+                try {
+                  const k = typeof e === 'string' ? e : e.key;
+                  return { ...(typeof e === 'string' ? { key: e } : e), urn: urisMint({ kind: 'memory', localId: `${ns}.${k}` }) };
+                } catch { return e; }
+              })
+            : entries;
+
           console.error(
             `[${new Date().toISOString()}] INFO [claude-flow-mcp] Listed shared memory entries: ${entries.length} (namespace: ${args.namespace || 'default'})`,
           );
@@ -2193,7 +2236,7 @@ class ClaudeFlowMCPServer {
             success: true,
             action: 'list',
             namespace: args.namespace || 'default',
-            entries: entries,
+            entries: annotated,
             count: entries.length,
             storage_type: this.memoryStore.isUsingFallback() ? 'in-memory' : 'sqlite',
             timestamp: new Date().toISOString(),
@@ -2224,6 +2267,16 @@ class ClaudeFlowMCPServer {
             limit: 50,
           });
 
+          // ADR-063: annotate search results with URNs
+          const searchNs = args.namespace || 'default';
+          const urnResults = urisMint
+            ? results.map(r => {
+                try {
+                  return { ...r, urn: urisMint({ kind: 'memory', localId: `${searchNs}.${r.key}` }) };
+                } catch { return r; }
+              })
+            : results;
+
           console.error(
             `[${new Date().toISOString()}] INFO [claude-flow-mcp] Searched shared memory: ${results.length} results for "${args.value}"`,
           );
@@ -2233,7 +2286,7 @@ class ClaudeFlowMCPServer {
             action: 'search',
             pattern: args.value,
             namespace: args.namespace || 'default',
-            results: results,
+            results: urnResults,
             count: results.length,
             storage_type: this.memoryStore.isUsingFallback() ? 'in-memory' : 'sqlite',
             timestamp: new Date().toISOString(),
@@ -2276,11 +2329,21 @@ class ClaudeFlowMCPServer {
         limit: args.limit || 10,
       });
 
+      // ADR-063: annotate with URNs
+      const sNs = args.namespace || 'default';
+      const urnAnnotated = urisMint
+        ? results.map(r => {
+            try {
+              return { ...r, urn: urisMint({ kind: 'memory', localId: `${sNs}.${r.key}` }) };
+            } catch { return r; }
+          })
+        : results;
+
       return {
         success: true,
         pattern: args.pattern,
         namespace: args.namespace || 'default',
-        results: results,
+        results: urnAnnotated,
         count: results.length,
         timestamp: new Date().toISOString(),
       };

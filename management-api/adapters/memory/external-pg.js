@@ -14,6 +14,13 @@ const { BaseAdapter } = require('../base');
 const { EmbeddingError } = require('../errors');
 const CONTRACT_VERSIONS = require('../contract-versions');
 
+// ADR-063: URN-traced memory entries
+let urisMint = null;
+try {
+  const uris = require('../../lib/uris');
+  urisMint = uris.mint;
+} catch { /* uris.js not loadable — URN minting degrades to null */ }
+
 const CREATE_TABLE = `
   CREATE TABLE IF NOT EXISTS memory_entries (
     key        TEXT        NOT NULL,
@@ -67,13 +74,17 @@ class ExternalPgMemoryAdapter extends BaseAdapter {
   async store(key, value, namespace = 'default') {
     if (!key) throw new Error('key is required');
     await this._ensureReady();
+    let urn = null;
+    if (urisMint) {
+      try { urn = urisMint({ kind: 'memory', localId: `${namespace}.${key}` }); } catch { /* */ }
+    }
     await this._pool.query(
       `INSERT INTO memory_entries (key, namespace, value, stored_at)
        VALUES ($1, $2, $3, NOW())
        ON CONFLICT (key, namespace) DO UPDATE SET value = EXCLUDED.value, stored_at = NOW()`,
       [key, namespace, String(value)]
     );
-    return { key, namespace, stored_at: new Date().toISOString() };
+    return { key, namespace, stored_at: new Date().toISOString(), urn };
   }
 
   /**
@@ -98,11 +109,13 @@ class ExternalPgMemoryAdapter extends BaseAdapter {
       [`%${query}%`, namespace, limit]
     );
     return {
-      results: res.rows.map(r => ({
-        key: r.key,
-        value: r.value,
-        score: parseFloat(r.score),
-      })),
+      results: res.rows.map(r => {
+        const entry = { key: r.key, value: r.value, score: parseFloat(r.score) };
+        if (urisMint) {
+          try { entry.urn = urisMint({ kind: 'memory', localId: `${namespace}.${r.key}` }); } catch { /* */ }
+        }
+        return entry;
+      }),
     };
   }
 
@@ -118,7 +131,11 @@ class ExternalPgMemoryAdapter extends BaseAdapter {
     );
     if (res.rows.length === 0) return null;
     const r = res.rows[0];
-    return { key: r.key, value: r.value, namespace: r.namespace, stored_at: r.stored_at };
+    let urn = null;
+    if (urisMint) {
+      try { urn = urisMint({ kind: 'memory', localId: `${r.namespace}.${r.key}` }); } catch { /* */ }
+    }
+    return { key: r.key, value: r.value, namespace: r.namespace, stored_at: r.stored_at, urn };
   }
 
   /**
