@@ -3,8 +3,8 @@
  * Manages workflow submission, execution tracking, and event broadcasting
  */
 
-const { v4: uuidv4 } = require('uuid');
 const EventEmitter = require('events');
+const uris = require('../lib/uris');
 const fs = require('fs');
 const path = require('path');
 
@@ -28,7 +28,8 @@ class ComfyUIManager extends EventEmitter {
    * Submit workflow for execution
    */
   async submitWorkflow(workflow, options = {}) {
-    const workflowId = uuidv4();
+    const pubkey = process.env.AGENTBOX_PUBKEY || '0'.repeat(64);
+    const workflowId = uris.mint({ kind: 'activity', pubkey, payload: { type: 'comfyui-workflow', priority: options.priority || 'normal', ts: Date.now() } });
     const { priority = 'normal', gpu = 'local' } = options;
 
     const workflowInfo = {

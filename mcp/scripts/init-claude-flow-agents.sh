@@ -19,13 +19,11 @@ WORKSPACE="${WORKSPACE_FOLDER:-/workspace}"
 [ -d "$WORKSPACE" ] || WORKSPACE="$HOME/workspace"
 cd "$WORKSPACE" || exit 1
 
-# Check if claude-flow is available
+# Check if claude-flow is available (Nix-packaged, no npm fallback)
 if ! command_exists claude-flow; then
-    echo "⚠️  claude-flow not found. Installing v3alpha..."
-    npm install -g claude-flow@v3alpha || {
-        echo "❌ Failed to install claude-flow"
-        exit 1
-    }
+    echo "❌ claude-flow not in PATH — Nix image packaging defect"
+    echo "   Expected at: /nix/store/.../bin/claude-flow"
+    exit 1
 fi
 
 # Display version

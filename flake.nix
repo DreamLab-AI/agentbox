@@ -1521,6 +1521,8 @@ ${ragflowNetworkDecl}
           "ENABLE_RUST_TOOLCHAIN=${boolEnv (toolchainCfg.rust or false)}"
           "ENABLE_GEMINI_CLI=${boolEnv (toolchainCfg.gemini_cli or false)}"
           "ENABLE_CODEX=${boolEnv (toolchainCfg.codex or false)}"
+          "CLAUDE_FLOW_PLUGIN_DIR=/home/devuser/.claude-flow/plugins"
+          "RUVECTOR_PG_CONNINFO=${(agentboxConfig.integrations.ruvector_external.conninfo or "")}"
           "WORKSPACE=/workspace"
           "SHARED_PROJECTS_ROOT=/projects"
           "AGENTBOX_AGENT_ID=agentbox-core"

@@ -5,6 +5,7 @@
  */
 
 const promClient = require('prom-client');
+const uris = require('../lib/uris');
 
 // Prometheus registry
 const register = new promClient.Registry();
@@ -71,7 +72,8 @@ function wrapDispatch(slot, impl, methodName, fn) {
     const startTime = Date.now();
     const startHrTime = process.hrtime.bigint();
 
-    const executionId = `${slot}-${impl}-${methodName}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+    const pubkey = process.env.AGENTBOX_PUBKEY || '0'.repeat(64);
+    const executionId = uris.mint({ kind: 'event', pubkey, payload: { slot, impl, method: methodName, ts: Date.now() } });
     const sessionId = process.env.SESSION_ID || 'unknown';
 
     try {

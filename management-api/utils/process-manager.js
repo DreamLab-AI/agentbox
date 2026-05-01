@@ -6,7 +6,7 @@
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
-const { v4: uuidv4 } = require('uuid');
+const uris = require('../lib/uris');
 
 class ProcessManager {
   constructor(logger) {
@@ -27,7 +27,8 @@ class ProcessManager {
    * Spawn a new agentic-flow task with isolation
    */
   spawnTask(agent, task, provider = 'gemini') {
-    const taskId = uuidv4();
+    const pubkey = process.env.AGENTBOX_PUBKEY || '0'.repeat(64);
+    const taskId = uris.mint({ kind: 'activity', pubkey, payload: { agent, task, provider, ts: Date.now() } });
     const taskDir = path.join(this.workspaceRoot, 'tasks', taskId);
     const logFile = path.join(this.logsRoot, `${taskId}.log`);
 

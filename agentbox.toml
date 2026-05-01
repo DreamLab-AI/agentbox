@@ -368,6 +368,39 @@ codex = true
 code_server = true
 cuda = false
 
+# ── Plugins (ruflo/claude-flow plugin system) ────────────────────────────────
+# Plugins are installed into $HOME/.claude-flow/plugins/ at container boot
+# (entrypoint Phase 7) and loaded by the MCP server at runtime.
+# The Nix-packaged claude-flow/ruflo binaries provide the plugin CLI;
+# npx @latest aliases are no longer needed.
+[plugins]
+auto_update = false                     # off by default — set true for @latest
+install_dir = "/home/devuser/.claude-flow/plugins"
+
+# Memory backend for plugins that need persistence.
+# Points to the same external ruvector-postgres used by integrations.ruvector_external.
+[plugins.memory]
+backend = "postgres"
+conninfo = "postgresql://ruvector:ruvector@ruvector-postgres:5432/ruvector"
+fallback = "sqlite"
+enable_hnsw = true
+
+# Declared plugins — installed at boot, gated by enabled flag.
+[[plugins.packages]]
+name = "@claude-flow/plugin-agentic-qe"
+version = "^3.0.0-alpha.4"
+enabled = true
+
+[[plugins.packages]]
+name = "@claude-flow/claims"
+version = "^3.0.0-alpha.8"
+enabled = true
+
+[[plugins.packages]]
+name = "@claude-flow/performance"
+version = "^3.0.0-alpha.1"
+enabled = true
+
 [observability]
 metrics_port = 9091
 otlp_endpoint = ""

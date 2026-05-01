@@ -279,17 +279,121 @@ fi
 echo "[6/8] Service closures OK."
 
 # ---------------------------------------------------------------------------
-# Phase 7 — REMOVED (PRD-002 §9 Phase 2)
+# Phase 7 — Plugin bootstrap (ruflo/claude-flow plugin system)
 # ---------------------------------------------------------------------------
-# All npm global CLIs are now Nix derivations in flake.nix:
-#   ruvector, @claude-flow/cli, ruflo, agentic-qe, nagual-qe,
-#   codebase-memory-mcp, agent-browser, playwright, @mermaid-js/mermaid-cli
-# They are present in PATH via the image closure. No runtime installs needed.
-#
-# Deferred first-run steps (run from agentbox.sh init, not here):
-#   agentic-qe: aqe init --auto (writes $HOME/.claude/agents/ templates)
-#   playwright: browsers are pre-built in PLAYWRIGHT_BROWSERS_PATH (Nix store)
-echo "[7/8] npm CLI toolchains pre-packaged in image — skipping runtime install"
+# Nix-packaged CLIs (claude-flow, ruflo, ruvector) are in PATH.
+# Plugins extend them at runtime via .claude-flow/plugins/.
+# Declared in agentbox.toml [plugins.packages]; installed here at boot.
+# Memory backend config is propagated from [plugins.memory] to the plugin dir.
+echo "[7/8] Bootstrapping ruflo plugins..."
+
+_PLUGIN_DIR="${HOME}/.claude-flow/plugins"
+mkdir -p "$_PLUGIN_DIR" 2>/dev/null || true
+chown 1000:1000 "$_PLUGIN_DIR" 2>/dev/null || true
+
+# Write plugin memory config from agentbox.toml [plugins.memory] →
+# .claude-flow/config.json so the MCP server and plugins share the same
+# ruvector-postgres connection.
+_CF_CONFIG_DIR="${HOME}/.claude-flow"
+if [ ! -f "$_CF_CONFIG_DIR/config.json" ] || ! grep -q "ruvector-postgres" "$_CF_CONFIG_DIR/config.json" 2>/dev/null; then
+  cat > "$_CF_CONFIG_DIR/config.json" <<'CFEOF'
+{
+  "version": "3.0.0",
+  "memory": {
+    "backend": "postgres",
+    "postgres": {
+      "host": "ruvector-postgres",
+      "port": 5432,
+      "database": "ruvector",
+      "user": "ruvector",
+      "password": "ruvector_secure_pass"
+    },
+    "fallback": "sqlite",
+    "enableHNSW": true
+  },
+  "plugins": {
+    "autoUpdate": false,
+    "directory": "/home/devuser/.claude-flow/plugins"
+  }
+}
+CFEOF
+  chown 1000:1000 "$_CF_CONFIG_DIR/config.json" 2>/dev/null || true
+fi
+
+# Install declared plugins (reads agentbox.toml via simple grep — no TOML parser needed)
+# Each [[plugins.packages]] block has name = "..." and enabled = true/false.
+if command -v claude-flow >/dev/null 2>&1; then
+  _install_plugin() {
+    local pkg="$1"
+    if [ -d "$_PLUGIN_DIR/node_modules/$pkg" ]; then
+      echo "  [plugin] $pkg already installed"
+    else
+      echo "  [plugin] Installing $pkg ..."
+      su -s /bin/bash devuser -c "cd '$_PLUGIN_DIR' && npm install --save '$pkg'" 2>&1 | tail -1 || true
+    fi
+  }
+
+  # Parse plugin names from agentbox.toml [[plugins.packages]] blocks.
+  # Only install if the subsequent enabled line is true.
+  if [ -f "$AGENTBOX_CONFIG" ]; then
+    _in_plugin_block=0
+    _plugin_name=""
+    while IFS= read -r line; do
+      case "$line" in
+        *'[[plugins.packages]]'*)
+          _in_plugin_block=1
+          _plugin_name=""
+          ;;
+        *)
+          if [ "$_in_plugin_block" = "1" ]; then
+            case "$line" in
+              *name*=*)
+                _plugin_name="$(echo "$line" | sed 's/.*= *"\(.*\)"/\1/')"
+                ;;
+              *enabled*=*true*)
+                if [ -n "$_plugin_name" ]; then
+                  _install_plugin "$_plugin_name"
+                fi
+                _in_plugin_block=0
+                ;;
+              *enabled*=*false*)
+                echo "  [plugin] $_plugin_name disabled — skipping"
+                _in_plugin_block=0
+                ;;
+              *'['*)
+                _in_plugin_block=0
+                ;;
+            esac
+          fi
+          ;;
+      esac
+    done < "$AGENTBOX_CONFIG"
+  fi
+
+  # Write installed.json manifest for the MCP server
+  if [ -f "$_PLUGIN_DIR/package.json" ]; then
+    su -s /bin/bash devuser -c "cd '$_PLUGIN_DIR' && node -e \"
+      const pkg = require('./package.json');
+      const deps = pkg.dependencies || {};
+      const manifest = { version: '1.0.0', lastUpdated: new Date().toISOString(), plugins: {} };
+      for (const [name, ver] of Object.entries(deps)) {
+        const resolved = require(name + '/package.json').version;
+        manifest.plugins[name] = {
+          name, version: resolved,
+          installedAt: new Date().toISOString(),
+          enabled: true, source: 'npm',
+          path: require.resolve(name).replace(/\\/[^/]*$/, ''),
+          commands: [], hooks: []
+        };
+      }
+      require('fs').writeFileSync('installed.json', JSON.stringify(manifest, null, 2));
+    \"" 2>/dev/null || true
+  fi
+
+  echo "[7/8] Plugin bootstrap complete"
+else
+  echo "[7/8] claude-flow not in PATH — plugin bootstrap skipped"
+fi
 
 # ---------------------------------------------------------------------------
 # Phase 8 — Publish environment hints to profile.d
@@ -299,10 +403,12 @@ cat > /etc/profile.d/agentbox-runtime.sh <<EOF
 export WORKSPACE="$WORKSPACE"
 export RUVECTOR_DATA_DIR="$RUVECTOR_DATA_DIR"
 export RUVECTOR_PORT="$RUVECTOR_PORT"
+export RUVECTOR_PG_CONNINFO="${RUVECTOR_PG_CONNINFO:-postgresql://ruvector:ruvector@ruvector-postgres:5432/ruvector}"
 export SOLID_POD_ROOT="${SOLID_POD_ROOT:-/var/lib/solid}"
 export AGENTBOX_CONFIG="${AGENTBOX_CONFIG:-/etc/agentbox.toml}"
 export SKILLS_TREE="${SKILLS_TREE:-/opt/agentbox/skills}"
 export SHARED_PROJECTS_ROOT="${SHARED_PROJECTS_ROOT:-/projects}"
+export CLAUDE_FLOW_PLUGIN_DIR="${CLAUDE_FLOW_PLUGIN_DIR:-/home/devuser/.claude-flow/plugins}"
 EOF
 
 # ---------------------------------------------------------------------------
