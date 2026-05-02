@@ -67,6 +67,7 @@ You are adding a feature, implementing an adapter, or investigating a regression
 | Architecture | |
 |---|---|
 | [Architecture overview](developer/architecture.md) | How it all fits together — manifest → flake → image → runtime |
+| [Identity and tracing mesh](developer/identity-mesh.md) | secp256k1 identity root, 18-kind URN namespace, adapter dispatch pipeline, credential provenance, federation invariants |
 | [Adapter pattern](developer/adapters.md) | Five slots × three classes; how to write a new impl |
 | [Sovereign mesh](developer/sovereign-mesh.md) | Nostr client + NIP-98 auth + relay pool internals |
 | [Linked-Data middleware](developer/linked-data.md) | Encoder + ContextResolver + LION linter + JCS — surface authoring guide |

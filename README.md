@@ -21,22 +21,208 @@ One TOML manifest. One Nix flake. One runtime contract.
 
 ## Why Agentbox
 
-Most agent containers fail in one of four ways:
+The core problem with most agent runtimes is not missing tooling — it is that the things agents do cannot be traced, audited, or federated. An agent writes to a pod: which agent, which pod resource, was the data redacted before write, can you prove it later? An agent issues a credential: which identity signed it, does the `@id` in the signed document match the `@id` in the audit log? Two agentboxes exchange messages: do the identifiers on both sides refer to the same thing, or have they been reminted at each hop? Without answers to these questions, an agent runtime is a collection of tools with no provenance.
 
-- they are mutable at boot, with `npm install` and `curl | bash` in the startup path
-- they hardcode one backend mesh and cannot stand alone
-- they expose a pile of tools but no durable runtime contract
-- they emit interesting data but not in a form agents or humans can actually monitor and resolve
+Agentbox answers all of them with a single design decision: every agent, resource, action, and event in the system is named by a stable identifier rooted in one cryptographic identity. A BIP-340 secp256k1 keypair is generated at bootstrap. Its x-only public key — 64 lowercase hex characters — becomes `did:nostr:<hex-pubkey>`: the agent's primary DID, accepted by the embedded Nostr relay under NIP-42, by the Solid pod under NIP-98 HTTP auth and WAC policies, and by every verifiable credential the agent issues or receives. From that one root, 18 kinds of `urn:agentbox:<kind>:[<scope>:]<local>` identifiers name every other entity in the system. Owner-scoped kinds embed the hex pubkey: `urn:agentbox:credential:<hex-pubkey>:<sha256-12-…>` means the credential was issued by that agent and no other. Content-addressed kinds derive their local part from `sha256-12-<first 12 hex chars of SHA-256(stableStringify(payload))>`: the same resource always has the same name, regardless of when or where it was emitted.
 
-Agentbox takes the opposite shape. A single `agentbox.toml` manifest drives:
+What this naming discipline unlocks is qualitatively different from feature lists. Signed credentials carry a stable `@id` that survives JCS canonicalisation — the proof block binds a meaningful identifier, not a freshly-rolled UUID. Re-emitting the same payload produces the same URI, so external indexes never double-count. The linked-data browser at `/lo/*` can follow `@id` links between resources across surfaces because every link resolves through the same `/v1/uri/<urn>` endpoint. Audit trails are complete by construction: every adapter dispatch emits an OTLP span and a `urn:agentbox:activity:…` provenance record carrying the same trace ID. Federation preserves names: a `urn:agentbox:credential:…` minted in standalone mode keeps its identity when the operator switches to federated pods — only the resolver's redirect target changes.
 
-- the Nix package graph
-- the generated runtime image
-- the generated compose file
-- the generated supervisor config
-- the health, readiness, and observability contract
+The manifest and Nix build model is what makes this practical rather than aspirational. The same `agentbox.toml` that selects which adapter slots are active also gates the privacy filter policy per slot, the linked-data surfaces, the relay ingress rules, and the URI resolver availability. Nothing is assembled at boot. The privacy filter runs before the JSON-LD encoder on every adapter dispatch — PII redaction completes before a single byte is encoded or persisted. The entire sovereign data stack (identity, pod, relay, privacy filter, URI grammar, linked-data encoder) is baked into the image and activated or suppressed by the manifest, not by runtime scripts.
 
-That gives you a container that can run standalone or federate into a larger system without changing codepaths. It can expose local storage, local relay, local orchestration, privacy-filtered linked-data surfaces, canonical URIs, and a browser for navigating emitted resources, while still being built as a pinned image rather than assembled live at boot.
+## The Identity and Tracing Mesh
+
+Every emitted entity carries a stable URN rooted in the agent's `did:nostr` identity. The identity root is a single secp256k1 keypair. Everything else — pods, credentials, events, activities, beads, memory catalogues, architecture docs — derives its identifier from that root and from the content of the resource itself.
+
+```mermaid
+flowchart TB
+    KP[secp256k1 keypair\nBIP-340 x-only]
+    HEX[64-char hex pubkey]
+    DID[did:nostr:hex-pubkey\nPrimary agent DID]
+    KP --> HEX
+    HEX --> DID
+
+    subgraph identity["Identity surfaces"]
+        POD_ID[Solid pod identity\nWAC agent field]
+        RELAY_ID[Nostr relay NIP-42\nNIP-98 HTTP auth]
+        DID_DOC[DID Document\nGET /.well-known/did.json]
+    end
+
+    DID --> POD_ID
+    DID --> RELAY_ID
+    DID --> DID_DOC
+
+    subgraph owned["Owner-scoped URNs - hex pubkey in scope"]
+        CRED[urn:agentbox:credential\nhex-pubkey:sha256-12-...]
+        RECEIPT[urn:agentbox:receipt\nhex-pubkey:sha256-12-...]
+        ACTIVITY[urn:agentbox:activity\nhex-pubkey:sha256-12-...]
+        BEAD[urn:agentbox:bead\nhex-pubkey:local-id]
+        EVENT[urn:agentbox:event\nhex-pubkey:sha256-12-...]
+    end
+
+    DID --> CRED
+    DID --> RECEIPT
+    DID --> ACTIVITY
+    DID --> BEAD
+    DID --> EVENT
+
+    subgraph stable["Stable URNs - no scope"]
+        SKILL[urn:agentbox:skill:skill-id]
+        MCP[urn:agentbox:mcp:server-id]
+        ADR[urn:agentbox:adr:013]
+        AGENT[urn:agentbox:agent:agent-name]
+    end
+
+    HEX --> SKILL
+    HEX --> MCP
+    HEX --> ADR
+    HEX --> AGENT
+```
+
+Every request through the management API follows the same lifecycle: the agent's identity is verified, the adapter resolver selects the backend, the privacy filter redacts before write, the JSON-LD encoder wraps the response with stable `@id` values, and an OTLP span carries the trace from entry to exit.
+
+```mermaid
+sequenceDiagram
+    participant AG as Agent did:nostr:hex
+    participant MA as management-api
+    participant AR as adapter resolver
+    participant PF as privacy filter
+    participant LD as JSON-LD encoder
+    participant UM as uris.mint
+    participant PO as solid-pod-rs
+    participant OT as OTLP exporter
+
+    AG->>MA: POST /v1/pods/:id/resources NIP-98 signed
+    MA->>OT: span open agentbox.adapter.pods.write
+    MA->>AR: resolve slot=pods
+    AR->>PF: write(slot=pods payload=data)
+    PF->>PF: policy=strict POST /redact to opf-router
+    PF-->>AR: redacted payload
+    AR->>UM: mint kind=pod pubkey=hex payload=redacted
+    UM-->>AR: urn:agentbox:pod:hex:sha256-12-abc
+    AR->>PO: PUT /var/lib/solid/... atomic rename
+    PO-->>AR: 201 ETag
+    AR->>UM: mint kind=activity pubkey=hex payload=action+slot+result
+    UM-->>AR: urn:agentbox:activity:hex:sha256-12-def
+    AR->>LD: encode resource=pod @id=urn:agentbox:pod:...
+    LD-->>MA: JSON-LD compacted with @id and @context
+    MA->>OT: span close trace-id=... resource-urn=...
+    MA-->>AG: 201 body=JSON-LD @id=urn:agentbox:pod:hex:sha256-12-abc
+```
+
+<details>
+<summary>Full URN kind taxonomy — all 18 kinds by category</summary>
+
+```mermaid
+flowchart LR
+    subgraph identity_cat["Identity"]
+        DID_NODE[did:nostr:hex-pubkey]
+    end
+
+    subgraph durable["Durable state - owner-scoped + content-addressed"]
+        POD_K[urn:agentbox:pod\nhex:sha256-12-...]
+        ENV_K[urn:agentbox:envelope\nhex:sha256-12-...]
+        CRED_K[urn:agentbox:credential\nhex:sha256-12-...]
+        MAND_K[urn:agentbox:mandate\nhex:sha256-12-...]
+        RECE_K[urn:agentbox:receipt\nhex:sha256-12-...]
+    end
+
+    subgraph events_cat["Events and comms - owner-scoped + content-addressed"]
+        ACT_K[urn:agentbox:activity\nhex:sha256-12-...]
+        EVT_K[urn:agentbox:event\nhex:sha256-12-...]
+    end
+
+    subgraph knowledge["Knowledge and data"]
+        MEM_K[urn:agentbox:memory:namespace]
+        BEAD_K[urn:agentbox:bead:hex:local-id]
+        DATA_K[urn:agentbox:dataset:hex:name]
+        THING_K[urn:agentbox:thing:local-id]
+    end
+
+    subgraph capabilities["Capabilities - stable on identity"]
+        MCP_K[urn:agentbox:mcp:server-id]
+        SKILL_K[urn:agentbox:skill:skill-id]
+        AGENT_K[urn:agentbox:agent:agent-name]
+    end
+
+    subgraph governance["Governance - stable on doc id"]
+        ADR_K[urn:agentbox:adr:013]
+        PRD_K[urn:agentbox:prd:001]
+        DDD_K[urn:agentbox:ddd:004]
+        META_K[urn:agentbox:meta:runtime]
+    end
+
+    DID_NODE --> POD_K
+    DID_NODE --> CRED_K
+    DID_NODE --> ACT_K
+    DID_NODE --> BEAD_K
+```
+
+| Kind | Owner-scoped | Content-addressed | Resolvable surface | Example |
+|---|---|---|---|---|
+| `pod` | yes | yes | pods | `urn:agentbox:pod:abc123...:sha256-12-deadbeef` |
+| `envelope` | yes | yes | pods | `urn:agentbox:envelope:abc123...:sha256-12-112233` |
+| `credential` | yes | yes | pods | `urn:agentbox:credential:abc123...:sha256-12-aabbcc` |
+| `mandate` | yes | yes | pods | `urn:agentbox:mandate:abc123...:sha256-12-001122` |
+| `receipt` | yes | yes | pods | `urn:agentbox:receipt:abc123...:sha256-12-334455` |
+| `activity` | yes | yes | agent-events | `urn:agentbox:activity:abc123...:sha256-12-667788` |
+| `event` | yes | yes | agent-events | `urn:agentbox:event:abc123...:sha256-12-99aabb` |
+| `mcp` | no | no | things | `urn:agentbox:mcp:playwright` |
+| `memory` | no | no | memory | `urn:agentbox:memory:project-state` |
+| `skill` | no | no | skills | `urn:agentbox:skill:console-buddy` |
+| `adr` | no | no | docs | `urn:agentbox:adr:013` |
+| `prd` | no | no | docs | `urn:agentbox:prd:006` |
+| `ddd` | no | no | docs | `urn:agentbox:ddd:004` |
+| `thing` | no | no | things | `urn:agentbox:thing:local-tool` |
+| `dataset` | yes | no | memory | `urn:agentbox:dataset:abc123...:vectors-v1` |
+| `bead` | yes | no | beads | `urn:agentbox:bead:abc123...:work-item-42` |
+| `agent` | no | no | agents | `urn:agentbox:agent:coordinator` |
+| `meta` | no | no | meta | `urn:agentbox:meta:runtime` |
+
+</details>
+
+<details>
+<summary>Credential issuance and provenance trace</summary>
+
+```mermaid
+sequenceDiagram
+    participant IA as Issuer Agent\ndid:nostr:A
+    participant MA as management-api
+    participant UM as uris.mint
+    participant JCS as JCS canonicaliser
+    participant PO as solid-pod-rs S1
+    participant NR as nostr-rs-relay S2
+    participant PR as provenance S5
+
+    IA->>MA: POST /v1/credentials issue credentialSubject=...
+    MA->>UM: mint kind=credential pubkey=A payload=credentialSubject
+    UM->>UM: sha256-12 of stableStringify payload
+    UM-->>MA: urn:agentbox:credential:A:sha256-12-xyz
+    MA->>JCS: canonicalise @id=urn:agentbox:credential:A:sha256-12-xyz
+    JCS-->>MA: canonical bytes stable across re-emit
+    MA->>IA: sign canonical bytes with secp256k1 key A
+    IA-->>MA: proof signature
+
+    par emit to pod S1
+        MA->>PO: PUT credential JSON-LD @id=urn:agentbox:credential:A:sha256-12-xyz
+        PO-->>MA: 201
+    and emit to relay S2
+        MA->>NR: EVENT kind=1059 content=sealed-VC p=A
+        NR-->>MA: OK
+    end
+
+    MA->>UM: mint kind=activity pubkey=A payload=issue+credential+urn
+    UM-->>MA: urn:agentbox:activity:A:sha256-12-prov
+    MA->>PR: write provenance record @id=urn:agentbox:activity:A:sha256-12-prov
+    PR-->>MA: stored
+
+    MA->>UM: mint kind=receipt pubkey=A payload=mandate+credential+timestamp
+    UM-->>MA: urn:agentbox:receipt:A:sha256-12-rec
+    MA-->>IA: 201 body includes all three URNs identical across pod relay provenance
+```
+
+The credential URN `urn:agentbox:credential:A:sha256-12-xyz` appears identically in the pod resource, the Nostr envelope payload, and the provenance activity record. It is deterministic: re-issuing the same credential subject produces the same URN. The proof block's `@id` is the same string that the audit system indexed.
+
+</details>
 
 ## Quickstart
 
@@ -76,7 +262,7 @@ Main operator docs:
 - [Running](docs/user/running.md)
 - [Troubleshooting](docs/user/troubleshooting.md)
 
-## What’s In The Current Platform
+## What's In The Current Platform
 
 ### Core runtime
 
@@ -88,6 +274,8 @@ Main operator docs:
 - Generated compose + generated supervisord + generated runtime config from the same manifest
 
 ### Sovereign data stack
+
+Every emitted entity carries a stable URN rooted in the agent's `did:nostr` pubkey — see [The Identity and Tracing Mesh](#the-identity-and-tracing-mesh).
 
 - First-party `solid-pod-rs` as the primary local pod server
 - `did:nostr:<pubkey>` identity loop across relay, pod, credentials, and receipts
@@ -180,6 +368,8 @@ This matters because the runtime now does more than expose APIs. It exposes a co
 
 ## Architecture
 
+The architecture is built around the manifest as contract. See [The Identity and Tracing Mesh](#the-identity-and-tracing-mesh) for how every emitted resource acquires a stable, cryptographically-rooted identifier through this same structure.
+
 ```mermaid
 flowchart TB
     subgraph manifest["Manifest Contract"]
@@ -225,11 +415,12 @@ Three rules matter more than anything else:
 
 1. The manifest is the contract.
 2. Adapters are the integration boundary.
-3. Startup should realize the manifest, not invent new state.
+3. Startup should realise the manifest, not invent new state.
 
 Deeper reading:
 
 - [Architecture overview](docs/developer/architecture.md)
+- [Identity and tracing mesh](docs/developer/identity-mesh.md)
 - [PRD-001](docs/reference/prd/PRD-001-capabilities-and-adapters.md)
 - [ADR-005](docs/reference/adr/ADR-005-pluggable-adapter-architecture.md)
 - [PRD-006](docs/reference/prd/PRD-006-linked-data-interfaces.md)
@@ -301,6 +492,7 @@ See:
 ### Developers
 
 - [Architecture](docs/developer/architecture.md)
+- [Identity and tracing mesh](docs/developer/identity-mesh.md)
 - [Adapters](docs/developer/adapters.md)
 - [Sovereign mesh](docs/developer/sovereign-mesh.md)
 - [Linked-data middleware](docs/developer/linked-data.md)
@@ -322,7 +514,7 @@ Start here:
 3. Prefer manifest-gated additions over ad hoc runtime mutation.
 4. Treat hardening, probe semantics, URI grammar, and linked-data surfaces as architectural changes, not incidental code tweaks.
 
-For substantial behavior changes, the repo already uses ADR/PRD/DDD documents as the source of truth. Follow that pattern.
+For substantial behaviour changes, the repo already uses ADR/PRD/DDD documents as the source of truth. Follow that pattern.
 
 ## License
 
