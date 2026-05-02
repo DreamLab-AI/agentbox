@@ -53,6 +53,21 @@ def bech32_encode(hrp, payload):
     return hrp + "1" + "".join(CHARSET[d] for d in combined)
 
 
+def bech32_decode(bech):
+    bech = bech.lower().strip()
+    pos = bech.rfind("1")
+    if pos < 1 or pos + 7 > len(bech):
+        return None, None
+    hrp = bech[:pos]
+    data = [CHARSET.find(c) for c in bech[pos + 1:]]
+    if any(d == -1 for d in data):
+        return None, None
+    decoded = _convertbits(data[:-6], 5, 8, False)
+    if decoded is None:
+        return None, None
+    return hrp, bytes(decoded)
+
+
 def load_config(path):
     with open(path, "rb") as fh:
         return tomllib.load(fh)
@@ -63,20 +78,52 @@ def write_json(path, payload):
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
+def _keypair_from_privkey_hex(privkey_hex):
+    signing_key = SigningKey.from_string(bytes.fromhex(privkey_hex), curve=SECP256k1)
+    verifying_key = signing_key.get_verifying_key()
+    private_bytes = signing_key.to_string()
+    public_bytes = verifying_key.to_string()
+    return {
+        "private_key_hex": private_bytes.hex(),
+        "public_key_hex": public_bytes.hex(),
+        "x_only_pubkey_hex": public_bytes[:32].hex(),
+        "nsec": bech32_encode("nsec", private_bytes),
+        "npub": bech32_encode("npub", public_bytes),
+    }
+
+
 def ensure_identity(agent_id, identity_root):
     identity_file = identity_root / f"{agent_id}.json"
+
+    # Env-supplied key takes priority — set AGENTBOX_NSEC (bech32 nsec1…) or
+    # AGENTBOX_PRIVKEY_HEX (64-char hex) in .env to use a stable signing identity.
+    # Written to the identity file so all downstream consumers see it consistently.
+    privkey_hex = os.getenv("AGENTBOX_PRIVKEY_HEX", "").strip().lower()
+    if not privkey_hex:
+        nsec_env = os.getenv("AGENTBOX_NSEC", "").strip()
+        if nsec_env:
+            hrp, privkey_bytes = bech32_decode(nsec_env)
+            if hrp == "nsec" and privkey_bytes and len(privkey_bytes) == 32:
+                privkey_hex = privkey_bytes.hex()
+
+    if privkey_hex:
+        keypair = _keypair_from_privkey_hex(privkey_hex)
+        identity = {"agent_id": agent_id, "created_at": int(time.time()), **keypair}
+        write_json(identity_file, identity)
+        return identity
+
+    # No env key supplied — use persisted identity or generate one on first boot.
     if identity_file.exists():
-      identity = json.loads(identity_file.read_text(encoding="utf-8"))
-      if "x_only_pubkey_hex" not in identity:
-          identity["x_only_pubkey_hex"] = identity["public_key_hex"][:64]
-          write_json(identity_file, identity)
-      return identity
+        identity = json.loads(identity_file.read_text(encoding="utf-8"))
+        if "x_only_pubkey_hex" not in identity:
+            identity["x_only_pubkey_hex"] = identity["public_key_hex"][:64]
+            write_json(identity_file, identity)
+        return identity
 
     signing_key = SigningKey.generate(curve=SECP256k1)
     verifying_key = signing_key.get_verifying_key()
     private_bytes = signing_key.to_string()
     public_bytes = verifying_key.to_string()
-
     identity = {
         "agent_id": agent_id,
         "created_at": int(time.time()),

@@ -46,6 +46,13 @@ services:
       - DISPLAY=:1
       # Tailscale — set authkey for headless join, or omit for interactive login
       - TAILSCALE_AUTHKEY=${TAILSCALE_AUTHKEY:-}
+      # Agent signing identity — set one of these in .env to use a stable
+      # Nostr keypair instead of auto-generating on first boot.
+      # AGENTBOX_NSEC accepts bech32 nsec1… (preferred — copy from any Nostr client).
+      # AGENTBOX_PRIVKEY_HEX accepts the raw 64-char hex private key.
+      # Both are untracked (.env is gitignored). Leave blank to auto-generate.
+      - AGENTBOX_NSEC=${AGENTBOX_NSEC:-}
+      - AGENTBOX_PRIVKEY_HEX=${AGENTBOX_PRIVKEY_HEX:-}
 
     # Additional volumes — match MAD mounts
     volumes:

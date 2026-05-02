@@ -63,3 +63,6 @@ jobs:
           nix eval --raw .#runtime.drvPath > /dev/null
           nix eval --raw .#compose.drvPath > /dev/null
           echo "OK: .#runtime and .#compose derivations resolve"
+
+      - name: Lint Nix files (statix)
+        run: nix shell nixpkgs#statix -c statix check

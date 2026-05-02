@@ -1707,6 +1707,10 @@ ${ragflowNetworkDecl}
           buildInputs = allPackages ++ [
             pkgs.nix
             n2c.nix2container
+            # Nix developer tools
+            pkgs.nurl      # generate fetchFromGitHub/fetchCrate calls with pre-computed hashes
+            pkgs.statix    # lint Nix files for antipatterns
+            pkgs.nix-init  # scaffold buildRustPackage/buildPythonPackage expressions from URLs
           ];
 
           shellHook = ''
