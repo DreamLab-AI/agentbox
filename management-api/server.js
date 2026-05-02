@@ -194,6 +194,14 @@ app.addHook('onRequest', async (request, reply) => {
     return;
   }
 
+  // Skip auth for the linked-object viewer bundle (/lo/*).
+  // Static assets (HTML, JS, CSS, panes) must load before window.nostr is
+  // available to sign a NIP-98 request. The bundle contains no private data.
+  // Data endpoints the viewer calls (/v1/*) remain fully gated.
+  if (request.url.startsWith('/lo/') || request.url === '/lo') {
+    return;
+  }
+
   await authMiddleware(request, reply);
 });
 

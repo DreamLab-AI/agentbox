@@ -33,7 +33,7 @@ telegram_mirror = true
 # The private key is NEVER stored in agentbox.toml — pass it via env var
 # OPERATOR_NOSTR_PRIVKEY or use NIP-07/NIP-46 remote signing.
 [sovereign_mesh.operator]
-pubkey_hex = ""                        # 64-char hex secp256k1 pubkey
+pubkey_hex = "11ed64225dd5e2c5e18f61ad43d5ad9272d08739d3a20dd25886197b0738663c"                        # 64-char hex secp256k1 pubkey
 npub       = ""                        # bech32 npub (alternative to hex; one is sufficient)
 display_name = ""                      # human-readable name for event tags
 relay_urls = []                        # operator's preferred relays for fan-out
@@ -344,7 +344,7 @@ order = "after"   # documentation only — the order is fixed in code (E048)
 # the image at /opt/agentbox/browser/. Pane manifest at /lo/manifest.json.
 # Validation rules: E050-E054, W053.
 [linked_data.viewer]
-mode                 = "off"     # off | local-linkedobjects | external
+mode                 = "local-linkedobjects"     # off | local-linkedobjects | external
 mount_path           = "/lo"
 bundle_path          = "/opt/agentbox/browser"
 external_url         = ""

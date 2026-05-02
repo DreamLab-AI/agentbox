@@ -39,7 +39,7 @@
 let
   version = "0.1.0+rev-8260dc5";
   rev     = "8260dc5e5a1212de123233da116b4e14d58e606e";
-  srcHash = lib.fakeHash;
+  srcHash = "sha256-yRx453b0AfrM4SOPqih5lAcCrcJtbHuktDXeLLxWO3k=";
 
   src = pkgs.fetchFromGitHub {
     owner = "linkedobjects";
