@@ -115,10 +115,10 @@ ws_url = "ws://comfyui:8188/ws"
 # See docs/developer/licensing.md for the AGPL-3.0-only aggregation analysis.
 [integrations.solid_pod_rs]
 port                   = 8484
-bind                   = "127.0.0.1"
+bind                   = "0.0.0.0"
 storage                = "fs"                    # fs | memory | s3
 storage_root           = "/var/lib/solid"
-base_url               = "http://127.0.0.1:8484"
+base_url               = "http://localhost:8484"
 enable_oidc            = false
 enable_schnorr_verify  = true
 enable_dpop_cache      = false

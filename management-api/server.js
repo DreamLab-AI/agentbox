@@ -202,6 +202,13 @@ app.addHook('onRequest', async (request, reply) => {
     return;
   }
 
+  // DID documents must be publicly resolvable per the DID-Core spec.
+  // The document contains only the public key and service endpoints — no
+  // private data. Gate removal is intentional, not an oversight.
+  if (request.url === '/.well-known/did.json') {
+    return;
+  }
+
   await authMiddleware(request, reply);
 });
 
