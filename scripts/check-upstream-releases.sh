@@ -115,6 +115,7 @@ for entry in \
   "agent-browser|agent-browser" \
   "playwright|playwright" \
   "@mermaid-js/mermaid-cli|@mermaid-js/mermaid-cli" \
+  "@google/gemini-cli|@google/gemini-cli" \
 ; do
   pkg="${entry%|*}"
   npm_pkg="${entry#*|}"
