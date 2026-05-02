@@ -151,7 +151,7 @@ in
   import { boot } from './losos/shell.js';
 
   const params = new URLSearchParams(location.search);
-  const uri = params.get('uri') || params.get('url') || '';
+  const uri = params.get('uri') || params.get('url') || "";
   const input = document.getElementById('urlinput');
 
   window.go = function () {
