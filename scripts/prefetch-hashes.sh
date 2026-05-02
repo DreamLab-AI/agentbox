@@ -467,10 +467,99 @@ else:
 PY
 }
 
+# Fast path for --cli: build just the node_modules FOD for each npm-cli package
+# that still has lib.fakeHash, using scripts/_get-nodemods-hash.nix.
+# This avoids the full CUDA runtime build and resolves each package in ~30 s.
+_list_fake_nodemods_hashes() {
+  # Prints tab-separated: pkgName TAB version TAB sha256 TAB bin
+  # for every mkNpmCli block that still has nodeModulesHash = lib.fakeHash.
+  python3 - "$1" <<'PY'
+import re, sys
+src = open(sys.argv[1]).read()
+# Match each top-level mkNpmCli { ... } block.
+# We walk character by character tracking brace depth to find block boundaries.
+i = 0
+while True:
+    m = re.search(r'\bmkNpmCli\s*\{', src[i:])
+    if not m:
+        break
+    start = i + m.start()
+    depth, j = 0, start
+    while j < len(src):
+        if src[j] == '{':
+            depth += 1
+        elif src[j] == '}':
+            depth -= 1
+            if depth == 0:
+                break
+        j += 1
+    blk = src[start:j+1]
+    if 'nodeModulesHash' in blk and 'lib.fakeHash' in blk:
+        pkg = re.search(r'pkgName\s*=\s*"([^"]+)"', blk)
+        ver = re.search(r'version\s*=\s*"([^"]+)"', blk)
+        sha = re.search(r'sha256\s*=\s*"([^"]+)"', blk)
+        bn  = re.search(r'\bbin\s*=\s*"([^"]+)"', blk)
+        if pkg and ver and sha:
+            bname = bn.group(1) if bn else pkg.group(1).split('/')[-1]
+            print(f"{pkg.group(1)}\t{ver.group(1)}\t{sha.group(1)}\t{bname}")
+    i = start + 1
+PY
+}
+
+prefetch_npm_cli_nodemods_fast() {
+  local nix_file="${SCRIPT_DIR}/_get-nodemods-hash.nix"
+  if [ ! -f "$nix_file" ]; then
+    echo "  _get-nodemods-hash.nix not found; falling back to full build loop"
+    prefetch_via_build_loop
+    return $?
+  fi
+
+  echo "== fast npm-cli nodeModulesHash resolution =="
+
+  local entries
+  entries=$(_list_fake_nodemods_hashes "${REPO_ROOT}/flake.nix" 2>/dev/null || true)
+  if [ -z "$entries" ]; then
+    echo "  no fakeHash nodeModulesHash entries found — already up to date."
+    return 0
+  fi
+
+  while IFS=$'\t' read -r pkgName version sha256 bin; do
+    [ -z "$pkgName" ] && continue
+    echo "  resolving nodeModulesHash for ${pkgName}@${version} …"
+    local got
+    got=$(nix build --impure -L \
+          -f "$nix_file" \
+          --arg pkgName "\"${pkgName}\"" \
+          --arg version "\"${version}\"" \
+          --arg sha256  "\"${sha256}\"" \
+          --arg bin     "\"${bin}\"" \
+          --no-link 2>&1 \
+        | grep -oE 'got:[[:space:]]*sha256-[A-Za-z0-9+/=]+' | awk '{print $NF}' || true)
+    if [ -z "$got" ]; then
+      echo "    WARN: no hash extracted for ${pkgName} (may need full build)"
+      continue
+    fi
+    local pname
+    pname=$(echo "$pkgName" | sed 's|@||;s|/|-|g')
+    patch_npm_cli_node_modules_hash "$pname" "$got"
+  done <<< "$entries"
+}
+
 # --- main ---
 
 if [ "$cli_only" -eq 1 ]; then
-  prefetch_via_build_loop
+  # Fast path: use the targeted single-package helper (_get-nodemods-hash.nix)
+  # for nodeModulesHash entries first — avoids building the full CUDA runtime.
+  # Falls back to the full build loop only if fakeHashes remain after that pass
+  # (covers cargoHash and any other FOD that needs the full graph).
+  prefetch_npm_cli_nodemods_fast
+  remaining=$(grep -c '= lib\.fakeHash' "${REPO_ROOT}/flake.nix" 2>/dev/null || echo 0)
+  if [ "$remaining" -gt 0 ]; then
+    echo "  $remaining fakeHash(es) remain — running full build loop for non-npm-cli hashes"
+    prefetch_via_build_loop
+  else
+    echo "  all npm-cli hashes resolved via targeted builds."
+  fi
   exit $?
 fi
 
