@@ -105,6 +105,89 @@ in
         # capability-driven, not name-driven.
         touch $out/.agentbox-viewer-bundle
 
+        # Agentbox shell page — losos/shell.js auto-boots on #losos and reads
+        # ?uri= natively. The address bar updates the query string so the URL
+        # is shareable and the browser back-button works.
+        cat > $out/index.html <<'HTML'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agentbox — Linked Data Browser</title>
+  <link rel="stylesheet" href="mashlib.css">
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,sans-serif;background:#0f1117;color:#e2e8f0;min-height:100vh}
+    #bar{display:flex;align-items:center;gap:8px;padding:10px 14px;background:#1a1f2e;border-bottom:1px solid #2d3748;position:sticky;top:0;z-index:200}
+    #bar a{color:#a78bfa;font-weight:600;font-size:13px;text-decoration:none;white-space:nowrap}
+    #bar input{flex:1;padding:7px 11px;background:#0d1117;border:1px solid #374151;color:#e2e8f0;border-radius:6px;font-size:13px;min-width:0}
+    #bar input:focus{outline:none;border-color:#7c3aed}
+    #bar button{padding:7px 16px;background:#7c3aed;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;white-space:nowrap}
+    #bar button:hover{background:#6d28d9}
+    #hint{padding:48px 24px;text-align:center;color:#4b5563}
+    #hint h2{color:#a78bfa;margin-bottom:8px}
+    #hint code{background:#1a1f2e;padding:2px 6px;border-radius:4px;font-size:13px}
+    #losos{padding:16px}
+  </style>
+</head>
+<body>
+<div id="bar">
+  <a href="/lo/">&#9632; Agentbox</a>
+  <input id="urlinput" type="text" placeholder="URN or URL — e.g. urn:agentbox:memory:name  or  http://localhost:8484/pods/…" />
+  <button onclick="go()">Browse</button>
+</div>
+
+<div id="hint" style="display:none">
+  <h2>Linked Data Browser</h2>
+  <p>Enter a URN or URL above, or navigate directly:</p>
+  <p><code>/lo/?uri=urn:agentbox:memory:name</code></p>
+  <p><code>/lo/?uri=http://localhost:8484/pods/&lt;npub&gt;/</code></p>
+</div>
+
+<div id="losos"></div>
+
+<script type="module">
+  import { boot } from './losos/shell.js';
+
+  const params = new URLSearchParams(location.search);
+  const uri = params.get('uri') || params.get('url') || '';
+  const input = document.getElementById('urlinput');
+
+  window.go = function () {
+    const v = input.value.trim();
+    if (!v) return;
+    const u = new URL(location.href);
+    u.searchParams.set('uri', v);
+    u.searchParams.delete('url');
+    location.href = u.toString();
+  };
+
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') window.go(); });
+
+  if (uri) {
+    input.value = uri;
+    document.getElementById('hint').style.display = 'none';
+    boot('#losos');
+  } else {
+    document.getElementById('hint').style.display = 'block';
+  }
+</script>
+
+<!-- Panes -->
+<script type="module" data-pane src="panes/folder-pane.js"></script>
+<script type="module" data-pane src="panes/profile-pane.js"></script>
+<script type="module" data-pane src="panes/home-pane.js"></script>
+<script type="module" data-pane src="panes/agent-pane.js"></script>
+<script type="module" data-pane src="panes/pod-pane.js"></script>
+<script type="module" data-pane src="panes/todo-pane.js"></script>
+<script type="module" data-pane src="panes/markdown-pane.js"></script>
+<script type="module" data-pane src="panes/schema-pane.js"></script>
+<script type="module" data-pane src="panes/source-pane.js"></script>
+</body>
+</html>
+HTML
+
         runHook postInstall
       '';
 }
