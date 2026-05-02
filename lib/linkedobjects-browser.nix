@@ -83,7 +83,7 @@ let
         #hint{padding:48px 24px;text-align:center;color:#4b5563}
         #hint h2{color:#a78bfa;margin-bottom:8px}
         #hint code{background:#1a1f2e;padding:2px 6px;border-radius:4px;font-size:13px}
-        #losos{padding:16px}
+        #lo-viewer{padding:16px}
       </style>
     </head>
     <body>
@@ -100,15 +100,24 @@ let
       <p><code>/lo/?uri=http://localhost:8484/pods/&lt;npub&gt;/</code></p>
     </div>
 
-    <div id="losos"></div>
+    <div id="lo-viewer"></div>
 
     <script type="module">
       import { boot } from './losos/shell.js';
 
       const params = new URLSearchParams(location.search);
-      const uri = params.get('uri') || params.get('url') || "";
-      const input = document.getElementById('urlinput');
-      const hint  = document.getElementById('hint');
+      const rawUri = params.get('uri') || params.get('url') || "";
+      const input  = document.getElementById('urlinput');
+      const hint   = document.getElementById('hint');
+
+      // Resolve urn:agentbox:* through the management-api before handing
+      // to losos — browsers cannot fetch urn: scheme URIs directly.
+      function resolveUri(uri) {
+        if (uri.startsWith('urn:')) {
+          return '/v1/uri/' + encodeURIComponent(uri);
+        }
+        return uri;
+      }
 
       window.go = function () {
         const v = input.value.trim();
@@ -121,10 +130,18 @@ let
 
       input.addEventListener('keydown', e => { if (e.key === 'Enter') window.go(); });
 
-      if (uri) {
-        input.value = uri;
+      if (rawUri) {
+        input.value = rawUri;
         hint.style.display = 'none';
-        boot('#losos');
+        // Patch ?uri in the query string that losos reads so it fetches
+        // the resolved URL, not the raw URN.
+        const resolved = resolveUri(rawUri);
+        if (resolved !== rawUri) {
+          const sp = new URLSearchParams(location.search);
+          sp.set('uri', resolved);
+          history.replaceState(null, "", "?" + sp.toString());
+        }
+        boot('#lo-viewer');
       }
     </script>
 
