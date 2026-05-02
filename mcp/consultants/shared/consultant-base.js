@@ -1,5 +1,34 @@
 'use strict';
 
+// Emit consultation events to the management API for audit trail.
+// Best-effort: never throws. Uses Bearer token auth with MANAGEMENT_API_KEY.
+const _MGMT_KEY  = process.env.MANAGEMENT_API_KEY  || '';
+const _MGMT_PORT = process.env.MANAGEMENT_API_PORT || '9090';
+const _MGMT_BASE = `http://127.0.0.1:${_MGMT_PORT}`;
+
+function _emitConsultEvent(consultant, envelope) {
+  if (!_MGMT_KEY) return;
+  const payload = {
+    source_agent_id: envelope.source_urn || `consultant-${consultant}`,
+    target_node_id:  envelope.consultation_urn || `consultant-${consultant}-result`,
+    action_type:     'query',
+    duration_ms:     envelope.latency_ms || 0,
+    metadata: {
+      consultant,
+      consultation_urn: envelope.consultation_urn,
+      model:      envelope.model,
+      cost_usd:   envelope.cost_usd,
+      tokens:     envelope.tokens,
+      ok:         envelope.ok,
+    },
+  };
+  fetch(`${_MGMT_BASE}/v1/agent-events/emit`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${_MGMT_KEY}` },
+    body: JSON.stringify(payload),
+  }).catch(() => { /* fire-and-forget */ });
+}
+
 /**
  * BaseConsultant — common scaffolding for every MCP server under
  * mcp/consultants/<name>/. Wraps the @modelcontextprotocol/sdk wire
@@ -203,6 +232,8 @@ class BaseConsultant {
       citations:    envelope.citations.length,
       consultation_urn: envelope.consultation_urn,
     });
+
+    _emitConsultEvent(this.name, envelope);
 
     return envelope;
   }

@@ -291,6 +291,10 @@ app.register(require('./routes/agent-events'), {
   metrics
 });
 
+// Memory routes — write/read agent memory entries to the operator's Solid pod.
+// Requires adapters.pods = "local-solid-rs"; gracefully returns 503 when off.
+app.register(require('./routes/memory'), { prefix: '', logger });
+
 // Liveness probe — registered early, no sentinel check, event-loop-alive only.
 // Must respond in <100 ms unconditionally.
 app.get('/livez', {
