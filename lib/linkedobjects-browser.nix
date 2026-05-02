@@ -110,11 +110,16 @@ let
       const input  = document.getElementById('urlinput');
       const hint   = document.getElementById('hint');
 
-      // Resolve urn:agentbox:* through the management-api before handing
-      // to losos — browsers cannot fetch urn: scheme URIs directly.
-      function resolveUri(uri) {
-        if (uri.startsWith('urn:')) {
-          return '/v1/uri/' + encodeURIComponent(uri);
+      // Route all fetches through /lo/proxy so the browser avoids auth walls
+      // (/v1/* requires Bearer) and cross-origin CORS (localhost:8484 vs :9190).
+      function proxyUri(uri) {
+        return '/lo/proxy?uri=' + encodeURIComponent(uri);
+      }
+
+      // Recover the display URI from a proxy URL (for showing in the input).
+      function displayUri(uri) {
+        if (uri.startsWith('/lo/proxy?uri=')) {
+          try { return decodeURIComponent(uri.slice('/lo/proxy?uri='.length)); } catch { /* */ }
         }
         return uri;
       }
@@ -123,7 +128,7 @@ let
         const v = input.value.trim();
         if (!v) return;
         const u = new URL(location.href);
-        u.searchParams.set('uri', v);
+        u.searchParams.set('uri', proxyUri(v));
         u.searchParams.delete('url');
         location.href = u.toString();
       };
@@ -131,14 +136,13 @@ let
       input.addEventListener('keydown', e => { if (e.key === 'Enter') window.go(); });
 
       if (rawUri) {
-        input.value = rawUri;
+        // Show the human-readable URI, not the proxy path.
+        input.value = displayUri(rawUri);
         hint.style.display = 'none';
-        // Patch ?uri in the query string that losos reads so it fetches
-        // the resolved URL, not the raw URN.
-        const resolved = resolveUri(rawUri);
-        if (resolved !== rawUri) {
+        // Ensure ?uri= points to the proxy so losos fetches through it.
+        if (!rawUri.startsWith('/lo/proxy')) {
           const sp = new URLSearchParams(location.search);
-          sp.set('uri', resolved);
+          sp.set('uri', proxyUri(rawUri));
           history.replaceState(null, "", "?" + sp.toString());
         }
         boot('#lo-viewer');
