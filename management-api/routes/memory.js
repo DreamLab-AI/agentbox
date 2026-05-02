@@ -65,7 +65,7 @@ module.exports = async function memoryRoutes(fastify) {
         },
       },
       response: {
-        201: { type: 'object' },
+        201: { type: 'object', additionalProperties: true },
         503: { type: 'object', properties: { error: { type: 'string' }, message: { type: 'string' } } },
       },
     },
