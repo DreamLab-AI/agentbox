@@ -113,8 +113,8 @@ AGPL-3.0 §13 compliance: every response from `/lo/*` carries
 `X-Viewer-{Source,Version,License}` headers. Aggregation analysis
 matches the solid-pod-rs treatment in `docs/developer/licensing.md`
 — the bundle is shipped as static assets served by the management-api,
-never linked into agentbox first-party JavaScript. Agentbox stays
-MPL-2.0; the viewer remains AGPL-3.0.
+never linked into agentbox first-party JavaScript. Both agentbox and the
+viewer are AGPL-3.0.
 
 **ADR-013 — Canonical URI grammar.** Every `@id` value emitted by a
 PRD-006 surface now follows the canonical URI grammar:

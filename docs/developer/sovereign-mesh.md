@@ -212,4 +212,4 @@ NIP-98 verification.
 - [ADR-009 — Embedded Nostr relay and pod-inbox bridge](../reference/adr/ADR-009-embedded-nostr-relay.md) — the decision and contract for the relay.
 - [ADR-010 — solid-pod-rs as first-class pod server](../reference/adr/ADR-010-rust-solid-pod-adoption.md) — the decision to adopt the Rust pod.
 - [DDD-003 — Sovereign messaging domain](../reference/ddd/DDD-003-sovereign-messaging-domain.md) — aggregate model and invariants; I01 / I08 now hold for real.
-- [licensing.md](licensing.md) — AGPL aggregation analysis for shipping `solid-pod-rs` inside an MPL-2.0 image.
+- [licensing.md](licensing.md) — component licence matrix for agentbox (AGPL-3.0) and its bundled components.

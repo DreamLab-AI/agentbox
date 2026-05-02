@@ -31,8 +31,8 @@
 # consumed by agentbox swarms as a sidecar. tui is excluded — interactive
 # terminal mode is not part of the agentbox runtime contract.
 #
-# Licence: MIT (see upstream LICENSE). No aggregation analysis needed —
-# MIT is GPL-compatible and inherits cleanly into agentbox MPL-2.0.
+# Licence: MIT (see upstream LICENSE). MIT is AGPL-3.0-compatible; no
+# aggregation analysis needed for permissive components.
 
 { lib, pkgs }:
 

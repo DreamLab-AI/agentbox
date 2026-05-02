@@ -30,10 +30,9 @@
 # header pointing back at this repository on every response from the
 # viewer mount path. See routes/linked-objects.js.
 #
-# Aggregation analysis (matches the solid-pod-rs treatment in
-# docs/developer/licensing.md): we ship the browser tree as static
-# assets served by, not linked into, agentbox first-party JavaScript.
-# Agentbox stays MPL-2.0; the viewer remains AGPL-3.0.
+# Licence: AGPL-3.0, consistent with agentbox (AGPL-3.0).
+# Shipped as static assets served by the management-api route handler.
+# See docs/developer/licensing.md for the component license matrix.
 
 { lib, pkgs }:
 

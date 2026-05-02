@@ -596,10 +596,10 @@
         # ---------------------------------------------------------------------------
         # solid-pod-rs — first-class Solid Protocol 0.11 server (ADR-010).
         # Gate: adapters.pods = "local-solid-rs" (the default).
-        # Source: github.com/DreamLab-AI/solid-pod-rs (AGPL-3.0-only; binary-
-        # aggregation under AGPL §5 keeps agentbox MPL-2.0 — see
-        # docs/developer/licensing.md). Derivation module in lib/solid-pod-rs.nix
-        # uses fakeHash placeholders that surface prefetch commands at realisation.
+        # Source: github.com/DreamLab-AI/solid-pod-rs (AGPL-3.0-only; consistent
+        # with agentbox AGPL-3.0 — see docs/developer/licensing.md). Derivation
+        # module in lib/solid-pod-rs.nix uses fakeHash placeholders that surface
+        # prefetch commands at realisation.
         # ---------------------------------------------------------------------------
         solidPodRsLib = import ./lib/solid-pod-rs.nix { inherit lib pkgs; };
         # Opt-in features layered on top of defaultFeatures in lib/solid-pod-rs.nix.

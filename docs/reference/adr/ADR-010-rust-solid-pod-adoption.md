@@ -94,7 +94,7 @@ Four of agentbox's in-flight commitments quietly depend on capabilities the Pyth
 
 ## Licence analysis
 
-Agentbox is MPL-2.0; solid-pod-rs is AGPL-3.0-only. Two interaction modes need to be distinguished:
+Agentbox is AGPL-3.0; solid-pod-rs is AGPL-3.0-only. Two interaction modes need to be distinguished:
 
 ### Binary aggregation (preferred)
 
@@ -102,7 +102,7 @@ Running `solid-pod-rs-server` as a supervisord program inside the agentbox OCI i
 
 > A compilation of a covered work with other separate and independent works… which are not by their nature extensions of the covered work, and which are not combined with it such as to form a larger program, in or on a volume of a storage or distribution medium, is called an "aggregate" if the compilation and its resulting copyright are not used to limit the access or legal rights of the compilation's users beyond what the individual works permit.
 
-The agentbox image remains MPL-2.0; the solid-pod-rs binary remains AGPL-3.0. We must:
+Both the agentbox image and the solid-pod-rs binary are AGPL-3.0. We must:
 
 - Ship the AGPL source (or a written offer) alongside the image — satisfied by the nixpkgs derivation pulling from the public GitHub repo.
 - Preserve the upstream `LICENSE` file in `/opt/agentbox/third-party/solid-pod-rs/LICENSE`.
@@ -235,7 +235,7 @@ The Python stub fails three of these immediately. The harness failure is tolerat
 - **Atomic-rename durability.** DDD-003 I01 / I08 land as real filesystem invariants, not hopeful prose.
 - **Same-vendor alignment.** solid-pod-rs is a DreamLab-AI project; issue triage flows through the same tracker.
 - **Nix packaging is straightforward.** `buildRustPackage` against a pinned git rev, like the existing `lib/codex-binary.nix` pattern.
-- **Licence-compatible.** Binary aggregation under AGPL §5 keeps agentbox MPL-2.0; documented in the new `docs/developer/licensing.md`.
+- **Licence-compatible.** Both components are AGPL-3.0; no aggregation analysis required. See `docs/developer/licensing.md`.
 - **Unlocks S3 backend.** Federated pods become an infrastructure choice at runtime — no code change, just storage-driver flip.
 - **Deterministic RDF.** solid-pod-rs emits stable Turtle serialisation; content-addressed pod storage becomes possible as a follow-up.
 

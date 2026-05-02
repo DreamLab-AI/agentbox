@@ -7,7 +7,7 @@
 ### A manifest-driven, reproducible runtime for sovereign software agents.
 
 [![Build](https://img.shields.io/github/actions/workflow/status/DreamLab-AI/agentbox/build-multi-arch.yml?branch=main&style=flat-square&logo=github)](https://github.com/DreamLab-AI/agentbox/actions)
-[![License](https://img.shields.io/badge/License-MPL%202.0-blue?style=flat-square)](LICENSE)
+[![License](https://img.shields.io/badge/License-AGPL%203.0-blue?style=flat-square)](LICENSE)
 [![Nix](https://img.shields.io/badge/Nix-flakes-5277C3?style=flat-square&logo=nixos)](flake.nix)
 [![Multi-arch](https://img.shields.io/badge/arch-amd64%20%7C%20arm64-green?style=flat-square&logo=docker)](https://github.com/DreamLab-AI/agentbox/pkgs/container/agentbox)
 
@@ -317,9 +317,11 @@ Deeper reading:
 
 ## License
 
-Core project: [MPL-2.0](LICENSE).
+Core project: [AGPL-3.0](LICENSE).
 
-Some optional integrated components carry their own licenses. The linked-data browser slot uses `linkedobjects/browser` under AGPL-3.0 when enabled. See [Licensing details](docs/developer/licensing.md) for the full matrix.
+Using agentbox as a hosted service — including running it on behalf of other users — requires you to make the full source (including any modifications) available to those users. Self-hosted and internal use carry no additional obligations beyond the standard copyleft terms.
+
+Optional components (`linkedobjects/browser`, `solid-pod-rs`) are also AGPL-3.0 and therefore consistent with the project license. Other bundled components are MIT or Apache-2.0. See [Licensing details](docs/developer/licensing.md) for the full matrix.
 
 ---
 

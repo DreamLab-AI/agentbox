@@ -26,10 +26,9 @@
 #   - s3-backend       — AWS S3 / MinIO / R2 / B2 storage
 #   - legacy-notifications — SolidOS-compatible WebSocket adapter
 #
-# Licence: AGPL-3.0-only. See docs/developer/licensing.md for the binary
-# aggregation analysis under AGPL §5 — we ship this as a standalone
-# supervisord program, never linked as a library into agentbox first-party
-# code, so the agentbox image stays MPL-2.0.
+# Licence: AGPL-3.0-only, consistent with agentbox (AGPL-3.0).
+# Shipped as a standalone supervisord program, never linked as a library.
+# See docs/developer/licensing.md for the component license matrix.
 
 { lib, pkgs }:
 
