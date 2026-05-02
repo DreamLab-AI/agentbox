@@ -102,6 +102,40 @@ let
 
     <div id="lo-viewer"></div>
 
+    <script>
+      // NIP-98 fetch interceptor — active when window.nostr (browser extension
+      // or injected signer) is available. Signs all same-origin /v1/* and
+      // /lo/proxy requests so the management API can verify the caller's
+      // Nostr identity without a shared secret.
+      // Falls back silently when window.nostr is absent.
+      (function () {
+        const _orig = window.fetch.bind(window);
+        window.fetch = async function (input, init) {
+          init = init || {};
+          if (window.nostr) {
+            const urlStr = typeof input === 'string' ? input
+              : input instanceof Request ? input.url : String(input);
+            if (urlStr.startsWith('/v1/') || urlStr.startsWith('/lo/proxy')) {
+              try {
+                const absUrl = new URL(urlStr, location.origin).toString();
+                const method = (init.method || 'GET').toUpperCase();
+                const evt = await window.nostr.signEvent({
+                  kind: 27235,
+                  created_at: Math.floor(Date.now() / 1000),
+                  tags: [['u', absUrl], ['method', method]],
+                  content: "",
+                });
+                init = Object.assign({}, init, {
+                  headers: Object.assign({}, init.headers || {},
+                    { 'Authorization': 'Nostr ' + btoa(JSON.stringify(evt)) }),
+                });
+              } catch { /* signer unavailable or user rejected */ }
+            }
+          }
+          return _orig(input, init);
+        };
+      })();
+    </script>
     <script type="module">
       import { boot } from './losos/shell.js';
 
@@ -112,11 +146,12 @@ let
 
       // Route all fetches through /lo/proxy so the browser avoids auth walls
       // (/v1/* requires Bearer) and cross-origin CORS (localhost:8484 vs :9190).
+      // The NIP-98 interceptor above additionally signs proxy requests when
+      // window.nostr is present.
       function proxyUri(uri) {
         return '/lo/proxy?uri=' + encodeURIComponent(uri);
       }
 
-      // Recover the display URI from a proxy URL (for showing in the input).
       function displayUri(uri) {
         if (uri.startsWith('/lo/proxy?uri=')) {
           try { return decodeURIComponent(uri.slice('/lo/proxy?uri='.length)); } catch { /* */ }
@@ -136,10 +171,8 @@ let
       input.addEventListener('keydown', e => { if (e.key === 'Enter') window.go(); });
 
       if (rawUri) {
-        // Show the human-readable URI, not the proxy path.
         input.value = displayUri(rawUri);
         hint.style.display = 'none';
-        // Ensure ?uri= points to the proxy so losos fetches through it.
         if (!rawUri.startsWith('/lo/proxy')) {
           const sp = new URLSearchParams(location.search);
           sp.set('uri', proxyUri(rawUri));

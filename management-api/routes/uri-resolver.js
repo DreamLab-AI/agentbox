@@ -107,9 +107,19 @@ async function uriResolverRoutes(fastify, options) {
         return;
 
       case 'memory':
-      case 'dataset':
-        reply.redirect(307, `/v1/memory/${parsed.local || parsed.pubkey}`);
+      case 'dataset': {
+        // localId is encoded as namespace.key by uris.mint; split on first dot.
+        const local = parsed.local || parsed.pubkey || '';
+        const dot   = local.indexOf('.');
+        if (dot !== -1) {
+          const ns  = local.slice(0, dot);
+          const key = local.slice(dot + 1);
+          reply.redirect(307, `/v1/memory/${encodeURIComponent(key)}?namespace=${encodeURIComponent(ns)}`);
+        } else {
+          reply.redirect(307, `/v1/memory/${encodeURIComponent(local)}`);
+        }
         return;
+      }
 
       case 'skill':
         reply.redirect(307, `/v1/skills/${parsed.local}`);

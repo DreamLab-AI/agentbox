@@ -197,6 +197,7 @@ async function linkedObjectsRoutes(fastify, options) {
     const tail = req.url.slice((viewer.mountPath || '/lo').length);
     if (tail.startsWith('/manifest.json')) return; // already handled above
     if (tail.startsWith('/panes/')) return;        // already handled above
+    if (tail.startsWith('/proxy')) return;         // already handled above
 
     // Strip any query string; the bundle does not consume them.
     const queryIdx = tail.indexOf('?');
