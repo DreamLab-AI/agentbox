@@ -100,6 +100,11 @@ let
       <p><code>/lo/?uri=http://localhost:8484/pods/&lt;npub&gt;/</code></p>
     </div>
 
+    <!-- Data island — losos injects the fetched ?uri= JSON-LD here and then
+         reads it back into the store. Without this element the store stays
+         empty and findSubject() returns null ("No data found"). -->
+    <script type="application/ld+json"></script>
+
     <div id="lo-viewer"></div>
 
     <script>
