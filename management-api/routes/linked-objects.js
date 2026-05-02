@@ -116,6 +116,16 @@ async function linkedObjectsRoutes(fastify, options) {
       const bytes = await fs.promises.readFile(full);
       reply.type(_mime(file)).send(bytes);
     } catch (err) {
+      // Fall back to the upstream bundle's panes directory.
+      if (viewer.bundlePath) {
+        const bundlePaneFull = path.join(viewer.bundlePath, 'panes', file);
+        if (bundlePaneFull.startsWith(path.resolve(viewer.bundlePath))) {
+          try {
+            const bytes2 = await fs.promises.readFile(bundlePaneFull);
+            return reply.type(_mime(file)).send(bytes2);
+          } catch { /* fall through to 404 */ }
+        }
+      }
       reply.code(404).send({ error: 'pane-not-found', file });
     }
   });
