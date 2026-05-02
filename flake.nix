@@ -988,7 +988,7 @@ stderr_logfile=/var/log/bootstrap.error.log
 [program:management-api]
 command=${managementApiPkg}/bin/management-api
 directory=/opt/agentbox/management-api
-environment=HOME="/workspace",MANAGEMENT_API_PORT="%(ENV_MANAGEMENT_API_PORT)s",MANAGEMENT_API_KEY="%(ENV_MANAGEMENT_API_KEY)s",MANAGEMENT_API_AUTH_MODE="%(ENV_MANAGEMENT_API_AUTH_MODE)s",AGENTBOX_REQUIRED_FOR_READINESS="true"
+environment=HOME="/workspace",MANAGEMENT_API_PORT="%(ENV_MANAGEMENT_API_PORT)s",MANAGEMENT_API_KEY="%(ENV_MANAGEMENT_API_KEY)s",MANAGEMENT_API_AUTH_MODE="%(ENV_MANAGEMENT_API_AUTH_MODE)s",MEMORY_ADMIN_ACCESS_MODE="%(ENV_MEMORY_ADMIN_ACCESS_MODE)s",AGENTBOX_REQUIRED_FOR_READINESS="true"
 autostart=true
 autorestart=true
 priority=20
@@ -1143,6 +1143,7 @@ stderr_logfile=/var/log/comfyui-builtin.error.log
         comfyuiExtCfg   = integrationsCfg.comfyui_external  or {};
         observCfg       = agentboxConfig.observability or {};
         adaptersCfg     = agentboxConfig.adapters     or {};
+        memoryCfg       = agentboxConfig.memory        or {};
 
         # True when the GPU backend is anything other than "none".
         gpuEnabled = gpuBackendKey != "none";
@@ -1547,6 +1548,9 @@ ${ragflowNetworkDecl}
           "OPF_MODE=${privacyFilterCfg.mode or "off"}"
           "OPF_POLICY_PODS=${(privacyFilterCfg.policy or {}).pods or "strict"}"
           "OPF_POLICY_MEMORY=${(privacyFilterCfg.policy or {}).memory or "strict"}"
+          # Memory access control (ADR-008 §memory gating) — baked from [memory] in agentbox.toml.
+          # "permissive" = admin Bearer callers see all namespaces; "scoped" = all callers isolated.
+          "MEMORY_ADMIN_ACCESS_MODE=${memoryCfg.admin_access_mode or "scoped"}"
           "OPF_POLICY_EVENTS=${(privacyFilterCfg.policy or {}).events or "soft"}"
           "OPF_POLICY_BEADS=${(privacyFilterCfg.policy or {}).beads or "soft"}"
           "OPF_POLICY_ORCHESTRATOR=${(privacyFilterCfg.policy or {}).orchestrator or "off"}"
