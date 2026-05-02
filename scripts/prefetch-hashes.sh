@@ -374,8 +374,76 @@ PY
 
 patch_npm_cli_tarball_hash() {
   local fod_name="$1" hash="$2"
-  echo "  (skip: tarball sha256 patch via fod_name='$fod_name' not yet implemented)"
-  return 0
+  local file="${REPO_ROOT}/flake.nix"
+  # fod_name is like "cli-3.6.12.tgz", "ruvector-0.2.25.tgz", "mermaid-cli-11.14.0.tgz".
+  # Extract the version (semver-like suffix before .tgz) and the basename.
+  # Strategy: version = last segment matching [0-9]+\.[0-9]+ prefix after last '-'.
+  python3 - "$file" "$fod_name" "$hash" <<'PY'
+import sys, pathlib, re
+file, fod_name, new_hash = sys.argv[1:4]
+
+# Strip .tgz, then find semver at tail: foo-bar-1.2.3 → basename="foo-bar", ver="1.2.3"
+stem = fod_name.removesuffix('.tgz')
+ver_re = re.compile(r'-(\d+\.\d+[\.\d\-]*)$')
+m = ver_re.search(stem)
+if not m:
+    print(f"  tarball-hash: cannot parse version from '{fod_name}' — skipping")
+    sys.exit(0)
+version = m.group(1)
+basename = stem[:m.start()]   # e.g. "cli", "ruvector", "mermaid-cli"
+
+src = pathlib.Path(file).read_text()
+lines = src.splitlines(keepends=True)
+
+# Find mkNpmCli block whose version matches AND sha256 is lib.fakeHash
+# We scan for the pattern:
+#   mkNpmCli {
+#     pkgName  = "..."     (pkgName's basename after / matches fod basename)
+#     version  = "VER"
+#     sha256   = lib.fakeHash    ← patch this
+block_start_re = re.compile(r'\bmkNpmCli\s*\{')
+pkg_re         = re.compile(r'pkgName\s*=\s*"([^"]+)"')
+ver_re2        = re.compile(r'version\s*=\s*"([^"]+)"')
+sha_fake_re    = re.compile(r'(\s*)sha256\s*=\s*lib\.fakeHash\s*;')
+
+def pkg_basename(pkgname):
+    return pkgname.split('/')[-1]
+
+patched = 0
+i = 0
+while i < len(lines):
+    if block_start_re.search(lines[i]):
+        block_end = i
+        depth = 0
+        for j in range(i, min(i+30, len(lines))):
+            depth += lines[j].count('{') - lines[j].count('}')
+            block_end = j
+            if j > i and depth <= 0:
+                break
+        block_lines = lines[i:block_end+1]
+        pkg_m = next((pkg_re.search(l) for l in block_lines if pkg_re.search(l)), None)
+        ver_m = next((ver_re2.search(l) for l in block_lines if ver_re2.search(l)), None)
+        if pkg_m and ver_m:
+            pkg = pkg_m.group(1)
+            ver = ver_m.group(1)
+            if pkg_basename(pkg) == basename and ver == version:
+                # Find the sha256 line (not nodeModulesHash)
+                for k, line in enumerate(lines[i:block_end+1], start=i):
+                    sha_m = sha_fake_re.match(line)
+                    if sha_m and 'nodeModulesHash' not in line:
+                        lines[k] = f'{sha_m.group(1)}sha256          = "{new_hash}";\n'
+                        patched += 1
+                        print(f"  patched sha256 for {pkg} {ver} → {new_hash}")
+                        break
+        i = block_end + 1
+    else:
+        i += 1
+
+if patched == 0:
+    print(f"  tarball-hash: no fakeHash sha256 found for basename={basename} ver={version}")
+else:
+    pathlib.Path(file).write_text(''.join(lines))
+PY
 }
 
 patch_cargo_hash() {

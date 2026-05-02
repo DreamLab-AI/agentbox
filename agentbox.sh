@@ -688,15 +688,24 @@ cmd_update() {
     fi
 
     echo ""
-    echo -e "${CYAN}Resolving npm CLI hashes (iterative build + patch)...${NC}"
-    echo -e "  This may take several minutes for first-time fetches."
-    echo ""
+    echo -e "${CYAN}Bumping npm CLI versions in flake.nix...${NC}"
+    # bump-npm-cli-versions.sh: fetches latest versions from npm registry, patches
+    # flake.nix version strings, and resets hashes to lib.fakeHash for prefetch.
+    bash "${SCRIPT_DIR}/scripts/bump-npm-cli-versions.sh"
 
-    # prefetch-hashes.sh --cli handles:
-    #   - npm CLI tarball sha256 (makeNpmCli.sha256)
-    #   - npm CLI node_modules FOD hash (makeNpmCli.nodeModulesHash)
-    #   - nagual-qe cargoHash
-    NIXPKGS_ALLOW_INSECURE=1 bash "${SCRIPT_DIR}/scripts/prefetch-hashes.sh" --cli
+    if grep -q 'lib\.fakeHash' "${SCRIPT_DIR}/flake.nix" 2>/dev/null; then
+        echo ""
+        echo -e "${CYAN}Resolving npm CLI hashes (iterative build + patch)...${NC}"
+        echo -e "  This may take several minutes for first-time fetches."
+        echo ""
+        # prefetch-hashes.sh --cli handles:
+        #   - npm CLI tarball sha256 (makeNpmCli.sha256)
+        #   - npm CLI node_modules FOD hash (makeNpmCli.nodeModulesHash)
+        #   - nagual-qe cargoHash
+        NIXPKGS_ALLOW_INSECURE=1 bash "${SCRIPT_DIR}/scripts/prefetch-hashes.sh" --cli
+    else
+        echo -e "${GREEN}All hashes already resolved — no prefetch needed.${NC}"
+    fi
 
     echo ""
     echo -e "${GREEN}Done. Review flake.nix changes and commit before next build.${NC}"
