@@ -21,7 +21,7 @@ const { spawnCli } = require('../shared/spawn-cli');
 
 const CODEX_BIN = process.env.AGENTBOX_CODEX_BIN || '/usr/local/bin/codex';
 const CODEX_HOME = process.env.AGENTBOX_CODEX_HOME || '/home/openai-user/.codex';
-const MODEL = process.env.AGENTBOX_CODEX_MODEL || 'gpt-5.4';
+const MODEL = process.env.AGENTBOX_CODEX_MODEL || 'gpt-5.5';
 
 // Rough USD per 1k tokens — published rate at time of writing; refresh on bump.
 const PRICE_PER_1K_PROMPT     = 0.005;
@@ -37,7 +37,7 @@ async function callConsult({ question, context_excerpt }) {
   const prompt = formatPrompt(question, context_excerpt);
   const result = await spawnCli({
     cmd: CODEX_BIN,
-    args: ['exec', '--json', '--', prompt],
+    args: ['exec', '--json', '--skip-git-repo-check', '--', prompt],
     env: {
       CODEX_HOME,
       OPENAI_API_KEY:    process.env.OPENAI_API_KEY    || '',

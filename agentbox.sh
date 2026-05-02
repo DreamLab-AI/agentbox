@@ -44,6 +44,7 @@ Local lifecycle commands:
   ${GREEN}down${NC}             Stop the Docker stack [--volumes: also remove volumes (confirms)]
   ${GREEN}build${NC}            Build the Nix image [--variant runtime|desktop|full]
   ${GREEN}rebuild${NC}          Full dev-loop cycle: down + build + up --build
+  ${GREEN}update${NC}           Check for upstream version bumps and patch flake.nix hashes [--check: report only, no patch]
   ${GREEN}logs${NC}             Follow logs [service: supervisorctl tail, else compose logs]
   ${GREEN}shell${NC}            Open shell in container [profile: zellij layout in that profile]
   ${GREEN}health${NC}           Show service health [--json: raw JSON output]
@@ -70,6 +71,8 @@ Examples:
   $0 down --volumes         # Stop stack and remove volumes (destructive, confirms)
   $0 build --variant full   # Build the full image without loading it
   $0 rebuild                # down + build + up (dev-loop iteration)
+  $0 update                 # check + bump npm CLI versions in flake.nix, then resolve hashes
+  $0 update --check         # report available updates without patching
   $0 logs                   # Follow all service logs
   $0 logs management-api    # Follow a specific service via supervisorctl
   $0 shell                  # bash in the agentbox container
@@ -655,6 +658,52 @@ cmd_build() {
     echo "Or use: $0 up --build"
 }
 
+cmd_update() {
+    # Check + bump npm CLI package versions in flake.nix, then resolve Nix hashes.
+    # This is intentionally a MANUAL step — auto-bumping on every build breaks Nix
+    # reproducibility (same flake = same image). Call this from the onboarding wizard
+    # or explicitly before a release rebuild.
+    #
+    # Usage:
+    #   ./agentbox.sh update          — bump versions + resolve hashes + report
+    #   ./agentbox.sh update --check  — report available updates, do not patch
+
+    local check_only=0
+    case "${1:-}" in
+        --check)   check_only=1 ;;
+        -h|--help) echo "Usage: $0 update [--check]"; return 0 ;;
+    esac
+
+    echo -e "${CYAN}Checking upstream releases...${NC}"
+    bash "${SCRIPT_DIR}/scripts/check-upstream-releases.sh" || true
+
+    if [[ "$check_only" -eq 1 ]]; then
+        echo -e "${YELLOW}[--check mode] no patches applied.${NC}"
+        return 0
+    fi
+
+    if ! command -v nix >/dev/null 2>&1; then
+        echo -e "${RED}nix not found — cannot resolve hashes.${NC}"
+        return 1
+    fi
+
+    echo ""
+    echo -e "${CYAN}Resolving npm CLI hashes (iterative build + patch)...${NC}"
+    echo -e "  This may take several minutes for first-time fetches."
+    echo ""
+
+    # prefetch-hashes.sh --cli handles:
+    #   - npm CLI tarball sha256 (makeNpmCli.sha256)
+    #   - npm CLI node_modules FOD hash (makeNpmCli.nodeModulesHash)
+    #   - nagual-qe cargoHash
+    NIXPKGS_ALLOW_INSECURE=1 bash "${SCRIPT_DIR}/scripts/prefetch-hashes.sh" --cli
+
+    echo ""
+    echo -e "${GREEN}Done. Review flake.nix changes and commit before next build.${NC}"
+    echo "  git diff flake.nix lib/"
+    echo "  git add flake.nix lib/ && git commit -m 'chore(deps): bump npm CLI + cargo hashes'"
+}
+
 cmd_rebuild() {
     if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
         echo "Usage: $0 rebuild [--no-cleanup]"
@@ -911,6 +960,7 @@ case "${CMD:-}" in
     down)          cmd_down "$@" ;;
     build)         cmd_build "$@" ;;
     rebuild)       cmd_rebuild "$@" ;;
+    update)        cmd_update "$@" ;;
     logs)          cmd_logs "$@" ;;
     shell)         cmd_shell "$@" ;;
     health)        cmd_health "$@" ;;

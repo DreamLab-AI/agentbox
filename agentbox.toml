@@ -214,7 +214,7 @@ optional_env_vars = ["ZAI_ANTHROPIC_API_KEY", "ZAI_URL"]
 auth_mode = "api_key"
 
 [gpu]
-backend = "none"
+backend = "local-cuda"
 
 # ── Consultant tier (PRD-005 / ADR-011) ────────────────────────────────────────
 # Five MCP servers that expose external LLM providers as named consultants
@@ -234,7 +234,7 @@ intelligence_signal = true                      # write ADR-043 QualitySignal fi
 
 [consultants.codex]
 enabled = true
-model   = "gpt-5.4"
+model   = "gpt-5.5"
 home    = "/home/openai-user/.codex"
 timeout_ms = 180000
 
@@ -366,7 +366,7 @@ rust = true
 gemini_cli = true
 codex = true
 code_server = true
-cuda = false
+cuda = true
 
 # ── Plugins (ruflo/claude-flow plugin system) ────────────────────────────────
 # Plugins are installed into $HOME/.claude-flow/plugins/ at container boot
@@ -386,19 +386,156 @@ fallback = "sqlite"
 enable_hnsw = true
 
 # Declared plugins — installed at boot, gated by enabled flag.
+# source = "ruflo-git" (default): cloned from github.com/ruvnet/ruflo/plugins/
+# source = "registry": installed from IPFS registry via `ruflo plugins install`
+
+# --- Core orchestration ---
 [[plugins.packages]]
-name = "@claude-flow/plugin-agentic-qe"
-version = "^3.0.0-alpha.4"
+name = "ruflo-core"
 enabled = true
 
 [[plugins.packages]]
-name = "@claude-flow/claims"
-version = "^3.0.0-alpha.8"
+name = "ruflo-intelligence"
 enabled = true
 
 [[plugins.packages]]
-name = "@claude-flow/performance"
-version = "^3.0.0-alpha.1"
+name = "ruflo-swarm"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-workflows"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-autopilot"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-loop-workers"
+enabled = true
+
+# --- Memory and data ---
+[[plugins.packages]]
+name = "ruflo-agentdb"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-ruvector"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-rag-memory"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-knowledge-graph"
+enabled = true
+
+# --- Development and quality ---
+[[plugins.packages]]
+name = "ruflo-sparc"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-testgen"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-goals"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-docs"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-adr"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-ddd"
+enabled = true
+
+# --- Security and observability ---
+[[plugins.packages]]
+name = "ruflo-security-audit"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-aidefence"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-observability"
+enabled = true
+
+# --- Specialised ---
+[[plugins.packages]]
+name = "ruflo-browser"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-wasm"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-neural-trader"
+enabled = false
+
+[[plugins.packages]]
+name = "ruflo-market-data"
+enabled = false
+
+[[plugins.packages]]
+name = "ruflo-iot-cognitum"
+enabled = false
+
+[[plugins.packages]]
+name = "ruflo-federation"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-migrations"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-daa"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-rvf"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-ruvllm"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-plugin-creator"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-jujutsu"
+enabled = false
+
+[[plugins.packages]]
+name = "ruflo-cost-tracker"
+enabled = true
+
+# --- IPFS registry plugins (non-git) ---
+[[plugins.packages]]
+name = "@claude-flow/embeddings"
+source = "registry"
+enabled = true
+
+[[plugins.packages]]
+name = "@claude-flow/security"
+source = "registry"
+enabled = true
+
+[[plugins.packages]]
+name = "@claude-flow/neural"
+source = "registry"
 enabled = true
 
 [observability]

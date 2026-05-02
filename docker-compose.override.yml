@@ -82,8 +82,10 @@ services:
       - ragflow
 
     # Security and capabilities
+    # seccomp-agentbox.json blocks AF_ALG sockets (CVE-2026-31431 / CERT-EU 2026-005)
     security_opt:
       - no-new-privileges:true
+      - seccomp=./config/seccomp-agentbox.json
     cap_add:
       - SYS_ADMIN
       - NET_ADMIN

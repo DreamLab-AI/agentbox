@@ -12,7 +12,7 @@
  *   const consultant = new BaseConsultant({
  *     name: 'codex',
  *     description: 'OpenAI Codex Rust CLI consultant',
- *     model: 'gpt-5.4',
+ *     model: 'gpt-5.5',
  *     callConsult: async ({ question, context_excerpt, format }) => ({
  *       response, model, tokens, cost_usd, citations,
  *     }),

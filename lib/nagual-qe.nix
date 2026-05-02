@@ -81,12 +81,9 @@ in
       pname   = "nagual-qe";
       inherit version src;
 
-      # Vendoring: upstream commits Cargo.lock at repo root, so the modern
-      # `useFetchCargoVendor + cargoHash` machinery resolves and fetches the
-      # entire vendor tree as a separate FOD on first build. cargoHash is
-      # verified, so the network access happens inside a hash-checked context
-      # that the Nix sandbox permits.
-      useFetchCargoVendor = true;
+      # Vendoring: upstream commits Cargo.lock at repo root. cargoHash is
+      # verified; the Nix sandbox permits network access inside a hash-checked FOD.
+      # useFetchCargoVendor is the default since nixpkgs 25.05 — no need to set it.
       inherit cargoHash;
 
       buildNoDefaultFeatures = true;

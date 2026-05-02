@@ -279,19 +279,23 @@ fi
 echo "[6/8] Service closures OK."
 
 # ---------------------------------------------------------------------------
-# Phase 7 — Plugin bootstrap (ruflo/claude-flow plugin system)
+# Phase 7 — Native ruflo plugin bootstrap
 # ---------------------------------------------------------------------------
 # Nix-packaged CLIs (claude-flow, ruflo, ruvector) are in PATH.
-# Plugins extend them at runtime via .claude-flow/plugins/.
-# Declared in agentbox.toml [plugins.packages]; installed here at boot.
-# Memory backend config is propagated from [plugins.memory] to the plugin dir.
+# Plugins are native .claude-plugin format from github.com/ruvnet/ruflo.
+# Two install sources:
+#   source = "ruflo-git" (default) — shallow-cloned from GitHub, symlinked
+#   source = "registry"            — installed via `ruflo plugins install`
+# Memory backend config propagated from [plugins.memory] to config.json.
 echo "[7/8] Bootstrapping ruflo plugins..."
 
 _PLUGIN_DIR="${HOME}/.claude-flow/plugins"
-mkdir -p "$_PLUGIN_DIR" 2>/dev/null || true
-chown 1000:1000 "$_PLUGIN_DIR" 2>/dev/null || true
+_RUFLO_PLUGINS_CACHE="/var/cache/ruflo-plugins"
+_RUFLO_PLUGINS_REPO="https://github.com/ruvnet/ruflo.git"
+mkdir -p "$_PLUGIN_DIR" "$_RUFLO_PLUGINS_CACHE" 2>/dev/null || true
+chown -R 1000:1000 "$_PLUGIN_DIR" 2>/dev/null || true
 
-# Write plugin memory config from agentbox.toml [plugins.memory] →
+# Write plugin memory config from agentbox.toml [plugins.memory] ->
 # .claude-flow/config.json so the MCP server and plugins share the same
 # ruvector-postgres connection.
 _CF_CONFIG_DIR="${HOME}/.claude-flow"
@@ -320,29 +324,34 @@ CFEOF
   chown 1000:1000 "$_CF_CONFIG_DIR/config.json" 2>/dev/null || true
 fi
 
-# Install declared plugins (reads agentbox.toml via simple grep — no TOML parser needed)
-# Each [[plugins.packages]] block has name = "..." and enabled = true/false.
-if command -v claude-flow >/dev/null 2>&1; then
-  _install_plugin() {
-    local pkg="$1"
-    if [ -d "$_PLUGIN_DIR/node_modules/$pkg" ]; then
-      echo "  [plugin] $pkg already installed"
-    else
-      echo "  [plugin] Installing $pkg ..."
-      su -s /bin/bash devuser -c "cd '$_PLUGIN_DIR' && npm install --save '$pkg'" 2>&1 | tail -1 || true
-    fi
-  }
+if command -v ruflo >/dev/null 2>&1; then
 
-  # Parse plugin names from agentbox.toml [[plugins.packages]] blocks.
-  # Only install if the subsequent enabled line is true.
+  # --- Step 1: Clone/update ruflo plugins from GitHub (sparse checkout) ---
+  if [ -d "$_RUFLO_PLUGINS_CACHE/.git" ]; then
+    echo "  [plugin] Updating ruflo plugins cache..."
+    git -C "$_RUFLO_PLUGINS_CACHE" pull --ff-only --depth 1 2>/dev/null || true
+  else
+    echo "  [plugin] Cloning ruflo plugins (sparse, depth 1)..."
+    git clone --depth 1 --filter=blob:none --sparse \
+      "$_RUFLO_PLUGINS_REPO" "$_RUFLO_PLUGINS_CACHE" 2>/dev/null || true
+    git -C "$_RUFLO_PLUGINS_CACHE" sparse-checkout set plugins 2>/dev/null || true
+  fi
+  chown -R 1000:1000 "$_RUFLO_PLUGINS_CACHE" 2>/dev/null || true
+
+  # --- Step 2: Install declared plugins from agentbox.toml ---
+  # Reads [[plugins.packages]] blocks. Fields: name, enabled, source (optional).
+  # source = "ruflo-git" (default): symlink from cache into plugin dir.
+  # source = "registry": install via `ruflo plugins install -n`.
   if [ -f "$AGENTBOX_CONFIG" ]; then
     _in_plugin_block=0
     _plugin_name=""
+    _plugin_source=""
     while IFS= read -r line; do
       case "$line" in
         *'[[plugins.packages]]'*)
           _in_plugin_block=1
           _plugin_name=""
+          _plugin_source="ruflo-git"
           ;;
         *)
           if [ "$_in_plugin_block" = "1" ]; then
@@ -350,9 +359,31 @@ if command -v claude-flow >/dev/null 2>&1; then
               *name*=*)
                 _plugin_name="$(echo "$line" | sed 's/.*= *"\(.*\)"/\1/')"
                 ;;
+              *source*=*\"registry\"*)
+                _plugin_source="registry"
+                ;;
+              *source*=*\"ruflo-git\"*)
+                _plugin_source="ruflo-git"
+                ;;
               *enabled*=*true*)
                 if [ -n "$_plugin_name" ]; then
-                  _install_plugin "$_plugin_name"
+                  if [ "$_plugin_source" = "registry" ]; then
+                    echo "  [plugin] Installing $_plugin_name from IPFS registry..."
+                    su -s /bin/bash devuser -c "ruflo plugins install -n '$_plugin_name'" 2>&1 | tail -3 || true
+                  else
+                    _src="$_RUFLO_PLUGINS_CACHE/plugins/$_plugin_name"
+                    _dst="$_PLUGIN_DIR/$_plugin_name"
+                    if [ -d "$_src" ]; then
+                      if [ ! -e "$_dst" ]; then
+                        ln -sf "$_src" "$_dst"
+                        echo "  [plugin] Linked $_plugin_name"
+                      else
+                        echo "  [plugin] $_plugin_name already present"
+                      fi
+                    else
+                      echo "  [plugin] WARN: $_plugin_name not found in ruflo cache"
+                    fi
+                  fi
                 fi
                 _in_plugin_block=0
                 ;;
@@ -370,29 +401,29 @@ if command -v claude-flow >/dev/null 2>&1; then
     done < "$AGENTBOX_CONFIG"
   fi
 
-  # Write installed.json manifest for the MCP server
-  if [ -f "$_PLUGIN_DIR/package.json" ]; then
-    su -s /bin/bash devuser -c "cd '$_PLUGIN_DIR' && node -e \"
-      const pkg = require('./package.json');
-      const deps = pkg.dependencies || {};
-      const manifest = { version: '1.0.0', lastUpdated: new Date().toISOString(), plugins: {} };
-      for (const [name, ver] of Object.entries(deps)) {
-        const resolved = require(name + '/package.json').version;
-        manifest.plugins[name] = {
-          name, version: resolved,
-          installedAt: new Date().toISOString(),
-          enabled: true, source: 'npm',
-          path: require.resolve(name).replace(/\\/[^/]*$/, ''),
-          commands: [], hooks: []
-        };
-      }
-      require('fs').writeFileSync('installed.json', JSON.stringify(manifest, null, 2));
-    \"" 2>/dev/null || true
-  fi
+  # --- Step 3: Write installed.json manifest for MCP server ---
+  _manifest="$_PLUGIN_DIR/installed.json"
+  {
+    printf '{"version":"1.0.0","lastUpdated":"%s","plugins":{' "$(date -Iseconds)"
+    _first=1
+    for _pdir in "$_PLUGIN_DIR"/*/; do
+      [ -d "$_pdir" ] || continue
+      _pjson="$_pdir/.claude-plugin/plugin.json"
+      if [ -f "$_pjson" ]; then
+        _pname="$(grep '"name"' "$_pjson" | head -1 | sed 's/.*: *"\(.*\)".*/\1/')"
+        _pver="$(grep '"version"' "$_pjson" | head -1 | sed 's/.*: *"\(.*\)".*/\1/')"
+        [ "$_first" = "1" ] && _first=0 || printf ','
+        printf '"%s":{"name":"%s","version":"%s","enabled":true,"source":"ruflo-git","path":"%s"}' \
+          "$_pname" "$_pname" "${_pver:-0.1.0}" "$_pdir"
+      fi
+    done
+    printf '}}\n'
+  } > "$_manifest"
+  chown 1000:1000 "$_manifest" 2>/dev/null || true
 
   echo "[7/8] Plugin bootstrap complete"
 else
-  echo "[7/8] claude-flow not in PATH — plugin bootstrap skipped"
+  echo "[7/8] ruflo not in PATH — plugin bootstrap skipped"
 fi
 
 # ---------------------------------------------------------------------------
