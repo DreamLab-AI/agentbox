@@ -295,7 +295,7 @@
           # Prefetched 2026-04-25. Refresh:
           #   nix run nixpkgs#prefetch-npm-deps -- mcp/consultants/package-lock.json
           # Prefetched 2026-04-25. Refresh: nix run nixpkgs#prefetch-npm-deps -- mcp/consultants/package-lock.json
-          npmDepsHash = "sha256-ph18TjfLha5ltqsqo1d2cjrqqYS6jB+FD0DlNqyG0Hw=";
+          npmDepsHash = "sha256-GlSG2FVmY9X8nQvk621jxBFuZTms1hj+1UEuDekT3xA=";
         };
 
         # 6. skills/comfyui/mcp-server — gated by skills.media.comfyui_builtin.
