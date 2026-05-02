@@ -409,8 +409,19 @@
           pnpm
         ];
 
+        # @google/gemini-cli pinned via makeNpmCli to stay ahead of nixpkgs.
+        # pkgs.gemini-cli lags npm; pin here for operator-controlled cadence.
+        # nix-prefetch-url https://registry.npmjs.org/%40google%2Fgemini-cli/-/gemini-cli-0.40.1.tgz
+        geminiCliPkg = mkNpmCli {
+          pkgName         = "@google/gemini-cli";
+          version         = "0.40.1";
+          sha256          = "sha256-iTIFEnwHLTuqL7pBmigIG5/Vy3fHRYgxOd2ePiwaKy0=";
+          nodeModulesHash = "sha256-vRMAns5rz3edeMNdbdQw16RByn0tOIPqzarn5VH3s2U=";
+          bin             = "gemini";
+        };
+
         geminiCliPackages = lib.optionals (toolchainCfg.gemini_cli or false) [
-          pkgs.gemini-cli
+          geminiCliPkg
         ];
 
         # OpenAI Codex Rust-native CLI — pinned upstream release asset.
