@@ -108,12 +108,20 @@ for _vol_root in \
     /var/lib/https-bridge \
     /run/agentbox \
     "$SHARED_PROJECTS_ROOT" \
+    /home/devuser/.local \
+    /home/devuser/.local/share \
     /home/devuser/.local/share/code-server \
+    /home/devuser/.config \
     /home/devuser/.config/claude-telegram-mirror \
     /home/devuser/.cache; do
   if [ -d "$_vol_root" ]; then
     # Only chown the root, not -R. If the dir is already uid 1000, this
-    # is a no-op kernel call.
+    # is a no-op kernel call. Crucially: Docker auto-creates the parent
+    # paths of named-volume bind mounts (e.g. /home/devuser/.local/share
+    # as parent of codeserver-config) as root-owned, even when the
+    # parent itself is a uid-1000 tmpfs. Bootstrap-as-root fixes the
+    # ownership before XDG-aware tools like zoxide/fzf/atuin try to
+    # mkdir there.
     chown 1000:1000 "$_vol_root" 2>/dev/null || true
   fi
 done

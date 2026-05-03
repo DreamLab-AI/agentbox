@@ -1471,6 +1471,20 @@ stderr_logfile=/var/log/comfyui-builtin.error.log
           # at the starship init line. 256M is plenty for prompt + tool
           # caches; persistent caches go to named volumes per-tool.
           "/home/devuser/.cache:mode=755,size=256M,uid=1000,gid=1000"
+          # devuser's XDG_DATA_HOME. zoxide, fzf, atuin, npm globals,
+          # pip --user, pipx, and a long tail of other XDG-aware CLIs
+          # write here. Same Read-only-fs symptom as .cache without it.
+          # The codeserver-config named volume mounts INSIDE this tmpfs
+          # at .../code-server — Docker handles the layered mount order
+          # (tmpfs first, then volumes on top), so persistence for
+          # code-server is preserved.
+          "/home/devuser/.local:mode=755,size=128M,uid=1000,gid=1000"
+          # devuser's XDG_CONFIG_HOME. Many CLIs that don't honor
+          # XDG_CONFIG_HOME still write to $HOME/.config (git, gh, kube,
+          # etc.). The .config/claude and .config/claude-telegram-mirror
+          # subdirs are bound from host / mounted from named volume on
+          # top of this tmpfs.
+          "/home/devuser/.config:mode=755,size=64M,uid=1000,gid=1000"
           # Writable, exec+suid-allowed bin dir for setuid wrappers (sudo).
           # The bootstrap program runs as root and provisions a setuid copy
           # of pkgs.sudo here so devuser shells can elevate via the NOPASSWD
