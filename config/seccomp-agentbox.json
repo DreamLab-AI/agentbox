@@ -1,5 +1,5 @@
 {
-  "comment": "Agentbox hardened seccomp profile. Blocks AF_ALG sockets (CVE-2026-31431 / 'Copy Fail') while permitting all other syscalls needed for normal container operation. Combined with cap_drop:ALL, no-new-privileges:true, read_only root, and uid 1000 this satisfies the CERT-EU 2026-005 mitigation recommendation for containerised workloads.",
+  "comment": "Agentbox hardened seccomp profile. Blocks AF_ALG sockets (CVE-2026-31431 / 'Copy Fail') while permitting all other syscalls needed for normal container operation. Combined with cap_drop:ALL, read_only root, uid 1000, and a tmpfs-mounted setuid sudo wrapper (no-new-privileges:false is required so the wrapper can elevate; without it devuser cannot run privileged maintenance commands) this satisfies the CERT-EU 2026-005 mitigation recommendation for containerised workloads.",
   "defaultAction": "SCMP_ACT_ALLOW",
   "listenerPath": "",
   "listenerMetadata": "",

@@ -18,9 +18,17 @@ class ComfyUIManager extends EventEmitter {
     this.subscribers = new Map(); // workflowId -> Set of clientIds
     this.outputsDir = process.env.COMFYUI_OUTPUTS || '/home/devuser/comfyui/output';
 
-    // Ensure output directory exists
-    if (!fs.existsSync(this.outputsDir)) {
-      fs.mkdirSync(this.outputsDir, { recursive: true });
+    // Best-effort directory creation. Under the hardened rootfs (read_only:true),
+    // /home/devuser/* is not writable unless an explicit volume is mounted; let
+    // the adapter degrade to "not configured" rather than crash the whole API.
+    try {
+      if (!fs.existsSync(this.outputsDir)) {
+        fs.mkdirSync(this.outputsDir, { recursive: true });
+      }
+    } catch (err) {
+      logger?.warn?.({ err: err.message, dir: this.outputsDir },
+        'comfyui outputs dir not writable — comfyui submissions will fail until COMFYUI_OUTPUTS points at a writable mount');
+      this.outputsDir = null;
     }
   }
 

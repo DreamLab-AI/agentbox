@@ -4,22 +4,29 @@
 services:
 
   agentbox:
-    image: agentbox:runtime-x86_64-linux
+    image: ${AGENTBOX_IMAGE_REF:-agentbox:runtime-x86_64-linux}
     container_name: agentbox
     hostname: agentbox
     restart: unless-stopped
+
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9090/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:9090/ready"]
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 60s
     extra_hosts:
       - "host.docker.internal:host-gateway"
-#     ports:
-#       - "9090:9090"
-#       - "9700:9700"
-#       - "8484:8484"
+
+    ports:
+      - "9090:9090"
+      - "9700:9700"
+      - "9091:9091"
+      - "8484:8484"
+      - "8888:8888"
+      - "5901:5901"
+      - "8080:8080"
+
     environment:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - GITHUB_TOKEN=${GITHUB_TOKEN:-}
@@ -28,10 +35,34 @@ services:
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:32b-instruct}
       - GOOGLE_GEMINI_API_KEY=${GOOGLE_GEMINI_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - MANAGEMENT_API_KEY=${MANAGEMENT_API_KEY:-}
       - MANAGEMENT_API_AUTH_MODE=${MANAGEMENT_API_AUTH_MODE:-hybrid}
       - NOSTR_RELAYS=${NOSTR_RELAYS:-wss://relay.damus.io,wss://relay.primal.net}
       - AGENTBOX_AGENT_ID=${AGENTBOX_AGENT_ID:-agentbox-core}
+      - AGENTBOX_METRICS_PORT=9091
+      - AGENTBOX_OTLP_ENDPOINT=
+      - AGENTBOX_LOG_LEVEL=info
+    user: "1000:1000"
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - SYS_ADMIN
+      - NET_ADMIN
+
+    tmpfs:
+      - /tmp:mode=1777,size=256M
+      - /run:mode=755,size=64M,uid=1000,gid=1000
+      - /var/run:mode=755,size=16M,uid=1000,gid=1000
+      - /var/log:mode=755,size=128M,uid=1000,gid=1000
+      - /var/log/supervisor:mode=755,size=64M,uid=1000,gid=1000
+      - /usr/local/bin:mode=755,size=8M,exec,suid
+      - /tmp/.X11-unix
+      - /run/user/1000
+    security_opt:
+      - no-new-privileges:false
+      - seccomp=./config/seccomp-agentbox.json
     volumes:
       - ./agentbox.toml:/etc/agentbox.toml:ro
       - ./workspace:/workspace
@@ -39,6 +70,13 @@ services:
       - ruvector-data:/var/lib/ruvector
       - solid-data:/var/lib/solid
       - sovereign-identities:/var/lib/agentbox/identities
+      - codeserver-config:/home/devuser/.local/share/code-server
+      - nostr-relay-data:/var/lib/nostr-relay
+      - solid-data:/var/lib/solid
+      - tailscale-state:/var/lib/tailscale
+      - ctm-config:/home/devuser/.config/claude-telegram-mirror
+
+
 
 volumes:
   ruvector-data:
@@ -47,3 +85,13 @@ volumes:
     name: agentbox-solid-data
   sovereign-identities:
     name: agentbox-sovereign-identities
+  codeserver-config:
+    name: agentbox-codeserver-config
+  nostr-relay-data:
+    name: agentbox-nostr-relay-data
+  tailscale-state:
+    name: agentbox-tailscale-state
+  ctm-config:
+    name: agentbox-ctm-config
+
+        

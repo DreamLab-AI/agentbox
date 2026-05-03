@@ -901,6 +901,18 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           find $out/opt/agentbox/scripts -type f -name '*.sh' -exec chmod +x {} +
           find $out/opt/agentbox/scripts -type f -name '*.py' -exec chmod +x {} +
           find $out/opt/agentbox/mcp -maxdepth 2 -type f -name '*.js' -exec chmod +x {} +
+
+          # Bake FHS shims into the image so wrapper scripts (`#!/usr/bin/env sh`,
+          # `#!/bin/sh`, etc.) and the Claude Code binary's `/lib64/ld-linux`
+          # work without a writable /usr/bin (or /bin or /lib64) tmpfs.
+          # nix2container's read_only rootfs makes the runtime mkdir+ln-sf
+          # in entrypoint.sh silently fail, leaving every npm-style wrapper
+          # ENOENT at exec time.
+          mkdir -p $out/usr/bin $out/bin $out/lib64
+          ln -s ${pkgs.coreutils}/bin/env $out/usr/bin/env
+          ln -sf ${pkgs.bash}/bin/sh $out/bin/sh
+          ln -sf ${pkgs.bash}/bin/bash $out/bin/bash
+          ln -sf ${pkgs.glibc}/lib/ld-linux-x86-64.so.2 $out/lib64/ld-linux-x86-64.so.2
         '';
 
         qgisServiceBlock = ''
@@ -1308,17 +1320,22 @@ stderr_logfile=/var/log/comfyui-builtin.error.log
         # every [program:*] log file writes there, and read_only:true would
         # otherwise make the container unable to log. Operators who need log
         # persistence can override with a named volume at deploy time.
+        # The container runs as uid 1000 (compose `user: "1000:1000"`), so
+        # every tmpfs the runtime needs to write to must be owned by uid 1000
+        # — otherwise `mkdir /run/agentbox` and `supervisord -> /var/log/...`
+        # both EACCES against root-owned tmpfs mountpoints.
         baselineTmpfsMounts = [
           "/tmp:mode=1777,size=256M"
-          "/run:mode=755,size=64M"
-          "/var/run:mode=755,size=16M"
-          "/var/log:mode=755,size=128M"
-          "/var/log/supervisor:mode=755,size=64M"
+          "/run:mode=755,size=64M,uid=1000,gid=1000"
+          "/var/run:mode=755,size=16M,uid=1000,gid=1000"
+          "/var/log:mode=755,size=128M,uid=1000,gid=1000"
+          "/var/log/supervisor:mode=755,size=64M,uid=1000,gid=1000"
           # Writable, exec+suid-allowed bin dir for setuid wrappers (sudo).
-          # Nix-store binaries are mode 555, so even with no-new-privileges:false
-          # sudo can't elevate without a setuid copy. The entrypoint provisions
-          # /usr/local/bin/sudo here at boot. Docker tmpfs defaults to nosuid,
-          # noexec — both must be explicitly enabled.
+          # Stays root-owned so the entrypoint (when run as root) can
+          # `chmod 4755` here. Under `user: "1000:1000"` the wrapper
+          # provisioning silently no-ops; that's an architectural follow-up
+          # — running supervisord as root with per-program `user=devuser`
+          # is the proper fix.
           "/usr/local/bin:mode=755,size=8M,exec,suid"
         ];
         mergedTmpfsMounts   = lib.unique (baselineTmpfsMounts ++ exceptionTmpfsPaths);
@@ -1357,12 +1374,26 @@ stderr_logfile=/var/log/comfyui-builtin.error.log
         # Top-level volumes block — explicit "  <name>:\n    name: ...\n"
         # per entry; the prior heredoc stripped the 2-space common indent
         # and produced flush-left volume keys.
+        #
+        # Baseline volumes are hardcoded; feature-exception volumes
+        # (writable_volumes entries like "codeserver-config:/path/in/container")
+        # are auto-derived so every volume referenced in the agentbox service's
+        # volumes list has a matching top-level declaration. Without this,
+        # docker compose rejects the file with "undefined volume <name>".
+        baselineTopLevelVolumeNames = [ "ruvector-data" "solid-data" "sovereign-identities" ];
+        exceptionVolumeNames = lib.unique (
+          map (v: lib.head (lib.splitString ":" v)) exceptionWritableVolumes
+        );
+        # Feature-exception names not already covered by the baseline.
+        extraTopLevelVolumeNames = lib.subtractLists baselineTopLevelVolumeNames exceptionVolumeNames;
         topLevelVolumes =
           lib.optionalString (gpuEnabled && ollamaSidecarEnabled) "  ollama:\n    name: ollama\n"
           + "  ruvector-data:\n    name: agentbox-ruvector-data\n"
           + "  solid-data:\n    name: agentbox-solid-data\n"
           + "  sovereign-identities:\n    name: agentbox-sovereign-identities\n"
-          + lib.optionalString relayLocal "  nostr-relay-data:\n    name: agentbox-nostr-relay-data\n";
+          + lib.concatMapStrings
+              (n: "  ${n}:\n    name: agentbox-${n}\n")
+              extraTopLevelVolumeNames;
 
         # Full compose document.
         composeText = ''
@@ -1407,7 +1438,7 @@ ${agentboxPorts}
 ${agentboxRuntime}${agentboxCapabilities}
 ${agentboxDevices}    tmpfs:
 ${agentboxTmpfs}    security_opt:
-      - no-new-privileges:true
+      - no-new-privileges:false
       - seccomp=./config/seccomp-agentbox.json
     volumes:
 ${agentboxVolumes}
@@ -1446,7 +1477,12 @@ ${ragflowNetworkDecl}
           GROUP
           sed -i 's/^[[:space:]]*//' $out/etc/group
 
-          # Passwordless sudo for devuser
+          # Passwordless sudo for devuser. Both /etc/sudoers and the drop-in
+          # are baked into the image because the rootfs is read_only at runtime
+          # — there's no place for the entrypoint to write these.
+          echo "root ALL=(ALL) ALL" > $out/etc/sudoers
+          echo "#includedir /etc/sudoers.d" >> $out/etc/sudoers
+          chmod 440 $out/etc/sudoers
           mkdir -p $out/etc/sudoers.d
           echo "devuser ALL=(ALL) NOPASSWD: ALL" > $out/etc/sudoers.d/devuser
           chmod 440 $out/etc/sudoers.d/devuser
@@ -1462,12 +1498,9 @@ ${ragflowNetworkDecl}
           ln -sf ${pkgs.coreutils}/bin/env /usr/bin/env 2>/dev/null || true
           ln -sf ${pkgs.bash}/bin/sh /bin/sh 2>/dev/null || true
           ln -sf ${pkgs.bash}/bin/bash /bin/bash 2>/dev/null || true
-          # sudo needs /etc/sudoers base file
-          if [ ! -f /etc/sudoers ]; then
-            echo "root ALL=(ALL) ALL" > /etc/sudoers
-            echo "#includedir /etc/sudoers.d" >> /etc/sudoers
-            chmod 440 /etc/sudoers
-          fi
+          # /etc/sudoers and /etc/sudoers.d/devuser are baked into the image
+          # at build time (configFiles derivation) — read_only rootfs would
+          # otherwise prevent runtime creation.
           # Claude Code binary needs /lib64/ld-linux (FHS path, not Nix-patched)
           mkdir -p /lib64 2>/dev/null || true
           ln -sf ${pkgs.glibc}/lib/ld-linux-x86-64.so.2 /lib64/ld-linux-x86-64.so.2 2>/dev/null || true
@@ -1643,7 +1676,11 @@ ${ragflowNetworkDecl}
             copyToRoot = pkgs.buildEnv {
               name = "agentbox-root";
               paths = [ entrypoint configFiles appRoot ];
-              pathsToLink = [ "/bin" "/etc" "/opt" ];
+              # /usr/bin and /lib64 are required so the FHS shims baked into
+              # appRoot (env, ld-linux) survive the buildEnv merge — the
+              # entrypoint's runtime fallback can't write here under
+              # read_only:true rootfs.
+              pathsToLink = [ "/bin" "/etc" "/opt" "/usr" "/lib64" ];
             };
             config = {
               Entrypoint = [ "${entrypoint}/bin/entrypoint" ];

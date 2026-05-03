@@ -13,15 +13,9 @@ services:
     env_file:
       - .env
 
-    # Port remapping to avoid MAD collision
-    ports:
-      - "127.0.0.1:9190:9090"  # Management API — localhost only (NIP-98 auth)
-      - "127.0.0.1:9700:9700"  # Agent events — localhost only
-      - "127.0.0.1:8484:8484"  # Solid pod — localhost only (WAC pending)
-      - "127.0.0.1:5902:5901"  # VNC desktop — localhost only (SSH tunnel)
-      - "127.0.0.1:8180:8080"  # Code-server — localhost only
-      - "127.0.0.1:2223:22"    # SSH — localhost only
-      - "127.0.0.1:9191:9091"  # Prometheus metrics — localhost only
+    # Ports come from the base compose (standard 9090/9700/9091/8484/8888/5901/8080).
+    # MAD has been deprecated; no remap needed. Direct host SSH is not exposed —
+    # use Tailscale SSH (config/tailscale auth) or `docker exec agentbox`.
 
     # Additional environment
     environment:
@@ -34,6 +28,11 @@ services:
       - CUDA_VISIBLE_DEVICES=0,1,2
       # ComfyUI external
       - COMFYUI_API_ENDPOINT=${COMFYUI_API_ENDPOINT:-http://192.168.2.48:3001}
+      # Hardened rootfs (read_only:true) means /home/devuser/* is not writable
+      # without an explicit volume. Route comfyui outputs to the uid-1000 /run
+      # tmpfs so the adapter's `mkdir -p` succeeds at boot. Outputs are
+      # ephemeral; mount a named volume here if persistence is needed.
+      - COMFYUI_OUTPUTS=${COMFYUI_OUTPUTS:-/run/comfyui/output}
       - COMFYUI_LOCAL_ENDPOINT=${COMFYUI_LOCAL_ENDPOINT:-http://172.18.0.10:8188}
       # Local LLM
       - LOCAL_LLM_HOST=${LOCAL_LLM_HOST:-192.168.2.48}
@@ -68,12 +67,22 @@ services:
       # throwaway path so the line is harmless when HOST_CLAUDE_PATH is unset.
       - ${HOME}/.claude:${HOST_CLAUDE_PATH:-/home/devuser/.claude-host-link-noop}:rw
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      # X11 socket is provided by the desktop security exception's tmpfs in
+      # the base compose (in-container VNC at :5902). Host X11 forwarding
+      # would mount /tmp/.X11-unix as a bind here; mutually exclusive with
+      # the tmpfs, so we don't.
       - ruvector-data:/var/lib/ruvector
       - solid-data:/var/lib/solid
       - sovereign-identities:/var/lib/agentbox/identities
-      - agentbox-workspace:/home/devuser/workspace
-      - agentbox-logs:/var/log
+      # Inherit the legacy multi-agent-docker workspace tree (~157 GB:
+      # agentbox/, claude-flow/, projects/...). The volume is declared at the
+      # bottom as an external alias for `multi-agent-docker_workspace` so the
+      # original MAD volume is reused in place — no copy. UID 1000 matches.
+      - mad-workspace:/home/devuser/workspace
+      # /var/log is a base tmpfs (128M); persistence not declared here.
+      # Add a [storage].log_persistence_volume TOML flag if operators need
+      # durable logs — gating must happen in flake.nix so the base drops
+      # the tmpfs entry instead of conflicting with this override.
       - tailscale-state:/var/lib/tailscale
 
     # Resource provisioning — host: 376G RAM, 32 cores, 3x GPU (98G VRAM), 1.9T disk
@@ -95,19 +104,9 @@ services:
       - default
       - ragflow
 
-    # Security and capabilities
-    # seccomp-agentbox.json blocks AF_ALG sockets (CVE-2026-31431 / CERT-EU 2026-005)
-    # no-new-privileges is FALSE here so devuser can sudo (NOPASSWD entry is
-    # baked into the image at flake.nix:1428). Container is still bounded by
-    # docker namespaces, seccomp, cap_add allowlist, and mount scope — the
-    # only thing toggled is in-namespace privilege escalation, which is
-    # required for agent-driven apt/sysctl/nft work.
-    security_opt:
-      - no-new-privileges:false
-      - seccomp=./config/seccomp-agentbox.json
-    cap_add:
-      - SYS_ADMIN
-      - NET_ADMIN
+    # security_opt (no-new-privileges:false + seccomp) is set in the base
+    # docker-compose.yml. cap_add is also defined in the base; we extend it
+    # implicitly here only via shm_size sizing for agent workloads.
     shm_size: '32gb'
 
 networks:
@@ -122,9 +121,11 @@ volumes:
     name: agentbox-solid-data
   sovereign-identities:
     name: agentbox-sovereign-identities
-  agentbox-workspace:
-    name: agentbox-workspace
-  agentbox-logs:
-    name: agentbox-logs
+  # External alias for the legacy multi-agent-docker workspace volume.
+  # Created by the deprecated MAD stack; reused here so agentbox sees the
+  # full project tree (agentbox/, claude-flow/, AR-AI-Knowledge-Graph/, ...).
+  mad-workspace:
+    external: true
+    name: multi-agent-docker_workspace
   tailscale-state:
     name: agentbox-tailscale-state

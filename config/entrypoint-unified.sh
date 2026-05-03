@@ -130,8 +130,11 @@ fi
 unset _legacy_sentinel
 
 if [ "${ENABLE_DESKTOP:-false}" = "true" ]; then
-  mkdir -p /tmp/.X11-unix
-  chmod 1777 /tmp/.X11-unix
+  # /tmp/.X11-unix is mounted as a Docker tmpfs (mode 1777 by default)
+  # via the desktop security exception. mkdir/chmod are best-effort because
+  # the container runs as uid 1000 and the tmpfs root is owned by uid 0.
+  mkdir -p /tmp/.X11-unix 2>/dev/null || true
+  chmod 1777 /tmp/.X11-unix 2>/dev/null || true
 fi
 
 # ---------------------------------------------------------------------------
@@ -148,24 +151,26 @@ if [ ! -d "$WORKSPACE/agents" ]; then
   mkdir -p "$WORKSPACE/agents"
 fi
 
-# Shell profile seeding — create /etc/bash.bashrc if it doesn't exist
-# (nix2container images have no FHS paths by default)
-touch /etc/bash.bashrc 2>/dev/null || true
-if ! grep -q "source.*agentbox-aliases" /etc/bash.bashrc 2>/dev/null; then
-  echo "source /opt/agentbox/config/agentbox-aliases.sh" >> /etc/bash.bashrc
-fi
-if ! grep -q "source.*bashrc.agentbox" /etc/bash.bashrc 2>/dev/null; then
-  echo "source /opt/agentbox/config/bashrc.agentbox" >> /etc/bash.bashrc
-fi
-# Also seed /etc/profile for login shells
-touch /etc/profile 2>/dev/null || true
-if ! grep -q "source.*bashrc.agentbox" /etc/profile 2>/dev/null; then
-  echo "source /opt/agentbox/config/bashrc.agentbox" >> /etc/profile
-fi
-# Fish shell config
-mkdir -p /etc/fish 2>/dev/null || true
-if [ -f /opt/agentbox/config/config.fish ] && ! grep -q "config.fish" /etc/fish/config.fish 2>/dev/null; then
-  echo "source /opt/agentbox/config/config.fish" >> /etc/fish/config.fish
+# Shell profile seeding — best-effort. The rootfs is read_only at runtime
+# so /etc writes fail unless /etc is also a tmpfs. Shell configs are
+# alternatively sourced by interactive shells via $HOME/.bashrc or
+# $HOME/.config/fish (set up below in the user-config phase).
+if [ -w /etc ]; then
+  touch /etc/bash.bashrc 2>/dev/null || true
+  if ! grep -q "source.*agentbox-aliases" /etc/bash.bashrc 2>/dev/null; then
+    echo "source /opt/agentbox/config/agentbox-aliases.sh" >> /etc/bash.bashrc 2>/dev/null || true
+  fi
+  if ! grep -q "source.*bashrc.agentbox" /etc/bash.bashrc 2>/dev/null; then
+    echo "source /opt/agentbox/config/bashrc.agentbox" >> /etc/bash.bashrc 2>/dev/null || true
+  fi
+  touch /etc/profile 2>/dev/null || true
+  if ! grep -q "source.*bashrc.agentbox" /etc/profile 2>/dev/null; then
+    echo "source /opt/agentbox/config/bashrc.agentbox" >> /etc/profile 2>/dev/null || true
+  fi
+  mkdir -p /etc/fish 2>/dev/null || true
+  if [ -f /opt/agentbox/config/config.fish ] && ! grep -q "config.fish" /etc/fish/config.fish 2>/dev/null; then
+    echo "source /opt/agentbox/config/config.fish" >> /etc/fish/config.fish 2>/dev/null || true
+  fi
 fi
 
 # Claude Code config — bridge host mount to HOME
@@ -464,7 +469,12 @@ fi
 # Phase 8 — Publish environment hints to profile.d
 # ---------------------------------------------------------------------------
 echo "[8/8] Publishing environment hints..."
-cat > /etc/profile.d/agentbox-runtime.sh <<EOF
+# /etc/profile.d/ is read-only on a hardened rootfs. Write to /run instead
+# (uid-1000-owned tmpfs from baselineTmpfsMounts). Anything that needs these
+# vars at shell-init time must source $AGENTBOX_RUNTIME_ENV (set below).
+RUNTIME_ENV_FILE=/run/agentbox/runtime-env.sh
+mkdir -p "$(dirname "$RUNTIME_ENV_FILE")" 2>/dev/null || true
+cat > "$RUNTIME_ENV_FILE" <<EOF
 export WORKSPACE="$WORKSPACE"
 export RUVECTOR_DATA_DIR="$RUVECTOR_DATA_DIR"
 export RUVECTOR_PORT="$RUVECTOR_PORT"
@@ -475,6 +485,9 @@ export SKILLS_TREE="${SKILLS_TREE:-/opt/agentbox/skills}"
 export SHARED_PROJECTS_ROOT="${SHARED_PROJECTS_ROOT:-/projects}"
 export CLAUDE_FLOW_PLUGIN_DIR="${CLAUDE_FLOW_PLUGIN_DIR:-/home/devuser/.claude-flow/plugins}"
 EOF
+export AGENTBOX_RUNTIME_ENV="$RUNTIME_ENV_FILE"
+# Best-effort symlink for legacy consumers; ignored on read-only /etc.
+ln -sf "$RUNTIME_ENV_FILE" /etc/profile.d/agentbox-runtime.sh 2>/dev/null || true
 
 # ---------------------------------------------------------------------------
 # Phase 8a — Start tmux session in background (MAD-style multi-tab workspace)
