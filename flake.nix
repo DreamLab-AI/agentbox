@@ -1149,7 +1149,7 @@ ${lib.optionalString (networkingCfg.tailscale or false) ''
 [program:tailscaled]
 command=${pkgs.tailscale}/bin/tailscaled --state=/var/lib/tailscale/tailscaled.state --tun=userspace-networking --socket=/var/run/tailscale/tailscaled.sock
 directory=/var/lib/tailscale
-environment=HOME="/workspace"
+environment=HOME="/home/devuser"
 autostart=true
 autorestart=true
 priority=15
@@ -1159,7 +1159,7 @@ stderr_logfile=/var/log/tailscaled.error.log
 [program:tailscale-up]
 command=${pkgs.bash}/bin/bash -c "sleep 2 && if [ -n \"$TAILSCALE_AUTHKEY\" ]; then ${pkgs.tailscale}/bin/tailscale up --authkey=$TAILSCALE_AUTHKEY --hostname=${networkingCfg.hostname or "agentbox"} --accept-routes --ssh 2>&1; else echo 'No TAILSCALE_AUTHKEY set — run: docker exec agentbox tailscale up'; fi"
 directory=/var/lib/tailscale
-environment=HOME="/workspace"
+environment=HOME="/home/devuser"
 autostart=true
 autorestart=false
 startsecs=0
@@ -1873,10 +1873,17 @@ ${topLevelVolumes}${lib.optionalString (ragflowCfg.enabled or false) "\nnetworks
           "ENABLE_CODEX=${boolEnv (toolchainCfg.codex or false)}"
           "CLAUDE_FLOW_PLUGIN_DIR=/home/devuser/.claude-flow/plugins"
           "RUVECTOR_PG_CONNINFO=${(agentboxConfig.integrations.ruvector_external.conninfo or "")}"
-          "WORKSPACE=/workspace"
+          # WORKSPACE intentionally NOT re-set here — the canonical value
+          # is set earlier in imageEnv as /home/devuser/workspace.
+          # Re-asserting it here would shadow the earlier value (the last
+          # entry in imageEnv wins via Docker env merge).
           "SHARED_PROJECTS_ROOT=/projects"
           "AGENTBOX_AGENT_ID=agentbox-core"
-          "CLAUDE_CONFIG_DIR=/workspace/.claude"
+          # CLAUDE_CONFIG_DIR points at the host-bind .claude. The
+          # previous /workspace/.claude path was a relic from when
+          # HOME=/workspace; it now resolves nowhere and silently breaks
+          # `claude --dangerously-skip-permissions` init.
+          "CLAUDE_CONFIG_DIR=/home/devuser/.claude"
           "SKILLS_TREE=/opt/agentbox/skills"
           "GPU_BACKEND=${agentboxConfig.gpu.backend or "none"}"
           # Privacy filter (ADR-008) — non-empty OPF_ENABLED signals the
