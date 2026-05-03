@@ -107,7 +107,10 @@ for _vol_root in \
     /var/lib/nostr-relay \
     /var/lib/https-bridge \
     /run/agentbox \
-    "$SHARED_PROJECTS_ROOT"; do
+    "$SHARED_PROJECTS_ROOT" \
+    /home/devuser/.local/share/code-server \
+    /home/devuser/.config/claude-telegram-mirror \
+    /home/devuser/.cache; do
   if [ -d "$_vol_root" ]; then
     # Only chown the root, not -R. If the dir is already uid 1000, this
     # is a no-op kernel call.

@@ -86,7 +86,11 @@ module.exports = async function memoryRoutes(fastify) {
       let urn = null;
       try { urn = uris.mint({ kind: 'memory', localId: `${effectiveNs}.${key}` }); } catch (_) {}
       const stored_at = new Date().toISOString();
-      const entry = { '@context': 'https://schema.org/', '@type': 'MemoryEntry', ...(urn ? { '@id': urn } : {}), key, namespace: effectiveNs, value, stored_at };
+      // Use the pinned schema.org IRI (http://, not https://) from
+      // lib/linked-data-contexts.nix so the encoder's documentLoader
+      // resolves it from /opt/agentbox/contexts/ rather than fetching
+      // at runtime (DDD-004 §L09 — pinned-context-at-build-time rule).
+      const entry = { '@context': 'http://schema.org/', '@type': 'MemoryEntry', ...(urn ? { '@id': urn } : {}), key, namespace: effectiveNs, value, stored_at };
       await pods.write(_podPath(effectiveNs, key), JSON.stringify(entry, null, 2), 'application/ld+json');
       return reply.code(201).send({ key, namespace: effectiveNs, stored_at, urn });
     }

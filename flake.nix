@@ -1464,6 +1464,13 @@ stderr_logfile=/var/log/comfyui-builtin.error.log
           # every boot; ephemeral by design. Writable for devuser so the
           # bridge process can re-issue if needed.
           "/var/lib/https-bridge:mode=755,size=8M,uid=1000,gid=1000"
+          # devuser's XDG_CACHE_HOME. starship, npm, pip, transformers,
+          # huggingface, etc. all expect a writable $HOME/.cache. Without
+          # this tmpfs the path lives on the read-only rootfs and every
+          # interactive shell prints "Os { code: 30, kind: ReadOnlyFilesystem }"
+          # at the starship init line. 256M is plenty for prompt + tool
+          # caches; persistent caches go to named volumes per-tool.
+          "/home/devuser/.cache:mode=755,size=256M,uid=1000,gid=1000"
           # Writable, exec+suid-allowed bin dir for setuid wrappers (sudo).
           # The bootstrap program runs as root and provisions a setuid copy
           # of pkgs.sudo here so devuser shells can elevate via the NOPASSWD
@@ -1758,12 +1765,21 @@ ${topLevelVolumes}${lib.optionalString (ragflowCfg.enabled or false) "\nnetworks
             fi
           fi
 
-          # Pre-generate HTTPS bridge self-signed cert if missing
+          # Pre-generate HTTPS bridge self-signed cert if missing. The
+          # tmpfs at /var/lib/https-bridge is uid-1000-owned (baselineTmpfsMounts);
+          # cert files are written world-readable, key world-unreadable.
+          # The bridge process (devuser) reads them at start. If this
+          # block fails, the JS app has its own node:crypto fallback in
+          # https-proxy.js — the cert is never sourced from the network.
+          mkdir -p /var/lib/https-bridge/certs 2>/dev/null || true
           if [ ! -f /var/lib/https-bridge/certs/server.key ]; then
             ${pkgs.openssl}/bin/openssl req -x509 -newkey rsa:2048 \
               -keyout /var/lib/https-bridge/certs/server.key \
               -out /var/lib/https-bridge/certs/server.crt \
               -days 365 -nodes -subj "/CN=localhost" 2>/dev/null || true
+            chown 1000:1000 /var/lib/https-bridge/certs/server.* 2>/dev/null || true
+            chmod 600 /var/lib/https-bridge/certs/server.key 2>/dev/null || true
+            chmod 644 /var/lib/https-bridge/certs/server.crt 2>/dev/null || true
           fi
 
           exec ${pkgs.bash}/bin/bash /opt/agentbox/config/entrypoint-unified.sh
