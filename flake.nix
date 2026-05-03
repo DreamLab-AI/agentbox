@@ -1439,10 +1439,15 @@ stderr_logfile=/var/log/comfyui-builtin.error.log
         # creates uid-1000-owned subdirs under them as needed.
         baselineTmpfsMounts = [
           "/tmp:mode=1777,size=256M"
-          "/run:mode=755,size=64M"
-          "/var/run:mode=755,size=16M"
-          "/var/log:mode=755,size=128M"
-          "/var/log/supervisor:mode=755,size=64M"
+          # /run, /var/log, /var/log/supervisor are uid-1000-owned so
+          # devuser-running services (per `user=devuser` directives) can
+          # write logs and runtime state without bootstrap chown
+          # acrobatics. Bootstrap-as-root still has CAP_CHOWN baseline
+          # cap if it needs to fix anything.
+          "/run:mode=755,size=64M,uid=1000,gid=1000"
+          "/var/run:mode=755,size=16M,uid=1000,gid=1000"
+          "/var/log:mode=755,size=128M,uid=1000,gid=1000"
+          "/var/log/supervisor:mode=755,size=64M,uid=1000,gid=1000"
           # Writable, exec+suid-allowed bin dir for setuid wrappers (sudo).
           # The bootstrap program runs as root and provisions a setuid copy
           # of pkgs.sudo here so devuser shells can elevate via the NOPASSWD
@@ -1466,12 +1471,21 @@ stderr_logfile=/var/log/comfyui-builtin.error.log
             + lib.concatMapStrings (d: "      - ${d}\n") exceptionDevicePaths
           );
 
+        # Baseline caps the bootstrap-as-root needs to initialize fresh
+        # volumes. CAP_CHOWN: chown -R 1000:1000 on freshly created named
+        # volumes; CAP_FOWNER: chmod 755 on volumes; CAP_DAC_OVERRIDE: read
+        # files when devuser ownership isn't set yet (defense in depth on
+        # bootstrap reads). Per ADR-007 W021, this is acknowledged as a
+        # baseline (not an exception) — the hardening posture covers the
+        # surface via cap_drop: ALL + read_only rootfs + seccomp + uid 1000
+        # for long-running services.
+        baselineCapAdd = [ "CHOWN" "FOWNER" "DAC_OVERRIDE" ];
         agentboxCapabilities =
-          "    cap_drop:\n      - ALL"
-          + lib.optionalString (exceptionCapAdd != []) (
-              "\n    cap_add:\n"
-              + lib.concatMapStrings (c: "      - ${c}\n") exceptionCapAdd
-            );
+          let allCaps = lib.unique (baselineCapAdd ++ exceptionCapAdd);
+          in
+          "    cap_drop:\n      - ALL\n"
+          + "    cap_add:\n"
+          + lib.concatMapStrings (c: "      - ${c}\n") allCaps;
 
         agentboxRuntime =
           lib.optionalString (exceptionRuntime != null) "    runtime: ${exceptionRuntime}\n";

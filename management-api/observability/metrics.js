@@ -6,6 +6,7 @@
 
 const promClient = require('prom-client');
 const uris = require('../lib/uris');
+const { wrapWithPrivacyFilter } = require('../middleware/privacy-filter');
 
 // Prometheus registry
 const register = new promClient.Registry();
@@ -58,16 +59,27 @@ function setBuildInfo() {
 }
 
 /**
- * Wrap an adapter method with instrumentation
- * Records histogram, counter, and logs the dispatch
+ * Wrap an adapter method with the three canonical middleware layers:
+ *
+ *   Layer 1: Observability  (this function — metrics + structured log)
+ *   Layer 2: Privacy filter (ADR-008 — wrapWithPrivacyFilter)
+ *   Layer 3: JSON-LD encoder (ADR-012 — caller must invoke encoder.dispatch
+ *                              after this wrapper returns)
+ *
+ * DDD-004 §L08: privacy redaction completes before the encoder runs.
+ * The ordering is asserted at runtime via assertPrivacyFilterApplied().
  *
  * @param {string} slot - Adapter slot (beads, pods, memory, events, orchestrator)
  * @param {string} impl - Implementation name (e.g., local-sqlite, external)
  * @param {string} methodName - Method name (e.g., createEpic, store)
  * @param {Function} fn - Async function to wrap (should be (args) => Promise)
+ * @param {object|null} [manifest] - Parsed agentbox.toml; required for privacy policy
  * @returns {Function} Wrapped function that records metrics and tracing
  */
-function wrapDispatch(slot, impl, methodName, fn) {
+function wrapDispatch(slot, impl, methodName, fn, manifest = null) {
+  // Layer 2: privacy filter wraps the raw adapter call
+  const privacyWrapped = wrapWithPrivacyFilter(slot, methodName, fn, manifest);
+
   return async function instrumentedDispatch(...args) {
     const startTime = Date.now();
     const startHrTime = process.hrtime.bigint();
@@ -77,7 +89,9 @@ function wrapDispatch(slot, impl, methodName, fn) {
     const sessionId = process.env.SESSION_ID || 'unknown';
 
     try {
-      const result = await fn(...args);
+      // Layer 2 (privacy) is applied inside privacyWrapped; Layer 1 timing
+      // wraps it so the full redaction latency is included in the dispatch span.
+      const result = await privacyWrapped(...args);
 
       const endHrTime = process.hrtime.bigint();
       const durationMs = Number(endHrTime - startHrTime) / 1_000_000;

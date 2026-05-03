@@ -248,6 +248,53 @@ Rejected as the sole approach because the product already documents a dedicated 
 2. **`--no-sandbox` on Chromium launch**. Removes the sandbox entirely; explicitly not recommended.
 3. **Status quo — `SYS_ADMIN` exception**. Default for shared hosts. `cap_drop: [ALL]` baseline still applies, so only the one cap is present in the running container.
 
+## Authentication
+
+### Auth modes
+
+`MANAGEMENT_API_AUTH_MODE` controls what the authentication middleware in
+`management-api/middleware/auth.js` accepts on every non-public route.
+
+| Mode | Accepts | Notes |
+|------|---------|-------|
+| `hybrid` | Bearer **or** NIP-98 (either is sufficient) | Default when `AGENTBOX_SOVEREIGN_MESH_ENABLED` is not set. Suitable for dev and operator-only deployments. |
+| `nip98` | NIP-98 Nostr HTTP Auth only | Bearer rejected. |
+| `bearer` | Bearer API-key only | NIP-98 rejected. |
+| `strict-nip98` | NIP-98 only, Bearer unconditionally rejected | Required when sovereign mesh is active (see below). |
+
+### Sovereignty claim
+
+CLAUDE.md states "every authenticated call carries a verifiable Nostr
+signature" when the sovereign mesh is active. The `hybrid` mode violates
+this claim because Bearer tokens carry no Nostr signature. To enforce the
+claim without requiring operators to remember to update an env var when
+sovereign mesh is toggled, the middleware auto-elevates:
+
+> If `AGENTBOX_SOVEREIGN_MESH_ENABLED=true` and `MANAGEMENT_API_AUTH_MODE`
+> is not set (or is set to `hybrid`), the effective auth mode is
+> `strict-nip98`.
+
+Operators who need Bearer in a sovereign-mesh deployment (e.g. internal
+service-to-service) must explicitly set `MANAGEMENT_API_AUTH_MODE=hybrid`
+in the compose env — the intent is forced-explicit, not silently permitted.
+
+### NIP-98 verification
+
+When `nostr-tools` is installed (`sovereign_mesh.nostr_bridge = true` in
+`agentbox.toml`), the middleware performs full Schnorr signature verification
+via `NostrBridge.verifyNip98()`. When `nostr-tools` is absent, NIP-98 tokens
+are **rejected** (fail-closed). Operators relying on NIP-98 must ensure the
+bridge module is installed; Bearer remains available as a fallback only in
+`hybrid` mode.
+
+### Public routes
+
+The following routes bypass auth unconditionally (no key or signature
+required):
+- `/livez`, `/health`, `/ready`, `/metrics`, `/v1/meta`
+- `/lo/*` and `/lo` (viewer bundle static assets)
+- `/.well-known/did.json` (DID-Core public resolution requirement)
+
 ## Follow-ups
 
 - Add compose-generation tests for image reference and hardening fields.

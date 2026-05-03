@@ -84,22 +84,32 @@ mkdir -p \
   /tmp/screenshots \
   "$WORKSPACE/.cache/ms-playwright"
 
-chmod 755 "$RUVECTOR_DATA_DIR"
+# Best-effort chmod. The container has cap_drop: ALL plus a narrow cap_add
+# (SYS_ADMIN, NET_ADMIN), neither of which grants CAP_FOWNER, so chmod
+# against files not already owned by the bootstrap process fails. The
+# named volumes are typically uid 1000 from initial creation, so the
+# chmod is idempotent for them anyway. Silenced to avoid spurious noise.
+chmod 755 "$RUVECTOR_DATA_DIR" 2>/dev/null || true
 
-# Non-root user: chown writable directories to devuser (uid 1000, gid 1000).
-# Supervisord (PID 1) stays root; interactive shells and tmux run as devuser.
+# Best-effort chown to devuser. cap_drop: ALL also drops CAP_CHOWN, so this
+# only succeeds when the volume is fresh (root-owned) and we have ownership.
+# Existing volumes are typically already uid 1000 — the chown is then a
+# silent no-op even if it would succeed. The list intentionally omits /etc
+# (image-baked) and /home/devuser (read-only rootfs); subdirs that need to
+# be writable are mounted as volumes/tmpfs.
 chown -R 1000:1000 \
   "$WORKSPACE" \
   "$SHARED_PROJECTS_ROOT" \
   "$RUVECTOR_DATA_DIR" \
   "$SOLID_POD_ROOT" \
   /var/lib/agentbox \
+  /var/lib/agentbox/secrets \
   /var/lib/nostr-relay \
   /var/lib/https-bridge \
   /var/log \
+  /var/log/supervisor \
+  /run/agentbox \
   /tmp \
-  /etc \
-  /home/devuser \
   2>/dev/null || true
 
 # Claude-flow data directory (hooks write here as devuser)
