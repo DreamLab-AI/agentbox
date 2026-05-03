@@ -1296,6 +1296,12 @@ ${lib.optionalString (gpuRuntime == "nvidia") ''      - NVIDIA_VISIBLE_DEVICES=a
           "/var/run:mode=755,size=16M"
           "/var/log:mode=755,size=128M"
           "/var/log/supervisor:mode=755,size=64M"
+          # Writable, exec+suid-allowed bin dir for setuid wrappers (sudo).
+          # Nix-store binaries are mode 555, so even with no-new-privileges:false
+          # sudo can't elevate without a setuid copy. The entrypoint provisions
+          # /usr/local/bin/sudo here at boot. Docker tmpfs defaults to nosuid,
+          # noexec — both must be explicitly enabled.
+          "/usr/local/bin:mode=755,size=8M,exec,suid"
         ];
         mergedTmpfsMounts   = lib.unique (baselineTmpfsMounts ++ exceptionTmpfsPaths);
 
@@ -1457,6 +1463,19 @@ ${ragflowNetworkDecl}
           # Home directory for devuser bind mounts (e.g. /home/devuser/.claude)
           mkdir -p /home/devuser 2>/dev/null || true
 
+          # Setuid sudo wrapper. The Nix-store sudo binary is mode 555 and
+          # cannot elevate; copy it to the tmpfs-backed /usr/local/bin (which
+          # the baseline tmpfs mount declares as exec+suid) and set the setuid
+          # bit. PATH puts /usr/local/bin first so this wrapper shadows the
+          # Nix-store sudo for devuser's interactive shells.
+          if [ -d /usr/local/bin ] && [ ! -u /usr/local/bin/sudo ] 2>/dev/null; then
+            if cp -L ${pkgs.sudo}/bin/sudo /usr/local/bin/sudo 2>/dev/null; then
+              chown 0:0 /usr/local/bin/sudo 2>/dev/null || true
+              chmod 4755 /usr/local/bin/sudo 2>/dev/null || true
+              echo "[entrypoint] Provisioned setuid sudo wrapper at /usr/local/bin/sudo"
+            fi
+          fi
+
           # Pre-generate HTTPS bridge self-signed cert if missing
           if [ ! -f /var/lib/https-bridge/certs/server.key ]; then
             ${pkgs.openssl}/bin/openssl req -x509 -newkey rsa:2048 \
@@ -1470,7 +1489,7 @@ ${ragflowNetworkDecl}
 
         imageEnv = [
           "HOME=/workspace"
-          "PATH=/bin:/usr/bin:${pkgs.lib.makeBinPath allPackages}"
+          "PATH=/usr/local/bin:/bin:/usr/bin:${pkgs.lib.makeBinPath allPackages}"
           "NODE_ENV=production"
           "PYTHONDONTWRITEBYTECODE=1"
           "RUST_BACKTRACE=1"
