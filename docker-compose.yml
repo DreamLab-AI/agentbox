@@ -49,12 +49,22 @@ services:
     read_only: true
     cap_drop:
       - ALL
+    cap_add:
+      - CHOWN
+      - FOWNER
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
+      - AUDIT_WRITE
+      - KILL
+
     tmpfs:
       - /tmp:mode=1777,size=256M
-      - /run:mode=755,size=64M
-      - /var/run:mode=755,size=16M
-      - /var/log:mode=755,size=128M
-      - /var/log/supervisor:mode=755,size=64M
+      - /run:mode=755,size=64M,uid=1000,gid=1000
+      - /var/run:mode=755,size=16M,uid=1000,gid=1000
+      - /var/log:mode=755,size=128M,uid=1000,gid=1000
+      - /var/log/supervisor:mode=755,size=64M,uid=1000,gid=1000
+      - /var/lib/https-bridge:mode=755,size=8M,uid=1000,gid=1000
       - /usr/local/bin:mode=755,size=8M,exec,suid
       - /tmp/.X11-unix:mode=1777
       - /run/user/1000:mode=700,uid=1000,gid=1000

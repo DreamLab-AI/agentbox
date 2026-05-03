@@ -457,6 +457,15 @@
         # (which crash-loops the container on first start).
         # sovereign-bootstrap.py imports ecdsa directly; provision-agent-stacks.py
         # imports yaml, requests, etc. — all must resolve via this interpreter.
+        # Sudo built without PAM. The default `pkgs.sudo` links libpam and
+        # tries to initialize a PAM session at every invocation, which
+        # fails inside the agentbox container with "unable to initialize
+        # PAM: Critical error - immediate abort" because no PAM modules
+        # are installed (the rootfs is read-only and image bake doesn't
+        # carry pam_unix.so + friends). NOPASSWD in /etc/sudoers.d/devuser
+        # is the only auth path used; PAM is dead weight.
+        sudoNoPam = pkgs.sudo.override { pam = null; };
+
         pythonRuntimeEnv = pkgs.python312.withPackages (ps: with ps; [
           pip
           virtualenv
@@ -1161,10 +1170,13 @@ stderr_logfile=/var/log/tailscale-up.error.log
 ${lib.optionalString (toolchainCfg.code_server or false) ''
 
 [program:code-server]
-command=${pkgs.code-server}/bin/code-server --bind-addr 0.0.0.0:8080 --auth none --user-data-dir /home/devuser/.local/share/code-server --extensions-dir /home/devuser/.local/share/code-server/extensions /home/devuser/workspace
+command=${pkgs.code-server}/bin/code-server --bind-addr 0.0.0.0:8080 --auth none --user-data-dir /home/devuser/.local/share/code-server --extensions-dir /home/devuser/.local/share/code-server/extensions --config /home/devuser/.local/share/code-server/config.yaml /home/devuser/workspace
 directory=/home/devuser/workspace
 user=devuser
-environment=HOME="/home/devuser",XDG_CONFIG_HOME="/home/devuser/.config",XDG_DATA_HOME="/home/devuser/.local/share"
+; XDG_CONFIG_HOME redirected into the writable codeserver-config volume
+; (mounted at /home/devuser/.local/share/code-server). The default
+; $HOME/.config/code-server is on the read-only rootfs.
+environment=HOME="/home/devuser",XDG_CONFIG_HOME="/home/devuser/.local/share/code-server/config",XDG_DATA_HOME="/home/devuser/.local/share"
 autostart=true
 autorestart=true
 priority=50
@@ -1448,6 +1460,10 @@ stderr_logfile=/var/log/comfyui-builtin.error.log
           "/var/run:mode=755,size=16M,uid=1000,gid=1000"
           "/var/log:mode=755,size=128M,uid=1000,gid=1000"
           "/var/log/supervisor:mode=755,size=64M,uid=1000,gid=1000"
+          # https-bridge cert dir — self-signed certs regenerated on
+          # every boot; ephemeral by design. Writable for devuser so the
+          # bridge process can re-issue if needed.
+          "/var/lib/https-bridge:mode=755,size=8M,uid=1000,gid=1000"
           # Writable, exec+suid-allowed bin dir for setuid wrappers (sudo).
           # The bootstrap program runs as root and provisions a setuid copy
           # of pkgs.sudo here so devuser shells can elevate via the NOPASSWD
@@ -1471,15 +1487,31 @@ stderr_logfile=/var/log/comfyui-builtin.error.log
             + lib.concatMapStrings (d: "      - ${d}\n") exceptionDevicePaths
           );
 
-        # Baseline caps the bootstrap-as-root needs to initialize fresh
-        # volumes. CAP_CHOWN: chown -R 1000:1000 on freshly created named
-        # volumes; CAP_FOWNER: chmod 755 on volumes; CAP_DAC_OVERRIDE: read
-        # files when devuser ownership isn't set yet (defense in depth on
-        # bootstrap reads). Per ADR-007 W021, this is acknowledged as a
-        # baseline (not an exception) — the hardening posture covers the
-        # surface via cap_drop: ALL + read_only rootfs + seccomp + uid 1000
-        # for long-running services.
-        baselineCapAdd = [ "CHOWN" "FOWNER" "DAC_OVERRIDE" ];
+        # Baseline caps. cap_drop: ALL removes everything, then cap_add
+        # restores the minimum the bootstrap-as-root and the setuid sudo
+        # wrapper need:
+        #   CHOWN          chown -R 1000:1000 on freshly created named volumes
+        #   FOWNER         chmod 755 on volumes (operate on uid-1000-owned files
+        #                  before bootstrap runs as uid 1000)
+        #   DAC_OVERRIDE   read files when ownership isn't set yet (defensive)
+        #   SETUID,SETGID  setuid sudo wrapper at /usr/local/bin/sudo elevates
+        #                  devuser to root via the NOPASSWD rule. Without these
+        #                  caps in the bounding set, the kernel refuses the
+        #                  setuid bit even with no-new-privileges:false.
+        #   AUDIT_WRITE    sudo writes to the audit log on every elevation
+        #   KILL           supervisord signals its child processes
+        # Per ADR-007 §4a baseline + W021 audit_acknowledged: the wider
+        # surface is acknowledged once at compose-eval time and documented
+        # in docs/user/configuration.md §Security trade-offs.
+        baselineCapAdd = [
+          "CHOWN"
+          "FOWNER"
+          "DAC_OVERRIDE"
+          "SETUID"
+          "SETGID"
+          "AUDIT_WRITE"
+          "KILL"
+        ];
         agentboxCapabilities =
           let allCaps = lib.unique (baselineCapAdd ++ exceptionCapAdd);
           in
@@ -1719,7 +1751,7 @@ ${topLevelVolumes}${lib.optionalString (ragflowCfg.enabled or false) "\nnetworks
           # bit. PATH puts /usr/local/bin first so this wrapper shadows the
           # Nix-store sudo for devuser's interactive shells.
           if [ -d /usr/local/bin ] && [ ! -u /usr/local/bin/sudo ] 2>/dev/null; then
-            if cp -L ${pkgs.sudo}/bin/sudo /usr/local/bin/sudo 2>/dev/null; then
+            if cp -L ${sudoNoPam}/bin/sudo /usr/local/bin/sudo 2>/dev/null; then
               chown 0:0 /usr/local/bin/sudo 2>/dev/null || true
               chmod 4755 /usr/local/bin/sudo 2>/dev/null || true
               echo "[entrypoint] Provisioned setuid sudo wrapper at /usr/local/bin/sudo"

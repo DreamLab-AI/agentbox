@@ -91,26 +91,38 @@ mkdir -p \
 # chmod is idempotent for them anyway. Silenced to avoid spurious noise.
 chmod 755 "$RUVECTOR_DATA_DIR" 2>/dev/null || true
 
-# Best-effort chown to devuser. cap_drop: ALL also drops CAP_CHOWN, so this
-# only succeeds when the volume is fresh (root-owned) and we have ownership.
-# Existing volumes are typically already uid 1000 — the chown is then a
-# silent no-op even if it would succeed. The list intentionally omits /etc
-# (image-baked) and /home/devuser (read-only rootfs); subdirs that need to
-# be writable are mounted as volumes/tmpfs.
-chown -R 1000:1000 \
-  "$WORKSPACE" \
-  "$SHARED_PROJECTS_ROOT" \
-  "$RUVECTOR_DATA_DIR" \
-  "$SOLID_POD_ROOT" \
-  /var/lib/agentbox \
-  /var/lib/agentbox/secrets \
-  /var/lib/nostr-relay \
-  /var/lib/https-bridge \
-  /var/log \
-  /var/log/supervisor \
-  /run/agentbox \
-  /tmp \
-  2>/dev/null || true
+# Volume root-only chown to devuser. cap_drop: ALL is now lifted by the
+# baseline cap_add list (CHOWN, FOWNER, DAC_OVERRIDE, ...), so this works
+# on fresh volumes. Crucially, this is NOT recursive: the workspace mount
+# can hold ~157 GB (MAD migration), and `chown -R` over millions of files
+# blocks bootstrap for many minutes. The volume root is what services
+# care about for permission to mkdir; existing files keep whatever uid
+# was set when they were created. Long-running services run as devuser
+# (per `user=devuser`), so they own anything they create.
+for _vol_root in \
+    "$RUVECTOR_DATA_DIR" \
+    "$SOLID_POD_ROOT" \
+    /var/lib/agentbox \
+    /var/lib/agentbox/secrets \
+    /var/lib/nostr-relay \
+    /var/lib/https-bridge \
+    /run/agentbox \
+    "$SHARED_PROJECTS_ROOT"; do
+  if [ -d "$_vol_root" ]; then
+    # Only chown the root, not -R. If the dir is already uid 1000, this
+    # is a no-op kernel call.
+    chown 1000:1000 "$_vol_root" 2>/dev/null || true
+  fi
+done
+
+# The workspace is special: if it's the legacy MAD volume, files inside
+# are already uid 1000. If it's a fresh agentbox-workspace volume, only
+# the root needs to be chowned (services creating new files will own
+# them). The `find -not -uid 1000` is bounded to top-level shallow check
+# to avoid the full 157 GB walk.
+if [ -d "$WORKSPACE" ]; then
+  chown 1000:1000 "$WORKSPACE" 2>/dev/null || true
+fi
 
 # Claude-flow data directory (hooks write here as devuser)
 mkdir -p /home/devuser/.claude-flow/data 2>/dev/null || true

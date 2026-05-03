@@ -13,12 +13,22 @@ class ProcessManager {
     this.logger = logger;
     this.processes = new Map(); // taskId -> process info
     this.workspaceRoot = process.env.WORKSPACE || path.join(process.env.HOME || '/home/devuser', 'workspace');
-    this.logsRoot = path.join(process.env.HOME || '/home/devuser', 'logs', 'tasks');
+    // Logs go under the writable workspace, not $HOME (which is the
+    // read-only image rootfs). Override via PROCESS_MANAGER_LOGS_DIR.
+    this.logsRoot = process.env.PROCESS_MANAGER_LOGS_DIR
+      || path.join(this.workspaceRoot, 'logs', 'tasks');
 
-    // Ensure directories exist
+    // Best-effort directory creation. The workspace volume is uid 1000
+    // (devuser), so the management-api process — running as devuser per
+    // supervisor `user=devuser` — owns the path. Non-fatal if it fails;
+    // task spawning will surface the error explicitly when invoked.
     [this.workspaceRoot, this.logsRoot].forEach(dir => {
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
+      try {
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+      } catch (err) {
+        logger?.warn?.({ err: err.message, dir }, 'process-manager: dir not creatable; task spawning may fail');
       }
     });
   }
