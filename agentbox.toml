@@ -229,6 +229,16 @@ env_var = "ZAI_API_KEY"
 optional_env_vars = ["ZAI_ANTHROPIC_API_KEY", "ZAI_URL"]
 auth_mode = "api_key"
 
+[providers.ollama]
+# Local LLM endpoint reached by Claude / consultants when OPENAI_API_KEY=ollama.
+# `enabled` keeps OPENAI_BASE_URL pointed at the host's ollama by default
+# (http://host.docker.internal:11434). `sidecar = true` brings up an ollama
+# container alongside agentbox instead — useful when no host ollama exists.
+# Default is OFF so GPU-enabled deployments don't unintentionally clash with
+# a host-level ollama already on port 11434.
+enabled = true
+sidecar = false
+
 [gpu]
 backend = "local-cuda"
 

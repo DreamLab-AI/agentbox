@@ -66,6 +66,13 @@
         podsImpl       = adaptersCfgTop.pods or "local-solid-rs";
         solidPodRsActive = podsImpl == "local-solid-rs";
 
+        # Provider gates. Ollama sidecar defaults OFF — most deployments
+        # already run ollama on the host (docker.internal:11434), and the
+        # m3 unified-GPU pass added the sidecar block ungated, which is the
+        # bug this flag fixes (see commit 278dc5a4).
+        providersCfg = agentboxConfig.providers or {};
+        ollamaSidecarEnabled = ((providersCfg.ollama or {}).sidecar or false);
+
         # GPU backend dispatch — single source of truth for GPU concerns.
         gpuLib = import ./lib/gpu-backend.nix { inherit lib pkgs; };
         gpuCfg = gpuLib.dispatchGpuBackend
@@ -1174,27 +1181,33 @@ stderr_logfile=/var/log/comfyui-builtin.error.log
         - NVIDIA_VISIBLE_DEVICES=all
         - NVIDIA_DRIVER_CAPABILITIES=compute,utility'';
 
-        # Ollama service block – only emitted when gpuEnabled.
-        ollamaServiceBlock = lib.optionalString gpuEnabled ''
-  ollama:
-    image: ollama/ollama:latest
-    container_name: ollama
-    restart: unless-stopped
-${if gpuRuntime == "rocm" then rocmDevices
-  else if gpuRuntime == "nvidia" then "    runtime: nvidia"
-  else ""}
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama:/root/.ollama
-    environment:
-      - OLLAMA_HOST=0.0.0.0:11434
-${lib.optionalString (gpuRuntime == "nvidia") ''      - NVIDIA_VISIBLE_DEVICES=all
-      - NVIDIA_DRIVER_CAPABILITIES=compute,utility''}      - OLLAMA_VULKAN=${if gpuRuntime == "rocm" then "1" else "0"}
-      - OLLAMA_FLASH_ATTENTION=true
-      - OLLAMA_KV_CACHE_TYPE=q8_0
-      - OLLAMA_CONTEXT_LENGTH=8192
-'';
+        # Ollama service block — emitted only when GPU is enabled AND the
+        # operator has explicitly opted in via [providers.ollama] sidecar=true.
+        # Built from explicit "\n"-joined strings (not a Nix heredoc) so the
+        # leading-whitespace stripper can't eat the indent.
+        ollamaServiceBlock = lib.optionalString (gpuEnabled && ollamaSidecarEnabled) (
+          "  ollama:\n"
+          + "    image: ollama/ollama:latest\n"
+          + "    container_name: ollama\n"
+          + "    restart: unless-stopped\n"
+          + (if gpuRuntime == "rocm" then rocmDevices + "\n"
+             else if gpuRuntime == "nvidia" then "    runtime: nvidia\n"
+             else "")
+          + "    ports:\n"
+          + "      - \"11434:11434\"\n"
+          + "    volumes:\n"
+          + "      - ollama:/root/.ollama\n"
+          + "    environment:\n"
+          + "      - OLLAMA_HOST=0.0.0.0:11434\n"
+          + lib.optionalString (gpuRuntime == "nvidia") (
+              "      - NVIDIA_VISIBLE_DEVICES=all\n"
+              + "      - NVIDIA_DRIVER_CAPABILITIES=compute,utility\n"
+            )
+          + "      - OLLAMA_VULKAN=" + (if gpuRuntime == "rocm" then "1" else "0") + "\n"
+          + "      - OLLAMA_FLASH_ATTENTION=true\n"
+          + "      - OLLAMA_KV_CACHE_TYPE=q8_0\n"
+          + "      - OLLAMA_CONTEXT_LENGTH=8192\n"
+        );
 
         # Ports for the agentbox service.
         # Always: management-api (9090), ruvector (9700), metrics (observCfg.metrics_port)
@@ -1204,26 +1217,30 @@ ${lib.optionalString (gpuRuntime == "nvidia") ''      - NVIDIA_VISIBLE_DEVICES=a
         # code_server: 8080
         metricsPort = toString (observCfg.metrics_port or 9091);
 
+        # All ports use plain "      - " prefix; the prior single-line heredoc
+        # for the first port was getting indent-stripped by Nix.
         agentboxPorts =
-          ''      - "9090:9090"''
-          + "\n      - \"9700:9700\""
-          + "\n      - \"${metricsPort}:${metricsPort}\""
+          "      - \"9090:9090\"\n"
+          + "      - \"9700:9700\"\n"
+          + "      - \"${metricsPort}:${metricsPort}\"\n"
           + lib.optionalString (sovereignCfg.enabled or false)
-              "\n      - \"8484:8484\""
+              "      - \"8484:8484\"\n"
           + lib.optionalString (relayEnabled && (relayCfg.expose or false))
-              ("\n      - \"" + toString (relayCfg.port or 7777) + ":" + toString (relayCfg.port or 7777) + "\"")
+              ("      - \"" + toString (relayCfg.port or 7777) + ":" + toString (relayCfg.port or 7777) + "\"\n")
           + lib.optionalString (dataScienceCfg.jupyter or false)
-              "\n      - \"8888:8888\""
+              "      - \"8888:8888\"\n"
           + lib.optionalString (desktopCfg.enabled or false)
-              "\n      - \"5901:5901\""
+              "      - \"5901:5901\"\n"
           + lib.optionalString ((toolchainCfg.code_server or false))
-              "\n      - \"8080:8080\"";
+              "      - \"8080:8080\"\n";
 
-        # agentbox depends_on block.
-        agentboxDependsOn = lib.optionalString gpuEnabled ''
-    depends_on:
-      ollama:
-        condition: service_started'';
+        # agentbox depends_on block — explicit-newline string (heredoc would
+        # strip the 4-space common indent and produce flush-left output).
+        agentboxDependsOn = lib.optionalString (gpuEnabled && ollamaSidecarEnabled) (
+          "    depends_on:\n"
+          + "      ollama:\n"
+          + "        condition: service_started\n"
+        );
 
         # External network declaration for ragflow integration.
         ragflowNetworkDecl = lib.optionalString (ragflowCfg.enabled or false) ''
@@ -1236,10 +1253,11 @@ ${lib.optionalString (gpuRuntime == "nvidia") ''      - NVIDIA_VISIBLE_DEVICES=a
       - default
       - docker_ragflow'';
 
-        # Extra hosts that let containers reach the Docker host.
-        agentboxExtraHosts = ''
-    extra_hosts:
-      - "host.docker.internal:host-gateway"'';
+        # Extra hosts that let containers reach the Docker host. Explicit-newline
+        # form so Nix doesn't strip the 4-space common indent.
+        agentboxExtraHosts =
+          "    extra_hosts:\n"
+          + "      - \"host.docker.internal:host-gateway\"\n";
 
         # DNS alias for ragflow when integration enabled.
         agentboxDnsAliases = lib.optionalString (ragflowCfg.enabled or false) ''
@@ -1324,29 +1342,27 @@ ${lib.optionalString (gpuRuntime == "nvidia") ''      - NVIDIA_VISIBLE_DEVICES=a
         agentboxRuntime =
           lib.optionalString (exceptionRuntime != null) "    runtime: ${exceptionRuntime}\n";
 
-        # Volumes list for agentbox service.
+        # Volumes list for agentbox service — explicit "      - " prefix per
+        # entry; the prior single-line heredoc on the first item was getting
+        # indent-stripped to flush-left.
         agentboxVolumes =
-          ''      - ./agentbox.toml:/etc/agentbox.toml:ro''
-          + "\n      - ./workspace:/workspace"
-          + "\n      - ./projects:/projects"
-          + "\n      - ruvector-data:/var/lib/ruvector"
-          + "\n      - solid-data:/var/lib/solid"
-          + "\n      - sovereign-identities:/var/lib/agentbox/identities"
-          + lib.concatMapStrings (v: "\n      - ${v}") exceptionWritableVolumes;
+          "      - ./agentbox.toml:/etc/agentbox.toml:ro\n"
+          + "      - ./workspace:/workspace\n"
+          + "      - ./projects:/projects\n"
+          + "      - ruvector-data:/var/lib/ruvector\n"
+          + "      - solid-data:/var/lib/solid\n"
+          + "      - sovereign-identities:/var/lib/agentbox/identities\n"
+          + lib.concatMapStrings (v: "      - ${v}\n") exceptionWritableVolumes;
 
-        # Top-level volumes block.
+        # Top-level volumes block — explicit "  <name>:\n    name: ...\n"
+        # per entry; the prior heredoc stripped the 2-space common indent
+        # and produced flush-left volume keys.
         topLevelVolumes =
-          lib.optionalString gpuEnabled "  ollama:\n    name: ollama\n"
-          + ''  ruvector-data:
-    name: agentbox-ruvector-data
-  solid-data:
-    name: agentbox-solid-data
-  sovereign-identities:
-    name: agentbox-sovereign-identities''
-          + lib.optionalString relayLocal ''
-
-  nostr-relay-data:
-    name: agentbox-nostr-relay-data'';
+          lib.optionalString (gpuEnabled && ollamaSidecarEnabled) "  ollama:\n    name: ollama\n"
+          + "  ruvector-data:\n    name: agentbox-ruvector-data\n"
+          + "  solid-data:\n    name: agentbox-solid-data\n"
+          + "  sovereign-identities:\n    name: agentbox-sovereign-identities\n"
+          + lib.optionalString relayLocal "  nostr-relay-data:\n    name: agentbox-nostr-relay-data\n";
 
         # Full compose document.
         composeText = ''
