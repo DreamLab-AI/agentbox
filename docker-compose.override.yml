@@ -60,6 +60,13 @@ services:
       - /mnt/mldata/githubs/AR-AI-Knowledge-Graph:/home/devuser/workspace/project:rw
       - ${HOME}/.claude:/home/devuser/.claude:rw
       - ${HOME}/.config/claude:/home/devuser/.config/claude:rw
+      # Second mount surfaces the host's .claude at the host-side path so
+      # Claude Code's plugin registry (installed_plugins.json,
+      # known_marketplaces.json), which persists absolute host paths,
+      # resolves inside the container. Set HOST_CLAUDE_PATH=$HOME/.claude
+      # on the host shell before `docker compose up`. Default routes to a
+      # throwaway path so the line is harmless when HOST_CLAUDE_PATH is unset.
+      - ${HOME}/.claude:${HOST_CLAUDE_PATH:-/home/devuser/.claude-host-link-noop}:rw
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
       - ruvector-data:/var/lib/ruvector
@@ -90,8 +97,13 @@ services:
 
     # Security and capabilities
     # seccomp-agentbox.json blocks AF_ALG sockets (CVE-2026-31431 / CERT-EU 2026-005)
+    # no-new-privileges is FALSE here so devuser can sudo (NOPASSWD entry is
+    # baked into the image at flake.nix:1428). Container is still bounded by
+    # docker namespaces, seccomp, cap_add allowlist, and mount scope — the
+    # only thing toggled is in-namespace privilege escalation, which is
+    # required for agent-driven apt/sysctl/nft work.
     security_opt:
-      - no-new-privileges:true
+      - no-new-privileges:false
       - seccomp=./config/seccomp-agentbox.json
     cap_add:
       - SYS_ADMIN

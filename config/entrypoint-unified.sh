@@ -175,6 +175,40 @@ if [ -d /home/devuser/.claude ] && [ ! -e "$WORKSPACE/.claude" ]; then
   ln -sf /home/devuser/.claude "$WORKSPACE/.claude"
 fi
 
+# Pre-install the Anthropic skill-creator plugin so /skill-creator works on
+# first boot. The plugin payload arrives via the host bind-mount of
+# ~/.claude/plugins/marketplaces/claude-plugins-official; we just need to
+# register it in installed_plugins.json. Idempotent — skips if already there.
+SKILL_CREATOR_DIR="/home/devuser/.claude/plugins/marketplaces/claude-plugins-official/plugins/skill-creator"
+INSTALLED_JSON="/home/devuser/.claude/plugins/installed_plugins.json"
+if [ -d "$SKILL_CREATOR_DIR" ] && [ -f "$INSTALLED_JSON" ]; then
+  if ! grep -q '"skill-creator@claude-plugins-official"' "$INSTALLED_JSON" 2>/dev/null; then
+    python3 - <<PY 2>/dev/null || true
+import json, datetime, sys
+path = "$INSTALLED_JSON"
+try:
+    with open(path) as f:
+        data = json.load(f)
+except Exception:
+    sys.exit(0)
+data.setdefault("plugins", {})
+key = "skill-creator@claude-plugins-official"
+if key not in data["plugins"]:
+    now = datetime.datetime.utcnow().isoformat() + "Z"
+    data["plugins"][key] = [{
+        "scope": "user",
+        "installPath": "$SKILL_CREATOR_DIR",
+        "version": "marketplace",
+        "installedAt": now,
+        "lastUpdated": now,
+    }]
+    with open(path, "w") as f:
+        json.dump(data, f, indent=2)
+    print("[bootstrap] Pre-installed skill-creator from claude-plugins-official")
+PY
+  fi
+fi
+
 # i3 window manager config
 mkdir -p "$WORKSPACE/.config/i3" 2>/dev/null || true
 if [ -f /opt/agentbox/config/i3/config ] && [ ! -f "$WORKSPACE/.config/i3/config" ]; then
