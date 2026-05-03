@@ -476,8 +476,20 @@
           pymupdf
         ]);
 
+        # Closed dependency env for the imagemagick-mcp service (Q14).
+        # Previously the supervisor block did `pip install --target=/tmp` at
+        # boot, downloading from PyPI on every container start — violates
+        # PRD-002 §9 (hermetic closure). Bake the deps in.
+        imagemagickMcpPythonEnv = pkgs.python312.withPackages (ps: with ps; [
+          pip
+          mcp
+          httpx
+          pydantic
+        ]);
+
         pythonBasePackages = [
           pythonRuntimeEnv
+          imagemagickMcpPythonEnv
         ];
 
         rustToolchain = pkgs.rust-bin.stable.latest.minimal.override {
@@ -919,6 +931,8 @@ default_days = ${toString (relayCfg.retention_days or 30)}
 [program:qgis-mcp]
 command=${pkgs.python312}/bin/python3 -u /opt/agentbox/scripts/qgis_mcp_standalone.py
 directory=/opt/agentbox/scripts
+user=devuser
+environment=HOME="/home/devuser"
 autostart=true
 autorestart=true
 priority=230
@@ -930,7 +944,8 @@ stderr_logfile=/var/log/qgis-mcp.error.log
 [program:blender-mcp]
 command=${pkgs.nodejs_20}/bin/node /opt/agentbox/skills/blender/tools/blender-mcp-proxy.js
 directory=/opt/agentbox/skills/blender/tools
-environment=HOME="/workspace"
+user=devuser
+environment=HOME="/home/devuser"
 autostart=true
 autorestart=true
 priority=231
@@ -940,9 +955,10 @@ stderr_logfile=/var/log/blender-mcp.error.log
 
         jupyterServiceBlock = ''
 [program:jupyter-lab]
-command=${pkgs.python312Packages.jupyterlab}/bin/jupyter-lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --ServerApp.token=
-directory=/workspace
-environment=HOME="/workspace"
+command=${pkgs.python312Packages.jupyterlab}/bin/jupyter-lab --ip=0.0.0.0 --port=8888 --no-browser --ServerApp.token=
+directory=/home/devuser/workspace
+user=devuser
+environment=HOME="/home/devuser"
 autostart=true
 autorestart=true
 priority=232
@@ -956,6 +972,8 @@ stderr_logfile=/var/log/jupyter-lab.error.log
         desktopBlocks = ''
 [program:xvnc]
 command=${pkgs.tigervnc}/bin/Xvnc :1 -geometry ${(desktopCfg.resolution or "1920x1080")} -depth 24 -SecurityTypes None -ac -pn -rfbport 5901 -localhost -rawkeyboard
+user=devuser
+environment=HOME="/home/devuser"
 autostart=true
 autorestart=true
 priority=40
@@ -964,7 +982,8 @@ stderr_logfile=/var/log/xvnc.error.log
 
 [program:i3wm]
 command=${pkgs.i3}/bin/i3
-environment=DISPLAY=":1",HOME="/workspace"
+user=devuser
+environment=DISPLAY=":1",HOME="/home/devuser"
 autostart=true
 autorestart=true
 startsecs=3
@@ -1007,7 +1026,8 @@ stderr_logfile=/var/log/bootstrap.error.log
 [program:management-api]
 command=${managementApiPkg}/bin/management-api
 directory=/opt/agentbox/management-api
-environment=HOME="/workspace",MANAGEMENT_API_PORT="%(ENV_MANAGEMENT_API_PORT)s",MANAGEMENT_API_KEY="%(ENV_MANAGEMENT_API_KEY)s",MANAGEMENT_API_AUTH_MODE="%(ENV_MANAGEMENT_API_AUTH_MODE)s",MEMORY_ADMIN_ACCESS_MODE="%(ENV_MEMORY_ADMIN_ACCESS_MODE)s",AGENTBOX_REQUIRED_FOR_READINESS="true"
+user=devuser
+environment=HOME="/home/devuser",MANAGEMENT_API_PORT="%(ENV_MANAGEMENT_API_PORT)s",MANAGEMENT_API_KEY="%(ENV_MANAGEMENT_API_KEY)s",MANAGEMENT_API_AUTH_MODE="%(ENV_MANAGEMENT_API_AUTH_MODE)s",MEMORY_ADMIN_ACCESS_MODE="%(ENV_MEMORY_ADMIN_ACCESS_MODE)s",AGENTBOX_REQUIRED_FOR_READINESS="true"
 autostart=true
 autorestart=true
 priority=20
@@ -1021,11 +1041,12 @@ stderr_logfile=/var/log/management-api.error.log
 ; written and /ready remains 503 (PRD-002 §9, DDD-001 BootstrapCompletion).
 [program:bootstrap-seal]
 command=/opt/agentbox/config/seal-bootstrap.sh
+user=devuser
 autostart=true
 autorestart=false
 startsecs=0
 priority=99
-environment=SUPERVISORD_CONF="/etc/supervisord.conf",BOOTSTRAP_SEAL_TIMEOUT="120"
+environment=SUPERVISORD_CONF="/etc/supervisord.conf",BOOTSTRAP_SEAL_TIMEOUT="120",HOME="/home/devuser"
 stdout_logfile=/var/log/bootstrap-seal.log
 stderr_logfile=/var/log/bootstrap-seal.error.log
 ${lib.optionalString ((sovereignCfg.enabled or false) && solidPodRsActive) ''
@@ -1033,7 +1054,8 @@ ${lib.optionalString ((sovereignCfg.enabled or false) && solidPodRsActive) ''
 [program:solid-pod]
 command=${solidPodRsPkg}/bin/solid-pod-rs-server
 directory=${solidPodRsCfg.storage_root or "/var/lib/solid"}
-environment=HOME="/workspace",JSS_HOST="${solidPodRsCfg.bind or "127.0.0.1"}",JSS_PORT="${toString (solidPodRsCfg.port or 8484)}",JSS_BASE_URL="${solidPodRsCfg.base_url or "http://127.0.0.1:8484"}",JSS_STORAGE_ROOT="${solidPodRsCfg.storage_root or "/var/lib/solid"}",JSS_LOG_LEVEL="${solidPodRsCfg.log_level or "info"}",RUST_LOG="${solidPodRsCfg.log_level or "info"}",JSS_ENABLE_DID_NOSTR="${boolEnv (solidPodRsCfg.enable_did_nostr or true)}",JSS_ENABLE_RATE_LIMIT="${boolEnv (solidPodRsCfg.enable_rate_limit or true)}",JSS_RATE_LIMIT_PER_SEC="${toString (solidPodRsCfg.rate_limit_per_sec or 20)}",JSS_ENABLE_QUOTA="${boolEnv (solidPodRsCfg.enable_quota or true)}",JSS_QUOTA_DEFAULT_BYTES="${toString (solidPodRsCfg.quota_default_bytes or 10737418240)}",JSS_ENABLE_WEBHOOK_SIGNING="${boolEnv (solidPodRsCfg.enable_webhook_signing or true)}",JSS_V04_COMPAT="${boolEnv (solidPodRsCfg.jss_v04_compat or true)}",AGENTBOX_REQUIRED_FOR_READINESS="true"
+user=devuser
+environment=HOME="/home/devuser",JSS_HOST="${solidPodRsCfg.bind or "127.0.0.1"}",JSS_PORT="${toString (solidPodRsCfg.port or 8484)}",JSS_BASE_URL="${solidPodRsCfg.base_url or "http://127.0.0.1:8484"}",JSS_STORAGE_ROOT="${solidPodRsCfg.storage_root or "/var/lib/solid"}",JSS_LOG_LEVEL="${solidPodRsCfg.log_level or "info"}",RUST_LOG="${solidPodRsCfg.log_level or "info"}",JSS_ENABLE_DID_NOSTR="${boolEnv (solidPodRsCfg.enable_did_nostr or true)}",JSS_ENABLE_RATE_LIMIT="${boolEnv (solidPodRsCfg.enable_rate_limit or true)}",JSS_RATE_LIMIT_PER_SEC="${toString (solidPodRsCfg.rate_limit_per_sec or 20)}",JSS_ENABLE_QUOTA="${boolEnv (solidPodRsCfg.enable_quota or true)}",JSS_QUOTA_DEFAULT_BYTES="${toString (solidPodRsCfg.quota_default_bytes or 10737418240)}",JSS_ENABLE_WEBHOOK_SIGNING="${boolEnv (solidPodRsCfg.enable_webhook_signing or true)}",JSS_V04_COMPAT="${boolEnv (solidPodRsCfg.jss_v04_compat or true)}",AGENTBOX_REQUIRED_FOR_READINESS="true"
 autostart=true
 autorestart=true
 priority=30
@@ -1049,7 +1071,8 @@ ${lib.optionalString ((sovereignCfg.enabled or false) && (sovereignCfg.https_bri
 [program:https-bridge]
 command=${pkgs.nodejs_20}/bin/node /opt/agentbox/https-bridge/https-proxy.js
 directory=/opt/agentbox/https-bridge
-environment=HOME="/workspace",MANAGEMENT_API_PORT="%(ENV_MANAGEMENT_API_PORT)s",CERT_DIR="/var/lib/https-bridge/certs",SSL_KEY="/var/lib/https-bridge/certs/server.key",SSL_CERT="/var/lib/https-bridge/certs/server.crt"
+user=devuser
+environment=HOME="/home/devuser",MANAGEMENT_API_PORT="%(ENV_MANAGEMENT_API_PORT)s",CERT_DIR="/var/lib/https-bridge/certs",SSL_KEY="/var/lib/https-bridge/certs/server.key",SSL_CERT="/var/lib/https-bridge/certs/server.crt"
 autostart=true
 autorestart=true
 priority=32
@@ -1061,7 +1084,8 @@ ${lib.optionalString (browserCfg.playwright or false) ''
 [program:playwright-mcp]
 command=${playwrightMcpPkg}/bin/playwright-mcp
 directory=/opt/agentbox/skills/playwright/mcp-server
-environment=HOME="/workspace",PLAYWRIGHT_BROWSERS_PATH="${pkgs.playwright-driver.browsers}"
+user=devuser
+environment=HOME="/home/devuser",PLAYWRIGHT_BROWSERS_PATH="${pkgs.playwright-driver.browsers}"
 autostart=true
 autorestart=true
 priority=200
@@ -1071,9 +1095,10 @@ stderr_logfile=/var/log/playwright-mcp.error.log
 ${lib.optionalString (mediaCfg.imagemagick or false) ''
 
 [program:imagemagick-mcp]
-command=${pkgs.bash}/bin/bash -c "${pythonRuntimeEnv}/bin/pip install --quiet --target=/tmp/mcp-deps mcp 2>/dev/null; PYTHONPATH=/tmp/mcp-deps exec ${pythonRuntimeEnv}/bin/python3 -u /opt/agentbox/skills/imagemagick/mcp-server/server.py"
+command=${imagemagickMcpPythonEnv}/bin/python3 -u /opt/agentbox/skills/imagemagick/mcp-server/server.py
 directory=/opt/agentbox/skills/imagemagick/mcp-server
-environment=HOME="/workspace"
+user=devuser
+environment=HOME="/home/devuser"
 autostart=true
 autorestart=true
 priority=210
@@ -1089,7 +1114,8 @@ ${lib.optionalString relayLocal ''
 [program:nostr-relay]
 command=${relayPkg}/bin/nostr-rs-relay --config /etc/agentbox/nostr-relay.toml
 directory=${relayCfg.data_dir or "/var/lib/nostr-relay"}
-environment=HOME="/workspace",RUST_LOG="info",AGENTBOX_REQUIRED_FOR_READINESS="false"
+user=devuser
+environment=HOME="/home/devuser",RUST_LOG="info",AGENTBOX_REQUIRED_FOR_READINESS="false"
 autostart=true
 autorestart=true
 priority=35
@@ -1101,7 +1127,8 @@ ${lib.optionalString privacyFilterEnabled ''
 [program:opf-router]
 command=${privacyFilterPythonEnv}/bin/python3 -u /opt/agentbox/scripts/opf-router.py
 directory=/opt/agentbox/scripts
-environment=HOME="/workspace",HF_HOME="/workspace/.cache/huggingface",TRANSFORMERS_CACHE="/workspace/.cache/huggingface",OPF_PORT="${toString (privacyFilterCfg.port or 9092)}",OPF_MODE="${privacyFilterCfg.mode or "off"}",OPF_DTYPE="${privacyFilterCfg.dtype or "bf16"}",OPF_MODEL="${privacyFilterCfg.model or "openai/privacy-filter"}"
+user=devuser
+environment=HOME="/home/devuser",HF_HOME="/home/devuser/.cache/huggingface",TRANSFORMERS_CACHE="/home/devuser/.cache/huggingface",OPF_PORT="${toString (privacyFilterCfg.port or 9092)}",OPF_MODE="${privacyFilterCfg.mode or "off"}",OPF_DTYPE="${privacyFilterCfg.dtype or "bf16"}",OPF_MODEL="${privacyFilterCfg.model or "openai/privacy-filter"}"
 autostart=true
 autorestart=true
 priority=240
@@ -1131,12 +1158,27 @@ priority=16
 stdout_logfile=/var/log/tailscale-up.log
 stderr_logfile=/var/log/tailscale-up.error.log
 ''}
+${lib.optionalString (toolchainCfg.code_server or false) ''
+
+[program:code-server]
+command=${pkgs.code-server}/bin/code-server --bind-addr 0.0.0.0:8080 --auth none --user-data-dir /home/devuser/.local/share/code-server --extensions-dir /home/devuser/.local/share/code-server/extensions /home/devuser/workspace
+directory=/home/devuser/workspace
+user=devuser
+environment=HOME="/home/devuser",XDG_CONFIG_HOME="/home/devuser/.config",XDG_DATA_HOME="/home/devuser/.local/share"
+autostart=true
+autorestart=true
+priority=50
+startsecs=5
+stdout_logfile=/var/log/code-server.log
+stderr_logfile=/var/log/code-server.error.log
+''}
 ${lib.optionalString (mediaCfg.comfyui_builtin or false) ''
 
 [program:comfyui-builtin]
 command=${comfyuiPythonEnv}/bin/python3 ${comfyuiSrc}/main.py --listen 127.0.0.1 --port 8188
 directory=${comfyuiSrc}
-environment=HOME="/workspace",COMFYUI_OUTPUT_DIR="/workspace/comfyui-outputs"
+user=devuser
+environment=HOME="/home/devuser",COMFYUI_OUTPUT_DIR="/home/devuser/comfyui-outputs"
 autostart=true
 autorestart=true
 priority=220
@@ -1156,6 +1198,35 @@ stderr_logfile=/var/log/comfyui-builtin.error.log
         # directly from the manifest here to avoid rebinding that name.
         # ---------------------------------------------------------------------------
         gpuBackendKey   = agentboxConfig.gpu.backend    or "none";
+        # When [networking].host_gateway = true, default LLM base URL points
+        # at the Docker host. When false (default, hardened), it points at
+        # the in-Docker `ollama` service alias (Compose DNS) — only emitted
+        # when the ollama sidecar is enabled (PRD-001 §providers).
+        defaultLlmBaseUrl =
+          if (networkingCfg.host_gateway or false)
+          then "http://host.docker.internal:11434"
+          else "http://ollama:11434";
+
+        # Q26 / Q6: build a claude-flow config template at image-build time.
+        # The literal `@@RUVECTOR_PG_PASSWORD@@` placeholder is expanded by
+        # the entrypoint when it copies the template into $HOME/.claude-flow/
+        # config.json, sourcing the live password from the env. This
+        # collapses the previous three-way password disagreement (heredoc
+        # in entrypoint, override env default, agentbox.toml) into one
+        # source of truth (the env var).
+        _pluginsMemoryCfg = (agentboxConfig.plugins or {}).memory or {};
+        claudeFlowConfigJson = builtins.toJSON {
+          memory = {
+            backend = "external-pg";
+            host = "ruvector-postgres";
+            port = 5432;
+            database = "ruvector";
+            user = "ruvector";
+            password = "@@RUVECTOR_PG_PASSWORD@@";
+            enableHNSW = _pluginsMemoryCfg.enable_hnsw or true;
+            embeddingDimension = _pluginsMemoryCfg.embedding_dimension or 384;
+          };
+        };
         integrationsCfg = agentboxConfig.integrations or {};
         ragflowCfg      = integrationsCfg.ragflow           or {};
         ruvectorExtCfg  = integrationsCfg.ruvector_external or {};
@@ -1265,11 +1336,15 @@ stderr_logfile=/var/log/comfyui-builtin.error.log
       - default
       - docker_ragflow'';
 
-        # Extra hosts that let containers reach the Docker host. Explicit-newline
-        # form so Nix doesn't strip the 4-space common indent.
+        # Extra hosts. The host-gateway alias is gated by
+        # [networking].host_gateway = true (Q17): air-gapped and hardened
+        # deployments must opt in. When disabled, OPENAI_BASE_URL must
+        # resolve via Docker DNS (sidecar service name) or fail closed.
         agentboxExtraHosts =
-          "    extra_hosts:\n"
-          + "      - \"host.docker.internal:host-gateway\"\n";
+          lib.optionalString (networkingCfg.host_gateway or false) (
+            "    extra_hosts:\n"
+            + "      - \"host.docker.internal:host-gateway\"\n"
+          );
 
         # DNS alias for ragflow when integration enabled.
         agentboxDnsAliases = lib.optionalString (ragflowCfg.enabled or false) ''
@@ -1306,8 +1381,45 @@ stderr_logfile=/var/log/comfyui-builtin.error.log
 
         exceptionTmpfsPaths     = lib.concatMap (exc: exc.tmpfs or [])           (lib.attrValues activeExceptions);
         exceptionDevicePaths    = lib.concatMap (exc: exc.devices or [])         (lib.attrValues activeExceptions);
-        exceptionCapAdd         = lib.concatMap (exc: exc.cap_add or [])         (lib.attrValues activeExceptions);
+        exceptionCapAdd         = lib.unique (lib.concatMap (exc: exc.cap_add or [])         (lib.attrValues activeExceptions));
         exceptionWritableVolumes= lib.concatMap (exc: exc.writable_volumes or []) (lib.attrValues activeExceptions);
+
+        # security_opt_override entries from active exceptions. ADR-007 §4a
+        # documents this merge path; the playwright exception in PRD-003 §272
+        # uses it to flip seccomp to "unconfined" without dropping the global
+        # NNP=true baseline. Each override is applied verbatim into the
+        # security_opt list at compose-emission time. See W021 below.
+        exceptionSecurityOptOverrides = lib.unique (
+          lib.concatMap (exc: exc.security_opt_override or []) (lib.attrValues activeExceptions)
+        );
+
+        # ADR-007 W021: when exceptions add capabilities or override security_opt
+        # beyond the baseline, the operator must explicitly acknowledge the
+        # widened attack surface via [security].audit_acknowledged = true.
+        # Fail closed at compose-eval time when the gate is missing.
+        securityCapsRaiseAttackSurface =
+          (exceptionCapAdd != []) || (exceptionSecurityOptOverrides != []);
+        auditAcknowledged = securityCfg.audit_acknowledged or false;
+        _w021Check =
+          if securityCapsRaiseAttackSurface && !auditAcknowledged
+          then throw ''
+            ADR-007 W021: active security exceptions widen the attack surface
+            (cap_add: ${builtins.toJSON exceptionCapAdd}; security_opt_override:
+            ${builtins.toJSON exceptionSecurityOptOverrides}) but
+            [security].audit_acknowledged is not set to true in agentbox.toml.
+            Set it to true once you have read docs/user/configuration.md and
+            understand the residual risk.''
+          else null;
+
+        # Compose security_opt baseline. NNP=true unless an exception's
+        # security_opt_override flips it. Merge preserves "key=value" semantics:
+        # the override entry replaces any matching baseline key.
+        nnpBaselineValue = "true";
+        # Each override entry is rendered as an additional `      - <entry>\n`
+        # under security_opt. Used by composeText.
+        securityOptOverrideEmission =
+          lib.optionalString (exceptionSecurityOptOverrides != [])
+            ("\n" + lib.concatMapStrings (s: "      - ${s}\n") exceptionSecurityOptOverrides);
 
         exceptionRuntime =
           let runtimes = lib.concatMap
@@ -1320,25 +1432,30 @@ stderr_logfile=/var/log/comfyui-builtin.error.log
         # every [program:*] log file writes there, and read_only:true would
         # otherwise make the container unable to log. Operators who need log
         # persistence can override with a named volume at deploy time.
-        # The container runs as uid 1000 (compose `user: "1000:1000"`), so
-        # every tmpfs the runtime needs to write to must be owned by uid 1000
-        # — otherwise `mkdir /run/agentbox` and `supervisord -> /var/log/...`
-        # both EACCES against root-owned tmpfs mountpoints.
+        # supervisord runs as PID 1 root (compose has no `user:` directive
+        # baseline). Long-running [program:*] blocks drop to uid 1000 via
+        # per-program `user=devuser`. /run, /var/log, /var/log/supervisor are
+        # owned by root so supervisord can write its own state; bootstrap
+        # creates uid-1000-owned subdirs under them as needed.
         baselineTmpfsMounts = [
           "/tmp:mode=1777,size=256M"
-          "/run:mode=755,size=64M,uid=1000,gid=1000"
-          "/var/run:mode=755,size=16M,uid=1000,gid=1000"
-          "/var/log:mode=755,size=128M,uid=1000,gid=1000"
-          "/var/log/supervisor:mode=755,size=64M,uid=1000,gid=1000"
+          "/run:mode=755,size=64M"
+          "/var/run:mode=755,size=16M"
+          "/var/log:mode=755,size=128M"
+          "/var/log/supervisor:mode=755,size=64M"
           # Writable, exec+suid-allowed bin dir for setuid wrappers (sudo).
-          # Stays root-owned so the entrypoint (when run as root) can
-          # `chmod 4755` here. Under `user: "1000:1000"` the wrapper
-          # provisioning silently no-ops; that's an architectural follow-up
-          # — running supervisord as root with per-program `user=devuser`
-          # is the proper fix.
+          # The bootstrap program runs as root and provisions a setuid copy
+          # of pkgs.sudo here so devuser shells can elevate via the NOPASSWD
+          # rule in /etc/sudoers.d/devuser. Docker tmpfs defaults to nosuid,
+          # noexec — both must be explicitly enabled.
           "/usr/local/bin:mode=755,size=8M,exec,suid"
         ];
-        mergedTmpfsMounts   = lib.unique (baselineTmpfsMounts ++ exceptionTmpfsPaths);
+        # `builtins.seq _w021Check ...` forces evaluation of the W021 audit
+        # check before mergedTmpfsMounts is computed; if W021 throws, the
+        # whole compose generation fails closed.
+        mergedTmpfsMounts = builtins.seq _w021Check (
+          lib.unique (baselineTmpfsMounts ++ exceptionTmpfsPaths)
+        );
 
         agentboxTmpfs =
           lib.concatMapStrings (p: "      - ${p}\n") mergedTmpfsMounts;
@@ -1359,17 +1476,40 @@ stderr_logfile=/var/log/comfyui-builtin.error.log
         agentboxRuntime =
           lib.optionalString (exceptionRuntime != null) "    runtime: ${exceptionRuntime}\n";
 
-        # Volumes list for agentbox service — explicit "      - " prefix per
-        # entry; the prior single-line heredoc on the first item was getting
-        # indent-stripped to flush-left.
+        # Volumes list for agentbox service — deduplicated (Q10).
+        # Baseline + feature-exception writable volumes are merged via
+        # `lib.unique` keyed by mount target (after the colon) so that an
+        # exception declaring the same target as the baseline doesn't
+        # emit a duplicate Docker volume mount.
+        # HOME = /home/devuser (Q19); the workspace tree lives there. Base
+        # mounts `./workspace:/home/devuser/workspace` for source-tree
+        # deployments; the override may swap in a named volume for
+        # operator-specific workspace persistence (e.g. agentbox-workspace
+        # post-MAD migration). agentbox-secrets gives the management-api
+        # somewhere to write the auto-generated key under read_only:true
+        # without leaking it into the shared workspace volume (Q5).
+        agentboxBaselineMounts = [
+          "./agentbox.toml:/etc/agentbox.toml:ro"
+          "./workspace:/home/devuser/workspace"
+          "./projects:/projects"
+          "ruvector-data:/var/lib/ruvector"
+          "solid-data:/var/lib/solid"
+          "sovereign-identities:/var/lib/agentbox/identities"
+          "agentbox-secrets:/var/lib/agentbox/secrets"
+        ];
+        # Drop entries from exceptionWritableVolumes whose container target
+        # path already appears in the baseline. Compare on the second
+        # colon-separated field (target).
+        _mountTarget = m:
+          let parts = lib.splitString ":" m;
+          in if (lib.length parts) >= 2 then lib.elemAt parts 1 else m;
+        baselineTargets = map _mountTarget agentboxBaselineMounts;
+        exceptionWritableVolumesUnique = lib.filter
+          (m: ! (lib.elem (_mountTarget m) baselineTargets))
+          (lib.unique exceptionWritableVolumes);
         agentboxVolumes =
-          "      - ./agentbox.toml:/etc/agentbox.toml:ro\n"
-          + "      - ./workspace:/workspace\n"
-          + "      - ./projects:/projects\n"
-          + "      - ruvector-data:/var/lib/ruvector\n"
-          + "      - solid-data:/var/lib/solid\n"
-          + "      - sovereign-identities:/var/lib/agentbox/identities\n"
-          + lib.concatMapStrings (v: "      - ${v}\n") exceptionWritableVolumes;
+          lib.concatMapStrings (m: "      - ${m}\n") agentboxBaselineMounts
+          + lib.concatMapStrings (v: "      - ${v}\n") exceptionWritableVolumesUnique;
 
         # Top-level volumes block — explicit "  <name>:\n    name: ...\n"
         # per entry; the prior heredoc stripped the 2-space common indent
@@ -1380,7 +1520,7 @@ stderr_logfile=/var/log/comfyui-builtin.error.log
         # are auto-derived so every volume referenced in the agentbox service's
         # volumes list has a matching top-level declaration. Without this,
         # docker compose rejects the file with "undefined volume <name>".
-        baselineTopLevelVolumeNames = [ "ruvector-data" "solid-data" "sovereign-identities" ];
+        baselineTopLevelVolumeNames = [ "ruvector-data" "solid-data" "sovereign-identities" "agentbox-secrets" ];
         exceptionVolumeNames = lib.unique (
           map (v: lib.head (lib.splitString ":" v)) exceptionWritableVolumes
         );
@@ -1391,6 +1531,7 @@ stderr_logfile=/var/log/comfyui-builtin.error.log
           + "  ruvector-data:\n    name: agentbox-ruvector-data\n"
           + "  solid-data:\n    name: agentbox-solid-data\n"
           + "  sovereign-identities:\n    name: agentbox-sovereign-identities\n"
+          + "  agentbox-secrets:\n    name: agentbox-secrets\n"
           + lib.concatMapStrings
               (n: "  ${n}:\n    name: agentbox-${n}\n")
               extraTopLevelVolumeNames;
@@ -1421,8 +1562,8 @@ ${agentboxPorts}
       - ANTHROPIC_API_KEY=''${ANTHROPIC_API_KEY:-}
       - GITHUB_TOKEN=''${GITHUB_TOKEN:-}
       - OPENAI_API_KEY=''${OPENAI_API_KEY:-ollama}
-      - OPENAI_BASE_URL=''${OPENAI_BASE_URL:-http://host.docker.internal:11434/v1}
-      - OLLAMA_BASE_URL=''${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - OPENAI_BASE_URL=''${OPENAI_BASE_URL:-${defaultLlmBaseUrl}/v1}
+      - OLLAMA_BASE_URL=''${OLLAMA_BASE_URL:-${defaultLlmBaseUrl}}
       - OLLAMA_MODEL=''${OLLAMA_MODEL:-qwen2.5:32b-instruct}
       - GOOGLE_GEMINI_API_KEY=''${GOOGLE_GEMINI_API_KEY:-}
       - GEMINI_API_KEY=''${GEMINI_API_KEY:-}
@@ -1433,23 +1574,24 @@ ${agentboxPorts}
       - AGENTBOX_METRICS_PORT=${metricsPort}
       - AGENTBOX_OTLP_ENDPOINT=${observCfg.otlp_endpoint or ""}
       - AGENTBOX_LOG_LEVEL=${observCfg.log_level or "info"}
-    user: "1000:1000"
+    # Baseline: supervisord runs as PID 1 root, with per-program `user=devuser`
+    # drops on every long-running service. Root is required at boot for
+    # tmpfs subdir creation, sudoers wrapper provisioning (chown 0:0 +
+    # chmod 4755), cert generation, and chowning runtime dirs to uid 1000.
+    # Per ADR-007 §4a hardening posture; see PRD-003 §5.4.
     read_only: true
 ${agentboxRuntime}${agentboxCapabilities}
 ${agentboxDevices}    tmpfs:
 ${agentboxTmpfs}    security_opt:
-      - no-new-privileges:false
-      - seccomp=./config/seccomp-agentbox.json
+      - no-new-privileges:${nnpBaselineValue}
+      - seccomp=./config/seccomp-agentbox.json${securityOptOverrideEmission}
     volumes:
 ${agentboxVolumes}
 ${agentboxNetworks}
 
 volumes:
-${topLevelVolumes}
-${lib.optionalString (ragflowCfg.enabled or false) ''
-networks:
-${ragflowNetworkDecl}
-''}        '';
+${topLevelVolumes}${lib.optionalString (ragflowCfg.enabled or false) "\nnetworks:\n${ragflowNetworkDecl}\n"}
+'';
 
         configFiles = pkgs.runCommand "agentbox-config" {} ''
           mkdir -p $out/etc/agentbox $out/bin
@@ -1465,7 +1607,7 @@ ${ragflowNetworkDecl}
           # /etc/passwd and /etc/group are seeded here; entrypoint may append at runtime.
           cat > $out/etc/passwd <<'PASSWD'
           root:x:0:0:root:/root:/bin/sh
-          devuser:x:1000:1000:devuser:/workspace:/bin/fish
+          devuser:x:1000:1000:devuser:/home/devuser:/bin/fish
           PASSWD
           # Strip leading whitespace introduced by Nix heredoc indentation
           sed -i 's/^[[:space:]]*//' $out/etc/passwd
@@ -1487,23 +1629,68 @@ ${ragflowNetworkDecl}
           echo "devuser ALL=(ALL) NOPASSWD: ALL" > $out/etc/sudoers.d/devuser
           chmod 440 $out/etc/sudoers.d/devuser
 
+          # Shell-rc seeding (Q23). Baked into the image at build time so
+          # interactive devuser shells consistently source the agentbox
+          # aliases and bashrc snippet. Previously the entrypoint tried to
+          # write these at runtime — silent no-op under read_only:true.
+          cat > $out/etc/bash.bashrc <<'BASHRC'
+          source /opt/agentbox/config/agentbox-aliases.sh 2>/dev/null || true
+          source /opt/agentbox/config/bashrc.agentbox 2>/dev/null || true
+          [ -f /run/agentbox/runtime-env.sh ] && source /run/agentbox/runtime-env.sh
+          BASHRC
+          sed -i 's/^[[:space:]]*//' $out/etc/bash.bashrc
+          chmod 644 $out/etc/bash.bashrc
+
+          cat > $out/etc/profile <<'PROFILE'
+          source /opt/agentbox/config/bashrc.agentbox 2>/dev/null || true
+          [ -f /run/agentbox/runtime-env.sh ] && source /run/agentbox/runtime-env.sh
+          PROFILE
+          sed -i 's/^[[:space:]]*//' $out/etc/profile
+          chmod 644 $out/etc/profile
+
+          # Q24: profile.d shim that sources the runtime env. Lives in the
+          # read-only image; the runtime-env.sh source is on the writable
+          # /run tmpfs and is created by entrypoint Phase 8.
+          mkdir -p $out/etc/profile.d
+          cat > $out/etc/profile.d/agentbox-runtime.sh <<'PRDRT'
+          #!/bin/sh
+          [ -f /run/agentbox/runtime-env.sh ] && . /run/agentbox/runtime-env.sh
+          PRDRT
+          sed -i 's/^[[:space:]]*//' $out/etc/profile.d/agentbox-runtime.sh
+          chmod 755 $out/etc/profile.d/agentbox-runtime.sh
+
+          # Fish shell config (Q23). Sourced by all interactive fish shells.
+          mkdir -p $out/etc/fish
+          cat > $out/etc/fish/config.fish <<'FISH'
+          if test -f /opt/agentbox/config/config.fish
+            source /opt/agentbox/config/config.fish
+          end
+          if test -f /run/agentbox/runtime-env.fish
+            source /run/agentbox/runtime-env.fish
+          end
+          FISH
+          sed -i 's/^[[:space:]]*//' $out/etc/fish/config.fish
+          chmod 644 $out/etc/fish/config.fish
+
+          # Q26: claude-flow plugin config, generated from agentbox.toml.
+          # Replaces the runtime heredoc in entrypoint-unified.sh. Values
+          # track the manifest, not magic constants. Password is sourced
+          # from RUVECTOR_PG_PASSWORD env (with fallback) so the three-way
+          # password disagreement (Q6) collapses into one source of truth.
+          mkdir -p $out/opt/agentbox/config
+          cp ${pkgs.writeText "claude-flow-config.json" claudeFlowConfigJson} $out/opt/agentbox/config/claude-flow-config.template.json
+
           # Z.AI wrapper: 'zai' invokes Claude Code against the Z.AI API endpoint.
           ln -s /opt/agentbox/config/zai-wrapper.sh $out/bin/zai
         '';
 
         entrypoint = pkgs.writeShellScriptBin "entrypoint" ''
-          # nix2container images lack FHS paths; create /usr/bin/env
-          # for shebangs in npm wrapper scripts (buildNpmPackage outputs)
-          mkdir -p /usr/bin 2>/dev/null || true
-          ln -sf ${pkgs.coreutils}/bin/env /usr/bin/env 2>/dev/null || true
-          ln -sf ${pkgs.bash}/bin/sh /bin/sh 2>/dev/null || true
-          ln -sf ${pkgs.bash}/bin/bash /bin/bash 2>/dev/null || true
-          # /etc/sudoers and /etc/sudoers.d/devuser are baked into the image
-          # at build time (configFiles derivation) — read_only rootfs would
-          # otherwise prevent runtime creation.
-          # Claude Code binary needs /lib64/ld-linux (FHS path, not Nix-patched)
-          mkdir -p /lib64 2>/dev/null || true
-          ln -sf ${pkgs.glibc}/lib/ld-linux-x86-64.so.2 /lib64/ld-linux-x86-64.so.2 2>/dev/null || true
+          # FHS shims (/usr/bin/env, /bin/sh, /bin/bash, /lib64/ld-linux)
+          # and /etc/sudoers, /etc/bash.bashrc, /etc/fish/config.fish, and
+          # /etc/profile.d/agentbox-runtime.sh are all baked into the image
+          # by the appRoot + configFiles derivations above. The read_only:true
+          # rootfs would block any runtime mkdir/ln-sf into these paths
+          # anyway. (Q15, Q23, Q24)
 
           # Runtime directories for services that need writable state
           mkdir -p /var/lib/nostr-relay 2>/dev/null || true
@@ -1537,7 +1724,14 @@ ${ragflowNetworkDecl}
         '';
 
         imageEnv = [
-          "HOME=/workspace"
+          # HOME=/home/devuser is canonical (Q19): standard FHS, matches the
+          # uid the long-running services run as, and matches the existing
+          # MAD volume layout when mounted at /home/devuser/workspace. The
+          # earlier HOME=/workspace was a backward-compat shim from the
+          # initial multi-profile design (CLAUDE.md "Shared Runtime Model"
+          # — `/workspace` is shared but `$HOME` is per-user).
+          "HOME=/home/devuser"
+          "WORKSPACE=/home/devuser/workspace"
           "PATH=/usr/local/bin:/bin:/usr/bin:${pkgs.lib.makeBinPath allPackages}"
           "NODE_ENV=production"
           "PYTHONDONTWRITEBYTECODE=1"
@@ -1685,7 +1879,7 @@ ${ragflowNetworkDecl}
             config = {
               Entrypoint = [ "${entrypoint}/bin/entrypoint" ];
               Env = imageEnv;
-              WorkingDir = "/workspace";
+              WorkingDir = "/home/devuser/workspace";
               ExposedPorts = commonPorts // sovereignPorts // desktopPorts // dataSciencePorts;
               Labels = {
                 "org.opencontainers.image.title" = "Agentbox";

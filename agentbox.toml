@@ -80,8 +80,19 @@ info_contact     = ""
 # Auth: set TAILSCALE_AUTHKEY in .env (create at https://login.tailscale.com/admin/settings/keys)
 # or omit to use interactive login via `docker exec agentbox tailscale up`.
 [networking]
-tailscale = true
+# Default off — see SECURITY WARNING above. Operators who need Tailscale on
+# their own deployment should override in agentbox.local.toml or set
+# TAILSCALE_AUTHKEY in .env and flip this to true. Leaving it false also
+# removes the NET_ADMIN cap_add and the [security.exceptions.tailscale]
+# block from the active set, tightening the default attack surface.
+tailscale = false
 hostname = "agentbox"
+# Gate /etc/hosts host-gateway alias (host.docker.internal:host-gateway).
+# Default false — air-gapped and hardened deployments must opt in. When
+# false, OPENAI_BASE_URL must point at a Docker-DNS-resolvable name
+# (e.g. ollama:11434 if [providers.ollama].sidecar = true) or the agent
+# fails closed at the LLM call site.
+host_gateway = false
 
 [desktop]
 enabled = true
@@ -117,8 +128,14 @@ admin_access_mode = "permissive"
 # ── RuVector PostgreSQL (external memory backend) ──────────────────────────────
 # Used when adapters.memory = "external-pg". Shared with the host container mesh
 # via docker_ragflow network. The ruvector-postgres container runs pgvector.
+#
+# The password is sourced from the RUVECTOR_PG_PASSWORD env var at runtime
+# (Q6: single source of truth). The conninfo template here uses the
+# manifest-time placeholder so static analysis can read the connection
+# string structure; the entrypoint substitutes the live password before
+# the management-api consumes it.
 [integrations.ruvector_external]
-conninfo = "postgresql://ruvector:ruvector@ruvector-postgres:5432/ruvector"
+conninfo = "postgresql://ruvector:@@RUVECTOR_PG_PASSWORD@@@ruvector-postgres:5432/ruvector"
 
 [integrations.comfyui_external]
 enabled = false
@@ -405,9 +422,11 @@ install_dir = "/home/devuser/.claude-flow/plugins"
 
 # Memory backend for plugins that need persistence.
 # Points to the same external ruvector-postgres used by integrations.ruvector_external.
+# Password sourced from RUVECTOR_PG_PASSWORD env var (Q6) and substituted
+# by the entrypoint when it materialises the claude-flow config.
 [plugins.memory]
 backend = "postgres"
-conninfo = "postgresql://ruvector:ruvector@ruvector-postgres:5432/ruvector"
+conninfo = "postgresql://ruvector:@@RUVECTOR_PG_PASSWORD@@@ruvector-postgres:5432/ruvector"
 fallback = "sqlite"
 enable_hnsw = true
 
@@ -570,6 +589,15 @@ otlp_endpoint = ""
 log_level = "info"
 
 [security]
+# ADR-007 W021: when one or more feature exceptions widen the attack surface
+# beyond the hardened baseline (cap_add or security_opt_override), the
+# operator must explicitly acknowledge the residual risk. The flake fails
+# closed at compose-eval time when this is missing while exceptions are
+# active. Currently SYS_ADMIN (chromium sandbox) and NET_ADMIN (tailscale
+# userspace tun) are widening caps; review docs/user/configuration.md for
+# the residual attack surface analysis before flipping this to true.
+audit_acknowledged = true
+
 # Feature-specific exceptions to the hardened baseline.
 # Each key must match an enabled feature gate (validator rule E020).
 # Add the exception block when you enable the corresponding feature.
@@ -588,13 +616,23 @@ reason = "solid-pod-rs fs-backend requires atomic-rename writable storage under 
 
 [security.exceptions.playwright]
 # Required because skills.browser.playwright = true
-# Chromium needs user namespace sandbox or SYS_ADMIN cap.
+# Chromium needs user namespace sandbox. The hardened baseline is
+# `no-new-privileges:true` which prevents the in-namespace setuid binary
+# Chromium uses for its sandbox from elevating. The exception flips that
+# bit (and only that bit) for this container; SYS_ADMIN is NOT added —
+# the user-namespace path is sufficient and avoids the broad SYS_ADMIN
+# attack surface (PRD-003 §272 example follows the same pattern).
 # Alternative: pass --no-sandbox to Chromium at the cost of defense-in-depth.
-cap_add = ["SYS_ADMIN"]
-reason = "chromium sandbox; SYS_ADMIN is the minimum privilege for Chromium user-ns sandbox inside a container"
+security_opt_override = ["no-new-privileges:false"]
+cap_add = []
+reason = "chromium user-ns sandbox needs setuid; only NNP is dropped, no SYS_ADMIN"
 
 [security.exceptions.desktop]
-tmpfs = ["/tmp/.X11-unix", "/run/user/1000"]
+# X11 abstract socket dir (mode 1777 sticky — the canonical X11 perm) and
+# devuser's runtime dir (XDG_RUNTIME_DIR convention: 0700, owned by uid).
+# Without explicit mode/uid, Docker creates these root-owned at default
+# tmpfs perms, so devuser-side X clients fail to bind/connect.
+tmpfs = ["/tmp/.X11-unix:mode=1777", "/run/user/1000:mode=700,uid=1000,gid=1000"]
 
 [security.exceptions.code-server]
 writable_volumes = ["codeserver-config:/home/devuser/.local/share/code-server"]

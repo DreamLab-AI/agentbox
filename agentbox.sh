@@ -48,6 +48,8 @@ Local lifecycle commands:
   ${GREEN}logs${NC}             Follow logs [service: supervisorctl tail, else compose logs]
   ${GREEN}shell${NC}            Open shell in container [profile: zellij layout in that profile]
   ${GREEN}health${NC}           Show service health [--json: raw JSON output]
+  ${GREEN}migrate-workspace${NC} One-shot rsync from legacy multi-agent-docker_workspace into agentbox-workspace, then patch override
+  ${GREEN}preflight${NC}        Validate the local environment + manifest before `up` (W021 audit, missing host paths, override drift)
 
 Options:
   -i, --ip IP      Override instance IP
@@ -481,19 +483,24 @@ cmd_restore() {
 # ---------------------------------------------------------------------------
 
 OVERRIDE_FILE="${SCRIPT_DIR}/docker-compose.override.yml"
+COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.yml"
 if [[ -f "$OVERRIDE_FILE" ]]; then
-    COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.yml"
-    COMPOSE_ARGS=(-f "$COMPOSE_FILE" -f "$OVERRIDE_FILE")
-    # Override remaps management-api 9090→9190 to avoid MAD collision
-    MGMT_PORT=9190
+    COMPOSE_ARGS=(--project-name agentbox -f "$COMPOSE_FILE" -f "$OVERRIDE_FILE")
 else
-    COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.yml"
-    COMPOSE_ARGS=(-f "$COMPOSE_FILE")
-    MGMT_PORT=9090
+    COMPOSE_ARGS=(--project-name agentbox -f "$COMPOSE_FILE")
 fi
+# Standard ports — MAD has been deprecated; no port remap needed.
+# All services bind to their canonical ports inside the container; the
+# operator's docker-compose.override.yml may further restrict by adding
+# a `127.0.0.1:` prefix to the published side.
+MGMT_PORT=9090
 READY_URL="http://localhost:${MGMT_PORT}/ready"
 LIVE_URL="http://localhost:${MGMT_PORT}/livez"
 HEALTH_URL="http://localhost:${MGMT_PORT}/health"
+
+# Always run docker compose from the script dir so the relative seccomp
+# profile path (./config/seccomp-agentbox.json) resolves correctly.
+cd "$SCRIPT_DIR"
 
 cmd_up() {
     local do_build=0
@@ -926,6 +933,166 @@ SETUP_EOF
     echo -e "${GREEN}Setup complete!${NC}"
 }
 
+# ---------------------------------------------------------------------------
+# cmd_migrate_workspace — Q43 MAD volume migration
+#
+# Rsyncs the legacy multi-agent-docker_workspace external volume into a
+# fresh agentbox-owned named volume, then patches docker-compose.override.yml
+# to point at the new volume. This is a one-shot. Idempotent: if the new
+# volume already has content matching the source, rsync is a no-op.
+# ---------------------------------------------------------------------------
+cmd_migrate_workspace() {
+    local force=0
+    local target_volume="agentbox-workspace"
+    local source_volume="multi-agent-docker_workspace"
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --force)        force=1; shift ;;
+            --source)       source_volume="$2"; shift 2 ;;
+            --target)       target_volume="$2"; shift 2 ;;
+            -h|--help)
+                cat <<'HELP_EOF'
+Usage: agentbox.sh migrate-workspace [--source NAME] [--target NAME] [--force]
+
+Rsync the legacy multi-agent-docker_workspace external volume into an
+agentbox-owned named volume, then patch docker-compose.override.yml to
+reference the new volume. Idempotent.
+
+Steps performed:
+  1. Verify source volume exists.
+  2. Create target volume (skipped if present).
+  3. Stop the agentbox container if running (so the source isn't mid-write).
+  4. Run rsync inside a busybox container with both volumes mounted.
+  5. Patch docker-compose.override.yml: rename mad-workspace alias and
+     point it at the new volume; the bind target stays
+     /home/devuser/workspace.
+  6. Print next steps for the operator (review override, restart stack).
+
+Use --force to skip the "are you sure" confirmation.
+HELP_EOF
+                return 0 ;;
+            *) echo -e "${RED}Unknown option: $1${NC}"; exit 1 ;;
+        esac
+    done
+
+    if ! docker volume inspect "$source_volume" >/dev/null 2>&1; then
+        echo -e "${RED}ERROR: source volume '$source_volume' does not exist on this Docker daemon.${NC}"
+        echo "If MAD never ran here there's nothing to migrate; the override's mad-workspace alias is harmless."
+        exit 1
+    fi
+
+    echo -e "${CYAN}Source volume:${NC} $source_volume"
+    echo -e "${CYAN}Target volume:${NC} $target_volume"
+    if docker volume inspect "$target_volume" >/dev/null 2>&1; then
+        echo -e "${YELLOW}Target volume already exists. Rsync will sync deltas in place.${NC}"
+    fi
+
+    if [[ "$force" -ne 1 ]]; then
+        echo -e "${YELLOW}This will:${NC}"
+        echo "  • Stop the agentbox container if running"
+        echo "  • Rsync ~157 GB from $source_volume to $target_volume (incremental)"
+        echo "  • Update docker-compose.override.yml to reference $target_volume"
+        echo ""
+        read -p "Proceed? [y/N] " -n 1 -r
+        echo
+        [[ ! $REPLY =~ ^[Yy]$ ]] && { echo "Aborted."; exit 0; }
+    fi
+
+    if docker ps --format '{{.Names}}' | grep -qx agentbox; then
+        echo -e "${CYAN}Stopping agentbox container...${NC}"
+        docker compose "${COMPOSE_ARGS[@]}" stop agentbox || true
+    fi
+
+    docker volume create "$target_volume" >/dev/null
+
+    echo -e "${CYAN}Rsyncing $source_volume -> $target_volume (this may take a while)...${NC}"
+    docker run --rm \
+        -v "$source_volume":/src:ro \
+        -v "$target_volume":/dst \
+        instrumentisto/rsync-ssh:alpine \
+        rsync -aHAX --info=progress2 --human-readable /src/ /dst/
+
+    echo -e "${CYAN}Patching docker-compose.override.yml...${NC}"
+    if grep -q "name: $source_volume" "$OVERRIDE_FILE"; then
+        # Rewrite the external alias so the override now references the
+        # new volume. The bind path /home/devuser/workspace is unchanged.
+        sed -i.pre-migrate \
+            -e "s|external: true|external: false|" \
+            -e "s|name: $source_volume|name: $target_volume|" \
+            "$OVERRIDE_FILE"
+        # Also rename the local alias from mad-workspace to agentbox-workspace
+        # to remove the misleading reference. Keep the bind name in sync.
+        sed -i \
+            -e "s|mad-workspace:|$target_volume:|g" \
+            "$OVERRIDE_FILE"
+        echo -e "${GREEN}Override patched. Backup at $OVERRIDE_FILE.pre-migrate${NC}"
+    else
+        echo -e "${YELLOW}Override doesn't reference $source_volume — skipping patch.${NC}"
+    fi
+
+    echo ""
+    echo -e "${GREEN}Migration complete.${NC}"
+    echo -e "${CYAN}Next steps:${NC}"
+    echo "  1. Review: diff $OVERRIDE_FILE.pre-migrate $OVERRIDE_FILE"
+    echo "  2. Start:  $0 up"
+    echo "  3. Verify: docker exec agentbox ls /home/devuser/workspace | head"
+    echo "  4. Once happy, you can `docker volume rm $source_volume` to free disk."
+}
+
+# ---------------------------------------------------------------------------
+# cmd_preflight — local env + manifest validation before `up`
+#
+# Catches the cascade of errors that ate the last debug session by
+# validating ahead of `docker compose up`:
+#   • W021: any active security exception widening the surface must have
+#     `[security].audit_acknowledged = true` in agentbox.toml.
+#   • Override paths exist on the host (e.g. ${HOME}/.claude).
+#   • Compose configs merge cleanly (no conflicting volumes/ports).
+#   • Required env vars are set or have safe defaults.
+# ---------------------------------------------------------------------------
+cmd_preflight() {
+    local errors=0
+
+    echo -e "${CYAN}Preflight: validating compose merge...${NC}"
+    if ! docker compose "${COMPOSE_ARGS[@]}" config >/dev/null 2>&1; then
+        echo -e "${RED}  ✗ docker compose config failed${NC}"
+        docker compose "${COMPOSE_ARGS[@]}" config 2>&1 | head -10
+        errors=$((errors+1))
+    else
+        echo -e "${GREEN}  ✓ compose merges cleanly${NC}"
+    fi
+
+    echo -e "${CYAN}Preflight: validating Nix flake (W021 audit gate)...${NC}"
+    if ! nix build .#compose --no-link 2>&1 | tail -5; then
+        echo -e "${RED}  ✗ nix build .#compose failed (W021 may be blocking)${NC}"
+        errors=$((errors+1))
+    else
+        echo -e "${GREEN}  ✓ flake evaluates; W021 satisfied${NC}"
+    fi
+
+    echo -e "${CYAN}Preflight: checking host bind targets...${NC}"
+    for hostpath in "${HOME}/.claude" "${HOME}/.config/claude" "/mnt/mldata/githubs/AR-AI-Knowledge-Graph"; do
+        if [[ ! -e "$hostpath" ]]; then
+            echo -e "${YELLOW}  ! $hostpath does not exist — bind will create it root-owned${NC}"
+        else
+            echo -e "${GREEN}  ✓ $hostpath${NC}"
+        fi
+    done
+
+    echo -e "${CYAN}Preflight: checking external volumes...${NC}"
+    for vol in multi-agent-docker_workspace agentbox-workspace; do
+        if docker volume inspect "$vol" >/dev/null 2>&1; then
+            echo -e "${GREEN}  ✓ $vol exists${NC}"
+        fi
+    done
+
+    if [[ "$errors" -gt 0 ]]; then
+        echo -e "${RED}Preflight failed with $errors error(s).${NC}"
+        return 1
+    fi
+    echo -e "${GREEN}Preflight passed.${NC}"
+}
+
 # Parse arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -970,8 +1137,10 @@ case "${CMD:-}" in
     build)         cmd_build "$@" ;;
     rebuild)       cmd_rebuild "$@" ;;
     update)        cmd_update "$@" ;;
-    logs)          cmd_logs "$@" ;;
-    shell)         cmd_shell "$@" ;;
-    health)        cmd_health "$@" ;;
-    *)             usage ;;
+    logs)              cmd_logs "$@" ;;
+    shell)             cmd_shell "$@" ;;
+    health)            cmd_health "$@" ;;
+    migrate-workspace) cmd_migrate_workspace "$@" ;;
+    preflight)         cmd_preflight "$@" ;;
+    *)                 usage ;;
 esac

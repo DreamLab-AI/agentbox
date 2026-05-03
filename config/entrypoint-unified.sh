@@ -109,7 +109,13 @@ chown -R 1000:1000 /home/devuser/.claude-flow 2>/dev/null || true
 # ---------------------------------------------------------------------------
 # Phase 2 — Management API key auto-generation
 # ---------------------------------------------------------------------------
-MGMT_KEY_FILE="$WORKSPACE/profiles/default/mgmt-key"
+# Q5: store the auto-generated mgmt key in a dedicated secrets volume
+# (mounted as /var/lib/agentbox/secrets via agentbox-secrets named volume).
+# Previous location ($WORKSPACE/profiles/default/mgmt-key) put the key in
+# the shared workspace volume, exposing it to every process with workspace
+# access — including the recycled MAD volume's history. The secrets volume
+# has its own mount, mode, and lifecycle.
+MGMT_KEY_FILE="${MGMT_KEY_FILE:-/var/lib/agentbox/secrets/mgmt-key}"
 _legacy_sentinel="change-this-secret-key"
 if [ -z "${MANAGEMENT_API_KEY:-}" ] || [ "${MANAGEMENT_API_KEY:-}" = "$_legacy_sentinel" ]; then
   if [ -f "$MGMT_KEY_FILE" ]; then
@@ -151,27 +157,11 @@ if [ ! -d "$WORKSPACE/agents" ]; then
   mkdir -p "$WORKSPACE/agents"
 fi
 
-# Shell profile seeding — best-effort. The rootfs is read_only at runtime
-# so /etc writes fail unless /etc is also a tmpfs. Shell configs are
-# alternatively sourced by interactive shells via $HOME/.bashrc or
-# $HOME/.config/fish (set up below in the user-config phase).
-if [ -w /etc ]; then
-  touch /etc/bash.bashrc 2>/dev/null || true
-  if ! grep -q "source.*agentbox-aliases" /etc/bash.bashrc 2>/dev/null; then
-    echo "source /opt/agentbox/config/agentbox-aliases.sh" >> /etc/bash.bashrc 2>/dev/null || true
-  fi
-  if ! grep -q "source.*bashrc.agentbox" /etc/bash.bashrc 2>/dev/null; then
-    echo "source /opt/agentbox/config/bashrc.agentbox" >> /etc/bash.bashrc 2>/dev/null || true
-  fi
-  touch /etc/profile 2>/dev/null || true
-  if ! grep -q "source.*bashrc.agentbox" /etc/profile 2>/dev/null; then
-    echo "source /opt/agentbox/config/bashrc.agentbox" >> /etc/profile 2>/dev/null || true
-  fi
-  mkdir -p /etc/fish 2>/dev/null || true
-  if [ -f /opt/agentbox/config/config.fish ] && ! grep -q "config.fish" /etc/fish/config.fish 2>/dev/null; then
-    echo "source /opt/agentbox/config/config.fish" >> /etc/fish/config.fish 2>/dev/null || true
-  fi
-fi
+# Shell profile seeding (Q23): /etc/bash.bashrc, /etc/profile,
+# /etc/fish/config.fish, and /etc/profile.d/agentbox-runtime.sh are now
+# all baked into the image by the configFiles derivation in flake.nix
+# (read_only:true rootfs would otherwise block any runtime mkdir/append).
+# Nothing for the entrypoint to do here.
 
 # Claude Code config — bridge host mount to HOME
 # The host .claude/ is mounted at /home/devuser/.claude but HOME=/workspace
@@ -261,7 +251,7 @@ fi
 # ---------------------------------------------------------------------------
 mkdir -p /run/agentbox
 
-echo "[5/8] Starting supervisord..."
+echo "[5b/8] Starting supervisord..."
 exec supervisord -c /etc/supervisord.conf -n
 
 fi  # end STAGE_B_MODE=0 block — Stage A exits via exec above
@@ -334,32 +324,19 @@ _RUFLO_PLUGINS_REPO="https://github.com/ruvnet/ruflo.git"
 mkdir -p "$_PLUGIN_DIR" "$_RUFLO_PLUGINS_CACHE" 2>/dev/null || true
 chown -R 1000:1000 "$_PLUGIN_DIR" 2>/dev/null || true
 
-# Write plugin memory config from agentbox.toml [plugins.memory] ->
-# .claude-flow/config.json so the MCP server and plugins share the same
-# ruvector-postgres connection.
+# Q26 / Q6: claude-flow plugin config is generated at image-build time from
+# agentbox.toml [plugins.memory] (see flake.nix `claudeFlowConfigJson`). The
+# template lives at /opt/agentbox/config/claude-flow-config.template.json
+# with a literal @@RUVECTOR_PG_PASSWORD@@ placeholder that we expand here
+# from the env, so the password lives in exactly one place (the env var).
 _CF_CONFIG_DIR="${HOME}/.claude-flow"
-if [ ! -f "$_CF_CONFIG_DIR/config.json" ] || ! grep -q "ruvector-postgres" "$_CF_CONFIG_DIR/config.json" 2>/dev/null; then
-  cat > "$_CF_CONFIG_DIR/config.json" <<'CFEOF'
-{
-  "version": "3.0.0",
-  "memory": {
-    "backend": "postgres",
-    "postgres": {
-      "host": "ruvector-postgres",
-      "port": 5432,
-      "database": "ruvector",
-      "user": "ruvector",
-      "password": "ruvector_secure_pass"
-    },
-    "fallback": "sqlite",
-    "enableHNSW": true
-  },
-  "plugins": {
-    "autoUpdate": false,
-    "directory": "/home/devuser/.claude-flow/plugins"
-  }
-}
-CFEOF
+_CF_TEMPLATE="/opt/agentbox/config/claude-flow-config.template.json"
+mkdir -p "$_CF_CONFIG_DIR" 2>/dev/null || true
+if [ -f "$_CF_TEMPLATE" ] && { [ ! -f "$_CF_CONFIG_DIR/config.json" ] || ! grep -q "ruvector-postgres" "$_CF_CONFIG_DIR/config.json" 2>/dev/null; }; then
+  : "${RUVECTOR_PG_PASSWORD:=ruvector}"
+  # sed escape the password to handle any '/' or '&' (paranoid; ruvector ships safe defaults)
+  _PG_PW_ESC=$(printf '%s\n' "$RUVECTOR_PG_PASSWORD" | sed -e 's/[\/&]/\\&/g')
+  sed "s/@@RUVECTOR_PG_PASSWORD@@/$_PG_PW_ESC/g" "$_CF_TEMPLATE" > "$_CF_CONFIG_DIR/config.json"
   chown 1000:1000 "$_CF_CONFIG_DIR/config.json" 2>/dev/null || true
 fi
 
@@ -381,63 +358,63 @@ if command -v ruflo >/dev/null 2>&1; then
   # Reads [[plugins.packages]] blocks. Fields: name, enabled, source (optional).
   # source = "ruflo-git" (default): symlink from cache into plugin dir.
   # source = "registry": install via `ruflo plugins install -n`.
-  if [ -f "$AGENTBOX_CONFIG" ]; then
-    _in_plugin_block=0
-    _plugin_name=""
-    _plugin_source=""
-    while IFS= read -r line; do
-      case "$line" in
-        *'[[plugins.packages]]'*)
-          _in_plugin_block=1
-          _plugin_name=""
-          _plugin_source="ruflo-git"
-          ;;
-        *)
-          if [ "$_in_plugin_block" = "1" ]; then
-            case "$line" in
-              *name*=*)
-                _plugin_name="$(echo "$line" | sed 's/.*= *"\(.*\)"/\1/')"
-                ;;
-              *source*=*\"registry\"*)
-                _plugin_source="registry"
-                ;;
-              *source*=*\"ruflo-git\"*)
-                _plugin_source="ruflo-git"
-                ;;
-              *enabled*=*true*)
-                if [ -n "$_plugin_name" ]; then
-                  if [ "$_plugin_source" = "registry" ]; then
-                    echo "  [plugin] Installing $_plugin_name from IPFS registry..."
-                    su -s /bin/bash devuser -c "ruflo plugins install -n '$_plugin_name'" 2>&1 | tail -3 || true
-                  else
-                    _src="$_RUFLO_PLUGINS_CACHE/plugins/$_plugin_name"
-                    _dst="$_PLUGIN_DIR/$_plugin_name"
-                    if [ -d "$_src" ]; then
-                      if [ ! -e "$_dst" ]; then
-                        ln -sf "$_src" "$_dst"
-                        echo "  [plugin] Linked $_plugin_name"
-                      else
-                        echo "  [plugin] $_plugin_name already present"
-                      fi
-                    else
-                      echo "  [plugin] WARN: $_plugin_name not found in ruflo cache"
-                    fi
-                  fi
-                fi
-                _in_plugin_block=0
-                ;;
-              *enabled*=*false*)
-                echo "  [plugin] $_plugin_name disabled — skipping"
-                _in_plugin_block=0
-                ;;
-              *'['*)
-                _in_plugin_block=0
-                ;;
-            esac
+  #
+  # Q27: parse via Python's tomllib (3.11+) instead of a hand-rolled
+  # case/sed loop. The previous implementation interpolated $_plugin_name
+  # directly into a `su -c '...'` shell command — a latent shell-injection
+  # vector if a plugin name ever contained a single quote. tomllib also
+  # handles multi-line values, comment placements, and string escapes the
+  # case/sed loop quietly mishandled.
+  if [ -f "$AGENTBOX_CONFIG" ] && command -v python3 >/dev/null 2>&1; then
+    # Parse [[plugins.packages]] via tomllib and emit `name<TAB>source\n`
+    # lines for enabled, validated entries. The validation regex catches
+    # any name that could break out of shell-quoting, which collapses the
+    # injection vector documented in Q27.
+    _PLUGIN_LIST=$(python3 - "$AGENTBOX_CONFIG" <<'PYEOF'
+import re, sys, tomllib
+with open(sys.argv[1], "rb") as f:
+    cfg = tomllib.load(f)
+pkgs = cfg.get("plugins", {}).get("packages", []) or []
+name_re = re.compile(r"^[a-zA-Z0-9@/_.+-]+$")
+for entry in pkgs:
+    if not entry.get("enabled", False):
+        continue
+    name = entry.get("name", "")
+    source = entry.get("source", "ruflo-git")
+    if not name_re.match(name):
+        sys.stderr.write(f"[plugin] skipping suspicious name: {name!r}\n")
+        continue
+    if source not in ("ruflo-git", "registry"):
+        sys.stderr.write(f"[plugin] skipping unknown source: {source!r} for {name}\n")
+        continue
+    print(f"{name}\t{source}")
+PYEOF
+)
+    while IFS=$'\t' read -r _plugin_name _plugin_source; do
+      [ -z "$_plugin_name" ] && continue
+      if [ "$_plugin_source" = "registry" ]; then
+        echo "  [plugin] Installing $_plugin_name from IPFS registry..."
+        # Pass the plugin name via env var; no shell interpolation.
+        AGENTBOX_PLUGIN_NAME="$_plugin_name" su -s /bin/bash devuser \
+          -c 'ruflo plugins install -n "$AGENTBOX_PLUGIN_NAME"' \
+          2>&1 | tail -3 || true
+      else
+        _src="$_RUFLO_PLUGINS_CACHE/plugins/$_plugin_name"
+        _dst="$_PLUGIN_DIR/$_plugin_name"
+        if [ -d "$_src" ]; then
+          if [ ! -e "$_dst" ]; then
+            ln -sf "$_src" "$_dst"
+            echo "  [plugin] Linked $_plugin_name"
+          else
+            echo "  [plugin] $_plugin_name already present"
           fi
-          ;;
-      esac
-    done < "$AGENTBOX_CONFIG"
+        else
+          echo "  [plugin] WARN: $_plugin_name not found in ruflo cache"
+        fi
+      fi
+    done <<EOF
+$_PLUGIN_LIST
+EOF
   fi
 
   # --- Step 3: Write installed.json manifest for MCP server ---

@@ -15,8 +15,6 @@ services:
       timeout: 10s
       retries: 5
       start_period: 60s
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
 
     ports:
       - "9090:9090"
@@ -31,8 +29,8 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - GITHUB_TOKEN=${GITHUB_TOKEN:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-ollama}
-      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-http://host.docker.internal:11434/v1}
-      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-http://ollama:11434/v1}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ollama:11434}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:32b-instruct}
       - GOOGLE_GEMINI_API_KEY=${GOOGLE_GEMINI_API_KEY:-}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
@@ -43,37 +41,38 @@ services:
       - AGENTBOX_METRICS_PORT=9091
       - AGENTBOX_OTLP_ENDPOINT=
       - AGENTBOX_LOG_LEVEL=info
-    user: "1000:1000"
+    # Baseline: supervisord runs as PID 1 root, with per-program `user=devuser`
+    # drops on every long-running service. Root is required at boot for
+    # tmpfs subdir creation, sudoers wrapper provisioning (chown 0:0 +
+    # chmod 4755), cert generation, and chowning runtime dirs to uid 1000.
+    # Per ADR-007 §4a hardening posture; see PRD-003 §5.4.
     read_only: true
     cap_drop:
       - ALL
-    cap_add:
-      - SYS_ADMIN
-      - NET_ADMIN
-
     tmpfs:
       - /tmp:mode=1777,size=256M
-      - /run:mode=755,size=64M,uid=1000,gid=1000
-      - /var/run:mode=755,size=16M,uid=1000,gid=1000
-      - /var/log:mode=755,size=128M,uid=1000,gid=1000
-      - /var/log/supervisor:mode=755,size=64M,uid=1000,gid=1000
+      - /run:mode=755,size=64M
+      - /var/run:mode=755,size=16M
+      - /var/log:mode=755,size=128M
+      - /var/log/supervisor:mode=755,size=64M
       - /usr/local/bin:mode=755,size=8M,exec,suid
-      - /tmp/.X11-unix
-      - /run/user/1000
+      - /tmp/.X11-unix:mode=1777
+      - /run/user/1000:mode=700,uid=1000,gid=1000
     security_opt:
-      - no-new-privileges:false
+      - no-new-privileges:true
       - seccomp=./config/seccomp-agentbox.json
+      - no-new-privileges:false
+
     volumes:
       - ./agentbox.toml:/etc/agentbox.toml:ro
-      - ./workspace:/workspace
+      - ./workspace:/home/devuser/workspace
       - ./projects:/projects
       - ruvector-data:/var/lib/ruvector
       - solid-data:/var/lib/solid
       - sovereign-identities:/var/lib/agentbox/identities
+      - agentbox-secrets:/var/lib/agentbox/secrets
       - codeserver-config:/home/devuser/.local/share/code-server
       - nostr-relay-data:/var/lib/nostr-relay
-      - solid-data:/var/lib/solid
-      - tailscale-state:/var/lib/tailscale
       - ctm-config:/home/devuser/.config/claude-telegram-mirror
 
 
@@ -85,13 +84,12 @@ volumes:
     name: agentbox-solid-data
   sovereign-identities:
     name: agentbox-sovereign-identities
+  agentbox-secrets:
+    name: agentbox-secrets
   codeserver-config:
     name: agentbox-codeserver-config
   nostr-relay-data:
     name: agentbox-nostr-relay-data
-  tailscale-state:
-    name: agentbox-tailscale-state
   ctm-config:
     name: agentbox-ctm-config
 
-        
