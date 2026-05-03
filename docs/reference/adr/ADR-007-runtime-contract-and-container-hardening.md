@@ -131,10 +131,27 @@ Three mechanisms were considered:
 
 B is the only mechanism that keeps the manifest as the single source of truth, matches the existing generator pattern, and makes every privilege delta attributable to a named feature in a machine-readable audit event.
 
+#### Supervisord user model
+
+Supervisord runs as PID 1 root. Every long-running `[program:*]` block carries `user=devuser` so those processes drop to uid 1000 before exec. Root is required at boot for:
+
+- creating tmpfs subdirectories with the correct mode and uid/gid
+- provisioning the setuid sudo wrapper (`chown 0:0` + `chmod 4755`)
+- generating TLS certificates and writing them to `/var/lib/agentbox/secrets`
+- `chown -R 1000:1000` on runtime directories before service start
+
+One-shot bootstrap programs (`[program:bootstrap]`, certificate generation) run as root. The `[program:tailscaled]` daemon also runs as root because it needs to create network interfaces. All other long-running services carry explicit `user=devuser`.
+
+The `user: "1000:1000"` compose field is absent from the generated service block. `no-new-privileges:true` remains the baseline security option. The `security_opt_override` mechanism (see below) allows per-exception relaxation of individual security_opt entries without lifting the baseline across the board.
+
+This model was implemented in commit `2341480c`. Prior to that commit, `user: "1000:1000"` was set at the compose level, which silently broke the setuid sudo wrapper provisioning (EPERM on `chown 0:0`) and made `chown -R 1000:1000` calls in the entrypoint no-ops.
+
 #### Baseline compose fields emitted for non-exceptional services
 
+As of commit `2341480c`, the generated baseline is:
+
 ```yaml
-user: "1000:1000"
+# user: field is absent — supervisord runs as root, per-program user=devuser
 read_only: true
 cap_drop:
   - ALL
@@ -143,8 +160,23 @@ tmpfs:
   - /run:mode=755
 security_opt:
   - no-new-privileges:true
-  - seccomp=default
+  - seccomp=./config/seccomp-agentbox.json
 ```
+
+Note: `no-new-privileges:true` is the baseline. The Playwright exception uses `security_opt_override` (see below) to flip this to `false` for the Chromium sandbox only — it does not affect the global baseline.
+
+#### W021 audit gate
+
+The flake compose generator fails closed when any active exception widens the attack surface (non-empty `cap_add`, raw `devices`, or `seccomp=unconfined`) and `[security].audit_acknowledged` is not set to `true` in `agentbox.toml`. This gate was implemented in commit `2341480c`.
+
+To acknowledge after reviewing the residual surface, add to `agentbox.toml`:
+
+```toml
+[security]
+audit_acknowledged = true
+```
+
+The `agentbox.sh preflight` command runs `nix build .#compose --no-link` ahead of `up` and reports W021 gate failures before the container starts.
 
 #### Exception block structure in `agentbox.toml`
 
@@ -162,7 +194,9 @@ runtime_override      = "<runtime>"                   # replaces service runtime
 
 #### Merge rules
 
-Union for `cap_add`, `devices`, `tmpfs`, `group_add`, `writable_volumes`. Replace-by-key for `security_opt_override` (e.g. `seccomp=` key replaces baseline `seccomp=default`). `no-new-privileges:true` is preserved unless explicitly overridden. When two features conflict on the same `security_opt_override` key, the generator takes the most permissive value and emits a W021 warning.
+Union for `cap_add`, `devices`, `tmpfs`, `group_add`, `writable_volumes`. Replace-by-key for `security_opt_override` (e.g. `seccomp=` key replaces baseline `seccomp=./config/seccomp-agentbox.json`). `no-new-privileges:true` is preserved unless explicitly overridden by a `security_opt_override` entry that includes `no-new-privileges:false`. When two features conflict on the same `security_opt_override` key, the generator takes the most permissive value and emits a W021 warning.
+
+The Playwright exception sets `security_opt_override = ["no-new-privileges:false"]` because the Chromium user-namespace sandbox requires it. All other baseline security_opt entries are preserved. The `no-new-privileges:true` entry is replaced by `no-new-privileges:false` only for the merged service block — no other change.
 
 #### Validator rules
 
@@ -219,4 +253,5 @@ Rejected as the sole approach because the product already documents a dedicated 
 - Add compose-generation tests for image reference and hardening fields.
 - Add readiness tests that fail when bootstrap or required adapters are incomplete.
 - Decide whether health detail lives on `/health` or a separate aggregate endpoint, but preserve readiness as its own contract.
+- Implement `[security].chromium_sandbox_mode = "sys-admin" | "userns-remap" | "no-sandbox"` knob (currently only `sys-admin` path exists via the Playwright exception `security_opt_override`). The `userns-remap` mode is the recommended choice for dedicated agentbox hosts: add `"userns-remap": "default"` to `/etc/docker/daemon.json` on the host, then set the mode to `userns-remap` in the manifest; the Playwright exception's `no-new-privileges:false` and `SYS_ADMIN` cap are no longer needed in that mode. The validator should confirm the daemon config when `userns-remap` is selected.
 

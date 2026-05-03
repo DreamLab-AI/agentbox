@@ -87,7 +87,7 @@ jobs:
           exit-code: '0'
 
       - name: Generate SBOM (CycloneDX)
-        uses: anchore/sbom-action@v0
+        uses: anchore/sbom-action@v0.24.0
         with:
           image: ${{ steps.ref.outputs.ref }}
           format: cyclonedx-json
@@ -95,7 +95,7 @@ jobs:
           upload-release-assets: false
 
       - name: Generate SBOM (SPDX)
-        uses: anchore/sbom-action@v0
+        uses: anchore/sbom-action@v0.24.0
         with:
           image: ${{ steps.ref.outputs.ref }}
           format: spdx-json

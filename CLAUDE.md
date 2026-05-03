@@ -62,12 +62,15 @@ Parallel namespace: the host project's Rust substrate uses `urn:visionclaw:<kind
 
 ## Shared Runtime Model
 
-The intended runtime model is:
+The intended runtime model (updated for commit `2341480c`):
 
-- all profiles see the same `/projects`
-- all profiles see the same `/workspace`
-- all profiles get the same `/opt/agentbox/skills` tree
-- profile-local settings live under `/workspace/profiles/<stack>/`
+- `HOME=/home/devuser` is the canonical home directory for devuser. The old `HOME=/workspace` value has been retired.
+- The agent workspace lives at `/home/devuser/workspace` (bind-mounted from `./workspace` in the base compose, or a named volume in the override).
+- Profile-local settings live under `/home/devuser/workspace/profiles/<stack>/`.
+- All profiles see the same `/projects` (bind-mounted from `./projects`).
+- All profiles get the same `/opt/agentbox/skills` tree (image-baked).
+- Scripts must use `$HOME` (which is `/home/devuser`) or the `$WORKSPACE` env var (`/home/devuser/workspace`) for durability. Using the literal path `/workspace` will break because that bind target no longer exists.
+- Supervisord runs as PID 1 root; all long-running supervised processes drop to devuser via per-program `user=devuser`. No agent-facing process runs as root after the one-shot bootstrap phase.
 
 ## Legacy Files
 

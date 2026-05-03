@@ -206,12 +206,16 @@ Capability-specific exceptions, such as GPU and desktop modes, must be explicit 
 
 ### 5.4a Feature-exception mechanism
 
+#### Supervisord user model (updated in commit `2341480c`)
+
+Supervisord runs as PID 1 root. Every long-running supervised service carries an explicit `user=devuser` directive so processes drop to uid 1000 before exec. The `user: "1000:1000"` compose field is absent. This allows the entrypoint to perform root-only boot operations (tmpfs dir creation, setuid wrapper provisioning, `chown -R 1000:1000` on runtime directories, TLS cert generation) before dropping privileges per service. The auto-generated `agentbox-secrets` named volume holds the management-api key at `/var/lib/agentbox/secrets` and is not mixed with the general workspace.
+
 #### Baseline compose fields (applied to all non-exceptional services)
 
-The flake compose generator must emit these fields on every service that does not carry an exception:
+As of commit `2341480c`, the flake compose generator emits these fields on every service:
 
 ```yaml
-user: "1000:1000"
+# user: field is absent — supervisord PID 1 is root; per-program user=devuser
 read_only: true
 cap_drop:
   - ALL
@@ -220,10 +224,12 @@ tmpfs:
   - /run:mode=755
 security_opt:
   - no-new-privileges:true
-  - seccomp=default
+  - seccomp=./config/seccomp-agentbox.json
 ```
 
-Named volumes and bind mounts that the service writes to (e.g. `/workspace`, `/var/lib/ruvector`) are explicitly declared; no other paths are writable.
+`no-new-privileges:true` is the baseline. Exceptions that require a different value for a specific security_opt entry use the `security_opt_override` field (see below) to replace that entry only; unrelated entries are preserved. The Playwright exception sets `security_opt_override = ["no-new-privileges:false"]` so the Chromium sandbox can use user namespaces.
+
+Named volumes and bind mounts that the service writes to (e.g. `/home/devuser/workspace`, `/var/lib/ruvector`) are explicitly declared; no other paths are writable.
 
 #### Chosen mechanism: B — manifest-driven delta blocks (flake compose generator)
 
@@ -268,9 +274,9 @@ cap_add  = []                      # toolkit handles device access; no extra cap
 
 [security.exceptions.playwright]
 # Parent gate: [skills.browser].playwright = true
-reason   = "Chromium sandbox requires SYS_ADMIN or user-ns; using --no-sandbox with seccomp=unconfined instead"
-security_opt_override = ["no-new-privileges:true", "seccomp=unconfined"]
-cap_add  = []
+reason   = "Chromium user-namespace sandbox requires no-new-privileges:false"
+security_opt_override = ["no-new-privileges:false"]
+cap_add  = ["SYS_ADMIN"]    # Chromium sandbox — see ADR-007 SYS_ADMIN alternative
 
 [security.exceptions.code-server]
 # Parent gate: [toolchains].code_server = true
@@ -309,11 +315,11 @@ Every time the container boundary is realised (compose generation, runtime apply
 {
   "event": "SecurityProfileApplied",
   "baseline": {
-    "user": "1000:1000",
+    "user": "root (supervisord PID 1); per-program user=devuser",
     "read_only": true,
     "cap_drop": ["ALL"],
     "tmpfs": ["/tmp", "/run"],
-    "security_opt": ["no-new-privileges:true", "seccomp=default"]
+    "security_opt": ["no-new-privileges:true", "seccomp=./config/seccomp-agentbox.json"]
   },
   "exceptions_applied": [
     {
@@ -358,7 +364,7 @@ The operator contract must be tested end to end:
    **Test:** `RC-003-08` (metrics port) — read `[observability].metrics_port` from manifest, assert it appears in compose `ports:`, assert it is bound inside container (`ss -tlnp`), assert `GET http://host:<port>/metrics` returns `text/plain` body containing `# HELP`.
 
 5. The default compose output includes an explicit hardening profile rather than relying only on `no-new-privileges`.
-   **Test:** `RC-003-09` (hardening baseline) — `docker inspect` the running container; assert `User != "0"`, `HostConfig.ReadonlyRootfs == true`, `HostConfig.CapDrop` contains `"ALL"`, at least two `Mounts` of type `tmpfs` are present.
+   **Test:** `RC-003-09` (hardening baseline) — `docker inspect` the running container; assert `HostConfig.ReadonlyRootfs == true`, `HostConfig.CapDrop` contains `"ALL"`, `HostConfig.SecurityOpt` contains `"no-new-privileges:true"`, at least two `Mounts` of type `tmpfs` are present. Supervisord PID 1 runs as root; long-running supervised processes (`ps aux` inside container) must show `devuser` not `root` as the user.
    **Test:** `RC-003-10` (hardening exceptions) — with `[desktop].enabled = true`, assert compose adds `/tmp/.X11-unix` and `/run/user/1000` tmpfs entries while baseline `cap_drop: ["ALL"]` remains unchanged.
 
 ## 7. Success metrics

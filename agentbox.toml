@@ -416,6 +416,23 @@ cuda = true
 # (entrypoint Phase 7) and loaded by the MCP server at runtime.
 # The Nix-packaged claude-flow/ruflo binaries provide the plugin CLI;
 # npx @latest aliases are no longer needed.
+#
+# Plugin provenance legend (best-guess — please clarify where marked ??):
+#   first-party (ruflo upstream, github.com/ruvnet/ruflo/plugins/):
+#     ruflo-core, ruflo-intelligence, ruflo-swarm, ruflo-workflows,
+#     ruflo-autopilot, ruflo-loop-workers, ruflo-agentdb, ruflo-ruvector,
+#     ruflo-rag-memory, ruflo-knowledge-graph, ruflo-sparc, ruflo-testgen,
+#     ruflo-goals, ruflo-docs, ruflo-adr, ruflo-ddd, ruflo-security-audit,
+#     ruflo-aidefence, ruflo-observability, ruflo-browser, ruflo-wasm,
+#     ruflo-federation, ruflo-migrations, ruflo-ruvllm, ruflo-plugin-creator,
+#     ruflo-jujutsu (disabled — beads adapter is off), ruflo-cost-tracker
+#   speculative / unconfirmed (not in any ADR or PRD; please clarify):
+#     ruflo-daa    -- ?? purpose unknown; enabled by default
+#     ruflo-rvf    -- ?? purpose unknown; enabled by default
+#   disabled (domain-specific, opt-in):
+#     ruflo-neural-trader, ruflo-market-data, ruflo-iot-cognitum
+#   third-party registry (IPFS, source = "registry"):
+#     @claude-flow/embeddings, @claude-flow/security, @claude-flow/neural
 [plugins]
 auto_update = false                     # off by default — set true for @latest
 install_dir = "/home/devuser/.claude-flow/plugins"

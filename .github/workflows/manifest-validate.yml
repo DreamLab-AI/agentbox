@@ -100,13 +100,28 @@ jobs:
       - name: Assert all W-codes are routed to warnings (advisory, not fatal)
         run: |
           set -euo pipefail
-          # W021 is the intentional exception — blocking warning.
-          grep -E "code: 'W[0-9]+'" scripts/agentbox-config-validate.js | \
-            grep -v "'W021'" | \
-            while read -r line; do
-              if echo "$line" | grep -q "errors\.push"; then
-                echo "FAIL: $line — non-W021 W-code pushed to errors"
-                exit 1
-              fi
-            done
-          echo "OK: all advisory W-codes use warnings.push"
+          # W021 was renamed E021 on 2026-04-25 and is no longer a W-code at all.
+          # All remaining W-codes must use warnings.push, never errors.push.
+          if grep -E "code: 'W[0-9]+'" scripts/agentbox-config-validate.js | \
+               grep -q "errors\.push"; then
+            echo "FAIL: a W-code is wired to errors.push — W-codes must be advisory"
+            grep -E "code: 'W[0-9]+'" scripts/agentbox-config-validate.js | \
+              grep "errors\.push"
+            exit 1
+          fi
+          echo "OK: all W-codes use warnings.push"
+
+      - name: Assert E021 fires when exception block is missing (gate-failure test)
+        run: |
+          set -euo pipefail
+          # tests/tui/fixtures/invalid-e021.toml enables solid-pod-rs adapter
+          # but omits [security.exceptions.solid-pod-rs], which must produce E021.
+          if node scripts/agentbox-config-validate.js \
+               tests/tui/fixtures/invalid-e021.toml 2>&1 | grep -q "E021"; then
+            echo "OK: E021 fired as expected"
+          else
+            echo "FAIL: E021 did not fire — W021 audit gate may be broken"
+            node scripts/agentbox-config-validate.js \
+              tests/tui/fixtures/invalid-e021.toml || true
+            exit 1
+          fi
