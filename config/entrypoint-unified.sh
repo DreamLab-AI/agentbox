@@ -515,6 +515,13 @@ ln -sf "$RUNTIME_ENV_FILE" /etc/profile.d/agentbox-runtime.sh 2>/dev/null || tru
 # ---------------------------------------------------------------------------
 # Phase 8a — Start tmux session in background (MAD-style multi-tab workspace)
 # ---------------------------------------------------------------------------
+# Pre-create XDG tool dirs so that fish/atuin/bottom init inside tmux windows
+# writes to uid-1000-owned dirs instead of creating them as root
+# (tmux default-command "fish" runs as root with HOME=/home/devuser).
+mkdir -p /home/devuser/.config/fish /home/devuser/.config/atuin \
+         /home/devuser/.config/bottom /home/devuser/.local/share/fish 2>/dev/null || true
+chown -R 1000:1000 /home/devuser/.config/fish /home/devuser/.config/atuin \
+                   /home/devuser/.config/bottom /home/devuser/.local/share/fish 2>/dev/null || true
 if [ -x /opt/agentbox/config/tmux-autostart.sh ]; then
   /opt/agentbox/config/tmux-autostart.sh &
 fi
