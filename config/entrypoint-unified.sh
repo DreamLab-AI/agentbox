@@ -113,7 +113,10 @@ for _vol_root in \
     /home/devuser/.local/share/code-server \
     /home/devuser/.config \
     /home/devuser/.config/claude-telegram-mirror \
-    /home/devuser/.cache; do
+    /home/devuser/.cache \
+    /home/devuser/.claude-flow \
+    /var/cache \
+    /var/cache/ruflo-plugins; do
   if [ -d "$_vol_root" ]; then
     # Only chown the root, not -R. If the dir is already uid 1000, this
     # is a no-op kernel call. Crucially: Docker auto-creates the parent
@@ -317,7 +320,13 @@ echo "[6/8] Validating pre-packaged service closures..."
 
 _probe_closure() {
   local dir="$1"
-  if [ ! -d "$dir/node_modules" ]; then
+  # Accept node_modules at $dir/node_modules OR $dir/package/node_modules.
+  # The latter occurs when the Nix build copies a derivation's /package dir
+  # into a destination that already exists from the skills source tree copy
+  # (cp puts the source dir *inside* the existing dest instead of replacing it).
+  # flake.nix is fixed to rm -rf before overlay cp; this fallback handles
+  # images built before that fix.
+  if [ ! -d "$dir/node_modules" ] && [ ! -d "$dir/package/node_modules" ]; then
     printf '{"level":"fatal","time":"%s","agentbox.stage":"bootstrap","event":"MissingArtifactDetected","path":"%s","reason":"node_modules not present — rerun nix build and push the image"}\n' \
       "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$dir" >&2
     exit 1
@@ -377,14 +386,17 @@ fi
 if command -v ruflo >/dev/null 2>&1; then
 
   # --- Step 1: Clone/update ruflo plugins from GitHub (sparse checkout) ---
+  # GIT_SAFE: home dir may be read-only (Nix hardened rootfs); pass safe.directory
+  # via -c to avoid needing to write to ~/.gitconfig.
+  _GIT_SAFE="-c safe.directory=$_RUFLO_PLUGINS_CACHE"
   if [ -d "$_RUFLO_PLUGINS_CACHE/.git" ]; then
     echo "  [plugin] Updating ruflo plugins cache..."
-    git -C "$_RUFLO_PLUGINS_CACHE" pull --ff-only --depth 1 2>/dev/null || true
+    git $_GIT_SAFE -C "$_RUFLO_PLUGINS_CACHE" pull --ff-only --depth 1 2>/dev/null || true
   else
     echo "  [plugin] Cloning ruflo plugins (sparse, depth 1)..."
     git clone --depth 1 --filter=blob:none --sparse \
       "$_RUFLO_PLUGINS_REPO" "$_RUFLO_PLUGINS_CACHE" 2>/dev/null || true
-    git -C "$_RUFLO_PLUGINS_CACHE" sparse-checkout set plugins 2>/dev/null || true
+    git $_GIT_SAFE -C "$_RUFLO_PLUGINS_CACHE" sparse-checkout set plugins 2>/dev/null || true
   fi
   chown -R 1000:1000 "$_RUFLO_PLUGINS_CACHE" 2>/dev/null || true
 

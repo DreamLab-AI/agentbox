@@ -897,19 +897,26 @@ default_days = ${toString (relayCfg.retention_days or 30)}
 
           # Optional skills — copy derivation package trees (includes node_modules)
           # when the corresponding feature gate is enabled.
+          # rm -rf the source-tree copy first: skillsTree cp above places source
+          # files at mcp-server/ already, so cp -rL into an existing dir would
+          # nest the package one level too deep ($dir/package/ instead of $dir/).
           ${lib.optionalString (toolchainCfg.codex or false) ''
+          rm -rf $out/opt/agentbox/skills/openai-codex/mcp-server
           mkdir -p $out/opt/agentbox/skills/openai-codex
           cp -rL ${codexMcpPkg}/package $out/opt/agentbox/skills/openai-codex/mcp-server
           ''}
           ${lib.optionalString ((toolchainCfg.ruflo or false) || (toolchainCfg.claude_flow or false)) ''
+          rm -rf $out/opt/agentbox/skills/lazy-fetch/mcp-server
           mkdir -p $out/opt/agentbox/skills/lazy-fetch
           cp -rL ${lazyFetchMcpPkg}/package $out/opt/agentbox/skills/lazy-fetch/mcp-server
           ''}
           ${lib.optionalString (browserCfg.playwright or false) ''
+          rm -rf $out/opt/agentbox/skills/playwright/mcp-server
           mkdir -p $out/opt/agentbox/skills/playwright
           cp -rL ${playwrightMcpPkg}/package $out/opt/agentbox/skills/playwright/mcp-server
           ''}
           ${lib.optionalString (mediaCfg.comfyui_builtin or false) ''
+          rm -rf $out/opt/agentbox/skills/comfyui/mcp-server
           mkdir -p $out/opt/agentbox/skills/comfyui
           cp -rL ${comfyuiMcpPkg}/package $out/opt/agentbox/skills/comfyui/mcp-server
           ''}
@@ -1020,7 +1027,7 @@ supervisor.rpcinterface_factory = supervisor.rpcinterface:make_main_rpcinterface
 
 [program:bootstrap]
 command=/opt/agentbox/config/entrypoint-unified.sh
-environment=AGENTBOX_BOOTSTRAP_STAGE="B"
+environment=AGENTBOX_BOOTSTRAP_STAGE="B",HOME="/home/devuser",TRANSFORMERS_CACHE="/home/devuser/.cache/huggingface",HF_HOME="/home/devuser/.cache/huggingface"
 autostart=true
 autorestart=false
 startsecs=0
@@ -1485,6 +1492,15 @@ stderr_logfile=/var/log/comfyui-builtin.error.log
           # subdirs are bound from host / mounted from named volume on
           # top of this tmpfs.
           "/home/devuser/.config:mode=755,size=64M,uid=1000,gid=1000"
+          # ruflo/claude-flow plugin dir. Phase 7 writes config.json (PG
+          # conninfo) and symlinks plugins here. Must be writable by root
+          # (entrypoint) and readable by devuser (uid 1000). Content is
+          # regenerated at each boot so tmpfs is sufficient.
+          "/home/devuser/.claude-flow:mode=755,size=64M,uid=1000,gid=1000"
+          # ruflo plugins git cache. Phase 7 sparse-clones github.com/ruvnet/ruflo
+          # here; plugins are then symlinked from cache into .claude-flow/plugins.
+          # 512M covers the full plugin tree with room for npm artefacts.
+          "/var/cache:mode=755,size=512M,uid=1000,gid=1000"
           # Writable, exec+suid-allowed bin dir for setuid wrappers (sudo).
           # The bootstrap program runs as root and provisions a setuid copy
           # of pkgs.sudo here so devuser shells can elevate via the NOPASSWD
