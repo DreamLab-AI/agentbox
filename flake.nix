@@ -1204,6 +1204,17 @@ priority=220
 stdout_logfile=/var/log/comfyui-builtin.log
 stderr_logfile=/var/log/comfyui-builtin.error.log
 ''}
+
+[program:tmux-autostart]
+command=/opt/agentbox/config/tmux-autostart.sh
+user=devuser
+environment=HOME="/home/devuser"
+autostart=true
+autorestart=false
+startsecs=0
+priority=95
+stdout_logfile=/var/log/tmux-autostart.log
+stderr_logfile=/var/log/tmux-autostart.error.log
         '';
 
         # ---------------------------------------------------------------------------
