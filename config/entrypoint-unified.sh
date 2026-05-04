@@ -197,7 +197,7 @@ fi
 # Nothing for the entrypoint to do here.
 
 # Claude Code config — bridge host mount to HOME
-# The host .claude/ is mounted at /home/devuser/.claude but HOME=/workspace
+# The host .claude/ is mounted at /home/devuser/.claude but HOME=/home/devuser
 # Create a symlink so Claude Code finds its OAuth tokens and settings
 if [ -d /home/devuser/.claude ] && [ ! -e "$WORKSPACE/.claude" ]; then
   ln -sf /home/devuser/.claude "$WORKSPACE/.claude"
@@ -283,6 +283,7 @@ fi
 # has confirmed required programs are RUNNING (Option A from PRD-002 §9).
 # ---------------------------------------------------------------------------
 mkdir -p /run/agentbox
+chown 1000:1000 /run/agentbox 2>/dev/null || true
 
 echo "[5b/8] Starting supervisord..."
 exec supervisord -c /etc/supervisord.conf -n
