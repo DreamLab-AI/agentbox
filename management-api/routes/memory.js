@@ -130,6 +130,31 @@ module.exports = async function memoryRoutes(fastify) {
     return reply.code(503).send({ error: 'no-memory-adapter' });
   });
 
+  /** POST /v1/memory/search — text search within a namespace */
+  fastify.post('/v1/memory/search', {
+    schema: {
+      tags: ['memory'],
+      body: {
+        type: 'object',
+        required: ['query'],
+        properties: {
+          query:     { type: 'string' },
+          namespace: { type: 'string', default: 'default' },
+          limit:     { type: 'number', default: 10 },
+        },
+      },
+    },
+  }, async (req, reply) => {
+    const { query, namespace = 'default', limit = 10 } = req.body;
+    const effectiveNs = _effectiveNamespace(req, namespace);
+    const mem = fastify.adapters && fastify.adapters.memory;
+    if (mem && mem._implName !== 'off' && mem._implName !== 'placeholder' && typeof mem.search === 'function') {
+      const result = await mem.search(query, { namespace: effectiveNs, limit });
+      return reply.send({ namespace: effectiveNs, ...result });
+    }
+    return reply.code(503).send({ error: 'no-memory-adapter' });
+  });
+
   /** GET /v1/memory — list entries in a namespace */
   fastify.get('/v1/memory', {
     schema: {
