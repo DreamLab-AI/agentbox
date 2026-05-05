@@ -71,6 +71,8 @@ export MANAGEMENT_API_PORT="${MANAGEMENT_API_PORT:-9090}"
 export RUVECTOR_PORT="${RUVECTOR_PORT:-9700}"
 export SOLID_POD_PORT="${SOLID_POD_PORT:-8484}"
 export SHARED_PROJECTS_ROOT="${SHARED_PROJECTS_ROOT:-/projects}"
+export CODEX_HOME="${CODEX_HOME:-/home/devuser/.codex}"
+export GIT_CONFIG_GLOBAL="${GIT_CONFIG_GLOBAL:-/home/devuser/.config/git/config}"
 
 echo "[1/8] Preparing runtime directories..."
 mkdir -p \
@@ -115,6 +117,8 @@ for _vol_root in \
     /home/devuser/.config/claude-telegram-mirror \
     /home/devuser/.cache \
     /home/devuser/.claude-flow \
+    /home/devuser/.codex \
+    /home/devuser/.gemini \
     /var/cache \
     /var/cache/ruflo-plugins; do
   if [ -d "$_vol_root" ]; then
@@ -141,6 +145,18 @@ fi
 # Claude-flow data directory (hooks write here as devuser)
 mkdir -p /home/devuser/.claude-flow/data 2>/dev/null || true
 chown -R 1000:1000 /home/devuser/.claude-flow 2>/dev/null || true
+
+# Git global config (home dir is read-only overlay; redirect to writable .config tmpfs)
+mkdir -p /home/devuser/.config/git 2>/dev/null || true
+if [ ! -f /home/devuser/.config/git/config ]; then
+  cat > /home/devuser/.config/git/config <<'GITCFG'
+[credential "https://github.com"]
+	helper = !gh auth git-credential
+[credential "https://gist.github.com"]
+	helper = !gh auth git-credential
+GITCFG
+fi
+chown -R 1000:1000 /home/devuser/.config/git 2>/dev/null || true
 
 # ---------------------------------------------------------------------------
 # Phase 2 — Management API key auto-generation

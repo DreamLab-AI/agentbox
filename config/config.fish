@@ -76,5 +76,9 @@ end
 # ── Container indicator ──────────────────────────────────────
 set -gx AGENTBOX_CONTAINER 1
 
+# ── AI CLI tool config homes (read-only overlay workaround) ──
+set -gx CODEX_HOME /home/devuser/.codex
+set -gx GIT_CONFIG_GLOBAL /home/devuser/.config/git/config
+
 # Claude Code quick aliases
 alias dsp="claude --dangerously-skip-permissions"

@@ -1899,6 +1899,8 @@ ${topLevelVolumes}${lib.optionalString (ragflowCfg.enabled or false) "\nnetworks
           "ENABLE_RUST_TOOLCHAIN=${boolEnv (toolchainCfg.rust or false)}"
           "ENABLE_GEMINI_CLI=${boolEnv (toolchainCfg.gemini_cli or false)}"
           "ENABLE_CODEX=${boolEnv (toolchainCfg.codex or false)}"
+          "CODEX_HOME=/home/devuser/.codex"
+          "GIT_CONFIG_GLOBAL=/home/devuser/.config/git/config"
           "CLAUDE_FLOW_PLUGIN_DIR=/home/devuser/.claude-flow/plugins"
           "RUVECTOR_PG_CONNINFO=${(agentboxConfig.integrations.ruvector_external.conninfo or "")}"
           # WORKSPACE intentionally NOT re-set here — the canonical value
