@@ -1,6 +1,6 @@
 # Running agentbox on your host
 
-Copy-paste recipes per OS × CPU arch × GPU. For the capability matrix see [`platforms.md`](platforms.md); for the registry itself see [`consuming-the-image.md`](consuming-the-image.md).
+Copy-paste recipes per OS × CPU arch × GPU. For the capability matrix see [`platforms.md`](platforms.md); for the registry itself see [`consuming-image.md`](consuming-image.md).
 
 ## Why this exists
 
@@ -325,7 +325,7 @@ Works from any host with SSH — macOS, Windows, Linux. ARM Ampere + optional NV
 ## See also
 
 - [`platforms.md`](platforms.md) — capability matrix per OS × GPU
-- [`consuming-the-image.md`](consuming-the-image.md) — registry, tags, single-arch diagnostic tags
-- [`quick-start.md`](quick-start.md) — end-to-end first-run flow
+- [`consuming-image.md`](consuming-image.md) — registry, tags, single-arch diagnostic tags
+- [`quickstart.md`](quickstart.md) — end-to-end first-run flow
 - [`backup-restore.md`](backup-restore.md) — save + restore local adapter state
 - [`providers.md`](providers.md) — which `.env` keys correspond to which provider

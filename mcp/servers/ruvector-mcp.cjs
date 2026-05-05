@@ -92,23 +92,24 @@ async function memList(namespace = 'default', limit = 100) {
   return { success: true, action: 'list', namespace, entries, count: entries.length, storage: 'ruvector-postgres' };
 }
 
-async function memSearch(query, namespace = 'default', limit = 10) {
+async function memSearch(query, namespace = 'default', limit = 10, sourceType = null) {
   if (!pgOk || !pool) return { success: false, error: 'pg unavailable' };
+  const st = sourceType && sourceType !== '*' ? sourceType : null;
   const res = await pool.query(
-    `SELECT key, value, namespace,
+    `SELECT key, value, namespace, source_type,
             (CASE WHEN value::text ILIKE $1 THEN 1.0 ELSE 0.5 END) AS score
      FROM memory_entries
      WHERE (namespace = $2 OR $2 = '*')
-       AND source_type = $3
+       AND ($3::text IS NULL OR source_type = $3)
        AND (key ILIKE $1 OR value::text ILIKE $1)
      ORDER BY score DESC, created_at DESC
      LIMIT $4`,
-    [`%${query}%`, namespace, SOURCE_TYPE, limit],
+    [`%${query}%`, namespace, st, limit],
   );
   const results = res.rows.map(r => {
     let v = r.value;
     if (typeof v === 'string') { try { v = JSON.parse(v); } catch { /* raw */ } }
-    return { key: r.key, value: v, namespace: r.namespace, score: parseFloat(r.score) };
+    return { key: r.key, value: v, namespace: r.namespace, source_type: r.source_type, score: parseFloat(r.score) };
   });
   return { success: true, action: 'search', query, namespace, results, count: results.length, storage: 'ruvector-postgres' };
 }
@@ -159,9 +160,10 @@ const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        query:     { type: 'string' },
-        namespace: { type: 'string', default: 'default' },
-        limit:     { type: 'number', default: 10 },
+        query:       { type: 'string' },
+        namespace:   { type: 'string', default: 'default' },
+        limit:       { type: 'number', default: 10 },
+        source_type: { type: 'string', description: 'Filter by source_type. Omit or use "*" for all sources.' },
       },
       required: ['query'],
     },
@@ -275,7 +277,7 @@ async function executeTool(name, args = {}) {
         return await memList(args.namespace || 'default', args.limit || 100);
 
       case 'memory_search':
-        return await memSearch(args.query, args.namespace || 'default', args.limit || 10);
+        return await memSearch(args.query, args.namespace || 'default', args.limit || 10, args.source_type || null);
 
       case 'memory_usage': {
         const ns = args.namespace || 'default';

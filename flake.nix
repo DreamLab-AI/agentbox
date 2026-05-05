@@ -940,6 +940,7 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           ln -s ${pkgs.coreutils}/bin/env $out/usr/bin/env
           ln -sf ${pkgs.bash}/bin/sh $out/bin/sh
           ln -sf ${pkgs.bash}/bin/bash $out/bin/bash
+          ln -sf ${pkgs.fish}/bin/fish $out/bin/fish
           ln -sf ${pkgs.glibc}/lib/ld-linux-x86-64.so.2 $out/lib64/ld-linux-x86-64.so.2
         '';
 
