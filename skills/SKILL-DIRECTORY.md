@@ -1,7 +1,7 @@
 # Skill Directory -- Comprehensive Inventory and Decision Tree
 
-> **87 active skills**. 18 formerly deprecated/archived skills removed (see table below for history).
-> Updated 2026-05-04. Reference this file from CLAUDE.md for intelligent routing.
+> **88 active skills**. 18 formerly deprecated/archived skills removed (see table below for history).
+> Updated 2026-05-05. Reference this file from CLAUDE.md for intelligent routing.
 
 ---
 
@@ -157,11 +157,12 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
-| `ui-ux-pro-max-skill` | No | 50 styles, 97 palettes, 57 font pairings, 9 tech stacks, shadcn/ui MCP | Designing UI components, choosing palettes/typography, reviewing UX |
+| `open-design` | No | **Design production pipeline**: structured intake, 129 brand specs (DESIGN.md), 5-dimensional critique gate, P0/P1/P2 checklists, anti-slop detection, layout libraries (web/mobile/dashboard/deck). Composes with all other design skills | Generating prototypes from brand specs, landing pages, dashboards, mobile mockups, any HTML artifact needing quality-gated design |
+| `ui-ux-pro-max-skill` | No | 50 styles, 97 palettes, 57 font pairings, 9 tech stacks, shadcn/ui MCP | Discovery/inspiration: choosing palettes, typography, styles before locking a brand spec |
 | `daisyui` | No | daisyUI 5 components, theme configuration, Tailwind CSS patterns | Building web interfaces specifically with daisyUI components |
 | `bencium-controlled-ux-designer` | No | WCAG 2.1 AA, mathematical scales, always-ask-first protocol, design system templates | Enterprise/regulated UX design with accessibility-first approach |
-| `bencium-creative` | No | Consolidated bold creative + production frontend. Two modes: `--design` (ask→commit boldly) and `--build` (shadcn/Tailwind/Phosphor implementation). Anti-AI-slop, 25+ tone options. Replaces bencium-innovative + bencium-impact | Creative landing pages, campaigns, product UIs needing distinctive aesthetics AND working code |
-| `design-audit` | No | Systematic visual UI/UX audits, phased implementation-ready design plans | Visual design review, polishing existing interfaces |
+| `bencium-creative` | No | Consolidated bold creative + production frontend. Two modes: `--design` (ask→commit boldly) and `--build` (shadcn/Tailwind/Phosphor implementation). Anti-AI-slop, 25+ tone options. Integrates with open-design DESIGN.md specs and critique gate | Creative landing pages, campaigns, product UIs needing distinctive aesthetics AND working code |
+| `design-audit` | No | Systematic 14-dimension visual audits + 5-dimensional critique gate, phased plans. Integrates open-design anti-slop detection | Visual design review, polishing existing interfaces, post-delivery quality validation |
 | `typography` | No | Professional typography: proper quotes, dashes, spacing, hierarchy (Butterick rules) | Auto-enforced typography in any HTML/CSS/React code generation |
 | `relationship-design` | No | AI-first interfaces, memory-aware UX, trust evolution, collaborative planning | Designing agentic/AI apps with ongoing user relationships |
 
@@ -607,8 +608,12 @@ Q3: What infrastructure task?
 ```
 Q3: What kind of design work?
     |
-    +-- General UI/UX (50 styles, palettes, fonts, accessibility)
-    |   --> ui-ux-pro-max-skill
+    +-- Prototype from brand spec / quality-gated HTML artifact
+    |   --> open-design (structured intake, 129 brands, critique gate, layout libraries)
+    |       Pipeline: intake → DESIGN.md → compose → critique → P0/P1/P2 → emit
+    |
+    +-- Discovery: palettes, fonts, styles (before locking brand spec)
+    |   --> ui-ux-pro-max-skill (50 styles, 97 palettes, 57 font pairings)
     |
     +-- daisyUI / Tailwind components specifically
     |   --> daisyui
@@ -621,15 +626,19 @@ Q3: What kind of design work?
     |       --design flag: ask-first, commit boldly, pick aesthetic direction
     |       --build flag: production code with shadcn/Tailwind/Phosphor
     |       default: full pipeline (design questions → implement)
+    |       Integrates: open-design DESIGN.md specs + critique gate
     |
     +-- Audit / polish existing UI (visual review, no functionality)
-    |   --> design-audit
+    |   --> design-audit (14-dimension + 5-dimensional critique + anti-slop)
     |
     +-- Typography enforcement (quotes, dashes, spacing, hierarchy)
     |   --> typography
     |
     +-- AI-first relationship interfaces (memory, trust, planning)
         --> relationship-design
+
+Recommended full pipeline:
+  open-design → bencium-creative --build → typography → design-audit
 ```
 
 ### [L] Software Architecture and Review

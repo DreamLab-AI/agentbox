@@ -23,6 +23,43 @@ https_bridge = true
 publish_agent_events = true
 telegram_mirror = true
 
+# ── Telegram bridge configuration ─────────────────────────────────────────────
+# CTM (Claude Telegram Mirror) adapter settings. The bot_token is NEVER stored
+# here — pass it via env var TELEGRAM_BOT_TOKEN or use the setup wizard.
+# The chat_id is the Telegram supergroup where sessions are mirrored.
+[sovereign_mesh.telegram]
+chat_id = 0                            # Telegram supergroup ID (starts with -100)
+use_threads = true                     # mirror each session to a forum topic
+chunk_size = 4000                      # max characters per Telegram message
+rate_limit = 20                        # messages per minute per user
+session_timeout_minutes = 30           # inactivity timeout for sessions
+stale_session_hours = 72               # hours before a session is considered stale
+auto_delete_topics = true              # delete forum topics for ended sessions
+topic_delete_delay_minutes = 15        # delay before deleting a topic
+inactivity_threshold_minutes = 720     # inactivity threshold for auto-cleanup
+socket_path = ""                       # Unix socket path (empty = default)
+verbose = true                         # verbose logging
+approvals = false                      # require Telegram approval for tool use
+default_model = "sonnet"               # default Claude model for new sessions
+max_workers = 5                        # max parallel Claude subprocesses per topic
+notification_mode = "live"             # live | summary | quiet
+
+# Users allowed to interact with the bot. Each entry maps a DID:nostr identity
+# to a Telegram user ID with a role. The operator pubkey from
+# [sovereign_mesh.operator] is auto-granted admin if listed here.
+# Additional users are provisioned via /adduser bot command.
+[[sovereign_mesh.telegram.allowed_users]]
+pubkey_hex = ""                        # DID:nostr hex pubkey (64 chars)
+telegram_id = 0                        # Telegram user ID
+role = "admin"                         # admin | user
+label = ""                             # human-readable label
+
+# LLM summarization for tool output (optional)
+[sovereign_mesh.telegram.summarizer]
+enabled = false
+url = ""                               # LLM endpoint (e.g. Z.AI, Anthropic)
+# API key via env var CTM_LLM_API_KEY — never stored in TOML
+
 # ── Operator identity (optional) ────────────────────────────────────────────────
 # The human operator's Nostr identity. When set, this pubkey is:
 #   - Added to the relay allowlist (can publish events to the embedded relay)

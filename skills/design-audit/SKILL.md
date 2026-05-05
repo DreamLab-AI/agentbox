@@ -121,3 +121,31 @@ If a design improvement requires a functional change, flag it:
 3. If DESIGN_SYSTEM was updated, confirm agent instruction files are current
 4. Flag remaining approved-but-not-implemented phases
 5. Present before/after comparison for each changed screen when possible
+
+---
+
+## Open Design Integration
+
+### 5-Dimensional Critique Gate
+
+After completing your audit, apply the five-dimensional scoring from `../open-design/references/critique-dimensions.md` to validate the post-audit state:
+
+1. **Philosophy Consistency** — Does the audit produce a coherent result, or have patches introduced style conflicts?
+2. **Visual Hierarchy** — Has the hierarchy improved measurably?
+3. **Detail Execution** — Are spacing/alignment issues resolved to magazine-grade?
+4. **Functionality** — Has responsiveness and accessibility improved?
+5. **Innovation** — Is the result distinctive or merely "cleaner generic"?
+
+All dimensions must score ≥6 post-audit. If Phase 1 changes lower any dimension, flag before proceeding.
+
+### DESIGN.md Compatibility
+
+When auditing a project that uses an open-design DESIGN.md specification:
+- All proposed token changes must remain within the schema format (6 required tokens + semantic)
+- Shadow, radius, and spacing proposals should reference the DESIGN.md depth/elevation levels
+- New tokens derived via `color-mix()` — don't proliferate the palette
+- See `../open-design/references/design-system-schema.md` for the authoring format
+
+### Anti-Slop Check
+
+Apply `../open-design/references/anti-slop-rules.md` as a final pass. If post-audit output triggers ≥3 slop signals, the audit hasn't gone far enough — it's cleaned up mediocrity without introducing distinction.

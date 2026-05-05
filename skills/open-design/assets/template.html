@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>[PAGE TITLE]</title>
+  <style>
+    /* ── Tokens — replace these 6 values from DESIGN.md ── */
+    :root {
+      --bg: #FAFAFA;
+      --fg: #111111;
+      --accent: #2F6FEB;
+      --muted: #6B6B6B;
+      --border: #E5E5E5;
+      --surface: #FFFFFF;
+
+      --font-display: 'Inter', -apple-system, system-ui, sans-serif;
+      --font-body: 'Inter', -apple-system, system-ui, sans-serif;
+      --font-mono: ui-monospace, 'JetBrains Mono', monospace;
+
+      --max-width: 1200px;
+      --gutter: 24px;
+      --section-gap: 80px;
+      --radius: 8px;
+    }
+
+    /* ── Reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font-body);
+      font-size: 16px;
+      line-height: 1.5;
+      color: var(--fg);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Typography ── */
+    h1, h2, h3 { font-family: var(--font-display); line-height: 1.2; letter-spacing: -0.02em; }
+    h1 { font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 600; }
+    h2 { font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 600; }
+    h3 { font-size: 1.25rem; font-weight: 600; }
+    p { max-width: 65ch; }
+    .lead { color: var(--muted); font-size: 1.125rem; max-width: 60ch; }
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+    }
+    .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+    /* ── Layout ── */
+    .container { max-width: var(--max-width); margin: 0 auto; padding: 0 var(--gutter); }
+    section { padding: var(--section-gap) 0; }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--gutter); }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--gutter); }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--gutter); }
+
+    /* ── Components ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.625rem 1.25rem;
+      background: var(--accent); color: white;
+      border: none; border-radius: var(--radius);
+      font-size: 0.875rem; font-weight: 500;
+      text-decoration: none; cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-ghost {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.625rem 1.25rem;
+      background: transparent; color: var(--fg);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      font-size: 0.875rem; font-weight: 500;
+      text-decoration: none; cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+    .ph-img {
+      background: color-mix(in srgb, var(--fg), transparent 92%);
+      border-radius: var(--radius);
+      aspect-ratio: 16/9;
+      width: 100%;
+    }
+
+    /* ── Navigation ── */
+    .topnav {
+      position: sticky; top: 0; z-index: 100;
+      background: color-mix(in srgb, var(--bg), transparent 10%);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0.75rem 0;
+    }
+    .topnav .container { display: flex; align-items: center; justify-content: space-between; }
+    .topnav-brand { font-weight: 600; font-size: 1rem; text-decoration: none; color: var(--fg); }
+    .topnav-links { display: flex; gap: 1.5rem; list-style: none; }
+    .topnav-links a { font-size: 0.875rem; color: var(--muted); text-decoration: none; }
+    .topnav-links a:hover { color: var(--fg); }
+
+    /* ── Hero ── */
+    .hero { padding: 96px 0 64px; }
+    .hero-actions { display: flex; gap: 0.75rem; margin-top: 1.5rem; }
+
+    /* ── Footer ── */
+    footer { padding: 48px 0; border-top: 1px solid var(--border); }
+    footer p { font-size: 0.875rem; color: var(--muted); }
+
+    /* ── CTA Band ── */
+    .cta-band { background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+
+    /* ── Responsive ── */
+    @media (max-width: 920px) {
+      .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+      :root { --section-gap: 48px; --gutter: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="topnav">
+    <div class="container">
+      <a href="#" class="topnav-brand">[BRAND]</a>
+      <ul class="topnav-links">
+        <li><a href="#">Features</a></li>
+        <li><a href="#">Pricing</a></li>
+        <li><a href="#">Docs</a></li>
+        <li><a href="#" class="btn" style="padding:0.4rem 1rem">Sign up</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main id="content">
+    <!-- Paste section layouts from references/layouts-web.md here -->
+  </main>
+
+  <footer>
+    <div class="container">
+      <p>&copy; 2026 [BRAND]. All rights reserved.</p>
+    </div>
+  </footer>
+</body>
+</html>
