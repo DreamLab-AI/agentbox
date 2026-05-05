@@ -697,8 +697,7 @@ mcp__claude-flow__sparc_mode {
 
 ```javascript
 // Store architectural decisions
-mcp__claude-flow__memory_usage {
-  action: "store",
+mcp__claude-flow__memory_store {
   namespace: "architecture",
   key: "api-design-v1",
   value: JSON.stringify(apiDesign),
@@ -706,8 +705,7 @@ mcp__claude-flow__memory_usage {
 }
 
 // Retrieve in subsequent agents
-mcp__claude-flow__memory_usage {
-  action: "retrieve",
+mcp__claude-flow__memory_retrieve {
   namespace: "architecture",
   key: "api-design-v1"
 }
@@ -1120,9 +1118,8 @@ mcp__claude-flow__sparc_mode { mode: "coder", task_description: "..." }
 mcp__claude-flow__swarm_monitor { interval: 5000 }
 
 // Store in memory
-mcp__claude-flow__memory_usage { action: "store", key: "...", value: "..." }
+mcp__claude-flow__memory_store { key: "...", value: "..." }
 ```
 
 ---
 
-Remember: **SPARC = Systematic, Parallel, Agile, Refined, Complete**

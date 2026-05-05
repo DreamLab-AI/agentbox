@@ -4,13 +4,13 @@ This guide shows how to invoke the **Build with Quality** skill for different pr
 
 ## Quick Reference
 
-| Project Type | Complexity | Estimated Agents | Key Quality Focus |
-|--------------|------------|------------------|-------------------|
-| [Todo App](#example-1-todo-app-beginner) | Beginner | 20-30 | TDD basics, CRUD |
-| [REST API](#example-2-rest-api-intermediate) | Intermediate | 40-50 | Security, contracts |
-| [E-commerce](#example-3-e-commerce-platform-advanced) | Advanced | 80-100 | Full stack, payments |
-| [CLI Tool](#example-4-cli-tool-intermediate) | Intermediate | 30-40 | Edge cases, UX |
-| [Real-time Chat](#example-5-real-time-chat-app-advanced) | Advanced | 60-80 | WebSockets, scale |
+| Project Type | Complexity | Estimated Agents | Key Quality Focus | EDD Fit (v1.2.0) |
+|--------------|------------|------------------|-------------------|------------------|
+| [Todo App](#example-1-todo-app-beginner) | Beginner | 20-30 | TDD basics, CRUD | Light: 1-2 EXPs, single auditor probe |
+| [REST API](#example-2-rest-api-intermediate) | Intermediate | 40-50 | Security, contracts | **Strong**: see worked example below |
+| [E-commerce](#example-3-e-commerce-platform-advanced) | Advanced | 80-100 | Full stack, payments | **Strong**: pricing math + payment ordering are textbook EDD targets |
+| [CLI Tool](#example-4-cli-tool-intermediate) | Intermediate | 30-40 | Edge cases, UX | Light: error message expectations are subjective, keep human in step 5 |
+| [Real-time Chat](#example-5-real-time-chat-app-advanced) | Advanced | 60-80 | WebSockets, scale | **Strong**: race conditions, presence consistency, reconnection — hard to capture in pure assert form |
 
 ---
 
@@ -22,7 +22,7 @@ This guide shows how to invoke the **Build with Quality** skill for different pr
 # Build with Quality - Claude Flow V3 Swarm
 
 ## Skill Activation
-build-with-quality v1.1.0 (111+ agents, hierarchical-mesh)
+build-with-quality v1.2.0 (114+ agents, hierarchical-mesh, EDD)
 Config: skill.yaml
 
 ## Project Context
@@ -71,7 +71,7 @@ Deliver working todo app with tests.
 # Build with Quality - Claude Flow V3 Swarm
 
 ## Skill Activation
-build-with-quality v1.1.0 (111+ agents, hierarchical-mesh)
+build-with-quality v1.2.0 (114+ agents, hierarchical-mesh, EDD)
 Config: skill.yaml
 
 ## Project Context
@@ -92,6 +92,7 @@ Build a complete REST API with users, projects, and tasks
 - [ ] OpenAPI documentation
 
 ## Methodology
+- **EDD (NEW v1.2.0):** Author 4 expectations BEFORE coder runs (see Expectations block below). Producer = sonnet, Auditor = opus.
 - **DDD:**
   - Bounded Contexts: Identity, ProjectManagement
   - Aggregates: User, Project, Task
@@ -99,12 +100,96 @@ Build a complete REST API with users, projects, and tasks
 - **ADR:**
   - ADR-001: JWT vs Session authentication
   - ADR-002: Prisma vs TypeORM
-- **TDD:** Test each endpoint before implementation
+- **TDD:** Test each endpoint before implementation; also stabilize EDD `regression_critical` expectations into permanent regression tests.
+
+## Expectations (EDD — author before coder runs)
+
+```yaml
+- id: EXP-001
+  priority: critical
+  regression_critical: true
+  evidence_category: executable
+  expectation: |
+    JWT tokens expire after exactly 1 hour from issuance. A request with an
+    expired token returns HTTP 401 with body {"error":"TOKEN_EXPIRED"}, not
+    a 500 or a silent refresh. The `iat` and `exp` claims are always set;
+    `sub` is the user ID, never the email.
+  in_scope:
+    - Token expiry boundary (exactly 3600s)
+    - Clock skew tolerance: 30s grace period MUST NOT be implemented
+    - Wrong-secret signature rejection
+  out_of_scope:
+    - Refresh token flow (covered by EXP-002)
+  counter_examples:
+    - Returning 500 on expired token (must be 401)
+    - Auto-refreshing without explicit refresh endpoint call
+    - Putting email in `sub` claim
+
+- id: EXP-002
+  priority: high
+  regression_critical: true
+  evidence_category: executable
+  expectation: |
+    Rate limiting is per-user-per-endpoint at 100 req/min. The 101st
+    request within a 60s window returns HTTP 429 with header
+    `Retry-After: <seconds>`. Limits reset on a sliding window, not a
+    fixed clock minute.
+  in_scope:
+    - Authenticated requests counted by user ID, anonymous by IP
+    - Sliding window (not fixed bucket)
+  out_of_scope:
+    - Global rate limiting (separate concern)
+  counter_examples:
+    - Fixed-clock-minute reset (lets bursts slip through at boundaries)
+    - 429 without Retry-After header
+    - Counting OPTIONS preflight requests against the limit
+
+- id: EXP-003
+  priority: critical
+  regression_critical: true
+  evidence_category: executable
+  expectation: |
+    Members of a project can read its tasks but cannot delete the project.
+    Only the project owner can delete it. Attempting to delete as a member
+    returns 403, not 404 (don't leak existence-based information differently
+    from authorization-based information for the same operation).
+  in_scope:
+    - Owner delete = 204
+    - Member delete = 403
+    - Non-member delete on existing project = 403 (NOT 404)
+    - Anyone delete on nonexistent project = 404
+  out_of_scope:
+    - Soft delete vs hard delete (covered by ADR-003)
+  counter_examples:
+    - Returning 404 to members (information leak: differs from non-existent)
+    - Allowing delete via DELETE /projects/:id?force=true bypass
+
+- id: EXP-004
+  priority: high
+  regression_critical: false
+  evidence_category: executable
+  expectation: |
+    OpenAPI schema served at /api/openapi.json validates against OpenAPI 3.1
+    spec, includes every public endpoint, and the response schemas match
+    actual response shapes for happy and error paths.
+  in_scope:
+    - Spec validates with @apidevtools/swagger-parser
+    - Every route in router has an entry
+    - Error response schemas (4xx, 5xx) match actual responses
+  out_of_scope:
+    - SDK generation (downstream)
+  counter_examples:
+    - Schema declares fields the actual response omits
+    - Endpoints exist in router but missing from schema
+```
+
+**Anti-fox configuration:** evidence-producer runs on sonnet, evidence-auditor runs on opus. The auditor will run at least one adversarial counter-example per expectation (e.g. for EXP-003 it might probe `DELETE /projects/<id-that-doesnt-exist>` as a non-member to verify the 404 vs 403 distinction holds).
 
 ## Quality Gates
 - Coverage: 85% overall, 95% auth flows
 - Security: 0 critical (OWASP top 10)
 - Contracts: OpenAPI schema validation
+- **Evidence Coverage (NEW v1.2.0):** every EXP has executed evidence with receipts; auditor distinct from producer; `regression_critical` EXPs (001, 002, 003) have `stabilized_by` test references before merge.
 
 ## Swarm Emphasis
 ```yaml
@@ -121,12 +206,15 @@ agents:
 
 ## Execute
 Phase 1: Design auth system with security-architect
-Phase 2: TDD for User aggregate and auth endpoints
-Phase 3: TDD for Project and Task aggregates
-Phase 4: Integration tests for all flows
+Phase 1.5 (NEW v1.2.0): expectation-author drafts EXP-001..004; human signs off
+Phase 2: TDD for User aggregate and auth endpoints (informed by EXP-001, EXP-003)
+Phase 2.5 (NEW v1.2.0): evidence-producer (sonnet) executes scenarios; evidence-auditor (opus) verifies + adversarial probe
+Phase 3: TDD for Project and Task aggregates (informed by EXP-003)
+Phase 4: Integration tests for all flows + Evidence Coverage gate
 Phase 5: Security scan and contract validation
+Phase 6 (NEW v1.2.0): tdd-stabilizer converts EXP-001..003 into permanent regression tests (EXP-004 not regression_critical, optional)
 
-Deliver production-ready API with full test coverage.
+Deliver production-ready API with full test coverage and proven evidence.
 ```
 
 ---
@@ -139,7 +227,7 @@ Deliver production-ready API with full test coverage.
 # Build with Quality - Claude Flow V3 Swarm
 
 ## Skill Activation
-build-with-quality v1.1.0 (111+ agents, hierarchical-mesh)
+build-with-quality v1.2.0 (114+ agents, hierarchical-mesh, EDD)
 Config: skill.yaml - FULL CAPABILITY MODE
 
 ## Project Context
@@ -232,7 +320,7 @@ Deliver production-ready e-commerce with full quality assurance.
 # Build with Quality - Claude Flow V3 Swarm
 
 ## Skill Activation
-build-with-quality v1.1.0 (111+ agents, hierarchical-mesh)
+build-with-quality v1.2.0 (114+ agents, hierarchical-mesh, EDD)
 Config: skill.yaml
 
 ## Project Context
@@ -299,7 +387,7 @@ Deliver polished CLI with excellent error messages.
 # Build with Quality - Claude Flow V3 Swarm
 
 ## Skill Activation
-build-with-quality v1.1.0 (111+ agents, hierarchical-mesh)
+build-with-quality v1.2.0 (114+ agents, hierarchical-mesh, EDD)
 Config: skill.yaml - FULL CAPABILITY MODE
 
 ## Project Context
@@ -391,7 +479,7 @@ Deliver scalable real-time chat with production quality.
 ### Minimal (Any Project)
 
 ```markdown
-Build with Quality skill (v1.1.0).
+Build with Quality skill (v1.2.0).
 
 Project: [NAME] | Stack: [TECH] | Task: [DESCRIPTION]
 
@@ -459,5 +547,6 @@ All examples use settings from [`config/skill.yaml`](./config/skill.yaml):
 
 ---
 
-*Version: 1.1.0*
-*Last Updated: 2026-02-01*
+*Version: 1.2.0*
+*Last Updated: 2026-05-03*
+*New in v1.2.0: Expectation-Driven Development examples in REST API entry below.*

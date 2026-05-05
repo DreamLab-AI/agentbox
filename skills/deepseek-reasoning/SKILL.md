@@ -44,7 +44,7 @@ DeepSeek MCP Server
     ↓ User bridge (sudo -u deepseek-user)
 DeepSeek API Client
     ↓ HTTPS
-api.deepseek.com/v3.2_speciale_expires_on_20251215
+api.deepseek.com/v1
 ```
 
 ## MCP Server
@@ -89,8 +89,8 @@ API credentials configured via deepseek-user environment:
 
 ```bash
 DEEPSEEK_API_KEY=sk-[your deepseek api key]
-DEEPSEEK_SPECIAL_ENDPOINT=https://api.deepseek.com/v3.2_speciale_expires_on_20251215
-DEEPSEEK_MODEL=deepseek-chat  # Special model
+DEEPSEEK_SPECIAL_ENDPOINT=https://api.deepseek.com/v1
+DEEPSEEK_MODEL=deepseek-chat  # Verify current model name at https://platform.deepseek.com/docs — model IDs change with API versions.
 ```
 
 Set in `/home/deepseek-user/.config/deepseek/config.json`
@@ -289,7 +289,7 @@ console.log('Solution:', reasoning.final_answer);
 ## Limitations
 
 - Requires thinking mode (cannot disable)
-- Special endpoint has expiration (v3.2_speciale_expires_on_20251215)
+- Verify current endpoint availability at https://platform.deepseek.com/docs
 - Higher latency than standard deepseek-chat
 - Reasoning tokens count toward usage
 
@@ -328,7 +328,7 @@ stderr_logfile=/var/log/deepseek-reasoning-mcp.error.log
 
 ## Comparison: DeepSeek vs Claude Reasoning
 
-| Aspect | DeepSeek Special | Claude Sonnet 4.5 |
+| Aspect | DeepSeek Special | Claude Sonnet 4.6 |
 |--------|------------------|-------------------|
 | Multi-step logic | Excellent | Very Good |
 | Code generation | Good | Excellent |

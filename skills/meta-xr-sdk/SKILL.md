@@ -1,5 +1,5 @@
 ---
-name: "Meta XR SDK"
+name: meta-xr-sdk
 description: >
   Deep integration with Meta's VR/AR developer ecosystem for Quest 2/3/3S/Pro.
   Covers WebXR (IWER, RATK, @react-three/xr), Meta Spatial SDK (Android),

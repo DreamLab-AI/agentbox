@@ -1,7 +1,7 @@
 {
   "name": "@claude-flow/build-with-quality-skill",
-  "version": "1.1.0",
-  "description": "Combined Claude Code V3 + Agentic QE skill for optimal project building with integrated quality engineering",
+  "version": "1.2.0",
+  "description": "Combined Claude Code V3 + Agentic QE skill for optimal project building with integrated quality engineering and Expectation-Driven Development (EDD)",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -40,7 +40,10 @@
     "multi-agent",
     "test-generation",
     "ai-testing",
-    "swarm-coordination"
+    "swarm-coordination",
+    "expectation-driven-development",
+    "edd",
+    "evidence-based-verification"
   ],
   "author": "Claude Code V3 QE Skill",
   "license": "MIT",

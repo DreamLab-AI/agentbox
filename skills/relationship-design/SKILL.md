@@ -1,5 +1,5 @@
 ---
-name: Agentic UX Design - Relationship-Centric Interfaces
+name: relationship-design
 description: Design AI-first interfaces that build ongoing relationships through memory, trust evolution, and collaborative planning, not just isolated screen interactions
 when_to_use: when user explicitly requests agentic UX design, relationship-centric design, or mentions designing for memory, trust evolution, or long-term user relationships; ONLY use when specifically asked, not for general UI/UX tasks
 version: 1.0.0

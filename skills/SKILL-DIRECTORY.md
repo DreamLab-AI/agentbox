@@ -1,7 +1,7 @@
 # Skill Directory -- Comprehensive Inventory and Decision Tree
 
-> **92 active skills**. 18 formerly deprecated/archived skills removed (see table below for history).
-> Updated 2026-04-13. Reference this file from CLAUDE.md for intelligent routing.
+> **87 active skills**. 18 formerly deprecated/archived skills removed (see table below for history).
+> Updated 2026-05-04. Reference this file from CLAUDE.md for intelligent routing.
 
 ---
 
@@ -30,13 +30,13 @@
 
 ---
 
-## Artefact 1: Categorised Skill Inventory (88 Active Skills)
+## Artefact 1: Categorised Skill Inventory (87 Active Skills)
 
 ### Context, Discovery, and Session Management
 
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
-| `skill-router` | No | **Unified dispatcher** for 89 skills. `/route [task]` classifies intent and routes to optimal skill. Single entry point | Don't know which skill to use — describe your task and get routed |
+| `skill-router` | No | **Unified dispatcher** for 87 skills. `/route [task]` classifies intent and routes to optimal skill. Single entry point | Don't know which skill to use — describe your task and get routed |
 | `lazy-fetch` | Yes | 25 MCP tools: context hydration, plan tracking, blueprints, PRD-to-sprints, security scanning, persistent memory | Starting a new session, managing context across tasks, tracking phased plans, running autonomous PRD execution |
 | `skill-builder` | No | Create new Claude Code skills with YAML frontmatter and progressive disclosure | Building new custom skills for the skills directory |
 | `codebase-memory` | Yes | 14 MCP tools: call graph tracing, architecture overview, git diff risk scoring, symbol search. 99.2% token reduction vs grep. Persistent SQLite index. **One-time index → permanent session upgrade** | Large codebase structural analysis (500+ files), call chains, diff blast radius, architecture overview |
@@ -78,7 +78,7 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 |-------|-----|----------------|----------------|
 | `swarm-advanced` | No | Advanced swarm patterns: mesh, hierarchical, adaptive topologies, fault tolerance | Local multi-agent orchestration for research, dev, and testing |
 | `hive-mind-advanced` | No | Queen-led hierarchical coordination, Byzantine consensus, collective memory | When you need consensus-driven multi-agent decisions |
-| `flow-nexus-swarm` | No | Cloud-based AI swarm deployment, event-driven workflows, message queues | Deploying swarms on Flow Nexus cloud infrastructure |
+| `flow-nexus-swarm` | No | Cloud-based AI swarm deployment, event-driven workflows, message queues | Deploying swarms on Flow Nexus cloud infrastructure ⚠️ NOT INSTALLED — requires Flow Nexus account |
 | `stream-chain` | No | Sequential multi-agent pipelines where output chains between steps | When each agent's output feeds the next (sequential, not parallel) |
 | `hooks-automation` | No | Pre/post task hooks, session management, Git hooks, neural training | Automating development operations with intelligent hooks |
 
@@ -97,7 +97,7 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 |-------|-----|----------------|----------------|
 | `pytorch-ml` | No | PyTorch, CUDA GPU, data science stack, distributed training | Deep learning model training and research |
 | `cuda` | Yes | 4 specialist agents, kernel optimisation, compilation, GPU profiling | Custom CUDA kernel development and GPU programming |
-| `flow-nexus-neural` | Yes | Distributed neural network training in E2B sandboxes (feedforward, LSTM, GAN, transformer) | Training models in cloud sandboxes via Flow Nexus |
+| `flow-nexus-neural` | Yes | Distributed neural network training in E2B sandboxes (feedforward, LSTM, GAN, transformer) | Training models in cloud sandboxes via Flow Nexus ⚠️ NOT INSTALLED — requires Flow Nexus account |
 | `deepseek-reasoning` | Yes | DeepSeek special model endpoint, structured chain-of-thought, multi-step reasoning | Complex reasoning tasks requiring DeepSeek's reasoning model |
 | `openai-codex` | Yes | GPT-5.4 code generation and review via MCP bridge | Delegating specific tasks to GPT-5.4 capabilities |
 | `codex-companion` | No | Full OpenAI Codex plugin: code review, adversarial review, rescue agent, GPT-5.4 structured prompting, stop-review gate | Cross-model validation, when Claude is stuck, adversarial design review, substantial code delegation |
@@ -109,7 +109,7 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 | `browser-automation` | No | **Meta-skill**: decision framework for choosing between 6 browser tools + Claude in Chrome (official) | Unsure which browser tool to use -- start here |
 | `browser` | No | agent-browser with AI-optimised snapshots, 93% context reduction via @refs | Quick form filling, scraping, navigation with minimal context |
 | `playwright` | Yes | Full Playwright API, screenshots, visual testing on Display :1 via VNC | Visual testing, complex automation, screenshot verification |
-| `qe-browser` | No | **Vibium** (WebDriver BiDi, W3C standard, 10MB vs 300MB Playwright). 16 typed assertion kinds, multi-step batch pre-validation, pixel-perfect visual-diff baselines, 14-pattern prompt-injection scanner, 15-intent semantic element finder (`submit_form`, `accept_cookies`, `primary_cta`, …). Part of AQE fleet — installed via `aqe init`. 11 QE skills delegate to it (a11y, visual, security, localization, etc.) | QE-grade browser testing with typed assertions and visual regression; AQE fleet integration; when Playwright is too heavy |
+| `qe-browser` | No | **Vibium** (WebDriver BiDi, W3C standard, 10MB vs 300MB Playwright). 16 typed assertion kinds, multi-step batch pre-validation, pixel-perfect visual-diff baselines, 14-pattern prompt-injection scanner, 15-intent semantic element finder (`submit_form`, `accept_cookies`, `primary_cta`, …). Part of AQE fleet — installed via `aqe init`. 11 QE skills delegate to it (a11y, visual, security, localization, etc.) | QE-grade browser testing with typed assertions and visual regression; AQE fleet integration; when Playwright is too heavy ⚠️ NOT INSTALLED — run aqe init to install |
 | `chrome-cdp` | No | CDP CLI for live Chromium sessions, 100+ tabs, no Puppeteer dependency | Inspecting already-open browser tabs, logged-in sessions |
 | `host-webserver-debug` | Yes | HTTPS-to-HTTP bridge for debugging host web servers from Docker | Cross-origin/CORS issues when accessing host dev servers |
 | `scrapling` | Yes | Adaptive web scraping: 9 MCP tools, Cloudflare Turnstile bypass, stealth browser, spider framework with pause/resume | Web scraping, internal infra monitoring, authorized client scraping, anti-bot bypass |
@@ -172,7 +172,7 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 | `adaptive-communication` | No | Detects relational vs transactional communication style, adapts responses | Ambiguous user intent, hedging language, relational conversations |
 | `negentropy-lens` | No | Entropy vs negentropy evaluation framework, surfaces tacit knowledge gaps | Architecture decisions, system evaluation, strategy review |
 
-### Software Architecture & Code Quality (Bencium)
+### Software Architecture and Strategic Review
 
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
@@ -228,7 +228,8 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
-| `flow-nexus-platform` | No | Authentication, sandboxes, app deployment, payments, challenges on Flow Nexus | Managing Flow Nexus accounts, sandboxes, and deployments |
+| `flow-nexus-platform` | No | Authentication, sandboxes, app deployment, payments, challenges on Flow Nexus | Managing Flow Nexus accounts, sandboxes, and deployments ⚠️ NOT INSTALLED — requires Flow Nexus account |
+| `hermes-scheduler` | No | Recurring task scheduling, cron jobs for Claude Code agents, routine automation | Scheduling periodic agent tasks, autonomous routines |
 
 ### Systems Programming
 
@@ -261,7 +262,7 @@ Answer these questions in order. Stop at the first match.
 
 ```
 Q0: Unsure which skill handles your task?
-    --> /route [describe task]  (skill-router — intelligent dispatcher for all 89 skills)
+    --> /route [describe task]  (skill-router — intelligent dispatcher for all 87 skills)
 
 Q1: Is the task about an EXISTING skill that is deprecated?
     YES --> Use its replacement (see Deprecated table above)
@@ -283,6 +284,7 @@ Q2: What is the primary domain?
     [M] DOMAIN-SPECIFIC (GIS, ontology, game dev, SEO/AEO)
     [N] SECURITY AND COMPLIANCE (hardening, audit, forensics)
     [O] AEC / BUILDING ARCHITECTURE (site planning, zoning, sustainability, materials)
+    [P] 3D, GAME, AND SPATIAL COMPUTING (game dev, VR/AR, 3D modelling, Gaussian splatting)
 ```
 
 ### [A] Code Development
@@ -393,6 +395,7 @@ Q3: What coordination pattern?
     |
     +-- Cloud-based swarm on Flow Nexus
     |   --> flow-nexus-swarm
+    |   ⚠️  flow-nexus-swarm not installed — requires Flow Nexus account
     |
     +-- Sequential pipeline (output of step N feeds step N+1)
     |   --> stream-chain
@@ -428,7 +431,10 @@ Q3: What do you need?
     |   --> reddit
     |
     +-- SEO audit, keyword research, content optimisation, schema markup
-        --> toprank
+    |   --> toprank
+    |
+    +-- Optimise content for AI search citations (ChatGPT, Claude, Gemini AIO)
+        --> bencium-aeo  (Answer Engine Optimisation — NOT traditional SEO)
 ```
 
 ### [E] Documents and Reports
@@ -475,20 +481,8 @@ Q3: What media type?
     +-- AI image/video generation (Stable Diffusion, FLUX)
     |   --> comfyui
     |
-    +-- 3D modelling and rendering
-    |   --> blender
-    |
-    +-- Game assets and full game dev pipeline
-    |   --> game-dev
-    |
-    +-- UE5 editor automation (actors, Blueprints, PIE, profiling)
-    |   --> unreal-engine (60+ MCP tools)
-    |
-    +-- 3D Gaussian Splatting (training, editing, export)
-    |   --> lichtfeld-studio
-    |
-    +-- Meta Quest VR/AR (WebXR, hand tracking, passthrough, spatial anchors, device mgmt)
-    |   --> meta-xr-sdk (40+ MCP tools)
+    +-- 3D, game, or spatial computing (game dev, VR/AR, 3D modelling, Gaussian splatting)
+    |   --> See [P] 3D, Game, and Spatial Computing
     |
     +-- AI art (Nano Banana 2): blog headers, infographics, technical illustrations, comics
     |   --> art
@@ -547,6 +541,7 @@ Q3: What ML task?
     |
     +-- Distributed training in cloud sandboxes
     |   --> flow-nexus-neural
+    |   ⚠️  flow-nexus-neural not installed — requires Flow Nexus account
     |
     +-- Interactive notebook-based experiments
     |   --> jupyter-notebooks
@@ -592,12 +587,16 @@ Q3: What infrastructure task?
     |
     +-- Flow Nexus account, sandbox, app deployment, payments
     |   --> flow-nexus-platform
+    |   ⚠️  flow-nexus-platform not installed — requires Flow Nexus account
     |
     +-- Swarm performance profiling and bottleneck detection
     |   --> performance-analysis
     |
     +-- GitHub Actions CI/CD pipelines
     |   --> github-workflow-automation
+    |
+    +-- Schedule recurring Claude Code tasks, cron jobs, autonomous routines
+    |   --> hermes-scheduler
     |
     +-- Creating new skills for this system
         --> skill-builder
@@ -651,7 +650,10 @@ Q3: What architecture need?
     |   --> negentropy-lens
     |
     +-- Detect relational vs transactional communication style
-        --> adaptive-communication
+    |   --> adaptive-communication
+    |
+    +-- Strategic positioning, technology evolution, competitive Wardley mapping
+        --> wardley-maps
 ```
 
 ### [M] Domain-Specific Tools
@@ -691,6 +693,31 @@ Q3: What security task?
     |
     +-- Security testing (OWASP, auth, vulns)
         --> security-testing (QE skill)
+        |   ⚠️  security-testing skill not installed — application security handled by build-with-quality security agents
+```
+
+### [P] 3D, Game, and Spatial Computing
+
+```
+Q3: What 3D/game/spatial task?
+    |
+    +-- Full game development project (design, code, art, audio, QA)
+    |   --> game-dev  (48 agents, Godot/Unity/Unreal)
+    |
+    +-- Direct UE5 editor control (actors, Blueprints, PIE, assets)
+    |   --> unreal-engine  (60+ MCP tools)
+    |
+    +-- Programmatic 3D modelling and rendering
+    |   --> blender
+    |
+    +-- 3D Gaussian Splatting (training, editing, export, COLMAP)
+    |   --> lichtfeld-studio
+    |
+    +-- Meta Quest VR/AR (WebXR, hand tracking, passthrough, spatial)
+    |   --> meta-xr-sdk  (40+ MCP tools)
+    |
+    +-- Real-world geography to Minecraft (OSM + elevation)
+        --> terracraft
 ```
 
 ---
@@ -779,4 +806,4 @@ Some tasks benefit from combining skills. Common compositions:
 ### Potential Future Consolidation
 
 - **AgentDB family** (4 skills): Consider a meta-skill `agentdb` that routes to the correct sub-skill, similar to how `browser-automation` routes browser tools.
-- **GitHub family** (5 skills): Consider a meta-skill `github` that routes based on the operation type.
+- **GitHub family** (5 skills): Consider a `github` meta-skill dispatcher — similar to how `browser-automation` routes browser tools. Routes via operation type: review/release/workflow/project/multi-repo.

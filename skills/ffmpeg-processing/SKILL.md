@@ -1,5 +1,5 @@
 ---
-name: FFmpeg Processing
+name: ffmpeg-processing
 description: Professional video and audio processing - transcode, edit, stream, and analyze media files
 ---
 

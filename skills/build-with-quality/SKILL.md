@@ -1,17 +1,20 @@
 ---
 name: build-with-quality
-description: "Unified Claude Code V3 + Agentic QE meta-skill for optimal project building with 111+ specialized agents, unified learning (SONA + ReasoningBank), TinyDancer model routing (75% token reduction), and comprehensive quality gates. Supersedes agentic-qe, reasoningbank-*, and pair-programming skills."
-version: 1.1.0
-author: Claude Flow
-tags: [meta-skill, development, qa, tdd, adr, ddd, agents, quality-gates, sona, hnsw, coverage, security, accessibility, chaos-testing]
-mcp_server: false
-supersedes: [agentic-qe, reasoningbank-intelligence, reasoningbank-agentdb, pair-programming]
+description: "Unified Claude Code V3 + Agentic QE meta-skill for optimal project building with 114+ specialized agents, unified learning (SONA + ReasoningBank), TinyDancer model routing (75% token reduction), Expectation-Driven Development (EDD) loop, and comprehensive quality gates including evidence coverage. Supersedes agentic-qe, reasoningbank-*, and pair-programming skills."
+license: MIT
+metadata:
+  version: 1.2.0
+  author: Claude Flow
+  tags: [meta-skill, development, qa, edd, tdd, bdd, adr, ddd, agents, quality-gates, evidence, sona, hnsw, coverage, security, accessibility, chaos-testing]
+  mcp_server: false
+  supersedes: [agentic-qe, reasoningbank-intelligence, reasoningbank-agentdb, pair-programming]
 ---
 
 # Build with Quality - Unified Meta-Skill
 
 > **Quick Start:** See [BUILD-WITH-QUALITY-PROMPT.md](./BUILD-WITH-QUALITY-PROMPT.md) for a copy-paste activation prompt.
 > **Examples:** See [USAGE-EXAMPLES.md](./USAGE-EXAMPLES.md) for 5 complete project examples.
+> **EDD Playbook (v1.2.0):** See [EDD-PROTOCOL.md](./EDD-PROTOCOL.md) for the Expectation-Driven Development loop, evidence categories, and anti-fox separation rules.
 
 **[Claude Flow V3](https://github.com/ruvnet/claude-flow/tree/main/v3) + [Agentic QE](https://github.com/proffesor-for-testing/agentic-qe) Combined**
 
@@ -63,12 +66,12 @@ mcp__claude-flow__task_orchestrate { task: "[PROJECT]", strategy: "parallel" }
 
 ## Features
 
-### 111+ Specialized Agents
+### 114+ Specialized Agents
 
 | Source | Count | Examples |
 |--------|-------|----------|
-| Claude Flow V3 | 60+ | architect, coder, reviewer, security-architect, deployer |
-| Agentic QE | 51 | test-strategist, coverage-analyzer, defect-predictor, chaos-engineer |
+| Claude Flow V3 | 62+ | architect, coder, reviewer, security-architect, deployer, expectation-author, tdd-stabilizer |
+| Agentic QE | 53 | test-strategist, coverage-analyzer, defect-predictor, chaos-engineer, evidence-producer, evidence-auditor |
 | Shared | 3 | unified-coordinator, event-bridge, unified-memory-coordinator |
 
 ### Unified Learning System
@@ -94,8 +97,28 @@ mcp__claude-flow__task_orchestrate { task: "[PROJECT]", strategy: "parallel" }
 - **Chaos Testing**: Network resilience (70%), resource exhaustion (75%), graceful degradation (80%)
 - **Contract Validation**: Schema validation, backward compatibility
 - **Defect Prediction**: ML-powered with F1 > 0.8
+- **Evidence Coverage** (NEW v1.2.0): Every shipped feature has an EXP-NNN; every EXP has executed evidence with receipts; auditor distinct from producer; `regression_critical` expectations have a `stabilized_by` test reference; zero stale evidence (>30d or post-SHA-drift)
 
 ### Development Methodologies
+
+#### Expectation-Driven Development (EDD) — NEW in v1.2.0
+
+The **design-time conversation layer** between human intent and AI implementation.
+Captures what TDD assertions and BDD Given/When/Then templates can't: qualitative
+expectations, ordering invariants, systemic properties, and explicit
+counter-examples ("must NOT happen"). See [EDD-PROTOCOL.md](./EDD-PROTOCOL.md)
+for the full playbook.
+
+- **7-step loop**: formulate -> implement -> produce evidence -> audit -> challenge -> iterate -> stabilize
+- **Executed evidence required**: agent must show command, raw output, timestamp, git SHA. Narrative evidence ("I tested it and it works") is auto-rejected.
+- **Anti-fox separation**: `evidence-producer` and `evidence-auditor` MUST be different agents on different model families. The auditor's mandate is to find a counter-example, not to confirm.
+- **Three evidence categories**: executable (gold), partially verifiable (plans/dry-runs), not executable (requires human spot-check)
+- **Stabilization mandatory** for `regression_critical` expectations: every shipped expectation hands off to an automated test (TDD/BDD) via `stabilized_by` field. EDD evidence is a snapshot; tests are the regression alarm. Both layers required.
+- **EXP-NNN artifacts** live in `.claude/expectations/`, evidence in `.claude/evidence/`. Linked into BHIL traceability chain alongside SPEC/ADR/TASK.
+
+EDD does **not** replace TDD or BDD. It runs **before** them as the design-time
+specification phase, then hands proven scenarios off to TDD/BDD for permanent
+regression coverage.
 
 #### Domain-Driven Design (DDD)
 - **Strategic Design**: Bounded contexts, context mapping, ubiquitous language
@@ -111,6 +134,7 @@ mcp__claude-flow__task_orchestrate { task: "[PROJECT]", strategy: "parallel" }
 - **Red-Green-Refactor**: Strict cycle enforcement with TDD-specific agents
 - **Test Patterns**: Unit, integration, and contract test templates
 - **Best Practices**: Arrange-Act-Assert, descriptive naming, behaviour-focused tests
+- **Stabilization role**: TDD agents now also receive proven EDD expectations as input — converting them into permanent regression tests is a first-class TDD task in v1.2.0.
 
 ## Usage
 
@@ -173,17 +197,44 @@ Phase 1: REQUIREMENTS & PLANNING
 ├── Code-intelligence builds knowledge graph
 └── SONA retrieves similar project patterns
 
+Phase 1.5: EXPECTATION AUTHORING (NEW v1.2.0 — EDD step 1)
+├── expectation-author agent + human draft EXP-NNN artifacts
+├── Each expectation: behaviour + edge cases + counter-examples
+├── Specificity rule: precise numbers, ordering, error modes
+├── Workshop pattern for shared business logic
+└── GATE: human signs off expectations as `accepted` before coder runs
+
 Phase 2: DEVELOPMENT (Parallel)
-├── Coder agent writes implementation
+├── Coder agent writes implementation against EXP-NNN + SPEC + ADR
 ├── Test-generation creates tests IN PARALLEL
 ├── Security-architect reviews for vulnerabilities
 └── Coverage-analysis identifies gaps
+
+Phase 2.5: EVIDENCE PRODUCTION & AUDIT (NEW v1.2.0 — EDD steps 3-4)
+├── evidence-producer executes scenarios per expectation
+│   ├── Required receipts: command, raw output, timestamp, git SHA
+│   └── Three evidence categories: executable / partial / not-executable
+├── evidence-auditor (DIFFERENT model family) independently verifies
+│   └── Mandate: find counter-example, do not confirm
+├── Human adversarial review (EDD step 5)
+└── Loop back to Phase 2 if gaps found (EDD step 6)
 
 Phase 3: QUALITY GATES
 ├── Quality-assessment evaluates readiness
 ├── Defect-intelligence predicts bugs
 ├── Visual-accessibility checks WCAG compliance
-└── Chaos-resilience validates fault tolerance
+├── Chaos-resilience validates fault tolerance
+└── Evidence Coverage gate (NEW v1.2.0 — sixth gate)
+    ├── Every feature has ≥1 expectation
+    ├── Every expectation has executed evidence with receipts
+    ├── Auditor distinct from producer
+    ├── Stale evidence = 0 (>30d or post-SHA-drift triggers re-run)
+    └── regression_critical expectations have stabilized_by reference
+
+Phase 3.5: STABILIZATION (NEW v1.2.0 — EDD step 7)
+├── tdd-stabilizer converts proven expectations into automated tests
+├── Test ID linked to EXP-NNN via `stabilized_by` frontmatter field
+└── Expectation status moves from `proven` -> `stable`
 
 Phase 4: DEPLOYMENT
 ├── Deployment agent manages CI/CD
@@ -191,9 +242,10 @@ Phase 4: DEPLOYMENT
 └── Performance agent benchmarks
 
 Phase 5: LEARNING
-├── ReasoningBank stores test patterns
+├── ReasoningBank stores test patterns AND high-quality expectation patterns
 ├── SONA optimizes future builds
-└── Cross-project transfer enables reuse
+├── Cross-project transfer enables reuse (incl. expectation libraries)
+└── Archive: EXP + evidence + test reference becomes living docs
 ```
 
 ## Agent Domains
@@ -204,6 +256,8 @@ Phase 5: LEARNING
 - `reviewer` - Code review and quality feedback
 - `browser-agent` - Web automation and E2E testing
 - `deployer` - CI/CD and deployment
+- `expectation-author` - **NEW v1.2.0** - Helps human draft EXP-NNN artifacts with frontmatter, edge cases, and counter-examples. Enforces specificity rule.
+- `tdd-stabilizer` - **NEW v1.2.0** - Converts proven expectations into automated regression tests; updates `stabilized_by` field on EXP-NNN.
 
 ### Quality Domain (Agentic QE)
 - `test-strategist` - AI-powered test strategy selection
@@ -216,6 +270,8 @@ Phase 5: LEARNING
 - `flaky-test-hunter` - Identify and fix flaky tests
 - `chaos-engineer` - Chaos engineering and fault injection
 - `resilience-validator` - System resilience validation
+- `evidence-producer` - **NEW v1.2.0** - Executes scenarios for each EXP-NNN, captures execution receipts (command, raw output, timestamp, git SHA). Tool-use enabled, runs in sandbox.
+- `evidence-auditor` - **NEW v1.2.0** - Independently verifies evidence. **MUST run on a different model family than `evidence-producer`** (anti-fox separation). Mandate is to find a counter-example, not confirm.
 
 ### Security Domain (Mixed)
 - `security-architect` - Security architecture and threat modeling
@@ -461,6 +517,7 @@ These skills work **alongside** build-with-quality:
 | Quality gate passage | Byzantine Fault Tolerant | 2/3 majority |
 | Pattern storage | CRDT | Conflict-free merge |
 | Architecture decisions | Raft | Leader-based |
+| Evidence audit verdict (NEW v1.2.0) | Independent Verifier | Producer ≠ Auditor; different model families; tie-break escalates to third model |
 
 ## Execution Modes
 
@@ -501,6 +558,7 @@ npx claude-flow@alpha hooks post-task --task-id "[id]"
 
 - **[BUILD-WITH-QUALITY-PROMPT.md](./BUILD-WITH-QUALITY-PROMPT.md)** - Copy-paste activation prompt
 - **[USAGE-EXAMPLES.md](./USAGE-EXAMPLES.md)** - 5 complete project examples
+- **[EDD-PROTOCOL.md](./EDD-PROTOCOL.md)** - Expectation-Driven Development playbook (v1.2.0)
 - **[config/skill.yaml](./config/skill.yaml)** - Full configuration options
 - **[README.md](./README.md)** - API reference and installation
 

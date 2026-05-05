@@ -32,7 +32,7 @@ Complete machine learning environment with PyTorch, CUDA, and data science stack
 
 - For custom CUDA kernel development and GPU profiling -- use the cuda skill instead
 - For distributed neural network training in cloud sandboxes -- use the flow-nexus-neural skill instead
-- For AgentDB reinforcement learning plugins (Q-Learning, Decision Transformer) -- use the agentdb-learning skill instead
+- For AgentDB reinforcement learning plugins -- use the **agentdb-advanced** skill (RL Plugins section) instead
 - For interactive data exploration in notebooks -- use the jupyter-notebooks skill instead
 - For AI image generation (Stable Diffusion, FLUX) -- use the comfyui skill instead
 
@@ -123,7 +123,7 @@ loader = DataLoader(dataset, batch_size=64, shuffle=True, num_workers=4)
 
 ```python
 # Load pretrained ResNet
-model = models.resnet50(pretrained=True)
+model = models.resnet50(weights=models.ResNet50_Weights.DEFAULT)
 
 # Fine-tune last layer
 num_features = model.fc.in_features

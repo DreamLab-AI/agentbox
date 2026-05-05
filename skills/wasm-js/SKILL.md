@@ -1,5 +1,5 @@
 ---
-name: "WASM-JS Interop"
+name: wasm-js
 description: "High-performance WebAssembly graphics with JavaScript interoperability. Use when building performance-critical web graphics, real-time animations, computational geometry, or hybrid JS/WASM architectures."
 ---
 

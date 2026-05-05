@@ -1,5 +1,5 @@
 ---
-name: "Mermaid Diagrams"
+name: mermaid-diagrams
 description: "Create, render, and export professional diagrams-as-code using Mermaid. Supports 25 diagram types: flowcharts, sequence, class, state, ER, Gantt, journey, mindmap, timeline, architecture, C4, Sankey, Kanban, gitgraph, and more. Renders to PNG/SVG/PDF via mmdc CLI. Use when creating system architecture diagrams, process flows, data models, project timelines, org charts, or any visual diagram from text. Integrates with report-builder skill for LaTeX document inclusion and Nano Banana infographic upgrade."
 ---
 

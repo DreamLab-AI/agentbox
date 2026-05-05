@@ -1,5 +1,5 @@
 ---
-name: Blender 3D
+name: blender
 description: Control Blender for 3D modeling, scene creation, and rendering operations via socket-based communication
 ---
 

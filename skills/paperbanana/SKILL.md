@@ -51,7 +51,7 @@ pip install "paperbanana[google,openai]"  # Both
 
 **API Keys** (at least one required):
 - `GOOGLE_API_KEY` — Gemini (free tier available, recommended for cost)
-- `OPENAI_API_KEY` — OpenAI GPT-5.2 + gpt-image-1.5
+- `OPENAI_API_KEY` — OpenAI gpt-image-1
 
 ---
 
@@ -183,9 +183,9 @@ items:
 | Component | Provider | Model | Notes |
 |-----------|----------|-------|-------|
 | VLM | Google Gemini | gemini-2.0-flash | Free tier available |
-| Image Gen | Google Gemini | gemini-3-pro-image-preview | Free tier available |
-| VLM | OpenAI | gpt-5.2 | Best quality |
-| Image Gen | OpenAI | gpt-image-1.5 | Best quality |
+| Image Gen | Google Gemini | imagen-3.0-generate-002 | Free tier available |
+| VLM | OpenAI | gpt-image-1 | Best quality (verify current version at provider docs) |
+| Image Gen | OpenAI | gpt-image-1 | Best quality (verify current version at provider docs) |
 | VLM/Image | OpenRouter | Various | Flexible routing |
 
 ---
@@ -286,7 +286,7 @@ PaperBanana's built-in critic evaluates on four dimensions:
 PAPERBANANA_VLM_PROVIDER=google        # or openai, openrouter
 PAPERBANANA_IMAGE_PROVIDER=google      # or openai
 PAPERBANANA_VLM_MODEL=gemini-2.0-flash
-PAPERBANANA_IMAGE_MODEL=gemini-3-pro-image-preview
+PAPERBANANA_IMAGE_MODEL=imagen-3.0-generate-002
 
 # API keys
 GOOGLE_API_KEY=your-gemini-key
