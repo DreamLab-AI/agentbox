@@ -6,15 +6,15 @@
 #   --from-host       Run tests from the Docker host (default)
 #   --from-container  Run tests from inside agentbox container
 
-set -euo pipefail
+set -uo pipefail
 
 PASS=0
 FAIL=0
 WARN=0
 
-pass() { ((PASS++)); printf '  \033[32m✓\033[0m %s\n' "$1"; }
-fail() { ((FAIL++)); printf '  \033[31m✗\033[0m %s\n' "$1"; }
-warn() { ((WARN++)); printf '  \033[33m!\033[0m %s\n' "$1"; }
+pass() { PASS=$((PASS + 1)); printf '  \033[32m✓\033[0m %s\n' "$1"; }
+fail() { FAIL=$((FAIL + 1)); printf '  \033[31m✗\033[0m %s\n' "$1"; }
+warn() { WARN=$((WARN + 1)); printf '  \033[33m!\033[0m %s\n' "$1"; }
 
 MODE="${1:---from-host}"
 
