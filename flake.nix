@@ -1669,6 +1669,8 @@ ${agentboxPorts}
       - AGENTBOX_METRICS_PORT=${metricsPort}
       - AGENTBOX_OTLP_ENDPOINT=${observCfg.otlp_endpoint or ""}
       - AGENTBOX_LOG_LEVEL=${observCfg.log_level or "info"}
+      - XINFERENCE_ENDPOINT=''${XINFERENCE_ENDPOINT:-http://xinference:9997}
+      - EMBEDDING_MODEL=''${EMBEDDING_MODEL:-bge-small-en-v1.5}
     # Baseline: supervisord runs as PID 1 root, with per-program `user=devuser`
     # drops on every long-running service. Root is required at boot for
     # tmpfs subdir creation, sudoers wrapper provisioning (chown 0:0 +
