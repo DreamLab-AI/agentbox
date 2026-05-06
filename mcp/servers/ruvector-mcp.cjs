@@ -6,7 +6,7 @@
  * Replaces `claude-flow mcp start` so that memory_store/search/list/retrieve
  * route to ruvector-postgres instead of the bundled sql.js fallback.
  *
- * Backed by: /opt/agentbox/management-api/node_modules/pg
+ * Backed by: pg module (searched in workspace, management-api, or global)
  * Connection: $RUVECTOR_PG_CONNINFO or defaults to docker service name
  */
 
@@ -14,12 +14,21 @@ const readline = require('readline');
 
 // ── PostgreSQL pool ───────────────────────────────────────────────────────────
 
-const PG_PATH = '/opt/agentbox/management-api/node_modules/pg';
+const PG_SEARCH_PATHS = [
+  '/home/devuser/workspace/.claude-pg/node_modules/pg',
+  '/opt/agentbox/management-api/node_modules/pg',
+  'pg',
+];
 let pool = null;
 let pgOk = false;
 
 try {
-  const { Pool } = require(PG_PATH);
+  let PgModule;
+  for (const p of PG_SEARCH_PATHS) {
+    try { PgModule = require(p); break; } catch {}
+  }
+  if (!PgModule) throw new Error('pg not found in any search path');
+  const { Pool } = PgModule;
   const conninfo = process.env.RUVECTOR_PG_CONNINFO ||
     'host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=ruvector';
   const parsed = {};
@@ -39,14 +48,28 @@ try {
   });
   pgOk = true;
 } catch (e) {
-  log('WARN', `pg module unavailable at ${PG_PATH}: ${e.message}`);
+  process.stderr.write(`[FATAL] [cf-mcp-ruvector] pg module unavailable — cannot start.\n`);
+  process.stderr.write(`  Searched: ${PG_SEARCH_PATHS.join(', ')}\n`);
+  process.stderr.write(`  NODE_PATH: ${process.env.NODE_PATH || '(unset)'}\n`);
+  process.stderr.write(`  Error: ${e.message}\n`);
+  process.stderr.write(`  Fix: npm install --prefix /home/devuser/workspace/.claude-pg pg\n`);
+  process.exit(1);
 }
 
 const WRITE_SOURCE_TYPE = 'agentbox';
-const VERSION = '2.1.0-ruvector';
+const VERSION = '2.2.0-ruvector';
 
 function entryId(namespace, key) { return `${WRITE_SOURCE_TYPE}:${namespace}:${key}`; }
 function log(level, msg) { process.stderr.write(`[${new Date().toISOString()}] ${level} [cf-mcp-ruvector] ${msg}\n`); }
+
+// Fail-closed: verify PG is reachable at startup (non-blocking — runs after event loop starts)
+pool.query('SELECT 1').then(() => {
+  log('INFO', `connected to ruvector-postgres (${pool.options.host}:${pool.options.port}/${pool.options.database})`);
+}).catch(err => {
+  process.stderr.write(`[FATAL] [cf-mcp-ruvector] cannot reach ruvector-postgres: ${err.message}\n`);
+  process.stderr.write(`  host=${pool.options.host} port=${pool.options.port} db=${pool.options.database}\n`);
+  process.exit(1);
+});
 
 function parseVal(v) {
   if (typeof v === 'string') { try { return JSON.parse(v); } catch { return v; } }

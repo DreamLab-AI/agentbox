@@ -399,6 +399,44 @@ if [ -f "$_CF_TEMPLATE" ] && { [ ! -f "$_CF_CONFIG_DIR/config.json" ] || ! grep 
   chown 1000:1000 "$_CF_CONFIG_DIR/config.json" 2>/dev/null || true
 fi
 
+# ── MCP server config: ensure .mcp.json always points to ruvector-mcp.cjs ──
+# Claude Code resolves .mcp.json by walking up from cwd.  We write one at
+# the workspace root so every project inherits ruvector-postgres by default.
+# The pg npm module is installed to a workspace-persistent prefix on first boot.
+_MCP_JSON="${WORKSPACE:-/home/devuser/workspace}/.mcp.json"
+_RUVECTOR_MCP="/opt/agentbox/mcp/servers/ruvector-mcp.cjs"
+_PG_PREFIX="${WORKSPACE:-/home/devuser/workspace}/.claude-pg"
+: "${RUVECTOR_PG_PASSWORD:=ruvector}"
+if [ -f "$_RUVECTOR_MCP" ]; then
+  # Install pg npm module if missing (workspace-persistent, survives rebuilds)
+  if [ ! -d "$_PG_PREFIX/node_modules/pg" ]; then
+    echo "  [mcp] Installing pg module to $_PG_PREFIX ..."
+    mkdir -p "$_PG_PREFIX" "${WORKSPACE:-/home/devuser/workspace}/.npm-cache" 2>/dev/null || true
+    npm install --cache "${WORKSPACE:-/home/devuser/workspace}/.npm-cache" --prefix "$_PG_PREFIX" pg 2>/dev/null || true
+    chown -R 1000:1000 "$_PG_PREFIX" 2>/dev/null || true
+  fi
+  # Write canonical .mcp.json (idempotent — only if it doesn't already point to ruvector-mcp)
+  if [ ! -f "$_MCP_JSON" ] || ! grep -q "ruvector-mcp" "$_MCP_JSON" 2>/dev/null; then
+    cat > "$_MCP_JSON" <<MCPEOF
+{
+  "mcpServers": {
+    "claude-flow": {
+      "command": "node",
+      "args": ["$_RUVECTOR_MCP"],
+      "type": "stdio",
+      "env": {
+        "RUVECTOR_PG_CONNINFO": "host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=$RUVECTOR_PG_PASSWORD",
+        "NODE_PATH": "$_PG_PREFIX/node_modules"
+      }
+    }
+  }
+}
+MCPEOF
+    chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
+    echo "  [mcp] Wrote $_MCP_JSON → ruvector-mcp.cjs (ruvector-postgres backend)"
+  fi
+fi
+
 if command -v ruflo >/dev/null 2>&1; then
 
   # --- Step 1: Clone/update ruflo plugins from GitHub (sparse checkout) ---
