@@ -91,6 +91,7 @@ services:
       - codeserver-config:/home/devuser/.local/share/code-server
       - nostr-relay-data:/var/lib/nostr-relay
       - ctm-config:/home/devuser/.config/claude-telegram-mirror
+      - cargo-home:/home/devuser/.cargo
 
 
 
@@ -109,4 +110,6 @@ volumes:
     name: agentbox-nostr-relay-data
   ctm-config:
     name: agentbox-ctm-config
+  cargo-home:
+    name: agentbox-cargo-home
 

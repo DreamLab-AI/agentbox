@@ -188,6 +188,8 @@ let
       supervisorExtraEnv = {
         CUDA_VISIBLE_DEVICES        = "all";
         NVIDIA_DRIVER_CAPABILITIES  = "compute,utility";
+        CUDA_PATH                   = "${pkgs.cudaPackages.cudatoolkit}";
+        CUDA_LIBRARY_PATH           = "${pkgs.cudaPackages.cudatoolkit}/lib:${pkgs.cudaPackages.cudatoolkit}/lib/stubs";
       };
       ollamaEnabled = true;
     };

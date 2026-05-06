@@ -42,11 +42,16 @@ try {
   log('WARN', `pg module unavailable at ${PG_PATH}: ${e.message}`);
 }
 
-const SOURCE_TYPE = 'agentbox';
-const VERSION = '2.0.0-ruvector';
+const WRITE_SOURCE_TYPE = 'agentbox';
+const VERSION = '2.1.0-ruvector';
 
-function entryId(namespace, key) { return `${SOURCE_TYPE}:${namespace}:${key}`; }
+function entryId(namespace, key) { return `${WRITE_SOURCE_TYPE}:${namespace}:${key}`; }
 function log(level, msg) { process.stderr.write(`[${new Date().toISOString()}] ${level} [cf-mcp-ruvector] ${msg}\n`); }
+
+function parseVal(v) {
+  if (typeof v === 'string') { try { return JSON.parse(v); } catch { return v; } }
+  return v;
+}
 
 // ── Memory operations ─────────────────────────────────────────────────────────
 
@@ -54,14 +59,15 @@ async function memStore(key, value, namespace = 'default') {
   if (!pgOk || !pool) return { success: false, error: 'pg unavailable', storage: 'none' };
   const id = entryId(namespace, key);
   const jsonValue = typeof value === 'object' ? JSON.stringify(value) : value;
-  // Wrap plain strings in JSON so they cast to jsonb
   let pgValue;
   try { JSON.parse(jsonValue); pgValue = jsonValue; } catch { pgValue = JSON.stringify(jsonValue); }
+  const embedText = typeof value === 'string' ? value : JSON.stringify(value);
   await pool.query(
-    `INSERT INTO memory_entries (id, namespace, key, value, source_type, metadata)
-     VALUES ($1, $2, $3, $4::jsonb, $5, '{}')
-     ON CONFLICT (id) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
-    [id, namespace, key, pgValue, SOURCE_TYPE],
+    `INSERT INTO memory_entries (id, namespace, key, value, source_type, metadata, embedding)
+     VALUES ($1, $2, $3, $4::jsonb, $5, '{}',
+             ('[' || (SELECT array_to_string(ARRAY(SELECT jsonb_array_elements_text(generate_text_embedding($6))), ',')) || ']')::ruvector(384))
+     ON CONFLICT (id) DO UPDATE SET value = EXCLUDED.value, embedding = EXCLUDED.embedding, updated_at = NOW()`,
+    [id, namespace, key, pgValue, WRITE_SOURCE_TYPE, embedText],
   );
   return { success: true, action: 'store', key, namespace, stored: true, storage: 'ruvector-postgres' };
 }
@@ -69,49 +75,72 @@ async function memStore(key, value, namespace = 'default') {
 async function memRetrieve(key, namespace = 'default') {
   if (!pgOk || !pool) return { success: false, error: 'pg unavailable' };
   const res = await pool.query(
-    `SELECT key, value FROM memory_entries WHERE namespace = $1 AND key = $2 AND source_type = $3`,
-    [namespace, key, SOURCE_TYPE],
+    `SELECT key, value, source_type FROM memory_entries WHERE namespace = $1 AND key = $2 ORDER BY updated_at DESC LIMIT 1`,
+    [namespace, key],
   );
   if (!res.rows.length) return { success: true, action: 'retrieve', key, namespace, value: null, found: false };
-  let val = res.rows[0].value;
-  if (typeof val === 'string') { try { val = JSON.parse(val); } catch { /* keep raw */ } }
-  return { success: true, action: 'retrieve', key, namespace, value: val, found: true, storage: 'ruvector-postgres' };
+  return { success: true, action: 'retrieve', key, namespace, value: parseVal(res.rows[0].value), found: true, source_type: res.rows[0].source_type, storage: 'ruvector-postgres' };
 }
 
 async function memList(namespace = 'default', limit = 100) {
   if (!pgOk || !pool) return { success: false, error: 'pg unavailable' };
   const res = await pool.query(
-    `SELECT key, value FROM memory_entries WHERE namespace = $1 AND source_type = $2 ORDER BY created_at DESC LIMIT $3`,
-    [namespace, SOURCE_TYPE, limit],
+    `SELECT key, value, source_type FROM memory_entries WHERE namespace = $1 ORDER BY created_at DESC LIMIT $2`,
+    [namespace, limit],
   );
-  const entries = res.rows.map(r => {
-    let v = r.value;
-    if (typeof v === 'string') { try { v = JSON.parse(v); } catch { /* raw */ } }
-    return { key: r.key, value: v };
-  });
+  const entries = res.rows.map(r => ({ key: r.key, value: parseVal(r.value), source_type: r.source_type }));
   return { success: true, action: 'list', namespace, entries, count: entries.length, storage: 'ruvector-postgres' };
 }
 
 async function memSearch(query, namespace = 'default', limit = 10, sourceType = null) {
   if (!pgOk || !pool) return { success: false, error: 'pg unavailable' };
   const st = sourceType && sourceType !== '*' ? sourceType : null;
-  const res = await pool.query(
-    `SELECT key, value, namespace, source_type,
-            (CASE WHEN value::text ILIKE $1 THEN 1.0 ELSE 0.5 END) AS score
-     FROM memory_entries
-     WHERE (namespace = $2 OR $2 = '*')
-       AND ($3::text IS NULL OR source_type = $3)
-       AND (key ILIKE $1 OR value::text ILIKE $1)
-     ORDER BY score DESC, created_at DESC
-     LIMIT $4`,
-    [`%${query}%`, namespace, st, limit],
-  );
-  const results = res.rows.map(r => {
-    let v = r.value;
-    if (typeof v === 'string') { try { v = JSON.parse(v); } catch { /* raw */ } }
-    return { key: r.key, value: v, namespace: r.namespace, source_type: r.source_type, score: parseFloat(r.score) };
-  });
-  return { success: true, action: 'search', query, namespace, results, count: results.length, storage: 'ruvector-postgres' };
+  const nsFilter = namespace === '*' ? '' : 'AND namespace = $4';
+  const stFilter = st ? 'AND source_type = $5' : '';
+  const params = [query, limit];
+
+  // HNSW vector similarity search using server-side embedding
+  const sql = `
+    WITH query_vec AS (
+      SELECT ('[' || (SELECT array_to_string(ARRAY(SELECT jsonb_array_elements_text(generate_text_embedding($1))), ',')) || ']')::ruvector(384) AS vec
+    )
+    SELECT key, value, namespace, source_type,
+           1.0 - (embedding <=> (SELECT vec FROM query_vec)) AS score
+    FROM memory_entries
+    WHERE embedding IS NOT NULL
+      ${nsFilter}
+      ${stFilter}
+    ORDER BY embedding <=> (SELECT vec FROM query_vec)
+    LIMIT $2`;
+
+  const queryParams = [...params];
+  if (nsFilter) queryParams.push(namespace);
+  if (stFilter) queryParams.push(st);
+
+  try {
+    const res = await pool.query(sql, queryParams);
+    const results = res.rows.map(r => ({
+      key: r.key, value: parseVal(r.value), namespace: r.namespace,
+      source_type: r.source_type, score: parseFloat(r.score),
+    }));
+    return { success: true, action: 'search', query, namespace, results, count: results.length, method: 'hnsw', storage: 'ruvector-postgres' };
+  } catch (vecErr) {
+    log('WARN', `HNSW search failed, falling back to ILIKE: ${vecErr.message}`);
+    const fallback = await pool.query(
+      `SELECT key, value, namespace, source_type, 0.5 AS score
+       FROM memory_entries
+       WHERE (namespace = $1 OR $1 = '*')
+         AND ($3::text IS NULL OR source_type = $3)
+         AND (key ILIKE $2 OR value::text ILIKE $2)
+       ORDER BY created_at DESC LIMIT $4`,
+      [namespace, `%${query}%`, st, limit],
+    );
+    const results = fallback.rows.map(r => ({
+      key: r.key, value: parseVal(r.value), namespace: r.namespace,
+      source_type: r.source_type, score: 0.5,
+    }));
+    return { success: true, action: 'search', query, namespace, results, count: results.length, method: 'ilike-fallback', storage: 'ruvector-postgres' };
+  }
 }
 
 // ── Tool schemas (claude-flow compatible) ─────────────────────────────────────
@@ -156,7 +185,7 @@ const TOOLS = [
   },
   {
     name: 'memory_search',
-    description: 'Search memory entries by key or value pattern in ruvector-postgres',
+    description: 'Semantic vector search over 2M+ memory entries via HNSW index in ruvector-postgres',
     inputSchema: {
       type: 'object',
       properties: {

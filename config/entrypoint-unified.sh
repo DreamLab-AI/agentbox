@@ -523,7 +523,31 @@ export AGENTBOX_CONFIG="${AGENTBOX_CONFIG:-/etc/agentbox.toml}"
 export SKILLS_TREE="${SKILLS_TREE:-/opt/agentbox/skills}"
 export SHARED_PROJECTS_ROOT="${SHARED_PROJECTS_ROOT:-/projects}"
 export CLAUDE_FLOW_PLUGIN_DIR="${CLAUDE_FLOW_PLUGIN_DIR:-/home/devuser/.claude-flow/plugins}"
+export CARGO_HOME="${CARGO_HOME:-/home/devuser/workspace/.cargo}"
+export RUSTUP_HOME="${RUSTUP_HOME:-/home/devuser/workspace/.rustup}"
+export TMPDIR="${TMPDIR:-/home/devuser/workspace/.tmp}"
+export OPENSSL_DIR="${OPENSSL_DIR:-}"
+export OPENSSL_LIB_DIR="${OPENSSL_LIB_DIR:-}"
+export OPENSSL_INCLUDE_DIR="${OPENSSL_INCLUDE_DIR:-}"
 EOF
+mkdir -p "/home/devuser/workspace/.cargo" "/home/devuser/workspace/.tmp" 2>/dev/null || true
+chown devuser:devuser "/home/devuser/workspace/.cargo" "/home/devuser/workspace/.tmp" 2>/dev/null || true
+# CUDA wrapper: Nix uses lib/ but Rust crates expect lib64/
+if [ -n "${CUDA_PATH:-}" ] && [ -d "$CUDA_PATH/include" ] && [ ! -d "$CUDA_PATH/lib64" ]; then
+  CUDA_WRAP="/home/devuser/workspace/.cuda"
+  mkdir -p "$CUDA_WRAP"
+  ln -sfn "$CUDA_PATH/include" "$CUDA_WRAP/include"
+  ln -sfn "$CUDA_PATH/lib"     "$CUDA_WRAP/lib64"
+  ln -sfn "$CUDA_PATH/bin"     "$CUDA_WRAP/bin"
+  ln -sfn "$CUDA_PATH/nvvm"    "$CUDA_WRAP/nvvm" 2>/dev/null || true
+  chown -h devuser:devuser "$CUDA_WRAP"/* 2>/dev/null || true
+  cat >> "$RUNTIME_ENV_FILE" <<CUDAEOF
+export CUDA_PATH="$CUDA_WRAP"
+export CUDA_LIBRARY_PATH="$CUDA_WRAP"
+export CPATH="$CUDA_WRAP/include:\${CPATH:-}"
+export LIBRARY_PATH="$CUDA_WRAP/lib64:$CUDA_WRAP/lib64/stubs:\${LIBRARY_PATH:-}"
+CUDAEOF
+fi
 export AGENTBOX_RUNTIME_ENV="$RUNTIME_ENV_FILE"
 # Best-effort symlink for legacy consumers; ignored on read-only /etc.
 ln -sf "$RUNTIME_ENV_FILE" /etc/profile.d/agentbox-runtime.sh 2>/dev/null || true
