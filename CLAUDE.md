@@ -13,6 +13,7 @@ Agentbox is in active development:
 - **pluggable adapters** replace hardcoded durable-state services (see [ADR-005](docs/adr/ADR-005-pluggable-adapter-architecture.md)): beads, pods, memory, events, orchestrator — each resolves to `local-*`, `external`, or `off`
 - standalone-or-federated: `federation.mode = "standalone"` ships a complete product with local fallbacks; `federation.mode = "client"` federates with a host container mesh through adapter endpoints
 - embedded RuVector is a per-session retrieval cache, not a durable source of truth
+- **MCP memory is mandatory ruvector-postgres** ([ADR-015](docs/reference/adr/ADR-015-mcp-ruvector-mandate.md)): the `ruvector-mcp.cjs` server fails closed if PostgreSQL is unreachable — no silent sql.js fallback. The entrypoint generates `.mcp.json` at boot and auto-installs the `pg` module to the workspace bind mount.
 
 Full product spec: [PRD-001](docs/prd/PRD-001-capabilities-and-adapters.md). Adapter contract + SLOs + observability: [ADR-005](docs/adr/ADR-005-pluggable-adapter-architecture.md).
 
