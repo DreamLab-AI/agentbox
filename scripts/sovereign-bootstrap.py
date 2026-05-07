@@ -78,17 +78,47 @@ def write_json(path, payload):
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
+def _x_only_pubkey_with_even_y(signing_key):
+    """Return the BIP-340 x-only pubkey (32 bytes) and force even-y by negating
+    the secret key when the derived public key has odd y.
+
+    NIP-19 npub MUST encode the 32-byte x-only pubkey, not the 64-byte SEC1
+    uncompressed form. BIP-340 §3.1 (lift_x) requires even y; clients comparing
+    pubkeys treat odd-y and even-y as the same identity, but signers must hold
+    the secret whose corresponding pubkey has even y. Returns (x_only_bytes,
+    canonical_signing_key) where canonical_signing_key has guaranteed even-y.
+    """
+    verifying_key = signing_key.get_verifying_key()
+    public_bytes = verifying_key.to_string()  # 64-byte SEC1 (X || Y)
+    y_bytes = public_bytes[32:]
+    # secp256k1 group order; lift_x requires y even (per BIP-340).
+    if y_bytes[-1] & 0x01:
+        n = SECP256k1.order
+        d = int.from_bytes(signing_key.to_string(), "big")
+        d_neg = (n - d) % n
+        signing_key = SigningKey.from_string(
+            d_neg.to_bytes(32, "big"), curve=SECP256k1
+        )
+        verifying_key = signing_key.get_verifying_key()
+        public_bytes = verifying_key.to_string()
+    x_only = public_bytes[:32]
+    return x_only, signing_key, public_bytes
+
+
 def _keypair_from_privkey_hex(privkey_hex):
     signing_key = SigningKey.from_string(bytes.fromhex(privkey_hex), curve=SECP256k1)
-    verifying_key = signing_key.get_verifying_key()
+    x_only, signing_key, public_bytes = _x_only_pubkey_with_even_y(signing_key)
     private_bytes = signing_key.to_string()
-    public_bytes = verifying_key.to_string()
     return {
         "private_key_hex": private_bytes.hex(),
         "public_key_hex": public_bytes.hex(),
-        "x_only_pubkey_hex": public_bytes[:32].hex(),
+        "x_only_pubkey_hex": x_only.hex(),
         "nsec": bech32_encode("nsec", private_bytes),
-        "npub": bech32_encode("npub", public_bytes),
+        # NIP-19 §npub: bech32 encodes the BIP-340 x-only pubkey (32 bytes),
+        # not the SEC1 uncompressed encoding. Encoding the 64-byte form
+        # produces an npub whose decoded payload no Nostr relay or client
+        # can verify against an event signature.
+        "npub": bech32_encode("npub", x_only),
     }
 
 
@@ -115,23 +145,38 @@ def ensure_identity(agent_id, identity_root):
     # No env key supplied — use persisted identity or generate one on first boot.
     if identity_file.exists():
         identity = json.loads(identity_file.read_text(encoding="utf-8"))
-        if "x_only_pubkey_hex" not in identity:
-            identity["x_only_pubkey_hex"] = identity["public_key_hex"][:64]
+        # Migration: identities written by older versions of this script
+        # encoded npub from the 64-byte SEC1 pubkey instead of the 32-byte
+        # BIP-340 x-only pubkey. Detect and correct in place. Existing
+        # private keys are valid; we only need to re-derive the public
+        # representation and re-encode npub. If the persisted private key
+        # corresponds to an odd-y pubkey we negate it so the canonical
+        # identity now satisfies BIP-340 even-y.
+        needs_migration = (
+            "x_only_pubkey_hex" not in identity
+            or len(identity.get("x_only_pubkey_hex", "")) != 64
+            or identity.get("npub", "").startswith("npub")
+            and len(_convertbits(
+                [CHARSET.find(c) for c in identity["npub"].split("1", 1)[1][:-6]],
+                5, 8, False,
+            )) != 32
+        )
+        if needs_migration and "private_key_hex" in identity:
+            sk = SigningKey.from_string(
+                bytes.fromhex(identity["private_key_hex"]), curve=SECP256k1
+            )
+            keypair = _keypair_from_privkey_hex(sk.to_string().hex())
+            identity.update(keypair)
+            identity["created_at"] = identity.get("created_at", int(time.time()))
             write_json(identity_file, identity)
         return identity
 
     signing_key = SigningKey.generate(curve=SECP256k1)
-    verifying_key = signing_key.get_verifying_key()
-    private_bytes = signing_key.to_string()
-    public_bytes = verifying_key.to_string()
+    keypair = _keypair_from_privkey_hex(signing_key.to_string().hex())
     identity = {
         "agent_id": agent_id,
         "created_at": int(time.time()),
-        "private_key_hex": private_bytes.hex(),
-        "public_key_hex": public_bytes.hex(),
-        "x_only_pubkey_hex": public_bytes[:32].hex(),
-        "nsec": bech32_encode("nsec", private_bytes),
-        "npub": bech32_encode("npub", public_bytes),
+        **keypair,
     }
     write_json(identity_file, identity)
     return identity
@@ -187,11 +232,18 @@ def ensure_acl(pod_root, identity):
         ],
         "id": did,
         "verificationMethod": [
+            # ADR-074 D1 + ADR-077 P3 + V3 C3 finding: cross-system DID
+            # canonicalisation requires the SchnorrSecp256k1VerificationKey2019
+            # suite identifier (Schnorr ECDSA Signature 2019) — this is the
+            # only published W3C suite for secp256k1 Schnorr verification keys.
+            # SchnorrSecp256k1VerificationKey2022 was a spec-drift fabrication.
+            # The publicKeyHex carries the BIP-340 x-only (32-byte) form so
+            # downstream verifiers compute the same identity hash.
             {
                 "id": f"{did}#key-0",
-                "type": "SchnorrSecp256k1VerificationKey2022",
+                "type": "SchnorrSecp256k1VerificationKey2019",
                 "controller": did,
-                "publicKeyHex": identity["public_key_hex"],
+                "publicKeyHex": identity["x_only_pubkey_hex"],
             }
         ],
         "authentication": [f"{did}#key-0"],
