@@ -143,9 +143,10 @@ async function probePodHealth() {
   return result;
 }
 
-// Middleware: CORS
+// Middleware: CORS — restrict to known origins (FIX 3).
+const allowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || 'http://localhost:8080,http://localhost:5901').split(',').map(s => s.trim());
 app.register(cors, {
-  origin: true,
+  origin: allowedOrigins,
   credentials: true
 });
 
@@ -613,9 +614,9 @@ app.get('/', {
   });
 });
 
-// Error handler
+// Error handler — scrub internal details from 5xx responses (FIX 6).
 app.setErrorHandler((error, request, reply) => {
-  logger.error({ error, reqId: request.id }, 'Request error');
+  const statusCode = error.statusCode || 500;
 
   // Record error in metrics
   metrics.recordError(
@@ -623,11 +624,20 @@ app.setErrorHandler((error, request, reply) => {
     request.routerPath || request.url
   );
 
-  reply.code(error.statusCode || 500).send({
-    error: error.name || 'Internal Server Error',
-    message: error.message,
-    statusCode: error.statusCode || 500
-  });
+  if (statusCode >= 500) {
+    logger.error({ err: error, reqId: request.id }, 'Internal server error');
+    reply.code(statusCode).send({
+      error: 'Internal Server Error',
+      statusCode,
+    });
+  } else {
+    logger.warn({ err: error, reqId: request.id }, 'Request error');
+    reply.code(statusCode).send({
+      error: error.name || 'Error',
+      message: error.message,
+      statusCode,
+    });
+  }
 });
 
 // Graceful shutdown

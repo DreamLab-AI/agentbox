@@ -80,16 +80,24 @@ async function _vcFetch(urlPath, options = {}) {
     headers['Content-Type'] = 'application/json';
   }
 
-  const resp = await fetch(url, {
-    method: options.method || 'GET',
-    headers,
-    body: options.body ? JSON.stringify(options.body) : undefined,
-    signal: options.signal,
-  });
+  let resp;
+  try {
+    resp = await fetch(url, {
+      method: options.method || 'GET',
+      headers,
+      body: options.body ? JSON.stringify(options.body) : undefined,
+      signal: options.signal,
+    });
+  } catch (fetchErr) {
+    // FIX 9: Suppress internal URL from error messages exposed to callers.
+    const err = new Error(`VisionClaw unreachable: ${fetchErr.message}`);
+    err.statusCode = 502;
+    throw err;
+  }
 
   if (!resp.ok) {
     const text = await resp.text().catch(() => resp.statusText);
-    const err = new Error(`VisionClaw ${resp.status}: ${text}`);
+    const err = new Error(`VisionClaw returned ${resp.status}`);
     err.statusCode = resp.status;
     throw err;
   }
@@ -107,6 +115,10 @@ async function _readSourceFile(filePath) {
   const safe = path.normalize(filePath).replace(/^(\.\.(\/|\\|$))+/, '');
   const full = path.join(GIT_CLONE_ROOT, safe);
   if (!full.startsWith(path.resolve(GIT_CLONE_ROOT))) return null;
+  // FIX 7: Block access to .git/ internal directories.
+  if (full.includes(`${path.sep}.git${path.sep}`) || full.endsWith(`${path.sep}.git`)) {
+    return null;
+  }
   try {
     return await fs.promises.readFile(full, 'utf8');
   } catch {
@@ -372,6 +384,7 @@ async function brokerBridgeRoutes(fastify, options) {
 
   // Track active SSE connections for graceful shutdown
   const sseConnections = new Set();
+  const MAX_SSE_CONNECTIONS = parseInt(process.env.MAX_SSE_CONNECTIONS, 10) || 100;
   let brokerWs = null;
   let wsReconnectTimer = null;
   let wsReconnectAttempt = 0;
@@ -472,6 +485,11 @@ async function brokerBridgeRoutes(fastify, options) {
       },
     },
   }, async (request, reply) => {
+    // FIX 4: Enforce SSE connection cap to prevent resource exhaustion.
+    if (sseConnections.size >= MAX_SSE_CONNECTIONS) {
+      return reply.code(503).send({ error: 'too-many-connections', message: 'SSE connection limit reached' });
+    }
+
     // Set SSE headers
     reply.raw.writeHead(200, {
       'Content-Type': 'text/event-stream',

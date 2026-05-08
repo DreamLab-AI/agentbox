@@ -46,6 +46,7 @@ const VISIONCLAW_API_URL = (
 const WORKSPACE_ROOT = process.env.GIT_BRIDGE_WORKSPACE_ROOT || '/home/devuser/workspace/repos';
 const NOSTR_RELAYS = (process.env.NOSTR_RELAYS || '').split(',').map(r => r.trim()).filter(Boolean);
 const AGENTBOX_PUBKEY = process.env.AGENTBOX_PUBKEY || '';
+const WEBHOOK_SECRET = process.env.WEBHOOK_HMAC_SECRET || '';
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -71,8 +72,9 @@ async function vcFetch(method, urlPath, body, logger) {
   try {
     res = await fetch(url, opts);
   } catch (err) {
-    logger.error({ url, err: err.message }, 'git-bridge: VisionClaw unreachable');
-    const error = new Error(`VisionClaw unreachable at ${url}: ${err.message}`);
+    // FIX 9: Log the URL internally but suppress it from the thrown error message.
+    logger.error({ url, err: err.message }, 'vcFetch: upstream unreachable');
+    const error = new Error(`VisionClaw unreachable: ${err.message}`);
     error.statusCode = 502;
     throw error;
   }
@@ -96,6 +98,16 @@ async function vcFetch(method, urlPath, body, logger) {
   return json;
 }
 
+// Filtered environment for child git processes — prevents leaking secrets
+// (API keys, tokens, etc.) from the management API process into git subprocesses.
+const GIT_SAFE_ENV = {
+  PATH: process.env.PATH,
+  HOME: process.env.HOME,
+  GIT_TERMINAL_PROMPT: '0',
+  GIT_ASKPASS: '/bin/true',
+  GIT_SSH_COMMAND: 'ssh -o StrictHostKeyChecking=accept-new',
+};
+
 /**
  * Run a git command in a given working directory.
  * Returns { stdout, stderr }. Throws on non-zero exit.
@@ -107,7 +119,7 @@ async function git(args, cwd, logger) {
       cwd,
       maxBuffer: 10 * 1024 * 1024, // 10 MB
       timeout: 120_000,             // 2 min
-      env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+      env: GIT_SAFE_ENV,
     });
     return result;
   } catch (err) {
@@ -296,6 +308,15 @@ async function gitBridgeRoutes(fastify, options) {
     },
   }, async (req, reply) => {
     const { remoteId, agentDid } = req.body;
+
+    // Verify agent DID matches authenticated identity to prevent impersonation.
+    if (req.auth && req.auth.pubkey && agentDid !== `did:nostr:${req.auth.pubkey}`) {
+      return reply.code(403).send({
+        error: 'identity-mismatch',
+        message: 'agentDid does not match authenticated identity',
+      });
+    }
+
     logger.info({ remoteId, agentDid }, 'git-bridge: clone requested');
 
     // 1. Fetch remote config from VisionClaw
@@ -418,6 +439,30 @@ async function gitBridgeRoutes(fastify, options) {
       targetPath, commitSubject, commitBody, entityUrn, reasoning,
     } = req.body;
 
+    // Verify agent DID matches authenticated identity to prevent impersonation.
+    if (req.auth && req.auth.pubkey && agentDid !== `did:nostr:${req.auth.pubkey}`) {
+      return reply.code(403).send({
+        error: 'identity-mismatch',
+        message: 'agentDid does not match authenticated identity',
+      });
+    }
+
+    // FIX 8: Validate commitSha format to prevent argument injection.
+    if (!/^[0-9a-f]{4,40}$/.test(commitSha)) {
+      return reply.code(400).send({
+        error: 'invalid-commit-sha',
+        message: 'commitSha must be a hex string (4-40 chars)',
+      });
+    }
+
+    // FIX 8: Validate targetPath to prevent argument injection and traversal.
+    if (targetPath.startsWith('-') || targetPath.includes('..')) {
+      return reply.code(400).send({
+        error: 'invalid-target-path',
+        message: 'targetPath must not start with - or contain ..',
+      });
+    }
+
     logger.info({ remoteId, agentDid, commitSha, enrichmentType }, 'git-bridge: submit-enrichment');
 
     const workdir = clonePath(remoteId, agentDid);
@@ -435,7 +480,7 @@ async function gitBridgeRoutes(fastify, options) {
     // 2. Read the commit message and validate provenance trailers
     let commitMessage;
     try {
-      const { stdout } = await git(['log', '-1', '--format=%B', commitSha], workdir, logger);
+      const { stdout } = await git(['log', '-1', '--format=%B', '--', commitSha], workdir, logger);
       commitMessage = stdout;
     } catch (err) {
       return reply.code(400).send({
@@ -629,6 +674,15 @@ async function gitBridgeRoutes(fastify, options) {
       },
     },
   }, async (req, reply) => {
+    // FIX 2: Webhook HMAC-SHA256 signature verification.
+    if (WEBHOOK_SECRET) {
+      const sig = req.headers['x-webhook-signature'] || '';
+      const expected = crypto.createHmac('sha256', WEBHOOK_SECRET).update(JSON.stringify(req.body)).digest('hex');
+      if (sig.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) {
+        return reply.code(403).send({ error: 'invalid-signature', message: 'Webhook signature verification failed' });
+      }
+    }
+
     const {
       caseId, action, remoteId, enrichmentType, targetPath, content,
       commitSubject, commitBody, proposedBy, approvedBy, entityUrn,
