@@ -247,7 +247,8 @@ app.register(require('@fastify/swagger'), {
       { name: 'monitoring', description: 'System monitoring and health' },
       { name: 'metrics', description: 'Prometheus metrics' },
       { name: 'comfyui', description: 'ComfyUI workflow management' },
-      { name: 'agent-events', description: 'Real-time agent action event streaming' }
+      { name: 'agent-events', description: 'Real-time agent action event streaming' },
+      { name: 'git-bridge', description: 'BC20 Git Bridge — clone, enrichment submission, broker polling (PRD-013 G5)' }
     ]
   }
 });
@@ -294,6 +295,17 @@ app.register(require('./routes/agent-events'), {
 // Memory routes — write/read agent memory entries to the operator's Solid pod.
 // Requires adapters.pods = "local-solid-rs"; gracefully returns 503 when off.
 app.register(require('./routes/memory'), { prefix: '', logger });
+
+// Broker Bridge — G6, PRD-013 §Broker Review Surface.
+// Bridges VisionClaw BrokerActor REST/WS into the management API so the
+// enrichment-review-pane (S12) can operate without cross-origin calls.
+app.register(require('./routes/broker-bridge'), { prefix: '', logger });
+
+// Git Bridge — G5, PRD-013 §Agentbox Pod Bridge.
+// BC20 adapter bridging agentbox agents to VisionClaw's git ingest surface
+// and judgment broker. Agents clone remotes, submit enrichments, and poll
+// for broker decisions through these local endpoints.
+app.register(require('./routes/git-bridge'), { prefix: '', logger });
 
 // Liveness probe — registered early, no sentinel check, event-loop-alive only.
 // Must respond in <100 ms unconditionally.
@@ -575,6 +587,19 @@ app.get('/', {
         batch: 'POST /v1/agent-events/batch',
         types: 'GET /v1/agent-events/types',
         status: 'GET /v1/agent-events/status'
+      },
+      brokerBridge: {
+        inbox: 'GET /api/broker/bridge/inbox',
+        case: 'GET /api/broker/bridge/cases/:id',
+        decide: 'POST /api/broker/bridge/cases/:id/decide',
+        history: 'GET /api/broker/bridge/cases/:id/history',
+        events: 'GET /api/broker/bridge/events (SSE)'
+      },
+      gitBridge: {
+        clone: 'POST /v1/git/clone',
+        submitEnrichment: 'POST /v1/git/submit-enrichment',
+        caseStatus: 'GET /v1/git/case-status/:caseId',
+        approveCallback: 'POST /v1/git/approve-callback'
       },
       monitoring: {
         status: 'GET /v1/status',
