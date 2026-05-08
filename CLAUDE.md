@@ -10,12 +10,12 @@ Agentbox is in active development:
 - the runtime is sovereign/profile-based
 - tmux with fish shell provides the multi-tab terminal experience (MAD-style layout)
 - profile isolation replaces Linux pseudo-user isolation
-- **pluggable adapters** replace hardcoded durable-state services (see [ADR-005](docs/adr/ADR-005-pluggable-adapter-architecture.md)): beads, pods, memory, events, orchestrator — each resolves to `local-*`, `external`, or `off`
+- **pluggable adapters** replace hardcoded durable-state services (see [ADR-005](docs/reference/adr/ADR-005-pluggable-adapter-architecture.md)): beads, pods, memory, events, orchestrator — each resolves to `local-*`, `external`, or `off`
 - standalone-or-federated: `federation.mode = "standalone"` ships a complete product with local fallbacks; `federation.mode = "client"` federates with a host container mesh through adapter endpoints
 - embedded RuVector is a per-session retrieval cache, not a durable source of truth
 - **MCP memory is mandatory ruvector-postgres** ([ADR-015](docs/reference/adr/ADR-015-mcp-ruvector-mandate.md)): the `ruvector-mcp.cjs` server fails closed if PostgreSQL is unreachable — no silent sql.js fallback. The entrypoint generates `.mcp.json` at boot and auto-installs the `pg` module to the workspace bind mount.
 
-Full product spec: [PRD-001](docs/prd/PRD-001-capabilities-and-adapters.md). Adapter contract + SLOs + observability: [ADR-005](docs/adr/ADR-005-pluggable-adapter-architecture.md).
+Full product spec: [PRD-001](docs/reference/prd/PRD-001-capabilities-and-adapters.md). Adapter contract + SLOs + observability: [ADR-005](docs/reference/adr/ADR-005-pluggable-adapter-architecture.md).
 
 ## Canonical Runtime Files
 
@@ -40,7 +40,7 @@ Content addressing: `sha256-12-<12 hex chars>` (same convention both sides).
 
 Minting: all URNs are minted via `management-api/lib/uris.js`. All durable identifiers MUST be minted through `uris.js`. Ad-hoc `format!()` or template-literal URNs are prohibited.
 
-Resolvability: best-effort via `/v1/uri/<urn>` (307/404/410). Canonical ref: [ADR-013](docs/adr/ADR-013-canonical-uri-grammar.md).
+Resolvability: best-effort via `/v1/uri/<urn>` (307/404/410). Canonical ref: [ADR-013](docs/reference/adr/ADR-013-canonical-uri-grammar.md).
 
 Parallel namespace: the host project's Rust substrate uses `urn:visionclaw:<kind>:<hex-pubkey>:<local>` (6 kinds: `concept`, `kg`, `bead`, `execution`, `group`) minted in `src/uri/`. Owner-scoped kinds use 64-char hex pubkey as scope (not bech32 npub). The BC20 anti-corruption layer maps between the two namespaces at the federation boundary.
 
@@ -86,6 +86,6 @@ These exist for historical context or partial compatibility and should not be tr
 When architecture changes, update these together:
 
 - [`README.md`](README.md)
-- [`docs/guides/quick-start.md`](docs/guides/quick-start.md)
+- [`docs/user/quickstart.md`](docs/user/quickstart.md)
 - [`CLAUDE.md`](CLAUDE.md)
-- relevant ADRs in `docs/adr/`
+- relevant ADRs in `docs/reference/adr/`
