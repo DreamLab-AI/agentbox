@@ -416,6 +416,8 @@ if [ -f "$_RUVECTOR_MCP" ]; then
     chown -R 1000:1000 "$_PG_PREFIX" 2>/dev/null || true
   fi
   # Write canonical .mcp.json (idempotent — only if it doesn't already point to ruvector-mcp)
+  : "${XINFERENCE_ENDPOINT:=http://xinference:9997}"
+  : "${EMBEDDING_MODEL:=bge-small-en-v1.5}"
   if [ ! -f "$_MCP_JSON" ] || ! grep -q "ruvector-mcp" "$_MCP_JSON" 2>/dev/null; then
     cat > "$_MCP_JSON" <<MCPEOF
 {
@@ -426,14 +428,16 @@ if [ -f "$_RUVECTOR_MCP" ]; then
       "type": "stdio",
       "env": {
         "RUVECTOR_PG_CONNINFO": "host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=$RUVECTOR_PG_PASSWORD",
-        "NODE_PATH": "$_PG_PREFIX/node_modules"
+        "NODE_PATH": "$_PG_PREFIX/node_modules",
+        "XINFERENCE_ENDPOINT": "$XINFERENCE_ENDPOINT",
+        "EMBEDDING_MODEL": "$EMBEDDING_MODEL"
       }
     }
   }
 }
 MCPEOF
     chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
-    echo "  [mcp] Wrote $_MCP_JSON → ruvector-mcp.cjs (ruvector-postgres backend)"
+    echo "  [mcp] Wrote $_MCP_JSON → ruvector-mcp.cjs (ruvector-postgres + xinference)"
   fi
 fi
 

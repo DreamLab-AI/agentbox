@@ -71,6 +71,7 @@ You are adding a feature, implementing an adapter, or investigating a regression
 | [Adapter pattern](developer/adapters.md) | Five slots × three classes; how to write a new impl |
 | [Sovereign mesh](developer/sovereign-mesh.md) | Nostr client + NIP-98 auth + relay pool internals |
 | [Linked-Data middleware](developer/linked-data.md) | Encoder + ContextResolver + LION linter + JCS — surface authoring guide |
+| [Ecosystem integration](developer/ecosystem.md) | Agentbox's role in the five-substrate DreamLab federation mesh |
 | [Skills upgrade path](developer/skills-upgrade.md) | Migrating from `path:./skills` to a standalone repo |
 
 | Tooling | |
@@ -101,6 +102,8 @@ These are the authoritative sources of truth. Anything in `user/` or `developer/
 | ADR-011 | [Consultation MCP servers](reference/adr/ADR-011-consultation-mcps.md) | Accepted | Coordinator + named-consultant pattern; rejects transparent API rewriting as the meta-router |
 | ADR-012 | [JSON-LD 1.1 as the federation interchange grammar](reference/adr/ADR-012-jsonld-federation-grammar.md) | Accepted | JSON-LD as the third cross-cutting middleware after observability and privacy; LION subset for hand-authored docs |
 | ADR-013 | [Canonical URI grammar and resolver](reference/adr/ADR-013-canonical-uri-grammar.md) | Accepted | `did:nostr:<pubkey>` + `urn:agentbox:<kind>:[<scope>:]<local>`; uniqueness unconditional, resolvability best-effort; `/v1/uri/<urn>` resolver |
+| ADR-014 | [Bi-directional graph-state ingress](reference/adr/ADR-014-bidirectional-graph-state-ingress.md) | Proposed | Bi-directional graph-state ingress for agent reaction |
+| ADR-015 | [MCP ruvector-postgres mandate](reference/adr/ADR-015-mcp-ruvector-mandate.md) | Accepted | `ruvector-mcp.cjs` fails closed if PostgreSQL is unreachable; no silent sql.js fallback |
 
 ### Product requirements (PRD)
 

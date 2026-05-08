@@ -7,6 +7,7 @@
  * route to ruvector-postgres instead of the bundled sql.js fallback.
  *
  * Backed by: pg module (searched in workspace, management-api, or global)
+ * Embeddings: xinference /v1/embeddings (bge-small-en-v1.5, 384-dim)
  * Connection: $RUVECTOR_PG_CONNINFO or defaults to docker service name
  */
 
@@ -57,19 +58,68 @@ try {
 }
 
 const WRITE_SOURCE_TYPE = 'agentbox';
-const VERSION = '2.2.0-ruvector';
+const VERSION = '2.3.0-ruvector';
+
+// ── Xinference embedding client ───────────────────────────────────────────────
+const http = require('http');
+const XINFERENCE_URL = process.env.XINFERENCE_ENDPOINT || 'http://xinference:9997';
+const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || 'bge-small-en-v1.5';
+const EMBEDDING_DIM = 384;
+let xinferenceOk = false;
+
+async function getEmbedding(text) {
+  const body = JSON.stringify({ model: EMBEDDING_MODEL, input: text });
+  return new Promise((resolve, reject) => {
+    const url = new URL(XINFERENCE_URL + '/v1/embeddings');
+    const req = http.request({
+      hostname: url.hostname, port: url.port, path: url.pathname,
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+      timeout: 10000,
+    }, res => {
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => {
+        try {
+          const j = JSON.parse(data);
+          if (j.data && j.data[0] && j.data[0].embedding) {
+            const emb = j.data[0].embedding;
+            if (emb.length === EMBEDDING_DIM) { resolve(emb); return; }
+            reject(new Error(`dimension mismatch: got ${emb.length}, expected ${EMBEDDING_DIM}`));
+          } else {
+            reject(new Error(`unexpected response: ${data.substring(0, 200)}`));
+          }
+        } catch (e) { reject(new Error(`parse error: ${e.message}`)); }
+      });
+    });
+    req.on('error', reject);
+    req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
+    req.write(body);
+    req.end();
+  });
+}
+
+function vecToSql(arr) { return '[' + arr.join(',') + ']'; }
 
 function entryId(namespace, key) { return `${WRITE_SOURCE_TYPE}:${namespace}:${key}`; }
 function log(level, msg) { process.stderr.write(`[${new Date().toISOString()}] ${level} [cf-mcp-ruvector] ${msg}\n`); }
 
-// Fail-closed: verify PG is reachable at startup (non-blocking — runs after event loop starts)
-pool.query('SELECT 1').then(() => {
-  log('INFO', `connected to ruvector-postgres (${pool.options.host}:${pool.options.port}/${pool.options.database})`);
-}).catch(err => {
-  process.stderr.write(`[FATAL] [cf-mcp-ruvector] cannot reach ruvector-postgres: ${err.message}\n`);
-  process.stderr.write(`  host=${pool.options.host} port=${pool.options.port} db=${pool.options.database}\n`);
-  process.exit(1);
-});
+// Fail-closed: verify PG and xinference are reachable at startup
+(async () => {
+  try {
+    await pool.query('SELECT 1');
+    log('INFO', `pg: connected (${pool.options.host}:${pool.options.port}/${pool.options.database})`);
+  } catch (err) {
+    process.stderr.write(`[FATAL] [cf-mcp-ruvector] cannot reach ruvector-postgres: ${err.message}\n`);
+    process.exit(1);
+  }
+  try {
+    const emb = await getEmbedding('startup probe');
+    xinferenceOk = true;
+    log('INFO', `xinference: connected (${XINFERENCE_URL}, model=${EMBEDDING_MODEL}, dim=${emb.length})`);
+  } catch (err) {
+    log('WARN', `xinference unavailable (${XINFERENCE_URL}): ${err.message} — search will use ILIKE fallback, store will skip embeddings`);
+  }
+})();
 
 function parseVal(v) {
   if (typeof v === 'string') { try { return JSON.parse(v); } catch { return v; } }
@@ -85,14 +135,22 @@ async function memStore(key, value, namespace = 'default') {
   let pgValue;
   try { JSON.parse(jsonValue); pgValue = jsonValue; } catch { pgValue = JSON.stringify(jsonValue); }
   const embedText = typeof value === 'string' ? value : JSON.stringify(value);
+  let embeddingClause = 'NULL';
+  const params = [id, namespace, key, pgValue, WRITE_SOURCE_TYPE];
+  if (xinferenceOk) {
+    try {
+      const emb = await getEmbedding(embedText.substring(0, 2000));
+      params.push(vecToSql(emb));
+      embeddingClause = `$6::ruvector(384)`;
+    } catch (e) { log('WARN', `embedding generation failed for store: ${e.message}`); }
+  }
   await pool.query(
     `INSERT INTO memory_entries (id, namespace, key, value, source_type, metadata, embedding)
-     VALUES ($1, $2, $3, $4::jsonb, $5, '{}',
-             ('[' || (SELECT array_to_string(ARRAY(SELECT jsonb_array_elements_text(generate_text_embedding($6))), ',')) || ']')::ruvector(384))
-     ON CONFLICT (id) DO UPDATE SET value = EXCLUDED.value, embedding = EXCLUDED.embedding, updated_at = NOW()`,
-    [id, namespace, key, pgValue, WRITE_SOURCE_TYPE, embedText],
+     VALUES ($1, $2, $3, $4::jsonb, $5, '{}', ${embeddingClause})
+     ON CONFLICT (id) DO UPDATE SET value = EXCLUDED.value, embedding = COALESCE(EXCLUDED.embedding, memory_entries.embedding), updated_at = NOW()`,
+    params,
   );
-  return { success: true, action: 'store', key, namespace, stored: true, storage: 'ruvector-postgres' };
+  return { success: true, action: 'store', key, namespace, stored: true, embedded: params.length > 5, storage: 'ruvector-postgres' };
 }
 
 async function memRetrieve(key, namespace = 'default') {
@@ -118,52 +176,54 @@ async function memList(namespace = 'default', limit = 100) {
 async function memSearch(query, namespace = 'default', limit = 10, sourceType = null) {
   if (!pgOk || !pool) return { success: false, error: 'pg unavailable' };
   const st = sourceType && sourceType !== '*' ? sourceType : null;
-  const nsFilter = namespace === '*' ? '' : 'AND namespace = $4';
-  const stFilter = st ? 'AND source_type = $5' : '';
-  const params = [query, limit];
 
-  // HNSW vector similarity search using server-side embedding
-  const sql = `
-    WITH query_vec AS (
-      SELECT ('[' || (SELECT array_to_string(ARRAY(SELECT jsonb_array_elements_text(generate_text_embedding($1))), ',')) || ']')::ruvector(384) AS vec
-    )
-    SELECT key, value, namespace, source_type,
-           1.0 - (embedding <=> (SELECT vec FROM query_vec)) AS score
-    FROM memory_entries
-    WHERE embedding IS NOT NULL
-      ${nsFilter}
-      ${stFilter}
-    ORDER BY embedding <=> (SELECT vec FROM query_vec)
-    LIMIT $2`;
+  // Try HNSW vector search via xinference embedding
+  if (xinferenceOk) {
+    try {
+      const queryEmb = await getEmbedding(query.substring(0, 2000));
+      const queryVec = vecToSql(queryEmb);
+      let paramIdx = 3;
+      const params = [queryVec, limit];
+      let nsFilter = '';
+      let stFilter = '';
+      if (namespace !== '*') { nsFilter = `AND namespace = $${paramIdx++}`; params.push(namespace); }
+      if (st) { stFilter = `AND source_type = $${paramIdx++}`; params.push(st); }
 
-  const queryParams = [...params];
-  if (nsFilter) queryParams.push(namespace);
-  if (stFilter) queryParams.push(st);
+      const sql = `
+        SELECT key, value, namespace, source_type,
+               1.0 - (embedding <=> $1::ruvector(384)) AS score
+        FROM memory_entries
+        WHERE embedding IS NOT NULL ${nsFilter} ${stFilter}
+        ORDER BY embedding <=> $1::ruvector(384)
+        LIMIT $2`;
 
-  try {
-    const res = await pool.query(sql, queryParams);
-    const results = res.rows.map(r => ({
-      key: r.key, value: parseVal(r.value), namespace: r.namespace,
-      source_type: r.source_type, score: parseFloat(r.score),
-    }));
-    return { success: true, action: 'search', query, namespace, results, count: results.length, method: 'hnsw', storage: 'ruvector-postgres' };
-  } catch (vecErr) {
-    log('WARN', `HNSW search failed, falling back to ILIKE: ${vecErr.message}`);
-    const fallback = await pool.query(
-      `SELECT key, value, namespace, source_type, 0.5 AS score
-       FROM memory_entries
-       WHERE (namespace = $1 OR $1 = '*')
-         AND ($3::text IS NULL OR source_type = $3)
-         AND (key ILIKE $2 OR value::text ILIKE $2)
-       ORDER BY created_at DESC LIMIT $4`,
-      [namespace, `%${query}%`, st, limit],
-    );
-    const results = fallback.rows.map(r => ({
-      key: r.key, value: parseVal(r.value), namespace: r.namespace,
-      source_type: r.source_type, score: 0.5,
-    }));
-    return { success: true, action: 'search', query, namespace, results, count: results.length, method: 'ilike-fallback', storage: 'ruvector-postgres' };
+      const res = await pool.query(sql, params);
+      const results = res.rows.map(r => ({
+        key: r.key, value: parseVal(r.value), namespace: r.namespace,
+        source_type: r.source_type, score: parseFloat(r.score),
+      }));
+      return { success: true, action: 'search', query, namespace, results, count: results.length, method: 'hnsw-xinference', storage: 'ruvector-postgres' };
+    } catch (vecErr) {
+      log('WARN', `HNSW search failed: ${vecErr.message}`);
+    }
   }
+
+  // Fallback: ILIKE text search — this is DEGRADED, not normal
+  log('WARN', 'DEGRADED: falling back to ILIKE text search — xinference unavailable or vector search failed. Semantic search is disabled. Check xinference container and XINFERENCE_ENDPOINT.');
+  const fallback = await pool.query(
+    `SELECT key, value, namespace, source_type, 0.5 AS score
+     FROM memory_entries
+     WHERE (namespace = $1 OR $1 = '*')
+       AND ($3::text IS NULL OR source_type = $3)
+       AND (key ILIKE $2 OR value::text ILIKE $2)
+     ORDER BY created_at DESC LIMIT $4`,
+    [namespace, `%${query}%`, st, limit],
+  );
+  const results = fallback.rows.map(r => ({
+    key: r.key, value: parseVal(r.value), namespace: r.namespace,
+    source_type: r.source_type, score: 0.5,
+  }));
+  return { success: true, action: 'search', query, namespace, results, count: results.length, method: 'ilike-fallback', degraded: true, warning: 'Semantic search unavailable — using text substring match. Check xinference service.', storage: 'ruvector-postgres' };
 }
 
 // ── Tool schemas (claude-flow compatible) ─────────────────────────────────────
