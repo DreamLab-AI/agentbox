@@ -123,11 +123,17 @@ async function git(args, cwd, logger) {
  * Each (remoteId, agentDid) pair gets its own directory to prevent conflicts.
  */
 function clonePath(remoteId, agentDid) {
+  // Sanitise remoteId to prevent path traversal.
+  const safeId = String(remoteId).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 128);
   const hash = crypto.createHash('sha256')
     .update(`${remoteId}:${agentDid}`)
     .digest('hex')
     .slice(0, 12);
-  return path.join(WORKSPACE_ROOT, `${remoteId}-${hash}`);
+  const result = path.resolve(WORKSPACE_ROOT, `${safeId}-${hash}`);
+  if (!result.startsWith(path.resolve(WORKSPACE_ROOT))) {
+    throw new Error('path-traversal: clonePath escaped workspace root');
+  }
+  return result;
 }
 
 /**
@@ -312,6 +318,22 @@ async function gitBridgeRoutes(fastify, options) {
     const workdir = clonePath(remoteId, agentDid);
     const branch = remote.branch || 'main';
 
+    // Validate remote URL protocol to prevent ext::, file://, ssh:// RCE.
+    if (remote.url && !remote.url.startsWith('https://') && !remote.url.startsWith('http://')) {
+      return reply.code(400).send({
+        error: 'invalid-remote-url',
+        message: 'Only HTTP(S) git remotes are supported',
+      });
+    }
+
+    // Validate branch name against safe pattern.
+    if (!/^[a-zA-Z0-9/_.-]{1,256}$/.test(branch)) {
+      return reply.code(400).send({
+        error: 'invalid-branch',
+        message: 'Branch name contains disallowed characters',
+      });
+    }
+
     // 2. Clone or fetch
     let alreadyCloned = false;
     try {
@@ -464,13 +486,30 @@ async function gitBridgeRoutes(fastify, options) {
       commitBody ? `\n**Commit Body**:\n${commitBody}` : null,
     ].filter(Boolean).join('\n');
 
+    // Read file content for write-back (the actual enrichment payload).
+    let fileContent = '';
+    try {
+      const { stdout } = await git(['show', `${commitSha}:${targetPath}`], workdir, logger);
+      fileContent = stdout;
+    } catch {
+      // Non-fatal — content may not be needed if write-back is disabled.
+    }
+
     let brokerResponse;
     try {
-      brokerResponse = await vcFetch('POST', '/api/broker/cases', {
+      brokerResponse = await vcFetch('POST', '/api/enrichment-proposals', {
+        agent_did: agentDid,
+        entity_urn: entityUrn || trailerCheck.trailers['Urn'] || '',
+        enrichment_type: enrichmentType,
+        target_path: targetPath,
+        reasoning_hash: trailerCheck.trailers['Reasoning-hash'] || '',
         title: caseTitle,
-        description: caseDescription,
-        priority: 'medium',
-        source: 'workflow_proposal',
+        summary: caseDescription.slice(0, 2000),
+        priority: 50,
+        content: fileContent,
+        commit_subject: commitSubject,
+        commit_body: commitBody || '',
+        remote_id: remoteId,
       }, logger);
     } catch (err) {
       return reply.code(err.statusCode || 502).send({
@@ -479,11 +518,11 @@ async function gitBridgeRoutes(fastify, options) {
       });
     }
 
-    logger.info({ caseId: brokerResponse.id, commitSha, enrichmentType }, 'git-bridge: enrichment submitted to broker');
+    logger.info({ caseId: brokerResponse.case_id, commitSha, enrichmentType }, 'git-bridge: enrichment submitted to broker');
 
     return reply.code(201).send({
-      caseId: brokerResponse.id,
-      status: 'submitted',
+      caseId: brokerResponse.case_id,
+      status: brokerResponse.status || 'submitted',
     });
   });
 

@@ -121,14 +121,17 @@ async function _readSourceFile(filePath) {
 async function _enrichCase(brokerCase) {
   const meta = brokerCase.metadata || brokerCase.case_metadata || {};
 
-  // Source file path — the broker case carries this in metadata
-  const sourceRef = meta.source_file || meta.source_path || meta.file_path || '';
+  // Source file path — PRD-013 enrichment_proposal_handler stores as target_path.
+  const sourceRef = meta.target_path || meta.source_file || meta.source_path || meta.file_path || '';
   const sourceContent = await _readSourceFile(sourceRef);
   if (sourceContent !== null) {
     brokerCase.source_content = sourceContent;
   }
 
-  // Proposed enrichment — may already be inline or nested in metadata
+  // Proposed enrichment content — PRD-013 stores under `content` key.
+  if (!brokerCase.proposed_enrichment && meta.content) {
+    brokerCase.proposed_enrichment = meta.content;
+  }
   if (!brokerCase.proposed_enrichment && meta.proposed_enrichment) {
     brokerCase.proposed_enrichment = meta.proposed_enrichment;
   }
@@ -327,16 +330,17 @@ async function brokerBridgeRoutes(fastify, options) {
     const { id } = request.params;
     const { decision, note, timestamp } = request.body;
 
-    // 1. Proxy the decision to VisionClaw
+    // 1. Proxy the decision to VisionClaw's enrichment-proposals decide endpoint.
+    // The BrokerActor triggers the WriteBackSaga internally for approved
+    // KnowledgeEnrichment cases, so no separate writeback call is needed.
     let decisionResult;
     try {
-      decisionResult = await _vcFetch(`/api/broker/cases/${encodeURIComponent(id)}/decide`, {
+      decisionResult = await _vcFetch(`/api/enrichment-proposals/${encodeURIComponent(id)}/decide`, {
         method: 'POST',
         body: {
-          decision,
-          case_id: id,
-          note: note || undefined,
-          timestamp: timestamp || new Date().toISOString(),
+          outcome: decision,
+          broker_pubkey: request.auth?.pubkey || 'unknown',
+          reasoning: note || '',
         },
       });
     } catch (err) {
@@ -347,38 +351,10 @@ async function brokerBridgeRoutes(fastify, options) {
       });
     }
 
-    // 2. On approve/promote, trigger the write-back saga
-    let writebackTriggered = false;
-    let writebackResult = null;
-
-    if (WRITEBACK_DECISIONS.has(decision)) {
-      try {
-        // Fetch the full case to get the enrichment payload for write-back
-        const fullCase = await _vcFetch(`/api/broker/cases/${encodeURIComponent(id)}`).catch(() => null);
-        const meta = fullCase ? (fullCase.metadata || fullCase.case_metadata || {}) : {};
-
-        writebackResult = await _vcFetch('/api/ingest/writeback', {
-          method: 'POST',
-          body: {
-            case_id: id,
-            decision,
-            source_file: meta.source_file || meta.source_path || null,
-            enrichment_payload: meta.proposed_enrichment || meta.enrichment_payload || null,
-            provenance: {
-              broker_case_id: id,
-              decision,
-              decided_at: new Date().toISOString(),
-              agent_did: meta.agent_did || meta.proposed_by || null,
-            },
-          },
-        });
-        writebackTriggered = true;
-        logger.info({ caseId: id, decision }, 'broker-bridge: write-back saga triggered');
-      } catch (err) {
-        logger.error({ err: err.message, caseId: id }, 'broker-bridge: write-back saga failed');
-        writebackResult = { error: err.message };
-      }
-    }
+    // Write-back is triggered internally by the BrokerActor for approved
+    // KnowledgeEnrichment cases. We report whether the decision was accepted.
+    const writebackTriggered = WRITEBACK_DECISIONS.has(decision);
+    let writebackResult = writebackTriggered ? { status: 'triggered-internally' } : null;
 
     return {
       success: true,
@@ -406,7 +382,8 @@ async function brokerBridgeRoutes(fastify, options) {
    * Broadcast an SSE event to all connected pane clients.
    */
   function _broadcastSSE(eventType, data) {
-    const payload = `event: ${eventType}\ndata: ${JSON.stringify(data)}\n\n`;
+    const safeEventType = String(eventType).replace(/[^a-zA-Z0-9:_-]/g, '');
+    const payload = `event: ${safeEventType}\ndata: ${JSON.stringify(data)}\n\n`;
     for (const res of sseConnections) {
       try {
         res.raw.write(payload);
