@@ -4,6 +4,43 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+## [Security Audit Sprint] - 2026-05-11
+
+DreamLab ecosystem-wide security audit. 7 fixes applied to agentbox
+covering P0 critical, P1 high, P2 medium, and Round 2 P0 findings.
+
+### Security
+
+- **P0-10**: Binary payload buffer size corrected from 15 to 19 bytes in
+  agent-event-publisher.js, fixing a 4-byte under-read that silently
+  truncated agent-action event payloads and could cause downstream
+  parsers to misinterpret the trailing fields
+- **P0-11**: NIP-98 structural validation fallback changed from soft
+  accept to hard reject in auth.js; malformed NIP-98 tokens that lack
+  required fields are now rejected instead of being treated as valid
+  with default values
+- **R2-P0-02**: Command injection vulnerability fixed in
+  system-monitor.js by replacing child_process.exec() with execFile(),
+  preventing shell metacharacter injection through monitoring parameters
+- **R2-P0-03**: --dangerously-skip-permissions flag removed from
+  process-manager.js; child Claude Code processes now run with the
+  standard permission model
+
+### Fixed
+
+- **P1-27**: ComfyUI simulation stub replaced with real backend
+  integration in comfyui-manager.js, connecting to the actual ComfyUI
+  API instead of returning synthetic responses
+- **P1-28**: Payment gate enforces server-side cost table in
+  payment-gate.js, preventing clients from submitting arbitrary payment
+  amounts that bypass the configured tier pricing
+
+### Added
+
+- **P2-10**: Linked-data input schema validation in input-validator.js,
+  rejecting payloads that do not conform to the expected JSON-LD
+  structure before they reach adapter dispatch
+
 ### `did:nostr` carries pubkey hex, not bech32 npub (2026-04-25)
 
 The DID grammar in ADR-013 now specifies BIP-340 x-only pubkey hex

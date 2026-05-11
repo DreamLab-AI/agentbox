@@ -1,5 +1,15 @@
 # Agentbox Repo Notes
 
+## Security Audit Sprint (2026-05-11)
+
+A DreamLab ecosystem-wide security audit applied 7 fixes to agentbox.
+See CHANGELOG.md `[Security Audit Sprint] - 2026-05-11` for the full
+manifest. Key areas hardened: binary payload buffer sizing (P0-10),
+NIP-98 structural validation (P0-11), command injection via exec()
+(R2-P0-02), dangerous permission skipping (R2-P0-03), ComfyUI backend
+wiring (P1-27), server-side payment enforcement (P1-28), and JSON-LD
+input schema validation (P2-10).
+
 This file documents the current repo architecture. It is not a generic Claude Code prompt file.
 
 ## Current State
