@@ -1509,6 +1509,11 @@ stderr_logfile=/var/log/tmux-autostart.error.log
           # (entrypoint) and readable by devuser (uid 1000). Content is
           # regenerated at each boot so tmpfs is sufficient.
           "/home/devuser/.claude-flow:mode=755,size=64M,uid=1000,gid=1000"
+          # OpenAI Codex CLI home. Plugin git pack + sqlite logs + session
+          # history grow quickly; 512M gives plenty of headroom.
+          "/home/devuser/.codex:mode=755,size=512M,uid=1000,gid=1000"
+          # Gemini CLI home. Model cache + history; 256M is generous.
+          "/home/devuser/.gemini:mode=755,size=256M,uid=1000,gid=1000"
           # ruflo plugins git cache. Phase 7 sparse-clones github.com/ruvnet/ruflo
           # here; plugins are then symlinked from cache into .claude-flow/plugins.
           # 512M covers the full plugin tree with room for npm artefacts.

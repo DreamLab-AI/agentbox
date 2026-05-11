@@ -69,8 +69,8 @@ services:
       - /home/devuser/.local:mode=755,size=128M,uid=1000,gid=1000
       - /home/devuser/.config:mode=755,size=64M,uid=1000,gid=1000
       - /home/devuser/.claude-flow:mode=755,size=64M,uid=1000,gid=1000
-      - /home/devuser/.codex:mode=755,size=32M,uid=1000,gid=1000
-      - /home/devuser/.gemini:mode=755,size=32M,uid=1000,gid=1000
+      - /home/devuser/.codex:mode=755,size=512M,uid=1000,gid=1000
+      - /home/devuser/.gemini:mode=755,size=256M,uid=1000,gid=1000
       - /var/cache:mode=755,size=512M,uid=1000,gid=1000
       - /usr/local/bin:mode=755,size=8M,exec,suid
       - /tmp/.X11-unix:mode=1777
