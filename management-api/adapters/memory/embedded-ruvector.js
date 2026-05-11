@@ -16,6 +16,13 @@ const { BaseAdapter } = require('../base');
 const { NotFound } = require('../errors');
 const CONTRACT_VERSIONS = require('../contract-versions');
 
+// ADR-063: URN-traced memory entries
+let urisMint = null;
+try {
+  const uris = require('../../lib/uris');
+  urisMint = uris.mint;
+} catch { /* uris.js not loadable — URN minting degrades to null */ }
+
 /**
  * Trivial TF embedding: returns a 64-float normalised array.
  * Sufficient for cosine-similarity ranking in tests; not suitable for prod.
@@ -68,11 +75,16 @@ class EmbeddedRuvectorMemoryAdapter extends BaseAdapter {
    */
   async store(key, value, namespace) {
     if (!key) throw new Error('key is required');
-    const ns = this._ns(namespace);
+    const nsName = namespace || 'default';
+    const ns = this._ns(nsName);
     const embedding = naiveEmbed(String(value));
     const stored_at = new Date().toISOString();
-    ns.set(key, { key, value: String(value), embedding, namespace: namespace || 'default', stored_at });
-    return { key, namespace: namespace || 'default', stored_at };
+    let urn = null;
+    if (urisMint) {
+      try { urn = urisMint({ kind: 'memory', localId: `${nsName}.${key}` }); } catch { /* */ }
+    }
+    ns.set(key, { key, value: String(value), embedding, namespace: nsName, stored_at, urn });
+    return { key, namespace: nsName, stored_at, urn };
   }
 
   /**
@@ -110,6 +122,9 @@ class EmbeddedRuvectorMemoryAdapter extends BaseAdapter {
     const entry = ns.get(key);
     if (!entry) return null;
     const { embedding: _, ...rest } = entry;
+    if (!rest.urn && urisMint) {
+      try { rest.urn = urisMint({ kind: 'memory', localId: `${rest.namespace}.${key}` }); } catch { /* */ }
+    }
     return rest;
   }
 

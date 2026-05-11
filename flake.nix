@@ -48,6 +48,7 @@
         agentboxConfig = builtins.fromTOML (builtins.readFile ./agentbox.toml);
         coreCfg = agentboxConfig.core or {};
         sovereignCfg = agentboxConfig.sovereign_mesh or {};
+        networkingCfg = agentboxConfig.networking or {};
         desktopCfg = agentboxConfig.desktop or {};
         skillsCfg = agentboxConfig.skills or {};
         toolchainCfg = agentboxConfig.toolchains or {};
@@ -64,6 +65,13 @@
         solidPodRsCfg  = (agentboxConfig.integrations or {}).solid_pod_rs or {};
         podsImpl       = adaptersCfgTop.pods or "local-solid-rs";
         solidPodRsActive = podsImpl == "local-solid-rs";
+
+        # Provider gates. Ollama sidecar defaults OFF — most deployments
+        # already run ollama on the host (docker.internal:11434), and the
+        # m3 unified-GPU pass added the sidecar block ungated, which is the
+        # bug this flag fixes (see commit 278dc5a4).
+        providersCfg = agentboxConfig.providers or {};
+        ollamaSidecarEnabled = ((providersCfg.ollama or {}).sidecar or false);
 
         # GPU backend dispatch — single source of truth for GPU concerns.
         gpuLib = import ./lib/gpu-backend.nix { inherit lib pkgs; };
@@ -92,32 +100,32 @@
         mkNpmCli  = npmCliLib.makeNpmCli;
 
         # 1. ruvector — always enabled; replaces npx in [program:ruvector] supervisor block.
-        #    nix-prefetch-url https://registry.npmjs.org/ruvector/-/ruvector-0.2.23.tgz
+        #    nix-prefetch-url https://registry.npmjs.org/ruvector/-/ruvector-0.2.25.tgz
         ruvectorPkg = mkNpmCli {
           pkgName         = "ruvector";
-          version         = "0.2.23";
-          sha256          = "sha256-IUSAj/MLpdBt2N/joQ1n6QM/u5gVA+1CMCO++hV+dfY=";
-          nodeModulesHash = "sha256-rUua0WWq+oCvDkE0WAPTD9yR+V/K26ddT0zh1/8n2ds=";
+          version         = "0.2.25";
+          sha256          = "sha256-CPzyPQjPQNO3C8HdBt8wlmCZNJn1DVev+/HBycoDakk=";
+          nodeModulesHash = "sha256-5ol92/2asyQoXLYQzZPsuQRIHB5gGjyJlw/FZiLMq1g=";
           bin             = "ruvector";
         };
 
         # 2. @claude-flow/cli — gated by toolchains.claude_flow.
-        #    nix-prefetch-url https://registry.npmjs.org/%40claude-flow/cli/-/cli-3.5.80.tgz
+        #    nix-prefetch-url https://registry.npmjs.org/%40claude-flow/cli/-/cli-3.6.12.tgz
         claudeFlowPkg = mkNpmCli {
           pkgName         = "@claude-flow/cli";
-          version         = "3.5.80";
-          sha256          = "sha256-7egZQtT2iKVXtrPWByc1zk9/TLbcDKO1nr+B+sqeQ88=";
-          nodeModulesHash = "sha256-Gj2qEcu5mqTq+Pl/qObg1C0D63eq6LW5bIcC4sgAQ/o=";
+          version         = "3.6.12";
+          sha256          = "sha256-k36Vtg3i0YKZsvZi9+5ESSdSVqXOpWSd+CxDX7LiCyY=";
+          nodeModulesHash = "sha256-pJLQKs0DPuW+HXlWKzy7J4BqMtVMeZYr0DWwJRBwiBA=";
           bin             = "claude-flow";
         };
 
         # 3. ruflo — gated by toolchains.ruflo.
-        #    nix-prefetch-url https://registry.npmjs.org/ruflo/-/ruflo-3.5.80.tgz
+        #    nix-prefetch-url https://registry.npmjs.org/ruflo/-/ruflo-3.6.12.tgz
         rufloPkg = mkNpmCli {
           pkgName         = "ruflo";
-          version         = "3.5.80";
-          sha256          = "sha256-7/e9G/Ggm+MB6TwAEnxUZ7pe9qCDp5qrm5v4fF6fq4I=";
-          nodeModulesHash = "sha256-WEw+K1c99z93/AU8H7LxAoZCwXnRrSv/gCnidZrLRZg=";
+          version         = "3.6.12";
+          sha256          = "sha256-dAUw69hxvHiNR8Xczyz+7PfUK0f9DPisRPoa2CH/an8=";
+          nodeModulesHash = "sha256-aKkv+zEv5Q+7GN2rxD+UYwJtNPls92H3qCW7Xja1tas=";
           bin             = "ruflo";
         };
 
@@ -126,12 +134,12 @@
         #    templates to $HOME/.claude/agents/ — it must run as the runtime user
         #    after container start, NOT at Nix build time. Add to agentbox.sh init:
         #      [[ "${ENABLE_AGENTIC_QE:-false}" == "true" ]] && aqe init --auto || true
-        #    nix-prefetch-url https://registry.npmjs.org/agentic-qe/-/agentic-qe-3.9.15.tgz
+        #    nix-prefetch-url https://registry.npmjs.org/agentic-qe/-/agentic-qe-3.9.18.tgz
         agenticQePkg = mkNpmCli {
           pkgName         = "agentic-qe";
-          version         = "3.9.15";
-          sha256          = "sha256-9CjwZt9bbJCIxyR8qy1snrXdAIAppxMiqwg5NooukVg=";
-          nodeModulesHash = "sha256-bIiH2aTz0ZEOxJVUNDlFE955jiczywwWvVpJvhLjJRw=";
+          version         = "3.9.18";
+          sha256          = "sha256-bYAVt/RJpyeKopiC7nSUOLvaWGLE+ANAL8xTlt/0e8I=";
+          nodeModulesHash = "sha256-jHTownp9urwwADTSnt5Hfd3GcjwK0KJ1af/sBeB7KMw=";
           bin             = "aqe";
         };
 
@@ -182,12 +190,12 @@
 
         # 9. @mermaid-js/mermaid-cli — gated by skills.docs.mermaid.
         #    Binary name is mmdc (upstream convention).
-        #    nix-prefetch-url https://registry.npmjs.org/%40mermaid-js/mermaid-cli/-/mermaid-cli-11.12.0.tgz
+        #    nix-prefetch-url https://registry.npmjs.org/%40mermaid-js/mermaid-cli/-/mermaid-cli-11.14.0.tgz
         mermaidCliPkg = mkNpmCli {
           pkgName         = "@mermaid-js/mermaid-cli";
-          version         = "11.12.0";
-          sha256          = "sha256-xZ4rfsAQ16J6RbSt3N6Xl4xkSx6ZZgnjlxTqUtiSaDc=";
-          nodeModulesHash = "sha256-2jYyZtdOYeCc0YtBLGeCY5B3IdQiYTF96Ya0VNXWhv8=";
+          version         = "11.14.0";
+          sha256          = "sha256-/skZEk7xAHj88GNX/OwiFKKMUiYFedGq9nfL436BINg=";
+          nodeModulesHash = "sha256-pcYQri+1my9aElbPt8lzUMTiWnjYqjaiSSAxehiRQDg=";
           bin             = "mmdc";
         };
 
@@ -228,8 +236,8 @@
           entry       = "server.js";
           # Prefetched 2026-04-24 against management-api/package-lock.json.
           # Refresh via: nix run nixpkgs#prefetch-npm-deps -- management-api/package-lock.json
-          # Prefetched 2026-04-25. Refresh: nix run nixpkgs#prefetch-npm-deps -- management-api/package-lock.json
-          npmDepsHash = "sha256-1xqNibe3Txjpd+n15TBhTjwwk53ZdkK1NsjP5C8Soc8=";
+          # Prefetched 2026-04-27. Refresh: nix run nixpkgs#prefetch-npm-deps -- management-api/package-lock.json
+          npmDepsHash = "sha256-KSyQJIMlbZHm2qWaw7Djpi4tJ4Zfm9st+umvHJuwrD8=";
         };
 
         # 2. mcp/nostr-bridge — sovereign_mesh service; 2 deps (nostr-tools, ws)
@@ -261,7 +269,7 @@
           # QE audit P0: `npx --yes tsc` attempts to fetch typescript from npm
           # which fails in the Nix sandbox (network disabled). Provide tsc via
           # nativeBuildInputs instead — typescript comes from nixpkgs, not npm.
-          extraBuildInputs = [ pkgs.nodePackages.typescript ];
+          extraBuildInputs = [ pkgs.typescript ];
           buildPhaseExtra  = ''
             export HOME="$TMPDIR"
             tsc --project tsconfig.json
@@ -294,7 +302,7 @@
           # Prefetched 2026-04-25. Refresh:
           #   nix run nixpkgs#prefetch-npm-deps -- mcp/consultants/package-lock.json
           # Prefetched 2026-04-25. Refresh: nix run nixpkgs#prefetch-npm-deps -- mcp/consultants/package-lock.json
-          npmDepsHash = "sha256-ph18TjfLha5ltqsqo1d2cjrqqYS6jB+FD0DlNqyG0Hw=";
+          npmDepsHash = "sha256-GlSG2FVmY9X8nQvk621jxBFuZTms1hj+1UEuDekT3xA=";
         };
 
         # 6. skills/comfyui/mcp-server — gated by skills.media.comfyui_builtin.
@@ -305,7 +313,7 @@
           src              = ./skills/comfyui/mcp-server;
           entry            = "server.js";
           skipLoadCheck    = true;
-          extraBuildInputs = [ pkgs.python3 pkgs.nodePackages.node-gyp ];
+          extraBuildInputs = [ pkgs.python3 pkgs.node-gyp ];
           extraEnv         = { npm_config_build_from_source = "true"; };
           # Prefetched 2026-04-24. Refresh: nix run nixpkgs#prefetch-npm-deps -- skills/comfyui/mcp-server/package-lock.json
           npmDepsHash = "sha256-3OchWVs/H+swo4KzBcicvs0+4FW8RVNDqc4DrmC81Xc=";
@@ -334,6 +342,8 @@
 
         basePackages = with pkgs; [
           bash
+          fish
+          sudo
           coreutils
           cacert
           curl
@@ -352,7 +362,7 @@
           less
           file
           tree
-          zellij
+          tmux
           vim
           nano
           unzip
@@ -361,8 +371,12 @@
           xz
           htop
           ncdu
+          ncurses         # provides clear, tput, reset, infocmp, tic — terminal handling
           procps
           openssh
+          inetutils       # hostname, telnet, ftp, traceroute — minimal network diagnostics
+          iproute2        # ip, ss — modern network introspection
+          iputils         # ping, ping6, tracepath — basic reachability tests
           gnumake
           gcc
           clang
@@ -370,18 +384,52 @@
           pkg-config
           uv
           pandoc
+
+          # Modern CLI replacements (DX tooling for agentic engineers)
+          eza             # modern ls with git integration
+          bat             # cat with syntax highlighting
+          delta           # better git diff viewer
+          dust         # visual disk usage (du replacement)
+          procs           # ps replacement with colour + tree
+          sd              # sed replacement with simpler syntax
+          choose          # cut replacement, human-friendly field selection
+          tokei           # fast code statistics
+          bottom          # resource monitor (btop alternative)
+          zoxide          # smart cd that learns directories
+          starship        # cross-shell prompt (git, nix, rust, node indicators)
+          atuin           # shell history with fuzzy search + sync
+          fzf             # fuzzy finder — Ctrl-R, Ctrl-T, piping
+          direnv          # per-directory environment variables
+          nushell         # structured data shell (JSON/TOML piping)
+
+          # Dev essentials
+          yq-go           # YAML processor (jq for YAML)
+          hyperfine       # command benchmarking
+          watchexec       # file watcher + command runner
+          just            # modern make replacement
         ];
 
         nodeEnvPackages = with pkgs; [
           nodejs_20
-          nodePackages.npm
-          nodePackages.yarn
+          nodejs_20
+          yarn
           pnpm
         ];
 
-        geminiCliPackages = lib.optionals (toolchainCfg.gemini_cli or false) (with pkgs; [
-          nodejs_20
-        ]);
+        # @google/gemini-cli pinned via makeNpmCli to stay ahead of nixpkgs.
+        # pkgs.gemini-cli lags npm; pin here for operator-controlled cadence.
+        # nix-prefetch-url https://registry.npmjs.org/%40google%2Fgemini-cli/-/gemini-cli-0.40.1.tgz
+        geminiCliPkg = mkNpmCli {
+          pkgName         = "@google/gemini-cli";
+          version         = "0.40.1";
+          sha256          = "sha256-iTIFEnwHLTuqL7pBmigIG5/Vy3fHRYgxOd2ePiwaKy0=";
+          nodeModulesHash = "sha256-vRMAns5rz3edeMNdbdQw16RByn0tOIPqzarn5VH3s2U=";
+          bin             = "gemini";
+        };
+
+        geminiCliPackages = lib.optionals (toolchainCfg.gemini_cli or false) [
+          geminiCliPkg
+        ];
 
         # OpenAI Codex Rust-native CLI — pinned upstream release asset.
         # See lib/codex-binary.nix for the per-arch sha256s and version bump
@@ -392,6 +440,15 @@
           ((toolchainCfg.codex or false) && pkgs.stdenv.isLinux)
           [ (codexLib.makeCodex system) ];
 
+        # Anthropic Claude Code native CLI — pinned upstream release binary.
+        # See lib/claude-code-binary.nix for the per-arch sha256s and version
+        # bump procedure.  Binary is wrapped with makeBinaryWrapper to disable
+        # the auto-updater and inject runtime PATH deps (ripgrep, bubblewrap).
+        claudeCodeLib = import ./lib/claude-code-binary.nix { inherit lib pkgs; };
+        claudeCodePackages = lib.optionals
+          ((toolchainCfg.claude_code or false) && pkgs.stdenv.isLinux)
+          [ (claudeCodeLib.makeClaudeCode system) ];
+
         # Runtime Python environment for bootstrap scripts and local helpers.
         # Use python.withPackages so every dep is on the interpreter's import
         # path inside the container — listing them as standalone derivations
@@ -400,6 +457,15 @@
         # (which crash-loops the container on first start).
         # sovereign-bootstrap.py imports ecdsa directly; provision-agent-stacks.py
         # imports yaml, requests, etc. — all must resolve via this interpreter.
+        # Sudo built without PAM. The default `pkgs.sudo` links libpam and
+        # tries to initialize a PAM session at every invocation, which
+        # fails inside the agentbox container with "unable to initialize
+        # PAM: Critical error - immediate abort" because no PAM modules
+        # are installed (the rootfs is read-only and image bake doesn't
+        # carry pam_unix.so + friends). NOPASSWD in /etc/sudoers.d/devuser
+        # is the only auth path used; PAM is dead weight.
+        sudoNoPam = pkgs.sudo.override { pam = null; };
+
         pythonRuntimeEnv = pkgs.python312.withPackages (ps: with ps; [
           pip
           virtualenv
@@ -419,8 +485,20 @@
           pymupdf
         ]);
 
+        # Closed dependency env for the imagemagick-mcp service (Q14).
+        # Previously the supervisor block did `pip install --target=/tmp` at
+        # boot, downloading from PyPI on every container start — violates
+        # PRD-002 §9 (hermetic closure). Bake the deps in.
+        imagemagickMcpPythonEnv = pkgs.python312.withPackages (ps: with ps; [
+          pip
+          mcp
+          httpx
+          pydantic
+        ]);
+
         pythonBasePackages = [
           pythonRuntimeEnv
+          imagemagickMcpPythonEnv
         ];
 
         rustToolchain = pkgs.rust-bin.stable.latest.minimal.override {
@@ -528,6 +606,11 @@
             pkgs.biber
           ];
 
+        networkingPackages =
+          lib.optionals (networkingCfg.tailscale or false) [
+            pkgs.tailscale
+          ];
+
         # ---------------------------------------------------------------------------
         # Privacy filter (ADR-008) — local openai/privacy-filter sidecar.
         # Gate: privacy_filter.enabled = true.
@@ -541,10 +624,10 @@
         # ---------------------------------------------------------------------------
         # solid-pod-rs — first-class Solid Protocol 0.11 server (ADR-010).
         # Gate: adapters.pods = "local-solid-rs" (the default).
-        # Source: github.com/DreamLab-AI/solid-pod-rs (AGPL-3.0-only; binary-
-        # aggregation under AGPL §5 keeps agentbox MPL-2.0 — see
-        # docs/developer/licensing.md). Derivation module in lib/solid-pod-rs.nix
-        # uses fakeHash placeholders that surface prefetch commands at realisation.
+        # Source: github.com/DreamLab-AI/solid-pod-rs (AGPL-3.0-only; consistent
+        # with agentbox AGPL-3.0 — see docs/developer/licensing.md). Derivation
+        # module in lib/solid-pod-rs.nix uses fakeHash placeholders that surface
+        # prefetch commands at realisation.
         # ---------------------------------------------------------------------------
         solidPodRsLib = import ./lib/solid-pod-rs.nix { inherit lib pkgs; };
         # Opt-in features layered on top of defaultFeatures in lib/solid-pod-rs.nix.
@@ -710,23 +793,23 @@ default_days = ${toString (relayCfg.retention_days or 30)}
         privacyFilterPackages = lib.optionals privacyFilterEnabled [ privacyFilterPythonEnv ];
 
         desktopPackages = lib.optionals (desktopCfg.enabled or false) (with pkgs; [
-          xorg-server
+          tigervnc              # Xvnc: X server + VNC in one binary (correct XKB paths)
+          xkbcomp               # runtime keymap compilation
           xauth
-          xinit
           xset
           xdpyinfo
           xprop
           xwininfo
           setxkbmap
           xkeyboard_config
-          x11vnc
-          openbox
-          tint2
+          i3                    # tiling WM — stable in Nix containers (openbox segfaults)
+          i3status              # status bar for i3
+          dmenu                 # launcher for i3
           xterm
           xfce4-terminal
           dejavu_fonts
           liberation_ttf
-          noto-fonts
+          noto-fonts-cjk-sans
           fontconfig
           xdotool
           xclip
@@ -754,6 +837,8 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           ++ desktopPackages
           ++ geminiCliPackages
           ++ codexPackages
+          ++ claudeCodePackages
+          ++ networkingPackages
           ++ gpuCfg.nixPackages
           # PRD-002 §9 Phase 1 — pre-packaged local npm services (immutable bootstrap)
           ++ npmServicePackages
@@ -782,6 +867,7 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           cp -r ${skillsTree} $out/opt/agentbox/skills
           cp -r ${./scripts} $out/opt/agentbox/scripts
           cp -r ${./config} $out/opt/agentbox/config
+          cp -r ${./https-bridge} $out/opt/agentbox/https-bridge
           cp -r ${./docs} $out/opt/agentbox/docs
           cp -r ${./aisp} $out/opt/agentbox/aisp
           cp ${./agentbox.toml} $out/opt/agentbox/agentbox.toml
@@ -811,19 +897,26 @@ default_days = ${toString (relayCfg.retention_days or 30)}
 
           # Optional skills — copy derivation package trees (includes node_modules)
           # when the corresponding feature gate is enabled.
+          # rm -rf the source-tree copy first: skillsTree cp above places source
+          # files at mcp-server/ already, so cp -rL into an existing dir would
+          # nest the package one level too deep ($dir/package/ instead of $dir/).
           ${lib.optionalString (toolchainCfg.codex or false) ''
+          rm -rf $out/opt/agentbox/skills/openai-codex/mcp-server
           mkdir -p $out/opt/agentbox/skills/openai-codex
           cp -rL ${codexMcpPkg}/package $out/opt/agentbox/skills/openai-codex/mcp-server
           ''}
           ${lib.optionalString ((toolchainCfg.ruflo or false) || (toolchainCfg.claude_flow or false)) ''
+          rm -rf $out/opt/agentbox/skills/lazy-fetch/mcp-server
           mkdir -p $out/opt/agentbox/skills/lazy-fetch
           cp -rL ${lazyFetchMcpPkg}/package $out/opt/agentbox/skills/lazy-fetch/mcp-server
           ''}
           ${lib.optionalString (browserCfg.playwright or false) ''
+          rm -rf $out/opt/agentbox/skills/playwright/mcp-server
           mkdir -p $out/opt/agentbox/skills/playwright
           cp -rL ${playwrightMcpPkg}/package $out/opt/agentbox/skills/playwright/mcp-server
           ''}
           ${lib.optionalString (mediaCfg.comfyui_builtin or false) ''
+          rm -rf $out/opt/agentbox/skills/comfyui/mcp-server
           mkdir -p $out/opt/agentbox/skills/comfyui
           cp -rL ${comfyuiMcpPkg}/package $out/opt/agentbox/skills/comfyui/mcp-server
           ''}
@@ -836,12 +929,27 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           find $out/opt/agentbox/scripts -type f -name '*.sh' -exec chmod +x {} +
           find $out/opt/agentbox/scripts -type f -name '*.py' -exec chmod +x {} +
           find $out/opt/agentbox/mcp -maxdepth 2 -type f -name '*.js' -exec chmod +x {} +
+
+          # Bake FHS shims into the image so wrapper scripts (`#!/usr/bin/env sh`,
+          # `#!/bin/sh`, etc.) and the Claude Code binary's `/lib64/ld-linux`
+          # work without a writable /usr/bin (or /bin or /lib64) tmpfs.
+          # nix2container's read_only rootfs makes the runtime mkdir+ln-sf
+          # in entrypoint.sh silently fail, leaving every npm-style wrapper
+          # ENOENT at exec time.
+          mkdir -p $out/usr/bin $out/bin $out/lib64
+          ln -s ${pkgs.coreutils}/bin/env $out/usr/bin/env
+          ln -sf ${pkgs.bash}/bin/sh $out/bin/sh
+          ln -sf ${pkgs.bash}/bin/bash $out/bin/bash
+          ln -sf ${pkgs.fish}/bin/fish $out/bin/fish
+          ln -sf ${pkgs.glibc}/lib/ld-linux-x86-64.so.2 $out/lib64/ld-linux-x86-64.so.2
         '';
 
         qgisServiceBlock = ''
 [program:qgis-mcp]
 command=${pkgs.python312}/bin/python3 -u /opt/agentbox/scripts/qgis_mcp_standalone.py
 directory=/opt/agentbox/scripts
+user=devuser
+environment=HOME="/home/devuser"
 autostart=true
 autorestart=true
 priority=230
@@ -851,9 +959,10 @@ stderr_logfile=/var/log/qgis-mcp.error.log
 
         blenderServiceBlock = ''
 [program:blender-mcp]
-command=${pkgs.python312}/bin/python3 -u /opt/agentbox/skills/blender/addon/server.py
-directory=/opt/agentbox/skills/blender/addon
-environment=HOME="/workspace"
+command=${pkgs.nodejs_20}/bin/node /opt/agentbox/skills/blender/tools/blender-mcp-proxy.js
+directory=/opt/agentbox/skills/blender/tools
+user=devuser
+environment=HOME="/home/devuser"
 autostart=true
 autorestart=true
 priority=231
@@ -864,8 +973,9 @@ stderr_logfile=/var/log/blender-mcp.error.log
         jupyterServiceBlock = ''
 [program:jupyter-lab]
 command=${pkgs.python312Packages.jupyterlab}/bin/jupyter-lab --ip=0.0.0.0 --port=8888 --no-browser --ServerApp.token=
-directory=/workspace
-environment=HOME="/workspace"
+directory=/home/devuser/workspace
+user=devuser
+environment=HOME="/home/devuser"
 autostart=true
 autorestart=true
 priority=232
@@ -873,32 +983,30 @@ stdout_logfile=/var/log/jupyter-lab.log
 stderr_logfile=/var/log/jupyter-lab.error.log
         '';
 
+        # Desktop via TigerVNC Xvnc — single binary replaces Xvfb + x11vnc.
+        # Xvnc builds xkbcomp paths into its own derivation closure, avoiding
+        # the XKB path mismatch that breaks standalone Xvfb in nix2container.
         desktopBlocks = ''
-[program:xvfb]
-command=${pkgs.xorg-server}/bin/Xvfb :1 -screen 0 ${(desktopCfg.resolution or "1920x1080")}x24 -ac +extension GLX +render -noreset
+[program:xvnc]
+command=${pkgs.tigervnc}/bin/Xvnc :1 -geometry ${(desktopCfg.resolution or "1920x1080")} -depth 24 -SecurityTypes None -ac -pn -rfbport 5901 -localhost -rawkeyboard
+user=devuser
+environment=HOME="/home/devuser"
 autostart=true
 autorestart=true
 priority=40
-stdout_logfile=/var/log/xvfb.log
-stderr_logfile=/var/log/xvfb.error.log
+stdout_logfile=/var/log/xvnc.log
+stderr_logfile=/var/log/xvnc.error.log
 
-[program:openbox]
-command=${pkgs.openbox}/bin/openbox
-environment=DISPLAY=":1",HOME="/workspace"
+[program:i3wm]
+command=${pkgs.i3}/bin/i3
+user=devuser
+environment=DISPLAY=":1",HOME="/home/devuser"
 autostart=true
 autorestart=true
+startsecs=3
 priority=41
-stdout_logfile=/var/log/openbox.log
-stderr_logfile=/var/log/openbox.error.log
-
-[program:x11vnc]
-command=${pkgs.x11vnc}/bin/x11vnc -display :1 -rfbport 5901 -localhost -forever -shared -nopw -xkb
-environment=DISPLAY=":1",HOME="/workspace"
-autostart=true
-autorestart=true
-priority=42
-stdout_logfile=/var/log/x11vnc.log
-stderr_logfile=/var/log/x11vnc.error.log
+stdout_logfile=/var/log/i3wm.log
+stderr_logfile=/var/log/i3wm.error.log
         '';
 
         supervisorText = ''
@@ -920,7 +1028,7 @@ supervisor.rpcinterface_factory = supervisor.rpcinterface:make_main_rpcinterface
 
 [program:bootstrap]
 command=/opt/agentbox/config/entrypoint-unified.sh
-environment=AGENTBOX_BOOTSTRAP_STAGE="B"
+environment=AGENTBOX_BOOTSTRAP_STAGE="B",HOME="/home/devuser",TRANSFORMERS_CACHE="/home/devuser/.cache/huggingface",HF_HOME="/home/devuser/.cache/huggingface"
 autostart=true
 autorestart=false
 startsecs=0
@@ -928,19 +1036,15 @@ priority=5
 stdout_logfile=/var/log/bootstrap.log
 stderr_logfile=/var/log/bootstrap.error.log
 
-[program:ruvector]
-command=${ruvectorPkg}/bin/ruvector serve --port %(ENV_RUVECTOR_PORT)s --data-dir %(ENV_RUVECTOR_DATA_DIR)s
-environment=HOME="/workspace",RUVECTOR_DATA_DIR="%(ENV_RUVECTOR_DATA_DIR)s",RUVECTOR_PORT="%(ENV_RUVECTOR_PORT)s",AGENTBOX_REQUIRED_FOR_READINESS="true"
-autostart=true
-autorestart=true
-priority=10
-stdout_logfile=/var/log/ruvector.log
-stderr_logfile=/var/log/ruvector.error.log
+# ruvector is a CLI/library tool, not a daemon — available on PATH as 'ruvector'
+# The management-api uses it via embedded-ruvector adapter (sql.js in-process)
+# or external-pg adapter (PostgreSQL connection). No supervisord service needed.
 
 [program:management-api]
 command=${managementApiPkg}/bin/management-api
 directory=/opt/agentbox/management-api
-environment=HOME="/workspace",MANAGEMENT_API_PORT="%(ENV_MANAGEMENT_API_PORT)s",MANAGEMENT_API_KEY="%(ENV_MANAGEMENT_API_KEY)s",MANAGEMENT_API_AUTH_MODE="%(ENV_MANAGEMENT_API_AUTH_MODE)s",AGENTBOX_REQUIRED_FOR_READINESS="true"
+user=devuser
+environment=HOME="/home/devuser",MANAGEMENT_API_PORT="%(ENV_MANAGEMENT_API_PORT)s",MANAGEMENT_API_KEY="%(ENV_MANAGEMENT_API_KEY)s",MANAGEMENT_API_AUTH_MODE="%(ENV_MANAGEMENT_API_AUTH_MODE)s",MEMORY_ADMIN_ACCESS_MODE="%(ENV_MEMORY_ADMIN_ACCESS_MODE)s",AGENTBOX_REQUIRED_FOR_READINESS="true"
 autostart=true
 autorestart=true
 priority=20
@@ -954,11 +1058,12 @@ stderr_logfile=/var/log/management-api.error.log
 ; written and /ready remains 503 (PRD-002 §9, DDD-001 BootstrapCompletion).
 [program:bootstrap-seal]
 command=/opt/agentbox/config/seal-bootstrap.sh
+user=devuser
 autostart=true
 autorestart=false
 startsecs=0
 priority=99
-environment=SUPERVISORD_CONF="/etc/supervisord.conf",BOOTSTRAP_SEAL_TIMEOUT="120"
+environment=SUPERVISORD_CONF="/etc/supervisord.conf",BOOTSTRAP_SEAL_TIMEOUT="120",HOME="/home/devuser"
 stdout_logfile=/var/log/bootstrap-seal.log
 stderr_logfile=/var/log/bootstrap-seal.error.log
 ${lib.optionalString ((sovereignCfg.enabled or false) && solidPodRsActive) ''
@@ -966,31 +1071,25 @@ ${lib.optionalString ((sovereignCfg.enabled or false) && solidPodRsActive) ''
 [program:solid-pod]
 command=${solidPodRsPkg}/bin/solid-pod-rs-server
 directory=${solidPodRsCfg.storage_root or "/var/lib/solid"}
-environment=HOME="/workspace",JSS_HOST="${solidPodRsCfg.bind or "127.0.0.1"}",JSS_PORT="${toString (solidPodRsCfg.port or 8484)}",JSS_BASE_URL="${solidPodRsCfg.base_url or "http://127.0.0.1:8484"}",JSS_STORAGE_ROOT="${solidPodRsCfg.storage_root or "/var/lib/solid"}",JSS_LOG_LEVEL="${solidPodRsCfg.log_level or "info"}",RUST_LOG="${solidPodRsCfg.log_level or "info"}",JSS_ENABLE_DID_NOSTR="${boolEnv (solidPodRsCfg.enable_did_nostr or true)}",JSS_ENABLE_RATE_LIMIT="${boolEnv (solidPodRsCfg.enable_rate_limit or true)}",JSS_RATE_LIMIT_PER_SEC="${toString (solidPodRsCfg.rate_limit_per_sec or 20)}",JSS_ENABLE_QUOTA="${boolEnv (solidPodRsCfg.enable_quota or true)}",JSS_QUOTA_DEFAULT_BYTES="${toString (solidPodRsCfg.quota_default_bytes or 10737418240)}",JSS_ENABLE_WEBHOOK_SIGNING="${boolEnv (solidPodRsCfg.enable_webhook_signing or true)}",JSS_V04_COMPAT="${boolEnv (solidPodRsCfg.jss_v04_compat or true)}",AGENTBOX_REQUIRED_FOR_READINESS="true"
+user=devuser
+environment=HOME="/home/devuser",JSS_HOST="${solidPodRsCfg.bind or "127.0.0.1"}",JSS_PORT="${toString (solidPodRsCfg.port or 8484)}",JSS_BASE_URL="${solidPodRsCfg.base_url or "http://127.0.0.1:8484"}",JSS_STORAGE_ROOT="${solidPodRsCfg.storage_root or "/var/lib/solid"}",JSS_LOG_LEVEL="${solidPodRsCfg.log_level or "info"}",RUST_LOG="${solidPodRsCfg.log_level or "info"}",JSS_ENABLE_DID_NOSTR="${boolEnv (solidPodRsCfg.enable_did_nostr or true)}",JSS_ENABLE_RATE_LIMIT="${boolEnv (solidPodRsCfg.enable_rate_limit or true)}",JSS_RATE_LIMIT_PER_SEC="${toString (solidPodRsCfg.rate_limit_per_sec or 20)}",JSS_ENABLE_QUOTA="${boolEnv (solidPodRsCfg.enable_quota or true)}",JSS_QUOTA_DEFAULT_BYTES="${toString (solidPodRsCfg.quota_default_bytes or 10737418240)}",JSS_ENABLE_WEBHOOK_SIGNING="${boolEnv (solidPodRsCfg.enable_webhook_signing or true)}",JSS_V04_COMPAT="${boolEnv (solidPodRsCfg.jss_v04_compat or true)}",AGENTBOX_REQUIRED_FOR_READINESS="true"
 autostart=true
 autorestart=true
 priority=30
 stdout_logfile=/var/log/solid-pod.log
 stderr_logfile=/var/log/solid-pod.error.log
 ''}
-${lib.optionalString ((sovereignCfg.enabled or false) && (sovereignCfg.nostr_bridge or false)) ''
-
-[program:nostr-bridge]
-command=${nostrBridgePkg}/bin/nostr-bridge
-directory=/opt/agentbox/mcp/servers
-environment=HOME="/workspace",NOSTR_RELAYS="%(ENV_NOSTR_RELAYS)s",NOSTR_BRIDGE_PORT="%(ENV_NOSTR_BRIDGE_PORT)s",MANAGEMENT_API_PORT="%(ENV_MANAGEMENT_API_PORT)s"
-autostart=true
-autorestart=true
-priority=31
-stdout_logfile=/var/log/nostr-bridge.log
-stderr_logfile=/var/log/nostr-bridge.error.log
-''}
+# nostr-bridge is a library consumed in-process by management-api (see
+# mcp/nostr-bridge/relay-consumer.js header comment). No supervisord block.
+# The [sovereign_mesh].nostr_bridge gate tells management-api to call
+# NostrBridge.connect() at boot, not to start a separate process.
 ${lib.optionalString ((sovereignCfg.enabled or false) && (sovereignCfg.https_bridge or false)) ''
 
 [program:https-bridge]
 command=${pkgs.nodejs_20}/bin/node /opt/agentbox/https-bridge/https-proxy.js
 directory=/opt/agentbox/https-bridge
-environment=HOME="/workspace",MANAGEMENT_API_PORT="%(ENV_MANAGEMENT_API_PORT)s"
+user=devuser
+environment=HOME="/home/devuser",MANAGEMENT_API_PORT="%(ENV_MANAGEMENT_API_PORT)s",CERT_DIR="/var/lib/https-bridge/certs",SSL_KEY="/var/lib/https-bridge/certs/server.key",SSL_CERT="/var/lib/https-bridge/certs/server.crt"
 autostart=true
 autorestart=true
 priority=32
@@ -1002,7 +1101,8 @@ ${lib.optionalString (browserCfg.playwright or false) ''
 [program:playwright-mcp]
 command=${playwrightMcpPkg}/bin/playwright-mcp
 directory=/opt/agentbox/skills/playwright/mcp-server
-environment=HOME="/workspace",PLAYWRIGHT_BROWSERS_PATH="${pkgs.playwright-driver.browsers}"
+user=devuser
+environment=HOME="/home/devuser",PLAYWRIGHT_BROWSERS_PATH="${pkgs.playwright-driver.browsers}"
 autostart=true
 autorestart=true
 priority=200
@@ -1012,9 +1112,10 @@ stderr_logfile=/var/log/playwright-mcp.error.log
 ${lib.optionalString (mediaCfg.imagemagick or false) ''
 
 [program:imagemagick-mcp]
-command=${pkgs.python312}/bin/python3 -u /opt/agentbox/skills/imagemagick/mcp-server/server.py
+command=${imagemagickMcpPythonEnv}/bin/python3 -u /opt/agentbox/skills/imagemagick/mcp-server/server.py
 directory=/opt/agentbox/skills/imagemagick/mcp-server
-environment=HOME="/workspace"
+user=devuser
+environment=HOME="/home/devuser"
 autostart=true
 autorestart=true
 priority=210
@@ -1030,7 +1131,8 @@ ${lib.optionalString relayLocal ''
 [program:nostr-relay]
 command=${relayPkg}/bin/nostr-rs-relay --config /etc/agentbox/nostr-relay.toml
 directory=${relayCfg.data_dir or "/var/lib/nostr-relay"}
-environment=HOME="/workspace",RUST_LOG="info",AGENTBOX_REQUIRED_FOR_READINESS="false"
+user=devuser
+environment=HOME="/home/devuser",RUST_LOG="info",AGENTBOX_REQUIRED_FOR_READINESS="false"
 autostart=true
 autorestart=true
 priority=35
@@ -1042,25 +1144,78 @@ ${lib.optionalString privacyFilterEnabled ''
 [program:opf-router]
 command=${privacyFilterPythonEnv}/bin/python3 -u /opt/agentbox/scripts/opf-router.py
 directory=/opt/agentbox/scripts
-environment=HOME="/workspace",HF_HOME="/workspace/.cache/huggingface",TRANSFORMERS_CACHE="/workspace/.cache/huggingface",OPF_PORT="${toString (privacyFilterCfg.port or 9092)}",OPF_MODE="${privacyFilterCfg.mode or "off"}",OPF_DTYPE="${privacyFilterCfg.dtype or "bf16"}",OPF_MODEL="${privacyFilterCfg.model or "openai/privacy-filter"}"
+user=devuser
+environment=HOME="/home/devuser",HF_HOME="/home/devuser/.cache/huggingface",TRANSFORMERS_CACHE="/home/devuser/.cache/huggingface",OPF_PORT="${toString (privacyFilterCfg.port or 9092)}",OPF_MODE="${privacyFilterCfg.mode or "off"}",OPF_DTYPE="${privacyFilterCfg.dtype or "bf16"}",OPF_MODEL="${privacyFilterCfg.model or "openai/privacy-filter"}"
 autostart=true
 autorestart=true
 priority=240
 stdout_logfile=/var/log/opf-router.log
 stderr_logfile=/var/log/opf-router.error.log
 ''}
+${lib.optionalString (networkingCfg.tailscale or false) ''
+
+[program:tailscaled]
+command=${pkgs.tailscale}/bin/tailscaled --state=/var/lib/tailscale/tailscaled.state --tun=userspace-networking --socket=/var/run/tailscale/tailscaled.sock
+directory=/var/lib/tailscale
+environment=HOME="/home/devuser"
+autostart=true
+autorestart=true
+priority=15
+stdout_logfile=/var/log/tailscaled.log
+stderr_logfile=/var/log/tailscaled.error.log
+
+[program:tailscale-up]
+command=${pkgs.bash}/bin/bash -c "sleep 2 && if [ -n \"$TAILSCALE_AUTHKEY\" ]; then ${pkgs.tailscale}/bin/tailscale up --authkey=$TAILSCALE_AUTHKEY --hostname=${networkingCfg.hostname or "agentbox"} --accept-routes --ssh 2>&1; else echo 'No TAILSCALE_AUTHKEY set — run: docker exec agentbox tailscale up'; fi"
+directory=/var/lib/tailscale
+environment=HOME="/home/devuser"
+autostart=true
+autorestart=false
+startsecs=0
+priority=16
+stdout_logfile=/var/log/tailscale-up.log
+stderr_logfile=/var/log/tailscale-up.error.log
+''}
+${lib.optionalString (toolchainCfg.code_server or false) ''
+
+[program:code-server]
+command=${pkgs.code-server}/bin/code-server --bind-addr 0.0.0.0:8080 --auth none --user-data-dir /home/devuser/.local/share/code-server --extensions-dir /home/devuser/.local/share/code-server/extensions --config /home/devuser/.local/share/code-server/config.yaml /home/devuser/workspace
+directory=/home/devuser/workspace
+user=devuser
+; XDG_CONFIG_HOME redirected into the writable codeserver-config volume
+; (mounted at /home/devuser/.local/share/code-server). The default
+; $HOME/.config/code-server is on the read-only rootfs.
+environment=HOME="/home/devuser",XDG_CONFIG_HOME="/home/devuser/.local/share/code-server/config",XDG_DATA_HOME="/home/devuser/.local/share"
+autostart=true
+autorestart=true
+priority=50
+startsecs=5
+stdout_logfile=/var/log/code-server.log
+stderr_logfile=/var/log/code-server.error.log
+''}
 ${lib.optionalString (mediaCfg.comfyui_builtin or false) ''
 
 [program:comfyui-builtin]
 command=${comfyuiPythonEnv}/bin/python3 ${comfyuiSrc}/main.py --listen 127.0.0.1 --port 8188
 directory=${comfyuiSrc}
-environment=HOME="/workspace",COMFYUI_OUTPUT_DIR="/workspace/comfyui-outputs"
+user=devuser
+environment=HOME="/home/devuser",COMFYUI_OUTPUT_DIR="/home/devuser/comfyui-outputs"
 autostart=true
 autorestart=true
 priority=220
 stdout_logfile=/var/log/comfyui-builtin.log
 stderr_logfile=/var/log/comfyui-builtin.error.log
 ''}
+
+[program:tmux-autostart]
+command=/opt/agentbox/config/tmux-autostart.sh
+user=devuser
+environment=HOME="/home/devuser"
+autostart=true
+autorestart=false
+startsecs=0
+priority=95
+stdout_logfile=/var/log/tmux-autostart.log
+stderr_logfile=/var/log/tmux-autostart.error.log
         '';
 
         # ---------------------------------------------------------------------------
@@ -1074,12 +1229,42 @@ stderr_logfile=/var/log/comfyui-builtin.error.log
         # directly from the manifest here to avoid rebinding that name.
         # ---------------------------------------------------------------------------
         gpuBackendKey   = agentboxConfig.gpu.backend    or "none";
+        # When [networking].host_gateway = true, default LLM base URL points
+        # at the Docker host. When false (default, hardened), it points at
+        # the in-Docker `ollama` service alias (Compose DNS) — only emitted
+        # when the ollama sidecar is enabled (PRD-001 §providers).
+        defaultLlmBaseUrl =
+          if (networkingCfg.host_gateway or false)
+          then "http://host.docker.internal:11434"
+          else "http://ollama:11434";
+
+        # Q26 / Q6: build a claude-flow config template at image-build time.
+        # The literal `@@RUVECTOR_PG_PASSWORD@@` placeholder is expanded by
+        # the entrypoint when it copies the template into $HOME/.claude-flow/
+        # config.json, sourcing the live password from the env. This
+        # collapses the previous three-way password disagreement (heredoc
+        # in entrypoint, override env default, agentbox.toml) into one
+        # source of truth (the env var).
+        _pluginsMemoryCfg = (agentboxConfig.plugins or {}).memory or {};
+        claudeFlowConfigJson = builtins.toJSON {
+          memory = {
+            backend = "external-pg";
+            host = "ruvector-postgres";
+            port = 5432;
+            database = "ruvector";
+            user = "ruvector";
+            password = "@@RUVECTOR_PG_PASSWORD@@";
+            enableHNSW = _pluginsMemoryCfg.enable_hnsw or true;
+            embeddingDimension = _pluginsMemoryCfg.embedding_dimension or 384;
+          };
+        };
         integrationsCfg = agentboxConfig.integrations or {};
         ragflowCfg      = integrationsCfg.ragflow           or {};
         ruvectorExtCfg  = integrationsCfg.ruvector_external or {};
         comfyuiExtCfg   = integrationsCfg.comfyui_external  or {};
         observCfg       = agentboxConfig.observability or {};
         adaptersCfg     = agentboxConfig.adapters     or {};
+        memoryCfg       = agentboxConfig.memory        or {};
 
         # True when the GPU backend is anything other than "none".
         gpuEnabled = gpuBackendKey != "none";
@@ -1110,27 +1295,33 @@ stderr_logfile=/var/log/comfyui-builtin.error.log
         - NVIDIA_VISIBLE_DEVICES=all
         - NVIDIA_DRIVER_CAPABILITIES=compute,utility'';
 
-        # Ollama service block – only emitted when gpuEnabled.
-        ollamaServiceBlock = lib.optionalString gpuEnabled ''
-  ollama:
-    image: ollama/ollama:latest
-    container_name: ollama
-    restart: unless-stopped
-${if gpuRuntime == "rocm" then rocmDevices
-  else if gpuRuntime == "nvidia" then "    runtime: nvidia"
-  else ""}
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama:/root/.ollama
-    environment:
-      - OLLAMA_HOST=0.0.0.0:11434
-${lib.optionalString (gpuRuntime == "nvidia") ''      - NVIDIA_VISIBLE_DEVICES=all
-      - NVIDIA_DRIVER_CAPABILITIES=compute,utility''}      - OLLAMA_VULKAN=${if gpuRuntime == "rocm" then "1" else "0"}
-      - OLLAMA_FLASH_ATTENTION=true
-      - OLLAMA_KV_CACHE_TYPE=q8_0
-      - OLLAMA_CONTEXT_LENGTH=8192
-'';
+        # Ollama service block — emitted only when GPU is enabled AND the
+        # operator has explicitly opted in via [providers.ollama] sidecar=true.
+        # Built from explicit "\n"-joined strings (not a Nix heredoc) so the
+        # leading-whitespace stripper can't eat the indent.
+        ollamaServiceBlock = lib.optionalString (gpuEnabled && ollamaSidecarEnabled) (
+          "  ollama:\n"
+          + "    image: ollama/ollama:latest\n"
+          + "    container_name: ollama\n"
+          + "    restart: unless-stopped\n"
+          + (if gpuRuntime == "rocm" then rocmDevices + "\n"
+             else if gpuRuntime == "nvidia" then "    runtime: nvidia\n"
+             else "")
+          + "    ports:\n"
+          + "      - \"11434:11434\"\n"
+          + "    volumes:\n"
+          + "      - ollama:/root/.ollama\n"
+          + "    environment:\n"
+          + "      - OLLAMA_HOST=0.0.0.0:11434\n"
+          + lib.optionalString (gpuRuntime == "nvidia") (
+              "      - NVIDIA_VISIBLE_DEVICES=all\n"
+              + "      - NVIDIA_DRIVER_CAPABILITIES=compute,utility\n"
+            )
+          + "      - OLLAMA_VULKAN=" + (if gpuRuntime == "rocm" then "1" else "0") + "\n"
+          + "      - OLLAMA_FLASH_ATTENTION=true\n"
+          + "      - OLLAMA_KV_CACHE_TYPE=q8_0\n"
+          + "      - OLLAMA_CONTEXT_LENGTH=8192\n"
+        );
 
         # Ports for the agentbox service.
         # Always: management-api (9090), ruvector (9700), metrics (observCfg.metrics_port)
@@ -1140,26 +1331,30 @@ ${lib.optionalString (gpuRuntime == "nvidia") ''      - NVIDIA_VISIBLE_DEVICES=a
         # code_server: 8080
         metricsPort = toString (observCfg.metrics_port or 9091);
 
+        # All ports use plain "      - " prefix; the prior single-line heredoc
+        # for the first port was getting indent-stripped by Nix.
         agentboxPorts =
-          ''      - "9090:9090"''
-          + "\n      - \"9700:9700\""
-          + "\n      - \"${metricsPort}:${metricsPort}\""
+          "      - \"9090:9090\"\n"
+          + "      - \"9700:9700\"\n"
+          + "      - \"${metricsPort}:${metricsPort}\"\n"
           + lib.optionalString (sovereignCfg.enabled or false)
-              "\n      - \"8484:8484\""
+              "      - \"8484:8484\"\n"
           + lib.optionalString (relayEnabled && (relayCfg.expose or false))
-              ("\n      - \"" + toString (relayCfg.port or 7777) + ":" + toString (relayCfg.port or 7777) + "\"")
+              ("      - \"" + toString (relayCfg.port or 7777) + ":" + toString (relayCfg.port or 7777) + "\"\n")
           + lib.optionalString (dataScienceCfg.jupyter or false)
-              "\n      - \"8888:8888\""
+              "      - \"8888:8888\"\n"
           + lib.optionalString (desktopCfg.enabled or false)
-              "\n      - \"5901:5901\""
+              "      - \"5901:5901\"\n"
           + lib.optionalString ((toolchainCfg.code_server or false))
-              "\n      - \"8080:8080\"";
+              "      - \"8080:8080\"\n";
 
-        # agentbox depends_on block.
-        agentboxDependsOn = lib.optionalString gpuEnabled ''
-    depends_on:
-      ollama:
-        condition: service_started'';
+        # agentbox depends_on block — explicit-newline string (heredoc would
+        # strip the 4-space common indent and produce flush-left output).
+        agentboxDependsOn = lib.optionalString (gpuEnabled && ollamaSidecarEnabled) (
+          "    depends_on:\n"
+          + "      ollama:\n"
+          + "        condition: service_started\n"
+        );
 
         # External network declaration for ragflow integration.
         ragflowNetworkDecl = lib.optionalString (ragflowCfg.enabled or false) ''
@@ -1172,10 +1367,15 @@ ${lib.optionalString (gpuRuntime == "nvidia") ''      - NVIDIA_VISIBLE_DEVICES=a
       - default
       - docker_ragflow'';
 
-        # Extra hosts that let containers reach the Docker host.
-        agentboxExtraHosts = ''
-    extra_hosts:
-      - "host.docker.internal:host-gateway"'';
+        # Extra hosts. The host-gateway alias is gated by
+        # [networking].host_gateway = true (Q17): air-gapped and hardened
+        # deployments must opt in. When disabled, OPENAI_BASE_URL must
+        # resolve via Docker DNS (sidecar service name) or fail closed.
+        agentboxExtraHosts =
+          lib.optionalString (networkingCfg.host_gateway or false) (
+            "    extra_hosts:\n"
+            + "      - \"host.docker.internal:host-gateway\"\n"
+          );
 
         # DNS alias for ragflow when integration enabled.
         agentboxDnsAliases = lib.optionalString (ragflowCfg.enabled or false) ''
@@ -1205,13 +1405,52 @@ ${lib.optionalString (gpuRuntime == "nvidia") ''      - NVIDIA_VISIBLE_DEVICES=a
               || (name == "code-server"        && (toolchainCfg.code_server or false))
               || (name == "telegram-mirror"    && (sovereignCfg.telegram_mirror or false))
               || (name == "nostr-relay"        && relayEnabled)
+              || (name == "tailscale"         && (networkingCfg.tailscale or false))
+              || (name == "solid-pod-rs"      && solidPodRsActive)
             )
             securityExceptions;
 
         exceptionTmpfsPaths     = lib.concatMap (exc: exc.tmpfs or [])           (lib.attrValues activeExceptions);
         exceptionDevicePaths    = lib.concatMap (exc: exc.devices or [])         (lib.attrValues activeExceptions);
-        exceptionCapAdd         = lib.concatMap (exc: exc.cap_add or [])         (lib.attrValues activeExceptions);
+        exceptionCapAdd         = lib.unique (lib.concatMap (exc: exc.cap_add or [])         (lib.attrValues activeExceptions));
         exceptionWritableVolumes= lib.concatMap (exc: exc.writable_volumes or []) (lib.attrValues activeExceptions);
+
+        # security_opt_override entries from active exceptions. ADR-007 §4a
+        # documents this merge path; the playwright exception in PRD-003 §272
+        # uses it to flip seccomp to "unconfined" without dropping the global
+        # NNP=true baseline. Each override is applied verbatim into the
+        # security_opt list at compose-emission time. See W021 below.
+        exceptionSecurityOptOverrides = lib.unique (
+          lib.concatMap (exc: exc.security_opt_override or []) (lib.attrValues activeExceptions)
+        );
+
+        # ADR-007 W021: when exceptions add capabilities or override security_opt
+        # beyond the baseline, the operator must explicitly acknowledge the
+        # widened attack surface via [security].audit_acknowledged = true.
+        # Fail closed at compose-eval time when the gate is missing.
+        securityCapsRaiseAttackSurface =
+          (exceptionCapAdd != []) || (exceptionSecurityOptOverrides != []);
+        auditAcknowledged = securityCfg.audit_acknowledged or false;
+        _w021Check =
+          if securityCapsRaiseAttackSurface && !auditAcknowledged
+          then throw ''
+            ADR-007 W021: active security exceptions widen the attack surface
+            (cap_add: ${builtins.toJSON exceptionCapAdd}; security_opt_override:
+            ${builtins.toJSON exceptionSecurityOptOverrides}) but
+            [security].audit_acknowledged is not set to true in agentbox.toml.
+            Set it to true once you have read docs/user/configuration.md and
+            understand the residual risk.''
+          else null;
+
+        # Compose security_opt baseline. NNP=true unless an exception's
+        # security_opt_override flips it. Merge preserves "key=value" semantics:
+        # the override entry replaces any matching baseline key.
+        nnpBaselineValue = "true";
+        # Each override entry is rendered as an additional `      - <entry>\n`
+        # under security_opt. Used by composeText.
+        securityOptOverrideEmission =
+          lib.optionalString (exceptionSecurityOptOverrides != [])
+            ("\n" + lib.concatMapStrings (s: "      - ${s}\n") exceptionSecurityOptOverrides);
 
         exceptionRuntime =
           let runtimes = lib.concatMap
@@ -1224,14 +1463,74 @@ ${lib.optionalString (gpuRuntime == "nvidia") ''      - NVIDIA_VISIBLE_DEVICES=a
         # every [program:*] log file writes there, and read_only:true would
         # otherwise make the container unable to log. Operators who need log
         # persistence can override with a named volume at deploy time.
+        # supervisord runs as PID 1 root (compose has no `user:` directive
+        # baseline). Long-running [program:*] blocks drop to uid 1000 via
+        # per-program `user=devuser`. /run, /var/log, /var/log/supervisor are
+        # owned by root so supervisord can write its own state; bootstrap
+        # creates uid-1000-owned subdirs under them as needed.
         baselineTmpfsMounts = [
           "/tmp:mode=1777,size=256M"
-          "/run:mode=755,size=64M"
-          "/var/run:mode=755,size=16M"
-          "/var/log:mode=755,size=128M"
-          "/var/log/supervisor:mode=755,size=64M"
+          # /run, /var/log, /var/log/supervisor are uid-1000-owned so
+          # devuser-running services (per `user=devuser` directives) can
+          # write logs and runtime state without bootstrap chown
+          # acrobatics. Bootstrap-as-root still has CAP_CHOWN baseline
+          # cap if it needs to fix anything.
+          "/run:mode=755,size=64M,uid=1000,gid=1000"
+          "/var/run:mode=755,size=16M,uid=1000,gid=1000"
+          "/var/log:mode=755,size=128M,uid=1000,gid=1000"
+          "/var/log/supervisor:mode=755,size=64M,uid=1000,gid=1000"
+          # https-bridge cert dir — self-signed certs regenerated on
+          # every boot; ephemeral by design. Writable for devuser so the
+          # bridge process can re-issue if needed.
+          "/var/lib/https-bridge:mode=755,size=8M,uid=1000,gid=1000"
+          # devuser's XDG_CACHE_HOME. starship, npm, pip, transformers,
+          # huggingface, etc. all expect a writable $HOME/.cache. Without
+          # this tmpfs the path lives on the read-only rootfs and every
+          # interactive shell prints "Os { code: 30, kind: ReadOnlyFilesystem }"
+          # at the starship init line. 256M is plenty for prompt + tool
+          # caches; persistent caches go to named volumes per-tool.
+          "/home/devuser/.cache:mode=755,size=256M,uid=1000,gid=1000"
+          # devuser's XDG_DATA_HOME. zoxide, fzf, atuin, npm globals,
+          # pip --user, pipx, and a long tail of other XDG-aware CLIs
+          # write here. Same Read-only-fs symptom as .cache without it.
+          # The codeserver-config named volume mounts INSIDE this tmpfs
+          # at .../code-server — Docker handles the layered mount order
+          # (tmpfs first, then volumes on top), so persistence for
+          # code-server is preserved.
+          "/home/devuser/.local:mode=755,size=128M,uid=1000,gid=1000"
+          # devuser's XDG_CONFIG_HOME. Many CLIs that don't honor
+          # XDG_CONFIG_HOME still write to $HOME/.config (git, gh, kube,
+          # etc.). The .config/claude and .config/claude-telegram-mirror
+          # subdirs are bound from host / mounted from named volume on
+          # top of this tmpfs.
+          "/home/devuser/.config:mode=755,size=64M,uid=1000,gid=1000"
+          # ruflo/claude-flow plugin dir. Phase 7 writes config.json (PG
+          # conninfo) and symlinks plugins here. Must be writable by root
+          # (entrypoint) and readable by devuser (uid 1000). Content is
+          # regenerated at each boot so tmpfs is sufficient.
+          "/home/devuser/.claude-flow:mode=755,size=64M,uid=1000,gid=1000"
+          # OpenAI Codex CLI home. Plugin git pack + sqlite logs + session
+          # history grow quickly; 512M gives plenty of headroom.
+          "/home/devuser/.codex:mode=755,size=512M,uid=1000,gid=1000"
+          # Gemini CLI home. Model cache + history; 256M is generous.
+          "/home/devuser/.gemini:mode=755,size=256M,uid=1000,gid=1000"
+          # ruflo plugins git cache. Phase 7 sparse-clones github.com/ruvnet/ruflo
+          # here; plugins are then symlinked from cache into .claude-flow/plugins.
+          # 512M covers the full plugin tree with room for npm artefacts.
+          "/var/cache:mode=755,size=512M,uid=1000,gid=1000"
+          # Writable, exec+suid-allowed bin dir for setuid wrappers (sudo).
+          # The bootstrap program runs as root and provisions a setuid copy
+          # of pkgs.sudo here so devuser shells can elevate via the NOPASSWD
+          # rule in /etc/sudoers.d/devuser. Docker tmpfs defaults to nosuid,
+          # noexec — both must be explicitly enabled.
+          "/usr/local/bin:mode=755,size=8M,exec,suid"
         ];
-        mergedTmpfsMounts   = lib.unique (baselineTmpfsMounts ++ exceptionTmpfsPaths);
+        # `builtins.seq _w021Check ...` forces evaluation of the W021 audit
+        # check before mergedTmpfsMounts is computed; if W021 throws, the
+        # whole compose generation fails closed.
+        mergedTmpfsMounts = builtins.seq _w021Check (
+          lib.unique (baselineTmpfsMounts ++ exceptionTmpfsPaths)
+        );
 
         agentboxTmpfs =
           lib.concatMapStrings (p: "      - ${p}\n") mergedTmpfsMounts;
@@ -1242,39 +1541,100 @@ ${lib.optionalString (gpuRuntime == "nvidia") ''      - NVIDIA_VISIBLE_DEVICES=a
             + lib.concatMapStrings (d: "      - ${d}\n") exceptionDevicePaths
           );
 
+        # Baseline caps. cap_drop: ALL removes everything, then cap_add
+        # restores the minimum the bootstrap-as-root and the setuid sudo
+        # wrapper need:
+        #   CHOWN          chown -R 1000:1000 on freshly created named volumes
+        #   FOWNER         chmod 755 on volumes (operate on uid-1000-owned files
+        #                  before bootstrap runs as uid 1000)
+        #   DAC_OVERRIDE   read files when ownership isn't set yet (defensive)
+        #   SETUID,SETGID  setuid sudo wrapper at /usr/local/bin/sudo elevates
+        #                  devuser to root via the NOPASSWD rule. Without these
+        #                  caps in the bounding set, the kernel refuses the
+        #                  setuid bit even with no-new-privileges:false.
+        #   AUDIT_WRITE    sudo writes to the audit log on every elevation
+        #   KILL           supervisord signals its child processes
+        # Per ADR-007 §4a baseline + W021 audit_acknowledged: the wider
+        # surface is acknowledged once at compose-eval time and documented
+        # in docs/user/configuration.md §Security trade-offs.
+        baselineCapAdd = [
+          "CHOWN"
+          "FOWNER"
+          "DAC_OVERRIDE"
+          "SETUID"
+          "SETGID"
+          "AUDIT_WRITE"
+          "KILL"
+        ];
         agentboxCapabilities =
-          "    cap_drop:\n      - ALL"
-          + lib.optionalString (exceptionCapAdd != []) (
-              "\n    cap_add:\n"
-              + lib.concatMapStrings (c: "      - ${c}\n") exceptionCapAdd
-            );
+          let allCaps = lib.unique (baselineCapAdd ++ exceptionCapAdd);
+          in
+          "    cap_drop:\n      - ALL\n"
+          + "    cap_add:\n"
+          + lib.concatMapStrings (c: "      - ${c}\n") allCaps;
 
         agentboxRuntime =
           lib.optionalString (exceptionRuntime != null) "    runtime: ${exceptionRuntime}\n";
 
-        # Volumes list for agentbox service.
+        # Volumes list for agentbox service — deduplicated (Q10).
+        # Baseline + feature-exception writable volumes are merged via
+        # `lib.unique` keyed by mount target (after the colon) so that an
+        # exception declaring the same target as the baseline doesn't
+        # emit a duplicate Docker volume mount.
+        # HOME = /home/devuser (Q19); the workspace tree lives there. Base
+        # mounts `./workspace:/home/devuser/workspace` for source-tree
+        # deployments; the override may swap in a named volume for
+        # operator-specific workspace persistence (e.g. agentbox-workspace
+        # post-MAD migration). agentbox-secrets gives the management-api
+        # somewhere to write the auto-generated key under read_only:true
+        # without leaking it into the shared workspace volume (Q5).
+        agentboxBaselineMounts = [
+          "./agentbox.toml:/etc/agentbox.toml:ro"
+          "./workspace:/home/devuser/workspace"
+          "./projects:/projects"
+          "ruvector-data:/var/lib/ruvector"
+          "solid-data:/var/lib/solid"
+          "sovereign-identities:/var/lib/agentbox/identities"
+          "agentbox-secrets:/var/lib/agentbox/secrets"
+        ];
+        # Drop entries from exceptionWritableVolumes whose container target
+        # path already appears in the baseline. Compare on the second
+        # colon-separated field (target).
+        _mountTarget = m:
+          let parts = lib.splitString ":" m;
+          in if (lib.length parts) >= 2 then lib.elemAt parts 1 else m;
+        baselineTargets = map _mountTarget agentboxBaselineMounts;
+        exceptionWritableVolumesUnique = lib.filter
+          (m: ! (lib.elem (_mountTarget m) baselineTargets))
+          (lib.unique exceptionWritableVolumes);
         agentboxVolumes =
-          ''      - ./agentbox.toml:/etc/agentbox.toml:ro''
-          + "\n      - ./workspace:/workspace"
-          + "\n      - ./projects:/projects"
-          + "\n      - ruvector-data:/var/lib/ruvector"
-          + "\n      - solid-data:/var/lib/solid"
-          + "\n      - sovereign-identities:/var/lib/agentbox/identities"
-          + lib.concatMapStrings (v: "\n      - ${v}") exceptionWritableVolumes;
+          lib.concatMapStrings (m: "      - ${m}\n") agentboxBaselineMounts
+          + lib.concatMapStrings (v: "      - ${v}\n") exceptionWritableVolumesUnique;
 
-        # Top-level volumes block.
+        # Top-level volumes block — explicit "  <name>:\n    name: ...\n"
+        # per entry; the prior heredoc stripped the 2-space common indent
+        # and produced flush-left volume keys.
+        #
+        # Baseline volumes are hardcoded; feature-exception volumes
+        # (writable_volumes entries like "codeserver-config:/path/in/container")
+        # are auto-derived so every volume referenced in the agentbox service's
+        # volumes list has a matching top-level declaration. Without this,
+        # docker compose rejects the file with "undefined volume <name>".
+        baselineTopLevelVolumeNames = [ "ruvector-data" "solid-data" "sovereign-identities" "agentbox-secrets" ];
+        exceptionVolumeNames = lib.unique (
+          map (v: lib.head (lib.splitString ":" v)) exceptionWritableVolumes
+        );
+        # Feature-exception names not already covered by the baseline.
+        extraTopLevelVolumeNames = lib.subtractLists baselineTopLevelVolumeNames exceptionVolumeNames;
         topLevelVolumes =
-          lib.optionalString gpuEnabled "  ollama:\n    name: ollama\n"
-          + ''  ruvector-data:
-    name: agentbox-ruvector-data
-  solid-data:
-    name: agentbox-solid-data
-  sovereign-identities:
-    name: agentbox-sovereign-identities''
-          + lib.optionalString relayLocal ''
-
-  nostr-relay-data:
-    name: agentbox-nostr-relay-data'';
+          lib.optionalString (gpuEnabled && ollamaSidecarEnabled) "  ollama:\n    name: ollama\n"
+          + "  ruvector-data:\n    name: agentbox-ruvector-data\n"
+          + "  solid-data:\n    name: agentbox-solid-data\n"
+          + "  sovereign-identities:\n    name: agentbox-sovereign-identities\n"
+          + "  agentbox-secrets:\n    name: agentbox-secrets\n"
+          + lib.concatMapStrings
+              (n: "  ${n}:\n    name: agentbox-${n}\n")
+              extraTopLevelVolumeNames;
 
         # Full compose document.
         composeText = ''
@@ -1302,8 +1662,8 @@ ${agentboxPorts}
       - ANTHROPIC_API_KEY=''${ANTHROPIC_API_KEY:-}
       - GITHUB_TOKEN=''${GITHUB_TOKEN:-}
       - OPENAI_API_KEY=''${OPENAI_API_KEY:-ollama}
-      - OPENAI_BASE_URL=''${OPENAI_BASE_URL:-http://host.docker.internal:11434/v1}
-      - OLLAMA_BASE_URL=''${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - OPENAI_BASE_URL=''${OPENAI_BASE_URL:-${defaultLlmBaseUrl}/v1}
+      - OLLAMA_BASE_URL=''${OLLAMA_BASE_URL:-${defaultLlmBaseUrl}}
       - OLLAMA_MODEL=''${OLLAMA_MODEL:-qwen2.5:32b-instruct}
       - GOOGLE_GEMINI_API_KEY=''${GOOGLE_GEMINI_API_KEY:-}
       - GEMINI_API_KEY=''${GEMINI_API_KEY:-}
@@ -1314,40 +1674,176 @@ ${agentboxPorts}
       - AGENTBOX_METRICS_PORT=${metricsPort}
       - AGENTBOX_OTLP_ENDPOINT=${observCfg.otlp_endpoint or ""}
       - AGENTBOX_LOG_LEVEL=${observCfg.log_level or "info"}
-    user: "1000:1000"
+      - XINFERENCE_ENDPOINT=''${XINFERENCE_ENDPOINT:-http://xinference:9997}
+      - EMBEDDING_MODEL=''${EMBEDDING_MODEL:-bge-small-en-v1.5}
+    # Baseline: supervisord runs as PID 1 root, with per-program `user=devuser`
+    # drops on every long-running service. Root is required at boot for
+    # tmpfs subdir creation, sudoers wrapper provisioning (chown 0:0 +
+    # chmod 4755), cert generation, and chowning runtime dirs to uid 1000.
+    # Per ADR-007 §4a hardening posture; see PRD-003 §5.4.
     read_only: true
 ${agentboxRuntime}${agentboxCapabilities}
 ${agentboxDevices}    tmpfs:
 ${agentboxTmpfs}    security_opt:
-      - no-new-privileges:true
-      - seccomp=default
+      - no-new-privileges:${nnpBaselineValue}
+      - seccomp=./config/seccomp-agentbox.json${securityOptOverrideEmission}
     volumes:
 ${agentboxVolumes}
 ${agentboxNetworks}
 
 volumes:
-${topLevelVolumes}
-${lib.optionalString (ragflowCfg.enabled or false) ''
-networks:
-${ragflowNetworkDecl}
-''}        '';
+${topLevelVolumes}${lib.optionalString (ragflowCfg.enabled or false) "\nnetworks:\n${ragflowNetworkDecl}\n"}
+'';
 
         configFiles = pkgs.runCommand "agentbox-config" {} ''
-          mkdir -p $out/etc/agentbox
+          mkdir -p $out/etc/agentbox $out/bin
           cp ${pkgs.writeText "supervisord.conf" supervisorText} $out/etc/supervisord.conf
           cp ${./agentbox.toml} $out/etc/agentbox.toml
           cp ${pkgs.writeText "docker-compose.yml" composeText} $out/etc/agentbox/docker-compose.yml
           ${lib.optionalString relayLocal ''
           cp ${pkgs.writeText "nostr-relay.toml" relayConfigText} $out/etc/agentbox/nostr-relay.toml
           ''}
+
+          # Non-root user: devuser (uid 1000, gid 1000)
+          # Supervisord (PID 1) runs as root; interactive shells run as devuser.
+          # /etc/passwd and /etc/group are seeded here; entrypoint may append at runtime.
+          cat > $out/etc/passwd <<'PASSWD'
+          root:x:0:0:root:/root:/bin/sh
+          devuser:x:1000:1000:devuser:/home/devuser:/bin/fish
+          PASSWD
+          # Strip leading whitespace introduced by Nix heredoc indentation
+          sed -i 's/^[[:space:]]*//' $out/etc/passwd
+
+          cat > $out/etc/group <<'GROUP'
+          root:x:0:devuser
+          wheel:x:998:devuser
+          devuser:x:1000:
+          GROUP
+          sed -i 's/^[[:space:]]*//' $out/etc/group
+
+          # Passwordless sudo for devuser. Both /etc/sudoers and the drop-in
+          # are baked into the image because the rootfs is read_only at runtime
+          # — there's no place for the entrypoint to write these.
+          echo "root ALL=(ALL) ALL" > $out/etc/sudoers
+          echo "#includedir /etc/sudoers.d" >> $out/etc/sudoers
+          chmod 440 $out/etc/sudoers
+          mkdir -p $out/etc/sudoers.d
+          echo "devuser ALL=(ALL) NOPASSWD: ALL" > $out/etc/sudoers.d/devuser
+          chmod 440 $out/etc/sudoers.d/devuser
+
+          # Shell-rc seeding (Q23). Baked into the image at build time so
+          # interactive devuser shells consistently source the agentbox
+          # aliases and bashrc snippet. Previously the entrypoint tried to
+          # write these at runtime — silent no-op under read_only:true.
+          cat > $out/etc/bash.bashrc <<'BASHRC'
+          source /opt/agentbox/config/agentbox-aliases.sh 2>/dev/null || true
+          source /opt/agentbox/config/bashrc.agentbox 2>/dev/null || true
+          [ -f /run/agentbox/runtime-env.sh ] && source /run/agentbox/runtime-env.sh
+          BASHRC
+          sed -i 's/^[[:space:]]*//' $out/etc/bash.bashrc
+          chmod 644 $out/etc/bash.bashrc
+
+          cat > $out/etc/profile <<'PROFILE'
+          source /opt/agentbox/config/bashrc.agentbox 2>/dev/null || true
+          [ -f /run/agentbox/runtime-env.sh ] && source /run/agentbox/runtime-env.sh
+          PROFILE
+          sed -i 's/^[[:space:]]*//' $out/etc/profile
+          chmod 644 $out/etc/profile
+
+          # Q24: profile.d shim that sources the runtime env. Lives in the
+          # read-only image; the runtime-env.sh source is on the writable
+          # /run tmpfs and is created by entrypoint Phase 8.
+          mkdir -p $out/etc/profile.d
+          cat > $out/etc/profile.d/agentbox-runtime.sh <<'PRDRT'
+          #!/bin/sh
+          [ -f /run/agentbox/runtime-env.sh ] && . /run/agentbox/runtime-env.sh
+          PRDRT
+          sed -i 's/^[[:space:]]*//' $out/etc/profile.d/agentbox-runtime.sh
+          chmod 755 $out/etc/profile.d/agentbox-runtime.sh
+
+          # Fish shell config (Q23). Sourced by all interactive fish shells.
+          mkdir -p $out/etc/fish
+          cat > $out/etc/fish/config.fish <<'FISH'
+          if test -f /opt/agentbox/config/config.fish
+            source /opt/agentbox/config/config.fish
+          end
+          if test -f /run/agentbox/runtime-env.fish
+            source /run/agentbox/runtime-env.fish
+          end
+          FISH
+          sed -i 's/^[[:space:]]*//' $out/etc/fish/config.fish
+          chmod 644 $out/etc/fish/config.fish
+
+          # Q26: claude-flow plugin config, generated from agentbox.toml.
+          # Replaces the runtime heredoc in entrypoint-unified.sh. Values
+          # track the manifest, not magic constants. Password is sourced
+          # from RUVECTOR_PG_PASSWORD env (with fallback) so the three-way
+          # password disagreement (Q6) collapses into one source of truth.
+          mkdir -p $out/opt/agentbox/config
+          cp ${pkgs.writeText "claude-flow-config.json" claudeFlowConfigJson} $out/opt/agentbox/config/claude-flow-config.template.json
+
+          # Z.AI wrapper: 'zai' invokes Claude Code against the Z.AI API endpoint.
+          ln -s /opt/agentbox/config/zai-wrapper.sh $out/bin/zai
         '';
 
         entrypoint = pkgs.writeShellScriptBin "entrypoint" ''
+          # FHS shims (/usr/bin/env, /bin/sh, /bin/bash, /lib64/ld-linux)
+          # and /etc/sudoers, /etc/bash.bashrc, /etc/fish/config.fish, and
+          # /etc/profile.d/agentbox-runtime.sh are all baked into the image
+          # by the appRoot + configFiles derivations above. The read_only:true
+          # rootfs would block any runtime mkdir/ln-sf into these paths
+          # anyway. (Q15, Q23, Q24)
+
+          # Runtime directories for services that need writable state
+          mkdir -p /var/lib/nostr-relay 2>/dev/null || true
+          mkdir -p /var/lib/https-bridge/certs 2>/dev/null || true
+
+          # Home directory for devuser bind mounts (e.g. /home/devuser/.claude)
+          mkdir -p /home/devuser 2>/dev/null || true
+
+          # Setuid sudo wrapper. The Nix-store sudo binary is mode 555 and
+          # cannot elevate; copy it to the tmpfs-backed /usr/local/bin (which
+          # the baseline tmpfs mount declares as exec+suid) and set the setuid
+          # bit. PATH puts /usr/local/bin first so this wrapper shadows the
+          # Nix-store sudo for devuser's interactive shells.
+          if [ -d /usr/local/bin ] && [ ! -u /usr/local/bin/sudo ] 2>/dev/null; then
+            if cp -L ${sudoNoPam}/bin/sudo /usr/local/bin/sudo 2>/dev/null; then
+              chown 0:0 /usr/local/bin/sudo 2>/dev/null || true
+              chmod 4755 /usr/local/bin/sudo 2>/dev/null || true
+              echo "[entrypoint] Provisioned setuid sudo wrapper at /usr/local/bin/sudo"
+            fi
+          fi
+
+          # Pre-generate HTTPS bridge self-signed cert if missing. The
+          # tmpfs at /var/lib/https-bridge is uid-1000-owned (baselineTmpfsMounts);
+          # cert files are written world-readable, key world-unreadable.
+          # The bridge process (devuser) reads them at start. If this
+          # block fails, the JS app has its own node:crypto fallback in
+          # https-proxy.js — the cert is never sourced from the network.
+          mkdir -p /var/lib/https-bridge/certs 2>/dev/null || true
+          if [ ! -f /var/lib/https-bridge/certs/server.key ]; then
+            ${pkgs.openssl}/bin/openssl req -x509 -newkey rsa:2048 \
+              -keyout /var/lib/https-bridge/certs/server.key \
+              -out /var/lib/https-bridge/certs/server.crt \
+              -days 365 -nodes -subj "/CN=localhost" 2>/dev/null || true
+            chown 1000:1000 /var/lib/https-bridge/certs/server.* 2>/dev/null || true
+            chmod 600 /var/lib/https-bridge/certs/server.key 2>/dev/null || true
+            chmod 644 /var/lib/https-bridge/certs/server.crt 2>/dev/null || true
+          fi
+
           exec ${pkgs.bash}/bin/bash /opt/agentbox/config/entrypoint-unified.sh
         '';
 
         imageEnv = [
-          "PATH=/bin:/usr/bin:${pkgs.lib.makeBinPath allPackages}"
+          # HOME=/home/devuser is canonical (Q19): standard FHS, matches the
+          # uid the long-running services run as, and matches the existing
+          # MAD volume layout when mounted at /home/devuser/workspace. The
+          # earlier HOME=/workspace was a backward-compat shim from the
+          # initial multi-profile design (CLAUDE.md "Shared Runtime Model"
+          # — `/workspace` is shared but `$HOME` is per-user).
+          "HOME=/home/devuser"
+          "WORKSPACE=/home/devuser/workspace"
+          "PATH=/usr/local/bin:/bin:/usr/bin:${pkgs.lib.makeBinPath allPackages}"
           "NODE_ENV=production"
           "PYTHONDONTWRITEBYTECODE=1"
           "RUST_BACKTRACE=1"
@@ -1361,7 +1857,7 @@ ${ragflowNetworkDecl}
           "RUVECTOR_PORT=9700"
           "MANAGEMENT_API_PORT=9090"
           "MANAGEMENT_API_AUTH_MODE=hybrid"
-          "MANAGEMENT_API_KEY="
+          # MANAGEMENT_API_KEY intentionally not set here — sourced from .env at runtime
           "SOVEREIGN_MESH_ENABLED=${boolEnv (sovereignCfg.enabled or false)}"
           "SOLID_POD_ENABLED=${boolEnv (sovereignCfg.solid_pod or false)}"
           "SOLID_POD_ROOT=/var/lib/solid"
@@ -1370,6 +1866,9 @@ ${ragflowNetworkDecl}
           "NOSTR_BRIDGE_ENABLED=${boolEnv (sovereignCfg.nostr_bridge or false)}"
           "NOSTR_BRIDGE_PORT=9740"
           "NOSTR_RELAYS=wss://relay.damus.io,wss://relay.primal.net"
+          "XKB_CONFIG_ROOT=${pkgs.xkeyboard_config}/share/X11/xkb"
+          "ENABLE_TAILSCALE=${boolEnv (networkingCfg.tailscale or false)}"
+          "TAILSCALE_HOSTNAME=${networkingCfg.hostname or "agentbox"}"
           "ENABLE_DESKTOP=${boolEnv (desktopCfg.enabled or false)}"
           "ENABLE_AGENT_BROWSER=${boolEnv (browserCfg.agent_browser or false)}"
           "ENABLE_PLAYWRIGHT=${boolEnv (browserCfg.playwright or false)}"
@@ -1398,18 +1897,36 @@ ${ragflowNetworkDecl}
           "ENABLE_REPORT_BUILDER=${boolEnv (docsCfg.report_builder or false)}"
           "ENABLE_MERMAID=${boolEnv (docsCfg.mermaid or false)}"
           "ENABLE_CLAUDE=${boolEnv (toolchainCfg.claude or false)}"
+          "ENABLE_CLAUDE_CODE=${boolEnv (toolchainCfg.claude_code or false)}"
           "ENABLE_RUFLO=${boolEnv (toolchainCfg.ruflo or false)}"
           "ENABLE_CLAUDE_FLOW=${boolEnv (toolchainCfg.claude_flow or false)}"
           "ENABLE_AGENTIC_QE=${boolEnv (toolchainCfg.agentic_qe or false)}"
           "ENABLE_NAGUAL_QE=${boolEnv (toolchainCfg.nagual_qe or false)}"
           "ENABLE_CODEBASE_MEMORY=${boolEnv (toolchainCfg.codebase_memory or false)}"
           "ENABLE_RUST_TOOLCHAIN=${boolEnv (toolchainCfg.rust or false)}"
+          "CARGO_HOME=/home/devuser/workspace/.cargo"
+          "RUSTUP_HOME=/home/devuser/workspace/.rustup"
+          "TMPDIR=/home/devuser/workspace/.tmp"
+          "OPENSSL_DIR=${pkgs.openssl}"
+          "OPENSSL_LIB_DIR=${pkgs.openssl.out}/lib"
+          "OPENSSL_INCLUDE_DIR=${pkgs.openssl.dev}/include"
           "ENABLE_GEMINI_CLI=${boolEnv (toolchainCfg.gemini_cli or false)}"
           "ENABLE_CODEX=${boolEnv (toolchainCfg.codex or false)}"
-          "WORKSPACE=/workspace"
+          "CODEX_HOME=/home/devuser/.codex"
+          "GIT_CONFIG_GLOBAL=/home/devuser/.config/git/config"
+          "CLAUDE_FLOW_PLUGIN_DIR=/home/devuser/.claude-flow/plugins"
+          "RUVECTOR_PG_CONNINFO=${(agentboxConfig.integrations.ruvector_external.conninfo or "")}"
+          # WORKSPACE intentionally NOT re-set here — the canonical value
+          # is set earlier in imageEnv as /home/devuser/workspace.
+          # Re-asserting it here would shadow the earlier value (the last
+          # entry in imageEnv wins via Docker env merge).
           "SHARED_PROJECTS_ROOT=/projects"
           "AGENTBOX_AGENT_ID=agentbox-core"
-          "CLAUDE_CONFIG_DIR=/workspace/.claude"
+          # CLAUDE_CONFIG_DIR points at the host-bind .claude. The
+          # previous /workspace/.claude path was a relic from when
+          # HOME=/workspace; it now resolves nowhere and silently breaks
+          # `claude --dangerously-skip-permissions` init.
+          "CLAUDE_CONFIG_DIR=/home/devuser/.claude"
           "SKILLS_TREE=/opt/agentbox/skills"
           "GPU_BACKEND=${agentboxConfig.gpu.backend or "none"}"
           # Privacy filter (ADR-008) — non-empty OPF_ENABLED signals the
@@ -1419,6 +1936,9 @@ ${ragflowNetworkDecl}
           "OPF_MODE=${privacyFilterCfg.mode or "off"}"
           "OPF_POLICY_PODS=${(privacyFilterCfg.policy or {}).pods or "strict"}"
           "OPF_POLICY_MEMORY=${(privacyFilterCfg.policy or {}).memory or "strict"}"
+          # Memory access control (ADR-008 §memory gating) — baked from [memory] in agentbox.toml.
+          # "permissive" = admin Bearer callers see all namespaces; "scoped" = all callers isolated.
+          "MEMORY_ADMIN_ACCESS_MODE=${memoryCfg.admin_access_mode or "scoped"}"
           "OPF_POLICY_EVENTS=${(privacyFilterCfg.policy or {}).events or "soft"}"
           "OPF_POLICY_BEADS=${(privacyFilterCfg.policy or {}).beads or "soft"}"
           "OPF_POLICY_ORCHESTRATOR=${(privacyFilterCfg.policy or {}).orchestrator or "off"}"
@@ -1476,12 +1996,16 @@ ${ragflowNetworkDecl}
             copyToRoot = pkgs.buildEnv {
               name = "agentbox-root";
               paths = [ entrypoint configFiles appRoot ];
-              pathsToLink = [ "/bin" "/etc" "/opt" ];
+              # /usr/bin and /lib64 are required so the FHS shims baked into
+              # appRoot (env, ld-linux) survive the buildEnv merge — the
+              # entrypoint's runtime fallback can't write here under
+              # read_only:true rootfs.
+              pathsToLink = [ "/bin" "/etc" "/opt" "/usr" "/lib64" ];
             };
             config = {
               Entrypoint = [ "${entrypoint}/bin/entrypoint" ];
               Env = imageEnv;
-              WorkingDir = "/workspace";
+              WorkingDir = "/home/devuser/workspace";
               ExposedPorts = commonPorts // sovereignPorts // desktopPorts // dataSciencePorts;
               Labels = {
                 "org.opencontainers.image.title" = "Agentbox";
@@ -1579,6 +2103,10 @@ ${ragflowNetworkDecl}
           buildInputs = allPackages ++ [
             pkgs.nix
             n2c.nix2container
+            # Nix developer tools
+            pkgs.nurl      # generate fetchFromGitHub/fetchCrate calls with pre-computed hashes
+            pkgs.statix    # lint Nix files for antipatterns
+            pkgs.nix-init  # scaffold buildRustPackage/buildPythonPackage expressions from URLs
           ];
 
           shellHook = ''

@@ -8,8 +8,8 @@
  * than producing simulated/fake results.
  */
 
-const { v4: uuidv4 } = require('uuid');
 const EventEmitter = require('events');
+const uris = require('../lib/uris');
 const fs = require('fs');
 const path = require('path');
 
@@ -24,9 +24,17 @@ class ComfyUIManager extends EventEmitter {
     this.outputsDir = process.env.COMFYUI_OUTPUTS || '/home/devuser/comfyui/output';
     this.comfyuiUrl = (process.env.COMFYUI_URL || 'http://localhost:8188').replace(/\/$/, '');
 
-    // Ensure output directory exists
-    if (!fs.existsSync(this.outputsDir)) {
-      fs.mkdirSync(this.outputsDir, { recursive: true });
+    // Best-effort directory creation. Under the hardened rootfs (read_only:true),
+    // /home/devuser/* is not writable unless an explicit volume is mounted; let
+    // the adapter degrade to "not configured" rather than crash the whole API.
+    try {
+      if (!fs.existsSync(this.outputsDir)) {
+        fs.mkdirSync(this.outputsDir, { recursive: true });
+      }
+    } catch (err) {
+      logger?.warn?.({ err: err.message, dir: this.outputsDir },
+        'comfyui outputs dir not writable — comfyui submissions will fail until COMFYUI_OUTPUTS points at a writable mount');
+      this.outputsDir = null;
     }
   }
 
@@ -86,7 +94,8 @@ class ComfyUIManager extends EventEmitter {
    * Submit workflow for execution
    */
   async submitWorkflow(workflow, options = {}) {
-    const workflowId = uuidv4();
+    const pubkey = process.env.AGENTBOX_PUBKEY || '0'.repeat(64);
+    const workflowId = uris.mint({ kind: 'activity', pubkey, payload: { type: 'comfyui-workflow', priority: options.priority || 'normal', ts: Date.now() } });
     const { priority = 'normal', gpu = 'local' } = options;
 
     const workflowInfo = {

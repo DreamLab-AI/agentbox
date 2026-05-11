@@ -14,7 +14,7 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-const MODEL = process.env.OPENAI_DEFAULT_MODEL || 'gpt-5.4';
+const MODEL = process.env.OPENAI_DEFAULT_MODEL || 'gpt-5.5';
 
 const server = new Server(
   { name: 'openai-codex', version: '2.0.0' },

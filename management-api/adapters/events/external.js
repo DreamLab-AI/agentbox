@@ -7,10 +7,10 @@
  * @see PRD-001 §Capabilities and adapters
  */
 
-const { randomUUID } = require('crypto');
 const { BaseAdapter } = require('../base');
 const { ValidationError, NotFound } = require('../errors');
 const CONTRACT_VERSIONS = require('../contract-versions');
+const uris = require('../../lib/uris');
 
 class ExternalEventsAdapter extends BaseAdapter {
   /**
@@ -53,7 +53,8 @@ class ExternalEventsAdapter extends BaseAdapter {
 
   async subscribe(filter, handler) {
     if (typeof handler !== 'function') throw new ValidationError('handler must be a function');
-    const id = randomUUID();
+    const pubkey = process.env.AGENTBOX_PUBKEY || '0'.repeat(64);
+    const id = uris.mint({ kind: 'event', pubkey, payload: { filter: filter || {}, ts: Date.now() } });
     this._subscribers.set(id, { filter, handler });
     return id;
   }

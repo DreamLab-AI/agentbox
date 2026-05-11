@@ -6,36 +6,23 @@
 alias claude-hierarchical="claude --dangerously-skip-permissions"
 alias dsp="claude --dangerously-skip-permissions"
 
-# === CLAUDE FLOW (orchestration) ===
-alias cf="npx -y @claude-flow/cli@latest"
-alias cf-init="npx -y @claude-flow/cli@latest init --force"
-alias cf-swarm="npx -y @claude-flow/cli@latest swarm"
-alias cf-hive="npx -y @claude-flow/cli@latest hive-mind spawn"
-alias cf-spawn="npx -y @claude-flow/cli@latest hive-mind spawn"
-alias cf-status="npx -y @claude-flow/cli@latest hive-mind status"
-alias cf-help="npx -y @claude-flow/cli@latest --help"
-alias cf-memory="npx -y @claude-flow/cli@latest memory"
-alias cf-hooks="npx -y @claude-flow/cli@latest hooks"
-alias cf-doctor="npx -y @claude-flow/cli@latest doctor --fix"
-alias cf-daemon="npx -y @claude-flow/cli@latest daemon start"
+# === CLAUDE FLOW (orchestration — Nix-packaged binary, no npx) ===
+alias cf="claude-flow"
+alias cf-init="claude-flow init --force"
+alias cf-swarm="claude-flow swarm"
+alias cf-hive="claude-flow hive-mind spawn"
+alias cf-spawn="claude-flow hive-mind spawn"
+alias cf-status="claude-flow hive-mind status"
+alias cf-help="claude-flow --help"
+alias cf-memory="claude-flow memory"
+alias cf-hooks="claude-flow hooks"
+alias cf-doctor="claude-flow doctor --fix"
+alias cf-daemon="claude-flow daemon start"
+alias cf-plugins="claude-flow plugins list"
+alias cf-plugin-install="claude-flow plugins install -n"
+alias cf-plugin-upgrade="claude-flow plugins upgrade -n"
 
-cf-fix() {
-    echo "🔧 Fixing claude-flow better-sqlite3 dependency..."
-    NPX_CF_DIR=$(find ~/.npm/_npx -type d -name "claude-flow" 2>/dev/null | head -1)
-    if [ -n "$NPX_CF_DIR" ]; then
-        echo "📁 Found: $NPX_CF_DIR"
-        (cd "$NPX_CF_DIR" && npm install better-sqlite3) && echo "✅ Fixed!" || echo "❌ Failed"
-    else
-        echo "⚠️ claude-flow not in cache. Running: npx -y @claude-flow/cli@latest --version"
-        npx -y @claude-flow/cli@latest --version || true
-        NPX_CF_DIR=$(find ~/.npm/_npx -type d -name "claude-flow" 2>/dev/null | head -1)
-        if [ -n "$NPX_CF_DIR" ]; then
-            (cd "$NPX_CF_DIR" && npm install better-sqlite3) && echo "✅ Fixed!" || echo "❌ Failed"
-        fi
-    fi
-}
-
-cf-task() { npx -y @claude-flow/cli@latest swarm "$@"; }
+cf-task() { claude-flow swarm "$@"; }
 
 # === AGENTIC FLOW ===
 alias af="npx -y agentic-flow"
@@ -118,11 +105,17 @@ alias mcp-chrome="npx -y chrome-devtools-mcp@latest"
 alias pal="cd ~/.pal-mcp-server && ./run-server.sh"
 alias pal-setup="cd ~/.pal-mcp-server && uv sync"
 
-# === RUVECTOR (Vector Database) ===
-alias rv="npx -y @ruvector/cli"
-alias rv-init="npx -y @ruvector/cli init"
-alias rv-search="npx -y @ruvector/cli search"
-alias rv-postgres="npx -y @ruvector/postgres-cli"
+# === RUFLO (orchestration — Nix-packaged binary, no npx) ===
+alias rf="ruflo"
+alias rf-swarm="ruflo swarm"
+alias rf-plugins="ruflo plugins list"
+alias rf-plugin-install="ruflo plugins install -n"
+
+# === RUVECTOR (Vector Database — Nix-packaged binary, no npx) ===
+alias rv="ruvector"
+alias rv-init="ruvector init"
+alias rv-search="ruvector search"
+alias rv-postgres="ruvector postgres"
 
 # === GITHUB CLI ===
 alias gh-pr="gh pr create"
@@ -217,7 +210,7 @@ generate-claude-md() { claude "Read the .specify/ directory and generate an opti
 agentbox-init() {
     echo "🚀 Initializing Agentbox workspace..."
     specify init . --ai claude 2>/dev/null || echo "⚠️ spec-kit init skipped"
-    npx -y @claude-flow/cli@latest init --force 2>/dev/null || echo "⚠️ claude-flow init skipped"
+    claude-flow init --force 2>/dev/null || echo "⚠️ claude-flow init skipped"
     echo "✅ Workspace ready! Run: claude"
 }
 

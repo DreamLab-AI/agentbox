@@ -229,14 +229,14 @@ flowchart LR
   `/run`, per-profile caches) are declared as tmpfs entries under the
   hardened baseline.
 - **TUI** — text-based user interface. Agentbox ships one under
-  `scripts/start-agentbox.sh` for manifest editing and a Zellij layout
+  `scripts/start-agentbox.sh` for manifest editing and a tmux layout
   preset for terminal work.
 - **wayvnc** — a VNC server for Wayland. Used when `[desktop].enabled = true`
   and `[desktop].stack = "hyprland-wayland"`; exposed on port 5901.
 - **workspace mount** — the shared host-mounted volume at `/workspace` (plus
   `/projects`). All profiles see the same content. Profile-local state lives
   under `/workspace/profiles/<stack>/`.
-- **zellij** — the terminal workspace multiplexer agentbox uses in place of
+- **tmux** — the terminal workspace multiplexer agentbox uses in place of
   tmux. `zclaude`, `zruflo`, `zqe`, `zdocs` launch pre-built layouts.
 
 ## Common confusions

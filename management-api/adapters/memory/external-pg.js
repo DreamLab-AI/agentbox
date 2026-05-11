@@ -3,26 +3,34 @@
 /**
  * memory/external-pg — PostgreSQL-backed vector memory adapter.
  *
- * Compatible with ruvector-postgres (pgvector extension) and plain pg.
- * Requires the `memory_entries` table to exist; creates it if absent.
+ * Works with the ruvector-postgres shared schema:
+ *
+ *   memory_entries (id TEXT PK, namespace TEXT, key TEXT, value JSONB,
+ *                   source_type TEXT, created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ, ...)
+ *
+ * Agentbox entries use source_type = 'agentbox' and id = 'agentbox:<namespace>:<key>'.
+ * This makes them visible in the RuVector memory visualiser alongside claude-flow
+ * entries while remaining distinguishable by source_type.
  *
  * @see ADR-005 §memory slot, §Manifest contract (E002)
  * @see PRD-001 §Capabilities and adapters
  */
 
 const { BaseAdapter } = require('../base');
-const { EmbeddingError } = require('../errors');
 const CONTRACT_VERSIONS = require('../contract-versions');
 
-const CREATE_TABLE = `
-  CREATE TABLE IF NOT EXISTS memory_entries (
-    key        TEXT        NOT NULL,
-    namespace  TEXT        NOT NULL DEFAULT 'default',
-    value      TEXT        NOT NULL,
-    stored_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (key, namespace)
-  );
-`;
+// ADR-063: URN-traced memory entries
+let urisMint = null;
+try {
+  const uris = require('../../lib/uris');
+  urisMint = uris.mint;
+} catch { /* uris.js not loadable — URN minting degrades to null */ }
+
+const SOURCE_TYPE = 'agentbox';
+
+function _entryId(namespace, key) {
+  return `agentbox:${namespace}:${key}`;
+}
 
 class ExternalPgMemoryAdapter extends BaseAdapter {
   /**
@@ -50,10 +58,15 @@ class ExternalPgMemoryAdapter extends BaseAdapter {
     this._ready = null;
   }
 
-  /** Lazy schema init */
+  /** Verify the table exists (do not attempt to create — it is owned by ruvector). */
   async _ensureReady() {
     if (!this._ready) {
-      this._ready = this._pool.query(CREATE_TABLE);
+      this._ready = this._pool.query(
+        `SELECT 1 FROM information_schema.tables
+         WHERE table_schema = 'public' AND table_name = 'memory_entries' LIMIT 1`
+      ).then(res => {
+        if (res.rowCount === 0) throw new Error('ExternalPgMemoryAdapter: memory_entries table not found');
+      });
     }
     return this._ready;
   }
@@ -67,21 +80,25 @@ class ExternalPgMemoryAdapter extends BaseAdapter {
   async store(key, value, namespace = 'default') {
     if (!key) throw new Error('key is required');
     await this._ensureReady();
+    let urn = null;
+    if (urisMint) {
+      try { urn = urisMint({ kind: 'memory', localId: `${namespace}.${key}` }); } catch { /* */ }
+    }
+    const id = _entryId(namespace, key);
+    const jsonValue = typeof value === 'string' ? JSON.stringify(value) : JSON.stringify(value);
     await this._pool.query(
-      `INSERT INTO memory_entries (key, namespace, value, stored_at)
-       VALUES ($1, $2, $3, NOW())
-       ON CONFLICT (key, namespace) DO UPDATE SET value = EXCLUDED.value, stored_at = NOW()`,
-      [key, namespace, String(value)]
+      `INSERT INTO memory_entries (id, namespace, key, value, source_type, metadata)
+       VALUES ($1, $2, $3, $4::jsonb, $5, '{}')
+       ON CONFLICT (id) DO UPDATE
+         SET value = EXCLUDED.value,
+             updated_at = NOW()`,
+      [id, namespace, key, jsonValue, SOURCE_TYPE]
     );
-    return { key, namespace, stored_at: new Date().toISOString() };
+    return { key, namespace, stored_at: new Date().toISOString(), urn };
   }
 
   /**
-   * Text-based search (ILIKE) — full pgvector search requires embeddings pipeline.
-   * @param {string} query
-   * @param {object} [opts]
-   * @param {string} [opts.namespace='default']
-   * @param {number} [opts.limit=10]
+   * Text-based search (ILIKE on value text) within agentbox-owned entries.
    */
   async search(query, opts = {}) {
     if (!query) throw new Error('query is required');
@@ -89,20 +106,24 @@ class ExternalPgMemoryAdapter extends BaseAdapter {
     const namespace = opts.namespace || 'default';
     const limit = opts.limit || 10;
     const res = await this._pool.query(
-      `SELECT key, value, namespace, stored_at,
-              (CASE WHEN value ILIKE $1 THEN 1.0 ELSE 0.5 END) AS score
+      `SELECT key, value, namespace, created_at,
+              (CASE WHEN value::text ILIKE $1 THEN 1.0 ELSE 0.5 END) AS score
        FROM memory_entries
-       WHERE namespace = $2 AND value ILIKE $1
-       ORDER BY score DESC, stored_at DESC
-       LIMIT $3`,
-      [`%${query}%`, namespace, limit]
+       WHERE namespace = $2 AND source_type = $3 AND value::text ILIKE $1
+       ORDER BY score DESC, created_at DESC
+       LIMIT $4`,
+      [`%${query}%`, namespace, SOURCE_TYPE, limit]
     );
     return {
-      results: res.rows.map(r => ({
-        key: r.key,
-        value: r.value,
-        score: parseFloat(r.score),
-      })),
+      results: res.rows.map(r => {
+        let val = r.value;
+        if (typeof val === 'string') { try { val = JSON.parse(val); } catch { /* */ } }
+        const entry = { key: r.key, value: val, score: parseFloat(r.score) };
+        if (urisMint) {
+          try { entry.urn = urisMint({ kind: 'memory', localId: `${namespace}.${r.key}` }); } catch { /* */ }
+        }
+        return entry;
+      }),
     };
   }
 
@@ -113,12 +134,21 @@ class ExternalPgMemoryAdapter extends BaseAdapter {
     if (!key) throw new Error('key is required');
     await this._ensureReady();
     const res = await this._pool.query(
-      `SELECT key, value, namespace, stored_at FROM memory_entries WHERE key = $1 AND namespace = $2`,
-      [key, namespace]
+      `SELECT key, value, namespace, created_at
+       FROM memory_entries
+       WHERE key = $1 AND namespace = $2 AND source_type = $3
+       LIMIT 1`,
+      [key, namespace, SOURCE_TYPE]
     );
     if (res.rows.length === 0) return null;
     const r = res.rows[0];
-    return { key: r.key, value: r.value, namespace: r.namespace, stored_at: r.stored_at };
+    let val = r.value;
+    if (typeof val === 'string') { try { val = JSON.parse(val); } catch { /* */ } }
+    let urn = null;
+    if (urisMint) {
+      try { urn = urisMint({ kind: 'memory', localId: `${r.namespace}.${r.key}` }); } catch { /* */ }
+    }
+    return { key: r.key, value: val, namespace: r.namespace, stored_at: r.created_at, urn };
   }
 
   /**
@@ -128,20 +158,22 @@ class ExternalPgMemoryAdapter extends BaseAdapter {
     if (!key) throw new Error('key is required');
     await this._ensureReady();
     const res = await this._pool.query(
-      `DELETE FROM memory_entries WHERE key = $1 AND namespace = $2`,
-      [key, namespace]
+      `DELETE FROM memory_entries WHERE key = $1 AND namespace = $2 AND source_type = $3`,
+      [key, namespace, SOURCE_TYPE]
     );
     return { deleted: res.rowCount > 0 };
   }
 
   /**
-   * List keys in a namespace.
+   * List keys in a namespace (agentbox entries only).
    */
   async list(namespace = 'default') {
     await this._ensureReady();
     const res = await this._pool.query(
-      `SELECT key FROM memory_entries WHERE namespace = $1 ORDER BY stored_at DESC`,
-      [namespace]
+      `SELECT key FROM memory_entries
+       WHERE namespace = $1 AND source_type = $2
+       ORDER BY created_at DESC`,
+      [namespace, SOURCE_TYPE]
     );
     return { keys: res.rows.map(r => r.key) };
   }

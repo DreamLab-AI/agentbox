@@ -14,10 +14,10 @@
 
 const fs = require('fs');
 const path = require('path');
-const { randomUUID } = require('crypto');
 const { BaseAdapter } = require('../base');
 const { NotFound, ValidationError } = require('../errors');
 const CONTRACT_VERSIONS = require('../contract-versions');
+const uris = require('../../lib/uris');
 
 const REQUIRED_FIELDS = ['kind'];
 
@@ -72,7 +72,8 @@ class LocalJsonlEventsAdapter extends BaseAdapter {
    */
   async subscribe(filter, handler) {
     if (typeof handler !== 'function') throw new ValidationError('handler must be a function');
-    const id = randomUUID();
+    const pubkey = process.env.AGENTBOX_PUBKEY || '0'.repeat(64);
+    const id = uris.mint({ kind: 'event', pubkey, payload: { filter: filter || {}, ts: Date.now() } });
     this._subscribers.set(id, { filter, handler });
     return id;
   }

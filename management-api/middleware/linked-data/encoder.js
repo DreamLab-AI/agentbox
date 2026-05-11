@@ -32,6 +32,7 @@ const crypto = require('crypto');
 const { canonicalise: jcsCanonicalise } = require('./jcs');
 const { roundTrip, RoundTripViolation } = require('./round-trip');
 const { validatePayload, InputValidationError, PayloadTooLargeError } = require('./input-validator');
+const { assertPrivacyFilterApplied } = require('../privacy-filter');
 
 class EncodingDisabledError extends Error {
   constructor(slot) {
@@ -117,6 +118,10 @@ class LinkedDataEncoder {
     if (!this._booted) {
       throw new Error('LinkedDataEncoder.dispatch called before boot()');
     }
+
+    // DDD-004 §L08 invariant: privacy redaction must precede encoding.
+    // assertPrivacyFilterApplied() is a no-op when OPF_MODE=off.
+    assertPrivacyFilterApplied(slot, this.logger);
 
     // Find a surface module for this slot. The first match whose gate is
     // enabled wins; surfaces are indexed by surfaceId (S01..S11), each

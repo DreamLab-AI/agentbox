@@ -2,13 +2,24 @@
 # "Build with Quality" - Optimal project building with integrated quality engineering
 
 name: build-with-quality
-version: 1.1.0
+version: 1.2.0
 description: |
   Combined Claude Code V3 and Agentic QE skill for optimal project building
-  with integrated quality engineering. Provides 111+ specialized agents,
+  with integrated quality engineering. Provides 114+ specialized agents,
   unified learning (SONA + ReasoningBank), and comprehensive quality gates.
 
-  New in v1.1.0:
+  New in v1.2.0:
+  - Expectation-Driven Development (EDD) as the design-time conversation layer
+  - Three new agent roles: expectation-author, evidence-producer, evidence-auditor
+  - Anti-fox separation: producer and auditor MUST be different agents on
+    different model families
+  - EDD-PROTOCOL.md: 7-step loop with executed-evidence requirement
+  - Evidence Coverage quality gate (sixth gate)
+  - EXP-NNN artifact type linked to SPEC/ADR/TASK in BHIL traceability chain
+  - Stabilization step: every regression-critical expectation MUST hand off
+    to an automated test before it can ship
+
+  Carried forward from v1.1.0:
   - Copy-paste activation prompt (BUILD-WITH-QUALITY-PROMPT.md)
   - 5 complete usage examples (USAGE-EXAMPLES.md)
   - Dual execution modes (MCP tools + CLI fallback)
@@ -57,6 +68,8 @@ swarm:
         - reviewer
         - browser-agent
         - deployer
+        - expectation-author      # NEW v1.2.0: helps human author EXP-NNN
+        - tdd-stabilizer          # NEW v1.2.0: converts proven expectations to tests
 
     - name: quality
       source: agentic-qe
@@ -72,6 +85,8 @@ swarm:
         - flaky-test-hunter
         - chaos-engineer
         - resilience-validator
+        - evidence-producer       # NEW v1.2.0: executes scenarios, captures receipts
+        - evidence-auditor        # NEW v1.2.0: different agent/model than producer
 
     - name: security
       source: mixed
@@ -205,12 +220,30 @@ quality_gates:
     threshold: 0.3
     f1_target: 0.8
 
+  # NEW v1.2.0 — sixth gate. Enforces EDD invariants before merge.
+  evidence_coverage:
+    enabled: true
+    every_feature_has_expectation: true        # 100%
+    every_expectation_has_evidence: true       # 100%
+    evidence_has_execution_receipts: true      # 100%
+    auditor_distinct_from_producer: true       # 100%
+    regression_critical_requires_stabilizer: true  # 100%
+    stale_evidence_max_count: 0
+    counter_example_probes_per_expectation: 1
+    failure_modes:
+      missing_receipts: return_to_producer
+      auditor_finds_counter_example: return_to_coder
+      missing_stabilization: return_to_tdd_stabilizer
+      stale_evidence: re_run_against_current_sha
+
 # Workflow hooks
 hooks:
   pre_build:
     - analyze_requirements
     - retrieve_similar_patterns
     - select_optimal_topology
+    - author_expectations            # NEW v1.2.0 — EDD step 1
+    - human_accepts_expectations     # NEW v1.2.0 — gate before coder runs
 
   during_development:
     - parallel_test_generation
@@ -218,17 +251,25 @@ hooks:
     - real_time_defect_prediction
     - security_scan
 
+  post_implementation:               # NEW v1.2.0 — EDD steps 3 & 4
+    - produce_evidence
+    - audit_evidence_with_distinct_agent
+    - human_adversarial_review
+
   pre_deployment:
     - quality_gate_enforcement
     - contract_validation
     - chaos_resilience_check
     - accessibility_audit
+    - evidence_coverage_check        # NEW v1.2.0 — sixth gate
+    - stabilize_regression_critical_expectations  # NEW v1.2.0 — EDD step 7
 
   post_deployment:
     - pattern_persistence
     - learning_consolidation
     - cross_project_transfer
     - metrics_collection
+    - archive_expectations_and_evidence  # NEW v1.2.0 — living docs
 
 # Performance targets
 performance:
@@ -240,6 +281,87 @@ performance:
 
 # Development Methodologies
 methodologies:
+  # ──────────────────────────────────────────────────────────────────────────
+  # Expectation-Driven Development (EDD) — v1.2.0
+  # The design-time conversation layer that wraps DDD/ADR/TDD/BDD.
+  # See EDD-PROTOCOL.md for the full playbook.
+  # ──────────────────────────────────────────────────────────────────────────
+  edd:
+    enabled: true
+    artifact_type: EXP            # EXP-NNN, parallel to SPEC/ADR/TASK
+    artifact_directory: .claude/expectations
+    evidence_directory: .claude/evidence
+
+    loop:
+      - step: 1
+        name: formulate
+        actor: human + expectation-author
+        output: EXP-NNN.md with frontmatter + body + counter-examples
+      - step: 2
+        name: implement
+        actor: coder
+        input: [EXP-NNN, SPEC-NNN, ADR-NNN]
+      - step: 3
+        name: produce-evidence
+        actor: evidence-producer
+        requires: [tool-use enabled, sandbox execution]
+        output: EXP-NNN.evidence.md with execution receipts
+      - step: 4
+        name: audit
+        actor: evidence-auditor
+        constraint: must_be_different_agent_from_step_3
+        constraint_model_family: must_differ_from_producer
+        mandate: find counter-example, do not confirm
+      - step: 5
+        name: human-challenge
+        actor: human
+        focus: subjective qualities, taste, scope gaps
+      - step: 6
+        name: iterate
+        loop_back_to: 2
+      - step: 7
+        name: stabilize
+        actor: tdd-stabilizer
+        required_when: regression_critical == true
+        output: automated test linked via stabilized_by
+
+    evidence_categories:
+      executable:
+        confidence: high
+        required_receipts: [command, raw_output, timestamp, git_sha]
+      partially_verifiable:
+        confidence: medium
+        required_receipts: [command, plan_or_dry_run_output, timestamp, git_sha, caveat]
+      not_executable:
+        confidence: low
+        required_receipts: [scenario_description, human_verify_marker, timestamp, git_sha]
+        gate_behaviour: requires_human_spot_check
+
+    anti_fox:
+      separation_required: true
+      producer_role: evidence-producer
+      auditor_role: evidence-auditor
+      auditor_model_family_must_differ: true
+      auditor_must_run_adversarial_probe: true
+      narrative_evidence_auto_rejected: true
+
+    versioning:
+      staleness_threshold_days: 30
+      stale_on_sha_drift: true
+      stale_evidence_blocks_gate: true
+
+    sizing_rules:
+      min_edge_cases_per_expectation: 2
+      min_counter_examples_per_expectation: 1
+      max_concerns_per_expectation: 1
+      target_priority_for_full_loop: [critical, high]
+      lighter_touch_priority: [medium, low]
+
+    workshop_pattern:
+      enabled: true
+      trigger: shared business logic OR cross-team feature
+      participants: [human-author, second-human-reviewer, expectation-author-agent]
+
   ddd:
     enabled: true
     strategic_design:
@@ -326,6 +448,16 @@ consensus:
     algorithm: raft
     leader_election: true
     log_replication: true
+
+  # NEW v1.2.0 — evidence audit verdict resolution. Auditor and producer must
+  # be different agents on different model families. Tie-breaks (rare) escalate
+  # to a third independent model rather than majority-vote within same family.
+  evidence_audit:
+    algorithm: independent_verifier
+    producer_model_family: any
+    auditor_model_family_must_differ: true
+    tiebreaker_on_disagreement: third_model_escalation
+    human_override: always_permitted
 
 # Execution modes
 execution:

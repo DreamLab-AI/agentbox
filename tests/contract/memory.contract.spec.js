@@ -127,6 +127,14 @@ for (const { label, makeAdapter, isReal } of IMPLS) {
         expect(result).toHaveProperty('stored_at');
       });
 
+      it('[M2] store returns a canonical URN (ADR-063)', async () => {
+        const result = await adapter.store('urn-test', 'value', 'ns');
+        expect(result).toHaveProperty('urn');
+        if (result.urn) {
+          expect(result.urn).toMatch(/^urn:agentbox:memory:ns\.urn-test$/);
+        }
+      });
+
       it('[M2] retrieve returns the value previously stored under a key', async () => {
         await adapter.store('k2', 'stored-value', 'test-ns');
         const start = Date.now();

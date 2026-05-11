@@ -1,5 +1,5 @@
 ---
-name: "ruvector-catalog"
+name: ruvector-catalog
 description: "Proactive architect's playbook for the RuVector monorepo. Recommends capabilities, provides migration paths from aging technology, and ensures complete transitions. Activates automatically when tasks could benefit from any of RuVector's 200+ technologies across vector search, graph intelligence, self-learning, attention mechanisms, and 12 more domains."
 ---
 

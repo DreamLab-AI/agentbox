@@ -105,5 +105,27 @@ section "Skills corpus (inputs.skills — path:./skills)"
 echo "  Currently path-input (local); see docs/guides/skills-upgrade.md"
 echo "  Future: pinned github:DreamLab-AI/agentbox-skills input."
 
+section "npm CLI packages (flake.nix makeNpmCli entries)"
+for entry in \
+  "ruvector|ruvector" \
+  "@claude-flow/cli|@claude-flow/cli" \
+  "ruflo|ruflo" \
+  "agentic-qe|agentic-qe" \
+  "codebase-memory-mcp|codebase-memory-mcp" \
+  "agent-browser|agent-browser" \
+  "playwright|playwright" \
+  "@mermaid-js/mermaid-cli|@mermaid-js/mermaid-cli" \
+  "@google/gemini-cli|@google/gemini-cli" \
+; do
+  pkg="${entry%|*}"
+  npm_pkg="${entry#*|}"
+  # Extract pinned version — look for version string near pkgName = "pkg"
+  escaped_pkg=$(printf '%s\n' "$pkg" | sed 's/[.*+?^${}()|[\]\\]/\\&/g')
+  pinned=$(grep -A3 "pkgName *= *\"${escaped_pkg}\"" flake.nix 2>/dev/null | grep -oE 'version *= *"[^"]+"' | head -1 | sed 's/.*"\(.*\)"/\1/' || echo "???")
+  latest=$(latest_npm "$npm_pkg")
+  print_row "$pkg" "${pinned:-???}" "$latest"
+done
+echo "  To bump: ./agentbox.sh update"
+
 printf "\n${BOLD}Legend${RESET}: ${GREEN}green${RESET} = pinned = latest; ${RED}red${RESET} = bump available; ${YELLOW}yellow${RESET} = unknown pin.\n"
 printf "Renovate opens PRs for red rows on Mondays. This script is just a human-readable dashboard.\n\n"

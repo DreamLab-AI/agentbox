@@ -607,7 +607,7 @@ The bundled linkedobjects/browser is AGPL-3.0. Every response from `/lo/*` carri
 - `X-Viewer-Source: <upstream-tree-url>`
 - `X-Viewer-License: AGPL-3.0-only`
 
-Aggregation analysis follows the [solid-pod-rs treatment](../adr/ADR-010-rust-solid-pod-adoption.md): the browser is shipped as static assets served by the management-api, never linked into agentbox first-party JavaScript. Agentbox stays MPL-2.0.
+Aggregation analysis follows the [solid-pod-rs treatment](../adr/ADR-010-rust-solid-pod-adoption.md): the browser is shipped as static assets served by the management-api, never linked into agentbox first-party JavaScript. Both agentbox and the viewer are AGPL-3.0.
 
 ### 15.6 Validation rules
 

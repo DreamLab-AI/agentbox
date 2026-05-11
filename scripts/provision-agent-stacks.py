@@ -87,6 +87,8 @@ def build_profile(name: str, config: dict) -> None:
         "zellijLayout": str(WORKSPACE / ".config" / "zellij" / "layouts" / f"{name}.kdl"),
         "recommendedSkills": config["skills"],
         "tooling": config["tools"],
+        "agentUrn": f"urn:agentbox:agent:{name}",
+        "didTemplate": "did:nostr:{AGENTBOX_PUBKEY_HEX}",
     }
 
     symlink_skills(claude_dir / "skills")
@@ -106,6 +108,7 @@ def build_profile(name: str, config: dict) -> None:
                 f"Shared workspace mount: {WORKSPACE}",
                 f"Shared skills tree: {SKILLS_TREE}",
                 f"Zellij layout: {WORKSPACE / '.config' / 'zellij' / 'layouts' / f'{name}.kdl'}",
+                f"Agent URN: urn:agentbox:agent:{name}",
                 "",
                 "Tools:",
                 *[f"- {tool}" for tool in config["tools"]],

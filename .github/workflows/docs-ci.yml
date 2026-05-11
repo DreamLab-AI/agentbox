@@ -2,7 +2,7 @@ name: Documentation Quality CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
     paths:
       - 'docs/**'
       - '.github/workflows/docs-ci.yml'
@@ -31,50 +31,56 @@ jobs:
       - name: Run link validation
         id: links
         run: |
+          set -euo pipefail
           echo "Running link validation..."
-          docs/scripts/validate-links.sh --json > /tmp/links.json || true
+          docs/scripts/validate-links.sh --json > /tmp/links.json
           cat /tmp/links.json
-          echo "links_result=$(cat /tmp/links.json | jq -r '.success_rate')" >> $GITHUB_OUTPUT
+          echo "links_result=$(jq -r '.success_rate' /tmp/links.json)" >> "$GITHUB_OUTPUT"
 
       - name: Run frontmatter validation
         id: frontmatter
         run: |
+          set -euo pipefail
           echo "Running frontmatter validation..."
-          docs/scripts/validate-frontmatter.sh --json > /tmp/frontmatter.json || true
+          docs/scripts/validate-frontmatter.sh --json > /tmp/frontmatter.json
           cat /tmp/frontmatter.json
-          echo "frontmatter_result=$(cat /tmp/frontmatter.json | jq -r '.success_rate')" >> $GITHUB_OUTPUT
+          echo "frontmatter_result=$(jq -r '.success_rate' /tmp/frontmatter.json)" >> "$GITHUB_OUTPUT"
 
       - name: Run Mermaid diagram validation
         id: mermaid
         run: |
+          set -euo pipefail
           echo "Running Mermaid validation..."
-          docs/scripts/validate-mermaid.sh --json > /tmp/mermaid.json || true
+          docs/scripts/validate-mermaid.sh --json > /tmp/mermaid.json
           cat /tmp/mermaid.json
-          echo "mermaid_result=$(cat /tmp/mermaid.json | jq -r '.success_rate')" >> $GITHUB_OUTPUT
+          echo "mermaid_result=$(jq -r '.success_rate' /tmp/mermaid.json)" >> "$GITHUB_OUTPUT"
 
       - name: Detect ASCII diagrams
         id: ascii
         run: |
+          set -euo pipefail
           echo "Detecting ASCII diagrams..."
-          docs/scripts/detect-ascii.sh --json > /tmp/ascii.json || true
+          docs/scripts/detect-ascii.sh --json > /tmp/ascii.json
           cat /tmp/ascii.json
-          echo "ascii_count=$(cat /tmp/ascii.json | jq -r '.ascii_diagrams_found')" >> $GITHUB_OUTPUT
+          echo "ascii_count=$(jq -r '.ascii_diagrams_found' /tmp/ascii.json)" >> "$GITHUB_OUTPUT"
 
       - name: Validate UK English spelling
         id: spelling
         run: |
+          set -euo pipefail
           echo "Validating UK English spelling..."
-          docs/scripts/validate-spelling.sh --json > /tmp/spelling.json || true
+          docs/scripts/validate-spelling.sh --json > /tmp/spelling.json
           cat /tmp/spelling.json
-          echo "spelling_errors=$(cat /tmp/spelling.json | jq -r '.spelling_errors')" >> $GITHUB_OUTPUT
+          echo "spelling_errors=$(jq -r '.spelling_errors' /tmp/spelling.json)" >> "$GITHUB_OUTPUT"
 
       - name: Validate structure
         id: structure
         run: |
+          set -euo pipefail
           echo "Validating structure..."
-          docs/scripts/validate-structure.sh --json > /tmp/structure.json || true
+          docs/scripts/validate-structure.sh --json > /tmp/structure.json
           cat /tmp/structure.json
-          echo "structure_errors=$(cat /tmp/structure.json | jq -r '.structure_errors')" >> $GITHUB_OUTPUT
+          echo "structure_errors=$(jq -r '.structure_errors' /tmp/structure.json)" >> "$GITHUB_OUTPUT"
 
       - name: Calculate overall quality score
         id: quality
@@ -141,11 +147,15 @@ jobs:
 
       - name: Check quality threshold
         run: |
-          overall_score=${{ steps.quality.outputs.overall_score }}
-
+          set -euo pipefail
+          overall_score="${{ steps.quality.outputs.overall_score }}"
+          if [ -z "$overall_score" ]; then
+            echo "::error::quality score output is empty — scoring step failed"
+            exit 1
+          fi
           if (( $(echo "$overall_score < 90" | bc -l) )); then
-            echo "❌ Documentation quality score ($overall_score%) is below the required threshold of 90%"
+            echo "::error::Documentation quality score (${overall_score}%) is below the required threshold of 90%"
             exit 1
           else
-            echo "✅ Documentation quality score ($overall_score%) meets the threshold"
+            echo "Documentation quality score (${overall_score}%) meets the threshold"
           fi

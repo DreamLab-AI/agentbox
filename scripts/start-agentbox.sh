@@ -749,6 +749,191 @@ section_providers() {
 }
 
 # ════════════════════════════════════════════════════════════════════════════════
+# SECTION 7b — operator Nostr identity
+#
+# Asks the operator whether they already have a Nostr keypair. If yes, captures
+# the public key (npub bech32 or 64-char hex) and optional display name.
+# If no, explains that a fresh identity will be auto-generated at first boot
+# by sovereign-bootstrap.py.
+#
+# Values are written to:
+#   agentbox.toml  → [sovereign_mesh.operator] pubkey_hex / npub / display_name
+#   .env           → OPERATOR_NOSTR_PUBKEY
+#
+# The PRIVATE key is NEVER stored in agentbox.toml. If the operator needs to
+# sign events, they pass OPERATOR_NOSTR_PRIVKEY via .env or use NIP-07/NIP-46
+# remote signing at runtime.
+# ════════════════════════════════════════════════════════════════════════════════
+
+# Globals populated by section_operator_identity and consumed after final write.
+_OPERATOR_PUBKEY_HEX=""
+_OPERATOR_NPUB=""
+_OPERATOR_DISPLAY_NAME=""
+
+# _validate_nostr_pubkey VALUE
+# Returns 0 and prints the normalised form if VALUE is a valid npub1… bech32
+# string or a 64-character lowercase hex string. Returns 1 otherwise.
+_validate_nostr_pubkey() {
+  local val="$1"
+  # npub bech32: starts with npub1, 59-64 chars total (spec: 63 chars)
+  if [[ "${val}" =~ ^npub1[0-9a-zA-Z]{58,63}$ ]]; then
+    echo "${val}"
+    return 0
+  fi
+  # 64-char hex (case-insensitive input, normalise to lowercase)
+  local lower="${val,,}"
+  if [[ "${lower}" =~ ^[0-9a-f]{64}$ ]]; then
+    echo "${lower}"
+    return 0
+  fi
+  return 1
+}
+
+section_operator_identity() {
+  # ── intro message ──────────────────────────────────────────────────────
+  wt_msgbox "Operator Nostr Identity" \
+    "Your Nostr public key identifies you as the operator of this agentbox.\n\n\
+It is used to:\n\
+  - Grant you operator-level access to the management API (NIP-98)\n\
+  - Add you to the embedded relay's allowlist\n\
+  - Tag you as the delegator on NIP-26 agent delegations\n\
+  - Set you as the WebID owner in Solid pod ACLs\n\n\
+Your private key is NEVER stored in agentbox.toml.\n\n\
+If you do not have a Nostr identity yet, you can get one free at\n\
+https://iris.to, https://primal.net, or any Nostr client."
+
+  # ── do you already have one? ───────────────────────────────────────────
+  if wt_yesno "Operator Identity" \
+    "Do you already have a Nostr identity?\n\n\
+Choose YES to enter your npub or hex public key now.\n\
+Choose NO to auto-generate a fresh identity at first boot."; then
+
+    # ── collect pubkey with format validation loop ─────────────────────
+    local pubkey="" validated=""
+    while true; do
+      pubkey="$(wt_inputbox "Operator — Public Key" \
+        "Enter your Nostr public key.\n\n\
+Format: npub1... (bech32) or 64-character hex string\n\
+Example: npub1qqqq...xyz  or  a1b2c3d4...64 hex chars" \
+        12 78 "")"
+
+      # Empty input — treat as skip
+      if [[ -z "${pubkey}" ]]; then
+        wt_msgbox "Operator Identity — Skipped" \
+          "No public key entered.\nA fresh identity will be auto-generated at first boot."
+        _OPERATOR_PUBKEY_HEX=""
+        _OPERATOR_NPUB=""
+        break
+      fi
+
+      validated="$(_validate_nostr_pubkey "${pubkey}")" && break
+
+      # Validation failed — show error and retry
+      wt_msgbox "Invalid Public Key" \
+        "\"${pubkey}\" is not a valid Nostr public key.\n\n\
+Accepted formats:\n\
+  - npub1… (bech32-encoded, ~63 characters)\n\
+  - 64-character lowercase hex string\n\n\
+Please try again, or leave the field blank to skip."
+    done
+
+    if [[ -n "${validated}" ]]; then
+      if [[ "${validated}" =~ ^npub1 ]]; then
+        _OPERATOR_NPUB="${validated}"
+        _OPERATOR_PUBKEY_HEX=""
+      else
+        _OPERATOR_PUBKEY_HEX="${validated}"
+        _OPERATOR_NPUB=""
+      fi
+
+      # Write to .env so the runtime can pick it up immediately
+      set_env_value "OPERATOR_NOSTR_PUBKEY" "${validated}"
+    fi
+  else
+    # No existing identity — auto-generation at first boot
+    wt_msgbox "Operator Identity — Auto-Generate" \
+      "A fresh Nostr identity will be generated at first boot by\n\
+sovereign-bootstrap.py. The keypair will be stored in the\n\
+container's secure keystore, and the public key written to\n\
+agentbox.toml automatically.\n\n\
+You can always set it manually later by editing:\n\
+  [sovereign_mesh.operator] in agentbox.toml\n\
+  OPERATOR_NOSTR_PUBKEY in .env"
+    _OPERATOR_PUBKEY_HEX=""
+    _OPERATOR_NPUB=""
+  fi
+
+  # ── optional display name ──────────────────────────────────────────────
+  local current_name; current_name="$(state_get 'sovereign_mesh.operator.display_name')"
+  _OPERATOR_DISPLAY_NAME="$(wt_inputbox "Operator — Display Name (optional)" \
+    "A human-readable name used in event tags and the management API.\nLeave blank to omit." \
+    9 78 "${current_name}")"
+
+  # Store in state so the summary preview can show them (even though
+  # tui-write does not emit [sovereign_mesh.operator] — we patch after).
+  state_set "sovereign_mesh.operator.pubkey_hex"  "${_OPERATOR_PUBKEY_HEX}"
+  state_set "sovereign_mesh.operator.npub"        "${_OPERATOR_NPUB}"
+  state_set "sovereign_mesh.operator.display_name" "${_OPERATOR_DISPLAY_NAME}"
+}
+
+# _patch_operator_toml FILE
+# Inserts or updates the [sovereign_mesh.operator] block in the given TOML file.
+# Called after tui-write produces the candidate, since tui-write does not emit
+# operator fields.
+_patch_operator_toml() {
+  local file="$1"
+  local hex="${_OPERATOR_PUBKEY_HEX}"
+  local npub="${_OPERATOR_NPUB}"
+  local name="${_OPERATOR_DISPLAY_NAME}"
+
+  # Build the block
+  local block
+  block="$(printf '\n[sovereign_mesh.operator]\npubkey_hex   = "%s"\nnpub         = "%s"\ndisplay_name = "%s"\nrelay_urls   = []\n' \
+    "${hex}" "${npub}" "${name}")"
+
+  # If the section already exists, replace it; otherwise insert after [sovereign_mesh]
+  if grep -q '^\[sovereign_mesh\.operator\]' "${file}" 2>/dev/null; then
+    # Remove existing block (from header to next section or EOF)
+    python3 -c "
+import re, pathlib, sys
+p = pathlib.Path(sys.argv[1])
+text = p.read_text()
+# Match [sovereign_mesh.operator] through to the next [...] header or EOF
+text = re.sub(
+    r'\n?\[sovereign_mesh\.operator\]\n(?:(?!\[)[^\n]*\n)*',
+    '',
+    text,
+)
+p.write_text(text)
+" "${file}"
+  fi
+  # Insert after the [sovereign_mesh] block's last key line
+  python3 -c "
+import pathlib, sys
+p = pathlib.Path(sys.argv[1])
+text = p.read_text()
+block = sys.argv[2]
+# Find [sovereign_mesh] section and insert operator block after its last key
+idx = text.find('[sovereign_mesh]')
+if idx == -1:
+    # Append at end
+    text += block + '\n'
+else:
+    # Find the blank line or next section after [sovereign_mesh]
+    rest = text[idx + len('[sovereign_mesh]'):]
+    # Walk past key=value lines
+    import re
+    m = re.search(r'\n(?=\n|\[)', rest)
+    if m:
+        insert_pos = idx + len('[sovereign_mesh]') + m.start()
+        text = text[:insert_pos] + block + text[insert_pos:]
+    else:
+        text += block + '\n'
+p.write_text(text)
+" "${file}" "${block}"
+}
+
+# ════════════════════════════════════════════════════════════════════════════════
 # SECTION 8 — observability
 # ════════════════════════════════════════════════════════════════════════════════
 section_observability() {
@@ -956,6 +1141,7 @@ SECTIONS=(
   section_skills
   section_providers
   section_consultants
+  section_operator_identity
   section_observability
   section_integrations
   section_sovereign_mesh
@@ -973,6 +1159,7 @@ done
 # SUMMARY — read-only view before committing
 # ════════════════════════════════════════════════════════════════════════════════
 python3 "${TUI_WRITE}" "${STATE_JSON}" "${CANDIDATE_TOML}"
+_patch_operator_toml "${CANDIDATE_TOML}"
 SUMMARY="$(cat "${CANDIDATE_TOML}")"
 wt_msgbox "Configuration Summary (read-only)" "${SUMMARY}"
 
@@ -983,6 +1170,7 @@ fi
 
 # Final validation + atomic write
 python3 "${TUI_WRITE}" "${STATE_JSON}" "${CANDIDATE_TOML}"
+_patch_operator_toml "${CANDIDATE_TOML}"
 if ! node "${VALIDATOR}" "${CANDIDATE_TOML}" 2>&1; then
   echo "Final validation failed. No changes written."
   exit 1

@@ -4,12 +4,14 @@
   "description": "MCP Server Registry for Agentbox",
   "mcpServers": {
     "claude-flow": {
-      "command": "node",
-      "args": ["/app/scripts/stdio-to-tcp-bridge.js"],
+      "command": "claude-flow",
+      "args": ["mcp", "start"],
       "type": "stdio",
       "env": {
-        "MCP_HOST": "127.0.0.1",
-        "MCP_PORT": "9500"
+        "HOME": "/home/devuser",
+        "CLAUDE_FLOW_PLUGIN_DIR": "/home/devuser/.claude-flow/plugins",
+        "TRANSFORMERS_CACHE": "/home/devuser/.cache/huggingface",
+        "HF_HOME": "/home/devuser/.cache/huggingface"
       }
     },
     "ruv-swarm": {

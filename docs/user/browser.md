@@ -270,7 +270,7 @@ The bundled linkedobjects/browser is AGPL-3.0. Every response from `/lo/*` carri
 - `X-Viewer-Version: <pinned-version>`
 - `X-Viewer-License: AGPL-3.0-only`
 
-Aggregation analysis matches the [solid-pod-rs treatment](../developer/licensing.md): the browser is shipped as static assets served by the management-api, never linked into agentbox first-party JavaScript. Agentbox stays MPL-2.0; the viewer remains AGPL-3.0.
+Aggregation analysis matches the [solid-pod-rs treatment](../developer/licensing.md): the browser is shipped as static assets served by the management-api, never linked into agentbox first-party JavaScript. Both agentbox and the viewer are AGPL-3.0.
 
 ## Common operator tasks
 

@@ -71,6 +71,8 @@ export MANAGEMENT_API_PORT="${MANAGEMENT_API_PORT:-9090}"
 export RUVECTOR_PORT="${RUVECTOR_PORT:-9700}"
 export SOLID_POD_PORT="${SOLID_POD_PORT:-8484}"
 export SHARED_PROJECTS_ROOT="${SHARED_PROJECTS_ROOT:-/projects}"
+export CODEX_HOME="${CODEX_HOME:-/home/devuser/.codex}"
+export GIT_CONFIG_GLOBAL="${GIT_CONFIG_GLOBAL:-/home/devuser/.config/git/config}"
 
 echo "[1/8] Preparing runtime directories..."
 mkdir -p \
@@ -84,12 +86,88 @@ mkdir -p \
   /tmp/screenshots \
   "$WORKSPACE/.cache/ms-playwright"
 
-chmod 755 "$RUVECTOR_DATA_DIR"
+# Best-effort chmod. The container has cap_drop: ALL plus a narrow cap_add
+# (SYS_ADMIN, NET_ADMIN), neither of which grants CAP_FOWNER, so chmod
+# against files not already owned by the bootstrap process fails. The
+# named volumes are typically uid 1000 from initial creation, so the
+# chmod is idempotent for them anyway. Silenced to avoid spurious noise.
+chmod 755 "$RUVECTOR_DATA_DIR" 2>/dev/null || true
+
+# Volume root-only chown to devuser. cap_drop: ALL is now lifted by the
+# baseline cap_add list (CHOWN, FOWNER, DAC_OVERRIDE, ...), so this works
+# on fresh volumes. Crucially, this is NOT recursive: the workspace mount
+# can hold ~157 GB (MAD migration), and `chown -R` over millions of files
+# blocks bootstrap for many minutes. The volume root is what services
+# care about for permission to mkdir; existing files keep whatever uid
+# was set when they were created. Long-running services run as devuser
+# (per `user=devuser`), so they own anything they create.
+for _vol_root in \
+    "$RUVECTOR_DATA_DIR" \
+    "$SOLID_POD_ROOT" \
+    /var/lib/agentbox \
+    /var/lib/agentbox/secrets \
+    /var/lib/nostr-relay \
+    /var/lib/https-bridge \
+    /run/agentbox \
+    "$SHARED_PROJECTS_ROOT" \
+    /home/devuser/.local \
+    /home/devuser/.local/share \
+    /home/devuser/.local/share/code-server \
+    /home/devuser/.config \
+    /home/devuser/.config/claude-telegram-mirror \
+    /home/devuser/.cache \
+    /home/devuser/.claude-flow \
+    /home/devuser/.codex \
+    /home/devuser/.gemini \
+    /var/cache \
+    /var/cache/ruflo-plugins; do
+  if [ -d "$_vol_root" ]; then
+    # Only chown the root, not -R. If the dir is already uid 1000, this
+    # is a no-op kernel call. Crucially: Docker auto-creates the parent
+    # paths of named-volume bind mounts (e.g. /home/devuser/.local/share
+    # as parent of codeserver-config) as root-owned, even when the
+    # parent itself is a uid-1000 tmpfs. Bootstrap-as-root fixes the
+    # ownership before XDG-aware tools like zoxide/fzf/atuin try to
+    # mkdir there.
+    chown 1000:1000 "$_vol_root" 2>/dev/null || true
+  fi
+done
+
+# The workspace is special: if it's the legacy MAD volume, files inside
+# are already uid 1000. If it's a fresh agentbox-workspace volume, only
+# the root needs to be chowned (services creating new files will own
+# them). The `find -not -uid 1000` is bounded to top-level shallow check
+# to avoid the full 157 GB walk.
+if [ -d "$WORKSPACE" ]; then
+  chown 1000:1000 "$WORKSPACE" 2>/dev/null || true
+fi
+
+# Claude-flow data directory (hooks write here as devuser)
+mkdir -p /home/devuser/.claude-flow/data 2>/dev/null || true
+chown -R 1000:1000 /home/devuser/.claude-flow 2>/dev/null || true
+
+# Git global config (home dir is read-only overlay; redirect to writable .config tmpfs)
+mkdir -p /home/devuser/.config/git 2>/dev/null || true
+if [ ! -f /home/devuser/.config/git/config ]; then
+  cat > /home/devuser/.config/git/config <<'GITCFG'
+[credential "https://github.com"]
+	helper = !gh auth git-credential
+[credential "https://gist.github.com"]
+	helper = !gh auth git-credential
+GITCFG
+fi
+chown -R 1000:1000 /home/devuser/.config/git 2>/dev/null || true
 
 # ---------------------------------------------------------------------------
 # Phase 2 — Management API key auto-generation
 # ---------------------------------------------------------------------------
-MGMT_KEY_FILE="$WORKSPACE/profiles/default/mgmt-key"
+# Q5: store the auto-generated mgmt key in a dedicated secrets volume
+# (mounted as /var/lib/agentbox/secrets via agentbox-secrets named volume).
+# Previous location ($WORKSPACE/profiles/default/mgmt-key) put the key in
+# the shared workspace volume, exposing it to every process with workspace
+# access — including the recycled MAD volume's history. The secrets volume
+# has its own mount, mode, and lifecycle.
+MGMT_KEY_FILE="${MGMT_KEY_FILE:-/var/lib/agentbox/secrets/mgmt-key}"
 _legacy_sentinel="change-this-secret-key"
 if [ -z "${MANAGEMENT_API_KEY:-}" ] || [ "${MANAGEMENT_API_KEY:-}" = "$_legacy_sentinel" ]; then
   if [ -f "$MGMT_KEY_FILE" ]; then
@@ -110,8 +188,11 @@ fi
 unset _legacy_sentinel
 
 if [ "${ENABLE_DESKTOP:-false}" = "true" ]; then
-  mkdir -p /tmp/.X11-unix
-  chmod 1777 /tmp/.X11-unix
+  # /tmp/.X11-unix is mounted as a Docker tmpfs (mode 1777 by default)
+  # via the desktop security exception. mkdir/chmod are best-effort because
+  # the container runs as uid 1000 and the tmpfs root is owned by uid 0.
+  mkdir -p /tmp/.X11-unix 2>/dev/null || true
+  chmod 1777 /tmp/.X11-unix 2>/dev/null || true
 fi
 
 # ---------------------------------------------------------------------------
@@ -121,36 +202,70 @@ echo "[2/8] Bootstrapping sovereign mesh identity..."
 python3 /opt/agentbox/scripts/sovereign-bootstrap.py
 
 # ---------------------------------------------------------------------------
-# Phase 4 — Workspace defaults (agents dir, zellij config, README)
+# Phase 4 — Workspace defaults (agents dir, tmux config, README)
 # ---------------------------------------------------------------------------
 echo "[3/8] Ensuring workspace defaults..."
 if [ ! -d "$WORKSPACE/agents" ]; then
   mkdir -p "$WORKSPACE/agents"
 fi
 
-# Shell profile seeding
-if [ -f /etc/bash.bashrc ]; then
-  if ! grep -q "source.*agentbox-aliases" /etc/bash.bashrc 2>/dev/null; then
-    echo "source /opt/agentbox/config/agentbox-aliases.sh" >> /etc/bash.bashrc
-  fi
+# Shell profile seeding (Q23): /etc/bash.bashrc, /etc/profile,
+# /etc/fish/config.fish, and /etc/profile.d/agentbox-runtime.sh are now
+# all baked into the image by the configFiles derivation in flake.nix
+# (read_only:true rootfs would otherwise block any runtime mkdir/append).
+# Nothing for the entrypoint to do here.
+
+# Claude Code config — bridge host mount to HOME
+# The host .claude/ is mounted at /home/devuser/.claude but HOME=/home/devuser
+# Create a symlink so Claude Code finds its OAuth tokens and settings
+if [ -d /home/devuser/.claude ] && [ ! -e "$WORKSPACE/.claude" ]; then
+  ln -sf /home/devuser/.claude "$WORKSPACE/.claude"
 fi
-if [ -f /etc/zsh/zshrc ]; then
-  if ! grep -q "source.*agentbox-aliases" /etc/zsh/zshrc 2>/dev/null; then
-    echo "source /opt/agentbox/config/agentbox-aliases.sh" >> /etc/zsh/zshrc
+
+# Pre-install the Anthropic skill-creator plugin so /skill-creator works on
+# first boot. The plugin payload arrives via the host bind-mount of
+# ~/.claude/plugins/marketplaces/claude-plugins-official; we just need to
+# register it in installed_plugins.json. Idempotent — skips if already there.
+SKILL_CREATOR_DIR="/home/devuser/.claude/plugins/marketplaces/claude-plugins-official/plugins/skill-creator"
+INSTALLED_JSON="/home/devuser/.claude/plugins/installed_plugins.json"
+if [ -d "$SKILL_CREATOR_DIR" ] && [ -f "$INSTALLED_JSON" ]; then
+  if ! grep -q '"skill-creator@claude-plugins-official"' "$INSTALLED_JSON" 2>/dev/null; then
+    python3 - <<PY 2>/dev/null || true
+import json, datetime, sys
+path = "$INSTALLED_JSON"
+try:
+    with open(path) as f:
+        data = json.load(f)
+except Exception:
+    sys.exit(0)
+data.setdefault("plugins", {})
+key = "skill-creator@claude-plugins-official"
+if key not in data["plugins"]:
+    now = datetime.datetime.utcnow().isoformat() + "Z"
+    data["plugins"][key] = [{
+        "scope": "user",
+        "installPath": "$SKILL_CREATOR_DIR",
+        "version": "marketplace",
+        "installedAt": now,
+        "lastUpdated": now,
+    }]
+    with open(path, "w") as f:
+        json.dump(data, f, indent=2)
+    print("[bootstrap] Pre-installed skill-creator from claude-plugins-official")
+PY
   fi
 fi
 
-mkdir -p "$WORKSPACE/.config/zellij"
-if [ ! -f "$WORKSPACE/.config/zellij/config.kdl" ]; then
-  cp /opt/agentbox/config/zellij.kdl "$WORKSPACE/.config/zellij/config.kdl"
+# i3 window manager config
+mkdir -p "$WORKSPACE/.config/i3" 2>/dev/null || true
+if [ -f /opt/agentbox/config/i3/config ] && [ ! -f "$WORKSPACE/.config/i3/config" ]; then
+  cp /opt/agentbox/config/i3/config "$WORKSPACE/.config/i3/config"
 fi
-mkdir -p "$WORKSPACE/.config/zellij/layouts"
-for layout in /opt/agentbox/config/zellij/layouts/*.kdl; do
-  target="$WORKSPACE/.config/zellij/layouts/$(basename "$layout")"
-  if [ ! -f "$target" ]; then
-    cp "$layout" "$target"
-  fi
-done
+
+# tmux config — fish shell + dark theme status bar
+# Replaces Zellij (see config/tmux.conf, config/tmux-autostart.sh)
+cp /opt/agentbox/config/tmux.conf "$HOME/.tmux.conf" 2>/dev/null || \
+  cp /opt/agentbox/config/tmux.conf "$WORKSPACE/.tmux.conf" 2>/dev/null || true
 
 if [ ! -f "$WORKSPACE/README.agentbox.md" ]; then
   cat > "$WORKSPACE/README.agentbox.md" <<'EOF'
@@ -187,8 +302,9 @@ fi
 # has confirmed required programs are RUNNING (Option A from PRD-002 §9).
 # ---------------------------------------------------------------------------
 mkdir -p /run/agentbox
+chown 1000:1000 /run/agentbox 2>/dev/null || true
 
-echo "[5/8] Starting supervisord..."
+echo "[5b/8] Starting supervisord..."
 exec supervisord -c /etc/supervisord.conf -n
 
 fi  # end STAGE_B_MODE=0 block — Stage A exits via exec above
@@ -220,7 +336,13 @@ echo "[6/8] Validating pre-packaged service closures..."
 
 _probe_closure() {
   local dir="$1"
-  if [ ! -d "$dir/node_modules" ]; then
+  # Accept node_modules at $dir/node_modules OR $dir/package/node_modules.
+  # The latter occurs when the Nix build copies a derivation's /package dir
+  # into a destination that already exists from the skills source tree copy
+  # (cp puts the source dir *inside* the existing dest instead of replacing it).
+  # flake.nix is fixed to rm -rf before overlay cp; this fallback handles
+  # images built before that fix.
+  if [ ! -d "$dir/node_modules" ] && [ ! -d "$dir/package/node_modules" ]; then
     printf '{"level":"fatal","time":"%s","agentbox.stage":"bootstrap","event":"MissingArtifactDetected","path":"%s","reason":"node_modules not present — rerun nix build and push the image"}\n' \
       "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$dir" >&2
     exit 1
@@ -245,30 +367,235 @@ fi
 echo "[6/8] Service closures OK."
 
 # ---------------------------------------------------------------------------
-# Phase 7 — REMOVED (PRD-002 §9 Phase 2)
+# Phase 7 — Native ruflo plugin bootstrap
 # ---------------------------------------------------------------------------
-# All npm global CLIs are now Nix derivations in flake.nix:
-#   ruvector, @claude-flow/cli, ruflo, agentic-qe, nagual-qe,
-#   codebase-memory-mcp, agent-browser, playwright, @mermaid-js/mermaid-cli
-# They are present in PATH via the image closure. No runtime installs needed.
-#
-# Deferred first-run steps (run from agentbox.sh init, not here):
-#   agentic-qe: aqe init --auto (writes $HOME/.claude/agents/ templates)
-#   playwright: browsers are pre-built in PLAYWRIGHT_BROWSERS_PATH (Nix store)
-echo "[7/8] npm CLI toolchains pre-packaged in image — skipping runtime install"
+# Nix-packaged CLIs (claude-flow, ruflo, ruvector) are in PATH.
+# Plugins are native .claude-plugin format from github.com/ruvnet/ruflo.
+# Two install sources:
+#   source = "ruflo-git" (default) — shallow-cloned from GitHub, symlinked
+#   source = "registry"            — installed via `ruflo plugins install`
+# Memory backend config propagated from [plugins.memory] to config.json.
+echo "[7/8] Bootstrapping ruflo plugins..."
+
+_PLUGIN_DIR="${HOME}/.claude-flow/plugins"
+_RUFLO_PLUGINS_CACHE="/var/cache/ruflo-plugins"
+_RUFLO_PLUGINS_REPO="https://github.com/ruvnet/ruflo.git"
+mkdir -p "$_PLUGIN_DIR" "$_RUFLO_PLUGINS_CACHE" 2>/dev/null || true
+chown -R 1000:1000 "$_PLUGIN_DIR" 2>/dev/null || true
+
+# Q26 / Q6: claude-flow plugin config is generated at image-build time from
+# agentbox.toml [plugins.memory] (see flake.nix `claudeFlowConfigJson`). The
+# template lives at /opt/agentbox/config/claude-flow-config.template.json
+# with a literal @@RUVECTOR_PG_PASSWORD@@ placeholder that we expand here
+# from the env, so the password lives in exactly one place (the env var).
+_CF_CONFIG_DIR="${HOME}/.claude-flow"
+_CF_TEMPLATE="/opt/agentbox/config/claude-flow-config.template.json"
+mkdir -p "$_CF_CONFIG_DIR" 2>/dev/null || true
+if [ -f "$_CF_TEMPLATE" ] && { [ ! -f "$_CF_CONFIG_DIR/config.json" ] || ! grep -q "ruvector-postgres" "$_CF_CONFIG_DIR/config.json" 2>/dev/null; }; then
+  : "${RUVECTOR_PG_PASSWORD:=ruvector}"
+  # sed escape the password to handle any '/' or '&' (paranoid; ruvector ships safe defaults)
+  _PG_PW_ESC=$(printf '%s\n' "$RUVECTOR_PG_PASSWORD" | sed -e 's/[\/&]/\\&/g')
+  sed "s/@@RUVECTOR_PG_PASSWORD@@/$_PG_PW_ESC/g" "$_CF_TEMPLATE" > "$_CF_CONFIG_DIR/config.json"
+  chown 1000:1000 "$_CF_CONFIG_DIR/config.json" 2>/dev/null || true
+fi
+
+# ── MCP server config: ensure .mcp.json always points to ruvector-mcp.cjs ──
+# Claude Code resolves .mcp.json by walking up from cwd.  We write one at
+# the workspace root so every project inherits ruvector-postgres by default.
+# The pg npm module is installed to a workspace-persistent prefix on first boot.
+_MCP_JSON="${WORKSPACE:-/home/devuser/workspace}/.mcp.json"
+_RUVECTOR_MCP="/opt/agentbox/mcp/servers/ruvector-mcp.cjs"
+_PG_PREFIX="${WORKSPACE:-/home/devuser/workspace}/.claude-pg"
+: "${RUVECTOR_PG_PASSWORD:=ruvector}"
+if [ -f "$_RUVECTOR_MCP" ]; then
+  # Install pg npm module if missing (workspace-persistent, survives rebuilds)
+  if [ ! -d "$_PG_PREFIX/node_modules/pg" ]; then
+    echo "  [mcp] Installing pg module to $_PG_PREFIX ..."
+    mkdir -p "$_PG_PREFIX" "${WORKSPACE:-/home/devuser/workspace}/.npm-cache" 2>/dev/null || true
+    npm install --cache "${WORKSPACE:-/home/devuser/workspace}/.npm-cache" --prefix "$_PG_PREFIX" pg 2>/dev/null || true
+    chown -R 1000:1000 "$_PG_PREFIX" 2>/dev/null || true
+  fi
+  # Write canonical .mcp.json (idempotent — only if it doesn't already point to ruvector-mcp)
+  : "${XINFERENCE_ENDPOINT:=http://xinference:9997}"
+  : "${EMBEDDING_MODEL:=bge-small-en-v1.5}"
+  if [ ! -f "$_MCP_JSON" ] || ! grep -q "ruvector-mcp" "$_MCP_JSON" 2>/dev/null; then
+    cat > "$_MCP_JSON" <<MCPEOF
+{
+  "mcpServers": {
+    "claude-flow": {
+      "command": "node",
+      "args": ["$_RUVECTOR_MCP"],
+      "type": "stdio",
+      "env": {
+        "RUVECTOR_PG_CONNINFO": "host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=$RUVECTOR_PG_PASSWORD",
+        "NODE_PATH": "$_PG_PREFIX/node_modules",
+        "XINFERENCE_ENDPOINT": "$XINFERENCE_ENDPOINT",
+        "EMBEDDING_MODEL": "$EMBEDDING_MODEL"
+      }
+    }
+  }
+}
+MCPEOF
+    chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
+    echo "  [mcp] Wrote $_MCP_JSON → ruvector-mcp.cjs (ruvector-postgres + xinference)"
+  fi
+fi
+
+if command -v ruflo >/dev/null 2>&1; then
+
+  # --- Step 1: Clone/update ruflo plugins from GitHub (sparse checkout) ---
+  # GIT_SAFE: home dir may be read-only (Nix hardened rootfs); pass safe.directory
+  # via -c to avoid needing to write to ~/.gitconfig.
+  _GIT_SAFE="-c safe.directory=$_RUFLO_PLUGINS_CACHE"
+  if [ -d "$_RUFLO_PLUGINS_CACHE/.git" ]; then
+    echo "  [plugin] Updating ruflo plugins cache..."
+    git $_GIT_SAFE -C "$_RUFLO_PLUGINS_CACHE" pull --ff-only --depth 1 2>/dev/null || true
+  else
+    echo "  [plugin] Cloning ruflo plugins (sparse, depth 1)..."
+    git clone --depth 1 --filter=blob:none --sparse \
+      "$_RUFLO_PLUGINS_REPO" "$_RUFLO_PLUGINS_CACHE" 2>/dev/null || true
+    git $_GIT_SAFE -C "$_RUFLO_PLUGINS_CACHE" sparse-checkout set plugins 2>/dev/null || true
+  fi
+  chown -R 1000:1000 "$_RUFLO_PLUGINS_CACHE" 2>/dev/null || true
+
+  # --- Step 2: Install declared plugins from agentbox.toml ---
+  # Reads [[plugins.packages]] blocks. Fields: name, enabled, source (optional).
+  # source = "ruflo-git" (default): symlink from cache into plugin dir.
+  # source = "registry": install via `ruflo plugins install -n`.
+  #
+  # Q27: parse via Python's tomllib (3.11+) instead of a hand-rolled
+  # case/sed loop. The previous implementation interpolated $_plugin_name
+  # directly into a `su -c '...'` shell command — a latent shell-injection
+  # vector if a plugin name ever contained a single quote. tomllib also
+  # handles multi-line values, comment placements, and string escapes the
+  # case/sed loop quietly mishandled.
+  if [ -f "$AGENTBOX_CONFIG" ] && command -v python3 >/dev/null 2>&1; then
+    # Parse [[plugins.packages]] via tomllib and emit `name<TAB>source\n`
+    # lines for enabled, validated entries. The validation regex catches
+    # any name that could break out of shell-quoting, which collapses the
+    # injection vector documented in Q27.
+    _PLUGIN_LIST=$(python3 - "$AGENTBOX_CONFIG" <<'PYEOF'
+import re, sys, tomllib
+with open(sys.argv[1], "rb") as f:
+    cfg = tomllib.load(f)
+pkgs = cfg.get("plugins", {}).get("packages", []) or []
+name_re = re.compile(r"^[a-zA-Z0-9@/_.+-]+$")
+for entry in pkgs:
+    if not entry.get("enabled", False):
+        continue
+    name = entry.get("name", "")
+    source = entry.get("source", "ruflo-git")
+    if not name_re.match(name):
+        sys.stderr.write(f"[plugin] skipping suspicious name: {name!r}\n")
+        continue
+    if source not in ("ruflo-git", "registry"):
+        sys.stderr.write(f"[plugin] skipping unknown source: {source!r} for {name}\n")
+        continue
+    print(f"{name}\t{source}")
+PYEOF
+)
+    while IFS=$'\t' read -r _plugin_name _plugin_source; do
+      [ -z "$_plugin_name" ] && continue
+      if [ "$_plugin_source" = "registry" ]; then
+        echo "  [plugin] Installing $_plugin_name from IPFS registry..."
+        # Pass the plugin name via env var; no shell interpolation.
+        AGENTBOX_PLUGIN_NAME="$_plugin_name" su -s /bin/bash devuser \
+          -c 'ruflo plugins install -n "$AGENTBOX_PLUGIN_NAME"' \
+          2>&1 | tail -3 || true
+      else
+        _src="$_RUFLO_PLUGINS_CACHE/plugins/$_plugin_name"
+        _dst="$_PLUGIN_DIR/$_plugin_name"
+        if [ -d "$_src" ]; then
+          if [ ! -e "$_dst" ]; then
+            ln -sf "$_src" "$_dst"
+            echo "  [plugin] Linked $_plugin_name"
+          else
+            echo "  [plugin] $_plugin_name already present"
+          fi
+        else
+          echo "  [plugin] WARN: $_plugin_name not found in ruflo cache"
+        fi
+      fi
+    done <<EOF
+$_PLUGIN_LIST
+EOF
+  fi
+
+  # --- Step 3: Write installed.json manifest for MCP server ---
+  _manifest="$_PLUGIN_DIR/installed.json"
+  {
+    printf '{"version":"1.0.0","lastUpdated":"%s","plugins":{' "$(date -Iseconds)"
+    _first=1
+    for _pdir in "$_PLUGIN_DIR"/*/; do
+      [ -d "$_pdir" ] || continue
+      _pjson="$_pdir/.claude-plugin/plugin.json"
+      if [ -f "$_pjson" ]; then
+        _pname="$(grep '"name"' "$_pjson" | head -1 | sed 's/.*: *"\(.*\)".*/\1/')"
+        _pver="$(grep '"version"' "$_pjson" | head -1 | sed 's/.*: *"\(.*\)".*/\1/')"
+        [ "$_first" = "1" ] && _first=0 || printf ','
+        printf '"%s":{"name":"%s","version":"%s","enabled":true,"source":"ruflo-git","path":"%s"}' \
+          "$_pname" "$_pname" "${_pver:-0.1.0}" "$_pdir"
+      fi
+    done
+    printf '}}\n'
+  } > "$_manifest"
+  chown 1000:1000 "$_manifest" 2>/dev/null || true
+
+  echo "[7/8] Plugin bootstrap complete"
+else
+  echo "[7/8] ruflo not in PATH — plugin bootstrap skipped"
+fi
 
 # ---------------------------------------------------------------------------
 # Phase 8 — Publish environment hints to profile.d
 # ---------------------------------------------------------------------------
 echo "[8/8] Publishing environment hints..."
-cat > /etc/profile.d/agentbox-runtime.sh <<EOF
+# /etc/profile.d/ is read-only on a hardened rootfs. Write to /run instead
+# (uid-1000-owned tmpfs from baselineTmpfsMounts). Anything that needs these
+# vars at shell-init time must source $AGENTBOX_RUNTIME_ENV (set below).
+RUNTIME_ENV_FILE=/run/agentbox/runtime-env.sh
+mkdir -p "$(dirname "$RUNTIME_ENV_FILE")" 2>/dev/null || true
+cat > "$RUNTIME_ENV_FILE" <<EOF
 export WORKSPACE="$WORKSPACE"
 export RUVECTOR_DATA_DIR="$RUVECTOR_DATA_DIR"
 export RUVECTOR_PORT="$RUVECTOR_PORT"
+export RUVECTOR_PG_CONNINFO="${RUVECTOR_PG_CONNINFO:-postgresql://ruvector:ruvector@ruvector-postgres:5432/ruvector}"
 export SOLID_POD_ROOT="${SOLID_POD_ROOT:-/var/lib/solid}"
 export AGENTBOX_CONFIG="${AGENTBOX_CONFIG:-/etc/agentbox.toml}"
 export SKILLS_TREE="${SKILLS_TREE:-/opt/agentbox/skills}"
 export SHARED_PROJECTS_ROOT="${SHARED_PROJECTS_ROOT:-/projects}"
+export CLAUDE_FLOW_PLUGIN_DIR="${CLAUDE_FLOW_PLUGIN_DIR:-/home/devuser/.claude-flow/plugins}"
+export CARGO_HOME="${CARGO_HOME:-/home/devuser/workspace/.cargo}"
+export RUSTUP_HOME="${RUSTUP_HOME:-/home/devuser/workspace/.rustup}"
+export TMPDIR="${TMPDIR:-/home/devuser/workspace/.tmp}"
+export OPENSSL_DIR="${OPENSSL_DIR:-}"
+export OPENSSL_LIB_DIR="${OPENSSL_LIB_DIR:-}"
+export OPENSSL_INCLUDE_DIR="${OPENSSL_INCLUDE_DIR:-}"
 EOF
+mkdir -p "/home/devuser/workspace/.cargo" "/home/devuser/workspace/.tmp" 2>/dev/null || true
+chown devuser:devuser "/home/devuser/workspace/.cargo" "/home/devuser/workspace/.tmp" 2>/dev/null || true
+# CUDA wrapper: Nix uses lib/ but Rust crates expect lib64/
+if [ -n "${CUDA_PATH:-}" ] && [ -d "$CUDA_PATH/include" ] && [ ! -d "$CUDA_PATH/lib64" ]; then
+  CUDA_WRAP="/home/devuser/workspace/.cuda"
+  mkdir -p "$CUDA_WRAP"
+  ln -sfn "$CUDA_PATH/include" "$CUDA_WRAP/include"
+  ln -sfn "$CUDA_PATH/lib"     "$CUDA_WRAP/lib64"
+  ln -sfn "$CUDA_PATH/bin"     "$CUDA_WRAP/bin"
+  ln -sfn "$CUDA_PATH/nvvm"    "$CUDA_WRAP/nvvm" 2>/dev/null || true
+  chown -h devuser:devuser "$CUDA_WRAP"/* 2>/dev/null || true
+  cat >> "$RUNTIME_ENV_FILE" <<CUDAEOF
+export CUDA_PATH="$CUDA_WRAP"
+export CUDA_LIBRARY_PATH="$CUDA_WRAP"
+export CPATH="$CUDA_WRAP/include:\${CPATH:-}"
+export LIBRARY_PATH="$CUDA_WRAP/lib64:$CUDA_WRAP/lib64/stubs:\${LIBRARY_PATH:-}"
+CUDAEOF
+fi
+export AGENTBOX_RUNTIME_ENV="$RUNTIME_ENV_FILE"
+# Best-effort symlink for legacy consumers; ignored on read-only /etc.
+ln -sf "$RUNTIME_ENV_FILE" /etc/profile.d/agentbox-runtime.sh 2>/dev/null || true
+
+# Phase 8a — tmux session is started by [program:tmux-autostart] (supervisord,
+# user=devuser) so fish/atuin/bottom config dirs are created with correct
+# ownership. Nothing to do here.
 
 echo "[AGENTBOX] Runtime bootstrap complete"

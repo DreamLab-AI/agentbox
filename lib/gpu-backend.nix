@@ -137,9 +137,11 @@ let
       # CUDA is Linux-only; guard against darwin eval even though darwin
       # x86_64 satisfies stdenv.isx86_64, it never has cudaPackages available.
       cudaEligible = pkgs.stdenv.isLinux && pkgs.stdenv.isx86_64;
+      # cudaPackages_13_0 has a nixpkgs packaging bug (missing math_functions.h
+      # in cuda_nvcc postInstall substitute). Skip it; 13.1+ or 12.x are fine.
       extendedCudaSet =
         if pkgs ? cudaPackages_13_1 then pkgs.cudaPackages_13_1
-        else if pkgs ? cudaPackages_13_0 then pkgs.cudaPackages_13_0
+        else if pkgs ? cudaPackages_12_6 then pkgs.cudaPackages_12_6
         else if pkgs ? cudaPackages_12_1 then pkgs.cudaPackages_12_1
         else pkgs.cudaPackages;
 
@@ -186,6 +188,8 @@ let
       supervisorExtraEnv = {
         CUDA_VISIBLE_DEVICES        = "all";
         NVIDIA_DRIVER_CAPABILITIES  = "compute,utility";
+        CUDA_PATH                   = "${pkgs.cudaPackages.cudatoolkit}";
+        CUDA_LIBRARY_PATH           = "${pkgs.cudaPackages.cudatoolkit}/lib:${pkgs.cudaPackages.cudatoolkit}/lib/stubs";
       };
       ollamaEnabled = true;
     };

@@ -64,4 +64,4 @@ The namespace path includes `v1`. A breaking change to any term semantics (datat
 
 ## License
 
-The agentbox extension vocabulary is published under [MPL-2.0](../../../LICENSE). The published context document is reusable by any consumer; we ask that derivative vocabularies use a different namespace to avoid collisions.
+The agentbox extension vocabulary is published under [AGPL-3.0](../../../LICENSE). The published context document is reusable by any consumer; we ask that derivative vocabularies use a different namespace to avoid collisions.

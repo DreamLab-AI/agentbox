@@ -63,6 +63,10 @@ const AGENT_INTENT_MAX  = 38099;
 const AGENT_RESPONSE_MIN = 38100;
 const AGENT_RESPONSE_MAX = 38199;
 
+// Payment event kinds (PRD-006 §S8 / agentbox.toml [payments]).
+const JOB_ESTIMATE_KIND   = 38200;
+const JOB_SETTLEMENT_KIND = 38201;
+
 const DEFAULT_OUTBOX_POLL_MS = 500;
 const DEFAULT_OUTBOX_RETRY_BACKOFF = [1_000, 5_000, 30_000, 300_000];
 const DEFAULT_POD_ROOT = process.env.SOLID_POD_ROOT || '/var/lib/solid';
@@ -133,6 +137,7 @@ class RelayConsumer {
       1059,                               // NIP-17 gift wrap DMs
       30078,                              // agent state (NIP-33)
       AGENT_INTENT_MIN, AGENT_RESPONSE_MIN,
+      JOB_ESTIMATE_KIND, JOB_SETTLEMENT_KIND,
     ];
   }
 
@@ -239,6 +244,12 @@ class RelayConsumer {
       } catch (err) {
         this._logger.warn({ err, eventId: event.id }, 'events-dispatch-failed');
       }
+    }
+
+    // Payment events (38200/38201): write to the dedicated payments directory
+    // alongside the inbox entry for cost-gate reconciliation and audit trail.
+    if (this._isPaymentEvent(event.kind)) {
+      this._writePaymentEvent(recipient, event);
     }
 
     // Agent-intent kinds: always write a durable marker to the pod intent
@@ -377,12 +388,46 @@ class RelayConsumer {
     return kind >= AGENT_INTENT_MIN && kind <= AGENT_INTENT_MAX;
   }
 
+  _isPaymentEvent(kind) {
+    return kind === JOB_ESTIMATE_KIND || kind === JOB_SETTLEMENT_KIND;
+  }
+
+  /**
+   * Write a payment event to pods/<npub>/events/payments/<event-id>.json.
+   * Atomic rename preserves DDD-003 I01 / I08 semantics.
+   * @private
+   */
+  _writePaymentEvent(recipient, event) {
+    const paymentsDir = path.join(this._podRoot, 'pods', recipient, 'events', 'payments');
+    const target = path.join(paymentsDir, `${event.id}.json`);
+    if (fs.existsSync(target)) return;           // dedup by event id
+    try {
+      fs.mkdirSync(paymentsDir, { recursive: true });
+      const kindLabel = event.kind === JOB_ESTIMATE_KIND ? 'estimate' : 'settlement';
+      const payload = {
+        event_id:       event.id,
+        kind:           event.kind,
+        kind_label:     kindLabel,
+        signer_pubkey:  event.pubkey,
+        recipient_npub: recipient,
+        received_at:    new Date(this._now()).toISOString(),
+        content:        event.content,
+        tags:           event.tags,
+      };
+      const tmp = path.join(paymentsDir, `.${event.id}.${process.pid}.tmp`);
+      fs.writeFileSync(tmp, JSON.stringify(payload, null, 2));
+      fs.renameSync(tmp, target);
+    } catch (err) {
+      this._logger.warn({ err, eventId: event.id }, 'payment-event-write-failed');
+    }
+  }
+
   // ── outbound path ─────────────────────────────────────────────────────────
 
   _ensureMailboxDirs() {
     for (const npub of this._npubs) {
       const podDir = path.join(this._podRoot, 'pods', npub);
-      for (const sub of ['events/inbox', 'events/outbox', 'events/intent-queue']) {
+      for (const sub of ['events/inbox', 'events/outbox', 'events/intent-queue', 'events/payments']) {
         fs.mkdirSync(path.join(podDir, sub), { recursive: true });
       }
     }
@@ -470,4 +515,4 @@ class RelayConsumer {
   }
 }
 
-module.exports = { RelayConsumer, AGENT_INTENT_MIN, AGENT_INTENT_MAX, AGENT_RESPONSE_MIN, AGENT_RESPONSE_MAX };
+module.exports = { RelayConsumer, AGENT_INTENT_MIN, AGENT_INTENT_MAX, AGENT_RESPONSE_MIN, AGENT_RESPONSE_MAX, JOB_ESTIMATE_KIND, JOB_SETTLEMENT_KIND };

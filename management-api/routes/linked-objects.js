@@ -116,7 +116,71 @@ async function linkedObjectsRoutes(fastify, options) {
       const bytes = await fs.promises.readFile(full);
       reply.type(_mime(file)).send(bytes);
     } catch (err) {
+      // Fall back to the upstream bundle's panes directory.
+      if (viewer.bundlePath) {
+        const bundlePaneFull = path.join(viewer.bundlePath, 'panes', file);
+        if (bundlePaneFull.startsWith(path.resolve(viewer.bundlePath))) {
+          try {
+            const bytes2 = await fs.promises.readFile(bundlePaneFull);
+            return reply.type(_mime(file)).send(bytes2);
+          } catch { /* fall through to 404 */ }
+        }
+      }
       reply.code(404).send({ error: 'pane-not-found', file });
+    }
+  });
+
+  // ---- Proxy — resolves URNs + fetches pod content server-side ---------------
+  // Public (covered by the /lo/* auth bypass). Used by index.html so the
+  // browser never needs to talk directly to /v1/* (auth required) or to
+  // localhost:8484 (cross-origin CORS issue).
+  fastify.get(`${viewer.mountPath}/proxy`, async (req, reply) => {
+    const rawUri = (req.query.uri || req.query.url || '').trim();
+    if (!rawUri) return reply.code(400).send({ error: 'uri-required' });
+
+    const apiKey  = process.env.MANAGEMENT_API_KEY  || '';
+    const apiPort = process.env.MANAGEMENT_API_PORT || '9090';
+    const apiBase = `http://127.0.0.1:${apiPort}`;
+
+    async function _fetch(url) {
+      const headers = { Accept: 'application/ld+json, application/json, text/turtle, */*' };
+      if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
+      return fetch(url, { headers, redirect: 'manual' });
+    }
+
+    try {
+      let fetchUrl;
+      if (rawUri.startsWith('urn:')) {
+        fetchUrl = `${apiBase}/v1/uri/${encodeURIComponent(rawUri)}`;
+      } else if (rawUri.startsWith('/')) {
+        fetchUrl = `${apiBase}${rawUri}`;
+      } else {
+        fetchUrl = rawUri;
+      }
+
+      let res = await _fetch(fetchUrl);
+
+      // Follow a single redirect (covers /v1/uri/<urn> → 307 → content URL)
+      if ([301, 302, 307, 308].includes(res.status)) {
+        const loc = res.headers.get('location');
+        if (loc) {
+          const next = loc.startsWith('/') ? `${apiBase}${loc}` : loc;
+          res = await _fetch(next);
+        }
+      }
+
+      if (!res.ok && res.status !== 200) {
+        return reply.code(res.status).send({ error: 'upstream-error', status: res.status });
+      }
+
+      const body = await res.text();
+      const ct   = res.headers.get('content-type') || 'application/json';
+      reply.header('Content-Type', ct);
+      reply.header('Cache-Control', 'no-cache');
+      return reply.send(body);
+    } catch (err) {
+      logger.warn({ err: err.message, uri: rawUri }, 'lo/proxy fetch failed');
+      return reply.code(502).send({ error: 'proxy-error', message: err.message });
     }
   });
 
@@ -143,6 +207,7 @@ async function linkedObjectsRoutes(fastify, options) {
     const tail = req.url.slice((viewer.mountPath || '/lo').length);
     if (tail.startsWith('/manifest.json')) return; // already handled above
     if (tail.startsWith('/panes/')) return;        // already handled above
+    if (tail.startsWith('/proxy')) return;         // already handled above
 
     // Strip any query string; the bundle does not consume them.
     const queryIdx = tail.indexOf('?');

@@ -1,10 +1,10 @@
 # Architecture overview
 
-For contributors. If you're an operator, start at [user/quickstart.md](../user/quickstart.md).
+For contributors. If you are an operator, start at [user/quickstart.md](../user/quickstart.md).
 
 ## Context in one paragraph
 
-Agentbox is the runtime container that executes autonomous coding agents. This document is the map you land on when you need to change behaviour: it explains how the manifest drives the build, how the build produces the image, and how the image boots into a hardened, observable runtime with pluggable durable-state adapters. The design is constrained by [PRD-001](../reference/prd/PRD-001-capabilities-and-adapters.md) (the product must ship standalone or federated with the same binary) and driven by three foundational ADRs — [ADR-001](../reference/adr/ADR-001-nixos-flakes.md) (Nix flake build), [ADR-005](../reference/adr/ADR-005-pluggable-adapter-architecture.md) (pluggable adapters), [ADR-006](../reference/adr/ADR-006-immutable-runtime-bootstrap.md) (immutable boot) — with [ADR-007](../reference/adr/ADR-007-runtime-contract-and-container-hardening.md) and [ADR-008](../reference/adr/ADR-008-privacy-filter-routing.md) layering hardening and cross-cutting middleware on top. Read that paragraph twice; the rest of this file is the mechanical elaboration.
+Agentbox is the runtime container that executes autonomous coding agents. This document is the map you land on when you need to change behaviour: it explains how the manifest drives the build, how the build produces the image, and how the image boots into a hardened, observable runtime with pluggable durable-state adapters. The [adapter pattern](adapters.md), [testing](testing.md), and [sovereign mesh](sovereign-mesh.md) pages cover the specifics; this page is the structural overview. The design is constrained by [PRD-001](../reference/prd/PRD-001-capabilities-and-adapters.md) (the product must ship standalone or federated with the same binary) and driven by three foundational ADRs — [ADR-001](../reference/adr/ADR-001-nixos-flakes.md) (Nix flake build), [ADR-005](../reference/adr/ADR-005-pluggable-adapter-architecture.md) (pluggable adapters), [ADR-006](../reference/adr/ADR-006-immutable-runtime-bootstrap.md) (immutable boot) — with [ADR-007](../reference/adr/ADR-007-runtime-contract-and-container-hardening.md) and [ADR-008](../reference/adr/ADR-008-privacy-filter-routing.md) layering hardening and cross-cutting middleware on top. Read that paragraph twice; the rest of this file is the mechanical elaboration.
 
 ## One-sentence summary
 
@@ -16,7 +16,7 @@ Agentbox is a manifest-driven Nix-built Linux container that hosts software agen
 - **Flake** — Nix's pure, hermetic build descriptor (`flake.nix` + `flake.lock`). Pure means identical inputs produce identical outputs byte-for-byte. Background: [ADR-001](../reference/adr/ADR-001-nixos-flakes.md).
 - **Adapter slot** — one of five fixed integration points (`beads`, `pods`, `memory`, `events`, `orchestrator`) defined in [ADR-005](../reference/adr/ADR-005-pluggable-adapter-architecture.md). Each slot has three implementation classes: `local-*`, `external`, `off`.
 - **Sovereign mesh** — the optional Nostr-based inter-agent identity and event layer detailed in [sovereign-mesh.md](sovereign-mesh.md); sovereign because each container owns its own cryptographic keypair.
-- **Bootstrap seal** — the one-shot sentinel file written at `/run/agentbox/bootstrap.done` once every required supervisord program reaches `RUNNING`. Consumed by `/ready`. See [PRD-002](../reference/prd/PRD-002-immutable-runtime-bootstrap.md).
+- **Bootstrap seal** — the one-shot sentinel file written at `/run/agentbox/bootstrap.done` once every required supervisord programme reaches `RUNNING`. Consumed by `/ready`. See [PRD-002](../reference/prd/PRD-002-immutable-runtime-bootstrap.md).
 - **Skills corpus** — the content-addressed Nix input holding ~96 skill packages (agent playbooks), copied into the image at `/opt/agentbox/skills`. Migration path: [skills-upgrade.md](skills-upgrade.md).
 - **RuntimeClosure** — the DDD-001 aggregate that represents a validated boot outcome: manifest + artifact probes + sealed sentinel.
 
@@ -85,7 +85,7 @@ flowchart TB
         API --> AD{resolve by slot}
         MCP --> AD
         AD --> BEADS[beads<br/>sqlite/http/off]
-        AD --> PODS[pods<br/>jss/http/off]
+        AD --> PODS[pods<br/>solid-rs/http/off]
         AD --> MEM[memory<br/>ruvector/pg/off]
         AD --> EVT[events<br/>jsonl/http/off]
         AD --> ORC[orchestrator<br/>procmgr/stdio/off]
@@ -123,7 +123,7 @@ Stage A — one-shot, exec-chained, ends with supervisord
   Phase 1: mkdir -p writable roots (/workspace, /var/lib/*, /tmp/screenshots)
   Phase 2: auto-generate MANAGEMENT_API_KEY if unset/sentinel
   Phase 3: python3 sovereign-bootstrap.py (Nostr identity)
-  Phase 4: workspace defaults (zellij, .config, README)
+  Phase 4: workspace defaults (tmux, .config, README)
   Phase 5: provision-agent-stacks.py; validate-artifacts.sh; exec supervisord
 
 Stage B — supervisord [program:bootstrap] (same script, AGENTBOX_BOOTSTRAP_STAGE=B)
@@ -133,7 +133,7 @@ Stage B — supervisord [program:bootstrap] (same script, AGENTBOX_BOOTSTRAP_STA
   Phase 8: write /etc/profile.d/agentbox-runtime.sh env hints
 
 Late: [program:bootstrap-seal] priority=99
-  polls every required program until RUNNING, then touches
+  polls every required programme until RUNNING, then touches
   /run/agentbox/bootstrap.done atomically.
 ```
 
@@ -142,7 +142,7 @@ Bootstrap events emitted as pino JSON, tagged `agentbox.stage: bootstrap`:
 
 Full spec: [PRD-002](../reference/prd/PRD-002-immutable-runtime-bootstrap.md) + [ADR-006](../reference/adr/ADR-006-immutable-runtime-bootstrap.md) + [DDD-001](../reference/ddd/DDD-001-immutable-bootstrap-domain.md).
 
-The bootstrap seal (the sentinel file written by `[program:bootstrap-seal]`) is the join point between the supervisord (process supervisor that manages child programmes) world and the probe world. Nothing answers `/ready` with 200 until that file exists.
+The bootstrap seal (the sentinel file written by `[program:bootstrap-seal]`) is the join point between the supervisord world (the process supervisor that manages child programmes) and the probe world. Nothing answers `/ready` with 200 until that file exists.
 
 ### Bootstrap sequence (readable view)
 
@@ -161,11 +161,37 @@ sequenceDiagram
     Entry->>Sup: exec (PID 1 handoff)
     Sup->>API: spawn (priority 10)
     Sup->>Seal: spawn (priority 99)
-    loop until every required program RUNNING
+    loop until every required programme RUNNING
         Seal->>Sup: supervisorctl status
     end
     Seal-->>Sup: touch /run/agentbox/bootstrap.done
     API-->>API: /ready now returns 200
+```
+
+## Federation session lifecycle
+
+When `federation.mode = "client"`, the container participates in a host mesh. The lifecycle below shows how a federated session is established and maintained.
+
+```mermaid
+sequenceDiagram
+    participant AB as Agentbox
+    participant HO as Host orchestrator
+    participant HP as Host pods/memory
+
+    AB->>HO: POST /v1/register (image hash, adapter versions)
+    HO-->>AB: 200 {session_id, endpoints}
+    AB->>AB: Resolve adapters to external impls
+    AB->>HP: connect() per slot (10 s timeout)
+    HP-->>AB: connected
+
+    loop Heartbeat (30 s)
+        AB->>HO: POST /v1/heartbeat {session_id, health}
+        HO-->>AB: 200 | 410 (evicted)
+    end
+
+    AB->>HO: POST /v1/deregister {session_id}
+    HO-->>AB: 200
+    AB->>AB: Disconnect adapters, shut down
 ```
 
 ## Adapter dispatch
@@ -215,14 +241,15 @@ Rejected in [ADR-007 §Context](../reference/adr/ADR-007-runtime-contract-and-co
 
 ## Observability chain
 
-```
-agentbox.toml [observability]
-  → flake.nix imageEnv (AGENTBOX_METRICS_PORT, AGENTBOX_OTLP_ENDPOINT, AGENTBOX_LOG_LEVEL)
-    → docker-compose.yml ports + environment
-      → OCI ExposedPorts
-        → management-api metrics-server.js (reads env, binds Fastify on port)
-          → /v1/meta reports observability.metrics_endpoint
-            → agentbox.sh health discovers and scrapes
+```mermaid
+flowchart LR
+    TOML["agentbox.toml<br/>[observability]"]
+    TOML --> FLAKE["flake.nix imageEnv<br/>AGENTBOX_METRICS_PORT<br/>AGENTBOX_OTLP_ENDPOINT<br/>AGENTBOX_LOG_LEVEL"]
+    FLAKE --> COMPOSE["docker-compose.yml<br/>ports + environment"]
+    COMPOSE --> OCI["OCI ExposedPorts"]
+    OCI --> MGMT["management-api<br/>metrics-server.js"]
+    MGMT --> META["/v1/meta<br/>reports metrics_endpoint"]
+    META --> HEALTH["agentbox.sh health<br/>discovers and scrapes"]
 ```
 
 Every link is verified by `RC-003-08.sh`. Breaking any link = this chain breaks.

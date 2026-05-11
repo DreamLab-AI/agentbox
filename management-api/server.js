@@ -14,7 +14,7 @@ const { createPaymentGate } = require('./middleware/payment-gate');
 const contractVersions = require('./adapters/contract-versions');
 const { resolveAdapters, SLOTS } = require('./adapters/index');
 const { loadManifest, ManifestNotFound } = require('./adapters/manifest-loader');
-const logger = require('./utils/logger');
+const logger = require('./observability/logger');
 const ProcessManager = require('./utils/process-manager');
 const SystemMonitor = require('./utils/system-monitor');
 const ComfyUIManager = require('./utils/comfyui-manager');
@@ -144,9 +144,10 @@ async function probePodHealth() {
   return result;
 }
 
-// Middleware: CORS
+// Middleware: CORS — restrict to known origins (FIX 3).
+const allowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || 'http://localhost:8080,http://localhost:5901').split(',').map(s => s.trim());
 app.register(cors, {
-  origin: true,
+  origin: allowedOrigins,
   credentials: true
 });
 
@@ -195,6 +196,21 @@ app.addHook('onRequest', async (request, reply) => {
     return;
   }
 
+  // Skip auth for the linked-object viewer bundle (/lo/*).
+  // Static assets (HTML, JS, CSS, panes) must load before window.nostr is
+  // available to sign a NIP-98 request. The bundle contains no private data.
+  // Data endpoints the viewer calls (/v1/*) remain fully gated.
+  if (request.url.startsWith('/lo/') || request.url === '/lo') {
+    return;
+  }
+
+  // DID documents must be publicly resolvable per the DID-Core spec.
+  // The document contains only the public key and service endpoints — no
+  // private data. Gate removal is intentional, not an oversight.
+  if (request.url === '/.well-known/did.json') {
+    return;
+  }
+
   await authMiddleware(request, reply);
 });
 
@@ -240,7 +256,8 @@ app.register(require('@fastify/swagger'), {
       { name: 'monitoring', description: 'System monitoring and health' },
       { name: 'metrics', description: 'Prometheus metrics' },
       { name: 'comfyui', description: 'ComfyUI workflow management' },
-      { name: 'agent-events', description: 'Real-time agent action event streaming' }
+      { name: 'agent-events', description: 'Real-time agent action event streaming' },
+      { name: 'git-bridge', description: 'BC20 Git Bridge — clone, enrichment submission, broker polling (PRD-013 G5)' }
     ]
   }
 });
@@ -283,6 +300,25 @@ app.register(require('./routes/agent-events'), {
   logger,
   metrics
 });
+
+// Memory routes — write/read agent memory entries to the operator's Solid pod.
+// Requires adapters.pods = "local-solid-rs"; gracefully returns 503 when off.
+app.register(require('./routes/memory'), { prefix: '', logger });
+
+// Broker Bridge — G6, PRD-013 §Broker Review Surface.
+// Bridges VisionClaw BrokerActor REST/WS into the management API so the
+// enrichment-review-pane (S12) can operate without cross-origin calls.
+app.register(require('./routes/broker-bridge'), { prefix: '', logger });
+
+// Git Bridge — G5, PRD-013 §Agentbox Pod Bridge.
+// BC20 adapter bridging agentbox agents to VisionClaw's git ingest surface
+// and judgment broker. Agents clone remotes, submit enrichments, and poll
+// for broker decisions through these local endpoints.
+app.register(require('./routes/git-bridge'), { prefix: '', logger });
+
+// Payment routes — HTTP 402 Web Ledger integration.
+// Proxies to solid-pod-rs payment module; local cost estimation.
+app.register(require('./routes/payments'), { prefix: '', logger, metrics });
 
 // Liveness probe — registered early, no sentinel check, event-loop-alive only.
 // Must respond in <100 ms unconditionally.
@@ -356,7 +392,7 @@ app.get('/ready', {
   // accessible before /ready goes green. local-solid-rs is the only
   // local pod impl post-2026-04-25 (legacy local-jss stub retired);
   // respect an operator override from [integrations.solid_pod_rs].storage_root.
-  const requiredPaths = ['/workspace', '/var/lib/ruvector'];
+  const requiredPaths = ['/home/devuser/workspace', '/var/lib/ruvector'];
   const pods = manifestAdapters.pods;
   if (pods === 'local-solid-rs') {
     const sp = (manifest && manifest.integrations && manifest.integrations.solid_pod_rs) || {};
@@ -565,6 +601,27 @@ app.get('/', {
         types: 'GET /v1/agent-events/types',
         status: 'GET /v1/agent-events/status'
       },
+      brokerBridge: {
+        inbox: 'GET /api/broker/bridge/inbox',
+        case: 'GET /api/broker/bridge/cases/:id',
+        decide: 'POST /api/broker/bridge/cases/:id/decide',
+        history: 'GET /api/broker/bridge/cases/:id/history',
+        events: 'GET /api/broker/bridge/events (SSE)'
+      },
+      gitBridge: {
+        clone: 'POST /v1/git/clone',
+        submitEnrichment: 'POST /v1/git/submit-enrichment',
+        caseStatus: 'GET /v1/git/case-status/:caseId',
+        approveCallback: 'POST /v1/git/approve-callback'
+      },
+      payments: {
+        info: 'GET /v1/pay/info',
+        balance: 'GET /v1/pay/balance',
+        deposit: 'POST /v1/pay/deposit',
+        estimate: 'POST /v1/pay/estimate',
+        buy: 'POST /v1/pay/buy',
+        withdraw: 'POST /v1/pay/withdraw'
+      },
       monitoring: {
         status: 'GET /v1/status',
         health: 'GET /health',
@@ -577,9 +634,9 @@ app.get('/', {
   });
 });
 
-// Error handler
+// Error handler — scrub internal details from 5xx responses (FIX 6).
 app.setErrorHandler((error, request, reply) => {
-  logger.error({ error, reqId: request.id }, 'Request error');
+  const statusCode = error.statusCode || 500;
 
   // Record error in metrics
   metrics.recordError(
@@ -587,11 +644,20 @@ app.setErrorHandler((error, request, reply) => {
     request.routerPath || request.url
   );
 
-  reply.code(error.statusCode || 500).send({
-    error: error.name || 'Internal Server Error',
-    message: error.message,
-    statusCode: error.statusCode || 500
-  });
+  if (statusCode >= 500) {
+    logger.error({ err: error, reqId: request.id }, 'Internal server error');
+    reply.code(statusCode).send({
+      error: 'Internal Server Error',
+      statusCode,
+    });
+  } else {
+    logger.warn({ err: error, reqId: request.id }, 'Request error');
+    reply.code(statusCode).send({
+      error: error.name || 'Error',
+      message: error.message,
+      statusCode,
+    });
+  }
 });
 
 // Graceful shutdown
@@ -790,7 +856,7 @@ async function start() {
         devices: exceptionDevices,
         runtime: exceptionRuntime,
         writableVolumes: [
-          '/workspace', '/var/lib/ruvector', '/var/lib/solid',
+          '/home/devuser/workspace', '/var/lib/ruvector', '/var/lib/solid',
           '/var/lib/agentbox/identities', ...exceptionWritableVolumes
         ]
       };

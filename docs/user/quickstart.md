@@ -8,6 +8,36 @@ This guide reflects the current Agentbox runtime.
 
 Agentbox is a self-contained Linux container that runs coding agents (Claude Code, Ruflo, Gemini, Codex and friends) behind a single management API. Think of it as a shared workstation for agents: one image carries the CLIs, skills, MCP servers and durable-state adapters, and you drive it from your laptop, a remote VM, or a cloud provider. Compared to running agents directly on your machine, Agentbox keeps keys, state, skill trees and model endpoints behind one switchable configuration file.
 
+```mermaid
+graph TB
+    subgraph host["Your host machine"]
+        Laptop["Laptop / VM / Cloud"]
+    end
+    subgraph agentbox["Agentbox container"]
+        API["Management API :9090"]
+        subgraph agents["Agent CLIs"]
+            CC[Claude Code]
+            RF[Ruflo]
+            GM[Gemini]
+            CX[Codex]
+        end
+        subgraph state["Durable state adapters"]
+            BD[Beads]
+            PD[Pods]
+            MM[Memory]
+            EV[Events]
+            OR[Orchestrator]
+        end
+        SK[Skills corpus]
+        MCP[MCP servers]
+    end
+    Laptop -->|"HTTP / docker exec"| API
+    API --> agents
+    API --> state
+    agents --> SK
+    agents --> MCP
+```
+
 **What it solves**
 
 - Agents losing their memory, beads and pod state between sessions because each CLI stashes things in its own home directory.
@@ -30,6 +60,23 @@ whiptail is absent). It walks through every manifest section in order and valida
 your choices after each one — you cannot advance past validation errors.
 
 Sections covered:
+
+```mermaid
+flowchart LR
+    S1["1 Federation"] --> S2["2 Adapters"]
+    S2 --> S3["3 GPU"]
+    S3 --> S4["4 Desktop"]
+    S4 --> S5["5 Toolchains"]
+    S5 --> S6["6 Skills"]
+    S6 --> S7["7 Providers"]
+    S7 --> S8["8 Observability"]
+    S8 --> S9["9 Integrations"]
+    S9 --> S10["10 Sovereign mesh"]
+    S10 --> S11["11 Summary + action"]
+    S11 -->|"validate"| V{{"agentbox-config-validate.js"}}
+    V -->|"errors"| S1
+    V -->|"clean"| DONE["Save / Build / Start"]
+```
 
 1. **Federation** — `standalone` (self-contained, local fallbacks) or `client` (federated with host mesh). If `client`, prompts for `external_url`.
 2. **Adapters** — one radio menu per slot: `beads`, `pods`, `memory`, `events`, `orchestrator`. Each shows the schema-exact enum values for that slot.
@@ -73,7 +120,7 @@ Key sections:
 - `[skills.*]` — 96-skill catalogue gates
 - `[toolchains]` — core CLIs (claude, ruflo, claude_flow, agentic_qe, gemini_cli, etc.)
 - `[gpu]` — `none` (default, no ollama sidecar) | `ollama-rocm` (ROCm/Vulkan via `/dev/kfd`+`/dev/dri`) | `ollama-cuda` (NVIDIA container runtime, sidecar only) | `local-cuda` (CUDA baked into image; required for `gaussian_splatting`)
-- `[desktop]` — Hyprland/Wayland (default) or X11/openbox
+- `[desktop]` — TigerVNC Xvnc desktop (access via SSH tunnel to port 5902)
 - `[observability]` — metrics port, OTLP endpoint, log level
 - `[providers.*]` — per-provider API-key gates
 
@@ -141,6 +188,16 @@ This gate is a **prepared placeholder** — the MCP server and associated toolin
 ## 2. Build The Image
 
 Agentbox is built with Nix (a reproducible package manager). The `flake.nix` file composes packages, skills and toolchains into a Docker image based on your manifest — no Dockerfile, no layer drift between rebuilds. `nix build .#runtime` produces a [nix2container](https://github.com/nlewo/nix2container) OCI manifest at `./result`; the runtime exposes a `copyToDockerDaemon` helper that loads the image into the local Docker daemon via skopeo (no intermediate tarball, no layer copies).
+
+```mermaid
+flowchart LR
+    TOML["agentbox.toml"] --> FLAKE["flake.nix"]
+    LOCK["flake.lock<br/>pinned inputs"] --> FLAKE
+    FLAKE --> N2C["nix2container"]
+    N2C --> OCI["OCI image<br/>at ./result"]
+    OCI -->|"copyToDockerDaemon<br/>(skopeo)"| DAEMON["Local Docker daemon"]
+    DAEMON --> RUN["docker compose up"]
+```
 
 ```bash
 nix build .#runtime
@@ -238,15 +295,36 @@ If the container is using an older image or an older entrypoint, use `agentbox.s
 
 ## 6. Verify Runtime Services
 
-The runtime exposes a small set of HTTP endpoints for liveness, readiness and metrics. These replace the usual "did the container boot?" guesswork with concrete signals. `/ready` goes green only after every required program reaches RUNNING and the `bootstrap-seal` sentinel writes `/run/agentbox/bootstrap.done` — see [ADR-006](../reference/adr/ADR-006-immutable-runtime-bootstrap.md) for the bootstrap contract.
+The runtime exposes a small set of HTTP endpoints for liveness, readiness and metrics. These replace the usual "did the container boot?" guesswork with concrete signals. `/ready` goes green only after every required programme reaches RUNNING and the `bootstrap-seal` sentinel writes `/run/agentbox/bootstrap.done` — see [ADR-006](../reference/adr/ADR-006-immutable-runtime-bootstrap.md) for the bootstrap contract.
+
+```mermaid
+graph TB
+    subgraph container["Agentbox container"]
+        SUP["supervisord (PID 1)"]
+        API["management-api :9090"]
+        SOLID["solid-pod-rs :8484"]
+        MCP["MCP servers"]
+        SEAL["bootstrap-seal"]
+        MET["metrics :9091"]
+    end
+    SUP --> API
+    SUP --> SOLID
+    SUP --> MCP
+    SUP --> SEAL
+    API --> MET
+    SEAL -->|"touches sentinel"| API
+    HOST["Host (localhost only)"] -->|"127.0.0.1:9190"| API
+    HOST -->|"127.0.0.1:9191"| MET
+    HOST -->|"127.0.0.1:8484"| SOLID
+```
 
 From the host:
 
 ```bash
-curl http://localhost:9090/health
-curl http://localhost:9090/v1/meta        # adapter contract versions + image hash
-curl http://localhost:9091/metrics        # Prometheus — scrape this
-curl http://localhost:9700/health
+# Via SSH tunnel (ports are localhost-only on host)
+curl http://localhost:9190/health
+curl http://localhost:9190/v1/meta        # adapter contract versions + image hash
+curl http://localhost:9191/metrics        # Prometheus — scrape this
 curl http://localhost:8484/health         # solid-pod-rs
 ```
 
@@ -254,13 +332,88 @@ From inside the container:
 
 ```bash
 docker exec agentbox supervisorctl status
-docker exec agentbox zellij --version
-docker exec agentbox /opt/agentbox/scripts/zellij-stack.sh ruflo-orchestrator
+docker exec agentbox tmux -V
+docker exec -it agentbox tmux attach -t agentbox
 docker exec agentbox ls -la /workspace/profiles
 docker exec agentbox ls -la /projects
 ```
 
-## 7. Inspect Provisioned Profiles
+## 7. Remote Access & Security
+
+All agentbox ports bind to `127.0.0.1` on the host — they are **not** exposed to the network. Remote access uses SSH tunnels, which provides authentication and encryption without additional VNC passwords or TLS certificates.
+
+```mermaid
+graph LR
+    subgraph laptop["Your Laptop"]
+        VNC["TigerVNC Viewer<br/>localhost:5902"]
+        BROWSER["Browser<br/>localhost:9190"]
+        CLI["SSH Terminal"]
+    end
+    subgraph tunnel["SSH Tunnel (encrypted)"]
+        T1["L5902:localhost:5902"]
+        T2["L9190:localhost:9190"]
+        T3["L8180:localhost:8180"]
+    end
+    subgraph host["Host Machine"]
+        D5902["127.0.0.1:5902"]
+        D9190["127.0.0.1:9190"]
+        D8180["127.0.0.1:8180"]
+    end
+    subgraph agentbox["Agentbox Container"]
+        XVNC[":5901 Xvnc"]
+        API[":9090 Management API"]
+        CODE[":8080 Code Server"]
+    end
+    VNC --> T1 --> D5902 --> XVNC
+    BROWSER --> T2 --> D9190 --> API
+    CLI --> T3 --> D8180 --> CODE
+```
+
+### Connect via SSH tunnel
+
+Open all tunnels in one command:
+
+```bash
+ssh -L 5902:localhost:5902 \
+    -L 9190:localhost:9190 \
+    -L 8180:localhost:8180 \
+    -L 8484:localhost:8484 \
+    -N machinelearn@YOUR_HOST_IP
+```
+
+Or use the built-in helper:
+
+```bash
+./agentbox.sh all    # opens VNC + code-server + API + CDP tunnels
+./agentbox.sh vnc    # VNC tunnel only
+```
+
+### VNC desktop
+
+Once the tunnel is open, connect your VNC client to `localhost:5902`:
+
+```bash
+vncviewer localhost:5902          # TigerVNC
+open vnc://localhost:5902         # macOS Screen Sharing
+```
+
+The desktop runs TigerVNC Xvnc with `-SecurityTypes None` (no VNC password) and `-localhost` (container-internal only). Security is provided by the SSH tunnel — no unauthenticated network access is possible.
+
+### Port reference
+
+| Service | Container Port | Host Binding | Access |
+|---------|---------------|-------------|--------|
+| Management API | 9090 | 127.0.0.1:9190 | SSH tunnel, NIP-98 auth |
+| VNC Desktop | 5901 | 127.0.0.1:5902 | SSH tunnel |
+| Code Server | 8080 | 127.0.0.1:8180 | SSH tunnel |
+| Solid Pod | 8484 | 127.0.0.1:8484 | SSH tunnel, WAC auth |
+| SSH | 22 | 127.0.0.1:2223 | Direct SSH |
+| Agent Events | 9700 | 127.0.0.1:9700 | SSH tunnel |
+| Prometheus | 9091 | 127.0.0.1:9191 | SSH tunnel |
+
+All ports are localhost-only on the host. The only way in from the network is through SSH authentication to the host machine.
+
+## 8. Inspect Provisioned Profiles
 
 The runtime creates these profile roots:
 
@@ -297,7 +450,7 @@ zqe
 zdocs
 ```
 
-Those commands open the seeded Zellij layouts for the main stacks.
+Those commands open the seeded tmux windows for the main stacks.
 
 ## Troubleshooting
 

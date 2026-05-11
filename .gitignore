@@ -46,8 +46,13 @@ debug_log.txt
 .env
 .env.local
 .env.*.local
+.env.mad-source
 !.env.example
 !.env.template
+
+# Runtime directories (created by container)
+workspace/
+projects/
 
 # Build artifacts
 dist/
@@ -86,6 +91,7 @@ claude-flow.bat
 claude-flow.ps1
 hive-mind-prompt-*.txt
 agentdb.db*
+.claude
 
 # MCP
 .mcp.json
@@ -93,7 +99,7 @@ mcp-logs/
 
 # Media (keep repo light)
 *.mp4
-*.webm
+#*.webm
 *.mov
 *.wav
 *.mp3
@@ -101,9 +107,9 @@ mcp-logs/
 *.gltf
 *.hdr
 *.exr
-*.gif
-*.jpeg
-*.png
+#*.gif
+#*.jpeg
+#*.png
 
 # CUDA (not used but keep for safety)
 *.ptx

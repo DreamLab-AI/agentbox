@@ -1,0 +1,127 @@
+#!/usr/bin/env bash
+# AGENTBOX SHELL CONFIG — modern CLI tooling for agentic engineers.
+# Sourced by /etc/bash.bashrc and /etc/zsh/zshrc at container start.
+# Assumes all tools are on PATH via Nix basePackages.
+
+# ---------------------------------------------------------------------------
+# Starship prompt — cross-shell, git-aware, nix/rust/node indicators
+# ---------------------------------------------------------------------------
+if command -v starship &>/dev/null; then
+  eval "$(starship init bash)"
+fi
+
+# ---------------------------------------------------------------------------
+# Zoxide — smart cd that learns your directories
+# ---------------------------------------------------------------------------
+if command -v zoxide &>/dev/null; then
+  eval "$(zoxide init bash)"
+fi
+
+# ---------------------------------------------------------------------------
+# Atuin — shell history with fuzzy search
+# ---------------------------------------------------------------------------
+if command -v atuin &>/dev/null; then
+  eval "$(atuin init bash --disable-up-arrow)"
+fi
+
+# ---------------------------------------------------------------------------
+# Direnv — per-directory env vars
+# ---------------------------------------------------------------------------
+if command -v direnv &>/dev/null; then
+  eval "$(direnv hook bash)"
+fi
+
+# ---------------------------------------------------------------------------
+# FZF — fuzzy finder integration (Ctrl-R history, Ctrl-T file finder)
+# ---------------------------------------------------------------------------
+if command -v fzf &>/dev/null; then
+  eval "$(fzf --bash 2>/dev/null)" || true
+  export FZF_DEFAULT_OPTS="--height 40% --layout=reverse --border --info=inline"
+  # Use fd for file search if available (respects .gitignore)
+  if command -v fd &>/dev/null; then
+    export FZF_DEFAULT_COMMAND="fd --type f --hidden --follow --exclude .git"
+    export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# Modern CLI aliases — drop-in replacements
+# ---------------------------------------------------------------------------
+if command -v eza &>/dev/null; then
+  alias ls='eza --group-directories-first --icons=auto'
+  alias ll='eza -alh --group-directories-first --icons=auto --git'
+  alias la='eza -a --group-directories-first --icons=auto'
+  alias lt='eza --tree --level=2 --icons=auto'
+fi
+
+if command -v bat &>/dev/null; then
+  alias cat='bat --paging=never --style=plain'
+  alias catp='bat'  # cat with pager + line numbers
+  export MANPAGER="sh -c 'col -bx | bat -l man -p'"
+fi
+
+if command -v delta &>/dev/null; then
+  alias diff='delta'
+fi
+
+if command -v dust &>/dev/null; then
+  alias du='dust'
+fi
+
+if command -v procs &>/dev/null; then
+  alias ps='procs'
+fi
+
+if command -v btm &>/dev/null; then
+  alias top='btm'
+fi
+
+# ---------------------------------------------------------------------------
+# Git aliases — quick access for common operations
+# ---------------------------------------------------------------------------
+alias gs='git status'
+alias gl='git log --oneline -20'
+alias gd='git diff'
+alias gds='git diff --staged'
+alias ga='git add'
+alias gc='git commit'
+alias gp='git push'
+alias gpl='git pull'
+alias gb='git branch'
+alias gco='git checkout'
+alias gsw='git switch'
+alias gst='git stash'
+
+# ---------------------------------------------------------------------------
+# Agentbox service aliases
+# ---------------------------------------------------------------------------
+alias svc='supervisorctl status'
+alias health='curl -sf http://localhost:9090/health | jq'
+alias ready='curl -sf http://localhost:9090/ready | jq'
+alias metrics='curl -sf http://localhost:9091/metrics | head -50'
+
+# ---------------------------------------------------------------------------
+# Development helpers
+# ---------------------------------------------------------------------------
+alias j='just'
+alias hf='hyperfine'
+alias we='watchexec'
+alias tk='tokei'
+alias nu='nushell'
+
+# ---------------------------------------------------------------------------
+# Git delta integration (use delta as the git pager)
+# ---------------------------------------------------------------------------
+if command -v delta &>/dev/null; then
+  export GIT_PAGER="delta"
+fi
+
+# ---------------------------------------------------------------------------
+# Container indicator in PS1 fallback (if starship fails to load)
+# ---------------------------------------------------------------------------
+if ! command -v starship &>/dev/null; then
+  export PS1='\[\033[1;36m\][agentbox]\[\033[0m\] \[\033[1;32m\]\u\[\033[0m\]:\[\033[1;34m\]\w\[\033[0m\]\$ '
+fi
+
+# Claude Code quick aliases
+alias dsp="claude --dangerously-skip-permissions"

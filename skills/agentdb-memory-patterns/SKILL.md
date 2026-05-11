@@ -1,5 +1,5 @@
 ---
-name: "AgentDB Memory Patterns"
+name: agentdb-memory-patterns
 description: "Implement persistent memory patterns for AI agents using AgentDB. Includes session memory, long-term storage, pattern learning, and context management. Use when building stateful agents, chat systems, or intelligent assistants."
 ---
 
@@ -16,7 +16,7 @@ Memory management patterns for AI agents: session memory, long-term storage, pat
 ## When Not To Use
 
 - For distributed multi-database setups or QUIC sync -- use the agentdb-advanced skill instead
-- For reinforcement learning and training plugins -- use the agentdb-learning skill instead
+- For reinforcement learning algorithms -- use the **agentdb-advanced** skill (RL Plugins section) instead
 - For pure vector search performance tuning (quantisation, HNSW) -- use the agentdb-vector-search skill instead
 - For non-persistent, session-only state that does not need vector search -- standard in-memory data structures suffice
 - For unified development and quality engineering workflows -- use the build-with-quality skill which includes memory management
@@ -132,7 +132,7 @@ const result = await adapter.retrieveWithReasoning(queryEmbedding, {
 });
 ```
 
-For learning plugins and RL algorithms, see the [agentdb-learning](../agentdb-learning/SKILL.md) skill. For performance tuning and quantization, see the [agentdb-vector-search](../agentdb-vector-search/SKILL.md) skill.
+For learning plugins and RL algorithms, see the [agentdb-advanced](../agentdb-advanced/SKILL.md) skill (RL Plugins section). For performance tuning and quantization, see the [agentdb-vector-search](../agentdb-vector-search/SKILL.md) skill.
 
 ## Troubleshooting
 

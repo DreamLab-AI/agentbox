@@ -4,43 +4,96 @@
 services:
 
   agentbox:
-    image: agentbox:runtime-x86_64-linux
+    image: ${AGENTBOX_IMAGE_REF:-agentbox:runtime-x86_64-linux}
     container_name: agentbox
     hostname: agentbox
     restart: unless-stopped
+
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9090/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:9090/ready"]
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 60s
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+
     ports:
       - "9090:9090"
       - "9700:9700"
+      - "9091:9091"
       - "8484:8484"
+      - "8888:8888"
+      - "5901:5901"
+      - "8080:8080"
+
     environment:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - GITHUB_TOKEN=${GITHUB_TOKEN:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-ollama}
-      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-http://host.docker.internal:11434/v1}
-      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-http://ollama:11434/v1}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ollama:11434}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:32b-instruct}
       - GOOGLE_GEMINI_API_KEY=${GOOGLE_GEMINI_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - MANAGEMENT_API_KEY=${MANAGEMENT_API_KEY:-}
       - MANAGEMENT_API_AUTH_MODE=${MANAGEMENT_API_AUTH_MODE:-hybrid}
       - NOSTR_RELAYS=${NOSTR_RELAYS:-wss://relay.damus.io,wss://relay.primal.net}
       - AGENTBOX_AGENT_ID=${AGENTBOX_AGENT_ID:-agentbox-core}
+      - AGENTBOX_METRICS_PORT=9091
+      - AGENTBOX_OTLP_ENDPOINT=
+      - AGENTBOX_LOG_LEVEL=info
+    # Baseline: supervisord runs as PID 1 root, with per-program `user=devuser`
+    # drops on every long-running service. Root is required at boot for
+    # tmpfs subdir creation, sudoers wrapper provisioning (chown 0:0 +
+    # chmod 4755), cert generation, and chowning runtime dirs to uid 1000.
+    # Per ADR-007 §4a hardening posture; see PRD-003 §5.4.
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - FOWNER
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
+      - AUDIT_WRITE
+      - KILL
+
+    tmpfs:
+      - /tmp:mode=1777,size=256M
+      - /run:mode=755,size=64M,uid=1000,gid=1000
+      - /var/run:mode=755,size=16M,uid=1000,gid=1000
+      - /var/log:mode=755,size=128M,uid=1000,gid=1000
+      - /var/log/supervisor:mode=755,size=64M,uid=1000,gid=1000
+      - /var/lib/https-bridge:mode=755,size=8M,uid=1000,gid=1000
+      - /home/devuser/.cache:mode=755,size=256M,uid=1000,gid=1000
+      - /home/devuser/.local:mode=755,size=128M,uid=1000,gid=1000
+      - /home/devuser/.config:mode=755,size=64M,uid=1000,gid=1000
+      - /home/devuser/.claude-flow:mode=755,size=64M,uid=1000,gid=1000
+      - /home/devuser/.codex:mode=755,size=512M,uid=1000,gid=1000
+      - /home/devuser/.gemini:mode=755,size=256M,uid=1000,gid=1000
+      - /var/cache:mode=755,size=512M,uid=1000,gid=1000
+      - /usr/local/bin:mode=755,size=8M,exec,suid
+      - /tmp/.X11-unix:mode=1777
+      - /run/user/1000:mode=700,uid=1000,gid=1000
+    security_opt:
+      - no-new-privileges:true
+      - seccomp=./config/seccomp-agentbox.json
+      - no-new-privileges:false
+
     volumes:
       - ./agentbox.toml:/etc/agentbox.toml:ro
-      - ./workspace:/workspace
+      - ./workspace:/home/devuser/workspace
       - ./projects:/projects
       - ruvector-data:/var/lib/ruvector
       - solid-data:/var/lib/solid
       - sovereign-identities:/var/lib/agentbox/identities
-    security_opt:
-      - no-new-privileges:true
+      - agentbox-secrets:/var/lib/agentbox/secrets
+      - codeserver-config:/home/devuser/.local/share/code-server
+      - nostr-relay-data:/var/lib/nostr-relay
+      - ctm-config:/home/devuser/.config/claude-telegram-mirror
+      - cargo-home:/home/devuser/.cargo
+
+
 
 volumes:
   ruvector-data:
@@ -49,3 +102,14 @@ volumes:
     name: agentbox-solid-data
   sovereign-identities:
     name: agentbox-sovereign-identities
+  agentbox-secrets:
+    name: agentbox-secrets
+  codeserver-config:
+    name: agentbox-codeserver-config
+  nostr-relay-data:
+    name: agentbox-nostr-relay-data
+  ctm-config:
+    name: agentbox-ctm-config
+  cargo-home:
+    name: agentbox-cargo-home
+

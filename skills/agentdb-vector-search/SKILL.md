@@ -1,5 +1,5 @@
 ---
-name: "AgentDB Vector Search & Performance"
+name: agentdb-vector-search
 description: "Implement and optimise semantic vector search with AgentDB. Covers HNSW indexing (150x faster), quantization (4-32x memory reduction), caching strategies, batch operations, and sub-millisecond search. Use when building RAG systems, optimising search speed, or scaling to millions of vectors."
 ---
 
@@ -16,7 +16,7 @@ Semantic vector search, RAG pipelines, similarity matching, quantization tuning,
 ## When Not To Use
 
 - For distributed multi-database or QUIC sync features -- use the agentdb-advanced skill instead
-- For reinforcement learning algorithms and training plugins -- use the agentdb-learning skill instead
+- For reinforcement learning algorithms and training plugins (Decision Transformer, Q-Learning, SARSA, Actor-Critic, etc.) -- use the **agentdb-advanced** skill (RL Plugins section) instead
 - For agent conversation memory and session patterns -- use the agentdb-memory-patterns skill instead
 - For full-text search without vector embeddings -- a standard database with FTS is simpler
 - For cloud-managed vector search (Pinecone, Weaviate) -- this skill is specific to local AgentDB

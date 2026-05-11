@@ -18,13 +18,14 @@ Agentbox is in active development:
 
 - build composition is driven by `agentbox.toml`
 - the runtime is sovereign/profile-based
-- Zellij replaces tmux
+- tmux with fish shell provides the multi-tab terminal experience (MAD-style layout)
 - profile isolation replaces Linux pseudo-user isolation
-- **pluggable adapters** replace hardcoded durable-state services (see [ADR-005](docs/adr/ADR-005-pluggable-adapter-architecture.md)): beads, pods, memory, events, orchestrator — each resolves to `local-*`, `external`, or `off`
+- **pluggable adapters** replace hardcoded durable-state services (see [ADR-005](docs/reference/adr/ADR-005-pluggable-adapter-architecture.md)): beads, pods, memory, events, orchestrator — each resolves to `local-*`, `external`, or `off`
 - standalone-or-federated: `federation.mode = "standalone"` ships a complete product with local fallbacks; `federation.mode = "client"` federates with a host container mesh through adapter endpoints
 - embedded RuVector is a per-session retrieval cache, not a durable source of truth
+- **MCP memory is mandatory ruvector-postgres** ([ADR-015](docs/reference/adr/ADR-015-mcp-ruvector-mandate.md)): the `ruvector-mcp.cjs` server fails closed if PostgreSQL is unreachable — no silent sql.js fallback. The entrypoint generates `.mcp.json` at boot and auto-installs the `pg` module to the workspace bind mount.
 
-Full product spec: [PRD-001](docs/prd/PRD-001-capabilities-and-adapters.md). Adapter contract + SLOs + observability: [ADR-005](docs/adr/ADR-005-pluggable-adapter-architecture.md).
+Full product spec: [PRD-001](docs/reference/prd/PRD-001-capabilities-and-adapters.md). Adapter contract + SLOs + observability: [ADR-005](docs/reference/adr/ADR-005-pluggable-adapter-architecture.md).
 
 ## Canonical Runtime Files
 
@@ -34,7 +35,24 @@ Full product spec: [PRD-001](docs/prd/PRD-001-capabilities-and-adapters.md). Ada
 - [`scripts/skills-entrypoint.sh`](scripts/skills-entrypoint.sh): runtime dependency bootstrap
 - [`scripts/sovereign-bootstrap.py`](scripts/sovereign-bootstrap.py): identity generation and pod scaffolding
 - [`scripts/provision-agent-stacks.py`](scripts/provision-agent-stacks.py): stack/profile provisioning
-- [`scripts/zellij-stack.sh`](scripts/zellij-stack.sh): stack-specific terminal workspace launcher
+- [`config/tmux-autostart.sh`](config/tmux-autostart.sh): tmux session launcher (MAD-style tabs)
+- [`config/tmux.conf`](config/tmux.conf): tmux configuration (fish shell, dark theme)
+
+## URI/URN Scheme
+
+Grammar: `urn:agentbox:<kind>:[<scope>:]<local>` where scope is a hex pubkey.
+
+18 kinds: `pod`, `envelope`, `credential`, `mandate`, `receipt`, `activity`, `event`, `mcp`, `memory`, `skill`, `adr`, `prd`, `ddd`, `thing`, `dataset`, `bead`, `agent`, `meta`.
+
+Identity: `did:nostr:<hex-pubkey>` (shared with VisionClaw substrate).
+
+Content addressing: `sha256-12-<12 hex chars>` (same convention both sides).
+
+Minting: all URNs are minted via `management-api/lib/uris.js`. All durable identifiers MUST be minted through `uris.js`. Ad-hoc `format!()` or template-literal URNs are prohibited.
+
+Resolvability: best-effort via `/v1/uri/<urn>` (307/404/410). Canonical ref: [ADR-013](docs/reference/adr/ADR-013-canonical-uri-grammar.md).
+
+Parallel namespace: the host project's Rust substrate uses `urn:visionclaw:<kind>:<hex-pubkey>:<local>` (6 kinds: `concept`, `kg`, `bead`, `execution`, `group`) minted in `src/uri/`. Owner-scoped kinds use 64-char hex pubkey as scope (not bech32 npub). The BC20 anti-corruption layer maps between the two namespaces at the federation boundary.
 
 ## Important Rules For Changes
 
@@ -49,18 +67,21 @@ Full product spec: [PRD-001](docs/prd/PRD-001-capabilities-and-adapters.md). Ada
 - **Linked-Data interfaces are opt-in per surface.** PRD-006 / ADR-012 / DDD-004 add eleven JSON-LD federation surfaces wrapping the existing adapters. Default off. Per-surface gates under `[linked_data]` in `agentbox.toml`. Context documents are pinned at build time via `lib/linked-data-contexts.nix` and never fetched at runtime. Hand-authored docs (skill frontmatter, ADR/PRD/DDD frontmatter) use the LION subset; the linter enforces the five rules in CI.
 - **Every emitted `@id` follows the canonical URI grammar.** ADR-013 defines `did:nostr:<pubkey>` for identity and `urn:agentbox:<kind>:[<scope>:]<local>` for everything else, all minted through `management-api/lib/uris.js`. Uniqueness is unconditional; resolvability is best-effort via the `/v1/uri/<urn>` route (307/404/410). Surfaces never invent ad-hoc IDs.
 - **The viewer slot (S12) is one implementation among many.** PRD-006 §15 + the `[linked_data.viewer]` manifest section make linkedobjects/browser the default viewer at `/lo/*`. Adding panes is a one-line manifest operation (`extra_panes`); swapping viewers is a single config flag (`mode = "external"`). The bundle is AGPL-3.0; aggregation analysis matches the solid-pod-rs treatment in `docs/developer/licensing.md`. AGPL §13 compliance is enforced by the route handler emitting a `Source-Code` header on every `/lo/*` response.
-- **The sovereign data stack is first-class.** `solid-pod-rs` (ADR-010), `nostr-rs-relay` + pod-inbox bridge (ADR-009), the sovereign identity layer, and the privacy filter (ADR-008) are the coherent substrate agentbox commits to. Changes that degrade one layer's invariants (DDD-003 I01-I12 especially) must be weighed across all four — they share a single npub and a single source of truth.
+- **The sovereign data stack is first-class.** `solid-pod-rs` (ADR-010), `nostr-rs-relay` + pod-inbox bridge (ADR-009), the sovereign identity layer, and the privacy filter (ADR-008) are the coherent substrate agentbox commits to. Changes that degrade one layer's invariants (DDD-003 I01-I12 especially) must be weighed across all four — they share a single identity (hex pubkey / did:nostr) and a single source of truth.
 - **No host-project specifics in this repo.** Agentbox is its own standalone project at `github.com/DreamLab-AI/agentbox`. Integration with any specific host project lives in that project's docs, not here. Reference the host by role ("host project", "integrator", "external orchestrator") rather than by name.
 - **Observability is built-in, not optional.** Every adapter dispatch emits a span, a log line, and metrics. Only the exporters are optional (OTLP endpoint can be empty).
 
 ## Shared Runtime Model
 
-The intended runtime model is:
+The intended runtime model (updated for commit `2341480c`):
 
-- all profiles see the same `/projects`
-- all profiles see the same `/workspace`
-- all profiles get the same `/opt/agentbox/skills` tree
-- profile-local settings live under `/workspace/profiles/<stack>/`
+- `HOME=/home/devuser` is the canonical home directory for devuser. The old `HOME=/workspace` value has been retired.
+- The agent workspace lives at `/home/devuser/workspace` (bind-mounted from `./workspace` in the base compose, or a named volume in the override).
+- Profile-local settings live under `/home/devuser/workspace/profiles/<stack>/`.
+- All profiles see the same `/projects` (bind-mounted from `./projects`).
+- All profiles get the same `/opt/agentbox/skills` tree (image-baked).
+- Scripts must use `$HOME` (which is `/home/devuser`) or the `$WORKSPACE` env var (`/home/devuser/workspace`) for durability. Using the literal path `/workspace` will break because that bind target no longer exists.
+- Supervisord runs as PID 1 root; all long-running supervised processes drop to devuser via per-program `user=devuser`. No agent-facing process runs as root after the one-shot bootstrap phase.
 
 ## Legacy Files
 
@@ -75,6 +96,6 @@ These exist for historical context or partial compatibility and should not be tr
 When architecture changes, update these together:
 
 - [`README.md`](README.md)
-- [`docs/guides/quick-start.md`](docs/guides/quick-start.md)
+- [`docs/user/quickstart.md`](docs/user/quickstart.md)
 - [`CLAUDE.md`](CLAUDE.md)
-- relevant ADRs in `docs/adr/`
+- relevant ADRs in `docs/reference/adr/`

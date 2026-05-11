@@ -237,6 +237,70 @@
       "description": "Code intelligence: 14 MCP tools for call graphs, architecture overview, git diff risk scoring. 99.2% token reduction vs grep. Persistent SQLite index.",
       "protocol": "stdio",
       "version": "1.0.0"
+    },
+    "consultant-codex": {
+      "command": "sh",
+      "args": [
+        "-c",
+        "AGENTBOX_CODEX_BIN=$(command -v codex) AGENTBOX_CODEX_HOME=$HOME/.codex exec node /opt/agentbox/mcp/consultants/package/codex/server.js"
+      ],
+      "type": "stdio",
+      "env": {
+        "AGENTBOX_CODEX_MODEL": "${AGENTBOX_CODEX_MODEL:-gpt-5.4}"
+      },
+      "description": "Codex consultant (PRD-005 / ADR-011): second-opinion code reasoning, refactors, test generation via OpenAI Codex Rust CLI. Tools: consult, health, cost_estimate. Inherits OPENAI_API_KEY from session env.",
+      "protocol": "stdio",
+      "version": "0.1.0"
+    },
+    "consultant-gemini": {
+      "command": "sh",
+      "args": [
+        "-c",
+        "AGENTBOX_GEMINI_BIN=$(command -v gemini) exec node /opt/agentbox/mcp/consultants/package/gemini/server.js"
+      ],
+      "type": "stdio",
+      "env": {
+        "AGENTBOX_GEMINI_MODEL": "${AGENTBOX_GEMINI_MODEL:-gemini-2.5-pro}"
+      },
+      "description": "Gemini consultant (PRD-005 / ADR-011): 1M-token context, long-document analysis via @google/gemini-cli. Tools: consult, health, cost_estimate. Inherits GOOGLE_GEMINI_API_KEY (or GEMINI_API_KEY) from session env.",
+      "protocol": "stdio",
+      "version": "0.1.0"
+    },
+    "consultant-zai": {
+      "command": "sh",
+      "args": [
+        "-c",
+        "AGENTBOX_ZAI_BIN=$(command -v claude-zai 2>/dev/null || command -v zai) exec node /opt/agentbox/mcp/consultants/package/zai/server.js"
+      ],
+      "type": "stdio",
+      "env": {
+        "AGENTBOX_ZAI_MODEL": "${AGENTBOX_ZAI_MODEL:-glm-4.6}"
+      },
+      "description": "Z.AI/GLM consultant (PRD-005 / ADR-011): Anthropic-API-compatible Chinese-language reasoning via claude-zai. Tools: consult, health, cost_estimate. Inherits ZAI_ANTHROPIC_API_KEY (or ZAI_API_KEY) and ZAI_URL from session env.",
+      "protocol": "stdio",
+      "version": "0.1.0"
+    },
+    "consultant-perplexity": {
+      "command": "node",
+      "args": ["/opt/agentbox/mcp/consultants/package/perplexity/server.js"],
+      "type": "stdio",
+      "env": {
+        "AGENTBOX_PERPLEXITY_MODEL": "${AGENTBOX_PERPLEXITY_MODEL:-sonar-pro}"
+      },
+      "description": "Perplexity consultant (PRD-005 / ADR-011): live web research with citations via Perplexity HTTPS API (sonar-pro). Tools: consult, health, cost_estimate. Inherits PERPLEXITY_API_KEY from session env.",
+      "protocol": "stdio",
+      "version": "0.1.0"
+    },
+    "consultant-deepseek": {
+      "command": "node",
+      "args": ["/opt/agentbox/mcp/consultants/package/deepseek/server.js"],
+      "type": "stdio",
+      "env": {
+        "AGENTBOX_DEEPSEEK_MODEL": "${AGENTBOX_DEEPSEEK_MODEL:-deepseek-reasoner}"
+      },
+      "description": "DeepSeek consultant (PRD-005 / ADR-011): math + reasoning chain transparency via DeepSeek HTTPS API (deepseek-reasoner). Tools: consult, health, cost_estimate. Inherits DEEPSEEK_API_KEY (and optional DEEPSEEK_BASE_URL) from session env.",
+      "protocol": "stdio",
+      "version": "0.1.0"
     }
   },
   "visionflow": {

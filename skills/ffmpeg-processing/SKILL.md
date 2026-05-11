@@ -1,284 +1,243 @@
 ---
-name: FFmpeg Processing
+name: ffmpeg-processing
 description: Professional video and audio processing - transcode, edit, stream, and analyze media files
 ---
 
 # FFmpeg Processing Skill
 
-Comprehensive media processing with FFmpeg 8.0 for video/audio transcoding, editing, streaming, and analysis.
+FFmpeg 8.0 for video/audio transcoding, editing, streaming, and analysis. The recipes/ directory holds production-grade compound commands for automation pipelines; this file is the quick-reference index.
 
 ## Capabilities
 
 - Video/audio transcoding and format conversion
 - Stream extraction and muxing
-- Video editing (cut, concat, filters)
-- Resolution and codec conversion
-- Subtitle handling
+- Video editing (cut, concat, filters, reframing)
+- Resolution and codec conversion (CPU + CUDA/QSV)
+- Subtitle handling (burn-in styled, embedded tracks)
 - Streaming protocols (HLS, DASH, RTMP)
-- Image sequence generation
-- Audio processing and normalization
-- Hardware acceleration (CUDA)
+- Image-to-video, slideshows, Ken Burns
+- Audio processing, mixing, normalisation
+- Scene-detected thumbnails and storyboards
 
 ## When to Use
 
 - Convert media formats
-- Extract audio from video
-- Create video thumbnails
-- Resize and crop videos
-- Merge or split media files
-- Generate streaming manifests
-- Apply filters and effects
-- Analyze media properties
+- Reframe horizontal video for vertical (Shorts/TikTok/Reels)
+- Compose intro+main+outro with background music
+- Burn styled subtitles or timed text overlays
+- Generate thumbnails, storyboards, GIFs
+- Build streaming manifests
+- Multi-output single-pass encoding
 
 ## When Not To Use
 
-- For still image processing (resize, crop, format conversion, filters) -- use the imagemagick skill instead
-- For AI-generated images or videos from text prompts -- use the comfyui skill instead
-- For 3D rendering and scene creation -- use the blender skill instead
-- For creating diagrams or charts as images -- use the mermaid-diagrams or report-builder skills instead
-- For browser-based video playback testing -- use the playwright or browser skills instead
+- Still image processing -- use `imagemagick`
+- AI-generated images/video from text -- use `comfyui`
+- 3D rendering and scene creation -- use `blender`
+- Diagrams or charts -- use `mermaid-diagrams` or `report-builder`
+- Browser-based playback testing -- use `playwright` or `browser`
 
-## Basic Commands
+## Recipe Index
+
+For production patterns (most automation tasks land here), open the matching recipe:
+
+| Recipe | Use when |
+|---|---|
+| [recipes/vertical-reframing.md](recipes/vertical-reframing.md) | Reframe 16:9 → 9:16 with pan-and-scan, multi-output (YT + Shorts in one pass) |
+| [recipes/kenburns-slideshow.md](recipes/kenburns-slideshow.md) | Image → video, slideshows with `xfade`, Ken Burns `zoompan` |
+| [recipes/intro-main-outro.md](recipes/intro-main-outro.md) | Concat clips with normalised formats, background music with fade and `amix duration=first` |
+| [recipes/styled-subtitles.md](recipes/styled-subtitles.md) | Burn styled SRT with custom font, embed soft subs with default disposition |
+| [recipes/timed-text-overlays.md](recipes/timed-text-overlays.md) | `drawtext` with `alpha=if(...)` fade-in, `enable=` time gating, `textfile`/`fontfile` |
+| [recipes/audio-mixing.md](recipes/audio-mixing.md) | Replace/mix audio, crossfades, mono panning, dynamic normalisation |
+| [recipes/thumbnails-storyboards.md](recipes/thumbnails-storyboards.md) | Scene-detected thumbnails, `tile=NxM` storyboards, keyframe-only extracts |
+| [recipes/gotchas.md](recipes/gotchas.md) | Input vs output seeking, `-c copy` traps, `hvc1` for Apple H.265, `yuv420p` for QuickTime, `-vsync` deprecation |
+| [recipes/gpu-encoding.md](recipes/gpu-encoding.md) | NVENC, Intel QSV, VAAPI matrix and tradeoffs |
+
+## Stream Selector Glossary
+
+Foundation for everything else.
+
+| Syntax | Meaning |
+|---|---|
+| `[0:v]` | Video stream from first input |
+| `[1:a]` | Audio stream from second input |
+| `0:v:0` | First video stream of first input (0-indexed) |
+| `0:a:1` | Second audio stream of first input |
+| `[name]` | Named filter output (used inside `-filter_complex`) |
+| `-map [name]` | Route a named stream to output |
+| `-map 0:v -map 1:a` | Take video from input 0, audio from input 1 |
+| `-vf` / `-af` | Simple video / audio filter chain (one input, one output) |
+| `-filter_complex` | Multi-input/output filter graph |
+| `-y` | Auto-overwrite output (put at start of every command) |
+
+## Quick Reference
 
 ### Info and Analysis
 ```bash
-ffmpeg -i input.mp4                    # Show file info
+ffmpeg -i input.mp4                      # Show file info
 ffprobe -v quiet -print_format json -show_format -show_streams input.mp4
+
+# Duration / resolution / bitrate
+ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 input.mp4
+ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=s=x:p=0 input.mp4
+ffprobe -v error -show_entries format=bit_rate -of default=noprint_wrappers=1:nokey=1 input.mp4
 ```
 
 ### Format Conversion
 ```bash
-ffmpeg -i input.avi output.mp4         # Convert to MP4
-ffmpeg -i input.mp4 -c copy output.mkv # Copy streams (fast)
+ffmpeg -y -i input.avi output.mp4              # Re-encode
+ffmpeg -y -i input.mp4 -c copy output.mkv      # Remux (no re-encode, fast)
 ```
 
-### Resolution and Quality
+### Resolution with aspect-ratio preservation
+The correct production form -- preserves aspect, pads black, normalises SAR:
 ```bash
-# Scale to 720p
-ffmpeg -i input.mp4 -vf scale=-2:720 output.mp4
-
-# Set bitrate
-ffmpeg -i input.mp4 -b:v 2M -b:a 192k output.mp4
-
-# Set quality (CRF)
-ffmpeg -i input.mp4 -c:v libx264 -crf 23 output.mp4
+ffmpeg -y -i input.mp4 -vf \
+  "scale=w=1920:h=1080:force_original_aspect_ratio=decrease,\
+pad=1920:1080:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1:1" \
+  output.mp4
+```
+For naive scaling without padding (only when source aspect already matches):
+```bash
+ffmpeg -y -i input.mp4 -vf scale=-2:720 output.mp4
 ```
 
-### Extract Audio
+### Quality and bitrate
 ```bash
-ffmpeg -i video.mp4 -vn -acodec libmp3lame -q:a 2 audio.mp3
-ffmpeg -i video.mp4 -vn -c:a copy audio.aac
+ffmpeg -y -i input.mp4 -c:v libx264 -crf 18 -preset veryslow output.mp4   # Archive quality
+ffmpeg -y -i input.mp4 -b:v 2M -b:a 192k output.mp4                       # Fixed bitrate
+```
+CRF: 0 lossless, 17-18 visually lossless, 23 default, 28+ small/lossy. ±6 ≈ ½× or 2× filesize.
+
+### Extract audio
+```bash
+ffmpeg -y -i video.mp4 -vn -acodec libmp3lame -q:a 2 audio.mp3   # MP3 high quality
+ffmpeg -y -i video.mp4 -vn -c:a copy audio.aac                   # AAC remux (fastest)
+ffmpeg -y -i video.mp4 -map 0:a:0 -acodec copy audio.aac         # Specific stream
 ```
 
-### Extract Frames
+### Extract frames
 ```bash
-# All frames as images
-ffmpeg -i input.mp4 frame%04d.png
-
-# One frame per second
-ffmpeg -i input.mp4 -vf fps=1 frame%04d.png
-
-# Single frame at timestamp
-ffmpeg -ss 00:01:30 -i input.mp4 -frames:v 1 thumbnail.jpg
+ffmpeg -y -i input.mp4 frame%04d.png                                       # All
+ffmpeg -y -i input.mp4 -vf fps=1 frame%04d.png                             # 1 fps
+ffmpeg -y -ss 00:01:30 -i input.mp4 -frames:v 1 -q:v 2 thumb.jpg           # At timestamp
 ```
 
-## Advanced Operations
-
-### Cutting and Trimming
+### Trim
+Output seeking (frame-accurate, requires re-encode for clean cuts):
 ```bash
-# Cut from 10s to 30s
-ffmpeg -ss 00:00:10 -to 00:00:30 -i input.mp4 -c copy output.mp4
-
-# First 60 seconds
-ffmpeg -t 60 -i input.mp4 -c copy output.mp4
+ffmpeg -y -i input.mp4 -ss 00:00:10 -to 00:00:30 output.mp4
 ```
-
-### Concatenation
+Input seeking (fast, keyframe-aligned, may produce black frames with `-c copy`):
 ```bash
-# Create file list (list.txt)
-# file 'video1.mp4'
-# file 'video2.mp4'
-
-ffmpeg -f concat -safe 0 -i list.txt -c copy output.mp4
+ffmpeg -y -ss 00:00:10 -to 00:00:30 -i input.mp4 -c copy output.mp4
 ```
+See [recipes/gotchas.md](recipes/gotchas.md#input-vs-output-seeking) for the full tradeoff.
 
-### Filters
-
+### Concat (file list, same codec/timebase)
 ```bash
-# Crop to 16:9
-ffmpeg -i input.mp4 -vf "crop=1920:1080:0:0" output.mp4
-
-# Add watermark
-ffmpeg -i input.mp4 -i logo.png -filter_complex "overlay=10:10" output.mp4
-
-# Speed up 2x
-ffmpeg -i input.mp4 -vf "setpts=0.5*PTS" -af "atempo=2.0" output.mp4
-
-# Blur face (coordinates x:y:w:h)
-ffmpeg -i input.mp4 -vf "boxblur=10:5:x=100:y=100:w=200:h=200" output.mp4
+# list.txt:
+#   file 'a.mp4'
+#   file 'b.mp4'
+ffmpeg -y -f concat -safe 0 -i list.txt -c copy output.mp4
 ```
+For mixed sources, see [recipes/intro-main-outro.md](recipes/intro-main-outro.md).
 
-### Subtitles
+### Web-optimised default preset
+Good baseline for VOD / archival / multi-device playback:
 ```bash
-# Burn subtitles into video
-ffmpeg -i input.mp4 -vf subtitles=subs.srt output.mp4
-
-# Add subtitle track
-ffmpeg -i video.mp4 -i subs.srt -c copy -c:s mov_text output.mp4
-```
-
-### Audio Processing
-```bash
-# Normalize audio
-ffmpeg -i input.mp4 -af "loudnorm" output.mp4
-
-# Extract specific channel
-ffmpeg -i stereo.mp3 -map_channel 0.0.0 left.mp3
-
-# Mix audio tracks
-ffmpeg -i video.mp4 -i audio.mp3 -c:v copy -map 0:v:0 -map 1:a:0 output.mp4
-```
-
-### Streaming
-
-```bash
-# HLS streaming
-ffmpeg -i input.mp4 \
-  -codec: copy \
-  -start_number 0 \
-  -hls_time 10 \
-  -hls_list_size 0 \
-  -f hls playlist.m3u8
-
-# RTMP stream
-ffmpeg -re -i input.mp4 -c:v libx264 -preset veryfast -maxrate 3000k \
-  -bufsize 6000k -pix_fmt yuv420p -g 50 -c:a aac -b:a 160k -ac 2 \
-  -f flv rtmp://server/live/streamkey
-```
-
-## CUDA Hardware Acceleration
-
-```bash
-# List encoders
-ffmpeg -encoders | grep nvenc
-
-# H.264 encoding with CUDA
-ffmpeg -hwaccel cuda -i input.mp4 -c:v h264_nvenc -preset fast output.mp4
-
-# Decode and encode with CUDA
-ffmpeg -hwaccel cuda -hwaccel_output_format cuda -i input.mp4 \
-  -c:v h264_nvenc -preset p4 output.mp4
-```
-
-## Batch Processing
-
-```bash
-# Convert all MKV to MP4
-for f in *.mkv; do
-  ffmpeg -i "$f" -c copy "${f%.mkv}.mp4"
-done
-
-# Generate thumbnails
-for f in *.mp4; do
-  ffmpeg -ss 00:00:05 -i "$f" -frames:v 1 "${f%.mp4}.jpg"
-done
-```
-
-## Presets and Profiles
-
-### YouTube Upload
-```bash
-ffmpeg -i input.mp4 \
-  -c:v libx264 -preset slow -crf 18 \
+ffmpeg -y -i input.mp4 \
+  -c:v libx264 -crf 18 -preset veryslow -tune fastdecode \
+  -pix_fmt yuv420p -movflags +faststart \
   -c:a aac -b:a 192k \
-  -pix_fmt yuv420p \
-  -movflags +faststart \
+  output.mp4
+```
+
+### YouTube upload
+```bash
+ffmpeg -y -i input.mp4 \
+  -c:v libx264 -preset slow -crf 18 -pix_fmt yuv420p \
+  -c:a aac -b:a 192k -movflags +faststart \
   youtube.mp4
 ```
 
-### Web Optimisation
+### GIF (two-pass with palette for quality)
 ```bash
-ffmpeg -i input.mp4 \
-  -c:v libx264 -crf 23 -preset faster \
-  -vf scale=-2:720 \
-  -c:a aac -b:a 128k \
-  -movflags +faststart \
-  web.mp4
-```
-
-### GIF Creation
-```bash
-ffmpeg -i input.mp4 -vf "fps=10,scale=480:-1:flags=lanczos" \
-  -c:v gif output.gif
-
-# Better quality (two-pass with palette)
-ffmpeg -i input.mp4 -vf "fps=10,scale=480:-1:flags=lanczos,palettegen" palette.png
-ffmpeg -i input.mp4 -i palette.png \
+ffmpeg -y -i input.mp4 -vf "fps=10,scale=480:-1:flags=lanczos,palettegen" palette.png
+ffmpeg -y -i input.mp4 -i palette.png \
   -lavfi "fps=10,scale=480:-1:flags=lanczos[x];[x][1:v]paletteuse" output.gif
 ```
 
-## Analysis Commands
-
+### Streaming
 ```bash
-# Get duration
-ffprobe -v error -show_entries format=duration \
-  -of default=noprint_wrappers=1:nokey=1 input.mp4
+# HLS
+ffmpeg -y -i input.mp4 -codec: copy -start_number 0 -hls_time 10 -hls_list_size 0 -f hls playlist.m3u8
 
-# Get resolution
-ffprobe -v error -select_streams v:0 \
-  -show_entries stream=width,height \
-  -of csv=s=x:p=0 input.mp4
+# RTMP live
+ffmpeg -re -i input.mp4 -c:v libx264 -preset veryfast -maxrate 3000k -bufsize 6000k \
+  -pix_fmt yuv420p -g 50 -c:a aac -b:a 160k -ac 2 -f flv rtmp://server/live/streamkey
+```
 
-# Get bitrate
-ffprobe -v error -show_entries format=bit_rate \
-  -of default=noprint_wrappers=1:nokey=1 input.mp4
+### Hardware acceleration (CUDA quick form)
+```bash
+ffmpeg -y -hwaccel cuda -hwaccel_output_format cuda -i input.mp4 \
+  -c:v h264_nvenc -preset p4 output.mp4
+```
+For full GPU matrix (NVENC, QSV, VAAPI) and tradeoffs, see [recipes/gpu-encoding.md](recipes/gpu-encoding.md).
+
+### Batch
+```bash
+for f in *.mkv; do ffmpeg -y -i "$f" -c copy "${f%.mkv}.mp4"; done
+for f in *.mp4; do ffmpeg -y -ss 00:00:05 -i "$f" -frames:v 1 "${f%.mp4}.jpg"; done
 ```
 
 ## Common Codecs
 
 ### Video
-- **H.264** (libx264) - Universal compatibility
-- **H.265** (libx265) - Better compression
-- **VP9** (libvpx-vp9) - Open standard
-- **AV1** (libaom-av1) - Modern codec
+- **H.264** (`libx264`) -- universal compatibility, default for MP4
+- **H.265** (`libx265`) -- ~30-50% smaller than H.264; add `-tag:v hvc1` for Apple/iOS playback
+- **VP9** (`libvpx-vp9`) -- WebM, 20-50% smaller than H.264 at same quality, slower encode
+- **AV1** (`libaom-av1`) -- best compression, slowest encode; `libsvtav1` is the fast alternative
 
 ### Audio
-- **AAC** (aac) - Universal
-- **MP3** (libmp3lame) - Legacy
-- **Opus** (libopus) - Best quality/bitrate
-- **FLAC** (flac) - Lossless
-
-## Troubleshooting
-
-### Sync Issues
-```bash
-# Fix A/V sync
-ffmpeg -i input.mp4 -itsoffset 0.5 -i input.mp4 \
-  -map 0:v -map 1:a -c copy output.mp4
-```
-
-### Corrupted Files
-```bash
-# Attempt repair
-ffmpeg -err_detect ignore_err -i corrupted.mp4 -c copy repaired.mp4
-```
+- **AAC** (`aac`) -- universal, default for MP4
+- **MP3** (`libmp3lame`) -- legacy compatibility
+- **Opus** (`libopus`) -- best quality/bitrate; default for WebM
+- **FLAC** (`flac`) -- lossless
 
 ## Performance Tips
 
-1. Use `-c copy` when possible (no re-encoding)
-2. Enable hardware acceleration for batch jobs
-3. Use appropriate presets (faster/fast/medium/slow)
-4. Limit threads with `-threads N` if needed
-5. Monitor with `-progress` flag
+1. Use `-c copy` whenever possible (no re-encode) -- but see [recipes/gotchas.md](recipes/gotchas.md#when-c-copy-breaks)
+2. Hardware acceleration for batch jobs -- see [recipes/gpu-encoding.md](recipes/gpu-encoding.md)
+3. Presets: `ultrafast`/`superfast`/`veryfast`/`faster`/`fast`/`medium`/`slow`/`slower`/`veryslow` -- slower = better compression at same quality
+4. `-threads 0` lets FFmpeg pick (default); only override for specific reasons
+5. `-progress pipe:1` for parseable progress output in pipelines
+6. Single `-filter_complex` with `split` produces multiple outputs in one decode pass -- always cheaper than running ffmpeg twice
 
-## Related Skills
+## Troubleshooting
 
-- **jupyter-notebooks** - Analyze media with Python
+```bash
+# Repair attempt
+ffmpeg -y -err_detect ignore_err -i corrupted.mp4 -c copy repaired.mp4
+
+# Fix A/V sync (offset audio +500ms)
+ffmpeg -y -i input.mp4 -itsoffset 0.5 -i input.mp4 -map 0:v -map 1:a -c copy output.mp4
+
+# Force pixel format compatibility (QuickTime, iOS, older players)
+ffmpeg -y -i input.mp4 -c:v libx264 -pix_fmt yuv420p -c:a copy output.mp4
+```
 
 ## Notes
 
 - FFmpeg 8.0 with full codec support
 - CUDA acceleration available
-- Supports 100+ formats
-- Real-time processing capable
-- Pipe support for streaming workflows
+- Recipes assume sample inputs are reachable via URL (FFmpeg downloads them); replace with local paths in production
+- Always `-y` for non-interactive automation
+
+## Related Skills
+
+- **imagemagick** -- still images
+- **comfyui** -- AI-generated media
+- **blender** -- 3D scenes
+- **jupyter-notebooks** -- analyse media with Python
+- **playwright** -- verify playback in a browser

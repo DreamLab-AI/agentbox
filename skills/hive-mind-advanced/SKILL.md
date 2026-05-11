@@ -718,7 +718,7 @@ npx claude-flow hive-mind spawn "Review PR #456" \
 - `consensus-mechanisms`: Distributed decision making
 - `memory-systems`: Advanced memory management
 - `sparc-methodology`: Structured development workflow
-- `github-integration`: Repository coordination
+- `github-code-review`: Repository PR review and coordination
 
 ## References
 

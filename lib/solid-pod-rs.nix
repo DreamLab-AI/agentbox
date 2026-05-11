@@ -25,41 +25,39 @@
 #   - dpop-replay-cache — JTI replay protection for DPoP (requires `oidc`)
 #   - s3-backend       — AWS S3 / MinIO / R2 / B2 storage
 #   - legacy-notifications — SolidOS-compatible WebSocket adapter
+#   - mashlib          — SolidOS data-browser rendering for RDF resources
+#                        (available from 0.4.0-alpha.5; enable via config)
 #
-# Licence: AGPL-3.0-only. See docs/developer/licensing.md for the binary
-# aggregation analysis under AGPL §5 — we ship this as a standalone
-# supervisord program, never linked as a library into agentbox first-party
-# code, so the agentbox image stays MPL-2.0.
+# Licence: AGPL-3.0-only, consistent with agentbox (AGPL-3.0).
+# Shipped as a standalone supervisord program, never linked as a library.
+# See docs/developer/licensing.md for the component license matrix.
 
 { lib, pkgs }:
 
 let
-  # Version label is "0.4.0-alpha.1+sprint-9" because upstream's tag has not
-  # moved past v0.4.0-alpha.1 but main is 8 commits ahead through Sprint 9
-  # (WAC 2.0 conditions, did:nostr, webhook signing, rate-limit, quota,
-  # operator surface). See lib/solid-pod-rs.nix commit message in agentbox
-  # for the Sprint 5-9 absorption rationale.
-  version = "0.4.0-alpha.1+sprint-9";
+  # Upstream tagged v0.4.0-alpha.5 at rev 298818e (2026-05-08).
+  # Ships git-http-backend (solid-pod-rs-git), did:nostr ↔ WebID
+  # resolver (solid-pod-rs-nostr), and the mashlib SolidOS data-browser
+  # module. See PRD-013 for integration rationale.
+  version = "0.4.0-alpha.5";
 
-  # Pinned to main at Sprint 9 consolidation (docs: 7f8bc89, P0 feat: 2275146).
-  # Operators running their first build will be asked by Nix to resolve the
-  # full 40-char SHA on prefetch — that is the definitive rev we lock at.
-  # When upstream tags v0.5.0 this flips to a tag ref.
-  rev     = "7f8bc89";
+  # Pinned to v0.4.0-alpha.5 tag (298818e). When upstream tags v0.5.0
+  # this flips to a tag ref.
+  rev     = "298818e";
 
-  # Prefetched 2026-04-24 against rev 7f8bc89.
-  # Refresh via:
+  # Placeholder — operator runs prefetch on first build:
   #   nix-prefetch-url --unpack --type sha256 \
-  #     https://github.com/DreamLab-AI/solid-pod-rs/archive/<new-rev>.tar.gz
+  #     https://github.com/DreamLab-AI/solid-pod-rs/archive/298818e.tar.gz
   #   nix hash convert --hash-algo sha256 --to sri <base32>
-  srcHash = "sha256-h8UOzgqTnrPkDSEfrpC+0bhNVCrYizNniVFGW6YAFPs=";
+  srcHash = "sha256-pfZVwmlEZvbAmGXh3HDtxbD1Y20SUfyM4wrmT2aEhvs=";
 
-  # Upstream solid-pod-rs at v0.4.0-alpha.1+sprint-9 does not ship its
+  # Upstream solid-pod-rs at v0.4.0-alpha.5 does not ship its
   # Cargo.lock (workspace builds without it locally because cargo
   # generate-lockfile picks the latest compat versions on first run, but
   # that is non-deterministic and breaks Nix's hermetic build). We vendor
   # a lockfile alongside lib/solid-pod-rs.nix instead.
   #
+  # NOTE: cargoLockFile needs refresh for 0.4.0-alpha.5.
   # Refresh procedure when the rev bumps:
   #   1. Update version + rev above and re-run `nix build .#runtime`
   #      to fetch the new src.

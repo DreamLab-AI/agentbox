@@ -95,6 +95,8 @@ Choose a clear aesthetic direction and execute with precision:
 - Atmosphere: gradient meshes, noise textures, grain overlays, dramatic shadows
 - Vary light/dark — no two designs should look the same
 
+**Extended slop detection**: See `../open-design/references/anti-slop-rules.md` for the 12-point checklist and remediation steps.
+
 ---
 
 ## Creative Reframing (When Stuck)
@@ -256,3 +258,17 @@ Simplified UI on slow connections.
 - **General palette/font selection** → `ui-ux-pro-max-skill` (50 styles, 97 palettes)
 - **Typography enforcement only** → `typography`
 - **Audit existing UI** → `design-audit`
+- **Prototype from brand spec** → use `open-design` (structured intake + DESIGN.md + quality gate)
+- **Need a brand spec first** → use `open-design` to generate DESIGN.md, then hand off here for production
+
+## Open Design Integration
+
+When a DESIGN.md brand specification exists (from `open-design/design-systems/`):
+- Map its 6 tokens to your implementation's CSS variables or Tailwind theme
+- Respect the typography weights and features specified
+- Use the brand's elevation/shadow system, not generic Tailwind shadows
+- Apply the critique gate (5 dimensions ≥6) before delivery
+
+When no brand spec exists but you're in `--build` mode:
+- Generate a lightweight DESIGN.md following `../open-design/references/design-system-schema.md`
+- Commit to it — don't freestyle hex values mid-implementation

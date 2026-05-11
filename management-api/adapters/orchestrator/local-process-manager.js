@@ -11,10 +11,10 @@
  */
 
 const { spawn } = require('child_process');
-const { randomUUID } = require('crypto');
 const { BaseAdapter } = require('../base');
 const { NotFound, SpawnError } = require('../errors');
 const CONTRACT_VERSIONS = require('../contract-versions');
+const uris = require('../../lib/uris');
 
 class LocalProcessManagerOrchestratorAdapter extends BaseAdapter {
   /**
@@ -38,7 +38,7 @@ class LocalProcessManagerOrchestratorAdapter extends BaseAdapter {
    */
   async spawnAgent(spec = {}) {
     if (!spec.command) throw new SpawnError('spec.command is required');
-    const agentId = randomUUID();
+    const agentId = uris.mint({ kind: 'agent', localId: `proc-${Date.now().toString(36)}` });
     let proc;
     try {
       proc = this._spawnFn(spec.command, spec.args || [], {

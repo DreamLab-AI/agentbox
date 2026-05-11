@@ -19,6 +19,13 @@ on:
       - 'mcp/nostr-bridge/**'
       - 'tests/contract/**'
 
+concurrency:
+  group: contract-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   contract:
     name: Adapter contract suites

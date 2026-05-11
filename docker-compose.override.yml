@@ -1,0 +1,150 @@
+# docker-compose.override.yml — side-by-side with MAD (agentic-workstation)
+# Remaps ports to avoid collisions:
+#   MAD:      9090, 8080, 5901, 2222
+#   Agentbox: 9190, 8180, 5902, 2223
+#
+# Once MAD is deprecated, revert ports to standard values.
+
+services:
+  agentbox:
+    # /usr/bin/env fix is now baked into the image entrypoint (flake.nix)
+
+    # Use env file for API keys
+    env_file:
+      - .env
+
+    # Ports come from the base compose (standard 9090/9700/9091/8484/8888/5901/8080).
+    # MAD has been deprecated; no remap needed. Direct host SSH is not exposed —
+    # use Tailscale SSH (config/tailscale auth) or `docker exec agentbox`.
+
+    # Additional environment
+    environment:
+      # RuVector external PG
+      - RUVECTOR_PG_CONNINFO=${RUVECTOR_PG_CONNINFO:-host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=${RUVECTOR_PG_PASSWORD:-ruvector}}
+      - RUVECTOR_USE_EXTERNAL=true
+      # Single source of truth for the postgres password (Q6). The
+      # entrypoint substitutes this into the claude-flow config template
+      # at /opt/agentbox/config/claude-flow-config.template.json so the
+      # in-container plugin config and the DB connection use the same value.
+      - RUVECTOR_PG_PASSWORD=${RUVECTOR_PG_PASSWORD:-ruvector}
+      # GPU
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics
+      - CUDA_VISIBLE_DEVICES=0,1,2
+      # ComfyUI external
+      - COMFYUI_API_ENDPOINT=${COMFYUI_API_ENDPOINT:-http://192.168.2.48:3001}
+      # Hardened rootfs (read_only:true) means /home/devuser/* is not writable
+      # without an explicit volume. Route comfyui outputs to the uid-1000 /run
+      # tmpfs so the adapter's `mkdir -p` succeeds at boot. Outputs are
+      # ephemeral; mount a named volume here if persistence is needed.
+      - COMFYUI_OUTPUTS=${COMFYUI_OUTPUTS:-/run/comfyui/output}
+      - COMFYUI_LOCAL_ENDPOINT=${COMFYUI_LOCAL_ENDPOINT:-http://172.18.0.10:8188}
+      # Local LLM
+      - LOCAL_LLM_HOST=${LOCAL_LLM_HOST:-192.168.2.48}
+      - LOCAL_LLM_PORT=${LOCAL_LLM_PORT:-8080}
+      # Telegram
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - TELEGRAM_MIRROR=${TELEGRAM_MIRROR:-false}
+      # Display for desktop/browser
+      - DISPLAY=:1
+      # Tailscale — set authkey for headless join, or omit for interactive login
+      - TAILSCALE_AUTHKEY=${TAILSCALE_AUTHKEY:-}
+      # Agent signing identity — set one of these in .env to use a stable
+      # Nostr keypair instead of auto-generating on first boot.
+      # AGENTBOX_NSEC accepts bech32 nsec1… (preferred — copy from any Nostr client).
+      # AGENTBOX_PRIVKEY_HEX accepts the raw 64-char hex private key.
+      # Both are untracked (.env is gitignored). Leave blank to auto-generate.
+      - AGENTBOX_NSEC=${AGENTBOX_NSEC:-}
+      - AGENTBOX_PRIVKEY_HEX=${AGENTBOX_PRIVKEY_HEX:-}
+
+    # Additional volumes (Q16 — override surface).
+    # Base owns: agentbox.toml ro, baseline named volumes (ruvector-data,
+    # solid-data, sovereign-identities, agentbox-secrets), feature-exception
+    # writable volumes (codeserver-config, ctm-config, nostr-relay-data,
+    # tailscale-state, ./projects, /home/devuser/workspace bind).
+    # Override owns: host bind mounts (project tree, .claude, .config/claude),
+    # the MAD workspace external alias (until migrated, Q43), and any
+    # operator-specific paths.
+    volumes:
+      - /mnt/mldata/githubs/AR-AI-Knowledge-Graph:/home/devuser/workspace/project:rw
+      # Q20 (escalation accepted-with-mitigation): the writable bind to the
+      # host's .claude is required for plugin install state, OAuth token
+      # refresh, and settings updates. The risk that a compromised in-container
+      # tool can modify the host's .claude is documented in
+      # docs/user/configuration.md §Security trade-offs. Operators who run
+      # untrusted code in agentbox should mount :ro and accept that plugin
+      # updates won't persist.
+      - ${HOME}/.claude:/home/devuser/.claude:rw
+      - ${HOME}/.config/claude:/home/devuser/.config/claude:rw
+      # Second mount surfaces the host's .claude at the host-side path so
+      # Claude Code's plugin registry (installed_plugins.json,
+      # known_marketplaces.json), which persists absolute host paths,
+      # resolves inside the container. Set HOST_CLAUDE_PATH=$HOME/.claude
+      # on the host shell before `docker compose up`. Default routes to a
+      # throwaway path so the line is harmless when HOST_CLAUDE_PATH is unset.
+      - ${HOME}/.claude:${HOST_CLAUDE_PATH:-/home/devuser/.claude-host-link-noop}:rw
+      # Q21: Docker socket is intentionally NOT mounted here. The previous
+      # mount (`/var/run/docker.sock:/var/run/docker.sock:ro`) gave the
+      # in-container API consumer the ability to enumerate every container,
+      # image, volume, and network on the host — even read-only. Combined
+      # with SYS_ADMIN this is a host-escape surface.
+      #
+      # If a feature actually requires the socket (e.g. management-api
+      # /v1/agents/spawn), the recommended pattern is a docker-socket-proxy
+      # sidecar (tecnativa/docker-socket-proxy) restricted to specific
+      # GET endpoints. Drop this comment and replace with the proxy
+      # service if/when needed.
+      # X11 socket is provided by the desktop security exception's tmpfs
+      # in the base compose (in-container VNC at :5902). Host X11
+      # forwarding would mount /tmp/.X11-unix as a bind here, but that's
+      # mutually exclusive with the tmpfs.
+      #
+      # Q43: legacy multi-agent-docker workspace tree (~157 GB) inherited
+      # in place. Run `agentbox.sh migrate-workspace` to rsync into an
+      # agentbox-owned named volume and detach the external MAD reference.
+      - mad-workspace:/home/devuser/workspace
+
+    # Resource provisioning — host: 376G RAM, 32 cores, 3x GPU (98G VRAM), 1.9T disk
+    deploy:
+      resources:
+        limits:
+          cpus: '24'
+          memory: 128G
+        reservations:
+          cpus: '8'
+          memory: 32G
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu, compute, utility]
+
+    # Join docker_ragflow for service discovery
+    networks:
+      - default
+      - ragflow
+
+    # security_opt (no-new-privileges:false + seccomp) is set in the base
+    # docker-compose.yml. cap_add is also defined in the base; we extend it
+    # implicitly here only via shm_size sizing for agent workloads.
+    shm_size: '32gb'
+
+networks:
+  ragflow:
+    external: true
+    name: docker_ragflow
+
+volumes:
+  # Base declares ruvector-data, solid-data, sovereign-identities,
+  # codeserver-config, ctm-config, nostr-relay-data, tailscale-state, and
+  # agentbox-secrets — no redeclaration needed here (Q12).
+  #
+  # External alias for the legacy multi-agent-docker workspace volume.
+  # Created by the deprecated MAD stack; reused here so agentbox sees the
+  # full project tree (agentbox/, claude-flow/, AR-AI-Knowledge-Graph/, ...).
+  # Q43 migration: run `agentbox.sh migrate-workspace` to rsync this into
+  # an agentbox-owned named volume; the override should then reference
+  # agentbox-workspace instead of mad-workspace.
+  mad-workspace:
+    external: true
+    name: multi-agent-docker_workspace

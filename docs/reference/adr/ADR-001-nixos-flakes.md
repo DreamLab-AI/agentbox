@@ -82,4 +82,4 @@ It no longer assumes:
 - [`flake.nix`](../../flake.nix)
 - [`agentbox.toml`](../../agentbox.toml)
 - [`config/entrypoint-unified.sh`](../../config/entrypoint-unified.sh)
-- [`docs/guides/quick-start.md`](../guides/quick-start.md)
+- [`docs/user/quickstart.md`](../../user/quickstart.md)

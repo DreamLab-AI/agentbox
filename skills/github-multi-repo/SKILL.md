@@ -857,13 +857,6 @@ npx claude-flow skill run github-multi-repo cross-team \
 
 ## Integration Points
 
-## When Not To Use
-
-- **Do not use for single-repository code review** (use `github-code-review` instead) -- If you only need to review a PR within one repository, the code-review skill provides deeper per-PR analysis with specialized agents.
-- **Do not use for release orchestration** (use `github-release-management` instead) -- If you need changelog generation, version bumping, staged deployment, or rollback for a single project's release cycle.
-- **Do not use for CI/CD pipeline management** (use `github-workflow-automation` instead) -- If you need to create or optimise GitHub Actions workflows within a single repository.
-- **Do not use for issue tracking or project boards** (use `github-project-management` instead) -- If your focus is sprint planning, issue triage, or board automation rather than cross-repository synchronization.
-
 ### Related Skills
 - `github-code-review` - Single-repo PR review
 - `github-release-management` - Release orchestration

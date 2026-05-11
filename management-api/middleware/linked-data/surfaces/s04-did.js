@@ -8,12 +8,13 @@
  * sovereign_mesh.solid_pod = true (the document is published at
  * /.well-known/did.json via solid-pod-rs).
  *
- * Builds the DID Document for `did:nostr:<npub>` — the agent's primary
+ * Builds the DID Document for `did:nostr:<hex-pubkey>` — the agent's primary
  * sovereign identifier — including verification methods (Schnorr public
  * key) and service endpoints (pod base URL, embedded relay URL).
  */
 
 const DID_CONTEXT = 'https://www.w3.org/ns/did/v1';
+const SECP_CONTEXT = 'https://w3id.org/security/suites/secp256k1-2019/v1';
 const AGBX_CONTEXT = 'https://agentbox.dreamlab-ai.systems/ns/v1#';
 
 module.exports = {
@@ -65,16 +66,21 @@ module.exports = {
 
     const verificationMethods = [];
     if (pubkeyHex) {
+      // ADR-074 D1 + ADR-077 P3 + V3 C4 finding: cross-system DID
+      // canonicalisation requires SchnorrSecp256k1VerificationKey2019 — the
+      // only published W3C suite for secp256k1 Schnorr verification keys.
+      // SchnorrSecp256k1VerificationKey2025 was a spec-drift fabrication that
+      // no DID resolver or W3C VC verifier accepts.
       verificationMethods.push({
         id: `${did}#schnorr-pubkey`,
-        type: 'SchnorrSecp256k1VerificationKey2025',
+        type: 'SchnorrSecp256k1VerificationKey2019',
         controller: did,
         publicKeyHex: pubkeyHex,
       });
     }
 
     const doc = {
-      '@context': [DID_CONTEXT, AGBX_CONTEXT],
+      '@context': [DID_CONTEXT, SECP_CONTEXT, AGBX_CONTEXT],
       id: did,
       verificationMethod: verificationMethods,
       service: services,

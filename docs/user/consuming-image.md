@@ -50,7 +50,7 @@ docker run --rm -it \
 
 For a full operator setup with persistent workspace and manifest overrides, use
 the generated `docker-compose.yml` (produced by `nix build .#compose`) and
-`.env` file documented in [`quick-start.md`](quick-start.md).
+`.env` file documented in [`quickstart.md`](quickstart.md).
 
 ## Image selection mechanism
 

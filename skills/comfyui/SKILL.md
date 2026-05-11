@@ -170,7 +170,7 @@ sed -i 's/YOUR PROMPT HERE/A stunning landscape at golden hour, cinematic lighti
 
 # Submit workflow
 WORKFLOW=$(cat /tmp/flux2_workflow.json)
-RESPONSE=$(curl -s -X POST "http://host.docker.internal:8188/prompt" \
+RESPONSE=$(curl -s -X POST "http://comfyui:8188/prompt" \
   -H "Content-Type: application/json" \
   -d "{\"prompt\": $WORKFLOW}")
 PROMPT_ID=$(echo "$RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['prompt_id'])")
@@ -182,7 +182,7 @@ echo "Submitted: $PROMPT_ID"
 ```bash
 # Poll until complete (typically 15-30 seconds for FLUX 2)
 while true; do
-  curl -s "http://host.docker.internal:8188/history/$PROMPT_ID" > /tmp/hist.json
+  curl -s "http://comfyui:8188/history/$PROMPT_ID" > /tmp/hist.json
   STATUS=$(python3 -c "
 import json
 d=json.load(open('/tmp/hist.json'))
@@ -211,7 +211,7 @@ for nid,out in outputs.items():
 ")
 
 # Download image
-curl -s "http://host.docker.internal:8188/view?filename=$FILENAME&type=output" -o ./generated_image.png
+curl -s "http://comfyui:8188/view?filename=$FILENAME&type=output" -o ./generated_image.png
 echo "Saved: generated_image.png"
 ```
 
@@ -223,18 +223,18 @@ PROMPT="A dreamlike mountain lake at dawn with fog"
 cat > /tmp/wf.json << EOF
 {"68":{"inputs":{"model":["86",0],"conditioning":["73",0]},"class_type":"BasicGuider"},"73":{"inputs":{"guidance":4,"conditioning":["85",0]},"class_type":"FluxGuidance"},"74":{"inputs":{"sampler_name":"euler"},"class_type":"KSamplerSelect"},"78":{"inputs":{"vae_name":"flux2-vae.safetensors"},"class_type":"VAELoader"},"79":{"inputs":{"width":1024,"height":768,"batch_size":1},"class_type":"EmptyFlux2LatentImage"},"80":{"inputs":{"noise":["87",0],"guider":["68",0],"sampler":["74",0],"sigmas":["94",0],"latent_image":["79",0]},"class_type":"SamplerCustomAdvanced"},"82":{"inputs":{"samples":["80",0],"vae":["78",0]},"class_type":"VAEDecode"},"85":{"inputs":{"text":["93",0],"clip":["90",0]},"class_type":"CLIPTextEncode"},"86":{"inputs":{"unet_name":"flux2_dev_fp8mixed.safetensors","weight_dtype":"default"},"class_type":"UNETLoader"},"87":{"inputs":{"noise_seed":$RANDOM},"class_type":"RandomNoise"},"89":{"inputs":{"filename_prefix":"Quick","images":["82",0]},"class_type":"SaveImage"},"90":{"inputs":{"clip_name":"mistral_3_small_flux2_bf16.safetensors","type":"flux2","device":"default"},"class_type":"CLIPLoader"},"93":{"inputs":{"value":"$PROMPT"},"class_type":"PrimitiveString"},"94":{"inputs":{"steps":25,"width":1024,"height":768},"class_type":"Flux2Scheduler"}}
 EOF
-PID=$(curl -s -X POST "http://host.docker.internal:8188/prompt" -H "Content-Type: application/json" -d "{\"prompt\": $(cat /tmp/wf.json)}" | python3 -c "import sys,json;print(json.load(sys.stdin)['prompt_id'])")
+PID=$(curl -s -X POST "http://comfyui:8188/prompt" -H "Content-Type: application/json" -d "{\"prompt\": $(cat /tmp/wf.json)}" | python3 -c "import sys,json;print(json.load(sys.stdin)['prompt_id'])")
 echo "Generating... $PID"
 sleep 30
-FN=$(curl -s "http://host.docker.internal:8188/history/$PID" | python3 -c "import sys,json;d=json.load(sys.stdin);o=d.get('$PID',{}).get('outputs',{});print([i['filename'] for v in o.values() for i in v.get('images',[])][0] if o else '')")
-[ -n "$FN" ] && curl -s "http://host.docker.internal:8188/view?filename=$FN&type=output" -o output.png && echo "Saved: output.png"
+FN=$(curl -s "http://comfyui:8188/history/$PID" | python3 -c "import sys,json;d=json.load(sys.stdin);o=d.get('$PID',{}).get('outputs',{});print([i['filename'] for v in o.values() for i in v.get('images',[])][0] if o else '')")
+[ -n "$FN" ] && curl -s "http://comfyui:8188/view?filename=$FN&type=output" -o output.png && echo "Saved: output.png"
 ```
 
 ### VRAM Management
 
 ```bash
 # Free GPU memory before generation (if OOM errors)
-curl -s -X POST "http://host.docker.internal:8188/free" \
+curl -s -X POST "http://comfyui:8188/free" \
   -H "Content-Type: application/json" \
   -d '{"unload_models": true, "free_memory": true}'
 ```

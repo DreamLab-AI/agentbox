@@ -10,10 +10,10 @@
  * @see PRD-001 §Capabilities and adapters
  */
 
-const { randomUUID } = require('crypto');
 const { BaseAdapter } = require('../base');
 const { NotFound, SpawnError } = require('../errors');
 const CONTRACT_VERSIONS = require('../contract-versions');
+const uris = require('../../lib/uris');
 
 class StdioBridgeOrchestratorAdapter extends BaseAdapter {
   /**
@@ -32,7 +32,7 @@ class StdioBridgeOrchestratorAdapter extends BaseAdapter {
 
   async spawnAgent(spec = {}) {
     if (!spec.command) throw new SpawnError('spec.command is required');
-    const agentId = randomUUID();
+    const agentId = uris.mint({ kind: 'agent', localId: `stdio-${Date.now().toString(36)}` });
     const msg = { jsonrpc: '2.0', method: 'agent.spawn', id: agentId, params: spec };
     try {
       this._stdio.write(JSON.stringify(msg));
@@ -64,7 +64,7 @@ class StdioBridgeOrchestratorAdapter extends BaseAdapter {
     if (!agentId) throw new Error('agentId is required');
     const entry = this._agents.get(agentId);
     if (!entry) throw new NotFound('agent', agentId);
-    const msg = { jsonrpc: '2.0', method: 'agent.terminate', id: randomUUID(), params: { agentId } };
+    const msg = { jsonrpc: '2.0', method: 'agent.terminate', id: uris.mint({ kind: 'event', pubkey: process.env.AGENTBOX_PUBKEY || '0'.repeat(64), payload: { method: 'agent.terminate', agentId } }), params: { agentId } };
     this._stdio.write(JSON.stringify(msg));
     entry.status = 'terminated';
     return { agentId, status: 'terminated' };

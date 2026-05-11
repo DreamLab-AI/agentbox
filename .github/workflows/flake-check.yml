@@ -60,6 +60,15 @@ jobs:
       - name: Eval top-level outputs (catches regressions eval-only misses)
         run: |
           set -euo pipefail
+          # .#runtime is the canonical build target (nix build .#runtime).
+          # .#compose is a separate derivation; eval it separately so a missing
+          # attribute surfaces here rather than silently in build-multi-arch.
+          # Evaluation of .#compose also forces the E021 / audit_acknowledged
+          # check (builtins.seq _w021Check ...) — a missing [security].audit_acknowledged
+          # will throw at eval time and this step will fail loudly.
           nix eval --raw .#runtime.drvPath > /dev/null
           nix eval --raw .#compose.drvPath > /dev/null
-          echo "OK: .#runtime and .#compose derivations resolve"
+          echo "OK: .#runtime and .#compose derivations resolve (E021 audit gate passed)"
+
+      - name: Lint Nix files (statix)
+        run: nix shell nixpkgs#statix -c statix check

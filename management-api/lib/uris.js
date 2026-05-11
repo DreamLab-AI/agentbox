@@ -27,13 +27,12 @@
  *     produced by `resolveCanonical(urn)` at the management-api boundary
  *
  * Why pubkey hex and not bech32 npub?
- *   The DID layer is a name service consumed by non-Nostr tooling
- *   (W3C VC verifiers, DID resolvers, monitoring stacks). Hex pubkeys
- *   match the broader DID ecosystem (did:ethr, did:pkh) and don't
- *   require a bech32 decoder. The Nostr-internal layer (DDD-003,
- *   ADR-009, pod filesystem paths under pods/<npub>/) keeps using
- *   bech32 npub because that's the Nostr-protocol native form.
- *   Conversion happens at the resolver boundary.
+ *   Both the DID layer and the URN scope segments use 64-char
+ *   lowercase hex (BIP-340 x-only pubkey). This is consumed by
+ *   non-Nostr tooling (W3C VC verifiers, DID resolvers, monitoring
+ *   stacks) without requiring a bech32 decoder. Bech32 npub is only
+ *   used at the Nostr-relay wire boundary and in legacy pod filesystem
+ *   paths. Conversion happens at the relay/display edge.
  *
  * Three rules govern minting:
  *
@@ -86,6 +85,7 @@ const KINDS = Object.freeze({
   thing:      { ownerScope: false, contentAddressed: false, resolvableSurface: 'things' },
   dataset:    { ownerScope: true,  contentAddressed: false, resolvableSurface: 'memory' },
   bead:       { ownerScope: true,  contentAddressed: false, resolvableSurface: 'beads' },
+  agent:      { ownerScope: false, contentAddressed: false, resolvableSurface: 'agents' },
   meta:       { ownerScope: false, contentAddressed: false, resolvableSurface: 'meta' },
 });
 

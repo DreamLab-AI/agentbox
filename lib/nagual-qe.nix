@@ -31,8 +31,8 @@
 # consumed by agentbox swarms as a sidecar. tui is excluded — interactive
 # terminal mode is not part of the agentbox runtime contract.
 #
-# Licence: MIT (see upstream LICENSE). No aggregation analysis needed —
-# MIT is GPL-compatible and inherits cleanly into agentbox MPL-2.0.
+# Licence: MIT (see upstream LICENSE). MIT is AGPL-3.0-compatible; no
+# aggregation analysis needed for permissive components.
 
 { lib, pkgs }:
 
@@ -81,12 +81,9 @@ in
       pname   = "nagual-qe";
       inherit version src;
 
-      # Vendoring: upstream commits Cargo.lock at repo root, so the modern
-      # `useFetchCargoVendor + cargoHash` machinery resolves and fetches the
-      # entire vendor tree as a separate FOD on first build. cargoHash is
-      # verified, so the network access happens inside a hash-checked context
-      # that the Nix sandbox permits.
-      useFetchCargoVendor = true;
+      # Vendoring: upstream commits Cargo.lock at repo root. cargoHash is
+      # verified; the Nix sandbox permits network access inside a hash-checked FOD.
+      # useFetchCargoVendor is the default since nixpkgs 25.05 — no need to set it.
       inherit cargoHash;
 
       buildNoDefaultFeatures = true;

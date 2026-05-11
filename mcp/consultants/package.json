@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "Consultant tier MCP servers for agentbox (PRD-005 / ADR-011) — codex, gemini, zai, perplexity, deepseek",
   "private": true,
-  "license": "MPL-2.0",
+  "license": "AGPL-3.0",
   "engines": {
     "node": ">=20"
   },

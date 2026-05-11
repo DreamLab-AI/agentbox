@@ -18,7 +18,10 @@ All thresholds, agent definitions, methodology settings, and quality gates are d
 |-------------|-------------------|
 | "85% coverage" | `quality_gates.coverage.minimum: 85` |
 | "TDD red-green-refactor" | `methodologies.tdd.phases` |
-| "111+ agents" | `swarm.domains[*].agents` |
+| "EDD 7-step loop" (v1.2.0) | `methodologies.edd.loop` |
+| "Evidence Coverage gate" (v1.2.0) | `quality_gates.evidence_coverage` |
+| "anti-fox separation" (v1.2.0) | `methodologies.edd.anti_fox` |
+| "114+ agents" | `swarm.domains[*].agents` |
 | "SONA balanced mode" | `learning.sona.mode: balanced` |
 | "WCAG AA" | `quality_gates.accessibility.level: AA` |
 
@@ -35,11 +38,19 @@ Copy everything below the line and paste it when starting a new project:
 
 ## SKILL ACTIVATION
 
-I am invoking the **Build with Quality** skill (v1.1.0) which combines:
-- **Claude Flow V3**: 60+ development agents
-- **Agentic QE**: 51 quality engineering agents
+I am invoking the **Build with Quality** skill (v1.2.0) which combines:
+- **Claude Flow V3**: 62+ development agents (incl. expectation-author, tdd-stabilizer)
+- **Agentic QE**: 53 quality engineering agents (incl. evidence-producer, evidence-auditor)
 - **Shared Coordination**: 3 coordination agents
-- **Total**: 111+ specialized agents
+- **Total**: 114+ specialized agents
+
+**v1.2.0 adds Expectation-Driven Development (EDD)** as the design-time
+conversation layer that wraps the existing DDD/ADR/TDD stack. See
+EDD-PROTOCOL.md. Key contract: every shipped feature has an EXP-NNN
+artifact, every expectation has executed evidence with receipts, the
+auditor agent is on a different model family from the producer, and
+`regression_critical` expectations are stabilized as automated tests
+before merge.
 
 ## PREREQUISITES
 
@@ -96,6 +107,34 @@ claude mcp list             # Should show 'aqe' in list
 - [ ] [Criterion 2]
 - [ ] [Criterion 3]
 
+## EXPECTATIONS (EDD — v1.2.0)
+
+Author 2-6 expectations BEFORE the coder agent runs. Each expectation
+captures one behaviour you'd explain in a single breath, with edge cases
+and explicit counter-examples. The expectation-author agent will help.
+
+```yaml
+# Save each as .claude/expectations/EXP-NNN.md
+- id: EXP-001
+  priority: critical          # critical | high | medium | low
+  regression_critical: true   # if true, MUST be stabilized as test before merge
+  evidence_category: executable  # executable | partially-verifiable | not-executable
+  expectation: |
+    [Single-sentence behavioural claim, then 2-6 specific sentences:
+     numbers, ordering, error modes, what should NOT happen]
+  in_scope: [edge case 1, edge case 2]
+  out_of_scope: [adjacent concern in another EXP]
+  counter_examples: [behaviour that would falsify this expectation]
+```
+
+**Specificity rule:** "Handles large uploads efficiently" is not an
+expectation. "A 500MB upload completes within 30s and never holds the full
+file in memory; a 5GB upload uses streaming and peaks under 256MB RSS" is.
+
+**Workshop pattern** (recommended for shared business logic): two humans
+draft expectations together, then one reviews the other's. Silent
+contradictions between expectations are worse than no spec.
+
 ---
 
 ## SWARM TOPOLOGY
@@ -128,15 +167,45 @@ Tasks:
 5. Select optimal swarm topology for task complexity
 ```
 
-### Phase 2: Implementation (TDD Cycle)
+### Phase 1.5: Expectation Authoring (NEW v1.2.0 — EDD step 1)
+```
+Agents: expectation-author, unified-coordinator
+Human: required (signs off expectations as `accepted`)
+Tasks:
+1. Draft EXP-NNN artifacts in .claude/expectations/ (one per behaviour)
+2. Apply specificity rule (numbers, ordering, error modes)
+3. List counter-examples ("must NOT happen")
+4. Tag each with priority + regression_critical + evidence_category
+5. Workshop pattern for shared business logic (2nd human reviews)
+GATE: human signs off expectations BEFORE coder agent starts implementation
+```
+
+### Phase 2: Implementation (TDD Cycle, informed by expectations)
 ```
 Agents: coder, unit-test-generator, reviewer, coverage-analyzer
+Inputs: EXP-NNN artifacts + SPEC + ADR
 Cycle:
 1. RED: Generate failing test first
 2. GREEN: Implement minimum code to pass
 3. REFACTOR: Clean up while maintaining green
 4. COMMIT: After each green phase
 Repeat until feature complete
+```
+
+### Phase 2.5: Evidence Production & Audit (NEW v1.2.0 — EDD steps 3-4)
+```
+Agents: evidence-producer (model A), evidence-auditor (model family ≠ A)
+Human: required (adversarial review in EDD step 5)
+Tasks:
+1. evidence-producer executes scenarios per EXP-NNN with tool use
+2. Captures execution receipts: command + raw output + timestamp + git_sha
+3. Writes .claude/evidence/EXP-NNN.evidence.md
+4. evidence-auditor (DIFFERENT MODEL FAMILY) verifies independently
+   - Mandate: find a counter-example, not confirm
+   - MUST run ≥1 adversarial probe the producer didn't run
+5. Human reviews adversarially: "what input would break this?"
+6. Loop back to Phase 2 if gaps; iterate (EDD step 6)
+GATE: narrative evidence ("I tested it and it works") is auto-rejected
 ```
 
 ### Phase 3: Quality Validation
@@ -150,6 +219,18 @@ Tasks:
 4. Execute defect prediction model
 5. Perform chaos testing
 6. Audit compliance (WCAG, security)
+7. Evidence Coverage gate: every feature has expectation, every expectation
+   has executed evidence, auditor distinct, zero stale evidence
+```
+
+### Phase 3.5: Stabilization (NEW v1.2.0 — EDD step 7)
+```
+Agents: tdd-stabilizer
+Tasks:
+1. For every regression_critical expectation, generate an automated test
+2. Test ID linked to EXP-NNN via stabilized_by frontmatter field
+3. Expectation status: proven -> stable
+GATE: cannot ship a regression_critical EXP without a stabilizing test
 ```
 
 ### Phase 4: Learning & Persistence
@@ -205,6 +286,18 @@ Tasks:
 | Resource exhaustion | >=75% | Y |
 | Graceful degradation | >=80% | Y |
 
+### Gate 6: Evidence Coverage (NEW v1.2.0 — EDD)
+| Check | Threshold | Required |
+|-------|-----------|----------|
+| Every shipped feature has ≥1 EXP-NNN | 100% | Y |
+| Every EXP has executed evidence | 100% | Y |
+| Evidence has receipts (cmd + raw output + SHA + timestamp) | 100% | Y |
+| evidence-auditor agent ≠ evidence-producer agent | 100% | Y |
+| evidence-auditor model family ≠ producer model family | 100% | Y |
+| Auditor ran ≥1 adversarial counter-example probe | 100% | Y |
+| `regression_critical` EXP has `stabilized_by` test reference | 100% | Y |
+| Stale evidence (>30 days OR post-SHA-drift) | 0 entries | Y |
+
 ---
 
 ## MODEL ROUTING (TinyDancer)
@@ -221,6 +314,41 @@ Tasks:
 ---
 
 ## DEVELOPMENT METHODOLOGIES
+
+### Expectation-Driven Development (EDD) — NEW v1.2.0
+```yaml
+artifacts:
+  expectations: .claude/expectations/EXP-NNN.md  # one behaviour per file
+  evidence: .claude/evidence/EXP-NNN.evidence.md  # execution receipts
+
+loop:
+  1_formulate: human + expectation-author
+  2_implement: coder (input: EXP + SPEC + ADR)
+  3_produce: evidence-producer (executes scenarios, captures receipts)
+  4_audit: evidence-auditor (DIFFERENT model family, adversarial probe)
+  5_challenge: human (focus: subjective qualities, scope gaps)
+  6_iterate: loop back to step 2 if gaps
+  7_stabilize: tdd-stabilizer (regression_critical -> automated test)
+
+evidence_categories:
+  executable: gold standard (functions, APIs, scripts)
+  partially_verifiable: plans/dry-runs (infra, schemas)
+  not_executable: requires human spot-check (UI, third-party)
+
+anti_fox:
+  producer_role: evidence-producer
+  auditor_role: evidence-auditor (different agent, different model family)
+  narrative_evidence: auto-rejected
+  auditor_mandate: find counter-example, do not confirm
+
+stabilization:
+  required_when: regression_critical == true
+  cannot_ship_without: stabilized_by test reference
+
+versioning:
+  staleness: 30 days OR git SHA drift
+  stale_blocks_gate: true
+```
 
 ### Domain-Driven Design (DDD)
 ```yaml
@@ -322,7 +450,11 @@ exploration_rate: 0.1
 
 At completion, ensure:
 
-- [ ] All code implemented following TDD
+- [ ] EXP-NNN expectations authored, signed off by human (NEW v1.2.0)
+- [ ] All code implemented following TDD, against the expectations
+- [ ] Evidence files in .claude/evidence/ with receipts (NEW v1.2.0)
+- [ ] Auditor verdicts recorded by a different agent than producer (NEW v1.2.0)
+- [ ] Every regression_critical EXP has stabilized_by test reference (NEW v1.2.0)
 - [ ] ADR documented for significant decisions
 - [ ] Unit tests with >=85% coverage
 - [ ] Integration tests for cross-module interactions
@@ -330,9 +462,10 @@ At completion, ensure:
 - [ ] Security scan passed (0 critical/high)
 - [ ] Accessibility audit passed (WCAG AA)
 - [ ] Chaos testing completed
-- [ ] Patterns captured in ReasoningBank
+- [ ] Evidence Coverage gate passed (NEW v1.2.0)
+- [ ] Patterns AND high-quality expectations captured in ReasoningBank
 - [ ] Code reviewed and approved
-- [ ] All quality gates passed
+- [ ] All 6 quality gates passed
 - [ ] Committed with descriptive messages
 - [ ] Pushed to feature branch
 
@@ -355,23 +488,32 @@ Use these MCP tools in ONE parallel batch:
 ```
 mcp__claude-flow__swarm_init {
   topology: "hierarchical-mesh",
-  maxAgents: 13,
+  maxAgents: 17,
   strategy: "parallel"
 }
 
 mcp__claude-flow__agent_spawn { type: "coordinator", name: "unified-coordinator" }
 mcp__claude-flow__agent_spawn { type: "architect", name: "system-architect" }
-mcp__claude-flow__agent_spawn { type: "coder", name: "primary-developer" }
-mcp__claude-flow__agent_spawn { type: "coder", name: "secondary-developer" }
+mcp__claude-flow__agent_spawn { type: "researcher", name: "expectation-author", model: "sonnet" }     // NEW v1.2.0
+mcp__claude-flow__agent_spawn { type: "coder", name: "primary-developer", model: "sonnet" }
+mcp__claude-flow__agent_spawn { type: "coder", name: "secondary-developer", model: "sonnet" }
 mcp__claude-flow__agent_spawn { type: "reviewer", name: "code-reviewer" }
 mcp__claude-flow__agent_spawn { type: "tester", name: "test-strategist" }
 mcp__claude-flow__agent_spawn { type: "tester", name: "unit-test-generator" }
 mcp__claude-flow__agent_spawn { type: "tester", name: "e2e-test-generator" }
+mcp__claude-flow__agent_spawn { type: "tester", name: "tdd-stabilizer" }                              // NEW v1.2.0
+mcp__claude-flow__agent_spawn { type: "tester", name: "evidence-producer", model: "sonnet" }          // NEW v1.2.0 — PRODUCER
+mcp__claude-flow__agent_spawn { type: "analyst", name: "evidence-auditor", model: "opus" }            // NEW v1.2.0 — AUDITOR (different model family)
 mcp__claude-flow__agent_spawn { type: "analyst", name: "coverage-analyzer" }
 mcp__claude-flow__agent_spawn { type: "security", name: "security-scanner" }
 mcp__claude-flow__agent_spawn { type: "researcher", name: "tech-researcher" }
 mcp__claude-flow__agent_spawn { type: "coordinator", name: "quality-coordinator" }
 ```
+
+**Anti-fox rule:** `evidence-producer` and `evidence-auditor` MUST be on
+different model families. The example above pairs Sonnet producer with
+Opus auditor; Sonnet+Haiku or Opus+Haiku also work. Same-family pairs
+inherit the same blind spots and break the audit.
 
 Then orchestrate and monitor:
 ```
@@ -388,19 +530,23 @@ mcp__claude-flow__swarm_status { verbose: true }
 
 #### Step 1: Initialize Swarm
 ```bash
-npx claude-flow@alpha swarm init --topology hierarchical-mesh --max-agents 13 --strategy parallel
+npx claude-flow@alpha swarm init --topology hierarchical-mesh --max-agents 17 --strategy parallel
 ```
 
 #### Step 2: Spawn Agents (run in parallel via Bash)
 ```bash
 npx claude-flow@alpha agent spawn --type coordinator --name unified-coordinator &
 npx claude-flow@alpha agent spawn --type architect --name system-architect &
-npx claude-flow@alpha agent spawn --type coder --name primary-developer &
-npx claude-flow@alpha agent spawn --type coder --name secondary-developer &
+npx claude-flow@alpha agent spawn --type researcher --name expectation-author --model sonnet &       # NEW v1.2.0
+npx claude-flow@alpha agent spawn --type coder --name primary-developer --model sonnet &
+npx claude-flow@alpha agent spawn --type coder --name secondary-developer --model sonnet &
 npx claude-flow@alpha agent spawn --type reviewer --name code-reviewer &
 npx claude-flow@alpha agent spawn --type tester --name test-strategist &
 npx claude-flow@alpha agent spawn --type tester --name unit-test-generator &
 npx claude-flow@alpha agent spawn --type tester --name e2e-test-generator &
+npx claude-flow@alpha agent spawn --type tester --name tdd-stabilizer &                              # NEW v1.2.0
+npx claude-flow@alpha agent spawn --type tester --name evidence-producer --model sonnet &            # NEW v1.2.0 — PRODUCER
+npx claude-flow@alpha agent spawn --type analyst --name evidence-auditor --model opus &              # NEW v1.2.0 — AUDITOR (different model family)
 npx claude-flow@alpha agent spawn --type analyst --name coverage-analyzer &
 npx claude-flow@alpha agent spawn --type security --name security-scanner &
 npx claude-flow@alpha agent spawn --type researcher --name tech-researcher &
@@ -499,14 +645,18 @@ The swarm will:
 ### Minimal Invocation (Copy & Customize)
 
 ```markdown
-Build with Quality skill (v1.1.0).
+Build with Quality skill (v1.2.0).
 
 Project: [NAME] | Stack: [TECH] | Task: [DESCRIPTION]
 
-Methodology: DDD + ADR + TDD
-Quality: 85% coverage, security scan, WCAG AA
+Methodology: EDD + DDD + ADR + TDD
+Quality: 85% coverage, security scan, WCAG AA, evidence coverage
 
-Execute and deliver tested code.
+Expectations: I will author 2-6 EXP-NNN before coder runs.
+Anti-fox: producer (sonnet) + auditor (opus) on different model families.
+Stabilization: regression_critical EXPs MUST have stabilized_by tests.
+
+Execute and deliver tested code with proven evidence.
 ```
 
 ### Rapid Prototype (Reduced Gates)
@@ -673,6 +823,7 @@ npm install -g agentic-qe && aqe init --auto && claude mcp add aqe -- aqe-mcp
 
 ---
 
-*Template Version: 1.1.0*
-*Last Updated: 2026-02-01*
+*Template Version: 1.2.0*
+*Last Updated: 2026-05-03*
 *Compatible with: claude-flow@alpha, agentic-qe@latest*
+*New in v1.2.0: Expectation-Driven Development loop, evidence-producer / evidence-auditor agents, Evidence Coverage gate. See EDD-PROTOCOL.md.*

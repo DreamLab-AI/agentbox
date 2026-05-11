@@ -148,7 +148,7 @@ in
 
         nativeBuildInputs = [
           pkgs.nodejs_20
-          pkgs.nodePackages.npm
+          pkgs.nodejs_20
           pkgs.cacert
         ];
 
@@ -220,6 +220,27 @@ in
         # Install package tree under $out/lib/<pname>
         mkdir -p $out/lib/${pname}
         cp -r ./. $out/lib/${pname}/
+
+        # ---- Sharp <0.33 native-binary loader bridge --------------------
+        # Stage 2's `npm install --ignore-scripts` skips sharp's postinstall
+        # hook, which is the step that copies the platform native binary
+        # into <sharp-pkg>/build/Release/sharp-<platform>.node. The companion
+        # @img/sharp-<platform> package IS installed as a regular dep and
+        # ships the same binary at lib/sharp-<platform>.node. We bridge the
+        # two so sharp@<0.33's relative-require loader resolves the binary
+        # without needing network access at build time. Idempotent: a no-op
+        # when sharp is absent or already wired correctly. Covers ruflo,
+        # @claude-flow/cli, and any other consumer that depends on sharp.
+        nm="$out/lib/${pname}/node_modules"
+        for plat in linux-x64 linuxmusl-x64 linux-arm64 linuxmusl-arm64 darwin-x64 darwin-arm64; do
+          if [ -d "$nm/@img/sharp-$plat/lib" ] \
+             && [ -d "$nm/sharp" ] \
+             && [ ! -e "$nm/sharp/build/Release/sharp-$plat.node" ]; then
+            mkdir -p "$nm/sharp/build/Release"
+            ln -s "../../../@img/sharp-$plat/lib/sharp-$plat.node" \
+                  "$nm/sharp/build/Release/sharp-$plat.node"
+          fi
+        done
 
         # Resolve the entry-point from package.json "bin" field.
         # We use node to parse it so we handle both string and object forms.

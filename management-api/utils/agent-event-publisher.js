@@ -6,6 +6,7 @@
  */
 
 const EventEmitter = require('events');
+const uris = require('../lib/uris');
 
 // Agent action types matching the Rust binary protocol
 const AgentActionType = {
@@ -43,15 +44,38 @@ class AgentEventPublisher extends EventEmitter {
    */
   emitAgentAction(event) {
     const fullEvent = {
+      version: 3,
       id: this.nextEventId++,
       timestamp: Date.now(),
       type: 'agent_action',
+      direction: event.direction || 'outbound',
       ...event,
       // Ensure action_type is a number
       action_type: typeof event.action_type === 'string'
         ? AgentActionType[event.action_type.toUpperCase()] || 0
         : event.action_type || 0
     };
+
+    // Phase 1 of ADR-014 / ADR-059: optional identity attribution.
+    // When the caller provides any of these fields they are forwarded;
+    // when omitted, the envelope still validates and renders correctly.
+    //   source_urn:  did:nostr:<hex> | urn:agentbox:agent:<scope>:<local>
+    //   target_urn:  urn:visionclaw:kg:<hex-pubkey>:<sha256-12-hex>  (foreign URN)
+    //   pubkey:      did:nostr hex of the agent or its operator
+    if (event.source_urn !== undefined) fullEvent.source_urn = event.source_urn;
+    if (event.target_urn !== undefined) fullEvent.target_urn = event.target_urn;
+    if (event.pubkey !== undefined)     fullEvent.pubkey     = event.pubkey;
+
+    // Auto-populate identity fields from environment when not supplied
+    // by the caller, so every event carries attribution by default.
+    if (!fullEvent.source_urn) {
+      fullEvent.source_urn = process.env.AGENTBOX_URN
+        || process.env.AGENTBOX_DID
+        || null;
+    }
+    if (!fullEvent.pubkey) {
+      fullEvent.pubkey = process.env.AGENTBOX_DID || null;
+    }
 
     // Buffer the event
     this.eventBuffer.push(fullEvent);
@@ -208,6 +232,8 @@ class AgentEventPublisher extends EventEmitter {
           )?.toLowerCase() || 'query',
           timestamp: event.timestamp,
           duration_ms: event.duration_ms,
+          source_urn: event.source_urn || null,
+          pubkey: event.pubkey || null,
           metadata: event.metadata || {}
         },
         timestamp: new Date().toISOString()

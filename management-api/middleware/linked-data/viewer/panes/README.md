@@ -14,6 +14,7 @@ profile, markdown, todo, playlist, sharing, source).
 | `runtime-pane.js` | S11 | `/v1/meta` — the agentbox runtime contract |
 | `dcat-pane.js` | S9 | DCAT-3 catalogues, e.g. memory namespace catalogues |
 | `handoff-pane.js` | S2 | Agent-to-agent verbs (HandoffClaim, RequestBriefing, DeliverArtefact) |
+| `enrichment-review-pane.js` | S12 | Broker Review Surface (G6, PRD-013): two-pane diff of agent-proposed knowledge enrichments with inline approval actions |
 
 ## Writing a new pane
 

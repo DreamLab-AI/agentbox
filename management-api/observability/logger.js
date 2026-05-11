@@ -76,14 +76,11 @@ function logAdapterDispatch(context) {
   }
 }
 
-module.exports = {
-  // Expose base pino logger for backward compatibility
-  ...baseLogger,
-  // Expose structured dispatch logger
+module.exports = Object.assign(Object.create(baseLogger), {
   logAdapterDispatch,
-  // Re-export base logger methods
   info: baseLogger.info.bind(baseLogger),
   warn: baseLogger.warn.bind(baseLogger),
   error: baseLogger.error.bind(baseLogger),
-  debug: baseLogger.debug.bind(baseLogger)
-};
+  debug: baseLogger.debug.bind(baseLogger),
+  child: baseLogger.child.bind(baseLogger),
+});

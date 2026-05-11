@@ -1,6 +1,6 @@
 # Adapter pattern
 
-How agentbox plugs into durable state. Canonical spec: [ADR-005](../reference/adr/ADR-005-pluggable-adapter-architecture.md).
+How agentbox plugs into durable state. Canonical spec: [ADR-005](../reference/adr/ADR-005-pluggable-adapter-architecture.md). For the operator's view, see [user/configuration.md § adapters](../user/configuration.md#adapters).
 
 ## Context in one paragraph
 
@@ -82,8 +82,24 @@ Considered during the ADR-005 radical-upgrade sprint; rejected because each slot
 4. Instantiates with slot-specific config.
 5. Calls `connect()` on each with 10 s timeout.
 6. On connect failure:
-   - non-critical slots → degrade to `off`, `/health` reports `degraded`
-   - `orchestrator` failure → `process.exit(1)` (no agent work without it)
+   - non-critical slots degrade to `off`, `/health` reports `degraded`
+   - `orchestrator` failure is fatal: `process.exit(1)` (no agent work without it)
+
+```mermaid
+flowchart TB
+    BOOT["management-api starts"] --> LOAD["Read agentbox.toml"]
+    LOAD --> LOOP["For each of 5 slots"]
+    LOOP --> REQ["require(slot/impl.js)"]
+    REQ -->|"unknown impl"| FAIL_FAST["Fail fast — crash"]
+    REQ -->|"found"| INST["Instantiate adapter"]
+    INST --> CONN["connect() — 10 s timeout"]
+    CONN -->|"success"| ATTACH["Attach to app.adapters"]
+    CONN -->|"failure + orchestrator"| FATAL["process.exit(1)"]
+    CONN -->|"failure + non-critical"| DEGRADE["Degrade to off"]
+    DEGRADE --> ATTACH
+    ATTACH --> HEALTH["/health reports per-slot status"]
+    ATTACH --> META["/v1/meta reports impl names"]
+```
 
 The resolved adapters are attached to the Fastify app: `app.adapters.{beads,pods,memory,events,orchestrator}`.
 
@@ -130,7 +146,17 @@ That is the minimum bar a new slot must clear before any `local-*` or `external`
 
 ## Writing a new impl for an existing slot
 
-Say you're writing a `beads/external-memcached` impl.
+The five-step workflow for adding a new implementation:
+
+```mermaid
+flowchart LR
+    A["1. Create<br/>adapters/slot/impl.js"] --> B["2. Register<br/>schema enum"]
+    B --> C["3. Contract test<br/>add to IMPLS"]
+    C --> D["4. Impl tests<br/>unit + integration"]
+    D --> E["5. Document<br/>config + user guide"]
+```
+
+Say you are writing a `beads/external-memcached` impl.
 
 ### 1. Create the file
 

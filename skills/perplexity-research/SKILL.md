@@ -34,7 +34,7 @@ Executes research queries against the Perplexity AI API to get real-time web inf
 Ensure your Perplexity API key is configured:
 
 ```bash
-# In your project root or NetworkPlan/.env
+# In your project root or <your-project>/.env
 echo "PERPLEXITY_API_KEY=your_key_here" >> .env
 ```
 
@@ -53,7 +53,7 @@ Use this skill when you need to:
 When activated, this skill will:
 
 1. **Construct Optimised Query**: Format your research request with context, task, focus, and deliverable structure
-2. **Call Perplexity API**: Use `llama-3.1-sonar-huge-128k-online` model for comprehensive research
+2. **Call Perplexity API**: Use `sonar-pro` model for comprehensive research
 3. **Extract Citations**: Capture source URLs and references
 4. **Format Results**: Present findings with structured citations
 
@@ -62,6 +62,7 @@ When activated, this skill will:
 ```python
 import os
 import requests
+from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -82,7 +83,7 @@ def research_query(prompt: str, model: str = "sonar-pro"):
         "messages": [
             {
                 "role": "system",
-                "content": "You are a helpful research assistant. Provide detailed, accurate information with current pricing and purchase links. Today's date is November 15, 2025."
+                "content": f"You are a helpful research assistant. Provide detailed, accurate information with current pricing and purchase links. Today's date is {datetime.now().strftime('%B %d, %Y')}."
             },
             {
                 "role": "user",
@@ -206,7 +207,7 @@ def save_research(topic: str, result: dict, output_dir: Path):
 
 ## Integration with Existing Scripts
 
-The skill complements the existing `NetworkPlan/scripts/perplexity_research.py` script:
+The skill complements the existing `<your-project>/scripts/perplexity_research.py` script:
 
 - **Script**: Batch research execution for predefined topics
 - **Skill**: Interactive research for ad-hoc queries via Claude Code
@@ -214,7 +215,7 @@ The skill complements the existing `NetworkPlan/scripts/perplexity_research.py` 
 ### Example: Extend Existing Script
 
 ```python
-# Add to RESEARCH_PROMPTS in perplexity_research.py
+# Add to RESEARCH_PROMPTS in <your-project>/scripts/perplexity_research.py
 RESEARCH_PROMPTS = {
     # ... existing prompts ...
 
@@ -256,7 +257,7 @@ Claude:
 **API Key Not Found**
 ```bash
 # Verify .env file exists and contains key
-cat NetworkPlan/.env | grep PERPLEXITY_API_KEY
+cat <your-project>/.env | grep PERPLEXITY_API_KEY
 ```
 
 **Rate Limiting**
@@ -425,13 +426,13 @@ Keep API key secure:
 echo ".env" >> .gitignore
 
 # Verify exclusion
-git check-ignore NetworkPlan/.env
+git check-ignore <your-project>/.env
 ```
 
 Update model selection as Perplexity releases new versions:
 ```python
 # Check latest models at https://docs.perplexity.ai/models
-model = "llama-3.1-sonar-huge-128k-online"  # Update as needed
+model = "sonar-pro"  # Update as needed; check latest models at https://docs.perplexity.ai/models
 ```
 
 ---
@@ -447,5 +448,5 @@ model = "llama-3.1-sonar-huge-128k-online"  # Update as needed
 ## References
 
 - Perplexity API Docs: https://docs.perplexity.ai
-- NetworkPlan Script: `NetworkPlan/scripts/perplexity_research.py`
+- Project Script: `<your-project>/scripts/perplexity_research.py`
 - Example Prompts: See `RESEARCH_PROMPTS` in script

@@ -11,10 +11,10 @@
  */
 
 const Database = require('better-sqlite3');
-const { randomUUID } = require('crypto');
 const { BaseAdapter } = require('../base');
 const { NotFound, AlreadyClaimed } = require('../errors');
 const CONTRACT_VERSIONS = require('../contract-versions');
+const uris = require('../../lib/uris');
 
 const SCHEMA = `
   CREATE TABLE IF NOT EXISTS beads (
@@ -63,8 +63,9 @@ class LocalSqliteBeadsAdapter extends BaseAdapter {
   async createEpic(opts = {}) {
     if (!opts.title) throw new Error('title is required');
     const now = new Date().toISOString();
+    const pubkey = opts.actor || process.env.AGENTBOX_PUBKEY || '0'.repeat(64);
     const row = {
-      id: randomUUID(),
+      id: uris.mint({ kind: 'bead', pubkey, payload: { title: opts.title, type: 'epic', ts: now } }),
       title: opts.title,
       type: 'epic',
       parent_id: null,
@@ -98,8 +99,9 @@ class LocalSqliteBeadsAdapter extends BaseAdapter {
     const parent = this._db.prepare('SELECT id FROM beads WHERE id = ?').get(opts.parent_id);
     if (!parent) throw new NotFound('epic', opts.parent_id);
     const now = new Date().toISOString();
+    const childPubkey = opts.actor || process.env.AGENTBOX_PUBKEY || '0'.repeat(64);
     const row = {
-      id: randomUUID(),
+      id: uris.mint({ kind: 'bead', pubkey: childPubkey, payload: { title: opts.title, type: 'child', parent: opts.parent_id, ts: now } }),
       title: opts.title,
       type: 'child',
       parent_id: opts.parent_id,

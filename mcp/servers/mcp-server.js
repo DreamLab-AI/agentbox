@@ -8,9 +8,62 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
 import { EnhancedMemory } from '../memory/enhanced-memory.js';
 // Use the same memory system that npx commands use - singleton instance
 import { memoryStore } from '../memory/fallback-store.js';
+
+// ADR-063: URN-traced memory entries via canonical URI grammar (ADR-013)
+const _require = createRequire(import.meta.url);
+let urisMint = null;
+try {
+  const uris = _require('../../management-api/lib/uris.js');
+  urisMint = uris.mint;
+} catch {
+  // uris.js not loadable — URN minting degrades to null (non-fatal)
+}
+
+// Operator identity — set by sovereign-bootstrap at boot via /run/agentbox/identity.env
+const MGMT_API_KEY  = process.env.MANAGEMENT_API_KEY   || '';
+const MGMT_API_PORT = process.env.MANAGEMENT_API_PORT  || '9090';
+const MGMT_API_BASE = `http://127.0.0.1:${MGMT_API_PORT}`;
+
+/**
+ * Write a memory entry to the operator's Solid pod via the management API.
+ * Falls back gracefully — never throws. Returns the URN on success, null on failure.
+ */
+async function podMemoryStore(key, value, namespace) {
+  if (!MGMT_API_KEY) return null;
+  try {
+    const res = await fetch(`${MGMT_API_BASE}/v1/memory`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${MGMT_API_KEY}` },
+      body: JSON.stringify({ key, value: typeof value === 'string' ? value : JSON.stringify(value), namespace }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return data.urn || null;
+    }
+  } catch { /* fall through to SQLite */ }
+  return null;
+}
+
+/**
+ * Read a memory entry from the operator's Solid pod via the management API.
+ * Returns the parsed entry body, or null on miss/error.
+ */
+async function podMemoryRetrieve(key, namespace) {
+  if (!MGMT_API_KEY) return null;
+  try {
+    const res = await fetch(
+      `${MGMT_API_BASE}/v1/memory/${encodeURIComponent(key)}?namespace=${encodeURIComponent(namespace)}`,
+      { headers: { 'Authorization': `Bearer ${MGMT_API_KEY}` } },
+    );
+    if (res.ok) { const d = await res.json(); return d.value ?? d; }
+    if (res.status === 404) return null;
+  } catch { /* fall through */ }
+  return null;
+}
 
 // Initialize agent tracker
 await import('./implementations/agent-tracker.js').catch(() => {
@@ -2132,40 +2185,58 @@ class ClaudeFlowMCPServer {
 
     try {
       switch (args.action) {
-        case 'store':
+        case 'store': {
+          const ns = args.namespace || 'default';
+          // ADR-063: attempt pod write first; fall back to SQLite
+          let memoryUrn = await podMemoryStore(args.key, args.value, ns);
+          let podStored = !!memoryUrn;
+
+          if (!memoryUrn && urisMint) {
+            try { memoryUrn = urisMint({ kind: 'memory', localId: `${ns}.${args.key}` }); } catch { /* degrade */ }
+          }
+
           const storeResult = await this.memoryStore.store(args.key, args.value, {
-            namespace: args.namespace || 'default',
+            namespace: ns,
             ttl: args.ttl,
-            metadata: {
-              sessionId: this.sessionId,
-              storedBy: 'mcp-server',
-              type: 'knowledge',
-            },
+            metadata: { sessionId: this.sessionId, storedBy: 'mcp-server', type: 'knowledge', urn: memoryUrn },
           });
 
           console.error(
-            `[${new Date().toISOString()}] INFO [claude-flow-mcp] Stored in shared memory: ${args.key} (namespace: ${args.namespace || 'default'})`,
+            `[${new Date().toISOString()}] INFO [claude-flow-mcp] Stored: ${args.key} (ns: ${ns}${memoryUrn ? ', urn: ' + memoryUrn : ''}${podStored ? ', pod: ok' : ''})`,
           );
 
           return {
             success: true,
             action: 'store',
             key: args.key,
-            namespace: args.namespace || 'default',
+            namespace: ns,
             stored: true,
-            size: storeResult.size || args.value.length,
+            size: storeResult.size || (typeof args.value === 'string' ? args.value.length : JSON.stringify(args.value).length),
             id: storeResult.id,
-            storage_type: this.memoryStore.isUsingFallback() ? 'in-memory' : 'sqlite',
+            urn: memoryUrn,
+            pod_stored: podStored,
+            storage_type: podStored ? 'solid-pod' : (this.memoryStore.isUsingFallback() ? 'in-memory' : 'sqlite'),
             timestamp: new Date().toISOString(),
           };
+        }
 
-        case 'retrieve':
-          const value = await this.memoryStore.retrieve(args.key, {
-            namespace: args.namespace || 'default',
-          });
+        case 'retrieve': {
+          const rNs = args.namespace || 'default';
+          // Try pod first, fall back to SQLite
+          let value = await podMemoryRetrieve(args.key, rNs);
+          let podHit = value !== null;
+          if (!podHit) {
+            value = await this.memoryStore.retrieve(args.key, { namespace: rNs });
+          }
+
+          // ADR-063: reconstruct URN for retrieved entry
+          let retrieveUrn = null;
+          if (urisMint && value !== null) {
+            try { retrieveUrn = urisMint({ kind: 'memory', localId: `${rNs}.${args.key}` }); } catch { /* degrade */ }
+          }
 
           console.error(
-            `[${new Date().toISOString()}] INFO [claude-flow-mcp] Retrieved from shared memory: ${args.key} (found: ${value !== null})`,
+            `[${new Date().toISOString()}] INFO [claude-flow-mcp] Retrieved: ${args.key} (found: ${value !== null}${podHit ? ', source: pod' : ''})`,
           );
 
           return {
@@ -2174,16 +2245,30 @@ class ClaudeFlowMCPServer {
             key: args.key,
             value: value,
             found: value !== null,
-            namespace: args.namespace || 'default',
-            storage_type: this.memoryStore.isUsingFallback() ? 'in-memory' : 'sqlite',
+            urn: retrieveUrn,
+            namespace: rNs,
+            pod_hit: podHit,
+            storage_type: podHit ? 'solid-pod' : (this.memoryStore.isUsingFallback() ? 'in-memory' : 'sqlite'),
             timestamp: new Date().toISOString(),
           };
+        }
 
         case 'list':
           const entries = await this.memoryStore.list({
             namespace: args.namespace || 'default',
             limit: 100,
           });
+
+          // ADR-063: annotate listed entries with URNs
+          const ns = args.namespace || 'default';
+          const annotated = urisMint
+            ? entries.map(e => {
+                try {
+                  const k = typeof e === 'string' ? e : e.key;
+                  return { ...(typeof e === 'string' ? { key: e } : e), urn: urisMint({ kind: 'memory', localId: `${ns}.${k}` }) };
+                } catch { return e; }
+              })
+            : entries;
 
           console.error(
             `[${new Date().toISOString()}] INFO [claude-flow-mcp] Listed shared memory entries: ${entries.length} (namespace: ${args.namespace || 'default'})`,
@@ -2193,7 +2278,7 @@ class ClaudeFlowMCPServer {
             success: true,
             action: 'list',
             namespace: args.namespace || 'default',
-            entries: entries,
+            entries: annotated,
             count: entries.length,
             storage_type: this.memoryStore.isUsingFallback() ? 'in-memory' : 'sqlite',
             timestamp: new Date().toISOString(),
@@ -2224,6 +2309,16 @@ class ClaudeFlowMCPServer {
             limit: 50,
           });
 
+          // ADR-063: annotate search results with URNs
+          const searchNs = args.namespace || 'default';
+          const urnResults = urisMint
+            ? results.map(r => {
+                try {
+                  return { ...r, urn: urisMint({ kind: 'memory', localId: `${searchNs}.${r.key}` }) };
+                } catch { return r; }
+              })
+            : results;
+
           console.error(
             `[${new Date().toISOString()}] INFO [claude-flow-mcp] Searched shared memory: ${results.length} results for "${args.value}"`,
           );
@@ -2233,7 +2328,7 @@ class ClaudeFlowMCPServer {
             action: 'search',
             pattern: args.value,
             namespace: args.namespace || 'default',
-            results: results,
+            results: urnResults,
             count: results.length,
             storage_type: this.memoryStore.isUsingFallback() ? 'in-memory' : 'sqlite',
             timestamp: new Date().toISOString(),
@@ -2276,11 +2371,21 @@ class ClaudeFlowMCPServer {
         limit: args.limit || 10,
       });
 
+      // ADR-063: annotate with URNs
+      const sNs = args.namespace || 'default';
+      const urnAnnotated = urisMint
+        ? results.map(r => {
+            try {
+              return { ...r, urn: urisMint({ kind: 'memory', localId: `${sNs}.${r.key}` }) };
+            } catch { return r; }
+          })
+        : results;
+
       return {
         success: true,
         pattern: args.pattern,
         namespace: args.namespace || 'default',
-        results: results,
+        results: urnAnnotated,
         count: results.length,
         timestamp: new Date().toISOString(),
       };

@@ -1,0 +1,36 @@
+# E021: adapters.pods="local-solid-rs" activates the solid-pod-rs feature gate
+# but no [security.exceptions.solid-pod-rs] block is declared.
+# The validator must emit E021 and exit non-zero.
+[core]
+orchestration = "ruflo-v3"
+vector_db = "ruvector-embedded"
+
+[federation]
+mode = "standalone"
+
+[adapters]
+beads        = "local-sqlite"
+pods         = "local-solid-rs"
+memory       = "embedded-ruvector"
+events       = "local-jsonl"
+orchestrator = "local-process-manager"
+
+[gpu]
+backend = "none"
+
+[desktop]
+enabled = false
+
+[sovereign_mesh]
+enabled = true
+
+[observability]
+metrics_port = 9091
+log_level    = "info"
+
+[toolchains]
+claude = true
+
+[security]
+audit_acknowledged = true
+# exceptions block intentionally omitted to trigger E021

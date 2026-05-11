@@ -1,5 +1,5 @@
 ---
-name: ui-typography
+name: typography
 description: >
   Professional typography rules for UI design, web applications, and screen-based text. Enforces correct
   quote marks, dashes, spacing, hierarchy, and layout in all generated UI code.

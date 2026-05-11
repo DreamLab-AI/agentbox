@@ -9,9 +9,9 @@ vector_db = "ruvector-embedded"
 # classes — `local-*`, `external`, or `off` — see docs/user/configuration.md
 # for the full matrix and trade-offs.
 [adapters]
-beads        = "local-sqlite"
+beads        = "off"
 pods         = "local-solid-rs"
-memory       = "embedded-ruvector"
+memory       = "external-pg"
 events       = "local-jsonl"
 orchestrator = "local-process-manager"
 
@@ -22,6 +22,58 @@ nostr_bridge = true
 https_bridge = true
 publish_agent_events = true
 telegram_mirror = true
+
+# ── Telegram bridge configuration ─────────────────────────────────────────────
+# CTM (Claude Telegram Mirror) adapter settings. The bot_token is NEVER stored
+# here — pass it via env var TELEGRAM_BOT_TOKEN or use the setup wizard.
+# The chat_id is the Telegram supergroup where sessions are mirrored.
+[sovereign_mesh.telegram]
+chat_id = 0                            # Telegram supergroup ID (starts with -100)
+use_threads = true                     # mirror each session to a forum topic
+chunk_size = 4000                      # max characters per Telegram message
+rate_limit = 20                        # messages per minute per user
+session_timeout_minutes = 30           # inactivity timeout for sessions
+stale_session_hours = 72               # hours before a session is considered stale
+auto_delete_topics = true              # delete forum topics for ended sessions
+topic_delete_delay_minutes = 15        # delay before deleting a topic
+inactivity_threshold_minutes = 720     # inactivity threshold for auto-cleanup
+socket_path = ""                       # Unix socket path (empty = default)
+verbose = true                         # verbose logging
+approvals = false                      # require Telegram approval for tool use
+default_model = "sonnet"               # default Claude model for new sessions
+max_workers = 5                        # max parallel Claude subprocesses per topic
+notification_mode = "live"             # live | summary | quiet
+
+# Users allowed to interact with the bot. Each entry maps a DID:nostr identity
+# to a Telegram user ID with a role. The operator pubkey from
+# [sovereign_mesh.operator] is auto-granted admin if listed here.
+# Additional users are provisioned via /adduser bot command.
+[[sovereign_mesh.telegram.allowed_users]]
+pubkey_hex = ""                        # DID:nostr hex pubkey (64 chars)
+telegram_id = 0                        # Telegram user ID
+role = "admin"                         # admin | user
+label = ""                             # human-readable label
+
+# LLM summarization for tool output (optional)
+[sovereign_mesh.telegram.summarizer]
+enabled = false
+url = ""                               # LLM endpoint (e.g. Z.AI, Anthropic)
+# API key via env var CTM_LLM_API_KEY — never stored in TOML
+
+# ── Operator identity (optional) ────────────────────────────────────────────────
+# The human operator's Nostr identity. When set, this pubkey is:
+#   - Added to the relay allowlist (can publish events to the embedded relay)
+#   - Granted operator-level access to management API via NIP-98
+#   - Tagged as the delegator on NIP-26 agent delegations
+#   - Used as the WebID owner in Solid pod ACLs
+# If omitted, the agentbox runs in autonomous mode (self-signed identity only).
+# The private key is NEVER stored in agentbox.toml — pass it via env var
+# OPERATOR_NOSTR_PRIVKEY or use NIP-07/NIP-46 remote signing.
+[sovereign_mesh.operator]
+pubkey_hex = "11ed64225dd5e2c5e18f61ad43d5ad9272d08739d3a20dd25886197b0738663c"                        # 64-char hex secp256k1 pubkey
+npub       = ""                        # bech32 npub (alternative to hex; one is sufficient)
+display_name = ""                      # human-readable name for event tags
+relay_urls = []                        # operator's preferred relays for fan-out
 
 # ── Embedded Nostr relay (PRD-004 / ADR-009 / DDD-003) ──────────────────────────
 # Gives external agents and humans a durable path to talk to internal agents.
@@ -40,8 +92,8 @@ bind             = "127.0.0.1"
 expose           = false
 data_dir         = "/var/lib/nostr-relay"
 ingress_policy   = "allowlist"        # allowlist | signed-only | open
-allowed_pubkeys  = []                  # empty = self only (own npub)
-allowed_kinds    = [1, 1059, 30078, 27235, 38000, 38100]
+allowed_pubkeys  = []                  # empty = self only (own npub); operator pubkey auto-added at boot
+allowed_kinds    = [1, 1059, 30078, 27235, 38000, 38100, 38200, 38201]
 pod_bridge       = true
 external_fanout  = "off"               # bidirectional | publish-only | subscribe-only | off
 max_event_bytes  = 131072
@@ -50,6 +102,34 @@ retention_days   = 30
 allow_nip04      = false
 info_description = "Agentbox sovereign relay"
 info_contact     = ""
+
+# ── Networking ─────────────────────────────────────────────────────────────────
+# Tailscale provides direct encrypted access to the agentbox from any device
+# on your tailnet — no port-forwarding, no SSH tunnels, no firewall rules.
+# Uses userspace networking by default (no /dev/net/tun needed).
+#
+# SECURITY WARNING: Tailscale bypasses the did:nostr identity boundary.
+# Traffic arriving over the tailnet is authenticated by Tailscale ACLs, not
+# by Nostr keypair signatures. This is convenient for dev but weakens the
+# sovereign-mesh trust model. For production deployments, prefer the
+# did:nostr + NIP-98 auth path and leave tailscale = false.
+#
+# Auth: set TAILSCALE_AUTHKEY in .env (create at https://login.tailscale.com/admin/settings/keys)
+# or omit to use interactive login via `docker exec agentbox tailscale up`.
+[networking]
+# Default off — see SECURITY WARNING above. Operators who need Tailscale on
+# their own deployment should override in agentbox.local.toml or set
+# TAILSCALE_AUTHKEY in .env and flip this to true. Leaving it false also
+# removes the NET_ADMIN cap_add and the [security.exceptions.tailscale]
+# block from the active set, tightening the default attack surface.
+tailscale = false
+hostname = "agentbox"
+# Gate /etc/hosts host-gateway alias (host.docker.internal:host-gateway).
+# Default false — air-gapped and hardened deployments must opt in. When
+# false, OPENAI_BASE_URL must point at a Docker-DNS-resolvable name
+# (e.g. ollama:11434 if [providers.ollama].sidecar = true) or the agent
+# fails closed at the LLM call site.
+host_gateway = false
 
 [desktop]
 enabled = true
@@ -64,7 +144,35 @@ qe_browser = true
 [skills.media]
 ffmpeg = true
 imagemagick = true
-comfyui_builtin = true
+comfyui_builtin = false
+
+# ── Memory access control ──────────────────────────────────────────────────────
+# Controls whether RuVector memory entries are scoped per authenticated caller.
+#
+# admin_access_mode values:
+#   "permissive" — the admin/devuser (Bearer token) sees and writes all
+#                  namespaces without any pubkey prefix. NIP-98 callers are
+#                  still scoped to their own pubkey namespace.
+#   "scoped"     — ALL callers (including admin) are restricted to their own
+#                  pubkey-prefixed namespace. Stronger isolation, breaks
+#                  cross-agent admin inspection.
+#
+# This flag is baked at Nix build time into MEMORY_ADMIN_ACCESS_MODE.
+# Changing it requires a `nix build` + container recreate.
+[memory]
+admin_access_mode = "permissive"
+
+# ── RuVector PostgreSQL (external memory backend) ──────────────────────────────
+# Used when adapters.memory = "external-pg". Shared with the host container mesh
+# via docker_ragflow network. The ruvector-postgres container runs pgvector.
+#
+# The password is sourced from the RUVECTOR_PG_PASSWORD env var at runtime
+# (Q6: single source of truth). The conninfo template here uses the
+# manifest-time placeholder so static analysis can read the connection
+# string structure; the entrypoint substitutes the live password before
+# the management-api consumes it.
+[integrations.ruvector_external]
+conninfo = "postgresql://ruvector:@@RUVECTOR_PG_PASSWORD@@@ruvector-postgres:5432/ruvector"
 
 [integrations.comfyui_external]
 enabled = false
@@ -77,10 +185,10 @@ ws_url = "ws://comfyui:8188/ws"
 # See docs/developer/licensing.md for the AGPL-3.0-only aggregation analysis.
 [integrations.solid_pod_rs]
 port                   = 8484
-bind                   = "127.0.0.1"
+bind                   = "0.0.0.0"
 storage                = "fs"                    # fs | memory | s3
 storage_root           = "/var/lib/solid"
-base_url               = "http://127.0.0.1:8484"
+base_url               = "http://localhost:8484"
 enable_oidc            = false
 enable_schnorr_verify  = true
 enable_dpop_cache      = false
@@ -175,8 +283,18 @@ env_var = "ZAI_API_KEY"
 optional_env_vars = ["ZAI_ANTHROPIC_API_KEY", "ZAI_URL"]
 auth_mode = "api_key"
 
+[providers.ollama]
+# Local LLM endpoint reached by Claude / consultants when OPENAI_API_KEY=ollama.
+# `enabled` keeps OPENAI_BASE_URL pointed at the host's ollama by default
+# (http://host.docker.internal:11434). `sidecar = true` brings up an ollama
+# container alongside agentbox instead — useful when no host ollama exists.
+# Default is OFF so GPU-enabled deployments don't unintentionally clash with
+# a host-level ollama already on port 11434.
+enabled = true
+sidecar = false
+
 [gpu]
-backend = "none"
+backend = "local-cuda"
 
 # ── Consultant tier (PRD-005 / ADR-011) ────────────────────────────────────────
 # Five MCP servers that expose external LLM providers as named consultants
@@ -297,6 +415,27 @@ method                = "nostr"
 service_endpoints     = ["pod", "relay"]
 publish_to_well_known = true
 
+# ── Payment System ────────────────────────────────────────────────────────────
+# HTTP 402 Web Ledger integration via solid-pod-rs.
+# All costs in satoshis. Token operations use DREAM at configurable rate.
+[payments]
+enabled = true
+backend = "solid-pod-rs"                    # proxy to local pod on :8484
+base_cost_sats = 10
+dream_per_sat = 10
+hold_buffer_ratio = 1.2
+
+[payments.tiers]
+inference = 10        # text LLM: 10x base
+image_gen = 100       # diffusion: 100x base
+analytics = 5         # embeddings: 5x base
+
+[payments.token]
+ticker = "DREAM"
+rate = 10             # DREAM per sat
+supply = 1000000
+issuer = ""           # populated from OPERATOR_NOSTR_PUBKEY at runtime
+
 [linked_data.privacy_handoff]
 order = "after"   # documentation only — the order is fixed in code (E048)
 
@@ -306,7 +445,7 @@ order = "after"   # documentation only — the order is fixed in code (E048)
 # the image at /opt/agentbox/browser/. Pane manifest at /lo/manifest.json.
 # Validation rules: E050-E054, W053.
 [linked_data.viewer]
-mode                 = "off"     # off | local-linkedobjects | external
+mode                 = "local-linkedobjects"     # off | local-linkedobjects | external
 mount_path           = "/lo"
 bundle_path          = "/opt/agentbox/browser"
 external_url         = ""
@@ -328,7 +467,196 @@ rust = true
 gemini_cli = true
 codex = true
 code_server = true
-cuda = false
+cuda = true
+
+# ── Plugins (ruflo/claude-flow plugin system) ────────────────────────────────
+# Plugins are installed into $HOME/.claude-flow/plugins/ at container boot
+# (entrypoint Phase 7) and loaded by the MCP server at runtime.
+# The Nix-packaged claude-flow/ruflo binaries provide the plugin CLI;
+# npx @latest aliases are no longer needed.
+#
+# Plugin provenance legend (best-guess — please clarify where marked ??):
+#   first-party (ruflo upstream, github.com/ruvnet/ruflo/plugins/):
+#     ruflo-core, ruflo-intelligence, ruflo-swarm, ruflo-workflows,
+#     ruflo-autopilot, ruflo-loop-workers, ruflo-agentdb, ruflo-ruvector,
+#     ruflo-rag-memory, ruflo-knowledge-graph, ruflo-sparc, ruflo-testgen,
+#     ruflo-goals, ruflo-docs, ruflo-adr, ruflo-ddd, ruflo-security-audit,
+#     ruflo-aidefence, ruflo-observability, ruflo-browser, ruflo-wasm,
+#     ruflo-federation, ruflo-migrations, ruflo-ruvllm, ruflo-plugin-creator,
+#     ruflo-jujutsu (disabled — beads adapter is off), ruflo-cost-tracker
+#   speculative / unconfirmed (not in any ADR or PRD; please clarify):
+#     ruflo-daa    -- ?? purpose unknown; enabled by default
+#     ruflo-rvf    -- ?? purpose unknown; enabled by default
+#   disabled (domain-specific, opt-in):
+#     ruflo-neural-trader, ruflo-market-data, ruflo-iot-cognitum
+#   third-party registry (IPFS, source = "registry"):
+#     @claude-flow/embeddings, @claude-flow/security, @claude-flow/neural
+[plugins]
+auto_update = false                     # off by default — set true for @latest
+install_dir = "/home/devuser/.claude-flow/plugins"
+
+# Memory backend for plugins that need persistence.
+# Points to the same external ruvector-postgres used by integrations.ruvector_external.
+# Password sourced from RUVECTOR_PG_PASSWORD env var (Q6) and substituted
+# by the entrypoint when it materialises the claude-flow config.
+[plugins.memory]
+backend = "postgres"
+conninfo = "postgresql://ruvector:@@RUVECTOR_PG_PASSWORD@@@ruvector-postgres:5432/ruvector"
+fallback = "sqlite"
+enable_hnsw = true
+
+# Declared plugins — installed at boot, gated by enabled flag.
+# source = "ruflo-git" (default): cloned from github.com/ruvnet/ruflo/plugins/
+# source = "registry": installed from IPFS registry via `ruflo plugins install`
+
+# --- Core orchestration ---
+[[plugins.packages]]
+name = "ruflo-core"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-intelligence"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-swarm"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-workflows"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-autopilot"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-loop-workers"
+enabled = true
+
+# --- Memory and data ---
+[[plugins.packages]]
+name = "ruflo-agentdb"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-ruvector"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-rag-memory"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-knowledge-graph"
+enabled = true
+
+# --- Development and quality ---
+[[plugins.packages]]
+name = "ruflo-sparc"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-testgen"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-goals"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-docs"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-adr"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-ddd"
+enabled = true
+
+# --- Security and observability ---
+[[plugins.packages]]
+name = "ruflo-security-audit"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-aidefence"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-observability"
+enabled = true
+
+# --- Specialised ---
+[[plugins.packages]]
+name = "ruflo-browser"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-wasm"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-neural-trader"
+enabled = false
+
+[[plugins.packages]]
+name = "ruflo-market-data"
+enabled = false
+
+[[plugins.packages]]
+name = "ruflo-iot-cognitum"
+enabled = false
+
+[[plugins.packages]]
+name = "ruflo-federation"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-migrations"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-daa"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-rvf"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-ruvllm"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-plugin-creator"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-jujutsu"
+enabled = false
+
+[[plugins.packages]]
+name = "ruflo-cost-tracker"
+enabled = true
+
+# --- IPFS registry plugins (non-git) ---
+[[plugins.packages]]
+name = "@claude-flow/embeddings"
+source = "registry"
+enabled = true
+
+[[plugins.packages]]
+name = "@claude-flow/security"
+source = "registry"
+enabled = true
+
+[[plugins.packages]]
+name = "@claude-flow/neural"
+source = "registry"
+enabled = true
 
 [observability]
 metrics_port = 9091
@@ -336,6 +664,15 @@ otlp_endpoint = ""
 log_level = "info"
 
 [security]
+# ADR-007 W021: when one or more feature exceptions widen the attack surface
+# beyond the hardened baseline (cap_add or security_opt_override), the
+# operator must explicitly acknowledge the residual risk. The flake fails
+# closed at compose-eval time when this is missing while exceptions are
+# active. Currently SYS_ADMIN (chromium sandbox) and NET_ADMIN (tailscale
+# userspace tun) are widening caps; review docs/user/configuration.md for
+# the residual attack surface analysis before flipping this to true.
+audit_acknowledged = true
+
 # Feature-specific exceptions to the hardened baseline.
 # Each key must match an enabled feature gate (validator rule E020).
 # Add the exception block when you enable the corresponding feature.
@@ -354,19 +691,34 @@ reason = "solid-pod-rs fs-backend requires atomic-rename writable storage under 
 
 [security.exceptions.playwright]
 # Required because skills.browser.playwright = true
-# Chromium needs user namespace sandbox or SYS_ADMIN cap.
+# Chromium needs user namespace sandbox. The hardened baseline is
+# `no-new-privileges:true` which prevents the in-namespace setuid binary
+# Chromium uses for its sandbox from elevating. The exception flips that
+# bit (and only that bit) for this container; SYS_ADMIN is NOT added —
+# the user-namespace path is sufficient and avoids the broad SYS_ADMIN
+# attack surface (PRD-003 §272 example follows the same pattern).
 # Alternative: pass --no-sandbox to Chromium at the cost of defense-in-depth.
-cap_add = ["SYS_ADMIN"]
-reason = "chromium sandbox; SYS_ADMIN is the minimum privilege for Chromium user-ns sandbox inside a container"
+security_opt_override = ["no-new-privileges:false"]
+cap_add = []
+reason = "chromium user-ns sandbox needs setuid; only NNP is dropped, no SYS_ADMIN"
 
 [security.exceptions.desktop]
-tmpfs = ["/tmp/.X11-unix", "/run/user/1000"]
+# X11 abstract socket dir (mode 1777 sticky — the canonical X11 perm) and
+# devuser's runtime dir (XDG_RUNTIME_DIR convention: 0700, owned by uid).
+# Without explicit mode/uid, Docker creates these root-owned at default
+# tmpfs perms, so devuser-side X clients fail to bind/connect.
+tmpfs = ["/tmp/.X11-unix:mode=1777", "/run/user/1000:mode=700,uid=1000,gid=1000"]
 
 [security.exceptions.code-server]
 writable_volumes = ["codeserver-config:/home/devuser/.local/share/code-server"]
 
 [security.exceptions.telegram-mirror]
 writable_volumes = ["ctm-config:/home/devuser/.config/claude-telegram-mirror"]
+
+[security.exceptions.tailscale]
+cap_add = ["NET_ADMIN"]
+writable_volumes = ["tailscale-state:/var/lib/tailscale"]
+reason = "tailscaled needs NET_ADMIN for userspace networking socket; durable state preserves node identity across restarts"
 
 [security.exceptions.nostr-relay]
 writable_volumes = ["nostr-relay-data:/var/lib/nostr-relay"]

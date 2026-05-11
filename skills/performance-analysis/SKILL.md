@@ -174,7 +174,7 @@ Automatic analysis during task execution:
 #### MCP Integration
 ```javascript
 // Check for bottlenecks in Claude Code
-mcp__claude-flow__bottleneck_detect({
+mcp__claude-flow__bottleneck_analyze({
   timeRange: "1h",
   threshold: 20,
   autoFix: false
@@ -558,9 +558,9 @@ npx claude-flow bottleneck detect --fix
 
 ## See Also
 
-- [Bottleneck Detection Guide](/workspaces/claude-code-flow/.claude/commands/analysis/bottleneck-detect.md)
-- [Performance Report Guide](/workspaces/claude-code-flow/.claude/commands/analysis/performance-report.md)
-- [Performance Bottlenecks Overview](/workspaces/claude-code-flow/.claude/commands/analysis/performance-bottlenecks.md)
+- Bottleneck Detection Guide — see `bottleneck-detect.md` in this skill's own directory
+- Performance Report Guide — see `performance-report.md` in this skill's own directory
+- Performance Bottlenecks Overview — see `performance-bottlenecks.md` in this skill's own directory
 - [Swarm Monitoring Documentation](../swarm-orchestration/SKILL.md)
 - [Memory Management Documentation](../memory-management/SKILL.md)
 

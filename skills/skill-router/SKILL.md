@@ -118,6 +118,14 @@ Manual call form (slash-command): `/consult <name> "<question>"` (e.g.
 | SEO audit, keyword research, schema markup, GEO | `toprank` |
 | Current/version-specific docs for external library (Next.js, React, Supabase, etc.) | `context7` |
 
+### Economics
+| If the request involves... | Route to |
+|---|---|
+| GPU endpoint cost estimation, inference/image-gen/analytics pricing | `cost-estimation` |
+| Agent job cost lifecycle (estimate, hold, settle, refund) | `cost-estimation` |
+| MRC20 DREAM token buy/withdraw calculations | `cost-estimation` |
+| Infrastructure replacement value, COCOMO-hybrid valuation | `cost-estimation` |
+
 ### Documents and Reports
 | If the request involves... | Route to |
 |---|---|
@@ -237,6 +245,7 @@ I don't have a specific skill for that. Here's what I cover:
 
 • Code: /route [bug fix / feature / refactor]
 • Research: /route [web search / URL analysis / NotebookLM]
+• Economics: /route [GPU cost / agent job pricing / token conversion / valuation]
 • Design: /route [UI/UX / design audit / typography]
 • Docs: /route [report / LaTeX / diagrams / Wardley map]
 • Media: /route [image / video / 3D / AI art]

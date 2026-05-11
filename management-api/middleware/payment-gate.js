@@ -1,215 +1,225 @@
 'use strict';
 
 /**
- * Payment gate middleware for GPU-metered endpoints.
+ * payment-gate.js -- HTTP 402 enforcement middleware.
  *
- * Enforces server-side cost calculation for metered operations (e.g. ComfyUI
- * workflow submission).  Client-supplied cost_sats values are NEVER trusted.
- * The server determines the cost from an internal cost table keyed by
- * endpoint / operation type, then debits the caller's balance.
+ * Factory function that returns a Fastify preHandler hook. When applied to a
+ * route, the hook checks the caller's balance (via solid-pod-rs) and returns
+ * HTTP 402 Payment Required with a standard body if the balance is insufficient.
  *
- * When a request's cost_sats is missing, zero, negative, or non-numeric, the
- * gate rejects the request with 402 Payment Required rather than allowing
- * free-riding on GPU resources.
+ * On success the hook deducts the cost by posting to solid-pod-rs and decorates
+ * the response with X-Cost, X-Balance, and X-Pay-Currency headers.
  *
- * Security invariants:
- *   1. cost_sats is ALWAYS overwritten with the server-side computed value.
- *   2. Requests to metered endpoints with insufficient balance are rejected.
- *   3. The cost table is not exposed to clients.
+ * Usage:
+ *
+ *   const { paymentGate } = require('../middleware/payment-gate');
+ *
+ *   // Fixed-cost route
+ *   fastify.addHook('preHandler', paymentGate({ costSats: 100 }));
+ *
+ *   // Tier-based route (reads from env multipliers)
+ *   fastify.addHook('preHandler', paymentGate({ tier: 'inference', units: 1 }));
+ *
+ *   // Dynamic cost from request body
+ *   fastify.addHook('preHandler', paymentGate({
+ *     costFn: (request) => request.body.units * 10,
+ *   }));
+ *
+ * Environment:
+ *
+ *   SOLID_POD_PORT        -- solid-pod-rs port (default: 8484)
+ *   BASE_COST_SATS        -- base cost per unit (default: 10)
+ *   INFERENCE_MULTIPLIER  -- (default: 10)
+ *   IMAGE_GEN_MULTIPLIER  -- (default: 100)
+ *   ANALYTICS_MULTIPLIER  -- (default: 5)
  */
+
+const POD_BASE = `http://127.0.0.1:${process.env.SOLID_POD_PORT || 8484}`;
+
+const BASE_COST_SATS       = parseInt(process.env.BASE_COST_SATS, 10) || 10;
+const INFERENCE_MULTIPLIER = parseFloat(process.env.INFERENCE_MULTIPLIER) || 10;
+const IMAGE_GEN_MULTIPLIER = parseFloat(process.env.IMAGE_GEN_MULTIPLIER) || 100;
+const ANALYTICS_MULTIPLIER = parseFloat(process.env.ANALYTICS_MULTIPLIER) || 5;
+
+const TIER_MULTIPLIERS = Object.freeze({
+  'inference':  INFERENCE_MULTIPLIER,
+  'image-gen':  IMAGE_GEN_MULTIPLIER,
+  'analytics':  ANALYTICS_MULTIPLIER,
+});
 
 /**
- * Server-side cost table.  Values are in satoshis.
- * Override at runtime via AGENTBOX_COST_TABLE_JSON env var (JSON string).
- *
- * Keys follow the pattern: "<method> <route-path>"
+ * Query the caller's sat balance from solid-pod-rs.
+ * Returns { balance_sats: number } or throws.
  */
-const DEFAULT_COST_TABLE = {
-  'POST /v1/comfyui/workflow': 100,       // Base cost for workflow submission
-  'POST /v1/comfyui/workflow:high': 200,  // High-priority surcharge
-};
+async function _queryBalance(authHeader) {
+  const headers = { Accept: 'application/json' };
+  if (authHeader) {
+    headers['Authorization'] = authHeader;
+  }
 
-let _costTable = null;
+  let res;
+  try {
+    res = await fetch(`${POD_BASE}/pay/.balance`, { method: 'GET', headers });
+  } catch (err) {
+    const wrapped = new Error(`Payment service unreachable: ${err.message}`);
+    wrapped.statusCode = 502;
+    throw wrapped;
+  }
 
-function getCostTable() {
-  if (_costTable) return _costTable;
+  if (!res.ok) {
+    const wrapped = new Error(`Payment service returned ${res.status}`);
+    wrapped.statusCode = res.status >= 500 ? 502 : res.status;
+    throw wrapped;
+  }
 
-  const envOverride = process.env.AGENTBOX_COST_TABLE_JSON;
-  if (envOverride) {
-    try {
-      _costTable = { ...DEFAULT_COST_TABLE, ...JSON.parse(envOverride) };
-    } catch {
-      _costTable = { ...DEFAULT_COST_TABLE };
+  const body = await res.json();
+  const balanceSats = body.balance_sats
+    ?? parseInt(res.headers.get('X-Balance') || '0', 10);
+  return { balance_sats: balanceSats };
+}
+
+/**
+ * Deduct a cost from the caller's balance via solid-pod-rs.
+ * Returns the updated balance or throws.
+ */
+async function _deductBalance(costSats, authHeader) {
+  const headers = {
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+  };
+  if (authHeader) {
+    headers['Authorization'] = authHeader;
+  }
+
+  let res;
+  try {
+    res = await fetch(`${POD_BASE}/pay/.deduct`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ amount_sats: costSats }),
+    });
+  } catch (err) {
+    const wrapped = new Error(`Payment service unreachable: ${err.message}`);
+    wrapped.statusCode = 502;
+    throw wrapped;
+  }
+
+  if (!res.ok) {
+    const wrapped = new Error(`Payment deduction failed: ${res.status}`);
+    wrapped.statusCode = res.status >= 500 ? 502 : res.status;
+    throw wrapped;
+  }
+
+  const body = await res.json();
+  return { balance_sats: body.balance_sats ?? body.new_balance ?? 0 };
+}
+
+/**
+ * Resolve the cost in sats from the gate options.
+ *
+ * @param {object} opts - Gate configuration
+ * @param {object} request - Fastify request
+ * @returns {number} cost in satoshis
+ */
+function _resolveCost(opts, request) {
+  if (typeof opts.costFn === 'function') {
+    return opts.costFn(request);
+  }
+  if (typeof opts.costSats === 'number') {
+    return opts.costSats;
+  }
+  if (opts.tier) {
+    const multiplier = TIER_MULTIPLIERS[opts.tier];
+    if (multiplier === undefined) {
+      throw new Error(`paymentGate: unknown tier "${opts.tier}"`);
     }
-  } else {
-    _costTable = { ...DEFAULT_COST_TABLE };
+    const units = opts.units || 1;
+    return BASE_COST_SATS * multiplier * units;
   }
-  return _costTable;
+  throw new Error('paymentGate: must specify costSats, tier, or costFn');
 }
 
 /**
- * Compute the server-side cost for a request.
+ * Create an HTTP 402 payment gate preHandler hook.
  *
- * @param {string} method - HTTP method (e.g. 'POST')
- * @param {string} routePath - Fastify route path (e.g. '/v1/comfyui/workflow')
- * @param {object} body - Request body (used for priority surcharges)
- * @returns {number} Cost in satoshis (always > 0 for metered endpoints)
+ * @param {object} opts
+ * @param {number}   [opts.costSats]  - Fixed cost in satoshis
+ * @param {string}   [opts.tier]      - Tier name (inference, image-gen, analytics)
+ * @param {number}   [opts.units]     - Number of units for tier-based cost (default: 1)
+ * @param {function} [opts.costFn]    - Dynamic cost function (request) => sats
+ * @param {boolean}  [opts.dryRun]    - If true, check balance but do not deduct
+ * @returns {function} Fastify preHandler hook
  */
-function computeCost(method, routePath, body = {}) {
-  const table = getCostTable();
-  const key = `${method} ${routePath}`;
-  let cost = table[key];
-
-  if (cost === undefined || cost === null) {
-    return 0; // Not a metered endpoint
-  }
-
-  // Apply priority surcharge if applicable
-  if (body.priority === 'high') {
-    const surchargeKey = `${key}:high`;
-    if (table[surchargeKey]) {
-      cost = table[surchargeKey];
-    }
-  }
-
-  return cost;
-}
-
-/**
- * Set of route patterns that are GPU-metered and require payment.
- * Requests to these routes MUST pass the payment gate.
- */
-const METERED_ROUTES = new Set([
-  'POST /v1/comfyui/workflow',
-]);
-
-/**
- * Determine whether a route is metered.
- */
-function isMeteredRoute(method, routePath) {
-  return METERED_ROUTES.has(`${method} ${routePath}`);
-}
-
-/**
- * Validate that a cost value is a positive finite number.
- * @param {*} value
- * @returns {boolean}
- */
-function isValidPositiveCost(value) {
-  return typeof value === 'number' && Number.isFinite(value) && value > 0;
-}
-
-/**
- * Create the payment gate Fastify hook.
- *
- * @param {object} options
- * @param {object} options.logger - Pino logger instance
- * @param {Function} [options.getBalance] - async (pubkey) => number  — returns caller's balance in sats.
- *   Defaults to a function that always returns Infinity (no balance enforcement) to allow
- *   gradual rollout.  Replace with a real balance-checking function in production.
- * @param {Function} [options.debit] - async (pubkey, amount) => void  — debits caller's balance.
- *   Defaults to a no-op.
- * @returns {Function} Fastify onRequest hook
- */
-function createPaymentGate(options = {}) {
-  const { logger } = options;
-
-  // Balance check and debit functions — pluggable for testing and gradual rollout.
-  const getBalance = options.getBalance || (async () => Infinity);
-  const debit = options.debit || (async () => {});
-
+function paymentGate(opts = {}) {
   return async function paymentGateHook(request, reply) {
-    const method = request.method;
-    const routePath = request.routeOptions?.url || request.routerPath || request.url;
-
-    if (!isMeteredRoute(method, routePath)) {
-      return; // Not a metered route — no payment required.
+    // Bearer-only auth (admin) bypasses payment if explicitly configured.
+    if (opts.bypassBearer && request.auth && request.auth.mode === 'bearer') {
+      return;
     }
 
-    // Compute server-side cost.  NEVER trust client-supplied cost_sats.
-    const serverCost = computeCost(method, routePath, request.body || {});
+    const costSats = _resolveCost(opts, request);
+    if (costSats <= 0) return;
 
-    if (!isValidPositiveCost(serverCost)) {
-      // Defensive: if the cost table is misconfigured, fail closed.
-      logger.error(
-        { method, routePath, serverCost },
-        'Payment gate: cost table returned invalid cost for metered route — rejecting request'
-      );
-      return reply.code(500).send({
-        error: 'Internal Server Error',
-        message: 'Server-side cost calculation failed for this metered endpoint',
-      });
-    }
+    const authHeader = request.headers.authorization || '';
 
-    // Reject if client sent cost_sats that is zero, negative, or missing.
-    // This prevents the bypass described in P1-28: attackers setting cost_sats=0.
-    const clientCost = request.body && request.body.cost_sats;
-    if (clientCost !== undefined && clientCost !== null) {
-      // Client tried to supply cost_sats — log the attempt and overwrite.
-      if (clientCost !== serverCost) {
-        logger.warn(
-          { method, routePath, clientCost, serverCost },
-          'Payment gate: client-supplied cost_sats differs from server cost — overwriting'
-        );
-      }
-    }
-
-    // Overwrite with server-computed cost so downstream code sees the real value.
-    if (request.body) {
-      request.body.cost_sats = serverCost;
-    }
-
-    // Check caller's balance.
-    const callerPubkey = request.auth?.pubkey || request.auth?.mode || 'anonymous';
+    // Query current balance
+    let balance;
     try {
-      const balance = await getBalance(callerPubkey);
-
-      if (!Number.isFinite(balance) && balance !== Infinity) {
-        logger.error({ callerPubkey }, 'Payment gate: balance check returned invalid value');
-        return reply.code(500).send({
-          error: 'Internal Server Error',
-          message: 'Balance check failed',
-        });
-      }
-
-      if (balance < serverCost) {
-        logger.warn(
-          { callerPubkey, balance, serverCost },
-          'Payment gate: insufficient balance'
-        );
-        return reply.code(402).send({
-          error: 'Payment Required',
-          message: `Insufficient balance. This operation costs ${serverCost} sats, your balance is ${balance} sats.`,
-          cost_sats: serverCost,
-        });
-      }
-
-      // Debit the caller.
-      await debit(callerPubkey, serverCost);
-
-      logger.info(
-        { callerPubkey, serverCost, routePath },
-        'Payment gate: metered request authorised'
-      );
+      balance = await _queryBalance(authHeader);
     } catch (err) {
-      logger.error(
-        { callerPubkey, error: err.message },
-        'Payment gate: balance/debit operation failed'
-      );
-      return reply.code(500).send({
-        error: 'Internal Server Error',
-        message: 'Payment processing failed',
+      request.log.error({ err: err.message }, 'payment-gate: balance query failed');
+      reply.code(err.statusCode || 502).send({
+        error: 'payment-service-error',
+        message: `Cannot verify payment balance: ${err.message}`,
       });
+      return reply;
     }
+
+    // Check sufficiency
+    if (balance.balance_sats < costSats) {
+      reply.header('X-Cost', String(costSats));
+      reply.header('X-Pay-Currency', 'sats');
+      reply.header('X-Balance', String(balance.balance_sats));
+      reply.code(402).send({
+        error: 'payment-required',
+        message: `Insufficient balance. This request costs ${costSats} sats; current balance is ${balance.balance_sats} sats.`,
+        cost_sats: costSats,
+        balance_sats: balance.balance_sats,
+        currency: 'sats',
+        deposit_endpoint: '/v1/pay/deposit',
+        info_endpoint: '/v1/pay/info',
+      });
+      return reply;
+    }
+
+    // Deduct unless dry-run
+    if (!opts.dryRun) {
+      let updated;
+      try {
+        updated = await _deductBalance(costSats, authHeader);
+      } catch (err) {
+        request.log.error({ err: err.message }, 'payment-gate: deduction failed');
+        reply.code(err.statusCode || 502).send({
+          error: 'payment-deduction-failed',
+          message: `Balance deduction failed: ${err.message}`,
+        });
+        return reply;
+      }
+      balance.balance_sats = updated.balance_sats;
+    }
+
+    // Decorate the response with payment headers
+    reply.header('X-Cost', String(costSats));
+    reply.header('X-Pay-Currency', 'sats');
+    reply.header('X-Balance', String(balance.balance_sats));
+
+    // Attach payment context to the request for downstream handlers
+    request.paymentContext = {
+      cost_sats: costSats,
+      balance_sats: balance.balance_sats,
+      deducted: !opts.dryRun,
+    };
   };
 }
 
-module.exports = {
-  createPaymentGate,
-  computeCost,
-  isMeteredRoute,
-  isValidPositiveCost,
-  getCostTable,
-  DEFAULT_COST_TABLE,
-  METERED_ROUTES,
-};
+module.exports = { paymentGate };

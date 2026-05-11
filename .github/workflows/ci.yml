@@ -34,6 +34,9 @@ jobs:
   ci-passed:
     name: CI passed
     runs-on: ubuntu-latest
+    # Only meaningful on PRs (branch protection gate) and main-branch pushes.
+    # Skip on other pushes — those don't have a PR check suite to wait for.
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
     steps:
       - name: Wait for required workflows
         uses: lewagon/wait-on-check-action@v1.3.4
@@ -42,6 +45,10 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 20
           allowed-conclusions: success,skipped
+          # Job names must match the `name:` field in each workflow exactly.
+          # E021 rename (2026-04-25): flake-check job names are "Check x86_64-linux"
+          # and "Check aarch64-linux"; manifest-validate is
+          # "agentbox config validate + TUI round-trip".
           check-regexp: '^(Check x86_64-linux|Check aarch64-linux|agentbox config validate \+ TUI round-trip|Adapter contract suites|pytest — TUI helper scripts|RC shell assertions|ShellCheck error|gitleaks)$'
           verbose: true
 

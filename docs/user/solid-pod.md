@@ -227,10 +227,10 @@ writes, `.meta` and `.acl` sidecars). Two alternatives:
 ## Licence and aggregation
 
 `solid-pod-rs` is AGPL-3.0-only (inherited from JavaScriptSolidServer to
-preserve copyleft of the wider Solid ecosystem). Agentbox is MPL-2.0. The
+preserve copyleft of the wider Solid ecosystem). Agentbox is AGPL-3.0. The
 agentbox image ships `solid-pod-rs-server` as a **separate binary** under
-supervisord, not as a linked library, which AGPL §5 explicitly permits as
-aggregation:
+supervisord, not as a linked library — both are uniformly AGPL-3.0. AGPL §5
+still applies to the binary boundary:
 
 > A compilation of a covered work with other separate and independent
 > works… is called an "aggregate" if the compilation and its resulting
