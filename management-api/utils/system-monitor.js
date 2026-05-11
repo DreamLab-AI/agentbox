@@ -3,10 +3,20 @@
  * Checks GPU, providers, and system health
  */
 
-const { exec } = require('child_process');
+const { exec, execFile } = require('child_process');
 const { promisify } = require('util');
 
 const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
+
+/**
+ * Validate that a path contains only safe characters.
+ * Allows alphanumeric, forward slashes, hyphens, underscores, dots, and tildes.
+ * Rejects shell metacharacters (;, |, &, $, `, etc.).
+ */
+function issafePath(p) {
+  return /^[a-zA-Z0-9/\-_.~]+$/.test(p);
+}
 
 class SystemMonitor {
   constructor(logger) {
@@ -81,7 +91,12 @@ class SystemMonitor {
 
       // Disk usage for workspace
       const workspaceRoot = process.env.WORKSPACE || '/home/devuser/workspace';
-      const { stdout: diskInfo } = await execAsync(`df -h ${workspaceRoot} | tail -1`);
+      if (!issafePath(workspaceRoot)) {
+        throw new Error(`WORKSPACE path contains invalid characters: ${workspaceRoot}`);
+      }
+      const { stdout: dfOutput } = await execFileAsync('df', ['-h', workspaceRoot]);
+      const dfLines = dfOutput.trim().split('\n');
+      const diskInfo = dfLines[dfLines.length - 1]; // equivalent to tail -1
       const diskParts = diskInfo.trim().split(/\s+/);
 
       return {

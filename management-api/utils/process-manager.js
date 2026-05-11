@@ -8,6 +8,41 @@ const path = require('path');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 
+// Maximum allowed task input length (characters)
+const MAX_TASK_LENGTH = 10000;
+
+// Patterns that indicate shell injection or prompt injection attempts
+const SUSPICIOUS_TASK_PATTERNS = [
+  /;\s*(rm|dd|mkfs|chmod|chown|curl|wget|nc|ncat|bash|sh|zsh|python|perl|ruby|node)\b/i,
+  /\|\s*(bash|sh|zsh|python|perl|ruby|node)\b/i,
+  /`[^`]*`/,                      // backtick command substitution
+  /\$\([^)]*\)/,                  // $() command substitution
+  />\s*\/etc\//,                  // redirect to /etc
+  />\s*\/dev\//,                  // redirect to /dev
+];
+
+/**
+ * Validate task input for length and suspicious patterns.
+ * Returns null if valid, or an error message string if invalid.
+ */
+function validateTaskInput(task) {
+  if (typeof task !== 'string') {
+    return 'Task must be a string';
+  }
+  if (task.length === 0) {
+    return 'Task must not be empty';
+  }
+  if (task.length > MAX_TASK_LENGTH) {
+    return `Task exceeds maximum length of ${MAX_TASK_LENGTH} characters (got ${task.length})`;
+  }
+  for (const pattern of SUSPICIOUS_TASK_PATTERNS) {
+    if (pattern.test(task)) {
+      return 'Task contains suspicious shell patterns';
+    }
+  }
+  return null;
+}
+
 class ProcessManager {
   constructor(logger) {
     this.logger = logger;
@@ -36,7 +71,29 @@ class ProcessManager {
 
     this.logger.info({ taskId, agent, provider }, 'Spawning new task');
 
+    // Validate task input before spawning any process
+    const taskValidationError = validateTaskInput(task);
+    if (taskValidationError) {
+      this.logger.error({ taskId, reason: taskValidationError }, 'Task input validation failed');
+      throw new Error(`Invalid task input: ${taskValidationError}`);
+    }
+
     let command, args, taskEnv;
+
+    // Allowed tools whitelist for Claude CLI sandbox mode.
+    // Only grant file read/write within the task directory and safe analysis tools.
+    const ALLOWED_TOOLS = [
+      'Read',
+      'Write',
+      'Edit',
+      'Bash(grep:*)',
+      'Bash(find:*)',
+      'Bash(ls:*)',
+      'Bash(cat:*)',
+      'Bash(head:*)',
+      'Bash(tail:*)',
+      'Bash(wc:*)',
+    ];
 
     // Use Claude CLI directly for claude-flow provider (accesses MCP servers)
     if (provider === 'claude-flow') {
@@ -44,7 +101,7 @@ class ProcessManager {
       // Prepend task directory instruction to the prompt
       const enhancedTask = `Working directory: ${taskDir}\n\n${task}\n\nWrite all files to the working directory specified above.`;
       args = [
-        '--dangerously-skip-permissions',
+        '--allowedTools', ALLOWED_TOOLS.join(','),
         enhancedTask
       ];
       // Pass through all API keys for MCP servers (matching dsp script)
@@ -61,7 +118,7 @@ class ProcessManager {
         OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY || '',
         ZAI_CONTAINER_URL: 'http://claude-zai-service:9600'
       };
-      this.logger.info({ taskId, workDir: taskDir }, 'Using Claude CLI with dangerously-skip-permissions for automated task');
+      this.logger.info({ taskId, workDir: taskDir }, 'Using Claude CLI with restricted tool allowlist for automated task');
     } else {
       // Use agentic-flow for other providers
       command = 'agentic-flow';
