@@ -5,8 +5,9 @@
  * When nostr-tools is installed (sovereign_mesh.nostr_bridge = true in
  * agentbox.toml), NIP-98 events are fully verified including Schnorr
  * signature via NostrBridge.verifyNip98().  When the bridge module is absent
- * the middleware falls back to structural + freshness checks only, preserving
- * behaviour for configurations that do not enable sovereign mesh.
+ * NIP-98 authentication is rejected outright because Schnorr signatures
+ * cannot be verified without the bridge — structural-only checks are
+ * insufficient as they would accept forged tokens.
  */
 
 // Attempt to load the Nostr bridge for full Schnorr verification.
@@ -56,44 +57,10 @@ function verifyNip98Header(header, request) {
     };
   }
 
-  // Structural-only fallback (nostr-tools not installed).
-  const encoded = header.slice('Nostr '.length).trim();
-  if (!encoded) {
-    return null;
-  }
-
-  let event;
-  try {
-    event = decodeBase64Json(encoded);
-  } catch {
-    return null;
-  }
-
-  if (event.kind !== 27235 || typeof event.created_at !== 'number') {
-    return null;
-  }
-
-  const now = Math.floor(Date.now() / 1000);
-  if (Math.abs(now - event.created_at) > 60) {
-    return null;
-  }
-
-  const methodTag = getTag(event, 'method');
-  const urlTag = getTag(event, 'u');
-
-  if (methodTag !== request.method) {
-    return null;
-  }
-
-  if (!urlTag || !(urlTag === requestUrl || urlTag.endsWith(request.url))) {
-    return null;
-  }
-
-  return {
-    mode: 'nip98',
-    pubkey: event.pubkey || null,
-    event,
-  };
+  // Bridge unavailable — cannot verify Schnorr signatures.
+  // Reject rather than falling back to structural-only validation, which would
+  // accept any well-formatted but unsigned/forged NIP-98 token.
+  return null;
 }
 
 function verifyBearerHeader(header, validToken) {

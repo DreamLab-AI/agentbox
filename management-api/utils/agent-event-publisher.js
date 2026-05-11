@@ -168,8 +168,10 @@ class AgentEventPublisher extends EventEmitter {
     const payloadJson = JSON.stringify(event.metadata || {});
     const payloadBuffer = Buffer.from(payloadJson, 'utf8');
 
-    // Total: 15 bytes header + payload
-    const buffer = Buffer.alloc(15 + payloadBuffer.length);
+    // Total: 19 bytes header + payload
+    // Header: version(1) + type(1) + source_id(4) + target_id(4) +
+    //         action_type(1) + timestamp(4) + duration(2) + payload_len(2) = 19
+    const buffer = Buffer.alloc(19 + payloadBuffer.length);
 
     buffer.writeUInt8(0x02, 0);                          // Version (V2)
     buffer.writeUInt8(0x23, 1);                          // Message type (AGENT_ACTION)
