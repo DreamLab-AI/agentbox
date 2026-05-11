@@ -196,7 +196,7 @@ intelligence_signal = true                      # write ADR-043 QualitySignal fi
 
 [consultants.codex]
 enabled = true
-model   = "gpt-5.4"
+model   = "gpt-5.5"
 home    = "/home/openai-user/.codex"
 timeout_ms = 180000
 
