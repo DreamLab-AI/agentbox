@@ -10,6 +10,7 @@ const cors = require('@fastify/cors');
 const rateLimit = require('@fastify/rate-limit');
 const websocket = require('@fastify/websocket');
 const { createAuthMiddleware } = require('./middleware/auth');
+const { createPaymentGate } = require('./middleware/payment-gate');
 const contractVersions = require('./adapters/contract-versions');
 const { resolveAdapters, SLOTS } = require('./adapters/index');
 const { loadManifest, ManifestNotFound } = require('./adapters/manifest-loader');
@@ -196,6 +197,13 @@ app.addHook('onRequest', async (request, reply) => {
 
   await authMiddleware(request, reply);
 });
+
+// Payment gate middleware — enforces server-side cost calculation for
+// GPU-metered endpoints (e.g. ComfyUI workflow submission).  Runs after auth
+// so that request.auth is populated.  Client-supplied cost_sats values are
+// NEVER trusted; the server computes the real cost from its internal table.
+const paymentGateHook = createPaymentGate({ logger });
+app.addHook('onRequest', paymentGateHook);
 
 // OpenAPI/Swagger
 app.register(require('@fastify/swagger'), {

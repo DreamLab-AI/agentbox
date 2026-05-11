@@ -1,6 +1,10 @@
 /**
  * ComfyUI workflow management routes
  * Integrates with existing Management API architecture
+ *
+ * GPU-metered endpoints (workflow submission) are protected by the payment
+ * gate middleware.  Server-side cost calculation is enforced — client-supplied
+ * cost_sats values are never trusted.
  */
 
 async function comfyuiRoutes(fastify, options) {
@@ -8,10 +12,15 @@ async function comfyuiRoutes(fastify, options) {
 
   /**
    * Submit workflow for execution
+   *
+   * This is a GPU-metered endpoint.  The payment gate (registered in
+   * server.js) validates payment before the handler runs.  The server
+   * computes cost_sats from the internal cost table — clients cannot
+   * bypass payment by sending zero/empty/negative cost_sats.
    */
   fastify.post('/v1/comfyui/workflow', {
     schema: {
-      description: 'Submit a ComfyUI workflow for execution',
+      description: 'Submit a ComfyUI workflow for execution (GPU-metered — payment required)',
       tags: ['comfyui'],
       body: {
         type: 'object',
@@ -39,23 +48,51 @@ async function comfyuiRoutes(fastify, options) {
           properties: {
             workflowId: { type: 'string' },
             status: { type: 'string' },
-            queuePosition: { type: 'number' }
+            queuePosition: { type: 'number' },
+            cost_sats: { type: 'number' }
+          }
+        },
+        402: {
+          type: 'object',
+          properties: {
+            error: { type: 'string' },
+            message: { type: 'string' },
+            cost_sats: { type: 'number' }
+          }
+        },
+        503: {
+          type: 'object',
+          properties: {
+            error: { type: 'string' },
+            message: { type: 'string' }
           }
         }
       }
     }
   }, async (request, reply) => {
     const { workflow, priority, gpu } = request.body;
+    // cost_sats is always set by the payment gate (server-side); read it back.
+    const costSats = request.body.cost_sats;
 
-    logger.info({ priority, gpu }, 'Submitting ComfyUI workflow');
+    logger.info({ priority, gpu, cost_sats: costSats }, 'Submitting ComfyUI workflow');
 
     try {
+      // Check backend availability before queuing to give an immediate 503.
+      const backendUp = await comfyuiManager._isBackendAvailable();
+      if (!backendUp) {
+        return reply.code(503).send({
+          error: 'Service Unavailable',
+          message: 'ComfyUI backend is not reachable. Workflow cannot be submitted.',
+        });
+      }
+
       const result = await comfyuiManager.submitWorkflow(workflow, { priority, gpu });
 
       reply.code(202).send({
         workflowId: result.workflowId,
         status: 'queued',
-        queuePosition: result.queuePosition
+        queuePosition: result.queuePosition,
+        cost_sats: costSats
       });
     } catch (error) {
       logger.error({ error: error.message }, 'Failed to submit workflow');

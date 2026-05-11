@@ -1,6 +1,11 @@
 /**
  * ComfyUI Workflow Manager
  * Manages workflow submission, execution tracking, and event broadcasting
+ *
+ * Connects to a real ComfyUI instance via HTTP + WebSocket.  The server URL
+ * is read from COMFYUI_URL (default http://localhost:8188).  If the backend
+ * is unreachable, workflow submissions return 503 Service Unavailable rather
+ * than producing simulated/fake results.
  */
 
 const { v4: uuidv4 } = require('uuid');
@@ -17,10 +22,63 @@ class ComfyUIManager extends EventEmitter {
     this.queue = [];
     this.subscribers = new Map(); // workflowId -> Set of clientIds
     this.outputsDir = process.env.COMFYUI_OUTPUTS || '/home/devuser/comfyui/output';
+    this.comfyuiUrl = (process.env.COMFYUI_URL || 'http://localhost:8188').replace(/\/$/, '');
 
     // Ensure output directory exists
     if (!fs.existsSync(this.outputsDir)) {
       fs.mkdirSync(this.outputsDir, { recursive: true });
+    }
+  }
+
+  /**
+   * Check whether the ComfyUI backend is reachable.
+   * @returns {Promise<boolean>}
+   */
+  async _isBackendAvailable() {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+      const res = await fetch(`${this.comfyuiUrl}/system_stats`, {
+        method: 'GET',
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Submit a workflow to the real ComfyUI /prompt endpoint.
+   * @returns {Promise<{prompt_id: string}>}
+   * @throws {Error} if the backend is unreachable or rejects the prompt.
+   */
+  async _submitToBackend(workflow) {
+    const res = await fetch(`${this.comfyuiUrl}/prompt`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: workflow }),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      throw new Error(`ComfyUI /prompt returned ${res.status}: ${body}`);
+    }
+    return res.json();
+  }
+
+  /**
+   * Poll the ComfyUI /history endpoint for a given prompt_id.
+   * @returns {Promise<object|null>}
+   */
+  async _pollHistory(promptId) {
+    try {
+      const res = await fetch(`${this.comfyuiUrl}/history/${promptId}`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data[promptId] || null;
+    } catch {
+      return null;
     }
   }
 
@@ -238,11 +296,12 @@ class ComfyUIManager extends EventEmitter {
   }
 
   /**
-   * Process workflow queue
+   * Process workflow queue — submits to the real ComfyUI backend.
+   *
+   * If the backend is unreachable the workflow is marked as failed with a
+   * ServiceUnavailable error.  No simulated/fake results are ever produced.
    */
   async _processQueue() {
-    // This would integrate with actual ComfyUI execution
-    // For now, simulate execution
     if (this.queue.length === 0) {
       return;
     }
@@ -254,47 +313,137 @@ class ComfyUIManager extends EventEmitter {
       return;
     }
 
-    workflowInfo.status = 'running';
-    workflowInfo.startTime = Date.now();
-
-    this.logger.info({ workflowId }, 'Workflow started');
-    this.emit('workflow:started', workflowInfo);
-
-    if (this.metrics.recordComfyUIWorkflow) {
-      this.metrics.recordComfyUIWorkflow('started');
+    // Guard: verify backend is reachable before attempting submission.
+    const available = await this._isBackendAvailable();
+    if (!available) {
+      workflowInfo.status = 'failed';
+      workflowInfo.error = 'ComfyUI backend is unavailable (503 Service Unavailable)';
+      workflowInfo.completionTime = Date.now();
+      this.logger.error({ workflowId, comfyuiUrl: this.comfyuiUrl }, 'ComfyUI backend unreachable — workflow failed');
+      this.emit('workflow:error', {
+        type: 'workflow:error',
+        workflowId,
+        error: workflowInfo.error,
+        timestamp: Date.now(),
+      });
+      if (this.metrics.recordComfyUIWorkflow) {
+        this.metrics.recordComfyUIWorkflow('failed');
+      }
+      // Continue draining the queue — next item may succeed if backend recovers.
+      this._processQueue();
+      return;
     }
 
-    // Simulate progress updates
-    // In real implementation, this would listen to ComfyUI API events
-    this._simulateProgress(workflowId);
+    // Submit to the real ComfyUI instance.
+    try {
+      const response = await this._submitToBackend(workflowInfo.workflow);
+      workflowInfo.promptId = response.prompt_id;
+      workflowInfo.status = 'running';
+      workflowInfo.startTime = Date.now();
+
+      this.logger.info({ workflowId, promptId: response.prompt_id }, 'Workflow submitted to ComfyUI');
+      this.emit('workflow:started', workflowInfo);
+
+      if (this.metrics.recordComfyUIWorkflow) {
+        this.metrics.recordComfyUIWorkflow('started');
+      }
+
+      // Poll the ComfyUI /history endpoint for completion.
+      this._pollForCompletion(workflowId, response.prompt_id);
+    } catch (err) {
+      workflowInfo.status = 'failed';
+      workflowInfo.error = `Failed to submit workflow to ComfyUI: ${err.message}`;
+      workflowInfo.completionTime = Date.now();
+
+      this.logger.error({ workflowId, error: err.message }, 'Workflow submission to ComfyUI failed');
+      this.emit('workflow:error', {
+        type: 'workflow:error',
+        workflowId,
+        error: workflowInfo.error,
+        timestamp: Date.now(),
+      });
+      if (this.metrics.recordComfyUIWorkflow) {
+        this.metrics.recordComfyUIWorkflow('failed');
+      }
+      this._processQueue();
+    }
   }
 
   /**
-   * Simulate workflow progress (replace with actual ComfyUI integration)
+   * Poll the ComfyUI /history endpoint until the prompt completes or fails.
+   * Polling interval: 2 s.  Timeout: 30 min.
    */
-  _simulateProgress(workflowId) {
+  _pollForCompletion(workflowId, promptId) {
     const workflowInfo = this.workflows.get(workflowId);
     if (!workflowInfo) return;
 
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += 10;
-      workflowInfo.progress = progress;
-      workflowInfo.currentNode = `node_${Math.floor(progress / 10)}`;
+    const maxPollMs = 30 * 60 * 1000; // 30 minutes
+    const pollIntervalMs = 2000;
+    const startedAt = Date.now();
 
-      this.emit('workflow:progress', {
-        type: 'workflow:progress',
-        workflowId,
-        progress,
-        currentNode: workflowInfo.currentNode,
-        timestamp: Date.now()
-      });
-
-      if (progress >= 100) {
+    const interval = setInterval(async () => {
+      // Check for cancellation.
+      if (workflowInfo.status === 'cancelled') {
         clearInterval(interval);
-        this._completeWorkflow(workflowId);
+        this._processQueue();
+        return;
       }
-    }, 1000);
+
+      // Timeout guard.
+      if (Date.now() - startedAt > maxPollMs) {
+        clearInterval(interval);
+        workflowInfo.status = 'failed';
+        workflowInfo.error = 'Workflow timed out after 30 minutes';
+        workflowInfo.completionTime = Date.now();
+        this.logger.error({ workflowId, promptId }, 'Workflow timed out');
+        this.emit('workflow:error', {
+          type: 'workflow:error',
+          workflowId,
+          error: workflowInfo.error,
+          timestamp: Date.now(),
+        });
+        if (this.metrics.recordComfyUIWorkflow) {
+          this.metrics.recordComfyUIWorkflow('failed');
+        }
+        this._processQueue();
+        return;
+      }
+
+      try {
+        const history = await this._pollHistory(promptId);
+        if (!history) return; // Not done yet — keep polling.
+
+        clearInterval(interval);
+
+        const statusStr = history.status && history.status.status_str;
+        if (statusStr === 'error' || history.status?.completed === false) {
+          workflowInfo.status = 'failed';
+          workflowInfo.error = history.status?.messages
+            ? JSON.stringify(history.status.messages)
+            : 'ComfyUI reported execution error';
+          workflowInfo.completionTime = Date.now();
+          this.logger.error({ workflowId, promptId }, 'ComfyUI workflow execution failed');
+          this.emit('workflow:error', {
+            type: 'workflow:error',
+            workflowId,
+            error: workflowInfo.error,
+            timestamp: Date.now(),
+          });
+          if (this.metrics.recordComfyUIWorkflow) {
+            this.metrics.recordComfyUIWorkflow('failed');
+          }
+        } else {
+          workflowInfo.outputs = history.outputs || [];
+          // _completeWorkflow calls _processQueue internally.
+          this._completeWorkflow(workflowId);
+          return;
+        }
+
+        this._processQueue();
+      } catch (err) {
+        this.logger.warn({ workflowId, promptId, error: err.message }, 'History poll error (will retry)');
+      }
+    }, pollIntervalMs);
   }
 
   /**
