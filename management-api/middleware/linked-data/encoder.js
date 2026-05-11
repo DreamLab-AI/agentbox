@@ -31,6 +31,7 @@
 const crypto = require('crypto');
 const { canonicalise: jcsCanonicalise } = require('./jcs');
 const { roundTrip, RoundTripViolation } = require('./round-trip');
+const { validatePayload, InputValidationError, PayloadTooLargeError } = require('./input-validator');
 
 class EncodingDisabledError extends Error {
   constructor(slot) {
@@ -126,6 +127,30 @@ class LinkedDataEncoder {
       return adapterCall(payload);
     }
 
+    // P2-10: validate input before passing to surface encoder.
+    const validationLimits = (this.manifest.linked_data || {}).input_validation || {};
+    try {
+      validatePayload(payload, {
+        surfaceId: surface.id,
+        resolver: this.resolver,
+        maxPayloadBytes: validationLimits.max_payload_bytes,
+        maxStringLength: validationLimits.max_string_length,
+        maxDepth: validationLimits.max_depth,
+        maxKeys: validationLimits.max_keys,
+      });
+    } catch (err) {
+      if (err instanceof InputValidationError) {
+        this.logger.warn?.({
+          event: 'linked-data.input-validation-rejected',
+          surface: surface.id,
+          code: err.code,
+          errorMessage: err.message,
+          agent: this.agentDid,
+        }) ?? this.logger.warn(`linked-data.input-validation-rejected: ${err.code} — ${err.message}`);
+      }
+      throw err;
+    }
+
     const startedAt = Date.now();
     let encoded;
     try {
@@ -215,6 +240,31 @@ class LinkedDataEncoder {
     if (!this._surfaceEnabled(surface.gateKey)) {
       throw new EncodingDisabledError(surface.gateKey);
     }
+
+    // P2-10: validate input before passing to surface encoder.
+    const standaloneValidationLimits = (this.manifest.linked_data || {}).input_validation || {};
+    try {
+      validatePayload(payload, {
+        surfaceId: surface.id,
+        resolver: this.resolver,
+        maxPayloadBytes: standaloneValidationLimits.max_payload_bytes,
+        maxStringLength: standaloneValidationLimits.max_string_length,
+        maxDepth: standaloneValidationLimits.max_depth,
+        maxKeys: standaloneValidationLimits.max_keys,
+      });
+    } catch (err) {
+      if (err instanceof InputValidationError) {
+        this.logger.warn?.({
+          event: 'linked-data.input-validation-rejected',
+          surface: surfaceId,
+          code: err.code,
+          errorMessage: err.message,
+          agent: this.agentDid,
+        }) ?? this.logger.warn(`linked-data.input-validation-rejected: ${err.code} — ${err.message}`);
+      }
+      throw err;
+    }
+
     const encoded = await surface.encode(payload, {
       resolver: this.resolver,
       manifest: this.manifest,
@@ -249,4 +299,6 @@ class LinkedDataEncoder {
 module.exports = {
   LinkedDataEncoder,
   EncodingDisabledError,
+  InputValidationError,
+  PayloadTooLargeError,
 };

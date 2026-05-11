@@ -19,6 +19,7 @@ const { LinkedDataEncoder } = require('./encoder');
 const { LIONLinter } = require('./lion-linter');
 const jcs = require('./jcs');
 const roundTrip = require('./round-trip');
+const inputValidator = require('./input-validator');
 
 const surfaceModules = [
   require('./surfaces/s01-pods'),
@@ -108,5 +109,6 @@ module.exports = {
   LIONLinter,
   jcs,
   roundTrip,
+  inputValidator,
   surfaceModules,
 };
