@@ -52,13 +52,15 @@ function getNostrTools() {
 // ─── Kind constants ────────────────────────────────────────────────────────────
 
 const kinds = Object.freeze({
-  AUTH:        27235,  // NIP-98 HTTP auth
-  AGENT_STATE: 30078,  // parameterised replaceable — agent state events
-  BRIEF_REF:   30000,  // NIP-33 addressable — brief references
-  BEAD_REF:    30001,  // NIP-33 addressable — bead/receipt references
+  AUTH:            27235,  // NIP-98 HTTP auth
+  AGENT_STATE:     30078,  // parameterised replaceable — agent state events
+  BRIEF_REF:       30000,  // NIP-33 addressable — brief references
+  BEAD_REF:        30001,  // NIP-33 addressable — bead/receipt references
+  JOB_ESTIMATE:    38200,  // agent job cost estimate (payment system)
+  JOB_SETTLEMENT:  38201,  // agent job receipt/settlement (payment system)
   // Generic NIP-33 range constants for subscription filters
-  NIP33_MIN:   30000,
-  NIP33_MAX:   39999,
+  NIP33_MIN:       30000,
+  NIP33_MAX:       39999,
 });
 
 // ─── Relay connection ──────────────────────────────────────────────────────────
@@ -380,6 +382,91 @@ class NostrBridge {
     }
 
     return { valid: true, pubkey: event.pubkey, error: null };
+  }
+
+  // ── Payment events ──
+
+  /**
+   * Create, sign, and publish a kind 38200 job cost estimate event.
+   *
+   * @param {object} jobData
+   * @param {string} jobData.job_id           - Unique job identifier (used as NIP-33 `d` tag).
+   * @param {string} jobData.endpoint         - Skill/endpoint being invoked.
+   * @param {number} jobData.estimated_sats   - Estimated cost in satoshis.
+   * @param {number} jobData.hold_sats        - Hold amount (estimated * buffer ratio).
+   * @param {number} jobData.dream_tokens     - Equivalent DREAM token cost.
+   * @param {number} jobData.rate             - DREAM-per-sat rate at time of estimate.
+   * @param {string} jobData.requester_pubkey - Hex pubkey of the requesting agent/user.
+   * @param {{ sign(event): Promise<object> }} signer - Produced by loadSigner().
+   * @returns {Promise<object>} The signed event.
+   */
+  async publishJobEstimate(jobData, signer) {
+    const event = {
+      kind: kinds.JOB_ESTIMATE,
+      content: JSON.stringify({
+        job_id: jobData.job_id,
+        endpoint: jobData.endpoint,
+        estimated_sats: jobData.estimated_sats,
+        hold_sats: jobData.hold_sats,
+        dream_tokens: jobData.dream_tokens,
+        rate: jobData.rate,
+      }),
+      tags: [
+        ['d', jobData.job_id],
+        ['p', jobData.requester_pubkey],
+        ['t', 'job-estimate'],
+        ['endpoint', jobData.endpoint],
+      ],
+      created_at: Math.floor(Date.now() / 1000),
+    };
+    return this.publish(event, signer);
+  }
+
+  /**
+   * Create, sign, and publish a kind 38201 job settlement event.
+   *
+   * @param {object} settlementData
+   * @param {string} settlementData.job_id             - Job identifier matching the estimate.
+   * @param {number} settlementData.actual_sats        - Actual cost in satoshis.
+   * @param {number} settlementData.refund_sats        - Refund amount (hold - actual).
+   * @param {string} settlementData.status             - 'settled' or 'failed'.
+   * @param {string} settlementData.requester_pubkey   - Hex pubkey of the requesting agent/user.
+   * @param {string} settlementData.estimate_event_id  - Event ID of the originating estimate.
+   * @param {{ sign(event): Promise<object> }} signer  - Produced by loadSigner().
+   * @returns {Promise<object>} The signed event.
+   */
+  async publishJobSettlement(settlementData, signer) {
+    const event = {
+      kind: kinds.JOB_SETTLEMENT,
+      content: JSON.stringify({
+        job_id: settlementData.job_id,
+        actual_sats: settlementData.actual_sats,
+        refund_sats: settlementData.refund_sats,
+        status: settlementData.status,
+      }),
+      tags: [
+        ['d', settlementData.job_id],
+        ['p', settlementData.requester_pubkey],
+        ['e', settlementData.estimate_event_id],
+        ['t', 'job-settlement'],
+      ],
+      created_at: Math.floor(Date.now() / 1000),
+    };
+    return this.publish(event, signer);
+  }
+
+  /**
+   * Subscribe to payment job events (estimates + settlements) for a pubkey.
+   *
+   * @param {string}   pubkey  - Hex pubkey to filter `p` tags against.
+   * @param {Function} handler - Called with each matching event.
+   * @returns {string} Subscription ID (pass to unsubscribe).
+   */
+  subscribeJobEvents(pubkey, handler) {
+    return this.subscribe(
+      { kinds: [kinds.JOB_ESTIMATE, kinds.JOB_SETTLEMENT], '#p': [pubkey] },
+      handler
+    );
   }
 
   // ── Internal message routing ──

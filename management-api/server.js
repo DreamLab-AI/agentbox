@@ -308,6 +308,10 @@ app.register(require('./routes/broker-bridge'), { prefix: '', logger });
 // for broker decisions through these local endpoints.
 app.register(require('./routes/git-bridge'), { prefix: '', logger });
 
+// Payment routes — HTTP 402 Web Ledger integration.
+// Proxies to solid-pod-rs payment module; local cost estimation.
+app.register(require('./routes/payments'), { prefix: '', logger, metrics });
+
 // Liveness probe — registered early, no sentinel check, event-loop-alive only.
 // Must respond in <100 ms unconditionally.
 app.get('/livez', {
@@ -601,6 +605,14 @@ app.get('/', {
         submitEnrichment: 'POST /v1/git/submit-enrichment',
         caseStatus: 'GET /v1/git/case-status/:caseId',
         approveCallback: 'POST /v1/git/approve-callback'
+      },
+      payments: {
+        info: 'GET /v1/pay/info',
+        balance: 'GET /v1/pay/balance',
+        deposit: 'POST /v1/pay/deposit',
+        estimate: 'POST /v1/pay/estimate',
+        buy: 'POST /v1/pay/buy',
+        withdraw: 'POST /v1/pay/withdraw'
       },
       monitoring: {
         status: 'GET /v1/status',

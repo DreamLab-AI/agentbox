@@ -41,6 +41,99 @@ module.exports = {
     }
     throw new Error(`S8 encode: unknown operation ${operation || payload.kind}`);
   },
+
+  /**
+   * Decode and validate an incoming mandate or receipt document.
+   *
+   * Performs structural validation:
+   *   - Checks @context includes VC_CONTEXT
+   *   - Checks type array contains PaymentMandate or PaymentReceipt
+   *   - Validates required credentialSubject fields
+   *
+   * Returns { kind: 'mandate'|'receipt', document, valid: true, errors: [] }
+   * or { valid: false, errors: [...] }.
+   */
+  async decode(document) {
+    if (!document) return { valid: false, errors: ['document required'] };
+
+    const errors = [];
+
+    // Context check
+    const contexts = Array.isArray(document['@context'])
+      ? document['@context']
+      : [document['@context']];
+    if (!contexts.includes(VC_CONTEXT)) {
+      errors.push(`Missing required @context: ${VC_CONTEXT}`);
+    }
+
+    const types = Array.isArray(document.type) ? document.type : [document.type];
+    const isMandate = types.includes('PaymentMandate');
+    const isReceipt = types.includes('PaymentReceipt');
+
+    if (!isMandate && !isReceipt) {
+      errors.push('Document type must include PaymentMandate or PaymentReceipt');
+      return { valid: false, errors };
+    }
+
+    if (!document.issuer) {
+      errors.push('issuer is required');
+    }
+
+    const subject = document.credentialSubject;
+    if (!subject) {
+      errors.push('credentialSubject is required');
+      return { valid: false, errors, kind: isMandate ? 'mandate' : 'receipt' };
+    }
+
+    if (isMandate) {
+      if (!subject['odrl:assignee'] && !subject.assignee) {
+        errors.push('mandate credentialSubject must include odrl:assignee');
+      }
+      if (!subject['odrl:assigner'] && !subject.assigner) {
+        errors.push('mandate credentialSubject must include odrl:assigner');
+      }
+      // Validate extended payment fields when present
+      if (subject['agbx:amount_sats'] !== undefined && typeof subject['agbx:amount_sats'] !== 'number') {
+        errors.push('agbx:amount_sats must be a number');
+      }
+      if (subject['agbx:currency'] !== undefined && typeof subject['agbx:currency'] !== 'string') {
+        errors.push('agbx:currency must be a string');
+      }
+      if (subject['agbx:rate'] !== undefined && typeof subject['agbx:rate'] !== 'number') {
+        errors.push('agbx:rate must be a number');
+      }
+      if (subject['agbx:token_ticker'] !== undefined && typeof subject['agbx:token_ticker'] !== 'string') {
+        errors.push('agbx:token_ticker must be a string');
+      }
+    }
+
+    if (isReceipt) {
+      if (!subject['schema:datePaid'] && !subject.datePaid) {
+        errors.push('receipt credentialSubject must include schema:datePaid');
+      }
+      // Validate extended receipt fields when present
+      if (subject['agbx:settled_sats'] !== undefined && typeof subject['agbx:settled_sats'] !== 'number') {
+        errors.push('agbx:settled_sats must be a number');
+      }
+      if (subject['agbx:refund_sats'] !== undefined && typeof subject['agbx:refund_sats'] !== 'number') {
+        errors.push('agbx:refund_sats must be a number');
+      }
+      if (subject['agbx:job_id'] !== undefined && typeof subject['agbx:job_id'] !== 'string') {
+        errors.push('agbx:job_id must be a string');
+      }
+    }
+
+    if (errors.length > 0) {
+      return { valid: false, errors, kind: isMandate ? 'mandate' : 'receipt' };
+    }
+
+    return {
+      valid: true,
+      errors: [],
+      kind: isMandate ? 'mandate' : 'receipt',
+      document,
+    };
+  },
 };
 
 function _encodeMandate(payload, agentDid) {
@@ -75,6 +168,11 @@ function _encodeMandate(payload, agentDid) {
       'odrl:constraint': payload.constraints || [],
     },
   };
+  // Extended payment fields for Web Ledger integration
+  if (payload.amount_sats !== undefined) mandate.credentialSubject['agbx:amount_sats'] = payload.amount_sats;
+  if (payload.currency) mandate.credentialSubject['agbx:currency'] = payload.currency;
+  if (payload.rate !== undefined) mandate.credentialSubject['agbx:rate'] = payload.rate;
+  if (payload.token_ticker) mandate.credentialSubject['agbx:token_ticker'] = payload.token_ticker;
   if (permission.duties) mandate.credentialSubject['odrl:duty'] = permission.duties;
   if (payload.validUntil) mandate.validUntil = payload.validUntil;
 
@@ -105,6 +203,10 @@ function _encodeReceipt(payload, agentDid) {
     'schema:customer': payload.customer || null,
     'schema:datePaid': payload.datePaid || new Date().toISOString(),
   };
+  // Extended receipt fields for Web Ledger integration
+  if (payload.settled_sats !== undefined) subject['agbx:settled_sats'] = payload.settled_sats;
+  if (payload.refund_sats !== undefined) subject['agbx:refund_sats'] = payload.refund_sats;
+  if (payload.job_id) subject['agbx:job_id'] = payload.job_id;
 
   const receipt = {
     '@context': [VC_CONTEXT, AGBX_CONTEXT, 'http://schema.org/'],

@@ -93,7 +93,7 @@ expose           = false
 data_dir         = "/var/lib/nostr-relay"
 ingress_policy   = "allowlist"        # allowlist | signed-only | open
 allowed_pubkeys  = []                  # empty = self only (own npub); operator pubkey auto-added at boot
-allowed_kinds    = [1, 1059, 30078, 27235, 38000, 38100]
+allowed_kinds    = [1, 1059, 30078, 27235, 38000, 38100, 38200, 38201]
 pod_bridge       = true
 external_fanout  = "off"               # bidirectional | publish-only | subscribe-only | off
 max_event_bytes  = 131072
@@ -414,6 +414,27 @@ round_trip_in_dispatch = true           # CI canary; turn off for hot paths
 method                = "nostr"
 service_endpoints     = ["pod", "relay"]
 publish_to_well_known = true
+
+# ── Payment System ────────────────────────────────────────────────────────────
+# HTTP 402 Web Ledger integration via solid-pod-rs.
+# All costs in satoshis. Token operations use DREAM at configurable rate.
+[payments]
+enabled = true
+backend = "solid-pod-rs"                    # proxy to local pod on :8484
+base_cost_sats = 10
+dream_per_sat = 10
+hold_buffer_ratio = 1.2
+
+[payments.tiers]
+inference = 10        # text LLM: 10x base
+image_gen = 100       # diffusion: 100x base
+analytics = 5         # embeddings: 5x base
+
+[payments.token]
+ticker = "DREAM"
+rate = 10             # DREAM per sat
+supply = 1000000
+issuer = ""           # populated from OPERATOR_NOSTR_PUBKEY at runtime
 
 [linked_data.privacy_handoff]
 order = "after"   # documentation only — the order is fixed in code (E048)
