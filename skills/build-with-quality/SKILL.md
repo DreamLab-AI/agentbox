@@ -82,6 +82,20 @@ mcp__claude-flow__task_orchestrate { task: "[PROJECT]", strategy: "parallel" }
 - **Dream Cycles**: Background pattern consolidation
 - **Q-Learning**: Coverage optimisation with 12-dimensional state space
 
+### Memory Architecture Enhancements (v1.3.0 — KHIVE-informed)
+
+Learnings from operational comparison with KHIVE v2 during cross-ecosystem sprints.
+See [agentdb-memory-patterns/KHIVE-LEARNINGS.md](../agentdb-memory-patterns/KHIVE-LEARNINGS.md) for full analysis.
+
+- **Orient Pattern**: Single cold-start call returns memory/task/entity counts, recent items, and open tasks. Eliminates the 4-5 sequential tool calls that currently open every session. Proposed: `mcp__claude-flow__memory_orient()`.
+- **Importance-Weighted Retrieval**: Memories stored with `importance` float (0.0–1.0). Retrieval blends: `0.6 * cosine + 0.2 * importance + 0.2 * recency`. Architecture decisions and security findings reliably surface above session noise.
+- **Episodic vs Semantic Memory Types**: `episodic` (what happened — decays, auto-expire via TTL) vs `semantic` (what we learned — durable, no TTL). Filterable on recall. Agents ask "what did we learn about NIP-98?" not "what happened on May 11th?"
+- **Tag Retrieval Path**: Exact-match categorical filters that bypass vector search entirely. `recall(tags=["security","p0"])` returns all P0 security issues without depending on embedding similarity. Uses GIN-indexed JSONB on the sidecar Postgres.
+- **Entity-Relationship Graph**: Lightweight entity/edge tables alongside the vector store. Enables structural queries: "what depends on solid-pod-rs?" → graph traversal, not embedding similarity. Entities have typed `kind` (person/project/concept) and typed `relation` edges.
+- **Task Dependency DAG**: Tasks with `depends_on` arrays and a `next()` verb that returns only unblocked work. Enforces execution order across multi-repo sprints without manual coordination.
+- **URI/URN Addressing**: Three-level scheme: `urn:agentdb:{namespace}:{kind}:{key}[@version]`. Every entry addressable by URN. Cross-references between tasks, entities, and memories use URNs, enabling graph traversal from any node.
+- **Hybrid Scoring**: Combine HNSW vector score with BM25 keyword match for retrieval. Catches exact-match queries that embedding models miss.
+
 ### Intelligent Model Routing (TinyDancer)
 
 - **3-tier routing**: Haiku (0-20), Sonnet (20-70), Opus (70-100) complexity
