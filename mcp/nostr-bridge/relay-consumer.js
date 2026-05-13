@@ -135,7 +135,11 @@ class RelayConsumer {
     return [
       1,                                  // general notes
       1059,                               // NIP-17 gift wrap DMs
+      30001,                              // legacy bead provenance
+      30050,                              // IS-Envelope mesh-event (ADR-075)
       30078,                              // agent state (NIP-33)
+      30910,                              // moderation (ban/mute)
+      31400, 31401, 31402, 31403, 31404, 31405,  // governance panels (ACSP)
       AGENT_INTENT_MIN, AGENT_RESPONSE_MIN,
       JOB_ESTIMATE_KIND, JOB_SETTLEMENT_KIND,
     ];
@@ -215,15 +219,13 @@ class RelayConsumer {
     }
 
     // Persist atomically (write tmp + rename).
+    // PRD-010 F19: emit LDN-native AS2 JSON-LD instead of raw Nostr JSON.
+    // The full signed event is preserved in x:nostrEvent for provenance.
     try {
       fs.mkdirSync(inboxPath, { recursive: true });
       const tmpPath = path.join(inboxPath, `.${event.id}.${process.pid}.tmp`);
-      fs.writeFileSync(tmpPath, JSON.stringify({
-        event,
-        recipient_npub: recipient,
-        received_at: new Date(this._now()).toISOString(),
-        relay_url: relayUrl,
-      }, null, 2));
+      const ldnPayload = this._formatAsLdn(event, recipient, relayUrl);
+      fs.writeFileSync(tmpPath, JSON.stringify(ldnPayload, null, 2));
       fs.renameSync(tmpPath, finalPath);
     } catch (err) {
       this._logger.error({ err, eventId: event.id }, 'pod-inbox-write-failed');
@@ -382,6 +384,62 @@ class RelayConsumer {
     } catch {
       return hex;
     }
+  }
+
+  /**
+   * Convert an npub (bech32) to hex pubkey.  If the input is already 64-char
+   * hex, return it as-is.  Falls back to returning the input unchanged when
+   * nostr-tools is unavailable (test environments).
+   * @param {string} npubOrHex
+   * @returns {string} 64-char lowercase hex pubkey, or the input unchanged
+   * @private
+   */
+  _npubToHex(npubOrHex) {
+    if (/^[0-9a-f]{64}$/i.test(npubOrHex)) return npubOrHex.toLowerCase();
+    try {
+      const nostrTools = require('nostr-tools');
+      const { type, data } = nostrTools.nip19.decode(npubOrHex);
+      if (type === 'npub') return data;
+    } catch { /* nostr-tools missing or invalid bech32 */ }
+    return npubOrHex;
+  }
+
+  /**
+   * Format a Nostr event as a Linked Data Notification (LDN) payload using
+   * ActivityStreams 2.0 (PRD-010 F19 / ADR-075 IS-Envelope).
+   *
+   * The outer AS2 shape lets vanilla LDN consumers process the message.
+   * The `x:nostrEvent` extension preserves the full signed event for
+   * verifier re-runs and provenance auditing.  The `x:envelope` extension
+   * preserves relay metadata that is not part of the Nostr event itself.
+   *
+   * @param {object} event     - Signed Nostr event (id, pubkey, kind, content, tags, sig, …)
+   * @param {string} recipient - Recipient identifier (npub or hex) as returned by _findRecipientNpub
+   * @param {string} relayUrl  - Relay URL the event was received from
+   * @returns {object} JSON-LD payload ready for JSON.stringify
+   * @private
+   */
+  _formatAsLdn(event, recipient, relayUrl) {
+    const senderHex = event.pubkey;  // Nostr events always carry hex pubkeys
+    const recipientHex = this._npubToHex(recipient);
+    return {
+      '@context': 'https://www.w3.org/ns/activitystreams',
+      type: 'Announce',
+      actor: `did:nostr:${senderHex}`,
+      target: `did:nostr:${recipientHex}`,
+      published: new Date(this._now()).toISOString(),
+      object: {
+        '@type': 'Note',
+        content: event.content,
+        id: `urn:nostr:event:${event.id}`,
+      },
+      'x:nostrEvent': event,
+      'x:envelope': {
+        received_at: new Date(this._now()).toISOString(),
+        relay_url: relayUrl,
+        recipient_npub: recipient,
+      },
+    };
   }
 
   _isAgentIntent(kind) {

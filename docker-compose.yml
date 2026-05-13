@@ -24,6 +24,8 @@ services:
       - "8888:8888"
       - "5901:5901"
       - "8080:8080"
+      # Uncomment for mesh.mode = "federated" (PRD-010 F17)
+      # - "7777:7777"
 
     environment:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}

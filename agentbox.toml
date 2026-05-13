@@ -103,6 +103,22 @@ allow_nip04      = false
 info_description = "Agentbox sovereign relay"
 info_contact     = ""
 
+# ── Mesh federation (PRD-010 Phase 3 / ADR-073) ─────────────────────────────
+# Controls cross-substrate federation behaviour. Requires
+# [sovereign_mesh.relay].enabled = true and [sovereign_mesh.nostr_bridge] = true.
+#
+# mode values:
+#   "standalone"  — no federation; relay is loopback-only (default)
+#   "federated"   — relay exposed externally; accepts peer connections
+#   "client"      — subscribes to peers but does not accept inbound
+[mesh]
+mode = "standalone"
+peer_relays = []                         # ws:// or wss:// URLs of mesh peers
+federated_kinds = [1, 1059, 30001, 30050, 30078, 30910, 31400, 31401, 31402, 31403, 31404, 31405, 38000, 38100]
+allowed_remote_dids = []                 # did:nostr:<hex> of trusted peers
+subscribed_kinds = []                    # subset of federated_kinds to pull; empty = all
+honor_remote_moderation = false          # accept kind-30910 bans from peers
+
 # ── Networking ─────────────────────────────────────────────────────────────────
 # Tailscale provides direct encrypted access to the agentbox from any device
 # on your tailnet — no port-forwarding, no SSH tunnels, no firewall rules.

@@ -1983,6 +1983,12 @@ ${topLevelVolumes}${lib.optionalString (ragflowCfg.enabled or false) "\nnetworks
           "8888/tcp" = {};
         };
 
+        # PRD-010 F17: expose the embedded relay port when
+        # [sovereign_mesh.relay].expose = true (federated mode).
+        relayPorts = lib.optionalAttrs (relayEnabled && (relayCfg.expose or false)) {
+          "${toString (relayCfg.port or 7777)}/tcp" = {};
+        };
+
         mkImage = { tag, extraPackages ? [], maxLayers ? 100 }:
           n2c.buildImage {
             name = "agentbox";
@@ -2006,7 +2012,7 @@ ${topLevelVolumes}${lib.optionalString (ragflowCfg.enabled or false) "\nnetworks
               Entrypoint = [ "${entrypoint}/bin/entrypoint" ];
               Env = imageEnv;
               WorkingDir = "/home/devuser/workspace";
-              ExposedPorts = commonPorts // sovereignPorts // desktopPorts // dataSciencePorts;
+              ExposedPorts = commonPorts // sovereignPorts // desktopPorts // dataSciencePorts // relayPorts;
               Labels = {
                 "org.opencontainers.image.title" = "Agentbox";
                 "org.opencontainers.image.description" = "Agentbox modular sovereign agent environment";

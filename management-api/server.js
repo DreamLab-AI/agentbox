@@ -916,6 +916,38 @@ async function start() {
       }
     }
 
+    // ── Nostr relay consumer (PRD-010 F16) ──────────────────────────────
+    // Wire the pod-bridge relay consumer after adapters are connected.
+    // Only starts when the relay and nostr_bridge are both enabled in the
+    // manifest. Env vars are set by flake.nix from [sovereign_mesh.relay].
+    if (process.env.AGENTBOX_RELAY_ENABLED === 'true'
+        && process.env.AGENTBOX_RELAY_POD_BRIDGE === 'true') {
+      try {
+        const { RelayConsumer } = require('../mcp/nostr-bridge/relay-consumer');
+        const npubs = (process.env.AGENTBOX_NPUB || '').split(',').filter(Boolean);
+        if (npubs.length > 0) {
+          const consumer = new RelayConsumer({
+            npubs,
+            allowedPubkeys: (process.env.AGENTBOX_RELAY_ALLOWED_PUBKEYS || '').split(',').filter(Boolean),
+            ingressPolicy: process.env.AGENTBOX_RELAY_POLICY || 'allowlist',
+            fanout: process.env.AGENTBOX_RELAY_FANOUT || 'off',
+            adapters: {
+              events: resolvedAdapters.events || null,
+              orchestrator: resolvedAdapters.orchestrator || null,
+            },
+            logger,
+          });
+          await consumer.start();
+          app.addHook('onClose', async () => { await consumer.stop(); });
+          logger.info('RelayConsumer started — pod-bridge active');
+        } else {
+          logger.warn('RelayConsumer skipped — AGENTBOX_NPUB is empty (sovereign-bootstrap may not have run)');
+        }
+      } catch (err) {
+        logger.warn({ err }, 'RelayConsumer failed to start — pod-bridge inactive');
+      }
+    }
+
     // ── Observability ───────────────────────────────────────────────────
     initTracing();
     observabilityMetrics.setBuildInfo();
