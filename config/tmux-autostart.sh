@@ -87,9 +87,66 @@ tmux new-window -t "${SESSION}:7" -n "Git" -c "$PROJECT"
 tmux send-keys -t "${SESSION}:7" "git status" C-m
 
 # ============================================================================
+# Window 8: OpenRouter — Claude Code via OpenRouter (free NVIDIA / open models)
+# Uses profile isolation: HOME=$OR_PROFILE so Claude reads settings.local.json
+# from profiles/openrouter/.claude/ instead of the devuser home.
+# OPENROUTER_API_KEY is injected at runtime from the dotenv credentials system.
+# ============================================================================
+OR_WORKSPACE="${WORKSPACE:-${HOME}/workspace}"
+OR_PROFILE="${OR_WORKSPACE}/profiles/openrouter"
+OR_CLAUDE_DIR="${OR_PROFILE}/.claude"
+# Default free NVIDIA model — override in OR_MODEL env var if desired:
+#   nvidia/nemotron-3-super-120b-a12b:free  (262k ctx, tools, coding)
+#   nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free (reasoning + vision)
+#   qwen/qwen3-coder:free (480B MoE, strong coder, 262k ctx)
+#   deepseek/deepseek-v4-flash:free (1M ctx, fast)
+#   inclusionai/ring-2.6-1t:free (1T param, 262k ctx, agent-optimised)
+OR_MODEL="${OR_MODEL:-nvidia/nemotron-3-super-120b-a12b:free}"
+
+mkdir -p "${OR_CLAUDE_DIR}"
+
+if [ -n "${OPENROUTER_API_KEY:-}" ]; then
+  # Write settings.local.json at runtime — API keys never baked into image.
+  # ANTHROPIC_BASE_URL redirect routes the Anthropic SDK to OpenRouter's
+  # compatible API endpoint. ANTHROPIC_AUTH_TOKEN is the Bearer token.
+  # ANTHROPIC_API_KEY is cleared so it doesn't shadow ANTHROPIC_AUTH_TOKEN.
+  cat > "${OR_CLAUDE_DIR}/settings.local.json" <<ORJSON
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://openrouter.ai/api",
+    "ANTHROPIC_AUTH_TOKEN": "${OPENROUTER_API_KEY}",
+    "ANTHROPIC_API_KEY": ""
+  },
+  "model": "${OR_MODEL}"
+}
+ORJSON
+  _or_status="OPENROUTER_API_KEY set — model: ${OR_MODEL}"
+else
+  # Leave any existing settings.local.json intact; warn in the window.
+  _or_status="WARNING: OPENROUTER_API_KEY not set — add it to your .env file"
+fi
+
+# Symlink shared workspace and projects into the profile (same as other stacks)
+[ -L "${OR_PROFILE}/workspace" ] || ln -sfn "${OR_WORKSPACE}" "${OR_PROFILE}/workspace" 2>/dev/null || true
+[ -L "${OR_PROFILE}/projects" ] || ln -sfn "${SHARED_PROJECTS_ROOT:-/projects}" "${OR_PROFILE}/projects" 2>/dev/null || true
+
+tmux new-window -t "${SESSION}:8" -n "OpenRouter" -c "${OR_PROFILE}"
+tmux send-keys -t "${SESSION}:8" "echo '  OpenRouter Profile — isolated Claude Code with free models'" C-m
+tmux send-keys -t "${SESSION}:8" "echo '  ${_or_status}'" C-m
+tmux send-keys -t "${SESSION}:8" "echo '  Run: HOME=${OR_PROFILE} claude'" C-m
+tmux send-keys -t "${SESSION}:8" "echo ''" C-m
+# Export HOME override so claude reads from this profile's .claude/ directory
+tmux send-keys -t "${SESSION}:8" "export HOME=${OR_PROFILE}" C-m
+tmux send-keys -t "${SESSION}:8" "export ANTHROPIC_BASE_URL=https://openrouter.ai/api" C-m
+if [ -n "${OPENROUTER_API_KEY:-}" ]; then
+  tmux send-keys -t "${SESSION}:8" "export ANTHROPIC_AUTH_TOKEN=${OPENROUTER_API_KEY}" C-m
+  tmux send-keys -t "${SESSION}:8" "export ANTHROPIC_API_KEY=" C-m
+fi
+
+# ============================================================================
 # Select window 0 (Claude)
 # ============================================================================
 tmux select-window -t "${SESSION}:0"
 
-echo "[tmux-autostart] Session '$SESSION' created with 8 windows"
-echo "  0:Claude  1:Agent  2:Services  3:Build  4:Logs  5:System  6:VNC  7:Git"
+echo "[tmux-autostart] Session '$SESSION' created with 9 windows"
+echo "  0:Claude  1:Agent  2:Services  3:Build  4:Logs  5:System  6:VNC  7:Git  8:OpenRouter"

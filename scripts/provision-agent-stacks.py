@@ -43,6 +43,20 @@ STACKS = {
         "skills": ["latex-documents", "report-builder", "mermaid-diagrams", "paperbanana", "wardley-maps"],
         "env": ["PERPLEXITY_API_KEY", "GOOGLE_GEMINI_API_KEY", "OPENAI_API_KEY"],
     },
+    # OpenRouter profile: Claude Code routed through OpenRouter's Anthropic-
+    # compatible API. OPENROUTER_API_KEY is injected via the dotenv credentials
+    # system (providers.openrouter in agentbox.toml). The tmux-autostart.sh
+    # Window 8 writes settings.local.json at runtime (not at build time) with
+    # the live key value. Free NVIDIA models available:
+    #   nvidia/nemotron-3-super-120b-a12b:free  (262k ctx, tool-calling)
+    #   nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free (reasoning+vision)
+    #   nvidia/nemotron-nano-12b-v2-vl:free     (fast vision-language)
+    # Also strong free alternatives: qwen/qwen3-coder:free, deepseek/deepseek-v4-flash:free
+    "openrouter": {
+        "tools": ["claude"],
+        "skills": ["skill-router", "lazy-fetch", "codebase-memory"],
+        "env": ["OPENROUTER_API_KEY"],
+    },
 }
 
 
