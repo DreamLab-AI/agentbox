@@ -18,7 +18,7 @@
  *   CHROMIUM_WEBGPU=false → --disable-gpu (safe software path)
  *
  * Display:
- *   DISPLAY (default :1)          → X11 Xvnc path (i3-x11 stack)
+ *   DISPLAY (default :1)          → X11 path (xorg-nvidia or i3-x11 stack)
  *   WAYLAND_DISPLAY set           → Chrome Ozone/Wayland path (future hyprland stack)
  */
 'use strict';
@@ -60,11 +60,9 @@ const baseArgs = [
   '--disable-breakpad',         // kill crash reporter background thread
 ];
 
-// WebGPU via ANGLE-Vulkan + VirtualGL: Xvnc has no GLX/EGL, so Chrome cannot
-// create a GPU context directly. VirtualGL intercepts GL/Vulkan calls, renders
-// on the real GPU via DRM render nodes (/dev/dri/renderD128+), and composites
-// back to Xvnc. VGLRUN_PATH is set by the Nix supervisor when virtualgl is
-// available. Falls back to SwiftShader software WebGPU when no GPU is present.
+// WebGPU via ANGLE-Vulkan on Xorg + NVIDIA. The xorg-nvidia stack provides
+// native GLX/EGL — Chrome gets a real GPU context directly. Falls back to
+// SwiftShader software WebGPU when no GPU hardware is present.
 const webgpuArgs = WEBGPU ? [
   '--enable-unsafe-webgpu',
   '--enable-features=Vulkan,WebGPU,UseSkiaRenderer',
@@ -89,11 +87,9 @@ const launchEnv = {
   ...process.env,
   DISPLAY,
   ...(WAYLAND_DISPLAY ? { WAYLAND_DISPLAY, XDG_RUNTIME_DIR } : {}),
-  // GPU context on Xvnc requires VirtualGL + NVIDIA ICD chain.
-  // These are set by the Nix supervisor; forward them to the Chrome subprocess.
   ...(process.env.VK_ICD_FILENAMES ? { VK_ICD_FILENAMES: process.env.VK_ICD_FILENAMES } : {}),
   ...(process.env.__EGL_VENDOR_LIBRARY_FILENAMES ? { __EGL_VENDOR_LIBRARY_FILENAMES: process.env.__EGL_VENDOR_LIBRARY_FILENAMES } : {}),
-  ...(process.env.VGL_DISPLAY ? { VGL_DISPLAY: process.env.VGL_DISPLAY } : {}),
+  ...(process.env.FONTCONFIG_FILE ? { FONTCONFIG_FILE: process.env.FONTCONFIG_FILE } : {}),
 };
 
 // ---------------------------------------------------------------------------

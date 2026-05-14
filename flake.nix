@@ -51,6 +51,7 @@
         networkingCfg = agentboxConfig.networking or {};
         desktopCfg = agentboxConfig.desktop or {};
         isWaylandStack = (desktopCfg.stack or "i3-x11") == "hyprland-wayland";
+        isXorgNvidiaStack = (desktopCfg.stack or "i3-x11") == "xorg-nvidia";
         webgpuEnabled  = desktopCfg.webgpu or false;
         skillsCfg = agentboxConfig.skills or {};
         toolchainCfg = agentboxConfig.toolchains or {};
@@ -295,14 +296,16 @@
           npmDepsHash = "sha256-pqt7Nv9a5iJNUqFucLUej14yWRNsDLirFFoEayB6WV0=";
         };
 
-        # VirtualGL-wrapped chromium for WebGPU on Xvnc. Xvnc has no GLX/EGL,
-        # so VirtualGL intercepts GL/Vulkan calls and renders on the real GPU
-        # via DRM render nodes. This wrapper is used as CHROMIUM_PATH when
-        # desktop.webgpu = true and the stack is i3-x11.
+        # VirtualGL-wrapped chromium for the legacy i3-x11 stack. Xvnc has no
+        # GLX/EGL, so VGL interposes GL calls. Known limitation: Chrome's
+        # multi-process sandbox prevents VGL window compositing — standalone
+        # GL apps work but Chrome windows don't appear on Xvnc. Retained as
+        # fallback; prefer xorg-nvidia stack for hardware GPU rendering.
         vglrunChromium = pkgs.writeShellScriptBin "vglrun-chromium" ''
-          export VGL_DISPLAY=''${VGL_DISPLAY:-/dev/dri/renderD128}
+          export VGL_DISPLAY=''${VGL_DISPLAY:-egl}
           export VK_ICD_FILENAMES=''${VK_ICD_FILENAMES:-/etc/vulkan/icd.d/nvidia_icd.json}
           export __EGL_VENDOR_LIBRARY_FILENAMES=''${__EGL_VENDOR_LIBRARY_FILENAMES:-/usr/share/glvnd/egl_vendor.d/10_nvidia.json}
+          export LD_LIBRARY_PATH="/usr/lib:${pkgs.libglvnd}/lib:''${LD_LIBRARY_PATH:-}"
           exec ${pkgs.virtualgl}/bin/vglrun ${pkgs.chromium}/bin/chromium "$@"
         '';
 
@@ -826,6 +829,12 @@ default_days = ${toString (relayCfg.retention_days or 30)}
             xwayland     # X11 compat on DISPLAY=:1 for agent-browser and legacy tools
             wayvnc       # VNC server that captures the Wayland compositor output
             wlr-randr    # Display management for wlroots-based compositors
+          ] else if isXorgNvidiaStack then with pkgs; [
+            xorg.xorgserver  # real Xorg with NVIDIA driver — native GLX/EGL
+            xorg.xf86inputlibinput
+            xorg.xrandr
+            x11vnc       # scrapes Xorg framebuffer → VNC port 5901
+            i3 i3status dmenu
           ] else with pkgs; [
             tigervnc     # Xvnc: X server + VNC in one binary (correct XKB paths)
             i3           # tiling WM — stable in Nix containers (openbox segfaults)
@@ -1015,6 +1024,13 @@ stderr_logfile=/var/log/jupyter-lab.error.log
         #   "drm" at runtime when NVIDIA DRM is mapped in (needs /dev/dri/card0).
         #   Chrome uses ANGLE-Vulkan for WebGPU regardless of compositor backend.
         #
+        # "xorg-nvidia": Real Xorg server with NVIDIA proprietary driver.
+        #   AllowEmptyInitialConfiguration + ConnectedMonitor DFP-0 creates a
+        #   virtual display. Xorg provides native GLX/EGL — Chrome gets a real
+        #   GPU context without VirtualGL. x11vnc scrapes the Xorg framebuffer
+        #   and exports over VNC port 5901. Requires /dev/dri/card* + NVIDIA
+        #   userspace libs mapped into the container.
+        #
         # "i3-x11" (default): TigerVNC Xvnc on :1 + i3 WM. Xvnc is a software
         #   framebuffer with NO GLX/EGL support. Chrome cannot create a GPU
         #   context (WebGL or WebGPU) on Xvnc directly. VirtualGL is required:
@@ -1059,6 +1075,38 @@ startsecs=5
 priority=42
 stdout_logfile=/var/log/wayvnc.log
 stderr_logfile=/var/log/wayvnc.error.log
+          '' else if isXorgNvidiaStack then ''
+[program:xorg-nvidia]
+command=/opt/agentbox/config/start-xorg-nvidia.sh
+environment=HOME="/home/devuser"
+autostart=true
+autorestart=true
+startsecs=3
+priority=40
+stdout_logfile=/var/log/xorg-nvidia.log
+stderr_logfile=/var/log/xorg-nvidia.error.log
+
+[program:i3wm]
+command=${pkgs.i3}/bin/i3
+user=devuser
+environment=DISPLAY=":1",HOME="/home/devuser"
+autostart=true
+autorestart=true
+startsecs=3
+priority=41
+stdout_logfile=/var/log/i3wm.log
+stderr_logfile=/var/log/i3wm.error.log
+
+[program:x11vnc]
+command=${pkgs.x11vnc}/bin/x11vnc -display :1 -rfbport 5901 -shared -forever -nopw -noxdamage -xkb
+user=devuser
+environment=DISPLAY=":1",HOME="/home/devuser"
+autostart=true
+autorestart=true
+startsecs=5
+priority=42
+stdout_logfile=/var/log/x11vnc.log
+stderr_logfile=/var/log/x11vnc.error.log
           '' else ''
 [program:xvnc]
 command=${pkgs.tigervnc}/bin/Xvnc :1 -geometry ${(desktopCfg.resolution or "1920x1080")} -depth 24 -SecurityTypes None -ac -pn -rfbport 5901 -rawkeyboard
@@ -1175,7 +1223,7 @@ ${lib.optionalString (browserCfg.playwright or false) ''
 command=${playwrightMcpPkg}/bin/playwright-mcp
 directory=/opt/agentbox/skills/playwright/mcp-server
 user=devuser
-environment=HOME="/home/devuser",PLAYWRIGHT_BROWSERS_PATH="${pkgs.playwright-driver.browsers}",CHROMIUM_PATH="${if webgpuEnabled && !isWaylandStack then "${vglrunChromium}/bin/vglrun-chromium" else "${pkgs.chromium}/bin/chromium"}",DISPLAY=":1",CHROMIUM_WEBGPU="${if webgpuEnabled then "true" else "false"}",VGL_DISPLAY="/dev/dri/renderD128",VK_ICD_FILENAMES="/etc/vulkan/icd.d/nvidia_icd.json",__EGL_VENDOR_LIBRARY_FILENAMES="/usr/share/glvnd/egl_vendor.d/10_nvidia.json"${if isWaylandStack then ",WAYLAND_DISPLAY=\"wayland-1\",XDG_RUNTIME_DIR=\"/run/user/1000\"" else ""}
+environment=HOME="/home/devuser",PLAYWRIGHT_BROWSERS_PATH="${pkgs.playwright-driver.browsers}",CHROMIUM_PATH="${if webgpuEnabled && !isWaylandStack && !isXorgNvidiaStack then "${vglrunChromium}/bin/vglrun-chromium" else "${pkgs.chromium}/bin/chromium"}",DISPLAY=":1",CHROMIUM_WEBGPU="${if webgpuEnabled then "true" else "false"}",FONTCONFIG_FILE="/etc/fonts/fonts.conf",VK_ICD_FILENAMES="/etc/vulkan/icd.d/nvidia_icd.json",__EGL_VENDOR_LIBRARY_FILENAMES="/usr/share/glvnd/egl_vendor.d/10_nvidia.json"${if isWaylandStack then ",WAYLAND_DISPLAY=\"wayland-1\",XDG_RUNTIME_DIR=\"/run/user/1000\"" else ""}${if isXorgNvidiaStack then ",__NV_PRIME_RENDER_OFFLOAD=\"1\",__GLX_VENDOR_LIBRARY_NAME=\"nvidia\"" else ""}
 autostart=true
 autorestart=true
 priority=200
@@ -1854,6 +1902,91 @@ ${topLevelVolumes}${lib.optionalString (ragflowCfg.enabled or false) "\nnetworks
           # password disagreement (Q6) collapses into one source of truth.
           mkdir -p $out/opt/agentbox/config
           cp ${pkgs.writeText "claude-flow-config.json" claudeFlowConfigJson} $out/opt/agentbox/config/claude-flow-config.template.json
+
+          # Fontconfig: Chrome's Skia font manager requires /etc/fonts/fonts.conf.
+          # Without it, the GPU process crashes with SkFontMgr_FontConfigInterface
+          # "Not implemented". The Nix image has no /etc/fonts by default.
+          mkdir -p $out/etc/fonts
+          cat > $out/etc/fonts/fonts.conf <<'FONTCFG'
+          <?xml version="1.0"?>
+          <!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+          <fontconfig>
+            <dir>/nix/store</dir>
+            <cachedir>/tmp/fontconfig-cache</cachedir>
+          </fontconfig>
+          FONTCFG
+          sed -i 's/^[[:space:]]*//' $out/etc/fonts/fonts.conf
+
+          ${lib.optionalString isXorgNvidiaStack ''
+          # Xorg + NVIDIA startup script. Auto-detects PCI BusID from the
+          # first available NVIDIA GPU, generates xorg.conf, and launches Xorg
+          # on display :1 with AllowEmptyInitialConfiguration for headless use.
+          mkdir -p $out/opt/agentbox/config
+          cat > $out/opt/agentbox/config/start-xorg-nvidia.sh <<'XORGSH'
+          #!/bin/sh
+          set -e
+          XORG_CONF="/tmp/xorg-nvidia.conf"
+          BUS_ID=$(nvidia-smi --query-gpu=pci.bus_id --format=csv,noheader 2>/dev/null | head -1 | sed 's/00000000://' | sed 's/\./:/')
+          if [ -z "$BUS_ID" ]; then
+            echo "[xorg-nvidia] No NVIDIA GPU found, falling back to BusID 18:00:0"
+            BUS_ID="18:00:0"
+          fi
+          # Convert AA:BB.C → PCI:AA:BB:C format
+          PCI_BUS=$(echo "$BUS_ID" | sed 's/\./:/g' | sed 's/^/PCI:/')
+          RES="${XORG_RESOLUTION:-1920x1080}"
+
+          cat > "$XORG_CONF" <<XCFG
+          Section "Files"
+              ModulePath "/usr/lib/xorg/modules"
+              ModulePath "/usr/lib/xorg/modules/drivers"
+              ModulePath "/usr/lib/nvidia/xorg"
+          EndSection
+
+          Section "ServerLayout"
+              Identifier     "Layout0"
+              Screen         "Screen0"
+          EndSection
+
+          Section "Device"
+              Identifier     "Device0"
+              Driver         "nvidia"
+              BusID          "$PCI_BUS"
+              Option         "AllowEmptyInitialConfiguration" "True"
+              Option         "ConnectedMonitor" "DFP-0"
+              Option         "UseDisplayDevice" "none"
+          EndSection
+
+          Section "Monitor"
+              Identifier     "Monitor0"
+              Option         "DPMS" "False"
+          EndSection
+
+          Section "Screen"
+              Identifier     "Screen0"
+              Device         "Device0"
+              Monitor        "Monitor0"
+              DefaultDepth    24
+              SubSection     "Display"
+                  Depth       24
+                  Virtual     $(echo "$RES" | cut -dx -f1) $(echo "$RES" | cut -dx -f2)
+              EndSubSection
+          EndSection
+
+          Section "ServerFlags"
+              Option "DontVTSwitch" "True"
+              Option "AllowMouseOpenFail" "True"
+              Option "AutoAddDevices" "False"
+              Option "AutoEnableDevices" "False"
+          EndSection
+          XCFG
+          sed -i 's/^[[:space:]]*//' "$XORG_CONF"
+
+          echo "[xorg-nvidia] Starting Xorg on :1 with GPU $PCI_BUS at $RES"
+          exec Xorg :1 -config "$XORG_CONF" -noreset -novtswitch -nolisten tcp +extension GLX +extension RANDR +extension MIT-SHM
+          XORGSH
+          sed -i 's/^[[:space:]]*//' $out/opt/agentbox/config/start-xorg-nvidia.sh
+          chmod 755 $out/opt/agentbox/config/start-xorg-nvidia.sh
+          ''}
 
           # Z.AI wrapper: 'zai' invokes Claude Code against the Z.AI API endpoint.
           ln -s /opt/agentbox/config/zai-wrapper.sh $out/bin/zai

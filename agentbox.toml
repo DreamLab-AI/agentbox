@@ -149,12 +149,13 @@ host_gateway = false
 
 [desktop]
 enabled = true
-stack = "i3-x11"
+stack = "xorg-nvidia"
 resolution = "1920x1080"
 # Enable WebGPU in Playwright MCP browser (ANGLE-Vulkan backend).
-# Removes --disable-gpu and injects --enable-unsafe-webgpu + Vulkan flags.
-# Requires gpu.backend = "local-cuda" or "ollama-rocm" for hardware path;
-# falls back to SwiftShader software WebGPU when no ICD is present.
+# xorg-nvidia: Xorg with NVIDIA driver provides native GLX/EGL — Chrome
+# gets a real GPU context without VirtualGL. x11vnc exports to VNC 5901.
+# i3-x11: Xvnc has no GLX/EGL; requires VirtualGL (broken with Chrome).
+# Requires /dev/dri/card* + NVIDIA libs mapped into the container.
 webgpu = true
 
 [skills.browser]

@@ -11,7 +11,8 @@ description: >
 # Playwright Skill
 
 Browser automation via the official `@playwright/mcp` server (Microsoft, v0.0.70) with 61 tools.
-Renders on i3/Xvnc Display :1 (1920x1080, VNC port 5901). Chromium 147 with WebGPU support.
+Renders on Xorg + NVIDIA Display :1 (1920x1080, VNC port 5901 via x11vnc). Chromium 147 with
+hardware WebGPU via native GLX/EGL.
 
 ## When To Use / Not To Use
 
@@ -55,10 +56,13 @@ Claude Code (MCP Client)
 @playwright/mcp server (official, 61 tools)
   |  Playwright 1.60 API
   v
-Chromium 147 (WebGPU, Vulkan)
-  |  X11
+Chromium 147 (WebGPU, Vulkan, native GLX/EGL)
+  |  X11 (native GPU context)
   v
-i3 WM on Xvnc :1 (1920x1080, port 5901)
+i3 WM on Xorg :1 (NVIDIA driver, 1920x1080)
+  |
+  v
+x11vnc → VNC port 5901
 ```
 
 ## Tool Categories (61 tools)
@@ -89,36 +93,33 @@ browser_run_code({ code: "async (page) => { await page.goto('https://example.com
 ### `browser_take_screenshot`
 Capture viewport or full-page screenshot as PNG/JPEG. Returned as image content.
 
-## WebGPU + GPU on Xvnc (VirtualGL)
+## WebGPU + GPU (Xorg + NVIDIA)
 
-Xvnc is a software framebuffer with **no GLX or EGL** support. Chrome cannot create
-a WebGL or WebGPU context on Xvnc directly — `chrome://gpu` reports "GL_RENDERER:
-Disabled" and all GPU features fail.
-
-**VirtualGL** solves this by intercepting GL/Vulkan calls from Chrome, rendering them
-on the real NVIDIA GPU via DRM render nodes (`/dev/dri/renderD128`+), and compositing
-the result back to the Xvnc framebuffer. The Nix build generates a `vglrun-chromium`
-wrapper script used as `CHROMIUM_PATH` when `desktop.webgpu = true`.
+The `xorg-nvidia` desktop stack runs a real Xorg server with the NVIDIA proprietary
+driver, providing native GLX/EGL. Chrome gets a hardware GPU context directly —
+no interposition layer needed. x11vnc scrapes the Xorg framebuffer and exports
+over VNC port 5901.
 
 ```
 Chrome (inside container)
-  │ GL/Vulkan calls
+  │ Native GLX/EGL + Vulkan
   ▼
-VirtualGL (vglrun wrapper)
-  │ Redirects to DRM render node
+Xorg :1 (NVIDIA driver, AllowEmptyInitialConfiguration)
+  │ DRM render node (/dev/dri/renderD128+)
   ▼
-NVIDIA GPU (/dev/dri/renderD128, driver 595+)
+NVIDIA GPU (driver 525+)
   │ Rendered frames
   ▼
-Xvnc :1 (composited display, VNC port 5901)
+x11vnc → VNC port 5901
 ```
 
 ### Requirements
 
+- `desktop.stack = "xorg-nvidia"` in `agentbox.toml`
 - `desktop.webgpu = true` in `agentbox.toml`
-- NVIDIA GPU mapped into container (`/dev/dri/renderD*`, `/dev/nvidia*`)
+- NVIDIA GPU mapped into container (`/dev/dri/card*`, `/dev/dri/renderD*`, `/dev/nvidia*`)
 - `NVIDIA_DRIVER_CAPABILITIES=all` in docker-compose
-- Host NVIDIA driver ≥ 525 (Vulkan 1.3 required for WebGPU)
+- Host NVIDIA driver >= 525 (Vulkan 1.3 required for WebGPU)
 
 ### Manual verification
 
@@ -127,28 +128,31 @@ Xvnc :1 (composited display, VNC port 5901)
 nvidia-smi
 vulkaninfo --summary
 
-# Check VirtualGL
-vglrun glxinfo | head -20
+# Check GLX (should show NVIDIA, not llvmpipe)
+DISPLAY=:1 glxinfo | grep "OpenGL renderer"
 
-# Launch with VirtualGL manually
-vglrun chromium --no-sandbox --enable-features=Vulkan,WebGPU --enable-unsafe-webgpu https://webgpusamples.org
+# Launch Chrome with WebGPU manually
+DISPLAY=:1 chromium --no-sandbox --enable-features=Vulkan,WebGPU --enable-unsafe-webgpu https://webgpusamples.org
 ```
 
-### Fallback (no GPU)
+### Fallback stacks
 
-When no GPU hardware is present, the server falls back to `--disable-gpu` (software
-rendering). WebGL works via SwiftShader; WebGPU is unavailable.
+| Stack | GPU | VNC | Notes |
+|-------|-----|-----|-------|
+| `xorg-nvidia` | Hardware (native GLX/EGL) | x11vnc | Recommended for WebGPU |
+| `i3-x11` | Software only (SwiftShader) | Xvnc built-in | No hardware GPU on Xvnc |
+| `hyprland-wayland` | Requires DRM seat access | wayvnc | Reverted — libseat issue in containers |
 
 ## Environment
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `DISPLAY` | `:1` | X display for browser |
-| `CHROMIUM_PATH` | auto-resolved | Path to chromium (or vglrun-chromium wrapper) |
+| `CHROMIUM_PATH` | auto-resolved | Path to chromium binary |
 | `CHROMIUM_WEBGPU` | `false` | Enable WebGPU launch flags |
-| `VGL_DISPLAY` | `/dev/dri/renderD128` | VirtualGL render device |
 | `VK_ICD_FILENAMES` | `/etc/vulkan/icd.d/nvidia_icd.json` | Vulkan ICD path for NVIDIA |
 | `__EGL_VENDOR_LIBRARY_FILENAMES` | `/usr/share/glvnd/egl_vendor.d/10_nvidia.json` | EGL vendor for NVIDIA |
+| `FONTCONFIG_FILE` | `/etc/fonts/fonts.conf` | Fontconfig path (baked into image) |
 | `PLAYWRIGHT_MCP_HEADLESS` | unset (headed) | Set to run headless |
 | `VIEWPORT_WIDTH` | `1920` | Browser viewport width |
 | `VIEWPORT_HEIGHT` | `1080` | Browser viewport height |
@@ -157,24 +161,5 @@ rendering). WebGL works via SwiftShader; WebGPU is unavailable.
 ## Visual Access
 
 ```bash
-vncviewer localhost:5901   # password: agentbox
+vncviewer localhost:5901   # no password (xorg-nvidia stack)
 ```
-
-## Migration from Custom Server
-
-The previous custom `mcp-server/server.js` (10 tools) is superseded by the official server (61 tools).
-
-| Old tool | New equivalent |
-|----------|---------------|
-| `navigate` | `browser_navigate` |
-| `screenshot` | `browser_take_screenshot` |
-| `click` | `browser_click` |
-| `type` | `browser_type` |
-| `evaluate` | `browser_evaluate` |
-| `wait_for_selector` | `browser_wait_for` |
-| `get_content` | `browser_snapshot` (better: structured accessibility tree) |
-| `get_url` | `browser_snapshot` includes URL |
-| `close_browser` | `browser_close` |
-| `health_check` | `browser_get_config` |
-
-New capabilities not in the old server: video recording, tracing, network mocking, storage CRUD, coordinate-based vision, test assertions, tab management, PDF generation, form filling, drag-and-drop, code execution.
