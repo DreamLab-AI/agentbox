@@ -1,6 +1,6 @@
 ---
 name: art
-description: Complete visual content system for Claude Code. Default aesthetic - light backgrounds, teal/burnt orange accents, hand-drawn sketch style.
+description: "Complete visual content system for Claude Code. Use when generating blog headers, infographics, editorial art, diagrams, or comics. Default aesthetic: light backgrounds, teal/burnt orange accents, hand-drawn sketch style."
 user-invocable: true
 triggers:
   - USE WHEN user wants to create visual content, illustrations, or diagrams

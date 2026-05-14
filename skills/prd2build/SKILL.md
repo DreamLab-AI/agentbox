@@ -1,6 +1,6 @@
 ---
 name: prd2build
-description: PRD → Complete Documentation (Single Command)
+description: "PRD to complete documentation in a single command. Use when you have a PRD and need specs, DDD domain model, ADRs, and an implementation plan generated from it."
 version: 3.0.0-simplified
 arguments:
   - name: prd_input

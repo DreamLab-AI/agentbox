@@ -4,6 +4,7 @@ description: >
   Programmatic access to Google NotebookLM for notebook management, source ingestion,
   AI chat, and content generation (audio overviews, video, slides, quizzes, mind maps,
   reports, infographics). Wraps the notebooklm-py SDK via MCP.
+  Use when creating NotebookLM notebooks, generating podcasts, slides, or quizzes from source material.
 version: 1.0.0
 author: agentbox-claude
 mcp_server: true

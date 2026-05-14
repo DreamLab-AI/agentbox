@@ -1,7 +1,7 @@
 ---
 name: agentic-jujutsu
 version: 2.3.2
-description: Quantum-resistant, self-learning version control for AI agents with ReasoningBank intelligence and multi-agent coordination
+description: "Quantum-resistant, self-learning version control for AI agents with ReasoningBank intelligence and multi-agent coordination. Use when you need lock-free multi-agent version control with Jujutsu, concurrent worktree isolation, or conflict-free agent collaboration."
 ---
 
 # Agentic Jujutsu - AI Agent Version Control

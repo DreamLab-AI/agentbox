@@ -1,6 +1,6 @@
 ---
 name: bencium-code-conventions
-description: Bence's code style, tech stack, and workflow conventions
+description: "Bence's code style, tech stack, and workflow conventions. Use when enforcing Bence's React/Next.js/TypeScript/Tailwind code style and workflow conventions."
 when_to_use: When writing code or setting up projects for Bence
 ---
 

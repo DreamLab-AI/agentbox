@@ -4,6 +4,7 @@ description: >
   Summarize web content including YouTube videos with semantic topic links for
   Logseq and Obsidian. Uses Z.AI service (port 9600) for cost-effective summarization.
   Supports markdown, plain text, and note-taking formats.
+  Use when summarising web pages, YouTube transcripts, or extracting key information from URLs.
 version: 2.0.0
 author: agentbox-claude
 mcp_server: true

@@ -1,6 +1,6 @@
 ---
 name: blender
-description: Control Blender for 3D modeling, scene creation, and rendering operations via socket-based communication
+description: "Control Blender for 3D modeling, scene creation, and rendering operations via socket-based communication. Use when doing 3D modelling, scene creation, rendering, or Blender automation."
 ---
 
 # Blender 3D Skill

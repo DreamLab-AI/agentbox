@@ -4,6 +4,7 @@ description: >
   Expand and analyze URLs using Google Gemini 2.5 Flash URL Context API.
   Efficiently fetches, summarizes, and extracts information from up to 20 URLs
   per request with grounding metadata and source citations.
+  Use when analysing or summarising specific URLs using Gemini's 1M-token context window.
 version: 1.0.0
 author: agentbox-claude
 mcp_server: true

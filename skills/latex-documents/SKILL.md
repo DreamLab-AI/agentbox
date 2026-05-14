@@ -1,6 +1,6 @@
 ---
 name: LaTeX Documents
-description: Professional document preparation with LaTeX - compile papers, presentations, and technical documentation
+description: "Professional document preparation with LaTeX - compile papers, presentations, and technical documentation. Use when compiling LaTeX papers, Beamer presentations, or technical documentation."
 ---
 
 # LaTeX Documents Skill

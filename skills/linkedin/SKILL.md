@@ -4,6 +4,7 @@ description: >
   LinkedIn integration via MCP for profile scraping, job search, messaging,
   company analysis, and people search. Uses Patchright browser automation
   with persistent session for authenticated access without API keys.
+  Use when searching LinkedIn profiles, jobs, companies, or managing LinkedIn messaging.
 version: 1.0.0
 author: agentbox-claude
 mcp_server: true

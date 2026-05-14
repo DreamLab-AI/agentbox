@@ -1,6 +1,6 @@
 ---
 name: wardley-maps
-description: Comprehensive Wardley mapping toolkit that transforms any input (structured data, unstructured text, business descriptions, technical architectures, competitive landscapes, or abstract concepts) into strategic Wardley maps. Creates visual maps showing component evolution and value chains for strategic decision-making.
+description: "Comprehensive Wardley mapping toolkit that transforms any input (structured data, unstructured text, business descriptions, technical architectures, competitive landscapes, or abstract concepts) into strategic Wardley maps. Creates visual maps showing component evolution and value chains for strategic decision-making. Use when creating strategic Wardley maps showing component evolution and value chains for decision-making."
 ---
 
 # Wardley Mapper

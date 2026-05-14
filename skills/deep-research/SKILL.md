@@ -1,9 +1,9 @@
 ---
 name: deep-research
 description: >
-  Run a thorough, source-heavy investigation on any topic. Produces a cited research brief with
-  provenance tracking, verification, and inline citations. Uses parallel researcher agents with
-  a verifier and reviewer pass.
+  Run a thorough, source-heavy investigation on any topic. Use when you need deep cited research
+  with parallel agents, provenance verification, and source cross-referencing. Produces a cited
+  research brief with inline citations, a verifier pass, and a reviewer pass.
 args: <topic>
 section: Research Workflows
 triggers:

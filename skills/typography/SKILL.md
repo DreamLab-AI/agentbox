@@ -2,6 +2,7 @@
 name: typography
 description: >
   Professional typography rules for UI design, web applications, and screen-based text. Enforces correct
+  Use when enforcing typographic standards, selecting font pairings, or reviewing type hierarchy.
   quote marks, dashes, spacing, hierarchy, and layout in all generated UI code.
 ---
 

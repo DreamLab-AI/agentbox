@@ -1,6 +1,6 @@
 ---
 name: PyTorch ML
-description: Deep learning with PyTorch - model training, GPU acceleration, and data science workflows
+description: "Deep learning with PyTorch - model training, GPU acceleration, and data science workflows. Use when training deep learning models with PyTorch, using GPU acceleration, or doing data science workflows."
 ---
 
 # PyTorch ML Skill

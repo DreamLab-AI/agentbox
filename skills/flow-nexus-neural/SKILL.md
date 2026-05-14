@@ -1,6 +1,6 @@
 ---
 name: flow-nexus-neural
-description: "Distributed neural network training in E2B cloud sandboxes via Flow Nexus. Supports feedforward, LSTM, GAN, and transformer architectures. Requires Flow Nexus account. NOT CURRENTLY INSTALLED in this environment."
+description: "Distributed neural network training in E2B cloud sandboxes via Flow Nexus. Supports feedforward, LSTM, GAN, and transformer architectures. Requires Flow Nexus account. NOT CURRENTLY INSTALLED in this environment. Use when training distributed neural networks in E2B cloud sandboxes via Flow Nexus."
 status: not-installed
 ---
 

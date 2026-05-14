@@ -4,6 +4,7 @@ description: >
   Reddit integration for browsing subreddits, searching content, analyzing
   user profiles, and fetching post details with comment threads. Supports
   anonymous, app-only, and authenticated modes with tiered rate limits.
+  Use when browsing Reddit, searching posts, or analysing user/subreddit activity.
 version: 1.0.0
 author: agentbox-claude
 mcp_server: true

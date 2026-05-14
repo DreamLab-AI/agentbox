@@ -1,6 +1,6 @@
 ---
 name: LichtFeld Studio
-description: Control LichtFeld Studio for 3D Gaussian Splatting training, visualization, editing, and export via its built-in MCP server (70+ tools). Includes SplatReady plugin for video-to-COLMAP dataset conversion via COLMAP. Supports headless and GUI modes with real-time scene manipulation, camera control, gaussian editing, and automated training workflows.
+description: "Control LichtFeld Studio for 3D Gaussian Splatting training, visualization, editing, and export via its built-in MCP server (70+ tools). Includes SplatReady plugin for video-to-COLMAP dataset conversion via COLMAP. Supports headless and GUI modes with real-time scene manipulation, camera control, gaussian editing, and automated training workflows. Use when training, visualising, editing, or exporting 3D Gaussian Splats via LichtFeld Studio."
 ---
 
 # LichtFeld Studio Skill

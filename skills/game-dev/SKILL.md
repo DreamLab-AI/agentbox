@@ -7,6 +7,7 @@ description: >-
   Unity, and Unreal Engine projects. Covers design, programming, art, audio,
   QA, production, and team orchestration workflows across 38 skill commands.
   Ported from Claude Code Game Studios.
+  Use when developing games with Godot, Unity, or Unreal Engine, or orchestrating game dev teams.
 tags:
   - game-dev
   - godot

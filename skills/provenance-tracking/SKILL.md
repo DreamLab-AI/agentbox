@@ -1,9 +1,9 @@
 ---
 name: provenance-tracking
 description: >
-  Add provenance tracking to any research or analysis output. Creates a .provenance.md sidecar
-  documenting sources, verification status, confidence levels, and the research trail.
-  Integrates with RuVector memory for persistent evidence chains.
+  Add provenance tracking to any research or analysis output. Use when you need source
+  verification, citation tracking, or evidence chains. Creates a .provenance.md sidecar
+  documenting sources, verification status, and confidence levels. Integrates with RuVector.
 args: <output-file-path>
 section: Quality & Verification
 triggers:

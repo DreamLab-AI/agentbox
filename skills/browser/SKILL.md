@@ -1,6 +1,6 @@
 ---
 name: browser
-description: Web browser automation with AI-optimised snapshots for claude-flow agents
+description: "Web browser automation with AI-optimised snapshots for claude-flow agents. Use when navigating web pages, quick scraping, or form-filling in headless mode."
 version: 1.0.0
 triggers:
   - /browser

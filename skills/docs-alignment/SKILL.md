@@ -1,6 +1,6 @@
 ---
 name: docs-alignment
-description: "Enterprise-grade documentation validation, modernization and corpus alignment using AI swarms. Validates documentation against codebase, enforces Diataxis framework, ensures 100% link coverage, modernises diagrams, enforces UK spelling, and generates production-ready corpus with comprehensive quality reports. Suitable for professional release and team onboarding."
+description: "Enterprise-grade documentation validation, modernization and corpus alignment using AI swarms. Validates documentation against codebase, enforces Diataxis framework, ensures 100% link coverage, modernises diagrams, enforces UK spelling, and generates production-ready corpus with comprehensive quality reports. Suitable for professional release and team onboarding. Use when validating documentation against codebase, enforcing Diataxis framework, or modernising diagrams and link coverage."
 ---
 
 # Professional Documentation Alignment Skill

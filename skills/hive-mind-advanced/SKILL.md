@@ -1,6 +1,6 @@
 ---
 name: hive-mind-advanced
-description: Advanced Hive Mind collective intelligence system for queen-led multi-agent coordination with consensus mechanisms and persistent memory
+description: "Advanced Hive Mind collective intelligence system for queen-led multi-agent coordination with consensus mechanisms and persistent memory. Use when running queen-led multi-agent coordination with Byzantine consensus, CRDT, or gossip protocols."
 version: 1.0.0
 category: coordination
 tags: [hive-mind, swarm, queen-worker, consensus, collective-intelligence, multi-agent, coordination]

@@ -5,6 +5,7 @@ description: >
   Single entry point via /studio [task]. Covers site planning, NYC zoning/due diligence,
   workplace programming, sustainability (EPD/GWP), materials research, FF&E schedules,
   specifications (CSI), and presentations. From AlpacaLabsLLC/skills-for-architects.
+  Use when designing buildings, site planning, zoning analysis, or sustainability assessments (AEC domain).
 version: 1.0.0
 author: AlpacaLabs LLC
 tags:

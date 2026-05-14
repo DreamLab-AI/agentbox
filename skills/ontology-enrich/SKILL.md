@@ -1,6 +1,6 @@
 ---
 name: ontology-enrich
-description: Validation, enrichment, and TTL generation for Logseq ontology with VisionFlow/WebVOWL compatibility
+description: "Validation, enrichment, and TTL generation for Logseq ontology with VisionFlow/WebVOWL compatibility. Use when validating, enriching, or generating TTL for Logseq ontology with VisionFlow/WebVOWL compatibility."
 version: 2.0.0
 category: ontology
 layer: 1

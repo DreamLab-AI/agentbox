@@ -1,6 +1,6 @@
 ---
 name: build-with-quality
-description: "Unified Claude Code V3 + Agentic QE meta-skill for optimal project building with 114+ specialized agents, unified learning (SONA + ReasoningBank), TinyDancer model routing (75% token reduction), Expectation-Driven Development (EDD) loop, and comprehensive quality gates including evidence coverage. Supersedes agentic-qe, reasoningbank-*, and pair-programming skills."
+description: "Unified Claude Code V3 + Agentic QE meta-skill with 114+ agents, EDD loop, and quality gates. Use when implementing features with TDD, debugging hard bugs (feedback-loop-first protocol), stress-testing designs, or running quality gate pipelines. Supersedes agentic-qe, reasoningbank-*, and pair-programming."
 license: MIT
 metadata:
   version: 1.2.0
@@ -15,6 +15,7 @@ metadata:
 > **Quick Start:** See [BUILD-WITH-QUALITY-PROMPT.md](./BUILD-WITH-QUALITY-PROMPT.md) for a copy-paste activation prompt.
 > **Examples:** See [USAGE-EXAMPLES.md](./USAGE-EXAMPLES.md) for 5 complete project examples.
 > **EDD Playbook (v1.2.0):** See [EDD-PROTOCOL.md](./EDD-PROTOCOL.md) for the Expectation-Driven Development loop, evidence categories, and anti-fox separation rules.
+> **Debugging:** See [DEBUGGING-PROTOCOL.md](./DEBUGGING-PROTOCOL.md) for the feedback-loop-first debugging protocol and design interrogation method.
 
 **[Claude Flow V3](https://github.com/ruvnet/claude-flow/tree/main/v3) + [Agentic QE](https://github.com/proffesor-for-testing/agentic-qe) Combined**
 

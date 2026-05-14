@@ -5,6 +5,7 @@ description: >
   Two modes: --design (ask-first, bold creative direction) and --build (production frontend code).
   Anti-AI-slop, distinctive aesthetics, shadcn/Tailwind/Phosphor stack. Replaces
   bencium-innovative-ux-designer and bencium-impact-designer.
+  Use when building bold creative UX, production frontend, or anti-AI-slop design with shadcn/Tailwind implementation.
 version: 1.0.0
 replaces:
   - bencium-innovative-ux-designer

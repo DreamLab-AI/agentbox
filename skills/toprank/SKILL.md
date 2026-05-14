@@ -4,6 +4,7 @@ description: >
   AI-powered SEO/SEM automation suite with 6 specialised skills. Google Search Console
   integration, content writing (E-E-A-T), keyword research, meta tag optimisation,
   JSON-LD schema markup, and GEO (Generative Engine Optimisation) for AI citations.
+  Use when doing SEO audits, keyword research, schema markup, or AI search citation optimisation.
 version: 1.0.0
 author: nowork-studio
 tags:

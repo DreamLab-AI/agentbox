@@ -1,6 +1,6 @@
 ---
 name: Jupyter Notebooks
-description: Comprehensive Jupyter notebook operations - create, execute, and analyze notebooks with full cell manipulation
+description: "Comprehensive Jupyter notebook operations - create, execute, and analyze notebooks with full cell manipulation. Use when creating, executing, or analysing Jupyter notebooks with full cell manipulation."
 ---
 
 # Jupyter Notebooks Skill

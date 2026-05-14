@@ -5,6 +5,7 @@ description: >
   management, feature editing, processing algorithms, rendering, styling, plugin
   development, and system management. Uses nkarasiak/qgis-mcp plugin (port 9877)
   with length-prefixed framing and FastMCP MCP server.
+  Use when doing geospatial analysis, creating maps, or working with GIS data.
 version: 3.0.0
 author: agentbox-claude
 mcp_server: true

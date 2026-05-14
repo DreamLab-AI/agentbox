@@ -1,6 +1,6 @@
 ---
 name: ComfyUI
-description: AI image and video generation using ComfyUI node-based workflow system with Stable Diffusion, FLUX, and other diffusion models via local or distributed GPU compute (Salad Cloud)
+description: "AI image and video generation using ComfyUI node-based workflow system with Stable Diffusion, FLUX, and other diffusion models via local or distributed GPU compute (Salad Cloud). Use when generating AI images or video with Stable Diffusion, FLUX, or other diffusion models."
 ---
 
 # ComfyUI Skill

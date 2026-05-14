@@ -1,6 +1,6 @@
 ---
 name: flow-nexus-platform
-description: "Flow Nexus platform management: authentication, sandbox creation, app deployment, payments, and challenge management. Requires Flow Nexus account. NOT CURRENTLY INSTALLED in this environment."
+description: "Flow Nexus platform management: authentication, sandbox creation, app deployment, payments, and challenge management. Requires Flow Nexus account. NOT CURRENTLY INSTALLED in this environment. Use when managing Flow Nexus platform: authentication, sandbox creation, app deployment, or payments."
 status: not-installed
 ---
 

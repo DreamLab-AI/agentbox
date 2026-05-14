@@ -2,7 +2,7 @@
 skill: cuda
 name: cuda
 version: 1.0.0
-description: AI-powered CUDA development assistant with 4 specialist agents, kernel optimisation, compilation, and GPU profiling
+description: "AI-powered CUDA development with 4 specialist agents. Use when writing CUDA kernels, optimising GPU code, debugging nvcc compilation, or profiling GPU performance."
 tags: [cuda, gpu, nvidia, optimisation, kernel, parallel-computing, nvcc, profiling, debugging]
 mcp_server: true
 entry_point: mcp-server/server.py

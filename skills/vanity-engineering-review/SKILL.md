@@ -2,6 +2,7 @@
 name: vanity-engineering-review
 description: >
   Identifies code, architecture, and technical decisions built to impress rather than to ship.
+  Use when checking for over-engineering, unnecessary complexity, or vanity architecture decisions.
   Reviews codebases, PRs, and architecture proposals for unjustified complexity and resume-driven choices.
 ---
 

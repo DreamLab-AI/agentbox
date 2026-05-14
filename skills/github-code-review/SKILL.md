@@ -1,7 +1,7 @@
 ---
 name: github-code-review
 version: 1.0.0
-description: Comprehensive GitHub code review with AI-powered swarm coordination
+description: "GitHub code review with AI-powered swarm coordination. Use when reviewing PRs, running security/performance checks on diffs, or coordinating multi-agent code review."
 category: github
 tags: [code-review, github, swarm, pr-management, automation]
 author: Claude Code Flow

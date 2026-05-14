@@ -9,6 +9,7 @@ description: >-
   advanced geospatial analysis, Blender for 3D terrain preview, ImageMagick
   for elevation processing, and perplexity-research for location enrichment.
   Agent-driven headless pipeline -- no UI required.
+  Use when converting real-world geography into Minecraft worlds.
 tags:
   - minecraft
   - geospatial

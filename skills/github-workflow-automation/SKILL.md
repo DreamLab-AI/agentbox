@@ -2,7 +2,7 @@
 name: github-workflow-automation
 version: 1.0.0
 category: github
-description: Advanced GitHub Actions workflow automation with AI swarm coordination, intelligent CI/CD pipelines, and comprehensive repository management
+description: "Advanced GitHub Actions workflow automation with AI swarm coordination, intelligent CI/CD pipelines, and comprehensive repository management. Use when creating or modifying GitHub Actions workflows, CI/CD pipelines, or repository automation."
 tags:
   - github
   - github-actions

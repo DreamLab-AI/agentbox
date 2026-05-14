@@ -8,6 +8,7 @@ description: >-
   hydration, phased task planning, deterministic+agentic workflow blueprints,
   persistent memory (bridged to RuVector), security scanning, and autonomous
   PRD-to-sprints execution. Ported from Lazy-Fetch by Clemens865.
+  Use when hydrating session context, tracking phased task plans, running blueprints, or doing progressive discovery in Claude Code sessions.
 tags:
   - context-management
   - plan-tracking

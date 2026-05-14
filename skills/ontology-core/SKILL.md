@@ -1,6 +1,6 @@
 ---
 name: ontology-core
-description: Foundation library for Logseq ontology manipulation with OWL2 DL TTL export
+description: "Foundation library for Logseq ontology manipulation with OWL2 DL TTL export. Use when manipulating Logseq ontology structures or exporting to OWL2 DL TTL format."
 version: 2.0.0
 author: Claude Code
 tags: [ontology, owl2, logseq, ttl, webvowl, validation]

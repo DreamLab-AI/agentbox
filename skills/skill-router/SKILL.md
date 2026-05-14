@@ -1,9 +1,8 @@
 ---
 name: skill-router
 description: >
-  Unified dispatcher for 88+ skills. Describe your task; get routed to the optimal skill,
-  agent composition, or MCP tool. Single entry point replacing manual decision tree navigation.
-  Inspired by the /studio dispatcher pattern from architecture-studio.
+  Unified dispatcher for 88+ skills. Use when you don't know which skill to invoke — describe
+  your task and get routed to the optimal skill, agent composition, or MCP tool.
 version: 1.0.0
 author: agentbox-claude
 tags:
@@ -53,6 +52,13 @@ Examples:
 | Systematic 5-phase development | `sparc-methodology` | "spec through deployment", "SPARC" |
 | Multi-agent dev + quality gates (code execution) | `build-with-quality` | "implement", "feature", "TDD", "quality gates" |
 | Truth-score only | `verification-quality` | "verify", "rollback safety", "confidence score" |
+
+**Debugging & diagnosis:**
+| If the request involves... | Route to |
+|---|---|
+| Hard bug, intermittent failure, performance regression, "can't reproduce" | `build-with-quality` (debugging entry — see DEBUGGING-PROTOCOL.md) |
+| Stress-test a plan or design, adversarial questioning, "grill me" | `build-with-quality` (design interrogation — see DEBUGGING-PROTOCOL.md) |
+| Requirements ambiguous before building, clarify decision tree | `build-with-quality` (design interrogation) |
 
 **Other code tasks:**
 | If the request involves... | Route to |

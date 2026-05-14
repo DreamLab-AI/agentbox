@@ -1,9 +1,9 @@
 ---
 name: host-webserver-debug
 description: >
-  Debug host web servers from inside Docker containers by bridging HTTPS to HTTP,
-  taking screenshots with Playwright, and analyzing with Chrome DevTools.
-  Solves cross-origin security issues when accessing host development servers.
+  Debug host web servers from inside Docker containers. Use when bridging HTTPS to HTTP,
+  taking screenshots with Playwright, analysing with Chrome DevTools, or solving
+  cross-origin security issues when accessing host development servers.
 version: 1.0.0
 author: agentbox-claude
 mcp_server: true

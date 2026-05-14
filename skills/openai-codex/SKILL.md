@@ -1,6 +1,6 @@
 ---
 name: openai-codex
-description: Delegates complex coding and reasoning tasks to OpenAI Codex (GPT-5.4)
+description: "Delegates complex coding and reasoning tasks to OpenAI Codex (GPT-5.4). Use when delegating complex coding or reasoning tasks to OpenAI Codex (GPT-5.4) as a second opinion."
 mcp_server: true
 protocol: stdio
 entry_point: mcp-server/server.js

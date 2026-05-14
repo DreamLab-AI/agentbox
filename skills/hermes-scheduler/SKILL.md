@@ -1,6 +1,6 @@
 ---
 name: hermes-scheduler
-description: "Background cron scheduler for recurring agent tasks. Start with /hermes-scheduler. Manages scheduled jobs that invoke Claude Code on cron/interval/one-shot schedules. Jobs persist across restarts. Inspired by NousResearch/hermes-agent scheduler."
+description: "Background cron scheduler for recurring agent tasks. Start with /hermes-scheduler. Manages scheduled jobs that invoke Claude Code on cron/interval/one-shot schedules. Jobs persist across restarts. Inspired by NousResearch/hermes-agent scheduler. Use when scheduling recurring agent tasks on cron/interval/one-shot schedules."
 version: 1.0.0
 author: jjohare
 license: MIT

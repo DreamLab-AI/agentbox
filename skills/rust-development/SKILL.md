@@ -1,6 +1,6 @@
 ---
 name: Rust Development
-description: Complete Rust toolchain with cargo, rustfmt, clippy, and WASM support
+description: "Complete Rust toolchain with cargo, rustfmt, clippy, and WASM support. Use when writing Rust code, running cargo build/test/clippy, compiling to WASM, or debugging Rust compilation errors."
 ---
 
 # Rust Development Skill

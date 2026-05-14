@@ -6,6 +6,7 @@ description: >
   (model selection, prompt strategy, agent orchestration), LLM evaluation suites,
   guardrails specifications, and sprint-driven workflows. Optimised for Claude Code
   and Ruflo/RuVector.
+  Use when you need SPEC/ADR/TASK artifact chain traceability, AI-native ADR categories, or sprint scaffolding.
 version: 1.0.0
 author: Barry Hurd (BHIL)
 tags:

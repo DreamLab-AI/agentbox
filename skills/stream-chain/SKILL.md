@@ -1,6 +1,6 @@
 ---
 name: stream-chain
-description: Stream-JSON chaining for multi-agent pipelines, data transformation, and sequential workflows
+description: "Stream-JSON chaining for multi-agent pipelines, data transformation, and sequential workflows. Use when building sequential multi-agent pipelines where step N output feeds step N+1 input."
 version: 1.0.0
 category: workflow
 tags: [streaming, pipeline, chaining, multi-agent, workflow]

@@ -5,6 +5,7 @@ description: >
   system hardening, compliance auditing (CIS/HIPAA/SOC2), malware scanning,
   incident response, container security, network defense, zero trust architecture,
   and forensics. Dry-run by default with confirmation gates.
+  Use when hardening Linux systems, auditing compliance (CIS/HIPAA/SOC2), scanning for malware, or doing incident response.
 version: 1.0.0
 author: agentbox-claude
 mcp_server: true

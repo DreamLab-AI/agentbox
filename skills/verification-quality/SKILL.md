@@ -1,6 +1,6 @@
 ---
 name: verification-quality
-description: "Comprehensive truth scoring, code quality verification, and automatic rollback system with 0.95 accuracy threshold for ensuring high-quality agent outputs and codebase reliability."
+description: "Truth scoring, code quality verification, and automatic rollback with 0.95 accuracy threshold. Use when you need confidence scores on agent output, rollback safety checks, or truth verification without the full build-with-quality pipeline."
 version: "2.0.0"
 category: "quality-assurance"
 tags: ["verification", "truth-scoring", "quality", "rollback", "metrics", "ci-cd"]

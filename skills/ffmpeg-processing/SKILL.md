@@ -1,6 +1,6 @@
 ---
 name: ffmpeg-processing
-description: Professional video and audio processing - transcode, edit, stream, and analyze media files
+description: "Professional video and audio processing - transcode, edit, stream, and analyze media files. Use when transcoding, editing, streaming, or analysing video and audio files."
 ---
 
 # FFmpeg Processing Skill

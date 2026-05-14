@@ -1,7 +1,7 @@
 ---
 name: github-release-management
 version: 2.0.0
-description: Comprehensive GitHub release orchestration with AI swarm coordination for automated versioning, testing, deployment, and rollback management
+description: "Comprehensive GitHub release orchestration with AI swarm coordination for automated versioning, testing, deployment, and rollback management. Use when cutting releases, generating changelogs, managing deployments, or coordinating rollbacks."
 category: github
 tags: [release, deployment, versioning, automation, ci-cd, swarm, orchestration]
 author: Claude Flow Team

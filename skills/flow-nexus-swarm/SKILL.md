@@ -1,6 +1,6 @@
 ---
 name: flow-nexus-swarm
-description: "Cloud-based AI swarm deployment on Flow Nexus infrastructure. Event-driven workflows, message queue processing, intelligent agent coordination at scale. Requires Flow Nexus account. NOT CURRENTLY INSTALLED in this environment."
+description: "Cloud-based AI swarm deployment on Flow Nexus infrastructure. Event-driven workflows, message queue processing, intelligent agent coordination at scale. Requires Flow Nexus account. NOT CURRENTLY INSTALLED in this environment. Use when deploying cloud-based AI swarms on Flow Nexus infrastructure."
 status: not-installed
 ---
 
