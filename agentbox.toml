@@ -149,7 +149,7 @@ host_gateway = false
 
 [desktop]
 enabled = true
-stack = "hyprland-wayland"
+stack = "i3-x11"
 resolution = "1920x1080"
 # Enable WebGPU in Playwright MCP browser (ANGLE-Vulkan backend).
 # Removes --disable-gpu and injects --enable-unsafe-webgpu + Vulkan flags.
