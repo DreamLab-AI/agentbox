@@ -1906,12 +1906,16 @@ ${topLevelVolumes}${lib.optionalString (ragflowCfg.enabled or false) "\nnetworks
           # Fontconfig: Chrome's Skia font manager requires /etc/fonts/fonts.conf.
           # Without it, the GPU process crashes with SkFontMgr_FontConfigInterface
           # "Not implemented". The Nix image has no /etc/fonts by default.
+          # Only list the specific font packages we ship — NOT /nix/store (that
+          # indexes 500+ font dirs and generates a 500MB cache that fills tmpfs).
           mkdir -p $out/etc/fonts
-          cat > $out/etc/fonts/fonts.conf <<'FONTCFG'
+          cat > $out/etc/fonts/fonts.conf <<FONTCFG
           <?xml version="1.0"?>
           <!DOCTYPE fontconfig SYSTEM "fonts.dtd">
           <fontconfig>
-            <dir>/nix/store</dir>
+            <dir>${pkgs.dejavu_fonts}/share/fonts</dir>
+            <dir>${pkgs.liberation_ttf}/share/fonts</dir>
+            <dir>${pkgs.noto-fonts-cjk-sans}/share/fonts</dir>
             <cachedir>/var/cache/fontconfig</cachedir>
           </fontconfig>
           FONTCFG
