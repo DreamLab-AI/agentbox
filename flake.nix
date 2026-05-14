@@ -1943,10 +1943,10 @@ ${topLevelVolumes}${lib.optionalString (ragflowCfg.enabled or false) "\nnetworks
             DEV_HEX=$(echo "$BDF" | cut -d: -f2 | cut -d. -f1)
             FN_HEX=$(echo "$BDF" | cut -d. -f2)
             # printf %d converts hex→decimal
-            BUS_DEC=$(printf "%d" "0x${BUS_HEX}")
-            DEV_DEC=$(printf "%d" "0x${DEV_HEX}")
-            FN_DEC=$(printf "%d" "0x${FN_HEX}")
-            PCI_BUS="PCI:${BUS_DEC}:${DEV_DEC}:${FN_DEC}"
+            BUS_DEC=$(printf "%d" "0x''${BUS_HEX}")
+            DEV_DEC=$(printf "%d" "0x''${DEV_HEX}")
+            FN_DEC=$(printf "%d" "0x''${FN_HEX}")
+            PCI_BUS="PCI:''${BUS_DEC}:''${DEV_DEC}:''${FN_DEC}"
           fi
           # Derive Nix Xorg module path from the Xorg binary location
           XORG_BIN=$(which Xorg 2>/dev/null || echo "/usr/bin/Xorg")
@@ -2004,7 +2004,7 @@ ${topLevelVolumes}${lib.optionalString (ragflowCfg.enabled or false) "\nnetworks
           # LD_LIBRARY_PATH: host NVIDIA libs (/usr/lib) are not in the Nix
           # ldconfig cache, so libglxserver_nvidia.so can't find libnvidia-tls.
           # Prepend /usr/lib so the dynamic linker resolves them at startup.
-          exec env LD_LIBRARY_PATH=/usr/lib:/usr/lib/x86_64-linux-gnu${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH} \
+          exec env LD_LIBRARY_PATH=/usr/lib:/usr/lib/x86_64-linux-gnu''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH} \
             Xorg :1 -config "$XORG_CONF" -noreset -novtswitch -nolisten tcp +extension GLX +extension RANDR +extension MIT-SHM
           XORGSH
           sed -i 's/^[[:space:]]*//' $out/opt/agentbox/config/start-xorg-nvidia.sh
