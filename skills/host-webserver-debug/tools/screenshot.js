@@ -40,7 +40,7 @@ async function takeScreenshot(options = {}) {
   console.log(`Taking screenshot of ${url}...`);
 
   const browser = await chromium.launch({
-    executablePath: '/usr/bin/chromium',
+    executablePath: process.env.CHROMIUM_PATH || (() => { try { return require('child_process').execFileSync('which', ['chromium'], { encoding: 'utf8' }).trim(); } catch { return '/usr/bin/chromium'; } })(),
     headless: process.env.PLAYWRIGHT_HEADLESS !== 'false',
     args: [
       '--no-sandbox',

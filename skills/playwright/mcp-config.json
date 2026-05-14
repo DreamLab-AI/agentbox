@@ -5,7 +5,8 @@
       "args": ["${SKILL_PATH}/mcp-server/server.js"],
       "env": {
         "DISPLAY": ":1",
-        "CHROMIUM_PATH": "/usr/bin/chromium",
+        "CHROMIUM_PATH": "@@CHROMIUM_PATH@@",
+        "CHROMIUM_WEBGPU": "true",
         "PLAYWRIGHT_HEADLESS": "false",
         "SCREENSHOT_DIR": "/tmp/playwright-screenshots",
         "PLAYWRIGHT_TIMEOUT": "30000",

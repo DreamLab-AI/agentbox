@@ -295,6 +295,17 @@
           npmDepsHash = "sha256-pqt7Nv9a5iJNUqFucLUej14yWRNsDLirFFoEayB6WV0=";
         };
 
+        # VirtualGL-wrapped chromium for WebGPU on Xvnc. Xvnc has no GLX/EGL,
+        # so VirtualGL intercepts GL/Vulkan calls and renders on the real GPU
+        # via DRM render nodes. This wrapper is used as CHROMIUM_PATH when
+        # desktop.webgpu = true and the stack is i3-x11.
+        vglrunChromium = pkgs.writeShellScriptBin "vglrun-chromium" ''
+          export VGL_DISPLAY=''${VGL_DISPLAY:-/dev/dri/renderD128}
+          export VK_ICD_FILENAMES=''${VK_ICD_FILENAMES:-/etc/vulkan/icd.d/nvidia_icd.json}
+          export __EGL_VENDOR_LIBRARY_FILENAMES=''${__EGL_VENDOR_LIBRARY_FILENAMES:-/usr/share/glvnd/egl_vendor.d/10_nvidia.json}
+          exec ${pkgs.virtualgl}/bin/vglrun ${pkgs.chromium}/bin/chromium "$@"
+        '';
+
         # 7. mcp/consultants — consultant tier (PRD-005 / ADR-011). Single
         # buildNpmPackage with five bin entries; ships when consultants.enabled
         # = true. Each individual consultant is gated separately at runtime via
@@ -533,6 +544,7 @@
           nspr
           vulkan-loader    # Vulkan runtime dispatch required for WebGPU via ANGLE-Vulkan
           vulkan-tools     # vulkaninfo for runtime diagnostics (chrome://gpu validation)
+          virtualgl        # GPU-on-VNC: intercepts GL/Vulkan, renders on DRM render node, composites to Xvnc
         ]);
 
         # ComfyUI built-in: fetch upstream source and wrap with a Python env.
@@ -917,6 +929,16 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           rm -rf $out/opt/agentbox/skills/playwright/mcp-server
           mkdir -p $out/opt/agentbox/skills/playwright
           cp -rL ${playwrightMcpPkg}/package $out/opt/agentbox/skills/playwright/mcp-server
+
+          # Resolve @@CHROMIUM_PATH@@ placeholder in static JSON configs.
+          # The Nix store path is baked at build time so supervisord, Claude
+          # Code MCP clients, and standalone test scripts all find chromium
+          # without relying on FHS /usr/bin/chromium (which doesn't exist on
+          # NixOS/Nix-based images).
+          ${pkgs.gnused}/bin/sed -i 's|@@CHROMIUM_PATH@@|${pkgs.chromium}/bin/chromium|g' \
+            $out/opt/agentbox/skills/playwright/mcp-config.json \
+            $out/opt/agentbox/skills/mcp.json \
+            $out/opt/agentbox/mcp/mcp.json
           ''}
           ${lib.optionalString (mediaCfg.comfyui_builtin or false) ''
           rm -rf $out/opt/agentbox/skills/comfyui/mcp-server
@@ -993,9 +1015,13 @@ stderr_logfile=/var/log/jupyter-lab.error.log
         #   "drm" at runtime when NVIDIA DRM is mapped in (needs /dev/dri/card0).
         #   Chrome uses ANGLE-Vulkan for WebGPU regardless of compositor backend.
         #
-        # "i3-x11" (default): TigerVNC Xvnc on :1 + i3 WM. Chrome uses
-        #   ANGLE-Vulkan for WebGPU even with the software Xvnc display because
-        #   ANGLE talks directly to the Vulkan ICD, bypassing the display path.
+        # "i3-x11" (default): TigerVNC Xvnc on :1 + i3 WM. Xvnc is a software
+        #   framebuffer with NO GLX/EGL support. Chrome cannot create a GPU
+        #   context (WebGL or WebGPU) on Xvnc directly. VirtualGL is required:
+        #   it intercepts GL/Vulkan calls, renders on the real GPU via DRM render
+        #   nodes (/dev/dri/renderD128+), and composites the result back to Xvnc.
+        #   The playwright-mcp supervisor wraps chromium with vglrun when WebGPU
+        #   is enabled.
         desktopBlocks =
           if isWaylandStack then ''
 [program:hyprland]
@@ -1149,7 +1175,7 @@ ${lib.optionalString (browserCfg.playwright or false) ''
 command=${playwrightMcpPkg}/bin/playwright-mcp
 directory=/opt/agentbox/skills/playwright/mcp-server
 user=devuser
-environment=HOME="/home/devuser",PLAYWRIGHT_BROWSERS_PATH="${pkgs.playwright-driver.browsers}",CHROMIUM_PATH="${pkgs.chromium}/bin/chromium",DISPLAY=":1",CHROMIUM_WEBGPU="${if webgpuEnabled then "true" else "false"}"${if isWaylandStack then ",WAYLAND_DISPLAY=\"wayland-1\",XDG_RUNTIME_DIR=\"/run/user/1000\"" else ""}
+environment=HOME="/home/devuser",PLAYWRIGHT_BROWSERS_PATH="${pkgs.playwright-driver.browsers}",CHROMIUM_PATH="${if webgpuEnabled && !isWaylandStack then "${vglrunChromium}/bin/vglrun-chromium" else "${pkgs.chromium}/bin/chromium"}",DISPLAY=":1",CHROMIUM_WEBGPU="${if webgpuEnabled then "true" else "false"}",VGL_DISPLAY="/dev/dri/renderD128",VK_ICD_FILENAMES="/etc/vulkan/icd.d/nvidia_icd.json",__EGL_VENDOR_LIBRARY_FILENAMES="/usr/share/glvnd/egl_vendor.d/10_nvidia.json"${if isWaylandStack then ",WAYLAND_DISPLAY=\"wayland-1\",XDG_RUNTIME_DIR=\"/run/user/1000\"" else ""}
 autostart=true
 autorestart=true
 priority=200

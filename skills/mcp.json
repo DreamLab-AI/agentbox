@@ -55,12 +55,13 @@
       "type": "stdio",
       "env": {
         "DISPLAY": ":1",
-        "CHROMIUM_PATH": "/usr/bin/chromium",
+        "CHROMIUM_PATH": "@@CHROMIUM_PATH@@",
+        "CHROMIUM_WEBGPU": "true",
         "PLAYWRIGHT_HEADLESS": "false",
         "SCREENSHOT_DIR": "/tmp/playwright-screenshots",
         "PLAYWRIGHT_TIMEOUT": "30000"
       },
-      "description": "Browser automation and visual testing on Display :1",
+      "description": "Browser automation, visual testing, and WebGPU validation on Display :1",
       "protocol": "mcp-sdk",
       "version": "2.0.0"
     },

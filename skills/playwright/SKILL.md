@@ -13,13 +13,23 @@ description: >
 Browser automation via the official `@playwright/mcp` server (Microsoft, v0.0.70) with 61 tools.
 Renders on i3/Xvnc Display :1 (1920x1080, VNC port 5901). Chromium 147 with WebGPU support.
 
-## When Not To Use
+## When To Use / Not To Use
 
-- For lightweight browser automation with AI-optimised snapshots -- use the `browser` skill (smaller context, faster)
-- For summarising web page content without interaction -- use `web-summary` or `gemini-url-context`
-- For debugging host web servers from inside Docker -- use `host-webserver-debug`
-- For API testing without a real browser -- use `curl` or `httpx`
-- For QE-grade typed assertions and visual-diff baselines -- use `qe-browser`
+**Use this skill when:**
+- You need full browser interaction (click, type, navigate, fill forms)
+- WebGPU/WebGL rendering validation (Three.js, R3F, Babylon.js)
+- Network interception, cookie/storage manipulation
+- Visual regression testing with screenshots
+- Multi-tab workflows, PDF generation, video recording
+- Debugging web apps running on the host or inside Docker
+
+**Consider alternatives:**
+- **`browser`** — lightweight AI-optimised snapshots, smaller context, faster (no vision/network/storage)
+- **`qe-browser`** — QE-grade typed assertions, visual-diff baselines, injection scanning
+- **`chrome-cdp`** — raw CDP protocol access for performance profiling and low-level debugging
+- **`web-summary` / `gemini-url-context`** — summarising page content without interaction
+- **`curl` / `httpx`** — API testing without a real browser
+- **`host-webserver-debug`** — legacy; use `playwright` directly instead (same chromium, more tools)
 
 ## Installation
 
@@ -79,34 +89,70 @@ browser_run_code({ code: "async (page) => { await page.goto('https://example.com
 ### `browser_take_screenshot`
 Capture viewport or full-page screenshot as PNG/JPEG. Returned as image content.
 
-## WebGPU Support
+## WebGPU + GPU on Xvnc (VirtualGL)
 
-Chromium 147 ships with WebGPU. Launch flags for GPU acceleration:
+Xvnc is a software framebuffer with **no GLX or EGL** support. Chrome cannot create
+a WebGL or WebGPU context on Xvnc directly — `chrome://gpu` reports "GL_RENDERER:
+Disabled" and all GPU features fail.
+
+**VirtualGL** solves this by intercepting GL/Vulkan calls from Chrome, rendering them
+on the real NVIDIA GPU via DRM render nodes (`/dev/dri/renderD128`+), and compositing
+the result back to the Xvnc framebuffer. The Nix build generates a `vglrun-chromium`
+wrapper script used as `CHROMIUM_PATH` when `desktop.webgpu = true`.
+
+```
+Chrome (inside container)
+  │ GL/Vulkan calls
+  ▼
+VirtualGL (vglrun wrapper)
+  │ Redirects to DRM render node
+  ▼
+NVIDIA GPU (/dev/dri/renderD128, driver 595+)
+  │ Rendered frames
+  ▼
+Xvnc :1 (composited display, VNC port 5901)
+```
+
+### Requirements
+
+- `desktop.webgpu = true` in `agentbox.toml`
+- NVIDIA GPU mapped into container (`/dev/dri/renderD*`, `/dev/nvidia*`)
+- `NVIDIA_DRIVER_CAPABILITIES=all` in docker-compose
+- Host NVIDIA driver ≥ 525 (Vulkan 1.3 required for WebGPU)
+
+### Manual verification
+
 ```bash
-DISPLAY=:1 chromium --no-sandbox --enable-features=Vulkan,WebGPU --enable-unsafe-webgpu
+# Check GPU access
+nvidia-smi
+vulkaninfo --summary
+
+# Check VirtualGL
+vglrun glxinfo | head -20
+
+# Launch with VirtualGL manually
+vglrun chromium --no-sandbox --enable-features=Vulkan,WebGPU --enable-unsafe-webgpu https://webgpusamples.org
 ```
 
-The `@playwright/mcp` server auto-launches Chromium; add launch args via config:
-```json
-{
-  "browser": {
-    "launchOptions": {
-      "args": ["--no-sandbox", "--enable-features=Vulkan,WebGPU", "--enable-unsafe-webgpu"]
-    }
-  }
-}
-```
+### Fallback (no GPU)
+
+When no GPU hardware is present, the server falls back to `--disable-gpu` (software
+rendering). WebGL works via SwiftShader; WebGPU is unavailable.
 
 ## Environment
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `DISPLAY` | `:1` | X display for browser |
+| `CHROMIUM_PATH` | auto-resolved | Path to chromium (or vglrun-chromium wrapper) |
+| `CHROMIUM_WEBGPU` | `false` | Enable WebGPU launch flags |
+| `VGL_DISPLAY` | `/dev/dri/renderD128` | VirtualGL render device |
+| `VK_ICD_FILENAMES` | `/etc/vulkan/icd.d/nvidia_icd.json` | Vulkan ICD path for NVIDIA |
+| `__EGL_VENDOR_LIBRARY_FILENAMES` | `/usr/share/glvnd/egl_vendor.d/10_nvidia.json` | EGL vendor for NVIDIA |
 | `PLAYWRIGHT_MCP_HEADLESS` | unset (headed) | Set to run headless |
-| `PLAYWRIGHT_MCP_VIEWPORT_SIZE` | `1920x1080` | Browser viewport |
-| `PLAYWRIGHT_MCP_OUTPUT_DIR` | `/tmp/playwright-screenshots` | Screenshot/trace output |
-| `PLAYWRIGHT_MCP_NO_SANDBOX` | set | Required in container |
-| `PLAYWRIGHT_MCP_CAPS` | `vision,pdf,devtools,testing,network,storage` | Enabled capability sets |
+| `VIEWPORT_WIDTH` | `1920` | Browser viewport width |
+| `VIEWPORT_HEIGHT` | `1080` | Browser viewport height |
+| `PLAYWRIGHT_OUTPUT_DIR` | `/tmp/playwright-mcp` | Screenshot/trace output |
 
 ## Visual Access
 

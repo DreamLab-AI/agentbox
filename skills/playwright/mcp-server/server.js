@@ -25,13 +25,22 @@
 
 const { createConnection } = require('@playwright/mcp');
 const { StdioServerTransport } = require('@modelcontextprotocol/sdk/server/stdio.js');
+const { execFileSync } = require('child_process');
 
 // ---------------------------------------------------------------------------
 // Configuration from environment
 // ---------------------------------------------------------------------------
 
+function resolveChromium() {
+  if (process.env.CHROMIUM_PATH) return process.env.CHROMIUM_PATH;
+  try { return execFileSync('which', ['chromium'], { encoding: 'utf8' }).trim(); } catch {}
+  try { return execFileSync('which', ['chromium-browser'], { encoding: 'utf8' }).trim(); } catch {}
+  try { return execFileSync('which', ['google-chrome-stable'], { encoding: 'utf8' }).trim(); } catch {}
+  return '/usr/bin/chromium';
+}
+
 const DISPLAY         = process.env.DISPLAY        || ':1';
-const CHROMIUM_PATH   = process.env.CHROMIUM_PATH   || '/usr/bin/chromium';
+const CHROMIUM_PATH   = resolveChromium();
 const WEBGPU          = process.env.CHROMIUM_WEBGPU === 'true';
 const WAYLAND_DISPLAY = process.env.WAYLAND_DISPLAY || '';
 const XDG_RUNTIME_DIR = process.env.XDG_RUNTIME_DIR || '/run/user/1000';
@@ -51,9 +60,11 @@ const baseArgs = [
   '--disable-breakpad',         // kill crash reporter background thread
 ];
 
-// WebGPU via ANGLE-Vulkan: Chrome talks directly to the NVIDIA Vulkan ICD
-// through /dev/renderD128/129/130 regardless of display server.
-// Falls back to SwiftShader software WebGPU when no hardware ICD is present.
+// WebGPU via ANGLE-Vulkan + VirtualGL: Xvnc has no GLX/EGL, so Chrome cannot
+// create a GPU context directly. VirtualGL intercepts GL/Vulkan calls, renders
+// on the real GPU via DRM render nodes (/dev/dri/renderD128+), and composites
+// back to Xvnc. VGLRUN_PATH is set by the Nix supervisor when virtualgl is
+// available. Falls back to SwiftShader software WebGPU when no GPU is present.
 const webgpuArgs = WEBGPU ? [
   '--enable-unsafe-webgpu',
   '--enable-features=Vulkan,WebGPU,UseSkiaRenderer',
@@ -78,6 +89,11 @@ const launchEnv = {
   ...process.env,
   DISPLAY,
   ...(WAYLAND_DISPLAY ? { WAYLAND_DISPLAY, XDG_RUNTIME_DIR } : {}),
+  // GPU context on Xvnc requires VirtualGL + NVIDIA ICD chain.
+  // These are set by the Nix supervisor; forward them to the Chrome subprocess.
+  ...(process.env.VK_ICD_FILENAMES ? { VK_ICD_FILENAMES: process.env.VK_ICD_FILENAMES } : {}),
+  ...(process.env.__EGL_VENDOR_LIBRARY_FILENAMES ? { __EGL_VENDOR_LIBRARY_FILENAMES: process.env.__EGL_VENDOR_LIBRARY_FILENAMES } : {}),
+  ...(process.env.VGL_DISPLAY ? { VGL_DISPLAY: process.env.VGL_DISPLAY } : {}),
 };
 
 // ---------------------------------------------------------------------------

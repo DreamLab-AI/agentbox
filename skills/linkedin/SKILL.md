@@ -151,7 +151,7 @@ rm -rf ~/.linkedin-mcp/profile/
 uvx patchright install chromium
 
 # Or specify Chrome path explicitly
-export CHROME_PATH="/usr/bin/chromium-browser"
+export CHROME_PATH="$(which chromium-browser || which chromium)"
 ```
 
 **Rate Limiting / CAPTCHA:**

@@ -49,7 +49,7 @@
       "type": "stdio",
       "env": {
         "DISPLAY": ":1",
-        "CHROMIUM_PATH": "/usr/bin/chromium",
+        "CHROMIUM_PATH": "@@CHROMIUM_PATH@@",
         "PLAYWRIGHT_TIMEOUT": "30000",
         "PLAYWRIGHT_OUTPUT_DIR": "/tmp/playwright-mcp",
         "CHROMIUM_WEBGPU": "true",

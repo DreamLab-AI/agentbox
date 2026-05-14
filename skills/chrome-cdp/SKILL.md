@@ -122,7 +122,7 @@ On first access to a tab, a background daemon spawns and holds the CDP session o
 
 ## Container-Specific Setup
 
-In our Docker container, Chromium is at `/usr/bin/chromium` and can run on Display :1 (VNC port 5901).
+In the Nix-based container, Chromium is on `$PATH` (Nix store) and can run on Display :1 (VNC port 5901). Use `which chromium` to find the exact path.
 
 ### Headless CDP Session
 

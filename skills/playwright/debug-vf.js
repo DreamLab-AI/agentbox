@@ -1,9 +1,10 @@
 const { chromium } = require('playwright');
+const resolveChromium = require('./resolve-chromium');
 
 (async () => {
   const browser = await chromium.launch({
     headless: false,
-    executablePath: '/usr/bin/chromium',
+    executablePath: resolveChromium(),
     args: ['--no-sandbox', '--disable-dev-shm-usage']
   });
   const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });

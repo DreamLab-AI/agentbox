@@ -152,7 +152,7 @@ DISPLAY=:1 chromium --ignore-certificate-errors https://localhost:3001
 // Using Playwright
 const { chromium } = require('playwright');
 const browser = await chromium.launch({
-  executablePath: '/usr/bin/chromium',
+  executablePath: process.env.CHROMIUM_PATH || 'chromium',
   args: ['--ignore-certificate-errors', '--no-sandbox']
 });
 const page = await browser.newPage();
@@ -203,7 +203,7 @@ DISPLAY=:1 node -e "
 const { chromium } = require('playwright');
 (async () => {
   const browser = await chromium.launch({
-    executablePath: '/usr/bin/chromium',
+    executablePath: process.env.CHROMIUM_PATH || 'chromium',
     args: ['--ignore-certificate-errors', '--no-sandbox']
   });
   const page = await browser.newPage();
@@ -244,7 +244,7 @@ const { chromium } = require('playwright');
 
 async function captureState(name) {
   const browser = await chromium.launch({
-    executablePath: '/usr/bin/chromium',
+    executablePath: process.env.CHROMIUM_PATH || 'chromium',
     args: ['--ignore-certificate-errors', '--no-sandbox']
   });
   const context = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
