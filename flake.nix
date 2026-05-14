@@ -1098,7 +1098,7 @@ stdout_logfile=/var/log/i3wm.log
 stderr_logfile=/var/log/i3wm.error.log
 
 [program:x11vnc]
-command=${pkgs.x11vnc}/bin/x11vnc -display :1 -rfbport 5901 -shared -forever -nopw -noxdamage -xkb
+command=${pkgs.x11vnc}/bin/x11vnc -display :1 -rfbport 5901 -shared -forever -nopw -noxdamage -xkb -noshm
 user=devuser
 environment=DISPLAY=":1",HOME="/home/devuser"
 autostart=true
@@ -1912,7 +1912,7 @@ ${topLevelVolumes}${lib.optionalString (ragflowCfg.enabled or false) "\nnetworks
           <!DOCTYPE fontconfig SYSTEM "fonts.dtd">
           <fontconfig>
             <dir>/nix/store</dir>
-            <cachedir>/tmp/fontconfig-cache</cachedir>
+            <cachedir>/var/cache/fontconfig</cachedir>
           </fontconfig>
           FONTCFG
           sed -i 's/^[[:space:]]*//' $out/etc/fonts/fonts.conf
@@ -1926,17 +1926,33 @@ ${topLevelVolumes}${lib.optionalString (ragflowCfg.enabled or false) "\nnetworks
           #!/bin/sh
           set -e
           XORG_CONF="/tmp/xorg-nvidia.conf"
-          BUS_ID=$(nvidia-smi --query-gpu=pci.bus_id --format=csv,noheader 2>/dev/null | head -1 | sed 's/00000000://' | sed 's/\./:/')
-          if [ -z "$BUS_ID" ]; then
-            echo "[xorg-nvidia] No NVIDIA GPU found, falling back to BusID 18:00:0"
-            BUS_ID="18:00:0"
+          # nvidia-smi reports PCI bus in hex (e.g. 00000000:18:00.0 where 0x18=24).
+          # Xorg BusID requires decimal. Convert each field explicitly.
+          RAW_BUS=$(nvidia-smi --query-gpu=pci.bus_id --format=csv,noheader 2>/dev/null | head -1)
+          if [ -z "$RAW_BUS" ]; then
+            echo "[xorg-nvidia] No NVIDIA GPU found, falling back to PCI:24:0:0"
+            PCI_BUS="PCI:24:0:0"
+          else
+            # Strip domain prefix, split into bus:device.function (all hex)
+            BDF=$(echo "$RAW_BUS" | sed 's/[0-9a-f]*://') # strip domain
+            BUS_HEX=$(echo "$BDF" | cut -d: -f1)
+            DEV_HEX=$(echo "$BDF" | cut -d: -f2 | cut -d. -f1)
+            FN_HEX=$(echo "$BDF" | cut -d. -f2)
+            # printf %d converts hex→decimal
+            BUS_DEC=$(printf "%d" "0x${BUS_HEX}")
+            DEV_DEC=$(printf "%d" "0x${DEV_HEX}")
+            FN_DEC=$(printf "%d" "0x${FN_HEX}")
+            PCI_BUS="PCI:${BUS_DEC}:${DEV_DEC}:${FN_DEC}"
           fi
-          # Convert AA:BB.C → PCI:AA:BB:C format
-          PCI_BUS=$(echo "$BUS_ID" | sed 's/\./:/g' | sed 's/^/PCI:/')
+          # Derive Nix Xorg module path from the Xorg binary location
+          XORG_BIN=$(which Xorg 2>/dev/null || echo "/usr/bin/Xorg")
+          NIX_XORG_MOD=$(dirname $(dirname "$XORG_BIN"))/lib/xorg/modules
           RES="''${XORG_RESOLUTION:-1920x1080}"
 
           cat > "$XORG_CONF" <<XCFG
           Section "Files"
+              ModulePath "$NIX_XORG_MOD"
+              ModulePath "$NIX_XORG_MOD/extensions"
               ModulePath "/usr/lib/xorg/modules"
               ModulePath "/usr/lib/xorg/modules/drivers"
               ModulePath "/usr/lib/nvidia/xorg"
@@ -1953,7 +1969,6 @@ ${topLevelVolumes}${lib.optionalString (ragflowCfg.enabled or false) "\nnetworks
               BusID          "$PCI_BUS"
               Option         "AllowEmptyInitialConfiguration" "True"
               Option         "ConnectedMonitor" "DFP-0"
-              Option         "UseDisplayDevice" "none"
           EndSection
 
           Section "Monitor"
