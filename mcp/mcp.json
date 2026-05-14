@@ -49,12 +49,15 @@
       "type": "stdio",
       "env": {
         "DISPLAY": ":1",
+        "WAYLAND_DISPLAY": "wayland-1",
+        "XDG_RUNTIME_DIR": "/run/user/1000",
         "CHROMIUM_PATH": "/usr/bin/chromium",
         "PLAYWRIGHT_HEADLESS": "false",
         "SCREENSHOT_DIR": "/tmp/playwright-screenshots",
-        "PLAYWRIGHT_TIMEOUT": "30000"
+        "PLAYWRIGHT_TIMEOUT": "30000",
+        "CHROMIUM_WEBGPU": "true"
       },
-      "description": "Browser automation and visual testing on Display :1",
+      "description": "Browser automation and visual testing — Wayland/Hyprland compositor, DISPLAY=:1 XWayland, WebGPU enabled via ANGLE-Vulkan",
       "protocol": "mcp-sdk",
       "version": "2.0.0"
     },

@@ -26,10 +26,12 @@ const {
 // Configuration from environment
 const CONFIG = {
     display: process.env.DISPLAY || ':1',
+    waylandDisplay: process.env.WAYLAND_DISPLAY || '',
     chromiumPath: process.env.CHROMIUM_PATH || '/usr/bin/chromium',
     headless: process.env.PLAYWRIGHT_HEADLESS === 'true',
     screenshotDir: process.env.SCREENSHOT_DIR || '/tmp/playwright-screenshots',
     defaultTimeout: parseInt(process.env.PLAYWRIGHT_TIMEOUT || '30000'),
+    webgpu: process.env.CHROMIUM_WEBGPU === 'true',
     defaultViewport: {
         width: parseInt(process.env.VIEWPORT_WIDTH || '1920'),
         height: parseInt(process.env.VIEWPORT_HEIGHT || '1080')
@@ -57,18 +59,46 @@ async function ensureBrowser() {
     await ensurePlaywright();
 
     if (!browser || !browser.isConnected()) {
-        console.error(`[playwright-mcp] Launching browser on ${CONFIG.display}`);
+        const sessionDesc = CONFIG.waylandDisplay
+            ? `Wayland (${CONFIG.waylandDisplay}) + XWayland DISPLAY=${CONFIG.display}`
+            : `X11 DISPLAY=${CONFIG.display}`;
+        console.error(`[playwright-mcp] Launching browser — ${sessionDesc}${CONFIG.webgpu ? ', WebGPU=on' : ''}`);
+
+        const launchArgs = [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+        ];
+
+        if (CONFIG.webgpu) {
+            // Hardware WebGPU via ANGLE-Vulkan. Chrome talks directly to the
+            // Vulkan ICD (NVIDIA/AMD/Mesa) regardless of the display server.
+            // Falls back to SwiftShader software WebGPU when no hardware ICD
+            // is present — the API remains fully functional in both cases.
+            launchArgs.push(
+                '--enable-unsafe-webgpu',
+                '--enable-features=Vulkan,WebGPU,UseSkiaRenderer',
+                '--use-angle=vulkan',
+                '--ignore-gpu-blocklist',
+                '--enable-gpu-rasterization',
+                '--disable-gpu-sandbox'
+            );
+        } else {
+            launchArgs.push('--disable-gpu');
+        }
+
+        if (CONFIG.waylandDisplay) {
+            // Native Wayland: Chrome uses Ozone/Wayland platform.
+            // XWayland DISPLAY=:1 is set in the environment for fallback clients.
+            launchArgs.push('--ozone-platform=wayland', '--enable-features=UseOzonePlatform');
+        } else {
+            launchArgs.push(`--display=${CONFIG.display}`);
+        }
 
         browser = await playwright.chromium.launch({
             executablePath: CONFIG.chromiumPath,
             headless: CONFIG.headless,
-            args: [
-                `--display=${CONFIG.display}`,
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-gpu'
-            ]
+            args: launchArgs
         });
 
         context = await browser.newContext({

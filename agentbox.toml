@@ -151,6 +151,11 @@ host_gateway = false
 enabled = true
 stack = "hyprland-wayland"
 resolution = "1920x1080"
+# Enable WebGPU in Playwright MCP browser (ANGLE-Vulkan backend).
+# Removes --disable-gpu and injects --enable-unsafe-webgpu + Vulkan flags.
+# Requires gpu.backend = "local-cuda" or "ollama-rocm" for hardware path;
+# falls back to SwiftShader software WebGPU when no ICD is present.
+webgpu = true
 
 [skills.browser]
 agent_browser = true

@@ -131,6 +131,10 @@ let
     # NOTE: aarch64 does not support CUDA; the extended package list is
     # wrapped in lib.optionals stdenv.isx86_64 so cross-arch builds remain
     # clean.
+    # "graphics" is added to NVIDIA_DRIVER_CAPABILITIES so the NVIDIA
+    # container runtime mounts Vulkan ICDs at
+    # /run/opengl-driver/share/vulkan/icd.d/nvidia_icd.x86_64.json,
+    # which Chrome's ANGLE-Vulkan backend picks up for WebGPU.
     # ----------------------------------------------------------------
     "local-cuda" = { toolchainsCudaEnabled ? false }:
     let
@@ -173,7 +177,9 @@ let
       runtimeClass  = "nvidia";
       envVars = {
         NVIDIA_VISIBLE_DEVICES     = "all";
-        NVIDIA_DRIVER_CAPABILITIES = "compute,utility";
+        # "graphics" enables Vulkan ICD mount at
+        # /run/opengl-driver/share/vulkan/icd.d/ — required for WebGPU.
+        NVIDIA_DRIVER_CAPABILITIES = "compute,utility,graphics";
         OLLAMA_FLASH_ATTENTION     = "true";
         OLLAMA_KV_CACHE_TYPE       = "q8_0";
         OLLAMA_CONTEXT_LENGTH      = "8192";
@@ -183,13 +189,19 @@ let
       composeDeviceReservations = {
         driver       = "nvidia";
         count        = "all";
-        capabilities = [ "gpu" "compute" "utility" ];
+        # "graphics" maps the Vulkan/GL driver into the container.
+        capabilities = [ "gpu" "compute" "utility" "graphics" ];
       };
       supervisorExtraEnv = {
         CUDA_VISIBLE_DEVICES        = "all";
-        NVIDIA_DRIVER_CAPABILITIES  = "compute,utility";
+        NVIDIA_DRIVER_CAPABILITIES  = "compute,utility,graphics";
         CUDA_PATH                   = "${pkgs.cudaPackages.cudatoolkit}";
         CUDA_LIBRARY_PATH           = "${pkgs.cudaPackages.cudatoolkit}/lib:${pkgs.cudaPackages.cudatoolkit}/lib/stubs";
+        # Vulkan ICD path set by NVIDIA Container Runtime when
+        # NVIDIA_DRIVER_CAPABILITIES includes "graphics".
+        # Explicit fallback covers edge cases where the runtime doesn't
+        # auto-set it (e.g. older nvidia-container-toolkit versions).
+        VK_ICD_FILENAMES            = "/run/opengl-driver/share/vulkan/icd.d/nvidia_icd.x86_64.json";
       };
       ollamaEnabled = true;
     };

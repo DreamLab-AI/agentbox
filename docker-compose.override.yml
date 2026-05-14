@@ -48,6 +48,12 @@ services:
       - TELEGRAM_MIRROR=${TELEGRAM_MIRROR:-false}
       # Display for desktop/browser
       - DISPLAY=:1
+      # Wayland compositor backend for Hyprland (stack = "hyprland-wayland").
+      # "headless" (default): pure software compositor — safe for all containers,
+      #   and Chrome still uses the NVIDIA GPU for WebGPU via ANGLE-Vulkan.
+      # "drm": GPU-backed compositor (composited Wayland rendering on NVIDIA).
+      #   Requires nvidia-drm with modeset=1 on the host and /dev/dri/card0 mapped.
+      - WLR_BACKENDS=${WLR_BACKENDS:-headless}
       # Tailscale — set authkey for headless join, or omit for interactive login
       - TAILSCALE_AUTHKEY=${TAILSCALE_AUTHKEY:-}
       # Agent signing identity — set one of these in .env to use a stable
@@ -117,7 +123,8 @@ services:
           devices:
             - driver: nvidia
               count: all
-              capabilities: [gpu, compute, utility]
+              # "graphics" enables Vulkan ICD mount — required for WebGPU via ANGLE-Vulkan.
+              capabilities: [gpu, compute, utility, graphics]
 
     # Join docker_ragflow for service discovery
     networks:

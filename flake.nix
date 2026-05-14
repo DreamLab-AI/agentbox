@@ -50,6 +50,8 @@
         sovereignCfg = agentboxConfig.sovereign_mesh or {};
         networkingCfg = agentboxConfig.networking or {};
         desktopCfg = agentboxConfig.desktop or {};
+        isWaylandStack = (desktopCfg.stack or "i3-x11") == "hyprland-wayland";
+        webgpuEnabled  = desktopCfg.webgpu or false;
         skillsCfg = agentboxConfig.skills or {};
         toolchainCfg = agentboxConfig.toolchains or {};
         browserCfg = skillsCfg.browser or {};
@@ -526,6 +528,8 @@
           alsa-lib
           nss
           nspr
+          vulkan-loader    # Vulkan runtime dispatch required for WebGPU via ANGLE-Vulkan
+          vulkan-tools     # vulkaninfo for runtime diagnostics (chrome://gpu validation)
         ]);
 
         # ComfyUI built-in: fetch upstream source and wrap with a Python env.
@@ -792,31 +796,27 @@ default_days = ${toString (relayCfg.retention_days or 30)}
         ]);
         privacyFilterPackages = lib.optionals privacyFilterEnabled [ privacyFilterPythonEnv ];
 
-        desktopPackages = lib.optionals (desktopCfg.enabled or false) (with pkgs; [
-          tigervnc              # Xvnc: X server + VNC in one binary (correct XKB paths)
-          xkbcomp               # runtime keymap compilation
-          xauth
-          xset
-          xdpyinfo
-          xprop
-          xwininfo
-          setxkbmap
-          xkeyboard_config
-          i3                    # tiling WM — stable in Nix containers (openbox segfaults)
-          i3status              # status bar for i3
-          dmenu                 # launcher for i3
-          xterm
-          xfce4-terminal
-          dejavu_fonts
-          liberation_ttf
-          noto-fonts-cjk-sans
-          fontconfig
-          xdotool
-          xclip
-          scrot
-          feh
-          pcmanfm
-        ]);
+        desktopPackages = lib.optionals (desktopCfg.enabled or false) (
+          # Shared X11/Wayland tools present in both stacks
+          (with pkgs; [
+            xkbcomp xkeyboard_config setxkbmap  # keyboard config shared by XWayland
+            xauth xset xdpyinfo xprop xwininfo   # X11 utils (also work over XWayland)
+            xterm xfce4-terminal                  # terminals
+            dejavu_fonts liberation_ttf noto-fonts-cjk-sans fontconfig
+            xdotool xclip scrot feh pcmanfm
+          ]) ++
+          # Stack-specific compositor + VNC server
+          (if isWaylandStack then with pkgs; [
+            hyprland     # Wayland compositor (implements declared stack = "hyprland-wayland")
+            xwayland     # X11 compat on DISPLAY=:1 for agent-browser and legacy tools
+            wayvnc       # VNC server that captures the Wayland compositor output
+            wlr-randr    # Display management for wlroots-based compositors
+          ] else with pkgs; [
+            tigervnc     # Xvnc: X server + VNC in one binary (correct XKB paths)
+            i3           # tiling WM — stable in Nix containers (openbox segfaults)
+            i3status dmenu
+          ])
+        );
 
         allPackages =
           basePackages
@@ -983,10 +983,54 @@ stdout_logfile=/var/log/jupyter-lab.log
 stderr_logfile=/var/log/jupyter-lab.error.log
         '';
 
-        # Desktop via TigerVNC Xvnc — single binary replaces Xvfb + x11vnc.
-        # Xvnc builds xkbcomp paths into its own derivation closure, avoiding
-        # the XKB path mismatch that breaks standalone Xvfb in nix2container.
-        desktopBlocks = ''
+        # Desktop supervisor blocks — stack-conditional on agentbox.toml [desktop].stack.
+        #
+        # "hyprland-wayland": Hyprland compositor → XWayland (:1) → wayvnc (:5901).
+        #   WLR_BACKENDS defaults to "headless" for container safety; override to
+        #   "drm" at runtime when NVIDIA DRM is mapped in (needs /dev/dri/card0).
+        #   Chrome uses ANGLE-Vulkan for WebGPU regardless of compositor backend.
+        #
+        # "i3-x11" (default): TigerVNC Xvnc on :1 + i3 WM. Chrome uses
+        #   ANGLE-Vulkan for WebGPU even with the software Xvnc display because
+        #   ANGLE talks directly to the Vulkan ICD, bypassing the display path.
+        desktopBlocks =
+          if isWaylandStack then ''
+[program:hyprland]
+command=${pkgs.hyprland}/bin/Hyprland --config /opt/agentbox/config/hyprland.conf
+user=devuser
+; WLR_BACKENDS=headless is the container-safe default (no DRM device needed).
+; Override to drm in docker-compose environment for GPU-backed compositor when
+; NVIDIA_DRIVER_CAPABILITIES=graphics and /dev/dri/card0 is mapped in.
+environment=HOME="/home/devuser",WAYLAND_DISPLAY="wayland-1",XDG_RUNTIME_DIR="/run/user/1000",XDG_SESSION_TYPE="wayland",WLR_NO_HARDWARE_CURSORS="1",WLR_BACKENDS="%(ENV_WLR_BACKENDS)s",WLR_HEADLESS_OUTPUTS="1",DISPLAY=":1",HYPRLAND_TRACE="0"
+autostart=true
+autorestart=true
+startsecs=2
+priority=40
+stdout_logfile=/var/log/hyprland.log
+stderr_logfile=/var/log/hyprland.error.log
+
+[program:xwayland-session]
+command=${pkgs.xwayland}/bin/Xwayland :1 -rootless -noreset -wm 1
+user=devuser
+environment=HOME="/home/devuser",WAYLAND_DISPLAY="wayland-1",XDG_RUNTIME_DIR="/run/user/1000"
+autostart=true
+autorestart=true
+startsecs=5
+priority=41
+stdout_logfile=/var/log/xwayland.log
+stderr_logfile=/var/log/xwayland.error.log
+
+[program:wayvnc]
+command=${pkgs.wayvnc}/bin/wayvnc --output=HEADLESS-1 0.0.0.0 5901
+user=devuser
+environment=HOME="/home/devuser",WAYLAND_DISPLAY="wayland-1",XDG_RUNTIME_DIR="/run/user/1000",WLR_NO_HARDWARE_CURSORS="1"
+autostart=true
+autorestart=true
+startsecs=5
+priority=42
+stdout_logfile=/var/log/wayvnc.log
+stderr_logfile=/var/log/wayvnc.error.log
+          '' else ''
 [program:xvnc]
 command=${pkgs.tigervnc}/bin/Xvnc :1 -geometry ${(desktopCfg.resolution or "1920x1080")} -depth 24 -SecurityTypes None -ac -pn -rfbport 5901 -localhost -rawkeyboard
 user=devuser
@@ -1007,7 +1051,7 @@ startsecs=3
 priority=41
 stdout_logfile=/var/log/i3wm.log
 stderr_logfile=/var/log/i3wm.error.log
-        '';
+          '';
 
         supervisorText = ''
 [supervisord]
@@ -1102,7 +1146,7 @@ ${lib.optionalString (browserCfg.playwright or false) ''
 command=${playwrightMcpPkg}/bin/playwright-mcp
 directory=/opt/agentbox/skills/playwright/mcp-server
 user=devuser
-environment=HOME="/home/devuser",PLAYWRIGHT_BROWSERS_PATH="${pkgs.playwright-driver.browsers}"
+environment=HOME="/home/devuser",PLAYWRIGHT_BROWSERS_PATH="${pkgs.playwright-driver.browsers}",CHROMIUM_PATH="${pkgs.chromium}/bin/chromium",DISPLAY=":1",CHROMIUM_WEBGPU="${if webgpuEnabled then "true" else "false"}"${if isWaylandStack then ",WAYLAND_DISPLAY=\"wayland-1\",XDG_RUNTIME_DIR=\"/run/user/1000\"" else ""}
 autostart=true
 autorestart=true
 priority=200
@@ -1870,6 +1914,12 @@ ${topLevelVolumes}${lib.optionalString (ragflowCfg.enabled or false) "\nnetworks
           "ENABLE_TAILSCALE=${boolEnv (networkingCfg.tailscale or false)}"
           "TAILSCALE_HOSTNAME=${networkingCfg.hostname or "agentbox"}"
           "ENABLE_DESKTOP=${boolEnv (desktopCfg.enabled or false)}"
+          "DESKTOP_STACK=${desktopCfg.stack or "i3-x11"}"
+          "DESKTOP_WEBGPU=${boolEnv webgpuEnabled}"
+          # WLR_BACKENDS: default headless (safe for containers without DRM).
+          # Override to "drm" in docker-compose when NVIDIA_DRIVER_CAPABILITIES
+          # includes "graphics" and /dev/dri/card0 is mapped in for GPU mode.
+          "WLR_BACKENDS=headless"
           "ENABLE_AGENT_BROWSER=${boolEnv (browserCfg.agent_browser or false)}"
           "ENABLE_PLAYWRIGHT=${boolEnv (browserCfg.playwright or false)}"
           "ENABLE_QE_BROWSER=${boolEnv (browserCfg.qe_browser or false)}"
