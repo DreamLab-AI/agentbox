@@ -2001,7 +2001,11 @@ ${topLevelVolumes}${lib.optionalString (ragflowCfg.enabled or false) "\nnetworks
           sed -i 's/^[[:space:]]*//' "$XORG_CONF"
 
           echo "[xorg-nvidia] Starting Xorg on :1 with GPU $PCI_BUS at $RES"
-          exec Xorg :1 -config "$XORG_CONF" -noreset -novtswitch -nolisten tcp +extension GLX +extension RANDR +extension MIT-SHM
+          # LD_LIBRARY_PATH: host NVIDIA libs (/usr/lib) are not in the Nix
+          # ldconfig cache, so libglxserver_nvidia.so can't find libnvidia-tls.
+          # Prepend /usr/lib so the dynamic linker resolves them at startup.
+          exec env LD_LIBRARY_PATH=/usr/lib:/usr/lib/x86_64-linux-gnu${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH} \
+            Xorg :1 -config "$XORG_CONF" -noreset -novtswitch -nolisten tcp +extension GLX +extension RANDR +extension MIT-SHM
           XORGSH
           sed -i 's/^[[:space:]]*//' $out/opt/agentbox/config/start-xorg-nvidia.sh
           chmod 755 $out/opt/agentbox/config/start-xorg-nvidia.sh
