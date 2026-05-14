@@ -43,6 +43,20 @@ STACKS = {
         "skills": ["latex-documents", "report-builder", "mermaid-diagrams", "paperbanana", "wardley-maps"],
         "env": ["PERPLEXITY_API_KEY", "GOOGLE_GEMINI_API_KEY", "OPENAI_API_KEY"],
     },
+    # ZAI profile: Claude Code routed through Z.AI GLM (Anthropic-compatible).
+    # Z.AI has TWO endpoints:
+    #   API (per-token): https://api.z.ai/api/anthropic
+    #   Subscription (flat-rate, GLM Coding Plan): https://api.z.ai/api/coding/paas/v4
+    #     Plans: Lite $9/mo | Pro $27/mo | Max $72/mo (quarterly billing)
+    #     z.ai/subscribe
+    # Set ZAI_URL to the subscription endpoint for flat-rate; leave unset for
+    # the Anthropic-compatible relay (per-token). ZAI_API_KEY is the auth token.
+    # Profile isolation prevents ANTHROPIC_BASE_URL from leaking to main Claude.
+    "zai": {
+        "tools": ["claude"],
+        "skills": ["skill-router", "lazy-fetch", "codebase-memory"],
+        "env": ["ZAI_API_KEY", "ZAI_URL"],
+    },
     # OpenRouter profile: Claude Code routed through OpenRouter's Anthropic-
     # compatible API. OPENROUTER_API_KEY is injected via the dotenv credentials
     # system (providers.openrouter in agentbox.toml). The tmux-autostart.sh

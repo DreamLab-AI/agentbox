@@ -144,9 +144,58 @@ if [ -n "${OPENROUTER_API_KEY:-}" ]; then
 fi
 
 # ============================================================================
+# Window 9: ZAI — Claude Code via Z.AI GLM (profile-isolated, no env bleed)
+# Z.AI supports TWO endpoints:
+#   API (per-token):    ZAI_URL=https://api.z.ai/api/anthropic
+#   Subscription ($9+/mo, GLM Coding Plan): https://api.z.ai/api/coding/paas/v4
+# Set ZAI_URL in .env to choose the endpoint. Default: per-token relay.
+# Profile isolation prevents ANTHROPIC_BASE_URL from leaking to the main
+# Claude Code session in Window 0.
+# ============================================================================
+ZAI_WORKSPACE="${WORKSPACE:-${HOME}/workspace}"
+ZAI_PROFILE="${ZAI_WORKSPACE}/profiles/zai"
+ZAI_CLAUDE_DIR="${ZAI_PROFILE}/.claude"
+# Endpoint: subscription path if ZAI_URL ends in /coding/paas/v4, else per-token relay
+_ZAI_ENDPOINT="${ZAI_URL:-https://api.z.ai/api/anthropic}"
+_ZAI_AUTH="${ZAI_ANTHROPIC_API_KEY:-${ZAI_API_KEY:-}}"
+
+mkdir -p "${ZAI_CLAUDE_DIR}"
+
+if [ -n "${_ZAI_AUTH:-}" ]; then
+  cat > "${ZAI_CLAUDE_DIR}/settings.local.json" <<ZAIJSON
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "${_ZAI_ENDPOINT}",
+    "ANTHROPIC_AUTH_TOKEN": "${_ZAI_AUTH}",
+    "ANTHROPIC_API_KEY": ""
+  }
+}
+ZAIJSON
+  _zai_status="ZAI key set — endpoint: ${_ZAI_ENDPOINT}"
+else
+  _zai_status="WARNING: ZAI_API_KEY not set — add it to your .env file"
+fi
+
+[ -L "${ZAI_PROFILE}/workspace" ] || ln -sfn "${ZAI_WORKSPACE}" "${ZAI_PROFILE}/workspace" 2>/dev/null || true
+[ -L "${ZAI_PROFILE}/projects" ] || ln -sfn "${SHARED_PROJECTS_ROOT:-/projects}" "${ZAI_PROFILE}/projects" 2>/dev/null || true
+
+tmux new-window -t "${SESSION}:9" -n "ZAI" -c "${ZAI_PROFILE}"
+tmux send-keys -t "${SESSION}:9" "echo '  ZAI Profile — GLM via Anthropic-compatible relay'" C-m
+tmux send-keys -t "${SESSION}:9" "echo '  ${_zai_status}'" C-m
+tmux send-keys -t "${SESSION}:9" "echo '  Subscription tier: z.ai/subscribe (Lite \$9/mo | Pro \$27/mo | Max \$72/mo)'" C-m
+tmux send-keys -t "${SESSION}:9" "echo '  Set ZAI_URL=https://api.z.ai/api/coding/paas/v4 for flat-rate billing'" C-m
+tmux send-keys -t "${SESSION}:9" "echo ''" C-m
+tmux send-keys -t "${SESSION}:9" "export HOME=${ZAI_PROFILE}" C-m
+tmux send-keys -t "${SESSION}:9" "export ANTHROPIC_BASE_URL=${_ZAI_ENDPOINT}" C-m
+if [ -n "${_ZAI_AUTH:-}" ]; then
+  tmux send-keys -t "${SESSION}:9" "export ANTHROPIC_AUTH_TOKEN=${_ZAI_AUTH}" C-m
+  tmux send-keys -t "${SESSION}:9" "export ANTHROPIC_API_KEY=" C-m
+fi
+
+# ============================================================================
 # Select window 0 (Claude)
 # ============================================================================
 tmux select-window -t "${SESSION}:0"
 
-echo "[tmux-autostart] Session '$SESSION' created with 9 windows"
-echo "  0:Claude  1:Agent  2:Services  3:Build  4:Logs  5:System  6:VNC  7:Git  8:OpenRouter"
+echo "[tmux-autostart] Session '$SESSION' created with 10 windows"
+echo "  0:Claude  1:Agent  2:Services  3:Build  4:Logs  5:System  6:VNC  7:Git  8:OpenRouter  9:ZAI"
