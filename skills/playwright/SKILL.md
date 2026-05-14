@@ -1,141 +1,134 @@
 ---
 name: playwright
 description: >
-  Browser automation, web scraping, and visual testing with Playwright on Display :1.
-  Use for navigating web pages, clicking elements, filling forms, taking screenshots,
-  executing JavaScript, and visual verification of web applications. Visual access
-  available via VNC on port 5901.
-version: 2.0.0
-author: agentbox-claude
-mcp_server: true
-protocol: mcp-sdk
-entry_point: mcp-server/server.js
-dependencies:
-  - chromium
-  - playwright
+  Browser automation, web scraping, visual testing, and WebGPU validation with the official
+  @playwright/mcp server (61 tools) on Display :1. Use for navigating pages, clicking elements,
+  filling forms, taking screenshots, executing JavaScript, network mocking, storage management,
+  video recording, tracing, coordinate-based vision interactions, test assertions, and PDF
+  generation. Visual access via VNC on port 5901. WebGPU-capable Chromium 147+.
 ---
 
 # Playwright Skill
 
-Browser automation and visual testing via MCP SDK, with direct browser control on Display :1.
+Browser automation via the official `@playwright/mcp` server (Microsoft, v0.0.70) with 61 tools.
+Renders on i3/Xvnc Display :1 (1920x1080, VNC port 5901). Chromium 147 with WebGPU support.
 
 ## When Not To Use
 
-- For lightweight browser automation with AI-optimised snapshots -- use the browser skill instead (smaller context, faster)
-- For summarising web page content without interaction -- use the web-summary or gemini-url-context skills instead
-- For debugging host web servers from inside Docker -- use the host-webserver-debug skill instead
-- For API testing that does not require a real browser -- use curl or httpx directly
+- For lightweight browser automation with AI-optimised snapshots -- use the `browser` skill (smaller context, faster)
+- For summarising web page content without interaction -- use `web-summary` or `gemini-url-context`
+- For debugging host web servers from inside Docker -- use `host-webserver-debug`
+- For API testing without a real browser -- use `curl` or `httpx`
+- For QE-grade typed assertions and visual-diff baselines -- use `qe-browser`
 
 ## Installation
 
 ```bash
-# Add MCP server to Claude Code
-claude mcp add playwright -- node /home/devuser/.claude/skills/playwright/mcp-server/server.js
-
-# Or for project-specific install
-cd /path/to/skill
-npm install
+claude mcp add playwright -- playwright-mcp --no-sandbox --caps vision,pdf,devtools,testing,network,storage
 ```
+
+The `playwright-mcp` binary is available at `/nix/store/.../bin/playwright-mcp` (Nix-managed).
+Chromium 147 is at the Nix store path and auto-detected.
 
 ### Quick Verification
 
 ```bash
-# Test browser works on Display :1
-DISPLAY=:1 chromium --no-sandbox https://example.com &
-
-# Test MCP server
-echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | \
-  DISPLAY=:1 node mcp-server/server.js
+DISPLAY=:1 chromium --no-sandbox --enable-features=Vulkan,WebGPU --enable-unsafe-webgpu https://example.com &
 ```
-
-## When to Use This Skill
-
-- Navigate to web pages and capture screenshots
-- Click buttons, links, and interactive elements
-- Fill forms and submit data
-- Execute JavaScript in page context
-- Wait for dynamic content and AJAX responses
-- Visual verification of web applications
-- Web scraping and data extraction
-- End-to-end testing of web UIs
 
 ## Architecture
 
 ```
-┌─────────────────────────────┐
-│  Claude Code / VisionFlow   │
-│  (MCP Client)               │
-└──────────────┬──────────────┘
-               │ MCP Protocol (stdio)
-               ▼
-┌─────────────────────────────┐
-│  Playwright MCP Server      │
-│  (Consolidated from 3 files)│
-└──────────────┬──────────────┘
-               │ Direct Playwright API
-               ▼
-┌─────────────────────────────┐
-│  Chromium Browser           │
-│  Display :1 (VNC 5901)      │
-└─────────────────────────────┘
+Claude Code (MCP Client)
+  |  MCP Protocol (stdio)
+  v
+@playwright/mcp server (official, 61 tools)
+  |  Playwright 1.60 API
+  v
+Chromium 147 (WebGPU, Vulkan)
+  |  X11
+  v
+i3 WM on Xvnc :1 (1920x1080, port 5901)
 ```
 
-## Tools
+## Tool Categories (61 tools)
 
-| Tool | Description |
-|------|-------------|
-| `navigate` | Navigate browser to URL |
-| `screenshot` | Capture screenshot (full page or viewport) |
-| `click` | Click an element by CSS/XPath selector |
-| `type` | Type text into input field |
-| `evaluate` | Execute JavaScript in page context |
-| `wait_for_selector` | Wait for element to appear/disappear |
-| `get_content` | Get full HTML content of page |
-| `get_url` | Get current page URL and title |
-| `close_browser` | Close browser instance |
-| `health_check` | Check browser connection health |
+| Category | Tools | Description |
+|----------|-------|-------------|
+| **Core** | `browser_navigate`, `browser_click`, `browser_type`, `browser_fill_form`, `browser_select_option`, `browser_hover`, `browser_drag`, `browser_press_key`, `browser_file_upload`, `browser_handle_dialog`, `browser_snapshot`, `browser_take_screenshot`, `browser_evaluate`, `browser_run_code`, `browser_wait_for`, `browser_close`, `browser_resize`, `browser_navigate_back`, `browser_console_messages`, `browser_network_requests` | Page navigation, interaction, screenshots, JS eval, accessibility snapshots |
+| **Tabs** | `browser_tabs` | List, create, close, select tabs |
+| **Vision** | `browser_mouse_move_xy`, `browser_mouse_click_xy`, `browser_mouse_drag_xy`, `browser_mouse_down`, `browser_mouse_up`, `browser_mouse_wheel` | Coordinate-based interactions (opt-in `--caps vision`) |
+| **DevTools** | `browser_resume`, `browser_start_tracing`, `browser_stop_tracing`, `browser_start_video`, `browser_stop_video`, `browser_video_chapter` | Debug stepping, tracing, video recording (opt-in `--caps devtools`) |
+| **Testing** | `browser_verify_element_visible`, `browser_verify_text_visible`, `browser_verify_list_visible`, `browser_verify_value`, `browser_generate_locator` | Assertion tools for test automation (opt-in `--caps testing`) |
+| **Network** | `browser_route`, `browser_route_list`, `browser_unroute`, `browser_network_state_set` | Mock network requests, offline simulation (opt-in `--caps network`) |
+| **Storage** | `browser_cookie_*` (5), `browser_localstorage_*` (5), `browser_sessionstorage_*` (5), `browser_storage_state`, `browser_set_storage_state` | Full cookie/localStorage/sessionStorage CRUD (opt-in `--caps storage`) |
+| **PDF** | `browser_pdf_save` | Save page as PDF (opt-in `--caps pdf`) |
+| **Config** | `browser_get_config` | Read resolved config (opt-in `--caps config`) |
 
-## Examples
+## Key Tools
 
+### `browser_snapshot` (preferred over screenshots for LLM interaction)
+Returns an accessibility tree of the page -- structured, deterministic, no vision model needed.
+
+### `browser_run_code`
+Execute arbitrary Playwright code:
 ```javascript
-// Navigate and screenshot
-await navigate({ url: "https://example.com" })
-await screenshot({ filename: "homepage.png", fullPage: true })
-
-// Fill and submit a form
-await type({ selector: "#email", text: "user@example.com" })
-await type({ selector: "#password", text: "secret123" })
-await click({ selector: "button[type=submit]" })
-
-// Wait for dynamic content
-await wait_for_selector({ selector: ".results-loaded" })
-
-// Execute JavaScript
-await evaluate({ script: "document.querySelectorAll('.item').length" })
+browser_run_code({ code: "async (page) => { await page.goto('https://example.com'); return await page.title(); }" })
 ```
 
-## Environment Variables
+### `browser_take_screenshot`
+Capture viewport or full-page screenshot as PNG/JPEG. Returned as image content.
+
+## WebGPU Support
+
+Chromium 147 ships with WebGPU. Launch flags for GPU acceleration:
+```bash
+DISPLAY=:1 chromium --no-sandbox --enable-features=Vulkan,WebGPU --enable-unsafe-webgpu
+```
+
+The `@playwright/mcp` server auto-launches Chromium; add launch args via config:
+```json
+{
+  "browser": {
+    "launchOptions": {
+      "args": ["--no-sandbox", "--enable-features=Vulkan,WebGPU", "--enable-unsafe-webgpu"]
+    }
+  }
+}
+```
+
+## Environment
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `DISPLAY` | `:1` | X display for browser |
-| `CHROMIUM_PATH` | `/usr/bin/chromium` | Path to Chromium binary |
-| `PLAYWRIGHT_HEADLESS` | `false` | Run headless (no display) |
-| `SCREENSHOT_DIR` | `/tmp/playwright-screenshots` | Screenshot output directory |
-| `PLAYWRIGHT_TIMEOUT` | `30000` | Default timeout in ms |
-| `VIEWPORT_WIDTH` | `1920` | Browser viewport width |
-| `VIEWPORT_HEIGHT` | `1080` | Browser viewport height |
+| `PLAYWRIGHT_MCP_HEADLESS` | unset (headed) | Set to run headless |
+| `PLAYWRIGHT_MCP_VIEWPORT_SIZE` | `1920x1080` | Browser viewport |
+| `PLAYWRIGHT_MCP_OUTPUT_DIR` | `/tmp/playwright-screenshots` | Screenshot/trace output |
+| `PLAYWRIGHT_MCP_NO_SANDBOX` | set | Required in container |
+| `PLAYWRIGHT_MCP_CAPS` | `vision,pdf,devtools,testing,network,storage` | Enabled capability sets |
 
 ## Visual Access
 
-Browser is visible via VNC:
 ```bash
-# Connect with VNC client
-vncviewer localhost:5901
-
-# Password: agentbox
+vncviewer localhost:5901   # password: agentbox
 ```
 
-## VisionFlow Integration
+## Migration from Custom Server
 
-This skill exposes `playwright://capabilities` and `playwright://status` resources for discovery by VisionFlow's MCP TCP client on port 9500.
+The previous custom `mcp-server/server.js` (10 tools) is superseded by the official server (61 tools).
+
+| Old tool | New equivalent |
+|----------|---------------|
+| `navigate` | `browser_navigate` |
+| `screenshot` | `browser_take_screenshot` |
+| `click` | `browser_click` |
+| `type` | `browser_type` |
+| `evaluate` | `browser_evaluate` |
+| `wait_for_selector` | `browser_wait_for` |
+| `get_content` | `browser_snapshot` (better: structured accessibility tree) |
+| `get_url` | `browser_snapshot` includes URL |
+| `close_browser` | `browser_close` |
+| `health_check` | `browser_get_config` |
+
+New capabilities not in the old server: video recording, tracing, network mocking, storage CRUD, coordinate-based vision, test assertions, tab management, PDF generation, form filling, drag-and-drop, code execution.
