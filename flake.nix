@@ -1933,7 +1933,7 @@ ${topLevelVolumes}${lib.optionalString (ragflowCfg.enabled or false) "\nnetworks
           fi
           # Convert AA:BB.C → PCI:AA:BB:C format
           PCI_BUS=$(echo "$BUS_ID" | sed 's/\./:/g' | sed 's/^/PCI:/')
-          RES="${XORG_RESOLUTION:-1920x1080}"
+          RES="''${XORG_RESOLUTION:-1920x1080}"
 
           cat > "$XORG_CONF" <<XCFG
           Section "Files"

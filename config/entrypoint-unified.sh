@@ -441,6 +441,60 @@ MCPEOF
   fi
 fi
 
+# ── Codex CLI MCP wiring: write ruvector-mcp into ~/.codex/config.toml ──
+# Codex CLI reads MCP servers from [mcp_servers.<name>] tables in config.toml.
+# We append the claude-flow server so Codex shares the same ruvector-postgres
+# memory infrastructure that Claude Code uses via .mcp.json above.
+_CODEX_CONFIG="$CODEX_HOME/config.toml"
+if [ "${ENABLE_CODEX:-false}" = "true" ] && [ -f "$_RUVECTOR_MCP" ]; then
+  mkdir -p "$CODEX_HOME" 2>/dev/null || true
+  if [ ! -f "$_CODEX_CONFIG" ] || ! grep -q 'mcp_servers' "$_CODEX_CONFIG" 2>/dev/null; then
+    # Seed config.toml with project trust + MCP servers if it doesn't exist yet.
+    # If it exists but lacks mcp_servers, append the MCP block.
+    if [ ! -f "$_CODEX_CONFIG" ]; then
+      cat > "$_CODEX_CONFIG" <<CODEXCFG
+[projects."/home/devuser/workspace"]
+trust_level = "trusted"
+
+[projects."/home/devuser/workspace/project"]
+trust_level = "trusted"
+
+CODEXCFG
+    fi
+    cat >> "$_CODEX_CONFIG" <<CODEXMCP
+[mcp_servers.claude-flow]
+command = "node"
+args = ["$_RUVECTOR_MCP"]
+startup_timeout_sec = 15
+required = false
+
+[mcp_servers.claude-flow.env]
+RUVECTOR_PG_CONNINFO = "host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=$RUVECTOR_PG_PASSWORD"
+NODE_PATH = "$_PG_PREFIX/node_modules"
+XINFERENCE_ENDPOINT = "$XINFERENCE_ENDPOINT"
+EMBEDDING_MODEL = "$EMBEDDING_MODEL"
+CODEXMCP
+    chown 1000:1000 "$_CODEX_CONFIG" 2>/dev/null || true
+    echo "  [mcp] Wrote Codex MCP config → $_CODEX_CONFIG (claude-flow → ruvector-mcp.cjs)"
+  fi
+  # Global AGENTS.md: tells the Codex LLM about the available MCP tools
+  _CODEX_AGENTS="$CODEX_HOME/AGENTS.md"
+  if [ ! -f "$_CODEX_AGENTS" ]; then
+    cat > "$_CODEX_AGENTS" <<'AGENTSEOF'
+# Agentbox Global Instructions
+
+## Shared Memory (MCP)
+
+A `claude-flow` MCP server is connected to ruvector-postgres (pgvector).
+Use `memory_search` before starting tasks and `memory_store` after success.
+
+Tools: `memory_store`, `memory_retrieve`, `memory_list`, `memory_search`.
+Namespaces: `patterns`, `project-state`, `tasks`, `default`.
+AGENTSEOF
+    chown 1000:1000 "$_CODEX_AGENTS" 2>/dev/null || true
+  fi
+fi
+
 if command -v ruflo >/dev/null 2>&1; then
 
   # --- Step 1: Clone/update ruflo plugins from GitHub (sparse checkout) ---
