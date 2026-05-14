@@ -49,17 +49,16 @@
       "type": "stdio",
       "env": {
         "DISPLAY": ":1",
-        "WAYLAND_DISPLAY": "wayland-1",
-        "XDG_RUNTIME_DIR": "/run/user/1000",
         "CHROMIUM_PATH": "/usr/bin/chromium",
-        "PLAYWRIGHT_HEADLESS": "false",
-        "SCREENSHOT_DIR": "/tmp/playwright-screenshots",
         "PLAYWRIGHT_TIMEOUT": "30000",
-        "CHROMIUM_WEBGPU": "true"
+        "PLAYWRIGHT_OUTPUT_DIR": "/tmp/playwright-mcp",
+        "CHROMIUM_WEBGPU": "true",
+        "VIEWPORT_WIDTH": "1920",
+        "VIEWPORT_HEIGHT": "1080"
       },
-      "description": "Browser automation and visual testing — Wayland/Hyprland compositor, DISPLAY=:1 XWayland, WebGPU enabled via ANGLE-Vulkan",
+      "description": "Browser automation — @playwright/mcp with accessibility-tree snapshots, network interception, WebGPU via ANGLE-Vulkan on DISPLAY=:1 (Xvnc). VNC on port 5901.",
       "protocol": "mcp-sdk",
-      "version": "2.0.0"
+      "version": "3.0.0"
     },
     "web-summary": {
       "command": "python3",

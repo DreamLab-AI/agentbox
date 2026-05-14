@@ -112,14 +112,17 @@ services:
       - mad-workspace:/home/devuser/workspace
 
     # Resource provisioning — host: 376G RAM, 32 cores, 3x GPU (98G VRAM), 1.9T disk
+    # Highly provisioned for agentic browser workloads with WebGPU inference.
+    # cpuset pins to cores 0-29 (leaves 2 cores for host OS overhead).
+    # Performance governor should be set on host: cpupower frequency-set -g performance
     deploy:
       resources:
         limits:
-          cpus: '24'
-          memory: 128G
+          cpus: '30'
+          memory: 256G
         reservations:
-          cpus: '8'
-          memory: 32G
+          cpus: '16'
+          memory: 64G
           devices:
             - driver: nvidia
               count: all

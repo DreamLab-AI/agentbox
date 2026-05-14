@@ -1,528 +1,153 @@
 #!/usr/bin/env node
 /**
- * Playwright MCP Server - Consolidated Implementation
+ * Agentbox Playwright MCP — @playwright/mcp wrapper with WebGPU support
  *
- * Merged from three separate scripts (client, proxy, local) into single
- * @modelcontextprotocol/sdk server with direct browser control on Display :1.
+ * Replaces the hand-rolled server.js with Microsoft's @playwright/mcp
+ * createConnection API (v0.0.75+). Claude Code now receives:
  *
- * Features:
- * - Direct browser launch on VNC display (no TCP proxy needed)
- * - Screenshot capture and visual verification
- * - Page navigation and interaction
- * - Element selection and manipulation
- * - JavaScript evaluation
- * - VisionFlow integration via MCP resources
+ *   browser_snapshot        — ARIA accessibility tree (93% smaller than screenshots)
+ *   browser_screenshot      — visual capture when needed
+ *   browser_network_requests — XHR/fetch interception for deep feedback
+ *   browser_console_messages — JS console capture
+ *   browser_navigate / click / type / select_option / hover
+ *   browser_tab_*           — multi-tab management
+ *   browser_wait_for        — smart wait on text/selector/load state
+ *
+ * Chrome launch flags:
+ *   CHROMIUM_WEBGPU=true  → --enable-unsafe-webgpu --use-angle=vulkan (+4 flags)
+ *   CHROMIUM_WEBGPU=false → --disable-gpu (safe software path)
+ *
+ * Display:
+ *   DISPLAY (default :1)          → X11 Xvnc path (i3-x11 stack)
+ *   WAYLAND_DISPLAY set           → Chrome Ozone/Wayland path (future hyprland stack)
  */
+'use strict';
 
-const { Server } = require('@modelcontextprotocol/sdk/server/index.js');
+const { createConnection } = require('@playwright/mcp');
 const { StdioServerTransport } = require('@modelcontextprotocol/sdk/server/stdio.js');
-const {
-    CallToolRequestSchema,
-    ListToolsRequestSchema,
-    ListResourcesRequestSchema,
-    ReadResourceRequestSchema
-} = require('@modelcontextprotocol/sdk/types.js');
 
+// ---------------------------------------------------------------------------
 // Configuration from environment
-const CONFIG = {
-    display: process.env.DISPLAY || ':1',
-    waylandDisplay: process.env.WAYLAND_DISPLAY || '',
-    chromiumPath: process.env.CHROMIUM_PATH || '/usr/bin/chromium',
-    headless: process.env.PLAYWRIGHT_HEADLESS === 'true',
-    screenshotDir: process.env.SCREENSHOT_DIR || '/tmp/playwright-screenshots',
-    defaultTimeout: parseInt(process.env.PLAYWRIGHT_TIMEOUT || '30000'),
-    webgpu: process.env.CHROMIUM_WEBGPU === 'true',
-    defaultViewport: {
-        width: parseInt(process.env.VIEWPORT_WIDTH || '1920'),
-        height: parseInt(process.env.VIEWPORT_HEIGHT || '1080')
-    }
-};
+// ---------------------------------------------------------------------------
 
-// Lazy-load playwright to handle missing dependency gracefully
-let playwright = null;
-let browser = null;
-let context = null;
-let page = null;
+const DISPLAY         = process.env.DISPLAY        || ':1';
+const CHROMIUM_PATH   = process.env.CHROMIUM_PATH   || '/usr/bin/chromium';
+const WEBGPU          = process.env.CHROMIUM_WEBGPU === 'true';
+const WAYLAND_DISPLAY = process.env.WAYLAND_DISPLAY || '';
+const XDG_RUNTIME_DIR = process.env.XDG_RUNTIME_DIR || '/run/user/1000';
+const OUTPUT_DIR      = process.env.PLAYWRIGHT_OUTPUT_DIR || '/tmp/playwright-mcp';
+const TIMEOUT_ACTION  = parseInt(process.env.PLAYWRIGHT_TIMEOUT   || '30000');
+const VIEWPORT_W      = parseInt(process.env.VIEWPORT_WIDTH  || '1920');
+const VIEWPORT_H      = parseInt(process.env.VIEWPORT_HEIGHT || '1080');
 
-async function ensurePlaywright() {
-    if (!playwright) {
-        try {
-            playwright = require('playwright');
-        } catch (err) {
-            throw new Error('Playwright not installed. Run: npm install playwright');
-        }
-    }
-    return playwright;
-}
+// ---------------------------------------------------------------------------
+// Chrome launch arg sets
+// ---------------------------------------------------------------------------
 
-async function ensureBrowser() {
-    await ensurePlaywright();
-
-    if (!browser || !browser.isConnected()) {
-        const sessionDesc = CONFIG.waylandDisplay
-            ? `Wayland (${CONFIG.waylandDisplay}) + XWayland DISPLAY=${CONFIG.display}`
-            : `X11 DISPLAY=${CONFIG.display}`;
-        console.error(`[playwright-mcp] Launching browser — ${sessionDesc}${CONFIG.webgpu ? ', WebGPU=on' : ''}`);
-
-        const launchArgs = [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-        ];
-
-        if (CONFIG.webgpu) {
-            // Hardware WebGPU via ANGLE-Vulkan. Chrome talks directly to the
-            // Vulkan ICD (NVIDIA/AMD/Mesa) regardless of the display server.
-            // Falls back to SwiftShader software WebGPU when no hardware ICD
-            // is present — the API remains fully functional in both cases.
-            launchArgs.push(
-                '--enable-unsafe-webgpu',
-                '--enable-features=Vulkan,WebGPU,UseSkiaRenderer',
-                '--use-angle=vulkan',
-                '--ignore-gpu-blocklist',
-                '--enable-gpu-rasterization',
-                '--disable-gpu-sandbox'
-            );
-        } else {
-            launchArgs.push('--disable-gpu');
-        }
-
-        if (CONFIG.waylandDisplay) {
-            // Native Wayland: Chrome uses Ozone/Wayland platform.
-            // XWayland DISPLAY=:1 is set in the environment for fallback clients.
-            launchArgs.push('--ozone-platform=wayland', '--enable-features=UseOzonePlatform');
-        } else {
-            launchArgs.push(`--display=${CONFIG.display}`);
-        }
-
-        browser = await playwright.chromium.launch({
-            executablePath: CONFIG.chromiumPath,
-            headless: CONFIG.headless,
-            args: launchArgs
-        });
-
-        context = await browser.newContext({
-            viewport: CONFIG.defaultViewport,
-            userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        });
-
-        page = await context.newPage();
-        console.error('[playwright-mcp] Browser ready');
-    }
-
-    return { browser, context, page };
-}
-
-async function ensurePage() {
-    const { page: p } = await ensureBrowser();
-    return p;
-}
-
-// =============================================================================
-// Tool Implementations
-// =============================================================================
-
-async function navigate(url, waitUntil = 'domcontentloaded') {
-    const p = await ensurePage();
-    await p.goto(url, { waitUntil, timeout: CONFIG.defaultTimeout });
-    return {
-        success: true,
-        url: p.url(),
-        title: await p.title()
-    };
-}
-
-async function screenshot(options = {}) {
-    const p = await ensurePage();
-    const fs = require('fs');
-    const path = require('path');
-
-    // Ensure screenshot directory exists
-    if (!fs.existsSync(CONFIG.screenshotDir)) {
-        fs.mkdirSync(CONFIG.screenshotDir, { recursive: true });
-    }
-
-    const filename = options.filename || `screenshot-${Date.now()}.png`;
-    const filepath = path.join(CONFIG.screenshotDir, filename);
-
-    await p.screenshot({
-        path: filepath,
-        fullPage: options.fullPage || false,
-        type: options.type || 'png'
-    });
-
-    // Read file for base64 encoding if requested
-    let base64 = null;
-    if (options.returnBase64) {
-        base64 = fs.readFileSync(filepath).toString('base64');
-    }
-
-    return {
-        success: true,
-        path: filepath,
-        filename,
-        base64,
-        viewport: CONFIG.defaultViewport
-    };
-}
-
-async function click(selector, options = {}) {
-    const p = await ensurePage();
-    await p.click(selector, {
-        timeout: options.timeout || CONFIG.defaultTimeout,
-        button: options.button || 'left',
-        clickCount: options.clickCount || 1
-    });
-    return { success: true, selector };
-}
-
-async function type(selector, text, options = {}) {
-    const p = await ensurePage();
-    await p.fill(selector, text, {
-        timeout: options.timeout || CONFIG.defaultTimeout
-    });
-    return { success: true, selector, textLength: text.length };
-}
-
-async function evaluate(script) {
-    const p = await ensurePage();
-    const result = await p.evaluate(script);
-    return { success: true, result };
-}
-
-async function waitForSelector(selector, options = {}) {
-    const p = await ensurePage();
-    await p.waitForSelector(selector, {
-        timeout: options.timeout || CONFIG.defaultTimeout,
-        state: options.state || 'visible'
-    });
-    return { success: true, selector };
-}
-
-async function getContent() {
-    const p = await ensurePage();
-    const content = await p.content();
-    return { success: true, content, length: content.length };
-}
-
-async function getUrl() {
-    const p = await ensurePage();
-    return {
-        success: true,
-        url: p.url(),
-        title: await p.title()
-    };
-}
-
-async function closeBrowser() {
-    if (browser) {
-        await browser.close();
-        browser = null;
-        context = null;
-        page = null;
-    }
-    return { success: true };
-}
-
-async function healthCheck() {
-    try {
-        const { browser: b } = await ensureBrowser();
-        return {
-            success: true,
-            status: 'connected',
-            display: CONFIG.display,
-            headless: CONFIG.headless,
-            browserConnected: b.isConnected()
-        };
-    } catch (err) {
-        return {
-            success: false,
-            status: 'disconnected',
-            error: err.message,
-            help: `Ensure Xvfb is running on ${CONFIG.display}. Check: supervisorctl status xvnc`
-        };
-    }
-}
-
-// =============================================================================
-// Tool Schemas
-// =============================================================================
-
-const TOOL_SCHEMAS = [
-    {
-        name: 'navigate',
-        description: 'Navigate browser to a URL. Use for opening web pages, following links, or loading applications.',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                url: { type: 'string', description: 'URL to navigate to' },
-                waitUntil: {
-                    type: 'string',
-                    enum: ['load', 'domcontentloaded', 'networkidle'],
-                    description: 'Wait condition',
-                    default: 'domcontentloaded'
-                }
-            },
-            required: ['url']
-        }
-    },
-    {
-        name: 'screenshot',
-        description: 'Capture screenshot of current page. Use for visual verification, debugging, or capturing state.',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                filename: { type: 'string', description: 'Output filename' },
-                fullPage: { type: 'boolean', description: 'Capture full page', default: false },
-                returnBase64: { type: 'boolean', description: 'Return base64 encoded image', default: false }
-            }
-        }
-    },
-    {
-        name: 'click',
-        description: 'Click an element on the page. Use for button clicks, link navigation, or form interaction.',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                selector: { type: 'string', description: 'CSS or XPath selector' },
-                button: { type: 'string', enum: ['left', 'right', 'middle'], default: 'left' },
-                clickCount: { type: 'integer', default: 1 }
-            },
-            required: ['selector']
-        }
-    },
-    {
-        name: 'type',
-        description: 'Type text into an input field. Use for form filling, search boxes, or text input.',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                selector: { type: 'string', description: 'CSS or XPath selector for input' },
-                text: { type: 'string', description: 'Text to type' }
-            },
-            required: ['selector', 'text']
-        }
-    },
-    {
-        name: 'evaluate',
-        description: 'Execute JavaScript in the page context. Use for DOM manipulation, data extraction, or custom interactions.',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                script: { type: 'string', description: 'JavaScript code to execute' }
-            },
-            required: ['script']
-        }
-    },
-    {
-        name: 'wait_for_selector',
-        description: 'Wait for an element to appear. Use for dynamic content, AJAX responses, or animations.',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                selector: { type: 'string', description: 'CSS or XPath selector' },
-                state: { type: 'string', enum: ['visible', 'hidden', 'attached', 'detached'], default: 'visible' },
-                timeout: { type: 'integer', description: 'Timeout in milliseconds' }
-            },
-            required: ['selector']
-        }
-    },
-    {
-        name: 'get_content',
-        description: 'Get the full HTML content of the page.',
-        inputSchema: {
-            type: 'object',
-            properties: {}
-        }
-    },
-    {
-        name: 'get_url',
-        description: 'Get the current page URL and title.',
-        inputSchema: {
-            type: 'object',
-            properties: {}
-        }
-    },
-    {
-        name: 'close_browser',
-        description: 'Close the browser instance. Use when done with automation session.',
-        inputSchema: {
-            type: 'object',
-            properties: {}
-        }
-    },
-    {
-        name: 'health_check',
-        description: 'Check browser and display connection health.',
-        inputSchema: {
-            type: 'object',
-            properties: {}
-        }
-    }
+const baseArgs = [
+  '--no-sandbox',
+  '--disable-setuid-sandbox',
+  '--disable-dev-shm-usage',
+  '--disable-breakpad',         // kill crash reporter background thread
 ];
 
-// =============================================================================
-// MCP Server Setup
-// =============================================================================
+// WebGPU via ANGLE-Vulkan: Chrome talks directly to the NVIDIA Vulkan ICD
+// through /dev/renderD128/129/130 regardless of display server.
+// Falls back to SwiftShader software WebGPU when no hardware ICD is present.
+const webgpuArgs = WEBGPU ? [
+  '--enable-unsafe-webgpu',
+  '--enable-features=Vulkan,WebGPU,UseSkiaRenderer',
+  '--use-angle=vulkan',
+  '--ignore-gpu-blocklist',
+  '--enable-gpu-rasterization',
+  '--enable-zero-copy',         // avoid extra CPU→GPU copy on present
+  '--disable-gpu-sandbox',      // user-namespace GPU sandbox blocked in container
+] : ['--disable-gpu'];
+
+// Native Wayland path (future: when hyprland-wayland stack is enabled).
+// When WAYLAND_DISPLAY is unset the X11 path is used via DISPLAY=:1.
+const displayArgs = WAYLAND_DISPLAY
+  ? ['--ozone-platform=wayland', '--enable-features=UseOzonePlatform']
+  : [];
+
+// ---------------------------------------------------------------------------
+// Runtime environment passed to Chrome subprocess
+// ---------------------------------------------------------------------------
+
+const launchEnv = {
+  ...process.env,
+  DISPLAY,
+  ...(WAYLAND_DISPLAY ? { WAYLAND_DISPLAY, XDG_RUNTIME_DIR } : {}),
+};
+
+// ---------------------------------------------------------------------------
+// Start
+// ---------------------------------------------------------------------------
 
 async function main() {
-    const server = new Server(
-        {
-            name: 'playwright',
-            version: '2.0.0'
+  const server = await createConnection(
+    {
+      browser: {
+        browserName: 'chromium',
+        launchOptions: {
+          executablePath: CHROMIUM_PATH,
+          headless: false,
+          env: launchEnv,
+          args: [...baseArgs, ...webgpuArgs, ...displayArgs],
         },
-        {
-            capabilities: {
-                tools: {},
-                resources: {}
-            }
-        }
-    );
+        contextOptions: {
+          viewport: { width: VIEWPORT_W, height: VIEWPORT_H },
+          userAgent: [
+            'Mozilla/5.0 (X11; Linux x86_64)',
+            'AppleWebKit/537.36 (KHTML, like Gecko)',
+            'Chrome/120.0.0.0 Safari/537.36',
+          ].join(' '),
+        },
+      },
 
-    // Handle tool listing
-    server.setRequestHandler(ListToolsRequestSchema, async () => {
-        return { tools: TOOL_SCHEMAS };
-    });
+      // Capability set for autonomous Claude Code agents:
+      //   core           — navigate, click, type, fill, hover, keyboard
+      //   core-navigation — back/forward/reload, waitForNavigation
+      //   core-tabs      — new tab, close tab, switch tab
+      //   core-input     — file upload, drag-drop, select
+      //   network        — intercept XHR/fetch, headers, status codes
+      //   vision         — coordinate-based screenshot + pixel inspection
+      //   storage        — cookies, localStorage, sessionStorage
+      capabilities: [
+        'core', 'core-navigation', 'core-tabs', 'core-input',
+        'network', 'vision', 'storage',
+      ],
 
-    // Handle tool calls
-    server.setRequestHandler(CallToolRequestSchema, async (request) => {
-        const { name, arguments: args } = request.params;
+      outputDir: OUTPUT_DIR,
+      imageResponses: 'allow',
+      timeouts: {
+        action:     TIMEOUT_ACTION,
+        navigation: 60000,
+      },
+      snapshot: { mode: 'full' },
+    },
+  );
 
-        try {
-            let result;
+  // Wire the MCP server to stdio transport.
+  // Protocol.connect() is duck-typed; StdioServerTransport from any recent
+  // @modelcontextprotocol/sdk version satisfies the start/send/on* interface.
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
 
-            switch (name) {
-                case 'navigate':
-                    result = await navigate(args.url, args.waitUntil);
-                    break;
-                case 'screenshot':
-                    result = await screenshot(args);
-                    break;
-                case 'click':
-                    result = await click(args.selector, args);
-                    break;
-                case 'type':
-                    result = await type(args.selector, args.text, args);
-                    break;
-                case 'evaluate':
-                    result = await evaluate(args.script);
-                    break;
-                case 'wait_for_selector':
-                    result = await waitForSelector(args.selector, args);
-                    break;
-                case 'get_content':
-                    result = await getContent();
-                    break;
-                case 'get_url':
-                    result = await getUrl();
-                    break;
-                case 'close_browser':
-                    result = await closeBrowser();
-                    break;
-                case 'health_check':
-                    result = await healthCheck();
-                    break;
-                default:
-                    throw new Error(`Unknown tool: ${name}`);
-            }
+  const webgpuDesc = WEBGPU ? 'ANGLE-Vulkan (hardware)' : 'disabled (software)';
+  const displayDesc = WAYLAND_DISPLAY
+    ? `Wayland(${WAYLAND_DISPLAY}) + XWayland DISPLAY=${DISPLAY}`
+    : `X11 DISPLAY=${DISPLAY}`;
+  process.stderr.write(`[playwright-mcp] @playwright/mcp server started\n`);
+  process.stderr.write(`[playwright-mcp] WebGPU: ${webgpuDesc}\n`);
+  process.stderr.write(`[playwright-mcp] Display: ${displayDesc}\n`);
+  process.stderr.write(`[playwright-mcp] VNC: port 5901 (Xvnc)\n`);
 
-            return {
-                content: [{
-                    type: 'text',
-                    text: JSON.stringify(result, null, 2)
-                }]
-            };
-        } catch (err) {
-            return {
-                content: [{
-                    type: 'text',
-                    text: JSON.stringify({
-                        success: false,
-                        error: err.message
-                    }, null, 2)
-                }],
-                isError: true
-            };
-        }
-    });
-
-    // Handle resource listing (for VisionFlow discovery)
-    server.setRequestHandler(ListResourcesRequestSchema, async () => {
-        return {
-            resources: [
-                {
-                    uri: 'playwright://capabilities',
-                    name: 'Playwright Capabilities',
-                    description: 'Playwright browser automation capabilities for VisionFlow',
-                    mimeType: 'application/json'
-                },
-                {
-                    uri: 'playwright://status',
-                    name: 'Browser Status',
-                    description: 'Current browser connection status',
-                    mimeType: 'application/json'
-                }
-            ]
-        };
-    });
-
-    // Handle resource reading
-    server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
-        const { uri } = request.params;
-
-        if (uri === 'playwright://capabilities') {
-            const capabilities = {
-                name: 'playwright',
-                version: '2.0.0',
-                protocol: 'mcp-sdk',
-                display: CONFIG.display,
-                tools: TOOL_SCHEMAS.map(t => t.name),
-                visionflow_compatible: true
-            };
-            return {
-                contents: [{
-                    uri,
-                    mimeType: 'application/json',
-                    text: JSON.stringify(capabilities, null, 2)
-                }]
-            };
-        }
-
-        if (uri === 'playwright://status') {
-            const status = await healthCheck();
-            return {
-                contents: [{
-                    uri,
-                    mimeType: 'application/json',
-                    text: JSON.stringify(status, null, 2)
-                }]
-            };
-        }
-
-        throw new Error(`Unknown resource: ${uri}`);
-    });
-
-    // Start server
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-
-    console.error('[playwright-mcp] Server started');
-    console.error(`[playwright-mcp] Display: ${CONFIG.display}`);
-    console.error('[playwright-mcp] Visual browser access via VNC on port 5901');
-
-    // Graceful shutdown
-    process.on('SIGTERM', async () => {
-        await closeBrowser();
-        process.exit(0);
-    });
-
-    process.on('SIGINT', async () => {
-        await closeBrowser();
-        process.exit(0);
-    });
+  process.on('SIGTERM', () => { server.close(); process.exit(0); });
+  process.on('SIGINT',  () => { server.close(); process.exit(0); });
 }
 
-main().catch((err) => {
-    console.error('[playwright-mcp] Fatal error:', err);
-    process.exit(1);
+main().catch(err => {
+  process.stderr.write(`[playwright-mcp] Fatal: ${err.message}\n`);
+  process.exit(1);
 });

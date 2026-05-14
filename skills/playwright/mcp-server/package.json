@@ -1,26 +1,28 @@
 {
   "name": "playwright-mcp-server",
-  "version": "2.0.0",
-  "description": "Consolidated Playwright MCP server for browser automation on Display :1",
+  "version": "3.0.0",
+  "description": "Agentbox Playwright MCP — @playwright/mcp wrapper with WebGPU and accessibility-tree support",
   "type": "commonjs",
   "main": "server.js",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "scripts": {
     "start": "node server.js",
     "test": "node --test"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.4",
-    "playwright": "^1.40.0"
+    "@modelcontextprotocol/sdk": "^1.11.0",
+    "@playwright/mcp": "^0.0.75"
   },
   "keywords": [
     "mcp",
     "playwright",
     "browser-automation",
-    "visual-testing"
+    "webgpu",
+    "accessibility-tree",
+    "agentbox"
   ],
-  "author": "agentbox-claude",
+  "author": "agentbox",
   "license": "MIT"
 }

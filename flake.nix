@@ -281,15 +281,18 @@
         };
 
         # 5. skills/playwright/mcp-server — gated by skills.browser.playwright.
-        # PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 prevents the npm postinstall script
-        # from fetching browsers; browsers are supplied by pkgs.playwright-driver.browsers.
+        # Uses @playwright/mcp (Microsoft) for accessibility-tree snapshots,
+        # network interception, and deterministic element refs; WebGPU Chrome
+        # flags injected via server.js createConnection launchOptions.args.
+        # PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 prevents npm postinstall browser
+        # fetch; browsers are supplied by pkgs.playwright-driver.browsers.
+        # Refresh hash: nix run nixpkgs#prefetch-npm-deps -- skills/playwright/mcp-server/package-lock.json
         playwrightMcpPkg = npmServicesLib.makeNpmService {
           name        = "playwright-mcp";
           src         = ./skills/playwright/mcp-server;
           entry       = "server.js";
           extraEnv    = { PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1"; };
-          # Prefetched 2026-04-24. Refresh: nix run nixpkgs#prefetch-npm-deps -- skills/playwright/mcp-server/package-lock.json
-          npmDepsHash = "sha256-Ix5YV1W54KYyc5fGS1DjpyfrUlX1Qjzt6cJcPetT7wM=";
+          npmDepsHash = "sha256-pqt7Nv9a5iJNUqFucLUej14yWRNsDLirFFoEayB6WV0=";
         };
 
         # 7. mcp/consultants — consultant tier (PRD-005 / ADR-011). Single
