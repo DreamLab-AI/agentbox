@@ -104,6 +104,8 @@ OR_CLAUDE_DIR="${OR_PROFILE}/.claude"
 OR_MODEL="${OR_MODEL:-nvidia/nemotron-3-super-120b-a12b:free}"
 
 mkdir -p "${OR_CLAUDE_DIR}"
+# Profile dirs are created by provision-agent-stacks.py as root; fix at runtime.
+sudo chown -R devuser:devuser "${OR_PROFILE}" 2>/dev/null || true
 
 if [ -n "${OPENROUTER_API_KEY:-}" ]; then
   # Write settings.local.json at runtime — API keys never baked into image.
@@ -160,6 +162,8 @@ _ZAI_ENDPOINT="${ZAI_URL:-https://api.z.ai/api/anthropic}"
 _ZAI_AUTH="${ZAI_ANTHROPIC_API_KEY:-${ZAI_API_KEY:-}}"
 
 mkdir -p "${ZAI_CLAUDE_DIR}"
+# Profile dirs are created by provision-agent-stacks.py as root; fix at runtime.
+sudo chown -R devuser:devuser "${ZAI_PROFILE}" 2>/dev/null || true
 
 if [ -n "${_ZAI_AUTH:-}" ]; then
   cat > "${ZAI_CLAUDE_DIR}/settings.local.json" <<ZAIJSON
