@@ -1035,7 +1035,7 @@ stdout_logfile=/var/log/wayvnc.log
 stderr_logfile=/var/log/wayvnc.error.log
           '' else ''
 [program:xvnc]
-command=${pkgs.tigervnc}/bin/Xvnc :1 -geometry ${(desktopCfg.resolution or "1920x1080")} -depth 24 -SecurityTypes None -ac -pn -rfbport 5901 -localhost -rawkeyboard
+command=${pkgs.tigervnc}/bin/Xvnc :1 -geometry ${(desktopCfg.resolution or "1920x1080")} -depth 24 -SecurityTypes None -ac -pn -rfbport 5901 -rawkeyboard
 user=devuser
 environment=HOME="/home/devuser"
 autostart=true
