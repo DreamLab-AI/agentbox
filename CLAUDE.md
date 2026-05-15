@@ -91,6 +91,43 @@ These exist for historical context or partial compatibility and should not be tr
 - older docs that describe `devuser`, `gemini-user`, `openai-user`, `zai-user`, `deepseek-user`
 - old keepalive-only runtime assumptions
 
+## Browser Container (GPU-accelerated Chrome + chrome-devtools-mcp)
+
+The `browsercontainer/` directory contains a standalone Docker service for headless Chrome automation. It is NOT a Nix-managed service — it runs as a separate compose file on the `visionclaw_network`.
+
+### Docker layout
+
+```
+agentbox.sh browsercontainer up/down/rebuild/health/cdp/gpu/shell/logs
+docker-compose.browsercontainer.yml  ← compose definition
+browsercontainer/
+  Dockerfile           ← Arch Linux, Chrome Beta 149+, socat, x11vnc
+  launch-chromium.sh   ← Chrome flags (Vulkan/ANGLE, TREAT_AS_SECURE)
+  supervisord.conf     ← 5 services: xvfb, x11vnc, chromium, cdp-proxy, mcp-server
+  server.js            ← MCP SSE bridge → chrome-devtools-mcp stdio
+  healthcheck.sh       ← checks all 5 services
+  cdp-diagnose.js      ← CDP diagnostic (navigate, evaluate, screenshot)
+  package.json         ← node deps for server.js
+```
+
+### Port mapping
+
+| Host port | Container port | Service |
+|-----------|----------------|---------|
+| 5903 | 5903 | VNC desktop (x11vnc) |
+| 8931 | 8931 | MCP SSE bridge (chrome-devtools-mcp) |
+| 9222 | 9223 (socat) → 9222 (Chrome) | CDP proxy |
+
+The socat proxy on 9223 rebinds Chrome's localhost-only CDP so `/json/list` returns connectable `ws://` URLs from outside the container.
+
+### Key details
+
+- **Rendering**: WebGL via Three.js, NOT WebGPU. GPU provides Vulkan/ANGLE hardware acceleration.
+- **TREAT_AS_SECURE**: Env var lists HTTP origins Chrome treats as secure contexts (for SharedArrayBuffer). Expanded to `--unsafely-treat-insecure-origin-as-secure=` flags per origin.
+- **SharedArrayBuffer**: Requires `isSecureContext` (TREAT_AS_SECURE) + COOP/COEP headers from the target server.
+- **Network**: `visionclaw_network` (external). Agents reach MCP at `http://browsercontainer:8931/sse`.
+- **GPU**: Quadro RTX 6000 via UUID. Optional — healthcheck warns but doesn't fail without it.
+
 ## Docs To Keep In Sync
 
 When architecture changes, update these together:
@@ -98,4 +135,5 @@ When architecture changes, update these together:
 - [`README.md`](README.md)
 - [`docs/user/quickstart.md`](docs/user/quickstart.md)
 - [`CLAUDE.md`](CLAUDE.md)
+- [`browsercontainer/README.md`](browsercontainer/README.md)
 - relevant ADRs in `docs/reference/adr/`

@@ -6,18 +6,6 @@ services:
       context: ./browsercontainer
       dockerfile: Dockerfile
     restart: unless-stopped
-    read_only: true
-    cap_drop:
-      - ALL
-    cap_add:
-      - CHOWN
-      - SETUID
-      - SETGID
-    security_opt:
-      - no-new-privileges:true
-    tmpfs:
-      - /tmp:mode=1777,size=512M
-      - /run:mode=755,size=16M
     healthcheck:
       test: ["CMD", "bash", "/opt/browsercontainer/healthcheck.sh"]
       interval: 15s
@@ -31,6 +19,11 @@ services:
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics
       - SIDECAR_TRANSPORT=sse
       - SIDECAR_PORT=8931
+      - XDG_RUNTIME_DIR=/tmp/xdg-runtime
+      - HOME=/home/devuser
+      # Treat LAN dev servers as secure contexts for SharedArrayBuffer
+      # (required for zero-copy position pipeline; VisionFlow uses WebGL not WebGPU)
+      - TREAT_AS_SECURE=http://192.168.2.132:3001,http://192.168.2.132:3000,http://host.docker.internal:3001,http://host.docker.internal:3000
     deploy:
       resources:
         limits:
@@ -44,10 +37,13 @@ services:
               capabilities: [gpu, compute, utility, graphics]
               device_ids: ['GPU-65b7ddef-5380-1b06-65b3-f770f7f9673b']
     ports:
-      # VNC only on localhost — not exposed to network
-      - "127.0.0.1:5903:5903"
-      # MCP SSE only on localhost — agentbox reaches it via visionclaw_network
-      - "127.0.0.1:8931:8931"
+      # VNC: view Chrome desktop
+      - "0.0.0.0:5903:5903"
+      # MCP SSE: chrome-devtools-mcp bridge (agents connect here)
+      - "0.0.0.0:8931:8931"
+      # CDP proxy: host:9222 → socat:9223 → Chrome:9222
+      # socat rebinds so CDP /json/list returns connectable ws:// URLs
+      - "0.0.0.0:9222:9223"
     networks:
       - visionclaw
     shm_size: '2gb'

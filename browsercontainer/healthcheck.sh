@@ -15,6 +15,18 @@ if ! ss -tlnp 2>/dev/null | grep -q ':5903 '; then
     FAIL=1
 fi
 
+# Check Chrome CDP is responding on port 9222
+if ! curl -fsS --max-time 5 http://127.0.0.1:9222/json/version >/dev/null 2>&1; then
+    echo "FAIL: Chrome CDP not responding on port 9222"
+    FAIL=1
+fi
+
+# Check socat CDP proxy is listening on port 9223
+if ! ss -tlnp 2>/dev/null | grep -q ':9223 '; then
+    echo "FAIL: socat CDP proxy not listening on port 9223"
+    FAIL=1
+fi
+
 # Check MCP server is listening on port 8931
 if ! ss -tlnp 2>/dev/null | grep -q ':8931 '; then
     echo "FAIL: MCP server not listening on port 8931"
@@ -27,10 +39,9 @@ if ! curl -fsS --max-time 5 http://127.0.0.1:8931/health >/dev/null 2>&1; then
     FAIL=1
 fi
 
-# Check NVIDIA GPU is accessible
+# GPU is optional — used for hardware-accelerated WebGL, not required
 if ! nvidia-smi >/dev/null 2>&1; then
-    echo "FAIL: nvidia-smi not available"
-    FAIL=1
+    echo "WARN: nvidia-smi not available (WebGL will use software rendering)"
 fi
 
 if [ "$FAIL" -eq 1 ]; then

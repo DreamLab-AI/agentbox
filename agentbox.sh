@@ -929,9 +929,23 @@ cmd_browsercontainer() {
             echo -e "${CYAN}Vulkan status:${NC}"
             docker exec browsercontainer vulkaninfo --summary 2>/dev/null || echo -e "${RED}vulkaninfo not available${NC}"
             ;;
+        cdp)
+            echo -e "${CYAN}CDP connectivity:${NC}"
+            local cdp_response
+            cdp_response=$(curl -sf http://localhost:9222/json/version 2>/dev/null) || {
+                echo -e "${RED}CDP not reachable at localhost:9222${NC}"
+                echo "Is the container running? Try: $0 browsercontainer status"
+                exit 1
+            }
+            echo -e "${GREEN}CDP version:${NC}"
+            echo "$cdp_response" | python3 -m json.tool 2>/dev/null || echo "$cdp_response"
+            echo ""
+            echo -e "${GREEN}Open tabs:${NC}"
+            curl -sf http://localhost:9222/json/list 2>/dev/null | python3 -m json.tool 2>/dev/null || echo "(failed)"
+            ;;
         help|*)
             cat <<BC_HELP
-${CYAN}Browser Container — GPU-accelerated Playwright MCP server${NC}
+${CYAN}Browser Container — hardware-accelerated Chrome with chrome-devtools-mcp${NC}
 
 Usage: $0 browsercontainer <command>
 
@@ -943,11 +957,19 @@ Usage: $0 browsercontainer <command>
   ${GREEN}rebuild${NC}   Full rebuild (down + build --no-cache + up)
   ${GREEN}shell${NC}     Open bash in the container
   ${GREEN}gpu${NC}       Check GPU and Vulkan status inside container
+  ${GREEN}cdp${NC}       Check CDP connectivity and list browser tabs
 
-Runs Chromium with hardware WebGPU/Vulkan on GPU 2
-(Quadro RTX 6000, 24GB). Agents connect via MCP SSE at
-http://browsercontainer:8931/sse on the visionclaw_network.
-VNC monitoring at vnc://localhost:5903.
+Chrome with Vulkan/ANGLE hardware acceleration on GPU 2
+(Quadro RTX 6000, 24GB). WebGL rendering, not WebGPU.
+Agents connect via MCP SSE at http://browsercontainer:8931/sse.
+
+Port layout:
+  5903  VNC desktop (view Chrome)
+  8931  MCP SSE bridge (chrome-devtools-mcp)
+  9222  CDP proxy (host:9222 → socat:9223 → Chrome:9222)
+
+CDP diagnostic: docker exec browsercontainer node /opt/browsercontainer/cdp-diagnose.js
+VNC monitoring:  vnc://localhost:5903
 BC_HELP
             ;;
     esac
