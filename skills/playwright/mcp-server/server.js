@@ -45,7 +45,8 @@ const WEBGPU          = process.env.CHROMIUM_WEBGPU === 'true';
 const WAYLAND_DISPLAY = process.env.WAYLAND_DISPLAY || '';
 const XDG_RUNTIME_DIR = process.env.XDG_RUNTIME_DIR || '/run/user/1000';
 const OUTPUT_DIR      = process.env.PLAYWRIGHT_OUTPUT_DIR || '/tmp/playwright-mcp';
-const TIMEOUT_ACTION  = parseInt(process.env.PLAYWRIGHT_TIMEOUT   || '30000');
+const TIMEOUT_ACTION  = parseInt(process.env.PLAYWRIGHT_TIMEOUT     || '30000');
+const TIMEOUT_NAV     = parseInt(process.env.PLAYWRIGHT_NAV_TIMEOUT || '30000');
 const VIEWPORT_W      = parseInt(process.env.VIEWPORT_WIDTH  || '1920');
 const VIEWPORT_H      = parseInt(process.env.VIEWPORT_HEIGHT || '1080');
 
@@ -134,7 +135,7 @@ async function main() {
       imageResponses: 'allow',
       timeouts: {
         action:     TIMEOUT_ACTION,
-        navigation: 60000,
+        navigation: TIMEOUT_NAV,
       },
       snapshot: { mode: 'full' },
     },

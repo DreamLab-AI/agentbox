@@ -1223,7 +1223,7 @@ ${lib.optionalString (browserCfg.playwright or false) ''
 command=${playwrightMcpPkg}/bin/playwright-mcp
 directory=/opt/agentbox/skills/playwright/mcp-server
 user=devuser
-environment=HOME="/home/devuser",PLAYWRIGHT_BROWSERS_PATH="${pkgs.playwright-driver.browsers}",CHROMIUM_PATH="${if webgpuEnabled && !isWaylandStack && !isXorgNvidiaStack then "${vglrunChromium}/bin/vglrun-chromium" else "${pkgs.chromium}/bin/chromium"}",DISPLAY=":1",CHROMIUM_WEBGPU="${if webgpuEnabled then "true" else "false"}",FONTCONFIG_FILE="/etc/fonts/fonts.conf",VK_ICD_FILENAMES="/etc/vulkan/icd.d/nvidia_icd.json",__EGL_VENDOR_LIBRARY_FILENAMES="/usr/share/glvnd/egl_vendor.d/10_nvidia.json"${if isWaylandStack then ",WAYLAND_DISPLAY=\"wayland-1\",XDG_RUNTIME_DIR=\"/run/user/1000\"" else ""}${if isXorgNvidiaStack then ",__NV_PRIME_RENDER_OFFLOAD=\"1\",__GLX_VENDOR_LIBRARY_NAME=\"nvidia\"" else ""}
+environment=HOME="/home/devuser",PLAYWRIGHT_BROWSERS_PATH="${pkgs.playwright-driver.browsers}",CHROMIUM_PATH="${if webgpuEnabled && !isWaylandStack && !isXorgNvidiaStack then "${vglrunChromium}/bin/vglrun-chromium" else "${pkgs.chromium}/bin/chromium"}",DISPLAY=":1",CHROMIUM_WEBGPU="${if webgpuEnabled then "true" else "false"}",FONTCONFIG_FILE="/etc/fonts/fonts.conf",VK_ICD_FILENAMES="/etc/vulkan/icd.d/nvidia_icd.json",__EGL_VENDOR_LIBRARY_FILENAMES="/usr/share/glvnd/egl_vendor.d/10_nvidia.json",LD_LIBRARY_PATH="/usr/lib:/usr/lib/x86_64-linux-gnu",PLAYWRIGHT_NAV_TIMEOUT="30000"${if isWaylandStack then ",WAYLAND_DISPLAY=\"wayland-1\",XDG_RUNTIME_DIR=\"/run/user/1000\"" else ""}${if isXorgNvidiaStack then ",__NV_PRIME_RENDER_OFFLOAD=\"1\",__GLX_VENDOR_LIBRARY_NAME=\"nvidia\"" else ""}
 autostart=true
 autorestart=true
 priority=200
