@@ -129,10 +129,10 @@ services:
               # "graphics" enables Vulkan ICD mount — required for WebGPU via ANGLE-Vulkan.
               capabilities: [gpu, compute, utility, graphics]
 
-    # Join docker_ragflow for service discovery
+    # Join visionclaw_network for service discovery
     networks:
       - default
-      - ragflow
+      - visionclaw
 
     # security_opt (no-new-privileges:false + seccomp) is set in the base
     # docker-compose.yml. cap_add is also defined in the base; we extend it
@@ -140,9 +140,9 @@ services:
     shm_size: '32gb'
 
 networks:
-  ragflow:
+  visionclaw:
     external: true
-    name: docker_ragflow
+    name: visionclaw_network
 
 volumes:
   # Base declares ruvector-data, solid-data, sovereign-identities,

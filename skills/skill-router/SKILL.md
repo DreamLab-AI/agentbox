@@ -163,9 +163,10 @@ Manual call form (slash-command): `/consult <name> "<question>"` (e.g.
 | If the request involves... | Route to |
 |---|---|
 | Unsure which browser tool | `browser-automation` (meta-skill) |
+| WebGPU, WebGL, GPU rendering, 3D graph testing, VisionFlow | `browser-sidecar` (hardware GPU, native NVIDIA Vulkan, SSE at browser-sidecar:8931) |
 | Desktop Chrome with login state | `claude --chrome` (built-in) |
 | Quick scrape/form-fill, headless | `browser` (agent-browser) |
-| Full API, screenshots, visual testing | `playwright` |
+| Full API, screenshots, visual testing (software rendering only) | `playwright` (local, no GPU) |
 | QE-grade browser: typed assertions (16 kinds), visual-diff baseline, prompt-injection scan, semantic intent finder | `qe-browser` (AQE fleet, Vibium engine — `aqe init` to install) |
 | Inspect live Chromium tabs | `chrome-cdp` |
 | Host web server from Docker | `host-webserver-debug` |

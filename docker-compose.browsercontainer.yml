@@ -1,0 +1,60 @@
+services:
+  browsercontainer:
+    container_name: browsercontainer
+    hostname: browsercontainer
+    build:
+      context: ./browsercontainer
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:mode=1777,size=512M
+      - /run:mode=755,size=16M
+    healthcheck:
+      test: ["CMD", "bash", "/opt/browsercontainer/healthcheck.sh"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    environment:
+      - DISPLAY=:2
+      # GPU 2: Quadro RTX 6000 (24GB) — stable UUID, not fragile index
+      - NVIDIA_VISIBLE_DEVICES=GPU-65b7ddef-5380-1b06-65b3-f770f7f9673b
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics
+      - SIDECAR_TRANSPORT=sse
+      - SIDECAR_PORT=8931
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+        reservations:
+          cpus: '2'
+          memory: 4G
+          devices:
+            - driver: nvidia
+              capabilities: [gpu, compute, utility, graphics]
+              device_ids: ['GPU-65b7ddef-5380-1b06-65b3-f770f7f9673b']
+    ports:
+      # VNC only on localhost — not exposed to network
+      - "127.0.0.1:5903:5903"
+      # MCP SSE only on localhost — agentbox reaches it via visionclaw_network
+      - "127.0.0.1:8931:8931"
+    networks:
+      - visionclaw
+    shm_size: '2gb'
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+networks:
+  visionclaw:
+    external: true
+    name: visionclaw_network

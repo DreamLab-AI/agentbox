@@ -133,41 +133,41 @@
     "ragflow": {
       "url": "http://docker-ragflow-cpu-1:80",
       "api_url": "http://docker-ragflow-cpu-1:9380",
-      "network": "docker_ragflow",
+      "network": "visionclaw_network",
       "description": "RAGFlow knowledge management and semantic search"
     },
     "whisper": {
       "url": "http://whisper-webui:7860",
-      "network": "docker_ragflow",
+      "network": "visionclaw_network",
       "description": "Whisper STT speech-to-text transcription"
     },
     "comfyui": {
       "url": "http://comfyui:8188",
       "ws_url": "ws://comfyui:8188/ws",
-      "network": "docker_ragflow",
+      "network": "visionclaw_network",
       "description": "ComfyUI AI image generation (external deployment reference; override via integrations.comfyui_external in agentbox.toml)"
     },
     "neo4j": {
       "bolt_url": "bolt://external-neo4j:7687",
       "http_url": "http://external-neo4j:7474",
-      "network": "docker_ragflow",
+      "network": "visionclaw_network",
       "description": "Neo4j graph database"
     },
     "jss": {
       "url": "http://external-jss:3030",
       "ws_url": "ws://external-jss:3030/.notifications",
-      "network": "docker_ragflow",
+      "network": "visionclaw_network",
       "description": "JavaScript Solid Server for Solid Protocol pods"
     },
     "qdrant": {
       "url": "http://qdrant:6333",
       "grpc_url": "grpc://qdrant:6334",
-      "network": "docker_ragflow",
+      "network": "visionclaw_network",
       "description": "Qdrant vector database"
     },
     "xinference": {
       "url": "http://xinference:9997",
-      "network": "docker_ragflow",
+      "network": "visionclaw_network",
       "description": "Xinference model inference server"
     }
   }

@@ -86,7 +86,7 @@ flowchart LR
 6. **Skills** — five grouped checklists: browser, media, spatial+3D, data science, docs+ontology.
 7. **Providers** — checklist to enable providers; for each enabled provider a redacted password field collects the API key and writes it to `.env`.
 8. **Observability** — `metrics_port` input, `otlp_endpoint` input, `log_level` radio.
-9. **Integrations** — ComfyUI external, RuVector external (only when `adapters.memory=external-pg`), RagFlow (only when the `docker_ragflow` network is detected).
+9. **Integrations** — ComfyUI external, RuVector external (only when `adapters.memory=external-pg`), RagFlow (only when the `visionclaw_network` network is detected).
 10. **Sovereign mesh** — full checklist of Nostr/pod/bridge/telegram flags.
 11. **Summary + action** — read-only summary of the full manifest, confirmation prompt, then a choice: save only / build image / build+start / start stack.
 

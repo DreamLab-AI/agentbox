@@ -5,8 +5,20 @@ description: >
   for all browser automation: navigation, interaction, screenshots, accessibility snapshots,
   network mocking, storage management, video recording, tracing, test assertions, coordinate-based
   vision, PDF generation, and WebGPU support on VNC Display :1. Use when automating browsers,
-  testing UIs, scraping pages, or debugging web apps.
+  testing UIs, scraping pages, or debugging web apps. For WebGPU/GPU-accelerated testing,
+  prefer the browser-sidecar container (Playwright MCP SSE at browser-sidecar:8931).
 ---
+
+## GPU Browser Sidecar
+
+For tests requiring hardware GPU (WebGPU, WebGL, 3D rendering), use the `browser-sidecar`
+container instead of local Playwright. The sidecar runs Chromium with native NVIDIA Vulkan
+on GPU 2 and exposes Playwright MCP over SSE at `http://browser-sidecar:8931/sse`.
+
+**Priority order:**
+1. **Sidecar** -- WebGPU/WebGL tests, VisionFlow app testing, GPU rendering validation
+2. **Local Playwright** -- simple page automation, form fills, DOM inspection (software rendering only)
+3. **agent-browser** -- quick accessibility snapshots, lightweight scraping
 
 # Browser Automation
 

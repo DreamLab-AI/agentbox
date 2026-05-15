@@ -186,7 +186,7 @@ admin_access_mode = "permissive"
 
 # ── RuVector PostgreSQL (external memory backend) ──────────────────────────────
 # Used when adapters.memory = "external-pg". Shared with the host container mesh
-# via docker_ragflow network. The ruvector-postgres container runs pgvector.
+# via visionclaw_network network. The ruvector-postgres container runs pgvector.
 #
 # The password is sourced from the RUVECTOR_PG_PASSWORD env var at runtime
 # (Q6: single source of truth). The conninfo template here uses the

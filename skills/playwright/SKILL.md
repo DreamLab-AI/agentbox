@@ -163,3 +163,34 @@ DISPLAY=:1 chromium --no-sandbox --enable-features=Vulkan,WebGPU --enable-unsafe
 ```bash
 vncviewer localhost:5901   # no password (xorg-nvidia stack)
 ```
+
+## Browser Sidecar (GPU-Accelerated)
+
+A dedicated Docker sidecar container (`browser-sidecar`) provides hardware-accelerated
+WebGPU browser automation with native NVIDIA Vulkan. The sidecar uses Ubuntu 24.04 (system
+glibc), eliminating the Nix glibc vs NVIDIA library mismatch that blocks hardware GPU
+access from agentbox's Nix-based Chromium.
+
+### When to use sidecar vs local
+
+| Scenario | Use |
+|----------|-----|
+| WebGPU rendering, GPU compute, WebGL perf testing | **Sidecar** (hardware GPU) |
+| Simple page loads, form fills, screenshots | **Local** (faster startup, no network hop) |
+| VisionFlow app testing (3D graph, WASM effects) | **Sidecar** (needs real GPU for WebGPU) |
+| Quick DOM inspection, accessibility snapshots | **Local** (sufficient) |
+
+### Connecting to the sidecar
+
+The sidecar exposes Playwright MCP over SSE at `http://browser-sidecar:8931/sse`.
+VNC monitoring at `vnc://hostname:5903` (Display :2, no password).
+CDP debug port at `browser-sidecar:9222`.
+
+The sidecar is on the shared `visionclaw_network` network and discoverable by hostname.
+GPU 2 (Quadro RTX 6000, 24GB VRAM) is assigned to the sidecar.
+
+### Local browser (reduced priority)
+
+The local Playwright MCP (in-container, Display :1) remains available for quick tests
+that don't need GPU acceleration. Without hardware GPU access (Nix glibc vs system
+NVIDIA library mismatch), local browser uses SwiftShader software rendering only.

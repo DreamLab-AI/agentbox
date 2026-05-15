@@ -1,0 +1,9 @@
+{
+  "private": true,
+  "name": "browsercontainer",
+  "description": "GPU-accelerated Playwright MCP server for browser automation",
+  "dependencies": {
+    "@playwright/mcp": "^0.0.75",
+    "@modelcontextprotocol/sdk": "^1.12.1"
+  }
+}

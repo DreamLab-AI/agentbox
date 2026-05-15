@@ -49,6 +49,7 @@ Local lifecycle commands:
   ${GREEN}shell${NC}            Open shell in container [profile: zellij layout in that profile]
   ${GREEN}health${NC}           Show service health [--json: raw JSON output]
   ${GREEN}migrate-workspace${NC} One-shot rsync from legacy multi-agent-docker_workspace into agentbox-workspace, then patch override
+  ${GREEN}browsercontainer${NC} Manage GPU browser container [up|down|logs|health|status|rebuild|shell|gpu]
   ${GREEN}preflight${NC}        Validate the local environment + manifest before `up` (W021 audit, missing host paths, override drift)
 
 Options:
@@ -484,11 +485,13 @@ cmd_restore() {
 
 OVERRIDE_FILE="${SCRIPT_DIR}/docker-compose.override.yml"
 COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.yml"
+SIDECAR_FILE="${SCRIPT_DIR}/docker-compose.browsercontainer.yml"
 if [[ -f "$OVERRIDE_FILE" ]]; then
     COMPOSE_ARGS=(--project-name agentbox -f "$COMPOSE_FILE" -f "$OVERRIDE_FILE")
 else
     COMPOSE_ARGS=(--project-name agentbox -f "$COMPOSE_FILE")
 fi
+SIDECAR_COMPOSE_ARGS=(--project-name agentbox -f "$SIDECAR_FILE")
 # Standard ports — MAD has been deprecated; no port remap needed.
 # All services bind to their canonical ports inside the container; the
 # operator's docker-compose.override.yml may further restrict by adding
@@ -859,6 +862,97 @@ cmd_health() {
     fi
 }
 
+# ---------------------------------------------------------------------------
+# browsercontainer lifecycle
+# ---------------------------------------------------------------------------
+
+cmd_browsercontainer() {
+    local subcmd="${1:-help}"
+    shift 2>/dev/null || true
+
+    case "$subcmd" in
+        up)
+            echo -e "${CYAN}Building and starting browsercontainer...${NC}"
+            docker compose "${SIDECAR_COMPOSE_ARGS[@]}" up -d --build
+            local deadline=$(( $(date +%s) + 60 ))
+            local ready=0
+            echo -e "${CYAN}Waiting for browsercontainer health...${NC}"
+            while [[ $(date +%s) -lt $deadline ]]; do
+                if curl -sf http://localhost:8931/health >/dev/null 2>&1; then
+                    ready=1
+                    break
+                fi
+                sleep 2
+            done
+            if [[ "$ready" -eq 0 ]]; then
+                echo -e "${RED}Health check timed out after 60s.${NC}"
+                echo "Check logs: $0 browsercontainer logs"
+                exit 1
+            fi
+            echo -e "${GREEN}Browser container is up.${NC}"
+            echo -e "  ${GREEN}MCP SSE :${NC} http://localhost:8931/sse"
+            echo -e "  ${GREEN}VNC     :${NC} vnc://localhost:5903"
+            echo -e "  ${GREEN}Health  :${NC} http://localhost:8931/health"
+            ;;
+        down)
+            echo -e "${CYAN}Stopping browsercontainer...${NC}"
+            docker compose "${SIDECAR_COMPOSE_ARGS[@]}" down
+            echo -e "${GREEN}Browser container stopped.${NC}"
+            ;;
+        logs)
+            docker compose "${SIDECAR_COMPOSE_ARGS[@]}" logs -f --tail 100
+            ;;
+        health)
+            local response
+            response=$(curl -sf http://localhost:8931/health 2>/dev/null) || {
+                echo -e "${RED}browsercontainer not responding at http://localhost:8931/health${NC}"
+                exit 1
+            }
+            echo -e "${GREEN}browsercontainer healthy:${NC} ${response}"
+            ;;
+        status)
+            docker compose "${SIDECAR_COMPOSE_ARGS[@]}" ps
+            ;;
+        rebuild)
+            echo -e "${CYAN}Rebuilding browsercontainer...${NC}"
+            docker compose "${SIDECAR_COMPOSE_ARGS[@]}" down
+            docker compose "${SIDECAR_COMPOSE_ARGS[@]}" build --no-cache
+            cmd_browsercontainer up
+            ;;
+        shell)
+            docker exec -it --user 1000 browsercontainer bash
+            ;;
+        gpu)
+            echo -e "${CYAN}GPU status inside browsercontainer:${NC}"
+            docker exec browsercontainer nvidia-smi 2>/dev/null || echo -e "${RED}nvidia-smi not available${NC}"
+            echo ""
+            echo -e "${CYAN}Vulkan status:${NC}"
+            docker exec browsercontainer vulkaninfo --summary 2>/dev/null || echo -e "${RED}vulkaninfo not available${NC}"
+            ;;
+        help|*)
+            cat <<BC_HELP
+${CYAN}Browser Container — GPU-accelerated Playwright MCP server${NC}
+
+Usage: $0 browsercontainer <command>
+
+  ${GREEN}up${NC}        Build and start the container (waits for health)
+  ${GREEN}down${NC}      Stop the container
+  ${GREEN}logs${NC}      Follow container logs
+  ${GREEN}health${NC}    Check MCP health endpoint
+  ${GREEN}status${NC}    Show container status
+  ${GREEN}rebuild${NC}   Full rebuild (down + build --no-cache + up)
+  ${GREEN}shell${NC}     Open bash in the container
+  ${GREEN}gpu${NC}       Check GPU and Vulkan status inside container
+
+Runs Chromium with hardware WebGPU/Vulkan on GPU 2
+(Quadro RTX 6000, 24GB). Agents connect via MCP SSE at
+http://browsercontainer:8931/sse on the visionclaw_network.
+VNC monitoring at vnc://localhost:5903.
+BC_HELP
+            ;;
+    esac
+}
+
 cmd_setup() {
     check_ip
     echo -e "${CYAN}Running initial setup on agentbox...${NC}"
@@ -1104,7 +1198,7 @@ while [[ $# -gt 0 ]]; do
             usage
             exit 0
             ;;
-        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser|backup|restore|up|down|build|rebuild|logs|shell|health)
+        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser|backup|restore|up|down|build|rebuild|logs|shell|health|browsercontainer)
             CMD="$1"
             shift
             break
@@ -1140,6 +1234,7 @@ case "${CMD:-}" in
     logs)              cmd_logs "$@" ;;
     shell)             cmd_shell "$@" ;;
     health)            cmd_health "$@" ;;
+    browsercontainer)  cmd_browsercontainer "$@" ;;
     migrate-workspace) cmd_migrate_workspace "$@" ;;
     preflight)         cmd_preflight "$@" ;;
     *)                 usage ;;

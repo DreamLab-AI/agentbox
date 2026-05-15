@@ -283,7 +283,7 @@ ws_url = "ws://comfyui:8188/ws"
 
 [integrations.ragflow]
 enabled = false
-network = "docker_ragflow"
+network = "visionclaw_network"
 aliases = ["agentbox"]
 ```
 
@@ -530,7 +530,7 @@ services:
           cpus: '${AGENTBOX_CPU_LIMIT:-4}'
           memory: '${AGENTBOX_MEM_LIMIT:-8G}'
     networks:
-      - docker_ragflow
+      - visionclaw_network
 ```
 
 ### `${HOME}/.claude` bind mount — known attack surface

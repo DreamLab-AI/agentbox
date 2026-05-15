@@ -1479,14 +1479,14 @@ stderr_logfile=/var/log/tmux-autostart.error.log
 
         # External network declaration for ragflow integration.
         ragflowNetworkDecl = lib.optionalString (ragflowCfg.enabled or false) ''
-  docker_ragflow:
+  visionclaw_network:
     external: true'';
 
         # agentbox network attachment block.
         agentboxNetworks = lib.optionalString (ragflowCfg.enabled or false) ''
     networks:
       - default
-      - docker_ragflow'';
+      - visionclaw_network'';
 
         # Extra hosts. The host-gateway alias is gated by
         # [networking].host_gateway = true (Q17): air-gapped and hardened

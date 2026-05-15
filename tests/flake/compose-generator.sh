@@ -5,8 +5,8 @@
 # Tests:
 #   1. nix build .#compose produces a parseable compose file.
 #   2. Default manifest (no [gpu], no [integrations]) omits the ollama service.
-#   3. Enabling [integrations.ragflow] adds the docker_ragflow external network.
-#   4. Disabling [integrations.ragflow] removes the docker_ragflow network.
+#   3. Enabling [integrations.ragflow] adds the visionclaw_network external network.
+#   4. Disabling [integrations.ragflow] removes the visionclaw_network network.
 #   5. docker compose config --quiet passes (if docker is available).
 #
 # Exit code: 0 = all tests passed, 1 = any failure.
@@ -139,8 +139,8 @@ else
 fi
 rm -rf "$TMPDIR_2" "$DEFAULT_TOML"
 
-# ── test 3: ragflow enabled adds docker_ragflow network ───────────────────────
-echo "=== Test 3: ragflow enabled → docker_ragflow network present ==="
+# ── test 3: ragflow enabled adds visionclaw_network network ───────────────────────
+echo "=== Test 3: ragflow enabled → visionclaw_network network present ==="
 RAGFLOW_ON_TOML="$(mktemp --suffix=.toml)"
 cat > "$RAGFLOW_ON_TOML" <<'TOML'
 [core]
@@ -192,18 +192,18 @@ if nix build "$TMPDIR_3#packages.x86_64-linux.compose" \
      --out-link "$TMPDIR_3/result" \
      --no-link 2>/dev/null; then
   GENERATED="$TMPDIR_3/result/docker-compose.yml"
-  if grep -q "docker_ragflow" "$GENERATED"; then
-    pass "ragflow enabled → docker_ragflow network present"
+  if grep -q "visionclaw_network" "$GENERATED"; then
+    pass "ragflow enabled → visionclaw_network network present"
   else
-    fail "ragflow enabled but docker_ragflow network missing from compose"
+    fail "ragflow enabled but visionclaw_network network missing from compose"
   fi
 else
   skip "nix build failed for test 3 (possibly evaluation-only environment)"
 fi
 rm -rf "$TMPDIR_3" "$RAGFLOW_ON_TOML"
 
-# ── test 4: ragflow disabled omits docker_ragflow network ─────────────────────
-echo "=== Test 4: ragflow disabled → docker_ragflow network absent ==="
+# ── test 4: ragflow disabled omits visionclaw_network network ─────────────────────
+echo "=== Test 4: ragflow disabled → visionclaw_network network absent ==="
 RAGFLOW_OFF_TOML="$(mktemp --suffix=.toml)"
 cat > "$RAGFLOW_OFF_TOML" <<'TOML'
 [core]
@@ -255,10 +255,10 @@ if nix build "$TMPDIR_4#packages.x86_64-linux.compose" \
      --out-link "$TMPDIR_4/result" \
      --no-link 2>/dev/null; then
   GENERATED="$TMPDIR_4/result/docker-compose.yml"
-  if grep -q "docker_ragflow" "$GENERATED"; then
-    fail "ragflow disabled but docker_ragflow network still present"
+  if grep -q "visionclaw_network" "$GENERATED"; then
+    fail "ragflow disabled but visionclaw_network network still present"
   else
-    pass "ragflow disabled → docker_ragflow network absent"
+    pass "ragflow disabled → visionclaw_network network absent"
   fi
 else
   skip "nix build failed for test 4 (possibly evaluation-only environment)"

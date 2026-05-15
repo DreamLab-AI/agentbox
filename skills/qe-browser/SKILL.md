@@ -34,6 +34,7 @@ aqe init
 | Full Playwright API, screenshots, Display :1 | `playwright` |
 | Inspect live logged-in Chromium tabs | `chrome-cdp` |
 | Unsure which browser tool | `browser-automation` |
+| WebGPU/GPU rendering tests | `browser-sidecar` (Playwright MCP SSE) |
 
 ## AQE Fleet Integration
 

@@ -14,6 +14,7 @@ Lightweight Chrome DevTools Protocol CLI. Connects directly via WebSocket to liv
 
 ## When Not To Use
 
+- For GPU-accelerated WebGPU testing -- use the browser-sidecar container (native NVIDIA Vulkan, Playwright MCP at browser-sidecar:8931)
 - For launching a fresh browser and automating forms/scraping -- use the browser or playwright skills instead
 - For AI-optimised accessibility snapshots without CDP setup -- use the browser skill (agent-browser) instead
 - For visual testing with screenshots on Display :1 -- use the playwright skill instead

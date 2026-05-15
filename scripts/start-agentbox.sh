@@ -255,7 +255,7 @@ DETECTED_GPU="none"
 command_exists nvidia-smi && DETECTED_GPU="ollama-cuda"
 command_exists rocm-smi   && DETECTED_GPU="ollama-rocm"
 DETECTED_RAGFLOW=false
-docker network ls 2>/dev/null | grep -q docker_ragflow && DETECTED_RAGFLOW=true
+docker network ls 2>/dev/null | grep -q visionclaw_network && DETECTED_RAGFLOW=true
 
 # CPU / RAM capability probe for the privacy filter sidecar.
 # MoE weights (~3 GB BF16) stay resident even though only 50M params fire per
@@ -966,10 +966,10 @@ section_observability() {
 # SECTION 9 — integrations
 # ════════════════════════════════════════════════════════════════════════════════
 section_integrations() {
-  # RagFlow — only offered when docker_ragflow network is detected
+  # RagFlow — only offered when visionclaw_network network is detected
   if [[ "${DETECTED_RAGFLOW}" == "true" ]]; then
     if wt_yesno "Integrations — RagFlow" \
-      "docker_ragflow network detected. Enable [integrations.ragflow]?"; then
+      "visionclaw_network network detected. Enable [integrations.ragflow]?"; then
       state_set_bool "integrations.ragflow.enabled" "true"
     else
       state_set_bool "integrations.ragflow.enabled" "false"

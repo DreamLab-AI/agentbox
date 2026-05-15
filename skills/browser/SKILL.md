@@ -24,6 +24,7 @@ Web browser automation using agent-browser with AI-optimised snapshots. Reduces 
 
 ## When Not To Use
 
+- For WebGPU/GPU-accelerated browser testing -- use the browser-sidecar container (Playwright MCP SSE at browser-sidecar:8931)
 - For choosing between browser tools -- use the browser-automation meta skill for guided selection
 - For full Playwright API access with visual testing on Display :1 -- use the playwright skill instead
 - For inspecting live Chromium sessions via CDP -- use the chrome-cdp skill instead

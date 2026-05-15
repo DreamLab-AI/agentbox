@@ -107,8 +107,9 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
 | `browser-automation` | No | **Meta-skill**: decision framework for choosing between 6 browser tools + Claude in Chrome (official) | Unsure which browser tool to use -- start here |
+| `browser-sidecar` | Yes | **GPU-accelerated** Playwright MCP in a dedicated Ubuntu container with native NVIDIA Vulkan on GPU 2 (Quadro RTX 6000). SSE at `browser-sidecar:8931`, VNC at port 5903 | WebGPU/WebGL testing, VisionFlow 3D graph validation, GPU rendering — **use this for all GPU browser work** |
 | `browser` | No | agent-browser with AI-optimised snapshots, 93% context reduction via @refs | Quick form filling, scraping, navigation with minimal context |
-| `playwright` | Yes | Full Playwright API, screenshots, visual testing on Display :1 via VNC | Visual testing, complex automation, screenshot verification |
+| `playwright` | Yes | Full Playwright API, screenshots, visual testing on Display :1 via VNC (software rendering only in agentbox — Nix glibc/NVIDIA mismatch) | Visual testing, complex automation, screenshot verification — no hardware GPU |
 | `qe-browser` | No | **Vibium** (WebDriver BiDi, W3C standard, 10MB vs 300MB Playwright). 16 typed assertion kinds, multi-step batch pre-validation, pixel-perfect visual-diff baselines, 14-pattern prompt-injection scanner, 15-intent semantic element finder (`submit_form`, `accept_cookies`, `primary_cta`, …). Part of AQE fleet — installed via `aqe init`. 11 QE skills delegate to it (a11y, visual, security, localization, etc.) | QE-grade browser testing with typed assertions and visual regression; AQE fleet integration; when Playwright is too heavy ⚠️ NOT INSTALLED — run aqe init to install |
 | `chrome-cdp` | No | CDP CLI for live Chromium sessions, 100+ tabs, no Puppeteer dependency | Inspecting already-open browser tabs, logged-in sessions |
 | `host-webserver-debug` | Yes | HTTPS-to-HTTP bridge for debugging host web servers from Docker | Cross-origin/CORS issues when accessing host dev servers |
@@ -505,14 +506,20 @@ Q3: Do you know which tool you need?
     |
     +-- No / unsure --> browser-automation (meta-skill, guides selection)
     |
+    +-- WebGPU / WebGL / GPU rendering tests? (3D, Three.js, VisionFlow)
+    |   --> browser-sidecar (GPU-accelerated, native NVIDIA Vulkan on GPU 2)
+    |       SSE: http://browser-sidecar:8931/sse | VNC: port 5903
+    |       NOTE: ALWAYS prefer sidecar for GPU browser work. Local Playwright
+    |       has no hardware GPU (Nix glibc vs NVIDIA library mismatch).
+    |
     +-- Desktop Chrome with login state, GIF recording (official beta)
     |   --> claude --chrome (not a skill — built into Claude Code 2.0.73+)
     |
     +-- Quick scrape/form-fill with minimal context
     |   --> browser (agent-browser, @ref snapshots)
     |
-    +-- Full API, screenshots, visual testing on Display :1
-    |   --> playwright
+    +-- Full API, screenshots, visual testing on Display :1 (software rendering)
+    |   --> playwright (local — no GPU, SwiftShader only)
     |
     +-- QE-grade assertions (typed checks, visual-diff baselines, injection scan), AQE fleet
     |   --> qe-browser  (Vibium: WebDriver BiDi, 10MB, 16 assertion kinds, `aqe init` to install)

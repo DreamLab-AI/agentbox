@@ -1,13 +1,13 @@
 /**
  * RAGFlow MCP Tools Implementation
  * Provides knowledge base query, document ingestion, and semantic search
- * for the VisionFlow multi-agent system via docker_ragflow network.
+ * for the VisionFlow multi-agent system via visionclaw_network network.
  */
 
 const http = require('http');
 const https = require('https');
 
-// RAGFlow service configuration from docker_ragflow network
+// RAGFlow service configuration from visionclaw_network network
 const RAGFLOW_CONFIG = {
   host: process.env.RAGFLOW_HOST || 'docker-ragflow-cpu-1',
   port: parseInt(process.env.RAGFLOW_PORT || '80'),

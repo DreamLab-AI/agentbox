@@ -46,7 +46,7 @@ ws_url = "ws://my-comfyui-host:8188/ws"
 ```
 
 `url` and `ws_url` accept any reachable URL — LAN address, DNS name, or Docker service name.
-The defaults (`http://comfyui:8188`) assume a `docker_ragflow`-network peer named `comfyui`.
+The defaults (`http://comfyui:8188`) assume a `visionclaw_network`-network peer named `comfyui`.
 
 `COMFYUI_URL` and `COMFYUI_WS_URL` are baked into the image environment at build time.
 The MCP server inherits them from the container environment.
