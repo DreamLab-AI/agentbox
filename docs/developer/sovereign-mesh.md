@@ -42,12 +42,18 @@ MANAGEMENT_API_KEY=<32-byte-hex>                    # used to decrypt nostr.key.
 
 ## Subscribe kinds
 
-| Constant      | Kind  | NIP        | Purpose                                |
-|---------------|-------|------------|----------------------------------------|
-| `AUTH`        | 27235 | NIP-98     | HTTP auth events                       |
-| `AGENT_STATE` | 30078 | NIP-33/78  | Parameterised replaceable agent state  |
-| `BRIEF_REF`   | 30000 | NIP-33     | Addressable brief references           |
-| `BEAD_REF`    | 30001 | NIP-33     | Addressable bead/receipt references    |
+| Constant           | Kind  | NIP        | Purpose                                |
+|--------------------|-------|------------|----------------------------------------|
+| `AUTH`             | 27235 | NIP-98     | HTTP auth events                       |
+| `AGENT_STATE`      | 30078 | NIP-33/78  | Parameterised replaceable agent state  |
+| `BRIEF_REF`        | 30000 | NIP-33     | Addressable brief references           |
+| `BEAD_REF`         | 30001 | NIP-33     | Addressable bead/receipt references    |
+| `PANEL_DEFINITION` | 31400 | NIP-33     | Agent Control Surface panel schema     |
+| `PANEL_STATE`      | 31401 | NIP-33     | Panel data snapshot                    |
+| `ACTION_REQUEST`   | 31402 | NIP-33     | Agent requests human decision          |
+| `ACTION_RESPONSE`  | 31403 | NIP-33     | Human responds to action request       |
+| `PANEL_UPDATE`     | 31404 | NIP-33     | Incremental panel state diff           |
+| `PANEL_RETIRED`    | 31405 | NIP-33     | Agent retires a control panel          |
 
 Override defaults at construction:
 

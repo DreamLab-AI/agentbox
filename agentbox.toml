@@ -93,9 +93,12 @@ expose           = false
 data_dir         = "/var/lib/nostr-relay"
 ingress_policy   = "allowlist"        # allowlist | signed-only | open
 allowed_pubkeys  = []                  # empty = self only (own npub); operator pubkey auto-added at boot
-allowed_kinds    = [1, 1059, 30078, 27235, 38000, 38100, 38200, 38201]
+allowed_kinds    = [1, 1059, 30078, 27235, 31400, 31401, 31402, 31403, 31404, 31405, 38000, 38100, 38200, 38201]
 pod_bridge       = true
-external_fanout  = "off"               # bidirectional | publish-only | subscribe-only | off
+external_fanout  = "bidirectional"     # bidirectional | publish-only | subscribe-only | off
+# Private point-to-point relay for governance event exchange with the forum.
+# Set via NOSTR_RELAYS env var at runtime; this field documents the target.
+forum_relay_url  = "wss://dreamlab-nostr-relay.solitary-paper-764d.workers.dev"
 max_event_bytes  = 131072
 messages_per_sec = 5
 retention_days   = 30

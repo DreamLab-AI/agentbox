@@ -128,8 +128,21 @@ All inbound and outbound messages are standard Nostr events — no custom framin
 | 1059 | NIP-17 | Sealed gift-wrapped DM; recommended inbound channel |
 | 27235 | NIP-98 | HTTP auth; read-only from bridge |
 | 30078 | NIP-33 | Agent state (already used) |
-| 38000-38099 | reserved | Agent-intent (inbound request for agent action) — new |
-| 38100-38199 | reserved | Agent-response (outbound response to an agent-intent) — new |
+| 31400 | NIP-33 | Agent Control Surface — PanelDefinition (agent publishes control panel schema) |
+| 31401 | NIP-33 | Agent Control Surface — PanelState (agent publishes panel data snapshot) |
+| 31402 | NIP-33 | Agent Control Surface — ActionRequest (agent requests human decision) |
+| 31403 | NIP-33 | Agent Control Surface — ActionResponse (human responds to action request) |
+| 31404 | NIP-33 | Agent Control Surface — PanelUpdate (incremental panel state diff) |
+| 31405 | NIP-33 | Agent Control Surface — PanelRetired (agent retires a panel) |
+| 38000-38099 | reserved | Agent-intent (inbound request for agent action) |
+| 38100-38199 | reserved | Agent-response (outbound response to an agent-intent) |
+
+Kinds 31400-31405 implement the **Agent Control Surface Protocol**, a
+bidirectional governance layer between agentbox agents and the DreamLab
+forum (nostr-rust-forum). VisionClaw's `BrokerActor` publishes PanelDefinitions
+and ActionRequests; forum humans respond with ActionResponses. The relay-consumer
+persists governance events to `pods/<npub>/events/governance/` and routes
+inbound ActionResponses to the orchestrator adapter.
 
 ### 4.3 NIP support matrix (embedded relay)
 

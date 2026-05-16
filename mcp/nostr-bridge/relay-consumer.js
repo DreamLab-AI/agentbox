@@ -67,6 +67,12 @@ const AGENT_RESPONSE_MAX = 38199;
 const JOB_ESTIMATE_KIND   = 38200;
 const JOB_SETTLEMENT_KIND = 38201;
 
+// Agent Control Surface Protocol — governance event kinds (31400-31405).
+// Bidirectional: agentbox publishes 31400/31401/31402/31404/31405 (outbound),
+// forum humans publish 31403 ActionResponse (inbound).
+const GOVERNANCE_KIND_MIN = 31400;
+const GOVERNANCE_KIND_MAX = 31405;
+
 const DEFAULT_OUTBOX_POLL_MS = 500;
 const DEFAULT_OUTBOX_RETRY_BACKOFF = [1_000, 5_000, 30_000, 300_000];
 const DEFAULT_POD_ROOT = process.env.SOLID_POD_ROOT || '/var/lib/solid';
@@ -139,7 +145,12 @@ class RelayConsumer {
       30050,                              // IS-Envelope mesh-event (ADR-075)
       30078,                              // agent state (NIP-33)
       30910,                              // moderation (ban/mute)
-      31400, 31401, 31402, 31403, 31404, 31405,  // governance panels (ACSP)
+      kinds.PANEL_DEFINITION,             // 31400 — Agent Control Surface Protocol
+      kinds.PANEL_STATE,                  // 31401
+      kinds.ACTION_REQUEST,               // 31402
+      kinds.ACTION_RESPONSE,              // 31403
+      kinds.PANEL_UPDATE,                 // 31404
+      kinds.PANEL_RETIRED,                // 31405
       AGENT_INTENT_MIN, AGENT_RESPONSE_MIN,
       JOB_ESTIMATE_KIND, JOB_SETTLEMENT_KIND,
     ];
@@ -252,6 +263,25 @@ class RelayConsumer {
     // alongside the inbox entry for cost-gate reconciliation and audit trail.
     if (this._isPaymentEvent(event.kind)) {
       this._writePaymentEvent(recipient, event);
+    }
+
+    // Governance events (31400-31405): write to the dedicated governance
+    // directory. Inbound ActionResponses (31403) from forum humans trigger
+    // the orchestrator adapter to route the decision to VisionClaw's
+    // BrokerActor. Outbound panel definitions/requests are handled by the
+    // outbox publisher path (agents write to events/outbox/).
+    if (this._isGovernanceEvent(event.kind)) {
+      this._writeGovernanceEvent(recipient, event);
+
+      // ActionResponse (31403) from a human in the forum UI — route to
+      // the orchestrator so VisionClaw can act on the decision.
+      if (event.kind === kinds.ACTION_RESPONSE
+          && this._adapters.orchestrator
+          && typeof this._adapters.orchestrator.handleGovernanceDecision === 'function') {
+        Promise.resolve(this._adapters.orchestrator.handleGovernanceDecision(event))
+          .then(() => this._logger.info({ eventId: event.id }, 'governance-decision-dispatched'))
+          .catch(err => this._logger.warn({ err, eventId: event.id }, 'governance-decision-dispatch-failed'));
+      }
     }
 
     // Agent-intent kinds: always write a durable marker to the pod intent
@@ -450,6 +480,49 @@ class RelayConsumer {
     return kind === JOB_ESTIMATE_KIND || kind === JOB_SETTLEMENT_KIND;
   }
 
+  _isGovernanceEvent(kind) {
+    return kind >= GOVERNANCE_KIND_MIN && kind <= GOVERNANCE_KIND_MAX;
+  }
+
+  /**
+   * Write a governance event to pods/<npub>/events/governance/<event-id>.json.
+   * Atomic rename preserves DDD-003 I01 / I08 semantics.
+   * @private
+   */
+  _writeGovernanceEvent(recipient, event) {
+    const govDir = path.join(this._podRoot, 'pods', recipient, 'events', 'governance');
+    const target = path.join(govDir, `${event.id}.json`);
+    if (fs.existsSync(target)) return;
+    try {
+      fs.mkdirSync(govDir, { recursive: true });
+      const kindLabels = {
+        [kinds.PANEL_DEFINITION]: 'panel-definition',
+        [kinds.PANEL_STATE]:      'panel-state',
+        [kinds.ACTION_REQUEST]:   'action-request',
+        [kinds.ACTION_RESPONSE]:  'action-response',
+        [kinds.PANEL_UPDATE]:     'panel-update',
+        [kinds.PANEL_RETIRED]:    'panel-retired',
+      };
+      const dTag = (event.tags || []).find(t => t[0] === 'd');
+      const payload = {
+        event_id:       event.id,
+        kind:           event.kind,
+        kind_label:     kindLabels[event.kind] || `unknown-${event.kind}`,
+        d_tag:          dTag ? dTag[1] : null,
+        signer_pubkey:  event.pubkey,
+        recipient_npub: recipient,
+        received_at:    new Date(this._now()).toISOString(),
+        content:        event.content,
+        tags:           event.tags,
+      };
+      const tmp = path.join(govDir, `.${event.id}.${process.pid}.tmp`);
+      fs.writeFileSync(tmp, JSON.stringify(payload, null, 2));
+      fs.renameSync(tmp, target);
+    } catch (err) {
+      this._logger.warn({ err, eventId: event.id }, 'governance-event-write-failed');
+    }
+  }
+
   /**
    * Write a payment event to pods/<npub>/events/payments/<event-id>.json.
    * Atomic rename preserves DDD-003 I01 / I08 semantics.
@@ -485,7 +558,7 @@ class RelayConsumer {
   _ensureMailboxDirs() {
     for (const npub of this._npubs) {
       const podDir = path.join(this._podRoot, 'pods', npub);
-      for (const sub of ['events/inbox', 'events/outbox', 'events/intent-queue', 'events/payments']) {
+      for (const sub of ['events/inbox', 'events/outbox', 'events/intent-queue', 'events/payments', 'events/governance']) {
         fs.mkdirSync(path.join(podDir, sub), { recursive: true });
       }
     }
@@ -573,4 +646,4 @@ class RelayConsumer {
   }
 }
 
-module.exports = { RelayConsumer, AGENT_INTENT_MIN, AGENT_INTENT_MAX, AGENT_RESPONSE_MIN, AGENT_RESPONSE_MAX, JOB_ESTIMATE_KIND, JOB_SETTLEMENT_KIND };
+module.exports = { RelayConsumer, AGENT_INTENT_MIN, AGENT_INTENT_MAX, AGENT_RESPONSE_MIN, AGENT_RESPONSE_MAX, JOB_ESTIMATE_KIND, JOB_SETTLEMENT_KIND, GOVERNANCE_KIND_MIN, GOVERNANCE_KIND_MAX };

@@ -124,9 +124,9 @@ expose           = false              # publish port in docker-compose
 data_dir         = "/var/lib/nostr-relay"
 ingress_policy   = "allowlist"        # allowlist | signed-only | open
 allowed_pubkeys  = []                 # empty = self only
-allowed_kinds    = [1, 1059, 30078, 27235, 38000, 38100]
+allowed_kinds    = [1, 1059, 30078, 27235, 31400, 31401, 31402, 31403, 31404, 31405, 38000, 38100]
 pod_bridge       = true
-external_fanout  = "off"              # bidirectional | publish-only | subscribe-only | off
+external_fanout  = "bidirectional"    # bidirectional | publish-only | subscribe-only | off
 max_event_bytes  = 131072
 messages_per_sec = 5
 retention_days   = 30
@@ -159,8 +159,22 @@ Validator rules:
 | 1059 | NIP-17 | Sealed gift-wrap DMs — the recommended inbound channel |
 | 27235 | NIP-98 | HTTP auth (read-only; bridge handles these out-of-band) |
 | 30078 | NIP-33/78 | Parameterised replaceable agent state |
+| 31400 | NIP-33 | Agent Control Surface — panel definition |
+| 31401 | NIP-33 | Agent Control Surface — panel state snapshot |
+| 31402 | NIP-33 | Agent Control Surface — action request (agent → human) |
+| 31403 | NIP-33 | Agent Control Surface — action response (human → agent) |
+| 31404 | NIP-33 | Agent Control Surface — incremental panel state diff |
+| 31405 | NIP-33 | Agent Control Surface — panel retired |
 | 38000-38099 | reserved | Agent-intent (inbound request for an agent to act) |
 | 38100-38199 | reserved | Agent-response (reply to an agent-intent) |
+
+Kinds 31400-31405 form the **Agent Control Surface Protocol** — a
+bidirectional governance layer between agentbox agents and the
+DreamLab forum. Agents publish panel definitions (31400) and action
+requests (31402) to the forum relay; humans respond with action
+responses (31403). The relay-consumer persists all governance events
+to `pods/<npub>/events/governance/` and routes inbound action responses
+to the orchestrator adapter for VisionClaw's `BrokerActor`.
 
 Kind `4` (legacy unencrypted DMs) is rejected by default. Set
 `allow_nip04 = true` to accept them; the validator will emit E031 so
