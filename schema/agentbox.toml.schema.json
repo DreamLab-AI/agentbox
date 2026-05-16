@@ -538,6 +538,21 @@
               "description": "Pubkeys (hex or npub) granted admin role over user pods. Operator pubkey auto-added at boot."
             }
           }
+        },
+        "git": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Git-versioned pods. When enabled, each pod directory is git-initted at provisioning time (solid-pod-rs alpha.12, JSS #466/#469/#471). See docs/user/git-pods.md.",
+          "properties": {
+            "enabled":           { "type": "boolean", "description": "Auto-init pods as git repos at provisioning time." },
+            "auto_init":         { "type": "boolean", "description": "Run git init -b <default_branch> at POST /pods." },
+            "default_branch":    { "type": "string",  "description": "Initial branch name. JSS #471 pins this to 'main'." },
+            "http_backend":      { "type": "string",  "description": "Path or name of the git-http-backend CGI binary." },
+            "http_route_prefix": { "type": "string",  "description": "Management-API route prefix for pod git HTTP (must start with '/')." },
+            "max_push_mb":       { "type": "integer", "minimum": 1, "description": "Per-push body size limit in MB." },
+            "auth_mode":         { "type": "string",  "enum": ["nip98", "off"], "description": "Auth mode for git operations. 'nip98' requires a NIP-98 bearer token." },
+            "read_public":       { "type": "boolean", "description": "Allow unauthenticated clone of pods (upload-pack). Default false." }
+          }
         }
       }
     },

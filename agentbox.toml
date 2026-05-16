@@ -111,13 +111,26 @@ info_contact     = ""
 # successfully AUTH'd did:nostr identity. When disabled (default), only the
 # operator pubkey gets a pod (legacy single-tenant). Provisioning policy
 # selects the trust model for accepting new users.
+# ─── Git-versioned pods (JSS #466/#469/#471, solid-pod-rs alpha.12) ────────
+# When enabled, each pod directory is `git init -b main`'d at provisioning
+# time via solid_pod_rs_git::init::GitAutoInit. The management-api exposes
+# a `GET|POST /pods/:npub/.git/*` HTTP smart-protocol endpoint backed by
+# git-http-backend CGI, authenticated via NIP-98 bearer.
 #
-# ─── COORDINATION MARKER ───────────────────────────────────────────────────
-# The [sovereign_mesh.git] block (auto-init pods as git repos via JSS #471,
-# wired by the agentbox-git-wiring teammate once solid-pod-rs alpha.12 ships)
-# BELONGS HERE — between [sovereign_mesh.multi_user] and [mesh]. DO NOT EDIT
-# IT FROM THIS BLOCK. Leave [sovereign_mesh.git] for that teammate to land.
-# ──────────────────────────────────────────────────────────────────────────
+# enabled = true  : auto-init runs at POST /pods (ADR-017 provisioning path)
+# enabled = false : pods are plain directories — no git history
+#
+# See docs/user/git-pods.md for clone instructions.
+[sovereign_mesh.git]
+enabled        = true           # safe to enable; git binary is present in agentbox
+auto_init      = true           # git init -b main at provisioning (solid-pod-rs alpha.12)
+default_branch = "main"         # pinned per JSS #471 contract
+http_backend   = "git-http-backend"   # CGI path (default on Debian/Ubuntu/CachyOS)
+http_route_prefix = "/pods"     # management-api mounts at /pods/:npub/.git/*
+max_push_mb    = 100            # per-push body limit; git itself also has pack limits
+auth_mode      = "nip98"        # bearer NIP-98 token required for write operations
+read_public    = false          # set true to allow unauthenticated clone of public pods
+
 [sovereign_mesh.multi_user]
 enabled                     = false                  # opt-in (ADR-017 / PRD-007)
 provisioning_policy         = "closed"               # closed | invite-only | open

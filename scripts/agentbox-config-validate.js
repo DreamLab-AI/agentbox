@@ -19,6 +19,8 @@
  *   E035-E037, W038         consultant tier (ADR-011 / PRD-005)
  *   E040-E049, W047, W048   linked-data interchange (ADR-012 / PRD-006 / DDD-004)
  *   E050-E054, W053         linked-data viewer slot S12 (ADR-013-related)
+ *   E055-E057, W058         multi-tenant did:nostr pods (ADR-017 / PRD-007)
+ *   E059-E062, W063         git-versioned pods (JSS #471, solid-pod-rs alpha.12)
  *
  * Reserved / retired codes (do not reuse):
  *   E009                    superseded by E017
@@ -666,6 +668,58 @@ if (sovereignMesh.telegram_mirror === true) {
         message: 'W058: [sovereign_mesh.multi_user].provisioning_policy="open" — any successfully-AUTH\'d pubkey gets a pod; prefer "invite-only" until PRD-008 per-user quotas land'
       });
     }
+  }
+}
+
+// ─── E059-E062 + W063: [sovereign_mesh.git] coherence (JSS #471, alpha.12) ───
+//
+// E059 — git.enabled=true requires sovereign_mesh.solid_pod=true (git repos live
+//         inside pod directories; no pod backend means no pod directory to init).
+// E060 — git.enabled=true requires the git binary to be reachable; checked by
+//         testing git --version at startup. This is a static warning only —
+//         the validator cannot spawn subprocesses, so the rule emits W063
+//         instead of E060 when git presence cannot be verified at validate time.
+// E061 — git.http_route_prefix must start with "/" if set.
+// E062 — git.max_push_mb must be a positive integer if set.
+// W063 — git.enabled=true but git binary may not be present in the container.
+//
+// Next free: E064.
+{
+  const sgit = (manifest.sovereign_mesh || {}).git || {};
+  const smesh = manifest.sovereign_mesh || {};
+
+  if (sgit.enabled === true) {
+    // E059: solid_pod must be active.
+    if (!smesh.solid_pod) {
+      errors.push({
+        code: 'E059',
+        message: 'E059: [sovereign_mesh.git].enabled=true requires sovereign_mesh.solid_pod=true (git repos live inside pod directories)'
+      });
+    }
+
+    // E061: http_route_prefix must start with "/".
+    const prefix = sgit.http_route_prefix;
+    if (prefix !== undefined && (typeof prefix !== 'string' || !prefix.startsWith('/'))) {
+      errors.push({
+        code: 'E061',
+        message: `E061: [sovereign_mesh.git].http_route_prefix must start with "/" if set; got ${JSON.stringify(prefix)}`
+      });
+    }
+
+    // E062: max_push_mb must be a positive integer if set.
+    const maxPush = sgit.max_push_mb;
+    if (maxPush !== undefined && (!Number.isInteger(maxPush) || maxPush <= 0)) {
+      errors.push({
+        code: 'E062',
+        message: `E062: [sovereign_mesh.git].max_push_mb must be a positive integer if set; got ${JSON.stringify(maxPush)}`
+      });
+    }
+
+    // W063: git binary presence advisory (cannot verify at validate time).
+    warnings.push({
+      code: 'W063',
+      message: 'W063: [sovereign_mesh.git].enabled=true — ensure the git binary and git-http-backend CGI are installed in the container (alpha.12 auto-init uses tokio::process::Command)'
+    });
   }
 }
 

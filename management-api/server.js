@@ -250,7 +250,8 @@ app.register(require('@fastify/swagger'), {
       { name: 'metrics', description: 'Prometheus metrics' },
       { name: 'comfyui', description: 'ComfyUI workflow management' },
       { name: 'agent-events', description: 'Real-time agent action event streaming' },
-      { name: 'git-bridge', description: 'BC20 Git Bridge — clone, enrichment submission, broker polling (PRD-013 G5)' }
+      { name: 'git-bridge', description: 'BC20 Git Bridge — clone, enrichment submission, broker polling (PRD-013 G5)' },
+      { name: 'pod-git', description: 'Per-user pod git HTTP smart protocol (JSS #466/#469/#471, alpha.12)' }
     ]
   }
 });
@@ -308,6 +309,13 @@ app.register(require('./routes/broker-bridge'), { prefix: '', logger });
 // and judgment broker. Agents clone remotes, submit enrichments, and poll
 // for broker decisions through these local endpoints.
 app.register(require('./routes/git-bridge'), { prefix: '', logger });
+
+// Pod git HTTP smart protocol (JSS #466/#469/#471, solid-pod-rs alpha.12).
+// Serves git-upload-pack / git-receive-pack / info/refs for each user's
+// solid pod git repository at /pods/:npub/.git/*.
+// Gated by agentbox.toml [sovereign_mesh.git].enabled; wired unconditionally
+// here since the routes return 404 when the pod is not a git repo.
+app.register(require('./routes/pod-git'), { prefix: '', logger });
 
 // Payment routes — HTTP 402 Web Ledger integration.
 // Proxies to solid-pod-rs payment module; local cost estimation.

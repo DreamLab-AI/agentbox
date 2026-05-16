@@ -23,9 +23,9 @@ const CODEX_BIN = process.env.AGENTBOX_CODEX_BIN || '/usr/local/bin/codex';
 const CODEX_HOME = process.env.AGENTBOX_CODEX_HOME || '/home/openai-user/.codex';
 const MODEL = process.env.AGENTBOX_CODEX_MODEL || 'gpt-5.5';
 
-// Rough USD per 1k tokens — published rate at time of writing; refresh on bump.
-const PRICE_PER_1K_PROMPT     = 0.005;
-const PRICE_PER_1K_COMPLETION = 0.015;
+// Rough USD per 1k tokens — gpt-5.5 published rates (refresh on model bump).
+const PRICE_PER_1K_PROMPT     = 0.010;
+const PRICE_PER_1K_COMPLETION = 0.030;
 
 function formatPrompt(question, context) {
   return context
