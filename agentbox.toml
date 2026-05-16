@@ -106,6 +106,27 @@ allow_nip04      = false
 info_description = "Agentbox sovereign relay"
 info_contact     = ""
 
+# ── Multi-tenant did:nostr user pods (PRD-007, ADR-017) ─────────────────────
+# When enabled, agentbox hosts per-user pods at pods/<pubkey-hex>/ for each
+# successfully AUTH'd did:nostr identity. When disabled (default), only the
+# operator pubkey gets a pod (legacy single-tenant). Provisioning policy
+# selects the trust model for accepting new users.
+#
+# ─── COORDINATION MARKER ───────────────────────────────────────────────────
+# The [sovereign_mesh.git] block (auto-init pods as git repos via JSS #471,
+# wired by the agentbox-git-wiring teammate once solid-pod-rs alpha.12 ships)
+# BELONGS HERE — between [sovereign_mesh.multi_user] and [mesh]. DO NOT EDIT
+# IT FROM THIS BLOCK. Leave [sovereign_mesh.git] for that teammate to land.
+# ──────────────────────────────────────────────────────────────────────────
+[sovereign_mesh.multi_user]
+enabled                     = false                  # opt-in (ADR-017 / PRD-007)
+provisioning_policy         = "closed"               # closed | invite-only | open
+invite_kind                 = 30910                  # NIP-58 invite event kind
+invite_validity_seconds     = 86400                  # 24 hours
+max_users                   = 100                    # safety cap; per-container scale target
+suspend_inactive_after_days = 90                     # admin policy
+admin_pubkeys               = []                     # operator pubkey auto-added at boot
+
 # ── Mesh federation (PRD-010 Phase 3 / ADR-073) ─────────────────────────────
 # Controls cross-substrate federation behaviour. Requires
 # [sovereign_mesh.relay].enabled = true and [sovereign_mesh.nostr_bridge] = true.

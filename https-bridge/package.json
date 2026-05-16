@@ -7,5 +7,5 @@
     "start": "node https-proxy.js"
   },
   "keywords": ["https", "proxy", "bridge", "cors"],
-  "license": "MIT"
+  "license": "AGPL-3.0-only"
 }

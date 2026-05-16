@@ -107,6 +107,15 @@ class RelayConsumer {
     }
     this._npubs = new Set(opts.npubs);
     this._allowedPubkeys = new Set(opts.allowedPubkeys || []);
+    // ADR-017 / PRD-007 multi-tenant did:nostr pod mode.
+    // When `opts.multiUser.enabled` is true, this._npubs is dynamically
+    // grown to include every provisioned user pubkey, and the routing
+    // logic below writes inbound events to pods/<recipient-pubkey>/...
+    // unchanged. When false (default — single-tenant), this._npubs
+    // contains only the operator pubkey and behaviour is byte-for-byte
+    // identical to the pre-ADR-017 baseline (asserted by regression test
+    // tests/config/multi-user-regression.test.js).
+    this._multiUser = opts.multiUser || { enabled: false };
     this._allowedKinds = opts.allowedKinds || this._defaultKinds();
     this._ingressPolicy = opts.ingressPolicy || 'allowlist';
     this._podRoot = opts.podRoot || DEFAULT_POD_ROOT;
@@ -196,6 +205,30 @@ class RelayConsumer {
 
   metrics() {
     return { ...this._metrics };
+  }
+
+  /**
+   * ADR-017 / PRD-007: report whether this consumer is configured for the
+   * multi-tenant did:nostr pod model. When false (the default), the
+   * inbound write path routes only to the operator's pod and rejects
+   * `p`-tag recipients that are not in the local npub set — preserving
+   * byte-for-byte single-tenant behaviour. When true, the local npub set
+   * is expected to contain every provisioned user pubkey, and the
+   * existing recipient-keyed write path naturally fans out to per-user
+   * pods at `pods/<recipient-pubkey>/events/inbox/` without further
+   * branching.
+   *
+   * Actual provisioning logic (NIP-42 first-touch detection, invite
+   * validation, suspend/archive transitions) is QUEUED for follow-on
+   * after solid-pod-rs alpha.12 ships and the `[sovereign_mesh.git]`
+   * wiring lands. This helper is the stable surface the provisioning
+   * code will read.
+   *
+   * @returns {boolean}
+   * @private
+   */
+  _isMultiUserMode() {
+    return this._multiUser && this._multiUser.enabled === true;
   }
 
   // ── inbound path ──────────────────────────────────────────────────────────

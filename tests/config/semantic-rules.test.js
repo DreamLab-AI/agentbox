@@ -847,3 +847,72 @@ describe('E037: consultants.zai requires toolchains.claude', () => {
     expect(stderrContains(r, 'E037')).toBe(false);
   });
 });
+
+// ─── E055-E057 + W058: multi-tenant did:nostr pods (ADR-017 / PRD-007) ────────
+//
+// Note: the ADR-017 brief reserved E034-E036+W037 but those codes were already
+// taken by the consultants block, so the validator uses the next free
+// contiguous slot E055/E056/E057+W058.
+describe('E055-E057+W058: multi-tenant did:nostr pods', () => {
+  test('regression: enabled=false leaves baseline silent (single-tenant default)', () => {
+    const m = baseValid();
+    m.sovereign_mesh.multi_user = { enabled: false };
+    const r = runValidator(m);
+    expect(stderrContains(r, 'E055')).toBe(false);
+    expect(stderrContains(r, 'E056')).toBe(false);
+    expect(stderrContains(r, 'E057')).toBe(false);
+    expect(stderrContains(r, 'W058')).toBe(false);
+  });
+
+  test('E055 fires when multi_user.enabled=true but solid_pod=false', () => {
+    const m = baseValid();
+    m.sovereign_mesh.solid_pod = false;
+    m.sovereign_mesh.multi_user = { enabled: true, provisioning_policy: 'closed' };
+    const r = runValidator(m);
+    expect(stderrContains(r, 'E055')).toBe(true);
+  });
+
+  test('E055 silent when solid_pod=true', () => {
+    const m = baseValid();
+    m.sovereign_mesh.solid_pod = true;
+    m.sovereign_mesh.multi_user = { enabled: true, provisioning_policy: 'closed' };
+    const r = runValidator(m);
+    expect(stderrContains(r, 'E055')).toBe(false);
+  });
+
+  test('E056 fires when invite-only is selected without a valid invite_kind', () => {
+    const m = baseValid();
+    m.sovereign_mesh.solid_pod = true;
+    m.sovereign_mesh.multi_user = {
+      enabled: true,
+      provisioning_policy: 'invite-only',
+      invite_kind: 'not-a-number'
+    };
+    const r = runValidator(m);
+    expect(stderrContains(r, 'E056')).toBe(true);
+  });
+
+  test('E057 fires when open policy has max_users <= 0', () => {
+    const m = baseValid();
+    m.sovereign_mesh.solid_pod = true;
+    m.sovereign_mesh.multi_user = {
+      enabled: true,
+      provisioning_policy: 'open',
+      max_users: 0
+    };
+    const r = runValidator(m);
+    expect(stderrContains(r, 'E057')).toBe(true);
+  });
+
+  test('W058 fires when provisioning_policy="open"', () => {
+    const m = baseValid();
+    m.sovereign_mesh.solid_pod = true;
+    m.sovereign_mesh.multi_user = {
+      enabled: true,
+      provisioning_policy: 'open',
+      max_users: 100
+    };
+    const r = runValidator(m);
+    expect(stderrContains(r, 'W058')).toBe(true);
+  });
+});

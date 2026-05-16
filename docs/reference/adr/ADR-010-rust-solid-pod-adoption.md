@@ -418,3 +418,17 @@ cannot bypass relay limits by hitting the pod HTTP surface directly.
 The stack is coherent because every layer speaks the same identity. With `did-nostr` absorbed from Sprint 6, that identity has a single canonical resolvable form: `did:nostr:<pubkey>` (ADR-013). The HTTP surface (NIP-98), the WebSocket surface (NIP-42), the pod's WAC policies, and the relay's allowlist all reference the same DID. An external agent that can sign a Nostr event can reach the relay, be identified by the pod, have its message persisted to a content-addressed mailbox bounded by a declared quota, and have its outbound notifications signed under RFC 9421 — no federated identity provider, no OAuth flow, no third-party broker.
 
 `solid-pod-rs` is the piece that was missing: until this ADR, the stack had identity and messaging but its "durable" layer was a 108-line Python stub that ignored WAC. The promotion is not an optimisation — it closes the stack.
+
+---
+
+## Addendum (2026-05-16): multi-tenant pod model — ADR-017
+
+ADR-010 established `solid-pod-rs` as the durable layer with one pod per
+operator. [ADR-017](ADR-017-multi-tenant-did-nostr-pods.md) extends the
+deployment shape to multi-tenant: a single agentbox container hosts a pod
+per `did:nostr` user pubkey at `pods/<pubkey-hex>/`, with WAC isolation
+inherited from solid-pod-rs. No changes to solid-pod-rs are required —
+the pod tree convention has always been per-pubkey; ADR-017 populates it
+with more pubkeys. The combined-work AGPL-3.0-only obligation
+established here is reasserted by
+[ADR-016](ADR-016-license-consolidation.md).

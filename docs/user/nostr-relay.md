@@ -68,6 +68,14 @@ is persisted to:
 pods/<npub>/events/inbox/<event-id>.json
 ```
 
+> **Multi-tenant deployments (ADR-017 / PRD-007).** When
+> `[sovereign_mesh.multi_user].enabled = true`, the path `<npub>` is the
+> recipient pubkey from the event's `p` tag, not necessarily the
+> operator. A single agentbox container can host pods for many
+> `did:nostr` identities, each receiving its own inbox stream. See
+> [multi-user-pods.md](multi-user-pods.md). When the flag is off
+> (default), behaviour is unchanged and `<npub>` is always the operator.
+
 Every outbound event starts life at:
 
 ```

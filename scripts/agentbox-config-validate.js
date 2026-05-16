@@ -608,6 +608,67 @@ if (sovereignMesh.telegram_mirror === true) {
   }
 }
 
+// ─── E055-E057 + W058: multi-tenant did:nostr pods (ADR-017 / PRD-007) ───────
+//
+// Note: the original ADR-017 draft reserved E034-E036+W037 but those codes are
+// already taken by the consultants block (see lines 391-404). Next free
+// contiguous slot is E055/E056/E057+W058 (E054 is the highest used code).
+//
+// E055 — [sovereign_mesh.multi_user].enabled=true requires sovereign_mesh.solid_pod=true.
+//        Per-user pods are stored in solid-pod-rs trees; without the pod
+//        backend there is nothing to multi-tenant.
+// E056 — provisioning_policy="invite-only" requires invite_kind to be a valid
+//        Nostr event kind (0 ≤ kind ≤ 65535). Default 30910.
+// E057 — provisioning_policy="open" requires max_users > 0. Open signup
+//        without a cap is an unbounded resource sink.
+// W058 — provisioning_policy="open" raises a warning: any successfully
+//        AUTH'd pubkey gets a pod (homelab / open-signup mode). Operators
+//        should prefer "invite-only" until PRD-008 quota work lands.
+{
+  const mu = (sovereignMesh.multi_user) || {};
+  if (mu.enabled === true) {
+    if (sovereignMesh.solid_pod !== true) {
+      errors.push({
+        code: 'E055',
+        message: 'E055: [sovereign_mesh.multi_user].enabled=true requires sovereign_mesh.solid_pod=true (per-user pods need the pod backend)'
+      });
+    }
+
+    const policy = mu.provisioning_policy || 'closed';
+    if (policy !== 'closed' && policy !== 'invite-only' && policy !== 'open') {
+      errors.push({
+        code: 'E056',
+        message: `E056: [sovereign_mesh.multi_user].provisioning_policy="${policy}" is not a recognised value (expected closed | invite-only | open)`
+      });
+    }
+
+    if (policy === 'invite-only') {
+      const inviteKind = mu.invite_kind;
+      const validKind = Number.isInteger(inviteKind) && inviteKind >= 0 && inviteKind <= 65535;
+      if (!validKind) {
+        errors.push({
+          code: 'E056',
+          message: `E056: [sovereign_mesh.multi_user].provisioning_policy="invite-only" requires invite_kind to be a valid Nostr kind (integer in 0..65535); got ${JSON.stringify(inviteKind)}`
+        });
+      }
+    }
+
+    if (policy === 'open') {
+      const cap = mu.max_users;
+      if (!Number.isInteger(cap) || cap <= 0) {
+        errors.push({
+          code: 'E057',
+          message: `E057: [sovereign_mesh.multi_user].provisioning_policy="open" requires max_users > 0 (open signup without a cap is an unbounded sink); got ${JSON.stringify(cap)}`
+        });
+      }
+      warnings.push({
+        code: 'W058',
+        message: 'W058: [sovereign_mesh.multi_user].provisioning_policy="open" — any successfully-AUTH\'d pubkey gets a pod; prefer "invite-only" until PRD-008 per-user quotas land'
+      });
+    }
+  }
+}
+
 // ─── E022-E025: privacy filter coherence (ADR-008) ────────────────────────────
 //
 // E022 — privacy_filter.enabled=true requires mode != "off".

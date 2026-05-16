@@ -496,6 +496,48 @@
             "info_description": { "type": "string" },
             "info_contact":     { "type": "string" }
           }
+        },
+        "multi_user": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Multi-tenant did:nostr per-user pods. See ADR-017 / PRD-007.",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "When true, agentbox hosts per-user pods at pods/<pubkey-hex>/. Default false (single-tenant)."
+            },
+            "provisioning_policy": {
+              "type": "string",
+              "enum": ["closed", "invite-only", "open"],
+              "description": "Trust model for accepting new user pubkeys. See E055/E056/E057/W058."
+            },
+            "invite_kind": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 65535,
+              "description": "NIP-58 invite event kind. Default 30910."
+            },
+            "invite_validity_seconds": {
+              "type": "integer",
+              "minimum": 60,
+              "description": "Maximum invite validity window in seconds."
+            },
+            "max_users": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Safety cap on number of provisioned pods. Required > 0 when provisioning_policy='open' (E057)."
+            },
+            "suspend_inactive_after_days": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Admin policy: pods inactive for N days are auto-suspended. 0 disables."
+            },
+            "admin_pubkeys": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Pubkeys (hex or npub) granted admin role over user pods. Operator pubkey auto-added at boot."
+            }
+          }
         }
       }
     },

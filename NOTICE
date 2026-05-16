@@ -1,0 +1,77 @@
+agentbox
+Copyright (c) 2024-2026 DreamLab AI / Dr John O'Hare
+
+This product is licensed under the GNU Affero General Public License v3.0 only
+(AGPL-3.0-only). See the LICENSE file for the full text.
+
+────────────────────────────────────────────────────────────────────────────────
+Combined-work licensing
+────────────────────────────────────────────────────────────────────────────────
+
+agentbox is distributed as a combined work that links — at the binary and
+network-service level — with `solid-pod-rs` (AGPL-3.0-only). Under AGPL §10
+(combined-work licensing) and §13 (network corresponding source), the combined
+work is offered under the AGPL-3.0-only.
+
+Every first-party agentbox component (this repository) is licensed
+AGPL-3.0-only. Third-party dependencies retain their upstream licenses; this
+NOTICE attributes the headline components as required by AGPL §5(a-c).
+
+────────────────────────────────────────────────────────────────────────────────
+First-party components (AGPL-3.0-only)
+────────────────────────────────────────────────────────────────────────────────
+
+  • agentbox manifest validator                 (scripts/, schema/)
+  • agentbox management-api                     (management-api/)
+  • agentbox MCP secure-scripts                 (mcp/)
+  • agentbox consultants                        (mcp/consultants/)
+  • agentbox HTTPS bridge                       (https-bridge/)
+  • agentbox browser container bridge           (browsercontainer/)
+  • agentbox AISP integration                   (aisp/)
+  • agentbox claude-zai wrapper                 (claude-zai/wrapper/)
+  • agentbox sovereign relay bridge             (mcp/nostr-bridge/)
+
+────────────────────────────────────────────────────────────────────────────────
+Headline third-party / vendored components
+────────────────────────────────────────────────────────────────────────────────
+
+  • solid-pod-rs                                AGPL-3.0-only
+      Rust Solid Protocol 0.11 server (WAC, LDP, Notifications, NIP-98 auth,
+      DID:nostr resolver). Linked at the binary/service level. Triggers the
+      combined-work AGPL classification of the agentbox distribution.
+      https://github.com/dreamlab-ai/solid-pod-rs
+
+  • nostr-rs-relay                              MIT (vendored upstream)
+      Embedded Nostr relay; vendored via Nix flake. Used at arm's length as a
+      network service; combined-work coupling is governed by the relay-bridge
+      adapter, not by library linkage.
+
+  • Privacy-filter middleware                   Apache-2.0 (vendored)
+      PII redaction layer; vendored from upstream privacy-filter; license
+      compatible with AGPL-3.0-only on combined-work consumption.
+
+  • Skills directory (skills/*)                 Various third-party
+      Each skill in `skills/` is a third-party SDK or template authored
+      upstream. Their licenses are retained as published; consult each
+      `skills/<name>/LICENSE` or `package.json` for terms. The combined-work
+      AGPL obligation applies to the agentbox distribution as a whole; skills
+      that are not invoked at runtime do not subordinate their upstream
+      licenses.
+
+────────────────────────────────────────────────────────────────────────────────
+Network-source correspondence (AGPL §13)
+────────────────────────────────────────────────────────────────────────────────
+
+Operators of network services built on agentbox (e.g. relays, pods, the
+management-api, the consultants MCP) must make the Corresponding Source of the
+agentbox distribution available to all users interacting over the network,
+including any modifications. The canonical upstream is:
+
+  https://github.com/dreamlab-ai/agentbox
+
+────────────────────────────────────────────────────────────────────────────────
+History
+────────────────────────────────────────────────────────────────────────────────
+
+  2026-05-16  ADR-016 (license consolidation) — all first-party code AGPL-3.0-only.
+              Eliminated remaining MIT designations from sub-package manifests.

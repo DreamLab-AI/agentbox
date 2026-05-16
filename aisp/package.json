@@ -23,7 +23,7 @@
     "agent-coordination"
   ],
   "author": "Integration by Multi-Agent Docker, Spec by Bradley Ross",
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "homepage": "https://gist.github.com/bar181/b02944bd27e91c7116c41647b396c4b8",
   "repository": {
     "type": "git",

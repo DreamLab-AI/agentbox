@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "agentbox manifest validator and CLI tools",
   "private": true,
+  "license": "AGPL-3.0-only",
   "scripts": {
     "validate": "node scripts/agentbox-config-validate.js",
     "test:config": "jest tests/config/semantic-rules.test.js --testEnvironment node"

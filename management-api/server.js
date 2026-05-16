@@ -776,6 +776,28 @@ async function start() {
       }
     }
 
+    // ── Multi-tenant did:nostr admin surface (ADR-017 / PRD-007) ────────────
+    // Mount /admin/users/* only when [sovereign_mesh.multi_user].enabled = true.
+    // Endpoints are 501 Not Implemented stubs in this scaffold pass; bodies
+    // land in the follow-on after solid-pod-rs alpha.12 ships.
+    {
+      const muCfg = (manifest.sovereign_mesh || {}).multi_user || {};
+      if (muCfg.enabled === true) {
+        try {
+          await app.register(require('./routes/admin-users'), { logger });
+          logger.info({
+            event: 'multi-user.admin-routes-mounted',
+            provisioning_policy: muCfg.provisioning_policy || 'closed',
+            max_users: muCfg.max_users,
+          }, 'Multi-tenant admin routes mounted (stubs return 501; see PRD-007)');
+        } catch (err) {
+          logger.error({ err: err.message }, 'Multi-tenant admin routes failed to mount');
+        }
+      } else {
+        logger.debug({ event: 'multi-user.disabled' }, 'Multi-tenant pod mode disabled (default); /admin/users/* not mounted');
+      }
+    }
+
     // ── Viewer slot (S12, PRD-006 §15) ──────────────────────────────────────
     // Resolves [linked_data.viewer] to a descriptor, mounts /lo/* with a
     // pane manifest endpoint and the bundled linkedobjects/browser bundle.
