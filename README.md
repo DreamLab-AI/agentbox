@@ -89,6 +89,7 @@ Your `agentbox.toml` manifest toggles capabilities on or off. Disabled features 
 | **Media and design** | Local ComfyUI (or external URL), ImageMagick, FFmpeg |
 | **Spatial and 3D** | QGIS geospatial analysis, Blender modelling, 3D Gaussian Splatting |
 | **Data science and docs** | PyTorch, Jupyter Lab, LaTeX, Mermaid rendering |
+| **Governance** | Agent Control Surface Protocol (kinds 31400-31405) — cross-repo human-in-the-loop integration with the DreamLab forum and VisionClaw's BrokerActor via the embedded relay |
 | **Operations** | OTLP tracing, Prometheus metrics (`:9191/metrics`), Tailscale VPN integration |
 
 ---
