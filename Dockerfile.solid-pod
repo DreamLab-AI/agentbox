@@ -1,0 +1,22 @@
+# syntax=docker/dockerfile:1
+# Stage 1: build solid-pod-rs-server with git feature
+FROM rust:1.85-slim-bookworm AS builder
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    pkg-config libssl-dev git && rm -rf /var/lib/apt/lists/*
+WORKDIR /src
+COPY . .
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/src/target \
+    cargo build --release --features git -p solid-pod-rs-server && \
+    cp target/release/solid-pod-rs-server /solid-pod-rs-server
+
+# Stage 2: minimal runtime
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates git && rm -rf /var/lib/apt/lists/*
+COPY --from=builder /solid-pod-rs-server /usr/local/bin/solid-pod-rs-server
+RUN useradd -r -u 1000 -m poduser
+USER poduser
+WORKDIR /var/lib/solid
+EXPOSE 8410
+ENTRYPOINT ["/usr/local/bin/solid-pod-rs-server"]

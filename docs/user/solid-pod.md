@@ -248,3 +248,4 @@ Full analysis: [`docs/developer/licensing.md`](../developer/licensing.md).
 - [Developer: sovereign mesh internals](../developer/sovereign-mesh.md)
 - [solid-pod-rs upstream](https://github.com/DreamLab-AI/solid-pod-rs)
 - [AGPL aggregation analysis](../developer/licensing.md)
+- [Native pod sidecar + Cloudflare Tunnel setup](native-solid-pod.md)
