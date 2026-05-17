@@ -396,6 +396,7 @@
           inetutils       # hostname, telnet, ftp, traceroute — minimal network diagnostics
           iproute2        # ip, ss — modern network introspection
           iputils         # ping, ping6, tracepath — basic reachability tests
+          docker-client   # docker CLI for talking to host daemon via mounted /var/run/docker.sock
           gnumake
           gcc
           clang
