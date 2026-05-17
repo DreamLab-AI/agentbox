@@ -219,6 +219,49 @@ PY
   fi
 }
 
+# Regenerate lib/solid-pod-rs.cargo-lock from the pinned rev.
+# Called after prefetch_solid_pod_rs so the source is already cached in
+# the Nix store. Uses a tmpdir clone to run `cargo generate-lockfile`
+# without polluting the workspace.
+regen_solid_pod_rs_lockfile() {
+  local file="${REPO_ROOT}/lib/solid-pod-rs.nix"
+  local lockfile="${REPO_ROOT}/lib/solid-pod-rs.cargo-lock"
+  local rev
+  rev=$(grep -oE '^\s*rev\s*=\s*"[^"]+"' "$file" | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+  [ -z "$rev" ] && { echo "could not parse rev from solid-pod-rs.nix"; return 1; }
+
+  # Check if the lockfile already covers this rev (version string in first package).
+  local cur_ver
+  cur_ver=$(grep -A1 '^name = "solid-pod-rs"' "$lockfile" 2>/dev/null | grep version | sed -E 's/.*"([^"]+)".*/\1/' || echo "")
+  local nix_ver
+  nix_ver=$(grep -oE '^\s*version\s*=\s*"[^"]+"' "$file" | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+  if [ "$cur_ver" = "$nix_ver" ] && grep -q "solid-pod-rs" "$lockfile" 2>/dev/null; then
+    echo "== solid-pod-rs Cargo.lock already at $nix_ver — skipping regen =="
+    return 0
+  fi
+
+  echo "== regenerating solid-pod-rs.cargo-lock for $nix_ver ($rev) =="
+  if [ "$dry_run" -ne 0 ]; then
+    echo "  (dry-run — would clone rev $rev and run cargo generate-lockfile)"
+    return 0
+  fi
+
+  local tmpdir
+  tmpdir=$(mktemp -d)
+  trap 'rm -rf "$tmpdir"' RETURN
+
+  git clone --quiet --depth 1 \
+    "https://github.com/DreamLab-AI/solid-pod-rs.git" \
+    --branch "v${nix_ver}" "$tmpdir" 2>/dev/null \
+    || git clone --quiet \
+         "https://github.com/DreamLab-AI/solid-pod-rs.git" \
+         "$tmpdir" 2>/dev/null && git -C "$tmpdir" checkout --quiet "$rev"
+
+  (cd "$tmpdir" && cargo generate-lockfile --quiet)
+  cp "$tmpdir/Cargo.lock" "$lockfile"
+  echo "  patched lib/solid-pod-rs.cargo-lock ($(wc -l < "$lockfile") lines)"
+}
+
 prefetch_nagual_qe() {
   local file="${REPO_ROOT}/lib/nagual-qe.nix"
   local rev
@@ -664,7 +707,7 @@ print('  patched srcHash = $sri')
 
 if [ -n "$target" ]; then
   case "$target" in
-    solid-pod-rs)         prefetch_solid_pod_rs ;;
+    solid-pod-rs)         prefetch_solid_pod_rs; regen_solid_pod_rs_lockfile ;;
     nagual-qe)            prefetch_nagual_qe ;;
     linkedobjects-browser) prefetch_linkedobjects_browser ;;
     *)                    prefetch_npm_service "$target" ;;
@@ -676,6 +719,7 @@ for svc in "${npm_services[@]}"; do
   prefetch_npm_service "$svc"
 done
 prefetch_solid_pod_rs
+regen_solid_pod_rs_lockfile
 prefetch_nagual_qe
 prefetch_linked_data_contexts
 prefetch_linkedobjects_browser

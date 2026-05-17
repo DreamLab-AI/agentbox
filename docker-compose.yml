@@ -43,6 +43,8 @@ services:
       - AGENTBOX_METRICS_PORT=9091
       - AGENTBOX_OTLP_ENDPOINT=
       - AGENTBOX_LOG_LEVEL=info
+      - SOLID_ADMIN_KEY=${SOLID_ADMIN_KEY:-}
+      - SOLID_ALLOWED_ORIGINS=${SOLID_ALLOWED_ORIGINS:-https://dreamlab-ai.com}
     # Baseline: supervisord runs as PID 1 root, with per-program `user=devuser`
     # drops on every long-running service. Root is required at boot for
     # tmpfs subdir creation, sudoers wrapper provisioning (chown 0:0 +

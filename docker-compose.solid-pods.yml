@@ -1,65 +1,21 @@
-# Solid pod native server + Cloudflare Tunnel sidecar.
+# Cloudflare Tunnel sidecar for the native pod mesh.
 #
-# Usage:
+# solid-pod-rs-server runs INSIDE the agentbox container (supervisord program
+# [solid-pod], built via lib/solid-pod-rs.nix alpha.15). This compose overlay
+# adds only the cloudflared connector that tunnels
+#   pods-native.dreamlab-ai.com → solid-pod-server:8484
+# into the agentbox network.
+#
+# Usage (from the agentbox directory):
 #   docker compose -f docker-compose.yml \
-#                  -f docker-compose.override.yml \
 #                  -f docker-compose.solid-pods.yml \
-#                  up -d solid-pod-server cloudflared-pod
+#                  --env-file .env.solid-pods \
+#                  up -d cloudflared-pod
 #
-# Required env vars (add to agentbox .env):
-#   CLOUDFLARE_TUNNEL_TOKEN   — from Cloudflare Zero Trust dashboard
-#   SOLID_ADMIN_KEY           — PSK for /_admin/provision/* endpoint
-#   SOLID_ALLOWED_ORIGINS     — comma-separated allowed CORS origins
-#                               e.g. "https://dreamlab-ai.com"
-#
-# The solid-pod-server container is built from ../solid-pod-rs source
-# via the Dockerfile.solid-pod multi-stage build.
+# Required env vars (.env.solid-pods):
+#   CLOUDFLARE_TUNNEL_TOKEN   — from Zero Trust → Tunnels → dreamlab-native-pods
 
 services:
-
-  solid-pod-server:
-    build:
-      context: ../solid-pod-rs
-      dockerfile: ../agentbox/Dockerfile.solid-pod
-    container_name: solid-pod-server
-    restart: unless-stopped
-
-    environment:
-      - RUST_LOG=info
-      # Public base URL (matches Cloudflare Tunnel hostname).
-      - JSS_BASE_URL=${SOLID_POD_PUBLIC_URL:-https://pods-native.dreamlab-ai.com}
-      # Storage: filesystem backend, data at /var/lib/solid/pods
-      - JSS_STORAGE_TYPE=fs
-      - JSS_STORAGE_ROOT=/var/lib/solid/pods
-      # Bind on all interfaces inside container.
-      - JSS_HOST=0.0.0.0
-      - JSS_PORT=8410
-      # CORS: only allow the forum origin.
-      - SOLID_ALLOWED_ORIGINS=${SOLID_ALLOWED_ORIGINS:-https://dreamlab-ai.com}
-      # Admin key for /_admin/provision/* (set in .env).
-      - SOLID_ADMIN_KEY=${SOLID_ADMIN_KEY:?SOLID_ADMIN_KEY must be set}
-
-    volumes:
-      # Pod data — shared with agentbox (same named volume).
-      - solid-pod-data:/var/lib/solid/pods
-
-    expose:
-      - "8410"
-
-    networks:
-      - pod-internal
-      - visionclaw
-
-    healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:8410/.well-known/solid"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
-
-    read_only: false
-    security_opt:
-      - no-new-privileges:true
 
   cloudflared-pod:
     image: cloudflare/cloudflared:latest
@@ -69,21 +25,9 @@ services:
     environment:
       - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN:?CLOUDFLARE_TUNNEL_TOKEN must be set}
     networks:
-      - pod-internal
-    depends_on:
-      solid-pod-server:
-        condition: service_healthy
+      - visionclaw
 
 networks:
-  pod-internal:
-    driver: bridge
-    internal: true   # cloudflared-pod and solid-pod-server only; not host-accessible
-
   visionclaw:
     external: true
     name: visionclaw_network
-
-volumes:
-  solid-pod-data:
-    external: true
-    name: agentbox-solid-data

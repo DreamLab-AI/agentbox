@@ -90,17 +90,13 @@ services:
       # on the host shell before `docker compose up`. Default routes to a
       # throwaway path so the line is harmless when HOST_CLAUDE_PATH is unset.
       - ${HOME}/.claude:${HOST_CLAUDE_PATH:-/home/devuser/.claude-host-link-noop}:rw
-      # Q21: Docker socket is intentionally NOT mounted here. The previous
-      # mount (`/var/run/docker.sock:/var/run/docker.sock:ro`) gave the
-      # in-container API consumer the ability to enumerate every container,
-      # image, volume, and network on the host — even read-only. Combined
-      # with SYS_ADMIN this is a host-escape surface.
-      #
-      # If a feature actually requires the socket (e.g. management-api
-      # /v1/agents/spawn), the recommended pattern is a docker-socket-proxy
-      # sidecar (tecnativa/docker-socket-proxy) restricted to specific
-      # GET endpoints. Drop this comment and replace with the proxy
-      # service if/when needed.
+      # Q21: Docker socket mount (accepted security trade-off — local dev host).
+      # Allows agentbox to orchestrate sibling containers on visionclaw_network.
+      # See ADR (Q21) for the documented escalation: host-escape risk in
+      # combination with SYS_ADMIN. On multi-tenant or hardened deployments,
+      # replace with a tecnativa/docker-socket-proxy sidecar restricted to
+      # specific GET endpoints.
+      - /var/run/docker.sock:/var/run/docker.sock:rw
       # X11 socket is provided by the desktop security exception's tmpfs
       # in the base compose (in-container VNC at :5902). Host X11
       # forwarding would mount /tmp/.X11-unix as a bind here, but that's

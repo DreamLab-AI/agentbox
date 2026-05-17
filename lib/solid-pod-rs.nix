@@ -35,21 +35,20 @@
 { lib, pkgs }:
 
 let
-  # Upstream tagged v0.4.0-alpha.5 at rev 298818e (2026-05-08).
-  # Ships git-http-backend (solid-pod-rs-git), did:nostr ↔ WebID
-  # resolver (solid-pod-rs-nostr), and the mashlib SolidOS data-browser
-  # module. See PRD-013 for integration rationale.
-  version = "0.4.0-alpha.5";
+  # alpha.15 (2026-05-17): CORS allowlist (--allowed-origins / SOLID_ALLOWED_ORIGINS),
+  # PSK admin provision endpoint (POST /_admin/provision/{pubkey}, --admin-key /
+  # SOLID_ADMIN_KEY), git control API (9 /_git/* REST routes), /.well-known/apps
+  # aggregation (JSS #464). Native pod mesh tier for dreamlab-ai.com.
+  version = "0.4.0-alpha.15";
 
-  # Pinned to v0.4.0-alpha.5 tag (298818e). When upstream tags v0.5.0
-  # this flips to a tag ref.
-  rev     = "298818e";
+  # Pinned to v0.4.0-alpha.15 tag (0c5fa42).
+  rev     = "0c5fa42";
 
-  # Placeholder — operator runs prefetch on first build:
+  # Run to refresh after rev bump:
   #   nix-prefetch-url --unpack --type sha256 \
-  #     https://github.com/DreamLab-AI/solid-pod-rs/archive/298818e.tar.gz
+  #     https://github.com/DreamLab-AI/solid-pod-rs/archive/0c5fa42.tar.gz
   #   nix hash convert --hash-algo sha256 --to sri <base32>
-  srcHash = "sha256-pfZVwmlEZvbAmGXh3HDtxbD1Y20SUfyM4wrmT2aEhvs=";
+  srcHash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
 
   # Upstream solid-pod-rs at v0.4.0-alpha.5 does not ship its
   # Cargo.lock (workspace builds without it locally because cargo
@@ -94,12 +93,15 @@ let
     "did-nostr"
     "rate-limit"
     "quota"
+    "git"               # git control API (/_git/* routes) + /.well-known/apps
+    "admin-provision"   # POST /_admin/provision/{pubkey} PSK endpoint (alpha.15)
     # ── Library-crate features via solid-pod-rs/<feature> ────────────
     "solid-pod-rs/nip98-schnorr"
     "solid-pod-rs/config-loader"
     "solid-pod-rs/acl-origin"
     "solid-pod-rs/webhook-signing"
     "solid-pod-rs/jss-v04"
+    "solid-pod-rs/cors-allowlist"  # SOLID_ALLOWED_ORIGINS support (alpha.15)
   ];
 
 in

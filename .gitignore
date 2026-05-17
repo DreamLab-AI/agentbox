@@ -134,3 +134,5 @@ skills/**/__pycache__/
 skills/**/.DS_Store
 skills/**/backups/
 portfinder-*.tgz
+
+.env.solid-pods

@@ -247,7 +247,9 @@ port                   = 8484
 bind                   = "0.0.0.0"
 storage                = "fs"                    # fs | memory | s3
 storage_root           = "/var/lib/solid"
-base_url               = "http://localhost:8484"
+# Public base URL — set to the Cloudflare Tunnel hostname when the native pod
+# mesh is active (SOLID_POD_PUBLIC_URL env overrides at runtime).
+base_url               = "https://pods-native.dreamlab-ai.com"
 enable_oidc            = false
 enable_schnorr_verify  = true
 enable_dpop_cache      = false
@@ -264,6 +266,13 @@ enable_quota           = true     # per-pod storage quota via .quota.json sideca
 jss_v04_compat         = true     # preserve JavaScriptSolidServer v0.4 semantics
 rate_limit_per_sec     = 20       # per-connection ceiling when enable_rate_limit
 quota_default_bytes    = 10737418240  # 10 GiB per pod when enable_quota
+
+# Native pod mesh (alpha.15) — CORS allowlist + PSK admin provisioning.
+# allowed_origins: comma-separated list; empty = wildcard (dev only).
+# admin_key: must match NATIVE_POD_ADMIN_KEY CF Worker secret. Set via
+#            SOLID_ADMIN_KEY env var — never hardcode here.
+allowed_origins        = "https://dreamlab-ai.com"
+admin_key_env          = "SOLID_ADMIN_KEY"       # env var name; value from .env.solid-pods
 
 [skills.spatial_and_3d]
 qgis = true
