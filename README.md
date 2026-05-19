@@ -13,6 +13,8 @@
 
 **One TOML manifest. One Nix flake. One runtime contract.**
 
+**Maintainer**: [John O'Hare](https://github.com/jjohare) · **Upstream IP**: [Melvin Carvalho](https://github.com/melvincarvalho) ([JSS](https://github.com/JavaScriptSolidServer/JavaScriptSolidServer), [DID:Nostr](https://github.com/nicholasgasior/did-nostr)) · [MAINTAINERS.md](MAINTAINERS.md)
+
 [Quickstart](#quickstart) · [Why Agentbox](#why-agentbox) · [Capabilities](#included-capabilities) · [Sovereign Architecture](#the-sovereign-data-stack) · [Docs](docs/README.md)
 
 </div>
