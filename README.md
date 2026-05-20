@@ -319,32 +319,18 @@ Deeper reading:
 3. Prefer manifest-gated additions over ad hoc runtime mutation.
 4. Treat hardening, probe semantics, URI grammar, and linked-data surfaces as architectural changes — propose them via an ADR.
 
-## Ecosystem
+## Part of VisionFlow
 
-Agentbox is one of five federated repositories in the DreamLab open-source ecosystem, connected via `did:nostr` identity and a private Nostr relay mesh.
+Agentbox is the **harness engineering** substrate of the [VisionFlow](https://github.com/DreamLab-AI/VisionFlow) coordination platform — a federated architecture for human–AI intelligence built on `did:nostr` identity, OWL 2 EL reasoning, and Nostr message passing.
 
-```mermaid
-graph LR
-    SPR["solid-pod-rs<br/><i>Foundation</i>"] -->|dep| NRF["nostr-rust-forum<br/><i>Forum Kit</i>"]
-    SPR -->|dep| AB["agentbox<br/><i>Agent Container</i>"]
-    SPR -->|dep| VC["VisionClaw<br/><i>Integration Substrate</i>"]
-    NRF -->|kit| DW["dreamlab-ai-website<br/><i>Deployment</i>"]
-    AB <-.->|"relay mesh"| VC
-    AB <-.->|"relay mesh"| NRF
-    VC <-.->|"relay mesh"| NRF
-
-    style AB fill:#4a9eff,stroke:#2563eb,color:#fff
-```
-
-| Repository | Role | Key Technology |
-|---|---|---|
-| [solid-pod-rs](https://github.com/DreamLab-AI/solid-pod-rs) | Foundation library | Solid Protocol, DID:Nostr, WAC |
-| [nostr-rust-forum](https://github.com/DreamLab-AI/nostr-rust-forum) | Forum kit | 11 `nostr-bbs-*` Rust crates, CF Workers |
-| **[agentbox](https://github.com/DreamLab-AI/agentbox)** | **Agent container** | **Nix, nostr-rs-relay, mesh peer** |
-| [VisionClaw](https://github.com/DreamLab-AI/VisionClaw) | Integration substrate | Knowledge graph, GPU physics, XR |
-| [dreamlab-ai-website](https://github.com/DreamLab-AI/dreamlab-ai-website) | Branded deployment | React SPA, WASM forum, `forum-config/` |
-
-All five share `did:nostr:<hex-pubkey>` as the universal identity primitive and communicate via IS-Envelope messages over a private Nostr relay mesh.
+| Substrate | Repository | Role |
+|:----------|:-----------|:-----|
+| **VisionFlow** | [DreamLab-AI/VisionFlow](https://github.com/DreamLab-AI/VisionFlow) | Ecosystem guide and coordination architecture |
+| **VisionClaw** | [DreamLab-AI/VisionClaw](https://github.com/DreamLab-AI/VisionClaw) | Knowledge engineering — OWL 2 EL, 92 CUDA kernels, XR |
+| **Agentbox** | **[DreamLab-AI/agentbox](https://github.com/DreamLab-AI/agentbox)** | **Harness engineering — Nix, 90+ skills, sovereign pods** |
+| **solid-pod-rs** | [DreamLab-AI/solid-pod-rs](https://github.com/DreamLab-AI/solid-pod-rs) | Cryptographic foundation — JSS Rust port, DID:Nostr |
+| **nostr-rust-forum** | [DreamLab-AI/nostr-rust-forum](https://github.com/DreamLab-AI/nostr-rust-forum) | Forum kit — passkey auth, governance events |
+| **dreamlab-ai-website** | [DreamLab-AI/dreamlab-ai-website](https://github.com/DreamLab-AI/dreamlab-ai-website) | Branded deployment — React, WASM, Cloudflare Workers |
 
 Deeper reading: [Ecosystem integration guide](docs/developer/ecosystem.md)
 
