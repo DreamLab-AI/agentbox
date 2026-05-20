@@ -122,7 +122,7 @@ The socat proxy on 9223 rebinds Chrome's localhost-only CDP so `/json/list` retu
 
 ### Key details
 
-- **Rendering**: WebGL via Three.js, NOT WebGPU. GPU provides Vulkan/ANGLE hardware acceleration.
+- **Rendering**: Both WebGPU and WebGL are hardware-accelerated via Vulkan/ANGLE on RTX 6000. `--enable-unsafe-webgpu` allows WebGPU on HTTP origins; VisionFlow currently uses WebGL (Three.js).
 - **TREAT_AS_SECURE**: Env var lists HTTP origins Chrome treats as secure contexts (for SharedArrayBuffer). Expanded to `--unsafely-treat-insecure-origin-as-secure=` flags per origin.
 - **SharedArrayBuffer**: Requires `isSecureContext` (TREAT_AS_SECURE) + COOP/COEP headers from the target server.
 - **Network**: `visionclaw_network` (external). Agents reach MCP at `http://browsercontainer:8931/sse`.

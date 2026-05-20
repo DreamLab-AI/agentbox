@@ -101,6 +101,12 @@ alias n8n-mcp="npx -y n8n-mcp"
 alias mcp-playwright="npx -y @playwright/mcp@latest"
 alias mcp-chrome="npx -y chrome-devtools-mcp@latest"
 
+# === BROWSER SIDECAR (browsercontainer on visionclaw_network) ===
+alias cdp-sidecar="/opt/agentbox/skills/chrome-cdp/scripts/cdp-sidecar.sh"
+alias browser-health="curl -s http://browsercontainer:8931/health | python3 -m json.tool"
+alias browser-tabs="curl -s http://browsercontainer:9222/json/list | python3 -m json.tool"
+alias browser-gpu="docker exec browsercontainer nvidia-smi --query-gpu=name,memory.used,utilization.gpu --format=csv,noheader 2>/dev/null || echo 'sidecar not running'"
+
 # === PAL MCP (Multi-Model AI) ===
 alias pal="cd ~/.pal-mcp-server && ./run-server.sh"
 alias pal-setup="cd ~/.pal-mcp-server && uv sync"

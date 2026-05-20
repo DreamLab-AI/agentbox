@@ -1,31 +1,15 @@
 {
   "mcpServers": {
-    "playwright": {
-      "command": "node",
-      "args": ["${SKILL_PATH}/mcp-server/server.js"],
-      "env": {
-        "DISPLAY": ":1",
-        "CHROMIUM_PATH": "@@CHROMIUM_PATH@@",
-        "CHROMIUM_WEBGPU": "true",
-        "PLAYWRIGHT_HEADLESS": "false",
-        "SCREENSHOT_DIR": "/tmp/playwright-screenshots",
-        "PLAYWRIGHT_TIMEOUT": "30000",
-        "VIEWPORT_WIDTH": "1920",
-        "VIEWPORT_HEIGHT": "1080"
-      },
-      "type": "stdio"
+    "browser-gpu": {
+      "url": "http://browsercontainer:8931/sse",
+      "type": "sse"
     }
   },
-  "installCommands": [
-    "cd ${SKILL_PATH}/mcp-server && npm install"
-  ],
-  "dependencies": {
-    "system": ["chromium"],
-    "npm": ["playwright", "@modelcontextprotocol/sdk"]
-  },
+  "installCommands": [],
+  "dependencies": {},
   "displayRequirements": {
-    "display": ":1",
-    "vncPort": 5901,
-    "description": "Browser visible via VNC on port 5901"
+    "display": ":2",
+    "vncPort": 5903,
+    "description": "Browser visible via VNC on port 5903 (external browsercontainer sidecar)"
   }
 }

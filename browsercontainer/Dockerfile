@@ -56,10 +56,11 @@ RUN sudo -u devuser yay -S --noconfirm --needed google-chrome-beta \
 RUN mkdir -p /opt/browsercontainer /tmp/xdg-runtime /tmp/chromium-crashes /tmp/chrome-profile \
     && chown -R devuser:devuser /opt/browsercontainer /tmp/xdg-runtime /tmp/chromium-crashes /tmp/chrome-profile
 
-# Install chrome-devtools-mcp and ws (CDP diagnostics) globally
+# Install chrome-devtools-mcp and ws globally (runtime uses Chrome Beta from AUR)
 RUN npm install -g chrome-devtools-mcp@latest ws && rm -rf /root/.npm
 
 COPY --chown=devuser:devuser package.json /opt/browsercontainer/package.json
+RUN cd /opt/browsercontainer && npm install ws && chown -R devuser:devuser node_modules
 COPY --chown=devuser:devuser server.js /opt/browsercontainer/server.js
 COPY --chown=devuser:devuser launch-chromium.sh /opt/browsercontainer/launch-chromium.sh
 COPY --chown=devuser:devuser cdp-diagnose.js /opt/browsercontainer/cdp-diagnose.js

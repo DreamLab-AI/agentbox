@@ -1,5 +1,5 @@
 #!/bin/bash
-# Persistent Chrome with hardware-accelerated WebGL via Vulkan/ANGLE
+# Persistent Chrome with hardware-accelerated WebGPU + WebGL via Vulkan/ANGLE
 # Launched by supervisord; MCP server attaches via CDP on port 9222
 # socat proxy on 9223 exposes CDP to the Docker host
 # Prefers google-chrome-beta (149+, WebMCP), falls back to chromium
@@ -39,7 +39,8 @@ exec "$CHROME_BIN" \
     --disable-dev-shm-usage \
     --disable-breakpad \
     --test-type \
-    --enable-features=Vulkan,VulkanFromANGLE,DefaultANGLEVulkan,UseSkiaRenderer,SharedArrayBuffer \
+    --enable-features=Vulkan,VulkanFromANGLE,DefaultANGLEVulkan,UseSkiaRenderer,SharedArrayBuffer,WebGPU \
+    --enable-unsafe-webgpu \
     --use-angle=vulkan \
     --ignore-gpu-blocklist \
     --enable-gpu-rasterization \

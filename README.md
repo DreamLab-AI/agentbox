@@ -87,7 +87,7 @@ Your `agentbox.toml` manifest toggles capabilities on or off. Disabled features 
 | :--- | :--- |
 | **Agent toolchains** | `claude-code`, `ruflo`, `gemini-cli`, `agentic-qe`, `openai-codex` |
 | **Consultants** | Meta-router for named external consultations: DeepSeek, Perplexity, Z.AI, Gemini |
-| **Browser and web** | Playwright automation, agent-browser, QE integration |
+| **Browser and web** | External browsercontainer sidecar (chrome-devtools-mcp, Chrome Beta 149+, GPU-accelerated) |
 | **Media and design** | Local ComfyUI (or external URL), ImageMagick, FFmpeg |
 | **Spatial and 3D** | QGIS geospatial analysis, Blender modelling, 3D Gaussian Splatting |
 | **Data science and docs** | PyTorch, Jupyter Lab, LaTeX, Mermaid rendering |

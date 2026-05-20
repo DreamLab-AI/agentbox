@@ -1,7 +1,10 @@
 ---
 name: browser
-description: "Web browser automation with AI-optimised snapshots for claude-flow agents. Use when navigating web pages, quick scraping, or form-filling in headless mode."
-version: 1.0.0
+description: >
+  Browser automation via the external browsercontainer sidecar (chrome-devtools-mcp).
+  Use for navigating web pages, screenshots, accessibility snapshots, form-filling,
+  JavaScript evaluation, and WebGPU rendering validation. Connects over MCP SSE.
+version: 2.0.0
 triggers:
   - /browser
   - browse
@@ -9,206 +12,85 @@ triggers:
   - scrape
   - navigate
   - screenshot
-tools:
-  - browser/open
-  - browser/snapshot
-  - browser/click
-  - browser/fill
-  - browser/screenshot
-  - browser/close
 ---
 
 # Browser Automation Skill
 
-Web browser automation using agent-browser with AI-optimised snapshots. Reduces context by 93% using element refs (@e1, @e2) instead of full DOM.
+All browser automation runs on the external `browsercontainer` sidecar via
+`chrome-devtools-mcp` (40+ tools) over MCP SSE. No local browser is installed
+in the agentbox image.
+
+## Connection
+
+```
+MCP SSE:  http://browsercontainer:8931/sse   (chrome-devtools-mcp)
+CDP:      browsercontainer:9222              (raw Chrome DevTools Protocol)
+VNC:      localhost:5903                     (visual debugging, Display :2)
+```
+
+Auto-registered at boot as `browser-gpu` in `.mcp.json`. Manual registration:
+
+```bash
+claude mcp add browser-gpu --transport sse http://browsercontainer:8931/sse
+```
+
+## When To Use
+
+- Page navigation, clicking, typing, form fills
+- Screenshots and accessibility snapshots
+- JavaScript evaluation in page context
+- WebGPU/WebGL rendering validation
+- Console log monitoring
+- Multi-tab workflows
 
 ## When Not To Use
 
-- For WebGPU/GPU-accelerated browser testing -- use the browser-sidecar container (Playwright MCP SSE at browser-sidecar:8931)
-- For choosing between browser tools -- use the browser-automation meta skill for guided selection
-- For full Playwright API access with visual testing on Display :1 -- use the playwright skill instead
-- For inspecting live Chromium sessions via CDP -- use the chrome-cdp skill instead
-- For fetching and summarising web page content without interaction -- use the web-summary or gemini-url-context skills instead
-- For API testing or HTTP requests that do not require a browser -- use curl or httpx directly
-- For scraping JavaScript-heavy pages that need Playwright's full API -- use the playwright skill instead
+- Fetching page content without interaction -- use `web-summary` or `gemini-url-context`
+- API testing without a browser -- use `curl` or `httpx`
+- Raw CDP protocol scripting -- use the **chrome-cdp** skill
+- QE-grade typed assertions, visual-diff baselines -- use **qe-browser**
 
-## Core Workflow
+## Key Tools
 
-```bash
-# 1. Navigate to page
-agent-browser open <url>
+### `browser_snapshot` (preferred for LLM interaction)
+Returns an accessibility tree -- structured, deterministic, no vision model needed.
 
-# 2. Get accessibility tree with element refs
-agent-browser snapshot -i    # -i = interactive elements only
+### `browser_take_screenshot`
+Capture viewport or full-page screenshot as PNG/JPEG.
 
-# 3. Interact using refs from snapshot
-agent-browser click @e2
-agent-browser fill @e3 "text"
+### `browser_navigate`
+Navigate to a URL.
 
-# 4. Re-snapshot after page changes
-agent-browser snapshot -i
+### `browser_click` / `browser_type` / `browser_fill_form`
+Interact with page elements.
+
+### `browser_evaluate`
+Execute JavaScript in the page context.
+
+### `browser_console_messages`
+Read browser console output.
+
+## Quick Start
+
+```javascript
+browser_navigate({ url: "https://example.com" })
+browser_snapshot()
+browser_take_screenshot({ filename: "page.png", fullPage: true })
 ```
 
-## Quick Reference
+## Sidecar Management
 
-### Navigation
-| Command | Description |
-|---------|-------------|
-| `open <url>` | Navigate to URL |
-| `back` | Go back |
-| `forward` | Go forward |
-| `reload` | Reload page |
-| `close` | Close browser |
-
-### Snapshots (AI-Optimised)
-| Command | Description |
-|---------|-------------|
-| `snapshot` | Full accessibility tree |
-| `snapshot -i` | Interactive elements only (buttons, links, inputs) |
-| `snapshot -c` | Compact (remove empty elements) |
-| `snapshot -d 3` | Limit depth to 3 levels |
-| `screenshot [path]` | Capture screenshot (base64 if no path) |
-
-### Interaction
-| Command | Description |
-|---------|-------------|
-| `click <sel>` | Click element |
-| `fill <sel> <text>` | Clear and fill input |
-| `type <sel> <text>` | Type with key events |
-| `press <key>` | Press key (Enter, Tab, etc.) |
-| `hover <sel>` | Hover element |
-| `select <sel> <val>` | Select dropdown option |
-| `check/uncheck <sel>` | Toggle checkbox |
-| `scroll <dir> [px]` | Scroll page |
-
-### Get Info
-| Command | Description |
-|---------|-------------|
-| `get text <sel>` | Get text content |
-| `get html <sel>` | Get innerHTML |
-| `get value <sel>` | Get input value |
-| `get attr <sel> <attr>` | Get attribute |
-| `get title` | Get page title |
-| `get url` | Get current URL |
-
-### Wait
-| Command | Description |
-|---------|-------------|
-| `wait <selector>` | Wait for element |
-| `wait <ms>` | Wait milliseconds |
-| `wait --text "text"` | Wait for text |
-| `wait --url "pattern"` | Wait for URL |
-| `wait --load networkidle` | Wait for load state |
-
-### Sessions
-| Command | Description |
-|---------|-------------|
-| `--session <name>` | Use isolated session |
-| `session list` | List active sessions |
-
-## Selectors
-
-### Element Refs (Recommended)
 ```bash
-# Get refs from snapshot
-agent-browser snapshot -i
-# Output: button "Submit" [ref=e2]
-
-# Use ref to interact
-agent-browser click @e2
+agentbox.sh browsercontainer up        # start
+agentbox.sh browsercontainer health    # check all 5 services
+agentbox.sh browsercontainer cdp       # list CDP tabs
+agentbox.sh browsercontainer shell     # shell into container
+agentbox.sh browsercontainer rebuild   # full rebuild
 ```
 
-### CSS Selectors
+## Health Check
+
 ```bash
-agent-browser click "#submit"
-agent-browser fill ".email-input" "test@test.com"
+curl -s http://browsercontainer:8931/health
+curl -s http://browsercontainer:9222/json/list | jq '.[].url'
 ```
-
-### Semantic Locators
-```bash
-agent-browser find role button click --name "Submit"
-agent-browser find label "Email" fill "test@test.com"
-agent-browser find testid "login-btn" click
-```
-
-## Examples
-
-### Login Flow
-```bash
-agent-browser open https://example.com/login
-agent-browser snapshot -i
-agent-browser fill @e2 "user@example.com"
-agent-browser fill @e3 "password123"
-agent-browser click @e4
-agent-browser wait --url "**/dashboard"
-```
-
-### Form Submission
-```bash
-agent-browser open https://example.com/contact
-agent-browser snapshot -i
-agent-browser fill @e1 "John Doe"
-agent-browser fill @e2 "john@example.com"
-agent-browser fill @e3 "Hello, this is my message"
-agent-browser click @e4
-agent-browser wait --text "Thank you"
-```
-
-### Data Extraction
-```bash
-agent-browser open https://example.com/products
-agent-browser snapshot -i
-# Iterate through product refs
-agent-browser get text @e1  # Product name
-agent-browser get text @e2  # Price
-agent-browser get attr @e3 href  # Link
-```
-
-### Multi-Session (Swarm)
-```bash
-# Session 1: Navigator
-agent-browser --session nav open https://example.com
-agent-browser --session nav state save auth.json
-
-# Session 2: Scraper (uses same auth)
-agent-browser --session scrape state load auth.json
-agent-browser --session scrape open https://example.com/data
-agent-browser --session scrape snapshot -i
-```
-
-## Integration with Claude Flow
-
-### MCP Tools
-All browser operations are available as MCP tools with `browser/` prefix:
-- `browser/open`
-- `browser/snapshot`
-- `browser/click`
-- `browser/fill`
-- `browser/screenshot`
-- etc.
-
-### Memory Integration
-```bash
-# Store successful patterns
-npx @claude-flow/cli memory store --namespace browser-patterns --key "login-flow" --value "snapshot->fill->click->wait"
-
-# Retrieve before similar task
-npx @claude-flow/cli memory search --query "login automation"
-```
-
-### Hooks
-```bash
-# Pre-browse hook (get context)
-npx @claude-flow/cli hooks pre-edit --file "browser-task.ts"
-
-# Post-browse hook (record success)
-npx @claude-flow/cli hooks post-task --task-id "browse-1" --success true
-```
-
-## Tips
-
-1. **Always use snapshots** - They're optimised for AI with refs
-2. **Prefer `-i` flag** - Gets only interactive elements, smaller output
-3. **Use refs, not selectors** - More reliable, deterministic
-4. **Re-snapshot after navigation** - Page state changes
-5. **Use sessions for parallel work** - Each session is isolated

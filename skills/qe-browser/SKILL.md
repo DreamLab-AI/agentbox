@@ -31,10 +31,10 @@ aqe init
 |------|-----|
 | QE-grade typed assertions, visual regression | **qe-browser** (this skill) |
 | Quick scraping, form fill, minimal context | `browser` |
-| Full Playwright API, screenshots, Display :1 | `playwright` |
+| Full browser automation, screenshots (sidecar) | `playwright` |
 | Inspect live logged-in Chromium tabs | `chrome-cdp` |
 | Unsure which browser tool | `browser-automation` |
-| WebGPU/GPU rendering tests | `browser-sidecar` (Playwright MCP SSE) |
+| WebGPU/GPU rendering tests | `browsercontainer` (chrome-devtools-mcp SSE) |
 
 ## AQE Fleet Integration
 

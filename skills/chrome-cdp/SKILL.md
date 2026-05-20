@@ -1,109 +1,189 @@
 ---
 name: chrome-cdp
 description: >
-  Connect to live Chromium/Chrome browser sessions via Chrome DevTools Protocol.
-  Lightweight CDP CLI with persistent per-tab daemons, no Puppeteer dependency.
-  Use when you need to inspect, debug, or interact with pages already open in
-  Chromium, access logged-in sessions, or execute raw CDP commands. Works with
-  100+ tabs reliably. Requires Chromium with remote debugging enabled.
+  Connect to Chrome/Chromium via Chrome DevTools Protocol — locally or to the
+  browsercontainer GPU sidecar (Chrome Beta 149+, NVIDIA Vulkan/ANGLE,
+  chrome-devtools-mcp 40+ tools). Use for WebGPU/WebGL testing on hardware GPU,
+  console monitoring, JS evaluation, screenshots, performance traces, and
+  raw CDP access to live browser sessions.
 ---
 
 # Chrome CDP Skill
 
-Lightweight Chrome DevTools Protocol CLI. Connects directly via WebSocket to live Chromium sessions -- no Puppeteer, no fresh browser, instant connection to tabs you already have open.
+Lightweight Chrome DevTools Protocol CLI. Connects directly via WebSocket to live Chrome sessions — no Puppeteer, instant connection to existing tabs.
 
-## When Not To Use
+## Two Chrome Targets
 
-- For GPU-accelerated WebGPU testing -- use the browser-sidecar container (native NVIDIA Vulkan, Playwright MCP at browser-sidecar:8931)
-- For launching a fresh browser and automating forms/scraping -- use the browser or playwright skills instead
-- For AI-optimised accessibility snapshots without CDP setup -- use the browser skill (agent-browser) instead
-- For visual testing with screenshots on Display :1 -- use the playwright skill instead
-- For debugging host web servers from inside Docker -- use the host-webserver-debug skill instead
-- For simple page content fetching -- use curl, web-summary, or gemini-url-context instead
+| Target | Address (from agentbox) | Address (from host) | Use Case |
+|--------|------------------------|---------------------|----------|
+| **browsercontainer sidecar** | `browsercontainer:9223` | `localhost:9222` | All browser automation — WebGPU/WebGL, screenshots, DOM |
 
-## Prerequisites
+No local browser is installed in agentbox. All CDP goes through the sidecar.
 
-Chromium must be running with remote debugging enabled:
+**WebGPU note:** `about:blank` and `data:` URIs do not support WebGPU.
+Navigate to a real HTTP URL first (`localhost`/`127.0.0.1` are secure by default;
+other HTTP origins need `TREAT_AS_SECURE` in docker-compose.browsercontainer.yml).
+
+## Quick Start — Sidecar (Recommended)
 
 ```bash
-# Option A: Launch Chromium with remote debugging (headless)
-chromium --remote-debugging-port=9222 --no-sandbox --headless &
+# Ensure sidecar is running
+agentbox.sh browsercontainer up
+agentbox.sh browsercontainer health
 
-# Option B: Launch on VNC display with debugging
+# List tabs in sidecar Chrome
+scripts/cdp-sidecar.sh list
+
+# Open your WebGPU app
+scripts/cdp-sidecar.sh open http://192.168.2.132:3001
+
+# Screenshot
+scripts/cdp-sidecar.sh shot <target>
+
+# Accessibility snapshot
+scripts/cdp-sidecar.sh snap <target>
+
+# Evaluate JS (check WebGPU availability)
+scripts/cdp-sidecar.sh eval <target> "navigator.gpu ? 'WebGPU available' : 'No WebGPU'"
+
+# Check GPU renderer
+scripts/cdp-sidecar.sh eval <target> \
+  "document.createElement('canvas').getContext('webgl2')?.getParameter(0x1F01)"
+```
+
+## Quick Start — Local
+
+```bash
 DISPLAY=:1 chromium --remote-debugging-port=9222 --no-sandbox &
-
-# Option C: Connect to existing Chromium via DevToolsActivePort
-# Enable at chrome://inspect/#remote-debugging (toggle switch)
+scripts/cdp-connect.sh 9222 list
 ```
 
-Verify CDP is responding:
+## Quick Start — Any Remote Host
 
 ```bash
-curl -s http://localhost:9222/json/version | head -5
+scripts/cdp-connect.sh 192.168.2.48:9222 list
+
+# Or via env vars
+export BROWSER_CDP_HOST=browsercontainer BROWSER_CDP_PORT=9222
+scripts/cdp-connect.sh list
 ```
 
-## Quick Start
+## MCP SSE Bridge (chrome-devtools-mcp)
+
+The sidecar exposes Google's `chrome-devtools-mcp` (40+ tools) over SSE at port 8931.
+Each SSE connection spawns a dedicated `chrome-devtools-mcp` subprocess attached to the
+persistent Chrome instance. This is the preferred way for Claude Code agents to interact.
 
 ```bash
-# List all open tabs
-scripts/cdp.mjs list
+# Health check
+curl -s http://browsercontainer:8931/health | python3 -m json.tool
 
-# Take screenshot of a tab (use targetId prefix from list)
-scripts/cdp.mjs shot <target>
-
-# Get accessibility tree (compact, semantic)
-scripts/cdp.mjs snap <target>
-
-# Evaluate JavaScript in page context
-scripts/cdp.mjs eval <target> "document.title"
-
-# Navigate to URL
-scripts/cdp.mjs nav <target> https://example.com
-
-# Click element
-scripts/cdp.mjs click <target> "#submit-btn"
-
-# Type text at focused element
-scripts/cdp.mjs type <target> "Hello world"
+# From host
+curl -s http://localhost:8931/health
 ```
 
-The `<target>` is a unique prefix of the targetId shown by `list` (minimum 8 characters).
+Register as MCP server in `.mcp.json`:
 
-## Commands
+```json
+{
+  "mcpServers": {
+    "browser-gpu": {
+      "url": "http://browsercontainer:8931/sse"
+    }
+  }
+}
+```
+
+### chrome-devtools-mcp Tool Categories
+
+| Category | Examples | Description |
+|----------|---------|-------------|
+| Screenshots | `screenshot`, `captureFullPageScreenshot` | Viewport and full-page captures |
+| Accessibility | `getAccessibilityTree`, `getAccessibilitySnapshot` | Semantic page structure for LLMs |
+| Console | `getConsoleMessages`, `evaluateJavaScript` | Read console output, execute JS |
+| Performance | `startPerformanceTrace`, `stopPerformanceTrace` | Chrome DevTools performance traces |
+| Memory | `takeHeapSnapshot`, `getMemoryInfo` | Heap analysis |
+| DOM | `querySelector`, `getElementProperties` | DOM inspection |
+| Network | `getNetworkRequests`, `enableNetworkInterception` | Request monitoring |
+| Navigation | `navigateTo`, `reload`, `goBack` | Page navigation |
+| Input | `click`, `type`, `pressKey`, `dispatchMouseEvent` | User interaction |
+| WebMCP | `discoverWebMCPServers` | Chrome 149+ WebMCP server discovery |
+| Extensions | `listExtensions`, `enableExtension` | Extension management |
+
+Flags enabled on the sidecar: `--category-experimental-webmcp`, `--experimental-vision`,
+`--experimental-memory`.
+
+## Commands (cdp.mjs)
 
 | Command | Description |
 |---------|-------------|
 | `list` | List all open pages with targetIds |
-| `shot <target> [file]` | Screenshot viewport (saves to runtime dir) |
-| `snap <target>` | Accessibility tree snapshot (compact, semantic) |
-| `html <target> [selector]` | Full HTML or element HTML via CSS selector |
-| `eval <target> <expr>` | Evaluate JavaScript in page context |
+| `shot <target> [file]` | Screenshot viewport |
+| `snap <target>` | Accessibility tree snapshot |
+| `html <target> [selector]` | Full or element HTML |
+| `eval <target> <expr>` | Evaluate JS in page context |
 | `nav <target> <url>` | Navigate and wait for load |
-| `net <target>` | Network resource timing entries |
-| `click <target> <selector>` | Click element by CSS selector |
-| `clickxy <target> <x> <y>` | Click at CSS pixel coordinates |
-| `type <target> <text>` | Insert text at focus (works cross-origin) |
-| `loadall <target> <selector> [ms]` | Click "load more" until gone |
-| `evalraw <target> <method> [json]` | Raw CDP command passthrough |
+| `net <target>` | Network resource timing |
+| `click <target> <selector>` | Click by CSS selector |
+| `clickxy <target> <x> <y>` | Click at CSS pixel coords |
+| `type <target> <text>` | Insert text at focus |
+| `loadall <target> <selector> [ms]` | Repeat-click "load more" |
+| `evalraw <target> <method> [json]` | Raw CDP passthrough |
 | `open [url]` | Open new tab |
 | `stop [target]` | Stop daemon(s) |
 
+The `<target>` is a unique prefix of the targetId from `list` (minimum 8 chars).
+
+## WebGPU/WebGL Testing Workflow
+
+```bash
+# 1. Start sidecar
+agentbox.sh browsercontainer up
+
+# 2. Navigate to app
+scripts/cdp-sidecar.sh open http://192.168.2.132:3001
+sleep 5
+
+# 3. Check rendering state
+scripts/cdp-sidecar.sh eval <target> "JSON.stringify({
+  gpu: !!navigator.gpu,
+  secure: window.isSecureContext,
+  sab: typeof SharedArrayBuffer !== 'undefined',
+  canvases: document.querySelectorAll('canvas').length,
+  renderer: document.createElement('canvas').getContext('webgl2')?.getParameter(0x1F01)
+}, null, 2)"
+
+# 4. Screenshot
+scripts/cdp-sidecar.sh shot <target> /tmp/webgpu-test.png
+
+# 5. Performance check
+scripts/cdp-sidecar.sh eval <target> "JSON.stringify(
+  performance.getEntriesByType('resource')
+    .filter(r => r.duration > 100)
+    .map(r => ({ name: r.name.split('/').pop(), ms: Math.round(r.duration) }))
+)"
+
+# 6. Full diagnostic (runs inside sidecar)
+docker exec browsercontainer node /opt/browsercontainer/cdp-diagnose.js http://192.168.2.132:3001
+```
+
+## VNC Monitoring
+
+View the sidecar Chrome desktop for visual debugging:
+
+```bash
+open vnc://localhost:5903   # no password
+```
+
 ## Coordinates
 
-`shot` saves at native resolution: image px = CSS px x DPR. CDP input events use **CSS pixels**.
-
-```
-CSS px = screenshot px / DPR
-```
-
-The `shot` command prints the DPR for the current page.
+`shot` saves at native resolution: image px = CSS px × DPR. CDP input events use **CSS pixels**.
 
 ## How It Works
 
 ```
 ┌──────────────────────────────┐
-│  cdp.mjs CLI                 │
-│  (Node.js 22+, no deps)     │
+│  cdp.mjs CLI (agentbox)     │
 └──────────┬───────────────────┘
            │ Unix socket / named pipe
            ▼
@@ -113,77 +193,71 @@ The `shot` command prints the DPR for the current page.
 └──────────┬───────────────────┘
            │ WebSocket (raw CDP)
            ▼
-┌──────────────────────────────┐
-│  Chromium CDP endpoint       │
-│  ws://localhost:9222/...     │
-└──────────────────────────────┘
+┌──────────────────────────────────────┐
+│  Chrome CDP endpoint                 │
+│  browsercontainer:9222 (sidecar)     │
+│  or localhost:9222 (local)           │
+└──────────────────────────────────────┘
 ```
 
-On first access to a tab, a background daemon spawns and holds the CDP session open. Subsequent commands reuse the daemon silently. Daemons auto-exit after 20 minutes of inactivity.
+## Network Topology
 
-## Container-Specific Setup
-
-In the Nix-based container, Chromium is on `$PATH` (Nix store) and can run on Display :1 (VNC port 5901). Use `which chromium` to find the exact path.
-
-### Headless CDP Session
-
-```bash
-# Start headless Chromium with CDP
-chromium --remote-debugging-port=9222 --no-sandbox --headless --disable-gpu &
-sleep 2
-
-# Verify
-curl -s http://localhost:9222/json/list | python3 -m json.tool
-
-# Use
-scripts/cdp.mjs list
 ```
-
-### Visual CDP Session (VNC)
-
-```bash
-# Start Chromium on VNC display with CDP
-DISPLAY=:1 chromium --remote-debugging-port=9222 --no-sandbox https://example.com &
-sleep 3
-
-# Now visible on VNC :5901 AND controllable via CDP
-scripts/cdp.mjs list
-scripts/cdp.mjs shot <target>
+┌──────────────────────────────────────────────┐
+│  visionclaw_network                          │
+│                                              │
+│  ┌──────────┐      ┌─────────────────────┐   │
+│  │ agentbox │─────▶│  browsercontainer   │   │
+│  │          │      │  Chrome Beta 149+   │   │
+│  │ cdp.mjs  │      │  RTX 6000 GPU       │   │
+│  │ skills/  │      │                     │   │
+│  └──────────┘      │  :8931 MCP SSE      │   │
+│                     │  :9222 CDP          │   │
+│                     │  :5903 VNC          │   │
+│                     └─────────────────────┘   │
+└──────────────────────────────────────────────┘
+        Host ports: 9222 (CDP), 8931 (MCP), 5903 (VNC)
 ```
-
-### Using with agent-browser CDP Connect
-
-agent-browser can also connect to CDP endpoints:
-
-```bash
-# Connect agent-browser to existing CDP session
-agent-browser connect 9222
-
-# Then use agent-browser commands on the connected session
-agent-browser snapshot -i
-agent-browser click @e2
-```
-
-## Tips
-
-1. **Prefer `snap` over `html`** for understanding page structure -- it is compact and semantic
-2. **Use `type` not `eval`** to enter text in cross-origin iframes -- `click`/`clickxy` to focus first, then `type`
-3. **Avoid index-based selectors across calls** -- DOM can change between `eval` calls. Collect all data in one `eval` or use stable selectors
-4. **DPR matters for clickxy** -- divide screenshot coordinates by DPR (typically 2 on Retina) to get CSS pixel coordinates
-5. **Daemons are persistent** -- once a tab is accessed, subsequent commands are instant (no reconnect)
-6. **100+ tabs work** -- unlike Puppeteer-based tools that timeout during target enumeration
-7. **Raw CDP passthrough** -- `evalraw` lets you call any CDP domain method directly
 
 ## Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `CDP_PORT_FILE` | Auto-detected | Path to DevToolsActivePort file |
-| `CDP_HOST` | `127.0.0.1` | CDP host address |
+| `BROWSER_CDP_HOST` | `browsercontainer` | CDP target host for sidecar scripts |
+| `BROWSER_CDP_PORT` | `9222` | CDP target port |
+| `CDP_PORT_FILE` | Auto-detected | DevToolsActivePort file path |
+| `CDP_HOST` | `127.0.0.1` | Host used by cdp.mjs internally |
+
+## Troubleshooting
+
+```bash
+# Sidecar health
+curl -s http://browsercontainer:8931/health | python3 -m json.tool
+
+# CDP reachable?
+curl -s http://browsercontainer:9222/json/version
+
+# List tabs
+curl -s http://browsercontainer:9222/json/list | python3 -m json.tool
+
+# GPU check
+docker exec browsercontainer nvidia-smi
+
+# Restart sidecar
+agentbox.sh browsercontainer down && agentbox.sh browsercontainer up
+```
+
+## Tips
+
+1. **Prefer `snap` over `html`** — compact and semantic, better for LLMs
+2. **Use `type` not `eval`** for text in cross-origin iframes
+3. **Daemons are persistent** — subsequent commands to the same tab are instant
+4. **100+ tabs work** — unlike Puppeteer-based tools
+5. **`evalraw`** lets you call any CDP domain method directly
 
 ## Related Skills
 
-- **browser**: AI-optimised snapshots via agent-browser (lightweight, no CDP setup)
-- **playwright**: Full Playwright API with MCP server on Display :1
-- **host-webserver-debug**: HTTPS bridge for accessing Docker host servers
-- **browser-automation**: Meta skill for choosing the right browser tool
+- **browser-automation**: Meta skill — routing to the right browser tool
+- **browser**: Browser automation via browsercontainer sidecar (chrome-devtools-mcp SSE)
+- **playwright**: Browser automation via browsercontainer sidecar (chrome-devtools-mcp SSE)
+- **host-webserver-debug**: HTTPS bridge for Docker-to-host servers

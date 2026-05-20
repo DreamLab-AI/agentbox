@@ -89,10 +89,12 @@ VisionFlow's nginx.dev.conf adds these headers.
 
 ## Rendering
 
-VisionFlow uses **WebGL** (Three.js / React Three Fiber), not WebGPU.
-GPU passthrough provides hardware-accelerated rendering via Vulkan/ANGLE
-but is not strictly required — Chrome falls back to software rendering
-without it. The healthcheck treats missing GPU as a warning, not a failure.
+Both **WebGPU** and **WebGL** are hardware-accelerated via Vulkan/ANGLE on the
+NVIDIA RTX 6000. Chrome is launched with `--enable-features=WebGPU` and
+`--enable-unsafe-webgpu` so that WebGPU works on both HTTPS and HTTP origins.
+VisionFlow currently uses WebGL (Three.js / React Three Fiber).
+GPU passthrough is not strictly required — Chrome falls back to software
+rendering without it. The healthcheck treats missing GPU as a warning, not a failure.
 
 ## CDP diagnostics
 

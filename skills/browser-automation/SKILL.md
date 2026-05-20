@@ -1,128 +1,111 @@
 ---
 name: browser-automation
 description: >
-  Browser automation meta-skill. The official @playwright/mcp (61 tools) is the primary tool
-  for all browser automation: navigation, interaction, screenshots, accessibility snapshots,
-  network mocking, storage management, video recording, tracing, test assertions, coordinate-based
-  vision, PDF generation, and WebGPU support on VNC Display :1. Use when automating browsers,
-  testing UIs, scraping pages, or debugging web apps. For WebGPU/GPU-accelerated testing,
-  prefer the browser-sidecar container (Playwright MCP SSE at browser-sidecar:8931).
+  Browser automation meta-skill with GPU sidecar integration. Routes tasks to the
+  right tool: browsercontainer sidecar (Chrome Beta 149+, chrome-devtools-mcp 40+ tools,
+  NVIDIA Vulkan GPU at browsercontainer:8931) for all browser automation including
+  WebGPU/WebGL testing; chrome-cdp for raw CDP scripting. Use when automating
+  browsers, testing UIs, or debugging web apps.
 ---
 
-## GPU Browser Sidecar
+## GPU Browser Sidecar (browsercontainer)
 
-For tests requiring hardware GPU (WebGPU, WebGL, 3D rendering), use the `browser-sidecar`
-container instead of local Playwright. The sidecar runs Chromium with native NVIDIA Vulkan
-on GPU 2 and exposes Playwright MCP over SSE at `http://browser-sidecar:8931/sse`.
+For WebGPU/WebGL/3D testing with hardware GPU, use the `browsercontainer` sidecar.
+It runs Chrome Beta 149+ with NVIDIA RTX 6000 (Vulkan/ANGLE) and exposes
+Google's `chrome-devtools-mcp` (40+ tools) over MCP SSE.
 
-**Priority order:**
-1. **Sidecar** -- WebGPU/WebGL tests, VisionFlow app testing, GPU rendering validation
-2. **Local Playwright** -- simple page automation, form fills, DOM inspection (software rendering only)
-3. **agent-browser** -- quick accessibility snapshots, lightweight scraping
-
-# Browser Automation
-
-The official `@playwright/mcp` server is the primary browser automation tool. It replaces the
-previous fragmented approach (6 separate tools) with a single 61-tool MCP server from Microsoft.
-
-## When Not To Use
-
-- For fetching page content without browser interaction -- use WebFetch, curl, web-summary, or gemini-url-context
-- For API testing without a real browser -- use curl or httpx
-- For building UI components -- use daisyui or ui-ux-pro-max-skill
-
-## Primary Tool: @playwright/mcp
-
-**61 tools** covering everything previously split across 6 separate tools:
+### Connection from agentbox
 
 ```bash
-claude mcp add playwright -- playwright-mcp --no-sandbox --caps vision,pdf,devtools,testing,network,storage
+# MCP SSE (chrome-devtools-mcp — preferred for agents)
+http://browsercontainer:8931/sse
+
+# CDP direct (for cdp.mjs scripts)
+browsercontainer:9222
+
+# VNC desktop (visual debugging)
+vnc://localhost:5903   # from host
 ```
 
-See the `playwright` skill for full tool reference.
+### Register as MCP server
 
-### What It Covers
-
-| Capability | @playwright/mcp tools | Previously required |
-|---|---|---|
-| Navigate, click, type, fill forms | `browser_navigate`, `browser_click`, `browser_type`, `browser_fill_form` | agent-browser or custom Playwright |
-| Accessibility snapshots (LLM-friendly) | `browser_snapshot` | agent-browser snapshots |
-| Screenshots (viewport or full-page) | `browser_take_screenshot` | Custom Playwright or CDP |
-| JavaScript evaluation | `browser_evaluate`, `browser_run_code` | CDP eval or custom Playwright |
-| Network mocking, offline simulation | `browser_route`, `browser_network_state_set` | Not available |
-| Cookie/localStorage/sessionStorage CRUD | 15 `browser_cookie_*`/`browser_*storage_*` tools | Not available |
-| Video recording with chapter markers | `browser_start_video`, `browser_video_chapter` | Not available |
-| Performance tracing | `browser_start_tracing`, `browser_stop_tracing` | Not available |
-| Coordinate-based mouse interactions | 6 `browser_mouse_*` tools | Not available |
-| Test assertions | `browser_verify_*` (4 tools), `browser_generate_locator` | qe-browser only |
-| Tab management | `browser_tabs` | CDP only |
-| PDF generation | `browser_pdf_save` | Not available |
-| Drag and drop | `browser_drag` | Not available |
-| File upload | `browser_file_upload` | Not available |
-| Dialog handling | `browser_handle_dialog` | Not available |
-
-### Quick Start
-
-```bash
-# Navigate and take accessibility snapshot (preferred for LLM interaction)
-browser_navigate({ url: "https://example.com" })
-browser_snapshot()
-
-# Screenshot for visual verification
-browser_take_screenshot({ filename: "page.png", fullPage: true })
-
-# Execute Playwright code directly
-browser_run_code({ code: "async (page) => { await page.goto('https://example.com'); return await page.title(); }" })
-```
-
-## Retired / Niche Tools
-
-These remain installed but are no longer the recommended first choice:
-
-| Tool | Status | When still useful |
-|------|--------|-------------------|
-| **agent-browser** | Niche | Multi-session parallel scraping with `--session` isolation. Lighter context if you only need `@ref`-based interaction. |
-| **Chrome CDP** | Niche | Attaching to an already-running Chromium with remote debugging enabled (inspect live tabs with login state). |
-| **qe-browser** | Niche | AQE fleet integration, Vibium-specific features (14-pattern injection scan, semantic intent finder). |
-| **host-webserver-debug** | Niche | Docker-to-host HTTPS bridge. No overlap with Playwright. |
-| **Custom mcp-server/server.js** | Retired | Superseded by official @playwright/mcp (10 tools -> 61 tools). |
-
-## Environment
-
-| Setting | Value |
-|---------|-------|
-| Display | `:1` (i3 WM on Xvnc, 1920x1080) |
-| VNC | Port 5901, password: `agentbox` |
-| Chromium | 147.0.7727.137 (Nix, WebGPU-capable) |
-| Playwright | 1.60.0 |
-| @playwright/mcp | 0.0.70 |
-
-## WebGPU
-
-Chromium 147 supports WebGPU natively. The `@playwright/mcp` server launches Chromium with
-the configured args. For WebGPU demos/testing, add launch flags:
+Add to `.mcp.json` in the project or `~/.claude/.mcp.json` globally:
 
 ```json
 {
-  "browser": {
-    "launchOptions": {
-      "args": ["--enable-features=Vulkan,WebGPU", "--enable-unsafe-webgpu"]
+  "mcpServers": {
+    "browser-gpu": {
+      "url": "http://browsercontainer:8931/sse"
     }
   }
 }
 ```
 
+### Sidecar management
+
+```bash
+agentbox.sh browsercontainer up        # start
+agentbox.sh browsercontainer health    # check all 5 services
+agentbox.sh browsercontainer cdp       # list CDP tabs
+agentbox.sh browsercontainer shell     # shell into container
+agentbox.sh browsercontainer rebuild   # full rebuild
+agentbox.sh browsercontainer down      # stop
+```
+
+### chrome-devtools-mcp capabilities
+
+Screenshots, accessibility snapshots, console reading, JS evaluation, performance
+traces, memory profiling, DOM inspection, network monitoring, input simulation,
+WebMCP discovery (Chrome 149+), extension management. Experimental flags enabled:
+`--category-experimental-webmcp`, `--experimental-vision`, `--experimental-memory`.
+
+**Priority order:**
+1. **Sidecar (browsercontainer)** — all browser automation: WebGPU/WebGL tests, GPU rendering, console monitoring, performance traces, form automation, DOM inspection, accessibility snapshots
+
+## When Not To Use
+
+- Fetching page content without interaction — use WebFetch, curl, web-summary
+- API testing — use curl or httpx
+- Building UI components — use daisyui or ui-ux-pro-max-skill
+
+## Niche Tools
+
+| Tool | When still useful |
+|------|-------------------|
+| **Chrome CDP (cdp.mjs)** | Raw CDP to live tabs — especially sidecar via `cdp-sidecar.sh` |
+| **qe-browser** | AQE fleet integration, injection scanning |
+| **host-webserver-debug** | Docker-to-host HTTPS bridge |
+
+## Environment — Sidecar
+
+| Setting | Value |
+|---------|-------|
+| Display | `:2` (Xvfb, 1920x1080) |
+| VNC | Port 5903, no password |
+| Chrome | Beta 149+ (Arch, AUR) |
+| GPU | NVIDIA RTX 6000 (Vulkan/ANGLE) |
+| MCP | chrome-devtools-mcp via SSE bridge |
+| Network | `visionclaw_network` (Docker) |
+
 ## Decision Tree
 
 ```
 START: Browser task?
-|
-+- "Read page, no interaction" -> WebFetch / curl (no browser)
-|
-+- Everything else -> @playwright/mcp (61 tools)
-   |
-   +- Need multi-session parallel scraping? -> agent-browser --session
-   +- Need to attach to live Chromium tabs? -> Chrome CDP
-   +- Need AQE fleet injection scanning? -> qe-browser
-   +- Need Docker-to-host bridge? -> host-webserver-debug
+│
+├─ "Read page, no interaction" → WebFetch / curl
+│
+├─ WebGPU / WebGL / GPU rendering?
+│  └─ YES → browsercontainer sidecar
+│     ├─ Agent/MCP integration → http://browsercontainer:8931/sse
+│     ├─ Raw CDP scripting → cdp-sidecar.sh (chrome-cdp skill)
+│     └─ Visual debugging → VNC :5903
+│
+├─ Standard page automation?
+│  └─ browsercontainer sidecar (chrome-devtools-mcp via SSE)
+│
+├─ Attach to live logged-in tabs?
+│  └─ Chrome CDP (cdp.mjs / cdp-sidecar.sh)
+│
+└─ AQE fleet injection scanning?
+   └─ qe-browser
 ```

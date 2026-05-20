@@ -83,8 +83,7 @@ mkdir -p \
   /var/lib/agentbox/identities \
   /var/log/supervisor \
   /var/run \
-  /tmp/screenshots \
-  "$WORKSPACE/.cache/ms-playwright"
+  /tmp/screenshots
 
 # Best-effort chmod. The container has cap_drop: ALL plus a narrow cap_add
 # (SYS_ADMIN, NET_ADMIN), neither of which grants CAP_FOWNER, so chmod
@@ -357,9 +356,7 @@ fi
 if [ "${ENABLE_RUFLO:-false}" = "true" ] || [ "${ENABLE_CLAUDE_FLOW:-false}" = "true" ]; then
   _probe_closure /opt/agentbox/skills/lazy-fetch/mcp-server
 fi
-if [ "${ENABLE_PLAYWRIGHT:-false}" = "true" ]; then
-  _probe_closure /opt/agentbox/skills/playwright/mcp-server
-fi
+# playwright-mcp probe removed — browser automation via external sidecar
 if [ "${ENABLE_COMFYUI_BUILTIN:-false}" = "true" ]; then
   _probe_closure /opt/agentbox/skills/comfyui/mcp-server
 fi
@@ -439,6 +436,81 @@ MCPEOF
     chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
     echo "  [mcp] Wrote $_MCP_JSON → ruvector-mcp.cjs (ruvector-postgres + xinference)"
   fi
+fi
+
+# ── Browser sidecar MCP: register browsercontainer if reachable ──
+# The browsercontainer runs Chrome Beta 149+ with chrome-devtools-mcp over SSE.
+# Only add if the sidecar is on the network and .mcp.json exists to patch.
+_BROWSER_MCP_URL="http://browsercontainer:8931/sse"
+if [ -f "$_MCP_JSON" ] && ! grep -q "browser-gpu" "$_MCP_JSON" 2>/dev/null; then
+  if curl -fsS --max-time 3 "http://browsercontainer:8931/health" >/dev/null 2>&1; then
+    # Patch browser-gpu SSE server into existing .mcp.json using python3 (always available)
+    python3 -c "
+import json, sys
+with open('$_MCP_JSON') as f: cfg = json.load(f)
+cfg.setdefault('mcpServers', {})['browser-gpu'] = {'url': '$_BROWSER_MCP_URL'}
+with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
+" 2>/dev/null && echo "  [mcp] Added browser-gpu → $_BROWSER_MCP_URL" || true
+    chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
+  else
+    echo "  [mcp] browsercontainer not reachable — skipping browser-gpu MCP"
+  fi
+fi
+
+# ── Xinference embedding sidecar: wait for readiness + ensure model loaded ──
+# The ruvector-mcp.cjs server checks xinference exactly once at startup. If
+# xinference isn't ready by then, semantic search degrades to ILIKE for the
+# entire session. This gate ensures the model is loaded before any MCP server
+# process can start.
+: "${XINFERENCE_ENDPOINT:=http://xinference:9997}"
+: "${EMBEDDING_MODEL:=bge-small-en-v1.5}"
+: "${XINFERENCE_WAIT_SECS:=30}"
+
+_xinference_ok=false
+echo "  [xinference] Waiting for ${XINFERENCE_ENDPOINT} (up to ${XINFERENCE_WAIT_SECS}s)..."
+_xwait=0
+while [ "$_xwait" -lt "$XINFERENCE_WAIT_SECS" ]; do
+  if curl -fsS --max-time 3 "${XINFERENCE_ENDPOINT}/v1/models" >/dev/null 2>&1; then
+    _xinference_ok=true
+    break
+  fi
+  sleep 2
+  _xwait=$((_xwait + 2))
+done
+
+if [ "$_xinference_ok" = "true" ]; then
+  echo "  [xinference] Reachable — checking for model ${EMBEDDING_MODEL}..."
+  _models_json=$(curl -fsS --max-time 5 "${XINFERENCE_ENDPOINT}/v1/models" 2>/dev/null || echo '{}')
+  if echo "$_models_json" | grep -q "\"${EMBEDDING_MODEL}\""; then
+    echo "  [xinference] Model ${EMBEDDING_MODEL} already loaded"
+  else
+    echo "  [xinference] Model ${EMBEDDING_MODEL} not loaded — launching..."
+    _launch_resp=$(curl -fsS --max-time 60 -X POST \
+      "${XINFERENCE_ENDPOINT}/v1/models" \
+      -H 'Content-Type: application/json' \
+      -d "{\"model_name\":\"${EMBEDDING_MODEL}\",\"model_type\":\"embedding\"}" 2>&1) || true
+    if echo "$_launch_resp" | grep -q "\"model_uid\""; then
+      echo "  [xinference] Model launched successfully"
+    else
+      echo "  [xinference] WARN: model launch response: $_launch_resp"
+    fi
+  fi
+  # Verify embeddings actually work end-to-end
+  _emb_test=$(curl -fsS --max-time 10 -X POST \
+    "${XINFERENCE_ENDPOINT}/v1/embeddings" \
+    -H 'Content-Type: application/json' \
+    -d "{\"model\":\"${EMBEDDING_MODEL}\",\"input\":\"startup probe\"}" 2>/dev/null || echo '{}')
+  if echo "$_emb_test" | grep -q '"embedding"'; then
+    _emb_dim=$(echo "$_emb_test" | python3 -c "import sys,json; print(len(json.load(sys.stdin)['data'][0]['embedding']))" 2>/dev/null || echo "?")
+    echo "  [xinference] Embedding verified (model=${EMBEDDING_MODEL}, dim=${_emb_dim})"
+    export XINFERENCE_READY=true
+  else
+    echo "  [xinference] WARN: embedding probe failed — ruvector-mcp will fall back to ILIKE"
+    export XINFERENCE_READY=false
+  fi
+else
+  echo "  [xinference] WARN: not reachable after ${XINFERENCE_WAIT_SECS}s — semantic search will be degraded"
+  export XINFERENCE_READY=false
 fi
 
 # ── Codex CLI MCP wiring: write ruvector-mcp into ~/.codex/config.toml ──
@@ -625,6 +697,9 @@ export TMPDIR="${TMPDIR:-/home/devuser/workspace/.tmp}"
 export OPENSSL_DIR="${OPENSSL_DIR:-}"
 export OPENSSL_LIB_DIR="${OPENSSL_LIB_DIR:-}"
 export OPENSSL_INCLUDE_DIR="${OPENSSL_INCLUDE_DIR:-}"
+export XINFERENCE_ENDPOINT="${XINFERENCE_ENDPOINT}"
+export XINFERENCE_READY="${XINFERENCE_READY:-false}"
+export EMBEDDING_MODEL="${EMBEDDING_MODEL}"
 EOF
 mkdir -p "/home/devuser/workspace/.cargo" "/home/devuser/workspace/.tmp" 2>/dev/null || true
 chown devuser:devuser "/home/devuser/workspace/.cargo" "/home/devuser/workspace/.tmp" 2>/dev/null || true
