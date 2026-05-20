@@ -60,6 +60,7 @@
         spatialCfg = skillsCfg.spatial_and_3d or {};
         dataScienceCfg = skillsCfg.data_science or {};
         docsCfg = skillsCfg.docs or {};
+        researchCfg = skillsCfg.research or {};
         securityCfg = agentboxConfig.security or {};
         securityExceptions = securityCfg.exceptions or {};
         privacyFilterCfg = agentboxConfig.privacy_filter or {};
@@ -162,43 +163,24 @@
           bin             = "codebase-memory-mcp";
         };
 
-        # 7. agent-browser — gated by skills.browser.agent_browser.
-        #    CHROME_PATH injected via extraEnv so agent-browser finds Nix-store Chromium.
-        #    nix-prefetch-url https://registry.npmjs.org/agent-browser/-/agent-browser-0.26.0.tgz
-        agentBrowserPkg = mkNpmCli {
-          pkgName         = "agent-browser";
-          version         = "0.26.0";
-          sha256          = "sha256-ikjPQRDX3CwSwcTW0l4Lq9+jFgS1N/Bd8NyDX+L4VL8=";
-          nodeModulesHash = "sha256-UH8DzadtsBJZXyrDxlVdhECqCnjLrHmu/9KQoGT0/Ds=";
-          bin             = "agent-browser";
-          extraEnv = {
-            CHROME_PATH = "${pkgs.chromium}/bin/chromium";
-          };
-        };
-
-        # 8. playwright CLI — gated by skills.browser.playwright.
-        #    PLAYWRIGHT_BROWSERS_PATH uses nixpkgs browsers; no download at runtime.
-        #    Distinct from skills/playwright/mcp-server (local project, Phase 1).
-        #    nix-prefetch-url https://registry.npmjs.org/playwright/-/playwright-1.59.1.tgz
-        playwrightCliPkg = mkNpmCli {
-          pkgName         = "playwright";
-          version         = "1.59.1";
-          sha256          = "sha256-emiKclkp8jJbNFmXhFscpQrOd5jnauSbYVFvg+CDiO8=";
-          nodeModulesHash = "sha256-Tza83dU5GfNrV+MqZpfmIhBa3t0LLq1YLRgsO2St4U8=";
-          bin             = "playwright";
-          extraEnv = {
-            PLAYWRIGHT_BROWSERS_PATH = "${pkgs.playwright-driver.browsers}";
-          };
-        };
+        # 7–8. agent-browser and playwright CLI removed — all browser
+        #       automation routes through the external browsercontainer sidecar
+        #       (chrome-devtools-mcp at browsercontainer:8931/sse).
 
         # 9. @mermaid-js/mermaid-cli — gated by skills.docs.mermaid.
         #    Binary name is mmdc (upstream convention).
-        #    nix-prefetch-url https://registry.npmjs.org/%40mermaid-js/mermaid-cli/-/mermaid-cli-11.14.0.tgz
+        #    Bumped 11.14.0 -> 11.15.0 (2026-05-11) for `wardley-beta` quality
+        #    fixes: hyphenated names (PR #7642) + de-sanitisation (PR #7726).
+        #    11.15.0 is what GitHub Markdown rendering ships today.
+        #    Re-fetch hashes:
+        #      nix-prefetch-url https://registry.npmjs.org/%40mermaid-js/mermaid-cli/-/mermaid-cli-11.15.0.tgz
+        #      then `nix build` once with the lib.fakeHash placeholder for
+        #      nodeModulesHash to harvest the real hash from the error.
         mermaidCliPkg = mkNpmCli {
           pkgName         = "@mermaid-js/mermaid-cli";
-          version         = "11.14.0";
-          sha256          = "sha256-/skZEk7xAHj88GNX/OwiFKKMUiYFedGq9nfL436BINg=";
-          nodeModulesHash = "sha256-pcYQri+1my9aElbPt8lzUMTiWnjYqjaiSSAxehiRQDg=";
+          version         = "11.15.0";
+          sha256          = lib.fakeHash;   # refresh via nix-prefetch-url
+          nodeModulesHash = lib.fakeHash;   # refresh via first build
           bin             = "mmdc";
         };
 
@@ -212,8 +194,6 @@
           ++ lib.optionals (toolchainCfg.ruflo or false)           [ rufloPkg ]
           ++ lib.optionals (toolchainCfg.agentic_qe or false)      [ agenticQePkg ]
           ++ lib.optionals (toolchainCfg.codebase_memory or false)  [ codebaseMemoryPkg ]
-          ++ lib.optionals (browserCfg.agent_browser or false)     [ agentBrowserPkg ]
-          ++ lib.optionals (browserCfg.playwright or false)        [ playwrightCliPkg ]
           ++ lib.optionals (docsCfg.mermaid or false)              [ mermaidCliPkg ];
 
         # 3DGS stack — gated by gaussian_splatting + local-cuda (E006).
@@ -281,33 +261,8 @@
           npmDepsHash = "sha256-Bh72Bvdqmqnyqoleqmmofp2feMspGOu6+xnfCz3xIbY=";
         };
 
-        # 5. skills/playwright/mcp-server — gated by skills.browser.playwright.
-        # Uses @playwright/mcp (Microsoft) for accessibility-tree snapshots,
-        # network interception, and deterministic element refs; WebGPU Chrome
-        # flags injected via server.js createConnection launchOptions.args.
-        # PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 prevents npm postinstall browser
-        # fetch; browsers are supplied by pkgs.playwright-driver.browsers.
-        # Refresh hash: nix run nixpkgs#prefetch-npm-deps -- skills/playwright/mcp-server/package-lock.json
-        playwrightMcpPkg = npmServicesLib.makeNpmService {
-          name        = "playwright-mcp";
-          src         = ./skills/playwright/mcp-server;
-          entry       = "server.js";
-          extraEnv    = { PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1"; };
-          npmDepsHash = "sha256-pqt7Nv9a5iJNUqFucLUej14yWRNsDLirFFoEayB6WV0=";
-        };
-
-        # VirtualGL-wrapped chromium for the legacy i3-x11 stack. Xvnc has no
-        # GLX/EGL, so VGL interposes GL calls. Known limitation: Chrome's
-        # multi-process sandbox prevents VGL window compositing — standalone
-        # GL apps work but Chrome windows don't appear on Xvnc. Retained as
-        # fallback; prefer xorg-nvidia stack for hardware GPU rendering.
-        vglrunChromium = pkgs.writeShellScriptBin "vglrun-chromium" ''
-          export VGL_DISPLAY=''${VGL_DISPLAY:-egl}
-          export VK_ICD_FILENAMES=''${VK_ICD_FILENAMES:-/etc/vulkan/icd.d/nvidia_icd.json}
-          export __EGL_VENDOR_LIBRARY_FILENAMES=''${__EGL_VENDOR_LIBRARY_FILENAMES:-/usr/share/glvnd/egl_vendor.d/10_nvidia.json}
-          export LD_LIBRARY_PATH="/usr/lib:${pkgs.libglvnd}/lib:''${LD_LIBRARY_PATH:-}"
-          exec ${pkgs.virtualgl}/bin/vglrun ${pkgs.chromium}/bin/chromium "$@"
-        '';
+        # 5–6. playwright-mcp and vglrunChromium removed — browser automation
+        #       is exclusively via the external browsercontainer sidecar.
 
         # 7. mcp/consultants — consultant tier (PRD-005 / ADR-011). Single
         # buildNpmPackage with five bin entries; ships when consultants.enabled
@@ -349,8 +304,6 @@
           ++ lib.optionals (toolchainCfg.codex or false) [ codexMcpPkg ]
           # lazy-fetch MCP: when ruflo or claude_flow enabled
           ++ lib.optionals ((toolchainCfg.ruflo or false) || (toolchainCfg.claude_flow or false)) [ lazyFetchMcpPkg ]
-          # playwright MCP: when skills.browser.playwright enabled
-          ++ lib.optionals (browserCfg.playwright or false) [ playwrightMcpPkg ]
           # comfyui MCP: when skills.media.comfyui_builtin enabled
           ++ lib.optionals (mediaCfg.comfyui_builtin or false) [ comfyuiMcpPkg ]
           # Consultants: ship the full bundle when the master gate is on.
@@ -536,20 +489,43 @@
           sqlite
         ];
 
-        browserPackages = lib.optionals (browserCfg.agent_browser or false || browserCfg.playwright or false || browserCfg.qe_browser or false) (with pkgs; [
-          chromium
-          playwright-driver
-          at-spi2-atk
-          cups
-          mesa
-          libdrm
-          alsa-lib
-          nss
-          nspr
-          vulkan-loader    # Vulkan runtime dispatch required for WebGPU via ANGLE-Vulkan
-          vulkan-tools     # vulkaninfo for runtime diagnostics (chrome://gpu validation)
-          virtualgl        # GPU-on-VNC: intercepts GL/Vulkan, renders on DRM render node, composites to Xvnc
-        ]);
+        # browserPackages removed — chromium, playwright-driver, virtualgl and
+        # supporting libs are no longer baked into the image. All browser
+        # automation is handled by the external browsercontainer sidecar.
+        browserPackages = [];
+
+        # web-researcher-mcp (Go) — gated by skills.research.web_researcher.
+        # The headless-browser scrape tier is intentionally disabled at runtime
+        # (SCRAPER_DISABLE_BROWSER=true in skills/mcp.json) so this binary never
+        # downloads or runs its own Chromium. JS-rendered pages must route to
+        # the external browsercontainer sidecar via the `browser` skill.
+        # Hashes need refresh on version bumps:
+        #   nix-prefetch-github zoharbabin web-researcher-mcp --rev <tag>
+        #   first build will print the correct vendorHash to substitute.
+        webResearcherMcpPkg = pkgs.buildGoModule rec {
+          pname   = "web-researcher-mcp";
+          version = "0.5.0";  # bump together with hashes below
+          src = pkgs.fetchFromGitHub {
+            owner = "zoharbabin";
+            repo  = "web-researcher-mcp";
+            rev   = "v${version}";
+            hash  = lib.fakeHash;   # refresh via nix-prefetch-github
+          };
+          vendorHash = lib.fakeHash; # refresh via first build
+          subPackages = [ "cmd/web-researcher-mcp" ];
+          # Strip the auto-Chromium download path — we never use tier 4.
+          ldflags = [ "-s" "-w" ];
+          doCheck = false;
+          meta = with lib; {
+            description = "MCP server: 8 web research tools, 4-tier scrape (browser tier disabled here)";
+            homepage    = "https://github.com/zoharbabin/web-researcher-mcp";
+            license     = licenses.mit;
+            mainProgram = "web-researcher-mcp";
+          };
+        };
+
+        researchPackages =
+          lib.optionals (researchCfg.web_researcher or false) [ webResearcherMcpPkg ];
 
         # ComfyUI built-in: fetch upstream source and wrap with a Python env.
         # Included only when skills.media.comfyui_builtin = true.
@@ -851,6 +827,7 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           ++ wasmPackages
           ++ dbPackages
           ++ browserPackages
+          ++ researchPackages
           ++ mediaPackages
           ++ spatialPackages
           ++ dataSciencePackages
@@ -935,21 +912,7 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           mkdir -p $out/opt/agentbox/skills/lazy-fetch
           cp -rL ${lazyFetchMcpPkg}/package $out/opt/agentbox/skills/lazy-fetch/mcp-server
           ''}
-          ${lib.optionalString (browserCfg.playwright or false) ''
-          rm -rf $out/opt/agentbox/skills/playwright/mcp-server
-          mkdir -p $out/opt/agentbox/skills/playwright
-          cp -rL ${playwrightMcpPkg}/package $out/opt/agentbox/skills/playwright/mcp-server
-
-          # Resolve @@CHROMIUM_PATH@@ placeholder in static JSON configs.
-          # The Nix store path is baked at build time so supervisord, Claude
-          # Code MCP clients, and standalone test scripts all find chromium
-          # without relying on FHS /usr/bin/chromium (which doesn't exist on
-          # NixOS/Nix-based images).
-          ${pkgs.gnused}/bin/sed -i 's|@@CHROMIUM_PATH@@|${pkgs.chromium}/bin/chromium|g' \
-            $out/opt/agentbox/skills/playwright/mcp-config.json \
-            $out/opt/agentbox/skills/mcp.json \
-            $out/opt/agentbox/mcp/mcp.json
-          ''}
+          # playwright-mcp skills copy removed — no local browser in image
           ${lib.optionalString (mediaCfg.comfyui_builtin or false) ''
           rm -rf $out/opt/agentbox/skills/comfyui/mcp-server
           mkdir -p $out/opt/agentbox/skills/comfyui
@@ -1218,19 +1181,7 @@ priority=32
 stdout_logfile=/var/log/https-bridge.log
 stderr_logfile=/var/log/https-bridge.error.log
 ''}
-${lib.optionalString (browserCfg.playwright or false) ''
-
-[program:playwright-mcp]
-command=${playwrightMcpPkg}/bin/playwright-mcp
-directory=/opt/agentbox/skills/playwright/mcp-server
-user=devuser
-environment=HOME="/home/devuser",PLAYWRIGHT_BROWSERS_PATH="${pkgs.playwright-driver.browsers}",CHROMIUM_PATH="${if webgpuEnabled && !isWaylandStack && !isXorgNvidiaStack then "${vglrunChromium}/bin/vglrun-chromium" else "${pkgs.chromium}/bin/chromium"}",DISPLAY=":1",CHROMIUM_WEBGPU="${if webgpuEnabled then "true" else "false"}",FONTCONFIG_FILE="/etc/fonts/fonts.conf",VK_ICD_FILENAMES="/etc/vulkan/icd.d/nvidia_icd.json",__EGL_VENDOR_LIBRARY_FILENAMES="/usr/share/glvnd/egl_vendor.d/10_nvidia.json",LD_LIBRARY_PATH="/usr/lib:/usr/lib/x86_64-linux-gnu",PLAYWRIGHT_NAV_TIMEOUT="30000"${if isWaylandStack then ",WAYLAND_DISPLAY=\"wayland-1\",XDG_RUNTIME_DIR=\"/run/user/1000\"" else ""}${if isXorgNvidiaStack then ",__NV_PRIME_RENDER_OFFLOAD=\"1\",__GLX_VENDOR_LIBRARY_NAME=\"nvidia\"" else ""}
-autostart=true
-autorestart=true
-priority=200
-stdout_logfile=/var/log/playwright-mcp.log
-stderr_logfile=/var/log/playwright-mcp.error.log
-''}
+# playwright-mcp supervisord block removed — browser automation via external sidecar
 ${lib.optionalString (mediaCfg.imagemagick or false) ''
 
 [program:imagemagick-mcp]

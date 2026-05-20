@@ -1,7 +1,7 @@
 # Skill Directory -- Comprehensive Inventory and Decision Tree
 
-> **88 active skills**. 18 formerly deprecated/archived skills removed (see table below for history).
-> Updated 2026-05-05. Reference this file from CLAUDE.md for intelligent routing.
+> **89 active skills**. 18 formerly deprecated/archived skills removed (see table below for history).
+> Updated 2026-05-20. Reference this file from CLAUDE.md for intelligent routing.
 
 ---
 
@@ -107,9 +107,9 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
 | `browser-automation` | No | **Meta-skill**: decision framework for choosing between 6 browser tools + Claude in Chrome (official) | Unsure which browser tool to use -- start here |
-| `browser-sidecar` | Yes | **GPU-accelerated** Playwright MCP in a dedicated Ubuntu container with native NVIDIA Vulkan on GPU 2 (Quadro RTX 6000). SSE at `browser-sidecar:8931`, VNC at port 5903 | WebGPU/WebGL testing, VisionFlow 3D graph validation, GPU rendering — **use this for all GPU browser work** |
-| `browser` | No | agent-browser with AI-optimised snapshots, 93% context reduction via @refs | Quick form filling, scraping, navigation with minimal context |
-| `playwright` | Yes | Full Playwright API, screenshots, visual testing on Display :1 via VNC (software rendering only in agentbox — Nix glibc/NVIDIA mismatch) | Visual testing, complex automation, screenshot verification — no hardware GPU |
+| `browsercontainer` | Yes | **GPU-accelerated** chrome-devtools-mcp (40+ tools) in a dedicated Arch Linux container with native NVIDIA Vulkan on GPU 2 (Quadro RTX 6000). SSE at `browsercontainer:8931`, VNC at port 5903 | WebGPU/WebGL testing, VisionFlow 3D graph validation, GPU rendering — **all browser automation routes here** |
+| `browser` | No | Browser automation via the external browsercontainer sidecar (chrome-devtools-mcp SSE) | Page navigation, screenshots, form fills, JS eval |
+| `playwright` | No | Browser automation via the external browsercontainer sidecar (chrome-devtools-mcp 40+ tools, Chrome Beta 149+) | Full browser interaction, WebGPU/WebGL validation, visual testing |
 | `qe-browser` | No | **Vibium** (WebDriver BiDi, W3C standard, 10MB vs 300MB Playwright). 16 typed assertion kinds, multi-step batch pre-validation, pixel-perfect visual-diff baselines, 14-pattern prompt-injection scanner, 15-intent semantic element finder (`submit_form`, `accept_cookies`, `primary_cta`, …). Part of AQE fleet — installed via `aqe init`. 11 QE skills delegate to it (a11y, visual, security, localization, etc.) | QE-grade browser testing with typed assertions and visual regression; AQE fleet integration; when Playwright is too heavy ⚠️ NOT INSTALLED — run aqe init to install |
 | `chrome-cdp` | No | CDP CLI for live Chromium sessions, 100+ tabs, no Puppeteer dependency | Inspecting already-open browser tabs, logged-in sessions |
 | `host-webserver-debug` | Yes | HTTPS-to-HTTP bridge for debugging host web servers from Docker | Cross-origin/CORS issues when accessing host dev servers |
@@ -128,6 +128,7 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
 | `perplexity-research` | No | Real-time web search via Perplexity API with citations | Current information, market research, live web data |
+| `web-researcher` | Yes | 8 MCP tools: web/image/news/**academic** (arXiv/PubMed/IEEE)/**patent** (US/EP/WO/JP/CN/KR)/sequential search + 4-tier scrape (markdown/stealth/HTML; browser tier OFF -- delegates to `browser` sidecar). Pluggable backends (Google PSE/Brave/Serper/SearXNG/SearchAPI) with multi-provider routing | Multi-source research with citations, academic literature search, patent research, scraping PDFs/DOCX/PPTX/YouTube transcripts |
 | `gemini-url-context` | Yes | Gemini 2.5 Flash URL expansion, up to 20 URLs per request, grounding metadata | Analysing or summarising specific known URLs |
 | `web-summary` | Yes | URL summarisation, YouTube transcript extraction, Logseq/Obsidian topic links | Summarising articles, YouTube videos, generating note links |
 | `notebooklm` | Yes | Google NotebookLM SDK: notebooks, sources, chat, audio/video/slides/quiz/report generation | Research automation, podcast generation, study material creation, knowledge management |
@@ -506,20 +507,14 @@ Q3: Do you know which tool you need?
     |
     +-- No / unsure --> browser-automation (meta-skill, guides selection)
     |
-    +-- WebGPU / WebGL / GPU rendering tests? (3D, Three.js, VisionFlow)
-    |   --> browser-sidecar (GPU-accelerated, native NVIDIA Vulkan on GPU 2)
-    |       SSE: http://browser-sidecar:8931/sse | VNC: port 5903
-    |       NOTE: ALWAYS prefer sidecar for GPU browser work. Local Playwright
-    |       has no hardware GPU (Nix glibc vs NVIDIA library mismatch).
+    +-- Any browser automation (navigation, forms, screenshots, WebGPU, visual testing)
+    |   --> browsercontainer sidecar (chrome-devtools-mcp 40+ tools, Chrome Beta 149+)
+    |       SSE: http://browsercontainer:8931/sse | VNC: port 5903
+    |       GPU: NVIDIA RTX 6000 (Vulkan/ANGLE) for WebGPU/WebGL
+    |       No local browser is installed — all automation routes through the sidecar.
     |
     +-- Desktop Chrome with login state, GIF recording (official beta)
     |   --> claude --chrome (not a skill — built into Claude Code 2.0.73+)
-    |
-    +-- Quick scrape/form-fill with minimal context
-    |   --> browser (agent-browser, @ref snapshots)
-    |
-    +-- Full API, screenshots, visual testing on Display :1 (software rendering)
-    |   --> playwright (local — no GPU, SwiftShader only)
     |
     +-- QE-grade assertions (typed checks, visual-diff baselines, injection scan), AQE fleet
     |   --> qe-browser  (Vibium: WebDriver BiDi, 10MB, 16 assertion kinds, `aqe init` to install)

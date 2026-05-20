@@ -1,6 +1,6 @@
 ---
 name: mermaid-diagrams
-description: "Create, render, and export professional diagrams-as-code using Mermaid. Supports 25 diagram types: flowcharts, sequence, class, state, ER, Gantt, journey, mindmap, timeline, architecture, C4, Sankey, Kanban, gitgraph, and more. Renders to PNG/SVG/PDF via mmdc CLI. Use when creating system architecture diagrams, process flows, data models, project timelines, org charts, or any visual diagram from text. Integrates with report-builder skill for LaTeX document inclusion and Nano Banana infographic upgrade."
+description: "Create, render, and export professional diagrams-as-code using Mermaid 11.15.0+. Supports 26 diagram types: flowcharts, sequence, class, state, ER, Gantt, journey, mindmap, timeline, architecture, C4, Sankey, Kanban, gitgraph, **wardley-beta** (strategy maps, native since 11.14.0; hyphenated names + de-sanitised text since 11.15.0), and more. Renders to PNG/SVG/PDF via mmdc CLI. Use when creating system architecture diagrams, process flows, data models, project timelines, Wardley strategy maps, org charts, or any visual diagram from text. Integrates with report-builder skill for LaTeX document inclusion and Nano Banana infographic upgrade."
 ---
 
 # Mermaid Diagrams — Professional Diagrams as Code
@@ -21,7 +21,6 @@ Create, render, and export production-quality diagrams from text using the Merma
 
 ## When Not To Use
 
-- For Wardley maps -- use TikZ via the latex-documents or report-builder skills (Mermaid does not support Wardley map syntax)
 - For publication-quality mathematical figures -- use TikZ/PGFPlots directly
 - For interactive or animated diagrams -- Mermaid produces static output only
 - For photo editing or raster image manipulation -- use the imagemagick skill
@@ -125,6 +124,39 @@ echo 'flowchart LR; A-->B-->C' | mmdc -i - -o quick.png
 | **GitGraph** | `gitGraph` | Branch strategies, release flows |
 | **Packet** | `packet-beta` | Network packet structure |
 | **ZenUML** | `zenuml` | UML sequence (alternative syntax) |
+
+### Strategy
+
+| Type | Keyword | Best For |
+|------|---------|----------|
+| **Wardley** | `wardley-beta` | Value-chain + evolution maps (Simon Wardley). Requires mmdc 11.14.0+; 11.15.0 needed for hyphenated names and de-sanitised labels. See the `wardley-maps` skill for input-to-map orchestration. |
+
+#### Wardley quick example
+
+```mermaid
+wardley-beta
+title Example -- AI assistant
+size [900, 600]
+evolution genesis / concept -> custom / emerging -> product / converging -> commodity / accepted
+
+anchor user [0.95, 0.40]
+
+component "Chat UI" [0.85, 0.40] label [10, -8]
+component "LLM API" [0.55, 0.40] label [10, -8]
+component "GPU cluster" [0.20, 0.40] label [10, -8]
+
+user -> "Chat UI"
+"Chat UI" -> "LLM API"
+"LLM API" -> "GPU cluster"
+
+evolve "LLM API" 0.80
+```
+
+Render:
+
+```bash
+mmdc -i wardley.mmd -o wardley.svg
+```
 
 ---
 

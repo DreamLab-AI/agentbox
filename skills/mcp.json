@@ -49,20 +49,10 @@
       "protocol": "fastmcp",
       "version": "2.0.0"
     },
-    "playwright": {
-      "command": "node",
-      "args": ["/home/devuser/.claude/skills/playwright/mcp-server/server.js"],
-      "type": "stdio",
-      "env": {
-        "DISPLAY": ":1",
-        "CHROMIUM_PATH": "@@CHROMIUM_PATH@@",
-        "CHROMIUM_WEBGPU": "true",
-        "PLAYWRIGHT_HEADLESS": "false",
-        "SCREENSHOT_DIR": "/tmp/playwright-screenshots",
-        "PLAYWRIGHT_TIMEOUT": "30000"
-      },
-      "description": "Browser automation, visual testing, and WebGPU validation on Display :1",
-      "protocol": "mcp-sdk",
+    "browser-gpu": {
+      "url": "http://browsercontainer:8931/sse",
+      "type": "sse",
+      "description": "Browser automation via external browsercontainer sidecar (chrome-devtools-mcp)",
       "version": "2.0.0"
     },
     "web-summary": {
@@ -291,6 +281,27 @@
       "description": "Perplexity consultant (PRD-005 / ADR-011): live web research with citations via Perplexity HTTPS API (sonar-pro). Tools: consult, health, cost_estimate. Inherits PERPLEXITY_API_KEY from session env.",
       "protocol": "stdio",
       "version": "0.1.0"
+    },
+    "web-researcher": {
+      "command": "web-researcher-mcp",
+      "args": [],
+      "type": "stdio",
+      "env": {
+        "SEARCH_PROVIDER": "${SEARCH_PROVIDER:-google}",
+        "SEARCH_ROUTING": "${SEARCH_ROUTING:-}",
+        "GOOGLE_CUSTOM_SEARCH_API_KEY": "${GOOGLE_CUSTOM_SEARCH_API_KEY:-}",
+        "GOOGLE_CUSTOM_SEARCH_ID": "${GOOGLE_CUSTOM_SEARCH_ID:-}",
+        "BRAVE_API_KEY": "${BRAVE_API_KEY:-}",
+        "SERPER_API_KEY": "${SERPER_API_KEY:-}",
+        "SEARCHAPI_API_KEY": "${SEARCHAPI_API_KEY:-}",
+        "SEARXNG_URL": "${SEARXNG_URL:-}",
+        "SCRAPER_DISABLE_BROWSER": "true",
+        "CHROME_PATH": ""
+      },
+      "description": "Multi-source web research: 8 tools (web/image/news/academic/patent/sequential search, scrape_page, search_and_scrape). 4-tier extraction; headless-browser tier DISABLED -- agents delegate to `browser` skill (browsercontainer) for JS-rendered pages. Pluggable backends (Google/Brave/Serper/SearXNG/SearchAPI) with multi-provider routing + circuit breakers.",
+      "protocol": "stdio",
+      "version": "1.0.0",
+      "upstream": "https://github.com/zoharbabin/web-researcher-mcp"
     },
     "consultant-deepseek": {
       "command": "node",

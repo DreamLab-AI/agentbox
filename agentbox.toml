@@ -188,17 +188,22 @@ host_gateway = false
 enabled = true
 stack = "xorg-nvidia"
 resolution = "1920x1080"
-# Enable WebGPU in Playwright MCP browser (ANGLE-Vulkan backend).
-# xorg-nvidia: Xorg with NVIDIA driver provides native GLX/EGL — Chrome
-# gets a real GPU context without VirtualGL. x11vnc exports to VNC 5901.
-# i3-x11: Xvnc has no GLX/EGL; requires VirtualGL (broken with Chrome).
-# Requires /dev/dri/card* + NVIDIA libs mapped into the container.
+# WebGPU flag retained for desktop apps (QGIS, Blender) that use GPU.
+# Browser automation is handled exclusively by the external browsercontainer
+# sidecar — no local chromium/playwright/agent-browser in the image.
 webgpu = true
 
 [skills.browser]
-agent_browser = true
-playwright = true
-qe_browser = true
+agent_browser = false
+playwright = false
+qe_browser = false
+# All browser automation routes through the external browsercontainer sidecar.
+# MCP SSE: http://browsercontainer:8931/sse (chrome-devtools-mcp 40+ tools)
+# CDP: browsercontainer:9222 | VNC: :5903
+# Start: agentbox.sh browsercontainer up
+sidecar_mcp_url = "http://browsercontainer:8931/sse"
+sidecar_cdp_host = "browsercontainer"
+sidecar_cdp_port = 9222
 
 [skills.media]
 ffmpeg = true
@@ -287,6 +292,12 @@ jupyter = true
 latex = true
 report_builder = true
 mermaid = true
+
+[skills.research]
+# web-researcher-mcp (Go binary). Provides 8 MCP research tools.
+# Headless-browser scrape tier is force-disabled at runtime; JS-rendered
+# pages route to the external browsercontainer sidecar (`browser` skill).
+web_researcher = true
 
 [skills.ontology]
 enabled = true
@@ -757,18 +768,9 @@ audit_acknowledged = true
 writable_volumes = ["solid-data:/var/lib/solid"]
 reason = "solid-pod-rs fs-backend requires atomic-rename writable storage under /var/lib/solid"
 
-[security.exceptions.playwright]
-# Required because skills.browser.playwright = true
-# Chromium needs user namespace sandbox. The hardened baseline is
-# `no-new-privileges:true` which prevents the in-namespace setuid binary
-# Chromium uses for its sandbox from elevating. The exception flips that
-# bit (and only that bit) for this container; SYS_ADMIN is NOT added —
-# the user-namespace path is sufficient and avoids the broad SYS_ADMIN
-# attack surface (PRD-003 §272 example follows the same pattern).
-# Alternative: pass --no-sandbox to Chromium at the cost of defense-in-depth.
-security_opt_override = ["no-new-privileges:false"]
-cap_add = []
-reason = "chromium user-ns sandbox needs setuid; only NNP is dropped, no SYS_ADMIN"
+# [security.exceptions.playwright] removed — no local chromium in image.
+# The NNP exception is no longer needed; browser sandbox runs in the
+# external browsercontainer sidecar.
 
 [security.exceptions.desktop]
 # X11 abstract socket dir (mode 1777 sticky — the canonical X11 perm) and

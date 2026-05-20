@@ -1,11 +1,24 @@
 ---
 name: wardley-maps
-description: "Comprehensive Wardley mapping toolkit that transforms any input (structured data, unstructured text, business descriptions, technical architectures, competitive landscapes, or abstract concepts) into strategic Wardley maps. Creates visual maps showing component evolution and value chains for strategic decision-making. Use when creating strategic Wardley maps showing component evolution and value chains for decision-making."
+description: "Comprehensive Wardley mapping toolkit that transforms any input (structured data, unstructured text, business descriptions, technical architectures, competitive landscapes, or abstract concepts) into strategic Wardley maps. Default render path is **Mermaid `wardley-beta`** (mmdc 11.15.0+) -- pure code, version-controllable, GitHub-native, no external service. Legacy OnlineWardleyMaps `.owm` and OWM->Mermaid conversion via tractorjuice/wardley-maps-mermaid tooling. Use when creating strategic Wardley maps showing component evolution and value chains for decision-making."
 ---
 
 # Wardley Mapper
 
 Transform ANY input into a strategic Wardley map for understanding competitive positioning and evolution.
+
+## Render Paths (pick one)
+
+| Path | Tooling | When |
+|------|---------|------|
+| **Mermaid `wardley-beta`** *(default)* | `mmdc` 11.15.0+ from the `mermaid-diagrams` skill | Plain `.mmd` files, GitHub-native preview, embed in markdown/LaTeX, version-control friendly |
+| OnlineWardleyMaps (`.owm`) | https://onlinewardleymaps.com or tractorjuice converter | Editing in the canonical web tool, exporting CC-BY-SA assets |
+| Custom HTML/SVG | `scripts/generate_wardley_map.py` here | Bespoke interactivity / report-builder dark-theme dashboards |
+
+Mermaid 11.15.0 (2026-05-11) finalised `wardley-beta` grammar -- hyphenated
+names render unquoted, label sanitisation no longer mangles parentheses,
+all 147 maps in the upstream `WARDLEY-MAP-REPOSITORY` parse cleanly. This
+is now the recommended default.
 
 ## Quick Start
 
@@ -87,17 +100,75 @@ See [references/data-mapper.md](references/data-mapper.md)
 
 ## Map Generation
 
-### HTML/SVG Visualization
+### Mermaid `wardley-beta` (default)
+
+Emit `.mmd` text; render with `mmdc` from the `mermaid-diagrams` skill.
+
+```
+wardley-beta
+title AI Assistant Stack -- 2026-05
+size [1100, 700]
+evolution genesis / concept -> custom / emerging -> product / converging -> commodity / accepted
+
+anchor user [0.95, 0.45]
+anchor regulator [0.95, 0.10]
+
+component "Chat UX" [0.86, 0.45] label [12, -6]
+component "Agent loop" [0.62, 0.45] label [12, -6]
+component "Frontier LLM" [0.55, 0.45] label [12, -6]
+component "GPU fleet" [0.20, 0.45] label [12, -6]
+component "Eval / Guardrails" [0.42, 0.18] label [-6, -12]
+
+user -> "Chat UX"
+"Chat UX" -> "Agent loop"
+"Agent loop" -> "Frontier LLM"
+"Frontier LLM" -> "GPU fleet"
+regulator -> "Eval / Guardrails"
+"Eval / Guardrails" -> "Frontier LLM"
+
+evolve "Frontier LLM" 0.80
+evolve "Eval / Guardrails" 0.40
+```
+
+Render:
+
+```bash
+mmdc -i map.mmd -o map.svg                                # vector
+mmdc -i map.mmd -o map.png -w 2000 -H 1200 -b transparent # high-DPI raster
+mmdc -i map.mmd -o map.pdf                                # LaTeX inclusion
+```
+
+Grammar reference (Mermaid 11.15.0): https://mermaid.js.org/syntax/wardleyMap.html
+Curated example corpus (147 maps, lossless OWM->Mermaid): https://github.com/tractorjuice/wardley-maps-mermaid
+
+### OWM (`.owm`) input -> Mermaid
+
+The upstream tractorjuice repo ships a pure-stdlib Node.js converter:
+
+```bash
+# One-off: convert a single .owm to .mmd
+git clone https://github.com/tractorjuice/wardley-maps-mermaid /tmp/wmm
+node /tmp/wmm/tools/regenerate.mjs --root /path/with/owm/files
+
+# Or batch via the converter package (no npm deps, Node 18+)
+node /tmp/wmm/tools/regenerate.mjs --dry-run   # preview
+node /tmp/wmm/tools/regenerate.mjs              # write .mmd siblings
+```
+
+Fidelity: 100% component / anchor / link retention, evolution-coordinate
+drift exactly 0.0, mean visibility drift 0.008 (grammar-level pipeline-
+block inheritance, not a converter bug).
+
+### Custom HTML/SVG (bespoke interactivity)
 
 ```python
-# Use scripts/generate_wardley_map.py
+# scripts/generate_wardley_map.py -- retained for report-builder
 from scripts.generate_wardley_map import WardleyMapGenerator
-
 generator = WardleyMapGenerator()
 map_html = generator.create_map(components, dependencies)
 ```
 
-### Text-Based Map
+### Text-Based Sketch
 
 ```
 User Need
@@ -133,10 +204,11 @@ See [references/strategic-patterns.md](references/strategic-patterns.md)
 
 ## Output Formats
 
-1. **Interactive HTML**: Full visualization with tooltips
-2. **Static SVG**: For presentations/documents
-3. **JSON Structure**: For programmatic use
-4. **Strategic Report**: Analysis and recommendations
+1. **Mermaid `.mmd`** *(default, version-controllable, GitHub-native)*
+2. **SVG / PNG / PDF** via `mmdc` (calls into the `mermaid-diagrams` skill)
+3. **Interactive HTML**: Full visualization with tooltips (custom path)
+4. **JSON Structure**: For programmatic use
+5. **Strategic Report**: Analysis and recommendations
 
 ## Quick Command
 
