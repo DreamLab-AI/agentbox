@@ -48,7 +48,7 @@ let
   #   nix-prefetch-url --unpack --type sha256 \
   #     https://github.com/DreamLab-AI/solid-pod-rs/archive/0c5fa42.tar.gz
   #   nix hash convert --hash-algo sha256 --to sri <base32>
-  srcHash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+  srcHash = "sha256-Gi54tlp62ipHjzQeOSEmo15UN99ZvuJz3+LEjcMdmu0=";
 
   # Upstream solid-pod-rs at v0.4.0-alpha.5 does not ship its
   # Cargo.lock (workspace builds without it locally because cargo
@@ -94,14 +94,12 @@ let
     "rate-limit"
     "quota"
     "git"               # git control API (/_git/* routes) + /.well-known/apps
-    "admin-provision"   # POST /_admin/provision/{pubkey} PSK endpoint (alpha.15)
     # ── Library-crate features via solid-pod-rs/<feature> ────────────
     "solid-pod-rs/nip98-schnorr"
     "solid-pod-rs/config-loader"
     "solid-pod-rs/acl-origin"
     "solid-pod-rs/webhook-signing"
     "solid-pod-rs/jss-v04"
-    "solid-pod-rs/cors-allowlist"  # SOLID_ALLOWED_ORIGINS support (alpha.15)
   ];
 
 in
