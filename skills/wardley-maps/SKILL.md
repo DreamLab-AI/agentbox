@@ -218,6 +218,83 @@ For instant mapping:
 exec(open('scripts/quick_map.py').read())
 ```
 
+## LaTeX Integration
+
+Workflow for including Wardley maps in LaTeX documents:
+
+### Step 1 — Write the `.mmd` file
+
+```
+wardley-beta
+title Creative Industries -- AI Strategic Positioning 2026
+size [1100, 700]
+evolution genesis / concept -> custom / emerging -> product / converging -> commodity / accepted
+
+anchor creator [0.95, 0.50]
+anchor audience [0.95, 0.80]
+
+component "Creative Output" [0.85, 0.50] label [12, -6]
+component "AI Tools" [0.60, 0.50] label [12, -6]
+component "Distribution" [0.75, 0.80] label [12, -6]
+component "Brand/Reputation" [0.70, 0.25] label [-90, 0]
+component "AI Training Data" [0.30, 0.50] label [12, -6]
+component "Compute" [0.15, 0.50] label [12, -6]
+
+creator -> "Creative Output"
+creator -> "Brand/Reputation"
+"Creative Output" -> "AI Tools"
+"Creative Output" -> "Distribution"
+audience -> "Distribution"
+"AI Tools" -> "AI Training Data"
+"AI Training Data" -> "Compute"
+```
+
+**Four strategic positions for creative industries:**
+
+| Position | Description | Map signal |
+|----------|-------------|------------|
+| All-in | Fully embrace AI in all workflows | AI Tools near product/commodity |
+| AI-native | Build with AI from the ground up | AI Tools as anchor component |
+| Refusal | Human-only, premium positioning | AI Tools absent from map |
+| Middle | Selective AI augmentation | AI Tools in custom/emerging |
+
+### Step 2 — Render via browser sidecar (not mmdc)
+
+**IMPORTANT:** `mmdc` 11.14.0 in the Nix store has a broken puppeteer dependency — use the browser sidecar instead.
+
+```python
+# HTML wrapper for Mermaid CDN rendering
+html = f"""<!DOCTYPE html>
+<html><head>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({{startOnLoad:true, theme:'default'}});</script>
+</head><body style="background:white;margin:0;padding:20px">
+<div class="mermaid" id="map">
+{mmd_content}
+</div></body></html>"""
+
+# Write wrapper, open in browser sidecar, screenshot at 2x
+# browser_navigate({"url": f"file://{html_path}"})
+# browser_take_screenshot({"filename": "wardley_map.png", "width": 2200, "height": 1400})
+```
+
+```bash
+# Or from a running browser session:
+# Navigate to the HTML file, then screenshot
+agentbox.sh browsercontainer up   # ensure sidecar is running
+```
+
+### Step 3 — Include in LaTeX
+
+```latex
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.9\textwidth]{figures/wardley/creative_industries.png}
+  \caption{Strategic positioning for creative industries, May 2026.}
+  \label{fig:wardley-creative}
+\end{figure}
+```
+
 ## Quality Indicators
 
 Good maps have:

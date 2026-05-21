@@ -284,6 +284,88 @@ convert original.png -quality 85 compressed.jpg
 
 ---
 
+## Diagram Upcycling via Gemini API
+
+Workflow for enhancing rendered diagrams (TikZ, Mermaid, matplotlib) for publication quality:
+
+### Step 1 — Render source diagram to base PNG
+
+```bash
+# TikZ standalone → PNG
+pdflatex -interaction=nonstopmode diagram.tex
+convert -density 300 diagram.pdf -quality 95 diagram_base.png
+
+# Mermaid via browser sidecar (mmdc 11.14.0 has broken puppeteer)
+# See browser skill for sidecar screenshot workflow
+
+# matplotlib
+plt.savefig("chart_base.png", dpi=150, bbox_inches="tight")
+```
+
+### Step 2 — Submit to Gemini API
+
+```python
+import google.generativeai as genai
+import os, base64, pathlib
+
+genai.configure(api_key=os.environ["GOOGLE_GEMINI_API_KEY"])
+model = genai.GenerativeModel("gemini-2.0-flash-exp")
+
+img_bytes = pathlib.Path("diagram_base.png").read_bytes()
+img_b64 = base64.b64encode(img_bytes).decode()
+
+response = model.generate_content([
+    {
+        "inline_data": {
+            "mime_type": "image/png",
+            "data": img_b64
+        }
+    },
+    "Enhance this diagram for professional publication. "
+    "Preserve all text labels, data values, and structural relationships exactly. "
+    "Improve visual clarity, contrast, line weight, and professional appearance. "
+    "Output at minimum 2x the input resolution."
+])
+
+# Save the enhanced image
+enhanced_data = response.parts[0].inline_data.data
+pathlib.Path("diagram_enhanced.png").write_bytes(base64.b64decode(enhanced_data))
+```
+
+**API key:** `GOOGLE_GEMINI_API_KEY` environment variable
+
+### Step 3 — Fallback (no API / batch processing)
+
+```bash
+# ImageMagick sharpen + upscale
+convert diagram_base.png -resize 200% -sharpen 0x1.0 diagram_hires.png
+
+# Higher quality upscale with unsharp mask
+convert diagram_base.png \
+  -resize 200% \
+  -unsharp 0x0.75+0.75+0.008 \
+  -quality 95 \
+  diagram_hires.png
+```
+
+### Resolution and Text Hallucination Note
+
+**Use ≥2x output resolution.** AI image models hallucinate text at low resolution — labels become garbled. At 2x or higher, text-preservation accuracy is significantly better. Always verify labels in the enhanced output match the original before including in publication.
+
+### Integration with LaTeX (book-publishing pipeline)
+
+```latex
+% In document, after upcycling
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{figures/diagram_enhanced.png}
+  \caption{Caption here.}
+  \label{fig:diagram}
+\end{figure}
+```
+
+---
+
 ## Assimilation Note
 
 **Source:** Personal_AI_Infrastructure Art Skill
