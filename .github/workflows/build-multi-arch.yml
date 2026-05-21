@@ -1,6 +1,8 @@
 # build-multi-arch.yml
 #
-# Triggers: push to main, release tags (v*), workflow_dispatch.
+# Triggers: workflow_dispatch only (disabled from automatic runs 2026-05-21).
+# Re-enable push/tag triggers when GHCR distribution matters.
+#
 # Produces: ghcr.io/dreamlab-ai/agentbox:<sha>-amd64 and :<sha>-arm64 per-arch
 #           images, then assembles them into a multi-arch manifest at
 #           ghcr.io/dreamlab-ai/agentbox:<sha>. On main-branch pushes the
@@ -12,11 +14,6 @@
 name: Build and publish multi-arch image
 
 on:
-  push:
-    branches:
-      - main
-    tags:
-      - 'v*'
   workflow_dispatch:
 
 concurrency:
