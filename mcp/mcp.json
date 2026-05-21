@@ -3,6 +3,38 @@
   "version": "2.0.0",
   "description": "MCP Server Registry for Agentbox",
   "mcpServers": {
+    "aci-shell": {
+      "command": "node",
+      "args": ["/opt/agentbox/mcp/aci-shell/server.js"],
+      "type": "stdio",
+      "env": {
+        "ACI_WORKSPACE_ROOT": "${ACI_WORKSPACE_ROOT:-/home/devuser/workspace/project}",
+        "ACI_MAX_VIEW_LINES": "${ACI_MAX_VIEW_LINES:-150}",
+        "ACI_MAX_EDIT_CONTEXT": "${ACI_MAX_EDIT_CONTEXT:-10}",
+        "ACI_TEST_COMMAND_ALLOWLIST": "${ACI_TEST_COMMAND_ALLOWLIST:-pytest,cargo test,npm test,go test}",
+        "AGENTBOX_AGENT_DID": "${AGENTBOX_AGENT_DID:-did:nostr:local}",
+        "AGENTBOX_AGENT_PUBKEY": "${AGENTBOX_AGENT_PUBKEY:-local}",
+        "RUVECTOR_PG_CONNINFO": "${RUVECTOR_PG_CONNINFO}"
+      },
+      "description": "SWE-agent-style Agent-Computer Interface MCP. 5 tools (view_file/edit_file/search_repo/run_tests/submit). Phase 2 surface — off by default (manifest gate [skills.aci_shell]). Composes with code-interpreter MCP for verified edits.",
+      "protocol": "stdio",
+      "version": "0.1.0"
+    },
+    "code-interpreter": {
+      "command": "python3",
+      "args": ["-u", "/opt/agentbox/mcp/code-interpreter/server.py"],
+      "type": "stdio",
+      "env": {
+        "RUVECTOR_PG_CONNINFO": "${RUVECTOR_PG_CONNINFO}",
+        "KERNEL_IDLE_TIMEOUT_S": "${KERNEL_IDLE_TIMEOUT_S:-1800}",
+        "KERNEL_MAX_MEMORY_MB": "${KERNEL_MAX_MEMORY_MB:-512}",
+        "KERNEL_ALLOW_PIP_INSTALL": "${KERNEL_ALLOW_PIP_INSTALL:-false}",
+        "KERNEL_WHEELHOUSE": "${KERNEL_WHEELHOUSE:-/var/lib/agentbox/code-interpreter-wheelhouse}"
+      },
+      "description": "Persistent Python code-interpreter MCP — 6 tools (kernel.exec/list_vars/inspect/reset/interrupt/install_pkg). One kernel per session, lazy spawn, idle watchdog. Wheelhouse-only package install (no PyPI). Trace-as-reward verification signal for ExpeL + Voyager.",
+      "protocol": "stdio",
+      "version": "0.1.0"
+    },
     "claude-flow": {
       "command": "claude-flow",
       "args": ["mcp", "start"],

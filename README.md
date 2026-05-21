@@ -85,14 +85,19 @@ Your `agentbox.toml` manifest toggles capabilities on or off. Disabled features 
 
 | Category | Highlights |
 | :--- | :--- |
-| **Agent toolchains** | `claude-code`, `ruflo`, `gemini-cli`, `agentic-qe`, `openai-codex` |
-| **Consultants** | Meta-router for named external consultations: DeepSeek, Perplexity, Z.AI, Gemini |
+| **Agent toolchains** | `claude-code`, `ruflo`, `antigravity` (agy), `agentic-qe`, `openai-codex` |
+| **Consultants** | Meta-router for named external consultations: DeepSeek, Perplexity, Z.AI, Antigravity |
 | **Browser and web** | External browsercontainer sidecar (chrome-devtools-mcp, Chrome Beta 149+, GPU-accelerated) |
 | **Media and design** | Local ComfyUI (or external URL), ImageMagick, FFmpeg |
 | **Spatial and 3D** | QGIS geospatial analysis, Blender modelling, 3D Gaussian Splatting |
 | **Data science and docs** | PyTorch, Jupyter Lab, LaTeX, Mermaid rendering |
+| **Code-as-Harness** | Persistent Python kernel MCP, ExpeL post-task lesson distillation, Voyager verified-skill library, SWE-agent ACI MCP, execution-gated tree-search (PRD-008) |
 | **Governance** | Agent Control Surface Protocol (kinds 31400-31405) — cross-repo human-in-the-loop integration with the DreamLab forum and VisionClaw's BrokerActor via the embedded relay |
 | **Operations** | OTLP tracing, Prometheus metrics (`:9191/metrics`), Tailscale VPN integration |
+
+### Code-as-Harness (PRD-008)
+
+A persistent IPython kernel MCP exposes six tools (`kernel.exec`, `kernel.list_vars`, `kernel.inspect`, `kernel.reset`, `kernel.interrupt`, `kernel.install_pkg`) so that variable state, imported modules, and computed DataFrames survive across tool calls within a session. An ExpeL post-task hook distils completed trajectories into reusable `DistilledLesson` records in RuVector. A Voyager verified-skill library accumulates assertion-passing Python functions for retrieval and injection at future task start. A SWE-agent-style ACI MCP provides bounded file viewing, compact-diff editing, budget-capped search, structured test execution, and task submission for autonomous repo-level bug-fixing. An execution-gated tree-search skill generates N candidates, executes each in a fresh kernel session, and scores by assertion-pass rate. Multi-tier memory uses OWL2-typed RuVector namespaces (semantic / procedural / episodic) with no schema changes. All records carry `did:nostr` identity and PROV-O action receipts. Phase 1 surfaces (`code_interpreter`, `codeact`, `expel_lesson_extraction`) are opt-in; Phase 2 surfaces (`voyager_skill_library`, `aci_shell`, `tree_search_coder`) are scaffolded and default off. See `docs/developer/code-as-harness.md` for the operator guide.
 
 ---
 

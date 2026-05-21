@@ -64,5 +64,23 @@
     "entrypoint_path": "@NIX_STORE_BIN@/mmdc",
     "required_for_readiness": false,
     "probe_command": "mmdc --version"
+  },
+  {
+    "capability_id": "code-interpreter-mcp",
+    "entrypoint_path": "/opt/agentbox/mcp/code-interpreter/server.py",
+    "required_for_readiness": false,
+    "probe_command": "python3 -c 'import ast; ast.parse(open(\"/opt/agentbox/mcp/code-interpreter/server.py\").read())'"
+  },
+  {
+    "capability_id": "code-interpreter-wheelhouse",
+    "entrypoint_path": "/var/lib/agentbox/code-interpreter-wheelhouse",
+    "required_for_readiness": false,
+    "probe_command": "test -f /var/lib/agentbox/code-interpreter-wheelhouse/.agentbox-wheelhouse-version"
+  },
+  {
+    "capability_id": "aci-shell-mcp",
+    "entrypoint_path": "/opt/agentbox/mcp/aci-shell/server.js",
+    "required_for_readiness": false,
+    "probe_command": "node --check /opt/agentbox/mcp/aci-shell/server.js"
   }
 ]

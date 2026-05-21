@@ -1,7 +1,7 @@
 # Skill Directory -- Comprehensive Inventory and Decision Tree
 
-> **89 active skills**. 18 formerly deprecated/archived skills removed (see table below for history).
-> Updated 2026-05-20. Reference this file from CLAUDE.md for intelligent routing.
+> **92 active skills** (3 new Phase 1 code-execution surfaces added 2026-05-21; tree-search-coder is Phase 2-3 scaffold, not counted as active). 18 formerly deprecated/archived skills removed (see table below for history).
+> Updated 2026-05-21. Reference this file from CLAUDE.md for intelligent routing.
 
 ---
 
@@ -49,6 +49,17 @@
 | `sparc-methodology` | No | SPARC 5-phase development (Specification, Pseudocode, Architecture, Refinement, Completion), 17 modes | Systematic multi-phase development from spec through deployment |
 | `prd2build` | No | PRD to complete documentation in a single command | Generating full project documentation from a product requirements document |
 | `bhil-methodology` | No | AI-first specification-driven methodology: PRD→SPEC→ADR→TASK traceability, AI-native ADRs (model/prompt/agent), eval suites, guardrails | Starting new features, architecture decisions, sprint planning, quality gates, artifact traceability |
+
+### Code Execution and Experiential Learning
+
+Phase 1 surfaces require `[skills.code_interpreter] enabled = true` (kernel MCP) and `[features.expel_lesson_extraction] enabled = true` (lesson extractor) in `agentbox.toml`. Phase 2 surfaces are scaffolded but ship `enabled = false` by default. See `docs/developer/code-as-harness.md` for the full operator guide.
+
+| Skill | MCP | Key Capability | When to Choose |
+|-------|-----|----------------|----------------|
+| `codeact` | Yes (code-interpreter) | Plan-execute-reflect loop over a persistent IPython kernel; variables survive across tool calls. Research-validated lift: +12 pp BBH (PoT/CoC patterns), +20% success rate on tool-use benchmarks (CodeAct). Token-efficient vs JSON-format actions (10–81% reduction). Requires `[skills.code_interpreter] enabled = true`. Degrades to `pytorch-ml` script mode if kernel is unavailable | Multi-step numerical reasoning, data wrangling, scientific Q&A, multi-step calculations that need state to persist between tool calls. NOT for single-file edits or one-shot scripts — use `sparc:code` or direct Edit for those |
+| `expel-lesson-extractor` | No | Post-task lesson distillation. Completed trajectory + outcome + execution traces → 0–N `DistilledLesson` rules written to RuVector namespace `code-harness-lessons` (`memory_type=semantic`). Privacy-filtered before write; confidence-decremented on contradiction; garbage-collected below threshold. Auto-invoked at task-end via `hooks post-task` when `[features.expel_lesson_extraction] enabled = true`. Lessons retrieved at future task start via semantic search | Cross-run learning when `ExecutionTrace` evidence is the verification source. Invoke manually after a complex or failed task (≥3 tool calls) to explicitly extract generalisable rules. Do NOT invoke for trivial one-liner tasks |
+| `voyager-skill-library` | No | Verified executable skill library. Candidate Python functions pass a three-step `VerificationGate` (static BannedAPI scan → `KernelSession` assertion execution → example execution) before storage in RuVector namespace `code-harness-skills` (`memory_type=procedural`). URN-versioned (`urn:agentbox:skill:<scope>:<name>:v<n>`); superseded versions archived after 30 days. Retrieved by semantic similarity at task start for context injection (≤3 functions, ≤600 tokens). Requires `[skills.voyager_skill_library] enabled = true` and kernel MCP. **Phase 2 scaffold — default off** | Building a reusable corpus of executable utility functions across sessions. Use when a function is likely to recur (parsers, validators, retry wrappers). NOT for one-off scripts or domain-specific logic unlikely to transfer |
+| (`tree-search-coder`) | No | Execution-gated branching code generation. N candidates (≤5) generated via `sparc:coder`, each executed in a fresh `KernelSession`, scored by assertion-pass rate; highest-scoring branch selected. Slow path — never auto-routed; requires explicit `[tree-search]` directive or user request. `spend_cap_usd` is mandatory (no default-unlimited mode). Requires `[skills.tree_search_coder] enabled = true` and kernel MCP. **Phase 2-3 scaffold — default off** | Correctness-critical code generation where a single attempt is demonstrably insufficient and the +26.9% correctness lift justifies the N× token cost. NOT a replacement for `sparc:coder`, `build-with-quality`, or direct Edit |
 
 ### Code Quality, Review, and Verification
 
@@ -265,7 +276,7 @@ Answer these questions in order. Stop at the first match.
 
 ```
 Q0: Unsure which skill handles your task?
-    --> /route [describe task]  (skill-router — intelligent dispatcher for all 87 skills)
+    --> /route [describe task]  (skill-router — intelligent dispatcher for all 92 skills)
 
 Q1: Is the task about an EXISTING skill that is deprecated?
     YES --> Use its replacement (see Deprecated table above)
@@ -280,6 +291,7 @@ Q2: What is the primary domain?
     [F] MEDIA (image, video, audio, 3D, AI generation)
     [G] BROWSER AUTOMATION (scrape, test UI, debug web apps)
     [H] AI/ML MODEL WORK (train, deploy, reason)
+    [H2] CODE EXECUTION and EXPERIENTIAL LEARNING (persistent kernel, lesson distillation, verified skills)
     [I] MEMORY and LEARNING (store, search, vector DB, RL)
     [J] INFRASTRUCTURE / PLATFORM / DEVOPS
     [K] UI/UX DESIGN (interfaces, components, audit, typography)
@@ -557,6 +569,37 @@ Q3: What ML task?
     |
     +-- Delegate coding to GPT-5.4
         --> openai-codex or codex-companion (/codex:rescue for full Codex plugin)
+```
+
+### [H2] Code Execution and Experiential Learning
+
+```
+### Code-as-Harness routing (critical disambiguation)
+
+Q3: What do you need?
+    |
+    +-- Stateful multi-step computation (variables persist across calls, data wrangling)
+    |   --> codeact (requires [skills.code_interpreter] enabled = true)
+    |   NOT: sparc:code (stateless), pytorch-ml (script mode), deepseek-reasoning (LLM only)
+    |
+    +-- Extract reusable lessons from a completed task trajectory (cross-run learning)
+    |   --> expel-lesson-extractor (auto-invoked via hooks post-task; manual for complex tasks)
+    |   NOT: hooks-automation alone (records outcome, does NOT distil lessons)
+    |
+    +-- Store a verified Python utility function for reuse across sessions
+    |   --> voyager-skill-library (Phase 2 — requires kernel MCP)
+    |   NOT: sparc:memory-manager (stores plans, not executable verified code)
+    |
+    +-- Correctness-critical generation needing N-candidate search and execution scoring
+    |   --> tree-search-coder (Phase 2-3; ALWAYS explicit opt-in; never auto-routed)
+    |   NOT: sparc:coder (single attempt), build-with-quality (QE pipeline not candidate selection)
+    |
+    +-- Autonomous repo-level bug-fixing with bounded file editing and test runner
+    |   --> aci-shell (Phase 2 scaffold; READ-ONLY graph queries → use codebase-memory instead)
+    |   NOT: codebase-memory (read-only structural graph queries; no edit-and-test loop)
+    |
+    +-- Single-file edit, one-shot script, stateless code generation
+        --> sparc:code or direct Edit (no kernel overhead needed)
 ```
 
 ### [I] Memory and Learning

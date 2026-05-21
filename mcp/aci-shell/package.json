@@ -1,0 +1,21 @@
+{
+  "name": "aci-shell-mcp",
+  "version": "0.1.0",
+  "description": "SWE-agent-style Agent-Computer Interface MCP for agentbox. Five tools: view_file, edit_file, search_repo, run_tests, submit. ADR-020 / PRD-008 §3.2.",
+  "main": "server.js",
+  "bin": {
+    "aci-shell-mcp": "./server.js"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js && echo 'syntax ok'"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "*"
+  },
+  "license": "AGPL-3.0-only",
+  "keywords": ["mcp", "aci", "swe-agent", "agentbox", "code-harness"]
+}

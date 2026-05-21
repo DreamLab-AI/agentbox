@@ -128,6 +128,19 @@ The socat proxy on 9223 rebinds Chrome's localhost-only CDP so `/json/list` retu
 - **Network**: `visionclaw_network` (external). Agents reach MCP at `http://browsercontainer:8931/sse`.
 - **GPU**: Quadro RTX 6000 via UUID. Optional — healthcheck warns but doesn't fail without it.
 
+## Code-as-Harness URN Allocation
+
+(PRD-008, ADR-018, ADR-019, ADR-020, DDD-005). Code execution and experiential learning emit URNs under the existing 18 kinds — no new kinds are added. Mapping:
+
+- KernelSession → `urn:agentbox:thing:<scope>:kernel-<id>`
+- ExecutionTrace → `urn:agentbox:activity:<scope>:trace-<id>` (action receipt)
+- DistilledLesson → `urn:agentbox:memory:<scope>:lesson-<sha256-12>`
+- VerifiedSkill → `urn:agentbox:skill:<scope>:<name>:v<n>`
+- ACI session → `urn:agentbox:thing:<scope>:aci-<id>`
+- ACI submission → `urn:agentbox:receipt:<scope>:aci-<id>`
+
+Every record carries `owner_did = did:nostr:<hex>` and an associated `action_urn = urn:agentbox:activity:<scope>:<verb>-<id>` Activity record (PROV-O aligned). The `<scope>` is always the 64-character BIP-340 x-only hex pubkey. All URNs are minted through `management-api/lib/uris.js`; ad-hoc template-literal construction is prohibited. Code-as-harness is the fifth participant in the `did:nostr` identity mesh — joining solid-pod-rs (NIP-98 auth), nostr-rust-forum (event signing), VisionClaw (graph governance), and dreamlab-ai-website (forum config) without inventing new identity primitives.
+
 ## Docs To Keep In Sync
 
 When architecture changes, update these together:
@@ -136,4 +149,6 @@ When architecture changes, update these together:
 - [`docs/user/quickstart.md`](docs/user/quickstart.md)
 - [`CLAUDE.md`](CLAUDE.md)
 - [`browsercontainer/README.md`](browsercontainer/README.md)
+- [`docs/developer/code-as-harness.md`](docs/developer/code-as-harness.md)
+- [`docs/developer/ecosystem.md`](docs/developer/ecosystem.md)
 - relevant ADRs in `docs/reference/adr/`

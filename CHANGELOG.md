@@ -4,6 +4,43 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+## [Code-as-Harness Sprint] - 2026-05-21
+
+Phase 1 of PRD-008 code-as-harness integration. Persistent Python kernel MCP, ExpeL post-task lesson distillation, and SWE-agent ACI MCP scaffold — all manifest-gated. Phase 2 surfaces (voyager_skill_library, aci_shell, tree_search_coder) ship as scaffolding only, `enabled = false` by default.
+
+### Added
+
+- PRD-008 + ADR-018 + ADR-019 + ADR-020 + DDD-005 specifying code-as-harness integration (persistent kernel, experiential learning, ACI, tree-search)
+- `code-interpreter` MCP (`mcp/code-interpreter/`) — 6-tool persistent IPython kernel: `kernel.exec`, `kernel.list_vars`, `kernel.inspect`, `kernel.reset`, `kernel.interrupt`, `kernel.install_pkg`
+- ExpeL lesson-extractor (`mcp/expel/distil.py`, `skills/expel-lesson-extractor/`) — post-task `DistilledLesson` distillation into RuVector namespace `code-harness-lessons`
+- `aci-shell` MCP (`mcp/aci-shell/`) — 5-tool SWE-agent interface: `aci.view_file`, `aci.edit_file`, `aci.search_repo`, `aci.run_tests`, `aci.submit` (Phase 2 scaffold)
+- Voyager skill library (`mcp/voyager/`, `skills/voyager-skill-library/`) — Phase 2 scaffold with three-step `VerificationGate` (BannedAPI scan → kernel assertion execution → example execution) and RuVector namespace `code-harness-skills`
+- `codeact` skill (`skills/codeact/SKILL.md`) — kernel orchestration with ICL exemplars and skill-router disambiguation
+- `tree-search-coder` skill stub (`skills/tree-search-coder/SKILL.md`) — Phase 2-3 scaffold, `enabled = false`
+- Multi-tier memory wiring via OWL2 classes: `ex:DistilledLesson`, `ex:VerifiedSkill`, `ex:ExecutionTrace`, `ex:KernelSession`, `ex:Activity` — discriminated by `source_type` field on existing `memory_entries` schema; no new tables
+- Manifest gates added to `agentbox.toml`: `[skills.code_interpreter]`, `[skills.codeact]`, `[features.expel_lesson_extraction]`, `[skills.voyager_skill_library]`, `[skills.aci_shell]`, `[skills.tree_search_coder]`
+- Nix derivations for `codeInterpreterPythonEnv`, local wheelhouse, `code-interpreter` MCP binary, and `aci-shell` MCP binary — gated by manifest
+- 7 test fixtures: `tests/code-harness/multi-turn-fibonacci.sh`, `tests/code-harness/kernel-interrupt.sh`, `tests/code-harness/lesson-retrieval-queries.json`, `tests/code-harness/aci-view-line-cap.sh`, `tests/code-harness/aci-edit-diff-ctx.sh`, `tests/code-harness/aci-search-truncation.sh`, `tests/fixtures/skill-router-prompts.json`
+- Ecosystem-consistent identity on every record: `owner_did = did:nostr:<hex>`, `action_urn = urn:agentbox:activity:<scope>:<verb>-<id>`, PROV-O Activity alignment
+- Operator and developer guide at `docs/developer/code-as-harness.md`
+
+### Changed
+
+- `agentbox.toml`: 6 new manifest gate blocks added under `[skills.*]` and `[features.*]`
+- `flake.nix`: `codeInterpreterPythonEnv` derivation + wheelhouse path + `code-interpreter` MCP + `aci-shell` MCP packages, all gated by manifest booleans
+- `config/entrypoint-unified.sh`: code-harness bootstrap (wheelhouse marker check, audit directory creation) + `did:nostr` env propagation to kernel MCP process environment
+- `config/artifact-probes.json`: 3 new readiness probes (kernel MCP liveness, wheelhouse marker, ExpeL hook registration)
+- `skills/SKILL-DIRECTORY.md`: 3 new active skills (codeact, expel-lesson-extractor, voyager-skill-library) + 1 Phase 2-3 scaffold (tree-search-coder); header count updated from 89 to 92; new "Code Execution and Experiential Learning" section; `[H2]` routing block with explicit disambiguation from sparc:code, pytorch-ml, deepseek-reasoning, codebase-memory, and build-with-quality
+- `agentbox/CLAUDE.md`: code-as-harness URN allocation paragraph added to URI/URN Scheme section; `code-as-harness.md` and `ecosystem.md` added to "Docs To Keep In Sync"
+- `docs/developer/ecosystem.md`: code-as-harness domain added as sixth participant in the `did:nostr` identity mesh
+
+### Notes
+
+- Wheelhouse hashes in `flake.nix` use `lib.fakeHash`; refresh with `nix build .#default` on first use — Nix will report the correct hash to substitute
+- Phase 2 surfaces (`voyager_skill_library`, `aci_shell`, `tree_search_coder`) ship as scaffolding only; defaults `enabled = false`; ADR-020 status remains `Proposed` until ADR-018 Phase 1 acceptance gate passes
+- Validator error codes added: E042, E043, E044, E050, E051, E052; warnings W042, W043, W044, W050, W051, W052 — see `scripts/agentbox-config-validate.js`
+- Privacy filter (ADR-008) applied to all `ExecutionTrace` stdout/stderr and `DistilledLesson` evidence before RuVector write; `LessonRedactionFailed` / `TraceRedactionFailed` events emitted on filter unavailability
+
 ## [Security Audit Sprint] - 2026-05-11
 
 DreamLab ecosystem-wide security audit. 7 fixes applied to agentbox

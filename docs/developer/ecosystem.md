@@ -12,6 +12,28 @@ Agentbox is one of five federated repositories in the DreamLab open-source ecosy
 | [VisionClaw](https://github.com/DreamLab-AI/VisionClaw) | Integration substrate | Host project when used as a submodule; peer on the relay mesh |
 | [dreamlab-ai-website](https://github.com/DreamLab-AI/dreamlab-ai-website) | Branded deployment | Downstream consumer of the forum kit; no direct dependency on agentbox |
 
+## Code-as-Harness Domain (Sixth Participant in the Identity Mesh)
+
+The code-as-harness integration (PRD-008, ADR-018, ADR-019, ADR-020, DDD-005) adds a sixth participant to the `did:nostr` identity mesh without introducing new identity primitives. The domain owns code execution lifetime (`KernelSession`), trace verification (`ExecutionTrace`), lesson distillation (`DistilledLesson`), and verified-skill storage (`VerifiedSkill`). Every record it emits carries `owner_did = did:nostr:<hex>` — the same keypair already used by the solid-pod-rs NIP-98 auth, nostr-rust-forum event signing, and VisionClaw graph governance layers.
+
+URNs follow the existing 18-kind grammar (ADR-013): `KernelSession` → `thing`, `ExecutionTrace` → `activity`, `DistilledLesson` → `memory`, `VerifiedSkill` → `skill`, ACI session → `thing`, ACI submission → `receipt`. Every state-changing dispatch emits an `action_urn = urn:agentbox:activity:<scope>:<verb>-<id>` Activity record (PROV-O aligned), making the domain's audit trail queryable via the same `mcp__claude-flow__memory_search` interface used across the mesh.
+
+```mermaid
+graph LR
+    DID[did:nostr:hex-pubkey\nShared identity root]
+
+    DID --> SPR[solid-pod-rs\nNIP-98 WAC auth]
+    DID --> NRF[nostr-rust-forum\nEvent signing]
+    DID --> VC[VisionClaw\nGraph governance]
+    DID --> DAW[dreamlab-ai-website\nForum config]
+    DID --> CAH[code-as-harness\nKernelSession / Lessons / Skills]
+
+    CAH --> RV[(RuVector\ncode-harness-lessons\ncode-harness-skills\ncode-harness-activities)]
+    CAH --> AJ[(Audit JSONL\n/var/lib/agentbox/\ncode-harness/)]
+```
+
+The `did:nostr` identity flows through all six participants. Federation surfaces for this domain are opt-in (`[linked_data.code_execution] enabled = true` in `agentbox.toml`), following the DDD-004 pattern: `LessonDistilled` and `SkillVerified` events are encoded as JSON-LD with the URN→IRI mapping (`urn:agentbox:K:S:L` ⇆ `https://urn.agentbox.dev/K/S/L`) before federation.
+
 ## Mesh participation
 
 Agentbox participates as a mesh peer via its built-in `nostr-rs-relay` (ADR-009). When `federation.mode = "client"` is set in `agentbox.toml`, the relay connects to the private relay mesh and exchanges NIP-42-authenticated messages with other substrates.

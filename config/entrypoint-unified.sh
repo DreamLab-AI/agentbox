@@ -360,8 +360,42 @@ fi
 if [ "${ENABLE_COMFYUI_BUILTIN:-false}" = "true" ]; then
   _probe_closure /opt/agentbox/skills/comfyui/mcp-server
 fi
+if [ "${ENABLE_CODE_INTERPRETER:-false}" = "true" ]; then
+  _probe_closure /opt/agentbox/mcp/code-interpreter
+fi
+if [ "${ENABLE_ACI_SHELL:-false}" = "true" ]; then
+  _probe_closure /opt/agentbox/mcp/aci-shell
+fi
 
 echo "[6/8] Service closures OK."
+
+# ── Code-as-Harness bootstrap (PRD-008) ──────────────────────────────────────
+if [ "${ENABLE_CODE_INTERPRETER:-false}" = "true" ]; then
+  # Wheelhouse must exist for kernel.install_pkg to work; baked at image
+  # build time by the Nix derivation, but ensure the directory exists at
+  # runtime so the MCP server's startup validation passes.
+  WHEELHOUSE="${AGENTBOX_KERNEL_WHEELHOUSE:-/var/lib/agentbox/code-interpreter-wheelhouse}"
+  if [ ! -d "$WHEELHOUSE" ] || [ ! -f "$WHEELHOUSE/.agentbox-wheelhouse-version" ]; then
+    echo "[code-harness] WARN: wheelhouse at $WHEELHOUSE missing or unversioned"
+    echo "[code-harness]   kernel.install_pkg will be disabled until Nix-baked wheelhouse is present"
+  else
+    echo "[code-harness] wheelhouse OK: $(cat "$WHEELHOUSE/.agentbox-wheelhouse-version")"
+  fi
+  # Audit + outbox dirs — devuser-owned so the MCP server can write JSONL
+  mkdir -p \
+    /var/lib/agentbox/code-harness \
+    /var/lib/agentbox/code-harness/traces-outbox \
+    /var/lib/agentbox/code-harness/aci-submissions
+  chown -R devuser:devuser /var/lib/agentbox/code-harness 2>/dev/null || true
+fi
+
+# Propagate did:nostr identity into MCP env. The sovereign mesh sets these
+# from the pod identity; in local-only dev mode they fall back to "local".
+# Every MCP server that needs agent identity reads these vars at spawn time.
+# Per ADR-013, URNs are minted only via management-api/lib/uris.js — the
+# new MCPs do NOT mint raw format!() URNs; they call the URI minter instead.
+export AGENTBOX_AGENT_DID="${AGENTBOX_AGENT_DID:-did:nostr:local}"
+export AGENTBOX_AGENT_PUBKEY="${AGENTBOX_AGENT_PUBKEY:-local}"
 
 # ---------------------------------------------------------------------------
 # Phase 7 — Native ruflo plugin bootstrap

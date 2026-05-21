@@ -1,0 +1,52 @@
+[
+  {
+    "prompt": "Compute the 47th Fibonacci number using a generator function, store it in a variable, then assert it equals 2971215073 and print a confirmation.",
+    "expected_skill": "codeact",
+    "rationale": "Needs a persistent kernel to define the generator, call it, store the result, and run the assertion in sequence — intermediate state must survive across turns."
+  },
+  {
+    "prompt": "Parse this CSV string into rows, filter rows where column 'revenue' > 1000, compute the mean of those rows, and assert the result is within 0.01 of 1847.33.",
+    "expected_skill": "codeact",
+    "rationale": "Multi-step stateful pipeline: parse → filter → aggregate → assert. Each step depends on in-kernel state from the previous step; a fresh shell per step would lose the intermediate data."
+  },
+  {
+    "prompt": "Implement a memoised Levenshtein distance function in Python, run it on 20 randomly generated string pairs drawn from the same random seed, and print the median distance.",
+    "expected_skill": "codeact",
+    "rationale": "Requires persistent kernel: define function, import random with fixed seed, generate pairs, call function for each pair, compute median — all in a shared namespace."
+  },
+  {
+    "prompt": "Load a pandas DataFrame from the variable 'df' already in the kernel, drop rows with NaN in any column, normalise the 'score' column to [0,1], and verify the max is exactly 1.0.",
+    "expected_skill": "codeact",
+    "rationale": "Explicitly references a variable already in the kernel namespace ('df'), which only exists if kernel state persists — a stateless shell cannot access it."
+  },
+  {
+    "prompt": "Run a binary search over a sorted list of 10 000 integers already in variable 'data', find the index of target value 7777, and assert data[index] == 7777.",
+    "expected_skill": "codeact",
+    "rationale": "Depends on 'data' already in the kernel namespace; the assertion verifies in-kernel state from a prior cell — requires persistent execution environment."
+  },
+  {
+    "prompt": "Design and implement a Rust crate skeleton with src/lib.rs, Cargo.toml, and a passing unit test that verifies an 'add' function returns the correct sum of two integers.",
+    "expected_skill": "sparc-code",
+    "rationale": "Multi-file project scaffolding with no shared kernel state dependency — architect plans the structure, coder writes the files, no intermediate in-memory state required."
+  },
+  {
+    "prompt": "Create a Python package layout for a CLI tool: pyproject.toml, src/mytool/__init__.py, src/mytool/cli.py using argparse, and tests/test_cli.py with one passing pytest assertion.",
+    "expected_skill": "sparc-code",
+    "rationale": "File-creation task across multiple files; no persistent kernel state needed — sparc-code plans and writes files without requiring a live interpreter between steps."
+  },
+  {
+    "prompt": "Refactor the existing authentication module at src/auth.py to extract password-hashing into a separate src/crypto.py module, update all imports, and add a docstring to each public function.",
+    "expected_skill": "sparc-code",
+    "rationale": "Cross-file refactoring: read existing files, plan the split, rewrite two files, update imports. No computation or intermediate variable state needed — this is an edit-and-review task."
+  },
+  {
+    "prompt": "Write a Go HTTP handler that serves a health-check endpoint at /healthz returning JSON {status: 'ok'}, add a corresponding table-driven unit test, and ensure 'go test ./...' passes.",
+    "expected_skill": "sparc-code",
+    "rationale": "Multi-file Go project scaffold with test — the task is write-then-verify at the file level; no persistent kernel or shared interpreter state involved between code-generation steps."
+  },
+  {
+    "prompt": "Generate an OpenAPI 3.1 YAML spec for a REST API with three endpoints (GET /users, POST /users, DELETE /users/{id}), then scaffold matching Express.js route handlers in routes/users.js with JSDoc annotations.",
+    "expected_skill": "sparc-code",
+    "rationale": "Orchestrator-shaped: specify contract first, then generate implementation files. Multiple files, no shared kernel state — sparc-code's plan-then-write model is the correct route."
+  }
+]

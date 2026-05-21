@@ -61,6 +61,7 @@
         dataScienceCfg = skillsCfg.data_science or {};
         docsCfg = skillsCfg.docs or {};
         researchCfg = skillsCfg.research or {};
+        codeInterpreterCfg = skillsCfg.code_interpreter or {};
         securityCfg = agentboxConfig.security or {};
         securityExceptions = securityCfg.exceptions or {};
         privacyFilterCfg = agentboxConfig.privacy_filter or {};
@@ -294,7 +295,7 @@
         };
 
         # Conditional package lists for allPackages — mirrors the lib.optionals
-        # pattern used for codexPackages, geminiCliPackages, etc.
+        # pattern used for codexPackages, antigravityCliPackages, etc.
         npmServicePackages =
           # management-api is always included
           [ managementApiPkg ]
@@ -389,19 +390,11 @@
           pnpm
         ];
 
-        # @google/gemini-cli pinned via makeNpmCli to stay ahead of nixpkgs.
-        # pkgs.gemini-cli lags npm; pin here for operator-controlled cadence.
-        # nix-prefetch-url https://registry.npmjs.org/%40google%2Fgemini-cli/-/gemini-cli-0.40.1.tgz
-        geminiCliPkg = mkNpmCli {
-          pkgName         = "@google/gemini-cli";
-          version         = "0.40.1";
-          sha256          = "sha256-iTIFEnwHLTuqL7pBmigIG5/Vy3fHRYgxOd2ePiwaKy0=";
-          nodeModulesHash = "sha256-vRMAns5rz3edeMNdbdQw16RByn0tOIPqzarn5VH3s2U=";
-          bin             = "gemini";
-        };
-
-        geminiCliPackages = lib.optionals (toolchainCfg.gemini_cli or false) [
-          geminiCliPkg
+        # Google Antigravity CLI — replaces @google/gemini-cli (sunset 2026-06-18).
+        # Binary: `agy`. Available in nixpkgs as `antigravity` (unfree).
+        # Pro tier web-based login: `agy auth login`.
+        antigravityCliPackages = lib.optionals (toolchainCfg.antigravity_cli or false) [
+          pkgs.antigravity
         ];
 
         # OpenAI Codex Rust-native CLI — pinned upstream release asset.
@@ -526,6 +519,69 @@
 
         researchPackages =
           lib.optionals (researchCfg.web_researcher or false) [ webResearcherMcpPkg ];
+
+        # ── Code-as-Harness packages (PRD-008 / ADR-018 / ADR-020) ───────────
+        # Gated on [skills.code_interpreter].enabled and [skills.aci_shell].enabled.
+        # Network is deliberately OFF inside the kernel — all packages are
+        # pre-baked into the wheelhouse at Nix build time (no PyPI at runtime).
+        # Hashes marked lib.fakeHash: the first `nix build` will print the
+        # correct content-addressed hash to substitute.
+
+        codeInterpreterPythonEnv = pkgs.python312.withPackages (ps: with ps; [
+          numpy pandas scipy sympy matplotlib scikit-learn requests
+          beautifulsoup4 lxml networkx pydantic
+          ipykernel jupyter_client
+          psycopg2          # for RuVector writes if needed inside kernel tasks
+          prometheus-client
+        ]);
+
+        # Pre-built wheelhouse directory — copied from the Nix-constructed
+        # Python environment. No PyPI fetch at runtime; pip --no-index
+        # --find-links points at this directory.
+        codeInterpreterWheelhousePkg = pkgs.runCommand "code-interpreter-wheelhouse-0.1.0" {
+          buildInputs = [ pkgs.python312 codeInterpreterPythonEnv ];
+        } ''
+          mkdir -p $out/wheelhouse
+          # Copy site-packages from the Nix-cured Python env as wheel stubs.
+          # The MCP server's install_pkg path uses --no-index --find-links=
+          # pointing here; packages are imported directly from the env, not
+          # re-installed from wheels, so this dir acts as the version manifest.
+          cp -r ${codeInterpreterPythonEnv}/lib/python3.12/site-packages $out/wheelhouse/site-packages || true
+          # Marker file for runtime validation (entrypoint checks this).
+          echo "0.1.0" > $out/wheelhouse/.agentbox-wheelhouse-version
+        '';
+
+        codeInterpreterMcpPkg = pkgs.runCommand "agentbox-code-interpreter-mcp-0.1.0" {} ''
+          mkdir -p $out/bin $out/share/agentbox/mcp/code-interpreter
+          cp -r ${./mcp/code-interpreter}/. $out/share/agentbox/mcp/code-interpreter/
+          cat > $out/bin/code-interpreter-mcp <<'WRAPPER'
+          #!/usr/bin/env bash
+          exec ${codeInterpreterPythonEnv}/bin/python3 \
+            $out/share/agentbox/mcp/code-interpreter/server.py "$@"
+          WRAPPER
+          chmod +x $out/bin/code-interpreter-mcp
+        '';
+
+        aciShellMcpPkg = pkgs.runCommand "agentbox-aci-shell-mcp-0.1.0" {} ''
+          mkdir -p $out/bin $out/share/agentbox/mcp/aci-shell
+          cp -r ${./mcp/aci-shell}/. $out/share/agentbox/mcp/aci-shell/
+          cat > $out/bin/aci-shell-mcp <<'WRAPPER'
+          #!/usr/bin/env bash
+          exec ${pkgs.nodejs_22}/bin/node \
+            $out/share/agentbox/mcp/aci-shell/server.js "$@"
+          WRAPPER
+          chmod +x $out/bin/aci-shell-mcp
+        '';
+
+        codeHarnessPackages =
+          lib.optionals (codeInterpreterCfg.enabled or false) [
+            codeInterpreterPythonEnv
+            codeInterpreterWheelhousePkg
+            codeInterpreterMcpPkg
+          ]
+          ++ lib.optionals ((skillsCfg.aci_shell or {}).enabled or false) [
+            aciShellMcpPkg
+          ];
 
         # ComfyUI built-in: fetch upstream source and wrap with a Python env.
         # Included only when skills.media.comfyui_builtin = true.
@@ -828,6 +884,7 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           ++ dbPackages
           ++ browserPackages
           ++ researchPackages
+          ++ codeHarnessPackages
           ++ mediaPackages
           ++ spatialPackages
           ++ dataSciencePackages
@@ -837,7 +894,7 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           ++ solidPodRsPackages
           ++ nagualQePackages
           ++ desktopPackages
-          ++ geminiCliPackages
+          ++ antigravityCliPackages
           ++ codexPackages
           ++ claudeCodePackages
           ++ networkingPackages
@@ -1429,13 +1486,15 @@ stderr_logfile=/var/log/tmux-autostart.error.log
           + "        condition: service_started\n"
         );
 
-        # External network declaration for ragflow integration.
-        ragflowNetworkDecl = lib.optionalString (ragflowCfg.enabled or false) ''
+        # External network declaration — always enabled so the agentbox
+        # container can reach the browsercontainer sidecar (and ragflow
+        # when enabled) via Docker DNS on visionclaw_network.
+        ragflowNetworkDecl = ''
   visionclaw_network:
     external: true'';
 
-        # agentbox network attachment block.
-        agentboxNetworks = lib.optionalString (ragflowCfg.enabled or false) ''
+        # agentbox network attachment block — unconditional.
+        agentboxNetworks = ''
     networks:
       - default
       - visionclaw_network'';
@@ -1585,8 +1644,8 @@ stderr_logfile=/var/log/tmux-autostart.error.log
           # OpenAI Codex CLI home. Plugin git pack + sqlite logs + session
           # history grow quickly; 512M gives plenty of headroom.
           "/home/devuser/.codex:mode=755,size=512M,uid=1000,gid=1000"
-          # Gemini CLI home. Model cache + history; 256M is generous.
-          "/home/devuser/.gemini:mode=755,size=256M,uid=1000,gid=1000"
+          # Antigravity CLI home. Model cache + session state; 256M is generous.
+          "/home/devuser/.antigravity:mode=755,size=256M,uid=1000,gid=1000"
           # ruflo plugins git cache. Phase 7 sparse-clones github.com/ruvnet/ruflo
           # here; plugins are then symlinked from cache into .claude-flow/plugins.
           # 512M covers the full plugin tree with room for npm artefacts.
@@ -1765,7 +1824,9 @@ ${agentboxVolumes}
 ${agentboxNetworks}
 
 volumes:
-${topLevelVolumes}${lib.optionalString (ragflowCfg.enabled or false) "\nnetworks:\n${ragflowNetworkDecl}\n"}
+${topLevelVolumes}
+networks:
+${ragflowNetworkDecl}
 '';
 
         configFiles = pkgs.runCommand "agentbox-config" {} ''
@@ -2083,6 +2144,16 @@ ${topLevelVolumes}${lib.optionalString (ragflowCfg.enabled or false) "\nnetworks
           "ENABLE_LATEX=${boolEnv (docsCfg.latex or false)}"
           "ENABLE_REPORT_BUILDER=${boolEnv (docsCfg.report_builder or false)}"
           "ENABLE_MERMAID=${boolEnv (docsCfg.mermaid or false)}"
+          # ── Code-as-Harness (PRD-008) ─────────────────────────────────────
+          "ENABLE_CODE_INTERPRETER=${boolEnv (codeInterpreterCfg.enabled or false)}"
+          "ENABLE_CODEACT_SKILL=${boolEnv ((skillsCfg.codeact or {}).enabled or false)}"
+          "ENABLE_EXPEL=${boolEnv ((agentboxConfig.features or {}).expel_lesson_extraction.enabled or false)}"
+          "ENABLE_VOYAGER=${boolEnv ((skillsCfg.voyager_skill_library or {}).enabled or false)}"
+          "ENABLE_ACI_SHELL=${boolEnv ((skillsCfg.aci_shell or {}).enabled or false)}"
+          "ENABLE_TREE_SEARCH_CODER=${boolEnv ((skillsCfg.tree_search_coder or {}).enabled or false)}"
+          "AGENTBOX_KERNEL_WHEELHOUSE=/var/lib/agentbox/code-interpreter-wheelhouse"
+          "AGENTBOX_CODE_HARNESS_DIR=/var/lib/agentbox/code-harness"
+          # ─────────────────────────────────────────────────────────────────
           "ENABLE_CLAUDE=${boolEnv (toolchainCfg.claude or false)}"
           "ENABLE_CLAUDE_CODE=${boolEnv (toolchainCfg.claude_code or false)}"
           "ENABLE_RUFLO=${boolEnv (toolchainCfg.ruflo or false)}"
@@ -2097,7 +2168,7 @@ ${topLevelVolumes}${lib.optionalString (ragflowCfg.enabled or false) "\nnetworks
           "OPENSSL_DIR=${pkgs.openssl}"
           "OPENSSL_LIB_DIR=${pkgs.openssl.out}/lib"
           "OPENSSL_INCLUDE_DIR=${pkgs.openssl.dev}/include"
-          "ENABLE_GEMINI_CLI=${boolEnv (toolchainCfg.gemini_cli or false)}"
+          "ENABLE_ANTIGRAVITY_CLI=${boolEnv (toolchainCfg.antigravity_cli or false)}"
           "ENABLE_CODEX=${boolEnv (toolchainCfg.codex or false)}"
           "CODEX_HOME=/home/devuser/.codex"
           "GIT_CONFIG_GLOBAL=/home/devuser/.config/git/config"

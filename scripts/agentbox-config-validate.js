@@ -21,6 +21,10 @@
  *   E050-E054, W053         linked-data viewer slot S12 (ADR-013-related)
  *   E055-E057, W058         multi-tenant did:nostr pods (ADR-017 / PRD-007)
  *   E059-E062, W063         git-versioned pods (JSS #471, solid-pod-rs alpha.12)
+ *   E042, E043, W042, W044, W045
+ *                           code-interpreter MCP (ADR-018 / PRD-008)
+ *   E044, W043              experiential skill learning (ADR-019 / PRD-008)
+ *   E050-E052, W050-W052    ACI MCP + tree-search (ADR-020 / PRD-008)
  *
  * Reserved / retired codes (do not reuse):
  *   E009                    superseded by E017
@@ -397,7 +401,7 @@ if (sovereignMesh.telegram_mirror === true) {
 //        (master gate); avoids accidentally shipping a consultant in the
 //        image while the dispatcher is off.
 // E037 — consultants.codex requires toolchains.codex;
-//        consultants.gemini requires toolchains.gemini_cli;
+//        consultants.antigravity requires toolchains.antigravity_cli;
 //        consultants.zai requires toolchains.claude (the claude-zai wrapper
 //        is bundled with that toolchain — without it `claude-zai` isn't on
 //        PATH inside the container).
@@ -407,23 +411,20 @@ if (sovereignMesh.telegram_mirror === true) {
 {
   const consultants = manifest.consultants || {};
   const consultantToProvider = {
-    codex:      'openai',
-    gemini:     'gemini',
-    zai:        'zai',
-    perplexity: 'perplexity',
-    deepseek:   'deepseek',
+    codex:         'openai',
+    antigravity:   'gemini',
+    zai:           'zai',
+    perplexity:    'perplexity',
+    deepseek:      'deepseek',
   };
   const consultantToToolchain = {
-    codex:  'codex',
-    gemini: 'gemini_cli',
-    // zai uses the `claude-zai` wrapper, which is a fork of claude-code
-    // bundled with toolchains.claude. perplexity and deepseek consultants
-    // talk over raw HTTP and have no toolchain gate.
-    zai:    'claude',
+    codex:        'codex',
+    antigravity:  'antigravity_cli',
+    zai:          'claude',
   };
   const tcCfg = manifest.toolchains || {};
 
-  const subConsultants = ['codex', 'gemini', 'zai', 'perplexity', 'deepseek'];
+  const subConsultants = ['codex', 'antigravity', 'zai', 'perplexity', 'deepseek'];
   let anySubEnabled = false;
 
   for (const sub of subConsultants) {
@@ -1098,6 +1099,153 @@ if (ldEnabled) {
       errors.push({
         code: 'E049',
         message: `E049: [linked_data].did_documents requires [integrations.solid_pod_rs].enable_did_nostr = true (the did-nostr resolver Cargo feature)`,
+      });
+    }
+  }
+}
+
+// ─── E042/E043/W042/W044/W045: code-interpreter MCP (ADR-018 / PRD-008) ─────
+//
+// E042 — allow_pip_install=true requires pip_allowlist to be non-empty.
+// E043 — enabled=true requires jupyter_client available (advisory — cannot
+//         spawn subprocess; emit as W043 at validate time, promote to E043
+//         at image build via `nix build .#pythonEnvCodeInterpreter` check).
+// W042 — max_memory_mb < 128 warns that scientific packages need ≥200 MB.
+// W044 — idle_timeout_s < 300 warns that short timeouts interrupt workflows.
+// W045 — allow_pip_install=true without non-empty pip_allowlist is caught by
+//         E042 as an error; W045 is the softer advisory when allow_pip_install
+//         is false and pip_allowlist is populated (dead config, not an error).
+{
+  const ciCfg = (manifest.skills || {}).code_interpreter || {};
+  if (ciCfg.enabled) {
+    // E042
+    if (ciCfg.allow_pip_install === true) {
+      const allowlist = ciCfg.pip_allowlist;
+      if (!Array.isArray(allowlist) || allowlist.length === 0) {
+        errors.push({
+          code: 'E042',
+          message: 'E042: [skills.code_interpreter].allow_pip_install=true requires pip_allowlist to be a non-empty array (ADR-018 §Package install policy)',
+        });
+      }
+    }
+    // W042
+    const maxMem = ciCfg.max_memory_mb;
+    if (typeof maxMem === 'number' && maxMem < 128) {
+      warnings.push({
+        code: 'W042',
+        message: `W042: [skills.code_interpreter].max_memory_mb=${maxMem} is very low; pandas, scipy, and matplotlib typically require ≥200 MB to import`,
+      });
+    }
+    // W044
+    const idleTimeout = ciCfg.idle_timeout_s;
+    if (typeof idleTimeout === 'number' && idleTimeout < 300) {
+      warnings.push({
+        code: 'W044',
+        message: `W044: [skills.code_interpreter].idle_timeout_s=${idleTimeout} is below 300 s; very short idle timeouts may interrupt long-running data workflows`,
+      });
+    }
+    // W045 — pip_allowlist populated but allow_pip_install is off (dead config)
+    if (!ciCfg.allow_pip_install) {
+      const allowlist = ciCfg.pip_allowlist;
+      if (Array.isArray(allowlist) && allowlist.length > 0) {
+        warnings.push({
+          code: 'W045',
+          message: 'W045: [skills.code_interpreter].pip_allowlist is populated but allow_pip_install=false; the allowlist is dead config until allow_pip_install is set to true',
+        });
+      }
+    }
+  }
+}
+
+// ─── E044 / W043: experiential skill learning (ADR-019 / PRD-008) ────────────
+//
+// E044 — voyager_skill_library.enabled=true requires code_interpreter.enabled=true
+//         (VerificationGate depends on KernelSession from kernel MCP).
+// W043 — expel_lesson_extraction.enabled=true without code_interpreter is
+//         accepted (lesson distillation does not require a KernelSession) but
+//         noted: lesson quality for code tasks is lower without ExecutionTrace.
+{
+  const ciEnabled = !!((manifest.skills || {}).code_interpreter || {}).enabled;
+  const voyagerEnabled = !!((manifest.skills || {}).voyager_skill_library || {}).enabled;
+  const expelEnabled = !!((manifest.features || {}).expel_lesson_extraction || {}).enabled;
+
+  if (voyagerEnabled && !ciEnabled) {
+    errors.push({
+      code: 'E044',
+      message: 'E044: [skills.voyager_skill_library].enabled=true requires [skills.code_interpreter].enabled=true (VerificationGate depends on KernelSession — ADR-019 §Architecture)',
+    });
+  }
+  if (expelEnabled && !ciEnabled) {
+    warnings.push({
+      code: 'W043',
+      message: 'W043: [features.expel_lesson_extraction].enabled=true without [skills.code_interpreter].enabled=true is accepted but lesson quality for code tasks is lower without ExecutionTrace grounding (ADR-019 §Manifest gates)',
+    });
+  }
+}
+
+// ─── E050-E052 / W050-W052: ACI MCP + tree-search (ADR-020 / PRD-008) ───────
+//
+// E050 — aci_shell.enabled=true requires code_interpreter.enabled=true
+//         (aci.run_tests routes through the kernel MCP).
+// E051 — aci_shell.test_command_allowlist must be non-empty when enabled.
+// E052 — tree_search_coder.enabled=true requires code_interpreter.enabled=true.
+// W050 — aci_shell.max_view_lines > 200 defeats the agent-tuned affordance.
+// W051 — tree_search_coder.max_candidates > 5 scales token spend linearly.
+// W052 — tree_search_coder.spend_cap_usd absent (or zero) is a hard error
+//         advisory; the tree-search skill has no default-unlimited mode.
+{
+  const ciEnabled = !!((manifest.skills || {}).code_interpreter || {}).enabled;
+  const aciCfg = (manifest.skills || {}).aci_shell || {};
+  const tsCfg = (manifest.skills || {}).tree_search_coder || {};
+
+  if (aciCfg.enabled) {
+    // E050
+    if (!ciEnabled) {
+      errors.push({
+        code: 'E050',
+        message: 'E050: [skills.aci_shell].enabled=true requires [skills.code_interpreter].enabled=true (aci.run_tests routes through the kernel MCP — ADR-020)',
+      });
+    }
+    // E051
+    const allowlist = aciCfg.test_command_allowlist;
+    if (!Array.isArray(allowlist) || allowlist.length === 0) {
+      errors.push({
+        code: 'E051',
+        message: 'E051: [skills.aci_shell].test_command_allowlist must be a non-empty array when aci_shell is enabled (ADR-020 §Manifest gates)',
+      });
+    }
+    // W050
+    const maxLines = aciCfg.max_view_lines;
+    if (typeof maxLines === 'number' && maxLines > 200) {
+      warnings.push({
+        code: 'W050',
+        message: `W050: [skills.aci_shell].max_view_lines=${maxLines} exceeds 200; values above 150 defeat the bounded-affordance intent of the SWE-agent ACI pattern (ADR-020 §Validator)`,
+      });
+    }
+  }
+
+  if (tsCfg.enabled) {
+    // E052
+    if (!ciEnabled) {
+      errors.push({
+        code: 'E052',
+        message: 'E052: [skills.tree_search_coder].enabled=true requires [skills.code_interpreter].enabled=true (branch scoring requires kernel execution — ADR-020)',
+      });
+    }
+    // W051
+    const maxCandidates = tsCfg.max_candidates;
+    if (typeof maxCandidates === 'number' && maxCandidates > 5) {
+      warnings.push({
+        code: 'W051',
+        message: `W051: [skills.tree_search_coder].max_candidates=${maxCandidates} > 5; token spend scales linearly with N (ADR-020 §Manifest gates)`,
+      });
+    }
+    // W052 — spend_cap_usd must be explicit and positive
+    const spendCap = tsCfg.spend_cap_usd;
+    if (typeof spendCap !== 'number' || spendCap <= 0) {
+      warnings.push({
+        code: 'W052',
+        message: `W052: [skills.tree_search_coder].spend_cap_usd must be a positive number; got ${JSON.stringify(spendCap)}. There is no default-unlimited mode for tree-search (ADR-020 §Manifest gates)`,
       });
     }
   }

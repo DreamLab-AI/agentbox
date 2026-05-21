@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agentbox:schema:mcp:aci-shell:v1",
+  "title": "ACI Shell MCP wire contract",
+  "description": "JSON Schema for the 5 tools of the ACI Shell MCP server. ADR-020 §Surface 1 / PRD-008 §3.2 / DDD-005. Phase 2 surface — manifest gate [skills.aci_shell] enabled = false.",
+  "version": "1.0.0",
+  "$defs": {
+    "HitRecord": {
+      "type": "object",
+      "required": ["path", "line", "snippet"],
+      "properties": {
+        "path":    { "type": "string", "description": "File path relative to ACI_WORKSPACE_ROOT." },
+        "line":    { "type": "integer", "minimum": 1, "description": "Line number (1-indexed)." },
+        "snippet": { "type": "string", "maxLength": 200, "description": "Matched line content, truncated to 200 chars." }
+      },
+      "additionalProperties": false
+    },
+    "ActivityRecord": {
+      "description": "Mandatory fields on every emitted Activity record per ADR-013 + ADR-020.",
+      "type": "object",
+      "required": ["owner_did", "action_urn", "action_verb", "subject_did", "object_urn", "started_at", "ended_at", "outcome"],
+      "properties": {
+        "owner_did":   { "type": "string", "pattern": "^did:nostr:" },
+        "action_urn":  { "type": "string", "pattern": "^urn:agentbox:activity:" },
+        "action_verb": { "type": "string", "enum": ["view", "edit", "search", "test", "submit"] },
+        "subject_did": { "type": "string", "pattern": "^did:nostr:" },
+        "object_urn":  { "type": "string", "pattern": "^urn:agentbox:" },
+        "started_at":  { "type": "string", "format": "date-time" },
+        "ended_at":    { "type": "string", "format": "date-time" },
+        "outcome":     { "type": "string", "enum": ["ok", "error", "skip"] }
+      }
+    }
+  },
+  "tools": {
+    "aci.view_file": {
+      "description": "Read a bounded window of a file. Hard cap: 150 lines per call.",
+      "inputSchema": {
+        "type": "object",
+        "required": ["path"],
+        "properties": {
+          "path":       { "type": "string" },
+          "start_line": { "type": "integer", "minimum": 1, "default": 1 },
+          "max_lines":  { "type": "integer", "minimum": 1, "maximum": 150, "default": 150 }
+        },
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": ["content", "total_lines", "truncated"],
+        "properties": {
+          "content":     { "type": "string" },
+          "total_lines": { "type": "integer", "minimum": 0 },
+          "truncated":   { "type": "boolean" }
+        },
+        "additionalProperties": false
+      },
+      "errorCases": [
+        { "condition": "max_lines > 150", "message": "max_lines must not exceed 150" },
+        { "condition": "path contains '..' segment", "message": "path traversal rejected" },
+        { "condition": "path outside ACI_WORKSPACE_ROOT", "message": "path outside workspace root" }
+      ]
+    },
+    "aci.edit_file": {
+      "description": "Replace lines [start_line, end_line] with replacement text. Atomic write. Returns compact diff (≤10 context lines) and exit_kind.",
+      "inputSchema": {
+        "type": "object",
+        "required": ["path", "start_line", "end_line", "replacement"],
+        "properties": {
+          "path":        { "type": "string" },
+          "start_line":  { "type": "integer", "minimum": 1 },
+          "end_line":    { "type": "integer", "minimum": 1 },
+          "replacement": { "type": "string" }
+        },
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": ["diff", "exit_kind"],
+        "properties": {
+          "diff":      { "type": "string", "description": "Compact unified diff with ≤10 context lines." },
+          "exit_kind": { "type": "string", "enum": ["ok", "conflict", "oob"] }
+        },
+        "additionalProperties": false
+      },
+      "errorCases": [
+        { "condition": "start_line > total_lines + 1", "exit_kind": "oob", "description": "Line number out of bounds" }
+      ]
+    },
+    "aci.search_repo": {
+      "description": "Search repo for pattern (rg preferred, grep fallback). Truncates at max_results; reports total_found.",
+      "inputSchema": {
+        "type": "object",
+        "required": ["query"],
+        "properties": {
+          "query":       { "type": "string" },
+          "path_glob":   { "type": "string", "default": "**" },
+          "max_results": { "type": "integer", "minimum": 1, "maximum": 500, "default": 20 }
+        },
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": ["hits", "total_found", "truncated"],
+        "properties": {
+          "hits":        { "type": "array", "items": { "$ref": "#/$defs/HitRecord" } },
+          "total_found": { "type": "integer", "minimum": 0 },
+          "truncated":   { "type": "boolean" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "aci.run_tests": {
+      "description": "Run an allowlisted test command in a fresh subprocess. Privacy filter applied to stdout/stderr before audit write.",
+      "inputSchema": {
+        "type": "object",
+        "required": ["command"],
+        "properties": {
+          "command":   { "type": "string" },
+          "timeout_s": { "type": "integer", "minimum": 1, "maximum": 600, "default": 300 }
+        },
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": ["stdout", "stderr", "exit_code", "duration_ms", "trace_urn"],
+        "properties": {
+          "stdout":      { "type": "string" },
+          "stderr":      { "type": "string" },
+          "exit_code":   { "type": "integer" },
+          "duration_ms": { "type": "integer", "minimum": 0 },
+          "trace_urn":   { "type": "string", "pattern": "^urn:agentbox:activity:" }
+        },
+        "additionalProperties": false
+      },
+      "allowlist": ["pytest", "cargo test", "npm test", "go test"],
+      "privacyNote": "stdout/stderr are passed through the privacy filter (ADR-008) before audit JSONL write. File contents from aci.view_file are NOT written to RuVector by default — only metadata (path, line range, total)."
+    },
+    "aci.submit": {
+      "description": "Close the ACI session. Emits a receipt URN and writes an ExpeL sentinel file.",
+      "inputSchema": {
+        "type": "object",
+        "required": ["summary"],
+        "properties": {
+          "summary": { "type": "string" }
+        },
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": ["submission_id", "status", "receipt_urn"],
+        "properties": {
+          "submission_id": { "type": "string" },
+          "status":        { "type": "string", "enum": ["closed"] },
+          "receipt_urn":   { "type": "string", "pattern": "^urn:agentbox:receipt:" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "urnScheme": {
+    "session":  "urn:agentbox:thing:<scope>:aci-<short-id>",
+    "activity": "urn:agentbox:activity:<scope>:aci-<verb>-<short-id>",
+    "receipt":  "urn:agentbox:receipt:<scope>:aci-<session-id>",
+    "note":     "scope is the hex pubkey from AGENTBOX_AGENT_PUBKEY; falls back to 'local' in dev mode"
+  },
+  "manifestGate": {
+    "tomlKey":  "[skills.aci_shell]",
+    "default":  "enabled = false",
+    "validatorCodes": {
+      "E050": "skills.aci_shell.enabled = true requires skills.code_interpreter.enabled = true",
+      "E051": "skills.aci_shell.test_command_allowlist must be non-empty when enabled",
+      "W050": "max_view_lines > 200 accepted but defeats agent-tuned ACI affordance intent"
+    }
+  },
+  "observability": {
+    "spans":   "agentbox.mcp.aci_shell.<tool>",
+    "counter": "agentbox_aci_calls_total{tool, outcome}",
+    "histogram": "agentbox_aci_duration_ms{tool}",
+    "auditJSONL": "/var/lib/agentbox/code-harness/aci-<session-id>-<YYYY-MM-DD>.jsonl"
+  }
+}

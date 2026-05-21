@@ -101,6 +101,12 @@ alias n8n-mcp="npx -y n8n-mcp"
 alias mcp-playwright="npx -y @playwright/mcp@latest"
 alias mcp-chrome="npx -y chrome-devtools-mcp@latest"
 
+# === CODE-AS-HARNESS (PRD-008) ===
+alias kernel-health="ls -la /var/lib/agentbox/code-interpreter-wheelhouse/.agentbox-wheelhouse-version 2>/dev/null && echo 'wheelhouse OK' || echo 'wheelhouse MISSING'"
+alias code-harness-traces="ls -la /var/lib/agentbox/code-harness/traces-outbox/ 2>/dev/null | tail -10"
+alias code-harness-audit="tail -f /var/lib/agentbox/code-harness/kernel-*.jsonl 2>/dev/null"
+alias aci-submissions="ls -la /var/lib/agentbox/code-harness/aci-submissions/ 2>/dev/null"
+
 # === BROWSER SIDECAR (browsercontainer on visionclaw_network) ===
 alias cdp-sidecar="/opt/agentbox/skills/chrome-cdp/scripts/cdp-sidecar.sh"
 alias browser-health="curl -s http://browsercontainer:8931/health | python3 -m json.tool"
@@ -180,10 +186,11 @@ alias profile-ruflo="cd /workspace/profiles/ruflo-orchestrator"
 alias profile-qe="cd /workspace/profiles/qe-fleet"
 alias profile-docs="cd /workspace/profiles/docs-latex"
 
-# === GEMINI CLI (@google/gemini-cli v0.38.2) ===
-alias zgemini='zellij action launch-or-focus-plugin -- gemini'
-alias gemini-help="gemini --help"
-alias gemini-version="gemini --version"
+# === ANTIGRAVITY CLI (Google, replaces gemini-cli) ===
+alias zantigravity='zellij action launch-or-focus-plugin -- antigravity'
+alias agy-help="agy --help"
+alias agy-version="agy --version"
+alias agy-login="agy auth login"
 
 # === OPENAI CODEX RUST CLI (github.com/openai/codex rust-v0.124.0) ===
 # Enabled via [toolchains.codex] = true in agentbox.toml.

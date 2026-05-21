@@ -299,6 +299,72 @@ mermaid = true
 # pages route to the external browsercontainer sidecar (`browser` skill).
 web_researcher = true
 
+# ── Code-as-Harness integration (PRD-008) ────────────────────────────────────
+# Phase 1 (build-now): code-interpreter MCP + ExpeL extractor + ACI MCP
+# Phase 2 (build-next): CodeAct skill + Voyager skill library + tree-search
+# All gates default to safe minima. See PRD-008 §6 for phasing semantics.
+
+[skills.code_interpreter]
+# Persistent Python kernel as an MCP. Six tools: kernel.exec, list_vars,
+# inspect, reset, interrupt, install_pkg. One kernel per Claude session,
+# lazy spawn, idle watchdog. Wheelhouse-only package install (no PyPI).
+enabled = true
+idle_timeout_s = 1800          # 30 min; W044 warns if <300
+max_memory_mb = 512            # RLIMIT_AS in MB
+allow_pip_install = false      # if true, kernel.install_pkg works against pip_allowlist
+# Wheels MUST be present in /var/lib/agentbox/code-interpreter-wheelhouse/.
+# The Nix derivation bakes this list into the wheelhouse at image build.
+pip_allowlist = [
+  "numpy", "pandas", "scipy", "sympy", "matplotlib",
+  "scikit-learn", "requests", "beautifulsoup4", "lxml",
+  "networkx", "pydantic"
+]
+
+[skills.codeact]
+# CodeAct skill — orchestrates the code-interpreter MCP for plan-execute-
+# reflect loops. Depends on skills.code_interpreter.
+enabled = true
+
+[features.expel_lesson_extraction]
+# Post-task experiential learning. Distils 0-N rules per completed
+# trajectory into RuVector namespace code-harness-lessons as
+# ex:DistilledLesson (memory_type=semantic, durable).
+# See skills/expel-lesson-extractor/SKILL.md + ADR-019 §Mechanism 1.
+enabled = true
+max_lessons_per_task = 5       # cap on lessons extracted per trajectory; prevents noise flood
+min_confidence = 0.6           # minimum confidence to store a lesson
+confidence_floor = 0.3         # below this, lesson is auto-archived (ADR-019 §Garbage collection)
+archive_after_days = 30        # lessons below floor demoted to *-archive after this many days
+contradiction_sample_rate = 0.1  # 1/10 retrievals sampled for LLM-judge contradiction check
+
+[skills.voyager_skill_library]
+# Verified executable skill library. ex:VerifiedSkill records in
+# code-harness-skills (memory_type=procedural). Three-gate VerificationGate.
+# Phase 2 — depends on skills.code_interpreter + features.expel_lesson_extraction.
+# See skills/voyager-skill-library/SKILL.md + ADR-019 §Mechanism 2.
+# Validator: E044 (requires skills.code_interpreter.enabled = true).
+enabled = false
+max_skill_body_lines = 80      # reject candidates exceeding this line count
+max_evidence_age_s = 3600      # verified_by trace URN must be younger than this
+archive_after_days = 30        # non-max-version skills demoted to *-archive after N days
+
+[skills.aci_shell]
+# SWE-agent-style Agent-Computer Interface MCP. 5 tools (view/edit/
+# search/test/submit). Phase 2 — off by default; opt-in only.
+enabled = false
+max_view_lines = 150           # hard cap per aci.view_file call
+max_edit_context = 10          # max diff context lines in aci.edit_file response
+test_command_allowlist = ["pytest", "cargo test", "npm test", "go test"]
+
+[skills.tree_search_coder]
+# Execution-gated tree-search. Generates N candidates, executes each
+# in fresh kernel, scores by assertion pass. Slow path — explicitly
+# invoked, never auto-routed. Phase 2 — off by default.
+enabled = false
+max_candidates = 5
+per_branch_timeout_s = 60
+spend_cap_usd = 0.50
+
 [skills.ontology]
 enabled = true
 
@@ -543,7 +609,7 @@ agentic_qe = true
 nagual_qe = true
 codebase_memory = true
 rust = true
-gemini_cli = true
+antigravity_cli = true
 codex = true
 code_server = true
 cuda = true
