@@ -10,7 +10,7 @@ automatic via the `auto-consultant` agent template).
 | Consultant | Backend | Strength | Auth |
 |------------|---------|----------|------|
 | `codex`      | OpenAI Codex Rust CLI subprocess | code reasoning, refactors, test generation | `OPENAI_API_KEY`, `~/.codex` config |
-| `gemini`     | `@google/gemini-cli` subprocess  | 1M-token context, long-document analysis | `GOOGLE_GEMINI_API_KEY` |
+| `antigravity` | Google Antigravity CLI (`agy`) subprocess | 1M-token context, long-document analysis | `GOOGLE_API_KEY` or web login |
 | `zai`        | `claude-zai` (Anthropic-API-compatible Z.AI/GLM) | Chinese-language, low-cost reasoning | `ZAI_ANTHROPIC_API_KEY`, `ZAI_URL` |
 | `perplexity` | Perplexity HTTPS API (`sonar-pro`) | live web research with citations | `PERPLEXITY_API_KEY` |
 | `deepseek`   | DeepSeek HTTPS API (`deepseek-reasoner`) | math + reasoning chain transparency | `DEEPSEEK_API_KEY`, optional `DEEPSEEK_BASE_URL` |
@@ -75,7 +75,7 @@ mcp/consultants/
 ├── README.md                # this file
 ├── shared/                  # consultant-base.js + spawn-cli + logger
 ├── codex/                   # Rust Codex CLI subprocess
-├── gemini/                  # @google/gemini-cli subprocess
+├── antigravity/             # Google Antigravity CLI (agy) subprocess
 ├── zai/                     # claude-zai (Z.AI) subprocess
 ├── perplexity/              # Perplexity HTTPS
 └── deepseek/                # DeepSeek HTTPS
@@ -114,7 +114,7 @@ Add a new consultant by:
    `estimateCost`.
 2. Adding the `[consultants.<name>]` block to `agentbox.toml.schema.json`
    and `agentbox.toml`.
-3. Wiring the npm-service derivation in `flake.nix` (mirror `gemini` /
+3. Wiring the npm-service derivation in `flake.nix` (mirror `antigravity` /
    `perplexity`).
 4. Listing in the routing table in `skills/skill-router/SKILL.md` under
    `### Consultants`.

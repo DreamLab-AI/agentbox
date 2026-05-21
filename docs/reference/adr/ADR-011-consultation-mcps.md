@@ -98,7 +98,7 @@ Single buildNpmPackage derivation packages the whole tree. Each `<consultant>/se
 |---|---|
 | **E035** | `consultants.<name>.enabled` requires the matching `providers.<provider>.enabled` |
 | **E036** | any sub-consultant enabled requires `consultants.enabled` (master gate) |
-| **E037** | `codex` consultant requires `toolchains.codex`; `gemini` consultant requires `toolchains.gemini_cli` |
+| **E037** | `codex` consultant requires `toolchains.codex`; `antigravity` consultant requires `toolchains.antigravity_cli` |
 | **E038** | `intelligence_signal=true` requires `AGENTBOX_INTELLIGENCE_DIR` or `WORKSPACE` env var |
 
 ### Why not: claude-code-router as the meta-router

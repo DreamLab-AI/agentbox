@@ -2,27 +2,23 @@
 'use strict';
 
 /**
- * Consultant: gemini (@google/gemini-cli).
+ * Consultant: antigravity (Google Antigravity CLI).
  *
- * Spawns gemini-cli (installed via toolchains.gemini_cli; lives on the PATH
- * in the agentbox image). Gemini's strength is its 1M-token context window
- * — most useful when the context_excerpt is large.
+ * Spawns `agy` (installed via toolchains.antigravity_cli; lives on PATH
+ * in the agentbox image). Antigravity replaces @google/gemini-cli
+ * (sunset 2026-06-18) with a Go-native binary and Pro tier web login.
  *
- * Auth: GOOGLE_GEMINI_API_KEY (canonical) or GEMINI_API_KEY (legacy
- * upstream var). HOME points at the gemini-user dir so any cached login
- * tokens or prefs are honoured.
+ * Auth: GOOGLE_API_KEY (canonical) or web-based login via `agy auth login`.
+ * HOME points at the antigravity home dir so cached session tokens are honoured.
  */
 
 const { BaseConsultant } = require('../shared/consultant-base');
 const { spawnCli } = require('../shared/spawn-cli');
 
-const GEMINI_BIN = process.env.AGENTBOX_GEMINI_BIN || 'gemini';
-const GEMINI_HOME = process.env.AGENTBOX_GEMINI_HOME || '/home/gemini-user';
-const MODEL = process.env.AGENTBOX_GEMINI_MODEL || 'gemini-2.5-pro';
+const AGY_BIN = process.env.AGENTBOX_ANTIGRAVITY_BIN || 'agy';
+const AGY_HOME = process.env.AGENTBOX_ANTIGRAVITY_HOME || '/home/devuser/.antigravity';
+const MODEL = process.env.AGENTBOX_ANTIGRAVITY_MODEL || 'gemini-2.5-pro';
 
-// Indicative pricing — refresh on tier change. Free tier exists for
-// development; paid tier is what the operator opts into when they enable
-// the consultant in production.
 const PRICE_PER_1K_PROMPT     = 0.00125;
 const PRICE_PER_1K_COMPLETION = 0.0050;
 
@@ -35,25 +31,22 @@ function combinedPrompt(question, context) {
 async function callConsult({ question, context_excerpt }) {
   const prompt = combinedPrompt(question, context_excerpt);
   const result = await spawnCli({
-    cmd: GEMINI_BIN,
+    cmd: AGY_BIN,
     args: ['--model', MODEL, '--prompt', prompt, '--no-input'],
     env: {
-      HOME:                   GEMINI_HOME,
-      GOOGLE_GEMINI_API_KEY:  process.env.GOOGLE_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '',
-      GEMINI_API_KEY:         process.env.GEMINI_API_KEY        || process.env.GOOGLE_GEMINI_API_KEY || '',
-      AGENTBOX_AGENT_ID:      'consultant-gemini',
+      HOME:               AGY_HOME,
+      GOOGLE_API_KEY:     process.env.GOOGLE_API_KEY || process.env.GOOGLE_GEMINI_API_KEY || '',
+      AGENTBOX_AGENT_ID:  'consultant-antigravity',
     },
     timeout_ms: 180_000,
   });
   if (result.code !== 0) {
     throw new Error(
-      `gemini CLI exited ${result.code}` +
+      `agy exited ${result.code}` +
       (result.killed ? ' (killed by timeout)' : '') +
       (result.stderr ? `: ${result.stderr.slice(0, 400)}` : '')
     );
   }
-  // gemini-cli prints the model response on stdout. Token usage is not
-  // currently exposed via the CLI, so we approximate from sizes.
   const response = result.stdout;
   const tokens = {
     prompt:     Math.ceil(prompt.length     / 4),
@@ -68,18 +61,18 @@ async function callConsult({ question, context_excerpt }) {
 }
 
 async function healthCheck() {
-  const key = process.env.GOOGLE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+  const key = process.env.GOOGLE_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
   if (!key) {
-    return { ok: false, model: MODEL, last_error: 'GOOGLE_GEMINI_API_KEY (or GEMINI_API_KEY) is not set' };
+    return { ok: false, model: MODEL, last_error: 'GOOGLE_API_KEY is not set (or authenticate via agy auth login)' };
   }
   const v = await spawnCli({
-    cmd: GEMINI_BIN,
+    cmd: AGY_BIN,
     args: ['--version'],
-    env: { HOME: GEMINI_HOME, GOOGLE_GEMINI_API_KEY: key, GEMINI_API_KEY: key },
+    env: { HOME: AGY_HOME, GOOGLE_API_KEY: key },
     timeout_ms: 10_000,
   });
   if (v.code !== 0) {
-    return { ok: false, model: MODEL, last_error: `gemini --version exit ${v.code}: ${v.stderr.slice(0, 200)}` };
+    return { ok: false, model: MODEL, last_error: `agy --version exit ${v.code}: ${v.stderr.slice(0, 200)}` };
   }
   return { ok: true, model: MODEL, last_error: null, version: v.stdout.trim() };
 }
@@ -94,8 +87,8 @@ async function estimateCost({ question_size, expected_response_size }) {
 }
 
 const consultant = new BaseConsultant({
-  name:        'gemini',
-  description: 'Google Gemini (CLI) — 1M-token context window for long-document analysis and codebase-wide reasoning',
+  name:        'antigravity',
+  description: 'Google Antigravity (agy CLI) — 1M-token context window for long-document analysis and codebase-wide reasoning',
   model:       MODEL,
   callConsult,
   healthCheck,
@@ -103,6 +96,6 @@ const consultant = new BaseConsultant({
 });
 
 consultant.start().catch((err) => {
-  process.stderr.write(`[consultant-gemini] failed to start: ${err.message}\n`);
+  process.stderr.write(`[consultant-antigravity] failed to start: ${err.message}\n`);
   process.exit(1);
 });

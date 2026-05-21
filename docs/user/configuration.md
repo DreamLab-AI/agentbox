@@ -259,7 +259,7 @@ agentic_qe    = true
 nagual_qe     = false    # Not on public npm yet
 codebase_memory = true
 rust          = true
-gemini_cli    = false    # @google/gemini-cli
+antigravity_cli = false  # Google Antigravity CLI (agy)
 codex         = false    # OpenAI Codex Rust CLI
 code_server   = false    # Web IDE on port 8080
 cuda          = false    # CUDA 13.1 toolchain (requires [gpu].backend = "local-cuda")

@@ -1,7 +1,7 @@
 {
   "name": "agentbox-consultants",
   "version": "0.1.0",
-  "description": "Consultant tier MCP servers for agentbox (PRD-005 / ADR-011) — codex, gemini, zai, perplexity, deepseek",
+  "description": "Consultant tier MCP servers for agentbox (PRD-005 / ADR-011) — codex, antigravity, zai, perplexity, deepseek",
   "private": true,
   "license": "AGPL-3.0-only",
   "engines": {
@@ -9,18 +9,18 @@
   },
   "bin": {
     "agentbox-consultant-codex":      "codex/server.js",
-    "agentbox-consultant-gemini":     "gemini/server.js",
+    "agentbox-consultant-antigravity": "antigravity/server.js",
     "agentbox-consultant-zai":        "zai/server.js",
     "agentbox-consultant-perplexity": "perplexity/server.js",
     "agentbox-consultant-deepseek":   "deepseek/server.js"
   },
   "scripts": {
     "start:codex":      "node codex/server.js",
-    "start:gemini":     "node gemini/server.js",
+    "start:antigravity": "node antigravity/server.js",
     "start:zai":        "node zai/server.js",
     "start:perplexity": "node perplexity/server.js",
     "start:deepseek":   "node deepseek/server.js",
-    "test": "node -e \"['codex','gemini','zai','perplexity','deepseek','shared/consultant-base','shared/memory-logger','shared/spawn-cli'].forEach(f => { try { require('./' + (f.includes('/') ? f : f + '/server')); } catch(e) { console.error(f, 'load failed:', e.message); process.exit(1); } }); console.log('all consultants load cleanly');\""
+    "test": "node -e \"['codex','antigravity','zai','perplexity','deepseek','shared/consultant-base','shared/memory-logger','shared/spawn-cli'].forEach(f => { try { require('./' + (f.includes('/') ? f : f + '/server')); } catch(e) { console.error(f, 'load failed:', e.message); process.exit(1); } }); console.log('all consultants load cleanly');\""
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0"

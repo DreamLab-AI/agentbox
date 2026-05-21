@@ -34,8 +34,8 @@ services:
       - OPENAI_BASE_URL=${OPENAI_BASE_URL:-http://ollama:11434/v1}
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ollama:11434}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:32b-instruct}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
       - GOOGLE_GEMINI_API_KEY=${GOOGLE_GEMINI_API_KEY:-}
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - MANAGEMENT_API_KEY=${MANAGEMENT_API_KEY:-}
       - MANAGEMENT_API_AUTH_MODE=${MANAGEMENT_API_AUTH_MODE:-hybrid}
       - NOSTR_RELAYS=${NOSTR_RELAYS:-wss://relay.damus.io,wss://relay.primal.net}
@@ -74,7 +74,7 @@ services:
       - /home/devuser/.config:mode=755,size=64M,uid=1000,gid=1000
       - /home/devuser/.claude-flow:mode=755,size=64M,uid=1000,gid=1000
       - /home/devuser/.codex:mode=755,size=512M,uid=1000,gid=1000
-      - /home/devuser/.gemini:mode=755,size=256M,uid=1000,gid=1000
+      - /home/devuser/.antigravity:mode=755,size=256M,uid=1000,gid=1000
       - /var/cache:mode=755,size=512M,uid=1000,gid=1000
       - /usr/local/bin:mode=755,size=8M,exec,suid
       - /tmp/.X11-unix:mode=1777
@@ -83,6 +83,10 @@ services:
       - no-new-privileges:true
       - seccomp=./config/seccomp-agentbox.json
       - no-new-privileges:false
+
+    networks:
+      - default
+      - visionclaw
 
     volumes:
       - ./agentbox.toml:/etc/agentbox.toml:ro
@@ -98,6 +102,11 @@ services:
       - cargo-home:/home/devuser/.cargo
 
 
+
+networks:
+  visionclaw:
+    external: true
+    name: visionclaw_network
 
 volumes:
   ruvector-data:

@@ -73,14 +73,14 @@
     },
     {
       "customType": "regex",
-      "description": "Track Gemini CLI version pinned in flake.nix / aliases.",
-      "fileMatch": ["^config/agentbox-aliases\\.sh$", "^flake\\.nix$"],
+      "description": "Track Antigravity CLI version via nixpkgs (replaces @google/gemini-cli).",
+      "fileMatch": ["^flake\\.nix$"],
       "matchStrings": [
-        "@google/gemini-cli\\s+v?(?<currentValue>[0-9.]+)",
-        "gemini_cli_version\\s*=\\s*\"(?<currentValue>[0-9.]+)\""
+        "antigravity_cli_version\\s*=\\s*\"(?<currentValue>[0-9.]+)\""
       ],
-      "depNameTemplate": "@google/gemini-cli",
-      "datasourceTemplate": "npm"
+      "depNameTemplate": "antigravity",
+      "datasourceTemplate": "github-releases",
+      "registryUrlTemplate": "https://github.com/google-antigravity/antigravity-cli"
     },
     {
       "customType": "regex",

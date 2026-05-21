@@ -366,7 +366,7 @@ section_gpu() {
 # ════════════════════════════════════════════════════════════════════════════════
 section_consultants() {
   if ! wt_yesno "Consultant tier (PRD-005 / ADR-011)" \
-    "Enable the consultant tier?\n\nFive MCP servers expose external LLM providers as named consultants the\ncoordinator can invoke explicitly: codex (OpenAI Codex CLI), gemini\n(@google/gemini-cli), zai (Z.AI / GLM-5), perplexity (live web), and\ndeepseek (math + reasoning).\n\nManual call from chat:  /consult <name> \"<question>\"\nAuto dispatch:           subagent_type=\"auto-consultant\"\n\nLogs land in /var/lib/agentbox/consultations/<name>-YYYY-MM-DD.jsonl;\nsetting intelligence_signal=true also writes ADR-043 quality signals\nfor SONA learning."; then
+    "Enable the consultant tier?\n\nFive MCP servers expose external LLM providers as named consultants the\ncoordinator can invoke explicitly: codex (OpenAI Codex CLI), antigravity\n(Google agy CLI), zai (Z.AI / GLM-5), perplexity (live web), and\ndeepseek (math + reasoning).\n\nManual call from chat:  /consult <name> \"<question>\"\nAuto dispatch:           subagent_type=\"auto-consultant\"\n\nLogs land in /var/lib/agentbox/consultations/<name>-YYYY-MM-DD.jsonl;\nsetting intelligence_signal=true also writes ADR-043 quality signals\nfor SONA learning."; then
     state_set_bool "consultants.enabled" "false"
     return 0
   fi
@@ -378,12 +378,12 @@ section_consultants() {
     "Pick which consultants to ship (each requires its matching\nproviders.<name>=true and the relevant CLI toolchain)" \
     18 78 5 \
     "consultants.codex.enabled"      "OpenAI Codex Rust CLI (toolchains.codex)"          "$([[ "$(state_get consultants.codex.enabled)" == "true" ]] && echo ON || echo OFF)" \
-    "consultants.gemini.enabled"     "@google/gemini-cli (toolchains.gemini_cli)"         "$([[ "$(state_get consultants.gemini.enabled)" == "true" ]] && echo ON || echo OFF)" \
+    "consultants.antigravity.enabled" "Google Antigravity agy (toolchains.antigravity_cli)" "$([[ "$(state_get consultants.antigravity.enabled)" == "true" ]] && echo ON || echo OFF)" \
     "consultants.zai.enabled"        "Z.AI / GLM-5 via claude-zai (providers.zai)"        "$([[ "$(state_get consultants.zai.enabled)" == "true" ]] && echo ON || echo OFF)" \
     "consultants.perplexity.enabled" "Perplexity (providers.perplexity)"                  "$([[ "$(state_get consultants.perplexity.enabled)" == "true" ]] && echo ON || echo OFF)" \
     "consultants.deepseek.enabled"   "DeepSeek (providers.deepseek)"                      "$([[ "$(state_get consultants.deepseek.enabled)" == "true" ]] && echo ON || echo OFF)")"
 
-  for k in consultants.codex.enabled consultants.gemini.enabled consultants.zai.enabled consultants.perplexity.enabled consultants.deepseek.enabled; do
+  for k in consultants.codex.enabled consultants.antigravity.enabled consultants.zai.enabled consultants.perplexity.enabled consultants.deepseek.enabled; do
     if echo "${raw}" | grep -qw "${k}"; then
       state_set_bool "${k}" "true"
     else
@@ -398,14 +398,14 @@ section_consultants() {
   # so E017 (env var present) is satisfied at boot.
   declare -A _cons_to_provider=(
     [consultants.codex.enabled]=providers.openai.enabled
-    [consultants.gemini.enabled]=providers.gemini.enabled
+    [consultants.antigravity.enabled]=providers.gemini.enabled
     [consultants.zai.enabled]=providers.zai.enabled
     [consultants.perplexity.enabled]=providers.perplexity.enabled
     [consultants.deepseek.enabled]=providers.deepseek.enabled
   )
   declare -A _cons_to_toolchain=(
     [consultants.codex.enabled]=toolchains.codex
-    [consultants.gemini.enabled]=toolchains.gemini_cli
+    [consultants.antigravity.enabled]=toolchains.antigravity_cli
   )
   local cascaded=()
   for cons_key in "${!_cons_to_provider[@]}"; do
@@ -567,7 +567,7 @@ section_toolchains() {
     "toolchains.claude_flow"     "Claude Flow v3"         "$(on_off toolchains.claude_flow)" \
     "toolchains.agentic_qe"      "Agentic QE"             "$(on_off toolchains.agentic_qe)" \
     "toolchains.nagual_qe"       "Nagual QE"              "$(on_off toolchains.nagual_qe)" \
-    "toolchains.gemini_cli"      "Gemini CLI"             "$(on_off toolchains.gemini_cli)" \
+    "toolchains.antigravity_cli" "Antigravity CLI (agy)"  "$(on_off toolchains.antigravity_cli)" \
     "toolchains.codex"           "OpenAI Codex Rust CLI"  "$(on_off toolchains.codex)" \
     "toolchains.code_server"     "code-server (VS Code)"  "$(on_off toolchains.code_server)" \
     "toolchains.codebase_memory" "Codebase Memory MCP"    "$(on_off toolchains.codebase_memory)" \
@@ -575,7 +575,7 @@ section_toolchains() {
     "toolchains.cuda"            "CUDA toolchain"         "$(on_off toolchains.cuda)")"
 
   for key in toolchains.claude toolchains.claude_code toolchains.ruflo toolchains.claude_flow \
-             toolchains.agentic_qe toolchains.nagual_qe toolchains.gemini_cli toolchains.codex \
+             toolchains.agentic_qe toolchains.nagual_qe toolchains.antigravity_cli toolchains.codex \
              toolchains.code_server toolchains.codebase_memory toolchains.rust toolchains.cuda; do
     if echo "${raw}" | grep -qw "${key}"; then
       state_set_bool "${key}" "true"

@@ -2,7 +2,7 @@
 
 /**
  * spawn-cli — small subprocess helper used by the CLI-spawning consultants
- * (codex, gemini, zai). Captures stdout + stderr, enforces a timeout,
+ * (codex, antigravity, zai). Captures stdout + stderr, enforces a timeout,
  * scrubs the environment so user-isolated CLIs see only the env vars they
  * need (no leakage of devuser secrets into a sibling user's process).
  *

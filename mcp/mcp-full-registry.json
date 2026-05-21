@@ -56,19 +56,10 @@
         "PBR_PORT": "9878"
       }
     },
-    "playwright-visual": {
-      "command": "node",
-      "args": ["/app/core-assets/scripts/playwright-mcp-client.js"],
-      "type": "stdio",
-      "env": {
-        "PLAYWRIGHT_PROXY_HOST": "localhost",
-        "PLAYWRIGHT_PROXY_PORT": "9879"
-      }
-    },
-    "playwright": {
-      "command": "node",
-      "args": ["/app/core-assets/scripts/playwright-mcp-local.js"],
-      "type": "stdio"
+    "browser-gpu": {
+      "url": "http://browsercontainer:8931/sse",
+      "type": "sse",
+      "description": "Browser automation via external browsercontainer sidecar (chrome-devtools-mcp)"
     },
     "web-summary": {
       "command": "/opt/venv312/bin/python3",

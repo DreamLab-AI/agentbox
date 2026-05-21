@@ -23,7 +23,7 @@ Every input to the build is pinned to an exact version or content hash so a rebu
 | Codex Rust CLI version | `lib/codex-binary.nix` (`codexVersion` + per-arch sha256) | Renovate custom-manager + manual sha256 rotation |
 | ComfyUI upstream rev | `flake.nix` (`comfyuiRev` + hash) | Renovate custom-manager + manual hash rotation |
 | LichtFeld upstream rev | `lib/3dgs-stack.nix` (`lichtfeldRev` + sha256) | Manual until upstream is pinned |
-| `@google/gemini-cli` version | `flake.nix` + `config/agentbox-aliases.sh` comment | Renovate custom-manager |
+| Antigravity CLI version | nixpkgs `antigravity` package | `nix flake update` (tracks nixpkgs unstable) |
 | `@anthropic-ai/claude-code` version | `claude-zai/Dockerfile` | Renovate (security-sensitive, manual review) |
 | Nostr crypto (`nostr-tools`, `@noble/curves`) | `mcp/package.json` | Renovate (security-sensitive, manual review) |
 

@@ -109,7 +109,6 @@ bump_pkg "codebase-memory-mcp"       "codebase-memory-mcp"
 bump_pkg "agent-browser"             "agent-browser"
 bump_pkg "playwright"                "playwright"
 bump_pkg "@mermaid-js/mermaid-cli"   "@mermaid-js/mermaid-cli"
-bump_pkg "@google/gemini-cli"        "@google/gemini-cli"
 
 echo ""
 if [[ "$dry_run" -eq 1 ]]; then

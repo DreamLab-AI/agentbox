@@ -95,7 +95,7 @@ claude_code = true
 ruflo = true
 claude_flow = true
 agentic_qe = true
-gemini_cli = false               # official @google/gemini-cli
+antigravity_cli = false          # Google Antigravity CLI (agy)
 code_server = false
 cuda = false
 ```
@@ -285,7 +285,7 @@ Standalone agentbox ships with these behind `agentbox.toml` gates. Only enabled 
 - **Desktop** — Hyprland (Wayland, default when enabled) + wayvnc on port 5901, or fallback X11 stack (xvfb + openbox + tint2) for older VNC clients.
 - **code-server** — web IDE on port 8080.
 - **Claude Code + ruflo + agentic-qe** — always on (default toolchains).
-- **Official `@google/gemini-cli`** v0.38.2 pinned via flake.lock — 1M context, Chapters narrative flow, Context Compression, worktree support.
+- **Google Antigravity CLI** (`agy`) via nixpkgs — 1M context, multi-agent workflows, Pro tier web login. Replaces sunset @google/gemini-cli.
 - **Local Ollama sidecar** (via compose) for inference when `[gpu].backend = "ollama-rocm"` or `"ollama-cuda"`.
 - **CUDA 13.1 local toolchain** when `[gpu].backend = "local-cuda"`; `gaussian_splatting` toolchain (COLMAP + METIS + LichtFeld) opt-in on top.
 - **Skills corpus** — 96 manifest-gated skills fetched as a content-addressed Nix input from a shared upstream tree; per-skill versioning via `nix flake lock --update-input skills`.

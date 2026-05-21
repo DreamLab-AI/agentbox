@@ -27,7 +27,7 @@ the hood, which is what `claude-code-router` and similar projects do.
 | Name | Backend | Strengths |
 |---|---|---|
 | `codex`      | OpenAI Codex Rust CLI subprocess | code reasoning, refactors, test generation |
-| `gemini`     | `@google/gemini-cli` subprocess | 1M-token context for long-document and codebase-wide analysis |
+| `antigravity` | Google Antigravity CLI (`agy`) subprocess | 1M-token context for long-document and codebase-wide analysis |
 | `zai`        | `claude-zai` (Z.AI / GLM-5, Anthropic-compatible) | Chinese-language reasoning; low-cost second opinions |
 | `perplexity` | Perplexity HTTPS API | live-web research with citations |
 | `deepseek`   | DeepSeek HTTPS API (`deepseek-reasoner`) | math + transparent chain-of-thought |
@@ -49,7 +49,7 @@ model      = "gpt-5.4"
 home       = "/home/openai-user/.codex"
 timeout_ms = 180000
 
-# … same shape for gemini, zai, perplexity, deepseek
+# … same shape for antigravity, zai, perplexity, deepseek
 ```
 
 Each enabled consultant requires its provider gate too:
@@ -57,7 +57,7 @@ Each enabled consultant requires its provider gate too:
 | Consultant | Required provider | Required toolchain |
 |---|---|---|
 | `codex`      | `[providers.openai].enabled = true`     | `toolchains.codex = true` |
-| `gemini`     | `[providers.gemini].enabled = true`     | `toolchains.gemini_cli = true` |
+| `antigravity` | `[providers.gemini].enabled = true`    | `toolchains.antigravity_cli = true` |
 | `zai`        | `[providers.zai].enabled = true`        | `toolchains.claude = true` (claude-zai is the wrapper) |
 | `perplexity` | `[providers.perplexity].enabled = true` | (HTTP-only; no CLI) |
 | `deepseek`   | `[providers.deepseek].enabled = true`   | (HTTP-only; no CLI) |

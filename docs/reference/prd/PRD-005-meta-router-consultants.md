@@ -8,7 +8,7 @@
 ## TL;DR for newcomers
 *Skip if you already know why "meta-router" and "consultant" are different problems.*
 
-Agentbox runs many LLM frontends — Claude Code, ruflo, the Codex Rust CLI, Google's gemini-cli, the Anthropic-compatible claude-zai (Z.AI / GLM), and direct HTTPS providers (Perplexity, DeepSeek). Operators repeatedly ask for "one router that picks the right model". Two distinct asks live inside that question: **API cost optimisation** (rewrite Anthropic-format requests under the hood for cheaper providers, like `musistudio/claude-code-router`) and **explicit consultation** (the coordinator agent says "ask Codex about this Rust unsafe block" and gets a labelled answer back). They have different SLOs, different failure modes, different audit-trail requirements. We solve only the second one here as a first-class capability — five MCP servers exposing a uniform `consult / health / cost_estimate` contract, dispatched manually via `/consult` (a skill-router skill) or automatically via an `auto-consultant` subagent template. The first ask (HTTP-level cost rewriting) stays as an optional Phase-3 add-on.
+Agentbox runs many LLM frontends — Claude Code, ruflo, the Codex Rust CLI, Google's Antigravity CLI (agy), the Anthropic-compatible claude-zai (Z.AI / GLM), and direct HTTPS providers (Perplexity, DeepSeek). Operators repeatedly ask for "one router that picks the right model". Two distinct asks live inside that question: **API cost optimisation** (rewrite Anthropic-format requests under the hood for cheaper providers, like `musistudio/claude-code-router`) and **explicit consultation** (the coordinator agent says "ask Codex about this Rust unsafe block" and gets a labelled answer back). They have different SLOs, different failure modes, different audit-trail requirements. We solve only the second one here as a first-class capability — five MCP servers exposing a uniform `consult / health / cost_estimate` contract, dispatched manually via `/consult` (a skill-router skill) or automatically via an `auto-consultant` subagent template. The first ask (HTTP-level cost rewriting) stays as an optional Phase-3 add-on.
 
 **If you remember only one thing:** consultants are explicit, labelled, audited; cost-rewriting routers are stateless, transparent, anonymous. Don't conflate them.
 
@@ -23,7 +23,7 @@ Agentbox already has multiple LLM frontends installed and isolated:
 | Claude Code | `claude` on PATH | `devuser` | coordinator; orchestrates everything else |
 | ruflo | `ruflo` on PATH | `devuser` | swarm orchestrator; Byzantine/Raft consensus; MCP-tool surface |
 | OpenAI Codex Rust CLI | `/usr/local/bin/codex` (lib/codex-binary.nix) | `openai-user` | code reasoning, refactors |
-| @google/gemini-cli | `gemini` on PATH | `gemini-user` | 1M-token context |
+| Google Antigravity CLI | `agy` on PATH | `devuser` | 1M-token context |
 | claude-zai | `claude-zai` on PATH | `zai-user` | Anthropic-compatible Z.AI / GLM |
 | OpenAI HTTP API | direct | n/a | already wrapped by `skills/openai-codex/mcp-server` |
 | Anthropic HTTP API | direct via Claude Code | n/a | the coordinator's own backend |
@@ -104,7 +104,7 @@ Every consultant MCP server exposes exactly three tools.
 | Consultant | Backend | Pricing model (indicative) | Strengths |
 |---|---|---|---|
 | `codex`      | OpenAI Codex Rust CLI subprocess (`/usr/local/bin/codex exec`) | $0.005/1k prompt, $0.015/1k completion (gpt-5.4) | code reasoning, refactors, test generation; respects per-user `CODEX_HOME` |
-| `gemini`     | `@google/gemini-cli` subprocess | $0.00125/1k prompt, $0.005/1k completion (gemini-2.5-pro) | 1M-token context; long-document and codebase-wide analysis |
+| `antigravity` | Google Antigravity CLI (`agy`) subprocess | $0.00125/1k prompt, $0.005/1k completion (gemini-2.5-pro) | 1M-token context; long-document and codebase-wide analysis |
 | `zai`        | `claude-zai` subprocess (Anthropic-compatible Z.AI endpoint) | $0.0006/1k prompt, $0.0024/1k completion (glm-5) | Chinese-language reasoning, low-cost second opinions |
 | `perplexity` | Perplexity HTTPS API direct | $0.003/1k prompt, $0.015/1k completion (sonar-pro) | live-web research with citations |
 | `deepseek`   | DeepSeek HTTPS API direct | $0.00055/1k prompt, $0.00219/1k completion (deepseek-reasoner) | math + transparent chain-of-thought reasoning |
@@ -132,10 +132,10 @@ timeout_ms = 180000
 |---|---|
 | **E035** | `consultants.<name>.enabled = true` requires the matching `providers.<provider>.enabled = true` (mapping below) |
 | **E036** | Any sub-consultant enabled requires `consultants.enabled = true` |
-| **E037** | `consultants.codex` requires `toolchains.codex = true`; `consultants.gemini` requires `toolchains.gemini_cli = true` |
+| **E037** | `consultants.codex` requires `toolchains.codex = true`; `consultants.antigravity` requires `toolchains.antigravity_cli = true` |
 | **E038** | `consultants.intelligence_signal = true` requires `AGENTBOX_INTELLIGENCE_DIR` or `WORKSPACE` set in the env |
 
-Provider mapping: `codex → openai`, `gemini → gemini`, `zai → zai`, `perplexity → perplexity`, `deepseek → deepseek`.
+Provider mapping: `codex → openai`, `antigravity → gemini`, `zai → zai`, `perplexity → perplexity`, `deepseek → deepseek`.
 
 ## 6. Dispatch surfaces
 

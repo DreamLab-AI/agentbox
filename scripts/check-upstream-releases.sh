@@ -65,11 +65,10 @@ pinned=$(grep -oE 'codexVersion\s*=\s*"[^"]+"' lib/codex-binary.nix | head -1 | 
 latest=$(latest_gh_release "openai/codex" "rust-v")
 print_row "openai/codex" "${pinned:-???}" "$latest"
 
-section "Gemini CLI (@google/gemini-cli)"
-# Pinned version is documented in README and aliases; npm install uses same number.
-pinned_gemini=$(grep -oE '@google/gemini-cli v?[0-9.]+' README.md | head -1 | grep -oE '[0-9.]+$' || echo "???")
-latest=$(latest_npm "@google/gemini-cli")
-print_row "@google/gemini-cli" "${pinned_gemini:-???}" "$latest"
+section "Antigravity CLI (google-antigravity/antigravity-cli)"
+pinned_agy=$(nix eval --raw nixpkgs#antigravity.version 2>/dev/null || echo "???")
+latest=$(latest_gh_release "google-antigravity/antigravity-cli" "v")
+print_row "antigravity" "${pinned_agy:-???}" "$latest"
 
 section "Claude Code (@anthropic-ai/claude-code)"
 pinned=$(grep -oE '@anthropic-ai/claude-code@[0-9.]+' claude-zai/Dockerfile 2>/dev/null | head -1 | sed 's/.*@//')
@@ -115,7 +114,6 @@ for entry in \
   "agent-browser|agent-browser" \
   "playwright|playwright" \
   "@mermaid-js/mermaid-cli|@mermaid-js/mermaid-cli" \
-  "@google/gemini-cli|@google/gemini-cli" \
 ; do
   pkg="${entry%|*}"
   npm_pkg="${entry#*|}"

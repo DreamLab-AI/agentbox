@@ -231,7 +231,7 @@
         "nagual_qe": { "type": "boolean" },
         "codebase_memory": { "type": "boolean" },
         "rust": { "type": "boolean" },
-        "gemini_cli": { "type": "boolean" },
+        "antigravity_cli": { "type": "boolean" },
         "codex": { "type": "boolean" },
         "code_server": { "type": "boolean" },
         "cuda": { "type": "boolean" }
@@ -352,14 +352,14 @@
             "timeout_ms": { "type": "integer", "minimum": 1000, "maximum": 600000 }
           }
         },
-        "gemini": {
+        "antigravity": {
           "type": "object",
           "additionalProperties": false,
-          "description": "@google/gemini-cli subprocess consultant. Requires providers.gemini (E035) and toolchains.gemini_cli (E037).",
+          "description": "Google Antigravity CLI (agy) subprocess consultant. Requires providers.gemini (E035) and toolchains.antigravity_cli (E037).",
           "properties": {
             "enabled":    { "type": "boolean" },
             "model":      { "type": "string" },
-            "home":       { "type": "string", "description": "HOME under the gemini-user isolation." },
+            "home":       { "type": "string", "description": "Antigravity CLI home directory." },
             "timeout_ms": { "type": "integer", "minimum": 1000, "maximum": 600000 }
           }
         },
