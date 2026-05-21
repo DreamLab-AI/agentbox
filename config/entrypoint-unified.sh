@@ -25,12 +25,14 @@ if [ "${AGENTBOX_BOOTSTRAP_STAGE:-A}" = "B" ]; then
   STAGE_B_MODE=1
 else
   STAGE_B_MODE=0
-  echo "========================================"
-  echo "  AGENTBOX"
-  echo "  Modular Sovereign Agent Environment"
-  echo "========================================"
-  echo "  Date: $(date -Iseconds)"
-  echo ""
+  printf '\033[1;34m'
+  echo "  ╔══════════════════════════════════════╗"
+  echo "  ║         A G E N T B O X              ║"
+  echo "  ║  Modular Sovereign Agent Environment ║"
+  echo "  ╚══════════════════════════════════════╝"
+  printf '\033[0;90m'
+  echo "  $(date -Iseconds)"
+  printf '\033[0m\n'
 fi
 
 if [ "$STAGE_B_MODE" = "0" ]; then

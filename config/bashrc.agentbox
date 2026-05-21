@@ -7,6 +7,7 @@
 # Starship prompt — cross-shell, git-aware, nix/rust/node indicators
 # ---------------------------------------------------------------------------
 if command -v starship &>/dev/null; then
+  export STARSHIP_CONFIG=/opt/agentbox/config/starship.toml
   eval "$(starship init bash)"
 fi
 

@@ -139,35 +139,10 @@ alias gh-issuev="gh issue view --web"
 alias gh-issuel="gh issue list"
 alias gh-repo="gh repo view --web"
 
-# === ZELLIJ - WORKSPACES ===
-alias z="zellij"
-alias zattach="zellij attach"
-alias zls="zellij list-sessions"
-alias zkill="zellij kill-session"
-alias t="zellij"
-alias zl="zellij"
-alias zn="zellij --session"
-alias za="zellij attach"
-alias zka="zellij kill-all-sessions"
-alias zk="zellij kill-session"
-alias zr="zellij run --"
-alias zrf="zellij run --floating --"
-
-# === ZELLIJ - QUICK LAYOUTS ===
-alias zstack="zellij --layout /opt/agentbox/config/zellij/layouts/agentbox.kdl"
-alias zdev="zellij --layout compact"
-alias zmon="zellij --layout compact --session monitor"
-alias zflo="zellij action toggle-floating-panes"
-alias zsync="zellij action toggle-active-sync-tab"
-alias zren="zellij action rename-session"
-alias zclaude="/opt/agentbox/scripts/zellij-stack.sh claude-core"
-alias zruflo="/opt/agentbox/scripts/zellij-stack.sh ruflo-orchestrator"
-alias zqe="/opt/agentbox/scripts/zellij-stack.sh qe-fleet"
-alias zdocs="/opt/agentbox/scripts/zellij-stack.sh docs-latex"
-
-# === TMUX COMPATIBILITY ===
-alias tmux-attach="zellij attach"
-alias tmux-ls="zellij list-sessions"
+# === TMUX ===
+alias ta="tmux attach -t agentbox"
+alias tls="tmux list-sessions"
+alias tks="tmux kill-session -t"
 
 # === SUPERVISORD ===
 alias svc="sudo /opt/venv/bin/supervisorctl"
@@ -198,15 +173,10 @@ alias zcodex='codex'
 alias codex-help='codex --help'
 alias codex-version='codex --version'
 
-# === GEMINI FLOW ===
-alias gf="gemini-flow"
-alias gf-init="gemini-flow init --protocols a2a,mcp --topology hierarchical"
-alias gf-swarm="gemini-flow swarm --agents 66 --intelligent"
-alias gf-architect="gemini-flow swarm --agents 5 --type system-architect"
-alias gf-coder="gemini-flow swarm --agents 12 --type master-coder"
-alias gf-status="gemini-flow status"
-alias gf-monitor="gemini-flow monitor --protocols --performance"
-alias gf-health="gemini-flow health"
+# === ANTIGRAVITY (Google) ===
+alias agy-chat="agy chat"
+alias agy-status="agy status"
+alias agy-models="agy models list"
 
 # === Z.AI SERVICE ===
 alias zai-health="curl -s http://localhost:9600/health | jq"
@@ -221,35 +191,81 @@ alias ptx-compile="nvcc -ptx"
 generate-claude-md() { claude "Read the .specify/ directory and generate an optimal CLAUDE.md for this project based on the specs, plan, and constitution."; }
 
 agentbox-init() {
-    echo "🚀 Initializing Agentbox workspace..."
-    specify init . --ai claude 2>/dev/null || echo "⚠️ spec-kit init skipped"
-    claude-flow init --force 2>/dev/null || echo "⚠️ claude-flow init skipped"
-    echo "✅ Workspace ready! Run: claude"
+    if command -v gum >/dev/null 2>&1; then
+        gum spin --spinner dot --title "Initialising spec-kit..." -- specify init . --ai claude 2>/dev/null || true
+        gum spin --spinner dot --title "Initialising claude-flow..." -- claude-flow init --force 2>/dev/null || true
+        gum style --foreground '#9ece6a' "Workspace ready — run: claude"
+    else
+        specify init . --ai claude 2>/dev/null || echo "spec-kit init skipped"
+        claude-flow init --force 2>/dev/null || echo "claude-flow init skipped"
+        echo "Workspace ready — run: claude"
+    fi
 }
 
 agentbox-help() {
-    echo "🚀 Agentbox Quick Reference"
-    echo "─────────────────────────────"
-    echo "claude          Start Claude Code"
-    echo "dsp             Claude (skip permissions)"
-    echo "cf-swarm        Claude Flow swarm mode"
-    echo "cf-hive         Spawn hive-mind agents"
-    echo "cf-memory       Memory operations"
-    echo "cf-doctor       System diagnostics"
-    echo "af-coder        Agentic Flow coder"
-    echo "aqe             Agentic QE testing"
-    echo "aj              Agentic Jujutsu (git)"
-    echo "sk-here         Init spec-kit in current dir"
-    echo "os-init         Init OpenSpec"
-    echo "agt-watch       Live agent observability"
-    echo "claudish        Multi-model proxy"
-    echo "skills-list     Browse AI skills"
-    echo "pal             Start PAL multi-model server"
-    echo "n8n-mcp         n8n workflow MCP"
-    echo "svc-status      Service status"
-    echo "profiles        Open provisioned stack profiles"
-    echo "pod-root        Open sovereign pod storage root"
-    echo "gh-pr           GitHub create PR"
+    if command -v gum >/dev/null 2>&1; then
+        gum style --border rounded --border-foreground '#7aa2f7' --padding '1 2' --bold "AGENTBOX QUICK REFERENCE"
+        echo ""
+        gum format -- \
+            "## AI Agents" \
+            "| Command | Description |" \
+            "|---------|-------------|" \
+            "| claude | Start Claude Code |" \
+            "| dsp | Claude (skip permissions) |" \
+            "| cf-swarm | Claude Flow swarm mode |" \
+            "| cf-hive | Spawn hive-mind agents |" \
+            "| cf-doctor | System diagnostics |" \
+            "| claudish | Multi-model proxy |" \
+            "" \
+            "## Development" \
+            "| Command | Description |" \
+            "|---------|-------------|" \
+            "| sk-here | Init spec-kit in current dir |" \
+            "| aqe | Agentic QE testing |" \
+            "| skills-list | Browse AI skills |" \
+            "| gh-pr | GitHub create PR |" \
+            "" \
+            "## Services" \
+            "| Command | Description |" \
+            "|---------|-------------|" \
+            "| svc-status | Service health |" \
+            "| health | Management API health |" \
+            "| profiles | Open provisioned stacks |" \
+            "| pod-root | Sovereign pod storage |"
+    else
+        echo "Agentbox Quick Reference"
+        echo "------------------------"
+        printf "  %-16s %s\n" \
+            "claude" "Start Claude Code" \
+            "dsp" "Claude (skip permissions)" \
+            "cf-swarm" "Claude Flow swarm mode" \
+            "cf-hive" "Spawn hive-mind agents" \
+            "cf-doctor" "System diagnostics" \
+            "claudish" "Multi-model proxy" \
+            "svc-status" "Service health" \
+            "gh-pr" "GitHub create PR" \
+            "skills-list" "Browse AI skills"
+    fi
+}
+
+agentbox-pick() {
+    if ! command -v gum >/dev/null 2>&1; then
+        echo "gum not installed — run agentbox-help instead"
+        return 1
+    fi
+    local choice
+    choice=$(gum choose --header "Pick a tool" \
+        "claude        — Start Claude Code" \
+        "cf-swarm      — Claude Flow swarm" \
+        "cf-doctor     — System diagnostics" \
+        "svc-status    — Service health" \
+        "skills-list   — Browse AI skills" \
+        "claudish      — Multi-model proxy" \
+        "agt-watch     — Agent observability" \
+        "agentbox-help — Full reference")
+    local cmd="${choice%%—*}"
+    cmd="$(echo "$cmd" | xargs)"
+    [ -n "$cmd" ] && eval "$cmd"
 }
 
 agent-load() {
@@ -280,6 +296,4 @@ export PATH="$HOME/.local/bin:$HOME/.cargo/bin:/usr/local/bin:$PATH"
 
 alias turbo-init="agentbox-init"
 alias turbo-help="agentbox-help"
-
-echo "✅ Agentbox aliases v11 loaded! (120+ aliases, 8 functions)"
-echo "   Run 'agentbox-help' for quick reference"
+alias pick="agentbox-pick"

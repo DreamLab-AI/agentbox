@@ -382,9 +382,9 @@ auth_mode = "api_key"
 
 [providers.gemini]
 enabled = true
-env_var = "GOOGLE_GEMINI_API_KEY"
-optional_env_vars = []
-auth_mode = "api_key"
+env_var = "GOOGLE_API_KEY"
+optional_env_vars = ["GOOGLE_GEMINI_API_KEY"]
+auth_mode = "web_login"
 
 [providers.deepseek]
 enabled = true
@@ -463,10 +463,10 @@ model   = "gpt-5.5"
 home    = "/home/openai-user/.codex"
 timeout_ms = 180000
 
-[consultants.gemini]
+[consultants.antigravity]
 enabled = true
 model   = "gemini-2.5-pro"
-home    = "/home/gemini-user"
+home    = "/home/devuser/.antigravity"
 timeout_ms = 180000
 
 [consultants.zai]

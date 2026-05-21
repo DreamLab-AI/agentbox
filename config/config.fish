@@ -3,6 +3,7 @@
 
 # ── Prompt: Starship ──────────────────────────────────────────
 if type -q starship
+    set -gx STARSHIP_CONFIG /opt/agentbox/config/starship.toml
     starship init fish | source
 end
 

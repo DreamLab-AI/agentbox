@@ -122,8 +122,8 @@
         claudeFlowPkg = mkNpmCli {
           pkgName         = "@claude-flow/cli";
           version         = "3.7.0-alpha.75";
-          sha256          = lib.fakeHash;
-          nodeModulesHash = lib.fakeHash;
+          sha256          = "sha256-YIINkMsXVcC0OE/NGdWEFu3x6iOeJUWc4C+jL5XKRcU=";
+          nodeModulesHash = "sha256-s8zZY54kMGXDH94/C36y0nUsJGlPcLXuZ5Uu57n8OxM=";
           bin             = "claude-flow";
         };
 
@@ -132,8 +132,8 @@
         rufloPkg = mkNpmCli {
           pkgName         = "ruflo";
           version         = "3.7.0-alpha.75";
-          sha256          = lib.fakeHash;
-          nodeModulesHash = lib.fakeHash;
+          sha256          = "sha256-djmHrNDuK/GkFXyUXuH1aY6PdIP8O0tGs2L7mbMIXDk=";
+          nodeModulesHash = "sha256-ZYHyjdlME3JbsdAPWkXwEhxPgmjpKEuNhvU8OEieVIw=";
           bin             = "ruflo";
         };
 
@@ -146,8 +146,8 @@
         agenticQePkg = mkNpmCli {
           pkgName         = "agentic-qe";
           version         = "3.10.0";
-          sha256          = lib.fakeHash;
-          nodeModulesHash = lib.fakeHash;
+          sha256          = "sha256-R1ffQ/S4pLp9OUonKi9q9OFg/YnSNChRQgoKRUPl1Xo=";
+          nodeModulesHash = "sha256-VGtIFer95NQV5NlJeuz1pksyexg1+28OGhqaZ/SHmwU=";
           bin             = "aqe";
         };
 
@@ -162,8 +162,8 @@
         codebaseMemoryPkg = mkNpmCli {
           pkgName         = "codebase-memory-mcp";
           version         = "0.6.1";
-          sha256          = lib.fakeHash;
-          nodeModulesHash = lib.fakeHash;
+          sha256          = "sha256-31h/HsnXK/UWLm1PSM6ztkA3jj1EoN4u1duziAWGyAc=";
+          nodeModulesHash = "sha256-/WISJTkAYozn9rkRgMnDON4cThlrOmjCpZ0RV+/l9ug=";
           bin             = "codebase-memory-mcp";
         };
 
@@ -183,8 +183,8 @@
         mermaidCliPkg = mkNpmCli {
           pkgName         = "@mermaid-js/mermaid-cli";
           version         = "11.15.0";
-          sha256          = lib.fakeHash;   # refresh via nix-prefetch-url
-          nodeModulesHash = lib.fakeHash;   # refresh via first build
+          sha256          = "sha256-9v0Iedv1AORTeEu9nbkq6VEJfg6eipDsYT8r08qPoGw=";
+          nodeModulesHash = "sha256-VMW5gJSlTf/EpoR8Re5Pp1rg5zYmZwHgkw+RCzqYJ+o=";
           bin             = "mmdc";
         };
 
@@ -280,7 +280,7 @@
           # Prefetched 2026-04-25. Refresh:
           #   nix run nixpkgs#prefetch-npm-deps -- mcp/consultants/package-lock.json
           # Prefetched 2026-04-25. Refresh: nix run nixpkgs#prefetch-npm-deps -- mcp/consultants/package-lock.json
-          npmDepsHash = "sha256-GlSG2FVmY9X8nQvk621jxBFuZTms1hj+1UEuDekT3xA=";
+          npmDepsHash = "sha256-o6Tn1wvHvXbDg3yjqXM0J8WMsTMP7suukMgl3L+fYr0=";
         };
 
         # 6. skills/comfyui/mcp-server — gated by skills.media.comfyui_builtin.
@@ -378,6 +378,7 @@
           fzf             # fuzzy finder — Ctrl-R, Ctrl-T, piping
           direnv          # per-directory environment variables
           nushell         # structured data shell (JSON/TOML piping)
+          gum             # TUI prompts, menus, confirmations (Charm toolkit)
 
           # Dev essentials
           yq-go           # YAML processor (jq for YAML)
@@ -500,14 +501,14 @@
         #   first build will print the correct vendorHash to substitute.
         webResearcherMcpPkg = pkgs.buildGoModule rec {
           pname   = "web-researcher-mcp";
-          version = "0.5.0";  # bump together with hashes below
+          version = "1.2.2";  # bump together with hashes below
           src = pkgs.fetchFromGitHub {
             owner = "zoharbabin";
             repo  = "web-researcher-mcp";
             rev   = "v${version}";
-            hash  = lib.fakeHash;   # refresh via nix-prefetch-github
+            hash  = "sha256-YyjlFZb4EiBnUz6Wz1CK6EHQVcpqPRstZDrahDPdeyU=";
           };
-          vendorHash = lib.fakeHash; # refresh via first build
+          vendorHash = "sha256-GqYFGTVGLoQAD6BC/vvOeMSrxaOPEfuvdCbYLvc6y7k="; # refreshed 2026-05-21
           subPackages = [ "cmd/web-researcher-mcp" ];
           # Strip the auto-Chromium download path — we never use tier 4.
           ldflags = [ "-s" "-w" ];
@@ -866,9 +867,9 @@ default_days = ${toString (relayCfg.retention_days or 30)}
             wayvnc       # VNC server that captures the Wayland compositor output
             wlr-randr    # Display management for wlroots-based compositors
           ] else if isXorgNvidiaStack then with pkgs; [
-            xorg.xorgserver  # real Xorg with NVIDIA driver — native GLX/EGL
-            xorg.xf86inputlibinput
-            xorg.xrandr
+            xorg-server      # real Xorg with NVIDIA driver — native GLX/EGL
+            xf86-input-libinput
+            xrandr
             x11vnc       # scrapes Xorg framebuffer → VNC port 5901
             i3 i3status dmenu
           ] else with pkgs; [

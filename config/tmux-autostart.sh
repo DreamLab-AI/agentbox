@@ -33,9 +33,22 @@ tmux $TMUX_ARGS start-server 2>/dev/null || true
 # Window 0: Claude — primary development shell
 # ============================================================================
 tmux $TMUX_ARGS new-session -d -s "$SESSION" -n "Claude" -c "$PROJECT"
-tmux send-keys -t "${SESSION}:0" "echo '  Agentbox — Claude Code workspace'" C-m
-tmux send-keys -t "${SESSION}:0" "echo '  Project: $PROJECT'" C-m
-tmux send-keys -t "${SESSION}:0" "echo ''" C-m
+
+# Welcome dashboard — gum renders a styled panel, falls back to plain text
+if command -v gum >/dev/null 2>&1; then
+  WELCOME_CMD="gum style --border rounded --border-foreground '#7aa2f7' --padding '1 2' --margin '1 0' --bold --foreground '#a9b1d6' \"\$(printf '  AGENTBOX\\n\\n  Project: $PROJECT\\n  Shell:   fish + starship\\n  Tabs:    Claude · Agent · Services · Build · Logs · System · VNC · Git\\n\\n  agentbox-help    quick reference\\n  svc-status       service health\\n  cf-doctor        system diagnostics')\""
+  tmux send-keys -t "${SESSION}:0" "$WELCOME_CMD" C-m
+else
+  tmux send-keys -t "${SESSION}:0" "echo ''" C-m
+  tmux send-keys -t "${SESSION}:0" "echo '  ┌─────────────────────────────────────────────┐'" C-m
+  tmux send-keys -t "${SESSION}:0" "echo '  │  AGENTBOX                                   │'" C-m
+  tmux send-keys -t "${SESSION}:0" "echo '  │                                             │'" C-m
+  tmux send-keys -t "${SESSION}:0" "echo '  │  Project: $PROJECT'" C-m
+  tmux send-keys -t "${SESSION}:0" "echo '  │  agentbox-help   quick reference             │'" C-m
+  tmux send-keys -t "${SESSION}:0" "echo '  │  svc-status      service health              │'" C-m
+  tmux send-keys -t "${SESSION}:0" "echo '  └─────────────────────────────────────────────┘'" C-m
+  tmux send-keys -t "${SESSION}:0" "echo ''" C-m
+fi
 
 # ============================================================================
 # Window 1: Agent — agent work

@@ -1,0 +1,99 @@
+# Agentbox Starship prompt — dark theme, agentbox-aware
+# Docs: https://starship.rs/config/
+
+format = """
+$username\
+$hostname\
+$directory\
+$git_branch\
+$git_status\
+$nix_shell\
+$python\
+$rust\
+$nodejs\
+$lua\
+$docker_context\
+$cmd_duration\
+$line_break\
+$character"""
+
+[username]
+style_user = "#4c7899 bold"
+style_root = "red bold"
+format = "[$user]($style) "
+show_always = false
+
+[hostname]
+ssh_only = true
+format = "@ [$hostname]($style) "
+style = "#666666"
+
+[directory]
+style = "#7aa2f7 bold"
+truncation_length = 4
+truncation_symbol = "…/"
+read_only = " "
+read_only_style = "#f7768e"
+
+[git_branch]
+style = "#9ece6a"
+format = "[$symbol$branch(:$remote_branch)]($style) "
+symbol = " "
+
+[git_status]
+style = "#e0af68"
+format = '([$all_status$ahead_behind]($style) )'
+conflicted = "="
+ahead = "⇡${count}"
+behind = "⇣${count}"
+diverged = "⇕⇡${ahead_count}⇣${behind_count}"
+untracked = "?${count}"
+stashed = "*"
+modified = "!${count}"
+staged = "+${count}"
+deleted = "✘${count}"
+
+[nix_shell]
+format = "[$symbol$state]($style) "
+symbol = " "
+style = "#7dcfff"
+
+[python]
+format = "[$symbol$version]($style) "
+symbol = " "
+style = "#bb9af7"
+
+[rust]
+format = "[$symbol$version]($style) "
+symbol = " "
+style = "#f7768e"
+
+[nodejs]
+format = "[$symbol$version]($style) "
+symbol = " "
+style = "#9ece6a"
+detect_files = ["package.json"]
+detect_folders = ["node_modules"]
+
+[lua]
+format = "[$symbol$version]($style) "
+symbol = " "
+style = "#7aa2f7"
+
+[docker_context]
+format = "[$symbol$context]($style) "
+symbol = " "
+style = "#7dcfff"
+only_with_files = false
+
+[cmd_duration]
+min_time = 2_000
+format = "[took $duration]($style) "
+style = "#565f89"
+
+[character]
+success_symbol = "[❯](bold #9ece6a)"
+error_symbol = "[❯](bold #f7768e)"
+
+[line_break]
+disabled = false
