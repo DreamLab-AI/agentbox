@@ -49,6 +49,31 @@ _wt_run() {
 
 cd "${ROOT_DIR}"
 
+# ── auto-fetch gum (single static binary, zero deps) ─────────────────────────
+# gum provides gorgeous TUI prompts. If not on PATH, download the correct
+# platform binary to a temp dir. Falls back gracefully to whiptail → plain text.
+GUM=""
+_bootstrap_gum() {
+  command -v gum >/dev/null 2>&1 && { GUM="gum"; return 0; }
+  local os arch gum_ver="0.17.0"
+  os="$(uname -s)"  # Darwin, Linux, Freebsd — release assets use Title Case
+  arch="$(uname -m)"
+  case "${arch}" in
+    x86_64|amd64) arch="x86_64" ;;
+    aarch64|arm64) arch="arm64" ;;
+    *) return 1 ;;
+  esac
+  local url="https://github.com/charmbracelet/gum/releases/download/v${gum_ver}/gum_${gum_ver}_${os}_${arch}.tar.gz"
+  local gum_bin="${TMP_DIR}/gum"
+  if curl -fsSL "${url}" 2>/dev/null | tar xz -C "${TMP_DIR}" gum 2>/dev/null; then
+    chmod +x "${gum_bin}"
+    GUM="${gum_bin}"
+    return 0
+  fi
+  return 1
+}
+_bootstrap_gum || true
+
 # ── helpers ────────────────────────────────────────────────────────────────────
 
 command_exists() { command -v "$1" >/dev/null 2>&1; }
@@ -137,7 +162,8 @@ p.write_text(json.dumps(d,indent=2))
 " "${STATE_JSON}" "$1" "$2"
 }
 
-# ── whiptail/dialog wrappers ───────────────────────────────────────────────────
+# ── TUI wrappers (gum → whiptail → plain text) ───────────────────────────────
+# Every wizard section calls these; upgrading the wrappers upgrades everything.
 
 detect_tui() { command_exists whiptail && echo whiptail || { command_exists dialog && echo dialog || echo ""; }; }
 WT="$(detect_tui)"
@@ -145,7 +171,15 @@ WT="$(detect_tui)"
 wt_menu() {
   # wt_menu TITLE PROMPT HEIGHT WIDTH LISTHEIGHT [TAG ITEM...]
   local title="$1" prompt="$2" h="$3" w="$4" lh="$5"; shift 5
-  if [[ -n "${WT}" ]]; then
+  if [[ -n "${GUM}" ]]; then
+    local -a items=() tags=()
+    while [[ $# -ge 2 ]]; do
+      tags+=("$1"); items+=("$1  —  $2"); shift 2
+    done
+    local raw
+    raw="$("${GUM}" choose --header "${title}: ${prompt%%$'\n'*}" --cursor.foreground="#7aa2f7" "${items[@]}" 2>/dev/null)" || { abort_wizard; return; }
+    echo "${raw%%  —  *}"
+  elif [[ -n "${WT}" ]]; then
     _wt_run "${WT}" --title "${title}" --menu "${prompt}" "${h}" "${w}" "${lh}" "$@" 3>&1 1>&2 2>&3 || true
   else
     echo "${prompt}" >&2
@@ -166,7 +200,24 @@ wt_menu() {
 wt_checklist() {
   # wt_checklist TITLE PROMPT HEIGHT WIDTH LISTHEIGHT [TAG ITEM STATUS...]
   local title="$1" prompt="$2" h="$3" w="$4" lh="$5"; shift 5
-  if [[ -n "${WT}" ]]; then
+  if [[ -n "${GUM}" ]]; then
+    local -a items=() tags=() preselected=()
+    while [[ $# -ge 3 ]]; do
+      tags+=("$1"); items+=("$1  —  $2")
+      [[ "${3,,}" == "on" ]] && preselected+=("$1  —  $2")
+      shift 3
+    done
+    local selected_args=()
+    for ps in "${preselected[@]}"; do selected_args+=(--selected "${ps}"); done
+    local raw
+    raw="$("${GUM}" choose --no-limit --header "${title}" --cursor.foreground="#7aa2f7" \
+      "${selected_args[@]}" "${items[@]}" 2>/dev/null)" || true
+    local result=""
+    while IFS= read -r line; do
+      [[ -n "${line}" ]] && result+="${line%%  —  *} "
+    done <<< "${raw}"
+    echo "${result}"
+  elif [[ -n "${WT}" ]]; then
     _wt_run "${WT}" --title "${title}" --checklist "${prompt}" "${h}" "${w}" "${lh}" "$@" 3>&1 1>&2 2>&3 | tr -d '"' || true
   else
     echo "${prompt}" >&2
@@ -183,7 +234,12 @@ wt_checklist() {
 
 wt_inputbox() {
   local title="$1" prompt="$2" h="$3" w="$4" init="$5"
-  if [[ -n "${WT}" ]]; then
+  if [[ -n "${GUM}" ]]; then
+    local val
+    val="$("${GUM}" input --header "${title}" --placeholder "${prompt%%$'\n'*}" --value "${init}" \
+      --cursor.foreground="#7aa2f7" --prompt.foreground="#565f89" 2>/dev/null)" || { echo "${init}"; return; }
+    echo "${val}"
+  elif [[ -n "${WT}" ]]; then
     _wt_run "${WT}" --title "${title}" --inputbox "${prompt}" "${h}" "${w}" "${init}" 3>&1 1>&2 2>&3 || echo "${init}"
   else
     read -r -p "${prompt} [${init}]: " val >&2
@@ -193,7 +249,10 @@ wt_inputbox() {
 
 wt_passwordbox() {
   local title="$1" prompt="$2" h="$3" w="$4"
-  if [[ -n "${WT}" ]]; then
+  if [[ -n "${GUM}" ]]; then
+    "${GUM}" input --header "${title}" --placeholder "${prompt%%$'\n'*}" --password \
+      --cursor.foreground="#7aa2f7" 2>/dev/null || true
+  elif [[ -n "${WT}" ]]; then
     _wt_run "${WT}" --title "${title}" --passwordbox "${prompt}" "${h}" "${w}" "" 3>&1 1>&2 2>&3 || true
   else
     read -r -s -p "${prompt}: " val >&2; echo >&2
@@ -203,7 +262,10 @@ wt_passwordbox() {
 
 wt_yesno() {
   local title="$1" prompt="$2"
-  if [[ -n "${WT}" ]]; then
+  if [[ -n "${GUM}" ]]; then
+    "${GUM}" confirm "${prompt%%$'\n'*}" --affirmative "Yes" --negative "No" \
+      --selected.foreground="#7aa2f7" 2>/dev/null
+  elif [[ -n "${WT}" ]]; then
     _wt_run "${WT}" --title "${title}" --yesno "${prompt}" 8 78 3>&1 1>&2 2>&3
   else
     read -r -p "${prompt} [y/N]: " ans >&2
@@ -213,7 +275,14 @@ wt_yesno() {
 
 wt_msgbox() {
   local title="$1" msg="$2"
-  if [[ -n "${WT}" ]]; then
+  if [[ -n "${GUM}" ]]; then
+    echo "" >&2
+    "${GUM}" style --border rounded --border-foreground "#7aa2f7" --padding "1 2" \
+      --foreground "#a9b1d6" --bold "${title}" >&2
+    echo "${msg}" | "${GUM}" format >&2
+    echo "" >&2
+    "${GUM}" input --placeholder "Press Enter to continue..." --width 0 >/dev/null 2>&1 || true
+  elif [[ -n "${WT}" ]]; then
     _wt_run "${WT}" --title "${title}" --msgbox "${msg}" 20 78 3>&1 1>&2 2>&3 || true
   else
     echo -e "${msg}" >&2
@@ -272,10 +341,25 @@ elif (( DETECTED_CORES >= 4 )) && (( DETECTED_MEM_MB >= 6144 )); then
   HAS_PRIVACY_CAPABLE=true
 fi
 
-# ── ensure whiptail available ──────────────────────────────────────────────────
-if [[ -z "${WT}" ]]; then
+# ── ensure at least one TUI backend ───────────────────────────────────────────
+if [[ -z "${GUM}" && -z "${WT}" ]]; then
   ensure_command_with_install whiptail "whiptail/newt" "libnewt whiptail newt dialog" || true
   WT="$(detect_tui)"
+fi
+
+# ── welcome banner ────────────────────────────────────────────────────────────
+if [[ -n "${GUM}" ]]; then
+  "${GUM}" style --border double --border-foreground "#7aa2f7" --padding "1 3" --margin "1 0" \
+    --bold --foreground "#a9b1d6" \
+    "A G E N T B O X" "" "Interactive Configuration Wizard" \
+    "" "This wizard will walk you through configuring agentbox.toml." \
+    "Your existing settings are loaded as defaults." >&2
+else
+  echo "" >&2
+  echo "  ╔══════════════════════════════════════════╗" >&2
+  echo "  ║        AGENTBOX CONFIGURATION WIZARD     ║" >&2
+  echo "  ╚══════════════════════════════════════════╝" >&2
+  echo "" >&2
 fi
 
 # ── load existing manifest → state.json ───────────────────────────────────────
@@ -1129,6 +1213,175 @@ section_sovereign_mesh() {
 }
 
 # ════════════════════════════════════════════════════════════════════════════════
+# SECTION 11 — linked-data interchange (PRD-006 / ADR-012 / DDD-004)
+# ════════════════════════════════════════════════════════════════════════════════
+section_linked_data() {
+  if ! wt_yesno "Linked-Data Interchange (ADR-012)" \
+    "Enable JSON-LD federation surfaces?\n\nWhen enabled, adapter output is wrapped in JSON-LD with pinned\ncontexts (never fetched at runtime). Eleven surfaces available:\npods, events, credentials, DID documents, provenance,\ncapability descriptors, skill metadata, payments,\nmemory catalogue, architecture docs, HTTP meta.\n\nDefault off. Surfaces are individually gated."; then
+    state_set_bool "linked_data.enabled" "false"
+    return 0
+  fi
+
+  state_set_bool "linked_data.enabled" "true"
+
+  on_off_ld() {
+    local v; v="$(state_get "$1")"
+    [[ "${v}" == "on" || "${v}" == "emit" ]] && echo "ON" || echo "OFF"
+  }
+
+  local raw
+  raw="$(wt_checklist "Linked-Data — Surfaces" \
+    "Select surfaces to enable (each emits JSON-LD on its adapter path)" \
+    22 78 11 \
+    "linked_data.pods"                   "Pods (Solid containers)"        "$(on_off_ld linked_data.pods)" \
+    "linked_data.events"                 "Events (Nostr relay bridge)"    "$(on_off_ld linked_data.events)" \
+    "linked_data.credentials"            "Verifiable Credentials"         "$(on_off_ld linked_data.credentials)" \
+    "linked_data.did_documents"          "DID Documents"                  "$(on_off_ld linked_data.did_documents)" \
+    "linked_data.provenance"             "Provenance (PROV-O)"            "$(on_off_ld linked_data.provenance)" \
+    "linked_data.capability_descriptors" "Capability Descriptors"         "$(on_off_ld linked_data.capability_descriptors)" \
+    "linked_data.skill_metadata"         "Skill Metadata"                 "$(on_off_ld linked_data.skill_metadata)" \
+    "linked_data.payments"               "Payments (Web Ledger)"          "$(on_off_ld linked_data.payments)" \
+    "linked_data.memory_catalogue"       "Memory Catalogue (DCAT)"        "$(on_off_ld linked_data.memory_catalogue)" \
+    "linked_data.architecture_docs"      "Architecture Docs"              "$(on_off_ld linked_data.architecture_docs)" \
+    "linked_data.http_meta"              "HTTP Meta Headers"              "$(on_off_ld linked_data.http_meta)")"
+
+  for k in linked_data.pods linked_data.events linked_data.credentials \
+           linked_data.did_documents linked_data.provenance \
+           linked_data.capability_descriptors linked_data.skill_metadata \
+           linked_data.payments linked_data.memory_catalogue \
+           linked_data.architecture_docs linked_data.http_meta; do
+    if echo "${raw}" | grep -qw "${k}"; then
+      state_set "${k}" "on"
+    else
+      state_set "${k}" "off"
+    fi
+  done
+
+  # Viewer slot
+  local viewer
+  viewer="$(wt_menu "Linked-Data — Viewer (S12)" \
+    "Interactive JSON-LD browser at /lo/*?" \
+    12 72 3 \
+    "off"                    "No viewer" \
+    "local-linkedobjects"    "linkedobjects/browser (bundled, AGPL-3.0)" \
+    "external"               "External viewer URL")"
+  [[ -n "${viewer}" ]] && state_set "linked_data.viewer.mode" "${viewer}"
+
+  validate_candidate
+}
+
+# ════════════════════════════════════════════════════════════════════════════════
+# SECTION 12 — multi-user pods (ADR-017 / PRD-007)
+# Only surfaced when sovereign_mesh.solid_pod is enabled.
+# ════════════════════════════════════════════════════════════════════════════════
+section_multi_user() {
+  if [[ "$(state_get 'sovereign_mesh.solid_pod')" != "true" ]]; then
+    state_set_bool "sovereign_mesh.multi_user.enabled" "false"
+    return 0
+  fi
+
+  if ! wt_yesno "Multi-User Pods (ADR-017)" \
+    "Enable multi-tenant did:nostr pod provisioning?\n\nWhen enabled, authenticated Nostr pubkeys can request their\nown Solid pod. Provisioning policy controls who gets access:\n  closed      — only the operator\n  invite-only — NIP event invitation required\n  open        — any AUTH'd pubkey (requires max_users cap)"; then
+    state_set_bool "sovereign_mesh.multi_user.enabled" "false"
+    return 0
+  fi
+
+  state_set_bool "sovereign_mesh.multi_user.enabled" "true"
+
+  local policy
+  policy="$(wt_menu "Multi-User — Provisioning Policy" \
+    "Who can get a pod?" \
+    12 72 3 \
+    "closed"      "Operator only (default)" \
+    "invite-only" "Nostr invite event required (kind 30910)" \
+    "open"        "Any AUTH'd pubkey (requires max_users)")"
+  [[ -n "${policy}" ]] && state_set "sovereign_mesh.multi_user.provisioning_policy" "${policy}"
+
+  if [[ "${policy}" == "open" ]]; then
+    local max
+    max="$(wt_inputbox "Multi-User — Max Users" \
+      "Maximum number of user pods (required for open policy)" \
+      9 60 "$(state_get 'sovereign_mesh.multi_user.max_users')")"
+    [[ -n "${max}" ]] && state_set "sovereign_mesh.multi_user.max_users" "${max}"
+  fi
+
+  validate_candidate
+}
+
+# ════════════════════════════════════════════════════════════════════════════════
+# SECTION 13 — code-as-harness (ADR-018/019/020 / PRD-008)
+# Persistent Python kernel, experiential learning, ACI shell, tree-search.
+# ════════════════════════════════════════════════════════════════════════════════
+section_code_harness() {
+  if ! wt_yesno "Code-as-Harness (PRD-008)" \
+    "Enable the persistent Python execution environment?\n\nThis powers:\n  - Code interpreter MCP (persistent Jupyter kernel)\n  - Voyager skill library (verified skills with execution proof)\n  - ACI shell (SWE-agent affordance for code agents)\n  - Tree-search coder (execution-gated multi-candidate search)\n\nThe code interpreter is the foundation; other features depend on it."; then
+    state_set_bool "skills.code_interpreter.enabled" "false"
+    return 0
+  fi
+
+  state_set_bool "skills.code_interpreter.enabled" "true"
+
+  # pip install policy
+  if wt_yesno "Code Interpreter — pip install" \
+    "Allow the kernel to install packages via pip?\n\nIf yes, a pip_allowlist restricts which packages are permitted.\nIf no, only pre-installed packages are available."; then
+    state_set_bool "skills.code_interpreter.allow_pip_install" "true"
+  else
+    state_set_bool "skills.code_interpreter.allow_pip_install" "false"
+  fi
+
+  on_off() { [[ "$(state_get "$1")" == "true" ]] && echo "ON" || echo "OFF"; }
+
+  # Optional dependent features
+  local raw
+  raw="$(wt_checklist "Code-as-Harness — Features" \
+    "Select additional execution features (all require code_interpreter)" \
+    16 78 4 \
+    "skills.voyager_skill_library.enabled" "Voyager skill library (verified skills)"  "$(on_off skills.voyager_skill_library.enabled)" \
+    "skills.aci_shell.enabled"             "ACI shell (SWE-agent affordance)"         "$(on_off skills.aci_shell.enabled)" \
+    "skills.tree_search_coder.enabled"     "Tree-search coder (multi-candidate)"      "$(on_off skills.tree_search_coder.enabled)" \
+    "features.expel_lesson_extraction.enabled" "ExPeL lesson extraction (learning)"   "$(on_off features.expel_lesson_extraction.enabled)")"
+
+  for k in skills.voyager_skill_library.enabled skills.aci_shell.enabled \
+           skills.tree_search_coder.enabled features.expel_lesson_extraction.enabled; do
+    echo "${raw}" | grep -qw "${k}" && state_set_bool "${k}" "true" || state_set_bool "${k}" "false"
+  done
+
+  # Tree-search spend cap
+  if [[ "$(state_get 'skills.tree_search_coder.enabled')" == "true" ]]; then
+    local cap
+    cap="$(wt_inputbox "Tree-Search — Spend Cap" \
+      "Maximum USD spend per tree-search invocation (required, no default)" \
+      9 60 "$(state_get 'skills.tree_search_coder.spend_cap_usd')")"
+    [[ -n "${cap}" ]] && state_set "skills.tree_search_coder.spend_cap_usd" "${cap}"
+  fi
+
+  validate_candidate
+}
+
+# ════════════════════════════════════════════════════════════════════════════════
+# SECTION 14 — payments (HTTP 402 / Web Ledger)
+# ════════════════════════════════════════════════════════════════════════════════
+section_payments() {
+  if ! wt_yesno "Payments (HTTP 402 Web Ledger)" \
+    "Enable the payment tier for metered agent operations?\n\nWhen enabled, expensive operations (inference, image gen,\nanalytics) require payment via HTTP 402 negotiation.\nSupports DREAM token or direct satoshi-denominated billing."; then
+    state_set_bool "payments.enabled" "false"
+    return 0
+  fi
+
+  state_set_bool "payments.enabled" "true"
+
+  local backend
+  backend="$(wt_menu "Payments — Backend" \
+    "Payment processing backend" \
+    11 72 2 \
+    "local-ledger" "Local SQLite ledger (standalone)" \
+    "external"     "External payment processor")"
+  [[ -n "${backend}" ]] && state_set "payments.backend" "${backend}"
+
+  validate_candidate
+}
+
+# ════════════════════════════════════════════════════════════════════════════════
 # WIZARD MAIN LOOP — run each section; retry on validation failure
 # ════════════════════════════════════════════════════════════════════════════════
 SECTIONS=(
@@ -1146,12 +1399,32 @@ SECTIONS=(
   section_integrations
   section_sovereign_mesh
   section_nostr_relay
+  section_multi_user
+  section_linked_data
+  section_code_harness
+  section_payments
 )
 
+SECTION_NAMES=(
+  "Federation" "Adapters" "GPU" "Privacy Filter" "Desktop"
+  "Toolchains" "Skills" "Providers" "Consultants" "Operator Identity"
+  "Observability" "Integrations" "Sovereign Mesh" "Nostr Relay"
+  "Multi-User Pods" "Linked-Data" "Code-as-Harness" "Payments"
+)
+
+TOTAL_SECTIONS=${#SECTIONS[@]}
+CURRENT_SECTION=0
+
 for section_fn in "${SECTIONS[@]}"; do
+  ((CURRENT_SECTION++))
+  local_name="${SECTION_NAMES[$((CURRENT_SECTION-1))]}"
+  if [[ -n "${GUM}" ]]; then
+    "${GUM}" style --foreground "#565f89" "  [${CURRENT_SECTION}/${TOTAL_SECTIONS}] ${local_name}" >&2
+  else
+    echo "  [${CURRENT_SECTION}/${TOTAL_SECTIONS}] ${local_name}" >&2
+  fi
   while true; do
     "${section_fn}" && break
-    # validate_candidate already showed the error msgbox; loop to retry section
   done
 done
 
@@ -1160,10 +1433,20 @@ done
 # ════════════════════════════════════════════════════════════════════════════════
 python3 "${TUI_WRITE}" "${STATE_JSON}" "${CANDIDATE_TOML}"
 _patch_operator_toml "${CANDIDATE_TOML}"
-SUMMARY="$(cat "${CANDIDATE_TOML}")"
-wt_msgbox "Configuration Summary (read-only)" "${SUMMARY}"
 
-if ! wt_yesno "Confirm Save" "Save configuration to agentbox.toml?\nThe existing file will be replaced."; then
+if [[ -n "${GUM}" ]]; then
+  echo "" >&2
+  "${GUM}" style --border rounded --border-foreground "#9ece6a" --padding "1 2" \
+    --bold "Configuration Complete" >&2
+  echo "" >&2
+  cat "${CANDIDATE_TOML}" | "${GUM}" format --type code >&2
+  echo "" >&2
+else
+  SUMMARY="$(cat "${CANDIDATE_TOML}")"
+  wt_msgbox "Configuration Summary (read-only)" "${SUMMARY}"
+fi
+
+if ! wt_yesno "Confirm Save" "Save configuration to agentbox.toml? The existing file will be replaced."; then
   echo "Aborted. No changes written."
   exit 0
 fi
@@ -1176,7 +1459,11 @@ if ! node "${VALIDATOR}" "${CANDIDATE_TOML}" 2>&1; then
   exit 1
 fi
 cp "${CANDIDATE_TOML}" "${CONFIG_FILE}"
-echo "agentbox.toml updated."
+if [[ -n "${GUM}" ]]; then
+  "${GUM}" style --foreground "#9ece6a" --bold "agentbox.toml saved." >&2
+else
+  echo "agentbox.toml updated."
+fi
 
 # ════════════════════════════════════════════════════════════════════════════════
 # ACTION MENU — what to do now
