@@ -67,17 +67,14 @@ jobs:
           name: ${{ vars.CACHIX_CACHE_NAME || 'dreamlab-ai' }}
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
+      - name: Install validator dependencies
+        run: npm ci --ignore-scripts
+
       - name: Preflight — validate manifest and E021 audit gate
-        # Mirrors agentbox.sh preflight: run the JS validator so the E021/audit_acknowledged
-        # gate fires before we spend minutes on a Nix build that will fail anyway.
         run: |
           set -euo pipefail
-          if command -v node >/dev/null 2>&1; then
-            node scripts/agentbox-config-validate.js agentbox.toml
-            echo "Preflight: agentbox.toml validates cleanly (E021 gate passed)"
-          else
-            echo "::notice::node not available — skipping JS preflight; Nix eval will catch E021"
-          fi
+          node scripts/agentbox-config-validate.js agentbox.toml
+          echo "Preflight: agentbox.toml validates cleanly (E021 gate passed)"
 
       - name: Build runtime image with Nix
         run: nix build .#runtime --print-build-logs
