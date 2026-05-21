@@ -44,7 +44,7 @@ Local lifecycle commands:
   ${GREEN}down${NC}             Stop the Docker stack [--volumes: also remove volumes (confirms)]
   ${GREEN}build${NC}            Build the Nix image [--variant runtime|desktop|full]
   ${GREEN}rebuild${NC}          Full dev-loop cycle: down + build + up --build
-  ${GREEN}update${NC}           Check for upstream version bumps and patch flake.nix hashes [--check: report only, no patch]
+  ${GREEN}update${NC}           Update flake inputs + npm CLI versions + resolve hashes [--check|--npm-only|--flake-only]
   ${GREEN}logs${NC}             Follow logs [service: supervisorctl tail, else compose logs]
   ${GREEN}shell${NC}            Open shell in container [profile: zellij layout in that profile]
   ${GREEN}health${NC}           Show service health [--json: raw JSON output]
@@ -74,8 +74,10 @@ Examples:
   $0 down --volumes         # Stop stack and remove volumes (destructive, confirms)
   $0 build --variant full   # Build the full image without loading it
   $0 rebuild                # down + build + up (dev-loop iteration)
-  $0 update                 # check + bump npm CLI versions in flake.nix, then resolve hashes
+  $0 update                 # full update: flake inputs (nixpkgs etc.) + npm CLI versions + resolve hashes
   $0 update --check         # report available updates without patching
+  $0 update --flake-only    # only update flake inputs (nixpkgs, rust-overlay, etc.)
+  $0 update --npm-only      # only bump npm CLI versions in flake.nix
   $0 logs                   # Follow all service logs
   $0 logs management-api    # Follow a specific service via supervisorctl
   $0 shell                  # bash in the agentbox container
@@ -669,20 +671,30 @@ cmd_build() {
 }
 
 cmd_update() {
-    # Check + bump npm CLI package versions in flake.nix, then resolve Nix hashes.
-    # This is intentionally a MANUAL step — auto-bumping on every build breaks Nix
-    # reproducibility (same flake = same image). Call this from the onboarding wizard
-    # or explicitly before a release rebuild.
+    # Bump all dependencies: flake inputs (nixpkgs, rust-overlay, …) and npm
+    # CLI package versions in flake.nix, then resolve Nix hashes.
+    # This is intentionally a MANUAL step — auto-bumping on every build breaks
+    # Nix reproducibility (same flake = same image). Call this from the
+    # onboarding wizard or explicitly before a release rebuild.
     #
     # Usage:
-    #   ./agentbox.sh update          — bump versions + resolve hashes + report
-    #   ./agentbox.sh update --check  — report available updates, do not patch
+    #   ./agentbox.sh update                — full update: flake inputs + npm CLIs + hashes
+    #   ./agentbox.sh update --check        — report available updates, do not patch
+    #   ./agentbox.sh update --npm-only     — skip flake input update, only bump npm CLIs
+    #   ./agentbox.sh update --flake-only   — only update flake inputs (nixpkgs etc.)
 
     local check_only=0
-    case "${1:-}" in
-        --check)   check_only=1 ;;
-        -h|--help) echo "Usage: $0 update [--check]"; return 0 ;;
-    esac
+    local skip_flake=0
+    local skip_npm=0
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --check)      check_only=1 ;;
+            --npm-only)   skip_flake=1 ;;
+            --flake-only) skip_npm=1 ;;
+            -h|--help)    echo "Usage: $0 update [--check] [--npm-only] [--flake-only]"; return 0 ;;
+        esac
+        shift
+    done
 
     echo -e "${CYAN}Checking upstream releases...${NC}"
     bash "${SCRIPT_DIR}/scripts/check-upstream-releases.sh" || true
@@ -697,30 +709,45 @@ cmd_update() {
         return 1
     fi
 
+    # ── Phase 1: flake inputs (nixpkgs, rust-overlay, nix2container, flake-utils) ──
+    if [[ "$skip_flake" -eq 0 ]]; then
+        echo ""
+        echo -e "${CYAN}Updating flake inputs (nixpkgs, rust-overlay, nix2container, flake-utils)...${NC}"
+        if nix flake update --flake "${SCRIPT_DIR}"; then
+            echo -e "${GREEN}  flake.lock updated.${NC}"
+        else
+            echo -e "${RED}  nix flake update failed — continuing with npm CLI bumps.${NC}"
+        fi
+    fi
+
+    if [[ "$skip_npm" -eq 1 ]]; then
+        echo ""
+        echo -e "${GREEN}Done (flake inputs only). Review flake.lock and commit.${NC}"
+        echo "  git diff flake.lock"
+        echo "  git add flake.lock && git commit -m 'chore(deps): update flake inputs'"
+        return 0
+    fi
+
+    # ── Phase 2: npm CLI version bumps ──
     echo ""
     echo -e "${CYAN}Bumping npm CLI versions in flake.nix...${NC}"
-    # bump-npm-cli-versions.sh: fetches latest versions from npm registry, patches
-    # flake.nix version strings, and resets hashes to lib.fakeHash for prefetch.
     bash "${SCRIPT_DIR}/scripts/bump-npm-cli-versions.sh"
 
+    # ── Phase 3: hash resolution ──
     if grep -q 'lib\.fakeHash' "${SCRIPT_DIR}/flake.nix" 2>/dev/null; then
         echo ""
         echo -e "${CYAN}Resolving npm CLI hashes (iterative build + patch)...${NC}"
         echo -e "  This may take several minutes for first-time fetches."
         echo ""
-        # prefetch-hashes.sh --cli handles:
-        #   - npm CLI tarball sha256 (makeNpmCli.sha256)
-        #   - npm CLI node_modules FOD hash (makeNpmCli.nodeModulesHash)
-        #   - nagual-qe cargoHash
         NIXPKGS_ALLOW_INSECURE=1 bash "${SCRIPT_DIR}/scripts/prefetch-hashes.sh" --cli
     else
         echo -e "${GREEN}All hashes already resolved — no prefetch needed.${NC}"
     fi
 
     echo ""
-    echo -e "${GREEN}Done. Review flake.nix changes and commit before next build.${NC}"
-    echo "  git diff flake.nix lib/"
-    echo "  git add flake.nix lib/ && git commit -m 'chore(deps): bump npm CLI + cargo hashes'"
+    echo -e "${GREEN}Done. Review changes and commit before next build.${NC}"
+    echo "  git diff flake.lock flake.nix lib/"
+    echo "  git add flake.lock flake.nix lib/ && git commit -m 'chore(deps): update flake inputs + bump npm CLIs'"
 }
 
 cmd_rebuild() {
@@ -1220,7 +1247,7 @@ while [[ $# -gt 0 ]]; do
             usage
             exit 0
             ;;
-        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser|backup|restore|up|down|build|rebuild|logs|shell|health|browsercontainer)
+        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser|backup|restore|up|down|build|rebuild|update|logs|shell|health|browsercontainer|migrate-workspace|preflight)
             CMD="$1"
             shift
             break

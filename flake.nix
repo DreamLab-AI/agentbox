@@ -38,7 +38,10 @@
             # hot path (NIP-98 verify, bridge signer) uses @noble/curves via
             # nostr-tools in management-api, which is constant-time. Tracking
             # upstream for an ecdsa bump or nixpkgs overlay replacement.
-            permittedInsecurePackages = [ "python3.12-ecdsa-0.19.1" ];
+            permittedInsecurePackages = [
+              "python3.12-ecdsa-0.19.1"
+              "python3.12-ecdsa-0.19.2"
+            ];
           };
         };
 
@@ -118,9 +121,9 @@
         #    nix-prefetch-url https://registry.npmjs.org/%40claude-flow/cli/-/cli-3.6.12.tgz
         claudeFlowPkg = mkNpmCli {
           pkgName         = "@claude-flow/cli";
-          version         = "3.6.12";
-          sha256          = "sha256-k36Vtg3i0YKZsvZi9+5ESSdSVqXOpWSd+CxDX7LiCyY=";
-          nodeModulesHash = "sha256-pJLQKs0DPuW+HXlWKzy7J4BqMtVMeZYr0DWwJRBwiBA=";
+          version         = "3.7.0-alpha.75";
+          sha256          = lib.fakeHash;
+          nodeModulesHash = lib.fakeHash;
           bin             = "claude-flow";
         };
 
@@ -128,9 +131,9 @@
         #    nix-prefetch-url https://registry.npmjs.org/ruflo/-/ruflo-3.6.12.tgz
         rufloPkg = mkNpmCli {
           pkgName         = "ruflo";
-          version         = "3.6.12";
-          sha256          = "sha256-dAUw69hxvHiNR8Xczyz+7PfUK0f9DPisRPoa2CH/an8=";
-          nodeModulesHash = "sha256-aKkv+zEv5Q+7GN2rxD+UYwJtNPls92H3qCW7Xja1tas=";
+          version         = "3.7.0-alpha.75";
+          sha256          = lib.fakeHash;
+          nodeModulesHash = lib.fakeHash;
           bin             = "ruflo";
         };
 
@@ -142,9 +145,9 @@
         #    nix-prefetch-url https://registry.npmjs.org/agentic-qe/-/agentic-qe-3.9.18.tgz
         agenticQePkg = mkNpmCli {
           pkgName         = "agentic-qe";
-          version         = "3.9.18";
-          sha256          = "sha256-bYAVt/RJpyeKopiC7nSUOLvaWGLE+ANAL8xTlt/0e8I=";
-          nodeModulesHash = "sha256-jHTownp9urwwADTSnt5Hfd3GcjwK0KJ1af/sBeB7KMw=";
+          version         = "3.10.0";
+          sha256          = lib.fakeHash;
+          nodeModulesHash = lib.fakeHash;
           bin             = "aqe";
         };
 
@@ -158,9 +161,9 @@
         #    nix-prefetch-url https://registry.npmjs.org/codebase-memory-mcp/-/codebase-memory-mcp-0.6.0.tgz
         codebaseMemoryPkg = mkNpmCli {
           pkgName         = "codebase-memory-mcp";
-          version         = "0.6.0";
-          sha256          = "sha256-aZ2msekZEaO/CHAGSLiFtkyZKNZnEhCVNOyKVEf3FYk=";
-          nodeModulesHash = "sha256-r9XtljjygaBEsRwCKKyd8KM5WWDVovz66SB0StudBE8=";
+          version         = "0.6.1";
+          sha256          = lib.fakeHash;
+          nodeModulesHash = lib.fakeHash;
           bin             = "codebase-memory-mcp";
         };
 
@@ -530,7 +533,7 @@
         codeInterpreterPythonEnv = pkgs.python312.withPackages (ps: with ps; [
           numpy pandas scipy sympy matplotlib scikit-learn requests
           beautifulsoup4 lxml networkx pydantic
-          ipykernel jupyter_client
+          ipykernel jupyter-client
           psycopg2          # for RuVector writes if needed inside kernel tasks
           prometheus-client
         ]);
