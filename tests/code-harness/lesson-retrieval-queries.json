@@ -1,0 +1,37 @@
+[
+  {
+    "query": "What's the right way to handle pagination in Cloudflare D1?",
+    "seeded_lesson_scope": "cf-d1-pagination",
+    "seeded_lesson_rule": "IF Cloudflare D1 paginated query THEN cursor on rowid not LIMIT/OFFSET",
+    "seeded_lesson_key": "lesson:cf-d1-pagination:cf1d2p4g1n4t",
+    "notes": "D1's LIMIT/OFFSET is O(n) full scan; cursor pagination on rowid is O(log n). This lesson should surface for any query mentioning D1, Cloudflare, or pagination."
+  },
+  {
+    "query": "How do I avoid hitting kernel idle timeout in long data loads?",
+    "seeded_lesson_scope": "kernel-timeout",
+    "seeded_lesson_rule": "IF data load >25 min THEN chunk into kernel.exec calls every 10 min OR raise idle_timeout_s",
+    "seeded_lesson_key": "lesson:kernel-timeout:k3rn3lt1m30ut",
+    "notes": "Kernel idle timeout (default 1800s) kills the KernelSession during a long uninterrupted load. Chunking keeps the kernel active. Lesson should surface for queries about long-running kernel exec, data ingestion, idle timeout."
+  },
+  {
+    "query": "What goes wrong when emitting Nostr events with relative timestamps?",
+    "seeded_lesson_scope": "nostr-events",
+    "seeded_lesson_rule": "IF Nostr event THEN created_at must be unix seconds (i64), not ISO string",
+    "seeded_lesson_key": "lesson:nostr-events:n0str3v3nts12",
+    "notes": "NIP-01 mandates created_at as a Unix epoch integer. Emitting an ISO-8601 string causes relay rejection or silent mangling. Lesson should surface for queries about Nostr, NIP-01, event timestamp, relay."
+  },
+  {
+    "query": "How should I cite trace evidence in an ExpeL lesson?",
+    "seeded_lesson_scope": "expel-evidence",
+    "seeded_lesson_rule": "IF lesson stored THEN evidence_traces array must contain ≥1 real trace_urn that resolves via memory_retrieve",
+    "seeded_lesson_key": "lesson:expel-evidence:3xp3l3v1d3nc3",
+    "notes": "Lessons without resolvable trace URNs fail the evidence grounding gate and are discarded. This lesson guards against hallucinated URNs. Should surface for queries about ExpeL, lesson writing, trace evidence, memory_retrieve."
+  },
+  {
+    "query": "What's the canonical way to write a Voyager skill body for repeatable maths?",
+    "seeded_lesson_scope": "voyager-skill-body",
+    "seeded_lesson_rule": "IF VerifiedSkill body uses numpy THEN import numpy AT THE TOP of body_python; do NOT rely on kernel state",
+    "seeded_lesson_key": "lesson:voyager-skill-body:v0y4g3rsk1llb0",
+    "notes": "Skill bodies must be self-contained. A skill that relies on numpy being pre-imported in kernel state will fail the VerificationGate when run in a fresh KernelSession. Should surface for queries about VerifiedSkill, body_python, numpy, self-contained functions."
+  }
+]

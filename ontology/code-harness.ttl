@@ -1,0 +1,286 @@
+# code-harness.ttl — OWL2 DL declarations for the Code Execution and
+# Experiential Learning bounded context (DDD-005, ADR-019, PRD-008).
+#
+# URN → IRI mapping (for use in Linked Data surfaces, ADR-012):
+#   urn:agentbox:<kind>:<scope>:<local>
+#   → <https://urn.agentbox.dev/<kind>/<scope>/<local>>
+# Example:
+#   urn:agentbox:memory:abc123:lesson-def456
+#   → <https://urn.agentbox.dev/memory/abc123/lesson-def456>
+# HTTP resolvability: best-effort via /v1/uri/<urn> (307/404/410, ADR-013).
+#
+# did:nostr mapping:
+#   did:nostr:<hex-pubkey> is represented as a Literal of datatype ex:NostrDid.
+#   Full DID-resolution semantics are out of scope here; the literal form is
+#   used for provenance and audit. Example triple:
+#     <https://urn.agentbox.dev/memory/abc123/lesson-def456>
+#         ex:ownerDid "did:nostr:abc123..."^^ex:NostrDid .
+#
+# ADR-013 URI/URN grammar: urn:agentbox:<kind>:[<scope>:]<local>
+# 18 valid kinds: pod, envelope, credential, mandate, receipt, activity,
+#   event, mcp, memory, skill, adr, prd, ddd, thing, dataset, bead, agent, meta.
+# No new kinds are introduced by this file.
+#
+# KernelSession maps to kind "thing": urn:agentbox:thing:<scope>:kernel-<short-id>
+# ExecutionTrace maps to kind "activity": urn:agentbox:activity:<scope>:trace-<short-id>
+# DistilledLesson maps to kind "memory": urn:agentbox:memory:<scope>:lesson-<sha256-12>
+# VerifiedSkill maps to kind "skill": urn:agentbox:skill:<scope>:<name>:v<n>
+# Activity records map to kind "activity": urn:agentbox:activity:<scope>:<verb>-<short-id>
+#
+# @prefix declarations MUST come first (WebVOWL / Turtle parser requirement,
+# per skills/ontology-core/SKILL.md §TTL Generation Rules).
+
+@prefix ex:    <https://ontology.agentbox.dev/> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:   <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix prov:  <http://www.w3.org/ns/prov#> .
+@prefix urn:   <https://urn.agentbox.dev/> .
+
+# ---------------------------------------------------------------------------
+# Ontology declaration
+# ---------------------------------------------------------------------------
+
+<https://ontology.agentbox.dev/code-harness>
+    a owl:Ontology ;
+    rdfs:label "Code Execution and Experiential Learning Ontology" ;
+    rdfs:comment """
+        OWL2 DL declarations for the Code Execution and Experiential Learning
+        bounded context. Defines four memory subclasses discriminated by
+        ex:memoryType, plus one Activity class aligned with PROV-O.
+        Related: DDD-005, ADR-019, PRD-008, ADR-013.
+    """ .
+
+# ---------------------------------------------------------------------------
+# Custom datatype for did:nostr identity literals
+# ---------------------------------------------------------------------------
+
+ex:NostrDid
+    a rdfs:Datatype ;
+    rdfs:label "Nostr DID literal" ;
+    rdfs:comment """
+        Represents a did:nostr:<hex-pubkey> identity literal. Used for
+        provenance (ex:ownerDid, ex:subjectDid) on memory and activity records.
+        Full DID-resolution semantics are out of scope; the literal form is
+        used for audit and cross-reference with the agentbox identity stack.
+        The four existing DreamLab backends (solid-pod-rs, nostr-rust-forum,
+        VisionClaw, dreamlab-ai-website) share this scheme — Code Execution and
+        Experiential Learning becomes the fifth participant without adding
+        identity primitives (per addendum ecosystem alignment).
+    """ .
+
+# ---------------------------------------------------------------------------
+# ex:memoryType property (multi-tier discriminator)
+# ---------------------------------------------------------------------------
+
+ex:memoryType
+    a owl:DatatypeProperty ;
+    rdfs:label "memory type" ;
+    rdfs:comment """
+        Discriminates the memory tier of an ex:Memory instance.
+        Values: "semantic" (durable, no TTL), "episodic" (TTL-bound, decay),
+        "procedural" (durable, executable). This property is the application-layer
+        multi-tier discriminator: it allows a single RuVector memory_entries table
+        to serve all three tiers without schema migration. It is also stored as
+        the source_type field on every RuVector entry (using the OWL2 class IRI).
+    """ ;
+    rdfs:domain ex:Memory ;
+    rdfs:range xsd:string .
+
+# ---------------------------------------------------------------------------
+# ex:Memory (superclass)
+# ---------------------------------------------------------------------------
+
+ex:Memory
+    a owl:Class ;
+    rdfs:label "Memory" ;
+    rdfs:comment """
+        Superclass for all memory records stored in the RuVector multi-tier
+        memory system. Subclasses are discriminated by ex:memoryType.
+        Memory records are stored in RuVector (ruvector-postgres:5432) via
+        mcp__ruvector__memory_store ONLY — never raw SQL (ADR-015 mandate).
+    """ .
+
+# ---------------------------------------------------------------------------
+# ex:DistilledLesson (semantic tier, durable)
+# ---------------------------------------------------------------------------
+
+ex:DistilledLesson
+    a owl:Class ;
+    rdfs:subClassOf ex:Memory ;
+    rdfs:label "Distilled Lesson" ;
+    rdfs:comment """
+        A short, scoped, natural-language rule extracted from a completed task
+        trajectory by the ExpeL distillation step (ADR-019 §Mechanism 1).
+        Persisted in RuVector namespace `code-harness-lessons`.
+        memory_type = "semantic" — durable, no TTL.
+        URN kind: memory. Example: urn:agentbox:memory:<scope>:lesson-<sha256-12>
+        IRI mapping: <https://urn.agentbox.dev/memory/<scope>/lesson-<sha256-12>>
+        Source: mcp/expel/distil.py (Phase 1).
+        Invariants: DDD-005 I08-I12.
+    """ ;
+    ex:memoryType "semantic" .
+
+# ---------------------------------------------------------------------------
+# ex:VerifiedSkill (procedural tier, durable)
+# ---------------------------------------------------------------------------
+
+ex:VerifiedSkill
+    a owl:Class ;
+    rdfs:subClassOf ex:Memory ;
+    rdfs:label "Verified Skill" ;
+    rdfs:comment """
+        An executable code primitive (Python function body + assertions + ≥1
+        example) that has passed the VerificationGate (ADR-019 §Mechanism 2).
+        Persisted in RuVector namespace `code-harness-skills`.
+        memory_type = "procedural" — durable, executable, no TTL (current version).
+        Superseded versions demoted to `code-harness-skills-archive` after
+        [skills.voyager_skill_library].archive_after_days days.
+        URN kind: skill. Example: urn:agentbox:skill:<scope>:<name>:v<n>
+        Archived URN: urn:agentbox:skill:<scope>:<name>:v<n>:archived
+        IRI mapping: <https://urn.agentbox.dev/skill/<scope>/<name>/v<n>>
+        Source: mcp/voyager/verify-and-store.py (Phase 2).
+        Invariants: DDD-005 I13-I15.
+    """ ;
+    ex:memoryType "procedural" .
+
+# ---------------------------------------------------------------------------
+# ex:ExecutionTrace (episodic tier, 90-day TTL)
+# ---------------------------------------------------------------------------
+
+ex:ExecutionTrace
+    a owl:Class ;
+    rdfs:subClassOf ex:Memory ;
+    rdfs:label "Execution Trace" ;
+    rdfs:comment """
+        The immutable record of one kernel.exec call: code hash, stdout, stderr,
+        exception (if any), last-expression value repr, duration in ms, timestamp.
+        The canonical evidence record — traces are facts, not opinions (DDD-005
+        §Trace-as-Reward). Written by the code-interpreter MCP (WP-A / ADR-018).
+        Persisted in RuVector namespace `code-harness-traces`.
+        memory_type = "episodic" — TTL 90 days (default; gated by manifest).
+        URN kind: activity. Example: urn:agentbox:activity:<scope>:trace-<short-id>
+        IRI mapping: <https://urn.agentbox.dev/activity/<scope>/trace-<short-id>>
+        Note: ExecutionTraces are action receipts — what was executed — hence the
+        `activity` kind (not a new kind; re-uses the existing 18-kind taxonomy).
+    """ ;
+    ex:memoryType "episodic" .
+
+# ---------------------------------------------------------------------------
+# ex:KernelSession (episodic tier, 7-day TTL)
+# ---------------------------------------------------------------------------
+
+ex:KernelSession
+    a owl:Class ;
+    rdfs:subClassOf ex:Memory ;
+    rdfs:label "Kernel Session" ;
+    rdfs:comment """
+        A live, addressable, stateful execution context bound to one Claude
+        session or one worktree. Variables, imports, and computed values persist
+        across kernel.exec calls until the session is terminated or reset.
+        Persisted in RuVector as a session record for coordination; the live
+        process is managed by supervisord (ADR-018).
+        memory_type = "episodic" — TTL 7 days (default; dies with session).
+        URN kind: thing. Example: urn:agentbox:thing:<scope>:kernel-<short-id>
+        IRI mapping: <https://urn.agentbox.dev/thing/<scope>/kernel-<short-id>>
+        Note: KernelSession maps to kind "thing" — it is a thing the agent uses,
+        not a new kind.
+    """ ;
+    ex:memoryType "episodic" .
+
+# ---------------------------------------------------------------------------
+# ex:Activity (PROV-O aligned, episodic tier, 365-day TTL)
+# ---------------------------------------------------------------------------
+
+ex:Activity
+    a owl:Class ;
+    rdfs:subClassOf prov:Activity ;
+    rdfs:label "Code Harness Activity" ;
+    rdfs:comment """
+        An action record emitted for every state-changing operation in the
+        Code Execution and Experiential Learning domain: exec, distil, verify,
+        store, archive, retrieve.
+        Persisted in RuVector namespace `code-harness-activities`.
+        memory_type = "episodic" — TTL 365 days.
+        URN kind: activity. Example: urn:agentbox:activity:<scope>:<verb>-<short-id>
+        IRI mapping: <https://urn.agentbox.dev/activity/<scope>/<verb>-<short-id>>
+        Aligned with PROV-O prov:Activity for interoperability with provenance
+        tracking tools (skills/provenance-tracking).
+        Activity records carry NO trace body — only URN references — so they
+        bypass privacy redaction by design (ADR-019 D04 / addendum).
+    """ ;
+    ex:memoryType "episodic" .
+
+# ---------------------------------------------------------------------------
+# ex:Activity properties (PROV-O + agentbox-specific)
+# ---------------------------------------------------------------------------
+
+ex:subjectDid
+    a owl:DatatypeProperty ;
+    rdfs:label "subject DID" ;
+    rdfs:comment """
+        did:nostr:<hex-pubkey> literal (datatype ex:NostrDid) of the agent
+        who performed the action. Maps to PROV-O prov:wasAssociatedWith
+        but uses the agentbox did:nostr identity form.
+    """ ;
+    rdfs:domain ex:Activity ;
+    rdfs:range ex:NostrDid .
+
+ex:verb
+    a owl:DatatypeProperty ;
+    rdfs:label "action verb" ;
+    rdfs:comment """
+        Short queryable verb describing the action type.
+        Enumeration: exec | distil | verify | store | archive | retrieve.
+    """ ;
+    rdfs:domain ex:Activity ;
+    rdfs:range xsd:string .
+
+ex:objectUrn
+    a owl:DatatypeProperty ;
+    rdfs:label "object URN" ;
+    rdfs:comment """
+        The URN of the primary record produced or operated on by this activity.
+        Stored as xsd:anyURI in the IRI form
+        <https://urn.agentbox.dev/<kind>/<scope>/<local>>.
+    """ ;
+    rdfs:domain ex:Activity ;
+    rdfs:range xsd:anyURI .
+
+ex:startedAt
+    a owl:DatatypeProperty ;
+    rdfs:subPropertyOf prov:startedAtTime ;
+    rdfs:label "started at" ;
+    rdfs:domain ex:Activity ;
+    rdfs:range xsd:dateTime .
+
+ex:endedAt
+    a owl:DatatypeProperty ;
+    rdfs:subPropertyOf prov:endedAtTime ;
+    rdfs:label "ended at" ;
+    rdfs:domain ex:Activity ;
+    rdfs:range xsd:dateTime .
+
+ex:outcome
+    a owl:DatatypeProperty ;
+    rdfs:label "outcome" ;
+    rdfs:comment """
+        Terminal outcome of the activity. Enumeration: ok | skip | error.
+    """ ;
+    rdfs:domain ex:Activity ;
+    rdfs:range xsd:string .
+
+# ---------------------------------------------------------------------------
+# ex:ownerDid — provenance property on Memory subclasses
+# ---------------------------------------------------------------------------
+
+ex:ownerDid
+    a owl:DatatypeProperty ;
+    rdfs:label "owner DID" ;
+    rdfs:comment """
+        did:nostr:<hex-pubkey> of the agent session that created this record.
+        Stored as a literal of datatype ex:NostrDid.
+        Applied to all ex:Memory subclass instances for provenance tracking.
+    """ ;
+    rdfs:domain ex:Memory ;
+    rdfs:range ex:NostrDid .
