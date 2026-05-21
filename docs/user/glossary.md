@@ -59,7 +59,7 @@ flowchart LR
   [ADR-005](../reference/adr/ADR-005-pluggable-adapter-architecture.md).
 - **Agent** — an autonomous software process that plans, calls tools, and
   edits files on your behalf. In agentbox, agents are shipped as CLIs (Claude
-  Code, ruflo, Gemini, Codex) that run inside the container.
+  Code, ruflo, Antigravity, Codex) that run inside the container.
 - **Agent container** — the single Linux container produced by an agentbox
   build. One container, one operator, possibly many profiles inside.
 - **Bootstrap seal** — the one-shot sentinel file written at
@@ -97,6 +97,10 @@ flowchart LR
 - **Flake** — a Nix build descriptor (`flake.nix` + `flake.lock`). Pure and
   hermetic: identical inputs produce identical outputs. Defined in
   [ADR-001](../reference/adr/ADR-001-nixos-flakes.md).
+- **gum** — a zero-dependency TUI toolkit from Charm. The setup wizard
+  (`scripts/start-agentbox.sh`) auto-fetches a static gum binary at first
+  run for styled menus, checklists, password inputs and progress indicators.
+  Falls back to whiptail or plain text if gum is unavailable.
 - **Hardened baseline** — the default security posture: non-root user
   `1000:1000`, `read_only: true`, `cap_drop: [ALL]`, `no-new-privileges`,
   `seccomp=default`, explicit tmpfs list. See
@@ -192,7 +196,7 @@ flowchart LR
   storage). The `pods` adapter can also federate with an external server or
   disable storage entirely. See [solid-pod.md](solid-pod.md) and
   [ADR-010](../reference/adr/ADR-010-rust-solid-pod-adoption.md).
-- **Consultant** — an external LLM provider (Codex, Gemini, Z.AI, Perplexity,
+- **Consultant** — an external LLM provider (Codex, Antigravity, Z.AI, Perplexity,
   DeepSeek) exposed to the coordinator as a named MCP tool. The coordinator
   asks `/consult deepseek "verify this proof"` and gets a labelled answer
   with provenance: model, tokens, cost, citations. Distinct from a
@@ -222,6 +226,9 @@ flowchart LR
   the same key the relay accepted under NIP-42.
 - **Sovereign mesh** — the optional Nostr-based identity and event layer.
   Sovereign because each container owns its own cryptographic keypair.
+- **starship** — a cross-shell prompt (fish, bash, zsh). Agentbox ships a
+  Tokyo Night themed config at `/opt/agentbox/config/starship.toml` with
+  git branch/status, nix-shell, Rust, Node and Python indicators.
 - **supervisor / supervisord** — the process manager that starts the
   management-api, MCP servers, desktop, and any enabled sidecars inside the
   container. Its config is generated from the manifest by `flake.nix`.
@@ -229,15 +236,18 @@ flowchart LR
   `/run`, per-profile caches) are declared as tmpfs entries under the
   hardened baseline.
 - **TUI** — text-based user interface. Agentbox ships one under
-  `scripts/start-agentbox.sh` for manifest editing and a tmux layout
-  preset for terminal work.
+  `scripts/start-agentbox.sh` for manifest editing (18-section wizard
+  powered by [gum](https://github.com/charmbracelet/gum), with whiptail
+  and plain-text fallbacks).
 - **wayvnc** — a VNC server for Wayland. Used when `[desktop].enabled = true`
   and `[desktop].stack = "hyprland-wayland"`; exposed on port 5901.
-- **workspace mount** — the shared host-mounted volume at `/workspace` (plus
-  `/projects`). All profiles see the same content. Profile-local state lives
-  under `/workspace/profiles/<stack>/`.
-- **tmux** — the terminal workspace multiplexer agentbox uses in place of
-  tmux. `zclaude`, `zruflo`, `zqe`, `zdocs` launch pre-built layouts.
+- **workspace mount** — the shared host-mounted volume at `/home/devuser/workspace`
+  (plus `/projects`). All profiles see the same content. Profile-local state lives
+  under `/home/devuser/workspace/profiles/<stack>/`.
+- **tmux** — the terminal multiplexer agentbox uses for its MAD-style
+  multi-tab workspace. The session launches 10 windows automatically:
+  Claude, Agent, Services, Build, Logs, System, VNC, Git, OpenRouter, ZAI.
+  Attach with `tmux attach -t agentbox` or use the `ta` alias.
 
 ## Common confusions
 
@@ -260,7 +270,7 @@ manifest. See [installation.md](installation.md).
 **What's the difference between agentbox, Claude Code, and ruflo?**
 Claude Code is one agent CLI from Anthropic. Ruflo is an orchestrator that
 coordinates multiple agents. Agentbox is the container runtime that hosts
-both of them (plus Gemini, Codex, Z.AI) behind one management API, with
+both of them (plus Antigravity, Codex, Z.AI) behind one management API, with
 shared skills, memory, and durable state.
 
 **Why can't I just install packages at boot?**
@@ -327,7 +337,7 @@ inbound events *at* the container. You can run the mesh without the relay
 | Operator tuning the build | [configuration.md](configuration.md) |
 | Operator on a specific host | [running.md](running.md) and [platforms.md](platforms.md) |
 | Operator debugging a failure | [troubleshooting.md](troubleshooting.md) |
-| Operator wiring up consultants (Codex / Gemini / Z.AI / Perplexity / DeepSeek) | [consultants.md](consultants.md) |
+| Operator wiring up consultants (Codex / Antigravity / Z.AI / Perplexity / DeepSeek) | [consultants.md](consultants.md) |
 | Operator setting up external-agent messaging | [nostr-relay.md](nostr-relay.md) |
 | Operator enabling PII redaction | [privacy-filter.md](privacy-filter.md) |
 | Operator tuning the Solid pod | [solid-pod.md](solid-pod.md) |

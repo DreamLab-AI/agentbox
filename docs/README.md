@@ -49,7 +49,7 @@ You have a machine, you want agentbox running on it, ideally with as little fuss
 | [Linked-Data interfaces](user/linked-data.md) | Eleven JSON-LD federation surfaces — pods / Nostr envelopes / VCs / DID Docs / PROV-O / WoT / skills / payments / DCAT / arch-docs / HTTP meta |
 | [Canonical URIs](user/uris.md) | The URI grammar that names every emitted resource — `did:nostr:<pubkey>` + `urn:agentbox:<kind>:[<scope>:]<local>`, content-addressed, unconditionally unique, best-effort resolvable |
 | [JSON-LD browser](user/browser.md) | The S12 viewer slot — every emitted document one URL away, pane-dispatched by `@type`, follows URIs through `/v1/uri/<urn>` |
-| [Consultants — meta-router](user/consultants.md) | Five MCP servers exposing Codex / Gemini / Z.AI / Perplexity / DeepSeek as labelled consultants the coordinator can invoke explicitly |
+| [Consultants — meta-router](user/consultants.md) | Five MCP servers exposing Codex / Antigravity / Z.AI / Perplexity / DeepSeek as labelled consultants the coordinator can invoke explicitly |
 
 | Feature guides | |
 |---|---|

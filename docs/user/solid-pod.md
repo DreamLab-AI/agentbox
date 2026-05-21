@@ -195,7 +195,7 @@ flowchart LR
         OPF["PII redaction<br/>middleware"]
     end
     subgraph agents["Internal agents"]
-        AG["Claude Code · ruflo · Codex · Gemini"]
+        AG["Claude Code · ruflo · Codex · Antigravity"]
     end
     EXT["External agent"] -->|"signed event + NIP-42"| REL
     REL -->|"verified event"| MBOX

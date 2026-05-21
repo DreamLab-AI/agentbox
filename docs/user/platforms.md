@@ -84,7 +84,7 @@ docker pull ghcr.io/dreamlab-ai/agentbox:latest
 ./agentbox.sh up
 ```
 
-`agentbox.sh` requires `bash` + `docker`; both work inside WSL2. The TUI (`scripts/start-agentbox.sh`) also runs in WSL2 via whiptail.
+`agentbox.sh` requires `bash` + `docker`; both work inside WSL2. The TUI (`scripts/start-agentbox.sh`) auto-fetches a `gum` binary and also runs in WSL2 (falls back to whiptail or plain text).
 
 ## Multi-arch registry
 
@@ -97,7 +97,7 @@ docker pull --platform linux/arm64 ghcr.io/dreamlab-ai/agentbox:latest
 ## CI coverage
 
 - `flake-check.yml` evaluates the flake on both `x86_64-linux` and `aarch64-linux` runners on every PR. Catches arch-specific regressions before merge.
-- `build-multi-arch.yml` produces the published image on every push to `main`.
+- `build-multi-arch.yml` produces the published image via manual `workflow_dispatch` (automatic triggers are disabled while the schema validator catches up with manifest drift).
 - `contract-tests.yml` runs the Jest adapter-contract suite (platform-agnostic Node tests).
 
 ## Things that are NOT cross-platform

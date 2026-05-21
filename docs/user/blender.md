@@ -38,7 +38,7 @@ Blender MCP server runs automatically as `blender-mcp` under supervisord (priori
 
 Located at `/opt/agentbox/skills/blender/addon/server.py`.
 - Listens for MCP calls from agent orchestrators
-- Requires `HOME=/workspace` for user config
+- Requires `HOME=/home/devuser` for user config
 
 ## Custom Packages
 

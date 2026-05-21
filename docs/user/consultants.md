@@ -35,7 +35,7 @@ the hood, which is what `claude-code-router` and similar projects do.
 ## Enabling
 
 The wizard at `scripts/start-agentbox.sh` walks you through it
-(Section 3a — Consultant tier). For manual editing:
+(Section 9 — Consultants). For manual editing:
 
 ```toml
 # agentbox.toml
@@ -83,7 +83,7 @@ forwards to the matching MCP tool:
 /consult deepseek "verify this proof"
 /consult perplexity "what's the 2026-04 status of the EU AI Act tier-2 requirements?"
 /consult codex "is this Rust unsafe block sound?" with-context
-/consult gemini "summarise this 200-page contract"
+/consult antigravity "summarise this 200-page contract"
 /consult zai "translate and explain this technical Chinese paragraph"
 ```
 

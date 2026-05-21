@@ -6,7 +6,7 @@ This guide reflects the current Agentbox runtime.
 
 ## Why this exists
 
-Agentbox is a self-contained Linux container that runs coding agents (Claude Code, Ruflo, Gemini, Codex and friends) behind a single management API. Think of it as a shared workstation for agents: one image carries the CLIs, skills, MCP servers and durable-state adapters, and you drive it from your laptop, a remote VM, or a cloud provider. Compared to running agents directly on your machine, Agentbox keeps keys, state, skill trees and model endpoints behind one switchable configuration file.
+Agentbox is a self-contained Linux container that runs coding agents (Claude Code, Ruflo, Antigravity, Codex and friends) behind a single management API. Think of it as a shared workstation for agents: one image carries the CLIs, skills, MCP servers and durable-state adapters, and you drive it from your laptop, a remote VM, or a cloud provider. Compared to running agents directly on your machine, Agentbox keeps keys, state, skill trees and model endpoints behind one switchable configuration file.
 
 ```mermaid
 graph TB
@@ -18,7 +18,7 @@ graph TB
         subgraph agents["Agent CLIs"]
             CC[Claude Code]
             RF[Ruflo]
-            GM[Gemini]
+            GM[Antigravity]
             CX[Codex]
         end
         subgraph state["Durable state adapters"]
@@ -55,25 +55,35 @@ Use the interactive launcher unless you specifically want to edit files by hand:
 ./scripts/start-agentbox.sh
 ```
 
-The launcher is a section-by-section wizard (whiptail TUI, plain-text fallback when
-whiptail is absent). It walks through every manifest section in order and validates
-your choices after each one — you cannot advance past validation errors.
+The launcher is a section-by-section wizard with a gum TUI (falls back to
+whiptail, then plain text when neither is available). It auto-fetches the
+[gum](https://github.com/charmbracelet/gum) binary on first run — no
+pre-installed dependencies required. The wizard walks through every manifest
+section in order and validates your choices after each one — you cannot advance
+past validation errors.
 
-Sections covered:
+Sections covered (18 total):
 
 ```mermaid
 flowchart LR
     S1["1 Federation"] --> S2["2 Adapters"]
     S2 --> S3["3 GPU"]
-    S3 --> S4["4 Desktop"]
-    S4 --> S5["5 Toolchains"]
-    S5 --> S6["6 Skills"]
-    S6 --> S7["7 Providers"]
-    S7 --> S8["8 Observability"]
-    S8 --> S9["9 Integrations"]
-    S9 --> S10["10 Sovereign mesh"]
-    S10 --> S11["11 Summary + action"]
-    S11 -->|"validate"| V{{"agentbox-config-validate.js"}}
+    S3 --> S4["4 Privacy Filter"]
+    S4 --> S5["5 Desktop"]
+    S5 --> S6["6 Toolchains"]
+    S6 --> S7["7 Skills"]
+    S7 --> S8["8 Providers"]
+    S8 --> S9["9 Consultants"]
+    S9 --> S10["10 Operator Identity"]
+    S10 --> S11["11 Observability"]
+    S11 --> S12["12 Integrations"]
+    S12 --> S13["13 Sovereign Mesh"]
+    S13 --> S14["14 Nostr Relay"]
+    S14 --> S15["15 Multi-User Pods"]
+    S15 --> S16["16 Linked-Data"]
+    S16 --> S17["17 Code-as-Harness"]
+    S17 --> S18["18 Payments"]
+    S18 -->|"validate"| V{{"agentbox-config-validate.js"}}
     V -->|"errors"| S1
     V -->|"clean"| DONE["Save / Build / Start"]
 ```
@@ -81,14 +91,21 @@ flowchart LR
 1. **Federation** — `standalone` (self-contained, local fallbacks) or `client` (federated with host mesh). If `client`, prompts for `external_url`.
 2. **Adapters** — one radio menu per slot: `beads`, `pods`, `memory`, `events`, `orchestrator`. Each shows the schema-exact enum values for that slot.
 3. **GPU backend** — `none` / `ollama-rocm` / `ollama-cuda` / `local-cuda`. The wizard auto-detects `nvidia-smi` and `rocm-smi` and pre-selects the appropriate default.
-4. **Desktop** — enable toggle, stack radio (`hyprland-wayland` / `x11-openbox`), resolution input.
-5. **Toolchains** — scrollable checklist of all 11 toolchain flags.
-6. **Skills** — five grouped checklists: browser, media, spatial+3D, data science, docs+ontology.
-7. **Providers** — checklist to enable providers; for each enabled provider a redacted password field collects the API key and writes it to `.env`.
-8. **Observability** — `metrics_port` input, `otlp_endpoint` input, `log_level` radio.
-9. **Integrations** — ComfyUI external, RuVector external (only when `adapters.memory=external-pg`), RagFlow (only when the `visionclaw_network` network is detected).
-10. **Sovereign mesh** — full checklist of Nostr/pod/bridge/telegram flags.
-11. **Summary + action** — read-only summary of the full manifest, confirmation prompt, then a choice: save only / build image / build+start / start stack.
+4. **Privacy Filter** — enable/disable the outbound PII redaction filter (ADR-008). Configures policy for outbound data leaving the container.
+5. **Desktop** — enable toggle, stack radio (`hyprland-wayland` / `x11-openbox`), resolution input.
+6. **Toolchains** — scrollable checklist of all toolchain flags (claude, ruflo, claude_flow, agentic_qe, antigravity_cli, codex, etc.).
+7. **Skills** — five grouped checklists: browser, media, spatial+3D, data science, docs+ontology.
+8. **Providers** — checklist to enable providers; for each enabled provider a redacted password field collects the API key and writes it to `.env`.
+9. **Consultants** — enable the multi-LLM consultant tier (PRD-005/ADR-011): codex, antigravity, zai, perplexity, deepseek. Each consultant requires its matching provider gate.
+10. **Operator Identity** — configure the operator's DID, display name, and Nostr keypair for sovereign identity across the stack.
+11. **Observability** — `metrics_port` input, `otlp_endpoint` input, `log_level` radio.
+12. **Integrations** — ComfyUI external, RuVector external (only when `adapters.memory=external-pg`), RagFlow (only when the `visionclaw_network` network is detected).
+13. **Sovereign Mesh** — full checklist of Nostr/pod/bridge/telegram flags.
+14. **Nostr Relay** — configure the embedded `nostr-rs-relay` instance and pod-inbox bridge (ADR-009).
+15. **Multi-User Pods** — provisioning policy for multi-tenant Solid pod access (ADR-017).
+16. **Linked-Data** — toggle the 11 JSON-LD federation surfaces and the linkedobjects viewer (PRD-006/ADR-012).
+17. **Code-as-Harness** — code interpreter kernel, Voyager loop, ACI submissions, tree-search, ExPeL experiential learning (PRD-008/ADR-018–020).
+18. **Payments** — HTTP 402 Web Ledger payment enforcement for metered agent operations.
 
 After each section the wizard runs `scripts/agentbox-config-validate.js` against the
 in-progress manifest. Any E001-E031 errors (or W021/W030 warnings) appear in a message box and the section
@@ -334,7 +351,7 @@ From inside the container:
 docker exec agentbox supervisorctl status
 docker exec agentbox tmux -V
 docker exec -it agentbox tmux attach -t agentbox
-docker exec agentbox ls -la /workspace/profiles
+docker exec agentbox ls -la /home/devuser/workspace/profiles
 docker exec agentbox ls -la /projects
 ```
 
@@ -417,40 +434,52 @@ All ports are localhost-only on the host. The only way in from the network is th
 
 The runtime creates these profile roots:
 
-- `/workspace/profiles/claude-core`
-- `/workspace/profiles/ruflo-orchestrator`
-- `/workspace/profiles/qe-fleet`
-- `/workspace/profiles/nagual-qe`
-- `/workspace/profiles/rust-builder`
-- `/workspace/profiles/docs-latex`
+- `/home/devuser/workspace/profiles/claude-core`
+- `/home/devuser/workspace/profiles/ruflo-orchestrator`
+- `/home/devuser/workspace/profiles/qe-fleet`
+- `/home/devuser/workspace/profiles/nagual-qe`
+- `/home/devuser/workspace/profiles/rust-builder`
+- `/home/devuser/workspace/profiles/docs-latex`
 
 Each one should expose:
 
 - `.claude/settings.json`
 - `.claude/skills -> /opt/agentbox/skills`
 - `projects -> /projects`
-- `workspace -> /workspace`
+- `workspace -> /home/devuser/workspace`
 
-## 8. Storage Paths
+## 8b. Storage Paths
 
 - RuVector: `/var/lib/ruvector`
 - Solid-style pod storage: `/var/lib/solid`
 - Sovereign identities: `/var/lib/agentbox/identities`
-- Shared workspace: `/workspace`
+- Shared workspace: `/home/devuser/workspace`
 - Shared external projects: `/projects`
 
 ## 9. Terminal Workflow
 
-Inside the container:
+The container runs a tmux session (`agentbox`) with 10 pre-configured windows:
+
+| Window | Name | Purpose |
+|--------|------|---------|
+| 0 | Claude | Primary development shell |
+| 1 | Agent | Agent execution workspace |
+| 2 | Services | `supervisorctl status` |
+| 3 | Build | Build/compile workspace |
+| 4 | Logs | Management API logs (split pane) |
+| 5 | System | Resource monitor (`btm` / `htop`) |
+| 6 | VNC | VNC connection info |
+| 7 | Git | Project git status |
+| 8 | OpenRouter | Claude Code via free OpenRouter models |
+| 9 | ZAI | Claude Code via Z.AI GLM relay |
+
+Attach from inside the container:
 
 ```bash
-zclaude
-zruflo
-zqe
-zdocs
+tmux attach -t agentbox    # or use the alias: ta
 ```
 
-Those commands open the seeded tmux windows for the main stacks.
+The shell environment includes fish + starship prompt (Tokyo Night theme), modern CLI replacements (`eza`, `bat`, `delta`, `dust`, `procs`, `btm`), and the full agentbox alias set. Run `agentbox-help` for a quick reference or `agentbox-pick` for an interactive launcher.
 
 ## Troubleshooting
 
@@ -468,7 +497,7 @@ Check the entrypoint and logs:
 
 ```bash
 docker logs agentbox
-docker exec agentbox ls -la /workspace
+docker exec agentbox ls -la /home/devuser/workspace
 ```
 
 ### Solid or RuVector paths do not exist
