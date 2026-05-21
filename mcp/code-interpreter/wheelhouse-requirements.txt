@@ -1,0 +1,20 @@
+# Persistent code-interpreter wheelhouse — frozen scientific stack
+# Consumed by WP-E Nix derivation (pythonEnvCodeInterpreter) to build
+# /var/lib/agentbox/code-interpreter-wheelhouse/ via:
+#   pip wheel --wheel-dir=/var/lib/agentbox/code-interpreter-wheelhouse/ -r wheelhouse-requirements.txt
+#
+# ADR-018 §Package install policy: this is the ONLY source of packages
+# available to the kernel.  Network is off inside the kernel (JUPYTER_NO_NETWORK=1).
+# To add a package: (1) add it here, (2) rebuild the wheelhouse via WP-E,
+# (3) add to pip_allowlist in agentbox.toml if runtime install is needed.
+
+numpy==2.3.5
+pandas==2.3.1
+scipy==1.15.5
+sympy==1.14.0
+matplotlib==3.10.1
+scikit-learn==1.7.3
+requests==2.32.5
+ipykernel==6.31.0
+jupyter_client==8.7.0
+ast-decompiler==0.7.0

@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agentbox:schema:mcp:code-interpreter:v1",
+  "title": "Code-interpreter MCP wire contract",
+  "description": "JSON Schema for the 6 tools of the persistent code-interpreter MCP server. ADR-018 §Wire contract / PRD-008 §3.1 / DDD-005.",
+  "version": "1.0.0",
+  "$defs": {
+    "ExceptionRecord": {
+      "type": "object",
+      "required": ["type", "message", "traceback"],
+      "properties": {
+        "type":      { "type": "string", "description": "Exception class name, e.g. 'NameError'" },
+        "message":   { "type": "string" },
+        "traceback": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "VarEntry": {
+      "type": "object",
+      "required": ["name", "type", "repr_short"],
+      "properties": {
+        "name":       { "type": "string" },
+        "type":       { "type": "string" },
+        "repr_short": { "type": "string", "description": "repr() truncated to 80 chars" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "tools": {
+    "kernel.exec": {
+      "input": {
+        "type": "object",
+        "required": ["code"],
+        "properties": {
+          "code":      { "type": "string", "minLength": 1 },
+          "timeout_s": { "type": "integer", "minimum": 1, "maximum": 3600, "default": 30 }
+        },
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "required": ["stdout", "stderr", "result", "exception", "duration_ms", "cell_id", "trace_urn"],
+        "properties": {
+          "stdout":      { "type": "string" },
+          "stderr":      { "type": "string" },
+          "result":      { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+          "exception":   { "oneOf": [{ "$ref": "#/$defs/ExceptionRecord" }, { "type": "null" }] },
+          "duration_ms": { "type": "number", "minimum": 0 },
+          "cell_id":     { "type": "integer", "minimum": 1 },
+          "trace_urn":   { "type": "string", "pattern": "^urn:agentbox:trace:[a-f0-9]+:[0-9]+$" }
+        },
+        "additionalProperties": false
+      },
+      "outcomes": ["ok", "exception", "timeout", "interrupt"]
+    },
+    "kernel.list_vars": {
+      "input": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "required": ["vars"],
+        "properties": {
+          "vars": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/VarEntry" }
+          }
+        },
+        "additionalProperties": false
+      },
+      "outcomes": ["ok", "error"]
+    },
+    "kernel.inspect": {
+      "input": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "required": ["name", "type", "repr"],
+        "properties": {
+          "name":  { "type": "string" },
+          "type":  { "type": "string" },
+          "repr":  { "type": "string" },
+          "doc":   { "type": "string" }
+        },
+        "additionalProperties": false
+      },
+      "outcomes": ["ok", "error"]
+    },
+    "kernel.reset": {
+      "input": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "required": ["ok"],
+        "properties": {
+          "ok": { "type": "boolean" }
+        },
+        "additionalProperties": false
+      },
+      "outcomes": ["ok", "error"]
+    },
+    "kernel.interrupt": {
+      "input": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "required": ["ok"],
+        "properties": {
+          "ok": { "type": "boolean" }
+        },
+        "additionalProperties": false
+      },
+      "outcomes": ["ok", "error"]
+    },
+    "kernel.install_pkg": {
+      "input": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "required": ["ok"],
+        "properties": {
+          "ok":      { "type": "boolean" },
+          "version": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+          "error":   { "oneOf": [{ "type": "string" }, { "type": "null" }] }
+        },
+        "additionalProperties": false
+      },
+      "outcomes": ["ok", "error"]
+    }
+  }
+}
