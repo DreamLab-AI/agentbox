@@ -3,13 +3,13 @@ useDefault = true
 
 [allowlist]
 files = [
-  "(?:^|/)\.env\.example$",
-  "(?:^|/)\.env\.template$"
+  '(?:^|/)\.env\.example$',
+  '(?:^|/)\.env\.template$'
 ]
 
 paths = [
-  "(?:^|/)\.env\.example$",
-  "(?:^|/)\.env\.template$"
+  '(?:^|/)\.env\.example$',
+  '(?:^|/)\.env\.template$'
 ]
 
 regexes = [

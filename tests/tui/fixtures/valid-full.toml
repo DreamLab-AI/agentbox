@@ -128,3 +128,15 @@ optional_env_vars = []
 enabled  = false
 env_var  = "ZAI_API_KEY"
 optional_env_vars = ["ZAI_ANTHROPIC_API_KEY", "ZAI_URL"]
+
+[security.exceptions.desktop]
+writable_volumes = []
+reason = "desktop stack requires X11/i3 runtime"
+
+[security.exceptions.playwright]
+writable_volumes = []
+reason = "playwright browser cache"
+
+[security.exceptions.solid-pod-rs]
+writable_volumes = ["solid-data:/var/lib/solid"]
+reason = "solid-pod-rs WAL and journal"

@@ -81,3 +81,11 @@ enabled = false
 enabled = false
 url    = "http://comfyui:8188"
 ws_url = "ws://comfyui:8188/ws"
+
+[security.exceptions.playwright]
+writable_volumes = []
+reason = "playwright browser cache"
+
+[security.exceptions.solid-pod-rs]
+writable_volumes = ["solid-data:/var/lib/solid"]
+reason = "solid-pod-rs WAL and journal"

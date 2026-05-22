@@ -85,11 +85,12 @@ jobs:
             [ -f "$invalid" ] || continue
             code=$(basename "$invalid" .toml | sed 's/^invalid-//' | tr 'a-z' 'A-Z')
             echo "== $invalid must emit $code =="
-            if node scripts/agentbox-config-validate.js "$invalid" 2>&1 | grep -q "$code"; then
+            output=$(node scripts/agentbox-config-validate.js "$invalid" 2>&1 || true)
+            if echo "$output" | grep -q "$code"; then
               echo "OK: $code surfaced"
             else
-              echo "FAIL: expected $code in stderr from $invalid"
-              node scripts/agentbox-config-validate.js "$invalid" || true
+              echo "FAIL: expected $code in output from $invalid"
+              echo "$output"
               exit 1
             fi
           done

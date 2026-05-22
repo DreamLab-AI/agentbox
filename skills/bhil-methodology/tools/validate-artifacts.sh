@@ -36,7 +36,7 @@ get_field() {
 echo ""
 echo "📄 Validating PRD files..."
 PRD_COUNT=0
-for file in project/.sdlc/specs/PRD-*.md 2>/dev/null; do
+for file in project/.sdlc/specs/PRD-*.md ; do
   [ -f "$file" ] || continue
   ((PRD_COUNT++)) || true
   
@@ -72,7 +72,7 @@ done
 echo ""
 echo "📄 Validating SPEC files..."
 SPEC_COUNT=0
-for file in project/.sdlc/specs/SPEC-*.md 2>/dev/null; do
+for file in project/.sdlc/specs/SPEC-*.md ; do
   [ -f "$file" ] || continue
   ((SPEC_COUNT++)) || true
   
@@ -110,7 +110,7 @@ done
 echo ""
 echo "📄 Validating ADR files..."
 ADR_COUNT=0
-for file in docs/adr/ADR-*.md 2>/dev/null; do
+for file in docs/adr/ADR-*.md ; do
   [ -f "$file" ] || continue
   ((ADR_COUNT++)) || true
   
@@ -148,7 +148,7 @@ done
 echo ""
 echo "📄 Validating TASK files..."
 TASK_COUNT=0
-for file in project/.sdlc/specs/TASK-*.md 2>/dev/null; do
+for file in project/.sdlc/specs/TASK-*.md ; do
   [ -f "$file" ] || continue
   ((TASK_COUNT++)) || true
   

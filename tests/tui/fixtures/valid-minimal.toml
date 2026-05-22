@@ -28,3 +28,7 @@ log_level    = "info"
 
 [toolchains]
 claude = true
+
+[security.exceptions.solid-pod-rs]
+writable_volumes = ["solid-data:/var/lib/solid"]
+reason = "solid-pod-rs WAL and journal"

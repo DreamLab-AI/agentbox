@@ -644,7 +644,13 @@
                   "type": "array",
                   "items": { "type": "string" },
                   "description": "Additional tmpfs mount paths beyond the hardened baseline."
-                }
+                },
+                "writable_volumes": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Named volume mount strings."
+                },
+                "reason": { "type": "string" }
               }
             },
             "gpu-rocm": {
@@ -656,7 +662,13 @@
                   "type": "array",
                   "items": { "type": "string" },
                   "description": "Host device paths to expose (e.g. /dev/kfd, /dev/dri)."
-                }
+                },
+                "writable_volumes": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Named volume mount strings."
+                },
+                "reason": { "type": "string" }
               }
             },
             "gpu-cuda": {
@@ -702,7 +714,13 @@
                   "type": "array",
                   "items": { "type": "string" },
                   "description": "Exception names whose deltas are merged first."
-                }
+                },
+                "writable_volumes": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Named volume mount strings."
+                },
+                "reason": { "type": "string" }
               }
             },
             "playwright": {
@@ -714,6 +732,11 @@
                   "type": "array",
                   "items": { "type": "string" },
                   "description": "Linux capabilities to add (minimum: SYS_ADMIN for Chromium sandbox)."
+                },
+                "writable_volumes": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Named volume mount strings."
                 },
                 "reason": {
                   "type": "string",
@@ -730,6 +753,10 @@
                   "type": "array",
                   "items": { "type": "string" },
                   "description": "Named volume mount strings appended to the service volumes list."
+                },
+                "reason": {
+                  "type": "string",
+                  "description": "Human-readable justification for this exception."
                 }
               }
             },
@@ -742,7 +769,8 @@
                   "type": "array",
                   "items": { "type": "string" },
                   "description": "Named volume mount strings appended to the service volumes list."
-                }
+                },
+                "reason": { "type": "string" }
               }
             },
             "nostr-relay": {
