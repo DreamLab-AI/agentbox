@@ -21,9 +21,16 @@
  *      --admin-key / SOLID_ADMIN_KEY on the same host.
  */
 
+const { execFileSync } = require('child_process');
+const path = require('path');
+const fs = require('fs');
+
 const SOLID_BASE      = process.env.SOLID_POD_BASE_URL  || 'http://127.0.0.1:8484';
 const SOLID_ADMIN_KEY = process.env.SOLID_ADMIN_KEY     || '';
 const SOLID_PUBLIC    = process.env.SOLID_POD_PUBLIC_URL || SOLID_BASE;
+const STORAGE_ROOT    = process.env.SOLID_STORAGE_ROOT   || '/var/lib/solid';
+const GIT_ENABLED     = process.env.GIT_POD_ENABLED !== 'false';
+const GIT_BRANCH      = process.env.GIT_DEFAULT_BRANCH   || 'main';
 
 async function provisionOnServer(pubkey) {
   if (!SOLID_ADMIN_KEY) {
@@ -71,6 +78,59 @@ function podMeta(pubkey) {
   };
 }
 
+/**
+ * Resolve the filesystem path for a pod given a hex pubkey.
+ * Sovereign-bootstrap names dirs with bech32 npub, but the API routes
+ * use hex pubkeys. Try hex first, then scan for a matching npub dir
+ * by reading did-nostr.json.
+ */
+function resolvePodDir(pubkey) {
+  const hexDir = path.join(STORAGE_ROOT, 'pods', pubkey);
+  if (fs.existsSync(hexDir)) return hexDir;
+
+  const podsDir = path.join(STORAGE_ROOT, 'pods');
+  if (!fs.existsSync(podsDir)) return null;
+
+  for (const entry of fs.readdirSync(podsDir)) {
+    if (!entry.startsWith('npub1')) continue;
+    const didPath = path.join(podsDir, entry, 'did-nostr.json');
+    try {
+      const did = JSON.parse(fs.readFileSync(didPath, 'utf8'));
+      const hex = (did.id || '').replace('did:nostr:', '');
+      if (hex === pubkey.toLowerCase()) return path.join(podsDir, entry);
+    } catch { /* skip unreadable entries */ }
+  }
+  return null;
+}
+
+/**
+ * Ensure a pod directory is a git repository. Idempotent — skips if .git
+ * already exists. Sets receive.denyCurrentBranch=updateInstead so pushes
+ * update the working tree in place (JSS #469 parity).
+ */
+function ensurePodGit(pubkey, logger) {
+  if (!GIT_ENABLED) return false;
+  if (!/^[0-9a-f]{64}$/i.test(pubkey)) return false;
+
+  const podDir = resolvePodDir(pubkey);
+  if (!podDir) return false;
+  if (fs.existsSync(path.join(podDir, '.git'))) return true;
+
+  try {
+    execFileSync('git', ['init', '-b', GIT_BRANCH], { cwd: podDir, timeout: 10000 });
+    execFileSync('git', ['config', 'user.email', 'pod@agentbox.local'], { cwd: podDir, timeout: 5000 });
+    execFileSync('git', ['config', 'user.name', 'agentbox'], { cwd: podDir, timeout: 5000 });
+    execFileSync('git', ['config', 'receive.denyCurrentBranch', 'updateInstead'], { cwd: podDir, timeout: 5000 });
+    execFileSync('git', ['add', '.'], { cwd: podDir, timeout: 10000 });
+    execFileSync('git', ['commit', '--allow-empty', '-m', 'pod: initial commit'], { cwd: podDir, timeout: 10000 });
+    logger.info({ pubkey, podDir }, 'git init completed for pod');
+    return true;
+  } catch (err) {
+    logger.warn({ pubkey, err: err.message }, 'git init failed for pod (non-fatal)');
+    return false;
+  }
+}
+
 module.exports = async function adminUsersRoutes(fastify, opts) {
   const logger = opts.logger || fastify.log;
 
@@ -94,6 +154,7 @@ module.exports = async function adminUsersRoutes(fastify, opts) {
             web_id:         { type: 'string' },
             git_url:        { type: 'string' },
             did:            { type: 'string' },
+            git:            { type: 'boolean' },
             already_existed:{ type: 'boolean' },
           },
         },
@@ -123,11 +184,46 @@ module.exports = async function adminUsersRoutes(fastify, opts) {
       return { error: 'provision_failed', message: err.message };
     }
 
+    const gitReady = ensurePodGit(pubkey, logger);
     const meta = podMeta(pubkey);
-    logger.info({ pubkey, ...meta, already_existed: serverResult.already_existed || false }, 'pod provisioned');
+    logger.info({ pubkey, ...meta, git: gitReady, already_existed: serverResult.already_existed || false }, 'pod provisioned');
 
     reply.code(201);
-    return { ...meta, already_existed: serverResult.already_existed || false };
+    return { ...meta, git: gitReady, already_existed: serverResult.already_existed || false };
+  });
+
+  fastify.post('/admin/users/:pubkey/git-init', {
+    schema: {
+      description: 'Ensure a pod has a git repository. Idempotent — safe to call on pods that already have .git. Use to backfill existing pods provisioned before git auto-init.',
+      tags: ['admin', 'pod-git'],
+      params: {
+        type: 'object',
+        required: ['pubkey'],
+        properties: { pubkey: { type: 'string', pattern: '^[0-9a-fA-F]{64}$' } },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            pubkey: { type: 'string' },
+            git: { type: 'boolean' },
+            git_url: { type: 'string' },
+          },
+        },
+      },
+    },
+  }, async (req, reply) => {
+    const { pubkey } = req.params;
+    const gitReady = ensurePodGit(pubkey, logger);
+    if (!gitReady) {
+      reply.code(422);
+      return { error: 'git_init_failed', pubkey, message: 'Pod does not exist, git is disabled, or git init failed' };
+    }
+    return {
+      pubkey,
+      git: true,
+      git_url: `${SOLID_PUBLIC}/pods/${pubkey}/.git`,
+    };
   });
 
   fastify.post('/admin/users/:pubkey/suspend', {

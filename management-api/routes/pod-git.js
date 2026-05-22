@@ -51,12 +51,29 @@ const READ_PUBLIC = process.env.GIT_READ_PUBLIC === 'true';
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Resolve and validate the pod filesystem root for a given npub. */
+/**
+ * Resolve and validate the pod filesystem root for a given hex pubkey.
+ * Sovereign-bootstrap names dirs with bech32 npub, so if the hex-named
+ * dir doesn't exist, scan for a matching npub dir via did-nostr.json.
+ */
 function podRoot(npub) {
-  // npub is the hex pubkey (did:nostr); pods live at STORAGE_ROOT/pods/<npub>/
-  // Path-traversal guard: npub must be 64 hex chars.
   if (!/^[0-9a-f]{64}$/.test(npub)) return null;
-  return path.join(STORAGE_ROOT, 'pods', npub);
+
+  const hexDir = path.join(STORAGE_ROOT, 'pods', npub);
+  if (fs.existsSync(hexDir)) return hexDir;
+
+  const podsDir = path.join(STORAGE_ROOT, 'pods');
+  if (!fs.existsSync(podsDir)) return null;
+
+  for (const entry of fs.readdirSync(podsDir)) {
+    if (!entry.startsWith('npub1')) continue;
+    try {
+      const did = JSON.parse(fs.readFileSync(path.join(podsDir, entry, 'did-nostr.json'), 'utf8'));
+      const hex = (did.id || '').replace('did:nostr:', '');
+      if (hex === npub) return path.join(podsDir, entry);
+    } catch { /* skip unreadable entries */ }
+  }
+  return null;
 }
 
 /** Return true when the pod directory has been git-initted. */
@@ -166,10 +183,11 @@ async function podGitRoutes(app, opts) {
       return reply.code(400).send({ error: 'unsupported service' });
     }
 
+    const dirName = path.basename(root);
     reply.hijack();
     spawnBackend({
-      projectRoot: path.join(STORAGE_ROOT, 'pods'),
-      pathInfo: `/${npub}/.git/info/refs`,
+      projectRoot: path.dirname(root),
+      pathInfo: `/${dirName}/.git/info/refs`,
       queryString: `service=${service}`,
       log,
     }, request, reply);
@@ -190,10 +208,11 @@ async function podGitRoutes(app, opts) {
     if (!fs.existsSync(root)) return reply.code(404).send({ error: 'pod not found' });
     if (!isPodGitRepo(root)) return reply.code(404).send({ error: 'pod is not a git repository' });
 
+    const dirName = path.basename(root);
     reply.hijack();
     spawnBackend({
-      projectRoot: path.join(STORAGE_ROOT, 'pods'),
-      pathInfo: `/${npub}/.git/git-upload-pack`,
+      projectRoot: path.dirname(root),
+      pathInfo: `/${dirName}/.git/git-upload-pack`,
       log,
     }, request, reply);
   });
@@ -225,10 +244,11 @@ async function podGitRoutes(app, opts) {
       return reply.code(413).send({ error: `push body exceeds ${MAX_PUSH_BYTES / 1024 / 1024} MB limit` });
     }
 
+    const dirName = path.basename(root);
     reply.hijack();
     spawnBackend({
-      projectRoot: path.join(STORAGE_ROOT, 'pods'),
-      pathInfo: `/${npub}/.git/git-receive-pack`,
+      projectRoot: path.dirname(root),
+      pathInfo: `/${dirName}/.git/git-receive-pack`,
       log,
     }, request, reply);
   });

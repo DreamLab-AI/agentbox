@@ -484,7 +484,7 @@ if [ -f "$_MCP_JSON" ] && ! grep -q "browser-gpu" "$_MCP_JSON" 2>/dev/null; then
     python3 -c "
 import json, sys
 with open('$_MCP_JSON') as f: cfg = json.load(f)
-cfg.setdefault('mcpServers', {})['browser-gpu'] = {'url': '$_BROWSER_MCP_URL'}
+cfg.setdefault('mcpServers', {})['browser-gpu'] = {'type': 'sse', 'url': '$_BROWSER_MCP_URL'}
 with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
 " 2>/dev/null && echo "  [mcp] Added browser-gpu → $_BROWSER_MCP_URL" || true
     chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
