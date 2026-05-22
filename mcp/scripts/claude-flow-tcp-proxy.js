@@ -73,7 +73,8 @@ class ClaudeFlowTCPProxy {
     }
 
     // Create a new claude-flow instance for this session
-    const cfProcess = spawn('/app/node_modules/.bin/claude-flow', ['mcp', 'start'], {
+    const cfBin = process.env.CLAUDE_FLOW_BIN || 'claude-flow';
+    const cfProcess = spawn(cfBin, ['mcp', 'start'], {
       stdio: ['pipe', 'pipe', 'pipe'],
       cwd: '/workspace',
       env: {

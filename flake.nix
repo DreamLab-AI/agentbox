@@ -67,6 +67,7 @@
         codeInterpreterCfg = skillsCfg.code_interpreter or {};
         securityCfg = agentboxConfig.security or {};
         securityExceptions = securityCfg.exceptions or {};
+        consultantsCfg = agentboxConfig.consultants or {};
         privacyFilterCfg = agentboxConfig.privacy_filter or {};
         relayCfg = (sovereignCfg.relay or {});
         adaptersCfgTop = agentboxConfig.adapters or {};
@@ -1543,6 +1544,7 @@ stderr_logfile=/var/log/tmux-autostart.error.log
               || (name == "nostr-relay"        && relayEnabled)
               || (name == "tailscale"         && (networkingCfg.tailscale or false))
               || (name == "solid-pod-rs"      && solidPodRsActive)
+              || (name == "consultants"       && (consultantsCfg.enabled or false))
             )
             securityExceptions;
 
@@ -1660,6 +1662,7 @@ stderr_logfile=/var/log/tmux-autostart.error.log
           # rule in /etc/sudoers.d/devuser. Docker tmpfs defaults to nosuid,
           # noexec — both must be explicitly enabled.
           "/usr/local/bin:mode=755,size=8M,exec,suid"
+          "/app/mcp-logs:mode=755,size=100M,uid=1000,gid=1000"
         ];
         # `builtins.seq _w021Check ...` forces evaluation of the W021 audit
         # check before mergedTmpfsMounts is computed; if W021 throws, the
@@ -1732,6 +1735,8 @@ stderr_logfile=/var/log/tmux-autostart.error.log
           "solid-data:/var/lib/solid"
           "sovereign-identities:/var/lib/agentbox/identities"
           "agentbox-secrets:/var/lib/agentbox/secrets"
+          "code-harness-data:/var/lib/agentbox/code-harness"
+          "agentbox-events:/var/lib/agentbox/events"
         ];
         # Drop entries from exceptionWritableVolumes whose container target
         # path already appears in the baseline. Compare on the second

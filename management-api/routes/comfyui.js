@@ -7,6 +7,8 @@
  * cost_sats values are never trusted.
  */
 
+const { paymentGate } = require('../middleware/payment-gate');
+
 async function comfyuiRoutes(fastify, options) {
   const { logger, metrics, comfyuiManager } = options;
 
@@ -68,7 +70,8 @@ async function comfyuiRoutes(fastify, options) {
           }
         }
       }
-    }
+    },
+    preHandler: paymentGate({ costSats: 100, tier: 'gpu' }),
   }, async (request, reply) => {
     const { workflow, priority, gpu } = request.body;
     // cost_sats is always set by the payment gate (server-side); read it back.

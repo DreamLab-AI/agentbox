@@ -186,7 +186,7 @@ class ClaudeFlowMCPServer {
 
   initializeTools() {
     return {
-      // Swarm Coordination Tools (12)
+      // Swarm Coordination Tools (4)
       swarm_init: {
         name: 'swarm_init',
         description: 'Initialize swarm with topology and configuration',
@@ -263,17 +263,7 @@ class ClaudeFlowMCPServer {
         },
       },
 
-      // Neural Network Tools (15)
-      neural_status: {
-        name: 'neural_status',
-        description: 'Check neural network status',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            modelId: { type: 'string' },
-          },
-        },
-      },
+      // Neural Network Tools (1)
       neural_train: {
         name: 'neural_train',
         description: 'Train neural patterns with WASM SIMD acceleration',
@@ -287,22 +277,7 @@ class ClaudeFlowMCPServer {
           required: ['pattern_type', 'training_data'],
         },
       },
-      neural_patterns: {
-        name: 'neural_patterns',
-        description: 'Analyze cognitive patterns',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            action: { type: 'string', enum: ['analyze', 'learn', 'predict'] },
-            operation: { type: 'string' },
-            outcome: { type: 'string' },
-            metadata: { type: 'object' },
-          },
-          required: ['action'],
-        },
-      },
-
-      // Memory & Persistence Tools (12)
+      // Memory & Persistence Tools (1)
       memory_usage: {
         name: 'memory_usage',
         description: 'Store/retrieve persistent memory with TTL and namespacing',
@@ -318,21 +293,7 @@ class ClaudeFlowMCPServer {
           required: ['action'],
         },
       },
-      memory_search: {
-        name: 'memory_search',
-        description: 'Search memory with patterns',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            pattern: { type: 'string' },
-            namespace: { type: 'string' },
-            limit: { type: 'number', default: 10 },
-          },
-          required: ['pattern'],
-        },
-      },
-
-      // Analysis & Monitoring Tools (13)
+      // Analysis & Monitoring Tools (2)
       performance_report: {
         name: 'performance_report',
         description: 'Generate performance reports with real-time metrics',
@@ -355,46 +316,7 @@ class ClaudeFlowMCPServer {
           },
         },
       },
-      token_usage: {
-        name: 'token_usage',
-        description: 'Analyze token consumption',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            operation: { type: 'string' },
-            timeframe: { type: 'string', default: '24h' },
-          },
-        },
-      },
-
-      // GitHub Integration Tools (8)
-      github_repo_analyze: {
-        name: 'github_repo_analyze',
-        description: 'Repository analysis',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            repo: { type: 'string' },
-            analysis_type: { type: 'string', enum: ['code_quality', 'performance', 'security'] },
-          },
-          required: ['repo'],
-        },
-      },
-      github_pr_manage: {
-        name: 'github_pr_manage',
-        description: 'Pull request management',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            repo: { type: 'string' },
-            pr_number: { type: 'number' },
-            action: { type: 'string', enum: ['review', 'merge', 'close'] },
-          },
-          required: ['repo', 'action'],
-        },
-      },
-
-      // DAA Tools (8)
+      // DAA Tools (2)
       daa_agent_create: {
         name: 'daa_agent_create',
         description: 'Create dynamic agents',
@@ -421,7 +343,7 @@ class ClaudeFlowMCPServer {
         },
       },
 
-      // Workflow Tools (11)
+      // Workflow Tools (1)
       workflow_create: {
         name: 'workflow_create',
         description: 'Create custom workflows',
@@ -435,76 +357,13 @@ class ClaudeFlowMCPServer {
           required: ['name', 'steps'],
         },
       },
-      sparc_mode: {
-        name: 'sparc_mode',
-        description: 'Run SPARC development modes',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            mode: { type: 'string', enum: ['dev', 'api', 'ui', 'test', 'refactor'] },
-            task_description: { type: 'string' },
-            options: { type: 'object' },
-          },
-          required: ['mode', 'task_description'],
-        },
-      },
-
-      // Additional Swarm Tools
+      // Additional Swarm Tools (1)
       agent_list: {
         name: 'agent_list',
         description: 'List active agents & capabilities',
         inputSchema: { type: 'object', properties: { swarmId: { type: 'string' } } },
       },
-      agent_metrics: {
-        name: 'agent_metrics',
-        description: 'Agent performance metrics',
-        inputSchema: { type: 'object', properties: { agentId: { type: 'string' } } },
-      },
-      swarm_monitor: {
-        name: 'swarm_monitor',
-        description: 'Real-time swarm monitoring',
-        inputSchema: {
-          type: 'object',
-          properties: { swarmId: { type: 'string' }, interval: { type: 'number' } },
-        },
-      },
-      topology_optimize: {
-        name: 'topology_optimize',
-        description: 'Auto-optimize swarm topology',
-        inputSchema: { type: 'object', properties: { swarmId: { type: 'string' } } },
-      },
-      load_balance: {
-        name: 'load_balance',
-        description: 'Distribute tasks efficiently',
-        inputSchema: {
-          type: 'object',
-          properties: { swarmId: { type: 'string' }, tasks: { type: 'array' } },
-        },
-      },
-      coordination_sync: {
-        name: 'coordination_sync',
-        description: 'Sync agent coordination',
-        inputSchema: { type: 'object', properties: { swarmId: { type: 'string' } } },
-      },
-      swarm_scale: {
-        name: 'swarm_scale',
-        description: 'Auto-scale agent count',
-        inputSchema: {
-          type: 'object',
-          properties: { swarmId: { type: 'string' }, targetSize: { type: 'number' } },
-        },
-      },
-      swarm_destroy: {
-        name: 'swarm_destroy',
-        description: 'Gracefully shutdown swarm',
-        inputSchema: {
-          type: 'object',
-          properties: { swarmId: { type: 'string' } },
-          required: ['swarmId'],
-        },
-      },
-
-      // Additional Neural Tools
+      // Additional Neural Tools (10)
       neural_predict: {
         name: 'neural_predict',
         description: 'Make AI predictions',
@@ -530,20 +389,6 @@ class ClaudeFlowMCPServer {
           type: 'object',
           properties: { modelId: { type: 'string' }, path: { type: 'string' } },
           required: ['modelId', 'path'],
-        },
-      },
-      wasm_optimize: {
-        name: 'wasm_optimize',
-        description: 'WASM SIMD optimization',
-        inputSchema: { type: 'object', properties: { operation: { type: 'string' } } },
-      },
-      inference_run: {
-        name: 'inference_run',
-        description: 'Run neural inference',
-        inputSchema: {
-          type: 'object',
-          properties: { modelId: { type: 'string' }, data: { type: 'array' } },
-          required: ['modelId', 'data'],
         },
       },
       pattern_recognize: {
@@ -610,147 +455,14 @@ class ClaudeFlowMCPServer {
         },
       },
 
-      // Additional Memory Tools
-      memory_persist: {
-        name: 'memory_persist',
-        description: 'Cross-session persistence',
-        inputSchema: { type: 'object', properties: { sessionId: { type: 'string' } } },
-      },
-      memory_namespace: {
-        name: 'memory_namespace',
-        description: 'Namespace management',
-        inputSchema: {
-          type: 'object',
-          properties: { namespace: { type: 'string' }, action: { type: 'string' } },
-          required: ['namespace', 'action'],
-        },
-      },
-      memory_backup: {
-        name: 'memory_backup',
-        description: 'Backup memory stores',
-        inputSchema: { type: 'object', properties: { path: { type: 'string' } } },
-      },
-      memory_restore: {
-        name: 'memory_restore',
-        description: 'Restore from backups',
-        inputSchema: {
-          type: 'object',
-          properties: { backupPath: { type: 'string' } },
-          required: ['backupPath'],
-        },
-      },
-      memory_compress: {
-        name: 'memory_compress',
-        description: 'Compress memory data',
-        inputSchema: { type: 'object', properties: { namespace: { type: 'string' } } },
-      },
-      memory_sync: {
-        name: 'memory_sync',
-        description: 'Sync across instances',
-        inputSchema: {
-          type: 'object',
-          properties: { target: { type: 'string' } },
-          required: ['target'],
-        },
-      },
-      cache_manage: {
-        name: 'cache_manage',
-        description: 'Manage coordination cache',
-        inputSchema: {
-          type: 'object',
-          properties: { action: { type: 'string' }, key: { type: 'string' } },
-          required: ['action'],
-        },
-      },
-      state_snapshot: {
-        name: 'state_snapshot',
-        description: 'Create state snapshots',
-        inputSchema: { type: 'object', properties: { name: { type: 'string' } } },
-      },
-      context_restore: {
-        name: 'context_restore',
-        description: 'Restore execution context',
-        inputSchema: {
-          type: 'object',
-          properties: { snapshotId: { type: 'string' } },
-          required: ['snapshotId'],
-        },
-      },
+      // Additional Memory Tools (1)
       memory_analytics: {
         name: 'memory_analytics',
         description: 'Analyze memory usage',
         inputSchema: { type: 'object', properties: { timeframe: { type: 'string' } } },
       },
 
-      // Additional Analysis Tools
-      task_status: {
-        name: 'task_status',
-        description: 'Check task execution status',
-        inputSchema: {
-          type: 'object',
-          properties: { taskId: { type: 'string' } },
-          required: ['taskId'],
-        },
-      },
-      task_results: {
-        name: 'task_results',
-        description: 'Get task completion results',
-        inputSchema: {
-          type: 'object',
-          properties: { taskId: { type: 'string' } },
-          required: ['taskId'],
-        },
-      },
-      benchmark_run: {
-        name: 'benchmark_run',
-        description: 'Performance benchmarks',
-        inputSchema: { type: 'object', properties: { suite: { type: 'string' } } },
-      },
-      metrics_collect: {
-        name: 'metrics_collect',
-        description: 'Collect system metrics',
-        inputSchema: { type: 'object', properties: { components: { type: 'array' } } },
-      },
-      trend_analysis: {
-        name: 'trend_analysis',
-        description: 'Analyze performance trends',
-        inputSchema: {
-          type: 'object',
-          properties: { metric: { type: 'string' }, period: { type: 'string' } },
-          required: ['metric'],
-        },
-      },
-      cost_analysis: {
-        name: 'cost_analysis',
-        description: 'Cost and resource analysis',
-        inputSchema: { type: 'object', properties: { timeframe: { type: 'string' } } },
-      },
-      quality_assess: {
-        name: 'quality_assess',
-        description: 'Quality assessment',
-        inputSchema: {
-          type: 'object',
-          properties: { target: { type: 'string' }, criteria: { type: 'array' } },
-          required: ['target'],
-        },
-      },
-      error_analysis: {
-        name: 'error_analysis',
-        description: 'Error pattern analysis',
-        inputSchema: { type: 'object', properties: { logs: { type: 'array' } } },
-      },
-      usage_stats: {
-        name: 'usage_stats',
-        description: 'Usage statistics',
-        inputSchema: { type: 'object', properties: { component: { type: 'string' } } },
-      },
-      health_check: {
-        name: 'health_check',
-        description: 'System health monitoring',
-        inputSchema: { type: 'object', properties: { components: { type: 'array' } } },
-      },
-
-      // Additional Workflow Tools
+      // Additional Workflow Tools (5)
       workflow_execute: {
         name: 'workflow_execute',
         description: 'Execute predefined workflows',
@@ -767,42 +479,6 @@ class ClaudeFlowMCPServer {
           type: 'object',
           properties: { workflowId: { type: 'string' }, format: { type: 'string' } },
           required: ['workflowId'],
-        },
-      },
-      automation_setup: {
-        name: 'automation_setup',
-        description: 'Setup automation rules',
-        inputSchema: {
-          type: 'object',
-          properties: { rules: { type: 'array' } },
-          required: ['rules'],
-        },
-      },
-      pipeline_create: {
-        name: 'pipeline_create',
-        description: 'Create CI/CD pipelines',
-        inputSchema: {
-          type: 'object',
-          properties: { config: { type: 'object' } },
-          required: ['config'],
-        },
-      },
-      scheduler_manage: {
-        name: 'scheduler_manage',
-        description: 'Manage task scheduling',
-        inputSchema: {
-          type: 'object',
-          properties: { action: { type: 'string' }, schedule: { type: 'object' } },
-          required: ['action'],
-        },
-      },
-      trigger_setup: {
-        name: 'trigger_setup',
-        description: 'Setup event triggers',
-        inputSchema: {
-          type: 'object',
-          properties: { events: { type: 'array' }, actions: { type: 'array' } },
-          required: ['events', 'actions'],
         },
       },
       workflow_template: {
@@ -833,63 +509,7 @@ class ClaudeFlowMCPServer {
         },
       },
 
-      // GitHub Integration Tools
-      github_issue_track: {
-        name: 'github_issue_track',
-        description: 'Issue tracking & triage',
-        inputSchema: {
-          type: 'object',
-          properties: { repo: { type: 'string' }, action: { type: 'string' } },
-          required: ['repo', 'action'],
-        },
-      },
-      github_release_coord: {
-        name: 'github_release_coord',
-        description: 'Release coordination',
-        inputSchema: {
-          type: 'object',
-          properties: { repo: { type: 'string' }, version: { type: 'string' } },
-          required: ['repo', 'version'],
-        },
-      },
-      github_workflow_auto: {
-        name: 'github_workflow_auto',
-        description: 'Workflow automation',
-        inputSchema: {
-          type: 'object',
-          properties: { repo: { type: 'string' }, workflow: { type: 'object' } },
-          required: ['repo', 'workflow'],
-        },
-      },
-      github_code_review: {
-        name: 'github_code_review',
-        description: 'Automated code review',
-        inputSchema: {
-          type: 'object',
-          properties: { repo: { type: 'string' }, pr: { type: 'number' } },
-          required: ['repo', 'pr'],
-        },
-      },
-      github_sync_coord: {
-        name: 'github_sync_coord',
-        description: 'Multi-repo sync coordination',
-        inputSchema: {
-          type: 'object',
-          properties: { repos: { type: 'array' } },
-          required: ['repos'],
-        },
-      },
-      github_metrics: {
-        name: 'github_metrics',
-        description: 'Repository metrics',
-        inputSchema: {
-          type: 'object',
-          properties: { repo: { type: 'string' } },
-          required: ['repo'],
-        },
-      },
-
-      // Additional DAA Tools
+      // Additional DAA Tools (4)
       daa_resource_alloc: {
         name: 'daa_resource_alloc',
         description: 'Resource allocation',
@@ -930,90 +550,6 @@ class ClaudeFlowMCPServer {
           required: ['agents', 'proposal'],
         },
       },
-      daa_fault_tolerance: {
-        name: 'daa_fault_tolerance',
-        description: 'Fault tolerance & recovery',
-        inputSchema: {
-          type: 'object',
-          properties: { agentId: { type: 'string' }, strategy: { type: 'string' } },
-          required: ['agentId'],
-        },
-      },
-      daa_optimization: {
-        name: 'daa_optimization',
-        description: 'Performance optimization',
-        inputSchema: {
-          type: 'object',
-          properties: { target: { type: 'string' }, metrics: { type: 'array' } },
-          required: ['target'],
-        },
-      },
-
-      // System & Utilities Tools
-      terminal_execute: {
-        name: 'terminal_execute',
-        description: 'Execute terminal commands',
-        inputSchema: {
-          type: 'object',
-          properties: { command: { type: 'string' }, args: { type: 'array' } },
-          required: ['command'],
-        },
-      },
-      config_manage: {
-        name: 'config_manage',
-        description: 'Configuration management',
-        inputSchema: {
-          type: 'object',
-          properties: { action: { type: 'string' }, config: { type: 'object' } },
-          required: ['action'],
-        },
-      },
-      features_detect: {
-        name: 'features_detect',
-        description: 'Feature detection',
-        inputSchema: { type: 'object', properties: { component: { type: 'string' } } },
-      },
-      security_scan: {
-        name: 'security_scan',
-        description: 'Security scanning',
-        inputSchema: {
-          type: 'object',
-          properties: { target: { type: 'string' }, depth: { type: 'string' } },
-          required: ['target'],
-        },
-      },
-      backup_create: {
-        name: 'backup_create',
-        description: 'Create system backups',
-        inputSchema: {
-          type: 'object',
-          properties: { components: { type: 'array' }, destination: { type: 'string' } },
-        },
-      },
-      restore_system: {
-        name: 'restore_system',
-        description: 'System restoration',
-        inputSchema: {
-          type: 'object',
-          properties: { backupId: { type: 'string' } },
-          required: ['backupId'],
-        },
-      },
-      log_analysis: {
-        name: 'log_analysis',
-        description: 'Log analysis & insights',
-        inputSchema: {
-          type: 'object',
-          properties: { logFile: { type: 'string' }, patterns: { type: 'array' } },
-          required: ['logFile'],
-        },
-      },
-      diagnostic_run: {
-        name: 'diagnostic_run',
-        description: 'System diagnostics',
-        inputSchema: { type: 'object', properties: { components: { type: 'array' } } },
-      },
-
       // RAGFlow Knowledge Base Tools (visionclaw_network network)
       ragflow_status: {
         name: 'ragflow_status',
@@ -1272,6 +808,8 @@ class ClaudeFlowMCPServer {
           );
         }
 
+        const _swarmPersisted = await podMemoryStore(`swarm:${swarmId}`, JSON.stringify(swarmData), 'swarms').catch(() => null);
+
         return {
           success: true,
           swarmId: swarmId,
@@ -1279,7 +817,7 @@ class ClaudeFlowMCPServer {
           maxAgents: swarmData.maxAgents,
           strategy: args.strategy || 'auto',
           status: 'initialized',
-          persisted: !!this.databaseManager,
+          persisted: !!_swarmPersisted,
           timestamp: new Date().toISOString(),
         };
 
@@ -1328,6 +866,9 @@ class ClaudeFlowMCPServer {
           );
         }
 
+        const _agentKey = activeSwarmId ? `agent:${activeSwarmId}:${agentId}` : `agent:${agentId}`;
+        const _agentPersisted = await podMemoryStore(_agentKey, JSON.stringify(agentData), 'agents').catch(() => null);
+
         // Track spawned agent
         if (global.agentTracker) {
           global.agentTracker.trackAgent(agentId, {
@@ -1347,7 +888,7 @@ class ClaudeFlowMCPServer {
           name: agentData.name,
           status: 'active',
           capabilities: args.capabilities || [],
-          persisted: !!this.databaseManager,
+          persisted: !!_agentPersisted,
           timestamp: new Date().toISOString(),
         };
 
@@ -1888,6 +1429,9 @@ class ClaudeFlowMCPServer {
           );
         }
 
+        const _taskKey = swarmIdForTask ? `task:${swarmIdForTask}:${taskId}` : `task:${taskId}`;
+        const _taskPersisted = await podMemoryStore(_taskKey, JSON.stringify(taskData), 'tasks').catch(() => null);
+
         return {
           success: true,
           taskId: taskId,
@@ -1895,7 +1439,7 @@ class ClaudeFlowMCPServer {
           strategy: taskData.strategy,
           priority: taskData.priority,
           status: 'pending',
-          persisted: true,
+          persisted: !!_taskPersisted,
           timestamp: new Date().toISOString(),
         };
 

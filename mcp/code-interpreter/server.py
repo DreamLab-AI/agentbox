@@ -86,6 +86,7 @@ HARNESS_DIR = pathlib.Path("/var/lib/agentbox/code-harness")
 AUDIT_DIR = HARNESS_DIR
 TRACES_OUTBOX = HARNESS_DIR / "traces-outbox"
 METRICS_FILE = HARNESS_DIR / "metrics.prom"
+PIP_TARGET = HARNESS_DIR / "pip-packages"
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -101,10 +102,16 @@ def _ensure_dirs() -> None:
     try:
         AUDIT_DIR.mkdir(parents=True, exist_ok=True)
         TRACES_OUTBOX.mkdir(parents=True, exist_ok=True)
+        PIP_TARGET.mkdir(parents=True, exist_ok=True)
     except OSError as exc:
         _LOG.error("Cannot create harness directories: %s — server will run but audit/traces will fail", exc)
 
 _ensure_dirs()
+
+# Ensure pip target is on sys.path so installed packages are importable
+_pip_target_str = str(PIP_TARGET)
+if _pip_target_str not in sys.path:
+    sys.path.insert(0, _pip_target_str)
 
 # Validate wheelhouse exists at startup (fail closed per spec)
 if not pathlib.Path(KERNEL_WHEELHOUSE).is_dir():
@@ -625,7 +632,8 @@ def _tool_install_pkg(args: dict) -> dict:
     try:
         result = subprocess.run(
             [sys.executable, "-m", "pip", "install", pkg_name,
-             "--no-index", f"--find-links={KERNEL_WHEELHOUSE}", "-q"],
+             "--no-index", f"--find-links={KERNEL_WHEELHOUSE}",
+             "--target", str(PIP_TARGET), "-q"],
             capture_output=True, text=True, timeout=120,
         )
         ok = result.returncode == 0

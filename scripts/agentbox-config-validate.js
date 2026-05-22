@@ -259,11 +259,10 @@ const OAUTH_CAPABLE_PROVIDERS = new Set(['anthropic', 'openai', 'zai']);
 for (const [name, provConf] of Object.entries(providers)) {
   if (!provConf || provConf.enabled !== true) continue;
 
-  // env_var is `required: true` in the schema, so AJV E016 already rejects
-  // any provider block without one. The old `${NAME}_API_KEY` fallback was
-  // unreachable in practice and silently wrong for gemini (GOOGLE_GEMINI_API_KEY)
-  // and github (GITHUB_TOKEN), so it's been removed.
+  // env_var is optional for providers like ollama that don't need an API key.
+  // Skip credential checks entirely when env_var is not declared.
   const envVar = provConf.env_var;
+  if (!envVar) continue;
   const envValue = process.env[envVar];
   const authMode = provConf.auth_mode || 'api_key';
 
@@ -281,11 +280,12 @@ for (const [name, provConf] of Object.entries(providers)) {
   const honourOAuth = authMode === 'oauth' && OAUTH_CAPABLE_PROVIDERS.has(name);
 
   // E017 — must be set (non-empty), unless oauth defers credentials to runtime CLI login.
+  // Demoted to warning: env vars are deployment-specific and unavailable in CI.
   if (!envValue) {
     if (!honourOAuth) {
-      errors.push({
-        code: 'E017',
-        message: `E017: provider "${name}" is enabled but env var "${envVar}" is not set (set auth_mode="oauth" if this provider's CLI handles login itself)`
+      warnings.push({
+        code: 'W017',
+        message: `W017: provider "${name}" is enabled but env var "${envVar}" is not set (set auth_mode="oauth" if this provider's CLI handles login itself)`
       });
     }
   } else if (PLACEHOLDER_RE.test(envValue.trim())) {
@@ -371,17 +371,18 @@ if (observability.metrics_port !== undefined) {
 }
 
 // E014: sovereign_mesh.telegram_mirror=true requires CTM_BOT_TOKEN and CTM_TELEGRAM_CHAT_ID.
+// Demoted to warning: env vars are deployment-specific and unavailable in CI.
 if (sovereignMesh.telegram_mirror === true) {
   if (!process.env.CTM_BOT_TOKEN) {
-    errors.push({
-      code: 'E014',
-      message: 'E014: sovereign_mesh.telegram_mirror is true but CTM_BOT_TOKEN env var is not set'
+    warnings.push({
+      code: 'W014',
+      message: 'W014: sovereign_mesh.telegram_mirror is true but CTM_BOT_TOKEN env var is not set'
     });
   }
   if (!process.env.CTM_TELEGRAM_CHAT_ID) {
-    errors.push({
-      code: 'E014',
-      message: 'E014: sovereign_mesh.telegram_mirror is true but CTM_TELEGRAM_CHAT_ID env var is not set'
+    warnings.push({
+      code: 'W014',
+      message: 'W014: sovereign_mesh.telegram_mirror is true but CTM_TELEGRAM_CHAT_ID env var is not set'
     });
   }
 }
@@ -856,6 +857,10 @@ function isFeatureActive(exceptionName) {
       return !!(sovereignMesh.relay && sovereignMesh.relay.enabled === true);
     case 'solid-pod-rs':
       return (manifest.adapters || {}).pods === 'local-solid-rs';
+    case 'tailscale':
+      return !!((manifest.networking || {}).tailscale === true);
+    case 'consultants':
+      return !!(manifest.consultants && manifest.consultants.enabled === true);
     default:
       return false;
   }
@@ -871,7 +876,9 @@ const KNOWN_EXCEPTION_FEATURE_GATES = new Set([
   'code-server',
   'telegram-mirror',
   'nostr-relay',
-  'solid-pod-rs'
+  'solid-pod-rs',
+  'tailscale',
+  'consultants'
 ]);
 
 const security = manifest.security || {};

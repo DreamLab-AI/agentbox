@@ -4,6 +4,8 @@
  * GET /v1/tasks/:taskId - Get task status and results
  */
 
+const { costGate } = require('../middleware/cost-gate');
+
 async function tasksRoutes(fastify, options) {
   const { processManager, logger } = options;
 
@@ -31,7 +33,8 @@ async function tasksRoutes(fastify, options) {
           }
         }
       }
-    }
+    },
+    preHandler: costGate({ logger }),
   }, async (request, reply) => {
     const { agent, task, provider = 'claude-flow' } = request.body;
 

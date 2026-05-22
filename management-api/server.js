@@ -10,7 +10,7 @@ const cors = require('@fastify/cors');
 const rateLimit = require('@fastify/rate-limit');
 const websocket = require('@fastify/websocket');
 const { createAuthMiddleware } = require('./middleware/auth');
-// payment-gate is imported per-route (e.g. ComfyUI); not a global hook
+// payment-gate: registered as preHandler on GPU-metered routes (comfyui, tasks)
 const contractVersions = require('./adapters/contract-versions');
 const { resolveAdapters, SLOTS } = require('./adapters/index');
 const { loadManifest, ManifestNotFound } = require('./adapters/manifest-loader');

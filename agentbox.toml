@@ -890,11 +890,14 @@ writable_volumes = ["codeserver-config:/home/devuser/.local/share/code-server"]
 [security.exceptions.telegram-mirror]
 writable_volumes = ["ctm-config:/home/devuser/.config/claude-telegram-mirror"]
 
-[security.exceptions.tailscale]
-cap_add = ["NET_ADMIN"]
-writable_volumes = ["tailscale-state:/var/lib/tailscale"]
-reason = "tailscaled needs NET_ADMIN for userspace networking socket; durable state preserves node identity across restarts"
+[security.exceptions.gpu-cuda]
+writable_volumes = []
+reason = "CUDA runtime requires device access; no additional writable volumes needed"
 
 [security.exceptions.nostr-relay]
 writable_volumes = ["nostr-relay-data:/var/lib/nostr-relay"]
 reason = "nostr-rs-relay SQLite journal and WAL require a writable durable path"
+
+[security.exceptions.consultants]
+writable_volumes = ["consultations-data:/var/lib/agentbox/consultations"]
+reason = "consultant tier writes JSONL audit log per call"

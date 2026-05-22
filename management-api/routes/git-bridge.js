@@ -674,13 +674,17 @@ async function gitBridgeRoutes(fastify, options) {
       },
     },
   }, async (req, reply) => {
-    // FIX 2: Webhook HMAC-SHA256 signature verification.
-    if (WEBHOOK_SECRET) {
-      const sig = req.headers['x-webhook-signature'] || '';
-      const expected = crypto.createHmac('sha256', WEBHOOK_SECRET).update(JSON.stringify(req.body)).digest('hex');
-      if (sig.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) {
-        return reply.code(403).send({ error: 'invalid-signature', message: 'Webhook signature verification failed' });
-      }
+    // FIX 2: Webhook HMAC-SHA256 signature verification — fail-closed.
+    if (!WEBHOOK_SECRET) {
+      return reply.code(500).send({
+        error: 'webhook-secret-missing',
+        message: 'WEBHOOK_HMAC_SECRET not configured; callback rejected'
+      });
+    }
+    const sig = req.headers['x-webhook-signature'] || '';
+    const expected = crypto.createHmac('sha256', WEBHOOK_SECRET).update(JSON.stringify(req.body)).digest('hex');
+    if (sig.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) {
+      return reply.code(403).send({ error: 'invalid-signature', message: 'Webhook signature verification failed' });
     }
 
     const {

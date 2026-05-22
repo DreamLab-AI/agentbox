@@ -90,8 +90,11 @@
         },
         "stack": {
           "type": "string",
-          "enum": ["hyprland-wayland", "x11-openbox"],
+          "enum": ["hyprland-wayland", "x11-openbox", "xorg-nvidia", "i3", "x11"],
           "description": "Desktop stack selection."
+        },
+        "webgpu": {
+          "description": "WebGPU flag for desktop apps that use GPU."
         },
         "resolution": {
           "type": "string",
@@ -127,7 +130,7 @@
       "additionalProperties": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["enabled", "env_var"],
+        "required": ["enabled"],
         "properties": {
           "enabled": {
             "type": "boolean",
@@ -145,9 +148,13 @@
           },
           "auth_mode": {
             "type": "string",
-            "enum": ["api_key", "oauth"],
+            "enum": ["api_key", "oauth", "web_login"],
             "default": "api_key",
             "description": "Credential model. \"api_key\" requires env_var to be set at boot (E017). \"oauth\" defers auth to an in-container CLI flow (e.g. `claude login`, `codex login`, `claude-zai login`) and skips the env-var check. Only currently honoured for anthropic, openai, and zai providers; other providers force api_key (W040)."
+          },
+          "sidecar": {
+            "type": "boolean",
+            "description": "When true, bring up a sidecar container for this provider (e.g. ollama)."
           }
         }
       }
@@ -163,7 +170,10 @@
           "properties": {
             "playwright": { "type": "boolean" },
             "qe_browser": { "type": "boolean" },
-            "agent_browser": { "type": "boolean" }
+            "agent_browser": { "type": "boolean" },
+            "sidecar_mcp_url": { "type": "string", "description": "MCP SSE URL for external browser sidecar." },
+            "sidecar_cdp_host": { "type": "string", "description": "CDP host for external browser sidecar." },
+            "sidecar_cdp_port": { "type": "integer", "description": "CDP port for external browser sidecar." }
           }
         },
         "media": {
@@ -216,6 +226,36 @@
               "description": "Logseq OWL2 DL tools."
             }
           }
+        },
+        "research": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Web researcher MCP skill configuration."
+        },
+        "code_interpreter": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Persistent Python kernel MCP (ADR-018 / PRD-008)."
+        },
+        "codeact": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "CodeAct skill — plan-execute-reflect loops (PRD-008)."
+        },
+        "voyager_skill_library": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Verified executable skill library (ADR-019 / PRD-008)."
+        },
+        "aci_shell": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "SWE-agent Agent-Computer Interface MCP (ADR-020 / PRD-008)."
+        },
+        "tree_search_coder": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Execution-gated tree-search coder (ADR-020 / PRD-008)."
         }
       }
     },
@@ -234,7 +274,8 @@
         "antigravity_cli": { "type": "boolean" },
         "codex": { "type": "boolean" },
         "code_server": { "type": "boolean" },
-        "cuda": { "type": "boolean" }
+        "cuda": { "type": "boolean" },
+        "gemini_cli": { "type": "boolean" }
       }
     },
     "integrations": {
@@ -274,7 +315,9 @@
             "enable_quota":           { "type": "boolean", "description": "Per-pod storage quota via .quota.json sidecar (Sprint 8 P0)." },
             "jss_v04_compat":         { "type": "boolean", "description": "JavaScriptSolidServer v0.4 configuration/behaviour compatibility (Sprint 6-9)." },
             "rate_limit_per_sec":     { "type": "integer", "minimum": 1, "description": "Per-connection token-bucket ceiling when enable_rate_limit=true." },
-            "quota_default_bytes":    { "type": "integer", "minimum": 0, "description": "Default per-pod storage ceiling when enable_quota=true." }
+            "quota_default_bytes":    { "type": "integer", "minimum": 0, "description": "Default per-pod storage ceiling when enable_quota=true." },
+            "allowed_origins":        { "type": "string", "description": "CORS allowlist for native pod mesh (comma-separated)." },
+            "admin_key_env":          { "type": "string", "description": "Env var name holding the admin provisioning PSK." }
           }
         },
         "external_orchestrator": {
@@ -393,6 +436,17 @@
             "model":      { "type": "string" },
             "timeout_ms": { "type": "integer", "minimum": 1000, "maximum": 600000 }
           }
+        },
+        "gemini": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Google Gemini API consultant. Requires providers.gemini (E035) and toolchains.gemini_cli (E037).",
+          "properties": {
+            "enabled":    { "type": "boolean" },
+            "model":      { "type": "string" },
+            "home":       { "type": "string", "description": "Gemini CLI home directory." },
+            "timeout_ms": { "type": "integer", "minimum": 1000, "maximum": 600000 }
+          }
         }
       }
     },
@@ -473,6 +527,16 @@
           "type": "boolean",
           "description": "Requires CTM_BOT_TOKEN and CTM_TELEGRAM_CHAT_ID env vars (E014)."
         },
+        "telegram": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Telegram bridge configuration (CTM adapter settings)."
+        },
+        "operator": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Operator Nostr identity for NIP-98 auth and delegation."
+        },
         "relay": {
           "type": "object",
           "additionalProperties": false,
@@ -494,7 +558,8 @@
             "retention_days":   { "type": "integer", "minimum": 0 },
             "allow_nip04":      { "type": "boolean", "description": "Legacy unencrypted DMs. Warned by E031." },
             "info_description": { "type": "string" },
-            "info_contact":     { "type": "string" }
+            "info_contact":     { "type": "string" },
+            "forum_relay_url":  { "type": "string", "description": "Private relay URL for governance event exchange with the forum." }
           }
         },
         "multi_user": {
@@ -561,6 +626,10 @@
       "additionalProperties": false,
       "description": "Security hardening configuration. The baseline is always applied; exceptions add minimum necessary privilege for specific features.",
       "properties": {
+        "audit_acknowledged": {
+          "type": "boolean",
+          "description": "Operator acknowledgement of residual risk from security exceptions."
+        },
         "exceptions": {
           "type": "object",
           "additionalProperties": false,
@@ -615,7 +684,13 @@
                       }
                     }
                   }
-                }
+                },
+                "writable_volumes": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Named volume mount strings for CUDA-specific writable paths."
+                },
+                "reason": { "type": "string" }
               }
             },
             "gaussian-splatting": {
@@ -695,10 +770,76 @@
                 },
                 "reason": { "type": "string" }
               }
+            },
+            "tailscale": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Tailscale userspace networking. Enabled when networking.tailscale=true.",
+              "properties": {
+                "cap_add": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Linux capabilities to add (NET_ADMIN for userspace tun)."
+                },
+                "writable_volumes": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Named volume mount strings for durable node state."
+                },
+                "reason": { "type": "string" }
+              }
+            },
+            "consultants": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Consultant tier audit log volume. Enabled when consultants.enabled=true.",
+              "properties": {
+                "writable_volumes": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Named volume mount strings for JSONL audit logs."
+                },
+                "reason": { "type": "string" }
+              }
             }
           }
         }
       }
+    },
+    "mesh": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Federation mesh configuration (PRD-010 Phase 3)."
+    },
+    "networking": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Networking configuration (Tailscale, host gateway)."
+    },
+    "llm_marketplace": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "LLM Resource Marketplace (kinds 38300-38305)."
+    },
+    "memory": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Memory access control configuration."
+    },
+    "features": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Feature flags (expel_lesson_extraction, etc.)."
+    },
+    "payments": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Payment system configuration (Web Ledger / DREAM token)."
+    },
+    "plugins": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "ruflo/claude-flow plugin system configuration."
     },
     "linked_data": {
       "type": "object",

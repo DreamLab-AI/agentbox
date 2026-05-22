@@ -295,7 +295,7 @@ wt_msgbox() {
 # Returns 0 if validator passed; on errors, shows blocking msgbox + retry.
 # On warnings-only, shows an info msgbox but lets the section advance.
 validate_candidate() {
-  python3 "${TUI_WRITE}" "${STATE_JSON}" "${CANDIDATE_TOML}"
+  python3 "${TUI_WRITE}" "${STATE_JSON}" "${CANDIDATE_TOML}" "${CONFIG_FILE}"
   local stderr_out rc
   stderr_out="$(node "${VALIDATOR}" "${CANDIDATE_TOML}" 2>&1 >/dev/null)" && rc=0 || rc=$?
   if [[ "${rc}" != "0" ]]; then
@@ -1457,7 +1457,7 @@ done
 # ════════════════════════════════════════════════════════════════════════════════
 # SUMMARY — read-only view before committing
 # ════════════════════════════════════════════════════════════════════════════════
-python3 "${TUI_WRITE}" "${STATE_JSON}" "${CANDIDATE_TOML}"
+python3 "${TUI_WRITE}" "${STATE_JSON}" "${CANDIDATE_TOML}" "${CONFIG_FILE}"
 _patch_operator_toml "${CANDIDATE_TOML}"
 
 if [[ -n "${GUM}" ]]; then
@@ -1478,7 +1478,7 @@ if ! wt_yesno "Confirm Save" "Save configuration to agentbox.toml? The existing 
 fi
 
 # Final validation + atomic write
-python3 "${TUI_WRITE}" "${STATE_JSON}" "${CANDIDATE_TOML}"
+python3 "${TUI_WRITE}" "${STATE_JSON}" "${CANDIDATE_TOML}" "${CONFIG_FILE}"
 _patch_operator_toml "${CANDIDATE_TOML}"
 if ! node "${VALIDATOR}" "${CANDIDATE_TOML}" 2>&1; then
   echo "Final validation failed. No changes written."

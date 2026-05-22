@@ -1,18 +1,97 @@
 #!/usr/bin/env python3
 """
 tui-write-manifest.py  —  take the TUI state JSON, emit a canonical agentbox.toml.
-Usage: python3 tui-write-manifest.py <state.json> <output.toml>
-Preserves every schema-valid key; omits sections that are entirely default/empty
-so the output is readable.  The caller is responsible for atomic rename.
+Usage: python3 tui-write-manifest.py <state.json> <output.toml> [<existing.toml>]
+When <existing.toml> is supplied (and exists), unknown TOML sections that the
+wizard does not manage are preserved in the output via deep-merge.  Wizard-
+controlled sections always win; everything else round-trips untouched.
+The caller is responsible for atomic rename.
 """
 import json
 import pathlib
 import sys
+import tomllib
 
 state_path  = pathlib.Path(sys.argv[1])
 output_path = pathlib.Path(sys.argv[2])
+existing_path = pathlib.Path(sys.argv[3]) if len(sys.argv) > 3 else None
 
 s: dict = json.loads(state_path.read_text(encoding="utf-8"))
+
+
+# ── helpers for merge + serialisation ──────────────────────────────────────────
+
+def _deep_merge(base: dict, overlay: dict) -> dict:
+    """Merge *overlay* into *base*.  Overlay values win for shared keys."""
+    result = dict(base)
+    for k, v in overlay.items():
+        if k in result and isinstance(result[k], dict) and isinstance(v, dict):
+            result[k] = _deep_merge(result[k], v)
+        else:
+            result[k] = v
+    return result
+
+
+def _dump_toml_value(v) -> str:
+    """Serialise a single TOML value to its text representation."""
+    if isinstance(v, bool):
+        return "true" if v else "false"
+    if isinstance(v, int):
+        return str(v)
+    if isinstance(v, float):
+        return repr(v)
+    if isinstance(v, str):
+        return json.dumps(v)          # produces valid TOML double-quoted string
+    if isinstance(v, list):
+        parts = []
+        for item in v:
+            parts.append(_dump_toml_value(item))
+        return "[" + ", ".join(parts) + "]"
+    if isinstance(v, dict):
+        # Inline table — used only for items in arrays-of-tables that are simple
+        inner = ", ".join(f"{k} = {_dump_toml_value(val)}" for k, val in v.items())
+        return "{" + inner + "}"
+    return json.dumps(str(v))
+
+
+def _dump_toml(d: dict, prefix: str = "") -> str:
+    """Minimal recursive TOML serialiser.
+
+    Handles nested dicts (as [section.subsection]), scalars, lists, and
+    arrays-of-tables (list-of-dicts → [[section]]).
+    """
+    lines: list[str] = []
+    scalars: dict = {}
+    tables: dict = {}
+    arrays_of_tables: dict = {}
+
+    for k, v in d.items():
+        if isinstance(v, dict):
+            tables[k] = v
+        elif isinstance(v, list) and v and isinstance(v[0], dict):
+            arrays_of_tables[k] = v
+        else:
+            scalars[k] = v
+
+    # Scalar key = value pairs
+    for k, v in scalars.items():
+        lines.append(f"{k} = {_dump_toml_value(v)}")
+
+    # Sub-tables
+    for k, v in tables.items():
+        section = f"{prefix}.{k}" if prefix else k
+        lines.append(f"\n[{section}]")
+        lines.append(_dump_toml(v, section))
+
+    # Arrays of tables ([[section]])
+    for k, items in arrays_of_tables.items():
+        section = f"{prefix}.{k}" if prefix else k
+        for item in items:
+            lines.append(f"\n[[{section}]]")
+            for ik, iv in item.items():
+                lines.append(f"{ik} = {_dump_toml_value(iv)}")
+
+    return "\n".join(lines)
 
 def b(key: str) -> str:
     """Bool field → TOML literal."""
@@ -416,4 +495,22 @@ if s.get("adapters.pods", "local-solid-rs") == "local-solid-rs":
 if _security_exceptions:
     lines += _security_exceptions
 
-output_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+# ── merge with existing manifest to preserve unknown sections ──────────────────
+wizard_toml_text = "\n".join(lines) + "\n"
+
+existing: dict = {}
+if existing_path and existing_path.exists():
+    try:
+        existing = tomllib.loads(existing_path.read_text(encoding="utf-8"))
+    except Exception:
+        existing = {}
+
+if existing:
+    # Parse the wizard output back into a dict so we can deep-merge
+    wizard_dict: dict = tomllib.loads(wizard_toml_text)
+    merged = _deep_merge(existing, wizard_dict)
+    output_path.write_text(_dump_toml(merged) + "\n", encoding="utf-8")
+else:
+    # No existing file or empty — write wizard output verbatim (preserves
+    # hand-crafted formatting for fresh installs)
+    output_path.write_text(wizard_toml_text, encoding="utf-8")
