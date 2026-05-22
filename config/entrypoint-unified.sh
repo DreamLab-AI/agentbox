@@ -787,6 +787,17 @@ export CPATH="$CUDA_WRAP/include:\${CPATH:-}"
 export LIBRARY_PATH="$CUDA_WRAP/lib64:$CUDA_WRAP/lib64/stubs:\${LIBRARY_PATH:-}"
 CUDAEOF
 fi
+# Cargo cross-compilation config — musl for static binaries, nvptx64 for GPU kernels
+CARGO_CONFIG="/home/devuser/workspace/.cargo/config.toml"
+MUSL_CC=$(command -v x86_64-unknown-linux-musl-gcc 2>/dev/null || command -v musl-gcc 2>/dev/null || true)
+if [ -n "$MUSL_CC" ] && [ ! -f "$CARGO_CONFIG" ]; then
+  cat > "$CARGO_CONFIG" <<CARGOEOF
+[target.x86_64-unknown-linux-musl]
+linker = "$MUSL_CC"
+CARGOEOF
+  chown devuser:devuser "$CARGO_CONFIG"
+  echo "[bootstrap] cargo musl cross-compile target configured"
+fi
 export AGENTBOX_RUNTIME_ENV="$RUNTIME_ENV_FILE"
 # Best-effort symlink for legacy consumers; ignored on read-only /etc.
 ln -sf "$RUNTIME_ENV_FILE" /etc/profile.d/agentbox-runtime.sh 2>/dev/null || true

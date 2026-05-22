@@ -170,6 +170,7 @@ let
         ++ lib.optionals (extendedCudaSet ? cutensor) [ extendedCudaSet.cutensor ]
         ++ lib.optionals (extendedCudaSet ? libcublas) [ extendedCudaSet.libcublas ]
         ++ lib.optionals (extendedCudaSet ? libcufft) [ extendedCudaSet.libcufft ]
+        ++ lib.optionals (extendedCudaSet ? libnvrtc) [ extendedCudaSet.libnvrtc ]
       );
     in
     {

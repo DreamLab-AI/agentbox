@@ -472,9 +472,19 @@
           imagemagickMcpPythonEnv
         ];
 
+        # Stable toolchain for general Rust development + WASM + static musl binaries
         rustToolchain = pkgs.rust-bin.stable.latest.minimal.override {
           extensions = [ "rust-src" "clippy" "rustfmt" ];
-          targets = [ "wasm32-unknown-unknown" ];
+          targets = [
+            "wasm32-unknown-unknown"
+            "x86_64-unknown-linux-musl"
+          ];
+        };
+
+        # Nightly toolchain for nvptx64 GPU kernel compilation (Tier 3 target)
+        rustNightlyToolchain = pkgs.rust-bin.nightly.latest.minimal.override {
+          extensions = [ "rust-src" "llvm-tools-preview" ];
+          targets = [ "nvptx64-nvidia-cuda" ];
         };
 
         wasmPackages = with pkgs; [
@@ -884,7 +894,7 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           basePackages
           ++ nodeEnvPackages
           ++ pythonBasePackages
-          ++ [ rustToolchain ]
+          ++ [ rustToolchain rustNightlyToolchain pkgs.pkgsStatic.stdenv.cc pkgs.musl ]
           ++ wasmPackages
           ++ dbPackages
           ++ browserPackages
@@ -2265,7 +2275,7 @@ ${ragflowNetworkDecl}
             layers = [
               (n2c.buildLayer { deps = basePackages; })
               (n2c.buildLayer { deps = nodeEnvPackages ++ pythonBasePackages; })
-              (n2c.buildLayer { deps = [ rustToolchain ] ++ wasmPackages ++ dbPackages; })
+              (n2c.buildLayer { deps = [ rustToolchain rustNightlyToolchain pkgs.pkgsStatic.stdenv.cc pkgs.musl ] ++ wasmPackages ++ dbPackages; })
               (n2c.buildLayer { deps = mediaPackages ++ browserPackages ++ spatialPackages ++ dataSciencePackages ++ docsPackages ++ desktopPackages ++ extraPackages; })
             ];
             copyToRoot = pkgs.buildEnv {

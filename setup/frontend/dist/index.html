@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agentbox</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body class="view-setup">
+
+  <header>
+    <div class="logo">
+      <h1>AGENTBOX</h1>
+      <span class="subtitle" id="mode-label">Configuration Wizard</span>
+    </div>
+
+    <div class="mode-toggle">
+      <button class="active" data-mode="setup">Setup</button>
+      <button data-mode="dashboard">Dashboard</button>
+    </div>
+
+    <div class="header-actions">
+      <span id="status" class="status-badge loading">loading…</span>
+      <div class="connection-indicator" id="connection">
+        <span class="conn-dot"></span>
+        <span class="conn-label">offline</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ====== SETUP SIDEBAR ====== -->
+  <nav id="sidebar" class="setup-only">
+    <div class="nav-header">Sections</div>
+    <ul id="section-nav"></ul>
+  </nav>
+
+  <!-- ====== MAIN CONTENT ====== -->
+  <div id="content">
+    <!-- Setup: Loading state -->
+    <div id="loading" class="setup-only">
+      <div class="spinner"></div>
+      <p style="color:var(--text-secondary); margin-top:var(--sp-4); text-align:center;">Loading configuration…</p>
+    </div>
+
+    <!-- Setup: Section editor -->
+    <div id="editor" class="setup-only" style="display:none">
+      <div id="sections-container"></div>
+    </div>
+
+    <!-- Setup: Validation bar -->
+    <div id="validation-bar" class="setup-only" style="display:none">
+      <div id="validation-errors"></div>
+      <div id="validation-warnings"></div>
+    </div>
+
+    <!-- Dashboard: Grid layout -->
+    <div class="dashboard-grid dashboard-only">
+
+      <!-- Status overview cards -->
+      <section class="mb-4">
+        <div class="divider-label mb-4">System Status</div>
+        <div id="status-cards" class="flex gap-4" style="flex-wrap:wrap;">
+          <div class="skeleton" style="width:200px;height:80px;border-radius:var(--radius-md);"></div>
+          <div class="skeleton" style="width:200px;height:80px;border-radius:var(--radius-md);"></div>
+          <div class="skeleton" style="width:200px;height:80px;border-radius:var(--radius-md);"></div>
+          <div class="skeleton" style="width:200px;height:80px;border-radius:var(--radius-md);"></div>
+        </div>
+      </section>
+
+      <!-- Service cards -->
+      <section class="mb-4">
+        <div class="divider-label mb-4">Services</div>
+        <div id="service-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:var(--sp-4);"></div>
+      </section>
+
+      <!-- Metrics area -->
+      <section class="mb-4">
+        <div class="divider-label mb-4">Metrics</div>
+        <div class="metrics-area" id="metrics-area">
+          <div class="metric-card">
+            <span class="metric-label">HTTP Requests</span>
+            <span class="metric-number">—</span>
+            <div class="sparkline"><svg viewBox="0 0 100 30"></svg></div>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Latency (p99)</span>
+            <span class="metric-number">—</span>
+            <div class="sparkline"><svg viewBox="0 0 100 30"></svg></div>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Memory</span>
+            <span class="metric-number">—</span>
+            <div class="sparkline"><svg viewBox="0 0 100 30"></svg></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Two-column: events + tasks -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-6);">
+        <!-- Agent Events -->
+        <section>
+          <div class="divider-label mb-4">
+            Agent Events
+            <span class="tag amber" id="event-count">0</span>
+          </div>
+          <div class="event-stream" id="event-stream">
+            <p style="text-align:center;color:var(--text-tertiary);padding:var(--sp-8);">Waiting for agent activity…</p>
+          </div>
+        </section>
+
+        <!-- Active Tasks -->
+        <section>
+          <div class="divider-label mb-4">Active Tasks</div>
+          <div class="task-list" id="task-list">
+            <p style="text-align:center;color:var(--text-tertiary);padding:var(--sp-8);">No active tasks</p>
+          </div>
+        </section>
+      </div>
+
+      <!-- Adapters -->
+      <section class="mt-4">
+        <div class="divider-label mb-4">Adapter Health</div>
+        <div id="adapter-cards" class="flex gap-4" style="flex-wrap:wrap;"></div>
+      </section>
+
+      <!-- Quick Actions -->
+      <section class="mt-4">
+        <div class="divider-label mb-4">Quick Actions</div>
+        <div class="flex gap-4" style="flex-wrap:wrap;">
+          <button class="btn btn-ghost" data-action="open-jupyter" data-tooltip="Port 8888">📓 Jupyter</button>
+          <button class="btn btn-ghost" data-action="open-code" data-tooltip="Port 8080">💻 Code</button>
+          <button class="btn btn-ghost" data-action="open-vnc" data-tooltip="Port 5901">🖥️ Desktop</button>
+          <button class="btn btn-ghost" data-action="open-lo" data-tooltip="Port 9090/lo/">🔗 Objects</button>
+          <button class="btn btn-ghost" data-action="open-metrics" data-tooltip="Port 9091">📊 Metrics</button>
+          <button class="btn btn-ghost" data-action="open-solid" data-tooltip="Port 8484">🔐 Pod</button>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- ====== FOOTER (setup mode only) ====== -->
+  <footer class="setup-only" id="setup-footer">
+    <div style="display:flex;justify-content:space-between;align-items:center;width:100%;">
+      <button id="btn-raw" class="btn btn-ghost">⇄ Edit Raw TOML</button>
+      <div class="flex gap-4">
+        <button id="btn-cancel" class="btn btn-ghost">Quit Without Saving</button>
+        <button id="btn-save" class="btn btn-primary">Save &amp; Exit</button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Dashboard footer -->
+  <footer class="dashboard-only" id="dash-footer">
+    <div class="connection-indicator" id="dash-connection">
+      <span class="conn-dot"></span>
+      <span class="conn-label">Management API</span>
+    </div>
+  </footer>
+
+  <!-- Raw TOML editor modal -->
+  <dialog id="raw-modal">
+    <div class="modal-content">
+      <h2>Raw TOML Editor</h2>
+      <textarea id="raw-toml" spellcheck="false" autocomplete="off"></textarea>
+      <div class="modal-actions">
+        <button id="raw-cancel" class="btn btn-ghost">Cancel</button>
+        <button id="raw-apply" class="btn btn-primary">Apply Changes</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
