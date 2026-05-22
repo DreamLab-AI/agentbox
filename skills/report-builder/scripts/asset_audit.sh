@@ -1,5 +1,5 @@
 #!/bin/bash
-# Report Builder — Asset Audit
+# Report Builder - Asset Audit
 # Checks that every \includegraphics reference has a corresponding file
 # and every generated figure is referenced in at LaTeX.
 
@@ -23,7 +23,7 @@ done
 
 # Check: every generated figure is referenced
 echo "Checking: All generated figures are referenced..."
-for f in figures/*.pdf diagrams/infographics/*_v3.png diagrams/infographics/*_v3.jpg 2>/dev/null; do
+for f in figures/*.pdf diagrams/infographics/*_v3.png diagrams/infographics/*_v3.jpg; do
   [ ! -f "$f" ] && continue
   if ! grep -rq "$f" chapters/*.tex main.tex 2>/dev/null; then
     echo "  UNUSED: $f"
