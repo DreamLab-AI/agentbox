@@ -315,15 +315,23 @@ cmd_backup() {
             cp -a "$profiles_dir" "${work}/profiles"
         else
             # Exclude key/pem/env/mgmt-key files
-            rsync -a \
-                --exclude='*.key' \
-                --exclude='*.pem' \
-                --exclude='*.env' \
-                --exclude='mgmt-key' \
-                "${profiles_dir}/" "${work}/profiles/" 2>/dev/null || \
-            tar -C "${profiles_dir}" \
-                --exclude='*.key' --exclude='*.pem' --exclude='*.env' --exclude='mgmt-key' \
-                -cf - . | tar -C "${work}/profiles" -xf - 2>/dev/null || true
+            mkdir -p "${work}/profiles"
+            if command -v rsync >/dev/null 2>&1; then
+                rsync -a \
+                    --exclude='*.key' \
+                    --exclude='*.pem' \
+                    --exclude='*.env' \
+                    --exclude='mgmt-key' \
+                    "${profiles_dir}/" "${work}/profiles/"
+            else
+                tar -C "${profiles_dir}" \
+                    --exclude='*.key' --exclude='*.pem' --exclude='*.env' --exclude='mgmt-key' \
+                    -cf - . | tar -C "${work}/profiles" -xf -
+                if [[ ${PIPESTATUS[0]} -ne 0 || ${PIPESTATUS[1]} -ne 0 ]]; then
+                    echo -e "${RED}ERROR: profile backup failed — neither rsync nor tar succeeded${NC}"
+                    exit 1
+                fi
+            fi
         fi
     fi
 
@@ -555,6 +563,13 @@ cmd_up() {
                  || echo "runtime")
     local resolved_ref="${AGENTBOX_IMAGE_REF:-agentbox:runtime-${system_tag}}"
     echo -e "${CYAN}using image: ${resolved_ref}${NC}"
+
+    # Ensure the external network exists (standalone-first: no pre-existing
+    # host deployment required). Silently succeeds if already present.
+    if ! docker network inspect visionclaw_network >/dev/null 2>&1; then
+        echo -e "${CYAN}Creating external network visionclaw_network...${NC}"
+        docker network create visionclaw_network
+    fi
 
     echo -e "${CYAN}Starting Docker stack...${NC}"
     docker compose "${COMPOSE_ARGS[@]}" up -d

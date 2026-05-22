@@ -51,6 +51,13 @@ _DEFAULT_BANNED: set[str] = {
     "ctypes",
     "cffi",
     "multiprocessing",
+    "eval",
+    "exec",
+    "__import__",
+    "getattr",
+    "compile",
+    "importlib",
+    "importlib.import_module",
 }
 
 _DEFAULT_FLAGGED_NETWORK: set[str] = {

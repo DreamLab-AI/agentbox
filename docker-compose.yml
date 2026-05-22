@@ -125,4 +125,8 @@ volumes:
     name: agentbox-ctm-config
   cargo-home:
     name: agentbox-cargo-home
+  code-harness-data:
+    name: agentbox-code-harness-data
+  agentbox-events:
+    name: agentbox-events
 

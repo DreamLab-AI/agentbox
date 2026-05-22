@@ -309,8 +309,22 @@ validate_candidate() {
     local blocking
     blocking="$(printf '%s\n' "${all_out}" | grep -E '^E[0-9]' | grep -vE '^E01[47]')"
     if [[ -n "${blocking}" ]]; then
+      local fix_hints=""
+      echo "${blocking}" | grep -q 'E001' && fix_hints="${fix_hints}\n\
+E001 fix: set federation.mode='client' + external_url, or switch\n\
+  the adapter back to a local option (ADR-005)."
+      echo "${blocking}" | grep -q 'E019' && fix_hints="${fix_hints}\n\
+E019 fix: CUDA toolchain requires gpu.backend='local-cuda' (ADR-007)."
+      echo "${blocking}" | grep -q 'E021' && fix_hints="${fix_hints}\n\
+E021 fix: add a [security.exceptions.<feature>] block for the enabled\n\
+  feature, or disable it. See ADR-007 §4a for exception contracts."
+      echo "${blocking}" | grep -q 'E016' && fix_hints="${fix_hints}\n\
+E016 fix: a manifest key failed schema validation. Check the JSON\n\
+  Schema at schema/agentbox.toml.schema.json for allowed values."
       wt_msgbox "Validation Errors" \
-        "Current selections produced errors. Correct them before proceeding.\n\n${blocking}"
+        "Current selections produced errors. Correct them before proceeding.\n\n${blocking}${fix_hints}\n\n\
+Full validator rules: docs/reference/adr/ADR-005-pluggable-adapter-architecture.md\n\
+Error code reference: scripts/agentbox-config-validate.js (header comment)"
       return 1
     fi
   fi
@@ -391,8 +405,17 @@ section_federation() {
   local current; current="$(state_get 'federation.mode')"
   local choice
   choice="$(wt_menu \
-    "Federation" "Deployment shape — how does this instance relate to a host mesh?" \
-    12 72 2 \
+    "Federation" \
+    "Deployment shape — how does this instance relate to a host mesh?\n\n\
+standalone: all adapters resolve locally (beads→SQLite, pods→solid-pod-rs,\n\
+  memory→embedded RuVector). No external dependencies required.\n\
+client: adapters marked 'external' delegate to a host orchestrator.\n\
+  Requires federation.external_url to be set.\n\n\
+NOTE: setting any adapter to 'external' in the next section requires\n\
+  federation.mode='client' + a valid external_url (validator rule E001).\n\n\
+Docs: docs/reference/adr/ADR-005-pluggable-adapter-architecture.md\n\
+      docs/reference/prd/PRD-001-capabilities-and-adapters.md" \
+    20 78 2 \
     "standalone" "All services run locally (self-contained)" \
     "client"     "Federate with a host container mesh via external adapters")"
   [[ -z "${choice}" ]] && choice="${current}"
@@ -401,8 +424,10 @@ section_federation() {
   if [[ "${choice}" == "client" ]]; then
     local url
     url="$(wt_inputbox "Federation — External URL" \
-      "Host mesh base URL (e.g. http://host-orchestrator:7070)" \
-      9 78 "$(state_get 'federation.external_url')")"
+      "Host mesh base URL (e.g. http://host-orchestrator:7070)\n\n\
+This is the endpoint your external adapters will connect to.\n\
+All adapters set to 'external' send requests here." \
+      12 78 "$(state_get 'federation.external_url')")"
     state_set "federation.external_url" "${url}"
   fi
   validate_candidate
@@ -413,19 +438,48 @@ section_federation() {
 # ════════════════════════════════════════════════════════════════════════════════
 section_adapters() {
   declare -A SLOT_DESC=(
-    [beads]="Structured agent-work receipts"
-    [pods]="Durable linked-data storage"
-    [memory]="Vector memory"
-    [events]="Agent lifecycle event sink"
-    [orchestrator]="Agent spawn and monitor channel"
+    [beads]="Structured agent-work receipts — immutable records of agent actions.\n\
+  local-sqlite: persists to a local SQLite database (standalone).\n\
+  external: delegates to the federated host (requires federation.mode=client).\n\
+  off: disables bead tracking entirely."
+    [pods]="Durable linked-data storage — Solid Protocol pods for agent data.\n\
+  local-solid-rs: runs solid-pod-rs locally (Rust, high-performance).\n\
+  external: delegates to the federated host (requires federation.mode=client).\n\
+  off: disables pod storage.\n\
+  Docs: docs/reference/adr/ADR-010-rust-solid-pod-adoption.md"
+    [memory]="Vector memory — semantic search over agent state and patterns.\n\
+  embedded-ruvector: runs RuVector in-process (session-scoped cache).\n\
+  external-pg: connects to ruvector-postgres for durable vector storage.\n\
+  off: disables vector memory.\n\
+  Docs: docs/reference/adr/ADR-015-mcp-ruvector-mandate.md"
+    [events]="Agent lifecycle event sink — records spawn/stop/error events.\n\
+  local-jsonl: appends to a local JSONL file.\n\
+  external: delegates to the federated host (requires federation.mode=client).\n\
+  off: disables event logging."
+    [orchestrator]="Agent spawn and monitor channel — how agents are launched.\n\
+  local-process-manager: spawns agents as local processes.\n\
+  stdio-bridge: delegates via stdio to an external orchestrator.\n\
+  off: disables agent orchestration."
   )
   declare -A SLOT_VALUES=(
     [beads]="local-sqlite external off"
-    [pods]="local-solid-rs local-jss external off"
+    [pods]="local-solid-rs external off"
     [memory]="embedded-ruvector external-pg off"
     [events]="local-jsonl external off"
     [orchestrator]="local-process-manager stdio-bridge off"
   )
+
+  local fed_mode; fed_mode="$(state_get 'federation.mode')"
+  wt_msgbox "Adapters — Overview" \
+    "The five adapter slots control how agentbox stores data and manages agents.\n\
+Each slot has local, external, and off options.\n\n\
+IMPORTANT: choosing 'external' for any slot requires:\n\
+  • federation.mode = 'client' (currently: ${fed_mode})\n\
+  • federation.external_url must be set\n\n\
+If you see E001 errors, either switch the adapter to a local option\n\
+or go back to Section 1 (Federation) and set mode='client'.\n\n\
+Docs: docs/reference/adr/ADR-005-pluggable-adapter-architecture.md\n\
+      docs/reference/prd/PRD-001-capabilities-and-adapters.md"
 
   for slot in beads pods memory events orchestrator; do
     local current; current="$(state_get "adapters.${slot}")"
@@ -436,7 +490,7 @@ section_adapters() {
     local choice
     choice="$(wt_menu \
       "Adapters — ${slot}" "${SLOT_DESC[${slot}]}\nCurrent: ${current}" \
-      12 72 3 "${menu_args[@]}")"
+      16 78 3 "${menu_args[@]}")"
     [[ -n "${choice}" ]] && state_set "adapters.${slot}" "${choice}"
   done
   validate_candidate
@@ -449,8 +503,16 @@ section_gpu() {
   local current; current="$(state_get 'gpu.backend')"
   local choice
   choice="$(wt_menu \
-    "GPU Backend" "Select GPU acceleration (detected: ${DETECTED_GPU})" \
-    12 72 4 \
+    "GPU Backend" \
+    "Select GPU acceleration (detected: ${DETECTED_GPU})\n\n\
+none: CPU-only mode — no GPU sidecar or device passthrough.\n\
+ollama-rocm: AMD GPU via ROCm/Vulkan. Mounts /dev/kfd + /dev/dri.\n\
+ollama-cuda: NVIDIA GPU via container runtime. Requires nvidia-docker.\n\
+local-cuda: CUDA toolkit baked into image. Required by gaussian_splatting\n\
+  and CUDA toolchains (validator rule E019).\n\n\
+Docs: docs/reference/adr/ADR-007-runtime-contract-and-container-hardening.md\n\
+      docs/reference/prd/PRD-003-runtime-contract-and-container-hardening.md" \
+    18 78 4 \
     "none"         "No GPU sidecar — CPU-only" \
     "ollama-rocm"  "Ollama — ROCm/Vulkan (/dev/kfd + /dev/dri)" \
     "ollama-cuda"  "Ollama — NVIDIA container runtime" \
@@ -635,11 +697,19 @@ section_privacy_filter() {
 # SECTION 4 — desktop
 # ════════════════════════════════════════════════════════════════════════════════
 section_desktop() {
-  if wt_yesno "Desktop" "Enable desktop environment (VNC/Wayland stack)?"; then
+  if wt_yesno "Desktop" \
+    "Enable desktop environment (VNC/Wayland stack)?\n\n\
+Provides a graphical desktop accessible via VNC for browser\n\
+automation, GUI tools (code-server), and visual debugging.\n\
+Requires a [security.exceptions.desktop] block (auto-created).\n\n\
+Docs: docs/reference/adr/ADR-007-runtime-contract-and-container-hardening.md §4a"; then
     state_set_bool "desktop.enabled" "true"
     local stack_choice
-    stack_choice="$(wt_menu "Desktop — Stack" "Choose the desktop compositor" \
-      10 72 2 \
+    stack_choice="$(wt_menu "Desktop — Stack" \
+      "Choose the desktop compositor\n\n\
+hyprland-wayland: modern compositor, GPU-accelerated, recommended.\n\
+x11-openbox: legacy X11 path, lower resource usage." \
+      14 78 2 \
       "hyprland-wayland" "Hyprland (Wayland, recommended)" \
       "x11-openbox"      "Openbox (X11, lower resources)")"
     [[ -n "${stack_choice}" ]] && state_set "desktop.stack" "${stack_choice}"
@@ -660,7 +730,10 @@ section_toolchains() {
   on_off() { [[ "$(state_get "$1")" == "true" ]] && echo "ON" || echo "OFF"; }
 
   local raw
-  raw="$(wt_checklist "Toolchains" "Select toolchains to install" \
+  raw="$(wt_checklist "Toolchains" \
+    "Select toolchains to install into the container image.\n\
+NOTE: CUDA toolchain requires gpu.backend='local-cuda' (rule E019).\n\
+Docs: docs/reference/prd/PRD-001-capabilities-and-adapters.md §Toolchains" \
     22 78 12 \
     "toolchains.claude"          "Claude CLI"             "$(on_off toolchains.claude)" \
     "toolchains.claude_code"     "Claude Code"            "$(on_off toolchains.claude_code)" \
@@ -753,7 +826,12 @@ section_providers() {
   on_off() { [[ "$(state_get "$1")" == "true" ]] && echo "ON" || echo "OFF"; }
 
   local raw_prov
-  raw_prov="$(wt_checklist "Providers" "Enable API providers (keys collected next)" \
+  raw_prov="$(wt_checklist "Providers" \
+    "Enable API providers (keys collected next).\n\
+Each provider can authenticate via API key (env var) or web login (OAuth).\n\
+API keys are checked at validate time — missing keys emit advisory W017\n\
+warnings, not blocking errors. You can set keys later at deploy time.\n\n\
+Docs: docs/reference/prd/PRD-001-capabilities-and-adapters.md §Providers" \
     22 78 10 \
     "anthropic"  "Anthropic (Claude)"  "$(on_off providers.anthropic.enabled)" \
     "openai"     "OpenAI"              "$(on_off providers.openai.enabled)" \
@@ -1126,7 +1204,7 @@ section_nostr_relay() {
   fi
 
   if ! wt_yesno "Embedded Nostr relay (ADR-009)" \
-    "Run an embedded Nostr relay for external-agent messaging?\n\nThe relay gives external agents and humans a signed,\naudited path to message agents running inside the\ncontainer. Every accepted event is persisted to\npods/<npub>/events/inbox/<id>.json; every outbound\nmessage goes through outbox/.\n\nDefault: loopback :7777, allowlist ingress, pod-bridge on.\nImpl: nostr-rs-relay (Apache-2.0, SQLite-backed, in nixpkgs)."; then
+    "Run an embedded Nostr relay for external-agent messaging?\n\nThe relay gives external agents and humans a signed,\naudited path to message agents running inside the\ncontainer. Every accepted event is persisted to\npods/<npub>/events/inbox/<id>.json; every outbound\nmessage goes through outbox/.\n\nDefault: loopback :7777, allowlist ingress, pod-bridge on.\nImpl: nostr-rs-relay (Apache-2.0, SQLite-backed, in nixpkgs).\n\nDocs: docs/reference/adr/ADR-009-embedded-nostr-relay.md\n      docs/reference/prd/PRD-004-external-agent-messaging.md"; then
     state_set_bool "sovereign_mesh.relay.enabled" "false"
     validate_candidate
     return 0
@@ -1212,8 +1290,14 @@ section_sovereign_mesh() {
 
   local raw
   raw="$(wt_checklist "Sovereign Mesh" \
-    "Nostr identity, NIP-98 auth, inter-agent messaging daemons" \
-    20 78 6 \
+    "Nostr identity, NIP-98 auth, inter-agent messaging daemons.\n\
+The sovereign data stack provides self-hosted identity (did:nostr),\n\
+encrypted DMs (NIP-17), and event signing across all adapters.\n\n\
+solid_pod enables the local Solid Protocol server (ADR-010).\n\
+telegram_mirror requires CTM_BOT_TOKEN + CTM_TELEGRAM_CHAT_ID env vars.\n\n\
+Docs: docs/reference/adr/ADR-009-embedded-nostr-relay.md\n\
+      docs/reference/adr/ADR-010-rust-solid-pod-adoption.md" \
+    22 78 6 \
     "sovereign_mesh.enabled"              "Sovereign mesh core"            "$(on_off sovereign_mesh.enabled)" \
     "sovereign_mesh.solid_pod"            "Solid-style pod service"        "$(on_off sovereign_mesh.solid_pod)" \
     "sovereign_mesh.nostr_bridge"         "Nostr bridge scaffold"          "$(on_off sovereign_mesh.nostr_bridge)" \
@@ -1331,7 +1415,7 @@ section_multi_user() {
 # ════════════════════════════════════════════════════════════════════════════════
 section_code_harness() {
   if ! wt_yesno "Code-as-Harness (PRD-008)" \
-    "Enable the persistent Python execution environment?\n\nThis powers:\n  - Code interpreter MCP (persistent Jupyter kernel)\n  - Voyager skill library (verified skills with execution proof)\n  - ACI shell (SWE-agent affordance for code agents)\n  - Tree-search coder (execution-gated multi-candidate search)\n\nThe code interpreter is the foundation; other features depend on it."; then
+    "Enable the persistent Python execution environment?\n\nThis powers:\n  - Code interpreter MCP (persistent Jupyter kernel)\n  - Voyager skill library (verified skills with execution proof)\n  - ACI shell (SWE-agent affordance for code agents)\n  - Tree-search coder (execution-gated multi-candidate search)\n\nThe code interpreter is the foundation; other features depend on it.\n\nSecurity: code runs in an AST-scanned sandbox (eval/exec/subprocess\nblocked). Pip installs require explicit allowlist.\n\nDocs: docs/reference/adr/ADR-018-persistent-code-interpreter-mcp.md\n      docs/reference/adr/ADR-019-experiential-skill-learning.md\n      docs/reference/prd/PRD-008-code-as-harness-integration.md"; then
     state_set_bool "skills.code_interpreter.enabled" "false"
     return 0
   fi
@@ -1380,7 +1464,7 @@ section_code_harness() {
 # ════════════════════════════════════════════════════════════════════════════════
 section_payments() {
   if ! wt_yesno "Payments (HTTP 402 Web Ledger)" \
-    "Enable the payment tier for metered agent operations?\n\nWhen enabled, expensive operations (inference, image gen,\nanalytics) require payment via HTTP 402 negotiation.\nSupports DREAM token or direct satoshi-denominated billing."; then
+    "Enable the payment tier for metered agent operations?\n\nWhen enabled, expensive operations (inference, image gen,\nanalytics) require payment via HTTP 402 negotiation.\nSupports DREAM token or direct satoshi-denominated billing.\n\nDocs: docs/reference/prd/PRD-009-llm-resource-marketplace.md"; then
     state_set_bool "payments.enabled" "false"
     return 0
   fi
