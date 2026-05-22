@@ -20,20 +20,24 @@ cleanup() { rm -rf "${TMP_DIR}"; }
 trap cleanup EXIT
 
 _WIZARD_PID="$$"
+_ABORT_SENTINEL="${TMP_DIR}/.abort"
 abort_wizard() {
-  # Reset terminal in case whiptail left it in cbreak/no-echo mode.
   stty sane 2>/dev/null || true
-  # If we're in a subshell (pipeline / $() / function scope inside one),
-  # exit alone won't kill the parent script. Signal the main wizard PID,
-  # whose own INT/TERM trap will re-enter abort_wizard at the top level.
+  touch "${_ABORT_SENTINEL}"
   if [[ "${BASHPID:-$$}" != "${_WIZARD_PID}" ]]; then
-    kill -TERM "${_WIZARD_PID}" 2>/dev/null || true
+    kill -INT "${_WIZARD_PID}" 2>/dev/null || true
     exit 130
   fi
   printf '\nWizard aborted by user. No changes written.\n' >&2
   exit 130
 }
-trap abort_wizard INT TERM
+trap abort_wizard INT TERM HUP
+
+# _check_abort — call after any TUI interaction; exits if Ctrl+C was caught
+# in a subshell that couldn't propagate cleanly.
+_check_abort() {
+  [[ -f "${_ABORT_SENTINEL}" ]] && abort_wizard
+}
 
 # _wt_run COMMAND...  — invoke a whiptail/dialog command and propagate Ctrl+C.
 # Whiptail catches SIGINT itself and exits 130; without this wrapper the parent
@@ -173,6 +177,7 @@ p.write_text(json.dumps(d,indent=2))
 _gum_run() {
   local rc=0
   "$@" || rc=$?
+  _check_abort
   if [[ "${rc}" == "130" || "${rc}" == "143" ]]; then
     abort_wizard
   fi
@@ -209,6 +214,7 @@ wt_menu() {
     choice="${choice:-1}"
     echo "${tags[$((choice-1))]:-${first_tag}}"
   fi
+  _check_abort
 }
 
 wt_checklist() {
@@ -244,6 +250,7 @@ wt_checklist() {
     done
     echo "${selected[*]}"
   fi
+  _check_abort
 }
 
 wt_inputbox() {
@@ -259,6 +266,7 @@ wt_inputbox() {
     read -r -p "${prompt} [${init}]: " val >&2
     echo "${val:-${init}}"
   fi
+  _check_abort
 }
 
 wt_passwordbox() {
@@ -272,6 +280,7 @@ wt_passwordbox() {
     read -r -s -p "${prompt}: " val >&2; echo >&2
     echo "${val}"
   fi
+  _check_abort
 }
 
 wt_yesno() {
@@ -285,6 +294,7 @@ wt_yesno() {
     read -r -p "${prompt} [y/N]: " ans >&2
     [[ "${ans,,}" =~ ^(y|yes)$ ]]
   fi
+  _check_abort
 }
 
 wt_msgbox() {
@@ -301,6 +311,7 @@ wt_msgbox() {
   else
     echo -e "${msg}" >&2
   fi
+  _check_abort
 }
 
 # ── validation helper ──────────────────────────────────────────────────────────
@@ -325,17 +336,20 @@ validate_candidate() {
 E001 fix: set federation.mode='client' + external_url, or switch\n\
   the adapter back to a local option (ADR-005)."
       echo "${blocking}" | grep -q 'E019' && fix_hints="${fix_hints}\n\
-E019 fix: CUDA toolchain requires gpu.backend='local-cuda' (ADR-007)."
+E019 fix: CUDA toolchain requires gpu.backend='local-cuda'.\n\
+  Disable CUDA in Toolchains or switch GPU to local-cuda."
       echo "${blocking}" | grep -q 'E021' && fix_hints="${fix_hints}\n\
 E021 fix: add a [security.exceptions.<feature>] block for the enabled\n\
   feature, or disable it. See ADR-007 §4a for exception contracts."
       echo "${blocking}" | grep -q 'E016' && fix_hints="${fix_hints}\n\
 E016 fix: a manifest key failed schema validation. Check the JSON\n\
   Schema at schema/agentbox.toml.schema.json for allowed values."
-      wt_msgbox "Validation Errors" \
-        "Current selections produced errors. Correct them before proceeding.\n\n${blocking}${fix_hints}\n\n\
-Full validator rules: docs/reference/adr/ADR-005-pluggable-adapter-architecture.md\n\
-Error code reference: scripts/agentbox-config-validate.js (header comment)"
+      if wt_yesno "Validation Errors" \
+        "${blocking}${fix_hints}\n\n\
+These errors may be fixable in a later section.\n\
+Proceed anyway? (Yes = continue, No = retry this section)"; then
+        return 0
+      fi
       return 1
     fi
   fi
@@ -1580,10 +1594,9 @@ for section_fn in "${SECTIONS[@]}"; do
     echo "  [${CURRENT_SECTION}/${TOTAL_SECTIONS}] ${local_name}" >&2
   fi
   while true; do
+    _check_abort
     "${section_fn}" && break
     _sec_rc=$?
-    # Signal-exit codes (128+N) that somehow escape section functions should
-    # terminate the wizard rather than retrying the section forever.
     (( _sec_rc >= 128 )) && exit "${_sec_rc}"
   done
 done
