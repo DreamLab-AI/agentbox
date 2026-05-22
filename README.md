@@ -43,13 +43,20 @@ Most agent runtimes are just a collection of tools with no provenance, privacy, 
 
 ### Interactive onboarding (recommended)
 
-Use the built-in wizard to generate your manifest, select your tools, and boot the container:
+Use the browser-based setup wizard to configure your manifest, select your tools, and boot the container:
 
 ```sh
 git clone https://github.com/DreamLab-AI/agentbox.git
 cd agentbox
 ./scripts/start-agentbox.sh
 ```
+
+The wizard opens in your default browser — no dependencies beyond Python 3 (for the local HTTP server). It renders all `agentbox.toml` sections with schema-validated form controls and the DreamLab glassmorphism design system. Pass `--tui` to use the legacy terminal wizard instead.
+
+<div align="center">
+<img src="docs/images/setup-wizard-overview.png" alt="Setup Wizard" width="720" />
+<br><em>Browser-based configuration wizard with schema-driven form controls</em>
+</div>
 
 ### Fast path (pre-built image)
 

@@ -84,9 +84,8 @@ Mount these directories on a named volume if you want the session to survive
 image rebuilds; the default compose stack already does this for the standard
 profile homes.
 
-The wizard (`./scripts/start-agentbox.sh`) offers an "API key vs web sign-in"
-radio for these three providers in the providers section, so you don't have to
-edit the manifest by hand. Other providers (gemini, deepseek, perplexity, …)
+The setup wizard (`./scripts/start-agentbox.sh`) offers provider configuration
+in the Providers section, so you don't have to edit the manifest by hand. Other providers (gemini, deepseek, perplexity, …)
 have no in-container OAuth flow yet — setting `auth_mode = "oauth"` on them
 emits validator warning **W040** and falls back to env-var (api_key) semantics.
 

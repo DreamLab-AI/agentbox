@@ -41,23 +41,19 @@ Eight entity classes, each toggleable independently:
 | `private_date` | dates tied to a person (DOBs, appointments) |
 | `secret` | API keys, tokens, passwords in plain text |
 
-## When the wizard offers it
+## When to enable it
 
-`scripts/start-agentbox.sh` probes the host before showing the prompt:
+The setup wizard (`scripts/start-agentbox.sh`) includes a Privacy Filter
+section. Hardware requirements:
 
-- **GPU path** — if `nvidia-smi` or `rocm-smi` resolves, the wizard offers
-  `local-gpu` mode by default. Inference is trivial at BF16.
-- **CPU path** — offered iff `nproc ≥ 4` **and** `MemAvailable ≥ 6 GB`.
+- **GPU path** — if `nvidia-smi` or `rocm-smi` is available, `local-gpu`
+  mode is offered by default. Inference is trivial at BF16.
+- **CPU path** — viable iff `nproc >= 4` **and** `MemAvailable >= 6 GB`.
   The MoE keeps all 128 experts resident (~3 GB BF16) even though only four
   fire per token, so the floor is memory, not cores.
-- **Neither** — the feature is hard-disabled in the wizard. You can still
-  force-enable via manual manifest edit, but the sidecar's `/health`
-  will report `unavailable` and `strict` policies will fail-closed.
-
-If you run `scripts/start-agentbox.sh` on a host that qualifies, you will
-see a dialog titled **Privacy Filter (openai/privacy-filter)** offering
-Y/N. Answer yes and the wizard walks you through mode, precision, and
-policy preset.
+- **Neither** — the feature can still be force-enabled via manual manifest
+  edit, but the sidecar's `/health` will report `unavailable` and `strict`
+  policies will fail-closed.
 
 ## Policy presets
 

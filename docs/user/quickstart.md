@@ -55,64 +55,36 @@ Use the interactive launcher unless you specifically want to edit files by hand:
 ./scripts/start-agentbox.sh
 ```
 
-The launcher is a section-by-section wizard with a gum TUI (falls back to
-whiptail, then plain text when neither is available). It auto-fetches the
-[gum](https://github.com/charmbracelet/gum) binary on first run — no
-pre-installed dependencies required. The wizard walks through every manifest
-section in order and validates your choices after each one — you cannot advance
-past validation errors.
+The launcher opens a browser-based setup wizard (PRD-012 / ADR-024) that renders
+every `agentbox.toml` section with schema-validated form controls — dropdowns,
+toggles, text inputs — using the DreamLab glassmorphism design system. No
+pre-installed dependencies required beyond Python 3 (for the local HTTP server).
 
-Sections covered (18 total):
+![Setup Wizard](../images/setup-wizard-overview.png)
+*Browser-based configuration wizard with sidebar navigation and live editing*
 
-```mermaid
-flowchart LR
-    S1["1 Federation"] --> S2["2 Adapters"]
-    S2 --> S3["3 GPU"]
-    S3 --> S4["4 Privacy Filter"]
-    S4 --> S5["5 Desktop"]
-    S5 --> S6["6 Toolchains"]
-    S6 --> S7["7 Skills"]
-    S7 --> S8["8 Providers"]
-    S8 --> S9["9 Consultants"]
-    S9 --> S10["10 Operator Identity"]
-    S10 --> S11["11 Observability"]
-    S11 --> S12["12 Integrations"]
-    S12 --> S13["13 Sovereign Mesh"]
-    S13 --> S14["14 Nostr Relay"]
-    S14 --> S15["15 Multi-User Pods"]
-    S15 --> S16["16 Linked-Data"]
-    S16 --> S17["17 Code-as-Harness"]
-    S17 --> S18["18 Payments"]
-    S18 -->|"validate"| V{{"agentbox-config-validate.js"}}
-    V -->|"errors"| S1
-    V -->|"clean"| DONE["Save / Build / Start"]
-```
+The wizard works in three tiers (ADR-024 D1):
 
-1. **Federation** — `standalone` (self-contained, local fallbacks) or `client` (federated with host mesh). If `client`, prompts for `external_url`.
-2. **Adapters** — one radio menu per slot: `beads`, `pods`, `memory`, `events`, `orchestrator`. Each shows the schema-exact enum values for that slot.
-3. **GPU backend** — `none` / `ollama-rocm` / `ollama-cuda` / `local-cuda`. The wizard auto-detects `nvidia-smi` and `rocm-smi` and pre-selects the appropriate default.
-4. **Privacy Filter** — enable/disable the outbound PII redaction filter (ADR-008). Configures policy for outbound data leaving the container.
-5. **Desktop** — enable toggle, stack radio (`hyprland-wayland` / `x11-openbox`), resolution input.
-6. **Toolchains** — scrollable checklist of all toolchain flags (claude, ruflo, claude_flow, agentic_qe, antigravity_cli, codex, etc.).
-7. **Skills** — five grouped checklists: browser, media, spatial+3D, data science, docs+ontology.
-8. **Providers** — checklist to enable providers; for each enabled provider a redacted password field collects the API key and writes it to `.env`.
-9. **Consultants** — enable the multi-LLM consultant tier (PRD-005/ADR-011): codex, antigravity, zai, perplexity, deepseek. Each consultant requires its matching provider gate.
-10. **Operator Identity** — configure the operator's DID, display name, and Nostr keypair for sovereign identity across the stack.
-11. **Observability** — `metrics_port` input, `otlp_endpoint` input, `log_level` radio.
-12. **Integrations** — ComfyUI external, RuVector external (only when `adapters.memory=external-pg`), RagFlow (only when the `visionclaw_network` network is detected).
-13. **Sovereign Mesh** — full checklist of Nostr/pod/bridge/telegram flags.
-14. **Nostr Relay** — configure the embedded `nostr-rs-relay` instance and pod-inbox bridge (ADR-009).
-15. **Multi-User Pods** — provisioning policy for multi-tenant Solid pod access (ADR-017).
-16. **Linked-Data** — toggle the 11 JSON-LD federation surfaces and the linkedobjects viewer (PRD-006/ADR-012).
-17. **Code-as-Harness** — code interpreter kernel, Voyager loop, ACI submissions, tree-search, ExPeL experiential learning (PRD-008/ADR-018–020).
-18. **Payments** — HTTP 402 Web Ledger payment enforcement for metered agent operations.
+1. **Full Rust binary** — if the pre-built `agentbox-setup` binary exists, it serves the frontend, proxies the management API, and handles secret containment server-side.
+2. **Python HTTP server** — `start-agentbox.sh` copies `agentbox.toml` and the JSON schema alongside the frontend HTML and serves them via `python3 -m http.server`. The SPA auto-loads the co-located config.
+3. **Pure browser** — open `setup/frontend/dist/index.html` directly. Load your TOML via drag-and-drop or file picker. Save via download.
 
-After each section the wizard runs `scripts/agentbox-config-validate.js` against the
-in-progress manifest. Any E001-E031 errors (or W021/W030 warnings) appear in a message box and the section
-loops for correction before you can proceed.
+Pass `--tui` to use the legacy terminal wizard (gum/whiptail) instead.
 
-The configuration is written atomically — staged in a temp file, validated, then
-moved into place. You are asked to confirm before the file is overwritten.
+**Dual-mode UI.** The same interface has a Dashboard tab that connects to the
+management API (port 9090) for real-time container monitoring once the stack is
+running — service health, active tasks, agent events, adapter status, and quick
+action launchers for Jupyter, Code Server, VNC, and more.
+
+![Dashboard](../images/setup-dashboard.png)
+*Operations dashboard with service grid and real-time status*
+
+**Sections covered** — the wizard renders all top-level `agentbox.toml` sections
+including Core, Federation, Adapters, GPU, Desktop, Observability, Providers,
+Skills, Toolchains, Integrations, Security, Sovereign Mesh, Linked Data,
+Identity, Limits, Backup, Payment, Code-as-Harness, and Marketplace. Each section
+is driven by the JSON schema at `schema/agentbox.toml.schema.json` — adding a new
+section to the schema automatically surfaces it in the wizard.
 
 **Validate-only mode** (CI / pre-commit use):
 

@@ -1,16 +1,19 @@
 # PRD-012: Agentbox Setup Wizard and Operations Dashboard
 
-**Status:** Draft v1
+**Status:** Implemented
 **Date:** 2026-05-22
 **Author:** Agentbox team
 **Related:** ADR-024 (Setup Dashboard), DDD-009 (Setup Dashboard Domain), PRD-001 (Capabilities and Adapters), ADR-005 (Pluggable Adapter Architecture), ADR-013 (Canonical URI Grammar)
 
 ## TL;DR for newcomers
-*Skip if you already know the dual-mode host binary model.*
+*Skip if you already know the progressive standalone SPA model.*
 
-This PRD describes `agentbox-setup`, a Rust native binary that runs on the **host machine** (not inside the container) and serves a browser-based UI for two distinct lifecycle phases. **Pre-boot mode** is a setup wizard that edits `agentbox.toml` with full JSON Schema validation before the container starts — no running container required. **Post-boot mode** is an operations dashboard that connects to the container's management API on port 9090 and surfaces service status, agent events, metrics, pod health, and payment state. The binary embeds all static assets (HTML/CSS/JS), serves them on a random localhost port, and opens the system browser. It proxies all API calls server-side to avoid CORS and to keep the management API key out of the browser.
+This PRD describes the agentbox setup wizard and operations dashboard — a standalone browser-based SPA (HTML/CSS/JS) that works on any platform with zero compiled dependencies. **Pre-boot mode** is a setup wizard that edits `agentbox.toml` with full JSON Schema validation before the container starts — no running container required. **Post-boot mode** is an operations dashboard that connects to the container's management API on port 9090 and surfaces service status, agent events, metrics, pod health, and payment state. The SPA runs in three tiers: (1) pure browser with file picker, (2) any HTTP server (python3) with co-located config, or (3) the optional Rust binary with embedded assets and server-side API proxy.
 
-**If you remember only one thing:** one binary, two modes — edit the manifest before boot, observe the running system after boot.
+**If you remember only one thing:** platform-agnostic browser SPA, two modes — edit the manifest before boot, observe the running system after boot.
+
+![Setup Wizard](../../images/setup-wizard-overview.png)
+![Operations Dashboard](../../images/setup-dashboard.png)
 
 ---
 
@@ -20,7 +23,7 @@ This PRD describes `agentbox-setup`, a Rust native binary that runs on the **hos
 |----|------|----------------|
 | G1 | Eliminate manual TOML editing for first-time users | 90% of new users complete setup without touching a text editor |
 | G2 | Provide real-time operational visibility into a running agentbox | All 8 external surfaces visible from a single pane |
-| G3 | Zero host dependencies beyond the binary itself | Single static binary, no runtime, no installer, no PATH manipulation |
+| G3 | Zero host dependencies | Runs in any browser; `python3 -m http.server` is the only optional dependency for the co-located tier |
 | G4 | Keep secrets server-side | Management API key never reaches browser JS |
 | G5 | Visual consistency with DreamLab design system | All components use shared design tokens (glassmorphism, amber brand, dark theme) |
 
@@ -37,7 +40,7 @@ This PRD describes `agentbox-setup`, a Rust native binary that runs on the **hos
 | US5 | Operator | Check pod health and storage utilisation | I know when Solid pod storage needs attention |
 | US6 | User | Toggle optional features (GPU, desktop, skills) with immediate validation | I avoid invalid feature combinations |
 | US7 | Operator | See payment/marketplace status | I verify LLM resource billing is operational |
-| US8 | Developer | Access the dashboard without installing anything | I run a single binary and a browser opens |
+| US8 | Developer | Access the dashboard without installing anything | I open an HTML file in a browser or run `start-agentbox.sh` |
 
 ---
 

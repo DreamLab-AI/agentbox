@@ -123,7 +123,7 @@ Validator rule **E006**: `gaussian_splatting = true` requires `backend = "local-
 ## `[privacy_filter]`
 
 Local PII redaction sidecar (openai/privacy-filter, 1.5B MoE, Apache-2.0).
-Gated at wizard time — only offered when a GPU is detected or the host has
+Gated at setup time — only offered when a GPU is detected or the host has
 ≥ 4 cores and ≥ 6 GB of free memory.
 
 ```mermaid
@@ -599,7 +599,7 @@ agentbox config validate --quiet   # exit-code only, suitable for pre-commit
 ```
 
 The validator runs in three places:
-1. The interactive TUI (`scripts/start-agentbox.sh`) on every section transition.
+1. The setup wizard (`scripts/start-agentbox.sh`) — browser UI or legacy TUI.
 2. `flake.nix` at build-time (`builtins.fromTOML` + assertions).
 3. CI (`.github/workflows/contract-tests.yml`) on every PR.
 

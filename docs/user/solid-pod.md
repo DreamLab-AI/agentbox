@@ -69,9 +69,10 @@ with E016 (unknown enum value). Flip it to `local-solid-rs` — both the
 legacy stub and the Rust server stored under `/var/lib/solid`, so existing
 data carries across without migration.
 
-## Wizard flow
+## Setup
 
-`scripts/start-agentbox.sh` asks one question for the `pods` slot. Pick from:
+The setup wizard (`scripts/start-agentbox.sh`) includes an Adapters section
+where you configure the `pods` slot. Pick from:
 
 - **`local-solid-rs`** (default) — the Rust server described here
 - `external` — a host-provided Solid server (requires `federation.mode="client"` + `federation.external_url`)

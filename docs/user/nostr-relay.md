@@ -39,25 +39,24 @@ The relay fixes three things at once:
 - You want the sovereign identity for NIP-98 HTTP auth but no messaging.
   Keep `sovereign_mesh.nostr_bridge = true` but `sovereign_mesh.relay.enabled = false`.
 
-## The wizard flow
+## Configuration
 
-`scripts/start-agentbox.sh` only surfaces the relay question when the
-sovereign mesh is already enabled. You will see four dialogs in sequence:
+The setup wizard (`scripts/start-agentbox.sh`) includes Sovereign Mesh
+settings when enabled. The key relay options are:
 
-1. **Implementation** — `nostr-rs-relay` (default, SQLite, in nixpkgs),
-   `rnostr` (LMDB + full-text search, must be vendored), `external`
-   (host-provided), or `off`.
-2. **Network binding** — `loopback` (safest; only the in-container bridge
-   can read), `host-expose` (publishes the port so external agents can
-   connect from outside Docker), `docker-net` (reachable from sibling
-   containers on the same docker network, not from the host).
-3. **Ingress policy** — `allowlist` (safest; NIP-42 AUTH + pubkey on the
-   allowed list), `signed-only` (NIP-42 AUTH; any valid signer), `open`
-   (no AUTH; homelab mode; raises validator warning W030).
-4. **External fanout** — `off` (air-gapped mesh), `publish-only`,
-   `subscribe-only`, `bidirectional`.
-
-The wizard also asks for retention in days.
+- **Implementation** — `nostr-rs-relay` (default, SQLite, in nixpkgs),
+  `rnostr` (LMDB + full-text search, must be vendored), `external`
+  (host-provided), or `off`.
+- **Network binding** — `loopback` (safest; only the in-container bridge
+  can read), `host-expose` (publishes the port so external agents can
+  connect from outside Docker), `docker-net` (reachable from sibling
+  containers on the same docker network, not from the host).
+- **Ingress policy** — `allowlist` (safest; NIP-42 AUTH + pubkey on the
+  allowed list), `signed-only` (NIP-42 AUTH; any valid signer), `open`
+  (no AUTH; homelab mode; raises validator warning W030).
+- **External fanout** — `off` (air-gapped mesh), `publish-only`,
+  `subscribe-only`, `bidirectional`.
+- **Retention** — days to retain events.
 
 ## The pod is the inbox
 

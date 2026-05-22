@@ -84,7 +84,7 @@ docker pull ghcr.io/dreamlab-ai/agentbox:latest
 ./agentbox.sh up
 ```
 
-`agentbox.sh` requires `bash` + `docker`; both work inside WSL2. The TUI (`scripts/start-agentbox.sh`) auto-fetches a `gum` binary and also runs in WSL2 (falls back to whiptail or plain text).
+`agentbox.sh` requires `bash` + `docker`; both work inside WSL2. The setup wizard (`scripts/start-agentbox.sh`) opens a browser-based UI and works on any platform with Python 3. Pass `--tui` for the legacy terminal wizard (gum/whiptail).
 
 ## Multi-arch registry
 

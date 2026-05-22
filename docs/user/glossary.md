@@ -97,10 +97,9 @@ flowchart LR
 - **Flake** — a Nix build descriptor (`flake.nix` + `flake.lock`). Pure and
   hermetic: identical inputs produce identical outputs. Defined in
   [ADR-001](../reference/adr/ADR-001-nixos-flakes.md).
-- **gum** — a zero-dependency TUI toolkit from Charm. The setup wizard
-  (`scripts/start-agentbox.sh`) auto-fetches a static gum binary at first
-  run for styled menus, checklists, password inputs and progress indicators.
-  Falls back to whiptail or plain text if gum is unavailable.
+- **gum** — a zero-dependency TUI toolkit from Charm. Used by the legacy
+  terminal wizard (`scripts/start-agentbox.sh --tui`). The primary setup
+  path is now a browser-based SPA (PRD-012 / ADR-024).
 - **Hardened baseline** — the default security posture: non-root user
   `1000:1000`, `read_only: true`, `cap_drop: [ALL]`, `no-new-privileges`,
   `seccomp=default`, explicit tmpfs list. See
@@ -235,10 +234,10 @@ flowchart LR
 - **tmpfs** — an in-memory filesystem. Writable scratch paths (`/tmp`,
   `/run`, per-profile caches) are declared as tmpfs entries under the
   hardened baseline.
-- **TUI** — text-based user interface. Agentbox ships one under
-  `scripts/start-agentbox.sh` for manifest editing (18-section wizard
-  powered by [gum](https://github.com/charmbracelet/gum), with whiptail
-  and plain-text fallbacks).
+- **TUI** — text-based user interface. The legacy terminal wizard
+  (`scripts/start-agentbox.sh --tui`) uses gum/whiptail for manifest
+  editing. The primary path is now a browser-based setup wizard
+  (PRD-012 / ADR-024) that opens automatically from `start-agentbox.sh`.
 - **wayvnc** — a VNC server for Wayland. Used when `[desktop].enabled = true`
   and `[desktop].stack = "hyprland-wayland"`; exposed on port 5901.
 - **workspace mount** — the shared host-mounted volume at `/home/devuser/workspace`

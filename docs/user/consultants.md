@@ -34,8 +34,8 @@ the hood, which is what `claude-code-router` and similar projects do.
 
 ## Enabling
 
-The wizard at `scripts/start-agentbox.sh` walks you through it
-(Section 9 — Consultants). For manual editing:
+The setup wizard (`scripts/start-agentbox.sh`) has a Consultants section
+for this. For manual editing:
 
 ```toml
 # agentbox.toml

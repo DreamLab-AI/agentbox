@@ -42,7 +42,7 @@ Exit code 77 (`ENOTSUP`) means "not yet implemented" — safe to catch in CI.
 | `.env.template.oci`      | OCI-specific vars (extends common)        |
 
 Copy `.env.template.common` (and the target-specific template) to `.env`, then run
-`scripts/start-agentbox.sh` to configure and start the stack interactively.
+`scripts/start-agentbox.sh` to open the browser-based setup wizard.
 
 ## Adding a New Target
 
