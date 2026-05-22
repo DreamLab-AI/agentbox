@@ -167,6 +167,17 @@ p.write_text(json.dumps(d,indent=2))
 
 # ── TUI wrappers (gum → whiptail → plain text) ───────────────────────────────
 # Every wizard section calls these; upgrading the wrappers upgrades everything.
+#
+# _gum_run CMD ARGS...  — run a gum subcommand, propagating Ctrl+C.
+# Gum exits 130 on SIGINT; without this wrapper, || true swallows it.
+_gum_run() {
+  local rc=0
+  "$@" || rc=$?
+  if [[ "${rc}" == "130" || "${rc}" == "143" ]]; then
+    abort_wizard
+  fi
+  return "${rc}"
+}
 
 detect_tui() { command_exists whiptail && echo whiptail || { command_exists dialog && echo dialog || echo ""; }; }
 WT="$(detect_tui)"
@@ -180,7 +191,7 @@ wt_menu() {
       tags+=("$1"); items+=("$1  —  $2"); shift 2
     done
     local raw
-    raw="$("${GUM}" choose --header "${title}: ${prompt%%$'\n'*}" --cursor.foreground="#7aa2f7" "${items[@]}" 2>/dev/null)" || { abort_wizard; return; }
+    raw="$(_gum_run "${GUM}" choose --header "${title}: ${prompt%%$'\n'*}" --cursor.foreground="#7aa2f7" "${items[@]}" 2>/dev/null)" || return
     echo "${raw%%  —  *}"
   elif [[ -n "${WT}" ]]; then
     _wt_run "${WT}" --title "${title}" --menu "${prompt}" "${h}" "${w}" "${lh}" "$@" 3>&1 1>&2 2>&3 || true
@@ -213,7 +224,7 @@ wt_checklist() {
     local selected_args=()
     for ps in "${preselected[@]}"; do selected_args+=(--selected "${ps}"); done
     local raw
-    raw="$("${GUM}" choose --no-limit --header "${title}" --cursor.foreground="#7aa2f7" \
+    raw="$(_gum_run "${GUM}" choose --no-limit --header "${title}" --cursor.foreground="#7aa2f7" \
       "${selected_args[@]}" "${items[@]}" 2>/dev/null)" || true
     local result=""
     while IFS= read -r line; do
@@ -239,7 +250,7 @@ wt_inputbox() {
   local title="$1" prompt="$2" h="$3" w="$4" init="$5"
   if [[ -n "${GUM}" ]]; then
     local val
-    val="$("${GUM}" input --header "${title}" --placeholder "${prompt%%$'\n'*}" --value "${init}" \
+    val="$(_gum_run "${GUM}" input --header "${title}" --placeholder "${prompt%%$'\n'*}" --value "${init}" \
       --cursor.foreground="#7aa2f7" --prompt.foreground="#565f89" 2>/dev/null)" || { echo "${init}"; return; }
     echo "${val}"
   elif [[ -n "${WT}" ]]; then
@@ -253,7 +264,7 @@ wt_inputbox() {
 wt_passwordbox() {
   local title="$1" prompt="$2" h="$3" w="$4"
   if [[ -n "${GUM}" ]]; then
-    "${GUM}" input --header "${title}" --placeholder "${prompt%%$'\n'*}" --password \
+    _gum_run "${GUM}" input --header "${title}" --placeholder "${prompt%%$'\n'*}" --password \
       --cursor.foreground="#7aa2f7" 2>/dev/null || true
   elif [[ -n "${WT}" ]]; then
     _wt_run "${WT}" --title "${title}" --passwordbox "${prompt}" "${h}" "${w}" "" 3>&1 1>&2 2>&3 || true
@@ -266,7 +277,7 @@ wt_passwordbox() {
 wt_yesno() {
   local title="$1" prompt="$2"
   if [[ -n "${GUM}" ]]; then
-    "${GUM}" confirm "${prompt%%$'\n'*}" --affirmative "Yes" --negative "No" \
+    _gum_run "${GUM}" confirm "${prompt%%$'\n'*}" --affirmative "Yes" --negative "No" \
       --selected.foreground="#7aa2f7" 2>/dev/null
   elif [[ -n "${WT}" ]]; then
     _wt_run "${WT}" --title "${title}" --yesno "${prompt}" 8 78 3>&1 1>&2 2>&3
@@ -284,7 +295,7 @@ wt_msgbox() {
       --foreground "#a9b1d6" --bold "${title}" >&2
     echo "${msg}" | "${GUM}" format >&2
     echo "" >&2
-    "${GUM}" input --placeholder "Press Enter to continue..." --width 0 >/dev/null 2>&1 || true
+    _gum_run "${GUM}" input --placeholder "Press Enter to continue..." --width 0 >/dev/null 2>&1 || true
   elif [[ -n "${WT}" ]]; then
     _wt_run "${WT}" --title "${title}" --msgbox "${msg}" 20 78 3>&1 1>&2 2>&3 || true
   else
@@ -1545,6 +1556,25 @@ CURRENT_SECTION=0
 for section_fn in "${SECTIONS[@]}"; do
   (( ++CURRENT_SECTION ))
   local_name="${SECTION_NAMES[$((CURRENT_SECTION-1))]}"
+
+  # Between sections, offer navigation: continue, skip, or exit.
+  if [[ "${CURRENT_SECTION}" -gt 1 ]]; then
+    local nav_choice
+    nav_choice="$(wt_menu \
+      "[${CURRENT_SECTION}/${TOTAL_SECTIONS}] ${local_name}" \
+      "Next section: ${local_name}\n\nContinue: configure this section\nSkip: accept defaults and move on\nSave & Exit: write current state and quit\nQuit: discard changes and exit" \
+      14 72 4 \
+      "continue"  "Configure ${local_name}" \
+      "skip"      "Accept defaults, move to next section" \
+      "save-exit" "Save current config and exit wizard" \
+      "quit"      "Discard all changes and exit")" || nav_choice="continue"
+    case "${nav_choice}" in
+      skip)      continue ;;
+      save-exit) break ;;
+      quit)      abort_wizard ;;
+    esac
+  fi
+
   if [[ -n "${GUM}" ]]; then
     "${GUM}" style --foreground "#565f89" "  [${CURRENT_SECTION}/${TOTAL_SECTIONS}] ${local_name}" >&2
   else
