@@ -3,12 +3,13 @@
 (function () {
   'use strict';
 
-  const API = '/api';
   const POLL_INTERVAL = 5000;
   const MAX_EVENTS = 200;
 
   let state = {
     mode: 'setup',
+    standalone: false,       // true = no Rust server, pure browser
+    fileHandle: null,        // File System Access API handle (if available)
     config: null,
     schema: null,
     tomlContent: '',
@@ -16,6 +17,7 @@
     sections: [],
     activeSection: null,
     dashboardConnected: false,
+    dashboardBaseUrl: '',    // direct mgmt API URL for standalone dashboard
     events: [],
     pollTimer: null,
     eventPollTimer: null,
@@ -30,7 +32,9 @@
   }
 
   async function api(path, opts = {}) {
-    const res = await fetch(`${API}${path}`, {
+    const base = state.standalone ? state.dashboardBaseUrl : '/api';
+    const url = state.standalone ? `${base}${path.replace(/^\/proxy/, '')}` : `${base}${path}`;
+    const res = await fetch(url, {
       headers: { 'Content-Type': 'application/json', ...opts.headers },
       ...opts,
     });
@@ -131,11 +135,133 @@
     else stopDashboard();
   }
 
+  // ─── Standalone Mode: File I/O ───────────────────────────────
+
+  function showStandalonePicker() {
+    $('#loading').style.display = 'none';
+    $('#standalone-picker').style.display = '';
+    setStatus('standalone');
+
+    // Show standalone UI controls
+    if ($('#btn-open')) $('#btn-open').style.display = '';
+
+    const dropZone = $('#drop-zone');
+    const fileInput = $('#file-input');
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('keydown', e => { if (e.key === 'Enter') fileInput.click(); });
+
+    dropZone.addEventListener('dragover', e => {
+      e.preventDefault();
+      dropZone.style.borderColor = 'var(--amber)';
+      dropZone.style.background = 'rgba(245, 158, 11, 0.05)';
+    });
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.style.borderColor = 'var(--border)';
+      dropZone.style.background = '';
+    });
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.style.borderColor = 'var(--border)';
+      dropZone.style.background = '';
+      const file = e.dataTransfer.files[0];
+      if (file) loadFileFromDisk(file);
+    });
+
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files[0]) loadFileFromDisk(fileInput.files[0]);
+    });
+  }
+
+  async function loadFileFromDisk(file) {
+    const text = await file.text();
+    state.tomlContent = text;
+    state.config = parseTOML(text);
+
+    // Try loading schema from relative path
+    await loadBundledSchema();
+
+    $('#standalone-picker').style.display = 'none';
+    $('#editor').style.display = '';
+    renderSections();
+    setStatus('connected');
+
+    // Update footer for standalone
+    if ($('#btn-save')) $('#btn-save').style.display = 'none';
+    if ($('#btn-cancel')) $('#btn-cancel').style.display = 'none';
+    if ($('#btn-download')) $('#btn-download').style.display = '';
+  }
+
+  async function loadBundledSchema() {
+    try {
+      const res = await fetch('agentbox.toml.schema.json');
+      if (res.ok) {
+        state.schema = await res.json();
+        return;
+      }
+    } catch {}
+    // Fallback: try relative to parent dirs (common layout)
+    for (const path of ['../schema/agentbox.toml.schema.json', '../../schema/agentbox.toml.schema.json']) {
+      try {
+        const res = await fetch(path);
+        if (res.ok) { state.schema = await res.json(); return; }
+      } catch {}
+    }
+    state.schema = null;
+  }
+
+  async function openFilePicker() {
+    if (window.showOpenFilePicker) {
+      try {
+        const [handle] = await window.showOpenFilePicker({
+          types: [{ description: 'TOML', accept: { 'text/plain': ['.toml'] } }],
+        });
+        state.fileHandle = handle;
+        const file = await handle.getFile();
+        await loadFileFromDisk(file);
+        return;
+      } catch (e) {
+        if (e.name === 'AbortError') return;
+      }
+    }
+    $('#file-input').click();
+  }
+
+  function downloadToml() {
+    const blob = new Blob([state.tomlContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'agentbox.toml';
+    a.click();
+    URL.revokeObjectURL(url);
+    state.dirty = false;
+  }
+
+  async function saveViaFileHandle() {
+    if (!state.fileHandle) { downloadToml(); return; }
+    try {
+      const writable = await state.fileHandle.createWritable();
+      await writable.write(state.tomlContent);
+      await writable.close();
+      state.dirty = false;
+      setStatus('connected');
+    } catch {
+      downloadToml();
+    }
+  }
+
   // ─── Setup: Init & Render ────────────────────────────────────
 
   async function initSetup() {
+    // Try connecting to Rust server first
     try {
-      const data = await api('/config');
+      const res = await fetch('/api/config', {
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!res.ok) throw new Error(res.status);
+      const data = await res.json();
+      state.standalone = false;
       state.tomlContent = data.toml_content;
       state.schema = data.schema;
       state.config = parseTOML(data.toml_content);
@@ -143,11 +269,42 @@
       setStatus('connected');
       $('#loading').style.display = 'none';
       $('#editor').style.display = '';
-    } catch (e) {
-      setStatus('error');
-      const p = $('#loading p');
-      if (p) p.textContent = `Failed: ${e.message}`;
-    }
+      return;
+    } catch {}
+
+    // No server — enter standalone mode
+    state.standalone = true;
+
+    // Check URL params for mgmt API URL
+    const params = new URLSearchParams(location.search);
+    const mgmtUrl = params.get('api');
+    if (mgmtUrl) state.dashboardBaseUrl = mgmtUrl.replace(/\/$/, '');
+
+    // Check if agentbox.toml is co-located (served by any static server)
+    try {
+      const res = await fetch('agentbox.toml');
+      if (res.ok) {
+        const text = await res.text();
+        if (text.includes('[') && text.includes('=')) {
+          state.tomlContent = text;
+          state.config = parseTOML(text);
+          await loadBundledSchema();
+          renderSections();
+          setStatus('connected');
+          $('#loading').style.display = 'none';
+          $('#editor').style.display = '';
+
+          // In standalone with co-located file, show download button
+          if ($('#btn-save')) $('#btn-save').style.display = 'none';
+          if ($('#btn-cancel')) $('#btn-cancel').style.display = 'none';
+          if ($('#btn-download')) $('#btn-download').style.display = '';
+          return;
+        }
+      }
+    } catch {}
+
+    // No co-located file — show picker
+    showStandalonePicker();
   }
 
   const SECTION_META = {
@@ -178,39 +335,44 @@
     nav.innerHTML = '';
     state.sections = [];
 
-    for (const [key, schemaDef] of Object.entries(schema)) {
-      if (schemaDef.type !== 'object') continue;
+    // If no schema, render raw sections from parsed config
+    const keys = Object.keys(schema).length > 0
+      ? Object.entries(schema).filter(([, v]) => v.type === 'object').map(([k]) => k)
+      : Object.keys(state.config).filter(k => typeof state.config[k] === 'object');
 
+    for (const key of keys) {
+      const schemaDef = schema[key] || { properties: {} };
       const meta = SECTION_META[key] || { icon: '📋', label: key, desc: '' };
       const data = state.config[key] || {};
       const id = `section-${key}`;
 
-      // Nav item
       const li = document.createElement('li');
       li.innerHTML = `<a href="#${id}" data-section="${key}">
         <span class="nav-icon">${meta.icon}</span> ${esc(meta.label)}
       </a>`;
       nav.appendChild(li);
 
-      // Section card
       const sec = document.createElement('div');
       sec.className = 'section-card slide-up';
       sec.id = id;
+
+      const props = schemaDef.properties || {};
+      const hasSchema = Object.keys(props).length > 0;
+
       sec.innerHTML = `
         <div class="section-header">
           <div>
             <h2>${meta.icon} ${esc(meta.label)}</h2>
-            <p class="section-desc">${esc(meta.desc)}</p>
+            <p class="section-desc">${esc(schemaDef.description || meta.desc)}</p>
           </div>
         </div>
         <div class="section-body">
-          ${renderFields(key, schemaDef.properties || {}, data)}
+          ${hasSchema ? renderFields(key, props, data) : renderRawFields(key, data)}
         </div>`;
       container.appendChild(sec);
       state.sections.push(key);
     }
 
-    // Nav clicks
     $$('#section-nav a').forEach(a => {
       a.addEventListener('click', e => {
         e.preventDefault();
@@ -220,7 +382,6 @@
       });
     });
 
-    // Scroll-spy
     const obs = new IntersectionObserver(entries => {
       for (const e of entries) {
         if (e.isIntersecting) setActiveNav(e.target.id.replace('section-', ''));
@@ -228,9 +389,59 @@
     }, { threshold: 0.2, rootMargin: '-80px 0px -50% 0px' });
     $$('.section-card').forEach(s => obs.observe(s));
 
-    // Field changes
     container.addEventListener('change', handleChange);
     container.addEventListener('input', debounce(handleChange, 300));
+  }
+
+  function renderRawFields(sectionKey, data, prefix = '') {
+    let html = '';
+    for (const [key, value] of Object.entries(data)) {
+      const path = prefix ? `${prefix}.${key}` : key;
+
+      if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+        html += `<div class="subsection open">
+          <button class="subsection-toggle" type="button">
+            <span class="chevron">▸</span> ${esc(key.replace(/_/g, ' '))}
+          </button>
+          <div class="subsection-body">
+            ${renderRawFields(sectionKey, value, path)}
+          </div>
+        </div>`;
+        continue;
+      }
+
+      const fid = `f-${sectionKey}-${path.replace(/\./g, '-')}`;
+      const label = key.replace(/_/g, ' ');
+
+      if (typeof value === 'boolean') {
+        html += `<div class="form-group">
+          <label class="form-label" for="${fid}">${esc(label)}</label>
+          <div class="toggle-wrap">
+            <label class="toggle">
+              <input type="checkbox" id="${fid}" ${value ? 'checked' : ''} data-section="${sectionKey}" data-key="${path}">
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            </label>
+            <span class="toggle-state">${value ? 'Enabled' : 'Disabled'}</span>
+          </div>
+        </div>`;
+      } else if (typeof value === 'number') {
+        html += `<div class="form-group">
+          <label class="form-label" for="${fid}">${esc(label)}</label>
+          <input type="number" id="${fid}" value="${value}" data-section="${sectionKey}" data-key="${path}">
+        </div>`;
+      } else if (Array.isArray(value)) {
+        html += `<div class="form-group">
+          <label class="form-label" for="${fid}">${esc(label)}</label>
+          <input type="text" id="${fid}" value="${esc(value.join(', '))}" placeholder="comma-separated" data-section="${sectionKey}" data-key="${path}">
+        </div>`;
+      } else {
+        html += `<div class="form-group">
+          <label class="form-label" for="${fid}">${esc(label)}</label>
+          <input type="text" id="${fid}" value="${esc(String(value ?? ''))}" data-section="${sectionKey}" data-key="${path}">
+        </div>`;
+      }
+    }
+    return html;
   }
 
   function renderFields(sectionKey, props, data, prefix = '') {
@@ -346,6 +557,11 @@
   // ─── Dashboard ───────────────────────────────────────────────
 
   function startDashboard() {
+    if (state.standalone && !state.dashboardBaseUrl) {
+      const url = prompt('Management API URL:', 'http://localhost:9090');
+      if (url) state.dashboardBaseUrl = url.replace(/\/$/, '');
+      else { setMode('setup'); return; }
+    }
     if (state.pollTimer) return;
     pollDashboard();
     state.pollTimer = setInterval(pollDashboard, POLL_INTERVAL);
@@ -361,10 +577,11 @@
 
   async function pollDashboard() {
     try {
+      const prefix = state.standalone ? '' : '/proxy';
       const [health, status, tasks] = await Promise.allSettled([
-        api('/proxy/health'),
-        api('/proxy/v1/status'),
-        api('/proxy/v1/tasks'),
+        api(`${prefix}/health`),
+        api(`${prefix}/v1/status`),
+        api(`${prefix}/v1/tasks`),
       ]);
 
       renderStatusCards(status.value);
@@ -380,7 +597,8 @@
   async function pollEvents() {
     if (state.mode !== 'dashboard') return;
     try {
-      const evts = await api('/proxy/v1/agent-events?limit=20');
+      const prefix = state.standalone ? '' : '/proxy';
+      const evts = await api(`${prefix}/v1/agent-events?limit=20`);
       if (Array.isArray(evts)) {
         for (const ev of evts) {
           if (!state.events.find(e => e.id === ev.id)) {
@@ -513,7 +731,12 @@
   function setStatus(type) {
     const el = $('#status');
     el.className = `status-badge ${type}`;
-    el.textContent = type === 'connected' ? 'ready' : type === 'error' ? 'error' : 'loading…';
+    const labels = {
+      connected: 'ready',
+      error: 'error',
+      standalone: 'standalone',
+    };
+    el.textContent = labels[type] || 'loading…';
   }
 
   // ─── Quick Actions ───────────────────────────────────────────
@@ -537,6 +760,10 @@
   // ─── Footer Actions ──────────────────────────────────────────
 
   async function saveAndExit() {
+    if (state.standalone) {
+      await saveViaFileHandle();
+      return;
+    }
     const btn = $('#btn-save');
     btn.disabled = true;
     btn.textContent = 'Saving…';
@@ -558,7 +785,9 @@
 
   async function quitNoSave() {
     if (state.dirty && !confirm('Unsaved changes will be lost. Quit anyway?')) return;
-    try { await api('/shutdown', { method: 'POST' }); } catch {}
+    if (!state.standalone) {
+      try { await api('/shutdown', { method: 'POST' }); } catch {}
+    }
     window.close();
   }
 
@@ -583,34 +812,33 @@
   // ─── Init ────────────────────────────────────────────────────
 
   function init() {
-    // Mode tabs
     $$('.mode-toggle button').forEach(b =>
       b.addEventListener('click', () => setMode(b.dataset.mode))
     );
 
-    // Footer
     $('#btn-save')?.addEventListener('click', saveAndExit);
     $('#btn-cancel')?.addEventListener('click', quitNoSave);
     $('#btn-raw')?.addEventListener('click', openRawEditor);
+    $('#btn-download')?.addEventListener('click', downloadToml);
+    $('#btn-open')?.addEventListener('click', openFilePicker);
     $('#raw-apply')?.addEventListener('click', applyRaw);
     $('#raw-cancel')?.addEventListener('click', () => $('#raw-modal').close());
 
-    // Quick actions
     $$('[data-action]').forEach(b =>
       b.addEventListener('click', () => handleAction(b.dataset.action))
     );
 
-    // Modal backdrop
     $('#raw-modal')?.addEventListener('click', e => {
       if (e.target === e.currentTarget) e.currentTarget.close();
     });
 
-    // Keyboard
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape' && $('#raw-modal')?.open) $('#raw-modal').close();
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
-        if (state.mode === 'setup') saveAndExit();
+        if (state.mode === 'setup') {
+          state.standalone ? downloadToml() : saveAndExit();
+        }
       }
     });
 

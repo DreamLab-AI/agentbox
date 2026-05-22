@@ -29,17 +29,24 @@ Five alternatives were evaluated:
 
 - **TUI-only (gum/charmbracelet).** Covers pre-boot well but cannot render charts or real-time event streams. Rejected as the sole interface; remains available as a complementary tool.
 - **Electron / Tauri app.** Satisfies UI richness but violates the zero-dependency constraint (Electron bundles Chromium; Tauri requires WebView2 on Windows). Over-engineered for what is a localhost status page.
-- **WASM SPA served from container.** Only works post-boot; cannot edit TOML pre-boot. Also complicates the build pipeline with a wasm-pack step.
-- **Python/Flask host script.** Adds a Python dependency. Rejected.
-- **Rust binary with embedded static frontend.** Meets all three constraints. Single binary, no runtime, serves its own assets, proxies API calls.
+- **WASM SPA served from container.** Only works post-boot unless paired with a local file strategy. Evaluated again in D1 revision.
+- **Python/Flask host script.** Adds a Python dependency. Rejected as the primary path.
+- **Rust binary with embedded static frontend.** Meets all three constraints when available, but limits portability to pre-built platforms.
+- **Standalone browser SPA with progressive server enhancement.** (Adopted) The frontend works in any browser with zero dependencies. File System Access API or upload/download handles pre-boot TOML editing. A co-located `python3 -m http.server` provides fetch access for co-located files. The Rust binary remains an optional enhancement for API proxy and secret containment.
 
 ---
 
 ## Decisions
 
-### D1: Rust native binary with embedded static frontend
+### D1: Progressive standalone SPA with optional Rust server
 
-The `agentbox-setup` binary is compiled with `rust-embed` (or `include_dir`) to bake HTML, CSS, and JS files into the binary at build time. The frontend is vanilla HTML/CSS/JS — no framework, no build step, no transpilation. This keeps the embedded payload small (target < 500 KB compressed) and the binary under 15 MB stripped.
+The primary interface is a standalone vanilla HTML/CSS/JS SPA that runs in any browser on any platform with zero dependencies. Three tiers of capability:
+
+1. **File-only (file:// or any static server):** User opens `index.html` directly. TOML is loaded via file picker / drag-and-drop. Saved via browser download. Works everywhere, zero install.
+2. **Co-located static server (python3 / any HTTP server):** `start-agentbox.sh` copies `agentbox.toml` and the JSON schema alongside the frontend, then serves via `python3 -m http.server`. The SPA auto-detects co-located files via fetch and loads them without user interaction.
+3. **Full Rust binary (`agentbox-setup`):** Embeds the frontend via `rust-embed`, serves on a random localhost port, proxies management API calls with server-side Bearer auth injection. This tier adds secret containment and CORS avoidance.
+
+The frontend detects which tier it is running in by attempting `/api/config` (tier 3), then falling back to fetching `agentbox.toml` (tier 2), then showing the file picker (tier 1). Dashboard mode in tiers 1-2 connects directly to the management API URL (prompted or passed via `?api=` query parameter).
 
 **Rationale.** A framework-less frontend avoids the npm dependency chain entirely. The UI complexity (form fields, cards, a chart, a scrolling log) does not justify React/Vue overhead. CSS custom properties handle theming. `fetch()` handles API calls. A WebSocket handles the event stream. That is the entire frontend stack.
 

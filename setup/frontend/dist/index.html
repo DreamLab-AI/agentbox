@@ -41,8 +41,40 @@
   <div id="content">
     <!-- Setup: Loading state -->
     <div id="loading" class="setup-only">
-      <div class="spinner"></div>
-      <p style="color:var(--text-secondary); margin-top:var(--sp-4); text-align:center;">Loading configuration…</p>
+      <div class="spinner" id="loading-spinner"></div>
+      <p id="loading-msg" style="color:var(--text-secondary); margin-top:var(--sp-4); text-align:center;">Loading configuration…</p>
+    </div>
+
+    <!-- Setup: Standalone file picker (shown when no server) -->
+    <div id="standalone-picker" class="setup-only" style="display:none">
+      <div class="section-card slide-up" style="max-width:600px;margin:var(--sp-12) auto;text-align:center;">
+        <div class="section-header">
+          <div>
+            <h2>Open agentbox.toml</h2>
+            <p class="section-desc">No server detected — running in standalone browser mode.<br>
+            Drop your <code>agentbox.toml</code> here or click to browse.</p>
+          </div>
+        </div>
+        <div class="section-body" style="padding:var(--sp-8);">
+          <div id="drop-zone" tabindex="0" style="
+            border: 2px dashed var(--border);
+            border-radius: var(--radius-lg);
+            padding: var(--sp-12) var(--sp-8);
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+          ">
+            <p style="font-size:2.5rem;margin:0;">📂</p>
+            <p style="margin:var(--sp-4) 0 0;color:var(--text-secondary);">
+              Drag &amp; drop <code>agentbox.toml</code><br>
+              <span style="font-size:0.85rem;">or click to open file picker</span>
+            </p>
+            <input type="file" id="file-input" accept=".toml" style="display:none">
+          </div>
+          <p id="schema-note" style="margin-top:var(--sp-4);font-size:0.8rem;color:var(--text-tertiary);">
+            Schema loaded from bundled defaults. Place <code>schema/agentbox.toml.schema.json</code> alongside for full validation.
+          </p>
+        </div>
+      </div>
     </div>
 
     <!-- Setup: Section editor -->
@@ -144,10 +176,14 @@
   <!-- ====== FOOTER (setup mode only) ====== -->
   <footer class="setup-only" id="setup-footer">
     <div style="display:flex;justify-content:space-between;align-items:center;width:100%;">
-      <button id="btn-raw" class="btn btn-ghost">⇄ Edit Raw TOML</button>
+      <div class="flex gap-4">
+        <button id="btn-raw" class="btn btn-ghost">Edit Raw TOML</button>
+        <button id="btn-open" class="btn btn-ghost" style="display:none">Open File</button>
+      </div>
       <div class="flex gap-4">
         <button id="btn-cancel" class="btn btn-ghost">Quit Without Saving</button>
         <button id="btn-save" class="btn btn-primary">Save &amp; Exit</button>
+        <button id="btn-download" class="btn btn-primary" style="display:none">Download agentbox.toml</button>
       </div>
     </div>
   </footer>

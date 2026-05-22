@@ -371,6 +371,61 @@ if [[ "${1:-}" == "--validate-only" ]]; then
   fi
 fi
 
+# ── browser-based wizard (preferred) ─────────────────────────────────────────
+# Pass --tui to force the legacy shell wizard even when the browser UI is available.
+if [[ "${1:-}" != "--tui" ]]; then
+  SETUP_FRONTEND="${ROOT_DIR}/setup/frontend/dist/index.html"
+
+  # Option 1: compiled Rust binary (serves files + API proxy)
+  SETUP_BIN=""
+  for _candidate in \
+    "${ROOT_DIR}/setup/agentbox-setup" \
+    "${ROOT_DIR}/setup/server/target/x86_64-unknown-linux-musl/release/agentbox-setup" \
+    "${ROOT_DIR}/setup/server/target/release/agentbox-setup"; do
+    [[ -x "${_candidate}" ]] && SETUP_BIN="${_candidate}" && break
+  done
+  if [[ -n "${SETUP_BIN}" ]]; then
+    exec "${SETUP_BIN}" "${CONFIG_FILE}" "${ROOT_DIR}/schema/agentbox.toml.schema.json"
+  fi
+
+  # Option 2: standalone browser mode (no binary needed)
+  # Copy agentbox.toml + schema alongside the frontend so the SPA can fetch them.
+  if [[ -f "${SETUP_FRONTEND}" ]]; then
+    DIST_DIR="$(dirname "${SETUP_FRONTEND}")"
+    cp -f "${CONFIG_FILE}" "${DIST_DIR}/agentbox.toml" 2>/dev/null || true
+    [[ -f "${ROOT_DIR}/schema/agentbox.toml.schema.json" ]] && \
+      cp -f "${ROOT_DIR}/schema/agentbox.toml.schema.json" "${DIST_DIR}/agentbox.toml.schema.json" 2>/dev/null || true
+
+    _open_browser() {
+      local url="$1"
+      if command_exists xdg-open; then xdg-open "${url}" 2>/dev/null &
+      elif command_exists open; then open "${url}" 2>/dev/null &
+      else echo "Open ${url} in your browser."; fi
+    }
+
+    # Try python3 http.server for a proper localhost origin (needed for fetch)
+    if command_exists python3; then
+      SETUP_PORT=$(python3 -c 'import socket; s=socket.socket(); s.bind(("",0)); print(s.getsockname()[1]); s.close()')
+      echo ""
+      echo "  ┌─────────────────────────────────────────┐"
+      echo "  │  AGENTBOX Setup (browser mode)           │"
+      echo "  │  http://localhost:${SETUP_PORT}                  │"
+      echo "  │  Ctrl+C to stop                          │"
+      echo "  └─────────────────────────────────────────┘"
+      echo ""
+      _open_browser "http://localhost:${SETUP_PORT}"
+      exec python3 -m http.server "${SETUP_PORT}" --directory "${DIST_DIR}" --bind 127.0.0.1
+    fi
+
+    # Fallback: direct file:// open (limited — fetch won't work for co-located files)
+    echo "  Tip: install python3 for the full browser experience."
+    echo "  Opening setup wizard (file picker mode)…"
+    _open_browser "file://${SETUP_FRONTEND}"
+    echo "  After editing, download agentbox.toml and place it at: ${CONFIG_FILE}"
+    exit 0
+  fi
+fi
+
 # ── context detection ──────────────────────────────────────────────────────────
 DETECTED_GPU="none"
 command_exists nvidia-smi && DETECTED_GPU="ollama-cuda"
