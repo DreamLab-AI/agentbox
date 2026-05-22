@@ -93,7 +93,7 @@ expose           = false
 data_dir         = "/var/lib/nostr-relay"
 ingress_policy   = "allowlist"        # allowlist | signed-only | open
 allowed_pubkeys  = []                  # empty = self only (own npub); operator pubkey auto-added at boot
-allowed_kinds    = [1, 1059, 30078, 27235, 31400, 31401, 31402, 31403, 31404, 31405, 38000, 38100, 38200, 38201]
+allowed_kinds    = [1, 1059, 30078, 27235, 31400, 31401, 31402, 31403, 31404, 31405, 38000, 38100, 38200, 38201, 38300, 38301, 38302, 38303, 38304, 38305]
 pod_bridge       = true
 external_fanout  = "bidirectional"     # bidirectional | publish-only | subscribe-only | off
 # Private point-to-point relay for governance event exchange with the forum.
@@ -150,8 +150,11 @@ admin_pubkeys               = []                     # operator pubkey auto-adde
 #   "client"      — subscribes to peers but does not accept inbound
 [mesh]
 mode = "standalone"
-peer_relays = []                         # ws:// or wss:// URLs of mesh peers
-federated_kinds = [1, 1059, 30001, 30050, 30078, 30910, 31400, 31401, 31402, 31403, 31404, 31405, 38000, 38100]
+# Peer relay URLs. For tailnet federation, use MagicDNS hostnames:
+#   peer_relays = ["ws://agentbox-02.tailnet-name.ts.net:7777"]
+# For Cloudflare tunnel federation, use the public wss:// URL.
+peer_relays = []
+federated_kinds = [1, 1059, 30001, 30050, 30078, 30910, 31400, 31401, 31402, 31403, 31404, 31405, 38000, 38100, 38300, 38301, 38302, 38304]
 allowed_remote_dids = []                 # did:nostr:<hex> of trusted peers
 subscribed_kinds = []                    # subset of federated_kinds to pull; empty = all
 honor_remote_moderation = false          # accept kind-30910 bans from peers
@@ -176,6 +179,12 @@ honor_remote_moderation = false          # accept kind-30910 bans from peers
 # removes the NET_ADMIN cap_add and the [security.exceptions.tailscale]
 # block from the active set, tightening the default attack surface.
 tailscale = false
+# MagicDNS hostname on the tailnet. Must be unique per instance.
+# This becomes the service discovery name for federation:
+#   solid-pod-rs at http://agentbox.tailnet-name.ts.net:8484
+#   nostr relay at ws://agentbox.tailnet-name.ts.net:7777
+#   management API at http://agentbox.tailnet-name.ts.net:9090
+# When tailscale = true, the entrypoint runs `tailscale up --hostname <this>`.
 hostname = "agentbox"
 # Gate /etc/hosts host-gateway alias (host.docker.internal:host-gateway).
 # Default false — air-gapped and hardened deployments must opt in. When
@@ -183,6 +192,36 @@ hostname = "agentbox"
 # (e.g. ollama:11434 if [providers.ollama].sidecar = true) or the agent
 # fails closed at the LLM call site.
 host_gateway = false
+
+# ── LLM Resource Marketplace (kinds 38300-38305) ──────────────────────────────
+# Mesh-wide negotiation of LLM compute resources between did:nostr identities.
+# Providers advertise available models; consumers discover and request access;
+# grants are tracked with token budgets and usage receipts that integrate with
+# the Web Ledger payment rails in solid-pod-rs.
+#
+# Kind allocation (NIP-01 parameterised replaceable range 30000-39999):
+#   38300  LLM Capability Advertisement  (replaceable, d-tag = model)
+#   38301  LLM Capability Request
+#   38302  LLM Grant
+#   38303  LLM Deny
+#   38304  LLM Usage Receipt
+#   38305  LLM Grant Revocation
+#
+# Federated kinds: 38300 (ads), 38301 (requests), 38302 (grants), 38304 (receipts)
+# Non-federated:   38303 (deny) and 38305 (revoke) are point-to-point only
+[llm_marketplace]
+enabled = true
+# Auto-advertise this node's available models on relay startup.
+# When true, the management-api publishes kind-38300 events for each
+# model listed in [providers.*] that has a valid API key.
+auto_advertise = true
+# Maximum grant TTL in seconds. Grants exceeding this are clamped.
+max_grant_ttl = 86400
+# Maximum token allocation per grant. Zero = unlimited.
+max_tokens_per_grant = 0
+# Cost tier — maps to Web Ledger DREAM token pricing.
+# "operator" = operator-set pricing; "market" = accept mesh best-offer.
+pricing_mode = "operator"
 
 [desktop]
 enabled = true

@@ -1381,6 +1381,31 @@ section_payments() {
   validate_candidate
 }
 
+section_networking() {
+  if ! wt_yesno "Networking — Tailscale" \
+    "Enable Tailscale for container-level mesh networking?\n\nTailscale creates an encrypted overlay network between\nyour agentbox containers and other DreamLab services.\nEach container gets its own MagicDNS hostname on the tailnet.\n\nRequires a Tailscale auth key (set TAILSCALE_AUTHKEY in .env).\nThe container uses userspace networking (no /dev/net/tun).\n\nSECURITY: Tailscale ACLs control access, NOT did:nostr\nsignatures. Only enable on trusted tailnets."; then
+    state_set_bool "networking.tailscale" "false"
+    return 0
+  fi
+
+  state_set_bool "networking.tailscale" "true"
+
+  local hostname
+  hostname="$(wt_inputbox "Networking — Hostname" \
+    "Tailscale MagicDNS hostname for this container.\nMust be unique per instance on the tailnet." \
+    "agentbox")"
+  [[ -n "${hostname}" ]] && state_set "networking.hostname" "${hostname}"
+
+  if wt_yesno "Networking — Host Gateway" \
+    "Enable host.docker.internal gateway?\n\nAllows the container to reach services on the Docker host\n(e.g., a host-level ollama at http://host.docker.internal:11434).\n\nLeave disabled for air-gapped deployments."; then
+    state_set_bool "networking.host_gateway" "true"
+  else
+    state_set_bool "networking.host_gateway" "false"
+  fi
+
+  validate_candidate
+}
+
 # ════════════════════════════════════════════════════════════════════════════════
 # WIZARD MAIN LOOP — run each section; retry on validation failure
 # ════════════════════════════════════════════════════════════════════════════════
@@ -1403,13 +1428,14 @@ SECTIONS=(
   section_linked_data
   section_code_harness
   section_payments
+  section_networking
 )
 
 SECTION_NAMES=(
   "Federation" "Adapters" "GPU" "Privacy Filter" "Desktop"
   "Toolchains" "Skills" "Providers" "Consultants" "Operator Identity"
   "Observability" "Integrations" "Sovereign Mesh" "Nostr Relay"
-  "Multi-User Pods" "Linked-Data" "Code-as-Harness" "Payments"
+  "Multi-User Pods" "Linked-Data" "Code-as-Harness" "Payments" "Networking"
 )
 
 TOTAL_SECTIONS=${#SECTIONS[@]}

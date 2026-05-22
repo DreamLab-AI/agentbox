@@ -739,6 +739,16 @@ export EMBEDDING_MODEL="${EMBEDDING_MODEL}"
 EOF
 mkdir -p "/home/devuser/workspace/.cargo" "/home/devuser/workspace/.tmp" 2>/dev/null || true
 chown devuser:devuser "/home/devuser/workspace/.cargo" "/home/devuser/workspace/.tmp" 2>/dev/null || true
+# Cargo registry credentials — write credentials.toml if CRATES_TOKEN is set.
+if [ -n "${CRATES_TOKEN:-}" ]; then
+  cat > "/home/devuser/workspace/.cargo/credentials.toml" <<CRATESEOF
+[registry]
+token = "${CRATES_TOKEN}"
+CRATESEOF
+  chmod 600 "/home/devuser/workspace/.cargo/credentials.toml"
+  chown devuser:devuser "/home/devuser/workspace/.cargo/credentials.toml"
+  echo "[bootstrap] cargo registry credentials configured"
+fi
 # CUDA wrapper: Nix uses lib/ but Rust crates expect lib64/
 if [ -n "${CUDA_PATH:-}" ] && [ -d "$CUDA_PATH/include" ] && [ ! -d "$CUDA_PATH/lib64" ]; then
   CUDA_WRAP="/home/devuser/workspace/.cuda"

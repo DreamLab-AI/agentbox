@@ -264,6 +264,69 @@ Deeper reading:
 
 ---
 
+## Federation Transports
+
+Agentbox participates in all three DreamLab federation transport strata. Each stratum is independently enabled via `agentbox.toml` and `.env` configuration.
+
+```mermaid
+graph LR
+    subgraph "This Agentbox"
+        TS["Tailscale\nuserspace-networking"]
+        NR["nostr-rs-relay\n:7777"]
+        MA["management-api\n:8080"]
+    end
+
+    TS <-->|"WireGuard\nMagicDNS"| OTHER["Other Agentboxes\nsolid-pod-rs hosts"]
+    NR <-->|"NIP-01 WS"| RELAY["Private/Public\nNostr Relays"]
+    MA -->|"CF Tunnel\nHTTPS"| CF["Cloudflare Edge"]
+```
+
+### Stratum 1 — Tailscale (Private Mesh)
+
+Each agentbox container joins the tailnet with its own identity using `--tun=userspace-networking` (no `/dev/net/tun` needed). The container's MagicDNS hostname (configured via `[networking].hostname` in `agentbox.toml`) becomes the service discovery address for other mesh participants.
+
+```toml
+# agentbox.toml
+[networking]
+tailscale = true
+hostname = "agentbox-london"
+
+# .env
+TAILSCALE_AUTHKEY=tskey-auth-...
+```
+
+**Security:** Tailscale runs inside the container, isolated from host networking. Tailscale ACLs control access — `did:nostr` signatures are not evaluated at this layer.
+
+### Stratum 2 — Nostr Relays (All Components)
+
+The embedded `nostr-rs-relay` (`:7777`) serves as both a local event store and a mesh relay. Peer relays are configured in `agentbox.toml`:
+
+```toml
+[sovereign_mesh.mesh]
+peer_relays = [
+    "ws://agentbox-paris.tailnet-name.ts.net:7777",   # Tailscale peer
+    "wss://relay.damus.io",                             # Public relay
+]
+```
+
+All relay traffic is authenticated via NIP-98/NIP-42 `did:nostr` Schnorr signatures. Private relays keep governance events (kinds 31400-31405) within the organisation. Public relays provide censorship-resistant message passing when private infrastructure is unavailable.
+
+### Stratum 3 — Cloudflare Tunnels (Edge ↔ Local)
+
+A Cloudflare tunnel exposes the management API and solid-pod-rs to CF Workers services (nostr-rust-forum, dreamlab-ai-website) without opening ports to the public internet. Configure via:
+
+```
+# .env
+CLOUDFLARE_TUNNEL_TOKEN=eyJ...
+AGENTBOX_PUBLIC_URL=https://pods-native.dreamlab-ai.com
+```
+
+CF Workers reach the local agentbox through the tunnel for pod provisioning, resource access, and NIP-05 federated resolution.
+
+See [Tailscale guide](docs/user/tailscale.md) · [Mesh deployment](docs/user/mesh-deployment.md) · [Identity mesh](docs/developer/identity-mesh.md)
+
+---
+
 ## Documentation
 
 ### For operators

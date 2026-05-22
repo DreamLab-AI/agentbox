@@ -321,6 +321,10 @@ app.register(require('./routes/pod-git'), { prefix: '', logger });
 // Proxies to solid-pod-rs payment module; local cost estimation.
 app.register(require('./routes/payments'), { prefix: '', logger, metrics });
 
+// LLM Resource Marketplace — Nostr kinds 38300-38305.
+// Mesh-wide negotiation of LLM compute resources between did:nostr identities.
+app.register(require('./routes/llm-marketplace'), { prefix: '', logger });
+
 // Liveness probe — registered early, no sentinel check, event-loop-alive only.
 // Must respond in <100 ms unconditionally.
 app.get('/livez', {
