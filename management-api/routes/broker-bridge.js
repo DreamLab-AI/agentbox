@@ -42,6 +42,7 @@
 const fs = require('fs');
 const path = require('path');
 const WebSocket = require('ws');
+const uris = require('../lib/uris');
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -50,6 +51,9 @@ const WebSocket = require('ws');
 const VISIONCLAW_API = (process.env.VISIONCLAW_API_URL || 'http://visionflow_container:4000').replace(/\/$/, '');
 const VISIONCLAW_WS = (process.env.VISIONCLAW_WS_URL || 'ws://visionflow_container:4000').replace(/\/$/, '');
 const GIT_CLONE_ROOT = process.env.KNOWLEDGE_GIT_CLONE || '/home/devuser/workspace/knowledge';
+const AGENTBOX_PUBKEY = process.env.AGENTBOX_X_ONLY_PUBKEY_HEX || process.env.AGENTBOX_PUBKEY || '0'.repeat(64);
+const AGENTBOX_NPUB = process.env.AGENTBOX_NPUB || '';
+const SOLID_POD_ROOT = process.env.SOLID_POD_ROOT || '/var/lib/solid';
 
 // Categories that this bridge handles — the enrichment-review-pane only
 // renders KnowledgeEnrichment cases.
@@ -334,6 +338,8 @@ async function brokerBridgeRoutes(fastify, options) {
             decision: { type: 'string' },
             writeback_triggered: { type: 'boolean' },
             writeback_result: { type: 'object' },
+            activity_urn: { type: 'string' },
+            receipt_urn: { type: 'string' },
           },
         },
       },
@@ -368,6 +374,67 @@ async function brokerBridgeRoutes(fastify, options) {
     const writebackTriggered = WRITEBACK_DECISIONS.has(decision);
     let writebackResult = writebackTriggered ? { status: 'triggered-internally' } : null;
 
+    // ── PROV-O provenance recording ──────────────────────────────────
+    // Mint activity + receipt URNs linking the governance decision to the
+    // agent action.  Both kinds are content-addressed and owner-scoped in
+    // the canonical URI grammar (ADR-013).
+    const decidingPubkey = request.headers['x-agent-pubkey'] || AGENTBOX_PUBKEY;
+    const decidedAt = new Date().toISOString();
+
+    const activityPayload = {
+      type: 'governance-decision',
+      case_id: id,
+      decision,
+      decided_at: decidedAt,
+    };
+    const receiptPayload = {
+      type: 'governance-receipt',
+      case_id: id,
+      decision,
+      decided_by: request.body.decided_by || 'unknown',
+      decided_at: decidedAt,
+    };
+
+    let activity_urn, receipt_urn;
+    try {
+      activity_urn = uris.mint({ kind: 'activity', pubkey: decidingPubkey, payload: activityPayload });
+      receipt_urn = uris.mint({ kind: 'receipt', pubkey: decidingPubkey, payload: receiptPayload });
+    } catch (mintErr) {
+      logger.warn({ err: mintErr.message, caseId: id }, 'broker-bridge: provenance URN minting failed (non-fatal)');
+      activity_urn = null;
+      receipt_urn = null;
+    }
+
+    // Persist provenance record to the pod filesystem.
+    if (activity_urn && AGENTBOX_NPUB) {
+      const provenanceRecord = {
+        activity_urn,
+        receipt_urn,
+        case_id: id,
+        decision,
+        decided_by: request.body.decided_by || 'unknown',
+        decided_at: decidedAt,
+        agent_did: `did:nostr:${decidingPubkey}`,
+        source_event_ids: {
+          request: request.body.request_event_id || null,
+          response: request.body.response_event_id || null,
+        },
+      };
+
+      try {
+        const provDir = path.join(SOLID_POD_ROOT, 'pods', AGENTBOX_NPUB, 'provenance', 'governance');
+        fs.mkdirSync(provDir, { recursive: true });
+        fs.writeFileSync(
+          path.join(provDir, `${encodeURIComponent(id)}.json`),
+          JSON.stringify(provenanceRecord, null, 2),
+          'utf8',
+        );
+        logger.info({ caseId: id, activity_urn, receipt_urn }, 'broker-bridge: governance provenance recorded');
+      } catch (writeErr) {
+        logger.warn({ err: writeErr.message, caseId: id }, 'broker-bridge: provenance write failed (non-fatal)');
+      }
+    }
+
     return {
       success: true,
       decision,
@@ -375,6 +442,8 @@ async function brokerBridgeRoutes(fastify, options) {
       upstream_result: decisionResult,
       writeback_triggered: writebackTriggered,
       writeback_result: writebackResult,
+      activity_urn: activity_urn || undefined,
+      receipt_urn: receipt_urn || undefined,
     };
   });
 

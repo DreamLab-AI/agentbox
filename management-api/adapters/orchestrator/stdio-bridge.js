@@ -60,6 +60,54 @@ class StdioBridgeOrchestratorAdapter extends BaseAdapter {
     return { agents };
   }
 
+  /**
+   * Handle an inbound governance decision (ACTION_RESPONSE, kind 31403).
+   *
+   * Forwards the decision as a JSON-RPC notification over stdio so the
+   * external orchestrator (e.g. VisionClaw BrokerActor) can act on it.
+   *
+   * @param {object} event - Nostr event (kind 31403)
+   * @returns {{ dispatched: boolean, target: string, event_id: string }}
+   */
+  async handleGovernanceDecision(event) {
+    if (!event || !event.id) throw new Error('event with id is required');
+
+    const activityUrn = uris.mint({ kind: 'activity', localId: 'decision-' + event.id.slice(0, 12) });
+
+    let parsed;
+    try {
+      parsed = typeof event.content === 'string' ? JSON.parse(event.content) : event.content;
+    } catch (_) {
+      parsed = { raw: event.content };
+    }
+
+    const caseId   = parsed.case_id || null;
+    const outcome  = parsed.outcome || null;
+    const reason   = parsed.reason || null;
+
+    const notification = {
+      jsonrpc: '2.0',
+      method:  'governance.decision',
+      params: {
+        event_id:   event.id,
+        case_id:    caseId,
+        outcome,
+        reason,
+        decided_by: event.pubkey,
+        decided_at: event.created_at,
+        activity_urn: activityUrn,
+      },
+    };
+
+    try {
+      this._stdio.write(JSON.stringify(notification));
+    } catch (err) {
+      throw new Error(`stdio write failed for governance decision: ${err.message}`);
+    }
+
+    return { dispatched: true, target: 'stdio', event_id: event.id };
+  }
+
   async terminateAgent(agentId) {
     if (!agentId) throw new Error('agentId is required');
     const entry = this._agents.get(agentId);

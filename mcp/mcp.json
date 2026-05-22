@@ -139,6 +139,18 @@
       "protocol": "mcp-fastmcp",
       "version": "1.4.0",
       "features": ["viewport_screenshots", "polyhaven", "sketchfab", "hyper3d_rodin", "hunyuan3d", "code_execution"]
+    },
+    "governance-bridge": {
+      "command": "node",
+      "args": ["/opt/agentbox/mcp/servers/governance-bridge.js"],
+      "type": "stdio",
+      "env": {
+        "AGENTBOX_PUBKEY": "${AGENTBOX_PUBKEY:-}",
+        "AGENTBOX_POD_ROOT": "${AGENTBOX_POD_ROOT:-/var/lib/agentbox}"
+      },
+      "description": "Governance tools for the Judgment Broker — 5 tools (governance_publish_panel/request_action/update_panel/retire_panel/list_decisions). Constructs valid PanelDefinition (31400), ActionRequest (31402), PanelUpdate (31404), PanelRetire (31405) Nostr events and reads ActionResponse (31403) decisions.",
+      "protocol": "stdio",
+      "version": "0.1.0"
     }
   },
   "external_bridge": {

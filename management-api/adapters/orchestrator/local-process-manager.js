@@ -10,6 +10,8 @@
  * @see PRD-001 §Capabilities and adapters
  */
 
+const fs = require('fs');
+const path = require('path');
 const { spawn } = require('child_process');
 const { BaseAdapter } = require('../base');
 const { NotFound, SpawnError } = require('../errors');
@@ -105,6 +107,181 @@ class LocalProcessManagerOrchestratorAdapter extends BaseAdapter {
       agents.push({ agentId, status, pid });
     }
     return { agents };
+  }
+
+  /**
+   * Handle an inbound governance decision (ACTION_RESPONSE, kind 31403).
+   *
+   * If a running agent matches the case reference, the decision is written
+   * to that agent's stdin as a JSON line. Otherwise it is persisted to the
+   * pod governance directory for later pickup.
+   *
+   * @param {object} event - Nostr event (kind 31403)
+   * @returns {{ dispatched: boolean, target: string, event_id: string }}
+   */
+  async handleGovernanceDecision(event) {
+    if (!event || !event.id) throw new Error('event with id is required');
+
+    let parsed;
+    try {
+      parsed = typeof event.content === 'string' ? JSON.parse(event.content) : event.content;
+    } catch (_) {
+      parsed = { raw: event.content };
+    }
+
+    const caseId   = parsed.case_id || null;
+    const outcome  = parsed.outcome || null;
+    const reason   = parsed.reason || null;
+    const decidedAt = new Date().toISOString();
+    const decidingPubkey = event.pubkey
+      || process.env.AGENTBOX_X_ONLY_PUBKEY_HEX
+      || process.env.AGENTBOX_PUBKEY
+      || '0'.repeat(64);
+
+    // ── PROV-O provenance URN minting ────────────────────────────────
+    // activity and receipt are content-addressed + owner-scoped kinds
+    // (ADR-013), so we pass payload (not localId).
+    let activityUrn = null;
+    let receiptUrn = null;
+    try {
+      activityUrn = uris.mint({
+        kind: 'activity',
+        pubkey: decidingPubkey,
+        payload: {
+          type: 'governance-decision',
+          case_id: caseId,
+          event_id: event.id,
+          outcome,
+          decided_at: decidedAt,
+        },
+      });
+      receiptUrn = uris.mint({
+        kind: 'receipt',
+        pubkey: decidingPubkey,
+        payload: {
+          type: 'governance-receipt',
+          case_id: caseId,
+          event_id: event.id,
+          outcome,
+          decided_by: decidingPubkey,
+          decided_at: decidedAt,
+        },
+      });
+    } catch (_) {
+      // URN minting failure is non-fatal; provenance degrades gracefully.
+    }
+
+    // Locate the d tag or e tag reference from the original ActionRequest.
+    const tags   = event.tags || [];
+    const dTag   = (tags.find(t => t[0] === 'd') || [])[1] || null;
+    const eTag   = (tags.find(t => t[0] === 'e') || [])[1] || null;
+    const refId  = dTag || eTag;
+
+    // Search running agents for a match on the reference id.
+    let matchedEntry = null;
+    if (refId) {
+      for (const entry of this._agents.values()) {
+        if (entry.agentId === refId || entry.status === 'running') {
+          // Prefer exact agentId match; fall back to first running agent
+          // whose spec contains a matching case reference.
+          if (entry.agentId === refId) {
+            matchedEntry = entry;
+            break;
+          }
+        }
+      }
+    }
+
+    const decision = {
+      type:         'governance_decision',
+      event_id:     event.id,
+      case_id:      caseId,
+      outcome,
+      reason,
+      decided_by:   event.pubkey,
+      decided_at:   event.created_at,
+      activity_urn: activityUrn,
+      receipt_urn:  receiptUrn,
+    };
+
+    if (matchedEntry && matchedEntry.proc && matchedEntry.proc.stdin) {
+      try {
+        matchedEntry.proc.stdin.write(JSON.stringify(decision) + '\n');
+      } catch (_) {
+        // stdin may have closed; fall through to file persistence.
+        matchedEntry = null;
+      }
+    }
+
+    // ── Provenance record persistence ────────────────────────────────
+    // Write a PROV-O-aligned provenance record to the pod's governance
+    // provenance directory, separate from the raw decision event.
+    const provenanceRecord = {
+      activity_urn: activityUrn,
+      receipt_urn:  receiptUrn,
+      case_id:      caseId,
+      event_id:     event.id,
+      decision:     outcome,
+      decided_by:   event.pubkey || 'unknown',
+      decided_at:   decidedAt,
+      agent_did:    `did:nostr:${decidingPubkey}`,
+      source_event_ids: {
+        request:  eTag || null,
+        response: event.id,
+      },
+    };
+
+    const npub = process.env.AGENTBOX_NPUB || '';
+    const podRoot = process.env.SOLID_POD_ROOT || '/var/lib/solid';
+    if (npub) {
+      try {
+        const provDir = path.join(podRoot, 'pods', npub, 'provenance', 'governance');
+        fs.mkdirSync(provDir, { recursive: true });
+        const target = path.join(provDir, `${encodeURIComponent(caseId || event.id)}.json`);
+        const tmp = path.join(provDir, `.${event.id}.${process.pid}.tmp`);
+        fs.writeFileSync(tmp, JSON.stringify(provenanceRecord, null, 2), 'utf8');
+        fs.renameSync(tmp, target);
+      } catch (_) {
+        // Best-effort provenance persistence.
+      }
+    }
+
+    // Emit lifecycle event if we have a matched agent with handlers.
+    if (matchedEntry) {
+      for (const h of matchedEntry.handlers) {
+        try {
+          h({
+            ts:      decidedAt,
+            agentId: matchedEntry.agentId,
+            kind:    'governance-decision',
+            payload: { event_id: event.id, case_id: caseId, outcome, activity_urn: activityUrn, receipt_urn: receiptUrn },
+          });
+        } catch (_) {}
+      }
+      return { dispatched: true, target: matchedEntry.agentId, event_id: event.id, activity_urn: activityUrn, receipt_urn: receiptUrn };
+    }
+
+    // No matching running agent — persist to the governance decisions directory.
+    const pubkey = process.env.AGENTBOX_PUBKEY || null;
+    let govDir;
+    if (pubkey) {
+      const npubFallback = `npub-${pubkey.slice(0, 16)}`;
+      govDir = path.join(process.cwd(), 'pods', npubFallback, 'events', 'governance', 'decisions');
+    } else {
+      govDir = path.join(process.cwd(), 'governance', 'decisions');
+    }
+
+    try {
+      fs.mkdirSync(govDir, { recursive: true });
+      const target = path.join(govDir, `${event.id}.json`);
+      const tmp = path.join(govDir, `.${event.id}.${process.pid}.tmp`);
+      fs.writeFileSync(tmp, JSON.stringify(decision, null, 2));
+      fs.renameSync(tmp, target);
+    } catch (_) {
+      // Best-effort persistence; the relay-consumer already wrote the raw event.
+    }
+
+    return { dispatched: true, target: 'file', event_id: event.id, activity_urn: activityUrn, receipt_urn: receiptUrn };
   }
 
   /**
