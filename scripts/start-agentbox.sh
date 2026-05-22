@@ -1559,7 +1559,6 @@ for section_fn in "${SECTIONS[@]}"; do
 
   # Between sections, offer navigation: continue, skip, or exit.
   if [[ "${CURRENT_SECTION}" -gt 1 ]]; then
-    local nav_choice
     nav_choice="$(wt_menu \
       "[${CURRENT_SECTION}/${TOTAL_SECTIONS}] ${local_name}" \
       "Next section: ${local_name}\n\nContinue: configure this section\nSkip: accept defaults and move on\nSave & Exit: write current state and quit\nQuit: discard changes and exit" \
