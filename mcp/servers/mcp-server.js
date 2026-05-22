@@ -65,43 +65,6 @@ async function podMemoryRetrieve(key, namespace) {
   return null;
 }
 
-// Initialize agent tracker
-await import('./implementations/agent-tracker.js').catch(() => {
-  // If ES module import fails, try require
-  try {
-    require('./implementations/agent-tracker');
-  } catch (e) {
-    console.log('Agent tracker not loaded');
-  }
-});
-
-// PATCHED: Verify agent tracker is available
-if (global.agentTracker) {
-  console.error(`[${new Date().toISOString()}] INFO [claude-flow-mcp] Agent tracker verified and ready`);
-} else {
-  console.error(`[${new Date().toISOString()}] ERROR [claude-flow-mcp] Agent tracker NOT available - agent tracking will not work!`);
-}
-
-// Initialize DAA manager
-await import('./implementations/daa-tools.js').catch(() => {
-  // If ES module import fails, try require
-  try {
-    require('./implementations/daa-tools');
-  } catch (e) {
-    console.log('DAA manager not loaded');
-  }
-});
-
-// Initialize Workflow and Performance managers
-await import('./implementations/workflow-tools.js').catch(() => {
-  // If ES module import fails, try require
-  try {
-    require('./implementations/workflow-tools');
-  } catch (e) {
-    console.log('Workflow tools not loaded');
-  }
-});
-
 // Initialize RAGFlow integration (visionclaw_network network)
 await import('./implementations/ragflow-tools.js').catch(() => {
   // If ES module import fails, try require

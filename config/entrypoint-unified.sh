@@ -493,6 +493,25 @@ with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
   fi
 fi
 
+# ── Ontology bridge MCP: register when [skills.ontology] enabled ──
+_ONTOLOGY_BRIDGE="/opt/agentbox/mcp/servers/ontology-bridge.js"
+if [ "${ENABLE_ONTOLOGY:-false}" = "true" ] && [ -f "$_ONTOLOGY_BRIDGE" ] && [ -f "$_MCP_JSON" ]; then
+  if ! grep -q "ontology-bridge" "$_MCP_JSON" 2>/dev/null; then
+    python3 -c "
+import json
+with open('$_MCP_JSON') as f: cfg = json.load(f)
+cfg.setdefault('mcpServers', {})['ontology-bridge'] = {
+  'command': 'node',
+  'args': ['$_ONTOLOGY_BRIDGE'],
+  'type': 'stdio',
+  'env': {'VISIONCLAW_API_URL': '${VISIONCLAW_API_URL:-http://webxr:4000}'}
+}
+with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
+" 2>/dev/null && echo "  [mcp] Added ontology-bridge → ${VISIONCLAW_API_URL:-http://webxr:4000}" || true
+    chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
+  fi
+fi
+
 # ── Xinference embedding sidecar: wait for readiness + ensure model loaded ──
 # The ruvector-mcp.cjs server checks xinference exactly once at startup. If
 # xinference isn't ready by then, semantic search degrades to ILIKE for the
@@ -721,7 +740,10 @@ cat > "$RUNTIME_ENV_FILE" <<EOF
 export WORKSPACE="$WORKSPACE"
 export RUVECTOR_DATA_DIR="$RUVECTOR_DATA_DIR"
 export RUVECTOR_PORT="$RUVECTOR_PORT"
-export RUVECTOR_PG_CONNINFO="${RUVECTOR_PG_CONNINFO:-postgresql://ruvector:ruvector@ruvector-postgres:5432/ruvector}"
+: "${RUVECTOR_PG_PASSWORD:=ruvector}"
+RUVECTOR_PG_CONNINFO="${RUVECTOR_PG_CONNINFO:-postgresql://ruvector:ruvector@ruvector-postgres:5432/ruvector}"
+RUVECTOR_PG_CONNINFO="${RUVECTOR_PG_CONNINFO//@@RUVECTOR_PG_PASSWORD@@/$RUVECTOR_PG_PASSWORD}"
+export RUVECTOR_PG_CONNINFO
 export SOLID_POD_ROOT="${SOLID_POD_ROOT:-/var/lib/solid}"
 export AGENTBOX_CONFIG="${AGENTBOX_CONFIG:-/etc/agentbox.toml}"
 export SKILLS_TREE="${SKILLS_TREE:-/opt/agentbox/skills}"

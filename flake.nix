@@ -2160,6 +2160,8 @@ ${ragflowNetworkDecl}
           "ENABLE_VOYAGER=${boolEnv ((skillsCfg.voyager_skill_library or {}).enabled or false)}"
           "ENABLE_ACI_SHELL=${boolEnv ((skillsCfg.aci_shell or {}).enabled or false)}"
           "ENABLE_TREE_SEARCH_CODER=${boolEnv ((skillsCfg.tree_search_coder or {}).enabled or false)}"
+          "ENABLE_ONTOLOGY=${boolEnv ((skillsCfg.ontology or {}).enabled or false)}"
+          "VISIONCLAW_API_URL=${(skillsCfg.ontology or {}).visionclaw_api_url or "http://webxr:4000"}"
           "AGENTBOX_KERNEL_WHEELHOUSE=/var/lib/agentbox/code-interpreter-wheelhouse"
           "AGENTBOX_CODE_HARNESS_DIR=/var/lib/agentbox/code-harness"
           # ─────────────────────────────────────────────────────────────────

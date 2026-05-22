@@ -407,6 +407,7 @@ spend_cap_usd = 0.50
 
 [skills.ontology]
 enabled = true
+visionclaw_api_url = "http://webxr:4000"
 
 [providers.anthropic]
 enabled = true

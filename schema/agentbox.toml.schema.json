@@ -223,7 +223,12 @@
           "properties": {
             "enabled": {
               "type": "boolean",
-              "description": "Logseq OWL2 DL tools."
+              "description": "VisionClaw ontology bridge — OWL2 DL class lookup, knowledge graph query, SPARQL (ADR-023)."
+            },
+            "visionclaw_api_url": {
+              "type": "string",
+              "description": "VisionClaw REST API base URL (default: http://webxr:4000).",
+              "default": "http://webxr:4000"
             }
           }
         },

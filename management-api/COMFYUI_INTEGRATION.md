@@ -188,28 +188,17 @@ Management API (Port 9090)
 - Test script
 - File listing (models, outputs)
 
-⚠️ **Needs Integration**:
-- Actual ComfyUI API connection (currently simulated)
-- Real GPU metrics collection
-- ComfyUI WebSocket client for live updates
+✅ **Integrated** (as of alpha.15):
+- ComfyUI HTTP API connection via `comfyui-manager.js` (`fetch` to `/prompt`, `/history`, `/queue`)
+- Payment gate wired on POST route (`preHandler: paymentGate({ costSats: 100, tier: 'gpu' })`)
 
-## Next Steps for Full Integration
+⚠️ **Remaining**:
+- Real GPU metrics collection (nvidia-smi polling)
+- ComfyUI WebSocket client for live progress updates
 
-To connect to an actual ComfyUI instance:
+## Extending the Integration
 
-1. **Install ComfyUI WebSocket Client**
-   ```bash
-   npm install ws
-   ```
-
-2. **Update comfyui-manager.js**
-   - Replace `_simulateProgress()` with ComfyUI WebSocket client
-   - Connect to ComfyUI API at http://localhost:8188
-   - Map ComfyUI events to internal event system
-
-3. **Add GPU Monitoring**
-   - Use nvidia-smi or similar for GPU metrics
-   - Update metrics periodically
+To add live progress updates:
 
 4. **Example Integration Code**:
    ```javascript
