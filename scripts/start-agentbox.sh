@@ -41,6 +41,9 @@ trap abort_wizard INT TERM
 _wt_run() {
   local rc=0
   "$@" || rc=$?
+  # Restore terminal — whiptail may leave it in a mode where Ctrl+C doesn't
+  # generate SIGINT. Restoring here ensures the next keypress works correctly.
+  stty sane 2>/dev/null || true
   if [[ "${rc}" == "130" || "${rc}" == "143" ]]; then
     abort_wizard
   fi
@@ -296,16 +299,26 @@ wt_msgbox() {
 # On warnings-only, shows an info msgbox but lets the section advance.
 validate_candidate() {
   python3 "${TUI_WRITE}" "${STATE_JSON}" "${CANDIDATE_TOML}" "${CONFIG_FILE}"
-  local stderr_out rc
-  stderr_out="$(node "${VALIDATOR}" "${CANDIDATE_TOML}" 2>&1 >/dev/null)" && rc=0 || rc=$?
+  local all_out rc
+  all_out="$(node "${VALIDATOR}" "${CANDIDATE_TOML}" 2>&1 >/dev/null)" && rc=0 || rc=$?
   if [[ "${rc}" != "0" ]]; then
-    wt_msgbox "Validation Errors" \
-      "Current selections produced errors. Correct them before proceeding.\n\n${stderr_out}"
-    return 1
+    # E017 (missing API key) and E014 (missing runtime token) require env vars
+    # that can only be supplied in the providers section or at deploy time.
+    # Strip them from the per-section blocking check so earlier sections are
+    # not permanently gated on keys the user hasn't had a chance to enter yet.
+    local blocking
+    blocking="$(printf '%s\n' "${all_out}" | grep -E '^E[0-9]' | grep -vE '^E01[47]')"
+    if [[ -n "${blocking}" ]]; then
+      wt_msgbox "Validation Errors" \
+        "Current selections produced errors. Correct them before proceeding.\n\n${blocking}"
+      return 1
+    fi
   fi
-  if [[ -n "${stderr_out}" ]]; then
+  local warnings
+  warnings="$(printf '%s\n' "${all_out}" | grep -E '^W[0-9]')"
+  if [[ -n "${warnings}" ]]; then
     wt_msgbox "Advisory Warnings" \
-      "Validator passed, but raised advisory warnings (W-codes).\nThese are direction signals, not blockers — you can proceed.\n\n${stderr_out}"
+      "Validator passed, but raised advisory warnings (W-codes).\nThese are direction signals, not blockers — you can proceed.\n\n${warnings}"
   fi
   return 0
 }
@@ -366,6 +379,10 @@ fi
 python3 "${TUI_READ}" "${CONFIG_FILE}" "${STATE_JSON}"
 # Apply detected GPU default only when manifest currently has "none"
 [[ "$(state_get 'gpu.backend')" == "none" ]] && state_set "gpu.backend" "${DETECTED_GPU}"
+
+# Source .env now so the validator can see pre-configured API keys (E017/E014)
+# rather than blocking users in early sections before they reach providers.
+[[ -f "${ENV_FILE}" ]] && set -a && source "${ENV_FILE}" 2>/dev/null && set +a || true
 
 # ════════════════════════════════════════════════════════════════════════════════
 # SECTION 1 — federation
@@ -1442,7 +1459,7 @@ TOTAL_SECTIONS=${#SECTIONS[@]}
 CURRENT_SECTION=0
 
 for section_fn in "${SECTIONS[@]}"; do
-  ((CURRENT_SECTION++))
+  (( ++CURRENT_SECTION ))
   local_name="${SECTION_NAMES[$((CURRENT_SECTION-1))]}"
   if [[ -n "${GUM}" ]]; then
     "${GUM}" style --foreground "#565f89" "  [${CURRENT_SECTION}/${TOTAL_SECTIONS}] ${local_name}" >&2
@@ -1451,6 +1468,10 @@ for section_fn in "${SECTIONS[@]}"; do
   fi
   while true; do
     "${section_fn}" && break
+    _sec_rc=$?
+    # Signal-exit codes (128+N) that somehow escape section functions should
+    # terminate the wizard rather than retrying the section forever.
+    (( _sec_rc >= 128 )) && exit "${_sec_rc}"
   done
 done
 

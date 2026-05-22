@@ -52,7 +52,7 @@ state = {
     "toolchains.claude_flow":     g("toolchains", "claude_flow",     default=True),
     "toolchains.agentic_qe":      g("toolchains", "agentic_qe",      default=True),
     "toolchains.nagual_qe":       g("toolchains", "nagual_qe",       default=True),
-    "toolchains.gemini_cli":      g("toolchains", "gemini_cli",      default=False),
+    "toolchains.antigravity_cli":  g("toolchains", "antigravity_cli",  default=False),
     "toolchains.codex":           g("toolchains", "codex",           default=False),
     "toolchains.code_server":     g("toolchains", "code_server",     default=False),
     "toolchains.codebase_memory": g("toolchains", "codebase_memory", default=True),
@@ -109,7 +109,7 @@ state = {
     "integrations.comfyui_external.enabled":       g("integrations","comfyui_external","enabled",            default=False),
     "integrations.comfyui_external.url":           g("integrations","comfyui_external","url",                default="http://comfyui:8188"),
     "integrations.comfyui_external.ws_url":        g("integrations","comfyui_external","ws_url",             default="ws://comfyui:8188/ws"),
-    "integrations.ruvector_external.enabled":      g("integrations","ruvector_external","enabled",           default=False),
+    "integrations.ruvector_external.enabled":      bool(g("integrations","ruvector_external","conninfo") or g("integrations","ruvector_external","enabled", default=False)),
     "integrations.ruvector_external.conninfo":     g("integrations","ruvector_external","conninfo",          default=""),
     # ── privacy filter (ADR-008) ─────────────────────────────────────────────────
     # ── consultant tier (ADR-011 / PRD-005) ──────────────────────────────────────
@@ -117,7 +117,7 @@ state = {
     "consultants.intelligence_signal":g("consultants", "intelligence_signal",default=False),
     "consultants.log_dir":            g("consultants", "log_dir",            default="/var/lib/agentbox/consultations"),
     "consultants.codex.enabled":      g("consultants", "codex", "enabled",      default=False),
-    "consultants.gemini.enabled":     g("consultants", "gemini", "enabled",     default=False),
+    "consultants.antigravity.enabled": g("consultants", "antigravity", "enabled", default=False),
     "consultants.zai.enabled":        g("consultants", "zai", "enabled",        default=False),
     "consultants.perplexity.enabled": g("consultants", "perplexity", "enabled", default=False),
     "consultants.deepseek.enabled":   g("consultants", "deepseek", "enabled",   default=False),

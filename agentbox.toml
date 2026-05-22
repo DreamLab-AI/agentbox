@@ -225,7 +225,7 @@ pricing_mode = "operator"
 
 [desktop]
 enabled = true
-stack = "xorg-nvidia"
+stack = "x11-openbox"
 resolution = "1920x1080"
 # WebGPU flag retained for desktop apps (QGIS, Blender) that use GPU.
 # Browser automation is handled exclusively by the external browsercontainer
@@ -275,6 +275,7 @@ admin_access_mode = "permissive"
 # string structure; the entrypoint substitutes the live password before
 # the management-api consumes it.
 [integrations.ruvector_external]
+enabled  = true
 conninfo = "postgresql://ruvector:@@RUVECTOR_PG_PASSWORD@@@ruvector-postgres:5432/ruvector"
 
 [integrations.comfyui_external]
