@@ -1505,14 +1505,16 @@ stderr_logfile=/var/log/tmux-autostart.error.log
         # container can reach the browsercontainer sidecar (and ragflow
         # when enabled) via Docker DNS on visionclaw_network.
         ragflowNetworkDecl = ''
-  visionclaw_network:
+  default:
+  visionclaw:
+    name: visionclaw_network
     external: true'';
 
         # agentbox network attachment block — unconditional.
         agentboxNetworks = ''
     networks:
       - default
-      - visionclaw_network'';
+      - visionclaw'';
 
         # Extra hosts. The host-gateway alias is gated by
         # [networking].host_gateway = true (Q17): air-gapped and hardened
@@ -2123,6 +2125,7 @@ ${ragflowNetworkDecl}
           "SOLID_POD_ENABLED=${boolEnv (sovereignCfg.solid_pod or false)}"
           "SOLID_POD_ROOT=/var/lib/solid"
           "SOLID_POD_PORT=8484"
+          "SOLID_ADMIN_KEY=\${SOLID_ADMIN_KEY:-}"
           "SOLID_REQUIRE_NIP98=${boolEnv (sovereignCfg.enabled or false)}"
           "NOSTR_BRIDGE_ENABLED=${boolEnv (sovereignCfg.nostr_bridge or false)}"
           "NOSTR_BRIDGE_PORT=9740"

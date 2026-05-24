@@ -24,8 +24,6 @@ services:
       - "8888:8888"
       - "5901:5901"
       - "8080:8080"
-      # Uncomment for mesh.mode = "federated" (PRD-010 F17)
-      # - "7777:7777"
 
     environment:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
@@ -34,8 +32,8 @@ services:
       - OPENAI_BASE_URL=${OPENAI_BASE_URL:-http://ollama:11434/v1}
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ollama:11434}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:32b-instruct}
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
       - GOOGLE_GEMINI_API_KEY=${GOOGLE_GEMINI_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - MANAGEMENT_API_KEY=${MANAGEMENT_API_KEY:-}
       - MANAGEMENT_API_AUTH_MODE=${MANAGEMENT_API_AUTH_MODE:-hybrid}
       - NOSTR_RELAYS=${NOSTR_RELAYS:-wss://relay.damus.io,wss://relay.primal.net}
@@ -43,8 +41,8 @@ services:
       - AGENTBOX_METRICS_PORT=9091
       - AGENTBOX_OTLP_ENDPOINT=
       - AGENTBOX_LOG_LEVEL=info
-      - SOLID_ADMIN_KEY=${SOLID_ADMIN_KEY:-}
-      - SOLID_ALLOWED_ORIGINS=${SOLID_ALLOWED_ORIGINS:-https://dreamlab-ai.com}
+      - XINFERENCE_ENDPOINT=${XINFERENCE_ENDPOINT:-http://xinference:9997}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-bge-small-en-v1.5}
     # Baseline: supervisord runs as PID 1 root, with per-program `user=devuser`
     # drops on every long-running service. Root is required at boot for
     # tmpfs subdir creation, sudoers wrapper provisioning (chown 0:0 +
@@ -61,6 +59,7 @@ services:
       - SETGID
       - AUDIT_WRITE
       - KILL
+      - NET_ADMIN
 
     tmpfs:
       - /tmp:mode=1777,size=256M
@@ -77,17 +76,12 @@ services:
       - /home/devuser/.antigravity:mode=755,size=256M,uid=1000,gid=1000
       - /var/cache:mode=755,size=512M,uid=1000,gid=1000
       - /usr/local/bin:mode=755,size=8M,exec,suid
+      - /app/mcp-logs:mode=755,size=100M,uid=1000,gid=1000
       - /tmp/.X11-unix:mode=1777
       - /run/user/1000:mode=700,uid=1000,gid=1000
     security_opt:
       - no-new-privileges:true
       - seccomp=./config/seccomp-agentbox.json
-      - no-new-privileges:false
-
-    networks:
-      - default
-      - visionclaw
-
     volumes:
       - ./agentbox.toml:/etc/agentbox.toml:ro
       - ./workspace:/home/devuser/workspace
@@ -96,17 +90,17 @@ services:
       - solid-data:/var/lib/solid
       - sovereign-identities:/var/lib/agentbox/identities
       - agentbox-secrets:/var/lib/agentbox/secrets
+      - code-harness-data:/var/lib/agentbox/code-harness
+      - agentbox-events:/var/lib/agentbox/events
       - codeserver-config:/home/devuser/.local/share/code-server
+      - consultations-data:/var/lib/agentbox/consultations
       - nostr-relay-data:/var/lib/nostr-relay
+      - tailscale-state:/var/lib/tailscale
       - ctm-config:/home/devuser/.config/claude-telegram-mirror
-      - cargo-home:/home/devuser/.cargo
 
-
-
-networks:
-  visionclaw:
-    external: true
-    name: visionclaw_network
+    networks:
+      - default
+      - visionclaw
 
 volumes:
   ruvector-data:
@@ -117,16 +111,23 @@ volumes:
     name: agentbox-sovereign-identities
   agentbox-secrets:
     name: agentbox-secrets
-  codeserver-config:
-    name: agentbox-codeserver-config
-  nostr-relay-data:
-    name: agentbox-nostr-relay-data
-  ctm-config:
-    name: agentbox-ctm-config
-  cargo-home:
-    name: agentbox-cargo-home
   code-harness-data:
     name: agentbox-code-harness-data
   agentbox-events:
     name: agentbox-events
+  codeserver-config:
+    name: agentbox-codeserver-config
+  consultations-data:
+    name: agentbox-consultations-data
+  nostr-relay-data:
+    name: agentbox-nostr-relay-data
+  tailscale-state:
+    name: agentbox-tailscale-state
+  ctm-config:
+    name: agentbox-ctm-config
 
+networks:
+  default:
+  visionclaw:
+    name: visionclaw_network
+    external: true
