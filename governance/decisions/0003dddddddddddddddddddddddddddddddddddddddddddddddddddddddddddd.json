@@ -1,0 +1,11 @@
+{
+  "type": "governance_decision",
+  "event_id": "0003dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "case_id": "case-governance-test-001",
+  "outcome": "approve",
+  "reason": "Concepts verified by domain expert.",
+  "decided_by": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "decided_at": 1779471042,
+  "activity_urn": "urn:agentbox:activity:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:sha256-12-69218146b930",
+  "receipt_urn": "urn:agentbox:receipt:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:sha256-12-fd97a475cb1e"
+}

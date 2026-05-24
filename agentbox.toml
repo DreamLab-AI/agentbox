@@ -178,7 +178,7 @@ honor_remote_moderation = false          # accept kind-30910 bans from peers
 # TAILSCALE_AUTHKEY in .env and flip this to true. Leaving it false also
 # removes the NET_ADMIN cap_add and the [security.exceptions.tailscale]
 # block from the active set, tightening the default attack surface.
-tailscale = false
+tailscale = true
 # MagicDNS hostname on the tailnet. Must be unique per instance.
 # This becomes the service discovery name for federation:
 #   solid-pod-rs at http://agentbox.tailnet-name.ts.net:8484
@@ -895,6 +895,11 @@ writable_volumes = ["ctm-config:/home/devuser/.config/claude-telegram-mirror"]
 [security.exceptions.gpu-cuda]
 writable_volumes = []
 reason = "CUDA runtime requires device access; no additional writable volumes needed"
+
+[security.exceptions.tailscale]
+writable_volumes = ["tailscale-state:/var/lib/tailscale"]
+cap_add = ["NET_ADMIN"]
+reason = "tailscaled needs persistent state dir and NET_ADMIN for userspace networking socket"
 
 [security.exceptions.nostr-relay]
 writable_volumes = ["nostr-relay-data:/var/lib/nostr-relay"]
