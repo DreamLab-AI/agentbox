@@ -214,7 +214,7 @@ fi
 # block runs after window 13 (all profile setup complete) for clarity, but the
 # variable itself is set here unconditionally.
 WORKTREE_BASE="${WORKSPACE:-${HOME}/workspace}/worktrees"
-mkdir -p "${WORKTREE_BASE}"
+mkdir -p "${WORKTREE_BASE}/antigravity" "${WORKTREE_BASE}/deepseek" "${WORKTREE_BASE}/ollama"
 
 # ============================================================================
 # Window 10: Antigravity — Google Gemini CLI (profile-isolated)
@@ -225,7 +225,7 @@ AG_WORKSPACE="${WORKSPACE:-${HOME}/workspace}"
 AG_PROFILE="${AG_WORKSPACE}/profiles/antigravity"
 AG_GEMINI_DIR="${AG_PROFILE}/.gemini"
 
-mkdir -p "${AG_GEMINI_DIR}"
+mkdir -p "${AG_GEMINI_DIR}" "${AG_PROFILE}/.cache/starship"
 sudo chown -R devuser:devuser "${AG_PROFILE}" 2>/dev/null || true
 
 _AG_KEY="${GOOGLE_GEMINI_API_KEY:-${GOOGLE_API_KEY:-}}"
@@ -258,7 +258,7 @@ DS_WORKSPACE="${WORKSPACE:-${HOME}/workspace}"
 DS_PROFILE="${DS_WORKSPACE}/profiles/deepseek"
 DS_CODEWHALE_DIR="${DS_PROFILE}/.codewhale"
 
-mkdir -p "${DS_CODEWHALE_DIR}"
+mkdir -p "${DS_CODEWHALE_DIR}" "${DS_PROFILE}/.cache/starship"
 sudo chown -R devuser:devuser "${DS_PROFILE}" 2>/dev/null || true
 
 if [ -n "${DEEPSEEK_API_KEY:-}" ]; then
@@ -290,7 +290,7 @@ fi
 PX_WORKSPACE="${WORKSPACE:-${HOME}/workspace}"
 PX_PROFILE="${PX_WORKSPACE}/profiles/perplexity"
 
-mkdir -p "${PX_PROFILE}"
+mkdir -p "${PX_PROFILE}" "${PX_PROFILE}/.cache/starship"
 sudo chown -R devuser:devuser "${PX_PROFILE}" 2>/dev/null || true
 
 if [ -n "${PERPLEXITY_API_KEY:-}" ]; then
@@ -326,7 +326,7 @@ OL_PROFILE="${OL_WORKSPACE}/profiles/ollama"
 _OL_MODEL="${OLLAMA_MODEL:-qwen2.5:32b-instruct}"
 _OL_BASE_URL="${OLLAMA_BASE_URL:-http://ollama:11434}"
 
-mkdir -p "${OL_PROFILE}"
+mkdir -p "${OL_PROFILE}" "${OL_PROFILE}/.cache/starship"
 sudo chown -R devuser:devuser "${OL_PROFILE}" 2>/dev/null || true
 
 [ -L "${OL_PROFILE}/workspace" ] || ln -sfn "${OL_WORKSPACE}" "${OL_PROFILE}/workspace" 2>/dev/null || true
