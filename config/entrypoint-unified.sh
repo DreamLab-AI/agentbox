@@ -143,6 +143,14 @@ if [ -d "$WORKSPACE" ]; then
   chown 1000:1000 "$WORKSPACE" 2>/dev/null || true
 fi
 
+# Docker socket: make accessible to devuser (gid 965 on host, not mapped
+# inside container). group_add in compose only affects PID 1's supplementary
+# groups, not processes that later switch to devuser via supervisord user=.
+# chmod o+rw is safe here — this is a single-user dev container.
+if [ -S /var/run/docker.sock ]; then
+  chmod o+rw /var/run/docker.sock 2>/dev/null || true
+fi
+
 # Claude-flow data directory (hooks write here as devuser)
 mkdir -p /home/devuser/.claude-flow/data 2>/dev/null || true
 chown -R 1000:1000 /home/devuser/.claude-flow 2>/dev/null || true
@@ -285,6 +293,16 @@ fi
 # ---------------------------------------------------------------------------
 echo "[4/8] Provisioning agent stacks..."
 python3 /opt/agentbox/scripts/provision-agent-stacks.py
+
+# provision-agent-stacks.py runs as root so the profile dirs land under
+# root:root with mode 755 — fine for static files (.env, README, settings.json)
+# but starship/atuin/etc. need to write per-profile cache and state. The
+# previous fix in tmux-autostart.sh tried `sudo chown` from devuser, which is
+# blocked by no_new_privileges:true. Doing it here, as root pre-supervisord,
+# is the only place chown can actually succeed.
+if [ -d "$WORKSPACE/profiles" ]; then
+  chown -R 1000:1000 "$WORKSPACE/profiles" 2>/dev/null || true
+fi
 
 # ---------------------------------------------------------------------------
 # Phase 5a — Artifact validation (must pass before supervisord starts)
