@@ -100,7 +100,7 @@ Your `agentbox.toml` manifest toggles capabilities on or off. Disabled features 
 | **Data science and docs** | PyTorch, Jupyter Lab, LaTeX, Mermaid rendering |
 | **Code-as-Harness** | Persistent Python kernel MCP, ExpeL post-task lesson distillation, Voyager verified-skill library, SWE-agent ACI MCP, execution-gated tree-search (PRD-008) |
 | **Governance** | Agent Control Surface Protocol (kinds 31400-31405) — cross-repo human-in-the-loop integration with the DreamLab forum and VisionClaw's BrokerActor via the embedded relay |
-| **Operations** | OTLP tracing, Prometheus metrics (`:9191/metrics`), Tailscale VPN integration |
+| **Operations** | OTLP tracing, Prometheus metrics (`:9091/metrics`), Tailscale VPN integration |
 
 ### Code-as-Harness (PRD-008)
 

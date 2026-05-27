@@ -35,7 +35,7 @@ Boot succeeded (container started) but readiness check never passed. Usually one
    ```
    Every required program must be RUNNING. A STARTING, FATAL, or EXITED program blocks the sentinel and thus `/ready`.
 
-3. **Required mount missing.** `/ready` checks `/workspace`, `/var/lib/ruvector`, `/var/lib/solid` exist.
+3. **Required mount missing.** `/ready` checks `/home/devuser/workspace`, `/var/lib/ruvector`, `/var/lib/solid` exist.
    ```sh
    docker inspect agentbox --format '{{json .Mounts}}' | jq
    ```

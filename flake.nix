@@ -340,6 +340,12 @@
           file
           tree
           tmux
+          # tmux session persistence + monitoring plugins (PRD-013 F15-F19)
+          tmuxPlugins.resurrect
+          tmuxPlugins.continuum
+          tmuxPlugins.cpu
+          tmuxPlugins.logging
+          tmuxPlugins.tmux-thumbs
           vim
           nano
           unzip
@@ -958,6 +964,18 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           mkdir -p $out/opt/agentbox/browser
           cp -rL ${linkedObjectsBrowserPkg}/. $out/opt/agentbox/browser/
           ''}
+
+          # tmux plugin loader — generated with Nix-interpolated store paths so
+          # run-shell lines resolve correctly without TPM or runtime path search.
+          # Sourced from tmux.conf via: source-file /opt/agentbox/config/tmux-plugins.conf
+          chmod -R u+w $out/opt/agentbox/config
+          cp ${pkgs.writeText "tmux-plugins.conf" ''
+            run-shell ${pkgs.tmuxPlugins.resurrect}/share/tmux-plugins/resurrect/resurrect.tmux
+            run-shell ${pkgs.tmuxPlugins.continuum}/share/tmux-plugins/continuum/continuum.tmux
+            run-shell ${pkgs.tmuxPlugins.cpu}/share/tmux-plugins/cpu/cpu.tmux
+            run-shell ${pkgs.tmuxPlugins.logging}/share/tmux-plugins/logging/logging.tmux
+            run-shell ${pkgs.tmuxPlugins.tmux-thumbs}/share/tmux-plugins/tmux-thumbs/tmux-thumbs.tmux
+          ''} $out/opt/agentbox/config/tmux-plugins.conf
 
           # `cp -r` from the Nix store preserves the read-only store bits on
           # every copied file, which blocks the subsequent node_modules and

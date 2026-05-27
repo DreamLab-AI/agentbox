@@ -285,9 +285,9 @@ memory = "external-pg"
 events = "external"
 orchestrator = "stdio-bridge"
 
-[federation]
+[mesh]
 mode = "client"
-external_url = "http://host-orchestrator:7070"
+peer_relays = ["wss://host-orchestrator:7070"]
 ```
 
 The contract test harness runs every assertion against every impl class. If a test passes for `local-sqlite` but fails for `external`, that's a real regression regardless of which deployment shape the user picks.

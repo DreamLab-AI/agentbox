@@ -103,20 +103,20 @@ Edit [`agentbox.toml`](../../agentbox.toml) before building. This file is the si
 
 Key sections:
 
-- `[federation]` — `mode = "standalone"` (default; the container is complete on its own) or `"client"` (federates with an external host mesh through adapter endpoints).
+- `[mesh]` — `mode = "standalone"` (default; the container is complete on its own) or `"client"` (federates with an external host mesh through adapter endpoints).
 - `[adapters]` — one per durable-state slot (beads, pods, memory, events, orchestrator). An `adapter` is the pluggable-backend pattern from [ADR-005](../reference/adr/ADR-005-pluggable-adapter-architecture.md): each slot resolves to `local-*`, `external`, or `off`, so you can run fully self-hosted or delegate to a host-mesh without changing code.
 - `[sovereign_mesh]` — Nostr identity + NIP-98 auth
 - `[skills.*]` — 96-skill catalogue gates
 - `[toolchains]` — core CLIs (claude, ruflo, claude_flow, agentic_qe, antigravity_cli, etc.)
 - `[gpu]` — `none` (default, no ollama sidecar) | `ollama-rocm` (ROCm/Vulkan via `/dev/kfd`+`/dev/dri`) | `ollama-cuda` (NVIDIA container runtime, sidecar only) | `local-cuda` (CUDA baked into image; required for `gaussian_splatting`)
-- `[desktop]` — TigerVNC Xvnc desktop (access via SSH tunnel to port 5902)
+- `[desktop]` — TigerVNC Xvnc desktop (access via SSH tunnel to port 5901)
 - `[observability]` — metrics port, OTLP endpoint, log level
 - `[providers.*]` — per-provider API-key gates
 
 Minimal example (standalone, local fallbacks for everything):
 
 ```toml
-[federation]
+[mesh]
 mode = "standalone"
 
 [adapters]
@@ -145,9 +145,9 @@ backend = "none"
 Federated example (drops into a host container mesh):
 
 ```toml
-[federation]
+[mesh]
 mode = "client"
-external_url = "http://host-orchestrator:7070"
+peer_relays = ["wss://host-orchestrator:7070"]
 
 [adapters]
 beads = "external"
@@ -302,8 +302,8 @@ graph TB
     SUP --> SEAL
     API --> MET
     SEAL -->|"touches sentinel"| API
-    HOST["Host (localhost only)"] -->|"127.0.0.1:9190"| API
-    HOST -->|"127.0.0.1:9191"| MET
+    HOST["Host (localhost only)"] -->|"127.0.0.1:9090"| API
+    HOST -->|"127.0.0.1:9091"| MET
     HOST -->|"127.0.0.1:8484"| SOLID
 ```
 
@@ -311,9 +311,9 @@ From the host:
 
 ```bash
 # Via SSH tunnel (ports are localhost-only on host)
-curl http://localhost:9190/health
-curl http://localhost:9190/v1/meta        # adapter contract versions + image hash
-curl http://localhost:9191/metrics        # Prometheus — scrape this
+curl http://localhost:9090/health
+curl http://localhost:9090/v1/meta        # adapter contract versions + image hash
+curl http://localhost:9091/metrics        # Prometheus — scrape this
 curl http://localhost:8484/health         # solid-pod-rs
 ```
 
@@ -334,28 +334,28 @@ All agentbox ports bind to `127.0.0.1` on the host — they are **not** exposed 
 ```mermaid
 graph LR
     subgraph laptop["Your Laptop"]
-        VNC["TigerVNC Viewer<br/>localhost:5902"]
-        BROWSER["Browser<br/>localhost:9190"]
+        VNC["TigerVNC Viewer<br/>localhost:5901"]
+        BROWSER["Browser<br/>localhost:9090"]
         CLI["SSH Terminal"]
     end
     subgraph tunnel["SSH Tunnel (encrypted)"]
-        T1["L5902:localhost:5902"]
-        T2["L9190:localhost:9190"]
-        T3["L8180:localhost:8180"]
+        T1["L5901:localhost:5901"]
+        T2["L9090:localhost:9090"]
+        T3["L8080:localhost:8080"]
     end
     subgraph host["Host Machine"]
-        D5902["127.0.0.1:5902"]
-        D9190["127.0.0.1:9190"]
-        D8180["127.0.0.1:8180"]
+        D5901["127.0.0.1:5901"]
+        D9090["127.0.0.1:9090"]
+        D8080["127.0.0.1:8080"]
     end
     subgraph agentbox["Agentbox Container"]
         XVNC[":5901 Xvnc"]
         API[":9090 Management API"]
         CODE[":8080 Code Server"]
     end
-    VNC --> T1 --> D5902 --> XVNC
-    BROWSER --> T2 --> D9190 --> API
-    CLI --> T3 --> D8180 --> CODE
+    VNC --> T1 --> D5901 --> XVNC
+    BROWSER --> T2 --> D9090 --> API
+    CLI --> T3 --> D8080 --> CODE
 ```
 
 ### Connect via SSH tunnel
@@ -363,9 +363,9 @@ graph LR
 Open all tunnels in one command:
 
 ```bash
-ssh -L 5902:localhost:5902 \
-    -L 9190:localhost:9190 \
-    -L 8180:localhost:8180 \
+ssh -L 5901:localhost:5901 \
+    -L 9090:localhost:9090 \
+    -L 8080:localhost:8080 \
     -L 8484:localhost:8484 \
     -N machinelearn@YOUR_HOST_IP
 ```
@@ -379,11 +379,11 @@ Or use the built-in helper:
 
 ### VNC desktop
 
-Once the tunnel is open, connect your VNC client to `localhost:5902`:
+Once the tunnel is open, connect your VNC client to `localhost:5901`:
 
 ```bash
-vncviewer localhost:5902          # TigerVNC
-open vnc://localhost:5902         # macOS Screen Sharing
+vncviewer localhost:5901          # TigerVNC
+open vnc://localhost:5901         # macOS Screen Sharing
 ```
 
 The desktop runs TigerVNC Xvnc with `-SecurityTypes None` (no VNC password) and `-localhost` (container-internal only). Security is provided by the SSH tunnel — no unauthenticated network access is possible.
@@ -392,15 +392,73 @@ The desktop runs TigerVNC Xvnc with `-SecurityTypes None` (no VNC password) and 
 
 | Service | Container Port | Host Binding | Access |
 |---------|---------------|-------------|--------|
-| Management API | 9090 | 127.0.0.1:9190 | SSH tunnel, NIP-98 auth |
-| VNC Desktop | 5901 | 127.0.0.1:5902 | SSH tunnel |
-| Code Server | 8080 | 127.0.0.1:8180 | SSH tunnel |
+| Management API | 9090 | 127.0.0.1:9090 | SSH tunnel, NIP-98 auth |
+| VNC Desktop | 5901 | 127.0.0.1:5901 | SSH tunnel |
+| Code Server | 8080 | 127.0.0.1:8080 | SSH tunnel |
 | Solid Pod | 8484 | 127.0.0.1:8484 | SSH tunnel, WAC auth |
-| SSH | 22 | 127.0.0.1:2223 | Direct SSH |
 | Agent Events | 9700 | 127.0.0.1:9700 | SSH tunnel |
-| Prometheus | 9091 | 127.0.0.1:9191 | SSH tunnel |
+| Prometheus | 9091 | 127.0.0.1:9091 | SSH tunnel |
 
 All ports are localhost-only on the host. The only way in from the network is through SSH authentication to the host machine.
+
+## Compose File Generation
+
+`docker-compose.yml` is **auto-generated** from `flake.nix` and `agentbox.toml`. Do not edit it by hand — changes will be overwritten the next time the compose output is regenerated, and hand-edits can desync the file from the manifest.
+
+To regenerate it after changing `agentbox.toml`:
+
+```bash
+nix build .#compose && cp result/docker-compose.yml docker-compose.yml
+```
+
+The `compose` flake output is a pure text-generation pass — it does not build the container image, so it evaluates on any system Nix runs on (including macOS and Linux aarch64). The generated file is committed to the repo so that operators without Nix can still run the stack; treat it as a build artefact rather than a source file. Per-deployment customisation belongs in `docker-compose.override.yml`, which Docker Compose merges automatically.
+
+## Environment Variables
+
+Copy `.env.example` to `.env` and fill in your values before running `./agentbox.sh up`.
+
+```bash
+cp .env.example .env
+```
+
+### API Keys
+
+| Variable | Required | Purpose |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | Yes (for Claude) | Claude Code and the `claude` toolchain |
+| `OPENAI_API_KEY` | Optional | Set to `ollama` to route through Ollama locally |
+| `OPENAI_BASE_URL` | Optional | Ollama endpoint — `http://ollama:11434/v1` (sidecar) or `http://host.docker.internal:11434/v1` (host, requires `networking.host_gateway = true`) |
+| `GOOGLE_GEMINI_API_KEY` | Optional | Gemini CLI and Gemini provider |
+| `GITHUB_TOKEN` | Optional | `gh` CLI and GitHub MCP tools |
+| `CRATES_TOKEN` | Optional | `cargo publish` for Rust ecosystem crates |
+
+### Networking and Identity
+
+| Variable | Purpose |
+|---|---|
+| `TAILSCALE_AUTHKEY` | Ephemeral auth key for Tailscale federation; leave blank to disable |
+| `TAILSCALE_HOSTNAME` | MagicDNS name for this instance (default: `agentbox`) |
+| `NOSTR_RELAYS` | Comma-separated Nostr relay URLs for the sovereign mesh |
+| `AGENTBOX_NSEC` | Pre-generated bech32 `nsec1...` private key; leave blank to auto-generate at boot |
+| `AGENTBOX_NPUB` | Operator bech32 pubkey; overrides `[sovereign_mesh.operator].pubkey_hex` in the manifest |
+
+### Infrastructure
+
+| Variable | Purpose |
+|---|---|
+| `MANAGEMENT_API_KEY` | Bearer token for the management HTTP API; auto-generated on first boot if empty |
+| `RUVECTOR_PG_PASSWORD` | PostgreSQL password for the RuVector vector store (must match the `ruvector-postgres` container) |
+| `AGENTBOX_AGENT_ID` | Stable identity label for this instance |
+
+### Feature Configuration
+
+| Variable | Purpose |
+|---|---|
+| `COMFYUI_API_ENDPOINT` | ComfyUI API URL reachable from inside the container |
+| `AGENTBOX_CPU_LIMIT` / `AGENTBOX_MEM_LIMIT` | Docker deploy resource caps (referenced by `docker-compose.override.yml`) |
+| `AGENTBOX_CPU_RESERVE` / `AGENTBOX_MEM_RESERVE` | Docker deploy reservations |
+
+Run `./agentbox.sh preflight` after editing `.env` — it validates the compose merge and checks that required variables are present before the stack starts.
 
 ## 8. Inspect Provisioned Profiles
 

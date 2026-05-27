@@ -1,452 +1,304 @@
 ---
 name: "Perplexity Research"
-description: "Execute real-time web research using Perplexity AI API with citations. Use when you need current information, UK market pricing, product availability, or technical specifications that require live web search."
+description: "Three-API Perplexity client: Search API (/search) for structured web results with domain/date filters, Agent API (/v1/agent) for multi-step deep research with reasoning, and Chat Completions (/chat/completions) for quick sonar queries. Use when you need live web research, academic citation discovery, UK ecology/policy lookups, or deep multi-step investigations with provenance."
 ---
 
-# Perplexity Research with Citations
+# Perplexity Research
 
-## What This Skill Does
+> **Native MCP tools also available.** When `PERPLEXITY_API_KEY` is set at boot,
+> the official `@perplexity-ai/mcp-server` is registered in `.mcp.json` and
+> exposes four direct Claude Code tools: `perplexity_search`, `perplexity_ask`,
+> `perplexity_research`, and `perplexity_reason`. Use those for quick one-shot
+> queries. Use this skill when you need the richer three-API surface: structured
+> `/search` with domain/date filters, `/v1/agent` deep research with multi-step
+> reasoning, or the Chat Completions endpoint for sonar model variants.
 
-Executes research queries against the Perplexity AI API to get real-time web information with citations. Ideal for market research, pricing queries, product availability, technical specifications, and any information requiring current web data.
+Three-API Perplexity client covering the full platform surface (May 2025 contracts).
 
-**Capabilities**: Real-time web search, citation tracking, UK market focus, structured research outputs.
+## When To Use
+
+- Live web search with structured results (title, URL, snippet, dates)
+- Academic citation discovery (domain-filtered to scholar/pubmed/springer/nature)
+- UK ecology and policy research (gov.uk, Natural England, JNCC, BTO)
+- Deep multi-step research with reasoning and web search tools (Agent API)
+- Quick factual queries with sonar models (Chat Completions, legacy)
 
 ## When Not To Use
 
-- For expanding and analysing specific known URLs -- use the gemini-url-context skill instead
-- For YouTube video transcript summarisation -- use the web-summary skill instead
-- For interactive browser automation (clicking, filling forms) -- use the browser or playwright skills instead
-- For information already available in the codebase or local files -- search locally first
-- For multi-step reasoning or planning tasks -- use the deepseek-reasoning skill instead
+- Known URLs needing expansion -- use `gemini-url-context`
+- YouTube transcript summarisation -- use `web-summary`
+- Interactive browser automation -- use `browser` or `playwright`
+- arXiv/PubMed/IEEE structured metadata search -- use `web-researcher` (`academic_search`)
+- Patent search -- use `web-researcher` (`patent_search`)
+- Multi-agent research with provenance verification -- use `deep-research`
+- Experiment optimisation loops -- use `autoresearch`
 
 ## Prerequisites
 
-- Python 3.8+
-- Perplexity API key in `.env` file
-- `requests` and `python-dotenv` packages
+- `PERPLEXITY_API_KEY` environment variable (or in `.env`)
+- `requests` package
 
 ---
 
-## Quick Start
+## API Surface
 
-### 1. Configure API Key
+### 1. Search API (`/search`) -- Structured Web Results
 
-Ensure your Perplexity API key is configured:
-
-```bash
-# In your project root or <your-project>/.env
-echo "PERPLEXITY_API_KEY=your_key_here" >> .env
-```
-
-### 2. Execute Research Query
-
-Use this skill when you need to:
-- Research current product availability and pricing
-- Get technical specifications from multiple sources
-- Find UK-specific market information
-- Gather information with citations for verification
-
----
-
-## Research Execution Pattern
-
-When activated, this skill will:
-
-1. **Construct Optimised Query**: Format your research request with context, task, focus, and deliverable structure
-2. **Call Perplexity API**: Use `sonar-pro` model for comprehensive research
-3. **Extract Citations**: Capture source URLs and references
-4. **Format Results**: Present findings with structured citations
-
-### API Query Template
+Returns structured results with title, URL, snippet, and dates. Supports domain filters, date filters, country, recency, and language.
 
 ```python
 import os
 import requests
-from datetime import datetime
-from pathlib import Path
-from dotenv import load_dotenv
 
-# Load API key
-load_dotenv()
-API_KEY = os.getenv("PERPLEXITY_API_KEY")
-API_URL = "https://api.perplexity.ai/chat/completions"
+API_KEY = os.environ["PERPLEXITY_API_KEY"]
+BASE = "https://api.perplexity.ai"
 
-def research_query(prompt: str, model: str = "sonar-pro"):
-    """Execute Perplexity research query with citations."""
-    headers = {
-        "Authorization": f"Bearer {API_KEY}",
-        "Content-Type": "application/json",
-    }
-
+def search(query, max_results=10, country="GB", domain_filter=None,
+           date_after=None, date_before=None, recency=None):
     payload = {
-        "model": model,
-        "messages": [
-            {
-                "role": "system",
-                "content": f"You are a helpful research assistant. Provide detailed, accurate information with current pricing and purchase links. Today's date is {datetime.now().strftime('%B %d, %Y')}."
-            },
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ],
-        "temperature": 0.2,
-        "max_tokens": 4000,
+        "query": query,
+        "max_results": min(max_results, 20),
+        "country": country,
+        "max_tokens": 10000,
+        "max_tokens_per_page": 4096,
     }
+    if domain_filter:
+        payload["search_domain_filter"] = domain_filter[:20]
+    if date_after:
+        payload["search_after_date_filter"] = date_after   # "YYYY-MM-DD"
+    if date_before:
+        payload["search_before_date_filter"] = date_before
+    if recency:
+        payload["search_recency_filter"] = recency  # "day"|"week"|"month"|"year"
 
-    response = requests.post(API_URL, headers=headers, json=payload, timeout=120)
-    response.raise_for_status()
-    return response.json()
+    resp = requests.post(f"{BASE}/search",
+        headers={"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"},
+        json=payload, timeout=60)
+    resp.raise_for_status()
+    return resp.json().get("results", [])
 ```
 
----
-
-## Prompt Structure Guidelines
-
-### Optimal Prompt Format
-
-```
-Context: [Background information about the project/need]
-
-Task: Research [specific topic] available in [region] (November 2025) that support:
-- [Requirement 1]
-- [Requirement 2]
-- [Requirement 3]
-
-Focus: [Specific products, brands, or technical criteria]
-
-Deliverable: [Expected output format - table, comparison, recommendation, etc.]
+**Response shape** (per result):
+```json
+{"title": "...", "url": "...", "snippet": "...", "date": "...", "last_updated": "..."}
 ```
 
-### Example Research Prompts
+#### Domain Filter Presets
 
-#### UK Technology Procurement
+**Academic**:
 ```python
-prompt = """Context: Designing a UK residential network with dual-WAN (5G + legacy broadband).
-
-Task: Research Ubiquiti gateway/router options available in UK market (November 2025) that support:
-- Dual-WAN with load balancing and failover
-- 10G SFP+ uplink capability
-- VLAN support and policy-based routing
-
-Focus: UniFi Dream Machine Pro, UXG-Pro, or newer 2024-2025 models.
-
-Deliverable: Comparison table with model names, specs, current UK pricing from at least 3 retailers, and stock availability. Include purchase links."""
+ACADEMIC_DOMAINS = [
+    "scholar.google.com", "researchgate.net", "academia.edu",
+    "semanticscholar.org", "pubmed.ncbi.nlm.nih.gov",
+    "sciencedirect.com", "wiley.com", "springer.com",
+    "nature.com", "jstor.org",
+]
+results = search(query, domain_filter=ACADEMIC_DOMAINS)
 ```
 
-#### Market Availability Research
+**UK Ecology / Government**:
 ```python
-prompt = """Context: Need 5G modem for UK mobile networks with external antenna support.
-
-Task: Research 5G CPE/modem options compatible with Ubiquiti networking (November 2025):
-- Ethernet WAN output (RJ45)
-- External antenna support (TS9, SMA, N-type)
-- UK 5G band support (n1, n3, n7, n20, n28, n78)
-
-Focus: Industrial/prosumer modems from Teltonika, Peplink, Mikrotik.
-
-Deliverable: Table with models, supported bands, antenna connectors, UK pricing and availability."""
+UK_ECOLOGY_DOMAINS = [
+    "gov.uk", "naturalengland.org.uk", "jncc.gov.uk",
+    "bto.org", "wildlifetrusts.org", "cieem.net",
+    "magic.defra.gov.uk", "data.gov.uk", "legislation.gov.uk",
+]
+results = search(query, domain_filter=UK_ECOLOGY_DOMAINS, country="GB")
 ```
 
----
+### 2. Agent API (`/v1/agent`) -- Deep Research with Reasoning
 
-## Response Processing
-
-### Extract Content and Citations
+Multi-step research with model-driven reasoning, web search tools, and citation extraction.
 
 ```python
-def process_response(result: dict) -> dict:
-    """Extract content and citations from Perplexity response."""
-    content = result["choices"][0]["message"]["content"]
-    citations = result.get("citations", [])
+def agent_research(prompt, instructions=None, model="anthropic/claude-sonnet-4-6",
+                   preset=None, max_steps=5, reasoning_effort="medium",
+                   search_domains=None, country="GB"):
+    payload = {
+        "input": prompt,
+        "max_output_tokens": 4096,
+        "stream": False,
+        "reasoning": {"effort": reasoning_effort},  # "low"|"medium"|"high"
+    }
+    if preset:
+        payload["preset"] = preset  # e.g. "pro-search"
+    else:
+        payload["model"] = model
+    if instructions:
+        payload["instructions"] = instructions
+    if max_steps > 1:
+        payload["max_steps"] = min(max_steps, 10)
 
+    tool_config = {"type": "web_search"}
+    if search_domains:
+        tool_config["filters"] = {"domain": search_domains}
+    tool_config["user_location"] = {
+        "country": country, "region": "Derbyshire",
+        "city": "Matlock", "latitude": 53.0694, "longitude": -1.5456,
+    }
+    payload["tools"] = [tool_config]
+
+    resp = requests.post(f"{BASE}/v1/agent",
+        headers={"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"},
+        json=payload, timeout=120)
+    resp.raise_for_status()
+    data = resp.json()
+
+    text = ""
+    citations = []
+    for item in data.get("output", []):
+        if item.get("type") == "message":
+            for part in item.get("content", []):
+                if isinstance(part, dict) and part.get("type") == "text":
+                    text += part.get("text", "")
+                elif isinstance(part, str):
+                    text += part
+        elif item.get("type") == "search_results":
+            for sr in item.get("results", []):
+                citations.append({
+                    "title": sr.get("title", ""),
+                    "url": sr.get("url", ""),
+                    "snippet": sr.get("snippet", ""),
+                })
+    return {"text": text, "citations": citations, "usage": data.get("usage", {})}
+```
+
+**Agent presets**: `"pro-search"` for deep research with maximum web search steps.
+
+**Model options**: Any model string accepted by Perplexity (e.g. `"anthropic/claude-sonnet-4-6"`, `"gpt-4.1"`). When using `preset`, omit `model`.
+
+### 3. Chat Completions (`/chat/completions`) -- Quick Sonar Queries (Legacy)
+
+Standard OpenAI-compatible chat endpoint. Still supported but Search + Agent APIs are preferred for new work.
+
+```python
+def chat_query(prompt, model="sonar-pro", temperature=0.2, max_tokens=4000):
+    resp = requests.post(f"{BASE}/chat/completions",
+        headers={"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"},
+        json={
+            "model": model,
+            "messages": [
+                {"role": "system", "content": "Research assistant. Provide detailed answers with citations."},
+                {"role": "user", "content": prompt},
+            ],
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        }, timeout=120)
+    resp.raise_for_status()
+    data = resp.json()
     return {
-        "content": content,
-        "citations": citations,
-        "timestamp": result.get("created", "Unknown")
+        "content": data["choices"][0]["message"]["content"],
+        "citations": data.get("citations", []),
     }
 ```
 
-### Save Research Results
+| Model | Use Case |
+|-------|----------|
+| `sonar` | Quick lookups |
+| `sonar-pro` | Comprehensive research, 2x citations |
+| `sonar-reasoning` | Multi-step logical reasoning |
+| `sonar-reasoning-pro` | Advanced inference (DeepSeek-R1) |
+| `sonar-deep-research` | Deep research sessions |
+
+---
+
+## Academic Reference Mining
+
+Combine Search API domain filters with Agent API deep research for citation discovery:
 
 ```python
-def save_research(topic: str, result: dict, output_dir: Path):
-    """Save research with citations to markdown."""
-    output_dir.mkdir(parents=True, exist_ok=True)
-    output_file = output_dir / f"{topic}.md"
+def find_academic_citations(topic, n=10):
+    academic = search(f"{topic}", max_results=n,
+                      domain_filter=ACADEMIC_DOMAINS)
+    uk_policy = search(f"{topic} UK", max_results=n,
+                       domain_filter=UK_ECOLOGY_DOMAINS, country="GB")
+    seen = set()
+    unique = []
+    for r in academic + uk_policy:
+        if r["url"] not in seen:
+            seen.add(r["url"])
+            unique.append(r)
+    return unique[:n]
 
-    processed = process_response(result)
-
-    with output_file.open("w") as f:
-        f.write(f"# {topic.replace('_', ' ').title()}\n\n")
-        f.write(f"*Research conducted: {processed['timestamp']}*\n\n")
-        f.write(processed["content"])
-        f.write("\n\n")
-
-        if processed["citations"]:
-            f.write("## Sources\n\n")
-            for i, citation in enumerate(processed["citations"], 1):
-                f.write(f"{i}. {citation}\n")
+def deep_academic_research(topic):
+    return agent_research(
+        prompt=topic,
+        instructions=(
+            "You are an academic research assistant. Provide detailed, factual responses "
+            "with specific citations to peer-reviewed papers, government publications, "
+            "and authoritative technical documentation. Prioritise primary sources."
+        ),
+        preset="pro-search",
+        max_steps=5,
+        reasoning_effort="high",
+    )
 ```
 
----
-
-## Available Models
-
-| Model | Use Case | Context |
-|-------|----------|---------|
-| `sonar` | Quick queries, simple lookups | 128k tokens |
-| `sonar-pro` | Comprehensive research with 2x citations | 128k tokens |
-| `sonar-reasoning` | Logical reasoning, multi-step evaluations | 128k tokens |
-| `sonar-reasoning-pro` | Advanced inference with DeepSeek-R1 | 128k tokens |
-| `sonar-deep-research` | Deep research sessions | 128k tokens |
-
-**Default**: `sonar-pro` for comprehensive research with maximum citations.
+For structured academic metadata (DOI, authors, abstract), prefer the `web-researcher` skill's `academic_search` tool which queries arXiv, PubMed, IEEE, Nature, and Springer APIs directly.
 
 ---
 
-## Integration with Existing Scripts
+## UK Ecology and BNG Research
 
-The skill complements the existing `<your-project>/scripts/perplexity_research.py` script:
-
-- **Script**: Batch research execution for predefined topics
-- **Skill**: Interactive research for ad-hoc queries via Claude Code
-
-### Example: Extend Existing Script
+Preset configuration for Biodiversity Net Gain and UK habitat surveys:
 
 ```python
-# Add to RESEARCH_PROMPTS in <your-project>/scripts/perplexity_research.py
-RESEARCH_PROMPTS = {
-    # ... existing prompts ...
-
-    "custom_query": """Your custom research prompt here""",
-}
-```
-
----
-
-## Execution Workflow
-
-When you invoke this skill, Claude will:
-
-1. **Load API credentials** from `.env` file
-2. **Construct optimised prompt** based on your query
-3. **Execute Perplexity API call** with appropriate model
-4. **Parse response** and extract citations
-5. **Format results** as markdown with sources
-6. **Save output** to specified location (optional)
-
-### Usage Pattern
-
-```
-User: Research UK availability of 10G SFP+ switches under £500
-
-Claude:
-[Loads perplexity-research skill]
-[Constructs prompt with UK market focus, pricing constraint, technical specs]
-[Calls Perplexity API]
-[Returns formatted research with citations]
+def research_biodiversity(topic):
+    return agent_research(
+        prompt=topic,
+        instructions=(
+            "You are a UK ecology research assistant specialising in Biodiversity Net Gain, "
+            "the Statutory Biodiversity Metric 4.0, UKHab habitat classification, and "
+            "Derbyshire/Peak District ecology. Provide detailed, factual responses with "
+            "specific citations. Focus on peer-reviewed sources, DEFRA guidance, and "
+            "Natural England publications. All spatial references should use British "
+            "National Grid (EPSG:27700)."
+        ),
+        preset="pro-search",
+        max_steps=5,
+        reasoning_effort="high",
+        search_domains=UK_ECOLOGY_DOMAINS,
+        country="GB",
+    )
 ```
 
 ---
 
 ## Error Handling
 
-### Common Issues
-
-**API Key Not Found**
-```bash
-# Verify .env file exists and contains key
-cat <your-project>/.env | grep PERPLEXITY_API_KEY
-```
-
-**Rate Limiting**
 ```python
-# Add retry logic with exponential backoff
-import time
 from requests.exceptions import HTTPError
+import time
 
-def query_with_retry(prompt, max_retries=3):
+def query_with_retry(fn, *args, max_retries=3, **kwargs):
     for attempt in range(max_retries):
         try:
-            return research_query(prompt)
+            return fn(*args, **kwargs)
         except HTTPError as e:
             if e.response.status_code == 429:
-                wait = 2 ** attempt
-                time.sleep(wait)
+                time.sleep(2 ** attempt)
             else:
                 raise
-```
-
-**Timeout Errors**
-```python
-# Increase timeout for complex queries
-response = requests.post(API_URL, headers=headers, json=payload, timeout=180)
-```
-
----
-
-## Best Practices
-
-### Prompt Optimisation
-- Include date context (November 2025)
-- Specify region (UK market)
-- Request structured output (tables, comparisons)
-- Define clear deliverables
-
-### Citation Management
-- Always extract and save citations
-- Include source URLs in markdown output
-- Cross-reference multiple sources
-- Verify pricing with retailer links
-
-### Token Efficiency
-- Use `sonar-small` for simple lookups
-- Use `sonar-huge` for comprehensive research
-- Set `temperature: 0.2` for consistent results
-- Limit `max_tokens` based on expected response length
-
----
-
-## Advanced Features
-
-### Multi-Query Research
-
-```python
-def batch_research(queries: dict) -> dict:
-    """Execute multiple research queries in sequence."""
-    results = {}
-    for topic, prompt in queries.items():
-        result = research_query(prompt)
-        results[topic] = process_response(result)
-        time.sleep(1)  # Rate limiting
-    return results
-```
-
-### Citation Aggregation
-
-```python
-def aggregate_citations(results: dict) -> list:
-    """Combine citations from multiple queries."""
-    all_citations = []
-    for topic, data in results.items():
-        all_citations.extend(data.get("citations", []))
-    return list(set(all_citations))  # Deduplicate
-```
-
----
-
-## Example: Complete Research Flow
-
-```python
-#!/usr/bin/env python3
-import os
-from pathlib import Path
-from dotenv import load_dotenv
-import requests
-
-# Setup
-ROOT = Path(__file__).resolve().parents[1]
-load_dotenv(ROOT / ".env")
-API_KEY = os.getenv("PERPLEXITY_API_KEY")
-
-# Research query
-prompt = """Context: Building UK home network with 10G backbone.
-
-Task: Research OM4 fibre components from UK suppliers (November 2025):
-- Pre-terminated LC-LC cables (20-30m)
-- 10GBASE-SR SFP+ transceivers (Ubiquiti-compatible)
-- LC patch panels (12-24 port)
-
-Focus: FS.com UK, Broadband Buyer, CPC Farnell.
-
-Deliverable: Component list with part numbers, specs, UK pricing."""
-
-# Execute
-result = research_query(prompt)
-processed = process_response(result)
-
-# Output
-print(processed["content"])
-print("\n## Sources")
-for i, cite in enumerate(processed["citations"], 1):
-    print(f"{i}. {cite}")
-```
-
----
-
-## When to Use This Skill
-
-- Need current market information (pricing, availability)
-- Researching UK-specific products or services
-- Require citation tracking for verification
-- Building Bills of Materials with current pricing
-- Comparing technical specifications across products
-- Finding retailer stock availability
-
-## When NOT to Use
-
-- Information already in codebase or documentation
-- Historical data (use WebFetch or other tools)
-- Internal project context (use Grep/Read tools)
-- Simple factual queries (use Claude's knowledge base)
-
----
-
-## Integration Example
-
-```bash
-# From Claude Code CLI
-> Research Ubiquiti 10G switches available in UK under £800
-
-[perplexity-research skill activates]
-[Constructs prompt with UK market, pricing, availability focus]
-[Calls API, extracts results with citations]
-[Presents formatted research with purchase links]
-```
-
----
-
-## Output Format
-
-Research results include:
-- **Summary**: Key findings and recommendations
-- **Comparison Table**: Product specs, pricing, availability
-- **Purchase Links**: Direct URLs to UK retailers
-- **Citations**: Source URLs for verification
-- **Timestamp**: Research execution date
-
----
-
-## Maintenance
-
-Keep API key secure:
-```bash
-# Add .env to .gitignore
-echo ".env" >> .gitignore
-
-# Verify exclusion
-git check-ignore <your-project>/.env
-```
-
-Update model selection as Perplexity releases new versions:
-```python
-# Check latest models at https://docs.perplexity.ai/models
-model = "sonar-pro"  # Update as needed; check latest models at https://docs.perplexity.ai/models
 ```
 
 ---
 
 ## Related Skills
 
-- `perplexity-prompt-generator`: Generate optimised prompts for Perplexity
-- `skill-builder`: Create custom research skills
-- `verification-quality`: Validate research results with truth scoring
+| Need | Skill |
+|------|-------|
+| Structured academic metadata (DOI, authors) | `web-researcher` (`academic_search`) |
+| Patent search | `web-researcher` (`patent_search`) |
+| Multi-agent research with provenance | `deep-research` |
+| URL content expansion | `gemini-url-context` |
+| Experiment optimisation loops | `autoresearch` |
+| Ontology enrichment with Perplexity | `ontology-enrich` |
 
 ---
 
 ## References
 
-- Perplexity API Docs: https://docs.perplexity.ai
-- Project Script: `<your-project>/scripts/perplexity_research.py`
-- Example Prompts: See `RESEARCH_PROMPTS` in script
+- Search API: `POST https://api.perplexity.ai/search` (May 2025)
+- Agent API: `POST https://api.perplexity.ai/v1/agent` (May 2025)
+- Chat Completions: `POST https://api.perplexity.ai/chat/completions` (legacy, still supported)
+- Full docs: https://docs.perplexity.ai

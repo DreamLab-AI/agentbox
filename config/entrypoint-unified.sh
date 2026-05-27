@@ -512,6 +512,29 @@ with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
   fi
 fi
 
+# ── Perplexity MCP: register official @perplexity-ai/mcp-server if API key set ──
+# The official Perplexity MCP server provides 4 native tools (perplexity_search,
+# perplexity_ask, perplexity_research, perplexity_reason) for quick in-session
+# queries. Only registered when PERPLEXITY_API_KEY is present in the environment.
+if [ -n "${PERPLEXITY_API_KEY:-}" ] && [ -f "$_MCP_JSON" ]; then
+  if ! grep -q "\"perplexity\"" "$_MCP_JSON" 2>/dev/null; then
+    python3 -c "
+import json
+with open('$_MCP_JSON') as f: cfg = json.load(f)
+cfg.setdefault('mcpServers', {})['perplexity'] = {
+  'command': 'npx',
+  'args': ['-y', '@perplexity-ai/mcp-server'],
+  'type': 'stdio',
+  'env': {'PERPLEXITY_API_KEY': '${PERPLEXITY_API_KEY}'}
+}
+with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
+" 2>/dev/null && echo "  [mcp] Added perplexity → @perplexity-ai/mcp-server" || true
+    chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
+  fi
+else
+  [ -z "${PERPLEXITY_API_KEY:-}" ] && echo "  [mcp] PERPLEXITY_API_KEY not set — skipping perplexity MCP"
+fi
+
 # ── Xinference embedding sidecar: wait for readiness + ensure model loaded ──
 # The ruvector-mcp.cjs server checks xinference exactly once at startup. If
 # xinference isn't ready by then, semantic search degrades to ILIKE for the

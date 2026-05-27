@@ -151,6 +151,18 @@
       "description": "Governance tools for the Judgment Broker — 5 tools (governance_publish_panel/request_action/update_panel/retire_panel/list_decisions). Constructs valid PanelDefinition (31400), ActionRequest (31402), PanelUpdate (31404), PanelRetire (31405) Nostr events and reads ActionResponse (31403) decisions.",
       "protocol": "stdio",
       "version": "0.1.0"
+    },
+    "perplexity": {
+      "command": "npx",
+      "args": ["-y", "@perplexity-ai/mcp-server"],
+      "type": "stdio",
+      "env": {
+        "PERPLEXITY_API_KEY": "${PERPLEXITY_API_KEY}"
+      },
+      "description": "Official Perplexity AI MCP server — 4 tools: perplexity_search (web search with citations), perplexity_ask (single question), perplexity_research (deep research), perplexity_reason (step-by-step reasoning). Requires PERPLEXITY_API_KEY. Complements the perplexity-research skill's richer three-API surface for quick native-tool access.",
+      "protocol": "stdio",
+      "version": "1.0.0",
+      "upstream": "https://www.npmjs.com/package/@perplexity-ai/mcp-server"
     }
   },
   "external_bridge": {

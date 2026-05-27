@@ -46,7 +46,7 @@ intelligence_signal  = false   # set true to feed SONA's learning loop
 [consultants.codex]
 enabled    = true
 model      = "gpt-5.4"
-home       = "/home/openai-user/.codex"
+home       = "/home/devuser/.codex"
 timeout_ms = 180000
 
 # … same shape for antigravity, zai, perplexity, deepseek
@@ -168,7 +168,7 @@ docker exec agentbox tail -f /var/lib/agentbox/consultations/codex-$(date -u +%F
 
 When `[consultants].intelligence_signal = true`, an ADR-043 `QualitySignal`
 JSON also lands under
-`/workspace/profiles/<stack>/intelligence/data/<consultant>-<id>.json`. The
+`/home/devuser/workspace/profiles/<stack>/intelligence/data/<consultant>-<id>.json`. The
 SONA learning loop in ruvllm absorbs these so the auto-consultant
 classifier improves over time.
 

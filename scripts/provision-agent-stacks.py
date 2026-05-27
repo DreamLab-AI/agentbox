@@ -71,6 +71,51 @@ STACKS = {
         "skills": ["skill-router", "lazy-fetch", "codebase-memory"],
         "env": ["OPENROUTER_API_KEY"],
     },
+    # antigravity profile: Google Gemini CLI coding agent.
+    # Uses Gemini's own config format under .antigravity/; no .claude/settings.json
+    # is written for this profile.  GOOGLE_GEMINI_API_KEY is the primary auth token;
+    # GOOGLE_API_KEY is the fallback used by some Gemini SDK variants.
+    "antigravity": {
+        "tools": ["gemini"],
+        "skills": ["skill-router", "lazy-fetch", "codebase-memory"],
+        "env": ["GOOGLE_GEMINI_API_KEY", "GOOGLE_API_KEY"],
+        "no_claude_settings": True,
+        "extra_dirs": [".antigravity"],
+    },
+    # deepseek profile: DeepSeek v4 via CodeWhale.
+    # CodeWhale manages its own config; no .claude/settings.json needed.
+    "deepseek": {
+        "tools": ["codewhale", "deepseek"],
+        "skills": ["skill-router", "lazy-fetch", "codebase-memory"],
+        "env": ["DEEPSEEK_API_KEY"],
+        "no_claude_settings": True,
+    },
+    # perplexity profile: Perplexity AI research shell.
+    # Provides AI-powered research with citations; no .claude/settings.json needed.
+    "perplexity": {
+        "tools": ["perplexity"],
+        "skills": ["perplexity-research", "web-researcher", "lazy-fetch"],
+        "env": ["PERPLEXITY_API_KEY"],
+        "no_claude_settings": True,
+    },
+    # ollama profile: local LLM via Nanocoder.
+    # Zero-cost local model coding agent; no .claude/settings.json needed.
+    # OLLAMA_BASE_URL defaults to http://localhost:11434 when unset.
+    "ollama": {
+        "tools": ["nanocoder", "ollama"],
+        "skills": ["skill-router", "lazy-fetch", "codebase-memory"],
+        "env": ["OLLAMA_BASE_URL", "OLLAMA_MODEL"],
+        "no_claude_settings": True,
+    },
+    # codex profile: OpenAI Codex CLI (GPT-5.5 coding agent).
+    # Uses .codex/ config directory; no .claude/settings.json needed.
+    "codex": {
+        "tools": ["openai-codex", "codex"],
+        "skills": ["skill-router", "lazy-fetch", "codebase-memory", "openai-codex"],
+        "env": ["OPENAI_API_KEY"],
+        "no_claude_settings": True,
+        "extra_dirs": [".codex"],
+    },
 }
 
 
@@ -107,23 +152,14 @@ def build_profile(name: str, config: dict) -> None:
     for key in config["env"]:
         env_lines.append(f"{key}={os.getenv(key, '')}")
 
-    settings = {
-        "stack": name,
-        "skillsDirectory": str(SKILLS_TREE),
-        "progressiveDisclosureIndex": str(SKILLS_TREE / "SKILL-DIRECTORY.md"),
-        "sharedProjectsRoot": str(SHARED_PROJECTS_ROOT),
-        "zellijLayout": str(WORKSPACE / ".config" / "zellij" / "layouts" / f"{name}.kdl"),
-        "recommendedSkills": config["skills"],
-        "tooling": config["tools"],
-        "agentUrn": f"urn:agentbox:agent:{name}",
-        "didTemplate": "did:nostr:{AGENTBOX_PUBKEY_HEX}",
-    }
-
-    symlink_skills(claude_dir / "skills")
     symlink_shared(root / "projects", SHARED_PROJECTS_ROOT)
     symlink_shared(root / "workspace", WORKSPACE)
     write_text(root / ".env", "\n".join(env_lines) + "\n")
-    write_text(claude_dir / "settings.json", json.dumps(settings, indent=2) + "\n")
+
+    # Create any stack-specific config directories (e.g. .antigravity/, .codex/).
+    for extra in config.get("extra_dirs", []):
+        (root / extra).mkdir(parents=True, exist_ok=True)
+
     write_text(
         root / "README.md",
         "\n".join(
@@ -149,6 +185,26 @@ def build_profile(name: str, config: dict) -> None:
             ]
         ),
     )
+
+    # Profiles that use a non-Claude agent (Gemini, DeepSeek, Perplexity, Ollama,
+    # Codex) manage their own config format — skip writing .claude/settings.json.
+    if config.get("no_claude_settings"):
+        return
+
+    settings = {
+        "stack": name,
+        "skillsDirectory": str(SKILLS_TREE),
+        "progressiveDisclosureIndex": str(SKILLS_TREE / "SKILL-DIRECTORY.md"),
+        "sharedProjectsRoot": str(SHARED_PROJECTS_ROOT),
+        "zellijLayout": str(WORKSPACE / ".config" / "zellij" / "layouts" / f"{name}.kdl"),
+        "recommendedSkills": config["skills"],
+        "tooling": config["tools"],
+        "agentUrn": f"urn:agentbox:agent:{name}",
+        "didTemplate": "did:nostr:{AGENTBOX_PUBKEY_HEX}",
+    }
+
+    symlink_skills(claude_dir / "skills")
+    write_text(claude_dir / "settings.json", json.dumps(settings, indent=2) + "\n")
 
 
 def main() -> None:

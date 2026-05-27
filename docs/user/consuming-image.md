@@ -68,7 +68,7 @@ value. When it is unset or empty, compose falls back to the locally loaded
 `agentbox:runtime-<system>` tag. This means:
 
 - operators with a local Nix build need no extra configuration — the default
-  tag matches what `docker load < result` produces.
+  tag matches what `nix run .#runtime.copyToDockerDaemon` produces.
 - operators pulling from a registry export `AGENTBOX_IMAGE_REF` to the ref they
   pulled and run `./agentbox.sh up --registry`.
 

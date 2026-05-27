@@ -1,6 +1,6 @@
 # ADR-019: Experiential skill learning — distilled lessons and verified skill library
 
-**Status:** Draft
+**Status:** Accepted
 **Date:** 2026-05-20
 **Author:** Agentbox team
 **Supersedes:** n/a

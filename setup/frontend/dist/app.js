@@ -309,7 +309,7 @@
 
   const SECTION_META = {
     core:             { icon: '⚙️',  label: 'Core',            desc: 'Orchestration engine and vector database.' },
-    federation:       { icon: '🌐',  label: 'Federation',      desc: 'Standalone or federated deployment mode.' },
+    mesh:             { icon: '🌐',  label: 'Mesh',            desc: 'Standalone or federated deployment mode (ADR-025).' },
     adapters:         { icon: '🔌',  label: 'Adapters',        desc: 'Five pluggable adapter slots (ADR-005).' },
     gpu:              { icon: '🎮',  label: 'GPU',             desc: 'GPU backend and acceleration.' },
     toolchains:       { icon: '🔧',  label: 'Toolchains',      desc: 'Language runtimes and dev tools.' },
@@ -325,6 +325,11 @@
     payment:          { icon: '💰',  label: 'Payment',         desc: 'DREAM token economy.' },
     code_as_harness:  { icon: '🧪',  label: 'Code-as-Harness', desc: 'Code execution (PRD-008).' },
     marketplace:      { icon: '🏪',  label: 'Marketplace',     desc: 'LLM Resource Marketplace.' },
+    providers:        { icon: '🤖',  label: 'Providers',       desc: 'LLM provider configuration and API keys.' },
+    consultants:      { icon: '💬',  label: 'Consultants',     desc: 'LLM consultant MCPs — dual-path with direct tabs (PRD-013).' },
+    networking:       { icon: '🌍',  label: 'Networking',      desc: 'Tailscale mesh and host gateway.' },
+    plugins:          { icon: '🧩',  label: 'Plugins',         desc: 'Nix package plugins and extensions.' },
+    memory:           { icon: '💾',  label: 'Memory',          desc: 'RuVector memory backend and access control.' },
   };
 
   function renderSections() {

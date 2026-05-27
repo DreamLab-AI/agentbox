@@ -36,12 +36,12 @@ orchestration = "ruflo-v3"       # Agent orchestrator. Currently only ruflo-v3 i
 vector_db = "ruvector-embedded"  # Local retrieval engine. Currently only ruvector-embedded.
 ```
 
-## `[federation]`
+## `[mesh]`
 
 ```toml
-[federation]
+[mesh]
 mode = "standalone"              # "standalone" (local fallbacks) | "client" (federate with host mesh)
-external_url = ""                # Required when mode="client". Base URL of the host mesh.
+peer_relays = []                 # Required when mode="client". WebSocket URLs of peer relays.
 ```
 
 ## `[adapters]`
@@ -81,9 +81,9 @@ graph LR
 
 ```toml
 [adapters]
-beads        = "local-sqlite"          # local-sqlite | external | off
+beads        = "off"                   # local-sqlite | external | off
 pods         = "local-solid-rs"        # local-solid-rs | external | off
-memory       = "embedded-ruvector"     # embedded-ruvector | external-pg | off
+memory       = "external-pg"           # embedded-ruvector | external-pg | off
 events       = "local-jsonl"           # local-jsonl | external | off
 orchestrator = "local-process-manager" # local-process-manager | stdio-bridge | off
 ```
@@ -97,7 +97,7 @@ See [solid-pod.md](solid-pod.md) for the operator guide and
 fail schema validation with E016 (unknown enum value).
 
 Validator rules:
-- **E001**: `"external"` requires `federation.mode = "client"` + `federation.external_url`.
+- **E001**: `"external"` requires `mesh.mode = "client"` + `mesh.peer_relays`.
 - **E002**: `memory = "external-pg"` requires `[integrations.ruvector_external].conninfo`.
 - **E003**: `orchestrator = "stdio-bridge"` must not bind an HTTP port.
 - **E033**: `integrations.solid_pod_rs.enable_dpop_cache = true` requires `enable_oidc = true`.
@@ -108,7 +108,7 @@ Full adapter contract: [ADR-005](../reference/adr/ADR-005-pluggable-adapter-arch
 
 ```toml
 [gpu]
-backend = "none"    # none | ollama-rocm | ollama-cuda | local-cuda
+backend = "local-cuda"    # none | ollama-rocm | ollama-cuda | local-cuda
 ```
 
 | Backend | When to use |
@@ -139,8 +139,8 @@ flowchart LR
 
 ```toml
 [privacy_filter]
-enabled = false
-mode    = "off"                 # off | local-gpu | local-cpu
+enabled = true
+mode    = "local-cpu"           # off | local-gpu | local-cpu
 port    = 9092                  # loopback-only
 dtype   = "bf16"                # bf16 | f32 | q4
 model   = "openai/privacy-filter"
@@ -171,12 +171,13 @@ Novice-friendly walkthrough: [privacy-filter.md](privacy-filter.md).
 
 ```toml
 [desktop]
-enabled = false
-stack = "hyprland-wayland"    # hyprland-wayland | x11-openbox
+enabled = true
+stack = "x11-openbox"         # hyprland-wayland | x11-openbox
 resolution = "1920x1080"
+webgpu = true
 ```
 
-When enabled, exposes port 5901 for VNC. The Hyprland stack needs the `[security.exceptions.desktop]` block active (see below).
+When enabled, exposes port 5901 for VNC. Browser automation is handled exclusively by the external browsercontainer sidecar — no local chromium/playwright/agent-browser in the image. The `[security.exceptions.desktop]` block must be active (see below).
 
 ## `[observability]`
 
@@ -200,12 +201,20 @@ env_var = "ANTHROPIC_API_KEY"
 optional_env_vars = []
 
 [providers.openai]
-enabled = false
+enabled = true
 env_var = "OPENAI_API_KEY"
 optional_env_vars = ["OPENAI_BASE_URL"]
 ```
 
-Supported out of the box: `anthropic`, `openai`, `gemini`, `deepseek`, `perplexity`, `openrouter`, `context7`, `brave`, `github`, `zai`.
+Supported out of the box: `anthropic`, `openai`, `gemini`, `deepseek`, `perplexity`, `openrouter`, `context7`, `brave`, `github`, `zai`, `ollama`.
+
+The `ollama` provider routes local LLM traffic to the host's ollama endpoint (or an optional sidecar). It is enabled in the default manifest so `OPENAI_BASE_URL` can be pointed at `http://host.docker.internal:11434` without extra config:
+
+```toml
+[providers.ollama]
+enabled = true
+sidecar = false    # set true to bring up an ollama container alongside agentbox
+```
 
 Validator rules **E017/E018**: enabled provider's env var must be present and not a placeholder.
 
@@ -217,9 +226,16 @@ Feature flags for the 96-skill catalogue. Only enabled skills contribute to the 
 
 ```toml
 [skills.browser]
-playwright = true
+playwright = false
 qe_browser = false
-agent_browser = true
+agent_browser = false
+# All browser automation routes through the external browsercontainer sidecar.
+# MCP SSE: http://browsercontainer:8931/sse (chrome-devtools-mcp 40+ tools)
+# CDP: browsercontainer:9222 | VNC: :5903
+# Start: agentbox.sh browsercontainer up
+sidecar_mcp_url = "http://browsercontainer:8931/sse"
+sidecar_cdp_host = "browsercontainer"
+sidecar_cdp_port = 9222
 
 [skills.media]
 ffmpeg = true
@@ -228,13 +244,13 @@ comfyui_builtin = false    # Install ComfyUI inside the container
 # [integrations.comfyui_external] — mutually exclusive with comfyui_builtin (E007)
 
 [skills.spatial_and_3d]
-blender = false
-qgis = false
+blender = true
+qgis = true
 gaussian_splatting = false    # Requires [gpu].backend = "local-cuda" (E006)
 
 [skills.data_science]
-pytorch = false
-jupyter = false
+pytorch = true
+jupyter = true
 
 [skills.docs]
 latex = true
@@ -242,7 +258,7 @@ mermaid = true
 report_builder = true
 
 [skills.ontology]
-enabled = false    # Logseq OWL2 DL tools
+enabled = true    # Logseq OWL2 DL tools; visionclaw_api_url set via [skills.ontology]
 ```
 
 ## `[toolchains]`
@@ -256,13 +272,13 @@ claude_code   = true
 ruflo         = true
 claude_flow   = true
 agentic_qe    = true
-nagual_qe     = false    # Not on public npm yet
+nagual_qe     = true     # Nagual QE test framework
 codebase_memory = true
 rust          = true
-antigravity_cli = false  # Google Antigravity CLI (agy)
-codex         = false    # OpenAI Codex Rust CLI
-code_server   = false    # Web IDE on port 8080
-cuda          = false    # CUDA 13.1 toolchain (requires [gpu].backend = "local-cuda")
+antigravity_cli = true   # Google Antigravity CLI (agy)
+codex         = true     # OpenAI Codex Rust CLI
+code_server   = true     # Web IDE on port 8080
+cuda          = true     # CUDA toolchain (requires [gpu].backend = "local-cuda")
 ```
 
 Validator rule **E019**: `cuda = true` requires `gpu.backend = "local-cuda"`.
@@ -273,18 +289,13 @@ Optional external endpoints for federated deployments.
 
 ```toml
 [integrations.ruvector_external]
-enabled = false
-conninfo = "postgresql://ruvector@ruvector-postgres:5432/ruvector"
+enabled  = true
+conninfo = "postgresql://ruvector:@@RUVECTOR_PG_PASSWORD@@@ruvector-postgres:5432/ruvector"
 
 [integrations.comfyui_external]
 enabled = false
 url = "http://comfyui:8188"
 ws_url = "ws://comfyui:8188/ws"
-
-[integrations.ragflow]
-enabled = false
-network = "visionclaw_network"
-aliases = ["agentbox"]
 ```
 
 ## `[sovereign_mesh]`
@@ -313,9 +324,9 @@ flowchart TB
 enabled = true
 solid_pod = true
 nostr_bridge = true
-https_bridge = false
-telegram_mirror = false
-publish_agent_events = false
+https_bridge = true
+telegram_mirror = true
+publish_agent_events = true
 ```
 
 See [sovereign-mesh (developer)](../developer/sovereign-mesh.md) for internals.
@@ -331,7 +342,7 @@ event is persisted to the pod mailbox. Specified by
 
 ```toml
 [sovereign_mesh.relay]
-enabled          = false
+enabled          = true
 implementation   = "nostr-rs-relay"   # nostr-rs-relay | rnostr | external | off
 port             = 7777
 bind             = "127.0.0.1"
@@ -339,9 +350,9 @@ expose           = false
 data_dir         = "/var/lib/nostr-relay"
 ingress_policy   = "allowlist"        # allowlist | signed-only | open
 allowed_pubkeys  = []
-allowed_kinds    = [1, 1059, 30078, 27235, 38000, 38100]
+allowed_kinds    = [1, 1059, 30078, 27235, 31400, 31401, 31402, 31403, 31404, 31405, 38000, 38100, 38200, 38201, 38300, 38301, 38302, 38303, 38304, 38305]
 pod_bridge       = true
-external_fanout  = "off"              # bidirectional | publish-only | subscribe-only | off
+external_fanout  = "bidirectional"    # bidirectional | publish-only | subscribe-only | off
 max_event_bytes  = 131072
 messages_per_sec = 5
 retention_days   = 30
@@ -352,7 +363,7 @@ info_contact     = ""
 
 Validator rules:
 - **E026**: `enabled=true` requires `sovereign_mesh.enabled` or `sovereign_mesh.solid_pod`.
-- **E027**: `implementation="external"` requires `federation.mode="client"` + `external_url`.
+- **E027**: `implementation="external"` requires `mesh.mode="client"` + `mesh.peer_relays`.
 - **E028**: `port` must not collide with RESERVED_PORTS or other services.
 - **E029**: `bind="0.0.0.0"` + `expose=false` is a wiring error.
 - **W030**: `ingress_policy="open"` is a warning (relay accepts writes from anyone).
@@ -372,14 +383,14 @@ Novice-friendly walkthrough: [nostr-relay.md](nostr-relay.md).
 
 ```toml
 [networking]
-tailscale     = false   # opt-in VPN tunnel; see security note below
+tailscale     = true    # VPN tunnel enabled; see security note in agentbox.toml
 hostname      = "agentbox"
 host_gateway  = false   # gate for the host.docker.internal alias
 ```
 
 ### `[networking].tailscale`
 
-Default `false`. Enabling it adds the tailscale exception (`NET_ADMIN` cap) and triggers the W021 audit gate. The SECURITY WARNING in `agentbox.toml` applies: Tailscale bypasses the did:nostr identity boundary. For production deployments prefer the did:nostr + NIP-98 auth path and leave `tailscale = false`.
+Currently `true` in the default manifest. Enabling it adds the `[security.exceptions.tailscale]` block (`NET_ADMIN` cap) and triggers the W021 audit gate. The SECURITY WARNING in `agentbox.toml` applies: Tailscale bypasses the did:nostr identity boundary. For production deployments that need stricter isolation, prefer the did:nostr + NIP-98 auth path and set `tailscale = false`.
 
 ### `[networking].host_gateway`
 
@@ -495,18 +506,15 @@ When any active exception widens the attack surface beyond the baseline (non-emp
 audit_acknowledged = true
 ```
 
-Review the residual attack surface before setting this to `true`. The current default manifest has SYS_ADMIN (Chromium sandbox) and NET_ADMIN (Tailscale userspace tun) as widening caps. The `agentbox.sh preflight` command checks the W021 gate before `up`:
+Review the residual attack surface before setting this to `true`. The current default manifest has NET_ADMIN (Tailscale userspace tun) as the widening cap. The former SYS_ADMIN (Chromium sandbox) was removed when the playwright exception was dropped. The `agentbox.sh preflight` command checks the W021 gate before `up`:
 
 ```sh
 ./agentbox.sh preflight   # validates W021, override paths, compose merge
 ```
 
-### `[security].chromium_sandbox_mode` — TODO
+### Chromium sandbox
 
-Currently only one path exists: the Playwright exception adds `SYS_ADMIN` and `security_opt_override = ["no-new-privileges:false"]` to allow the Chromium user-namespace sandbox. A manifest knob to select between modes is planned but not yet implemented. The two relevant modes are:
-
-- **`sys-admin`** (current): `SYS_ADMIN` cap + `no-new-privileges:false` via Playwright exception. Default for shared hosts.
-- **`userns-remap`** (recommended for dedicated hosts): add `"userns-remap": "default"` to `/etc/docker/daemon.json` on the host. The Chromium sandbox works without `SYS_ADMIN` inside the container. Once the manifest knob is implemented, selecting this mode removes both `SYS_ADMIN` and `no-new-privileges:false` from the generated compose. See ADR-007 §"SYS_ADMIN alternative for Chromium-based skills".
+The `[security.exceptions.playwright]` block has been removed from the manifest. There is no local Chromium/Playwright in the image — the NNP exception is no longer needed. Browser automation runs in the external `browsercontainer` sidecar which manages its own sandbox. See `agentbox.sh browsercontainer up` and `agentbox/CLAUDE.md §Browser Container`.
 
 ### Override surface contract
 
@@ -571,10 +579,8 @@ device_requests = [{driver = "nvidia", count = -1, capabilities = [["gpu"]]}]
 [security.exceptions.gaussian-splatting]
 inherits = ["gpu-cuda"]
 
-[security.exceptions.playwright]
-cap_add = ["SYS_ADMIN"]                              # Chromium user-namespace sandbox
-security_opt_override = ["no-new-privileges:false"]  # required for Chromium sandbox
-reason = "chromium user-namespace sandbox"
+# [security.exceptions.playwright] removed — no local chromium in image.
+# Browser sandbox runs in the external browsercontainer sidecar.
 
 [security.exceptions.code-server]
 writable_volumes = ["codeserver-config:/home/devuser/.local/share/code-server"]
@@ -617,3 +623,35 @@ The validator runs in three places:
 | `[privacy_filter.policy.*]` tweak | No — middleware re-reads env on restart |
 
 When in doubt: `./agentbox.sh rebuild`.
+
+## tmpfs Mounts
+
+The container runs with `read_only: true` on its root filesystem. All paths that require writes at runtime are provided as in-memory tmpfs mounts. The compose generator derives the complete list from `flake.nix` — it is the authoritative source; do not add tmpfs entries manually to `docker-compose.override.yml`.
+
+### Baseline mounts (always present)
+
+| Path | Size | Purpose |
+|---|---|---|
+| `/tmp` | 256 MB | General-purpose temp space |
+| `/run` | 64 MB | Runtime PID files and Unix sockets |
+| `/var/run` | 16 MB | Legacy runtime alias |
+| `/var/log` | 128 MB | Supervisord and service log files |
+| `/var/log/supervisor` | 64 MB | Supervisord program logs |
+| `/var/lib/https-bridge` | 8 MB | Ephemeral self-signed TLS certs (regenerated at boot) |
+| `/home/devuser/.cache` | 256 MB | XDG cache — starship, npm, pip, HuggingFace, etc. |
+| `/home/devuser/.local` | 128 MB | XDG data home — zoxide, fzf, atuin, pipx, npm globals |
+| `/home/devuser/.config` | 64 MB | XDG config home — git, gh, kube, and other CLI config |
+| `/home/devuser/.claude-flow` | 64 MB | Claude Flow / Ruflo plugin config (regenerated at boot) |
+| `/home/devuser/.codex` | 512 MB | OpenAI Codex CLI session state and git pack cache |
+| `/home/devuser/.antigravity` | 256 MB | Antigravity CLI model cache and session state |
+| `/var/cache` | 512 MB | Ruflo plugin git sparse-clone cache |
+| `/usr/local/bin` | 8 MB | Setuid sudo wrapper (exec+suid flags required) |
+| `/app/mcp-logs` | 100 MB | MCP server log output |
+
+**Total baseline: ~2.43 GB.**
+
+### Feature-exception mounts
+
+Feature exceptions declared under `[security.exceptions.*]` in `agentbox.toml` can contribute additional tmpfs paths. For example, `[security.exceptions.desktop]` adds `/tmp/.X11-unix` and `/run/user/1000` for the VNC desktop. The compose generator merges and deduplicates all paths before writing the final `tmpfs:` block.
+
+Persistent state (RuVector, Solid pod storage, sovereign identities, code-server config) uses named Docker volumes, not tmpfs, so it survives container restarts.

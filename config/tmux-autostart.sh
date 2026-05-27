@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # tmux Workspace Auto-Start for Agentbox
-# Creates 8 windows with fish shell — MAD-style tab layout
+# Creates 14 windows with fish shell — MAD-style tab layout
 #
 # Replaces Zellij layouts; fish shell configs (config.fish,
 # bashrc.agentbox) are sourced automatically by fish in each window.
@@ -36,7 +36,7 @@ tmux $TMUX_ARGS new-session -d -s "$SESSION" -n "Claude" -c "$PROJECT"
 
 # Welcome dashboard — gum renders a styled panel, falls back to plain text
 if command -v gum >/dev/null 2>&1; then
-  WELCOME_CMD="clear; gum style --border rounded --border-foreground '#7aa2f7' --padding '1 2' --margin '1 0' --bold --foreground '#a9b1d6' \"\$(printf '  AGENTBOX\\n\\n  Project: $PROJECT\\n  Shell:   fish + starship\\n  Tabs:    Claude · Agent · Services · Build · Logs · System · VNC · Git\\n\\n  agentbox-help    quick reference\\n  svc-status       service health\\n  cf-doctor        system diagnostics')\""
+  WELCOME_CMD="clear; gum style --border rounded --border-foreground '#7aa2f7' --padding '1 2' --margin '1 0' --bold --foreground '#a9b1d6' \"\$(printf '  AGENTBOX\\n\\n  Project: $PROJECT\\n  Shell:   fish + starship\\n  Tabs:    Claude · Agent · Services · Build · Logs · System · VNC · Git · OpenRouter · ZAI · Antigravity · DeepSeek · Perplexity · Ollama\\n\\n  agentbox-help    quick reference\\n  svc-status       service health\\n  cf-doctor        system diagnostics')\""
   tmux send-keys -t "${SESSION}:0" "$WELCOME_CMD" C-m
 else
   tmux send-keys -t "${SESSION}:0" "echo ''" C-m
@@ -209,10 +209,211 @@ if [ -n "${_ZAI_AUTH:-}" ]; then
   tmux send-keys -t "${SESSION}:9" "export ANTHROPIC_API_KEY=" C-m
 fi
 
+# WORKTREE_BASE is referenced by windows 10, 11, 13 (-c flag) so it must be
+# defined before those windows are created. The full git worktree initialisation
+# block runs after window 13 (all profile setup complete) for clarity, but the
+# variable itself is set here unconditionally.
+WORKTREE_BASE="${WORKSPACE:-${HOME}/workspace}/worktrees"
+mkdir -p "${WORKTREE_BASE}"
+
+# ============================================================================
+# Window 10: Antigravity — Google Gemini CLI (profile-isolated)
+# Auth: GOOGLE_GEMINI_API_KEY or GOOGLE_API_KEY from env
+# CLI: gemini (@google/gemini-cli) — uses its own config dir, no settings.local.json
+# ============================================================================
+AG_WORKSPACE="${WORKSPACE:-${HOME}/workspace}"
+AG_PROFILE="${AG_WORKSPACE}/profiles/antigravity"
+AG_GEMINI_DIR="${AG_PROFILE}/.gemini"
+
+mkdir -p "${AG_GEMINI_DIR}"
+sudo chown -R devuser:devuser "${AG_PROFILE}" 2>/dev/null || true
+
+_AG_KEY="${GOOGLE_GEMINI_API_KEY:-${GOOGLE_API_KEY:-}}"
+if [ -n "${_AG_KEY:-}" ]; then
+  _ag_status="Gemini key set — model: gemini-2.5-flash"
+else
+  _ag_status="WARNING: GOOGLE_GEMINI_API_KEY not set — add it to your .env file"
+fi
+
+[ -L "${AG_PROFILE}/workspace" ] || ln -sfn "${AG_WORKSPACE}" "${AG_PROFILE}/workspace" 2>/dev/null || true
+[ -L "${AG_PROFILE}/projects" ] || ln -sfn "${SHARED_PROJECTS_ROOT:-/projects}" "${AG_PROFILE}/projects" 2>/dev/null || true
+
+tmux new-window -t "${SESSION}:10" -n "Antigravity" -c "${WORKTREE_BASE}/antigravity"
+tmux send-keys -t "${SESSION}:10" "echo '  Antigravity Profile — Google Gemini CLI'" C-m
+tmux send-keys -t "${SESSION}:10" "echo '  ${_ag_status}'" C-m
+tmux send-keys -t "${SESSION}:10" "echo '  Run: gemini  (gemini-2.5-flash, 1M ctx, multimodal)'" C-m
+tmux send-keys -t "${SESSION}:10" "echo ''" C-m
+tmux send-keys -t "${SESSION}:10" "export HOME=${AG_PROFILE}" C-m
+if [ -n "${_AG_KEY:-}" ]; then
+  tmux send-keys -t "${SESSION}:10" "export GOOGLE_GEMINI_API_KEY=${_AG_KEY}" C-m
+  tmux send-keys -t "${SESSION}:10" "export GOOGLE_API_KEY=${_AG_KEY}" C-m
+fi
+
+# ============================================================================
+# Window 11: DeepSeek — CodeWhale CLI (profile-isolated)
+# Auth: DEEPSEEK_API_KEY from env
+# CLI: codewhale — model: deepseek-v4-0324
+# ============================================================================
+DS_WORKSPACE="${WORKSPACE:-${HOME}/workspace}"
+DS_PROFILE="${DS_WORKSPACE}/profiles/deepseek"
+DS_CODEWHALE_DIR="${DS_PROFILE}/.codewhale"
+
+mkdir -p "${DS_CODEWHALE_DIR}"
+sudo chown -R devuser:devuser "${DS_PROFILE}" 2>/dev/null || true
+
+if [ -n "${DEEPSEEK_API_KEY:-}" ]; then
+  _ds_status="DEEPSEEK_API_KEY set — model: deepseek-v4-0324"
+else
+  _ds_status="WARNING: DEEPSEEK_API_KEY not set — add it to your .env file"
+fi
+
+[ -L "${DS_PROFILE}/workspace" ] || ln -sfn "${DS_WORKSPACE}" "${DS_PROFILE}/workspace" 2>/dev/null || true
+[ -L "${DS_PROFILE}/projects" ] || ln -sfn "${SHARED_PROJECTS_ROOT:-/projects}" "${DS_PROFILE}/projects" 2>/dev/null || true
+
+tmux new-window -t "${SESSION}:11" -n "DeepSeek" -c "${WORKTREE_BASE}/deepseek"
+tmux send-keys -t "${SESSION}:11" "echo '  DeepSeek Profile — CodeWhale CLI'" C-m
+tmux send-keys -t "${SESSION}:11" "echo '  ${_ds_status}'" C-m
+tmux send-keys -t "${SESSION}:11" "echo '  Run: codewhale  (deepseek-v4-0324, 64k ctx, strong reasoning)'" C-m
+tmux send-keys -t "${SESSION}:11" "echo ''" C-m
+tmux send-keys -t "${SESSION}:11" "export HOME=${DS_PROFILE}" C-m
+if [ -n "${DEEPSEEK_API_KEY:-}" ]; then
+  tmux send-keys -t "${SESSION}:11" "export DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}" C-m
+fi
+
+# ============================================================================
+# Window 12: Perplexity — Research shell (profile-isolated)
+# Auth: PERPLEXITY_API_KEY from env
+# This is a research shell, not a coding agent.
+# The official Perplexity MCP server is also available in Claude Code tab 0
+# via the mcp__perplexity-research integration.
+# ============================================================================
+PX_WORKSPACE="${WORKSPACE:-${HOME}/workspace}"
+PX_PROFILE="${PX_WORKSPACE}/profiles/perplexity"
+
+mkdir -p "${PX_PROFILE}"
+sudo chown -R devuser:devuser "${PX_PROFILE}" 2>/dev/null || true
+
+if [ -n "${PERPLEXITY_API_KEY:-}" ]; then
+  _px_status="PERPLEXITY_API_KEY set"
+else
+  _px_status="WARNING: PERPLEXITY_API_KEY not set — add it to your .env file"
+fi
+
+[ -L "${PX_PROFILE}/workspace" ] || ln -sfn "${PX_WORKSPACE}" "${PX_PROFILE}/workspace" 2>/dev/null || true
+[ -L "${PX_PROFILE}/projects" ] || ln -sfn "${SHARED_PROJECTS_ROOT:-/projects}" "${PX_PROFILE}/projects" 2>/dev/null || true
+
+tmux new-window -t "${SESSION}:12" -n "Perplexity" -c "${PX_PROFILE}"
+tmux send-keys -t "${SESSION}:12" "echo '  Perplexity Research Shell'" C-m
+tmux send-keys -t "${SESSION}:12" "echo '  ${_px_status}'" C-m
+tmux send-keys -t "${SESSION}:12" "echo ''" C-m
+tmux send-keys -t "${SESSION}:12" "echo '  Available tools:'" C-m
+tmux send-keys -t "${SESSION}:12" "echo '    curl https://api.perplexity.ai/chat/completions  (direct API)'" C-m
+tmux send-keys -t "${SESSION}:12" "echo '    MCP: mcp__perplexity-research in Claude Code tab 0'" C-m
+tmux send-keys -t "${SESSION}:12" "echo '    skill: /perplexity-research  (runs inside tab 0)'" C-m
+tmux send-keys -t "${SESSION}:12" "echo ''" C-m
+if [ -n "${PERPLEXITY_API_KEY:-}" ]; then
+  tmux send-keys -t "${SESSION}:12" "export PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY}" C-m
+fi
+
+# ============================================================================
+# Window 13: Ollama — Local LLM via Nanocoder (profile-isolated)
+# Auth: none (network-local via OLLAMA_BASE_URL)
+# CLI: nanocoder --provider ollama --model <model>
+# Default model: qwen2.5:32b-instruct (override via OLLAMA_MODEL env var)
+# ============================================================================
+OL_WORKSPACE="${WORKSPACE:-${HOME}/workspace}"
+OL_PROFILE="${OL_WORKSPACE}/profiles/ollama"
+_OL_MODEL="${OLLAMA_MODEL:-qwen2.5:32b-instruct}"
+_OL_BASE_URL="${OLLAMA_BASE_URL:-http://ollama:11434}"
+
+mkdir -p "${OL_PROFILE}"
+sudo chown -R devuser:devuser "${OL_PROFILE}" 2>/dev/null || true
+
+[ -L "${OL_PROFILE}/workspace" ] || ln -sfn "${OL_WORKSPACE}" "${OL_PROFILE}/workspace" 2>/dev/null || true
+[ -L "${OL_PROFILE}/projects" ] || ln -sfn "${SHARED_PROJECTS_ROOT:-/projects}" "${OL_PROFILE}/projects" 2>/dev/null || true
+
+tmux new-window -t "${SESSION}:13" -n "Ollama" -c "${WORKTREE_BASE}/ollama"
+tmux send-keys -t "${SESSION}:13" "echo '  Ollama Profile — Local LLM via Nanocoder'" C-m
+tmux send-keys -t "${SESSION}:13" "echo '  Endpoint: ${_OL_BASE_URL}'" C-m
+tmux send-keys -t "${SESSION}:13" "echo '  Model:    ${_OL_MODEL}'" C-m
+tmux send-keys -t "${SESSION}:13" "echo '  Run: nanocoder --provider ollama --model ${_OL_MODEL}'" C-m
+tmux send-keys -t "${SESSION}:13" "echo ''" C-m
+tmux send-keys -t "${SESSION}:13" "export HOME=${OL_PROFILE}" C-m
+tmux send-keys -t "${SESSION}:13" "export OLLAMA_BASE_URL=${_OL_BASE_URL}" C-m
+tmux send-keys -t "${SESSION}:13" "export OLLAMA_MODEL=${_OL_MODEL}" C-m
+
+# ============================================================================
+# Git Worktree Setup — isolate harness tabs from the primary working tree
+# Each harness that edits files gets its own named worktree and branch.
+# Claude Code (tab 0) retains the primary worktree.
+# Worktree creation is idempotent — safe across container restarts.
+# (WORKTREE_BASE was already set and mkdir'd before window 10.)
+# ============================================================================
+
+# Detect whether PROJECT is a git repository before attempting worktree ops.
+# This guard makes the block safe when the container boots without a git repo.
+_git_ok=false
+if git -C "${PROJECT}" rev-parse --git-dir >/dev/null 2>&1; then
+  _git_ok=true
+fi
+
+if [ "${_git_ok}" = "true" ]; then
+  # Create worktrees for file-editing harnesses (tabs 10, 11, 13).
+  # Tab 12 (Perplexity) is research-only — no worktree needed.
+  for _harness in antigravity deepseek ollama; do
+    _wt_path="${WORKTREE_BASE}/${_harness}"
+    _wt_branch="harness/${_harness}"
+    if [ ! -d "${_wt_path}" ]; then
+      # Create branch from HEAD if it doesn't already exist, then add worktree.
+      git -C "${PROJECT}" branch "${_wt_branch}" HEAD 2>/dev/null || true
+      git -C "${PROJECT}" worktree add "${_wt_path}" "${_wt_branch}" 2>/dev/null || true
+    fi
+  done
+  echo "[tmux-autostart] Git worktrees ready under ${WORKTREE_BASE}"
+else
+  # No git repo — fall back to plain directories so the window -c paths still exist.
+  for _harness in antigravity deepseek ollama; do
+    mkdir -p "${WORKTREE_BASE}/${_harness}"
+  done
+  echo "[tmux-autostart] WARNING: ${PROJECT} is not a git repo — worktrees created as plain dirs"
+fi
+
+# ============================================================================
+# Harness-merge helper — inject into the Claude (tab 0) tmux environment so it
+# is available as a shell function in any fish/bash session started there.
+# Usage (from tab 0): harness-merge antigravity
+#                     harness-merge deepseek
+#                     harness-merge ollama
+# ============================================================================
+_HARNESS_MERGE_SH="$(cat <<'MERGE_EOF'
+harness-merge() {
+  local _name="${1:?Usage: harness-merge <antigravity|deepseek|ollama>}"
+  local _wt="${WORKTREE_BASE:-${HOME}/workspace/worktrees}/${_name}"
+  local _branch="harness/${_name}"
+  if [ ! -d "${_wt}" ]; then
+    echo "harness-merge: worktree not found: ${_wt}" >&2
+    return 1
+  fi
+  echo "Merging harness/${_name} into current branch..."
+  git merge --no-ff "${_branch}" -m "merge: harness/${_name} work into primary"
+}
+export -f harness-merge 2>/dev/null || true
+MERGE_EOF
+)"
+
+# Inject the helper as an environment variable; tab 0 can source it via:
+#   eval "$HARNESS_MERGE_FN"
+tmux set-environment -t "${SESSION}" HARNESS_MERGE_FN "${_HARNESS_MERGE_SH}"
+tmux set-environment -t "${SESSION}" WORKTREE_BASE "${WORKTREE_BASE}"
+
+# Auto-source the helper in tab 0 so it is immediately available.
+tmux send-keys -t "${SESSION}:0" "eval \"\$HARNESS_MERGE_FN\" 2>/dev/null || true" C-m
+
 # ============================================================================
 # Select window 0 (Claude)
 # ============================================================================
 tmux select-window -t "${SESSION}:0"
 
-echo "[tmux-autostart] Session '$SESSION' created with 10 windows"
+echo "[tmux-autostart] Session '$SESSION' created with 14 windows"
 echo "  0:Claude  1:Agent  2:Services  3:Build  4:Logs  5:System  6:VNC  7:Git  8:OpenRouter  9:ZAI"
+echo "  10:Antigravity  11:DeepSeek  12:Perplexity  13:Ollama"

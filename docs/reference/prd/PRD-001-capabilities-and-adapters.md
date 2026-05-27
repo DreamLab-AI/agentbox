@@ -1,6 +1,6 @@
 # PRD-001: Agentbox capabilities and adapter architecture
 
-**Status:** Draft v1
+**Status:** Accepted
 **Date:** 2026-04-23
 **Repo:** [github.com/DreamLab-AI/agentbox](https://github.com/DreamLab-AI/agentbox) *(standalone repo; agentbox is pushed here when stable)*
 **Related:** ADR-001 (Nix flakes), ADR-002 (RuVector embedded), ADR-003 (Guidance control plane), ADR-004 (Upstream sync), ADR-005 (Pluggable adapter architecture)

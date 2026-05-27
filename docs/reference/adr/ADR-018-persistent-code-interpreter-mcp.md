@@ -1,6 +1,6 @@
 # ADR-018: Persistent code-interpreter MCP and CodeAct skill
 
-**Status:** Draft
+**Status:** Accepted
 **Date:** 2026-05-20
 **Author:** Agentbox team
 **Supersedes:** n/a

@@ -12,6 +12,34 @@ Different hosts can do different things with the same image. Docker Desktop on m
 - Avoiding the trap of enabling `local-cuda` on a machine that cannot pass through NVIDIA.
 - Picking the right escape hatch when your laptop cannot do the workload (remote provisioning).
 
+## Installing Nix on Linux
+
+Agentbox builds require Nix with flakes enabled. The Determinate Systems installer is the recommended path — it handles multi-user setup, systemd integration, and flake configuration automatically.
+
+```bash
+# Install Nix (multi-user, systemd-based)
+curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
+
+# Restart your shell or source the Nix profile
+. /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+```
+
+Flakes are enabled by default with the Determinate installer. If you used the official Nix installer instead, add the following to `~/.config/nix/nix.conf` (or `/etc/nix/nix.conf` for system-wide):
+
+```
+experimental-features = nix-flakes nix-command
+```
+
+Once Nix is installed, build and load the image:
+
+```bash
+nix build .#runtime                        # build the OCI image
+nix run .#runtime.copyToDockerDaemon       # load into Docker via skopeo (no tarball)
+./agentbox.sh up                           # start the stack
+```
+
+Verify with `nix flake check` to confirm the flake evaluates cleanly on your system before the full build.
+
 ## Build vs run
 
 | Action | Linux x86_64 | Linux aarch64 | macOS (Intel or Apple Silicon) | Windows 10/11 |
@@ -44,7 +72,7 @@ Apple Silicon's Metal, Intel's iGPU/oneAPI, and neural-accelerator paths (Apple 
 
 ```sh
 nix build .#runtime
-docker load < result
+nix run .#runtime.copyToDockerDaemon
 ./agentbox.sh up
 ```
 
@@ -52,7 +80,7 @@ docker load < result
 
 ```sh
 nix build .#runtime              # native ARM build
-docker load < result
+nix run .#runtime.copyToDockerDaemon
 ./agentbox.sh up
 ```
 

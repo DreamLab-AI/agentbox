@@ -41,11 +41,13 @@ class PerplexityClient:
     """
     Client for Perplexity API with UK English focus and citation extraction.
 
-    Uses llama-3.1-sonar-large-128k-online model for current information.
+    Uses sonar-pro model for comprehensive research with citations.
+    Also supports Search API (/search) for structured results and
+    Agent API (/v1/agent) for multi-step deep research.
     """
 
     API_BASE = "https://api.perplexity.ai"
-    DEFAULT_MODEL = "llama-3.1-sonar-large-128k-online"
+    DEFAULT_MODEL = "sonar-pro"
 
     def __init__(
         self,

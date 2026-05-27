@@ -24,16 +24,18 @@
     },
     "federation": {
       "type": "object",
+      "deprecated": true,
+      "description": "DEPRECATED: Use [mesh] instead. This section is retained for backwards compatibility with old manifests only.",
       "additionalProperties": false,
       "properties": {
         "mode": {
           "type": "string",
           "enum": ["standalone", "client"],
-          "description": "Deployment shape: standalone (all local fallbacks) or client (federated with host mesh)."
+          "description": "Deployment shape: standalone (all local fallbacks) or client (federated with host mesh). DEPRECATED: set mesh.mode instead."
         },
         "external_url": {
           "type": "string",
-          "description": "Base URL of the host mesh. Required when mode=client."
+          "description": "Base URL of the host mesh. Required when mode=client. DEPRECATED: set mesh.external_url instead."
         }
       }
     },
@@ -55,7 +57,8 @@
         "memory": {
           "type": "string",
           "enum": ["embedded-ruvector", "external-pg", "off"],
-          "description": "Vector memory adapter."
+          "description": "Vector memory adapter. Default (and recommended) value is external-pg backed by ruvector-postgres. embedded-ruvector is a per-session cache only and is not a durable source of truth.",
+          "default": "external-pg"
         },
         "events": {
           "type": "string",
@@ -91,7 +94,8 @@
         "stack": {
           "type": "string",
           "enum": ["hyprland-wayland", "x11-openbox", "xorg-nvidia", "i3", "x11"],
-          "description": "Desktop stack selection."
+          "description": "Desktop stack selection. Default is x11-openbox. hyprland-wayland is available but not the recommended default for containerised deployments.",
+          "default": "x11-openbox"
         },
         "webgpu": {
           "description": "WebGPU flag for desktop apps that use GPU."
@@ -126,7 +130,7 @@
     },
     "providers": {
       "type": "object",
-      "description": "API-provider credential gates. Each key is a provider name.",
+      "description": "API-provider credential gates. Each key is a provider name. Known provider keys include: anthropic, openai, gemini, zai, perplexity, deepseek, ollama, xinference. ollama does not require an API key — set enabled=true and sidecar=true; env_var may be omitted (W040). xinference is similar: set sidecar=true and supply an optional_env_vars base-URL override.",
       "additionalProperties": {
         "type": "object",
         "additionalProperties": false,
@@ -406,7 +410,12 @@
           "description": "Google Antigravity CLI (agy) subprocess consultant. Requires providers.gemini (E035) and toolchains.antigravity_cli (E037).",
           "properties": {
             "enabled":    { "type": "boolean" },
-            "model":      { "type": "string" },
+            "model": {
+              "type": "string",
+              "enum": ["gemini-3.5-flash", "gemini-3.5-pro", "gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash", "gemini-1.5-pro"],
+              "default": "gemini-3.5-flash",
+              "description": "Gemini model used by the Antigravity CLI subprocess. gemini-3.5-flash is the current recommended default."
+            },
             "home":       { "type": "string", "description": "Antigravity CLI home directory." },
             "timeout_ms": { "type": "integer", "minimum": 1000, "maximum": 600000 }
           }
@@ -417,7 +426,12 @@
           "description": "Z.AI / GLM via Anthropic-compatible claude-zai subprocess. Requires providers.zai (E035).",
           "properties": {
             "enabled":    { "type": "boolean" },
-            "model":      { "type": "string" },
+            "model": {
+              "type": "string",
+              "enum": ["glm-5.2", "glm-5", "glm-4-plus", "glm-4", "glm-4-air", "glm-4-flash"],
+              "default": "glm-5.2",
+              "description": "Z.AI / GLM model identifier. glm-5 is superseded by glm-5.2; glm-5.2 is the current recommended default."
+            },
             "home":       { "type": "string", "description": "HOME under the zai-user isolation." },
             "timeout_ms": { "type": "integer", "minimum": 1000, "maximum": 600000 }
           }
@@ -438,7 +452,12 @@
           "description": "DeepSeek HTTPS API consultant. Requires providers.deepseek (E035).",
           "properties": {
             "enabled":    { "type": "boolean" },
-            "model":      { "type": "string" },
+            "model": {
+              "type": "string",
+              "enum": ["deepseek-v4-0324", "deepseek-v3", "deepseek-r1", "deepseek-chat", "deepseek-coder"],
+              "default": "deepseek-v4-0324",
+              "description": "DeepSeek model identifier. deepseek-reasoner is retired — use deepseek-v4-0324."
+            },
             "timeout_ms": { "type": "integer", "minimum": 1000, "maximum": 600000 }
           }
         },
@@ -448,7 +467,12 @@
           "description": "Google Gemini API consultant. Requires providers.gemini (E035) and toolchains.gemini_cli (E037).",
           "properties": {
             "enabled":    { "type": "boolean" },
-            "model":      { "type": "string" },
+            "model": {
+              "type": "string",
+              "enum": ["gemini-3.5-flash", "gemini-3.5-pro", "gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash"],
+              "default": "gemini-3.5-flash",
+              "description": "Gemini model identifier. gemini-2.5-pro is the previous default; gemini-3.5-flash is the current recommended default."
+            },
             "home":       { "type": "string", "description": "Gemini CLI home directory." },
             "timeout_ms": { "type": "integer", "minimum": 1000, "maximum": 600000 }
           }
@@ -841,8 +865,42 @@
     },
     "mesh": {
       "type": "object",
-      "additionalProperties": true,
-      "description": "Federation mesh configuration (PRD-010 Phase 3)."
+      "additionalProperties": false,
+      "description": "Federation mesh configuration (PRD-010 Phase 3). Replaces the deprecated [federation] section.",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["standalone", "client"],
+          "description": "Deployment shape: standalone (all local fallbacks) or client (federated with host mesh).",
+          "default": "standalone"
+        },
+        "external_url": {
+          "type": "string",
+          "description": "Base URL of the host mesh. Required when mode=client."
+        },
+        "peer_urls": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of peer mesh URLs for bidirectional federation."
+        },
+        "auth_mode": {
+          "type": "string",
+          "enum": ["nip98", "api_key", "none"],
+          "description": "Authentication mode for mesh federation. Default nip98.",
+          "default": "nip98"
+        },
+        "sync_interval_sec": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "How often (seconds) this node syncs state with the host mesh. Only applies when mode=client."
+        },
+        "max_hops": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16,
+          "description": "Maximum relay hops for routed mesh messages."
+        }
+      }
     },
     "networking": {
       "type": "object",

@@ -131,7 +131,7 @@ curl -s http://<host>:8484/ | jq '."http://www.w3.org/ns/solid/terms#ServiceReso
 # Writing through WAC requires a NIP-98 Authorization header signed with your
 # container's npub — the NostrBridge.verifyNip98() library in management-api
 # produces this. Try a write via an internal agent first, then verify it lands:
-ls /workspace/profiles/default/pods/<your-npub>/
+ls /home/devuser/workspace/profiles/default/pods/<your-npub>/
 ```
 
 Container health is aggregated into `/health/pods` on the management-api:
@@ -239,6 +239,30 @@ still applies to the binary boundary:
 > compilation's users beyond what the individual works permit.
 
 Full analysis: [`docs/developer/licensing.md`](../developer/licensing.md).
+
+## Cloudflare Tunnel overlay (docker-compose.solid-pods.yml)
+
+`docker-compose.solid-pods.yml` is a compose overlay that adds a `cloudflared-pod` sidecar. It tunnels external HTTPS traffic from `pods-native.dreamlab-ai.com` through Cloudflare Zero Trust into the solid-pod-rs server on port 8484 — without exposing any port to the public internet.
+
+To enable it, create `.env.solid-pods` containing your tunnel token:
+
+```bash
+CLOUDFLARE_TUNNEL_TOKEN=<token from Zero Trust → Tunnels → dreamlab-native-pods>
+```
+
+Then start the stack with the overlay:
+
+```bash
+docker compose \
+  -f docker-compose.yml \
+  -f docker-compose.solid-pods.yml \
+  --env-file .env.solid-pods \
+  up -d cloudflared-pod
+```
+
+The sidecar joins the `visionclaw_network` and reaches `solid-pod-rs` by its Docker service DNS name. No changes to `agentbox.toml` or the main `docker-compose.yml` are required — the overlay is additive. Leave `adapters.pods = "local-solid-rs"` in your manifest; the tunnel simply makes the running pod server reachable externally.
+
+See [native-solid-pod.md](native-solid-pod.md) for the full setup walkthrough including tunnel creation in the Cloudflare dashboard.
 
 ## Further reading
 

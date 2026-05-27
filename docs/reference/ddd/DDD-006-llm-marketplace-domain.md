@@ -1,8 +1,9 @@
 # DDD-006: LLM Resource Marketplace Domain
 
-**Status:** Draft v1
-**Date:** 2026-05-22
-**Related:** PRD-009 (LLM Resource Marketplace), ADR-021 (Nostr kind schema), DDD-003 (Sovereign messaging), ADR-013 (Canonical URI grammar)
+**Date**: 2026-05-22
+**Status**: Draft
+**Bounded Context**: LLM Resource Marketplace
+**Cross-references**: PRD-009 (LLM Resource Marketplace), ADR-021 (Nostr kind schema), DDD-003 (Sovereign messaging), ADR-013 (Canonical URI grammar)
 
 ## Domain Overview
 

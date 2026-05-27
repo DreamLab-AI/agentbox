@@ -170,7 +170,7 @@ sequenceDiagram
 
 ## Federation session lifecycle
 
-When `federation.mode = "client"`, the container participates in a host mesh. The lifecycle below shows how a federated session is established and maintained.
+When `mesh.mode = "client"`, the container participates in a host mesh. The lifecycle below shows how a federated session is established and maintained.
 
 ```mermaid
 sequenceDiagram

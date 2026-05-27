@@ -77,8 +77,8 @@ re-used across restarts:
 | Provider | Command | Token path |
 |---|---|---|
 | `anthropic` | `claude login` (run as `devuser`) | `/home/devuser/.claude/` |
-| `openai` | `codex login` (run as `openai-user`) | `/home/openai-user/.codex/auth.json` |
-| `zai` | `claude-zai login` (run as `zai-user`) | `/home/zai-user/.zai/` |
+| `openai` | `codex login` (run as `devuser`) | `/home/devuser/.codex/auth.json` |
+| `zai` | `claude-zai login` (run as `devuser`) | `/home/devuser/.zai/` |
 
 Mount these directories on a named volume if you want the session to survive
 image rebuilds; the default compose stack already does this for the standard

@@ -1,14 +1,11 @@
----
-id: DDD-008
-title: Ontology Bridge Domain Model
-status: proposed
-date: 2026-05-22
-author: Dr John O'Hare
-parent: PRD-011
-adr: ADR-023
----
+# DDD-008: Ontology Bridge Domain Model
 
-# DDD-008 — Ontology Bridge Domain Model
+**Date**: 2026-05-22
+**Status**: Proposed
+**Bounded Context**: Ontology Bridge
+**Cross-references**: PRD-011 (product requirements), ADR-023 (decision record), DDD-003 (sovereign messaging — relay transport), DDD-004 (linked-data interchange — JSON-LD encoding)
+
+---
 
 ## Bounded Context: Ontology Bridge (BC21)
 

@@ -1,6 +1,6 @@
 # ADR-014: Bi-directional graph-state ingress for agent reaction
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-04-28
 **Author:** Agentbox team
 **Supersedes:** n/a — first formal decision on inbound graph signals

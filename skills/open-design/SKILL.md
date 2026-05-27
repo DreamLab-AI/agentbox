@@ -7,6 +7,12 @@ description: "Design production pipeline with structured intake, brand-system en
 
 Generate professional visual artifacts constrained by brand specifications, quality gates, and structured workflows. Not freestyle generation — compositional design from validated parts.
 
+## Routing Trigger
+
+Route to this skill when the user asks for UI mockups, visual documentation, design system generation, slide decks, landing pages, dashboards, or any quality-gated HTML visual artifact. Agent count: 1 (single-agent pipeline with self-critique gate).
+
+**Not a replacement for the setup wizard SPA.** The setup wizard (`PRD-012 / ADR-024`) is a browser-based first-boot configuration tool. Open Design generates brand-constrained visual artifacts; it has no role in agentbox configuration or provisioning.
+
 ## When To Use This Skill
 
 - Web prototypes, landing pages, marketing pages

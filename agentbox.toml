@@ -333,6 +333,12 @@ latex = true
 report_builder = true
 mermaid = true
 
+[skills.design]
+# open-design: structured intake pipeline, 129 brand specs, 5-dimensional critique gate,
+# P0/P1/P2 checklists, layout libraries (web/mobile/dashboard/deck). Default off.
+# NOT a replacement for the setup wizard SPA (PRD-012 / ADR-024).
+open_design = false
+
 [skills.research]
 # web-researcher-mcp (Go binary). Provides 8 MCP research tools.
 # Headless-browser scrape tier is force-disabled at runtime; JS-rendered
@@ -501,19 +507,19 @@ intelligence_signal = true                      # write ADR-043 QualitySignal fi
 [consultants.codex]
 enabled = true
 model   = "gpt-5.5"
-home    = "/home/openai-user/.codex"
+home    = "/home/devuser/.codex"
 timeout_ms = 180000
 
 [consultants.antigravity]
 enabled = true
-model   = "gemini-2.5-pro"
+model   = "gemini-3.5-flash"
 home    = "/home/devuser/.antigravity"
 timeout_ms = 180000
 
 [consultants.zai]
 enabled = true
-model   = "glm-5"
-home    = "/home/zai-user"
+model   = "glm-5.2"
+home    = "/home/devuser/.zai"
 timeout_ms = 180000
 
 [consultants.perplexity]
@@ -523,7 +529,7 @@ timeout_ms = 60000
 
 [consultants.deepseek]
 enabled = true
-model   = "deepseek-reasoner"
+model   = "deepseek-v4-0324"
 timeout_ms = 120000
 
 # ── Privacy filter ──────────────────────────────────────────────────────────────

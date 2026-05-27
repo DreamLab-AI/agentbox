@@ -116,7 +116,7 @@ curl -s http://localhost:7777/ -H 'Accept: application/nostr+json' | jq
 # accept writes after NIP-42 AUTH unless ingress_policy = "open".
 
 # Inspect the inbox
-ls /workspace/profiles/default/pods/<your-npub>/events/inbox/
+ls /home/devuser/workspace/profiles/default/pods/<your-npub>/events/inbox/
 ```
 
 ## Manifest reference

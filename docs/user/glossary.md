@@ -69,6 +69,13 @@ flowchart LR
 - **Capability (Linux)** — a fine-grained slice of root privilege (e.g.
   `CAP_NET_ADMIN`). Agentbox drops them all by default (`cap_drop: [ALL]`)
   and re-adds only what a feature explicitly requires.
+- **Code-as-Harness** — the PRD-008 pattern where code execution environments
+  (kernel sessions, REPL loops, test runners) serve as learning harnesses for
+  agent skill acquisition. Execution traces are distilled into
+  `urn:agentbox:memory:<scope>:lesson-<sha256-12>` records; verified skills
+  become `urn:agentbox:skill:<scope>:<name>:v<n>` entries. See
+  [developer/code-as-harness.md](../developer/code-as-harness.md) and
+  [PRD-008](../reference/prd/PRD-008-code-as-harness.md).
 - **Compose** — short for docker compose. The generated `docker-compose.yml`
   wires the agentbox container, optional ollama sidecar, and any external
   endpoints. Never hand-edited; regenerated from the manifest.
@@ -118,9 +125,21 @@ flowchart LR
 - **Hypercall** — term used loosely in some agent literature for a structured
   call from agent code into the container runtime. Agentbox does not
   implement hypercalls; all agent tool invocations happen over MCP.
+- **LION** — Linked Interoperable Object Notation. The agentbox JSON-LD
+  subset defined in DDD-004 §L01-L05. Five rules: every object carries
+  `@context` and `@type`; `@id` follows the canonical URI grammar (ADR-013);
+  values are plain JSON scalars or LION objects — no RDF blank nodes; arrays
+  are homogeneous typed lists; and `@context` is pinned at build time (never
+  fetched at runtime). The linter enforces all five rules in CI.
 - **LLM** — Large Language Model. Agentbox does not host LLMs itself; it
   either calls external providers (Anthropic, OpenAI, Google, Z.AI) or a
   local ollama sidecar when `[gpu].backend` selects one.
+- **Management API** — the `/v1/` REST API served by the `management-api`
+  service on port 9090. It is the single control plane for pod operations,
+  profile management, adapter dispatch, health probes (`/ready`, `/livez`,
+  `/health`), metrics (`/metrics`), and agent event streaming
+  (`/v1/agent-events`). All adapter calls go through this service; no agent
+  talks to a backend directly. See [ADR-005](../reference/adr/ADR-005-pluggable-adapter-architecture.md).
 - **Manifest** — `agentbox.toml`. The single source of truth for what is
   built, what boots, and what is validated. See
   [configuration.md](configuration.md).
@@ -167,6 +186,12 @@ flowchart LR
   stores keyed by Nostr event id; this is the durability contract behind
   external-agent messaging. See
   [DDD-003](../reference/ddd/DDD-003-sovereign-messaging-domain.md).
+- **Profile** — an isolated agent workspace under
+  `workspace/profiles/<stack>/` with its own HOME directory, per-profile
+  config files, and symlinks to the shared `/workspace` and `/projects`
+  mounts. Each profile is provisioned by `scripts/provision-agent-stacks.py`.
+  Profiles share the same image; isolation is filesystem-level, not
+  container-level.
 - **Prometheus metric** — a time-series counter, gauge or histogram scraped
   from `/metrics`. Every adapter dispatch increments a counter and records
   duration.
@@ -225,6 +250,11 @@ flowchart LR
   the same key the relay accepted under NIP-42.
 - **Sovereign mesh** — the optional Nostr-based identity and event layer.
   Sovereign because each container owns its own cryptographic keypair.
+- **Stack** — a named agent configuration (e.g. `claude`, `antigravity`,
+  `deepseek`) provisioned by `scripts/provision-agent-stacks.py`. Each stack
+  maps to one profile directory under `workspace/profiles/<stack>/`. Stacks
+  are declared in `agentbox.toml` under `[agents.*]`; the provisioner creates
+  the directory tree, writes per-stack config, and symlinks shared paths.
 - **starship** — a cross-shell prompt (fish, bash, zsh). Agentbox ships a
   Tokyo Night themed config at `/opt/agentbox/config/starship.toml` with
   git branch/status, nix-shell, Rust, Node and Python indicators.
@@ -252,7 +282,7 @@ flowchart LR
 
 **Is this a Docker image or a VM?**
 It is a Docker/OCI image. No kernel, no hypervisor, no VM. The manifest drives
-a Nix build that outputs an OCI image tarball; `docker load` imports it and
+a Nix build that outputs an OCI image via nix2container; `nix run .#runtime.copyToDockerDaemon` loads it into the Docker daemon and
 `docker compose up` runs it. Multi-arch builds are published to GHCR.
 
 **Why does the feature list look huge? Won't my image be enormous?**

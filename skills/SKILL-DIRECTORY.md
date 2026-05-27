@@ -1,7 +1,7 @@
 # Skill Directory -- Comprehensive Inventory and Decision Tree
 
-> **92 active skills** (3 new Phase 1 code-execution surfaces added 2026-05-21; tree-search-coder is Phase 2-3 scaffold, not counted as active). 18 formerly deprecated/archived skills removed (see table below for history).
-> Updated 2026-05-21. Reference this file from CLAUDE.md for intelligent routing.
+> **104 active skills** (3 new Phase 1 code-execution surfaces added 2026-05-21; tree-search-coder is Phase 2-3 scaffold, not counted as active). 18 formerly deprecated/archived skills removed (see table below for history).
+> Updated 2026-05-27. Reference this file from CLAUDE.md for intelligent routing.
 
 ---
 
@@ -30,13 +30,13 @@
 
 ---
 
-## Artefact 1: Categorised Skill Inventory (87 Active Skills)
+## Artefact 1: Categorised Skill Inventory (104 Active Skills)
 
 ### Context, Discovery, and Session Management
 
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
-| `skill-router` | No | **Unified dispatcher** for 87 skills. `/route [task]` classifies intent and routes to optimal skill. Single entry point | Don't know which skill to use — describe your task and get routed |
+| `skill-router` | No | **Unified dispatcher** for 104 skills. `/route [task]` classifies intent and routes to optimal skill. Single entry point | Don't know which skill to use — describe your task and get routed |
 | `lazy-fetch` | Yes | 25 MCP tools: context hydration, plan tracking, blueprints, PRD-to-sprints, security scanning, persistent memory | Starting a new session, managing context across tasks, tracking phased plans, running autonomous PRD execution |
 | `skill-builder` | No | Create new Claude Code skills with YAML frontmatter and progressive disclosure | Building new custom skills for the skills directory |
 | `codebase-memory` | Yes | 14 MCP tools: call graph tracing, architecture overview, git diff risk scoring, symbol search. 99.2% token reduction vs grep. Persistent SQLite index. **One-time index → permanent session upgrade** | Large codebase structural analysis (500+ files), call chains, diff blast radius, architecture overview |
@@ -65,9 +65,10 @@ Phase 1 surfaces require `[skills.code_interpreter] enabled = true` (kernel MCP)
 
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
-| `github-code-review` | No | Multi-agent AI code review, security/performance analysis, quality gates | Reviewing PRs on GitHub with specialised review agents |
 | `verification-quality` | No | Truth scoring (0.0-1.0), automatic rollback at 0.95 threshold, CI/CD export | Ensuring code correctness with truth-score verification and auto-rollback |
 | `docs-alignment` | No | 15-agent swarm for documentation validation, Diataxis framework, link coverage, Mermaid diagrams | Validating and modernising project documentation against codebase |
+| `security-testing` | No | OWASP Top 10 validation, auth/authorisation testing, API security, dependency CVE scanning, secrets detection, SAST/DAST | Application-layer security testing for web services and APIs (not Linux hardening — use `defense-security` for that) |
+| `prose-sanitiser` | No | Remove LLM writing fingerprints: em-dash overuse, "The X" headings, tier-1 slop vocabulary, sycophantic filler, structural tells. Enforces UK English | Cleaning public-facing content, docs, articles, or presentations that should read as human-authored |
 
 ### Testing and QA
 
@@ -118,13 +119,14 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
 | `browser-automation` | No | **Meta-skill**: decision framework for choosing between 6 browser tools + Claude in Chrome (official) | Unsure which browser tool to use -- start here |
-| `browsercontainer` | Yes | **GPU-accelerated** chrome-devtools-mcp (40+ tools) in a dedicated Arch Linux container with native NVIDIA Vulkan on GPU 2 (Quadro RTX 6000). SSE at `browsercontainer:8931`, VNC at port 5903 | WebGPU/WebGL testing, VisionFlow 3D graph validation, GPU rendering — **all browser automation routes here** |
 | `browser` | No | Browser automation via the external browsercontainer sidecar (chrome-devtools-mcp SSE) | Page navigation, screenshots, form fills, JS eval |
 | `playwright` | No | Browser automation via the external browsercontainer sidecar (chrome-devtools-mcp 40+ tools, Chrome Beta 149+) | Full browser interaction, WebGPU/WebGL validation, visual testing |
 | `qe-browser` | No | **Vibium** (WebDriver BiDi, W3C standard, 10MB vs 300MB Playwright). 16 typed assertion kinds, multi-step batch pre-validation, pixel-perfect visual-diff baselines, 14-pattern prompt-injection scanner, 15-intent semantic element finder (`submit_form`, `accept_cookies`, `primary_cta`, …). Part of AQE fleet — installed via `aqe init`. 11 QE skills delegate to it (a11y, visual, security, localization, etc.) | QE-grade browser testing with typed assertions and visual regression; AQE fleet integration; when Playwright is too heavy ⚠️ NOT INSTALLED — run aqe init to install |
 | `chrome-cdp` | No | CDP CLI for live Chromium sessions, 100+ tabs, no Puppeteer dependency | Inspecting already-open browser tabs, logged-in sessions |
 | `host-webserver-debug` | Yes | HTTPS-to-HTTP bridge for debugging host web servers from Docker | Cross-origin/CORS issues when accessing host dev servers |
 | `scrapling` | Yes | Adaptive web scraping: 9 MCP tools, Cloudflare Turnstile bypass, stealth browser, spider framework with pause/resume | Web scraping, internal infra monitoring, authorized client scraping, anti-bot bypass |
+
+> Note: The browsercontainer sidecar (Chrome + CDP + MCP SSE) is Docker infrastructure, not a skill. See `browsercontainer/README.md`.
 
 ### Research Workflows (adapted from Feynman methodology)
 
@@ -138,7 +140,7 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
-| `perplexity-research` | No | Real-time web search via Perplexity API with citations | Current information, market research, live web data |
+| `perplexity-research` | No | Three-API client: Search API (/search) structured results with domain/date filters, Agent API (/v1/agent) multi-step deep research with reasoning, Chat Completions (legacy sonar). Academic domain presets, UK ecology/BNG presets | Live web research, academic citation discovery, UK ecology/policy lookups, deep multi-step investigations, market research |
 | `web-researcher` | Yes | 8 MCP tools: web/image/news/**academic** (arXiv/PubMed/IEEE)/**patent** (US/EP/WO/JP/CN/KR)/sequential search + 4-tier scrape (markdown/stealth/HTML; browser tier OFF -- delegates to `browser` sidecar). Pluggable backends (Google PSE/Brave/Serper/SearXNG/SearchAPI) with multi-provider routing | Multi-source research with citations, academic literature search, patent research, scraping PDFs/DOCX/PPTX/YouTube transcripts |
 | `gemini-url-context` | Yes | Gemini 2.5 Flash URL expansion, up to 20 URLs per request, grounding metadata | Analysing or summarising specific known URLs |
 | `web-summary` | Yes | URL summarisation, YouTube transcript extraction, Logseq/Obsidian topic links | Summarising articles, YouTube videos, generating note links |
@@ -160,6 +162,8 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 |-------|-----|----------------|----------------|
 | `report-builder` | No | LaTeX reports, Python analytics, Wardley maps, TikZ+Mermaid diagrams, multi-LLM research | Research reports, white papers, sector analyses, policy briefs |
 | `latex-documents` | No | TeX Live toolchain, Beamer presentations, BibTeX, mathematical typesetting | Academic papers, presentations, publication-quality documents |
+| `latex-book` | No | Convert markdown/HTML manuscripts to arXiv-compliant LaTeX: memoir class, biblatex citations, parallel swarm conversion, UK typography conventions, cite_mapping.json footnote pipeline | Converting a multi-chapter markdown book to LaTeX for arXiv submission or print-ready PDF |
+| `book-publishing` | No | End-to-end book pipeline: markdown → arXiv/KDP/print-ready PDF using parallel agent swarms (LaTeX conversion, BibTeX extraction, TikZ diagrams, matplotlib charts, Wardley maps, Gemini image upcycling, visual verification) | Publishing a book or preparing a full manuscript for academic or commercial publication |
 | `mermaid-diagrams` | No | 25 diagram types, PNG/SVG/PDF export, dark/light themes | System architecture, flowcharts, ER models, Gantt charts, mindmaps |
 | `paperbanana` | No | Publication-quality academic figures via multi-agent VLM pipeline (Gemini/OpenAI) | Research paper figures, methodology diagrams, statistical plots |
 | `art` | No | Nano Banana 2 AI art: 16 workflows (editorial, technical diagrams, comics, maps, stats, sketchnotes), style transfer, text rendering | Blog headers, infographics, technical illustrations, editorial art, image editing |
@@ -213,6 +217,7 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
 | `game-dev` | No | 48 agents, 38 commands across Godot/Unity/Unreal, design/programming/art/audio/QA | Full game development projects across any major engine |
+| `godot-development` | No | Single-agent Godot 4: GDScript, C#, scene editing, signals, physics, navigation, shaders, export builds, godot-rust (gdext), OpenXR/WebXR integration | Targeted Godot scripting tasks, single mechanic implementation, gdext extensions — without the full 48-agent studio |
 | `unreal-engine` | Yes | UE5 automation: 60+ MCP tools for actors, Blueprints, materials, PIE, profiling, assets, StateTrees | Direct UE5 editor control, Blueprint automation, PIE sessions, asset management |
 | `terracraft` | No | OSM + elevation + arnis pipeline: real-world locations to Minecraft Java worlds. QGIS/Blender/GDAL integration | Generating Minecraft worlds from real geography, geospatial-to-game conversion |
 | `blender` | No | 3D modelling, scene creation, rendering, material PBR, import/export via socket | Programmatic 3D modelling, automated Blender workflows |
@@ -244,6 +249,7 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 |-------|-----|----------------|----------------|
 | `flow-nexus-platform` | No | Authentication, sandboxes, app deployment, payments, challenges on Flow Nexus | Managing Flow Nexus accounts, sandboxes, and deployments ⚠️ NOT INSTALLED — requires Flow Nexus account |
 | `hermes-scheduler` | No | Recurring task scheduling, cron jobs for Claude Code agents, routine automation | Scheduling periodic agent tasks, autonomous routines |
+| `cost-estimation` | No | GPU endpoint cost tiers, agent job estimate-hold-run-settle lifecycle, DREAM/sats token conversion, COCOMO-hybrid infrastructure valuation, /pay/.estimate integration | Pricing inference/image-gen/analytics endpoints, agent job cost planning, DREAM token economics |
 
 ### Systems Programming
 
@@ -276,7 +282,7 @@ Answer these questions in order. Stop at the first match.
 
 ```
 Q0: Unsure which skill handles your task?
-    --> /route [describe task]  (skill-router — intelligent dispatcher for all 92 skills)
+    --> /route [describe task]  (skill-router — intelligent dispatcher for all 104 skills)
 
 Q1: Is the task about an EXISTING skill that is deprecated?
     YES --> Use its replacement (see Deprecated table above)
@@ -462,6 +468,12 @@ Q3: What kind of document?
     |
     +-- Academic paper, Beamer presentation, math typesetting
     |   --> latex-documents
+    |
+    +-- Multi-chapter markdown manuscript → arXiv/KDP/print-ready PDF (full pipeline)
+    |   --> book-publishing  (parallel agent swarms, image upcycling, visual verification)
+    |
+    +-- Markdown/HTML book → arXiv-compliant LaTeX (memoir class, biblatex, UK typography)
+    |   --> latex-book  (LaTeX conventions, cite_mapping.json footnote pipeline)
     |
     +-- Diagrams only (flowchart, ER, sequence, Gantt, mindmap)
     |   --> mermaid-diagrams
@@ -724,8 +736,11 @@ Q3: Which domain?
     +-- Ontology validation and enrichment
     |   --> ontology-enrich
     |
-    +-- Game development (Godot/Unity/Unreal)
-    |   --> game-dev
+    +-- Full game development project (Godot/Unity/Unreal, with art/audio/QA teams)
+    |   --> game-dev  (48-agent studio)
+    |
+    +-- Targeted Godot 4 scripting, single mechanic, gdext extension, OpenXR
+    |   --> godot-development  (single-agent; lighter weight than game-dev)
     |
     +-- Geospatial-to-game conversion (real-world to Minecraft)
     |   --> terracraft
@@ -745,9 +760,8 @@ Q3: What security task?
     +-- Linux system hardening, firewall, compliance audit
     |   --> defense-security
     |
-    +-- Security testing (OWASP, auth, vulns)
-        --> security-testing (QE skill)
-        |   ⚠️  security-testing skill not installed — application security handled by build-with-quality security agents
+    +-- Security testing (OWASP, auth, vulns, dependency scanning, secrets detection)
+        --> security-testing (OWASP Top 10, auth/authorisation testing, API security, SAST/DAST)
 ```
 
 ### [P] 3D, Game, and Spatial Computing
@@ -757,6 +771,9 @@ Q3: What 3D/game/spatial task?
     |
     +-- Full game development project (design, code, art, audio, QA)
     |   --> game-dev  (48 agents, Godot/Unity/Unreal)
+    |
+    +-- Targeted Godot 4 scripting, single mechanic, gdext/godot-rust, OpenXR
+    |   --> godot-development  (single-agent; lighter than game-dev)
     |
     +-- Direct UE5 editor control (actors, Blueprints, PIE, assets)
     |   --> unreal-engine  (60+ MCP tools)
@@ -807,7 +824,7 @@ Some tasks benefit from combining skills. Common compositions:
 
 ## MCP Server Summary
 
-18 skills provide MCP servers (registered in `skills/mcp.json` or invocable via skill config):
+17 skills provide MCP servers (registered in `skills/mcp.json` or invocable via skill config):
 
 | Skill | Protocol | Entry Point |
 |-------|----------|-------------|
@@ -826,7 +843,6 @@ Some tasks benefit from combining skills. Common compositions:
 | `comfyui` | fastmcp | `mcp-server/server.py` |
 | `blender` | stdio | `mcp-server/server.py` |
 | `lichtfeld-studio` | stdio | `mcp-server/server.js` |
-| `perplexity` | mcp-sdk | `mcp-server/server.js` (DEPRECATED -- use perplexity-research) |
 | `linkedin` | stdio | via uvx linkedin-scraper-mcp |
 | `defense-security` | stdio | via npx defense-mcp-server |
 | `reddit` | stdio | via npx reddit-mcp-buddy |
