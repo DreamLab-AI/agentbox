@@ -776,6 +776,7 @@ echo "[8/8] Publishing environment hints..."
 # (uid-1000-owned tmpfs from baselineTmpfsMounts). Anything that needs these
 # vars at shell-init time must source $AGENTBOX_RUNTIME_ENV (set below).
 RUNTIME_ENV_FILE=/run/agentbox/runtime-env.sh
+RUNTIME_ENV_DURABLE=/home/devuser/workspace/.agentbox-runtime-env.sh
 mkdir -p "$(dirname "$RUNTIME_ENV_FILE")" 2>/dev/null || true
 cat > "$RUNTIME_ENV_FILE" <<EOF
 export WORKSPACE="$WORKSPACE"
@@ -812,20 +813,19 @@ CRATESEOF
   chown devuser:devuser "/home/devuser/workspace/.cargo/credentials.toml"
   echo "[bootstrap] cargo registry credentials configured"
 fi
-# CUDA wrapper: Nix uses lib/ but Rust crates expect lib64/
-if [ -n "${CUDA_PATH:-}" ] && [ -d "$CUDA_PATH/include" ] && [ ! -d "$CUDA_PATH/lib64" ]; then
-  CUDA_WRAP="/home/devuser/workspace/.cuda"
-  mkdir -p "$CUDA_WRAP"
-  ln -sfn "$CUDA_PATH/include" "$CUDA_WRAP/include"
-  ln -sfn "$CUDA_PATH/lib"     "$CUDA_WRAP/lib64"
-  ln -sfn "$CUDA_PATH/bin"     "$CUDA_WRAP/bin"
-  ln -sfn "$CUDA_PATH/nvvm"    "$CUDA_WRAP/nvvm" 2>/dev/null || true
-  chown -h devuser:devuser "$CUDA_WRAP"/* 2>/dev/null || true
+# CUDA and LIBCLANG env vars are set by the flake (gpu-backend.nix) via
+# supervisorExtraEnv. The cuda-compat derivation provides lib64/ symlink.
+# Propagate to the runtime env file so interactive shells also pick them up.
+for var in CUDA_PATH CUDA_ROOT CUDA_LIBRARY_PATH LIBCLANG_PATH; do
+  eval val=\$$var
+  if [ -n "$val" ]; then
+    echo "export $var=\"$val\"" >> "$RUNTIME_ENV_FILE"
+  fi
+done
+if [ -n "${CUDA_PATH:-}" ]; then
   cat >> "$RUNTIME_ENV_FILE" <<CUDAEOF
-export CUDA_PATH="$CUDA_WRAP"
-export CUDA_LIBRARY_PATH="$CUDA_WRAP"
-export CPATH="$CUDA_WRAP/include:\${CPATH:-}"
-export LIBRARY_PATH="$CUDA_WRAP/lib64:$CUDA_WRAP/lib64/stubs:\${LIBRARY_PATH:-}"
+export CPATH="${CUDA_PATH}/include:\${CPATH:-}"
+export LIBRARY_PATH="${CUDA_PATH}/lib64:\${LIBRARY_PATH:-}"
 CUDAEOF
 fi
 # Cargo cross-compilation config — musl for static binaries, nvptx64 for GPU kernels
@@ -842,6 +842,31 @@ fi
 export AGENTBOX_RUNTIME_ENV="$RUNTIME_ENV_FILE"
 # Best-effort symlink for legacy consumers; ignored on read-only /etc.
 ln -sf "$RUNTIME_ENV_FILE" /etc/profile.d/agentbox-runtime.sh 2>/dev/null || true
+
+# Durable copy survives /run tmpfs clears — fish config sources this
+cp "$RUNTIME_ENV_FILE" "$RUNTIME_ENV_DURABLE" 2>/dev/null || true
+chown devuser:devuser "$RUNTIME_ENV_DURABLE" 2>/dev/null || true
+
+# Fish integration: source runtime env on shell start
+FISH_CONF_D="/home/devuser/.config/fish/conf.d"
+mkdir -p "$FISH_CONF_D" 2>/dev/null || true
+cat > "$FISH_CONF_D/agentbox-runtime.fish" <<'FISHEOF'
+# Source agentbox runtime env vars (CUDA_PATH, LIBCLANG_PATH, etc.)
+set -l envfile /run/agentbox/runtime-env.sh
+if not test -f $envfile
+  set envfile /home/devuser/workspace/.agentbox-runtime-env.sh
+end
+if test -f $envfile
+  for line in (grep '^export ' $envfile)
+    set -l kv (string replace 'export ' '' $line)
+    set -l parts (string split -m1 '=' $kv)
+    if test (count $parts) -eq 2
+      set -gx $parts[1] (string trim -c '"' $parts[2])
+    end
+  end
+end
+FISHEOF
+chown devuser:devuser "$FISH_CONF_D/agentbox-runtime.fish" 2>/dev/null || true
 
 # Phase 8a — tmux session is started by [program:tmux-autostart] (supervisord,
 # user=devuser) so fish/atuin/bottom config dirs are created with correct

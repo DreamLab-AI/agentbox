@@ -153,6 +153,22 @@ let
       # AND the platform is Linux-x86_64. On any other platform the list
       # is empty and the user gets a degraded "GPU backend declared but
       # CUDA unavailable" setup; the validator still gates harder use.
+      cudaToolkit = pkgs.cudaPackages.cudatoolkit;
+
+      # Nix CUDA uses lib/ but Rust crates (find_cuda_helper) expect lib64/.
+      # Build a thin wrapper derivation with lib64 → lib symlink.
+      cudaCompat = pkgs.runCommand "cuda-compat" {} ''
+        mkdir -p $out
+        ln -s ${cudaToolkit}/include $out/include
+        ln -s ${cudaToolkit}/lib     $out/lib
+        ln -s ${cudaToolkit}/lib     $out/lib64
+        ln -s ${cudaToolkit}/bin     $out/bin
+        [ -d ${cudaToolkit}/nvvm ] && ln -s ${cudaToolkit}/nvvm $out/nvvm || true
+      '';
+
+      # LIBCLANG_PATH for bindgen (oxrocksdb-sys, cust_raw, etc.)
+      clangLib = pkgs.llvmPackages.libclang.lib;
+
       baseCudaPackages = lib.optionals cudaEligible (with pkgs; [
         cudaPackages.cudatoolkit
         cudaPackages.cuda_nvcc
@@ -196,8 +212,10 @@ let
       supervisorExtraEnv = {
         CUDA_VISIBLE_DEVICES        = "all";
         NVIDIA_DRIVER_CAPABILITIES  = "compute,utility,graphics";
-        CUDA_PATH                   = "${pkgs.cudaPackages.cudatoolkit}";
-        CUDA_LIBRARY_PATH           = "${pkgs.cudaPackages.cudatoolkit}/lib:${pkgs.cudaPackages.cudatoolkit}/lib/stubs";
+        CUDA_PATH                   = "${cudaCompat}";
+        CUDA_ROOT                   = "${cudaCompat}";
+        CUDA_LIBRARY_PATH           = "${cudaCompat}";
+        LIBCLANG_PATH               = "${clangLib}/lib";
         # Vulkan ICD path set by NVIDIA Container Runtime when
         # NVIDIA_DRIVER_CAPABILITIES includes "graphics".
         # Explicit fallback covers edge cases where the runtime doesn't
