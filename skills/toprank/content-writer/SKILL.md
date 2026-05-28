@@ -146,18 +146,14 @@ Content angle: [differentiator]
 
 ## Step 5 — Write
 
-Follow the writing rules from the guidelines for the content type. Key principles
-that apply to all content:
+Follow the writing rules from the guidelines for the content type.
 
-**Lead with value.** First paragraph directly addresses the search intent. No
-throat-clearing ("In today's digital landscape...").
+**Voice and prose quality:** apply the **prose-sanitiser** skill throughout —
+it owns the rules for lead-with-value openings, show-don't-tell specifics,
+banned vocabulary, em-dash density, "The X" headings, throat-clearing,
+hedge words, and UK English. Do not re-derive those rules here.
 
-**Show experience.** Specific examples, data, scenarios. "We found that..." and
-"In our testing..." signal first-hand knowledge. If the site has its own data,
-weave it in.
-
-**Be concrete.** Every recommendation includes the what, why, and how. "Add a
-sticky CTA bar — we saw a 23% increase on mobile" not "improve your CTAs."
+SEO-specific writing rules that prose-sanitiser does not cover:
 
 **Structure for scanning.** Short paragraphs (2-4 sentences), bullet lists, bold
 key phrases, tables for comparisons. One idea per paragraph.
@@ -165,6 +161,9 @@ key phrases, tables for comparisons. One idea per paragraph.
 **Keyword placement.** Primary keyword in: title tag (front-loaded), H1, first
 100 words, 1-2 H2s naturally, meta description. After that: synonyms and natural
 language. No stuffing.
+
+**Search-intent match.** First paragraph directly answers the query the keyword
+implies. If the searcher wants a list, give a list before the prose.
 
 ### Deliverables for blog posts:
 1. Full post in markdown with heading hierarchy (H1 → H2 → H3)
@@ -236,9 +235,10 @@ Would the reader need to search again? If yes, the content isn't done.
 ### Anti-Pattern Check (from guidelines)
 - No keyword stuffing
 - No filler paragraphs (every paragraph earns its place)
-- No generic AI hedging ("it depends", "many factors" without committing)
 - No wall of text (headings, bullets, bold key phrases throughout)
 - No duplicate intent with existing pages on the site
+- **Run prose-sanitiser** for voice tells (em-dashes, banned vocab, "The X"
+  headings, hedge words, throat-clearing, negative parallelism)
 
 ### Format Match
 Does the content type match what Google shows for this query?
