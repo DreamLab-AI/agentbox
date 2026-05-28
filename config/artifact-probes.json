@@ -42,6 +42,12 @@
     "probe_command": "claude-flow --version"
   },
   {
+    "capability_id": "native-sqlite-backend",
+    "entrypoint_path": "@NIX_STORE_BIN@/claude-flow",
+    "required_for_readiness": false,
+    "probe_command": "d=$(grep -oE '/nix/store/[^[:space:]]+/lib/claude-flow-cli' \"$(readlink -f \"$(command -v claude-flow)\")\" | head -1); [ -n \"$d\" ] && ! find \"$d\" -type d -name better-sqlite3 -exec sh -c 'test ! -e \"$1/build/Release/better_sqlite3.node\"' _ {} \\; -print | grep -q ."
+  },
+  {
     "capability_id": "agentic-qe-cli",
     "entrypoint_path": "@NIX_STORE_BIN@/aqe",
     "required_for_readiness": false,

@@ -214,6 +214,10 @@ in
       src = packageWithDeps;
       dontBuild = true;
 
+      # python3 for node-gyp (the better-sqlite3 native bridge below); the C++
+      # toolchain and gnumake come from stdenv.
+      nativeBuildInputs = [ pkgs.python3 ];
+
       installPhase = ''
         runHook preInstall
 
@@ -239,6 +243,30 @@ in
             mkdir -p "$nm/sharp/build/Release"
             ln -s "../../../@img/sharp-$plat/lib/sharp-$plat.node" \
                   "$nm/sharp/build/Release/sharp-$plat.node"
+          fi
+        done
+
+        # ---- better-sqlite3 native-binary bridge ------------------------
+        # Stage 2's `npm install --ignore-scripts` skips better-sqlite3's
+        # install hook ("prebuild-install || node-gyp rebuild"), so no native
+        # better_sqlite3.node is produced. agentdb (bundled by @claude-flow/cli,
+        # ruflo, and agentic-qe) pins better-sqlite3@^11.8.1 and, finding no
+        # native binary, silently falls back to the sql.js WASM backend whose
+        # write/WAL/delete paths drop data without erroring. Compile the binary
+        # here, offline, from better-sqlite3's vendored deps/ against Node 20
+        # headers (ABI 115 — v11 builds cleanly). --nodedir keeps node-gyp off
+        # the network. Idempotent: skips any instance already carrying a binary.
+        export HOME="$TMPDIR"
+        export npm_config_nodedir="${pkgs.nodejs_20}"
+        _node_gyp="${pkgs.nodejs_20}/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js"
+        find "$out/lib/${pname}" -type d -path '*/node_modules/better-sqlite3' | while read -r _bsq3; do
+          if [ -f "$_bsq3/binding.gyp" ] && [ ! -e "$_bsq3/build/Release/better_sqlite3.node" ]; then
+            if ( cd "$_bsq3" && ${pkgs.nodejs_20}/bin/node "$_node_gyp" \
+                   rebuild --release --nodedir="${pkgs.nodejs_20}" 1>&2 ); then
+              echo "better-sqlite3 native bridge: built ''${_bsq3#$out/lib/${pname}/}" >&2
+            else
+              echo "WARN better-sqlite3 native bridge: build failed at ''${_bsq3#$out/lib/${pname}/} — agentdb will use the buggy WASM fallback" >&2
+            fi
           fi
         done
 
