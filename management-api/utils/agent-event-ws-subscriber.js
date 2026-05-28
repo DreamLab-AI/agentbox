@@ -13,7 +13,7 @@
  *
  * Configuration (agentbox.toml):
  *   [adapters.events]
- *   host_ws_url = "ws://visionflow_container:4000/wss/agent-events"
+ *   host_ws_url = "ws://visionclaw_container:4000/wss/agent-events"
  *
  * Or env override: AGENTBOX_HOST_WS_URL
  */

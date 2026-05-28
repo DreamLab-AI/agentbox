@@ -45,7 +45,7 @@ Guardian", "The Loop").
 |--------|-------|
 | The Problem: AI Is Hard | AI Is Hard |
 | The Uncomfortable Question | One Awkward Question |
-| The VisionFlow Stack | VisionFlow Stack |
+| The VisionClaw Stack | VisionClaw Stack |
 | The 80/10 Gap | 80/10 Gap |
 
 ### 3. Negative Parallelism

@@ -153,7 +153,7 @@ class TCPServer {
         break;
 
       case 'notifications/agent_action':
-        // Forward agent action events to all subscribers (VisionFlow)
+        // Forward agent action events to all subscribers (VisionClaw)
         const broadcastCount = this.context.broadcastAgentEvent({
           jsonrpc: '2.0',
           method: 'notifications/agent_action',
@@ -349,7 +349,7 @@ class WebSocketServerWrapper {
         break;
 
       case 'notifications/agent_action':
-        // Forward agent action events to all subscribers (VisionFlow)
+        // Forward agent action events to all subscribers (VisionClaw)
         const broadcastCount = this.context.broadcastAgentEvent({
           jsonrpc: '2.0',
           method: 'notifications/agent_action',

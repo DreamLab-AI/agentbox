@@ -2,10 +2,10 @@
  * Agent Event Bridge
  *
  * Connects the Management API's agent event publisher to the MCP TCP server
- * for forwarding agent action events to VisionFlow.
+ * for forwarding agent action events to VisionClaw.
  *
  * Architecture:
- *   claude-flow hooks → AgentEventPublisher → AgentEventBridge → MCP TCP → VisionFlow
+ *   claude-flow hooks → AgentEventPublisher → AgentEventBridge → MCP TCP → VisionClaw
  *
  * Supports both JSON-RPC and binary protocols for maximum efficiency.
  */
@@ -182,7 +182,7 @@ class AgentEventBridge {
             duration_ms: event.duration_ms,
             metadata: event.metadata || {}
           },
-          // Include binary-compatible fields for VisionFlow decoder
+          // Include binary-compatible fields for VisionClaw decoder
           message_type: 0x23,  // AGENT_ACTION
           protocol_version: 2,
           timestamp: new Date().toISOString()

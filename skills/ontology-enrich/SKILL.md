@@ -1,6 +1,6 @@
 ---
 name: ontology-enrich
-description: "Validation, enrichment, and TTL generation for Logseq ontology with VisionFlow/WebVOWL compatibility. Use when validating, enriching, or generating TTL for Logseq ontology with VisionFlow/WebVOWL compatibility."
+description: "Validation, enrichment, and TTL generation for Logseq ontology with VisionClaw/WebVOWL compatibility. Use when validating, enriching, or generating TTL for Logseq ontology with VisionClaw/WebVOWL compatibility."
 version: 2.0.0
 category: ontology
 layer: 1
@@ -22,11 +22,11 @@ tags:
 
 - For creating new ontology schemas from scratch -- use ontology-core instead
 - For general data validation unrelated to Logseq ontology -- use standard validation tools
-- For VisionFlow graph rendering -- this handles data, not display
+- For VisionClaw graph rendering -- this handles data, not display
 
 ## Purpose
 
-Validated enrichment and TTL generation for mainKnowledgeGraph corpus with VisionFlow/WebVOWL compatibility.
+Validated enrichment and TTL generation for mainKnowledgeGraph corpus with VisionClaw/WebVOWL compatibility.
 
 ## Key Workflows
 
@@ -157,9 +157,9 @@ Use for cross-domain classification without changing `source-domain`.
     fi
 ```
 
-## Integration with VisionFlow
+## Integration with VisionClaw
 
-VisionFlow's `github_sync_service.rs` expects:
+VisionClaw's `github_sync_service.rs` expects:
 
 | Field | Required | Format |
 |-------|----------|--------|

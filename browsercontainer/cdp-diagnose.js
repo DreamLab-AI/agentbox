@@ -128,7 +128,7 @@ async function main() {
 
       console.log('\n=== SCREENSHOT ===');
       const ss = await send('Page.captureScreenshot', { format: 'png' });
-      const path = '/tmp/visionflow-diagnose.png';
+      const path = '/tmp/visionclaw-diagnose.png';
       require('fs').writeFileSync(path, Buffer.from(ss.data, 'base64'));
       console.log(`Saved: ${path}`);
 

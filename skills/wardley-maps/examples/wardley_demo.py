@@ -11,7 +11,7 @@ from generate_wardley_map import WardleyMapGenerator
 
 # Complex business description
 business_description = """
-We're building an AI-powered knowledge management platform called VisionFlow. 
+We're building an AI-powered knowledge management platform called VisionClaw. 
 Our users are enterprise R&D teams who need to manage massive amounts of unstructured data.
 
 The platform features:
@@ -44,7 +44,7 @@ generic. We're focusing on the R&D vertical with deep domain expertise.
 # Parse and create components
 components = [
     # User-facing components (high visibility)
-    {"name": "VisionFlow Platform", "visibility": 0.95, "evolution": 0.4, "type": "user"},
+    {"name": "VisionClaw Platform", "visibility": 0.95, "evolution": 0.4, "type": "user"},
     {"name": "User Interface", "visibility": 0.90, "evolution": 0.6},
     {"name": "XR Visualization", "visibility": 0.85, "evolution": 0.15, "type": "custom"},
     {"name": "Real-time Collaboration", "visibility": 0.85, "evolution": 0.65},
@@ -78,13 +78,13 @@ components = [
 # Define dependencies
 dependencies = [
     # Platform dependencies
-    ("VisionFlow Platform", "User Interface"),
+    ("VisionClaw Platform", "User Interface"),
     ("User Interface", "XR Visualization"),
     ("User Interface", "Real-time Collaboration"),
-    ("VisionFlow Platform", "Plugin Ecosystem"),
+    ("VisionClaw Platform", "Plugin Ecosystem"),
     
     # Core system dependencies
-    ("VisionFlow Platform", "Knowledge Graph"),
+    ("VisionClaw Platform", "Knowledge Graph"),
     ("Knowledge Graph", "Multi-Agent Orchestration"),
     ("Knowledge Graph", "Domain Ontologies"),
     ("Knowledge Graph", "GraphRAG System"),
@@ -117,13 +117,13 @@ generator = WardleyMapGenerator(width=1000, height=700)
 html_map = generator.create_map(components, dependencies)
 
 # Save the map
-output_file = '/mnt/user-data/outputs/visionflow_wardley_map.html'
+output_file = '/mnt/user-data/outputs/visionclaw_wardley_map.html'
 with open(output_file, 'w') as f:
     f.write(html_map)
 
 # Also create a strategic analysis
 analysis = """
-# Strategic Analysis: VisionFlow Platform
+# Strategic Analysis: VisionClaw Platform
 
 ## Current Position
 - **Genesis Components (0.0-0.2)**: XR Visualization
@@ -179,12 +179,12 @@ analysis = """
 """
 
 # Save the analysis
-with open('/mnt/user-data/outputs/visionflow_analysis.md', 'w') as f:
+with open('/mnt/user-data/outputs/visionclaw_analysis.md', 'w') as f:
     f.write(analysis)
 
 print("✅ Wardley Map Demonstration Complete!")
-print(f"📊 Visual Map: visionflow_wardley_map.html")
-print(f"📝 Strategic Analysis: visionflow_analysis.md")
+print(f"📊 Visual Map: visionclaw_wardley_map.html")
+print(f"📝 Strategic Analysis: visionclaw_analysis.md")
 print("\nThis demonstrates how the Wardley Mapper skill can:")
 print("1. Parse complex business descriptions")
 print("2. Identify and position components on evolution axis")

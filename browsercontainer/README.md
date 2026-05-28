@@ -69,7 +69,7 @@ agentbox.sh browsercontainer rebuild
 ## TREAT_AS_SECURE
 
 Chrome treats HTTP origins as insecure by default, which blocks
-`SharedArrayBuffer` (needed for the VisionFlow zero-copy position pipeline).
+`SharedArrayBuffer` (needed for the VisionClaw zero-copy position pipeline).
 The `TREAT_AS_SECURE` env var lists comma-separated origins that Chrome should
 treat as secure contexts. Set in `docker-compose.browsercontainer.yml`:
 
@@ -85,14 +85,14 @@ For `SharedArrayBuffer` to work, the target page must also serve:
 - `Cross-Origin-Opener-Policy: same-origin`
 - `Cross-Origin-Embedder-Policy: credentialless` (or `require-corp`)
 
-VisionFlow's nginx.dev.conf adds these headers.
+VisionClaw's nginx.dev.conf adds these headers.
 
 ## Rendering
 
 Both **WebGPU** and **WebGL** are hardware-accelerated via Vulkan/ANGLE on the
 NVIDIA RTX 6000. Chrome is launched with `--enable-features=WebGPU` and
 `--enable-unsafe-webgpu` so that WebGPU works on both HTTPS and HTTP origins.
-VisionFlow currently uses WebGL (Three.js / React Three Fiber).
+VisionClaw currently uses WebGL (Three.js / React Three Fiber).
 GPU passthrough is not strictly required — Chrome falls back to software
 rendering without it. The healthcheck treats missing GPU as a warning, not a failure.
 
@@ -105,7 +105,7 @@ waits for it to load, then reports:
 - WebSocket connections
 - Console messages and errors
 - Runtime.evaluate latency (detects main thread freezes)
-- Screenshot saved to `/tmp/visionflow-diagnose.png`
+- Screenshot saved to `/tmp/visionclaw-diagnose.png`
 
 ```bash
 # Default target (192.168.2.132:3001), 15s wait

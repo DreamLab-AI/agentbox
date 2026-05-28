@@ -21,7 +21,7 @@ const resolveChromium = require('./resolve-chromium');
     }
   });
 
-  console.log('Navigating to VisionFlow...');
+  console.log('Navigating to VisionClaw...');
   await page.goto('http://192.168.0.51:3001', { waitUntil: 'domcontentloaded', timeout: 30000 });
   await page.waitForTimeout(8000);
 

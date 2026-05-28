@@ -20,7 +20,7 @@ VisionClaw maintains a comprehensive ontology and knowledge graph system:
   `urn:ngm:graph:ontology:inferred` (Whelk-derived), `urn:ngm:graph:knowledge`
   (KG entities), `urn:ngm:graph:agent` (telemetry)
 - **Whelk-rs** OWL 2 EL++ reasoner for materialised inference
-- **REST API** at `http://webxr:4000/api/` (graph, ontology, health endpoints)
+- **REST API** at `http://visionclaw-server:4000/api/` (graph, ontology, health endpoints)
 - **WebSocket** at `/wss` (binary physics protocol) and `/ws/mcp-relay` (MCP bridge)
 - **IRI namespace**: `vc:` → `https://narrativegoldmine.com/ns/v1#`
 - **URN scheme**: `urn:visionclaw:{concept,kg,bead,execution,group}:<pubkey>:<local>`
@@ -104,10 +104,10 @@ PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 ```toml
 [skills.ontology]
 enabled = true
-visionclaw_api_url = "http://webxr:4000"
+visionclaw_api_url = "http://visionclaw-server:4000"
 ```
 
-The URL defaults to `http://webxr:4000` (the VisionClaw container hostname on
+The URL defaults to `http://visionclaw-server:4000` (the VisionClaw container hostname on
 `visionclaw_network`). Operators can override for external deployments.
 
 ## Consequences

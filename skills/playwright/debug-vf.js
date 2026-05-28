@@ -18,7 +18,7 @@ const resolveChromium = require('./resolve-chromium');
     }
   });
 
-  console.log('Navigating to VisionFlow...');
+  console.log('Navigating to VisionClaw...');
   await page.goto('http://192.168.0.51:3001', { waitUntil: 'domcontentloaded', timeout: 30000 });
 
   // Wait longer for WebSocket connection and data
@@ -39,7 +39,7 @@ const resolveChromium = require('./resolve-chromium');
     // Check localStorage/sessionStorage for settings
     let storedSettings = null;
     try {
-      const stored = localStorage.getItem('visionflow-settings') || localStorage.getItem('settings');
+      const stored = localStorage.getItem('visionclaw-settings') || localStorage.getItem('settings');
       if (stored) {
         const parsed = JSON.parse(stored);
         storedSettings = {

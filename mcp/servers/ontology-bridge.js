@@ -2,13 +2,13 @@
 // ontology-bridge.js — MCP server bridging agentbox agents to VisionClaw's
 // Oxigraph ontology + knowledge graph via REST API (ADR-023, PRD-011).
 //
-// Reads VISIONCLAW_API_URL from env (default: http://webxr:4000).
+// Reads VISIONCLAW_API_URL from env (default: http://visionclaw-server:4000).
 // Fail-open: returns structured errors when VisionClaw is unreachable.
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
-const API_URL = (process.env.VISIONCLAW_API_URL || 'http://webxr:4000').replace(/\/$/, '');
+const API_URL = (process.env.VISIONCLAW_API_URL || 'http://visionclaw-server:4000').replace(/\/$/, '');
 const TIMEOUT_MS = parseInt(process.env.ONTOLOGY_TIMEOUT_MS || '10000', 10);
 
 const SPARQL_PROLOGUE = `PREFIX vc: <https://narrativegoldmine.com/ns/v1#>

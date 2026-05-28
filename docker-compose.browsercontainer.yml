@@ -22,7 +22,7 @@ services:
       - XDG_RUNTIME_DIR=/tmp/xdg-runtime
       - HOME=/home/devuser
       # Treat LAN dev servers as secure contexts for SharedArrayBuffer
-      # (required for zero-copy position pipeline; VisionFlow uses WebGL not WebGPU)
+      # (required for zero-copy position pipeline; VisionClaw uses WebGL not WebGPU)
       - TREAT_AS_SECURE=http://192.168.2.132:3001,http://192.168.2.132:3000,http://host.docker.internal:3001,http://host.docker.internal:3000
     deploy:
       resources:

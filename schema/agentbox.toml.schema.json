@@ -231,8 +231,8 @@
             },
             "visionclaw_api_url": {
               "type": "string",
-              "description": "VisionClaw REST API base URL (default: http://webxr:4000).",
-              "default": "http://webxr:4000"
+              "description": "VisionClaw REST API base URL (default: http://visionclaw-server:4000).",
+              "default": "http://visionclaw-server:4000"
             }
           }
         },

@@ -29,8 +29,8 @@
  *
  * Configuration:
  *
- *   VISIONCLAW_API_URL   — base URL of VisionClaw REST (default: http://visionflow_container:4000)
- *   VISIONCLAW_WS_URL    — WS URL for broker events (default: ws://visionflow_container:4000)
+ *   VISIONCLAW_API_URL   — base URL of VisionClaw REST (default: http://visionclaw_container:4000)
+ *   VISIONCLAW_WS_URL    — WS URL for broker events (default: ws://visionclaw_container:4000)
  *   KNOWLEDGE_GIT_CLONE  — path to the git clone of the knowledge repo (default: /home/devuser/workspace/knowledge)
  *
  * Attribution
@@ -48,8 +48,8 @@ const uris = require('../lib/uris');
 // Configuration
 // ---------------------------------------------------------------------------
 
-const VISIONCLAW_API = (process.env.VISIONCLAW_API_URL || 'http://visionflow_container:4000').replace(/\/$/, '');
-const VISIONCLAW_WS = (process.env.VISIONCLAW_WS_URL || 'ws://visionflow_container:4000').replace(/\/$/, '');
+const VISIONCLAW_API = (process.env.VISIONCLAW_API_URL || 'http://visionclaw_container:4000').replace(/\/$/, '');
+const VISIONCLAW_WS = (process.env.VISIONCLAW_WS_URL || 'ws://visionclaw_container:4000').replace(/\/$/, '');
 const GIT_CLONE_ROOT = process.env.KNOWLEDGE_GIT_CLONE || '/home/devuser/workspace/knowledge';
 const AGENTBOX_PUBKEY = process.env.AGENTBOX_X_ONLY_PUBKEY_HEX || process.env.AGENTBOX_PUBKEY || '0'.repeat(64);
 const AGENTBOX_NPUB = process.env.AGENTBOX_NPUB || '';

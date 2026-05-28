@@ -9,7 +9,7 @@ const resolveChromium = require('./resolve-chromium');
   });
   const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
 
-  console.log('Navigating to VisionFlow...');
+  console.log('Navigating to VisionClaw...');
   await page.goto('http://192.168.0.51:3001', { waitUntil: 'domcontentloaded', timeout: 30000 });
   await page.waitForTimeout(6000);
 

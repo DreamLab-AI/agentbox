@@ -522,10 +522,10 @@ cfg.setdefault('mcpServers', {})['ontology-bridge'] = {
   'command': 'node',
   'args': ['$_ONTOLOGY_BRIDGE'],
   'type': 'stdio',
-  'env': {'VISIONCLAW_API_URL': '${VISIONCLAW_API_URL:-http://webxr:4000}'}
+  'env': {'VISIONCLAW_API_URL': '${VISIONCLAW_API_URL:-http://visionclaw-server:4000}'}
 }
 with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
-" 2>/dev/null && echo "  [mcp] Added ontology-bridge → ${VISIONCLAW_API_URL:-http://webxr:4000}" || true
+" 2>/dev/null && echo "  [mcp] Added ontology-bridge → ${VISIONCLAW_API_URL:-http://visionclaw-server:4000}" || true
     chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
   fi
 fi

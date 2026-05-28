@@ -1,7 +1,7 @@
 /**
  * Agent Event Publisher
  *
- * Emits agent action events for visualization in VisionFlow.
+ * Emits agent action events for visualization in VisionClaw.
  * Events are broadcast via WebSocket and MCP TCP to connected clients.
  */
 

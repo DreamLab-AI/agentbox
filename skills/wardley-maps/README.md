@@ -383,8 +383,8 @@ Based on Simon Wardley's pioneering work in strategic mapping:
 
 ## 🚦 Getting Started
 
-1. **Open the example**: `examples/visionflow_wardley_map.html`
-2. **Read the analysis**: `examples/visionflow_analysis.md`
+1. **Open the example**: `examples/visionclaw_wardley_map.html`
+2. **Read the analysis**: `examples/visionclaw_analysis.md`
 3. **Try the interactive tool**: Run `tools/quick_map.py`
 4. **Create your own map**: Use any input method above
 

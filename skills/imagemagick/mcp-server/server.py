@@ -400,12 +400,12 @@ def batch_process(params: BatchParams) -> dict:
 
 
 # =============================================================================
-# MCP Resources (for VisionFlow integration)
+# MCP Resources (for VisionClaw integration)
 # =============================================================================
 
 @mcp.resource("imagemagick://capabilities")
 def get_capabilities() -> str:
-    """Return ImageMagick capabilities for VisionFlow discovery."""
+    """Return ImageMagick capabilities for VisionClaw discovery."""
     import json
     capabilities = {
         "name": "imagemagick",
@@ -416,7 +416,7 @@ def get_capabilities() -> str:
             "crop_image", "composite_images", "identify_image", "batch_process"
         ],
         "formats_supported": ["png", "jpg", "jpeg", "gif", "webp", "bmp", "tiff", "svg", "pdf"],
-        "visionflow_compatible": True
+        "visionclaw_compatible": True
     }
     return json.dumps(capabilities, indent=2)
 

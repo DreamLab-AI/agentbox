@@ -81,6 +81,6 @@ batch_process({
 |----------|---------|-------------|
 | `IMAGEMAGICK_TIMEOUT` | `300` | Command timeout in seconds |
 
-## VisionFlow Integration
+## VisionClaw Integration
 
-This skill exposes `imagemagick://capabilities` resource for discovery by VisionFlow's MCP TCP client on port 9500.
+This skill exposes `imagemagick://capabilities` resource for discovery by VisionClaw's MCP TCP client on port 9500.

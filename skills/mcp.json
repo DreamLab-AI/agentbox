@@ -359,7 +359,7 @@
       "upstream": "https://www.npmjs.com/package/@perplexity-ai/mcp-server"
     }
   },
-  "visionflow": {
+  "visionclaw": {
     "tcp_bridge": {
       "host": "multi-agent-container",
       "port": 9500,

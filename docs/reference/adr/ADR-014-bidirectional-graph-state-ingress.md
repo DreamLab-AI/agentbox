@@ -22,7 +22,7 @@ Agentbox today only **emits** agent activity (claude-flow hooks → AgentEventPu
 
 Three observations forced the decision:
 
-1. **The current bridge is one-way.** `management-api/utils/agent-event-bridge.js` opens a TCP socket toward `MCP_TCP_HOST:MCP_TCP_PORT` (default `localhost:9500`), serialises agent events outbound, and consumes nothing inbound. The reconnect storm visible in agentbox logs (`Agent event bridge error: connect ECONNREFUSED 127.0.0.1:9500`) is the artefact of this assumption clashing with VisionClaw's actual socket layout (MCP listens on `:3001` inside `visionflow_container`, not `:9500` inside agentbox).
+1. **The current bridge is one-way.** `management-api/utils/agent-event-bridge.js` opens a TCP socket toward `MCP_TCP_HOST:MCP_TCP_PORT` (default `localhost:9500`), serialises agent events outbound, and consumes nothing inbound. The reconnect storm visible in agentbox logs (`Agent event bridge error: connect ECONNREFUSED 127.0.0.1:9500`) is the artefact of this assumption clashing with VisionClaw's actual socket layout (MCP listens on `:3001` inside `visionclaw_container`, not `:9500` inside agentbox).
 
 2. **Agents cannot see user attention.** VisionClaw renders `AgentCapsule` nodes in a 3D spring graph and the user routinely focuses, selects, hovers, or drags specific KGNodes. Today nothing about that interaction reaches the agent runtime. An agent answering "what is the user looking at?" has to guess. This breaks the user-aware-agent UX the integrating host wants.
 

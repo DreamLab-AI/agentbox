@@ -21,7 +21,7 @@ const resolveChromium = require('./resolve-chromium');
     }
   });
 
-  console.log('Navigating to VisionFlow...');
+  console.log('Navigating to VisionClaw...');
   await page.goto('http://192.168.0.51:3001', { waitUntil: 'domcontentloaded', timeout: 60000 });
 
   // Wait for graph data to load and filter

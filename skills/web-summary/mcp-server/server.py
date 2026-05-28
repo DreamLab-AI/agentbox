@@ -9,7 +9,7 @@ Features:
 - URL content summarization
 - YouTube transcript extraction
 - Semantic topic generation for Logseq/Obsidian
-- VisionFlow integration via MCP resources
+- VisionClaw integration via MCP resources
 """
 
 import os
@@ -354,12 +354,12 @@ async def health_check() -> dict:
 
 
 # =============================================================================
-# MCP Resources (for VisionFlow integration)
+# MCP Resources (for VisionClaw integration)
 # =============================================================================
 
 @mcp.resource("web-summary://capabilities")
 def get_capabilities() -> str:
-    """Return web-summary capabilities for VisionFlow discovery."""
+    """Return web-summary capabilities for VisionClaw discovery."""
     capabilities = {
         "name": "web-summary",
         "version": "2.0.0",
@@ -367,7 +367,7 @@ def get_capabilities() -> str:
         "tools": ["summarize_url", "youtube_transcript", "generate_topics", "health_check"],
         "zai_integration": True,
         "supported_formats": ["markdown", "plain", "logseq", "obsidian"],
-        "visionflow_compatible": True
+        "visionclaw_compatible": True
     }
     return json.dumps(capabilities, indent=2)
 

@@ -38,7 +38,7 @@ through the `[skills.ontology]` manifest gate.
 ### W1: Ontology Bridge MCP Server
 
 A lightweight Node.js MCP server (`mcp/servers/ontology-bridge.js`) that
-proxies to VisionClaw's REST API at `http://webxr:4000/api/`.
+proxies to VisionClaw's REST API at `http://visionclaw-server:4000/api/`.
 
 **Tools exposed:**
 
@@ -58,7 +58,7 @@ proxies to VisionClaw's REST API at `http://webxr:4000/api/`.
 ### W2: Manifest Integration
 
 - Enable `[skills.ontology]` gate in `agentbox.toml`
-- Add `visionclaw_api_url` config key (default: `http://webxr:4000`)
+- Add `visionclaw_api_url` config key (default: `http://visionclaw-server:4000`)
 - Register ontology-bridge in `.mcp.json` generation (entrypoint-unified.sh)
 - Health check: bridge verifies VisionClaw reachability at startup
 

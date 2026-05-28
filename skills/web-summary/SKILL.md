@@ -38,7 +38,7 @@ URL content summarization and topic extraction via FastMCP, using Z.AI service f
 
 ```
 ┌─────────────────────────────┐
-│  Claude Code / VisionFlow   │
+│  Claude Code / VisionClaw   │
 │  (MCP Client)               │
 └──────────────┬──────────────┘
                │ MCP Protocol (stdio)
@@ -132,6 +132,6 @@ curl -X POST http://localhost:9600/chat \
   -d '{"prompt": "Hello"}'
 ```
 
-## VisionFlow Integration
+## VisionClaw Integration
 
-This skill exposes `web-summary://capabilities` resource for discovery by VisionFlow's MCP TCP client on port 9500.
+This skill exposes `web-summary://capabilities` resource for discovery by VisionClaw's MCP TCP client on port 9500.

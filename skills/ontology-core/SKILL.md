@@ -14,11 +14,11 @@ tags: [ontology, owl2, logseq, ttl, webvowl, validation]
 
 - For enriching or validating existing ontology data -- use ontology-enrich instead
 - For general knowledge graph work unrelated to Logseq/OWL2 -- use standard RDF tools
-- For VisionFlow graph rendering -- this is the data layer, not the display layer
+- For VisionClaw graph rendering -- this is the data layer, not the display layer
 
 ## Overview
 
-Production-quality ontology parsing, validation, and TTL generation for the mainKnowledgeGraph corpus targeting VisionFlow/WebVOWL compatibility.
+Production-quality ontology parsing, validation, and TTL generation for the mainKnowledgeGraph corpus targeting VisionClaw/WebVOWL compatibility.
 
 ## Valid Domain Prefixes
 

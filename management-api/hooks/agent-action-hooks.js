@@ -2,7 +2,7 @@
  * Claude-Flow Agent Action Hooks
  *
  * Integrates with claude-flow hooks system to emit agent action events
- * for visualization in VisionFlow.
+ * for visualization in VisionClaw.
  *
  * Usage in claude-flow:
  *   claude-flow hooks route --task "My task"

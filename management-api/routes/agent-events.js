@@ -1,7 +1,7 @@
 /**
  * Agent Events WebSocket Route
  *
- * Provides real-time agent action streaming to VisionFlow.
+ * Provides real-time agent action streaming to VisionClaw.
  * Supports both JSON and binary protocols for efficiency.
  *
  * WebSocket: /v1/agent-events/stream

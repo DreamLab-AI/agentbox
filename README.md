@@ -394,13 +394,13 @@ See [Tailscale guide](docs/user/tailscale.md) · [Mesh deployment](docs/user/mes
 3. Prefer manifest-gated additions over ad hoc runtime mutation.
 4. Treat hardening, probe semantics, URI grammar, and linked-data surfaces as architectural changes — propose them via an ADR.
 
-## Part of VisionFlow
+## Part of VisionClaw
 
-Agentbox is the **harness engineering** substrate of the [VisionFlow](https://github.com/DreamLab-AI/VisionFlow) coordination platform — a federated architecture for human–AI intelligence built on `did:nostr` identity, OWL 2 EL reasoning, and Nostr message passing.
+Agentbox is the **harness engineering** substrate of the [VisionClaw](https://github.com/DreamLab-AI/VisionClaw) coordination platform — a federated architecture for human–AI intelligence built on `did:nostr` identity, OWL 2 EL reasoning, and Nostr message passing.
 
 | Substrate | Repository | Role |
 |:----------|:-----------|:-----|
-| **VisionFlow** | [DreamLab-AI/VisionFlow](https://github.com/DreamLab-AI/VisionFlow) | Ecosystem guide and coordination architecture |
+| **VisionClaw** | [DreamLab-AI/VisionClaw](https://github.com/DreamLab-AI/VisionClaw) | Ecosystem guide and coordination architecture |
 | **VisionClaw** | [DreamLab-AI/VisionClaw](https://github.com/DreamLab-AI/VisionClaw) | Knowledge engineering — OWL 2 EL, 92 CUDA kernels, XR |
 | **Agentbox** | **[DreamLab-AI/agentbox](https://github.com/DreamLab-AI/agentbox)** | **Harness engineering — Nix, 90+ skills, sovereign pods** |
 | **solid-pod-rs** | [DreamLab-AI/solid-pod-rs](https://github.com/DreamLab-AI/solid-pod-rs) | Cryptographic foundation — JSS Rust port, DID:Nostr |

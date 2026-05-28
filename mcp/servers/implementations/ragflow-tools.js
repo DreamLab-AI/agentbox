@@ -1,7 +1,7 @@
 /**
  * RAGFlow MCP Tools Implementation
  * Provides knowledge base query, document ingestion, and semantic search
- * for the VisionFlow multi-agent system via visionclaw_network network.
+ * for the VisionClaw multi-agent system via visionclaw_network network.
  */
 
 const http = require('http');
