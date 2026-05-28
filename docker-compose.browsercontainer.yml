@@ -21,9 +21,13 @@ services:
       - SIDECAR_PORT=8931
       - XDG_RUNTIME_DIR=/tmp/xdg-runtime
       - HOME=/home/devuser
-      # Treat LAN dev servers as secure contexts for SharedArrayBuffer
-      # (required for zero-copy position pipeline; VisionClaw uses WebGL not WebGPU)
-      - TREAT_AS_SECURE=http://192.168.2.132:3001,http://192.168.2.132:3000,http://host.docker.internal:3001,http://host.docker.internal:3000
+      # Treat dev/LAN origins as secure contexts. Required for:
+      #   - SharedArrayBuffer (zero-copy position pipeline)
+      #   - navigator.gpu (WebGPU) — Chrome refuses to expose `gpu` on
+      #     non-secure origins. Without `visionclaw_container:3001` in
+      #     this list, the client silently falls back to WebGL and the
+      #     embedding-cloud rendering path swamps the GPU.
+      - TREAT_AS_SECURE=http://visionclaw_container:3001,http://visionclaw_container:3000,http://visionclaw_container:4000,http://192.168.2.132:3001,http://192.168.2.132:3000,http://host.docker.internal:3001,http://host.docker.internal:3000
     deploy:
       resources:
         limits:

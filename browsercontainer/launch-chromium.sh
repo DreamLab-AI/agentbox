@@ -24,11 +24,12 @@ fi
 echo "[launch-chromium] Using: $CHROME_BIN" >&2
 echo "[launch-chromium] TREAT_AS_SECURE: $SECURE_ORIGINS" >&2
 
-SECURE_FLAGS=""
-IFS=',' read -ra ORIGINS <<< "$SECURE_ORIGINS"
-for o in "${ORIGINS[@]}"; do
-  SECURE_FLAGS="$SECURE_FLAGS --unsafely-treat-insecure-origin-as-secure=$o"
-done
+# Chrome's --unsafely-treat-insecure-origin-as-secure accepts EITHER repeated
+# flag entries OR a single comma-separated value, but the single-value form is
+# what the docs canonically describe and what propagates reliably across all
+# Chrome 100+ versions. Earlier per-origin form left isSecureContext=false
+# on Chrome 149 even though SharedArrayBuffer worked. Use the single-flag
+# comma form.
 
 exec "$CHROME_BIN" \
     --user-data-dir=/tmp/chrome-profile \
@@ -46,10 +47,11 @@ exec "$CHROME_BIN" \
     --enable-gpu-rasterization \
     --disable-gpu-sandbox \
     --enable-vulkan \
+    --allow-insecure-localhost \
     --remote-debugging-port=9222 \
     --remote-debugging-address=0.0.0.0 \
     --remote-allow-origins=* \
     --crash-dumps-dir=/tmp/chromium-crashes \
     --disable-features=CrashReporting \
-    $SECURE_FLAGS \
+    --unsafely-treat-insecure-origin-as-secure="$SECURE_ORIGINS" \
     about:blank
