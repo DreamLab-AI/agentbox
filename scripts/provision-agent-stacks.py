@@ -11,6 +11,46 @@ SKILLS_TREE = pathlib.Path(os.getenv("SKILLS_TREE", "/opt/agentbox/skills"))
 AGENTBOX_CONFIG = pathlib.Path(os.getenv("AGENTBOX_CONFIG", "/etc/agentbox.toml"))
 SHARED_PROJECTS_ROOT = pathlib.Path(os.getenv("SHARED_PROJECTS_ROOT", "/projects"))
 
+# Image-baked self-learning hook adapter (config/ → /opt/agentbox/config/).
+HOOK_ADAPTER = pathlib.Path(
+    os.getenv("AGENTBOX_HOOK_ADAPTER", "/opt/agentbox/config/hooks/claude-flow-hook-adapter.cjs")
+)
+# Writable embedder cache for claude-flow's route/intelligence HNSW recall;
+# unset, @xenova/transformers caches into the read-only Nix store and crashes.
+HF_CACHE = os.getenv("AGENTBOX_HF_CACHE", "/home/devuser/.cache/huggingface")
+
+
+def learning_hooks() -> dict:
+    """Claude Code hook wiring for the claude-flow self-learning loop.
+
+    Every hook delegates to the baked stdin→CLI adapter, which routes through
+    the mandated ruvector-postgres backend (ADR-015). `|| true` keeps a missing
+    binary or adapter from ever breaking the session; the adapter itself always
+    exits 0. session-end is bound to SessionEnd only (never Stop) so per-session
+    consolidation does not fire on every turn.
+    """
+
+    def cmd(action: str, timeout_ms: int) -> dict:
+        return {
+            "type": "command",
+            "command": f"node {HOOK_ADAPTER} {action} || true",
+            "timeout": timeout_ms,
+        }
+
+    return {
+        "PreToolUse": [
+            {"matcher": "Bash", "hooks": [cmd("pre-command", 5000)]},
+            {"matcher": "Write|Edit|MultiEdit", "hooks": [cmd("pre-edit", 5000)]},
+        ],
+        "PostToolUse": [
+            {"matcher": "Write|Edit|MultiEdit", "hooks": [cmd("post-edit", 10000)]},
+            {"matcher": "Bash", "hooks": [cmd("post-command", 5000)]},
+        ],
+        "UserPromptSubmit": [{"hooks": [cmd("route", 12000)]}],
+        "SessionStart": [{"hooks": [cmd("session-restore", 15000)]}],
+        "SessionEnd": [{"hooks": [cmd("session-end", 10000)]}],
+    }
+
 
 STACKS = {
     "claude-core": {
@@ -201,6 +241,15 @@ def build_profile(name: str, config: dict) -> None:
         "tooling": config["tools"],
         "agentUrn": f"urn:agentbox:agent:{name}",
         "didTemplate": "did:nostr:{AGENTBOX_PUBKEY_HEX}",
+        # Exported to hook subprocesses by Claude Code. TRANSFORMERS_CACHE/HF_HOME
+        # give the embedder a writable cache outside the read-only Nix store.
+        "env": {
+            "CLAUDE_FLOW_HOOKS_ENABLED": "true",
+            "CLAUDE_FLOW_V3_ENABLED": "true",
+            "TRANSFORMERS_CACHE": HF_CACHE,
+            "HF_HOME": HF_CACHE,
+        },
+        "hooks": learning_hooks(),
     }
 
     symlink_skills(claude_dir / "skills")

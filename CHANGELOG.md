@@ -4,6 +4,20 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Added
+
+- Self-learning hook loop pre-wired into every Claude-driven profile. Provisioned profiles previously shipped a bare `settings.json` with no hooks, so a fresh container had no auto-learning unless the ambient (non-baked) `~/.claude/helpers` bundle happened to exist. The loop now ships in the image and routes through the baked `claude-flow`/`ruflo` RuVector intelligence (SONA/MoE/HNSW) — and therefore the mandated ruvector-postgres backend (ADR-015) — rather than any local-SQLite learning store.
+- `config/hooks/claude-flow-hook-adapter.cjs` — thin stdin→CLI adapter (baked to `/opt/agentbox/config/hooks/`). Claude Code delivers hook payloads as stdin JSON, but `claude-flow hooks <cmd>` takes typed flags (`--task`/`--file`/`--command`) and ignores stdin; wiring hooks straight at the CLI no-ops every turn. The adapter translates the payload, forwards only high-signal lines for `route`/`session-restore` (token-lean context injection), sets a writable `TRANSFORMERS_CACHE` so the embedder does not crash against the read-only Nix store, and always exits 0 so a hook can never break the session.
+
+### Changed
+
+- `scripts/provision-agent-stacks.py`: `build_profile()` now emits `env` (`CLAUDE_FLOW_HOOKS_ENABLED`, `CLAUDE_FLOW_V3_ENABLED`, `TRANSFORMERS_CACHE`, `HF_HOME`) and `hooks` (PreToolUse/PostToolUse/UserPromptSubmit/SessionStart/SessionEnd) blocks in every Claude-settings `settings.json`. `session-end` is bound to `SessionEnd` only (never `Stop`) so per-session consolidation does not fire every turn; every hook command carries `|| true` and a timeout for fail-open resilience. `no_claude_settings` profiles are unaffected.
+- `config/artifact-probes.json`: new non-fatal `self-learning-hook-adapter` probe (`node --check` on the baked adapter).
+
+### Notes
+
+- Builds on `b82dacba` (better-sqlite3 native bridge). That fix is load-bearing here: without it `claude-flow` falls back to the sql.js WASM backend that silently drops writes, so the hook loop's edit/command/session learning would not persist. The `native-sqlite-backend` probe verifies the bridge; the new adapter probe verifies the wiring.
+
 ## [Code-as-Harness Sprint] - 2026-05-21
 
 Phase 1 of PRD-008 code-as-harness integration. Persistent Python kernel MCP, ExpeL post-task lesson distillation, and SWE-agent ACI MCP scaffold — all manifest-gated. Phase 2 surfaces (voyager_skill_library, aci_shell, tree_search_coder) ship as scaffolding only, `enabled = false` by default.
