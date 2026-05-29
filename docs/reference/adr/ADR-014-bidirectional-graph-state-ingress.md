@@ -143,6 +143,22 @@ Phases 1–3 are scoped to one sprint and land alongside VisionClaw ADR-059 phas
 
 **Reversible?** Yes through Phase 3. Phase 4 (auth gate) requires a feature-flag rollback path for one release.
 
+### Implementation note — 2026-05-29 (producer convergence)
+
+Phase-1 work on the VisionClaw pair (ADR-059) surfaced a producer-side bug worth
+recording: the deprecated `agent-event-bridge.js` JSON path hand-rolled its own
+`notifications/agent_action` literal instead of calling the publisher's builder,
+so it **computed the ADR-013 identity (`source_urn`/`target_urn`/`pubkey`) and
+then discarded it** before the wire. Every transport now emits through the single
+canonical builder `agentEventPublisher.createMcpNotification(event)`; the bridge
+no longer constructs its own envelope. This makes the "canonical schema source"
+claim in ADR-059 literally true — there is one builder, not one-builder-plus-a-
+divergent-copy. Guarded by `tests/sovereign/agent-event-notification.test.js`
+(asserts identity end-to-end **and** that the bridge contains no inline
+`method: 'notifications/agent_action'` literal). The legacy bridge is otherwise
+unchanged: still gated behind `ENABLE_MCP_BRIDGE` (default off) pending Phase-2
+removal. Commit `8005fc3f`.
+
 ## Alternatives considered
 
 ### A. Polling agentbox for state instead of pushing

@@ -1,7 +1,7 @@
 # PRD-014: Embodied Agent Loop — Voice-to-Ontology Gap Closure
 
-**Status:** Draft v1
-**Date:** 2026-05-28
+**Status:** In progress (Tier A done; Tier B WS5 producer convergence + Phase-1 mirror done — see §8 Progress log)
+**Date:** 2026-05-28 (progress log appended 2026-05-29)
 **Author:** DreamLab AI
 **Related:** ADR-005 (Pluggable Adapters), ADR-009 (Embedded Nostr Relay), ADR-010 (Rust Solid Pod), ADR-012 (JSON-LD Federation), ADR-013 (Canonical URI Grammar), ADR-014 (Bidirectional Graph-State Ingress), ADR-017 (Multi-Tenant did:nostr Pods), ADR-023 (Ontology Bridge), PRD-006 (Linked-Data Interfaces), PRD-011 (Ontology Bridge)
 **Drives:** ADR-026 (Cross-Substrate Agent-Loop Seams), DDD-012 (Sovereign Knowledge Elevation Domain — BC22)
@@ -171,7 +171,7 @@ The closure introduces **no new identity primitives and no new URN kinds**. It u
 - **nostr-rust-forum (X3, X4)**: advertise the agent-control capability in NIP-11 (`supported_kinds`/custom field); decide and document 38xxx handling (route+project, or declare out-of-scope).
 - **dreamlab-ai-website (X5, X6)**: either wire a minimal relay client subscribing 31400-31405 for the declared `/governance` route, or remove the dead `VITE_RELAY_URL`/`VITE_ADMIN_PUBKEY` config; reconcile the placeholder-vs-seeded agent-key roster.
 - **VisionFlow (X7)**: document the voice→actor→pod→KG→ontology→viz flow and the BC20 namespace grammar in canon (`docs/architecture/`, `docs/protocol/`).
-- **Agent-action ingest (X2)**: this is **not** a port fix (the `:9500`→`:3001` diagnosis was wrong; both sides agree on `:9500`). The agentbox relay already broadcasts `notifications/agent_action`; the gap is that VisionClaw's `AgentMonitorActor` polls request/response and never subscribes to the pushed stream, and the `0x23` binary frame has no decoder. Closing it is BC20's job (WS5): add a push-subscription read loop on the existing `:9500` connection (or the WS `agent-action` channel) that maps each `notifications/agent_action` into a live agent-actor update. Do not change the agentbox egress port.
+- **Agent-action ingest (X2)**: this is **not** a port fix (the `:9500`→`:3001` diagnosis was wrong; both sides agree on `:9500`). The gap is that VisionClaw *polls* request/response and never consumes the *pushed* `notifications/agent_action`, and the `0x23` binary frame has no server-side decoder. **Refined close (2026-05-29):** rather than bolt a subscription onto the deprecated `:9500` MCP-TCP relay, converge on the already-accepted **ADR-014 (agentbox) + ADR-059 (VisionClaw)** WebSocket contract — one `/wss/agent-events` socket carrying both directions — and **retire `:9500`** (ADR-014 deprecates the MCP-TCP bridge and explicitly rejects standing up an MCP-TCP listener, Alt C). The `:9500` relay keeps working in Phase 1 behind `ENABLE_MCP_BRIDGE` (default off) only until the WS cutover. This is the debt-free path: no second transport, no divergent envelope. Producer-side convergence is already done (one canonical builder; identity no longer dropped — agentbox commit `8005fc3f`); consumer-side Phase-1 schema mirror has landed (`project/src/agent_events/schema.rs`).
 - **Judgment Broker (X1)**: the broker `handleGovernanceDecision()` / BrokerActor-to-main work is tracked in VisionFlow but is a dependency of G8 (called out, not owned here).
 
 ---
@@ -184,7 +184,7 @@ The closure introduces **no new identity primitives and no new URN kinds**. It u
 | WS2 | ~~agentbox~~ VisionClaw | ~~egress port `:9500`→`:3001`~~ **VOID — misdiagnosis.** Port `:9500` is correct on both sides; agentbox egress unchanged. The real X2 gap (VisionClaw polls, never reads the pushed `agent_action`) folds into WS5 (BC20 ingest). | X2 | ~~A~~ → B (WS5) |
 | WS3 | solid-pod-rs | GET content-negotiation | C4 | A |
 | WS4 | agentbox | pod adapter signed NIP-98 + agent mandate model | C2, C3 | B |
-| WS5 | agentbox + VisionClaw | BC20 anti-corruption layer (real) + push-subscription ingest of `notifications/agent_action` on the `:9500` relay (absorbs the former WS2) | E1, X2 | B |
+| WS5 | agentbox + VisionClaw | BC20 anti-corruption layer (real) + agent-action ingest via the **ADR-014/ADR-059 `/wss/agent-events` WS contract** (retires `:9500`; absorbs former WS2). Stage 1 (BC20 + docs) ✅; Stage 2 producer convergence ✅ + VisionClaw Phase-1 schema mirror ✅; Stage 3 = `/wss/agent-events` handler + poll retirement (needs host build) | E1, X2 | B |
 | WS6 | agentbox + VisionClaw | governed elevation routing + extractor + alignment | D1, D2, D4, D5 | B |
 | WS7 | VisionClaw | voice→selected-actor binding + ACSP dispatcher | A2, A3, E3 | B |
 | WS8 | VisionClaw | `ConceptElevated` event + owner field + elevation animation | E4, E5 | B |
@@ -209,7 +209,36 @@ The closure introduces **no new identity primitives and no new URN kinds**. It u
 ## 7. Success metrics (end-to-end acceptance)
 
 1. **E2E smoke**: with an agent node selected in the XR graph, a spoken instruction ("remember that X relates to Y") results in: a signed ActionRequest → agentbox actor → NIP-98 pod write of the triple → personal-KG node appears → ACSP elevation prompt → on approval, a governed PR proposes the shared class → on merge, `ConceptElevated` animates the node into shared-ontology styling — with one continuous provenance chain (`urn:agentbox:activity` ↔ `urn:visionclaw`).
-2. **Regression**: pod PATCH preserves prior triples (G3). **Ingest (X2)**: a `notifications/agent_action` pushed through the `:9500` relay is consumed by VisionClaw and updates the corresponding live agent-actor node (delivered via BC20/WS5, not a port change).
+2. **Regression**: pod PATCH preserves prior triples (G3). **Ingest (X2)**: a `notifications/agent_action` emitted by agentbox is consumed by VisionClaw over the ADR-014/ADR-059 `/wss/agent-events` socket — carrying its `source_urn`/`pubkey` identity intact — and updates the corresponding live agent-actor node (delivered via BC20/WS5 on the WS contract, with `:9500` retired — not a port change, not a second transport).
 3. **Governance**: no path writes shared ontology without the Whelk gate AND, where policy requires, ACSP approval (G4, G8).
 4. **Alignment**: forum NIP-11 advertises agent-control kinds; website has no dead relay config (G7).
 5. **Contract**: all three adapter implementation classes still pass `tests/contract/` (ADR-005 non-negotiable).
+
+---
+
+## 8. Progress log
+
+### 2026-05-29 — WS5 producer convergence + ADR-059 Phase 1 mirror
+
+- **WS5 Stage 1 (done, agentbox commit `e3ecfb3c`)**: BC20 anti-corruption layer
+  is real code (`management-api/lib/bc20-provenance-bridge.js`, 20 tests); closed
+  kind map `activity→execution`, `agent→did:nostr`, `thing→kg`, `memory→concept`;
+  DDD-012 §A4 + `CLAUDE.md` aligned to VisionClaw's real `urn:visionclaw` grammar.
+- **WS5 Stage 2 (done, agentbox commit `8005fc3f`)**: producer convergence — one
+  canonical wire-envelope builder (`agent-event-publisher.js::createMcpNotification`);
+  the deprecated bridge no longer hand-rolls a divergent literal that dropped the
+  ADR-013 identity. Guarded by `tests/sovereign/agent-event-notification.test.js`.
+- **WS5 Stage 2 (done, VisionClaw)**: ADR-059 Phase-1 canonical schema mirror
+  landed at `project/src/agent_events/schema.rs` (round-trip + cross-repo fixture
+  tests). Awaiting a host build (tmux tab 6) to compile-verify before Stage 3.
+- **Design refinements folded in (ADR-014, ADR-059, this PRD)**: (a) X2 closes via
+  the `/wss/agent-events` WS contract, **retiring `:9500`** — not a subscription
+  on the deprecated relay; (b) the inbound path was *absent*, not merely lossy —
+  Phase-1 attach point is a new ingest module, not the outbound viz protocol;
+  (c) the binary `0x23` frame is identity-blind **by design** — identity rides
+  the JSON ingest envelope and is resolved server-side to numeric ids before the
+  GPU frame.
+- **Next (WS5 Stage 3, needs host build)**: `/wss/agent-events` handler consuming
+  `AgentActionNotification`; switch the VisionClaw consumer from poll → WS;
+  beam+gluon despawn reaper (ADR-059 §4); did:nostr-keyed live actor nodes
+  (closes E2). Then agentbox ADR-014 Phase-2 legacy-bridge removal.
