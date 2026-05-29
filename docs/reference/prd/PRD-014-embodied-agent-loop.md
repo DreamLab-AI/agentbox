@@ -1,6 +1,6 @@
 # PRD-014: Embodied Agent Loop — Voice-to-Ontology Gap Closure
 
-**Status:** In progress (Tier A done; Tier B WS5 producer convergence + Phase-1 mirror done — see §8 Progress log)
+**Status:** In progress (Tier A done; Tier B WS5 Stage 1–3a done — producer convergence, Phase-1 mirror, and the authenticated `/wss/agent-events` ingest seam, all cargo-verified; render + `:9500` state cutover = Stage 3b pending — see §8 Progress log)
 **Date:** 2026-05-28 (progress log appended 2026-05-29)
 **Author:** DreamLab AI
 **Related:** ADR-005 (Pluggable Adapters), ADR-009 (Embedded Nostr Relay), ADR-010 (Rust Solid Pod), ADR-012 (JSON-LD Federation), ADR-013 (Canonical URI Grammar), ADR-014 (Bidirectional Graph-State Ingress), ADR-017 (Multi-Tenant did:nostr Pods), ADR-023 (Ontology Bridge), PRD-006 (Linked-Data Interfaces), PRD-011 (Ontology Bridge)
@@ -117,14 +117,14 @@ Evidence is cited as `repo path:line`. Each row is **IMPLEMENTED / PARTIAL / DOC
 | E3 | ACSP kinds 31400-31405 entirely absent in VisionClaw; replaced by an unwired one-way `AgentActionEnvelope` (4 variants) | ABSENT | `grep 3140[0-5]` = 0; `crates/visionclaw-contracts/src/agent_action.rs:75-166` (no client dispatcher) |
 | E4 | No `ConceptElevated` domain event → no elevation animation hook | ABSENT | DDD-008 events = Queried/AxiomSubmitted/BridgeHealthChanged only |
 | E5 | knowledge-vs-ontology node distinction exists (mode-aware colouring, IRI-bit classes); **personal-vs-shared (owner) distinction does not** | PARTIAL | `project/client/src/.../useGraphNodeColors.ts:100-144`; `validator.rs:505-507` |
-| E6 | Server binary protocol already defines `0x23 AGENT_ACTION` frames + `agent-action` WS event | IMPLEMENTED | `project/src/utils/binary_protocol.rs:1187-1463` |
+| E6 | Server binary protocol *defines* `0x23 AGENT_ACTION` frames, but the path is **latent, not wired** (correction 2026-05-29): the outbound `encode`/broadcast is dead code never called; `MultiMcpVisualizationActor` is never `.start()`ed and is absent from `AppState`; the only live agent-viz WS (`/visualization/agents/ws`) emits an empty `Vec<AgentStatus>` placeholder. The frame type exists; nothing renders it. | PARTIAL (was mis-marked IMPLEMENTED) | `project/src/utils/binary_protocol.rs:1187-1463` (defined); dead broadcast `:1334`; dead actor `project/src/actors/multi_mcp_visualization_actor.rs`; empty live path `project/src/handlers/bots_visualization_handler.rs:525-560` |
 
 ### Cross-cutting — identity, governance, comms alignment
 
 | # | Finding | Status | Evidence |
 |---|---------|--------|----------|
 | X1 | Judgment Broker ~65%: `handleGovernanceDecision()` missing; BrokerActor branch-only (`crashbug`), not on main; decisions persisted but not applied; no PROV-O linkage | PARTIAL | `VisionFlow/docs/.../DDD-judgment-broker-context.md:181-189`; `status-reconciliation.md:34` |
-| X2 | Agent-action egress reaches VisionClaw but is never consumed: the agentbox bridge pushes `notifications/agent_action` to the agentbox MCP TCP relay (`:9500`), which broadcasts it; VisionClaw connects to the same `:9500` but **polls request/response** (`agent_list`/topology, one `read_line` per request) and never reads the pushed notification. The `0x23 AGENT_ACTION` binary path has no server-side decoder. (NB: the original "wrong port `:9500`→`:3001`" diagnosis was incorrect — both sides agree on `:9500`; `:3001` is VisionClaw's HTTP/WS API, not an agent-action ingest. This is a push-vs-poll ingest gap owned by BC20.) | GAP | bridge `agentbox/management-api/utils/agent-event-bridge.js:39-51,154-194`; relay `agentbox/mcp/servers/mcp-tcp-server.js:144-150`; VisionClaw subscriber `project/src/app_state.rs:895-907`, `project/src/utils/mcp_tcp_client.rs:297`; dead binary `project/src/utils/binary_protocol.rs:1334` |
+| X2 | Agent-action egress reached VisionClaw but was never consumed: the agentbox bridge pushes `notifications/agent_action` to the agentbox MCP TCP relay (`:9500`); VisionClaw connected to the same `:9500` but **polled request/response** and never read the pushed notification. **Consume-side closed 2026-05-29 (Phase 2a):** VisionClaw now has an authenticated `/wss/agent-events` ingest (`project/src/agent_events/ingest.rs`) that parses + validates the pushed envelope and publishes it to a broadcast hub (`hub.rs`); cargo-verified, 7/7 tests. **Still open:** the render of those events (beam+gluon, ADR-059 §2b) and retiring the `:9500` *state* poll (`bots_client`, a separate payload). (NB: the original "wrong port `:9500`→`:3001`" diagnosis was incorrect — both sides agree on `:9500`.) | PARTIAL (was GAP) | ingest `project/src/agent_events/ingest.rs`, hub `…/hub.rs`, schema `…/schema.rs`; remaining: dead binary `project/src/utils/binary_protocol.rs:1334`, state poll `project/src/services/bots_client.rs` |
 | X3 | nostr-rust-forum relay supports 31400-31405 (registered-agent gated) but **NIP-11 does not advertise** the capability | GAP | `nostr-rust-forum/crates/nostr-bbs-relay-worker/src/nip11.rs:28`; routing `nip_handlers.rs:218-232` |
 | X4 | Forum relay has no dedicated handler for the 38xxx kinds agentbox federates | GAP | `nip11.rs:50` (generic PRE only) vs `agentbox.toml:96,157` |
 | X5 | dreamlab-ai-website declares `VITE_RELAY_URL`/`VITE_ADMIN_PUBKEY` but never reads them (HTTP-only, no relay client) | GAP | `dreamlab-ai-website/src/vite-env.d.ts:9,15` (unused); `src/lib/forum-api.ts` |
@@ -161,7 +161,7 @@ The closure introduces **no new identity primitives and no new URN kinds**. It u
 
 ### 4.4 Seam E — Visualisation with continuous provenance
 
-- **BC20 made real (E1)**: implement the anti-corruption layer mapping `urn:agentbox:{activity,agent,memory,...}` ↔ `urn:visionclaw:{execution,agent,concept,...}` at the federation boundary. Live in VisionClaw's ingest path (consumes agentbox Activity/PROV-O records via the existing `0x23 AGENT_ACTION` frame / WS `agent-action` event, E6) and round-tripped in agentbox's BC20 reference. Provenance is preserved both directions.
+- **BC20 made real (E1)**: implement the anti-corruption layer mapping `urn:agentbox:{activity,agent,memory,...}` ↔ `urn:visionclaw:{execution,agent,concept,...}` at the federation boundary. Live in VisionClaw's ingest path — consumes agentbox Activity/PROV-O records via the **JSON `/wss/agent-events` envelope** (ADR-059 §2; the `source_urn`/`target_urn`/`pubkey` identity rides in this JSON, *not* in the identity-blind `0x23` binary frame, which is a downstream server→browser projection — E6 correction) and round-tripped in agentbox's BC20 reference. Provenance is preserved both directions.
 - **Live actors (E2)**: replace the mock `/api/bots/agents` polling source for *real* agents with the BC20-ingested live agent identities; keep mock injection behind a dev flag.
 - **Single protocol (E3)**: make VisionClaw speak **ACSP 31400-31405** — either by mapping the existing `AgentActionEnvelope` onto ACSP kinds or by adopting ACSP directly and wiring a client dispatcher (clicking an agent node emits a real 31402). This removes the divergent dead contract.
 - **Elevation visual (E4, E5)**: emit a `ConceptElevated` domain event when a proposal merges; add an **owner/origin field** to graph nodes so personal-vs-shared is renderable; animate a node migrating from personal-KG styling to shared-ontology depth-spectrum on elevation.
@@ -171,7 +171,7 @@ The closure introduces **no new identity primitives and no new URN kinds**. It u
 - **nostr-rust-forum (X3, X4)**: advertise the agent-control capability in NIP-11 (`supported_kinds`/custom field); decide and document 38xxx handling (route+project, or declare out-of-scope).
 - **dreamlab-ai-website (X5, X6)**: either wire a minimal relay client subscribing 31400-31405 for the declared `/governance` route, or remove the dead `VITE_RELAY_URL`/`VITE_ADMIN_PUBKEY` config; reconcile the placeholder-vs-seeded agent-key roster.
 - **VisionFlow (X7)**: document the voice→actor→pod→KG→ontology→viz flow and the BC20 namespace grammar in canon (`docs/architecture/`, `docs/protocol/`).
-- **Agent-action ingest (X2)**: this is **not** a port fix (the `:9500`→`:3001` diagnosis was wrong; both sides agree on `:9500`). The gap is that VisionClaw *polls* request/response and never consumes the *pushed* `notifications/agent_action`, and the `0x23` binary frame has no server-side decoder. **Refined close (2026-05-29):** rather than bolt a subscription onto the deprecated `:9500` MCP-TCP relay, converge on the already-accepted **ADR-014 (agentbox) + ADR-059 (VisionClaw)** WebSocket contract — one `/wss/agent-events` socket carrying both directions — and **retire `:9500`** (ADR-014 deprecates the MCP-TCP bridge and explicitly rejects standing up an MCP-TCP listener, Alt C). The `:9500` relay keeps working in Phase 1 behind `ENABLE_MCP_BRIDGE` (default off) only until the WS cutover. This is the debt-free path: no second transport, no divergent envelope. Producer-side convergence is already done (one canonical builder; identity no longer dropped — agentbox commit `8005fc3f`); consumer-side Phase-1 schema mirror has landed (`project/src/agent_events/schema.rs`).
+- **Agent-action ingest (X2)**: this is **not** a port fix (the `:9500`→`:3001` diagnosis was wrong; both sides agree on `:9500`). The gap is that VisionClaw *polls* request/response and never consumes the *pushed* `notifications/agent_action`, and the `0x23` binary frame has no server-side decoder. **Refined close (2026-05-29):** rather than bolt a subscription onto the deprecated `:9500` MCP-TCP relay, converge on the already-accepted **ADR-014 (agentbox) + ADR-059 (VisionClaw)** WebSocket contract — one `/wss/agent-events` socket carrying both directions — and **retire `:9500`** (ADR-014 deprecates the MCP-TCP bridge and explicitly rejects standing up an MCP-TCP listener, Alt C). The `:9500` relay keeps working in Phase 1 behind `ENABLE_MCP_BRIDGE` (default off) only until the WS cutover. This is the debt-free path: no second transport, no divergent envelope. Producer-side convergence is already done (one canonical builder; identity no longer dropped — agentbox commit `8005fc3f`); consumer-side Phase-1 schema mirror landed (`project/src/agent_events/schema.rs`); **Phase-2a authenticated ingest landed & cargo-verified 2026-05-29** (`project/src/agent_events/ingest.rs` + `hub.rs`, 7/7 tests). What remains is render (beam+gluon, ADR-059 §2b) and the `:9500` *state*-poll cutover — a refinement surfaced during implementation: `:9500` carries two unrelated payloads (agent **state** snapshots via `bots_client`, and the agent **action** push), so retiring it fully needs the WS to also carry state, tracked as ADR-059 Phasing 2b.
 - **Judgment Broker (X1)**: the broker `handleGovernanceDecision()` / BrokerActor-to-main work is tracked in VisionFlow but is a dependency of G8 (called out, not owned here).
 
 ---
@@ -184,7 +184,7 @@ The closure introduces **no new identity primitives and no new URN kinds**. It u
 | WS2 | ~~agentbox~~ VisionClaw | ~~egress port `:9500`→`:3001`~~ **VOID — misdiagnosis.** Port `:9500` is correct on both sides; agentbox egress unchanged. The real X2 gap (VisionClaw polls, never reads the pushed `agent_action`) folds into WS5 (BC20 ingest). | X2 | ~~A~~ → B (WS5) |
 | WS3 | solid-pod-rs | GET content-negotiation | C4 | A |
 | WS4 | agentbox | pod adapter signed NIP-98 + agent mandate model | C2, C3 | B |
-| WS5 | agentbox + VisionClaw | BC20 anti-corruption layer (real) + agent-action ingest via the **ADR-014/ADR-059 `/wss/agent-events` WS contract** (retires `:9500`; absorbs former WS2). Stage 1 (BC20 + docs) ✅; Stage 2 producer convergence ✅ + VisionClaw Phase-1 schema mirror ✅; Stage 3 = `/wss/agent-events` handler + poll retirement (needs host build) | E1, X2 | B |
+| WS5 | agentbox + VisionClaw | BC20 anti-corruption layer (real) + agent-action ingest via the **ADR-014/ADR-059 `/wss/agent-events` WS contract** (absorbs former WS2). Stage 1 (BC20 + docs) ✅; Stage 2 producer convergence ✅ + VisionClaw Phase-1 schema mirror ✅; **Stage 3a `/wss/agent-events` authenticated ingest handler + broadcast hub ✅ cargo-verified (2026-05-29)**; Stage 3b = beam+gluon render actor (ADR-059 §2b) + `:9500` *state*-poll cutover (pending — render substrate found latent, see ADR-059 Design log Finding 4) | E1, X2 | B |
 | WS6 | agentbox + VisionClaw | governed elevation routing + extractor + alignment | D1, D2, D4, D5 | B |
 | WS7 | VisionClaw | voice→selected-actor binding + ACSP dispatcher | A2, A3, E3 | B |
 | WS8 | VisionClaw | `ConceptElevated` event + owner field + elevation animation | E4, E5 | B |
@@ -238,7 +238,27 @@ The closure introduces **no new identity primitives and no new URN kinds**. It u
   (c) the binary `0x23` frame is identity-blind **by design** — identity rides
   the JSON ingest envelope and is resolved server-side to numeric ids before the
   GPU frame.
-- **Next (WS5 Stage 3, needs host build)**: `/wss/agent-events` handler consuming
-  `AgentActionNotification`; switch the VisionClaw consumer from poll → WS;
-  beam+gluon despawn reaper (ADR-059 §4); did:nostr-keyed live actor nodes
-  (closes E2). Then agentbox ADR-014 Phase-2 legacy-bridge removal.
+### 2026-05-29 — WS5 Stage 3a: authenticated ingest landed & verified
+
+- **WS5 Stage 3a (done, VisionClaw)**: `/wss/agent-events` authenticated ingest
+  handler (`project/src/agent_events/ingest.rs`) + process-global broadcast hub
+  (`hub.rs`), registered in `main.rs` beside `/wss`. Token-validated upgrade
+  (`NostrService::get_session`), subprotocol `vc-agent-events.v1`, parse →
+  `is_canonical()` → publish to hub. **Verified** via `docker exec
+  visionclaw_container`: `cargo check --lib`/`--bins` clean (zero new warnings),
+  `cargo test --lib agent_events` → 7/7 (4 schema + 3 ingest). **Closes the X2
+  consume-side debt** — VisionClaw now consumes the pushed `agent_action`.
+- **Finding 4 (re-scope; E6 correction)**: the agent-action *render* substrate is
+  **latent, not implemented** — the `0x23` outbound broadcast is dead code,
+  `MultiMcpVisualizationActor` is never started, and the live agent-viz WS emits
+  empty placeholder data. The live agent **state** path is the deprecated `:9500`
+  poll (`bots_client`), a *different* payload from `agent_action`. So Phase 2 was
+  split: **2a (ingest seam, done here)** vs **2b (beam+gluon render + `:9500`
+  state cutover, pending)**. The PRD §3 E6 row is corrected IMPLEMENTED → PARTIAL.
+  Escape hatch respected: no speculative GPU/actor wiring against dead substrate.
+- **Next (WS5 Stage 3b)**: hub-subscribing beam+gluon render actor (ADR-059 §2b,
+  transient `Edge` flag + `class_charge` modulation + despawn reaper);
+  did:nostr-keyed live actor nodes (closes E2); `:9500` *state* cutover (needs WS
+  to also carry state snapshots). Then agentbox ADR-014 Phase-2 legacy-bridge removal.
+
+### 2026-05-29 — WS5 producer convergence + ADR-059 Phase 1 mirror

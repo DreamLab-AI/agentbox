@@ -104,9 +104,12 @@ The bidirectional crossing is defined by an **executable reference** in agentbox
 cross-namespace grammar, with the closed kind map, the `UrnMapping` value object, and the
 round-trip proof). Until VisionClaw's `src/uri` minter merges to main, this reference *is*
 the contract the VisionClaw ingest path conforms to. BC20 then lives at the **VisionClaw
-ingest path**, consuming agentbox Activity/PROV-O records via the existing `0x23
-AGENT_ACTION` binary frame / WS `agent-action` event
-(`project/src/utils/binary_protocol.rs:1187-1463`). Every `urn:agentbox` `@id` is
+ingest path**, consuming agentbox Activity/PROV-O records via the **JSON `/wss/agent-events`
+envelope** (ADR-059 §2; landed Phase 2a 2026-05-29 at `project/src/agent_events/ingest.rs`).
+*Correction (2026-05-29):* identity rides this JSON ingest envelope, **not** the `0x23`
+binary frame (`project/src/utils/binary_protocol.rs:1187-1463`), which is identity-blind by
+design and is a downstream server→browser projection — and currently latent (dead broadcast,
+unstarted actor). Every `urn:agentbox` `@id` is
 parsed/validated through `lib/uris.js`; every `urn:visionclaw` `@id` is minted through the
 `src/uri/` minter (per ADR-013) once merged. The reference never fabricates an ad-hoc
 identifier.
@@ -115,8 +118,9 @@ identifier.
 `project/{src,crates,client/src}`, and VisionFlow `docs/ecosystem-map.md:88` already flags
 it paper-only. Without a real bidirectional ACL, agentbox Activity never reaches the graph
 (G5 fails) and provenance continuity is broken at the only boundary that matters. The
-`0x23 AGENT_ACTION` frame already exists (E6), so the cost is the mapping logic, not new
-transport.
+`/wss/agent-events` ingest transport now exists (ADR-059 Phase 2a, cargo-verified), so the
+cost is the mapping logic, not new transport. (E6 correction: the `0x23` frame is *defined*
+but its render path is latent — it is not the ingest transport.)
 
 **Rejected alternatives.**
 - *A shared graph store* (mount Oxigraph into agentbox, or a common KG database). Violates

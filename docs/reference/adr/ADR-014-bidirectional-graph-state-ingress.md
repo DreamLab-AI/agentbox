@@ -159,6 +159,33 @@ divergent-copy. Guarded by `tests/sovereign/agent-event-notification.test.js`
 unchanged: still gated behind `ENABLE_MCP_BRIDGE` (default off) pending Phase-2
 removal. Commit `8005fc3f`.
 
+### Implementation note — 2026-05-29 (consumer side now consumes)
+
+The VisionClaw consumer half landed too (ADR-059 Phase 2a): a new authenticated
+`/wss/agent-events` ingest handler (`project/src/agent_events/ingest.rs`) parses
+the canonical `notifications/agent_action` envelope, validates it, and publishes
+it to a process-global broadcast hub. **This is the actual close of the X2 gap
+this ADR was written to fix** — the pushed events agentbox emits are now *read*
+by VisionClaw rather than dropped (previously VisionClaw only polled a list and
+never consumed the push). cargo-verified, 7/7 tests, via the live-bind-mounted
+`visionclaw_container`.
+
+Two findings from that work refine this ADR's expectations:
+
+1. **The render of ingested actions is a separate increment.** VisionClaw's
+   agent-action *render* path is latent — the outbound `0x23` binary broadcast is
+   dead code, `MultiMcpVisualizationActor` is never started, and the live
+   agent-viz WS emits empty placeholder data. So "ingest" (done) and "render"
+   (ADR-059 Phase 2b) are decoupled; the hub is the seam between them. Bolting
+   render onto dead substrate was deliberately avoided.
+2. **`:9500` retirement is two payloads, not one.** This ADR frames `:9500` as the
+   agent-action egress. Implementation showed `:9500` *also* carries agent **state
+   snapshots** (VisionClaw `bots_client` polls `query_agent_list` every 2 s for
+   cpu/health/status — a different payload from `agent_action`). The
+   `agent-event-bridge.js` retarget stops the *action* push hitting `:9500`, but
+   fully retiring `:9500` additionally needs the WS contract to carry **state**.
+   Tracked as ADR-059 Phasing row 2b.
+
 ## Alternatives considered
 
 ### A. Polling agentbox for state instead of pushing
