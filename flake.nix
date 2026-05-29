@@ -114,7 +114,7 @@
           pkgName         = "ruvector";
           version         = "0.2.25";
           sha256          = "sha256-CPzyPQjPQNO3C8HdBt8wlmCZNJn1DVev+/HBycoDakk=";
-          nodeModulesHash = "sha256-5ol92/2asyQoXLYQzZPsuQRIHB5gGjyJlw/FZiLMq1g=";
+          nodeModulesHash = "sha256-IJ+ztPl1opr3yVWmgllTMR6/k7xdeqNXlcxu3V1uMzU=";
           bin             = "ruvector";
         };
 
