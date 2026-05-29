@@ -52,7 +52,15 @@ Minting: all URNs are minted via `management-api/lib/uris.js`. All durable ident
 
 Resolvability: best-effort via `/v1/uri/<urn>` (307/404/410). Canonical ref: [ADR-013](docs/reference/adr/ADR-013-canonical-uri-grammar.md).
 
-Parallel namespace: the host project's Rust substrate uses `urn:visionclaw:<kind>:<hex-pubkey>:<local>` (6 kinds: `concept`, `kg`, `bead`, `execution`, `group`) minted in `src/uri/`. Owner-scoped kinds use 64-char hex pubkey as scope (not bech32 npub). The BC20 anti-corruption layer maps between the two namespaces at the federation boundary.
+Parallel namespace: the host project's Rust substrate uses the converged `urn:visionclaw:<kind>:...` grammar minted in `src/uri/` — 5 URN kinds plus `did:nostr` for identity. The kinds are *not* uniformly `<hex-pubkey>:<local>`; their shapes differ by kind:
+- `concept:<domain>:<slug>` — domain-scoped (post-elevation shared ontology class)
+- `kg:<hex-pubkey>:<sha256-12>` — owner-scoped, content-addressed (personal KG node)
+- `bead:<hex-pubkey>:<sha256-12>` — owner-scoped, content-addressed
+- `execution:<sha256-12>` — content-addressed, **unscoped** (owner travels in `owner_did`)
+- `group:<team>#members` — team-scoped
+- identity is `did:nostr:<hex-pubkey>` — there is **no** `urn:visionclaw:agent` kind; an agent's identity *is* its DID.
+
+Owner-scoped kinds use the 64-char hex pubkey as scope (not bech32 npub). This grammar is converged across agentic worktrees but **not yet merged to VisionClaw main** (main still carries the legacy `urn:ngm:node/edge/domain` scheme). Until it merges, `management-api/lib/bc20-provenance-bridge.js` (+ its sovereign test) is the executable definition of the BC20 anti-corruption layer that maps between the two namespaces at the federation boundary (B05: the only cross-namespace importer).
 
 ## Important Rules For Changes
 

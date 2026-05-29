@@ -75,24 +75,41 @@ Elevation) is modelled in DDD-012.
 ### D1 — BC20 is a real, owned, bidirectional anti-corruption component
 
 The BC20 anti-corruption layer is implemented as a real, owned, **bidirectional**
-component — not the paper reference ADR-023 D5 left it as. It maps
-`urn:agentbox:{activity,agent,memory,mandate,...}` ↔
-`urn:visionclaw:{execution,agent,concept,group}` at the federation boundary, preserving
-both directions:
+component — not the paper reference ADR-023 D5 left it as. It maps the agentbox kinds
+that cross the federation boundary onto VisionClaw's **actual converged `urn:visionclaw`
+grammar** (`concept | group | kg | bead | execution | did` — see `project/src/uri/kinds.rs`,
+converged across worktrees, pending merge to main which still carries the legacy `urn:ngm`
+scheme):
 
-- `owner_did = did:nostr:<hex>` is carried through unchanged (the identity spine is shared,
-  so this is a relabelling of the URN scheme around a constant identity, never a re-issue).
-- The PROV-O `action_urn = urn:agentbox:activity:<scope>:<verb>-<id>` round-trips: an
-  agentbox Activity record re-identified as a `urn:visionclaw:execution` node retains a
-  back-reference to its source `urn:agentbox:activity`, and the reverse mapping recovers it.
+| agentbox | VisionClaw | note |
+|---|---|---|
+| `urn:agentbox:activity:<pubkey>:<verb>-<id>` | `urn:visionclaw:execution:<sha256-12>` | content-addressed; owner travels in `owner_did` + the `UrnMapping` |
+| `urn:agentbox:agent:<pubkey>:<name>` | `did:nostr:<pubkey>` | **no `urn:visionclaw:agent` kind** — an agent's identity *is* its DID |
+| `urn:agentbox:thing:<pubkey>:proposal-<id>` | `urn:visionclaw:kg:<pubkey>:<sha256-12>` | owner-scoped, content-addressed |
+| `urn:agentbox:memory:<pubkey>:lesson-<hash>` | `urn:visionclaw:concept:<domain>:<slug>` | domain-scoped; emitted post-elevation |
 
-BC20 lives at the **VisionClaw ingest path**, consuming agentbox Activity/PROV-O records
-via the existing `0x23 AGENT_ACTION` binary frame / WS `agent-action` event
-(`project/src/utils/binary_protocol.rs:1187-1463`), with a round-trip reference held in
-agentbox (`management-api/lib/uris.js`, where ADR-023 D5 already declared the mapping
-lives). Every `urn:visionclaw` `@id` BC20 emits, and every `urn:agentbox` `@id` it
-recovers, is minted/validated through the canonical libraries (`lib/uris.js` on the
-agentbox side, the `src/uri/` minter on the VisionClaw side per ADR-013).
+preserving both directions:
+
+- `owner_did = did:nostr:<hex>` is carried through unchanged (the identity spine is shared).
+  For the `agent` crossing the DID *is* the VisionClaw identifier; for the content-addressed
+  kinds (`execution`, `kg`) the owner rides alongside in the `UrnMapping`, since those
+  VisionClaw kinds are addressed by content hash, not by a relabelled URN.
+- The PROV-O `action_urn = urn:agentbox:activity:<pubkey>:<verb>-<id>` round-trips: an
+  agentbox Activity re-identified as a `urn:visionclaw:execution` node is recovered to the
+  exact source `urn:agentbox:activity` through the durable `UrnMapping` table (injective per
+  `owner_did`); zero identity loss.
+
+The bidirectional crossing is defined by an **executable reference** in agentbox
+(`management-api/lib/bc20-provenance-bridge.js` — the single module importing the
+cross-namespace grammar, with the closed kind map, the `UrnMapping` value object, and the
+round-trip proof). Until VisionClaw's `src/uri` minter merges to main, this reference *is*
+the contract the VisionClaw ingest path conforms to. BC20 then lives at the **VisionClaw
+ingest path**, consuming agentbox Activity/PROV-O records via the existing `0x23
+AGENT_ACTION` binary frame / WS `agent-action` event
+(`project/src/utils/binary_protocol.rs:1187-1463`). Every `urn:agentbox` `@id` is
+parsed/validated through `lib/uris.js`; every `urn:visionclaw` `@id` is minted through the
+`src/uri/` minter (per ADR-013) once merged. The reference never fabricates an ad-hoc
+identifier.
 
 **Rationale.** PRD-014 E1 proves BC20 is absent in code: zero `urn:agentbox` references in
 `project/{src,crates,client/src}`, and VisionFlow `docs/ecosystem-map.md:88` already flags

@@ -129,10 +129,10 @@ The BC20 anti-corruption translation. Maps `urn:agentbox:*` records to `urn:visi
 **Consistency boundary**: stateless translation per crossing, plus a small durable `UrnMapping` table for round-trip re-identification. Live in VisionClaw's ingest path (consuming agentbox PROV-O records via the existing `0x23 AGENT_ACTION` binary frame / WS `agent-action` event) and round-tripped in agentbox's BC20 reference.
 
 **Invariants:**
-- **B01**: Provenance is CONTINUOUS and BIDIRECTIONAL — a `urn:agentbox:activity` re-identifies to a `urn:visionclaw` node and back to the same `urn:agentbox:activity`; zero identity loss across the crossing (G5). The `UrnMapping` is injective in both directions per `owner_did`.
+- **B01**: Provenance is CONTINUOUS and BIDIRECTIONAL — a `urn:agentbox:activity` re-identifies to a `urn:visionclaw` node and back to the same `urn:agentbox:activity`; zero identity loss across the crossing (G5). The `UrnMapping` is injective in both directions per `owner_did`. Because `execution` and `kg` are content-addressed (`sha256-12`) and carry no verbatim copy of the source local part, the reverse crossing for those kinds is recovered from the durable `UrnMapping` store, not by string symmetry; only the identity-bearing `agent → did:nostr` round-trips structurally on the pubkey alone.
 - **B02**: Mappings are minted via `uris.js` (agentbox side) / `src/uri/` (VisionClaw side) per ADR-013; the bridge NEVER constructs a URN ad-hoc. The mapping table maps names; it does not invent them.
 - **B03**: The bridge FAILS OPEN on an unreachable peer — when VisionClaw is unreachable, the agentbox-side record is still persisted with its `urn:agentbox` identity and the crossing is retried later; the local action is not blocked by an unreachable visualiser (mirrors DDD-008 BC21's degraded posture; contrast M01/P01/P03 which fail closed). `BridgeHealth.status` reflects the peer state.
-- **B04**: The kind map is closed and explicit: `activity↔execution`, `agent↔agent`, `memory↔concept`, `thing↔kg` (extends DDD-008's BC21 ACL table). An unmapped kind is logged and dropped, never silently mis-mapped.
+- **B04**: The kind map is closed and explicit: `activity↔execution`, `agent→did:nostr` (no `urn:visionclaw:agent` kind — the agent's identity *is* its DID), `memory↔concept`, `thing↔kg` (extends DDD-008's BC21 ACL table). An unmapped kind is logged and dropped, never silently mis-mapped.
 - **B05**: The translation is the ONLY code that imports the cross-namespace grammar; BC22 aggregates A1–A3 speak only `urn:agentbox` value objects (anti-corruption discipline, per DDD-003's "domain code MUST NOT import the wire model outside this layer").
 
 ## Domain events
@@ -193,18 +193,23 @@ Relationship summary (using the strategic-pattern vocabulary):
 
 ## Anti-corruption layer
 
-A4 ProvenanceBridge is the ACL between BC22's `urn:agentbox` model and BC20's `urn:visionclaw` model. It extends the BC21 table (DDD-008 §Anti-Corruption Layer) with the elevation-specific kinds:
+A4 ProvenanceBridge is the ACL between BC22's `urn:agentbox` model and BC20's `urn:visionclaw` model. It extends the BC21 table (DDD-008 §Anti-Corruption Layer) with the elevation-specific kinds.
+
+The map is reconciled against VisionClaw's *converged* `urn:visionclaw` grammar (`src/uri/{kinds,parse,mint}.rs` — agreed across the unmerged agent worktrees; VisionClaw main still carries the legacy `urn:ngm` scheme). Two structural facts drive the translation, and neither matches a naive `<scope>:<local>` rewrite:
+
+1. **There is no `urn:visionclaw:agent` kind.** An agent's identity *is* its `did:nostr`, so an agentbox `agent` URN crosses as the bare DID, not a relabelled URN.
+2. **`execution` and `kg` are content-addressed** (`sha256-12-<hex>`), `concept` is `<domain>:<slug>` (post-elevation), and `execution` carries no scope (owner travels in `owner_did`). The local part is *not* preserved verbatim; continuity is restored from the durable `UrnMapping` store (B01), not by string symmetry.
 
 | Agentbox (BC22) | VisionClaw (BC20) | Translation |
 |---|---|---|
-| `urn:agentbox:activity:<scope>:<verb>-<id>` | `urn:visionclaw:execution:<scope>:<local>` | PROV-O Activity → execution graph node (B01, B04) |
-| `urn:agentbox:agent:<scope>:<name>` | `urn:visionclaw:agent:<scope>:<local>` | actor identity → live agent node (replaces E2 mock polling) |
-| `urn:agentbox:memory:<scope>:lesson-<hash>` | `urn:visionclaw:concept:<scope>:<slug>` | personal-KG concept → graph concept node |
-| `urn:agentbox:thing:<scope>:proposal-<id>` | `urn:visionclaw:kg:<scope>:<slug>` | elevation proposal → personal-KG node (pre-elevation) |
+| `urn:agentbox:activity:<scope>:<verb>-<id>` | `urn:visionclaw:execution:sha256-12-<hex>` | PROV-O Activity → content-addressed execution node; unscoped, `owner_did` + UrnMapping carry provenance (B01, B04) |
+| `urn:agentbox:agent:<scope>:<name>` | `did:nostr:<scope>` | actor identity → live agent node keyed by DID (no `agent` URN kind; replaces E2 mock polling) |
+| `urn:agentbox:memory:<scope>:lesson-<hash>` | `urn:visionclaw:concept:<domain>:<slug>` | personal-KG concept → shared concept node; `{domain, slug}` is the elevation target, not derivable from the source URN |
+| `urn:agentbox:thing:<scope>:proposal-<id>` | `urn:visionclaw:kg:<scope>:sha256-12-<hex>` | elevation proposal → owner-scoped content-addressed personal-KG node (pre-elevation) |
 | `ConceptElevated` event | `0x23 AGENT_ACTION` frame / WS `agent-action` | elevation animation hook (E4, E6) |
 | ACSP 31400-31405 | (BC20 must adopt; E3) | governance protocol — BC20 maps `AgentActionEnvelope` onto ACSP kinds |
 
-The translation code is the ONLY place the cross-namespace grammar is imported (B05); BC22 aggregates A1–A3 speak only typed `urn:agentbox` value objects.
+The executable definition of this contract is `management-api/lib/bc20-provenance-bridge.js` (with `tests/sovereign/bc20-provenance-bridge.test.js`). It is the ONLY place the cross-namespace grammar is imported (B05); BC22 aggregates A1–A3 speak only typed `urn:agentbox` value objects. Until VisionClaw's `src/uri` grammar merges to main, that module + its tests *are* the authoritative cross-namespace contract the VisionClaw ingest path must conform to.
 
 ## Invariant summary
 
@@ -226,10 +231,10 @@ The translation code is the ONLY place the cross-namespace grammar is imported (
 | P04 | ElevationProposal | proposal URN reuses `thing` kind; no new URN kind | build/test gate |
 | P05 | ElevationProposal | candidate source_triples resolve to provenanced KgTriples | fail-closed |
 | P06 | ElevationProposal | policy gate required where policy mandates; Whelk never skippable | policy-conditional |
-| B01 | ProvenanceBridge | provenance continuous + bidirectional; zero identity loss | invariant |
-| B02 | ProvenanceBridge | mappings minted via uris.js / src/uri; never ad-hoc | build/test gate |
-| B03 | ProvenanceBridge | fails open on unreachable peer; local action not blocked | fail-open |
-| B04 | ProvenanceBridge | kind map closed; unmapped kind dropped + logged | invariant |
+| B01 | ProvenanceBridge | provenance continuous + bidirectional, injective per `owner_did`; zero identity loss. Content-addressed kinds (execution, kg) recover the source URN from the durable UrnMapping store; identity-bearing `agent → did:nostr` round-trips structurally on the pubkey | invariant |
+| B02 | ProvenanceBridge | agentbox side parsed/validated via uris.js; VisionClaw side via src/uri; never ad-hoc | build/test gate |
+| B03 | ProvenanceBridge | fails open on unreachable peer; local action not blocked (the fail-open posture lives at the VisionClaw ingest boundary, not in the pure translation) | fail-open |
+| B04 | ProvenanceBridge | kind map closed — `{activity, agent, thing, memory}` only; unmapped kind dropped + logged, never silently mis-mapped | invariant |
 | B05 | ProvenanceBridge | translation is the only cross-namespace importer | architecture gate |
 
 **Posture rule of thumb**: everything that gates *authority* or *correctness* (mandates, the two elevation gates, provenance-per-triple) fails CLOSED. Everything that gates *visibility* across the federation boundary (the visualiser, the ontology peer reachability) fails OPEN. This mirrors the agentbox CLAUDE.md constraint: fail-closed on missing/invalid mandate; fail-open on unreachable ontology/visualiser peer.
@@ -242,12 +247,12 @@ The translation code is the ONLY place the cross-namespace grammar is imported (
 | **G3** (non-destructive RDF write) | A2 K02 (C1 fix asserted as contract) |
 | **G4** (governed elevation path) | A3 P03 (`/ontology-agent/propose`, not the backdoor) + P01 Whelk gate |
 | **G5** (continuous provenance) | A4 B01 + `ProvenanceMapped` event |
-| **G6** (live actors + elevation viz) | A4 ACL (agent↔agent live mapping) + `ConceptElevated` event |
+| **G6** (live actors + elevation viz) | A4 ACL (`agent → did:nostr` live actor node keyed by DID) + `ConceptElevated` event |
 | **G8** (governed loop) | A3 P01 + P06 ACSP policy gate + `ElevationPolicyApproved` |
 | **Seam A/B** | consumed boundary — voice→actor ingress hands BC22 an actor `did:nostr` to act under a mandate |
 | **Seam C** | A1 (mandate/delegation, C2/C3) + A2 (non-destructive PATCH C1, content-neg C4) |
 | **Seam D** | A3 entirely — extractor (D1), alignment (D4), governed routing (D2), policy gate (D5), unified store (D6 via K03) |
-| **Seam E** | A4 (BC20 ACL made real, E1) + `ConceptElevated` (E4) + agent↔agent live mapping (E2) |
+| **Seam E** | A4 (BC20 ACL made real, E1) + `ConceptElevated` (E4) + `agent → did:nostr` live actor mapping (E2) |
 
 ## Repository mapping
 
