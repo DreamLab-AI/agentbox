@@ -64,6 +64,91 @@ const bridge = new NostrBridge({
 });
 ```
 
+## Agent Control Surface Protocol — producer (`agent-control-surface.js`)
+
+The Agent Control Surface Protocol (ACSP) is the cross-repo human-in-the-loop
+surface: an agent projects an interactive control panel into the
+nostr-rust-forum forum-client (which dreamlab-ai-website shallow-clones at build
+time), and a human's decisions flow back through the relay's governance inbox.
+The relay, the forum-client `panel_registry` consumer, and the website embed
+already existed; `management-api/lib/agent-control-surface.js` is the agentbox
+**producer** — the module that mints and publishes the panel events.
+
+It exports five pure builders, one per emitting kind, plus a publish delegate:
+
+| Builder | Kind | Purpose |
+|---|---|---|
+| `buildPanelDefinition(p)` | 31400 | Declare a panel — schema, fields, actions, layout, capabilities |
+| `buildPanelState(p)` | 31401 | Publish the current panel data snapshot |
+| `buildActionRequest(p)` | 31402 | Request a human decision (projected into the relay's `broker_cases` inbox) |
+| `buildPanelUpdate(p)` | 31404 | Publish an incremental state diff, shallow-merged by the consumer |
+| `buildPanelRetired(p)` | 31405 | Retire a panel (empty content; consumer removes by `d` tag) |
+
+`ACTION_RESPONSE` (31403) is consumed, not produced, so there is no builder for
+it. The `kinds` enum is imported from `nostr-bridge.js` — never re-declared.
+
+Wire contract (serde-exact with `nostr-bbs-core::governance`):
+
+- every event is a parameterised-replaceable NIP-33 event keyed by its
+  `["d", panelId]` tag — re-publishing the same `panelId` replaces the prior state;
+- content JSON keys are snake_case (`field_type`, `refresh_secs`, `context_url`);
+- enum values are kebab-case and validated against frozen domains
+  (`PANEL_SCHEMAS`, `FIELD_TYPES`, `ACTION_STYLES`, `LAYOUT_HINTS`,
+  `PANEL_CAPABILITIES`, `ACTION_PRIORITIES`);
+- `ActionRequest` priority travels as a `["priority", <label>]` **tag**, not in
+  content; the optional `category` / `subject-kind` / `subject-id` / `title`
+  tags populate the relay's `broker_cases` governance-inbox row.
+
+Publication is a thin delegate, deliberately performing no relay I/O of its own:
+
+```js
+const acsp = require('../lib/agent-control-surface');
+const def = acsp.buildPanelDefinition({
+  panelId: 'inbox', title: 'Approvals', description: 'Pending agent actions',
+  schema: 'action-inbox', layout: 'inbox-table',
+});
+// bridge is an ALREADY-CONNECTED NostrBridge; signer from loadSigner(stack)
+await acsp.publishPanelEvent(bridge, signer, def);
+```
+
+`publishPanelEvent` requires a bridge whose lifecycle is owned by
+management-api boot (under the `sovereign_mesh.nostr_bridge` gate); it never
+opens or closes connections, which is what makes it safe to call from a request
+handler. **No HTTP route is wired in this increment** — the module is library
+primitives only. The producer's serde-exactness is asserted by
+`tests/sovereign/agent-control-surface.test.js`.
+
+## Memory-flash beacon (`memory-flash-notifier.js`)
+
+Every RuVector memory operation (store / retrieve / search) emits a privacy-safe,
+fire-and-forget beacon to a host project's `POST /api/memory-flash` route, which
+broadcasts a `memory_flash` frame so the host's embedding-cloud visual fires a
+burst ring at the point matching the entry key. The render chain existed on both
+sides; `management-api/lib/memory-flash-notifier.js` is the missing producer
+call, wired into both memory entry points:
+
+- the MCP server (`mcp/servers/ruvector-mcp.cjs`) — the mandated
+  `mcp__claude-flow__memory_*` path;
+- the HTTP `/v1/memory` routes (`management-api/routes/memory.js`).
+
+`search` lights each matched embedding-cloud point via the batch route
+(`/api/memory-flash/batch`), capped at the top five results.
+
+Invariants:
+
+- **Privacy (ADR-008):** only the entry key, the logical namespace, and the
+  action verb ever leave the process — never the stored value. The
+  `user:<pubkey>:` access-control prefix is stripped so the visual groups by the
+  logical namespace, not the per-user shard.
+- **Fail-open:** a disabled, failed, or slow beacon never affects or delays the
+  memory operation; a hung POST is aborted after
+  `VISIONCLAW_MEMORY_FLASH_TIMEOUT_MS` (default 1500 ms).
+- **Disabled by default:** no beacon is sent unless `VISIONCLAW_API_URL` (or
+  `VISIONCLAW_MEMORY_FLASH_URL`) is set; `VISIONCLAW_MEMORY_FLASH=off`
+  force-disables even when a URL is present.
+
+Asserted by `tests/sovereign/memory-flash-notifier.test.js`.
+
 ## Key handling
 
 The private key is stored encrypted at `/workspace/profiles/<stack>/nostr.key.enc`

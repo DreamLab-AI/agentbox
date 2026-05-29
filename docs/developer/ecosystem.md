@@ -44,6 +44,13 @@ flowchart TB
     AB -.->|"notifications/agent_action over /wss/agent-events (Phase 2a, wired)"| VIZ
 ```
 
+The ACSP and memory-flash producers — the agentbox-side hops the embodied loop
+previously lacked — now exist as `management-api/lib/agent-control-surface.js`
+(NIP-33 panel-event builders + publish delegate, no route yet) and
+`management-api/lib/memory-flash-notifier.js` (privacy-safe, env-gated beacon
+wired into both the MCP and `/v1/memory` paths). See
+[sovereign-mesh.md](sovereign-mesh.md) for both.
+
 The wiring contract is **agentbox ADR-014** (the ingress half) paired with **VisionClaw ADR-059**
 (the server half); the cross-substrate seam closures are recorded in **agentbox ADR-026** and
 driven by **PRD-014 (Embodied Agent Loop)**. As of 2026-05-29 the action signal is wired

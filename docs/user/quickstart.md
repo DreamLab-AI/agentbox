@@ -442,6 +442,10 @@ cp .env.example .env
 | `NOSTR_RELAYS` | Comma-separated Nostr relay URLs for the sovereign mesh |
 | `AGENTBOX_NSEC` | Pre-generated bech32 `nsec1...` private key; leave blank to auto-generate at boot |
 | `AGENTBOX_NPUB` | Operator bech32 pubkey; overrides `[sovereign_mesh.operator].pubkey_hex` in the manifest |
+| `VISIONCLAW_API_URL` | Host project base URL for the memory-flash beacon; unset disables the beacon. Only the key + logical namespace + action verb leave the process (never the value), fail-open |
+| `VISIONCLAW_MEMORY_FLASH_URL` | Overrides `VISIONCLAW_API_URL` for the beacon only |
+| `VISIONCLAW_MEMORY_FLASH` | Set to `off` to force-disable the beacon even when a URL is present |
+| `VISIONCLAW_MEMORY_FLASH_TIMEOUT_MS` | Abort a hung beacon POST after this many ms (default 1500) |
 
 ### Infrastructure
 
