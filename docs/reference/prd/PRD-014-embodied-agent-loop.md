@@ -30,7 +30,7 @@ The flow and its five seams:
                ACSP not spoken here; no ConceptElevated event
 ```
 
-**If you remember only one thing:** the pieces all exist; the work is wiring the five seams with a single coherent identity (`did:nostr`), provenance (PROV-O Activity URNs), and governance (ACSP human-in-the-loop) spine, plus fixing two correctness bugs (pod PATCH data-loss, egress port) that silently break the chain.
+**If you remember only one thing:** the pieces all exist; the work is wiring the five seams with a single coherent identity (`did:nostr`), provenance (PROV-O Activity URNs), and governance (ACSP human-in-the-loop) spine, plus fixing the pod PATCH data-loss correctness bug that silently breaks the chain. (An earlier draft of this PRD listed a second "egress port" bug — `:9500`→`:3001`. Implementation revealed that diagnosis was wrong: the agentbox egress relay and VisionClaw's subscriber both agree on `:9500`. The real Seam-E gap is that VisionClaw *polls* request/response and never consumes the *pushed* `notifications/agent_action` broadcast — a BC20 ingest concern, see X2 and WS5, not a port change.)
 
 ---
 
@@ -124,7 +124,7 @@ Evidence is cited as `repo path:line`. Each row is **IMPLEMENTED / PARTIAL / DOC
 | # | Finding | Status | Evidence |
 |---|---------|--------|----------|
 | X1 | Judgment Broker ~65%: `handleGovernanceDecision()` missing; BrokerActor branch-only (`crashbug`), not on main; decisions persisted but not applied; no PROV-O linkage | PARTIAL | `VisionFlow/docs/.../DDD-judgment-broker-context.md:181-189`; `status-reconciliation.md:34` |
-| X2 | agentbox egress bridge dials `:9500` but VisionClaw MCP listens `:3001` (reconnect storm) | BUG | `agentbox/management-api/utils/agent-event-bridge.js:39-51`; ADR-014 §Context-1 |
+| X2 | Agent-action egress reaches VisionClaw but is never consumed: the agentbox bridge pushes `notifications/agent_action` to the agentbox MCP TCP relay (`:9500`), which broadcasts it; VisionClaw connects to the same `:9500` but **polls request/response** (`agent_list`/topology, one `read_line` per request) and never reads the pushed notification. The `0x23 AGENT_ACTION` binary path has no server-side decoder. (NB: the original "wrong port `:9500`→`:3001`" diagnosis was incorrect — both sides agree on `:9500`; `:3001` is VisionClaw's HTTP/WS API, not an agent-action ingest. This is a push-vs-poll ingest gap owned by BC20.) | GAP | bridge `agentbox/management-api/utils/agent-event-bridge.js:39-51,154-194`; relay `agentbox/mcp/servers/mcp-tcp-server.js:144-150`; VisionClaw subscriber `project/src/app_state.rs:895-907`, `project/src/utils/mcp_tcp_client.rs:297`; dead binary `project/src/utils/binary_protocol.rs:1334` |
 | X3 | nostr-rust-forum relay supports 31400-31405 (registered-agent gated) but **NIP-11 does not advertise** the capability | GAP | `nostr-rust-forum/crates/nostr-bbs-relay-worker/src/nip11.rs:28`; routing `nip_handlers.rs:218-232` |
 | X4 | Forum relay has no dedicated handler for the 38xxx kinds agentbox federates | GAP | `nip11.rs:50` (generic PRE only) vs `agentbox.toml:96,157` |
 | X5 | dreamlab-ai-website declares `VITE_RELAY_URL`/`VITE_ADMIN_PUBKEY` but never reads them (HTTP-only, no relay client) | GAP | `dreamlab-ai-website/src/vite-env.d.ts:9,15` (unused); `src/lib/forum-api.ts` |
@@ -171,7 +171,8 @@ The closure introduces **no new identity primitives and no new URN kinds**. It u
 - **nostr-rust-forum (X3, X4)**: advertise the agent-control capability in NIP-11 (`supported_kinds`/custom field); decide and document 38xxx handling (route+project, or declare out-of-scope).
 - **dreamlab-ai-website (X5, X6)**: either wire a minimal relay client subscribing 31400-31405 for the declared `/governance` route, or remove the dead `VITE_RELAY_URL`/`VITE_ADMIN_PUBKEY` config; reconcile the placeholder-vs-seeded agent-key roster.
 - **VisionFlow (X7)**: document the voice→actor→pod→KG→ontology→viz flow and the BC20 namespace grammar in canon (`docs/architecture/`, `docs/protocol/`).
-- **Judgment Broker (X1, X2)**: fix the agentbox egress port (`:9500`→`:3001`); the broker `handleGovernanceDecision()` / BrokerActor-to-main work is tracked in VisionFlow but is a dependency of G8 (called out, not owned here).
+- **Agent-action ingest (X2)**: this is **not** a port fix (the `:9500`→`:3001` diagnosis was wrong; both sides agree on `:9500`). The agentbox relay already broadcasts `notifications/agent_action`; the gap is that VisionClaw's `AgentMonitorActor` polls request/response and never subscribes to the pushed stream, and the `0x23` binary frame has no decoder. Closing it is BC20's job (WS5): add a push-subscription read loop on the existing `:9500` connection (or the WS `agent-action` channel) that maps each `notifications/agent_action` into a live agent-actor update. Do not change the agentbox egress port.
+- **Judgment Broker (X1)**: the broker `handleGovernanceDecision()` / BrokerActor-to-main work is tracked in VisionFlow but is a dependency of G8 (called out, not owned here).
 
 ---
 
@@ -180,10 +181,10 @@ The closure introduces **no new identity primitives and no new URN kinds**. It u
 | WS | Repo | Scope | Seam | Tier |
 |----|------|-------|------|------|
 | WS1 | solid-pod-rs | PATCH non-destructive fix + regression test | C1 | A |
-| WS2 | agentbox | egress port `:9500`→`:3001` | X2 | A |
+| WS2 | ~~agentbox~~ VisionClaw | ~~egress port `:9500`→`:3001`~~ **VOID — misdiagnosis.** Port `:9500` is correct on both sides; agentbox egress unchanged. The real X2 gap (VisionClaw polls, never reads the pushed `agent_action`) folds into WS5 (BC20 ingest). | X2 | ~~A~~ → B (WS5) |
 | WS3 | solid-pod-rs | GET content-negotiation | C4 | A |
 | WS4 | agentbox | pod adapter signed NIP-98 + agent mandate model | C2, C3 | B |
-| WS5 | agentbox + VisionClaw | BC20 anti-corruption layer (real) | E1 | B |
+| WS5 | agentbox + VisionClaw | BC20 anti-corruption layer (real) + push-subscription ingest of `notifications/agent_action` on the `:9500` relay (absorbs the former WS2) | E1, X2 | B |
 | WS6 | agentbox + VisionClaw | governed elevation routing + extractor + alignment | D1, D2, D4, D5 | B |
 | WS7 | VisionClaw | voice→selected-actor binding + ACSP dispatcher | A2, A3, E3 | B |
 | WS8 | VisionClaw | `ConceptElevated` event + owner field + elevation animation | E4, E5 | B |
@@ -208,7 +209,7 @@ The closure introduces **no new identity primitives and no new URN kinds**. It u
 ## 7. Success metrics (end-to-end acceptance)
 
 1. **E2E smoke**: with an agent node selected in the XR graph, a spoken instruction ("remember that X relates to Y") results in: a signed ActionRequest → agentbox actor → NIP-98 pod write of the triple → personal-KG node appears → ACSP elevation prompt → on approval, a governed PR proposes the shared class → on merge, `ConceptElevated` animates the node into shared-ontology styling — with one continuous provenance chain (`urn:agentbox:activity` ↔ `urn:visionclaw`).
-2. **Regression**: pod PATCH preserves prior triples (G3); egress reconnect storm gone (X2).
+2. **Regression**: pod PATCH preserves prior triples (G3). **Ingest (X2)**: a `notifications/agent_action` pushed through the `:9500` relay is consumed by VisionClaw and updates the corresponding live agent-actor node (delivered via BC20/WS5, not a port change).
 3. **Governance**: no path writes shared ontology without the Whelk gate AND, where policy requires, ACSP approval (G4, G8).
 4. **Alignment**: forum NIP-11 advertises agent-control kinds; website has no dead relay config (G7).
 5. **Contract**: all three adapter implementation classes still pass `tests/contract/` (ADR-005 non-negotiable).

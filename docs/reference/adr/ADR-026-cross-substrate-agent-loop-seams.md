@@ -7,7 +7,7 @@ type: integration
 author: Dr John O'Hare
 depends_on: [ADR-005, ADR-009, ADR-010, ADR-013, ADR-014, ADR-017, ADR-023]
 review_trigger: VisionClaw ingest schema change, ACSP kind range change, or WAC/NIP-26 delegation spec change
-supersedes_consideration: ADR-014 egress port (:9500→:3001) is corrected under D1 consequences
+supersedes_consideration: the ADR-014 "egress port :9500→:3001" item is RETRACTED under D1 consequences — implementation proved it a misdiagnosis (both sides agree on :9500; the gap is push-vs-poll ingest, owned by BC20)
 ---
 
 # ADR-026 — Cross-Substrate Agent-Loop Seams
@@ -57,8 +57,9 @@ PRD-014's gap ledger (§3) identifies five broken seams in the flow:
 ADR-023 D1 established that VisionClaw owns the Oxigraph store under a single-writer model
 and that the HTTP API — not a shared volume — is the contract. ADR-023 D5 named the BC20
 anti-corruption layer but left it as a forward reference. ADR-014 added the inbound WS
-subscriber and recorded the egress port bug (the agentbox bridge dials `:9500` but
-VisionClaw's MCP listens on `:3001`). ADR-013 fixed identity once and for all:
+subscriber and recorded a supposed egress port bug (the agentbox bridge dialing `:9500`
+while VisionClaw's MCP "listens on `:3001`"); D1 below retracts that — the two sides agree
+on `:9500` and the real gap is push-vs-poll ingest. ADR-013 fixed identity once and for all:
 `did:nostr:<pubkey>` plus `urn:agentbox:<kind>:[<scope>:]<local>`, every `@id` minted
 through `management-api/lib/uris.js`, no ad-hoc IDs. ADR-010 brought in the Rust Solid pod
 and ADR-009 the embedded Nostr relay; ADR-017 scoped multi-tenant did:nostr pods.
@@ -109,13 +110,20 @@ transport.
 - *Leaving BC20 paper-only.* Breaks provenance continuity end to end; this is precisely the
   state VisionFlow `ecosystem-map.md:88` flags and PRD-014 G5 exists to close.
 
-**Consequences.** The ADR-014 egress port bug is corrected here as a precondition: the
-agentbox egress bridge must dial VisionClaw's MCP on `:3001`, not `:9500`
-(`management-api/utils/agent-event-bridge.js:39-51`; PRD-014 X2; WS2). The reconnect storm
-disappears once BC20 has a reachable peer to ingest into. **Fail-open** on an unreachable
-peer, matching ADR-023 D4: if VisionClaw is down, BC20 buffers/drops with a `degraded`
-health signal and does not block agentbox startup or the emitting agent — agentbox Activity
-records remain durable locally and re-ingest on reconnect.
+**Consequences.** The ADR-014 "egress port" item is **retracted, not corrected** — verifying
+the wiring during implementation showed there is no port bug. The agentbox egress bridge
+dials its own MCP TCP relay on `:9500` (`management-api/utils/agent-event-bridge.js:39-51`),
+which broadcasts `notifications/agent_action` to subscribers (`mcp/servers/mcp-tcp-server.js:144-150`);
+VisionClaw's `AgentMonitorActor` dials the same `:9500` (`project/src/app_state.rs:895-907`).
+`:3001` is VisionClaw's HTTP/WS API, never an agent-action TCP ingest. The real Seam-E gap
+(PRD-014 X2) is that VisionClaw *polls* request/response (`project/src/utils/mcp_tcp_client.rs:297`,
+one `read_line` per call) and never reads the pushed notification, and the `0x23 AGENT_ACTION`
+binary frame has no decoder (`project/src/utils/binary_protocol.rs:1334`). BC20 therefore
+also owns the **push-subscription ingest** on the existing `:9500` connection (PRD-014 WS5,
+absorbing the former WS2). Do not change the agentbox egress port. **Fail-open** on an
+unreachable peer, matching ADR-023 D4: if VisionClaw is down, the agentbox relay's broadcast
+simply has no live subscriber, and agentbox Activity records remain durable locally and
+re-ingest when VisionClaw reconnects — agent startup and execution never block on the peer.
 
 ### D2 — Pod writes use a scoped, revocable mandate; the agent writes as its OWN did:nostr
 
@@ -264,8 +272,8 @@ here but owned in VisionFlow, not by this ADR.
   retired (D4, G6/G7).
 - Zero new identity primitives, zero new URN kinds, zero new adapter slots — the closure
   rides entirely on ADR-005/009/010/013/014/017/023 surfaces already in place.
-- The ADR-014 egress reconnect storm is resolved as a side effect of giving BC20 a reachable
-  peer on the correct port (`:3001`).
+- Agent-action egress, already correctly wired on `:9500`, becomes *consumed* once BC20 adds
+  the push-subscription read loop — closing X2 without any port or transport change.
 
 ### Negative
 
@@ -293,9 +301,11 @@ here but owned in VisionFlow, not by this ADR.
 ## Status of dependent work
 
 This ADR is realised by PRD-014's workstreams. Tier A (correctness preconditions): WS1
-(solid-pod-rs non-destructive PATCH), WS2 (egress port `:9500`→`:3001`, see D1
-consequences), WS3 (GET content-negotiation). Tier B (the seam closures owned here): WS4
-(signed NIP-98 + agent mandate — D2), WS5 (real BC20 — D1), WS6 (governed elevation routing
+(solid-pod-rs non-destructive PATCH), WS3 (GET content-negotiation). (The former WS2
+"egress port `:9500`→`:3001`" is VOID — a misdiagnosis retracted under D1 consequences; its
+real concern, push-subscription ingest, moves into WS5.) Tier B (the seam closures owned here): WS4
+(signed NIP-98 + agent mandate — D2), WS5 (real BC20 + push-subscription ingest of
+`notifications/agent_action` on `:9500`, absorbing the former WS2 — D1), WS6 (governed elevation routing
 + extractor + alignment — D3), WS7 (voice→selected-actor binding + ACSP dispatcher — D4),
 WS8 (`ConceptElevated` + owner field + animation — D3/D4), WS9 (default intentSpec +
 per-agent did:nostr auth on ingress). Tier C (source-repo alignment and optional ingress):
@@ -318,8 +328,8 @@ dependency, not owned here.
 - **ADR-010** — Rust Solid pod adoption (the pod D2 writes to; WAC `acl:agent`).
 - **ADR-013** — Canonical URI grammar (`did:nostr:<pubkey>`, `urn:agentbox:<kind>:…`, all
   minted via `management-api/lib/uris.js`; no ad-hoc IDs, no new kinds — binds D1/D2/D4).
-- **ADR-014** — Bidirectional graph-state ingress (`0x23 AGENT_ACTION` frame; egress port
-  `:9500`→`:3001` corrected under D1).
+- **ADR-014** — Bidirectional graph-state ingress (`0x23 AGENT_ACTION` frame; its "egress port
+  `:9500`→`:3001`" item is retracted under D1 — no port bug, the gap is push-vs-poll ingest).
 - **ADR-017** — Multi-tenant did:nostr pods (per-user signing key for D2 multi-tenant
   NIP-98).
 - **ADR-023** — VisionClaw ontology bridge (D1 single-writer; D2 query-surface-not-a-slot;
