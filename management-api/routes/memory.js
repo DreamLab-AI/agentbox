@@ -21,6 +21,7 @@
  */
 
 const uris = require('../lib/uris');
+const { notifyMemoryFlash, notifyMemoryFlashBatch } = require('../lib/memory-flash-notifier');
 
 const NPUB             = process.env.AGENTBOX_NPUB || '';
 const ADMIN_ACCESS_MODE = (process.env.MEMORY_ADMIN_ACCESS_MODE || 'scoped').toLowerCase();
@@ -78,6 +79,7 @@ module.exports = async function memoryRoutes(fastify) {
     // external-pg / embedded-ruvector path
     if (mem && mem._implName !== 'off' && mem._implName !== 'placeholder') {
       const result = await mem.store(key, typeof value === 'string' ? value : JSON.stringify(value), effectiveNs);
+      notifyMemoryFlash({ key, namespace: effectiveNs, action: 'store' });
       return reply.code(201).send(result);
     }
 
@@ -114,6 +116,7 @@ module.exports = async function memoryRoutes(fastify) {
     if (mem && mem._implName !== 'off' && mem._implName !== 'placeholder') {
       const result = await mem.retrieve(key, effectiveNs);
       if (!result) return reply.code(404).send({ error: 'not-found', key, namespace: effectiveNs });
+      notifyMemoryFlash({ key, namespace: effectiveNs, action: 'retrieve' });
       return reply.send(result);
     }
 
@@ -150,6 +153,9 @@ module.exports = async function memoryRoutes(fastify) {
     const mem = fastify.adapters && fastify.adapters.memory;
     if (mem && mem._implName !== 'off' && mem._implName !== 'placeholder' && typeof mem.search === 'function') {
       const result = await mem.search(query, { namespace: effectiveNs, limit });
+      notifyMemoryFlashBatch(
+        (result.results || []).slice(0, 5).map((r) => ({ key: r.key, namespace: effectiveNs, action: 'search' })),
+      );
       return reply.send({ namespace: effectiveNs, ...result });
     }
     return reply.code(503).send({ error: 'no-memory-adapter' });

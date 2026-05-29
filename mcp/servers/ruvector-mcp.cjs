@@ -60,6 +60,17 @@ try {
 const WRITE_SOURCE_TYPE = 'agentbox';
 const VERSION = '2.3.0-ruvector';
 
+// Fire-and-forget RuVector-access → VisionClaw memory-flash beacon. Defensive
+// require: if the notifier (or its require path) is unavailable, memory ops
+// proceed silently — the beacon is best-effort and never load-bearing.
+let notifyMemoryFlash = () => {};
+let notifyMemoryFlashBatch = () => {};
+try {
+  const mf = require('../../management-api/lib/memory-flash-notifier');
+  notifyMemoryFlash = mf.notifyMemoryFlash;
+  notifyMemoryFlashBatch = mf.notifyMemoryFlashBatch;
+} catch { /* notifier unavailable — RuVector ops run without visual beacons */ }
+
 // ── Xinference embedding client ───────────────────────────────────────────────
 const http = require('http');
 const XINFERENCE_URL = process.env.XINFERENCE_ENDPOINT || 'http://xinference:9997';
@@ -150,6 +161,7 @@ async function memStore(key, value, namespace = 'default') {
      ON CONFLICT (id) DO UPDATE SET value = EXCLUDED.value, embedding = COALESCE(EXCLUDED.embedding, memory_entries.embedding), updated_at = NOW()`,
     params,
   );
+  notifyMemoryFlash({ key, namespace, action: 'store' });
   return { success: true, action: 'store', key, namespace, stored: true, embedded: params.length > 5, storage: 'ruvector-postgres' };
 }
 
@@ -160,6 +172,7 @@ async function memRetrieve(key, namespace = 'default') {
     [namespace, key],
   );
   if (!res.rows.length) return { success: true, action: 'retrieve', key, namespace, value: null, found: false };
+  notifyMemoryFlash({ key, namespace, action: 'retrieve' });
   return { success: true, action: 'retrieve', key, namespace, value: parseVal(res.rows[0].value), found: true, source_type: res.rows[0].source_type, storage: 'ruvector-postgres' };
 }
 
@@ -202,6 +215,7 @@ async function memSearch(query, namespace = 'default', limit = 10, sourceType = 
         key: r.key, value: parseVal(r.value), namespace: r.namespace,
         source_type: r.source_type, score: parseFloat(r.score),
       }));
+      notifyMemoryFlashBatch(results.slice(0, 5).map(r => ({ key: r.key, namespace: r.namespace || namespace, action: 'search' })));
       return { success: true, action: 'search', query, namespace, results, count: results.length, method: 'hnsw-xinference', storage: 'ruvector-postgres' };
     } catch (vecErr) {
       log('WARN', `HNSW search failed: ${vecErr.message}`);
@@ -223,6 +237,7 @@ async function memSearch(query, namespace = 'default', limit = 10, sourceType = 
     key: r.key, value: parseVal(r.value), namespace: r.namespace,
     source_type: r.source_type, score: 0.5,
   }));
+  notifyMemoryFlashBatch(results.slice(0, 5).map(r => ({ key: r.key, namespace: r.namespace || namespace, action: 'search' })));
   return { success: true, action: 'search', query, namespace, results, count: results.length, method: 'ilike-fallback', degraded: true, warning: 'Semantic search unavailable — using text substring match. Check xinference service.', storage: 'ruvector-postgres' };
 }
 
