@@ -7,6 +7,12 @@
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { createRequire } from 'module';
+
+// ontology-propose is a CommonJS pure helper (governed-path request builder +
+// direct-load guard). createRequire lets this ESM bridge consume it directly.
+const require = createRequire(import.meta.url);
+const propose = require('./ontology-propose.js');
 
 const API_URL = (process.env.VISIONCLAW_API_URL || 'http://visionclaw-server:4000').replace(/\/$/, '');
 const TIMEOUT_MS = parseInt(process.env.ONTOLOGY_TIMEOUT_MS || '10000', 10);
@@ -85,7 +91,9 @@ const TOOLS = [
   },
   {
     name: 'ontology_axiom_add',
-    description: 'Submit a new OWL axiom for reasoning. Axiom is validated before insertion.',
+    description: 'GUARDED. Direct axiom load bypasses the Whelk-consistency + human-approval + PR ' +
+      'governance path and is disabled by default. Use ontology_propose instead. Set ' +
+      'AGENTBOX_ONTOLOGY_DIRECT_LOAD=true only for admin/bootstrap to allow the ungoverned backdoor.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -102,6 +110,7 @@ const TOOLS = [
       additionalProperties: false,
     },
   },
+  propose.ONTOLOGY_PROPOSE_TOOL,
   {
     name: 'ontology_validate',
     description: 'Validate ontology consistency. Returns validation report with errors and warnings.',
@@ -214,21 +223,34 @@ SELECT ?class ?label ?domain ?quality WHERE {
       });
     }
 
-    case 'ontology_axiom_add':
-      return vcFetch('/api/ontology/load', {
-        method: 'POST',
+    case 'ontology_axiom_add': {
+      const descriptor = propose.axiomAddDescriptor(args, process.env);
+      if (descriptor.guarded) {
+        return { error: descriptor.error, message: descriptor.message };
+      }
+      return vcFetch(descriptor.path, {
+        method: descriptor.method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          source: 'agentbox-bridge',
-          format: 'axiom',
-          validate_immediately: true,
-          axioms: [{
-            axiom_type: args.axiom_type,
-            subject: args.subject,
-            object: args.object,
-          }],
-        }),
+        body: JSON.stringify(descriptor.body),
       });
+    }
+
+    case 'ontology_propose': {
+      let descriptor;
+      try {
+        descriptor = propose.buildProposeRequest(args, process.env);
+      } catch (err) {
+        if (err instanceof propose.ProposeError) {
+          return { error: 'ontology_propose_invalid', message: err.message };
+        }
+        throw err;
+      }
+      return vcFetch(descriptor.path, {
+        method: descriptor.method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(descriptor.body),
+      });
+    }
 
     case 'ontology_validate':
       return vcFetch('/api/ontology/validate', {

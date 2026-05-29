@@ -432,6 +432,12 @@ spend_cap_usd = 0.50
 [skills.ontology]
 enabled = true
 visionclaw_api_url = "http://visionclaw-server:4000"
+# PRD-014 Seam D / D2: personal-KG concepts reach the shared ontology only
+# through VisionClaw's GOVERNED path (ontology_propose → Whelk consistency →
+# human approval → PR). The legacy ungoverned ontology_axiom_add backdoor
+# (`POST /api/ontology/load`) is disabled by default; set true only for
+# admin/bootstrap. Default off = ontology_axiom_add refuses + redirects.
+direct_axiom_load = false
 
 [providers.anthropic]
 enabled = true

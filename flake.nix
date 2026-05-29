@@ -2193,6 +2193,8 @@ ${ragflowNetworkDecl}
           "ENABLE_TREE_SEARCH_CODER=${boolEnv ((skillsCfg.tree_search_coder or {}).enabled or false)}"
           "ENABLE_ONTOLOGY=${boolEnv ((skillsCfg.ontology or {}).enabled or false)}"
           "VISIONCLAW_API_URL=${(skillsCfg.ontology or {}).visionclaw_api_url or "http://visionclaw-server:4000"}"
+          # PRD-014 D2: ungoverned ontology_axiom_add backdoor, off by default.
+          "AGENTBOX_ONTOLOGY_DIRECT_LOAD=${boolEnv ((skillsCfg.ontology or {}).direct_axiom_load or false)}"
           "AGENTBOX_KERNEL_WHEELHOUSE=/var/lib/agentbox/code-interpreter-wheelhouse"
           "AGENTBOX_CODE_HARNESS_DIR=/var/lib/agentbox/code-harness"
           # ─────────────────────────────────────────────────────────────────
