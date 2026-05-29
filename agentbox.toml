@@ -304,6 +304,13 @@ log_level              = "info"
 # Sprint 5-9 features absorbed from upstream main — all on by default because
 # they either sharpen sovereign-stack invariants (did_nostr) or close P0
 # hardening gaps (rate_limit, quota, webhook_signing).
+# Pod adapter originates a signed NIP-98 Authorization header per request so an
+# autonomous agent authenticates to a default-deny pod under its OWN did:nostr
+# (PRD-014 Seam C / C2). Default OFF: unsigned requests are byte-identical to
+# prior behaviour. When on, the signing key is the active stack's nostr.key.enc
+# (resolved from AGENTBOX_STACK / integrations.solid_pod_rs.sign_stack); load
+# failures fail open (adapter goes out unsigned, pod still fails closed).
+sign_requests          = false    # originate signed NIP-98 from the pods adapter
 enable_did_nostr       = true     # did:nostr:<pubkey> → Solid WebID resolver (ADR-013)
 enable_webhook_signing = true     # RFC 9421 Ed25519 outbound notification signing
 enable_rate_limit      = true     # sliding-window LRU per-connection guard

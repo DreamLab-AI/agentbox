@@ -391,6 +391,60 @@ class NostrBridge {
     return { valid: true, pubkey: event.pubkey, error: null };
   }
 
+  /**
+   * Originate a NIP-98 `Authorization` header value for an outbound HTTP
+   * request — the signing counterpart of {@link verifyNip98}. Used by the
+   * pods adapter so an autonomous agent presents a provable identity to a
+   * default-deny Solid pod instead of going out anonymous (PRD-014 Seam C
+   * / C2).
+   *
+   * The kind-27235 event carries the `u` (URL) and `method` tags the
+   * verifier checks, plus a `payload` tag (`hex(sha256(body))`) when the
+   * request has a body, per NIP-98. The `u` tag is signed WITHOUT any
+   * query string: solid-pod-rs reconstructs the expected URL from
+   * `req.uri().path()` and compares after trimming a trailing slash, so a
+   * signed query would never match.
+   *
+   * @param {{ sign(event: object): Promise<object> }} signer - from loadSigner().
+   * @param {string} method - HTTP method (case-insensitive).
+   * @param {string} url - Full request URL; the query string is stripped.
+   * @param {object} [opts]
+   * @param {string|Buffer} [opts.body] - Request body for the payload hash.
+   * @returns {Promise<string>} `Nostr <base64(json(signedEvent))>`.
+   */
+  static async buildNip98Header(signer, method, url, opts = {}) {
+    if (!signer || typeof signer.sign !== 'function') {
+      throw new Error('buildNip98Header: a signer with sign(event) is required');
+    }
+    const queryAt = String(url).indexOf('?');
+    const uTag = queryAt === -1 ? String(url) : String(url).slice(0, queryAt);
+
+    const tags = [
+      ['u', uTag],
+      ['method', String(method).toUpperCase()],
+    ];
+
+    const { body } = opts;
+    if (body !== undefined && body !== null && body !== '') {
+      const buf = Buffer.isBuffer(body)
+        ? body
+        : Buffer.from(typeof body === 'string' ? body : JSON.stringify(body), 'utf8');
+      if (buf.length > 0) {
+        tags.push(['payload', crypto.createHash('sha256').update(buf).digest('hex')]);
+      }
+    }
+
+    const unsigned = {
+      kind: kinds.AUTH,
+      created_at: Math.floor(Date.now() / 1000),
+      tags,
+      content: '',
+    };
+    const signed = await signer.sign(unsigned);
+    const encoded = Buffer.from(JSON.stringify(signed), 'utf8').toString('base64');
+    return `Nostr ${encoded}`;
+  }
+
   // ── Payment events ──
 
   /**

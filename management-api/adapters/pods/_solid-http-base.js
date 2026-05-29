@@ -30,11 +30,38 @@ class SolidHttpPodsAdapter extends BaseAdapter {
    * @param {string} [opts.baseUrl='http://localhost:8484']
    * @param {Function} [opts.fetchFn] - Override for tests
    * @param {string}   [opts.impl] - Concrete impl tag (overridden by subclasses)
+   * @param {Function} [opts.nip98] - `async (method, url, body) => string|null`.
+   *   When supplied, an `Authorization: Nostr <…>` header is originated and
+   *   attached to every request so the adapter authenticates to a
+   *   default-deny pod instead of going out anonymous (PRD-014 Seam C / C2).
+   *   Absent → requests are unsigned (backward compatible).
    */
   constructor(opts = {}) {
     super('pods', opts.impl || 'solid-http', CONTRACT_VERSIONS.pods);
     this._base = (opts.baseUrl || DEFAULT_BASE).replace(/\/$/, '');
-    this._fetch = opts.fetchFn || ((...a) => fetch(...a));
+    this._rawFetch = opts.fetchFn || ((...a) => fetch(...a));
+    this._nip98 = typeof opts.nip98 === 'function' ? opts.nip98 : null;
+    // Route every request through the signer when one is configured. All
+    // verbs (base and subclass overrides) call `this._fetch`, so wrapping
+    // here signs the whole surface in one place.
+    this._fetch = this._nip98 ? this._signedFetch.bind(this) : this._rawFetch;
+  }
+
+  /**
+   * Fetch wrapper that originates and attaches a NIP-98 Authorization
+   * header. The originator may decline (return a falsy value), in which
+   * case the request proceeds unsigned. A caller-supplied Authorization
+   * header is never overwritten.
+   * @private
+   */
+  async _signedFetch(url, init = {}) {
+    const method = (init.method || 'GET').toUpperCase();
+    const existing = init.headers || {};
+    const hasAuth = Object.keys(existing).some((k) => k.toLowerCase() === 'authorization');
+    if (hasAuth) return this._rawFetch(url, init);
+    const header = await this._nip98(method, url, init.body);
+    if (!header) return this._rawFetch(url, init);
+    return this._rawFetch(url, { ...init, headers: { ...existing, Authorization: header } });
   }
 
   /**

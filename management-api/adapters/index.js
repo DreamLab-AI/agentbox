@@ -11,6 +11,8 @@
 
 const path = require('path');
 
+const { buildPodNip98 } = require('../lib/pod-signer');
+
 const SLOTS = ['beads', 'pods', 'memory', 'events', 'orchestrator'];
 
 class UnknownAdapterImpl extends Error {
@@ -47,17 +49,27 @@ function slotConfig(slot, impl, manifest) {
       }
       return {};
 
-    case 'pods':
+    case 'pods': {
+      // Originate signed NIP-98 per request when gated on (default off →
+      // nip98 is null → unsigned, byte-identical to prior behaviour).
+      const nip98 = buildPodNip98(manifest, {
+        onError: (err) =>
+          // eslint-disable-next-line no-console
+          console.warn(`[adapters] pods NIP-98 signing disabled: ${err.message}`),
+      });
+      const withSigner = (cfg) => (nip98 ? { ...cfg, nip98 } : cfg);
+
       if (impl === 'external') {
-        return { externalUrl: fed.external_url || '' };
+        return withSigner({ externalUrl: fed.external_url || '' });
       }
       if (impl === 'local-solid-rs') {
         const sp = integrations.solid_pod_rs || {};
         const bind = sp.bind || '127.0.0.1';
         const port = sp.port || 8484;
-        return { baseUrl: sp.base_url || `http://${bind}:${port}` };
+        return withSigner({ baseUrl: sp.base_url || `http://${bind}:${port}` });
       }
       return {};
+    }
 
     case 'orchestrator':
       if (impl === 'stdio-bridge') {
