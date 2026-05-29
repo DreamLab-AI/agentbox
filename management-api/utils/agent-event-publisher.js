@@ -215,7 +215,16 @@ class AgentEventPublisher extends EventEmitter {
   }
 
   /**
-   * Create JSON-RPC notification for MCP broadcast
+   * Create JSON-RPC notification for MCP/WebSocket broadcast.
+   *
+   * This is the SINGLE canonical wire-envelope builder (ADR-059 §2: agentbox
+   * is the canonical schema source; VisionClaw mirrors this shape in
+   * src/agent_events/schema.rs). Every transport — the /v1/agent-events/stream
+   * WebSocket and the deprecated MCP-TCP bridge — emits through here, so the
+   * ADR-013 identity attribution (source_urn / target_urn / pubkey) is never
+   * dropped at the federation boundary. The legacy numeric ids are retained for
+   * backward compatibility; the URN/pubkey fields are optional in Phase 1 and
+   * become required under fail-closed attribution in Phase 5.
    */
   createMcpNotification(event) {
     return {
@@ -224,6 +233,8 @@ class AgentEventPublisher extends EventEmitter {
       params: {
         type: 'agent_action',
         event: {
+          version: 3,
+          id: event.id,
           source_agent_id: event.source_agent_id,
           target_node_id: event.target_node_id,
           action_type: event.action_type,
@@ -233,9 +244,12 @@ class AgentEventPublisher extends EventEmitter {
           timestamp: event.timestamp,
           duration_ms: event.duration_ms,
           source_urn: event.source_urn || null,
+          target_urn: event.target_urn || null,
           pubkey: event.pubkey || null,
           metadata: event.metadata || {}
         },
+        message_type: 0x23,   // AGENT_ACTION — binary-frame parity (ADR-059 §1)
+        protocol_version: 2,
         timestamp: new Date().toISOString()
       }
     };

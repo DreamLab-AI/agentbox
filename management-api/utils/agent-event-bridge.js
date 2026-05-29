@@ -11,7 +11,7 @@
  */
 
 const net = require('net');
-const { agentEventPublisher, AgentActionType } = require('./agent-event-publisher');
+const { agentEventPublisher } = require('./agent-event-publisher');
 
 class AgentEventBridge {
   constructor(options = {}) {
@@ -164,32 +164,11 @@ class AgentEventBridge {
       const binaryPayload = agentEventPublisher.createBinaryPayload(event);
       this.socket.write(binaryPayload);
     } else {
-      // Send JSON-RPC notification
-      const notification = {
-        jsonrpc: '2.0',
-        method: 'notifications/agent_action',
-        params: {
-          type: 'agent_action',
-          event: {
-            id: event.id,
-            source_agent_id: event.source_agent_id,
-            target_node_id: event.target_node_id,
-            action_type: event.action_type,
-            action_type_name: Object.keys(AgentActionType).find(
-              k => AgentActionType[k] === event.action_type
-            )?.toLowerCase() || 'query',
-            timestamp: event.timestamp,
-            duration_ms: event.duration_ms,
-            metadata: event.metadata || {}
-          },
-          // Include binary-compatible fields for VisionClaw decoder
-          message_type: 0x23,  // AGENT_ACTION
-          protocol_version: 2,
-          timestamp: new Date().toISOString()
-        }
-      };
-
-      this.send(notification);
+      // Emit through the single canonical wire-envelope builder so the
+      // ADR-013 identity (source_urn / target_urn / pubkey) reaches the wire.
+      // Previously this path hand-rolled its own notification that silently
+      // dropped identity — that divergence was the producer-side debt.
+      this.send(agentEventPublisher.createMcpNotification(event));
     }
   }
 
