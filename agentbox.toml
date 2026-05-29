@@ -96,6 +96,17 @@ allowed_pubkeys  = []                  # empty = self only (own npub); operator 
 allowed_kinds    = [1, 1059, 30078, 27235, 31400, 31401, 31402, 31403, 31404, 31405, 38000, 38100, 38200, 38201, 38300, 38301, 38302, 38303, 38304, 38305]
 pod_bridge       = true
 external_fanout  = "bidirectional"     # bidirectional | publish-only | subscribe-only | off
+# PRD-014 Seam B / B3 — deterministic responder dispatch for voice-origin
+# agent-intent events (kinds 38000-38099). Empty (default) → marker-only path,
+# byte-identical to prior behaviour. Set to a command and the relay consumer
+# spawns it per intent, passing the addressed actor + the Schnorr-verified
+# did:nostr:<signer> as AGENTBOX_INTENT_SOURCE_URN (unforgeable attribution).
+intent_command   = ""                  # e.g. "claude-flow"; "" = disabled
+intent_args      = ""                  # extra leading args, space-separated
+# PRD-014 Seam B / B4 — per-agent did:nostr auth on POST /v1/agent-events/emit.
+# "off" (default) keeps caller-asserted/env-defaulted attribution. "nip98"
+# requires a kind-27235 header and stamps source_urn from the verified pubkey.
+agent_event_auth = "off"               # off | nip98
 # Private point-to-point relay for governance event exchange with the forum.
 # Set via NOSTR_RELAYS env var at runtime; this field documents the target.
 forum_relay_url  = "wss://dreamlab-nostr-relay.solitary-paper-764d.workers.dev"

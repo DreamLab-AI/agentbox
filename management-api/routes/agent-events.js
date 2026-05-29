@@ -10,6 +10,7 @@
  */
 
 const { agentEventPublisher, AgentActionType } = require('../utils/agent-event-publisher');
+const { verifyAgentEventRequest, reconcileSourceUrn } = require('../lib/agent-event-auth');
 const { processHookEvent, getRegistryStats } = require('../hooks/agent-action-hooks');
 const { initializeAgentEventBridge, getAgentEventBridge } = require('../utils/agent-event-bridge');
 const { initializeAgentEventWsSubscriber, getAgentEventWsSubscriber } = require('../utils/agent-event-ws-subscriber');
@@ -225,6 +226,17 @@ async function agentEventsRoutes(fastify, options) {
   }, async (request, reply) => {
     const body = request.body;
 
+    // B4: per-agent did:nostr verification (gated; off → no-op, identity null).
+    const auth = verifyAgentEventRequest(request);
+    if (!auth.ok) {
+      return reply.code(auth.status).send({ success: false, error: auth.error });
+    }
+    const claimed = body.source_urn || (body.metadata && body.metadata.source_urn) || null;
+    const rec = reconcileSourceUrn(claimed, auth.did);
+    if (!rec.ok) {
+      return reply.code(rec.status).send({ success: false, error: rec.error });
+    }
+
     // Convert string IDs to numeric hashes if needed
     const sourceId = typeof body.source_agent_id === 'string'
       ? hashString(body.source_agent_id)
@@ -239,13 +251,21 @@ async function agentEventsRoutes(fastify, options) {
       ? AgentActionType[body.action_type.toUpperCase()] || 0
       : body.action_type;
 
-    const event = agentEventPublisher.emitAgentAction({
+    const emitPayload = {
       source_agent_id: sourceId,
       target_node_id: targetId,
       action_type: actionType,
       duration_ms: body.duration_ms || 100,
       metadata: body.metadata || {}
-    });
+    };
+    // When authenticated, stamp the verified identity so attribution is
+    // provable rather than caller-asserted or env-defaulted.
+    if (auth.did) {
+      emitPayload.source_urn = auth.did;
+      emitPayload.pubkey = auth.pubkey;
+    }
+
+    const event = agentEventPublisher.emitAgentAction(emitPayload);
 
     logger.debug(`Agent action emitted: ${event.id} (${Object.keys(AgentActionType).find(k => AgentActionType[k] === actionType)})`);
 
@@ -288,7 +308,21 @@ async function agentEventsRoutes(fastify, options) {
     const { events } = request.body;
     const emittedIds = [];
 
+    // B4: verify once for the whole batch; every event inherits the same
+    // authenticated identity (gated; off → no-op).
+    const auth = verifyAgentEventRequest(request);
+    if (!auth.ok) {
+      return reply.code(auth.status).send({ success: false, error: auth.error });
+    }
+
     for (const eventData of events) {
+      const claimed = eventData.source_urn
+        || (eventData.metadata && eventData.metadata.source_urn) || null;
+      const rec = reconcileSourceUrn(claimed, auth.did);
+      if (!rec.ok) {
+        return reply.code(rec.status).send({ success: false, error: rec.error });
+      }
+
       const sourceId = typeof eventData.source_agent_id === 'string'
         ? hashString(eventData.source_agent_id)
         : eventData.source_agent_id;
@@ -301,13 +335,19 @@ async function agentEventsRoutes(fastify, options) {
         ? AgentActionType[eventData.action_type.toUpperCase()] || 0
         : eventData.action_type;
 
-      const event = agentEventPublisher.emitAgentAction({
+      const emitPayload = {
         source_agent_id: sourceId,
         target_node_id: targetId,
         action_type: actionType,
         duration_ms: eventData.duration_ms || 100,
         metadata: eventData.metadata || {}
-      });
+      };
+      if (auth.did) {
+        emitPayload.source_urn = auth.did;
+        emitPayload.pubkey = auth.pubkey;
+      }
+
+      const event = agentEventPublisher.emitAgentAction(emitPayload);
 
       emittedIds.push(event.id);
     }

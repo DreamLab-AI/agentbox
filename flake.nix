@@ -2255,6 +2255,10 @@ ${ragflowNetworkDecl}
           "AGENTBOX_RELAY_POD_BRIDGE=${boolEnv (relayCfg.pod_bridge or true)}"
           "AGENTBOX_RELAY_FANOUT=${relayCfg.external_fanout or "off"}"
           "AGENTBOX_RELAY_RETENTION_DAYS=${toString (relayCfg.retention_days or 30)}"
+          # PRD-014 Seam B — voice-origin intent dispatch (B3) + emit auth (B4).
+          "AGENTBOX_INTENT_COMMAND=${relayCfg.intent_command or ""}"
+          "AGENTBOX_INTENT_ARGS=${relayCfg.intent_args or ""}"
+          "AGENTBOX_AGENT_EVENT_AUTH=${relayCfg.agent_event_auth or "off"}"
           # Observability — sourced from [observability] in agentbox.toml
           "AGENTBOX_METRICS_PORT=${metricsPort}"
           "AGENTBOX_OTLP_ENDPOINT=${observCfg.otlp_endpoint or ""}"

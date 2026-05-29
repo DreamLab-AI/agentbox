@@ -951,13 +951,19 @@ async function start() {
         && process.env.AGENTBOX_RELAY_POD_BRIDGE === 'true') {
       try {
         const { RelayConsumer } = require('../mcp/nostr-bridge/relay-consumer');
+        const { buildDefaultIntentSpec } = require('../mcp/nostr-bridge/default-intent-spec');
         const npubs = (process.env.AGENTBOX_NPUB || '').split(',').filter(Boolean);
         if (npubs.length > 0) {
+          // B3: deterministic responder dispatch for voice-origin agent-intent
+          // events. Null when AGENTBOX_INTENT_COMMAND is unset → marker-only
+          // (prior behaviour), so wiring is a no-op until the operator opts in.
+          const intentSpec = buildDefaultIntentSpec();
           const consumer = new RelayConsumer({
             npubs,
             allowedPubkeys: (process.env.AGENTBOX_RELAY_ALLOWED_PUBKEYS || '').split(',').filter(Boolean),
             ingressPolicy: process.env.AGENTBOX_RELAY_POLICY || 'allowlist',
             fanout: process.env.AGENTBOX_RELAY_FANOUT || 'off',
+            ...(intentSpec ? { intentSpec } : {}),
             adapters: {
               events: resolvedAdapters.events || null,
               orchestrator: resolvedAdapters.orchestrator || null,
