@@ -21,31 +21,32 @@
 // We mock nostr-tools at the module level so verifyNip98 and publish use
 // controlled implementations without loading the real secp256k1 wasm.
 
-const VALID_PUBKEY  = 'a'.repeat(64); // 32-byte hex pubkey placeholder
+const mockValidPubkey  = 'a'.repeat(64); // 32-byte hex pubkey placeholder
 const VALID_PRIVKEY = 'b'.repeat(64); // 32-byte hex privkey placeholder
 
 // Track verifyEvent call args for assertion
-let lastVerifyEventArg = null;
-let verifyEventResult  = true;
+// `mock`-prefixed so jest permits referencing them inside the jest.mock factory.
+let mockLastVerifyEventArg = null;
+let mockVerifyEventResult  = true;
 
 jest.mock('nostr-tools', () => ({
   verifyEvent(event) {
-    lastVerifyEventArg = event;
-    return verifyEventResult;
+    mockLastVerifyEventArg = event;
+    return mockVerifyEventResult;
   },
   finalizeEvent(unsignedEvent, _privKeyBytes) {
     // Return a minimal signed event shape
     return {
       ...unsignedEvent,
       id:     'mock-event-id',
-      pubkey: VALID_PUBKEY,
+      pubkey: mockValidPubkey,
       sig:    'mock-sig',
     };
   },
   getPublicKey(_privKeyBytes) {
-    return VALID_PUBKEY;
+    return mockValidPubkey;
   },
-}));
+}), { virtual: true });
 
 const { NostrBridge, kinds } = require('../../mcp/servers/nostr-bridge');
 
@@ -118,7 +119,7 @@ function makeNip98Token(overrides = {}) {
   const event = {
     kind:       kinds.AUTH,
     created_at: now,
-    pubkey:     VALID_PUBKEY,
+    pubkey:     mockValidPubkey,
     tags:       [['u', 'http://localhost/v1/test'], ['method', 'GET']],
     content:    '',
     id:         'event-id',
@@ -137,15 +138,15 @@ function makeNip98Token(overrides = {}) {
 describe('NostrBridge.verifyNip98', () => {
 
   beforeEach(() => {
-    verifyEventResult  = true;
-    lastVerifyEventArg = null;
+    mockVerifyEventResult  = true;
+    mockLastVerifyEventArg = null;
   });
 
   it('accepts a structurally valid, in-window event with matching method and URL', () => {
     const header = makeNip98Token();
     const result = NostrBridge.verifyNip98(header, 'GET', 'http://localhost/v1/test');
     expect(result.valid).toBe(true);
-    expect(result.pubkey).toBe(VALID_PUBKEY);
+    expect(result.pubkey).toBe(mockValidPubkey);
     expect(result.error).toBeNull();
   });
 
@@ -184,7 +185,7 @@ describe('NostrBridge.verifyNip98', () => {
   });
 
   it('rejects when verifyEvent returns false (bad signature)', () => {
-    verifyEventResult = false;
+    mockVerifyEventResult = false;
     const header = makeNip98Token();
     const result = NostrBridge.verifyNip98(header, 'GET', 'http://localhost/v1/test');
     expect(result.valid).toBe(false);
@@ -194,8 +195,8 @@ describe('NostrBridge.verifyNip98', () => {
   it('calls verifyEvent with the decoded event', () => {
     const header = makeNip98Token();
     NostrBridge.verifyNip98(header, 'GET', 'http://localhost/v1/test');
-    expect(lastVerifyEventArg).toBeTruthy();
-    expect(lastVerifyEventArg.kind).toBe(kinds.AUTH);
+    expect(mockLastVerifyEventArg).toBeTruthy();
+    expect(mockLastVerifyEventArg.kind).toBe(kinds.AUTH);
   });
 
   it('rejects when the Authorization header is missing', () => {
@@ -288,7 +289,7 @@ describe('NostrBridge.publish', () => {
 
     const mockSigner = {
       async sign(event) {
-        return { ...event, id: 'test-id', pubkey: VALID_PUBKEY, sig: 'test-sig' };
+        return { ...event, id: 'test-id', pubkey: mockValidPubkey, sig: 'test-sig' };
       },
     };
 
@@ -371,7 +372,7 @@ describe('NostrBridge.subscribe', () => {
     const event = {
       kind:       kinds.AGENT_STATE,
       created_at: Math.floor(Date.now() / 1000),
-      pubkey:     VALID_PUBKEY,
+      pubkey:     mockValidPubkey,
       tags:       [['d', 'agent-1']],
       content:    '{}',
       id:         'ev1',
@@ -394,7 +395,7 @@ describe('NostrBridge.subscribe', () => {
     const wrongKindEvent = {
       kind:       1, // text note — not subscribed
       created_at: Math.floor(Date.now() / 1000),
-      pubkey:     VALID_PUBKEY,
+      pubkey:     mockValidPubkey,
       tags:       [],
       content:    'hello',
       id:         'ev2',
@@ -416,7 +417,7 @@ describe('NostrBridge.subscribe', () => {
     const subId2 = bridge.subscribe([kinds.AGENT_STATE], ev => received2.push(ev));
 
     const event = {
-      kind: kinds.AGENT_STATE, created_at: 0, pubkey: VALID_PUBKEY,
+      kind: kinds.AGENT_STATE, created_at: 0, pubkey: mockValidPubkey,
       tags: [], content: '{}', id: 'ev3', sig: 's3',
     };
 
@@ -451,7 +452,7 @@ describe('NostrBridge.unsubscribe', () => {
 
     // Subsequent messages for this subId must not fire the handler
     const event = {
-      kind: kinds.AGENT_STATE, created_at: 0, pubkey: VALID_PUBKEY,
+      kind: kinds.AGENT_STATE, created_at: 0, pubkey: mockValidPubkey,
       tags: [], content: '{}', id: 'ev4', sig: 's4',
     };
     handles['wss://relay1.test'].simulateMessage(['EVENT', subId, event]);
