@@ -1,13 +1,13 @@
 ---
 id: ADR-026
 title: Cross-Substrate Agent-Loop Seams
-status: proposed
+status: accepted (partially realised — WS5 producer convergence + ADR-059 Phase-1 mirror done 2026-05-29)
 date: 2026-05-28
 type: integration
 author: Dr John O'Hare
-depends_on: [ADR-005, ADR-009, ADR-010, ADR-013, ADR-014, ADR-017, ADR-023]
+depends_on: [ADR-005, ADR-009, ADR-010, ADR-013, ADR-014, ADR-017, ADR-023, ADR-059]
 review_trigger: VisionClaw ingest schema change, ACSP kind range change, or WAC/NIP-26 delegation spec change
-supersedes_consideration: the ADR-014 "egress port :9500→:3001" item is RETRACTED under D1 consequences — implementation proved it a misdiagnosis (both sides agree on :9500; the gap is push-vs-poll ingest, owned by BC20)
+supersedes_consideration: the ADR-014 "egress port :9500→:3001" item is RETRACTED under D1 consequences — implementation proved it a misdiagnosis (both sides agree on :9500; the gap is push-vs-poll ingest, owned by BC20). Refined 2026-05-29: the ingest converges on the ADR-014/ADR-059 /wss/agent-events WS contract and retires :9500 entirely — one transport, one envelope.
 ---
 
 # ADR-026 — Cross-Substrate Agent-Loop Seams
@@ -136,11 +136,20 @@ VisionClaw's `AgentMonitorActor` dials the same `:9500` (`project/src/app_state.
 (PRD-014 X2) is that VisionClaw *polls* request/response (`project/src/utils/mcp_tcp_client.rs:297`,
 one `read_line` per call) and never reads the pushed notification, and the `0x23 AGENT_ACTION`
 binary frame has no decoder (`project/src/utils/binary_protocol.rs:1334`). BC20 therefore
-also owns the **push-subscription ingest** on the existing `:9500` connection (PRD-014 WS5,
-absorbing the former WS2). Do not change the agentbox egress port. **Fail-open** on an
-unreachable peer, matching ADR-023 D4: if VisionClaw is down, the agentbox relay's broadcast
-simply has no live subscriber, and agentbox Activity records remain durable locally and
-re-ingest when VisionClaw reconnects — agent startup and execution never block on the peer.
+also owns the **agent-action ingest** (PRD-014 WS5, absorbing the former WS2).
+
+**Better idea, adopted 2026-05-29:** do *not* bolt a push-subscription onto the deprecated
+`:9500` MCP-TCP relay. Converge instead on the already-accepted **ADR-014 (agentbox) +
+ADR-059 (VisionClaw)** WebSocket contract — one `/wss/agent-events` socket carrying both
+directions — and **retire `:9500`** (ADR-014 deprecates the MCP-TCP bridge and rejects an
+MCP-TCP listener, Alt C). The producer half is converged (single canonical builder; identity
+no longer dropped — agentbox commit `8005fc3f`); the VisionClaw Phase-1 canonical schema
+mirror has landed (`project/src/agent_events/schema.rs`). The `:9500` relay survives Phase 1
+behind `ENABLE_MCP_BRIDGE` (default off) only until the WS cutover. This keeps one transport
+and one envelope — the debt-free outcome the re-engineering pass targeted. **Fail-open** on an
+unreachable peer, matching ADR-023 D4: if VisionClaw is down, the agentbox publisher's
+broadcast simply has no live subscriber, and agentbox Activity records remain durable locally
+and re-ingest when VisionClaw reconnects — agent startup and execution never block on the peer.
 
 ### D2 — Pod writes use a scoped, revocable mandate; the agent writes as its OWN did:nostr
 
@@ -289,8 +298,10 @@ here but owned in VisionFlow, not by this ADR.
   retired (D4, G6/G7).
 - Zero new identity primitives, zero new URN kinds, zero new adapter slots — the closure
   rides entirely on ADR-005/009/010/013/014/017/023 surfaces already in place.
-- Agent-action egress, already correctly wired on `:9500`, becomes *consumed* once BC20 adds
-  the push-subscription read loop — closing X2 without any port or transport change.
+- Agent-action egress becomes *consumed* once BC20 ingests it over the ADR-014/ADR-059
+  `/wss/agent-events` WS contract — closing X2 with **one** transport (the deprecated `:9500`
+  MCP-TCP relay is retired, not extended). No new port; identity (`source_urn`/`pubkey`)
+  reaches the wire intact.
 
 ### Negative
 
@@ -320,9 +331,10 @@ here but owned in VisionFlow, not by this ADR.
 This ADR is realised by PRD-014's workstreams. Tier A (correctness preconditions): WS1
 (solid-pod-rs non-destructive PATCH), WS3 (GET content-negotiation). (The former WS2
 "egress port `:9500`→`:3001`" is VOID — a misdiagnosis retracted under D1 consequences; its
-real concern, push-subscription ingest, moves into WS5.) Tier B (the seam closures owned here): WS4
-(signed NIP-98 + agent mandate — D2), WS5 (real BC20 + push-subscription ingest of
-`notifications/agent_action` on `:9500`, absorbing the former WS2 — D1), WS6 (governed elevation routing
+real concern, agent-action ingest, moves into WS5.) Tier B (the seam closures owned here): WS4
+(signed NIP-98 + agent mandate — D2), WS5 (real BC20 ✅ + producer convergence ✅ + ADR-059
+Phase-1 schema mirror ✅; agent-action ingest converges on the ADR-014/ADR-059
+`/wss/agent-events` WS contract and retires `:9500`, absorbing the former WS2 — D1), WS6 (governed elevation routing
 + extractor + alignment — D3), WS7 (voice→selected-actor binding + ACSP dispatcher — D4),
 WS8 (`ConceptElevated` + owner field + animation — D3/D4), WS9 (default intentSpec +
 per-agent did:nostr auth on ingress). Tier C (source-repo alignment and optional ingress):
