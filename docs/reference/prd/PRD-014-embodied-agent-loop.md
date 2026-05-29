@@ -257,8 +257,29 @@ The closure introduces **no new identity primitives and no new URN kinds**. It u
   state cutover, pending)**. The PRD §3 E6 row is corrected IMPLEMENTED → PARTIAL.
   Escape hatch respected: no speculative GPU/actor wiring against dead substrate.
 - **Next (WS5 Stage 3b)**: hub-subscribing beam+gluon render actor (ADR-059 §2b,
-  transient `Edge` flag + `class_charge` modulation + despawn reaper);
+  transient `Edge { transient: bool }` flag + despawn reaper — the transient edge
+  *is* the gluon attractive force, **no `class_charge` modulation**; see the
+  correction below and ADR-059 Design log Finding 5);
   did:nostr-keyed live actor nodes (closes E2); `:9500` *state* cutover (needs WS
   to also carry state snapshots). Then agentbox ADR-014 Phase-2 legacy-bridge removal.
+
+### 2026-05-29 — Keystone design correction: gluon = transient edge, not `class_charge`
+
+Verifying the VisionClaw GPU substrate before scheduling the Stage-3b render proved
+the original ADR-059 §4 gluon ("modulate the agent capsule's `class_charge` for
+`duration_ms`") **unimplementable as written**. `class_charge` is a real device
+buffer but is **bulk ontology-clustering metadata loaded at construction**
+(`src/utils/unified_gpu_compute/{construction.rs:55,memory.rs:84-126,execution.rs:573}`),
+uploaded only over the full `num_nodes` array via `upload_class_metadata` — there is
+no per-node mutation path, and per-beam modulation would both require a whole-array
+re-upload and corrupt domain clustering for `duration_ms`. **Decision (keystone):** the
+**transient beam edge is the gluon** — the spring kernel already resolves an attractive
+force along every edge, so the transient `(agent)-[:ACTION]->(target)` edge delivers the
+pull for free with zero GPU-buffer changes. This pairs with the other keystone call —
+**revive the existing `0x23 AGENT_ACTION` frame end-to-end rather than invent a new
+frame**, with identity riding the JSON `/wss/agent-events` envelope and the identity-blind
+`0x23` frame staying a downstream server→browser projection. ADR-059 §4/§2b are corrected;
+the stale `class_charge` comment in `src/agent_events/ingest.rs:16` is a one-line fix owned
+by the Stage-3b code lane.
 
 ### 2026-05-29 — WS5 producer convergence + ADR-059 Phase 1 mirror

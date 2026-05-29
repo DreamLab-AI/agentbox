@@ -68,25 +68,41 @@
 
 const crypto = require('crypto');
 
+// Scope semantics:
+//   ownerScope=false                      — pubkey scope is NEVER emitted.
+//   ownerScope=true, scopeRequired=true   — pubkey scope is REQUIRED (mint throws
+//                                           without it). The historic default.
+//   ownerScope=true, scopeRequired=false  — pubkey scope is emitted WHEN SUPPLIED
+//                                           and omitted otherwise (optional scope).
+//
+// Optional scope is used by the Code-as-Harness kinds (CLAUDE.md §Code-as-Harness
+// URN Allocation: thing:<scope>:kernel-…, memory:<scope>:lesson-…, agent identity
+// being the bare DID) and by the WS6 elevation path, whose `thing` proposal URN
+// must carry the owner pubkey so it can cross to `urn:visionclaw:kg:<pubkey>:…`
+// through the BC20 bridge (lib/bc20-provenance-bridge.js, which drops an unscoped
+// `thing`). The unscoped forms (e.g. urn:agentbox:thing:mcp-foo) remain valid.
+//
+// `ownerScope` stays a boolean (contract L15); `scopeRequired` is only meaningful
+// when `ownerScope` is true and defaults to true for backward compatibility.
 const KINDS = Object.freeze({
-  pod:        { ownerScope: true,  contentAddressed: true,  resolvableSurface: 'pods' },
-  envelope:   { ownerScope: true,  contentAddressed: true,  resolvableSurface: 'pods' },
-  credential: { ownerScope: true,  contentAddressed: true,  resolvableSurface: 'pods' },
-  mandate:    { ownerScope: true,  contentAddressed: true,  resolvableSurface: 'pods' },
-  receipt:    { ownerScope: true,  contentAddressed: true,  resolvableSurface: 'pods' },
-  activity:   { ownerScope: true,  contentAddressed: true,  resolvableSurface: 'agent-events' },
-  event:      { ownerScope: true,  contentAddressed: true,  resolvableSurface: 'agent-events' },
-  mcp:        { ownerScope: false, contentAddressed: false, resolvableSurface: 'things' },
-  memory:     { ownerScope: false, contentAddressed: false, resolvableSurface: 'memory' },
-  skill:      { ownerScope: false, contentAddressed: false, resolvableSurface: 'skills' },
-  adr:        { ownerScope: false, contentAddressed: false, resolvableSurface: 'docs' },
-  prd:        { ownerScope: false, contentAddressed: false, resolvableSurface: 'docs' },
-  ddd:        { ownerScope: false, contentAddressed: false, resolvableSurface: 'docs' },
-  thing:      { ownerScope: false, contentAddressed: false, resolvableSurface: 'things' },
-  dataset:    { ownerScope: true,  contentAddressed: false, resolvableSurface: 'memory' },
-  bead:       { ownerScope: true,  contentAddressed: false, resolvableSurface: 'beads' },
-  agent:      { ownerScope: false, contentAddressed: false, resolvableSurface: 'agents' },
-  meta:       { ownerScope: false, contentAddressed: false, resolvableSurface: 'meta' },
+  pod:        { ownerScope: true,  scopeRequired: true,  contentAddressed: true,  resolvableSurface: 'pods' },
+  envelope:   { ownerScope: true,  scopeRequired: true,  contentAddressed: true,  resolvableSurface: 'pods' },
+  credential: { ownerScope: true,  scopeRequired: true,  contentAddressed: true,  resolvableSurface: 'pods' },
+  mandate:    { ownerScope: true,  scopeRequired: true,  contentAddressed: true,  resolvableSurface: 'pods' },
+  receipt:    { ownerScope: true,  scopeRequired: true,  contentAddressed: true,  resolvableSurface: 'pods' },
+  activity:   { ownerScope: true,  scopeRequired: true,  contentAddressed: true,  resolvableSurface: 'agent-events' },
+  event:      { ownerScope: true,  scopeRequired: true,  contentAddressed: true,  resolvableSurface: 'agent-events' },
+  mcp:        { ownerScope: false, scopeRequired: false, contentAddressed: false, resolvableSurface: 'things' },
+  memory:     { ownerScope: true,  scopeRequired: false, contentAddressed: false, resolvableSurface: 'memory' },
+  skill:      { ownerScope: false, scopeRequired: false, contentAddressed: false, resolvableSurface: 'skills' },
+  adr:        { ownerScope: false, scopeRequired: false, contentAddressed: false, resolvableSurface: 'docs' },
+  prd:        { ownerScope: false, scopeRequired: false, contentAddressed: false, resolvableSurface: 'docs' },
+  ddd:        { ownerScope: false, scopeRequired: false, contentAddressed: false, resolvableSurface: 'docs' },
+  thing:      { ownerScope: true,  scopeRequired: false, contentAddressed: false, resolvableSurface: 'things' },
+  dataset:    { ownerScope: true,  scopeRequired: true,  contentAddressed: false, resolvableSurface: 'memory' },
+  bead:       { ownerScope: true,  scopeRequired: true,  contentAddressed: false, resolvableSurface: 'beads' },
+  agent:      { ownerScope: true,  scopeRequired: false, contentAddressed: false, resolvableSurface: 'agents' },
+  meta:       { ownerScope: false, scopeRequired: false, contentAddressed: false, resolvableSurface: 'meta' },
 });
 
 const URN_RE = /^urn:agentbox:([a-z]+):([^:]+(?::[^:]+)?)$/;
@@ -151,6 +167,10 @@ function mint({ kind, pubkey, npub, payload, localId } = {}) {
   if (spec.ownerScope) {
     const supplied = pubkey || npub;
     if (!supplied) {
+      // scopeRequired === false → optional scope: mint the unscoped form.
+      if (spec.scopeRequired === false) {
+        return `urn:agentbox:${kind}:${local}`;
+      }
       throw new MalformedUri(`urn:agentbox:${kind}:${local}`, 'kind requires pubkey scope');
     }
     const normalised = _normalisePubkey(supplied);

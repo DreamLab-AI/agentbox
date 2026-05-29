@@ -788,6 +788,35 @@ async function start() {
       }
     }
 
+    // ── WS7 voice→actor binding (PRD-014 Seam B / B3) ───────────────────────
+    // /v1/voice-intent maps a plain-text transcript to an agent intent and
+    // emits the canonical agent_action notification. Gated by
+    // [sovereign_mesh].voice_intent; the route itself returns 503 when off, so
+    // it is mounted unconditionally and self-gates from the manifest.
+    {
+      try {
+        await app.register(require('./routes/voice-intent'), { logger, manifest });
+        const on = (manifest.sovereign_mesh || {}).voice_intent === true;
+        logger.debug({ event: 'voice-intent.mounted', enabled: on }, 'Voice→actor binding route ready at /v1/voice-intent');
+      } catch (err) {
+        logger.error({ err: err.message }, 'Voice→actor binding route failed to mount');
+      }
+    }
+
+    // ── WS6 personal-KG → proposal extractor (PRD-014 Seam D / D2) ───────────
+    // /v1/kg-elevation/scan reads the personal KG via the memory adapter slot,
+    // emits agent_action LINK beams, and returns governed ontology-propose
+    // descriptors. Gated by [sovereign_mesh].kg_elevation (route self-gates).
+    {
+      try {
+        await app.register(require('./routes/kg-elevation'), { logger, manifest });
+        const on = (manifest.sovereign_mesh || {}).kg_elevation === true;
+        logger.debug({ event: 'kg-elevation.mounted', enabled: on }, 'Personal-KG elevation route ready at /v1/kg-elevation/scan');
+      } catch (err) {
+        logger.error({ err: err.message }, 'Personal-KG elevation route failed to mount');
+      }
+    }
+
     // ── Multi-tenant did:nostr admin surface (ADR-017 / PRD-007) ────────────
     // Mount /admin/users/* only when [sovereign_mesh.multi_user].enabled = true.
     // Endpoints are 501 Not Implemented stubs in this scaffold pass; bodies

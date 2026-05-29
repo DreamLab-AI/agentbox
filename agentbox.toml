@@ -22,6 +22,13 @@ nostr_bridge = true
 https_bridge = true
 publish_agent_events = true
 telegram_mirror = true
+# WS7 (PRD-014 Seam B): bind a voice transcript to an agent intent and emit the
+# canonical agent_action notification at POST /v1/voice-intent. Off → 503.
+voice_intent = false
+# WS6 (PRD-014 Seam D): scan the personal KG (via the memory adapter slot) for
+# elevation candidates, emit agent_action LINK beams, and return the GOVERNED
+# ontology-propose descriptors at POST /v1/kg-elevation/scan. Off → 503.
+kg_elevation = false
 
 # ── Telegram bridge configuration ─────────────────────────────────────────────
 # CTM (Claude Telegram Mirror) adapter settings. The bot_token is NEVER stored

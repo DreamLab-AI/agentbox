@@ -99,7 +99,8 @@ Your `agentbox.toml` manifest toggles capabilities on or off. Disabled features 
 | **Spatial and 3D** | QGIS geospatial analysis, Blender modelling, 3D Gaussian Splatting |
 | **Data science and docs** | PyTorch, Jupyter Lab, LaTeX, Mermaid rendering |
 | **Code-as-Harness** | Persistent Python kernel MCP, ExpeL post-task lesson distillation, Voyager verified-skill library, SWE-agent ACI MCP, execution-gated tree-search (PRD-008) |
-| **Governance** | Agent Control Surface Protocol (kinds 31400-31405) — cross-repo human-in-the-loop integration with the DreamLab forum and VisionClaw's BrokerActor via the embedded relay |
+| **Governance** | Agent Control Surface Protocol (kinds 31400-31405) — cross-repo human-in-the-loop integration with the DreamLab forum and the host project's broker via the embedded relay |
+| **Embodied agent loop** | Bi-directional `/wss/agent-events` channel (ADR-014) — agents emit a canonical `agent_action` signal (identity preserved per ADR-013) that a host project renders as a live agent actor (coloured beam + transient attractive edge), and consume inbound user-interaction events so agents become user-aware. See [ADR-014](docs/reference/adr/ADR-014-bidirectional-graph-state-ingress.md), [ADR-026](docs/reference/adr/ADR-026-cross-substrate-agent-loop-seams.md), [PRD-014](docs/reference/prd/PRD-014-embodied-agent-loop.md). |
 | **Operations** | OTLP tracing, Prometheus metrics (`:9091/metrics`), Tailscale VPN integration |
 
 ### Code-as-Harness (PRD-008)
@@ -394,15 +395,15 @@ See [Tailscale guide](docs/user/tailscale.md) · [Mesh deployment](docs/user/mes
 3. Prefer manifest-gated additions over ad hoc runtime mutation.
 4. Treat hardening, probe semantics, URI grammar, and linked-data surfaces as architectural changes — propose them via an ADR.
 
-## Part of VisionClaw
+## Part of VisionFlow
 
-Agentbox is the **harness engineering** substrate of the [VisionClaw](https://github.com/DreamLab-AI/VisionClaw) coordination platform — a federated architecture for human–AI intelligence built on `did:nostr` identity, OWL 2 EL reasoning, and Nostr message passing.
+Agentbox is the **harness engineering** substrate of the [VisionFlow](https://github.com/DreamLab-AI/VisionFlow) coordination platform — a federated architecture for human–AI intelligence built on `did:nostr` identity, OWL 2 EL reasoning, and Nostr message passing. agentbox runs the agents; VisionClaw renders the embodied agent loop; solid-pod-rs stores sovereignly; the forum and website provide governance and operator surfaces.
 
 | Substrate | Repository | Role |
 |:----------|:-----------|:-----|
-| **VisionClaw** | [DreamLab-AI/VisionClaw](https://github.com/DreamLab-AI/VisionClaw) | Ecosystem guide and coordination architecture |
-| **VisionClaw** | [DreamLab-AI/VisionClaw](https://github.com/DreamLab-AI/VisionClaw) | Knowledge engineering — OWL 2 EL, 92 CUDA kernels, XR |
-| **Agentbox** | **[DreamLab-AI/agentbox](https://github.com/DreamLab-AI/agentbox)** | **Harness engineering — Nix, 90+ skills, sovereign pods** |
+| **VisionFlow** | [DreamLab-AI/VisionFlow](https://github.com/DreamLab-AI/VisionFlow) | Umbrella canon — ecosystem guide and coordination architecture |
+| **VisionClaw** | [DreamLab-AI/VisionClaw](https://github.com/DreamLab-AI/VisionClaw) | Knowledge engineering — OWL 2 EL, 92 CUDA kernels, XR; renders the embodied agent loop |
+| **Agentbox** | **[DreamLab-AI/agentbox](https://github.com/DreamLab-AI/agentbox)** | **Harness engineering — Nix, 90+ skills, sovereign pods; runs the agents** |
 | **solid-pod-rs** | [DreamLab-AI/solid-pod-rs](https://github.com/DreamLab-AI/solid-pod-rs) | Cryptographic foundation — JSS Rust port, DID:Nostr |
 | **nostr-rust-forum** | [DreamLab-AI/nostr-rust-forum](https://github.com/DreamLab-AI/nostr-rust-forum) | Forum kit — passkey auth, governance events |
 | **dreamlab-ai-website** | [DreamLab-AI/dreamlab-ai-website](https://github.com/DreamLab-AI/dreamlab-ai-website) | Branded deployment — React, WASM, Cloudflare Workers |

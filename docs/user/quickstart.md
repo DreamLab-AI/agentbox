@@ -44,6 +44,7 @@ graph TB
 - API keys leaking into shell history, Dockerfiles and git diffs instead of living in one `.env`.
 - Boot cycles spending minutes downloading npm, pip and model weights every restart — Agentbox bakes them into the image.
 - Swapping agent backends (local SQLite vs a federated host mesh) without rewriting orchestration code.
+- Agent actions being invisible: when federated into a host mesh, agentbox emits a canonical `agent_action` signal over the bidirectional `/wss/agent-events` channel (ADR-014), so a host project can render each action as a live agent actor and feed user-interaction events back to the agents. Standalone, the same events stay local; nothing in this quickstart requires a host.
 
 **When to skip this**: if you only need a single agent CLI on a single machine and are comfortable wiring its storage and keys by hand, running the CLI natively is simpler. Agentbox earns its keep once you want more than one agent, reproducible storage, or remote deployment.
 
