@@ -74,7 +74,14 @@ module.exports = async function kgElevationRoutes(fastify, options) {
       body: {
         type: 'object',
         properties: {
-          namespace: { type: 'string', default: 'personal-context' },
+          namespace: {
+            type: 'string',
+            default: 'personal-context',
+            description:
+              'Memory namespace to scan. Use "personal-context" for the personal KG, ' +
+              'or "code-harness-lessons" to elevate experiential DistilledLesson records ' +
+              '(mcp/expel/distil.py) into the SAME governed memory→concept pipeline.',
+          },
           query: { type: 'string', description: 'Optional text filter; omit to list the namespace' },
           min_score: { type: 'number', minimum: 0, maximum: 1, default: 0.6 },
           limit: { type: 'integer', minimum: 1, maximum: 100, default: 20 },
@@ -206,6 +213,9 @@ module.exports = async function kgElevationRoutes(fastify, options) {
         domain: p.candidate.domain,
         score: p.candidate.score,
         reasons: p.candidate.reasons,
+        // The experiential lesson this candidate was distilled from (null for
+        // personal-KG entries) — links code-as-harness into the governed record.
+        source_lesson_urn: p.source_lesson_urn || null,
         propose_request: p.propose_request, // governed path — execute via the ontology bridge
         event_id: emitted[i] ? emitted[i].event_id : null,
         // Nostr federation outcome for this governed proposal (false in standalone).

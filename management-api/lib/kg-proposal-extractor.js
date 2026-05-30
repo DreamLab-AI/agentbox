@@ -61,16 +61,79 @@ const STOP = new Set([
 ]);
 
 /**
+ * Code-as-harness lesson records (mcp/expel/distil.py) are written to the
+ * `code-harness-lessons` namespace as `"<rule> | <json>"` where the JSON is an
+ * `ex:DistilledLesson` aggregate (DDD-005). Distil already mints the lesson's
+ * own canonical `urn:agentbox:memory:<scope>:lesson-<sha256-12>` (per the
+ * CLAUDE.md Code-as-Harness URN allocation). This recogniser maps that record
+ * onto the term/definition shape the elevation scorer expects, so experiential
+ * learning FEEDS the SAME governed memory→concept elevation pipeline as the
+ * personal KG — no separate path, no new MCP server. The distil writer leads
+ * the value with the rule text (the semantic-embedding hook), so a plain-text
+ * fallback still degrades to a usable term.
+ */
+function normaliseLesson(value) {
+  if (!value || typeof value !== 'object') return null;
+  if (value.ontology_type !== 'ex:DistilledLesson' && !value.lesson_urn) return null;
+  const rule = value.rule ? String(value.rule).trim() : null;
+  if (!rule) return null;
+  // The rule IS the elevation candidate term; the evidence claim (when present)
+  // backs it as the definition so the scorer can judge substance. We keep the
+  // lesson's confidence/scope as metadata for downstream governance display.
+  return {
+    term: rule,
+    definition: (value.evidence_claim ? String(value.evidence_claim).trim() : null) || rule,
+    domain: value.domain ? String(value.domain).trim() : 'experiential',
+    physicality: 'abstract',
+    role: 'lesson',
+    lesson_urn: typeof value.lesson_urn === 'string' ? value.lesson_urn : null,
+    confidence: typeof value.confidence === 'number' ? value.confidence : null,
+  };
+}
+
+/**
  * Normalise a raw memory-adapter entry into the fields the extractor needs.
  * The memory adapters return `{ key, value, ... }` where value may be a JSON
  * string, an object, or plain text. We coalesce to a term + definition pair.
+ *
+ * The distil writer stores lesson values as `"<rule> | <json>"`; we split on
+ * the first ` | ` and parse the JSON tail so `ex:DistilledLesson` records are
+ * recognised even when the adapter returns the raw stored string.
  */
 function normaliseEntry(entry) {
   if (!entry || typeof entry !== 'object') return null;
   const key = entry.key || entry.id || null;
   let value = entry.value;
   if (typeof value === 'string') {
-    try { value = JSON.parse(value); } catch { /* plain text value */ }
+    try {
+      value = JSON.parse(value);
+    } catch {
+      // distil format: "<rule text> | <json>" — recover the JSON tail.
+      const bar = value.indexOf(' | ');
+      if (bar !== -1) {
+        try { value = JSON.parse(value.slice(bar + 3)); } catch { /* plain text */ }
+      }
+    }
+  }
+
+  // Code-as-harness experiential lesson → elevation candidate (feeds the same
+  // governed pipeline). Detected before the generic shape so the lesson's own
+  // canonical URN and confidence survive into the descriptor metadata.
+  const lesson = normaliseLesson(value);
+  if (lesson) {
+    if (!lesson.term) return null;
+    return {
+      key,
+      term: lesson.term,
+      definition: lesson.definition,
+      domain: lesson.domain,
+      physicality: lesson.physicality,
+      role: lesson.role,
+      source: 'distilled-lesson',
+      lesson_urn: lesson.lesson_urn,
+      confidence: lesson.confidence,
+      raw: value,
+    };
   }
 
   let term = null;
@@ -203,7 +266,9 @@ function buildProposalDescriptor(norm, score, opts = {}) {
     action_type: AgentActionType.LINK,
     duration_ms: opts.duration_ms || 250,
     metadata: {
-      origin: 'kg-elevation',
+      // 'distilled-lesson' when the candidate is a code-as-harness lesson fed
+      // into the governed pipeline; 'kg-elevation' for personal-KG entries.
+      origin: norm.source === 'distilled-lesson' ? 'distilled-lesson' : 'kg-elevation',
       proposal_urn,
       proposal_foreign_urn,
       term: norm.term,
@@ -211,6 +276,10 @@ function buildProposalDescriptor(norm, score, opts = {}) {
       score: score.score,
       reasons: score.reasons,
       governed_path: propose_request.path,
+      // The originating experiential lesson URN (already minted by distil.py
+      // through the memory kind), preserving the experiential→governed link.
+      ...(norm.lesson_urn ? { source_lesson_urn: norm.lesson_urn } : {}),
+      ...(typeof norm.confidence === 'number' ? { lesson_confidence: norm.confidence } : {}),
     },
   };
   if (target_urn) emit.target_urn = target_urn;
@@ -222,6 +291,10 @@ function buildProposalDescriptor(norm, score, opts = {}) {
     target_urn,
     propose_request,
     emit,
+    // Provenance: the experiential lesson this proposal was distilled from
+    // (null for personal-KG candidates). Links the code-as-harness 5th identity
+    // participant into the governed elevation record.
+    source_lesson_urn: norm.lesson_urn || null,
   };
 }
 
@@ -270,6 +343,7 @@ module.exports = {
   ExtractError,
   DEFAULT_MIN_SCORE,
   normaliseEntry,
+  normaliseLesson,
   scoreCandidate,
   buildProposalDescriptor,
   extractProposals,

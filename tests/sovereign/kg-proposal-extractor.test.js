@@ -13,6 +13,7 @@
 const {
   ExtractError,
   normaliseEntry,
+  normaliseLesson,
   scoreCandidate,
   buildProposalDescriptor,
   extractProposals,
@@ -138,5 +139,76 @@ describe('extractProposals + wire envelope', () => {
 
   it('throws on a non-array input', () => {
     expect(() => extractProposals('nope', { ownerPubkey: PUBKEY })).toThrow(ExtractError);
+  });
+});
+
+/**
+ * Task B: code-as-harness DistilledLesson records (mcp/expel/distil.py, written
+ * to the `code-harness-lessons` namespace) FEED the SAME governed memory→concept
+ * elevation pipeline. The lesson's own minted urn:agentbox:memory:lesson-* URN
+ * is preserved as provenance — the experiential learning → governed ontology link.
+ */
+describe('code-as-harness lessons feed the governed pipeline', () => {
+  const LESSON_URN = `urn:agentbox:memory:${PUBKEY}:lesson-deadbeefcafe`;
+  // A lesson record exactly as distil.py writes its JSON value.
+  const LESSON_JSON = {
+    lesson_urn: LESSON_URN,
+    ontology_type: 'ex:DistilledLesson',
+    memory_type: 'semantic',
+    rule: 'Verify adapter health before dispatch to avoid silent fallback writes',
+    scope: PUBKEY,
+    confidence: 0.72,
+    evidence_claim: 'Three trajectories where a degraded memory adapter dropped lessons silently.',
+    active: true,
+  };
+  // distil writes the stored value as "<rule> | <json>".
+  const LESSON_ENTRY = {
+    key: `lesson:${PUBKEY}:lesson-deadbeefcafe`,
+    value: `${LESSON_JSON.rule} | ${JSON.stringify(LESSON_JSON)}`,
+  };
+
+  it('normaliseLesson recognises an ex:DistilledLesson object', () => {
+    const n = normaliseLesson(LESSON_JSON);
+    expect(n.term).toBe(LESSON_JSON.rule);
+    expect(n.role).toBe('lesson');
+    expect(n.domain).toBe('experiential');
+    expect(n.lesson_urn).toBe(LESSON_URN);
+    expect(n.confidence).toBe(0.72);
+  });
+
+  it('normaliseEntry recovers the JSON tail from the distil "<rule> | <json>" value', () => {
+    const n = normaliseEntry(LESSON_ENTRY);
+    expect(n.source).toBe('distilled-lesson');
+    expect(n.term).toBe(LESSON_JSON.rule);
+    expect(n.lesson_urn).toBe(LESSON_URN);
+    expect(n.definition).toBe(LESSON_JSON.evidence_claim);
+  });
+
+  it('a substantive lesson scores as an elevation candidate', () => {
+    expect(scoreCandidate(normaliseEntry(LESSON_ENTRY)).score).toBeGreaterThanOrEqual(0.6);
+  });
+
+  it('builds a GOVERNED proposal carrying the originating lesson URN as provenance', () => {
+    const { proposals, accepted } = extractProposals([LESSON_ENTRY], { ownerPubkey: PUBKEY, env: ENV });
+    expect(accepted).toBe(1);
+    const p = proposals[0];
+
+    // Same sanctioned governed path as the personal-KG candidates.
+    expect(p.propose_request.path).toBe('/ontology-agent/propose');
+    expect(uris.isCanonical(p.proposal_urn)).toBe(true);
+
+    // The experiential→governed link: the lesson URN survives onto the
+    // descriptor and into the beam metadata, with origin marked distilled-lesson.
+    expect(p.source_lesson_urn).toBe(LESSON_URN);
+    expect(p.emit.metadata.origin).toBe('distilled-lesson');
+    expect(p.emit.metadata.source_lesson_urn).toBe(LESSON_URN);
+    expect(p.emit.metadata.lesson_confidence).toBe(0.72);
+  });
+
+  it('personal-KG candidates carry no lesson provenance (null, origin kg-elevation)', () => {
+    const { proposals } = extractProposals([RICH], { ownerPubkey: PUBKEY, env: ENV });
+    expect(proposals[0].source_lesson_urn).toBeNull();
+    expect(proposals[0].emit.metadata.origin).toBe('kg-elevation');
+    expect(proposals[0].emit.metadata.source_lesson_urn).toBeUndefined();
   });
 });
