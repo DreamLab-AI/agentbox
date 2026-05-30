@@ -28,6 +28,7 @@
 const { agentEventPublisher, AgentActionType } = require('../utils/agent-event-publisher');
 const { verifyAgentEventRequest } = require('../lib/agent-event-auth');
 const { extractProposals, ExtractError } = require('../lib/kg-proposal-extractor');
+const { buildElevationPublisher } = require('../lib/elevation-publisher');
 
 /** u32 string hash — identical to the agent-events surface. */
 function hashString(str) {
@@ -51,6 +52,17 @@ function memoryUsable(mem) {
 
 module.exports = async function kgElevationRoutes(fastify, options) {
   const { logger, manifest } = options;
+
+  // Close the elevation → Nostr federation loop. Built once: inert no-op in
+  // standalone (gate off / no relays / no signing stack), live federation
+  // otherwise. Never load-bearing — a publish failure degrades to a logged
+  // no-op and the beam+propose response is returned unchanged (ADR-005).
+  const elevationPublisher =
+    options.elevationPublisher || buildElevationPublisher(manifest, { logger });
+  logger.debug(
+    { event: 'kg-elevation.federation', enabled: elevationPublisher.enabled, reason: elevationPublisher.reason },
+    `kg-elevation Nostr federation ${elevationPublisher.enabled ? 'active' : 'inert'}`
+  );
 
   fastify.post('/v1/kg-elevation/scan', {
     schema: {
@@ -141,6 +153,10 @@ module.exports = async function kgElevationRoutes(fastify, options) {
     }
 
     const emitted = [];
+    // Federation results, indexed alongside result.proposals. Each entry is the
+    // outcome of publishing the GOVERNED elevation proposal as a signed ACSP
+    // ActionRequest to Nostr — or a logged no-op in standalone.
+    const federated = [];
     if (doEmit) {
       for (const p of result.proposals) {
         const emitPayload = {
@@ -161,11 +177,19 @@ module.exports = async function kgElevationRoutes(fastify, options) {
           event_id: event.id,
           notification: agentEventPublisher.createMcpNotification(event),
         });
+
+        // Close the loop: publish the governed proposal to Nostr. publish()
+        // never throws — standalone returns { published: false }, federated
+        // returns { published: true, event_id }. The beam above is unaffected
+        // either way.
+        federated.push(await elevationPublisher.publish(p));
       }
     }
 
+    const publishedCount = federated.filter((f) => f && f.published).length;
     logger.debug(
-      `kg-elevation: scanned ${result.scanned}, accepted ${result.accepted}, emitted ${emitted.length} LINK beams`
+      `kg-elevation: scanned ${result.scanned}, accepted ${result.accepted}, ` +
+      `emitted ${emitted.length} LINK beams, federated ${publishedCount}/${federated.length} proposals to Nostr`
     );
 
     return reply.send({
@@ -173,6 +197,8 @@ module.exports = async function kgElevationRoutes(fastify, options) {
       scanned: result.scanned,
       accepted: result.accepted,
       action_type: AgentActionType.LINK,
+      federation_enabled: elevationPublisher.enabled,
+      federated_events: publishedCount,
       proposals: result.proposals.map((p, i) => ({
         proposal_urn: p.proposal_urn,
         target_urn: p.target_urn,
@@ -182,6 +208,9 @@ module.exports = async function kgElevationRoutes(fastify, options) {
         reasons: p.candidate.reasons,
         propose_request: p.propose_request, // governed path — execute via the ontology bridge
         event_id: emitted[i] ? emitted[i].event_id : null,
+        // Nostr federation outcome for this governed proposal (false in standalone).
+        nostr_published: federated[i] ? !!federated[i].published : false,
+        nostr_event_id: federated[i] && federated[i].published ? federated[i].event_id : null,
       })),
       emitted_events: emitted.length,
     });
