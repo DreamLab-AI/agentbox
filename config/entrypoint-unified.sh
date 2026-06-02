@@ -322,6 +322,17 @@ fi
 mkdir -p /run/agentbox
 chown 1000:1000 /run/agentbox 2>/dev/null || true
 
+# Phase 5c — Inherit the sovereign agent identity into PID 1.
+# sovereign-bootstrap.py (Phase 3) wrote /run/agentbox/identity.env, including
+# AGENTBOX_BRIDGE_RECIPIENT_PUBKEY / AGENTBOX_BRIDGE_SK for the nostr-pod-bridge
+# relay slot. Source it here, as root, before exec'ing supervisord so PID 1 —
+# and every supervised child that inherits its environment — carries the agent
+# secret without it ever entering the Nix-store supervisor text. The file is
+# 0600 root; only this pre-supervisord launcher reads it.
+if [ -f /run/agentbox/identity.env ]; then
+  . /run/agentbox/identity.env
+fi
+
 echo "[5b/8] Starting supervisord..."
 exec supervisord -c /etc/supervisord.conf -n
 

@@ -268,11 +268,22 @@ def write_runtime_env(identity, run_root):
                 f"export AGENTBOX_X_ONLY_PUBKEY_HEX={identity['x_only_pubkey_hex']}",
                 f"export AGENTBOX_DID=did:nostr:{identity['x_only_pubkey_hex']}",
                 f"export AGENTBOX_URN=urn:agentbox:agent:{identity['agent_id']}",
+                # nostr-pod-bridge ingress reads the agent identity from these two
+                # vars (see services/nostr-pod-bridge/src/main.rs). The recipient
+                # is the agent's own BIP-340 x-only key; the SK is its 64-char hex
+                # secret. The entrypoint sources this file before exec'ing
+                # supervisord so PID 1 — and thus the bridge child — inherit them,
+                # keeping the secret out of the generated supervisor text.
+                f"export AGENTBOX_BRIDGE_RECIPIENT_PUBKEY={identity['x_only_pubkey_hex']}",
+                f"export AGENTBOX_BRIDGE_SK={identity['private_key_hex']}",
                 "",
             ]
         ),
         encoding="utf-8",
     )
+    # Carries the agent secret (nsec + SK hex); root sources it pre-supervisord,
+    # devuser never reads it directly. Keep it off any other reader.
+    os.chmod(env_file, 0o600)
 
 
 def main():
