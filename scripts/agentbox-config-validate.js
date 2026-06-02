@@ -6,7 +6,7 @@
  * own stderr line: "E### message".
  *
  * Active rule families:
- *   E001-E010, E013-E014, E016
+ *   E001-E010, E013, E016
  *                           adapter + federation coherence (ADR-005)
  *   E017-E018, W040         provider credentials + OAuth deferral
  *   W012                    federation-mode advisory (was E012; recategorised)
@@ -370,22 +370,10 @@ if (observability.metrics_port !== undefined) {
   }
 }
 
-// E014: sovereign_mesh.telegram_mirror=true requires CTM_BOT_TOKEN and CTM_TELEGRAM_CHAT_ID.
-// Demoted to warning: env vars are deployment-specific and unavailable in CI.
-if (sovereignMesh.telegram_mirror === true) {
-  if (!process.env.CTM_BOT_TOKEN) {
-    warnings.push({
-      code: 'W014',
-      message: 'W014: sovereign_mesh.telegram_mirror is true but CTM_BOT_TOKEN env var is not set'
-    });
-  }
-  if (!process.env.CTM_TELEGRAM_CHAT_ID) {
-    warnings.push({
-      code: 'W014',
-      message: 'W014: sovereign_mesh.telegram_mirror is true but CTM_TELEGRAM_CHAT_ID env var is not set'
-    });
-  }
-}
+// E014 retired — `sovereign_mesh.telegram_mirror` and its CTM_BOT_TOKEN /
+// CTM_TELEGRAM_CHAT_ID env vars were removed when the Telegram mirror was
+// replaced by the pure-Nostr mobile bridge (embedded relay + nostr-pod-bridge).
+// The mobile path carries no deployment-specific secret in the manifest.
 
 // E015 retired — `sovereign_mesh.jss_rust_backend` was a placeholder for a
 // `jss-rust` Nix flake input that was never declared. The Rust pod adoption
@@ -612,6 +600,38 @@ if (sovereignMesh.telegram_mirror === true) {
   }
 }
 
+// ─── E065 + W065: mobile bridge egress (session-summary phone mirror) ────────
+//
+// E065 — [sovereign_mesh.mobile_bridge].enabled=true requires the embedded relay
+//        to be on AND to accept kind 30840. The egress path signs a kind-30840
+//        session-summary and dual-writes it to the pod *and* publishes it to the
+//        relay for the live phone view; if the relay is off or 30840 is not in
+//        allowed_kinds the publish is silently rejected at ingest.
+// W065 — mobile_bridge.enabled=true without an operator pubkey: the phone has no
+//        NIP-26 delegator, so the operator must add the device pubkey to
+//        relay.allowed_pubkeys directly for inbound to work.
+{
+  const mb = (sovereignMesh.mobile_bridge) || {};
+  if (mb.enabled === true) {
+    const relay = sovereignMesh.relay || {};
+    const kinds = Array.isArray(relay.allowed_kinds) ? relay.allowed_kinds : [];
+    if (relay.enabled !== true || !kinds.includes(30840)) {
+      errors.push({
+        code: 'E065',
+        message: 'E065: [sovereign_mesh.mobile_bridge].enabled=true requires sovereign_mesh.relay.enabled=true and 30840 in sovereign_mesh.relay.allowed_kinds (the kind-30840 session-summary is dual-written to the pod and published to the relay)'
+      });
+    }
+    const operatorPubkey = (sovereignMesh.operator && sovereignMesh.operator.pubkey_hex) || '';
+    if (!operatorPubkey
+        && (!Array.isArray(relay.allowed_pubkeys) || relay.allowed_pubkeys.length === 0)) {
+      warnings.push({
+        code: 'W065',
+        message: 'W065: [sovereign_mesh.mobile_bridge].enabled=true without [sovereign_mesh.operator].pubkey_hex — the phone has no NIP-26 delegator; add the device pubkey to sovereign_mesh.relay.allowed_pubkeys for inbound to work'
+      });
+    }
+  }
+}
+
 // ─── E055-E057 + W058: multi-tenant did:nostr pods (ADR-017 / PRD-007) ───────
 //
 // Note: the original ADR-017 draft reserved E034-E036+W037 but those codes are
@@ -833,7 +853,6 @@ if (sovereignMesh.telegram_mirror === true) {
 //   gaussian-splatting    │ skills.spatial_and_3d.gaussian_splatting === true
 //   playwright            │ skills.browser.playwright === true
 //   code-server           │ toolchains.code_server === true
-//   telegram-mirror       │ sovereign_mesh.telegram_mirror === true
 
 const toolchains = manifest.toolchains || {};
 
@@ -851,8 +870,6 @@ function isFeatureActive(exceptionName) {
       return !!(skills.browser && skills.browser.playwright === true);
     case 'code-server':
       return toolchains.code_server === true;
-    case 'telegram-mirror':
-      return sovereignMesh.telegram_mirror === true;
     case 'nostr-relay':
       return !!(sovereignMesh.relay && sovereignMesh.relay.enabled === true);
     case 'solid-pod-rs':
@@ -874,7 +891,6 @@ const KNOWN_EXCEPTION_FEATURE_GATES = new Set([
   'gaussian-splatting',
   'playwright',
   'code-server',
-  'telegram-mirror',
   'nostr-relay',
   'solid-pod-rs',
   'tailscale',

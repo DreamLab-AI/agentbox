@@ -122,6 +122,53 @@ sequenceDiagram
     Relay-->>AB: Deliver reply
 ```
 
+## Mobile bridge — the operator phone as a delegated participant
+
+The mobile bridge adds an operator's Android phone to the mesh as an interactive
+chat surface onto internal agents (operator guide:
+[user/mobile-bridge.md](../user/mobile-bridge.md); wiring:
+[sovereign-mesh.md §Mobile bridge](sovereign-mesh.md#mobile-bridge--decrypt-at-dispatch)).
+It does **not** add a sixth identity root. The phone holds its own secp256k1
+keypair but acts under a short-lived **NIP-26 delegation** signed by the operator's
+admin key — a revocable, window-bounded *extension* of the existing admin
+identity, not a new signing repo. The five-participant identity-mesh count is
+unchanged.
+
+Two ecosystem boundaries make this clean:
+
+- **Crypto is reused, not rebuilt.** The agent-side decryption (NIP-44 v2 / NIP-59
+  gift wrap) and delegation validation (NIP-26) are consumed from
+  [`nostr-bbs-core`](https://github.com/DreamLab-AI/nostr-rust-forum) — the same
+  crate already underpinning the relay worker, the auth worker, and the forum
+  client. This is **library reuse, not runtime forum interop**: agentbox links the
+  shared crypto crate but reads and writes no forum BBS state. The "no forum at
+  this time" constraint holds.
+- **The phone is a pure Nostr citizen.** It speaks Nostr only — no Solid, no WAC,
+  no LDP. The pod-write boundary sits entirely on the agent side: the agent writes
+  session records (`kind-30840` + `/sessions/*.jsonld`) under its own identity,
+  backed by a one-time WAC mandate. This is what decouples Android client choice
+  from the sovereignty requirement — any NIP-17/42/55 client works.
+
+```mermaid
+graph LR
+    ADMIN[did:nostr admin key\noperator identity root]
+    PHONE[Phone key\nNIP-26 delegated]
+    AGENT[Agent\nholds own nsec]
+    POD[(Solid pod\n/sessions/*.jsonld)]
+    RELAY[Embedded relay\nkind-1059 / kind-30840]
+
+    ADMIN -->|"signs delegation (kinds 14,1059, ttl)"| PHONE
+    PHONE -->|"gift-wrapped DM"| RELAY
+    RELAY -->|"unwrap via nostr-bbs-core, dispatch"| AGENT
+    AGENT -->|"reply + summary"| RELAY
+    AGENT -->|"WAC-mandated write (agent identity)"| POD
+```
+
+The durability axis is shared with the rest of the mesh but the *ownership* axis
+is the pod's: the relay (and, in Phase 2, the Cloudflare Durable Object) persists
+events durably, but only the pod gives the operator export, migration, and WAC
+control. agentbox keeps no durable chat transcript of its own.
+
 ## Dependency on solid-pod-rs
 
 Agentbox consumes `solid-pod-rs` as its first-class Solid Protocol 0.11 server (ADR-010). The pod provides durable storage with WAC 2.0 access control, `did:nostr` identity binding, atomic-rename writes, and quota enforcement. The pod-inbox bridge (ADR-009) routes inbound Nostr relay messages into the pod's LDP inbox as AS2 LDN notifications.

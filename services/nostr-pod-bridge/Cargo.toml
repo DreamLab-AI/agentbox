@@ -1,0 +1,48 @@
+[package]
+name = "nostr-pod-bridge"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+license = "MIT OR Apache-2.0"
+description = "Embedded Nostr relay + Solid-pod ingress bridge for agentbox. Consumes nostr-bbs-core crypto (NIP-44/26/59) and solid-pod-rs-nostr relay substrate (NIP-01/11/16) — no hand-rolled JS crypto."
+
+[[bin]]
+name = "nostr-pod-bridge"
+path = "src/main.rs"
+
+[lib]
+name = "nostr_pod_bridge"
+path = "src/lib.rs"
+
+[dependencies]
+# First-party upstream crates — the whole point of this bridge.
+nostr-bbs-core = { path = "../../../../nostr-rust-forum/crates/nostr-bbs-core" }
+solid-pod-rs-nostr = { path = "../../../../solid-pod-rs/crates/solid-pod-rs-nostr" }
+
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "sync", "time", "io-util", "fs", "signal"] }
+# WS client for the egress path: publish kind-30840 summaries to the running
+# relay for the live phone mirror. Version-matched to solid-pod-rs-nostr's own
+# tokio-tungstenite so the lock graph stays single-source.
+tokio-tungstenite = "0.24"
+futures-util = "0.3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+hex = "0.4"
+thiserror = "1"
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "test-util"] }
+
+# Unify solid-pod-rs to the single local source. nostr-bbs-core pulls it from
+# crates.io (0.4.0-alpha.15); solid-pod-rs-nostr path-deps the local copy. The
+# patch redirects the registry reference to that same local crate so both
+# resolve to one solid-pod-rs (no duplicate-source conflict, shared features).
+[patch.crates-io]
+solid-pod-rs = { path = "../../../../solid-pod-rs/crates/solid-pod-rs" }
+
+# Standalone workspace root: prevents Cargo from absorbing this crate into the
+# parent visionclaw workspace at /home/devuser/workspace/project/Cargo.toml.
+[workspace]

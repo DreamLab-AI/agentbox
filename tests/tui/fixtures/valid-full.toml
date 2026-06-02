@@ -28,7 +28,6 @@ solid_pod            = true
 nostr_bridge         = true
 https_bridge         = true
 publish_agent_events = true
-telegram_mirror      = false
 
 [observability]
 metrics_port  = 9091

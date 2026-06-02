@@ -115,7 +115,6 @@ for _vol_root in \
     /home/devuser/.local/share \
     /home/devuser/.local/share/code-server \
     /home/devuser/.config \
-    /home/devuser/.config/claude-telegram-mirror \
     /home/devuser/.cache \
     /home/devuser/.claude-flow \
     /home/devuser/.codex \
@@ -527,6 +526,37 @@ cfg.setdefault('mcpServers', {})['ontology-bridge'] = {
 with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
 " 2>/dev/null && echo "  [mcp] Added ontology-bridge → ${VISIONCLAW_API_URL:-http://visionclaw-server:4000}" || true
     chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
+  fi
+fi
+
+# ── Private Email Search MCP: register email-gateway when [skills.email_search]
+#    is enabled, configured, and reachable. The gateway is a streamable-HTTP MCP
+#    server on a separate LAN host (DreamLab-AI/email-mcp-gateway) that searches
+#    the owner's personal mail locally and returns only privacy-sanitised results.
+#    The bearer token is read from the env inside python3 (never interpolated onto
+#    the command line). GET /health is auth-exempt; we gate registration on it. ──
+_EMAIL_GW_URL="${AGENTBOX_EMAIL_GATEWAY_URL:-}"
+if [ "${ENABLE_EMAIL_SEARCH:-false}" = "true" ] \
+   && [ -n "$_EMAIL_GW_URL" ] \
+   && [ -n "${AGENTBOX_EMAIL_GATEWAY_TOKEN:-}" ] \
+   && [ -f "$_MCP_JSON" ] \
+   && ! grep -q "email-gateway" "$_MCP_JSON" 2>/dev/null; then
+  if curl -fsS --max-time 3 "$_EMAIL_GW_URL/health" >/dev/null 2>&1; then
+    python3 -c "
+import json, os
+url = '$_EMAIL_GW_URL'.rstrip('/')
+token = os.environ['AGENTBOX_EMAIL_GATEWAY_TOKEN']
+with open('$_MCP_JSON') as f: cfg = json.load(f)
+cfg.setdefault('mcpServers', {})['email-gateway'] = {
+  'type': 'http',
+  'url': url + '/mcp',
+  'headers': {'Authorization': 'Bearer ' + token},
+}
+with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
+" 2>/dev/null && echo "  [mcp] Added email-gateway → $_EMAIL_GW_URL/mcp" || true
+    chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
+  else
+    echo "  [mcp] email gateway not reachable at $_EMAIL_GW_URL — skipping email-search MCP"
   fi
 fi
 

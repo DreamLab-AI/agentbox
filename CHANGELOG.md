@@ -14,6 +14,10 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 - `scripts/provision-agent-stacks.py`: `build_profile()` now emits `env` (`CLAUDE_FLOW_HOOKS_ENABLED`, `CLAUDE_FLOW_V3_ENABLED`, `TRANSFORMERS_CACHE`, `HF_HOME`) and `hooks` (PreToolUse/PostToolUse/UserPromptSubmit/SessionStart/SessionEnd) blocks in every Claude-settings `settings.json`. `session-end` is bound to `SessionEnd` only (never `Stop`) so per-session consolidation does not fire every turn; every hook command carries `|| true` and a timeout for fail-open resilience. `no_claude_settings` profiles are unaffected.
 - `config/artifact-probes.json`: new non-fatal `self-learning-hook-adapter` probe (`node --check` on the baked adapter).
 
+### Removed
+
+- **Telegram/CTM mirror removed entirely.** The phone↔agent path is now pure Nostr: an Android Nostr client (Amethyst + Amber signer) talks to the embedded relay, holding its own key plus a NIP-26 delegation from `[sovereign_mesh.operator]` — no private key is shipped to the device. Inbound NIP-59 gift wraps (kind 1059) are unwrapped by `services/nostr-pod-bridge` (consuming `nostr-bbs-core` + `solid-pod-rs-nostr`) and persisted to the pod inbox; a kind-30840 session-summary is dual-written to relay + pod as the durable conversation record. Dropped surfaces: `[sovereign_mesh].telegram_mirror` flag, the `[sovereign_mesh.telegram]` config block, `[security.exceptions.telegram-mirror]`, the `CTM_BOT_TOKEN`/`CTM_TELEGRAM_CHAT_ID` env-var preconditions, and validator rule **E014** (now retired). Removed from manifest, schema, flake, entrypoint, management-api, the TUI manifest read/write scripts, the setup wizard, and the config/semantic test suites. Operator + Android onboarding: `docs/user/mobile-bridge.md`.
+
 ### Notes
 
 - Builds on `b82dacba` (better-sqlite3 native bridge). That fix is load-bearing here: without it `claude-flow` falls back to the sql.js WASM backend that silently drops writes, so the hook loop's edit/command/session learning would not persist. The `native-sqlite-backend` probe verifies the bridge; the new adapter probe verifies the wiring.

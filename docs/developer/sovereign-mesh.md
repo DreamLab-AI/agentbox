@@ -294,6 +294,94 @@ retention sweeps safe to run under process-level isolation. The bridge
 module stays in-process for the same hot-path reason that applied to
 NIP-98 verification.
 
+## Mobile bridge — decrypt at dispatch
+
+The mobile bridge (operator guide: [user/mobile-bridge.md](../user/mobile-bridge.md))
+lets a stock Android Nostr client reach internal agents. It extends the
+relay-consumer's `onInbound` path; it is **not** a new transport. The
+cryptographic substrate is reused wholesale from the first-party
+[`nostr-bbs-core`](https://github.com/DreamLab-AI/nostr-rust-forum) crate — the
+same NIP-44 v2 / NIP-59 implementation that runs under the relay worker, the auth
+worker, and the forum client. Consuming it is **library reuse, not runtime forum
+interop**: agentbox does not read or write the forum BBS.
+
+### The kind-1059 unwrap path
+
+Today the relay-consumer stores gift wraps but never decrypts them (the ADR-009
+deferral). The bridge adds one decryption hop at the dispatch boundary:
+
+```
+kind-1059 gift wrap
+  → unwrap_gift        (recover the kind-13 seal)
+  → unseal             (recover the kind-14 chat rumor)
+  → nip44 decrypt      (conversation_key from agent nsec × sender pubkey)
+  → dispatch the rumor to the agent
+```
+
+Every step already exists and is e2e-tested in `nostr-bbs-core`
+(`gift_wrap.rs::unwrap_gift`, `nip44.rs::decrypt` / `conversation_key`; round-trip
+asserted in `tests/e2e_auth_flow.rs`). **The net-new work is the call-site, not the
+crypto.** Three integration tasks:
+
+1. **Consume the crate** from the relay-consumer — through the existing
+   `wasm_bridge.rs` exports or a direct Rust path.
+2. **Add the one missing shim.** `wasm_bridge.rs` currently exports
+   `nip44_encrypt`/`nip44_decrypt`, schnorr, and NIP-98, but **not**
+   `gift_wrap`/`unwrap_gift` (the impls are `pub`, just unexposed to JS). Add one
+   `#[wasm_bindgen]` re-export.
+3. **Invoke at the dispatch boundary** inside `onInbound`, after Schnorr verify
+   and before agent side effects.
+
+> **Orthogonality.** A kind-1059 is encrypted *to the agent pubkey* — only the
+> agent nsec can derive the conversation key and unwrap it. Where the wrap is
+> *stored* (the embedded relay, or the Cloudflare Durable Object in Phase 2) is
+> independent of where it is *decrypted* (agent-side, in-container). agentbox
+> therefore keeps no durable chat store: the durable record is the `kind-30840`
+> summary plus the pod resource, not the transcript.
+
+### NIP-26 delegation — wire the existing validator
+
+The phone holds its own key, authorised by a NIP-26 delegation from the admin key.
+`validate_delegation_tag` (`nostr-bbs-core::nip26`) already parses the tag, verifies
+the delegator's Schnorr signature over
+`SHA-256("nostr:delegation:" || delegatee || ":" || conditions)`, and checks the
+conditions permit the event kind and timestamp. It is implemented and unit-tested.
+
+The net-new work is to **call it** in the relay-consumer dispatch path and confirm
+the delegator is in the admin set:
+
+```js
+// inside onInbound, after Schnorr verify, before dispatch
+const author = rumor.pubkey;
+const allowed =
+  author === ADMIN_PUBKEY ||
+  adminPubkeys.has(author) ||
+  validateDelegation(event, adminPubkeys);   // nostr-bbs-core nip26
+if (!allowed) return reject('not-authorised');
+```
+
+This is wiring, not cryptography. The security-critical failure mode is a *missing
+or mis-ordered call* — trusting the delegation tag without invoking the validator
+is a full auth bypass — so signature verification MUST precede authorisation, and
+authorisation MUST precede any agent side effect.
+
+### Session summaries (kind-30840)
+
+On session end (and optional checkpoints) the agent dual-writes:
+
+1. a **`kind-30840`** addressable event to the relay (`d` tag = session id, so
+   `active → complete` replaces in place), and
+2. a JSON-LD resource to the operator's pod at
+   `/sessions/<iso-date>-<session-id>.jsonld` (carrying `owner_did`, `action_urn`,
+   and resource URNs).
+
+Phase 1 generates the `content` from Claude Code's own `transcript_summary`
+(`Stop`-hook field, zero token cost). Dual write is two operations that can
+partially fail; idempotency via the `d` tag (relay) and the deterministic path
+(pod) makes retry safe. kind-30840 sits outside the forum's used ranges and the
+ACSP governance band (31400-31405) — it is reserved ecosystem-wide for session
+summaries.
+
 ## Related specs
 
 - [PRD-001 §Federation modes](../reference/prd/PRD-001-capabilities-and-adapters.md) — the standalone-vs-client distinction.

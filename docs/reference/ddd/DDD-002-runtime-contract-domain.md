@@ -204,7 +204,7 @@ Represents a controlled expansion of the baseline hardened profile.
 | `[skills.spatial_and_3d].gaussian_splatting = true` | `gaussian-splatting` | inherits `gpu-cuda`; no additional delta (CUDA device access sufficient) |
 | `[skills.browser].playwright = true` | `playwright` | `security_opt_override: ["seccomp=unconfined"]` (Chromium `--no-sandbox` path; no `SYS_ADMIN`) |
 | `[toolchains].code_server = true` | `code-server` | `writable_volumes: ["/workspace/.local/share/code-server"]`; no extra caps |
-| `[sovereign_mesh].telegram_mirror = true` | `telegram-mirror` | `writable_volumes: ["/workspace/.config/claude-telegram-mirror"]`; no extra caps |
+| `[sovereign_mesh.relay].enabled = true` | `nostr-relay` | `writable_volumes: ["nostr-relay-data:/var/lib/nostr-relay"]`; no extra caps |
 
 ### ObservabilityBinding
 

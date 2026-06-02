@@ -300,23 +300,32 @@ ws_url = "ws://comfyui:8188/ws"
 
 ## `[sovereign_mesh]`
 
-Nostr identity + Solid pod + optional CTM mirror.
+Nostr identity + Solid pod + pure-Nostr mobile agent bridge.
+
+The phone↔agent path is pure Nostr (it replaced the retired Telegram/CTM
+mirror). An Android Nostr client (Amethyst + Amber signer) talks to the
+embedded relay; the phone holds its OWN key plus a NIP-26 delegation signed
+by `[sovereign_mesh.operator]`, so no private key is ever shipped to the
+device. Inbound NIP-59 gift wraps (kind 1059) are unwrapped by the Rust
+bridge (`services/nostr-pod-bridge`) and persisted to the pod inbox. The
+durable record of a conversation is a kind-30840 session-summary event
+dual-written to the relay and the pod — not a chat transcript.
 
 ```mermaid
 flowchart TB
     subgraph agentbox["Agentbox"]
         ID["Nostr identity<br/>(npub/nsec)"]
         RELAY["Embedded relay<br/>:7777"]
-        BRIDGE["Pod-inbox bridge"]
+        BRIDGE["nostr-pod-bridge"]
         POD["solid-pod-rs<br/>:8484"]
-        CTM["Telegram mirror<br/>(optional)"]
     end
+    PHONE["Android<br/>(Amethyst + Amber)"] -->|"NIP-59 gift wrap (1059)"| RELAY
     EXT["External agents<br/>/ humans"] -->|"NIP-98 signed events"| RELAY
     RELAY -->|"accepted events"| BRIDGE
-    BRIDGE -->|"persist to mailbox"| POD
+    BRIDGE -->|"persist to inbox"| POD
+    BRIDGE -->|"kind-30840 summary"| POD
     ID -->|"signs outbound"| RELAY
     RELAY -->|"fanout"| EXT
-    agentbox -.->|"mirror"| CTM
 ```
 
 ```toml
@@ -325,7 +334,6 @@ enabled = true
 solid_pod = true
 nostr_bridge = true
 https_bridge = true
-telegram_mirror = true
 publish_agent_events = true
 ```
 
@@ -585,8 +593,8 @@ inherits = ["gpu-cuda"]
 [security.exceptions.code-server]
 writable_volumes = ["codeserver-config:/home/devuser/.local/share/code-server"]
 
-[security.exceptions.telegram-mirror]
-writable_volumes = ["ctm-config:/home/devuser/.config/claude-telegram-mirror"]
+[security.exceptions.nostr-relay]
+writable_volumes = ["nostr-relay-data:/var/lib/nostr-relay"]
 ```
 
 Validator rules **E020/W021**:

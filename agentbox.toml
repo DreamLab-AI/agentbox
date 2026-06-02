@@ -21,7 +21,6 @@ solid_pod = true
 nostr_bridge = true
 https_bridge = true
 publish_agent_events = true
-telegram_mirror = true
 # WS7 (PRD-014 Seam B): bind a voice transcript to an agent intent and emit the
 # canonical agent_action notification at POST /v1/voice-intent. Off → 503.
 voice_intent = false
@@ -30,42 +29,34 @@ voice_intent = false
 # ontology-propose descriptors at POST /v1/kg-elevation/scan. Off → 503.
 kg_elevation = false
 
-# ── Telegram bridge configuration ─────────────────────────────────────────────
-# CTM (Claude Telegram Mirror) adapter settings. The bot_token is NEVER stored
-# here — pass it via env var TELEGRAM_BOT_TOKEN or use the setup wizard.
-# The chat_id is the Telegram supergroup where sessions are mirrored.
-[sovereign_mesh.telegram]
-chat_id = 0                            # Telegram supergroup ID (starts with -100)
-use_threads = true                     # mirror each session to a forum topic
-chunk_size = 4000                      # max characters per Telegram message
-rate_limit = 20                        # messages per minute per user
-session_timeout_minutes = 30           # inactivity timeout for sessions
-stale_session_hours = 72               # hours before a session is considered stale
-auto_delete_topics = true              # delete forum topics for ended sessions
-topic_delete_delay_minutes = 15        # delay before deleting a topic
-inactivity_threshold_minutes = 720     # inactivity threshold for auto-cleanup
-socket_path = ""                       # Unix socket path (empty = default)
-verbose = true                         # verbose logging
-approvals = false                      # require Telegram approval for tool use
-default_model = "sonnet"               # default Claude model for new sessions
-max_workers = 5                        # max parallel Claude subprocesses per topic
-notification_mode = "live"             # live | summary | quiet
+# ── Mobile agent bridge (replaces the retired Telegram/CTM mirror) ────────────
+# The phone↔agent path is now pure Nostr, not Telegram. An Android Nostr client
+# (Amethyst + Amber signer) talks to the embedded relay below; the phone holds
+# its OWN key plus a NIP-26 delegation signed by [sovereign_mesh.operator], so
+# the operator never ships a private key to the device. Inbound NIP-59 gift wraps
+# (kind 1059) are unwrapped by the Rust bridge (services/nostr-pod-bridge, which
+# consumes nostr-bbs-core + solid-pod-rs-nostr) and persisted to the pod inbox.
+# The durable record of a conversation is a kind-30840 session-summary event
+# dual-written to the relay and the pod, NOT a chat transcript held in agentbox.
+# Ingress knobs live under [sovereign_mesh.relay] and identity under
+# [sovereign_mesh.operator]; the egress phone-mirror toggle lives under
+# [sovereign_mesh.mobile_bridge] below.
 
-# Users allowed to interact with the bot. Each entry maps a DID:nostr identity
-# to a Telegram user ID with a role. The operator pubkey from
-# [sovereign_mesh.operator] is auto-granted admin if listed here.
-# Additional users are provisioned via /adduser bot command.
-[[sovereign_mesh.telegram.allowed_users]]
-pubkey_hex = ""                        # DID:nostr hex pubkey (64 chars)
-telegram_id = 0                        # Telegram user ID
-role = "admin"                         # admin | user
-label = ""                             # human-readable label
-
-# LLM summarization for tool output (optional)
-[sovereign_mesh.telegram.summarizer]
-enabled = false
-url = ""                               # LLM endpoint (e.g. Z.AI, Anthropic)
-# API key via env var CTM_LLM_API_KEY — never stored in TOML
+# ── Mobile bridge egress (session-summary phone mirror) ───────────────────────
+# Egress half of the bridge: on SessionEnd a hook distils the transcript into a
+# curated digest (summary + actions + actionable questions, NOT the full
+# transcript) via the paid Z.AI/GLM consultant (ADR-011), then pipes it into
+# `nostr-pod-bridge summarise`, which signs a kind-30840 and dual-writes it to
+# the relay + pod. Disabled by default: when enabled=false the SessionEnd hook
+# is not registered and no transcript ever leaves the box. Even when enabled it
+# stays a silent no-op at runtime unless the bridge secrets (AGENTBOX_BRIDGE_SK /
+# AGENTBOX_BRIDGE_RECIPIENT_PUBKEY / AGENTBOX_POD_ROOT / AGENTBOX_ADMIN_PUBKEY)
+# and a Z.AI key are present. Privacy note: when enabled, the transcript is sent
+# to ZAI_URL for summarisation — the one external hop on this path. Point ZAI_URL
+# at a local GLM endpoint to keep summarisation on-box.
+[sovereign_mesh.mobile_bridge]
+enabled       = false      # register the SessionEnd phone-mirror hook
+summary_model = "glm-5.2"  # Z.AI/GLM model for the digest (→ AGENTBOX_ZAI_MODEL)
 
 # ── Operator identity (optional) ────────────────────────────────────────────────
 # The human operator's Nostr identity. When set, this pubkey is:
@@ -100,7 +91,10 @@ expose           = false
 data_dir         = "/var/lib/nostr-relay"
 ingress_policy   = "allowlist"        # allowlist | signed-only | open
 allowed_pubkeys  = []                  # empty = self only (own npub); operator pubkey auto-added at boot
-allowed_kinds    = [1, 1059, 30078, 27235, 31400, 31401, 31402, 31403, 31404, 31405, 38000, 38100, 38200, 38201, 38300, 38301, 38302, 38303, 38304, 38305]
+# Mobile bridge kinds: 1059 = NIP-59 gift wrap (phone→agent encrypted envelope),
+# 30840 = addressable session-summary (the durable conversation record, dual-written
+# to relay + pod). 27235 = NIP-98 HTTP auth. 38xxx = agent-intent/event surfaces.
+allowed_kinds    = [1, 1059, 30078, 30840, 27235, 31400, 31401, 31402, 31403, 31404, 31405, 38000, 38100, 38200, 38201, 38300, 38301, 38302, 38303, 38304, 38305]
 pod_bridge       = true
 external_fanout  = "bidirectional"     # bidirectional | publish-only | subscribe-only | off
 # PRD-014 Seam B / B3 — deterministic responder dispatch for voice-origin
@@ -445,6 +439,15 @@ visionclaw_api_url = "http://visionclaw-server:4000"
 # (`POST /api/ontology/load`) is disabled by default; set true only for
 # admin/bootstrap. Default off = ontology_axiom_add refuses + redirects.
 direct_axiom_load = false
+
+[skills.email_search]
+# Private Email Search MCP gateway (DreamLab-AI/email-mcp-gateway). Runs on a
+# separate LAN host that holds the mail archive + index; all reading/reasoning is
+# local and every response is privacy-sanitised before it reaches an agent.
+# When enabled + reachable, the entrypoint patches .mcp.json with a streamable-HTTP
+# server carrying the bearer token from AGENTBOX_EMAIL_GATEWAY_TOKEN (never committed).
+enabled = true
+gateway_url = "http://192.168.2.48:8765"
 
 [providers.anthropic]
 enabled = true
@@ -925,9 +928,6 @@ tmpfs = ["/tmp/.X11-unix:mode=1777", "/run/user/1000:mode=700,uid=1000,gid=1000"
 
 [security.exceptions.code-server]
 writable_volumes = ["codeserver-config:/home/devuser/.local/share/code-server"]
-
-[security.exceptions.telegram-mirror]
-writable_volumes = ["ctm-config:/home/devuser/.config/claude-telegram-mirror"]
 
 [security.exceptions.gpu-cuda]
 writable_volumes = []

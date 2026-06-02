@@ -224,8 +224,8 @@
           entry       = "server.js";
           # Prefetched 2026-04-24 against management-api/package-lock.json.
           # Refresh via: nix run nixpkgs#prefetch-npm-deps -- management-api/package-lock.json
-          # Prefetched 2026-04-27. Refresh: nix run nixpkgs#prefetch-npm-deps -- management-api/package-lock.json
-          npmDepsHash = "sha256-KSyQJIMlbZHm2qWaw7Djpi4tJ4Zfm9st+umvHJuwrD8=";
+          # Prefetched 2026-06-02. Refresh: nix run nixpkgs#prefetch-npm-deps -- management-api/package-lock.json
+          npmDepsHash = "sha256-eLoqnV7Tk2k951TiEzHSTjhIonMcVyrQS6YY66YMfIo=";
         };
 
         # 2. mcp/nostr-bridge — sovereign_mesh service; 2 deps (nostr-tools, ws)
@@ -799,13 +799,31 @@
           else if relayEnabled && relayImpl == "rnostr" then pkgs.rnostr
           else null;
 
-        relayPackages = lib.optionals relayLocal (lib.filter (p: p != null) [ relayPkg ]);
+        # When relay.pod_bridge = true the relay slot is served by our first-party
+        # nostr-pod-bridge daemon (embedded relay + NIP-59 unwrap + pod write),
+        # which replaces the standalone nostr-rs-relay binary in one process.
+        # Gate on a local relay so an `implementation = "external"`/`"off"` slot
+        # never builds the Rust bridge.
+        podBridgeEnabled = relayLocal && (relayCfg.pod_bridge or false);
+        nostrPodBridgePkg =
+          if podBridgeEnabled
+          then (import ./lib/nostr-pod-bridge.nix { inherit lib pkgs; })
+          else null;
+
+        relayPackages = lib.optionals relayLocal (
+          if podBridgeEnabled
+          then lib.filter (p: p != null) [ nostrPodBridgePkg ]
+          else lib.filter (p: p != null) [ relayPkg ]
+        );
 
         # Render a config.toml for nostr-rs-relay from manifest fields.
         # Consumed by the supervisor block at /etc/agentbox/nostr-relay.toml.
+        # (Unused on the pod_bridge path — the bridge is env-configured.)
         relayAllowedKinds = relayCfg.allowed_kinds or [ 1 1059 30078 27235 38000 38100 ];
         relayAllowedKindsToml = lib.concatStringsSep ", " (map toString relayAllowedKinds);
         relayAllowedPubkeys = relayCfg.allowed_pubkeys or [];
+        # Comma-separated hex for the bridge's AGENTBOX_ALLOWED_PUBKEYS env var.
+        relayAllowedPubkeysCsv = lib.concatStringsSep "," relayAllowedPubkeys;
         relayAllowedPubkeysToml =
           if relayAllowedPubkeys == []
           then ""
@@ -1289,7 +1307,25 @@ ${lib.optionalString (spatialCfg.qgis or false) "\n${qgisServiceBlock}"}
 ${lib.optionalString (spatialCfg.blender or false) "\n${blenderServiceBlock}"}
 ${lib.optionalString (dataScienceCfg.jupyter or false) "\n${jupyterServiceBlock}"}
 ${lib.optionalString (desktopCfg.enabled or false) "\n${desktopBlocks}"}
-${lib.optionalString relayLocal ''
+${lib.optionalString relayLocal (
+  if podBridgeEnabled then ''
+
+# Relay slot served by our first-party nostr-pod-bridge (embedded relay +
+# NIP-59 unwrap + pod write). The agent secret + recipient pubkey are exported
+# into the process environment by the entrypoint launcher (which owns the
+# encrypted nostr.key.enc); they are inherited here, never written into the
+# generated supervisor text. Only Nix-known public values are set below.
+[program:nostr-relay]
+command=${nostrPodBridgePkg}/bin/nostr-pod-bridge
+directory=${relayCfg.data_dir or "/var/lib/nostr-relay"}
+user=devuser
+environment=HOME="/home/devuser",RUST_LOG="info",AGENTBOX_REQUIRED_FOR_READINESS="false",AGENTBOX_RELAY_BIND="${relayCfg.bind or "127.0.0.1"}:${toString (relayCfg.port or 7777)}",AGENTBOX_POD_ROOT="${solidPodRsCfg.storage_root or "/var/lib/solid"}",AGENTBOX_ADMIN_PUBKEY="${(sovereignCfg.operator or {}).pubkey_hex or ""}",AGENTBOX_ALLOWED_PUBKEYS="${relayAllowedPubkeysCsv}"
+autostart=true
+autorestart=true
+priority=35
+stdout_logfile=/var/log/nostr-relay.log
+stderr_logfile=/var/log/nostr-relay.error.log
+'' else ''
 
 [program:nostr-relay]
 command=${relayPkg}/bin/nostr-rs-relay --config /etc/agentbox/nostr-relay.toml
@@ -1301,7 +1337,7 @@ autorestart=true
 priority=35
 stdout_logfile=/var/log/nostr-relay.log
 stderr_logfile=/var/log/nostr-relay.error.log
-''}
+'')}
 ${lib.optionalString privacyFilterEnabled ''
 
 [program:opf-router]
@@ -1570,7 +1606,6 @@ stderr_logfile=/var/log/tmux-autostart.error.log
               || (name == "gaussian-splatting" && (spatialCfg.gaussian_splatting or false))
               || (name == "playwright"         && (browserCfg.playwright or false))
               || (name == "code-server"        && (toolchainCfg.code_server or false))
-              || (name == "telegram-mirror"    && (sovereignCfg.telegram_mirror or false))
               || (name == "nostr-relay"        && relayEnabled)
               || (name == "tailscale"         && (networkingCfg.tailscale or false))
               || (name == "solid-pod-rs"      && solidPodRsActive)
@@ -1668,9 +1703,8 @@ stderr_logfile=/var/log/tmux-autostart.error.log
           "/home/devuser/.local:mode=755,size=128M,uid=1000,gid=1000"
           # devuser's XDG_CONFIG_HOME. Many CLIs that don't honor
           # XDG_CONFIG_HOME still write to $HOME/.config (git, gh, kube,
-          # etc.). The .config/claude and .config/claude-telegram-mirror
-          # subdirs are bound from host / mounted from named volume on
-          # top of this tmpfs.
+          # etc.). The .config/claude subdir is bound from host / mounted
+          # from named volume on top of this tmpfs.
           "/home/devuser/.config:mode=755,size=64M,uid=1000,gid=1000"
           # ruflo/claude-flow plugin dir. Phase 7 writes config.json (PG
           # conninfo) and symlinks plugins here. Must be writable by root
@@ -2193,6 +2227,11 @@ ${ragflowNetworkDecl}
           "ENABLE_TREE_SEARCH_CODER=${boolEnv ((skillsCfg.tree_search_coder or {}).enabled or false)}"
           "ENABLE_ONTOLOGY=${boolEnv ((skillsCfg.ontology or {}).enabled or false)}"
           "VISIONCLAW_API_URL=${(skillsCfg.ontology or {}).visionclaw_api_url or "http://visionclaw-server:4000"}"
+          # Private Email Search MCP gateway (DreamLab-AI/email-mcp-gateway). The
+          # bearer token is NOT emitted here — it arrives at runtime via
+          # AGENTBOX_EMAIL_GATEWAY_TOKEN so it never bakes into the image.
+          "ENABLE_EMAIL_SEARCH=${boolEnv ((skillsCfg.email_search or {}).enabled or false)}"
+          "AGENTBOX_EMAIL_GATEWAY_URL=${(skillsCfg.email_search or {}).gateway_url or "http://192.168.2.48:8765"}"
           # PRD-014 D2: ungoverned ontology_axiom_add backdoor, off by default.
           "AGENTBOX_ONTOLOGY_DIRECT_LOAD=${boolEnv ((skillsCfg.ontology or {}).direct_axiom_load or false)}"
           "AGENTBOX_KERNEL_WHEELHOUSE=/var/lib/agentbox/code-interpreter-wheelhouse"

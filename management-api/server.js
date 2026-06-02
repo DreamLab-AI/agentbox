@@ -872,8 +872,6 @@ async function start() {
       const desktopEnabled = manifest.desktop ? (manifest.desktop.enabled === true) : false;
       const browserPlaywright = manifest.skills && manifest.skills.browser
         ? (manifest.skills.browser.playwright === true) : false;
-      const telegramMirror = manifest.sovereign_mesh
-        ? (manifest.sovereign_mesh.telegram_mirror === true) : false;
       const codeServer = manifest.toolchains
         ? (manifest.toolchains.code_server === true) : false;
       const gaussianSplatting = manifest.skills && manifest.skills.spatial_and_3d
@@ -887,7 +885,6 @@ async function start() {
           case 'gaussian-splatting': return gaussianSplatting;
           case 'playwright':         return browserPlaywright;
           case 'code-server':        return codeServer;
-          case 'telegram-mirror':    return telegramMirror;
           default:                   return false;
         }
       }

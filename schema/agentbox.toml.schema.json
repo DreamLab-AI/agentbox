@@ -545,43 +545,34 @@
     "sovereign_mesh": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Nostr identity, NIP-98 auth, inter-agent messaging, and optional daemons.",
+      "description": "Nostr identity, NIP-98 auth, inter-agent messaging, and the mobile agent bridge. The phone↔agent path is pure Nostr (an Android Amethyst+Amber client talks to the embedded relay below); the device holds its own key plus a NIP-26 delegation from [operator], so no private key ships to the phone. Inbound NIP-59 gift wraps (kind 1059) are unwrapped by services/nostr-pod-bridge and persisted to the pod inbox; the durable conversation record is a kind-30840 session-summary dual-written to the relay and the pod. This replaced the retired Telegram/CTM mirror.",
       "properties": {
         "enabled": { "type": "boolean" },
         "solid_pod": { "type": "boolean" },
         "nostr_bridge": { "type": "boolean" },
         "https_bridge": { "type": "boolean" },
         "publish_agent_events": { "type": "boolean" },
-        "telegram_mirror": {
-          "type": "boolean",
-          "description": "Requires CTM_BOT_TOKEN and CTM_TELEGRAM_CHAT_ID env vars (E014)."
-        },
-        "telegram": {
-          "type": "object",
-          "additionalProperties": true,
-          "description": "Telegram bridge configuration (CTM adapter settings)."
-        },
         "operator": {
           "type": "object",
           "additionalProperties": true,
-          "description": "Operator Nostr identity for NIP-98 auth and delegation."
+          "description": "Operator (human owner) Nostr identity. Its pubkey is added to the relay allowlist, granted NIP-98 operator access, used as the WebID owner in pod ACLs, and — for the mobile bridge — tagged as the NIP-26 delegator: the phone signs with its own key under a delegation from this pubkey, so no operator private key ever ships to the device. Private key is never stored here; pass it via OPERATOR_NOSTR_PRIVKEY or NIP-07/NIP-46 remote signing."
         },
         "relay": {
           "type": "object",
           "additionalProperties": false,
-          "description": "Embedded Nostr relay. See ADR-009 and PRD-004.",
+          "description": "Embedded Nostr relay — the ingress point for the mobile agent bridge. An Android Amethyst+Amber client connects here over NIP-01; signature-verified events addressed to a local npub are unwrapped (NIP-59 gift wraps) by services/nostr-pod-bridge and written to the pod inbox. See ADR-009 and PRD-004.",
           "properties": {
-            "enabled":          { "type": "boolean" },
-            "implementation":   { "type": "string",  "enum": ["nostr-rs-relay", "external", "off"], "description": "Relay backend. Only nostr-rs-relay is bundled today; rnostr was dropped from the enum because no flake supervisor branch wires it up." },
+            "enabled":          { "type": "boolean", "description": "Turn the embedded relay on. Required for the mobile bridge, inter-agent messaging, and mesh federation." },
+            "implementation":   { "type": "string",  "enum": ["nostr-rs-relay", "external", "off"], "description": "Relay backend. nostr-rs-relay is the bundled plain relay; the Nix-built nostr-pod-bridge binary wraps it with NIP-59 unwrap + pod-inbox writes for the mobile path. rnostr was dropped from the enum because no flake supervisor branch wires it up." },
             "port":             { "type": "integer", "minimum": 1, "maximum": 65535 },
-            "bind":             { "type": "string",  "description": "Loopback or 0.0.0.0. See E029." },
+            "bind":             { "type": "string",  "description": "Loopback or 0.0.0.0. See E029. Keep loopback for standalone; the phone reaches it via the HTTPS/Tailscale bridge, not a raw exposed port." },
             "expose":           { "type": "boolean", "description": "Publish the port in docker-compose." },
             "data_dir":         { "type": "string" },
-            "ingress_policy":   { "type": "string",  "enum": ["allowlist", "signed-only", "open"] },
-            "allowed_pubkeys":  { "type": "array",   "items": { "type": "string" } },
-            "allowed_kinds":    { "type": "array",   "items": { "type": "integer", "minimum": 0 } },
-            "pod_bridge":       { "type": "boolean" },
-            "external_fanout":  { "type": "string",  "enum": ["bidirectional", "publish-only", "subscribe-only", "off"] },
+            "ingress_policy":   { "type": "string",  "enum": ["allowlist", "signed-only", "open"], "description": "Who may publish. 'allowlist' (default) accepts only allowed_pubkeys (+ own npub); the phone's delegated pubkey is accepted via its NIP-26 tag from the operator. 'signed-only' accepts any valid signature; 'open' disables NIP-42 AUTH." },
+            "allowed_pubkeys":  { "type": "array",   "items": { "type": "string" }, "description": "Hex pubkeys permitted to publish under 'allowlist'. Empty = self only; the operator pubkey is auto-added at boot. Add the phone's pubkey here for direct (non-delegated) mobile access." },
+            "allowed_kinds":    { "type": "array",   "items": { "type": "integer", "minimum": 0 }, "description": "Event kinds the relay accepts. Mobile bridge essentials: 1059 (NIP-59 gift wrap, the encrypted phone→agent envelope) and 30840 (the addressable session-summary that is the durable conversation record dual-written to relay + pod)." },
+            "pod_bridge":       { "type": "boolean", "description": "When true, every verified event targeting a local npub is persisted to pods/<npub>/events/inbox/<id>.json — the durable mailbox the agent reads. This is what makes the mobile bridge survive a relay restart." },
+            "external_fanout":  { "type": "string",  "enum": ["bidirectional", "publish-only", "subscribe-only", "off"], "description": "Outbound replication to the forum_relay_url / NOSTR_RELAYS fan-out list. 'off' keeps the relay loopback-only (matches federation standalone)." },
             "max_event_bytes":  { "type": "integer", "minimum": 1024 },
             "messages_per_sec": { "type": "integer", "minimum": 1 },
             "retention_days":   { "type": "integer", "minimum": 0 },
@@ -589,6 +580,21 @@
             "info_description": { "type": "string" },
             "info_contact":     { "type": "string" },
             "forum_relay_url":  { "type": "string", "description": "Private relay URL for governance event exchange with the forum." }
+          }
+        },
+        "mobile_bridge": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Egress half of the mobile bridge: mirror a curated session digest (summary + actions + actionable questions, NOT the full transcript) to the operator's phone. On SessionEnd, a hook distils the transcript via the paid Z.AI/GLM consultant (ADR-011) and pipes the digest into `nostr-pod-bridge summarise`, which signs a kind-30840 and dual-writes it to the relay + pod. When enabled=false the SessionEnd hook is not registered (no transcript leaves the box). Replaces the retired Telegram/CTM mirror.",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Register the nostr-session-summary SessionEnd hook. Still no-ops at runtime unless the bridge secrets (AGENTBOX_BRIDGE_SK / AGENTBOX_BRIDGE_RECIPIENT_PUBKEY / AGENTBOX_POD_ROOT / AGENTBOX_ADMIN_PUBKEY) and a Z.AI key are present. Default false. Privacy note: when true, the transcript is sent to the Z.AI endpoint for summarisation — the one external hop on this path."
+            },
+            "summary_model": {
+              "type": "string",
+              "description": "Z.AI / GLM model used to summarise the session (exported as AGENTBOX_ZAI_MODEL to the hook). Default glm-5.2. Point ZAI_URL at a local GLM endpoint to keep summarisation on-box."
+            }
           }
         },
         "multi_user": {
@@ -787,19 +793,6 @@
                   "type": "string",
                   "description": "Human-readable justification for this exception."
                 }
-              }
-            },
-            "telegram-mirror": {
-              "type": "object",
-              "additionalProperties": false,
-              "description": "CTM config volume. Enabled when sovereign_mesh.telegram_mirror=true.",
-              "properties": {
-                "writable_volumes": {
-                  "type": "array",
-                  "items": { "type": "string" },
-                  "description": "Named volume mount strings appended to the service volumes list."
-                },
-                "reason": { "type": "string" }
               }
             },
             "nostr-relay": {

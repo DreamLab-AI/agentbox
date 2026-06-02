@@ -157,7 +157,6 @@ lines += [
     f'nostr_bridge         = {b("sovereign_mesh.nostr_bridge")}',
     f'https_bridge         = {b("sovereign_mesh.https_bridge")}',
     f'publish_agent_events = {b("sovereign_mesh.publish_agent_events")}',
-    f'telegram_mirror      = {b("sovereign_mesh.telegram_mirror")}',
     "",
 ]
 
@@ -464,13 +463,6 @@ if s.get("toolchains.code_server", False):
     _security_exceptions += [
         "[security.exceptions.code-server]",
         'writable_volumes = ["codeserver-config:/home/devuser/.local/share/code-server"]',
-        "",
-    ]
-
-if s.get("sovereign_mesh.telegram_mirror", False):
-    _security_exceptions += [
-        "[security.exceptions.telegram-mirror]",
-        'writable_volumes = ["ctm-config:/home/devuser/.config/claude-telegram-mirror"]',
         "",
     ]
 

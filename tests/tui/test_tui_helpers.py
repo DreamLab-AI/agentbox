@@ -129,7 +129,6 @@ MINIMAL_STATE: dict = {
     "sovereign_mesh.nostr_bridge":         True,
     "sovereign_mesh.https_bridge":         False,
     "sovereign_mesh.publish_agent_events": False,
-    "sovereign_mesh.telegram_mirror":      False,
 }
 
 

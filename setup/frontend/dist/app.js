@@ -314,7 +314,7 @@
     gpu:              { icon: '🎮',  label: 'GPU',             desc: 'GPU backend and acceleration.' },
     toolchains:       { icon: '🔧',  label: 'Toolchains',      desc: 'Language runtimes and dev tools.' },
     security:         { icon: '🛡️', label: 'Security',        desc: 'Sandbox policy, read-only rootfs.' },
-    sovereign_mesh:   { icon: '🔐',  label: 'Sovereign Mesh',  desc: 'Nostr relay, NIP-98 auth, events.' },
+    sovereign_mesh:   { icon: '🔐',  label: 'Sovereign Mesh',  desc: 'Nostr relay, NIP-98 auth, and the pure-Nostr mobile agent bridge (Amethyst+Amber phone → embedded relay → pod). Replaces the retired Telegram/CTM mirror.' },
     skills:           { icon: '🧠',  label: 'Skills',          desc: 'Pluggable skill modules.' },
     desktop:          { icon: '🖥️', label: 'Desktop',         desc: 'VNC desktop environment.' },
     linked_data:      { icon: '🔗',  label: 'Linked Data',     desc: 'JSON-LD federation surfaces (PRD-006).' },

@@ -95,7 +95,7 @@ describe('ADR-017 / PRD-007 single-tenant regression guard', () => {
       toolchains: { claude: true, ruflo: true, claude_flow: true, agentic_qe: true },
       sovereign_mesh: {
         enabled: true, solid_pod: true, nostr_bridge: false,
-        https_bridge: false, telegram_mirror: false
+        https_bridge: false
         // NB: no multi_user block at all — the most common single-tenant shape.
       },
       security: {

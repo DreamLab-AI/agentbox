@@ -231,7 +231,7 @@ security_opt:
 
 Feature-specific privilege expansions live in `[security.exceptions.<feature>]` manifest blocks. Activation is gated on the corresponding feature flag (validator rule E020). Baseline drops are never removed by exceptions — they can only add devices, tmpfs paths, caps, or runtime hints.
 
-Seven current exception keys: `desktop`, `gpu-rocm`, `gpu-cuda`, `gaussian-splatting`, `playwright`, `code-server`, `telegram-mirror`.
+Seven current exception keys: `solid-pod-rs`, `desktop`, `code-server`, `gpu-cuda`, `tailscale`, `nostr-relay`, `consultants`.
 
 Full spec: [ADR-007 §4a](../reference/adr/ADR-007-runtime-contract-and-container-hardening.md).
 

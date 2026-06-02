@@ -70,8 +70,7 @@ function baseValid() {
       enabled: true,
       solid_pod: false,
       nostr_bridge: false,
-      https_bridge: false,
-      telegram_mirror: false
+      https_bridge: false
     },
     // playwright=true and pods=local-solid-rs both require security
     // exception blocks (E021); declare both so the baseline is silent.
@@ -424,23 +423,10 @@ describe('E013: observability.metrics_port must not collide with reserved ports'
   });
 });
 
-// ─── E014 ─────────────────────────────────────────────────────────────────────
-describe('E014: sovereign_mesh.telegram_mirror requires CTM env vars', () => {
-  test('invalid: telegram_mirror=true without CTM_BOT_TOKEN', () => {
-    const m = baseValid();
-    m.sovereign_mesh.telegram_mirror = true;
-    const r = runValidator(m, { CTM_BOT_TOKEN: '', CTM_TELEGRAM_CHAT_ID: '' });
-    expect(r.exitCode).not.toBe(0);
-    expect(stderrContains(r, 'E014')).toBe(true);
-  });
-
-  test('valid: telegram_mirror=true with both CTM env vars set', () => {
-    const m = baseValid();
-    m.sovereign_mesh.telegram_mirror = true;
-    const r = runValidator(m, { CTM_BOT_TOKEN: 'bot123:abc', CTM_TELEGRAM_CHAT_ID: '-1001234567890' });
-    expect(stderrContains(r, 'E014')).toBe(false);
-  });
-});
+// ─── E014 retired ─────────────────────────────────────────────────────────────
+// The Telegram mirror (sovereign_mesh.telegram_mirror + CTM_BOT_TOKEN /
+// CTM_TELEGRAM_CHAT_ID) was replaced by the pure-Nostr mobile bridge. No
+// manifest-level secret gate remains, so the E014 rule was removed.
 
 // ─── E015 retired 2026-04-25 ──────────────────────────────────────────────────
 // Was: `sovereign_mesh.jss_rust_backend = true` requires the `jss-rust` Nix
@@ -617,12 +603,6 @@ describe('E020 edge case: all 7 exception keys fire E020 when parent feature is 
         m.toolchains.code_server = false;
       },
       exceptionBlock: { writable_volumes: ['/workspace/.local/share/code-server'], reason: 'test' }
-    },
-    {
-      exceptionKey: 'telegram-mirror',
-      featureName: 'telegram-mirror',
-      manifestPatch: (m) => { m.sovereign_mesh.telegram_mirror = false; },
-      exceptionBlock: { writable_volumes: ['/workspace/.config/claude-telegram-mirror'], reason: 'test' }
     }
   ];
 

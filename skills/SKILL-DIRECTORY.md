@@ -149,6 +149,7 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 | `reddit` | Yes | Reddit browsing, search, user analysis, post details with comment threads | Reddit research, community analysis, content discovery |
 | `toprank` | No | 6 SEO sub-skills: GSC audit, E-E-A-T content writing, keyword research, meta tags, schema markup, GEO | SEO audit, content optimisation, keyword research, schema markup, AI search visibility |
 | `context7` | Yes | Version-specific documentation for 800+ libraries (Next.js, Supabase, React, etc.). `resolve-library-id` + `query-docs`. Eliminates hallucination from stale training data | Writing code with external libraries, "use context7", needing current API docs |
+| `email-search` | Yes | Single tool `ask_email` over a local Private Email MCP Gateway (DreamLab-AI/email-mcp-gateway) on the LAN. Local-model synthesis + privacy filter — returns schema-abstracted, PII-masked evidence, never raw mail. Gated by `[skills.email_search] enabled = true` + `AGENTBOX_EMAIL_GATEWAY_TOKEN`; entrypoint auto-registers the streamable-HTTP server when `/health` is reachable | Questions about the owner's **personal** email — invoices, threads, "did X email me", "search for anyone called <name>". NOT for work mail, calendar, or sending |
 
 ### Security and Compliance
 

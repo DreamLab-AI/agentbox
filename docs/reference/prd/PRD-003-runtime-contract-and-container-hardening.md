@@ -284,10 +284,10 @@ reason   = "code-server writes extension state to ~/.local/share/code-server"
 writable_volumes = ["/workspace/.local/share/code-server"]
 cap_add  = []
 
-[security.exceptions.telegram-mirror]
-# Parent gate: [sovereign_mesh].telegram_mirror = true
-reason   = "CTM daemon writes config and session state to ~/.config/claude-telegram-mirror"
-writable_volumes = ["/workspace/.config/claude-telegram-mirror"]
+[security.exceptions.nostr-relay]
+# Parent gate: [sovereign_mesh.relay].enabled = true
+reason   = "nostr-rs-relay SQLite journal and WAL require a writable durable path"
+writable_volumes = ["nostr-relay-data:/var/lib/nostr-relay"]
 cap_add  = []
 ```
 

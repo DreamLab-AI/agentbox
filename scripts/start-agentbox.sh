@@ -1374,20 +1374,20 @@ section_sovereign_mesh() {
 The sovereign data stack provides self-hosted identity (did:nostr),\n\
 encrypted DMs (NIP-17), and event signing across all adapters.\n\n\
 solid_pod enables the local Solid Protocol server (ADR-010).\n\
-telegram_mirror requires CTM_BOT_TOKEN + CTM_TELEGRAM_CHAT_ID env vars.\n\n\
+The mobile agent path is pure Nostr (Amethyst+Amber → embedded relay);\n\
+configure it under [sovereign_mesh.relay] + [sovereign_mesh.operator].\n\n\
 Docs: docs/reference/adr/ADR-009-embedded-nostr-relay.md\n\
-      docs/reference/adr/ADR-010-rust-solid-pod-adoption.md" \
-    22 78 6 \
+      docs/reference/adr/ADR-010-rust-solid-pod-adoption.md\n\
+      docs/user/mobile-bridge.md" \
+    22 78 5 \
     "sovereign_mesh.enabled"              "Sovereign mesh core"            "$(on_off sovereign_mesh.enabled)" \
     "sovereign_mesh.solid_pod"            "Solid-style pod service"        "$(on_off sovereign_mesh.solid_pod)" \
     "sovereign_mesh.nostr_bridge"         "Nostr bridge scaffold"          "$(on_off sovereign_mesh.nostr_bridge)" \
     "sovereign_mesh.https_bridge"         "HTTPS bridge"                   "$(on_off sovereign_mesh.https_bridge)" \
-    "sovereign_mesh.publish_agent_events" "Publish agent events to Nostr"  "$(on_off sovereign_mesh.publish_agent_events)" \
-    "sovereign_mesh.telegram_mirror"      "Telegram mirror (CTM)"          "$(on_off sovereign_mesh.telegram_mirror)")"
+    "sovereign_mesh.publish_agent_events" "Publish agent events to Nostr"  "$(on_off sovereign_mesh.publish_agent_events)")"
 
   for k in sovereign_mesh.enabled sovereign_mesh.solid_pod sovereign_mesh.nostr_bridge \
-            sovereign_mesh.https_bridge sovereign_mesh.publish_agent_events \
-            sovereign_mesh.telegram_mirror; do
+            sovereign_mesh.https_bridge sovereign_mesh.publish_agent_events; do
     echo "${raw}" | grep -qw "${k}" && state_set_bool "${k}" "true" || state_set_bool "${k}" "false"
   done
   validate_candidate
