@@ -15,7 +15,8 @@ metadata:
 > **Quick Start:** See [BUILD-WITH-QUALITY-PROMPT.md](./BUILD-WITH-QUALITY-PROMPT.md) for a copy-paste activation prompt.
 > **Examples:** See [USAGE-EXAMPLES.md](./USAGE-EXAMPLES.md) for 5 complete project examples.
 > **EDD Playbook (v1.2.0):** See [EDD-PROTOCOL.md](./EDD-PROTOCOL.md) for the Expectation-Driven Development loop, evidence categories, and anti-fox separation rules.
-> **Debugging:** See [DEBUGGING-PROTOCOL.md](./DEBUGGING-PROTOCOL.md) for the feedback-loop-first debugging protocol and design interrogation method.
+> **Debugging:** See [DEBUGGING-PROTOCOL.md](./DEBUGGING-PROTOCOL.md) for the feedback-loop-first debugging protocol and design interrogation method. Complex multi-function bug or suspected parallel implementations? See the **Diagram-Driven Diagnosis** section. Implementing from a spec or restoring a stub with no runtime (no shell/compiler/test runner)? See **Reasoning Without a Runtime (Static-Oracle Mode)** in that file.
+> **Tuning this skill empirically:** to optimize any part of this skill against a measurable reward rather than by intuition, use the `skill-tuning` skill (SkillOpt loop + held-out A/B). This file's Static-Oracle Mode section was produced by that loop.
 
 **[Claude Flow V3](https://github.com/ruvnet/claude-flow/tree/main/v3) + [Agentic QE](https://github.com/proffesor-for-testing/agentic-qe) Combined**
 

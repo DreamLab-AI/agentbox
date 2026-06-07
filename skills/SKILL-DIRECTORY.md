@@ -30,7 +30,7 @@
 
 ---
 
-## Artefact 1: Categorised Skill Inventory (104 Active Skills)
+## Artefact 1: Categorised Skill Inventory (105 Active Skills)
 
 ### Context, Discovery, and Session Management
 
@@ -39,6 +39,7 @@
 | `skill-router` | No | **Unified dispatcher** for 104 skills. `/route [task]` classifies intent and routes to optimal skill. Single entry point | Don't know which skill to use — describe your task and get routed |
 | `lazy-fetch` | Yes | 25 MCP tools: context hydration, plan tracking, blueprints, PRD-to-sprints, security scanning, persistent memory | Starting a new session, managing context across tasks, tracking phased plans, running autonomous PRD execution |
 | `skill-builder` | No | Create new Claude Code skills with YAML frontmatter and progressive disclosure | Building new custom skills for the skills directory |
+| `skill-tuning` | No | Empirically optimize an existing skill against a measurable reward via the SkillOpt loop + noise-robust held-out A/B (single-optimizer vs mesh arms). Live harness in skillopt-lab | Tuning a skill by evidence — raising an agent's success rate on a bounded scoreable task, not eyeballing prose |
 | `codebase-memory` | Yes | 14 MCP tools: call graph tracing, architecture overview, git diff risk scoring, symbol search. 99.2% token reduction vs grep. Persistent SQLite index. **One-time index → permanent session upgrade** | Large codebase structural analysis (500+ files), call chains, diff blast radius, architecture overview |
 
 ### Development Methodology and Meta-Skills
