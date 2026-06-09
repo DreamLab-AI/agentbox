@@ -35,22 +35,33 @@
 { lib, pkgs }:
 
 let
-  # alpha.15 (2026-05-17, pinned to HEAD b81ce9f): CORS allowlist
-  # (--allowed-origins / SOLID_ALLOWED_ORIGINS), PSK admin provision endpoint
-  # (POST /_admin/provision/{pubkey}), git control API (9 /_git/* routes),
-  # /.well-known/apps aggregation (JSS #464). HEAD adds include_dir-backed MCP
-  # docs embedding and mime_guess MIME resolution for sidecar-absent resources.
-  version = "0.4.0-alpha.15";
+  # v0.4.0-alpha.16 (2026-06-09): the first real solid-pod-rs git tag since
+  # alpha.11. It cuts an unambiguous version over what was previously the
+  # untagged post-alpha.15 HEAD, killing the alpha.15 aliasing (the same version
+  # string had denoted both the crates.io publish and an advanced git HEAD —
+  # the Nix-store binary built from the publish predated the resource-cost
+  # accounting fix and served cost-gated reads without consuming the cost; see
+  # docs/developer/economy-loop.md "key discovery"). alpha.16 carries the
+  # post-publish CORS allowlist, PSK admin provision endpoint, git control API,
+  # /.well-known/apps aggregation, MCP docs embedding, the WAC ancestor
+  # accessTo over-inheritance + git read-auth fix, and payments::debit wired
+  # into the WAC grant path (R-04).
+  version = "0.4.0-alpha.16";
 
-  # Pinned to public HEAD (b81ce9f, post-alpha.15; Cargo.toml still labels
-  # 0.4.0-alpha.15). Picks up fixes landed after the alpha.15 tag (0c5fa42).
-  rev     = "b81ce9f055f1540fd7efab81f55e49fe5fab16b3";
+  # Pinned to the v0.4.0-alpha.16 version-bump commit. Cargo.toml now correctly
+  # labels 0.4.0-alpha.16, so the version string and the built code agree — the
+  # aliasing this comment previously acknowledged is resolved.
+  rev     = "6340a468a9b6e6bbaf33b2f5b9d5c74d792bc7bd";
 
-  # Run to refresh after rev bump:
-  #   nix-prefetch-url --unpack --type sha256 \
-  #     https://github.com/DreamLab-AI/solid-pod-rs/archive/<rev>.tar.gz
-  #   nix hash convert --hash-algo sha256 --to sri <base32>
-  srcHash = "sha256-mWsaLGxPFf65lEBBp0WhfR1GwJ9qzjU3Oa4bXYPkqD4=";
+  # srcHash is the documented fakeHash placeholder (troubleshooting.md → "nix
+  # build .#runtime fails with a hash mismatch"). The alpha.16 tag/commit is not
+  # yet on the remote — the tarball cannot be prefetched until the operator
+  # pushes solid-pod-rs main. After the push, resolve with:
+  #   ./scripts/prefetch-hashes.sh --service solid-pod-rs
+  # (or manually: nix-prefetch-url --unpack
+  #   https://github.com/DreamLab-AI/solid-pod-rs/archive/<rev>.tar.gz
+  #   then nix hash convert --hash-algo sha256 --to sri <base32>).
+  srcHash = lib.fakeHash;
 
   # Upstream solid-pod-rs at v0.4.0-alpha.5 does not ship its
   # Cargo.lock (workspace builds without it locally because cargo
