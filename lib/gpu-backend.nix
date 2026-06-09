@@ -121,10 +121,11 @@ let
     # Base packages: CUDA 12.x from the default cudaPackages alias in
     # nixos-unstable (currently tracks 12.x; updated as nixpkgs advances).
     #
-    # [toolchains].cuda = true augments this with the full CUDA 13.1
-    # toolchain (cudaPackages_13_1).  If cudaPackages_13_1 is not yet
-    # available in the pinned nixpkgs rev, fall back to cudaPackages and
-    # leave a comment — the attribute set is guarded by lib.optionals so
+    # [toolchains].cuda = true augments this with the newest fully-packaged
+    # CUDA 13.x toolchain at-or-below the host minor (host 13.3; nixpkgs
+    # a799d3e packages 13.2 fully but ships 13.3 as a broken stub, so 13.2 is
+    # selected).  Selection falls back through 13.2 → 13.1 → 12.6 → cudaPackages
+    # by buildability — the attribute set is guarded by lib.optionals so
     # an evaluation error surfaces immediately rather than silently omitting
     # packages.
     #
@@ -141,12 +142,28 @@ let
       # CUDA is Linux-only; guard against darwin eval even though darwin
       # x86_64 satisfies stdenv.isx86_64, it never has cudaPackages available.
       cudaEligible = pkgs.stdenv.isLinux && pkgs.stdenv.isx86_64;
-      # cudaPackages_13_0 has a nixpkgs packaging bug (missing math_functions.h
-      # in cuda_nvcc postInstall substitute). Skip it; 13.1+ or 12.x are fine.
+      # Track the host driver/toolkit minor as closely as the pinned nixpkgs
+      # rev allows (build host: nvidia-smi UMD 13.3, nvcc 13.3.33). Within a
+      # CUDA major the container runtime is backward-compatible against a
+      # newer host driver, so any 13.x runtime works on a >=13.x driver;
+      # matching the minor minimises drift between host nvcc-built artefacts
+      # and the in-container runtime libraries.
+      #
+      # Selection is by buildability, not just attribute presence — nixpkgs
+      # ships partially-packaged CUDA sets whose `cuda_cccl` is a `0`-version
+      # `-unsupported` stub that throws at eval. In rev a799d3e:
+      #   cudaPackages_13_3 → cuda_cccl 0-unsupported (BROKEN, do not select)
+      #   cudaPackages_13_2 → 13.2.75 (fully packaged) ← closest viable to host
+      #   cudaPackages_13_1 → 13.1.80 (fully packaged)
+      #   cudaPackages_13_0 → missing math_functions.h in cuda_nvcc (BROKEN)
+      # Lead with 13.2; promote to 13.3 once nixpkgs completes its packaging.
+      cudaSetUsable = setName:
+        pkgs ? ${setName}
+        && (builtins.tryEval (pkgs.${setName}.cuda_cccl.outPath)).success;
       extendedCudaSet =
-        if pkgs ? cudaPackages_13_1 then pkgs.cudaPackages_13_1
-        else if pkgs ? cudaPackages_12_6 then pkgs.cudaPackages_12_6
-        else if pkgs ? cudaPackages_12_1 then pkgs.cudaPackages_12_1
+        if cudaSetUsable "cudaPackages_13_2" then pkgs.cudaPackages_13_2
+        else if cudaSetUsable "cudaPackages_13_1" then pkgs.cudaPackages_13_1
+        else if cudaSetUsable "cudaPackages_12_6" then pkgs.cudaPackages_12_6
         else pkgs.cudaPackages;
 
       # Base CUDA 12.x packages — always included when backend=local-cuda

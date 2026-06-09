@@ -112,9 +112,9 @@
         #    nix-prefetch-url https://registry.npmjs.org/ruvector/-/ruvector-0.2.25.tgz
         ruvectorPkg = mkNpmCli {
           pkgName         = "ruvector";
-          version         = "0.2.25";
-          sha256          = "sha256-CPzyPQjPQNO3C8HdBt8wlmCZNJn1DVev+/HBycoDakk=";
-          nodeModulesHash = "sha256-IJ+ztPl1opr3yVWmgllTMR6/k7xdeqNXlcxu3V1uMzU=";
+          version         = "0.2.28";
+          sha256          = "sha256-QQIJVIMcorZuUzFb0dn3ojhvv93n/hqupj9L0w7PZRs=";
+          nodeModulesHash = "sha256-LANskpOmUshnYtWxzEpjOlZV4X3bAT2pQ11MdUGLdfU=";
           bin             = "ruvector";
         };
 
@@ -122,9 +122,9 @@
         #    nix-prefetch-url https://registry.npmjs.org/%40claude-flow/cli/-/cli-3.6.12.tgz
         claudeFlowPkg = mkNpmCli {
           pkgName         = "@claude-flow/cli";
-          version         = "3.7.0-alpha.75";
-          sha256          = "sha256-YIINkMsXVcC0OE/NGdWEFu3x6iOeJUWc4C+jL5XKRcU=";
-          nodeModulesHash = "sha256-1pswikqoda8MPd5FGx/mGfY8yHPhhVsPMCIq7k24ntY=";
+          version         = "3.10.40";
+          sha256          = "sha256-Cmt0CuAuolpAz8TLe+yHDQKxDvXDQUSUbA+X28mKUO0=";
+          nodeModulesHash = "sha256-9cNntS43sXcZImpdYUVCXN5Yu5AYj6lK2NsuzQq1xS0=";
           bin             = "claude-flow";
         };
 
@@ -132,9 +132,9 @@
         #    nix-prefetch-url https://registry.npmjs.org/ruflo/-/ruflo-3.6.12.tgz
         rufloPkg = mkNpmCli {
           pkgName         = "ruflo";
-          version         = "3.7.0-alpha.75";
-          sha256          = "sha256-djmHrNDuK/GkFXyUXuH1aY6PdIP8O0tGs2L7mbMIXDk=";
-          nodeModulesHash = "sha256-croPVhWRK2DAfbHTZbmTet/1QqoNHrZCz4+aiA7GS7E=";
+          version         = "3.10.40";
+          sha256          = "sha256-CgQdnn/HY1ON7hfyVbOZNXB/J32EQ+Vg3qpYW7eOMBA=";
+          nodeModulesHash = "sha256-B0c7YKFB0jXx6Mr2EHgtBXKnQiPN1htKpXaJRk4Nv00=";
           bin             = "ruflo";
         };
 
@@ -146,9 +146,9 @@
         #    nix-prefetch-url https://registry.npmjs.org/agentic-qe/-/agentic-qe-3.9.18.tgz
         agenticQePkg = mkNpmCli {
           pkgName         = "agentic-qe";
-          version         = "3.10.0";
-          sha256          = "sha256-R1ffQ/S4pLp9OUonKi9q9OFg/YnSNChRQgoKRUPl1Xo=";
-          nodeModulesHash = "sha256-gubXexUGrUEKy2JXs3PvHevVjr3oB2f6my0mBI1ieL0=";
+          version         = "3.10.4";
+          sha256          = "sha256-eQrkhB0GNsL1/Bm56bwtoX48qF1y4wXhodASao9ICqo=";
+          nodeModulesHash = "sha256-bukYzeVxtuWRCG93uU8SofqAXRBBAf5f/Oyrni+HSco=";
           bin             = "aqe";
         };
 
@@ -162,9 +162,9 @@
         #    nix-prefetch-url https://registry.npmjs.org/codebase-memory-mcp/-/codebase-memory-mcp-0.6.0.tgz
         codebaseMemoryPkg = mkNpmCli {
           pkgName         = "codebase-memory-mcp";
-          version         = "0.6.1";
-          sha256          = "sha256-31h/HsnXK/UWLm1PSM6ztkA3jj1EoN4u1duziAWGyAc=";
-          nodeModulesHash = "sha256-/WISJTkAYozn9rkRgMnDON4cThlrOmjCpZ0RV+/l9ug=";
+          version         = "0.7.0";
+          sha256          = "sha256-6fEGeGHoyYSqm6jivEo3yPmqrKizzZaLY0Kf64acQ54=";
+          nodeModulesHash = "sha256-GDNlArhpzNcfpqjo76DwqskOS+z+zwi1TxC30Dotabo=";
           bin             = "codebase-memory-mcp";
         };
 
@@ -185,7 +185,7 @@
           pkgName         = "@mermaid-js/mermaid-cli";
           version         = "11.15.0";
           sha256          = "sha256-9v0Iedv1AORTeEu9nbkq6VEJfg6eipDsYT8r08qPoGw=";
-          nodeModulesHash = "sha256-sPuyyt5DiecGRxmdYD2S2EisIXPCeGTBh9eCIsaqr5w=";
+          nodeModulesHash = "sha256-fZIXonve9XhNhP0NnHzEllLLn7JZmey45RKtY5CKfZM=";
           bin             = "mmdc";
         };
 
@@ -395,8 +395,7 @@
         ];
 
         nodeEnvPackages = with pkgs; [
-          nodejs_20
-          nodejs_20
+          nodejs_22
           yarn
           pnpm
         ];
@@ -1065,7 +1064,7 @@ stderr_logfile=/var/log/qgis-mcp.error.log
 
         blenderServiceBlock = ''
 [program:blender-mcp]
-command=${pkgs.nodejs_20}/bin/node /opt/agentbox/skills/blender/tools/blender-mcp-proxy.js
+command=${pkgs.nodejs_22}/bin/node /opt/agentbox/skills/blender/tools/blender-mcp-proxy.js
 directory=/opt/agentbox/skills/blender/tools
 user=devuser
 environment=HOME="/home/devuser"
@@ -1279,7 +1278,7 @@ stderr_logfile=/var/log/solid-pod.error.log
 ${lib.optionalString ((sovereignCfg.enabled or false) && (sovereignCfg.https_bridge or false)) ''
 
 [program:https-bridge]
-command=${pkgs.nodejs_20}/bin/node /opt/agentbox/https-bridge/https-proxy.js
+command=${pkgs.nodejs_22}/bin/node /opt/agentbox/https-bridge/https-proxy.js
 directory=/opt/agentbox/https-bridge
 user=devuser
 environment=HOME="/home/devuser",MANAGEMENT_API_PORT="%(ENV_MANAGEMENT_API_PORT)s",CERT_DIR="/var/lib/https-bridge/certs",SSL_KEY="/var/lib/https-bridge/certs/server.key",SSL_CERT="/var/lib/https-bridge/certs/server.crt"

@@ -147,8 +147,7 @@ in
         sourceRoot = "package";
 
         nativeBuildInputs = [
-          pkgs.nodejs_20
-          pkgs.nodejs_20
+          pkgs.nodejs_22
           pkgs.cacert
         ];
 
@@ -253,16 +252,16 @@ in
         # ruflo, and agentic-qe) pins better-sqlite3@^11.8.1 and, finding no
         # native binary, silently falls back to the sql.js WASM backend whose
         # write/WAL/delete paths drop data without erroring. Compile the binary
-        # here, offline, from better-sqlite3's vendored deps/ against Node 20
-        # headers (ABI 115 — v11 builds cleanly). --nodedir keeps node-gyp off
+        # here, offline, from better-sqlite3's vendored deps/ against Node 22
+        # headers (ABI 127 — v11 builds cleanly). --nodedir keeps node-gyp off
         # the network. Idempotent: skips any instance already carrying a binary.
         export HOME="$TMPDIR"
-        export npm_config_nodedir="${pkgs.nodejs_20}"
-        _node_gyp="${pkgs.nodejs_20}/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js"
+        export npm_config_nodedir="${pkgs.nodejs_22}"
+        _node_gyp="${pkgs.nodejs_22}/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js"
         find "$out/lib/${pname}" -type d -path '*/node_modules/better-sqlite3' | while read -r _bsq3; do
           if [ -f "$_bsq3/binding.gyp" ] && [ ! -e "$_bsq3/build/Release/better_sqlite3.node" ]; then
-            if ( cd "$_bsq3" && ${pkgs.nodejs_20}/bin/node "$_node_gyp" \
-                   rebuild --release --nodedir="${pkgs.nodejs_20}" 1>&2 ); then
+            if ( cd "$_bsq3" && ${pkgs.nodejs_22}/bin/node "$_node_gyp" \
+                   rebuild --release --nodedir="${pkgs.nodejs_22}" 1>&2 ); then
               echo "better-sqlite3 native bridge: built ''${_bsq3#$out/lib/${pname}/}" >&2
             else
               echo "WARN better-sqlite3 native bridge: build failed at ''${_bsq3#$out/lib/${pname}/} — agentdb will use the buggy WASM fallback" >&2
@@ -276,7 +275,7 @@ in
         # indented-string quote-escape rules and the outer shell quoting
         # around node -e.
         cd $out/lib/${pname}
-        entry=$(${pkgs.nodejs_20}/bin/node -e "
+        entry=$(${pkgs.nodejs_22}/bin/node -e "
           const p = require('./package.json');
           const b = p.bin;
           const EMPTY = [].join();
@@ -302,7 +301,7 @@ in
         cat > $out/bin/${bin} <<WRAPPER
       #!/bin/sh
       ${envPreamble}
-      exec ${pkgs.nodejs_20}/bin/node $out/lib/${pname}/$entry "\$@"
+      exec ${pkgs.nodejs_22}/bin/node $out/lib/${pname}/$entry "\$@"
       WRAPPER
         chmod +x $out/bin/${bin}
 

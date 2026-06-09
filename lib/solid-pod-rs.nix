@@ -35,20 +35,22 @@
 { lib, pkgs }:
 
 let
-  # alpha.15 (2026-05-17): CORS allowlist (--allowed-origins / SOLID_ALLOWED_ORIGINS),
-  # PSK admin provision endpoint (POST /_admin/provision/{pubkey}, --admin-key /
-  # SOLID_ADMIN_KEY), git control API (9 /_git/* REST routes), /.well-known/apps
-  # aggregation (JSS #464). Native pod mesh tier for dreamlab-ai.com.
+  # alpha.15 (2026-05-17, pinned to HEAD b81ce9f): CORS allowlist
+  # (--allowed-origins / SOLID_ALLOWED_ORIGINS), PSK admin provision endpoint
+  # (POST /_admin/provision/{pubkey}), git control API (9 /_git/* routes),
+  # /.well-known/apps aggregation (JSS #464). HEAD adds include_dir-backed MCP
+  # docs embedding and mime_guess MIME resolution for sidecar-absent resources.
   version = "0.4.0-alpha.15";
 
-  # Pinned to v0.4.0-alpha.15 tag (0c5fa42).
-  rev     = "0c5fa42";
+  # Pinned to public HEAD (b81ce9f, post-alpha.15; Cargo.toml still labels
+  # 0.4.0-alpha.15). Picks up fixes landed after the alpha.15 tag (0c5fa42).
+  rev     = "b81ce9f055f1540fd7efab81f55e49fe5fab16b3";
 
   # Run to refresh after rev bump:
   #   nix-prefetch-url --unpack --type sha256 \
-  #     https://github.com/DreamLab-AI/solid-pod-rs/archive/0c5fa42.tar.gz
+  #     https://github.com/DreamLab-AI/solid-pod-rs/archive/<rev>.tar.gz
   #   nix hash convert --hash-algo sha256 --to sri <base32>
-  srcHash = "sha256-Gi54tlp62ipHjzQeOSEmo15UN99ZvuJz3+LEjcMdmu0=";
+  srcHash = "sha256-mWsaLGxPFf65lEBBp0WhfR1GwJ9qzjU3Oa4bXYPkqD4=";
 
   # Upstream solid-pod-rs at v0.4.0-alpha.5 does not ship its
   # Cargo.lock (workspace builds without it locally because cargo

@@ -105,6 +105,9 @@ in
                            # semantically significant for image derivation tracking
       inherit src;
 
+      # Pin to Node 22 to match the rest of the image (single Node major).
+      nodejs = pkgs.nodejs_22;
+
       npmDepsHash = effectiveHash;
 
       # Fakehash hint: emits an operator-friendly message if the build is
@@ -116,7 +119,7 @@ in
       doCheck = true;
 
       # Extra native build inputs (e.g. node-gyp + python for native addons).
-      nativeBuildInputs = [ pkgs.nodejs_20 ] ++ extraBuildInputs;
+      nativeBuildInputs = [ pkgs.nodejs_22 ] ++ extraBuildInputs;
 
       # Upstream @opentelemetry/* packages ship with overlapping peer-version
       # constraints that npm 7+ strict resolver rejects. The npmDepsHash
@@ -168,7 +171,7 @@ in
         # empty-string fallback — we cannot write a literal JS empty string
         # here without tripping Nix's indented-string lexer or the outer
         # node -e shell quoting. Same pattern used in lib/npm-cli.nix.
-        actual_name=$(${pkgs.nodejs_20}/bin/node -e "process.stdout.write(require('./package.json').name || [].join());")
+        actual_name=$(${pkgs.nodejs_22}/bin/node -e "process.stdout.write(require('./package.json').name || [].join());")
         if [ -z "$actual_name" ]; then
           echo "ERROR: package.json has no 'name' for Nix pname=${name}" >&2
           exit 1

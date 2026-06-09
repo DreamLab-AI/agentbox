@@ -50,6 +50,7 @@ Local lifecycle commands:
   ${GREEN}health${NC}           Show service health [--json: raw JSON output]
   ${GREEN}migrate-workspace${NC} One-shot rsync from legacy multi-agent-docker_workspace into agentbox-workspace, then patch override
   ${GREEN}browsercontainer${NC} Manage GPU browser container [up|down|logs|health|status|rebuild|shell|gpu]
+  ${GREEN}xr-runtime${NC}       Manage Monado OpenXR + Godot XR test runtime [up|down|logs|health|status|rebuild|shell|gpu|vnc]
   ${GREEN}preflight${NC}        Validate the local environment + manifest before `up` (W021 audit, missing host paths, override drift)
 
 Options:
@@ -502,6 +503,8 @@ else
     COMPOSE_ARGS=(--project-name agentbox -f "$COMPOSE_FILE")
 fi
 SIDECAR_COMPOSE_ARGS=(--project-name agentbox -f "$SIDECAR_FILE")
+XR_RUNTIME_FILE="${SCRIPT_DIR}/docker-compose.xr-runtime.yml"
+XR_RUNTIME_COMPOSE_ARGS=(--project-name agentbox -f "$XR_RUNTIME_FILE")
 # Standard ports — MAD has been deprecated; no port remap needed.
 # All services bind to their canonical ports inside the container; the
 # operator's docker-compose.override.yml may further restrict by adding
@@ -1017,6 +1020,113 @@ BC_HELP
     esac
 }
 
+# ---------------------------------------------------------------------------
+# xr-runtime lifecycle (Monado OpenXR desktop runtime + Godot 4.3)
+# ---------------------------------------------------------------------------
+
+cmd_xr_runtime() {
+    local subcmd="${1:-help}"
+    shift 2>/dev/null || true
+
+    case "$subcmd" in
+        up)
+            echo -e "${CYAN}Building and starting xr-runtime...${NC}"
+            echo -e "${YELLOW}First boot compiles the gdext cdylib (~5-10 min cold); be patient.${NC}"
+            docker compose "${XR_RUNTIME_COMPOSE_ARGS[@]}" up -d --build
+            # No HTTP health endpoint — gate on the container's own healthcheck.
+            local deadline=$(( $(date +%s) + 720 ))
+            local status=""
+            echo -e "${CYAN}Waiting for xr-runtime to report healthy...${NC}"
+            while [[ $(date +%s) -lt $deadline ]]; do
+                status=$(docker inspect --format '{{.State.Health.Status}}' xr-runtime 2>/dev/null || echo "missing")
+                [[ "$status" == "healthy" ]] && break
+                [[ "$status" == "missing" ]] && { echo -e "${RED}Container not found.${NC}"; exit 1; }
+                sleep 5
+            done
+            if [[ "$status" != "healthy" ]]; then
+                echo -e "${RED}Health check did not pass within 12 min (status: ${status}).${NC}"
+                echo "Check logs: $0 xr-runtime logs"
+                exit 1
+            fi
+            echo -e "${GREEN}xr-runtime is up.${NC}"
+            echo -e "  ${GREEN}VNC      :${NC} vnc://localhost:5904  (watch Monado compositor + Godot stereo render)"
+            echo -e "  ${GREEN}Runtime  :${NC} Monado (simulated stereo HMD, core OpenXR)"
+            echo -e "  ${GREEN}Scene    :${NC} XRBoot → GraphScene (override via XR_GODOT_SCENE)"
+            ;;
+        down)
+            echo -e "${CYAN}Stopping xr-runtime...${NC}"
+            docker compose "${XR_RUNTIME_COMPOSE_ARGS[@]}" down
+            echo -e "${GREEN}xr-runtime stopped.${NC}"
+            ;;
+        logs)
+            docker compose "${XR_RUNTIME_COMPOSE_ARGS[@]}" logs -f --tail 100
+            ;;
+        health)
+            local status
+            status=$(docker inspect --format '{{.State.Health.Status}}' xr-runtime 2>/dev/null) || {
+                echo -e "${RED}xr-runtime container not found. Try: $0 xr-runtime up${NC}"
+                exit 1
+            }
+            if [[ "$status" == "healthy" ]]; then
+                echo -e "${GREEN}xr-runtime healthy.${NC}"
+            else
+                echo -e "${YELLOW}xr-runtime status: ${status}${NC}"
+                echo "Recent healthcheck output:"
+                docker inspect --format '{{range .State.Health.Log}}{{.Output}}{{end}}' xr-runtime 2>/dev/null | tail -20
+            fi
+            ;;
+        status)
+            docker compose "${XR_RUNTIME_COMPOSE_ARGS[@]}" ps
+            ;;
+        rebuild)
+            echo -e "${CYAN}Rebuilding xr-runtime...${NC}"
+            docker compose "${XR_RUNTIME_COMPOSE_ARGS[@]}" down
+            docker compose "${XR_RUNTIME_COMPOSE_ARGS[@]}" build --no-cache
+            cmd_xr_runtime up
+            ;;
+        shell)
+            docker exec -it --user 1000 xr-runtime bash
+            ;;
+        gpu)
+            echo -e "${CYAN}GPU status inside xr-runtime:${NC}"
+            docker exec xr-runtime nvidia-smi 2>/dev/null || echo -e "${RED}nvidia-smi not available${NC}"
+            echo ""
+            echo -e "${CYAN}Vulkan status:${NC}"
+            docker exec xr-runtime vulkaninfo --summary 2>/dev/null || echo -e "${RED}vulkaninfo not available${NC}"
+            ;;
+        vnc)
+            echo -e "${GREEN}Connect a VNC viewer to:${NC} vnc://localhost:5904"
+            echo "Watch the Monado compositor window + Godot stereo render."
+            echo "Default HMD is static (simulated). For 6DoF: set XR_INPUT_DRIVER=qwerty (experimental)."
+            ;;
+        help|*)
+            cat <<XR_HELP
+${CYAN}XR Runtime — Monado OpenXR desktop runtime + Godot 4.3 (no headset)${NC}
+
+Usage: $0 xr-runtime <command>
+
+  ${GREEN}up${NC}        Build and start (waits for container health; first boot ~5-10 min)
+  ${GREEN}down${NC}      Stop the container
+  ${GREEN}logs${NC}      Follow logs (watch gdext build + OpenXR session bring-up)
+  ${GREEN}health${NC}    Show Docker health status + recent healthcheck output
+  ${GREEN}status${NC}    Show container status
+  ${GREEN}rebuild${NC}   Full rebuild (down + build --no-cache + up)
+  ${GREEN}shell${NC}     Open bash in the container
+  ${GREEN}gpu${NC}       Check GPU and Vulkan status inside container
+  ${GREEN}vnc${NC}       Print the VNC address to watch the stereo render
+
+Monado runs a simulated stereo HMD — validates core OpenXR
+(session lifecycle, stereo submit, scene mount, presence WS, binary protocol).
+Quest vendor extensions (passthrough/hand-tracking/foveation/anchors) are
+Android-only and do NOT run here. See xr-runtime/README.md.
+
+Port layout:
+  5904  VNC (Monado compositor window + Godot stereo render)
+XR_HELP
+            ;;
+    esac
+}
+
 cmd_setup() {
     check_ip
     echo -e "${CYAN}Running initial setup on agentbox...${NC}"
@@ -1262,7 +1372,7 @@ while [[ $# -gt 0 ]]; do
             usage
             exit 0
             ;;
-        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser|backup|restore|up|down|build|rebuild|update|logs|shell|health|browsercontainer|migrate-workspace|preflight)
+        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser|backup|restore|up|down|build|rebuild|update|logs|shell|health|browsercontainer|xr-runtime|migrate-workspace|preflight)
             CMD="$1"
             shift
             break
@@ -1299,6 +1409,7 @@ case "${CMD:-}" in
     shell)             cmd_shell "$@" ;;
     health)            cmd_health "$@" ;;
     browsercontainer)  cmd_browsercontainer "$@" ;;
+    xr-runtime)        cmd_xr_runtime "$@" ;;
     migrate-workspace) cmd_migrate_workspace "$@" ;;
     preflight)         cmd_preflight "$@" ;;
     *)                 usage ;;

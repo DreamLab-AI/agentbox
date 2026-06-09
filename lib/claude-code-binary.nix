@@ -21,7 +21,7 @@
 { lib, pkgs }:
 
 let
-  claudeCodeVersion = "2.1.119";
+  claudeCodeVersion = "2.1.170";
 
   # Map agentbox's system string to the upstream download platform slug.
   platforms = {
@@ -42,7 +42,7 @@ let
   # lib.fakeHash triggers a build-time error with the exact prefetch command.
   assets = {
     "x86_64-linux" = {
-      sha256 = "sha256-zKQwU/BilJSVWWsRtv0bWc95ECrbE7rL5mmX5vrkHko=";
+      sha256 = "sha256-hJ4AcnegRCqydXDT49bUN4dQeUZZDo3RlH5aObcIH54=";
     };
     "aarch64-linux" = {
       sha256 = lib.fakeHash;
