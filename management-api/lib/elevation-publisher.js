@@ -149,6 +149,21 @@ function buildElevationPublisher(manifest, deps = {}) {
       return { published: false, reason: 'invalid-proposal' };
     }
 
+    // Record the namespace crossing durably (B01) so the inbound direction
+    // can recover the agentbox source after a restart. Additive: a storage
+    // failure must not block the publish.
+    try {
+      if (proposal.proposal_foreign_urn) {
+        const bc20 = require('./bc20-provenance-bridge');
+        const parsed = require('./uris').parse(proposal.proposal_urn);
+        bc20.durableStore().put({
+          agentbox_urn: proposal.proposal_urn,
+          visionclaw_urn: proposal.proposal_foreign_urn,
+          owner_did: parsed && parsed.pubkey ? `did:nostr:${parsed.pubkey}` : null,
+        });
+      }
+    } catch (_) { /* additive — never blocks the publish */ }
+
     try {
       const cand = proposal.candidate || {};
       // The governed human-decision request. Priority/category/subject tags

@@ -151,6 +151,78 @@ describe('bead → bead (content-addressed pass-through, structural round-trip)'
   });
 });
 
+describe('JsonlUrnMappingStore (durable, append-only)', () => {
+  const os = require('os');
+  const fs = require('fs');
+  const pathMod = require('path');
+  const uris = require('../../management-api/lib/uris');
+
+  function tmpStorePath(tag) {
+    return pathMod.join(os.tmpdir(), `bc20-test-${tag}-${process.pid}.jsonl`);
+  }
+
+  it('persists puts and reloads them in a fresh instance', () => {
+    const p = tmpStorePath('reload');
+    try {
+      const ab = uris.mint({ kind: 'bead', pubkey: PK, payload: { t: 'persist' } });
+      const s1 = new bc20.JsonlUrnMappingStore(p);
+      const out = bc20.crossOutbound(ab, s1);
+      expect(out).not.toBeNull();
+      // fresh instance reads the same file — mapping survives the "restart"
+      const s2 = new bc20.JsonlUrnMappingStore(p);
+      expect(s2.getByAgentbox(ab)).toEqual(out);
+      expect(s2.getByVisionclaw(out.visionclaw_urn).agentbox_urn).toBe(ab);
+    } finally {
+      try { fs.unlinkSync(p); } catch { /* noop */ }
+    }
+  });
+
+  it('skips corrupt lines on load instead of failing', () => {
+    const p = tmpStorePath('corrupt');
+    try {
+      fs.writeFileSync(p, 'not-json\n' + JSON.stringify({
+        agentbox_urn: `urn:agentbox:thing:${PK}:proposal-1`,
+        visionclaw_urn: `urn:visionclaw:kg:${PK}:sha256-12-abcdefabcdef`,
+        owner_did: `did:nostr:${PK}`,
+      }) + '\n', 'utf8');
+      const s = new bc20.JsonlUrnMappingStore(p);
+      expect(s.size).toBe(1);
+    } finally {
+      try { fs.unlinkSync(p); } catch { /* noop */ }
+    }
+  });
+});
+
+describe('Prometheus counters (A-004)', () => {
+  // Resolve the same prom-client instance the bridge soft-requires (it lives
+  // in management-api/node_modules, not at the repo root the tests run from).
+  const promClient = require('../../management-api/node_modules/prom-client');
+
+  it('counts drops with a closed reason_class label set', async () => {
+    const c = promClient.register.getSingleMetric('agentbox_bc20_drops_total');
+    expect(c).toBeTruthy();
+    const before = (await c.get()).values
+      .filter(v => v.labels.reason_class === 'unmapped-kind')
+      .reduce((a, v) => a + v.value, 0);
+    bc20.toVisionclaw(`urn:agentbox:receipt:${PK}:aci-9`, { onDrop: silent });
+    const after = (await c.get()).values
+      .filter(v => v.labels.reason_class === 'unmapped-kind')
+      .reduce((a, v) => a + v.value, 0);
+    expect(after).toBe(before + 1);
+  });
+
+  it('counts successful crossings by direction', async () => {
+    const c = promClient.register.getSingleMetric('agentbox_bc20_crossings_total');
+    expect(c).toBeTruthy();
+    const count = async () => (await c.get()).values
+      .filter(v => v.labels.kind === 'activity' && v.labels.direction === 'outbound')
+      .reduce((a, v) => a + v.value, 0);
+    const before = await count();
+    bc20.toVisionclaw(`urn:agentbox:activity:${PK}:respond-77`);
+    expect(await count()).toBe(before + 1);
+  });
+});
+
 describe('toAgentbox reverse guards', () => {
   it('drops a non-visionclaw identifier', () => {
     expect(bc20.toAgentbox('http://example/x', { onDrop: silent })).toBeNull();

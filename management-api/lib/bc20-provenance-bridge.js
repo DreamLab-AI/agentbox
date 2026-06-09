@@ -37,7 +37,52 @@
  */
 
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const uris = require('./uris');
+
+// ---------------------------------------------------------------------------
+// Prometheus counters (audit A-004): dropped crossings were stderr-only, with
+// no agent-readable failure signal. Registered on the prom-client DEFAULT
+// register (same pattern as middleware/privacy-filter.js) and exposed via the
+// metrics server's registry merge. Soft-required so the bridge stays usable
+// where prom-client is absent. Counting is in-process and synchronous, so the
+// B03 purity posture (never calls a peer) is unchanged.
+// ---------------------------------------------------------------------------
+let _bcDrops = null;
+let _bcCrossings = null;
+(() => {
+  try {
+    const promClient = require('prom-client');
+    const reg = promClient.register;
+    _bcDrops = reg.getSingleMetric('agentbox_bc20_drops_total')
+      || new promClient.Counter({
+        name: 'agentbox_bc20_drops_total',
+        help: 'Identifiers dropped at the BC20 provenance bridge, by kind and reason class',
+        labelNames: ['kind', 'reason_class'],
+      });
+    _bcCrossings = reg.getSingleMetric('agentbox_bc20_crossings_total')
+      || new promClient.Counter({
+        name: 'agentbox_bc20_crossings_total',
+        help: 'Successful BC20 namespace crossings, by kind and direction',
+        labelNames: ['kind', 'direction'],
+      });
+  } catch { /* prom-client unavailable — counters stay null */ }
+})();
+
+// reason_class is a CLOSED label set (bounded cardinality); the free-text
+// reason still goes to the onDrop callback / stderr log.
+function _countDrop(kind, reasonClass) {
+  if (_bcDrops) {
+    try { _bcDrops.labels(kind || 'unknown', reasonClass).inc(); } catch { /* noop */ }
+  }
+}
+
+function _countCrossing(kind, direction) {
+  if (_bcCrossings) {
+    try { _bcCrossings.labels(kind, direction).inc(); } catch { /* noop */ }
+  }
+}
 
 // Closed kind map (B04). `agent` is special-cased to did:nostr (no URN kind).
 // `bead` crosses structurally: both grammars are <pubkey>:<sha256-12> now that
@@ -90,6 +135,7 @@ function toVisionclaw(agentboxUrn, opts = {}) {
   const onDrop = opts.onDrop || defaultLog;
   const parsed = uris.parse(agentboxUrn); // B02
   if (!parsed || parsed.scheme !== 'urn') {
+    _countDrop('unknown', 'non-canonical');
     onDrop('not a canonical urn:agentbox URI', agentboxUrn);
     return null;
   }
@@ -98,15 +144,18 @@ function toVisionclaw(agentboxUrn, opts = {}) {
   // agent → did:nostr (identity-bearing; structural round-trip on the pubkey)
   if (parsed.kind === 'agent') {
     if (!parsed.pubkey || !PUBKEY_HEX_RE.test(parsed.pubkey)) {
+      _countDrop('agent', 'missing-scope');
       onDrop('agent crossing needs a 64-hex owner pubkey scope', agentboxUrn);
       return null;
     }
     const vc = `did:nostr:${parsed.pubkey}`;
+    _countCrossing('agent', 'outbound');
     return { visionclaw_id: vc, mapping: { agentbox_urn: agentboxUrn, visionclaw_urn: vc, owner_did: ownerDid } };
   }
 
   const vcKind = AGENTBOX_TO_VISIONCLAW[parsed.kind];
   if (!vcKind) {
+    _countDrop(parsed.kind, 'unmapped-kind');
     onDrop(`unmapped kind '${parsed.kind}'`, agentboxUrn);
     return null;
   }
@@ -121,28 +170,33 @@ function toVisionclaw(agentboxUrn, opts = {}) {
     // local keeps content identity intact across the boundary (unlike
     // execution/kg, which re-hash the URN string).
     if (!parsed.pubkey || !PUBKEY_HEX_RE.test(parsed.pubkey)) {
+      _countDrop('bead', 'missing-scope');
       onDrop('bead crossing needs a 64-hex owner pubkey scope', agentboxUrn);
       return null;
     }
     if (!/^sha256-12-[0-9a-f]{12}$/.test(parsed.local)) {
+      _countDrop('bead', 'malformed-local');
       onDrop('bead crossing needs a sha256-12 content-addressed local', agentboxUrn);
       return null;
     }
     vc = `urn:visionclaw:bead:${parsed.pubkey}:${parsed.local}`;
   } else if (vcKind === 'kg') {
     if (!parsed.pubkey || !PUBKEY_HEX_RE.test(parsed.pubkey)) {
+      _countDrop(parsed.kind, 'missing-scope');
       onDrop('kg crossing needs a 64-hex owner pubkey scope', agentboxUrn);
       return null;
     }
     vc = `urn:visionclaw:kg:${parsed.pubkey}:${sha12(agentboxUrn)}`;
   } else { // concept
     if (!opts.domain || !opts.slug) {
+      _countDrop(parsed.kind, 'missing-args');
       onDrop('concept crossing needs {domain, slug} (the elevation target)', agentboxUrn);
       return null;
     }
     vc = `urn:visionclaw:concept:${slugify(opts.domain)}:${slugify(opts.slug)}`;
   }
 
+  _countCrossing(parsed.kind, 'outbound');
   return { visionclaw_id: vc, mapping: { agentbox_urn: agentboxUrn, visionclaw_urn: vc, owner_did: ownerDid } };
 }
 
@@ -167,6 +221,7 @@ function toAgentbox(visionclawId, opts = {}) {
     // did:nostr → the agent's identity is the pubkey. The human-readable name
     // is node metadata, not identity, so the exact source URN is recovered from
     // the store when present; otherwise a stable did-derived agent URN.
+    _countCrossing('agent', 'inbound');
     if (store) {
       const hit = store.getByVisionclaw(visionclawId);
       if (hit) return hit.agentbox_urn;
@@ -176,26 +231,36 @@ function toAgentbox(visionclawId, opts = {}) {
 
   const m = VC_URN_RE.exec(visionclawId || '');
   if (!m) {
+    _countDrop('unknown', 'non-canonical');
     onDrop('not a urn:visionclaw identifier', visionclawId);
     return null;
   }
   const vcKind = m[1];
   if (!(vcKind in VISIONCLAW_TO_AGENTBOX)) {
+    _countDrop(vcKind, 'unmapped-kind');
     onDrop(`unmapped visionclaw kind '${vcKind}'`, visionclawId);
     return null;
   }
   if (store) {
     const hit = store.getByVisionclaw(visionclawId);
-    if (hit) return hit.agentbox_urn;
+    if (hit) {
+      _countCrossing(vcKind, 'inbound');
+      return hit.agentbox_urn;
+    }
   }
   if (vcKind === 'bead') {
     // structural recovery: both bead grammars are <pubkey>:<sha256-12>, so the
     // crossing reverses without a store (identity-preserving pass-through).
     const beadMatch = /^([0-9a-f]{64}):(sha256-12-[0-9a-f]{12})$/.exec(m[2]);
-    if (beadMatch) return `urn:agentbox:bead:${beadMatch[1]}:${beadMatch[2]}`;
+    if (beadMatch) {
+      _countCrossing('bead', 'inbound');
+      return `urn:agentbox:bead:${beadMatch[1]}:${beadMatch[2]}`;
+    }
+    _countDrop('bead', 'malformed-local');
     onDrop('bead identifier is not <64-hex pubkey>:<sha256-12>', visionclawId);
     return null;
   }
+  _countDrop(vcKind, 'store-miss');
   onDrop(`content-addressed ${vcKind} needs a UrnMapping store to recover the urn:agentbox source`, visionclawId);
   return null;
 }
@@ -247,6 +312,56 @@ class InMemoryUrnMappingStore {
   get size() { return this._byAb.size; }
 }
 
+/**
+ * Durable, append-only JSONL UrnMapping store. Loads existing mappings on
+ * construction (corrupt lines skipped), keeps the injective in-memory index
+ * for reads, appends one JSON line per put. A failed append degrades to
+ * in-memory-only with a stderr log — the crossing itself never fails on
+ * storage (B03: the bridge stays additive).
+ */
+class JsonlUrnMappingStore {
+  constructor(filePath) {
+    this._path = filePath;
+    this._mem = new InMemoryUrnMappingStore();
+    try {
+      const text = fs.readFileSync(filePath, 'utf8');
+      for (const line of text.split('\n')) {
+        const t = line.trim();
+        if (!t) continue;
+        try { this._mem.put(JSON.parse(t)); } catch { /* skip corrupt line */ }
+      }
+    } catch { /* no file yet — first put creates it */ }
+  }
+  put(mapping) {
+    this._mem.put(mapping); // validates shape; throws on malformed mapping
+    try {
+      fs.mkdirSync(path.dirname(this._path), { recursive: true });
+      fs.appendFileSync(this._path, JSON.stringify(mapping) + '\n', 'utf8');
+    } catch (err) {
+      try { process.stderr.write(`[bc20] durable mapping append failed: ${err.message}\n`); } catch { /* noop */ }
+    }
+    return mapping;
+  }
+  getByAgentbox(urn) { return this._mem.getByAgentbox(urn); }
+  getByVisionclaw(id) { return this._mem.getByVisionclaw(id); }
+  get size() { return this._mem.size; }
+}
+
+let _durable = null;
+
+/**
+ * Process-wide durable UrnMapping store. Path from BC20_URN_MAPPING_PATH
+ * (default /var/lib/agentbox/code-harness/bc20-urn-mappings.jsonl).
+ */
+function durableStore() {
+  if (!_durable) {
+    const p = process.env.BC20_URN_MAPPING_PATH
+      || '/var/lib/agentbox/code-harness/bc20-urn-mappings.jsonl';
+    _durable = new JsonlUrnMappingStore(p);
+  }
+  return _durable;
+}
+
 module.exports = {
   AGENTBOX_TO_VISIONCLAW,
   VISIONCLAW_TO_AGENTBOX,
@@ -257,4 +372,6 @@ module.exports = {
   crossOutbound,
   roundTrips,
   InMemoryUrnMappingStore,
+  JsonlUrnMappingStore,
+  durableStore,
 };

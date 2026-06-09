@@ -5,6 +5,7 @@
  */
 
 const fastify = require('fastify');
+const promClient = require('prom-client');
 const { register } = require('./metrics');
 
 const METRICS_PORT = process.env.AGENTBOX_METRICS_PORT || 9091;
@@ -21,10 +22,15 @@ async function startMetricsServer() {
       logger: false
     });
 
-    // GET /metrics — Prometheus format
+    // GET /metrics — Prometheus format. Merged per request: the agentbox
+    // registry (adapter dispatch, build info) plus the prom-client DEFAULT
+    // register, where the privacy filter (opf_*) and the BC20 bridge
+    // (agentbox_bc20_*) register their counters. Without the merge those
+    // metric families were never scraped.
     metricsApp.get('/metrics', async (request, reply) => {
       reply.type('text/plain; version=0.0.4');
-      return register.metrics();
+      const merged = promClient.Registry.merge([register, promClient.register]);
+      return merged.metrics();
     });
 
     // Liveness for metrics server (optional)
