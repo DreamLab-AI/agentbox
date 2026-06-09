@@ -12,6 +12,7 @@
 const path = require('path');
 
 const { buildPodNip98 } = require('../lib/pod-signer');
+const { wrapDispatch } = require('../observability/metrics');
 
 const SLOTS = ['beads', 'pods', 'memory', 'events', 'orchestrator'];
 
@@ -117,6 +118,33 @@ function requireImpl(slot, impl) {
 }
 
 /**
+ * Wrap every public method of a constructed adapter with the canonical
+ * middleware chain (ADR-005 observability → ADR-008 privacy filter) via
+ * wrapDispatch(). Walks the full prototype chain because pods impls
+ * inherit from an intermediate SolidHttpPodsAdapter, not BaseAdapter
+ * directly. Lifecycle hooks and underscore-private helpers are skipped:
+ * the privacy filter is write-op gated by method name, and connect()
+ * failure semantics (degraded-start fallback) must stay unwrapped.
+ */
+const NON_DISPATCH = new Set(['constructor', 'connect', 'disconnect']);
+
+function instrumentAdapter(adapter, slot, impl, manifest) {
+  const seen = new Set();
+  let proto = Object.getPrototypeOf(adapter);
+  while (proto && proto !== Object.prototype) {
+    for (const name of Object.getOwnPropertyNames(proto)) {
+      if (seen.has(name) || NON_DISPATCH.has(name) || name.startsWith('_')) continue;
+      const desc = Object.getOwnPropertyDescriptor(proto, name);
+      if (!desc || typeof desc.value !== 'function') continue;
+      seen.add(name);
+      adapter[name] = wrapDispatch(slot, impl, name, desc.value.bind(adapter), manifest);
+    }
+    proto = Object.getPrototypeOf(proto);
+  }
+  return adapter;
+}
+
+/**
  * Resolve all five adapter slots from the parsed manifest.
  *
  * @param {object} manifest - Parsed agentbox.toml object
@@ -139,7 +167,7 @@ function resolveAdapters(manifest) {
       mod;
 
     const cfg = slotConfig(slot, impl, manifest);
-    resolved[slot] = new AdapterClass(cfg);
+    resolved[slot] = instrumentAdapter(new AdapterClass(cfg), slot, impl, manifest);
 
     // Attach meta for health/meta endpoints
     resolved[slot]._implName = impl;
