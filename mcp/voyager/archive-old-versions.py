@@ -13,7 +13,7 @@ Archive is implemented as a compensating write (store to archive namespace
 a delete primitive, so the original is retained with `archived=True` to
 preserve audit trail.
 
-Archived skill URN suffix: `urn:agentbox:skill:<scope>:<name>:v<n>:archived`
+Archived skill URN suffix: `urn:agentbox:skill:<name>:v<n>:archived`
 (same identity, `:archived` suffix signals tier, per addendum.)
 
 Usage:
@@ -267,7 +267,7 @@ def archive_old_versions(archive_after_days: int = 30, dry_run: bool = False) ->
                 continue  # Not old enough yet.
 
             # Archive this version.
-            skill_urn = record.get("skill_urn", f"urn:agentbox:skill:{scope}:{name}:v{version}")
+            skill_urn = record.get("skill_urn", f"urn:agentbox:skill:{name}:v{version}")
             archived_urn = f"{skill_urn}:archived"
             started_at = _now_iso()
 

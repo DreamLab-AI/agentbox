@@ -27,10 +27,10 @@ DDD-005 §VerifiedSkill aggregate, invariants I08-I15
 
 Identity scheme (ADR-013 addendum):
   - WHO: did:nostr:<hex-pubkey> from env AGENTBOX_AGENT_DID.
-  - WHAT (skill): urn:agentbox:skill:<scope>:<name>:v<n>
+  - WHAT (skill): urn:agentbox:skill:<name>:v<n>
   - WHAT (activity): urn:agentbox:activity:<scope>:verify-<short-id>
   - Trace (ExecutionTrace): urn:agentbox:activity:<scope>:trace-<short-id>
-  - Archived skill: urn:agentbox:skill:<scope>:<name>:v<n>:archived
+  - Archived skill: urn:agentbox:skill:<name>:v<n>:archived
 
 Activity records (code-harness-activities, episodic, 365d TTL):
   Emitted for every gate run (verb=verify) and every successful store
@@ -522,7 +522,7 @@ def verification_gate(candidate: dict, dry_run: bool = False) -> int:
         _quarantine(name, scope, s1, candidate, dry_run=dry_run)
         _emit_activity(
             verb="verify",
-            object_urn=f"urn:agentbox:skill:{_SCOPE}:{name}:v?",
+            object_urn=f"urn:agentbox:skill:{name}:v?",
             started_at=started_at,
             ended_at=_now_iso(),
             outcome="error",
@@ -546,7 +546,7 @@ def verification_gate(candidate: dict, dry_run: bool = False) -> int:
         _quarantine(name, scope, s2, candidate, dry_run=dry_run)
         _emit_activity(
             verb="verify",
-            object_urn=f"urn:agentbox:skill:{_SCOPE}:{name}:v?",
+            object_urn=f"urn:agentbox:skill:{name}:v?",
             started_at=started_at,
             ended_at=_now_iso(),
             outcome="error",
@@ -566,7 +566,7 @@ def verification_gate(candidate: dict, dry_run: bool = False) -> int:
         _quarantine(name, scope, s3, candidate, dry_run=dry_run)
         _emit_activity(
             verb="verify",
-            object_urn=f"urn:agentbox:skill:{_SCOPE}:{name}:v?",
+            object_urn=f"urn:agentbox:skill:{name}:v?",
             started_at=started_at,
             ended_at=_now_iso(),
             outcome="error",
@@ -579,7 +579,7 @@ def verification_gate(candidate: dict, dry_run: bool = False) -> int:
     # All gates passed — mint URN and store
     # ------------------------------------------------------------------
     version = _get_current_max_version(name, scope, dry_run=dry_run) + 1
-    skill_urn = f"urn:agentbox:skill:{_SCOPE}:{name}:v{version}"
+    skill_urn = f"urn:agentbox:skill:{name}:v{version}"
 
     verify_activity_urn = _emit_activity(
         verb="verify",
@@ -691,17 +691,29 @@ def retrieve_skill(urn: str = "", name: str = "", scope: str = "", dry_run: bool
     With --retrieve-skill --name <name>: return the highest-version record.
     """
     if urn:
-        # Derive key from URN: urn:agentbox:skill:<scope>:<name>:v<n>
+        # URN form is unscoped (skill has ownerScope=false in ADR-013):
+        # urn:agentbox:skill:<name>:v<n>. The memory key carries the
+        # candidate domain scope, which the URN does not — so resolve by
+        # searching on name and matching the stored skill_urn exactly.
         parts = urn.split(":")
-        if len(parts) >= 6:
-            r_scope = parts[3]
-            r_name = parts[4]
-            r_version = parts[5]  # e.g. "v1"
-            key = f"skill:{r_scope}:{r_name}:{r_version}"
-            record = _memory_retrieve(key=key, namespace="code-harness-skills", dry_run=dry_run)
-            if record:
-                print(json.dumps({"ok": True, "record": record}))
-                return 0
+        if len(parts) >= 5:
+            r_name = parts[3]
+            results = _memory_search(
+                namespace="code-harness-skills",
+                query=f"skill:{r_name}",
+                limit=20,
+                dry_run=dry_run,
+            )
+            for r in results:
+                try:
+                    val = r.get("value", "")
+                    inner_json = val.split(" | ", 1)[-1] if " | " in val else val
+                    inner = json.loads(inner_json)
+                except (json.JSONDecodeError, ValueError):
+                    continue
+                if inner.get("skill_urn") == urn:
+                    print(json.dumps({"ok": True, "record": inner}))
+                    return 0
         print(json.dumps({"ok": False, "reason": f"URN {urn} not found."}))
         return 1
 
