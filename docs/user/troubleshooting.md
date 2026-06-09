@@ -113,6 +113,43 @@ curl -sf http://localhost:9091/metrics | head -5    # 5. reachable on host
 
 First step that fails is where to fix.
 
+## MCP memory tools fail with `pg unavailable`
+
+Symptom: every `memory_store` / `memory_search` call returns
+`{"success":false,"error":"pg unavailable"}`. Per ADR-015 the
+`ruvector-mcp.cjs` bridge fails closed when PostgreSQL is unreachable —
+there is no silent sql.js fallback, so this is always an operator-visible
+incident, never quiet data loss.
+
+Walk the chain:
+
+```sh
+# 1. Is the container up? NOTE: ruvector-postgres may run as a bare
+#    `docker run`, NOT as part of this compose project — `docker compose ps`
+#    will NOT list it in that case. Check the docker daemon directly.
+docker ps -a --filter name=ruvector-postgres
+
+# 2. If absent/exited, start it (compose form if it is in your project):
+docker start ruvector-postgres   # or: docker compose up -d ruvector-postgres
+
+# 3. TCP reachable from inside agentbox?
+docker exec agentbox sh -c 'echo > /dev/tcp/ruvector-postgres/5432' && echo ok
+
+# 4. The pg client module must exist on the workspace bind mount
+#    (the entrypoint auto-installs it at boot; a wiped volume loses it):
+ls /home/devuser/workspace/.claude-pg/node_modules/pg || \
+  npm install --prefix /home/devuser/workspace/.claude-pg pg
+```
+
+Recovery semantics: the bridge re-probes the pool lazily on every call
+(`pgEnsure()`), so once steps 1–4 pass, the **next** MCP call self-heals —
+no restart needed in the common case. The exception is a bridge process
+that booted while PostgreSQL was down *and* is holding a failed pool from
+startup: kill the `ruvector-mcp.cjs` process and let the MCP client
+respawn it. Be aware that killing it disconnects the registered MCP tools
+for the current agent session; a one-shot JSON-RPC invocation of the
+bridge works as an interim access path until the session reconnects.
+
 ## `nix build .#runtime` fails with a hash mismatch
 
 The shipped tree carries resolved hashes for every npm service and every
