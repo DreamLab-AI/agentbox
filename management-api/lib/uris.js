@@ -100,7 +100,10 @@ const KINDS = Object.freeze({
   ddd:        { ownerScope: false, scopeRequired: false, contentAddressed: false, resolvableSurface: 'docs' },
   thing:      { ownerScope: true,  scopeRequired: false, contentAddressed: false, resolvableSurface: 'things' },
   dataset:    { ownerScope: true,  scopeRequired: true,  contentAddressed: false, resolvableSurface: 'memory' },
-  bead:       { ownerScope: true,  scopeRequired: true,  contentAddressed: false, resolvableSurface: 'beads' },
+  // bead is content-addressed to match VisionClaw's converged grammar
+  // (`urn:visionclaw:bead:<pubkey>:<sha256-12>`) so the BC20 bridge can
+  // cross beads structurally instead of dropping them (audit 2026-06-09 A3).
+  bead:       { ownerScope: true,  scopeRequired: true,  contentAddressed: true,  resolvableSurface: 'beads' },
   agent:      { ownerScope: true,  scopeRequired: false, contentAddressed: false, resolvableSurface: 'agents' },
   meta:       { ownerScope: false, scopeRequired: false, contentAddressed: false, resolvableSurface: 'meta' },
 });

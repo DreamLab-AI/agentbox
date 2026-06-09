@@ -144,7 +144,7 @@ flowchart TB
         CRED[urn:agentbox:credential\nhex-pubkey:sha256-12-...]
         RECEIPT[urn:agentbox:receipt\nhex-pubkey:sha256-12-...]
         ACTIVITY[urn:agentbox:activity\nhex-pubkey:sha256-12-...]
-        BEAD[urn:agentbox:bead\nhex-pubkey:local-id]
+        BEAD[urn:agentbox:bead\nhex-pubkey:sha256-12-...]
         EVENT[urn:agentbox:event\nhex-pubkey:sha256-12-...]
         MANDATE[urn:agentbox:mandate\nhex-pubkey:sha256-12-...]
         AGENT[urn:agentbox:agent\nhex-pubkey:sha256-12-...]
@@ -247,7 +247,7 @@ flowchart LR
 | `receipt` | yes | yes | `urn:agentbox:receipt:hex:sha256-12-abc` |
 | `activity` | yes | yes | `urn:agentbox:activity:hex:sha256-12-abc` |
 | `event` | yes | yes | `urn:agentbox:event:hex:sha256-12-abc` |
-| `bead` | yes | no | `urn:agentbox:bead:hex:local-id` |
+| `bead` | yes | yes | `urn:agentbox:bead:hex:sha256-12-abc` |
 | `agent` | yes | yes | `urn:agentbox:agent:hex:sha256-12-abc` |
 | `mcp` | no | no | `urn:agentbox:mcp:server-slug` |
 | `memory` | no | no | `urn:agentbox:memory:name` |

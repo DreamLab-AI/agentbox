@@ -18,6 +18,7 @@
  *   urn:agentbox:agent:<pubkey>:<name>          → did:nostr:<pubkey>
  *   urn:agentbox:thing:<pubkey>:proposal-<id>   → urn:visionclaw:kg:<pubkey>:<sha256-12>
  *   urn:agentbox:memory:<pubkey>:lesson-<hash>  → urn:visionclaw:concept:<domain>:<slug>
+ *   urn:agentbox:bead:<pubkey>:<sha256-12>      → urn:visionclaw:bead:<pubkey>:<sha256-12> (pass-through)
  *
  * Discipline (DDD-012 invariants):
  *  - B05: the ONLY module importing the cross-namespace (urn:visionclaw)
@@ -39,15 +40,21 @@ const crypto = require('crypto');
 const uris = require('./uris');
 
 // Closed kind map (B04). `agent` is special-cased to did:nostr (no URN kind).
+// `bead` crosses structurally: both grammars are <pubkey>:<sha256-12> now that
+// agentbox beads are content-addressed (uris.js), so the local passes through
+// unchanged — content identity is preserved across the boundary and the
+// crossing round-trips without a UrnMapping store (audit 2026-06-09 A3).
 const AGENTBOX_TO_VISIONCLAW = Object.freeze({
   activity: 'execution',
   thing: 'kg',
   memory: 'concept',
+  bead: 'bead',
 });
 const VISIONCLAW_TO_AGENTBOX = Object.freeze({
   execution: 'activity',
   kg: 'thing',
   concept: 'memory',
+  bead: 'bead',
 });
 
 const PUBKEY_HEX_RE = /^[0-9a-f]{64}$/;
@@ -108,6 +115,20 @@ function toVisionclaw(agentboxUrn, opts = {}) {
   if (vcKind === 'execution') {
     // content-addressed, unscoped — owner travels in owner_did + the mapping
     vc = `urn:visionclaw:execution:${sha12(agentboxUrn)}`;
+  } else if (vcKind === 'bead') {
+    // structural pass-through: agentbox bead locals are already sha256-12
+    // content addresses, identical to VisionClaw's bead shape. Preserving the
+    // local keeps content identity intact across the boundary (unlike
+    // execution/kg, which re-hash the URN string).
+    if (!parsed.pubkey || !PUBKEY_HEX_RE.test(parsed.pubkey)) {
+      onDrop('bead crossing needs a 64-hex owner pubkey scope', agentboxUrn);
+      return null;
+    }
+    if (!/^sha256-12-[0-9a-f]{12}$/.test(parsed.local)) {
+      onDrop('bead crossing needs a sha256-12 content-addressed local', agentboxUrn);
+      return null;
+    }
+    vc = `urn:visionclaw:bead:${parsed.pubkey}:${parsed.local}`;
   } else if (vcKind === 'kg') {
     if (!parsed.pubkey || !PUBKEY_HEX_RE.test(parsed.pubkey)) {
       onDrop('kg crossing needs a 64-hex owner pubkey scope', agentboxUrn);
@@ -166,6 +187,14 @@ function toAgentbox(visionclawId, opts = {}) {
   if (store) {
     const hit = store.getByVisionclaw(visionclawId);
     if (hit) return hit.agentbox_urn;
+  }
+  if (vcKind === 'bead') {
+    // structural recovery: both bead grammars are <pubkey>:<sha256-12>, so the
+    // crossing reverses without a store (identity-preserving pass-through).
+    const beadMatch = /^([0-9a-f]{64}):(sha256-12-[0-9a-f]{12})$/.exec(m[2]);
+    if (beadMatch) return `urn:agentbox:bead:${beadMatch[1]}:${beadMatch[2]}`;
+    onDrop('bead identifier is not <64-hex pubkey>:<sha256-12>', visionclawId);
+    return null;
   }
   onDrop(`content-addressed ${vcKind} needs a UrnMapping store to recover the urn:agentbox source`, visionclawId);
   return null;

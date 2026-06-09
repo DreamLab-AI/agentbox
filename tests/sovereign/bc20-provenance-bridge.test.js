@@ -20,9 +20,9 @@ const PK = 'a'.repeat(64);
 const silent = () => {};
 
 describe('the closed kind map (B04)', () => {
-  it('maps exactly activity/thing/memory to execution/kg/concept and is bijective on those', () => {
-    expect(bc20.AGENTBOX_TO_VISIONCLAW).toEqual({ activity: 'execution', thing: 'kg', memory: 'concept' });
-    expect(bc20.VISIONCLAW_TO_AGENTBOX).toEqual({ execution: 'activity', kg: 'thing', concept: 'memory' });
+  it('maps exactly activity/thing/memory/bead to execution/kg/concept/bead and is bijective on those', () => {
+    expect(bc20.AGENTBOX_TO_VISIONCLAW).toEqual({ activity: 'execution', thing: 'kg', memory: 'concept', bead: 'bead' });
+    expect(bc20.VISIONCLAW_TO_AGENTBOX).toEqual({ execution: 'activity', kg: 'thing', concept: 'memory', bead: 'bead' });
   });
 
   it('drops (and logs) an unmapped agentbox kind rather than mis-mapping it', () => {
@@ -109,6 +109,45 @@ describe('memory → concept (domain:slug, post-elevation)', () => {
 
   it('round-trips through the store (B01)', () => {
     expect(bc20.roundTrips(ab, { domain: 'renewables', slug: 'pv-cell' })).toBe(true);
+  });
+});
+
+describe('bead → bead (content-addressed pass-through, structural round-trip)', () => {
+  const uris = require('../../management-api/lib/uris');
+  const ab = uris.mint({ kind: 'bead', pubkey: PK, payload: { title: 'epic', ts: 1 } });
+
+  it('mints agentbox beads content-addressed (sha256-12 local)', () => {
+    expect(ab).toMatch(new RegExp(`^urn:agentbox:bead:${PK}:sha256-12-[0-9a-f]{12}$`));
+  });
+
+  it('crosses with the content address preserved (no re-hash)', () => {
+    const r = bc20.toVisionclaw(ab);
+    const local = ab.split(':').pop();
+    expect(r.visionclaw_id).toBe(`urn:visionclaw:bead:${PK}:${local}`);
+    expect(r.mapping.owner_did).toBe(`did:nostr:${PK}`);
+  });
+
+  it('round-trips structurally WITHOUT a store (unlike execution/kg)', () => {
+    const r = bc20.toVisionclaw(ab);
+    expect(bc20.toAgentbox(r.visionclaw_id)).toBe(ab);
+  });
+
+  it('round-trips through the store too (B01)', () => {
+    expect(bc20.roundTrips(ab)).toBe(true);
+  });
+
+  it('drops a bead whose local is not a sha256-12 content address', () => {
+    const drops = [];
+    const r = bc20.toVisionclaw(`urn:agentbox:bead:${PK}:my-slug-bead`, { onDrop: (reason) => drops.push(reason) });
+    expect(r).toBeNull();
+    expect(drops[0]).toMatch(/sha256-12 content-addressed local/);
+  });
+
+  it('drops a reverse bead crossing with a malformed scope', () => {
+    const drops = [];
+    const r = bc20.toAgentbox('urn:visionclaw:bead:nothex:sha256-12-abcdefabcdef', { onDrop: (reason) => drops.push(reason) });
+    expect(r).toBeNull();
+    expect(drops[0]).toMatch(/not <64-hex pubkey>/);
   });
 });
 
