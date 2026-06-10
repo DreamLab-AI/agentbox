@@ -46,17 +46,18 @@ let
   # /.well-known/apps aggregation, MCP docs embedding, the WAC ancestor
   # accessTo over-inheritance + git read-auth fix, and payments::debit wired
   # into the WAC grant path (R-04).
-  version = "0.4.0-alpha.16";
+  version = "0.4.0-alpha.17";
 
-  # Pinned to the v0.4.0-alpha.16 version-bump commit. Cargo.toml now correctly
-  # labels 0.4.0-alpha.16, so the version string and the built code agree — the
-  # aliasing this comment previously acknowledged is resolved.
-  rev     = "6340a468a9b6e6bbaf33b2f5b9d5c74d792bc7bd";
+  # Pinned to the v0.4.0-alpha.17 tag commit — the first version whose
+  # registry release includes solid-pod-rs-server (embedded-docs packaging
+  # fix: the server's MCP docs tools consume solid_pod_rs::DOCS_DIR instead
+  # of an include_dir path escape). Version string, tag, registry, and built
+  # code all agree.
+  rev     = "9b4076ae94ba1402d7e774c2a20ebf30663486f2";
 
   # srcHash is the documented fakeHash placeholder (troubleshooting.md → "nix
-  # build .#runtime fails with a hash mismatch"). The alpha.16 tag/commit is not
-  # yet on the remote — the tarball cannot be prefetched until the operator
-  # pushes solid-pod-rs main. After the push, resolve with:
+  # build .#runtime fails with a hash mismatch"). The tag is on the remote;
+  # this container has no nix toolchain to compute the SRI hash. Resolve with:
   #   ./scripts/prefetch-hashes.sh --service solid-pod-rs
   # (or manually: nix-prefetch-url --unpack
   #   https://github.com/DreamLab-AI/solid-pod-rs/archive/<rev>.tar.gz
