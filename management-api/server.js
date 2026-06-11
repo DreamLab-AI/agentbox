@@ -1013,7 +1013,13 @@ async function start() {
     // for the relay pool; never crashes management-api on any failure.
     if (String(process.env.JUNKIEJARVIS_ENABLED || '').toLowerCase() === 'true') {
       try {
-        const { NostrBridge } = require('../mcp/servers/nostr-bridge');
+        // The bridge is vendored into lib/ at build time (flake buildPhaseExtra
+        // copies mcp/servers/nostr-bridge.js → lib/) so it resolves nostr-tools
+        // and ws from this package's own node_modules. Fall back to the sibling
+        // mcp/ tree when running from the source checkout (dev / standalone).
+        let NostrBridge;
+        try { ({ NostrBridge } = require('./lib/nostr-bridge')); }
+        catch { ({ NostrBridge } = require('../mcp/servers/nostr-bridge')); }
         const { startJunkieJarvis } = require('./lib/junkiejarvis-agent');
         const jjRelays = (process.env.NOSTR_RELAYS || '')
           .split(',').map((r) => r.trim()).filter(Boolean);

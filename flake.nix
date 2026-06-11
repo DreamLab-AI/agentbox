@@ -226,6 +226,15 @@
           # Refresh via: nix run nixpkgs#prefetch-npm-deps -- management-api/package-lock.json
           # Prefetched 2026-06-02. Refresh: nix run nixpkgs#prefetch-npm-deps -- management-api/package-lock.json
           npmDepsHash = "sha256-eLoqnV7Tk2k951TiEzHSTjhIonMcVyrQS6YY66YMfIo=";
+          # Vendor the canonical NostrBridge into lib/ so the in-process
+          # JunkieJarvis agent (server.js) can require('./lib/nostr-bridge') and
+          # resolve nostr-tools + ws from THIS package's node_modules. A bare
+          # require('../mcp/servers/nostr-bridge') escapes the packaged
+          # node_modules/agentic-flow-management-api boundary at runtime.
+          buildPhaseExtra = ''
+            mkdir -p lib
+            cp ${./mcp/servers/nostr-bridge.js} lib/nostr-bridge.js
+          '';
         };
 
         # 2. mcp/nostr-bridge — sovereign_mesh service; 2 deps (nostr-tools, ws)
