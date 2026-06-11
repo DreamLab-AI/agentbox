@@ -119,9 +119,13 @@ class LinkedDataEncoder {
       throw new Error('LinkedDataEncoder.dispatch called before boot()');
     }
 
-    // DDD-004 §L08 invariant: privacy redaction must precede encoding.
+    // DDD-004 §L08 invariant: privacy redaction must precede encoding, on
+    // THIS payload. The per-dispatch marker stamped by wrapWithPrivacyFilter
+    // is verified here; an unmarked payload (e.g. a route calling the adapter
+    // directly and then the encoder, bypassing the privacy layer) trips the
+    // violation counter and throws for fail-closed slots (pods/memory).
     // assertPrivacyFilterApplied() is a no-op when OPF_MODE=off.
-    assertPrivacyFilterApplied(slot, this.logger);
+    assertPrivacyFilterApplied(payload, slot, this.logger);
 
     // Find a surface module for this slot. The first match whose gate is
     // enabled wins; surfaces are indexed by surfaceId (S01..S11), each

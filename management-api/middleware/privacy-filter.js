@@ -31,11 +31,22 @@
  *   opf_fail_closed_total{slot}
  *   opf_fail_open_total{slot}
  *
- * Middleware-order assertion:
- *   On module load, the ordering invariant is written to an in-process
- *   symbol so that the wrapDispatch caller can assert it. A
- *   MiddlewareOrderViolation is emitted to stderr if the encoder is wired
- *   before this module has been applied.
+ * Middleware-order assertion (DDD-004 §L08 — per-dispatch, not module-load):
+ *   The privacy filter stamps every payload it has actually redacted (or
+ *   deliberately passed through under an `off`/`soft`-bypass policy) by
+ *   registering the live payload object in a module-level WeakSet
+ *   (`_redactedPayloads`) AND writing a non-enumerable Symbol marker on it.
+ *   `assertPrivacyFilterApplied(payload, slot)` then verifies that THIS
+ *   specific payload carries the marker. A payload that reaches the encoder
+ *   without having passed through wrapWithPrivacyFilter (e.g. a route calling
+ *   adapter.write() directly, finding O2) is unmarked, so the assertion fires
+ *   a MiddlewareOrderViolation, increments `opf_middleware_order_violations_total`,
+ *   and — for fail-closed slots (pods/memory, ADR-008 §Fail-mode) — throws.
+ *
+ *   The marker is a Symbol (non-enumerable) plus an external WeakSet, so it
+ *   never appears in JSON.stringify output and cannot leak into encoded
+ *   JSON-LD. It is per-payload, so it cannot be globally forged once the
+ *   module is loaded — the original O3 defect.
  */
 
 const promClient = require('prom-client');
@@ -90,10 +101,61 @@ function _bootstrapCounters() {
   });
 }
 
-// In-process sentinel — set to true once this module has been required.
-// The LinkedDataEncoder checks for it at dispatch time.
-const PRIVACY_FILTER_APPLIED_KEY = Symbol.for('agentbox.privacyFilterApplied');
-global[PRIVACY_FILTER_APPLIED_KEY] = true;
+// Per-dispatch marker (DDD-004 §L08). This replaces the old module-load
+// `global[...] = true` sentinel, which was always true after boot and so
+// could never detect a bypass (finding O3).
+//
+// `PRIVACY_FILTER_APPLIED_KEY` is a non-enumerable Symbol stamped on each
+// payload object the filter has processed. `_redactedPayloads` is a parallel
+// WeakSet for payload types that cannot carry a property (or to keep the
+// check robust against shallow-clone). Both are per-payload, so a payload
+// that never went through the filter is unmarked even though the module is
+// loaded process-wide.
+const PRIVACY_FILTER_APPLIED_KEY = Symbol('agentbox.privacyFilterApplied');
+const _redactedPayloads = new WeakSet();
+
+// Slots whose privacy posture is fail-closed (ADR-008 §Fail-mode semantics).
+// A middleware-order violation on these slots throws; on others it is logged
+// and counted (fail-open), preserving the per-slot posture already documented.
+const FAIL_CLOSED_SLOTS = new Set(['pods', 'memory']);
+
+/**
+ * Stamp a payload as having passed through the privacy filter on THIS
+ * dispatch. The mark is invisible to JSON serialisation:
+ *   - the Symbol property is non-enumerable, so JSON.stringify ignores it;
+ *   - the WeakSet is external to the object entirely.
+ *
+ * @param {*} payload - the (possibly redacted) value object that will travel
+ *                      onward to the encoder/adapter
+ */
+function _markPrivacyApplied(payload) {
+  if (payload === null || (typeof payload !== 'object' && typeof payload !== 'function')) {
+    return; // primitives carry no marker; encoder treats them as out-of-scope
+  }
+  try {
+    _redactedPayloads.add(payload);
+    Object.defineProperty(payload, PRIVACY_FILTER_APPLIED_KEY, {
+      value: true,
+      enumerable: false,
+      configurable: true,
+      writable: false,
+    });
+  } catch {
+    // Frozen/sealed payloads still get the WeakSet entry above; ignore.
+  }
+}
+
+/**
+ * True iff `payload` carries the per-dispatch privacy marker.
+ * @param {*} payload
+ * @returns {boolean}
+ */
+function _hasPrivacyMark(payload) {
+  if (payload === null || (typeof payload !== 'object' && typeof payload !== 'function')) {
+    return false;
+  }
+  return _redactedPayloads.has(payload) || payload[PRIVACY_FILTER_APPLIED_KEY] === true;
+}
 
 // ---------------------------------------------------------------------------
 // Error type
@@ -249,30 +311,59 @@ async function _callOpf(text, slot, op) {
 // Middleware assertion — MiddlewareOrderViolation
 // ---------------------------------------------------------------------------
 
+class MiddlewareOrderViolation extends Error {
+  constructor(slot, payloadType) {
+    super(
+      `MiddlewareOrderViolation[${slot}]: JSON-LD encoder invoked for a ` +
+      `payload (${payloadType}) that did not pass through the privacy filter ` +
+      `on this dispatch. Canonical order: observability → privacy → encoder ` +
+      `(DDD-004 §L08). Route the payload through wrapWithPrivacyFilter before ` +
+      `encoding.`,
+    );
+    this.name = 'MiddlewareOrderViolation';
+    this.slot = slot;
+    this.statusCode = 500;
+  }
+}
+
 /**
- * Assert that the privacy filter was applied before the JSON-LD encoder.
- * Call this from the encoder's dispatch path.
+ * Assert that THIS payload passed privacy redaction before reaching the
+ * JSON-LD encoder. This is a per-dispatch check (DDD-004 §L08), not a
+ * module-load sentinel: the payload itself must carry the marker stamped by
+ * wrapWithPrivacyFilter on this dispatch.
  *
- * Emits MiddlewareOrderViolation to stderr and increments the violation
- * counter if the filter sentinel is absent.
+ * On a miss:
+ *   - emits MiddlewareOrderViolation to stderr,
+ *   - increments opf_middleware_order_violations_total{slot}, and
+ *   - throws for fail-closed slots (pods/memory) per ADR-008 §Fail-mode;
+ *     logs-and-continues (fail-open) for the rest, matching the per-slot
+ *     posture already in force for OPF failures.
  *
+ * @param {*}      payload - the value object about to be encoded
  * @param {string} slot
  * @param {object|null} logger  - optional pino-compatible logger
+ * @throws {MiddlewareOrderViolation} for fail-closed slots when unmarked
  */
-function assertPrivacyFilterApplied(slot, logger) {
+function assertPrivacyFilterApplied(payload, slot, logger) {
   if (_opfMode() === 'off') return; // nothing to assert when filter is off
-  if (global[PRIVACY_FILTER_APPLIED_KEY] === true) return;
+  if (_hasPrivacyMark(payload)) return;
 
-  const msg = `MiddlewareOrderViolation: JSON-LD encoder invoked for slot="${slot}" but privacy-filter middleware has not been applied. Canonical order: observability → privacy → encoder. Fix: ensure middleware/privacy-filter.js is required before middleware/linked-data/encoder.js in the dispatch wrapper.`;
+  const payloadType = payload === null ? 'null' : typeof payload;
+  const msg = `MiddlewareOrderViolation: JSON-LD encoder invoked for slot="${slot}" with a payload that did not pass the privacy filter on this dispatch (per-dispatch L08 check). Canonical order: observability → privacy → encoder.`;
   process.stderr.write(JSON.stringify({
     event: 'MiddlewareOrderViolation',
     slot,
+    payloadType,
     ts: new Date().toISOString(),
     msg,
   }) + '\n');
+  (logger && logger.error) && logger.error({ event: 'MiddlewareOrderViolation', slot, payloadType });
 
-  if (_countersBootstrapped) {
-    opfMiddlewareOrderViolations.labels(slot).inc();
+  _bootstrapCounters();
+  opfMiddlewareOrderViolations.labels(slot).inc();
+
+  if (FAIL_CLOSED_SLOTS.has(slot)) {
+    throw new MiddlewareOrderViolation(slot, payloadType);
   }
 }
 
@@ -301,8 +392,12 @@ function wrapWithPrivacyFilter(slot, methodName, fn, manifest) {
   return async function privacyFilteredDispatch(...args) {
     const policy = _slotPolicy(slot, manifest);
 
-    // Pass-through: not a write, or policy is off, or OPF_MODE=off
+    // Pass-through: not a write, or policy is off, or OPF_MODE=off.
+    // We still stamp the value so a downstream encoder sees that the privacy
+    // layer was traversed on this dispatch (an intentional pass-through is
+    // distinct from a layer bypass — DDD-004 §L08).
     if (!isWriteOp || policy === 'off') {
+      _markValueArg(args);
       return fn(...args);
     }
 
@@ -342,14 +437,53 @@ function wrapWithPrivacyFilter(slot, methodName, fn, manifest) {
       // continue with original args
     }
 
+    // Stamp the value the encoder will see as having traversed the privacy
+    // layer on this dispatch (redacted, or soft-fail-open original).
+    _markValueArg(finalArgs);
     return fn(...finalArgs);
   };
+}
+
+/**
+ * Stamp the privacy marker onto the value object inside a write call's args,
+ * matching the call convention. For the object convention the encoder's
+ * payload is args[0]; for the positional convention it is the value at
+ * args[1]. Both the container and (if an object) the value itself are
+ * marked so the encoder sees the mark regardless of which object it treats
+ * as the payload.
+ *
+ * @param {Array} args - the args array about to be passed to the adapter fn
+ */
+function _markValueArg(args) {
+  if (_callConvention(args) === 'object') {
+    _markPrivacyApplied(args[0]);
+    if (args[0] && typeof args[0].value === 'object') _markPrivacyApplied(args[0].value);
+    return;
+  }
+  _markPrivacyApplied(args[1]);
 }
 
 module.exports = {
   wrapWithPrivacyFilter,
   assertPrivacyFilterApplied,
   AdapterWriteRejected,
+  MiddlewareOrderViolation,
   PRIVACY_FILTER_APPLIED_KEY,
   DEFAULT_POLICY,
+  FAIL_CLOSED_SLOTS,
+  // Exposed for tests/encoder so a correctly-ordered caller that already ran
+  // redaction out-of-band can stamp the payload it hands to the encoder.
+  _markPrivacyApplied,
+  _hasPrivacyMark,
+  // Test helper: current value of opf_middleware_order_violations_total{slot}
+  // on whatever register the counter was created against. Avoids the test
+  // needing to resolve prom-client from a different node_modules root.
+  // prom-client 15's Counter.get() is async, so this returns a Promise.
+  async _violationCount(slot) {
+    if (!_countersBootstrapped) return 0;
+    const snapshot = await opfMiddlewareOrderViolations.get();
+    const vals = (snapshot && snapshot.values) || [];
+    const hit = vals.find((v) => v.labels && v.labels.slot === slot);
+    return hit ? hit.value : 0;
+  },
 };

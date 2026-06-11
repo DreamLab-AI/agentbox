@@ -125,9 +125,15 @@ describe('DDD-004 — Linked-Data Interchange invariants', () => {
         logger: { info() {}, debug() {}, error() {}, warn() {} },
       });
       expect(encoder.enabled).toBe(false);
-      // Dispatch is a pass-through when no surface is enabled.
+      // Dispatch is a pass-through when no surface is enabled. Stamp the
+      // payload as privacy-applied (the filter runs upstream in production)
+      // so the L08 per-dispatch handoff check is satisfied — this test
+      // exercises surface gating, not the handoff (see L08 + privacy-handoff).
+      const pf = require('../../../management-api/middleware/privacy-filter');
+      const payload = { ok: true };
+      pf._markPrivacyApplied(payload);
       const result = await encoder.dispatch({
-        slot: 'pods', operation: 'write', payload: { ok: true },
+        slot: 'pods', operation: 'write', payload,
         context: {}, adapterCall: (p) => Promise.resolve({ passed: p }),
       });
       expect(result.passed).toEqual({ ok: true });
@@ -170,6 +176,28 @@ describe('DDD-004 — Linked-Data Interchange invariants', () => {
       const ld = require('../../../management-api/middleware/linked-data');
       expect(typeof ld.createEncoder).toBe('function');
     });
+
+    test('per-dispatch handoff: encoder rejects a payload that skipped the privacy filter (O3)', async () => {
+      // The full per-dispatch behaviour lives in privacy-handoff.contract.spec.js;
+      // here we assert the L08 invariant directly: with the privacy filter
+      // active, the encoder must NOT accept an unmarked fail-closed payload.
+      const pf = require('../../../management-api/middleware/privacy-filter');
+      const ld = require('../../../management-api/middleware/linked-data');
+      const prevMode = process.env.OPF_MODE;
+      process.env.OPF_MODE = 'on';
+      try {
+        const encoder = await ld.createEncoder({
+          manifest: { linked_data: { enabled: false } },
+          logger: { info() {}, debug() {}, error() {}, warn() {} },
+        });
+        await expect(encoder.dispatch({
+          slot: 'pods', operation: 'write', payload: { value: 'unredacted' },
+          context: {}, adapterCall: () => Promise.resolve('reached'),
+        })).rejects.toBeInstanceOf(pf.MiddlewareOrderViolation);
+      } finally {
+        if (prevMode === undefined) delete process.env.OPF_MODE; else process.env.OPF_MODE = prevMode;
+      }
+    });
   });
 
   describe('L09 — Encoder never fetches at runtime', () => {
@@ -205,8 +233,13 @@ describe('DDD-004 — Linked-Data Interchange invariants', () => {
         logger: { info() {}, debug() {}, error() {}, warn() {} },
       });
       let sawAdapter = false;
+      // Stamp the payload as privacy-applied (filter runs upstream); this
+      // test exercises the disabled-encoder no-op, not the L08 handoff.
+      const pf = require('../../../management-api/middleware/privacy-filter');
+      const payload = { hello: 'world' };
+      pf._markPrivacyApplied(payload);
       const result = await encoder.dispatch({
-        slot: 'pods', operation: 'write', payload: { hello: 'world' },
+        slot: 'pods', operation: 'write', payload,
         adapterCall: (p) => { sawAdapter = true; return p; },
       });
       expect(sawAdapter).toBe(true);
