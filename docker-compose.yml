@@ -77,9 +77,12 @@ services:
     # drops on every long-running service. Root is required at boot for
     # tmpfs subdir creation, cert generation, and chowning runtime dirs to
     # uid 1000. R-005/SEC-001: no runtime sudo — root-at-boot via supervisord
-    # (PID 1) is the only elevation; no-new-privileges:true neuters setuid, so
-    # SETUID/SETGID are deliberately not in cap_add.
-    # Per ADR-007 §4a hardening posture; see PRD-003 §5.4.
+    # (PID 1) is the only elevation.
+    # SETUID/SETGID are REQUIRED: supervisord calls setgroups()/setuid() to
+    # demote children to devuser, and that needs CAP_SETGID/CAP_SETUID even
+    # for privilege *dropping*. no-new-privileges:true neuters setuid file
+    # bits at execve (privilege *gaining*) but does not replace these caps.
+    # Per ADR-007 §4a hardening posture; see PRD-003 §5.4 and ADR-027 §amendment.
     read_only: true
     cap_drop:
       - ALL
@@ -90,6 +93,8 @@ services:
       - AUDIT_WRITE
       - KILL
       - NET_ADMIN
+      - SETUID
+      - SETGID
 
     tmpfs:
       - /tmp:mode=1777,size=256M

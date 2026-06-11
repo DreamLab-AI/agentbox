@@ -1810,18 +1810,25 @@ stderr_logfile=/var/log/tmux-autostart.error.log
         #   DAC_OVERRIDE   read files when ownership isn't set yet (defensive)
         #   AUDIT_WRITE    write to the audit log
         #   KILL           supervisord signals its child processes
-        # R-005/SEC-001: SETUID and SETGID are deliberately NOT in the baseline.
-        # no-new-privileges:true is in effect, which neuters any setuid wrapper
-        # regardless of the bounding set, so a setuid sudo path is dead weight
-        # and a footgun. Root-at-boot via supervisord (PID 1) is the only
-        # elevation; there is no runtime sudo. The entrypoint no longer installs
-        # a setuid sudo wrapper (removed there separately).
+        #   SETUID/SETGID  supervisord (root PID 1) calls setgroups()/setuid()
+        #                  to demote every `user=devuser` program; privilege
+        #                  *dropping* needs these caps even under
+        #                  no-new-privileges (which only blocks *gaining*
+        #                  privileges via setuid file bits at execve). Without
+        #                  them every supervised program exits 127.
+        # R-005/SEC-001: there is still no runtime sudo. no-new-privileges:true
+        # is in effect, which neuters any setuid wrapper regardless of the
+        # bounding set. Root-at-boot via supervisord (PID 1) is the only
+        # elevation; the entrypoint no longer installs a setuid sudo wrapper
+        # (removed there separately). See ADR-027 amendment (2026-06-11).
         baselineCapAdd = [
           "CHOWN"
           "FOWNER"
           "DAC_OVERRIDE"
           "AUDIT_WRITE"
           "KILL"
+          "SETUID"
+          "SETGID"
         ];
         agentboxCapabilities =
           let allCaps = lib.unique (baselineCapAdd ++ exceptionCapAdd);
@@ -1944,9 +1951,10 @@ ${agentboxPorts}
       - EMBEDDING_MODEL=''${EMBEDDING_MODEL:-bge-small-en-v1.5}
     # Baseline: supervisord runs as PID 1 root, with per-program `user=devuser`
     # drops on every long-running service. Root is required at boot for
-    # tmpfs subdir creation, sudoers wrapper provisioning (chown 0:0 +
-    # chmod 4755), cert generation, and chowning runtime dirs to uid 1000.
-    # Per ADR-007 §4a hardening posture; see PRD-003 §5.4.
+    # tmpfs subdir creation, cert generation, and chowning runtime dirs to
+    # uid 1000. SETUID/SETGID stay in cap_add for the supervisord
+    # privilege-drop path; no-new-privileges:true blocks privilege gaining.
+    # Per ADR-007 §4a hardening posture; see PRD-003 §5.4 and ADR-027 §amendment.
     read_only: true
 ${agentboxRuntime}${agentboxCapabilities}
 ${agentboxDevices}    tmpfs:

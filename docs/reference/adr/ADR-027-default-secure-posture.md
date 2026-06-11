@@ -51,11 +51,13 @@ A replacement allowlist was **rejected deliberately**: the workload surface (Chr
 
 *Rationale:* the previous README framed this as a "tightened profile", implying allowlist-grade containment. That oversold the guarantee. The honest statement is: supplemental denylist, defence-in-depth, container is the boundary.
 
-### D3: No runtime privilege escalation
+### D3: No runtime privilege escalation (amended 2026-06-11)
 
-`SETUID`/`SETGID` are removed from `cap_add` (flake `baselineCapAdd` and compose). `no-new-privileges:true` is kept. Redundant runtime `sudo chown` calls are removed from the entrypoint. **Root exists only at boot** (supervisord PID 1 performs the one-shot bootstrap); every long-running supervised process drops to `devuser`, and there is no setuid path back to root.
+**As amended:** `SETUID`/`SETGID` **stay in `cap_add`** (flake `baselineCapAdd` and compose); `no-new-privileges:true` is kept; the setuid sudo wrapper and redundant runtime `sudo chown` calls are removed from the entrypoint. **Root exists only at boot** (supervisord PID 1 performs the one-shot bootstrap); every long-running supervised process drops to `devuser`, and there is no setuid path back to root.
 
-*Rationale:* a runtime escalation path defeats `cap_drop: ALL` — if a process can re-acquire privilege after the boot phase, the dropped capabilities are theatre.
+*Rationale:* a runtime escalation path defeats `cap_drop: ALL` — if a process can re-acquire privilege after the boot phase, the dropped capabilities are theatre. The escalation path is closed by `no-new-privileges:true` plus the absence of any setuid binary, not by the capability bounding set.
+
+**Amendment (2026-06-11):** the original decision also removed `CAP_SETUID`/`CAP_SETGID` from `cap_add`, on the reasoning that `no-new-privileges:true` made them dead weight. That reasoning conflated privilege *gaining* with privilege *dropping*: `no-new-privileges` neuters setuid file bits at execve, but supervisord (root PID 1) still needs `CAP_SETGID`/`CAP_SETUID` to call `setgroups()`/`setuid()` when demoting `user=devuser` children. With the caps dropped, every supervised program exited 127 (`couldn't setuid to 1000`) and the container never became healthy. The caps are restored; the no-escalation guarantee is unchanged because gaining privilege still requires a setuid binary (none exists) and `no-new-privileges` blocks that path categorically. `scripts/ci/check-nnp.sh` now enforces the *presence* of both caps alongside `no-new-privileges:true`.
 
 ### D4: Secret via tmpfs file, not env
 
@@ -95,7 +97,7 @@ These are the §6-style executable invariants this ADR commits to — each maps 
 | EI-1 | No `HostConfig.PortBindings` entry binds anything but `127.0.0.1`. | compose host-publish | RM-001-01 |
 | EI-2 | WS auth, when enabled with no token, rejects the connection (fail-closed). | `auth-middleware`, `mcp-ws-relay` | RM-001-02 |
 | EI-3 | The zai wrapper spawns no `--dangerously-skip-permissions` argv unless `ZAI_DANGEROUS=true`, and 401s without a bearer token. | `claude-zai/wrapper/server.js` | RM-001-03 |
-| EI-4 | `CapAdd` contains neither `SETUID` nor `SETGID`; `SecurityOpt` contains `no-new-privileges:true`; no setuid sudo on `devuser` PATH. | flake `baselineCapAdd`, compose | RM-001-04 |
+| EI-4 | `CapAdd` contains both `SETUID` and `SETGID` (supervisord privilege-drop path); `SecurityOpt` contains `no-new-privileges:true`; no setuid binary on `devuser` PATH (amended 2026-06-11). | flake `baselineCapAdd`, compose, `check-nnp.sh` | RM-001-04 |
 | EI-5 | `AGENTBOX_BRIDGE_SK` is absent from every long-running process env; `/run/secrets/nostr.key` is `0400 devuser` on tmpfs. | entrypoint, `nostr-pod-bridge` | RM-001-05 |
 | EI-6 | `docker compose config` fails when `RUVECTOR_PG_PASSWORD` is unset. | compose `${VAR:?}` | RM-001-06 |
 | EI-7 | The seccomp profile's `defaultAction` is `SCMP_ACT_ALLOW` (denylist) and the file's own comment states it is supplemental, not a replacement allowlist. | `config/seccomp-agentbox.json` | doc/file review |
