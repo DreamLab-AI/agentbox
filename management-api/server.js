@@ -18,13 +18,20 @@ const logger = require('./observability/logger');
 const ProcessManager = require('./utils/process-manager');
 const SystemMonitor = require('./utils/system-monitor');
 const ComfyUIManager = require('./utils/comfyui-manager');
-const metrics = require('./utils/metrics');
+// R-011: single Prometheus registry — observability/metrics.js owns the
+// registry, collectDefaultMetrics, adapter spans, and HTTP instrumentation.
+// utils/metrics.js is a thin re-export of this same module for any stragglers.
 const observabilityMetrics = require('./observability/metrics');
+const metrics = observabilityMetrics;
 const { startMetricsServer, shutdownMetricsServer } = require('./observability/metrics-server');
 const { initTracing, shutdown: shutdownTracing } = require('./observability/tracing');
 
 // Configuration
 const PORT = process.env.MANAGEMENT_API_PORT || 9090;
+// R-003: bind defaults to 0.0.0.0 because Docker port publishing requires the
+// in-container listener to accept the bridge interface. It is exposed only on
+// host-loopback via the compose `127.0.0.1:` publish mapping; cross-container
+// access on the docker network is gated by MANAGEMENT_API_KEY (see authMiddleware).
 const HOST = process.env.MANAGEMENT_API_HOST || '0.0.0.0';
 const API_KEY = process.env.MANAGEMENT_API_KEY;
 if (!API_KEY) {

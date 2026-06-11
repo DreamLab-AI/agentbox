@@ -1,11 +1,49 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const { spawn } = require('child_process');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
 const app = express();
 const PORT = 9600;
+
+// R-004: bearer token gate. The wrapper spawns the Claude CLI, so unauthenticated
+// access is RCE-adjacent. The token is the ZAI-specific override or the shared
+// management API key. If neither is configured, EVERY request is rejected
+// (fail closed) — the service must not run open.
+const ZAI_WRAPPER_TOKEN = process.env.ZAI_WRAPPER_TOKEN || process.env.MANAGEMENT_API_KEY;
+
+// R-004: allowlisted tools replace --dangerously-skip-permissions. Conservative
+// default; override with ZAI_ALLOWED_TOOLS (comma-separated).
+const ZAI_ALLOWED_TOOLS = process.env.ZAI_ALLOWED_TOOLS || 'Read,Grep,Glob,Bash,Edit,Write';
+// Escape hatch retained for pools that genuinely cannot function under an
+// allowlist. Default OFF. When true, skip-permissions is restored and a loud
+// warning is logged on every spawn.
+const ZAI_DANGEROUS = process.env.ZAI_DANGEROUS === 'true';
+
+/**
+ * Constant-time bearer-token check. Guards unequal lengths first because
+ * crypto.timingSafeEqual throws on length mismatch.
+ */
+function checkAuth(req) {
+  if (!ZAI_WRAPPER_TOKEN) {
+    return false; // fail closed: no token configured
+  }
+  const header = req.headers.authorization || '';
+  const presented = header.startsWith('Bearer ')
+    ? header.slice('Bearer '.length).trim()
+    : header.trim();
+  if (!presented) {
+    return false;
+  }
+  const a = Buffer.from(presented, 'utf8');
+  const b = Buffer.from(ZAI_WRAPPER_TOKEN, 'utf8');
+  if (a.length !== b.length) {
+    return false;
+  }
+  return crypto.timingSafeEqual(a, b);
+}
 
 // Configuration loading from file or environment
 const ZAI_CONFIG_DIR = process.env.ZAI_CONFIG_DIR || '/home/zai-user/.config/zai';
@@ -37,6 +75,17 @@ const ZAI_BASE_URL = config.baseUrl || 'https://api.z.ai/api/anthropic';
 const ZAI_API_KEY = config.apiKey;
 
 app.use(bodyParser.json({ limit: '10mb' }));
+
+// R-004: enforce bearer auth on every request before any handler runs.
+app.use((req, res, next) => {
+    if (!checkAuth(req)) {
+        return res.status(401).json({
+            success: false,
+            error: 'Unauthorized: valid Bearer token required (ZAI_WRAPPER_TOKEN / MANAGEMENT_API_KEY)'
+        });
+    }
+    next();
+});
 
 // Worker pool implementation
 class ClaudeWorkerPool {
@@ -89,11 +138,20 @@ class ClaudeWorkerPool {
         const BASE_DELAY = 1000; // 1 second
 
         return new Promise((resolve, reject) => {
+            // R-004: --dangerously-skip-permissions was removed. Tool access is
+            // restricted to an explicit allowlist (ZAI_ALLOWED_TOOLS). The
+            // skip-permissions flag is only restored under the explicit
+            // ZAI_DANGEROUS=true escape hatch, with a loud warning.
+            const claudeArgs = [];
+            if (ZAI_DANGEROUS) {
+                console.warn('[ZAI][R-004][WARNING] ZAI_DANGEROUS=true — restoring --dangerously-skip-permissions. This bypasses the tool allowlist and is unsafe.');
+                claudeArgs.push('--dangerously-skip-permissions');
+            } else {
+                claudeArgs.push('--allowedTools', ZAI_ALLOWED_TOOLS);
+            }
+            claudeArgs.push('--print');
             // GLM-4.7 is default model when using Z.AI, no --model flag needed
-            const claudeProcess = spawn('claude', [
-                '--dangerously-skip-permissions',
-                '--print'
-            ], {
+            const claudeProcess = spawn('claude', claudeArgs, {
                 env: {
                     ...process.env,
                     CLAUDE_CONFIG_DIR: CLAUDE_CONFIG_DIR,
@@ -278,8 +336,14 @@ app.post('/chat', async (req, res) => {
     }
 });
 
+// R-004: bind defaults to 0.0.0.0 because Docker port publishing requires the
+// in-container listener to accept the bridge interface. It is exposed only on
+// host-loopback via the compose `127.0.0.1:` publish mapping; cross-container
+// access on the docker network is gated by the bearer token above.
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Z.AI Claude Code wrapper listening on port ${PORT}`);
     console.log(`Worker pool size: ${WORKER_POOL_SIZE}`);
     console.log(`Max queue size: ${MAX_QUEUE_SIZE}`);
+    console.log(`R-004: bearer auth ${ZAI_WRAPPER_TOKEN ? 'ENABLED' : 'MISCONFIGURED (no token — all requests rejected)'}`);
+    console.log(`R-004: tool policy ${ZAI_DANGEROUS ? 'DANGEROUS (skip-permissions)' : 'allowlist=' + ZAI_ALLOWED_TOOLS}`);
 });

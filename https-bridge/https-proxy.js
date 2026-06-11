@@ -28,6 +28,10 @@ function detectGatewayIP() {
 }
 
 const HOST_IP = process.env.HOST_IP || detectGatewayIP();
+// R-003: listen bind defaults to 0.0.0.0 because Docker port publishing requires
+// the in-container listener to accept the bridge interface. It is exposed only on
+// host-loopback via the compose `127.0.0.1:` publish mapping.
+const HTTPS_HOST = process.env.HTTPS_BRIDGE_HOST || '0.0.0.0';
 const HTTPS_PORT = parseInt(process.env.HTTPS_PORT || '3001', 10);
 const TARGET_PORT = parseInt(process.env.TARGET_PORT || '3001', 10);
 const CERT_DIR = process.env.CERT_DIR || __dirname;
@@ -255,7 +259,7 @@ server.on('error', (err) => {
   console.error('Server error:', err);
 });
 
-server.listen(HTTPS_PORT, '0.0.0.0', () => {
+server.listen(HTTPS_PORT, HTTPS_HOST, () => {
   console.log('='.repeat(60));
   console.log('HTTPS Bridge Proxy Started');
   console.log('='.repeat(60));

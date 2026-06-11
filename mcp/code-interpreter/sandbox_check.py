@@ -3,7 +3,19 @@
 """
 sandbox_check.py — Static AST scanner for sandbox-escape patterns.
 
-ADR-018 §Package install policy / DDD-005 I12
+ADR-018 §Package install policy / DDD-005 I12 / SEC-002 / R-044 (partial)
+
+DEFENSE IN DEPTH — NOT THE ISOLATION BOUNDARY.
+    This static AST pre-check is one layer of defense in depth. It is a
+    best-effort tripwire for obvious escape patterns; a determined adversary
+    can defeat any purely static scanner through dynamic construction. The
+    REAL, authoritative isolation boundary is the CONTAINER RUNTIME that
+    executes the kernel. This check exists to fail fast on careless or
+    accidental misuse, not to contain a motivated attacker.
+
+    The full migration to a syscall-level sandbox (gVisor) / capability-bound
+    WASI runtime is tracked in a separate ADR (authored elsewhere) and is
+    explicitly OUT OF SCOPE for this file. Do not add gVisor/WASI logic here.
 
 Usage:
     python3 sandbox_check.py <source_file.py>
@@ -16,15 +28,21 @@ Exit 2:  argument or parse error; writes JSON to stdout.
 Banned APIs (v1 defaults, overridable via SANDBOX_BANNED_APIS env var,
 comma-separated):
     subprocess, os.fork, os.exec, os.execv, os.execve, os.execvp,
-    os.execvpe, os.system, socket, ctypes, cffi, multiprocessing,
-    importlib.import_module (flagged as WARNING if target is banned)
+    os.execvpe, os.system, socket, ctypes, cffi, multiprocessing.
 
-Network modules (requests, urllib) are FLAGGED (outcome: "flagged_network")
-but do not cause a non-zero exit unless SANDBOX_STRICT_NETWORK=1.
+R-044: import/attribute indirection used to defeat name-based scanning is now
+a hard ERROR (exit 1), not a warning:
+    getattr, __import__, importlib, importlib.import_module,
+    eval, exec, compile, and any manipulation of sys.modules.
+
+Network modules (requests, urllib) are FLAGGED (outcome: "flagged_network").
+SEC-002: SANDBOX_STRICT_NETWORK now defaults to 1, so network imports FAIL the
+check by default. Set SANDBOX_STRICT_NETWORK=0 to downgrade them to warnings.
 
 Configurable via environment:
     SANDBOX_BANNED_APIS       Comma-separated additional banned names
-    SANDBOX_STRICT_NETWORK    "1" to fail on network module imports (default 0)
+    SANDBOX_STRICT_NETWORK    "0" to downgrade network imports to warnings
+                              (default 1 — network imports fail the check)
 """
 
 from __future__ import annotations
@@ -51,6 +69,9 @@ _DEFAULT_BANNED: set[str] = {
     "ctypes",
     "cffi",
     "multiprocessing",
+    # R-044: indirection / dynamic-execution primitives — hard ERRORS, not
+    # warnings. These are the standard tools used to defeat name-based static
+    # scanning, so they must fail the check outright.
     "eval",
     "exec",
     "__import__",
@@ -58,6 +79,8 @@ _DEFAULT_BANNED: set[str] = {
     "compile",
     "importlib",
     "importlib.import_module",
+    # sys.modules manipulation can swap in / out modules to bypass the scan.
+    "sys.modules",
 }
 
 _DEFAULT_FLAGGED_NETWORK: set[str] = {
@@ -74,7 +97,8 @@ _extra_banned = os.environ.get("SANDBOX_BANNED_APIS", "")
 BANNED: set[str] = _DEFAULT_BANNED | {
     x.strip() for x in _extra_banned.split(",") if x.strip()
 }
-STRICT_NETWORK: bool = os.environ.get("SANDBOX_STRICT_NETWORK", "0") == "1"
+# SEC-002: network imports fail the check by default. Set =0 to downgrade.
+STRICT_NETWORK: bool = os.environ.get("SANDBOX_STRICT_NETWORK", "1") == "1"
 
 
 # ---------------------------------------------------------------------------
@@ -126,6 +150,26 @@ class _BannedFinder(ast.NodeVisitor):
             full = ".".join(parts)
             self._check_name(full, node.lineno)
             # Check sub-paths too
+            for i in range(1, len(parts)):
+                self._check_name(".".join(parts[:i]), node.lineno)
+        self.generic_visit(node)
+
+    def visit_Attribute(self, node: ast.Attribute) -> None:  # noqa: N802
+        # R-044: catch attribute access that is NOT a call, e.g.
+        # `sys.modules['os']`, `del sys.modules[k]`, or `x = importlib.util`.
+        # The call-walker above only fires on Call nodes, so subscript/assign
+        # uses of banned attribute chains would otherwise slip through.
+        parts: list[str] = []
+        obj: ast.expr = node
+        while isinstance(obj, ast.Attribute):
+            parts.append(obj.attr)
+            obj = obj.value
+        if isinstance(obj, ast.Name):
+            parts.append(obj.id)
+        parts.reverse()
+        if parts:
+            full = ".".join(parts)
+            self._check_name(full, node.lineno)
             for i in range(1, len(parts)):
                 self._check_name(".".join(parts[:i]), node.lineno)
         self.generic_visit(node)

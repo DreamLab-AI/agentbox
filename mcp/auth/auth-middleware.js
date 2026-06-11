@@ -9,7 +9,8 @@ class AuthMiddleware {
     
     // Configuration
     this.config = {
-      authEnabled: process.env.WS_AUTH_ENABLED === 'true',
+      // R-003: default-ON. Auth is only disabled if explicitly set to 'false'.
+      authEnabled: process.env.WS_AUTH_ENABLED !== 'false',
       authToken: process.env.WS_AUTH_TOKEN,
       maxConnections: parseInt(process.env.WS_MAX_CONNECTIONS || '100'),
       connectionTimeout: parseInt(process.env.WS_CONNECTION_TIMEOUT || '300000'),
@@ -30,15 +31,42 @@ class AuthMiddleware {
    */
   validateToken(token) {
     if (!this.config.authEnabled) {
-      return true; // Auth disabled, allow all
+      return true; // Auth explicitly disabled (WS_AUTH_ENABLED=false), allow all
+    }
+
+    // R-003: FAIL CLOSED. Auth is enabled but no token is configured — deny
+    // everything rather than allowing all. Misconfiguration must never open
+    // the gate.
+    if (!this.config.authToken) {
+      return false;
     }
 
     if (!token) {
       return false;
     }
 
-    // Simple token validation for now - enhance with JWT in production
-    return token === this.config.authToken;
+    // R-003: constant-time comparison to avoid token-length/byte timing leaks.
+    return AuthMiddleware.safeTokenEqual(token, this.config.authToken);
+  }
+
+  /**
+   * Constant-time token comparison.
+   * Guards unequal lengths first (timingSafeEqual throws on length mismatch),
+   * then compares equal-length Buffers via crypto.timingSafeEqual.
+   * @param {string} a
+   * @param {string} b
+   * @returns {boolean}
+   */
+  static safeTokenEqual(a, b) {
+    if (typeof a !== 'string' || typeof b !== 'string') {
+      return false;
+    }
+    const bufA = Buffer.from(a, 'utf8');
+    const bufB = Buffer.from(b, 'utf8');
+    if (bufA.length !== bufB.length) {
+      return false;
+    }
+    return crypto.timingSafeEqual(bufA, bufB);
   }
 
   /**

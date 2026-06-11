@@ -6,10 +6,16 @@
 
 const WebSocket = require('ws');
 const { spawn } = require('child_process');
-const AuthMiddleware = require('./auth-middleware');
+// R-003: honour the canonical default-ON auth gate (mcp/auth/auth-middleware.js,
+// task 1). This bridges to the claude-flow MCP process, so the gate MUST apply.
+const AuthMiddleware = require('../auth/auth-middleware');
 
 const PORT = process.env.MCP_BRIDGE_PORT || 3002;
-const HOST = '0.0.0.0'; // Listen on all network interfaces
+// R-003: bind defaults to 0.0.0.0 because Docker port publishing requires the
+// in-container listener to accept the bridge interface. It is exposed only on
+// host-loopback via the compose `127.0.0.1:` publish mapping; cross-container
+// access on the docker network is gated by the auth-middleware token gate.
+const HOST = process.env.MCP_BRIDGE_HOST || '0.0.0.0';
 const MAX_CONNECTIONS = parseInt(process.env.WS_MAX_CONNECTIONS || '100');
 
 // Initialize authentication middleware

@@ -15,6 +15,10 @@ const { spawn } = require('child_process');
 const readline = require('readline');
 
 const TCP_PORT = parseInt(process.env.CLAUDE_FLOW_TCP_PORT || '9502');
+// R-003: bind defaults to 0.0.0.0 because Docker port publishing requires the
+// in-container listener to accept the bridge interface. It is exposed only on
+// host-loopback via the compose `127.0.0.1:` publish mapping.
+const TCP_HOST = process.env.CLAUDE_FLOW_TCP_HOST || '0.0.0.0';
 const MAX_SESSIONS = parseInt(process.env.CLAUDE_FLOW_MAX_SESSIONS || '10');
 
 class ClaudeFlowTCPProxy {
@@ -34,7 +38,7 @@ class ClaudeFlowTCPProxy {
       this.handleNewConnection(socket, sessionId);
     });
 
-    this.server.listen(TCP_PORT, '0.0.0.0', () => {
+    this.server.listen(TCP_PORT, TCP_HOST, () => {
       this.log('info', `Claude-Flow TCP Proxy listening on port ${TCP_PORT}`);
       this.log('info', `Max concurrent sessions: ${MAX_SESSIONS}`);
     });

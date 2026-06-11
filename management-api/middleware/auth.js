@@ -13,6 +13,8 @@
 // Attempt to load the Nostr bridge for full Schnorr verification.
 // Soft-require: if nostr-tools is not installed, nostrBridge is null and the
 // structural fallback below is used instead.
+const crypto = require('crypto');
+
 let nostrBridge = null;
 try {
   const { NostrBridge } = require('../../mcp/servers/nostr-bridge');
@@ -69,7 +71,19 @@ function verifyBearerHeader(header, validToken) {
   }
 
   const token = header.slice('Bearer '.length).trim();
-  if (!token || token !== validToken) {
+  // Fail closed when no valid token is configured on the server side.
+  if (!token || !validToken) {
+    return null;
+  }
+
+  // R-003: constant-time comparison. Guard unequal lengths first because
+  // crypto.timingSafeEqual throws on mismatched buffer lengths.
+  const tokenBuf = Buffer.from(token, 'utf8');
+  const validBuf = Buffer.from(validToken, 'utf8');
+  if (tokenBuf.length !== validBuf.length) {
+    return null;
+  }
+  if (!crypto.timingSafeEqual(tokenBuf, validBuf)) {
     return null;
   }
 

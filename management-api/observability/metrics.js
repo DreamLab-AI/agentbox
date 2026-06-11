@@ -47,6 +47,52 @@ const buildInfo = new promClient.Gauge({
   registers: [register]
 });
 
+// ---------------------------------------------------------------------------
+// R-011: HTTP request instrumentation, migrated here from utils/metrics.js so
+// that exactly one Prometheus registry and one collectDefaultMetrics() call
+// exist. utils/metrics.js is now a thin re-export of this module.
+// ---------------------------------------------------------------------------
+
+// Histogram: HTTP request duration (seconds)
+const httpRequestDuration = new promClient.Histogram({
+  name: 'http_request_duration_seconds',
+  help: 'Duration of HTTP requests in seconds',
+  labelNames: ['method', 'route', 'status_code'],
+  buckets: [0.001, 0.005, 0.015, 0.05, 0.1, 0.5, 1, 5],
+  registers: [register]
+});
+
+// Counter: total HTTP requests
+const httpRequestsTotal = new promClient.Counter({
+  name: 'http_requests_total',
+  help: 'Total number of HTTP requests',
+  labelNames: ['method', 'route', 'status_code'],
+  registers: [register]
+});
+
+// Counter: API errors
+const apiErrors = new promClient.Counter({
+  name: 'api_errors_total',
+  help: 'Total number of API errors',
+  labelNames: ['error_type', 'route'],
+  registers: [register]
+});
+
+/**
+ * Record an HTTP request (duration in seconds).
+ */
+function recordHttpRequest(method, route, statusCode, duration) {
+  httpRequestDuration.observe({ method, route, status_code: statusCode }, duration);
+  httpRequestsTotal.inc({ method, route, status_code: statusCode });
+}
+
+/**
+ * Record an API error.
+ */
+function recordError(errorType, route) {
+  apiErrors.inc({ error_type: errorType, route });
+}
+
 /**
  * Set build info gauge with environment values
  */
@@ -163,9 +209,15 @@ module.exports = {
   setBuildInfo,
   wrapDispatch,
   setAdapterHealth,
+  // R-011: HTTP instrumentation (migrated from utils/metrics.js)
+  recordHttpRequest,
+  recordError,
   // Getters for direct access if needed
   adapterDispatchTotal,
   adapterDurationSeconds,
   adapterHealth,
-  buildInfo
+  buildInfo,
+  httpRequestDuration,
+  httpRequestsTotal,
+  apiErrors
 };
