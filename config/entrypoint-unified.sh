@@ -578,6 +578,31 @@ MCPEOF
   fi
 fi
 
+# ── Live Nostr session mirror: register the hook in settings.json ──
+# Replaces the retired Telegram/CTM mirror. Idempotently registers
+# config/hooks/nostr-live-mirror.cjs on the conversation hook events so a fresh
+# container auto-wires the mobile mirror (instead of relying on a persisted
+# ~/.claude). Silent no-op at runtime unless a recipient pubkey is configured.
+_CLAUDE_SETTINGS="${CLAUDE_CONFIG_DIR:-/home/devuser/.claude}/settings.json"
+_MIRROR_HOOK="/opt/agentbox/config/hooks/nostr-live-mirror.cjs"
+if [ -f "$_MIRROR_HOOK" ] && command -v node >/dev/null 2>&1; then
+  mkdir -p "$(dirname "$_CLAUDE_SETTINGS")" 2>/dev/null || true
+  MIRROR_HOOK="$_MIRROR_HOOK" SETTINGS="$_CLAUDE_SETTINGS" node <<'MIRRORJS' || true
+const fs = require('fs');
+const f = process.env.SETTINGS, cmd = `node ${process.env.MIRROR_HOOK}`;
+let s = {}; try { s = JSON.parse(fs.readFileSync(f, 'utf8')); } catch {}
+s.hooks = s.hooks || {};
+let changed = false;
+for (const evt of ['SessionStart', 'UserPromptSubmit', 'Stop', 'SessionEnd']) {
+  s.hooks[evt] = s.hooks[evt] || [];
+  const has = s.hooks[evt].some((g) => (g.hooks || []).some((h) => String(h.command || '').includes('nostr-live-mirror.cjs')));
+  if (!has) { s.hooks[evt].push({ hooks: [{ type: 'command', command: `${cmd} || true`, timeout: 8000 }] }); changed = true; }
+}
+if (changed) { fs.writeFileSync(f, JSON.stringify(s, null, 2)); console.log('  [mirror] registered nostr-live-mirror hooks in settings.json'); }
+else { console.log('  [mirror] nostr-live-mirror hooks already registered'); }
+MIRRORJS
+fi
+
 # ── Browser sidecar MCP: register browsercontainer if reachable ──
 # The browsercontainer runs Chrome Beta 149+ with chrome-devtools-mcp over SSE.
 # Only add if the sidecar is on the network and .mcp.json exists to patch.

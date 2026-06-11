@@ -202,6 +202,52 @@ The summary content is **not encrypted** in Phase 1 — it is intended to be
 operator-readable in any client, and the embedded relay is whitelist-gated. If
 session text becomes sensitive, it can be wrapped in NIP-44 later.
 
+## Live session mirror
+
+The `kind-30840` summary is the *end-of-session* record. Its live-chat
+complement is the **live session mirror**
+(`config/hooks/nostr-live-mirror.cjs`): a set of Claude Code hooks that mirror
+the running task chat to your phone turn-by-turn, so you can watch a session as
+it happens rather than reading one digest at the end.
+
+Each turn is sent as a **NIP-59 gift-wrapped DM** (a `kind-14` rumor sealed in a
+`kind-1059` wrap) addressed to the operator pubkey — exactly the envelope
+Amethyst already shows as a private message:
+
+| Hook event        | Mirrored line                                  |
+|-------------------|------------------------------------------------|
+| `SessionStart`    | `▶ session <id> started (<source>)`            |
+| `UserPromptSubmit`| `🧑 [<id>] <your prompt>`                        |
+| `Stop`            | `🤖 [<id>] <last assistant message>`            |
+| `SessionEnd`      | `■ session <id> ended (<reason>)`              |
+
+Properties that distinguish it from the digest:
+
+- **End-to-end encrypted, no LLM hop.** Unlike the digest path (which sends the
+  transcript to Z.AI for summarisation), the live mirror seals the raw turn text
+  straight to your pubkey with NIP-59. The only network egress is the encrypted
+  gift wrap.
+- **Cloud relay, exclusively.** It publishes *only* to the cloud relay
+  (`wss://dreamlab-nostr-relay.solitary-paper-764d.workers.dev`) and never reads
+  the `NOSTR_RELAYS` fan-out list, so mirror traffic never reaches public relays
+  like `relay.damus.io`. Override the target only for testing via
+  `NOSTR_MIRROR_RELAY`.
+- **No whitelist needed.** A `kind-1059` gift wrap is admitted by the relay iff
+  its first `["p"]` recipient is whitelisted; the operator pubkey already is, and
+  `nip59.wrapEvent` stamps an ephemeral author — so the mirror carries no relay
+  identity of its own.
+- **Fail-open, non-blocking.** Each hook exits 0 within a ~6 s budget and
+  swallows every error; a slow or unreachable relay never stalls the session.
+
+Gating: the mirror is a silent no-op unless an operator recipient pubkey is in
+the environment (`AGENTBOX_PUBKEY`, or `AGENTBOX_BRIDGE_RECIPIENT_PUBKEY` /
+`AGENTBOX_ADMIN_PUBKEY` / `AGENTBOX_MIRROR_RECIPIENT_PUBKEY`). Set
+`AGENTBOX_LIVE_MIRROR=0` to disable it explicitly even when a recipient is
+configured. The inner DM sender is the operator key
+(`AGENTBOX_PRIVKEY_HEX` / `AGENTBOX_BRIDGE_SK`) when present, else a throwaway
+key. Register/unregister the hooks in `~/.claude/settings.json` under the
+`SessionStart`, `UserPromptSubmit`, `Stop`, and `SessionEnd` events.
+
 ## Permission model
 
 An inbound message reaches an agent only if, **after** its Schnorr signature is
