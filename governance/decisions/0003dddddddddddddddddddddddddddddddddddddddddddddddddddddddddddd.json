@@ -1,4 +1,6 @@
 {
+  "_fixture": true,
+  "_comment": "TEST FIXTURE — not a real governance decision. The event_id, decided_by, and scope pubkeys are placeholder digests (all-d / all-a), NOT real content-addressed hashes. Governance decisions are content-addressed by their event_id; this record's id is a stub. Retained as a sample/fixture only — do not treat as an authoritative decision and do not let it into the content-addressed decision set.",
   "type": "governance_decision",
   "event_id": "0003dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
   "case_id": "case-governance-test-001",

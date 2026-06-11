@@ -1,4 +1,5 @@
 {
+  "_role": "GENERATED/DOC-FACING capability summary — NOT the live MCP server registry. The authoritative server registry is mcp/mcp.json. This file is a flat capability catalogue (categories + aliases) referenced only by mcp/config/SYSTEM_TOOLS.md. Its companion .tools-manifest.lock was driven by a 'claude-md-watcher' that no longer exists in the tree, so re-patching is currently inert. Treat as historical/doc reference; do not wire runtime MCP servers from here.",
   "version": "1.0.0",
   "lastUpdated": "2025-01-30",
   "categories": {

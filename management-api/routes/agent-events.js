@@ -12,7 +12,6 @@
 const { agentEventPublisher, AgentActionType } = require('../utils/agent-event-publisher');
 const { verifyAgentEventRequest, reconcileSourceUrn } = require('../lib/agent-event-auth');
 const { processHookEvent, getRegistryStats } = require('../hooks/agent-action-hooks');
-const { initializeAgentEventBridge, getAgentEventBridge } = require('../utils/agent-event-bridge');
 const { initializeAgentEventWsSubscriber, getAgentEventWsSubscriber } = require('../utils/agent-event-ws-subscriber');
 
 async function agentEventsRoutes(fastify, options) {
@@ -486,38 +485,25 @@ async function agentEventsRoutes(fastify, options) {
       }
     }
   }, async (request, reply) => {
-    const bridge = getAgentEventBridge();
-    const bridgeStatus = bridge ? bridge.getStatus() : { connected: false };
+    const sub = getAgentEventWsSubscriber();
+    const wsStatus = sub ? sub.status() : { connected: false };
 
     reply.send({
       connected_clients: wsConnections.size,
       buffer_size: agentEventPublisher.eventBuffer.length,
       total_events_emitted: agentEventPublisher.nextEventId - 1,
-      mcp_bridge: bridgeStatus,
+      ws_subscriber: wsStatus,
       registry: getRegistryStats(),
       timestamp: new Date().toISOString()
     });
   });
 
-  // Initialize MCP TCP bridge on route registration
+  // ADR-014 / ADR-059 Phase 2 — the bidirectional WebSocket subscriber is now
+  // the sole agent-event transport. The legacy MCP-TCP outbound bridge
+  // (agent-event-bridge.js) is retired from the route; it is retained in the
+  // tree only as the ADR-059 canonical-envelope conformance fixture referenced
+  // by tests/sovereign/agent-event-notification.test.js.
   fastify.addHook('onReady', async () => {
-    // Legacy outbound TCP bridge (deprecated by ADR-014). Disabled by
-    // default; ADR-014 Phase 2 cuts over to the WS subscriber. Keep
-    // the path alive only when explicitly opted in.
-    try {
-      if (process.env.ENABLE_MCP_BRIDGE === 'true') {
-        await initializeAgentEventBridge({
-          logger,
-          tcpHost: process.env.MCP_TCP_HOST || 'localhost',
-          tcpPort: parseInt(process.env.MCP_TCP_PORT || '9500')
-        });
-        logger.info('Agent event bridge connected to MCP TCP (legacy path)');
-      }
-    } catch (err) {
-      logger.warn(`Agent event bridge connection deferred: ${err.message}`);
-    }
-
-    // ADR-014 / ADR-059 — bidirectional WebSocket subscriber.
     // No-op when AGENTBOX_HOST_WS_URL is absent.
     try {
       await initializeAgentEventWsSubscriber({ logger });

@@ -1,5 +1,9 @@
-# Lock file to track manifest version
-# Used by claude-md-watcher to detect when re-patching is needed
+# ROLE: RESOLVED-STATE lock for tools-manifest.json (the doc-facing capability
+# summary, NOT the live MCP server registry — that is mcp/mcp.json).
+# This was driven by a 'claude-md-watcher' that no longer exists anywhere in the
+# repo, so re-patching is inert (LAST_APPLIED=0, empty CHECKSUM = never applied).
+# Retained alongside tools-manifest.json as historical context. Canonical MCP
+# server wiring lives in mcp/mcp.json.
 VERSION=1.0.0
 LAST_APPLIED=0
 CHECKSUM=
