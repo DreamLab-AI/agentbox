@@ -442,14 +442,12 @@
         # (which crash-loops the container on first start).
         # sovereign-bootstrap.py imports ecdsa directly; provision-agent-stacks.py
         # imports yaml, requests, etc. — all must resolve via this interpreter.
-        # Sudo built without PAM. The default `pkgs.sudo` links libpam and
-        # tries to initialize a PAM session at every invocation, which
-        # fails inside the agentbox container with "unable to initialize
-        # PAM: Critical error - immediate abort" because no PAM modules
-        # are installed (the rootfs is read-only and image bake doesn't
-        # carry pam_unix.so + friends). NOPASSWD in /etc/sudoers.d/devuser
-        # is the only auth path used; PAM is dead weight.
-        sudoNoPam = pkgs.sudo.override { pam = null; };
+        # R-005/SEC-001/ADR-027: the setuid sudo wrapper has been removed.
+        # With no-new-privileges:true (always emitted) the kernel ignores the
+        # setuid bit, and SETUID/SETGID are no longer in the capability
+        # baseline — so a runtime sudo could never elevate. All privileged
+        # setup happens in the root boot phase before the drop to devuser;
+        # there is no runtime escalation path. `sudoNoPam` is intentionally gone.
 
         pythonRuntimeEnv = pkgs.python312.withPackages (ps: with ps; [
           pip
@@ -2185,18 +2183,11 @@ ${ragflowNetworkDecl}
           # Home directory for devuser bind mounts (e.g. /home/devuser/.claude)
           mkdir -p /home/devuser 2>/dev/null || true
 
-          # Setuid sudo wrapper. The Nix-store sudo binary is mode 555 and
-          # cannot elevate; copy it to the tmpfs-backed /usr/local/bin (which
-          # the baseline tmpfs mount declares as exec+suid) and set the setuid
-          # bit. PATH puts /usr/local/bin first so this wrapper shadows the
-          # Nix-store sudo for devuser's interactive shells.
-          if [ -d /usr/local/bin ] && [ ! -u /usr/local/bin/sudo ] 2>/dev/null; then
-            if cp -L ${sudoNoPam}/bin/sudo /usr/local/bin/sudo 2>/dev/null; then
-              chown 0:0 /usr/local/bin/sudo 2>/dev/null || true
-              chmod 4755 /usr/local/bin/sudo 2>/dev/null || true
-              echo "[entrypoint] Provisioned setuid sudo wrapper at /usr/local/bin/sudo"
-            fi
-          fi
+          # R-005/SEC-001/ADR-027: setuid sudo wrapper provisioning removed.
+          # no-new-privileges:true neuters setuid and SETUID/SETGID are not in
+          # the cap baseline, so this wrapper could never elevate — it was dead
+          # weight that contradicted the documented no-runtime-escalation model.
+          # Root-needing setup runs in the root boot phase before the devuser drop.
 
           # Pre-generate HTTPS bridge self-signed cert if missing. The
           # tmpfs at /var/lib/https-bridge is uid-1000-owned (baselineTmpfsMounts);

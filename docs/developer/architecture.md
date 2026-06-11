@@ -217,7 +217,9 @@ Generated compose emits:
 ```yaml
 user: "1000:1000"
 read_only: true
-cap_drop: [ALL]            # SETUID/SETGID deliberately NOT re-added (ADR-027 D3)
+cap_drop: [ALL]            # baseline; cap_add re-adds CHOWN, SETUID, SETGID, ...
+# SETUID/SETGID are required for supervisord's root-PID1→devuser privilege DROP
+# (ADR-027 D3 amendment); no-new-privileges:true blocks privilege GAIN. No setuid binary ships.
 tmpfs:
   - /tmp:mode=1777,size=256M
   - /run:mode=755,size=64M

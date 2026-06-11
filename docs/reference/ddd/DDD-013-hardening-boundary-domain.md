@@ -44,7 +44,7 @@ The Hardening Boundary domain ensures that agentbox's *enforced* posture matches
 | **Host-Loopback Publish** | A compose port binding of the form `127.0.0.1:<p>:<p>` — reachable only from the host's loopback interface, not the host's network interfaces. |
 | **Process-Loopback** | A service binding `127.0.0.1` *inside* the container. Rejected as the publication model because it breaks cross-container dispatch. |
 | **Auth-Default-On** | Authentication that is enabled unless explicitly disabled, and that fails closed when enabled with no token. |
-| **Runtime Escalation Path** | Any mechanism by which a post-boot process can re-acquire privilege it was supposed to drop (setuid sudo, `SETUID`/`SETGID` caps, a privileged helper). |
+| **Runtime Escalation Path** | Any mechanism by which a post-boot process can re-acquire privilege it was supposed to drop (a setuid binary, a privileged helper). Note: `SETUID`/`SETGID` in `cap_add` are NOT an escalation path — they are held by root PID 1 to *drop* children to devuser; with `no-new-privileges:true` and no setuid binary, devuser cannot use them to gain privilege. |
 | **Secret Materialisation** | The form a secret takes at runtime. A tmpfs file (`0400`, owner-scoped) is the narrow form; a process env var is the leaky form. |
 | **Posture Overclaim** | Documentation that asserts a stronger guarantee than the code enforces (e.g. calling a supplemental denylist a "tightened profile"). |
 
