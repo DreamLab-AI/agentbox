@@ -1,10 +1,11 @@
 'use strict';
 /**
- * memory-tools.js — single-source memory tool logic shared by the two agentbox
- * MCP servers (ruvector-mcp.cjs and mcp-server.js).
+ * memory-tools.js — single-source memory tool logic for the agentbox MCP
+ * memory server (ruvector-mcp.cjs). The legacy ESM mcp-server.js consumer
+ * has been removed.
  *
- * This is a CommonJS module by design: ruvector-mcp.cjs requires it directly,
- * and the ESM mcp-server.js consumes it via createRequire(). Keep it CommonJS.
+ * This is a CommonJS module by design: ruvector-mcp.cjs requires it
+ * directly. Keep it CommonJS.
  *
  * `createMemoryTools({ backend })` returns an object with four async methods:
  *   memStore(key, value, namespace)

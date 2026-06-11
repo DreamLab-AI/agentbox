@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 /**
  * DeepSeek Special Model Client
- * Executes as deepseek-user, calls special endpoint
- *
- * Must run as deepseek-user (UID 1004) for credential access
+ * Runs as the current user; reads credentials from
+ * $HOME/.config/deepseek/config.json.
  */
 
 const https = require('https');

@@ -3,7 +3,7 @@ name: deepseek-reasoning
 description: >
   DeepSeek reasoning bridge. Use when the user says "ask deepseek", "consult with
   deepseek", "delegate reasoning to deepseek", or needs advanced multi-step reasoning.
-  Bridges devuser to deepseek-user via MCP for complex problem-solving with structured
+  Invokes DeepSeek via MCP for complex problem-solving with structured
   Chain-of-Thought outputs.
 version: 1.0.0
 author: agentbox-claude
@@ -16,13 +16,12 @@ dependencies:
 
 # DeepSeek Reasoning Skill
 
-Access DeepSeek's special reasoning model endpoint directly from Claude Code with MCP bridge to isolated deepseek-user.
+Access DeepSeek's special reasoning model endpoint directly from Claude Code via an MCP bridge.
 
 ## Overview
 
 This skill provides:
 - **Advanced reasoning** via DeepSeek special model endpoint
-- **User isolation** - Bridges devuser (Claude Code) to deepseek-user
 - **Structured outputs** with reasoning traces
 - **Multi-step problem solving** for complex queries
 - **Hybrid AI workflow** - Claude as executor, DeepSeek as reasoning planner
@@ -41,7 +40,7 @@ This skill provides:
 Claude Code (devuser)
     ↓ MCP Protocol
 DeepSeek MCP Server
-    ↓ User bridge (sudo -u deepseek-user)
+    ↓ node tools/deepseek_client.js (direct spawn, current user)
 DeepSeek API Client
     ↓ HTTPS
 api.deepseek.com/v1
@@ -85,7 +84,7 @@ deepseek_plan --goal "Implement distributed cache" \
 
 ## Configuration
 
-API credentials configured via deepseek-user environment:
+API credentials are configured in the running user's config file:
 
 ```bash
 DEEPSEEK_API_KEY=sk-[your deepseek api key]
@@ -93,7 +92,7 @@ DEEPSEEK_SPECIAL_ENDPOINT=https://api.deepseek.com/v1
 DEEPSEEK_MODEL=deepseek-chat  # Verify current model name at https://platform.deepseek.com/docs — model IDs change with API versions.
 ```
 
-Set in `/home/deepseek-user/.config/deepseek/config.json`
+Set in `$HOME/.config/deepseek/config.json` (typically `/home/devuser/.config/deepseek/config.json`)
 
 ## Special Model Features
 
@@ -214,14 +213,14 @@ Claude Execution:
 }
 ```
 
-## User Isolation
+## Security
 
-**Security:** DeepSeek credentials isolated to deepseek-user (UID 1004)
+**Credential protection:** DeepSeek credentials are protected by standard per-user file permissions.
 
-- MCP server runs as `devuser`
-- API calls execute as `deepseek-user` via sudo bridge
-- Credentials never exposed to devuser environment
-- Separate workspace: `/home/deepseek-user/workspace`
+- MCP server and API client both run as `devuser`
+- `deepseek_client.js` is spawned directly (no sudo bridge, no separate user)
+- Credentials stored in `$HOME/.config/deepseek/config.json` with mode `0600`
+- No other OS user or workspace separation is required
 
 ## Workflow Examples
 
@@ -310,7 +309,7 @@ Add to `supervisord.unified.conf`:
 command=/usr/local/bin/node /home/devuser/.claude/skills/deepseek-reasoning/mcp-server/server.js
 directory=/home/devuser/.claude/skills/deepseek-reasoning/mcp-server
 user=devuser
-environment=HOME="/home/devuser",DEEPSEEK_USER="deepseek-user"
+environment=HOME="/home/devuser"
 autostart=true
 autorestart=true
 priority=530
@@ -345,8 +344,8 @@ stderr_logfile=/var/log/deepseek-reasoning-mcp.error.log
 - Special endpoint requires reasoning mode (automatic in this skill)
 
 ### "Permission denied" errors
-- Check deepseek-user exists (UID 1004)
-- Verify sudo access: `devuser ALL=(deepseek-user) NOPASSWD: ALL`
+- Check `$HOME/.config/deepseek/config.json` exists and has mode `0600`
+- Confirm the file is owned by `devuser`
 
 ### Slow responses
 - Normal for reasoning model (includes thinking time)
@@ -354,7 +353,7 @@ stderr_logfile=/var/log/deepseek-reasoning-mcp.error.log
 - Use `format: quick` for faster responses
 
 ### API key errors
-- Verify config: `/home/deepseek-user/.config/deepseek/config.json`
+- Verify config: `$HOME/.config/deepseek/config.json`
 - Check API key is valid
 - Ensure special endpoint URL is correct
 

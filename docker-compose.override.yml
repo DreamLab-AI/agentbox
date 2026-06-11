@@ -42,10 +42,6 @@ services:
       # Local LLM
       - LOCAL_LLM_HOST=${LOCAL_LLM_HOST:-192.168.2.48}
       - LOCAL_LLM_PORT=${LOCAL_LLM_PORT:-8080}
-      # Telegram
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
-      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
-      - TELEGRAM_MIRROR=${TELEGRAM_MIRROR:-false}
       # Display for desktop/browser
       - DISPLAY=:1
       # Wayland compositor backend for Hyprland (stack = "hyprland-wayland").

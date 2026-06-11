@@ -1,17 +1,16 @@
 #!/usr/bin/env node
 /**
  * DeepSeek Reasoning MCP Server
- * Bridges devuser (Claude Code) to deepseek-user for special model reasoning
+ * Bridges Claude Code to the DeepSeek API via a local client subprocess.
  *
  * Architecture:
- *   Claude Code → MCP Server → deepseek-user → DeepSeek API
+ *   Claude Code → MCP Server → deepseek_client.js (current user) → DeepSeek API
  */
 
 const { spawn } = require('child_process');
 const path = require('path');
 
 const TOOL_PATH = path.join(__dirname, '../tools/deepseek_client.js');
-const DEEPSEEK_USER = process.env.DEEPSEEK_USER || 'deepseek-user';
 
 class DeepSeekReasoningMCPServer {
   constructor() {
@@ -113,19 +112,14 @@ class DeepSeekReasoningMCPServer {
     // Convert params to JSON argument
     args.push('--params', JSON.stringify(params));
 
-    return this._executeAsDeepSeekUser(args);
+    return this._executeClient(args);
   }
 
-  async _executeAsDeepSeekUser(args) {
+  async _executeClient(args) {
     return new Promise((resolve, reject) => {
-      // Execute as deepseek-user via sudo
-      const sudoArgs = [
-        '-u', DEEPSEEK_USER,
-        'node', TOOL_PATH,
-        ...args
-      ];
-
-      const proc = spawn('sudo', sudoArgs, {
+      // Execute the DeepSeek client directly as the current user. The legacy
+      // pseudo-user privilege hop (sudo -u deepseek-user) is retired.
+      const proc = spawn(process.execPath, [TOOL_PATH, ...args], {
         stdio: ['pipe', 'pipe', 'pipe']
       });
 
@@ -161,7 +155,7 @@ class DeepSeekReasoningMCPServer {
 
   async start() {
     console.error('DeepSeek Reasoning MCP Server starting...');
-    console.error(`Bridge: devuser → ${DEEPSEEK_USER} → DeepSeek API`);
+    console.error('Bridge: Claude Code → deepseek_client.js → DeepSeek API');
 
     // MCP protocol: Read JSON-RPC requests from stdin, write responses to stdout
     process.stdin.setEncoding('utf8');

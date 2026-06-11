@@ -7,7 +7,6 @@
     "ws": "^8.18.3"
   },
   "scripts": {
-    "tcp-server": "node mcp-tcp-server.js",
     "ws-server": "node mcp-ws-relay.js",
     "test-client": "node secure-client-example.js",
     "migrate-env": "node /workspace/ext/scripts/migrate-env.js"

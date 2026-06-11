@@ -1,6 +1,6 @@
 # DeepSeek Reasoning Skill
 
-MCP bridge for DeepSeek special model reasoning, connecting Claude Code (devuser) to isolated deepseek-user.
+MCP bridge for DeepSeek special model reasoning, invoked directly by Claude Code as the current user.
 
 ## Quick Start
 
@@ -20,7 +20,7 @@ docker exec <host-container> bash -c "
 
 ### 2. Configuration
 
-Already configured in `/home/deepseek-user/.config/deepseek/config.json`:
+Already configured in `$HOME/.config/deepseek/config.json` (typically `/home/devuser/.config/deepseek/config.json`):
 
 ```json
 {
@@ -43,7 +43,7 @@ Add to `/home/devuser/.config/supervisord.unified.conf`:
 command=/usr/local/bin/node /home/devuser/.claude/skills/deepseek-reasoning/mcp-server/server.js
 directory=/home/devuser/.claude/skills/deepseek-reasoning/mcp-server
 user=devuser
-environment=HOME="/home/devuser",DEEPSEEK_USER="deepseek-user"
+environment=HOME="/home/devuser"
 autostart=true
 autorestart=true
 priority=530
@@ -90,8 +90,8 @@ const plan = await deepseek_plan({
 Test individual components:
 
 ```bash
-# Test client directly as deepseek-user
-docker exec -u deepseek-user <host-container> node \
+# Test client directly
+docker exec <host-container> node \
   /home/devuser/.claude/skills/deepseek-reasoning/tools/deepseek_client.js \
   --tool deepseek_reason \
   --params '{"query":"What is 2+2?","format":"steps"}'
@@ -115,11 +115,11 @@ docker exec -i <host-container> \
 │ DeepSeek MCP Server (devuser)                   │
 │ - Receives tool call                            │
 │ - Validates parameters                          │
-│ - Bridges to deepseek-user                      │
+│ - Spawns deepseek_client.js directly            │
 └─────────────────┬───────────────────────────────┘
-                  │ sudo -u deepseek-user
+                  │ node tools/deepseek_client.js (direct spawn)
 ┌─────────────────▼───────────────────────────────┐
-│ DeepSeek Client (deepseek-user)                 │
+│ DeepSeek Client (devuser)                       │
 │ - Loads credentials from config                 │
 │ - Constructs reasoning prompt                   │
 │ - Calls special endpoint                        │
@@ -142,15 +142,14 @@ deepseek-reasoning/
 ├── mcp-server/
 │   └── server.js          # MCP protocol server (runs as devuser)
 └── tools/
-    └── deepseek_client.js # API client (runs as deepseek-user)
+    └── deepseek_client.js # API client (runs as devuser, spawned directly)
 ```
 
 ## Security
 
-- **Credentials isolated:** API key only accessible to deepseek-user
-- **User bridge:** MCP server uses sudo to execute as deepseek-user
-- **No credential exposure:** devuser never sees API key
-- **Workspace isolation:** `/home/deepseek-user/workspace` separate
+- **Credentials protected:** API key stored in `$HOME/.config/deepseek/config.json` with mode `0600`
+- **Direct spawn:** MCP server spawns `deepseek_client.js` as the current user — no sudo bridge, no separate OS user
+- **No global exposure:** config file is readable only by its owner
 
 ## Hybrid Workflow
 
@@ -189,24 +188,15 @@ docker exec <host-container> which node
 docker exec <host-container> ls -la /home/devuser/.claude/skills/deepseek-reasoning/
 ```
 
-### "sudo: deepseek-user: command not found"
-```bash
-# Verify deepseek-user exists
-docker exec <host-container> id deepseek-user
-
-# Check sudo config
-docker exec <host-container> grep deepseek-user /etc/sudoers
-```
-
 ### API errors
 ```bash
 # Test endpoint directly
-docker exec -u deepseek-user <host-container> curl \
+docker exec <host-container> curl \
   https://api.deepseek.com/v3.2_speciale_expires_on_20251215/v1/models \
-  -H "Authorization: Bearer sk-d76e012d700a4cd3983f93c056aafee0"
+  -H "Authorization: Bearer <your-api-key>"
 
 # Verify config
-docker exec <host-container> cat /home/deepseek-user/.config/deepseek/config.json
+docker exec <host-container> cat /home/devuser/.config/deepseek/config.json
 ```
 
 ## Performance

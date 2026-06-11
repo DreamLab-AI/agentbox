@@ -235,7 +235,8 @@ const TOOLS = [
       required: ['query'],
     },
   },
-  // Swarm coordination stubs (full implementations in mcp-server.js)
+  // Swarm coordination stubs (the legacy mcp-server.js that carried the full
+  // implementations was removed in the 2026-06-11 audit; these remain thin stubs)
   {
     name: 'swarm_init',
     description: 'Initialize a swarm with topology and configuration',

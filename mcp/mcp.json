@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "_role": "CANONICAL SOURCE — this is the live agentbox MCP server registry. Consumed by agentbox.toml, flake.nix, config/entrypoint-unified.sh, mcp/servers/mcp-ws-relay.js, mcp/scripts/automated-setup.sh and tests/integration/test-mcp-infra.sh. Edit MCP server wiring HERE. mcp/config/tools-manifest.json is a separate, doc-facing capability summary (NOT a server registry); mcp-full-registry.json was a legacy orphan and has been removed.",
+  "_role": "CANONICAL SOURCE — this is the live agentbox MCP server registry. Consumed by agentbox.toml, flake.nix, config/entrypoint-unified.sh, mcp/servers/mcp-ws-relay.js and tests/integration/test-mcp-infra.sh. Edit MCP server wiring HERE. mcp/config/tools-manifest.json is a separate, doc-facing capability summary (NOT a server registry); mcp-full-registry.json was a legacy orphan and has been removed.",
   "version": "2.0.0",
   "description": "MCP Server Registry for Agentbox",
   "mcpServers": {
