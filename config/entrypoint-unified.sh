@@ -595,13 +595,22 @@ else
 fi
 
 # ── Xinference embedding sidecar: wait for readiness + ensure model loaded ──
-# The ruvector-mcp.cjs server checks xinference exactly once at startup. If
-# xinference isn't ready by then, semantic search degrades to ILIKE for the
-# entire session. This gate ensures the model is loaded before any MCP server
-# process can start.
+# xinference does NOT persist launched models across its own restarts, so this
+# boot-time launch is the only thing that loads ${EMBEDDING_MODEL}. The
+# ruvector-mcp.cjs server lazily re-probes xinference (throttled, 60s) and
+# recovers mid-session, but only if the model is actually loaded — keep this
+# gate even though the bridge no longer hard-fails on a missed startup probe.
 : "${XINFERENCE_ENDPOINT:=http://xinference:9997}"
 : "${EMBEDDING_MODEL:=bge-small-en-v1.5}"
-: "${XINFERENCE_WAIT_SECS:=30}"
+# Reachability wait (was 30s — too short on a cold start where xinference itself
+# is still booting / pulling the model image). 120s covers a cold container.
+: "${XINFERENCE_WAIT_SECS:=120}"
+# Embedding-serving poll: after the model is *launched* it loads asynchronously,
+# so /v1/models can list it while /v1/embeddings still 503s. Stores landing in
+# that window got NULL pgvector embeddings (invisible to HNSW search). We now
+# poll the actual embeddings endpoint until it returns a vector before declaring
+# readiness, closing that cold-start glitch.
+: "${XINFERENCE_EMBED_WAIT_SECS:=150}"
 
 _xinference_ok=false
 echo "  [xinference] Waiting for ${XINFERENCE_ENDPOINT} (up to ${XINFERENCE_WAIT_SECS}s)..."
@@ -632,18 +641,28 @@ if [ "$_xinference_ok" = "true" ]; then
       echo "  [xinference] WARN: model launch response: $_launch_resp"
     fi
   fi
-  # Verify embeddings actually work end-to-end
-  _emb_test=$(curl -fsS --max-time 10 -X POST \
-    "${XINFERENCE_ENDPOINT}/v1/embeddings" \
-    -H 'Content-Type: application/json' \
-    -d "{\"model\":\"${EMBEDDING_MODEL}\",\"input\":\"startup probe\"}" 2>/dev/null || echo '{}')
-  if echo "$_emb_test" | grep -q '"embedding"'; then
-    _emb_dim=$(echo "$_emb_test" | python3 -c "import sys,json; print(len(json.load(sys.stdin)['data'][0]['embedding']))" 2>/dev/null || echo "?")
-    echo "  [xinference] Embedding verified (model=${EMBEDDING_MODEL}, dim=${_emb_dim})"
-    export XINFERENCE_READY=true
-  else
-    echo "  [xinference] WARN: embedding probe failed — ruvector-mcp will fall back to ILIKE"
-    export XINFERENCE_READY=false
+  # Verify embeddings actually work end-to-end — POLL until the model is
+  # serving (async load after launch), not just a single probe. This is the
+  # gate that prevents emb=NULL stores during the cold-start window.
+  echo "  [xinference] Polling embeddings endpoint (up to ${XINFERENCE_EMBED_WAIT_SECS}s for async model load)..."
+  export XINFERENCE_READY=false
+  _ewait=0
+  while [ "$_ewait" -lt "$XINFERENCE_EMBED_WAIT_SECS" ]; do
+    _emb_test=$(curl -fsS --max-time 10 -X POST \
+      "${XINFERENCE_ENDPOINT}/v1/embeddings" \
+      -H 'Content-Type: application/json' \
+      -d "{\"model\":\"${EMBEDDING_MODEL}\",\"input\":\"startup probe\"}" 2>/dev/null || echo '{}')
+    if echo "$_emb_test" | grep -q '"embedding"'; then
+      _emb_dim=$(echo "$_emb_test" | python3 -c "import sys,json; print(len(json.load(sys.stdin)['data'][0]['embedding']))" 2>/dev/null || echo "?")
+      echo "  [xinference] Embedding verified after ${_ewait}s (model=${EMBEDDING_MODEL}, dim=${_emb_dim})"
+      export XINFERENCE_READY=true
+      break
+    fi
+    sleep 5
+    _ewait=$((_ewait + 5))
+  done
+  if [ "$XINFERENCE_READY" != "true" ]; then
+    echo "  [xinference] WARN: embeddings not serving after ${XINFERENCE_EMBED_WAIT_SECS}s — ruvector-mcp will fall back to ILIKE and re-probe (60s) mid-session"
   fi
 else
   echo "  [xinference] WARN: not reachable after ${XINFERENCE_WAIT_SECS}s — semantic search will be degraded"
