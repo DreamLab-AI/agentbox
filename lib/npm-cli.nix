@@ -67,6 +67,22 @@
 #   4. Renovate custom-manager in renovate.json detects the version bump
 #      automatically.
 
+# R-002/BLD-001 (deferred remainder):
+#   The `pg` runtime install handled at boot via `npm install pg` is now
+#   eliminated WITHOUT a new makeNpmCli pin — pg is already a baked dependency
+#   of the management-api derivation (npmDepsHash-pinned), and flake.nix exports
+#   AGENTBOX_PG_NODE_PATH=/opt/agentbox/management-api/node_modules so the
+#   entrypoint sets NODE_PATH instead of installing. No SRI hash work needed.
+#
+#   TODO (R-002): migrate the remaining `npx -y <pkg>@latest` invocations
+#   (notably chrome-devtools-mcp and the playwright CLI) onto makeNpmCli pins
+#   with real SRI hashes. Deferred here because resolving those hashes requires
+#   network (nix-prefetch-url against registry.npmjs.org / the node_modules
+#   FOD), which is not available in the refactor sandbox. Run
+#   ./scripts/prefetch-hashes.sh --cli on a networked build host to realise the
+#   hashes, then add makeNpmCli call sites in flake.nix. Note chrome-devtools-mcp
+#   actually runs inside the browsercontainer image, not the agentbox image.
+
 { lib, pkgs }:
 
 let

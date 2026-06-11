@@ -16,8 +16,10 @@
 # (../../../../<repo>), so cargo resolves them without us editing Cargo.toml.
 #
 # Both sibling fetches pin the development revs the in-repo Cargo.lock was
-# generated against. They ship with `lib.fakeHash` placeholders; Nix surfaces
-# the correct SRI hash at realisation (the same pattern as lib/solid-pod-rs.nix).
+# generated against. BLD-002/R-026: the placeholders are RESOLVED — forumHash
+# and solidHash below carry real SRI hashes, so this builds reproducibly. If a
+# rev bumps, set the moved hash back to lib.fakeHash and re-resolve it via the
+# prefetch procedure below (Nix surfaces the correct SRI at realisation).
 #
 # Hash-refresh procedure (run on the host build shell — tmux tab 6 — when a rev
 # bumps, or to fill the initial placeholders):

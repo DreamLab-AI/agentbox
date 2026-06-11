@@ -1,12 +1,11 @@
 {
-  "comment": "Agentbox hardened seccomp profile. Blocks AF_ALG sockets (CVE-2026-31431 / 'Copy Fail') while permitting all other syscalls needed for normal container operation. Combined with cap_drop:ALL, read_only root, uid 1000, and a tmpfs-mounted setuid sudo wrapper (no-new-privileges:false is required so the wrapper can elevate; without it devuser cannot run privileged maintenance commands) this satisfies the CERT-EU 2026-005 mitigation recommendation for containerised workloads.",
+  "comment": "Agentbox supplemental seccomp DENYLIST. This is intentionally allow-by-default (defaultAction SCMP_ACT_ALLOW): it is a thin supplemental layer that adds AF_ALG socket blocking (CVE-2026-31431 / 'Copy Fail') plus a set of high-risk syscalls on top of Docker's own default profile — it is NOT a replacement allowlist and is NOT a complete sandbox on its own. An allowlist was rejected deliberately: the workload surface (Chromium, CUDA, Godot) is too wide to enumerate safely without breakage. Combined with cap_drop:ALL, read_only root, uid 1000, and no-new-privileges:true, this denylist narrows the syscall surface while keeping the broad runtime working.",
   "defaultAction": "SCMP_ACT_ALLOW",
   "listenerPath": "",
   "listenerMetadata": "",
   "architectures": [
     "SCMP_ARCH_X86_64",
     "SCMP_ARCH_X86",
-    "SCMP_ARCH_X32",
     "SCMP_ARCH_AARCH64",
     "SCMP_ARCH_ARM"
   ],

@@ -2,6 +2,11 @@
 # Run: nix build .#compose
 
 services:
+  # R-025: optional `claude-zai` sidecar. management-api/utils/process-manager.js
+  # dials http://claude-zai-service:9600 when the Z.AI/GLM provider is selected.
+  # No service is emitted here by default — the sidecar is operator-provided and
+  # joins visionclaw_network as `claude-zai-service`. process-manager guards the
+  # URL so its absence is a no-op when Z.AI is not in use (handled separately).
   ruvector-postgres:
     image: ruvnet/ruvector-postgres:latest
     container_name: ruvector-postgres
@@ -9,7 +14,7 @@ services:
     environment:
       - POSTGRES_DB=ruvector
       - POSTGRES_USER=ruvector
-      - POSTGRES_PASSWORD=${RUVECTOR_PG_PASSWORD:-ruvector}
+      - POSTGRES_PASSWORD=${RUVECTOR_PG_PASSWORD:?set RUVECTOR_PG_PASSWORD}
     volumes:
       - ruvector-pg-data:/var/lib/postgresql/data
     healthcheck:
@@ -38,14 +43,17 @@ services:
       retries: 5
       start_period: 60s
 
+    # R-003: host exposure is loopback-only (SSH-tunnel model) — reached via
+    # tunnel; sibling-container access on the docker network is gated by
+    # per-service auth, not by host port binding.
     ports:
-      - "9090:9090"
-      - "9700:9700"
-      - "9091:9091"
-      - "8484:8484"
-      - "8888:8888"
-      - "5901:5901"
-      - "8080:8080"
+      - "127.0.0.1:9090:9090"
+      - "127.0.0.1:9700:9700"
+      - "127.0.0.1:9091:9091"
+      - "127.0.0.1:8484:8484"
+      - "127.0.0.1:8888:8888"
+      - "127.0.0.1:5901:5901"
+      - "127.0.0.1:8080:8080"
 
     environment:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
@@ -67,8 +75,10 @@ services:
       - EMBEDDING_MODEL=${EMBEDDING_MODEL:-bge-small-en-v1.5}
     # Baseline: supervisord runs as PID 1 root, with per-program `user=devuser`
     # drops on every long-running service. Root is required at boot for
-    # tmpfs subdir creation, sudoers wrapper provisioning (chown 0:0 +
-    # chmod 4755), cert generation, and chowning runtime dirs to uid 1000.
+    # tmpfs subdir creation, cert generation, and chowning runtime dirs to
+    # uid 1000. R-005/SEC-001: no runtime sudo — root-at-boot via supervisord
+    # (PID 1) is the only elevation; no-new-privileges:true neuters setuid, so
+    # SETUID/SETGID are deliberately not in cap_add.
     # Per ADR-007 §4a hardening posture; see PRD-003 §5.4.
     read_only: true
     cap_drop:
@@ -77,8 +87,6 @@ services:
       - CHOWN
       - FOWNER
       - DAC_OVERRIDE
-      - SETUID
-      - SETGID
       - AUDIT_WRITE
       - KILL
       - NET_ADMIN

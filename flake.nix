@@ -1553,7 +1553,8 @@ stderr_logfile=/var/log/tmux-autostart.error.log
           + "    environment:\n"
           + "      - POSTGRES_DB=ruvector\n"
           + "      - POSTGRES_USER=ruvector\n"
-          + "      - POSTGRES_PASSWORD=\${RUVECTOR_PG_PASSWORD:-ruvector}\n"
+          # R-024: no literal default password. Compose fails loudly if unset.
+          + "      - POSTGRES_PASSWORD=\${RUVECTOR_PG_PASSWORD:?set RUVECTOR_PG_PASSWORD}\n"
           + "    volumes:\n"
           + "      - ruvector-pg-data:/var/lib/postgresql/data\n"
           + "    healthcheck:\n"
@@ -1697,9 +1698,13 @@ stderr_logfile=/var/log/tmux-autostart.error.log
             understand the residual risk.''
           else null;
 
-        # Compose security_opt baseline. NNP=true unless an exception's
-        # security_opt_override flips it. Merge preserves "key=value" semantics:
-        # the override entry replaces any matching baseline key.
+        # Compose security_opt baseline. NNP=true unconditionally at the
+        # baseline (a feature exception's security_opt_override may still flip
+        # seccomp to unconfined for e.g. playwright, but NNP stays true).
+        # R-005/SEC-001: no-new-privileges:true is correct and required; the
+        # earlier claim that it had to be false for a setuid sudo wrapper is
+        # void — that wrapper has been removed. Root-at-boot via supervisord
+        # (PID 1) is the only elevation; there is no runtime sudo.
         nnpBaselineValue = "true";
         # Each override entry is rendered as an additional `      - <entry>\n`
         # under security_opt. Used by composeText.
@@ -1772,11 +1777,12 @@ stderr_logfile=/var/log/tmux-autostart.error.log
           # here; plugins are then symlinked from cache into .claude-flow/plugins.
           # 512M covers the full plugin tree with room for npm artefacts.
           "/var/cache:mode=755,size=512M,uid=1000,gid=1000"
-          # Writable, exec+suid-allowed bin dir for setuid wrappers (sudo).
-          # The bootstrap program runs as root and provisions a setuid copy
-          # of pkgs.sudo here so devuser shells can elevate via the NOPASSWD
-          # rule in /etc/sudoers.d/devuser. Docker tmpfs defaults to nosuid,
-          # noexec — both must be explicitly enabled.
+          # Writable, exec-allowed bin dir for runtime-provisioned wrappers
+          # and MCP shims. R-005/SEC-001: this is NOT a setuid-sudo path —
+          # no-new-privileges:true neuters setuid, SETUID/SETGID are not in
+          # the cap baseline, and the entrypoint no longer installs a setuid
+          # sudo wrapper. `suid` is kept on the mount only so non-privileged
+          # exec semantics are unaffected; nothing here actually elevates.
           "/usr/local/bin:mode=755,size=8M,exec,suid"
           "/app/mcp-logs:mode=755,size=100M,uid=1000,gid=1000"
         ];
@@ -1797,27 +1803,23 @@ stderr_logfile=/var/log/tmux-autostart.error.log
           );
 
         # Baseline caps. cap_drop: ALL removes everything, then cap_add
-        # restores the minimum the bootstrap-as-root and the setuid sudo
-        # wrapper need:
+        # restores the minimum the bootstrap-as-root needs:
         #   CHOWN          chown -R 1000:1000 on freshly created named volumes
         #   FOWNER         chmod 755 on volumes (operate on uid-1000-owned files
         #                  before bootstrap runs as uid 1000)
         #   DAC_OVERRIDE   read files when ownership isn't set yet (defensive)
-        #   SETUID,SETGID  setuid sudo wrapper at /usr/local/bin/sudo elevates
-        #                  devuser to root via the NOPASSWD rule. Without these
-        #                  caps in the bounding set, the kernel refuses the
-        #                  setuid bit even with no-new-privileges:false.
-        #   AUDIT_WRITE    sudo writes to the audit log on every elevation
+        #   AUDIT_WRITE    write to the audit log
         #   KILL           supervisord signals its child processes
-        # Per ADR-007 §4a baseline + W021 audit_acknowledged: the wider
-        # surface is acknowledged once at compose-eval time and documented
-        # in docs/user/configuration.md §Security trade-offs.
+        # R-005/SEC-001: SETUID and SETGID are deliberately NOT in the baseline.
+        # no-new-privileges:true is in effect, which neuters any setuid wrapper
+        # regardless of the bounding set, so a setuid sudo path is dead weight
+        # and a footgun. Root-at-boot via supervisord (PID 1) is the only
+        # elevation; there is no runtime sudo. The entrypoint no longer installs
+        # a setuid sudo wrapper (removed there separately).
         baselineCapAdd = [
           "CHOWN"
           "FOWNER"
           "DAC_OVERRIDE"
-          "SETUID"
-          "SETGID"
           "AUDIT_WRITE"
           "KILL"
         ];
@@ -1901,6 +1903,11 @@ stderr_logfile=/var/log/tmux-autostart.error.log
 # Run: nix build .#compose
 
 services:
+  # R-025: optional `claude-zai` sidecar. management-api/utils/process-manager.js
+  # dials http://claude-zai-service:9600 when the Z.AI/GLM provider is selected.
+  # No service is emitted here by default — the sidecar is operator-provided and
+  # joins visionclaw_network as `claude-zai-service`. process-manager guards the
+  # URL so its absence is a no-op when Z.AI is not in use (handled separately).
 ${ollamaServiceBlock}${ruvectorPostgresServiceBlock}
   agentbox:
     image: ''${AGENTBOX_IMAGE_REF:-agentbox:runtime-${system}}
@@ -2311,6 +2318,14 @@ ${ragflowNetworkDecl}
           "GIT_CONFIG_GLOBAL=/home/devuser/.config/git/config"
           "CLAUDE_FLOW_PLUGIN_DIR=/home/devuser/.claude-flow/plugins"
           "RUVECTOR_PG_CONNINFO=${(agentboxConfig.integrations.ruvector_external.conninfo or "")}"
+          # R-002/BLD-001: the management-api package already depends on `pg`
+          # (baked into its node_modules at image build via npmDepsHash). Point
+          # the entrypoint at that resolved tree so it can set NODE_PATH for the
+          # ruvector-mcp.cjs server instead of running `npm install pg` at boot
+          # (network install on a read_only rootfs into a tmpfs — slow, flaky,
+          # non-reproducible). appRoot copies managementApiPkg/package to
+          # /opt/agentbox/management-api, so pg resolves under .../node_modules.
+          "AGENTBOX_PG_NODE_PATH=/opt/agentbox/management-api/node_modules"
           # WORKSPACE intentionally NOT re-set here — the canonical value
           # is set earlier in imageEnv as /home/devuser/workspace.
           # Re-asserting it here would shadow the earlier value (the last

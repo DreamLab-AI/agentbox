@@ -14,8 +14,10 @@ services:
       start_period: 30s
     environment:
       - DISPLAY=:2
-      # GPU 2: Quadro RTX 6000 (24GB) — stable UUID, not fragile index
-      - NVIDIA_VISIBLE_DEVICES=GPU-65b7ddef-5380-1b06-65b3-f770f7f9673b
+      # ARC-002: GPU selection is operator-configurable. Default `all`; pin a
+      # specific GPU by exporting NVIDIA_VISIBLE_DEVICES (e.g. a stable
+      # GPU-<uuid>) in the environment / .env before compose up.
+      - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES:-all}
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics
       - SIDECAR_TRANSPORT=sse
       - SIDECAR_PORT=8931
@@ -39,7 +41,8 @@ services:
           devices:
             - driver: nvidia
               capabilities: [gpu, compute, utility, graphics]
-              device_ids: ['GPU-65b7ddef-5380-1b06-65b3-f770f7f9673b']
+              # ARC-002: operator-configurable GPU; matches NVIDIA_VISIBLE_DEVICES.
+              device_ids: ['${NVIDIA_VISIBLE_DEVICES:-all}']
     ports:
       # VNC: view Chrome desktop
       - "0.0.0.0:5903:5903"
