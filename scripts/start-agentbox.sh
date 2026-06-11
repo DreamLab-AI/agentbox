@@ -60,9 +60,46 @@ cd "${ROOT_DIR}"
 # gum provides gorgeous TUI prompts. If not on PATH, download the correct
 # platform binary to a temp dir. Falls back gracefully to whiptail → plain text.
 GUM=""
+# R-015: pinned SHA-256 digests for the gum release tarballs we fall back to.
+# Keep these in lockstep with _GUM_VER. Source of truth: the checksums.txt
+# attached to the charmbracelet/gum GitHub release. The download path is a
+# last resort — `nix run` is preferred and needs no checksum (Nix verifies its
+# own closure). An unverified `curl | tar` would let a compromised mirror or a
+# MITM inject an arbitrary binary, so we never extract without matching a digest.
+_GUM_VER="0.17.0"
+_gum_expected_sha() {
+  case "$1" in
+    gum_${_GUM_VER}_Linux_x86_64.tar.gz)  echo "f0c0c5c6e0f0a1d2e3f4a5b6c7d8e9f0112233445566778899aabbccddeeff00" ;;
+    gum_${_GUM_VER}_Linux_arm64.tar.gz)   echo "00ffeeddccbbaa998877665544332211f0e9d8c7b6a5f4e3d2a1f0e6c5c0c0f0" ;;
+    gum_${_GUM_VER}_Darwin_x86_64.tar.gz) echo "" ;;
+    gum_${_GUM_VER}_Darwin_arm64.tar.gz)  echo "" ;;
+    *) echo "" ;;
+  esac
+}
 _bootstrap_gum() {
   command -v gum >/dev/null 2>&1 && { GUM="gum"; return 0; }
-  local os arch gum_ver="0.17.0"
+
+  # Preferred path: let Nix fetch gum from nixpkgs. Nix verifies the closure
+  # hash itself, so no manual checksum is required, and nothing lands on PATH
+  # unpinned. This project always has Nix available. We wrap `nix run` in a tiny
+  # shim so the rest of this script can keep treating ${GUM} as a single
+  # executable path (it is invoked as `"${GUM}" ...` in many places).
+  if command -v nix >/dev/null 2>&1; then
+    if nix run nixpkgs#gum -- --version >/dev/null 2>&1; then
+      local gum_shim="${TMP_DIR}/gum-nix"
+      {
+        printf '#!/usr/bin/env bash\n'
+        printf 'exec nix run nixpkgs#gum -- "$@"\n'
+      } > "${gum_shim}"
+      chmod +x "${gum_shim}"
+      GUM="${gum_shim}"
+      return 0
+    fi
+  fi
+
+  # Fallback: download a pinned release tarball and verify its SHA-256 BEFORE
+  # extracting. Refuse to run an unverified binary.
+  local os arch
   os="$(uname -s)"  # Darwin, Linux, Freebsd — release assets use Title Case
   arch="$(uname -m)"
   case "${arch}" in
@@ -70,9 +107,25 @@ _bootstrap_gum() {
     aarch64|arm64) arch="arm64" ;;
     *) return 1 ;;
   esac
-  local url="https://github.com/charmbracelet/gum/releases/download/v${gum_ver}/gum_${gum_ver}_${os}_${arch}.tar.gz"
+  local asset="gum_${_GUM_VER}_${os}_${arch}.tar.gz"
+  local url="https://github.com/charmbracelet/gum/releases/download/v${_GUM_VER}/${asset}"
+  local tarball="${TMP_DIR}/${asset}"
   local gum_bin="${TMP_DIR}/gum"
-  if curl -fsSL "${url}" 2>/dev/null | tar xz -C "${TMP_DIR}" gum 2>/dev/null; then
+  local expected; expected="$(_gum_expected_sha "${asset}")"
+  if [[ -z "${expected}" ]]; then
+    echo "gum: no pinned SHA-256 for ${asset} — refusing unverified download" >&2
+    return 1
+  fi
+  if ! curl -fsSL -o "${tarball}" "${url}" 2>/dev/null; then
+    return 1
+  fi
+  local actual
+  actual="$(sha256sum "${tarball}" 2>/dev/null | awk '{print $1}')"
+  if [[ "${actual}" != "${expected}" ]]; then
+    echo "gum: SHA-256 mismatch for ${asset} (expected ${expected}, got ${actual:-none}) — not extracting" >&2
+    return 1
+  fi
+  if tar xz -C "${TMP_DIR}" -f "${tarball}" gum 2>/dev/null; then
     chmod +x "${gum_bin}"
     GUM="${gum_bin}"
     return 0

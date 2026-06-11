@@ -10,7 +10,9 @@
 //! | `AGENTBOX_RELAY_BIND`                | bind addr (default `127.0.0.1:7777`)      |
 //! | `AGENTBOX_POD_ROOT`                  | pod filesystem root (required)            |
 //! | `AGENTBOX_BRIDGE_RECIPIENT_PUBKEY`   | agent x-only hex pubkey (required)        |
-//! | `AGENTBOX_BRIDGE_SK`                 | agent secret key, 64-char hex (required)  |
+//! | `AGENTBOX_BRIDGE_SK_FILE`            | path to 64-char-hex key file (default     |
+//! |                                      | `/run/secrets/nostr.key`); preferred      |
+//! | `AGENTBOX_BRIDGE_SK`                 | agent secret key hex (legacy fallback)    |
 //! | `AGENTBOX_ADMIN_PUBKEY`              | admin delegator hex pubkey (required)     |
 //! | `AGENTBOX_ALLOWED_PUBKEYS`           | comma-separated hex allowlist (optional)  |
 //!
@@ -38,12 +40,49 @@ fn env_required(key: &str) -> anyhow::Result<String> {
 }
 
 fn parse_sk(hex_str: &str) -> anyhow::Result<[u8; 32]> {
-    let bytes = hex::decode(hex_str.trim()).context("AGENTBOX_BRIDGE_SK is not valid hex")?;
+    let bytes = hex::decode(hex_str.trim()).context("bridge secret key is not valid hex")?;
     let arr: [u8; 32] = bytes
         .as_slice()
         .try_into()
-        .map_err(|_| anyhow!("AGENTBOX_BRIDGE_SK must be exactly 32 bytes (64 hex chars)"))?;
+        .map_err(|_| anyhow!("bridge secret key must be exactly 32 bytes (64 hex chars)"))?;
     Ok(arr)
+}
+
+/// SEC-003: Load the agent secret key, preferring a file over an env var.
+///
+/// The agentbox launcher writes the decrypted key to a tmpfs file (0400 devuser)
+/// and exports its path as `AGENTBOX_BRIDGE_SK_FILE` (default
+/// `/run/secrets/nostr.key`), deliberately keeping the raw secret out of the
+/// process environment (env is world-readable via `/proc/<pid>/environ` for the
+/// same uid and leaks into crash dumps). We read the file first; only if no file
+/// is present do we fall back to the legacy `AGENTBOX_BRIDGE_SK` env var for
+/// back-compat. The parsed key is a fixed-size array scoped to `BridgeConfig`,
+/// exactly as before.
+fn load_sk() -> anyhow::Result<[u8; 32]> {
+    let path = std::env::var("AGENTBOX_BRIDGE_SK_FILE")
+        .unwrap_or_else(|_| "/run/secrets/nostr.key".to_string());
+    if let Ok(mut contents) = std::fs::read_to_string(&path) {
+        let sk = parse_sk(&contents)
+            .with_context(|| format!("parsing agent secret key from {path}"))?;
+        // Best-effort scrub of the heap-resident hex string before drop.
+        zeroize_string(&mut contents);
+        return Ok(sk);
+    }
+    // Fallback: legacy env var (kept for back-compat; the launcher no longer
+    // populates it for long-running processes).
+    parse_sk(&env_required("AGENTBOX_BRIDGE_SK")?)
+        .context("parsing agent secret key from AGENTBOX_BRIDGE_SK env")
+}
+
+/// Overwrite a `String`'s bytes in place so the decrypted hex does not linger in
+/// freed heap memory after the function returns.
+fn zeroize_string(s: &mut String) {
+    // Safety: we overwrite valid UTF-8 (ASCII '0') in place; length is unchanged.
+    unsafe {
+        for b in s.as_bytes_mut() {
+            *b = 0;
+        }
+    }
 }
 
 fn load_config() -> anyhow::Result<BridgeConfig> {
@@ -59,7 +98,7 @@ fn load_config() -> anyhow::Result<BridgeConfig> {
             .unwrap_or_else(|_| "127.0.0.1:7777".to_string()),
         pod_root: PathBuf::from(env_required("AGENTBOX_POD_ROOT")?),
         recipient_pubkey: env_required("AGENTBOX_BRIDGE_RECIPIENT_PUBKEY")?,
-        recipient_sk: parse_sk(&env_required("AGENTBOX_BRIDGE_SK")?)?,
+        recipient_sk: load_sk()?,
         admin_pubkey: env_required("AGENTBOX_ADMIN_PUBKEY")?,
         allowed_pubkeys,
     })

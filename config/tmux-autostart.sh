@@ -6,9 +6,13 @@
 # bashrc.agentbox) are sourced automatically by fish in each window.
 
 SESSION="agentbox"
-PROJECT="${HOME:-/workspace}/project"
-[ -d "$PROJECT" ] || PROJECT="${HOME:-/workspace}"
-WORKSPACE_DIR="${HOME:-/workspace}"
+# R-012: WORKSPACE is set authoritatively by the entrypoint (=/home/devuser/workspace,
+# the compose bind mount). Honour it if present; otherwise fall back to the same
+# canonical path — never the legacy /workspace, which is no longer a mount target.
+WORKSPACE="${WORKSPACE:-/home/devuser/workspace}"
+PROJECT="${WORKSPACE}/project"
+[ -d "$PROJECT" ] || PROJECT="${WORKSPACE}"
+WORKSPACE_DIR="${WORKSPACE}"
 FISH="$(which fish 2>/dev/null || echo fish)"
 
 # If session already exists, skip creation
@@ -105,7 +109,7 @@ tmux send-keys -t "${SESSION}:7" "git status" C-m
 # from profiles/openrouter/.claude/ instead of the devuser home.
 # OPENROUTER_API_KEY is injected at runtime from the dotenv credentials system.
 # ============================================================================
-OR_WORKSPACE="${WORKSPACE:-${HOME}/workspace}"
+OR_WORKSPACE="${WORKSPACE}"
 OR_PROFILE="${OR_WORKSPACE}/profiles/openrouter"
 OR_CLAUDE_DIR="${OR_PROFILE}/.claude"
 # Default free NVIDIA model — override in OR_MODEL env var if desired:
@@ -117,8 +121,9 @@ OR_CLAUDE_DIR="${OR_PROFILE}/.claude"
 OR_MODEL="${OR_MODEL:-nvidia/nemotron-3-super-120b-a12b:free}"
 
 mkdir -p "${OR_CLAUDE_DIR}"
-# Profile dirs are created by provision-agent-stacks.py as root; fix at runtime.
-sudo chown -R devuser:devuser "${OR_PROFILE}" 2>/dev/null || true
+# R-005: profile dir ownership is fixed by the entrypoint (root, pre-supervisord)
+# via `chown -R 1000:1000 $WORKSPACE/profiles`. Runtime `sudo chown` here was
+# dead — no-new-privileges:true neuters the setuid sudo path — so it is removed.
 
 if [ -n "${OPENROUTER_API_KEY:-}" ]; then
   # Write settings.local.json at runtime — API keys never baked into image.
@@ -167,7 +172,7 @@ fi
 # Profile isolation prevents ANTHROPIC_BASE_URL from leaking to the main
 # Claude Code session in Window 0.
 # ============================================================================
-ZAI_WORKSPACE="${WORKSPACE:-${HOME}/workspace}"
+ZAI_WORKSPACE="${WORKSPACE}"
 ZAI_PROFILE="${ZAI_WORKSPACE}/profiles/zai"
 ZAI_CLAUDE_DIR="${ZAI_PROFILE}/.claude"
 # Endpoint: subscription path if ZAI_URL ends in /coding/paas/v4, else per-token relay
@@ -175,8 +180,7 @@ _ZAI_ENDPOINT="${ZAI_URL:-https://api.z.ai/api/anthropic}"
 _ZAI_AUTH="${ZAI_ANTHROPIC_API_KEY:-${ZAI_API_KEY:-}}"
 
 mkdir -p "${ZAI_CLAUDE_DIR}"
-# Profile dirs are created by provision-agent-stacks.py as root; fix at runtime.
-sudo chown -R devuser:devuser "${ZAI_PROFILE}" 2>/dev/null || true
+# R-005: profile dir ownership fixed by entrypoint root phase; runtime sudo removed.
 
 if [ -n "${_ZAI_AUTH:-}" ]; then
   cat > "${ZAI_CLAUDE_DIR}/settings.local.json" <<ZAIJSON
@@ -213,7 +217,7 @@ fi
 # defined before those windows are created. The full git worktree initialisation
 # block runs after window 13 (all profile setup complete) for clarity, but the
 # variable itself is set here unconditionally.
-WORKTREE_BASE="${WORKSPACE:-${HOME}/workspace}/worktrees"
+WORKTREE_BASE="${WORKSPACE}/worktrees"
 mkdir -p "${WORKTREE_BASE}/antigravity" "${WORKTREE_BASE}/deepseek" "${WORKTREE_BASE}/ollama"
 
 # ============================================================================
@@ -221,12 +225,12 @@ mkdir -p "${WORKTREE_BASE}/antigravity" "${WORKTREE_BASE}/deepseek" "${WORKTREE_
 # Auth: GOOGLE_GEMINI_API_KEY or GOOGLE_API_KEY from env
 # CLI: gemini (@google/gemini-cli) — uses its own config dir, no settings.local.json
 # ============================================================================
-AG_WORKSPACE="${WORKSPACE:-${HOME}/workspace}"
+AG_WORKSPACE="${WORKSPACE}"
 AG_PROFILE="${AG_WORKSPACE}/profiles/antigravity"
 AG_GEMINI_DIR="${AG_PROFILE}/.gemini"
 
 mkdir -p "${AG_GEMINI_DIR}" "${AG_PROFILE}/.cache/starship"
-sudo chown -R devuser:devuser "${AG_PROFILE}" 2>/dev/null || true
+# R-005: profile dir ownership fixed by entrypoint root phase; runtime sudo removed.
 
 _AG_KEY="${GOOGLE_GEMINI_API_KEY:-${GOOGLE_API_KEY:-}}"
 if [ -n "${_AG_KEY:-}" ]; then
@@ -254,12 +258,12 @@ fi
 # Auth: DEEPSEEK_API_KEY from env
 # CLI: codewhale — model: deepseek-v4-0324
 # ============================================================================
-DS_WORKSPACE="${WORKSPACE:-${HOME}/workspace}"
+DS_WORKSPACE="${WORKSPACE}"
 DS_PROFILE="${DS_WORKSPACE}/profiles/deepseek"
 DS_CODEWHALE_DIR="${DS_PROFILE}/.codewhale"
 
 mkdir -p "${DS_CODEWHALE_DIR}" "${DS_PROFILE}/.cache/starship"
-sudo chown -R devuser:devuser "${DS_PROFILE}" 2>/dev/null || true
+# R-005: profile dir ownership fixed by entrypoint root phase; runtime sudo removed.
 
 if [ -n "${DEEPSEEK_API_KEY:-}" ]; then
   _ds_status="DEEPSEEK_API_KEY set — model: deepseek-v4-0324"
@@ -287,11 +291,11 @@ fi
 # The official Perplexity MCP server is also available in Claude Code tab 0
 # via the mcp__perplexity-research integration.
 # ============================================================================
-PX_WORKSPACE="${WORKSPACE:-${HOME}/workspace}"
+PX_WORKSPACE="${WORKSPACE}"
 PX_PROFILE="${PX_WORKSPACE}/profiles/perplexity"
 
 mkdir -p "${PX_PROFILE}" "${PX_PROFILE}/.cache/starship"
-sudo chown -R devuser:devuser "${PX_PROFILE}" 2>/dev/null || true
+# R-005: profile dir ownership fixed by entrypoint root phase; runtime sudo removed.
 
 if [ -n "${PERPLEXITY_API_KEY:-}" ]; then
   _px_status="PERPLEXITY_API_KEY set"
@@ -321,13 +325,13 @@ fi
 # CLI: nanocoder --provider ollama --model <model>
 # Default model: qwen2.5:32b-instruct (override via OLLAMA_MODEL env var)
 # ============================================================================
-OL_WORKSPACE="${WORKSPACE:-${HOME}/workspace}"
+OL_WORKSPACE="${WORKSPACE}"
 OL_PROFILE="${OL_WORKSPACE}/profiles/ollama"
 _OL_MODEL="${OLLAMA_MODEL:-qwen2.5:32b-instruct}"
 _OL_BASE_URL="${OLLAMA_BASE_URL:-http://ollama:11434}"
 
 mkdir -p "${OL_PROFILE}" "${OL_PROFILE}/.cache/starship"
-sudo chown -R devuser:devuser "${OL_PROFILE}" 2>/dev/null || true
+# R-005: profile dir ownership fixed by entrypoint root phase; runtime sudo removed.
 
 [ -L "${OL_PROFILE}/workspace" ] || ln -sfn "${OL_WORKSPACE}" "${OL_PROFILE}/workspace" 2>/dev/null || true
 [ -L "${OL_PROFILE}/projects" ] || ln -sfn "${SHARED_PROJECTS_ROOT:-/projects}" "${OL_PROFILE}/projects" 2>/dev/null || true
@@ -407,6 +411,11 @@ tmux set-environment -t "${SESSION}" HARNESS_MERGE_FN "${_HARNESS_MERGE_SH}"
 tmux set-environment -t "${SESSION}" WORKTREE_BASE "${WORKTREE_BASE}"
 
 # Auto-source the helper in tab 0 so it is immediately available.
+# R-028: this eval is benign — HARNESS_MERGE_FN is set (above, via
+# `tmux set-environment`) to the fixed `_HARNESS_MERGE_SH` heredoc literal
+# defined in this script. Its contents are not attacker-influenced (no external
+# input is interpolated), so `eval` here is the intended function-injection
+# mechanism and is left as-is.
 tmux send-keys -t "${SESSION}:0" "eval \"\$HARNESS_MERGE_FN\" 2>/dev/null || true" C-m
 
 # ============================================================================

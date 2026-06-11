@@ -27,7 +27,7 @@ else
   STAGE_B_MODE=0
   printf '\033[1;34m'
   echo "  ╔══════════════════════════════════════╗"
-  echo "  ║         A G E N T B O X              ║"
+  echo "  ║           A G E N T B O X            ║"
   echo "  ║  Modular Sovereign Agent Environment ║"
   echo "  ╚══════════════════════════════════════╝"
   printf '\033[0;90m'
@@ -65,7 +65,12 @@ fi
 # ---------------------------------------------------------------------------
 # Phase 1 — Environment defaults + runtime directory creation
 # ---------------------------------------------------------------------------
-export WORKSPACE="${WORKSPACE:-/workspace}"
+# R-012: WORKSPACE is the single source of truth. It MUST match the compose
+# bind mount (/home/devuser/workspace). Set authoritatively here — every
+# downstream reference uses ${WORKSPACE} bare, never re-defaulting. The old
+# /workspace and ${HOME}/workspace fallbacks disagreed and produced split-brain
+# state across services.
+export WORKSPACE="/home/devuser/workspace"
 export AGENTBOX_CONFIG="${AGENTBOX_CONFIG:-/etc/agentbox.toml}"
 export RUVECTOR_DATA_DIR="${RUVECTOR_DATA_DIR:-/var/lib/ruvector}"
 export SOLID_POD_ROOT="${SOLID_POD_ROOT:-/var/lib/solid}"
@@ -85,7 +90,28 @@ mkdir -p \
   /var/lib/agentbox/identities \
   /var/log/supervisor \
   /var/run \
+  /run/secrets \
   /tmp/screenshots
+
+# SEC-003: /run/secrets is a tmpfs dir for runtime secret material (e.g. the
+# decrypted Nostr bridge key written in Phase 5c). Tight perms — only devuser
+# (the uid services run as) may traverse it. This is the ONLY place root creates
+# it; all secret writes happen in the root boot phase before the drop to devuser.
+chmod 0700 /run/secrets 2>/dev/null || true
+chown 1000:1000 /run/secrets 2>/dev/null || true
+
+# R-012: Boot assertion — WORKSPACE must be a mounted volume, not tmpfs.
+# If the compose mount is missing, $WORKSPACE silently lands on the container
+# overlay/tmpfs and every "durable" write evaporates on restart. Warn loudly
+# so the operator notices a misconfigured mount before data loss.
+_ws_fstype="$(stat -f -c %T "$WORKSPACE" 2>/dev/null || echo unknown)"
+case "$_ws_fstype" in
+  tmpfs|ramfs|overlayfs|overlay)
+    printf '{"level":"warn","time":"%s","agentbox.stage":"bootstrap","event":"WorkspaceNotMounted","workspace":"%s","fstype":"%s","message":"WORKSPACE is not a persistent mounted volume — durable writes will be lost on restart (check compose bind mount)"}\n' \
+      "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$WORKSPACE" "$_ws_fstype" >&2
+    ;;
+esac
+unset _ws_fstype
 
 # Best-effort chmod. The container has cap_drop: ALL plus a narrow cap_add
 # (SYS_ADMIN, NET_ADMIN), neither of which grants CAP_FOWNER, so chmod
@@ -280,7 +306,7 @@ if [ ! -f "$WORKSPACE/README.agentbox.md" ]; then
 # Agentbox Workspace
 
 Runtime state is mounted under:
-- `/workspace`
+- `/home/devuser/workspace`
 - `/var/lib/ruvector`
 - `/var/lib/solid`
 - `/var/lib/agentbox/identities`
@@ -327,12 +353,38 @@ chown 1000:1000 /run/agentbox 2>/dev/null || true
 # AGENTBOX_BRIDGE_RECIPIENT_PUBKEY / AGENTBOX_BRIDGE_SK for the nostr-pod-bridge
 # relay slot. Source it here, as root, before exec'ing supervisord so PID 1 —
 # and every supervised child that inherits its environment — carries the agent
-# secret without it ever entering the Nix-store supervisor text. The file is
+# identity without it ever entering the Nix-store supervisor text. The file is
 # 0600 root; only this pre-supervisord launcher reads it.
 if [ -f /run/agentbox/identity.env ]; then
   . /run/agentbox/identity.env
 fi
 
+# SEC-003: Do NOT propagate the decrypted Nostr secret key as an env var into
+# long-running processes (env is readable via /proc/<pid>/environ by anything
+# sharing the uid, and leaks into crash dumps / `ps e` / child env). Instead,
+# write it once to a tmpfs file with 0400 devuser perms and unset it from this
+# launcher's environment before exec'ing supervisord. nostr-pod-bridge reads
+# AGENTBOX_BRIDGE_SK_FILE (see services/nostr-pod-bridge/src/main.rs); the env
+# var remains supported only as a back-compat fallback.
+NOSTR_KEY_FILE="/run/secrets/nostr.key"
+if [ -n "${AGENTBOX_BRIDGE_SK:-}" ]; then
+  ( umask 077; printf '%s' "$AGENTBOX_BRIDGE_SK" > "$NOSTR_KEY_FILE" )
+  chmod 0400 "$NOSTR_KEY_FILE" 2>/dev/null || true
+  chown 1000:1000 "$NOSTR_KEY_FILE" 2>/dev/null || true
+  export AGENTBOX_BRIDGE_SK_FILE="$NOSTR_KEY_FILE"
+  # Scrub the secret from this process's env so it does not inherit into
+  # supervisord (PID 1) or any supervised child.
+  unset AGENTBOX_BRIDGE_SK
+  echo "[5b/8] Wrote Nostr bridge key to $NOSTR_KEY_FILE (0400 devuser); unset from env"
+fi
+
+# R-005 / SEC-001: There is no runtime privilege escalation in agentbox. The
+# container runs with no-new-privileges:true, which neuters any setuid bit, so
+# the former tmpfs setuid `sudo` wrapper was dead code AND a misleading security
+# surface — it has been removed. ALL root-needing setup (tmpfs subdir creation,
+# /run/secrets, cert/key material, chown to uid 1000) happens above in this
+# root boot phase, BEFORE the drop to devuser. Supervised programs run as
+# devuser (user=devuser) and never re-acquire root.
 echo "[5b/8] Starting supervisord..."
 exec supervisord -c /etc/supervisord.conf -n
 
@@ -343,7 +395,10 @@ fi  # end STAGE_B_MODE=0 block — Stage A exits via exec above
 # Re-exports critical env that Phase-1 would have set (since Stage A lives in
 # the PID-1 supervisord process and its env is inherited by children).
 # ---------------------------------------------------------------------------
-export WORKSPACE="${WORKSPACE:-/workspace}"
+# R-012: Stage B inherits PID 1's env (WORKSPACE was exported authoritatively in
+# Stage A before exec supervisord). The default below only fires if Stage B is
+# ever invoked standalone; it uses the canonical path, never the legacy /workspace.
+export WORKSPACE="${WORKSPACE:-/home/devuser/workspace}"
 export RUVECTOR_DATA_DIR="${RUVECTOR_DATA_DIR:-/var/lib/ruvector}"
 export SOLID_POD_ROOT="${SOLID_POD_ROOT:-/var/lib/solid}"
 export RUVECTOR_PORT="${RUVECTOR_PORT:-9700}"
@@ -472,17 +527,30 @@ fi
 # Claude Code resolves .mcp.json by walking up from cwd.  We write one at
 # the workspace root so every project inherits ruvector-postgres by default.
 # The pg npm module is installed to a workspace-persistent prefix on first boot.
-_MCP_JSON="${WORKSPACE:-/home/devuser/workspace}/.mcp.json"
+_MCP_JSON="${WORKSPACE}/.mcp.json"
 _RUVECTOR_MCP="/opt/agentbox/mcp/servers/ruvector-mcp.cjs"
-_PG_PREFIX="${WORKSPACE:-/home/devuser/workspace}/.claude-pg"
+_PG_PREFIX="${WORKSPACE}/.claude-pg"
 : "${RUVECTOR_PG_PASSWORD:=ruvector}"
 if [ -f "$_RUVECTOR_MCP" ]; then
-  # Install pg npm module if missing (workspace-persistent, survives rebuilds)
-  if [ ! -d "$_PG_PREFIX/node_modules/pg" ]; then
-    echo "  [mcp] Installing pg module to $_PG_PREFIX ..."
-    mkdir -p "$_PG_PREFIX" "${WORKSPACE:-/home/devuser/workspace}/.npm-cache" 2>/dev/null || true
-    npm install --cache "${WORKSPACE:-/home/devuser/workspace}/.npm-cache" --prefix "$_PG_PREFIX" pg 2>/dev/null || true
-    chown -R 1000:1000 "$_PG_PREFIX" 2>/dev/null || true
+  # R-002: pg module resolution for the ruvector-mcp .mcp.json.
+  # Preferred path: the Nix build bakes a `pg` closure and exports its path as
+  # $AGENTBOX_PG_NODE_PATH. We prepend it to NODE_PATH for the generated config
+  # and SKIP any runtime npm install — reproducible, offline, no network fetch.
+  # Fallback (only if the var is empty): a runtime `npm install pg`. This breaks
+  # build reproducibility (pulls an unpinned version from the registry) and is
+  # kept solely as a defensive measure for images built without the baked closure.
+  if [ -n "${AGENTBOX_PG_NODE_PATH:-}" ]; then
+    _PG_NODE_PATH="${AGENTBOX_PG_NODE_PATH}:${_PG_PREFIX}/node_modules"
+    echo "  [mcp] Using build-provided pg closure: $AGENTBOX_PG_NODE_PATH (no npm install)"
+  else
+    _PG_NODE_PATH="${_PG_PREFIX}/node_modules"
+    if [ ! -d "$_PG_PREFIX/node_modules/pg" ]; then
+      echo "  [mcp] WARN: AGENTBOX_PG_NODE_PATH unset — falling back to runtime npm install (breaks reproducibility)"
+      echo "  [mcp] Installing pg module to $_PG_PREFIX ..."
+      mkdir -p "$_PG_PREFIX" "${WORKSPACE}/.npm-cache" 2>/dev/null || true
+      npm install --cache "${WORKSPACE}/.npm-cache" --prefix "$_PG_PREFIX" pg 2>/dev/null || true
+      chown -R 1000:1000 "$_PG_PREFIX" 2>/dev/null || true
+    fi
   fi
   # Write canonical .mcp.json (idempotent — only if it doesn't already point to ruvector-mcp)
   : "${XINFERENCE_ENDPOINT:=http://xinference:9997}"
@@ -497,7 +565,7 @@ if [ -f "$_RUVECTOR_MCP" ]; then
       "type": "stdio",
       "env": {
         "RUVECTOR_PG_CONNINFO": "host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=$RUVECTOR_PG_PASSWORD",
-        "NODE_PATH": "$_PG_PREFIX/node_modules",
+        "NODE_PATH": "$_PG_NODE_PATH",
         "XINFERENCE_ENDPOINT": "$XINFERENCE_ENDPOINT",
         "EMBEDDING_MODEL": "$EMBEDDING_MODEL"
       }
@@ -726,7 +794,7 @@ required = false
 
 [mcp_servers.claude-flow.env]
 RUVECTOR_PG_CONNINFO = "host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=$RUVECTOR_PG_PASSWORD"
-NODE_PATH = "$_PG_PREFIX/node_modules"
+NODE_PATH = "$_PG_NODE_PATH"
 XINFERENCE_ENDPOINT = "$XINFERENCE_ENDPOINT"
 EMBEDDING_MODEL = "$EMBEDDING_MODEL"
 CODEXMCP
@@ -905,7 +973,9 @@ fi
 # supervisorExtraEnv. The cuda-compat derivation provides lib64/ symlink.
 # Propagate to the runtime env file so interactive shells also pick them up.
 for var in CUDA_PATH CUDA_ROOT CUDA_LIBRARY_PATH LIBCLANG_PATH; do
-  eval val=\$$var
+  # R-028: bash indirect expansion instead of `eval val=\$$var` (no eval, no
+  # word-splitting/code-execution surface). $var is a fixed loop literal anyway.
+  val="${!var:-}"
   if [ -n "$val" ]; then
     echo "export $var=\"$val\"" >> "$RUNTIME_ENV_FILE"
   fi

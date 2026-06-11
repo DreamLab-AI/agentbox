@@ -265,6 +265,10 @@ agentbox-pick() {
         "agentbox-help — Full reference")
     local cmd="${choice%%—*}"
     cmd="$(echo "$cmd" | xargs)"
+    # R-028: $cmd is the first word of a selection from the FIXED `gum choose`
+    # menu above (no free-text entry), so it can only ever be one of the
+    # hardcoded alias names. Input is not attacker-influenced; eval is retained
+    # so aliases/functions resolve in the caller's interactive shell.
     [ -n "$cmd" ] && eval "$cmd"
 }
 
