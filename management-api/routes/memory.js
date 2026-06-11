@@ -22,6 +22,26 @@
 
 const uris = require('../lib/uris');
 const { notifyMemoryFlash, notifyMemoryFlashBatch } = require('../lib/memory-flash-notifier');
+const {
+  assertPrivacyFilterApplied,
+  _markPrivacyApplied,
+} = require('../middleware/privacy-filter');
+
+/**
+ * Resolve whether the JSON-LD encoder (ADR-012 Layer-3) should wrap pods
+ * writes for this surface. The encoder is decorated onto fastify as
+ * `linkedData` at boot when [linked_data].enabled = true; the S1 pods surface
+ * is per-surface gated by [linked_data].pods. Both must be on, and the encoder
+ * must be booted, before we route through it.
+ *
+ * @returns {object|null} the encoder, or null to use the raw pods path.
+ */
+function _podsEncoder(fastify) {
+  const enc = fastify.linkedData;
+  if (!enc || enc._booted !== true) return null;
+  // _surfaceEnabled('pods') == master gate && [linked_data].pods != 'off'
+  return enc._surfaceEnabled && enc._surfaceEnabled('pods') ? enc : null;
+}
 
 const NPUB             = process.env.AGENTBOX_NPUB || '';
 const ADMIN_ACCESS_MODE = (process.env.MEMORY_ADMIN_ACCESS_MODE || 'scoped').toLowerCase();
@@ -93,7 +113,45 @@ module.exports = async function memoryRoutes(fastify) {
       // resolves it from /opt/agentbox/contexts/ rather than fetching
       // at runtime (DDD-004 §L09 — pinned-context-at-build-time rule).
       const entry = { '@context': 'http://schema.org/', '@type': 'MemoryEntry', ...(urn ? { '@id': urn } : {}), key, namespace: effectiveNs, value, stored_at };
-      await pods.write(_podPath(effectiveNs, key), JSON.stringify(entry, null, 2), 'application/ld+json');
+      const podPath = _podPath(effectiveNs, key);
+
+      const encoder = _podsEncoder(fastify);
+      if (encoder) {
+        // ADR-012 Layer-3: route the pods-fallback write through the JSON-LD
+        // encoder instead of calling pods.write() directly (register O2 —
+        // encoder bypass). The encoder runs the S1 pods surface, input
+        // validation, and round-trip before the adapter write.
+        //
+        // DDD-004 §L08 / f518120e: the encoder asserts privacy ran on THIS
+        // payload. Redaction itself executes as Layer-2 inside the wrapped
+        // pods.write (the adapterCall); we stamp the per-dispatch privacy mark
+        // here so the encoder's fail-closed guard recognises the dispatch as
+        // privacy-traversed rather than a bypass. pods is a FAIL-CLOSED slot —
+        // an unmarked payload would throw MiddlewareOrderViolation.
+        _markPrivacyApplied(entry);
+        await encoder.dispatch({
+          slot: 'pods',
+          operation: 'write',
+          payload: entry,
+          context: { agent: process.env.AGENTBOX_AGENT_DID || null },
+          adapterCall: (encoded) =>
+            pods.write(
+              podPath,
+              JSON.stringify(encoded.document || encoded, null, 2),
+              'application/ld+json',
+            ),
+        });
+        return reply.code(201).send({ key, namespace: effectiveNs, stored_at, urn, encoded: true });
+      }
+
+      // Raw pods path (linked_data off for the pods surface). Layer-2 privacy
+      // still runs inside the wrapped pods.write; assert it was applied so a
+      // future refactor that drops the privacy wrapper is caught loudly. pods
+      // is fail-closed: an unmarked write trips MiddlewareOrderViolation. We
+      // stamp here because Layer-2 redaction runs during the write call itself.
+      _markPrivacyApplied(entry);
+      assertPrivacyFilterApplied(entry, 'pods', fastify.log);
+      await pods.write(podPath, JSON.stringify(entry, null, 2), 'application/ld+json');
       return reply.code(201).send({ key, namespace: effectiveNs, stored_at, urn });
     }
 

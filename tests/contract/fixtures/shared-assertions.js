@@ -80,4 +80,62 @@ async function assertOffClassThrows(instance, methods, AdapterDisabledClass) {
   }
 }
 
-module.exports = { assertMethodShape, assertContractVersion, assertOffClassThrows };
+/**
+ * ADR-031 §Registered exemption protocol.
+ *
+ * When an impl's `[M2]` behavioural block genuinely cannot run in CI (no live
+ * host, no feasible loopback), it may declare a registered exemption INSTEAD of
+ * a silent `isReal: false` skip. This helper makes the exemption loud and
+ * well-formed: it throws if any required field is missing or expired, and emits
+ * a warning naming the slot/impl so the exemption can never pass as a green
+ * silent skip.
+ *
+ * Required shape:
+ *   { reason: string, owner: string, tracking: string, expires: ISO-8601 date }
+ *
+ * @param {string} slot
+ * @param {string} impl
+ * @param {object} exemption
+ * @param {object} [warn] - sink with a .warn(msg) method (default: console)
+ */
+function assertRegisteredExemption(slot, impl, exemption, warn = console) {
+  if (!exemption || typeof exemption !== 'object') {
+    throw new Error(
+      `[ADR-031] ${slot}::${impl} declared isReal:false without a registered ` +
+      `exemption object — silent skips are banned. Provide ` +
+      `{ reason, owner, tracking, expires } or make the impl real.`
+    );
+  }
+  const missing = ['reason', 'owner', 'tracking', 'expires'].filter(
+    (k) => typeof exemption[k] !== 'string' || exemption[k].length === 0,
+  );
+  if (missing.length) {
+    throw new Error(
+      `[ADR-031] ${slot}::${impl} exemption is malformed — missing/empty: ${missing.join(', ')}`
+    );
+  }
+  const expiry = Date.parse(exemption.expires);
+  if (Number.isNaN(expiry)) {
+    throw new Error(`[ADR-031] ${slot}::${impl} exemption.expires is not an ISO-8601 date: '${exemption.expires}'`);
+  }
+  if (expiry < Date.now()) {
+    throw new Error(
+      `[ADR-031] ${slot}::${impl} exemption EXPIRED on ${exemption.expires} ` +
+      `(tracking: ${exemption.tracking}, owner: ${exemption.owner}). ` +
+      `Renew the tracking ref or make the impl real.`
+    );
+  }
+  (warn.warn || warn.log || console.warn).call(
+    warn,
+    `[ADR-031] REGISTERED EXEMPTION — ${slot}::${impl} skips [M2] behavioural ` +
+    `assertions. reason="${exemption.reason}" owner=${exemption.owner} ` +
+    `tracking=${exemption.tracking} expires=${exemption.expires}`
+  );
+}
+
+module.exports = {
+  assertMethodShape,
+  assertContractVersion,
+  assertOffClassThrows,
+  assertRegisteredExemption,
+};

@@ -43,9 +43,20 @@ const IMPLS = [
   },
   {
     label: 'stdio-bridge',
+    // Round-trip loopback: instead of a write-only stub (which never verifies
+    // the federated spawn actually crosses the wire), the stdio sink captures
+    // every JSON-RPC frame the adapter emits and exposes it via getFrames() so
+    // the spec can parse it back and assert the spawn was really serialised
+    // over stdio (ADR-031 §Middleware-bypass / round-trip coverage).
     makeAdapter: () => {
-      const lines = [];
-      return new StdioBridgeOrchestratorAdapter({ stdio: { write: l => lines.push(l) } });
+      const frames = [];
+      const stdio = {
+        write: (l) => frames.push(l),
+        getFrames: () => frames.map((l) => JSON.parse(l)),
+      };
+      const adapter = new StdioBridgeOrchestratorAdapter({ stdio });
+      adapter._testStdio = stdio; // expose for round-trip assertions
+      return adapter;
     },
     isReal: true,
   },
@@ -155,6 +166,33 @@ for (const { label, makeAdapter, isReal } of IMPLS) {
         // stdio-bridge same. Both should still return terminated (not throw).
         const second = await adapter.terminateAgent(agentId);
         expect(second.status).toBe('terminated');
+      });
+    }
+
+    // --- Federated round-trip: the spawn must actually cross the stdio wire ---
+    // A write-only stub proves nothing about federation; this reads the emitted
+    // JSON-RPC frame back and verifies the spawn was serialised with the right
+    // method, the returned agentId, and the spec params (ADR-031 §round-trip).
+    if (label === 'stdio-bridge') {
+      it('[M2] spawnAgent emits a well-formed agent.spawn JSON-RPC frame carrying the agentId and spec', async () => {
+        const spec = { command: 'echo', args: ['hello'] };
+        const { agentId } = await adapter.spawnAgent(spec);
+        const frames = adapter._testStdio.getFrames();
+        const spawnFrame = frames.find((f) => f.method === 'agent.spawn');
+        expect(spawnFrame).toBeDefined();
+        expect(spawnFrame.jsonrpc).toBe('2.0');
+        expect(spawnFrame.id).toBe(agentId);
+        expect(spawnFrame.params).toMatchObject(spec);
+      });
+
+      it('[M2] terminateAgent emits an agent.terminate JSON-RPC frame for the agentId', async () => {
+        const { agentId } = await adapter.spawnAgent({ command: 'echo', args: [] });
+        await adapter.terminateAgent(agentId);
+        const frames = adapter._testStdio.getFrames();
+        const termFrame = frames.find((f) => f.method === 'agent.terminate');
+        expect(termFrame).toBeDefined();
+        expect(termFrame.jsonrpc).toBe('2.0');
+        expect(termFrame.params).toMatchObject({ agentId });
       });
     }
 

@@ -11,6 +11,7 @@
 
 const { assertMethodShape, assertContractVersion, assertOffClassThrows } =
   require('./fixtures/shared-assertions');
+const { makeBeadsLoopback } = require('./fixtures/beads-loopback');
 const { AdapterDisabled } = require('../../management-api/adapters/errors');
 
 const { LocalSqliteBeadsAdapter } = require('../../management-api/adapters/beads/local-sqlite');
@@ -20,53 +21,31 @@ const { OffBeadsAdapter }         = require('../../management-api/adapters/beads
 const REQUIRED_METHODS = ['createEpic', 'createChild', 'claim', 'close', 'getReady', 'show'];
 
 // ---------------------------------------------------------------------------
-// Helpers — minimal fetch stub for external adapter
-// ---------------------------------------------------------------------------
-function makeFetchStub(responses) {
-  // responses: Map<url-substring, {status, body}>
-  return async (url, _opts) => {
-    for (const [key, resp] of responses) {
-      if (url.includes(key)) {
-        return {
-          ok: resp.status >= 200 && resp.status < 300,
-          status: resp.status,
-          json: async () => resp.body,
-          text: async () => JSON.stringify(resp.body),
-        };
-      }
-    }
-    return { ok: false, status: 500, json: async () => ({}), text: async () => '' };
-  };
-}
-
-// ---------------------------------------------------------------------------
 // Implementation factories
+// ---------------------------------------------------------------------------
+//
+// The external impl is driven by a STATEFUL loopback (fixtures/beads-loopback),
+// not a canned-body stub. The loopback short-circuits only the network hop:
+// the adapter still constructs every request, emits headers, parses the JSON
+// body, and maps 404/409 to typed NotFound/AlreadyClaimed. The loopback's
+// store mirrors local-sqlite semantics, so the M2 assertions verify genuine
+// federated behavioural parity (ADR-031 §Real-parity). isReal: true.
 // ---------------------------------------------------------------------------
 const IMPLS = [
   {
     label: 'local-sqlite',
     makeAdapter: () => new LocalSqliteBeadsAdapter({ dbPath: ':memory:' }),
     isReal: true,
+    typedErrors: true,
   },
   {
     label: 'external',
     makeAdapter: () => {
-      const epicBody = { id: 'ep1', title: 'T', type: 'epic', status: 'open', priority: 1, actor: null, tags: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
-      const childBody = { id: 'ch1', title: 'C', type: 'child', parent_id: 'ep1', status: 'open', priority: 1, actor: null, tags: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
-      const claimBody = { ...childBody, status: 'claimed', actor: 'agent-1' };
-      const closeBody = { ...childBody, status: 'closed' };
-      const readyBody = [epicBody];
-      const fetchFn = makeFetchStub(new Map([
-        ['epics', { status: 201, body: epicBody }],
-        ['children', { status: 201, body: childBody }],
-        ['claim', { status: 200, body: claimBody }],
-        ['close', { status: 200, body: closeBody }],
-        ['ready', { status: 200, body: readyBody }],
-        ['ep1', { status: 200, body: epicBody }],
-      ]));
+      const { fetchFn } = makeBeadsLoopback();
       return new ExternalBeadsAdapter({ baseUrl: 'http://fake-host', fetchFn });
     },
-    isReal: false, // fetch-stubbed
+    isReal: true, // stateful loopback — real round-trip behavioural parity
+    typedErrors: true, // loopback returns 404/409 → typed-error probes run
   },
   {
     label: 'off',
@@ -75,7 +54,7 @@ const IMPLS = [
   },
 ];
 
-for (const { label, makeAdapter, isReal } of IMPLS) {
+for (const { label, makeAdapter, isReal, typedErrors } of IMPLS) {
   describe(`beads :: ${label}`, () => {
 
     let adapter;
@@ -171,9 +150,12 @@ for (const { label, makeAdapter, isReal } of IMPLS) {
 
     // --- Promoted typed-error assertions (M2) ---
 
-    // local-sqlite has deterministic NotFound/AlreadyClaimed; external fetch-stub
-    // returns 500 for unknown paths (not 404), so typed-error probes run local only.
-    if (label === 'local-sqlite') {
+    // Both local-sqlite and the external loopback surface deterministic typed
+    // errors: local-sqlite throws NotFound/AlreadyClaimed directly; the loopback
+    // returns 404/409 which the external adapter maps to the same typed errors
+    // (adapters/beads/external.js §_handleResponse). The off impl is covered by
+    // the off-class discipline block above.
+    if (typedErrors) {
       it('[M2] show throws a typed NotFound for an unknown id', async () => {
         await expect(adapter.show('does-not-exist-xyz')).rejects.toMatchObject({
           name: 'NotFound',
