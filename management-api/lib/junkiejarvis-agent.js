@@ -81,8 +81,8 @@ const SYSTEM_PROMPT = [
   '',
   'CREATING A CALENDAR EVENT:',
   'When — and only when — the member clearly wants an event created, your reply MUST begin with a single JSON directive on its very first line, then the human-readable reply on the lines after it. The directive shape is exactly:',
-  '{"tool":"create_event","title":"<title>","start":<unix-seconds>,"end":<unix-seconds>,"zone":"friends|family|business|public","venue":"fairfield"|"dreamlab"|null}',
-  'Rules for the directive: start and end are integer Unix timestamps (seconds). If the member gives no end time, make end = start + 3600. Pick the zone from context (default "friends" for social, "business" for work, "family" for family). venue is "fairfield", "dreamlab", or null if none was mentioned. Do NOT emit the directive for questions, scheduling enquiries without a clear "create it" intent, or anything ambiguous — ask a brief clarifying question instead.',
+  '{"tool":"create_event","title":"<title>","start":"<ISO-8601 datetime>","end":"<ISO-8601 datetime>","zone":"friends|family|business|public","venue":"fairfield"|"dreamlab"|null}',
+  'Rules for the directive: start and end are ISO-8601 datetimes WITH the Europe/London offset, e.g. "2026-06-19T19:00:00+01:00" (use +01:00 during British Summer Time, +00:00 otherwise). Resolve relative dates ("next Friday 7pm") against the CURRENT TIME given below. If the member gives no end time, make end one hour after start. Pick the zone from context (default "friends" for social, "business" for work, "family" for family). venue is "fairfield", "dreamlab", or null if none was mentioned. Do NOT emit the directive for questions, scheduling enquiries without a clear "create it" intent, or anything ambiguous — ask a brief clarifying question instead.',
 ].join('\n');
 
 // ─── Mention / addressing detection (pure) ──────────────────────────────────
@@ -174,12 +174,24 @@ function normaliseEventDirective(directive) {
   const title = typeof directive.title === 'string' ? directive.title.trim() : '';
   if (!title) return null;
 
-  let start = Number(directive.start);
-  let end = Number(directive.end);
+  // Accept either an integer Unix-second timestamp OR an ISO-8601 datetime
+  // string. LLMs reliably emit "2026-06-19T19:00:00+01:00" but are poor at
+  // computing raw epoch seconds, so the directive prefers ISO and we convert
+  // here (in code, exactly) — falling back to numeric for compatibility.
+  const toEpoch = (v) => {
+    if (typeof v === 'number' && Number.isFinite(v)) return Math.floor(v);
+    if (typeof v === 'string') {
+      const s = v.trim();
+      if (/^\d{9,11}$/.test(s)) return Math.floor(Number(s)); // bare epoch as string
+      const ms = Date.parse(s);
+      if (Number.isFinite(ms)) return Math.floor(ms / 1000);
+    }
+    return NaN;
+  };
+  let start = toEpoch(directive.start);
+  let end = toEpoch(directive.end);
   if (!Number.isFinite(start) || start <= 0) return null;
-  start = Math.floor(start);
   if (!Number.isFinite(end) || end <= start) end = start + 3600;
-  end = Math.floor(end);
 
   let zone = typeof directive.zone === 'string' ? directive.zone.toLowerCase() : '';
   if (!VALID_ZONES.includes(zone)) zone = 'friends';
@@ -250,7 +262,7 @@ function buildCalendarEvent(spec, createdAt) {
 
 // ─── LLM brain ──────────────────────────────────────────────────────────────
 
-const LLM_TIMEOUT_MS = 15000;
+const LLM_TIMEOUT_MS = 25000;
 const CANNED_APOLOGY = 'Sorry — I had a glitch reaching my brain just then. Try me again in a moment, or ask john if it persists.';
 
 /**
@@ -266,7 +278,18 @@ const CANNED_APOLOGY = 'Sorry — I had a glitch reaching my brain just then. Tr
 async function callLlm(userText, opts = {}) {
   const fetchImpl = opts.fetchImpl || (typeof fetch === 'function' ? fetch : null);
   if (!fetchImpl) return CANNED_APOLOGY;
-  const system = opts.system || SYSTEM_PROMPT;
+  // Inject the current wall-clock so the model can resolve relative dates
+  // ("next Friday 7pm") into the integer Unix timestamps the create_event
+  // directive requires. Without this the model emits <placeholder> tokens and
+  // the directive fails to parse. Provide UTC + Europe/London (the community's
+  // timezone) and the matching epoch so it can anchor its arithmetic.
+  const nowMs = Date.now();
+  let londonStr;
+  try {
+    londonStr = new Date(nowMs).toLocaleString('en-GB', { timeZone: 'Europe/London', dateStyle: 'full', timeStyle: 'short' });
+  } catch { londonStr = new Date(nowMs).toUTCString(); }
+  const dateContext = `\n\nCURRENT TIME: ${new Date(nowMs).toISOString()} (UTC). Local: ${londonStr} (Europe/London). Current Unix epoch (seconds): ${Math.floor(nowMs / 1000)}. Resolve all relative dates/times ("today", "next Friday 7pm") against this, in Europe/London, and emit integer Unix-second timestamps.`;
+  const system = (opts.system || SYSTEM_PROMPT) + dateContext;
   const model = opts.model
     || process.env.JUNKIEJARVIS_MODEL
     || (process.env.ANTHROPIC_API_KEY ? 'claude-haiku-4-5-20251001' : undefined);
@@ -294,6 +317,47 @@ async function callLlm(userText, opts = {}) {
       const json = await res.json();
       const block = Array.isArray(json.content) ? json.content.find((b) => b.type === 'text') : null;
       const out = block && typeof block.text === 'string' ? block.text.trim() : '';
+      return out || CANNED_APOLOGY;
+    }
+
+    // OpenAI-compatible chat completions (Z.AI/GLM, OpenAI, or any compatible
+    // gateway). Chosen when an OpenAI-compatible key is present — this is the
+    // reachable path in the DreamLab deployment (local ollama is not on-net).
+    // Config: JUNKIEJARVIS_LLM_BASE + JUNKIEJARVIS_LLM_KEY + JUNKIEJARVIS_LLM_MODEL,
+    // defaulting to Z.AI GLM-4.6 when ZAI_API_KEY is set.
+    const oaiKey = process.env.JUNKIEJARVIS_LLM_KEY || process.env.ZAI_API_KEY || process.env.OPENAI_API_KEY;
+    if (oaiKey) {
+      const base = (process.env.JUNKIEJARVIS_LLM_BASE
+        || (process.env.ZAI_API_KEY ? 'https://api.z.ai/api/paas/v4' : 'https://api.openai.com/v1')
+      ).replace(/\/+$/, '');
+      const oaiModel = model
+        || (process.env.ZAI_API_KEY ? 'glm-4.5-flash' : 'gpt-4o-mini');
+      // Z.AI GLM-4.5/4.6 are reasoning models: with thinking ENABLED they spend
+      // the whole token budget on reasoning_content and return empty content
+      // (finish_reason "length"). Disable thinking so the budget goes to the
+      // actual reply — fast (~2.5s) and the create_event directive parses.
+      const isZai = /z\.ai|bigmodel/.test(base);
+      const res = await fetchImpl(`${base}/chat/completions`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${oaiKey}` },
+        body: JSON.stringify({
+          model: oaiModel,
+          max_tokens: 300,
+          stream: false,
+          ...(isZai ? { thinking: { type: 'disabled' } } : {}),
+          messages: [
+            { role: 'system', content: system },
+            { role: 'user', content: String(userText || '').slice(0, 4000) },
+          ],
+        }),
+        signal: controller.signal,
+      });
+      if (!res.ok) return CANNED_APOLOGY;
+      const json = await res.json();
+      const out = json && Array.isArray(json.choices) && json.choices[0] && json.choices[0].message
+        && typeof json.choices[0].message.content === 'string'
+        ? json.choices[0].message.content.trim()
+        : '';
       return out || CANNED_APOLOGY;
     }
 
@@ -416,10 +480,14 @@ class JunkieJarvisAgent {
         (event) => { this._onEvent(event).catch((err) => this._logErr('dm', err)); }
       )
     );
-    // (b) channel messages — filter to kind-42, mention-detected in handler.
+    // (b) channel mentions — scoped to kind-42 that p-tag JunkieJarvis. The
+    // forum client emits ["p", <agent>] on @-mentions, so this captures every
+    // proper invocation while excluding the public kind-42 firehose (a bare
+    // {kinds:[42]} sub pulls the entire network's channel traffic from the
+    // public relays). The handler still re-checks p-tag OR @junkiejarvis text.
     this._subIds.push(
       this.bridge.subscribe(
-        { kinds: [KIND_CHANNEL_MESSAGE] },
+        { kinds: [KIND_CHANNEL_MESSAGE], '#p': [this.pubkey] },
         (event) => { this._onEvent(event).catch((err) => this._logErr('channel', err)); }
       )
     );
@@ -639,6 +707,13 @@ function startJunkieJarvis(deps = {}) {
         { derived: signer.pubkey },
         'junkiejarvis: derived pubkey does not match the provisioned JunkieJarvis identity — continuing with the derived key'
       );
+    }
+    // NIP-42: zone-gated relays (the DreamLab forum relay) withhold
+    // friends/family/business events from unauthenticated read sessions.
+    // Register the signer BEFORE subscribing so the bridge can answer each
+    // relay's ["AUTH", challenge] and replay the subscriptions post-AUTH.
+    if (typeof deps.bridge.setAuthSigner === 'function') {
+      deps.bridge.setAuthSigner(signer);
     }
     const agent = new JunkieJarvisAgent({
       bridge: deps.bridge,
