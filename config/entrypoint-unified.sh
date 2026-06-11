@@ -596,7 +596,8 @@ let changed = false;
 for (const evt of ['SessionStart', 'UserPromptSubmit', 'Stop', 'SessionEnd']) {
   s.hooks[evt] = s.hooks[evt] || [];
   const has = s.hooks[evt].some((g) => (g.hooks || []).some((h) => String(h.command || '').includes('nostr-live-mirror.cjs')));
-  if (!has) { s.hooks[evt].push({ hooks: [{ type: 'command', command: `${cmd} || true`, timeout: 8000 }] }); changed = true; }
+  // The hook reads the event name from argv[2]; pass it per event.
+  if (!has) { s.hooks[evt].push({ hooks: [{ type: 'command', command: `${cmd} ${evt} || true`, timeout: 8000 }] }); changed = true; }
 }
 if (changed) { fs.writeFileSync(f, JSON.stringify(s, null, 2)); console.log('  [mirror] registered nostr-live-mirror hooks in settings.json'); }
 else { console.log('  [mirror] nostr-live-mirror hooks already registered'); }

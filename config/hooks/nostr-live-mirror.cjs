@@ -116,6 +116,29 @@ function loadWs() {
   return null;
 }
 
+/**
+ * Deterministic single-purpose mirror key derived from the operator key:
+ *   child_sk = HMAC-SHA256(operator_sk, AGENTBOX_MIRROR_KEY_TAG | "agentbox-mirror-v1")
+ * Domain-separated and rotatable (bump the tag). This keeps the ROOT operator
+ * key OFF the phone — the device holds only this child, signs nothing of
+ * consequence with it, and the mirror is a self-DM on the child identity.
+ * Returns null when child mode is off (AGENTBOX_MIRROR_CHILD=0) or no operator
+ * key is present, in which case the legacy operator-self-DM path is used.
+ */
+let _childCache;
+function deriveChildKey() {
+  if (_childCache !== undefined) return _childCache;
+  if (String(process.env.AGENTBOX_MIRROR_CHILD || '').trim() === '0') { _childCache = null; return null; }
+  const hex = envFirst('AGENTBOX_PRIVKEY_HEX', 'AGENTBOX_BRIDGE_SK', 'OPERATOR_NOSTR_PRIVKEY');
+  if (!/^[0-9a-f]{64}$/i.test(hex)) { _childCache = null; return null; }
+  const tag = envFirst('AGENTBOX_MIRROR_KEY_TAG') || 'agentbox-mirror-v1';
+  try {
+    const d = crypto.createHmac('sha256', Buffer.from(hex, 'hex')).update(tag).digest();
+    _childCache = Uint8Array.from(d);
+  } catch { _childCache = null; }
+  return _childCache;
+}
+
 /** Sender identity sealed inside the gift wrap. */
 function senderSecretKey(tools) {
   const hex = envFirst('AGENTBOX_PRIVKEY_HEX', 'AGENTBOX_BRIDGE_SK', 'OPERATOR_NOSTR_PRIVKEY');
@@ -252,10 +275,12 @@ async function main() {
   // The event name is the first CLI arg (SessionStart|UserPromptSubmit|Stop|SessionEnd).
   const event = process.argv[2] || '';
 
-  // Gate: explicit off switch, or no recipient configured → silent no-op.
+  // Gate: explicit off switch → no-op. We then need EITHER a derivable child
+  // key (default, preferred) OR an explicit recipient pubkey (legacy).
   if (String(process.env.AGENTBOX_LIVE_MIRROR || '').trim() === '0') return 0;
-  const recipient = recipientPubkey();
-  if (!recipient) return 0;
+  const childSk = deriveChildKey();
+  const explicitRecipient = recipientPubkey();
+  if (!childSk && !explicitRecipient) return 0;
 
   const raw = await readStdin();
   let payload = {};
@@ -276,7 +301,11 @@ async function main() {
 
   let wrap;
   try {
-    const sk = senderSecretKey(tools);
+    // Default: a SELF-DM on the derived child identity — the root operator key
+    // never reaches the phone. Legacy fallback: operator-signed DM to an
+    // explicit recipient pubkey.
+    const sk = childSk || senderSecretKey(tools);
+    const recipient = childSk ? tools.getPublicKey(childSk) : explicitRecipient;
     const rumor = {
       kind: KIND_DM_RUMOR,
       content: body,
