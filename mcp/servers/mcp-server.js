@@ -23,6 +23,14 @@ try {
   // uris.js not loadable — URN minting degrades to null (non-fatal)
 }
 
+// Single-source memory-tool primitives (shared with ruvector-mcp.cjs). This
+// server uses the delegating backend: raw store/retrieve/list/search route
+// through the shared module wrapping the memoryStore singleton, while this file
+// keeps its own pod + URN response-shape assembly (so observable output is
+// unchanged).
+const { createMemoryTools } = _require('./lib/memory-tools.js');
+const memTools = createMemoryTools({ backend: 'in-memory', deps: { memoryStore } });
+
 // Operator identity — set by sovereign-bootstrap at boot via /run/agentbox/identity.env
 const MGMT_API_KEY  = process.env.MANAGEMENT_API_KEY   || '';
 const MGMT_API_PORT = process.env.MANAGEMENT_API_PORT  || '9090';
@@ -1702,8 +1710,7 @@ class ClaudeFlowMCPServer {
             try { memoryUrn = urisMint({ kind: 'memory', localId: `${ns}.${args.key}` }); } catch { /* degrade */ }
           }
 
-          const storeResult = await this.memoryStore.store(args.key, args.value, {
-            namespace: ns,
+          const storeResult = await memTools.memStore(args.key, args.value, ns, {
             ttl: args.ttl,
             metadata: { sessionId: this.sessionId, storedBy: 'mcp-server', type: 'knowledge', urn: memoryUrn },
           });
@@ -1733,7 +1740,7 @@ class ClaudeFlowMCPServer {
           let value = await podMemoryRetrieve(args.key, rNs);
           let podHit = value !== null;
           if (!podHit) {
-            value = await this.memoryStore.retrieve(args.key, { namespace: rNs });
+            value = await memTools.memRetrieve(args.key, rNs);
           }
 
           // ADR-063: reconstruct URN for retrieved entry
@@ -1761,10 +1768,7 @@ class ClaudeFlowMCPServer {
         }
 
         case 'list':
-          const entries = await this.memoryStore.list({
-            namespace: args.namespace || 'default',
-            limit: 100,
-          });
+          const entries = await memTools.memList(args.namespace || 'default', 100);
 
           // ADR-063: annotate listed entries with URNs
           const ns = args.namespace || 'default';
@@ -1811,10 +1815,7 @@ class ClaudeFlowMCPServer {
           };
 
         case 'search':
-          const results = await this.memoryStore.search(args.value || '', {
-            namespace: args.namespace || 'default',
-            limit: 50,
-          });
+          const results = await memTools.memSearch(args.value || '', args.namespace || 'default', 50);
 
           // ADR-063: annotate search results with URNs
           const searchNs = args.namespace || 'default';

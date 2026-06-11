@@ -12,6 +12,7 @@
  */
 
 const readline = require('readline');
+const { createMemoryTools } = require('./lib/memory-tools');
 
 // ── PostgreSQL pool ───────────────────────────────────────────────────────────
 
@@ -157,126 +158,28 @@ function parseVal(v) {
 }
 
 // ── Memory operations ─────────────────────────────────────────────────────────
+//
+// Tool logic lives in the shared lib/memory-tools.js module (single source of
+// truth across the two agentbox MCP servers). This server is the ADR-015
+// mandated external-pg path; it injects its pool, embedding transport, notifier
+// and helpers so the extracted logic behaves byte-for-byte as before.
 
-async function memStore(key, value, namespace = 'default') {
-  if (!pgOk || !pool) return { success: false, error: 'pg unavailable', storage: 'none' };
-  const id = entryId(namespace, key);
-  const jsonValue = typeof value === 'object' ? JSON.stringify(value) : value;
-  let pgValue;
-  try { JSON.parse(jsonValue); pgValue = jsonValue; } catch { pgValue = JSON.stringify(jsonValue); }
-  const embedText = typeof value === 'string' ? value : JSON.stringify(value);
-  let embeddingClause = 'NULL';
-  const params = [id, namespace, key, pgValue, WRITE_SOURCE_TYPE];
-  if (await xinfEnsure()) {
-    try {
-      const emb = await getEmbedding(embedText.substring(0, 2000));
-      params.push(vecToSql(emb));
-      embeddingClause = `$6::ruvector(384)`;
-    } catch (e) { log('WARN', `embedding generation failed for store: ${e.message}`); }
-  }
-  await pool.query(
-    `INSERT INTO memory_entries (id, namespace, key, value, source_type, metadata, embedding)
-     VALUES ($1, $2, $3, $4::jsonb, $5, '{}', ${embeddingClause})
-     ON CONFLICT (id) DO UPDATE SET value = EXCLUDED.value, embedding = COALESCE(EXCLUDED.embedding, memory_entries.embedding), updated_at = NOW()`,
-    params,
-  );
-  notifyMemoryFlash({ key, namespace, action: 'store' });
-  return { success: true, action: 'store', key, namespace, stored: true, embedded: params.length > 5, storage: 'ruvector-postgres' };
-}
-
-async function memRetrieve(key, namespace = 'default') {
-  if (!pgOk || !pool) return { success: false, error: 'pg unavailable' };
-  const res = await pool.query(
-    `SELECT key, value, source_type FROM memory_entries WHERE namespace = $1 AND key = $2 ORDER BY updated_at DESC LIMIT 1`,
-    [namespace, key],
-  );
-  if (!res.rows.length) return { success: true, action: 'retrieve', key, namespace, value: null, found: false };
-  notifyMemoryFlash({ key, namespace, action: 'retrieve' });
-  return { success: true, action: 'retrieve', key, namespace, value: parseVal(res.rows[0].value), found: true, source_type: res.rows[0].source_type, storage: 'ruvector-postgres' };
-}
-
-async function memList(namespace = 'default', limit = 100) {
-  if (!pgOk || !pool) return { success: false, error: 'pg unavailable' };
-  const res = await pool.query(
-    `SELECT key, value, source_type FROM memory_entries WHERE namespace = $1 ORDER BY created_at DESC LIMIT $2`,
-    [namespace, limit],
-  );
-  const entries = res.rows.map(r => ({ key: r.key, value: parseVal(r.value), source_type: r.source_type }));
-  return { success: true, action: 'list', namespace, entries, count: entries.length, storage: 'ruvector-postgres' };
-}
-
-async function memSearch(query, namespace = 'default', limit = 10, sourceType = null) {
-  if (!pgOk || !pool) return { success: false, error: 'pg unavailable' };
-  const st = sourceType && sourceType !== '*' ? sourceType : null;
-
-  // Try HNSW vector search via xinference embedding
-  if (await xinfEnsure()) {
-    try {
-      const queryEmb = await getEmbedding(query.substring(0, 2000));
-      const queryVec = vecToSql(queryEmb);
-      let paramIdx = 3;
-      const params = [queryVec, limit];
-      let nsFilter = '';
-      let stFilter = '';
-      if (namespace !== '*') { nsFilter = `AND namespace = $${paramIdx++}`; params.push(namespace); }
-      if (st) { stFilter = `AND source_type = $${paramIdx++}`; params.push(st); }
-
-      // ruvector 0.3.0's HNSW scan post-filters its candidate set without
-      // iterating: a WHERE clause on a kNN query silently returns 0 rows
-      // when the namespace's rows aren't among the index's top candidates
-      // (with 2M+ vectors, a 271-row namespace never is). The ef_search
-      // GUCs are no-ops in this extension version. For filtered searches,
-      // select the subset via btree first (MATERIALIZED blocks the HNSW
-      // plan) and rank exactly — small namespaces make this cheap and
-      // recall is perfect. Unfiltered searches keep the fast HNSW path.
-      const sql = (nsFilter || stFilter) ? `
-        WITH ns AS MATERIALIZED (
-          SELECT key, value, namespace, source_type, embedding
-          FROM memory_entries
-          WHERE embedding IS NOT NULL ${nsFilter} ${stFilter}
-        )
-        SELECT key, value, namespace, source_type,
-               1.0 - (embedding <=> $1::ruvector(384)) AS score
-        FROM ns
-        ORDER BY embedding <=> $1::ruvector(384)
-        LIMIT $2` : `
-        SELECT key, value, namespace, source_type,
-               1.0 - (embedding <=> $1::ruvector(384)) AS score
-        FROM memory_entries
-        WHERE embedding IS NOT NULL
-        ORDER BY embedding <=> $1::ruvector(384)
-        LIMIT $2`;
-
-      const res = await pool.query(sql, params);
-      const results = res.rows.map(r => ({
-        key: r.key, value: parseVal(r.value), namespace: r.namespace,
-        source_type: r.source_type, score: parseFloat(r.score),
-      }));
-      notifyMemoryFlashBatch(results.slice(0, 5).map(r => ({ key: r.key, namespace: r.namespace || namespace, action: 'search' })));
-      return { success: true, action: 'search', query, namespace, results, count: results.length, method: 'hnsw-xinference', storage: 'ruvector-postgres' };
-    } catch (vecErr) {
-      log('WARN', `HNSW search failed: ${vecErr.message}`);
-    }
-  }
-
-  // Fallback: ILIKE text search — this is DEGRADED, not normal
-  log('WARN', 'DEGRADED: falling back to ILIKE text search — xinference unavailable or vector search failed. Semantic search is disabled. Check xinference container and XINFERENCE_ENDPOINT.');
-  const fallback = await pool.query(
-    `SELECT key, value, namespace, source_type, 0.5 AS score
-     FROM memory_entries
-     WHERE (namespace = $1 OR $1 = '*')
-       AND ($3::text IS NULL OR source_type = $3)
-       AND (key ILIKE $2 OR value::text ILIKE $2)
-     ORDER BY created_at DESC LIMIT $4`,
-    [namespace, `%${query}%`, st, limit],
-  );
-  const results = fallback.rows.map(r => ({
-    key: r.key, value: parseVal(r.value), namespace: r.namespace,
-    source_type: r.source_type, score: 0.5,
-  }));
-  notifyMemoryFlashBatch(results.slice(0, 5).map(r => ({ key: r.key, namespace: r.namespace || namespace, action: 'search' })));
-  return { success: true, action: 'search', query, namespace, results, count: results.length, method: 'ilike-fallback', degraded: true, warning: 'Semantic search unavailable — using text substring match. Check xinference service.', storage: 'ruvector-postgres' };
-}
+const { memStore, memRetrieve, memList, memSearch } = createMemoryTools({
+  backend: 'external-pg',
+  deps: {
+    pool,
+    getPgOk: () => pgOk,
+    getEmbedding,
+    xinfEnsure,
+    vecToSql,
+    entryId,
+    parseVal,
+    notifyMemoryFlash: (...a) => notifyMemoryFlash(...a),
+    notifyMemoryFlashBatch: (...a) => notifyMemoryFlashBatch(...a),
+    log,
+    writeSourceType: WRITE_SOURCE_TYPE,
+  },
+});
 
 // ── Tool schemas (claude-flow compatible) ─────────────────────────────────────
 
