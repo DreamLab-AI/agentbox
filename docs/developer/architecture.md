@@ -217,7 +217,7 @@ Generated compose emits:
 ```yaml
 user: "1000:1000"
 read_only: true
-cap_drop: [ALL]
+cap_drop: [ALL]            # SETUID/SETGID deliberately NOT re-added (ADR-027 D3)
 tmpfs:
   - /tmp:mode=1777,size=256M
   - /run:mode=755,size=64M
@@ -226,8 +226,13 @@ tmpfs:
   - /var/log/supervisor:mode=755,size=64M
 security_opt:
   - no-new-privileges:true
-  - seccomp=default
+  - seccomp=./config/seccomp-agentbox.json   # supplemental allow-by-default denylist
+ports:
+  - "127.0.0.1:9090:9090"    # all published ports bind host-loopback only (ADR-027 D1)
+  # ...
 ```
+
+The seccomp profile is an **allow-by-default supplemental denylist** (47 high-risk syscall denials layered on Docker's default), not a replacement allowlist — see [ADR-027 §D2](../reference/adr/ADR-027-default-secure-posture.md). All published ports bind `127.0.0.1` on the host; cross-container reach is token-gated (auth-default-on). Root exists only during the supervisord boot phase; there is no runtime privilege-escalation path (no setuid sudo, no `SETUID`/`SETGID` caps).
 
 Feature-specific privilege expansions live in `[security.exceptions.<feature>]` manifest blocks. Activation is gated on the corresponding feature flag (validator rule E020). Baseline drops are never removed by exceptions — they can only add devices, tmpfs paths, caps, or runtime hints.
 

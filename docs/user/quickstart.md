@@ -400,7 +400,7 @@ The desktop runs TigerVNC Xvnc with `-SecurityTypes None` (no VNC password) and 
 | Agent Events | 9700 | 127.0.0.1:9700 | SSH tunnel |
 | Prometheus | 9091 | 127.0.0.1:9091 | SSH tunnel |
 
-All ports are localhost-only on the host. The only way in from the network is through SSH authentication to the host machine.
+All ports are localhost-only on the host. The only way in from the network is through SSH authentication to the host machine. Cross-container calls are token-gated (WS auth is on by default and fails closed). The full default-secure posture — host-loopback publish, auth-default-on, no runtime privilege escalation, secrets in tmpfs files — is recorded in [ADR-027](../reference/adr/ADR-027-default-secure-posture.md).
 
 ## Compose File Generation
 

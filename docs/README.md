@@ -115,6 +115,7 @@ These are the authoritative sources of truth. Anything in `user/` or `developer/
 | ADR-023 | [Ontology bridge](reference/adr/ADR-023-ontology-bridge.md) | Proposed | VisionClaw ontology bridge via MCP; BC20 anti-corruption layer |
 | ADR-024 | [Setup dashboard architecture](reference/adr/ADR-024-setup-dashboard.md) | Accepted | Setup wizard and operations dashboard — browser-based, zero-dependency |
 | ADR-025 | [Multi-Harness tmux Architecture](reference/adr/ADR-025-multi-harness-tmux-architecture.md) | Accepted | Multi-harness tmux layout for parallel agent workstreams |
+| ADR-027 | [Default-secure posture and runtime-isolation roadmap](reference/adr/ADR-027-default-secure-posture.md) | Accepted | Loopback-publish + auth-default-on, supplemental seccomp denylist, no runtime sudo, secret-via-tmpfs; gVisor/WASI proposed |
 
 ### Product requirements (PRD)
 
@@ -133,6 +134,7 @@ These are the authoritative sources of truth. Anything in `user/` or `developer/
 | PRD-011 | [Ontology bridge](reference/prd/PRD-011-ontology-bridge.md) | VisionClaw ontology bridge exposing knowledge-graph concepts via MCP |
 | PRD-012 | [Setup wizard and operations dashboard](reference/prd/PRD-012-setup-dashboard.md) | Browser-based first-boot wizard and day-2 ops dashboard |
 | PRD-013 | [Multi-harness tmux architecture](reference/prd/PRD-013-multi-harness-tmux-architecture.md) | Multi-harness tmux layout and documentation revamp |
+| PRD-REMEDIATION-001 | [Default-secure posture remediation](reference/PRD-REMEDIATION-001.md) | Second-pass hardening: loopback publish, auth-default-on, zai allowlist, no runtime escalation, secret-via-tmpfs, doc truth-up |
 
 ### Domain design (DDD)
 
@@ -149,6 +151,7 @@ These are the authoritative sources of truth. Anything in `user/` or `developer/
 | DDD-009 | [Setup dashboard domain](reference/ddd/DDD-009-setup-dashboard-domain.md) | WizardSession + ConfigBlob + HealthSnapshot + OperationsDashboard |
 | DDD-010 | [Multi-Harness Coordination Domain](reference/ddd/DDD-010-multi-harness-coordination-domain.md) | HarnessSession + WorkstreamRouter + TmuxLayout aggregates |
 | DDD-011 | [Multi-Tenant Federation Domain](reference/ddd/DDD-011-multi-tenant-federation-domain.md) | FederationPeer + MeshTopology + TenantIsolation aggregates |
+| DDD-013 | [Hardening Boundary Domain](reference/ddd/DDD-013-hardening-boundary-domain.md) | NetworkEdgePolicy + PrivilegeModel + SecretMaterialisation + DefenceInDepthLayer aggregates |
 
 ### QE Reviews
 

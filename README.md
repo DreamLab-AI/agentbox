@@ -25,15 +25,15 @@
 
 Agentbox is a hardened, fully reproducible Linux container environment built specifically to host, orchestrate, and trace autonomous AI agents.
 
-Instead of juggling custom Dockerfiles, scattered API keys, and brittle dependency scripts, **everything in Agentbox is driven by a single `agentbox.toml` manifest**. You declare the agents you want, the tools they need — from browser automation to 3D rendering — and the storage backends they use. Agentbox builds a byte-for-byte reproducible image using Nix, spins up the environment, and automatically routes all agent actions through local privacy filters and cryptographic audit trails.
+Instead of juggling custom Dockerfiles, scattered API keys, and brittle dependency scripts, **everything in Agentbox is driven by a single `agentbox.toml` manifest**. You declare the agents you want, the tools they need — from browser automation to 3D rendering — and the storage backends they use. Agentbox builds a byte-for-byte reproducible image using Nix, spins up the environment, and routes durable agent writes (memory, pods, beads, events) through a local privacy-redaction filter and cryptographic audit trails.
 
 ## Why Agentbox?
 
 Most agent runtimes are just a collection of tools with no provenance, privacy, or reproducible state. Agentbox is built differently:
 
 - 🚀 **Batteries Included (via MCP)**: Out-of-the-box support for Claude Code, Codex, Gemini, DeepSeek, and ruflo. Instantly equip them with 90+ skills including Playwright, ComfyUI, QGIS, Blender, LaTeX, and Jupyter via the Model Context Protocol (MCP).
-- 🔒 **Privacy by Default**: An embedded `openai/privacy-filter` sidecar intercepts every agent action, ensuring PII and secrets are redacted _before_ any data hits your memory or logs.
-- 🛡️ **Hardened & Reproducible**: Built with Nix flakes — zero mutable `npm install` steps at runtime. Runs as non-root with a read-only filesystem and all capabilities dropped by default.
+- 🔒 **Privacy by Default**: An embedded `openai/privacy-filter` sidecar sits in the adapter-dispatch path, redacting PII and secrets _before_ durable writes hit memory or pods. Policy is **per slot** — `strict` (redact-then-write, fail-closed) for `memory` and `pods`, `soft` for `events`/`beads`, `off` for the `orchestrator` control plane. It is not a universal interceptor on every tool call; see [ADR-008](docs/reference/adr/ADR-008-privacy-filter-routing.md).
+- 🛡️ **Hardened & Reproducible**: Built with Nix flakes. The `pg` Node module is baked into the image (no `npm install pg` at boot); a small set of `npx -y` CLI aliases is the one remaining runtime-fetch path, pending SRI pinning ([tracked in `lib/npm-cli.nix`](lib/npm-cli.nix)). Runs as non-root (uid 1000) with a read-only root filesystem, `cap_drop: ALL`, `no-new-privileges:true`, and a **supplemental seccomp denylist** (47 high-risk syscall denials layered on Docker's default profile — not a replacement allowlist; the container runtime is the security boundary). Published ports bind host-loopback only ([ADR-027](docs/reference/adr/ADR-027-default-secure-posture.md)).
 - 🔗 **Sovereign Data & Auditability**: Agents own their data cryptographically. Every generated file, memory, and action is stamped with a `did:nostr` identity and stored in an embedded Solid Pod (`solid-pod-rs`). See [The Sovereign Data Stack](#the-sovereign-data-stack).
 - 🔌 **Pluggable Adapters**: Run entirely standalone on a laptop (SQLite + local JSONL), or effortlessly federate into a cloud mesh (Postgres pgvector + HTTP event sinks) by flipping a TOML switch.
 
