@@ -1,0 +1,57 @@
+name: Security Invariants
+
+# Executable-invariant CI guards for the 2026 hardening sprint. Each check under
+# scripts/ci/ asserts a property the sprint established and exits non-zero on
+# regression. check-no-npx-latest is a ratchet (fails only above baseline).
+on:
+  push:
+    paths:
+      - 'docker-compose.yml'
+      - 'config/seccomp-agentbox.json'
+      - 'config/entrypoint-unified.sh'
+      - 'management-api/**'
+      - 'lib/**'
+      - 'scripts/**'
+      - 'flake.nix'
+      - '.github/workflows/invariants.yml'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  invariants:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Make check scripts executable
+        run: chmod +x scripts/ci/*.sh
+
+      - name: check-seccomp (high-value syscall denials intact)
+        run: sh scripts/ci/check-seccomp.sh
+
+      - name: check-nnp (no-new-privileges; no SETUID/SETGID cap_add)
+        run: sh scripts/ci/check-nnp.sh
+
+      - name: check-ports-loopback (all publishes bind 127.0.0.1)
+        run: sh scripts/ci/check-ports-loopback.sh
+
+      - name: check-db-password (no :-ruvector default)
+        run: sh scripts/ci/check-db-password.sh
+
+      - name: check-secret-not-in-env (AGENTBOX_BRIDGE_SK scrubbed before exec)
+        run: sh scripts/ci/check-secret-not-in-env.sh
+
+      - name: check-single-metrics (exactly one collectDefaultMetrics call)
+        run: node scripts/ci/check-single-metrics.js
+
+      - name: check-no-npx-latest (ratchet — fails only above baseline)
+        run: sh scripts/ci/check-no-npx-latest.sh
