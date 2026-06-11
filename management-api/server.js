@@ -1007,6 +1007,36 @@ async function start() {
       }
     }
 
+    // ── JunkieJarvis forum agent (env-gated, fail-open) ─────────────────
+    // Rides this always-on process — no supervisor program. Disabled unless
+    // JUNKIEJARVIS_ENABLED=true so the repo stays generic. Reuses NostrBridge
+    // for the relay pool; never crashes management-api on any failure.
+    if (String(process.env.JUNKIEJARVIS_ENABLED || '').toLowerCase() === 'true') {
+      try {
+        const { NostrBridge } = require('../mcp/servers/nostr-bridge');
+        const { startJunkieJarvis } = require('./lib/junkiejarvis-agent');
+        const jjRelays = (process.env.NOSTR_RELAYS || '')
+          .split(',').map((r) => r.trim()).filter(Boolean);
+        if (jjRelays.length === 0) {
+          logger.warn('junkiejarvis: NOSTR_RELAYS is empty — not starting');
+        } else {
+          const jjBridge = new NostrBridge({ relays: jjRelays });
+          await jjBridge.connect();
+          const junkiejarvis = startJunkieJarvis({ bridge: jjBridge, logger });
+          if (junkiejarvis) {
+            app.addHook('onClose', async () => {
+              try { junkiejarvis.stop(); } catch (_) { /* ignore */ }
+              try { await jjBridge.disconnect(); } catch (_) { /* ignore */ }
+            });
+          } else {
+            try { await jjBridge.disconnect(); } catch (_) { /* ignore */ }
+          }
+        }
+      } catch (err) {
+        logger.warn({ err }, 'junkiejarvis failed to start — forum agent inactive (fail-open)');
+      }
+    }
+
     // ── Observability ───────────────────────────────────────────────────
     initTracing();
     observabilityMetrics.setBuildInfo();
