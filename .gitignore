@@ -42,13 +42,15 @@ Thumbs.db
 logs/
 debug_log.txt
 
-# Environment
+# Environment — ignore every .env variant by default; only templates/examples
+# are tracked. (.env.dreamlab-additions slipped through the old narrow patterns.)
 .env
-.env.local
-.env.*.local
-.env.mad-source
+.env.*
 !.env.example
 !.env.template
+!.env.template.*
+!.env.*.example
+!.env.*.template
 
 # Runtime directories (created by container)
 workspace/
