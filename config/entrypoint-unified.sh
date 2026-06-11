@@ -391,7 +391,15 @@ if [ "${ENABLE_COMFYUI_BUILTIN:-false}" = "true" ]; then
   _probe_closure /opt/agentbox/skills/comfyui/mcp-server
 fi
 if [ "${ENABLE_CODE_INTERPRETER:-false}" = "true" ]; then
-  _probe_closure /opt/agentbox/mcp/code-interpreter
+  # code-interpreter is a Python MCP server with a name-only package.json
+  # (zero npm deps) — node_modules never exists, so _probe_closure would
+  # fatally abort the bootstrap here and skip everything after phase 6
+  # (.mcp.json generation included). Probe the real entrypoint instead.
+  if [ ! -f /opt/agentbox/mcp/code-interpreter/server.py ]; then
+    printf '{"level":"fatal","time":"%s","agentbox.stage":"bootstrap","event":"MissingArtifactDetected","path":"%s","reason":"server.py not present — rerun nix build and push the image"}\n' \
+      "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "/opt/agentbox/mcp/code-interpreter" >&2
+    exit 1
+  fi
 fi
 if [ "${ENABLE_ACI_SHELL:-false}" = "true" ]; then
   _probe_closure /opt/agentbox/mcp/aci-shell
@@ -518,6 +526,26 @@ with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
     chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
   else
     echo "  [mcp] browsercontainer not reachable — skipping browser-gpu MCP"
+  fi
+fi
+
+# ── Agentic-QE MCP: register the fleet server when the toolchain is enabled ──
+# PATH-resolved `aqe mcp` (never a raw /nix/store path: rebuild GC deletes old
+# versioned paths and a pinned path breaks every persisted .mcp.json).
+if [ "${ENABLE_AGENTIC_QE:-false}" = "true" ] && command -v aqe >/dev/null 2>&1 && [ -f "$_MCP_JSON" ]; then
+  if ! grep -q "agentic-qe" "$_MCP_JSON" 2>/dev/null; then
+    python3 -c "
+import json
+with open('$_MCP_JSON') as f: cfg = json.load(f)
+cfg.setdefault('mcpServers', {})['agentic-qe'] = {
+  'command': 'aqe',
+  'args': ['mcp'],
+  'type': 'stdio',
+  'env': {'AQE_MEMORY_BACKEND': 'memory', 'AQE_VERBOSE': 'false', 'NODE_NO_WARNINGS': '1'}
+}
+with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
+" 2>/dev/null && echo "  [mcp] Added agentic-qe → aqe mcp" || true
+    chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
   fi
 fi
 

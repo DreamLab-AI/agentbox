@@ -122,9 +122,9 @@
         #    nix-prefetch-url https://registry.npmjs.org/%40claude-flow/cli/-/cli-3.6.12.tgz
         claudeFlowPkg = mkNpmCli {
           pkgName         = "@claude-flow/cli";
-          version         = "3.10.40";
-          sha256          = "sha256-Cmt0CuAuolpAz8TLe+yHDQKxDvXDQUSUbA+X28mKUO0=";
-          nodeModulesHash = "sha256-9cNntS43sXcZImpdYUVCXN5Yu5AYj6lK2NsuzQq1xS0=";
+          version         = "3.10.41";
+          sha256          = "sha256-B7iiUkekqlGHpeQZZDgw87kcKKOBiLzODaLhz3Q0WWk=";
+          nodeModulesHash = "sha256-BZ1stHVMG7eKbnoyni1ot7xSmBt/UCeHXMWiUDkAgbE=";
           bin             = "claude-flow";
         };
 
@@ -132,9 +132,9 @@
         #    nix-prefetch-url https://registry.npmjs.org/ruflo/-/ruflo-3.6.12.tgz
         rufloPkg = mkNpmCli {
           pkgName         = "ruflo";
-          version         = "3.10.40";
-          sha256          = "sha256-CgQdnn/HY1ON7hfyVbOZNXB/J32EQ+Vg3qpYW7eOMBA=";
-          nodeModulesHash = "sha256-B0c7YKFB0jXx6Mr2EHgtBXKnQiPN1htKpXaJRk4Nv00=";
+          version         = "3.10.41";
+          sha256          = "sha256-BUJPveUkxgdwRbgLIS13Xt72/M10VQbdpqWG8Ql0lAw=";
+          nodeModulesHash = "sha256-V1mk2oo2qYk6qoj8/q7cJ4neSqAAvSiFaQf8I9fp8GQ=";
           bin             = "ruflo";
         };
 
@@ -146,9 +146,9 @@
         #    nix-prefetch-url https://registry.npmjs.org/agentic-qe/-/agentic-qe-3.9.18.tgz
         agenticQePkg = mkNpmCli {
           pkgName         = "agentic-qe";
-          version         = "3.10.4";
-          sha256          = "sha256-eQrkhB0GNsL1/Bm56bwtoX48qF1y4wXhodASao9ICqo=";
-          nodeModulesHash = "sha256-bukYzeVxtuWRCG93uU8SofqAXRBBAf5f/Oyrni+HSco=";
+          version         = "3.10.5";
+          sha256          = "sha256-4rhFjviITgWttyN37f8eHMUE+rrWDGMBOeaikQeZDq8=";
+          nodeModulesHash = "sha256-m7uuVXZOOreFTXBPGqOAVyYBeuHdw0mC0BWPnwF7ODo=";
           bin             = "aqe";
         };
 
