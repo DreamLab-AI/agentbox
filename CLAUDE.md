@@ -31,8 +31,7 @@ Full product spec: [PRD-001](docs/reference/prd/PRD-001-capabilities-and-adapter
 
 - [`flake.nix`](flake.nix): image composition and generated supervisor text
 - [`agentbox.toml`](agentbox.toml): feature gates and toolchains
-- [`config/entrypoint-unified.sh`](config/entrypoint-unified.sh): runtime bootstrap
-- [`scripts/skills-entrypoint.sh`](scripts/skills-entrypoint.sh): runtime dependency bootstrap
+- [`config/entrypoint-unified.sh`](config/entrypoint-unified.sh): runtime bootstrap (also performs runtime dependency bootstrap; the old `scripts/skills-entrypoint.sh` is retired)
 - [`scripts/sovereign-bootstrap.py`](scripts/sovereign-bootstrap.py): identity generation and pod scaffolding
 - [`scripts/provision-agent-stacks.py`](scripts/provision-agent-stacks.py): stack/profile provisioning
 - [`config/tmux-autostart.sh`](config/tmux-autostart.sh): tmux session launcher (MAD-style tabs)
@@ -95,7 +94,6 @@ The intended runtime model (updated for commit `2341480c`):
 
 These exist for historical context or partial compatibility and should not be treated as the primary runtime path:
 
-- `config/supervisord.conf`
 - older docs that describe `devuser`, `gemini-user`, `openai-user`, `zai-user`, `deepseek-user`
 - old keepalive-only runtime assumptions
 

@@ -248,12 +248,12 @@ flowchart LR
 | `activity` | yes | yes | `urn:agentbox:activity:hex:sha256-12-abc` |
 | `event` | yes | yes | `urn:agentbox:event:hex:sha256-12-abc` |
 | `bead` | yes | yes | `urn:agentbox:bead:hex:sha256-12-abc` |
-| `agent` | yes | yes | `urn:agentbox:agent:hex:sha256-12-abc` |
+| `agent` | yes | no | `urn:agentbox:agent:hex:agent-name` |
 | `mcp` | no | no | `urn:agentbox:mcp:server-slug` |
-| `memory` | no | no | `urn:agentbox:memory:name` |
+| `memory` | yes | no | `urn:agentbox:memory:hex:name` |
 | `skill` | no | no | `urn:agentbox:skill:slug` |
-| `dataset` | no | yes | `urn:agentbox:dataset:sha256-12-abc` |
-| `thing` | no | yes | `urn:agentbox:thing:sha256-12-abc` |
+| `dataset` | yes | no | `urn:agentbox:dataset:hex:name` |
+| `thing` | yes | no | `urn:agentbox:thing:hex:name` |
 | `adr` | no | no | `urn:agentbox:adr:ADR-013` |
 | `prd` | no | no | `urn:agentbox:prd:PRD-006` |
 | `ddd` | no | no | `urn:agentbox:ddd:DDD-004` |
@@ -281,7 +281,7 @@ graph LR
     subgraph "This Agentbox"
         TS["Tailscale\nuserspace-networking"]
         NR["nostr-rs-relay\n:7777"]
-        MA["management-api\n:8080"]
+        MA["management-api\n:9090"]
     end
 
     TS <-->|"WireGuard\nMagicDNS"| OTHER["Other Agentboxes\nsolid-pod-rs hosts"]

@@ -158,7 +158,7 @@ Consultants remain a first-class path. The MCP relay pattern is cost-effective f
 | ID | Fix | Files |
 |----|-----|-------|
 | D07 | Update `docs/README.md` index: add ADR-016 through ADR-024, PRD-007 through PRD-013, DDD-005 through DDD-009, QE reviews, vocab registry | `docs/README.md` |
-| D08 | Document 9 undocumented subsystems in `configuration.md`: LLM marketplace, payments, telegram (16 keys), git pods, multi-user pods, plugins (30+), memory admin, consultant keys, XINFERENCE/EMBEDDING vars | `configuration.md` |
+| D08 | Document 9 undocumented subsystems in `configuration.md`: LLM marketplace, payments, ~~telegram (16 keys)~~ mirror + xinference vars (see `.env.example`), git pods, multi-user pods, plugins (30+), memory admin, consultant keys, XINFERENCE/EMBEDDING vars | `configuration.md` |
 | D09 | Remove phantom `[integrations.ragflow]` section | `configuration.md:284-288` |
 | D10 | Remove deleted Playwright security exception | `configuration.md:575-577` |
 | D11 | Add 6 missing skills to SKILL-DIRECTORY.md: `book-publishing`, `cost-estimation`, `godot-development`, `latex-book`, `prose-sanitiser`, `security-testing` | `SKILL-DIRECTORY.md` |

@@ -62,5 +62,5 @@ That split is the intended design.
 ## Related Files
 
 - [`scripts/solid-pod-server.py`](../../scripts/solid-pod-server.py)
-- [`scripts/skills-entrypoint.sh`](../../scripts/skills-entrypoint.sh)
+- [`config/entrypoint-unified.sh`](../../config/entrypoint-unified.sh)
 - [`agentbox.toml`](../../agentbox.toml)

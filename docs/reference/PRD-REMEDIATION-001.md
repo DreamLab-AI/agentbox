@@ -106,7 +106,7 @@ The `npx -y` remainder is a **documented reproducibility caveat**, not a hidden 
 
 | Phase | Surface | Commit |
 |-------|---------|--------|
-| 0/1 | Infra: loopback publish, seccomp truth-up, drop setuid caps, fail-loud DB password, bake pg path | `3eee9b37` |
+| 0/1 | Infra: loopback publish, seccomp truth-up, drop setuid caps (later restored — see AC-4 amendment / `b251f440`), fail-loud DB password, bake pg path | `3eee9b37` |
 | 0/1 | Net: auth default-on, fail-closed, timing-safe, zai allowlist, one metrics registry | `971d06eb` |
 | 0/1/4 | Boot: key→tmpfs file, single WORKSPACE, drop runtime sudo, pinned gum | `0bfa856c` |
 | 2 | Cleanup: dead code, duplicate test tree, orphan registry, demote task regex | `4ea1c9ee` |

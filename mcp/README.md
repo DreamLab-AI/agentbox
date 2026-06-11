@@ -49,5 +49,5 @@ When updating MCP infrastructure for Agentbox:
 ## Related Files
 
 - [`../skills/mcp.json`](../skills/mcp.json)
-- [`../scripts/skills-entrypoint.sh`](../scripts/skills-entrypoint.sh)
+- [`../config/entrypoint-unified.sh`](../config/entrypoint-unified.sh)
 - [`../mcp/servers/nostr-bridge.js`](servers/nostr-bridge.js)

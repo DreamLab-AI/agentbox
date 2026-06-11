@@ -4,6 +4,10 @@
 **Repo state:** `DreamLab-AI/agentbox` @ `17321ddf` (main)
 **Date:** 2026-06-11
 
+> **Snapshot note:** this brief is a snapshot @ `17321ddf` — see CHANGELOG for later
+> commits (nostr mirror `5acbb3f9`, child-key `146a3e3e`, kit primitives `b0893526`,
+> caps restore `b251f440`, env untrack `7cb7832b`).
+
 A 7-commit security-hardening sprint just landed (both remediation PRDs merged into
 `PRD-REMEDIATION-001`). This brief is everything needed to rebuild the image and bring
 it up safely.
@@ -55,6 +59,11 @@ blindly.**
 - **No runtime sudo** (setuid wrapper removed, `no-new-privileges:true`). The Nostr bridge key
   is read from `/run/secrets/nostr.key` (tmpfs), not the process environment.
 
+  > **Superseded by `b251f440`:** only the setuid *sudo wrapper* stays removed.
+  > `SETUID`/`SETGID` capabilities were **restored** for the supervisord
+  > privilege-drop path (supervisord drops from root to devuser at boot and needs
+  > them). The "setuid caps dropped" framing below applies to the sudo wrapper only.
+
 ---
 
 ## Post-build verification — run the invariant checks (all must pass)
@@ -97,10 +106,13 @@ only goes down over time.
 
 | Commit | Workstream |
 |--------|-----------|
-| `3eee9b37` | infra: loopback publish, seccomp truth-up, drop setuid caps, fail-loud DB password, bake pg path, GPU UUID param |
+| `3eee9b37` | infra: loopback publish, seccomp truth-up, drop setuid caps¹, fail-loud DB password, bake pg path, GPU UUID param |
 | `971d06eb` | network: auth default-on + timing-safe, zai allowlist, single metrics registry, sandbox hardening |
 | `0bfa856c` | boot: key→tmpfs (SEC-003), single WORKSPACE, drop runtime sudo, pinned gum |
 | `4ea1c9ee` | cleanup: dead code, duplicate test tree, orphan registry, task-regex→telemetry |
 | `2d9f130c` | mcp: shared memory-tools module (ruvector behaviour byte-identical) |
 | `d4ec42e4` | ci: 7 executable-invariant checks + workflow |
 | `17321ddf` | docs: PRD-REMEDIATION-001 + ADR-027 + DDD-013 + README truth-up |
+
+> ¹ **Superseded by `b251f440`:** `SETUID`/`SETGID` were later **restored** for the
+> supervisord privilege-drop path. Only the setuid sudo wrapper remains removed.

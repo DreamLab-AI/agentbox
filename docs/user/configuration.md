@@ -387,6 +387,27 @@ reason = "nostr-rs-relay SQLite journal and WAL require a writable durable path"
 
 Novice-friendly walkthrough: [nostr-relay.md](nostr-relay.md).
 
+### Sovereign mesh & mirror — environment variables
+
+Some sovereign-mesh behaviour is wired through environment variables (set in
+`.env`) rather than `agentbox.toml`. Defaults are baked at build time; override
+only when needed. See `.env.example` for the same names with safe defaults.
+
+| Variable | Description |
+|----------|-------------|
+| `AGENTBOX_LIVE_MIRROR` | `0` disables the per-turn Nostr live mirror (`config/hooks/nostr-live-mirror.cjs`). |
+| `AGENTBOX_MIRROR_CHILD` | `0` falls back to operator self-DM; otherwise a derived child key is used. |
+| `AGENTBOX_MIRROR_KEY_TAG` | HMAC tag for child-key derivation; bump to rotate the mirror identity. |
+| `AGENTBOX_MIRROR_RECIPIENT_PUBKEY` | Hex pubkey receiving the per-turn live-mirror DMs. Unset = silent no-op. |
+| `AGENTBOX_BRIDGE_RECIPIENT_PUBKEY` | Hex pubkey receiving the SessionEnd digest (pod bridge). |
+| `AGENTBOX_PUBKEY` | Operator hex pubkey; fallback mirror recipient when set. |
+| `AGENTBOX_ADMIN_PUBKEY` | Operator/admin hex pubkey for relay and bridge auth. |
+| `AGENTBOX_ALLOWED_PUBKEYS` | Comma-separated hex pubkeys allowed to write to the embedded relay. |
+| `AGENTBOX_RELAY_BIND` | `address:port` the embedded nostr-rs-relay binds to (default `127.0.0.1:7777`). |
+| `NOSTR_MIRROR_RELAY` | Mirror relay WebSocket URL (override for testing). |
+| `BC20_URN_MAPPING_PATH` | Path to the durable BC20 `UrnMapping` store. |
+| `MANAGEMENT_API_URL` | Base URL agent runners use to reach management-api (default `http://127.0.0.1:9090`). |
+
 ## `[networking]`
 
 ```toml
