@@ -185,13 +185,19 @@ class ComfyUIClient extends EventEmitter {
     }
 
     async captureDisplay(displayNum = 1) {
-        const { execSync } = require('child_process');
+        const { execFileSync } = require('child_process');
         const fs = require('fs');
         const path = require('path');
 
         try {
-            const tmpFile = path.join('/tmp', `display_${displayNum}_${Date.now()}.png`);
-            execSync(`DISPLAY=:${displayNum} import -window root ${tmpFile}`);
+            const display = Number.parseInt(displayNum, 10);
+            if (!Number.isInteger(display) || display < 0 || display > 99) {
+                return { success: false, error: `Invalid display number: ${displayNum}` };
+            }
+            const tmpFile = path.join('/tmp', `display_${display}_${Date.now()}.png`);
+            execFileSync('import', ['-window', 'root', tmpFile], {
+                env: { ...process.env, DISPLAY: `:${display}` }
+            });
 
             const imageData = fs.readFileSync(tmpFile, 'base64');
             fs.unlinkSync(tmpFile);

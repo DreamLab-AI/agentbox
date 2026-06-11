@@ -4,12 +4,15 @@
  * beads/local-sqlite — SQLite-backed durable work-receipt store.
  *
  * Self-initialising schema on first use. Uses better-sqlite3 sync API.
- * Path defaults to /workspace/beads.db; override via opts.dbPath.
+ * Path defaults to $WORKSPACE/beads.db (the agent workspace, normally
+ * /home/devuser/workspace); override via opts.dbPath.
  *
  * @see ADR-005 §beads slot
  * @see PRD-001 §Capabilities and adapters
  */
 
+const os = require('os');
+const path = require('path');
 const Database = require('better-sqlite3');
 const { BaseAdapter } = require('../base');
 const { NotFound, AlreadyClaimed } = require('../errors');
@@ -46,7 +49,8 @@ class LocalSqliteBeadsAdapter extends BaseAdapter {
    */
   constructor(opts = {}) {
     super('beads', 'local-sqlite', CONTRACT_VERSIONS.beads);
-    const dbPath = opts.dbPath || '/workspace/beads.db';
+    const workspace = process.env.WORKSPACE || path.join(os.homedir(), 'workspace');
+    const dbPath = opts.dbPath || path.join(workspace, 'beads.db');
     this._db = new Database(dbPath);
     this._db.exec(SCHEMA);
   }

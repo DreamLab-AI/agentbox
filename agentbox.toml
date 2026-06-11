@@ -28,6 +28,16 @@ voice_intent = false
 # elevation candidates, emit agent_action LINK beams, and return the GOVERNED
 # ontology-propose descriptors at POST /v1/kg-elevation/scan. Off → 503.
 kg_elevation = false
+# JunkieJarvis forum agent (management-api/lib/junkiejarvis-agent.js): rides the
+# management-api process and answers forum mentions over Nostr. Requires BOTH
+# this manifest gate AND the JUNKIEJARVIS_ENABLED=true env var — the env var
+# remains the runtime override, so existing deployments keep working when the
+# manifest is absent.
+junkiejarvis = false
+# Per-user agent sessions (management-api/lib/per-user-agent.js +
+# scripts/run-per-user-agent.cjs): one Claude session per pod user, spawned on
+# inbound relay messages. Manifest declaration of the live feature gate.
+per_user_agents = false
 
 # ── Mobile agent bridge (replaces the retired Telegram/CTM mirror) ────────────
 # The phone↔agent path is now pure Nostr, not Telegram. An Android Nostr client

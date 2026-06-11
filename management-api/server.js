@@ -1014,11 +1014,21 @@ async function start() {
       }
     }
 
-    // ── JunkieJarvis forum agent (env-gated, fail-open) ─────────────────
-    // Rides this always-on process — no supervisor program. Disabled unless
-    // JUNKIEJARVIS_ENABLED=true so the repo stays generic. Reuses NostrBridge
-    // for the relay pool; never crashes management-api on any failure.
-    if (String(process.env.JUNKIEJARVIS_ENABLED || '').toLowerCase() === 'true') {
+    // ── JunkieJarvis forum agent (manifest + env gated, fail-open) ──────
+    // Rides this always-on process — no supervisor program. Gated by
+    // agentbox.toml [sovereign_mesh].junkiejarvis (default false) ANDed with
+    // the env var: when JUNKIEJARVIS_ENABLED is explicitly set it remains the
+    // runtime override (so existing env-driven deployments keep working);
+    // when it is unset the manifest value decides. Reuses NostrBridge for the
+    // relay pool; never crashes management-api on any failure.
+    const jjEnvRaw = process.env.JUNKIEJARVIS_ENABLED;
+    const jjManifestEnabled = !!(manifest
+      && manifest.sovereign_mesh
+      && manifest.sovereign_mesh.junkiejarvis === true);
+    const jjEnabled = (jjEnvRaw !== undefined && jjEnvRaw !== '')
+      ? String(jjEnvRaw).toLowerCase() === 'true'
+      : jjManifestEnabled;
+    if (jjEnabled) {
       try {
         // The bridge is vendored into lib/ at build time (flake buildPhaseExtra
         // copies mcp/servers/nostr-bridge.js → lib/) so it resolves nostr-tools

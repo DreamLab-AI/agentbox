@@ -14,8 +14,12 @@
  *   - WHO:  did:nostr:<hex> (AGENTBOX_AGENT_DID or AGENTBOX_AGENT_PUBKEY)
  *   - WHAT: urn:agentbox:<kind>:<scope>:<local>
  *   - ACI session  → urn:agentbox:thing:<scope>:aci-<short-id>
- *   - Activity     → urn:agentbox:activity:<scope>:aci-<verb>-<short-id>
- *   - Receipt      → urn:agentbox:receipt:<scope>:aci-<session-id>
+ *   - Activity     → urn:agentbox:activity:<scope>:sha256-12-<hash>
+ *   - Receipt      → urn:agentbox:receipt:<scope>:sha256-12-<hash>
+ *
+ * All URNs are minted through management-api/lib/uris.js (ADR-013);
+ * activity and receipt are content-addressed kinds, so their <local>
+ * segment is the sha256-12 of the minting payload.
  *
  * Dev-mode fallback: when AGENTBOX_AGENT_DID / AGENTBOX_AGENT_PUBKEY are
  * not set, owner_did resolves to "did:nostr:local" and scope to "local".
@@ -32,6 +36,10 @@ const crypto = require('crypto');
 const fs     = require('fs');
 const path   = require('path');
 
+// Canonical URI minter (ADR-013). In the image, management-api sits next to
+// mcp/ under /opt/agentbox, matching this repo's layout.
+const uris = require('../../management-api/lib/uris.js');
+
 // ── Identity resolution (ADR-013) ───────────────────────────────────────────
 const _rawDid    = process.env.AGENTBOX_AGENT_DID || null;
 const _rawPubkey = process.env.AGENTBOX_AGENT_PUBKEY || null;
@@ -40,9 +48,21 @@ const OWNER_DID  = _rawDid
 const SCOPE      = _rawPubkey || (_rawDid && _rawDid.startsWith('did:nostr:')
   ? _rawDid.slice('did:nostr:'.length) : 'local');
 
+// URN scope (ADR-013): scope segments must be a BIP-340 x-only pubkey hex.
+// In dev mode (SCOPE === 'local') there is no valid pubkey, so optional-scope
+// kinds (thing) mint the unscoped form and scope-required kinds (activity,
+// receipt) use the all-zero dev pubkey — the same convention the
+// orchestrator adapters use.
+const PUBKEY_SCOPE = /^[0-9a-f]{64}$/.test(SCOPE) ? SCOPE : null;
+const DEV_SCOPE    = '0'.repeat(64);
+
 // ── Session bootstrap ────────────────────────────────────────────────────────
 const SESSION_ID   = crypto.randomBytes(6).toString('hex');
-const SESSION_URN  = `urn:agentbox:thing:${SCOPE}:aci-${SESSION_ID}`;
+const SESSION_URN  = uris.mint({
+  kind:    'thing',
+  pubkey:  PUBKEY_SCOPE || undefined,
+  localId: `aci-${SESSION_ID}`,
+});
 let   _sessionOpen = true;
 
 // ── Configuration from env ───────────────────────────────────────────────────
@@ -90,11 +110,19 @@ function _privacyFilter(text) {
 // ── URN mint helpers (ADR-013) ───────────────────────────────────────────────
 function _activityUrn(verb) {
   const id = crypto.randomBytes(6).toString('hex');
-  return `urn:agentbox:activity:${SCOPE}:aci-${verb}-${id}`;
+  return uris.mint({
+    kind:    'activity',
+    pubkey:  PUBKEY_SCOPE || DEV_SCOPE,
+    payload: { surface: 'aci-shell', session: SESSION_ID, verb, id },
+  });
 }
 
 function _receiptUrn() {
-  return `urn:agentbox:receipt:${SCOPE}:aci-${SESSION_ID}`;
+  return uris.mint({
+    kind:    'receipt',
+    pubkey:  PUBKEY_SCOPE || DEV_SCOPE,
+    payload: { surface: 'aci-shell', session: SESSION_ID, type: 'aci-submission' },
+  });
 }
 
 // ── Activity record builder (mandatory fields per spec) ──────────────────────
@@ -171,7 +199,7 @@ async function _viewFile(args) {
   const content    = slice.join('\n');
   const duration_ms = Date.now() - t0;
 
-  const objectUrn = `urn:agentbox:thing:${SCOPE}:aci-${SESSION_ID}`;
+  const objectUrn = SESSION_URN;
   const activity  = _activityRecord('view', objectUrn, 'ok', {
     started_at, path: inputPath, start_line: fromLine, lines_returned: slice.length,
     // File content is NOT written to audit JSONL by default (ADR-008 exemption:
@@ -250,7 +278,7 @@ async function _editFile(args) {
   }
 
   const duration_ms = Date.now() - t0;
-  const objectUrn   = `urn:agentbox:thing:${SCOPE}:aci-${SESSION_ID}`;
+  const objectUrn   = SESSION_URN;
   const activity    = _activityRecord('edit', objectUrn, 'ok', {
     started_at, path: inputPath, start_line, end_line,
     lines_changed: Math.abs(newLines.length - total),
@@ -327,7 +355,7 @@ async function _searchRepo(args) {
 
   const truncated   = hits.length < total_found;
   const duration_ms = Date.now() - t0;
-  const objectUrn   = `urn:agentbox:thing:${SCOPE}:aci-${SESSION_ID}`;
+  const objectUrn   = SESSION_URN;
   const activity    = _activityRecord('search', objectUrn, 'ok', {
     started_at, query, path_glob, hits_returned: hits.length, total_found, truncated,
   });
@@ -366,7 +394,11 @@ async function _runTests(args) {
   // Parse command into argv
   const parts = _parseCommandLine(command);
   const traceId = crypto.randomBytes(6).toString('hex');
-  const traceUrn = `urn:agentbox:activity:${SCOPE}:aci-test-${traceId}`;
+  const traceUrn = uris.mint({
+    kind:    'activity',
+    pubkey:  PUBKEY_SCOPE || DEV_SCOPE,
+    payload: { surface: 'aci-shell', session: SESSION_ID, verb: 'test', trace: traceId },
+  });
 
   // Minimal env (no secrets leakage)
   const safeEnv = {

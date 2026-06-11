@@ -66,6 +66,9 @@ services:
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - MANAGEMENT_API_KEY=${MANAGEMENT_API_KEY:-}
       - MANAGEMENT_API_AUTH_MODE=${MANAGEMENT_API_AUTH_MODE:-hybrid}
+      # Shared service key for VisionClaw mutating endpoints (broker write-back);
+      # must match VISIONCLAW_AGENT_KEY on the VisionClaw container.
+      - VISIONCLAW_AGENT_KEY=${VISIONCLAW_AGENT_KEY:-}
       - NOSTR_RELAYS=${NOSTR_RELAYS:-wss://relay.damus.io,wss://relay.primal.net}
       - AGENTBOX_AGENT_ID=${AGENTBOX_AGENT_ID:-agentbox-core}
       - AGENTBOX_METRICS_PORT=9091
@@ -131,7 +134,6 @@ services:
       - consultations-data:/var/lib/agentbox/consultations
       - nostr-relay-data:/var/lib/nostr-relay
       - tailscale-state:/var/lib/tailscale
-      - ctm-config:/home/devuser/.config/claude-telegram-mirror
 
     networks:
       - default
@@ -160,8 +162,6 @@ volumes:
     name: agentbox-nostr-relay-data
   tailscale-state:
     name: agentbox-tailscale-state
-  ctm-config:
-    name: agentbox-ctm-config
 
 networks:
   default:

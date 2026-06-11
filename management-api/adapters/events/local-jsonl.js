@@ -1,9 +1,10 @@
 'use strict';
 
 /**
- * events/local-jsonl — append-only JSONL event log under /workspace/events/.
+ * events/local-jsonl — append-only JSONL event log under $WORKSPACE/events/
+ * (the agent workspace, normally /home/devuser/workspace).
  *
- * Files rotate daily: /workspace/events/YYYY-MM-DD.jsonl
+ * Files rotate daily: $WORKSPACE/events/YYYY-MM-DD.jsonl
  * Subscription handlers are in-process (for the same process instance).
  *
  * Event schema: { ts, session_id, execution_id, kind, payload }
@@ -13,6 +14,7 @@
  */
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { BaseAdapter } = require('../base');
 const { NotFound, ValidationError } = require('../errors');
@@ -24,12 +26,13 @@ const REQUIRED_FIELDS = ['kind'];
 class LocalJsonlEventsAdapter extends BaseAdapter {
   /**
    * @param {object} [opts]
-   * @param {string} [opts.eventsDir='/workspace/events'] - Directory for JSONL files
+   * @param {string} [opts.eventsDir='$WORKSPACE/events'] - Directory for JSONL files
    * @param {Function} [opts.appendFn] - Override fs.appendFileSync for tests
    */
   constructor(opts = {}) {
     super('events', 'local-jsonl', CONTRACT_VERSIONS.events);
-    this._dir = opts.eventsDir || '/workspace/events';
+    const workspace = process.env.WORKSPACE || path.join(os.homedir(), 'workspace');
+    this._dir = opts.eventsDir || path.join(workspace, 'events');
     this._appendFn = opts.appendFn || null;
     this._subscribers = new Map(); // id -> { filter, handler }
   }

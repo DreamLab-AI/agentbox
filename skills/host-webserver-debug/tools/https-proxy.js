@@ -15,7 +15,7 @@ const https = require('https');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 
 // Try to detect gateway IP if HOST_IP not set
 function detectGatewayIP() {
@@ -40,9 +40,13 @@ function ensureCertificates() {
   if (!fs.existsSync(keyPath) || !fs.existsSync(certPath)) {
     console.log('Generating self-signed certificate...');
     try {
-      execSync(`openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout "${keyPath}" -out "${certPath}" -subj "/CN=localhost"`, {
-        stdio: 'inherit'
-      });
+      execFileSync('openssl', [
+        'req', '-x509', '-nodes', '-days', '365',
+        '-newkey', 'rsa:2048',
+        '-keyout', keyPath,
+        '-out', certPath,
+        '-subj', '/CN=localhost'
+      ], { stdio: 'inherit' });
       console.log('Certificate generated successfully');
     } catch (err) {
       console.error('Failed to generate certificate:', err.message);

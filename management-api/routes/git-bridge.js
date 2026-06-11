@@ -16,7 +16,8 @@
  *
  * Environment:
  *
- *   VISIONCLAW_API_URL — Base URL for VisionClaw REST API (default: http://visionclaw-server:4000)
+ *   VISIONCLAW_API_URL — Base URL for VisionClaw REST API (shared with
+ *                        broker-bridge.js; default: http://visionclaw_container:4000)
  *   NOSTR_RELAYS       — Comma-separated relay URLs for Nostr event emission
  *   AGENTBOX_PUBKEY    — BIP-340 x-only pubkey hex for the agentbox identity
  *   GIT_BRIDGE_WORKSPACE_ROOT — Agent workspace root (default: /home/devuser/workspace/repos)
@@ -39,8 +40,10 @@ const fsReadFile = promisify(fs.readFile);
 // Config
 // ---------------------------------------------------------------------------
 
+// Shared host-project endpoint env (one source of truth with
+// routes/broker-bridge.js); the fallback matches broker-bridge's default.
 const VISIONCLAW_API_URL = (
-  process.env.VISIONCLAW_API_URL || 'http://visionclaw-server:4000'
+  process.env.VISIONCLAW_API_URL || 'http://visionclaw_container:4000'
 ).replace(/\/$/, '');
 
 const WORKSPACE_ROOT = process.env.GIT_BRIDGE_WORKSPACE_ROOT || '/home/devuser/workspace/repos';

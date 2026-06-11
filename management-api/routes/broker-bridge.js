@@ -80,6 +80,11 @@ async function _vcFetch(urlPath, options = {}) {
     Accept: 'application/json',
     ...options.headers,
   };
+  // VisionClaw gates service-to-service mutations (e.g. enrichment-proposal
+  // decisions) on this shared key; without it those POSTs return 401.
+  if (process.env.VISIONCLAW_AGENT_KEY) {
+    headers['X-Agent-Key'] = process.env.VISIONCLAW_AGENT_KEY;
+  }
   if (options.body) {
     headers['Content-Type'] = 'application/json';
   }

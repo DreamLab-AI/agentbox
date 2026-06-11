@@ -552,6 +552,10 @@
         "nostr_bridge": { "type": "boolean" },
         "https_bridge": { "type": "boolean" },
         "publish_agent_events": { "type": "boolean" },
+        "voice_intent": { "type": "boolean", "description": "WS7 (PRD-014 Seam B): bind a voice transcript to an agent intent and emit the canonical agent_action notification at POST /v1/voice-intent. Off → 503. Default false." },
+        "kg_elevation": { "type": "boolean", "description": "WS6 (PRD-014 Seam D): scan the personal KG for elevation candidates and return GOVERNED ontology-propose descriptors at POST /v1/kg-elevation/scan. Off → 503. Default false." },
+        "junkiejarvis": { "type": "boolean", "description": "JunkieJarvis forum agent — rides the management-api process and answers forum mentions over Nostr. Requires BOTH this gate AND the JUNKIEJARVIS_ENABLED=true env var; the env var remains the runtime override, so deployments without a manifest keep working. Default false." },
+        "per_user_agents": { "type": "boolean", "description": "Per-user agent sessions (per-user-agent.js + run-per-user-agent.cjs): one Claude session per pod user, spawned on inbound relay messages. Manifest declaration of the live feature gate. Default false." },
         "operator": {
           "type": "object",
           "additionalProperties": true,

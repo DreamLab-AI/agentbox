@@ -61,8 +61,23 @@ const { StdioServerTransport } = require('@modelcontextprotocol/sdk/server/stdio
 const { ListToolsRequestSchema, CallToolRequestSchema } =
   require('@modelcontextprotocol/sdk/types.js');
 
-const crypto = require('crypto');
 const { MemoryLogger } = require('./memory-logger');
+
+// Canonical URI minter (ADR-013). In the image, management-api sits next to
+// mcp/ under /opt/agentbox, matching this repo's layout.
+const uris = require('../../../management-api/lib/uris.js');
+
+// `activity` is a scope-required kind: the URN scope must be a BIP-340
+// x-only pubkey hex. Consultants take theirs from the agent identity env;
+// when none is set we fall back to the all-zero dev pubkey, the same
+// convention the orchestrator adapters use.
+const _CONSULTANT_PUBKEY = (() => {
+  const candidate = process.env.AGENTBOX_AGENT_PUBKEY
+    || process.env.AGENTBOX_PUBKEY
+    || (process.env.AGENTBOX_AGENT_DID || '').replace(/^did:nostr:/, '')
+    || (process.env.AGENTBOX_DID || '').replace(/^did:nostr:/, '');
+  return /^[0-9a-f]{64}$/.test(candidate) ? candidate : '0'.repeat(64);
+})();
 
 const DEFAULT_TIMEOUT_MS = 120_000;
 
@@ -199,11 +214,6 @@ class BaseConsultant {
       throw err;
     }
 
-    const consultHash = crypto.createHash('sha256')
-      .update(`${this.name}:${args.question}`)
-      .digest('hex')
-      .slice(0, 12);
-
     const envelope = {
       ok:         true,
       consultant: this.name,
@@ -214,10 +224,18 @@ class BaseConsultant {
       citations:  Array.isArray(result.citations) ? result.citations : [],
       latency_ms: Date.now() - t0,
     };
-    envelope.consultation_urn = `urn:agentbox:activity:sha256-12-${consultHash}`;
+    // urn:agentbox:activity:<scope>:sha256-12-<hash> — minted through
+    // uris.js (ADR-013). The payload is deterministic (consultant + question)
+    // so repeat consultations of the same question share a URN, preserving
+    // the previous content-addressing intent.
+    envelope.consultation_urn = uris.mint({
+      kind:    'activity',
+      pubkey:  _CONSULTANT_PUBKEY,
+      payload: { surface: 'consultant', consultant: this.name, question: args.question },
+    });
     envelope.source_urn = process.env.AGENTBOX_URN
       || process.env.AGENTBOX_DID
-      || `urn:agentbox:agent:consultant-${this.name}`;
+      || uris.mint({ kind: 'agent', localId: `consultant-${this.name}` });
 
     this.memlog.log({
       ok:           true,

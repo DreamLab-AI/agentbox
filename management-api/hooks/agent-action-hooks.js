@@ -11,6 +11,7 @@
  */
 
 const { agentEventPublisher, AgentActionType } = require('../utils/agent-event-publisher');
+const uris = require('../lib/uris');
 
 // Agent ID registry - maps agent names to numeric IDs for binary protocol
 const agentRegistry = new Map();
@@ -306,7 +307,13 @@ function deriveSourceUrn(data) {
 
   const agentName = data.agent_name || data.agentId || data.agent;
   if (agentName) {
-    return `urn:agentbox:agent:${String(agentName).replace(/[^A-Za-z0-9._-]/g, '_')}`;
+    // Minted through uris.js (ADR-013): `agent` is an optional-scope kind,
+    // so this yields the unscoped form urn:agentbox:agent:<slug>.
+    try {
+      return uris.mint({ kind: 'agent', localId: String(agentName) });
+    } catch (_) {
+      // URN minting failure is non-fatal; fall through to the env anchor.
+    }
   }
 
   return process.env.AGENTBOX_URN || null;

@@ -19,7 +19,8 @@
  *      that the upstream browser does not ship.
  *   2. Operator-supplied panes pointed to by the `[linked_data.viewer]
  *      .extra_panes` array. Each entry is a URL or a path under
- *      /workspace/profiles/<stack>/viewer/panes/.
+ *      $WORKSPACE/profiles/<stack>/viewer/panes/ (the agent workspace,
+ *      normally /home/devuser/workspace).
  *   3. Upstream linkedobjects/browser panes shipped at the bundle root
  *      (folder, profile, markdown, playlist, todo, sharing, source).
  *
@@ -30,7 +31,7 @@
  *   # in agentbox.toml:
  *   [linked_data.viewer]
  *   extra_panes = [
- *     "/workspace/profiles/default/viewer/panes/custom-pane.js",
+ *     "/home/devuser/workspace/profiles/default/viewer/panes/custom-pane.js",
  *     "https://my.example.com/panes/billing.js"
  *   ]
  *
