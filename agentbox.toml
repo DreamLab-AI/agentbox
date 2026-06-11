@@ -15,6 +15,14 @@ memory       = "external-pg"
 events       = "local-jsonl"
 orchestrator = "local-process-manager"
 
+# ── Sovereign-mesh subsystem (boundary: ADR-030) ──────────────────────────────
+# One manifest-gated subsystem umbrellaing every Nostr-identity-and-relay feature
+# (relay, operator identity, per_user_agents, junkiejarvis, mobile_bridge, git,
+# multi_user). Gate semantics: default off; the env var remains the runtime
+# override (R7 fix) so manifest-absent deployments keep working. The whole mesh
+# makes exactly ONE external data hop — the [sovereign_mesh.mobile_bridge] Z.AI
+# summarisation (ADR-030 D3). The per-turn live mirror (ADR-029) belongs to this
+# subsystem too but is gated by recipient-pubkey env presence, not a manifest key.
 [sovereign_mesh]
 enabled = true
 solid_pod = true
@@ -33,10 +41,14 @@ kg_elevation = false
 # this manifest gate AND the JUNKIEJARVIS_ENABLED=true env var — the env var
 # remains the runtime override, so existing deployments keep working when the
 # manifest is absent.
+# Gate semantics + subsystem boundary: ADR-030.
 junkiejarvis = false
 # Per-user agent sessions (management-api/lib/per-user-agent.js +
 # scripts/run-per-user-agent.cjs): one Claude session per pod user, spawned on
 # inbound relay messages. Manifest declaration of the live feature gate.
+# Canonical gate for ADR-028 (Per-User Agent Fabric, Accepted): this key —
+# [sovereign_mesh].per_user_agents — is the gate, NOT a top-level [per_user_agents]
+# table. See ADR-028 "Gate-key alignment" + ADR-030.
 per_user_agents = false
 
 # ── Mobile agent bridge (replaces the retired Telegram/CTM mirror) ────────────

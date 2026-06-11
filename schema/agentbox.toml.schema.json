@@ -545,7 +545,7 @@
     "sovereign_mesh": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Nostr identity, NIP-98 auth, inter-agent messaging, and the mobile agent bridge. The phone↔agent path is pure Nostr (an Android Amethyst+Amber client talks to the embedded relay below); the device holds its own key plus a NIP-26 delegation from [operator], so no private key ships to the phone. Inbound NIP-59 gift wraps (kind 1059) are unwrapped by services/nostr-pod-bridge and persisted to the pod inbox; the durable conversation record is a kind-30840 session-summary dual-written to the relay and the pod. This replaced the retired Telegram/CTM mirror.",
+      "description": "Sovereign-mesh subsystem (boundary: ADR-030) — Nostr identity, NIP-98 auth, inter-agent messaging, and the mobile agent bridge, gated as one subsystem (default off; env var remains the runtime override per the R7 fix). The phone↔agent path is pure Nostr (an Android Amethyst+Amber client talks to the embedded relay below); the device holds its own key plus a NIP-26 delegation from [operator], so no private key ships to the phone. Inbound NIP-59 gift wraps (kind 1059) are unwrapped by services/nostr-pod-bridge and persisted to the pod inbox; the durable conversation record is a kind-30840 session-summary dual-written to the relay and the pod. The whole mesh makes exactly one external data hop — the mobile_bridge Z.AI summarisation (ADR-030 D3); the per-turn live mirror (ADR-029) has none. This replaced the retired Telegram/CTM mirror.",
       "properties": {
         "enabled": { "type": "boolean" },
         "solid_pod": { "type": "boolean" },
@@ -555,7 +555,7 @@
         "voice_intent": { "type": "boolean", "description": "WS7 (PRD-014 Seam B): bind a voice transcript to an agent intent and emit the canonical agent_action notification at POST /v1/voice-intent. Off → 503. Default false." },
         "kg_elevation": { "type": "boolean", "description": "WS6 (PRD-014 Seam D): scan the personal KG for elevation candidates and return GOVERNED ontology-propose descriptors at POST /v1/kg-elevation/scan. Off → 503. Default false." },
         "junkiejarvis": { "type": "boolean", "description": "JunkieJarvis forum agent — rides the management-api process and answers forum mentions over Nostr. Requires BOTH this gate AND the JUNKIEJARVIS_ENABLED=true env var; the env var remains the runtime override, so deployments without a manifest keep working. Default false." },
-        "per_user_agents": { "type": "boolean", "description": "Per-user agent sessions (per-user-agent.js + run-per-user-agent.cjs): one Claude session per pod user, spawned on inbound relay messages. Manifest declaration of the live feature gate. Default false." },
+        "per_user_agents": { "type": "boolean", "description": "Per-user agent sessions (per-user-agent.js + run-per-user-agent.cjs): one Claude session per pod user, spawned on inbound relay messages. Canonical gate for ADR-028 (Per-User Agent Fabric, Accepted) — this key, [sovereign_mesh].per_user_agents, is the gate, NOT a top-level [per_user_agents] table (see ADR-028 gate-key alignment + ADR-030). Default false." },
         "operator": {
           "type": "object",
           "additionalProperties": true,

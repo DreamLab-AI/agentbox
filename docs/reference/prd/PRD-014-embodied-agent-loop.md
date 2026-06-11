@@ -5,6 +5,7 @@
 **Author:** DreamLab AI
 **Related:** ADR-005 (Pluggable Adapters), ADR-009 (Embedded Nostr Relay), ADR-010 (Rust Solid Pod), ADR-012 (JSON-LD Federation), ADR-013 (Canonical URI Grammar), ADR-014 (Bidirectional Graph-State Ingress), ADR-017 (Multi-Tenant did:nostr Pods), ADR-023 (Ontology Bridge), PRD-006 (Linked-Data Interfaces), PRD-011 (Ontology Bridge)
 **Drives:** ADR-026 (Cross-Substrate Agent-Loop Seams), DDD-012 (Sovereign Knowledge Elevation Domain — BC22)
+**Open items:** Seam D social-approval gate (D5) — the ACSP 31400/31402 emitter it referenced is phantom; mechanism unresolved (see §8 decision-stub 2026-06-11)
 
 ## TL;DR for newcomers
 
@@ -283,3 +284,38 @@ the stale `class_charge` comment in `src/agent_events/ingest.rs:16` is a one-lin
 by the Stage-3b code lane.
 
 ### 2026-05-29 — WS5 producer convergence + ADR-059 Phase 1 mirror
+
+### 2026-06-11 — Decision-stub: Seam D elevation-governance gate (D4 + D5) — phantom-emitter correction
+
+A VisionClaw audit confirmed the ACSP plane this PRD's §4.3 leaned on is **phantom**.
+VisionClaw emits **only bead-provenance** (kind-30001 → kind-9); it has **no ACSP
+panels** — kinds 31400-31405 return zero hits in VisionClaw and the divergent
+one-way `AgentActionEnvelope` has no client dispatcher (this PRD already recorded
+that as E3 ABSENT; the audit closes the question). The proposed social-governance
+gate in §4.3 D5 ("an elevation candidate raises a `PanelDefinition`/`ActionRequest`
+(31400/31402) to the forum; human approval (31403) authorises the PR") therefore
+**references an emitter that does not exist**.
+
+**Decision (stub, not a redesign):**
+
+1. **Do not wire D5 against ACSP 31400/31402.** The earlier §4.3 D5 text is
+   superseded by this note: it described a mechanism whose emitter is phantom.
+   No code or contract should target ACSP panels for the elevation social-approval
+   gate until a real mechanism is chosen.
+2. **D4 (alignment/dedup) is independent and still valid.** Entity-alignment/dedup
+   before elevation (`ontology_mutation_service.rs:401`, `new_subsumptions`
+   stubbed) is a *correctness* concern, not a social-governance one. It proceeds
+   on its own track (string + embedding similarity over `vc:` labels) and does
+   **not** depend on the unresolved D5 mechanism.
+3. **The social-approval mechanism is an unresolved, tracked open item.** The real
+   choice is **bead-provenance (kind-30001 → kind-9, which VisionClaw actually
+   emits) vs a future, genuinely-implemented ACSP**. Recorded in the frontmatter
+   "Open items" line. Whelk EL++ remains the *correctness* gate regardless; only
+   the *policy* (should-this-be-shared) gate is open. Acceptance criterion §7.3
+   ("where policy requires, ACSP approval") reads as "where policy requires, the
+   chosen social-approval mechanism" pending this decision.
+
+This is a scoped truth-up: it removes a phantom reference and flags the gap as a
+tracked open item rather than leaving §4.3 implying an emitter that the audit has
+declared does not exist. It does not redesign the elevation pipeline; the governed
+propose→Whelk→PR path (D2/D3) is unchanged.

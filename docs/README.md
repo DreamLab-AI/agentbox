@@ -117,7 +117,10 @@ These are the authoritative sources of truth. Anything in `user/` or `developer/
 | ADR-025 | [Multi-Harness tmux Architecture](reference/adr/ADR-025-multi-harness-tmux-architecture.md) | Accepted | Multi-harness tmux layout for parallel agent workstreams |
 | ADR-026 | [Cross-Substrate Agent-Loop Seams](reference/adr/ADR-026-cross-substrate-agent-loop-seams.md) | Accepted (partially realised) | The five seams across the substrate mesh; BC20 ingest converges on the `/wss/agent-events` WS contract and retires `:9500` |
 | ADR-027 | [Default-secure posture and runtime-isolation roadmap](reference/adr/ADR-027-default-secure-posture.md) | Accepted | Loopback-publish + auth-default-on, supplemental seccomp denylist, no runtime sudo, secret-via-tmpfs; gVisor/WASI proposed |
-| ADR-028 | [Per-User Agent Fabric](reference/adr/ADR-028-per-user-agent-fabric.md) | Proposed | Pod-sourced identity, RuVector memory, and heartbeat autonomy for per-user agents |
+| ADR-028 | [Per-User Agent Fabric](reference/adr/ADR-028-per-user-agent-fabric.md) | Accepted | Pod-sourced identity, RuVector memory, and heartbeat autonomy for per-user agents; gate aligned to `[sovereign_mesh].per_user_agents` |
+| ADR-029 | [Session-mirror live egress](reference/adr/ADR-029-session-mirror-live-egress.md) | Accepted | Per-turn NIP-59 gift-wrapped self-DM under a derived child key; the live sibling of the kind-30840 digest, no external LLM hop, fail-open |
+| ADR-030 | [Sovereign-mesh manifest boundary](reference/adr/ADR-030-sovereign-mesh-manifest-boundary.md) | Accepted | `[sovereign_mesh]` as one subsystem gate (default off; env override per R7); the one external data hop is the mobile-bridge Z.AI summarisation |
+| ADR-031 | _Incoming — authored concurrently by a sibling workstream (management-api adapter/middleware)_ | (reserved) | _reserved_ |
 
 ### Product requirements (PRD)
 

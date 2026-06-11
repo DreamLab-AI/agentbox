@@ -1,10 +1,10 @@
 ---
 id: ADR-028
 title: Per-User Agent Fabric (pod-sourced identity, RuVector memory, heartbeat autonomy)
-status: Proposed
+status: Accepted
 date: 2026-06-11
 supersedes: []
-related: [ADR-008, ADR-009, ADR-010, ADR-015, ADR-018, PRD-008]
+related: [ADR-008, ADR-009, ADR-010, ADR-015, ADR-018, ADR-030, PRD-008]
 "@context": https://schema.org
 "@type": TechArticle
 ---
@@ -13,7 +13,21 @@ related: [ADR-008, ADR-009, ADR-010, ADR-015, ADR-018, PRD-008]
 
 ## Status
 
-Proposed (2026-06-11). Minimal prototype landed alongside this ADR.
+Accepted (2026-06-11). Minimal prototype landed alongside this ADR; the per-user
+agent fabric is part of the `[sovereign_mesh]` subsystem (boundary recorded in
+ADR-030).
+
+### Gate-key alignment (2026-06-11)
+
+This ADR's original draft named the manifest gate `[per_user_agents]` (a
+top-level table). The **shipped manifest gates it at `[sovereign_mesh].per_user_agents`**
+— a top-level key inside the `[sovereign_mesh]` subsystem, not a separate table.
+The canonical gate is therefore `[sovereign_mesh].per_user_agents = false`
+(default off), consistent with the sovereign-mesh boundary and gate semantics in
+**ADR-030** (default off; the env var remains the runtime override per the R7
+fix). Every reference below to "`[per_user_agents]`" reads as
+"`[sovereign_mesh].per_user_agents`". No value or behaviour changes — only the
+key path is corrected to match the shipped `agentbox.toml`.
 
 ## Context
 
@@ -105,8 +119,10 @@ substrate that instantiates, per member, an autonomous agent.
   AIMDS/privacy middleware are mandatory. N agents = N relay sessions; the
   bridge must pool, not open one socket per user (fan-in subscription by
   `#p`-set, dispatch by tag).
-- **Reversible.** PUAF is additive and gate-flagged (`[per_user_agents]` in
-  `agentbox.toml`, default off). Removing it leaves JunkieJarvis untouched.
+- **Reversible.** PUAF is additive and gate-flagged
+  (`[sovereign_mesh].per_user_agents` in `agentbox.toml`, default off — see the
+  gate-key alignment note above and ADR-030). Removing it leaves JunkieJarvis
+  untouched.
 
 ## Prototype scope (this change)
 
