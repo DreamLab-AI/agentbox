@@ -2,12 +2,34 @@
 # Run: nix build .#compose
 
 services:
+  ruvector-postgres:
+    image: ruvnet/ruvector-postgres:latest
+    container_name: ruvector-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=ruvector
+      - POSTGRES_USER=ruvector
+      - POSTGRES_PASSWORD=${RUVECTOR_PG_PASSWORD:-ruvector}
+    volumes:
+      - ruvector-pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ruvector -d ruvector"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - default
+      - visionclaw
 
   agentbox:
     image: ${AGENTBOX_IMAGE_REF:-agentbox:runtime-x86_64-linux}
     container_name: agentbox
     hostname: agentbox
     restart: unless-stopped
+    depends_on:
+      ruvector-postgres:
+        condition: service_healthy
 
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9090/ready"]
@@ -103,6 +125,8 @@ services:
       - visionclaw
 
 volumes:
+  ruvector-pg-data:
+    name: ruvector_postgres_data_v2
   ruvector-data:
     name: agentbox-ruvector-data
   solid-data:

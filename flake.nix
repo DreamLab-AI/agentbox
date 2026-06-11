@@ -1521,6 +1521,43 @@ stderr_logfile=/var/log/tmux-autostart.error.log
           + "      - OLLAMA_CONTEXT_LENGTH=8192\n"
         );
 
+        # RuVector PostgreSQL sidecar — emitted when the memory adapter is
+        # external-pg AND [integrations.ruvector_external] manage_sidecar=true.
+        # Owning the sidecar in the generated compose guarantees the memory
+        # backend restarts with the stack (incident 2026-06-09: the container
+        # was deleted out-of-band and nothing recreated it; ruvector-mcp.cjs
+        # fail-closed per ADR-015 and every session lost memory access).
+        # The data volume is declared by name (default ruvector_postgres_data_v2)
+        # so compose adopts the pre-existing production dataset rather than
+        # creating a fresh empty volume.
+        ruvectorSidecarEnabled =
+          (adaptersCfg.memory or "") == "external-pg"
+          && (ruvectorExtCfg.enabled or false)
+          && (ruvectorExtCfg.manage_sidecar or false);
+        ruvectorPgImage  = ruvectorExtCfg.image or "ruvnet/ruvector-postgres:latest";
+        ruvectorPgVolume = ruvectorExtCfg.data_volume or "ruvector_postgres_data_v2";
+        ruvectorPostgresServiceBlock = lib.optionalString ruvectorSidecarEnabled (
+          "  ruvector-postgres:\n"
+          + "    image: ${ruvectorPgImage}\n"
+          + "    container_name: ruvector-postgres\n"
+          + "    restart: unless-stopped\n"
+          + "    environment:\n"
+          + "      - POSTGRES_DB=ruvector\n"
+          + "      - POSTGRES_USER=ruvector\n"
+          + "      - POSTGRES_PASSWORD=\${RUVECTOR_PG_PASSWORD:-ruvector}\n"
+          + "    volumes:\n"
+          + "      - ruvector-pg-data:/var/lib/postgresql/data\n"
+          + "    healthcheck:\n"
+          + "      test: [\"CMD-SHELL\", \"pg_isready -U ruvector -d ruvector\"]\n"
+          + "      interval: 10s\n"
+          + "      timeout: 5s\n"
+          + "      retries: 5\n"
+          + "      start_period: 20s\n"
+          + "    networks:\n"
+          + "      - default\n"
+          + "      - visionclaw\n"
+        );
+
         # Ports for the agentbox service.
         # Always: management-api (9090), ruvector (9700), metrics (observCfg.metrics_port)
         # Sovereign: solid-pod (8484)
@@ -1548,10 +1585,17 @@ stderr_logfile=/var/log/tmux-autostart.error.log
 
         # agentbox depends_on block — explicit-newline string (heredoc would
         # strip the 4-space common indent and produce flush-left output).
-        agentboxDependsOn = lib.optionalString (gpuEnabled && ollamaSidecarEnabled) (
+        agentboxDependsOn = lib.optionalString
+          ((gpuEnabled && ollamaSidecarEnabled) || ruvectorSidecarEnabled) (
           "    depends_on:\n"
-          + "      ollama:\n"
-          + "        condition: service_started\n"
+          + lib.optionalString (gpuEnabled && ollamaSidecarEnabled) (
+              "      ollama:\n"
+              + "        condition: service_started\n"
+            )
+          + lib.optionalString ruvectorSidecarEnabled (
+              "      ruvector-postgres:\n"
+              + "        condition: service_healthy\n"
+            )
         );
 
         # External network declaration — always enabled so the agentbox
@@ -1832,6 +1876,8 @@ stderr_logfile=/var/log/tmux-autostart.error.log
         extraTopLevelVolumeNames = lib.subtractLists baselineTopLevelVolumeNames exceptionVolumeNames;
         topLevelVolumes =
           lib.optionalString (gpuEnabled && ollamaSidecarEnabled) "  ollama:\n    name: ollama\n"
+          + lib.optionalString ruvectorSidecarEnabled
+              "  ruvector-pg-data:\n    name: ${ruvectorPgVolume}\n"
           + "  ruvector-data:\n    name: agentbox-ruvector-data\n"
           + "  solid-data:\n    name: agentbox-solid-data\n"
           + "  sovereign-identities:\n    name: agentbox-sovereign-identities\n"
@@ -1846,7 +1892,7 @@ stderr_logfile=/var/log/tmux-autostart.error.log
 # Run: nix build .#compose
 
 services:
-${ollamaServiceBlock}
+${ollamaServiceBlock}${ruvectorPostgresServiceBlock}
   agentbox:
     image: ''${AGENTBOX_IMAGE_REF:-agentbox:runtime-${system}}
     container_name: agentbox

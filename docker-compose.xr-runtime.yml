@@ -1,0 +1,86 @@
+services:
+  xr-runtime:
+    container_name: xr-runtime
+    hostname: xr-runtime
+    build:
+      context: ./xr-runtime
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "bash", "/opt/xr-runtime/healthcheck.sh"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      # gdext compiles on first boot (cargo build, ~5-10 min cold), so give the
+      # runtime a long grace period before the orchestrator marks it unhealthy.
+      start_period: 600s
+    environment:
+      - DISPLAY=:3
+      # GPU 2: Quadro RTX 6000 (24GB) — stable UUID, not fragile index.
+      # Monado's Vulkan compositor renders here; the gdext build needs no GPU.
+      - NVIDIA_VISIBLE_DEVICES=GPU-65b7ddef-5380-1b06-65b3-f770f7f9673b
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics,display
+      - XDG_RUNTIME_DIR=/tmp/xdg-runtime
+      - HOME=/home/devuser
+      # OpenXR loader → Monado active-runtime manifest (installed by monado-git).
+      - XR_RUNTIME_JSON=/usr/share/openxr/1/openxr_monado.json
+      # Input driver: `simulated` (default) registers a static stereo HMD that
+      # reliably brings the OpenXR session + Vulkan compositor up with no
+      # hardware. `qwerty` (keyboard/mouse 6DoF) is experimental — it currently
+      # produces no head device in this Monado build and crashes the compositor.
+      - XR_INPUT_DRIVER=simulated
+      # Visual mode (default): Monado opens an XCB window on Xvfb :3, mirrored to
+      # VNC :5904 so you can watch the stereo render. Set XR_RUNTIME_HEADLESS=1 to
+      # use the null compositor instead (no window — protocol/lifecycle only).
+      - XR_RUNTIME_HEADLESS=0
+      # Which Godot scene to boot. Default is the real XRBoot entry; override to
+      # res://scenes/GraphScene.tscn to skip the OpenXR session bring-up probe.
+      - XR_GODOT_SCENE=res://scenes/XRBoot.tscn
+      # Backend the gdext presence WS / binary protocol dials out to. Outbound
+      # only — no inbound port. Reachable across visionclaw_network by name.
+      - XR_BACKEND_WS=ws://visionclaw_container:4000
+    deploy:
+      resources:
+        limits:
+          cpus: '8'
+          memory: 12G
+        reservations:
+          cpus: '2'
+          memory: 4G
+          devices:
+            - driver: nvidia
+              capabilities: [gpu, compute, utility, graphics, display]
+              device_ids: ['GPU-65b7ddef-5380-1b06-65b3-f770f7f9673b']
+    # Direct DRM render-node access for the Vulkan compositor. NVIDIA proprietary
+    # exposes the GPU through the runtime hook above; the card/render nodes here
+    # cover the mesa/llvmpipe fallback path and any KMS probing Monado does.
+    devices:
+      - /dev/dri:/dev/dri
+    ports:
+      # VNC: watch the Monado compositor window + Godot stereo render.
+      # 5904 avoids the browsercontainer VNC on 5903.
+      - "0.0.0.0:5904:5904"
+    volumes:
+      # The integrator's XR project tree. `..` resolves to the host project root
+      # in an integrated checkout (agentbox/ lives inside it); override
+      # XR_PROJECT_ROOT to point at a standalone XR project checkout.
+      - ${XR_PROJECT_ROOT:-..}/xr-client:/workspace/xr-client
+      - ${XR_PROJECT_ROOT:-..}/crates:/workspace/crates:ro
+      # Cache the gdext build artifacts in a named volume so the cdylib survives
+      # container restarts and is not written back into the host source tree.
+      - xr-gdext-target:/workspace/xr-client/rust/target
+      - xr-cargo-registry:/home/devuser/.cargo/registry
+    networks:
+      - visionclaw
+    shm_size: '2gb'
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  xr-gdext-target:
+  xr-cargo-registry:
+
+networks:
+  visionclaw:
+    external: true
+    name: visionclaw_network

@@ -289,6 +289,19 @@ admin_access_mode = "permissive"
 [integrations.ruvector_external]
 enabled  = true
 conninfo = "postgresql://ruvector:@@RUVECTOR_PG_PASSWORD@@@ruvector-postgres:5432/ruvector"
+# When true, the generated compose owns the ruvector-postgres sidecar:
+# service block + healthcheck + depends_on, so `agentbox.sh up`/`rebuild`
+# always brings the memory backend up with the stack. When false, an
+# external deployment (host mesh) must provide ruvector-postgres on
+# visionclaw_network. Incident 2026-06-09: the sidecar container was
+# deleted and nothing recreated it — 2M+ memory entries unreachable
+# until a manual `docker run`. This flag closes that gap.
+manage_sidecar = true
+image          = "ruvnet/ruvector-postgres:latest"
+# Pre-existing volume holding the production dataset (PG17, 2M+ rows).
+# The compose volume declaration reuses it by name; do NOT rename
+# without a migration.
+data_volume    = "ruvector_postgres_data_v2"
 
 [integrations.comfyui_external]
 enabled = false

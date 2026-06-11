@@ -55,14 +55,7 @@ let
   # code all agree.
   rev     = "9b4076ae94ba1402d7e774c2a20ebf30663486f2";
 
-  # srcHash is the documented fakeHash placeholder (troubleshooting.md → "nix
-  # build .#runtime fails with a hash mismatch"). The tag is on the remote;
-  # this container has no nix toolchain to compute the SRI hash. Resolve with:
-  #   ./scripts/prefetch-hashes.sh --service solid-pod-rs
-  # (or manually: nix-prefetch-url --unpack
-  #   https://github.com/DreamLab-AI/solid-pod-rs/archive/<rev>.tar.gz
-  #   then nix hash convert --hash-algo sha256 --to sri <base32>).
-  srcHash = lib.fakeHash;
+  srcHash = "sha256-CFS/d1ajoIGo6CHLWYeH3P+/ddB35RoORJVC+rTEZOM=";
 
   # Upstream solid-pod-rs at v0.4.0-alpha.5 does not ship its
   # Cargo.lock (workspace builds without it locally because cargo

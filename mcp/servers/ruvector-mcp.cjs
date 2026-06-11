@@ -114,6 +114,25 @@ function vecToSql(arr) { return '[' + arr.join(',') + ']'; }
 function entryId(namespace, key) { return `${WRITE_SOURCE_TYPE}:${namespace}:${key}`; }
 function log(level, msg) { process.stderr.write(`[${new Date().toISOString()}] ${level} [cf-mcp-ruvector] ${msg}\n`); }
 
+// Lazy xinference recovery, throttled to one probe per 60s so a down
+// embedding service doesn't add latency to every call. Without this the
+// startup probe was the only check: if xinference (or its model) came up
+// after the MCP server, semantic search stayed degraded for the whole
+// session even though embeddings were available.
+let xinfLastProbe = 0;
+async function xinfEnsure() {
+  if (xinferenceOk) return true;
+  const now = Date.now();
+  if (now - xinfLastProbe < 60000) return false;
+  xinfLastProbe = now;
+  try {
+    const emb = await getEmbedding('reconnect probe');
+    xinferenceOk = true;
+    log('INFO', `xinference: reconnected (${XINFERENCE_URL}, model=${EMBEDDING_MODEL}, dim=${emb.length})`);
+  } catch {}
+  return xinferenceOk;
+}
+
 // Fail-closed: verify PG and xinference are reachable at startup
 (async () => {
   try {
@@ -148,7 +167,7 @@ async function memStore(key, value, namespace = 'default') {
   const embedText = typeof value === 'string' ? value : JSON.stringify(value);
   let embeddingClause = 'NULL';
   const params = [id, namespace, key, pgValue, WRITE_SOURCE_TYPE];
-  if (xinferenceOk) {
+  if (await xinfEnsure()) {
     try {
       const emb = await getEmbedding(embedText.substring(0, 2000));
       params.push(vecToSql(emb));
@@ -191,7 +210,7 @@ async function memSearch(query, namespace = 'default', limit = 10, sourceType = 
   const st = sourceType && sourceType !== '*' ? sourceType : null;
 
   // Try HNSW vector search via xinference embedding
-  if (xinferenceOk) {
+  if (await xinfEnsure()) {
     try {
       const queryEmb = await getEmbedding(query.substring(0, 2000));
       const queryVec = vecToSql(queryEmb);
@@ -202,11 +221,29 @@ async function memSearch(query, namespace = 'default', limit = 10, sourceType = 
       if (namespace !== '*') { nsFilter = `AND namespace = $${paramIdx++}`; params.push(namespace); }
       if (st) { stFilter = `AND source_type = $${paramIdx++}`; params.push(st); }
 
-      const sql = `
+      // ruvector 0.3.0's HNSW scan post-filters its candidate set without
+      // iterating: a WHERE clause on a kNN query silently returns 0 rows
+      // when the namespace's rows aren't among the index's top candidates
+      // (with 2M+ vectors, a 271-row namespace never is). The ef_search
+      // GUCs are no-ops in this extension version. For filtered searches,
+      // select the subset via btree first (MATERIALIZED blocks the HNSW
+      // plan) and rank exactly — small namespaces make this cheap and
+      // recall is perfect. Unfiltered searches keep the fast HNSW path.
+      const sql = (nsFilter || stFilter) ? `
+        WITH ns AS MATERIALIZED (
+          SELECT key, value, namespace, source_type, embedding
+          FROM memory_entries
+          WHERE embedding IS NOT NULL ${nsFilter} ${stFilter}
+        )
+        SELECT key, value, namespace, source_type,
+               1.0 - (embedding <=> $1::ruvector(384)) AS score
+        FROM ns
+        ORDER BY embedding <=> $1::ruvector(384)
+        LIMIT $2` : `
         SELECT key, value, namespace, source_type,
                1.0 - (embedding <=> $1::ruvector(384)) AS score
         FROM memory_entries
-        WHERE embedding IS NOT NULL ${nsFilter} ${stFilter}
+        WHERE embedding IS NOT NULL
         ORDER BY embedding <=> $1::ruvector(384)
         LIMIT $2`;
 

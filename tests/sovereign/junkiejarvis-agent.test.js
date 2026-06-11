@@ -493,4 +493,156 @@ describe('startJunkieJarvis gating', () => {
     expect(agent).toBeInstanceOf(JunkieJarvisAgent);
     agent.stop();
   });
+
+  test('registers the signer for NIP-42 AUTH before subscribing', () => {
+    process.env.JUNKIEJARVIS_ENABLED = 'true';
+    process.env.JUNKIEJARVIS_PRIVKEY_HEX = '1'.repeat(64);
+    const calls = [];
+    const bridge = makeBridge();
+    bridge.setAuthSigner = (s) => { calls.push({ signer: s, subsAtCall: bridge.subs.length }); };
+    const agent = startJunkieJarvis({ bridge, logger: silentLogger, signerFactory: fakeFactory });
+    expect(agent).toBeInstanceOf(JunkieJarvisAgent);
+    expect(calls.length).toBe(1);
+    expect(typeof calls[0].signer.sign).toBe('function');
+    // Registered BEFORE the two subscriptions were created.
+    expect(calls[0].subsAtCall).toBe(0);
+    agent.stop();
+  });
+});
+
+// ── NIP-42 relay session auth (NostrBridge, fake WebSocket) ─────────────────
+//
+// The DreamLab relay zone-gates READS: an unauthenticated session only
+// receives public-zone events. The bridge must answer ["AUTH", challenge]
+// with a signed kind-22242 on THAT socket, then replay all active REQs so
+// the relay re-evaluates them with the authenticated session.
+
+describe('NostrBridge NIP-42 AUTH', () => {
+  const { NostrBridge, kinds: bridgeKinds } = require('../../mcp/servers/nostr-bridge');
+
+  class FakeWS {
+    constructor(url) {
+      this.url = url;
+      this.sent = [];
+      this.readyState = 0;
+      this._handlers = {};
+      FakeWS.instances.push(this);
+    }
+    on(ev, fn) { this._handlers[ev] = fn; }
+    send(m) { this.sent.push(m); }
+    close() { this.readyState = 3; }
+    // test helpers
+    simulateOpen() { this.readyState = 1; this._handlers.open(); }
+    simulateMessage(obj) { this._handlers.message(JSON.stringify(obj)); }
+  }
+
+  const flushAsync = () => new Promise((r) => setImmediate(r));
+  const RELAY_URL = 'wss://gated.example';
+  let logSpy;
+
+  beforeEach(() => {
+    FakeWS.instances = [];
+    logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+  });
+  afterEach(() => { logSpy.mockRestore(); });
+
+  function makeAuthedBridge() {
+    const bridge = new NostrBridge({ relays: [RELAY_URL], WebSocket: FakeWS });
+    bridge.connect();
+    const ws = FakeWS.instances[0];
+    ws.simulateOpen();
+    return { bridge, ws };
+  }
+
+  const authSigner = {
+    sign: async (ev) => ({ ...ev, id: 'auth-id', sig: 'auth-sig', pubkey: JUNKIEJARVIS_PUBKEY }),
+  };
+
+  test('kinds.CLIENT_AUTH is 22242', () => {
+    expect(bridgeKinds.CLIENT_AUTH).toBe(22242);
+  });
+
+  test('AUTH challenge → signed kind-22242 with relay+challenge tags on that socket', async () => {
+    const { bridge, ws } = makeAuthedBridge();
+    bridge.setAuthSigner(authSigner);
+    ws.simulateMessage(['AUTH', 'challenge-abc']);
+    await flushAsync();
+
+    const authFrames = ws.sent.map(JSON.parse).filter((m) => m[0] === 'AUTH');
+    expect(authFrames.length).toBe(1);
+    const ev = authFrames[0][1];
+    expect(ev.kind).toBe(22242);
+    expect(ev.content).toBe('');
+    expect(ev.tags).toContainEqual(['relay', RELAY_URL]);
+    expect(ev.tags).toContainEqual(['challenge', 'challenge-abc']);
+    expect(ev.sig).toBe('auth-sig');
+    bridge.disconnect();
+  });
+
+  test('active subscriptions are RE-SENT after AUTH (relay evaluates REQs at REQ time)', async () => {
+    const { bridge, ws } = makeAuthedBridge();
+    bridge.setAuthSigner(authSigner);
+    const subId = bridge.subscribe({ kinds: [42] }, () => {});
+    expect(ws.sent.map(JSON.parse).filter((m) => m[0] === 'REQ').length).toBe(1);
+
+    ws.simulateMessage(['AUTH', 'chal-1']);
+    await flushAsync();
+
+    const frames = ws.sent.map(JSON.parse);
+    const reqFrames = frames.filter((m) => m[0] === 'REQ');
+    expect(reqFrames.length).toBe(2); // original + post-AUTH replay
+    expect(reqFrames[1][1]).toBe(subId); // same subId replayed
+    expect(reqFrames[1][2]).toEqual({ kinds: [42] });
+    // Replay comes AFTER the AUTH frame on the wire.
+    const authIdx = frames.findIndex((m) => m[0] === 'AUTH');
+    const replayIdx = frames.map((m, i) => (m[0] === 'REQ' ? i : -1)).filter((i) => i >= 0)[1];
+    expect(replayIdx).toBeGreaterThan(authIdx);
+    bridge.disconnect();
+  });
+
+  test('no auth signer registered → challenge is ignored (fail-open, session stays public)', async () => {
+    const { bridge, ws } = makeAuthedBridge();
+    bridge.subscribe({ kinds: [42] }, () => {});
+    const sentBefore = ws.sent.length;
+    ws.simulateMessage(['AUTH', 'chal-x']);
+    await flushAsync();
+    expect(ws.sent.length).toBe(sentBefore); // nothing sent in response
+    bridge.disconnect();
+  });
+
+  test('signer failure is swallowed — bridge keeps working (fail-open)', async () => {
+    const { bridge, ws } = makeAuthedBridge();
+    bridge.setAuthSigner({ sign: async () => { throw new Error('hsm offline'); } });
+    bridge.subscribe({ kinds: [42] }, () => {});
+    const sentBefore = ws.sent.length;
+    ws.simulateMessage(['AUTH', 'chal-y']);
+    await flushAsync();
+    // No AUTH frame, no replay, no crash.
+    expect(ws.sent.length).toBe(sentBefore);
+    // Subsequent EVENT delivery still works.
+    let received = null;
+    const subId2 = bridge.subscribe({ kinds: [42] }, (e) => { received = e; });
+    ws.simulateMessage(['EVENT', subId2, { kind: 42, content: 'hi', pubkey: 'a'.repeat(64), created_at: 1 }]);
+    expect(received).toMatchObject({ kind: 42, content: 'hi' });
+    bridge.disconnect();
+  });
+
+  test('setAuthSigner rejects a signer without sign()', () => {
+    const { bridge } = makeAuthedBridge();
+    expect(() => bridge.setAuthSigner({})).toThrow(TypeError);
+    expect(() => bridge.setAuthSigner(null)).toThrow(TypeError);
+    bridge.disconnect();
+  });
+
+  test('breadcrumb log line never contains the challenge or event contents', async () => {
+    const { bridge, ws } = makeAuthedBridge();
+    bridge.setAuthSigner(authSigner);
+    ws.simulateMessage(['AUTH', 'super-secret-challenge']);
+    await flushAsync();
+    const lines = logSpy.mock.calls.map((c) => c.join(' '));
+    const breadcrumb = lines.find((l) => l.includes('NIP-42'));
+    expect(breadcrumb).toBe(`[bridge] NIP-42 AUTH sent to ${RELAY_URL}`);
+    expect(lines.join('\n')).not.toContain('super-secret-challenge');
+    bridge.disconnect();
+  });
 });

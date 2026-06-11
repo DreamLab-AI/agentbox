@@ -53,6 +53,7 @@ function getNostrTools() {
 
 const kinds = Object.freeze({
   AUTH:            27235,  // NIP-98 HTTP auth
+  CLIENT_AUTH:     22242,  // NIP-42 relay session auth (ephemeral)
   AGENT_STATE:     30078,  // parameterised replaceable — agent state events
   BRIEF_REF:       30000,  // NIP-33 addressable — brief references
   BEAD_REF:        30001,  // NIP-33 addressable — bead/receipt references
@@ -213,6 +214,7 @@ class NostrBridge {
     this._connections = new Map(); // url → RelayConnection
     this._subscriptions = new Map(); // subId → { filter, handler }
     this._subCounter = 0;
+    this._authSigner = null; // NIP-42 session signer (setAuthSigner)
 
     for (const url of relayUrls) {
       const connOpts = { ...this._relayOpts };
@@ -530,13 +532,79 @@ class NostrBridge {
     );
   }
 
+  // ── NIP-42 relay session auth ──
+
+  /**
+   * Register a signer used to answer NIP-42 ["AUTH", <challenge>] frames.
+   * Same { sign(unsignedEvent) } contract as publish(). Zone-gated relays
+   * (e.g. the DreamLab forum relay) withhold non-public events from
+   * unauthenticated sessions — without this, subscriptions silently receive
+   * only public-zone traffic.
+   *
+   * NOTE: never log the signer or any field from it — it fronts private key
+   * material.
+   *
+   * @param {{ sign(event: object): Promise<object>|object }} signer
+   */
+  setAuthSigner(signer) {
+    if (!signer || typeof signer.sign !== 'function') {
+      throw new TypeError('setAuthSigner: signer must have a sign(event) method');
+    }
+    this._authSigner = signer;
+  }
+
+  /**
+   * Answer a relay's NIP-42 challenge on the socket that issued it, then
+   * RE-SEND every active subscription on that socket: relays evaluate REQs
+   * against the session state at REQ time, so pre-AUTH subscriptions stay
+   * locked to the unauthenticated view until replayed.
+   *
+   * Fail-open: a signing or send failure is swallowed — the session simply
+   * stays unauthenticated (public-zone view), it never crashes the bridge.
+   *
+   * @private
+   */
+  async _handleAuthChallenge(challenge, relayUrl) {
+    if (!this._authSigner) return; // no signer registered — stay unauth
+    const conn = this._connections.get(relayUrl);
+    if (!conn) return;
+    try {
+      const unsigned = {
+        kind: kinds.CLIENT_AUTH,
+        created_at: Math.floor(Date.now() / 1000),
+        tags: [
+          ['relay', relayUrl],
+          ['challenge', challenge],
+        ],
+        content: '',
+      };
+      const signed = await this._authSigner.sign(unsigned);
+      conn.send(JSON.stringify(['AUTH', signed]));
+      // Replay all active subscriptions post-AUTH (same subIds — the relay
+      // re-evaluates them with the now-authenticated session).
+      for (const [subId, sub] of this._subscriptions.entries()) {
+        conn.send(JSON.stringify(['REQ', subId, sub.filter]));
+      }
+      // One-line breadcrumb only — never the challenge or event contents.
+      console.log(`[bridge] NIP-42 AUTH sent to ${relayUrl}`);
+    } catch { /* fail-open: unauthenticated session keeps its public view */ }
+  }
+
   // ── Internal message routing ──
 
   _handleRelayMessage(message, relayUrl) {
-    // Relay message shapes: ["EVENT", subId, event], ["EOSE", subId], ["NOTICE", text], ["OK", ...]
+    // Relay message shapes: ["EVENT", subId, event], ["EOSE", subId],
+    // ["NOTICE", text], ["OK", ...], ["AUTH", challenge] (NIP-42)
     if (!Array.isArray(message) || message.length < 2) return;
 
     const [type, subId, event] = message;
+
+    if (type === 'AUTH' && typeof subId === 'string' && subId.length > 0) {
+      // subId slot carries the challenge string for AUTH frames.
+      this._handleAuthChallenge(subId, relayUrl)
+        .catch(() => { /* fail-open */ });
+      return;
+    }
 
     if (type === 'EVENT' && event) {
       const sub = this._subscriptions.get(subId);

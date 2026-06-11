@@ -574,6 +574,22 @@ cmd_up() {
         docker network create visionclaw_network
     fi
 
+    # Adopt an orphaned ruvector-postgres container if one exists outside
+    # compose management (e.g. started by hand with `docker run` during the
+    # 2026-06-09 outage). Compose refuses to start a service whose
+    # container_name is taken by a foreign container. Removal is safe: all
+    # data lives on the named volume (ruvector_postgres_data_v2), which the
+    # compose service re-mounts.
+    if docker inspect ruvector-postgres >/dev/null 2>&1; then
+        local rv_project
+        rv_project=$(docker inspect ruvector-postgres \
+            --format '{{index .Config.Labels "com.docker.compose.project"}}' 2>/dev/null || true)
+        if [[ -z "$rv_project" ]]; then
+            echo -e "${YELLOW}Removing non-compose ruvector-postgres container (data persists on its named volume)...${NC}"
+            docker rm -f ruvector-postgres >/dev/null
+        fi
+    fi
+
     echo -e "${CYAN}Starting Docker stack...${NC}"
     docker compose "${COMPOSE_ARGS[@]}" up -d
 
