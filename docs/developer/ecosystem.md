@@ -85,6 +85,26 @@ graph LR
 
 The `did:nostr` identity flows through all five identity-mesh participants. Federation surfaces for this domain are opt-in (`[linked_data.code_execution] enabled = true` in `agentbox.toml`), following the DDD-004 pattern: `LessonDistilled` and `SkillVerified` events are encoded as JSON-LD with the URN→IRI mapping (`urn:agentbox:K:S:L` ⇆ `https://urn.agentbox.dev/K/S/L`) before federation.
 
+## Consuming the upstream forum kit primitives (2026-06-11)
+
+Four features merged into nostr-rust-forum's upstream kit on 2026-06-11 are
+**hand-rolled agentbox-side patterns promoted to first-class kit features**.
+agentbox now consumes them rather than maintaining its own divergent copies:
+
+| Kit feature | ADR (nostr-rust-forum) | agentbox-side consumption |
+|---|---|---|
+| `derive_subkey(root, tag)` — HMAC-SHA-256 purpose-scoped subkeys | [ADR-094](https://github.com/DreamLab-AI/nostr-rust-forum/blob/main/docs/adr/ADR-094-deterministic-subkey-derivation.md) | The session-mirror child-key derivation (tag `agentbox-mirror-v1`) now **matches and is consumed by** the canonical kit scheme. The kit's known-answer vector (root `0x01`×32 → `2d07f2ce…695d`) is the agentbox JS output verbatim — the cross-language contract is pinned, not parallel. |
+| Atomic agent provisioning endpoint | [ADR-097](https://github.com/DreamLab-AI/nostr-rust-forum/blob/main/docs/adr/ADR-097-agent-identity-provisioning.md) | Agent identities should be provisioned via `POST /api/governance/agents/provision` (NIP-98 admin, one D1 batch). This supersedes the per-agent seed scripts (the `provision-junkiejarvis` / `provision-carol` / `mirror-child` four-call seed dance). The agent's own kind-0/NIP-65 remain client-signed under its `did:nostr`. |
+| Per-container ACL delegation | [ADR-096](https://github.com/DreamLab-AI/nostr-rust-forum/blob/main/docs/adr/ADR-096-acl-container-resolution-and-delegation.md) | Pod delegation uses the container ACL form `<container>/.acl` (opt-in `PUT {"@delegation":{agent,modes}}`), with owner Control always preserved and `acl:Control` never delegated. The flat-sidecar `agent.acl` workaround is **retired** — both forms still resolve, so the `agent.acl → agent/.acl` migration is non-breaking. |
+| Recovery & device-onboarding sheet | [ADR-095](https://github.com/DreamLab-AI/nostr-rust-forum/blob/main/docs/adr/ADR-095-recovery-device-onboarding-sheet.md) | The forum's printable recovery/device-onboarding QR sheet and the agentbox session-mirror onboarding (operator phone) share one generator and one 0xchat-targeted on-ramp. See [user/mobile-bridge.md](../user/mobile-bridge.md). |
+
+The unifying principle: these are **library/contract reuse, not runtime forum
+interop**. agentbox links the shared kit crate and consumes the kit's admin
+endpoints, but reads and writes no forum BBS state — the "no forum at this time"
+constraint (see [mobile bridge](#mobile-bridge--the-operator-phone-as-a-delegated-participant))
+holds. `derive_subkey` provides domain separation, not compromise isolation; the
+operator phone's revocable authority still rides NIP-26 delegation, not a subkey.
+
 ## Mesh participation
 
 Agentbox participates as a mesh peer via its built-in `nostr-rs-relay` (ADR-009). When `federation.mode = "client"` is set in `agentbox.toml`, the relay connects to the private relay mesh and exchanges NIP-42-authenticated messages with other substrates.
@@ -137,10 +157,13 @@ unchanged.
 Two ecosystem boundaries make this clean:
 
 - **Crypto is reused, not rebuilt.** The agent-side decryption (NIP-44 v2 / NIP-59
-  gift wrap) and delegation validation (NIP-26) are consumed from
+  gift wrap), delegation validation (NIP-26), and purpose-scoped subkey derivation
+  (`derive_subkey`, ADR-094) are consumed from
   [`nostr-bbs-core`](https://github.com/DreamLab-AI/nostr-rust-forum) — the same
   crate already underpinning the relay worker, the auth worker, and the forum
-  client. This is **library reuse, not runtime forum interop**: agentbox links the
+  client. The session-mirror child key (tag `agentbox-mirror-v1`) is the kit's
+  ADR-094 known-answer vector verbatim, so the JS and Rust derivations are one
+  contract. This is **library reuse, not runtime forum interop**: agentbox links the
   shared crypto crate but reads and writes no forum BBS state. The "no forum at
   this time" constraint holds.
 - **The phone is a pure Nostr citizen.** It speaks Nostr only — no Solid, no WAC,

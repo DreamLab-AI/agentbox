@@ -91,6 +91,16 @@ is provided by the first-party [`nostr-bbs-core`](https://github.com/DreamLab-AI
 crate (the same NIP-44/59 implementation that runs under the forum and relay) —
 nothing to install for that; it ships with agentbox.
 
+> **Device onboarding is an upstream forum feature.** The printable
+> recovery/device-onboarding QR sheet — the nsec/npub/relay QR codes that get a
+> phone onto the mesh, generated 100% client-side and saved as a PDF — is the
+> forum kit's **recovery & device-onboarding sheet**
+> ([nostr-rust-forum ADR-095](https://github.com/DreamLab-AI/nostr-rust-forum/blob/main/docs/adr/ADR-095-recovery-device-onboarding-sheet.md)).
+> The mobile bridge consumes that same generator and its 0xchat-targeted on-ramp
+> rather than maintaining a separate onboarding flow. The Amber/Amethyst path
+> below is the agentbox-side delegated-key setup; the sheet is the kit-side
+> key/QR backup the operator prints once.
+
 ### 1. Install the apps
 
 - **[Amethyst](https://github.com/vitorpamplona/amethyst)** — the chat client.
