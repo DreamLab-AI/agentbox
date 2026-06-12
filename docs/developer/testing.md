@@ -50,7 +50,7 @@ graph LR
         BOOTTEST["bootstrap/"]
         CLITEST["cli/"]
         FLAKETEST["flake/"]
-        PROBES["artefact-probes/"]
+        PROBES["artifact-probes/"]
         SECTEST["security/"]
         REPRO["reproducibility/"]
     end
@@ -64,7 +64,7 @@ tests/
 ├── runtime-contract/      # PRD-002/003 end-to-end (bash + Jest)
 ├── config/                # Validator semantic-rule tests (Jest)
 ├── tui/                   # Python TOML round-trip (pytest)
-├── artefact-probes/       # Per-feature binary-exists probes (bash)
+├── artifact-probes/       # Per-feature binary-exists probes (bash)
 ├── bootstrap/             # Entrypoint lifecycle tests (bash)
 ├── cli/                   # agentbox.sh smoke tests (bash)
 ├── flake/                 # Nix eval + generator tests (bash)
@@ -136,33 +136,37 @@ done
 
 ```mermaid
 flowchart TB
-    subgraph pr_gates["PR gates (block merge)"]
+    subgraph pr_gates["Aggregated by ci.yml 'CI passed' (block merge)"]
+        SC["shellcheck.yml<br/>(error severity)"]
+        SS["secret-scan.yml<br/>(gitleaks)"]
+        MV["manifest-validate.yml<br/>(validate + TUI round-trip)"]
+    end
+    CI["ci.yml<br/>aggregate status"] --> SC
+    CI --> SS
+    CI --> MV
+
+    subgraph independent["Run on PRs, not aggregated"]
         CT["contract-tests.yml"]
         TT["tui-tests.yml"]
-        MV["manifest-validate.yml"]
         FC["flake-check.yml"]
-        RCT["runtime-contract.yml"]
-        SC["shellcheck.yml"]
-        SS["secret-scan.yml"]
+        INV["invariants.yml<br/>(security ratchets)"]
     end
-    CI["ci.yml<br/>aggregate status"] --> CT
-    CI --> TT
-    CI --> MV
-    CI --> FC
-    CI --> RCT
-    CI --> SC
-    CI --> SS
 
     subgraph post_merge["Post-merge / scheduled"]
         BMA["build-multi-arch.yml"]
         IS["image-scan.yml"]
         REL["release.yml"]
-        DOC["docs-ci.yml"]
         NFU["nix-flake-update.yml"]
+        ONT["ontology-publish.yml"]
     end
     BMA --> IS
     BMA -->|"v* tag"| REL
 ```
+
+> The former `runtime-contract.yml` and `docs-ci.yml` PR gates were removed
+> from the aggregate (ci.yml header, "low value-to-noise"); the
+> `tests/runtime-contract/RC-*.sh` scripts still exist and run locally or via
+> shellcheck lint.
 
 ### PR gates
 

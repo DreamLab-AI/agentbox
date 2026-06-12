@@ -18,11 +18,11 @@ mindmap
       URN taxonomy table wrong — FIXED
       REBUILD-BRIEF stale caps claim — ANNOTATED
       unindexed ADR-026/028 PRD-014 DDD-012 — FIXED
-    Adapter invariants (open)
-      encoder bypass on direct pods.write
-      OPF sentinel weaker than invariant
-      beads external contract isReal:false
-      ILIKE vs cosine search parity
+    Adapter invariants
+      encoder bypass on direct pods.write — FIXED 83f59e11
+      OPF sentinel weaker than invariant — FIXED f518120e
+      beads external contract isReal:false — FIXED 83f59e11
+      ILIKE vs cosine search parity — open
     Env-gap (open-partial)
       18 vars code-read undocumented — DOCUMENTED
       AGENTBOX_PUBKEY never exported by bootstrap
@@ -47,9 +47,9 @@ mindmap
 
 | ID | Sev | Where | Finding |
 |----|-----|-------|---------|
-| O1 | CRIT | `tests/contract/beads.contract.spec.js:68` | Beads `external` impl marked `isReal:false` — all behavioural assertions skipped; zero parity coverage for the federated class. Violates the all-three-classes contract rule. |
-| O2 | HIGH | `routes/memory.js:96` | Standalone pods-fallback path calls `pods.write()` directly, bypassing the JSON-LD encoder even with `linked_data.pods = "on"` — Layer-3 middleware (ADR-012) skipped on direct adapter calls. |
-| O3 | HIGH | `middleware/privacy-filter.js:95` | `assertPrivacyFilterApplied()` checks a module-load global sentinel set at require() time — cannot detect a route bypassing `wrapDispatch`; `opfMiddlewareOrderViolations` can never fire. Assertion is weaker than the DDD-004 §L08 invariant it claims. |
+| O1 | ~~CRIT~~ FIXED (`83f59e11`) | `tests/contract/beads.contract.spec.js:47` | ~~Beads `external` impl marked `isReal:false`~~ — `external` now runs against a stateful loopback with `isReal: true`; behavioural parity assertions execute for the federated class. |
+| O2 | ~~HIGH~~ FIXED (`83f59e11`) | `routes/memory.js:132` | ~~Standalone pods-fallback path calls `pods.write()` directly~~ — the fallback now routes through `encoder.dispatch()` with a per-dispatch privacy mark; Layer 3 remains call-site opt-in by design, guarded by the O3 fix. |
+| O3 | ~~HIGH~~ FIXED (`f518120e`) | `middleware/privacy-filter.js:114` | ~~Module-load global sentinel~~ — the marker is now a non-enumerable Symbol stamped per-payload by `wrapWithPrivacyFilter`; `assertPrivacyFilterApplied(payload, slot)` is per-dispatch, fail-closed for pods/memory, and `opf_middleware_order_violations_total` can fire. |
 | O4 | HIGH | `tests/contract/orchestrator.contract.spec.js:45` | `stdio-bridge` tested with a write-only stub; federated spawn never verified round-trip. Plus `server.js:945` — client-mode orchestrator `process.exit(1)` on connect failure while every other slot degrades. |
 | O5 | MED | `adapters/memory/external-pg.js:107` | `ILIKE` substring search vs embedded TF-cosine — fundamentally different semantics per impl class; pgvector `<=>` unused. |
 | O6 | MED | `adapters/index.js:48` | Missing `[federation].external_url` → empty string → generic "baseUrl is required" throw with no manifest-key pointer (E001 only enforced in `config validate`). |
@@ -59,4 +59,4 @@ mindmap
 
 ## Verdict
 
-Skills directory parity, route registration, `.env` leak surface, and the no-eval/no-shell-spawn checks all verified **clean**. Remaining debt is concentrated in the adapter contract layer (O1-O6): the standalone-or-federated promise is only as strong as the three-class contract tests, and two of five slots currently fake their federated leg.
+Skills directory parity, route registration, `.env` leak surface, and the no-eval/no-shell-spawn checks all verified **clean**. O1-O3 were closed post-audit (`f518120e`, `83f59e11`). Remaining debt sits in O4-O9: the orchestrator `stdio-bridge` is still the one slot faking its federated leg, and the memory-slot search parity gap (O5) is open.

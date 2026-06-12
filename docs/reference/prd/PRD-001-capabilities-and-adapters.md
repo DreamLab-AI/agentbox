@@ -259,7 +259,7 @@ flowchart LR
         direction TB
         S_AB[agentbox container]
         S_AB --> S_B[local sqlite beads]
-        S_AB --> S_P[local JSS pods]
+        S_AB --> S_P[local solid-pod-rs pods]
         S_AB --> S_M[embedded RuVector]
         S_AB --> S_E[local JSONL events]
         S_AB --> S_O[local process manager]

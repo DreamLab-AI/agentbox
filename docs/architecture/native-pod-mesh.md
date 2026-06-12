@@ -1,6 +1,8 @@
 # Native Pod Mesh — Architecture & Wiring
 
-> **Status**: Live (alpha.15). agentbox build: `./agentbox.sh update && nix build .#runtime`
+> **Status**: Live. Shipped at alpha.15; `lib/solid-pod-rs.nix` is now pinned
+> to `v0.4.0-alpha.17` (the first unambiguous tag after the alpha.15 aliasing).
+> agentbox build: `./agentbox.sh update && nix build .#runtime`
 
 The native pod mesh extends the DreamLab platform with a sovereign, git-versioned Solid
 pod tier running inside the agentbox container. Forum users in eligible cohorts see a
@@ -25,7 +27,7 @@ graph TB
     subgraph AGENTBOX["Agentbox Container (on-prem)"]
         direction TB
         MGMT["management-api\nFastify · NIP-98\nPOST /admin/users/provision"]
-        SPR["solid-pod-rs-server\nalpha.15 · git feature\nPSK /_admin/provision"]
+        SPR["solid-pod-rs-server\nv0.4.0-alpha.17 · git feature\nPSK /_admin/provision"]
         NOSTR["Nostr Bridge\nnip98 · relay fanout"]
         VC["VisionClaw\nBrokerActor\nGovernance events 31400-31405"]
         RUVEC["RuVector\nMiniLM-L6-v2 embeddings\nHNSW semantic search"]
@@ -89,7 +91,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor Operator
-    participant MGMT as management-api<br/>:3000 (agentbox)
+    participant MGMT as management-api<br/>:9090 (agentbox)
     participant SPR as solid-pod-rs-server<br/>:8484 (agentbox)
     participant FS as Pod Filesystem
 

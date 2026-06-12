@@ -97,7 +97,7 @@ See [solid-pod.md](solid-pod.md) for the operator guide and
 fail schema validation with E016 (unknown enum value).
 
 Validator rules:
-- **E001**: `"external"` requires `mesh.mode = "client"` + `mesh.peer_relays`.
+- **E001**: `"external"` requires `federation.mode = "client"` + `federation.external_url`.
 - **E002**: `memory = "external-pg"` requires `[integrations.ruvector_external].conninfo`.
 - **E003**: `orchestrator = "stdio-bridge"` must not bind an HTTP port.
 - **E033**: `integrations.solid_pod_rs.enable_dpop_cache = true` requires `enable_oidc = true`.
@@ -129,11 +129,11 @@ Gated at setup time — only offered when a GPU is detected or the host has
 ```mermaid
 flowchart LR
     REQ["Agent request"] --> PF{"Privacy filter<br/>:9092"}
-    PF -->|"strict"| REDACT["Redact PII"]
-    PF -->|"soft"| FLAG["Flag PII"]
+    PF -->|"strict"| REDACT["Redact PII<br/>(fail-closed: reject on outage)"]
+    PF -->|"soft"| SOFT["Redact PII<br/>(fail-open: pass original on outage)"]
     PF -->|"off"| PASS["Pass through"]
     REDACT --> ADAPTER["Adapter slot"]
-    FLAG --> ADAPTER
+    SOFT --> ADAPTER
     PASS --> ADAPTER
 ```
 

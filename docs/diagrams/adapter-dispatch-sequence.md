@@ -277,7 +277,15 @@ only two (`local-solid-rs`, `external`) are tested.
 
 ---
 
-### Finding 4 — HIGH: Privacy filter middleware-order assertion is a module-load sentinel, not a per-call sentinel
+### Finding 4 — RESOLVED (was HIGH): Privacy filter middleware-order assertion is a module-load sentinel, not a per-call sentinel
+
+> **Resolved 2026-06-11** (commit `f518120e`). `PRIVACY_FILTER_APPLIED_KEY` is
+> now a non-enumerable `Symbol` stamped per-payload by `wrapWithPrivacyFilter`
+> (privacy-filter.js:114-157), and `assertPrivacyFilterApplied(payload, slot)`
+> checks the marker on THIS dispatch — throwing `MiddlewareOrderViolation`
+> for fail-closed slots (pods/memory) and incrementing
+> `opf_middleware_order_violations_total{slot}`. The text below describes the
+> pre-fix state and is retained for audit history.
 
 **File:** `middleware/privacy-filter.js:95-96` and `middleware/linked-data/encoder.js:124`
 **Classification:** Middleware ordering — assertion is weaker than the invariant claims
@@ -296,7 +304,16 @@ sentinel is always true after boot.
 
 ---
 
-### Finding 5 — HIGH: JSON-LD encoder is not wired into `instrumentAdapter` — it is opt-in at call sites only
+### Finding 5 — PARTIALLY RESOLVED (was HIGH): JSON-LD encoder is not wired into `instrumentAdapter` — it is opt-in at call sites only
+
+> **Update 2026-06-12** (commit `83f59e11`). The worst instance is fixed: the
+> standalone pods-fallback write in `routes/memory.js` now routes through
+> `encoder.dispatch({slot:'pods', operation:'write', ...})` with a per-dispatch
+> privacy mark (routes/memory.js:132), instead of calling `pods.write()`
+> directly. The structural point stands: Layer 3 remains call-site opt-in
+> (`encoder.dispatch()` / `app.linkedData`), not applied by
+> `instrumentAdapter` — new routes can still bypass the encoder, but doing so
+> on a fail-closed slot now trips `MiddlewareOrderViolation` (Finding 4 fix).
 
 **File:** `adapters/index.js:126-145` (instrumentAdapter), `server.js:762-782` (encoder boot)
 **Classification:** Middleware ordering / adapter hardcoding gap
@@ -407,8 +424,8 @@ representation of agentbox.toml.
 | 1 | CRITICAL | tests/contract/beads.contract.spec.js:68 | beads `external` impl has zero M2 behavioural assertions; all skipped because `isReal=false` | Contract coverage gap |
 | 2 | HIGH | tests/contract/orchestrator.contract.spec.js:45 | `stdio-bridge` impl tests with write-only stub; federated spawn path never verified | Contract coverage gap |
 | 3 | HIGH | tests/contract/README.md:9 | README still lists retired `local-jss` pods impl in slot matrix | Documentation drift |
-| 4 | HIGH | middleware/privacy-filter.js:95 + encoder.js:124 | Middleware-order assertion is a module-load sentinel, not a per-dispatch sentinel; can never detect encoder invoked without filter on a specific call | Middleware ordering weak assertion |
-| 5 | HIGH | adapters/index.js:126 + server.js:762 | JSON-LD encoder (Layer 3) is not wired into `instrumentAdapter`; routes that call adapter methods directly bypass the encoder even when surfaces are enabled | Adapter dispatch — encoder skipped |
+| 4 | RESOLVED (`f518120e`) | middleware/privacy-filter.js:114 + encoder.js:128 | ~~Module-load sentinel~~ — now a per-dispatch payload marker; fail-closed slots throw `MiddlewareOrderViolation` | Middleware ordering — fixed |
+| 5 | PARTIALLY RESOLVED (`83f59e11`) | adapters/index.js:131 + routes/memory.js:132 | Pods-fallback write now goes through `encoder.dispatch()`; Layer 3 remains call-site opt-in by design, guarded by the Finding-4 per-dispatch check | Adapter dispatch — encoder bypass fixed at known site |
 | 6 | MEDIUM | adapters/memory/external-pg.js:107 | `external-pg` search uses ILIKE not vector similarity; parity gap vs `embedded-ruvector` cosine search | Impl class behavioural divergence |
 | 7 | MEDIUM | adapters/index.js:48 + adapters/beads/external.js:26 | `slotConfig` passes empty `externalUrl` when `[federation].external_url` is absent; constructor throws with generic error, not E001 | Fail-silent on missing config |
 | 8 | MEDIUM | server.js:945 | Orchestrator slot crashes on connect failure; all other slots degrade gracefully; client-mode orchestrator unavailability is fatal | Mode asymmetry — standalone-only resilience |

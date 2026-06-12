@@ -20,6 +20,13 @@ This is the loop the whole sovereign substrate was built for: identity (NIP-98)
 
 ## Sequence
 
+> **Known gap (verified 2026-06-12):** receipt crossing to the host graph is
+> not yet wired. `bc20.crossOutbound()` is invoked only from the test/runner
+> tier (`tests/integration/economy-loop*`, `tests/sovereign/bc20-provenance-bridge.test.js`)
+> — no production caller crosses into the host graph, and nothing on the host
+> consumes the durable `UrnMapping` table. The `Host` lane below is design, not
+> a live path.
+
 ```mermaid
 sequenceDiagram
     autonumber

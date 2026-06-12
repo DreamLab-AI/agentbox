@@ -172,6 +172,12 @@ sequenceDiagram
 
 When `mesh.mode = "client"`, the container participates in a host mesh. The lifecycle below shows how a federated session is established and maintained.
 
+> **Status:** aspirational design — not implemented as of 2026-06-12. No
+> `/v1/register`, `/v1/heartbeat`, or `/v1/deregister` client code exists in
+> `management-api/`; what IS implemented in client mode is adapter resolution
+> to `external`/`stdio-bridge` impls with per-slot `connect()` (see
+> [Adapter dispatch](#adapter-dispatch) below).
+
 ```mermaid
 sequenceDiagram
     participant AB as Agentbox

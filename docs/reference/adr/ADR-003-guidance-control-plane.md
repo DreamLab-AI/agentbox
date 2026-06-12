@@ -51,6 +51,14 @@ Integrate the Guidance Control Plane as the governance backbone for all agent op
 
 ### Architecture
 
+> **Status:** aspirational design — not implemented as of 2026-06-12. No
+> GuidanceCompiler, ShardRetriever, EnforcementGates, ProofChain, or
+> MemoryQuorum component exists in this repo (`management-api/`, `mcp/`,
+> `scripts/`, `governance/`). The implemented governance surfaces today are
+> the adapter middleware chain (observability → privacy filter → JSON-LD
+> encoder, ADR-005/008/012) and NIP-98/relay-allowlist auth; the control
+> plane below remains a design under local experimentation.
+
 ```mermaid
 flowchart TB
     subgraph "Input Processing"

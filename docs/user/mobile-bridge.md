@@ -192,6 +192,13 @@ mirror never did. Each agent session is represented by one **`kind-30840`** even
   modified. The pod copy is the canonical, exportable, user-owned record; the
   Nostr event is the phone-readable projection.
 
+> **Status:** partially implemented as of 2026-06-12. The kind-30840 digest is
+> emitted **once, at SessionEnd**, by `config/hooks/nostr-session-summary.py`
+> driving the `services/nostr-pod-bridge` one-shot (sign → pod dual-write →
+> relay publish), and `[sovereign_mesh.mobile_bridge]` ships `enabled = false`
+> by default. The mid-session `status: active` publish and the in-place
+> active → complete update shown below are aspirational design.
+
 ```mermaid
 sequenceDiagram
     participant Agent

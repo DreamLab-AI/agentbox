@@ -42,7 +42,7 @@ flowchart TB
         ENV_U[urn:agentbox:envelope\nhex:sha256-12-...]
         ACT_U[urn:agentbox:activity\nhex:sha256-12-...]
         EVT_U[urn:agentbox:event\nhex:sha256-12-...]
-        BEAD_U[urn:agentbox:bead\nhex:local-id]
+        BEAD_U[urn:agentbox:bead\nhex:sha256-12-...]
         DATA_U[urn:agentbox:dataset\nhex:name]
     end
 
@@ -83,10 +83,10 @@ flowchart LR
     end
 
     subgraph knowledge_c["Knowledge\nmixed scope and addressing"]
-        MEM_K[memory\nno-scope stable]
-        BEAD_K[bead\nhex:local-id]
+        MEM_K[memory\noptional-scope stable]
+        BEAD_K[bead\nhex:sha256-12-...]
         DATA_K[dataset\nhex:name]
-        THING_K[thing\nno-scope stable]
+        THING_K[thing\noptional-scope stable]
     end
 
     subgraph cap_c["Capabilities\nownerScope=false contentAddressed=false"]
@@ -118,15 +118,15 @@ flowchart LR
 | `activity` | yes | yes | agent-events | PROV-O activity; hash of action+slot+operation+input+output |
 | `event` | yes | yes | agent-events | Agent event; hash of action+slot+timestamp+payload |
 | `mcp` | no | no | things | MCP server; stable on `serverId` |
-| `memory` | no | no | memory | Memory namespace; stable on namespace name |
+| `memory` | optional | no | memory | Memory namespace; stable on namespace name |
 | `skill` | no | no | skills | Skill; stable on skill id |
 | `adr` | no | no | docs | Architecture decision record |
 | `prd` | no | no | docs | Product requirements document |
 | `ddd` | no | no | docs | Domain design document |
-| `thing` | no | no | things | Generic named thing |
+| `thing` | optional | no | things | Generic named thing |
 | `dataset` | yes | no | memory | Named dataset owned by an agent |
-| `bead` | yes | no | beads | Work bead owned by an agent |
-| `agent` | no | no | agents | Named agent in the agent catalogue |
+| `bead` | yes | yes | beads | Work bead; content-addressed (`sha256-12`) to match the host's converged bead grammar so BC20 crosses it structurally (uris.js, 2026-06-09) |
+| `agent` | optional | no | agents | Named agent in the agent catalogue |
 | `meta` | no | no | meta | Runtime meta; one per container |
 
 Content addressing uses `sha256-12-<first 12 hex chars of SHA-256(stableStringify(payload))>`. The stable-stringify step sorts object keys recursively before hashing, giving a deterministic name for any JSON-serialisable payload regardless of key insertion order. This is sufficient for URI minting; the JCS canonicalisation step in the signing path provides bytes-identical signing fidelity when that is required.
@@ -134,6 +134,15 @@ Content addressing uses `sha256-12-<first 12 hex chars of SHA-256(stableStringif
 ## Adapter Dispatch Pipeline
 
 Every write through the five adapter slots passes through three mandatory middleware layers in this order. The order is non-negotiable: observability must open its span before any other work begins; the privacy filter must redact before encoding; the encoder must see only redacted bytes.
+
+> **Wiring note (2026-06-12):** Layers 1-2 (observability + privacy filter) are
+> applied automatically to every adapter method by `instrumentAdapter()` in
+> `management-api/adapters/index.js` (via `wrapDispatch` →
+> `wrapWithPrivacyFilter`). Layer 3 (JSON-LD encoder) is invoked at call sites
+> via `encoder.dispatch()`, opt-in per `[linked_data]` surface; the encoder's
+> per-dispatch `assertPrivacyFilterApplied()` guard enforces the L08 ordering
+> (fail-closed for pods/memory). The diagram below shows the canonical
+> conceptual order across all slots.
 
 ```mermaid
 flowchart TB
@@ -161,10 +170,10 @@ flowchart TB
 
     subgraph slots["Adapter slots"]
         S_PODS[pods\nlocal-solid-rs external off]
-        S_EVENTS[events\nlocal-nostr external off]
-        S_MEMORY[memory\nlocal-ruvector external off]
+        S_EVENTS[events\nlocal-jsonl external off]
+        S_MEMORY[memory\nembedded-ruvector external-pg off]
         S_BEADS[beads\nlocal-sqlite external off]
-        S_ORCH[orchestrator\nlocal external off]
+        S_ORCH[orchestrator\nlocal-process-manager stdio-bridge off]
     end
 
     CALL --> OBS_B
@@ -208,6 +217,13 @@ Privacy policy per slot:
 
 A complete walkthrough of `POST /v1/pods/:id/resources` from agent call to response.
 
+> **Status:** illustrative composite — `POST /v1/pods/:id/resources` is not a
+> management-api route as of 2026-06-12 (pod resource writes go to
+> solid-pod-rs directly or through the pods adapter from other routes). Each
+> individual step (NIP-98 verification, OPF redaction, `uris.mint`, JSON-LD
+> encoding, WAC-checked atomic write) is implemented; the single endpoint
+> shown stitching them together is not.
+
 ```mermaid
 sequenceDiagram
     participant AG as Agent did:nostr:hex
@@ -249,6 +265,11 @@ The trace `T1` in the OTLP backend links directly to both the pod resource URN a
 ## Credential Issuance and Provenance
 
 Credential issuance is the clearest demonstration of the determinism property. The credential's `@id` is derived from the `credentialSubject` payload. Re-issuing the same subject produces the same URN in the pod, in the Nostr envelope, and in the provenance record.
+
+> **Status:** aspirational design — not implemented as of 2026-06-12. There is
+> no `POST /v1/credentials` route in `management-api/routes/`; the determinism
+> property it illustrates is real (content-addressed minting in
+> `lib/uris.js`), but the issuance endpoint and dual pod/relay emit are design.
 
 ```mermaid
 sequenceDiagram
@@ -310,19 +331,19 @@ URNs survive backend swaps and host moves because a URN is a name, not a locatio
 flowchart LR
     subgraph standalone["Standalone mode\nfederation.mode=standalone"]
         SA_PODS[pods adapter\nlocal-solid-rs\n:8484]
-        SA_EVENTS[events adapter\nlocal-nostr\n:7777]
-        SA_MEM[memory adapter\nlocal-ruvector\n:5432]
-        SA_BEADS[beads adapter\nlocal-sqlite\n/var/lib/beads]
-        SA_ORCH[orchestrator adapter\nlocal-claude-flow\n:9191]
+        SA_EVENTS[events adapter\nlocal-jsonl\n/workspace/events/*.jsonl]
+        SA_MEM[memory adapter\nembedded-ruvector\nin-process]
+        SA_BEADS[beads adapter\nlocal-sqlite\n/workspace/beads.db]
+        SA_ORCH[orchestrator adapter\nlocal-process-manager\nchild_process.spawn]
         SA_URN[urn:agentbox:credential\nhex:sha256-12-xyz\nresolver -> :8484/pods/...]
     end
 
     subgraph client_mode["Client mode\nfederation.mode=client"]
-        CL_PODS[pods adapter\nexternal\nhost-mesh:8484]
-        CL_EVENTS[events adapter\nexternal\nhost-mesh:7777]
-        CL_MEM[memory adapter\nexternal\nhost-mesh:5432]
-        CL_BEADS[beads adapter\nexternal\nhost-mesh:9200]
-        CL_ORCH[orchestrator adapter\nexternal\nhost-mesh:9191]
+        CL_PODS[pods adapter\nexternal\nfederation.external_url]
+        CL_EVENTS[events adapter\nexternal\nHTTP POST]
+        CL_MEM[memory adapter\nexternal-pg\nruvector-postgres:5432]
+        CL_BEADS[beads adapter\nexternal\nfederation.external_url/v1/beads/*]
+        CL_ORCH[orchestrator adapter\nstdio-bridge\nJSON-RPC over stdio]
         CL_URN[urn:agentbox:credential\nhex:sha256-12-xyz\nresolver -> host-mesh:8484/pods/...]
     end
 

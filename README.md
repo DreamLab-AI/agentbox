@@ -168,6 +168,12 @@ flowchart TB
 
 Every request through the management API follows a rigorous lifecycle: identity verification → adapter routing → privacy redaction → JSON-LD encoding → OTLP tracing.
 
+> **Note:** illustrative composite. Each stage (NIP-98 verification, the
+> privacy filter, `uris.mint`, the JSON-LD encoder, OTLP spans) is implemented
+> as adapter middleware, but `POST /v1/pods/:id/resources` is not itself a
+> management-api route — pod resource writes go to solid-pod-rs directly or
+> through the pods adapter from other routes.
+
 ```mermaid
 sequenceDiagram
     participant AG as Agent did:nostr:hex
@@ -310,7 +316,7 @@ TAILSCALE_AUTHKEY=tskey-auth-...
 The embedded `nostr-rs-relay` (`:7777`) serves as both a local event store and a mesh relay. Peer relays are configured in `agentbox.toml`:
 
 ```toml
-[sovereign_mesh.mesh]
+[mesh]
 peer_relays = [
     "ws://agentbox-paris.tailnet-name.ts.net:7777",   # Tailscale peer
     "wss://relay.damus.io",                             # Public relay
