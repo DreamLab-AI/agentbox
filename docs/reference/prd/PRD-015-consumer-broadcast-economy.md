@@ -1,11 +1,21 @@
 # PRD-015: Consumer & Broadcast Economy Surfaces
 
-**Status:** Draft v1
+**Status:** Draft v1.2
 **Date:** 2026-06-12
 **Author:** DreamLab AI
 **Repo:** [github.com/DreamLab-AI/agentbox](https://github.com/DreamLab-AI/agentbox)
-**Related:** PRD-009 (LLM resource marketplace), PRD-006 (Linked-data interfaces), PRD-007 (Multi-tenant federation), ADR-005 (Pluggable adapters), ADR-008 (Privacy filter), ADR-009 (Embedded Nostr relay), ADR-010 (Rust Solid pod), ADR-012 (JSON-LD federation grammar), ADR-013 (Canonical URI grammar), ADR-021 (Marketplace kinds), DDD-006 (Marketplace domain), [`docs/developer/economy-loop.md`](../../developer/economy-loop.md)
-**Drives:** an ADR for the 402 challenge & scheme-detection grammar (numbered on acceptance), the `skills/payment-router` skill (Phase 1 deliverable), and the real-money settlement workstream already flagged in economy-loop.md §What remains #4
+**Related:** PRD-009 (LLM resource marketplace), PRD-006 (Linked-data interfaces), PRD-007 (Multi-tenant federation), ADR-005 (Pluggable adapters), ADR-008 (Privacy filter), ADR-009 (Embedded Nostr relay), ADR-010 (Rust Solid pod), ADR-012 (JSON-LD federation grammar), ADR-013 (Canonical URI grammar), ADR-021 (Marketplace kinds), ADR-031 (Adapter contract enforcement), DDD-006 (Marketplace domain), [`docs/developer/economy-loop.md`](../../developer/economy-loop.md)
+**Drives:** [ADR-032](../adr/ADR-032-402-scheme-grammar.md) (402 challenge & scheme-detection grammar — drafted as *proposed* alongside this PRD), the `skills/payment-router` skill (Phase 1 deliverable), and the real-money settlement workstream already flagged in economy-loop.md §What remains #4
+
+> **Changelog.**
+> *v1.2 (2026-06-12):* **Lightning-first** (operator decision) — NWC/L402 is
+> the only planned native real-money rail; the EVM/USDC x402 rail (was C11)
+> moves to the rejection list (x402 stays detectable, and payable only via
+> explicit C9 delegation). Open Question 1 resolved: approval surface is an
+> ACSP broker case. Companion ADR numbered (ADR-032). B4 anchored to the now
+> executable middleware merge gate (ADR-031). BC20 receipt-crossing corrected
+> to a named known gap.
+> *v1 (2026-06-12):* initial draft (desktop commit `51be12d`).
 
 ## TL;DR
 
@@ -154,8 +164,8 @@ grammar. Classification is a pure function of `(status, headers, body)`:
 | Scheme | Detection signature | Pay rail | Status |
 |---|---|---|---|
 | `agentbox-ledger` | 402 + `X-Pay-Currency: sats` + body `deposit_endpoint`, and/or `accepts[]` entry with `scheme: "agentbox-ledger"` | Web Ledger debit via NIP-98 (native) | Implemented server-side today; consumer = Phase 1 |
-| `x402` | 402 + JSON body with `x402Version` / `accepts[]` of scheme entries (e.g. `exact` on an EVM network, EIP-3009 settlement) | Signed USDC authorisation | Phase 3 native (C11) or delegated (C9) |
-| `l402` | 402/401 + `WWW-Authenticate: L402` (or legacy `LSAT`) carrying `macaroon` + `invoice` (BOLT11) | Lightning payment + macaroon replay | Phase 3 native via NWC (C10) or delegated (C9) |
+| `x402` | 402 + JSON body with `x402Version` / `accepts[]` of scheme entries (e.g. `exact` on an EVM network, EIP-3009 settlement) | **No native rail** (v1.2 operator decision) — delegated only (C9) | Detection always; payment only via explicit delegation |
+| `l402` | 402/401 + `WWW-Authenticate: L402` (or legacy `LSAT`) carrying `macaroon` + `invoice` (BOLT11) | Lightning payment + macaroon replay — **the native real-money rail** | Phase 3 native via NWC (C10) or delegated (C9) |
 | `unknown` | Anything else returning 402 | None — fail closed | Named error always |
 
 Exact wire-format fixtures (header shapes, field names, version pinning) are
@@ -262,12 +272,15 @@ a second `accepts[]` entry advertises it without touching the first.
 
 ### 5.3 Could have (Phase 3 — real-money rails; separate workstream)
 
-- [ ] **C10 Lightning rail via NWC (NIP-47).** First native real-money rail:
+- [ ] **C10 Lightning rail via NWC (NIP-47).** The native real-money rail:
   pays L402 invoices through an operator-configured wallet connection. Chosen
-  first because it reuses the nostr identity/transport substrate and needs no
+  because it reuses the nostr identity/transport substrate (NIP-47 rides the
+  same relays and key discipline as everything else here) and needs no
   resident node.
-- [ ] **C11 x402 rail (EIP-3009).** Native USDC authorisation signing with an
-  operator-held EVM key; self-contained signer, no chain infrastructure.
+- ~~**C11 x402 rail (EIP-3009).**~~ **Rejected in v1.2** (see §11): no native
+  EVM/USDC signing rail will be built. x402 challenges remain fully
+  *detectable* (C1) so agents can name what a foreign service wants, and
+  remain *payable* solely through explicit, default-off C9 delegation.
 - [ ] **C12 Deposit settlement verification.** Close the trusted-write gap on
   `/v1/pay/deposit` (solid-pod-rs audit A-4, economy-loop.md §What remains
   #4): a deposit credits the ledger only after rail-appropriate settlement
@@ -302,7 +315,10 @@ a second `accepts[]` entry advertises it without touching the first.
 - [ ] **B4 S8 surface parity.** The `[linked_data]` payments surface (S8)
   renders the same offer data as JSON-LD, passing through the standard
   middleware order — observability → privacy filter → encoder (ADR-008,
-  ADR-012, DDD-004 §L08) — so redaction completes before encoding.
+  ADR-012, DDD-004 §L08) — so redaction completes before encoding. This
+  order is no longer aspiration: `instrumentAdapter` wraps every dispatch
+  (commits `f518120e`/`83f59e11`) and ADR-031 makes the contract suite an
+  executable merge gate with middleware-bypass coverage — B4 inherits it.
 
 ### 6.2 Should have (Phase 2)
 
@@ -380,7 +396,7 @@ gated; schema + validator entries (`schema/agentbox.toml.schema.json`,
 | Budget surface (C8) | extend `management-api/routes/payments.js` |
 | Agent-facing loop (C5) | `skills/payment-router/` (SKILL.md + `scripts/pay-fetch.mjs`), MCP-server subdir only if/when C9 lands — precedent: `skills/comfyui/mcp-server` |
 | Identity | caller DID from NIP-98 (`req.auth.pubkey` → `did:nostr:<hex>`); operator DID from `AGENTBOX_PUBKEY`; signing originator `lib/pod-signer.js` |
-| Provenance | `lib/uris.js` sole-mint; receipt + activity kinds per the code-as-harness allocation; BC20 crossing of activities reuses the existing bridge |
+| Provenance | `lib/uris.js` sole-mint; receipt + activity kinds per the code-as-harness allocation; BC20 crossing of activities reuses the existing bridge — **known gap (2026-06-12):** `bc20-provenance-bridge.js` `crossOutbound` has no production caller yet (economy-loop.md §What remains), so crossed spend provenance reaches the host graph only once that wiring lands; receipts are agentbox-local truth regardless |
 | Observability | every consumer dispatch emits span/log/metrics (ADR-005): `agentbox_pay_spend_total{scheme,outcome}`, `agentbox_pay_denied_total{reason}`, `agentbox_pay_challenge_detected_total{scheme}`; exporters stay optional |
 | Contract tests | `tests/contract/` — detector fixture corpus; consumer flow green in both `standalone` and `client` federation modes; B2 regression for legacy challenge bytes |
 
@@ -420,8 +436,9 @@ gated; schema + validator entries (`schema/agentbox.toml.schema.json`,
 5. **Identity is the existing mesh.** No new key types: NIP-98 for HTTP,
    BIP-340 x-only pubkeys as scope, `did:nostr` everywhere — the consumer is
    one more participant in the identity mesh, not a new primitive. Phase 3
-   adds operator-held wallet keys (NWC connection string, EVM key) stored
-   like the existing encrypted stack keys.
+   adds exactly one operator-held wallet secret (the NWC connection string)
+   stored like the existing encrypted stack keys; no EVM keys enter the box
+   (v1.2).
 
 ---
 
@@ -431,7 +448,7 @@ gated; schema + validator entries (`schema/agentbox.toml.schema.json`,
 |---|---|---|
 | 1 — In-mesh consumer + native broadcast | C1–C6, B1–B4 | Agent on node A pays a 402 from node B's gated route end-to-end (detect → policy → ledger debit → retry → 200), with receipt + activity URNs minted and the legacy challenge byte-identical under B2; contract tests green in standalone + client modes |
 | 2 — Discovery + budget UX | C7–C9, B5–B6 | Merged offer view returns mesh ads + crawled manifests; `/v1/pay/budget` live; one external crawl pilot indexes an opted-in agentbox manifest; C9 delegation behind its gate with local receipts |
-| 3 — Real-money rails | C10–C12, B7 | An L402 service paid via NWC under policy caps; deposit credits require settlement proof (A-4 closed); x402 rail behind its own gate |
+| 3 — Real money, Lightning-first | C10, C12, B7 | An L402 service paid via NWC under policy caps; deposit credits require settlement proof (A-4 closed); agentbox services emit L402-compatible challenges (B7) |
 
 Phase 3 is deliberately a separate workstream with its own risk review —
 Phases 1–2 ship full product value (the in-mesh economy plus discovery)
@@ -450,6 +467,7 @@ without touching real money.
 | Durable crawl-index database in agentbox | Embedded RuVector is a per-session cache; durable truth belongs to pods and marketplace events |
 | USDC- (or DREAM-) denominated external offers | Ledger and external offers stay sats-denominated; currency bridging happens at the payer edge, token economics stay internal |
 | Auto-funding the ledger from a wallet on low balance | Turns a spend-cap breach into a wallet drain; deposits remain operator-driven |
+| Native EVM/USDC x402 rail (EIP-3009 signing, was C11) | Operator decision (v1.2): Lightning/NWC is the sovereign-aligned rail — sats end to end, no EVM key custody, no stablecoin counterparty. x402 stays in the detection grammar and is payable via explicit C9 delegation only; revisit only if the mesh meets x402-only services it cannot route through delegation |
 
 ---
 
@@ -469,16 +487,29 @@ without touching real money.
 
 ## 13. Open questions
 
-1. **Approval surface.** Where does `approval_threshold_sats` park-and-approve
-   live — the setup dashboard (PRD-012), an ACSP human-in-the-loop event, or
-   both? (PRD-014's Seam-D decision stub is adjacent prior art.)
+1. **Approval surface — resolved (v1.2): an ACSP broker case.** An
+   above-threshold spend opens a kind-31402 ActionRequest on the governance
+   relay (case prefix `abx-pay-`, fields: origin, scheme, amount, requesting
+   agent DID, what the spend buys), answered by a signed kind-31403
+   approve/reject — the same human-in-the-loop seam PRD-014 Seam-D pointed
+   at, and now proven end to end by the host project's elevation workflow
+   (its ADR-110, shipped 2026-06-12: frontier-concept cases opened by an
+   agentic actor, decided on the forum governance page, decisions signed,
+   attributable and durable). The setup dashboard (PRD-012) renders pending
+   approvals *read-only* via the C8 budget surface; the decision itself
+   lives on the broker so it carries a signature and an audit trail.
+   Operational prerequisite, same as every ACSP producer: the panel pubkey
+   must be registered in the relay's `agent_registry`.
 2. **Scheme naming.** Keep `agentbox-ledger` as a private scheme string, or
    pursue registration in the x402 scheme namespace once stable?
 3. **Signed manifests.** Should `/.well-known/x402.json` carry a detached
    operator signature (JCS canonicalisation via the existing `jcs.js` +
    BIP-340)? Crawlers don't require it; peers could verify it.
-4. **L402 macaroon lifecycle.** Caching/replay window for purchased macaroons
-   across retried calls — needs an answer in the Phase 3 ADR.
+4. **L402 macaroon lifecycle — answered in ADR-032 §D6.** Purchased
+   macaroons are credentials, not cache entries: stored in the agent pod's
+   private storage keyed by origin, replayed for the macaroon's own validity
+   window, never shared across origins or scopes, and receipt-linked to the
+   spend that bought them.
 5. **DREAM exposure.** `/v1/pay/info` advertises DREAM internally; external
    broadcast is sats-only in this draft. Confirm token economics stay
    non-broadcast.

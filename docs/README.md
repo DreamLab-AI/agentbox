@@ -120,7 +120,8 @@ These are the authoritative sources of truth. Anything in `user/` or `developer/
 | ADR-028 | [Per-User Agent Fabric](reference/adr/ADR-028-per-user-agent-fabric.md) | Accepted | Pod-sourced identity, RuVector memory, and heartbeat autonomy for per-user agents; gate aligned to `[sovereign_mesh].per_user_agents` |
 | ADR-029 | [Session-mirror live egress](reference/adr/ADR-029-session-mirror-live-egress.md) | Accepted | Per-turn NIP-59 gift-wrapped self-DM under a derived child key; the live sibling of the kind-30840 digest, no external LLM hop, fail-open |
 | ADR-030 | [Sovereign-mesh manifest boundary](reference/adr/ADR-030-sovereign-mesh-manifest-boundary.md) | Accepted | `[sovereign_mesh]` as one subsystem gate (default off; env override per R7); the one external data hop is the mobile-bridge Z.AI summarisation |
-| ADR-031 | _Incoming — authored concurrently by a sibling workstream (management-api adapter/middleware)_ | (reserved) | _reserved_ |
+| ADR-031 | [Adapter contract enforcement](reference/adr/ADR-031-adapter-contract-enforcement.md) | Accepted | The merge gate is executable: `isReal:false` banned, stateful loopbacks for federated legs, registered time-boxed exemptions, middleware-bypass coverage |
+| ADR-032 | [402 payment challenge & scheme-detection grammar](reference/adr/ADR-032-402-scheme-grammar.md) | Proposed | Pure-function 402 classifier (`agentbox-ledger`/`x402`/`l402`/`unknown`), frozen byte-fixture corpus, additive `accepts[]` emission, Lightning-first settlement (no native EVM rail) — companion to PRD-015 |
 
 ### Product requirements (PRD)
 
