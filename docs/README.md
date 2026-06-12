@@ -140,6 +140,7 @@ These are the authoritative sources of truth. Anything in `user/` or `developer/
 | PRD-012 | [Setup wizard and operations dashboard](reference/prd/PRD-012-setup-dashboard.md) | Browser-based first-boot wizard and day-2 ops dashboard |
 | PRD-013 | [Multi-harness tmux architecture](reference/prd/PRD-013-multi-harness-tmux-architecture.md) | Multi-harness tmux layout and documentation revamp |
 | PRD-014 | [Embodied agent loop](reference/prd/PRD-014-embodied-agent-loop.md) | Voice-to-ontology gap closure across the five-substrate seams (In progress) |
+| PRD-015 | [Consumer & broadcast economy surfaces](reference/prd/PRD-015-consumer-broadcast-economy.md) | Outbound 402 payment consumer (detect → policy → pay → receipt) and service discovery broadcast (well-known manifest, standards-shaped challenges) |
 | PRD-REMEDIATION-001 | [Default-secure posture remediation](reference/PRD-REMEDIATION-001.md) | Second-pass hardening: loopback publish, auth-default-on, zai allowlist, no runtime escalation, secret-via-tmpfs, doc truth-up |
 
 ### Domain design (DDD)
