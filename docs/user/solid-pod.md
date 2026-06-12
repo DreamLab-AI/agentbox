@@ -48,6 +48,8 @@ deliberate backwards compatibility for anyone who learned the older API.
 | Per-pod storage quota (Sprint 8) | `.quota.json` sidecar with atomic writes; 413 on overflow |
 | Solid-OIDC with DPoP | optional feature gate |
 | Solid Notifications 0.2 | WebSocket + Webhook channels |
+| MCP tool surface (JSS 0.0.204) | `POST /mcp` — 16 Model Context Protocol tools, NIP-98 + WAC gated; off unless `enable_mcp = true` |
+| `install` subcommand (JSS 0.0.204) | `solid-pod-rs-server install <app>` — push Solid apps into a pod over git, NIP-98-authenticated |
 | `/.well-known/solid` + WebFinger JRD | standards-compliant discovery |
 | Storage backends | filesystem (atomic rename), memory (tests), S3/MinIO/R2/B2 |
 | Strong ETags | SHA-256; If-Match, If-None-Match, range requests |
@@ -105,6 +107,8 @@ enable_quota           = true                # per-pod storage ceiling
 jss_v04_compat         = true                # JSS v0.4 config/behaviour compat
 rate_limit_per_sec     = 20                  # per-connection token-bucket ceiling
 quota_default_bytes    = 10737418240         # 10 GiB default quota per pod
+# JSS 0.0.204 re-sync (solid-pod-rs b81ce9f):
+enable_mcp             = false               # MCP tool surface at POST /mcp (16 tools)
 
 [security.exceptions.solid-pod-rs]
 writable_volumes = ["solid-data:/var/lib/solid"]

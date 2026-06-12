@@ -131,6 +131,12 @@ services:
     # implicitly here only via shm_size sizing for agent workloads.
     shm_size: '32gb'
 
+    # Docker socket access: host docker group is gid 965. Without this,
+    # devuser (uid 1000) can't talk to /var/run/docker.sock and every
+    # docker/compose command requires sudo (blocked by no-new-privileges).
+    group_add:
+      - "965"
+
 networks:
   visionclaw:
     external: true
