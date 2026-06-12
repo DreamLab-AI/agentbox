@@ -100,8 +100,30 @@ Your `agentbox.toml` manifest toggles capabilities on or off. Disabled features 
 | **Data science and docs** | PyTorch, Jupyter Lab, LaTeX, Mermaid rendering |
 | **Code-as-Harness** | Persistent Python kernel MCP, ExpeL post-task lesson distillation, Voyager verified-skill library, SWE-agent ACI MCP, execution-gated tree-search (PRD-008) |
 | **Governance** | Agent Control Surface Protocol (kinds 31400-31405) — cross-repo human-in-the-loop integration with the DreamLab forum and the host project's broker via the embedded relay. The agentbox producer (`management-api/lib/agent-control-surface.js`) mints and publishes the panel events; see [sovereign mesh](docs/developer/sovereign-mesh.md). |
+| **Consumer Economy** | Governed outbound payment pipeline (PRD-015 Phase 1): `lib/pay402.js` pure 402-scheme classifier (`agentbox-ledger`/`x402`/`l402`/`unknown`), spend-policy middleware (fail-closed caps + allowlist), native payer (NIP-98 ledger debit, idempotent single retry), receipt + activity URNs minted on every spend attempt, `/.well-known/x402.json` discovery manifest, additive `accepts[]` in 402 challenges, `skills/payment-router` skill. Lightning-first: NWC/L402 is the only planned real-money rail; no native EVM/USDC. [ADR-032](docs/reference/adr/ADR-032-402-scheme-grammar.md), [PRD-015](docs/reference/prd/PRD-015-consumer-broadcast-economy.md). |
 | **Embodied agent loop** | Bi-directional `/wss/agent-events` channel (ADR-014) — agents emit a canonical `agent_action` signal (identity preserved per ADR-013) that a host project renders as a live agent actor (coloured beam + transient attractive edge), and consume inbound user-interaction events so agents become user-aware. A privacy-safe memory-flash beacon (env-gated on `VISIONCLAW_API_URL`) fires the host's embedding-cloud visual on every RuVector access. See [ADR-014](docs/reference/adr/ADR-014-bidirectional-graph-state-ingress.md), [ADR-026](docs/reference/adr/ADR-026-cross-substrate-agent-loop-seams.md), [PRD-014](docs/reference/prd/PRD-014-embodied-agent-loop.md). |
 | **Operations** | OTLP tracing, Prometheus metrics (`:9091/metrics`), Tailscale VPN integration |
+
+### Consumer Economy Pipeline (PRD-015 Phase 1)
+
+When an agent encounters an HTTP 402 from a peer node or external service, the consumer pipeline takes over: `lib/pay402.js` classifies the challenge as `agentbox-ledger`, `x402`, `l402`, or `unknown` — a pure function with fail-closed semantics (attacker-controlled bytes never become money). A spend-policy middleware checks per-call caps, daily budgets, origin allowlists, and approval thresholds from `[payments.consumer]` in the manifest before any rail is invoked. For `agentbox-ledger` challenges (in-mesh, Phase 1), the native payer debits the Web Ledger via NIP-98 with an idempotency key and retries the original request once. A receipt URN and a PROV-O activity URN are minted through `lib/uris.js` on every spend attempt — paid, denied, failed, or pending — so the audit trail has no gaps. The broadcast side emits an additive `accepts[]` block in 402 challenges (byte-compatible with existing clients) and generates `/.well-known/x402.json` at boot so external crawlers can discover gated services. The `skills/payment-router` skill wraps all of this as `payFetch()` — a 402-aware drop-in for `fetch()`. Configuration:
+
+```toml
+[payments.consumer]
+enabled = true
+max_sats_per_call = 100
+daily_budget_sats = 1000
+approval_threshold_sats = 50
+
+[payments.broadcast]
+well_known = true
+accepts_block = true
+
+[skills.payment_router]
+enabled = true
+```
+
+Phase 3 adds Lightning settlement via NWC (NIP-47) for L402 invoices — the only planned real-money rail. See [economy-loop.md](docs/developer/economy-loop.md) and [PRD-015](docs/reference/prd/PRD-015-consumer-broadcast-economy.md).
 
 ### Code-as-Harness (PRD-008)
 

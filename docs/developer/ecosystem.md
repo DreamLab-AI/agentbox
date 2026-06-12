@@ -9,7 +9,7 @@ Agentbox is one of six repositories in the DreamLab open-source ecosystem — fi
 | [VisionFlow](https://github.com/DreamLab-AI/VisionFlow) | Umbrella coordination canon | Documentation/positioning only; names the ecosystem flows. Pure canon — it does **not** sign on the relay, so it is not a did:nostr identity-mesh participant |
 | [solid-pod-rs](https://github.com/DreamLab-AI/solid-pod-rs) | Foundation library | Consumed as the embedded Solid pod server (ADR-010) |
 | [nostr-rust-forum](https://github.com/DreamLab-AI/nostr-rust-forum) | Forum kit | Peer on the relay mesh; receives IS-Envelope messages; renders ACSP governance panels |
-| **[agentbox](https://github.com/DreamLab-AI/agentbox)** | **Agent runtime** | **This repository** — runs the agents |
+| **[agentbox](https://github.com/DreamLab-AI/agentbox)** | **Agent runtime** | **This repository** — runs the agents; governed outbound payment consumer pipeline (PRD-015 Phase 1) |
 | [VisionClaw](https://github.com/DreamLab-AI/VisionClaw) | Integration substrate | Host project when used as a submodule; peer on the relay mesh; renders the embodied agent loop (GPU/XR graph) |
 | [dreamlab-ai-website](https://github.com/DreamLab-AI/dreamlab-ai-website) | Branded deployment | Downstream consumer of the forum kit; operator overlay |
 
@@ -104,6 +104,20 @@ endpoints, but reads and writes no forum BBS state — the "no forum at this tim
 constraint (see [mobile bridge](#mobile-bridge--the-operator-phone-as-a-delegated-participant))
 holds. `derive_subkey` provides domain separation, not compromise isolation; the
 operator phone's revocable authority still rides NIP-26 delegation, not a subkey.
+
+## Consumer economy (PRD-015 Phase 1)
+
+Phase 1 closes the buy-side gap identified in PRD-015. Where previously agentbox could only *charge* for routes, agents can now *resolve* 402 challenges from peer nodes via a governed pipeline:
+
+- **C1 Scheme classifier** (`lib/pay402.js`) — pure function classifying `(status, headers, body)` into `agentbox-ledger | x402 | l402 | unknown`. Closed result set, fail-closed, 64KiB body cap.
+- **C3 Spend-policy gate** (`middleware/spend-policy.js`) — deterministic policy evaluation from `[payments.consumer]` manifest keys (per-call cap, daily budget, origin allowlist, approval threshold). Never falls through on missing policy.
+- **C2 Native payer** (`middleware/consumer-payer.js`) — Web Ledger debit via NIP-98, idempotency key, single retry.
+- **C4 Receipts** (`lib/receipt-minter.js`) — `urn:agentbox:receipt:…` and `urn:agentbox:activity:…` minted on every attempt (paid, denied, failed, pending).
+- **B2 Enriched challenge** (`middleware/payment-gate.js`) — additive `accepts[]` block alongside byte-identical legacy fields.
+- **B1 Well-known manifest** (`routes/well-known.js`) — `/.well-known/x402.json` generated at boot.
+- **C5 Skill** (`skills/payment-router/`) — `payFetch()` wraps the full pipeline as a drop-in for `fetch()`.
+
+Settlement stance: Lightning via NWC (NIP-47, PRD-015 C10) is the planned real-money rail — Phase 3. No native EVM/USDC rail (operator decision, v1.2). See [economy-loop.md](economy-loop.md) and [ADR-032](../reference/adr/ADR-032-402-scheme-grammar.md).
 
 ## Mesh participation
 

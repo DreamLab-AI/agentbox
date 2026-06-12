@@ -348,6 +348,11 @@ enable_dpop_cache      = false
 notifications          = "websocket"             # websocket | webhook | off
 log_level              = "info"
 
+# MCP server (JSS 0.0.204 re-sync, solid-pod-rs b81ce9f). Exposes the pod as a
+# Model Context Protocol 2025-03-26 tool surface at POST /mcp (16 tools, same
+# NIP-98 + WAC treatment as REST). Always compiled; off unless enabled here.
+enable_mcp             = false    # → JSS_MCP=1 on the [program:solid-pod] env
+
 # Sprint 5-9 features absorbed from upstream main — all on by default because
 # they either sharpen sovereign-stack invariants (did_nostr) or close P0
 # hardening gaps (rate_limit, quota, webhook_signing).
@@ -696,6 +701,26 @@ ticker = "DREAM"
 rate = 10             # DREAM per sat
 supply = 1000000
 issuer = ""           # populated from OPERATOR_NOSTR_PUBKEY at runtime
+
+# PRD-015 Phase 1 — consumer & broadcast economy
+[payments.consumer]
+enabled                 = false          # opt-in; enable to allow governed outbound spends
+max_sats_per_call       = 100
+daily_budget_sats       = 1000
+approval_threshold_sats = 50             # above this, spend parks pending ACSP approval
+allow_origins           = []             # empty = mesh-only (pods + peer nodes)
+deny_origins            = []
+external_router         = "off"          # "off" | "cinderwright" (C9; custody warning)
+
+[payments.broadcast]
+enabled       = false
+well_known    = false                    # serve /.well-known/x402.json (B1)
+accepts_block = true                     # emit accepts[] in 402 challenges (B2)
+health_signals = false
+index_submit  = "off"
+
+[skills.payment_router]
+enabled = false                          # C5 — enable with [payments.consumer].enabled = true
 
 [linked_data.privacy_handoff]
 order = "after"   # documentation only — the order is fixed in code (E048)

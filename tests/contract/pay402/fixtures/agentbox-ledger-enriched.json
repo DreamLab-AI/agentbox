@@ -1,0 +1,28 @@
+{
+  "status": 402,
+  "headers": {
+    "X-Pay-Currency": "sats",
+    "X-Cost": "100",
+    "Content-Type": "application/json"
+  },
+  "body": {
+    "error": "payment-required",
+    "message": "Insufficient balance. This request costs 100 sats.",
+    "cost_sats": 100,
+    "balance_sats": 30,
+    "currency": "sats",
+    "deposit_endpoint": "/v1/pay/deposit",
+    "info_endpoint": "/v1/pay/info",
+    "accepts": [
+      {
+        "scheme": "agentbox-ledger",
+        "currency": "sats",
+        "amount": 100,
+        "pay_to": "did:web:operator.example",
+        "ledger": "web-ledger",
+        "deposit": "/v1/pay/deposit",
+        "info": "/v1/pay/info"
+      }
+    ]
+  }
+}

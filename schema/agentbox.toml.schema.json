@@ -265,6 +265,18 @@
           "type": "object",
           "additionalProperties": true,
           "description": "Execution-gated tree-search coder (ADR-020 / PRD-008)."
+        },
+        "payment_router": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Payment-router skill gate. When enabled, the management-api registers the /v1/pay/route endpoint and the spend-policy middleware is applied to all payment-gated routes. Requires payments.consumer.enabled=true (E-PAY3).",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "Enable the payment-router skill. Requires payments.consumer.enabled=true (E-PAY3 will fire otherwise)."
+            }
+          }
         }
       }
     },
@@ -922,7 +934,82 @@
     "payments": {
       "type": "object",
       "additionalProperties": true,
-      "description": "Payment system configuration (Web Ledger / DREAM token)."
+      "description": "Payment system configuration (Web Ledger / DREAM token).",
+      "properties": {
+        "consumer": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Consumer-facing spend-policy enforced by the spend-policy middleware. All fields are read by management-api/middleware/spend-policy.js. enabled must be true for any inbound payment calls to be accepted (fail-closed).",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Master gate. false or absent causes every call to be rejected with HTTP 402 consumer-payments-disabled."
+            },
+            "max_sats_per_call": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Hard per-call satoshi cap. Requests whose cost exceeds this value are rejected with HTTP 402 exceeds-per-call-cap."
+            },
+            "daily_budget_sats": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Rolling daily satoshi budget per origin. Accumulated across the process lifetime (in-memory, resets on restart). Requests that would push spend over this limit are rejected with HTTP 402 daily-budget-exceeded."
+            },
+            "approval_threshold_sats": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Calls whose cost exceeds this threshold have request.requiresApproval=true set. The call is NOT denied — downstream handlers may choose to gate or log it."
+            },
+            "allow_origins": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Origin allowlist. When non-empty, only listed origins may spend. Requests from unlisted origins are rejected with HTTP 402 origin-not-allowed. Empty list means any origin is allowed.",
+              "default": []
+            },
+            "deny_origins": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Origin denylist. Checked before allow_origins. Requests from a listed origin are rejected with HTTP 402 origin-denied.",
+              "default": []
+            },
+            "external_router": {
+              "type": "string",
+              "enum": ["off", "cinderwright"],
+              "description": "External payment-router integration. off disables any outbound routing; cinderwright enables the Cinderwright Lightning router sidecar.",
+              "default": "off"
+            }
+          }
+        },
+        "broadcast": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Payment broadcast configuration — controls whether this agentbox advertises payment capabilities on the mesh.",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable outbound payment-capability broadcast."
+            },
+            "well_known": {
+              "type": "boolean",
+              "description": "Serve a /.well-known/payments.json capability document. Requires broadcast.enabled=true (W-PAY1 when enabled=false)."
+            },
+            "accepts_block": {
+              "type": "boolean",
+              "description": "Declare that this node accepts block-level payment settlements."
+            },
+            "health_signals": {
+              "type": "boolean",
+              "description": "Emit periodic payment-health signals on the mesh event bus."
+            },
+            "index_submit": {
+              "type": "string",
+              "enum": ["off"],
+              "description": "Payment index submission mode. Only 'off' is currently implemented.",
+              "default": "off"
+            }
+          }
+        }
+      }
     },
     "plugins": {
       "type": "object",

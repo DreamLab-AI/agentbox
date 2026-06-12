@@ -218,6 +218,12 @@ app.addHook('onRequest', async (request, reply) => {
     return;
   }
 
+  // x402 payment-surface discovery manifest must be publicly readable
+  // so HTTP clients can negotiate payment schemes without prior auth.
+  if (request.url === '/.well-known/x402.json') {
+    return;
+  }
+
   await authMiddleware(request, reply);
 });
 
@@ -866,6 +872,20 @@ async function start() {
         }
       } catch (err) {
         logger.error({ err: err.message }, 'Linked-Object Viewer failed to boot');
+      }
+    }
+
+    // ── x402 well-known discovery route (B1, PRD-015) ──────────────────────
+    // Serves /.well-known/x402.json for payment-scheme negotiation.
+    // No-ops (404) when payments.broadcast.well_known is false.
+    // Auth-skip for this URL is wired in the onRequest hook above.
+    {
+      try {
+        await app.register(require('./routes/well-known'), { manifest, logger });
+        const enabled = !!(manifest && manifest.payments && manifest.payments.broadcast && manifest.payments.broadcast.well_known);
+        logger.debug({ event: 'well-known.x402-mounted', enabled }, 'x402 well-known route mounted at /.well-known/x402.json');
+      } catch (err) {
+        logger.error({ err: err.message }, 'x402 well-known route failed to mount');
       }
     }
 

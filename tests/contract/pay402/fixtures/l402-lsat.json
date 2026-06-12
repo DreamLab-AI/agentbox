@@ -1,0 +1,7 @@
+{
+  "status": 402,
+  "headers": {
+    "WWW-Authenticate": "LSAT macaroon=\"AgELbG5kLmxvY2FsAgJpZAAABiDexample\", invoice=\"lnbc250n1pjklsatexampleinvoicehash\""
+  },
+  "body": null
+}

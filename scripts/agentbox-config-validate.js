@@ -25,6 +25,8 @@
  *                           code-interpreter MCP (ADR-018 / PRD-008)
  *   E044, W043              experiential skill learning (ADR-019 / PRD-008)
  *   E050-E052, W050-W052    ACI MCP + tree-search (ADR-020 / PRD-008)
+ *   E-PAY1, E-PAY2, E-PAY3, W-PAY1
+ *                           payments.consumer spend-policy coherence
  *
  * Reserved / retired codes (do not reuse):
  *   E009                    superseded by E017
@@ -1271,6 +1273,66 @@ if (ldEnabled) {
         message: `W052: [skills.tree_search_coder].spend_cap_usd must be a positive number; got ${JSON.stringify(spendCap)}. There is no default-unlimited mode for tree-search (ADR-020 §Manifest gates)`,
       });
     }
+  }
+}
+
+// ─── E-PAY1/E-PAY2/E-PAY3/W-PAY1: payments.consumer spend-policy coherence ───
+//
+// E-PAY1 — payments.consumer.enabled=true requires max_sats_per_call to be set.
+//           The spend-policy middleware hard-fails without it (policy-invalid).
+// E-PAY2 — payments.consumer.daily_budget_sats, when set, must be >= max_sats_per_call.
+//           A budget smaller than a single call cap makes every call over the
+//           cap immediately hit the daily limit — the two values are incoherent.
+// W-PAY1 — payments.broadcast.well_known=true while broadcast.enabled=false is
+//           dead config: the /.well-known/payments.json handler is never mounted.
+// E-PAY3 — skills.payment_router.enabled=true requires payments.consumer.enabled=true.
+//           The payment-router skill routes through spend-policy; without the
+//           consumer block being enabled every call is rejected with 402
+//           consumer-payments-disabled, making the skill non-functional.
+{
+  const paymentsCfg  = manifest.payments  || {};
+  const consumerCfg  = paymentsCfg.consumer  || {};
+  const broadcastCfg = paymentsCfg.broadcast || {};
+  const paymentRouterSkill = (manifest.skills || {}).payment_router || {};
+
+  // E-PAY1
+  if (consumerCfg.enabled === true) {
+    const maxSatsPerCall = consumerCfg.max_sats_per_call;
+    if (typeof maxSatsPerCall !== 'number' || !Number.isFinite(maxSatsPerCall) || maxSatsPerCall < 1) {
+      errors.push({
+        code: 'E-PAY1',
+        message: 'E-PAY1: payments.consumer.enabled=true requires max_sats_per_call to be set to a positive integer (the spend-policy middleware fails closed without it)'
+      });
+    }
+
+    // E-PAY2 — only checked when max_sats_per_call is itself valid
+    const dailyBudget = consumerCfg.daily_budget_sats;
+    if (
+      typeof maxSatsPerCall === 'number' && Number.isFinite(maxSatsPerCall) && maxSatsPerCall >= 1 &&
+      typeof dailyBudget === 'number' && Number.isFinite(dailyBudget) && dailyBudget >= 1 &&
+      dailyBudget < maxSatsPerCall
+    ) {
+      errors.push({
+        code: 'E-PAY2',
+        message: `E-PAY2: payments.consumer.daily_budget_sats (${dailyBudget}) is less than max_sats_per_call (${maxSatsPerCall}); a daily budget smaller than the per-call cap makes all calls over the cap immediately exceed the budget`
+      });
+    }
+  }
+
+  // W-PAY1
+  if (broadcastCfg.well_known === true && broadcastCfg.enabled !== true) {
+    warnings.push({
+      code: 'W-PAY1',
+      message: 'W-PAY1: payments.broadcast.well_known=true but payments.broadcast.enabled=false — the /.well-known/payments.json endpoint is never mounted; set broadcast.enabled=true or remove the well_known flag'
+    });
+  }
+
+  // E-PAY3
+  if (paymentRouterSkill.enabled === true && consumerCfg.enabled !== true) {
+    errors.push({
+      code: 'E-PAY3',
+      message: 'E-PAY3: skills.payment_router.enabled=true requires payments.consumer.enabled=true (the payment-router skill gates all calls through spend-policy; without consumer enabled every call is rejected 402)'
+    });
   }
 }
 

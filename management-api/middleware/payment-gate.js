@@ -140,6 +140,24 @@ function _resolveCost(opts, request) {
 }
 
 /**
+ * Build a single accepts entry for the agentbox-ledger scheme.
+ *
+ * @param {number} costSats - Cost in satoshis
+ * @returns {object} accepts entry object
+ */
+function buildOfferEntry(costSats) {
+  return {
+    scheme: 'agentbox-ledger',
+    currency: 'sats',
+    amount: costSats,
+    pay_to: 'did:nostr:' + (process.env.AGENTBOX_PUBKEY || process.env.OPERATOR_NOSTR_PUBKEY || ''),
+    ledger: 'web-ledger',
+    deposit: '/v1/pay/deposit',
+    info: '/v1/pay/info',
+  };
+}
+
+/**
  * Create an HTTP 402 payment gate preHandler hook.
  *
  * @param {object} opts
@@ -149,8 +167,9 @@ function _resolveCost(opts, request) {
  * @param {function} [opts.costFn]    - Dynamic cost function (request) => sats
  * @param {boolean}  [opts.dryRun]    - If true, check balance but do not deduct
  * @returns {function} Fastify preHandler hook
+ * @param {{ manifest?: object }} [ctx] - Optional context carrying the loaded manifest
  */
-function paymentGate(opts = {}) {
+function paymentGate(opts = {}, { manifest } = {}) {
   return async function paymentGateHook(request, reply) {
     // Bearer-only auth (admin) bypasses payment if explicitly configured.
     if (opts.bypassBearer && request.auth && request.auth.mode === 'bearer') {
@@ -180,7 +199,10 @@ function paymentGate(opts = {}) {
       reply.header('X-Cost', String(costSats));
       reply.header('X-Pay-Currency', 'sats');
       reply.header('X-Balance', String(balance.balance_sats));
-      reply.code(402).send({
+
+      // Build 402 body — legacy challenge fields are byte-identical regardless
+      // of accepts_block. The accepts array is ADDITIVE only.
+      const body402 = {
         error: 'payment-required',
         message: `Insufficient balance. This request costs ${costSats} sats; current balance is ${balance.balance_sats} sats.`,
         cost_sats: costSats,
@@ -188,7 +210,15 @@ function paymentGate(opts = {}) {
         currency: 'sats',
         deposit_endpoint: '/v1/pay/deposit',
         info_endpoint: '/v1/pay/info',
-      });
+      };
+
+      // Append x402-style accepts when broadcast is not explicitly disabled.
+      const broadcastCfg = (manifest && manifest.payments && manifest.payments.broadcast) || {};
+      if (broadcastCfg.accepts_block !== false) {
+        body402.accepts = [buildOfferEntry(costSats)];
+      }
+
+      reply.code(402).send(body402);
       return reply;
     }
 
@@ -222,4 +252,4 @@ function paymentGate(opts = {}) {
   };
 }
 
-module.exports = { paymentGate };
+module.exports = { paymentGate, buildOfferEntry };

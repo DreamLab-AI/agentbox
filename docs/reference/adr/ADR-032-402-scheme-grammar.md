@@ -1,7 +1,7 @@
 ---
 id: ADR-032
 title: The 402 payment challenge & scheme-detection grammar
-status: proposed
+status: accepted
 date: 2026-06-12
 type: contract
 author: Dr John O'Hare

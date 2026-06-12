@@ -1,9 +1,6 @@
 # Economy Loop — Cross-Repo Capability Demonstration
 
-> Status: first end-to-end demonstration landed 2026-06-09. The agentbox →
-> solid-pod-rs → BC20 legs are implemented and test-gated. The host-graph
-> ingest leg (VisionClaw) is specified but not yet wired (see
-> [What remains](#what-remains)).
+> Status: **Sell-side** (agentbox → solid-pod-rs → BC20): landed 2026-06-09, test-gated. **Buy-side consumer pipeline** (PRD-015 Phase 1): landed 2026-06-12 — C1 classifier, C3 spend-policy, C2 native payer, C4 URN receipts, B2 enriched challenges, B1 well-known manifest, C5 payment-router skill. The host-graph ingest leg (VisionClaw BC20 wiring) is specified but not yet wired (see [What remains](#what-remains)).
 
 ## TL;DR
 
@@ -95,6 +92,56 @@ Key invariants the demo proves:
 - **Durable round-trip.** Both mappings persist to a JSONL store and recover
   their agentbox source after a fresh reopen (provenance is reversible, B01).
 
+## Consumer pipeline (buy-side — PRD-015 Phase 1)
+
+The sell-side loop (above) lets agentbox *charge* for routes. Phase 1 closes the reciprocal gap: an agent can now *resolve* a 402 it receives, pay it, and get the resource — with deterministic policy gates, a complete audit trail, and no custody risk.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Agent as agentbox agent
+    participant PF as pay-fetch.mjs
+    participant C1 as lib/pay402.js<br/>(scheme classifier)
+    participant C3 as middleware/spend-policy.js
+    participant C2 as middleware/consumer-payer.js
+    participant URIs as lib/uris.js
+    participant Peer as Peer agentbox node<br/>(payment-gate.js B2)
+
+    Agent->>PF: payFetch(url, opts)
+    PF->>Peer: GET /resource
+    Peer-->>PF: 402 + headers + accepts[]
+    PF->>C1: classify({status,headers,body})
+    C1-->>PF: {scheme:agentbox-ledger, payable:true, offer:{amount,deposit}}
+    PF->>C3: spendPolicy check (caps, allowlist, threshold)
+    C3-->>PF: approved (or denied → receipt:denied, return)
+    PF->>C2: resolveAgentboxLedger(offer, {idempotencyKey})
+    C2->>Peer: POST /v1/pay/deposit {amount_sats, idempotency_key}
+    Peer-->>C2: 200 {balance_sats}
+    C2-->>PF: {success:true, outcome:paid}
+    PF->>URIs: mintSpendReceipt + mintSpendActivity
+    URIs-->>PF: urn:agentbox:receipt:…  urn:agentbox:activity:…
+    PF->>Peer: GET /resource (retry)
+    Peer-->>PF: 200 + resource body
+    PF-->>Agent: 200 response
+```
+
+| Leg | File | Description |
+|---|---|---|
+| Scheme classifier (C1) | `management-api/lib/pay402.js` | Pure function, closed result set, 64KiB cap, never throws |
+| Spend policy gate (C3) | `management-api/middleware/spend-policy.js` | Fail-closed: caps, allowlist, approval threshold |
+| Native payer (C2) | `management-api/middleware/consumer-payer.js` | NIP-98 ledger debit, idempotency key, single retry |
+| Receipt/activity URNs (C4) | `management-api/lib/receipt-minter.js` | Minted on EVERY attempt — audit trail has no gaps |
+| Enriched challenge (B2) | `management-api/middleware/payment-gate.js` | Additive `accepts[]`, byte-identical legacy fields |
+| Well-known manifest (B1) | `management-api/routes/well-known.js` | `/.well-known/x402.json`, generated at boot |
+| Agent skill (C5) | `skills/payment-router/scripts/pay-fetch.mjs` | `payFetch()` — 402-aware drop-in fetch wrapper |
+| Contract corpus (D4) | `tests/contract/pay402/` | Captured-bytes fixture corpus, merge gate |
+
+Key invariants:
+- **Fail-closed classifier.** `unknown` scheme is unpayable by construction. Malformed, oversized, or attacker-controlled bodies classify `unknown` and leave a denied-outcome receipt.
+- **Sole-mint.** All receipt and activity URNs go through `lib/uris.js mint()` — same discipline as the sell side.
+- **Idempotency.** The debit endpoint receives an `Idempotency-Key` header and `idempotency_key` in the body; a 409 replay is treated as success (no double-charge).
+- **Lightning-first.** `x402` and `l402` classify correctly but `payable:false` in Phase 1 (no native rail yet). Phase 3 adds Lightning via NWC.
+
 ## How an operator runs the demo for real
 
 The integration test exercises the loop automatically (see below). To run the
@@ -185,7 +232,7 @@ is not yet wired**:
    operator-provisioned stack identity is required to run against a federated
    pod mesh rather than a locally-seeded one.
 
-4. **Deposit settlement.** The Web Ledger is credited by writing the ledger doc
+4. **Deposit settlement (PRD-015 C12 — Phase 3).** The Web Ledger is credited by writing the ledger doc
    (WAC-gated). There is no Lightning-invoice settlement check on deposit
    (solid-pod-rs audit A-4) — crediting is trusted-write today. Real-money
    settlement is a separate workstream.

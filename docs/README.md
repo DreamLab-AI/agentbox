@@ -121,7 +121,7 @@ These are the authoritative sources of truth. Anything in `user/` or `developer/
 | ADR-029 | [Session-mirror live egress](reference/adr/ADR-029-session-mirror-live-egress.md) | Accepted | Per-turn NIP-59 gift-wrapped self-DM under a derived child key; the live sibling of the kind-30840 digest, no external LLM hop, fail-open |
 | ADR-030 | [Sovereign-mesh manifest boundary](reference/adr/ADR-030-sovereign-mesh-manifest-boundary.md) | Accepted | `[sovereign_mesh]` as one subsystem gate (default off; env override per R7); the one external data hop is the mobile-bridge Z.AI summarisation |
 | ADR-031 | [Adapter contract enforcement](reference/adr/ADR-031-adapter-contract-enforcement.md) | Accepted | The merge gate is executable: `isReal:false` banned, stateful loopbacks for federated legs, registered time-boxed exemptions, middleware-bypass coverage |
-| ADR-032 | [402 payment challenge & scheme-detection grammar](reference/adr/ADR-032-402-scheme-grammar.md) | Proposed | Pure-function 402 classifier (`agentbox-ledger`/`x402`/`l402`/`unknown`), frozen byte-fixture corpus, additive `accepts[]` emission, Lightning-first settlement (no native EVM rail) — companion to PRD-015 |
+| ADR-032 | [402 payment challenge & scheme-detection grammar](reference/adr/ADR-032-402-scheme-grammar.md) | Accepted | Pure-function 402 classifier (`agentbox-ledger`/`x402`/`l402`/`unknown`), frozen byte-fixture corpus, additive `accepts[]` emission, Lightning-first settlement (no native EVM rail) — companion to PRD-015 |
 
 ### Product requirements (PRD)
 
@@ -141,7 +141,7 @@ These are the authoritative sources of truth. Anything in `user/` or `developer/
 | PRD-012 | [Setup wizard and operations dashboard](reference/prd/PRD-012-setup-dashboard.md) | Browser-based first-boot wizard and day-2 ops dashboard |
 | PRD-013 | [Multi-harness tmux architecture](reference/prd/PRD-013-multi-harness-tmux-architecture.md) | Multi-harness tmux layout and documentation revamp |
 | PRD-014 | [Embodied agent loop](reference/prd/PRD-014-embodied-agent-loop.md) | Voice-to-ontology gap closure across the five-substrate seams (In progress) |
-| PRD-015 | [Consumer & broadcast economy surfaces](reference/prd/PRD-015-consumer-broadcast-economy.md) | Outbound 402 payment consumer (detect → policy → pay → receipt) and service discovery broadcast (well-known manifest, standards-shaped challenges) |
+| PRD-015 | [Consumer & broadcast economy surfaces](reference/prd/PRD-015-consumer-broadcast-economy.md) | **Phase 1 shipped** — Outbound 402 payment consumer (detect → policy → pay → receipt) and service discovery broadcast (well-known manifest, standards-shaped challenges) |
 | PRD-REMEDIATION-001 | [Default-secure posture remediation](reference/PRD-REMEDIATION-001.md) | Second-pass hardening: loopback publish, auth-default-on, zai allowlist, no runtime escalation, secret-via-tmpfs, doc truth-up |
 
 ### Domain design (DDD)

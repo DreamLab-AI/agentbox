@@ -1,0 +1,7 @@
+{
+  "status": 401,
+  "headers": {
+    "WWW-Authenticate": "L402 macaroon=\"AgELbG5kLmxvY2FsAgJpZAAABiDexample\", invoice=\"lntb500n1pjk401exampleinvoicehash\""
+  },
+  "body": null
+}
