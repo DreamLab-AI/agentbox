@@ -19,15 +19,6 @@
 #   - nip98-schnorr   — BIP-340 Schnorr signature verification (matches our
 #                       existing NostrBridge.verifyNip98 contract)
 #   - security-primitives — SSRF guard + dotfile allowlist (hardened baseline)
-#   - install         — `solid-pod-rs-server install <app>` subcommand with
-#                       NIP-98 token minting (pushes Solid apps into a pod over
-#                       the /_git/{pubkey}/ smart protocol; JSS src/cli/install.js
-#                       parity). Pulls solid-pod-rs/nip98-schnorr (already on).
-#
-# Always compiled, runtime-gated (no Cargo feature):
-#   - MCP server      — POST /mcp Model Context Protocol 2025-03-26 tool surface
-#                       (16 tools). Off by default; enable per-pod via JSS_MCP=1
-#                       (agentbox.toml integrations.solid_pod_rs.enable_mcp).
 #
 # Deferred (available as manifest-driven Cargo-feature toggles):
 #   - oidc             — Solid-OIDC 0.1 with DPoP
@@ -44,43 +35,53 @@
 { lib, pkgs }:
 
 let
-  # alpha.15 (2026-05-17): CORS allowlist (--allowed-origins / SOLID_ALLOWED_ORIGINS),
-  # PSK admin provision endpoint (POST /_admin/provision/{pubkey}, --admin-key /
-  # SOLID_ADMIN_KEY), git control API (9 /_git/* REST routes), /.well-known/apps
-  # aggregation (JSS #464). Native pod mesh tier for dreamlab-ai.com.
+  # v0.4.0-alpha.16 (2026-06-09): the first real solid-pod-rs git tag since
+  # alpha.11. It cuts an unambiguous version over what was previously the
+  # untagged post-alpha.15 HEAD, killing the alpha.15 aliasing (the same version
+  # string had denoted both the crates.io publish and an advanced git HEAD —
+  # the Nix-store binary built from the publish predated the resource-cost
+  # accounting fix and served cost-gated reads without consuming the cost; see
+  # docs/developer/economy-loop.md "key discovery"). alpha.16 carries the
+  # post-publish CORS allowlist, PSK admin provision endpoint, git control API,
+  # /.well-known/apps aggregation, MCP docs embedding, the WAC ancestor
+  # accessTo over-inheritance + git read-auth fix, and payments::debit wired
+  # into the WAC grant path (R-04).
+  # 0.5.0-alpha.0 (2026-06-13): the PROVENANCE release (solid-pod-rs ADR-059).
+  # Adds block-trails (Bitcoin taproot-anchored, hash-chained provenance trails;
+  # byte-parity with JSS token.js, verified against BIP-340/341 vectors),
+  # git-marks (write-as-commit + PROV-O sidecar on every LDP write), the
+  # ProvenanceLog composition (git-mark always / Bitcoin anchor opt-in / epoch
+  # Merkle-root batching) + the `_prov` API + the ProvenanceAnchor WAC condition,
+  # the now-routed web-ledger/order-book/AMM economy with replay protection wired
+  # (PaymentStore the sole ledger I/O), and WAC-gated git smart-HTTP (the
+  # anonymous clone/push hole closed). Full workspace: 1542 tests green.
+  version = "0.5.0-alpha.0";
+
+  # Pinned to the v0.5.0-alpha.0 tag commit.
+  rev     = "9f33b505f10fb5a707cf5efdc53816b425750c10";
+
+  # REFRESH REQUIRED for rev 9f33b50 (could not be computed in the editing
+  # container — no `nix` binary). On a nix host, run `nix build .#runtime`: it
+  # fetches the new src and fails with the correct expected `srcHash`, which you
+  # paste here. Then refresh the vendored Cargo.lock per the procedure below.
+  # The value left here is the previous (alpha.17) hash and WILL mismatch.
+  srcHash = "sha256-CFS/d1ajoIGo6CHLWYeH3P+/ddB35RoORJVC+rTEZOM=";
+
+  # Upstream solid-pod-rs at v0.4.0-alpha.5 does not ship its
+  # Cargo.lock (workspace builds without it locally because cargo
+  # generate-lockfile picks the latest compat versions on first run, but
+  # that is non-deterministic and breaks Nix's hermetic build). We vendor
+  # a lockfile alongside lib/solid-pod-rs.nix instead.
   #
-  # b81ce9f (2026-06-07): JSS 0.0.204 re-sync — MCP server (POST /mcp, 16 tools,
-  # runtime-gated by JSS_MCP), `install` subcommand + NIP-98 minting, RDF content
-  # negotiation on GET, mime-types DB fallback (JSS #533), symlink container
-  # listing fix (JSS #531), NIP-01 raw-event verify (Amethyst/Amber events),
-  # GitLenient NIP-98 match policy on the git push bridge. Version string
-  # unchanged (still 0.4.0-alpha.15) — rev advanced past the tag.
-  version = "0.4.0-alpha.15";
-
-  # Pinned to main @ b81ce9f (alpha.15 + JSS 0.0.204 re-sync). The version
-  # string did not bump, so this is a rev advance past the v0.4.0-alpha.15 tag.
-  rev     = "b81ce9f";
-
-  # Refresh after rev bump (handled automatically by ./agentbox.sh update →
-  # scripts/prefetch-hashes.sh --service solid-pod-rs). To do it by hand:
-  #   nix-prefetch-url --unpack --type sha256 \
-  #     https://github.com/DreamLab-AI/solid-pod-rs/archive/b81ce9f.tar.gz
-  #   nix hash convert --hash-algo sha256 --to sri <base32>
-  # lib.fakeHash surfaces the correct SRI in the build error on first realise.
-  srcHash = lib.fakeHash;
-
-  # solid-pod-rs does not commit its Cargo.lock (the working-tree lockfile
-  # is git-ignored), so the GitHub source tarball omits it. We vendor a
-  # lockfile alongside lib/solid-pod-rs.nix and copy it in during postPatch
-  # for a hermetic, deterministic build.
-  #
-  # Vendored from solid-pod-rs @ b81ce9f (includes mime_guess + include_dir,
-  # the two deps the JSS 0.0.204 re-sync added). Refresh when the rev bumps:
-  #   ./agentbox.sh update          (automated: regen + FOD loop), or by hand:
-  #   nix-shell -p cargo --run 'cd $(mktemp -d) && \
-  #     cp -r /nix/store/*-solid-pod-rs-*-source/. . && \
-  #     chmod -R u+w . && cargo generate-lockfile'
-  #   then copy the resulting Cargo.lock to lib/solid-pod-rs.cargo-lock.
+  # NOTE: cargoLockFile needs refresh for 0.4.0-alpha.5.
+  # Refresh procedure when the rev bumps:
+  #   1. Update version + rev above and re-run `nix build .#runtime`
+  #      to fetch the new src.
+  #   2. cd $(nix eval --raw nixpkgs#hello.src) → no, easier:
+  #        nix-shell -p cargo --run 'cd $(mktemp -d) && \
+  #          cp -r /nix/store/*-solid-pod-rs-*-source/. . && \
+  #          chmod -R u+w . && cargo generate-lockfile'
+  #      then copy the resulting Cargo.lock to lib/solid-pod-rs.cargo-lock.
   cargoLockFile = ./solid-pod-rs.cargo-lock;
 
   src = pkgs.fetchFromGitHub {
@@ -110,7 +111,6 @@ let
     "rate-limit"
     "quota"
     "git"               # git control API (/_git/* routes) + /.well-known/apps
-    "install"           # `install <app>` subcommand + NIP-98 minting (JSS #518)
     # ── Library-crate features via solid-pod-rs/<feature> ────────────
     "solid-pod-rs/nip98-schnorr"
     "solid-pod-rs/config-loader"
