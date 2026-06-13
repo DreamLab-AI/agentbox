@@ -65,7 +65,7 @@ let
   # fetches the new src and fails with the correct expected `srcHash`, which you
   # paste here. Then refresh the vendored Cargo.lock per the procedure below.
   # The value left here is the previous (alpha.17) hash and WILL mismatch.
-  srcHash = "sha256-CFS/d1ajoIGo6CHLWYeH3P+/ddB35RoORJVC+rTEZOM=";
+  srcHash = "sha256-pKpfZbHQ12Vjvtma0SgUl9zkg2/25R38SLYEwwvVOVY=";
 
   # Upstream solid-pod-rs at v0.4.0-alpha.5 does not ship its
   # Cargo.lock (workspace builds without it locally because cargo
