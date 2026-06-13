@@ -587,11 +587,17 @@ class JunkieJarvisAgent {
   async _sendChannelReply(srcEvent, root, zone, askerPubkey, replyText) {
     try {
       const tags = [];
-      // Preserve the channel root e-tag (NIP-28 reply threading).
+      // NIP-28/NIP-10 reply threading: the channel is the thread ROOT and the
+      // triggering message is the reply PARENT, so the answer threads UNDER the
+      // question rather than spawning a new top-level topic. The forum's topic
+      // classifier treats a non-root 'reply' e-tag as a reply (not a root).
       if (root) {
         tags.push(['e', root.id, root.relay || '', 'root']);
+        if (root.id !== srcEvent.id) {
+          tags.push(['e', srcEvent.id, root.relay || '', 'reply']);
+        }
       } else {
-        // Fall back to threading on the source message itself.
+        // No channel root — the source message is itself the thread root.
         tags.push(['e', srcEvent.id, '', 'root']);
       }
       tags.push(['p', askerPubkey]);

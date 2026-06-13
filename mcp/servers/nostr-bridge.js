@@ -99,6 +99,18 @@ class RelayConnection {
     this._pending     = [];   // buffered messages awaiting open
     this._onMessage   = null; // set by NostrBridge after construction
     this._reconnectTimer = null;
+    // WebSocket keepalive (liveness detection). Cloudflare Worker /
+    // Durable-Object relays stop pushing live events to an idle subscription
+    // within ~20s and never send a TCP FIN, so 'close' never fires and the
+    // socket sits ESTABLISHED while effectively deaf (observed 2026-06-13: a
+    // mention posted ~25s after connect got no delivery; the same mention ~6s
+    // after connect was delivered in 1.9s). A periodic ping keeps the
+    // connection warm; a missed pong forces terminate() so 'close' drives a
+    // reconnect that re-AUTHs (NIP-42) and replays every REQ. Interval is
+    // deliberately under the ~20s idle-death window.
+    this._pingMs       = options.pingIntervalMs ?? 12000;
+    this._pingTimer    = null;
+    this._awaitingPong = false;
   }
 
   get healthy() { return this._healthy; }
@@ -115,6 +127,7 @@ class RelayConnection {
         this._attempt = 0;
         const flush = this._pending.splice(0);
         for (const msg of flush) ws.send(msg);
+        this._startKeepalive(ws);
       });
 
       ws.on('message', (data) => {
@@ -126,9 +139,13 @@ class RelayConnection {
         }
       });
 
+      // Relay answered our keepalive ping — connection is still live.
+      ws.on('pong', () => { this._awaitingPong = false; });
+
       ws.on('close', () => {
         this._healthy = false;
         this._ws = null;
+        this._stopKeepalive();
         if (!this._destroyed) this._scheduleReconnect();
       });
 
@@ -150,6 +167,30 @@ class RelayConnection {
     this._reconnectTimer = setTimeout(() => this.connect(), delay);
   }
 
+  _startKeepalive(ws) {
+    this._stopKeepalive();
+    this._awaitingPong = false;
+    this._pingTimer = setInterval(() => {
+      if (!this._ws || this._ws.readyState !== 1 /* OPEN */) return;
+      if (this._awaitingPong) {
+        // No pong since the previous ping — the relay went unresponsive
+        // (or its Durable-Object subscription was evicted). Force the socket
+        // closed so the 'close' handler reconnects, re-AUTHs and replays REQs.
+        try { this._ws.terminate(); } catch { /* ignore */ }
+        return;
+      }
+      this._awaitingPong = true;
+      try { this._ws.ping(); } catch { /* ignore */ }
+    }, this._pingMs);
+    // Keepalive must not keep the process alive on shutdown.
+    if (this._pingTimer && this._pingTimer.unref) this._pingTimer.unref();
+  }
+
+  _stopKeepalive() {
+    if (this._pingTimer) { clearInterval(this._pingTimer); this._pingTimer = null; }
+    this._awaitingPong = false;
+  }
+
   send(message) {
     const serialised = typeof message === 'string' ? message : JSON.stringify(message);
     if (this._ws && this._ws.readyState === 1 /* OPEN */) {
@@ -161,6 +202,7 @@ class RelayConnection {
 
   disconnect() {
     this._destroyed = true;
+    this._stopKeepalive();
     if (this._reconnectTimer) clearTimeout(this._reconnectTimer);
     if (this._ws) {
       try { this._ws.close(); } catch { /* ignore */ }
