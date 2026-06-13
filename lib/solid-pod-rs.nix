@@ -46,15 +46,25 @@ let
   # /.well-known/apps aggregation, MCP docs embedding, the WAC ancestor
   # accessTo over-inheritance + git read-auth fix, and payments::debit wired
   # into the WAC grant path (R-04).
-  version = "0.4.0-alpha.17";
+  # 0.5.0-alpha.0 (2026-06-13): the PROVENANCE release (solid-pod-rs ADR-059).
+  # Adds block-trails (Bitcoin taproot-anchored, hash-chained provenance trails;
+  # byte-parity with JSS token.js, verified against BIP-340/341 vectors),
+  # git-marks (write-as-commit + PROV-O sidecar on every LDP write), the
+  # ProvenanceLog composition (git-mark always / Bitcoin anchor opt-in / epoch
+  # Merkle-root batching) + the `_prov` API + the ProvenanceAnchor WAC condition,
+  # the now-routed web-ledger/order-book/AMM economy with replay protection wired
+  # (PaymentStore the sole ledger I/O), and WAC-gated git smart-HTTP (the
+  # anonymous clone/push hole closed). Full workspace: 1542 tests green.
+  version = "0.5.0-alpha.0";
 
-  # Pinned to the v0.4.0-alpha.17 tag commit — the first version whose
-  # registry release includes solid-pod-rs-server (embedded-docs packaging
-  # fix: the server's MCP docs tools consume solid_pod_rs::DOCS_DIR instead
-  # of an include_dir path escape). Version string, tag, registry, and built
-  # code all agree.
-  rev     = "9b4076ae94ba1402d7e774c2a20ebf30663486f2";
+  # Pinned to the v0.5.0-alpha.0 tag commit.
+  rev     = "9f33b505f10fb5a707cf5efdc53816b425750c10";
 
+  # REFRESH REQUIRED for rev 9f33b50 (could not be computed in the editing
+  # container — no `nix` binary). On a nix host, run `nix build .#runtime`: it
+  # fetches the new src and fails with the correct expected `srcHash`, which you
+  # paste here. Then refresh the vendored Cargo.lock per the procedure below.
+  # The value left here is the previous (alpha.17) hash and WILL mismatch.
   srcHash = "sha256-CFS/d1ajoIGo6CHLWYeH3P+/ddB35RoORJVC+rTEZOM=";
 
   # Upstream solid-pod-rs at v0.4.0-alpha.5 does not ship its
