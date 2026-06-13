@@ -192,6 +192,13 @@ is not yet wired**:
 
 ## See also
 
+- **Provenance substrate.** As of the `solid-pod-rs 0.5.0-alpha.0` provenance
+  release, **git-marks** (write-as-commit on every pod write) and **block-trails**
+  (hash-chained, optionally Bitcoin-taproot-anchored trails) are the substrate
+  beneath the receipt/activity URNs above — cheap by default, settlement-grade on
+  demand — and this loop's settlement now derives from the pod's routed
+  web-ledger / AMM with replay protection. Carrying `git_commit_sha` + block-height
+  trailers into receipts is the [next increment](#what-remains).
 - [`docs/developer/code-as-harness.md`](code-as-harness.md) — the URN allocation
   for execution/activity/lesson/skill records that share this identity mesh.
 - [`docs/developer/identity-mesh.md`](identity-mesh.md) — the five `did:nostr`
