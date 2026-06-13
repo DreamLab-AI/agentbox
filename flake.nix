@@ -189,11 +189,36 @@
           bin             = "mmdc";
         };
 
+        # wrangler — Cloudflare Workers/D1/secrets CLI. Always included for
+        # operator ops (`wrangler d1 execute --remote`, `wrangler secret put`,
+        # remote deploys). Version bump: set version below, set BOTH hashes to
+        # lib.fakeHash, run ./scripts/prefetch-hashes.sh (resolves them in one
+        # sweep), then rebuild; Renovate auto-detects the bump.
+        #   nix-prefetch-url https://registry.npmjs.org/wrangler/-/wrangler-4.78.0.tgz
+        #
+        # PIN: 4.78.0 is the last release before wrangler upstream added
+        # `@cloudflare/codemod@1.1.0` to devDependencies (4.79.0+). That
+        # package is not published to the public npm registry, so even
+        # `npm install --production` fails resolving the dev tree before
+        # pruning. Bump only after upstream either publishes codemod or
+        # removes it from devDependencies.
+        wranglerPkg = mkNpmCli {
+          pkgName         = "wrangler";
+          version         = "4.78.0";
+          sha256          = "sha256-tC1kgCS3jQSKkgGChKOrVPMTZkZ4p3x+D3rtK3j/NJk=";
+          nodeModulesHash = "sha256-Oh0xX5JAlYlmXc5qcSlkfjCThq+kXgPAkUcLSlfDHJI=";
+          bin             = "wrangler";
+          # wrangler's devDependencies reference private @cloudflare/*
+          # packages not on the public npm registry — strip them so npm
+          # never tries to resolve them. See lib/npm-cli.nix for details.
+          stripDevDeps    = true;
+        };
+
         # ruvector is always included; rest are feature-gated. nagual-qe is
         # NOT in this list — it is a Rust source build wired via nagualQePkg
         # alongside solid-pod-rs (see further down) and added to the package
         # set via nagualQePackages.
-        npmCliAlwaysPackages = [ ruvectorPkg ];
+        npmCliAlwaysPackages = [ ruvectorPkg wranglerPkg ];
         npmCliGatedPackages =
           lib.optionals (toolchainCfg.claude_flow or false)       [ claudeFlowPkg ]
           ++ lib.optionals (toolchainCfg.ruflo or false)           [ rufloPkg ]

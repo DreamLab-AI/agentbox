@@ -11,7 +11,7 @@
 #     --argstr sha256 "sha256-CPzy..." \
 #     --no-link
 #
-{ pkgName, version, sha256, bin ? pkgName }:
+{ pkgName, version, sha256, bin ? pkgName, stripDevDeps ? false }:
 
 let
   # Load the pinned nixpkgs from the flake.lock without copying the repo tree.
@@ -34,6 +34,6 @@ let
   npmCliLib  = import ../lib/npm-cli.nix { inherit lib pkgs; };
 in
   (npmCliLib.makeNpmCli {
-    inherit pkgName version sha256 bin;
+    inherit pkgName version sha256 bin stripDevDeps;
     nodeModulesHash = lib.fakeHash;
   }).passthru.packageWithDeps

@@ -115,6 +115,15 @@ in
     nodeModulesHash,
     bin,
     extraEnv ? {},
+    # Strip devDependencies (and peerDependencies/peerDependenciesMeta)
+    # from package.json before `npm install`. Required for upstream
+    # packages whose published tarball references private monorepo deps
+    # in devDependencies — e.g. wrangler's `@cloudflare/cli`,
+    # `@cloudflare/codemod`, etc. that don't exist on the public registry.
+    # Modern npm (>=10) resolves the full graph before pruning, so
+    # `--omit=dev` alone is insufficient. Off by default to keep the
+    # existing nodeModulesHashes valid for other CLIs.
+    stripDevDeps ? false,
   }:
     let
       # Placeholder-detection. Returning a substituted SRI means the derivation
@@ -174,12 +183,29 @@ in
         # same flags that buildNpmPackage uses, plus --legacy-peer-deps for
         # the same reason as before (overly-strict peerOptional decls in
         # the npm graph would otherwise break random installs).
+        #
         installPhase = ''
           runHook preInstall
 
           export HOME="$TMPDIR"
           export SSL_CERT_FILE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
           export NODE_EXTRA_CA_CERTS="$SSL_CERT_FILE"
+
+          ${lib.optionalString stripDevDeps ''
+            # Some upstream CLIs (e.g. wrangler) ship published tarballs whose
+            # devDependencies reference private monorepo packages that are
+            # not on the public npm registry. Modern npm (>=10) resolves the
+            # full dep graph before pruning, so `--omit=dev` alone is not
+            # enough — npm 404s on the private packages and aborts. We strip
+            # devDependencies (and the related peerDependencies metadata if
+            # present) from package.json so npm never tries to resolve them.
+            node -e '
+              const fs = require("fs");
+              const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+              delete pkg.devDependencies;
+              fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2));
+            '
+          ''}
 
           # Ensure deterministic timestamps inside node_modules so that
           # outputHashMode = "recursive" + content addressing yields a stable
