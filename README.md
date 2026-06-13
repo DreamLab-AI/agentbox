@@ -34,7 +34,7 @@ Most agent runtimes are just a collection of tools with no provenance, privacy, 
 - 🚀 **Batteries Included (via MCP)**: Out-of-the-box support for Claude Code, Codex, Gemini, DeepSeek, and ruflo. Instantly equip them with 90+ skills including Playwright, ComfyUI, QGIS, Blender, LaTeX, and Jupyter via the Model Context Protocol (MCP).
 - 🔒 **Privacy by Default**: An embedded `openai/privacy-filter` sidecar sits in the adapter-dispatch path, redacting PII and secrets _before_ durable writes hit memory or pods. Policy is **per slot** — `strict` (redact-then-write, fail-closed) for `memory` and `pods`, `soft` for `events`/`beads`, `off` for the `orchestrator` control plane. It is not a universal interceptor on every tool call; see [ADR-008](docs/reference/adr/ADR-008-privacy-filter-routing.md).
 - 🛡️ **Hardened & Reproducible**: Built with Nix flakes. The `pg` Node module is baked into the image (no `npm install pg` at boot); a small set of `npx -y` CLI aliases is the one remaining runtime-fetch path, pending SRI pinning ([tracked in `lib/npm-cli.nix`](lib/npm-cli.nix)). Runs as non-root (uid 1000) with a read-only root filesystem, `cap_drop: ALL`, `no-new-privileges:true`, and a **supplemental seccomp denylist** (47 high-risk syscall denials layered on Docker's default profile — not a replacement allowlist; the container runtime is the security boundary). Published ports bind host-loopback only ([ADR-027](docs/reference/adr/ADR-027-default-secure-posture.md)).
-- 🔗 **Sovereign Data & Auditability**: Agents own their data cryptographically. Every generated file, memory, and action is stamped with a `did:nostr` identity and stored in an embedded Solid Pod (`solid-pod-rs`). See [The Sovereign Data Stack](#the-sovereign-data-stack).
+- 🔗 **Sovereign Data & Auditability**: Agents own their data cryptographically. Every generated file, memory, and action is stamped with a `did:nostr` identity and stored in an embedded Solid Pod (`solid-pod-rs`). As of the `solid-pod-rs 0.5.0-alpha.0` provenance release, the pod substrate makes agent actions **traceable by construction**: every write is a **git-mark** (write-as-commit + PROV-O sidecar), and high-value or disputed records can become **block-trails** — tamper-evident, hash-chained provenance trails with an optional Bitcoin (taproot) anchor. See [The Sovereign Data Stack](#the-sovereign-data-stack).
 - 🔌 **Pluggable Adapters**: Run entirely standalone on a laptop (SQLite + local JSONL), or effortlessly federate into a cloud mesh (Postgres pgvector + HTTP event sinks) by flipping a TOML switch.
 
 ---
@@ -290,6 +290,17 @@ flowchart LR
 </details>
 
 Because Agentbox uses canonical URIs and Linked Data (JSON-LD), you can spin up the built-in [Linked-Data browser](docs/user/browser.md) at `/lo/*` to navigate the graph of your agent's memories, architectural decisions, and credentials. The `/v1/uri/<urn>` resolver maps any URN to its current HTTP representation.
+
+### Verifiable provenance and value transfer (substrate)
+
+The `solid-pod-rs 0.5.0-alpha.0` provenance release upgrades the pod backend into a **global trust ledger for the agentic mesh**. Two substrate capabilities are now available beneath the identity layer:
+
+- **git-marks** — every pod write lands as a commit, with a PROV-O sidecar recording who wrote what, when. Provenance is the default, not an afterthought.
+- **block-trails** — tamper-evident, hash-chained provenance trails. The cheap git-mark/hash-chain holds always; a Bitcoin (taproot) anchor is opt-in for high-value or disputed records, so traceability scales from free to settlement-grade per record.
+
+This makes the owner-scoped agent URNs minted by [`management-api/lib/uris.js`](management-api/lib/uris.js) — `urn:agentbox:activity` (what an agent did), `urn:agentbox:receipt` (what it was paid for), `urn:agentbox:credential` (what it was authorised to do) — eligible to become **trail states**: cheap by default, Bitcoin-anchored on demand. Value transfer across the mesh rides the same substrate — the sovereign, Bitcoin-settled (sats / Lightning, no EVM) [402 economy](docs/developer/economy-loop.md) (PRD-015 / ADR-032) now settles through the pod's routed web-ledger / order-book / AMM with replay protection.
+
+> The substrate capability is available now via the pin. The deeper wiring — receipts carrying `git_commit_sha` + block-height trailers, and crossing those trailers across the host-graph boundary — is the next increment, tracked in [economy-loop.md](docs/developer/economy-loop.md#what-remains).
 
 Deeper reading:
 
