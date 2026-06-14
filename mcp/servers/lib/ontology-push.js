@@ -14,7 +14,11 @@ const budget = require('./ontology-budget');
 
 const DEFAULT_CACHE = process.env.ONTOLOGY_PUSH_CACHE
   || path.join(process.env.HOME || '/home/devuser', '.claude-flow/data/ontology-classes-cache.json');
-const MIN_RELEVANCE = parseFloat(process.env.ONTOLOGY_PUSH_MIN_RELEVANCE || '0.3');
+// Trigram-jaccard over the Class-Summary cache scores ~0.12-0.30 on-topic vs
+// ~0.06-0.10 off-topic (calibrated against the live 5975-class corpus, PRD-020
+// WS-2). 0.11 sits in the gap. NOTE the old 0.3 default suppressed ALL
+// breadcrumbs — alive-but-silent, the ADR-119 trap. Override per-deployment.
+const MIN_RELEVANCE = parseFloat(process.env.ONTOLOGY_PUSH_MIN_RELEVANCE || '0.11');
 
 function trigrams(s) {
   const t = String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
