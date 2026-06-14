@@ -78,6 +78,26 @@ function main() {
     });
   }
   fs.writeFileSync(OUT, JSON.stringify(records));
+
+  // Also (re)write the PUSH-channel Class-Summary cache so this script is the
+  // single startup/refresh entry point. ~/.claude-flow/data is ephemeral and is
+  // wiped on rebuild, so the entrypoint MUST run this on boot (PRD-020 WS-2) —
+  // the breadcrumb no-ops without it. Optional alias merge from ONTOLOGY_ALIASES
+  // (a durable {iri:[aliases]} JSON the condensation mesh can persist).
+  const CACHE = process.env.ONTOLOGY_PUSH_CACHE
+    || path.join(process.env.HOME || '/home/devuser', '.claude-flow/data/ontology-classes-cache.json');
+  let aliases = {};
+  if (process.env.ONTOLOGY_ALIASES) {
+    try { aliases = JSON.parse(fs.readFileSync(process.env.ONTOLOGY_ALIASES, 'utf8')); } catch { /* base cache only */ }
+  }
+  const cache = records.map((r) => {
+    const t = new Set(r.terms || []);
+    for (const a of (aliases[r.iri] || [])) for (const w of String(a).toLowerCase().replace(/-/g, ' ').split(/\s+/)) if (w.length > 2) t.add(w);
+    return { iri: r.iri, label: r.label, domain: r.domain, maturity: r.maturity, terms: [...t].slice(0, 40) };
+  });
+  fs.mkdirSync(path.dirname(CACHE), { recursive: true });
+  fs.writeFileSync(CACHE, JSON.stringify({ classes: cache }));
+
   const withDef = records.filter((r) => r.definition && r.definition.length > 40).length;
   console.log(JSON.stringify({
     pages: files.length,
@@ -85,6 +105,8 @@ function main() {
     no_class_block: noClass,
     with_substantial_definition: withDef,
     out: OUT,
+    push_cache: CACHE,
+    aliases_merged: Object.keys(aliases).length,
     sample: records.slice(0, 2).map((r) => ({ iri: r.iri, label: r.label, domain: r.domain, maturity: r.maturity, def_len: r.definition.length, rels: r.relations.length, terms: r.terms.slice(0, 6) })),
   }, null, 2));
 }
