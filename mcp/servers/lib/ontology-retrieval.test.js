@@ -4,7 +4,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const budget = require('./ontology-budget');
-const { createOntologyRetrieval, createTtlCache, breadcrumb } = require('./ontology-retrieval');
+const { createOntologyRetrieval, createTtlCache, breadcrumb, serialiseTurtle, defaultSeedFn, defaultExpandFn } = require('./ontology-retrieval');
 
 const SEEDS = [
   { iri: 'https://narrativegoldmine.com/ns/v1#smart-contract', label: 'Smart Contract', domain: 'blockchain', maturity: 'mature', summary: 'A self-executing agreement.', relations: ['enables', 'requires', 'subClassOf'] },
@@ -121,4 +121,34 @@ test('classifyCause: splits auth/validation from availability', () => {
   assert.strictEqual(classifyCause({ error: 'sparql_readonly' }), 'auth_or_validation');
   assert.strictEqual(classifyCause(new Error('connect ECONNREFUSED')), 'availability');
   assert.strictEqual(classifyCause({ error: 'ontology_timeout' }), 'timeout');
+});
+
+test('serialise: renders urn: IRIs as full angle-bracket (no vc: prefix mismatch)', () => {
+  const t = serialiseTurtle([{ iri: 'urn:ngm:class:datalog-kg', label: 'Datalog KG', maturity: 'mature' }], []);
+  assert.ok(t.includes('<urn:ngm:class:datalog-kg> a owl:Class'), t);
+  assert.ok(!t.includes('vc:urn:'), 'no double-prefix');
+});
+
+test('breadcrumb: clean local-name for urn: IRI', () => {
+  const bc = breadcrumb([{ iri: 'urn:ngm:class:datalog-kg', maturity: 'mature', domain: 'ai' }]);
+  assert.ok(bc.includes('vc:datalog-kg'), bc);
+  assert.ok(!bc.includes('urn:ngm'), bc);
+});
+
+test('defaultSeedFn: unwraps the {success,data:{results}} VisionClaw envelope', async () => {
+  const fakeFetch = async () => ({ success: true, data: { results: [
+    { iri: 'urn:ngm:class:x', preferred_term: 'X', relevance_score: 0.9 },
+  ] }, error: null });
+  const seeds = await defaultSeedFn(fakeFetch)({ query: 'x' });
+  assert.strictEqual(seeds.length, 1);
+  assert.strictEqual(seeds[0].iri, 'urn:ngm:class:x');
+});
+
+test('defaultExpandFn: unwraps {success,data:{results:{bindings}}}', async () => {
+  const fakeFetch = async () => ({ success: true, data: { results: { bindings: [
+    { s: { type: 'uri', value: 'urn:ngm:class:a' }, p: { type: 'uri', value: 'p' }, o: { type: 'uri', value: 'urn:ngm:class:b' } },
+  ] } }, error: null });
+  const triples = await defaultExpandFn(fakeFetch)({ seedIris: ['urn:ngm:class:a'], depth: 1 });
+  assert.strictEqual(triples.length, 1);
+  assert.ok(triples[0].s.includes('urn:ngm:class:a'));
 });

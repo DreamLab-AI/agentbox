@@ -60,10 +60,10 @@ function ttlStr(s) {
   return '"' + String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, ' ') + '"';
 }
 
-/** Local-name from a vc: IRI for terse rendering. */
+/** Local-name from any IRI/URN (handles #, /, and urn:…:slug) for terse labels. */
 function localName(iri) {
   if (!iri) return 'unknown';
-  const i = Math.max(iri.lastIndexOf('#'), iri.lastIndexOf('/'));
+  const i = Math.max(iri.lastIndexOf('#'), iri.lastIndexOf('/'), iri.lastIndexOf(':'));
   return i >= 0 ? iri.slice(i + 1) : iri;
 }
 
@@ -75,8 +75,9 @@ function serialiseTurtle(seeds, expandTriples, { includePrefixes = true } = {}) 
   const lines = [];
   if (includePrefixes) lines.push(VC_PREFIXES, '');
   for (const c of seeds) {
-    const ln = localName(c.iri);
-    const parts = [`vc:${ln} a owl:Class`];
+    // Render the full IRI in angle brackets — valid Turtle for any scheme
+    // (vc:#…, urn:ngm:…, urn:visionclaw:…) without prefix-mismatch.
+    const parts = [`<${c.iri}> a owl:Class`];
     if (c.label) parts.push(`  rdfs:label ${ttlStr(c.label)}`);
     if (c.domain) parts.push(`  vc:sourceDomain ${ttlStr(c.domain)}`);
     if (c.maturity) parts.push(`  vc:maturity ${ttlStr(c.maturity)}`);
@@ -269,7 +270,9 @@ function defaultSeedFn(vcFetch) {
       method: 'POST', body: JSON.stringify({ query, limit: limit ?? 8, domain }),
     });
     if (res && res.error) throw res;
-    const rows = Array.isArray(res) ? res : (res && res.results) || [];
+    // VisionClaw wraps responses in {success, data:{…}, error, timestamp}.
+    const body = (res && res.data !== undefined) ? res.data : res;
+    const rows = Array.isArray(body) ? body : (body && body.results) || [];
     return rows.map((r) => ({
       iri: r.iri,
       label: r.preferred_term || r.label,
@@ -297,7 +300,8 @@ SELECT ?s ?p ?o WHERE {
       method: 'POST', authed: true, body: JSON.stringify({ query: sparql }),
     });
     if (res && res.error) throw res;
-    const bindings = (res && res.results && res.results.bindings) || [];
+    const body = (res && res.data !== undefined) ? res.data : res;
+    const bindings = (body && body.results && body.results.bindings) || [];
     return bindings.map((b) => ({
       s: b.s ? `<${b.s.value}>` : '?s',
       p: b.p ? `<${b.p.value}>` : '?p',
