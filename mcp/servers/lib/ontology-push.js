@@ -67,7 +67,7 @@ function getOntologyBreadcrumb(prompt, opts = {}) {
     const floor = opts.minRelevance != null ? opts.minRelevance : MIN_RELEVANCE;
     if (!best || bestScore < floor) return null; // relevance null-gate → 0 tokens
     const tags = [best.maturity, best.domain].filter(Boolean).join(', ');
-    const ln = (best.iri ? best.iri.split(/[#/]/).pop() : best.label) || 'class';
+    const ln = (best.iri ? best.iri.split(/[#/:]/).pop() : best.label) || 'class';
     const line = `[ONTOLOGY] seed: vc:${ln}${tags ? ` (${tags})` : ''} → expand via ontology_ask`;
     return budget.clampBreadcrumb(line).line;
   } catch {
