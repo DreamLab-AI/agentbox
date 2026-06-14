@@ -17,7 +17,7 @@ const { spawnCli } = require('../shared/spawn-cli');
 
 const ZAI_BIN  = process.env.AGENTBOX_ZAI_BIN  || 'claude-zai';
 const ZAI_HOME = process.env.AGENTBOX_ZAI_HOME || '/home/zai-user';
-const MODEL    = process.env.AGENTBOX_ZAI_MODEL || 'glm-5';
+const MODEL    = process.env.AGENTBOX_ZAI_MODEL || 'glm-5.2';
 
 const PRICE_PER_1K_PROMPT     = 0.0006;
 const PRICE_PER_1K_COMPLETION = 0.0024;

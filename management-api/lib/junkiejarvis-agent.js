@@ -232,6 +232,40 @@ function wantsDetail(text) {
   );
 }
 
+/**
+ * Deterministic gate: does the MEMBER'S message actually express intent to
+ * create a calendar event? GLM-4.5-flash sometimes emits a `create_event`
+ * directive for plain chit-chat ("write me a haiku" once produced a
+ * "friends-haiku-workshop" event), ignoring the system-prompt instruction not
+ * to. A real event always has a "when", so we require either an unmistakable
+ * create-an-event phrasing, OR a temporal anchor together with event/scheduling
+ * vocabulary. Pure conversation ("write me a haiku", "tell me a joke") matches
+ * neither and so can never spawn an event regardless of what the model returns.
+ * @param {string} text  the member's message (mention/handle already stripped)
+ * @returns {boolean}
+ */
+function hasSchedulingIntent(text) {
+  const t = (typeof text === 'string' ? text : '').toLowerCase();
+  if (!t) return false;
+
+  // A "when": day names, relative days, months, clock times, ISO dates.
+  const temporal =
+    /\b(today|tonight|tomorrow|tmrw|this (?:morning|afternoon|evening|weekend|week|month)|next (?:week|month|monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun)|mon(?:day)?|tue(?:s|sday)?|wed(?:nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?|january|february|march|april|june|july|august|september|october|november|december)\b/.test(t) ||
+    /\b\d{1,2}\s*(?::\d{2})?\s*(?:am|pm)\b/.test(t) || // 7pm, 7:30 pm
+    /\b\d{1,2}:\d{2}\b/.test(t) || // 19:00
+    /\b\d{4}-\d{2}-\d{2}\b/.test(t); // ISO date
+
+  // Event / scheduling vocabulary.
+  const eventVocab =
+    /\b(schedul|calendar|diary|\bevent\b|meeting|meet ?up|rsvp|invit|book(?:ing)?|organis|organiz|gathering|workshop|webinar|standup|stand-up|party|night out|listening night|launch|screening|rehearsal|session)\b/.test(t);
+
+  // Unmistakable "create an event" phrasing (verb + event-ish noun nearby).
+  const explicitCreate =
+    /\b(create|make|set ?up|schedule|add|organis|organiz|book|plan(?:ning)?|put)\b[^.!?\n]{0,40}\b(event|meeting|session|workshop|party|night|gathering|call|calendar|diary|screening|rehearsal|launch)\b/.test(t);
+
+  return (temporal && eventVocab) || explicitCreate;
+}
+
 // ─── Calendar event building (pure) ─────────────────────────────────────────
 
 /**
@@ -331,7 +365,7 @@ async function callLlm(userText, opts = {}) {
         || (process.env.ZAI_API_KEY ? 'https://api.z.ai/api/paas/v4' : 'https://api.openai.com/v1')
       ).replace(/\/+$/, '');
       const oaiModel = model
-        || (process.env.ZAI_API_KEY ? 'glm-4.5-flash' : 'gpt-4o-mini');
+        || (process.env.ZAI_API_KEY ? 'glm-5.2' : 'gpt-4o-mini');
       // Z.AI GLM-4.5/4.6 are reasoning models: with thinking ENABLED they spend
       // the whole token budget on reasoning_content and return empty content
       // (finish_reason "length"). Disable thinking so the budget goes to the
@@ -635,7 +669,20 @@ class JunkieJarvisAgent {
     const { directive, reply } = parseDirective(llmText);
     let body = reply || llmText || CANNED_APOLOGY;
 
-    if (directive) {
+    // Deterministic guard against spurious calendar events: only honour a
+    // create_event directive when the member's own message actually expresses
+    // scheduling intent. GLM occasionally emits the directive for plain chit-chat
+    // (e.g. "write me a haiku") despite the system prompt; we drop it and keep
+    // just the conversational reply.
+    if (directive && !hasSchedulingIntent(userText)) {
+      this.logger.info(
+        { title: directive.title },
+        'junkiejarvis suppressed spurious create_event (no scheduling intent in message)'
+      );
+      // Use only the human reply after the directive line — never fall back to
+      // the raw llmText, which still contains the stripped directive JSON.
+      body = reply || CANNED_APOLOGY;
+    } else if (directive) {
       const spec = normaliseEventDirective(directive);
       if (spec) {
         // If the channel had a zone and the directive didn't pick a hard zone,

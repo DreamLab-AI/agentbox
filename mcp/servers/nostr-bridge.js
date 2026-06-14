@@ -257,6 +257,7 @@ class NostrBridge {
     this._subscriptions = new Map(); // subId → { filter, handler }
     this._subCounter = 0;
     this._authSigner = null; // NIP-42 session signer (setAuthSigner)
+    this._pendingAuth = new Map(); // relayUrl → in-flight NIP-42 AUTH event id
 
     for (const url of relayUrls) {
       const connOpts = { ...this._relayOpts };
@@ -622,14 +623,43 @@ class NostrBridge {
       };
       const signed = await this._authSigner.sign(unsigned);
       conn.send(JSON.stringify(['AUTH', signed]));
-      // Replay all active subscriptions post-AUTH (same subIds — the relay
-      // re-evaluates them with the now-authenticated session).
-      for (const [subId, sub] of this._subscriptions.entries()) {
-        conn.send(JSON.stringify(['REQ', subId, sub.filter]));
-      }
+      // Defer the subscription replay until the relay ACKNOWLEDGES the AUTH with
+      // ["OK", <authId>, true] (handled in _handleRelayMessage). Replaying in the
+      // SAME tick races the relay's async AUTH verification on Durable-Object
+      // relays (Cloudflare): the REQ is evaluated against the still-
+      // unauthenticated session, so gated-zone events (friends/family/business)
+      // are silently withheld until the next reconnect — the exact "jarvis
+      // receives at startup then goes quiet" symptom. Fallback: replay after
+      // 1.2s if the relay omits the AUTH ack.
+      this._pendingAuth.set(relayUrl, signed.id);
+      setTimeout(() => {
+        if (this._pendingAuth.get(relayUrl) === signed.id) {
+          this._pendingAuth.delete(relayUrl);
+          this._replaySubscriptions(relayUrl);
+        }
+      }, 1200);
       // One-line breadcrumb only — never the challenge or event contents.
       console.log(`[bridge] NIP-42 AUTH sent to ${relayUrl}`);
     } catch { /* fail-open: unauthenticated session keeps its public view */ }
+  }
+
+  /**
+   * Re-send every active subscription on a relay socket so the relay
+   * re-evaluates them against the now-authenticated session. Called once the
+   * NIP-42 AUTH is acknowledged with OK (or via the fallback timer) — see
+   * _handleAuthChallenge. Without this the bridge keeps the unauthenticated
+   * (public-only) view and never sees gated-zone mentions.
+   * @private
+   */
+  _replaySubscriptions(relayUrl) {
+    const conn = this._connections.get(relayUrl);
+    if (!conn) return;
+    for (const [subId, sub] of this._subscriptions.entries()) {
+      conn.send(JSON.stringify(['REQ', subId, sub.filter]));
+    }
+    console.log(
+      `[bridge] replayed ${this._subscriptions.size} subscription(s) post-AUTH to ${relayUrl}`
+    );
   }
 
   // ── Internal message routing ──
@@ -655,8 +685,21 @@ class NostrBridge {
           sub.handler(event, relayUrl);
         } catch { /* handler errors must not crash the bridge */ }
       }
+      return;
     }
-    // EOSE, NOTICE, OK are informational — no action needed for the library contract
+
+    if (type === 'OK') {
+      // ["OK", <eventId>, <accepted>, <msg>]. When it acks our in-flight NIP-42
+      // AUTH event, the relay session is now authenticated — replay every
+      // subscription so gated zones start delivering. (subId carries the event
+      // id; the accepted bool is message[2].)
+      if (this._pendingAuth.get(relayUrl) === subId) {
+        this._pendingAuth.delete(relayUrl);
+        if (message[2] === true) this._replaySubscriptions(relayUrl);
+      }
+      return;
+    }
+    // EOSE, NOTICE are informational — no action needed for the library contract
   }
 
   _matchesFilter(event, filter) {
