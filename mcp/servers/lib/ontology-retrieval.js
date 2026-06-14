@@ -292,21 +292,38 @@ function defaultExpandFn(vcFetch) {
     const graph = provenance === 'inferred'
       ? 'urn:ngm:graph:ontology:inferred' : 'urn:ngm:graph:ontology:assert';
     const values = seedIris.slice(0, 8).map((i) => `<${i}>`).join(' ');
-    const sparql = `${VC_PREFIXES}
-SELECT ?s ?p ?o WHERE {
-  GRAPH <${graph}> { VALUES ?s { ${values} } ?s ?p ?o . }
-} LIMIT ${Math.min(50 * Math.max(1, depth), 200)}`;
-    const res = await vcFetch('/api/ontology/sparql', {
-      method: 'POST', authed: true, body: JSON.stringify({ query: sparql }),
-    });
-    if (res && res.error) throw res;
-    const body = (res && res.data !== undefined) ? res.data : res;
-    const bindings = (body && body.results && body.results.bindings) || [];
-    return bindings.map((b) => ({
-      s: b.s ? `<${b.s.value}>` : '?s',
-      p: b.p ? `<${b.p.value}>` : '?p',
-      o: b.o ? (b.o.type === 'uri' ? `<${b.o.value}>` : JSON.stringify(b.o.value)) : '?o',
-    }));
+    const SUBCLASS = 'http://www.w3.org/2000/01/rdf-schema#subClassOf';
+    // Two queries, run in parallel and merged children-first. The asserted graph
+    // only stores `child subClassOf parent`, so a seed's subclasses are INCOMING
+    // edges; a purely-outgoing expand missed them (measured gap, eval 2026-06-14 —
+    // subclass questions). A single UNION under one LIMIT lets dense domain hubs
+    // starve the few child rows, so children get their own dedicated query and are
+    // placed first so the budget clamp can never trim them out of the tail. Makes
+    // expand hierarchy-complete for every consumer (MCP tool, seam, CLI) — ADR-112.
+    // NB: full IRIs only, no PREFIX block — the read-only SPARQL guard (WS-0) rejects
+    // any query whose first token is PREFIX, so both queries must start with SELECT.
+    const outLimit = Math.min(80 * Math.max(1, depth), 300);
+    const outSparql = `SELECT ?s ?p ?o WHERE { GRAPH <${graph}> { VALUES ?s { ${values} } ?s ?p ?o . } } LIMIT ${outLimit}`;
+    // Children only for the TOP seed(s): a "subclasses of X" question targets the best
+    // match, and spanning all 8 seeds lets dense domain hubs (ai-domain, computation-…)
+    // fill the LIMIT before the target's children appear (measured 2026-06-14).
+    const childValues = seedIris.slice(0, 2).map((i) => `<${i}>`).join(' ');
+    const childSparql = `SELECT ?s ?o WHERE { GRAPH <${graph}> { VALUES ?o { ${childValues} } ?s <${SUBCLASS}> ?o . } } LIMIT 60`;
+    const run = async (q) => {
+      const res = await vcFetch('/api/ontology/sparql', { method: 'POST', authed: true, body: JSON.stringify({ query: q }) });
+      if (res && res.error) throw res;
+      const body = (res && res.data !== undefined) ? res.data : res;
+      return (body && body.results && body.results.bindings) || [];
+    };
+    // Sequential, not Promise.all: two concurrent SPARQL reads against Oxigraph
+    // intermittently returned the child query empty under load (measured 2026-06-14).
+    // Children first so they're fetched even if the larger outgoing query is slow.
+    const childB = await run(childSparql);
+    const outB = await run(outSparql);
+    const uri = (x) => (x ? (x.type === 'uri' ? `<${x.value}>` : JSON.stringify(x.value)) : '?');
+    const children = childB.map((b) => ({ s: `<${b.s.value}>`, p: `<${SUBCLASS}>`, o: `<${b.o.value}>` }));
+    const outgoing = outB.map((b) => ({ s: uri(b.s), p: uri(b.p), o: uri(b.o) }));
+    return [...children, ...outgoing]; // children first — survive the downstream clamp
   };
 }
 

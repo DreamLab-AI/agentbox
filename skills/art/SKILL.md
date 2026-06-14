@@ -284,6 +284,15 @@ convert original.png -quality 85 compressed.jpg
 
 ---
 
+## LinkedIn Slide / Carousel Production
+
+To turn results into a **stunning, faithful, LinkedIn-ready slide deck** (Beamer 4:3 →
+MuPDF rasterise → Nano Banana Pro per-slide upcycle with a shared metaprompt → audit →
+composite PDF), see **[references/linkedin-slides.md](references/linkedin-slides.md)**.
+Reusable tooling: `tools/slide-upcycle.sh` + `tools/slide-upcycle-metaprompt.txt`.
+Key rule: diagrams-as-code (PGFPlots) give exact charts; the upcycle improves *only* the
+visuals — the `--ref` image is authoritative, every number/label is reproduced verbatim.
+
 ## Diagram Upcycling via Gemini API
 
 Workflow for enhancing rendered diagrams (TikZ, Mermaid, matplotlib) for publication quality:

@@ -53,6 +53,18 @@ the CLI. Not an HTTP microservice; each process builds its own via `createDefaul
   maturity is dropped. Override via `deps.minMaturity` when constructing a custom retrieval.
 - `domain` filters seeds to one source-domain prefix.
 
+## Hierarchy completeness (subclass children)
+
+`expand` issues two parallel read-only queries and merges them children-first:
+an **outgoing** query (`VALUES ?s … ?s ?p ?o`) for the seed's relations, and a
+dedicated **children** query (`VALUES ?o {top seeds} ?s rdfs:subClassOf ?o`) for
+incoming `subClassOf` edges. The asserted graph only stores `child subClassOf
+parent`, so a seed's subclasses are *incoming* — a purely-outgoing expand missed
+them (measured gap, eval 2026-06-14). Children are placed first so the budget
+clamp never trims them, and the children query targets only the top seed(s) so
+dense domain hubs can't starve them. NB: queries start with `SELECT` (full IRIs,
+no `PREFIX` block) because the WS-0 read-only guard rejects a leading `PREFIX`.
+
 ## Fail-open semantics
 
 Both stages are wrapped: a `seed` failure returns `{degraded:true, error:'seed_unavailable'}`

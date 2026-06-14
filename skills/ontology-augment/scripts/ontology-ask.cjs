@@ -13,11 +13,12 @@
 
 const fs = require('fs');
 
-// Resolve the retrieval lib across the container path and the repo checkout.
+// Resolve the retrieval lib. Prefer the repo checkout (source of truth, always
+// current) over the baked /opt copy, which can lag behind un-rebuilt edits.
 const CANDIDATES = [
-  '/opt/agentbox/mcp/servers/lib/ontology-retrieval.js',
-  require('path').resolve(__dirname, '../../../mcp/servers/lib/ontology-retrieval.js'),
   '/home/devuser/workspace/project/agentbox/mcp/servers/lib/ontology-retrieval.js',
+  require('path').resolve(__dirname, '../../../mcp/servers/lib/ontology-retrieval.js'),
+  '/opt/agentbox/mcp/servers/lib/ontology-retrieval.js',
 ];
 let createDefaultRetrieval;
 for (const p of CANDIDATES) {
@@ -79,5 +80,21 @@ SELECT ?c ?label WHERE {
   console.log(`tier=${req.model_tier} mode=${r.provenance ? (req.mode || 'auto') : '-'} seeds=${r.seed_iris.length} tokens=${r.tokens_used} truncated=${r.truncated} degraded=${r.degraded} full_denied=${r.full_denied} ${r.latency_ms}ms`);
   console.log(`breadcrumb: ${r.breadcrumb || '(none — below floor / no seeds)'}`);
   if (r.error) console.log(`error    : ${r.error}`);
+  // Explicit hierarchy summary: children (subclasses) of the top seed are the
+  // triples where the seed is the OBJECT of subClassOf; parents are where it's
+  // the subject. Surface them plainly so "subclasses of X" is unambiguous.
+  if (r.turtle && r.seed_iris && r.seed_iris.length) {
+    const seed0 = r.seed_iris[0];
+    const ln = (s) => s.replace(/[<>]/g, '').split(/[#/:]/).pop();
+    const kids = [], parents = [];
+    for (const l of r.turtle.split('\n')) {
+      const m = l.match(/^<([^>]+)> <[^>]*subClassOf> <([^>]+)>/);
+      if (!m) continue;
+      if (m[2] === seed0) kids.push(ln('<' + m[1] + '>'));
+      else if (m[1] === seed0) parents.push(ln('<' + m[2] + '>'));
+    }
+    if (kids.length) console.log(`SUBCLASSES (children) of ${ln('<' + seed0 + '>')}: ${[...new Set(kids)].join(', ')}`);
+    if (parents.length) console.log(`parents of ${ln('<' + seed0 + '>')}: ${[...new Set(parents)].join(', ')}`);
+  }
   if (r.turtle) { console.log('--- turtle ---'); console.log(r.turtle); }
 })().catch((e) => { console.error('ERROR:', e.message); process.exit(1); });

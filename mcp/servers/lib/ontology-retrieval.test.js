@@ -144,11 +144,23 @@ test('defaultSeedFn: unwraps the {success,data:{results}} VisionClaw envelope', 
   assert.strictEqual(seeds[0].iri, 'urn:ngm:class:x');
 });
 
-test('defaultExpandFn: unwraps {success,data:{results:{bindings}}}', async () => {
-  const fakeFetch = async () => ({ success: true, data: { results: { bindings: [
-    { s: { type: 'uri', value: 'urn:ngm:class:a' }, p: { type: 'uri', value: 'p' }, o: { type: 'uri', value: 'urn:ngm:class:b' } },
-  ] } }, error: null });
+test('defaultExpandFn: unwraps responses, merges outgoing + children (children first)', async () => {
+  // expand now issues TWO queries: outgoing (VALUES ?s) and incoming subClassOf
+  // children (VALUES ?o). The mock distinguishes them by the query text.
+  const fakeFetch = async (_path, { body }) => {
+    const q = JSON.parse(body).query;
+    if (q.includes('VALUES ?o')) { // child query
+      return { success: true, data: { results: { bindings: [
+        { s: { type: 'uri', value: 'urn:ngm:class:child' }, o: { type: 'uri', value: 'urn:ngm:class:a' } },
+      ] } }, error: null };
+    }
+    return { success: true, data: { results: { bindings: [ // outgoing query
+      { s: { type: 'uri', value: 'urn:ngm:class:a' }, p: { type: 'uri', value: 'p' }, o: { type: 'uri', value: 'urn:ngm:class:b' } },
+    ] } }, error: null };
+  };
   const triples = await defaultExpandFn(fakeFetch)({ seedIris: ['urn:ngm:class:a'], depth: 1 });
-  assert.strictEqual(triples.length, 1);
-  assert.ok(triples[0].s.includes('urn:ngm:class:a'));
+  assert.strictEqual(triples.length, 2);            // 1 child + 1 outgoing
+  assert.ok(triples[0].p.includes('subClassOf'));   // children first (survive clamp)
+  assert.ok(triples[0].s.includes('urn:ngm:class:child'));
+  assert.ok(triples.some((t) => t.p === '<p>' && t.s.includes('urn:ngm:class:a')));
 });
