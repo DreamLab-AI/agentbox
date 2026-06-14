@@ -153,6 +153,20 @@
       "protocol": "stdio",
       "version": "0.1.0"
     },
+    "ontology-bridge": {
+      "command": "node",
+      "args": ["/opt/agentbox/mcp/servers/ontology-bridge.js"],
+      "type": "stdio",
+      "env": {
+        "VISIONCLAW_API_URL": "${VISIONCLAW_API_URL:-http://visionclaw-server:4000}",
+        "VISIONCLAW_DEV_TOKEN": "${VISIONCLAW_DEV_TOKEN:-}",
+        "AGENTBOX_PUBKEY": "${AGENTBOX_PUBKEY:-}",
+        "ONTOLOGY_TIMEOUT_MS": "${ONTOLOGY_TIMEOUT_MS:-10000}"
+      },
+      "description": "Pervasive ontology augmentation (PRD-020/ADR-112). Bridges every agentbox AI call to VisionClaw's Oxigraph/Whelk knowledge graph. Primary tool: ontology_ask (budget-bounded, provenance-scoped subgraph, fail-open) — the PULL-B channel that makes ontology grounding available to all agents. Plus health/search/class_get/class_list/graph_query(read-only SPARQL)/kg_neighbors/kg_pathfind and the GOVERNED ontology_propose write path. Read-pervasive, write-governed.",
+      "protocol": "stdio",
+      "version": "0.2.0"
+    },
     "perplexity": {
       "command": "npx",
       "args": ["-y", "@perplexity-ai/mcp-server"],

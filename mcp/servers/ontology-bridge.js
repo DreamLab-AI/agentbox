@@ -13,9 +13,23 @@ import { createRequire } from 'module';
 // direct-load guard). createRequire lets this ESM bridge consume it directly.
 const require = createRequire(import.meta.url);
 const propose = require('./ontology-propose.js');
+const { createDefaultRetrieval } = require('./lib/ontology-retrieval.js');
 
 const API_URL = (process.env.VISIONCLAW_API_URL || 'http://visionclaw-server:4000').replace(/\/$/, '');
 const TIMEOUT_MS = parseInt(process.env.ONTOLOGY_TIMEOUT_MS || '10000', 10);
+
+// Auth for VisionClaw power_user-gated read surfaces (POST /api/ontology/sparql).
+// WS-1: the bridge previously sent NO auth headers and hit the wrong endpoint
+// (/api/ontology/query), so its reads fail-open-empty in production. Anonymous
+// surfaces (/api/ontology-agent/discover) ignore these headers harmlessly.
+const VC_DEV_TOKEN = process.env.VISIONCLAW_DEV_TOKEN || '';
+const VC_PUBKEY = process.env.AGENTBOX_PUBKEY || '';
+function authHeaders() {
+  const h = { 'Content-Type': 'application/json' };
+  if (VC_DEV_TOKEN) h['Authorization'] = `Bearer ${VC_DEV_TOKEN}`;
+  if (VC_PUBKEY) h['X-Nostr-Pubkey'] = VC_PUBKEY;
+  return h;
+}
 
 const SPARQL_PROLOGUE = `PREFIX vc: <https://narrativegoldmine.com/ns/v1#>
 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
@@ -173,7 +187,36 @@ const TOOLS = [
       additionalProperties: false,
     },
   },
+  {
+    name: 'ontology_ask',
+    description: 'Pervasive ontology augmentation (PRD-020). Turn a free-text query into a ' +
+      'budget-bounded, provenance-scoped ontology subgraph (terse Turtle). Seeds via VisionClaw ' +
+      "discover, optionally expands k-hop. Token budget is enforced per model tier — this is the " +
+      'one tool every agent uses to ground reasoning in the formal ontology. Read-only; fail-open.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Free-text query to ground against the ontology' },
+        model_tier: { type: 'string', enum: ['booster', 'haiku', 'sonnet', 'opus'], default: 'sonnet' },
+        mode: { type: 'string', enum: ['menu', 'expand'], description: 'menu = class summaries; expand = k-hop neighbourhood' },
+        depth: { type: 'number', description: 'k-hop depth for expand (clamped by tier)' },
+        provenance: { type: 'string', enum: ['asserted', 'inferred'], default: 'asserted' },
+        full: { type: 'boolean', description: 'Include page bodies (forbidden below sonnet; chunked)', default: false },
+        domain: { type: 'string', description: 'Optional sourceDomain filter' },
+        max_tokens: { type: 'number', description: 'Lower the tier budget (cannot raise it)' },
+      },
+      required: ['query'],
+      additionalProperties: false,
+    },
+  },
 ];
+
+// ── Ontology augmentation brain (shared retrieval library, ADR-112) ──────────
+// One identical brain across bridge / consultant seam / hook. Default transport
+// reads VISIONCLAW_API_URL + VISIONCLAW_DEV_TOKEN + AGENTBOX_PUBKEY from env.
+// Seed = anonymous /api/ontology-agent/discover; expand = authed SPARQL k-hop
+// (client LIMIT until the WS-0/ADR-117 server clamp lands). Fail-open.
+const retrieval = createDefaultRetrieval();
 
 async function handleTool(name, args) {
   switch (name) {
@@ -196,9 +239,9 @@ async function handleTool(name, args) {
       }
       const sparql = `${SPARQL_PROLOGUE}
 SELECT ?p ?o WHERE { <${iri}> ?p ?o } LIMIT 100`;
-      return vcFetch('/api/ontology/query', {
+      return vcFetch('/api/ontology/sparql', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify({ query: sparql }),
       });
     }
@@ -216,9 +259,9 @@ SELECT ?class ?label ?domain ?quality WHERE {
   }
   ${filter}
 } LIMIT ${args.limit ?? 50}`;
-      return vcFetch('/api/ontology/query', {
+      return vcFetch('/api/ontology/sparql', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify({ query: sparql }),
       });
     }
@@ -230,7 +273,7 @@ SELECT ?class ?label ?domain ?quality WHERE {
       }
       return vcFetch(descriptor.path, {
         method: descriptor.method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify(descriptor.body),
       });
     }
@@ -247,7 +290,7 @@ SELECT ?class ?label ?domain ?quality WHERE {
       }
       return vcFetch(descriptor.path, {
         method: descriptor.method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify(descriptor.body),
       });
     }
@@ -255,7 +298,7 @@ SELECT ?class ?label ?domain ?quality WHERE {
     case 'ontology_validate':
       return vcFetch('/api/ontology/validate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify({ mode: args.mode ?? 'Quick' }),
       });
 
@@ -265,9 +308,9 @@ SELECT ?class ?label ?domain ?quality WHERE {
         return { error: 'sparql_readonly', message: 'Only SELECT/ASK/DESCRIBE/CONSTRUCT queries are permitted.' };
       }
       const fullQuery = q.startsWith('PREFIX') ? q : SPARQL_PROLOGUE + q;
-      return vcFetch('/api/ontology/query', {
+      return vcFetch('/api/ontology/sparql', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify({ query: fullQuery }),
       });
     }
@@ -289,9 +332,9 @@ SELECT ?neighbor ?edge_type ?weight ?label WHERE {
   OPTIONAL { ?neighbor rdfs:label ?label }
   OPTIONAL { ?edge_type vc:weight ?weight }
 } LIMIT 100`;
-      return vcFetch('/api/ontology/query', {
+      return vcFetch('/api/ontology/sparql', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify({ query: sparql }),
       });
     }
@@ -306,15 +349,42 @@ SELECT ?path_node ?step WHERE {
            vc:step ?step .
   }
 } ORDER BY ?step`;
-      return vcFetch('/api/ontology/query', {
+      return vcFetch('/api/ontology/sparql', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify({ query: sparql }),
       });
     }
 
+    case 'ontology_ask':
+      return retrieval.ask(args);
+
     default:
       return { error: 'unknown_tool', message: `Tool ${name} not found` };
+  }
+}
+
+// Bridge-start self-test (WS-1): prove the read path is actually live on boot
+// instead of fail-open-empty in silence (the bug this bridge shipped with).
+// Logs loudly on failure; never blocks startup (fail-open).
+async function selfTest() {
+  try {
+    const probe = await vcFetch('/api/ontology/sparql', {
+      method: 'POST', headers: authHeaders(),
+      body: JSON.stringify({ query: 'SELECT ?s WHERE { GRAPH <urn:ngm:graph:ontology:assert> { ?s a <http://www.w3.org/2002/07/owl#Class> } } LIMIT 1' }),
+    });
+    if (probe && probe.error) {
+      console.error(`[ontology-bridge] SELF-TEST FAILED (${probe.error}): read path is NOT live — ` +
+        `check VISIONCLAW_DEV_TOKEN / AGENTBOX_PUBKEY / endpoint. Augmentation will fail-open to empty.`);
+      return;
+    }
+    const n = (probe && probe.results && probe.results.bindings && probe.results.bindings.length) || 0;
+    if (!VC_DEV_TOKEN) {
+      console.error('[ontology-bridge] SELF-TEST WARN: no VISIONCLAW_DEV_TOKEN set; power_user reads will 401.');
+    }
+    console.error(`[ontology-bridge] self-test OK: authed SELECT returned ${n} row(s).`);
+  } catch (err) {
+    console.error(`[ontology-bridge] SELF-TEST ERROR: ${err && err.message}`);
   }
 }
 
@@ -339,3 +409,4 @@ server.setRequestHandler({ method: 'tools/call' }, async (request) => {
 const transport = new StdioServerTransport();
 await server.connect(transport);
 console.error(`[ontology-bridge] Connected to MCP, proxying to ${API_URL}`);
+selfTest(); // fire-and-forget; logs loudly if the read path is dead

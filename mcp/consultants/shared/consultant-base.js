@@ -81,6 +81,29 @@ const _CONSULTANT_PUBKEY = (() => {
 
 const DEFAULT_TIMEOUT_MS = 120_000;
 
+// ── Ontology augmentation seam (PULL-A, PRD-020 / ADR-112) ───────────────────
+// One edit reaches all 5 consultants. Default OFF (resolved choice #2): enabled
+// per-call via args.ontology_context===true, or globally via
+// CONSULT_ONTOLOGY_AUGMENT=1. Fail-open: a degraded ontology never blocks a
+// consult. The coordinator's context_excerpt is preserved whole; ontology
+// Turtle is prepended and bounded (CONSULT_ONTOLOGY_MAX_TOKENS, default 1500)
+// so it yields to the coordinator's curated context (consultant-base "keep small").
+let _ontoBrain = null;
+function ontoBrain() {
+  if (_ontoBrain) return _ontoBrain;
+  try {
+    const { createDefaultRetrieval } = require('../../servers/lib/ontology-retrieval.js');
+    _ontoBrain = createDefaultRetrieval();
+  } catch {
+    _ontoBrain = { ask: async () => ({ turtle: '', seed_iris: [], tokens_used: 0, degraded: true }) };
+  }
+  return _ontoBrain;
+}
+const CONSULT_ONTOLOGY_MAX_TOKENS = parseInt(process.env.CONSULT_ONTOLOGY_MAX_TOKENS || '1500', 10);
+function ontologyAugmentEnabled(args) {
+  return args.ontology_context === true || process.env.CONSULT_ONTOLOGY_AUGMENT === '1';
+}
+
 class BaseConsultant {
   /**
    * @param {object}   opts
@@ -159,6 +182,7 @@ class BaseConsultant {
           properties: {
             question:        { type: 'string', description: 'The question or task to put to the consultant.' },
             context_excerpt: { type: 'string', description: 'Curated context the coordinator wants the consultant to see. Keep this small — the coordinator picks what matters.' },
+            ontology_context: { type: 'boolean', description: 'When true, prepend budget-bounded VisionClaw ontology grounding (PRD-020 PULL-A). Fail-open; off by default.' },
             format:          { type: 'string', enum: ['markdown', 'plain', 'json'], description: 'Preferred response format. Default markdown.' },
             timeout_ms:      { type: 'number', description: 'Override the per-call timeout. Capped at 600000.' },
           },
@@ -192,12 +216,31 @@ class BaseConsultant {
     const t0 = Date.now();
     const timeout_ms = Math.min(args.timeout_ms || this.timeout_ms, 600_000);
 
+    // PULL-A: optionally ground the consult in the formal ontology. Fail-open,
+    // bounded, and preserves the coordinator's context_excerpt whole.
+    let context_excerpt = args.context_excerpt || '';
+    let ontology_meta = null;
+    if (ontologyAugmentEnabled(args)) {
+      try {
+        const r = await ontoBrain().ask({
+          query: args.question, model_tier: 'sonnet', mode: 'expand',
+          max_tokens: CONSULT_ONTOLOGY_MAX_TOKENS,
+        });
+        if (r && r.turtle) {
+          context_excerpt =
+            `Relevant ontology context (provenance: ${r.provenance}${r.truncated ? ', truncated' : ''}):\n` +
+            `${r.turtle}\n\n---\n\n${context_excerpt}`;
+          ontology_meta = { seed_iris: r.seed_iris, tokens_added: r.tokens_used, degraded: !!r.degraded };
+        }
+      } catch { /* fail-open: proceed ungrounded */ }
+    }
+
     let result;
     try {
       result = await this._withTimeout(
         this.callConsult({
           question:        args.question,
-          context_excerpt: args.context_excerpt || '',
+          context_excerpt: context_excerpt,
           format:          args.format || 'markdown',
         }),
         timeout_ms
@@ -241,7 +284,8 @@ class BaseConsultant {
       ok:           true,
       consultant:   this.name,
       question:     args.question,
-      context_size: (args.context_excerpt || '').length,
+      context_size: context_excerpt.length,
+      ontology:     ontology_meta,
       response_len: typeof result.response === 'string' ? result.response.length : 0,
       model:        envelope.model,
       tokens:       envelope.tokens,

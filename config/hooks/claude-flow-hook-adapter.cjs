@@ -81,6 +81,28 @@ function run(args, { signal = null, timeout = 6000 } = {}) {
   }
 }
 
+// PRD-020 WS-5 PUSH channel: after the claude-flow [INTELLIGENCE] forward, emit
+// a single synchronous, token-clamped [ONTOLOGY] breadcrumb on relevant turns.
+// Gated by ONTOLOGY_INJECT; no-ops until the WS-2 cache exists. Fail-open.
+function maybeInjectOntology(prompt) {
+  if (!process.env.ONTOLOGY_INJECT || !prompt) return;
+  try {
+    const path = require('path');
+    const candidates = [
+      process.env.ONTOLOGY_PUSH_MODULE,
+      path.join(__dirname, '../../mcp/servers/lib/ontology-push.js'),
+      '/opt/agentbox/mcp/servers/lib/ontology-push.js',
+    ].filter(Boolean);
+    let mod = null;
+    for (const p of candidates) { try { mod = require(p); break; } catch { /* try next */ } }
+    if (!mod) return;
+    const line = mod.getOntologyBreadcrumb(prompt);
+    if (line) process.stdout.write(line + '\n');
+  } catch {
+    /* hooks must never break the session */
+  }
+}
+
 function main() {
   const action = process.argv[2] || '';
   const payload = parsePayload(readStdin());
@@ -93,6 +115,7 @@ function main() {
   switch (action) {
     case 'route':
       if (prompt) run(['route', '--task', prompt], { signal: ROUTE_SIGNAL, timeout: 12000 });
+      maybeInjectOntology(prompt);
       break;
     case 'pre-edit':
       if (file) run(['pre-edit', '--file', file], { timeout: 5000 });
