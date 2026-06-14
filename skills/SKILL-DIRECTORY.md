@@ -1,6 +1,6 @@
 # Skill Directory -- Comprehensive Inventory and Decision Tree
 
-> **104 active skills** (3 new Phase 1 code-execution surfaces added 2026-05-21; tree-search-coder is Phase 2-3 scaffold, not counted as active). 18 formerly deprecated/archived skills removed (see table below for history).
+> **105 active skills** (`ontology-augment` added 2026-06-14 — consumption side of the PRD-020 ontology binding; 3 Phase 1 code-execution surfaces added 2026-05-21; tree-search-coder is Phase 2-3 scaffold, not counted as active). 18 formerly deprecated/archived skills removed (see table below for history).
 > Updated 2026-05-27. Reference this file from CLAUDE.md for intelligent routing.
 
 ---
@@ -244,6 +244,7 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 |-------|-----|----------------|----------------|
 | `ontology-core` | No | Logseq ontology parsing, OWL2 DL TTL export, WebVOWL compatibility | Creating new ontology schemas from Logseq data |
 | `ontology-enrich` | No | Validation, enrichment, TTL generation for existing ontology data | Enriching or validating existing ontology datasets |
+| `ontology-augment` | Yes (`ontology-bridge`) | **Consume** the formal KG at inference time — budget-bounded provenance-scoped subgraphs (`ontology_ask`), read-only SPARQL, neighbours/pathfind, governed writeback (PRD-020/ADR-112) | Grounding reasoning/claims in the ontology; "what does our KG say about X"; proposing a governed enrichment |
 
 ### Platform Management
 
@@ -737,6 +738,9 @@ Q3: Which domain?
     |
     +-- Ontology validation and enrichment
     |   --> ontology-enrich
+    |
+    +-- Ground reasoning in the formal KG / "what does our ontology say about X" / governed writeback
+    |   --> ontology-augment  (ontology_ask, read-only SPARQL, neighbours/pathfind; PRD-020)
     |
     +-- Full game development project (Godot/Unity/Unreal, with art/audio/QA teams)
     |   --> game-dev  (48-agent studio)
