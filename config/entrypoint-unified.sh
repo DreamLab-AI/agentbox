@@ -385,6 +385,21 @@ fi
 # /run/secrets, cert/key material, chown to uid 1000) happens above in this
 # root boot phase, BEFORE the drop to devuser. Supervised programs run as
 # devuser (user=devuser) and never re-acquire root.
+# Phase 5d — Rebuild the ontology PUSH-channel Class-Summary cache (PRD-020 WS-2).
+# ~/.claude-flow/data is ephemeral (wiped on every rebuild), so without this the
+# [ONTOLOGY] per-turn breadcrumb silently no-ops. Parses the logseq corpus →
+# RuVector-free local cache. Runs as devuser (so the cache is devuser-owned for
+# the hook), fail-open, never blocks boot. Set ONTOLOGY_ALIASES to a durable
+# {iri:[alias]} file to fold in the condensation-mesh synonyms.
+ONTO_PAGES="${ONTOLOGY_PAGES_DIR:-/home/devuser/workspace/logseq/mainKnowledgeGraph/pages}"
+ONTO_BUILDER="/opt/agentbox/mcp/servers/lib/ontology-index-build.js"
+if [ -d "$ONTO_PAGES" ] && [ -f "$ONTO_BUILDER" ]; then
+  echo "[5c/8] Refreshing ontology PUSH cache (WS-2)..."
+  runuser -u devuser -- node "$ONTO_BUILDER" >/dev/null 2>&1 \
+    && echo "[5c/8] ontology PUSH cache refreshed" \
+    || echo "[5c/8] ontology PUSH cache refresh skipped (non-fatal)"
+fi
+
 echo "[5b/8] Starting supervisord..."
 exec supervisord -c /etc/supervisord.conf -n
 
