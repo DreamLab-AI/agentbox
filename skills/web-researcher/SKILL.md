@@ -1,108 +1,198 @@
 ---
 name: web-researcher
 description: >
-  Multi-source web research via the web-researcher-mcp Go server. 8 MCP tools:
-  web_search, scrape_page, search_and_scrape, image_search, news_search,
-  academic_search (arXiv/PubMed/IEEE), patent_search (US/EP/WO/JP/CN/KR),
-  sequential_search (multi-step session-tracked investigation). Pluggable
-  search backends (Google PSE, Brave, Serper, SearXNG, SearchAPI) with
-  multi-provider routing and automatic fallback. 4-tier content extraction
-  (markdown -> stealth HTTP -> HTML parser -> headless browser). For JS-heavy
-  pages the headless tier is DISABLED in this deployment; agents delegate to
-  the `browser` skill (browsercontainer chrome-devtools-mcp sidecar) instead.
-version: 1.0.0
+  Multi-source web research via the web-researcher-mcp Go server (tracks upstream
+  v1.33.0) — you pick the search ENGINE and the trusted SOURCES, and every citation
+  is a real, checkable link. ~26 MCP tools: web/image/news/academic/patent/structured
+  search, search_and_scrape, sequential_search; domain search (clinical_search,
+  legal_search/CourtListener, econ_search/World Bank+FRED, filing_search/SEC EDGAR);
+  scrape_page (full PDF/DOCX/PPTX/YouTube/HN, not snippets); citation integrity
+  (verify_citation, audit_bibliography, citation_graph, archive_source/Wayback,
+  format_bibliography APA/MLA/BibTeX/RIS/CSL); a grounded `answer` that cites real
+  sources; research session memory + export. Search LENSES restrict results to
+  trusted domains (academic, clinical, legal, finance, government, journalism, devops,
+  docs). Pluggable backends (Google PSE/Brave/Serper/SearXNG/SearchAPI/Exa) with
+  failover. Use for reputation-attached research needing verifiable citations — the
+  open, auditable, private counterpart to perplexity-research (fast closed synthesis).
+  Headless scrape tier is DISABLED here → delegate JS-rendered pages to the `browser` sidecar.
+version: 1.33.0
 triggers:
   - /research
   - web search
   - academic search
   - patent search
+  - legal / clinical / SEC filing search
+  - verify citation
+  - format bibliography
   - scrape page
   - news search
   - multi-source research
 upstream: https://github.com/zoharbabin/web-researcher-mcp
+upstream_version: 1.33.0
 license: MIT
 ---
 
 # Web Researcher Skill
 
-Production-grade live-web research bridge. Provides search, multi-tier
-extraction, and domain lenses (programming, news, legal, medical) without
-ever invoking a local browser from inside this skill.
+Production-grade live-web research bridge: search across **the engine you choose**,
+narrow to **the sources you trust** (lenses), read the **full source** (not snippets),
+and get citations you can **verify** — never fabricated, never a closed pre-synthesized
+garden. Runs locally/private; never invokes a browser from inside this skill.
+
+## Which web-search skill? (read this first — avoids the common mix-up)
+
+| Need | Skill |
+|------|-------|
+| **Verifiable, reputation-attached research** — real citations, full sources, you control which domains are searched (lenses), private/local; client work, filings, publications, medical/legal/finance | **`web-researcher`** (this) |
+| **Fast synthesized answer** from a closed engine, casual lookups, Perplexity's sonar/agent surface + their academic/policy filters | **`perplexity-research`** |
+| **Multi-agent deep report** — fan-out + adversarial verification + cited synthesis (orchestrates searchers; can use either of the above as a backend) | **`deep-research`** |
+| Expand a single known URL | **`gemini-url-context`** ; YouTube/page summary → **`web-summary`** |
+| Interactive browser (login/click/JS render) | **`browser`** / **`playwright`** |
+
+One-liner: **perplexity-research = closed engine, synthesized answer; web-researcher = your engine + trusted lenses, real verifiable sources; deep-research = the harness over both.**
 
 ## When To Use
 
-- Multi-source research with citation aggregation
-- Academic search across arXiv, PubMed, IEEE, Nature, Springer
-- Patent search with CPC classification and office filters
-- News with freshness controls + source allow/deny
-- Combined search-and-scrape pipelines with quality scoring + dedup
-- Sequential / session-tracked investigations
-- Image search with size/colour/format filters
-- Scraping non-JS pages (PDF, DOCX, PPTX, YouTube transcripts included)
+- Research where your reputation is on the line — citations must be real and checkable.
+- Restrict search to trusted sources via **lenses** (PubMed/arXiv/SEC/.gov, not random blogs).
+- Read full articles — web pages, **PDF/DOCX/PPTX, YouTube transcripts, Hacker News** threads.
+- Academic work: real papers + DOIs (`academic_search`), citation neighborhoods (`citation_graph`).
+- Domain search: courts (`legal_search`), trials (`clinical_search`), macro/econ (`econ_search`), SEC (`filing_search`).
+- **Verify** a citation before relying on it (`verify_citation`) or audit a whole reference list (`audit_bibliography`); snapshot a source to Wayback (`archive_source`); export a bibliography (`format_bibliography`).
+- A direct, source-cited `answer` instead of a reading list; structured JSON extraction (`structured_search`).
+- Session-tracked multi-step digs (`sequential_search`) with recovery + export.
 
 ## When Not To Use
 
-- Single known URL summary -- use `gemini-url-context` or `web-summary`
-- UK-pricing / vendor lookup with structured deliverable -- use
-  `perplexity-research` (sonar-pro is tuned for that shape)
-- Interactive browser flows (login, click, fill form) -- use `browser`
-- WebGPU/WebGL rendering validation -- use `browser` or `chrome-cdp`
-- Deep multi-agent research with provenance sidecars -- use `deep-research`
-- Iterative metric-optimisation experiment loops -- use `autoresearch`
+- Quick casual lookup, no citing needed → `perplexity-research` or Claude built-in search.
+- Single known URL summary → `gemini-url-context` or `web-summary`.
+- Interactive browser flows (login, click, form-fill) → `browser` / `playwright`.
+- WebGPU/WebGL rendering validation → `browser` / `chrome-cdp`.
+- Multi-agent report with adversarial verification → `deep-research` (it can call this skill).
+- Iterative metric-optimisation experiment loops → `autoresearch`.
+- Grounding in OUR formal ontology/KG → `ontology-augment`.
 
 ## Connection
 
-This skill ships as an MCP stdio server registered as `web-researcher` in
-`skills/mcp.json`. The runtime resolves the binary from `$PATH` (Nix-baked
-when `[skills.research].web_researcher = true`, otherwise via
+MCP stdio server registered as `web-researcher` in `mcp/mcp.json`. Binary resolved from
+`$PATH` (Nix-baked when `[skills.research].web_researcher = true`, else
 `go install github.com/zoharbabin/web-researcher-mcp/cmd/web-researcher-mcp@latest`).
 
 ```bash
-# Manual registration (rarely needed -- auto-registered at boot):
+# Manual registration (auto-registered at boot):
 claude mcp add --scope user --transport stdio web-researcher -- web-researcher-mcp
 ```
 
+> **Version gap (read this):** this doc tracks upstream **v1.33.0**, but the **deployed
+> Nix binary is currently v1.2.2** (the original 8 tools: web/image/news/academic/patent/
+> sequential search + scrape_page + search_and_scrape). The newer tools below (domain
+> search, citation integrity, `answer`, session/memory) and the expanded lens set go live
+> only after bumping the `flake.nix` pin (`webResearcherMcpPkg`: `version = "1.33.0"`,
+> rev `v1.33.0` = commit `8ccf4c7e`, refresh `hash` + `vendorHash` via
+> `nix-prefetch-github zoharbabin web-researcher-mcp --rev v1.33.0` and the first build's
+> printed `vendorHash`) and rebuilding agentbox. Until then, **only the 8 v1.2.2 tools are
+> live** — run `tools/list` (Health Check) to confirm what the server actually exposes.
+
+## Tools (live set depends on configured providers — see notes)
+
+**Search & read**
+| Tool | What it does |
+|------|--------------|
+| `web_search` | Search the web; optionally restrict to trusted sources via a **lens** |
+| `search_and_scrape` | Search then read the best results, quality-scored + deduped |
+| `scrape_page` | Read any URL in full — pages, PDF/DOCX/PPTX, YouTube transcripts, HN (API); `mode:raw` for verbatim |
+| `image_search` | Images by size/type/colour/format |
+| `news_search` | Recent news with date controls + source filtering |
+| `structured_search` | Search + extract structured JSON per result (supply a schema) — needs an Exa-class provider |
+| `sequential_search` | Multi-step research that remembers prior findings |
+
+**Domain search**
+| Tool | Source |
+|------|--------|
+| `academic_search` | Real papers + DOIs (OpenAlex/Semantic Scholar/arXiv/PubMed/IEEE) |
+| `citation_graph` | Walk a paper's citing/cited neighborhood — needs a citation-capable provider |
+| `patent_search` | US/EP/WO/JP/CN/KR patent offices + classification |
+| `legal_search` | US court opinions/dockets via CourtListener |
+| `clinical_search` | ClinicalTrials.gov (discovery, not medical advice) |
+| `econ_search` | World Bank indicators (keyless) + FRED US macro series |
+| `filing_search` | SEC EDGAR filings + XBRL company facts — needs `EDGAR_CONTACT_EMAIL` |
+
+**Citation integrity & output**
+| Tool | What it does |
+|------|--------------|
+| `verify_citation` | Does a citation exist, match a real record, is it retracted/dead-link? Evidence, not a verdict |
+| `audit_bibliography` | Audit a whole CSL-JSON/RIS/BibTeX list/session — per-entry + corpus flags |
+| `verify_recommendation` | Check a recommended source before relying on it |
+| `archive_source` | Capture a fresh Wayback snapshot so a cited page stays verifiable (write tool) |
+| `format_bibliography` | APA / MLA / BibTeX / RIS / CSL-JSON (Zotero/EndNote/Mendeley-ready) |
+| `answer` | One synthesized answer **with real citations** (needs an answer-capable provider, e.g. Exa) |
+
+**Session / memory / collaboration** (some are opt-in, consent-gated by the operator)
+| Tool | What it does |
+|------|--------------|
+| `get_research_session` / `research_export` | Recover a session after context loss; export a provenance-tracked report (md/JSON) |
+| `memory_save` / `memory_recall` | Long-term research memory (opt-in) |
+| `workspace_contribute` / `workspace_read` | Shared team workspace (opt-in) |
+| `get_my_analytics` | Per-user usage/limits (opt-in) |
+
+`docs/TOOLS.md` upstream is the authoritative, CI-verified tool list + schemas.
+
+## Search Lenses (the differentiator)
+
+Lenses restrict results to a curated set of trusted domains for a field, instead of the
+whole web. Built-in lenses ship with the binary (catalog at `lenses://catalog`):
+`academic`, `academic-extended`, `clinical`, `legal`, `finance`, `government`,
+`journalism`, `devops`, `docs` (+ custom JSON lenses). Reference by short name:
+
+```javascript
+web_search({ query: "ML-KEM constant-time implementations", lens: "academic", count: 8 })
+web_search({ query: "FDA breakthrough designation 2026", lens: "clinical" })
+```
+
+## MCP Resources & Prompts
+
+Live status/diagnostics the agent can read: `stats://tools`, `stats://sessions`,
+`stats://rate-limits`, `stats://providers`, `lenses://catalog`,
+`diagnostics://errors/recent`, `diagnostics://health`, and a large-payload artifact
+store `research://artifact/{id}`. Ready-made research prompt templates appear as `/` commands.
+
 ## Browser Delegation (Critical)
 
-`web-researcher-mcp`'s tier-4 scrape strategy (`go-rod` + stealth) would
-normally auto-download and run its own Chromium per pod. In agentbox this
-is **disabled**:
+`web-researcher-mcp`'s tier-4 scrape (`go-rod` + stealth) would auto-download its own
+Chromium per pod. In agentbox this is **disabled** — a second Chromium duplicates the
+`browsercontainer` sidecar (Chrome Beta 149+, NVIDIA Vulkan, VNC :5903, MCP SSE :8931):
 
 ```
 SCRAPER_DISABLE_BROWSER=true
 CHROME_PATH=                       # empty -> tier 4 hard-fails fast
 ```
 
-Rationale: a second Chromium pool inside the agentbox image duplicates the
-`browsercontainer` sidecar (Chrome Beta 149+, NVIDIA Vulkan, VNC :5903, MCP
-SSE on 8931). When tiers 1-3 (markdown negotiation, stealth HTTP, HTML
-parser) cannot extract a JS-rendered page, the agent MUST switch to the
-`browser` skill rather than retry inside this MCP. Pseudo-flow:
+When tiers 1–3 (markdown negotiation, stealth HTTP, HTML parser) can't extract a
+JS-rendered page (`NEEDS_BROWSER`), switch to the `browser` skill — do **not** retry inside this MCP:
 
 ```
-1. scrape_page(url) on web-researcher
-   -> tiers 1-3 succeed                    => done
-   -> all tiers fail with NEEDS_BROWSER    => switch skill
+1. scrape_page(url)  -> tiers 1-3 ok => done ; all fail => NEEDS_BROWSER
 2. browser_navigate({url}) on browser-gpu
 3. browser_snapshot() / browser_evaluate(...)
 ```
 
-This keeps a single Chrome surface, a single GPU allocation, and a single
-audit trail for browser activity.
+One Chrome surface, one GPU allocation, one audit trail.
 
 ## Required Configuration
 
-Search-provider keys are read from session env. Set at least one provider:
+Set at least one search provider (read from session env):
 
 ```
-GOOGLE_CUSTOM_SEARCH_API_KEY   GOOGLE_CUSTOM_SEARCH_ID   # PSE (default)
-BRAVE_API_KEY                                            # Brave
-SERPER_API_KEY                                           # Serper.dev
-SEARCHAPI_API_KEY                                        # SearchAPI.io
-SEARXNG_URL                                              # self-hosted
+GOOGLE_CUSTOM_SEARCH_API_KEY  GOOGLE_CUSTOM_SEARCH_ID   # PSE (default)
+BRAVE_API_KEY                                           # Brave
+SERPER_API_KEY                                          # Serper.dev
+SEARCHAPI_API_KEY                                       # SearchAPI.io
+EXA_API_KEY                                             # Exa (enables `answer` + `structured_search`)
+SEARXNG_URL                                             # self-hosted
+EDGAR_CONTACT_EMAIL                                     # enables filing_search (SEC EDGAR)
 ```
 
-Optional multi-provider routing with circuit breakers:
+Multi-provider routing with per-provider circuit breakers + failover:
 
 ```bash
 export SEARCH_ROUTING=brave,google,serper
@@ -110,75 +200,28 @@ export SEARCH_ROUTING=brave,google,serper
 export SEARCH_ROUTING='{"web":"brave,google","news":"brave,serper","images":"google,brave","default":"brave,google"}'
 ```
 
-## Tools
-
-| Tool | Returns | Notes |
-|------|---------|-------|
-| `web_search` | Ranked results | Supports lens (programming/news/legal/medical/...) |
-| `scrape_page` | Cleaned markdown + metadata | 3-tier (browser tier off); handles PDF/DOCX/PPTX/YouTube |
-| `search_and_scrape` | Search + extraction with quality scoring + dedup | |
-| `image_search` | Image hits with filters | size/type/colour/format |
-| `news_search` | Freshness + source filtering | |
-| `academic_search` | Scholarly papers | arXiv/PubMed/IEEE/Nature/Springer |
-| `patent_search` | Patents | CPC classification, office filter US/EP/WO/JP/CN/KR |
-| `sequential_search` | Session-tracked multi-step research | per-tenant session memory |
-
-## Quick Start
-
-```javascript
-// General search with lens
-web_search({ query: "rust async runtime comparison 2026", lens: "programming", count: 8 })
-
-// Scrape a single URL (HTML / markdown / PDF / DOCX / PPTX / YouTube)
-scrape_page({ url: "https://arxiv.org/abs/2401.12345", format: "markdown" })
-
-// Combined pipeline
-search_and_scrape({ query: "post-quantum signature standards NIST 2026", top_k: 5 })
-
-// Multi-step session
-sequential_search({ session_id: "pqc-review", step: "1", query: "ML-KEM benchmark CPU" })
-sequential_search({ session_id: "pqc-review", step: "2", query: "ML-KEM constant-time impls" })
-```
-
-## Lenses
-
-JSON lens files under `lenses/` in the upstream repo bias `site:` operators
-toward a domain. Ship with the binary; reference by short name:
-
-| Lens | Focuses on |
-|------|------------|
-| `programming` | GitHub, StackOverflow, dev.to, MDN, language docs |
-| `news` | Reuters, AP, BBC, FT, NYT, Guardian |
-| `legal` | EU Lex, Westlaw, legal blogs, .gov |
-| `medical` | PubMed, NIH, Cochrane, WHO |
-
-## Caching, Rate Limits, Audit
-
-The server has built-in hybrid cache (memory + disk), three-tier rate
-limiting, circuit breakers per provider, Prometheus metrics, and structured
-audit logging. Defaults are sane for an agent session; tune via env if
-running at high QPS (see `docs/DEPLOYMENT.md` upstream).
-
 ## Composition Patterns
 
 | Goal | Recipe |
 |------|--------|
-| Deep cited report | `web-researcher` (search) -> `deep-research` (parallel agents + provenance) |
-| UK pricing / SKUs  | `perplexity-research` (better at structured deliverables) |
-| Single known URL  | `gemini-url-context` or `web-summary` |
-| JS-rendered SPA   | `web-researcher.scrape_page` -> fallback to `browser` skill |
-| Session-tracked iterative dig | `sequential_search` with persistent `session_id` |
+| Deep cited report | `web-researcher` (search/verify) → `deep-research` (parallel agents + adversarial verify) |
+| Trustworthy academic claim | `academic_search` → `verify_citation` → `citation_graph` → `format_bibliography` |
+| Keep a cited source alive | `archive_source` (Wayback) before publishing |
+| Fast casual answer | `perplexity-research` instead |
+| Single known URL | `gemini-url-context` / `web-summary` |
+| JS-rendered SPA | `scrape_page` → fallback to `browser` skill |
+| Add provenance sidecars to a deliverable | pair with `provenance-tracking` |
 
 ## Health Check
 
 ```bash
-# Server reports health on stdio init; for a quick sanity test:
 echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | web-researcher-mcp 2>/dev/null | head -1
 ```
 
 ## References
 
-- Upstream: https://github.com/zoharbabin/web-researcher-mcp
-- Deployment guide: `docs/DEPLOYMENT.md` upstream
-- Related skills: `browser`, `perplexity-research`, `deep-research`,
-  `autoresearch`, `gemini-url-context`, `web-summary`
+- Upstream (v1.33.0): https://github.com/zoharbabin/web-researcher-mcp
+- Authoritative tools: `docs/TOOLS.md` ; deployment: `docs/DEPLOYMENT.md` (upstream)
+- Related skills: `perplexity-research` (fast closed synthesis), `deep-research`
+  (multi-agent harness), `browser`, `gemini-url-context`, `web-summary`,
+  `provenance-tracking`, `autoresearch`, `ontology-augment`

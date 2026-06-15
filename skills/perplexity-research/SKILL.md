@@ -15,6 +15,19 @@ description: "Three-API Perplexity client: Search API (/search) for structured w
 
 Three-API Perplexity client covering the full platform surface (May 2025 contracts).
 
+## Which web-search skill? (perplexity vs web-researcher vs deep-research)
+
+Perplexity is a **closed engine that returns a synthesized answer** — fast, opinionated,
+great for casual lookups and its tuned academic/policy filters, but you don't control which
+sites are searched and citations aren't independently verifiable.
+
+- **`perplexity-research`** (this) — quick synthesized answers from Perplexity's engine.
+- **`web-researcher`** — you pick the engine + restrict to trusted-domain **lenses**, read
+  full sources, and **verify** every citation (`verify_citation`, `citation_graph`,
+  `audit_bibliography`). Use when your reputation is attached to the result.
+- **`deep-research`** — multi-agent harness (fan-out + adversarial verify + cited report)
+  that can call either of the above as its search backend.
+
 ## When To Use
 
 - Live web search with structured results (title, URL, snippet, dates)

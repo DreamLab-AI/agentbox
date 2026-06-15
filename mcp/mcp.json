@@ -110,9 +110,9 @@
         "SCRAPER_DISABLE_BROWSER": "true",
         "CHROME_PATH": ""
       },
-      "description": "Multi-source web research (web-researcher-mcp): 8 MCP tools -- web/image/news/academic/patent/sequential search + scrape_page + search_and_scrape. 4-tier extraction (markdown/stealth-HTTP/HTML); headless-browser tier DISABLED -- delegate JS-rendered pages to `browser-gpu` sidecar. Pluggable backends (Google PSE/Brave/Serper/SearXNG/SearchAPI) with multi-provider routing + per-provider circuit breakers.",
+      "description": "Multi-source web research (web-researcher-mcp v1.33.0): ~26 tools -- web/image/news/academic/patent/structured search, search_and_scrape, sequential_search; domain search (clinical/legal-CourtListener/econ-WorldBank+FRED/filing-SEC EDGAR); scrape_page (full PDF/DOCX/PPTX/YouTube/HN); citation integrity (verify_citation, audit_bibliography, citation_graph, archive_source/Wayback, format_bibliography); grounded `answer` with real citations; research session memory+export. Search LENSES restrict to trusted domains (academic/clinical/legal/finance/government/journalism/devops/docs). 4-tier extraction (markdown/stealth-HTTP/HTML); headless tier DISABLED -- delegate JS pages to `browser-gpu` sidecar. Backends Google PSE/Brave/Serper/SearXNG/SearchAPI/Exa with routing+circuit breakers. The verifiable, you-pick-the-engine counterpart to perplexity-research (fast closed synthesis). NOTE: new tools require the deployed binary >= v1.33.0.",
       "protocol": "stdio",
-      "version": "1.0.0",
+      "version": "1.33.0",
       "upstream": "https://github.com/zoharbabin/web-researcher-mcp"
     },
     "comfyui": {

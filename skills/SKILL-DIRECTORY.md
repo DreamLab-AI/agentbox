@@ -141,8 +141,8 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
-| `perplexity-research` | No | Three-API client: Search API (/search) structured results with domain/date filters, Agent API (/v1/agent) multi-step deep research with reasoning, Chat Completions (legacy sonar). Academic domain presets, UK ecology/BNG presets | Live web research, academic citation discovery, UK ecology/policy lookups, deep multi-step investigations, market research |
-| `web-researcher` | Yes | 8 MCP tools: web/image/news/**academic** (arXiv/PubMed/IEEE)/**patent** (US/EP/WO/JP/CN/KR)/sequential search + 4-tier scrape (markdown/stealth/HTML; browser tier OFF -- delegates to `browser` sidecar). Pluggable backends (Google PSE/Brave/Serper/SearXNG/SearchAPI) with multi-provider routing | Multi-source research with citations, academic literature search, patent research, scraping PDFs/DOCX/PPTX/YouTube transcripts |
+| `perplexity-research` | No | **Closed engine, synthesized answer.** Three-API client: Search API (/search) structured results with domain/date filters, Agent API (/v1/agent) multi-step deep research, Chat Completions (sonar). Academic/UK-ecology presets | **Fast** live web research + synthesized answers where you don't need to independently verify sources; academic/policy lookups, market research |
+| `web-researcher` | Yes | **You pick the engine + trusted-domain LENSES; real, verifiable citations.** v1.33.0, ~26 tools: web/image/news/academic/patent/structured search, search_and_scrape, sequential; domain search (clinical/legal-CourtListener/econ-WorldBank+FRED/filing-SEC EDGAR); full scrape (PDF/DOCX/PPTX/YouTube/HN); **citation integrity** (verify_citation, audit_bibliography, citation_graph, archive_source/Wayback, format_bibliography); grounded `answer`; session memory+export. Backends Google PSE/Brave/Serper/SearXNG/SearchAPI/Exa; browser tier OFF → delegates to `browser` sidecar | **Reputation-attached** research needing verifiable citations: client work, filings, publications, legal/medical/finance; restrict to trusted sources via lenses; verify/audit citations |
 | `gemini-url-context` | Yes | Gemini 2.5 Flash URL expansion, up to 20 URLs per request, grounding metadata | Analysing or summarising specific known URLs |
 | `web-summary` | Yes | URL summarisation, YouTube transcript extraction, Logseq/Obsidian topic links | Summarising articles, YouTube videos, generating note links |
 | `notebooklm` | Yes | Google NotebookLM SDK: notebooks, sources, chat, audio/video/slides/quiz/report generation | Research automation, podcast generation, study material creation, knowledge management |
@@ -436,8 +436,15 @@ Q3: What coordination pattern?
 ```
 Q3: What do you need?
     |
-    +-- Live web search with citations
+    +-- Fast synthesized answer, casual lookup (closed engine, no need to verify sources)
     |   --> perplexity-research
+    |
+    +-- Verifiable, reputation-attached research: real citations, trusted-domain lenses,
+    |   full-source read, verify_citation/citation_graph; academic/legal/clinical/SEC/patent
+    |   --> web-researcher  (v1.33.0; you pick the engine + sources)
+    |
+    +-- Multi-agent deep report: fan-out + adversarial verification + cited synthesis
+    |   --> deep-research  (orchestrates perplexity-research / web-researcher as backends)
     |
     +-- Analyse/summarise specific URLs (up to 20)
     |   --> gemini-url-context
