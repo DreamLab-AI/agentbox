@@ -549,20 +549,24 @@
         #   first build will print the correct vendorHash to substitute.
         webResearcherMcpPkg = pkgs.buildGoModule rec {
           pname   = "web-researcher-mcp";
-          version = "1.2.2";  # bump together with hashes below
+          # Bumped 1.2.2 -> 1.33.0 (tag v1.33.0 = commit 8ccf4c7e). HASHES BELOW ARE
+          # PLACEHOLDERS (lib.fakeHash): the first build fails fast and prints the real
+          # `hash`, then (after pasting it) the real `vendorHash` — paste both and rebuild.
+          # Or precompute: nix-prefetch-github zoharbabin web-researcher-mcp --rev v1.33.0
+          version = "1.33.0";  # bump together with hashes below
           src = pkgs.fetchFromGitHub {
             owner = "zoharbabin";
             repo  = "web-researcher-mcp";
             rev   = "v${version}";
-            hash  = "sha256-YyjlFZb4EiBnUz6Wz1CK6EHQVcpqPRstZDrahDPdeyU=";
+            hash  = lib.fakeHash;  # TODO: replace with real hash printed by first build
           };
-          vendorHash = "sha256-GqYFGTVGLoQAD6BC/vvOeMSrxaOPEfuvdCbYLvc6y7k="; # refreshed 2026-05-21
+          vendorHash = lib.fakeHash;  # TODO: replace with real vendorHash printed by build
           subPackages = [ "cmd/web-researcher-mcp" ];
           # Strip the auto-Chromium download path — we never use tier 4.
           ldflags = [ "-s" "-w" ];
           doCheck = false;
           meta = with lib; {
-            description = "MCP server: 8 web research tools, 4-tier scrape (browser tier disabled here)";
+            description = "MCP server: ~26 web research tools (search incl. domain/clinical/legal/econ/SEC, citation integrity, grounded answer, lenses), 4-tier scrape (browser tier disabled here)";
             homepage    = "https://github.com/zoharbabin/web-researcher-mcp";
             license     = licenses.mit;
             mainProgram = "web-researcher-mcp";
