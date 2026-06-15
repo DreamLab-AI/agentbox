@@ -558,9 +558,9 @@
             owner = "zoharbabin";
             repo  = "web-researcher-mcp";
             rev   = "v${version}";
-            hash  = lib.fakeHash;  # TODO: replace with real hash printed by first build
+            hash  = "sha256-JFlstEiWHMFEJLxE91LyjpFS7A4ZlASzwL4BsoKfL7s=";
           };
-          vendorHash = lib.fakeHash;  # TODO: replace with real vendorHash printed by build
+          vendorHash = "sha256-bNWVQdElw3b2dobWAAgz9eoxv99n9exnIGMwel5vtS0=";
           subPackages = [ "cmd/web-researcher-mcp" ];
           # Strip the auto-Chromium download path — we never use tier 4.
           ldflags = [ "-s" "-w" ];
