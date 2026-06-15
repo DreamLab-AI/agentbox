@@ -53,9 +53,38 @@ describe('Surface encoders', () => {
     expect(r.document.validFrom).toBeTruthy();
   });
 
-  test('S4 DID — Document with services', async () => {
+  test('S4 DID — canonical did-nostr CG single Multikey form', async () => {
+    // The DID body is the 32-byte x-only hex; the emitter consumes that
+    // (not a compressed-key input) so publicKeyMultibase round-trips (ADR-033 I2).
+    const xOnly = AGBX_DID.slice('did:nostr:'.length);
+    const r = await surfaces.S4.encode({ did: AGBX_DID }, { agentDid: AGBX_DID });
+    const d = r.document;
+    expect(d['@context']).toEqual(['https://w3id.org/did', 'https://w3id.org/nostr/context']);
+    expect(d.id).toBe(AGBX_DID);
+    expect(d.type).toBe('DIDNostr');
+    expect(d.verificationMethod).toHaveLength(1);
+    const vm = d.verificationMethod[0];
+    expect(vm.id).toBe(`${AGBX_DID}#key1`);
+    expect(vm.type).toBe('Multikey');
+    expect(vm.controller).toBe(AGBX_DID);
+    // fe70102 + 64 hex; the `02` parity byte is load-bearing multicodec payload.
+    expect(vm.publicKeyMultibase).toBe(`fe70102${xOnly}`);
+    expect(vm.publicKeyMultibase).toMatch(/^fe70102[0-9a-f]{64}$/);
+    expect(vm.publicKeyMultibase).toHaveLength(71);
+    // I2 round-trip: multibase body == DID body.
+    expect(vm.publicKeyMultibase.slice(7)).toBe(d.id.slice('did:nostr:'.length));
+    // The 2019 suite / publicKeyHex shape is superseded — must not reappear.
+    expect(vm.publicKeyHex).toBeUndefined();
+    expect(vm.type).not.toBe('SchnorrSecp256k1VerificationKey2019');
+    expect(d.authentication).toEqual(['#key1']);
+    expect(d.assertionMethod).toEqual(['#key1']);
+    // Canonical reference output is the empty service array.
+    expect(d.service).toEqual([]);
+  });
+
+  test('S4 DID — service endpoints are an opt-in agentbox extension', async () => {
     const r = await surfaces.S4.encode(
-      { did: AGBX_DID, pubkeyHex: '02'.repeat(33) },
+      { did: AGBX_DID },
       {
         manifest: {
           integrations: { solid_pod_rs: { base_url: 'http://127.0.0.1:8484' } },
@@ -65,9 +94,14 @@ describe('Surface encoders', () => {
         agentDid: AGBX_DID,
       },
     );
-    expect(r.document.id).toBe(AGBX_DID);
-    expect(r.document.service.find((s) => s.type === 'SolidPod')).toBeTruthy();
+    expect(r.document.service.find((s) => s.type === 'SolidStorage')).toBeTruthy();
     expect(r.document.service.find((s) => s.type === 'NostrRelay')).toBeTruthy();
+  });
+
+  test('S4 DID — rejects a non-lowercase / wrong-length x-only pubkey', async () => {
+    await expect(
+      surfaces.S4.encode({ did: AGBX_DID, xOnlyHex: 'XYZ' }, { agentDid: AGBX_DID }),
+    ).rejects.toThrow(/64 lowercase hex/);
   });
 
   test('S5 provenance — Activity', async () => {

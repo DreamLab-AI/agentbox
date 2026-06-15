@@ -2,6 +2,7 @@
 import json
 import os
 import pathlib
+import subprocess
 import time
 import tomllib
 from ecdsa import SECP256k1, SigningKey
@@ -182,6 +183,192 @@ def ensure_identity(agent_id, identity_root):
     return identity
 
 
+# did-nostr Multikey: f(base16-lower) ‖ e701(varint secp256k1-pub) ‖ 02(SEC1
+# compressed even-y prefix) ‖ x-only hex. The `02` is load-bearing multicodec
+# payload, not a separator — BIP-340 lift_x always yields even-y so it is
+# invariantly `02`. publicKeyMultibase is a fixed 71 chars and round-trips to
+# the identical key (ADR-033 I2). No key bytes change.
+MULTIKEY_PREFIX = "fe70102"
+
+
+def build_did_document(identity, also_known_as=None):
+    """Build the canonical did-nostr CG single Multikey DID document.
+
+    Ground truth: melvincarvalho/create-agent index.js,
+    nostrcg.github.io/did-nostr. Supersedes the ADR-074 D2 2019 suite shape
+    (ADR-033); ADR-074 D1 (x-only hex = canonical identity) stays.
+    """
+    x_only = identity["x_only_pubkey_hex"].lower()
+    did = f"did:nostr:{x_only}"
+    doc = {
+        "@context": ["https://w3id.org/did", "https://w3id.org/nostr/context"],
+        "id": did,
+        "type": "DIDNostr",
+        "verificationMethod": [
+            {
+                "id": f"{did}#key1",
+                "type": "Multikey",
+                "controller": did,
+                "publicKeyMultibase": f"{MULTIKEY_PREFIX}{x_only}",
+            }
+        ],
+        "authentication": ["#key1"],
+        "assertionMethod": ["#key1"],
+        # Canonical create-agent / did-nostr CG reference form is service: [].
+        # alsoKnownAs (pod profile cross-reference) is an agentbox extension.
+        "service": [],
+    }
+    if also_known_as:
+        doc["alsoKnownAs"] = also_known_as
+    return doc
+
+
+def _git(repo_root, *args, check=True, capture=False):
+    """Thin git wrapper scoped to a repo. Returns stdout (stripped) when
+    capture=True, else None. Raises on non-zero only when check=True."""
+    cmd = ["git", "-C", str(repo_root), *args]
+    if capture:
+        out = subprocess.run(
+            cmd, check=check, stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL, text=True,
+        )
+        return (out.stdout or "").strip()
+    subprocess.run(
+        cmd, check=check, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    )
+    return None
+
+
+def _ensure_pod_git(repo_root, identity):
+    """Initialise the per-user pod as a full git repo if it is not one already
+    (Melvin's create-agent layout: the pod IS a git repo). Idempotent. Sets a
+    deterministic committer identity so commit SHAs are reproducible enough for
+    the gitmark/blocktrails trail. Returns True if the repo is usable.
+    """
+    repo_root = pathlib.Path(repo_root)
+    repo_root.mkdir(parents=True, exist_ok=True)
+    try:
+        if not (repo_root / ".git").exists():
+            _git(repo_root, "init", "-q")
+        # Repo-scoped committer identity (does not touch global config). The
+        # agent commits as its own did:nostr — no human identity leaks in.
+        did = f"did:nostr:{identity['x_only_pubkey_hex']}"
+        _git(repo_root, "config", "user.name", identity["agent_id"], check=False)
+        _git(repo_root, "config", "user.email", f"{did}@agentbox.local", check=False)
+        return True
+    except (OSError, subprocess.CalledProcessError):
+        return False
+
+
+def build_gitmark(identity, repo_root, genesis_sha, package="agentbox-pod"):
+    """Canonical gitmark envelope — the 5-key create-agent ground-truth form
+    (ADR-033 build-out note / ADR-124 §5). The verbatim ground-truth gitmark is
+    exactly {@id, genesis, nick, package, repository}; @context/@type/commit/
+    parent are NOT in the file — parent-linkage lives in blocktrails.json
+    states[]/txo[]. @id is gitmark:<genesis-sha>:<vout=0>.
+    """
+    return {
+        "@id": f"gitmark:{genesis_sha}:0",
+        "genesis": genesis_sha,
+        "nick": identity["agent_id"],
+        "package": package,
+        "repository": f"did:nostr:{identity['x_only_pubkey_hex']}",
+    }
+
+
+def build_blocktrail(genesis_sha, states, txo=None):
+    """Reconstructed Blocktrail (webcontracts.org reference shape; NOT lifted
+    from a fetchable create-agent artefact). profile=gitmark, BIP-341 single-
+    use-seal chain. states[] = REAL pod commit SHAs; txo[] = the UTXO/seal
+    chain (empty until an L1 single-use-seal is opened — honest-or-caught L0
+    until then, per ADR-124 trust model)."""
+    return {
+        "@type": "Blocktrail",
+        "profile": "gitmark",
+        "genesis": genesis_sha,
+        "states": list(states),
+        "txo": list(txo or []),
+    }
+
+
+def wire_pod_contract_substrate(identity, repo_root):
+    """ADR-124 build-out: anchor the 4-layer web-contract (reducer/state/ledger/
+    trail) onto the REAL per-user pod git. Deploy ritual on the live surface:
+    write agent.did.json + gitmark.json + blocktrails.json -> commit -> record
+    the real commit SHA in blocktrails states[]. No stub: states[] holds actual
+    pod commit SHAs.
+
+    Honest-or-caught (L0): the trail tip is a real git commit, not yet a
+    confirmed tx. The single-use-seal txo[] upgrade seam to trustless (RGB/DLC)
+    is reserved but empty here (ADR-124 trust model). Changes no key bytes
+    (ADR-033 I1); the did:nostr identity string is untouched.
+    """
+    repo_root = pathlib.Path(repo_root)
+    # 1. edit: place the canonical Multikey DID doc + key at the pod-git root.
+    write_json(repo_root / "agent.did.json", build_did_document(identity))
+    try:
+        _git(repo_root, "config", "nostr.privkey", identity["private_key_hex"])
+    except (OSError, subprocess.CalledProcessError):
+        pass  # non-fatal; identity.env remains the canonical key source.
+
+    # 2. genesis commit: stage agent.did.json so the trail has a real anchor.
+    try:
+        _git(repo_root, "add", "agent.did.json")
+        # Only commit if there is something staged (idempotent re-runs).
+        staged = _git(repo_root, "diff", "--cached", "--name-only",
+                      capture=True, check=False)
+        if staged:
+            _git(repo_root, "commit", "-q", "-m",
+                 "chore(identity): publish did:nostr Multikey doc (ADR-033)")
+        genesis_sha = _git(repo_root, "rev-parse", "HEAD", capture=True)
+    except (OSError, subprocess.CalledProcessError):
+        return  # no usable HEAD — leave identity.env as the source of truth.
+    if not genesis_sha:
+        return
+
+    # 3. git-mark: write gitmark.json (5-key) + blocktrails.json (states[] = the
+    #    genesis commit SHA, a REAL pod commit), then commit them. The follow-up
+    #    commit SHA is appended to states[] so the trail tip is the live HEAD.
+    write_json(repo_root / "gitmark.json", build_gitmark(identity, repo_root, genesis_sha))
+    write_json(repo_root / "blocktrails.json",
+               build_blocktrail(genesis_sha, states=[genesis_sha]))
+    try:
+        _git(repo_root, "add", "gitmark.json", "blocktrails.json")
+        staged = _git(repo_root, "diff", "--cached", "--name-only",
+                      capture=True, check=False)
+        if staged:
+            _git(repo_root, "commit", "-q", "-m",
+                 "chore(contract): anchor gitmark + blocktrails (ADR-124)")
+        tip_sha = _git(repo_root, "rev-parse", "HEAD", capture=True)
+        if tip_sha and tip_sha != genesis_sha:
+            # Advance the trail tip to the real contract-anchor commit SHA.
+            write_json(repo_root / "blocktrails.json",
+                       build_blocktrail(genesis_sha, states=[genesis_sha, tip_sha]))
+            _git(repo_root, "add", "blocktrails.json")
+            _git(repo_root, "commit", "-q", "-m",
+                 "chore(contract): advance blocktrails tip to anchor SHA (ADR-124)")
+    except (OSError, subprocess.CalledProcessError):
+        pass  # contract anchoring is best-effort; identity write already landed.
+
+
+def write_agent_repo_identity(identity, repo_root):
+    """DreamLab convention (inspired by create-agent's key/document separation,
+    NOT create-agent's layout — create-agent takes --privkey on the CLI and
+    writes the DID doc to stdout; it neither sets git config nor writes a
+    repo-root DID file). Greenfield/additive to identity.env; changes no key
+    bytes (ADR-033 I1).
+
+    The pod IS a full git repo (Melvin's create-agent layout). This initialises
+    it if needed, writes agent.did.json (the Multikey DID document) into the
+    repo root, sets `git config nostr.privkey <hex>`, and wires the ADR-124
+    gitmark/blocktrails contract substrate onto the live pod git with REAL
+    commit SHAs in blocktrails states[].
+    """
+    if not _ensure_pod_git(repo_root, identity):
+        return  # git unavailable — identity.env remains the source of truth.
+    wire_pod_contract_substrate(identity, repo_root)
+
+
 def ensure_acl(pod_root, identity):
     pod_dir = pod_root / identity["npub"]
     for relative in [
@@ -222,36 +409,15 @@ def ensure_acl(pod_root, identity):
             "alsoKnownAs": [did],
         },
     )
-    # Tier 1 + Tier 3 DID document — consumed by solid-pod-rs's did-nostr
-    # resolver at GET /did:nostr:<hex-pubkey>. alsoKnownAs cross-references
-    # the pod profile URI so downstream clients can traverse in either direction.
-    did_doc = {
-        "@context": [
-            "https://www.w3.org/ns/did/v1",
-            "https://w3id.org/security/suites/secp256k1-2019/v1",
-        ],
-        "id": did,
-        "verificationMethod": [
-            # ADR-074 D1 + ADR-077 P3 + V3 C3 finding: cross-system DID
-            # canonicalisation requires the SchnorrSecp256k1VerificationKey2019
-            # suite identifier (Schnorr ECDSA Signature 2019) — this is the
-            # only published W3C suite for secp256k1 Schnorr verification keys.
-            # SchnorrSecp256k1VerificationKey2022 was a spec-drift fabrication.
-            # The publicKeyHex carries the BIP-340 x-only (32-byte) form so
-            # downstream verifiers compute the same identity hash.
-            {
-                "id": f"{did}#key-0",
-                "type": "SchnorrSecp256k1VerificationKey2019",
-                "controller": did,
-                "publicKeyHex": identity["x_only_pubkey_hex"],
-            }
-        ],
-        "authentication": [f"{did}#key-0"],
-        "assertionMethod":  [f"{did}#key-0"],
-        "alsoKnownAs": [
+    # DID document — consumed by solid-pod-rs's did-nostr resolver at
+    # GET /did:nostr:<hex-pubkey>. alsoKnownAs cross-references the pod profile
+    # URI so downstream clients can traverse in either direction.
+    did_doc = build_did_document(
+        identity,
+        also_known_as=[
             f"http://localhost:{os.getenv('SOLID_POD_PORT', '8484')}/pods/{identity['npub']}/profile.json"
         ],
-    }
+    )
     write_json(pod_dir / "did-nostr.json", did_doc)
 
 
@@ -301,6 +467,17 @@ def main():
     identity = ensure_identity(agent_id, identity_root)
     ensure_acl(pod_root, identity)
     write_runtime_env(identity, run_root)
+
+    # DreamLab convention (Melvin's create-agent layout): the PER-USER POD is a
+    # full git repo, and the Multikey DID document (agent.did.json) + the signing
+    # key (`git config nostr.privkey`) live at the POD-GIT ROOT. The pod dir is
+    # pod_root/<npub> (the same dir ensure_acl scaffolds). It is git-init'd if
+    # needed and the ADR-124 gitmark/blocktrails contract substrate is anchored
+    # onto it with real commit SHAs. An explicit AGENTBOX_AGENT_REPO_ROOT
+    # override is honoured for non-pod deployments. Additive to identity.env;
+    # no key bytes change (ADR-033 I1).
+    repo_root = os.getenv("AGENTBOX_AGENT_REPO_ROOT") or str(pod_root / identity["npub"])
+    write_agent_repo_identity(identity, repo_root)
 
 
 if __name__ == "__main__":

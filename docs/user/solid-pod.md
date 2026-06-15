@@ -146,25 +146,36 @@ curl -s http://localhost:9090/health/pods | jq
 
 ## did:nostr — the identity loop
 
-After the Sprint 6 absorption, the pod serves a Tier 1 / Tier 3 DID document
-at `GET /did:nostr:<your-npub>`:
+After the Sprint 6 absorption, the pod serves a DID document at
+`GET /did:nostr:<hex-pubkey>` in the did-nostr Community Group single
+`Multikey` form (ADR-033, supersedes ADR-074 D2):
 
 ```sh
-curl -s http://127.0.0.1:8484/did:nostr:npub1q…abcd | jq
+curl -s http://127.0.0.1:8484/did:nostr:<hex> | jq
 # {
-#   "@context": "https://www.w3.org/ns/did/v1",
-#   "id": "did:nostr:npub1q...abcd",
+#   "@context": ["https://w3id.org/did", "https://w3id.org/nostr/context"],
+#   "id": "did:nostr:<hex>",
+#   "type": "DIDNostr",
 #   "verificationMethod": [{
-#     "id": "did:nostr:npub1q...abcd#key-0",
-#     "type": "SchnorrSecp256k1VerificationKey2022",
-#     "controller": "did:nostr:npub1q...abcd",
-#     "publicKeyHex": "<32-byte schnorr pubkey>"
+#     "id": "did:nostr:<hex>#key1",
+#     "type": "Multikey",
+#     "controller": "did:nostr:<hex>",
+#     "publicKeyMultibase": "fe70102<hex>"   // f + e701(secp256k1-pub) + 02(even-y) + x-only hex
 #   }],
-#   "alsoKnownAs": [
-#     "http://127.0.0.1:8484/pods/npub1q...abcd/profile.json"
+#   "authentication": ["#key1"],
+#   "assertionMethod": ["#key1"],
+#   "service": [],
+#   "alsoKnownAs": [                          // agentbox extension
+#     "http://127.0.0.1:8484/pods/<hex>/profile.json"
 #   ]
 # }
 ```
+
+`publicKeyMultibase` is `fe70102` + the 64-char lowercase x-only hex (71 chars
+total). The `02` byte is the SEC1 compressed even-y prefix — load-bearing
+multicodec payload, not a separator — so the value round-trips to the identical
+key with no key-byte change. The `did:nostr:<hex>` identity string is unchanged
+(ADR-074 D1).
 
 Rather than writing WAC policies against raw hex pubkeys, you can now
 reference the DID:

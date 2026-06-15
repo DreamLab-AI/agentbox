@@ -1,21 +1,38 @@
 'use strict';
 
 /**
- * S4 — DID Documents (W3C DID Core 1.0).
+ * S4 — DID Documents (did:nostr method, did-nostr CG single Multikey form).
  *
- * Direction: emit. Form: Compacted. Vocabulary: DID v1 + did:nostr method.
+ * Direction: emit. Form: Compacted. Vocabulary: did v1 + did:nostr context.
  * Manifest gate: [linked_data].did_documents. Prerequisite:
  * sovereign_mesh.solid_pod = true (the document is published at
  * /.well-known/did.json via solid-pod-rs).
  *
  * Builds the DID Document for `did:nostr:<hex-pubkey>` — the agent's primary
- * sovereign identifier — including verification methods (Schnorr public
- * key) and service endpoints (pod base URL, embedded relay URL).
+ * sovereign identifier. Emits the canonical did-nostr Community Group single
+ * form (ground truth: melvincarvalho/create-agent index.js,
+ * nostrcg.github.io/did-nostr): a single `Multikey` verification method whose
+ * `publicKeyMultibase` is `fe70102` + the 64-char lowercase x-only hex.
+ *
+ * `fe70102<hex>` decodes as `f` (base16-lower multibase) ‖ `e701`
+ * (varint(0xe7) = secp256k1-pub) ‖ `02` (SEC1 compressed even-y prefix —
+ * load-bearing multicodec payload, the first byte of the 33-byte compressed
+ * point, NOT a separator) ‖ `<hex>` (the 32-byte x-only X). BIP-340 lift_x
+ * always selects even-y, so the parity byte is invariantly `02`. Fixed length:
+ * total multibase string = 71 chars (`f` + 4 + 2 + 64). The `02` byte changes
+ * no key bytes (ADR-033 I2) — round-trips to the identical did:nostr:<hex>.
+ *
+ * The old SchnorrSecp256k1VerificationKey2019 / publicKeyHex shape (ADR-074 D2)
+ * is superseded by ADR-033; ADR-074 D1 (x-only hex = canonical identity)
+ * stays. NIP-98 auth verifies the RAW pubkey in the event and never reads this
+ * verificationMethod (ADR-033 I3), so re-encoding the VM cannot touch auth.
  */
 
-const DID_CONTEXT = 'https://www.w3.org/ns/did/v1';
-const SECP_CONTEXT = 'https://w3id.org/security/suites/secp256k1-2019/v1';
-const AGBX_CONTEXT = 'https://agentbox.dreamlab-ai.systems/ns/v1#';
+const DID_CONTEXT = 'https://w3id.org/did';
+const NOSTR_CONTEXT = 'https://w3id.org/nostr/context';
+
+// did-nostr Multikey: f(base16-lower) e701(secp256k1-pub varint) 02(even-y).
+const MULTIKEY_PREFIX = 'fe70102';
 
 module.exports = {
   id: 'S4',
@@ -26,7 +43,7 @@ module.exports = {
   direction: 'emit',
   operations: ['publish'],
   canonicalisation: 'none',
-  vocabularyBinding: ['did:', 'agbx:'],
+  vocabularyBinding: ['did:', 'nostr:'],
   contextIri: DID_CONTEXT,
 
   async encode(payload, { manifest, agentDid }) {
@@ -36,20 +53,55 @@ module.exports = {
       throw new Error(`S4 encode: only did:nostr: methods are currently emitted (got ${did})`);
     }
     const pubkey = did.slice('did:nostr:'.length);
-    // The DID itself is the BIP-340 x-only pubkey hex; payload.pubkeyHex
-    // is kept as an explicit input for callers that want to attach a
-    // verification method without inferring it from the DID method.
-    const pubkeyHex = payload?.pubkeyHex || pubkey;
+    // Identity is the BIP-340 x-only (even-y) hex pubkey carried in the DID
+    // method-specific id (ADR-033 I1). payload.xOnlyHex is accepted as an
+    // explicit override; if absent the x-only hex is read from the DID body.
+    // The legacy payload.pubkeyHex name remains accepted as an alias.
+    const xOnlyHex = (payload?.xOnlyHex || payload?.pubkeyHex || pubkey || '').toLowerCase();
+    if (xOnlyHex && !/^[0-9a-f]{64}$/.test(xOnlyHex)) {
+      throw new Error(`S4 encode: x-only pubkey must be 64 lowercase hex chars (got ${xOnlyHex.length})`);
+    }
 
-    const services = [];
+    // did-nostr CG single Multikey form. publicKeyMultibase = fe70102 + x-only
+    // hex. The `02` parity byte is the SEC1 compressed-point even-y prefix (the
+    // first byte of the 33-byte multicodec payload), NOT a separator — it is
+    // load-bearing (ADR-033 I2). Output is a fixed 71 chars and round-trips to
+    // the identical key with no key-byte change.
+    const publicKeyMultibase = xOnlyHex ? `${MULTIKEY_PREFIX}${xOnlyHex}` : undefined;
+
+    const verificationMethod = [];
+    if (publicKeyMultibase) {
+      verificationMethod.push({
+        id: `${did}#key1`,
+        type: 'Multikey',
+        controller: did,
+        publicKeyMultibase,
+      });
+    }
+
+    const doc = {
+      '@context': [DID_CONTEXT, NOSTR_CONTEXT],
+      id: did,
+      type: 'DIDNostr',
+      verificationMethod,
+      authentication: publicKeyMultibase ? ['#key1'] : [],
+      assertionMethod: publicKeyMultibase ? ['#key1'] : [],
+      // The canonical create-agent / did-nostr CG reference output is the empty
+      // service array. Populated service[] (SolidWebID, NostrRelay, …) are
+      // agentbox extensions, layered by callers, not the canonical form.
+      service: [],
+    };
+
+    // agentbox extension: callers MAY attach service endpoints (pod, relay,
+    // WebID). These are permitted by the optional `service` field but are NOT
+    // part of the canonical create-agent shape.
     const ld = manifest && manifest.linked_data && manifest.linked_data.did;
-    const enabled = ld?.service_endpoints || ['pod', 'relay'];
-
+    const enabled = ld?.service_endpoints || [];
     if (enabled.includes('pod')) {
       const sp = (manifest?.integrations?.solid_pod_rs) || {};
-      services.push({
+      doc.service.push({
         id: `${did}#pod`,
-        type: 'SolidPod',
+        type: 'SolidStorage',
         serviceEndpoint: sp.base_url || `http://${sp.bind || '127.0.0.1'}:${sp.port || 8484}`,
       });
     }
@@ -57,36 +109,12 @@ module.exports = {
       const r = (manifest?.sovereign_mesh?.relay) || {};
       const port = r.port || 7777;
       const bind = r.bind || '127.0.0.1';
-      services.push({
+      doc.service.push({
         id: `${did}#relay`,
         type: 'NostrRelay',
         serviceEndpoint: `ws://${bind}:${port}`,
       });
     }
-
-    const verificationMethods = [];
-    if (pubkeyHex) {
-      // ADR-074 D1 + ADR-077 P3 + V3 C4 finding: cross-system DID
-      // canonicalisation requires SchnorrSecp256k1VerificationKey2019 — the
-      // only published W3C suite for secp256k1 Schnorr verification keys.
-      // SchnorrSecp256k1VerificationKey2025 was a spec-drift fabrication that
-      // no DID resolver or W3C VC verifier accepts.
-      verificationMethods.push({
-        id: `${did}#schnorr-pubkey`,
-        type: 'SchnorrSecp256k1VerificationKey2019',
-        controller: did,
-        publicKeyHex: pubkeyHex,
-      });
-    }
-
-    const doc = {
-      '@context': [DID_CONTEXT, SECP_CONTEXT, AGBX_CONTEXT],
-      id: did,
-      verificationMethod: verificationMethods,
-      service: services,
-      authentication: pubkeyHex ? [`${did}#schnorr-pubkey`] : [],
-      assertionMethod: pubkeyHex ? [`${did}#schnorr-pubkey`] : [],
-    };
 
     if (payload?.alsoKnownAs) doc.alsoKnownAs = payload.alsoKnownAs;
     if (payload?.controller) doc.controller = payload.controller;

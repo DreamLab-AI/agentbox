@@ -32,6 +32,17 @@ Identity scheme (ADR-013 addendum):
   - Trace (ExecutionTrace): urn:agentbox:activity:<scope>:trace-<short-id>
   - Archived skill: urn:agentbox:skill:<name>:v<n>:archived
 
+VerifiedSkill envelope (ADR-033 D6'):
+  The VerifiedSkill record is the functional analogue of create-agent's
+  `aam skill sign` — an owner-attested skill envelope. The attester is
+  `owner_did = did:nostr:<hex>` (env AGENTBOX_AGENT_DID); the skill URN
+  (urn:agentbox:skill:<name>:v<n>) is kept as the internal index. Envelope
+  authenticity rides the existing did:nostr event-signing / NIP-98 rail (auth
+  verifies the raw event pubkey, never the DID-doc verificationMethod — ADR-033
+  I3); no parallel in-process signer is introduced here. The record `signature`
+  field is the *skill function type signature* (def foo(...) -> ...), NOT a
+  cryptographic signature — do not conflate the two.
+
 Activity records (code-harness-activities, episodic, 365d TTL):
   Emitted for every gate run (verb=verify) and every successful store
   (verb=store). Activity records carry only URN refs — no function bodies

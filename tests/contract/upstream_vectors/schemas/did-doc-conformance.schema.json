@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://dreamlab.ai/schemas/fixtures/did-doc-conformance.schema.json",
-  "title": "DID Document conformance fixture (ADR-074 D2)",
+  "title": "DID Document conformance fixture (ADR-074 D1 identity + ADR-033 did-nostr Multikey shape)",
   "type": "object",
   "required": ["_meta", "vectors"],
   "additionalProperties": false,
@@ -22,6 +22,7 @@
             "properties": {
               "@context": {"type": "array", "items": {"type": "string"}},
               "id": {"type": "string"},
+              "type": {"type": "string"},
               "alsoKnownAs": {"type": "array", "items": {"type": "string"}},
               "verificationMethod": {"type": "array"},
               "authentication": {"type": "array"},

@@ -3,6 +3,10 @@ result
 result-*
 .direnv/
 
+# Sovereign runtime artifacts (pod-git roots + version cache written at bootstrap/test)
+pods/
+cache/
+
 # Node.js
 node_modules/
 npm-debug.log*
