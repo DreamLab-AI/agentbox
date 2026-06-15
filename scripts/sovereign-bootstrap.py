@@ -225,8 +225,15 @@ def build_did_document(identity, also_known_as=None):
 
 def _git(repo_root, *args, check=True, capture=False):
     """Thin git wrapper scoped to a repo. Returns stdout (stripped) when
-    capture=True, else None. Raises on non-zero only when check=True."""
-    cmd = ["git", "-C", str(repo_root), *args]
+    capture=True, else None. Raises on non-zero only when check=True.
+
+    `-c safe.directory=*` is injected per-invocation (never persisted to any
+    config) so the root bootstrap can operate on a pre-existing pod `.git`
+    owned by devuser without tripping git's dubious-ownership guard — otherwise
+    `git config nostr.privkey` and the gitmark/blocktrails commits silently fail
+    on pods whose `.git` predates the current (root) provisioning pass.
+    """
+    cmd = ["git", "-c", "safe.directory=*", "-C", str(repo_root), *args]
     if capture:
         out = subprocess.run(
             cmd, check=check, stdout=subprocess.PIPE,
