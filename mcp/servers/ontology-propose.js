@@ -5,11 +5,11 @@
  * bridge (PRD-014 Seam D / D2).
  *
  * Personal-KG concepts must reach the shared ontology through VisionClaw's
- * GOVERNED path: `POST /ontology-agent/propose` → Whelk consistency gate →
+ * GOVERNED path: `POST /api/ontology-agent/propose` → Whelk consistency gate →
  * human approval → PR. The bridge previously POSTed axioms straight to
  * `/api/ontology/load`, bypassing every gate. This module:
  *
- *   - builds the `/ontology-agent/propose` request body (the `ontology_propose`
+ *   - builds the `/api/ontology-agent/propose` request body (the `ontology_propose`
  *     tool) mirroring VisionClaw's ProposeRequest contract, defaulting the
  *     agent context from the agent's did:nostr environment; and
  *   - guards the ungoverned `/api/ontology/load` backdoor behind
@@ -24,7 +24,13 @@
  */
 
 const DIRECT_LOAD_ENV = 'AGENTBOX_ONTOLOGY_DIRECT_LOAD';
-const PROPOSE_PATH = '/ontology-agent/propose';
+// Live route is `/api/ontology-agent/propose`: the Rust handler registers
+// `web::scope("/ontology-agent")` nested inside `web::scope("/api")`
+// (main.rs:882 → ontology_agent_handler.rs:346), so the mount point carries the
+// `/api` prefix. The bare `/ontology-agent/propose` 404s at the server — there
+// is no gateway rewriting the boundary (VISIONCLAW_API_URL points directly at
+// visionclaw-server:4000). Aligns with the sibling LOAD_PATH convention below.
+const PROPOSE_PATH = '/api/ontology-agent/propose';
 const LOAD_PATH = '/api/ontology/load';
 
 class ProposeError extends Error {

@@ -37,7 +37,7 @@ function makeProposal() {
     proposal_urn,
     proposal_foreign_urn: 'urn:visionclaw:kg:' + PUBKEY + ':sha256-12-deadbeef0001',
     target_urn: 'urn:visionclaw:concept:renewables:photovoltaic-cell',
-    propose_request: { path: '/ontology-agent/propose', method: 'POST', body: { action: 'create' } },
+    propose_request: { path: '/api/ontology-agent/propose', method: 'POST', body: { action: 'create' } },
     candidate: {
       term: 'Photovoltaic Cell',
       domain: 'renewables',

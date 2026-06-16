@@ -2,7 +2,7 @@
 
 /**
  * WS6 (PRD-014 Seam D / D2): personal-KG concepts reach the shared ontology
- * only through VisionClaw's GOVERNED path (`/ontology-agent/propose` → Whelk
+ * only through VisionClaw's GOVERNED path (`/api/ontology-agent/propose` → Whelk
  * consistency → human approval → PR). The ungoverned `/api/ontology/load`
  * backdoor in `ontology_axiom_add` is disabled by default and must be opted
  * into explicitly. The propose request body mirrors VisionClaw's ProposeRequest

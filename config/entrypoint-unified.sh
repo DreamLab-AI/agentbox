@@ -393,9 +393,19 @@ fi
 # {iri:[alias]} file to fold in the condensation-mesh synonyms.
 ONTO_PAGES="${ONTOLOGY_PAGES_DIR:-/home/devuser/workspace/logseq/mainKnowledgeGraph/pages}"
 ONTO_BUILDER="/opt/agentbox/mcp/servers/lib/ontology-index-build.js"
+# Durable {iri:[alias]} file produced by the ontology-condense refresh
+# (ontology-condense.js). Lives on the workspace bind mount so condensation
+# synonyms survive image rebuilds and get folded into the PUSH cache on boot.
+# The condense pass itself is operator-gated + heavy, so it runs on demand
+# (scripts/ontology-condense-refresh.sh), NOT on every boot.
+export ONTOLOGY_ALIASES="${ONTOLOGY_ALIASES:-/home/devuser/workspace/.agentbox-data/ontology-aliases.json}"
+# Entrypoint runs as root here; make the dir devuser-owned so the on-demand
+# condense refresh (run as devuser) can write the aliases the cache folds in.
+mkdir -p "$(dirname "$ONTOLOGY_ALIASES")" 2>/dev/null || true
+chown devuser:devuser "$(dirname "$ONTOLOGY_ALIASES")" 2>/dev/null || true
 if [ -d "$ONTO_PAGES" ] && [ -f "$ONTO_BUILDER" ]; then
   echo "[5c/8] Refreshing ontology PUSH cache (WS-2)..."
-  runuser -u devuser -- node "$ONTO_BUILDER" >/dev/null 2>&1 \
+  runuser -u devuser -- env ONTOLOGY_ALIASES="$ONTOLOGY_ALIASES" node "$ONTO_BUILDER" >/dev/null 2>&1 \
     && echo "[5c/8] ontology PUSH cache refreshed" \
     || echo "[5c/8] ontology PUSH cache refresh skipped (non-fatal)"
 fi

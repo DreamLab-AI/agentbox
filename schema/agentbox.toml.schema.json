@@ -233,6 +233,53 @@
               "type": "string",
               "description": "VisionClaw REST API base URL (default: http://visionclaw-server:4000).",
               "default": "http://visionclaw-server:4000"
+            },
+            "direct_axiom_load": {
+              "type": "boolean",
+              "description": "DANGER: enable the ungoverned ontology_axiom_add backdoor (POST /api/ontology/load), bypassing Whelk consistency + human approval. Off by default; set true only for admin/bootstrap.",
+              "default": false
+            },
+            "condense": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Offline ontology condensation (PRD-020 WS-2). A cheap LOCAL LLM summarises every knowledge-graph class into one retrieval sentence + synonyms, enriching the search-optimisation cache. OPERATOR INFRASTRUCTURE — leave disabled unless you run your own model endpoint. The endpoint is never baked with secrets; it is a plain LAN URL.",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "description": "Enable the LLM condensation pass. When off, ontology search falls back to deterministic term extraction only (no synonym enrichment). Vanilla default: off.",
+                  "default": false
+                },
+                "endpoint": {
+                  "type": "string",
+                  "description": "Base URL of your OpenAI-compatible or ollama LLM endpoint, e.g. http://192.168.2.48:8084/v1 (DiffusionGemma) or http://ollama:11434. Leave blank when disabled.",
+                  "default": ""
+                },
+                "model": {
+                  "type": "string",
+                  "description": "Model id to request, e.g. diffusiongemma-26B-A4B-it-Q8_0. Optional for single-model servers.",
+                  "default": ""
+                },
+                "style": {
+                  "type": "string",
+                  "enum": ["openai", "ollama"],
+                  "description": "Wire protocol: 'openai' POSTs /chat/completions; 'ollama' POSTs /api/chat.",
+                  "default": "openai"
+                },
+                "n_blocks": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 16,
+                  "description": "DiffusionGemma answer sizing (256 tokens per block). Ignored by ollama and autoregressive servers. 3 gives clean class summaries.",
+                  "default": 3
+                },
+                "max_concurrency": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 16,
+                  "description": "Parallel in-flight requests. MUST be 1 for a single-context diffusion server (DiffusionGemma serialises internally; fan-out only queues). Raise only for a true multi-worker endpoint.",
+                  "default": 1
+                }
+              }
             }
           }
         },

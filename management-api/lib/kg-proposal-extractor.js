@@ -203,7 +203,7 @@ function scoreCandidate(norm) {
  *     candidate,                // the normalised entry + score
  *     proposal_urn,             // urn:agentbox:thing:<pubkey>:proposal-<sha256-12>
  *     target_urn,               // FOREIGN urn:visionclaw:concept:<domain>:<slug> (the elevation target)
- *     propose_request,          // GOVERNED { path, method, body } for /ontology-agent/propose
+ *     propose_request,          // GOVERNED { path, method, body } for /api/ontology-agent/propose
  *     emit,                     // agent-action LINK emit payload
  *   }
  *

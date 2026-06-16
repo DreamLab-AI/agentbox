@@ -403,6 +403,18 @@
           uv
           pandoc
 
+          # PDF / document tooling — top-tier open-source extraction, OCR &
+          # manipulation (closes the runtime gap: container had no pdftotext/
+          # mutool/pdfinfo, only a stopgap pip-installed pypdf).
+          poppler_utils  # pdftotext, pdfinfo, pdftoppm, pdfimages, pdfseparate
+          mupdf          # mutool — render/extract/clean/merge; fast text layer
+          qpdf           # structural transform, linearize, decrypt, repair
+          ghostscript    # gs — PostScript/PDF interpreter, compress, convert
+          pdfgrep        # grep across PDF text content
+          tesseract      # OCR engine (eng traineddata by default)
+          ocrmypdf       # add a searchable OCR text layer to scanned PDFs
+          img2pdf        # lossless image -> PDF assembly
+
           # Modern CLI replacements (DX tooling for agentic engineers)
           eza             # modern ls with git integration
           bat             # cat with syntax highlighting
@@ -490,7 +502,12 @@
           pandas
           matplotlib
           seaborn
-          pymupdf
+          # PDF / document libraries — extraction, layout analysis & generation.
+          # pymupdf (above) covers fast text/render; the rest fill the gaps:
+          pypdf          # pure-python read/write/merge/split/encrypt
+          pdfplumber     # precise text + table extraction with layout geometry
+          reportlab      # programmatic PDF generation
+          python-docx    # read/write .docx (Office Open XML)
         ]);
 
         # Closed dependency env for the imagemagick-mcp service (Q14).
@@ -2323,6 +2340,16 @@ ${ragflowNetworkDecl}
           "AGENTBOX_EMAIL_GATEWAY_URL=${(skillsCfg.email_search or {}).gateway_url or "http://192.168.2.48:8765"}"
           # PRD-014 D2: ungoverned ontology_axiom_add backdoor, off by default.
           "AGENTBOX_ONTOLOGY_DIRECT_LOAD=${boolEnv ((skillsCfg.ontology or {}).direct_axiom_load or false)}"
+          # Offline ontology condensation (PRD-020 WS-2). Operator-supplied cheap
+          # LLM endpoint that summarises KG classes into the search-optimisation
+          # cache. Vanilla default OFF + empty endpoint; the operator fills these
+          # via [skills.ontology.condense] at onboarding/build time.
+          "ONTOLOGY_CONDENSE_ENABLED=${boolEnv (((skillsCfg.ontology or {}).condense or {}).enabled or false)}"
+          "ONTOLOGY_CONDENSE_ENDPOINT=${((skillsCfg.ontology or {}).condense or {}).endpoint or ""}"
+          "ONTOLOGY_CONDENSE_MODEL=${((skillsCfg.ontology or {}).condense or {}).model or ""}"
+          "ONTOLOGY_CONDENSE_STYLE=${((skillsCfg.ontology or {}).condense or {}).style or "openai"}"
+          "ONTOLOGY_CONDENSE_N_BLOCKS=${toString (((skillsCfg.ontology or {}).condense or {}).n_blocks or 3)}"
+          "ONTOLOGY_CONDENSE_CONCURRENCY=${toString (((skillsCfg.ontology or {}).condense or {}).max_concurrency or 1)}"
           "AGENTBOX_KERNEL_WHEELHOUSE=/var/lib/agentbox/code-interpreter-wheelhouse"
           "AGENTBOX_CODE_HARNESS_DIR=/var/lib/agentbox/code-harness"
           # ─────────────────────────────────────────────────────────────────

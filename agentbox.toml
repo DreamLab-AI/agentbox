@@ -481,6 +481,22 @@ visionclaw_api_url = "http://visionclaw-server:4000"
 # admin/bootstrap. Default off = ontology_axiom_add refuses + redirects.
 direct_axiom_load = false
 
+# Offline ontology condensation (PRD-020 WS-2 / ADR-113). A cheap LOCAL LLM
+# summarises every KG class into one retrieval sentence + a synonym list, which
+# enriches the PUSH Class-Summary cache (search optimisation) and RuVector
+# ns:ontology-classes. Replaces the old Haiku mesh with an operator-supplied
+# endpoint. OpenAI-compatible (/chat/completions) or ollama (/api/chat).
+# Vanilla agentbox ships this OFF — it is operator infrastructure. DiffusionGemma
+# holds a single model context and SERIALISES requests, so max_concurrency MUST
+# stay 1; never fan out against a diffusion server.
+[skills.ontology.condense]
+enabled = true
+endpoint = "http://192.168.2.48:8084/v1"   # operator LAN model (DiffusionGemma 26B-A4B)
+model = "diffusiongemma-26B-A4B-it-Q8_0"
+style = "openai"                            # openai | ollama
+n_blocks = 3                                # DiffusionGemma answer sizing (256 tok/block); ignored by ollama
+max_concurrency = 1                         # single-context server → never parallelise
+
 [skills.email_search]
 # Private Email Search MCP gateway (DreamLab-AI/email-mcp-gateway). Runs on a
 # separate LAN host that holds the mail archive + index; all reading/reasoning is

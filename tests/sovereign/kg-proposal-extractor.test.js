@@ -88,8 +88,8 @@ describe('buildProposalDescriptor — sanctioned URN minting only', () => {
     expect(d.target_urn).toBe('urn:visionclaw:concept:renewables:photovoltaic-cell');
   });
 
-  it('routes through the GOVERNED /ontology-agent/propose path (never /api/ontology/load)', () => {
-    expect(d.propose_request.path).toBe('/ontology-agent/propose');
+  it('routes through the GOVERNED /api/ontology-agent/propose path (never /api/ontology/load)', () => {
+    expect(d.propose_request.path).toBe('/api/ontology-agent/propose');
     expect(d.propose_request.method).toBe('POST');
     expect(d.propose_request.body.proposal.action).toBe('create');
     expect(d.propose_request.body.proposal.preferred_term).toBe('Photovoltaic Cell');
@@ -134,7 +134,7 @@ describe('extractProposals + wire envelope', () => {
     expect(n.params.message_type).toBe(0x23);
     expect(n.params.protocol_version).toBe(2);
     expect(n.params.event.metadata.origin).toBe('kg-elevation');
-    expect(n.params.event.metadata.governed_path).toBe('/ontology-agent/propose');
+    expect(n.params.event.metadata.governed_path).toBe('/api/ontology-agent/propose');
   });
 
   it('throws on a non-array input', () => {
@@ -194,7 +194,7 @@ describe('code-as-harness lessons feed the governed pipeline', () => {
     const p = proposals[0];
 
     // Same sanctioned governed path as the personal-KG candidates.
-    expect(p.propose_request.path).toBe('/ontology-agent/propose');
+    expect(p.propose_request.path).toBe('/api/ontology-agent/propose');
     expect(uris.isCanonical(p.proposal_urn)).toBe(true);
 
     // The experiential→governed link: the lesson URN survives onto the

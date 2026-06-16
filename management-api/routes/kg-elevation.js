@@ -12,7 +12,7 @@
  *     personal node to its shared-ontology target) through the canonical
  *     agentEventPublisher — picked up by /v1/agent-events/stream and pushed to
  *     the host substrate; and
- *   - returns the GOVERNED `/ontology-agent/propose` descriptor (Whelk →
+ *   - returns the GOVERNED `/api/ontology-agent/propose` descriptor (Whelk →
  *     human approval → PR). This route NEVER POSTs to the ungoverned
  *     /api/ontology/load backdoor; it only surfaces the governed request the
  *     operator (or the ontology bridge) then executes.
