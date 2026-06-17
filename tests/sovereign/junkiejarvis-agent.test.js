@@ -310,7 +310,9 @@ describe('JunkieJarvisAgent._think', () => {
       logger: silentLogger,
       llm: async () => `{"tool":"create_event","title":"Reunion","start":${start},"end":${start + 7200},"zone":"family","venue":"fairfield"}\nAll set.`,
     });
-    const reply = await agent._think('book fairfield for the family reunion', { zone: null });
+    // The user message must carry scheduling intent (date/time + event vocab),
+    // or the deterministic `hasSchedulingIntent` guard suppresses the directive.
+    const reply = await agent._think('book the family reunion event for next Friday 7pm at fairfield', { zone: null });
     expect(bridge.published.length).toBe(1);
     const ev = bridge.published[0];
     expect(ev.kind).toBe(31923);
@@ -329,7 +331,7 @@ describe('JunkieJarvisAgent._think', () => {
       logger: silentLogger,
       llm: async () => `{"tool":"create_event","title":"X","start":${start},"end":${start + 60},"zone":"friends","venue":null}\nok`,
     });
-    await agent._think('create it', { zone: 'business' });
+    await agent._think('create the event for next Friday 7pm', { zone: 'business' });
     expect(bridge.published[0].tags.find((t) => t[0] === 'zone')[1]).toBe('business');
   });
 
@@ -358,6 +360,48 @@ describe('JunkieJarvisAgent._think', () => {
     });
     const reply = await agent._think('explain in detail how zones work', { zone: null });
     expect(reply.length).toBeGreaterThan(280);
+  });
+});
+
+describe('JunkieJarvisAgent kind-0 profile', () => {
+  test('_publishProfile publishes a kind-0 with the JunkieJarvis metadata', async () => {
+    const bridge = makeBridge();
+    const agent = new JunkieJarvisAgent({ bridge, signer: fakeSigner, logger: silentLogger, llm: async () => '' });
+    await agent._publishProfile();
+    expect(bridge.published.length).toBe(1);
+    const ev = bridge.published[0];
+    expect(ev.kind).toBe(0);
+    const meta = JSON.parse(ev.content);
+    expect(meta.name).toBe('junkiejarvis');
+    expect(meta.display_name).toBe('JunkieJarvis');
+    expect(meta.bot).toBe(true);
+    expect(meta).toEqual(jj.PROFILE_METADATA);
+  });
+
+  test('start() schedules the profile publish (fires after the delay)', async () => {
+    jest.useFakeTimers();
+    const bridge = makeBridge();
+    const agent = new JunkieJarvisAgent({ bridge, signer: fakeSigner, logger: silentLogger, llm: async () => '' });
+    agent.start();
+    expect(bridge.published.length).toBe(0); // not published synchronously
+    jest.runOnlyPendingTimers(); // fire the deferred profile publish
+    jest.useRealTimers();
+    await Promise.resolve(); // flush the _publishProfile microtask
+    expect(bridge.published.some((e) => e.kind === 0)).toBe(true);
+  });
+});
+
+describe('JunkieJarvisAgent scheduling-intent guard', () => {
+  test('plain chit-chat has no scheduling intent', () => {
+    expect(jj.hasSchedulingIntent('write me a haiku')).toBe(false);
+    expect(jj.hasSchedulingIntent('what zones exist?')).toBe(false);
+    expect(jj.hasSchedulingIntent('')).toBe(false);
+  });
+
+  test('explicit scheduling phrasing is detected', () => {
+    expect(jj.hasSchedulingIntent('schedule a meeting next Friday 7pm')).toBe(true);
+    expect(jj.hasSchedulingIntent('create the event for tomorrow evening')).toBe(true);
+    expect(jj.hasSchedulingIntent('book a listening night next Friday at dreamlab')).toBe(true);
   });
 });
 

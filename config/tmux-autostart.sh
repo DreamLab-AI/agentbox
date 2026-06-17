@@ -35,8 +35,12 @@ tmux $TMUX_ARGS start-server 2>/dev/null || true
 
 # ============================================================================
 # Window 0: Claude — primary development shell
+# CLAUDE_CONFIG_DIR is no longer baked into the image env (it defeated profile
+# isolation for tabs 8/9). Set it here for the primary session so Claude Code
+# reads /home/devuser/.claude as before.
 # ============================================================================
 tmux $TMUX_ARGS new-session -d -s "$SESSION" -n "Claude" -c "$PROJECT"
+tmux send-keys -t "${SESSION}:0" "export CLAUDE_CONFIG_DIR=/home/devuser/.claude" C-m
 
 # Welcome dashboard — gum renders a styled panel, falls back to plain text
 if command -v gum >/dev/null 2>&1; then
@@ -55,9 +59,10 @@ else
 fi
 
 # ============================================================================
-# Window 1: Agent — agent work
+# Window 1: Agent — agent work (shares primary Claude config with tab 0)
 # ============================================================================
 tmux new-window -t "${SESSION}:1" -n "Agent" -c "$WORKSPACE_DIR"
+tmux send-keys -t "${SESSION}:1" "export CLAUDE_CONFIG_DIR=/home/devuser/.claude" C-m
 tmux send-keys -t "${SESSION}:1" "echo '  Agent workspace — use for agent execution'" C-m
 
 # ============================================================================
@@ -153,10 +158,13 @@ fi
 tmux new-window -t "${SESSION}:8" -n "OpenRouter" -c "${OR_PROFILE}"
 tmux send-keys -t "${SESSION}:8" "echo '  OpenRouter Profile — isolated Claude Code with free models'" C-m
 tmux send-keys -t "${SESSION}:8" "echo '  ${_or_status}'" C-m
-tmux send-keys -t "${SESSION}:8" "echo '  Run: HOME=${OR_PROFILE} claude'" C-m
+tmux send-keys -t "${SESSION}:8" "echo '  Run: claude  (profile-isolated, model: ${OR_MODEL})'" C-m
 tmux send-keys -t "${SESSION}:8" "echo ''" C-m
-# Export HOME override so claude reads from this profile's .claude/ directory
+# Profile isolation: HOME + CLAUDE_CONFIG_DIR must BOTH point at the profile
+# so claude reads this profile's settings.json/settings.local.json, not the
+# global /home/devuser/.claude which carries the primary Anthropic API key.
 tmux send-keys -t "${SESSION}:8" "export HOME=${OR_PROFILE}" C-m
+tmux send-keys -t "${SESSION}:8" "export CLAUDE_CONFIG_DIR=${OR_CLAUDE_DIR}" C-m
 tmux send-keys -t "${SESSION}:8" "export ANTHROPIC_BASE_URL=https://openrouter.ai/api" C-m
 if [ -n "${OPENROUTER_API_KEY:-}" ]; then
   tmux send-keys -t "${SESSION}:8" "export ANTHROPIC_AUTH_TOKEN=${OPENROUTER_API_KEY}" C-m
@@ -201,12 +209,19 @@ fi
 [ -L "${ZAI_PROFILE}/projects" ] || ln -sfn "${SHARED_PROJECTS_ROOT:-/projects}" "${ZAI_PROFILE}/projects" 2>/dev/null || true
 
 tmux new-window -t "${SESSION}:9" -n "ZAI" -c "${ZAI_PROFILE}"
-tmux send-keys -t "${SESSION}:9" "echo '  ZAI Profile — GLM via Anthropic-compatible relay'" C-m
+tmux send-keys -t "${SESSION}:9" "echo '  ZAI Profile — Claude Code via Z.AI subscription relay'" C-m
 tmux send-keys -t "${SESSION}:9" "echo '  ${_zai_status}'" C-m
 tmux send-keys -t "${SESSION}:9" "echo '  Subscription tier: z.ai/subscribe (Lite \$9/mo | Pro \$27/mo | Max \$72/mo)'" C-m
 tmux send-keys -t "${SESSION}:9" "echo '  Set ZAI_URL=https://api.z.ai/api/coding/paas/v4 for flat-rate billing'" C-m
+tmux send-keys -t "${SESSION}:9" "echo '  Run: dsp  (profile-isolated — bills to ZAI, not direct Anthropic)'" C-m
 tmux send-keys -t "${SESSION}:9" "echo ''" C-m
+# Profile isolation: HOME + CLAUDE_CONFIG_DIR must BOTH point at the ZAI
+# profile so Claude Code reads the ZAI settings.local.json (which sets
+# ANTHROPIC_BASE_URL → z.ai and ANTHROPIC_AUTH_TOKEN → ZAI key) instead of
+# the global /home/devuser/.claude which carries the direct Anthropic API key.
+# Without CLAUDE_CONFIG_DIR override, Claude ignores HOME for config discovery.
 tmux send-keys -t "${SESSION}:9" "export HOME=${ZAI_PROFILE}" C-m
+tmux send-keys -t "${SESSION}:9" "export CLAUDE_CONFIG_DIR=${ZAI_CLAUDE_DIR}" C-m
 tmux send-keys -t "${SESSION}:9" "export ANTHROPIC_BASE_URL=${_ZAI_ENDPOINT}" C-m
 if [ -n "${_ZAI_AUTH:-}" ]; then
   tmux send-keys -t "${SESSION}:9" "export ANTHROPIC_AUTH_TOKEN=${_ZAI_AUTH}" C-m
@@ -248,6 +263,8 @@ tmux send-keys -t "${SESSION}:10" "echo '  ${_ag_status}'" C-m
 tmux send-keys -t "${SESSION}:10" "echo '  Run: gemini  (gemini-2.5-flash, 1M ctx, multimodal)'" C-m
 tmux send-keys -t "${SESSION}:10" "echo ''" C-m
 tmux send-keys -t "${SESSION}:10" "export HOME=${AG_PROFILE}" C-m
+# Prevent accidental Claude invocations from reading the global Anthropic key
+tmux send-keys -t "${SESSION}:10" "export CLAUDE_CONFIG_DIR=${AG_PROFILE}/.claude" C-m
 if [ -n "${_AG_KEY:-}" ]; then
   tmux send-keys -t "${SESSION}:10" "export GOOGLE_GEMINI_API_KEY=${_AG_KEY}" C-m
   tmux send-keys -t "${SESSION}:10" "export GOOGLE_API_KEY=${_AG_KEY}" C-m
@@ -280,6 +297,7 @@ tmux send-keys -t "${SESSION}:11" "echo '  ${_ds_status}'" C-m
 tmux send-keys -t "${SESSION}:11" "echo '  Run: codewhale  (deepseek-v4-0324, 64k ctx, strong reasoning)'" C-m
 tmux send-keys -t "${SESSION}:11" "echo ''" C-m
 tmux send-keys -t "${SESSION}:11" "export HOME=${DS_PROFILE}" C-m
+tmux send-keys -t "${SESSION}:11" "export CLAUDE_CONFIG_DIR=${DS_PROFILE}/.claude" C-m
 if [ -n "${DEEPSEEK_API_KEY:-}" ]; then
   tmux send-keys -t "${SESSION}:11" "export DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}" C-m
 fi
@@ -315,20 +333,24 @@ tmux send-keys -t "${SESSION}:12" "echo '    curl https://api.perplexity.ai/chat
 tmux send-keys -t "${SESSION}:12" "echo '    MCP: mcp__perplexity-research in Claude Code tab 0'" C-m
 tmux send-keys -t "${SESSION}:12" "echo '    skill: /perplexity-research  (runs inside tab 0)'" C-m
 tmux send-keys -t "${SESSION}:12" "echo ''" C-m
+tmux send-keys -t "${SESSION}:12" "export CLAUDE_CONFIG_DIR=${PX_PROFILE}/.claude" C-m
 if [ -n "${PERPLEXITY_API_KEY:-}" ]; then
   tmux send-keys -t "${SESSION}:12" "export PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY}" C-m
 fi
 
 # ============================================================================
-# Window 13: Ollama — Local LLM via Nanocoder (profile-isolated)
-# Auth: none (network-local via OLLAMA_BASE_URL)
+# Window 13: Ollama — Local/LAN LLM harness (profile-isolated)
+# Auth: none (network-local). Points at the operator's LAN model server.
+# Default: DiffusionGemma at 192.168.2.48:8084 (OpenAI-compatible /v1).
+# Override: set OLLAMA_BASE_URL and OLLAMA_MODEL in .env to use a different
+# endpoint (e.g. host ollama at :11434, or any OpenAI-compatible server).
 # CLI: nanocoder --provider ollama --model <model>
-# Default model: qwen2.5:32b-instruct (override via OLLAMA_MODEL env var)
 # ============================================================================
 OL_WORKSPACE="${WORKSPACE}"
 OL_PROFILE="${OL_WORKSPACE}/profiles/ollama"
-_OL_MODEL="${OLLAMA_MODEL:-qwen2.5:32b-instruct}"
-_OL_BASE_URL="${OLLAMA_BASE_URL:-http://ollama:11434}"
+# Default to DiffusionGemma on the LAN; operator overrides via env.
+_OL_MODEL="${OLLAMA_MODEL:-diffusiongemma-26B-A4B-it-Q8_0}"
+_OL_BASE_URL="${OLLAMA_BASE_URL:-http://192.168.2.48:8084/v1}"
 
 mkdir -p "${OL_PROFILE}" "${OL_PROFILE}/.cache/starship"
 # R-005: profile dir ownership fixed by entrypoint root phase; runtime sudo removed.
@@ -337,12 +359,13 @@ mkdir -p "${OL_PROFILE}" "${OL_PROFILE}/.cache/starship"
 [ -L "${OL_PROFILE}/projects" ] || ln -sfn "${SHARED_PROJECTS_ROOT:-/projects}" "${OL_PROFILE}/projects" 2>/dev/null || true
 
 tmux new-window -t "${SESSION}:13" -n "Ollama" -c "${WORKTREE_BASE}/ollama"
-tmux send-keys -t "${SESSION}:13" "echo '  Ollama Profile — Local LLM via Nanocoder'" C-m
+tmux send-keys -t "${SESSION}:13" "echo '  Ollama Profile — LAN LLM Harness (DiffusionGemma)'" C-m
 tmux send-keys -t "${SESSION}:13" "echo '  Endpoint: ${_OL_BASE_URL}'" C-m
 tmux send-keys -t "${SESSION}:13" "echo '  Model:    ${_OL_MODEL}'" C-m
 tmux send-keys -t "${SESSION}:13" "echo '  Run: nanocoder --provider ollama --model ${_OL_MODEL}'" C-m
 tmux send-keys -t "${SESSION}:13" "echo ''" C-m
 tmux send-keys -t "${SESSION}:13" "export HOME=${OL_PROFILE}" C-m
+tmux send-keys -t "${SESSION}:13" "export CLAUDE_CONFIG_DIR=${OL_PROFILE}/.claude" C-m
 tmux send-keys -t "${SESSION}:13" "export OLLAMA_BASE_URL=${_OL_BASE_URL}" C-m
 tmux send-keys -t "${SESSION}:13" "export OLLAMA_MODEL=${_OL_MODEL}" C-m
 

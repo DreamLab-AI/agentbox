@@ -46,8 +46,27 @@ const KIND_GIFT_WRAP = 1059; // NIP-59 gift wrap
 const KIND_CHANNEL_MESSAGE = 42; // NIP-28 channel message
 const KIND_DM_RUMOR = 14; // NIP-17 / NIP-59 DM rumor kind
 const KIND_CALENDAR_EVENT = 31923; // NIP-52 time-based calendar event
+const KIND_PROFILE = 0; // NIP-01 metadata (kind-0)
 
 const JUNKIEJARVIS_PUBKEY = '2de44d5622eef79519ac078f6e227a85aecbaefd561e4e50c5f51dfadbf916e9';
+
+/**
+ * JunkieJarvis self-published kind-0 metadata. Published once on startup so the
+ * forum resolves its display name everywhere (chat author labels, calendar event
+ * authors, the admin user list, notifications, @-mention search) instead of
+ * falling back to the raw hex pubkey. Mirrors
+ * dreamlab-ai-website/scripts/seed/provision-junkiejarvis-relay.mjs so a manual
+ * provision and the bridge converge on the same profile, and survives a relay /
+ * D1 reset without an operator re-seed (the relay's kind-0 -> profiles
+ * projection picks it up on receipt).
+ */
+const PROFILE_METADATA = Object.freeze({
+  name: 'junkiejarvis',
+  display_name: 'JunkieJarvis',
+  about:
+    'DreamLab forum agent. DM me or @junkiejarvis in any section to organise calendar events, check venue availability, or ask anything. Brisk, professional, always on.',
+  bot: true,
+});
 
 const VALID_ZONES = Object.freeze(['public', 'friends', 'family', 'business']);
 const VALID_VENUES = Object.freeze(['fairfield', 'dreamlab']);
@@ -529,7 +548,39 @@ class JunkieJarvisAgent {
       { pubkey: this.pubkey, maxReply: this.maxReply },
       'junkiejarvis watching — gift-wrapped DMs (#p) + kind-42 mentions'
     );
+
+    // Publish (or refresh) the kind-0 profile so the forum resolves the display
+    // name rather than the raw hex pubkey. Fire-and-forget + fail-open: a failed
+    // profile publish must never stop the agent from watching. Deferred a beat so
+    // the bridge has answered the relay's NIP-42 AUTH challenge before the write.
+    this._scheduleProfilePublish();
+
     return this._subIds.slice();
+  }
+
+  /** Publish the kind-0 profile shortly after start, once NIP-42 AUTH settles. */
+  _scheduleProfilePublish() {
+    const delayMs = Number(process.env.JUNKIEJARVIS_PROFILE_DELAY_MS) || 2000;
+    setTimeout(() => {
+      this._publishProfile().catch((err) => this._logErr('profile', err));
+    }, delayMs);
+  }
+
+  /**
+   * Build, sign as JunkieJarvis, and publish the kind-0 metadata event.
+   * kind-0 is replaceable, so re-publishing on every startup is idempotent
+   * (last-write-wins). Fail-open — errors are logged, never thrown.
+   * @returns {Promise<void>}
+   */
+  async _publishProfile() {
+    const unsigned = {
+      kind: KIND_PROFILE,
+      content: JSON.stringify(PROFILE_METADATA),
+      tags: [],
+      created_at: Math.floor(Date.now() / 1000),
+    };
+    await this.bridge.publish(unsigned, this.signer);
+    this.logger.info({ pubkey: this.pubkey }, 'junkiejarvis published kind-0 profile');
   }
 
   stop() {
@@ -801,9 +852,11 @@ module.exports = {
   wantsDetail,
   buildCalendarEvent,
   // constants
+  hasSchedulingIntent,
   SYSTEM_PROMPT,
   CANNED_APOLOGY,
   JUNKIEJARVIS_PUBKEY,
+  PROFILE_METADATA,
   VALID_ZONES,
   VALID_VENUES,
   kinds: {
@@ -811,5 +864,6 @@ module.exports = {
     CHANNEL_MESSAGE: KIND_CHANNEL_MESSAGE,
     DM_RUMOR: KIND_DM_RUMOR,
     CALENDAR_EVENT: KIND_CALENDAR_EVENT,
+    PROFILE: KIND_PROFILE,
   },
 };

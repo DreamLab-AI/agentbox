@@ -406,11 +406,17 @@
           # PDF / document tooling — top-tier open-source extraction, OCR &
           # manipulation (closes the runtime gap: container had no pdftotext/
           # mutool/pdfinfo, only a stopgap pip-installed pypdf).
-          poppler_utils  # pdftotext, pdfinfo, pdftoppm, pdfimages, pdfseparate
+          poppler-utils  # pdftotext, pdfinfo, pdftoppm, pdfimages, pdfseparate
           mupdf          # mutool — render/extract/clean/merge; fast text layer
           qpdf           # structural transform, linearize, decrypt, repair
           ghostscript    # gs — PostScript/PDF interpreter, compress, convert
           pdfgrep        # grep across PDF text content
+          pdftk          # merge, split, rotate, watermark, fill forms, attach files
+          pdfcpu         # Go PDF processor — validate, optimize, trim, booklet, stamp
+          diff-pdf       # visual diff between two PDFs (pixel comparison)
+          exiftool       # read/write EXIF & XMP metadata on PDFs and images
+          djvulibre      # djvuextract, ddjvu, djvutxt — DjVu ↔ PDF conversion
+          tabula-java    # extract tables from PDFs into CSV/TSV/JSON
           tesseract      # OCR engine (eng traineddata by default)
           ocrmypdf       # add a searchable OCR text layer to scanned PDFs
           img2pdf        # lossless image -> PDF assembly
@@ -502,12 +508,19 @@
           pandas
           matplotlib
           seaborn
-          # PDF / document libraries — extraction, layout analysis & generation.
-          # pymupdf (above) covers fast text/render; the rest fill the gaps:
+          # PDF / document libraries — extraction, layout analysis & generation:
           pypdf          # pure-python read/write/merge/split/encrypt
           pdfplumber     # precise text + table extraction with layout geometry
+          pdfminer-six   # low-level PDF parser — fonts, layout, streams, annotations
+          pikepdf        # qpdf-backed PDF read/write — repair, linearize, encrypt
+          pymupdf        # Python bindings for MuPDF — fast render, text, page ops
+          camelot        # table extraction from PDFs using OpenCV lattice/stream
+          tabula-py      # extract tables from PDFs into pandas DataFrames
           reportlab      # programmatic PDF generation
+          weasyprint     # HTML/CSS → PDF rendering engine
           python-docx    # read/write .docx (Office Open XML)
+          python-pptx    # read/write .pptx (Office Open XML presentations)
+          openpyxl       # read/write Excel .xlsx/.xlsm files
         ]);
 
         # Closed dependency env for the imagemagick-mcp service (Q14).
@@ -2387,11 +2400,10 @@ ${ragflowNetworkDecl}
           # entry in imageEnv wins via Docker env merge).
           "SHARED_PROJECTS_ROOT=/projects"
           "AGENTBOX_AGENT_ID=agentbox-core"
-          # CLAUDE_CONFIG_DIR points at the host-bind .claude. The
-          # previous /workspace/.claude path was a relic from when
-          # HOME=/workspace; it now resolves nowhere and silently breaks
-          # `claude --dangerously-skip-permissions` init.
-          "CLAUDE_CONFIG_DIR=/home/devuser/.claude"
+          # CLAUDE_CONFIG_DIR is NOT set globally — profile-isolated tabs
+          # override it per-window in tmux-autostart.sh. The entrypoint
+          # and tab 0 fall back to ${CLAUDE_CONFIG_DIR:-/home/devuser/.claude}.
+          # Baking it here defeated HOME-redirect profile isolation (tabs 8, 9).
           "SKILLS_TREE=/opt/agentbox/skills"
           "GPU_BACKEND=${agentboxConfig.gpu.backend or "none"}"
           # Privacy filter (ADR-008) — non-empty OPF_ENABLED signals the
