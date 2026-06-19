@@ -30,7 +30,7 @@ services:
       # GPU
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics
-      - CUDA_VISIBLE_DEVICES=0,1,2
+      - CUDA_VISIBLE_DEVICES=0,1
       # ComfyUI external
       - COMFYUI_API_ENDPOINT=${COMFYUI_API_ENDPOINT:-http://192.168.2.48:3001}
       # Hardened rootfs (read_only:true) means /home/devuser/* is not writable
@@ -69,7 +69,10 @@ services:
     # the MAD workspace external alias (until migrated, Q43), and any
     # operator-specific paths.
     volumes:
-      - /mnt/mldata/githubs/AR-AI-Knowledge-Graph:/home/devuser/workspace/project:rw
+      - /home/john/githubs/visionflow-hp:/home/devuser/workspace/project:rw
+      # gaussian project — host bind so it can be worked on from inside agentbox
+      # (appears at /home/devuser/workspace/gaussian; writable).
+      - /home/john/githubs/gaussian:/home/devuser/workspace/gaussian:rw
       # Q20 (escalation accepted-with-mitigation): the writable bind to the
       # host's .claude is required for plugin install state, OAuth token
       # refresh, and settings updates. The risk that a compromised in-container
@@ -98,12 +101,10 @@ services:
       # forwarding would mount /tmp/.X11-unix as a bind here, but that's
       # mutually exclusive with the tmpfs.
       #
-      # Q43: legacy multi-agent-docker workspace tree (~157 GB) inherited
-      # in place. Run `agentbox.sh migrate-workspace` to rsync into an
-      # agentbox-owned named volume and detach the external MAD reference.
-      - mad-workspace:/home/devuser/workspace
+      # (this machine) legacy MAD workspace volume removed — not present here.
+      # The base compose's `./workspace:/home/devuser/workspace` bind is used.
 
-    # Resource provisioning — host: 376G RAM, 32 cores, 3x GPU (98G VRAM), 1.9T disk
+    # Resource provisioning — this host: 251G RAM, 48 cores, 2x RTX 6000 Ada (96G VRAM)
     # Highly provisioned for agentic browser workloads with WebGPU inference.
     # cpuset pins to cores 0-29 (leaves 2 cores for host OS overhead).
     # Performance governor should be set on host: cpupower frequency-set -g performance
@@ -111,7 +112,7 @@ services:
       resources:
         limits:
           cpus: '30'
-          memory: 256G
+          memory: 220G
         reservations:
           cpus: '16'
           memory: 64G
@@ -142,17 +143,6 @@ networks:
     external: true
     name: visionclaw_network
 
-volumes:
-  # Base declares ruvector-data, solid-data, sovereign-identities,
-  # codeserver-config, ctm-config, nostr-relay-data, tailscale-state, and
-  # agentbox-secrets — no redeclaration needed here (Q12).
-  #
-  # External alias for the legacy multi-agent-docker workspace volume.
-  # Created by the deprecated MAD stack; reused here so agentbox sees the
-  # full project tree (agentbox/, claude-flow/, AR-AI-Knowledge-Graph/, ...).
-  # Q43 migration: run `agentbox.sh migrate-workspace` to rsync this into
-  # an agentbox-owned named volume; the override should then reference
-  # agentbox-workspace instead of mad-workspace.
-  mad-workspace:
-    external: true
-    name: multi-agent-docker_workspace
+# volumes: (this machine) the legacy MAD external volume `mad-workspace` was
+# removed — agentbox uses the base compose's `./workspace` bind instead.
+# Base declares all named volumes (ruvector-data, solid-data, etc.).

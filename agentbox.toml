@@ -388,8 +388,8 @@ pytorch = true
 jupyter = true
 
 [skills.docs]
-latex = true
-report_builder = true
+latex = false
+report_builder = false
 mermaid = true
 
 [skills.design]
@@ -763,7 +763,7 @@ claude = true
 claude_code = true
 ruflo = true
 claude_flow = true
-agentic_qe = true
+agentic_qe = false
 nagual_qe = true
 codebase_memory = true
 rust = true

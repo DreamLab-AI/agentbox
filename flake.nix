@@ -114,7 +114,7 @@
           pkgName         = "ruvector";
           version         = "0.2.28";
           sha256          = "sha256-QQIJVIMcorZuUzFb0dn3ojhvv93n/hqupj9L0w7PZRs=";
-          nodeModulesHash = "sha256-LANskpOmUshnYtWxzEpjOlZV4X3bAT2pQ11MdUGLdfU=";
+          nodeModulesHash = "sha256-LRpxxFYr+3ZbH1mf2pBRGjgiYWU1J/MFC0t3cBt56cY=";
           bin             = "ruvector";
         };
 
@@ -124,7 +124,7 @@
           pkgName         = "@claude-flow/cli";
           version         = "3.10.41";
           sha256          = "sha256-B7iiUkekqlGHpeQZZDgw87kcKKOBiLzODaLhz3Q0WWk=";
-          nodeModulesHash = "sha256-BZ1stHVMG7eKbnoyni1ot7xSmBt/UCeHXMWiUDkAgbE=";
+          nodeModulesHash = "sha256-qVFT4vfYzLiB9jJB01nwMJql0ytUMtRO3dSA2LHcjOM=";
           bin             = "claude-flow";
         };
 
@@ -134,7 +134,7 @@
           pkgName         = "ruflo";
           version         = "3.10.41";
           sha256          = "sha256-BUJPveUkxgdwRbgLIS13Xt72/M10VQbdpqWG8Ql0lAw=";
-          nodeModulesHash = "sha256-V1mk2oo2qYk6qoj8/q7cJ4neSqAAvSiFaQf8I9fp8GQ=";
+          nodeModulesHash = "sha256-nYJbGVOwQRMG214yUE6I4FOSbNmn3mXunV691GHKfv8=";
           bin             = "ruflo";
         };
 
@@ -185,7 +185,7 @@
           pkgName         = "@mermaid-js/mermaid-cli";
           version         = "11.15.0";
           sha256          = "sha256-9v0Iedv1AORTeEu9nbkq6VEJfg6eipDsYT8r08qPoGw=";
-          nodeModulesHash = "sha256-fZIXonve9XhNhP0NnHzEllLLn7JZmey45RKtY5CKfZM=";
+          nodeModulesHash = "sha256-M3bjHQXI5XPDNDdC9ZXNvqkhuUV5V5AKoIlnB7tdcek=";
           bin             = "mmdc";
         };
 
