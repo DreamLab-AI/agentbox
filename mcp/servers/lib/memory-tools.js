@@ -28,6 +28,31 @@
  *                        URN annotation), so its observable output is unchanged.
  */
 
+// ── headroom compression (PRD-016 / ADR-034) ───────────────────────────────
+// Compress search results before returning to agents. Fail-open: if the addon
+// is absent or init fails, results pass through uncompressed.
+let _headroom = null;
+function _getHeadroom() {
+  if (_headroom !== null) return _headroom;
+  try {
+    const h = require('/opt/agentbox/lib/headroom/headroom_napi.node');
+    h.initCompression({ backend: 'memory', ttlMinutes: 30, maxEntries: 1000, targetRatio: 0.15 });
+    _headroom = h;
+  } catch { _headroom = false; }
+  return _headroom;
+}
+function _compressResults(results) {
+  if (!results || results.length < 3) return results;
+  const h = _getHeadroom();
+  if (!h) return results;
+  try {
+    const raw = JSON.stringify(results);
+    const cr = h.smartCrush(raw, { targetRatio: 0.3 });
+    if (cr && cr.ratio < 1.0) return JSON.parse(cr.compressed);
+  } catch { /* fail-open */ }
+  return results;
+}
+
 // ── external-pg backend ─────────────────────────────────────────────────────
 // Verbatim extraction of the pgvector/xinference/HNSW memory logic that lived
 // inline in ruvector-mcp.cjs. Dependencies are injected so the module never
@@ -144,7 +169,7 @@ function createExternalPgBackend(deps) {
           source_type: r.source_type, score: parseFloat(r.score),
         }));
         notifyMemoryFlashBatch(results.slice(0, 5).map(r => ({ key: r.key, namespace: r.namespace || namespace, action: 'search' })));
-        return { success: true, action: 'search', query, namespace, results, count: results.length, method: 'hnsw-xinference', storage: 'ruvector-postgres' };
+        return { success: true, action: 'search', query, namespace, results: _compressResults(results), count: results.length, method: 'hnsw-xinference', storage: 'ruvector-postgres' };
       } catch (vecErr) {
         log('WARN', `HNSW search failed: ${vecErr.message}`);
       }
@@ -166,7 +191,7 @@ function createExternalPgBackend(deps) {
       source_type: r.source_type, score: 0.5,
     }));
     notifyMemoryFlashBatch(results.slice(0, 5).map(r => ({ key: r.key, namespace: r.namespace || namespace, action: 'search' })));
-    return { success: true, action: 'search', query, namespace, results, count: results.length, method: 'ilike-fallback', degraded: true, warning: 'Semantic search unavailable — using text substring match. Check xinference service.', storage: 'ruvector-postgres' };
+    return { success: true, action: 'search', query, namespace, results: _compressResults(results), count: results.length, method: 'ilike-fallback', degraded: true, warning: 'Semantic search unavailable — using text substring match. Check xinference service.', storage: 'ruvector-postgres' };
   }
 
   return { memStore, memRetrieve, memList, memSearch };

@@ -1080,6 +1080,19 @@ async function start() {
       }
     }
 
+    // ── Context compression (PRD-016 / ADR-034) ─────────────────────────
+    {
+      const headroom = require('./lib/headroom');
+      const initResult = headroom.init({ logger });
+      if (initResult.ok) {
+        app.decorate('headroom', headroom);
+        logger.info({ event: 'headroom.boot' }, 'Headroom compression active');
+      } else {
+        app.decorate('headroom', null);
+        logger.info({ event: 'headroom.skip', reason: initResult.reason }, 'Headroom compression inactive');
+      }
+    }
+
     // ── Observability ───────────────────────────────────────────────────
     initTracing();
     observabilityMetrics.setBuildInfo();

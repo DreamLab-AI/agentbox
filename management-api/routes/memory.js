@@ -214,7 +214,17 @@ module.exports = async function memoryRoutes(fastify) {
       notifyMemoryFlashBatch(
         (result.results || []).slice(0, 5).map((r) => ({ key: r.key, namespace: effectiveNs, action: 'search' })),
       );
-      return reply.send({ namespace: effectiveNs, ...result });
+      const payload = { namespace: effectiveNs, ...result };
+      if (fastify.headroom && result.results && result.results.length > 2) {
+        const headroom = fastify.headroom;
+        const raw = JSON.stringify(result.results);
+        const cr = headroom.compress(raw, 'memory', { logger: fastify.log });
+        if (cr.compressed) {
+          payload.results = JSON.parse(cr.content);
+          payload._compression = { ratio: cr.ratio, ccrEntries: cr.ccrEntries };
+        }
+      }
+      return reply.send(payload);
     }
     return reply.code(503).send({ error: 'no-memory-adapter' });
   });
