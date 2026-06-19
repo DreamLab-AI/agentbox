@@ -961,6 +961,30 @@ name = "@claude-flow/neural"
 source = "registry"
 enabled = true
 
+# ── Context compression (PRD-016, ADR-034) ─────────────────────────────
+# Content-aware compression for agent context windows and storage.
+# Uses in-process Rust N-API bindings (headroom-napi crate).
+# Gate: compression.enabled = true adds the headroom-napi package to the
+# image and activates the compression middleware in management-api.
+[compression]
+enabled = true                     # headroom-napi crate built; compression active
+backend = "sqlite"                 # sqlite | memory (redis deferred)
+ttl_minutes = 30                   # CCR cache TTL
+max_entries = 1000                 # CCR store capacity (LRU eviction)
+target_ratio = 0.15                # aggressive default (keep ~15%)
+
+[compression.slots]
+memory = true                      # compress memory search results
+pods = true                        # compress pod writes
+events = false                     # NEVER compress audit trail
+beads = true                       # compress bead payloads
+orchestrator = false               # skip orchestrator coordination
+
+[compression.algorithms]
+smart_crusher = true               # JSON array compression
+log_compressor = true              # template-based log compression
+diff_compressor = true             # unified diff compression
+
 [observability]
 metrics_port = 9091
 otlp_endpoint = ""

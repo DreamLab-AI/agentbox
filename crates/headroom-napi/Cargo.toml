@@ -1,0 +1,32 @@
+[workspace]
+
+[package]
+name = "headroom-napi"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+license = "AGPL-3.0-only"
+description = "N-API native addon for context compression (CCR, smart-crush, log/diff compressors)"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+napi = { version = "2", features = ["napi8"] }
+napi-derive = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order", "raw_value"] }
+blake3 = "1"
+dashmap = "6"
+rusqlite = { version = "0.31", features = ["bundled"] }
+flate2 = "1"
+regex = "1"
+rayon = "1"
+
+[build-dependencies]
+napi-build = "2"
+
+[profile.release]
+lto = true
+strip = true
+codegen-units = 1

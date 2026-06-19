@@ -881,6 +881,19 @@
           else lib.filter (p: p != null) [ relayPkg ]
         );
 
+        # ---------------------------------------------------------------------------
+        # headroom-napi — Rust N-API compression addon (crates/headroom-napi).
+        # Gate: compression.enabled = true.
+        # Built from source via lib/headroom-compress.nix (napi-rs .node output).
+        # ---------------------------------------------------------------------------
+        compressionCfg = agentboxConfig.compression or {};
+        compressionEnabled = (compressionCfg.enabled or false) == true;
+        headroomNapiPkg =
+          if compressionEnabled
+          then (import ./lib/headroom-compress.nix { inherit lib pkgs; })
+          else null;
+        headroomPackages = lib.optionals compressionEnabled [ headroomNapiPkg ];
+
         # Render a config.toml for nostr-rs-relay from manifest fields.
         # Consumed by the supervisor block at /etc/agentbox/nostr-relay.toml.
         # (Unused on the pod_bridge path — the bridge is env-configured.)
@@ -996,6 +1009,7 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           ++ privacyFilterPackages
           ++ relayPackages
           ++ solidPodRsPackages
+          ++ headroomPackages
           ++ nagualQePackages
           ++ desktopPackages
           ++ antigravityCliPackages
@@ -2477,7 +2491,7 @@ ${ragflowNetworkDecl}
             layers = [
               (n2c.buildLayer { deps = basePackages; })
               (n2c.buildLayer { deps = nodeEnvPackages ++ pythonBasePackages; })
-              (n2c.buildLayer { deps = [ rustToolchain rustNightlyToolchain pkgs.pkgsStatic.stdenv.cc pkgs.musl ] ++ wasmPackages ++ dbPackages; })
+              (n2c.buildLayer { deps = [ rustToolchain rustNightlyToolchain pkgs.pkgsStatic.stdenv.cc pkgs.musl ] ++ wasmPackages ++ dbPackages ++ headroomPackages; })
               (n2c.buildLayer { deps = mediaPackages ++ browserPackages ++ spatialPackages ++ dataSciencePackages ++ docsPackages ++ desktopPackages ++ extraPackages; })
             ];
             copyToRoot = pkgs.buildEnv {
