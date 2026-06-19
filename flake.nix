@@ -1110,6 +1110,11 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           cp -rL ${consultantsPkg}/package $out/opt/agentbox/mcp/consultants
           ''}
 
+          ${lib.optionalString compressionEnabled ''
+          mkdir -p $out/opt/agentbox/lib/headroom
+          cp ${headroomNapiPkg}/lib/headroom/headroom_napi.node $out/opt/agentbox/lib/headroom/headroom_napi.node
+          ''}
+
           chmod +x $out/opt/agentbox/config/entrypoint-unified.sh
           find $out/opt/agentbox/scripts -type f -name '*.sh' -exec chmod +x {} +
           find $out/opt/agentbox/scripts -type f -name '*.py' -exec chmod +x {} +

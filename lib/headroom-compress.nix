@@ -33,11 +33,11 @@ pkgs.rustPlatform.buildRustPackage {
   nativeBuildInputs = [ pkgs.pkg-config pkgs.nodejs ];
   buildInputs = [ pkgs.openssl ];
 
-  # napi-rs produces a .node shared library rather than a standard binary.
-  # Install it to a well-known path so the JS wrapper can locate it.
+  # buildRustPackage installs the cdylib as lib/libheadroom_napi.so.
+  # Node.js require() needs a .node extension — rename it in place.
   postInstall = ''
     mkdir -p $out/lib/headroom
-    find target -name "*.node" -exec cp {} $out/lib/headroom/headroom_napi.node \;
+    cp $out/lib/libheadroom_napi.so $out/lib/headroom/headroom_napi.node
   '';
 
   # Tests run separately in CI, not in the Nix sandbox.
