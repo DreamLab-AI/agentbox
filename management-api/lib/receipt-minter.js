@@ -14,6 +14,7 @@
  */
 
 const { mint } = require('./uris');
+const bc20 = require('./bc20-provenance-bridge');
 
 /**
  * Canonical outcome labels for spend attempts.
@@ -75,8 +76,9 @@ function mintSpendReceipt({ pubkey, origin, scheme, amountSats, outcome, idempot
  * @returns {string} `urn:agentbox:activity:<pubkey>:<sha256-12-…>` or fallback error URN
  */
 function mintSpendActivity({ pubkey, origin, scheme, amountSats, outcome, idempotencyKey } = {}) {
+  let urn;
   try {
-    return mint({
+    urn = mint({
       kind: 'activity',
       pubkey,
       payload: {
@@ -90,6 +92,24 @@ function mintSpendActivity({ pubkey, origin, scheme, amountSats, outcome, idempo
   } catch (_e) {
     return 'urn:agentbox:activity:error:mint-failed';
   }
+  crossActivityOutbound(urn);
+  return urn;
 }
 
-module.exports = { mintSpendReceipt, mintSpendActivity, OUTCOMES };
+/**
+ * Cross an activity URN outbound through BC20 so it reaches the
+ * VisionClaw provenance graph (PRD-022 WS-2, ADR-127 D2.3).
+ *
+ * Fail-open: crossing failures are logged but never block the caller.
+ */
+function crossActivityOutbound(activityUrn) {
+  try {
+    if (!activityUrn || activityUrn.includes(':error:')) return null;
+    return bc20.crossOutbound(activityUrn, bc20.durableStore());
+  } catch (e) {
+    try { process.stderr.write(`[receipt-minter] crossOutbound failed: ${e.message}\n`); } catch { /* noop */ }
+    return null;
+  }
+}
+
+module.exports = { mintSpendReceipt, mintSpendActivity, crossActivityOutbound, OUTCOMES };
