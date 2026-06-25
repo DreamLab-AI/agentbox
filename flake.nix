@@ -143,12 +143,29 @@
         #    templates to $HOME/.claude/agents/ — it must run as the runtime user
         #    after container start, NOT at Nix build time. Add to agentbox.sh init:
         #      [[ "${ENABLE_AGENTIC_QE:-false}" == "true" ]] && aqe init --auto || true
-        #    nix-prefetch-url https://registry.npmjs.org/agentic-qe/-/agentic-qe-3.9.18.tgz
+        #    nix-prefetch-url https://registry.npmjs.org/agentic-qe/-/agentic-qe-3.11.1.tgz
+        #
+        #    Bumped 3.10.5 -> 3.11.1 (2026-06-25) — upstream v3.11.1 release:
+        #    best-of-k generation, cross-model best-of-k, opt-in adversarial-verify
+        #    (@ruvector/adversarial-verify + verifyGate), MCP self-governance
+        #    (.harness/mcp-policy.json), cost-Pareto scoring, witnessed delivery
+        #    (Ed25519 hash-chained provenance), Goodhart guard, and the qwen3:30b-a3b
+        #    default free-tier model. All new behaviour is opt-in and default-off,
+        #    so the install/`aqe init` contract is unchanged. Release notes:
+        #    https://github.com/proffesor-for-testing/agentic-qe/blob/main/docs/releases/v3.11.1.md
+        #
+        #    tarball sha256 below is the verified flat fetchurl hash. nodeModulesHash
+        #    is left at the lib.fakeHash sentinel because 3.11.1 adds/bumps deps
+        #    (@huggingface/transformers, vibium, axe-core, jose, secure-json-parse,
+        #    prime-radiant-advanced-wasm, better-sqlite3@^12) so the old tree hash is
+        #    stale, and the recursive node_modules NAR hash can only be realised by a
+        #    networked Nix build. Resolve on a build host with:
+        #      ./scripts/prefetch-hashes.sh --cli
         agenticQePkg = mkNpmCli {
           pkgName         = "agentic-qe";
-          version         = "3.10.5";
-          sha256          = "sha256-4rhFjviITgWttyN37f8eHMUE+rrWDGMBOeaikQeZDq8=";
-          nodeModulesHash = "sha256-m7uuVXZOOreFTXBPGqOAVyYBeuHdw0mC0BWPnwF7ODo=";
+          version         = "3.11.1";
+          sha256          = "sha256-Yrd6Dtj4fVQU9D3NXjYB65JLhopUs1Yi9XRnemkjS+0=";
+          nodeModulesHash = lib.fakeHash;   # resolve via ./scripts/prefetch-hashes.sh --cli
           bin             = "aqe";
         };
 

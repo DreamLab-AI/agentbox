@@ -3,9 +3,10 @@ name: build-with-quality
 description: "Unified Claude Code V3 + Agentic QE meta-skill with 114+ agents, EDD loop, and quality gates. Use when implementing features with TDD, debugging hard bugs (feedback-loop-first protocol), stress-testing designs, or running quality gate pipelines. Supersedes agentic-qe, reasoningbank-*, and pair-programming."
 license: MIT
 metadata:
-  version: 1.2.0
+  version: 1.4.0
   author: Claude Flow
-  tags: [meta-skill, development, qa, edd, tdd, bdd, adr, ddd, agents, quality-gates, evidence, sona, hnsw, coverage, security, accessibility, chaos-testing]
+  agentic_qe_upstream: 3.11.1
+  tags: [meta-skill, development, qa, edd, tdd, bdd, adr, ddd, agents, quality-gates, evidence, sona, hnsw, coverage, security, accessibility, chaos-testing, best-of-k, adversarial-verify, witnessed-delivery]
   mcp_server: false
   supersedes: [agentic-qe, reasoningbank-intelligence, reasoningbank-agentdb, pair-programming]
 ---
@@ -114,6 +115,30 @@ See [agentdb-memory-patterns/KHIVE-LEARNINGS.md](../agentdb-memory-patterns/KHIV
 - **Contract Validation**: Schema validation, backward compatibility
 - **Defect Prediction**: ML-powered with F1 > 0.8
 - **Evidence Coverage** (NEW v1.2.0): Every shipped feature has an EXP-NNN; every EXP has executed evidence with receipts; auditor distinct from producer; `regression_critical` expectations have a `stabilized_by` test reference; zero stale evidence (>30d or post-SHA-drift)
+
+### Agentic QE Upstream Capabilities (v3.11.1 — NEW v1.4.0)
+
+The pinned upstream executor is [`agentic-qe@3.11.1`](https://github.com/proffesor-for-testing/agentic-qe/blob/main/docs/releases/v3.11.1.md)
+(installed as the `aqe` CLI; gated by `toolchains.agentic_qe` in `agentbox.toml`).
+v3.11.1 adds the following capabilities. **All are opt-in and default-off** —
+they activate only when explicitly enabled in the runtime `.harness/` config at
+`aqe init` time, so a plain install changes no behaviour. Each reinforces an
+existing principle of this skill rather than replacing it:
+
+| Upstream capability | Config / artifact | Maps to this skill's principle |
+|---------------------|-------------------|--------------------------------|
+| **Best-of-k generation** — try a few diverse candidates, keep the first that passes the objective check; extra cost only when the first fails | `freeTierBestOfK` | Iterate loop (EDD step 6) gated by **objective** checks, not self-grading |
+| **Cross-model best-of-k** — candidates from different model families to cover complementary failure modes (~+6 quality pts) | `freeTierCandidateProviders` | Anti-fox separation — the auditor/candidate must be a *different model family* than the producer |
+| **Adversarial verification** — host-agnostic blind-refuter + opt-in `verifyGate` output gate | `@ruvector/adversarial-verify` (optional dep; not in the core dependency tree) | `evidence-auditor` whose mandate is to find a counter-example, not confirm |
+| **MCP self-governance** — default-deny tool policy with CI enforcement | `.harness/mcp-policy.json` | Guardrails Spec (input/output constraints, fail-closed); aligns with agentbox ADR-005 fail-closed adapter middleware |
+| **Cost-Pareto scoring** — quality-per-dollar ranking from *measured* performance | (scoring output) | Model Selection ADR cost/latency/quality matrix |
+| **Witnessed delivery** — Ed25519 hash-chained provenance for findings, fail-closed verification | (signed finding records) | Executed evidence with receipts (command, raw output, timestamp, git SHA); aligns with agentbox `urn:agentbox:receipt:*` provenance |
+| **Goodhart guard** — self-authored tests no longer raise routing confidence; only objective checks (coverage, mutation, schema) can | (routing policy) | "Narrative evidence is auto-rejected" — only executed, objective evidence counts |
+| **Cheap-first lane expansion** — requirements → BDD/Gherkin generation with relevance filtering | (cheap-first lane) | EDD → BDD handoff (proven expectations become permanent regression scenarios) |
+
+> **Default free-tier model** moved `qwen3:8b` → `qwen3:30b-a3b` (~89% mutation
+> kill rate). This only affects free-tier local-model runs; hosted routing via
+> TinyDancer (Haiku/Sonnet/Opus) is unchanged.
 
 ### Development Methodologies
 
