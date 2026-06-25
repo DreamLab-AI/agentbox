@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ascii-to-svg — keep the ASCII, ship the SVG</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#E7E9EC; --panel:#FFFFFF; --ink:#13202B; --ink-soft:#516170;
+    --line:#D3D8DD; --line-soft:#E2E6EA;
+    --term-bg:#141C26; --term-fg:#C9D4DE; --term-dim:#6E8091; --term-line:#243240;
+    --accent:#0C6B73; --accent-bright:#11929C; --accent-soft:#E2F1F2;
+    --ok:#1C8A52; --ok-bg:#E2F2E8; --stale:#B45309; --stale-bg:#FBEBCF;
+    --maxw:1080px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background-color:var(--paper);
+    background-image:radial-gradient(circle, rgba(19,32,43,.05) 1px, transparent 1px);
+    background-size:22px 22px;
+    color:var(--ink); font-family:"Inter",system-ui,sans-serif;
+    font-size:16px; line-height:1.6; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 28px}
+  h1,h2,h3{font-family:"Space Grotesk",sans-serif; line-height:1.08; letter-spacing:-.02em; margin:0}
+  .eyebrow{font-family:"JetBrains Mono",monospace; font-size:12px; font-weight:500;
+    letter-spacing:.18em; text-transform:uppercase; color:var(--accent)}
+  a{color:inherit}
+  .dot{display:inline-block; width:8px; height:8px; border-radius:50%; vertical-align:middle}
+  .dot-fg{background:var(--term-dim)}
+  .dot-ok{background:var(--ok)}
+  .dot-stale{background:var(--stale)}
+
+  /* ---------- nav ---------- */
+  .nav{display:flex; align-items:center; justify-content:space-between;
+    padding:22px 28px; max-width:var(--maxw); margin:0 auto}
+  .brand{font-family:"JetBrains Mono",monospace; font-weight:700; font-size:15px; letter-spacing:-.01em}
+  .brand b{color:var(--accent)}
+  .nav-tag{font-family:"JetBrains Mono",monospace; font-size:12px; color:var(--ink-soft);
+    border:1px solid var(--line); border-radius:999px; padding:5px 12px}
+
+  /* ---------- hero ---------- */
+  .hero{padding:46px 0 30px}
+  .hero h1{font-size:clamp(38px,6.5vw,72px); font-weight:600; margin:18px 0 0}
+  .hero h1 .em{color:var(--accent)}
+  .hero-sub{max-width:620px; margin:20px 0 0; font-size:18px; color:var(--ink-soft)}
+
+  /* transform showcase (signature) */
+  .show{margin-top:38px; background:var(--panel); border:1px solid var(--line);
+    border-radius:16px; padding:10px; box-shadow:0 1px 0 rgba(19,32,43,.04)}
+  .show-grid{display:grid; grid-template-columns:1fr 96px 1fr; align-items:stretch; gap:0}
+  .show-pane{padding:22px}
+  .show-cap{font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--ink-soft); margin:0 0 14px}
+  .show .term{background:var(--term-bg); border-radius:11px; margin:0}
+  .show .term .show-cap{color:var(--term-dim)}
+  .show-svg{display:flex; align-items:center; justify-content:center; min-height:120px}
+  .show-svg svg{width:100%; height:auto; max-width:380px}
+  .show-mid{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
+    border-left:1px dashed var(--line); border-right:1px dashed var(--line)}
+  .show-arrow{font-family:"JetBrains Mono",monospace; font-size:22px; color:var(--accent)}
+  .show-hash{font-family:"JetBrains Mono",monospace; font-size:10px; color:var(--ink-soft);
+    writing-mode:vertical-rl; transform:rotate(180deg); letter-spacing:.08em}
+  .syncbar{display:flex; align-items:center; gap:10px; padding:14px 22px; margin-top:10px;
+    border-top:1px solid var(--line-soft); font-size:14px; color:var(--ink-soft)}
+  .syncbar b{color:var(--ink); font-weight:600}
+
+  /* ---------- generic section ---------- */
+  .sec{padding:64px 0}
+  .sec-head{max-width:680px}
+  .sec-head h2{font-size:clamp(28px,4vw,40px); font-weight:600; margin:12px 0 0}
+  .sec-head p{color:var(--ink-soft); margin:16px 0 0; font-size:17px}
+
+  /* problem */
+  .prob-lede{max-width:720px; margin:26px 0 0; font-size:18px}
+  .prob-lede p{margin:0 0 14px}
+  .drift{display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-top:34px}
+  .drift-card{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:22px}
+  .drift-card h4{font-family:"Space Grotesk",sans-serif; font-size:17px; margin:0 0 8px; font-weight:600}
+  .drift-card p{margin:0; font-size:14.5px; color:var(--ink-soft)}
+  .drift-tag{font-family:"JetBrains Mono",monospace; font-size:11px; letter-spacing:.1em;
+    color:var(--stale); text-transform:uppercase}
+
+  /* mechanism steps */
+  .steps{display:grid; grid-template-columns:repeat(3,1fr); gap:0; margin-top:36px;
+    border:1px solid var(--line); border-radius:14px; overflow:hidden; background:var(--panel)}
+  .step{padding:28px 24px; border-right:1px solid var(--line-soft)}
+  .step:last-child{border-right:none}
+  .step-n{font-family:"JetBrains Mono",monospace; font-size:13px; color:var(--accent); font-weight:700}
+  .step h4{font-family:"Space Grotesk",sans-serif; font-size:18px; font-weight:600; margin:10px 0 8px}
+  .step p{margin:0; font-size:14.5px; color:var(--ink-soft)}
+  .step .k{color:var(--ink); font-weight:600}
+
+  /* sync demo */
+  .demo{margin-top:40px; background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:26px}
+  .demo-top{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:16px}
+  .demo-top h3{font-size:20px; font-weight:600}
+  .demo-top p{margin:6px 0 0; font-size:14.5px; color:var(--ink-soft); max-width:430px}
+  .badge{display:inline-flex; align-items:center; gap:9px; font-family:"JetBrains Mono",monospace;
+    font-size:12.5px; font-weight:500; padding:9px 14px; border-radius:999px; white-space:nowrap}
+  .badge.ok{background:var(--ok-bg); color:var(--ok)}
+  .badge.stale{background:var(--stale-bg); color:var(--stale)}
+  .demo-grid{display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:22px; align-items:stretch}
+  .demo-grid figure{margin:0}
+  .demo .term{background:var(--term-bg); border-radius:11px; padding:18px; height:100%}
+  .demo .term .show-cap{color:var(--term-dim)}
+  .demo .render{background:var(--paper); border:1px dashed var(--line); border-radius:11px; padding:18px;
+    display:flex; flex-direction:column}
+  .demo .render .show-cap{color:var(--ink-soft)}
+  .demo-svg{flex:1; display:flex; align-items:center; justify-content:center; padding:8px 0}
+  .demo-svg svg{width:100%; height:auto; max-width:100%}
+  .demo-svg.stale-glass{opacity:.5; filter:grayscale(.35)}
+  .demo-controls{display:flex; gap:12px; flex-wrap:wrap; margin-top:22px}
+  .btn{font-family:"JetBrains Mono",monospace; font-size:13px; font-weight:500; cursor:pointer;
+    border-radius:9px; padding:12px 20px; border:1px solid var(--accent); background:var(--accent); color:#fff;
+    transition:transform .1s ease, background .15s ease}
+  .btn:hover{background:var(--accent-bright)}
+  .btn:active{transform:translateY(1px)}
+  .btn.ghost{background:transparent; color:var(--accent)}
+  .btn:focus-visible{outline:3px solid var(--accent-soft); outline-offset:2px}
+  .demo-msg{font-size:13.5px; color:var(--ink-soft); margin-top:14px; min-height:20px}
+  .demo-msg b{color:var(--ink)}
+
+  /* gallery */
+  .gx{display:flex; flex-direction:column; gap:18px; margin-top:36px}
+  .gx-item{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:22px}
+  .gx-head{display:flex; align-items:baseline; gap:12px; margin-bottom:18px}
+  .gx-num{font-family:"JetBrains Mono",monospace; font-size:12px; color:var(--accent); font-weight:700}
+  .gx-title{font-size:18px; font-weight:600}
+  .gx-note{font-family:"JetBrains Mono",monospace; font-size:11px; color:var(--ink-soft); margin-left:auto}
+  .gx-cols{display:grid; grid-template-columns:1fr 76px 1fr; align-items:start; gap:0}
+  .gx-link{display:flex; justify-content:center; align-self:center}
+  .gx-link-chip{font-family:"JetBrains Mono",monospace; font-size:10px; letter-spacing:.05em; color:var(--ink-soft);
+    border:1px solid var(--line); border-radius:999px; padding:5px 10px; background:var(--paper); white-space:nowrap;
+    transform:rotate(0deg)}
+  .term{margin:0}
+  .term-cap,.render-cap{font-family:"JetBrains Mono",monospace; font-size:11px; letter-spacing:.12em;
+    text-transform:uppercase; margin:0 0 12px}
+  .gx .term{background:var(--term-bg); border-radius:11px; padding:18px}
+  .gx .term .term-cap{color:var(--term-dim)}
+  .gx .render{margin:0; padding:18px; background:var(--paper); border:1px dashed var(--line); border-radius:11px}
+  .gx .render .render-cap{color:var(--ink-soft)}
+  .svg-wrap{display:flex; align-items:center; justify-content:center; min-height:90px}
+  .svg-wrap svg{width:100%; height:auto; max-width:100%}
+  .ascii{font-family:"JetBrains Mono",monospace; font-size:12px; line-height:1.45; color:var(--term-fg);
+    margin:0; overflow-x:auto; white-space:pre}
+
+  /* use it */
+  .use-grid{display:grid; grid-template-columns:1.1fr 1fr; gap:22px; margin-top:34px}
+  .use-card{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:24px}
+  .use-card h4{font-family:"Space Grotesk",sans-serif; font-size:16px; font-weight:600; margin:0 0 4px}
+  .use-card .hint{font-size:13.5px; color:var(--ink-soft); margin:0 0 14px}
+  .code{font-family:"JetBrains Mono",monospace; font-size:12.5px; line-height:1.7; background:var(--term-bg);
+    color:var(--term-fg); border-radius:10px; padding:16px 18px; overflow-x:auto; white-space:pre; margin:0}
+  .code .c{color:var(--term-dim)}
+  .code .g{color:#7FD4A0}
+  .cmds{list-style:none; padding:0; margin:0}
+  .cmds li{display:flex; gap:12px; align-items:flex-start; padding:11px 0; border-bottom:1px solid var(--line-soft)}
+  .cmds li:last-child{border-bottom:none}
+  .cmds code{font-family:"JetBrains Mono",monospace; font-size:12.5px; color:var(--accent);
+    background:var(--accent-soft); border-radius:6px; padding:3px 8px; white-space:nowrap}
+  .cmds span{font-size:14px; color:var(--ink-soft)}
+
+  /* footer */
+  .foot{border-top:1px solid var(--line); margin-top:30px; padding:34px 0 56px}
+  .foot-row{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:14px}
+  .foot .brand{font-size:14px}
+  .foot-meta{font-family:"JetBrains Mono",monospace; font-size:12px; color:var(--ink-soft)}
+  .foot-meta b{color:var(--ink)}
+
+  @media (max-width:860px){
+    .show-grid{grid-template-columns:1fr}
+    .show-mid{flex-direction:row; border:none; border-top:1px dashed var(--line); border-bottom:1px dashed var(--line); padding:12px 0}
+    .show-hash{writing-mode:horizontal-tb; transform:none}
+    .show-arrow{transform:rotate(90deg)}
+    .drift,.steps{grid-template-columns:1fr}
+    .step{border-right:none; border-bottom:1px solid var(--line-soft)}
+    .step:last-child{border-bottom:none}
+    .demo-grid,.use-grid{grid-template-columns:1fr}
+    .gx-cols{grid-template-columns:1fr}
+    .gx-link{padding:10px 0}
+    .gx-link-chip{transform:rotate(90deg)}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{transition:none !important; scroll-behavior:auto}
+  }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <span class="brand">ascii<b>→</b>svg</span>
+  <span class="nav-tag">Claude Code skill · v2.1</span>
+</nav>
+
+<header class="hero wrap">
+  <span class="eyebrow">Documentation tooling · ASCII-to-SVG</span>
+  <h1>Keep the ASCII.<br><span class="em">Ship the SVG.</span></h1>
+  <p class="hero-sub">Your README diagrams should look designed, not typed into a box. We render the ASCII
+  diagrams you already write into clean SVGs — and keep the original ASCII as the source of truth, so the
+  picture can never quietly drift away from the structure it describes.</p>
+
+  <div class="show">
+    <div class="show-grid">
+      <figure class="term show-pane">
+        <p class="show-cap"><span class="dot dot-fg"></span> source · ASCII (what you keep)</p>
+        <pre class="ascii">+--------+     +----------+     +---------+
+| Start  | --&gt; | Process  | --&gt; |   End   |
++--------+     +----------+     +---------+</pre>
+      </figure>
+      <div class="show-mid">
+        <span class="show-arrow">→</span>
+        <span class="show-hash">sha256 · linked</span>
+      </div>
+      <figure class="render show-pane">
+        <p class="show-cap">rendered · SVG (what you ship)</p>
+        <div class="show-svg"><svg class="d-he" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 544 140" width="544" height="140"><defs>
+<filter id="hesh" x="-25%" y="-25%" width="150%" height="160%"><feDropShadow dx="0" dy="1.5" stdDeviation="2.4" flood-color="#14202B" flood-opacity="0.14"/></filter>
+<linearGradient id="hetg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#16A6B1"/><stop offset="1" stop-color="#0E7C86"/></linearGradient>
+<linearGradient id="hehg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F5F9FB"/><stop offset="1" stop-color="#ECF3F5"/></linearGradient>
+<marker id="hear" markerWidth="11" markerHeight="9" refX="7.5" refY="4.5" orient="auto-start-reverse"><path d="M0.5,0.8 L8.5,4.5 L0.5,8.2 L3,4.5 Z" fill="#7C8B99"/></marker>
+</defs><line x1="150" y1="70" x2="196" y2="70" stroke="#7C8B99" stroke-width="2" marker-end="url(#hear)"/><line x1="346" y1="70" x2="392" y2="70" stroke="#7C8B99" stroke-width="2" marker-end="url(#hear)"/><rect x="28" y="42" width="122" height="56" rx="28" fill="url(#hetg)" stroke="none" stroke-width="0" filter="url(#hesh)"/><text x="89.0" y="70.0" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="15" font-weight="600" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle">Start</text><rect x="198" y="42" width="148" height="56" rx="28" fill="#FFFFFF" stroke="#CFD8E0" stroke-width="1.5" filter="url(#hesh)"/><text x="272.0" y="70.0" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="15" font-weight="600" fill="#14202B" text-anchor="middle" dominant-baseline="middle">Process</text><rect x="394" y="42" width="122" height="56" rx="28" fill="#FFFFFF" stroke="#0E7C86" stroke-width="2" filter="url(#hesh)"/><text x="455.0" y="70.0" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="15" font-weight="600" fill="#0E7C86" text-anchor="middle" dominant-baseline="middle">End</text></svg></div>
+      </figure>
+    </div>
+    <div class="syncbar">
+      <span class="dot dot-ok"></span>
+      <span><b>In sync.</b> The SVG was generated from this exact ASCII. Change one, and the link flags the other.</span>
+    </div>
+  </div>
+</header>
+
+<section class="sec wrap">
+  <div class="sec-head">
+    <span class="eyebrow">The problem</span>
+    <h2>A diagram is only as trustworthy as it is current.</h2>
+  </div>
+  <div class="prob-lede">
+    <p>Hand-drawn ASCII diagrams are honest. They live in the file, they show up in diffs, and an agent
+    reading your repo can parse them. But they look like what they are — characters in a box.</p>
+    <p>A pasted image looks polished, right up until someone changes the architecture and forgets the picture.
+    Now the diagram says one thing and the code does another, and every reader has to guess which one to trust.
+    That gap is the thing we set out to close.</p>
+  </div>
+  <div class="drift">
+    <div class="drift-card">
+      <span class="drift-tag">silent</span>
+      <h4>Images go stale</h4>
+      <p>A PNG has no connection to the thing it depicts. Edit the system, and the image keeps smiling as if nothing changed.</p>
+    </div>
+    <div class="drift-card">
+      <span class="drift-tag">rough</span>
+      <h4>ASCII stays true but plain</h4>
+      <p>It remains accurate because it lives in the doc and moves with every commit — but it reads as a draft, not a deliverable.</p>
+    </div>
+    <div class="drift-card">
+      <span class="drift-tag">eroded</span>
+      <h4>Trust gets spent</h4>
+      <p>Once a picture and the reality disagree, every other diagram in the repo becomes suspect too.</p>
+    </div>
+  </div>
+</section>
+
+<section class="sec wrap">
+  <div class="sec-head">
+    <span class="eyebrow">How the two stay honest</span>
+    <h2>One source of truth. One beautiful rendering. A hash that binds them.</h2>
+  </div>
+  <div class="steps">
+    <div class="step">
+      <span class="step-n">01</span>
+      <h4>ASCII is the source</h4>
+      <p>You write the diagram in plain characters, kept in a collapsible block right under the image.
+      It is <span class="k">diffable, reviewable, and machine-readable</span> — the version of record.</p>
+    </div>
+    <div class="step">
+      <span class="step-n">02</span>
+      <h4>SVG is the rendering</h4>
+      <p>We convert each diagram into a clean, validated SVG and reference it as the visible image.
+      That is what your readers actually see — <span class="k">designed, not drawn</span>.</p>
+    </div>
+    <div class="step">
+      <span class="step-n">03</span>
+      <h4>A manifest binds them</h4>
+      <p>Every diagram's ASCII is hashed and tracked. Edit the ASCII, the hash changes, the SVG is flagged
+      stale and <span class="k">regenerated</span>. The picture is never allowed to outlive its source.</p>
+    </div>
+  </div>
+
+  <div class="demo">
+    <div class="demo-top">
+      <div>
+        <h3>See the sync loop</h3>
+        <p>Edit the ASCII to add a step. Watch the link break — then regenerate to bring them back together.</p>
+      </div>
+      <span class="badge ok" id="syncBadge"><span class="dot dot-ok"></span> in sync · hash matches</span>
+    </div>
+    <div class="demo-grid">
+      <figure class="term">
+        <p class="show-cap"><span class="dot dot-fg"></span> source · ASCII</p>
+        <pre class="ascii" id="demoAscii">+--------+     +----------+     +---------+
+| Start  | --&gt; | Process  | --&gt; |   End   |
++--------+     +----------+     +---------+</pre>
+      </figure>
+      <figure class="render">
+        <p class="show-cap">rendered · SVG</p>
+        <div class="demo-svg" id="demoSvg"><svg class="d-d1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 544 140" width="544" height="140"><defs>
+<filter id="d1sh" x="-25%" y="-25%" width="150%" height="160%"><feDropShadow dx="0" dy="1.5" stdDeviation="2.4" flood-color="#14202B" flood-opacity="0.14"/></filter>
+<linearGradient id="d1tg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#16A6B1"/><stop offset="1" stop-color="#0E7C86"/></linearGradient>
+<linearGradient id="d1hg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F5F9FB"/><stop offset="1" stop-color="#ECF3F5"/></linearGradient>
+<marker id="d1ar" markerWidth="11" markerHeight="9" refX="7.5" refY="4.5" orient="auto-start-reverse"><path d="M0.5,0.8 L8.5,4.5 L0.5,8.2 L3,4.5 Z" fill="#7C8B99"/></marker>
+</defs><line x1="150" y1="70" x2="196" y2="70" stroke="#7C8B99" stroke-width="2" marker-end="url(#d1ar)"/><line x1="346" y1="70" x2="392" y2="70" stroke="#7C8B99" stroke-width="2" marker-end="url(#d1ar)"/><rect x="28" y="42" width="122" height="56" rx="28" fill="url(#d1tg)" stroke="none" stroke-width="0" filter="url(#d1sh)"/><text x="89.0" y="70.0" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="15" font-weight="600" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle">Start</text><rect x="198" y="42" width="148" height="56" rx="28" fill="#FFFFFF" stroke="#CFD8E0" stroke-width="1.5" filter="url(#d1sh)"/><text x="272.0" y="70.0" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="15" font-weight="600" fill="#14202B" text-anchor="middle" dominant-baseline="middle">Process</text><rect x="394" y="42" width="122" height="56" rx="28" fill="#FFFFFF" stroke="#0E7C86" stroke-width="2" filter="url(#d1sh)"/><text x="455.0" y="70.0" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="15" font-weight="600" fill="#0E7C86" text-anchor="middle" dominant-baseline="middle">End</text></svg></div>
+      </figure>
+    </div>
+    <div class="demo-controls">
+      <button class="btn" id="demoBtn">Edit the ASCII →</button>
+      <button class="btn ghost" id="demoReset" hidden>Reset demo</button>
+    </div>
+    <p class="demo-msg" id="demoMsg">Start state: the SVG was built from this ASCII, so the manifest hash matches.</p>
+  </div>
+</section>
+
+<section class="sec wrap">
+  <div class="sec-head">
+    <span class="eyebrow">Both ways, five ways</span>
+    <h2>Every diagram type, side by side.</h2>
+    <p>These are the skill's own examples. On the left is the ASCII you keep in the doc; on the right is the
+    SVG it produces. The pair travels together, always.</p>
+  </div>
+  <div class="gx">
+      <article class="gx-item">
+        <div class="gx-head">
+          <span class="gx-num">01</span>
+          <h3 class="gx-title">Linear flowchart</h3>
+          
+        </div>
+        <div class="gx-cols">
+          <figure class="term">
+            <figcaption class="term-cap"><span class="dot dot-fg"></span> source · ASCII</figcaption>
+            <pre class="ascii">+--------+     +----------+     +---------+
+| Start  | --&gt; | Process  | --&gt; |   End   |
++--------+     +----------+     +---------+</pre>
+          </figure>
+          <div class="gx-link" aria-hidden="true"><span class="gx-link-chip">renders to</span></div>
+          <figure class="render">
+            <figcaption class="render-cap">rendered · SVG</figcaption>
+            <div class="svg-wrap"><svg class="d-fs" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 544 140" width="544" height="140"><defs>
+<filter id="fssh" x="-25%" y="-25%" width="150%" height="160%"><feDropShadow dx="0" dy="1.5" stdDeviation="2.4" flood-color="#14202B" flood-opacity="0.14"/></filter>
+<linearGradient id="fstg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#16A6B1"/><stop offset="1" stop-color="#0E7C86"/></linearGradient>
+<linearGradient id="fshg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F5F9FB"/><stop offset="1" stop-color="#ECF3F5"/></linearGradient>
+<marker id="fsar" markerWidth="11" markerHeight="9" refX="7.5" refY="4.5" orient="auto-start-reverse"><path d="M0.5,0.8 L8.5,4.5 L0.5,8.2 L3,4.5 Z" fill="#7C8B99"/></marker>
+</defs><line x1="150" y1="70" x2="196" y2="70" stroke="#7C8B99" stroke-width="2" marker-end="url(#fsar)"/><line x1="346" y1="70" x2="392" y2="70" stroke="#7C8B99" stroke-width="2" marker-end="url(#fsar)"/><rect x="28" y="42" width="122" height="56" rx="28" fill="url(#fstg)" stroke="none" stroke-width="0" filter="url(#fssh)"/><text x="89.0" y="70.0" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="15" font-weight="600" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle">Start</text><rect x="198" y="42" width="148" height="56" rx="28" fill="#FFFFFF" stroke="#CFD8E0" stroke-width="1.5" filter="url(#fssh)"/><text x="272.0" y="70.0" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="15" font-weight="600" fill="#14202B" text-anchor="middle" dominant-baseline="middle">Process</text><rect x="394" y="42" width="122" height="56" rx="28" fill="#FFFFFF" stroke="#0E7C86" stroke-width="2" filter="url(#fssh)"/><text x="455.0" y="70.0" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="15" font-weight="600" fill="#0E7C86" text-anchor="middle" dominant-baseline="middle">End</text></svg></div>
+          </figure>
+        </div>
+      </article>
+      <article class="gx-item">
+        <div class="gx-head">
+          <span class="gx-num">02</span>
+          <h3 class="gx-title">Decision flowchart</h3>
+          
+        </div>
+        <div class="gx-cols">
+          <figure class="term">
+            <figcaption class="term-cap"><span class="dot dot-fg"></span> source · ASCII</figcaption>
+            <pre class="ascii">              +-------+
+              | Start |
+              +-------+
+                  |
+                  v
+            +-----------+
+            | Validate? |
+            +-----------+
+             /         \
+           Yes          No
+           /             \
+          v               v
+    +---------+     +---------+
+    | Process |     | Reject  |
+    +---------+     +---------+
+          |               |
+          v               v
+      +-------+       +-------+
+      |  End  |       |  End  |
+      +-------+       +-------+</pre>
+          </figure>
+          <div class="gx-link" aria-hidden="true"><span class="gx-link-chip">renders to</span></div>
+          <figure class="render">
+            <figcaption class="render-cap">rendered · SVG</figcaption>
+            <div class="svg-wrap"><svg class="d-fd" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 410" width="460" height="410"><defs>
+<filter id="fdsh" x="-25%" y="-25%" width="150%" height="160%"><feDropShadow dx="0" dy="1.5" stdDeviation="2.4" flood-color="#14202B" flood-opacity="0.14"/></filter>
+<linearGradient id="fdtg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#16A6B1"/><stop offset="1" stop-color="#0E7C86"/></linearGradient>
+<linearGradient id="fdhg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F5F9FB"/><stop offset="1" stop-color="#ECF3F5"/></linearGradient>
+<marker id="fdar" markerWidth="11" markerHeight="9" refX="7.5" refY="4.5" orient="auto-start-reverse"><path d="M0.5,0.8 L8.5,4.5 L0.5,8.2 L3,4.5 Z" fill="#7C8B99"/></marker>
+</defs><line x1="230" y1="84" x2="230" y2="104" stroke="#7C8B99" stroke-width="2" marker-end="url(#fdar)"/><path d="M230,110 L304,152.0 L230,194 L156,152.0 Z" fill="#FAEFD6" stroke="#B9791A" stroke-width="1.8" filter="url(#fdsh)"/><text x="230" y="152.0" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="15" font-weight="600" fill="#8A5A12" text-anchor="middle" dominant-baseline="middle">Validate?</text><line x1="156" y1="152.0" x2="96" y2="152.0" stroke="#2E8B57" stroke-width="2" marker-end="url(#fdar)"/><line x1="96" y1="152.0" x2="96" y2="250" stroke="#2E8B57" stroke-width="2" marker-end="url(#fdar)"/><rect x="120" y="127.0" width="44" height="22" rx="11" fill="#E4F3F4" stroke="#2E8B57" stroke-width="1.2"/><text x="142" y="138.0" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="12" font-weight="700" fill="#2E8B57" text-anchor="middle" dominant-baseline="middle">Yes</text><line x1="304" y1="152.0" x2="364" y2="152.0" stroke="#B14E68" stroke-width="2" marker-end="url(#fdar)"/><line x1="364" y1="152.0" x2="364" y2="250" stroke="#B14E68" stroke-width="2" marker-end="url(#fdar)"/><rect x="298" y="127.0" width="40" height="22" rx="11" fill="#FBE7EC" stroke="#B14E68" stroke-width="1.2"/><text x="318" y="138.0" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="12" font-weight="700" fill="#9A3A52" text-anchor="middle" dominant-baseline="middle">No</text><rect x="36" y="250" width="120" height="52" rx="14" fill="#FFFFFF" stroke="#0E7C86" stroke-width="2" filter="url(#fdsh)"/><text x="96.0" y="276.0" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="15" font-weight="600" fill="#0E7C86" text-anchor="middle" dominant-baseline="middle">Process</text><rect x="304" y="250" width="120" height="52" rx="14" fill="#FBE7EC" stroke="#B14E68" stroke-width="1.6" filter="url(#fdsh)"/><text x="364.0" y="276.0" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="15" font-weight="600" fill="#8E3A50" text-anchor="middle" dominant-baseline="middle">Reject</text><line x1="96" y1="302" x2="96" y2="336" stroke="#7C8B99" stroke-width="2" marker-end="url(#fdar)"/><line x1="364" y1="302" x2="364" y2="336" stroke="#7C8B99" stroke-width="2" marker-end="url(#fdar)"/><rect x="42" y="336" width="108" height="50" rx="14" fill="url(#fdtg)" stroke="none" stroke-width="0" filter="url(#fdsh)"/><text x="96.0" y="361.0" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="15" font-weight="600" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle">End</text><rect x="310" y="336" width="108" height="50" rx="14" fill="#FFFFFF" stroke="#CFD8E0" stroke-width="1.5" filter="url(#fdsh)"/><text x="364.0" y="361.0" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="15" font-weight="600" fill="#14202B" text-anchor="middle" dominant-baseline="middle">End</text><rect x="172" y="30" width="116" height="52" rx="14" fill="url(#fdtg)" stroke="none" stroke-width="0" filter="url(#fdsh)"/><text x="230.0" y="56.0" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="15" font-weight="600" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle">Start</text></svg></div>
+          </figure>
+        </div>
+      </article>
+      <article class="gx-item">
+        <div class="gx-head">
+          <span class="gx-num">03</span>
+          <h3 class="gx-title">Architecture, two layers</h3>
+          
+        </div>
+        <div class="gx-cols">
+          <figure class="term">
+            <figcaption class="term-cap"><span class="dot dot-fg"></span> source · ASCII</figcaption>
+            <pre class="ascii">┌─────────────────────────────────────────────┐
+│                 Frontend                     │
+│  ┌─────────────┐         ┌───────────────┐  │
+│  │    React    │         │    Nginx      │  │
+│  │     App     │         │   (static)    │  │
+│  └─────────────┘         └───────────────┘  │
+└────────────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────┐
+│                  Backend                     │
+│  ┌─────────────┐         ┌───────────────┐  │
+│  │   Node.js   │────────▶│  PostgreSQL   │  │
+│  │     API     │         │      DB       │  │
+│  └─────────────┘         └───────────────┘  │
+└─────────────────────────────────────────────────┘</pre>
+          </figure>
+          <div class="gx-link" aria-hidden="true"><span class="gx-link-chip">renders to</span></div>
+          <figure class="render">
+            <figcaption class="render-cap">rendered · SVG</figcaption>
+            <div class="svg-wrap"><svg class="d-ar" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 406" width="560" height="406"><defs>
+<filter id="arsh" x="-25%" y="-25%" width="150%" height="160%"><feDropShadow dx="0" dy="1.5" stdDeviation="2.4" flood-color="#14202B" flood-opacity="0.14"/></filter>
+<linearGradient id="artg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#16A6B1"/><stop offset="1" stop-color="#0E7C86"/></linearGradient>
+<linearGradient id="arhg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F5F9FB"/><stop offset="1" stop-color="#ECF3F5"/></linearGradient>
+<marker id="arar" markerWidth="11" markerHeight="9" refX="7.5" refY="4.5" orient="auto-start-reverse"><path d="M0.5,0.8 L8.5,4.5 L0.5,8.2 L3,4.5 Z" fill="#7C8B99"/></marker>
+</defs><rect x="28" y="24" width="504" height="150" rx="18" fill="#FBFDFE" stroke="#CFD8E0" stroke-width="1.5"/><path d="M28,64 L28,42 Q28,24 46,24 L514,24 Q532,24 532,42 L532,64 Z" fill="url(#arhg)"/><line x1="28" y1="64" x2="532" y2="64" stroke="#CFD8E0" stroke-width="1.2"/><text x="280.0" y="44" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="15" font-weight="700" fill="#0E7C86" text-anchor="middle" dominant-baseline="middle">Frontend</text><rect x="64" y="76" width="150" height="76" rx="14" fill="#FFFFFF" stroke="#0E7C86" stroke-width="2" filter="url(#arsh)"/><text x="139.0" y="105.0" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="15" font-weight="600" fill="#0E7C86" text-anchor="middle" dominant-baseline="middle">React</text><text x="139.0" y="125.0" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="12.5" font-weight="500" fill="#5A6B7B" text-anchor="middle" dominant-baseline="middle">App</text><rect x="346" y="76" width="150" height="76" rx="14" fill="#EBEFF4" stroke="#51647A" stroke-width="1.6" filter="url(#arsh)"/><text x="421.0" y="105.0" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="15" font-weight="600" fill="#37475A" text-anchor="middle" dominant-baseline="middle">Nginx</text><text x="421.0" y="125.0" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="12.5" font-weight="500" fill="#7C8B99" text-anchor="middle" dominant-baseline="middle">static</text><line x1="280.0" y1="174" x2="280.0" y2="222" stroke="#7C8B99" stroke-width="2" marker-end="url(#arar)"/><rect x="28" y="232" width="504" height="150" rx="18" fill="#FBFDFE" stroke="#CFD8E0" stroke-width="1.5"/><path d="M28,272 L28,250 Q28,232 46,232 L514,232 Q532,232 532,250 L532,272 Z" fill="url(#arhg)"/><line x1="28" y1="272" x2="532" y2="272" stroke="#CFD8E0" stroke-width="1.2"/><text x="280.0" y="252" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="15" font-weight="700" fill="#0E7C86" text-anchor="middle" dominant-baseline="middle">Backend</text><rect x="64" y="284" width="150" height="76" rx="14" fill="#FFFFFF" stroke="#0E7C86" stroke-width="2" filter="url(#arsh)"/><text x="139.0" y="313.0" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="15" font-weight="600" fill="#0E7C86" text-anchor="middle" dominant-baseline="middle">Node.js</text><text x="139.0" y="333.0" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="12.5" font-weight="500" fill="#5A6B7B" text-anchor="middle" dominant-baseline="middle">API</text><rect x="346" y="284" width="150" height="76" rx="14" fill="#E9ECFA" stroke="#3B58B8" stroke-width="1.6" filter="url(#arsh)"/><text x="421.0" y="313.0" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="15" font-weight="600" fill="#2B3F8C" text-anchor="middle" dominant-baseline="middle">PostgreSQL</text><text x="421.0" y="333.0" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="12.5" font-weight="500" fill="#6471A8" text-anchor="middle" dominant-baseline="middle">DB</text><line x1="214" y1="322" x2="338" y2="322" stroke="#3B58B8" stroke-width="2" marker-end="url(#arar)"/></svg></div>
+          </figure>
+        </div>
+      </article>
+      <article class="gx-item">
+        <div class="gx-head">
+          <span class="gx-num">04</span>
+          <h3 class="gx-title">Sequence diagram</h3>
+          
+        </div>
+        <div class="gx-cols">
+          <figure class="term">
+            <figcaption class="term-cap"><span class="dot dot-fg"></span> source · ASCII</figcaption>
+            <pre class="ascii">Client          Server          Database
+  │                │                │
+  │  1. Request    │                │
+  │───────────────&gt;│                │
+  │                │  2. Query      │
+  │                │───────────────&gt;│
+  │                │                │
+  │                │  3. Results    │
+  │                │&lt;───────────────│
+  │  4. Response   │                │
+  │&lt;───────────────│                │
+  │                │                │</pre>
+          </figure>
+          <div class="gx-link" aria-hidden="true"><span class="gx-link-chip">renders to</span></div>
+          <figure class="render">
+            <figcaption class="render-cap">rendered · SVG</figcaption>
+            <div class="svg-wrap"><svg class="d-sq" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 372" width="600" height="372"><defs>
+<filter id="sqsh" x="-25%" y="-25%" width="150%" height="160%"><feDropShadow dx="0" dy="1.5" stdDeviation="2.4" flood-color="#14202B" flood-opacity="0.14"/></filter>
+<linearGradient id="sqtg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#16A6B1"/><stop offset="1" stop-color="#0E7C86"/></linearGradient>
+<linearGradient id="sqhg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F5F9FB"/><stop offset="1" stop-color="#ECF3F5"/></linearGradient>
+<marker id="sqar" markerWidth="11" markerHeight="9" refX="7.5" refY="4.5" orient="auto-start-reverse"><path d="M0.5,0.8 L8.5,4.5 L0.5,8.2 L3,4.5 Z" fill="#7C8B99"/></marker>
+</defs><line x1="90" y1="74" x2="90" y2="354" stroke="#CFD8E0" stroke-width="1.4" stroke-dasharray="2 6"/><line x1="300" y1="74" x2="300" y2="354" stroke="#CFD8E0" stroke-width="1.4" stroke-dasharray="2 6"/><line x1="510" y1="74" x2="510" y2="354" stroke="#CFD8E0" stroke-width="1.4" stroke-dasharray="2 6"/><line x1="98" y1="120" x2="292" y2="120" stroke="#0E7C86" stroke-width="2" marker-end="url(#sqar)"/><rect x="147.5" y="90" width="95.0" height="20" rx="10" fill="#FFFFFF" stroke="#CFD8E0" stroke-width="1"/><text x="195.0" y="100" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="12" font-weight="600" fill="#3D4D5C" text-anchor="middle" dominant-baseline="middle">1 · Request</text><line x1="308" y1="178" x2="502" y2="178" stroke="#3B58B8" stroke-width="2" marker-end="url(#sqar)"/><rect x="364.5" y="148" width="81.0" height="20" rx="10" fill="#FFFFFF" stroke="#CFD8E0" stroke-width="1"/><text x="405.0" y="158" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="12" font-weight="600" fill="#3D4D5C" text-anchor="middle" dominant-baseline="middle">2 · Query</text><line x1="502" y1="236" x2="308" y2="236" stroke="#3B58B8" stroke-width="2" marker-end="url(#sqar)"/><rect x="357.5" y="206" width="95.0" height="20" rx="10" fill="#FFFFFF" stroke="#CFD8E0" stroke-width="1"/><text x="405.0" y="216" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="12" font-weight="600" fill="#3D4D5C" text-anchor="middle" dominant-baseline="middle">3 · Results</text><line x1="292" y1="294" x2="98" y2="294" stroke="#0E7C86" stroke-width="2" marker-end="url(#sqar)"/><rect x="144.0" y="264" width="102.0" height="20" rx="10" fill="#FFFFFF" stroke="#CFD8E0" stroke-width="1"/><text x="195.0" y="274" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="12" font-weight="600" fill="#3D4D5C" text-anchor="middle" dominant-baseline="middle">4 · Response</text><rect x="24" y="28" width="132" height="46" rx="12" fill="url(#sqtg)" stroke="none" stroke-width="0" filter="url(#sqsh)"/><text x="90.0" y="51.0" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="15" font-weight="600" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle">Client</text><rect x="234" y="28" width="132" height="46" rx="12" fill="#FFFFFF" stroke="#0E7C86" stroke-width="2" filter="url(#sqsh)"/><text x="300.0" y="51.0" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="15" font-weight="600" fill="#0E7C86" text-anchor="middle" dominant-baseline="middle">Server</text><rect x="444" y="28" width="132" height="46" rx="12" fill="#E9ECFA" stroke="#3B58B8" stroke-width="1.6" filter="url(#sqsh)"/><text x="510.0" y="51.0" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="15" font-weight="600" fill="#2B3F8C" text-anchor="middle" dominant-baseline="middle">Database</text></svg></div>
+          </figure>
+        </div>
+      </article>
+      <article class="gx-item">
+        <div class="gx-head">
+          <span class="gx-num">05</span>
+          <h3 class="gx-title">Directory tree</h3>
+          
+        </div>
+        <div class="gx-cols">
+          <figure class="term">
+            <figcaption class="term-cap"><span class="dot dot-fg"></span> source · ASCII</figcaption>
+            <pre class="ascii">project/
+├── src/
+│   ├── components/
+│   │   ├── Button.tsx
+│   │   ├── Input.tsx
+│   │   └── Modal.tsx
+│   ├── utils/
+│   │   └── helpers.ts
+│   └── index.ts
+├── tests/
+│   └── Button.test.tsx
+├── package.json
+└── README.md</pre>
+          </figure>
+          <div class="gx-link" aria-hidden="true"><span class="gx-link-chip">renders to</span></div>
+          <figure class="render">
+            <figcaption class="render-cap">rendered · SVG</figcaption>
+            <div class="svg-wrap"><svg class="d-tr" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 513" width="420" height="513"><defs>
+<filter id="trsh" x="-25%" y="-25%" width="150%" height="160%"><feDropShadow dx="0" dy="1.5" stdDeviation="2.4" flood-color="#14202B" flood-opacity="0.14"/></filter>
+<linearGradient id="trtg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#16A6B1"/><stop offset="1" stop-color="#0E7C86"/></linearGradient>
+<linearGradient id="trhg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F5F9FB"/><stop offset="1" stop-color="#ECF3F5"/></linearGradient>
+<marker id="trar" markerWidth="11" markerHeight="9" refX="7.5" refY="4.5" orient="auto-start-reverse"><path d="M0.5,0.8 L8.5,4.5 L0.5,8.2 L3,4.5 Z" fill="#7C8B99"/></marker>
+</defs><line x1="33" y1="54.5" x2="33" y2="81.5" stroke="#CFD8E0" stroke-width="1.4"/><line x1="33" y1="81.5" x2="55" y2="81.5" stroke="#CFD8E0" stroke-width="1.4"/><line x1="63" y1="91.5" x2="63" y2="118.5" stroke="#CFD8E0" stroke-width="1.4"/><line x1="63" y1="118.5" x2="85" y2="118.5" stroke="#CFD8E0" stroke-width="1.4"/><line x1="93" y1="128.5" x2="93" y2="155.5" stroke="#CFD8E0" stroke-width="1.4"/><line x1="93" y1="155.5" x2="115" y2="155.5" stroke="#CFD8E0" stroke-width="1.4"/><line x1="93" y1="128.5" x2="93" y2="192.5" stroke="#CFD8E0" stroke-width="1.4"/><line x1="93" y1="192.5" x2="115" y2="192.5" stroke="#CFD8E0" stroke-width="1.4"/><line x1="93" y1="128.5" x2="93" y2="229.5" stroke="#CFD8E0" stroke-width="1.4"/><line x1="93" y1="229.5" x2="115" y2="229.5" stroke="#CFD8E0" stroke-width="1.4"/><line x1="63" y1="91.5" x2="63" y2="266.5" stroke="#CFD8E0" stroke-width="1.4"/><line x1="63" y1="266.5" x2="85" y2="266.5" stroke="#CFD8E0" stroke-width="1.4"/><line x1="93" y1="276.5" x2="93" y2="303.5" stroke="#CFD8E0" stroke-width="1.4"/><line x1="93" y1="303.5" x2="115" y2="303.5" stroke="#CFD8E0" stroke-width="1.4"/><line x1="63" y1="91.5" x2="63" y2="340.5" stroke="#CFD8E0" stroke-width="1.4"/><line x1="63" y1="340.5" x2="85" y2="340.5" stroke="#CFD8E0" stroke-width="1.4"/><line x1="33" y1="54.5" x2="33" y2="377.5" stroke="#CFD8E0" stroke-width="1.4"/><line x1="33" y1="377.5" x2="55" y2="377.5" stroke="#CFD8E0" stroke-width="1.4"/><line x1="63" y1="387.5" x2="63" y2="414.5" stroke="#CFD8E0" stroke-width="1.4"/><line x1="63" y1="414.5" x2="85" y2="414.5" stroke="#CFD8E0" stroke-width="1.4"/><line x1="33" y1="54.5" x2="33" y2="451.5" stroke="#CFD8E0" stroke-width="1.4"/><line x1="33" y1="451.5" x2="55" y2="451.5" stroke="#CFD8E0" stroke-width="1.4"/><line x1="33" y1="54.5" x2="33" y2="488.5" stroke="#CFD8E0" stroke-width="1.4"/><line x1="33" y1="488.5" x2="55" y2="488.5" stroke="#CFD8E0" stroke-width="1.4"/><path d="M24,39.5 Q24,35.5 28,35.5 L32,35.5 L35,38.5 L42,38.5 Q46,38.5 46,42.5 L46,49.5 Q46,53.5 42,53.5 L28,53.5 Q24,53.5 24,49.5 Z" fill="#E4F3F4" stroke="#0E7C86" stroke-width="1.3"/><text x="54" y="44.5" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="14.5" font-weight="700" fill="#14202B" text-anchor="start" dominant-baseline="middle">project/</text><path d="M54,76.5 Q54,72.5 58,72.5 L62,72.5 L65,75.5 L72,75.5 Q76,75.5 76,79.5 L76,86.5 Q76,90.5 72,90.5 L58,90.5 Q54,90.5 54,86.5 Z" fill="#E4F3F4" stroke="#0E7C86" stroke-width="1.3"/><text x="84" y="81.5" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="14.5" font-weight="700" fill="#14202B" text-anchor="start" dominant-baseline="middle">src/</text><path d="M84,113.5 Q84,109.5 88,109.5 L92,109.5 L95,112.5 L102,112.5 Q106,112.5 106,116.5 L106,123.5 Q106,127.5 102,127.5 L88,127.5 Q84,127.5 84,123.5 Z" fill="#E4F3F4" stroke="#0E7C86" stroke-width="1.3"/><text x="114" y="118.5" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="14.5" font-weight="700" fill="#14202B" text-anchor="start" dominant-baseline="middle">components/</text><path d="M117,146.5 L128,146.5 L133,151.5 L133,164.5 L117,164.5 Z" fill="#FFFFFF" stroke="#51647A" stroke-width="1.2"/><path d="M128,146.5 L128,151.5 L133,151.5 Z" fill="#EBEFF4" stroke="#51647A" stroke-width="1"/><text x="140" y="155.5" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="14" font-weight="500" fill="#37475A" text-anchor="start" dominant-baseline="middle">Button.tsx</text><path d="M117,183.5 L128,183.5 L133,188.5 L133,201.5 L117,201.5 Z" fill="#FFFFFF" stroke="#51647A" stroke-width="1.2"/><path d="M128,183.5 L128,188.5 L133,188.5 Z" fill="#EBEFF4" stroke="#51647A" stroke-width="1"/><text x="140" y="192.5" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="14" font-weight="500" fill="#37475A" text-anchor="start" dominant-baseline="middle">Input.tsx</text><path d="M117,220.5 L128,220.5 L133,225.5 L133,238.5 L117,238.5 Z" fill="#FFFFFF" stroke="#51647A" stroke-width="1.2"/><path d="M128,220.5 L128,225.5 L133,225.5 Z" fill="#EBEFF4" stroke="#51647A" stroke-width="1"/><text x="140" y="229.5" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="14" font-weight="500" fill="#37475A" text-anchor="start" dominant-baseline="middle">Modal.tsx</text><path d="M84,261.5 Q84,257.5 88,257.5 L92,257.5 L95,260.5 L102,260.5 Q106,260.5 106,264.5 L106,271.5 Q106,275.5 102,275.5 L88,275.5 Q84,275.5 84,271.5 Z" fill="#E4F3F4" stroke="#0E7C86" stroke-width="1.3"/><text x="114" y="266.5" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="14.5" font-weight="700" fill="#14202B" text-anchor="start" dominant-baseline="middle">utils/</text><path d="M117,294.5 L128,294.5 L133,299.5 L133,312.5 L117,312.5 Z" fill="#FFFFFF" stroke="#51647A" stroke-width="1.2"/><path d="M128,294.5 L128,299.5 L133,299.5 Z" fill="#EBEFF4" stroke="#51647A" stroke-width="1"/><text x="140" y="303.5" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="14" font-weight="500" fill="#37475A" text-anchor="start" dominant-baseline="middle">helpers.ts</text><path d="M87,331.5 L98,331.5 L103,336.5 L103,349.5 L87,349.5 Z" fill="#FFFFFF" stroke="#51647A" stroke-width="1.2"/><path d="M98,331.5 L98,336.5 L103,336.5 Z" fill="#EBEFF4" stroke="#51647A" stroke-width="1"/><text x="110" y="340.5" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="14" font-weight="500" fill="#37475A" text-anchor="start" dominant-baseline="middle">index.ts</text><path d="M54,372.5 Q54,368.5 58,368.5 L62,368.5 L65,371.5 L72,371.5 Q76,371.5 76,375.5 L76,382.5 Q76,386.5 72,386.5 L58,386.5 Q54,386.5 54,382.5 Z" fill="#E4F3F4" stroke="#0E7C86" stroke-width="1.3"/><text x="84" y="377.5" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="14.5" font-weight="700" fill="#14202B" text-anchor="start" dominant-baseline="middle">tests/</text><path d="M87,405.5 L98,405.5 L103,410.5 L103,423.5 L87,423.5 Z" fill="#FFFFFF" stroke="#51647A" stroke-width="1.2"/><path d="M98,405.5 L98,410.5 L103,410.5 Z" fill="#EBEFF4" stroke="#51647A" stroke-width="1"/><text x="110" y="414.5" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="14" font-weight="500" fill="#37475A" text-anchor="start" dominant-baseline="middle">Button.test.tsx</text><path d="M57,442.5 L68,442.5 L73,447.5 L73,460.5 L57,460.5 Z" fill="#FFFFFF" stroke="#51647A" stroke-width="1.2"/><path d="M68,442.5 L68,447.5 L73,447.5 Z" fill="#EBEFF4" stroke="#51647A" stroke-width="1"/><text x="80" y="451.5" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="14" font-weight="500" fill="#37475A" text-anchor="start" dominant-baseline="middle">package.json</text><path d="M57,479.5 L68,479.5 L73,484.5 L73,497.5 L57,497.5 Z" fill="#FFFFFF" stroke="#51647A" stroke-width="1.2"/><path d="M68,479.5 L68,484.5 L73,484.5 Z" fill="#EBEFF4" stroke="#51647A" stroke-width="1"/><text x="80" y="488.5" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="14" font-weight="500" fill="#37475A" text-anchor="start" dominant-baseline="middle">README.md</text></svg></div>
+          </figure>
+        </div>
+      </article>
+  </div>
+</section>
+
+<section class="sec wrap">
+  <div class="sec-head">
+    <span class="eyebrow">Get started</span>
+    <h2>Drop it in, then forget it.</h2>
+    <p>Install once, add one rule, and diagrams render themselves as part of the work — no separate step to remember.</p>
+  </div>
+  <div class="use-grid">
+    <div class="use-card">
+      <h4>1 · Install the skill</h4>
+      <p class="hint">Copy the folder into your Claude Code skills directory.</p>
+      <pre class="code"><span class="c"># available in every project</span>
+cp -r ascii-to-svg <span class="g">~/.claude/skills/</span></pre>
+      <h4 style="margin-top:22px">2 · Make it automatic</h4>
+      <p class="hint">Add this to your project's CLAUDE.md so SVGs are created proactively.</p>
+      <pre class="code"><span class="c">## Diagram creation (mandatory)</span>
+Convert any ASCII diagram to an SVG,
+keep the ASCII in a &lt;details&gt; block
+right below it, save to assets/diagrams/.</pre>
+    </div>
+    <div class="use-card">
+      <h4>Or call it on demand</h4>
+      <p class="hint">Plain-language commands for existing files.</p>
+      <ul class="cmds">
+        <li><code>Convert ASCII art in README.md</code><span>a single file</span></li>
+        <li><code>Convert all ASCII in docs/</code><span>a whole directory</span></li>
+        <li><code>Show me what you'd convert</code><span>dry-run preview, no changes</span></li>
+        <li><code>Sync ASCII to SVG</code><span>regenerate anything gone stale</span></li>
+        <li><code>Show ASCII to SVG status</code><span>read the tracking manifest</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<footer class="foot">
+  <div class="wrap foot-row">
+    <span class="brand">ascii<b>→</b>svg</span>
+    <span class="foot-meta">Prepared by <b>ISO Vision LLC</b> · diagrams that stay in sync with the systems they describe</span>
+  </div>
+</footer>
+
+<script>
+  (function(){
+    var v1A = "+--------+     +----------+     +---------+\n| Start  | --&gt; | Process  | --&gt; |   End   |\n+--------+     +----------+     +---------+";
+    var v2A = "+--------+    +-----------+    +----------+    +---------+\n| Start  | -&gt; | Validate  | -&gt; | Process  | -&gt; |   End   |\n+--------+    +-----------+    +----------+    +---------+";
+    var v1S = "<svg class=\"d-d1\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 544 140\" width=\"544\" height=\"140\"><defs>\n<filter id=\"d1sh\" x=\"-25%\" y=\"-25%\" width=\"150%\" height=\"160%\"><feDropShadow dx=\"0\" dy=\"1.5\" stdDeviation=\"2.4\" flood-color=\"#14202B\" flood-opacity=\"0.14\"/></filter>\n<linearGradient id=\"d1tg\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop offset=\"0\" stop-color=\"#16A6B1\"/><stop offset=\"1\" stop-color=\"#0E7C86\"/></linearGradient>\n<linearGradient id=\"d1hg\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop offset=\"0\" stop-color=\"#F5F9FB\"/><stop offset=\"1\" stop-color=\"#ECF3F5\"/></linearGradient>\n<marker id=\"d1ar\" markerWidth=\"11\" markerHeight=\"9\" refX=\"7.5\" refY=\"4.5\" orient=\"auto-start-reverse\"><path d=\"M0.5,0.8 L8.5,4.5 L0.5,8.2 L3,4.5 Z\" fill=\"#7C8B99\"/></marker>\n</defs><line x1=\"150\" y1=\"70\" x2=\"196\" y2=\"70\" stroke=\"#7C8B99\" stroke-width=\"2\" marker-end=\"url(#d1ar)\"/><line x1=\"346\" y1=\"70\" x2=\"392\" y2=\"70\" stroke=\"#7C8B99\" stroke-width=\"2\" marker-end=\"url(#d1ar)\"/><rect x=\"28\" y=\"42\" width=\"122\" height=\"56\" rx=\"28\" fill=\"url(#d1tg)\" stroke=\"none\" stroke-width=\"0\" filter=\"url(#d1sh)\"/><text x=\"89.0\" y=\"70.0\" font-family=\"Inter, system-ui, -apple-system, sans-serif\" font-size=\"15\" font-weight=\"600\" fill=\"#FFFFFF\" text-anchor=\"middle\" dominant-baseline=\"middle\">Start</text><rect x=\"198\" y=\"42\" width=\"148\" height=\"56\" rx=\"28\" fill=\"#FFFFFF\" stroke=\"#CFD8E0\" stroke-width=\"1.5\" filter=\"url(#d1sh)\"/><text x=\"272.0\" y=\"70.0\" font-family=\"Inter, system-ui, -apple-system, sans-serif\" font-size=\"15\" font-weight=\"600\" fill=\"#14202B\" text-anchor=\"middle\" dominant-baseline=\"middle\">Process</text><rect x=\"394\" y=\"42\" width=\"122\" height=\"56\" rx=\"28\" fill=\"#FFFFFF\" stroke=\"#0E7C86\" stroke-width=\"2\" filter=\"url(#d1sh)\"/><text x=\"455.0\" y=\"70.0\" font-family=\"Inter, system-ui, -apple-system, sans-serif\" font-size=\"15\" font-weight=\"600\" fill=\"#0E7C86\" text-anchor=\"middle\" dominant-baseline=\"middle\">End</text></svg>";
+    var v2S = "<svg class=\"d-d2\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 728 140\" width=\"728\" height=\"140\"><defs>\n<filter id=\"d2sh\" x=\"-25%\" y=\"-25%\" width=\"150%\" height=\"160%\"><feDropShadow dx=\"0\" dy=\"1.5\" stdDeviation=\"2.4\" flood-color=\"#14202B\" flood-opacity=\"0.14\"/></filter>\n<linearGradient id=\"d2tg\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop offset=\"0\" stop-color=\"#16A6B1\"/><stop offset=\"1\" stop-color=\"#0E7C86\"/></linearGradient>\n<linearGradient id=\"d2hg\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop offset=\"0\" stop-color=\"#F5F9FB\"/><stop offset=\"1\" stop-color=\"#ECF3F5\"/></linearGradient>\n<marker id=\"d2ar\" markerWidth=\"11\" markerHeight=\"9\" refX=\"7.5\" refY=\"4.5\" orient=\"auto-start-reverse\"><path d=\"M0.5,0.8 L8.5,4.5 L0.5,8.2 L3,4.5 Z\" fill=\"#7C8B99\"/></marker>\n</defs><line x1=\"150\" y1=\"70\" x2=\"186\" y2=\"70\" stroke=\"#7C8B99\" stroke-width=\"2\" marker-end=\"url(#d2ar)\"/><line x1=\"336\" y1=\"70\" x2=\"372\" y2=\"70\" stroke=\"#7C8B99\" stroke-width=\"2\" marker-end=\"url(#d2ar)\"/><line x1=\"540\" y1=\"70\" x2=\"576\" y2=\"70\" stroke=\"#7C8B99\" stroke-width=\"2\" marker-end=\"url(#d2ar)\"/><rect x=\"28\" y=\"42\" width=\"122\" height=\"56\" rx=\"28\" fill=\"url(#d2tg)\" stroke=\"none\" stroke-width=\"0\" filter=\"url(#d2sh)\"/><text x=\"89.0\" y=\"70.0\" font-family=\"Inter, system-ui, -apple-system, sans-serif\" font-size=\"15\" font-weight=\"600\" fill=\"#FFFFFF\" text-anchor=\"middle\" dominant-baseline=\"middle\">Start</text><rect x=\"188\" y=\"42\" width=\"148\" height=\"56\" rx=\"28\" fill=\"#FFFFFF\" stroke=\"#0E7C86\" stroke-width=\"2\" filter=\"url(#d2sh)\"/><text x=\"262.0\" y=\"70.0\" font-family=\"Inter, system-ui, -apple-system, sans-serif\" font-size=\"15\" font-weight=\"600\" fill=\"#0E7C86\" text-anchor=\"middle\" dominant-baseline=\"middle\">Validate</text><rect x=\"374\" y=\"42\" width=\"166\" height=\"56\" rx=\"28\" fill=\"#FFFFFF\" stroke=\"#CFD8E0\" stroke-width=\"1.5\" filter=\"url(#d2sh)\"/><text x=\"457.0\" y=\"70.0\" font-family=\"Inter, system-ui, -apple-system, sans-serif\" font-size=\"15\" font-weight=\"600\" fill=\"#14202B\" text-anchor=\"middle\" dominant-baseline=\"middle\">Process</text><rect x=\"578\" y=\"42\" width=\"122\" height=\"56\" rx=\"28\" fill=\"#FFFFFF\" stroke=\"#0E7C86\" stroke-width=\"2\" filter=\"url(#d2sh)\"/><text x=\"639.0\" y=\"70.0\" font-family=\"Inter, system-ui, -apple-system, sans-serif\" font-size=\"15\" font-weight=\"600\" fill=\"#0E7C86\" text-anchor=\"middle\" dominant-baseline=\"middle\">End</text><rect x=\"248\" y=\"22\" width=\"36\" height=\"18\" rx=\"9\" fill=\"#0E7C86\"/><text x=\"266\" y=\"31\" font-family=\"Inter, system-ui, -apple-system, sans-serif\" font-size=\"10.5\" font-weight=\"700\" fill=\"#fff\" text-anchor=\"middle\" dominant-baseline=\"middle\">new</text></svg>";
+    var state = 0; // 0 in-sync v1, 1 stale, 2 in-sync v2
+    var ascii = document.getElementById('demoAscii');
+    var svg = document.getElementById('demoSvg');
+    var badge = document.getElementById('syncBadge');
+    var btn = document.getElementById('demoBtn');
+    var reset = document.getElementById('demoReset');
+    var msg = document.getElementById('demoMsg');
+
+    function setBadge(kind, text){
+      badge.className = 'badge ' + (kind==='ok'?'ok':'stale');
+      badge.innerHTML = '<span class="dot '+(kind==='ok'?'dot-ok':'dot-stale')+'"></span> '+text;
+    }
+    function render(){
+      if(state===0){
+        ascii.textContent = decodeEnt(v1A); svg.innerHTML = v1S; svg.className='demo-svg';
+        setBadge('ok','in sync · hash matches');
+        btn.hidden = false; btn.textContent = 'Edit the ASCII →'; reset.hidden = true;
+        msg.innerHTML = 'Start state: the SVG was built from this ASCII, so the manifest hash matches.';
+      } else if(state===1){
+        ascii.textContent = decodeEnt(v2A); svg.innerHTML = v1S; svg.className='demo-svg stale-glass';
+        setBadge('stale','stale · ASCII changed');
+        btn.hidden = false; btn.textContent = 'Regenerate SVG'; reset.hidden = true;
+        msg.innerHTML = 'You added a <b>Validate</b> step. The ASCII hash no longer matches the SVG — the manifest marks it <b>stale</b> and the old image is held back.';
+      } else {
+        ascii.textContent = decodeEnt(v2A); svg.innerHTML = v2S; svg.className='demo-svg';
+        setBadge('ok','in sync · hash matches');
+        btn.hidden = true; reset.hidden = false;
+        msg.innerHTML = 'Regenerated. The SVG now reflects the new ASCII, the hash matches again, and the pair is back <b>in sync</b>.';
+      }
+    }
+    // textContent expects raw text; our payloads are HTML-escaped, so decode entities
+    var ta = document.createElement('textarea');
+    function decodeEnt(s){ ta.innerHTML = s; return ta.value; }
+
+    btn.addEventListener('click', function(){ state = (state===0)?1:2; render(); });
+    reset.addEventListener('click', function(){ state = 0; render(); });
+    render();
+  })();
+</script>
+</body>
+</html>

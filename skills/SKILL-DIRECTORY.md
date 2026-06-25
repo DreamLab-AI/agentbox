@@ -1,6 +1,6 @@
 # Skill Directory -- Comprehensive Inventory and Decision Tree
 
-> **105 active skills** (`ontology-augment` added 2026-06-14 — consumption side of the PRD-020 ontology binding; 3 Phase 1 code-execution surfaces added 2026-05-21; tree-search-coder is Phase 2-3 scaffold, not counted as active). 18 formerly deprecated/archived skills removed (see table below for history).
+> **106 active skills** (`ascii-to-svg` added 2026-06-25 — third-party documentation/diagram skill, ISO Vision LLC, Documentation and Reports category; `ontology-augment` added 2026-06-14 — consumption side of the PRD-020 ontology binding; 3 Phase 1 code-execution surfaces added 2026-05-21; tree-search-coder is Phase 2-3 scaffold, not counted as active). 18 formerly deprecated/archived skills removed (see table below for history).
 > Updated 2026-05-27. Reference this file from CLAUDE.md for intelligent routing.
 
 ---
@@ -30,13 +30,13 @@
 
 ---
 
-## Artefact 1: Categorised Skill Inventory (105 Active Skills)
+## Artefact 1: Categorised Skill Inventory (106 Active Skills)
 
 ### Context, Discovery, and Session Management
 
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
-| `skill-router` | No | **Unified dispatcher** for 104 skills. `/route [task]` classifies intent and routes to optimal skill. Single entry point | Don't know which skill to use — describe your task and get routed |
+| `skill-router` | No | **Unified dispatcher** for 105 skills. `/route [task]` classifies intent and routes to optimal skill. Single entry point | Don't know which skill to use — describe your task and get routed |
 | `lazy-fetch` | Yes | 25 MCP tools: context hydration, plan tracking, blueprints, PRD-to-sprints, security scanning, persistent memory | Starting a new session, managing context across tasks, tracking phased plans, running autonomous PRD execution |
 | `skill-builder` | No | Create new Claude Code skills with YAML frontmatter and progressive disclosure | Building new custom skills for the skills directory |
 | `skill-tuning` | No | Empirically optimize an existing skill against a measurable reward via the SkillOpt loop + noise-robust held-out A/B (single-optimizer vs mesh arms). Live harness in skillopt-lab | Tuning a skill by evidence — raising an agent's success rate on a bounded scoreable task, not eyeballing prose |
@@ -167,6 +167,7 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 | `latex-book` | No | Convert markdown/HTML manuscripts to arXiv-compliant LaTeX: memoir class, biblatex citations, parallel swarm conversion, UK typography conventions, cite_mapping.json footnote pipeline | Converting a multi-chapter markdown book to LaTeX for arXiv submission or print-ready PDF |
 | `book-publishing` | No | End-to-end book pipeline: markdown → arXiv/KDP/print-ready PDF using parallel agent swarms (LaTeX conversion, BibTeX extraction, TikZ diagrams, matplotlib charts, Wardley maps, Gemini image upcycling, visual verification) | Publishing a book or preparing a full manuscript for academic or commercial publication |
 | `mermaid-diagrams` | No | 25 diagram types, PNG/SVG/PDF export, dark/light themes | System architecture, flowcharts, ER models, Gantt charts, mindmaps |
+| `ascii-to-svg` | No | Convert hand-drawn ASCII diagrams in markdown/README to clean designed SVGs with an accessible ASCII `<details>` fallback; hashed manifest tracks the source and flags stale SVGs for regeneration. xmllint validation, optional Playwright verify and PostToolUse auto-sync hook | README/docs containing ASCII diagrams that should become real SVG images kept in sync with their source |
 | `paperbanana` | No | Publication-quality academic figures via multi-agent VLM pipeline (Gemini/OpenAI) | Research paper figures, methodology diagrams, statistical plots |
 | `art` | No | Nano Banana 2 AI art: 16 workflows (editorial, technical diagrams, comics, maps, stats, sketchnotes), style transfer, text rendering | Blog headers, infographics, technical illustrations, editorial art, image editing |
 | `fossflow` | No | Isometric network/architecture diagrams, compact LLM-optimised format | Network topology diagrams and infrastructure maps |
@@ -285,7 +286,7 @@ Answer these questions in order. Stop at the first match.
 
 ```
 Q0: Unsure which skill handles your task?
-    --> /route [describe task]  (skill-router — intelligent dispatcher for all 104 skills)
+    --> /route [describe task]  (skill-router — intelligent dispatcher for all 105 skills)
 
 Q1: Is the task about an EXISTING skill that is deprecated?
     YES --> Use its replacement (see Deprecated table above)
@@ -487,6 +488,9 @@ Q3: What kind of document?
     |
     +-- Diagrams only (flowchart, ER, sequence, Gantt, mindmap)
     |   --> mermaid-diagrams
+    |
+    +-- Existing ASCII art diagrams in markdown/README → designed SVGs (kept in sync)
+    |   --> ascii-to-svg
     |
     +-- Publication-quality academic figures (methodology, stats plots)
     |   --> paperbanana

@@ -1,0 +1,8 @@
+{
+  "name": "ascii-to-svg",
+  "description": "Convert ASCII art diagrams in markdown to clean, designed SVGs with an accessible ASCII fallback, and keep the two in sync via a hashed manifest.",
+  "version": "2.2.0",
+  "author": { "name": "ISO Vision LLC" },
+  "license": "MIT",
+  "keywords": ["documentation", "diagrams", "svg", "ascii", "readme"]
+}
