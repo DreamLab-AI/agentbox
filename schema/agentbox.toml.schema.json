@@ -313,6 +313,42 @@
           "additionalProperties": true,
           "description": "Execution-gated tree-search coder (ADR-020 / PRD-008)."
         },
+        "design": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Design skills (open-design pipeline, design-audit).",
+          "properties": {
+            "open_design": { "type": "boolean", "description": "Structured intake pipeline, brand specs, dimensional critique gate." }
+          }
+        },
+        "harness": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Harness Engineering MCP bridge (ADR-004).",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "template_dir": { "type": "string", "description": "Path to harness template directory." }
+          }
+        },
+        "precedent": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Governance precedent system for promoted decisions.",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "namespace": { "type": "string", "description": "RuVector namespace for precedent storage." },
+            "similarity_threshold": { "type": "number", "minimum": 0, "maximum": 1, "description": "Minimum similarity for precedent matching." }
+          }
+        },
+        "email_search": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Private Email Search MCP gateway.",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "gateway_url": { "type": "string", "description": "URL of the email search gateway." }
+          }
+        },
         "payment_router": {
           "type": "object",
           "additionalProperties": false,
@@ -359,7 +395,10 @@
             "conninfo": {
               "type": "string",
               "description": "PostgreSQL DSN for external RuVector. Required when adapters.memory=external-pg (E002)."
-            }
+            },
+            "manage_sidecar": { "type": "boolean", "description": "When true, compose owns the ruvector-postgres sidecar container." },
+            "image": { "type": "string", "description": "Docker image for the managed sidecar." },
+            "data_volume": { "type": "string", "description": "Named Docker volume holding the production dataset." }
           }
         },
         "solid_pod_rs": {
@@ -385,7 +424,9 @@
             "rate_limit_per_sec":     { "type": "integer", "minimum": 1, "description": "Per-connection token-bucket ceiling when enable_rate_limit=true." },
             "quota_default_bytes":    { "type": "integer", "minimum": 0, "description": "Default per-pod storage ceiling when enable_quota=true." },
             "allowed_origins":        { "type": "string", "description": "CORS allowlist for native pod mesh (comma-separated)." },
-            "admin_key_env":          { "type": "string", "description": "Env var name holding the admin provisioning PSK." }
+            "admin_key_env":          { "type": "string", "description": "Env var name holding the admin provisioning PSK." },
+            "sign_requests":          { "type": "boolean", "description": "Originate signed NIP-98 from the pods adapter." },
+            "enable_mcp":             { "type": "boolean", "description": "Enable MCP 2025-03-26 tool surface at POST /mcp." }
           }
         },
         "external_orchestrator": {
@@ -960,29 +1001,90 @@
     },
     "networking": {
       "type": "object",
-      "additionalProperties": true,
-      "description": "Networking configuration (Tailscale, host gateway)."
+      "additionalProperties": false,
+      "description": "Networking configuration (Tailscale, host gateway).",
+      "properties": {
+        "tailscale": { "type": "boolean", "description": "Enable Tailscale userspace networking. WARNING: bypasses did:nostr identity boundary." },
+        "hostname": { "type": "string", "description": "MagicDNS hostname on the tailnet. Must be unique per instance." },
+        "host_gateway": { "type": "boolean", "description": "Gate /etc/hosts host-gateway alias (host.docker.internal). Default false for air-gapped deployments." }
+      }
     },
     "llm_marketplace": {
       "type": "object",
-      "additionalProperties": true,
-      "description": "LLM Resource Marketplace (kinds 38300-38305)."
+      "additionalProperties": false,
+      "description": "LLM Resource Marketplace (kinds 38300-38305). Mesh-wide negotiation of LLM compute resources between did:nostr identities.",
+      "properties": {
+        "enabled": { "type": "boolean", "description": "Enable the LLM marketplace subsystem." },
+        "auto_advertise": { "type": "boolean", "description": "Auto-publish kind-38300 capability events for available models on relay startup." },
+        "max_grant_ttl": { "type": "integer", "minimum": 0, "description": "Maximum grant TTL in seconds. Grants exceeding this are clamped." },
+        "max_tokens_per_grant": { "type": "integer", "minimum": 0, "description": "Maximum token allocation per grant. 0 = unlimited." },
+        "pricing_mode": { "type": "string", "enum": ["operator", "market"], "description": "operator = operator-set pricing; market = accept mesh best-offer." }
+      }
     },
     "memory": {
       "type": "object",
-      "additionalProperties": true,
-      "description": "Memory access control configuration."
+      "additionalProperties": false,
+      "description": "Memory access control configuration.",
+      "properties": {
+        "admin_access_mode": {
+          "type": "string",
+          "enum": ["permissive", "scoped"],
+          "description": "permissive = admin sees all namespaces; scoped = all callers restricted to their own pubkey namespace.",
+          "default": "permissive"
+        }
+      }
     },
     "features": {
       "type": "object",
-      "additionalProperties": true,
-      "description": "Feature flags (expel_lesson_extraction, etc.)."
+      "additionalProperties": false,
+      "description": "Feature flags for cross-cutting capabilities.",
+      "properties": {
+        "expel_lesson_extraction": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Post-task experiential learning. Distils lessons per completed trajectory into RuVector (ADR-019).",
+          "properties": {
+            "enabled": { "type": "boolean", "description": "Enable ExpeL lesson extraction after task completion." },
+            "max_lessons_per_task": { "type": "integer", "minimum": 1, "description": "Cap on lessons extracted per trajectory." },
+            "min_confidence": { "type": "number", "minimum": 0, "maximum": 1, "description": "Minimum confidence to store a lesson." },
+            "confidence_floor": { "type": "number", "minimum": 0, "maximum": 1, "description": "Below this, lesson is auto-archived." },
+            "archive_after_days": { "type": "integer", "minimum": 0, "description": "Lessons below floor demoted to *-archive after this many days." },
+            "contradiction_sample_rate": { "type": "number", "minimum": 0, "maximum": 1, "description": "Fraction of retrievals sampled for LLM-judge contradiction check." }
+          }
+        }
+      }
     },
     "payments": {
       "type": "object",
-      "additionalProperties": true,
+      "additionalProperties": false,
       "description": "Payment system configuration (Web Ledger / DREAM token).",
       "properties": {
+        "enabled": { "type": "boolean", "description": "Enable the payment subsystem." },
+        "backend": { "type": "string", "enum": ["solid-pod-rs", "external", "off"], "description": "Payment backend. solid-pod-rs proxies to local pod." },
+        "base_cost_sats": { "type": "integer", "minimum": 0, "description": "Base cost unit in satoshis." },
+        "dream_per_sat": { "type": "integer", "minimum": 1, "description": "DREAM token exchange rate per satoshi." },
+        "hold_buffer_ratio": { "type": "number", "minimum": 1, "description": "Hold buffer ratio for payment pre-auth." },
+        "tiers": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Cost tier multipliers.",
+          "properties": {
+            "inference": { "type": "integer", "minimum": 0 },
+            "image_gen": { "type": "integer", "minimum": 0 },
+            "analytics": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "token": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "DREAM token configuration.",
+          "properties": {
+            "ticker": { "type": "string" },
+            "rate": { "type": "integer", "minimum": 1 },
+            "supply": { "type": "integer", "minimum": 0 },
+            "issuer": { "type": "string", "description": "Populated from OPERATOR_NOSTR_PUBKEY at runtime." }
+          }
+        },
         "consumer": {
           "type": "object",
           "additionalProperties": false,
@@ -1062,6 +1164,40 @@
       "type": "object",
       "additionalProperties": true,
       "description": "ruflo/claude-flow plugin system configuration."
+    },
+    "compression": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Content-aware compression for agent context windows and storage (PRD-016, ADR-034). Uses in-process Rust N-API bindings (headroom-napi crate).",
+      "properties": {
+        "enabled": { "type": "boolean", "description": "Build headroom-napi crate and activate compression middleware." },
+        "backend": { "type": "string", "enum": ["sqlite", "memory"], "description": "CCR cache backend." },
+        "ttl_minutes": { "type": "integer", "minimum": 1, "description": "CCR cache TTL in minutes." },
+        "max_entries": { "type": "integer", "minimum": 1, "description": "CCR store capacity (LRU eviction)." },
+        "target_ratio": { "type": "number", "minimum": 0.01, "maximum": 1, "description": "Compression target ratio (e.g. 0.15 = keep ~15%)." },
+        "slots": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Per-adapter-slot compression toggles.",
+          "properties": {
+            "memory": { "type": "boolean" },
+            "pods": { "type": "boolean" },
+            "events": { "type": "boolean", "description": "NEVER compress audit trail." },
+            "beads": { "type": "boolean" },
+            "orchestrator": { "type": "boolean" }
+          }
+        },
+        "algorithms": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Available compression algorithms.",
+          "properties": {
+            "smart_crusher": { "type": "boolean", "description": "JSON array compression." },
+            "log_compressor": { "type": "boolean", "description": "Template-based log compression." },
+            "diff_compressor": { "type": "boolean", "description": "Unified diff compression." }
+          }
+        }
+      }
     },
     "linked_data": {
       "type": "object",

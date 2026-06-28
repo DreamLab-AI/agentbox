@@ -399,7 +399,7 @@ mermaid = true
 open_design = false
 
 [skills.research]
-# web-researcher-mcp (Go binary, v1.33.0). Provides ~26 MCP research tools
+# web-researcher-mcp (Go binary, v1.36.4). Provides ~26 MCP research tools
 # (search incl. domain/clinical/legal/econ/SEC, citation integrity, grounded answer, lenses).
 # Headless-browser scrape tier is force-disabled at runtime; JS-rendered
 # pages route to the external browsercontainer sidecar (`browser` skill).
