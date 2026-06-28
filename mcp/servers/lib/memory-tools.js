@@ -53,6 +53,23 @@ function _compressResults(results) {
   return results;
 }
 
+// ── protected namespaces ────────────────────────────────────────────────────
+// Namespaces listed here reject writes from non-admin callers. Prevents
+// agents from injecting synthetic records into governance-critical stores
+// (e.g. precedent namespace poisoning via memory_store).
+const PROTECTED_NAMESPACES = new Set(
+  (process.env.RUVECTOR_PROTECTED_NAMESPACES || 'governance-precedents').split(',').map(s => s.trim()).filter(Boolean)
+);
+const ADMIN_WRITE_ENABLED = process.env.RUVECTOR_ADMIN_WRITE === 'true';
+
+function checkProtectedNamespace(namespace) {
+  if (ADMIN_WRITE_ENABLED) return null;
+  if (PROTECTED_NAMESPACES.has(namespace)) {
+    return { success: false, error: `namespace "${namespace}" is write-protected (IR2 mandate-at-grant)`, storage: 'none' };
+  }
+  return null;
+}
+
 // ── external-pg backend ─────────────────────────────────────────────────────
 // Verbatim extraction of the pgvector/xinference/HNSW memory logic that lived
 // inline in ruvector-mcp.cjs. Dependencies are injected so the module never
@@ -75,6 +92,8 @@ function createExternalPgBackend(deps) {
   } = deps;
 
   async function memStore(key, value, namespace = 'default') {
+    const guard = checkProtectedNamespace(namespace);
+    if (guard) return guard;
     if (!getPgOk() || !pool) return { success: false, error: 'pg unavailable', storage: 'none' };
     const id = entryId(namespace, key);
     const jsonValue = typeof value === 'object' ? JSON.stringify(value) : value;
@@ -207,6 +226,8 @@ function createDelegatingBackend(deps) {
   const { memoryStore } = deps;
 
   async function memStore(key, value, namespace = 'default', options = {}) {
+    const guard = checkProtectedNamespace(namespace);
+    if (guard) return guard;
     return memoryStore.store(key, value, { namespace, ...options });
   }
   async function memRetrieve(key, namespace = 'default', options = {}) {

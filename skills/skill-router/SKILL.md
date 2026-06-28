@@ -102,7 +102,7 @@ caller knows who said it. Specified by [PRD-005 / ADR-011](../../docs/reference/
 |---|---|
 | Code reasoning, refactor, test gen — second opinion (OpenAI Codex CLI) | `codex` consultant via `mcp__agentbox-consultants__codex_consult` |
 | Long-document or codebase-wide analysis (1M-token Gemini) | `gemini` consultant |
-| Chinese-language reasoning, low-cost second opinion (Z.AI / GLM-5) | `zai` consultant |
+| Chinese-language reasoning, low-cost second opinion (Z.AI / GLM-5.2) | `zai` consultant |
 | Live-web research with citations (Perplexity) | `perplexity` consultant |
 | Math + transparent chain-of-thought (DeepSeek-reasoner) | `deepseek` consultant |
 | User says "ask <name>", "consult <name>", "second opinion from <name>" | matching consultant |

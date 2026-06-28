@@ -377,7 +377,7 @@ async function callLlm(userText, opts = {}) {
     // gateway). Chosen when an OpenAI-compatible key is present — this is the
     // reachable path in the DreamLab deployment (local ollama is not on-net).
     // Config: JUNKIEJARVIS_LLM_BASE + JUNKIEJARVIS_LLM_KEY + JUNKIEJARVIS_LLM_MODEL,
-    // defaulting to Z.AI GLM-4.6 when ZAI_API_KEY is set.
+    // defaulting to Z.AI GLM-5.2 when ZAI_API_KEY is set.
     const oaiKey = process.env.JUNKIEJARVIS_LLM_KEY || process.env.ZAI_API_KEY || process.env.OPENAI_API_KEY;
     if (oaiKey) {
       const base = (process.env.JUNKIEJARVIS_LLM_BASE
@@ -385,8 +385,8 @@ async function callLlm(userText, opts = {}) {
       ).replace(/\/+$/, '');
       const oaiModel = model
         || (process.env.ZAI_API_KEY ? 'glm-5.2' : 'gpt-4o-mini');
-      // Z.AI GLM-4.5/4.6 are reasoning models: with thinking ENABLED they spend
-      // the whole token budget on reasoning_content and return empty content
+      // Z.AI GLM-5.2 is a reasoning model: with thinking ENABLED it spends
+      // the whole token budget on reasoning_content and returns empty content
       // (finish_reason "length"). Disable thinking so the budget goes to the
       // actual reply — fast (~2.5s) and the create_event directive parses.
       const isZai = /z\.ai|bigmodel/.test(base);

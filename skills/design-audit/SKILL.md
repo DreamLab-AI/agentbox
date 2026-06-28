@@ -33,8 +33,20 @@ Read and internalize before forming any opinion:
 You must understand the current system completely before proposing changes.
 
 **Reference files** (read as needed):
-- `references/design-principles.md` — Core design rules and philosophy
-- `references/audit-template.md` — Output format for the phased plan
+- `design-principles.md` — Core design rules and philosophy
+- `audit-template.md` — Output format for the phased plan
+- `refinement-lenses.md` — 15 focused, single-objective transformation lenses
+  (bolder, quieter, typeset, layout, animate, harden, distill, …) selected by
+  **inferred intent**, not slash commands
+
+## Full Audit vs Single Lens
+
+When the user asks for *one specific kind* of change — "make it bolder", "calm
+this down", "fix the type", "add the empty/error states" — don't run the whole
+14-dimension audit. Infer the matching lens from `refinement-lenses.md`, apply
+only that pass, gate it through open-design's slop detector + anti-slop rules,
+and persist the decision to RuVector. Reserve the full protocol below for "audit
+the design" / "make it feel premium" / broad-scope requests.
 
 ---
 

@@ -662,7 +662,7 @@ Docs: docs/reference/adr/ADR-007-runtime-contract-and-container-hardening.md\n\
 # ════════════════════════════════════════════════════════════════════════════════
 section_consultants() {
   if ! wt_yesno "Consultant tier (PRD-005 / ADR-011)" \
-    "Enable the consultant tier?\n\nFive MCP servers expose external LLM providers as named consultants the\ncoordinator can invoke explicitly: codex (OpenAI Codex CLI), antigravity\n(Google agy CLI), zai (Z.AI / GLM-5), perplexity (live web), and\ndeepseek (math + reasoning).\n\nManual call from chat:  /consult <name> \"<question>\"\nAuto dispatch:           subagent_type=\"auto-consultant\"\n\nLogs land in /var/lib/agentbox/consultations/<name>-YYYY-MM-DD.jsonl;\nsetting intelligence_signal=true also writes ADR-043 quality signals\nfor SONA learning."; then
+    "Enable the consultant tier?\n\nFive MCP servers expose external LLM providers as named consultants the\ncoordinator can invoke explicitly: codex (OpenAI Codex CLI), antigravity\n(Google agy CLI), zai (Z.AI / GLM-5.2), perplexity (live web), and\ndeepseek (math + reasoning).\n\nManual call from chat:  /consult <name> \"<question>\"\nAuto dispatch:           subagent_type=\"auto-consultant\"\n\nLogs land in /var/lib/agentbox/consultations/<name>-YYYY-MM-DD.jsonl;\nsetting intelligence_signal=true also writes ADR-043 quality signals\nfor SONA learning."; then
     state_set_bool "consultants.enabled" "false"
     return 0
   fi
@@ -675,7 +675,7 @@ section_consultants() {
     18 78 5 \
     "consultants.codex.enabled"      "OpenAI Codex Rust CLI (toolchains.codex)"          "$([[ "$(state_get consultants.codex.enabled)" == "true" ]] && echo ON || echo OFF)" \
     "consultants.antigravity.enabled" "Google Antigravity agy (toolchains.antigravity_cli)" "$([[ "$(state_get consultants.antigravity.enabled)" == "true" ]] && echo ON || echo OFF)" \
-    "consultants.zai.enabled"        "Z.AI / GLM-5 via claude-zai (providers.zai)"        "$([[ "$(state_get consultants.zai.enabled)" == "true" ]] && echo ON || echo OFF)" \
+    "consultants.zai.enabled"        "Z.AI / GLM-5.2 via claude-zai (providers.zai)"        "$([[ "$(state_get consultants.zai.enabled)" == "true" ]] && echo ON || echo OFF)" \
     "consultants.perplexity.enabled" "Perplexity (providers.perplexity)"                  "$([[ "$(state_get consultants.perplexity.enabled)" == "true" ]] && echo ON || echo OFF)" \
     "consultants.deepseek.enabled"   "DeepSeek (providers.deepseek)"                      "$([[ "$(state_get consultants.deepseek.enabled)" == "true" ]] && echo ON || echo OFF)")"
 

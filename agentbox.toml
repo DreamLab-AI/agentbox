@@ -129,7 +129,7 @@ intent_args      = ""                  # extra leading args, space-separated
 # PRD-014 Seam B / B4 — per-agent did:nostr auth on POST /v1/agent-events/emit.
 # "off" (default) keeps caller-asserted/env-defaulted attribution. "nip98"
 # requires a kind-27235 header and stamps source_urn from the verified pubkey.
-agent_event_auth = "off"               # off | nip98
+agent_event_auth = "nip98"             # off | nip98 — IR1: default hardened; operator CLI is unaffected (in-process path)
 # Private point-to-point relay for governance event exchange with the forum.
 # Set via NOSTR_RELAYS env var at runtime; this field documents the target.
 forum_relay_url  = "wss://dreamlab-nostr-relay.solitary-paper-764d.workers.dev"
@@ -496,6 +496,23 @@ model = "diffusiongemma-26B-A4B-it-Q8_0"
 style = "openai"                            # openai | ollama
 n_blocks = 3                                # DiffusionGemma answer sizing (256 tok/block); ignored by ollama
 max_concurrency = 1                         # single-context server → never parallelise
+
+[skills.harness]
+# Harness Engineering MCP bridge (ADR-004). Agents inspect harness templates
+# to understand guide-sensor pairings for their active topology. Four tools:
+# harness_list, harness_inspect, harness_validate, harness_audit.
+# Templates live in VisionFlow docs/engineering/templates/.
+enabled = true
+template_dir = "/home/devuser/workspace/VisionFlow/docs/engineering/templates"
+
+[skills.precedent]
+# Precedent system for governance decisions (PRD-harness-engineering M6).
+# Stores promoted governance decisions and auto-applies them to matching
+# future ActionRequests. Four tools: precedent_match, precedent_list,
+# precedent_promote, precedent_retire.
+enabled = true
+namespace = "governance-precedents"
+similarity_threshold = 0.85
 
 [skills.email_search]
 # Private Email Search MCP gateway (DreamLab-AI/email-mcp-gateway). Runs on a

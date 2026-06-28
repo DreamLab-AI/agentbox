@@ -629,6 +629,56 @@ else { console.log('  [mirror] nostr-live-mirror hooks already registered'); }
 MIRRORJS
 fi
 
+# ── Self-heal: normalise auto-memory-hook commands to a fail-open form ──
+# ruflo / claude-flow init scaffolds settings.json across projects with hooks
+# like `node "$CLAUDE_PROJECT_DIR/.claude/helpers/auto-memory-hook.mjs" sync`
+# — no existence guard, no `|| true`. In a sub-project that lacks the helper
+# (e.g. a sibling repo), the Stop/SessionStart hook throws MODULE_NOT_FOUND and
+# surfaces a noisy hook error. Rewrite every such command to a guarded form
+# that prefers the project helper, falls back to the home helper, and never
+# exits non-zero. Idempotent. Scans the home config dir plus every
+# workspace `.claude/settings*.json`.
+if command -v node >/dev/null 2>&1; then
+  node <<'AMHEAL' || true
+const fs = require('fs'), path = require('path'), cp = require('child_process');
+function find() {
+  const out = new Set();
+  for (const p of ['/home/devuser/.claude/settings.json',
+                   '/home/devuser/.claude/settings.local.json']) out.add(p);
+  try {
+    const r = cp.execSync(
+      "find /home/devuser/workspace -maxdepth 4 -name 'settings*.json' -path '*/.claude/*' -not -path '*/node_modules/*' 2>/dev/null || true",
+      { encoding: 'utf8' });
+    r.split('\n').filter(Boolean).forEach((x) => out.add(x));
+  } catch {}
+  return [...out];
+}
+function guarded(arg) {
+  return `sh -c 'f="\${CLAUDE_PROJECT_DIR:-$PWD}/.claude/helpers/auto-memory-hook.mjs"; [ -f "$f" ] || f=/home/devuser/.claude/helpers/auto-memory-hook.mjs; [ -f "$f" ] && node "$f" ${arg}; true'`;
+}
+let files = 0, fixed = 0;
+for (const f of find()) {
+  let s; try { s = JSON.parse(fs.readFileSync(f, 'utf8')); } catch { continue; }
+  if (!s || typeof s !== 'object' || !s.hooks) continue;
+  let changed = false;
+  for (const evt of Object.keys(s.hooks)) {
+    for (const grp of (s.hooks[evt] || [])) {
+      for (const h of (grp.hooks || [])) {
+        const c = String(h.command || '');
+        if (!c.includes('auto-memory-hook.mjs')) continue;
+        if (c.startsWith('sh -c') && c.includes('[ -f "$f" ]')) continue; // already guarded
+        const arg = /\bsync\b/.test(c) ? 'sync' : 'import';
+        h.command = guarded(arg); changed = true;
+      }
+    }
+  }
+  if (changed) { try { fs.writeFileSync(f, JSON.stringify(s, null, 2)); fixed++; } catch {} }
+  files++;
+}
+console.log(`  [auto-memory] scanned ${files} settings file(s), normalised ${fixed}`);
+AMHEAL
+fi
+
 # ── Browser sidecar MCP: register browsercontainer if reachable ──
 # The browsercontainer runs Chrome Beta 149+ with chrome-devtools-mcp over SSE.
 # Only add if the sidecar is on the network and .mcp.json exists to patch.

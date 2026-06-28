@@ -1,7 +1,7 @@
 # Skill Directory -- Comprehensive Inventory and Decision Tree
 
-> **105 active skills** (`ontology-augment` added 2026-06-14 — consumption side of the PRD-020 ontology binding; 3 Phase 1 code-execution surfaces added 2026-05-21; tree-search-coder is Phase 2-3 scaffold, not counted as active). 18 formerly deprecated/archived skills removed (see table below for history).
-> Updated 2026-05-27. Reference this file from CLAUDE.md for intelligent routing.
+> **107 active skills** (`leptos` added 2026-06-28 — Leptos full-stack Rust web playbook + 0.7/0.8 reference; `ceramic-search` added 2026-06-20 — Ceramic.ai keyword web search with rich page extracts; `ontology-augment` added 2026-06-14). 18 formerly deprecated/archived skills removed (see table below for history).
+> Updated 2026-06-20. Reference this file from CLAUDE.md for intelligent routing.
 
 ---
 
@@ -141,7 +141,8 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
-| `perplexity-research` | No | **Closed engine, synthesized answer.** Three-API client: Search API (/search) structured results with domain/date filters, Agent API (/v1/agent) multi-step deep research, Chat Completions (sonar). Academic/UK-ecology presets | **Fast** live web research + synthesized answers where you don't need to independently verify sources; academic/policy lookups, market research |
+| `ceramic-search` | No | **PRIMARY web search.** High-recall keyword engine, 10 results per query, up to 8k chars per description. Fast (sub-200ms). Best for LLM-augmented retrieval where you need dense source context. Multi-query strategies recommended | **Default first choice** for all web search; dense page extracts for LLM grounding; multi-query aggregation. For complex/important queries, run alongside perplexity + Claude WebSearch |
+| `perplexity-research` | No | **SECONDARY web search.** Closed engine, synthesized answer. Three-API client: Search API (/search) structured results with domain/date filters, Agent API (/v1/agent) multi-step deep research, Chat Completions (sonar). Academic/UK-ecology presets | **Second choice** after ceramic-search; authoritative primary sources (gov/academic), synthesized answers, domain-filtered research. For complex/important queries, run alongside ceramic + Claude WebSearch |
 | `web-researcher` | Yes | **You pick the engine + trusted-domain LENSES; real, verifiable citations.** v1.33.0, ~26 tools: web/image/news/academic/patent/structured search, search_and_scrape, sequential; domain search (clinical/legal-CourtListener/econ-WorldBank+FRED/filing-SEC EDGAR); full scrape (PDF/DOCX/PPTX/YouTube/HN); **citation integrity** (verify_citation, audit_bibliography, citation_graph, archive_source/Wayback, format_bibliography); grounded `answer`; session memory+export. Backends Google PSE/Brave/Serper/SearXNG/SearchAPI/Exa; browser tier OFF → delegates to `browser` sidecar | **Reputation-attached** research needing verifiable citations: client work, filings, publications, legal/medical/finance; restrict to trusted sources via lenses; verify/audit citations |
 | `gemini-url-context` | Yes | Gemini 2.5 Flash URL expansion, up to 20 URLs per request, grounding metadata | Analysing or summarising specific known URLs |
 | `web-summary` | Yes | URL summarisation, YouTube transcript extraction, Logseq/Obsidian topic links | Summarising articles, YouTube videos, generating note links |
@@ -176,12 +177,12 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
-| `open-design` | No | **Design production pipeline**: structured intake, 129 brand specs (DESIGN.md), 5-dimensional critique gate, P0/P1/P2 checklists, anti-slop detection, layout libraries (web/mobile/dashboard/deck). Composes with all other design skills | Generating prototypes from brand specs, landing pages, dashboards, mobile mockups, any HTML artifact needing quality-gated design |
+| `open-design` | No | **Design production pipeline**: structured intake, 129 brand specs (DESIGN.md), 5-dimensional critique gate, P0/P1/P2 checklists, **deterministic slop detector** (`scripts/slop-detect.py`, no-LLM, 20 coded rules + inline disables) + 3-layer slop catalogue (CLI/browser/LLM, adapted from impeccable), layout libraries (web/mobile/dashboard/deck). Composes with all other design skills | Generating prototypes from brand specs, landing pages, dashboards, mobile mockups, any HTML artifact needing quality-gated design; statically scanning code for design anti-patterns |
 | `ui-ux-pro-max-skill` | No | 50 styles, 97 palettes, 57 font pairings, 9 tech stacks, shadcn/ui MCP | Discovery/inspiration: choosing palettes, typography, styles before locking a brand spec |
 | `daisyui` | No | daisyUI 5 components, theme configuration, Tailwind CSS patterns | Building web interfaces specifically with daisyUI components |
 | `bencium-controlled-ux-designer` | No | WCAG 2.1 AA, mathematical scales, always-ask-first protocol, design system templates | Enterprise/regulated UX design with accessibility-first approach |
 | `bencium-creative` | No | Consolidated bold creative + production frontend. Two modes: `--design` (ask→commit boldly) and `--build` (shadcn/Tailwind/Phosphor implementation). Anti-AI-slop, 25+ tone options. Integrates with open-design DESIGN.md specs and critique gate | Creative landing pages, campaigns, product UIs needing distinctive aesthetics AND working code |
-| `design-audit` | No | Systematic 14-dimension visual audits + 5-dimensional critique gate, phased plans. Integrates open-design anti-slop detection | Visual design review, polishing existing interfaces, post-delivery quality validation |
+| `design-audit` | No | Systematic 14-dimension visual audits + 5-dimensional critique gate, phased plans. Integrates open-design anti-slop detection. **15 inferred-intent refinement lenses** (`refinement-lenses.md`: bolder/quieter/typeset/layout/animate/harden/distill… — adapted from impeccable's verbs, triggered by intent not slash commands) for single-objective passes | Visual design review, polishing existing interfaces, post-delivery quality validation; focused single-aspect refinement ("make it bolder", "fix the type") |
 | `typography` | No | Professional typography: proper quotes, dashes, spacing, hierarchy (Butterick rules) | Auto-enforced typography in any HTML/CSS/React code generation |
 | `relationship-design` | No | AI-first interfaces, memory-aware UX, trust evolution, collaborative planning | Designing agentic/AI apps with ongoing user relationships |
 
@@ -260,6 +261,7 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 |-------|-----|----------------|----------------|
 | `rust-development` | No | Cargo, rustfmt, clippy, rust-analyzer, WASM compilation, cross-compilation | Rust systems programming, CLI tools, network services |
 | `wasm-js` | No | High-performance WASM graphics, JS interop, Canvas/WebGL with WASM compute | Performance-critical web graphics, real-time animations, hybrid JS/WASM |
+| `leptos` | No | **Leptos full-stack Rust web playbook + current 0.7/0.8 reference**: fine-grained signals/memos/effects, server functions, SSR/islands/hydration, leptos_router, the ecosystem "eye candy" (Thaw/Leptodon/Tailwind v4/charts/icons) with maintenance verdicts, feature-flag + cargo-leptos discipline, hydration/disposal/build-break pitfalls, copy-paste scaffold. Includes a verified mid-2026 **Rust web-UI framework comparison** (Leptos vs Dioxus/Yew/Sycamore/egui/Slint/Maud+htmx). Pairs with `open-design`/`design-audit` (visual layer) | Building or debugging any Leptos app — components/`view!`, signals, `#[server]`, SSR/hydration mismatch, choosing a Leptos UI/styling/chart library, ssr/hydrate/csr build breaks, WASM size tuning, 0.6→0.7→0.8 migration; OR comparing Rust web frameworks / deciding Leptos vs Dioxus vs Yew vs egui vs server-rendered htmx |
 
 ### Performance
 

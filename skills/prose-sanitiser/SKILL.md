@@ -26,6 +26,44 @@ Two modes:
 - **Generative** — apply Section A principles when drafting new content.
 - **Destructive** — run the Section B audit on existing text.
 
+## Mechanical pre-pass: the scanner
+
+`scripts/slop_scan.py` catches the mechanical tells (Tier-1 vocab, "The X"
+headings, negative parallelism, throat-clearing, hedge words, US spelling,
+em-dash and transition density) before you read for the ones a regex cannot
+see. Run it first, fix in priority order, then do the human read for Section C
+and for voice.
+
+```bash
+python3 scripts/slop_scan.py <path>                 # full report + slop score
+python3 scripts/slop_scan.py <path> --severity high # only the strongest signals
+python3 scripts/slop_scan.py <path> --json          # machine-readable, for CI
+```
+
+It scans `.md .markdown .mdx .txt .rst`, skips fenced code and blockquotes,
+respects the `slop-ignore` marker (see below), and reports each finding with
+`file:line` and the fix. The exit code is the high-severity count, so CI can
+gate a docs build on it. The scanner sees lexical and structural tells only; it
+is blind to narrative defaults, altitude, and whether a sentence is actually
+true. Those are still yours.
+
+## Don't launder slop into a new slop (second-order defaults)
+
+The failure mode of every de-slop pass is swapping one default for another. Kill
+every "leverage" and the prose acquires a different fingerprint: uniform
+"use", staccato two-word fragments ("Fast. Actually fast."), the same inverted
+"X, not Y" cadence on every other line, hedges amputated until the voice reads as
+clipped and machine-confident. An editor can clock a *de-slopped-by-AI* draft as
+fast as a slopped one. The replacement vocabulary, applied mechanically, is a
+tell.
+
+So the rules below are a detector, not a target. The replace-with column is a
+prompt to make a choice, not a lookup table to apply on autopilot. The only
+durable property is the one a default can never have: a wording you chose for
+this sentence and can say why. Vary the repair. Sometimes "leverage" wants
+"use", sometimes "lean on", sometimes the clause should be cut. If a fix
+introduces a new uniform default, it is not a fix.
+
 ---
 
 # Section A — Generative Principles
@@ -409,15 +447,33 @@ Before publishing:
 
 ## Output Format
 
-Return the cleaned text with no commentary. If asked for a report, list changes
-as a diff-style summary after the cleaned text.
+Default: return the cleaned text with no commentary.
+
+If asked for a report (or running an audit), lead with the verdict, not the
+findings:
+
+1. **Verdict and the single highest-impact change.** One line: the slop score
+   and verdict from the scanner, then the one fix that matters most.
+2. **Findings by priority**, each with `file:line`, the tell, and the fix.
+   High-severity first. Quote the offending span, not the whole paragraph.
+3. **Close with the slop score and the top three changes.** Plain and specific.
+
+The goal is prose a person decided the wording of, which is the one thing the
+scanner cannot do for them. State what is mechanical (the scanner found it) and
+what needed a human read (Section C, voice, truth).
 
 ## When NOT to sanitise
 
-- Direct quotes from other people (blockquotes)
-- Code, terminal output, API responses
+- Direct quotes from other people (blockquotes — the scanner already skips these)
+- Code, terminal output, API responses (the scanner skips fenced blocks)
 - Proper nouns and product names
 - Technical terms of art (even if they overlap with the banned list)
 - Content the user explicitly flags as intentional
 - Stylistic choices that violate a rule but serve the piece (e.g. a deliberately
   philosophical dialogue in a Socratic essay)
+
+**Marking intentional choices.** Put `slop-ignore` on a line (an HTML comment
+`<!-- slop-ignore -->` works in markdown) and the scanner skips it. Use it when
+a flagged word is a real decision, so the audit stays trustworthy and does not
+nag about a chosen term. A line you have to mark is a line you have made a
+choice about — which is the whole point.

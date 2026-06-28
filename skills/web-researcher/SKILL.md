@@ -41,15 +41,23 @@ garden. Runs locally/private; never invokes a browser from inside this skill.
 
 ## Which web-search skill? (read this first — avoids the common mix-up)
 
+```
+Search priority: 1. ceramic → 2. perplexity → 3. Claude WebSearch
+Complex/important? → all three in parallel
+Verifiable citations needed? → web-researcher (this)
+```
+
 | Need | Skill |
 |------|-------|
+| **Default web search** — keyword, rich 8k extracts, fast | **`ceramic-search`** (primary) |
+| **Authoritative sources**, synthesized answer, academic/policy filters | **`perplexity-research`** (secondary) |
+| **Quick built-in fallback** | **Claude WebSearch** (tertiary) |
 | **Verifiable, reputation-attached research** — real citations, full sources, you control which domains are searched (lenses), private/local; client work, filings, publications, medical/legal/finance | **`web-researcher`** (this) |
-| **Fast synthesized answer** from a closed engine, casual lookups, Perplexity's sonar/agent surface + their academic/policy filters | **`perplexity-research`** |
-| **Multi-agent deep report** — fan-out + adversarial verification + cited synthesis (orchestrates searchers; can use either of the above as a backend) | **`deep-research`** |
+| **Multi-agent deep report** — fan-out + adversarial verification + cited synthesis (orchestrates searchers; can use any of the above as a backend) | **`deep-research`** |
 | Expand a single known URL | **`gemini-url-context`** ; YouTube/page summary → **`web-summary`** |
 | Interactive browser (login/click/JS render) | **`browser`** / **`playwright`** |
 
-One-liner: **perplexity-research = closed engine, synthesized answer; web-researcher = your engine + trusted lenses, real verifiable sources; deep-research = the harness over both.**
+One-liner: **ceramic = primary keyword search with dense extracts; perplexity = secondary, synthesized + authoritative; web-researcher = verifiable citations + lenses; deep-research = the harness over all.**
 
 ## When To Use
 

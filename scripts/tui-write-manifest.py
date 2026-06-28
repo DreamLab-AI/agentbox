@@ -194,7 +194,7 @@ lines += [
     "",
     "[consultants.zai]",
     f'enabled = {b("consultants.zai.enabled")}',
-    'model      = "glm-5"',
+    'model      = "glm-5.2"',
     'home       = "/home/zai-user"',
     'timeout_ms = 180000',
     "",

@@ -3,7 +3,7 @@
     "baseURL": "https://api.z.ai/api/paas/v4",
     "apiKey": "${ZAI_API_KEY}"
   },
-  "model": "glm-5",
+  "model": "glm-5.2",
   "installMethod": "docker",
   "autoUpdates": false
 }

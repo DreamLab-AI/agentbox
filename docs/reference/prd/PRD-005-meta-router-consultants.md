@@ -105,7 +105,7 @@ Every consultant MCP server exposes exactly three tools.
 |---|---|---|---|
 | `codex`      | OpenAI Codex Rust CLI subprocess (`/usr/local/bin/codex exec`) | $0.005/1k prompt, $0.015/1k completion (gpt-5.4) | code reasoning, refactors, test generation; respects per-user `CODEX_HOME` |
 | `antigravity` | Google Antigravity CLI (`agy`) subprocess | $0.00125/1k prompt, $0.005/1k completion (gemini-2.5-pro) | 1M-token context; long-document and codebase-wide analysis |
-| `zai`        | `claude-zai` subprocess (Anthropic-compatible Z.AI endpoint) | $0.0006/1k prompt, $0.0024/1k completion (glm-5) | Chinese-language reasoning, low-cost second opinions |
+| `zai`        | `claude-zai` subprocess (Anthropic-compatible Z.AI endpoint) | $0.0006/1k prompt, $0.0024/1k completion (glm-5.2) | Chinese-language reasoning, low-cost second opinions |
 | `perplexity` | Perplexity HTTPS API direct | $0.003/1k prompt, $0.015/1k completion (sonar-pro) | live-web research with citations |
 | `deepseek`   | DeepSeek HTTPS API direct | $0.00055/1k prompt, $0.00219/1k completion (deepseek-reasoner) | math + transparent chain-of-thought reasoning |
 

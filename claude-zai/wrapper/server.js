@@ -150,7 +150,7 @@ class ClaudeWorkerPool {
                 claudeArgs.push('--allowedTools', ZAI_ALLOWED_TOOLS);
             }
             claudeArgs.push('--print');
-            // GLM-4.7 is default model when using Z.AI, no --model flag needed
+            // GLM-5.2 is default model when using Z.AI, no --model flag needed
             const claudeProcess = spawn('claude', claudeArgs, {
                 env: {
                     ...process.env,
@@ -263,9 +263,9 @@ const pool = new ClaudeWorkerPool(WORKER_POOL_SIZE);
 app.get('/health', (req, res) => {
     res.json({
         status: 'ok',
-        service: 'z.ai-glm-4.7-wrapper',
+        service: 'z.ai-glm-5.2-wrapper',
         backend: 'Z.AI GLM Coding Plan',
-        defaultModel: 'glm-4.7',
+        defaultModel: 'glm-5.2',
         baseUrl: ZAI_BASE_URL,
         configLoaded: !!config.apiKey,
         ...pool.getStats()

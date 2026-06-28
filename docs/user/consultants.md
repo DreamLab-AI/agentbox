@@ -28,7 +28,7 @@ the hood, which is what `claude-code-router` and similar projects do.
 |---|---|---|
 | `codex`      | OpenAI Codex Rust CLI subprocess | code reasoning, refactors, test generation |
 | `antigravity` | Google Antigravity CLI (`agy`) subprocess | 1M-token context for long-document and codebase-wide analysis |
-| `zai`        | `claude-zai` (Z.AI / GLM-5, Anthropic-compatible) | Chinese-language reasoning; low-cost second opinions |
+| `zai`        | `claude-zai` (Z.AI / GLM-5.2, Anthropic-compatible) | Chinese-language reasoning; low-cost second opinions |
 | `perplexity` | Perplexity HTTPS API | live-web research with citations |
 | `deepseek`   | DeepSeek HTTPS API (`deepseek-reasoner`) | math + transparent chain-of-thought |
 

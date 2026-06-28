@@ -81,5 +81,16 @@ set -gx AGENTBOX_CONTAINER 1
 set -gx CODEX_HOME /home/devuser/.codex
 set -gx GIT_CONFIG_GLOBAL /home/devuser/.config/git/config
 
+# ── Claude Code config dir: share the primary login everywhere ──
+# Default every interactive shell (ad-hoc panes, SSH, sub-project dirs, tabs
+# 2-7) to the primary config dir so the Anthropic credential persists instead
+# of prompting a per-directory login under --dangerously-skip-permissions.
+# Guarded with `set -q`: tmux-autostart's profile tabs (Z.AI/OpenRouter/etc.)
+# and any explicit override still run AFTER this and win, so profile isolation
+# holds. NOT baked into image env on purpose — that leaked into the profile
+# wrappers' subprocesses; fish-only scope keeps supervisor-launched wrappers
+# isolated since they never source fish.
+set -q CLAUDE_CONFIG_DIR; or set -gx CLAUDE_CONFIG_DIR /home/devuser/.claude
+
 # Claude Code quick aliases
 alias dsp="claude --dangerously-skip-permissions"

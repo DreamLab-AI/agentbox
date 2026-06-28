@@ -15,18 +15,28 @@ description: "Three-API Perplexity client: Search API (/search) for structured w
 
 Three-API Perplexity client covering the full platform surface (May 2025 contracts).
 
-## Which web-search skill? (perplexity vs web-researcher vs deep-research)
+## Search Priority (this skill is SECONDARY)
 
-Perplexity is a **closed engine that returns a synthesized answer** — fast, opinionated,
-great for casual lookups and its tuned academic/policy filters, but you don't control which
-sites are searched and citations aren't independently verifiable.
+```
+1. ceramic-search         — DEFAULT for all web search. Keyword, fast, rich 8k extracts
+2. perplexity-research    — (this) Authoritative sources, academic/policy filters, synthesized
+3. Claude WebSearch       — Tertiary fallback. Built-in, no API key
+★  Complex/important?     — Run ALL THREE in parallel, dedupe + cross-verify
+```
 
-- **`perplexity-research`** (this) — quick synthesized answers from Perplexity's engine.
+Perplexity is a **closed engine that returns a synthesized answer** — authoritative
+primary sources (gov, academic) rank higher than Ceramic, and the academic/policy
+domain filters are tuned, but you don't control which sites are searched and citations
+aren't independently verifiable. Use as the **secondary** engine after Ceramic, or
+alongside it for complex queries.
+
+- **`ceramic-search`** — primary. High-recall keyword search with dense page extracts.
+- **`perplexity-research`** (this) — secondary. Synthesized answers, authoritative source ranking.
 - **`web-researcher`** — you pick the engine + restrict to trusted-domain **lenses**, read
   full sources, and **verify** every citation (`verify_citation`, `citation_graph`,
   `audit_bibliography`). Use when your reputation is attached to the result.
 - **`deep-research`** — multi-agent harness (fan-out + adversarial verify + cited report)
-  that can call either of the above as its search backend.
+  that can call any of the above as its search backend.
 
 ## When To Use
 

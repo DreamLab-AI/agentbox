@@ -44,7 +44,7 @@ class LocalProcessManagerOrchestratorAdapter extends BaseAdapter {
     let proc;
     try {
       proc = this._spawnFn(spec.command, spec.args || [], {
-        env: { ...process.env, ...(spec.env || {}) },
+        env: { ...LocalProcessManagerOrchestratorAdapter._safeEnv(), ...(spec.env || {}) },
         cwd: spec.cwd || process.cwd(),
         stdio: ['pipe', 'pipe', 'pipe'],
       });
@@ -296,6 +296,22 @@ class LocalProcessManagerOrchestratorAdapter extends BaseAdapter {
     try { entry.proc.kill('SIGTERM'); } catch (_) {}
     entry.status = 'terminated';
     return { agentId, status: 'terminated' };
+  }
+
+  static _safeEnv() {
+    const ALLOWED_ENV = [
+      'PATH', 'HOME', 'USER', 'SHELL', 'LANG', 'TERM',
+      'NODE_PATH', 'NODE_ENV',
+      'AGENTBOX_PUBKEY', 'AGENTBOX_POD_ROOT',
+      'NOSTR_RELAYS', 'RUVECTOR_PG_CONNINFO',
+      'XINFERENCE_ENDPOINT', 'EMBEDDING_MODEL',
+      'HARNESS_TEMPLATE_DIR', 'VISIONFLOW_DOCS_DIR',
+    ];
+    const env = {};
+    for (const k of ALLOWED_ENV) {
+      if (process.env[k] !== undefined) env[k] = process.env[k];
+    }
+    return env;
   }
 }
 

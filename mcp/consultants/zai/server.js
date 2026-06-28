@@ -89,7 +89,7 @@ async function estimateCost({ question_size, expected_response_size }) {
 
 const consultant = new BaseConsultant({
   name:        'zai',
-  description: 'Z.AI / GLM-5 (Anthropic-compatible via claude-zai) — Chinese-language reasoning, low-cost second opinions',
+  description: 'Z.AI / GLM-5.2 (Anthropic-compatible via claude-zai) — Chinese-language reasoning, low-cost second opinions',
   model:       MODEL,
   callConsult,
   healthCheck,

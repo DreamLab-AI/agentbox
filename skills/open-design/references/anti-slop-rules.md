@@ -22,6 +22,19 @@ Score 1 point per match. If ≥3 points, the output is slop — redo Phase 3.
 | 10 | **Emoji as icons** | Using emoji characters instead of monoline SVG icons |
 | 11 | **Pill buttons** | `border-radius: 999px` without brand justification |
 | 12 | **Dark mode with neon** | Dark background + bright gradient text for no design-thesis reason |
+| 13 | **Gradient text** | `background-clip:text` + transparent fill — kills scannability |
+| 14 | **Gray on color** | Gray text colour on a colored (non-neutral) background |
+| 15 | **Pure black/white** | `#000`/`#fff` untinted — no warmth toward the accent |
+| 16 | **Side-tab stripe** | Thick one-sided coloured border on a rounded card |
+| 17 | **Nested cards** | A card inside a card — borders-in-borders clutter |
+| 18 | **Bounce/elastic easing** | Overshoot motion — dated; use 150–300ms ease-out |
+| 19 | **Tiny text / tight leading** | `font-size < 11px` or `line-height < 1.3` on body |
+| 20 | **Everything centered** | Reflex center-alignment flattening hierarchy |
+
+> Signals 1–20 are the fast judgment checklist. The deterministic scanner
+> `scripts/slop-detect.py` decides the code-detectable subset automatically, and
+> the full three-layer (CLI / browser / LLM) catalogue lives in
+> `slop-rules-catalog.md`. Run the scanner first; use this checklist for the rest.
 
 ---
 

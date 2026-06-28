@@ -242,7 +242,7 @@ Shared resources:
 
 ### 7.2 xAI/Grok Status
 
-No viable terminal agent harness exists for xAI/Grok. The Z.AI integration (tab 9) proxies Claude Code through Z.AI's GLM-5 endpoint. A dedicated Grok tab is deferred until an official or credible community CLI ships.
+No viable terminal agent harness exists for xAI/Grok. The Z.AI integration (tab 9) proxies Claude Code through Z.AI's GLM-5.2 endpoint. A dedicated Grok tab is deferred until an official or credible community CLI ships.
 
 ---
 

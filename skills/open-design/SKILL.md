@@ -137,9 +137,28 @@ Does this push past the median? Unexpected layout or typographic moves that earn
 - [ ] Sticky nav with `backdrop-filter: blur()`
 - [ ] System-first font loading with web font enhancement
 
-### Phase 6 — Anti-Slop Spot-Check
+### Phase 6 — Anti-Slop Gate (deterministic + judgment)
 
-If the output resembles generic AI startup pages:
+**6a. Deterministic scan (no LLM).** Run the static detector over the emitted
+source before judging it by eye:
+
+```bash
+python3 skills/open-design/scripts/slop-detect.py path/to/artifact.html --min-severity warn
+```
+
+It flags the CLI-layer signals in `references/slop-rules-catalog.md`
+(overused-font, purple→blue gradient, gradient-text, gray-on-color, tiny-text,
+bounce-easing, layout-transition, side-tab, nested-cards, skipped-heading, …) and
+honours inline `/* slop-disable <rule> */` suppressions. Exit code = finding
+count, so it doubles as a CI gate. Fix every `warn`/`error` or record a justified
+exception (see Memory below).
+
+**6b. Browser layer.** For computed-layout rules (line-length, low-contrast,
+cramped-padding, flat-type-hierarchy, monotonous-spacing) render with the
+`browser` sidecar and measure — these can't be seen statically.
+
+**6c. Judgment layer.** Apply the LLM-only rows of the catalogue. If the output
+resembles generic AI startup pages:
 1. Replace one feature cell with product-specific content (screenshot, concrete example, actual output)
 2. Remove one accent color use
 3. Check: would a designer be embarrassed to claim this? If yes, redo Phase 3.
@@ -243,4 +262,23 @@ This skill composes with the existing design skill suite:
 - `references/layouts-mobile.md` — 6 mobile screen archetypes
 - `references/critique-dimensions.md` — Extended scoring rubric with examples
 - `references/brand-index.md` — Complete catalog of 129 brand specifications
-- `references/anti-slop-rules.md` — Expanded slop detection and remediation
+- `references/anti-slop-rules.md` — Fast 12-signal slop checklist + remediation
+- `references/slop-rules-catalog.md` — Full 3-layer (CLI/browser/LLM) anti-pattern catalogue, adapted from impeccable
+- `scripts/slop-detect.py` — Zero-dependency deterministic slop scanner (the CLI layer)
+
+## Memory (not flat config files)
+
+Impeccable records project context in flat `PRODUCT.md`/`DESIGN.md` files and
+slop exceptions in `.impeccable/config.json`. We keep `DESIGN.md` (it is the
+brand spec), but persist *decisions* and *exceptions* to RuVector instead:
+
+```javascript
+// Confirmed-intentional slop exception (impeccable's ignoreValues equivalent)
+mcp__claude-flow__memory_store({namespace: "project-state", key: "design-slop-exceptions",
+  value: "<rule> intentional in <file>: <reason>"})
+// Recall before re-scanning so prior exceptions aren't re-flagged as new
+mcp__claude-flow__memory_search({query: "design slop exceptions", namespace: "project-state", limit: 10})
+```
+
+Inline `/* slop-disable <rule> */` handles file-local suppression; memory handles
+cross-session intent.
