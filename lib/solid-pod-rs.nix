@@ -46,26 +46,18 @@ let
   # /.well-known/apps aggregation, MCP docs embedding, the WAC ancestor
   # accessTo over-inheritance + git read-auth fix, and payments::debit wired
   # into the WAC grant path (R-04).
-  # 0.5.0-alpha.0 (2026-06-13): the PROVENANCE release (solid-pod-rs ADR-059).
-  # Adds block-trails (Bitcoin taproot-anchored, hash-chained provenance trails;
-  # byte-parity with JSS token.js, verified against BIP-340/341 vectors),
-  # git-marks (write-as-commit + PROV-O sidecar on every LDP write), the
-  # ProvenanceLog composition (git-mark always / Bitcoin anchor opt-in / epoch
-  # Merkle-root batching) + the `_prov` API + the ProvenanceAnchor WAC condition,
-  # the now-routed web-ledger/order-book/AMM economy with replay protection wired
-  # (PaymentStore the sole ledger I/O), and WAC-gated git smart-HTTP (the
-  # anonymous clone/push hole closed). Full workspace: 1542 tests green.
-  version = "0.5.0-alpha.0";
+  # 0.5.0-alpha.3 (2026-06-28): latest tagged release. Bumped from alpha.0;
+  # includes 8 commits of fixes and improvements since the PROVENANCE release.
+  # Cargo.lock refresh required — run the procedure below after updating hashes.
+  version = "0.5.0-alpha.3";
 
-  # Pinned to the v0.5.0-alpha.0 tag commit.
-  rev     = "9f33b505f10fb5a707cf5efdc53816b425750c10";
+  # Pinned to the v0.5.0-alpha.3 tag commit.
+  rev     = "87b35a1b32f9789e296ebbf7277b9ecc01657c42";
 
-  # REFRESH REQUIRED for rev 9f33b50 (could not be computed in the editing
-  # container — no `nix` binary). On a nix host, run `nix build .#runtime`: it
-  # fetches the new src and fails with the correct expected `srcHash`, which you
-  # paste here. Then refresh the vendored Cargo.lock per the procedure below.
-  # The value left here is the previous (alpha.17) hash and WILL mismatch.
-  srcHash = "sha256-pKpfZbHQ12Vjvtma0SgUl9zkg2/25R38SLYEwwvVOVY=";
+  # REFRESH REQUIRED: set to lib.fakeHash; `nix build .#runtime` prints the
+  # correct SRI hash. Then refresh the vendored Cargo.lock per the procedure
+  # below.
+  srcHash = lib.fakeHash;
 
   # Upstream solid-pod-rs at v0.4.0-alpha.5 does not ship its
   # Cargo.lock (workspace builds without it locally because cargo

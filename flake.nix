@@ -112,9 +112,9 @@
         #    nix-prefetch-url https://registry.npmjs.org/ruvector/-/ruvector-0.2.25.tgz
         ruvectorPkg = mkNpmCli {
           pkgName         = "ruvector";
-          version         = "0.2.28";
-          sha256          = "sha256-QQIJVIMcorZuUzFb0dn3ojhvv93n/hqupj9L0w7PZRs=";
-          nodeModulesHash = "sha256-LANskpOmUshnYtWxzEpjOlZV4X3bAT2pQ11MdUGLdfU=";
+          version         = "0.2.32";
+          sha256          = "sha256-JEVa8Rn7DgQHQOpcNF0DboNLH1uoZc226+eox5yWpn0=";
+          nodeModulesHash = lib.fakeHash;
           bin             = "ruvector";
         };
 
@@ -122,9 +122,9 @@
         #    nix-prefetch-url https://registry.npmjs.org/%40claude-flow/cli/-/cli-3.6.12.tgz
         claudeFlowPkg = mkNpmCli {
           pkgName         = "@claude-flow/cli";
-          version         = "3.10.41";
-          sha256          = "sha256-B7iiUkekqlGHpeQZZDgw87kcKKOBiLzODaLhz3Q0WWk=";
-          nodeModulesHash = "sha256-BZ1stHVMG7eKbnoyni1ot7xSmBt/UCeHXMWiUDkAgbE=";
+          version         = "3.14.4";
+          sha256          = "sha256-ars0PnBq+VYI3FRpMK2/W6U9HBJPvQXjrekStFltsrY=";
+          nodeModulesHash = lib.fakeHash;
           bin             = "claude-flow";
         };
 
@@ -132,9 +132,9 @@
         #    nix-prefetch-url https://registry.npmjs.org/ruflo/-/ruflo-3.6.12.tgz
         rufloPkg = mkNpmCli {
           pkgName         = "ruflo";
-          version         = "3.10.41";
-          sha256          = "sha256-BUJPveUkxgdwRbgLIS13Xt72/M10VQbdpqWG8Ql0lAw=";
-          nodeModulesHash = "sha256-V1mk2oo2qYk6qoj8/q7cJ4neSqAAvSiFaQf8I9fp8GQ=";
+          version         = "3.14.4";
+          sha256          = "sha256-jdYTjAt+s4bpZf9pHdaalaeoHZ+04kIBWyTdjavsmag=";
+          nodeModulesHash = lib.fakeHash;
           bin             = "ruflo";
         };
 
@@ -146,9 +146,9 @@
         #    nix-prefetch-url https://registry.npmjs.org/agentic-qe/-/agentic-qe-3.9.18.tgz
         agenticQePkg = mkNpmCli {
           pkgName         = "agentic-qe";
-          version         = "3.10.5";
-          sha256          = "sha256-4rhFjviITgWttyN37f8eHMUE+rrWDGMBOeaikQeZDq8=";
-          nodeModulesHash = "sha256-m7uuVXZOOreFTXBPGqOAVyYBeuHdw0mC0BWPnwF7ODo=";
+          version         = "3.11.3";
+          sha256          = "sha256-WzwPH8AOsIuKdcdskmujKrzjWM1O889pBfShNns91Mo=";
+          nodeModulesHash = lib.fakeHash;
           bin             = "aqe";
         };
 
@@ -162,9 +162,9 @@
         #    nix-prefetch-url https://registry.npmjs.org/codebase-memory-mcp/-/codebase-memory-mcp-0.6.0.tgz
         codebaseMemoryPkg = mkNpmCli {
           pkgName         = "codebase-memory-mcp";
-          version         = "0.7.0";
-          sha256          = "sha256-6fEGeGHoyYSqm6jivEo3yPmqrKizzZaLY0Kf64acQ54=";
-          nodeModulesHash = "sha256-GDNlArhpzNcfpqjo76DwqskOS+z+zwi1TxC30Dotabo=";
+          version         = "0.8.1";
+          sha256          = "sha256-z2l+JTn1kFwByTAE/z8jIxkZWnahdsvcFQ0hl7J8Ang=";
+          nodeModulesHash = lib.fakeHash;
           bin             = "codebase-memory-mcp";
         };
 
@@ -579,18 +579,17 @@
         #   first build will print the correct vendorHash to substitute.
         webResearcherMcpPkg = pkgs.buildGoModule rec {
           pname   = "web-researcher-mcp";
-          # Bumped 1.2.2 -> 1.33.0 (tag v1.33.0 = commit 8ccf4c7e). HASHES BELOW ARE
-          # PLACEHOLDERS (lib.fakeHash): the first build fails fast and prints the real
-          # `hash`, then (after pasting it) the real `vendorHash` — paste both and rebuild.
-          # Or precompute: nix-prefetch-github zoharbabin web-researcher-mcp --rev v1.33.0
-          version = "1.33.0";  # bump together with hashes below
+          # Bumped 1.33.0 -> 1.36.4. Hashes need refresh on first host build:
+          #   nix-prefetch-github zoharbabin web-researcher-mcp --rev v1.36.4
+          #   then `nix build` once with lib.fakeHash for vendorHash.
+          version = "1.36.4";  # bump together with hashes below
           src = pkgs.fetchFromGitHub {
             owner = "zoharbabin";
             repo  = "web-researcher-mcp";
             rev   = "v${version}";
-            hash  = "sha256-JFlstEiWHMFEJLxE91LyjpFS7A4ZlASzwL4BsoKfL7s=";
+            hash  = lib.fakeHash;
           };
-          vendorHash = "sha256-bNWVQdElw3b2dobWAAgz9eoxv99n9exnIGMwel5vtS0=";
+          vendorHash = lib.fakeHash;
           subPackages = [ "cmd/web-researcher-mcp" ];
           # Strip the auto-Chromium download path — we never use tier 4.
           ldflags = [ "-s" "-w" ];

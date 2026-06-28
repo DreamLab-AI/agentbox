@@ -39,22 +39,22 @@
 let
   version = "0.1.0";
 
-  # Pinned to master at 2026-04-25 (commit 1692cb4 — README + Sprint 6 features).
+  # Pinned to master at 2026-06-28 (commit b3f7a12 — deps bump).
   # Refresh via:
   #   gh api repos/proffesor-for-testing/nagual-qe/commits/master -q '.sha'
-  rev = "1692cb447b6346f4623e18eb9bde6bcc753244f5";
+  rev = "b3f7a12609e3cb0a59e53bc6d6a82c08d46b0d05";
 
   # Resolve via:
   #   nix-prefetch-url --unpack --type sha256 \
   #     https://github.com/proffesor-for-testing/nagual-qe/archive/<rev>.tar.gz
   #   nix hash convert --hash-algo sha256 --to sri <base32>
-  srcHash = "sha256-VXE/VP7YWgsAMzhyq79YWUbOAKLT9LWpS5elEvfjefM=";
+  srcHash = lib.fakeHash;
 
   # Resolved by buildRustPackage's vendoring on first build. Nix prints the
   # real hash on mismatch. Refresh via:
   #   nix build .#runtime
   #   (read the "got: sha256-…" line, paste here)
-  cargoHash = "sha256-EwaZjegwYd6UxHlFqkqri5ts1Fd51xXem8S0xG9tJ98=";
+  cargoHash = lib.fakeHash;
 
   src = pkgs.fetchFromGitHub {
     owner = "proffesor-for-testing";
