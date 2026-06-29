@@ -48,13 +48,13 @@ let
   #   nix-prefetch-url --unpack --type sha256 \
   #     https://github.com/proffesor-for-testing/nagual-qe/archive/<rev>.tar.gz
   #   nix hash convert --hash-algo sha256 --to sri <base32>
-  srcHash = lib.fakeHash;
+  srcHash = "sha256-R3gZWOfP/iki+Nmzq2kDk8PADyJlDOFpiHZ9Sob2SXo=";
 
   # Resolved by buildRustPackage's vendoring on first build. Nix prints the
   # real hash on mismatch. Refresh via:
   #   nix build .#runtime
   #   (read the "got: sha256-…" line, paste here)
-  cargoHash = lib.fakeHash;
+  cargoHash = "sha256-xYUeSYJyoQ/WIJiZHEXuliJ2NW8XuTl6VkgdEUjOzfs=";
 
   src = pkgs.fetchFromGitHub {
     owner = "proffesor-for-testing";

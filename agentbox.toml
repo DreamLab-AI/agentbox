@@ -115,8 +115,10 @@ ingress_policy   = "allowlist"        # allowlist | signed-only | open
 allowed_pubkeys  = []                  # empty = self only (own npub); operator pubkey auto-added at boot
 # Mobile bridge kinds: 1059 = NIP-59 gift wrap (phone→agent encrypted envelope),
 # 30840 = addressable session-summary (the durable conversation record, dual-written
-# to relay + pod). 27235 = NIP-98 HTTP auth. 38xxx = agent-intent/event surfaces.
-allowed_kinds    = [1, 1059, 30078, 30840, 27235, 31400, 31401, 31402, 31403, 31404, 31405, 38000, 38100, 38200, 38201, 38300, 38301, 38302, 38303, 38304, 38305]
+# to relay + pod). 30841 = addressable project-tracking digest (per-project status,
+# PRD-017 / ADR-035 §D3, dual-written to relay + pod, d-tag = project slug).
+# 27235 = NIP-98 HTTP auth. 38xxx = agent-intent/event surfaces.
+allowed_kinds    = [1, 1059, 30078, 30840, 30841, 27235, 31400, 31401, 31402, 31403, 31404, 31405, 38000, 38100, 38200, 38201, 38300, 38301, 38302, 38303, 38304, 38305]
 pod_bridge       = true
 external_fanout  = "bidirectional"     # bidirectional | publish-only | subscribe-only | off
 # PRD-014 Seam B / B3 — deterministic responder dispatch for voice-origin
@@ -775,13 +777,38 @@ extra_panes          = []
 upstream_panes_visible = true
 source_code_header   = ""        # default = upstream repo URL (AGPL §13)
 
+# ── Project tracking (PRD-017 / ADR-035 / DDD-015) ────────────────────────────
+# Helm-grade project tracking (status grid, 30-day commit activity, AI
+# primers/synopses, GitHub + local repo sync) re-expressed on the sovereign
+# substrate. Every tracked workspace/host-mount git repo becomes a first-class
+# `urn:agentbox:thing:<pubkey>:project-<sha>` (minted via management-api/lib/uris.js,
+# no new URN kind); each scan is observable on the existing port-bound /metrics as
+# the agentbox_project_* gauges (no new port — ADR-035 §D2); and, when nostr_publish
+# is on, per-project status is signed as an addressable kind-30841 digest to the
+# operator's did:nostr (sibling of the kind-30840 session summary — ADR-035 §D3).
+#
+# Disabled by default: when enabled=false the /v1/projects route returns 503 and
+# no scan, metric, or nostr publish runs. Durable state rides the EXISTING adapter
+# slots (memory for primers, events for scans) — never a new slot (ADR-035 §D4).
+# Primers and github_enrichment are the only external hops and are independently
+# gated (a Z.AI/GLM key and GITHUB_TOKEN respectively).
+[project_tracking]
+enabled             = false                                          # master gate; /v1/projects → 503 when off
+scan_dirs           = ["/projects", "/home/devuser/workspace/project"]  # one-level-deep git-repo discovery roots
+scan_interval_hours = 6                                              # periodic re-scan; 0 = on-demand only (no scheduler)
+github_enrichment   = false                                         # pull open issues + stars via GITHUB_TOKEN (one external hop)
+primer_model        = "glm-5.2"                                     # Z.AI/GLM model for primers/synopses (→ consultant, ADR-011)
+primer_on_scan      = false                                         # auto-generate primers for new projects during a scan
+nostr_publish       = false                                         # publish kind-30841 digests to the operator's did:nostr
+metrics             = true                                          # emit the agentbox_project_* gauges on the port-bound /metrics
+
 [toolchains]
 claude = true
 claude_code = true
 ruflo = true
 claude_flow = true
 agentic_qe = true
-nagual_qe = true
+nagual_qe = false  # disabled: upstream sqlx 0.9 SqlSafeStr compilation error
 codebase_memory = true
 rust = true
 antigravity_cli = true

@@ -67,9 +67,47 @@ function parseValue(raw) {
   if (raw === 'false') return false;
   if (/^"(.*)"$/.test(raw)) return raw.slice(1, -1).replace(/\\"/g, '"').replace(/\\\\/g, '\\');
   if (/^'(.*)'$/.test(raw)) return raw.slice(1, -1);
+  // Inline array of scalars: [a, "b", 3]. Single-line only (the parser is
+  // line-based; arrays-of-tables [[x]] and multiline arrays are still out of
+  // scope). Elements are parsed recursively; commas inside quotes are honoured.
+  // Falls back to the raw string on a malformed bracket pair. Previously such
+  // values were returned verbatim as strings, which silently broke JS consumers
+  // of array keys (e.g. [project_tracking].scan_dirs, relay.allowed_kinds).
+  if (/^\[.*\]$/.test(raw)) {
+    const inner = raw.slice(1, -1).trim();
+    if (inner === '') return [];
+    return splitTopLevelCommas(inner).map((part) => parseValue(part.trim()));
+  }
   const num = Number(raw);
   if (!isNaN(num) && raw !== '') return num;
   return raw;
+}
+
+/**
+ * Split a comma-separated list on top-level commas only — commas inside single
+ * or double quotes are preserved. Used for inline-array parsing.
+ */
+function splitTopLevelCommas(s) {
+  const out = [];
+  let buf = '';
+  let quote = null;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (quote) {
+      buf += c;
+      if (c === quote && s[i - 1] !== '\\') quote = null;
+    } else if (c === '"' || c === "'") {
+      quote = c;
+      buf += c;
+    } else if (c === ',') {
+      out.push(buf);
+      buf = '';
+    } else {
+      buf += c;
+    }
+  }
+  if (buf.trim() !== '') out.push(buf);
+  return out;
 }
 
 /**

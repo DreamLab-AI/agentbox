@@ -57,7 +57,7 @@ let
   # REFRESH REQUIRED: set to lib.fakeHash; `nix build .#runtime` prints the
   # correct SRI hash. Then refresh the vendored Cargo.lock per the procedure
   # below.
-  srcHash = lib.fakeHash;
+  srcHash = "sha256-cz9rUqjQ0PuAjqGduyd3vVvrX31FNMuCciNeeq0tBjw=";
 
   # Upstream solid-pod-rs at v0.4.0-alpha.5 does not ship its
   # Cargo.lock (workspace builds without it locally because cargo
@@ -127,7 +127,9 @@ in
       # Copy the vendored lockfile into the source tree before configurePhase
       # so cargo can find it relative to the workspace root.
       postPatch = ''
+        chmod -R u+w .
         cp ${cargoLockFile} Cargo.lock
+        chmod u+w Cargo.lock
       '';
 
       # The workspace member lives under crates/solid-pod-rs-server.

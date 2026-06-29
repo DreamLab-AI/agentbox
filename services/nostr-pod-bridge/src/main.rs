@@ -33,7 +33,10 @@ use solid_pod_rs_nostr::Relay;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 
-use nostr_pod_bridge::{publish_session_summary, serve, spawn_consumer, BridgeConfig, SessionSummary};
+use nostr_pod_bridge::{
+    publish_project_tracking, publish_session_summary, serve, spawn_consumer, BridgeConfig,
+    ProjectTrackingDigest, SessionSummary,
+};
 
 fn env_required(key: &str) -> anyhow::Result<String> {
     std::env::var(key).with_context(|| format!("missing required env var {key}"))
@@ -99,7 +102,6 @@ fn load_config() -> anyhow::Result<BridgeConfig> {
         pod_root: PathBuf::from(env_required("AGENTBOX_POD_ROOT")?),
         recipient_pubkey: env_required("AGENTBOX_BRIDGE_RECIPIENT_PUBKEY")?,
         recipient_sk: load_sk()?,
-        admin_pubkey: env_required("AGENTBOX_ADMIN_PUBKEY")?,
         allowed_pubkeys,
     })
 }
@@ -114,8 +116,9 @@ async fn main() -> anyhow::Result<()> {
 
     match std::env::args().nth(1).as_deref() {
         Some("summarise") => run_summarise(cfg).await,
+        Some("track") => run_track(cfg).await,
         Some(other) => Err(anyhow!(
-            "unknown subcommand '{other}'; expected 'summarise' or no argument (daemon mode)"
+            "unknown subcommand '{other}'; expected 'summarise', 'track', or no argument (daemon mode)"
         )),
         None => run_daemon(cfg).await,
     }
@@ -128,6 +131,17 @@ async fn run_summarise(cfg: BridgeConfig) -> anyhow::Result<()> {
     let summary: SessionSummary =
         serde_json::from_str(&raw).context("parsing SessionSummary JSON from stdin")?;
     publish_session_summary(&cfg, &summary).await?;
+    Ok(())
+}
+
+/// One-shot egress: read a curated project digest from stdin and publish the
+/// kind-30841 (PRD-017 / ADR-035 §D3). Invoked by `project-tracking-publish.cjs`.
+async fn run_track(cfg: BridgeConfig) -> anyhow::Result<()> {
+    let raw = std::io::read_to_string(std::io::stdin())
+        .context("reading project-tracking JSON from stdin")?;
+    let digest: ProjectTrackingDigest =
+        serde_json::from_str(&raw).context("parsing ProjectTrackingDigest JSON from stdin")?;
+    publish_project_tracking(&cfg, &digest).await?;
     Ok(())
 }
 

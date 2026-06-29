@@ -114,7 +114,7 @@
           pkgName         = "ruvector";
           version         = "0.2.32";
           sha256          = "sha256-JEVa8Rn7DgQHQOpcNF0DboNLH1uoZc226+eox5yWpn0=";
-          nodeModulesHash = lib.fakeHash;
+          nodeModulesHash = "sha256-Kevyj1TCfBl4jb2io4qlQgQD5rJwnroTSFV1yHjEm/I=";
           bin             = "ruvector";
         };
 
@@ -124,7 +124,7 @@
           pkgName         = "@claude-flow/cli";
           version         = "3.14.4";
           sha256          = "sha256-ars0PnBq+VYI3FRpMK2/W6U9HBJPvQXjrekStFltsrY=";
-          nodeModulesHash = lib.fakeHash;
+          nodeModulesHash = "sha256-5A45CO3iTq5Dh7icjGG0yQ7JaHQQMAecICzd18idpiQ=";
           bin             = "claude-flow";
         };
 
@@ -134,7 +134,7 @@
           pkgName         = "ruflo";
           version         = "3.14.4";
           sha256          = "sha256-jdYTjAt+s4bpZf9pHdaalaeoHZ+04kIBWyTdjavsmag=";
-          nodeModulesHash = lib.fakeHash;
+          nodeModulesHash = "sha256-qWBuRtuV20QzBaCIeCSS/FLayCYLJNdlwYqfsneHDKg=";
           bin             = "ruflo";
         };
 
@@ -148,7 +148,7 @@
           pkgName         = "agentic-qe";
           version         = "3.11.3";
           sha256          = "sha256-WzwPH8AOsIuKdcdskmujKrzjWM1O889pBfShNns91Mo=";
-          nodeModulesHash = lib.fakeHash;
+          nodeModulesHash = "sha256-5evIQoQwLlSVgXe31e9/UiH9kJnvwT9kOer7WC/ja3c=";
           bin             = "aqe";
         };
 
@@ -164,7 +164,7 @@
           pkgName         = "codebase-memory-mcp";
           version         = "0.8.1";
           sha256          = "sha256-z2l+JTn1kFwByTAE/z8jIxkZWnahdsvcFQ0hl7J8Ang=";
-          nodeModulesHash = lib.fakeHash;
+          nodeModulesHash = "sha256-+I72VyWOwXDKK+lUMaKNwiQpEdkBGL406a9AgJjbbu4=";
           bin             = "codebase-memory-mcp";
         };
 
@@ -185,7 +185,7 @@
           pkgName         = "@mermaid-js/mermaid-cli";
           version         = "11.15.0";
           sha256          = "sha256-9v0Iedv1AORTeEu9nbkq6VEJfg6eipDsYT8r08qPoGw=";
-          nodeModulesHash = "sha256-fZIXonve9XhNhP0NnHzEllLLn7JZmey45RKtY5CKfZM=";
+          nodeModulesHash = "sha256-5iAgX7c3mShzkbkKE+H1Cuy9Q37ILNKxTXvgrT8nhF0=";
           bin             = "mmdc";
         };
 
@@ -206,7 +206,7 @@
           pkgName         = "wrangler";
           version         = "4.78.0";
           sha256          = "sha256-tC1kgCS3jQSKkgGChKOrVPMTZkZ4p3x+D3rtK3j/NJk=";
-          nodeModulesHash = "sha256-Oh0xX5JAlYlmXc5qcSlkfjCThq+kXgPAkUcLSlfDHJI=";
+          nodeModulesHash = "sha256-4IRZZ2WSttxrrEcVWHbH+nPeRA79MaPVeUagitb2q4E=";
           bin             = "wrangler";
           # wrangler's devDependencies reference private @cloudflare/*
           # packages not on the public npm registry — strip them so npm
@@ -587,9 +587,9 @@
             owner = "zoharbabin";
             repo  = "web-researcher-mcp";
             rev   = "v${version}";
-            hash  = lib.fakeHash;
+            hash  = "sha256-tlC+LF+ZRIIcNdK1V5fXMm6WJR3KYyfPjak9lkMXcjw=";
           };
-          vendorHash = lib.fakeHash;
+          vendorHash = "sha256-JsLlBCZQhij/ivcU6pjcWDzh1Z4hORCzJghre+ai49k=";
           subPackages = [ "cmd/web-researcher-mcp" ];
           # Strip the auto-Chromium download path — we never use tier 4.
           ldflags = [ "-s" "-w" ];

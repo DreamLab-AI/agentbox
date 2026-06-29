@@ -300,16 +300,34 @@ in
         export HOME="$TMPDIR"
         export npm_config_nodedir="${pkgs.nodejs_22}"
         _node_gyp="${pkgs.nodejs_22}/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js"
-        find "$out/lib/${pname}" -type d -path '*/node_modules/better-sqlite3' | while read -r _bsq3; do
+        # Process-substitution (not `find | while`) so the loop runs in THIS
+        # shell — a piped `while` is a subshell where `exit 1` cannot fail the
+        # derivation, which is exactly how the broken binary shipped silently.
+        while read -r _bsq3; do
           if [ -f "$_bsq3/binding.gyp" ] && [ ! -e "$_bsq3/build/Release/better_sqlite3.node" ]; then
-            if ( cd "$_bsq3" && ${pkgs.nodejs_22}/bin/node "$_node_gyp" \
-                   rebuild --release --nodedir="${pkgs.nodejs_22}" 1>&2 ); then
+            # Start from a clean build/. better-sqlite3's published tarball can
+            # carry a stale build/ whose generated Makefile encodes node-header
+            # paths (relative, calibrated for some other store layout) that do
+            # not resolve here, so `make` can abort on a phantom regen rule
+            # before compiling. A fresh, self-consistent `node-gyp rebuild`
+            # regenerates everything against THIS build's node + nodedir.
+            rm -rf "$_bsq3/build"
+            if ( cd "$_bsq3" \
+                 && PATH="${pkgs.nodejs_22}/bin:$PATH" \
+                    ${pkgs.nodejs_22}/bin/node "$_node_gyp" \
+                       rebuild --release --nodedir="${pkgs.nodejs_22}" 1>&2 ) \
+               && [ -e "$_bsq3/build/Release/better_sqlite3.node" ]; then
               echo "better-sqlite3 native bridge: built ''${_bsq3#$out/lib/${pname}/}" >&2
             else
-              echo "WARN better-sqlite3 native bridge: build failed at ''${_bsq3#$out/lib/${pname}/} — agentdb will use the buggy WASM fallback" >&2
+              # Fail loud. Without this binary agentdb silently falls back to a
+              # data-losing WASM SQLite backend (e.g. agentic-qe fleet_init dies
+              # locating the binding). Never ship that state — break the build.
+              echo "ERROR better-sqlite3 native bridge: FAILED to build ''${_bsq3#$out/lib/${pname}/}" >&2
+              echo "      agentdb would silently use the data-losing WASM fallback — aborting." >&2
+              exit 1
             fi
           fi
-        done
+        done < <(find "$out/lib/${pname}" -type d -path '*/node_modules/better-sqlite3')
 
         # Resolve the entry-point from package.json "bin" field.
         # We use node to parse it so we handle both string and object forms.

@@ -9,8 +9,13 @@
 //!   calls `Event::verify` before broadcast), and a WebSocket wire handler
 //!   ([`solid_pod_rs_nostr::serve_relay_ws`]).
 //! - [`nostr_bbs_core`] supplies the crypto the relay does not: NIP-59
-//!   gift-wrap unwrap ([`nostr_bbs_core::unwrap_gift`]) and NIP-26 delegation
-//!   validation ([`nostr_bbs_core::validate_delegation_tag`]).
+//!   gift-wrap unwrap ([`nostr_bbs_core::unwrap_gift`]).
+//!
+//! Authorization is allowlist-only. NIP-26 delegation was removed upstream
+//! (nostr-rust-forum commit 5bfd9815, ADR-099) because revocation is
+//! expiry-only and major Nostr clients had abandoned it. Dynamic onboarding —
+//! the use case NIP-26 previously served here — is tracked under the device-key
+//! registry model (ADR-099) and is not yet wired into this bridge.
 //!
 //! ## Flow
 //!
@@ -21,7 +26,7 @@
 //!        │                                 │   └─ Event::verify (sig)  │
 //!        │                                 │   └─ broadcast            │
 //!        │                          consumer task (relay.subscribe)    │
-//!        │                                 │   1. NIP-26 authz (admin) │
+//!        │                                 │   1. allowlist authz      │
 //!        │                                 │   2. unwrap_gift (sk)     │
 //!        │                                 │   3. AS2/LDN format       │
 //!        │                                 ├──────────── inbox/<id>.json
@@ -29,8 +34,8 @@
 //!
 //! Signature verification (authn) always precedes authorization (authz):
 //! the relay verifies the signature in `ingest` *before* the event reaches the
-//! consumer, and the consumer performs the NIP-26 admin-delegation check before
-//! any unwrap or pod write.
+//! consumer, and the consumer performs the allowlist check before any unwrap
+//! or pod write.
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -43,9 +48,7 @@ use tokio_tungstenite::tungstenite::Message;
 use tracing::{debug, error, info, warn};
 
 use nostr_bbs_core::keys::signing_key_from_bytes;
-use nostr_bbs_core::{
-    sign_event, unwrap_gift, validate_delegation_tag, DelegationTag, NostrEvent, UnsignedEvent,
-};
+use nostr_bbs_core::{sign_event, unwrap_gift, NostrEvent, UnsignedEvent};
 use solid_pod_rs_nostr::{serve_relay_ws, Event, Relay};
 
 /// NIP-59 gift-wrap (outer envelope for NIP-17 DMs).
@@ -56,6 +59,11 @@ pub const KIND_DM: u64 = 14;
 pub const KIND_DM_FILE: u64 = 15;
 /// kind-30840 session-summary addressable event (NIP-33, `d`-tag = session id).
 pub const KIND_SESSION_SUMMARY: u64 = 30840;
+/// kind-30841 project-tracking digest addressable event (NIP-33, `d`-tag =
+/// project slug). Sibling of [`KIND_SESSION_SUMMARY`]: where 30840 mirrors a
+/// session, 30841 mirrors the *status of a tracked project* (PRD-017 /
+/// ADR-035 §D3). Re-publishing the same project slug replaces the prior digest.
+pub const KIND_PROJECT_TRACKING: u64 = 30841;
 
 /// Bridge configuration. Secrets arrive already-decrypted from the agentbox
 /// launcher (which owns the AES-256-GCM `nostr.key.enc` format); this crate
@@ -70,9 +78,10 @@ pub struct BridgeConfig {
     pub recipient_pubkey: String,
     /// 32-byte secret key of the agent — used solely to unwrap NIP-59 gifts.
     pub recipient_sk: [u8; 32],
-    /// Hex pubkey of the admin permitted to issue NIP-26 delegations.
-    pub admin_pubkey: String,
-    /// Direct allowlist of hex pubkeys permitted without delegation.
+    /// Hex pubkeys authorized to write into this agent's inbox. Authorization
+    /// is allowlist-only: any other pubkey is rejected after signature
+    /// verification. Dynamic onboarding (the former NIP-26 admin-delegation
+    /// path) is deferred to the device-key registry model (ADR-099).
     pub allowed_pubkeys: Vec<String>,
 }
 
@@ -81,8 +90,6 @@ pub struct BridgeConfig {
 enum Authz {
     /// Author is directly allow-listed.
     Direct,
-    /// Author acts under a valid NIP-26 delegation from the admin pubkey.
-    Delegated { delegator: String },
 }
 
 /// Errors surfaced while processing a single inbound event. Processing is
@@ -109,38 +116,19 @@ fn to_core_event(ev: &Event) -> Result<NostrEvent, IngressError> {
     serde_json::from_value(v).map_err(|e| IngressError::Serde(e.to_string()))
 }
 
-/// Find the first `["delegation", ...]` tag on an event, if present.
-fn delegation_tag(ev: &Event) -> Option<&Vec<String>> {
-    ev.tags
-        .iter()
-        .find(|t| t.first().map(String::as_str) == Some("delegation"))
-}
-
 /// Decide whether an already-signature-verified event may be ingested.
 ///
-/// Order: direct allowlist first, then NIP-26 delegation. A delegation is only
-/// honoured when its delegator equals the configured admin pubkey *and*
-/// [`validate_delegation_tag`] accepts it for this event's kind + timestamp.
+/// Allowlist-only: the author pubkey must appear in [`BridgeConfig::allowed_pubkeys`].
+/// The previous NIP-26 admin-delegation path was retired in lockstep with the
+/// upstream removal in nostr-bbs-core (commit 5bfd9815). Operators who need
+/// dynamic onboarding should add the pubkey to the allowlist (push it through
+/// the agent config) until the device-key registry (ADR-099) is wired up.
 fn authorize(ev: &Event, cfg: &BridgeConfig) -> Result<Authz, IngressError> {
     if cfg.allowed_pubkeys.iter().any(|p| p == &ev.pubkey) {
         return Ok(Authz::Direct);
     }
-
-    if let Some(tag) = delegation_tag(ev) {
-        let delegator = tag.get(1).cloned().unwrap_or_default();
-        if delegator != cfg.admin_pubkey {
-            return Err(IngressError::Unauthorized(format!(
-                "delegation delegator {delegator} is not the admin pubkey"
-            )));
-        }
-        let dtag = DelegationTag(tag.clone());
-        validate_delegation_tag(&dtag, &ev.pubkey, ev.kind, ev.created_at)
-            .map_err(|e| IngressError::Unauthorized(format!("invalid NIP-26 delegation: {e}")))?;
-        return Ok(Authz::Delegated { delegator });
-    }
-
     Err(IngressError::Unauthorized(format!(
-        "pubkey {} not allow-listed and no admin delegation present",
+        "pubkey {} not allow-listed",
         ev.pubkey
     )))
 }
@@ -213,7 +201,11 @@ fn format_as_ldn(outer: &Event, msg: &EffectiveMessage) -> Value {
         "published": rfc3339(msg.created_at),
         "actor": format!("did:nostr:{}", msg.sender_pubkey),
         "object": {
-            "type": if msg.kind == KIND_SESSION_SUMMARY { "Document" } else { "Note" },
+            "type": if msg.kind == KIND_SESSION_SUMMARY || msg.kind == KIND_PROJECT_TRACKING {
+                "Document"
+            } else {
+                "Note"
+            },
             "content": msg.content,
             "x:kind": msg.kind,
             "x:tags": msg.tags,
@@ -248,6 +240,18 @@ fn session_path(pod_root: &Path, recipient: &str, event_id: &str) -> PathBuf {
         .join(format!("{event_id}.jsonld"))
 }
 
+/// Projects path: `<pod_root>/pods/<recipient>/projects/<event_id>.jsonld`.
+/// The durable per-project status record (ADR-035 §D3). Addressable on the
+/// kind-30841 `d`-tag (the project slug), so the latest digest for a project is
+/// always the newest event id written here.
+fn projects_path(pod_root: &Path, recipient: &str, event_id: &str) -> PathBuf {
+    pod_root
+        .join("pods")
+        .join(recipient)
+        .join("projects")
+        .join(format!("{event_id}.jsonld"))
+}
+
 async fn write_json(path: &Path, doc: &Value) -> Result<(), IngressError> {
     if let Some(parent) = path.parent() {
         tokio::fs::create_dir_all(parent)
@@ -263,10 +267,8 @@ async fn write_json(path: &Path, doc: &Value) -> Result<(), IngressError> {
 /// Process a single already-verified event: authorize, peel, address-check,
 /// write to the pod. Idempotent on event id (the inbox filename is the id).
 pub async fn process_event(ev: &Event, cfg: &BridgeConfig) -> Result<(), IngressError> {
-    let authz = authorize(ev, cfg)?;
-    if let Authz::Delegated { delegator } = &authz {
-        debug!(event_id = %ev.id, %delegator, "authorized via admin delegation");
-    }
+    let Authz::Direct = authorize(ev, cfg)?;
+    debug!(event_id = %ev.id, pubkey = %ev.pubkey, "authorized via allowlist");
     let msg = effective_message(ev, cfg)?;
 
     if !addressed_to(&cfg.recipient_pubkey, ev, &msg.tags) {
@@ -279,6 +281,12 @@ pub async fn process_event(ev: &Event, cfg: &BridgeConfig) -> Result<(), Ingress
     if msg.kind == KIND_SESSION_SUMMARY {
         write_json(
             &session_path(&cfg.pod_root, &cfg.recipient_pubkey, &ev.id),
+            &doc,
+        )
+        .await?;
+    } else if msg.kind == KIND_PROJECT_TRACKING {
+        write_json(
+            &projects_path(&cfg.pod_root, &cfg.recipient_pubkey, &ev.id),
             &doc,
         )
         .await?;
@@ -403,6 +411,149 @@ pub async fn publish_session_summary(
     Ok(())
 }
 
+// ── Project-tracking egress (kind-30841) ────────────────────────────────────
+//
+// The project digest is the structural twin of the session summary (kind-30840):
+// the agent *authors* a curated status record for one tracked project and
+// dual-writes it to the pod + relay. The curation (synopsis, primer, commit
+// counts, github enrichment) is done upstream by `management-api/lib/project-tracker.js`
+// and the `project-tracking-publish.cjs` hook; this crate only owns the crypto —
+// sign the kind-30841, persist it to the pod, and push it to the relay. PRD-017 /
+// ADR-035 §D3 / DDD-015.
+
+/// A curated per-project status digest produced by the project tracker. The
+/// `track` subcommand reads this as JSON on stdin. `project_id` (the project
+/// slug) becomes the kind-30841 `d` tag (NIP-33 addressable), so re-tracking the
+/// same project replaces the prior digest.
+#[derive(Debug, Clone, Deserialize)]
+pub struct ProjectTrackingDigest {
+    /// Stable project slug; becomes the kind-30841 `d` tag.
+    pub project_id: String,
+    /// Human-readable project name.
+    pub name: String,
+    /// One-sentence synopsis.
+    #[serde(default)]
+    pub synopsis: String,
+    /// Primary language (best-effort heuristic).
+    #[serde(default)]
+    pub language: Option<String>,
+    /// Canonical remote URL, if any.
+    #[serde(default)]
+    pub remote: Option<String>,
+    /// Commits in the trailing 30 days.
+    #[serde(default)]
+    pub commits_30d: u64,
+    /// Open GitHub issues (0 when enrichment is off).
+    #[serde(default)]
+    pub open_issues: u64,
+    /// GitHub stars (0 when enrichment is off).
+    #[serde(default)]
+    pub stars: u64,
+    /// ISO-8601 timestamp of the last commit, if known.
+    #[serde(default)]
+    pub last_commit_iso: Option<String>,
+    /// Primer status: none | pending | ready | stale | error.
+    #[serde(default)]
+    pub primer_status: Option<String>,
+    /// The agentbox `urn:agentbox:thing:…:project-…` identity, if minted.
+    #[serde(default)]
+    pub urn: Option<String>,
+}
+
+/// Render a [`ProjectTrackingDigest`] as the text shown in the kind-30841
+/// `content` field. Layout mirrors the kind-30840 digest: a header, the
+/// synopsis, then the status facts.
+fn render_project_content(d: &ProjectTrackingDigest) -> String {
+    let mut out = format!("Project {}\n", d.name.trim());
+    if !d.synopsis.trim().is_empty() {
+        out.push_str(&format!("\n{}\n", d.synopsis.trim()));
+    }
+    out.push_str("\nSTATUS\n");
+    if let Some(lang) = d.language.as_deref().filter(|s| !s.is_empty()) {
+        out.push_str(&format!("- language: {lang}\n"));
+    }
+    out.push_str(&format!("- commits (30d): {}\n", d.commits_30d));
+    out.push_str(&format!("- open issues: {}\n", d.open_issues));
+    out.push_str(&format!("- stars: {}\n", d.stars));
+    if let Some(ts) = d.last_commit_iso.as_deref().filter(|s| !s.is_empty()) {
+        out.push_str(&format!("- last commit: {ts}\n"));
+    }
+    if let Some(ps) = d.primer_status.as_deref().filter(|s| !s.is_empty()) {
+        out.push_str(&format!("- primer: {ps}\n"));
+    }
+    if let Some(remote) = d.remote.as_deref().filter(|s| !s.is_empty()) {
+        out.push_str(&format!("- remote: {remote}\n"));
+    }
+    if let Some(urn) = d.urn.as_deref().filter(|s| !s.is_empty()) {
+        out.push_str(&format!("- urn: {urn}\n"));
+    }
+    out
+}
+
+/// Sign a kind-30841 project-tracking digest as the agent itself, dual-write it
+/// to the pod (inbox + projects), and publish it to the running relay for the
+/// live phone view. Structural twin of [`publish_session_summary`].
+pub async fn publish_project_tracking(
+    cfg: &BridgeConfig,
+    digest: &ProjectTrackingDigest,
+) -> anyhow::Result<()> {
+    let signing_key = signing_key_from_bytes(&cfg.recipient_sk)
+        .map_err(|e| anyhow::anyhow!("invalid agent secret key: {e}"))?;
+
+    // NIP-33 addressable + NIP-31 alt + structured project tags.
+    let mut tags = vec![
+        vec!["d".to_string(), digest.project_id.clone()],
+        vec!["p".to_string(), cfg.recipient_pubkey.clone()],
+        vec!["t".to_string(), "agentbox-project".to_string()],
+        vec!["alt".to_string(), format!("Project status: {}", digest.name)],
+    ];
+    if let Some(remote) = digest.remote.as_deref().filter(|s| !s.is_empty()) {
+        tags.push(vec!["r".to_string(), remote.to_string()]);
+    }
+    if let Some(lang) = digest.language.as_deref().filter(|s| !s.is_empty()) {
+        tags.push(vec!["l".to_string(), lang.to_string()]);
+    }
+
+    let unsigned = UnsignedEvent {
+        pubkey: cfg.recipient_pubkey.clone(),
+        created_at: now_unix(),
+        kind: KIND_PROJECT_TRACKING,
+        tags,
+        content: render_project_content(digest),
+    };
+    let signed = sign_event(unsigned, &signing_key)
+        .map_err(|e| anyhow::anyhow!("project-tracking signing failed: {e}"))?;
+
+    let relay_event: Event = serde_json::from_value(serde_json::to_value(&signed)?)?;
+    let msg = EffectiveMessage {
+        sender_pubkey: signed.pubkey.clone(),
+        kind: signed.kind,
+        created_at: signed.created_at,
+        tags: signed.tags.clone(),
+        content: signed.content.clone(),
+        gift_wrapped: false,
+    };
+    let doc = format_as_ldn(&relay_event, &msg);
+
+    write_json(
+        &inbox_path(&cfg.pod_root, &cfg.recipient_pubkey, &signed.id),
+        &doc,
+    )
+    .await?;
+    write_json(
+        &projects_path(&cfg.pod_root, &cfg.recipient_pubkey, &signed.id),
+        &doc,
+    )
+    .await?;
+
+    if let Err(e) = publish_to_relay(&cfg.bind_addr, &signed).await {
+        warn!(error = %e, "live relay publish failed; pod record persisted");
+    }
+
+    info!(event_id = %signed.id, project = %digest.project_id, "project digest dual-written to pod");
+    Ok(())
+}
+
 /// Open a short-lived WebSocket to the embedded relay and publish a single
 /// `["EVENT", …]` frame. Waits briefly for the relay's `OK`/`NOTICE` ack so the
 /// frame is flushed and processed before the socket closes.
@@ -505,7 +656,6 @@ mod tests {
             pod_root: std::env::temp_dir(),
             recipient_pubkey: "a".repeat(64),
             recipient_sk: [7u8; 32],
-            admin_pubkey: "b".repeat(64),
             allowed_pubkeys: vec!["c".repeat(64)],
         }
     }
@@ -530,18 +680,21 @@ mod tests {
     }
 
     #[test]
-    fn unknown_pubkey_without_delegation_rejected() {
+    fn unknown_pubkey_rejected() {
         let c = cfg();
         let e = ev(&"f".repeat(64), 1, vec![]);
         assert!(matches!(authorize(&e, &c), Err(IngressError::Unauthorized(_))));
     }
 
     #[test]
-    fn delegation_from_non_admin_rejected() {
+    fn delegation_tag_no_longer_grants_access() {
+        // Regression: prior to ADR-099 a valid admin-signed delegation tag would
+        // authorize a non-allowlisted author. Authorization is now allowlist-only;
+        // delegation tags are ignored.
         let c = cfg();
         let tag = vec![
             "delegation".into(),
-            "d".repeat(64), // delegator != admin ("b"*64)
+            "d".repeat(64),
             "kind=1".into(),
             "00".repeat(64),
         ];
@@ -631,6 +784,86 @@ mod tests {
         assert_eq!(relay_event.d_tag(), Some("sess-1"));
     }
 
+    #[test]
+    fn project_digest_deserializes_with_optional_fields_defaulted() {
+        let d: ProjectTrackingDigest =
+            serde_json::from_str(r#"{"project_id":"agentbox","name":"agentbox"}"#).unwrap();
+        assert_eq!(d.project_id, "agentbox");
+        assert_eq!(d.name, "agentbox");
+        assert_eq!(d.commits_30d, 0);
+        assert!(d.language.is_none());
+        assert!(d.urn.is_none());
+    }
+
+    #[test]
+    fn render_project_content_includes_status_facts() {
+        let d = ProjectTrackingDigest {
+            project_id: "agentbox".into(),
+            name: "agentbox".into(),
+            synopsis: "Sovereign agent container.".into(),
+            language: Some("Rust".into()),
+            remote: Some("https://github.com/DreamLab-AI/agentbox".into()),
+            commits_30d: 42,
+            open_issues: 3,
+            stars: 7,
+            last_commit_iso: Some("2026-06-28T00:00:00Z".into()),
+            primer_status: Some("ready".into()),
+            urn: Some("urn:agentbox:thing:aa:project-deadbeef".into()),
+        };
+        let out = render_project_content(&d);
+        assert!(out.starts_with("Project agentbox"));
+        assert!(out.contains("Sovereign agent container."));
+        assert!(out.contains("commits (30d): 42"));
+        assert!(out.contains("open issues: 3"));
+        assert!(out.contains("language: Rust"));
+        assert!(out.contains("primer: ready"));
+        assert!(out.contains("urn:agentbox:thing:aa:project-deadbeef"));
+    }
+
+    #[test]
+    fn signed_project_digest_is_addressable_and_verifies() {
+        use nostr_bbs_core::keys::signing_key_from_bytes;
+        use nostr_bbs_core::sign_event;
+
+        let sk_bytes = [0x22u8; 32];
+        let signing_key = signing_key_from_bytes(&sk_bytes).unwrap();
+        let pubkey = hex::encode(signing_key.verifying_key().to_bytes());
+
+        let digest = ProjectTrackingDigest {
+            project_id: "agentbox".into(),
+            name: "agentbox".into(),
+            synopsis: "x".into(),
+            language: Some("Rust".into()),
+            remote: Some("https://github.com/DreamLab-AI/agentbox".into()),
+            commits_30d: 1,
+            open_issues: 0,
+            stars: 0,
+            last_commit_iso: None,
+            primer_status: None,
+            urn: None,
+        };
+        let unsigned = UnsignedEvent {
+            pubkey: pubkey.clone(),
+            created_at: 1_700_000_000,
+            kind: KIND_PROJECT_TRACKING,
+            tags: vec![
+                vec!["d".into(), digest.project_id.clone()],
+                vec!["p".into(), pubkey.clone()],
+                vec!["t".into(), "agentbox-project".into()],
+                vec!["alt".into(), format!("Project status: {}", digest.name)],
+                vec!["r".into(), digest.remote.clone().unwrap()],
+                vec!["l".into(), digest.language.clone().unwrap()],
+            ],
+            content: render_project_content(&digest),
+        };
+        let signed = sign_event(unsigned, &signing_key).unwrap();
+        let relay_event: Event =
+            serde_json::from_value(serde_json::to_value(&signed).unwrap()).unwrap();
+        assert!(relay_event.verify().is_ok());
+        assert_eq!(relay_event.kind, KIND_PROJECT_TRACKING);
+        assert_eq!(relay_event.d_tag(), Some("agentbox"));
+    }
+
     /// Derive the x-only pubkey hex for a raw secret key.
     fn pk_of(sk: &[u8; 32]) -> String {
         hex::encode(signing_key_from_bytes(sk).unwrap().verifying_key().to_bytes())
@@ -697,89 +930,4 @@ mod tests {
         ));
     }
 
-    // ── Behaviour 2: NIP-26 delegation validation (authorize) ────────────────
-
-    #[test]
-    fn valid_admin_delegation_authorizes() {
-        use nostr_bbs_core::{Conditions, DelegationTag, DelegationToken};
-
-        let admin_sk = [5u8; 32];
-        let admin_pk = pk_of(&admin_sk);
-        let author_pk = pk_of(&[6u8; 32]);
-
-        let conditions = Conditions::from_str("kind=1").unwrap();
-        let token = DelegationToken::create(&admin_sk, &author_pk, &conditions).unwrap();
-        let tag = DelegationTag::from_token(&token).0;
-
-        let c = BridgeConfig {
-            admin_pubkey: admin_pk.clone(),
-            ..cfg()
-        };
-        let e = ev(&author_pk, 1, vec![tag]);
-        let authz = authorize(&e, &c).expect("admin-signed delegation must authorize");
-        assert!(matches!(authz, Authz::Delegated { delegator } if delegator == admin_pk));
-    }
-
-    #[test]
-    fn admin_delegation_for_wrong_kind_rejected() {
-        use nostr_bbs_core::{Conditions, DelegationTag, DelegationToken};
-
-        let admin_sk = [5u8; 32];
-        let admin_pk = pk_of(&admin_sk);
-        let author_pk = pk_of(&[6u8; 32]);
-
-        // Delegation only permits kind=1; the event is kind 5.
-        let conditions = Conditions::from_str("kind=1").unwrap();
-        let token = DelegationToken::create(&admin_sk, &author_pk, &conditions).unwrap();
-        let tag = DelegationTag::from_token(&token).0;
-
-        let c = BridgeConfig {
-            admin_pubkey: admin_pk,
-            ..cfg()
-        };
-        let e = ev(&author_pk, 5, vec![tag]);
-        assert!(matches!(authorize(&e, &c), Err(IngressError::Unauthorized(_))));
-    }
-
-    #[test]
-    fn admin_delegation_with_expired_window_rejected() {
-        use nostr_bbs_core::{Conditions, DelegationTag, DelegationToken};
-
-        let admin_sk = [5u8; 32];
-        let admin_pk = pk_of(&admin_sk);
-        let author_pk = pk_of(&[6u8; 32]);
-
-        // Permits only events created before t=1000; ev() stamps 1_700_000_000.
-        let conditions = Conditions::from_str("kind=1&created_at<1000").unwrap();
-        let token = DelegationToken::create(&admin_sk, &author_pk, &conditions).unwrap();
-        let tag = DelegationTag::from_token(&token).0;
-
-        let c = BridgeConfig {
-            admin_pubkey: admin_pk,
-            ..cfg()
-        };
-        let e = ev(&author_pk, 1, vec![tag]);
-        assert!(matches!(authorize(&e, &c), Err(IngressError::Unauthorized(_))));
-    }
-
-    #[test]
-    fn admin_delegation_with_tampered_signature_rejected() {
-        use nostr_bbs_core::{Conditions, DelegationTag, DelegationToken};
-
-        let admin_sk = [5u8; 32];
-        let admin_pk = pk_of(&admin_sk);
-        let author_pk = pk_of(&[6u8; 32]);
-
-        let conditions = Conditions::from_str("kind=1").unwrap();
-        let mut token = DelegationToken::create(&admin_sk, &author_pk, &conditions).unwrap();
-        token.sig = "00".repeat(64); // valid delegator, broken Schnorr signature
-        let tag = DelegationTag::from_token(&token).0;
-
-        let c = BridgeConfig {
-            admin_pubkey: admin_pk,
-            ..cfg()
-        };
-        let e = ev(&author_pk, 1, vec![tag]);
-        assert!(matches!(authorize(&e, &c), Err(IngressError::Unauthorized(_))));
-    }
 }

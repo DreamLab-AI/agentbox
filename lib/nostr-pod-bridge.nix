@@ -41,16 +41,19 @@ let
   version = "0.1.0";
 
   # ── Sibling crate sources (consumed via path-deps, never published) ────────
-  # nostr-rust-forum → crates/nostr-bbs-core (NIP-44/26/59 crypto).
-  forumRev  = "adde24d732778a013e852349d09d98fede53ced2";
-  forumHash = "sha256-M9uJmoEagsUPBtUhLBSloE+ASuYFXv5D5jAB1r8mEKo="; # refresh via the prefetch procedure above
+  # nostr-rust-forum → crates/nostr-bbs-core (NIP-44/59 crypto, NIP-98).
+  # Upstream commit 5bfd9815 (2026-06-11) removed NIP-26 delegation in favour
+  # of the ADR-099 device-key registry. The bridge tracked that removal — its
+  # authorize() is now allowlist-only.
+  forumRev  = "c4a94d17d85fa458f28c663739b28efb1b77c9d6";
+  forumHash = "sha256-+y77RdQBaQ3glm2KWPiV4ar7oJvphEUlP/bCRgnkAhs="; # refresh via the prefetch procedure above
 
   # solid-pod-rs → crates/solid-pod-rs-nostr (relay substrate) + crates/solid-pod-rs
-  # (the [patch.crates-io] target). Pinned to the rev the bridge Cargo.lock was
-  # locked against (0.4.0-alpha.15 line), independent of the server's pin in
-  # lib/solid-pod-rs.nix so a server-rev bump cannot desync the bridge lockfile.
-  solidRev  = "0cf2d61fa4b308379136cb9b8013088f984bf07e";
-  solidHash = "sha256-IL6qXiKiXw+jBgshA355uSLnC+6PTZa5B5Kkiem2kVg="; # refresh via the prefetch procedure above
+  # (the [patch.crates-io] target). Aligned with the server pin in
+  # lib/solid-pod-rs.nix (v0.5.0-alpha.3) — required because the new
+  # nostr-bbs-core (v1.0.0-beta.3) depends on solid-pod-rs 0.5.0-alpha.x.
+  solidRev  = "87b35a1b32f9789e296ebbf7277b9ecc01657c42";
+  solidHash = "sha256-cz9rUqjQ0PuAjqGduyd3vVvrX31FNMuCciNeeq0tBjw="; # refresh via the prefetch procedure above
 
   forumSrc = pkgs.fetchFromGitHub {
     owner = "DreamLab-AI";

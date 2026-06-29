@@ -147,6 +147,24 @@ The socat proxy on 9223 rebinds Chrome's localhost-only CDP so `/json/list` retu
 
 Every record carries `owner_did = did:nostr:<hex>` and an associated `action_urn = urn:agentbox:activity:<scope>:<verb>-<id>` Activity record (PROV-O aligned). The `<scope>` is always the 64-character BIP-340 x-only hex pubkey. All URNs are minted through `management-api/lib/uris.js`; ad-hoc template-literal construction is prohibited. Code-as-harness is the fifth participant in the `did:nostr` identity mesh — joining solid-pod-rs (NIP-98 auth), nostr-rust-forum (event signing), VisionClaw (graph governance), and dreamlab-ai-website (forum config) without inventing new identity primitives.
 
+## Project Tracking
+
+(PRD-017, ADR-035, DDD-015). Helm-grade project tracking re-expressed on the three sovereign substrates — no new URN kind, no new port, no new adapter slot. Each workspace/host-mount git repo found under `[project_tracking].scan_dirs` becomes a first-class:
+
+- TrackedProject → `urn:agentbox:thing:<scope>:project-<sha256-12>` (content-addressed)
+- ProjectScan → `urn:agentbox:activity:<scope>:projscan-<sha256-12>` (PROV-O receipt)
+- CommitWindow → `urn:agentbox:dataset:<scope>:commits-<projsha>-30d`
+- ProjectPrimer / ProjectSynopsis → `urn:agentbox:memory:<scope>:primer|synopsis-<sha256-12>`
+- TrackingDigest → `urn:agentbox:event:<scope>:projtrack-<sha256-12>`
+
+All minted through `management-api/lib/uris.js`. Three surfaces:
+
+1. **Port-bound telemetry** — `management-api/observability/project-metrics.js` registers ten `agentbox_project_*` series on the shared Prometheus registry, so they appear on the existing `/metrics` (9090 + 9091). Labels carry the project **slug**, never the host path (privacy invariant).
+2. **HTTP** — `management-api/routes/projects.js` at `/v1/projects` (list/detail/activity/scan/primer/publish); self-gates `503` when `[project_tracking].enabled` is not true; JSON-LD when `[linked_data]` is on.
+3. **Custom-kind nostr** — **kind-30841** addressable project digest (NIP-33, `d`-tag = project slug), signed by the agent key and dual-written to pod + relay by `services/nostr-pod-bridge` (`track` subcommand), driven by `config/hooks/project-tracking-publish.cjs`. Sibling of kind-30840; communicates per-project status to the operator's `did:nostr`. Added to `[sovereign_mesh.relay].allowed_kinds`.
+
+Durable state rides the existing **memory** (primers) and **events** (scans) adapter slots — never a new slot. Primers and GitHub enrichment are the only external hops and are independently gated. Disabled by default. Project tracking is the sixth participant in the `did:nostr` identity mesh.
+
 ## Docs To Keep In Sync
 
 When architecture changes, update these together:
@@ -157,4 +175,4 @@ When architecture changes, update these together:
 - [`browsercontainer/README.md`](browsercontainer/README.md)
 - [`docs/developer/code-as-harness.md`](docs/developer/code-as-harness.md)
 - [`docs/developer/ecosystem.md`](docs/developer/ecosystem.md)
-- relevant ADRs in `docs/reference/adr/`
+- relevant ADRs in `docs/reference/adr/` (project tracking: [ADR-035](docs/reference/adr/ADR-035-project-tracking-telemetry-and-nostr-kind.md), [PRD-017](docs/reference/prd/PRD-017-sovereign-project-tracking.md), [DDD-015](docs/reference/ddd/DDD-015-project-tracking-domain.md))

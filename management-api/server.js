@@ -25,6 +25,12 @@ const observabilityMetrics = require('./observability/metrics');
 const metrics = observabilityMetrics;
 const { startMetricsServer, shutdownMetricsServer } = require('./observability/metrics-server');
 const { initTracing, shutdown: shutdownTracing } = require('./observability/tracing');
+// Project tracking (PRD-017 / ADR-035 / DDD-015) — helm-grade project tracking
+// expressed on the sovereign substrate: thing URNs, port-bound /metrics gauges,
+// and kind-30841 nostr digests. Self-gates from [project_tracking] in the manifest.
+const projectMetrics = require('./observability/project-metrics');
+const { ProjectTracker } = require('./lib/project-tracker');
+const { PrimerGenerator } = require('./lib/project-primer');
 
 // Configuration
 const PORT = process.env.MANAGEMENT_API_PORT || 9090;
@@ -263,6 +269,7 @@ app.register(require('@fastify/swagger'), {
       { name: 'metrics', description: 'Prometheus metrics' },
       { name: 'comfyui', description: 'ComfyUI workflow management' },
       { name: 'agent-events', description: 'Real-time agent action event streaming' },
+      { name: 'projects', description: 'Project tracking — scan, status, commit activity, primers, kind-30841 nostr digests (PRD-017)' },
       { name: 'git-bridge', description: 'BC20 Git Bridge — clone, enrichment submission, broker polling (PRD-013 G5)' },
       { name: 'pod-git', description: 'Per-user pod git HTTP smart protocol (JSS #466/#469/#471, alpha.12)' }
     ]
@@ -619,6 +626,14 @@ app.get('/', {
         types: 'GET /v1/agent-events/types',
         status: 'GET /v1/agent-events/status'
       },
+      projects: {
+        list: 'GET /v1/projects',
+        get: 'GET /v1/projects/:id',
+        activity: 'GET /v1/projects/:id/activity',
+        scan: 'POST /v1/projects/scan',
+        primer: 'POST /v1/projects/:id/primer',
+        publish: 'POST /v1/projects/:id/publish'
+      },
       brokerBridge: {
         inbox: 'GET /api/broker/bridge/inbox',
         case: 'GET /api/broker/bridge/cases/:id',
@@ -827,6 +842,53 @@ async function start() {
         logger.debug({ event: 'kg-elevation.mounted', enabled: on }, 'Personal-KG elevation route ready at /v1/kg-elevation/scan');
       } catch (err) {
         logger.error({ err: err.message }, 'Personal-KG elevation route failed to mount');
+      }
+    }
+
+    // ── Project tracking (PRD-017 / ADR-035 / DDD-015) ──────────────────────
+    // Scans workspace/host-mount git repos, mints `thing` URNs, emits the
+    // agentbox_project_* gauges on the port-bound /metrics, and (when enabled)
+    // publishes per-project kind-30841 digests to the operator's did:nostr.
+    // Mounted unconditionally; the route self-gates 503 when
+    // [project_tracking].enabled is not true. The scheduler only arms when on.
+    {
+      const ptCfg = (manifest.project_tracking) || {};
+      try {
+        const primer = new PrimerGenerator({
+          logger,
+          manifest,
+          memoryAdapter: resolvedAdapters ? resolvedAdapters.memory : null,
+        });
+        const tracker = new ProjectTracker({
+          logger,
+          manifest,
+          adapters: resolvedAdapters,
+          primer,
+          metrics: projectMetrics,
+        });
+        app.decorate('projectTracker', tracker);
+        await app.register(require('./routes/projects'), { logger, manifest, tracker });
+
+        if (ptCfg.enabled === true) {
+          // Best-effort initial scan + scheduler arm. Never blocks boot.
+          tracker
+            .scan({ githubEnrichment: ptCfg.github_enrichment === true })
+            .then((r) => logger.info({ event: 'project-tracking.initial-scan', scanned: r.projects.length, scanUrn: r.scanUrn }, 'Project tracking initial scan complete'))
+            .catch((err) => logger.warn({ err: err.message }, 'Project tracking initial scan failed (non-fatal)'));
+          tracker.startScheduler();
+          app.addHook('onClose', async () => { try { tracker.stopScheduler(); } catch (_) { /* ignore */ } });
+          logger.info({
+            event: 'project-tracking.mounted',
+            enabled: true,
+            scan_interval_hours: ptCfg.scan_interval_hours,
+            nostr_publish: ptCfg.nostr_publish === true,
+            metrics: ptCfg.metrics !== false,
+          }, 'Project tracking active at /v1/projects');
+        } else {
+          logger.debug({ event: 'project-tracking.disabled' }, 'Project tracking disabled (default); /v1/projects returns 503');
+        }
+      } catch (err) {
+        logger.error({ err: err.message }, 'Project tracking failed to mount');
       }
     }
 
