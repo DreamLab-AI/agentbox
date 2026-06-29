@@ -10,12 +10,12 @@ Agentbox is one of six repositories in the DreamLab open-source ecosystem — fi
 | [solid-pod-rs](https://github.com/DreamLab-AI/solid-pod-rs) | Foundation library | Consumed as the embedded Solid pod server (ADR-010) |
 | [nostr-rust-forum](https://github.com/DreamLab-AI/nostr-rust-forum) | Forum kit | Peer on the relay mesh; receives IS-Envelope messages; renders ACSP governance panels |
 | **[agentbox](https://github.com/DreamLab-AI/agentbox)** | **Agent runtime** | **This repository** — runs the agents; governed outbound payment consumer pipeline (PRD-015 Phase 1) |
-| [VisionClaw](https://github.com/DreamLab-AI/VisionClaw) | Integration substrate | Host project when used as a submodule; peer on the relay mesh; renders the embodied agent loop (GPU/XR graph) |
+| [Host project](https://github.com/DreamLab-AI/VisionClaw) | Integration substrate | Hosts agentbox as a submodule; peer on the relay mesh; renders the embodied agent loop (GPU/XR graph) |
 | [dreamlab-ai-website](https://github.com/DreamLab-AI/dreamlab-ai-website) | Branded deployment | Downstream consumer of the forum kit; operator overlay |
 
 > **Substrate count vs identity-mesh count.** The ecosystem has **six repositories**, but the
 > `did:nostr` identity mesh has **five active signing participants**: solid-pod-rs (NIP-98 auth),
-> nostr-rust-forum (event signing), VisionClaw (graph governance), dreamlab-ai-website (forum
+> nostr-rust-forum (event signing), the host project (graph governance), dreamlab-ai-website (forum
 > config), and the code-as-harness domain (below). VisionFlow is pure canon and signs nothing;
 > agentbox is the runtime that *hosts* code-as-harness, so it is not double-counted. This is why
 > code-as-harness is the **fifth** identity-mesh participant even though there are six repos.
@@ -25,17 +25,17 @@ Agentbox is one of six repositories in the DreamLab open-source ecosystem — fi
 The six repositories together realise one flagship journey — **speak to an agent, have it act
 on your sovereign Solid pod, watch a personal knowledge graph grow, and see selected concepts
 elevated into the shared ontology, all visualised as living agent actors in the XR graph**.
-agentbox runs the agents and emits the action signal; VisionClaw renders the embodiment;
+agentbox runs the agents and emits the action signal; the host project renders the embodiment;
 solid-pod-rs stores sovereignly; the forum and website provide governance and operator surfaces;
 VisionFlow is the canon. The journey and the substrates it crosses:
 
 ```mermaid
 flowchart TB
-    V["VisionClaw — voice (PTT to Whisper to Kokoro)<br/>+ selected agent actor"]
+    V["Host project — voice (PTT to Whisper to Kokoro)<br/>+ selected agent actor"]
     AB["agentbox — agent forms intent<br/>(did:nostr, ACSP kinds 31400-31405)"]
     POD["solid-pod-rs — write personal KG to pod<br/>(NIP-98, WAC acl:agent mandate)"]
-    ELEV["agentbox to VisionClaw — elevate personal KG<br/>to shared ontology (Whelk gate + ACSP approval)"]
-    VIZ["VisionClaw — embodied as agent actors:<br/>coloured beam (agent to target) + gluon (transient attractive edge)"]
+    ELEV["agentbox to host project — elevate personal KG<br/>to shared ontology (Whelk gate + ACSP approval)"]
+    VIZ["Host project — embodied as agent actors:<br/>coloured beam (agent to target) + gluon (transient attractive edge)"]
 
     V -->|"signed ACSP ActionRequest (31402)"| AB
     AB -->|"signed pod write"| POD
@@ -51,11 +51,11 @@ previously lacked — now exist as `management-api/lib/agent-control-surface.js`
 wired into both the MCP and `/v1/memory` paths). See
 [sovereign-mesh.md](sovereign-mesh.md) for both.
 
-The wiring contract is **agentbox ADR-014** (the ingress half) paired with **VisionClaw ADR-059**
+The wiring contract is **agentbox ADR-014** (the ingress half) paired with the **host project's ADR-059**
 (the server half); the cross-substrate seam closures are recorded in **agentbox ADR-026** and
 driven by **PRD-014 (Embodied Agent Loop)**. As of 2026-05-29 the action signal is wired
 end-to-end through Phase 2a: agentbox emits `notifications/agent_action` over `/wss/agent-events`
-via a single canonical builder (identity preserved per ADR-013), and VisionClaw's authenticated
+via a single canonical builder (identity preserved per ADR-013), and the host project's authenticated
 ingest publishes each event to a process-global broadcast hub. The transient **beam + gluon**
 render (the visible embodiment) is the Phase-2b increment; the gluon is the attractive force the
 transient beam edge already exerts on the spring kernel — **not** a per-node charge modulation
@@ -65,7 +65,7 @@ snapshots, a different payload from the agent **action** push, and is retired in
 
 ## Code-as-Harness Domain (Fifth Participant in the Identity Mesh)
 
-The code-as-harness integration (PRD-008, ADR-018, ADR-019, ADR-020, DDD-005) adds a fifth participant to the `did:nostr` identity mesh without introducing new identity primitives. The domain owns code execution lifetime (`KernelSession`), trace verification (`ExecutionTrace`), lesson distillation (`DistilledLesson`), and verified-skill storage (`VerifiedSkill`). Every record it emits carries `owner_did = did:nostr:<hex>` — the same keypair already used by the solid-pod-rs NIP-98 auth, nostr-rust-forum event signing, and VisionClaw graph governance layers.
+The code-as-harness integration (PRD-008, ADR-018, ADR-019, ADR-020, DDD-005) adds a fifth participant to the `did:nostr` identity mesh without introducing new identity primitives. The domain owns code execution lifetime (`KernelSession`), trace verification (`ExecutionTrace`), lesson distillation (`DistilledLesson`), and verified-skill storage (`VerifiedSkill`). Every record it emits carries `owner_did = did:nostr:<hex>` — the same keypair already used by the solid-pod-rs NIP-98 auth, nostr-rust-forum event signing, and the host project's graph governance layers.
 
 URNs follow the existing 18-kind grammar (ADR-013): `KernelSession` → `thing`, `ExecutionTrace` → `activity`, `DistilledLesson` → `memory`, `VerifiedSkill` → `skill`, ACI session → `thing`, ACI submission → `receipt`. Every state-changing dispatch emits an `action_urn = urn:agentbox:activity:<scope>:<verb>-<id>` Activity record (PROV-O aligned), making the domain's audit trail queryable via the same `mcp__claude-flow__memory_search` interface used across the mesh.
 
@@ -75,7 +75,7 @@ graph LR
 
     DID --> SPR[solid-pod-rs\nNIP-98 WAC auth]
     DID --> NRF[nostr-rust-forum\nEvent signing]
-    DID --> VC[VisionClaw\nGraph governance]
+    DID --> VC[Host project\nGraph governance]
     DID --> DAW[dreamlab-ai-website\nForum config]
     DID --> CAH[code-as-harness\nKernelSession / Lessons / Skills]
 
@@ -84,6 +84,32 @@ graph LR
 ```
 
 The `did:nostr` identity flows through all five identity-mesh participants. Federation surfaces for this domain are opt-in (`[linked_data.code_execution] enabled = true` in `agentbox.toml`), following the DDD-004 pattern: `LessonDistilled` and `SkillVerified` events are encoded as JSON-LD with the URN→IRI mapping (`urn:agentbox:K:S:L` ⇆ `https://urn.agentbox.dev/K/S/L`) before federation.
+
+## Project Tracking Domain (Sixth Participant in the Identity Mesh)
+
+Project tracking (PRD-017, ADR-035, DDD-015) adds a sixth participant to the `did:nostr` identity mesh — again with **no new identity primitive and no new URN kind**. The domain treats every workspace/host-mount git repository as a `TrackedProject`, identified by a content-addressed `urn:agentbox:thing:<scope>:project-<sha>` minted through `lib/uris.js`. Scans emit `urn:agentbox:activity` receipts; the 30-day commit window is a `urn:agentbox:dataset`; primers/synopses are `urn:agentbox:memory`; and each published digest is a `urn:agentbox:event`. All carry `owner_did = did:nostr:<hex>` — the same root key as the other five participants.
+
+The novelty is in the **three egress surfaces**, mirroring the rest of the mesh rather than inventing a dashboard:
+
+- **Port-bound telemetry** — ten `agentbox_project_*` Prometheus series on the shared registry, scraped on the existing `/metrics` (9090 + 9091). The container's own status is now externally observable per project, alongside the adapter-dispatch and HTTP metrics (ADR-005).
+- **Custom-kind Nostr** — **kind-30841** is the project-tracking sibling of the kind-30840 session summary. It is NIP-33 addressable (`d`-tag = project slug, so a re-publish replaces the prior digest), signed by the agent key, and dual-written to the pod (`projects/<id>.jsonld`) + relay by `services/nostr-pod-bridge`'s `track` subcommand. This is how per-project status reaches users on the Nostr forums around their `did:nostr` pubkeys — the same transport the session digest and the JunkieJarvis forum agent already use.
+- **HTTP / Linked Data** — `/v1/projects` returns JSON, or JSON-LD (`@type: [SoftwareSourceCode, Project]`, `@id` = the thing URN) when `[linked_data]` is enabled.
+
+```mermaid
+graph LR
+    DID[did:nostr:hex-pubkey\nShared identity root]
+    DID --> SPR[solid-pod-rs\nNIP-98 WAC auth]
+    DID --> NRF[nostr-rust-forum\nEvent signing]
+    DID --> VC[Host project\nGraph governance]
+    DID --> CAH[code-as-harness\nKernelSession / Lessons]
+    DID --> PT[project-tracking\nTrackedProject / kind-30841]
+
+    PT --> MET[(/metrics\nagentbox_project_*)]
+    PT --> REL[(relay + pod\nkind-30841 digests)]
+    PT --> MEM[(RuVector\nproject-tracking-primers)]
+```
+
+Durable state rides the existing **memory** (primers) and **events** (scans) adapter slots — project tracking adds **no sixth adapter slot**. Both external hops (the Z.AI/GLM primer consultant and GitHub enrichment) are independently gated; the whole domain is off by default behind `[project_tracking]`.
 
 ## Consuming the upstream forum kit primitives (2026-06-11)
 

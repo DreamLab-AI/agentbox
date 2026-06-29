@@ -190,7 +190,7 @@ sequenceDiagram
     MemPG-->>Route: {key, namespace, stored_at, urn}
     Route-->>Client: 201 {key, namespace, stored_at, urn}
 
-    Note over Client,SolidRS: CASE B — standalone mode with memory="embedded-ruvector"<br/>(non-active; shown for contrast)
+    Note over Client,SolidRS: CASE B — standalone mode with memory="embedded-ruvector"<br/>(non-active, shown for contrast)
 
     Client->>Route: POST /v1/memory {key, value, namespace}
     Route->>Adapters: fastify.adapters.memory

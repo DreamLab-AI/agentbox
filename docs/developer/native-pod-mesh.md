@@ -29,7 +29,7 @@ graph TB
         MGMT["management-api\nFastify · NIP-98\nPOST /admin/users/provision"]
         SPR["solid-pod-rs-server\nv0.4.0-alpha.17 · git feature\nPSK /_admin/provision"]
         NOSTR["Nostr Bridge\nnip98 · relay fanout"]
-        VC["VisionClaw\nBrokerActor\nGovernance events 31400-31405"]
+        VC["Host project\nBrokerActor\nGovernance events 31400-31405"]
         RUVEC["RuVector\nMiniLM-L6-v2 embeddings\nHNSW semantic search"]
     end
 
@@ -153,7 +153,7 @@ surfaced as a second browser entry rather than replacing the CF pod.
 ```mermaid
 graph TB
     subgraph AGENTS["Agentbox Agents"]
-        VC["VisionClaw\nBrokerActor\npubkey: 11ed6422..."]
+        VC["Host project\nBrokerActor\npubkey: 11ed6422..."]
         KEA["Knowledge Enrichment Agent\npubkey: e18f1dc1..."]
         MOD["Moderation Bot\npubkey: 5d80b5fa..."]
         WB["Welcome Bot\npubkey: 94f74e9c..."]

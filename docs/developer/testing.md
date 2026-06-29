@@ -176,7 +176,7 @@ flowchart TB
 | [`tui-tests.yml`](../../.github/workflows/tui-tests.yml) | PR | pytest TUI round-trip fixtures |
 | [`manifest-validate.yml`](../../.github/workflows/manifest-validate.yml) | PR + push | `agentbox config validate`, fixture round-trip through TUI read/write, expected-error-code assertions, W-code advisory-vs-error audit |
 | [`flake-check.yml`](../../.github/workflows/flake-check.yml) | PR | `nix flake check --no-build` on amd64 + arm64 + eval of `.#runtime` and `.#compose` derivations |
-| [`runtime-contract.yml`](../../.github/workflows/runtime-contract.yml) | PR + push | Discovers and runs every `tests/runtime-contract/RC-*.sh` |
+| `runtime-contract.yml` | PR + push | Discovers and runs every `tests/runtime-contract/RC-*.sh` |
 | [`shellcheck.yml`](../../.github/workflows/shellcheck.yml) | PR + push | ShellCheck at `error` severity (blocking) and `warning` severity (informational) |
 | [`secret-scan.yml`](../../.github/workflows/secret-scan.yml) | PR + push | gitleaks + canary |
 | [`ci.yml`](../../.github/workflows/ci.yml) | PR + push | Aggregate status check — configure as the sole required status in branch protection |
@@ -188,7 +188,7 @@ flowchart TB
 | [`build-multi-arch.yml`](../../.github/workflows/build-multi-arch.yml) | push to main, `v*` tag, manual | Nix build + GHCR publish on both arches; closure + compressed size captured to Actions summary; runs the PRD-001 §8 size-ceiling guard |
 | [`image-scan.yml`](../../.github/workflows/image-scan.yml) | after `build-multi-arch.yml` succeeds, manual | Trivy HIGH/CRITICAL gate, full-severity informational run, CycloneDX + SPDX SBOM uploads, SARIF posted to the Security tab |
 | [`release.yml`](../../.github/workflows/release.yml) | after `build-multi-arch.yml` on `v*` tag | Extracts matching CHANGELOG section, attaches image-scan artefacts (SBOMs), publishes the GitHub Release; pre-release flag inferred from tag |
-| [`docs-ci.yml`](../../.github/workflows/docs-ci.yml) | PR + push touching `docs/` | Link validation, frontmatter, Mermaid lint, ASCII-diagram detection, UK English, structure; 90% quality gate |
+| `docs-ci.yml` | PR + push touching `docs/` | Link validation, frontmatter, Mermaid lint, ASCII-diagram detection, UK English, structure; 90% quality gate |
 | [`nix-flake-update.yml`](../../.github/workflows/nix-flake-update.yml) | Mondays 06:00 UTC, manual | `nix flake update` → PR if `flake.lock` changed |
 
 Failure in any PR-gate workflow blocks merge. `ci.yml` aggregates the gate into a single status for branch protection rules.

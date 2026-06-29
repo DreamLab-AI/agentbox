@@ -277,7 +277,7 @@ Acceptance criteria are measurable and binary unless stated otherwise.
 - [ADR-005 — Pluggable adapter architecture](../adr/ADR-005-pluggable-adapter-architecture.md)
 - [ADR-009 — Embedded Nostr relay](../adr/ADR-009-embedded-nostr-relay.md)
 - [ADR-013 — Canonical URI grammar](../adr/ADR-013-canonical-uri-grammar.md)
-- [ADR-030 — Sovereign-mesh mobile bridge](../adr/ADR-030-sovereign-mesh-mobile-bridge.md)
+- [ADR-030 — Sovereign-mesh mobile bridge](../adr/ADR-030-sovereign-mesh-manifest-boundary.md)
 - [DDD-003 — Sovereign messaging domain](../ddd/DDD-003-sovereign-messaging-domain.md)
 - [DDD-004 — Linked-data interchange domain](../ddd/DDD-004-linked-data-interchange-domain.md)
 - [`management-api/lib/uris.js`](../../../management-api/lib/uris.js) — URN minting

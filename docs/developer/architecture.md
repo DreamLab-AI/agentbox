@@ -44,17 +44,17 @@ Rejected in [ADR-005 §Context](../reference/adr/ADR-005-pluggable-adapter-archi
 flowchart TB
     subgraph manifest_layer["manifest"]
         M[agentbox.toml]
-        V[agentbox config validate<br/>30 semantic rules]
+        V["agentbox config validate<br/>30 semantic rules"]
         V --> M
     end
 
     subgraph build_layer["build"]
         M --> F[flake.nix]
-        F --> N1[npm services<br/>lib/npm-services.nix]
-        F --> N2[npm CLIs<br/>lib/npm-cli.nix]
-        F --> N3[GPU dispatch<br/>lib/gpu-backend.nix]
-        F --> N4[3DGS stack<br/>lib/3dgs-stack.nix]
-        F --> N5[Codex binary<br/>lib/codex-binary.nix]
+        F --> N1["npm services<br/>lib/npm-services.nix"]
+        F --> N2["npm CLIs<br/>lib/npm-cli.nix"]
+        F --> N3["GPU dispatch<br/>lib/gpu-backend.nix"]
+        F --> N4["3DGS stack<br/>lib/3dgs-stack.nix"]
+        F --> N5["Codex binary<br/>lib/codex-binary.nix"]
         F --> G[supervisorText generator]
         F --> C[composeText generator]
         F --> I[content-addressed image]
@@ -70,25 +70,25 @@ flowchart TB
         SUP --> API[management-api]
         SUP --> MCP[MCP servers]
         SUP --> DSK[desktop optional]
-        BS --> SENT[/run/agentbox/<br/>bootstrap.done]
+        BS --> SENT["/run/agentbox/<br/>bootstrap.done"]
     end
 
     subgraph probes["probes"]
-        API --> LIV[/livez/]
-        API --> RDY[/ready<br/>checks sentinel + adapters + mounts/]
-        API --> HLT[/health/]
-        API --> MET[:9091/metrics<br/>Prometheus]
-        API --> META[/v1/meta/]
+        API --> LIV["/livez"]
+        API --> RDY["/ready<br/>checks sentinel + adapters + mounts"]
+        API --> HLT["/health"]
+        API --> MET[":9091/metrics<br/>Prometheus"]
+        API --> META["/v1/meta"]
     end
 
     subgraph adapter_dispatch["adapter dispatch"]
         API --> AD{resolve by slot}
         MCP --> AD
-        AD --> BEADS[beads<br/>sqlite/http/off]
-        AD --> PODS[pods<br/>solid-rs/http/off]
-        AD --> MEM[memory<br/>ruvector/pg/off]
-        AD --> EVT[events<br/>jsonl/http/off]
-        AD --> ORC[orchestrator<br/>procmgr/stdio/off]
+        AD --> BEADS["beads<br/>sqlite/http/off"]
+        AD --> PODS["pods<br/>solid-rs/http/off"]
+        AD --> MEM["memory<br/>ruvector/pg/off"]
+        AD --> EVT["events<br/>jsonl/http/off"]
+        AD --> ORC["orchestrator<br/>procmgr/stdio/off"]
     end
 ```
 

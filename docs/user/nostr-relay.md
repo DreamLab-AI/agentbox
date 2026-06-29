@@ -181,7 +181,7 @@ DreamLab forum. Agents publish panel definitions (31400) and action
 requests (31402) to the forum relay; humans respond with action
 responses (31403). The relay-consumer persists all governance events
 to `pods/<npub>/events/governance/` and routes inbound action responses
-to the orchestrator adapter for VisionClaw's `BrokerActor`.
+to the orchestrator adapter for the host project's `BrokerActor`.
 
 Kind `4` (legacy unencrypted DMs) is rejected by default. Set
 `allow_nip04 = true` to accept them; the validator will emit E031 so

@@ -126,7 +126,7 @@ sequenceDiagram
             NT-->>JJ: rumor { pubkey, content }
             JJ->>JJ: _shouldIgnore(asker)?<br/>self + JUNKIEJARVIS_IGNORE_PUBKEYS<br/>or CONCIERGE_IGNORE_PUBKEYS (line 448)
 
-            JJ->>LLM: callLlm(userText)<br/>Provider selection (line 294):<br/>1. ANTHROPIC_API_KEY → Anthropic messages API<br/>   model: JUNKIEJARVIS_MODEL or claude-haiku-4-5-20251001<br/>2. JUNKIEJARVIS_LLM_KEY or ZAI_API_KEY → OpenAI-compat<br/>   base: JUNKIEJARVIS_LLM_BASE or z.ai paas/v4<br/>   model: glm-4.5-flash; thinking:{type:"disabled"}<br/>3. OLLAMA_BASE_URL → Ollama /api/chat<br/>date-context injected: ISO UTC + Europe/London + epoch<br/>timeout: 25000ms (line 265)<br/>max_tokens: 300
+            JJ->>LLM: callLlm(userText)<br/>Provider selection (line 294):<br/>1. ANTHROPIC_API_KEY → Anthropic messages API<br/>   model: JUNKIEJARVIS_MODEL or claude-haiku-4-5-20251001<br/>2. JUNKIEJARVIS_LLM_KEY or ZAI_API_KEY → OpenAI-compat<br/>   base: JUNKIEJARVIS_LLM_BASE or z.ai paas/v4<br/>   model glm-4.5-flash, thinking disabled<br/>3. OLLAMA_BASE_URL → Ollama /api/chat<br/>date-context injected: ISO UTC + Europe/London + epoch<br/>timeout: 25000ms (line 265)<br/>max_tokens: 300
 
             LLM-->>JJ: llmText (or CANNED_APOLOGY)
 
@@ -169,7 +169,7 @@ sequenceDiagram
     participant Mem as management-api<br/>POST /v1/memory/search<br/>or GET /v1/memory
     participant LLM as callLlm()<br/>from junkiejarvis-agent.js
 
-    MA->>RB: resolveBinding(bindings, message)<br/>Fields: channel, peer, accountId<br/>Most-specific match wins;<br/>default = "main" (line 96-116)
+    MA->>RB: resolveBinding(bindings, message)<br/>Fields: channel, peer, accountId<br/>Most-specific match wins,<br/>default = main (line 96-116)
 
     RB-->>MA: agentId
 
@@ -293,7 +293,7 @@ flowchart TD
         BC_BACK["toAgentbox(visionclawId)\nbead: structural reverse\ndid:nostr: pubkey reverse\nothers: store.getByVisionclaw()"]
     end
 
-    subgraph VC["VisionClaw namespace\n(federation boundary)"]
+    subgraph VC["Host-project namespace\n(federation boundary)"]
         V1["urn:visionclaw:execution:<sha256-12>"]
         V2["did:nostr:<pubkey>"]
         V3["urn:visionclaw:kg:<pubkey>:<sha256-12>"]
@@ -353,7 +353,7 @@ flowchart TD
 
 ### Kind map (bc20-provenance-bridge.js lines 92-103)
 
-| agentbox kind | VisionClaw kind | Local computation |
+| agentbox kind | Host-project kind | Local computation |
 |---|---|---|
 | `activity` | `execution` | `sha256-12(agentboxUrn)` — content-addressed, unscoped |
 | `agent` | `did:nostr:<pubkey>` | structural (pubkey pass-through) |

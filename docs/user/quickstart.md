@@ -465,6 +465,27 @@ cp .env.example .env
 
 Run `./agentbox.sh preflight` after editing `.env` — it validates the compose merge and checks that required variables are present before the stack starts.
 
+### Project tracking (optional, PRD-017)
+
+Track the git repositories the container hosts (workspace projects and host-mount checkouts) with status, 30-day commit activity, AI primers, and per-project Nostr digests. Disabled by default — enable in `agentbox.toml`:
+
+```toml
+[project_tracking]
+enabled             = true
+scan_dirs           = ["/projects", "/home/devuser/workspace/project"]
+scan_interval_hours = 6          # 0 = on-demand only
+github_enrichment   = false      # set true (with GITHUB_TOKEN) to pull open issues + stars
+primer_model        = "glm-5.2"  # needs a Z.AI/GLM key for primers/synopses
+nostr_publish       = false      # set true to sign kind-30841 digests to your did:nostr
+metrics             = true
+```
+
+Once enabled:
+
+- **HTTP** — `curl -H "Authorization: Bearer $MANAGEMENT_API_KEY" http://127.0.0.1:9090/v1/projects` (also `/v1/projects/:id`, `/v1/projects/:id/activity`, `POST /v1/projects/scan`).
+- **Telemetry** — the project status is on the existing metrics port: `curl -s http://127.0.0.1:9091/metrics | grep agentbox_project_` (no new port). Labels use the project slug, never the host path.
+- **Phone / Nostr** — with `nostr_publish = true` and the mobile-bridge secrets set (see §7 / `[sovereign_mesh.mobile_bridge]`), each project's status is signed as an addressable **kind-30841** digest (sibling of the kind-30840 session summary) and dual-written to your pod + relay, readable in Amethyst under your `did:nostr`.
+
 ## 8. Inspect Provisioned Profiles
 
 The runtime creates these profile roots:

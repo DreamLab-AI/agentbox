@@ -12,7 +12,7 @@ private key to the phone.
 
 > **Status.** This guide describes Phase 1 (direct connection to the agentbox
 > embedded relay). Phase 2 (federation via the DreamLab Cloudflare relay) is a
-> configuration change, summarised under [Phasing](#phasing-phase-1-vs-phase-2).
+> configuration change, summarised under [Phasing](#phasing--phase-1-vs-phase-2).
 
 ## Why this exists
 

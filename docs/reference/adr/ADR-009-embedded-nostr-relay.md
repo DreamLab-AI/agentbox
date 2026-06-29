@@ -120,7 +120,7 @@ sequenceDiagram
     par fanout
       BR->>XR: EVENT to NOSTR_RELAYS
     end
-    BR->>PO: rename <pending-id>.json → <event-id>.json; stamp status="published"
+    BR->>PO: rename <pending-id>.json to <event-id>.json, stamp status published
 ```
 
 ### Security posture

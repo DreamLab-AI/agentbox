@@ -51,9 +51,9 @@ Only port upstream changes that fit the current agentbox architecture.
 
 ## Current Sync Targets
 
-- [`skills/`](../../skills/)
-- [`config/agentbox-aliases.sh`](../../config/agentbox-aliases.sh)
-- [`aisp/`](../../aisp/)
+- [`skills/`](../../../skills/)
+- [`config/agentbox-aliases.sh`](../../../config/agentbox-aliases.sh)
+- [`aisp/`](../../../aisp/)
 
 ## Sync Rule
 

@@ -1,6 +1,6 @@
 # Economy Loop — Cross-Repo Capability Demonstration
 
-> Status: **Sell-side** (agentbox → solid-pod-rs → BC20): landed 2026-06-09, test-gated. **Buy-side consumer pipeline** (PRD-015 Phase 1): landed 2026-06-12 — C1 classifier, C3 spend-policy, C2 native payer, C4 URN receipts, B2 enriched challenges, B1 well-known manifest, C5 payment-router skill. The host-graph ingest leg (VisionClaw BC20 wiring) is specified but not yet wired (see [What remains](#what-remains)).
+> Status: **Sell-side** (agentbox → solid-pod-rs → BC20): landed 2026-06-09, test-gated. **Buy-side consumer pipeline** (PRD-015 Phase 1): landed 2026-06-12 — C1 classifier, C3 spend-policy, C2 native payer, C4 URN receipts, B2 enriched challenges, B1 well-known manifest, C5 payment-router skill. The host-graph ingest leg (host-project BC20 wiring) is specified but not yet wired (see [What remains](#what-remains)).
 
 ## TL;DR
 
@@ -34,7 +34,7 @@ sequenceDiagram
     participant URIs as lib/uris.js
     participant BC20 as lib/bc20-provenance-bridge.js
     participant Store as durable UrnMapping<br/>(JsonlUrnMappingStore)
-    participant Host as VisionClaw host graph<br/>(NOT YET WIRED)
+    participant Host as Host-project graph<br/>(NOT YET WIRED)
 
     Agent->>Adapter: read('/premium/feed')
     Adapter->>Signer: nip98('GET', url)
@@ -209,12 +209,12 @@ The suite has two tiers:
 The agentbox → solid-pod-rs → BC20 legs are closed. The **host-graph ingest leg
 is not yet wired**:
 
-1. **VisionClaw ingest of crossed nodes.** BC20 hands a `urn:visionclaw:execution`
-   / `urn:visionclaw:bead` id plus a durable `UrnMapping`. VisionClaw must read
+1. **Host-project ingest of crossed nodes.** BC20 hands a `urn:visionclaw:execution`
+   / `urn:visionclaw:bead` id plus a durable `UrnMapping`. The host project must read
    that mapping table and materialise the corresponding graph nodes
    (`execution`, `bead`) with `owner_did` provenance. Today the mapping is durable
    on the agentbox side but nothing on the host consumes it. This is the B05
-   ingest counterpart to agentbox's B05 export bridge — VisionClaw's `src/uri`
+   ingest counterpart to agentbox's B05 export bridge — the host project's `src/uri`
    grammar is converged across worktrees but **not merged to main** (main still
    carries `urn:ngm`), so the bridge contract in
    `management-api/lib/bc20-provenance-bridge.js` (+ its sovereign test) remains
@@ -249,7 +249,7 @@ is not yet wired**:
 - [`docs/developer/code-as-harness.md`](code-as-harness.md) — the URN allocation
   for execution/activity/lesson/skill records that share this identity mesh.
 - [`docs/developer/identity-mesh.md`](identity-mesh.md) — the five `did:nostr`
-  participants (solid-pod-rs, nostr-rust-forum, VisionClaw, dreamlab-ai-website,
+  participants (solid-pod-rs, nostr-rust-forum, the host project, dreamlab-ai-website,
   code-as-harness).
 - [`docs/reference/adr/ADR-005-pluggable-adapter-architecture.md`](../reference/adr/ADR-005-pluggable-adapter-architecture.md)
   — the pods slot contract.

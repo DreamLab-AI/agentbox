@@ -1,10 +1,13 @@
-# Native Solid pod — Docker sidecar + Cloudflare Tunnel
+# Solid pod sidecar — Docker container + Cloudflare Tunnel
 
 This page covers running `solid-pod-rs-server --features git` as a **Docker
 sidecar** alongside the agentbox stack and routing public traffic to it via a
 [Cloudflare Zero Trust Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/).
 
-For the in-container (supervisord) deployment see [solid-pod.md](solid-pod.md).
+This is **not** the first-party pod adapter. For the default in-container
+(supervisord) `solid-pod-rs` deployment — the `pods = "local-solid-rs"` adapter
+slot — see [solid-pod.md](solid-pod.md). This page is only for the optional
+externally-tunnelled sidecar variant.
 
 ## Overview
 

@@ -3,7 +3,7 @@
 > **Ecosystem alignment**: This domain reuses the agentbox identity stack:
 > `did:nostr:<hex-pubkey>` for actors, `urn:agentbox:<kind>:<scope>:<local>`
 > for resources (ADR-013), PROV-O `Activity` for actions. The four existing
-> DreamLab backends (solid-pod-rs, nostr-rust-forum, VisionClaw,
+> DreamLab backends (solid-pod-rs, nostr-rust-forum, the host project,
 > dreamlab-ai-website) share this scheme — Code Execution and Experiential
 > Learning becomes the fifth participant without adding identity primitives.
 

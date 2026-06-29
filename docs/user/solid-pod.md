@@ -3,7 +3,7 @@
 Agentbox's `pods` adapter slot is backed by a first-party Rust Solid Protocol
 0.11 server, [`solid-pod-rs`](https://github.com/DreamLab-AI/solid-pod-rs).
 It is the durable-storage layer of the
-[sovereign data stack](../../README.md#sovereign-data-stack) — a coherent
+[sovereign data stack](../../README.md#the-sovereign-data-stack) — a coherent
 identity-plus-data substrate that lets external agents reach internal ones,
 and lets internal agents persist their state, without any third-party broker.
 
@@ -277,7 +277,7 @@ docker compose \
 
 The sidecar joins the `visionclaw_network` and reaches `solid-pod-rs` by its Docker service DNS name. No changes to `agentbox.toml` or the main `docker-compose.yml` are required — the overlay is additive. Leave `adapters.pods = "local-solid-rs"` in your manifest; the tunnel simply makes the running pod server reachable externally.
 
-See [native-solid-pod.md](native-solid-pod.md) for the full setup walkthrough including tunnel creation in the Cloudflare dashboard.
+See [solid-pod-sidecar.md](solid-pod-sidecar.md) for the full setup walkthrough including tunnel creation in the Cloudflare dashboard.
 
 ## Further reading
 
@@ -288,4 +288,4 @@ See [native-solid-pod.md](native-solid-pod.md) for the full setup walkthrough in
 - [Developer: sovereign mesh internals](../developer/sovereign-mesh.md)
 - [solid-pod-rs upstream](https://github.com/DreamLab-AI/solid-pod-rs)
 - [AGPL aggregation analysis](../developer/licensing.md)
-- [Native pod sidecar + Cloudflare Tunnel setup](native-solid-pod.md)
+- [Native pod sidecar + Cloudflare Tunnel setup](solid-pod-sidecar.md)

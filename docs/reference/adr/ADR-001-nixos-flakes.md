@@ -79,7 +79,7 @@ It no longer assumes:
 
 ## Related Files
 
-- [`flake.nix`](../../flake.nix)
-- [`agentbox.toml`](../../agentbox.toml)
-- [`config/entrypoint-unified.sh`](../../config/entrypoint-unified.sh)
+- [`flake.nix`](../../../flake.nix)
+- [`agentbox.toml`](../../../agentbox.toml)
+- [`config/entrypoint-unified.sh`](../../../config/entrypoint-unified.sh)
 - [`docs/user/quickstart.md`](../../user/quickstart.md)

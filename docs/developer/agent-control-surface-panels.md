@@ -436,7 +436,7 @@ Publish a kind-0 metadata event for your agent pubkey (with `name` /
 
 - Operator/consumer view: `dreamlab-ai-website` →
   `docs/architecture/agent-panels.md`
-- VisionClaw integration note: host project →
+- Integration note in the host project →
   `docs/architecture/agent-control-surface-panels.md`
 - Identity mesh: [`identity-mesh.md`](identity-mesh.md)
 - Sovereign mesh (bridge boot gate): [`sovereign-mesh.md`](sovereign-mesh.md)

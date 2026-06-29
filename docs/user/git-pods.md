@@ -15,7 +15,7 @@ mirroring JSS issues #466/#469/#471).
   offline copy with provenance from the git tree-SHA.
 - The combination of NIP-42/NIP-98 Nostr signatures (who published)
   and git tree-SHA (what content) provides two-layer provenance per
-  bead (see VisionClaw ADR-033).
+  bead (see the host project's ADR-033).
 
 ## Clone a pod
 

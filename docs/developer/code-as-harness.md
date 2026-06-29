@@ -90,9 +90,9 @@ Every record this domain emits carries:
 | `action_urn` | `urn:agentbox:activity:<scope>:<id>` | `urn:agentbox:activity:a3f1...:distil-7b2a` |
 | `action_verb` | exec, distil, verify, archive, store, retrieve, view, edit, search, test, or submit | `exec` |
 
-The URN→IRI mapping for federation surfaces (DDD-004): `urn:agentbox:K:S:L` ⇆ `<https://urn.agentbox.dev/K/S/L>`. Both forms refer to the same resource; URN is the embeddable canonical form, IRI is the resolvable form for JSON-LD and HTTP routes. The `owner_did` field on every record uses `did:nostr:<hex>` as its value type; it is the same identity that NIP-98 signs and VisionClaw's graph governance validates.
+The URN→IRI mapping for federation surfaces (DDD-004): `urn:agentbox:K:S:L` ⇆ `<https://urn.agentbox.dev/K/S/L>`. Both forms refer to the same resource; URN is the embeddable canonical form, IRI is the resolvable form for JSON-LD and HTTP routes. The `owner_did` field on every record uses `did:nostr:<hex>` as its value type; it is the same identity that NIP-98 signs and the host project's graph governance validates.
 
-`did:nostr:<hex>` is the agentbox-wide identity scheme — shared with solid-pod-rs (NIP-98 auth), nostr-rust-forum (event signing), VisionClaw (graph governance), and dreamlab-ai-website (forum config). Code-as-harness joins as the fifth participant without inventing new identity primitives. The `<scope>` in every URN is always the 64-character BIP-340 x-only hex pubkey, consistent with ADR-013 owner-scoped kinds.
+`did:nostr:<hex>` is the agentbox-wide identity scheme — shared with solid-pod-rs (NIP-98 auth), nostr-rust-forum (event signing), the host project (graph governance), and dreamlab-ai-website (forum config). Code-as-harness joins as the fifth participant without inventing new identity primitives. The `<scope>` in every URN is always the 64-character BIP-340 x-only hex pubkey, consistent with ADR-013 owner-scoped kinds.
 
 ### URN allocation within existing 18 kinds
 

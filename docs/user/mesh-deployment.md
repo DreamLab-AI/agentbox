@@ -10,7 +10,7 @@ No federation. The embedded relay on `:7777` is bound to `127.0.0.1` and only ac
 
 ### Federated
 
-The relay is exposed externally. Peer substrates (VisionClaw, forum workers, other agentboxes) can connect and exchange events.
+The relay is exposed externally. Peer substrates (the host project, forum workers, other agentboxes) can connect and exchange events.
 
 **To enable:**
 

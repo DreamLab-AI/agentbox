@@ -32,7 +32,7 @@ Two facts have converged since those manifests were written:
    `solid-pod-rs`. The coupling is not arm's-length network use — it is
    in-process aggregation per AGPL §10.
 2. **The agentbox container is a network service** ([ADR-009](ADR-009-embedded-nostr-relay.md),
-   [ADR-073](ADR-073-federation-peer-trust.md), forthcoming ADR-017). AGPL
+   ADR-073, forthcoming ADR-017). AGPL
    §13 (network corresponding source) requires the combined work, including
    any modifications, be offered to interacting users under the same
    AGPL-3.0-only.

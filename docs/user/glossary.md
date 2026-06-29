@@ -75,7 +75,7 @@ flowchart LR
   `urn:agentbox:memory:<scope>:lesson-<sha256-12>` records; verified skills
   become `urn:agentbox:skill:<scope>:<name>:v<n>` entries. See
   [developer/code-as-harness.md](../developer/code-as-harness.md) and
-  [PRD-008](../reference/prd/PRD-008-code-as-harness.md).
+  [PRD-008](../reference/prd/PRD-008-code-as-harness-integration.md).
 - **Compose** — short for docker compose. The generated `docker-compose.yml`
   wires the agentbox container, optional ollama sidecar, and any external
   endpoints. Never hand-edited; regenerated from the manifest.
@@ -241,7 +241,7 @@ flowchart LR
   `openai/privacy-filter` (PII governance). With Sprint 6's `did:nostr`
   absorption, every layer references a single canonical identity:
   `did:nostr:<pubkey>`. No third-party broker. See the
-  [README top section](../../README.md#sovereign-data-stack).
+  [README top section](../../README.md#the-sovereign-data-stack).
 - **did:nostr** — the DID method (Tier 1 + Tier 3 with `alsoKnownAs`) that
   maps a Nostr npub to a resolvable DID document. Served by `solid-pod-rs`
   at `GET /did:nostr:<pubkey>` after the Sprint 6 upstream absorption
