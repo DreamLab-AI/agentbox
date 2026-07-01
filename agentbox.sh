@@ -788,6 +788,8 @@ cmd_rebuild() {
     if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
         echo "Usage: $0 rebuild [--no-cleanup]"
         echo "Equivalent to: down + build --variant runtime + up --build + cleanup"
+        echo "Cleanup also reaps runaway/stale Rust target caches (AGENTBOX_REAP_CARGO=0 to skip;"
+        echo "tune via AGENTBOX_CARGO_REAP_MAX_GB / _STALE_DAYS / _DRYRUN)."
         return 0
     fi
 
