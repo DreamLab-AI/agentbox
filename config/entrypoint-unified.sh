@@ -739,8 +739,9 @@ fi
 
 # ── Private Email Search MCP: register email-gateway when [skills.email_search]
 #    is enabled, configured, and reachable. The gateway is a streamable-HTTP MCP
-#    server on a separate LAN host (DreamLab-AI/email-mcp-gateway) that searches
-#    the owner's personal mail locally and returns only privacy-sanitised results.
+#    server — the `email-mcp-gateway` container on the shared visionclaw_network
+#    (DreamLab-AI/email-mcp-gateway) — that searches the owner's personal mail
+#    locally and returns only privacy-sanitised results.
 #    The bearer token is read from the env inside python3 (never interpolated onto
 #    the command line). GET /health is auth-exempt; we gate registration on it. ──
 _EMAIL_GW_URL="${AGENTBOX_EMAIL_GATEWAY_URL:-}"

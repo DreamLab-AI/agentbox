@@ -517,13 +517,15 @@ namespace = "governance-precedents"
 similarity_threshold = 0.85
 
 [skills.email_search]
-# Private Email Search MCP gateway (DreamLab-AI/email-mcp-gateway). Runs on a
-# separate LAN host that holds the mail archive + index; all reading/reasoning is
-# local and every response is privacy-sanitised before it reaches an agent.
-# When enabled + reachable, the entrypoint patches .mcp.json with a streamable-HTTP
-# server carrying the bearer token from AGENTBOX_EMAIL_GATEWAY_TOKEN (never committed).
+# Private Email Search MCP gateway (DreamLab-AI/email-mcp-gateway). Now runs as the
+# `email-mcp-gateway` container on the shared `visionclaw_network`, so it is reached
+# by its docker service name (robust against IP reassignment) rather than a LAN IP.
+# It holds the mail archive + index; all reading/reasoning is local and every response
+# is privacy-sanitised before it reaches an agent. When enabled + reachable, the
+# entrypoint patches .mcp.json with a streamable-HTTP server carrying the bearer token
+# from AGENTBOX_EMAIL_GATEWAY_TOKEN (never committed).
 enabled = true
-gateway_url = "http://192.168.2.48:8765"
+gateway_url = "http://email-mcp-gateway:8765"
 
 [providers.anthropic]
 enabled = true

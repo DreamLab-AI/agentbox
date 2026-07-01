@@ -51,14 +51,16 @@ the pubkey. Read the operator pubkey from runtime env (**`AGENTBOX_X_ONLY_PUBKEY
 time; do not hardcode the literal hex into committed skill source.
 
 ## Connection
-External **streamable-HTTP** MCP server with bearer auth on the LAN host that holds the
-mail/index. Plain HTTP + bearer over the trusted LAN (`http://`, not `https://`). Auto-registered
-in agentbox by the entrypoint when `[skills.email_search] enabled = true`, `gateway_url` and
-`AGENTBOX_EMAIL_GATEWAY_TOKEN` are set; it health-checks `GET <gateway_url>/health` and patches
-`.mcp.json`. Manual register:
+**Streamable-HTTP** MCP server with bearer auth on the host that holds the mail/index.
+It now runs as the **`email-mcp-gateway`** container on the shared `visionclaw_network`,
+so the canonical endpoint is `http://email-mcp-gateway:8765` — reached by docker service
+name (survives IP reassignment), not a fixed LAN IP. Plain HTTP + bearer over the trusted
+network (`http://`, not `https://`). Auto-registered in agentbox by the entrypoint when
+`[skills.email_search] enabled = true`, `gateway_url` and `AGENTBOX_EMAIL_GATEWAY_TOKEN`
+are set; it health-checks `GET <gateway_url>/health` and patches `.mcp.json`. Manual register:
 
 ```
-claude mcp add --transport http email-gateway http://<host>:8765/mcp \
+claude mcp add --transport http email-gateway http://email-mcp-gateway:8765/mcp \
   --header "Authorization: Bearer <token>"
 ```
 

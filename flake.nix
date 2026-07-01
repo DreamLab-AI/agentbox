@@ -2368,7 +2368,7 @@ ${ragflowNetworkDecl}
           # bearer token is NOT emitted here — it arrives at runtime via
           # AGENTBOX_EMAIL_GATEWAY_TOKEN so it never bakes into the image.
           "ENABLE_EMAIL_SEARCH=${boolEnv ((skillsCfg.email_search or {}).enabled or false)}"
-          "AGENTBOX_EMAIL_GATEWAY_URL=${(skillsCfg.email_search or {}).gateway_url or "http://192.168.2.48:8765"}"
+          "AGENTBOX_EMAIL_GATEWAY_URL=${(skillsCfg.email_search or {}).gateway_url or "http://email-mcp-gateway:8765"}"
           # PRD-014 D2: ungoverned ontology_axiom_add backdoor, off by default.
           "AGENTBOX_ONTOLOGY_DIRECT_LOAD=${boolEnv ((skillsCfg.ontology or {}).direct_axiom_load or false)}"
           # Offline ontology condensation (PRD-020 WS-2). Operator-supplied cheap
