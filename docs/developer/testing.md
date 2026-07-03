@@ -1,6 +1,6 @@
 # Testing
 
-Agentbox ships ~200 tests across nine categories. This doc covers how to run them and how to add your own.
+Agentbox ships roughly 870 automated test cases — about 797 JavaScript `it()`/`test()` assertions plus about 74 Python `test_*` functions — across 19 test directories under `tests/` (the largest being `tests/contract/` and `tests/sovereign/`). This doc covers how to run them and how to add your own.
 
 ## Context in one paragraph
 
@@ -176,7 +176,6 @@ flowchart TB
 | [`tui-tests.yml`](../../.github/workflows/tui-tests.yml) | PR | pytest TUI round-trip fixtures |
 | [`manifest-validate.yml`](../../.github/workflows/manifest-validate.yml) | PR + push | `agentbox config validate`, fixture round-trip through TUI read/write, expected-error-code assertions, W-code advisory-vs-error audit |
 | [`flake-check.yml`](../../.github/workflows/flake-check.yml) | PR | `nix flake check --no-build` on amd64 + arm64 + eval of `.#runtime` and `.#compose` derivations |
-| `runtime-contract.yml` | PR + push | Discovers and runs every `tests/runtime-contract/RC-*.sh` |
 | [`shellcheck.yml`](../../.github/workflows/shellcheck.yml) | PR + push | ShellCheck at `error` severity (blocking) and `warning` severity (informational) |
 | [`secret-scan.yml`](../../.github/workflows/secret-scan.yml) | PR + push | gitleaks + canary |
 | [`ci.yml`](../../.github/workflows/ci.yml) | PR + push | Aggregate status check — configure as the sole required status in branch protection |
@@ -188,7 +187,6 @@ flowchart TB
 | [`build-multi-arch.yml`](../../.github/workflows/build-multi-arch.yml) | push to main, `v*` tag, manual | Nix build + GHCR publish on both arches; closure + compressed size captured to Actions summary; runs the PRD-001 §8 size-ceiling guard |
 | [`image-scan.yml`](../../.github/workflows/image-scan.yml) | after `build-multi-arch.yml` succeeds, manual | Trivy HIGH/CRITICAL gate, full-severity informational run, CycloneDX + SPDX SBOM uploads, SARIF posted to the Security tab |
 | [`release.yml`](../../.github/workflows/release.yml) | after `build-multi-arch.yml` on `v*` tag | Extracts matching CHANGELOG section, attaches image-scan artefacts (SBOMs), publishes the GitHub Release; pre-release flag inferred from tag |
-| `docs-ci.yml` | PR + push touching `docs/` | Link validation, frontmatter, Mermaid lint, ASCII-diagram detection, UK English, structure; 90% quality gate |
 | [`nix-flake-update.yml`](../../.github/workflows/nix-flake-update.yml) | Mondays 06:00 UTC, manual | `nix flake update` → PR if `flake.lock` changed |
 
 Failure in any PR-gate workflow blocks merge. `ci.yml` aggregates the gate into a single status for branch protection rules.
@@ -235,25 +233,33 @@ Maps 1:1 to PRD-002/003 acceptance criteria.
 
 ## Coverage scorecard
 
-Current (2026-04-24):
+Approximate snapshot (2026-07-03). These are **volume counts** of `it()`/`test()`
+assertions, Python `test_*` functions, and `.sh` acceptance scripts per
+directory — not pass/fail results, which require an actual run. Regenerate with
+`jest --listTests` or `grep -c`. The two largest directories (`contract` and the
+previously-omitted `sovereign`) dominate the total.
 
-| Category | Tests | Passing | Todo/Skip |
-|---|---|---|---|
-| Contract harness | 178 | 145 | 33 (infra-blocked) |
-| Semantic rules | 50 | 49 | 1 (Nix-eval) |
-| Runtime-contract | 10 | 10 | 0 |
-| Bootstrap | 4 | 4 | 0 |
-| Integration | 16 | 16 | 0 |
-| TUI pytest | 23 | 23 | 0 |
-| Artifact probes | 15 | 15 | 0 |
-| Other bash | ~11 | all (skip-77 unless Docker) | — |
+| Directory (`tests/…`) | JS `it`/`test` | Python `test_*` | Shell scripts | `it.todo()` |
+|---|---|---|---|---|
+| contract | 332 | — | — | 19 (infra-blocked) |
+| sovereign | 371 | 40 | — | — |
+| config (semantic rules) | 66 | — | — | 1 (Nix-eval) |
+| integration | 13 | — | 1 | — |
+| tui | — | 21 | 1 | — |
+| observability | 10 | — | — | — |
+| runtime-contract | 5 | — | 9 | — |
+| artifact-probes | — | — | 16 | — |
+| bootstrap | — | — | 4 | — |
+| flake | — | — | 3 | — |
+| security | — | — | 1 | — |
 
-**33 contract todos** legitimately pending on external infrastructure:
-- k6 load harness for SLO tests (×15)
-- Community Solid Server + WAC for permission-denied (×3)
-- ONNX runtime for embedding-error path (×3)
-- SSD-backed CI runner for JSONL timing (×3)
-- Dedicated HW + synthetic agent for orchestrator SLO (×9)
+The **19 contract `it.todo()` stubs** are legitimately pending on external
+infrastructure (grouped by the dependency they wait on):
+- k6 load harness for SLO tests
+- Community Solid Server + WAC for permission-denied
+- ONNX runtime for embedding-error path
+- SSD-backed CI runner for JSONL timing
+- Dedicated HW + synthetic agent for orchestrator SLO
 
 Each todo carries a one-line note citing the specific missing dependency.
 
