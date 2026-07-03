@@ -1,6 +1,12 @@
 # ADR-020: ACI MCP and execution-gated tree-search
 
-**Status:** Proposed
+**Status:** Accepted for Surface 1 / Proposed for Surface 2 (2026-07-03).
+**Surface 1 (ACI shell) is landed:** `mcp/aci-shell/server.js` ships the
+agent-tuned tool set (bounded file viewing, compact-diff editing, budget-capped
+search, test execution, task submission). **Surface 2 (execution-gated
+tree-search) remains proposed and unbuilt:** `skills/tree-search-coder/` does
+not yet exist. Note Surface 1 shipped ahead of the ADR-018 Phase-1 gate this
+ADR named as a precondition; that ordering is recorded rather than retro-gated.
 **Date:** 2026-05-20
 **Author:** Agentbox team
 **Supersedes:** n/a

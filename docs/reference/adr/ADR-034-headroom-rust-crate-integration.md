@@ -1,7 +1,7 @@
 ---
 id: ADR-034
 title: Headroom Rust crate integration — content-aware compression via N-API
-status: proposed
+status: accepted (implemented — realised 2026-07-03)
 date: 2026-06-19
 type: integration
 author: Dr John O'Hare
@@ -10,6 +10,15 @@ review_trigger: headroom upstream releases a breaking API change to headroom-cor
 ---
 
 # ADR-034 — Headroom Rust crate integration (content-aware compression via N-API)
+
+> **Realisation note (2026-07-03, closeout):** Accepted — implemented. The
+> N-API crate ships in `crates/headroom-napi/src/` (lib.rs, ccr_store.rs,
+> content_router.rs, diff_compressor.rs, log_compressor.rs, smart_crusher.rs,
+> types.rs); the JS bindings are `management-api/lib/headroom.js` and
+> `management-api/lib/headroom-mcp-tools.js`; the contract test is
+> `tests/contract/compression.contract.spec.js`; and the manifest config block
+> is `agentbox.toml` (`# Context compression (PRD-016, ADR-034)`). The previous
+> `proposed` status was stale.
 
 **Related:** PRD-016 (product requirements), DDD-014 (compression domain
 model), ADR-005 (pluggable adapters — the middleware chain this integrates

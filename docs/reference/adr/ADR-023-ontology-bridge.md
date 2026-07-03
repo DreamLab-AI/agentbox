@@ -1,7 +1,7 @@
 ---
 id: ADR-023
 title: VisionClaw Ontology Bridge via MCP
-status: proposed
+status: accepted (implemented — realised 2026-07-03)
 date: 2026-05-22
 type: integration
 author: Dr John O'Hare
@@ -10,6 +10,14 @@ review_trigger: VisionClaw API schema changes or Oxigraph upgrade
 ---
 
 # ADR-023 — VisionClaw Ontology Bridge via MCP
+
+> **Realisation note (2026-07-03, closeout):** Accepted — implemented. The
+> governed propose path ships in `mcp/servers/ontology-bridge.js` and
+> `mcp/servers/ontology-propose.js`, and the ungoverned `ontology_axiom_add`
+> backdoor is now disabled-by-default (`ontology-bridge.js:107-109`). ADR-026
+> (accepted) already treats this ADR's D1 single-writer and D5 BC20 decisions
+> as established; the previous `proposed` status left an accepted ADR depending
+> on a proposed one, and was stale.
 
 ## Context
 

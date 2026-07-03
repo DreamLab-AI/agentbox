@@ -1,6 +1,15 @@
 # ADR-017 — Multi-Tenant did:nostr Pods
 
-- **Status:** Proposed
+- **Status:** Accepted (partially realised — 2026-07-03). The per-user signing
+  fabric and admin provisioning surfaces are built: per-user NIP-98 signing
+  (`management-api/lib/per-user-agent.js:134` `nip98Token`), per-key pod
+  originator (`management-api/lib/pod-signer.js:76`), and tenant provisioning
+  (`management-api/routes/admin-users.js`). ADR-026 and the accepted ADR-028
+  (per-user-agent-fabric prototype) already depend on this per-user signing as
+  realised. **Open:** the per-user pod moderation lifecycle (suspend/archive
+  return 501, `admin-users.js:240-258`) and full PRD-007 multi-tenant
+  federation; the `[sovereign_mesh.multi_user]` feature stays gated
+  (`enabled=false`) so default single-tenant operation is unaffected.
 - **Date:** 2026-05-16
 - **Deciders:** DreamLab AI core team
 - **Related:** [ADR-009](ADR-009-embedded-nostr-relay.md) (embedded Nostr relay),
