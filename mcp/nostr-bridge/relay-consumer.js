@@ -299,15 +299,19 @@ class RelayConsumer {
     }
 
     // Governance events (31400-31405): write to the dedicated governance
-    // directory. Inbound ActionResponses (31403) from forum humans trigger
-    // the orchestrator adapter to route the decision to VisionClaw's
-    // BrokerActor. Outbound panel definitions/requests are handled by the
-    // outbox publisher path (agents write to events/outbox/).
+    // directory. Inbound ActionResponses (31403) from forum humans are handed
+    // to the orchestrator adapter's handleGovernanceDecision, which delivers
+    // the decision to a matched running agent's stdin, or (no match) persists
+    // it as JSON to the pod governance decisions directory for VisionClaw to
+    // consume. This is a local dispatch/persist, NOT a live push to a
+    // VisionClaw BrokerActor. Outbound panel definitions/requests are handled
+    // by the outbox publisher path (agents write to events/outbox/).
     if (this._isGovernanceEvent(event.kind)) {
       this._writeGovernanceEvent(recipient, event);
 
-      // ActionResponse (31403) from a human in the forum UI — route to
-      // the orchestrator so VisionClaw can act on the decision.
+      // ActionResponse (31403) from a human in the forum UI — dispatch to the
+      // orchestrator, which writes it to a matched agent's stdin or persists it
+      // to the pod governance directory for VisionClaw to pick up.
       if (event.kind === kinds.ACTION_RESPONSE
           && this._adapters.orchestrator
           && typeof this._adapters.orchestrator.handleGovernanceDecision === 'function') {
