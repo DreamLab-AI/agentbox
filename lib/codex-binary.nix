@@ -20,7 +20,7 @@
 { lib, pkgs }:
 
 let
-  codexVersion = "0.142.3";
+  codexVersion = "0.142.5";
   baseUrl = "https://github.com/openai/codex/releases/download/rust-v${codexVersion}";
 
   # Map agentbox's system string to OpenAI's release asset triple.
@@ -30,11 +30,11 @@ let
   assets = {
     "x86_64-linux" = {
       name   = "codex-x86_64-unknown-linux-musl.tar.gz";
-      sha256 = "f96813f41692b4d8ae44d0812165a2fcc429196eb3481f6bc221afdec96a17f8";
+      sha256 = "cb933ec3cb61bf4b5fc88eecf5e6149829faa6172535b6ef0afb0154beb4aab8";
     };
     "aarch64-linux" = {
       name   = "codex-aarch64-unknown-linux-musl.tar.gz";
-      sha256 = "d4bb18793cd53902593ddb92c409f262c05dc80e4235f865ede2378ba15a1dd1";
+      sha256 = "b18c75c49645918fae23beba0ab41c05f07941601510a2451ba97fe519573c38";
     };
   };
 

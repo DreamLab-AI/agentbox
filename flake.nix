@@ -134,7 +134,7 @@
           pkgName         = "ruflo";
           version         = "3.14.4";
           sha256          = "sha256-jdYTjAt+s4bpZf9pHdaalaeoHZ+04kIBWyTdjavsmag=";
-          nodeModulesHash = "sha256-qWBuRtuV20QzBaCIeCSS/FLayCYLJNdlwYqfsneHDKg=";
+          nodeModulesHash = "sha256-TyG2WOrNx3QV4AI9ozain5EgAQlYiCnhGs/8HRg46LE=";
           bin             = "ruflo";
         };
 
@@ -148,7 +148,7 @@
           pkgName         = "agentic-qe";
           version         = "3.11.3";
           sha256          = "sha256-WzwPH8AOsIuKdcdskmujKrzjWM1O889pBfShNns91Mo=";
-          nodeModulesHash = "sha256-5evIQoQwLlSVgXe31e9/UiH9kJnvwT9kOer7WC/ja3c=";
+          nodeModulesHash = "sha256-e8LBzbrkKTgUhpsmYLwn6fHwaGkFvEgL2LAurjyQp98=";
           bin             = "aqe";
         };
 
@@ -185,7 +185,7 @@
           pkgName         = "@mermaid-js/mermaid-cli";
           version         = "11.15.0";
           sha256          = "sha256-9v0Iedv1AORTeEu9nbkq6VEJfg6eipDsYT8r08qPoGw=";
-          nodeModulesHash = "sha256-5iAgX7c3mShzkbkKE+H1Cuy9Q37ILNKxTXvgrT8nhF0=";
+          nodeModulesHash = "sha256-JBMDaUnR+TcPK5qZrTqm3CGU2m5b8bTOMEbe4Pf0cP8=";
           bin             = "mmdc";
         };
 
@@ -582,12 +582,12 @@
           # Bumped 1.33.0 -> 1.36.4. Hashes need refresh on first host build:
           #   nix-prefetch-github zoharbabin web-researcher-mcp --rev v1.36.4
           #   then `nix build` once with lib.fakeHash for vendorHash.
-          version = "1.36.4";  # bump together with hashes below
+          version = "1.37.5";  # bump together with hashes below
           src = pkgs.fetchFromGitHub {
             owner = "zoharbabin";
             repo  = "web-researcher-mcp";
             rev   = "v${version}";
-            hash  = "sha256-tlC+LF+ZRIIcNdK1V5fXMm6WJR3KYyfPjak9lkMXcjw=";
+            hash  = "sha256-cjWmIMj4j4HjIbUGjjS3MCKUwHR9u332wbIQR8g+mjM=";
           };
           vendorHash = "sha256-JsLlBCZQhij/ivcU6pjcWDzh1Z4hORCzJghre+ai49k=";
           subPackages = [ "cmd/web-researcher-mcp" ];
