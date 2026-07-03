@@ -133,9 +133,41 @@ function assertRegisteredExemption(slot, impl, exemption, warn = console) {
   );
 }
 
+/**
+ * Measure the p95 latency (in milliseconds) of an async operation over a
+ * sequential run against the real in-process adapter.
+ *
+ * This is the ADR-005 §Service-level-objectives *floor* measurement: it runs
+ * the operation `iterations` times back-to-back (after `warmup` untimed calls)
+ * and returns the 95th-percentile per-call latency. A sequential p95 is a
+ * necessary condition for the concurrent load SLO — if the single-caller floor
+ * already exceeds the budget the load SLO cannot pass — so the contract suite
+ * asserts it directly against the real adapter, while the full concurrent
+ * "at N req/s" figure is measured by the nightly k6 harness.
+ *
+ * @param {(i:number)=>Promise<any>} fn  - Operation to time; receives the iteration index.
+ * @param {object} [opts]
+ * @param {number} [opts.iterations=200] - Timed samples.
+ * @param {number} [opts.warmup=20]      - Untimed warm-up calls.
+ * @returns {Promise<number>} p95 latency in milliseconds.
+ */
+async function measureP95(fn, { iterations = 200, warmup = 20 } = {}) {
+  for (let i = 0; i < warmup; i++) await fn(i);
+  const samples = new Array(iterations);
+  for (let i = 0; i < iterations; i++) {
+    const t = process.hrtime.bigint();
+    await fn(i);
+    samples[i] = Number(process.hrtime.bigint() - t) / 1e6;
+  }
+  samples.sort((a, b) => a - b);
+  const idx = Math.max(0, Math.ceil(samples.length * 0.95) - 1);
+  return samples[idx];
+}
+
 module.exports = {
   assertMethodShape,
   assertContractVersion,
   assertOffClassThrows,
   assertRegisteredExemption,
+  measureP95,
 };
