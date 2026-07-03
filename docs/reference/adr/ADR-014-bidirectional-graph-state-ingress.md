@@ -1,6 +1,14 @@
 # ADR-014: Bi-directional graph-state ingress for agent reaction
 
-**Status:** Accepted
+**Status:** Accepted — Phases 1–3 realised (2026-07-03). The inbound WS
+subscriber and `direction: "inbound"` extension are wired (via
+`management-api/routes/agent-events.js`). **Open (not built):**
+- §5 OPF **inbound** policy — `OPF_POLICY_INBOUND` / `[privacy.policy].inbound`
+  has no production wiring in `management-api`.
+- §6 foreign-URN resolver — `management-api/routes/uri-resolver.js` has no
+  `urn:visionclaw` / `[linked_data.federation.peers]` 307 branch.
+- Phase-5 `graph_delta` / `authority_grant` inbound events and NIP-26
+  delegation enforcement (see the repointed follow-on refs below).
 **Date:** 2026-04-28
 **Author:** Agentbox team
 **Supersedes:** n/a — first formal decision on inbound graph signals
@@ -68,7 +76,7 @@ Three event types are recognised in this ADR; later phases extend the set:
 | 5 | `graph_delta` | VisionClaw Neo4j change feed | agents that registered a query subscription |
 | 5 | `authority_grant` | VisionClaw operator | NIP-26 delegation handler (gates auth) |
 
-`graph_delta` and `authority_grant` are **out of scope for this ADR**. They get their own follow-on (ADR-015 and ADR-016 respectively) and are gated on Phase 5 of ADR-059.
+`graph_delta` and `authority_grant` are **out of scope for this ADR** and remain unbuilt. Their follow-on is [ADR-026](ADR-026-cross-substrate-agent-loop-seams.md) — D1 (cross-substrate ingest) covers inbound `graph_delta`, and D2 (NIP-26 speak-as-user delegation) covers `authority_grant`; both are gated on Phase 5 of ADR-059. (The original ADR-015/ADR-016 pointers here were dangling — those numbers were reassigned to the ruvector MCP mandate and licence consolidation respectively.)
 
 ### 3. Routing into the agent runtime
 
@@ -96,9 +104,14 @@ A new helper subscription `agentEventPublisher.subscribeInbound(filterSpec, hand
 | 4 | required when host claims write authority over an ADR-050 owned KGNode | reject + log |
 | 5 | required + signed + NIP-26 delegation chain validated by `auth.js` | fail-closed (ADR-005 W030 lift) |
 
-Phase 5 enforcement depends on the future ADR-016 (NIP-26 delegation handler in `management-api/middleware/auth.js`). Until ADR-016 lands, attribution is best-effort.
+Phase 5 enforcement depends on the NIP-26 delegation handler tracked under [ADR-026 D2](ADR-026-cross-substrate-agent-loop-seams.md) (speak-as-user delegation, landing in `management-api/middleware/auth.js`). Until that lands, attribution is best-effort. (This previously cited a non-existent "future ADR-016" — that number is licence consolidation, not delegation.)
 
 ### 5. Privacy filter (OPF) integration
+
+> **Status: open (unbuilt as of 2026-07-03).** The inbound OPF policy described
+> here (`OPF_POLICY_INBOUND` / `[privacy.policy].inbound`) has no production
+> wiring in `management-api`; inbound `user_interaction` events are not yet
+> filtered through an inbound OPF policy.
 
 The OPF middleware (ADR-008) wraps every adapter dispatch. Inbound `user_interaction` events pass through the **inbound** OPF policy (`OPF_POLICY_INBOUND`, agentbox.toml `[privacy.policy].inbound`):
 
@@ -109,6 +122,11 @@ The OPF middleware (ADR-008) wraps every adapter dispatch. Inbound `user_interac
 This composes cleanly with the existing OPF flow (`OPF_POLICY_PODS=strict, OPF_POLICY_MEMORY=strict, OPF_POLICY_INBOUND=soft`); no new middleware shape is introduced.
 
 ### 6. URN expectations
+
+> **Status: open (unbuilt as of 2026-07-03).** The foreign-URN resolver branch
+> described here is not built: `management-api/routes/uri-resolver.js` has no
+> `urn:visionclaw` / `[linked_data.federation.peers]` case, so inbound foreign
+> URNs are not yet resolved via a 307 to the host resolver.
 
 Inbound `target_urn` values are minted by the host per their own grammar. Agentbox **resolves** but does **not** persist them. The existing `lib/uris.js` parser is extended only to recognise `urn:visionclaw:*` as a valid foreign URN that round-trips through the resolver (`/v1/uri/<urn>` returns 307 to the host's resolver when the URN matches a known external prefix configured in `agentbox.toml [linked_data.federation.peers]`).
 
@@ -122,7 +140,7 @@ This preserves ADR-013's invariant: every URN agentbox **mints** is unique by co
 | 2 | Full subscriber + `direction: "inbound"` extension + `subscribeInbound` helper; OPF integration | `management-api/utils/agent-event-ws-subscriber.js` (~200 lines), `management-api/utils/agent-event-publisher.js` (+30 lines), supervisor block in `flake.nix` |
 | 3 | Recognised inbound types: `user_interaction` (focus/select/hover/drag) | event-type registry update; no protocol break |
 | 4 | Phase-4 attribution gate (require pubkey for ownership-claiming events) | `auth.js` (+40 lines) |
-| 5 | Inbound `graph_delta` + `authority_grant`; full NIP-26 delegation enforcement | ADR-015 + ADR-016 (separate decisions) |
+| 5 | Inbound `graph_delta` + `authority_grant`; full NIP-26 delegation enforcement | ADR-026 D1 + D2 (separate decision) — **open, unbuilt** |
 
 Phases 1–3 are scoped to one sprint and land alongside VisionClaw ADR-059 phases 1–3.
 

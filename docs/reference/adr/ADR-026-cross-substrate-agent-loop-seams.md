@@ -1,7 +1,7 @@
 ---
 id: ADR-026
 title: Cross-Substrate Agent-Loop Seams
-status: accepted (partially realised — WS5 producer convergence + ADR-059 Phase-1 mirror done 2026-05-29)
+status: accepted (partially realised — WS5 producer convergence + ADR-059 Phase-1 mirror done 2026-05-29). OPEN as of 2026-07-03 — the residual workstreams are cross-repo tracked, not done: WS5 D1 agent-action render + ACSP 31402 dispatcher (WS7) live in the VisionClaw (/project) slice under Seam E and are unbuilt (zero urn:agentbox refs; ACSP kinds 31400-31405 absent; agent-action decoder latent); and WS4 pod-mandate enforcement is not fail-closed on the agentbox side (uris.js mandate kind exists but pod NIP-98 originator is opt-in — _solid-http-base.js falls back unsigned). The agentbox producer/BC20/propose surfaces landed.
 date: 2026-05-28
 type: integration
 author: Dr John O'Hare
@@ -46,13 +46,18 @@ PRD-014's gap ledger (§3) identifies five broken seams in the flow:
   `/api/ontology/load` backdoor (`mcp/servers/ontology-bridge.js:217-231`), bypassing the
   governed `propose → Whelk → PR` path that already exists in VisionClaw
   (`ontology_mutation_service.rs:104-123`).
-- **Seam E — elevation → visualisation (VisionClaw + BC20).** The BC20 anti-corruption
-  layer is paper-only — zero `urn:agentbox` references exist anywhere in `project/{src,
-  crates,client/src}` (PRD-014 E1; VisionFlow `docs/ecosystem-map.md:88` already flags
-  this). Agent nodes render from polled mock data, ACSP is not spoken, and there is no
-  `ConceptElevated` event. The server binary protocol does already define the
-  `0x23 AGENT_ACTION` frame and the `agent-action` WS event
-  (`project/src/utils/binary_protocol.rs:1187-1463`).
+- **Seam E — elevation → visualisation (VisionClaw + BC20). OPEN (unbuilt as of
+  2026-07-03) — cross-repo, owned by the VisionClaw (/project) slice.** The BC20
+  anti-corruption layer is paper-only — zero `urn:agentbox` references exist
+  anywhere in `project/{src,crates,client/src}` (PRD-014 E1; VisionFlow
+  `docs/ecosystem-map.md:88` already flags this). Agent nodes render from polled
+  mock data, ACSP (kinds 31400-31405) is not spoken, the ACSP 31402 dispatcher
+  (WS7) is absent, and there is no `ConceptElevated` event. The server binary
+  protocol does already define the `0x23 AGENT_ACTION` frame and the
+  `agent-action` WS event (`project/src/utils/binary_protocol.rs:1187-1463`),
+  but the frame has no decoder. The agentbox producer side (BC20 bridge, propose
+  surfaces) is done; the render (WS5 D1) + dispatcher (WS7) residual is tracked
+  open in the VisionClaw slice.
 
 ADR-023 D1 established that VisionClaw owns the Oxigraph store under a single-writer model
 and that the HTTP API — not a shared volume — is the contract. ADR-023 D5 named the BC20
