@@ -35,7 +35,12 @@ Each substrate runs `scripts/sync-fixtures.sh` to pull fixtures into its own `te
 
 ## Validation
 
-`tests/fixture-master-validity.sh` (in VisionClaw monorepo root) MUST run on every PR that touches `docs/specs/fixtures/`. Verifies:
+There is **no master-validity script in this repo**. An earlier revision cited
+`tests/fixture-master-validity.sh` (described as living in the VisionClaw
+monorepo root) as a required PR gate; that script does not exist here and is not
+wired into any agentbox workflow, so the reference has been removed. The checks
+below are the *intended* validation invariants for the shared fixture corpus
+(ADR-082), specification not executed gate:
 - Every fixture file passes its JSON Schema
 - Every fixture has ≥3 vectors
 - UPSTREAM_PINS.md commit hashes are well-formed (40-char hex)
