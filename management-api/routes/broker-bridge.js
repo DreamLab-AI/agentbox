@@ -341,8 +341,12 @@ async function brokerBridgeRoutes(fastify, options) {
           properties: {
             success: { type: 'boolean' },
             decision: { type: 'string' },
+            case_id: { type: 'string' },
+            attributed: { type: 'boolean' },
             writeback_triggered: { type: 'boolean' },
-            writeback_result: { type: 'object' },
+            writeback_committed: { type: 'boolean' },
+            writeback_result: { type: 'object', additionalProperties: true, nullable: true },
+            upstream_result: { type: 'object', additionalProperties: true },
             activity_urn: { type: 'string' },
             receipt_urn: { type: 'string' },
           },
@@ -353,16 +357,26 @@ async function brokerBridgeRoutes(fastify, options) {
     const { id } = request.params;
     const { decision, note, timestamp } = request.body;
 
+    // Resolve the deciding broker's did:nostr pubkey. Prefer the authenticated
+    // caller, then an explicit x-agent-pubkey header, then this agentbox's own
+    // x-only pubkey. Never send the literal string 'unknown': VisionClaw treats
+    // a non-hex broker_pubkey as UNATTRIBUTED and refuses to commit the KG
+    // write-back, so 'unknown' would silently suppress every write-back.
+    const decidingPubkey = request.auth?.pubkey
+      || request.headers['x-agent-pubkey']
+      || AGENTBOX_PUBKEY;
+
     // 1. Proxy the decision to VisionClaw's enrichment-proposals decide endpoint.
-    // The BrokerActor triggers the WriteBackSaga internally for approved
-    // KnowledgeEnrichment cases, so no separate writeback call is needed.
+    // The BrokerActor performs the KG write-back internally for approved
+    // KnowledgeEnrichment cases; we key true closure off its writeback_committed
+    // response field rather than assuming success.
     let decisionResult;
     try {
       decisionResult = await _vcFetch(`/api/enrichment-proposals/${encodeURIComponent(id)}/decide`, {
         method: 'POST',
         body: {
           outcome: decision,
-          broker_pubkey: request.auth?.pubkey || 'unknown',
+          broker_pubkey: decidingPubkey,
           reasoning: note || '',
         },
       });
@@ -374,16 +388,53 @@ async function brokerBridgeRoutes(fastify, options) {
       });
     }
 
-    // Write-back is triggered internally by the BrokerActor for approved
-    // KnowledgeEnrichment cases. We report whether the decision was accepted.
-    const writebackTriggered = WRITEBACK_DECISIONS.has(decision);
-    let writebackResult = writebackTriggered ? { status: 'triggered-internally' } : null;
+    // ── Honour VisionClaw's real write-back result ───────────────────
+    // VisionClaw separates two facts: `writeback_triggered` (the outcome
+    // qualifies AND the decision is attributed) and `writeback_committed`
+    // (the Oxigraph derived write actually landed). A qualifying, attributed
+    // approval whose write-back was triggered but did NOT commit is a
+    // silent-data-loss failure — surface it as an error instead of reporting
+    // a successful closure.
+    const writebackExpected = WRITEBACK_DECISIONS.has(decision);
+    const upstreamTriggered = !!(decisionResult && decisionResult.writeback_triggered === true);
+    const upstreamCommitted = !!(decisionResult && decisionResult.writeback_committed === true);
+    const upstreamAttributed = !!(decisionResult && decisionResult.attributed === true);
+
+    if (writebackExpected && upstreamTriggered && upstreamAttributed && !upstreamCommitted) {
+      logger.error(
+        { caseId: id, decision, upstream: decisionResult },
+        'broker-bridge: decision accepted upstream but write-back did NOT commit',
+      );
+      return reply.code(502).send({
+        error: 'writeback-not-committed',
+        message: 'VisionClaw accepted the decision but the knowledge-graph write-back did not commit',
+        decision,
+        case_id: id,
+        attributed: upstreamAttributed,
+        writeback_triggered: upstreamTriggered,
+        writeback_committed: false,
+        upstream_result: decisionResult,
+      });
+    }
+
+    // Report the true write-back state. An attributed approval commits to the
+    // KG; an unattributed one is recorded durably but intentionally not written
+    // (no owner DID to scope an owner-less KG node) — reported, not faked.
+    const writebackResult = writebackExpected
+      ? {
+          triggered: upstreamTriggered,
+          committed: upstreamCommitted,
+          attributed: upstreamAttributed,
+          status: upstreamCommitted
+            ? 'committed'
+            : (upstreamTriggered && !upstreamAttributed ? 'recorded-unattributed' : 'not-committed'),
+        }
+      : null;
 
     // ── PROV-O provenance recording ──────────────────────────────────
     // Mint activity + receipt URNs linking the governance decision to the
     // agent action.  Both kinds are content-addressed and owner-scoped in
     // the canonical URI grammar (ADR-013).
-    const decidingPubkey = request.headers['x-agent-pubkey'] || AGENTBOX_PUBKEY;
     const decidedAt = new Date().toISOString();
 
     const activityPayload = {
@@ -444,8 +495,10 @@ async function brokerBridgeRoutes(fastify, options) {
       success: true,
       decision,
       case_id: id,
+      attributed: upstreamAttributed,
       upstream_result: decisionResult,
-      writeback_triggered: writebackTriggered,
+      writeback_triggered: upstreamTriggered,
+      writeback_committed: upstreamCommitted,
       writeback_result: writebackResult,
       activity_urn: activity_urn || undefined,
       receipt_urn: receipt_urn || undefined,
