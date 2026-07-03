@@ -65,7 +65,6 @@ pub fn compress(input: &str, options: &LogCompressOptions) -> Result<CompressRes
     }
 
     // Phase 2: template mining for normal lines.
-    let mut template_counts: HashMap<String, TemplateBucket> = HashMap::new();
     let mut output_parts: Vec<OutputPart> = Vec::new();
     let mut pending_normals: Vec<(usize, String)> = Vec::new();
 
@@ -75,7 +74,6 @@ pub fn compress(input: &str, options: &LogCompressOptions) -> Result<CompressRes
                 // Flush pending normals.
                 flush_normals(
                     &mut pending_normals,
-                    &mut template_counts,
                     &mut output_parts,
                     max_templates,
                 );
@@ -91,7 +89,6 @@ pub fn compress(input: &str, options: &LogCompressOptions) -> Result<CompressRes
     // Flush remaining normals.
     flush_normals(
         &mut pending_normals,
-        &mut template_counts,
         &mut output_parts,
         max_templates,
     );
@@ -160,12 +157,6 @@ enum OutputPart {
     },
 }
 
-#[allow(dead_code)]
-struct TemplateBucket {
-    count: usize,
-    example: String,
-}
-
 fn is_error_line(line: &str) -> bool {
     ERROR_RE.is_match(line)
 }
@@ -194,7 +185,6 @@ fn truncate_template(t: &str, max: usize) -> &str {
 /// Flush accumulated normal lines into template groups.
 fn flush_normals(
     normals: &mut Vec<(usize, String)>,
-    template_counts: &mut HashMap<String, TemplateBucket>,
     output: &mut Vec<OutputPart>,
     max_templates: usize,
 ) {
@@ -220,15 +210,6 @@ fn flush_normals(
             // that is fine for compression output).
             entry.1 = template.clone();
         }
-
-        // Also update global counts.
-        let global = template_counts
-            .entry(template.clone())
-            .or_insert_with(|| TemplateBucket {
-                count: 0,
-                example: template.clone(),
-            });
-        global.count += 1;
     }
 
     // Emit template groups in order, capping at max_templates.
