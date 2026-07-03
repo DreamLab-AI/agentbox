@@ -201,7 +201,9 @@ def build_did_document(identity, also_known_as=None):
     x_only = identity["x_only_pubkey_hex"].lower()
     did = f"did:nostr:{x_only}"
     doc = {
-        "@context": ["https://w3id.org/did", "https://w3id.org/nostr/context"],
+        # did:nostr CG spec (https://nostrcg.github.io/did-nostr/): @context[0]
+        # is the Controlled Identifiers v1.0 context, which defines Multikey.
+        "@context": ["https://www.w3.org/ns/cid/v1", "https://w3id.org/nostr/context"],
         "id": did,
         "type": "DIDNostr",
         "verificationMethod": [
@@ -214,10 +216,11 @@ def build_did_document(identity, also_known_as=None):
         ],
         "authentication": ["#key1"],
         "assertionMethod": ["#key1"],
-        # Canonical create-agent / did-nostr CG reference form is service: [].
-        # alsoKnownAs (pod profile cross-reference) is an agentbox extension.
-        "service": [],
     }
+    # did:nostr CG spec omit-when-empty field model: optional members
+    # (alsoKnownAs, service, …) are omitted when absent — no empty service:[].
+    # The pod-profile WebID and any other identity links go in top-level
+    # alsoKnownAs (the spec's canonical cross-platform-identity location).
     if also_known_as:
         doc["alsoKnownAs"] = also_known_as
     return doc

@@ -59,7 +59,7 @@ describe('Surface encoders', () => {
     const xOnly = AGBX_DID.slice('did:nostr:'.length);
     const r = await surfaces.S4.encode({ did: AGBX_DID }, { agentDid: AGBX_DID });
     const d = r.document;
-    expect(d['@context']).toEqual(['https://w3id.org/did', 'https://w3id.org/nostr/context']);
+    expect(d['@context']).toEqual(['https://www.w3.org/ns/cid/v1', 'https://w3id.org/nostr/context']);
     expect(d.id).toBe(AGBX_DID);
     expect(d.type).toBe('DIDNostr');
     expect(d.verificationMethod).toHaveLength(1);
@@ -78,8 +78,8 @@ describe('Surface encoders', () => {
     expect(vm.type).not.toBe('SchnorrSecp256k1VerificationKey2019');
     expect(d.authentication).toEqual(['#key1']);
     expect(d.assertionMethod).toEqual(['#key1']);
-    // Canonical reference output is the empty service array.
-    expect(d.service).toEqual([]);
+    // did:nostr CG spec omit-when-empty: no service endpoints ⇒ no service field.
+    expect(d.service).toBeUndefined();
   });
 
   test('S4 DID — service endpoints are an opt-in agentbox extension', async () => {
@@ -95,7 +95,11 @@ describe('Surface encoders', () => {
       },
     );
     expect(r.document.service.find((s) => s.type === 'SolidStorage')).toBeTruthy();
-    expect(r.document.service.find((s) => s.type === 'NostrRelay')).toBeTruthy();
+    // Relay entries use the did:nostr CG spec `type: "Relay"` with a
+    // trailing-slash endpoint.
+    const relay = r.document.service.find((s) => s.type === 'Relay');
+    expect(relay).toBeTruthy();
+    expect(relay.serviceEndpoint.endsWith('/')).toBe(true);
   });
 
   test('S4 DID — rejects a non-lowercase / wrong-length x-only pubkey', async () => {

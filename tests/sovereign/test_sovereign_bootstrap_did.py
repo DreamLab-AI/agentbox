@@ -76,7 +76,7 @@ def pod_repo(sb, identity, tmp_path):
 def test_did_document_is_canonical_multikey_form(sb, identity):
     doc = sb.build_did_document(identity)
     assert doc["@context"] == [
-        "https://w3id.org/did",
+        "https://www.w3.org/ns/cid/v1",
         "https://w3id.org/nostr/context",
     ]
     assert doc["id"] == f"did:nostr:{EXPECTED_XONLY}"
@@ -88,7 +88,8 @@ def test_did_document_is_canonical_multikey_form(sb, identity):
     assert vm["controller"] == f"did:nostr:{EXPECTED_XONLY}"
     assert doc["authentication"] == ["#key1"]
     assert doc["assertionMethod"] == ["#key1"]
-    assert doc["service"] == []
+    # did:nostr CG spec omit-when-empty: no alsoKnownAs/service given ⇒ omitted.
+    assert "service" not in doc
 
 
 def test_i2_public_key_multibase_round_trips(sb, identity):

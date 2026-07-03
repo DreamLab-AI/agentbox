@@ -28,7 +28,10 @@
  * verificationMethod (ADR-033 I3), so re-encoding the VM cannot touch auth.
  */
 
-const DID_CONTEXT = 'https://w3id.org/did';
+// did:nostr CG spec (https://nostrcg.github.io/did-nostr/): the canonical
+// @context[0] is the Controlled Identifiers v1.0 context, which is what
+// defines the `Multikey` term (the generic w3id.org/did context does not).
+const DID_CONTEXT = 'https://www.w3.org/ns/cid/v1';
 const NOSTR_CONTEXT = 'https://w3id.org/nostr/context';
 
 // did-nostr Multikey: f(base16-lower) e701(secp256k1-pub varint) 02(even-y).
@@ -86,20 +89,18 @@ module.exports = {
       verificationMethod,
       authentication: publicKeyMultibase ? ['#key1'] : [],
       assertionMethod: publicKeyMultibase ? ['#key1'] : [],
-      // The canonical create-agent / did-nostr CG reference output is the empty
-      // service array. Populated service[] (SolidWebID, NostrRelay, …) are
-      // agentbox extensions, layered by callers, not the canonical form.
-      service: [],
     };
 
-    // agentbox extension: callers MAY attach service endpoints (pod, relay,
-    // WebID). These are permitted by the optional `service` field but are NOT
-    // part of the canonical create-agent shape.
+    // did:nostr CG spec omit-when-empty field model: `service` is emitted only
+    // when it carries entries (no empty `service: []`). Callers MAY attach pod
+    // and relay endpoints; relay entries use the spec `type: "Relay"` with a
+    // trailing-slash endpoint.
+    const service = [];
     const ld = manifest && manifest.linked_data && manifest.linked_data.did;
     const enabled = ld?.service_endpoints || [];
     if (enabled.includes('pod')) {
       const sp = (manifest?.integrations?.solid_pod_rs) || {};
-      doc.service.push({
+      service.push({
         id: `${did}#pod`,
         type: 'SolidStorage',
         serviceEndpoint: sp.base_url || `http://${sp.bind || '127.0.0.1'}:${sp.port || 8484}`,
@@ -109,13 +110,16 @@ module.exports = {
       const r = (manifest?.sovereign_mesh?.relay) || {};
       const port = r.port || 7777;
       const bind = r.bind || '127.0.0.1';
-      doc.service.push({
-        id: `${did}#relay`,
-        type: 'NostrRelay',
-        serviceEndpoint: `ws://${bind}:${port}`,
+      service.push({
+        id: `${did}#relay1`,
+        type: 'Relay',
+        serviceEndpoint: `ws://${bind}:${port}/`,
       });
     }
+    if (service.length) doc.service = service;
 
+    // Cross-platform identity links go in top-level `alsoKnownAs` (the spec's
+    // canonical location — WebID / ActivityPub / AT-proto).
     if (payload?.alsoKnownAs) doc.alsoKnownAs = payload.alsoKnownAs;
     if (payload?.controller) doc.controller = payload.controller;
 
