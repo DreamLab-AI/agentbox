@@ -235,31 +235,35 @@ const TOOLS = [
       required: ['query'],
     },
   },
-  // Swarm coordination stubs (the legacy mcp-server.js that carried the full
-  // implementations was removed in the 2026-06-11 audit; these remain thin stubs)
+  // Orchestration tools — UNIMPLEMENTED. The legacy mcp-server.js that carried
+  // the real implementations was removed in the 2026-06-11 audit. This server
+  // backs the memory_* tools only; every tool below returns an honest
+  // { ok:false, error:'unimplemented' } rather than fabricating success, so a
+  // coordinating agent never believes a swarm/agent/task was created when it
+  // was not. They are advertised so the tool surface stays discoverable.
   {
     name: 'swarm_init',
-    description: 'Initialize a swarm with topology and configuration',
+    description: '[unimplemented in ruvector-mcp] Returns { ok:false, error:"unimplemented" }; this server backs memory_* tools only.',
     inputSchema: { type: 'object', properties: { topology: { type: 'string' }, maxAgents: { type: 'number' }, strategy: { type: 'string' } }, required: ['topology'] },
   },
   {
     name: 'agent_spawn',
-    description: 'Create specialized AI agents',
+    description: '[unimplemented in ruvector-mcp] Returns { ok:false, error:"unimplemented" }; no process is spawned.',
     inputSchema: { type: 'object', properties: { type: { type: 'string' }, name: { type: 'string' }, capabilities: { type: 'array' }, swarmId: { type: 'string' } }, required: ['type'] },
   },
   {
     name: 'task_orchestrate',
-    description: 'Orchestrate complex task workflows',
+    description: '[unimplemented in ruvector-mcp] Returns { ok:false, error:"unimplemented" }; no task is orchestrated.',
     inputSchema: { type: 'object', properties: { task: { type: 'string' }, strategy: { type: 'string' }, priority: { type: 'string' } }, required: ['task'] },
   },
   {
     name: 'swarm_status',
-    description: 'Monitor swarm health and performance',
+    description: '[unimplemented in ruvector-mcp] Returns { ok:false, error:"unimplemented" }; no swarm state is tracked here.',
     inputSchema: { type: 'object', properties: { swarmId: { type: 'string' } } },
   },
   {
     name: 'neural_patterns',
-    description: 'Analyze cognitive patterns',
+    description: '[unimplemented in ruvector-mcp] Returns { ok:false, error:"unimplemented" }.',
     inputSchema: { type: 'object', properties: { action: { type: 'string' }, operation: { type: 'string' }, outcome: { type: 'string' } }, required: ['action'] },
   },
   {
@@ -278,55 +282,60 @@ const TOOLS = [
   },
   {
     name: 'coordination_sync',
-    description: 'Sync agent coordination',
+    description: '[unimplemented in ruvector-mcp] Returns { ok:false, error:"unimplemented" }.',
     inputSchema: { type: 'object', properties: { swarmId: { type: 'string' } } },
   },
   {
     name: 'load_balance',
-    description: 'Distribute tasks efficiently',
+    description: '[unimplemented in ruvector-mcp] Returns { ok:false, error:"unimplemented" }.',
     inputSchema: { type: 'object', properties: { swarmId: { type: 'string' }, tasks: { type: 'array' } } },
   },
   {
     name: 'performance_report',
-    description: 'Generate performance reports',
+    description: '[unimplemented in ruvector-mcp] Returns { ok:false, error:"unimplemented" }.',
     inputSchema: { type: 'object', properties: { timeframe: { type: 'string' }, format: { type: 'string' } } },
   },
   {
     name: 'bottleneck_analyze',
-    description: 'Identify performance bottlenecks',
+    description: '[unimplemented in ruvector-mcp] Returns { ok:false, error:"unimplemented" }.',
     inputSchema: { type: 'object', properties: { component: { type: 'string' } } },
   },
   {
     name: 'github_repo_analyze',
-    description: 'Repository analysis',
+    description: '[unimplemented in ruvector-mcp] Returns { ok:false, error:"unimplemented" }.',
     inputSchema: { type: 'object', properties: { repo: { type: 'string' }, analysis_type: { type: 'string' } }, required: ['repo'] },
   },
   {
     name: 'github_pr_manage',
-    description: 'Pull request management',
+    description: '[unimplemented in ruvector-mcp] Returns { ok:false, error:"unimplemented" }.',
     inputSchema: { type: 'object', properties: { repo: { type: 'string' }, pr_number: { type: 'number' }, action: { type: 'string' } }, required: ['repo', 'action'] },
   },
   {
     name: 'workflow_create',
-    description: 'Create custom workflows',
+    description: '[unimplemented in ruvector-mcp] Returns { ok:false, error:"unimplemented" }.',
     inputSchema: { type: 'object', properties: { name: { type: 'string' }, steps: { type: 'array' } }, required: ['name', 'steps'] },
   },
   {
     name: 'workflow_execute',
-    description: 'Execute predefined workflows',
+    description: '[unimplemented in ruvector-mcp] Returns { ok:false, error:"unimplemented" }.',
     inputSchema: { type: 'object', properties: { workflowId: { type: 'string' }, params: { type: 'object' } }, required: ['workflowId'] },
   },
   {
     name: 'parallel_execute',
-    description: 'Execute tasks in parallel',
+    description: '[unimplemented in ruvector-mcp] Returns { ok:false, error:"unimplemented" }.',
     inputSchema: { type: 'object', properties: { tasks: { type: 'array' } }, required: ['tasks'] },
   },
   {
     name: 'sparc_mode',
-    description: 'Run SPARC development modes',
+    description: '[unimplemented in ruvector-mcp] Returns { ok:false, error:"unimplemented" }.',
     inputSchema: { type: 'object', properties: { mode: { type: 'string' }, task_description: { type: 'string' } }, required: ['mode', 'task_description'] },
   },
 ];
+
+// Advertised tool names. Only the memory_* tools are genuinely backed by
+// ruvector-postgres; every other advertised tool is an unimplemented stub that
+// must return an honest error rather than fabricating success.
+const ADVERTISED_TOOLS = new Set(TOOLS.map((t) => t.name));
 
 // ── Tool execution ────────────────────────────────────────────────────────────
 
@@ -359,30 +368,20 @@ async function executeTool(name, args = {}) {
         }
       }
 
-      case 'swarm_init': {
-        const swarmId = `swarm_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-        await memStore(`swarm:${swarmId}`, JSON.stringify({ id: swarmId, topology: args.topology, maxAgents: args.maxAgents || 8 }), 'swarms').catch(() => {});
-        return { success: true, swarmId, topology: args.topology, maxAgents: args.maxAgents || 8, status: 'initialized', timestamp: new Date().toISOString() };
-      }
-
-      case 'agent_spawn': {
-        const agentId = `agent_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-        return { success: true, agentId, type: args.type, name: args.name || `${args.type}-${Date.now()}`, status: 'active', timestamp: new Date().toISOString() };
-      }
-
-      case 'task_orchestrate': {
-        const taskId = `task_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-        return { success: true, taskId, task: args.task, strategy: args.strategy || 'parallel', priority: args.priority || 'medium', status: 'pending', timestamp: new Date().toISOString() };
-      }
-
-      case 'swarm_status':
-        return { success: true, swarmId: args.swarmId || 'unknown', topology: 'hierarchical', agentCount: 0, activeAgents: 0, taskCount: 0, timestamp: new Date().toISOString() };
-
-      case 'neural_patterns':
-        return { success: true, action: args.action, patterns: [], timestamp: new Date().toISOString() };
-
       default:
-        return { success: true, tool: name, message: `${name} executed (ruvector-mcp stub)`, timestamp: new Date().toISOString() };
+        // Honest failure. Advertised orchestration tools (swarm_init,
+        // agent_spawn, task_orchestrate, swarm_status, neural_patterns,
+        // coordination_sync, load_balance, performance_report,
+        // bottleneck_analyze, github_repo_analyze, github_pr_manage,
+        // workflow_create, workflow_execute, parallel_execute, sparc_mode)
+        // have no backing implementation here — never fabricate success.
+        // Unknown tool names are also an error, not a silent success.
+        if (ADVERTISED_TOOLS.has(name)) {
+          log('WARN', `tool ${name}: unimplemented (memory_* tools only)`);
+          return { ok: false, success: false, error: 'unimplemented', tool: name, message: `${name} is not implemented in ruvector-mcp (memory_* tools only)`, timestamp: new Date().toISOString() };
+        }
+        log('WARN', `tool ${name}: unknown`);
+        return { ok: false, success: false, error: 'unknown_tool', tool: name, message: `unknown tool: ${name}`, timestamp: new Date().toISOString() };
     }
   } catch (err) {
     log('ERROR', `tool ${name} failed: ${err.message}`);
