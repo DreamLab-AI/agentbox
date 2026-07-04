@@ -603,6 +603,37 @@ MCPEOF
   fi
 fi
 
+# ── ADR-036 D2 / PRD-018 Phase 0: de-register the ungoverned ruvector fork ──
+# One governed durable RuVector writer only (mcp/servers/ruvector-mcp.cjs,
+# registered "claude-flow" above). An older personal fork of the server
+# (typically ~/.claude/ruvector-mcp.cjs, registered "ruvector" in the
+# user-level ~/.claude/.claude.json) predates the PROTECTED_NAMESPACES guard
+# and must not stay registered — it can write to protected namespaces the
+# governed server refuses. Only registrations whose script path is a
+# ruvector-mcp OUTSIDE /opt/agentbox are removed; the fork file itself is
+# left on disk (deprecated). Idempotent; failure never blocks boot.
+_USER_CLAUDE_JSON="/home/devuser/.claude/.claude.json"
+if [ -f "$_USER_CLAUDE_JSON" ]; then
+  python3 - "$_USER_CLAUDE_JSON" <<'PYEOF' || true
+import json, sys
+path = sys.argv[1]
+try:
+    cfg = json.load(open(path))
+except Exception:
+    sys.exit(0)
+servers = cfg.get("mcpServers") or {}
+doomed = [k for k, v in servers.items()
+          if isinstance(v, dict)
+          and any("ruvector-mcp" in str(a) and "/opt/agentbox/" not in str(a)
+                  for a in (v.get("args") or []) + [v.get("command") or ""])]
+for k in doomed:
+    del servers[k]
+if doomed:
+    json.dump(cfg, open(path, "w"), indent=2)
+    print("  [mcp] De-registered ungoverned ruvector fork: " + ", ".join(doomed) + " (ADR-036 D2)")
+PYEOF
+fi
+
 # ── Live Nostr session mirror: register the hook in settings.json ──
 # Replaces the retired Telegram/CTM mirror. Idempotently registers
 # config/hooks/nostr-live-mirror.cjs on the conversation hook events so a fresh

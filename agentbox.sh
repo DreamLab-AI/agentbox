@@ -281,6 +281,24 @@ cmd_backup() {
     mkdir -p "${work}/volumes/ruvector-data"
     _volume_tar agentbox-ruvector-data | tar -C "${work}/volumes/ruvector-data" -xf - 2>/dev/null || true
 
+    # -- ruvector-postgres logical dump (PRD-018 Phase 0, closes gap #12) -----
+    # The memory DB (2M+ rows on ruvector_postgres_data_v2) was previously
+    # absent from backups entirely. A raw volume tar of a live PG datadir is
+    # not crash-consistent, so the backup carries a pg_dump -Fc instead;
+    # restore replays it via pg_restore once the sidecar is back up.
+    local rv_pg_dumped=0
+    if docker exec ruvector-postgres pg_isready -U ruvector -d ruvector >/dev/null 2>&1; then
+        echo -e "  ${GREEN}+${NC} ruvector-postgres (pg_dump -Fc — 2M+ rows, may take minutes)"
+        if docker exec ruvector-postgres pg_dump -U ruvector -Fc ruvector > "${work}/ruvector-pg.dump" 2>/dev/null; then
+            rv_pg_dumped=1
+        else
+            rm -f "${work}/ruvector-pg.dump"
+            echo -e "  ${YELLOW}!${NC} pg_dump failed — memory DB NOT included in this backup"
+        fi
+    else
+        echo -e "  ${YELLOW}!${NC} ruvector-postgres not running — memory DB NOT included in this backup"
+    fi
+
     # -- solid-data (when pods = local-solid-rs) ------------------------------
     # solid-pod-rs (ADR-010) stores under /var/lib/solid. See docs/user/backup-restore.md.
     local solid_included=0
@@ -353,6 +371,7 @@ cmd_backup() {
   "solid_included": ${solid_included},
   "contents": {
     "ruvector_data": true,
+    "ruvector_pg_dump": $([ "$rv_pg_dumped" -eq 1 ] && echo true || echo false),
     "solid_data": ${solid_included},
     "sovereign_identities": ${secrets_included},
     "agentbox_toml": $([ -f "${work}/agentbox.toml" ] && echo true || echo false),
@@ -486,6 +505,29 @@ cmd_restore() {
     # -- restart stack --------------------------------------------------------
     echo -e "${CYAN}Restarting stack...${NC}"
     docker compose -f "${SCRIPT_DIR}/docker-compose.yml" up -d
+
+    # -- restore ruvector-postgres memory DB (PRD-018 Phase 0) ----------------
+    # pg_restore --clean replaces the current contents with the dump. The
+    # operator already confirmed the restore above; this replays the memory DB
+    # into the running sidecar once it accepts connections.
+    if [[ -f "${work}/ruvector-pg.dump" ]]; then
+        echo -e "  ${GREEN}*${NC} Restoring ruvector-postgres memory DB (pg_restore --clean)"
+        local rv_deadline=$(( $(date +%s) + 120 ))
+        local rv_ready=0
+        while [[ $(date +%s) -lt $rv_deadline ]]; do
+            if docker exec ruvector-postgres pg_isready -U ruvector -d ruvector >/dev/null 2>&1; then
+                rv_ready=1; break
+            fi
+            sleep 2
+        done
+        if [[ "$rv_ready" -eq 1 ]] && docker exec -i ruvector-postgres \
+                pg_restore -U ruvector -d ruvector --clean --if-exists < "${work}/ruvector-pg.dump" 2>/dev/null; then
+            echo -e "  ${GREEN}*${NC} Memory DB restored"
+        else
+            echo -e "  ${YELLOW}!${NC} pg_restore failed or sidecar not ready — memory DB NOT restored."
+            echo -e "    Replay manually: docker exec -i ruvector-postgres pg_restore -U ruvector -d ruvector --clean --if-exists < ruvector-pg.dump"
+        fi
+    fi
 
     echo ""
     echo -e "${GREEN}Restore complete.${NC}"
