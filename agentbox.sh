@@ -45,6 +45,7 @@ Local lifecycle commands:
   ${GREEN}build${NC}            Build the Nix image [--variant runtime|desktop|full]
   ${GREEN}rebuild${NC}          Full dev-loop cycle: down + build + up --build
   ${GREEN}update${NC}           Update flake inputs + npm CLI versions + resolve hashes [--check|--npm-only|--flake-only]
+  ${GREEN}ruvector${NC}         Manage the ruvector-postgres memory sidecar [status|check|test|update|rollback]
   ${GREEN}logs${NC}             Follow logs [service: supervisorctl tail, else compose logs]
   ${GREEN}shell${NC}            Open shell in container [profile: zellij layout in that profile]
   ${GREEN}health${NC}           Show service health [--json: raw JSON output]
@@ -77,6 +78,9 @@ Examples:
   $0 rebuild                # down + build + up (dev-loop iteration)
   $0 update                 # full update: flake inputs (nixpkgs etc.) + npm CLI versions + resolve hashes
   $0 update --check         # report available updates without patching
+  $0 ruvector check         # compare running sidecar + pinned image against Docker Hub
+  $0 ruvector update        # gated sidecar update: dump + snapshot + candidate rehearsal + swap
+  $0 ruvector rollback      # revert the last sidecar update from its snapshot
   $0 update --flake-only    # only update flake inputs (nixpkgs, rust-overlay, etc.)
   $0 update --npm-only      # only bump npm CLI versions in flake.nix
   $0 logs                   # Follow all service logs
@@ -784,6 +788,16 @@ cmd_update() {
     echo "  git add flake.lock flake.nix lib/ && git commit -m 'chore(deps): update flake inputs + bump npm CLIs'"
 }
 
+cmd_ruvector() {
+    # Careful, gated lifecycle management for the ruvector-postgres sidecar.
+    # The image pin lives in agentbox.toml [integrations.ruvector_external]
+    # (flake composeText reads it) mirrored into docker-compose.yml; the
+    # engine rehearses every update on a pg_basebackup snapshot before the
+    # production volume (2M+ memory_entries) is touched, and records state
+    # so `rollback` can restore the previous image + datadir.
+    exec bash "${SCRIPT_DIR}/scripts/ruvector-sidecar-update.sh" "$@"
+}
+
 cmd_rebuild() {
     if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
         echo "Usage: $0 rebuild [--no-cleanup]"
@@ -1390,7 +1404,7 @@ while [[ $# -gt 0 ]]; do
             usage
             exit 0
             ;;
-        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser|backup|restore|up|down|build|rebuild|update|logs|shell|health|browsercontainer|xr-runtime|migrate-workspace|preflight)
+        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser|backup|restore|up|down|build|rebuild|update|ruvector|logs|shell|health|browsercontainer|xr-runtime|migrate-workspace|preflight)
             CMD="$1"
             shift
             break
@@ -1423,6 +1437,7 @@ case "${CMD:-}" in
     build)         cmd_build "$@" ;;
     rebuild)       cmd_rebuild "$@" ;;
     update)        cmd_update "$@" ;;
+    ruvector)      cmd_ruvector "$@" ;;
     logs)              cmd_logs "$@" ;;
     shell)             cmd_shell "$@" ;;
     health)            cmd_health "$@" ;;

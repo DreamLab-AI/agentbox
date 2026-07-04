@@ -321,7 +321,12 @@ conninfo = "postgresql://ruvector:@@RUVECTOR_PG_PASSWORD@@@ruvector-postgres:543
 # deleted and nothing recreated it — 2M+ memory entries unreachable
 # until a manual `docker run`. This flag closes that gap.
 manage_sidecar = true
-image          = "ruvnet/ruvector-postgres:latest"
+# Pinned tag@digest (upstream publishes linux/amd64 only). A floating :latest
+# here silently drifts from what is actually deployed — the running sidecar
+# was one image release behind before this pin. Bump ONLY via
+# `./agentbox.sh ruvector update`, which rehearses the new image against a
+# pg_basebackup snapshot of the production dataset before swapping.
+image          = "ruvnet/ruvector-postgres:2.0.5@sha256:7fb09d439d82fccbe6e0035d09f91c9dce456bb2d70cb2e8d6afb12a6afa2051"
 # Pre-existing volume holding the production dataset (PG17, 2M+ rows).
 # The compose volume declaration reuses it by name; do NOT rename
 # without a migration.

@@ -143,3 +143,6 @@ skills/**/backups/
 portfinder-*.tgz
 
 .env.solid-pods
+
+# ruvector sidecar update/backup artefacts (pg dumps, snapshots state)
+/backups/

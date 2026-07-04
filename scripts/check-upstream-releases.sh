@@ -80,10 +80,13 @@ pinned=$(grep -oE 'comfyuiRev\s*=\s*"v?[0-9.]+"' flake.nix | head -1 | sed 's/.*
 latest=$(latest_gh_release "comfyanonymous/ComfyUI")
 print_row "comfyanonymous/ComfyUI" "${pinned:-???}" "$latest"
 
-section "gitleaks-action (gitleaks/gitleaks-action)"
-pinned=$(grep -oE 'gitleaks/gitleaks-action@v[0-9.]+' .github/workflows/secret-scan.yml | head -1 | sed 's/.*@v//')
-latest=$(latest_gh_release "gitleaks/gitleaks-action")
-print_row "gitleaks/gitleaks-action" "${pinned:-???}" "$latest"
+section "gitleaks (gitleaks/gitleaks)"
+# secret-scan.yml installs the binary directly via GITLEAKS_VERSION="x.y.z"
+# (the gitleaks-action wrapper is gone). Guarded: a format change here must
+# degrade to "???", not kill the dashboard (set -euo pipefail).
+pinned=$(grep -oE 'GITLEAKS_VERSION="[0-9.]+"' .github/workflows/secret-scan.yml 2>/dev/null | head -1 | grep -oE '[0-9.]+' || echo "???")
+latest=$(latest_gh_release "gitleaks/gitleaks")
+print_row "gitleaks/gitleaks" "${pinned:-???}" "$latest"
 
 section "nostr-tools (npm)"
 pinned=$(jq -r '.dependencies["nostr-tools"] // "???"' mcp/package.json 2>/dev/null | sed 's/^[\^~]//')
@@ -124,6 +127,21 @@ for entry in \
   print_row "$pkg" "${pinned:-???}" "$latest"
 done
 echo "  To bump: ./agentbox.sh update"
+
+section "Docker sidecar images (agentbox.toml pins)"
+# ruvector-postgres: pin is tag@digest in [integrations.ruvector_external].image;
+# compare the digest part against what :latest resolves to on Docker Hub.
+rv_pin=$(awk '/^\[integrations\.ruvector_external\]/{f=1;next} /^\[/{f=0}
+              f && /^image[[:space:]]*=/{
+                  sub(/^image[[:space:]]*=[[:space:]]*"/,""); sub(/".*$/,""); print; exit }' agentbox.toml 2>/dev/null || echo "???")
+rv_pin_digest="${rv_pin##*@}"
+[ "$rv_pin_digest" = "$rv_pin" ] && rv_pin_digest="floating:${rv_pin##*:}"
+rv_hub=$(curl -fsSL "https://hub.docker.com/v2/repositories/ruvnet/ruvector-postgres/tags/latest" 2>/dev/null | jq -r '.digest // "???"')
+rv_hub_tag=$(curl -fsSL "https://hub.docker.com/v2/repositories/ruvnet/ruvector-postgres/tags/?page_size=50" 2>/dev/null \
+    | jq -r --arg d "$rv_hub" '[.results[] | select(.digest==$d and (.name|test("^[0-9]")))]
+                               | sort_by(.last_updated) | last | .name // "?"')
+print_row "ruvnet/ruvector-postgres" "${rv_pin_digest:0:19}" "${rv_hub:0:19} (${rv_hub_tag})"
+echo "  To bump: ./agentbox.sh ruvector update   (gated: dump + snapshot + candidate rehearsal)"
 
 printf "\n${BOLD}Legend${RESET}: ${GREEN}green${RESET} = pinned = latest; ${RED}red${RESET} = bump available; ${YELLOW}yellow${RESET} = unknown pin.\n"
 printf "Renovate opens PRs for red rows on Mondays. This script is just a human-readable dashboard.\n\n"
