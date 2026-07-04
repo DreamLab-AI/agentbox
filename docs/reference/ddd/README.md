@@ -28,6 +28,7 @@ drove the context and the ADRs whose decisions it realises.
 | [013](DDD-013-hardening-boundary-domain.md) | Hardening Boundary Domain | Accepted | [PRD-REMEDIATION-001](../prd/PRD-REMEDIATION-001.md) · [ADR-027](../adr/ADR-027-default-secure-posture.md) |
 | [014](DDD-014-compression-cache-domain.md) | Compression & Cache Domain | Proposed | [PRD-016](../prd/PRD-016-context-compression-caching.md) · [ADR-034](../adr/ADR-034-headroom-rust-crate-integration.md) |
 | [015](DDD-015-project-tracking-domain.md) | Project Tracking Domain | Accepted | [PRD-017](../prd/PRD-017-sovereign-project-tracking.md) · [ADR-035](../adr/ADR-035-project-tracking-telemetry-and-nostr-kind.md) |
+| [016](DDD-016-memory-learning-domain.md) | Memory & Learning Domain | Proposed | [PRD-018](../prd/PRD-018-ruvector-native-memory-and-learning.md) · [ADR-036](../adr/ADR-036-ruvector-capability-adoption-and-learning-loop.md) |
 
 ## See also
 

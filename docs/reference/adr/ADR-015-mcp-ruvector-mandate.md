@@ -74,3 +74,21 @@ mount, surviving image rebuilds. The MCP server searches for `pg` in order:
 - ruvector-postgres schema: `memory_entries` table with `ruvector(384)` embedding column
 - `generate_text_embedding()`: server-side embedding function (MiniLM-L6-v2, 384-dim)
 - ADR-005: Pluggable adapter architecture (memory adapter slot)
+
+## Amendment (2026-07-04) — embedding pipeline correction
+
+A live audit (7-agent verification against the running system) found two claims
+in this ADR stale; the mandate itself stands, but the mechanism is corrected:
+
+- **Embeddings are NOT MiniLM-L6-v2 and NOT computed by `generate_text_embedding()`.**
+  The live `ruvector-mcp.cjs` computes embeddings client-side via Xinference
+  (`XINFERENCE_ENDPOINT`, model **`bge-small-en-v1.5`**, 384-dim) and INSERTs the
+  vector directly. The Postgres-side `generate_text_embedding()` is a
+  non-semantic character-hash stub and is never called by the live path.
+- **Two copies of the MCP server exist**: this ADR's mandated
+  `/opt/agentbox/mcp/servers/ruvector-mcp.cjs` (registered `claude-flow`, carries
+  `PROTECTED_NAMESPACES` governance) and an older diverged personal copy at
+  `~/.claude/ruvector-mcp.cjs` (registered `ruvector`, no governance guard).
+  Consolidation onto the mandated copy is the recorded intent.
+
+Full audit findings: `~/workspace/docs/ruvector-system-reference.md`.

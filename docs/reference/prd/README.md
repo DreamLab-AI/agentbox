@@ -31,6 +31,7 @@ shipped the default-secure posture.
 | [015](PRD-015-consumer-broadcast-economy.md) | Consumer & broadcast economy surfaces | Draft v1.2 | [ADR-021](../adr/ADR-021-llm-resource-marketplace-kinds.md), [ADR-032](../adr/ADR-032-402-scheme-grammar.md), [ADR-033](../adr/ADR-033-did-nostr-multikey-convergence.md) · [DDD-006](../ddd/DDD-006-llm-marketplace-domain.md) |
 | [016](PRD-016-context-compression-caching.md) | Context compression & caching (Headroom integration) | Draft v1.0 | [ADR-034](../adr/ADR-034-headroom-rust-crate-integration.md) · [DDD-014](../ddd/DDD-014-compression-cache-domain.md) |
 | [017](PRD-017-sovereign-project-tracking.md) | Sovereign project tracking | Draft v1 | [ADR-035](../adr/ADR-035-project-tracking-telemetry-and-nostr-kind.md) · [DDD-015](../ddd/DDD-015-project-tracking-domain.md) |
+| [018](PRD-018-ruvector-native-memory-and-learning.md) | RuVector-native memory and learning | Draft v1 | [ADR-036](../adr/ADR-036-ruvector-capability-adoption-and-learning-loop.md) · [DDD-016](../ddd/DDD-016-memory-learning-domain.md) |
 | [REMEDIATION-001](PRD-REMEDIATION-001.md) | Default-secure posture remediation | Shipped (Phase 0–4) | [ADR-027](../adr/ADR-027-default-secure-posture.md) · [DDD-013](../ddd/DDD-013-hardening-boundary-domain.md) |
 
 ## See also
