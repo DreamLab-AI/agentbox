@@ -472,7 +472,7 @@ cmd_restore() {
 
     # -- stop stack -----------------------------------------------------------
     echo -e "${CYAN}Stopping stack...${NC}"
-    docker compose -f "${SCRIPT_DIR}/docker-compose.yml" down 2>/dev/null || true
+    docker compose "${COMPOSE_ARGS[@]}" down 2>/dev/null || true
 
     # -- restore volumes ------------------------------------------------------
     if [[ -d "${work}/volumes/ruvector-data" ]]; then
@@ -509,8 +509,12 @@ cmd_restore() {
     fi
 
     # -- restart stack --------------------------------------------------------
+    # COMPOSE_ARGS includes docker-compose.override.yml when present — the
+    # override carries RUVECTOR_PG_CONNINFO/RUVECTOR_PG_PASSWORD into the
+    # agentbox service; a bare -f docker-compose.yml would silently downgrade
+    # the memory sidecar connection to the default password.
     echo -e "${CYAN}Restarting stack...${NC}"
-    docker compose -f "${SCRIPT_DIR}/docker-compose.yml" up -d
+    docker compose "${COMPOSE_ARGS[@]}" up -d
 
     # -- restore ruvector-postgres memory DB (PRD-018 Phase 0) ----------------
     # pg_restore --clean replaces the current contents with the dump. The

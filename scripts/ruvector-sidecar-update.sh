@@ -804,17 +804,25 @@ cmd_repair_namespaces() {
     local n
     n=$(pg "$CONTAINER" "SELECT count(*) FROM memory_entries WHERE ${SWAP_PREDICATE};")
 
+    # The swapped JSON in the namespace column was truncated on write for most
+    # rows (the column is narrower than the original value), so a bare ::jsonb
+    # cast aborts the whole transaction. PG17's pg_input_is_valid() guards the
+    # cast; unparseable text is preserved verbatim as {"raw":…,"truncated":true}
+    # — that truncated text is all that remains of the original value.
     local sql="BEGIN;
 UPDATE memory_entries
    SET namespace = value->>'data',
-       value     = namespace::jsonb
+       value     = CASE WHEN pg_input_is_valid(namespace, 'jsonb')
+                        THEN namespace::jsonb
+                        ELSE jsonb_build_object('raw', namespace, 'truncated', true)
+                        END
  WHERE ${SWAP_PREDICATE};
 COMMIT;"
 
     info "repair-namespaces (namespace<->value un-swap)"
     echo "  detection : namespace LIKE '{%' AND value ? 'data'"
     echo "  affected  : ${n} rows"
-    echo "  transform : namespace <- value->>'data' ; value <- namespace::jsonb"
+    echo "  transform : namespace <- value->>'data' ; value <- namespace::jsonb when valid, else {\"raw\":…,\"truncated\":true}"
     echo "  examples  :"
     pg "$CONTAINER" "SELECT id || '  ns=[' || left(namespace,32) || ']  ->real=[' || left(value->>'data',40) || ']'
                      FROM memory_entries WHERE ${SWAP_PREDICATE} LIMIT 5;" | sed 's/^/    /'
