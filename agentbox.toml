@@ -269,9 +269,9 @@ resolution = "1920x1080"
 webgpu = true
 
 [skills.browser]
-agent_browser = false
-playwright = false
-qe_browser = false
+agent_browser = true
+playwright = false   # superseded by the browsercontainer sidecar (browser / browser-automation skills)
+qe_browser = true
 # All browser automation routes through the external browsercontainer sidecar.
 # MCP SSE: http://browsercontainer:8931/sse (chrome-devtools-mcp 40+ tools)
 # CDP: browsercontainer:9222 | VNC: :5903
@@ -338,12 +338,12 @@ data_volume    = "ruvector_postgres_data_v2"
 # manifest with all six false is byte-identical to the pre-PRD-018 product
 # (PRD-018 metric 1). The entrypoint mirrors each flag into the RUVECTOR_* gate
 # env of the governed ruvector-mcp server in the generated .mcp.json.
-hybrid_search      = false   # memory_hybrid_search (DIY fusion: ruvector_hybrid_score + PG FTS)
-typed_metadata     = false   # honour importance/tags/memory_type/ttl on memory_store (else metadata stays {})
-metadata_gin       = false   # require/build the GIN on metadata jsonb for tag retrieval (built by a D5 hygiene op)
-health_tool        = false   # expose memory_health read-only diagnostics
-episodic_ttl_sweep = false   # honour TTL, sweep expired episodic entries (implements delete)
-memory_orient      = false   # memory_orient OODA cold-start bundle (semantic + effectiveness aggregates + episodic)
+hybrid_search      = true    # memory_hybrid_search (DIY fusion: ruvector_hybrid_score + PG FTS)
+typed_metadata     = true    # honour importance/tags/memory_type/ttl on memory_store (else metadata stays {})
+metadata_gin       = true    # require/build the GIN on metadata jsonb for tag retrieval (built by a D5 hygiene op)
+health_tool        = true    # expose memory_health read-only diagnostics
+episodic_ttl_sweep = true    # honour TTL, sweep expired episodic entries (implements delete)
+memory_orient      = true    # memory_orient OODA cold-start bundle (semantic + effectiveness aggregates + episodic)
 
 # ── PRD-018 / ADR-036 D6: memory learning loop (top-level table, default-off) ──
 # The agentbox-owned hook (config/hooks/trajectory-recorder.cjs) records real
@@ -354,8 +354,8 @@ memory_orient      = false   # memory_orient OODA cold-start bundle (semantic + 
 # Do NOT enable a consumer (feed_retrieval/feed_routing) ahead of its producer
 # (record_trajectories); the validator flags that as W066.
 [memory_learning]
-enabled                = false   # master gate for the learning loop
-record_trajectories    = false   # agentbox hook writes trajectories/trajectory_steps
+enabled                = true    # master gate for the learning loop
+record_trajectories    = true    # agentbox hook writes trajectories/trajectory_steps
 aggregate_min_samples  = 20      # Wilson-bound sample floor before an aggregate influences retrieval
 recency_half_life_days = 14      # recency half-life for aggregation and the hybrid recency term
 feed_retrieval         = false   # effectiveness aggregates re-rank memory_search
@@ -369,9 +369,9 @@ relevance_feedback     = false   # ADOPT-LATER, reserved (wraps ruvector_enable_
 # flow of scripts/ruvector-sidecar-update.sh. An absent block or a false flag is
 # fail-closed (dry-run only) — the op refuses to mutate.
 [memory_hygiene]
-allow_namespace_repair   = false  # non-dry-run repair-namespaces (~178k swapped namespace/value rows)
-allow_embedding_backfill = false  # non-dry-run backfill-embeddings (NULL-embedding rows via Xinference)
-allow_legacy_archival    = false  # non-dry-run archive-legacy (frozen legacy telemetry → cold storage)
+allow_namespace_repair   = false  # non-dry-run repair-namespaces (completed 2026-07-05: 178,238 rows un-swapped)
+allow_embedding_backfill = false  # non-dry-run backfill-embeddings (completed 2026-07-05: 36 rows embedded, 0 NULL remain)
+allow_legacy_archival    = false  # non-dry-run archive-legacy (completed 2026-07-05: 2,014,173 rows → cold archive)
 
 [integrations.comfyui_external]
 enabled = false
@@ -410,7 +410,7 @@ enable_mcp             = false    # → JSS_MCP=1 on the [program:solid-pod] env
 # prior behaviour. When on, the signing key is the active stack's nostr.key.enc
 # (resolved from AGENTBOX_STACK / integrations.solid_pod_rs.sign_stack); load
 # failures fail open (adapter goes out unsigned, pod still fails closed).
-sign_requests          = false    # originate signed NIP-98 from the pods adapter
+sign_requests          = true     # originate signed NIP-98 from the pods adapter
 enable_did_nostr       = true     # did:nostr:<pubkey> → Solid WebID resolver (ADR-013)
 enable_webhook_signing = true     # RFC 9421 Ed25519 outbound notification signing
 enable_rate_limit      = true     # sliding-window LRU per-connection guard
@@ -444,7 +444,7 @@ mermaid = true
 # open-design: structured intake pipeline, 129 brand specs, 5-dimensional critique gate,
 # P0/P1/P2 checklists, layout libraries (web/mobile/dashboard/deck). Default off.
 # NOT a replacement for the setup wizard SPA (PRD-012 / ADR-024).
-open_design = false
+open_design = true
 
 [skills.research]
 # web-researcher-mcp (Go binary, v1.36.4). Provides ~26 MCP research tools
@@ -497,7 +497,7 @@ contradiction_sample_rate = 0.1  # 1/10 retrievals sampled for LLM-judge contrad
 # Phase 2 — depends on skills.code_interpreter + features.expel_lesson_extraction.
 # See skills/voyager-skill-library/SKILL.md + ADR-019 §Mechanism 2.
 # Validator: E044 (requires skills.code_interpreter.enabled = true).
-enabled = false
+enabled = true
 max_skill_body_lines = 80      # reject candidates exceeding this line count
 max_evidence_age_s = 3600      # verified_by trace URN must be younger than this
 archive_after_days = 30        # non-max-version skills demoted to *-archive after N days
@@ -505,7 +505,7 @@ archive_after_days = 30        # non-max-version skills demoted to *-archive aft
 [skills.aci_shell]
 # SWE-agent-style Agent-Computer Interface MCP. 5 tools (view/edit/
 # search/test/submit). Phase 2 — off by default; opt-in only.
-enabled = false
+enabled = true
 max_view_lines = 150           # hard cap per aci.view_file call
 max_edit_context = 10          # max diff context lines in aci.edit_file response
 test_command_allowlist = ["pytest", "cargo test", "npm test", "go test"]
@@ -514,7 +514,7 @@ test_command_allowlist = ["pytest", "cargo test", "npm test", "go test"]
 # Execution-gated tree-search. Generates N candidates, executes each
 # in fresh kernel, scores by assertion pass. Slow path — explicitly
 # invoked, never auto-routed. Phase 2 — off by default.
-enabled = false
+enabled = true
 max_candidates = 5
 per_branch_timeout_s = 60
 spend_cap_usd = 0.50
@@ -677,6 +677,7 @@ timeout_ms = 180000
 [consultants.zai]
 enabled = true
 model   = "glm-5.2"
+reasoning_effort = "high"   # deep thinking: maps to Claude Code MAX_THINKING_TOKENS → GLM reasoning_effort
 home    = "/home/devuser/.zai"
 timeout_ms = 180000
 
@@ -820,7 +821,7 @@ mount_path           = "/lo"
 bundle_path          = "/opt/agentbox/browser"
 external_url         = ""
 sri_hash             = ""
-expose_port          = false
+expose_port          = true
 extra_panes          = []
 upstream_panes_visible = true
 source_code_header   = ""        # default = upstream repo URL (AGPL §13)
@@ -841,13 +842,13 @@ source_code_header   = ""        # default = upstream repo URL (AGPL §13)
 # Primers and github_enrichment are the only external hops and are independently
 # gated (a Z.AI/GLM key and GITHUB_TOKEN respectively).
 [project_tracking]
-enabled             = false                                          # master gate; /v1/projects → 503 when off
+enabled             = true                                           # master gate; /v1/projects → 503 when off
 scan_dirs           = ["/projects", "/home/devuser/workspace/project"]  # one-level-deep git-repo discovery roots
 scan_interval_hours = 6                                              # periodic re-scan; 0 = on-demand only (no scheduler)
 github_enrichment   = false                                         # pull open issues + stars via GITHUB_TOKEN (one external hop)
 primer_model        = "glm-5.2"                                     # Z.AI/GLM model for primers/synopses (→ consultant, ADR-011)
 primer_on_scan      = false                                         # auto-generate primers for new projects during a scan
-nostr_publish       = false                                         # publish kind-30841 digests to the operator's did:nostr
+nostr_publish       = true                                          # publish kind-30841 digests to the operator's did:nostr
 metrics             = true                                          # emit the agentbox_project_* gauges on the port-bound /metrics
 
 [toolchains]
@@ -1108,9 +1109,8 @@ audit_acknowledged = true
 writable_volumes = ["solid-data:/var/lib/solid"]
 reason = "solid-pod-rs fs-backend requires atomic-rename writable storage under /var/lib/solid"
 
-# [security.exceptions.playwright] removed — no local chromium in image.
-# The NNP exception is no longer needed; browser sandbox runs in the
-# external browsercontainer sidecar.
+# [security.exceptions.playwright] intentionally absent — playwright is
+# superseded by the external browsercontainer sidecar (no local chromium).
 
 [security.exceptions.desktop]
 # X11 abstract socket dir (mode 1777 sticky — the canonical X11 perm) and
