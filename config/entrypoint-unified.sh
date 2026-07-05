@@ -654,6 +654,8 @@ if [ -f "$_MCP_JSON" ] && command -v node >/dev/null 2>&1; then
   ML_ENABLED="$_ML_ENABLED" ML_RECORD_TRAJ="$_ML_RECORD_TRAJ" \
   ML_FEED_RETRIEVAL="$_ML_FEED_RETRIEVAL" ML_FEED_ROUTING="$_ML_FEED_ROUTING" \
   ML_AGG_MIN="$_ML_AGG_MIN" ML_HALFLIFE="$_ML_HALFLIFE" \
+  RV_CONN="host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=${RUVECTOR_PG_PASSWORD:-ruvector}" \
+  RV_NODE_PATH="$_PG_NODE_PATH" RV_XINF="$XINFERENCE_ENDPOINT" RV_EMB="$EMBEDDING_MODEL" \
   node <<'MCPGATEJS' || true
 const fs = require('fs');
 const f = process.env.MCP_JSON;
@@ -679,6 +681,20 @@ let changed = false;
 for (const [k, v] of Object.entries(gates)) {
   const val = String(v == null ? '' : v);
   if (srv.env[k] !== val) { srv.env[k] = val; changed = true; }
+}
+// C-1 (rebuild-readiness audit): .mcp.json persists on the workspace volume, so
+// the four connection fields written at first boot went stale on password /
+// endpoint changes (the governed server would then fail closed with old creds).
+// Reconcile them every boot exactly like the gates — but only with non-empty
+// values, so an unset var never clobbers a working config.
+const conn = {
+  RUVECTOR_PG_CONNINFO: process.env.RV_CONN,
+  NODE_PATH:            process.env.RV_NODE_PATH,
+  XINFERENCE_ENDPOINT:  process.env.RV_XINF,
+  EMBEDDING_MODEL:      process.env.RV_EMB,
+};
+for (const [k, v] of Object.entries(conn)) {
+  if (v != null && v !== '' && srv.env[k] !== v) { srv.env[k] = v; changed = true; }
 }
 if (changed) { fs.writeFileSync(f, JSON.stringify(s, null, 2)); console.log('  [mcp] injected PRD-018 RuVector memory gate env into .mcp.json'); }
 else { console.log('  [mcp] PRD-018 RuVector memory gate env already current'); }

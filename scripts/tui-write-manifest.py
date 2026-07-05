@@ -205,7 +205,7 @@ lines += [
     "",
     "[consultants.deepseek]",
     f'enabled = {b("consultants.deepseek.enabled")}',
-    'model      = "deepseek-reasoner"',
+    'model      = "deepseek-v4-0324"',
     'timeout_ms = 120000',
     "",
 ]
@@ -471,6 +471,17 @@ if s.get("sovereign_mesh.relay.enabled", False):
         "[security.exceptions.nostr-relay]",
         'writable_volumes = ["nostr-relay-data:/var/lib/nostr-relay"]',
         'reason = "nostr-rs-relay SQLite journal and WAL require a writable durable path"',
+        "",
+    ]
+
+# consultants.enabled is round-tripped via state, so the wizard-verbatim
+# output (no existing-manifest merge, e.g. the CI fixture round-trip) must
+# regenerate its exception block too or E021 fires on its own output.
+if s.get("consultants.enabled", False):
+    _security_exceptions += [
+        "[security.exceptions.consultants]",
+        'writable_volumes = ["consultations-data:/var/lib/agentbox/consultations"]',
+        'reason = "consultant tier writes JSONL audit log per call"',
         "",
     ]
 
