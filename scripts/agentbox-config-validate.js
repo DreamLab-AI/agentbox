@@ -27,6 +27,8 @@
  *   E050-E052, W050-W052    ACI MCP + tree-search (ADR-020 / PRD-008)
  *   E-PAY1, E-PAY2, E-PAY3, W-PAY1
  *                           payments.consumer spend-policy coherence
+ *   W066                    memory-learning consumer-ahead-of-producer
+ *                           coherence (PRD-018 / ADR-036 D6)
  *
  * Reserved / retired codes (do not reuse):
  *   E009                    superseded by E017
@@ -1332,6 +1334,29 @@ if (ldEnabled) {
     errors.push({
       code: 'E-PAY3',
       message: 'E-PAY3: skills.payment_router.enabled=true requires payments.consumer.enabled=true (the payment-router skill gates all calls through spend-policy; without consumer enabled every call is rejected 402)'
+    });
+  }
+}
+
+// ─── W066: memory-learning consumer-ahead-of-producer coherence (ADR-036 D6) ─
+//
+// W066 — [memory_learning].feed_retrieval or feed_routing = true while
+//         record_trajectories = false is a consumer-ahead-of-producer
+//         misconfiguration: the effectiveness aggregates those consumers read are
+//         produced by the trajectory-recording hook, so with the producer off the
+//         consumers have no corpus and stay inert. Advisory (ADR-036 D6
+//         consequence note), never blocking — the loop is fail-open by design.
+{
+  const ml = manifest.memory_learning || {};
+  const consumersOn = ml.feed_retrieval === true || ml.feed_routing === true;
+  if (consumersOn && ml.record_trajectories !== true) {
+    const which = [
+      ml.feed_retrieval === true ? 'feed_retrieval' : null,
+      ml.feed_routing === true ? 'feed_routing' : null,
+    ].filter(Boolean).join(' and ');
+    warnings.push({
+      code: 'W066',
+      message: `W066: [memory_learning].${which} = true while record_trajectories = false — a consumer is enabled ahead of its producer; the effectiveness aggregates these consumers read are produced by the trajectory-recording hook, so with record_trajectories off they have no corpus and stay inert (ADR-036 D6)`,
     });
   }
 }

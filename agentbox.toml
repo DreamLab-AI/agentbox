@@ -331,6 +331,47 @@ image          = "ruvnet/ruvector-postgres:2.0.5@sha256:7fb09d439d82fccbe6e0035d
 # The compose volume declaration reuses it by name; do NOT rename
 # without a migration.
 data_volume    = "ruvector_postgres_data_v2"
+# ── PRD-018 / ADR-036 D6: RuVector-native retrieval upgrades (all default-off) ──
+# Six retrieval flags extend this existing sidecar section. Default state == today:
+# pure-vector `<=>` search, no typed metadata, no learning, no ops. Each new
+# behaviour is opt-in and checked at its own code path before running, so a
+# manifest with all six false is byte-identical to the pre-PRD-018 product
+# (PRD-018 metric 1). The entrypoint mirrors each flag into the RUVECTOR_* gate
+# env of the governed ruvector-mcp server in the generated .mcp.json.
+hybrid_search      = false   # memory_hybrid_search (DIY fusion: ruvector_hybrid_score + PG FTS)
+typed_metadata     = false   # honour importance/tags/memory_type/ttl on memory_store (else metadata stays {})
+metadata_gin       = false   # require/build the GIN on metadata jsonb for tag retrieval (built by a D5 hygiene op)
+health_tool        = false   # expose memory_health read-only diagnostics
+episodic_ttl_sweep = false   # honour TTL, sweep expired episodic entries (implements delete)
+memory_orient      = false   # memory_orient OODA cold-start bundle (semantic + effectiveness aggregates + episodic)
+
+# ── PRD-018 / ADR-036 D6: memory learning loop (top-level table, default-off) ──
+# The agentbox-owned hook (config/hooks/trajectory-recorder.cjs) records real
+# (state, action, outcome, duration) tuples into the purpose-built trajectory
+# tables, and effectiveness is aggregated (Wilson lower-bound + recency decay)
+# onto the memory slot (namespace memory-learning-aggregates) — no new slot, no
+# new table. Master gate off = no hook registered, no aggregation, no consumers.
+# Do NOT enable a consumer (feed_retrieval/feed_routing) ahead of its producer
+# (record_trajectories); the validator flags that as W066.
+[memory_learning]
+enabled                = false   # master gate for the learning loop
+record_trajectories    = false   # agentbox hook writes trajectories/trajectory_steps
+aggregate_min_samples  = 20      # Wilson-bound sample floor before an aggregate influences retrieval
+recency_half_life_days = 14      # recency half-life for aggregation and the hybrid recency term
+feed_retrieval         = false   # effectiveness aggregates re-rank memory_search
+feed_routing           = false   # aggregates surface as advisory [INTELLIGENCE] hints
+sona_enabled           = false   # ADOPT-LATER, reserved (wraps ruvector_sona_learn behind a recall harness)
+relevance_feedback     = false   # ADOPT-LATER, reserved (wraps ruvector_enable_learning/record_feedback)
+
+# ── PRD-018 / ADR-036 D6: data hygiene ops (top-level table, default-off) ──
+# These flags ONLY enable the non-dry-run path of `agentbox.sh ruvector <op>`;
+# every op is dry-run by default and inherits the audited snapshot + auto-rollback
+# flow of scripts/ruvector-sidecar-update.sh. An absent block or a false flag is
+# fail-closed (dry-run only) — the op refuses to mutate.
+[memory_hygiene]
+allow_namespace_repair   = false  # non-dry-run repair-namespaces (~178k swapped namespace/value rows)
+allow_embedding_backfill = false  # non-dry-run backfill-embeddings (NULL-embedding rows via Xinference)
+allow_legacy_archival    = false  # non-dry-run archive-legacy (frozen legacy telemetry → cold storage)
 
 [integrations.comfyui_external]
 enabled = false

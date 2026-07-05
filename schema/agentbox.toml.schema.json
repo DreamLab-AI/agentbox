@@ -398,7 +398,13 @@
             },
             "manage_sidecar": { "type": "boolean", "description": "When true, compose owns the ruvector-postgres sidecar container." },
             "image": { "type": "string", "description": "Docker image for the managed sidecar." },
-            "data_volume": { "type": "string", "description": "Named Docker volume holding the production dataset." }
+            "data_volume": { "type": "string", "description": "Named Docker volume holding the production dataset." },
+            "hybrid_search": { "type": "boolean", "description": "PRD-018/ADR-036 D6: enable memory_hybrid_search (DIY fusion: ruvector_hybrid_score + PG FTS). Default false ⇒ pure-vector search only. Injected as RUVECTOR_HYBRID_SEARCH." },
+            "typed_metadata": { "type": "boolean", "description": "PRD-018/ADR-036 D6: write structured metadata (importance/tags/memory_type/ttl_seconds) on memory_store. Default false ⇒ metadata stays {}. Injected as RUVECTOR_TYPED_METADATA." },
+            "metadata_gin": { "type": "boolean", "description": "PRD-018/ADR-036 D6: require/build the GIN on metadata jsonb for tag retrieval (built by a D5 hygiene op). Injected as RUVECTOR_METADATA_GIN." },
+            "health_tool": { "type": "boolean", "description": "PRD-018/ADR-036 D6: expose the memory_health read-only diagnostics tool. Injected as RUVECTOR_HEALTH_TOOL." },
+            "episodic_ttl_sweep": { "type": "boolean", "description": "PRD-018/ADR-036 D6: honour TTL and sweep expired episodic entries (this is the delete implementation). Injected as RUVECTOR_EPISODIC_TTL_SWEEP." },
+            "memory_orient": { "type": "boolean", "description": "PRD-018/ADR-036 D6: expose the memory_orient OODA cold-start tool (semantic + effectiveness aggregates + episodic bundle). Injected as RUVECTOR_MEMORY_ORIENT." }
           }
         },
         "solid_pod_rs": {
@@ -683,7 +689,10 @@
             "allow_nip04":      { "type": "boolean", "description": "Legacy unencrypted DMs. Warned by E031." },
             "info_description": { "type": "string" },
             "info_contact":     { "type": "string" },
-            "forum_relay_url":  { "type": "string", "description": "Private relay URL for governance event exchange with the forum." }
+            "forum_relay_url":  { "type": "string", "description": "Private relay URL for governance event exchange with the forum." },
+            "intent_command":   { "type": "string", "description": "PRD-014 Seam B/B3: deterministic responder command spawned per voice-origin agent-intent event (kinds 38000-38099). Empty (default) → marker-only path, byte-identical to prior behaviour." },
+            "intent_args":      { "type": "string", "description": "PRD-014 Seam B/B3: extra leading args (space-separated) passed to intent_command." },
+            "agent_event_auth": { "type": "string", "enum": ["off", "nip98"], "description": "PRD-014 Seam B/B4: per-agent did:nostr auth on POST /v1/agent-events/emit. 'off' keeps caller-asserted/env-defaulted attribution; 'nip98' requires a kind-27235 header and stamps source_urn from the verified pubkey." }
           }
         },
         "mobile_bridge": {
@@ -980,6 +989,30 @@
           "items": { "type": "string" },
           "description": "List of peer mesh URLs for bidirectional federation."
         },
+        "peer_relays": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Peer relay URLs (ws:// or wss://) for relay-level federation. For tailnet federation use MagicDNS hostnames; for Cloudflare-tunnel federation use the public wss:// URL."
+        },
+        "federated_kinds": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 0 },
+          "description": "Nostr event kinds replicated across the federation."
+        },
+        "allowed_remote_dids": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "did:nostr:<hex> of trusted peers permitted to federate."
+        },
+        "subscribed_kinds": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 0 },
+          "description": "Subset of federated_kinds to pull from peers; empty = all."
+        },
+        "honor_remote_moderation": {
+          "type": "boolean",
+          "description": "Accept kind-30910 moderation/ban events from peers."
+        },
         "auth_mode": {
           "type": "string",
           "enum": ["nip98", "api_key", "none"],
@@ -1032,6 +1065,46 @@
           "description": "permissive = admin sees all namespaces; scoped = all callers restricted to their own pubkey namespace.",
           "default": "permissive"
         }
+      }
+    },
+    "memory_learning": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "RuVector-native learning loop (PRD-018 / ADR-036 D6, DDD-016). The agentbox-owned hook records real (state, action, outcome, duration) trajectory tuples and aggregates per-action effectiveness (Wilson lower-bound + recency decay) onto the memory slot — no new adapter slot, no new table. Every flag is default-off: a manifest with enabled=false is byte-identical to the pre-PRD-018 product (PRD-018 metric 1). The entrypoint injects each key into the RUVECTOR_* gate env of the governed ruvector-mcp server and registers config/hooks/trajectory-recorder.cjs only when enabled AND record_trajectories are both true.",
+      "properties": {
+        "enabled": { "type": "boolean", "description": "Master gate for the learning loop. Off ⇒ no hook registered, no aggregation, no consumers. Injected as RUVECTOR_MEMORY_LEARNING_ENABLED." },
+        "record_trajectories": { "type": "boolean", "description": "The agentbox hook writes to trajectories/trajectory_steps. Injected as RUVECTOR_RECORD_TRAJECTORIES." },
+        "aggregate_min_samples": { "type": "integer", "minimum": 1, "description": "Wilson-bound sample floor before an aggregate influences retrieval. Default 20. Injected as RUVECTOR_AGGREGATE_MIN_SAMPLES.", "default": 20 },
+        "recency_half_life_days": { "type": "integer", "minimum": 1, "description": "Recency half-life (days) for aggregation and the hybrid recency term. Default 14. Injected as RUVECTOR_RECENCY_HALF_LIFE_DAYS.", "default": 14 },
+        "feed_retrieval": { "type": "boolean", "description": "Effectiveness aggregates re-rank memory_search. Consumer of record_trajectories — enabling this ahead of the producer is flagged W066. Injected as RUVECTOR_FEED_RETRIEVAL." },
+        "feed_routing": { "type": "boolean", "description": "Aggregates surface as advisory [INTELLIGENCE] hints, never a hard gate. Consumer of record_trajectories — enabling this ahead of the producer is flagged W066. Injected as RUVECTOR_FEED_ROUTING." },
+        "sona_enabled": { "type": "boolean", "description": "Reserved (ADOPT-LATER); wraps ruvector_sona_learn behind a recall-regression harness. Default false." },
+        "relevance_feedback": { "type": "boolean", "description": "Reserved (ADOPT-LATER); wraps ruvector_enable_learning/ruvector_record_feedback. Default false." }
+      }
+    },
+    "memory_hygiene": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Data hygiene operations gate (PRD-018 / ADR-036 D6, D5). Each flag ONLY enables the non-dry-run path of the corresponding `agentbox.sh ruvector <op>` subcommand; every op is dry-run by default and inherits the audited snapshot + auto-rollback flow of scripts/ruvector-sidecar-update.sh. An absent block or a false flag is fail-closed (dry-run only).",
+      "properties": {
+        "allow_namespace_repair": { "type": "boolean", "description": "Enable the non-dry-run repair-namespaces path (~178k swapped namespace/value rows)." },
+        "allow_embedding_backfill": { "type": "boolean", "description": "Enable the non-dry-run backfill-embeddings path (NULL-embedding rows recomputed via Xinference)." },
+        "allow_legacy_archival": { "type": "boolean", "description": "Enable the non-dry-run archive-legacy path (frozen legacy telemetry dumped to cold storage then deleted from the hot table)." }
+      }
+    },
+    "project_tracking": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Sovereign project tracking (PRD-017 / ADR-035 / DDD-015). Helm-grade status grid, commit activity, primers/synopses and GitHub/local repo sync re-expressed on the existing sovereign substrates — no new URN kind, no new port, no new adapter slot. Disabled by default: when enabled=false the /v1/projects route returns 503 and no scan, metric, or nostr publish runs.",
+      "properties": {
+        "enabled": { "type": "boolean", "description": "Master gate; /v1/projects → 503 when off." },
+        "scan_dirs": { "type": "array", "items": { "type": "string" }, "description": "One-level-deep git-repo discovery roots." },
+        "scan_interval_hours": { "type": "integer", "minimum": 0, "description": "Periodic re-scan interval in hours; 0 = on-demand only (no scheduler)." },
+        "github_enrichment": { "type": "boolean", "description": "Pull open issues + stars via GITHUB_TOKEN (one external hop)." },
+        "primer_model": { "type": "string", "description": "Z.AI/GLM model for primers/synopses (routed through the consultant tier, ADR-011)." },
+        "primer_on_scan": { "type": "boolean", "description": "Auto-generate primers for new projects during a scan." },
+        "nostr_publish": { "type": "boolean", "description": "Publish kind-30841 addressable project digests to the operator's did:nostr." },
+        "metrics": { "type": "boolean", "description": "Emit the agentbox_project_* gauges on the port-bound /metrics." }
       }
     },
     "features": {

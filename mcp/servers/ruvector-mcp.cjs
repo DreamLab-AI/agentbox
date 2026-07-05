@@ -13,6 +13,9 @@
 
 const readline = require('readline');
 const { createMemoryTools } = require('./lib/memory-tools');
+const { gates } = require('./lib/ruvector-gates');
+const { createHybridTools } = require('./lib/memory-hybrid');
+const { createHealthTools } = require('./lib/memory-health');
 
 // ── PostgreSQL pool ───────────────────────────────────────────────────────────
 
@@ -164,7 +167,7 @@ function parseVal(v) {
 // mandated external-pg path; it injects its pool, embedding transport, notifier
 // and helpers so the extracted logic behaves byte-for-byte as before.
 
-const { memStore, memRetrieve, memList, memSearch } = createMemoryTools({
+const { memStore, memRetrieve, memList, memSearch, memDelete, memSweepEpisodic } = createMemoryTools({
   backend: 'external-pg',
   deps: {
     pool,
@@ -180,6 +183,22 @@ const { memStore, memRetrieve, memList, memSearch } = createMemoryTools({
     writeSourceType: WRITE_SOURCE_TYPE,
   },
 });
+
+// PRD-018 D3/D4 gated tools — hybrid fusion, orient bundle, read-only health.
+// The factories own no state; they reuse this server's pool + transport and
+// fail-open to the existing search path. They are wired unconditionally but
+// only reachable via tools registered when their gate is on (see TOOLS below).
+const { memHybridSearch, memOrient } = createHybridTools({
+  pool,
+  getPgOk: () => pgOk,
+  getEmbedding,
+  xinfEnsure,
+  vecToSql,
+  parseVal,
+  log,
+  memSearch,
+});
+const { memHealth } = createHealthTools({ pool, getPgOk: () => pgOk, log });
 
 // ── Tool schemas (claude-flow compatible) ─────────────────────────────────────
 
@@ -332,10 +351,90 @@ const TOOLS = [
   },
 ];
 
+// ── PRD-018 D3/D4 gated tool registration ─────────────────────────────────────
+// The tool list is byte-identical to today's when no gate is set (PRD-018
+// metric 1). New tools — and the new memory_store metadata inputs — are only
+// added when their gate is on. Each gate maps to an agentbox.toml manifest key
+// injected into the .mcp.json env at boot.
+
+if (gates.typedMetadata()) {
+  // Augment memory_store to advertise the typed-metadata inputs it now honours.
+  const storeTool = TOOLS.find((t) => t.name === 'memory_store');
+  if (storeTool) {
+    Object.assign(storeTool.inputSchema.properties, {
+      importance:  { type: 'number', description: 'Relevance weight 0..1 (default 0.5 at read time)' },
+      tags:        { type: 'array', items: { type: 'string' }, description: 'Free-text tags for @> filtering' },
+      memory_type: { type: 'string', enum: ['episodic', 'semantic'], description: "Default 'semantic'. Episodic entries are TTL-swept." },
+      ttl_seconds: { type: 'number', description: 'TTL in seconds → metadata.expires_at (episodic sweep). Alias: ttl.' },
+    });
+  }
+}
+
+if (gates.hybridSearch()) {
+  TOOLS.push({
+    name: 'memory_hybrid_search',
+    description: 'Namespace-scoped hybrid search: 0.6·vector + 0.2·importance + 0.2·recency fused with keyword relevance (ruvector_hybrid_score + FTS). Fail-open to pure-vector search.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query:       { type: 'string' },
+        namespace:   { type: 'string', default: 'default' },
+        limit:       { type: 'number', default: 10 },
+        alpha:       { type: 'number', description: 'Keyword/vector fusion weight 0..1 (default 0.5)' },
+        source_type: { type: 'string', description: 'Filter by source_type. Omit or "*" for all.' },
+      },
+      required: ['query'],
+    },
+  });
+}
+
+if (gates.memoryOrient()) {
+  TOOLS.push({
+    name: 'memory_orient',
+    description: 'OODA cold-start bundle for a task: top-k semantic memories + effectiveness aggregates + recent episodic entries for the session namespace. Read-only, fail-open.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        task:            { type: 'string' },
+        namespace:       { type: 'string', default: 'default', description: 'Session namespace for the episodic bucket.' },
+        semantic_limit:  { type: 'number', default: 8 },
+        aggregate_limit: { type: 'number', default: 10 },
+        episodic_limit:  { type: 'number', default: 10 },
+      },
+      required: ['task'],
+    },
+  });
+}
+
+if (gates.healthTool()) {
+  TOOLS.push({
+    name: 'memory_health',
+    description: 'Read-only ruvector-postgres diagnostics: is_healthy, health_status, system_metrics, simd_info. No auto-remediation.',
+    inputSchema: { type: 'object', properties: {} },
+  });
+}
+
+if (gates.episodicTtlSweep()) {
+  TOOLS.push({
+    name: 'memory_sweep_episodic',
+    description: 'Delete expired episodic entries (metadata.memory_type=episodic AND expires_at < now). Refuses PROTECTED_NAMESPACES without RUVECTOR_ADMIN_WRITE.',
+    inputSchema: {
+      type: 'object',
+      properties: { namespace: { type: 'string', description: 'Optional: scope the sweep to one namespace. Omit to sweep all (non-protected).' } },
+    },
+  });
+}
+
 // Advertised tool names. Only the memory_* tools are genuinely backed by
 // ruvector-postgres; every other advertised tool is an unimplemented stub that
 // must return an honest error rather than fabricating success.
 const ADVERTISED_TOOLS = new Set(TOOLS.map((t) => t.name));
+
+// Honest unknown-tool response — a gate-off call to a gated tool name lands here.
+function unknownTool(name) {
+  log('WARN', `tool ${name}: unknown or gate-disabled`);
+  return { ok: false, success: false, error: 'unknown_tool', tool: name, message: `unknown tool: ${name}`, timestamp: new Date().toISOString() };
+}
 
 // ── Tool execution ────────────────────────────────────────────────────────────
 
@@ -345,7 +444,35 @@ async function executeTool(name, args = {}) {
   try {
     switch (name) {
       case 'memory_store':
-        return await memStore(args.key, args.value, args.namespace || 'default');
+        // Typed-metadata options are always passed; memStore ignores them unless
+        // RUVECTOR_TYPED_METADATA is on (gate-off store is byte-identical). `ttl`
+        // is the historically-advertised-but-dropped param → mapped to ttl_seconds.
+        return await memStore(args.key, args.value, args.namespace || 'default', {
+          importance:  args.importance,
+          tags:        args.tags,
+          memory_type: args.memory_type,
+          ttl_seconds: args.ttl_seconds !== undefined ? args.ttl_seconds : args.ttl,
+        });
+
+      case 'memory_hybrid_search':
+        if (!gates.hybridSearch()) return unknownTool(name);
+        return await memHybridSearch(args.query, args.namespace || 'default', args.limit || 10, {
+          alpha: args.alpha, sourceType: args.source_type,
+        });
+
+      case 'memory_orient':
+        if (!gates.memoryOrient()) return unknownTool(name);
+        return await memOrient(args.task || args.query || '', args.namespace || 'default', {
+          semanticLimit: args.semantic_limit, aggregateLimit: args.aggregate_limit, episodicLimit: args.episodic_limit,
+        });
+
+      case 'memory_health':
+        if (!gates.healthTool()) return unknownTool(name);
+        return await memHealth();
+
+      case 'memory_sweep_episodic':
+        if (!gates.episodicTtlSweep()) return unknownTool(name);
+        return await memSweepEpisodic(args.namespace || null);
 
       case 'memory_retrieve':
         return await memRetrieve(args.key, args.namespace || 'default');
@@ -359,11 +486,20 @@ async function executeTool(name, args = {}) {
       case 'memory_usage': {
         const ns = args.namespace || 'default';
         switch (args.action) {
-          case 'store':    return await memStore(args.key, args.value, ns);
+          case 'store':    return await memStore(args.key, args.value, ns, {
+            importance:  args.importance,
+            tags:        args.tags,
+            memory_type: args.memory_type,
+            ttl_seconds: args.ttl_seconds !== undefined ? args.ttl_seconds : args.ttl,
+          });
           case 'retrieve': return await memRetrieve(args.key, ns);
           case 'list':     return await memList(ns, 100);
           case 'search':   return await memSearch(args.value || args.key || '', ns, 50);
-          case 'delete':   return { success: false, error: 'delete not implemented in ruvector-mcp' };
+          case 'delete':
+            // Implemented only under RUVECTOR_EPISODIC_TTL_SWEEP; gate off keeps
+            // the historic "not implemented" response byte-identical.
+            if (!gates.episodicTtlSweep()) return { success: false, error: 'delete not implemented in ruvector-mcp' };
+            return await memDelete(args.key, ns);
           default:         return { success: false, error: `unknown action: ${args.action}` };
         }
       }

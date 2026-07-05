@@ -156,6 +156,7 @@ typed_metadata     = false   # honour importance/tags/memory_type/ttl on memory_
 metadata_gin       = false   # require/build GIN on metadata jsonb
 health_tool        = false   # memory_health read-only diagnostics
 episodic_ttl_sweep = false   # honour TTL, sweep expired episodic entries (implements delete)
+memory_orient      = false   # memory_orient OODA cold-start bundle (semantic + aggregates + episodic)
 
 [memory_learning]
 enabled               = false   # master gate for the learning loop
@@ -180,6 +181,7 @@ allow_legacy_archival    = false
 | `…metadata_gin` | bool | `false` | require/build the GIN on `metadata` for tag retrieval |
 | `…health_tool` | bool | `false` | expose `memory_health` read-only diagnostics |
 | `…episodic_ttl_sweep` | bool | `false` | honour TTL, sweep expired episodic entries (this is the `delete` implementation) |
+| `…memory_orient` | bool | `false` | expose the `memory_orient` OODA cold-start bundle (semantic + effectiveness aggregates + episodic) |
 | `[memory_learning].enabled` | bool | `false` | master gate; off ⇒ no hook writes, no aggregation, no consumers |
 | `…record_trajectories` | bool | `false` | the agentbox hook writes to `trajectories`/`trajectory_steps` |
 | `…aggregate_min_samples` | int | `20` | Wilson-bound sample floor before an aggregate influences retrieval |

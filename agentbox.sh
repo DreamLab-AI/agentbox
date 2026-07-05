@@ -45,7 +45,7 @@ Local lifecycle commands:
   ${GREEN}build${NC}            Build the Nix image [--variant runtime|desktop|full]
   ${GREEN}rebuild${NC}          Full dev-loop cycle: down + build + up --build
   ${GREEN}update${NC}           Update flake inputs + npm CLI versions + resolve hashes [--check|--npm-only|--flake-only]
-  ${GREEN}ruvector${NC}         Manage the ruvector-postgres memory sidecar [status|check|test|update|rollback]
+  ${GREEN}ruvector${NC}         Manage the ruvector-postgres memory sidecar [status|check|test|update|rollback|migrate-trajectories|repair-namespaces|backfill-embeddings|archive-legacy|aggregate-effectiveness|build-metadata-gin]
   ${GREEN}logs${NC}             Follow logs [service: supervisorctl tail, else compose logs]
   ${GREEN}shell${NC}            Open shell in container [profile: zellij layout in that profile]
   ${GREEN}health${NC}           Show service health [--json: raw JSON output]
@@ -81,6 +81,12 @@ Examples:
   $0 ruvector check         # compare running sidecar + pinned image against Docker Hub
   $0 ruvector update        # gated sidecar update: dump + snapshot + candidate rehearsal + swap
   $0 ruvector rollback      # revert the last sidecar update from its snapshot
+  $0 ruvector migrate-trajectories       # additive learning-loop schema (dry-run; --yes applies)
+  $0 ruvector repair-namespaces          # dry-run un-swap of 178k namespace<->value rows (--yes + [memory_hygiene] flag)
+  $0 ruvector backfill-embeddings        # dry-run NULL-embedding backfill via Xinference (--yes + flag)
+  $0 ruvector archive-legacy             # dry-run archive+delete of ~1.84M frozen legacy rows (--yes + flag)
+  $0 ruvector aggregate-effectiveness    # dry-run Wilson+recency effectiveness aggregates (--yes + [memory_learning] enabled)
+  $0 ruvector build-metadata-gin         # dry-run GIN on metadata jsonb_path_ops for tag @> (--yes + metadata_gin flag)
   $0 update --flake-only    # only update flake inputs (nixpkgs, rust-overlay, etc.)
   $0 update --npm-only      # only bump npm CLI versions in flake.nix
   $0 logs                   # Follow all service logs

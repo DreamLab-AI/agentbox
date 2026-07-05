@@ -25,6 +25,42 @@
 #                         7. auto-rollback on any post-swap failure
 #   rollback            Revert pin + restore snapshot (per recorded state)
 #
+# Data-hygiene ops (PRD-018 Phase 2 / ADR-036 D5). ALL dry-run by default;
+# --yes applies. The three destructive ops additionally require the matching
+# [memory_hygiene] flag in agentbox.toml (fail-closed if the flag is off).
+#   migrate-trajectories [--yes]
+#                       Additive schema migration for the learning loop:
+#                       ADD COLUMN trajectory_steps.duration_ms +
+#                       idx_trajectory_steps_trajectory. No toml flag needed.
+#   repair-namespaces [--yes]            (flag: allow_namespace_repair)
+#                       Un-swap rows whose namespace holds a JSON object and
+#                       whose value.data holds the real namespace token.
+#                       pg_dump of affected rows before the single-txn swap.
+#   backfill-embeddings [--yes]          (flag: allow_embedding_backfill)
+#                       Compute embeddings (Xinference bge-small-en-v1.5) for
+#                       NULL-embedding non-empty rows; quarantine failures via
+#                       metadata.embedding_quarantined=true.
+#   archive-legacy [--yes]               (flag: allow_legacy_archival)
+#                       Snapshot, then COPY (data-only) the frozen legacy /
+#                       dead-hooks namespaces to a compressed archive under
+#                       backups/, then DELETE in batches; suggest VACUUM.
+#
+# Learning + retrieval ops (PRD-018 / ADR-036 D1/D4). Dry-run by default.
+#   aggregate-effectiveness [--yes]      (flag: [memory_learning].enabled)
+#                       Group trajectory_steps by action pattern; compute the
+#                       Wilson lower-bound (z=1.96) success rate with recency
+#                       half-life decay; skip patterns below aggregate_min_samples;
+#                       upsert each surviving aggregate THROUGH the governed
+#                       memStore path into the memory-learning-aggregates
+#                       namespace. Dry-run prints the per-pattern table; --yes
+#                       writes (requires the flag). Env resolved from .mcp.json.
+#   build-metadata-gin [--yes]           (flag: metadata_gin)
+#                       CREATE INDEX CONCURRENTLY idx_memory_metadata_gin ON
+#                       memory_entries USING gin (metadata jsonb_path_ops) so tag
+#                       (metadata @> …) retrieval becomes a bitmap index scan.
+#                       Dry-run shows the SQL, current index presence, and the
+#                       ~365k-cost seq-scan EXPLAIN it eliminates.
+#
 # The image pin lives in agentbox.toml [integrations.ruvector_external].image
 # (source of truth — flake.nix composeText reads it) and is mirrored in the
 # checked-in docker-compose.yml. Both are updated together here.
@@ -87,6 +123,128 @@ toml_volume() {
 
 compose_pin() {
     awk '$1=="image:" && $2 ~ /ruvector-postgres/ {print $2; exit}' "$COMPOSE_FILE"
+}
+
+# ── data-hygiene helpers (PRD-018 Phase 2) ───────────────────────────────────
+
+# Parse a bare boolean from the [memory_hygiene] block, same anchored-awk style
+# as toml_pin. Returns the raw token ("true"/"false"/"" if the key/section is
+# absent — an absent flag reads as off, i.e. the destructive path stays closed).
+toml_hygiene_flag() { # toml_hygiene_flag <key>
+    awk -v key="$1" '
+        /^\[memory_hygiene\]/{f=1;next} /^\[/{f=0}
+        f && index($0, key)==1 && $0 ~ ("^" key "[[:space:]]*=") {
+            sub(/^[^=]*=[[:space:]]*/,""); sub(/[[:space:]]*(#.*)?$/,""); gsub(/"/,"");
+            print; exit }' "$TOML"
+}
+
+# A gate is on iff the value is exactly '1' or 'true' (env-var contract parity).
+is_on() { [[ "${1:-}" == "1" || "${1:-}" == "true" ]]; }
+
+# Double single-quotes so a value can be embedded in a SQL literal safely.
+sql_quote() { local s="${1//\'/\'\'}"; printf '%s' "$s"; }
+
+XINFERENCE_ENDPOINT="${XINFERENCE_ENDPOINT:-http://xinference:9997}"
+XINFERENCE_MODEL="bge-small-en-v1.5"
+
+# The frozen legacy / dead-hooks selection (verified live: ~1.84M rows).
+# namespace LIKE 'legacy/%' OR 'swarm/%' OR one of the write-only telemetry
+# namespaces that are never read back. Defined once so archive + delete + the
+# dry-run enumeration all use the identical predicate.
+LEGACY_PREDICATE="namespace LIKE 'legacy/%' OR namespace LIKE 'swarm/%' OR namespace IN ('hooks:pre-bash','hooks:post-bash','performance-metrics','command-results','command-history')"
+
+# The namespace<->value swap detection predicate (verified live: 178,238 rows).
+# A corrupted row has a JSON object in `namespace` and the real namespace token
+# nested in `value->>'data'`.
+SWAP_PREDICATE="namespace LIKE '{%' AND value ? 'data'"
+
+# psql that keeps backslash meta-commands (\d) working — pg() uses -tAc.
+psql_raw() { docker exec "$1" psql -U "$PG_USER" -d "$PG_DB" -c "$2"; }
+
+# Enforce the dry-run/apply/flag contract for a destructive op.
+#   hygiene_apply_gate <apply?0/1> <flag-key> <human-op-name>
+# Returns 0 to proceed with the write, 1 (via die) if the gate is closed.
+hygiene_apply_gate() {
+    local apply="$1" flag_key="$2" op="$3" flag_val
+    flag_val=$(toml_hygiene_flag "$flag_key")
+    if [[ "$apply" -ne 1 ]]; then
+        return 1   # dry-run: caller prints the plan and returns
+    fi
+    if ! is_on "$flag_val"; then
+        die "${op} is gated: set [memory_hygiene] ${flag_key} = true in
+       ${TOML} to enable the non-dry-run path (currently '${flag_val:-unset}')."
+    fi
+    return 0
+}
+
+# Parse a bare boolean from [integrations.ruvector_external], same anchored-awk
+# style as toml_hygiene_flag. Absent key/section reads as off.
+toml_ruvector_flag() { # toml_ruvector_flag <key>
+    awk -v key="$1" '
+        /^\[integrations\.ruvector_external\]/{f=1;next} /^\[/{f=0}
+        f && index($0, key)==1 && $0 ~ ("^" key "[[:space:]]*=") {
+            sub(/^[^=]*=[[:space:]]*/,""); sub(/[[:space:]]*(#.*)?$/,""); gsub(/"/,"");
+            print; exit }' "$TOML"
+}
+
+# Parse a bare boolean from [memory_learning], same anchored-awk style.
+toml_learning_flag() { # toml_learning_flag <key>
+    awk -v key="$1" '
+        /^\[memory_learning\]/{f=1;next} /^\[/{f=0}
+        f && index($0, key)==1 && $0 ~ ("^" key "[[:space:]]*=") {
+            sub(/^[^=]*=[[:space:]]*/,""); sub(/[[:space:]]*(#.*)?$/,""); gsub(/"/,"");
+            print; exit }' "$TOML"
+}
+
+# Enforce dry-run/apply/flag contract against [integrations.ruvector_external].
+#   ruvector_apply_gate <apply?0/1> <flag-key> <human-op-name>
+ruvector_apply_gate() {
+    local apply="$1" flag_key="$2" op="$3" flag_val
+    flag_val=$(toml_ruvector_flag "$flag_key")
+    if [[ "$apply" -ne 1 ]]; then
+        return 1   # dry-run: caller prints the plan and returns
+    fi
+    if ! is_on "$flag_val"; then
+        die "${op} is gated: set [integrations.ruvector_external] ${flag_key} = true
+       in ${TOML} to enable the non-dry-run path (currently '${flag_val:-unset}')."
+    fi
+    return 0
+}
+
+# Enforce dry-run/apply/flag contract against [memory_learning].enabled.
+#   learning_apply_gate <apply?0/1> <human-op-name>
+learning_apply_gate() {
+    local apply="$1" op="$2" flag_val
+    flag_val=$(toml_learning_flag "enabled")
+    if [[ "$apply" -ne 1 ]]; then
+        return 1   # dry-run: caller prints the plan and returns
+    fi
+    if ! is_on "$flag_val"; then
+        die "${op} is gated: set [memory_learning] enabled = true in
+       ${TOML} to enable the non-dry-run path (currently '${flag_val:-unset}')."
+    fi
+    return 0
+}
+
+# Resolve the governed MCP env (RUVECTOR_PG_CONNINFO, NODE_PATH,
+# XINFERENCE_ENDPOINT, EMBEDDING_MODEL, injected gate vars) the same way the
+# runtime does — from the generated .mcp.json claude-flow env block. Emits
+# `KEY=VALUE` lines for the first .mcp.json that carries a claude-flow env.
+# Empty output (no file / no jq) is fine: the node lib falls back to defaults.
+mcp_env_pairs() {
+    command -v jq >/dev/null 2>&1 || return 1
+    local f
+    for f in "${WORKSPACE:-$HOME/workspace}/.mcp.json" \
+             "${REPO_DIR}/.mcp.json" \
+             "${REPO_DIR}/../.mcp.json" \
+             "$HOME/workspace/.mcp.json"; do
+        [[ -f "$f" ]] || continue
+        if jq -e '.mcpServers["claude-flow"].env' "$f" >/dev/null 2>&1; then
+            jq -r '.mcpServers["claude-flow"].env | to_entries[] | "\(.key)=\(.value)"' "$f"
+            return 0
+        fi
+    done
+    return 1
 }
 
 set_pin() { # set_pin <new-ref> — update agentbox.toml + docker-compose.yml together
@@ -591,6 +749,358 @@ cmd_rollback() {
     echo -e "${GREEN}Rolled back to ${prev}.${NC}"
 }
 
+# ── data-hygiene subcommands (PRD-018 Phase 2 / ADR-036 D5) ──────────────────
+
+# 1. migrate-trajectories — additive schema for the learning loop. No toml flag
+#    (purely additive: ADD COLUMN IF NOT EXISTS + CREATE INDEX IF NOT EXISTS).
+cmd_migrate_trajectories() {
+    local apply=0
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --yes)     apply=1; shift ;;
+            --dry-run) apply=0; shift ;;
+            -h|--help) echo "Usage: $0 migrate-trajectories [--yes]"; return 0 ;;
+            *) die "unknown migrate-trajectories option: $1" ;;
+        esac
+    done
+    require_prod_running
+
+    local sql="ALTER TABLE trajectory_steps ADD COLUMN IF NOT EXISTS duration_ms double precision;
+CREATE INDEX IF NOT EXISTS idx_trajectory_steps_trajectory ON trajectory_steps(trajectory_id);"
+
+    info "migrate-trajectories (additive, learning-loop schema)"
+    echo "  before:"
+    psql_raw "$CONTAINER" "\\d trajectory_steps" | sed 's/^/    /'
+    echo ""
+    echo "  SQL that WOULD run:"
+    echo "$sql" | sed 's/^/    /'
+
+    if [[ "$apply" -ne 1 ]]; then
+        echo -e "${YELLOW}[dry-run] no changes made. Re-run with --yes to apply.${NC}"
+        return 0
+    fi
+
+    info "applying additive migration"
+    pg "$CONTAINER" "$sql" >/dev/null || die "migration failed"
+    ok "duration_ms column + idx_trajectory_steps_trajectory ensured"
+    echo "  after:"
+    psql_raw "$CONTAINER" "\\d trajectory_steps" | sed 's/^/    /'
+    echo -e "${GREEN}migrate-trajectories complete.${NC}"
+}
+
+# 2. repair-namespaces — un-swap namespace<->value on the 178,238 corrupted rows.
+cmd_repair_namespaces() {
+    local apply=0
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --yes)     apply=1; shift ;;
+            --dry-run) apply=0; shift ;;
+            -h|--help) echo "Usage: $0 repair-namespaces [--yes]  (flag: allow_namespace_repair)"; return 0 ;;
+            *) die "unknown repair-namespaces option: $1" ;;
+        esac
+    done
+    require_prod_running
+
+    local n
+    n=$(pg "$CONTAINER" "SELECT count(*) FROM memory_entries WHERE ${SWAP_PREDICATE};")
+
+    local sql="BEGIN;
+UPDATE memory_entries
+   SET namespace = value->>'data',
+       value     = namespace::jsonb
+ WHERE ${SWAP_PREDICATE};
+COMMIT;"
+
+    info "repair-namespaces (namespace<->value un-swap)"
+    echo "  detection : namespace LIKE '{%' AND value ? 'data'"
+    echo "  affected  : ${n} rows"
+    echo "  transform : namespace <- value->>'data' ; value <- namespace::jsonb"
+    echo "  examples  :"
+    pg "$CONTAINER" "SELECT id || '  ns=[' || left(namespace,32) || ']  ->real=[' || left(value->>'data',40) || ']'
+                     FROM memory_entries WHERE ${SWAP_PREDICATE} LIMIT 5;" | sed 's/^/    /'
+    echo ""
+    echo "  SQL that WOULD run (single transaction):"
+    echo "$sql" | sed 's/^/    /'
+
+    if ! hygiene_apply_gate "$apply" "allow_namespace_repair" "repair-namespaces"; then
+        echo -e "${YELLOW}[dry-run] no changes made. Re-run with --yes (and [memory_hygiene] allow_namespace_repair=true) to apply.${NC}"
+        return 0
+    fi
+    [[ "$n" -eq 0 ]] && { echo -e "${GREEN}nothing to repair.${NC}"; return 0; }
+
+    # Pre-op backup of exactly the affected rows (reversible via COPY FROM).
+    mkdir -p "$STATE_DIR"
+    local ts backup
+    ts=$(date -u +%Y%m%dT%H%M%SZ)
+    backup="${STATE_DIR}/repair-namespaces-${ts}.copy.gz"
+    info "backing up ${n} affected rows -> ${backup}"
+    docker exec "$CONTAINER" psql -U "$PG_USER" -d "$PG_DB" -v ON_ERROR_STOP=1 \
+        -c "\\copy (SELECT id, namespace, value FROM memory_entries WHERE ${SWAP_PREDICATE}) TO STDOUT" \
+        | gzip > "$backup" || die "pre-op backup failed — aborting, no rows changed"
+    ok "backup: $(du -h "$backup" | cut -f1)"
+
+    info "applying swap in a single transaction"
+    pg "$CONTAINER" "$sql" >/dev/null || die "repair transaction failed (rolled back)"
+    local remaining
+    remaining=$(pg "$CONTAINER" "SELECT count(*) FROM memory_entries WHERE ${SWAP_PREDICATE};")
+    ok "repaired ${n} rows (remaining matching detection predicate: ${remaining})"
+    echo "  restore   : gunzip -c ${backup} | docker exec -i ${CONTAINER} psql -U ${PG_USER} -d ${PG_DB} -c \"\\copy ... FROM STDIN\""
+    echo -e "${GREEN}repair-namespaces complete.${NC}"
+}
+
+# 3. backfill-embeddings — compute embeddings for NULL-embedding non-empty rows.
+cmd_backfill_embeddings() {
+    local apply=0 batch=50
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --yes)     apply=1; shift ;;
+            --dry-run) apply=0; shift ;;
+            --batch)   batch="$2"; shift 2 ;;
+            -h|--help) echo "Usage: $0 backfill-embeddings [--yes] [--batch N]  (flag: allow_embedding_backfill)"; return 0 ;;
+            *) die "unknown backfill-embeddings option: $1" ;;
+        esac
+    done
+    require_prod_running
+
+    local pred="embedding IS NULL AND value IS NOT NULL AND value::text NOT IN ('\"\"','null','{}')"
+    local n
+    n=$(pg "$CONTAINER" "SELECT count(*) FROM memory_entries WHERE ${pred};")
+
+    info "backfill-embeddings (Xinference ${XINFERENCE_MODEL})"
+    echo "  endpoint  : ${XINFERENCE_ENDPOINT}/v1/embeddings"
+    echo "  model     : ${XINFERENCE_MODEL} (384-dim, matches ruvector(384))"
+    echo "  candidates: ${n} NULL-embedding non-empty rows"
+    echo "  per row   : POST value text -> embedding; UPDATE memory_entries.embedding"
+    echo "  on failure: UPDATE metadata = metadata || '{\"embedding_quarantined\":true}'"
+    echo "  examples  :"
+    pg "$CONTAINER" "SELECT id || '  ns=[' || left(namespace,24) || ']  val=[' || left(value::text,32) || ']'
+                     FROM memory_entries WHERE ${pred} LIMIT 5;" | sed 's/^/    /'
+
+    if ! hygiene_apply_gate "$apply" "allow_embedding_backfill" "backfill-embeddings"; then
+        echo -e "${YELLOW}[dry-run] no HTTP calls or writes made. Re-run with --yes (and [memory_hygiene] allow_embedding_backfill=true) to apply.${NC}"
+        return 0
+    fi
+    [[ "$n" -eq 0 ]] && { echo -e "${GREEN}nothing to backfill.${NC}"; return 0; }
+    command -v curl >/dev/null || die "curl required"
+    command -v jq >/dev/null   || die "jq required"
+
+    info "resolving candidate ids"
+    local ids id text vec http_ok=0 quarantined=0 done=0
+    mapfile -t ids < <(pg "$CONTAINER" "SELECT id FROM memory_entries WHERE ${pred};")
+    for id in "${ids[@]}"; do
+        [[ -z "$id" ]] && continue
+        # Fetch the plain text payload for this row (jsonb -> text).
+        text=$(pg "$CONTAINER" "SELECT value::text FROM memory_entries WHERE id='$(sql_quote "$id")';")
+        # Ask Xinference for a 384-dim embedding.
+        vec=$(curl -fsS --max-time 30 -X POST "${XINFERENCE_ENDPOINT}/v1/embeddings" \
+                -H 'Content-Type: application/json' \
+                --data "$(jq -n --arg m "$XINFERENCE_MODEL" --arg i "$text" '{model:$m,input:$i}')" 2>/dev/null \
+              | jq -rc 'if (.data[0].embedding|length)==384 then (.data[0].embedding|@json) else empty end' 2>/dev/null || true)
+        if [[ -n "$vec" ]]; then
+            if pg "$CONTAINER" "UPDATE memory_entries SET embedding='${vec}'::ruvector, updated_at=now()
+                                WHERE id='$(sql_quote "$id")';" >/dev/null 2>&1; then
+                http_ok=$((http_ok+1))
+            else
+                pg "$CONTAINER" "UPDATE memory_entries
+                                    SET metadata = coalesce(metadata,'{}'::jsonb) || '{\"embedding_quarantined\":true}'::jsonb
+                                  WHERE id='$(sql_quote "$id")';" >/dev/null 2>&1 || true
+                quarantined=$((quarantined+1))
+            fi
+        else
+            pg "$CONTAINER" "UPDATE memory_entries
+                                SET metadata = coalesce(metadata,'{}'::jsonb) || '{\"embedding_quarantined\":true}'::jsonb
+                              WHERE id='$(sql_quote "$id")';" >/dev/null 2>&1 || true
+            quarantined=$((quarantined+1))
+        fi
+        done=$((done+1))
+        if (( done % batch == 0 )); then
+            echo "  progress: ${done}/${n}  (embedded ${http_ok}, quarantined ${quarantined})"
+        fi
+    done
+    ok "backfill done: ${http_ok} embedded, ${quarantined} quarantined, ${done} processed"
+    pg "$CONTAINER" "ANALYZE memory_entries;" >/dev/null 2>&1 || true
+    echo -e "${GREEN}backfill-embeddings complete.${NC}"
+}
+
+# 4. archive-legacy — snapshot, COPY-out (data-only), then DELETE the frozen
+#    legacy / dead-hooks namespaces in batches. Reversible (archive retained).
+cmd_archive_legacy() {
+    local apply=0 batch=10000
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --yes)     apply=1; shift ;;
+            --dry-run) apply=0; shift ;;
+            --batch)   batch="$2"; shift 2 ;;
+            -h|--help) echo "Usage: $0 archive-legacy [--yes] [--batch N]  (flag: allow_legacy_archival)"; return 0 ;;
+            *) die "unknown archive-legacy option: $1" ;;
+        esac
+    done
+    require_prod_running
+
+    local n size
+    n=$(pg "$CONTAINER" "SELECT count(*) FROM memory_entries WHERE ${LEGACY_PREDICATE};")
+    size=$(pg "$CONTAINER" "SELECT pg_size_pretty(pg_total_relation_size('memory_entries'));")
+
+    info "archive-legacy (frozen legacy / dead-hooks namespaces)"
+    echo "  table size (now) : ${size}"
+    echo "  affected rows    : ${n}"
+    echo "  namespace roots  :"
+    pg "$CONTAINER" "SELECT split_part(namespace,'/',1) || coalesce('/'||split_part(namespace,'/',2),'') AS grp, count(*)
+                     FROM memory_entries WHERE ${LEGACY_PREDICATE}
+                     GROUP BY 1 ORDER BY 2 DESC LIMIT 20;" \
+        | awk -F'|' '{printf "    %-40s %s\n", $1, $2}'
+    echo ""
+    echo "  archive (COPY data-only) that WOULD run:"
+    echo "    \\copy (SELECT * FROM memory_entries WHERE ${LEGACY_PREDICATE}) TO STDOUT | gzip > backups/ruvector-sidecar/archive-legacy-<ts>.copy.gz"
+    echo "  delete (batched, ${batch}/batch) that WOULD run:"
+    echo "    DELETE FROM memory_entries WHERE ctid IN"
+    echo "      (SELECT ctid FROM memory_entries WHERE ${LEGACY_PREDICATE} LIMIT ${batch});  -- looped until 0"
+    echo "  then: VACUUM ANALYZE memory_entries;  (reclaims heap + HNSW bloat)"
+
+    if ! hygiene_apply_gate "$apply" "allow_legacy_archival" "archive-legacy"; then
+        echo -e "${YELLOW}[dry-run] no snapshot/archive/delete performed. Re-run with --yes (and [memory_hygiene] allow_legacy_archival=true) to apply.${NC}"
+        return 0
+    fi
+    [[ "$n" -eq 0 ]] && { echo -e "${GREEN}nothing to archive.${NC}"; return 0; }
+
+    # Pre-delete physical snapshot via the existing snapshot machinery.
+    local ts snap_vol archive current_image
+    ts=$(date -u +%Y%m%dT%H%M%SZ)
+    snap_vol="ruvector_pg_snap_archive_${ts}"
+    archive="${STATE_DIR}/archive-legacy-${ts}.copy.gz"
+    mkdir -p "$STATE_DIR"
+    current_image=$(docker inspect "$CONTAINER" --format '{{.Config.Image}}')
+    snapshot_volume "$current_image" "$snap_vol"
+    state_write "phase=archive-snapshotted" "archive_snapshot=${snap_vol}" "archive_file=${archive}" "archive_ts=${ts}"
+
+    # Logical, data-only export of exactly the archived rows (reversible).
+    info "COPY data-only export -> ${archive}"
+    docker exec "$CONTAINER" psql -U "$PG_USER" -d "$PG_DB" -v ON_ERROR_STOP=1 \
+        -c "\\copy (SELECT * FROM memory_entries WHERE ${LEGACY_PREDICATE}) TO STDOUT" \
+        | gzip > "$archive" || die "archive export failed — aborting, no rows deleted (snapshot ${snap_vol} retained)"
+    ok "archive: $(du -h "$archive" | cut -f1)"
+
+    info "deleting in batches of ${batch}"
+    local deleted=0 d
+    while :; do
+        d=$(pg "$CONTAINER" "WITH del AS (
+                DELETE FROM memory_entries
+                 WHERE ctid IN (SELECT ctid FROM memory_entries WHERE ${LEGACY_PREDICATE} LIMIT ${batch})
+                RETURNING 1) SELECT count(*) FROM del;")
+        [[ -z "$d" || "$d" == "0" ]] && break
+        deleted=$((deleted + d))
+        echo "  deleted ${deleted}/${n}"
+    done
+    ok "deleted ${deleted} rows"
+
+    local newsize
+    newsize=$(pg "$CONTAINER" "SELECT pg_size_pretty(pg_total_relation_size('memory_entries'));")
+    state_write "phase=archive-done" "archive_deleted=${deleted}"
+    echo ""
+    echo -e "${GREEN}archive-legacy complete: ${deleted} rows removed.${NC}"
+    echo "  table size       : ${size} -> ${newsize}"
+    echo "  archive          : ${archive} (restore: gunzip -c ... | psql \\copy memory_entries FROM STDIN)"
+    echo "  pre-delete snap  : ${snap_vol} (docker volume rm after soak)"
+    echo -e "  ${YELLOW}suggested next   : docker exec ${CONTAINER} psql -U ${PG_USER} -d ${PG_DB} -c 'VACUUM ANALYZE memory_entries;'${NC}"
+    echo "                     (reclaims heap + rebuilds HNSW planner stats; run off-peak)"
+}
+
+# ── learning + retrieval subcommands (PRD-018 / ADR-036 D1/D4) ───────────────
+
+# 5. aggregate-effectiveness — distil trajectory_steps into per-action-pattern
+#    EffectivenessAggregates (Wilson lower bound + recency decay), written
+#    THROUGH the governed memStore path (never raw SQL) into
+#    memory-learning-aggregates. Node lib does the maths + governed write; this
+#    subcommand owns the gate + .mcp.json env resolution. apply requires
+#    [memory_learning].enabled = true (fail-closed).
+cmd_aggregate_effectiveness() {
+    local apply=0
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --yes)     apply=1; shift ;;
+            --dry-run) apply=0; shift ;;
+            -h|--help) echo "Usage: $0 aggregate-effectiveness [--yes]  (flag: [memory_learning].enabled)"; return 0 ;;
+            *) die "unknown aggregate-effectiveness option: $1" ;;
+        esac
+    done
+    require_prod_running
+    command -v node >/dev/null || die "node required for aggregate-effectiveness"
+
+    local lib="${REPO_DIR}/mcp/servers/lib/aggregate-effectiveness.js"
+    [[ -f "$lib" ]] || die "aggregate lib not found: ${lib}"
+
+    # Resolve the governed MCP env (.mcp.json pattern); force typed metadata on so
+    # the aggregate's tags/importance persist (feed_retrieval re-rank keys on them).
+    local -a envp=()
+    mapfile -t envp < <(mcp_env_pairs || true)
+    envp+=("RUVECTOR_TYPED_METADATA=1")
+
+    info "aggregate-effectiveness (Wilson lower-bound + recency decay, ADR-036 D1)"
+    echo "  namespace : memory-learning-aggregates (governed memStore path — no raw SQL)"
+    echo "  tunables  : RUVECTOR_AGGREGATE_MIN_SAMPLES, RUVECTOR_RECENCY_HALF_LIFE_DAYS"
+    echo "  env       : ${#envp[@]} key(s) from .mcp.json (+ RUVECTOR_TYPED_METADATA=1)"
+
+    if learning_apply_gate "$apply" "aggregate-effectiveness"; then
+        info "applying — upserting eligible aggregates via memStore"
+        env "${envp[@]}" node "$lib" --yes || die "aggregate-effectiveness apply failed"
+        echo -e "${GREEN}aggregate-effectiveness complete.${NC}"
+    else
+        env "${envp[@]}" node "$lib" || die "aggregate-effectiveness dry-run failed"
+        echo -e "${YELLOW}[dry-run] no writes. Re-run with --yes (and [memory_learning] enabled=true) to apply.${NC}"
+    fi
+}
+
+# 6. build-metadata-gin — GIN on metadata jsonb_path_ops so tag (metadata @> …)
+#    retrieval is a bitmap index scan instead of a ~365k-cost parallel seq scan.
+#    Gated on [integrations.ruvector_external].metadata_gin (fail-closed).
+cmd_build_metadata_gin() {
+    local apply=0
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --yes)     apply=1; shift ;;
+            --dry-run) apply=0; shift ;;
+            -h|--help) echo "Usage: $0 build-metadata-gin [--yes]  (flag: metadata_gin)"; return 0 ;;
+            *) die "unknown build-metadata-gin option: $1" ;;
+        esac
+    done
+    require_prod_running
+
+    # CREATE INDEX CONCURRENTLY must run outside a transaction (autocommit via -c).
+    local sql="CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_memory_metadata_gin ON memory_entries USING gin (metadata jsonb_path_ops);"
+    local present
+    present=$(pg "$CONTAINER" "SELECT 1 FROM pg_indexes WHERE tablename='memory_entries' AND indexname='idx_memory_metadata_gin' LIMIT 1;")
+
+    info "build-metadata-gin (tag @> retrieval acceleration, ADR-036 D4)"
+    echo "  gate      : [integrations.ruvector_external] metadata_gin"
+    if [[ -n "$present" ]]; then
+        echo "  current   : idx_memory_metadata_gin ALREADY present"
+    else
+        echo "  current   : idx_memory_metadata_gin ABSENT"
+    fi
+    echo "  SQL that WOULD run:"
+    echo "    ${sql}"
+    echo "  estimated benefit (current metadata @> plan — the seq scan this removes):"
+    psql_raw "$CONTAINER" "EXPLAIN SELECT count(*) FROM memory_entries WHERE metadata @> '{\"tags\":[\"probe\"]}';" | sed 's/^/    /'
+
+    if ! ruvector_apply_gate "$apply" "metadata_gin" "build-metadata-gin"; then
+        echo -e "${YELLOW}[dry-run] no index built. Re-run with --yes (and [integrations.ruvector_external] metadata_gin=true) to apply.${NC}"
+        return 0
+    fi
+    [[ -n "$present" ]] && { echo -e "${GREEN}index already present — nothing to do.${NC}"; return 0; }
+
+    info "building GIN index CONCURRENTLY (no table lock; may take minutes over 2M+ rows)"
+    if ! pg "$CONTAINER" "$sql" >/dev/null; then
+        die "GIN build failed. A failed CONCURRENTLY build can leave an INVALID index —
+       inspect with: docker exec ${CONTAINER} psql -U ${PG_USER} -d ${PG_DB} -c \"\\d memory_entries\"
+       and drop if needed: DROP INDEX IF EXISTS idx_memory_metadata_gin;"
+    fi
+    ok "idx_memory_metadata_gin built"
+    echo "  new metadata @> plan:"
+    psql_raw "$CONTAINER" "EXPLAIN SELECT count(*) FROM memory_entries WHERE metadata @> '{\"tags\":[\"probe\"]}';" | sed 's/^/    /'
+    pg "$CONTAINER" "ANALYZE memory_entries;" >/dev/null 2>&1 || true
+    echo -e "${GREEN}build-metadata-gin complete.${NC}"
+}
+
 # ── dispatch ─────────────────────────────────────────────────────────────────
 
 case "${1:-status}" in
@@ -599,8 +1109,14 @@ case "${1:-status}" in
     test)     shift || true; cmd_test "$@" ;;
     update)   shift || true; cmd_update "$@" ;;
     rollback) shift || true; cmd_rollback "$@" ;;
+    migrate-trajectories) shift || true; cmd_migrate_trajectories "$@" ;;
+    repair-namespaces)    shift || true; cmd_repair_namespaces "$@" ;;
+    backfill-embeddings)  shift || true; cmd_backfill_embeddings "$@" ;;
+    archive-legacy)       shift || true; cmd_archive_legacy "$@" ;;
+    aggregate-effectiveness) shift || true; cmd_aggregate_effectiveness "$@" ;;
+    build-metadata-gin)   shift || true; cmd_build_metadata_gin "$@" ;;
     -h|--help|help)
-        sed -n '2,35p' "$0" | sed 's/^# \{0,1\}//'
+        sed -n '2,69p' "$0" | sed 's/^# \{0,1\}//'
         ;;
-    *) die "unknown subcommand: $1 (status|check|test|update|rollback)" ;;
+    *) die "unknown subcommand: $1 (status|check|test|update|rollback|migrate-trajectories|repair-namespaces|backfill-embeddings|archive-legacy|aggregate-effectiveness|build-metadata-gin)" ;;
 esac

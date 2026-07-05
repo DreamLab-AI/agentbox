@@ -548,6 +548,41 @@ if [ -f "$_CF_TEMPLATE" ] && { [ ! -f "$_CF_CONFIG_DIR/config.json" ] || ! grep 
   chown 1000:1000 "$_CF_CONFIG_DIR/config.json" 2>/dev/null || true
 fi
 
+# ── PRD-018 / ADR-036 D6: read the RuVector memory gate flags from the manifest ─
+# Anchored-awk section parse, same style as scripts/ruvector-sidecar-update.sh
+# (toml_pin / toml_hygiene_flag). Booleans normalise to "1"/"0" (the gate
+# contract: on iff the value is '1' or 'true'); the two int tunables fall back to
+# their documented defaults (20 / 14). An absent key or section → off / default.
+# All-false manifest ⇒ every gate "0"/default ⇒ runtime byte-identical to today
+# (PRD-018 metric 1). Fail-open: unreadable manifest → all gates off.
+_ab_toml_val() { # _ab_toml_val <section> <key>
+  [ -r "$AGENTBOX_CONFIG" ] || return 0
+  awk -v sec="[$1]" -v key="$2" '
+    $0==sec {f=1;next} /^\[/{f=0}
+    f && index($0,key)==1 && $0 ~ ("^" key "[[:space:]]*=") {
+      sub(/^[^=]*=[[:space:]]*/,""); sub(/[[:space:]]*(#.*)?$/,""); gsub(/"/,"");
+      print; exit }' "$AGENTBOX_CONFIG"
+}
+_ab_toml_bool() { # _ab_toml_bool <section> <key> → 1|0
+  case "$(_ab_toml_val "$1" "$2")" in 1|true|TRUE|True|yes|on) echo 1 ;; *) echo 0 ;; esac
+}
+_ab_toml_int() { # _ab_toml_int <section> <key> <default>
+  local v; v="$(_ab_toml_val "$1" "$2")"
+  case "$v" in ''|*[!0-9]*) echo "$3" ;; *) echo "$v" ;; esac
+}
+_RV_TYPED_METADATA=$(_ab_toml_bool integrations.ruvector_external typed_metadata)
+_RV_HYBRID_SEARCH=$(_ab_toml_bool integrations.ruvector_external hybrid_search)
+_RV_METADATA_GIN=$(_ab_toml_bool integrations.ruvector_external metadata_gin)
+_RV_HEALTH_TOOL=$(_ab_toml_bool integrations.ruvector_external health_tool)
+_RV_EPISODIC_TTL_SWEEP=$(_ab_toml_bool integrations.ruvector_external episodic_ttl_sweep)
+_RV_MEMORY_ORIENT=$(_ab_toml_bool integrations.ruvector_external memory_orient)
+_ML_ENABLED=$(_ab_toml_bool memory_learning enabled)
+_ML_RECORD_TRAJ=$(_ab_toml_bool memory_learning record_trajectories)
+_ML_FEED_RETRIEVAL=$(_ab_toml_bool memory_learning feed_retrieval)
+_ML_FEED_ROUTING=$(_ab_toml_bool memory_learning feed_routing)
+_ML_AGG_MIN=$(_ab_toml_int memory_learning aggregate_min_samples 20)
+_ML_HALFLIFE=$(_ab_toml_int memory_learning recency_half_life_days 14)
+
 # ── MCP server config: ensure .mcp.json always points to ruvector-mcp.cjs ──
 # Claude Code resolves .mcp.json by walking up from cwd.  We write one at
 # the workspace root so every project inherits ruvector-postgres by default.
@@ -601,6 +636,54 @@ MCPEOF
     chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
     echo "  [mcp] Wrote $_MCP_JSON → ruvector-mcp.cjs (ruvector-postgres + xinference)"
   fi
+fi
+
+# ── PRD-018 / ADR-036 D6: inject the RuVector memory gate env into .mcp.json ──
+# The gate env-var contract (booleans on iff '1'/'true') read from agentbox.toml
+# above is written into the governed claude-flow server's env block so
+# ruvector-mcp.cjs sees the operator's flags. Applied on every boot (idempotent),
+# so flipping a manifest flag takes effect on the next restart even when the
+# .mcp.json already exists. Default-off manifest ⇒ every gate "0"/default ⇒
+# byte-identical runtime to today (PRD-018 metric 1). Fail-open: any parse/write
+# error leaves .mcp.json untouched and never blocks boot.
+if [ -f "$_MCP_JSON" ] && command -v node >/dev/null 2>&1; then
+  MCP_JSON="$_MCP_JSON" \
+  RV_TYPED_METADATA="$_RV_TYPED_METADATA" RV_HYBRID_SEARCH="$_RV_HYBRID_SEARCH" \
+  RV_METADATA_GIN="$_RV_METADATA_GIN" RV_HEALTH_TOOL="$_RV_HEALTH_TOOL" \
+  RV_EPISODIC_TTL_SWEEP="$_RV_EPISODIC_TTL_SWEEP" RV_MEMORY_ORIENT="$_RV_MEMORY_ORIENT" \
+  ML_ENABLED="$_ML_ENABLED" ML_RECORD_TRAJ="$_ML_RECORD_TRAJ" \
+  ML_FEED_RETRIEVAL="$_ML_FEED_RETRIEVAL" ML_FEED_ROUTING="$_ML_FEED_ROUTING" \
+  ML_AGG_MIN="$_ML_AGG_MIN" ML_HALFLIFE="$_ML_HALFLIFE" \
+  node <<'MCPGATEJS' || true
+const fs = require('fs');
+const f = process.env.MCP_JSON;
+let s; try { s = JSON.parse(fs.readFileSync(f, 'utf8')); } catch { process.exit(0); }
+const srv = s && s.mcpServers && s.mcpServers['claude-flow'];
+if (!srv) process.exit(0);
+srv.env = srv.env || {};
+const gates = {
+  RUVECTOR_TYPED_METADATA:          process.env.RV_TYPED_METADATA,
+  RUVECTOR_HYBRID_SEARCH:           process.env.RV_HYBRID_SEARCH,
+  RUVECTOR_METADATA_GIN:            process.env.RV_METADATA_GIN,
+  RUVECTOR_HEALTH_TOOL:             process.env.RV_HEALTH_TOOL,
+  RUVECTOR_EPISODIC_TTL_SWEEP:      process.env.RV_EPISODIC_TTL_SWEEP,
+  RUVECTOR_MEMORY_ORIENT:           process.env.RV_MEMORY_ORIENT,
+  RUVECTOR_MEMORY_LEARNING_ENABLED: process.env.ML_ENABLED,
+  RUVECTOR_RECORD_TRAJECTORIES:     process.env.ML_RECORD_TRAJ,
+  RUVECTOR_FEED_RETRIEVAL:          process.env.ML_FEED_RETRIEVAL,
+  RUVECTOR_FEED_ROUTING:            process.env.ML_FEED_ROUTING,
+  RUVECTOR_AGGREGATE_MIN_SAMPLES:   process.env.ML_AGG_MIN,
+  RUVECTOR_RECENCY_HALF_LIFE_DAYS:  process.env.ML_HALFLIFE,
+};
+let changed = false;
+for (const [k, v] of Object.entries(gates)) {
+  const val = String(v == null ? '' : v);
+  if (srv.env[k] !== val) { srv.env[k] = val; changed = true; }
+}
+if (changed) { fs.writeFileSync(f, JSON.stringify(s, null, 2)); console.log('  [mcp] injected PRD-018 RuVector memory gate env into .mcp.json'); }
+else { console.log('  [mcp] PRD-018 RuVector memory gate env already current'); }
+MCPGATEJS
+  chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
 fi
 
 # ── ADR-036 D2 / PRD-018 Phase 0: de-register the ungoverned ruvector fork ──
@@ -658,6 +741,72 @@ for (const evt of ['SessionStart', 'UserPromptSubmit', 'Stop', 'SessionEnd']) {
 if (changed) { fs.writeFileSync(f, JSON.stringify(s, null, 2)); console.log('  [mirror] registered nostr-live-mirror hooks in settings.json'); }
 else { console.log('  [mirror] nostr-live-mirror hooks already registered'); }
 MIRRORJS
+fi
+
+# ── PRD-018 / ADR-036 D6 (D1): register the learning-loop trajectory hook ──
+# config/hooks/trajectory-recorder.cjs records (state, action, outcome, duration)
+# tuples into the trajectory tables. Registered on PreToolUse/PostToolUse (Bash
+# matcher) + SubagentStop, mirroring the nostr-live-mirror registration above:
+# idempotent, fail-open. Registered ONLY when BOTH [memory_learning].enabled and
+# record_trajectories are true — otherwise the block below actively de-registers
+# any prior entry so toggling the manifest off restores byte-identical behaviour
+# on the next boot (PRD-018 metric 1). The two gate vars are embedded inline in
+# the command so the hook's own gate check passes exactly when the operator opted
+# in; the conninfo (and optional pubkey/agent) are passed through so the hook can
+# reach the sidecar regardless of the ambient hook env.
+_TRAJ_HOOK="/opt/agentbox/config/hooks/trajectory-recorder.cjs"
+if [ "$_ML_ENABLED" = "1" ] && [ "$_ML_RECORD_TRAJ" = "1" ] \
+   && [ -f "$_TRAJ_HOOK" ] && command -v node >/dev/null 2>&1; then
+  mkdir -p "$(dirname "$_CLAUDE_SETTINGS")" 2>/dev/null || true
+  TRAJ_HOOK="$_TRAJ_HOOK" SETTINGS="$_CLAUDE_SETTINGS" \
+  TRAJ_CONNINFO="${RUVECTOR_PG_CONNINFO:-host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=${RUVECTOR_PG_PASSWORD:-ruvector}}" \
+  TRAJ_PUBKEY="${AGENTBOX_PUBKEY:-}" TRAJ_AGENT="${AGENTBOX_AGENT:-}" \
+  node <<'TRAJJS' || true
+const fs = require('fs');
+const f = process.env.SETTINGS, hook = process.env.TRAJ_HOOK;
+// Inline env prefix so the hook sees its gates + DB reach independent of the
+// parent hook environment. Registration only happens when the operator enabled
+// the loop, so hardcoding the two gates to 1 is consistent with the manifest.
+let pfx = 'RUVECTOR_MEMORY_LEARNING_ENABLED=1 RUVECTOR_RECORD_TRAJECTORIES=1';
+if (process.env.TRAJ_CONNINFO) pfx += ` RUVECTOR_PG_CONNINFO=${JSON.stringify(process.env.TRAJ_CONNINFO)}`;
+if (process.env.TRAJ_PUBKEY)   pfx += ` AGENTBOX_PUBKEY=${process.env.TRAJ_PUBKEY}`;
+if (process.env.TRAJ_AGENT)    pfx += ` AGENTBOX_AGENT=${JSON.stringify(process.env.TRAJ_AGENT)}`;
+let s = {}; try { s = JSON.parse(fs.readFileSync(f, 'utf8')); } catch {}
+s.hooks = s.hooks || {};
+let changed = false;
+// [event, tool matcher]. The hook reads the event name from argv[2].
+const specs = [['PreToolUse', 'Bash'], ['PostToolUse', 'Bash'], ['SubagentStop', null]];
+for (const [evt, matcher] of specs) {
+  s.hooks[evt] = s.hooks[evt] || [];
+  const has = s.hooks[evt].some((g) => (g.hooks || []).some((h) => String(h.command || '').includes('trajectory-recorder.cjs')));
+  if (has) continue;
+  const grp = { hooks: [{ type: 'command', command: `${pfx} node ${hook} ${evt} || true`, timeout: 10000 }] };
+  if (matcher) grp.matcher = matcher;
+  s.hooks[evt].push(grp);
+  changed = true;
+}
+if (changed) { fs.writeFileSync(f, JSON.stringify(s, null, 2)); console.log('  [learning] registered trajectory-recorder hooks in settings.json'); }
+else { console.log('  [learning] trajectory-recorder hooks already registered'); }
+TRAJJS
+  chown 1000:1000 "$_CLAUDE_SETTINGS" 2>/dev/null || true
+elif [ -f "$_CLAUDE_SETTINGS" ] && command -v node >/dev/null 2>&1; then
+  # Gate off (default) → strip any prior trajectory-recorder registration so a
+  # container that once had the loop enabled returns to byte-identical behaviour.
+  SETTINGS="$_CLAUDE_SETTINGS" node <<'TRAJUNJS' || true
+const fs = require('fs');
+const f = process.env.SETTINGS;
+let s; try { s = JSON.parse(fs.readFileSync(f, 'utf8')); } catch { process.exit(0); }
+if (!s.hooks) process.exit(0);
+let changed = false;
+for (const evt of ['PreToolUse', 'PostToolUse', 'SubagentStop']) {
+  const arr = s.hooks[evt];
+  if (!Array.isArray(arr)) continue;
+  const kept = arr.filter((g) => !(g.hooks || []).some((h) => String(h.command || '').includes('trajectory-recorder.cjs')));
+  if (kept.length !== arr.length) { s.hooks[evt] = kept; changed = true; }
+}
+if (changed) { fs.writeFileSync(f, JSON.stringify(s, null, 2)); console.log('  [learning] de-registered trajectory-recorder hooks (gate off)'); }
+TRAJUNJS
+  chown 1000:1000 "$_CLAUDE_SETTINGS" 2>/dev/null || true
 fi
 
 # ── Self-heal: normalise auto-memory-hook commands to a fail-open form ──

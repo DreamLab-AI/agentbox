@@ -148,6 +148,7 @@ typed_metadata     = false   # honour importance/tags/memory_type/ttl on memory_
 metadata_gin       = false   # require/build GIN on metadata jsonb
 health_tool        = false   # memory_health read-only diagnostics
 episodic_ttl_sweep = false   # honour TTL, sweep expired episodic entries (implements delete)
+memory_orient      = false   # memory_orient OODA cold-start bundle (semantic + aggregates + episodic)
 
 [memory_learning]
 enabled              = false  # master gate for the learning loop
@@ -169,7 +170,7 @@ allow_legacy_archival    = false
 - *One coarse `[memory_learning].enabled` master switch.* Rejected: retrieval upgrades (D3) are useful without the learning loop and vice-versa; independent gates let each land and be evaluated alone (the CLAUDE.local.md experiment posture).
 - *A new `[ruvector]` top-level table.* Rejected: the sidecar config already lives under `[integrations.ruvector_external]`; retrieval flags extend it, learning gets its own `[memory_learning]` block (a distinct concern), hygiene its own. No orphan top-level table.
 
-**Consequences.** A default agentbox behaves exactly as today — the safe, reversible landing PRD-018 requires — and each capability can be enabled and evaluated in isolation, matching the guidance-control-plane experiment posture in CLAUDE.local.md. Cost: three config blocks and fourteen flags are a broader surface than one switch; the independence is worth it because retrieval, learning and hygiene are genuinely separable concerns with different risk profiles.
+**Consequences.** A default agentbox behaves exactly as today — the safe, reversible landing PRD-018 requires — and each capability can be enabled and evaluated in isolation, matching the guidance-control-plane experiment posture in CLAUDE.local.md. Cost: three config blocks and fifteen flags are a broader surface than one switch; the independence is worth it because retrieval, learning and hygiene are genuinely separable concerns with different risk profiles.
 
 ### D7 — Adapter-contract compliance (per feature)
 
@@ -236,7 +237,7 @@ This ADR **operationalises** the 2026-07-04 amendment to ADR-015. That amendment
 
 ### Negative
 - `activity` and `memory` now hold trajectories/effectiveness alongside execution traces and distilled lessons; disambiguation rests on the local-part prefix (`trajectory-`, `effectiveness-`), a naming convention, not a type-system guarantee — a prefix-filtering consumer must keep its list current (the same cost ADR-035 accepted).
-- Fourteen manifest flags across three blocks are a broader configuration surface than a single switch; the independence is deliberate but must be documented so operators do not enable a consumer (`feed_retrieval`) ahead of its producer (`record_trajectories`).
+- Fifteen manifest flags across three blocks are a broader configuration surface than a single switch; the independence is deliberate but must be documented so operators do not enable a consumer (`feed_retrieval`) ahead of its producer (`record_trajectories`).
 - The D2 stdio↔HTTP merge is deferred, so two dispatch surfaces coexist and their observability is reconciled by hand in v1 (recorded reconciliation debt).
 
 ### Risks

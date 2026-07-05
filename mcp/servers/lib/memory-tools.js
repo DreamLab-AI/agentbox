@@ -28,6 +28,9 @@
  *                        URN annotation), so its observable output is unchanged.
  */
 
+const { gates } = require('./ruvector-gates');
+const { buildMetadata } = require('./memory-metadata');
+
 // ── headroom compression (PRD-016 / ADR-034) ───────────────────────────────
 // Compress search results before returning to agents. Fail-open: if the addon
 // is absent or init fails, results pass through uncompressed.
@@ -91,7 +94,7 @@ function createExternalPgBackend(deps) {
     writeSourceType,
   } = deps;
 
-  async function memStore(key, value, namespace = 'default') {
+  async function memStore(key, value, namespace = 'default', options = {}) {
     const guard = checkProtectedNamespace(namespace);
     if (guard) return guard;
     if (!getPgOk() || !pool) return { success: false, error: 'pg unavailable', storage: 'none' };
@@ -101,22 +104,45 @@ function createExternalPgBackend(deps) {
     try { JSON.parse(jsonValue); pgValue = jsonValue; } catch { pgValue = JSON.stringify(jsonValue); }
     const embedText = typeof value === 'string' ? value : JSON.stringify(value);
     let embeddingClause = 'NULL';
+    let embedded = false;
     const params = [id, namespace, key, pgValue, writeSourceType];
     if (await xinfEnsure()) {
       try {
         const emb = await getEmbedding(embedText.substring(0, 2000));
         params.push(vecToSql(emb));
         embeddingClause = `$6::ruvector(384)`;
+        embedded = true;
       } catch (e) { log('WARN', `embedding generation failed for store: ${e.message}`); }
     }
-    await pool.query(
-      `INSERT INTO memory_entries (id, namespace, key, value, source_type, metadata, embedding)
-       VALUES ($1, $2, $3, $4::jsonb, $5, '{}', ${embeddingClause})
-       ON CONFLICT (id) DO UPDATE SET value = EXCLUDED.value, embedding = COALESCE(EXCLUDED.embedding, memory_entries.embedding), updated_at = NOW()`,
-      params,
-    );
+
+    // PRD-018 D3 typed metadata (gate RUVECTOR_TYPED_METADATA). Gate OFF →
+    // exact current behaviour: metadata literal '{}', conflict clause untouched
+    // (byte-identical to today). Gate ON → honour {importance,tags,memory_type,
+    // ttl_seconds}, computing expires_at, and persist/refresh the metadata jsonb.
+    const typed = gates.typedMetadata();
+    let metadata = null;
+    if (typed) {
+      metadata = buildMetadata(options || {});
+      params.push(JSON.stringify(metadata));
+      const metaClause = `$${params.length}::jsonb`;
+      await pool.query(
+        `INSERT INTO memory_entries (id, namespace, key, value, source_type, metadata, embedding)
+         VALUES ($1, $2, $3, $4::jsonb, $5, ${metaClause}, ${embeddingClause})
+         ON CONFLICT (id) DO UPDATE SET value = EXCLUDED.value, metadata = EXCLUDED.metadata, embedding = COALESCE(EXCLUDED.embedding, memory_entries.embedding), updated_at = NOW()`,
+        params,
+      );
+    } else {
+      await pool.query(
+        `INSERT INTO memory_entries (id, namespace, key, value, source_type, metadata, embedding)
+         VALUES ($1, $2, $3, $4::jsonb, $5, '{}', ${embeddingClause})
+         ON CONFLICT (id) DO UPDATE SET value = EXCLUDED.value, embedding = COALESCE(EXCLUDED.embedding, memory_entries.embedding), updated_at = NOW()`,
+        params,
+      );
+    }
     notifyMemoryFlash({ key, namespace, action: 'store' });
-    return { success: true, action: 'store', key, namespace, stored: true, embedded: params.length > 5, storage: 'ruvector-postgres' };
+    const out = { success: true, action: 'store', key, namespace, stored: true, embedded, storage: 'ruvector-postgres' };
+    if (typed) out.metadata = metadata;
+    return out;
   }
 
   async function memRetrieve(key, namespace = 'default') {
@@ -213,7 +239,45 @@ function createExternalPgBackend(deps) {
     return { success: true, action: 'search', query, namespace, results: _compressResults(results), count: results.length, method: 'ilike-fallback', degraded: true, warning: 'Semantic search unavailable — using text substring match. Check xinference service.', storage: 'ruvector-postgres' };
   }
 
-  return { memStore, memRetrieve, memList, memSearch };
+  // ── delete + episodic TTL sweep (PRD-018 D3, gate RUVECTOR_EPISODIC_TTL_SWEEP)
+  // Implements the previously-unimplemented delete case and honours the
+  // typed-metadata TTL by sweeping expired episodic rows. Fail-closed on
+  // PROTECTED_NAMESPACES unless RUVECTOR_ADMIN_WRITE=true (I-GOV).
+
+  async function memDelete(key, namespace = 'default') {
+    const guard = checkProtectedNamespace(namespace);
+    if (guard) return { ...guard, action: 'delete' };
+    if (!getPgOk() || !pool) return { success: false, error: 'pg unavailable' };
+    const id = entryId(namespace, key);
+    const res = await pool.query(`DELETE FROM memory_entries WHERE id = $1`, [id]);
+    notifyMemoryFlash({ key, namespace, action: 'delete' });
+    return { success: true, action: 'delete', key, namespace, deleted: res.rowCount, storage: 'ruvector-postgres' };
+  }
+
+  async function memSweepEpisodic(namespace = null) {
+    if (!getPgOk() || !pool) return { success: false, error: 'pg unavailable' };
+    const admin = ADMIN_WRITE_ENABLED;
+    if (namespace && !admin && PROTECTED_NAMESPACES.has(namespace)) {
+      return { success: false, action: 'sweep', namespace, error: `namespace "${namespace}" is write-protected`, swept: 0 };
+    }
+    const params = [];
+    let nsClause = '';
+    if (namespace) { params.push(namespace); nsClause = `AND namespace = $${params.length}`; }
+    let protClause = '';
+    const protectedList = Array.from(PROTECTED_NAMESPACES);
+    if (!admin && protectedList.length) { params.push(protectedList); protClause = `AND NOT (namespace = ANY($${params.length}))`; }
+    const res = await pool.query(
+      `DELETE FROM memory_entries
+        WHERE (metadata->>'memory_type') = 'episodic'
+          AND (metadata->>'expires_at') IS NOT NULL
+          AND (metadata->>'expires_at')::timestamptz < now()
+          ${nsClause} ${protClause}`,
+      params,
+    );
+    return { success: true, action: 'sweep', namespace: namespace || '*', swept: res.rowCount, storage: 'ruvector-postgres' };
+  }
+
+  return { memStore, memRetrieve, memList, memSearch, memDelete, memSweepEpisodic };
 }
 
 // ── delegating (in-memory / sqlite) backend ─────────────────────────────────
