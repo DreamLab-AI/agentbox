@@ -647,16 +647,18 @@
           chmod +x $out/bin/code-interpreter-mcp
         '';
 
-        aciShellMcpPkg = pkgs.runCommand "agentbox-aci-shell-mcp-0.1.0" {} ''
-          mkdir -p $out/bin $out/share/agentbox/mcp/aci-shell
-          cp -r ${./mcp/aci-shell}/. $out/share/agentbox/mcp/aci-shell/
-          cat > $out/bin/aci-shell-mcp <<'WRAPPER'
-          #!/usr/bin/env bash
-          exec ${pkgs.nodejs_22}/bin/node \
-            $out/share/agentbox/mcp/aci-shell/server.js "$@"
-          WRAPPER
-          chmod +x $out/bin/aci-shell-mcp
-        '';
+        # npm closure (node_modules baked): the entrypoint's phase-6 probe
+        # requires node_modules at /opt/agentbox/mcp/aci-shell when the gate is
+        # on, and server.js requires @modelcontextprotocol/sdk at runtime.
+        aciShellMcpPkg = npmServicesLib.makeNpmService {
+          name          = "aci-shell-mcp";
+          src           = ./mcp/aci-shell;
+          entry         = "server.js";
+          # stdio MCP server starts on module load — skip the import check.
+          skipLoadCheck = true;
+          # Prefetched 2026-07-05. Refresh: nix run nixpkgs#prefetch-npm-deps -- mcp/aci-shell/package-lock.json
+          npmDepsHash   = "sha256-8aKmf3gvv5aBMp40WHaatZPtRxBcX6ubxcQaZeS9sBA=";
+        };
 
         codeHarnessPackages =
           lib.optionals (codeInterpreterCfg.enabled or false) [
@@ -1107,6 +1109,10 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           ${lib.optionalString ((agentboxConfig.consultants or {}).enabled or false) ''
           mkdir -p $out/opt/agentbox/mcp
           cp -rL ${consultantsPkg}/package $out/opt/agentbox/mcp/consultants
+          ''}
+          ${lib.optionalString ((skillsCfg.aci_shell or {}).enabled or false) ''
+          rm -rf $out/opt/agentbox/mcp/aci-shell
+          cp -rL ${aciShellMcpPkg}/package $out/opt/agentbox/mcp/aci-shell
           ''}
 
           ${lib.optionalString compressionEnabled ''

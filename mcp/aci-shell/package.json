@@ -14,7 +14,7 @@
     "node": ">=22"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "*"
+    "@modelcontextprotocol/sdk": "^1.0.0"
   },
   "license": "AGPL-3.0-only",
   "keywords": ["mcp", "aci", "swe-agent", "agentbox", "code-harness"]
