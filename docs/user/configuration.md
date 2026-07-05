@@ -226,10 +226,13 @@ Feature flags for the 96-skill catalogue. Only enabled skills contribute to the 
 
 ```toml
 [skills.browser]
-playwright = false
-qe_browser = false
-agent_browser = false
+agent_browser = true    # on by default in the shipped manifest
+qe_browser    = true    # on by default in the shipped manifest
+playwright    = false   # permanently off — superseded by the browsercontainer sidecar
 # All browser automation routes through the external browsercontainer sidecar.
+# There is no local chromium/playwright in the image — agent_browser and
+# qe_browser both dispatch to the sidecar's chrome-devtools-mcp, they don't
+# bundle their own browser.
 # MCP SSE: http://browsercontainer:8931/sse (chrome-devtools-mcp 40+ tools)
 # CDP: browsercontainer:9222 | VNC: :5903
 # Start: agentbox.sh browsercontainer up
@@ -283,6 +286,58 @@ cuda          = true     # CUDA toolchain (requires [gpu].backend = "local-cuda"
 
 Validator rule **E019**: `cuda = true` requires `gpu.backend = "local-cuda"`.
 
+## `[consultants]` and `[consultants.<name>]`
+
+Five named-consultant MCP servers that expose external LLMs as explicit
+second opinions (PRD-005 / ADR-011). Full operator guide, calling
+conventions, and audit trail: [consultants.md](consultants.md).
+
+```toml
+[consultants]
+enabled             = true   # master gate (E036)
+intelligence_signal = true   # write ADR-043 QualitySignal files for the SONA learning loop
+
+[consultants.zai]
+enabled          = true
+model            = "glm-5.2"
+reasoning_effort = "high"   # NEW field: low | medium | high — deep-thinking depth
+home             = "/home/devuser/.zai"
+timeout_ms       = 180000
+```
+
+`reasoning_effort` plumbs through `provision-agent-stacks.py` to
+`AGENTBOX_ZAI_REASONING_EFFORT`, passed as an env var to the `consultant-zai`
+MCP, which maps it in `zai/server.js` to Claude Code's `MAX_THINKING_TOKENS`
+(`low` = 4096, `medium` = 10000, `high` = 31999). The Z.AI Anthropic-compatible
+endpoint (`api.z.ai/api/anthropic`) then translates that thinking-token
+budget into GLM's own `reasoning_effort` parameter. Leave unset to fall back
+to the endpoint default. Note: ZCode (`zcode.z.ai`) is Z.AI's own desktop/web
+IDE, not a CLI — it is not part of this integration path.
+
+## `[project_tracking]`
+
+Helm-grade project tracking re-expressed on the sovereign substrate — no new
+URN kind, no new port, no new adapter slot ([PRD-017](../reference/prd/PRD-017-sovereign-project-tracking.md) / [ADR-035](../reference/adr/ADR-035-project-tracking-telemetry-and-nostr-kind.md) / [DDD-015](../reference/ddd/DDD-015-project-tracking-domain.md)). Every tracked git
+repo under `scan_dirs` becomes a `urn:agentbox:thing:<scope>:project-<sha256-12>`;
+scans and primers ride the existing events/memory adapter slots.
+
+```toml
+[project_tracking]
+enabled             = true
+scan_dirs           = ["/projects", "/home/devuser/workspace/project"]
+scan_interval_hours = 6        # 0 = on-demand only (no scheduler)
+github_enrichment   = false    # pulls issues + stars via GITHUB_TOKEN — one external hop
+primer_model        = "glm-5.2"
+primer_on_scan      = false    # auto-generate AI primers for new projects during a scan
+nostr_publish       = true     # publish kind-30841 digests to the operator's did:nostr
+metrics             = true     # agentbox_project_* gauges on the port-bound /metrics
+```
+
+`enabled = false` makes `/v1/projects` return 503 and disables every scan,
+metric, and publish path. `github_enrichment` and primer generation are the
+only external hops and are independently gated (a GitHub token and a Z.AI/GLM
+key respectively).
+
 ## `[integrations.<name>]`
 
 Optional external endpoints for federated deployments.
@@ -292,11 +347,96 @@ Optional external endpoints for federated deployments.
 enabled  = true
 conninfo = "postgresql://ruvector:@@RUVECTOR_PG_PASSWORD@@@ruvector-postgres:5432/ruvector"
 
+# PRD-018 / ADR-036 D6 — retrieval upgrades. All six are TRUE in the shipped
+# manifest (rolled out 2026-07-05). A manifest with all six false is
+# byte-identical to the pre-PRD-018 product: pure `<=>` vector search, no
+# typed metadata, no learning, no ops.
+hybrid_search      = true   # memory_hybrid_search: fuses vector score + PG full-text
+typed_metadata     = true   # honour importance/tags/memory_type/ttl on memory_store
+metadata_gin       = true   # GIN index on metadata jsonb for tag @> retrieval
+health_tool        = true   # memory_health read-only diagnostics
+episodic_ttl_sweep = true   # honour TTL, sweep expired episodic entries
+memory_orient      = true   # memory_orient OODA cold-start bundle
+
 [integrations.comfyui_external]
 enabled = false
 url = "http://comfyui:8188"
 ws_url = "ws://comfyui:8188/ws"
 ```
+
+Each retrieval gate mirrors into the `RUVECTOR_*` env of the governed
+`ruvector-mcp.cjs` server — the legacy 20 tools plus `memory_hybrid_search`,
+`memory_orient`, `memory_health`, and `memory_sweep_episodic` (24 total).
+See [PRD-018](../reference/prd/PRD-018-ruvector-native-memory-and-learning.md)
+/ [ADR-036](../reference/adr/ADR-036-ruvector-capability-adoption-and-learning-loop.md).
+
+## `[memory_learning]`
+
+The trajectory-recording learning loop (PRD-018 Phase 1-2 / ADR-036 D1/D3).
+The agentbox-owned hook (`config/hooks/trajectory-recorder.cjs`) records real
+`(state, action, outcome, duration)` tuples on `PreToolUse`/`PostToolUse(Bash)`/
+`SubagentStop`; effectiveness is aggregated (Wilson lower-bound + recency
+decay) onto the existing memory slot — no new adapter slot, no new table.
+
+```toml
+[memory_learning]
+enabled                = true    # master gate for the learning loop
+record_trajectories    = true    # producer: hook writes trajectories/trajectory_steps
+aggregate_min_samples  = 20      # Wilson-bound sample floor before an aggregate influences retrieval
+recency_half_life_days = 14      # recency half-life for aggregation and the hybrid recency term
+feed_retrieval         = false   # consumer: effectiveness aggregates re-rank memory_search
+feed_routing           = false   # consumer: aggregates surface as advisory [INTELLIGENCE] hints
+sona_enabled           = false   # ADOPT-LATER, reserved
+relevance_feedback     = false   # ADOPT-LATER, reserved
+```
+
+The producer (`record_trajectories`) is live in the shipped manifest; the two
+consumers (`feed_retrieval`, `feed_routing`) stay off until the trajectory
+corpus clears `aggregate_min_samples` — enabling a consumer ahead of its
+producer is validator rule **W066**.
+
+## `[memory_hygiene]`
+
+One-shot data-hygiene operations against the ruvector-postgres store
+(PRD-018 Phase 2 / ADR-036 D5), run via `./agentbox.sh ruvector <op>` (see
+[agentbox-cli.md](agentbox-cli.md)). Every op is dry-run unless its flag here
+is `true` **and** you pass `--yes`; an absent block or a `false` flag is
+fail-closed.
+
+```toml
+[memory_hygiene]
+allow_namespace_repair   = false  # non-dry-run repair-namespaces
+allow_embedding_backfill = false  # non-dry-run backfill-embeddings
+allow_legacy_archival    = false  # non-dry-run archive-legacy
+```
+
+All three flags read `false` in the shipped manifest — not because the ops
+are still pending, but because they already ran (2026-07-05) and were reset
+to fail-closed afterwards: 178,238 rows un-swapped (`repair-namespaces`), 36
+NULL-embedding rows backfilled via Xinference `bge-small-en-v1.5`
+(`backfill-embeddings`), and 2,014,173 frozen legacy rows archived then
+deleted (`archive-legacy`). Recovery archives from that run live under
+`backups/ruvector-sidecar/`.
+
+## `[linked_data]` and `[linked_data.viewer]`
+
+Eleven JSON-LD federation surfaces ([PRD-006](../reference/prd/PRD-006-linked-data-interfaces.md) / [ADR-012](../reference/adr/ADR-012-jsonld-federation-grammar.md)) plus an optional JSON-LD-aware
+browser at `/lo/*` (S12). Full walkthrough: [linked-data.md](linked-data.md)
+(surfaces) and [browser.md](browser.md) (viewer).
+
+```toml
+[linked_data]
+enabled = true   # master gate for all eleven surfaces
+
+[linked_data.viewer]
+mode        = "local-linkedobjects"   # off | local-linkedobjects | external
+expose_port = true                    # reach /lo/* from outside the host
+```
+
+The shipped manifest enables both the surfaces and the viewer by default; a
+from-scratch manifest that omits these keys falls back to `enabled = false`
+/ `mode = "off"` (viewer code-default is off). Full field list:
+[browser.md](browser.md#configuration-reference).
 
 ## `[sovereign_mesh]`
 

@@ -1,33 +1,33 @@
 # Code-as-Harness — Operator and Developer Guide
 
-> Status: Phase 1 in progress (2026-05-21). Phase 1 surfaces (code-interpreter MCP, ExpeL lesson-extractor, ACI MCP scaffold) ship behind opt-in manifest gates. Phase 2 (CodeAct skill use beyond exemplars, Voyager skill library, tree-search) ships once Phase 1 acceptance criteria (PRD-008 §7) pass.
+> Status: Phase 2 is LIVE (2026-07-05). All six surfaces — code-interpreter MCP, CodeAct, ExpeL lesson-extractor, ACI MCP, Voyager skill library, tree-search — are enabled in the live manifest. Phase 1 acceptance criteria (PRD-008 §7) passed; the ACI shell MCP packaging fix (npm closure, see below) was the last blocker and is now resolved.
 
 ## TL;DR for Operators
 
-Four independent research lines — Program of Thoughts (+12 pp on maths benchmarks), Chain of Code (+12 pp on BIG-Bench Hard), CodeAct (+20% success rate on tool-use benchmarks), and ORPS tree-search (+26.9% correctness) — converge on the same missing primitive: a Python kernel that persists variable state across tool calls within a session. Code-as-harness adds that kernel as an MCP server, wires a post-task lesson-distillation pipeline (ExpeL) that accumulates cross-run rules in RuVector, and scaffolds a verified executable skill library (Voyager) for reuse across sessions. Every record emitted carries the agent's `did:nostr` identity and a PROV-O Activity receipt, making the domain's audit trail queryable. Phase 1 surfaces are opt-in; Phase 2 surfaces are scaffolded but default off.
+Four independent research lines — Program of Thoughts (+12 pp on maths benchmarks), Chain of Code (+12 pp on BIG-Bench Hard), CodeAct (+20% success rate on tool-use benchmarks), and ORPS tree-search (+26.9% correctness) — converge on the same missing primitive: a Python kernel that persists variable state across tool calls within a session. Code-as-harness adds that kernel as an MCP server, wires a post-task lesson-distillation pipeline (ExpeL) that accumulates cross-run rules in RuVector, and ships a verified executable skill library (Voyager) for reuse across sessions. Every record emitted carries the agent's `did:nostr` identity and a PROV-O Activity receipt, making the domain's audit trail queryable. All six surfaces are opt-in manifest gates; in the current deployment all six are on.
 
 ## Quick Start
 
 ```bash
-# Enable Phase 1 surfaces in agentbox.toml:
+# Phase 1 surfaces in agentbox.toml (enabled):
 [skills.code_interpreter]
 enabled = true
+
+[skills.codeact]
+enabled = true              # depends on code_interpreter
 
 [features.expel_lesson_extraction]
 enabled = true
 
-# Phase 2 surfaces (scaffold only — off by default):
-# [skills.codeact]
-# enabled = true              # depends on code_interpreter
+# Phase 2 surfaces — LIVE (2026-07-05), all depend on the Phase 1 surfaces above:
+[skills.aci_shell]
+enabled = true  # E050 requires code_interpreter; npm closure packaged (see below)
 
-# [skills.aci_shell]
-# enabled = true              # opt-in; E050 requires code_interpreter
+[skills.voyager_skill_library]
+enabled = true  # depends on expel + code_interpreter (E044)
 
-# [skills.voyager_skill_library]
-# enabled = true              # depends on expel + code_interpreter (E044)
-
-# [skills.tree_search_coder]
-# enabled = false             # off by default; never auto-routed
+[skills.tree_search_coder]
+enabled = true  # execution-gated search; explicitly invoked, never auto-routed
 
 # Rebuild:
 nix build .#default
@@ -45,10 +45,10 @@ code-harness-audit   # follows the kernel MCP audit log
 flowchart LR
     CI[code-interpreter MCP\nPhase 1]
     EX[ExpeL extractor\nPhase 1]
-    AC[ACI MCP\nPhase 2 scaffold]
+    AC[ACI MCP\nPhase 2 — live]
     CA[CodeAct skill\nPhase 1-2]
-    VS[Voyager library\nPhase 2 scaffold]
-    TS[tree-search-coder\nPhase 2-3]
+    VS[Voyager library\nPhase 2 — live]
+    TS[tree-search-coder\nPhase 2 — live]
     RV[(RuVector\ncode-harness-lessons\ncode-harness-skills)]
     AT[(Audit JSONL\n/var/lib/agentbox/\ncode-harness/)]
 
@@ -75,9 +75,18 @@ flowchart LR
 | code-interpreter MCP | MCP | shipping | `[skills.code_interpreter]` | 1 |
 | CodeAct skill | Skill | shipping | `[skills.codeact]` | 1-2 |
 | ExpeL lesson-extractor | Skill + hook | shipping | `[features.expel_lesson_extraction]` | 1 |
-| ACI MCP | MCP | scaffold | `[skills.aci_shell]` | 2 |
-| Voyager skill library | Skill + hook | scaffold | `[skills.voyager_skill_library]` | 2 |
-| Execution-gated tree-search | Skill | future | `[skills.tree_search_coder]` | 2-3 |
+| ACI MCP | MCP | shipping (live 2026-07-05) | `[skills.aci_shell]` | 2 |
+| Voyager skill library | Skill + hook | shipping (live 2026-07-05) | `[skills.voyager_skill_library]` | 2 |
+| Execution-gated tree-search | Skill | shipping (live 2026-07-05) | `[skills.tree_search_coder]` | 2-3 |
+
+## ACI Shell MCP Packaging
+
+`mcp/aci-shell` is a proper npm closure, built via `makeNpmService` in `flake.nix` (fixed 2026-07-05):
+
+- Pinned `@modelcontextprotocol/sdk ^1.0.0`, lockfile at `mcp/aci-shell/package-lock.json`, `npmDepsHash` prefetched.
+- `node_modules` is baked and overlaid into `/opt/agentbox/mcp/aci-shell` at image build time — no runtime `npm install`.
+- The entrypoint's Stage B phase-6 artefact probe (`_probe_closure /opt/agentbox/mcp/aci-shell`) checks `node_modules` exists when `[skills.aci_shell].enabled = true`, and passes.
+- The stdio MCP server starts on module load, so the Nix build's import-check step is skipped for this package (`skipLoadCheck = true`) — the closure is still validated at runtime by the phase-6 probe.
 
 ## Identity Stack (Ecosystem-Consistent)
 
@@ -193,9 +202,9 @@ Phase 3 items (deferred, not rejected):
 - **PoE-World** (if game-dev adoption creates demand): revisit in Phase 3.
 - **Multi-tier MIRIX memory** (if RuVector schema work is separately funded): revisit in Phase 3.
 
-## Open Questions (Still Open After Phase 1)
+## Open Questions (Still Open — Phase 2 Live)
 
-These questions are unresolved as of the Phase 1 sprint. Each will be answered by the ADR that implements the relevant Phase 2 item:
+These questions remain unresolved even with Phase 2 live; none blocked the rollout, but each will be answered by a future ADR revision:
 
 1. **Kernel scope: per-session vs per-worktree.** In ruflo swarms with `isolation: "worktree"`, should the kernel scope follow the worktree boundary? ADR-018 must decide.
 2. **Pip install policy.** Explicit per-package allowlist in `agentbox.toml`, signed package allowlist, or Nix-only? ADR-018 must decide.
@@ -203,7 +212,7 @@ These questions are unresolved as of the Phase 1 sprint. Each will be answered b
 4. **State persistence across sessions.** Kernel namespace is throwaway in v1. ADR-018 must decide whether `kernel.snapshot()` → RuVector is added.
 5. **Lesson quality threshold.** `source_evidence` field is required; minimum evidence quality bar is not yet specified. ADR-019 should calibrate.
 6. **Voyager skill discovery surface.** Silent context injection, `voyager-skills list` command, or management-api endpoint? ADR-019 must decide.
-7. **ACI vs codebase-memory delineation in practice.** A routing example documenting the combined pattern (codebase-memory to navigate, ACI to edit and test) is required before Phase 2 ships. PRD-008 §10 mandates this.
+7. **ACI vs codebase-memory delineation in practice.** A routing example documenting the combined pattern (codebase-memory to navigate, ACI to edit and test) is still outstanding. PRD-008 §10 mandates this; track against a follow-up ADR revision.
 
 ## References
 

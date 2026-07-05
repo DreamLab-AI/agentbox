@@ -5,6 +5,15 @@
 **Repo:** [github.com/DreamLab-AI/agentbox](https://github.com/DreamLab-AI/agentbox)
 **Related:** ADR-005 (Pluggable adapter architecture), ADR-011 (Consultation MCP servers), ADR-026 in upstream claude-flow (3-tier model routing), ADR-043 in ruvector (External Intelligence Providers), PRD-001 (Capabilities and adapters)
 
+## Amendment (2026-07-05) — reasoning-effort control added to §5
+
+`[consultants.zai].reasoning_effort` (enum `low`\|`medium`\|`high`, default
+`high`) extends the §5 manifest model. It flows through
+`provision-agent-stacks.py` as `AGENTBOX_ZAI_REASONING_EFFORT`, into the `zai`
+consultant's env, mapped to Claude Code `MAX_THINKING_TOKENS` (low=4096,
+medium=10000, high=31999); the Z.AI Anthropic-compatible endpoint translates
+the thinking block to GLM `reasoning_effort`.
+
 ## TL;DR for newcomers
 *Skip if you already know why "meta-router" and "consultant" are different problems.*
 

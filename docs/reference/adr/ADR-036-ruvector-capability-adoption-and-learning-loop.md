@@ -1,7 +1,7 @@
 ---
 id: ADR-036
 title: "RuVector capability adoption and learning loop"
-status: proposed
+status: implemented
 date: 2026-07-04
 type: architecture
 author: Dr John O'Hare
@@ -14,10 +14,21 @@ review_trigger: a ninth capability-adoption decision is needed (forces a re-eval
 
 # ADR-036 — RuVector capability adoption and learning loop
 
-**Status:** Proposed (v1)
+**Status:** Proposed (v1) — D1–D6 implemented 2026-07-05 (see amendment below)
 **Date:** 2026-07-04
 **Repo:** DreamLab-AI/agentbox
 **Related:** PRD-018 (RuVector-native memory and learning — product goals, adoption menu, retrieval UX, hygiene programme), DDD-016 (Memory-learning domain — ubiquitous language, aggregates, invariants), PRD-001 (Capabilities and adapters — the five-slot product spec), ADR-005 (Pluggable adapter architecture + observability middleware), ADR-008 (Privacy filter routing), ADR-012 (JSON-LD encoder), ADR-013 (Canonical URI grammar — the 18 kinds), ADR-015 (MCP RuVector mandate) **and its 2026-07-04 amendment** (embedding-pipeline correction: Xinference/bge-small-en-v1.5, two MCP copies), ADR-035 (Project tracking — the additive-substrate precedent this ADR follows), DDD-003 (Sovereign data-stack invariants), DDD-004 (Adapter middleware ordering, §L08), ADR-027 (Default-secure posture), ADR-029 (Fail-open egress precedent)
+
+## Amendment (2026-07-05) — D1–D6 implemented, hygiene ops executed
+
+D1–D6 are implemented and live: retrieval + learning gates are `true` in
+`agentbox.toml` (see the [PRD-018 amendment](../prd/PRD-018-ruvector-native-memory-and-learning.md)). The D5 hygiene ops ran for real on 2026-07-05:
+`repair-namespaces` un-swapped 178,238 rows (the `::jsonb` cast now guards with
+`pg_input_is_valid()`, PG17); `archive-legacy` exported 2,014,173 rows to an 11G
+cold archive; `VACUUM FULL` took `memory_entries` from 34 GB to 614 MB;
+`backfill-embeddings` embedded the last 36 NULL rows (0 of 46,271 remain); the
+`metadata` GIN (`idx_memory_metadata_gin`) was built. `[memory_hygiene]` flags
+are back to `false` (fail-closed), the runs annotated in the manifest.
 
 ## TL;DR for newcomers
 *Skip if you already know that the sidecar is a strong store with a severed learning loop, and that we close the gap additively — no new slot, no new kind, no new port, everything default-off.*

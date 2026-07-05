@@ -41,16 +41,41 @@ for this. For manual editing:
 # agentbox.toml
 [consultants]
 enabled              = true
-intelligence_signal  = false   # set true to feed SONA's learning loop
+intelligence_signal  = true   # feeds the SONA learning loop; set false to disable
 
 [consultants.codex]
 enabled    = true
-model      = "gpt-5.4"
+model      = "gpt-5.5"
 home       = "/home/devuser/.codex"
 timeout_ms = 180000
 
-# … same shape for antigravity, zai, perplexity, deepseek
+[consultants.zai]
+enabled          = true
+model            = "glm-5.2"
+reasoning_effort = "high"   # low | medium | high — deep-thinking depth; see below
+home             = "/home/devuser/.zai"
+timeout_ms       = 180000
+
+# … same shape for antigravity, perplexity, deepseek
 ```
+
+### `zai` deep thinking — `reasoning_effort`
+
+`[consultants.zai].reasoning_effort` (`low` | `medium` | `high`) plumbs
+through `provision-agent-stacks.py` to the `AGENTBOX_ZAI_REASONING_EFFORT`
+env var, passed to the `consultant-zai` MCP, which maps it in `zai/server.js`
+to Claude Code's `MAX_THINKING_TOKENS` (`low` = 4096, `medium` = 10000,
+`high` = 31999). The Z.AI Anthropic-compatible endpoint
+(`api.z.ai/api/anthropic`) then translates that thinking-token budget into
+GLM's own `reasoning_effort` parameter. Leave the field unset to fall back to
+the endpoint default.
+
+`glm-5.2` remains Z.AI's flagship coding model (1M context) and the model
+used everywhere Z.AI appears in agentbox (`consultants.zai.model`,
+`project_tracking.primer_model`, `sovereign_mesh.mobile_bridge` summary
+model). **ZCode** (`zcode.z.ai`) is Z.AI's own desktop/web IDE — it is not a
+CLI and does not replace the `claude-zai` wrapper harness; don't confuse the
+two when reading Z.AI's own docs.
 
 Each enabled consultant requires its provider gate too:
 
@@ -92,7 +117,7 @@ The coordinator picks a `context_excerpt` from the current chat (curated
 response is rendered with provenance:
 
 ```
-[codex / gpt-5.4, 412→180 tokens, $0.0021, 2.1s]
+[codex / gpt-5.5, 412→180 tokens, $0.0021, 2.1s]
 
 The unsafe block is sound provided buf is non-null and aligned for u8…
 ```
@@ -135,7 +160,7 @@ Every consultation returns the same envelope:
   "ok":         true,
   "consultant": "codex",
   "response":   "<the consultant's answer>",
-  "model":      "gpt-5.4",
+  "model":      "gpt-5.5",
   "tokens":     { "prompt": 412, "completion": 180, "total": 592 },
   "cost_usd":   0.0021,
   "citations":  [],
@@ -161,7 +186,7 @@ docker exec agentbox tail -f /var/lib/agentbox/consultations/codex-$(date -u +%F
 #   "id": "1c8d…", "ts": "2026-04-25T13:14:15Z", "consultant": "codex",
 #   "ok": true, "question": "Is this Rust unsafe block sound?",
 #   "context_size": 318, "response_len": 712,
-#   "model": "gpt-5.4", "tokens": {…}, "cost_usd": 0.0021,
+#   "model": "gpt-5.5", "tokens": {…}, "cost_usd": 0.0021,
 #   "latency_ms": 2143, "citations": 0
 # }
 ```

@@ -89,8 +89,10 @@ flowchart LR
   accepted event is persisted to the pod mailbox. Spec:
   [ADR-009](../reference/adr/ADR-009-embedded-nostr-relay.md).
 - **Embedding** — a fixed-length numeric vector representing a piece of text,
-  used for semantic search. Agentbox uses MiniLM-L6-v2 (384-dim) for the
-  embedded memory adapter.
+  used for semantic search. The governed memory MCP computes embeddings
+  client-side via Xinference `bge-small-en-v1.5` (384-dim) — not MiniLM, and
+  not the in-database `generate_text_embedding()` path (ADR-015, amended
+  2026-07-04).
 - **Event inbox / outbox** — pod directories `events/inbox/` and `events/outbox/`
   under `pods/<npub>/`. The bridge writes signature-verified inbound Nostr
   events to inbox and lifts outbound messages from outbox for signing and
@@ -144,8 +146,10 @@ flowchart LR
   built, what boots, and what is validated. See
   [configuration.md](configuration.md).
 - **MCP** — Model Context Protocol, the standard JSON-RPC protocol agents use
-  to call tools. Agentbox ships 13 MCP servers (Playwright, ImageMagick,
-  QGIS, Blender, ComfyUI, etc.) as optional manifest-gated services.
+  to call tools. Agentbox ships 13 MCP servers (ImageMagick, QGIS, Blender,
+  ComfyUI, ontology, etc.) as optional manifest-gated services. Browser
+  automation is not one of them — it runs in the external browsercontainer
+  sidecar (chrome-devtools-mcp), not an in-image MCP server.
 - **Mesh** — a group of cooperating containers exchanging messages. Agentbox
   speaks to two kinds: the optional Nostr sovereign mesh (inter-agent) and an
   external host mesh (federated adapters).
@@ -197,9 +201,14 @@ flowchart LR
   duration.
 - **read_only filesystem** — the container's root filesystem is mounted
   read-only; writable paths are explicit tmpfs entries plus mounted volumes.
-- **RuVector** — the embedded vector retrieval engine used by the
-  `embedded-ruvector` memory adapter. Per-session cache, not a durable store.
-  See [ADR-002](../reference/adr/ADR-002-ruvector-standalone.md).
+- **RuVector** — the vector retrieval engine, used two ways. `vector_db =
+  "ruvector-embedded"` is a per-session cache, not a durable store (see
+  [ADR-002](../reference/adr/ADR-002-ruvector-standalone.md)). The shipped
+  `memory` adapter is `external-pg` instead: an external `ruvector-postgres`
+  (pgvector) sidecar is the actual durable memory backend, with hybrid
+  search, typed metadata, and a trajectory-recording learning loop layered on
+  top (PRD-018 / ADR-036). Don't confuse the two — only the external form
+  survives a container rebuild.
 - **seccomp** — a Linux kernel feature that filters which system calls a
   process may make. Agentbox uses the Docker default profile.
 - **Sidecar** — an auxiliary process running alongside the main service,
@@ -208,7 +217,7 @@ flowchart LR
   (`nostr-relay` on :7777). Each is gated on its own manifest block and
   adds nothing to the image when disabled.
 - **Skill** — a self-contained package of instructions and tools an agent can
-  load (e.g. `blender`, `latex`, `playwright`). Skills are progressive-
+  load (e.g. `blender`, `latex`, `browser`). Skills are progressive-
   disclosure: the agent reads the manifest, then loads only what it needs.
 - **Skills corpus** — the 96-skill content-addressed Nix input copied into
   the image at `/opt/agentbox/skills`. Per-skill gating via `[skills.*]`.

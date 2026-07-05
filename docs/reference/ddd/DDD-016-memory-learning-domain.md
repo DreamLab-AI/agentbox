@@ -1,10 +1,22 @@
 # DDD-016: Memory & Learning Domain
 
-**Status**: Draft v1
+**Status**: Draft v1 — live in production since 2026-07-05 (see amendment below)
 **Date**: 2026-07-04
 **Repo**: `github.com/DreamLab-AI/agentbox`
 **Bounded Context**: Memory & Learning (semantic memory store + honest learning loop over the RuVector sidecar)
 **Related**: [PRD-018](../prd/PRD-018-ruvector-native-memory-and-learning.md) (product goals, capability-adoption menu, retrieval UX, hygiene programme), [ADR-036](../adr/ADR-036-ruvector-capability-adoption-and-learning-loop.md) (the eight decisions D1–D8 with alternatives and rejections), [PRD-001](../prd/PRD-001-capabilities-and-adapters.md) (capabilities and adapter slots — memory is one of the five), [ADR-005](../adr/ADR-005-pluggable-adapter-architecture.md) (memory + events adapter slots, observability middleware, dispatch metrics), [ADR-008](../adr/ADR-008-privacy-filter-routing.md) (privacy redaction — fail-closed on the trajectory write path), [ADR-012](../adr/ADR-012-jsonld-federation-grammar.md) (JSON-LD encoder — opt-in per surface), [ADR-013](../adr/ADR-013-canonical-uri-grammar.md) (canonical URI grammar; all identities minted via `management-api/lib/uris.js`), [ADR-015](../adr/ADR-015-mcp-ruvector-mandate.md) *and its 2026-07-04 amendment* (MCP-ruvector mandate; the embedding-pipeline claim corrected from MiniLM/`generate_text_embedding()` to Xinference `bge-small-en-v1.5`), [DDD-003](./DDD-003-sovereign-messaging-domain.md) (sovereign messaging — owner identity `did:nostr`, consumed not owned), [DDD-004](./DDD-004-linked-data-interchange-domain.md) (linked-data interchange — JSON-LD encoding surface), [DDD-005](./DDD-005-code-execution-domain.md) (code-execution domain — the `DistilledLesson` / memory-slot precedent this domain extends), [DDD-015](./DDD-015-project-tracking-domain.md) (project tracking — sibling precedent: memory/events slots plus `uris.js` discipline for a prior additive capability). Ground truth: [`docs/ruvector-system-reference.md`](../../ruvector-system-reference.md) (7-agent audit, 2026-07-04).
+
+---
+
+## Amendment (2026-07-05) — domain live in production
+
+This domain's write path is live: the governed MCP server enforces I-GOV, the
+memory-slot retrieval upgrades (I01, I03, I08) are enabled, and the
+`HookObservationPort` trajectory producer has been recording real
+`(state, action, outcome, duration)` tuples since 2026-07-05 (ADR-036 D5
+hygiene ops executed the same day). `feed_retrieval`/`feed_routing` (I06)
+remain inert pending `aggregate_min_samples`; SONA/relevance-feedback stay
+reserved (§12 open question 1).
 
 ---
 

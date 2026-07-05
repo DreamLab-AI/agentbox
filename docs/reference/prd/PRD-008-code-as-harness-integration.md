@@ -1,9 +1,18 @@
 # PRD-008: Code-as-Harness integration
 
-**Status:** Draft v1
+**Status:** Draft v1 — Phase 2 gates enabled 2026-07-05 (see amendment below)
 **Date:** 2026-05-20
 **Repo:** [github.com/DreamLab-AI/agentbox](https://github.com/DreamLab-AI/agentbox)
 **Related:** ADR-018 (Persistent code-interpreter MCP + CodeAct), ADR-019 (Experiential skill learning), DDD-005 (Code-execution and experiential-learning domain), PRD-001 (Capabilities and adapters), ADR-005 (Pluggable adapters), ADR-015 (MCP RuVector mandate)
+
+## Amendment (2026-07-05) — Phase 2 gates enabled
+
+`[skills.voyager_skill_library]`, `[skills.aci_shell]`, and
+`[skills.tree_search_coder]` are all `enabled = true` in the live manifest
+(their Phase 1 dependencies — `skills.code_interpreter`,
+`features.expel_lesson_extraction` — were already on). Surface 5 (ACI MCP) is
+packaged as a proper npm closure fixing the phase-6 entrypoint probe; see the
+[ADR-020 amendment](../adr/ADR-020-aci-mcp-tree-search.md).
 
 ## TL;DR for newcomers
 

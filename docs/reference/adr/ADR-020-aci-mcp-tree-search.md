@@ -14,6 +14,18 @@ ADR named as a precondition; that ordering is recorded rather than retro-gated.
 
 ---
 
+## Amendment (2026-07-05) — both surfaces enabled
+
+`[skills.aci_shell].enabled` and `[skills.tree_search_coder].enabled` are both
+`true` in the live manifest. The Surface 1 packaging gap that blocked the
+entrypoint's phase-6 probe (`_probe_closure`) is fixed: `mcp/aci-shell/` is now
+a proper npm closure (`makeNpmService` in `flake.nix`, pinned
+`@modelcontextprotocol/sdk ^1.0.0`, lockfile-prefetched `npmDepsHash`, baked
+`node_modules`), overlaid to `/opt/agentbox/mcp/aci-shell`. The probe passes
+when the gate is on.
+
+---
+
 ## TL;DR
 
 Two coupled surfaces are proposed here. Surface 1 is a SWE-agent-style Agent-Computer Interface (ACI) MCP (`mcp/aci-shell/`) that replaces raw `Edit` and `Bash` with five agent-tuned tools: bounded file viewing, compact-diff editing, budget-capped search, test execution, and task submission. Surface 2 is an execution-gated tree-search skill (`skills/tree-search-coder/`) that generates N candidate programs, scores each by execution outcome, and selects the best branch.

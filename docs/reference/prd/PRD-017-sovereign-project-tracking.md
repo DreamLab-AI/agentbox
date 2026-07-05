@@ -1,9 +1,18 @@
 # PRD-017: Sovereign Project Tracking
 
-**Status:** Draft v1
+**Status:** Draft v1 — enabled in production 2026-07-05 (see amendment below)
 **Date:** 2026-06-28
 **Repo:** [github.com/DreamLab-AI/agentbox](https://github.com/DreamLab-AI/agentbox)
 **Related:** PRD-001 (Capabilities and adapters), PRD-004 (External agent messaging), PRD-006 (Linked-data interfaces), PRD-008 (Code-as-Harness integration — URN-reuse precedent), ADR-005 (Pluggable adapter architecture), ADR-008 (Privacy filter routing), ADR-009 (Embedded Nostr relay), ADR-012 (JSON-LD 1.1 adoption), ADR-013 (Canonical URI grammar), ADR-015 (MCP RuVector mandate), ADR-029 (Nostr custom-kind allocation), ADR-030 (Sovereign-mesh mobile bridge), ADR-035 (Project-tracking telemetry and Nostr kind — this PRD's decision record), DDD-003 (Sovereign messaging domain), DDD-004 (Linked-data interchange domain), DDD-015 (Project-tracking domain)
+
+## Amendment (2026-07-05) — enabled in production
+
+`[project_tracking].enabled` and `nostr_publish` are `true` in the live
+manifest; `30841` is present in `[sovereign_mesh.relay].allowed_kinds`.
+`github_enrichment` and `primer_on_scan` remain `false` (no `GITHUB_TOKEN`
+provisioned; primers stay request-driven, not scan-automatic). Acceptance
+criterion 1 (master-gate silence) no longer describes the shipped default —
+see the manifest for current gate state.
 
 ## TL;DR for newcomers
 

@@ -16,6 +16,13 @@ review_trigger: a seventh project-tracking URN shape is needed (forces a new-kin
 
 **Related:** ADR-005 (Pluggable adapter architecture + observability middleware), ADR-008 (Privacy filter routing), ADR-009 (Embedded Nostr relay), ADR-012 (JSON-LD encoder), ADR-013 (Canonical URI grammar), ADR-015 (MCP RuVector mandate), ADR-029 (Session-mirror live egress), ADR-030 (Sovereign-mesh manifest boundary), PRD-008 (Code-as-Harness URN reuse precedent), PRD-017 (Sovereign project tracking), DDD-015 (Project-tracking domain)
 
+## Amendment (2026-07-05) — enabled in production
+
+`[project_tracking].enabled = true` and `nostr_publish = true` in the live
+manifest; `30841` is registered in `[sovereign_mesh.relay].allowed_kinds`.
+`github_enrichment` and `primer_on_scan` remain off (D5's fail-open GitHub path
+is simply unconfigured, not broken; primers stay request-driven).
+
 ## TL;DR for newcomers
 *Skip if you already know that project tracking adds no new URN kinds, no new port, and one new addressable nostr kind.*
 

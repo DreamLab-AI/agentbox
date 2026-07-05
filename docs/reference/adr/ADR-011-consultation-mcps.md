@@ -6,6 +6,16 @@
 **Supersedes:** n/a
 **Related:** ADR-005 (Pluggable adapter architecture), ADR-008 (Privacy filter routing), PRD-005 (Meta-router and consultant tier), ADR-026 in claude-flow (3-tier model routing)
 
+## Amendment (2026-07-05) — reasoning-effort control added
+
+`[consultants.zai].reasoning_effort` (enum `low`\|`medium`\|`high`, default
+`high`) is added to the `zai` consultant. Plumbing: manifest →
+`provision-agent-stacks.py` exports `AGENTBOX_ZAI_REASONING_EFFORT` →
+`skills/mcp.json` env passthrough → `zai/server.js` maps to Claude Code
+`MAX_THINKING_TOKENS` (low=4096, medium=10000, high=31999) → the Z.AI
+Anthropic-compatible endpoint translates the thinking block to GLM
+`reasoning_effort`.
+
 ## TL;DR for newcomers
 *Skip if you already know why "consultants" beats "meta-router" for agentbox.*
 

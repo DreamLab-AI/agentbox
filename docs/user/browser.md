@@ -1,5 +1,12 @@
 # The agentbox browser — every surface, one URL away
 
+> **Not the Chrome/Playwright browser.** This page is about the JSON-LD
+> linked-data viewer (`[linked_data.viewer]`, PRD-006 §15/S12) — a read-only
+> web UI for agentbox's own emitted documents. Looking for browser
+> *automation* (navigating pages, screenshots, WebGPU testing)? That's the
+> external browsercontainer sidecar — see the `browser` / `browser-automation`
+> skills and [configuration.md](configuration.md#skills) `[skills.browser]`.
+
 When the viewer slot is on, every JSON-LD document agentbox emits has a clickable URL. Point a browser tab at a pod resource, a credential, an agent-event stream, an MCP capability descriptor — anything PRD-006 emits — and you get an interactive view, with `@type`-dispatched panes, `@id`-following navigation, and copy-pasteable deeplinks. No backend coordination, no SDK, no per-deployment client. One URI, one renderer.
 
 This page is the operator's walkthrough. The companion docs:
@@ -10,13 +17,17 @@ This page is the operator's walkthrough. The companion docs:
 - [ADR-012](../reference/adr/ADR-012-jsonld-federation-grammar.md) — JSON-LD adoption decision
 - [ADR-013](../reference/adr/ADR-013-canonical-uri-grammar.md) — URI grammar decision
 
-> **TL;DR.** Default off. `[linked_data.viewer].mode = "local-linkedobjects"` mounts a JSON-LD-aware browser at `/lo/*`, served by the management-api. It reads `/lo/manifest.json` at boot, follows `@id` URIs through `/v1/uri/<urn>`, and renders every PRD-006 surface with a per-`@type` pane. AGPL-3.0; uses [linkedobjects/browser](https://github.com/linkedobjects/browser) (Melvin Carvalho et al.) as the first viewer implementation.
+> **TL;DR.** The shipped `agentbox.toml` enables this by default: `[linked_data.viewer].mode = "local-linkedobjects"` and `expose_port = true` mount a JSON-LD-aware browser at `/lo/*`, served by the management-api. It reads `/lo/manifest.json` at boot, follows `@id` URIs through `/v1/uri/<urn>`, and renders every PRD-006 surface with a per-`@type` pane. AGPL-3.0; uses [linkedobjects/browser](https://github.com/linkedobjects/browser) (Melvin Carvalho et al.) as the first viewer implementation. A from-scratch manifest that omits `[linked_data.viewer]` falls back to `mode = "off"` (every `/lo/*` request 404s) — see the Quickstart below to turn it on explicitly.
 
 ## The URI surface in one paragraph
 
 Every agentbox JSON-LD document carries an `@id` minted through the canonical grammar (`did:nostr:<pubkey>` or `urn:agentbox:<kind>:[<scope>:]<local>`, [ADR-013](../reference/adr/ADR-013-canonical-uri-grammar.md)). The `/v1/uri/<urn>` resolver dereferences names to current HTTPS IRIs (best-effort: 307 when known, 404 when not). The viewer follows those redirects automatically. This means: if you can produce a URI that names something agentbox manages — a credential, an event, a pod resource, an MCP server — you can drop it into a browser address bar and get a rendered view, even when the URI is name-only and the resolver only knows the redirect target on this specific deployment. **Names are unconditional; views are best-effort. The browser handles both.**
 
 ## Quickstart — turn it on
+
+The shipped manifest already has this on — skip to "How it works" below if
+you're running the default `agentbox.toml`. If you're working from a trimmed
+or from-scratch manifest, enable it explicitly:
 
 ```toml
 # agentbox.toml
@@ -26,6 +37,7 @@ http_meta = "emit"        # so /v1/meta becomes JSON-LD too
 
 [linked_data.viewer]
 mode = "local-linkedobjects"
+expose_port = true        # reach /lo/* from outside the host
 ```
 
 ```sh
@@ -230,8 +242,8 @@ The pane manifest picks it up on the next `/lo/manifest.json` request. No image 
 
 | Mode | What happens | When to use |
 |---|---|---|
-| `off` (default) | every `/lo/*` request returns 404 | viewer not needed; surfaces still emit JSON-LD |
-| `local-linkedobjects` | bundle materialised at `/opt/agentbox/browser/` is served by management-api | want an interactive surface, single-tenant |
+| `off` (code default when the key is absent) | every `/lo/*` request returns 404 | viewer not needed; surfaces still emit JSON-LD |
+| `local-linkedobjects` (shipped-manifest default) | bundle materialised at `/opt/agentbox/browser/` is served by management-api | want an interactive surface, single-tenant |
 | `external` | management-api redirects `/lo/*` to a hosted instance | want to share a viewer across many deployments |
 
 `external` mode supports an `sri_hash` value to pin the integrity of the upstream bundle.
@@ -240,16 +252,19 @@ The pane manifest picks it up on the next `/lo/manifest.json` request. No image 
 
 ```toml
 [linked_data.viewer]
-mode                 = "off"                    # off | local-linkedobjects | external
+mode                 = "local-linkedobjects"    # off | local-linkedobjects | external
 mount_path           = "/lo"                    # URL prefix; reserved-route-safe (E054)
 bundle_path          = "/opt/agentbox/browser"  # override for local-linkedobjects
 external_url         = ""                       # required when mode = external (E051)
 sri_hash             = ""                       # SRI hash for external bundles (E052)
-expose_port          = false                    # reach /lo/* from outside the host
+expose_port          = true                     # reach /lo/* from outside the host
 extra_panes          = []                       # operator-supplied pane URLs/paths
 upstream_panes_visible = true                   # show upstream panes in the manifest
 source_code_header   = ""                       # override; default = upstream repo URL
 ```
+
+These are the values in the shipped `agentbox.toml`. A key omitted entirely
+falls back to its code default (`mode = "off"`, `expose_port = false`).
 
 ## Validation rules
 

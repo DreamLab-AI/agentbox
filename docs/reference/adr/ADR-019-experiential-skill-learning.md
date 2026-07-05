@@ -8,6 +8,15 @@
 
 ---
 
+## Amendment (2026-07-05)
+
+`[skills.voyager_skill_library].enabled` is `true` in the live manifest
+(`skills.code_interpreter` and `features.expel_lesson_extraction` were already
+on, satisfying validator E044). Phase 2 (Mechanism 2, the Voyager verified
+skill library) is live alongside Phase 1 (ExpeL).
+
+---
+
 ## TL;DR for newcomers
 
 *Skip if you already know the distinction between storing task outcomes and distilling lessons from them.*

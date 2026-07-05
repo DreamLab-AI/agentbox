@@ -150,16 +150,18 @@ corresponding Activity record.
 
 ## Manifest Gates
 
+Both surfaces are live in the current manifest:
+
 ```toml
 [features.expel_lesson_extraction]
-enabled              = false
+enabled              = true
 max_lessons_per_task = 5
 min_confidence       = 0.6
 confidence_floor     = 0.3
 archive_after_days   = 30
 
 [skills.voyager_skill_library]
-enabled              = false  # requires skills.code_interpreter.enabled = true
+enabled              = true  # requires skills.code_interpreter.enabled = true
 max_skill_body_lines = 80
 archive_after_days   = 30
 max_evidence_age_s   = 3600
@@ -192,13 +194,16 @@ The `ex:memoryType` property discriminates the memory tier (`semantic`,
 
 ## MCP Write Protocol
 
-All writes go through `mcp__ruvector__memory_store`. Never raw SQL, never
-`claude-flow memory *` CLI. Both paths bypass the MiniLM-L6-v2 (384-dim)
-embedding pipeline and produce entries invisible to HNSW semantic search
-(ADR-015 mandate, `ruvector-postgres:5432`, db: `ruvector`).
+All writes go through `mcp__claude-flow__memory_store`. Never raw SQL, never
+`claude-flow memory *` CLI. Both those paths bypass the client-side embedding
+pipeline and produce entries invisible to HNSW semantic search. Per the
+2026-07-04 amendment to ADR-015, embeddings are computed client-side via
+Xinference (model `bge-small-en-v1.5`, 384-dim) — not MiniLM-L6-v2 and not
+`generate_text_embedding()` — before the governed `ruvector-mcp.cjs` server
+INSERTs the row (mandate: `ruvector-postgres:5432`, db: `ruvector`).
 
 ```python
-mcp__ruvector__memory_store(
+mcp__claude-flow__memory_store(
     namespace="code-harness-lessons",        # or skills, activities, etc.
     key="lesson:<scope>:<short-id>",
     value="<rule-text> | <full-json>",       # rule text is the semantic embedding hook
@@ -206,3 +211,29 @@ mcp__ruvector__memory_store(
     upsert=True,
 )
 ```
+
+## PRD-018 / ADR-036 Status (2026-07-05)
+
+The six retrieval gates in `[integrations.ruvector_external]` — `hybrid_search`,
+`typed_metadata`, `metadata_gin`, `health_tool`, `episodic_ttl_sweep`,
+`memory_orient` — are all `true` in the live manifest, extending this domain's
+writes with hybrid fusion search, honoured `importance`/`tags`/`memory_type`/`ttl`
+metadata, and a GIN index for tag retrieval. `[memory_learning].enabled` and
+`.record_trajectories` are also `true`: the trajectory-recorder hooks
+(`PreToolUse`/`PostToolUse(Bash)` + `SubagentStop`) are live producers, writing
+`trajectories`/`trajectory_steps` alongside this domain's own namespaces.
+`feed_retrieval`/`feed_routing` stay `false` until the trajectory corpus clears
+the Wilson-bound floor (`aggregate_min_samples = 20`); `sona_enabled` and
+`relevance_feedback` are reserved, adopt-later.
+
+The underlying RuVector store was remediated on 2026-07-05: namespace-swapped
+rows were un-swapped, 2,014,173 dead/legacy rows were archived and deleted, a
+`VACUUM FULL` shrank `memory_entries` from 34 GB to 614 MB, the remaining
+NULL-embedding rows were backfilled, and a GIN index (`jsonb_path_ops`) was
+built on `metadata`. The store now holds 46,271 rows, fully embedded, correctly
+namespaced, GIN+HNSW indexed — the namespaces this domain writes to
+(`code-harness-lessons`, `code-harness-skills`, `code-harness-activities`,
+`code-harness-traces`) are part of that remediated set. See
+[ADR-036](../reference/adr/ADR-036-ruvector-capability-adoption-and-learning-loop.md)
+and [PRD-018](../reference/prd/PRD-018-ruvector-native-memory-and-learning.md)
+for the full decision record and remediation manifest.

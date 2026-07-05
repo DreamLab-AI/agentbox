@@ -157,9 +157,8 @@ Rust source build — fresh clones build without manual prefetch. You hit
 this only after one of:
 
 - A `package-lock.json` change in any of `management-api/`, `mcp/`,
-  `mcp/consultants/`, `skills/openai-codex/mcp-server/`,
-  `skills/lazy-fetch/mcp-server/`, `skills/playwright/mcp-server/`,
-  `skills/comfyui/mcp-server/`.
+  `mcp/consultants/`, `mcp/aci-shell/`, `skills/openai-codex/mcp-server/`,
+  `skills/lazy-fetch/mcp-server/`, `skills/comfyui/mcp-server/`.
 - A `solid-pod-rs` or `nagual-qe` rev bump in `lib/solid-pod-rs.nix` or
   `lib/nagual-qe.nix`.
 - Adding a new `makeNpmCli` entry in `flake.nix` with `lib.fakeHash` for

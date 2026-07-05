@@ -1,9 +1,20 @@
 # PRD-018: RuVector-Native Memory and Learning
 
-**Status:** Draft v1
+**Status:** Draft v1 — Phases 0–2 shipped 2026-07-05 (see amendment below)
 **Date:** 2026-07-04
 **Repo:** [github.com/DreamLab-AI/agentbox](https://github.com/DreamLab-AI/agentbox)
 **Related:** PRD-001 (Capabilities and adapters), PRD-008 (Code-as-Harness integration — URN-reuse precedent), PRD-017 (Sovereign project tracking — additive-substrate precedent), ADR-005 (Pluggable adapter architecture — dispatch contract and observability), ADR-008 (Privacy filter routing), ADR-012 (JSON-LD 1.1 adoption), ADR-013 (Canonical URI grammar), ADR-015 (MCP RuVector mandate) + its 2026-07-04 amendment (embedding pipeline correction), ADR-035 (Project-tracking telemetry and Nostr kind — additive-substrate framing), ADR-036 (RuVector capability adoption and learning loop — this PRD's decision record), DDD-003 (Sovereign messaging domain), DDD-004 (Linked-data interchange domain), DDD-016 (Memory-learning domain — this PRD's domain model)
+
+## Amendment (2026-07-05) — Phases 0–2 shipped, gates live in production
+
+All six `[integrations.ruvector_external]` retrieval gates (`hybrid_search`,
+`typed_metadata`, `metadata_gin`, `health_tool`, `episodic_ttl_sweep`,
+`memory_orient`) and the `[memory_learning]` producer (`enabled` +
+`record_trajectories`) are now `true` in the live manifest; default-off
+equivalence (§6 metric 1) was verified before enablement. `feed_retrieval` /
+`feed_routing` / `sona_enabled` / `relevance_feedback` stay off — consumers
+remain corpus-gated on `aggregate_min_samples`. `[memory_hygiene]` ops all ran
+for real on 2026-07-05 (results: the [ADR-036 amendment](../adr/ADR-036-ruvector-capability-adoption-and-learning-loop.md)) and flags are back to `false`, fail-closed.
 
 ## TL;DR for newcomers
 

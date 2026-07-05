@@ -131,7 +131,8 @@ orchestrator = "local-process-manager"
 enabled = true
 
 [skills.browser]
-playwright = true
+agent_browser = true   # browser automation routes to the external browsercontainer sidecar;
+                        # playwright-in-image is deprecated and stays false
 
 [toolchains]
 claude = true
@@ -465,9 +466,9 @@ cp .env.example .env
 
 Run `./agentbox.sh preflight` after editing `.env` — it validates the compose merge and checks that required variables are present before the stack starts.
 
-### Project tracking (optional, PRD-017)
+### Project tracking (PRD-017)
 
-Track the git repositories the container hosts (workspace projects and host-mount checkouts) with status, 30-day commit activity, AI primers, and per-project Nostr digests. Disabled by default — enable in `agentbox.toml`:
+Tracks the git repositories the container hosts (workspace projects and host-mount checkouts) with status, 30-day commit activity, AI primers, and per-project Nostr digests. Enabled in the shipped manifest:
 
 ```toml
 [project_tracking]
@@ -476,11 +477,14 @@ scan_dirs           = ["/projects", "/home/devuser/workspace/project"]
 scan_interval_hours = 6          # 0 = on-demand only
 github_enrichment   = false      # set true (with GITHUB_TOKEN) to pull open issues + stars
 primer_model        = "glm-5.2"  # needs a Z.AI/GLM key for primers/synopses
-nostr_publish       = false      # set true to sign kind-30841 digests to your did:nostr
+primer_on_scan      = false      # set true to auto-generate primers for new projects during a scan
+nostr_publish       = true       # signs kind-30841 digests to your did:nostr
 metrics             = true
 ```
 
-Once enabled:
+`github_enrichment` and `primer_on_scan` stay off by default (the former needs a `GITHUB_TOKEN`, both are independently-gated external hops). Set `enabled = false` to disable the surface entirely — `/v1/projects` then returns `503` and no scan, metric, or Nostr publish runs.
+
+With it enabled:
 
 - **HTTP** — `curl -H "Authorization: Bearer $MANAGEMENT_API_KEY" http://127.0.0.1:9090/v1/projects` (also `/v1/projects/:id`, `/v1/projects/:id/activity`, `POST /v1/projects/scan`).
 - **Telemetry** — the project status is on the existing metrics port: `curl -s http://127.0.0.1:9091/metrics | grep agentbox_project_` (no new port). Labels use the project slug, never the host path.
