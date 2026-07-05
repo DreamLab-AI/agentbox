@@ -297,9 +297,10 @@
       ],
       "type": "stdio",
       "env": {
-        "AGENTBOX_ZAI_MODEL": "${AGENTBOX_ZAI_MODEL:-glm-5.2}"
+        "AGENTBOX_ZAI_MODEL": "${AGENTBOX_ZAI_MODEL:-glm-5.2}",
+        "AGENTBOX_ZAI_REASONING_EFFORT": "${AGENTBOX_ZAI_REASONING_EFFORT:-high}"
       },
-      "description": "Z.AI/GLM consultant (PRD-005 / ADR-011): Anthropic-API-compatible Chinese-language reasoning via claude-zai. Tools: consult, health, cost_estimate. Inherits ZAI_ANTHROPIC_API_KEY (or ZAI_API_KEY) and ZAI_URL from session env.",
+      "description": "Z.AI/GLM consultant (PRD-005 / ADR-011): Anthropic-API-compatible Chinese-language reasoning via claude-zai; reasoning_effort maps to a Claude Code thinking budget. Tools: consult, health, cost_estimate. Inherits ZAI_ANTHROPIC_API_KEY (or ZAI_API_KEY) and ZAI_URL from session env.",
       "protocol": "stdio",
       "version": "0.1.0"
     },

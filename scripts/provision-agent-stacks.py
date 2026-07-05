@@ -209,7 +209,8 @@ def symlink_shared(target: pathlib.Path, source: pathlib.Path) -> None:
 
 
 def build_profile(
-    name: str, config: dict, mobile_bridge: bool = False, summary_model: str = ""
+    name: str, config: dict, mobile_bridge: bool = False, summary_model: str = "",
+    zai_reasoning_effort: str = ""
 ) -> None:
     root = WORKSPACE / "profiles" / name
     claude_dir = root / ".claude"
@@ -282,6 +283,13 @@ def build_profile(
     if mobile_bridge and summary_model:
         settings["env"]["AGENTBOX_ZAI_MODEL"] = summary_model
 
+    # GLM reasoning depth for the zai consultant (glm-5.2 reasoning_effort).
+    # The consultant maps this to a Claude Code thinking budget; the Z.AI
+    # Anthropic-compatible endpoint translates the thinking block to GLM
+    # reasoning. Empty = consultant default.
+    if zai_reasoning_effort:
+        settings["env"]["AGENTBOX_ZAI_REASONING_EFFORT"] = zai_reasoning_effort
+
     symlink_skills(claude_dir / "skills")
     write_text(claude_dir / "settings.json", json.dumps(settings, indent=2) + "\n")
 
@@ -300,9 +308,12 @@ def main() -> None:
     mb_config = config.get("sovereign_mesh", {}).get("mobile_bridge", {})
     mobile_bridge = bool(mb_config.get("enabled", False))
     summary_model = str(mb_config.get("summary_model", "")) if mobile_bridge else ""
+    zai_reasoning_effort = str(
+        config.get("consultants", {}).get("zai", {}).get("reasoning_effort", "")
+    )
 
     for name, stack in STACKS.items():
-        build_profile(name, stack, mobile_bridge, summary_model)
+        build_profile(name, stack, mobile_bridge, summary_model, zai_reasoning_effort)
 
     write_text(WORKSPACE / ".agentbox" / "stack-manifest.json", json.dumps(manifest, indent=2) + "\n")
 

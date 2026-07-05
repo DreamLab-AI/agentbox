@@ -538,6 +538,11 @@
               "default": "glm-5.2",
               "description": "Z.AI / GLM model identifier. glm-5 is superseded by glm-5.2; glm-5.2 is the current recommended default."
             },
+            "reasoning_effort": {
+              "type": "string",
+              "enum": ["low", "medium", "high"],
+              "description": "GLM-5.2 reasoning depth. Mapped by the consultant to a Claude Code thinking budget (MAX_THINKING_TOKENS); the Z.AI Anthropic-compatible endpoint translates the thinking block into GLM reasoning_effort. Omit for the endpoint default."
+            },
             "home":       { "type": "string", "description": "HOME under the zai-user isolation." },
             "timeout_ms": { "type": "integer", "minimum": 1000, "maximum": 600000 }
           }

@@ -19,6 +19,14 @@ const ZAI_BIN  = process.env.AGENTBOX_ZAI_BIN  || 'claude-zai';
 const ZAI_HOME = process.env.AGENTBOX_ZAI_HOME || '/home/zai-user';
 const MODEL    = process.env.AGENTBOX_ZAI_MODEL || 'glm-5.2';
 
+// GLM-5.2 reasoning depth ([consultants.zai].reasoning_effort). claude-zai is
+// Claude Code on the wire, so the lever is the extended-thinking budget: the
+// Z.AI Anthropic-compatible endpoint translates the thinking block into GLM
+// reasoning_effort. Unset/unknown → no thinking env, endpoint default.
+const REASONING_EFFORT = (process.env.AGENTBOX_ZAI_REASONING_EFFORT || '').toLowerCase();
+const THINKING_BUDGETS = { low: 4096, medium: 10000, high: 31999 };
+const MAX_THINKING_TOKENS = THINKING_BUDGETS[REASONING_EFFORT] || 0;
+
 const PRICE_PER_1K_PROMPT     = 0.0006;
 const PRICE_PER_1K_COMPLETION = 0.0024;
 
@@ -39,6 +47,7 @@ async function callConsult({ question, context_excerpt }) {
       ANTHROPIC_API_KEY:      process.env.ZAI_ANTHROPIC_API_KEY  || process.env.ZAI_API_KEY || '',
       ZAI_API_KEY:            process.env.ZAI_API_KEY            || '',
       AGENTBOX_AGENT_ID:      'consultant-zai',
+      ...(MAX_THINKING_TOKENS > 0 ? { MAX_THINKING_TOKENS: String(MAX_THINKING_TOKENS) } : {}),
     },
     timeout_ms: 180_000,
   });
