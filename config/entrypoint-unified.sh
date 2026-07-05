@@ -760,9 +760,11 @@ MIRRORJS
 fi
 
 # ── PRD-018 / ADR-036 D6 (D1): register the learning-loop trajectory hook ──
-# config/hooks/trajectory-recorder.cjs records (state, action, outcome, duration)
-# tuples into the trajectory tables. Registered on PreToolUse/PostToolUse (Bash
-# matcher) + SubagentStop, mirroring the nostr-live-mirror registration above:
+# config/hooks/trajectory-recorder.cjs records (action, outcome, duration) tuples
+# into the trajectory tables. Registered on Stop + SubagentStop: it grades from the
+# session transcript (both success and failure outcomes) rather than per-tool —
+# PostToolUse never fires for a failed Bash command, so per-tool grading was blind
+# to every failure. Mirrors the nostr-live-mirror registration above:
 # idempotent, fail-open. Registered ONLY when BOTH [memory_learning].enabled and
 # record_trajectories are true — otherwise the block below actively de-registers
 # any prior entry so toggling the manifest off restores byte-identical behaviour
@@ -787,21 +789,26 @@ let pfx = 'RUVECTOR_MEMORY_LEARNING_ENABLED=1 RUVECTOR_RECORD_TRAJECTORIES=1';
 if (process.env.TRAJ_CONNINFO) pfx += ` RUVECTOR_PG_CONNINFO=${JSON.stringify(process.env.TRAJ_CONNINFO)}`;
 if (process.env.TRAJ_PUBKEY)   pfx += ` AGENTBOX_PUBKEY=${process.env.TRAJ_PUBKEY}`;
 if (process.env.TRAJ_AGENT)    pfx += ` AGENTBOX_AGENT=${JSON.stringify(process.env.TRAJ_AGENT)}`;
-let s = {}; try { s = JSON.parse(fs.readFileSync(f, 'utf8')); } catch {}
+let s = {}, origText = ''; try { origText = fs.readFileSync(f, 'utf8'); s = JSON.parse(origText); } catch {}
 s.hooks = s.hooks || {};
-let changed = false;
-// [event, tool matcher]. The hook reads the event name from argv[2].
-const specs = [['PreToolUse', 'Bash'], ['PostToolUse', 'Bash'], ['SubagentStop', null]];
+// [event, tool matcher]. The hook reads the event name from argv[2]. Transcript-
+// driven (PRD-018 redesign): grade at Stop/SubagentStop, not per-tool — PostToolUse
+// never fires for a failed Bash command, so per-tool grading missed every failure.
+const specs = [['Stop', null], ['SubagentStop', null]];
+// Reconcile: strip ANY prior trajectory-recorder registration (including the legacy
+// PreToolUse/PostToolUse wiring left on existing volumes), then add exactly `specs`.
+for (const evt of ['PreToolUse', 'PostToolUse', 'Stop', 'SubagentStop']) {
+  if (!Array.isArray(s.hooks[evt])) continue;
+  s.hooks[evt] = s.hooks[evt].filter((g) => !(g.hooks || []).some((h) => String(h.command || '').includes('trajectory-recorder.cjs')));
+}
 for (const [evt, matcher] of specs) {
   s.hooks[evt] = s.hooks[evt] || [];
-  const has = s.hooks[evt].some((g) => (g.hooks || []).some((h) => String(h.command || '').includes('trajectory-recorder.cjs')));
-  if (has) continue;
   const grp = { hooks: [{ type: 'command', command: `${pfx} node ${hook} ${evt} || true`, timeout: 10000 }] };
   if (matcher) grp.matcher = matcher;
   s.hooks[evt].push(grp);
-  changed = true;
 }
-if (changed) { fs.writeFileSync(f, JSON.stringify(s, null, 2)); console.log('  [learning] registered trajectory-recorder hooks in settings.json'); }
+const nextText = JSON.stringify(s, null, 2);
+if (nextText !== origText) { fs.writeFileSync(f, nextText); console.log('  [learning] registered trajectory-recorder hooks (Stop/SubagentStop) in settings.json'); }
 else { console.log('  [learning] trajectory-recorder hooks already registered'); }
 TRAJJS
   chown 1000:1000 "$_CLAUDE_SETTINGS" 2>/dev/null || true
@@ -814,7 +821,7 @@ const f = process.env.SETTINGS;
 let s; try { s = JSON.parse(fs.readFileSync(f, 'utf8')); } catch { process.exit(0); }
 if (!s.hooks) process.exit(0);
 let changed = false;
-for (const evt of ['PreToolUse', 'PostToolUse', 'SubagentStop']) {
+for (const evt of ['PreToolUse', 'PostToolUse', 'Stop', 'SubagentStop']) {
   const arr = s.hooks[evt];
   if (!Array.isArray(arr)) continue;
   const kept = arr.filter((g) => !(g.hooks || []).some((h) => String(h.command || '').includes('trajectory-recorder.cjs')));

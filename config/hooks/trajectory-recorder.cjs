@@ -13,9 +13,17 @@
  * `trajectories` / `trajectory_steps` sidecar tables.
  *
  * Invoked by Claude Code as:  trajectory-recorder.cjs <event>   (hook JSON on stdin)
- *   PreToolUse   → stash {ts, patternDigest} keyed by tool_use id (duration start + state)
- *   PostToolUse  → (Bash) derive graded outcome + measured duration → persist one step
- *   SubagentStop → close the trajectory (ended_at + outcome rollup into metadata)
+ *   Stop / SubagentStop → scan the session transcript (payload.transcript_path),
+ *     grade every Bash tool call by its recorded `is_error`, persist one step each
+ *     + a per-session trajectory rollup. A per-session line watermark (in the stash
+ *     file) makes repeated Stop firings incremental; deterministic step ids make the
+ *     inserts idempotent.
+ *
+ * Why transcript-driven and not per-PostToolUse: on this Claude Code build a
+ * successful Bash tool_response carries NO exit code / error flag, and PostToolUse
+ * does NOT fire at all for non-zero-exit commands — so per-tool grading is blind to
+ * every failure. The transcript is the only source that records both outcomes
+ * (tool_result.is_error), which is what a learning corpus needs.
  *
  * HARD RULES honoured:
  *   - DEFAULT-OFF: silent exit 0 unless BOTH RUVECTOR_MEMORY_LEARNING_ENABLED
@@ -119,13 +127,16 @@ function writeStash(session, stash) {
   } catch (e) { log(`stash write failed (non-fatal): ${e && e.message}`); }
 }
 
-// stashKey pairs Pre with Post. Prefer a real tool_use id; else session+command hash.
-function stashKey(payload) {
-  const tid = payload && (payload.tool_use_id || payload.toolUseId ||
-    (payload.tool_use && payload.tool_use.id));
-  if (tid) return String(tid);
-  const cmd = payload && payload.tool_input && payload.tool_input.command;
-  return `cmd:${util.sha12(sessionId(payload) + ':' + String(cmd || ''))}`;
+// Resolve the session transcript path from the hook payload.
+function transcriptPath(payload) {
+  const p = payload && (payload.transcript_path || payload.transcriptPath);
+  return typeof p === 'string' && p ? p : null;
+}
+
+// ISO-8601 → epoch ms (null if unparseable). Used for measured step duration.
+function isoMs(s) {
+  const t = Date.parse(String(s || ''));
+  return Number.isFinite(t) ? t : null;
 }
 
 // ── trajectory identity (content-addressed activity URN; graceful non-URN fallback) ─
@@ -178,78 +189,88 @@ async function hasDurationColumn(client) {
 
 // ── event handlers ─────────────────────────────────────────────────────────────
 
-/** PreToolUse: stash the duration start + state digest, keyed by tool_use id. */
-function handlePre(payload) {
-  const session = sessionId(payload);
-  const cmd = payload && payload.tool_input && payload.tool_input.command;
-  const stash = readStash(session);
-  const pattern = util.commandPattern(typeof cmd === 'string' ? cmd : '');
-  stash.pending = stash.pending || {};
-  stash.pending[stashKey(payload)] = {
-    ts: Date.now(),
-    patternDigest: pattern ? util.sha12(pattern) : null,
-  };
-  // Capture initial state context (task = session, cwd) once.
-  if (!stash.task) stash.task = `claude-code-session:${session.slice(0, 12)}`;
-  if (!stash.cwd && payload && payload.cwd) stash.cwd = String(payload.cwd).slice(0, 256);
-  writeStash(session, stash);
-  return 0;
+/**
+ * Scan the session transcript once and return the graded, redacted Bash steps
+ * whose tool_result record appears at/after `fromLine` (the per-session watermark),
+ * plus the new line count. A tool_use may precede the watermark while its result
+ * follows, so the tool_use map is built over the WHOLE transcript.
+ */
+function scanTranscript(lines, fromLine) {
+  const uses = new Map(); // tool_use_id → { command, ts }
+  for (const line of lines) {
+    if (!line) continue;
+    let rec; try { rec = JSON.parse(line); } catch { continue; }
+    const content = rec && rec.message && rec.message.content;
+    if (!Array.isArray(content)) continue;
+    for (const b of content) {
+      if (b && b.type === 'tool_use' && b.name === 'Bash' && b.id) {
+        const cmd = b.input && b.input.command;
+        uses.set(String(b.id), { command: typeof cmd === 'string' ? cmd : '', ts: rec.timestamp });
+      }
+    }
+  }
+
+  const steps = [];
+  for (let i = fromLine; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line) continue;
+    let rec; try { rec = JSON.parse(line); } catch { continue; }
+    const content = rec && rec.message && rec.message.content;
+    if (!Array.isArray(content)) continue;
+    const tur = (rec.toolUseResult && typeof rec.toolUseResult === 'object') ? rec.toolUseResult : {};
+    for (const b of content) {
+      if (!b || b.type !== 'tool_result' || !b.tool_use_id) continue;
+      const use = uses.get(String(b.tool_use_id));
+      if (!use) continue; // not a Bash tool call we tracked
+
+      // I04: grade from the real transcript signal or write NOTHING.
+      const outcome = util.gradeResult(b.is_error, tur.stderr, tur.interrupted);
+      if (!outcome) continue;
+      const action = util.commandPattern(use.command);
+      if (!action) continue;
+      // I10: fail-closed on redaction.
+      const redacted = util.redact(use.command);
+      if (redacted == null) { log('redaction failed — skipping step (fail-closed, I10)'); continue; }
+
+      let durationMs = null;
+      const t0 = isoMs(use.ts), t1 = isoMs(rec.timestamp);
+      if (t0 != null && t1 != null && t1 >= t0) durationMs = t1 - t0;
+
+      steps.push({ toolUseId: String(b.tool_use_id), action, outcome, redacted, durationMs });
+    }
+  }
+  return { steps, lineCount: lines.length };
 }
 
-/** PostToolUse (Bash): derive graded outcome + measured duration → persist one step. */
-async function handlePost(payload) {
-  // Only Bash carries an exit/error signal we can grade honestly.
-  const toolName = payload && payload.tool_name;
-  if (toolName && String(toolName) !== 'Bash') return 0;
-
+/**
+ * Stop / SubagentStop: parse the session transcript, grade each new Bash call by
+ * its recorded is_error, and persist steps + a per-session trajectory rollup.
+ * Idempotent: step ids are content-addressed from the tool_use id; the per-session
+ * line watermark keeps repeated Stop firings incremental.
+ */
+async function handleClose(payload) {
   const session = sessionId(payload);
+  const tpath = transcriptPath(payload);
+  if (!tpath) { log('no transcript_path — skipping'); return 0; }
+
+  let raw;
+  try { raw = fs.readFileSync(tpath, 'utf8'); }
+  catch (e) { log(`transcript read failed (fail-open): ${e && e.message}`); return 0; }
+  const lines = raw.split('\n');
+
   const stash = readStash(session);
-  const key = stashKey(payload);
-  const pending = stash.pending && stash.pending[key];
+  const from = Number(stash.processedLines || 0);
+  const { steps, lineCount } = scanTranscript(lines, from);
 
-  // I05: no stash → we cannot measure duration → skip.
-  if (!pending || typeof pending.ts !== 'number') return 0;
-
-  const durationMs = Date.now() - pending.ts;
-  // I05: a zero (or negative) duration is a bug signal, never a stored value.
-  if (!(durationMs > 0)) {
-    delete stash.pending[key];
-    writeStash(session, stash);
-    return 0;
-  }
-
-  // I04: outcome must be a real graded signal or we write NOTHING.
-  const outcome = util.deriveOutcome(payload && payload.tool_response);
-  if (!outcome) {
-    delete stash.pending[key];
-    writeStash(session, stash);
-    return 0;
-  }
-
-  const command = payload && payload.tool_input && payload.tool_input.command;
-  const action = util.commandPattern(typeof command === 'string' ? command : '');
-  if (!action) {
-    delete stash.pending[key];
-    writeStash(session, stash);
-    return 0;
-  }
-
-  // I10: fail-closed on redaction — skip the write rather than persist unredacted.
-  const redacted = util.redact(typeof command === 'string' ? command : '');
-  if (redacted == null) {
-    log('redaction failed — skipping step (fail-closed, I10)');
-    delete stash.pending[key];
-    writeStash(session, stash);
-    return 0;
-  }
+  // Advance the watermark regardless (idempotent inserts cover any race).
+  stash.processedLines = lineCount;
+  if (!steps.length) { writeStash(session, stash); return 0; }
 
   const Pg = loadPg();
-  if (!Pg) { log('pg unavailable — skipping (fail-open)'); return 0; }
+  if (!Pg) { log('pg unavailable — skipping (fail-open)'); writeStash(session, stash); return 0; }
 
   const ident = trajectoryIdentity(session);
-  const stepOrder = Number(stash.stepOrder || 0);
   const client = makeClient(Pg);
-
   try {
     await client.connect();
     const hasDur = await hasDurationColumn(client);
@@ -258,7 +279,6 @@ async function handlePost(payload) {
     const trajMeta = {
       type: 'trajectory',
       session,
-      cwd: stash.cwd || null,
       owner_did: ident.ownerDid || undefined,
       trajectory_urn: ident.urn || undefined,
     };
@@ -266,71 +286,47 @@ async function handlePost(payload) {
       `INSERT INTO trajectories (id, task, agent, status, started_at, metadata)
          VALUES ($1, $2, $3, 'recording', CURRENT_TIMESTAMP, $4::jsonb)
        ON CONFLICT (id) DO NOTHING`,
-      [ident.id, stash.task || `claude-code-session:${session.slice(0, 12)}`,
+      [ident.id, `claude-code-session:${session.slice(0, 12)}`,
         String(process.env.AGENTBOX_AGENT || 'claude-code'), JSON.stringify(trajMeta)]
     );
 
-    // 2. one step row per determined outcome.
-    const stepId = `${ident.id}:step-${util.sha12(key + ':' + pending.ts)}`;
-    const resultObj = {
-      outcome: outcome.success ? 'success' : 'failure',
-      signal: outcome.signal,
-      exit_code: outcome.exit,
-      command: redacted,
-      prior_step: pending.patternDigest || null,
-    };
-    if (!hasDur) resultObj.duration_ms = durationMs; // pre-migration: carry in result JSON
-
-    if (hasDur) {
-      await client.query(
-        `INSERT INTO trajectory_steps
-           (id, trajectory_id, action, result, quality, step_order, duration_ms)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
-         ON CONFLICT (id) DO NOTHING`,
-        [stepId, ident.id, action, JSON.stringify(resultObj), outcome.quality, stepOrder, durationMs]
-      );
-    } else {
-      await client.query(
-        `INSERT INTO trajectory_steps
-           (id, trajectory_id, action, result, quality, step_order)
-         VALUES ($1, $2, $3, $4, $5, $6)
-         ON CONFLICT (id) DO NOTHING`,
-        [stepId, ident.id, action, JSON.stringify(resultObj), outcome.quality, stepOrder]
-      );
+    // 2. one step row per graded Bash call (idempotent by content-addressed id).
+    let order = Number(stash.stepOrder || 0);
+    for (const s of steps) {
+      const stepId = `${ident.id}:step-${util.sha12(s.toolUseId)}`;
+      const resultObj = {
+        outcome: s.outcome.success ? 'success' : 'failure',
+        signal: s.outcome.signal,
+        command: s.redacted,
+      };
+      if (!hasDur && s.durationMs != null) resultObj.duration_ms = s.durationMs;
+      if (hasDur) {
+        await client.query(
+          `INSERT INTO trajectory_steps
+             (id, trajectory_id, action, result, quality, step_order, duration_ms)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
+           ON CONFLICT (id) DO NOTHING`,
+          [stepId, ident.id, s.action, JSON.stringify(resultObj), s.outcome.quality, order, s.durationMs]
+        );
+      } else {
+        await client.query(
+          `INSERT INTO trajectory_steps
+             (id, trajectory_id, action, result, quality, step_order)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           ON CONFLICT (id) DO NOTHING`,
+          [stepId, ident.id, s.action, JSON.stringify(resultObj), s.outcome.quality, order]
+        );
+      }
+      order++;
+      stash.qualitySum = Number(stash.qualitySum || 0) + s.outcome.quality;
+      stash.qualityCount = Number(stash.qualityCount || 0) + 1;
     }
+    stash.stepOrder = order;
 
-    // Advance the session bookkeeping (step order + rollup accumulators).
-    stash.stepOrder = stepOrder + 1;
-    stash.qualitySum = Number(stash.qualitySum || 0) + outcome.quality;
-    stash.qualityCount = Number(stash.qualityCount || 0) + 1;
-    delete stash.pending[key];
-    writeStash(session, stash);
-  } catch (e) {
-    log(`persist failed (non-fatal, fail-open): ${e && e.message}`);
-  } finally {
-    try { await client.end(); } catch { /* ignore */ }
-  }
-  return 0;
-}
-
-/** SubagentStop: close the trajectory — ended_at + outcome rollup into metadata. */
-async function handleStop(payload) {
-  const session = sessionId(payload);
-  const stash = readStash(session);
-  // Nothing recorded → no trajectory row to close.
-  if (!Number(stash.qualityCount || 0)) return 0;
-
-  const Pg = loadPg();
-  if (!Pg) return 0;
-
-  const ident = trajectoryIdentity(session);
-  const count = Number(stash.qualityCount);
-  const meanQuality = count > 0 ? Number(stash.qualitySum || 0) / count : 0;
-  const success = meanQuality >= 0.5;
-
-  const client = makeClient(Pg);
-  try {
-    await client.connect();
+    // 3. roll the trajectory up to its current cumulative outcome (idempotent update).
+    const count = Number(stash.qualityCount || 0);
+    const meanQuality = count > 0 ? Number(stash.qualitySum || 0) / count : 0;
+    const success = meanQuality >= 0.5;
     await client.query(
       `UPDATE trajectories
           SET ended_at = CURRENT_TIMESTAMP,
@@ -345,8 +341,9 @@ async function handleStop(payload) {
         WHERE id = $1`,
       [ident.id, success, count, meanQuality, success ? 'success' : 'mixed']
     );
+    writeStash(session, stash);
   } catch (e) {
-    log(`close failed (non-fatal, fail-open): ${e && e.message}`);
+    log(`persist failed (non-fatal, fail-open): ${e && e.message}`);
   } finally {
     try { await client.end(); } catch { /* ignore */ }
   }
@@ -369,9 +366,8 @@ async function main() {
   }
 
   switch (event) {
-    case 'PreToolUse':   return handlePre(payload);
-    case 'PostToolUse':  return handlePost(payload);
-    case 'SubagentStop': return handleStop(payload);
+    case 'Stop':
+    case 'SubagentStop': return handleClose(payload);
     default:             return 0;
   }
 }

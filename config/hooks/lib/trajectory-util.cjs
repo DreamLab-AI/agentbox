@@ -184,4 +184,32 @@ function deriveOutcome(toolResponse) {
   return null;
 }
 
-module.exports = { sha12, commandPattern, redact, deriveOutcome, SUBCOMMAND_VERBS, REDACTORS };
+/**
+ * Grade a Bash outcome from a session-transcript tool_result (PRD-018 redesign).
+ *
+ * Unlike deriveOutcome (which reads a live PostToolUse tool_response), this reads
+ * the authoritative `is_error` flag the transcript records for BOTH successful and
+ * failed tool calls. It exists because this Claude Code build (a) omits any exit
+ * code from a successful Bash tool_response and (b) does NOT fire PostToolUse at
+ * all for non-zero-exit commands — so the transcript is the only source that sees
+ * failures. `is_error` is a real graded signal; absence of it → undetermined → null
+ * (never defaulted to success — the same honesty invariant I04).
+ *
+ * @param {boolean|undefined} isError  the tool_result.is_error flag
+ * @param {string} [stderr]            toolUseResult.stderr (noise → slightly lower quality)
+ * @param {boolean} [interrupted]      toolUseResult.interrupted (user abort → undetermined)
+ * @returns {{ success: boolean, quality: number, signal: string }|null}
+ */
+function gradeResult(isError, stderr, interrupted) {
+  if (interrupted === true) return null; // user abort, not a command-quality signal
+  if (isError === true) {
+    return { success: false, quality: 0.0, signal: 'transcript-is_error' };
+  }
+  if (isError === false) {
+    const noise = typeof stderr === 'string' && stderr.trim().length > 0;
+    return { success: true, quality: noise ? 0.85 : 1.0, signal: 'transcript-is_error' };
+  }
+  return null; // is_error absent → undetermined → write nothing
+}
+
+module.exports = { sha12, commandPattern, redact, deriveOutcome, gradeResult, SUBCOMMAND_VERBS, REDACTORS };
