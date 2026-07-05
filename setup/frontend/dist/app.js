@@ -310,8 +310,9 @@
   const SECTION_META = {
     core:             { icon: '⚙️',  label: 'Core',            desc: 'Orchestration engine and vector database.' },
     mesh:             { icon: '🌐',  label: 'Mesh',            desc: 'Standalone or federated deployment mode (ADR-025).' },
+    federation:       { icon: '🛰️', label: 'Federation',      desc: 'Standalone or client federation with a host container mesh.' },
     adapters:         { icon: '🔌',  label: 'Adapters',        desc: 'Five pluggable adapter slots (ADR-005).' },
-    integrations:     { icon: '🔗',  label: 'Integrations',    desc: 'RuVector PG, solid-pod-rs, ComfyUI external connections.' },
+    integrations:     { icon: '🔗',  label: 'Integrations',    desc: 'RuVector PG sidecar with PRD-018 retrieval gates (hybrid search, typed metadata, orient, health, TTL sweep), solid-pod-rs, ComfyUI.' },
     gpu:              { icon: '🎮',  label: 'GPU',             desc: 'GPU backend and acceleration.' },
     toolchains:       { icon: '🔧',  label: 'Toolchains',      desc: 'Language runtimes and dev tools.' },
     security:         { icon: '🛡️', label: 'Security',        desc: 'Sandbox policy, read-only rootfs.' },
@@ -330,6 +331,9 @@
     networking:       { icon: '🌍',  label: 'Networking',      desc: 'Tailscale mesh and host gateway.' },
     plugins:          { icon: '🧩',  label: 'Plugins',         desc: 'Nix package plugins and extensions.' },
     memory:           { icon: '💾',  label: 'Memory',          desc: 'RuVector memory backend and access control.' },
+    memory_learning:  { icon: '📈',  label: 'Memory Learning', desc: 'Trajectory-recording learning loop (PRD-018/ADR-036): record real (state, action, outcome, duration) tuples, aggregate effectiveness, feed retrieval/routing. Enable producers before consumers (W066).' },
+    memory_hygiene:   { icon: '🧹',  label: 'Memory Hygiene',  desc: 'Gates for the non-dry-run data-hygiene ops (namespace repair, embedding backfill, legacy archival). Fail-closed: ops stay dry-run until a flag is set. Run via ./agentbox.sh ruvector <op>.' },
+    project_tracking: { icon: '📋',  label: 'Project Tracking', desc: 'Sovereign project tracking (PRD-017/ADR-035): per-repo telemetry on /metrics, /v1/projects HTTP surface, kind-30841 nostr digests.' },
   };
 
   function renderSections() {
@@ -646,7 +650,7 @@
 
   const SERVICES = [
     { name: 'Management API', port: 9090, icon: '🔧', core: true },
-    { name: 'RuVector',       port: 9700, icon: '🧠', core: true },
+    { name: 'RuVector PG',    port: 5432, icon: '🧠', core: true },
     { name: 'Prometheus',     port: 9091, icon: '📊', core: true },
     { name: 'Solid Pod',      port: 8484, icon: '🔐', core: false },
     { name: 'Jupyter Lab',    port: 8888, icon: '📓', core: false },

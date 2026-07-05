@@ -45,26 +45,30 @@ The dashboard renders one card per top-level `agentbox.toml` section:
 |---|---|
 | Core | Orchestration engine and vector database |
 | Mesh | Standalone or federated deployment mode (ADR-025) |
+| Federation | Standalone or client federation with a host container mesh |
 | Adapters | Five pluggable adapter slots (ADR-005) |
+| Integrations | RuVector PG sidecar with PRD-018 retrieval gates (hybrid search, typed metadata, orient, health, TTL sweep), solid-pod-rs, ComfyUI |
 | GPU | GPU backend and acceleration |
 | Toolchains | Language runtimes and dev tools |
 | Security | Sandbox policy, read-only rootfs |
-| Sovereign Mesh | Nostr relay, NIP-98 auth, events |
+| Sovereign Mesh | Nostr relay, NIP-98 auth, pure-Nostr mobile agent bridge |
 | Skills | Pluggable skill modules |
+| Features | Feature flags (ExpeL lesson extraction, etc.) |
 | Desktop | VNC desktop environment |
 | Linked Data | JSON-LD federation surfaces (PRD-006) |
-| Identity | Sovereign identity (did:nostr) |
-| Limits | Resource limits and quotas |
+| Privacy Filter | Local PII redaction sidecar (ADR-008) |
+| Compression | Context-aware compression middleware (PRD-016) |
 | Observability | Prometheus, OpenTelemetry |
-| Backup | Volume backup configuration |
-| Payment | DREAM token economy |
-| Code-as-Harness | Code execution environments (PRD-008) |
-| Marketplace | LLM Resource Marketplace |
+| Payments | DREAM token economy and Web Ledger |
+| Marketplace | LLM Resource Marketplace (kinds 38300-38305) |
 | Providers | LLM provider configuration and API keys |
 | Consultants | LLM consultant MCPs (PRD-013) |
 | Networking | Tailscale mesh and host gateway |
 | Plugins | Nix package plugins and extensions |
 | Memory | RuVector memory backend and access control |
+| Memory Learning | Trajectory-recording learning loop (PRD-018/ADR-036); enable producers before consumers (W066) |
+| Memory Hygiene | Gates for non-dry-run data-hygiene ops (namespace repair, embedding backfill, legacy archival); fail-closed |
+| Project Tracking | Sovereign project tracking (PRD-017/ADR-035): telemetry, `/v1/projects`, kind-30841 digests |
 
 ## See also
 
