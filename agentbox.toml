@@ -572,6 +572,14 @@ similarity_threshold = 0.85
 # from AGENTBOX_EMAIL_GATEWAY_TOKEN (never committed).
 enabled = true
 gateway_url = "http://email-mcp-gateway:8765"
+# MCP client resilience. The gateway reasons locally with an LLM (30s+ per call)
+# and holds SSE streams open; Claude Code disables an MCP server for the whole
+# session if its startup handshake exceeds MCP_TIMEOUT and never retries HTTP
+# servers after boot. These raise the startup + tool-call ceilings (ms) so a
+# slow-but-healthy gateway is not marked dead at session start. Consumed by
+# flake.nix → container env MCP_TIMEOUT / MCP_TOOL_TIMEOUT.
+mcp_startup_timeout_ms = 60000
+mcp_tool_timeout_ms = 180000
 
 [providers.anthropic]
 enabled = true

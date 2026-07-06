@@ -967,6 +967,29 @@ cfg.setdefault('mcpServers', {})['email-gateway'] = {
 with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
 " 2>/dev/null && echo "  [mcp] Added email-gateway → $_EMAIL_GW_URL/mcp" || true
     chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
+    # Warm-up (best-effort, detached): prime the gateway's local LLM backend and
+    # open a session NOW, so the first Claude Code session's MCP `initialize`
+    # handshake is fast instead of paying the cold-start latency that used to trip
+    # the session-start timeout (see MCP_TIMEOUT in flake.nix). Token is read from
+    # env inside python3 — never placed on the command line / process list. Never
+    # blocks boot: fully backgrounded, all errors swallowed.
+    ( python3 - <<'WARMPY'
+import os, json, urllib.request
+base = os.environ.get('AGENTBOX_EMAIL_GATEWAY_URL', '').rstrip('/')
+tok = os.environ.get('AGENTBOX_EMAIL_GATEWAY_TOKEN', '')
+if base and tok:
+    body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "initialize",
+        "params": {"protocolVersion": "2025-06-18", "capabilities": {},
+                   "clientInfo": {"name": "boot-warmup", "version": "1.0"}}}).encode()
+    req = urllib.request.Request(base + '/mcp', data=body, method='POST', headers={
+        'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json',
+        'Accept': 'application/json, text/event-stream'})
+    try:
+        urllib.request.urlopen(req, timeout=45).read(1)
+    except Exception:
+        pass
+WARMPY
+    ) >/dev/null 2>&1 &
   else
     echo "  [mcp] email gateway not reachable at $_EMAIL_GW_URL — skipping email-search MCP"
   fi

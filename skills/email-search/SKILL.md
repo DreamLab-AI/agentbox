@@ -153,3 +153,17 @@ remains is **where the output goes**:
 - `{"authorized": false}` (capability) → wrong/empty pubkey, or `npub` instead of hex, or key not
   on the gateway allow-list (`PRIVILEGED_NOSTR_PUBKEYS`).
 - Timeout on first call → models warming; retry once (don't hammer with parallel calls).
+- **Tools absent for the whole session, but the gateway is healthy** → Claude Code's MCP client
+  disables an HTTP/SSE server for the entire session if its startup `initialize` handshake exceeds
+  `MCP_TIMEOUT`, and it does **not** retry HTTP servers after boot. The gateway reasons with a local
+  LLM (30s+ per call) and holds SSE streams open, so a cold backend at session start trips this.
+  Durable fix (in the build, applied on next nix buildout): container env `MCP_TIMEOUT=60000` +
+  `MCP_TOOL_TIMEOUT=180000` (set in `flake.nix`, tunable via `[skills.email_search]
+  .mcp_startup_timeout_ms / .mcp_tool_timeout_ms`), plus a detached boot warm-up in
+  `config/entrypoint-unified.sh` that primes the backend so the first session's handshake is fast.
+- **Mid-session recovery when the client link is already down** (can't wait for a rebuild): drive the
+  gateway directly over JSON-RPC. It is a streamable-HTTP MCP server — POST to `$AGENTBOX_EMAIL_GATEWAY_URL/mcp`
+  with `Authorization: Bearer $AGENTBOX_EMAIL_GATEWAY_TOKEN`, `Accept: application/json, text/event-stream`,
+  do `initialize` → capture the `Mcp-Session-Id` response header → `notifications/initialized` →
+  `tools/call`. Verified working when the harness tools were disconnected (2026-07-06). The container
+  itself never went down; only the harness client link did.

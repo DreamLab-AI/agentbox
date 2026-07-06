@@ -1,0 +1,6 @@
+# never commit the fallback venv or any signing key material
+scripts/venv/
+keys/
+*.p12
+.p12-pass
+*-signed.pdf

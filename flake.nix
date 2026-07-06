@@ -521,6 +521,15 @@
           python-docx    # read/write .docx (Office Open XML)
           python-pptx    # read/write .pptx (Office Open XML presentations)
           openpyxl       # read/write Excel .xlsx/.xlsm files
+          # PDF cryptographic signing (skills/pdf-signing) — pyHanko applies
+          # PAdES/eIDAS-aligned digital signatures; pillow + fonttools enable the
+          # image-support + opentype appearance extras. cryptography/asn1crypto/
+          # oscrypto come transitively. Baking these here removes the skill's
+          # first-run pip venv (setup.sh detects ambient pyHanko and skips it).
+          # Verification tool `pdfsig` ships via poppler-utils in allPackages.
+          pyhanko        # PDF digital signatures (PAdES B-B/B-T/B-LT/B-LTA, CAdES, LTV, PKCS#11)
+          pillow         # visible signature appearance / image stamps
+          fonttools      # opentype text rendering in the signature panel
         ]);
 
         # Closed dependency env for the imagemagick-mcp service (Q14).
@@ -2375,6 +2384,18 @@ ${ragflowNetworkDecl}
           # AGENTBOX_EMAIL_GATEWAY_TOKEN so it never bakes into the image.
           "ENABLE_EMAIL_SEARCH=${boolEnv ((skillsCfg.email_search or {}).enabled or false)}"
           "AGENTBOX_EMAIL_GATEWAY_URL=${(skillsCfg.email_search or {}).gateway_url or "http://email-mcp-gateway:8765"}"
+          # ── MCP client resilience (fixes email-gateway session-start disconnect) ──
+          # Claude Code DISABLES an MCP server for the whole session if its startup
+          # handshake exceeds MCP_TIMEOUT, and does NOT retry HTTP/SSE servers after
+          # boot. The email-gateway is a streamable-HTTP server that runs local LLM
+          # inference (30s+ per call) and holds SSE streams open, so the stock
+          # ceilings are too low → the server registers in .mcp.json but is marked
+          # dead all session (verified 2026-07-06: gateway healthy, tools absent).
+          # Raise both ceilings so slow-but-healthy MCP servers finish initialize +
+          # tool calls. Applies to every MCP server (harmless: only raises limits).
+          # Tunable via [skills.email_search].mcp_startup_timeout_ms / mcp_tool_timeout_ms.
+          "MCP_TIMEOUT=${toString ((skillsCfg.email_search or {}).mcp_startup_timeout_ms or 60000)}"
+          "MCP_TOOL_TIMEOUT=${toString ((skillsCfg.email_search or {}).mcp_tool_timeout_ms or 180000)}"
           # PRD-014 D2: ungoverned ontology_axiom_add backdoor, off by default.
           "AGENTBOX_ONTOLOGY_DIRECT_LOAD=${boolEnv ((skillsCfg.ontology or {}).direct_axiom_load or false)}"
           # Offline ontology condensation (PRD-020 WS-2). Operator-supplied cheap

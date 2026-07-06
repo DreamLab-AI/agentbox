@@ -1,7 +1,7 @@
 # Skill Directory -- Comprehensive Inventory and Decision Tree
 
-> **107 active skills** (`leptos` added 2026-06-28 — Leptos full-stack Rust web playbook + 0.7/0.8 reference; `ceramic-search` added 2026-06-20 — Ceramic.ai keyword web search with rich page extracts; `ontology-augment` added 2026-06-14). 18 formerly deprecated/archived skills removed (see table below for history).
-> Updated 2026-06-20. Reference this file from CLAUDE.md for intelligent routing.
+> **108 active skills** (`pdf-signing` added 2026-07-06 — open-source cryptographic PDF signing (pyHanko/PAdES), self-signed identity + visible panel + trust/eIDAS upgrade path; `leptos` added 2026-06-28 — Leptos full-stack Rust web playbook + 0.7/0.8 reference; `ceramic-search` added 2026-06-20 — Ceramic.ai keyword web search with rich page extracts; `ontology-augment` added 2026-06-14). 18 formerly deprecated/archived skills removed (see table below for history).
+> Updated 2026-07-06. Reference this file from CLAUDE.md for intelligent routing.
 
 ---
 
@@ -168,6 +168,7 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 | `latex-book` | No | Convert markdown/HTML manuscripts to arXiv-compliant LaTeX: memoir class, biblatex citations, parallel swarm conversion, UK typography conventions, cite_mapping.json footnote pipeline | Converting a multi-chapter markdown book to LaTeX for arXiv submission or print-ready PDF |
 | `book-publishing` | No | End-to-end book pipeline: markdown → arXiv/KDP/print-ready PDF using parallel agent swarms (LaTeX conversion, BibTeX extraction, TikZ diagrams, matplotlib charts, Wardley maps, Gemini image upcycling, visual verification) | Publishing a book or preparing a full manuscript for academic or commercial publication |
 | `mermaid-diagrams` | No | 25 diagram types, PNG/SVG/PDF export, dark/light themes | System architecture, flowcharts, ER models, Gantt charts, mindmaps |
+| `pdf-signing` | No | Cryptographic PDF signing via **pyHanko** (PAdES/eIDAS-aligned): self-signed identity generation (X.509/RSA-3072), visible signature panel, RFC-3161 timestamps, LTV, `pdfsig` verification, PKCS#11/HSM + eIDAS QES upgrade path. Private key stays in `$PDF_SIGNING_KEYS_DIR`, never in the image | "Digitally sign / e-sign this PDF/invoice/contract", a counterparty requires signed documents, generating a signing identity, verifying or timestamping a signature. NOT for stamping a signature image only (imagemagick) or form-fill (pdftk) |
 | `paperbanana` | No | Publication-quality academic figures via multi-agent VLM pipeline (Gemini/OpenAI) | Research paper figures, methodology diagrams, statistical plots |
 | `art` | No | Nano Banana 2 AI art: 16 workflows (editorial, technical diagrams, comics, maps, stats, sketchnotes), style transfer, text rendering | Blog headers, infographics, technical illustrations, editorial art, image editing |
 | `fossflow` | No | Isometric network/architecture diagrams, compact LLM-optimised format | Network topology diagrams and infrastructure maps |
@@ -486,6 +487,9 @@ Q3: What kind of document?
     |
     +-- Markdown/HTML book → arXiv-compliant LaTeX (memoir class, biblatex, UK typography)
     |   --> latex-book  (LaTeX conventions, cite_mapping.json footnote pipeline)
+    |
+    +-- Cryptographically sign a PDF (invoice, contract) — digital/e-signature
+    |   --> pdf-signing  (pyHanko/PAdES; self-signed identity → trust/eIDAS upgrade path)
     |
     +-- Diagrams only (flowchart, ER, sequence, Gantt, mindmap)
     |   --> mermaid-diagrams
