@@ -87,6 +87,9 @@ Examples:
   $0 ruvector archive-legacy             # dry-run archive+delete of ~1.84M frozen legacy rows (--yes + flag)
   $0 ruvector aggregate-effectiveness    # dry-run Wilson+recency effectiveness aggregates (--yes + [memory_learning] enabled)
   $0 ruvector build-metadata-gin         # dry-run GIN on metadata jsonb_path_ops for tag @> (--yes + metadata_gin flag)
+  $0 ruvnet-brain ingest    # reconcile RuvNet KB corpus in the sidecar against latest release (--force to re-embed all)
+  $0 ruvnet-brain status    # corpus chunk count + ingest manifest (namespace ruvnet-kb)
+  $0 ruvnet-brain logs      # follow the boot-time ingest log
   $0 update --flake-only    # only update flake inputs (nixpkgs, rust-overlay, etc.)
   $0 update --npm-only      # only bump npm CLI versions in flake.nix
   $0 logs                   # Follow all service logs
@@ -850,6 +853,35 @@ cmd_ruvector() {
     exec bash "${SCRIPT_DIR}/scripts/ruvector-sidecar-update.sh" "$@"
 }
 
+cmd_ruvnet_brain() {
+    # RuvNet Brain corpus playbook (see [skills.ruvnet_brain] in agentbox.toml).
+    # The corpus lives in the ruvector-postgres sidecar (namespace ruvnet-kb);
+    # ingest reconciles it against the latest upstream GitHub release. The
+    # container env carries RUVNET_BRAIN_* config; only the conninfo needs
+    # container-side password resolution (same form the MCP registration uses).
+    local subcmd="${1:-status}"
+    shift 2>/dev/null || true
+    local ingest_env='RUVECTOR_PG_CONNINFO="host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=${RUVECTOR_PG_PASSWORD:-ruvector}"'
+    case "$subcmd" in
+        ingest)
+            echo -e "${CYAN}Reconciling RuvNet KB corpus (this embeds via Xinference; new corpus ≈ minutes)...${NC}"
+            docker exec --user 1000 agentbox bash -c \
+                "${ingest_env} node /opt/agentbox/scripts/ruvnet-brain-ingest.mjs $*"
+            ;;
+        status)
+            docker exec --user 1000 agentbox bash -c \
+                "${ingest_env} node /opt/agentbox/scripts/ruvnet-brain-ingest.mjs --status"
+            ;;
+        logs)
+            docker exec agentbox tail -n 100 -f /var/log/ruvnet-brain-ingest.log
+            ;;
+        *)
+            echo "Usage: $0 ruvnet-brain <ingest [--force]|status|logs>"
+            exit 1
+            ;;
+    esac
+}
+
 cmd_rebuild() {
     if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
         echo "Usage: $0 rebuild [--no-cleanup]"
@@ -1490,6 +1522,7 @@ case "${CMD:-}" in
     rebuild)       cmd_rebuild "$@" ;;
     update)        cmd_update "$@" ;;
     ruvector)      cmd_ruvector "$@" ;;
+    ruvnet-brain)  cmd_ruvnet_brain "$@" ;;
     logs)              cmd_logs "$@" ;;
     shell)             cmd_shell "$@" ;;
     health)            cmd_health "$@" ;;

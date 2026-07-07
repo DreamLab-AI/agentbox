@@ -65,6 +65,7 @@
         docsCfg = skillsCfg.docs or {};
         researchCfg = skillsCfg.research or {};
         codeInterpreterCfg = skillsCfg.code_interpreter or {};
+        ruvnetBrainCfg = skillsCfg.ruvnet_brain or {};
         securityCfg = agentboxConfig.security or {};
         securityExceptions = securityCfg.exceptions or {};
         consultantsCfg = agentboxConfig.consultants or {};
@@ -669,6 +670,24 @@
           npmDepsHash   = "sha256-8aKmf3gvv5aBMp40WHaatZPtRxBcX6ubxcQaZeS9sBA=";
         };
 
+        # RuvNet Brain: THIN MCP wrapper over the shared ruvector-postgres
+        # sidecar. No local vector store, no local embedder — search_ruvnet is a
+        # namespace-scoped (ruvnet-kb) pgvector/HNSW query with the query
+        # embedded client-side via Xinference bge-small-en-v1.5 (ADR-015), the
+        # same embedding space as every other memory_entries row. The corpus is
+        # loaded by scripts/ruvnet-brain-ingest.mjs (boot playbook), which
+        # downloads the upstream passages bundle and bulk-embeds via Xinference.
+        # Deps: @modelcontextprotocol/sdk + pg only.
+        # Refresh hash: nix run nixpkgs#prefetch-npm-deps -- mcp/ruvnet-brain/package-lock.json
+        ruvnetBrainMcpPkg = npmServicesLib.makeNpmService {
+          name          = "ruvnet-brain-mcp";
+          src           = ./mcp/ruvnet-brain;
+          entry         = "server.js";
+          skipLoadCheck = true;
+          # Prefetched 2026-07-07. Refresh: nix run nixpkgs#prefetch-npm-deps -- mcp/ruvnet-brain/package-lock.json
+          npmDepsHash   = "sha256-kKxKUQMsO6BVKwNaEkOPayyTXv1ssvz6i1vSdu8O8zg=";
+        };
+
         codeHarnessPackages =
           lib.optionals (codeInterpreterCfg.enabled or false) [
             codeInterpreterPythonEnv
@@ -677,6 +696,9 @@
           ]
           ++ lib.optionals ((skillsCfg.aci_shell or {}).enabled or false) [
             aciShellMcpPkg
+          ]
+          ++ lib.optionals (ruvnetBrainCfg.enabled or false) [
+            ruvnetBrainMcpPkg
           ];
 
         # ComfyUI built-in: fetch upstream source and wrap with a Python env.
@@ -1122,6 +1144,10 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           ${lib.optionalString ((skillsCfg.aci_shell or {}).enabled or false) ''
           rm -rf $out/opt/agentbox/mcp/aci-shell
           cp -rL ${aciShellMcpPkg}/package $out/opt/agentbox/mcp/aci-shell
+          ''}
+          ${lib.optionalString (ruvnetBrainCfg.enabled or false) ''
+          rm -rf $out/opt/agentbox/mcp/ruvnet-brain
+          cp -rL ${ruvnetBrainMcpPkg}/package $out/opt/agentbox/mcp/ruvnet-brain
           ''}
 
           ${lib.optionalString compressionEnabled ''
@@ -1819,7 +1845,7 @@ stderr_logfile=/var/log/tmux-autostart.error.log
         # owned by root so supervisord can write its own state; bootstrap
         # creates uid-1000-owned subdirs under them as needed.
         baselineTmpfsMounts = [
-          "/tmp:mode=1777,size=256M"
+          "/tmp:mode=1777,size=1G"
           # /run, /var/log, /var/log/supervisor are uid-1000-owned so
           # devuser-running services (per `user=devuser` directives) can
           # write logs and runtime state without bootstrap chown
@@ -1952,6 +1978,9 @@ stderr_logfile=/var/log/tmux-autostart.error.log
           "agentbox-secrets:/var/lib/agentbox/secrets"
           "code-harness-data:/var/lib/agentbox/code-harness"
           "agentbox-events:/var/lib/agentbox/events"
+        ]
+        ++ lib.optionals (ruvnetBrainCfg.enabled or false) [
+          "ruvnet-brain-data:/var/lib/agentbox/ruvnet-brain"
         ];
         # Drop entries from exceptionWritableVolumes whose container target
         # path already appears in the baseline. Compare on the second
@@ -1976,7 +2005,8 @@ stderr_logfile=/var/log/tmux-autostart.error.log
         # are auto-derived so every volume referenced in the agentbox service's
         # volumes list has a matching top-level declaration. Without this,
         # docker compose rejects the file with "undefined volume <name>".
-        baselineTopLevelVolumeNames = [ "ruvector-data" "solid-data" "sovereign-identities" "agentbox-secrets" "code-harness-data" "agentbox-events" ];
+        baselineTopLevelVolumeNames = [ "ruvector-data" "solid-data" "sovereign-identities" "agentbox-secrets" "code-harness-data" "agentbox-events" ]
+          ++ lib.optionals (ruvnetBrainCfg.enabled or false) [ "ruvnet-brain-data" ];
         exceptionVolumeNames = lib.unique (
           map (v: lib.head (lib.splitString ":" v)) exceptionWritableVolumes
         );
@@ -2377,6 +2407,17 @@ ${ragflowNetworkDecl}
           "ENABLE_VOYAGER=${boolEnv ((skillsCfg.voyager_skill_library or {}).enabled or false)}"
           "ENABLE_ACI_SHELL=${boolEnv ((skillsCfg.aci_shell or {}).enabled or false)}"
           "ENABLE_TREE_SEARCH_CODER=${boolEnv ((skillsCfg.tree_search_coder or {}).enabled or false)}"
+          # RuvNet Brain — corpus lives IN the ruvector-postgres sidecar
+          # (namespace below); the MCP server is a thin namespace-scoped
+          # wrapper and the ingest playbook reconciles the corpus against the
+          # latest upstream release at every boot (auto_ingest).
+          "ENABLE_RUVNET_BRAIN=${boolEnv (ruvnetBrainCfg.enabled or false)}"
+          "RUVNET_BRAIN_NAMESPACE=${ruvnetBrainCfg.namespace or "ruvnet-kb"}"
+          "RUVNET_BRAIN_AUTO_INGEST=${boolEnv (ruvnetBrainCfg.auto_ingest or true)}"
+          "RUVNET_BRAIN_GROUNDING_HOOK=${boolEnv (ruvnetBrainCfg.grounding_hook or true)}"
+          "RUVNET_BRAIN_RELEASE_URL=${ruvnetBrainCfg.kb_release_url or "https://github.com/stuinfla/ruvnet-brain/releases/latest/download/ruvnet-brain.zip"}"
+          "RUVNET_BRAIN_STAGING=${ruvnetBrainCfg.staging_path or "/var/lib/agentbox/ruvnet-brain"}"
+          "RUVNET_BRAIN_EMBED_BATCH=${toString (ruvnetBrainCfg.embed_batch or 32)}"
           "ENABLE_ONTOLOGY=${boolEnv ((skillsCfg.ontology or {}).enabled or false)}"
           "VISIONCLAW_API_URL=${(skillsCfg.ontology or {}).visionclaw_api_url or "http://visionclaw-server:4000"}"
           # Private Email Search MCP gateway (DreamLab-AI/email-mcp-gateway). The

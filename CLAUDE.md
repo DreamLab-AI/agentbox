@@ -150,6 +150,20 @@ Every record carries `owner_did = did:nostr:<hex>` and an associated `action_urn
 
 `mcp/aci-shell` (fixed 2026-07-05) is packaged as a proper npm closure — `makeNpmService` in `flake.nix`, `@modelcontextprotocol/sdk` pinned to `^1.0.0` (lockfile + prefetched `npmDepsHash`), overlaid into `/opt/agentbox/mcp/aci-shell` with `node_modules` baked in. The entrypoint's phase-6 `_probe_closure` check passes once `skills.aci_shell.enabled` is on.
 
+## RuvNet Brain (Source-Grounded KB in the Sidecar)
+
+The [ruvnet-brain](https://github.com/stuinfla/ruvnet-brain) corpus (~90k source chunks from 21+ RuvNet ecosystem repos: ruflo, ruvector, safla, agentdb, agentic-flow, sparc, etc) is ingested INTO the shared ruvector-postgres sidecar under namespace **`ruvnet-kb`** — embedded client-side via Xinference `bge-small-en-v1.5` (384-dim, ADR-015), the same embedding space and `memory_entries` table as all other agent memory. The upstream retrieval stack (`@ruvector/rvf` file stores + `@xenova/transformers` in-process embedder) is deliberately NOT run: the corpus is the value, the substrate is ours. No second embedder, no second vector store, no 512 MB in-memory model.
+
+**Ingest playbook**: `scripts/ruvnet-brain-ingest.mjs` — auto-runs at boot (backgrounded, after the Xinference readiness gate) when `auto_ingest = true`; every boot/build reconciles against the latest upstream GitHub release. Chunks are content-addressed (`key = ruvnet/<repo>/<sha256-12>`), so only new/changed text is re-embedded, unchanged rows get a metadata version bump, vanished rows are pruned, and a `ruvnet/manifest` row stamps the corpus version (+ best-effort ADR-013 `urn:agentbox:dataset` URN). Manual: `./agentbox.sh ruvnet-brain <ingest [--force]|status|logs>`.
+
+**MCP surface**: `mcp/ruvnet-brain/server.js` is a THIN wrapper (deps: MCP SDK + pg) exposing `search_ruvnet` (namespace-scoped pgvector search, optional repo filter, ILIKE fallback when Xinference is down) and `ruvnet_brain_status`. The same data is reachable via `mcp__claude-flow__memory_search({namespace: "ruvnet-kb"})` — no wrapper required.
+
+**Write protection**: the entrypoint appends `ruvnet-kb` to `RUVECTOR_PROTECTED_NAMESPACES` on the claude-flow MCP env, so agents cannot overwrite reference corpus rows through `memory_store`; only the ingest playbook (direct pg, `source_type = ruvnet-brain-ingest`) writes there.
+
+**Manifest gate**: `[skills.ruvnet_brain]` in `agentbox.toml` — `enabled`, `namespace`, `auto_ingest`, `grounding_hook`, `kb_release_url`, `staging_path` (named volume `ruvnet-brain-data`, download/extract scratch only), `embed_batch`.
+
+**Grounding hook**: `config/hooks/ruvnet-brain-ground.cjs` on `UserPromptSubmit` — detects RuvNet ecosystem mentions and classical-substitute anti-patterns (Pinecone, LangChain, ChromaDB, hnswlib, etc), injects a search-first directive. **Skill file**: `skills/ruvnet-brain/SKILL.md` — grounding rules, covered repos, anti-pattern matrix.
+
 ## Consultant Tier (Z.AI / GLM)
 
 `glm-5.2` (1M context) is Z.AI's flagship coding model and the one used everywhere in this repo (`consultants.zai.model`, `project_tracking.primer_model`, `[sovereign_mesh.mobile_bridge].summary_model`). `[consultants.zai].reasoning_effort` (`low | medium | high`) is wired end-to-end for deep thinking: manifest → `scripts/provision-agent-stacks.py` exports `AGENTBOX_ZAI_REASONING_EFFORT` → `skills/mcp.json` consultant-zai env passthrough → `zai/server.js` maps it to Claude Code's `MAX_THINKING_TOKENS` (`low`=4096, `medium`=10000, `high`=31999) → the Z.AI Anthropic-compatible endpoint (`api.z.ai/api/anthropic`) translates the thinking block into GLM `reasoning_effort`. Unset falls back to the endpoint default. ZCode (`zcode.z.ai`) is Z.AI's own desktop/web IDE, not a CLI — it does not replace the `claude-zai` wrapper harness and should not be documented as an integration path.

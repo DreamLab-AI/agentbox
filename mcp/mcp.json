@@ -178,6 +178,24 @@
       "protocol": "stdio",
       "version": "1.0.0",
       "upstream": "https://www.npmjs.com/package/@perplexity-ai/mcp-server"
+    },
+    "ruvnet-brain": {
+      "command": "node",
+      "args": ["/opt/agentbox/mcp/ruvnet-brain/server.js"],
+      "type": "stdio",
+      "env": {
+        "RUVECTOR_PG_CONNINFO": "${RUVECTOR_PG_CONNINFO}",
+        "XINFERENCE_ENDPOINT": "${XINFERENCE_ENDPOINT:-http://xinference:9997}",
+        "EMBEDDING_MODEL": "${EMBEDDING_MODEL:-bge-small-en-v1.5}",
+        "RUVNET_BRAIN_NAMESPACE": "${RUVNET_BRAIN_NAMESPACE:-ruvnet-kb}",
+        "NODE_PATH": "/opt/agentbox/mcp/ruvnet-brain/node_modules",
+        "NODE_NO_WARNINGS": "1"
+      },
+      "description": "RuvNet Brain — thin wrapper over the shared ruvector-postgres sidecar. Tools: search_ruvnet (namespace-scoped pgvector search over ~90k RuvNet ecosystem source chunks: ruflo, ruvector, safla, agentdb, agentic-flow, sparc, etc; optional repo filter; query embedded via Xinference bge-small-en-v1.5, ADR-015) and ruvnet_brain_status (corpus health + ingest manifest). Same data reachable via memory_search namespace 'ruvnet-kb'. Corpus loaded by scripts/ruvnet-brain-ingest.mjs (boot playbook, reconciles against latest upstream release). Manifest gate [skills.ruvnet_brain]. Namespace is write-protected (RUVECTOR_PROTECTED_NAMESPACES).",
+      "protocol": "stdio",
+      "version": "0.2.0",
+      "upstream": "https://github.com/stuinfla/ruvnet-brain",
+      "features": ["search_ruvnet", "ruvnet_brain_status", "namespace_scoped", "shared_embedding_space"]
     }
   },
   "external_bridge": {

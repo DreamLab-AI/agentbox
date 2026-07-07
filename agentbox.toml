@@ -510,6 +510,40 @@ max_view_lines = 150           # hard cap per aci.view_file call
 max_edit_context = 10          # max diff context lines in aci.edit_file response
 test_command_allowlist = ["pytest", "cargo test", "npm test", "go test"]
 
+[skills.ruvnet_brain]
+# RuvNet Brain: source-grounded knowledge corpus for the RuvNet ecosystem
+# (21+ repos: ruflo, ruvector, safla, agentdb, agentic-flow, sparc, etc).
+# ~90k source chunks INGESTED INTO THE SHARED ruvector-postgres SIDECAR under
+# the namespace below — embedded client-side via Xinference bge-small-en-v1.5
+# (384-dim, ADR-015), the same embedding space and memory_entries table as all
+# other agent memory. We deliberately do NOT run the upstream retrieval stack
+# (@ruvector/rvf file stores + @xenova/transformers in-process embedder): the
+# corpus is the value, the substrate is ours.
+#
+# Surfaces:
+#  - search_ruvnet MCP tool (thin wrapper, mcp/ruvnet-brain/server.js):
+#    namespace-scoped pgvector search + repo filter + passage formatting.
+#  - mcp__claude-flow__memory_search({namespace: "ruvnet-kb"}): same data,
+#    generic tool — no wrapper needed.
+#  - Grounding hook on UserPromptSubmit: detects RuvNet mentions and
+#    classical-substitute anti-patterns (pgvector-as-a-product, Pinecone,
+#    LangChain, ...) and injects a search-first directive.
+#
+# Ingest playbook: scripts/ruvnet-brain-ingest.mjs — auto-runs at boot
+# (backgrounded, after Xinference readiness) when auto_ingest = true; every
+# boot reconciles against the latest upstream GitHub release (content-
+# addressed chunks: only new/changed text is re-embedded, vanished chunks are
+# pruned). Manual: ./agentbox.sh ruvnet-brain <ingest|status>.
+# The namespace is appended to RUVECTOR_PROTECTED_NAMESPACES so agents cannot
+# overwrite reference corpus rows through memory_store.
+enabled = true
+namespace = "ruvnet-kb"
+auto_ingest = true                  # reconcile corpus at boot (backgrounded)
+grounding_hook = true               # register UserPromptSubmit grounding hook
+kb_release_url = "https://github.com/stuinfla/ruvnet-brain/releases/latest/download/ruvnet-brain.zip"
+staging_path = "/var/lib/agentbox/ruvnet-brain"   # download/extract scratch (named volume)
+embed_batch = 32                    # passages per Xinference /v1/embeddings call
+
 [skills.tree_search_coder]
 # Execution-gated tree-search. Generates N candidates, executes each
 # in fresh kernel, scores by assertion pass. Slow path — explicitly

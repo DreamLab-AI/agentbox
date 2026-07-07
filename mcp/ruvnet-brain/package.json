@@ -1,0 +1,22 @@
+{
+  "name": "ruvnet-brain-mcp",
+  "version": "0.2.0",
+  "description": "RuvNet Brain thin MCP wrapper for agentbox. search_ruvnet is a namespace-scoped semantic search over the ruvnet-kb corpus in ruvector-postgres (the shared sidecar), embedded client-side via Xinference bge-small-en-v1.5 (ADR-015). No local vector store, no local embedder — one embedding space, one database.",
+  "main": "server.js",
+  "bin": {
+    "ruvnet-brain-mcp": "./server.js"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js && echo 'syntax ok'"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "pg": "^8.13.0"
+  },
+  "license": "MIT",
+  "keywords": ["mcp", "ruvnet", "knowledge-base", "ruvector", "agentbox", "ruflo"]
+}

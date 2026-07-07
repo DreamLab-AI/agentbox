@@ -1018,6 +1018,92 @@ else
   [ -z "${PERPLEXITY_API_KEY:-}" ] && echo "  [mcp] PERPLEXITY_API_KEY not set — skipping perplexity MCP"
 fi
 
+# ── RuvNet Brain: RuvNet-ecosystem corpus in the ruvector-postgres sidecar ──
+# The corpus (~90k source chunks) lives IN the shared memory sidecar under
+# namespace $RUVNET_BRAIN_NAMESPACE, embedded via Xinference (ADR-015) — same
+# embedding space + table as all other memory. Here: (1) register the thin
+# search_ruvnet MCP wrapper, (2) protect the namespace against agent
+# memory_store writes, (3) register the grounding hook. The corpus ingest
+# itself runs AFTER the xinference readiness gate below (backgrounded).
+_RB_MCP_DIR="/opt/agentbox/mcp/ruvnet-brain"
+_RB_NS="${RUVNET_BRAIN_NAMESPACE:-ruvnet-kb}"
+if [ "${ENABLE_RUVNET_BRAIN:-false}" = "true" ] && [ -d "$_RB_MCP_DIR" ]; then
+
+  # Phase 1: Register the thin MCP wrapper. Conninfo mirrors the claude-flow
+  # entry (libpq key=value form, password resolved at write time).
+  if [ -f "$_MCP_JSON" ] && ! grep -q "ruvnet-brain" "$_MCP_JSON" 2>/dev/null; then
+    python3 -c "
+import json, os
+with open('$_MCP_JSON') as f: cfg = json.load(f)
+cfg.setdefault('mcpServers', {})['ruvnet-brain'] = {
+  'command': 'node',
+  'args': ['$_RB_MCP_DIR/server.js'],
+  'type': 'stdio',
+  'env': {
+    'RUVECTOR_PG_CONNINFO': 'host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=' + os.environ.get('RUVECTOR_PG_PASSWORD', 'ruvector'),
+    'XINFERENCE_ENDPOINT': os.environ.get('XINFERENCE_ENDPOINT', 'http://xinference:9997'),
+    'EMBEDDING_MODEL': os.environ.get('EMBEDDING_MODEL', 'bge-small-en-v1.5'),
+    'RUVNET_BRAIN_NAMESPACE': '$_RB_NS',
+    'NODE_PATH': '$_RB_MCP_DIR/node_modules',
+    'NODE_NO_WARNINGS': '1',
+  }
+}
+with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
+" 2>/dev/null && echo "  [mcp] Added ruvnet-brain → $_RB_MCP_DIR/server.js (namespace: $_RB_NS)" || true
+    chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
+  fi
+
+  # Phase 2: Protect the corpus namespace — reference data must not be
+  # overwritable via agent memory_store. Append (never replace) so the
+  # existing default (governance-precedents) and any operator additions
+  # survive. Idempotent.
+  if [ -f "$_MCP_JSON" ]; then
+    python3 -c "
+import json
+with open('$_MCP_JSON') as f: cfg = json.load(f)
+cf = cfg.get('mcpServers', {}).get('claude-flow')
+if cf is not None:
+    env = cf.setdefault('env', {})
+    cur = [s.strip() for s in env.get('RUVECTOR_PROTECTED_NAMESPACES', 'governance-precedents').split(',') if s.strip()]
+    if '$_RB_NS' not in cur:
+        cur.append('$_RB_NS')
+        env['RUVECTOR_PROTECTED_NAMESPACES'] = ','.join(cur)
+        with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
+        print('  [ruvnet-brain] protected namespace $_RB_NS in claude-flow env')
+" 2>/dev/null || true
+    chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
+  fi
+
+  # Phase 3: Register grounding hook on UserPromptSubmit
+  _RB_GROUND_HOOK="/opt/agentbox/config/hooks/ruvnet-brain-ground.cjs"
+  if [ "${RUVNET_BRAIN_GROUNDING_HOOK:-true}" = "true" ] \
+     && [ -f "$_RB_GROUND_HOOK" ] && command -v node >/dev/null 2>&1; then
+    mkdir -p "$(dirname "$_CLAUDE_SETTINGS")" 2>/dev/null || true
+    RB_HOOK="$_RB_GROUND_HOOK" SETTINGS="$_CLAUDE_SETTINGS" node <<'RBHOOKJS' || true
+const fs = require('fs');
+const f = process.env.SETTINGS, cmd = `node ${process.env.RB_HOOK}`;
+let s = {}; try { s = JSON.parse(fs.readFileSync(f, 'utf8')); } catch {}
+s.hooks = s.hooks || {};
+s.hooks.UserPromptSubmit = s.hooks.UserPromptSubmit || [];
+const has = s.hooks.UserPromptSubmit.some((g) =>
+  (g.hooks || []).some((h) => String(h.command || '').includes('ruvnet-brain-ground.cjs')));
+if (!has) {
+  s.hooks.UserPromptSubmit.push({
+    hooks: [{ type: 'command', command: `${cmd} || true`, timeout: 5000 }]
+  });
+  fs.writeFileSync(f, JSON.stringify(s, null, 2));
+  console.log('  [ruvnet-brain] registered grounding hook on UserPromptSubmit');
+} else {
+  console.log('  [ruvnet-brain] grounding hook already registered');
+}
+RBHOOKJS
+    chown 1000:1000 "$_CLAUDE_SETTINGS" 2>/dev/null || true
+  fi
+else
+  [ "${ENABLE_RUVNET_BRAIN:-false}" = "true" ] \
+    && echo "  [ruvnet-brain] MCP closure not found at $_RB_MCP_DIR — skipping"
+fi
+
 # ── Xinference embedding sidecar: wait for readiness + ensure model loaded ──
 # xinference does NOT persist launched models across its own restarts, so this
 # boot-time launch is the only thing that loads ${EMBEDDING_MODEL}. The
@@ -1091,6 +1177,28 @@ if [ "$_xinference_ok" = "true" ]; then
 else
   echo "  [xinference] WARN: not reachable after ${XINFERENCE_WAIT_SECS}s — semantic search will be degraded"
   export XINFERENCE_READY=false
+fi
+
+# ── RuvNet Brain corpus ingest: reconcile against the latest upstream release ──
+# Backgrounded playbook (scripts/ruvnet-brain-ingest.mjs). Every boot — i.e.
+# after every build — it compares the upstream GitHub release tag against the
+# manifest row in the DB: matching tag + non-empty corpus is a fast no-op;
+# otherwise it downloads the passages, embeds NEW/changed chunks via
+# Xinference (content-addressed keys), prunes vanished ones, and stamps the
+# manifest. Runs detached so a 512 MB download + ~90k-chunk embed job never
+# blocks boot. The script does its own xinference readiness poll (180s), so
+# even a slow embedder cold-start is tolerated.
+_RB_INGEST="/opt/agentbox/scripts/ruvnet-brain-ingest.mjs"
+if [ "${ENABLE_RUVNET_BRAIN:-false}" = "true" ] \
+   && [ "${RUVNET_BRAIN_AUTO_INGEST:-true}" = "true" ] \
+   && [ -f "$_RB_INGEST" ] && command -v node >/dev/null 2>&1; then
+  mkdir -p "${RUVNET_BRAIN_STAGING:-/var/lib/agentbox/ruvnet-brain}" 2>/dev/null || true
+  chown -R 1000:1000 "${RUVNET_BRAIN_STAGING:-/var/lib/agentbox/ruvnet-brain}" 2>/dev/null || true
+  (
+    RUVECTOR_PG_CONNINFO="host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=${RUVECTOR_PG_PASSWORD:-ruvector}" \
+    node "$_RB_INGEST" >> /var/log/ruvnet-brain-ingest.log 2>&1
+  ) &
+  echo "  [ruvnet-brain] corpus reconciliation launched (log: /var/log/ruvnet-brain-ingest.log)"
 fi
 
 # ── Codex CLI MCP wiring: write ruvector-mcp into ~/.codex/config.toml ──

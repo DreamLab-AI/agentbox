@@ -1,7 +1,7 @@
 # Skill Directory -- Comprehensive Inventory and Decision Tree
 
-> **108 active skills** (`pdf-signing` added 2026-07-06 — open-source cryptographic PDF signing (pyHanko/PAdES), self-signed identity + visible panel + trust/eIDAS upgrade path; `leptos` added 2026-06-28 — Leptos full-stack Rust web playbook + 0.7/0.8 reference; `ceramic-search` added 2026-06-20 — Ceramic.ai keyword web search with rich page extracts; `ontology-augment` added 2026-06-14). 18 formerly deprecated/archived skills removed (see table below for history).
-> Updated 2026-07-06. Reference this file from CLAUDE.md for intelligent routing.
+> **109 active skills** (`ruvnet-brain` added 2026-07-07 — RuvNet-ecosystem source corpus (~90k chunks, 21+ repos) in the ruvector-postgres sidecar, `search_ruvnet` MCP + grounding hook; `pdf-signing` added 2026-07-06 — open-source cryptographic PDF signing (pyHanko/PAdES), self-signed identity + visible panel + trust/eIDAS upgrade path; `leptos` added 2026-06-28 — Leptos full-stack Rust web playbook + 0.7/0.8 reference; `ceramic-search` added 2026-06-20 — Ceramic.ai keyword web search with rich page extracts; `ontology-augment` added 2026-06-14). 18 formerly deprecated/archived skills removed (see table below for history).
+> Updated 2026-07-07. Reference this file from CLAUDE.md for intelligent routing.
 
 ---
 
@@ -101,6 +101,7 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 |-------|-----|----------------|----------------|
 | `agentdb-advanced` | No | QUIC sync, multi-database, custom distance metrics, hybrid search, MMR diversity, **9 RL algorithms** (Decision Transformer, Q-Learning, SARSA, Actor-Critic, Federated, etc.) | Distributed AI systems, cross-network AgentDB sync, self-learning agents with RL |
 | `ruvector-catalog` | No | Architect's playbook for 200+ RuVector capabilities across 14 domains, migration paths, 3 access paths (npm/WASM/NAPI) | "What RuVector tools can help with X?", technology recommendations, migration from aging tech |
+| `ruvnet-brain` | Yes | Source-grounded RuvNet-ecosystem corpus (~90k chunks, 21+ repos: ruflo, ruvector, safla, agentdb, agentic-flow, sparc, …) living in the ruvector-postgres sidecar under write-protected namespace `ruvnet-kb`. `search_ruvnet` (repo filter, file attribution) + `ruvnet_brain_status`; same data via `memory_search({namespace: "ruvnet-kb"})`. Grounding hook auto-injects search-first directives on RuvNet mentions | Any question about how a RuvNet tool actually works — search before asserting; verifying capability claims before substituting classical alternatives (Pinecone/LangChain/hnswlib) |
 | `agentdb-memory-patterns` | No | Session memory, long-term storage, pattern learning, context management | Stateful agents, chat systems, intelligent assistants |
 | `agentdb-vector-search` | No | HNSW indexing (150x faster), quantization, caching, batch ops, RAG pipelines | Semantic search, RAG systems, scaling to millions of vectors |
 
@@ -843,11 +844,12 @@ Some tasks benefit from combining skills. Common compositions:
 
 ## MCP Server Summary
 
-17 skills provide MCP servers (registered in `skills/mcp.json` or invocable via skill config):
+19 skills provide MCP servers (registered in `skills/mcp.json`, `mcp/mcp.json`, or invocable via skill config):
 
 | Skill | Protocol | Entry Point |
 |-------|----------|-------------|
 | `lazy-fetch` | stdio | `mcp-server/dist/mcp-server.js` |
+| `ruvnet-brain` | mcp-sdk | `/opt/agentbox/mcp/ruvnet-brain/server.js` (registered via `mcp/mcp.json` + entrypoint) |
 | `cuda` | stdio | `mcp-server/server.py` |
 | `deepseek-reasoning` | mcp-sdk | `mcp-server/server.js` |
 | `flow-nexus-neural` | flow-nexus | via `npx flow-nexus@latest` |
