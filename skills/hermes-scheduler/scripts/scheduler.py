@@ -107,6 +107,14 @@ def parse_schedule(schedule: str) -> Dict[str, Any]:
         minutes = parse_duration(schedule[6:].strip())
         return {"kind": "interval", "minutes": minutes, "display": f"every {minutes}m"}
 
+    # "daily at HH:MM" (or "at HH:MM") -> fixed local wall-clock time, no croniter needed
+    m = re.match(r"^(?:daily\s+at|at)\s+(\d{1,2}):(\d{2})$", lower)
+    if m:
+        hh, mm = int(m.group(1)), int(m.group(2))
+        if hh > 23 or mm > 59:
+            raise ValueError(f"Invalid daily time '{original}'")
+        return {"kind": "daily", "hour": hh, "minute": mm, "display": f"daily at {hh:02d}:{mm:02d}"}
+
     # Cron expression (5+ space-separated fields of digits/*/-, /)
     parts = schedule.split()
     if len(parts) >= 5 and all(re.match(r"^[\d\*\-,/]+$", p) for p in parts[:5]):
@@ -177,6 +185,13 @@ def compute_next_run(schedule: Dict[str, Any], last_run_at: Optional[str] = None
         cron = croniter(schedule["expr"], now)
         return cron.get_next(datetime).isoformat()
 
+    if kind == "daily":
+        candidate = now.replace(hour=schedule["hour"], minute=schedule["minute"],
+                                second=0, microsecond=0)
+        if candidate <= now:
+            candidate += timedelta(days=1)
+        return candidate.isoformat()
+
     return None
 
 
@@ -186,6 +201,8 @@ def _compute_grace_seconds(schedule: Dict[str, Any]) -> int:
     if kind == "interval":
         period = schedule.get("minutes", 1) * 60
         return max(MIN_GRACE, min(period // 2, MAX_GRACE))
+    if kind == "daily":
+        return MAX_GRACE
     if kind == "cron" and HAS_CRONITER:
         try:
             now = _now()
@@ -423,7 +440,7 @@ def run_job(job: Dict[str, Any]) -> tuple:
             ["claude", "--print", prompt],
             capture_output=True,
             text=True,
-            timeout=600,  # 10 minute timeout
+            timeout=1800,  # 30 minute timeout (TA sweeps need more than 10)
             cwd=workdir,
             env={**os.environ, "CLAUDE_NO_TELEMETRY": "1"},
         )
