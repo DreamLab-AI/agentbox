@@ -33,14 +33,21 @@ class StdioBridgeOrchestratorAdapter extends BaseAdapter {
   async spawnAgent(spec = {}) {
     if (!spec.command) throw new SpawnError('spec.command is required');
     const agentId = uris.mint({ kind: 'agent', localId: `stdio-${Date.now().toString(36)}` });
-    const msg = { jsonrpc: '2.0', method: 'agent.spawn', id: agentId, params: spec };
+    // COM-14 / ADR-037 D6 — carry the minted per-agent did:nostr on the spawn
+    // frame the external orchestrator (VisionClaw BrokerActor) consumes, so it
+    // can key the node by a verifiable identity. Additive to the spec params;
+    // only the public DID crosses the wire, never the private key. Null when
+    // identity is unset.
+    const didNostr = process.env.AGENTBOX_AGENT_DID || null;
+    const params = { ...spec, did_nostr: didNostr };
+    const msg = { jsonrpc: '2.0', method: 'agent.spawn', id: agentId, params };
     try {
       this._stdio.write(JSON.stringify(msg));
     } catch (err) {
       throw new SpawnError(`stdio write failed: ${err.message}`);
     }
     this._agents.set(agentId, { agentId, status: 'running', spec, handlers: [] });
-    return { agentId, status: 'running' };
+    return { agentId, status: 'running', did_nostr: didNostr };
   }
 
   async streamEvent(agentId, handler) {
