@@ -67,6 +67,16 @@ class AgentEventPublisher extends EventEmitter {
     if (event.target_urn !== undefined) fullEvent.target_urn = event.target_urn;
     if (event.pubkey !== undefined)     fullEvent.pubkey     = event.pubkey;
 
+    // REC-3 (CTC — contextual transaction cost, emitter side, PRD-019 REC-3 /
+    // ADR-037): additive cost/correlation fields matching VisionClaw's PRD-023
+    // CTC contract — token burden, the handoff-chain correlation id, and a
+    // verification outcome (populated by the REC-8 anti-fox verifier when a
+    // closure check ran). Forwarded only when the caller supplies them; an
+    // existing success-only caller emits none of them (byte-compatible).
+    if (event.token_count !== undefined)  fullEvent.token_count  = event.token_count;
+    if (event.handoff_id  !== undefined)  fullEvent.handoff_id   = event.handoff_id;
+    if (event.verification !== undefined) fullEvent.verification = event.verification;
+
     // REC-5 (AC3): any action whose outcome is a FAILURE carries a MAST
     // failure_mode tag on the envelope — a mode id or the `unmapped` sentinel,
     // never a free-text error alone. A caller signals failure by passing
@@ -270,6 +280,12 @@ class AgentEventPublisher extends EventEmitter {
           pubkey: event.pubkey || null,
           // REC-5: MAST failure tag forwarded on the wire (null on success).
           failure_mode: event.failure_mode || null,
+          // REC-3: CTC fields on the wire — token burden, handoff-chain id, and
+          // verification outcome. Null when absent → byte-compatible with
+          // existing consumers (same discipline as failure_mode above).
+          token_count: (typeof event.token_count === 'number') ? event.token_count : null,
+          handoff_id: event.handoff_id || null,
+          verification: event.verification || null,
           metadata: event.metadata || {}
         },
         message_type: 0x23,   // AGENT_ACTION — binary-frame parity (ADR-059 §1)

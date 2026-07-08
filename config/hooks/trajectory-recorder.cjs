@@ -225,17 +225,25 @@ async function hasDurationColumn(client) {
  * follows, so the tool_use map is built over the WHOLE transcript.
  */
 function scanTranscript(lines, fromLine) {
-  const uses = new Map(); // tool_use_id → { command, ts }
+  const uses = new Map(); // tool_use_id → { command, ts, tokenCount }
+  // REC-3 (CTC): count subagent Task spawns across the WHOLE session — each Task
+  // tool_use is a handoff to another agent, so the count IS the chain's handoff
+  // burden the CTC dashboard reconstructs. Built over all lines (like `uses`).
+  let handoffCount = 0;
   for (const line of lines) {
     if (!line) continue;
     let rec; try { rec = JSON.parse(line); } catch { continue; }
     const content = rec && rec.message && rec.message.content;
     if (!Array.isArray(content)) continue;
+    // REC-3: the token burden of the assistant turn that ISSUED the tool call.
+    const tokenCount = util.tokenCountOf(rec.message && rec.message.usage);
     for (const b of content) {
       if (b && b.type === 'tool_use' && b.name === 'Bash' && b.id) {
         const cmd = b.input && b.input.command;
-        uses.set(String(b.id), { command: typeof cmd === 'string' ? cmd : '', ts: rec.timestamp });
+        uses.set(String(b.id), { command: typeof cmd === 'string' ? cmd : '', ts: rec.timestamp, tokenCount });
       }
+      // A Task tool_use hands off to a subagent — count it as one handoff.
+      if (b && b.type === 'tool_use' && b.name === 'Task') handoffCount++;
     }
   }
 
@@ -275,10 +283,10 @@ function scanTranscript(lines, fromLine) {
         if (red != null) failureHint = red.slice(0, 400);
       }
 
-      steps.push({ toolUseId: String(b.tool_use_id), action, outcome, redacted, durationMs, failureHint });
+      steps.push({ toolUseId: String(b.tool_use_id), action, outcome, redacted, durationMs, failureHint, tokenCount: use.tokenCount });
     }
   }
-  return { steps, lineCount: lines.length };
+  return { steps, lineCount: lines.length, handoffCount };
 }
 
 /**
@@ -299,7 +307,7 @@ async function handleClose(payload) {
 
   const stash = readStash(session);
   const from = Number(stash.processedLines || 0);
-  const { steps, lineCount } = scanTranscript(lines, from);
+  const { steps, lineCount, handoffCount } = scanTranscript(lines, from);
 
   // Advance the watermark regardless (idempotent inserts cover any race).
   stash.processedLines = lineCount;
@@ -309,6 +317,9 @@ async function handleClose(payload) {
   if (!Pg) { log('pg unavailable — skipping (fail-open)'); writeStash(session, stash); return 0; }
 
   const ident = trajectoryIdentity(session);
+  // REC-3 (CTC): the chain-correlation id every step and the rollup carry so a
+  // multi-agent DAG can be reconstructed (handoff counts + token burden per step).
+  const chainId = util.handoffIdFrom(process.env, ident.urn || ident.id);
   const taxonomy = loadTaxonomy();
   const client = makeClient(Pg);
   try {
@@ -321,6 +332,7 @@ async function handleClose(payload) {
       session,
       owner_did: ident.ownerDid || undefined,
       trajectory_urn: ident.urn || undefined,
+      handoff_id: chainId || undefined,
     };
     await client.query(
       `INSERT INTO trajectories (id, task, agent, status, started_at, metadata)
@@ -342,6 +354,10 @@ async function handleClose(payload) {
       // REC-5 (AC2): a graded FAILURE carries a MAST failure_mode tag (or the
       // `unmapped` sentinel); a graded SUCCESS writes no mode.
       if (!s.outcome.success) resultObj.failure_mode = failureModeFor(taxonomy, s);
+      // REC-3 (AC1): the token burden of the turn that issued this step, parsed
+      // from the transcript usage block. Additive — absent when the turn carried
+      // no usage (byte-compatible with the pre-REC-3 result shape).
+      if (s.tokenCount != null) resultObj.token_count = s.tokenCount;
       if (!hasDur && s.durationMs != null) resultObj.duration_ms = s.durationMs;
       if (hasDur) {
         await client.query(
@@ -370,6 +386,9 @@ async function handleClose(payload) {
     const count = Number(stash.qualityCount || 0);
     const meanQuality = count > 0 ? Number(stash.qualitySum || 0) / count : 0;
     const success = meanQuality >= 0.5;
+    // REC-3 (AC2/AC4): the rollup carries handoff_id (chain correlation) and
+    // handoff_count (subagent Task spawns this session) so the CTC dashboard can
+    // reconstruct a completed DAG — handoff counts + per-step token burden.
     await client.query(
       `UPDATE trajectories
           SET ended_at = CURRENT_TIMESTAMP,
@@ -377,12 +396,15 @@ async function handleClose(payload) {
               success  = $2,
               metadata = COALESCE(metadata, '{}'::jsonb)
                          || jsonb_build_object(
-                              'ended_at_iso', to_char(now(), 'YYYY-MM-DD"T"HH24:MI:SSZ'),
-                              'step_count',   $3::int,
-                              'mean_quality', $4::double precision,
-                              'outcome',      $5::text)
+                              'ended_at_iso',  to_char(now(), 'YYYY-MM-DD"T"HH24:MI:SSZ'),
+                              'step_count',    $3::int,
+                              'mean_quality',  $4::double precision,
+                              'outcome',       $5::text,
+                              'handoff_id',    $6::text,
+                              'handoff_count', $7::int)
         WHERE id = $1`,
-      [ident.id, success, count, meanQuality, success ? 'success' : 'mixed']
+      [ident.id, success, count, meanQuality, success ? 'success' : 'mixed',
+        chainId, Number(handoffCount || 0)]
     );
     writeStash(session, stash);
   } catch (e) {

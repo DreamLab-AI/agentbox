@@ -212,4 +212,47 @@ function gradeResult(isError, stderr, interrupted) {
   return null; // is_error absent → undetermined → write nothing
 }
 
-module.exports = { sha12, commandPattern, redact, deriveOutcome, gradeResult, SUBCOMMAND_VERBS, REDACTORS };
+/**
+ * REC-3 (CTC — contextual transaction cost, emitter side). Sum an assistant
+ * turn's token burden from a Claude Code transcript `message.usage` block into a
+ * single integer, so a step can carry the `token_count` the CTC dashboard reads
+ * (PRD-019 REC-3 AC1). The burden is the WHOLE turn cost — prompt + completion +
+ * cache-creation + cache-read — because that is what the turn actually spent to
+ * produce the tool call. Returns null when no usage block is present or the sum
+ * is zero (byte-compatible: a step without a usage source carries no field).
+ *
+ * @param {*} usage  a transcript record's `message.usage` object
+ * @returns {number|null} total tokens, or null when undeterminable
+ */
+function tokenCountOf(usage) {
+  if (!usage || typeof usage !== 'object') return null;
+  const n = (x) => (typeof x === 'number' && Number.isFinite(x) && x > 0 ? x : 0);
+  const total = n(usage.input_tokens) + n(usage.output_tokens)
+    + n(usage.cache_creation_input_tokens) + n(usage.cache_read_input_tokens);
+  return total > 0 ? total : null;
+}
+
+/**
+ * REC-3 (CTC). Resolve the chain-correlation id that stitches a step to the
+ * multi-agent task chain it belongs to (PRD-019 REC-3 AC2/AC4). Precedence:
+ *   1. an explicit orchestrator-set chain id (AGENTBOX_HANDOFF_ID / CLAUDE_DAG_ID)
+ *      — set once when a chain of agents is spawned, so every agent's steps share it;
+ *   2. otherwise the trajectory's own id — a single-agent session is a chain of
+ *      one, correlating its own steps and reconstructable on its own.
+ * Never returns empty: a step always carries a resolvable handoff id.
+ *
+ * @param {object} env         process.env (or an override for testing)
+ * @param {string} fallbackId  the trajectory's own id (urn or deterministic id)
+ * @returns {string} the chain-correlation id
+ */
+function handoffIdFrom(env, fallbackId) {
+  const e = env || {};
+  const explicit = String(e.AGENTBOX_HANDOFF_ID || e.CLAUDE_DAG_ID || '').trim();
+  return explicit || String(fallbackId || '');
+}
+
+module.exports = {
+  sha12, commandPattern, redact, deriveOutcome, gradeResult,
+  tokenCountOf, handoffIdFrom,
+  SUBCOMMAND_VERBS, REDACTORS,
+};

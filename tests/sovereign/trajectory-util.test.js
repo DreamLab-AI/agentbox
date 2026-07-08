@@ -58,3 +58,35 @@ describe('trajectory-util supporting purity (unchanged contracts)', () => {
     expect(util.deriveOutcome({ stdout: 'ok', stderr: '', interrupted: false })).toBeNull();
   });
 });
+
+// ── REC-3 (CTC emitter, source side): token burden + handoff-chain id ──────────
+describe('trajectory-util.tokenCountOf (transcript usage → step token burden)', () => {
+  test('sums prompt + completion + cache tokens of a turn', () => {
+    expect(util.tokenCountOf({
+      input_tokens: 100, output_tokens: 40,
+      cache_creation_input_tokens: 10, cache_read_input_tokens: 200,
+    })).toBe(350);
+  });
+
+  test('null when no usage block is present or the sum is zero (byte-compatible)', () => {
+    expect(util.tokenCountOf(undefined)).toBeNull();
+    expect(util.tokenCountOf(null)).toBeNull();
+    expect(util.tokenCountOf({})).toBeNull();
+    expect(util.tokenCountOf({ input_tokens: 0, output_tokens: 0 })).toBeNull();
+  });
+
+  test('ignores non-numeric / negative fields rather than throwing', () => {
+    expect(util.tokenCountOf({ input_tokens: 12, output_tokens: 'x', cache_read_input_tokens: -5 })).toBe(12);
+  });
+});
+
+describe('trajectory-util.handoffIdFrom (chain correlation across a multi-agent DAG)', () => {
+  test('prefers an explicit orchestrator chain id (AGENTBOX_HANDOFF_ID)', () => {
+    expect(util.handoffIdFrom({ AGENTBOX_HANDOFF_ID: 'chain-7' }, 'urn:fallback')).toBe('chain-7');
+  });
+
+  test('falls back to CLAUDE_DAG_ID, then to the trajectory id (single-agent chain of one)', () => {
+    expect(util.handoffIdFrom({ CLAUDE_DAG_ID: 'dag-9' }, 'urn:fallback')).toBe('dag-9');
+    expect(util.handoffIdFrom({}, 'urn:agentbox:activity:xyz')).toBe('urn:agentbox:activity:xyz');
+  });
+});
