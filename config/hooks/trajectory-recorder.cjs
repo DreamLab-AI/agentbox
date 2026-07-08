@@ -82,6 +82,35 @@ function loadUris() {
   return null;
 }
 
+// ── failure-taxonomy.js (REC-5: MAST tag on a graded failure). Same candidate
+// resolution as uris.js. Fail-open: if the shared library cannot be loaded, a
+// failure step is still tagged with the inline `unmapped` sentinel rather than a
+// free-text error — never dropped, never left untagged (PRD-019 REC-5 AC4).
+const UNMAPPED = 'unmapped';
+function loadTaxonomy() {
+  const candidates = [
+    path.resolve(__dirname, '..', '..', 'management-api', 'lib', 'failure-taxonomy.js'),
+    '/opt/agentbox/management-api/lib/failure-taxonomy.js',
+  ];
+  for (const c of candidates) {
+    try { return require(c); } catch { /* next */ }
+  }
+  return null;
+}
+// Classify a graded failure to a MAST mode id, or `unmapped`. Never throws.
+function failureModeFor(taxonomy, step) {
+  try {
+    if (taxonomy && typeof taxonomy.classify === 'function') {
+      return taxonomy.classify({
+        signal: step.outcome && step.outcome.signal,
+        stderr: step.failureHint || undefined,
+        action: step.action,
+      });
+    }
+  } catch { /* fall through to the sentinel */ }
+  return UNMAPPED;
+}
+
 // ── owner identity (public pubkey only — I09; the nsec never enters this hook) ──
 function ownerPubkey() {
   const pk = String(process.env.AGENTBOX_PUBKEY || '').trim().toLowerCase();
@@ -236,7 +265,17 @@ function scanTranscript(lines, fromLine) {
       const t0 = isoMs(use.ts), t1 = isoMs(rec.timestamp);
       if (t0 != null && t1 != null && t1 >= t0) durationMs = t1 - t0;
 
-      steps.push({ toolUseId: String(b.tool_use_id), action, outcome, redacted, durationMs });
+      // REC-5: for a graded FAILURE, keep a redacted, capped stderr hint so the
+      // MAST classifier can run its high-precision heuristics. This hint is used
+      // in-memory only for tagging — it is NEVER persisted to the step result
+      // (I10: the durable result carries the redacted command, not stderr).
+      let failureHint;
+      if (!outcome.success && typeof tur.stderr === 'string' && tur.stderr.trim()) {
+        const red = util.redact(tur.stderr);
+        if (red != null) failureHint = red.slice(0, 400);
+      }
+
+      steps.push({ toolUseId: String(b.tool_use_id), action, outcome, redacted, durationMs, failureHint });
     }
   }
   return { steps, lineCount: lines.length };
@@ -270,6 +309,7 @@ async function handleClose(payload) {
   if (!Pg) { log('pg unavailable — skipping (fail-open)'); writeStash(session, stash); return 0; }
 
   const ident = trajectoryIdentity(session);
+  const taxonomy = loadTaxonomy();
   const client = makeClient(Pg);
   try {
     await client.connect();
@@ -299,6 +339,9 @@ async function handleClose(payload) {
         signal: s.outcome.signal,
         command: s.redacted,
       };
+      // REC-5 (AC2): a graded FAILURE carries a MAST failure_mode tag (or the
+      // `unmapped` sentinel); a graded SUCCESS writes no mode.
+      if (!s.outcome.success) resultObj.failure_mode = failureModeFor(taxonomy, s);
       if (!hasDur && s.durationMs != null) resultObj.duration_ms = s.durationMs;
       if (hasDur) {
         await client.query(

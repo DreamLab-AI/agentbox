@@ -7,6 +7,7 @@
 
 const EventEmitter = require('events');
 const uris = require('../lib/uris');
+const taxonomy = require('../lib/failure-taxonomy');
 
 // Agent action types matching the Rust binary protocol
 const AgentActionType = {
@@ -65,6 +66,27 @@ class AgentEventPublisher extends EventEmitter {
     if (event.source_urn !== undefined) fullEvent.source_urn = event.source_urn;
     if (event.target_urn !== undefined) fullEvent.target_urn = event.target_urn;
     if (event.pubkey !== undefined)     fullEvent.pubkey     = event.pubkey;
+
+    // REC-5 (AC3): any action whose outcome is a FAILURE carries a MAST
+    // failure_mode tag on the envelope — a mode id or the `unmapped` sentinel,
+    // never a free-text error alone. A caller signals failure by passing
+    // `outcome:'failure'`, a `failure` context object, or a pre-resolved
+    // `failure_mode`. A non-failure event carries no mode (byte-compatible for
+    // existing success-only callers).
+    const isFailure = event.outcome === 'failure'
+      || (event.metadata && event.metadata.outcome === 'failure')
+      || event.failure != null
+      || typeof event.failure_mode === 'string';
+    if (isFailure) {
+      if (taxonomy.isTag(fullEvent.failure_mode)) {
+        // caller supplied a valid tag — keep it
+      } else {
+        const ctx = (event.failure && typeof event.failure === 'object')
+          ? event.failure
+          : { mode: event.failure_mode };
+        fullEvent.failure_mode = taxonomy.classify(ctx);
+      }
+    }
 
     // Auto-populate identity fields from environment when not supplied
     // by the caller, so every event carries attribution by default.
@@ -246,6 +268,8 @@ class AgentEventPublisher extends EventEmitter {
           source_urn: event.source_urn || null,
           target_urn: event.target_urn || null,
           pubkey: event.pubkey || null,
+          // REC-5: MAST failure tag forwarded on the wire (null on success).
+          failure_mode: event.failure_mode || null,
           metadata: event.metadata || {}
         },
         message_type: 0x23,   // AGENT_ACTION — binary-frame parity (ADR-059 §1)

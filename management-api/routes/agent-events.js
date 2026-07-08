@@ -11,6 +11,7 @@
 
 const { agentEventPublisher, AgentActionType } = require('../utils/agent-event-publisher');
 const { verifyAgentEventRequest, reconcileSourceUrn } = require('../lib/agent-event-auth');
+const taxonomy = require('../lib/failure-taxonomy');
 const { processHookEvent, getRegistryStats } = require('../hooks/agent-action-hooks');
 const { initializeAgentEventWsSubscriber, getAgentEventWsSubscriber } = require('../utils/agent-event-ws-subscriber');
 
@@ -228,12 +229,20 @@ async function agentEventsRoutes(fastify, options) {
     // B4: per-agent did:nostr verification (gated; off → no-op, identity null).
     const auth = verifyAgentEventRequest(request);
     if (!auth.ok) {
-      return reply.code(auth.status).send({ success: false, error: auth.error });
+      // REC-5 (AC5): classify the {success:false} return through the taxonomy. A
+      // transport auth-signature rejection is not a multi-agent behaviour failure
+      // the current signal can resolve → `unmapped` with the human text as detail.
+      const tag = taxonomy.tagFailure({ error: auth.error });
+      return reply.code(auth.status).send({ success: false, error: auth.error, ...tag });
     }
     const claimed = body.source_urn || (body.metadata && body.metadata.source_urn) || null;
     const rec = reconcileSourceUrn(claimed, auth.did);
     if (!rec.ok) {
-      return reply.code(rec.status).send({ success: false, error: rec.error });
+      // REC-5 (AC5): a claimed source_urn that does not match the verified did is
+      // an identity-attribution failure — the caller asserting a role/identity it
+      // does not hold → FM-1.2 (Disobey Role Specification), text kept as detail.
+      const tag = taxonomy.tagFailure({ reason: taxonomy.REASON.IDENTITY_MISMATCH, error: rec.error });
+      return reply.code(rec.status).send({ success: false, error: rec.error, ...tag });
     }
 
     // Convert string IDs to numeric hashes if needed
@@ -311,7 +320,11 @@ async function agentEventsRoutes(fastify, options) {
     // authenticated identity (gated; off → no-op).
     const auth = verifyAgentEventRequest(request);
     if (!auth.ok) {
-      return reply.code(auth.status).send({ success: false, error: auth.error });
+      // REC-5 (AC5): classify the {success:false} return through the taxonomy. A
+      // transport auth-signature rejection is not a multi-agent behaviour failure
+      // the current signal can resolve → `unmapped` with the human text as detail.
+      const tag = taxonomy.tagFailure({ error: auth.error });
+      return reply.code(auth.status).send({ success: false, error: auth.error, ...tag });
     }
 
     for (const eventData of events) {
