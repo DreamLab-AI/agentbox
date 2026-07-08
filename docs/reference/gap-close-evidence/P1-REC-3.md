@@ -91,3 +91,45 @@ OK: management-api/utils/agent-event-publisher.js
   needs the trajectory hook enabled against live agent traffic; the VisionClaw
   `LivenessHarness` was not reachable from this build container → registration
   **pending-live-session**. Standing monitor (feeds the CTC KPI, REC-4), not one-shot.
+
+---
+
+## Gap-close correction — 2026-07-08 (adversarial re-verification)
+
+**Captured against SHA:** `1fc47a14bffc524f7d59aacdefbe0671551ac6bf` · **UTC:** 2026-07-08T14:45:18Z
+
+**Defect found (REC-3):** the claim above — that the CTC fields "ride **both**
+emitter envelopes" — was overstated for the agent-events envelope. The publisher
+*could* carry `token_count`/`handoff_id` **only when a caller supplied them**
+(`emitAgentAction` lines 76-78), and the trajectory-recorder wrote the captured
+fields **only into the `trajectory_steps` DB rows** — no code path forwarded them
+into a real `emitAgentAction` call. The two halves were disconnected: the emit
+route (`POST /v1/agent-events/emit`) also **dropped** any `token_count`/`handoff_id`
+from its body. So the agent-events envelope never carried a trajectory step's CTC
+fields and **`CANARY-AB-CTC` could not fire even live** — the wire the canary
+observes did not exist end to end.
+
+**What the correction wired (the missing forwarding path):**
+
+| File | Change |
+|---|---|
+| `config/hooks/lib/trajectory-util.cjs` | New pure `ctcEmitBodyFromStep(step, {handoffId, sessionId})` — the deterministic core of the forwarding path: maps a captured step into the emit body carrying `token_count` + `handoff_id`; returns `null` when the step has no CTC signal (byte-compatible). |
+| `config/hooks/trajectory-recorder.cjs` | After DB persistence, `emitCtcStepsBestEffort` POSTs each step's `ctcEmitBodyFromStep` body to `POST /v1/agent-events/emit` (fail-open, bounded, `http.request` mirroring `project-tracking-publish.cjs`; off-switch `AGENTBOX_CTC_EMIT=0`). This is the real `emitAgentAction` call the fields now reach. |
+| `management-api/routes/agent-events.js` | The `/v1/agent-events/emit` route body schema + `emitPayload` now **forward** `token_count`/`handoff_id`/`verification` (they were dropped before), so the recorder's fields reach the publisher-built envelope. |
+| `tests/sovereign/ctc-emitter-wire.test.js` | **New.** Proves the mapper, and an **end-to-end** case: the mapped step POSTed to the real emit route yields an envelope whose `token_count`/`handoff_id` carry through (`emitAgentAction` + `createMcpNotification`). |
+
+**Correction receipts:**
+- `node -c` OK on all four files.
+- `npx jest ../tests/sovereign/ctc-emitter-wire.test.js` → PASS (4/4), incl. the
+  END-TO-END step→emit-route→envelope assertion.
+- Full sovereign suite unaffected (the 7 pre-existing contract/integration failures
+  are environmental — needing a live server/relay — and fail identically on the
+  clean baseline; none reference the changed modules).
+
+**Corrected tier:** still `integrated` on the **emitter code path** — the forwarding
+now exists and is unit-proven end to end (recorder → emit route → agent-events
+envelope). The **live** `CANARY-AB-CTC` fire remains **pending-live-session**: it
+needs the trajectory hook enabled (`RUVECTOR_RECORD_TRAJECTORIES`) against live
+agent traffic with the management-API reachable, which this build container does not
+provide. The earlier "rides both envelopes" wording is corrected above rather than
+deleted.

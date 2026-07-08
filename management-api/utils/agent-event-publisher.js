@@ -77,6 +77,14 @@ class AgentEventPublisher extends EventEmitter {
     if (event.handoff_id  !== undefined)  fullEvent.handoff_id   = event.handoff_id;
     if (event.verification !== undefined) fullEvent.verification = event.verification;
 
+    // REC-6 (AC4, PRD-019 / ADR-037 D2): the authority classification the gate
+    // resolved for this action (`recoverable` | `zero-tolerance` |
+    // `escalation-required`) is recorded on the envelope so a governance/CTC
+    // consumer can see which actions were gated and how they were dispositioned.
+    // Forwarded only when the caller supplies it — an existing caller that never
+    // ran through the authority gate emits none (byte-compatible).
+    if (event.authority_class !== undefined) fullEvent.authority_class = event.authority_class;
+
     // REC-5 (AC3): any action whose outcome is a FAILURE carries a MAST
     // failure_mode tag on the envelope — a mode id or the `unmapped` sentinel,
     // never a free-text error alone. A caller signals failure by passing
@@ -286,6 +294,9 @@ class AgentEventPublisher extends EventEmitter {
           token_count: (typeof event.token_count === 'number') ? event.token_count : null,
           handoff_id: event.handoff_id || null,
           verification: event.verification || null,
+          // REC-6 (AC4): authority classification on the wire — null when the
+          // action never ran through the gate (byte-compatible, same discipline).
+          authority_class: event.authority_class || null,
           metadata: event.metadata || {}
         },
         message_type: 0x23,   // AGENT_ACTION — binary-frame parity (ADR-059 §1)

@@ -209,7 +209,13 @@ async function agentEventsRoutes(fastify, options) {
             ]
           },
           duration_ms: { type: 'integer', default: 100 },
-          metadata: { type: 'object' }
+          metadata: { type: 'object' },
+          // REC-3 (CTC emitter wire): optional cost/correlation fields. The
+          // trajectory-recorder hook forwards a step's captured token burden and
+          // its chain handoff id here so they reach the agent-events envelope.
+          token_count: { type: 'integer', minimum: 0 },
+          handoff_id: { type: 'string' },
+          verification: { type: 'string' }
         }
       },
       response: {
@@ -272,6 +278,12 @@ async function agentEventsRoutes(fastify, options) {
       emitPayload.source_urn = auth.did;
       emitPayload.pubkey = auth.pubkey;
     }
+    // REC-3 (CTC emitter wire): forward the token burden + chain handoff id from
+    // the request body onto the emit payload, so the trajectory-recorder's
+    // captured CTC fields reach the agent-events envelope the publisher emits.
+    if (body.token_count !== undefined) emitPayload.token_count = body.token_count;
+    if (body.handoff_id !== undefined)  emitPayload.handoff_id  = body.handoff_id;
+    if (body.verification !== undefined) emitPayload.verification = body.verification;
 
     const event = agentEventPublisher.emitAgentAction(emitPayload);
 
@@ -332,7 +344,14 @@ async function agentEventsRoutes(fastify, options) {
         || (eventData.metadata && eventData.metadata.source_urn) || null;
       const rec = reconcileSourceUrn(claimed, auth.did);
       if (!rec.ok) {
-        return reply.code(rec.status).send({ success: false, error: rec.error });
+        // REC-5 (AC5): the fourth {success:false} return — the per-event
+        // identity-mismatch inside the batch for-loop — classifies through the
+        // SAME taxonomy as the singular /emit site three handlers above: a claimed
+        // source_urn that does not match the verified did is an identity-attribution
+        // failure → FM-1.2 (Disobey Role Specification), the human text preserved
+        // as failure_detail. AC5 requires ALL {success:false} returns to classify.
+        const tag = taxonomy.tagFailure({ reason: taxonomy.REASON.IDENTITY_MISMATCH, error: rec.error });
+        return reply.code(rec.status).send({ success: false, error: rec.error, ...tag });
       }
 
       const sourceId = typeof eventData.source_agent_id === 'string'

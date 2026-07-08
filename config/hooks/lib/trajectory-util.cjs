@@ -251,8 +251,60 @@ function handoffIdFrom(env, fallbackId) {
   return explicit || String(fallbackId || '');
 }
 
+/**
+ * REC-3 (CTC emitter WIRE, PRD-019 REC-3 / ADR-037). Map a graded trajectory step
+ * into the request body the agent-events emit endpoint accepts, forwarding the
+ * captured CTC fields — the per-step `token_count` and the chain-correlation
+ * `handoff_id` — so they REACH the agent-events envelope the publisher emits.
+ * Before this, the recorder captured the fields but nothing forwarded them into a
+ * real emitAgentAction call, so `CANARY-AB-CTC` could never fire; this pure mapper
+ * is the deterministic core of the forwarding path (the hook owns the HTTP POST).
+ *
+ * Returns null when the step carries NO CTC signal (no token burden and no chain
+ * id) — the wire only carries steps the CTC dashboard can actually correlate,
+ * keeping the emit byte-compatible with the pre-REC-3 posture (emit nothing extra).
+ *
+ * @param {object} step  a scanned step: { action, outcome, durationMs, tokenCount }
+ * @param {object} opts
+ * @param {string} [opts.handoffId]  the chain-correlation id (from handoffIdFrom)
+ * @param {string} [opts.sessionId]  the session id (source-agent label)
+ * @returns {object|null} an emit body carrying token_count / handoff_id, or null
+ */
+function ctcEmitBodyFromStep(step, opts = {}) {
+  if (!step || typeof step !== 'object') return null;
+  const tokenCount = (typeof step.tokenCount === 'number' && Number.isFinite(step.tokenCount) && step.tokenCount > 0)
+    ? step.tokenCount
+    : null;
+  const handoffId = opts.handoffId != null && String(opts.handoffId).trim() !== ''
+    ? String(opts.handoffId)
+    : null;
+  // No CTC signal → no emit (byte-compatible: the wire gains nothing to correlate).
+  if (tokenCount == null && handoffId == null) return null;
+
+  const session = String(opts.sessionId || 'unknown');
+  const success = !!(step.outcome && step.outcome.success);
+  const body = {
+    // String ids are hashed to u32 by the emit route; stable per session/action.
+    source_agent_id: `traj:${sha12(session)}`,
+    target_node_id: `action:${sha12(String(step.action || 'bash'))}`,
+    // TRANSFORM (AgentActionType.TRANSFORM = 5): a bash step transforms state.
+    action_type: 5,
+    duration_ms: (typeof step.durationMs === 'number' && step.durationMs >= 0) ? step.durationMs : 0,
+    metadata: {
+      kind: 'trajectory-step',
+      action: step.action || null,
+      outcome: success ? 'success' : 'failure',
+    },
+  };
+  if (tokenCount != null) body.token_count = tokenCount;
+  if (handoffId != null) body.handoff_id = handoffId;
+  // A graded FAILURE carries its MAST tag onto the envelope too (REC-5 parity).
+  if (!success && step.failure_mode) body.metadata.failure_mode = step.failure_mode;
+  return body;
+}
+
 module.exports = {
   sha12, commandPattern, redact, deriveOutcome, gradeResult,
-  tokenCountOf, handoffIdFrom,
+  tokenCountOf, handoffIdFrom, ctcEmitBodyFromStep,
   SUBCOMMAND_VERBS, REDACTORS,
 };

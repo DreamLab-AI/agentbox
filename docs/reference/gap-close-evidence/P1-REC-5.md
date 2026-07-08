@@ -81,3 +81,46 @@ The `failure_mode`/wire addition is additive: the ADR-059 canonical-envelope con
 - **Tier claimed:** `integrated` — both the trajectory hook path and the agent-events envelope (plus the route error returns) now emit the taxonomy; the classifier is the single shared library. The meta-PRD's "QE fleet emits the taxonomy" clause is a downstream consumer of the same library and is not claimed fired here.
 - **Honest scope of mapping (ADR-037 D1):** on the raw Bash-failure signal the honest classification is predominantly `unmapped` — a binary success/failure grade cannot distinguish 14 inter-agent modes, and the library refuses to fabricate one. The mapping power is exercised where a caller has real context (the identity-mismatch route return → `FM-1.2`) and by future orchestrators passing a symbolic `reason`. `unmapped` is the taxonomy's own honesty rule, not a gap.
 - **`CANARY-AB-MAST`:** registered as the code/config that fires when a real failure carries a MAST `failure_mode` tag (or explicit `unmapped`) end to end on the `trajectory_steps.result` + agent-events envelope wire. The live VisionClaw `LivenessHarness` (`POST /api/canary/register`, port 4000) was not reachable from this build container, so registration is recorded as **pending-live-session** per the honesty rule; the wire is exercised green above. It is a standing KPI monitor (Augmentation Ratio), not a one-shot.
+
+---
+
+## Gap-close correction — 2026-07-08 (adversarial re-verification)
+
+**Captured against SHA:** `1fc47a14bffc524f7d59aacdefbe0671551ac6bf` · **UTC:** 2026-07-08T14:45:18Z
+
+**Defect found (REC-5, AC5):** the "What changed" row above described **"the two
+`{success:false}` error-return sites"** in `agent-events.js`. There are in fact
+**four** such returns, and the **fourth** was left untouched: the per-event
+`reconcileSourceUrn` identity-mismatch check **inside the `POST
+/v1/agent-events/batch` for-loop** (formerly line ~335) still returned a bare
+`{ success:false, error }` with **no `failure_mode`** — while the singular `/emit`
+site three handlers above already classified the identical failure as `FM-1.2`.
+AC5 requires **ALL** `{success:false}` returns to classify; this one did not, so the
+falsification bar ("any failure path … still emits a free-text error without a MAST
+tag") was met at that site.
+
+**Sweep (all `{success:false}` returns in `agent-events.js`):**
+
+| Site | Before | After |
+|---|---|---|
+| `/emit` auth reject | `unmapped` (classified) | unchanged |
+| `/emit` reconcile mismatch | `FM-1.2` (classified) | unchanged |
+| `/batch` auth reject | `unmapped` (classified) | unchanged |
+| **`/batch` reconcile mismatch (the defect)** | **bare `{success:false}`** | **`FM-1.2` + `failure_detail`** |
+
+No other unclassified `{success:false}` return remains in the file (`grep -n
+'success: false'` → the four sites above, all now classified).
+
+**Correction receipts:**
+- `node -c management-api/routes/agent-events.js` → OK.
+- `npx jest ../tests/sovereign/agent-events-taxonomy.test.js` → PASS (5/5). The new
+  route-level test drives the batch loop with a mismatched `source_urn` and asserts
+  the response carries `failure_mode: "FM-1.2"` + `failure_detail`, asserts the
+  `/emit` parity, asserts the batch **auth** reject classifies `unmapped`, and
+  asserts a matching `source_urn` proceeds (no spurious tag on success).
+- `../tests/sovereign/failure-taxonomy.test.js` still PASS (library unchanged).
+
+**Tier unchanged (`integrated`):** the correction closes the one un-swept site the
+earlier evidence under-counted; the taxonomy library and the trajectory-hook path
+are unchanged. The "two sites" wording is corrected above rather than deleted.
+`CANARY-AB-MAST` remains **pending-live-session** as recorded above.

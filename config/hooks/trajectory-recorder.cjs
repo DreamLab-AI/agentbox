@@ -42,6 +42,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const http = require('http');
 
 const util = require('./lib/trajectory-util.cjs');
 
@@ -109,6 +110,50 @@ function failureModeFor(taxonomy, step) {
     }
   } catch { /* fall through to the sentinel */ }
   return UNMAPPED;
+}
+
+// ── REC-3 (CTC emitter WIRE): forward a step's captured token_count + chain
+// handoff_id into a REAL agent-events emit call, so the CTC fields reach the
+// agent-events envelope the publisher emits and CANARY-AB-CTC can fire. Best-effort
+// over the same in-process management-API the project-tracking hook already POSTs
+// to (127.0.0.1:${MANAGEMENT_API_PORT|9090}/v1/agent-events/emit). Fail-open: any
+// error is swallowed — the DB persistence already happened; the emit is additive.
+const CTC_EMIT_TIMEOUT_MS = 3000;
+const CTC_EMIT_CAP = 200; // never flood the wire from one Stop firing
+function emitCtcStep(body) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = () => { if (!settled) { settled = true; resolve(); } };
+    try {
+      const port = Number(process.env.MANAGEMENT_API_PORT || '9090');
+      const payload = Buffer.from(JSON.stringify(body), 'utf8');
+      const apiKey = String(process.env.MANAGEMENT_API_KEY || '').trim();
+      const req = http.request({
+        host: '127.0.0.1',
+        port,
+        path: '/v1/agent-events/emit',
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'content-length': payload.length,
+          ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}),
+        },
+        timeout: CTC_EMIT_TIMEOUT_MS,
+      }, (res) => { res.on('data', () => {}); res.on('end', done); res.on('error', done); });
+      req.on('timeout', () => { try { req.destroy(); } catch { /* ignore */ } done(); });
+      req.on('error', (e) => { log(`ctc emit unreachable (non-fatal): ${e && e.message}`); done(); });
+      req.write(payload);
+      req.end();
+    } catch (e) { log(`ctc emit failed (non-fatal): ${e && e.message}`); done(); }
+  });
+}
+async function emitCtcStepsBestEffort(bodies) {
+  if (String(process.env.AGENTBOX_CTC_EMIT || '').trim() === '0') return; // explicit off switch
+  if (!Array.isArray(bodies) || bodies.length === 0) return;
+  const bounded = bodies.slice(0, CTC_EMIT_CAP);
+  for (const b of bounded) {
+    try { await emitCtcStep(b); } catch { /* fail-open */ }
+  }
 }
 
 // ── owner identity (public pubkey only — I09; the nsec never enters this hook) ──
@@ -321,6 +366,9 @@ async function handleClose(payload) {
   // multi-agent DAG can be reconstructed (handoff counts + token burden per step).
   const chainId = util.handoffIdFrom(process.env, ident.urn || ident.id);
   const taxonomy = loadTaxonomy();
+  // REC-3 (CTC emitter WIRE): the emit bodies to forward onto the agent-events
+  // envelope after DB persistence — one per step carrying a token_count / handoff_id.
+  const ctcEmits = [];
   const client = makeClient(Pg);
   try {
     await client.connect();
@@ -353,7 +401,7 @@ async function handleClose(payload) {
       };
       // REC-5 (AC2): a graded FAILURE carries a MAST failure_mode tag (or the
       // `unmapped` sentinel); a graded SUCCESS writes no mode.
-      if (!s.outcome.success) resultObj.failure_mode = failureModeFor(taxonomy, s);
+      if (!s.outcome.success) { resultObj.failure_mode = failureModeFor(taxonomy, s); s.failure_mode = resultObj.failure_mode; }
       // REC-3 (AC1): the token burden of the turn that issued this step, parsed
       // from the transcript usage block. Additive — absent when the turn carried
       // no usage (byte-compatible with the pre-REC-3 result shape).
@@ -379,6 +427,10 @@ async function handleClose(payload) {
       order++;
       stash.qualitySum = Number(stash.qualitySum || 0) + s.outcome.quality;
       stash.qualityCount = Number(stash.qualityCount || 0) + 1;
+      // REC-3 (CTC emitter WIRE): build the emit body forwarding this step's
+      // captured token_count + the chain handoff_id onto the agent-events envelope.
+      const ctcBody = util.ctcEmitBodyFromStep(s, { handoffId: chainId, sessionId: session });
+      if (ctcBody && ctcEmits.length < CTC_EMIT_CAP) ctcEmits.push(ctcBody);
     }
     stash.stepOrder = order;
 
@@ -412,6 +464,11 @@ async function handleClose(payload) {
   } finally {
     try { await client.end(); } catch { /* ignore */ }
   }
+  // REC-3 (CTC emitter WIRE): after DB persistence, forward each step's captured
+  // token_count + chain handoff_id into a REAL agent-events emit call so they
+  // reach the agent-events envelope the publisher emits (CANARY-AB-CTC wire).
+  // Best-effort, fail-open — the durable trajectory record is already written.
+  await emitCtcStepsBestEffort(ctcEmits);
   return 0;
 }
 
