@@ -20,7 +20,12 @@ async function tasksRoutes(fastify, options) {
         properties: {
           agent: { type: 'string' },
           task: { type: 'string' },
-          provider: { type: 'string', default: 'claude-flow' }
+          provider: { type: 'string', default: 'claude-flow' },
+          // D2 (PRD-023 WP-3): OPTIONAL, additive claude-flow swarm agent_id this
+          // task is created for. Persisted on the task record and echoed by
+          // GET /v1/tasks + task status so an interrupt can join a swarm
+          // agent_id -> task_id. `agent` is a role label and can never be this id.
+          claude_flow_agent_id: { type: 'string' }
         }
       },
       response: {
@@ -36,12 +41,12 @@ async function tasksRoutes(fastify, options) {
     },
     preHandler: costGate({ logger }),
   }, async (request, reply) => {
-    const { agent, task, provider = 'claude-flow' } = request.body;
+    const { agent, task, provider = 'claude-flow', claude_flow_agent_id = null } = request.body;
 
-    logger.info({ agent, provider, task: task.substring(0, 100) }, 'Creating new task');
+    logger.info({ agent, provider, claudeFlowAgentId: claude_flow_agent_id, task: task.substring(0, 100) }, 'Creating new task');
 
     try {
-      const processInfo = processManager.spawnTask(agent, task, provider);
+      const processInfo = processManager.spawnTask(agent, task, provider, claude_flow_agent_id);
 
       reply.code(202).send({
         taskId: processInfo.taskId,
@@ -84,7 +89,10 @@ async function tasksRoutes(fastify, options) {
             exitTime: { type: ['number', 'null'] },
             exitCode: { type: ['number', 'null'] },
             duration: { type: 'number' },
-            logTail: { type: 'string' }
+            logTail: { type: 'string' },
+            // D2 (PRD-023 WP-3): echoed claude-flow join key (null when the task
+            // carried none). Must be in the schema or fastify strips it.
+            claudeFlowAgentId: { type: ['string', 'null'] }
           }
         },
         404: {
@@ -128,7 +136,10 @@ async function tasksRoutes(fastify, options) {
                   taskId: { type: 'string' },
                   agent: { type: 'string' },
                   startTime: { type: 'number' },
-                  duration: { type: 'number' }
+                  duration: { type: 'number' },
+                  // D2 (PRD-023 WP-3): echoed claude-flow join key (null when the
+                  // task carried none). Must be in the schema or fastify strips it.
+                  claudeFlowAgentId: { type: ['string', 'null'] }
                 }
               }
             },
