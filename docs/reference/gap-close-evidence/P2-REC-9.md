@@ -128,3 +128,73 @@ sibling VisionClaw workspace — the ADR-037 Risk footgun does not apply here.)
 `integrated`: both egress paths (per-turn live mirror, SessionEnd digest) carry
 a resolvable, byte-identical `urn:agentbox:activity` reference; the mirror stays
 fail-open. `CANARY-AB-PROV` fires when a live mirrored DM carries the reference.
+
+---
+
+## Gap-close correction — 2026-07-08 (adversarial re-verification)
+
+**Captured against SHA:** `3bba1e3dfccba40a58b824a7447c0166e3aabc20` · **UTC:** 2026-07-08T17:00Z
+
+**Two defects found against the claim above:**
+
+1. **Code defect — the resolution target ignored its own `id`.** Falsification
+   clause 2 above ("does not resolve to a real receipt → falsified") rested on
+   `/v1/uri/<urn>` 307-redirecting to `/v1/agent-events?id=<urn>` (uri-resolver.js,
+   activity/event kind). But `GET /v1/agent-events` **read only `limit` and
+   `since` and ignored `id` entirely** — it always returned an arbitrary
+   recent-events window, never the referenced record. So the pocket's provenance
+   reference resolved to **nothing**: the falsification clause held empirically
+   rather than was met, and the `resolveCanonical → surface=agent-events` unit
+   assertion proved only that the redirect was *aimed*, not that it *landed*.
+2. **Tier overclaim (canary-discipline breach).** The header and Maturity label
+   claimed `integrated` with **no `CANARY-AB-PROV` fire and no LivenessHarness
+   registration attempt** — a regression from the sprint's honesty rule that every
+   sibling P0/P1 evidence file follows (P1-REC-6, P1-REC-5, P1-REC-3, P0-COM-14).
+
+**What the correction wired:**
+
+| File | Change |
+|---|---|
+| `management-api/routes/agent-events.js` | `GET /v1/agent-events` now **honours `id`**: when the query carries a reference it searches the retained event buffer (the same store the route already reads via `getRecentEvents`) and returns the ONE matching record — matched by canonical urn against any urn-bearing envelope field (`source_urn`/`target_urn`/`activity_urn`/`event_urn`/`urn`, string equality only — a URN is a name, not a query) or by bare numeric event id — else **404** with a clear body (`{error:'not-found', id, count:0}`) when the reference is unknown. Most-recent match wins (a session's turns share one activity urn). The record is returned with its identity/provenance fields intact: the response item is `additionalProperties:true` so the serializer no longer silently strips `source_urn` off a resolved record. No `id` → the original recent-events window, `id` echoing `null` (regression-locked). |
+| `tests/sovereign/agent-events-id-resolution.test.js` (new) | 4 cases: a stored event with a known urn is returned for `?id=<urn>` with the urn intact; an unknown urn → 404 (never a leaked window); no `id` → the recent-events window (`id` echoes null); a bare numeric event id resolves the same envelope. |
+
+**GREP PROOF (the route now reads `id`, resolves it, and 404s on a miss):**
+```
+$ grep -nE "since, id \}|eventMatchesRef|No agent-event resolves|additionalProperties: true" management-api/routes/agent-events.js
+154:                additionalProperties: true,
+175:    const { limit = 100, since, id } = request.query;
+190:      const match = [...all].reverse().find(e => eventMatchesRef(e, ref));
+195:          message: `No agent-event resolves the reference: ${ref}`,
+618:function eventMatchesRef(event, ref) {
+```
+
+**`CANARY-AB-PROV` — pending-live-session.** With the resolver target fixed, a
+mirrored DM's `urn:agentbox:activity` reference now resolves to its own record
+**when that record is in the buffer**, and a reference with no emitted record
+404s honestly (no window leaked). The **live** fire — a real mirrored per-turn DM
+whose reference resolves to the session's activity record end to end in a live
+session — needs the VisionClaw `LivenessHarness` (`POST /api/canary/register`,
+port 4000), not reachable from this build container
+(`curl -m3 http://127.0.0.1:4000/api/canary/register` → `http_code=000`, curl
+exit 7 / connection refused), so registration is recorded **pending-live-session**
+per the honesty rule.
+
+**Corrected tier — was `integrated`, now `standalone` (code + test verified),
+`integrated` PENDING the live fire:** both egress paths carry the byte-identical
+reference, the mirror stays fail-open, AND the resolver target now honours the
+reference and returns the record (or 404s honestly) — all unit-proven standalone.
+Under PRD-019's own Maturity Summary this does **not** reach `integrated`, which
+requires `CANARY-AB-PROV` to fire on a live mirrored DM whose reference resolves.
+The earlier `integrated` claim (which additionally rested on a resolver target
+that silently ignored the reference) is corrected here rather than deleted.
+
+**Correction receipts:**
+- `node -c management-api/routes/agent-events.js` OK; `node -c` on the new test OK.
+- `npx jest ../tests/sovereign/agent-events-id-resolution.test.js` → PASS (4/4);
+  `../tests/sovereign/nostr-live-mirror-provenance.test.js` still PASS (9/9);
+  adjacent `agent-events-taxonomy` / `agent-event-notification` / `ctc-emitter-wire`
+  suites still PASS.
+- `node scripts/agentbox-config-validate.js` → exit 1 on **only** the three
+  pre-existing `E016` keys PRD-019 scopes out (`ruvnet_brain`,
+  `mcp_startup_timeout_ms`, `mcp_tool_timeout_ms`); no new error — drift-neutral
+  (no `agentbox.toml`/schema change).

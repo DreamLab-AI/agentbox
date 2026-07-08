@@ -90,3 +90,57 @@ the live consult seam, and available to verify the other items' closures
 (meta-PRD Quality Gate 3). `CANARY-AB-DIVERSITY` fires when a real
 closure-verification consult carries a `producer_family` and dispatches to a
 different-family consultant in a live session.
+
+---
+
+## Gap-close correction — 2026-07-08 (adversarial re-verification)
+
+**Captured against SHA:** `3bba1e3dfccba40a58b824a7447c0166e3aabc20` · **UTC:** 2026-07-08T17:00Z
+
+**Defect found against the claim above:**
+
+1. **Tier overclaim (canary-discipline breach).** The header and the Maturity
+   label flatly claimed `integrated` with **no `CANARY-AB-DIVERSITY` fire and no
+   LivenessHarness registration attempt** — a regression from this sprint's own
+   honesty rule, which every sibling P0/P1 evidence file follows (P1-REC-6
+   §"Maturity & canary honesty", P1-REC-5, P1-REC-3, P0-COM-14): a `CANARY-AB-*`
+   that cannot be observed live in this build container is recorded
+   **pending-live-session**, and the tier claimed is the one the offline receipts
+   actually prove — `standalone` — not the live one. Under PRD-019's own Maturity
+   Summary, REC-8 reaches `integrated` only when `CANARY-AB-DIVERSITY` fires on a
+   **live** cross-model closure verification (a real closure consult carrying a
+   `producer_family` and dispatching to a different-family named consultant). This
+   container cannot make that observation.
+
+**No code change.** The anti-fox wrapper (`model-diversity.js`), its wire into
+`consultant-base.js`'s live consult seam, and the 19-case suite are unchanged and
+still green — the mechanism is built and unit-proven **standalone**; only the
+tier claim is corrected here (visibly, not by rewriting the header above).
+
+**`CANARY-AB-DIVERSITY` — pending-live-session.** The live VisionClaw
+`LivenessHarness` (`POST /api/canary/register`, port 4000) was not reachable from
+this build container (`curl -m3 http://127.0.0.1:4000/api/canary/register` →
+`http_code=000`, curl exit 7 / connection refused), so registration is recorded
+**pending-live-session** per the honesty rule; the family-diverse selection +
+verdict-stamping path is exercised green above. One-shot correctness wire (a
+single live fire suffices, re-checked on its captured SHA).
+
+**Corrected tier — was `integrated`, now `standalone` (code + test verified),
+`integrated` PENDING the live fire:** the `FAMILY_BY_CONSULTANT` registry,
+`selectVerifier` (never a same-family fallback → `null` on shortfall),
+`verificationRecord`, and the `consultant-base` wire that stamps
+`producer_family`/`verifier_family`/`anti_fox_ok` are all present and unit-proven
+standalone. Under PRD-019's own Maturity Summary this does **not** reach
+`integrated`, which requires `CANARY-AB-DIVERSITY` to fire on a live cross-model
+closure verification — absent in this build container. The earlier `integrated`
+claim is corrected here rather than deleted.
+
+**Correction receipts:**
+- `node -c mcp/consultants/shared/model-diversity.js` OK;
+  `node -c mcp/consultants/shared/consultant-base.js` OK (both unchanged).
+- `npx jest ../tests/sovereign/model-diversity.test.js` → PASS (19/19), re-run on
+  the captured base.
+- `node scripts/agentbox-config-validate.js` → exit 1 on **only** the three
+  pre-existing `E016` keys PRD-019 scopes out (§Out of Scope: `ruvnet_brain`,
+  `mcp_startup_timeout_ms`, `mcp_tool_timeout_ms`); no new error, no `diversity`
+  error — drift-neutral (no `agentbox.toml`/schema change).
