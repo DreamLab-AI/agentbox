@@ -7,6 +7,7 @@
 
 const EventEmitter = require('events');
 const uris = require('../lib/uris');
+const taxonomy = require('../lib/failure-taxonomy');
 
 // Agent action types matching the Rust binary protocol
 const AgentActionType = {
@@ -65,6 +66,45 @@ class AgentEventPublisher extends EventEmitter {
     if (event.source_urn !== undefined) fullEvent.source_urn = event.source_urn;
     if (event.target_urn !== undefined) fullEvent.target_urn = event.target_urn;
     if (event.pubkey !== undefined)     fullEvent.pubkey     = event.pubkey;
+
+    // REC-3 (CTC — contextual transaction cost, emitter side, PRD-019 REC-3 /
+    // ADR-037): additive cost/correlation fields matching VisionClaw's PRD-023
+    // CTC contract — token burden, the handoff-chain correlation id, and a
+    // verification outcome (populated by the REC-8 anti-fox verifier when a
+    // closure check ran). Forwarded only when the caller supplies them; an
+    // existing success-only caller emits none of them (byte-compatible).
+    if (event.token_count !== undefined)  fullEvent.token_count  = event.token_count;
+    if (event.handoff_id  !== undefined)  fullEvent.handoff_id   = event.handoff_id;
+    if (event.verification !== undefined) fullEvent.verification = event.verification;
+
+    // REC-6 (AC4, PRD-019 / ADR-037 D2): the authority classification the gate
+    // resolved for this action (`recoverable` | `zero-tolerance` |
+    // `escalation-required`) is recorded on the envelope so a governance/CTC
+    // consumer can see which actions were gated and how they were dispositioned.
+    // Forwarded only when the caller supplies it — an existing caller that never
+    // ran through the authority gate emits none (byte-compatible).
+    if (event.authority_class !== undefined) fullEvent.authority_class = event.authority_class;
+
+    // REC-5 (AC3): any action whose outcome is a FAILURE carries a MAST
+    // failure_mode tag on the envelope — a mode id or the `unmapped` sentinel,
+    // never a free-text error alone. A caller signals failure by passing
+    // `outcome:'failure'`, a `failure` context object, or a pre-resolved
+    // `failure_mode`. A non-failure event carries no mode (byte-compatible for
+    // existing success-only callers).
+    const isFailure = event.outcome === 'failure'
+      || (event.metadata && event.metadata.outcome === 'failure')
+      || event.failure != null
+      || typeof event.failure_mode === 'string';
+    if (isFailure) {
+      if (taxonomy.isTag(fullEvent.failure_mode)) {
+        // caller supplied a valid tag — keep it
+      } else {
+        const ctx = (event.failure && typeof event.failure === 'object')
+          ? event.failure
+          : { mode: event.failure_mode };
+        fullEvent.failure_mode = taxonomy.classify(ctx);
+      }
+    }
 
     // Auto-populate identity fields from environment when not supplied
     // by the caller, so every event carries attribution by default.
@@ -246,6 +286,17 @@ class AgentEventPublisher extends EventEmitter {
           source_urn: event.source_urn || null,
           target_urn: event.target_urn || null,
           pubkey: event.pubkey || null,
+          // REC-5: MAST failure tag forwarded on the wire (null on success).
+          failure_mode: event.failure_mode || null,
+          // REC-3: CTC fields on the wire — token burden, handoff-chain id, and
+          // verification outcome. Null when absent → byte-compatible with
+          // existing consumers (same discipline as failure_mode above).
+          token_count: (typeof event.token_count === 'number') ? event.token_count : null,
+          handoff_id: event.handoff_id || null,
+          verification: event.verification || null,
+          // REC-6 (AC4): authority classification on the wire — null when the
+          // action never ran through the gate (byte-compatible, same discipline).
+          authority_class: event.authority_class || null,
           metadata: event.metadata || {}
         },
         message_type: 0x23,   // AGENT_ACTION — binary-frame parity (ADR-059 §1)

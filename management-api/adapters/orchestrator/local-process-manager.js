@@ -79,7 +79,18 @@ class LocalProcessManagerOrchestratorAdapter extends BaseAdapter {
       emit('error', { message: err.message });
     });
 
-    return { agentId, status: 'running', pid: proc.pid };
+    // COM-14 / ADR-037 D6 — carry the minted per-agent did:nostr on the spawn
+    // response so a downstream (VisionClaw) can key the spawned node by a
+    // verifiable identity. Additive: the DID is the container agent's public
+    // identity (AGENTBOX_AGENT_DID, minted at spawn in entrypoint-unified.sh),
+    // which the child process inherits via its environment. Null when identity
+    // is unset — never the private key.
+    return {
+      agentId,
+      status: 'running',
+      pid: proc.pid,
+      did_nostr: process.env.AGENTBOX_AGENT_DID || null,
+    };
   }
 
   /**

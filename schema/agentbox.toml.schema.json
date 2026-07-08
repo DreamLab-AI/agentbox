@@ -360,6 +360,32 @@
               "description": "Enable the payment-router skill. Requires payments.consumer.enabled=true (E-PAY3 will fire otherwise)."
             }
           }
+        },
+        "authority": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "REC-6 / ADR-037 D2: the action authority axis, orthogonal to the WAC ACL resource modes in lib/mandate.js. Classifies the action surface into recoverable vs zero-tolerance actions. A zero-tolerance (or unclassified/escalation-required) action blocks on a signed ACSP 31402 response via lib/authority.js. The classification lives in this table, not in code.",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true,
+              "description": "Master gate for the authority axis. When false the gate still classifies but callers may skip the blocking wait (development only)."
+            },
+            "default": {
+              "type": "string",
+              "enum": ["escalation"],
+              "default": "escalation",
+              "description": "Disposition for an action class absent from the classes table. Only 'escalation' is honoured — an unclassified action is escalation-required (blocks pending review), never permissive (ADR-037 D2)."
+            },
+            "classes": {
+              "type": "object",
+              "description": "The classification table: action-class key → authority_class. recoverable actions proceed without a blocking wait; zero-tolerance actions block on a signed 31402 response. An action class not listed here is escalation-required by default.",
+              "additionalProperties": {
+                "type": "string",
+                "enum": ["recoverable", "zero-tolerance"]
+              }
+            }
+          }
         }
       }
     },

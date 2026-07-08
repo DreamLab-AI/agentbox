@@ -40,11 +40,45 @@ const {
 } = require('../lib/llm-marketplace');
 
 const uris = require('../lib/uris');
+const { buildAuthorityGate } = require('../lib/authority');
+const { agentEventPublisher, AgentActionType } = require('../utils/agent-event-publisher');
 
 const orderbook = new Orderbook();
 
+/**
+ * Load the manifest so the authority gate can read `[skills.authority]`. The
+ * static route registration (server.js) does not pass a manifest, so — mirroring
+ * server.js buildVoiceIntentDispatcher — we load it here, fail-soft to `{}`.
+ */
+function safeLoadManifest() {
+  try { return require('../adapters/manifest-loader').loadManifest(); }
+  catch { return {}; }
+}
+
 async function llmMarketplaceRoutes(fastify, opts) {
   const logger = opts.logger || fastify.log;
+
+  // REC-6 (PRD-019 / ADR-037 D2): the authority gate for irreversible marketplace
+  // actions. `mandate_revoke` is classed `zero-tolerance` in
+  // agentbox.toml [skills.authority.classes] — a granted agent losing access is
+  // not locally reversible. Built ONCE at registration (mirrors kg-elevation's
+  // elevationPublisher); a test injects `opts.authorityGate` (or the decision
+  // surface) to exercise the block/RELEASE path. In production the forum's signed
+  // 31402/31403 decision loop (COM-16) is injected when wired; absent → a
+  // zero-tolerance action is fail-closed DENIED (escalation-by-default), never
+  // silently proceeds.
+  const manifest = opts.manifest || safeLoadManifest();
+  const authorityGate = opts.authorityGate || buildAuthorityGate(manifest, {
+    logger,
+    publishActionRequest: opts.publishActionRequest,
+    awaitDecision: opts.awaitDecision,
+    verifyEvent: opts.verifyEvent,
+  });
+  const authorityEnabled = !authorityGate.table || authorityGate.table.enabled !== false;
+  logger.info(
+    { event: 'llm-marketplace.authority', enabled: authorityEnabled },
+    `llm-marketplace authority gate ${authorityEnabled ? 'active' : 'inert (skills.authority disabled)'}`
+  );
 
   // ── POST /v1/llm/advertise ────────────────────────────────────────────────
   fastify.post('/v1/llm/advertise', {
@@ -401,13 +435,64 @@ async function llmMarketplaceRoutes(fastify, opts) {
       response: {
         200: {
           type: 'object',
-          properties: { event: { type: 'object' }, revoked: { type: 'boolean' } },
+          properties: {
+            event: { type: 'object' },
+            revoked: { type: 'boolean' },
+            authority_class: { type: 'string' },
+          },
         },
       },
     },
-  }, async (req) => {
+  }, async (req, reply) => {
     const pubkey = req.nip98?.pubkey || process.env.AGENTBOX_PUBKEY || '0'.repeat(64);
     const body = req.body;
+
+    // REC-6: gate the irreversible revocation BEFORE it happens. `mandate_revoke`
+    // is zero-tolerance → guard() publishes a kind-31402 ActionRequest and blocks
+    // until a verified, approving, signed kind-31403 response arrives (release),
+    // else DENIES (fail-closed: no decision surface / timeout / reject / unverified).
+    let authorityClass = null;
+    if (authorityEnabled) {
+      const gate = await authorityGate.guard({
+        actionClass: 'mandate_revoke',
+        action: `Revoke LLM grant ${body.grant_id}`,
+        reasoning: body.reason || 'provider-initiated LLM grant revocation (irreversible)',
+      });
+      authorityClass = gate.authority_class;
+
+      // AC4: record the authority classification on the agent-events envelope,
+      // whatever the disposition, so a governance/CTC consumer sees the gate ran.
+      agentEventPublisher.emitAgentAction({
+        action_type: AgentActionType.DELETE,
+        source_urn: `did:nostr:${pubkey}`,
+        duration_ms: 0,
+        authority_class: gate.authority_class,
+        metadata: {
+          kind: 'llm-grant-revoke',
+          grant_id: body.grant_id,
+          decision: gate.decision,
+          blocked: gate.blocked,
+          released: gate.released,
+          reason: gate.reason || null,
+          request_event_id: gate.request_event_id || null,
+          response_event_id: gate.response_event_id || null,
+        },
+      });
+
+      if (gate.decision !== 'allow') {
+        logger.warn(
+          { pubkey, grantId: body.grant_id, authority_class: gate.authority_class, reason: gate.reason },
+          'llm-marketplace: revoke DENIED by authority gate (fail-closed)'
+        );
+        return reply.code(403).send({
+          error: 'authority_denied',
+          message: 'Grant revocation is a zero-tolerance action; it requires a verified, approving signed 31403 response.',
+          authority_class: gate.authority_class,
+          reason: gate.reason || null,
+          revoked: false,
+        });
+      }
+    }
 
     orderbook.revokeGrant(body.grant_id);
 
@@ -418,9 +503,9 @@ async function llmMarketplaceRoutes(fastify, opts) {
       reason: body.reason || '',
     });
 
-    logger.info({ pubkey, grantId: body.grant_id, kind: KINDS.REVOCATION }, 'llm-marketplace: grant revoked');
+    logger.info({ pubkey, grantId: body.grant_id, authority_class: authorityClass, kind: KINDS.REVOCATION }, 'llm-marketplace: grant revoked');
 
-    return { event: evt, revoked: true };
+    return { event: evt, revoked: true, ...(authorityClass ? { authority_class: authorityClass } : {}) };
   });
 
   // ── GET /v1/llm/grants ────────────────────────────────────────────────────

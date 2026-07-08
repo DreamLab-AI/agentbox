@@ -11,6 +11,7 @@
 
 const { agentEventPublisher, AgentActionType } = require('../utils/agent-event-publisher');
 const { verifyAgentEventRequest, reconcileSourceUrn } = require('../lib/agent-event-auth');
+const taxonomy = require('../lib/failure-taxonomy');
 const { processHookEvent, getRegistryStats } = require('../hooks/agent-action-hooks');
 const { initializeAgentEventWsSubscriber, getAgentEventWsSubscriber } = require('../utils/agent-event-ws-subscriber');
 
@@ -128,7 +129,13 @@ async function agentEventsRoutes(fastify, options) {
         type: 'object',
         properties: {
           limit: { type: 'integer', default: 100, minimum: 1, maximum: 1000 },
-          since: { type: 'integer', description: 'Timestamp to filter events after' }
+          since: { type: 'integer', description: 'Timestamp to filter events after' },
+          // REC-9 (PRD-019 §REC-9 / ADR-037 D5): resolve a SINGLE record by its
+          // canonical urn (or numeric event id). This is the provenance
+          // resolver's landing target — /v1/uri/<urn> 307-redirects here as
+          // ?id=<urn>. When set, the window params are bypassed and the one
+          // matching record is returned (or 404 when the reference is unknown).
+          id: { type: 'string', description: 'Resolve a single event by its urn:agentbox:activity reference or numeric id' }
         }
       },
       response: {
@@ -138,7 +145,13 @@ async function agentEventsRoutes(fastify, options) {
             events: {
               type: 'array',
               items: {
+                // additionalProperties:true so an id-resolved record keeps its
+                // identity/provenance fields (source_urn, target_urn, pubkey,
+                // token_count, …) instead of the serializer silently dropping
+                // them — otherwise a resolved provenance reference would come
+                // back stripped of the very attribution it exists to carry.
                 type: 'object',
+                additionalProperties: true,
                 properties: {
                   id: { type: 'integer' },
                   timestamp: { type: 'integer' },
@@ -151,13 +164,57 @@ async function agentEventsRoutes(fastify, options) {
               }
             },
             count: { type: 'integer' },
+            // Echo of the resolved reference (null on a window query).
+            id: { type: ['string', 'null'] },
             timestamp: { type: 'string' }
           }
         }
       }
     }
   }, async (request, reply) => {
-    const { limit = 100, since } = request.query;
+    const { limit = 100, since, id } = request.query;
+
+    // REC-9 (PRD-019 §REC-9 / ADR-037 D5): honour an explicit id/urn lookup.
+    // The provenance resolver lands a reference here (/v1/uri/<urn> → 307 →
+    // /v1/agent-events?id=<urn>). Before this branch the id was ignored and the
+    // route returned an arbitrary recent-events window, so a mirrored turn's
+    // urn:agentbox:activity reference resolved to nothing — the item's own
+    // "does not resolve to a real execution/action receipt" falsification.
+    if (id !== undefined && id !== null && String(id).length > 0) {
+      const ref = String(id);
+      // Search the whole retained buffer, not just the default window — the
+      // referenced record can be older than `limit` events back.
+      const all = agentEventPublisher.getRecentEvents(agentEventPublisher.maxBufferSize || 1000);
+      // Most-recent match wins: every turn of a session shares one activity urn,
+      // so the latest record under that reference is the useful one to return.
+      const match = [...all].reverse().find(e => eventMatchesRef(e, ref));
+
+      if (!match) {
+        reply.code(404).send({
+          error: 'not-found',
+          message: `No agent-event resolves the reference: ${ref}`,
+          id: ref,
+          count: 0
+        });
+        return;
+      }
+
+      const resolved = {
+        ...match,
+        action_type_name: Object.keys(AgentActionType).find(
+          k => AgentActionType[k] === match.action_type
+        )?.toLowerCase() || 'unknown'
+      };
+
+      reply.send({
+        events: [resolved],
+        count: 1,
+        id: ref,
+        timestamp: new Date().toISOString(),
+        connected_clients: wsConnections.size
+      });
+      return;
+    }
 
     let events = agentEventPublisher.getRecentEvents(limit);
 
@@ -176,6 +233,7 @@ async function agentEventsRoutes(fastify, options) {
     reply.send({
       events,
       count: events.length,
+      id: null,
       timestamp: new Date().toISOString(),
       connected_clients: wsConnections.size
     });
@@ -208,7 +266,13 @@ async function agentEventsRoutes(fastify, options) {
             ]
           },
           duration_ms: { type: 'integer', default: 100 },
-          metadata: { type: 'object' }
+          metadata: { type: 'object' },
+          // REC-3 (CTC emitter wire): optional cost/correlation fields. The
+          // trajectory-recorder hook forwards a step's captured token burden and
+          // its chain handoff id here so they reach the agent-events envelope.
+          token_count: { type: 'integer', minimum: 0 },
+          handoff_id: { type: 'string' },
+          verification: { type: 'string' }
         }
       },
       response: {
@@ -228,12 +292,20 @@ async function agentEventsRoutes(fastify, options) {
     // B4: per-agent did:nostr verification (gated; off → no-op, identity null).
     const auth = verifyAgentEventRequest(request);
     if (!auth.ok) {
-      return reply.code(auth.status).send({ success: false, error: auth.error });
+      // REC-5 (AC5): classify the {success:false} return through the taxonomy. A
+      // transport auth-signature rejection is not a multi-agent behaviour failure
+      // the current signal can resolve → `unmapped` with the human text as detail.
+      const tag = taxonomy.tagFailure({ error: auth.error });
+      return reply.code(auth.status).send({ success: false, error: auth.error, ...tag });
     }
     const claimed = body.source_urn || (body.metadata && body.metadata.source_urn) || null;
     const rec = reconcileSourceUrn(claimed, auth.did);
     if (!rec.ok) {
-      return reply.code(rec.status).send({ success: false, error: rec.error });
+      // REC-5 (AC5): a claimed source_urn that does not match the verified did is
+      // an identity-attribution failure — the caller asserting a role/identity it
+      // does not hold → FM-1.2 (Disobey Role Specification), text kept as detail.
+      const tag = taxonomy.tagFailure({ reason: taxonomy.REASON.IDENTITY_MISMATCH, error: rec.error });
+      return reply.code(rec.status).send({ success: false, error: rec.error, ...tag });
     }
 
     // Convert string IDs to numeric hashes if needed
@@ -263,6 +335,12 @@ async function agentEventsRoutes(fastify, options) {
       emitPayload.source_urn = auth.did;
       emitPayload.pubkey = auth.pubkey;
     }
+    // REC-3 (CTC emitter wire): forward the token burden + chain handoff id from
+    // the request body onto the emit payload, so the trajectory-recorder's
+    // captured CTC fields reach the agent-events envelope the publisher emits.
+    if (body.token_count !== undefined) emitPayload.token_count = body.token_count;
+    if (body.handoff_id !== undefined)  emitPayload.handoff_id  = body.handoff_id;
+    if (body.verification !== undefined) emitPayload.verification = body.verification;
 
     const event = agentEventPublisher.emitAgentAction(emitPayload);
 
@@ -311,7 +389,11 @@ async function agentEventsRoutes(fastify, options) {
     // authenticated identity (gated; off → no-op).
     const auth = verifyAgentEventRequest(request);
     if (!auth.ok) {
-      return reply.code(auth.status).send({ success: false, error: auth.error });
+      // REC-5 (AC5): classify the {success:false} return through the taxonomy. A
+      // transport auth-signature rejection is not a multi-agent behaviour failure
+      // the current signal can resolve → `unmapped` with the human text as detail.
+      const tag = taxonomy.tagFailure({ error: auth.error });
+      return reply.code(auth.status).send({ success: false, error: auth.error, ...tag });
     }
 
     for (const eventData of events) {
@@ -319,7 +401,14 @@ async function agentEventsRoutes(fastify, options) {
         || (eventData.metadata && eventData.metadata.source_urn) || null;
       const rec = reconcileSourceUrn(claimed, auth.did);
       if (!rec.ok) {
-        return reply.code(rec.status).send({ success: false, error: rec.error });
+        // REC-5 (AC5): the fourth {success:false} return — the per-event
+        // identity-mismatch inside the batch for-loop — classifies through the
+        // SAME taxonomy as the singular /emit site three handlers above: a claimed
+        // source_urn that does not match the verified did is an identity-attribution
+        // failure → FM-1.2 (Disobey Role Specification), the human text preserved
+        // as failure_detail. AC5 requires ALL {success:false} returns to classify.
+        const tag = taxonomy.tagFailure({ reason: taxonomy.REASON.IDENTITY_MISMATCH, error: rec.error });
+        return reply.code(rec.status).send({ success: false, error: rec.error, ...tag });
       }
 
       const sourceId = typeof eventData.source_agent_id === 'string'
@@ -515,6 +604,22 @@ async function agentEventsRoutes(fastify, options) {
       logger.warn(`Agent-events WS subscriber deferred: ${err.message}`);
     }
   });
+}
+
+/**
+ * REC-9: does an event record resolve the given id/urn reference?
+ *
+ * A reference is either a canonical urn (the provenance resolver's landing
+ * value, e.g. urn:agentbox:activity:<scope>:sha256-12-…) matched against any
+ * urn-bearing identity field on the envelope, or a bare numeric event id
+ * matched against the envelope's own `id`. String equality only — the URN is a
+ * name, not a query, so there is no partial/prefix match.
+ */
+function eventMatchesRef(event, ref) {
+  if (!event || ref == null) return false;
+  if (String(event.id) === ref) return true;
+  const URN_FIELDS = ['source_urn', 'target_urn', 'activity_urn', 'event_urn', 'urn'];
+  return URN_FIELDS.some(k => typeof event[k] === 'string' && event[k] === ref);
 }
 
 /**

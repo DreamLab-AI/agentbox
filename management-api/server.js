@@ -739,6 +739,55 @@ setInterval(() => {
   processManager.cleanup(3600000); // 1 hour
 }, 600000);
 
+/**
+ * COM-15 producer wiring. Build the signed-31402 dispatcher the voice-intent
+ * route uses to dispatch a governed intent toward the scene-selected actor_did.
+ * Returns null (route then declines 503, fail-closed) when the sovereign bridge,
+ * relays, or a signer stack are unavailable — no dead code, no silent success.
+ *
+ * The bridge + signer are connected/loaded LAZILY on the first dispatch, not at
+ * boot, so mounting the route never opens a relay connection. Mirrors the
+ * junkiejarvis vendoring: prefer the flake-vendored lib/, fall back to the mcp/
+ * source tree for a dev checkout.
+ */
+function buildVoiceIntentDispatcher(manifest, logger) {
+  const sm = (manifest && manifest.sovereign_mesh) || {};
+  const bridgeEnabled = sm.nostr_bridge === true;
+  const relays = String(process.env.NOSTR_RELAYS || '')
+    .split(',').map((r) => r.trim()).filter(Boolean);
+  const integ = (manifest && manifest.integrations && manifest.integrations.solid_pod_rs) || {};
+  const stack = process.env.AGENTBOX_STACK || process.env.AGENTBOX_PROFILE || integ.sign_stack || null;
+
+  if (!bridgeEnabled || relays.length === 0 || !stack) {
+    logger.debug({
+      event: 'voice-intent.dispatch-unwired',
+      nostr_bridge: bridgeEnabled, relays: relays.length, stack: !!stack,
+    }, 'Voice-intent signed-31402 dispatcher not wired (declines otherwise-valid requests 503)');
+    return null;
+  }
+
+  const acs = require('./lib/agent-control-surface');
+  let ready = null; // cached { bridge, signer } after the first successful connect
+
+  async function ensureReady() {
+    if (ready) return ready;
+    let NostrBridge, loadSigner;
+    try { ({ NostrBridge, loadSigner } = require('./lib/nostr-bridge')); }
+    catch { ({ NostrBridge, loadSigner } = require('../mcp/servers/nostr-bridge')); }
+    const bridge = new NostrBridge({ relays });
+    await bridge.connect();
+    const signer = loadSigner(stack, {});
+    app.addHook('onClose', async () => { try { await bridge.disconnect(); } catch (_) { /* ignore */ } });
+    ready = { bridge, signer };
+    return ready;
+  }
+
+  return async function dispatchActionRequest(unsigned) {
+    const { bridge, signer } = await ensureReady();
+    return acs.publishPanelEvent(bridge, signer, unsigned);
+  };
+}
+
 // Start server
 async function start() {
   try {
@@ -816,16 +865,20 @@ async function start() {
       }
     }
 
-    // ── WS7 voice→actor binding (PRD-014 Seam B / B3) ───────────────────────
-    // /v1/voice-intent maps a plain-text transcript to an agent intent and
-    // emits the canonical agent_action notification. Gated by
-    // [sovereign_mesh].voice_intent; the route itself returns 503 when off, so
-    // it is mounted unconditionally and self-gates from the manifest.
+    // ── WS7 voice→actor binding (PRD-014 Seam B / B3; COM-15 producer) ──────
+    // /v1/voice-intent maps a plain-text transcript to an agent intent, un-gates
+    // behind a MANDATE (ADR-037 D7, no longer the blanket voice_intent flag), and
+    // DISPATCHES a signed kind-31402 toward the scene-selected actor_did. The
+    // signed-31402 dispatcher is a thin, lazily-connected closure over a
+    // NostrBridge + the agentbox signer (same vendoring pattern as junkiejarvis);
+    // when the sovereign bridge or its key is unavailable the dispatcher is
+    // undefined and an otherwise-valid request is declined 503 (fail-closed).
     {
       try {
-        await app.register(require('./routes/voice-intent'), { logger, manifest });
-        const on = (manifest.sovereign_mesh || {}).voice_intent === true;
-        logger.debug({ event: 'voice-intent.mounted', enabled: on }, 'Voice→actor binding route ready at /v1/voice-intent');
+        const dispatchActionRequest = buildVoiceIntentDispatcher(manifest, logger);
+        await app.register(require('./routes/voice-intent'), { logger, manifest, dispatchActionRequest });
+        logger.debug({ event: 'voice-intent.mounted', dispatch: !!dispatchActionRequest },
+          'Voice→actor binding route ready at /v1/voice-intent (mandate-gated)');
       } catch (err) {
         logger.error({ err: err.message }, 'Voice→actor binding route failed to mount');
       }

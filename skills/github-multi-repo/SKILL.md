@@ -1,5 +1,6 @@
 ---
 name: github-multi-repo
+authority_class: zero-tolerance   # REC-6: org-wide cross-repo pushes are not locally reversible; block on a signed 31402
 version: 1.0.0
 description: "Multi-repository coordination, synchronization, and architecture management with AI swarm orchestration. Use when coordinating across multiple repositories, syncing packages, or running org-wide automation."
 category: github-integration

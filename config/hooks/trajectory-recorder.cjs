@@ -42,6 +42,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const http = require('http');
 
 const util = require('./lib/trajectory-util.cjs');
 
@@ -80,6 +81,79 @@ function loadUris() {
     try { return require(c); } catch { /* next */ }
   }
   return null;
+}
+
+// ── failure-taxonomy.js (REC-5: MAST tag on a graded failure). Same candidate
+// resolution as uris.js. Fail-open: if the shared library cannot be loaded, a
+// failure step is still tagged with the inline `unmapped` sentinel rather than a
+// free-text error — never dropped, never left untagged (PRD-019 REC-5 AC4).
+const UNMAPPED = 'unmapped';
+function loadTaxonomy() {
+  const candidates = [
+    path.resolve(__dirname, '..', '..', 'management-api', 'lib', 'failure-taxonomy.js'),
+    '/opt/agentbox/management-api/lib/failure-taxonomy.js',
+  ];
+  for (const c of candidates) {
+    try { return require(c); } catch { /* next */ }
+  }
+  return null;
+}
+// Classify a graded failure to a MAST mode id, or `unmapped`. Never throws.
+function failureModeFor(taxonomy, step) {
+  try {
+    if (taxonomy && typeof taxonomy.classify === 'function') {
+      return taxonomy.classify({
+        signal: step.outcome && step.outcome.signal,
+        stderr: step.failureHint || undefined,
+        action: step.action,
+      });
+    }
+  } catch { /* fall through to the sentinel */ }
+  return UNMAPPED;
+}
+
+// ── REC-3 (CTC emitter WIRE): forward a step's captured token_count + chain
+// handoff_id into a REAL agent-events emit call, so the CTC fields reach the
+// agent-events envelope the publisher emits and CANARY-AB-CTC can fire. Best-effort
+// over the same in-process management-API the project-tracking hook already POSTs
+// to (127.0.0.1:${MANAGEMENT_API_PORT|9090}/v1/agent-events/emit). Fail-open: any
+// error is swallowed — the DB persistence already happened; the emit is additive.
+const CTC_EMIT_TIMEOUT_MS = 3000;
+const CTC_EMIT_CAP = 200; // never flood the wire from one Stop firing
+function emitCtcStep(body) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = () => { if (!settled) { settled = true; resolve(); } };
+    try {
+      const port = Number(process.env.MANAGEMENT_API_PORT || '9090');
+      const payload = Buffer.from(JSON.stringify(body), 'utf8');
+      const apiKey = String(process.env.MANAGEMENT_API_KEY || '').trim();
+      const req = http.request({
+        host: '127.0.0.1',
+        port,
+        path: '/v1/agent-events/emit',
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'content-length': payload.length,
+          ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}),
+        },
+        timeout: CTC_EMIT_TIMEOUT_MS,
+      }, (res) => { res.on('data', () => {}); res.on('end', done); res.on('error', done); });
+      req.on('timeout', () => { try { req.destroy(); } catch { /* ignore */ } done(); });
+      req.on('error', (e) => { log(`ctc emit unreachable (non-fatal): ${e && e.message}`); done(); });
+      req.write(payload);
+      req.end();
+    } catch (e) { log(`ctc emit failed (non-fatal): ${e && e.message}`); done(); }
+  });
+}
+async function emitCtcStepsBestEffort(bodies) {
+  if (String(process.env.AGENTBOX_CTC_EMIT || '').trim() === '0') return; // explicit off switch
+  if (!Array.isArray(bodies) || bodies.length === 0) return;
+  const bounded = bodies.slice(0, CTC_EMIT_CAP);
+  for (const b of bounded) {
+    try { await emitCtcStep(b); } catch { /* fail-open */ }
+  }
 }
 
 // ── owner identity (public pubkey only — I09; the nsec never enters this hook) ──
@@ -196,17 +270,25 @@ async function hasDurationColumn(client) {
  * follows, so the tool_use map is built over the WHOLE transcript.
  */
 function scanTranscript(lines, fromLine) {
-  const uses = new Map(); // tool_use_id → { command, ts }
+  const uses = new Map(); // tool_use_id → { command, ts, tokenCount }
+  // REC-3 (CTC): count subagent Task spawns across the WHOLE session — each Task
+  // tool_use is a handoff to another agent, so the count IS the chain's handoff
+  // burden the CTC dashboard reconstructs. Built over all lines (like `uses`).
+  let handoffCount = 0;
   for (const line of lines) {
     if (!line) continue;
     let rec; try { rec = JSON.parse(line); } catch { continue; }
     const content = rec && rec.message && rec.message.content;
     if (!Array.isArray(content)) continue;
+    // REC-3: the token burden of the assistant turn that ISSUED the tool call.
+    const tokenCount = util.tokenCountOf(rec.message && rec.message.usage);
     for (const b of content) {
       if (b && b.type === 'tool_use' && b.name === 'Bash' && b.id) {
         const cmd = b.input && b.input.command;
-        uses.set(String(b.id), { command: typeof cmd === 'string' ? cmd : '', ts: rec.timestamp });
+        uses.set(String(b.id), { command: typeof cmd === 'string' ? cmd : '', ts: rec.timestamp, tokenCount });
       }
+      // A Task tool_use hands off to a subagent — count it as one handoff.
+      if (b && b.type === 'tool_use' && b.name === 'Task') handoffCount++;
     }
   }
 
@@ -236,10 +318,20 @@ function scanTranscript(lines, fromLine) {
       const t0 = isoMs(use.ts), t1 = isoMs(rec.timestamp);
       if (t0 != null && t1 != null && t1 >= t0) durationMs = t1 - t0;
 
-      steps.push({ toolUseId: String(b.tool_use_id), action, outcome, redacted, durationMs });
+      // REC-5: for a graded FAILURE, keep a redacted, capped stderr hint so the
+      // MAST classifier can run its high-precision heuristics. This hint is used
+      // in-memory only for tagging — it is NEVER persisted to the step result
+      // (I10: the durable result carries the redacted command, not stderr).
+      let failureHint;
+      if (!outcome.success && typeof tur.stderr === 'string' && tur.stderr.trim()) {
+        const red = util.redact(tur.stderr);
+        if (red != null) failureHint = red.slice(0, 400);
+      }
+
+      steps.push({ toolUseId: String(b.tool_use_id), action, outcome, redacted, durationMs, failureHint, tokenCount: use.tokenCount });
     }
   }
-  return { steps, lineCount: lines.length };
+  return { steps, lineCount: lines.length, handoffCount };
 }
 
 /**
@@ -260,7 +352,7 @@ async function handleClose(payload) {
 
   const stash = readStash(session);
   const from = Number(stash.processedLines || 0);
-  const { steps, lineCount } = scanTranscript(lines, from);
+  const { steps, lineCount, handoffCount } = scanTranscript(lines, from);
 
   // Advance the watermark regardless (idempotent inserts cover any race).
   stash.processedLines = lineCount;
@@ -270,6 +362,13 @@ async function handleClose(payload) {
   if (!Pg) { log('pg unavailable — skipping (fail-open)'); writeStash(session, stash); return 0; }
 
   const ident = trajectoryIdentity(session);
+  // REC-3 (CTC): the chain-correlation id every step and the rollup carry so a
+  // multi-agent DAG can be reconstructed (handoff counts + token burden per step).
+  const chainId = util.handoffIdFrom(process.env, ident.urn || ident.id);
+  const taxonomy = loadTaxonomy();
+  // REC-3 (CTC emitter WIRE): the emit bodies to forward onto the agent-events
+  // envelope after DB persistence — one per step carrying a token_count / handoff_id.
+  const ctcEmits = [];
   const client = makeClient(Pg);
   try {
     await client.connect();
@@ -281,6 +380,7 @@ async function handleClose(payload) {
       session,
       owner_did: ident.ownerDid || undefined,
       trajectory_urn: ident.urn || undefined,
+      handoff_id: chainId || undefined,
     };
     await client.query(
       `INSERT INTO trajectories (id, task, agent, status, started_at, metadata)
@@ -299,6 +399,13 @@ async function handleClose(payload) {
         signal: s.outcome.signal,
         command: s.redacted,
       };
+      // REC-5 (AC2): a graded FAILURE carries a MAST failure_mode tag (or the
+      // `unmapped` sentinel); a graded SUCCESS writes no mode.
+      if (!s.outcome.success) { resultObj.failure_mode = failureModeFor(taxonomy, s); s.failure_mode = resultObj.failure_mode; }
+      // REC-3 (AC1): the token burden of the turn that issued this step, parsed
+      // from the transcript usage block. Additive — absent when the turn carried
+      // no usage (byte-compatible with the pre-REC-3 result shape).
+      if (s.tokenCount != null) resultObj.token_count = s.tokenCount;
       if (!hasDur && s.durationMs != null) resultObj.duration_ms = s.durationMs;
       if (hasDur) {
         await client.query(
@@ -320,6 +427,10 @@ async function handleClose(payload) {
       order++;
       stash.qualitySum = Number(stash.qualitySum || 0) + s.outcome.quality;
       stash.qualityCount = Number(stash.qualityCount || 0) + 1;
+      // REC-3 (CTC emitter WIRE): build the emit body forwarding this step's
+      // captured token_count + the chain handoff_id onto the agent-events envelope.
+      const ctcBody = util.ctcEmitBodyFromStep(s, { handoffId: chainId, sessionId: session });
+      if (ctcBody && ctcEmits.length < CTC_EMIT_CAP) ctcEmits.push(ctcBody);
     }
     stash.stepOrder = order;
 
@@ -327,6 +438,9 @@ async function handleClose(payload) {
     const count = Number(stash.qualityCount || 0);
     const meanQuality = count > 0 ? Number(stash.qualitySum || 0) / count : 0;
     const success = meanQuality >= 0.5;
+    // REC-3 (AC2/AC4): the rollup carries handoff_id (chain correlation) and
+    // handoff_count (subagent Task spawns this session) so the CTC dashboard can
+    // reconstruct a completed DAG — handoff counts + per-step token burden.
     await client.query(
       `UPDATE trajectories
           SET ended_at = CURRENT_TIMESTAMP,
@@ -334,12 +448,15 @@ async function handleClose(payload) {
               success  = $2,
               metadata = COALESCE(metadata, '{}'::jsonb)
                          || jsonb_build_object(
-                              'ended_at_iso', to_char(now(), 'YYYY-MM-DD"T"HH24:MI:SSZ'),
-                              'step_count',   $3::int,
-                              'mean_quality', $4::double precision,
-                              'outcome',      $5::text)
+                              'ended_at_iso',  to_char(now(), 'YYYY-MM-DD"T"HH24:MI:SSZ'),
+                              'step_count',    $3::int,
+                              'mean_quality',  $4::double precision,
+                              'outcome',       $5::text,
+                              'handoff_id',    $6::text,
+                              'handoff_count', $7::int)
         WHERE id = $1`,
-      [ident.id, success, count, meanQuality, success ? 'success' : 'mixed']
+      [ident.id, success, count, meanQuality, success ? 'success' : 'mixed',
+        chainId, Number(handoffCount || 0)]
     );
     writeStash(session, stash);
   } catch (e) {
@@ -347,6 +464,11 @@ async function handleClose(payload) {
   } finally {
     try { await client.end(); } catch { /* ignore */ }
   }
+  // REC-3 (CTC emitter WIRE): after DB persistence, forward each step's captured
+  // token_count + chain handoff_id into a REAL agent-events emit call so they
+  // reach the agent-events envelope the publisher emits (CANARY-AB-CTC wire).
+  // Best-effort, fail-open — the durable trajectory record is already written.
+  await emitCtcStepsBestEffort(ctcEmits);
   return 0;
 }
 

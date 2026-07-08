@@ -39,7 +39,7 @@
 
 const crypto = require('crypto');
 const http = require('http');
-const { params: gateParams } = require('./ruvector-gates');
+const { params: gateParams, gates } = require('./ruvector-gates');
 const { createMemoryTools } = require('./memory-tools');
 
 const AGG_NAMESPACE = 'memory-learning-aggregates';
@@ -154,6 +154,32 @@ const AGG_SQL = `
    WHERE action IS NOT NULL AND action <> ''
    GROUP BY action`;
 
+// ── gate-state inspection (REC-7: "gates that stay OFF until the floor clears,
+// with the gate state inspectable") ──────────────────────────────────────────
+// A PURE summary of where the learning loop stands: how many action patterns
+// have cleared the Wilson sample floor, and whether the two consumer gates
+// (feed_retrieval / feed_routing) are on. It NEVER flips a gate — it reports.
+// The load-bearing field is `premature_consumer_enabled`: a consumer gate ON
+// while the floor has NOT cleared is exactly the degenerate-label pathology the
+// floor exists to prevent (ADR-037 D3), and the validator flags the same as W066.
+function summariseGates(rows, opts = {}) {
+  const minSamples = Number.isFinite(opts.minSamples) ? opts.minSamples : gateParams.aggregateMinSamples();
+  const list = Array.isArray(rows) ? rows : [];
+  const eligible = list.filter((r) => (Number(r.n) || 0) >= minSamples);
+  const floorCleared = eligible.length > 0;
+  const feedRetrieval = opts.feedRetrieval === undefined ? gates.feedRetrieval() : !!opts.feedRetrieval;
+  const feedRouting = opts.feedRouting === undefined ? gates.feedRouting() : !!opts.feedRouting;
+  return {
+    aggregate_min_samples: minSamples,
+    patterns_total: list.length,
+    patterns_cleared_floor: eligible.length,
+    floor_cleared: floorCleared,
+    gates: { feed_retrieval: feedRetrieval, feed_routing: feedRouting },
+    premature_consumer_enabled: (feedRetrieval || feedRouting) && !floorCleared,
+    eligible_patterns: eligible.map((r) => ({ pattern: r.pattern, n: Number(r.n) || 0, wilson: round(r.wilson, 4) })),
+  };
+}
+
 function computeRows(pgRows) {
   const rows = [];
   for (const r of pgRows) {
@@ -189,6 +215,46 @@ function printTable(rows, minSamples, halfLife) {
   w.write('\n');
 }
 
+// ── pg pool (shared by run + status) ────────────────────────────────────────────
+function makePool() {
+  const Pg = loadPg();
+  const conninfo = process.env.RUVECTOR_PG_CONNINFO ||
+    'host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=ruvector';
+  const parsed = {};
+  for (const pair of conninfo.split(/\s+/)) {
+    const eq = pair.indexOf('=');
+    if (eq > 0) parsed[pair.slice(0, eq)] = pair.slice(eq + 1);
+  }
+  return new Pg.Pool({
+    host: parsed.host || 'ruvector-postgres',
+    port: parseInt(parsed.port || '5432', 10),
+    database: parsed.dbname || parsed.database || 'ruvector',
+    user: parsed.user || parsed.username || 'ruvector',
+    password: parsed.password || 'ruvector',
+    max: 4,
+    idleTimeoutMillis: 10000,
+    connectionTimeoutMillis: 5000,
+  });
+}
+
+// ── status: non-interactive gate-state inspection (REC-7) ─────────────────────
+// Reads the live corpus and reports where each gate stands relative to the
+// floor, WITHOUT ever flipping one. Machine-readable JSON for the live-session
+// receipt (`node aggregate-effectiveness.js --status`).
+async function status() {
+  const halfLife = gateParams.recencyHalfLifeDays();
+  const minSamples = gateParams.aggregateMinSamples();
+  const pool = makePool();
+  let rows;
+  try {
+    const res = await pool.query(AGG_SQL, [halfLife]);
+    rows = computeRows(res.rows);
+  } finally {
+    await pool.end().catch(() => {});
+  }
+  return summariseGates(rows, { minSamples });
+}
+
 // ── main ──────────────────────────────────────────────────────────────────────
 async function run({ apply = false } = {}) {
   // The aggregate's tags + importance are load-bearing (feed_retrieval re-rank
@@ -203,24 +269,7 @@ async function run({ apply = false } = {}) {
   const halfLife = gateParams.recencyHalfLifeDays();
   const minSamples = gateParams.aggregateMinSamples();
 
-  const Pg = loadPg();
-  const conninfo = process.env.RUVECTOR_PG_CONNINFO ||
-    'host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=ruvector';
-  const parsed = {};
-  for (const pair of conninfo.split(/\s+/)) {
-    const eq = pair.indexOf('=');
-    if (eq > 0) parsed[pair.slice(0, eq)] = pair.slice(eq + 1);
-  }
-  const pool = new Pg.Pool({
-    host: parsed.host || 'ruvector-postgres',
-    port: parseInt(parsed.port || '5432', 10),
-    database: parsed.dbname || parsed.database || 'ruvector',
-    user: parsed.user || parsed.username || 'ruvector',
-    password: parsed.password || 'ruvector',
-    max: 4,
-    idleTimeoutMillis: 10000,
-    connectionTimeoutMillis: 5000,
-  });
+  const pool = makePool();
 
   let rows;
   try {
@@ -295,6 +344,12 @@ async function run({ apply = false } = {}) {
 
 if (require.main === module) {
   const argv = process.argv.slice(2);
+  // --status: inspect gate state vs the floor (no writes, no gate flip).
+  if (argv.some((a) => a === '--status')) {
+    status()
+      .then((s) => { process.stdout.write(JSON.stringify(s, null, 2) + '\n'); process.exit(0); })
+      .catch((e) => { log('ERROR', e.stack || e.message); process.exit(1); });
+  } else {
   const apply = argv.some((a) => a === '--yes' || a === '--apply');
   run({ apply })
     .then((r) => {
@@ -307,6 +362,7 @@ if (require.main === module) {
       process.exit(0);
     })
     .catch((e) => { log('ERROR', e.stack || e.message); process.exit(1); });
+  }
 }
 
-module.exports = { run, wilsonLower, aggregateKey, computeRows, AGG_NAMESPACE, AGG_SQL };
+module.exports = { run, status, summariseGates, wilsonLower, aggregateKey, computeRows, AGG_NAMESPACE, AGG_SQL };

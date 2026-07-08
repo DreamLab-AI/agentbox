@@ -512,6 +512,36 @@ fi
 # Every MCP server that needs agent identity reads these vars at spawn time.
 # Per ADR-013, URNs are minted only via management-api/lib/uris.js — the
 # new MCPs do NOT mint raw format!() URNs; they call the URI minter instead.
+#
+# COM-14 / ADR-037 D6 — mint (or load) a real per-agent did:nostr at spawn.
+# Unless an operator explicitly set a non-placeholder AGENTBOX_AGENT_DID, derive
+# a per-agent BIP-340 secp256k1 keypair via management-api/lib/agent-identity.js,
+# persisted per profile (0600) so a restart of the same profile keeps the same
+# identity, and export the public did:nostr:<hex> (plus x-only pubkey and the
+# ADR-033 Multikey form) for the four consumers that read AGENTBOX_AGENT_DID at
+# import. The private key stays in the profile key file and never enters the
+# environment or any log. Fail-open: if node/nostr-tools are unavailable the
+# `${VAR:-did:nostr:local}` fallback below is preserved.
+if [ -z "${AGENTBOX_AGENT_DID:-}" ] || [ "${AGENTBOX_AGENT_DID}" = "did:nostr:local" ]; then
+  _AGENT_ID_NODE="$(command -v node 2>/dev/null || true)"
+  _AGENT_ID_SCRIPT="/opt/agentbox/management-api/lib/agent-identity.js"
+  if [ -n "$_AGENT_ID_NODE" ] && [ -f "$_AGENT_ID_SCRIPT" ]; then
+    _AGENT_ID_EXPORTS="$("$_AGENT_ID_NODE" "$_AGENT_ID_SCRIPT" mint 2>&1 1>/tmp/.agent-did-exports.$$)" || true
+    _AGENT_ID_OUT="$(cat /tmp/.agent-did-exports.$$ 2>/dev/null || true)"
+    rm -f /tmp/.agent-did-exports.$$ 2>/dev/null || true
+    # Only eval output that is exactly the expected export lines with a real
+    # 64-hex did:nostr — never eval arbitrary text on the shell.
+    if printf '%s\n' "$_AGENT_ID_OUT" | grep -Eq '^export AGENTBOX_AGENT_DID=did:nostr:[0-9a-f]{64}$'; then
+      eval "$_AGENT_ID_OUT"
+      echo "[identity] per-agent did:nostr ready: ${AGENTBOX_AGENT_DID}"
+    else
+      echo "[identity] WARN: agent-identity mint produced no usable did:nostr — falling back to placeholder"
+      [ -n "$_AGENT_ID_EXPORTS" ] && echo "[identity]   $_AGENT_ID_EXPORTS"
+    fi
+    unset _AGENT_ID_EXPORTS _AGENT_ID_OUT
+  fi
+  unset _AGENT_ID_NODE _AGENT_ID_SCRIPT
+fi
 export AGENTBOX_AGENT_DID="${AGENTBOX_AGENT_DID:-did:nostr:local}"
 export AGENTBOX_AGENT_PUBKEY="${AGENTBOX_AGENT_PUBKEY:-local}"
 
