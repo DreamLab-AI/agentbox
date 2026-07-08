@@ -1,5 +1,6 @@
 ---
 name: web-researcher
+authority_class: recoverable   # REC-6: read-only research; proceeds without an escalation wait
 description: >
   Multi-source web research via the web-researcher-mcp Go server (tracks upstream
   v1.33.0) — you pick the search ENGINE and the trusted SOURCES, and every citation

@@ -615,6 +615,46 @@ gateway_url = "http://email-mcp-gateway:8765"
 mcp_startup_timeout_ms = 60000
 mcp_tool_timeout_ms = 180000
 
+# ── Action authority axis (REC-6 / ADR-037 D2 / PRD-019) ────────────────────────
+# A NEW axis, ORTHOGONAL to the WAC ACL resource modes in lib/mandate.js
+# (Read/Write/Append/Control — "which pod container"). This one answers "is this
+# action reversible": recoverable actions proceed freely; zero-tolerance actions
+# block until a signed ACSP 31402 response approves them (lib/authority.js consumes
+# the nostr-rust-forum decision loop — COM-16 — it does not reimplement it).
+#
+# ESCALATION BY DEFAULT: an action class NOT in [skills.authority.classes] is
+# escalation-required (blocks pending review), never permissive. The cost of
+# forgetting to classify is a prompt, not an unreviewed irreversible action.
+#
+# The classification is THIS TABLE, not code — the action surface is classified
+# declaratively and the table grows without a code change.
+[skills.authority]
+enabled = true
+default = "escalation"        # unclassified action classes are escalation-required
+
+# The classification table for the existing action surface. Keys are action-class
+# labels lib/authority.js resolves; a per-skill SKILL.md `authority_class:`
+# frontmatter override takes precedence over the entry here.
+[skills.authority.classes]
+# ── zero-tolerance: irreversible / high-blast-radius; block on a signed 31402 ──
+ontology_axiom_load     = "zero-tolerance"   # ungoverned KG write backdoor (skills.ontology.direct_axiom_load)
+memory_namespace_repair = "zero-tolerance"   # destructive namespace-repair hygiene op
+memory_legacy_archival  = "zero-tolerance"   # bulk archival of memory rows to cold store
+memory_embedding_backfill = "zero-tolerance" # rewrites embeddings in place
+payment_settlement      = "zero-tolerance"   # irreversible above-threshold sats spend
+pod_delete              = "zero-tolerance"   # pod resource deletion
+pod_git_push            = "zero-tolerance"    # publishes to a remote — not locally reversible
+mandate_revoke          = "zero-tolerance"   # revokes a granted agent mandate
+# ── recoverable: read-only / reversible / sandboxed; proceed without a wait ──
+skill_browser           = "recoverable"      # browser automation (read/inspect)
+research                = "recoverable"      # web-researcher read-only search
+memory_read             = "recoverable"      # memory_search / memory_retrieve
+memory_store            = "recoverable"      # additive; a mis-store is editable
+ontology_query          = "recoverable"      # class lookup / SPARQL read
+code_interpreter_exec   = "recoverable"      # sandboxed kernel, reset-able
+aci_view                = "recoverable"      # read a file through the ACI surface
+docs_render             = "recoverable"      # latex / mermaid / report render
+
 [providers.anthropic]
 enabled = true
 env_var = "ANTHROPIC_API_KEY"
