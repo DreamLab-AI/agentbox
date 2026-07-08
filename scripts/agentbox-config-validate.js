@@ -1361,6 +1361,33 @@ if (ldEnabled) {
   }
 }
 
+// ─── E-SKILL1: skill-count drift (RES-d / ADR-037 D8) ─────────────────────────
+//
+// Run the skill-count source-of-truth check in the same pass as the manifest
+// validator (ADR-037 D8: "run in the same pass as scripts/agentbox-config-
+// validate.js"). skills/*/SKILL.md is the single source; a headline count claim
+// in README.md or SKILL-DIRECTORY.md that diverges from it is a blocking error.
+// The check module is fail-soft on its own infrastructure errors (e.g. an
+// absent skills/ dir in a minimal deployment) so it degrades to advisory rather
+// than crashing the manifest validator.
+{
+  try {
+    const { checkSkillCount } = require('./skill-count-check');
+    const skillReport = checkSkillCount({ repoRoot: path.resolve(__dirname, '..') });
+    for (const d of skillReport.divergences) {
+      errors.push({
+        code: 'E-SKILL1',
+        message: `E-SKILL1: skill-count drift — ${d.doc}:${d.line} states ${d.stated}${d.kind === 'floor' ? '+' : ''} skills but skills/*/SKILL.md counts ${skillReport.count} (RES-d single source of truth; run scripts/skill-count-check.js)`,
+      });
+    }
+  } catch (err) {
+    warnings.push({
+      code: 'W067',
+      message: `W067: skill-count check could not run (${err.message}) — RES-d gate skipped this pass (ADR-037 D8)`,
+    });
+  }
+}
+
 // ─── output ───────────────────────────────────────────────────────────────────
 // Warnings (W-codes) are always printed to stderr — they are direction
 // signals and do not affect the exit code. Errors (E-codes) cause exit 1.
