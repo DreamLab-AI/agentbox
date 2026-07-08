@@ -20,8 +20,24 @@ function _emitConsultEvent(consultant, envelope) {
       cost_usd:   envelope.cost_usd,
       tokens:     envelope.tokens,
       ok:         envelope.ok,
+      // REC-8: record the producing family + the full anti-fox record on the
+      // dispatch so a closure verification is auditable (AC3). metadata is
+      // free-form; the top-level `verification` slot the emit route reserves is
+      // typed string, so it carries the short verdict.
+      ...(envelope.verification ? {
+        producer_family: envelope.verification.producer_family,
+        verifier_family: envelope.verification.verifier_family,
+        anti_fox_ok:     envelope.verification.anti_fox_ok,
+        verification:    envelope.verification,
+      } : {}),
     },
   };
+  // The reserved agent-events `verification` slot (REC-3 emitter) is typed
+  // string; carry the short anti-fox verdict there so a CTC/governance consumer
+  // sees it without unpacking metadata.
+  if (envelope.verification) {
+    payload.verification = envelope.verification.anti_fox_ok ? 'anti-fox:ok' : 'anti-fox:same-family';
+  }
   fetch(`${_MGMT_BASE}/v1/agent-events/emit`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${_MGMT_KEY}` },
@@ -66,6 +82,12 @@ const { MemoryLogger } = require('./memory-logger');
 // Canonical URI minter (ADR-013). In the image, management-api sits next to
 // mcp/ under /opt/agentbox, matching this repo's layout.
 const uris = require('../../../management-api/lib/uris.js');
+
+// Anti-fox cross-model verification seam (REC-8, ADR-037 D4). A thin wrapper
+// over these named consultants: when a consult carries the producer's model
+// family, we record whether THIS consultant is a different-family verifier so
+// a closure check that self-verifies its own family is flagged, never silent.
+const diversity = require('./model-diversity');
 
 // `activity` is a scope-required kind: the URN scope must be a BIP-340
 // x-only pubkey hex. Consultants take theirs from the agent identity env;
@@ -182,6 +204,7 @@ class BaseConsultant {
           properties: {
             question:        { type: 'string', description: 'The question or task to put to the consultant.' },
             context_excerpt: { type: 'string', description: 'Curated context the coordinator wants the consultant to see. Keep this small — the coordinator picks what matters.' },
+            producer_family: { type: 'string', description: 'REC-8 anti-fox: the model family (or model id) that PRODUCED the change under review. When set, this consult is a closure verification; the envelope records whether this consultant is a different-family verifier (Quality Gate 3). Pick the verifier with mcp/consultants/shared/model-diversity.selectVerifier so this is never the producing family.' },
             ontology_context: { type: 'boolean', description: 'When true, prepend budget-bounded VisionClaw ontology grounding (PRD-020 PULL-A). Fail-open; off by default.' },
             format:          { type: 'string', enum: ['markdown', 'plain', 'json'], description: 'Preferred response format. Default markdown.' },
             timeout_ms:      { type: 'number', description: 'Override the per-call timeout. Capped at 600000.' },
@@ -280,6 +303,28 @@ class BaseConsultant {
       || process.env.AGENTBOX_DID
       || uris.mint({ kind: 'agent', localId: `consultant-${this.name}` });
 
+    // REC-8 anti-fox: when the caller declares the producing model family, this
+    // consult is a closure verification. Record whether THIS named consultant
+    // is a different-family verifier (Quality Gate 3, mechanically). The
+    // selection that guarantees diversity happens upstream in
+    // model-diversity.selectVerifier; here we stamp the producing family onto
+    // the dispatch and flag a same-family self-verification rather than let it
+    // pass silently. Non-fatal: the consult still answers.
+    if (typeof args.producer_family === 'string' && args.producer_family.trim()) {
+      envelope.verification = diversity.verificationRecord({
+        producerFamily: args.producer_family,
+        verifier:       this.name,
+        task:           'closure-verification',
+      });
+      if (!envelope.verification.anti_fox_ok) {
+        this.logger.error(
+          `[consultant-${this.name}] anti-fox WARNING: producer family ` +
+          `"${envelope.verification.producer_family}" matches verifier family ` +
+          `"${envelope.verification.verifier_family}" — this is NOT a cross-model check`
+        );
+      }
+    }
+
     this.memlog.log({
       ok:           true,
       consultant:   this.name,
@@ -293,6 +338,7 @@ class BaseConsultant {
       latency_ms:   envelope.latency_ms,
       citations:    envelope.citations.length,
       consultation_urn: envelope.consultation_urn,
+      verification: envelope.verification || null,
     });
 
     _emitConsultEvent(this.name, envelope);

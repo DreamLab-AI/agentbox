@@ -116,6 +116,81 @@ function loadWs() {
   return null;
 }
 
+// ── REC-9: provenance to the pocket (PRD-019 / ADR-037 D5) ───────────────────
+// The live mirror carries readable turn text; REC-9 adds a signed-adjacent
+// urn:agentbox:activity reference INSIDE the already gift-wrap-sealed rumor, so
+// the recipient can resolve the DM back to the underlying execution record
+// (/v1/uri/<urn> → 307 → /v1/agent-events). Minted via the canonical minter
+// (ADR-013) — no second signature, no second event, within the body cap.
+
+/** Load the canonical URI minter (lib/uris.js). Fail-open null; no external deps. */
+function loadUris() {
+  const here = __dirname;
+  const candidates = [
+    path.resolve(here, '..', '..', 'management-api', 'lib', 'uris.js'),
+    path.resolve(here, '..', '..', 'mcp', 'servers', 'lib', 'uris.js'),
+  ];
+  for (const c of candidates) {
+    try { return require(c); } catch { /* try next */ }
+  }
+  return null;
+}
+
+/**
+ * Scope pubkey for the activity urn (BIP-340 x-only hex). Same precedence the
+ * digest producer uses so the two egress paths mint the SAME reference for a
+ * session; falls back to the all-zero dev pubkey when no identity is set (the
+ * convention consultant-base.js and the orchestrator adapters use).
+ */
+function activityScopePubkey() {
+  const candidate = envFirst('AGENTBOX_AGENT_PUBKEY', 'AGENTBOX_PUBKEY', 'AGENTBOX_ADMIN_PUBKEY')
+    || (envFirst('AGENTBOX_AGENT_DID') || '').replace(/^did:nostr:/, '')
+    || (envFirst('AGENTBOX_DID') || '').replace(/^did:nostr:/, '');
+  const lc = String(candidate).toLowerCase();
+  return /^[0-9a-f]{64}$/.test(lc) ? lc : '0'.repeat(64);
+}
+
+/**
+ * Mint the session's urn:agentbox:activity reference, deterministic on the
+ * session id + scope, so every turn of a session shares one urn and the
+ * SessionEnd digest (nostr-pod-bridge) mirrors the identical reference. Returns
+ * '' (fail-open, text-only) on any error or when there is no session id.
+ */
+function mintActivityUrn(uris, payload) {
+  try {
+    if (!uris || typeof uris.mint !== 'function') return '';
+    const session_id = String((payload && payload.session_id) || '').trim();
+    if (!session_id) return '';
+    return uris.mint({
+      kind:    'activity',
+      pubkey:  activityScopePubkey(),
+      payload: { surface: 'session', session_id },
+    });
+  } catch { return ''; }
+}
+
+/**
+ * Compose the final rumor body: the turn text plus the provenance reference,
+ * guaranteed within MAX_BODY_CHARS with the urn NEVER truncated. When no urn is
+ * available, degrades to the original text-only cap behaviour (fail-open).
+ */
+function composeBody(text, urn) {
+  const base = String(text || '');
+  if (!urn) {
+    return base.length > MAX_BODY_CHARS ? `${base.slice(0, MAX_BODY_CHARS)}…` : base;
+  }
+  const ref = `\n\n⛓ ${urn}`;
+  const budget = MAX_BODY_CHARS - ref.length;
+  if (budget <= 0) {
+    // The reference alone exceeds the cap (a urn is short, so this is only
+    // reachable with an absurd cap) — never drop provenance; ship the ref.
+    return ref.replace(/^\n+/, '');
+  }
+  let head = base;
+  if (head.length > budget) head = `${head.slice(0, Math.max(0, budget - 1))}…`;
+  return head + ref;
+}
+
 /**
  * Deterministic single-purpose mirror key derived from the operator key:
  *   child_sk = HMAC-SHA256(operator_sk, AGENTBOX_MIRROR_KEY_TAG | "agentbox-mirror-v1")
@@ -290,7 +365,21 @@ async function main() {
 
   let body = bodyForEvent(event, payload);
   if (!body || !body.trim()) return 0;
-  if (body.length > MAX_BODY_CHARS) body = `${body.slice(0, MAX_BODY_CHARS)}…`;
+
+  // REC-9: append the session's urn:agentbox:activity provenance reference,
+  // minted via lib/uris.js (ADR-013), INSIDE the rumor body and within the cap.
+  // Fail-open: an unmintable/missing urn degrades to text-only, never blocks.
+  const activityUrn = mintActivityUrn(loadUris(), payload);
+  body = composeBody(body, activityUrn);
+
+  // Dry-run affordance (operator / CI smoke test): compose the sealed body and
+  // print it to stderr WITHOUT any network egress, then exit 0. Lets a mirror
+  // smoke test observe the provenance reference without publishing to the relay.
+  if (String(process.env.AGENTBOX_MIRROR_DRY_RUN || '').trim() === '1') {
+    const to = explicitRecipient || (childSk ? 'child-self-dm' : 'none');
+    log(`DRY-RUN (${event}) recipient=${to} urn=${activityUrn || '(none — text-only)'} body:\n${body}`);
+    return 0;
+  }
 
   const tools = loadNostrTools();
   const WS = loadWs();
@@ -328,10 +417,23 @@ async function main() {
   return 0;
 }
 
-// Hard kill-switch: never let the hook outlive its budget under any circumstance.
-const guard = setTimeout(() => { try { process.exit(0); } catch { /* ignore */ } }, DEADLINE_MS + 1500);
-if (typeof guard.unref === 'function') guard.unref();
+// Exported for unit tests. The CLI entrypoint (guard + main) runs ONLY when the
+// hook is invoked directly, so a `require()` in a test never spawns the publish
+// path or the process-exit guard.
+module.exports = {
+  composeBody,
+  mintActivityUrn,
+  activityScopePubkey,
+  bodyForEvent,
+  MAX_BODY_CHARS,
+};
 
-main()
-  .then((code) => process.exit(typeof code === 'number' ? code : 0))
-  .catch((err) => { log(`fatal (swallowed): ${err && err.message}`); process.exit(0); });
+if (require.main === module) {
+  // Hard kill-switch: never let the hook outlive its budget under any circumstance.
+  const guard = setTimeout(() => { try { process.exit(0); } catch { /* ignore */ } }, DEADLINE_MS + 1500);
+  if (typeof guard.unref === 'function') guard.unref();
+
+  main()
+    .then((code) => process.exit(typeof code === 'number' ? code : 0))
+    .catch((err) => { log(`fatal (swallowed): ${err && err.message}`); process.exit(0); });
+}

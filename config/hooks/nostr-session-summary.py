@@ -29,6 +29,7 @@ policy should leave [sovereign_mesh.mobile_bridge] disabled (the hook is not
 registered then) or point ZAI_URL at a local GLM endpoint.
 """
 
+import hashlib
 import json
 import os
 import subprocess
@@ -55,6 +56,42 @@ def env_first(*keys: str) -> str:
         if v:
             return v
     return ""
+
+
+def _activity_scope_pubkey() -> str:
+    """
+    BIP-340 x-only pubkey hex for the activity urn scope. Same precedence the
+    live mirror (config/hooks/nostr-live-mirror.cjs) uses, so the SessionEnd
+    digest and the per-turn stream mint the IDENTICAL urn:agentbox:activity
+    reference for a session. Falls back to the all-zero dev pubkey.
+    """
+    candidate = env_first("AGENTBOX_AGENT_PUBKEY", "AGENTBOX_PUBKEY", "AGENTBOX_ADMIN_PUBKEY")
+    if not candidate:
+        did = env_first("AGENTBOX_AGENT_DID", "AGENTBOX_DID")
+        candidate = did[len("did:nostr:"):] if did.startswith("did:nostr:") else ""
+    lc = candidate.lower()
+    return lc if len(lc) == 64 and all(c in "0123456789abcdef" for c in lc) else "0" * 64
+
+
+def mint_activity_urn(session_id: str) -> str:
+    """
+    REC-9 (PRD-019 / ADR-037 D5): mint the session's urn:agentbox:activity
+    provenance reference so the digest bridge (nostr-pod-bridge) mirrors the
+    SAME reference the live mirror carries. Byte-identical to the canonical
+    minter management-api/lib/uris.js (ADR-013): content-address the sorted,
+    minified JSON of {surface, session_id} with SHA-256, first 12 hex chars.
+    Fail-open: returns "" on any error (the digest then carries no urn).
+    """
+    try:
+        sid = str(session_id or "").strip()
+        if not sid:
+            return ""
+        payload = {"session_id": sid, "surface": "session"}
+        canon = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+        digest = hashlib.sha256(canon.encode("utf-8")).hexdigest()
+        return f"urn:agentbox:activity:{_activity_scope_pubkey()}:sha256-12-{digest[:12]}"
+    except Exception:  # noqa: BLE001 — provenance is best-effort, never blocks the summary
+        return ""
 
 
 def bridge_configured() -> bool:
@@ -220,6 +257,11 @@ def main() -> int:
         digest.setdefault("summary", "")
         digest.setdefault("actions", [])
         digest.setdefault("actionable_questions", [])
+        # REC-9: carry the same urn:agentbox:activity reference the live mirror
+        # embeds, so the SessionEnd digest resolves back to the activity record.
+        activity_urn = mint_activity_urn(session_id)
+        if activity_urn:
+            digest["activity_urn"] = activity_urn
         publish(digest)
         log(f"session {session_id} mirrored to phone")
     except (OSError, urllib.error.URLError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:

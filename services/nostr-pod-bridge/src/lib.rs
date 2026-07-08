@@ -320,6 +320,14 @@ pub struct SessionSummary {
     /// Open questions that need an operator decision.
     #[serde(default)]
     pub actionable_questions: Vec<String>,
+    /// REC-9 (PRD-019 / ADR-037 D5): the session's `urn:agentbox:activity:…`
+    /// provenance reference, minted upstream by the Node/Python producer via the
+    /// canonical minter (lib/uris.js). Carrying it here mirrors the SAME
+    /// reference the per-turn live mirror embeds, so the SessionEnd digest
+    /// resolves back to the activity record (/v1/uri/<urn> → agent-events).
+    /// Absent when the producer could not mint one (fail-open, text-only).
+    #[serde(default)]
+    pub activity_urn: Option<String>,
 }
 
 /// Current wall-clock seconds since the Unix epoch.
@@ -346,6 +354,11 @@ fn render_summary_content(s: &SessionSummary) -> String {
         for q in &s.actionable_questions {
             out.push_str(&format!("- {}\n", q.trim()));
         }
+    }
+    // REC-9: the provenance reference, mirroring the project digest's `- urn:`
+    // line (render_project_content). Resolves back to the activity record.
+    if let Some(urn) = s.activity_urn.as_deref().filter(|u| !u.is_empty()) {
+        out.push_str(&format!("\nPROVENANCE\n- activity: {urn}\n"));
     }
     out
 }
@@ -740,12 +753,45 @@ mod tests {
             summary: "Refactored the relay.".into(),
             actions: vec!["edited lib.rs".into()],
             actionable_questions: vec![],
+            activity_urn: None,
         };
         let out = render_summary_content(&s);
         assert!(out.starts_with("Session abc"));
         assert!(out.contains("SUMMARY\nRefactored the relay."));
         assert!(out.contains("ACTIONS\n- edited lib.rs"));
         assert!(!out.contains("ACTIONABLE QUESTIONS"));
+        // REC-9: no provenance line when the producer minted no urn (fail-open).
+        assert!(!out.contains("PROVENANCE"));
+    }
+
+    #[test]
+    fn render_summary_content_includes_provenance_when_present() {
+        // REC-9: the SessionEnd digest mirrors the same urn:agentbox:activity
+        // reference the per-turn live mirror embeds.
+        let urn = format!("urn:agentbox:activity:{}:sha256-12-deadbeef1234", "0".repeat(64));
+        let s = SessionSummary {
+            session_id: "abc".into(),
+            summary: "did work".into(),
+            actions: vec![],
+            actionable_questions: vec![],
+            activity_urn: Some(urn.clone()),
+        };
+        let out = render_summary_content(&s);
+        assert!(out.contains("PROVENANCE"));
+        assert!(out.contains(&format!("- activity: {urn}")));
+    }
+
+    #[test]
+    fn session_summary_deserializes_with_activity_urn() {
+        // REC-9: the producer supplies activity_urn in the summarise JSON.
+        let s: SessionSummary = serde_json::from_str(
+            r#"{"session_id":"s1","summary":"x","activity_urn":"urn:agentbox:activity:aa:sha256-12-abcdef012345"}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            s.activity_urn.as_deref(),
+            Some("urn:agentbox:activity:aa:sha256-12-abcdef012345")
+        );
     }
 
     #[test]
@@ -763,6 +809,7 @@ mod tests {
             summary: "hello".into(),
             actions: vec![],
             actionable_questions: vec![],
+            activity_urn: None,
         };
         let unsigned = UnsignedEvent {
             pubkey: pubkey.clone(),
