@@ -1389,7 +1389,7 @@ ${lib.optionalString ((sovereignCfg.enabled or false) && solidPodRsActive) ''
 command=${solidPodRsPkg}/bin/solid-pod-rs-server
 directory=${solidPodRsCfg.storage_root or "/var/lib/solid"}
 user=devuser
-environment=HOME="/home/devuser",JSS_HOST="${solidPodRsCfg.bind or "127.0.0.1"}",JSS_PORT="${toString (solidPodRsCfg.port or 8484)}",JSS_BASE_URL="${solidPodRsCfg.base_url or "http://127.0.0.1:8484"}",JSS_STORAGE_ROOT="${solidPodRsCfg.storage_root or "/var/lib/solid"}",JSS_LOG_LEVEL="${solidPodRsCfg.log_level or "info"}",RUST_LOG="${solidPodRsCfg.log_level or "info"}",JSS_ENABLE_DID_NOSTR="${boolEnv (solidPodRsCfg.enable_did_nostr or true)}",JSS_ENABLE_RATE_LIMIT="${boolEnv (solidPodRsCfg.enable_rate_limit or true)}",JSS_RATE_LIMIT_PER_SEC="${toString (solidPodRsCfg.rate_limit_per_sec or 20)}",JSS_ENABLE_QUOTA="${boolEnv (solidPodRsCfg.enable_quota or true)}",JSS_QUOTA_DEFAULT_BYTES="${toString (solidPodRsCfg.quota_default_bytes or 10737418240)}",JSS_ENABLE_WEBHOOK_SIGNING="${boolEnv (solidPodRsCfg.enable_webhook_signing or true)}",JSS_V04_COMPAT="${boolEnv (solidPodRsCfg.jss_v04_compat or true)}",SOLID_ALLOWED_ORIGINS="${solidPodRsCfg.allowed_origins or ""}",SOLID_ADMIN_KEY="%(ENV_SOLID_ADMIN_KEY)s",JSS_MCP="${boolEnv (solidPodRsCfg.enable_mcp or false)}",AGENTBOX_REQUIRED_FOR_READINESS="true"
+environment=HOME="/home/devuser",JSS_HOST="${solidPodRsCfg.bind or "127.0.0.1"}",JSS_PORT="${toString (solidPodRsCfg.port or 8484)}",JSS_BASE_URL="%(ENV_SOLID_POD_PUBLIC_URL)s",JSS_STORAGE_ROOT="${solidPodRsCfg.storage_root or "/var/lib/solid"}",JSS_LOG_LEVEL="${solidPodRsCfg.log_level or "info"}",RUST_LOG="${solidPodRsCfg.log_level or "info"}",JSS_ENABLE_DID_NOSTR="${boolEnv (solidPodRsCfg.enable_did_nostr or true)}",JSS_ENABLE_RATE_LIMIT="${boolEnv (solidPodRsCfg.enable_rate_limit or true)}",JSS_RATE_LIMIT_PER_SEC="${toString (solidPodRsCfg.rate_limit_per_sec or 20)}",JSS_ENABLE_QUOTA="${boolEnv (solidPodRsCfg.enable_quota or true)}",JSS_QUOTA_DEFAULT_BYTES="${toString (solidPodRsCfg.quota_default_bytes or 10737418240)}",JSS_ENABLE_WEBHOOK_SIGNING="${boolEnv (solidPodRsCfg.enable_webhook_signing or true)}",JSS_V04_COMPAT="${boolEnv (solidPodRsCfg.jss_v04_compat or true)}",SOLID_ALLOWED_ORIGINS="${solidPodRsCfg.allowed_origins or ""}",SOLID_ADMIN_KEY="%(ENV_SOLID_ADMIN_KEY)s",JSS_MCP="${boolEnv (solidPodRsCfg.enable_mcp or false)}",AGENTBOX_REQUIRED_FOR_READINESS="true"
 autostart=true
 autorestart=true
 priority=30
@@ -2359,7 +2359,16 @@ ${ragflowNetworkDecl}
           "SOLID_POD_ENABLED=${boolEnv (sovereignCfg.solid_pod or false)}"
           "SOLID_POD_ROOT=/var/lib/solid"
           "SOLID_POD_PORT=8484"
-          "SOLID_ADMIN_KEY=\${SOLID_ADMIN_KEY:-}"
+          # Public base URL default from the manifest. Root .env overrides at
+          # runtime (compose env_file → PID-1 env → supervisord
+          # %(ENV_SOLID_POD_PUBLIC_URL)s → JSS_BASE_URL); management-api also
+          # reads it directly when building provisioning-response URLs.
+          "SOLID_POD_PUBLIC_URL=${solidPodRsCfg.base_url or "http://127.0.0.1:8484"}"
+          # Empty default so supervisord's %(ENV_SOLID_ADMIN_KEY)s expansion
+          # resolves when no .env supplies a key. OCI image Env is never
+          # shell-expanded — the previous dollar-brace default expression was
+          # delivered to the container as a 22-char literal string, not empty.
+          "SOLID_ADMIN_KEY="
           "SOLID_REQUIRE_NIP98=${boolEnv (sovereignCfg.enabled or false)}"
           "NOSTR_BRIDGE_ENABLED=${boolEnv (sovereignCfg.nostr_bridge or false)}"
           "NOSTR_BRIDGE_PORT=9740"

@@ -365,15 +365,18 @@ All relay traffic is authenticated via NIP-98/NIP-42 `did:nostr` Schnorr signatu
 
 ### Stratum 3 — Cloudflare Tunnels (Edge ↔ Local)
 
-A Cloudflare tunnel exposes the management API and solid-pod-rs to CF Workers services (nostr-rust-forum, dreamlab-ai-website) without opening ports to the public internet. Configure via:
+A Cloudflare tunnel exposes the in-container solid-pod-rs to CF Workers services (nostr-rust-forum, dreamlab-ai-website) without opening ports to the public internet. The connector is the `docker-compose.solid-pods.yml` overlay (not the base compose file):
 
 ```
-# .env
+# .env.solid-pods — consumed only by the cloudflared-pod overlay service
 CLOUDFLARE_TUNNEL_TOKEN=eyJ...
-AGENTBOX_PUBLIC_URL=https://pods-native.dreamlab-ai.com
+
+# .env (root) — optional public base URL override for the pod server +
+# management-api provisioning responses; defaults to the manifest base_url
+SOLID_POD_PUBLIC_URL=https://pods-native.dreamlab-ai.com
 ```
 
-CF Workers reach the local agentbox through the tunnel for pod provisioning, resource access, and NIP-05 federated resolution.
+The CF Zero-Trust Public Hostname must target `http://agentbox:8484`. CF Workers reach the local agentbox through the tunnel for pod provisioning, resource access, and NIP-05 federated resolution. Full runbook: [Native pod tunnel](docs/user/solid-pod-sidecar.md).
 
 See [Tailscale guide](docs/user/tailscale.md) · [Mesh deployment](docs/user/mesh-deployment.md) · [Identity mesh](docs/developer/identity-mesh.md)
 

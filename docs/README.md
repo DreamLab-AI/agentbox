@@ -52,7 +52,7 @@ You have a machine, you want agentbox running on it, ideally with as little fuss
 |---|---|
 | [**Sovereign stack — end to end**](user/sovereign-stack.md) | **Start here.** One-page walkthrough of identity → pod → relay → privacy-filter with verifiable commands |
 | [Solid pod (solid-pod-rs)](user/solid-pod.md) | First-party Rust Solid Protocol 0.11 server — durable storage, WAC 2.0, did:nostr, atomic-rename, quota, rate-limit |
-| [Solid pod sidecar](user/solid-pod-sidecar.md) | Run `solid-pod-rs --features git` as a Docker sidecar behind a Cloudflare Tunnel — the public-facing alternative to the in-container pod adapter |
+| [Native pod tunnel](user/solid-pod-sidecar.md) | Publish the in-container pod at `pods-native.dreamlab-ai.com` via the cloudflared compose overlay (origin `http://agentbox:8484`) |
 | [Nostr relay](user/nostr-relay.md) | External-agent messaging over the embedded Nostr relay with pod-inbox bridge — including the **Agent Control Surface Protocol** (kinds 31400-31405) for cross-repo governance with the forum and the host project's broker actor |
 | [Mobile bridge](user/mobile-bridge.md) | Talk to your agents from a stock Android Nostr client (Amethyst + Amber) — encrypted NIP-17 chat, NIP-26 phone delegation, and `kind-30840` session summaries dual-written to your Solid pod. No bespoke app; the agent's key never leaves the container |
 | [Privacy filter](user/privacy-filter.md) | Local PII redaction sidecar (openai/privacy-filter) as adapter middleware |

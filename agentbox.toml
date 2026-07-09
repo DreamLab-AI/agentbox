@@ -112,7 +112,12 @@ bind             = "127.0.0.1"
 expose           = false
 data_dir         = "/var/lib/nostr-relay"
 ingress_policy   = "allowlist"        # allowlist | signed-only | open
-allowed_pubkeys  = []                  # empty = self only (own npub); operator pubkey auto-added at boot
+# Strict allowlist consumed by nostr-pod-bridge authorize() — there is NO
+# fallback and NO auto-add: empty = every inbound relay event is dropped.
+# (The operator pubkey is NOT auto-added at boot; that older claim matched no
+# code.) Add 64-char hex pubkeys to admit them. Baked into the supervisor env
+# at nix build time (flake.nix relayAllowedPubkeysCsv) — changes need a rebuild.
+allowed_pubkeys  = []
 # Mobile bridge kinds: 1059 = NIP-59 gift wrap (phone→agent encrypted envelope),
 # 30840 = addressable session-summary (the durable conversation record, dual-written
 # to relay + pod). 30841 = addressable project-tracking digest (per-project status,
@@ -387,8 +392,10 @@ port                   = 8484
 bind                   = "0.0.0.0"
 storage                = "fs"                    # fs | memory | s3
 storage_root           = "/var/lib/solid"
-# Public base URL — set to the Cloudflare Tunnel hostname when the native pod
-# mesh is active (SOLID_POD_PUBLIC_URL env overrides at runtime).
+# Public base URL — the Cloudflare Tunnel hostname when the native pod mesh
+# is active. Baked into the image as the SOLID_POD_PUBLIC_URL env default at
+# nix build time; setting SOLID_POD_PUBLIC_URL in the root .env overrides it
+# at runtime (compose env_file → supervisord %(ENV_…)s → JSS_BASE_URL).
 base_url               = "https://pods-native.dreamlab-ai.com"
 enable_oidc            = false
 enable_schnorr_verify  = true

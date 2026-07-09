@@ -3,8 +3,13 @@
 # solid-pod-rs-server runs INSIDE the agentbox container (supervisord program
 # [solid-pod], built via lib/solid-pod-rs.nix alpha.15). This compose overlay
 # adds only the cloudflared connector that tunnels
-#   pods-native.dreamlab-ai.com → solid-pod-server:8484
-# into the agentbox network.
+#   pods-native.dreamlab-ai.com → agentbox:8484
+# over the shared visionclaw_network.
+#
+# The CF Zero-Trust Public Hostname "Service" field MUST be
+#   http://agentbox:8484
+# (the agentbox container's compose hostname). The solid-pod-server:8410
+# sidecar named in older docs was deleted in ae7f4ec0 and does not exist.
 #
 # Usage (from the agentbox directory):
 #   docker compose -f docker-compose.yml \
