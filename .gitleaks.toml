@@ -25,12 +25,31 @@ description = "DeepSeek API key (sk- + 32 hex)"
 regex = '''\bsk-[0-9a-f]{32}\b'''
 keywords = ["sk-"]
 
-  # A DeepSeek key was once committed to skills/deepseek-reasoning/README.md and
-  # is immutable in the two commits below. The key has been rotated/revoked; these
-  # commits are exempted from THIS rule only so the secret scan does not fail
-  # perpetually on history. Any new sk- key in future commits still trips the rule.
+  # A single DeepSeek key (long since rotated/revoked) was committed in 2024 and
+  # propagated across many now-deleted legacy trees — spatialKnowledgeGraph{,JOH},
+  # webxr-graph, inputData, data/markdown, docs/archive, docs/features, and
+  # multi-agent-docker/{skills/deepseek-reasoning,unified-config} — plus the
+  # skills/deepseek-reasoning/README.md copies. All occurrences live in the
+  # immutable historical commits enumerated below (history is never rewritten
+  # here — no force-push). The current tree carries no `sk-` key. These commits
+  # are exempted from THIS rule only, so a NEW sk- key in any future commit still
+  # trips the scan. Fingerprints were enumerated from the full-history gitleaks
+  # run; see CHANGELOG for the security note.
   [rules.allowlist]
   commits = [
     "5c194927cb737887c2b82e254bd24ac013a40b52",
-    "f9335e941ec238da0539c5ba2ad75df4847d3d0d"
+    "f9335e941ec238da0539c5ba2ad75df4847d3d0d",
+    "10f981525ba4bdad93f99b70d2e7d7df3d5e97b1",
+    "1e9a8ffb91c5a4dc3369e09cbccde6e249e77c1e",
+    "222131b7f9186170c591e9f3bae50978bbbeefea",
+    "2d1559cbdd62c676a552a1ec99e50c7b7bb5d170",
+    "35aa4a28645e77d0314581503ab1353e075d9166",
+    "4b7aef94d92b8c7c53ee21171ff3adb895e2be94",
+    "4cbbe67644b22d0dae9a7b10e60c4d8b5840154a",
+    "637ddc33d1af6c7224bdbbfb4f00cdfe72ea83a4",
+    "783b6080c18b459882f00446a2e97f654b83631c",
+    "9dc8395f905ce577e55fb810835d187dd2bacbf7",
+    "9f6330b4079d393301e4110665459e60d45ec1b1",
+    "e41e6b07ef494c7c6ab456c13abd6b91352c0e35",
+    "e8f89926ce678fb623fcc4691c40db1a2239ab3b"
   ]
