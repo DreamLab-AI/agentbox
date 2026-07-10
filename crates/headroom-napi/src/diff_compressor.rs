@@ -64,11 +64,8 @@ pub fn compress(input: &str, options: &DiffCompressOptions) -> Result<CompressRe
                         for line in changed {
                             all_lines.push((line.as_str(), true));
                         }
-                        let ctx_set: std::collections::HashSet<usize> = sampled_ctx
-                            .iter()
-                            .enumerate()
-                            .map(|(i, _)| i)
-                            .collect();
+                        let ctx_set: std::collections::HashSet<usize> =
+                            sampled_ctx.iter().enumerate().map(|(i, _)| i).collect();
                         let mut ctx_omitted = 0usize;
                         for (i, line) in context.iter().enumerate() {
                             if ctx_set.contains(&i) {
@@ -173,7 +170,7 @@ fn parse_hunks(input: &str) -> Vec<HunkPart> {
                 });
             }
             current_header = Some(line.to_string());
-        } else if let Some(_) = &current_header {
+        } else if current_header.is_some() {
             if line.starts_with('+') || line.starts_with('-') {
                 current_changed.push(line.to_string());
             } else {
@@ -230,7 +227,8 @@ mod tests {
 
     #[test]
     fn compress_small_diff_passes_through() {
-        let input = "diff --git a/f b/f\n--- a/f\n+++ b/f\n@@ -1,3 +1,3 @@\n ctx1\n-old\n+new\n ctx2\n";
+        let input =
+            "diff --git a/f b/f\n--- a/f\n+++ b/f\n@@ -1,3 +1,3 @@\n ctx1\n-old\n+new\n ctx2\n";
         let result = compress(input, &DiffCompressOptions::default()).unwrap();
         // Small diff should pass through mostly unchanged.
         assert!(result.compressed.contains("-old"));

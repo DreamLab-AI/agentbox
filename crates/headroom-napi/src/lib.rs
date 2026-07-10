@@ -24,7 +24,7 @@ pub fn smart_crush(
     options: Option<SmartCrushOptions>,
 ) -> napi::Result<CompressResult> {
     let opts = options.unwrap_or_default();
-    smart_crusher::crush(&input, &opts).map_err(|e| napi::Error::from_reason(e))
+    smart_crusher::crush(&input, &opts).map_err(napi::Error::from_reason)
 }
 
 /// Compress log output by template-mining repeated lines, preserving errors
@@ -35,7 +35,7 @@ pub fn compress_log(
     options: Option<LogCompressOptions>,
 ) -> napi::Result<CompressResult> {
     let opts = options.unwrap_or_default();
-    log_compressor::compress(&input, &opts).map_err(|e| napi::Error::from_reason(e))
+    log_compressor::compress(&input, &opts).map_err(napi::Error::from_reason)
 }
 
 /// Compress a unified diff by sampling context lines when the context-to-changes
@@ -46,7 +46,7 @@ pub fn compress_diff(
     options: Option<DiffCompressOptions>,
 ) -> napi::Result<CompressResult> {
     let opts = options.unwrap_or_default();
-    diff_compressor::compress(&input, &opts).map_err(|e| napi::Error::from_reason(e))
+    diff_compressor::compress(&input, &opts).map_err(napi::Error::from_reason)
 }
 
 /// Detect the content type of a string (JSON array, log, diff, code, prose, binary).
@@ -62,26 +62,22 @@ pub fn ccr_store_entry(hash: String, original: Buffer) -> napi::Result<()> {
     let store = ccr_store::global();
     store
         .store(&hash, &original)
-        .map_err(|e| napi::Error::from_reason(e))
+        .map_err(napi::Error::from_reason)
 }
 
 /// Retrieve content from the process-global CCR store by hash.
 #[napi]
 pub fn ccr_retrieve(hash: String) -> napi::Result<Option<Buffer>> {
     let store = ccr_store::global();
-    let result = store
-        .retrieve(&hash)
-        .map_err(|e| napi::Error::from_reason(e))?;
-    Ok(result.map(|data| Buffer::from(data)))
+    let result = store.retrieve(&hash).map_err(napi::Error::from_reason)?;
+    Ok(result.map(Buffer::from))
 }
 
 /// Get statistics for the process-global CCR store.
 #[napi]
 pub fn ccr_stats() -> napi::Result<CcrStoreStats> {
     let store = ccr_store::global();
-    store
-        .stats()
-        .map_err(|e| napi::Error::from_reason(e))
+    store.stats().map_err(napi::Error::from_reason)
 }
 
 /// Initialise the compression subsystem with the given configuration.
@@ -90,5 +86,5 @@ pub fn ccr_stats() -> napi::Result<CcrStoreStats> {
 #[napi]
 pub fn init_compression(config: CompressionConfig) -> napi::Result<()> {
     ccr_store::init_global(&config.backend, config.ttl_minutes, config.max_entries)
-        .map_err(|e| napi::Error::from_reason(e))
+        .map_err(napi::Error::from_reason)
 }

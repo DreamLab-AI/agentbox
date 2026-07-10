@@ -276,7 +276,11 @@ pub async fn process_event(ev: &Event, cfg: &BridgeConfig) -> Result<(), Ingress
     }
 
     let doc = format_as_ldn(ev, &msg);
-    write_json(&inbox_path(&cfg.pod_root, &cfg.recipient_pubkey, &ev.id), &doc).await?;
+    write_json(
+        &inbox_path(&cfg.pod_root, &cfg.recipient_pubkey, &ev.id),
+        &doc,
+    )
+    .await?;
 
     if msg.kind == KIND_SESSION_SUMMARY {
         write_json(
@@ -342,7 +346,11 @@ fn now_unix() -> u64 {
 /// kind-30840 `content` field. Layout mirrors the retired Telegram digest:
 /// summary, then actions, then actionable questions.
 fn render_summary_content(s: &SessionSummary) -> String {
-    let mut out = format!("Session {}\n\nSUMMARY\n{}\n", s.session_id, s.summary.trim());
+    let mut out = format!(
+        "Session {}\n\nSUMMARY\n{}\n",
+        s.session_id,
+        s.summary.trim()
+    );
     if !s.actions.is_empty() {
         out.push_str("\nACTIONS\n");
         for a in &s.actions {
@@ -518,7 +526,10 @@ pub async fn publish_project_tracking(
         vec!["d".to_string(), digest.project_id.clone()],
         vec!["p".to_string(), cfg.recipient_pubkey.clone()],
         vec!["t".to_string(), "agentbox-project".to_string()],
-        vec!["alt".to_string(), format!("Project status: {}", digest.name)],
+        vec![
+            "alt".to_string(),
+            format!("Project status: {}", digest.name),
+        ],
     ];
     if let Some(remote) = digest.remote.as_deref().filter(|s| !s.is_empty()) {
         tags.push(vec!["r".to_string(), remote.to_string()]);
@@ -643,7 +654,11 @@ pub async fn serve(relay: Arc<Relay>, bind_addr: &str) -> anyhow::Result<()> {
 fn rfc3339(unix_secs: u64) -> String {
     let days = (unix_secs / 86_400) as i64;
     let secs_of_day = unix_secs % 86_400;
-    let (h, m, s) = (secs_of_day / 3600, (secs_of_day % 3600) / 60, secs_of_day % 60);
+    let (h, m, s) = (
+        secs_of_day / 3600,
+        (secs_of_day % 3600) / 60,
+        secs_of_day % 60,
+    );
 
     let z = days + 719_468;
     let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
@@ -696,7 +711,10 @@ mod tests {
     fn unknown_pubkey_rejected() {
         let c = cfg();
         let e = ev(&"f".repeat(64), 1, vec![]);
-        assert!(matches!(authorize(&e, &c), Err(IngressError::Unauthorized(_))));
+        assert!(matches!(
+            authorize(&e, &c),
+            Err(IngressError::Unauthorized(_))
+        ));
     }
 
     #[test]
@@ -712,7 +730,10 @@ mod tests {
             "00".repeat(64),
         ];
         let e = ev(&"f".repeat(64), 1, vec![tag]);
-        assert!(matches!(authorize(&e, &c), Err(IngressError::Unauthorized(_))));
+        assert!(matches!(
+            authorize(&e, &c),
+            Err(IngressError::Unauthorized(_))
+        ));
     }
 
     #[test]
@@ -724,7 +745,11 @@ mod tests {
     #[test]
     fn addressed_via_outer_p_tag() {
         let recipient = "a".repeat(64);
-        let outer = ev(&"c".repeat(64), 1059, vec![vec!["p".into(), recipient.clone()]]);
+        let outer = ev(
+            &"c".repeat(64),
+            1059,
+            vec![vec!["p".into(), recipient.clone()]],
+        );
         assert!(addressed_to(&recipient, &outer, &[]));
     }
 
@@ -768,7 +793,10 @@ mod tests {
     fn render_summary_content_includes_provenance_when_present() {
         // REC-9: the SessionEnd digest mirrors the same urn:agentbox:activity
         // reference the per-turn live mirror embeds.
-        let urn = format!("urn:agentbox:activity:{}:sha256-12-deadbeef1234", "0".repeat(64));
+        let urn = format!(
+            "urn:agentbox:activity:{}:sha256-12-deadbeef1234",
+            "0".repeat(64)
+        );
         let s = SessionSummary {
             session_id: "abc".into(),
             summary: "did work".into(),
@@ -913,7 +941,12 @@ mod tests {
 
     /// Derive the x-only pubkey hex for a raw secret key.
     fn pk_of(sk: &[u8; 32]) -> String {
-        hex::encode(signing_key_from_bytes(sk).unwrap().verifying_key().to_bytes())
+        hex::encode(
+            signing_key_from_bytes(sk)
+                .unwrap()
+                .verifying_key()
+                .to_bytes(),
+        )
     }
 
     /// Serde-round-trip a crypto-crate `NostrEvent` into a relay `Event` — the
@@ -945,7 +978,10 @@ mod tests {
         let msg = effective_message(&relay_event, &c).expect("unwrap should succeed");
 
         assert!(msg.gift_wrapped);
-        assert_eq!(msg.sender_pubkey, sender_pk, "sender recovered from the seal");
+        assert_eq!(
+            msg.sender_pubkey, sender_pk,
+            "sender recovered from the seal"
+        );
         assert_eq!(msg.kind, KIND_DM, "effective kind is the inner rumor kind");
         assert_eq!(msg.content, "ping from phone");
         // The inner rumor carries the real recipient `p` tag, so addressing only
@@ -976,5 +1012,4 @@ mod tests {
             Err(IngressError::Unwrap(_))
         ));
     }
-
 }

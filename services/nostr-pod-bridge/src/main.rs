@@ -65,8 +65,8 @@ fn load_sk() -> anyhow::Result<[u8; 32]> {
     let path = std::env::var("AGENTBOX_BRIDGE_SK_FILE")
         .unwrap_or_else(|_| "/run/secrets/nostr.key".to_string());
     if let Ok(mut contents) = std::fs::read_to_string(&path) {
-        let sk = parse_sk(&contents)
-            .with_context(|| format!("parsing agent secret key from {path}"))?;
+        let sk =
+            parse_sk(&contents).with_context(|| format!("parsing agent secret key from {path}"))?;
         // Best-effort scrub of the heap-resident hex string before drop.
         zeroize_string(&mut contents);
         return Ok(sk);
@@ -79,7 +79,7 @@ fn load_sk() -> anyhow::Result<[u8; 32]> {
 
 /// Overwrite a `String`'s bytes in place so the decrypted hex does not linger in
 /// freed heap memory after the function returns.
-fn zeroize_string(s: &mut String) {
+fn zeroize_string(s: &mut str) {
     // Safety: we overwrite valid UTF-8 (ASCII '0') in place; length is unchanged.
     unsafe {
         for b in s.as_bytes_mut() {
@@ -109,7 +109,9 @@ fn load_config() -> anyhow::Result<BridgeConfig> {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
+        .with_env_filter(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
+        )
         .init();
 
     let cfg = load_config()?;

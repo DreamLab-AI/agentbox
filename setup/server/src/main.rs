@@ -194,8 +194,7 @@ async fn main() {
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("schema/agentbox.toml.schema.json"));
 
-    let mgmt_port = std::env::var("AGENTBOX_MGMT_PORT")
-        .unwrap_or_else(|_| "9090".to_string());
+    let mgmt_port = std::env::var("AGENTBOX_MGMT_PORT").unwrap_or_else(|_| "9090".to_string());
 
     let mgmt_api_url = format!("http://127.0.0.1:{mgmt_port}");
     let mgmt_api_key = load_mgmt_key();
@@ -234,7 +233,10 @@ async fn main() {
     eprintln!("\x1b[1;33m│\x1b[0m  \x1b[1mAGENTBOX\x1b[0m Setup & Dashboard             \x1b[1;33m│\x1b[0m");
     eprintln!("\x1b[1;33m├─────────────────────────────────────────┤\x1b[0m");
     eprintln!("\x1b[1;33m│\x1b[0m  URL:    \x1b[4m{url}\x1b[0m");
-    eprintln!("\x1b[1;33m│\x1b[0m  Config: {}\x1b[0m", config_path.display());
+    eprintln!(
+        "\x1b[1;33m│\x1b[0m  Config: {}\x1b[0m",
+        config_path.display()
+    );
     eprintln!("\x1b[1;33m│\x1b[0m  Ctrl+C or Save & Exit to quit          \x1b[1;33m│\x1b[0m");
     eprintln!("\x1b[1;33m└─────────────────────────────────────────┘\x1b[0m");
 

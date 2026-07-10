@@ -6,8 +6,7 @@ use std::sync::LazyLock;
 
 use crate::types::{CompressResult, LogCompressOptions};
 
-static NUMBER_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"\d{2,}").expect("number regex"));
+static NUMBER_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\d{2,}").expect("number regex"));
 
 static UUID_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b")
@@ -26,8 +25,7 @@ static ERROR_RE: LazyLock<Regex> = LazyLock::new(|| {
 });
 
 static STACK_FRAME_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^\s+(at |Caused by:|\.\.\.|\d+ more|File |Traceback)")
-        .expect("stack frame regex")
+    Regex::new(r"^\s+(at |Caused by:|\.\.\.|\d+ more|File |Traceback)").expect("stack frame regex")
 });
 
 /// Compress log output by template-mining identical lines, preserving errors
@@ -72,11 +70,7 @@ pub fn compress(input: &str, options: &LogCompressOptions) -> Result<CompressRes
         match class {
             LineClass::Error | LineClass::StackTrace if preserve_errors => {
                 // Flush pending normals.
-                flush_normals(
-                    &mut pending_normals,
-                    &mut output_parts,
-                    max_templates,
-                );
+                flush_normals(&mut pending_normals, &mut output_parts, max_templates);
                 output_parts.push(OutputPart::Literal(line.to_string()));
             }
             _ => {
@@ -87,11 +81,7 @@ pub fn compress(input: &str, options: &LogCompressOptions) -> Result<CompressRes
     }
 
     // Flush remaining normals.
-    flush_normals(
-        &mut pending_normals,
-        &mut output_parts,
-        max_templates,
-    );
+    flush_normals(&mut pending_normals, &mut output_parts, max_templates);
 
     // Phase 3: render output.
     let mut compressed = String::with_capacity(input.len() / 2);
@@ -198,12 +188,10 @@ fn flush_normals(
     let mut order: Vec<String> = Vec::new();
 
     for (_idx, template) in normals.iter() {
-        let entry = batch_templates
-            .entry(template.clone())
-            .or_insert_with(|| {
-                order.push(template.clone());
-                (0, String::new())
-            });
+        let entry = batch_templates.entry(template.clone()).or_insert_with(|| {
+            order.push(template.clone());
+            (0, String::new())
+        });
         entry.0 += 1;
         if entry.1.is_empty() {
             // Use the original template as the example (it still has placeholders but
@@ -213,8 +201,7 @@ fn flush_normals(
     }
 
     // Emit template groups in order, capping at max_templates.
-    let mut emitted = 0;
-    for tmpl in &order {
+    for (emitted, tmpl) in order.iter().enumerate() {
         if emitted >= max_templates {
             // Aggregate the rest into a single line.
             let remaining: usize = order[emitted..]
@@ -237,7 +224,6 @@ fn flush_normals(
             count: *count,
             example: example.clone(),
         });
-        emitted += 1;
     }
 
     normals.clear();
@@ -255,7 +241,8 @@ mod tests {
 
     #[test]
     fn preserves_error_lines() {
-        let input = "INFO Starting\nINFO Loading\nERROR Failed to connect\n  at main.rs:42\nINFO Done\n";
+        let input =
+            "INFO Starting\nINFO Loading\nERROR Failed to connect\n  at main.rs:42\nINFO Done\n";
         let opts = LogCompressOptions {
             preserve_errors: Some(true),
             max_templates: Some(50),
@@ -269,11 +256,7 @@ mod tests {
     fn groups_repeated_templates() {
         let mut lines = String::new();
         for i in 100..120 {
-            lines.push_str(&format!(
-                "INFO Request {} completed in {}ms\n",
-                i,
-                i * 10
-            ));
+            lines.push_str(&format!("INFO Request {} completed in {}ms\n", i, i * 10));
         }
         let opts = LogCompressOptions {
             preserve_errors: Some(true),
@@ -290,7 +273,8 @@ mod tests {
 
     #[test]
     fn templatise_replaces_variables() {
-        let line = "Request 12345 from 192.168.1.1 took 0x1F ms, id=550e8400-e29b-41d4-a716-446655440000";
+        let line =
+            "Request 12345 from 192.168.1.1 took 0x1F ms, id=550e8400-e29b-41d4-a716-446655440000";
         let t = templatise(line);
         assert!(t.contains("<N>"));
         assert!(t.contains("<IP>"));

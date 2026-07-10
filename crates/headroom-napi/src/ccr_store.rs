@@ -19,11 +19,7 @@ pub fn ccr_hash(data: &[u8]) -> String {
 }
 
 /// Initialise the global CCR store. Subsequent calls are no-ops.
-pub fn init_global(
-    backend: &str,
-    ttl_minutes: u32,
-    max_entries: u32,
-) -> Result<(), String> {
+pub fn init_global(backend: &str, ttl_minutes: u32, max_entries: u32) -> Result<(), String> {
     let ttl = Duration::from_secs(u64::from(ttl_minutes) * 60);
     let store = match backend {
         "sqlite" => {

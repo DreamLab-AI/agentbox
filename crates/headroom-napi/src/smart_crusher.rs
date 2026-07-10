@@ -69,9 +69,7 @@ pub fn crush(input: &str, options: &SmartCrushOptions) -> Result<CompressResult,
     } else {
         // Stratified sampling of the remainder.
         let remaining_budget = target_count - must_keep.len();
-        let candidates: Vec<usize> = (0..arr.len())
-            .filter(|i| !must_keep.contains(i))
-            .collect();
+        let candidates: Vec<usize> = (0..arr.len()).filter(|i| !must_keep.contains(i)).collect();
 
         let mut sampled = must_keep;
         if !candidates.is_empty() && remaining_budget > 0 {
@@ -175,8 +173,8 @@ fn analyse_schema(arr: &[Value]) -> Vec<String> {
 fn contains_error_signal(value: &Value) -> bool {
     match value {
         Value::String(s) => has_error_keyword(s),
-        Value::Object(map) => map.values().any(|v| contains_error_signal(v)),
-        Value::Array(arr) => arr.iter().any(|v| contains_error_signal(v)),
+        Value::Object(map) => map.values().any(contains_error_signal),
+        Value::Array(arr) => arr.iter().any(contains_error_signal),
         _ => false,
     }
 }

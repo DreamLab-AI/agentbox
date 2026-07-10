@@ -94,14 +94,8 @@ pub fn detect(input: &str) -> (ContentType, f64) {
     // Log output detection: sample lines for timestamps and log levels.
     let lines: Vec<&str> = trimmed.lines().take(50).collect();
     if lines.len() >= 3 {
-        let timestamp_hits = lines
-            .iter()
-            .filter(|l| TIMESTAMP_RE.is_match(l))
-            .count();
-        let level_hits = lines
-            .iter()
-            .filter(|l| LOG_LEVEL_RE.is_match(l))
-            .count();
+        let timestamp_hits = lines.iter().filter(|l| TIMESTAMP_RE.is_match(l)).count();
+        let level_hits = lines.iter().filter(|l| LOG_LEVEL_RE.is_match(l)).count();
         let ratio = (timestamp_hits + level_hits) as f64 / (lines.len() as f64 * 2.0);
         if ratio > 0.3 {
             let confidence = (0.5 + ratio * 0.5).min(0.98);
@@ -111,10 +105,7 @@ pub fn detect(input: &str) -> (ContentType, f64) {
 
     // Code detection.
     if lines.len() >= 2 {
-        let code_hits = lines
-            .iter()
-            .filter(|l| CODE_PATTERN_RE.is_match(l))
-            .count();
+        let code_hits = lines.iter().filter(|l| CODE_PATTERN_RE.is_match(l)).count();
         let ratio = code_hits as f64 / lines.len() as f64;
         if ratio > 0.2 {
             let confidence = (0.4 + ratio * 0.6).min(0.95);
@@ -215,7 +206,8 @@ mod tests {
 
     #[test]
     fn detects_diff() {
-        let input = "diff --git a/foo b/foo\n--- a/foo\n+++ b/foo\n@@ -1,3 +1,3 @@\n-old\n+new\n ctx\n";
+        let input =
+            "diff --git a/foo b/foo\n--- a/foo\n+++ b/foo\n@@ -1,3 +1,3 @@\n-old\n+new\n ctx\n";
         let (ct, conf) = detect(input);
         assert_eq!(ct, ContentType::UnifiedDiff);
         assert!(conf > 0.9);
