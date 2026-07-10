@@ -1136,6 +1136,11 @@ async function start() {
               events: resolvedAdapters.events || null,
               orchestrator: resolvedAdapters.orchestrator || null,
             },
+            // ADR-037 D2: the shared governance-decision waiter so an authority
+            // gate (broker-bridge decide route) awaiting a signed 31403 releases
+            // off this ONE relay subscription. Same singleton the gated route
+            // requires — no second relay client.
+            governanceDecisionSink: require('./lib/governance-decision-waiter'),
             logger,
           });
           await consumer.start();

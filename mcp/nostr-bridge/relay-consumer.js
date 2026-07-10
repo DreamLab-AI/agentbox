@@ -123,6 +123,14 @@ class RelayConsumer {
     this._fanout = opts.fanout || 'off';
     this._adapters = opts.adapters || {};
     this._intentSpec = typeof opts.intentSpec === 'function' ? opts.intentSpec : null;
+    // ADR-037 D2: an optional sink notified when an ACSP ActionResponse (31403)
+    // arrives, so an in-process authority gate awaiting a signed decision can
+    // release. Reuses THIS one relay subscription — no second client. Absent →
+    // no-op (marker/orchestrator dispatch is unchanged).
+    this._governanceSink = (opts.governanceDecisionSink
+      && typeof opts.governanceDecisionSink.notify === 'function')
+      ? opts.governanceDecisionSink
+      : null;
     this._logger = opts.logger || console;
     this._verifyEvent = opts.verifyEvent || null;
     this._now = opts.now || (() => Date.now());
@@ -318,6 +326,18 @@ class RelayConsumer {
         Promise.resolve(this._adapters.orchestrator.handleGovernanceDecision(event))
           .then(() => this._logger.info({ eventId: event.id }, 'governance-decision-dispatched'))
           .catch(err => this._logger.warn({ err, eventId: event.id }, 'governance-decision-dispatch-failed'));
+      }
+
+      // ADR-037 D2: release any in-process authority gate awaiting this signed
+      // decision. Same 31403, same subscription — the gate consumes the forum's
+      // decision rather than opening a second relay client.
+      if (event.kind === kinds.ACTION_RESPONSE && this._governanceSink) {
+        try {
+          const matched = this._governanceSink.notify(event);
+          if (matched) this._logger.info({ eventId: event.id }, 'governance-decision-released-gate');
+        } catch (err) {
+          this._logger.warn({ err, eventId: event.id }, 'governance-decision-notify-failed');
+        }
       }
     }
 

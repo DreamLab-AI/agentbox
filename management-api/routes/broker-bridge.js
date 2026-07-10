@@ -43,6 +43,32 @@ const fs = require('fs');
 const path = require('path');
 const WebSocket = require('ws');
 const uris = require('../lib/uris');
+const { buildAuthorityGate } = require('../lib/authority');
+const governanceWaiter = require('../lib/governance-decision-waiter');
+
+/**
+ * Load the manifest so the authority gate can read `[skills.authority]`. The
+ * static route registration (server.js) does not pass a manifest, so — mirroring
+ * routes/llm-marketplace.js — we load it here, fail-soft to `{}` (an empty table
+ * escalates every action by default, i.e. fail-closed).
+ */
+function _safeLoadManifest() {
+  try { return require('../adapters/manifest-loader').loadManifest(); }
+  catch { return {}; }
+}
+
+/**
+ * Map a broker decision to its authority action-class (ADR-037 D2). approve /
+ * promote commit an irreversible KG derived write-back → zero-tolerance; every
+ * other decision is a reversible review action → recoverable (proceeds ungated).
+ * The class NAMES resolve through `agentbox.toml [skills.authority.classes]`, so
+ * an operator can retune the posture without a code change.
+ */
+function _actionClassForDecision(decision) {
+  return WRITEBACK_DECISIONS.has(decision)
+    ? 'broker_enrichment_writeback'
+    : 'broker_enrichment_review';
+}
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -188,6 +214,33 @@ async function _enrichCase(brokerCase) {
 
 async function brokerBridgeRoutes(fastify, options) {
   const { logger } = options;
+
+  // ── REC-6 authority gate (PRD-019 / ADR-037 D2) ────────────────────────────
+  // A broker approve/promote commits an irreversible KG write-back; before it is
+  // proxied to VisionClaw it must clear the authority gate. `broker_enrichment_
+  // writeback` is zero-tolerance in agentbox.toml [skills.authority.classes] →
+  // guard() publishes a kind-31402 ActionRequest and blocks until a verified,
+  // approving, signed kind-31403 response arrives (RELEASE), else DENIES
+  // (fail-closed: no decision surface / timeout / reject / unverified). Reversible
+  // decisions (reject/amend/delegate/precedent) classify recoverable and pass
+  // through ungated. Built ONCE at registration (mirrors llm-marketplace); a test
+  // injects `options.authorityGate` (or the decision surface) to exercise the
+  // block/RELEASE path. In production the signed-decision consumer defaults to the
+  // shared governance-decision waiter fed by the ONE relay subscription
+  // (relay-consumer.js 31403 branch → governance-decision-waiter.notify).
+  const manifest = options.manifest || _safeLoadManifest();
+  const authorityGate = options.authorityGate || buildAuthorityGate(manifest, {
+    logger,
+    publishActionRequest: options.publishActionRequest,
+    awaitDecision: options.awaitDecision
+      || ((signedRequest, opts) => governanceWaiter.awaitDecision(signedRequest, opts)),
+    verifyEvent: options.verifyEvent,
+  });
+  const authorityEnabled = !authorityGate.table || authorityGate.table.enabled !== false;
+  logger.info(
+    { event: 'broker-bridge.authority', enabled: authorityEnabled },
+    `broker-bridge authority gate ${authorityEnabled ? 'active' : 'inert (skills.authority disabled)'}`,
+  );
 
   // ------------------------------------------------------------------
   // GET /api/broker/bridge/inbox
@@ -349,6 +402,9 @@ async function brokerBridgeRoutes(fastify, options) {
             upstream_result: { type: 'object', additionalProperties: true },
             activity_urn: { type: 'string' },
             receipt_urn: { type: 'string' },
+            authority_class: { type: 'string' },
+            authority_request_event_id: { type: 'string' },
+            authority_response_event_id: { type: 'string' },
           },
         },
       },
@@ -356,6 +412,43 @@ async function brokerBridgeRoutes(fastify, options) {
   }, async (request, reply) => {
     const { id } = request.params;
     const { decision, note, timestamp } = request.body;
+
+    // ── REC-6 authority gate — block the irreversible write-back BEFORE it is
+    // proxied to VisionClaw (ADR-037 D2). A recoverable decision returns
+    // decision:'allow' with no wait; a zero-tolerance/escalation decision blocks
+    // on a verified, approving, signed 31403 and DENIES on anything else.
+    let authorityClass = null;
+    let gate = null;
+    if (authorityEnabled) {
+      const actionClass = _actionClassForDecision(decision);
+      gate = await authorityGate.guard({
+        actionClass,
+        action: `Broker "${decision}" on enrichment case ${id}`,
+        reasoning: note
+          || `broker governance decision "${decision}" (${WRITEBACK_DECISIONS.has(decision)
+            ? 'commits an irreversible KG write-back' : 'reversible review action'})`,
+        panelId: `urn:agentbox:authority:broker-decision:${id}`,
+      });
+      authorityClass = gate.authority_class;
+
+      if (gate.decision !== 'allow') {
+        logger.warn(
+          { caseId: id, decision, authority_class: gate.authority_class, reason: gate.reason },
+          'broker-bridge: decision DENIED by authority gate (fail-closed) — not proxied to VisionClaw',
+        );
+        return reply.code(403).send({
+          error: 'authority_denied',
+          message: 'This broker decision is a zero-tolerance action; it requires a verified, approving signed 31403 response.',
+          decision,
+          case_id: id,
+          authority_class: gate.authority_class,
+          reason: gate.reason || null,
+          request_event_id: gate.request_event_id || undefined,
+          response_event_id: gate.response_event_id || undefined,
+          success: false,
+        });
+      }
+    }
 
     // Resolve the deciding broker's did:nostr pubkey. Prefer the authenticated
     // caller, then an explicit x-agent-pubkey header, then this agentbox's own
@@ -502,6 +595,9 @@ async function brokerBridgeRoutes(fastify, options) {
       writeback_result: writebackResult,
       activity_urn: activity_urn || undefined,
       receipt_urn: receipt_urn || undefined,
+      authority_class: authorityClass || undefined,
+      authority_request_event_id: (gate && gate.request_event_id) || undefined,
+      authority_response_event_id: (gate && gate.response_event_id) || undefined,
     };
   });
 

@@ -652,7 +652,9 @@ payment_settlement      = "zero-tolerance"   # irreversible above-threshold sats
 pod_delete              = "zero-tolerance"   # pod resource deletion
 pod_git_push            = "zero-tolerance"    # publishes to a remote — not locally reversible
 mandate_revoke          = "zero-tolerance"   # revokes a granted agent mandate
+broker_enrichment_writeback = "zero-tolerance" # broker approve/promote commits an irreversible KG derived write-back (ADR-037 D2, routes/broker-bridge.js)
 # ── recoverable: read-only / reversible / sandboxed; proceed without a wait ──
+broker_enrichment_review = "recoverable"     # broker reject/amend/delegate/precedent — no KG write, reversible review action
 skill_browser           = "recoverable"      # browser automation (read/inspect)
 research                = "recoverable"      # web-researcher read-only search
 memory_read             = "recoverable"      # memory_search / memory_retrieve
