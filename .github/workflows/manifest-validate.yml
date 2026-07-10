@@ -31,6 +31,10 @@ on:
       - 'agentbox.toml'
       - 'schema/**'
       - 'scripts/agentbox-config-validate.*'
+      - 'scripts/tui-read-manifest.py'
+      - 'scripts/tui-write-manifest.py'
+      - 'tests/tui/**'
+      - '.github/workflows/manifest-validate.yml'
 
 concurrency:
   group: manifest-validate-${{ github.ref }}
@@ -117,12 +121,17 @@ jobs:
           set -euo pipefail
           # tests/tui/fixtures/invalid-e021.toml enables solid-pod-rs adapter
           # but omits [security.exceptions.solid-pod-rs], which must produce E021.
-          if node scripts/agentbox-config-validate.js \
-               tests/tui/fixtures/invalid-e021.toml 2>&1 | grep -q "E021"; then
+          # The validator exits non-zero on this intentionally-invalid fixture,
+          # so capture its output with `|| true` first (same pattern as the
+          # "Assert invalid fixtures fail" step). Grepping the pipeline directly
+          # under `set -o pipefail` would inherit the validator's expected
+          # non-zero exit and spuriously fail even when E021 is emitted.
+          output=$(node scripts/agentbox-config-validate.js \
+            tests/tui/fixtures/invalid-e021.toml 2>&1 || true)
+          if echo "$output" | grep -q "E021"; then
             echo "OK: E021 fired as expected"
           else
             echo "FAIL: E021 did not fire — W021 audit gate may be broken"
-            node scripts/agentbox-config-validate.js \
-              tests/tui/fixtures/invalid-e021.toml || true
+            echo "$output"
             exit 1
           fi
