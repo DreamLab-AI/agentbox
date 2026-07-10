@@ -24,7 +24,7 @@ Already configured in `$HOME/.config/deepseek/config.json` (typically `/home/dev
 
 ```json
 {
-  "apiKey": "sk-d76e012d700a4cd3983f93c056aafee0",
+  "apiKey": "${DEEPSEEK_API_KEY}",
   "availableEndpoints": {
     "special": "https://api.deepseek.com/v3.2_speciale_expires_on_20251215"
   },

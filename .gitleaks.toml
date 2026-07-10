@@ -15,3 +15,22 @@ paths = [
 regexes = [
   "AKIA.*EXAMPLE"
 ]
+
+# DeepSeek API keys are `sk-` followed by 32 lowercase hex chars. The default
+# gitleaks ruleset's openai-api-key rule matches `sk-[A-Za-z0-9]{48}` and so
+# misses this shorter, lowercase-hex vendor format. Add an explicit rule.
+[[rules]]
+id = "deepseek-api-key"
+description = "DeepSeek API key (sk- + 32 hex)"
+regex = '''\bsk-[0-9a-f]{32}\b'''
+keywords = ["sk-"]
+
+  # A DeepSeek key was once committed to skills/deepseek-reasoning/README.md and
+  # is immutable in the two commits below. The key has been rotated/revoked; these
+  # commits are exempted from THIS rule only so the secret scan does not fail
+  # perpetually on history. Any new sk- key in future commits still trips the rule.
+  [rules.allowlist]
+  commits = [
+    "5c194927cb737887c2b82e254bd24ac013a40b52",
+    "f9335e941ec238da0539c5ba2ad75df4847d3d0d"
+  ]
