@@ -269,6 +269,21 @@ class NostrBridge {
     this._authSigner = null; // NIP-42 session signer (setAuthSigner)
     this._pendingAuth = new Map(); // relayUrl → in-flight NIP-42 AUTH event id
 
+    // Subscription-level keepalive (distinct from RelayConnection's socket
+    // ping/pong). A Cloudflare Durable-Object relay stops PUSHING to an idle
+    // subscription ~20s after its last REQ regardless of socket liveness. The
+    // post-AUTH fresh-id re-issue (_replaySubscriptions) only fires on
+    // reconnect — but the socket ping keeps the connection warm, so on a
+    // healthy link NO reconnect ever happens and the subscription is never
+    // refreshed. It therefore goes deaf ~20s after boot and stays deaf (the
+    // "junkiejarvis answers at startup then goes quiet" symptom that survived
+    // the reconnect-only fix). This timer re-issues every active subscription
+    // under a fresh wire id on an interval UNDER that ~20s window, independent
+    // of reconnects — the same reason dreamlab-ai-website's DmSession (ADR-042)
+    // pokes the relay on a 12s timer. Set to 0 to disable (tests).
+    this._subRefreshMs = options.subRefreshIntervalMs ?? 15000;
+    this._subRefreshTimer = null;
+
     for (const url of relayUrls) {
       const connOpts = { ...this._relayOpts };
       if (this._WebSocket) connOpts.WebSocket = this._WebSocket;
@@ -285,11 +300,13 @@ class NostrBridge {
     for (const conn of this._connections.values()) {
       conn.connect();
     }
+    this._startSubRefresh();
     return Promise.resolve();
   }
 
   /** Close all relay connections. */
   disconnect() {
+    this._stopSubRefresh();
     for (const conn of this._connections.values()) {
       conn.disconnect();
     }
@@ -691,7 +708,33 @@ class NostrBridge {
    */
   _replaySubscriptions(relayUrl) {
     if (!this._connections.get(relayUrl)) return;
+    this._refreshSubscriptions(`post-AUTH to ${relayUrl}`);
+  }
+
+  /**
+   * Rotate every active subscription onto a FRESH wire subId (CLOSE old + REQ
+   * new) across all connections. Shared by the post-AUTH replay
+   * (_replaySubscriptions) and the idle keepalive timer (_startSubRefresh).
+   *
+   * Why a fresh id, not a re-REQ of the same id: Cloudflare Durable-Object
+   * relays do NOT restart live push when a KNOWN subId is re-REQ'd — only a
+   * CLOSE of the stale id followed by a REQ under a brand-new id makes the DO
+   * begin pushing again. The caller-facing stableId is preserved (unsubscribe()
+   * keeps working); only the wireId rotates, and _wireIndex is rekeyed so
+   * inbound EVENT routing resolves to the handler under the new id.
+   *
+   * The stored filter is re-issued VERBATIM every time — deliberately no `since`
+   * floor. NIP-59 gift wraps (kind 1059) carry a RANDOMISED created_at up to ~2
+   * days in the past, so any `since` filter would silently drop legitimately-new
+   * DMs. The agent dedups the resulting historical re-delivery by event id.
+   *
+   * Fail-open: RelayConnection.send buffers or drops on a dead socket; a rotate
+   * failure never crashes the bridge.
+   * @private
+   */
+  _refreshSubscriptions(reason) {
     const conns = Array.from(this._connections.values());
+    if (conns.length === 0 || this._subscriptions.size === 0) return;
     let count = 0;
     for (const [stableId, sub] of this._subscriptions.entries()) {
       const oldWire = sub.wireId;
@@ -707,9 +750,35 @@ class NostrBridge {
       }
       count += 1;
     }
-    console.log(
-      `[bridge] re-issued ${count} subscription(s) under fresh ids post-AUTH to ${relayUrl}`
-    );
+    console.log(`[bridge] re-issued ${count} subscription(s) under fresh ids ${reason}`);
+  }
+
+  /**
+   * Start the subscription-level keepalive: every _subRefreshMs, re-issue all
+   * active subscriptions under fresh wire ids so a Durable-Object relay keeps
+   * pushing even when the warm socket never reconnects. See the constructor's
+   * _subRefreshMs note for the failure mode this prevents.
+   * @private
+   */
+  _startSubRefresh() {
+    this._stopSubRefresh();
+    if (!(this._subRefreshMs > 0)) return;
+    this._subRefreshTimer = setInterval(() => {
+      if (this._subscriptions.size === 0) return;
+      // Only poke while a socket is actually open. When every link is down the
+      // reconnect + post-AUTH replay re-issues anyway, and send() would just
+      // buffer into _pending and flush stale on the next open.
+      const anyHealthy = Array.from(this._connections.values()).some((c) => c.healthy);
+      if (!anyHealthy) return;
+      this._refreshSubscriptions('idle-keepalive');
+    }, this._subRefreshMs);
+    // Must not keep the process alive on shutdown.
+    if (this._subRefreshTimer && this._subRefreshTimer.unref) this._subRefreshTimer.unref();
+  }
+
+  /** @private */
+  _stopSubRefresh() {
+    if (this._subRefreshTimer) { clearInterval(this._subRefreshTimer); this._subRefreshTimer = null; }
   }
 
   // ── Internal message routing ──

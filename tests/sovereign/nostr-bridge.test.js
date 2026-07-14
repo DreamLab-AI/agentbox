@@ -597,6 +597,95 @@ describe('NostrBridge post-AUTH re-subscription (fresh wire ids)', () => {
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
+// Idle subscription keepalive (timer-based fresh-id refresh)
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// The CF Durable-Object relay stops pushing to an idle subscription ~20 s after
+// its last REQ while the SOCKET stays warm (pings answered), so the post-AUTH
+// replay above never fires again and the subscription goes deaf. The refresh
+// must therefore also run from a timer against a healthy, never-reconnecting
+// socket. (Root cause of junkiejarvis missing DMs ~20 s after startup.)
+
+describe('NostrBridge idle subscription keepalive', () => {
+  const RELAY = 'wss://gated.test';
+  let logSpy;
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+  });
+  afterEach(() => {
+    jest.useRealTimers();
+    logSpy.mockRestore();
+  });
+
+  const reqIds   = (h) => h._sent.map(JSON.parse).filter((m) => m[0] === 'REQ').map((m) => m[1]);
+  const closeIds = (h) => h._sent.map(JSON.parse).filter((m) => m[0] === 'CLOSE').map((m) => m[1]);
+
+  it('re-issues subscriptions under fresh ids on a HEALTHY socket, with no reconnect', () => {
+    // Ping keepalive pushed out of the window: this test must prove the
+    // SUBSCRIPTION refresh alone rotates ids — not a ping-death reconnect.
+    const { bridge, handles } = makeBridge([RELAY], { pingIntervalMs: 3600000 });
+    bridge.connect();
+    const ws = handles[RELAY];
+    ws.simulateOpen();
+
+    const received = [];
+    const stableId = bridge.subscribe([kinds.AGENT_STATE], (ev) => received.push(ev));
+    expect(reqIds(ws)).toEqual([stableId]);
+
+    jest.advanceTimersByTime(15000); // default subRefreshIntervalMs
+
+    const reqs = reqIds(ws);
+    expect(reqs).toHaveLength(2);
+    const freshId = reqs[1];
+    expect(freshId).not.toBe(stableId);          // rotated by the timer alone
+    expect(closeIds(ws)).toEqual([stableId]);    // stale id released first
+
+    // Delivery follows the fresh id; the pre-refresh id is deaf.
+    const base = { kind: kinds.AGENT_STATE, created_at: 0, pubkey: mockValidPubkey, tags: [], content: '{}', sig: 's' };
+    ws.simulateMessage(['EVENT', freshId,  { ...base, id: 'live' }]);
+    ws.simulateMessage(['EVENT', stableId, { ...base, id: 'dead' }]);
+    expect(received.map((e) => e.id)).toEqual(['live']);
+
+    // Every tick rotates again — wire ids never repeat.
+    jest.advanceTimersByTime(15000);
+    expect(reqIds(ws)).toHaveLength(3);
+    expect(new Set(reqIds(ws)).size).toBe(3);
+
+    bridge.disconnect();
+  });
+
+  it('skips ticks while no connection is healthy and stops entirely on disconnect', () => {
+    const { bridge, handles } = makeBridge([RELAY], { pingIntervalMs: 3600000 });
+    bridge.connect();
+    const ws = handles[RELAY];
+
+    // Socket never opened → not healthy → ticks are no-ops (the REQ itself is
+    // queued in the connection's pending buffer, so nothing hits the wire).
+    const stableId = bridge.subscribe([kinds.AGENT_STATE], () => {});
+    jest.advanceTimersByTime(45000);
+    expect(ws._sent).toHaveLength(0);
+
+    // Once the socket opens, the queued REQ flushes under the UNROTATED id
+    // (skipped ticks must not have mutated wire ids)…
+    ws.simulateOpen();
+    expect(reqIds(ws)).toEqual([stableId]);
+
+    // …and the next tick resumes rotation.
+    jest.advanceTimersByTime(15000);
+    expect(reqIds(ws)).toHaveLength(2);
+    expect(reqIds(ws)[1]).not.toBe(stableId);
+
+    // disconnect() clears the timer: no further refresh traffic.
+    bridge.disconnect();
+    const sentAfter = ws._sent.length;
+    jest.advanceTimersByTime(60000);
+    expect(ws._sent).toHaveLength(sentAfter);
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
 // kinds constants
 // ═════════════════════════════════════════════════════════════════════════════
 
