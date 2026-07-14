@@ -254,7 +254,17 @@ class NostrBridge {
     this._relayOpts = options.relayOptions ?? {};
 
     this._connections = new Map(); // url → RelayConnection
-    this._subscriptions = new Map(); // subId → { filter, handler }
+    // Caller-facing map: the stableId is what subscribe() returns and
+    // unsubscribe() accepts — it NEVER changes for the life of the subscription.
+    // `wireId` is the id actually present in the REQ/CLOSE frames on the wire; it
+    // is ROTATED on every post-AUTH replay (see _replaySubscriptions) because
+    // Cloudflare Durable-Object relays do NOT restart live delivery when a KNOWN
+    // subId is re-REQ'd — they only begin pushing for a FRESH subId. Reusing the
+    // id on reconnect+re-AUTH is exactly why junkiejarvis went deaf after its
+    // first reconnect. Keeping stableId ≠ wireId lets the public subscribe/
+    // unsubscribe contract stay intact while the wire id rotates underneath.
+    this._subscriptions = new Map(); // stableId → { filter, handler, wireId }
+    this._wireIndex = new Map();     // wireId → stableId  (inbound EVENT routing)
     this._subCounter = 0;
     this._authSigner = null; // NIP-42 session signer (setAuthSigner)
     this._pendingAuth = new Map(); // relayUrl → in-flight NIP-42 AUTH event id
@@ -310,14 +320,19 @@ class NostrBridge {
       ? { kinds: filter }
       : (filter ?? { kinds: this._subscribeKinds });
 
-    const subId = `sub-${++this._subCounter}`;
-    this._subscriptions.set(subId, { filter: normalisedFilter, handler });
+    // stableId is returned to the caller (and is what unsubscribe() expects).
+    // The initial wireId equals it; it rotates on each post-AUTH replay. Inbound
+    // EVENT frames are routed back to this record via _wireIndex.
+    const stableId = `sub-${++this._subCounter}`;
+    const wireId = stableId;
+    this._subscriptions.set(stableId, { filter: normalisedFilter, handler, wireId });
+    this._wireIndex.set(wireId, stableId);
 
-    const reqMsg = JSON.stringify(['REQ', subId, normalisedFilter]);
+    const reqMsg = JSON.stringify(['REQ', wireId, normalisedFilter]);
     for (const conn of this._connections.values()) {
       conn.send(reqMsg);
     }
-    return subId;
+    return stableId;
   }
 
   /**
@@ -325,9 +340,13 @@ class NostrBridge {
    * @param {string} subId - ID returned by subscribe().
    */
   unsubscribe(subId) {
-    if (!this._subscriptions.has(subId)) return;
+    const sub = this._subscriptions.get(subId);
+    if (!sub) return;
     this._subscriptions.delete(subId);
-    const closeMsg = JSON.stringify(['CLOSE', subId]);
+    this._wireIndex.delete(sub.wireId);
+    // CLOSE the id currently live on the wire (the rotated wireId, which differs
+    // from the caller's stable subId once a post-AUTH replay has run).
+    const closeMsg = JSON.stringify(['CLOSE', sub.wireId]);
     for (const conn of this._connections.values()) {
       conn.send(closeMsg);
     }
@@ -644,21 +663,52 @@ class NostrBridge {
   }
 
   /**
-   * Re-send every active subscription on a relay socket so the relay
-   * re-evaluates them against the now-authenticated session. Called once the
-   * NIP-42 AUTH is acknowledged with OK (or via the fallback timer) — see
-   * _handleAuthChallenge. Without this the bridge keeps the unauthenticated
-   * (public-only) view and never sees gated-zone mentions.
+   * Re-issue every active subscription under a FRESH wire subId so the relay
+   * both re-evaluates the REQ against the now-authenticated session AND actually
+   * resumes live delivery. Called once the NIP-42 AUTH is acknowledged with OK
+   * (or via the fallback timer) — see _handleAuthChallenge.
+   *
+   * Why a fresh id (the junkiejarvis-deafness fix): Cloudflare Durable-Object
+   * relays do NOT restart live push when a KNOWN subId is re-REQ'd — a re-REQ of
+   * an existing subscription is a no-op for delivery. Only a CLOSE of the stale
+   * id followed by a REQ under a brand-new id makes the Durable Object start
+   * pushing again. The old code re-sent the SAME subId, so after the first
+   * reconnect+re-AUTH the session re-authenticated but the subscription stayed
+   * deaf — the exact "jarvis receives at startup then goes quiet" symptom. This
+   * mirrors dreamlab-ai-website src/lib/nostr.ts (ADR-042 DmSession), which for
+   * the same reason never re-REQs a live subId and mints a fresh one each time.
+   *
+   * The caller-facing stableId is preserved (unsubscribe() keeps working); only
+   * the wireId rotates, and _wireIndex is rekeyed so inbound EVENT routing
+   * resolves to the handler under the new id. CLOSE(old)+REQ(new) is broadcast
+   * to ALL connections so the single global wireId stays consistent across
+   * relays; because a fresh id RESTORES (never suppresses) delivery, re-issuing
+   * on an already-authenticated relay is safe.
+   *
+   * Fail-open: RelayConnection.send buffers or drops on a dead socket; a replay
+   * failure never crashes the bridge.
    * @private
    */
   _replaySubscriptions(relayUrl) {
-    const conn = this._connections.get(relayUrl);
-    if (!conn) return;
-    for (const [subId, sub] of this._subscriptions.entries()) {
-      conn.send(JSON.stringify(['REQ', subId, sub.filter]));
+    if (!this._connections.get(relayUrl)) return;
+    const conns = Array.from(this._connections.values());
+    let count = 0;
+    for (const [stableId, sub] of this._subscriptions.entries()) {
+      const oldWire = sub.wireId;
+      const newWire = `sub-${++this._subCounter}`;
+      this._wireIndex.delete(oldWire);
+      sub.wireId = newWire;
+      this._wireIndex.set(newWire, stableId);
+      const closeMsg = JSON.stringify(['CLOSE', oldWire]);
+      const reqMsg   = JSON.stringify(['REQ', newWire, sub.filter]);
+      for (const conn of conns) {
+        conn.send(closeMsg);
+        conn.send(reqMsg);
+      }
+      count += 1;
     }
     console.log(
-      `[bridge] replayed ${this._subscriptions.size} subscription(s) post-AUTH to ${relayUrl}`
+      `[bridge] re-issued ${count} subscription(s) under fresh ids post-AUTH to ${relayUrl}`
     );
   }
 
@@ -679,7 +729,10 @@ class NostrBridge {
     }
 
     if (type === 'EVENT' && event) {
-      const sub = this._subscriptions.get(subId);
+      // Relays tag EVENT frames with the WIRE subId; resolve it to the stable
+      // subscription record, since the wire id rotates across post-AUTH replays.
+      const stableId = this._wireIndex.get(subId);
+      const sub = stableId ? this._subscriptions.get(stableId) : undefined;
       if (sub && this._matchesFilter(event, sub.filter)) {
         try {
           sub.handler(event, relayUrl);

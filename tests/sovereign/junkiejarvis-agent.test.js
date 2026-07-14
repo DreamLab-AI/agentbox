@@ -623,21 +623,29 @@ describe('NostrBridge NIP-42 AUTH', () => {
     bridge.disconnect();
   });
 
-  test('active subscriptions are RE-SENT after AUTH (relay evaluates REQs at REQ time)', async () => {
+  test('active subscriptions are RE-ISSUED under a FRESH id after AUTH (Durable-Object relays only resume push on a new subId)', async () => {
     const { bridge, ws } = makeAuthedBridge();
     bridge.setAuthSigner(authSigner);
     const subId = bridge.subscribe({ kinds: [42] }, () => {});
     expect(ws.sent.map(JSON.parse).filter((m) => m[0] === 'REQ').length).toBe(1);
 
+    // Answer the challenge, then let the relay ACK our AUTH so the replay fires
+    // deterministically via the OK path (authSigner signs with id 'auth-id').
     ws.simulateMessage(['AUTH', 'chal-1']);
     await flushAsync();
+    ws.simulateMessage(['OK', 'auth-id', true]);
 
     const frames = ws.sent.map(JSON.parse);
     const reqFrames = frames.filter((m) => m[0] === 'REQ');
-    expect(reqFrames.length).toBe(2); // original + post-AUTH replay
-    expect(reqFrames[1][1]).toBe(subId); // same subId replayed
+    expect(reqFrames.length).toBe(2); // original + post-AUTH re-issue
+    // The re-issue uses a BRAND-NEW wire id — reusing subId leaves the Durable
+    // Object deaf (the junkiejarvis-goes-quiet regression this guards against).
+    expect(reqFrames[1][1]).not.toBe(subId);
     expect(reqFrames[1][2]).toEqual({ kinds: [42] });
-    // Replay comes AFTER the AUTH frame on the wire.
+    // The stale id is CLOSEd so the relay releases it before the fresh REQ.
+    const closeFrames = frames.filter((m) => m[0] === 'CLOSE');
+    expect(closeFrames.map((m) => m[1])).toContain(subId);
+    // Both the CLOSE(old) and the fresh REQ land AFTER the AUTH frame.
     const authIdx = frames.findIndex((m) => m[0] === 'AUTH');
     const replayIdx = frames.map((m, i) => (m[0] === 'REQ' ? i : -1)).filter((i) => i >= 0)[1];
     expect(replayIdx).toBeGreaterThan(authIdx);

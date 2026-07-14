@@ -471,6 +471,132 @@ describe('NostrBridge.unsubscribe', () => {
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
+// Post-AUTH re-subscription: fresh wire ids (junkiejarvis-deafness regression)
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// Cloudflare Durable-Object relays do NOT resume live delivery when a KNOWN
+// subId is re-REQ'd; only a CLOSE(old)+REQ(new-id) restarts push. The bridge
+// must therefore ROTATE the wire subId on every post-AUTH replay while keeping
+// the caller-facing subId stable, and re-route inbound EVENTs to the new id.
+
+describe('NostrBridge post-AUTH re-subscription (fresh wire ids)', () => {
+  const RELAY = 'wss://gated.test';
+  const flush = () => new Promise((r) => setImmediate(r));
+  let logSpy;
+
+  beforeEach(() => { logSpy = jest.spyOn(console, 'log').mockImplementation(() => {}); });
+  afterEach(() => { logSpy.mockRestore(); });
+
+  // Signer that stamps a distinct id per AUTH cycle so the OK-ack path can be
+  // driven deterministically (no 1200 ms fallback-timer wait).
+  function makeAuthSigner() {
+    let n = 0;
+    return { sign: async (ev) => ({ ...ev, id: `auth-${++n}`, sig: 's', pubkey: 'f'.repeat(64) }) };
+  }
+
+  const reqIds   = (h) => h._sent.map(JSON.parse).filter((m) => m[0] === 'REQ').map((m) => m[1]);
+  const closeIds = (h) => h._sent.map(JSON.parse).filter((m) => m[0] === 'CLOSE').map((m) => m[1]);
+
+  it('re-issues under a fresh id, CLOSEs the stale id, and re-routes EVENTs to the new id', async () => {
+    const { bridge, handles } = makeBridge([RELAY]);
+    bridge.setAuthSigner(makeAuthSigner());
+    bridge.connect();
+    const ws = handles[RELAY];
+    ws.simulateOpen();
+
+    const received = [];
+    const stableId = bridge.subscribe([kinds.AGENT_STATE], (ev) => received.push(ev));
+    expect(reqIds(ws)).toEqual([stableId]); // initial wire id == stable id
+
+    // AUTH challenge → sign (async) → OK-ack fires the replay synchronously.
+    ws.simulateMessage(['AUTH', 'challenge-1']);
+    await flush();
+    ws.simulateMessage(['OK', 'auth-1', true]);
+
+    const afterReq = reqIds(ws);
+    expect(afterReq).toHaveLength(2);
+    const freshId = afterReq[1];
+    expect(freshId).not.toBe(stableId);          // rotated
+    expect(closeIds(ws)).toContain(stableId);    // old id released
+
+    // Inbound EVENT under the FRESH wire id routes to the handler…
+    const ev = {
+      kind: kinds.AGENT_STATE, created_at: 0, pubkey: mockValidPubkey,
+      tags: [], content: '{}', id: 'fresh-ev', sig: 's',
+    };
+    ws.simulateMessage(['EVENT', freshId, ev]);
+    expect(received.map((e) => e.id)).toEqual(['fresh-ev']);
+
+    // …and an EVENT under the now-stale id is dropped (relay would have CLOSEd it).
+    ws.simulateMessage(['EVENT', stableId, { ...ev, id: 'stale-ev' }]);
+    expect(received.map((e) => e.id)).toEqual(['fresh-ev']);
+
+    bridge.disconnect();
+  });
+
+  it('rotates again on a second re-AUTH (reconnect): each cycle yields a NEW id', async () => {
+    const { bridge, handles } = makeBridge([RELAY]);
+    bridge.setAuthSigner(makeAuthSigner());
+    bridge.connect();
+    const ws = handles[RELAY];
+    ws.simulateOpen();
+
+    const received = [];
+    const stableId = bridge.subscribe([kinds.AGENT_STATE], (ev) => received.push(ev));
+
+    // First AUTH cycle.
+    ws.simulateMessage(['AUTH', 'c1']);
+    await flush();
+    ws.simulateMessage(['OK', 'auth-1', true]);
+    const firstFresh = reqIds(ws)[1];
+
+    // Second AUTH cycle (models a reconnect that re-challenges the socket).
+    ws.simulateMessage(['AUTH', 'c2']);
+    await flush();
+    ws.simulateMessage(['OK', 'auth-2', true]);
+    const secondFresh = reqIds(ws)[2];
+
+    expect(new Set([stableId, firstFresh, secondFresh]).size).toBe(3); // all distinct
+    expect(closeIds(ws)).toEqual(expect.arrayContaining([stableId, firstFresh]));
+
+    // Delivery follows the NEWEST id; the previous fresh id is now deaf.
+    const base = { kind: kinds.AGENT_STATE, created_at: 0, pubkey: mockValidPubkey, tags: [], content: '{}', sig: 's' };
+    ws.simulateMessage(['EVENT', secondFresh, { ...base, id: 'newest' }]);
+    ws.simulateMessage(['EVENT', firstFresh,  { ...base, id: 'prev-stale' }]);
+    expect(received.map((e) => e.id)).toEqual(['newest']);
+
+    bridge.disconnect();
+  });
+
+  it('unsubscribe still works after a rotation and CLOSEs the CURRENT wire id', async () => {
+    const { bridge, handles } = makeBridge([RELAY]);
+    bridge.setAuthSigner(makeAuthSigner());
+    bridge.connect();
+    const ws = handles[RELAY];
+    ws.simulateOpen();
+
+    const received = [];
+    const stableId = bridge.subscribe([kinds.AGENT_STATE], (ev) => received.push(ev));
+    ws.simulateMessage(['AUTH', 'c1']);
+    await flush();
+    ws.simulateMessage(['OK', 'auth-1', true]);
+    const freshId = reqIds(ws)[1];
+
+    ws._sent = [];
+    // Caller still holds the ORIGINAL stableId — unsubscribe must resolve it and
+    // CLOSE the rotated wire id, not silently no-op.
+    bridge.unsubscribe(stableId);
+    expect(closeIds(ws)).toEqual([freshId]);
+
+    // No further delivery under the fresh id after unsubscribe.
+    ws.simulateMessage(['EVENT', freshId, { kind: kinds.AGENT_STATE, created_at: 0, pubkey: mockValidPubkey, tags: [], content: '{}', id: 'x', sig: 's' }]);
+    expect(received).toHaveLength(0);
+
+    bridge.disconnect();
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
 // kinds constants
 // ═════════════════════════════════════════════════════════════════════════════
 
