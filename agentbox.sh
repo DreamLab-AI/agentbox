@@ -52,6 +52,7 @@ Local lifecycle commands:
   ${GREEN}migrate-workspace${NC} One-shot rsync from legacy multi-agent-docker_workspace into agentbox-workspace, then patch override
   ${GREEN}browsercontainer${NC} Manage GPU browser container [up|down|logs|health|status|rebuild|shell|gpu]
   ${GREEN}gui-tools${NC}        Manage GPU Blender + QGIS sidecar [up|down|logs|health|status|rebuild|shell|gpu]
+  ${GREEN}openmed${NC}          Manage optional clinical-PHI redaction sidecar [up|down|logs|health|status|rebuild|shell]
   ${GREEN}xr-runtime${NC}       Manage Monado OpenXR + Godot XR test runtime [up|down|logs|health|status|rebuild|shell|gpu|vnc]
   ${GREEN}preflight${NC}        Validate the local environment + manifest before `up` (W021 audit, missing host paths, override drift)
 
@@ -567,6 +568,8 @@ XR_RUNTIME_FILE="${SCRIPT_DIR}/docker-compose.xr-runtime.yml"
 XR_RUNTIME_COMPOSE_ARGS=(--project-name agentbox -f "$XR_RUNTIME_FILE")
 GUI_TOOLS_FILE="${SCRIPT_DIR}/docker-compose.gui-tools.yml"
 GUI_TOOLS_COMPOSE_ARGS=(--project-name agentbox -f "$GUI_TOOLS_FILE")
+OPENMED_FILE="${SCRIPT_DIR}/docker-compose.openmed.yml"
+OPENMED_COMPOSE_ARGS=(--project-name agentbox -f "$OPENMED_FILE")
 # Standard ports — MAD has been deprecated; no port remap needed.
 # All services bind to their canonical ports inside the container; the
 # operator's docker-compose.override.yml may further restrict by adding
@@ -1491,7 +1494,7 @@ while [[ $# -gt 0 ]]; do
             usage
             exit 0
             ;;
-        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser|backup|restore|up|down|build|rebuild|update|ruvector|logs|shell|health|browsercontainer|gui-tools|xr-runtime|migrate-workspace|preflight)
+        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser|backup|restore|up|down|build|rebuild|update|ruvector|logs|shell|health|browsercontainer|gui-tools|openmed|xr-runtime|migrate-workspace|preflight)
             CMD="$1"
             shift
             break
@@ -1569,6 +1572,47 @@ GT_HELP
     esac
 }
 
+cmd_openmed() {
+    local subcmd="${1:-help}"
+    shift 2>/dev/null || true
+    case "$subcmd" in
+        up)
+            echo -e "${CYAN}Building and starting the OpenMed clinical-PHI sidecar...${NC}"
+            echo -e "${YELLOW}Note: refuses to serve unless [privacy_filter.openmed] prerequisites"
+            echo -e "      (license_acknowledged, onnx_runtime_present, governance_acknowledged)"
+            echo -e "      are set and the model artifact verifies. Default: all false → gated off.${NC}"
+            docker compose "${OPENMED_COMPOSE_ARGS[@]}" up -d --build
+            echo -e "${GREEN}openmed dispatched.${NC} Check: $0 openmed health / $0 openmed logs"
+            ;;
+        down)    docker compose "${OPENMED_COMPOSE_ARGS[@]}" down; echo -e "${GREEN}openmed stopped.${NC}" ;;
+        logs)    docker compose "${OPENMED_COMPOSE_ARGS[@]}" logs -f --tail 100 ;;
+        status)  docker compose "${OPENMED_COMPOSE_ARGS[@]}" ps ;;
+        health)
+            docker exec openmed bash /opt/openmed/healthcheck.sh \
+                && echo -e "${GREEN}openmed healthy${NC}" \
+                || { echo -e "${RED}openmed unhealthy (or gated off — see logs)${NC}"; exit 1; }
+            ;;
+        rebuild) docker compose "${OPENMED_COMPOSE_ARGS[@]}" down; docker compose "${OPENMED_COMPOSE_ARGS[@]}" build --no-cache; cmd_openmed up ;;
+        shell)   docker exec -it --user 1000 openmed bash ;;
+        help|*)
+            cat <<OM_HELP
+${CYAN}openmed — optional, gated clinical-PHI redaction sidecar (ADR-008 local-clinical backend)${NC}
+
+  $0 openmed up        Build + start (fail-closed on unacknowledged prerequisites)
+  $0 openmed down      Stop it
+  $0 openmed logs      Follow logs
+  $0 openmed status    Compose ps
+  $0 openmed health    In-container healthcheck
+  $0 openmed rebuild   Rebuild --no-cache and restart
+  $0 openmed shell     Shell into the container
+
+Default-off. Enable via [privacy_filter.openmed] in agentbox.toml after resolving
+the licence, ONNX runtime, and governance prerequisites. See docs/user/openmed.md.
+OM_HELP
+            ;;
+    esac
+}
+
 # Execute command
 case "${CMD:-}" in
     ssh)           cmd_ssh "$@" ;;
@@ -1596,6 +1640,7 @@ case "${CMD:-}" in
     health)            cmd_health "$@" ;;
     browsercontainer)  cmd_browsercontainer "$@" ;;
     gui-tools)         cmd_gui_tools "$@" ;;
+    openmed)           cmd_openmed "$@" ;;
     xr-runtime)        cmd_xr_runtime "$@" ;;
     migrate-workspace) cmd_migrate_workspace "$@" ;;
     preflight)         cmd_preflight "$@" ;;

@@ -823,6 +823,35 @@ section_privacy_filter() {
     :
   fi
 
+  # ── OpenMed clinical-PHI redaction sidecar (optional, gated, default-off) ──
+  if wt_yesno "OpenMed — clinical-PHI sidecar (optional)" \
+    "Add the OpenMed clinical/PHI redactor as the 'local-clinical' backend?\n\n\
+This is an ONNX PHI-detection model (ruvnet/helix) run as its own\n\
+sidecar; the privacy filter routes clinical slots to it.\n\n\
+It stays GATED OFF until THREE prerequisites are met:\n\
+ 1. helix licence verified (it is pre-release, licence unresolved)\n\
+ 2. ONNX runtime provisioned (the sidecar image provides it)\n\
+ 3. governance decided (a passing gate is NOT HIPAA compliance)\n\n\
+Enable the scaffold now and acknowledge the operator decisions?"; then
+    state_set_bool "privacy_filter.openmed.enabled" "true"
+    if wt_yesno "OpenMed — licence" \
+      "Have you verified the helix licence permits this use?\n\nSetting this false keeps the sidecar fail-closed (it will not serve)."; then
+      state_set_bool "privacy_filter.openmed.license_acknowledged" "true"
+    else
+      state_set_bool "privacy_filter.openmed.license_acknowledged" "false"
+    fi
+    if wt_yesno "OpenMed — governance" \
+      "Have you decided the compliance posture you are claiming?\n\nOpenMed's own docs disclaim that a passing gate equals HIPAA\ncompliance. Setting this false keeps the sidecar fail-closed."; then
+      state_set_bool "privacy_filter.openmed.governance_acknowledged" "true"
+    else
+      state_set_bool "privacy_filter.openmed.governance_acknowledged" "false"
+    fi
+    # onnx_runtime_present + the model artifact/lock are set when the sidecar is
+    # built and the model provisioned (./agentbox.sh openmed up). Leave as-is here.
+  else
+    state_set_bool "privacy_filter.openmed.enabled" "false"
+  fi
+
   validate_candidate
 }
 

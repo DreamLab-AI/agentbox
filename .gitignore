@@ -146,3 +146,7 @@ portfinder-*.tgz
 
 # ruvector sidecar update/backup artefacts (pg dumps, snapshots state)
 /backups/
+
+# OpenMed provisioned model + helix pipeline (licence-gated, never committed)
+openmed-sidecar/model/
+openmed-sidecar/server/

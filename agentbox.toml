@@ -788,9 +788,13 @@ timeout_ms = 120000
 # contract. Gated: the wizard only offers this when a GPU is detected or the
 # host has ≥4 cores and ≥6 GB free RAM (CPU path needs all experts resident).
 #
-# mode: off       → sidecar disabled; adapter dispatch is a pass-through.
-#       local-gpu → HF transformers pipeline, BF16 on CUDA/ROCm.
-#       local-cpu → HF transformers pipeline on CPU (~3 GB BF16 weights).
+# mode: off            → sidecar disabled; adapter dispatch is a pass-through.
+#       local-gpu      → HF transformers pipeline, BF16 on CUDA/ROCm.
+#       local-cpu      → HF transformers pipeline on CPU (~3 GB BF16 weights).
+#       local-clinical → route the clinical/PHI slots to the OpenMed sidecar
+#                        (see [privacy_filter.openmed]); PII slots still use the
+#                        base model above. Only honoured when the openmed block
+#                        is enabled AND its prerequisites are acknowledged.
 #
 # Per-slot policy values:
 #   "strict" → redact-before-persist; fail-closed if router unreachable.
@@ -817,6 +821,47 @@ outbound     = "soft"
 # Allowed: account_number, private_address, private_email, private_person,
 #          private_phone, private_url, private_date, secret.
 enabled = []
+
+# ── OpenMed clinical-PHI redaction sidecar (optional, gated, DEFAULT OFF) ──────
+# Layers a clinical/PHI redactor onto the ADR-008 privacy-filter seam, as the
+# `local-clinical` backend above. OpenMed is an ONNX PHI-detection model
+# (ruvnet/helix `helix-openmed` Rust policy + `helix-wasm` unicode-safe gates +
+# an ONNX runtime). Runs as its own sidecar (docker-compose.openmed.yml /
+# `./agentbox.sh openmed <up|down|health>`); the privacy filter calls it over
+# the port below and applies redaction before persistence, reusing the existing
+# `wrapWithPrivacyFilter` middleware — no new adapter slot, no new MCP tool.
+#
+# THREE PREREQUISITES gate activation (fail-closed — the boot probe refuses to
+# start the sidecar unless all three are satisfied, mirroring the mainnet guard):
+#   1. license_acknowledged  — helix is pre-release (v0.1.0) with an unresolved
+#      LICENSE. Set true only after the operator has verified the licence permits
+#      this use. Vendoring the model/code is blocked until then.
+#   2. onnx_runtime_present   — no ONNX runtime is packaged in the image yet
+#      (the same gap PRD-016 deferred for "Kompress ML"). The sidecar Dockerfile
+#      provisions it; this flag records that it is available.
+#   3. governance_acknowledged — a passing gate is NOT HIPAA Safe Harbor / Expert
+#      Determination (OpenMed's own docs disclaim this). Set true only after the
+#      operator has decided the compliance posture being claimed.
+# The HMAC key OpenMed requires is derived via the existing ADR-029 child-key
+# scheme (HMAC-SHA256(operator_sk, key_tag)) — no new secret store.
+[privacy_filter.openmed]
+enabled                 = false
+port                    = 9093
+# Content-addressed model artifact + SHA-256 lock, provisioned into the sidecar
+# (never committed to this repo). Empty until the operator provisions them.
+model_artifact          = ""
+artifact_lock_sha256    = ""
+hmac_key_tag            = "agentbox-openmed-v1"   # ADR-029 child-key derivation tag
+# Fail-closed prerequisite gates (see comment above) — all must be true to run.
+license_acknowledged    = false
+onnx_runtime_present    = false
+governance_acknowledged = false
+# Which privacy-filter slots route to the clinical redactor when active.
+[privacy_filter.openmed.policy]
+pods    = "strict"
+memory  = "strict"
+inbound = "soft"
+outbound = "soft"
 
 # ── Linked-Data interchange (PRD-006 / ADR-012 / DDD-004) ──────────────────────
 # Master gate for the eleven JSON-LD federation surfaces. Default off — a

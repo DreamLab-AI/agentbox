@@ -1,0 +1,40 @@
+services:
+  openmed:
+    container_name: openmed
+    hostname: openmed
+    build:
+      context: ./openmed-sidecar
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "bash", "/opt/openmed/healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    environment:
+      - OPENMED_PORT=9093
+      # Prerequisite gates — mirrored from [privacy_filter.openmed] in agentbox.toml.
+      # All default false: the container refuses to serve until the operator sets them.
+      - OPENMED_LICENSE_ACKNOWLEDGED=${OPENMED_LICENSE_ACKNOWLEDGED:-false}
+      - OPENMED_ONNX_RUNTIME_PRESENT=${OPENMED_ONNX_RUNTIME_PRESENT:-false}
+      - OPENMED_GOVERNANCE_ACKNOWLEDGED=${OPENMED_GOVERNANCE_ACKNOWLEDGED:-false}
+      - OPENMED_MODEL_ARTIFACT=${OPENMED_MODEL_ARTIFACT:-}
+      - OPENMED_ARTIFACT_LOCK_SHA256=${OPENMED_ARTIFACT_LOCK_SHA256:-}
+      # ADR-029 child-key derivation tag; the derived HMAC key is injected at runtime,
+      # never baked into the image.
+      - OPENMED_HMAC_KEY_TAG=${OPENMED_HMAC_KEY_TAG:-agentbox-openmed-v1}
+    ports:
+      - "127.0.0.1:9093:9093"
+    networks:
+      - visionclaw
+    # A provisioned model directory is bind-mounted at deploy (kept out of the image
+    # and out of git). Uncomment and point at the operator's model store:
+    # volumes:
+    #   - ${OPENMED_MODEL_DIR:-./openmed-sidecar/model}:/opt/openmed/model:ro
+    #   - ${OPENMED_SERVER_DIR:-./openmed-sidecar/server}:/opt/openmed/server:ro
+
+networks:
+  visionclaw:
+    external: true
+    name: visionclaw_network
