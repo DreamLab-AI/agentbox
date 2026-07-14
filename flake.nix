@@ -28,7 +28,41 @@
       let
         pkgs = import nixpkgs {
           inherit system;
-          overlays = [ rust-overlay.overlays.default ];
+          overlays = [
+            rust-overlay.overlays.default
+            # nixpkgs e7a3ca8 (2026-07-11) carries two build breaks this image
+            # hits; both are upstream, neither is agentbox config:
+            #  - pdal 2.9.3 fails against the newer GDAL const API
+            #    (CSLConstList -> char** conversion in Raster.cpp:704, a
+            #    gcc -fpermissive-class error) and blocks qgis. Fixed in
+            #    pdal post-2.9.3; compile permissively until nixpkgs catches up.
+            #  - python inline-snapshot 0.32.5 fails a cosmetic docs-format
+            #    test (mkdocs hl_lines off-by-one vs a newer dep) and blocks
+            #    the openai/jupyter python chain. Skip its test suite only.
+            # Drop both overrides on the next nixpkgs bump that builds clean.
+            (final: prev: {
+              pdal = prev.pdal.overrideAttrs (old: {
+                env = (old.env or { }) // {
+                  NIX_CFLAGS_COMPILE =
+                    (old.env.NIX_CFLAGS_COMPILE or "") + " -fpermissive";
+                };
+              });
+              pythonPackagesExtensions = (prev.pythonPackagesExtensions or [ ]) ++ [
+                (pyFinal: pyPrev: {
+                  inline-snapshot = pyPrev.inline-snapshot.overridePythonAttrs
+                    (_: { doCheck = false; });
+                  # pandas-stubs 2.3.3: 23/2178 tests fail on pandas/numpy
+                  # version skew (missing FutureWarnings, deprecated numpy
+                  # timedelta 'generic' unit). Stubs are type annotations only;
+                  # skip the test suite, same treatment as inline-snapshot.
+                  # pythonImportsCheck imports pandas, which only enters the
+                  # build env via checkInputs — clearing doCheck must clear it too.
+                  pandas-stubs = pyPrev.pandas-stubs.overridePythonAttrs
+                    (_: { doCheck = false; pythonImportsCheck = [ ]; });
+                })
+              ];
+            })
+          ];
           config = {
             allowUnfree = true;
             # python3.12-ecdsa is flagged insecure upstream (timing-side-channel
@@ -113,9 +147,9 @@
         #    nix-prefetch-url https://registry.npmjs.org/ruvector/-/ruvector-0.2.25.tgz
         ruvectorPkg = mkNpmCli {
           pkgName         = "ruvector";
-          version         = "0.2.32";
-          sha256          = "sha256-JEVa8Rn7DgQHQOpcNF0DboNLH1uoZc226+eox5yWpn0=";
-          nodeModulesHash = "sha256-Kevyj1TCfBl4jb2io4qlQgQD5rJwnroTSFV1yHjEm/I=";
+          version         = "0.2.34";
+          sha256          = "sha256-lXvClsufT38cpyPAKZCiBbqpzYilG2OYudaVdo5WUco=";
+          nodeModulesHash = "sha256-Eft92d17aEoqCJppSI3SVK59IPZtPbe/F9nr2Al8cnY=";
           bin             = "ruvector";
         };
 
@@ -123,9 +157,9 @@
         #    nix-prefetch-url https://registry.npmjs.org/%40claude-flow/cli/-/cli-3.6.12.tgz
         claudeFlowPkg = mkNpmCli {
           pkgName         = "@claude-flow/cli";
-          version         = "3.14.4";
-          sha256          = "sha256-ars0PnBq+VYI3FRpMK2/W6U9HBJPvQXjrekStFltsrY=";
-          nodeModulesHash = "sha256-5A45CO3iTq5Dh7icjGG0yQ7JaHQQMAecICzd18idpiQ=";
+          version         = "3.26.1";
+          sha256          = "sha256-Yor16SS9nMN1L7Js6vL+yh5CpuEuIdTXn38LN5WnEeY=";
+          nodeModulesHash = "sha256-FtWmKiZFERQvNQdbB3NhcUFlTC19kN/vGD7pbn/DY4A=";
           bin             = "claude-flow";
         };
 
@@ -133,9 +167,9 @@
         #    nix-prefetch-url https://registry.npmjs.org/ruflo/-/ruflo-3.6.12.tgz
         rufloPkg = mkNpmCli {
           pkgName         = "ruflo";
-          version         = "3.14.4";
-          sha256          = "sha256-jdYTjAt+s4bpZf9pHdaalaeoHZ+04kIBWyTdjavsmag=";
-          nodeModulesHash = "sha256-TyG2WOrNx3QV4AI9ozain5EgAQlYiCnhGs/8HRg46LE=";
+          version         = "3.26.1";
+          sha256          = "sha256-alT9GTZpXme9rFF8NbJsitaTlPvK8lltQ7y+o4yCQtE=";
+          nodeModulesHash = "sha256-IO61yDAcHIrTX8Kf/igb+ryosmQFAwja0tlJAVtAdVs=";
           bin             = "ruflo";
         };
 
@@ -147,9 +181,9 @@
         #    nix-prefetch-url https://registry.npmjs.org/agentic-qe/-/agentic-qe-3.9.18.tgz
         agenticQePkg = mkNpmCli {
           pkgName         = "agentic-qe";
-          version         = "3.11.3";
-          sha256          = "sha256-WzwPH8AOsIuKdcdskmujKrzjWM1O889pBfShNns91Mo=";
-          nodeModulesHash = "sha256-e8LBzbrkKTgUhpsmYLwn6fHwaGkFvEgL2LAurjyQp98=";
+          version         = "3.12.2";
+          sha256          = "sha256-8n4515jWaOwYWTGUsyoeHRHR31QKQuXOG5u0CMMGl3U=";
+          nodeModulesHash = "sha256-JzNSPFweSD/TQ7nlZE3VxtQeoeey7Y931vf9QhncXvI=";
           bin             = "aqe";
         };
 
@@ -163,9 +197,9 @@
         #    nix-prefetch-url https://registry.npmjs.org/codebase-memory-mcp/-/codebase-memory-mcp-0.6.0.tgz
         codebaseMemoryPkg = mkNpmCli {
           pkgName         = "codebase-memory-mcp";
-          version         = "0.8.1";
-          sha256          = "sha256-z2l+JTn1kFwByTAE/z8jIxkZWnahdsvcFQ0hl7J8Ang=";
-          nodeModulesHash = "sha256-+I72VyWOwXDKK+lUMaKNwiQpEdkBGL406a9AgJjbbu4=";
+          version         = "0.9.0";
+          sha256          = "sha256-/sb2gPJmLt6kjOSEf/EV7cjCXw0to8pv37j/Etzn2Es=";
+          nodeModulesHash = "sha256-tBHj4iyTOb1rMyp2lH0MghP4lzBowXSYJsYbKcro/c0=";
           bin             = "codebase-memory-mcp";
         };
 
@@ -184,9 +218,9 @@
         #      nodeModulesHash to harvest the real hash from the error.
         mermaidCliPkg = mkNpmCli {
           pkgName         = "@mermaid-js/mermaid-cli";
-          version         = "11.15.0";
-          sha256          = "sha256-9v0Iedv1AORTeEu9nbkq6VEJfg6eipDsYT8r08qPoGw=";
-          nodeModulesHash = "sha256-JBMDaUnR+TcPK5qZrTqm3CGU2m5b8bTOMEbe4Pf0cP8=";
+          version         = "11.16.0";
+          sha256          = "sha256-ZdeVGRv5ymypCkCh6jA1SmpJHiBmdMr9TZ3mL+kHVDk=";
+          nodeModulesHash = "sha256-JIYR/HKW4w28QiGF/Nf+9Fckv/jySaamKzmJL5Afh8Y=";
           bin             = "mmdc";
         };
 
@@ -207,7 +241,7 @@
           pkgName         = "wrangler";
           version         = "4.78.0";
           sha256          = "sha256-tC1kgCS3jQSKkgGChKOrVPMTZkZ4p3x+D3rtK3j/NJk=";
-          nodeModulesHash = "sha256-4IRZZ2WSttxrrEcVWHbH+nPeRA79MaPVeUagitb2q4E=";
+          nodeModulesHash = "sha256-2CEp4AC0WjpjuGqiCDyxpDNFAZDZoGj++wh3mLnBdQQ=";
           bin             = "wrangler";
           # wrangler's devDependencies reference private @cloudflare/*
           # packages not on the public npm registry — strip them so npm
