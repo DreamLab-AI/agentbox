@@ -1022,7 +1022,9 @@ cmd_health() {
             fi
         fi
 
-        [[ -n "$degraded" ]] && exit 1
+        if [[ -n "$degraded" ]]; then
+            exit 1
+        fi
     else
         echo -e "${YELLOW}Note: jq not found; showing raw response.${NC}"
         printf '%s\n' "$response"

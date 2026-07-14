@@ -477,7 +477,11 @@ app.get('/health', {
           uptime: { type: 'number' },
           image_hash: { type: ['string', 'null'] },
           manifest_checksum: { type: ['string', 'null'] },
-          adapters: { type: 'object' }
+          // fast-json-stringify strips undeclared properties; without
+          // additionalProperties the adapter map serializes as {}
+          adapters: { type: 'object', additionalProperties: { type: 'string' } },
+          degraded_count: { type: 'number' },
+          note: { type: 'string' }
         }
       }
     }

@@ -16,7 +16,10 @@ echo -e "${CYAN}=== Post-Deploy Cleanup ===${NC}"
 CURRENT_ID=$(docker inspect agentbox --format '{{.Image}}' 2>/dev/null | sed 's/sha256://' | head -c 12)
 if [ -n "$CURRENT_ID" ]; then
     echo -e "${CYAN}[1/5] Pruning old agentbox images (keeping ${CURRENT_ID})...${NC}"
-    docker images --format '{{.ID}} {{.Repository}}:{{.Tag}}' 2>/dev/null | grep agentbox | while read id tag; do
+    # Match only the runtime image repo "agentbox" exactly — sidecar images
+    # (agentbox-gui-tools-service, agentbox-xr-runtime, agentbox-browsercontainer)
+    # must never be pruned here.
+    docker images --format '{{.ID}} {{.Repository}}:{{.Tag}}' 2>/dev/null | grep ' agentbox:' | while read id tag; do
         short_id=$(echo "$id" | head -c 12)
         if [ "$short_id" != "$CURRENT_ID" ]; then
             echo "  Removing: $tag ($short_id)"
