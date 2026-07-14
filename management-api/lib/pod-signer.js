@@ -52,7 +52,12 @@ function buildPodNip98(manifest, deps = {}) {
   let bridge = null;
   const getBridge = () => {
     if (deps.bridge) return deps.bridge;
-    if (!bridge) bridge = require('../../mcp/servers/nostr-bridge');
+    if (!bridge) {
+      // Vendored into lib/ at build time (flake buildPhaseExtra); the sibling
+      // mcp/ path only resolves from the source checkout.
+      try { bridge = require('./nostr-bridge'); }
+      catch { bridge = require('../../mcp/servers/nostr-bridge'); }
+    }
     return bridge;
   };
   const loadSigner = deps.loadSigner || ((s, o) => getBridge().loadSigner(s, o));

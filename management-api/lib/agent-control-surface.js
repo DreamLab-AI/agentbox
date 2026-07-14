@@ -31,7 +31,12 @@
  * never re-declared here.
  */
 
-const { kinds } = require('../../mcp/servers/nostr-bridge');
+// Vendored into lib/ at build time (flake buildPhaseExtra copies
+// mcp/servers/nostr-bridge.js → lib/); fall back to the sibling mcp/ tree
+// when running from the source checkout (dev / standalone).
+let kinds;
+try { ({ kinds } = require('./nostr-bridge')); }
+catch { ({ kinds } = require('../../mcp/servers/nostr-bridge')); }
 
 // ─── Enum domains (kebab-case, mirrors governance.rs serde rename_all) ──────────
 

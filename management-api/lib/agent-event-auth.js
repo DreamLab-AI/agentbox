@@ -57,8 +57,15 @@ function verifyAgentEventRequest(request, deps = {}) {
     return { ok: false, status: 401, error: 'NIP-98 Authorization header required' };
   }
 
-  const verify =
-    deps.verify || require('../../mcp/servers/nostr-bridge').NostrBridge.verifyNip98;
+  // Vendored into lib/ at build time (flake buildPhaseExtra); the sibling
+  // mcp/ path only resolves from the source checkout.
+  let verify = deps.verify;
+  if (!verify) {
+    let bridgeMod;
+    try { bridgeMod = require('./nostr-bridge'); }
+    catch { bridgeMod = require('../../mcp/servers/nostr-bridge'); }
+    verify = bridgeMod.NostrBridge.verifyNip98;
+  }
   // The originator strips the query string from the signed `u` tag, so compare
   // against the path only (verifyNip98 accepts urlTag.endsWith(url)).
   const pathOnly = String((request && request.url) || '').split('?')[0];
