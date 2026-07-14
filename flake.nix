@@ -1208,6 +1208,12 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           ln -sf ${pkgs.glibc}/lib/ld-linux-x86-64.so.2 $out/lib64/ld-linux-x86-64.so.2
         '';
 
+        # QGIS MCP transport. DECONFLATED 2026-07-14: QGIS itself moved to the GPU
+        # sidecar (gui-tools-service) — nix-built QGIS in agentbox-main cannot reach the
+        # nvidia driver libs injected into /usr/lib (nix RPATHs exclude it) and has no GPU
+        # GL context, the same constraint as Blender. qgis_mcp_standalone.py is now a thin
+        # TCP proxy (localhost:9877 -> gui-tools-service:9877), not the old local stub;
+        # set GUI_CONTAINER_HOST in the container env to retarget. See docs/user/blender.md.
         qgisServiceBlock = ''
 [program:qgis-mcp]
 command=${pkgs.python312}/bin/python3 -u /opt/agentbox/scripts/qgis_mcp_standalone.py
@@ -1221,6 +1227,18 @@ stdout_logfile=/var/log/qgis-mcp.log
 stderr_logfile=/var/log/qgis-mcp.error.log
         '';
 
+        # Blender MCP transport. This supervised program is the "client / federated"
+        # path: it runs blender-mcp-proxy.js, which bridges the local BlenderMCP socket
+        # (127.0.0.1:9876, what agents connect to) to a Blender running in an external
+        # GPU-capable GUI sidecar. Blender is NOT served locally: the BlenderMCP addon
+        # needs an OpenGL context inside Blender's GUI event loop, and the in-container
+        # TigerVNC display (:1) does not advertise GLX_ARB_create_context, so a local GUI
+        # Blender cannot obtain a context. Point the proxy at a live BlenderMCP host by
+        # setting GUI_CONTAINER_HOST / GUI_BLENDER_PORT in the container environment
+        # (inherited here). For pure batch bpy work (scripting + rendering) that needs no
+        # socket server, run `blender --background --python <script>` directly instead.
+        # Health: `node /opt/agentbox/skills/blender/tools/blender-health.js`.
+        # See docs/user/blender.md and skills/blender/SKILL.md.
         blenderServiceBlock = ''
 [program:blender-mcp]
 command=${pkgs.nodejs_22}/bin/node /opt/agentbox/skills/blender/tools/blender-mcp-proxy.js

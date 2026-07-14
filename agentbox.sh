@@ -51,6 +51,7 @@ Local lifecycle commands:
   ${GREEN}health${NC}           Show service health [--json: raw JSON output]
   ${GREEN}migrate-workspace${NC} One-shot rsync from legacy multi-agent-docker_workspace into agentbox-workspace, then patch override
   ${GREEN}browsercontainer${NC} Manage GPU browser container [up|down|logs|health|status|rebuild|shell|gpu]
+  ${GREEN}gui-tools${NC}        Manage GPU Blender + QGIS sidecar [up|down|logs|health|status|rebuild|shell|gpu]
   ${GREEN}xr-runtime${NC}       Manage Monado OpenXR + Godot XR test runtime [up|down|logs|health|status|rebuild|shell|gpu|vnc]
   ${GREEN}preflight${NC}        Validate the local environment + manifest before `up` (W021 audit, missing host paths, override drift)
 
@@ -564,6 +565,8 @@ fi
 SIDECAR_COMPOSE_ARGS=(--project-name agentbox -f "$SIDECAR_FILE")
 XR_RUNTIME_FILE="${SCRIPT_DIR}/docker-compose.xr-runtime.yml"
 XR_RUNTIME_COMPOSE_ARGS=(--project-name agentbox -f "$XR_RUNTIME_FILE")
+GUI_TOOLS_FILE="${SCRIPT_DIR}/docker-compose.gui-tools.yml"
+GUI_TOOLS_COMPOSE_ARGS=(--project-name agentbox -f "$GUI_TOOLS_FILE")
 # Standard ports — MAD has been deprecated; no port remap needed.
 # All services bind to their canonical ports inside the container; the
 # operator's docker-compose.override.yml may further restrict by adding
@@ -1488,7 +1491,7 @@ while [[ $# -gt 0 ]]; do
             usage
             exit 0
             ;;
-        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser|backup|restore|up|down|build|rebuild|update|ruvector|logs|shell|health|browsercontainer|xr-runtime|migrate-workspace|preflight)
+        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser|backup|restore|up|down|build|rebuild|update|ruvector|logs|shell|health|browsercontainer|gui-tools|xr-runtime|migrate-workspace|preflight)
             CMD="$1"
             shift
             break
@@ -1500,6 +1503,71 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+cmd_gui_tools() {
+    local subcmd="${1:-help}"
+    shift 2>/dev/null || true
+    case "$subcmd" in
+        up)
+            echo -e "${CYAN}Building and starting gui-tools-service (GPU Blender + QGIS sidecar)...${NC}"
+            docker compose "${GUI_TOOLS_COMPOSE_ARGS[@]}" up -d --build
+            echo -e "${CYAN}Waiting for BlenderMCP health (start-period ~60s)...${NC}"
+            local deadline=$(( $(date +%s) + 120 )) ready=0
+            while [[ $(date +%s) -lt $deadline ]]; do
+                if docker exec gui-tools-service bash /opt/gui-tools/healthcheck.sh >/dev/null 2>&1; then ready=1; break; fi
+                sleep 3
+            done
+            if [[ "$ready" -eq 0 ]]; then
+                echo -e "${RED}Health check timed out.${NC} Check logs: $0 gui-tools logs"
+                exit 1
+            fi
+            echo -e "${GREEN}gui-tools-service is up.${NC}"
+            echo -e "  ${GREEN}BlenderMCP :${NC} gui-tools-service:9876 (agentbox proxy bridges localhost:9876)"
+            echo -e "  ${GREEN}QGIS MCP   :${NC} gui-tools-service:9877"
+            echo -e "  ${GREEN}VNC        :${NC} vnc://localhost:5905"
+            ;;
+        down)
+            docker compose "${GUI_TOOLS_COMPOSE_ARGS[@]}" down
+            echo -e "${GREEN}gui-tools-service stopped.${NC}"
+            ;;
+        logs)    docker compose "${GUI_TOOLS_COMPOSE_ARGS[@]}" logs -f --tail 100 ;;
+        status)  docker compose "${GUI_TOOLS_COMPOSE_ARGS[@]}" ps ;;
+        health)
+            docker exec gui-tools-service bash /opt/gui-tools/healthcheck.sh \
+                && echo -e "${GREEN}gui-tools-service healthy${NC}" \
+                || { echo -e "${RED}gui-tools-service unhealthy${NC}"; exit 1; }
+            ;;
+        gpu)
+            echo -e "${CYAN}GPU + GL inside gui-tools-service:${NC}"
+            docker exec gui-tools-service nvidia-smi -L 2>/dev/null || echo -e "${RED}nvidia-smi unavailable${NC}"
+            docker exec gui-tools-service vulkaninfo --summary 2>/dev/null | head -12 || echo -e "${RED}vulkaninfo unavailable${NC}"
+            ;;
+        rebuild)
+            docker compose "${GUI_TOOLS_COMPOSE_ARGS[@]}" down
+            docker compose "${GUI_TOOLS_COMPOSE_ARGS[@]}" build --no-cache
+            cmd_gui_tools up
+            ;;
+        shell)   docker exec -it --user 1000 gui-tools-service bash ;;
+        help|*)
+            cat <<GT_HELP
+${CYAN}gui-tools-service — GPU-accelerated FHS sidecar for Blender + QGIS${NC}
+
+  $0 gui-tools up        Build + start the sidecar, wait for BlenderMCP health
+  $0 gui-tools down      Stop it
+  $0 gui-tools logs      Follow logs
+  $0 gui-tools status    Compose ps
+  $0 gui-tools health    Run the in-container healthcheck
+  $0 gui-tools gpu       Show GPU + Vulkan status inside the container
+  $0 gui-tools rebuild   Rebuild --no-cache and restart
+  $0 gui-tools shell     Shell into the container
+
+Blender runs here (VirtualGL → GPU EGL) because nix agentbox-main cannot give it a
+GPU GL context. agentbox's blender-mcp-proxy / qgis proxy bridge localhost:9876/9877
+to this sidecar. See docs/user/blender.md.
+GT_HELP
+            ;;
+    esac
+}
 
 # Execute command
 case "${CMD:-}" in
@@ -1527,6 +1595,7 @@ case "${CMD:-}" in
     shell)             cmd_shell "$@" ;;
     health)            cmd_health "$@" ;;
     browsercontainer)  cmd_browsercontainer "$@" ;;
+    gui-tools)         cmd_gui_tools "$@" ;;
     xr-runtime)        cmd_xr_runtime "$@" ;;
     migrate-workspace) cmd_migrate_workspace "$@" ;;
     preflight)         cmd_preflight "$@" ;;

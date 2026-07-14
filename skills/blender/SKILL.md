@@ -1,205 +1,162 @@
 ---
 name: blender
-description: "Control Blender for 3D modeling, scene creation, and rendering operations via socket-based communication. Use when doing 3D modelling, scene creation, rendering, or Blender automation."
+description: "Meta-skill for driving Blender via BlenderMCP: 3D modelling (box, hard-surface, boolean), digital sculpting, PBR material authoring, lighting, rendering, and scene assembly. Claude writes and runs bpy Python (execute_code), screenshots the viewport, inspects, and corrects — with GPU renders via blender-batch and interactive sessions via the gui-tools GPU sidecar. Use this whenever a task involves Blender, a .blend file, 3D modelling/sculpting/texturing, a Cycles or EEVEE render, or generating and processing 3D assets — even when the user does not name Blender explicitly (e.g. 'model a low-poly house', 'sculpt a creature head', 'make a PBR metal material', 'render this scene on the GPU', 'build a modular sci-fi corridor kit'). Not for 2D image editing (use imagemagick), text-to-image generation (use comfyui), or GIS map rendering (use qgis)."
 ---
 
 # Blender 3D Skill
 
-This skill enables Claude to interact with Blender for 3D modeling, scene manipulation, material application, and rendering operations through a socket-based server.
+Drive Blender programmatically through **BlenderMCP** — a socket bridge that lets an agent
+run arbitrary `bpy` Python inside a live Blender, see the result, and iterate. This skill is
+the distilled method for doing that well: how to connect, the working loop, the real command
+surface, version-specific `bpy` facts, and per-domain technique references.
 
-## Capabilities
+## Mental model (read this first)
 
-- Create and manipulate 3D objects (meshes, curves, lights, cameras)
-- Apply and modify materials with PBR properties
-- Manage scenes and collections
-- Execute Blender Python scripts
-- Render scenes with various settings
-- Import/export 3D models in multiple formats
+Claude does **not** model by clicking tools. It:
 
-## When to Use This Skill
+1. **Decomposes** the target into an ordered build plan (blockout → parts → detail → material → light → render).
+2. **Writes a `bpy` script** for one step and runs it via `execute_code`.
+3. **Looks** at the result with `get_viewport_screenshot`, and introspects state with `get_scene_info` / `get_object_info`.
+4. **Corrects** and moves to the next step.
 
-Use this skill when you need to:
-- Create 3D models programmatically
-- Automate Blender workflows
-- Generate scenes from descriptions
-- Batch process 3D assets
-- Create visualization prototypes
-- Prepare renders for design review
+`execute_code` is the workhorse — roughly 90% of all work is Python you send through it. The
+other commands exist so you can *see* and *verify*. Never assume a step worked; screenshot and
+check, because errors compound when the next piece snaps or parents to a wrong origin.
 
-## When Not To Use
+## When to use
 
-- For 2D image processing (resize, crop, filter, format conversion) -- use the imagemagick skill instead
-- For AI image generation from text prompts -- use the comfyui skill instead
-- For diagrams and flowcharts -- use the mermaid-diagrams skill instead
-- For video editing, transcoding, or audio extraction -- use the ffmpeg-processing skill instead
-- For geospatial 3D visualisation -- use the qgis skill instead
+- Create or edit 3D models, sculpts, or scenes programmatically
+- Author PBR materials / shader node graphs
+- Set up cameras, lights, and render a scene
+- Batch-process or procedurally generate 3D assets
+- Build modular asset libraries or environments
 
-## Prerequisites
+## When NOT to use
 
-- Blender must be running with the socket server plugin active
-- Default connection: localhost:2800
-- Blender 3.0+ recommended
+- 2D image processing (resize, crop, filter, convert) → **imagemagick** skill
+- AI image generation from a text prompt → **comfyui** skill
+- Diagrams / flowcharts → **mermaid-diagrams** skill
+- Video editing / transcoding / audio → **ffmpeg-processing** skill
+- Geospatial 3D → **qgis** skill
 
-## Instructions
+## Connecting (do this before any modelling)
 
-### Basic Object Creation
+BlenderMCP has two halves that must both be running:
 
-To create 3D objects:
-1. Specify the object type (mesh, curve, light, camera)
-2. Provide position, rotation, scale parameters
-3. Optionally apply materials and modifiers
+- **Blender side**: the "Blender MCP" addon runs a raw TCP JSON server. Enable the addon, open
+  `View3D > Sidebar (N) > BlenderMCP`, and click **Connect to MCP server**. It listens on
+  `localhost:9876` by default. This is **per-session** — a fresh Blender starts with the socket
+  closed even though the addon stays enabled.
+- **Agent side**: an MCP server launched with `uvx blender-mcp`, registered in your MCP client
+  (`.mcp.json` entry: `{"command": "uvx", "args": ["blender-mcp"]}`).
 
-### Scene Management
+**Verify the link before working** — run the health check, which distinguishes the failure
+modes that actually happen:
 
-For scene operations:
-1. Create or select a scene
-2. Add objects to collections
-3. Configure lighting and camera setup
-4. Set render parameters
-
-### Material Application
-
-To apply materials:
-1. Specify the object to modify
-2. Define material properties (color, metallic, roughness)
-3. Configure texture mapping if needed
-
-## Tool Functions
-
-### `create_object`
-Create a new 3D object in Blender.
-
-Parameters:
-- `type` (required): "cube" | "sphere" | "cylinder" | "plane" | "monkey" | "camera" | "light"
-- `name` (optional): Object name (default: auto-generated)
-- `location` (optional): [x, y, z] coordinates (default: [0, 0, 0])
-- `scale` (optional): [x, y, z] scale values (default: [1, 1, 1])
-- `rotation` (optional): [x, y, z] rotation in radians (default: [0, 0, 0])
-
-### `apply_material`
-Apply a material to an object.
-
-Parameters:
-- `object_name` (required): Name of the object
-- `material_name` (required): Name for the new material
-- `base_color` (optional): [R, G, B, A] values 0-1 (default: [0.8, 0.8, 0.8, 1.0])
-- `metallic` (optional): Metallic value 0-1 (default: 0.0)
-- `roughness` (optional): Roughness value 0-1 (default: 0.5)
-- `emission` (optional): [R, G, B] emission color (default: [0, 0, 0])
-
-### `execute_script`
-Execute arbitrary Python code in Blender.
-
-Parameters:
-- `script` (required): Python code to execute
-- `return_data` (optional): boolean, capture and return output (default: false)
-
-### `render_scene`
-Render the current scene.
-
-Parameters:
-- `output_path` (required): Path to save the render
-- `resolution_x` (optional): Render width in pixels (default: 1920)
-- `resolution_y` (optional): Render height in pixels (default: 1080)
-- `samples` (optional): Number of render samples (default: 128)
-- `engine` (optional): "CYCLES" | "EEVEE" (default: "CYCLES")
-
-### `import_model`
-Import a 3D model file.
-
-Parameters:
-- `file_path` (required): Path to the model file
-- `format` (optional): "obj" | "fbx" | "gltf" | "stl" (auto-detected from extension)
-
-### `export_model`
-Export objects to a file.
-
-Parameters:
-- `file_path` (required): Path to save the exported file
-- `objects` (optional): List of object names to export (default: all selected)
-- `format` (optional): "obj" | "fbx" | "gltf" | "stl" (auto-detected from extension)
-
-## Examples
-
-### Example 1: Create a Simple Scene
-```
-Use the Blender skill to create a scene with:
-- A cube at the origin
-- A camera at position [5, -5, 5] looking at the origin
-- A sun light at [0, 0, 10]
-- Apply a red metallic material to the cube
+```bash
+node tools/blender-health.js          # PASS / FAIL [refused|silent-close|timeout|bad-json]
+# env: BLENDER_HOST (default localhost), BLENDER_PORT (default 9876)
 ```
 
-### Example 2: Batch Material Application
-```
-Apply different PBR materials to objects in the scene:
-- Cube: metallic gold (metallic=1.0, roughness=0.2, base_color=[1.0, 0.766, 0.336, 1.0])
-- Sphere: rough plastic (metallic=0.0, roughness=0.8, base_color=[0.1, 0.5, 0.8, 1.0])
-```
+Full setup, the `uvx` registration, container-split topology, asset-integration toggles, and
+troubleshooting: **[references/connection-and-protocol.md](references/connection-and-protocol.md)**.
 
-### Example 3: Automated Rendering Pipeline
-```
-Set up and render multiple camera angles:
-1. Create 4 cameras around the object in a circle
-2. For each camera, render a 4K image
-3. Save renders to /output/render_001.png through render_004.png
-```
+### Deployment topology (agentbox)
 
-## Technical Details
+There are two paths, because agentbox's main image is **nix-built** and nix binaries don't
+search `/usr/lib`, where the nvidia-container-runtime injects the GPU driver libraries — so
+in-container Blender is blind to the GPU for both CUDA and GL unless helped.
 
-- Uses socket communication on port 2800 (configurable)
-- Supports async operations for long-running tasks
-- Python scripts execute in Blender's Python environment
-- Materials use Principled BSDF shader
-- Render operations can be queued
+- **Headless GPU batch (local, works now):** run `tools/blender-batch.sh script.py` (or
+  `--render file.blend out.png`). It prepends `/usr/lib` to `LD_LIBRARY_PATH` so Cycles finds
+  the injected `libcuda` and renders on the GPUs. No GL context / socket server needed. This is
+  the reliable path for "run a `bpy` script, render an image."
+- **Interactive BlenderMCP (GPU sidecar):** the socket server needs a GUI GL context, which the
+  in-container VNC display can't provide. So Blender runs in the **`gui-tools-service`** GPU
+  sidecar (Arch/FHS, VirtualGL → GPU EGL), and `tools/blender-mcp-proxy.js` bridges
+  `localhost:9876 → gui-tools-service:9876`. Bring the sidecar up with
+  `./agentbox.sh gui-tools up`. If it's down, the proxy accepts then closes with no reply —
+  the health check reports `silent-close`, not `refused`.
 
-## Error Handling
+Run `node tools/blender-health.js` to confirm the interactive path is live before using it.
 
-The skill handles:
-- Blender not running (connection refused)
-- Invalid object names (suggests alternatives)
-- Script execution errors (returns Python traceback)
-- Render failures (provides diagnostic info)
+## The real command surface
 
-## Integration with Other Skills
+Everything BlenderMCP exposes (anything else goes through `execute_code`):
 
-Works well with:
-- `imagemagick` skill for post-processing renders
+| Command | Purpose |
+|---|---|
+| `get_scene_info` | List objects, materials, scene state |
+| `get_object_info(name)` | Mesh/transform detail for one object |
+| `get_viewport_screenshot(max_size, filepath, format)` | See the current viewport |
+| `execute_code(code)` | Run arbitrary `bpy` Python — **the workhorse** |
+| `get_telemetry_consent` | Addon housekeeping |
 
-## Performance Notes
+Optional, only if the user enables the matching toggle in the addon panel:
 
-- Object creation: < 100ms
-- Material application: < 50ms
-- Render operations: varies by complexity (seconds to minutes)
-- Script execution: depends on script complexity
+- **PolyHaven** (free HDRIs/textures/models): `get_polyhaven_categories`, `search_polyhaven_assets`, `download_polyhaven_asset`, `set_texture`
+- **Hyper3D Rodin** (text/image→mesh): `create_rodin_job`, `poll_rodin_job_status`, `import_generated_asset`
+- **Sketchfab**: `search_sketchfab_models`, `get_sketchfab_model_preview`, `download_sketchfab_model`
+- **Hunyuan3D**: `create_hunyuan_job`, `poll_hunyuan_job_status`, `import_generated_asset_hunyuan`
 
-## Advanced Usage
+## Technique references (route by task)
 
-### Custom Python Scripts
+Each is a dense, practical reference for an agent mid-task — workflow phases, concrete `bpy`,
+prompt strategy, and pitfalls.
 
-Execute complex operations:
-```python
-script = """
-import bpy
-import math
+| Task | Reference |
+|---|---|
+| Connect, protocol, the loop, troubleshooting | [connection-and-protocol.md](references/connection-and-protocol.md) |
+| Box/primitive modelling, decomposition, blockout | [modeling-foundations.md](references/modeling-foundations.md) |
+| Hard-surface, Boolean & non-destructive, vehicles/mechanical | [hard-surface-and-boolean.md](references/hard-surface-and-boolean.md) |
+| Digital sculpting, dyntopo/remesh/multires, organic & portraits | [sculpting-organic.md](references/sculpting-organic.md) |
+| Low-poly/stylized, modular asset libraries, environments | [stylized-and-environments.md](references/stylized-and-environments.md) |
+| PBR materials & shader node graphs | [materials-and-pbr.md](references/materials-and-pbr.md) |
+| Cameras, lighting (3-point/portrait/HDRI), rendering, basic rig/anim | [lighting-rendering-and-scene.md](references/lighting-rendering-and-scene.md) |
+| Verified anatomy of 52 finished pro scenes (render/modifier/material/tri norms) | [reference-scenes.md](references/reference-scenes.md) |
 
-# Create a grid of cubes
-for x in range(-5, 6):
-    for y in range(-5, 6):
-        bpy.ops.mesh.primitive_cube_add(location=(x*2, y*2, 0))
-        obj = bpy.context.active_object
-        obj.scale = (0.8, 0.8, 0.8 + math.sin(x + y) * 0.3)
-"""
+## Version facts (verified against the installed Blender 5.1.2)
 
-Execute Blender skill with execute_script tool and the above script.
-```
+The course material this skill distils was authored for Blender 4.x. On 5.x, three things drift
+— a snippet copied from a 4.x tutorial will otherwise throw:
 
-### Modifier Application
+- **Render engine enum is `('BLENDER_EEVEE', 'BLENDER_WORKBENCH', 'CYCLES')`.** The 4.2–4.5 name
+  `BLENDER_EEVEE_NEXT` does **not** exist on 5.1.2; setting it raises `TypeError`. Use
+  `scene.render.engine = "BLENDER_EEVEE"`.
+- **`Material.use_nodes` / `World.use_nodes` are deprecated** (removal expected in Blender 6.0).
+  New materials/worlds already have a `node_tree`. Guard rather than assert: `if not mat.use_nodes: mat.use_nodes = True`.
+- **`bpy.ops.render.render(write_still=True)` needs a camera.** Assert `scene.camera is not None`
+  first, or it raises `RuntimeError: Cannot render, no camera`.
 
-Apply modifiers via script:
-```python
-# Add subdivision surface to smooth objects
-obj = bpy.data.objects['Cube']
-mod = obj.modifiers.new(name='Subsurf', type='SUBSURF')
-mod.levels = 2
-```
+Verified-working on 5.1.2: `primitive_*_add`, `transform_apply`, `bmesh.from_edit_mesh`,
+modifiers `BEVEL/SUBSURF/BOOLEAN/MIRROR/ARRAY/SOLIDIFY` via `obj.modifiers.new`,
+`shade_smooth`/`shade_flat`, Principled BSDF inputs `Base Color`/`Metallic`/`Roughness`,
+`ShaderNodeTexImage`+`ShaderNodeNormalMap`, lights `SUN/AREA/POINT/SPOT`, camera + `TRACK_TO`
+constraint, world `ShaderNodeTexEnvironment`, `armature_add` + `keyframe_insert`.
+
+## Tools
+
+| File | Purpose |
+|---|---|
+| `tools/blender-batch.sh` | Headless GPU batch runner — prepends `/usr/lib` so nix Blender finds the injected CUDA driver; run a `bpy` script or `--render file.blend out.png` on the GPUs |
+| `tools/blender-health.js` | Health check — round-trips `get_scene_info`, diagnoses refused/silent-close/timeout/bad-json |
+| `tools/mcp-blender-client.js` | Stdio↔TCP bridge; maps `{tool, params}` → BlenderMCP `{type, params}` on port 9876 |
+| `tools/blender-mcp-proxy.js` | TCP proxy to the GPU sidecar (`localhost:9876 → gui-tools-service:9876`) |
+
+## Security
+
+`execute_code` runs **arbitrary Python inside Blender** with full filesystem and process access
+of the Blender process. Treat it as a trust boundary: only run scripts you constructed for the
+task, never opaque code from an untrusted source, and be deliberate about scripts that read/write
+files or reach the network. See the trust-boundary section in
+[connection-and-protocol.md](references/connection-and-protocol.md).
+
+## Attribution
+
+- **BlenderMCP** addon and MCP server: Siddharth Ahuja, MIT — github.com/ahujasid/blender-mcp.
+  Command names, parameters, and socket behaviour documented here are read from that source.
+- Workflow techniques were distilled — in original form — from Blender-with-Claude-Code
+  courseware the operator licensed. The operator's private staged `.blend` files, prompt
+  transcripts, and lesson material live outside this skill at
+  `/home/devuser/workspace/blender-course-assets/` (not shipped with the skill). This skill
+  contains original method, not course text.
