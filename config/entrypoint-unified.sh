@@ -1390,6 +1390,24 @@ else
   echo "[7/8] ruflo not in PATH — plugin bootstrap skipped"
 fi
 
+# ── Harness skill registration ─────────────────────────────────────────────
+# Reconcile ~/.claude/skills (what the Claude Code Skill tool discovers) from the
+# curated manifest skills/registered-skills.txt, symlinking each entry into the
+# baked skills tree. Replaces the historical hand-accreted copies that left
+# blender/qgis invisible to every session and froze each registered skill at a
+# stale snapshot. Runs privileged here (one-shot boot phase) so it can replace
+# root-owned legacy dirs; idempotent and fail-open — never blocks boot.
+# NOTE: must stay OUTSIDE the runtime-env heredoc below — under `set -u` a
+# $var reference in heredoc text expands at write time and aborts the boot.
+_RECONCILE_SKILLS="/opt/agentbox/scripts/reconcile-skills.sh"
+if [ -f "$_RECONCILE_SKILLS" ]; then
+  CLAUDE_SKILLS_DIR="/home/devuser/.claude/skills" \
+  SKILLS_TREE="${SKILLS_TREE:-/opt/agentbox/skills}" \
+  REGISTERED_SKILLS_MANIFEST="${SKILLS_TREE:-/opt/agentbox/skills}/registered-skills.txt" \
+    bash "$_RECONCILE_SKILLS" 2>&1 | sed 's/^/  [skills] /' || true
+  chown -h 1000:1000 /home/devuser/.claude/skills/* 2>/dev/null || true
+fi
+
 # ---------------------------------------------------------------------------
 # Phase 8 — Publish environment hints to profile.d
 # ---------------------------------------------------------------------------
@@ -1411,23 +1429,6 @@ export RUVECTOR_PG_CONNINFO
 export SOLID_POD_ROOT="${SOLID_POD_ROOT:-/var/lib/solid}"
 export AGENTBOX_CONFIG="${AGENTBOX_CONFIG:-/etc/agentbox.toml}"
 export SKILLS_TREE="${SKILLS_TREE:-/opt/agentbox/skills}"
-
-# ── Harness skill registration ─────────────────────────────────────────────
-# Reconcile ~/.claude/skills (what the Claude Code Skill tool discovers) from the
-# curated manifest skills/registered-skills.txt, symlinking each entry into the
-# baked skills tree. Replaces the historical hand-accreted copies that left
-# blender/qgis invisible to every session and froze each registered skill at a
-# stale snapshot. Runs privileged here (one-shot boot phase) so it can replace
-# root-owned legacy dirs; idempotent and fail-open — never blocks boot.
-_RECONCILE_SKILLS="/opt/agentbox/scripts/reconcile-skills.sh"
-if [ -f "$_RECONCILE_SKILLS" ]; then
-  CLAUDE_SKILLS_DIR="/home/devuser/.claude/skills" \
-  SKILLS_TREE="$SKILLS_TREE" \
-  REGISTERED_SKILLS_MANIFEST="$SKILLS_TREE/registered-skills.txt" \
-    bash "$_RECONCILE_SKILLS" 2>&1 | sed 's/^/  [skills] /' || true
-  chown -h 1000:1000 /home/devuser/.claude/skills/* 2>/dev/null || true
-fi
-
 export SHARED_PROJECTS_ROOT="${SHARED_PROJECTS_ROOT:-/projects}"
 export CLAUDE_FLOW_PLUGIN_DIR="${CLAUDE_FLOW_PLUGIN_DIR:-/home/devuser/.claude-flow/plugins}"
 export CARGO_HOME="${CARGO_HOME:-/home/devuser/workspace/.cargo}"
