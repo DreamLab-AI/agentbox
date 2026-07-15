@@ -1,0 +1,46 @@
+# registered-skills.txt — the curated set of skills exposed to the Claude Code
+# harness (i.e. symlinked into ~/.claude/skills/ so they appear in the native Skill
+# list). Every other skill under /opt/agentbox/skills remains reference-only and is
+# reached via the progressive-discovery layer (SKILL-DIRECTORY.md + skill-router +
+# lazy-fetch).
+#
+# This file is the SINGLE SOURCE OF TRUTH for harness skill registration. The boot
+# reconciler (scripts/reconcile-skills.sh, called from config/entrypoint-unified.sh)
+# symlinks each name below from /opt/agentbox/skills/<name> into ~/.claude/skills/<name>
+# every boot — idempotent, fail-open. To register a new skill: add its directory name
+# here (it must have /opt/agentbox/skills/<name>/SKILL.md). Blank lines and #comments
+# are ignored.
+#
+# WHY a curated subset and not all 115 baked skills: the native Skill list is always in
+# context, so keeping it small preserves the token budget; heavier/rarer skills are
+# discovered on demand through the router.
+
+# --- browser / web automation (GPU browsercontainer sidecar) ---
+browser
+browser-automation
+chrome-cdp
+playwright
+qe-browser
+
+# --- 3D / GIS (GPU gui-tools-service sidecar) ---
+blender
+qgis
+
+# --- research / search ---
+ceramic-search
+perplexity-research
+web-researcher
+
+# --- design / writing ---
+design-audit
+open-design
+prose-sanitiser
+
+# --- knowledge / dispatch / misc ---
+skill-router
+ontology-augment
+email-search
+leptos
+
+# --- domain planners ---
+uk-solar-planner

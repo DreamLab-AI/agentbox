@@ -90,7 +90,7 @@ optional_env_vars = ["OPENAI_BASE_URL"]
 
 [providers.gemini]
 enabled  = false
-env_var  = "GOOGLE_GEMINI_API_KEY"
+env_var  = "GOOGLE_API_KEY"
 optional_env_vars = []
 
 [providers.deepseek]

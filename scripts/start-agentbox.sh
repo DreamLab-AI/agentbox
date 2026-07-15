@@ -1009,7 +1009,7 @@ Docs: docs/reference/prd/PRD-001-capabilities-and-adapters.md §Providers" \
   declare -A PROV_ENV=(
     [anthropic]="ANTHROPIC_API_KEY"
     [openai]="OPENAI_API_KEY"
-    [gemini]="GOOGLE_GEMINI_API_KEY"
+    [gemini]="GOOGLE_API_KEY"
     [deepseek]="DEEPSEEK_API_KEY"
     [perplexity]="PERPLEXITY_API_KEY"
     [openrouter]="OPENROUTER_API_KEY"

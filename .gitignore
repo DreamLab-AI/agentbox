@@ -55,6 +55,9 @@ debug_log.txt
 !.env.template.*
 !.env.*.example
 !.env.*.template
+# Local audit scratch (redacted env survey) and agentic-qe runtime state (witness keys)
+env-redacted.txt
+.agentic-qe/
 
 # Runtime directories (created by container)
 workspace/

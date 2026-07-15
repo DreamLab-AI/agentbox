@@ -247,11 +247,11 @@ AG_GEMINI_DIR="${AG_PROFILE}/.gemini"
 mkdir -p "${AG_GEMINI_DIR}" "${AG_PROFILE}/.cache/starship"
 # R-005: profile dir ownership fixed by entrypoint root phase; runtime sudo removed.
 
-_AG_KEY="${GOOGLE_GEMINI_API_KEY:-${GOOGLE_API_KEY:-}}"
+_AG_KEY="${GOOGLE_API_KEY:-${GOOGLE_GEMINI_API_KEY:-}}"
 if [ -n "${_AG_KEY:-}" ]; then
   _ag_status="Gemini key set — model: gemini-2.5-flash"
 else
-  _ag_status="WARNING: GOOGLE_GEMINI_API_KEY not set — add it to your .env file"
+  _ag_status="WARNING: GOOGLE_API_KEY not set — add it to your .env file"
 fi
 
 [ -L "${AG_PROFILE}/workspace" ] || ln -sfn "${AG_WORKSPACE}" "${AG_PROFILE}/workspace" 2>/dev/null || true

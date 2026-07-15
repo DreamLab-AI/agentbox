@@ -2110,6 +2110,7 @@ ${agentboxPorts}
       - OPENAI_BASE_URL=''${OPENAI_BASE_URL:-${defaultLlmBaseUrl}/v1}
       - OLLAMA_BASE_URL=''${OLLAMA_BASE_URL:-${defaultLlmBaseUrl}}
       - OLLAMA_MODEL=''${OLLAMA_MODEL:-qwen2.5:32b-instruct}
+      - GOOGLE_API_KEY=''${GOOGLE_API_KEY:-}
       - GOOGLE_GEMINI_API_KEY=''${GOOGLE_GEMINI_API_KEY:-}
       - GEMINI_API_KEY=''${GEMINI_API_KEY:-}
       - MANAGEMENT_API_KEY=''${MANAGEMENT_API_KEY:-}

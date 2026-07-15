@@ -25,7 +25,10 @@ logging.basicConfig(
 logger = logging.getLogger("gemini-url-context")
 
 # Environment configuration
-GEMINI_API_KEY = os.environ.get("GOOGLE_GEMINI_API_KEY", "")
+# GOOGLE_API_KEY is canonical; GOOGLE_GEMINI_API_KEY/GEMINI_API_KEY are legacy fallbacks.
+GEMINI_API_KEY = (os.environ.get("GOOGLE_API_KEY")
+                  or os.environ.get("GOOGLE_GEMINI_API_KEY")
+                  or os.environ.get("GEMINI_API_KEY", ""))
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 GEMINI_TIMEOUT = int(os.environ.get("GEMINI_TIMEOUT", "60"))
 GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta"
@@ -120,7 +123,7 @@ async def call_gemini(prompt: str, urls: List[str] = None) -> dict:
     if not GEMINI_API_KEY:
         return {
             "success": False,
-            "error": "GOOGLE_GEMINI_API_KEY not set. Export it or add to .env"
+            "error": "GOOGLE_API_KEY not set. Export it or add to .env"
         }
 
     # Build the prompt with URLs embedded
@@ -347,7 +350,7 @@ async def health_check() -> dict:
         return {
             "success": False,
             "status": "not_configured",
-            "error": "GOOGLE_GEMINI_API_KEY not set"
+            "error": "GOOGLE_API_KEY not set"
         }
 
     # Test with a simple URL

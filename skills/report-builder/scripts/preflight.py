@@ -50,7 +50,7 @@ def skill_exists(name):
 
 def check_nano_banana():
     """Test if Nano Banana API is actually callable."""
-    key = os.environ.get("GOOGLE_GEMINI_API_KEY", "")
+    key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GOOGLE_GEMINI_API_KEY", "")
     if not key:
         return False, "No API key"
     try:
@@ -109,7 +109,7 @@ def main():
     # --- OPTIONAL: API Keys ---
     print(f"\n{BOLD}API Keys (OPTIONAL — enables enhanced features){RESET}")
     total += 4
-    score += check("GOOGLE_GEMINI_API_KEY", env_set("GOOGLE_GEMINI_API_KEY"), "Export key for Nano Banana")
+    score += check("GOOGLE_API_KEY", env_set("GOOGLE_API_KEY") or env_set("GOOGLE_GEMINI_API_KEY"), "Export key for Nano Banana")
     score += check("PERPLEXITY_API_KEY", env_set("PERPLEXITY_API_KEY"), "Export key for web research")
     score += check("OPENAI_API_KEY", env_set("OPENAI_API_KEY"), "Export key for cross-LLM review")
     score += check("DEEPSEEK_API_KEY", env_set("DEEPSEEK_API_KEY"), "Export key for reasoner review")

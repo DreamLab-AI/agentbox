@@ -194,13 +194,13 @@ EXAMPLES:
 
 ENVIRONMENT VARIABLES:
   GOOGLE_API_KEY       Required for Google provider
-  OPENROUTER_KEY       Required for OpenRouter provider
+  OPENROUTER_API_KEY   Required for OpenRouter provider (OPENROUTER_KEY also accepted)
   REMOVEBG_API_KEY     Required for --remove-bg flag
 
 PROVIDER AUTO-DETECTION:
   If --provider is not specified, the CLI checks for available API keys:
   1. GOOGLE_API_KEY found → uses Google provider
-  2. OPENROUTER_KEY found → uses OpenRouter provider
+  2. OPENROUTER_API_KEY found → uses OpenRouter provider
 
 ERROR CODES:
   0  Success
@@ -593,9 +593,9 @@ async function generateWithOpenRouter(
   output: string,
   referenceImage?: string
 ): Promise<void> {
-  const apiKey = process.env.OPENROUTER_KEY;
+  const apiKey = process.env.OPENROUTER_API_KEY || process.env.OPENROUTER_KEY;
   if (!apiKey) {
-    throw new CLIError("Missing environment variable: OPENROUTER_KEY");
+    throw new CLIError("Missing environment variable: OPENROUTER_API_KEY");
   }
 
   const openrouterModel = OPENROUTER_MODELS[model];
@@ -729,10 +729,10 @@ async function main(): Promise<void> {
       provider = args.provider;
     } else if (process.env.GOOGLE_API_KEY) {
       provider = "google";
-    } else if (process.env.OPENROUTER_KEY) {
+    } else if (process.env.OPENROUTER_API_KEY || process.env.OPENROUTER_KEY) {
       provider = "openrouter";
     } else {
-      throw new CLIError("No API key found. Set GOOGLE_API_KEY or OPENROUTER_KEY in ~/.claude/.env");
+      throw new CLIError("No API key found. Set GOOGLE_API_KEY or OPENROUTER_API_KEY in ~/.claude/.env");
     }
 
     // Warn about provider-specific features when using OpenRouter

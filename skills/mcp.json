@@ -131,7 +131,7 @@
       "args": ["-u", "/home/devuser/.claude/skills/gemini-url-context/mcp-server/server.py"],
       "type": "stdio",
       "env": {
-        "GOOGLE_GEMINI_API_KEY": "${GOOGLE_GEMINI_API_KEY}",
+        "GOOGLE_API_KEY": "${GOOGLE_API_KEY}",
         "GEMINI_MODEL": "gemini-2.5-flash",
         "GEMINI_TIMEOUT": "60"
       },

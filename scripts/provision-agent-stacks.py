@@ -105,7 +105,7 @@ STACKS = {
     "docs-latex": {
         "tools": ["pdflatex", "xelatex", "lualatex", "biber", "latexmk", "pandoc"],
         "skills": ["latex-documents", "report-builder", "mermaid-diagrams", "paperbanana", "wardley-maps"],
-        "env": ["PERPLEXITY_API_KEY", "GOOGLE_GEMINI_API_KEY", "OPENAI_API_KEY"],
+        "env": ["PERPLEXITY_API_KEY", "GOOGLE_API_KEY", "OPENAI_API_KEY"],
     },
     # ZAI profile: Claude Code routed through Z.AI GLM (Anthropic-compatible).
     # Z.AI has TWO endpoints:
@@ -142,7 +142,7 @@ STACKS = {
     "antigravity": {
         "tools": ["gemini"],
         "skills": ["skill-router", "lazy-fetch", "codebase-memory"],
-        "env": ["GOOGLE_GEMINI_API_KEY", "GOOGLE_API_KEY"],
+        "env": ["GOOGLE_API_KEY", "GOOGLE_GEMINI_API_KEY"],
         "no_claude_settings": True,
         "extra_dirs": [".antigravity"],
     },

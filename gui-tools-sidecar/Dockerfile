@@ -65,6 +65,23 @@ RUN sudo -u devuser yay -S --noconfirm --needed virtualgl \
     && sudo -u devuser yay -Scc --noconfirm \
     && rm -rf /home/devuser/.cache/yay /tmp/*
 
+# Solar compute stack (pinned venv — the "bake it in" path for deps nix can't cleanly
+# package: quartz-solar-forecast is a PyPI ML pkg that pulls model weights at runtime,
+# opendssdirect vendors a compiled OpenDSS engine). FHS + pip here is reproducible via
+# these pins. Isolated in /opt/solar-venv so it never touches the system python.
+# uk-solar-planner calls these for generation forecasting + DNO grid feasibility.
+RUN python -m venv /opt/solar-venv \
+    && /opt/solar-venv/bin/pip install --no-cache-dir --upgrade pip \
+    && /opt/solar-venv/bin/pip install --no-cache-dir \
+        "quartz-solar-forecast==1.2.11" \
+    && chown -R devuser:devuser /opt/solar-venv
+# opendss-mcp-server (EPRI OpenDSS via MCP — DNO connection feasibility, MIT).
+# Its own install pulls opendssdirect.py (the vendored compiled engine); pinned by
+# the repo's requirements, so no separate pin here (avoids clashing with quartz's).
+RUN git clone --depth 1 https://github.com/ahmedelshazly27/opendss-mcp-server /opt/opendss-mcp \
+    && /opt/solar-venv/bin/pip install --no-cache-dir -e /opt/opendss-mcp \
+    && chown -R devuser:devuser /opt/opendss-mcp
+
 RUN mkdir -p /opt/gui-tools /tmp/xdg-runtime /home/devuser/.config \
     && chown -R devuser:devuser /opt/gui-tools /tmp/xdg-runtime /home/devuser
 
@@ -74,6 +91,7 @@ COPY --chown=devuser:devuser launch-blender.py /opt/gui-tools/launch-blender.py
 COPY --chown=devuser:devuser launch-blender.sh /opt/gui-tools/launch-blender.sh
 COPY --chown=devuser:devuser launch-qgis.sh /opt/gui-tools/launch-qgis.sh
 COPY --chown=devuser:devuser qgis-mcp-server.py /opt/gui-tools/qgis-mcp-server.py
+COPY --chown=devuser:devuser forecast_quartz.py /opt/gui-tools/forecast_quartz.py
 COPY --chown=devuser:devuser healthcheck.sh /opt/gui-tools/healthcheck.sh
 COPY supervisord.conf /etc/supervisord.conf
 RUN chmod +x /opt/gui-tools/launch-blender.sh /opt/gui-tools/launch-qgis.sh /opt/gui-tools/healthcheck.sh

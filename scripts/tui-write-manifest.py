@@ -237,7 +237,7 @@ lines += [
 PROVIDERS = {
     "anthropic":  "ANTHROPIC_API_KEY",
     "openai":     "OPENAI_API_KEY",
-    "gemini":     "GOOGLE_GEMINI_API_KEY",
+    "gemini":     "GOOGLE_API_KEY",
     "deepseek":   "DEEPSEEK_API_KEY",
     "perplexity": "PERPLEXITY_API_KEY",
     "openrouter": "OPENROUTER_API_KEY",

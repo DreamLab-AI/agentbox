@@ -63,7 +63,7 @@ class SystemMonitor {
    */
   async checkProviders() {
     const providers = {
-      gemini: process.env.GOOGLE_GEMINI_API_KEY ? 'configured' : 'not_configured',
+      gemini: (process.env.GOOGLE_API_KEY || process.env.GOOGLE_GEMINI_API_KEY) ? 'configured' : 'not_configured',
       openai: process.env.OPENAI_API_KEY ? 'configured' : 'not_configured',
       claude: process.env.ANTHROPIC_API_KEY ? 'configured' : 'not_configured',
       openrouter: process.env.OPENROUTER_API_KEY ? 'configured' : 'not_configured',

@@ -80,6 +80,14 @@ in-container Blender is blind to the GPU for both CUDA and GL unless helped.
 
 Run `node tools/blender-health.js` to confirm the interactive path is live before using it.
 
+**Native MCP tools are optional (on-demand).** The supervised proxy already exposes the
+socket on `localhost:9876`, so you can drive Blender through it directly (or via
+`tools/mcp-blender-client.js`) without any MCP registration. When you want the BlenderMCP
+tools to appear natively in the session, register them on demand with
+`tools/register-mcp.sh` (adds `uvx blender-mcp → localhost:9876` to the workspace
+`.mcp.json`; idempotent; `--remove` to unregister). This keeps `.mcp.json` lean by default
+and only loads the heavy sidecar-backed server when 3D work actually needs it.
+
 ## The real command surface
 
 Everything BlenderMCP exposes (anything else goes through `execute_code`):
