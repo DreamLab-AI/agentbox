@@ -70,16 +70,33 @@ RUN sudo -u devuser yay -S --noconfirm --needed virtualgl \
 # opendssdirect vendors a compiled OpenDSS engine). FHS + pip here is reproducible via
 # these pins. Isolated in /opt/solar-venv so it never touches the system python.
 # uk-solar-planner calls these for generation forecasting + DNO grid feasibility.
-RUN python -m venv /opt/solar-venv \
-    && /opt/solar-venv/bin/pip install --no-cache-dir --upgrade pip \
-    && /opt/solar-venv/bin/pip install --no-cache-dir \
+#
+# The Arch rolling base ships a Python NEWER than quartz's transitive constraint:
+# quartz-solar-forecast -> pv-site-prediction, whose every release pins
+# Requires-Python >=3.10,<3.12. Building the venv on the system interpreter therefore
+# fails to resolve (No matching distribution for pv-site-prediction). We build the venv
+# on a uv-managed CPython 3.11 instead, decoupling it from whatever /usr/bin/python the
+# rolling base happens to be. `--seed` keeps pip/setuptools inside the venv so the
+# opendss editable-install below and forecast_quartz.py keep using /opt/solar-venv/bin/pip
+# unchanged.
+#
+# numpy<2: quartz's forecast path (via xarray==2022.12.0 / pvlib) still uses `np.unicode_`,
+# which NumPy 2.0 removed. The stack is pre-NumPy-2 (note the pinned Dec-2022 xarray), so we
+# hold numpy on the 1.x line (1.26.4). Without this the resolver pulls numpy 2.x and the
+# forecast fails at run_forecast() with "`np.unicode_` was removed in the NumPy 2.0 release".
+RUN pacman -S --noconfirm --needed uv \
+    && pacman -Scc --noconfirm \
+    && uv venv --seed --python 3.11 /opt/solar-venv \
+    && uv pip install --python /opt/solar-venv/bin/python --no-cache \
+        "numpy<2" \
         "quartz-solar-forecast==1.2.11" \
     && chown -R devuser:devuser /opt/solar-venv
 # opendss-mcp-server (EPRI OpenDSS via MCP — DNO connection feasibility, MIT).
-# Its own install pulls opendssdirect.py (the vendored compiled engine); pinned by
-# the repo's requirements, so no separate pin here (avoids clashing with quartz's).
+# Its own install pulls opendssdirect.py (the vendored compiled engine); opendssdirect
+# runs fine on numpy 1.x, so we carry the same numpy<2 pin here to stop this editable
+# install from silently upgrading numpy back to 2.x and re-breaking quartz's forecast path.
 RUN git clone --depth 1 https://github.com/ahmedelshazly27/opendss-mcp-server /opt/opendss-mcp \
-    && /opt/solar-venv/bin/pip install --no-cache-dir -e /opt/opendss-mcp \
+    && /opt/solar-venv/bin/pip install --no-cache-dir "numpy<2" -e /opt/opendss-mcp \
     && chown -R devuser:devuser /opt/opendss-mcp
 
 RUN mkdir -p /opt/gui-tools /tmp/xdg-runtime /home/devuser/.config \
