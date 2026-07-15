@@ -343,14 +343,26 @@ async function callLlm(userText, opts = {}) {
   } catch { londonStr = new Date(nowMs).toUTCString(); }
   const dateContext = `\n\nCURRENT TIME: ${new Date(nowMs).toISOString()} (UTC). Local: ${londonStr} (Europe/London). Current Unix epoch (seconds): ${Math.floor(nowMs / 1000)}. Resolve all relative dates/times ("today", "next Friday 7pm") against this, in Europe/London, and emit integer Unix-second timestamps.`;
   const system = (opts.system || SYSTEM_PROMPT) + dateContext;
+  // Brain selection. An explicitly-configured JunkieJarvis endpoint
+  // (JUNKIEJARVIS_LLM_BASE / JUNKIEJARVIS_LLM_KEY) takes PRECEDENCE over the
+  // ambient ANTHROPIC_API_KEY. In the agentbox that ambient key is Claude
+  // Code's — frequently a Z.AI-routed key that 401s against the real Anthropic
+  // API — so a bare ANTHROPIC_API_KEY must NOT hijack JJ when a dedicated brain
+  // is configured. `oaiKey` also accepts the agentbox's ZAI_ANTHROPIC_API_KEY.
+  const oaiKey = process.env.JUNKIEJARVIS_LLM_KEY
+    || process.env.ZAI_API_KEY
+    || process.env.ZAI_ANTHROPIC_API_KEY
+    || process.env.OPENAI_API_KEY;
+  const hasExplicitOaiBrain = !!(process.env.JUNKIEJARVIS_LLM_BASE || process.env.JUNKIEJARVIS_LLM_KEY);
+  const useAnthropic = !!process.env.ANTHROPIC_API_KEY && !hasExplicitOaiBrain;
   const model = opts.model
     || process.env.JUNKIEJARVIS_MODEL
-    || (process.env.ANTHROPIC_API_KEY ? 'claude-haiku-4-5-20251001' : undefined);
+    || (useAnthropic ? 'claude-haiku-4-5-20251001' : undefined);
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
   try {
-    if (process.env.ANTHROPIC_API_KEY) {
+    if (useAnthropic) {
       const res = await fetchImpl('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
@@ -376,20 +388,21 @@ async function callLlm(userText, opts = {}) {
     // OpenAI-compatible chat completions (Z.AI/GLM, OpenAI, or any compatible
     // gateway). Chosen when an OpenAI-compatible key is present — this is the
     // reachable path in the DreamLab deployment (local ollama is not on-net).
-    // Config: JUNKIEJARVIS_LLM_BASE + JUNKIEJARVIS_LLM_KEY + JUNKIEJARVIS_LLM_MODEL,
-    // defaulting to Z.AI GLM-5.2 when ZAI_API_KEY is set.
-    const oaiKey = process.env.JUNKIEJARVIS_LLM_KEY || process.env.ZAI_API_KEY || process.env.OPENAI_API_KEY;
+    // Config: JUNKIEJARVIS_LLM_BASE + JUNKIEJARVIS_LLM_KEY + JUNKIEJARVIS_MODEL,
+    // defaulting to Z.AI GLM when a Z.AI key (ZAI_API_KEY or the agentbox's
+    // ZAI_ANTHROPIC_API_KEY) is present. `oaiKey` was resolved above.
     if (oaiKey) {
+      const zaiKeyPresent = !!(process.env.ZAI_API_KEY || process.env.ZAI_ANTHROPIC_API_KEY);
       const base = (process.env.JUNKIEJARVIS_LLM_BASE
-        || (process.env.ZAI_API_KEY ? 'https://api.z.ai/api/paas/v4' : 'https://api.openai.com/v1')
+        || (zaiKeyPresent ? 'https://api.z.ai/api/paas/v4' : 'https://api.openai.com/v1')
       ).replace(/\/+$/, '');
-      const oaiModel = model
-        || (process.env.ZAI_API_KEY ? 'glm-5.2' : 'gpt-4o-mini');
-      // Z.AI GLM-5.2 is a reasoning model: with thinking ENABLED it spends
-      // the whole token budget on reasoning_content and returns empty content
+      // Z.AI GLM is a reasoning model: with thinking ENABLED it spends the whole
+      // token budget on reasoning_content and returns empty content
       // (finish_reason "length"). Disable thinking so the budget goes to the
       // actual reply — fast (~2.5s) and the create_event directive parses.
       const isZai = /z\.ai|bigmodel/.test(base);
+      const oaiModel = model
+        || (isZai ? 'glm-4.6' : 'gpt-4o-mini');
       const res = await fetchImpl(`${base}/chat/completions`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', authorization: `Bearer ${oaiKey}` },
