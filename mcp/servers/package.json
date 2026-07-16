@@ -1,8 +1,7 @@
 {
   "name": "agentbox-mcp-servers",
   "version": "0.1.0",
-  "type": "module",
-  "description": "MCP bridge servers for agentbox (ontology-bridge, precedent-bridge, governance-bridge, harness-bridge). Each server is an ESM module using the MCP SDK stdio transport.",
+  "description": "Nix closure providing @modelcontextprotocol/sdk for MCP bridge servers. No type field: bridge servers auto-detect as ESM; ruvector-mcp and lib/ remain CommonJS.",
   "engines": {
     "node": ">=22"
   },
