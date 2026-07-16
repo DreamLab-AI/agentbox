@@ -722,6 +722,31 @@
           npmDepsHash   = "sha256-kKxKUQMsO6BVKwNaEkOPayyTXv1ssvz6i1vSdu8O8zg=";
         };
 
+        # MCP bridge servers (ontology-bridge, precedent-bridge, governance-bridge,
+        # harness-bridge). These ESM modules import @modelcontextprotocol/sdk; the
+        # Nix closure bakes node_modules so they resolve at /opt/agentbox/mcp/servers/.
+        # The entrypoint sets NODE_PATH to this closure's node_modules.
+        # Refresh hash: nix run nixpkgs#prefetch-npm-deps -- mcp/servers/package-lock.json
+        mcpServersPkg = npmServicesLib.makeNpmService {
+          name          = "agentbox-mcp-servers";
+          src           = ./mcp/servers;
+          entry         = "ontology-bridge.js";
+          skipLoadCheck = true;
+          npmDepsHash   = "sha256-h0P+TmD/0sXsxJYB4JloPQpNthXIbwDT/JdnzQ+6HXw=";
+        };
+
+        # Perplexity MCP: pins @perplexity-ai/mcp-server so the entrypoint
+        # runs `node .../dist/index.js` instead of `npx -y` (which fails on
+        # a read-only rootfs). Gated on PERPLEXITY_API_KEY at the entrypoint.
+        # Refresh hash: nix run nixpkgs#prefetch-npm-deps -- mcp/perplexity/package-lock.json
+        perplexityMcpPkg = npmServicesLib.makeNpmService {
+          name          = "perplexity-mcp";
+          src           = ./mcp/perplexity;
+          entry         = "node_modules/@perplexity-ai/mcp-server/dist/index.js";
+          skipLoadCheck = true;
+          npmDepsHash   = "sha256-iu3TMYhpyWir5IvGwfIFg4BE8YL20nbYWyW2E1BBY4k=";
+        };
+
         codeHarnessPackages =
           lib.optionals (codeInterpreterCfg.enabled or false) [
             codeInterpreterPythonEnv
@@ -1149,6 +1174,16 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           ${lib.optionalString (sovereignCfg.enabled or false) ''
           cp -rL ${nostrBridgePkg}/package/node_modules $out/opt/agentbox/mcp/node_modules
           ''}
+
+          # MCP bridge servers: bake @modelcontextprotocol/sdk so
+          # ontology-bridge, precedent-bridge, governance-bridge, harness-bridge
+          # resolve the SDK without relying on workspace node_modules.
+          cp -rL ${mcpServersPkg}/package/node_modules $out/opt/agentbox/mcp/servers/node_modules
+
+          # Perplexity MCP: bake @perplexity-ai/mcp-server so the entrypoint
+          # uses `node .../dist/index.js` instead of `npx -y`.
+          mkdir -p $out/opt/agentbox/mcp/perplexity
+          cp -rL ${perplexityMcpPkg}/package/node_modules $out/opt/agentbox/mcp/perplexity/node_modules
 
           # Optional skills — copy derivation package trees (includes node_modules)
           # when the corresponding feature gate is enabled.

@@ -107,7 +107,11 @@ COPY --chown=devuser:devuser blendermcp-addon.py /opt/gui-tools/blendermcp-addon
 COPY --chown=devuser:devuser launch-blender.py /opt/gui-tools/launch-blender.py
 COPY --chown=devuser:devuser launch-blender.sh /opt/gui-tools/launch-blender.sh
 COPY --chown=devuser:devuser launch-qgis.sh /opt/gui-tools/launch-qgis.sh
-COPY --chown=devuser:devuser qgis-mcp-server.py /opt/gui-tools/qgis-mcp-server.py
+# Real headless QGIS MCP server (QgsApplication + qgis_mcp_plugin QgisMCPServer) —
+# replaces the old HTTP placeholder stub qgis-mcp-server.py — plus the plugin it runs,
+# installed into the default QGIS profile so `import qgis_mcp_plugin` resolves.
+COPY --chown=devuser:devuser qgis-mcp-headless.py /opt/gui-tools/qgis-mcp-headless.py
+COPY --chown=devuser:devuser qgis_mcp_plugin /home/devuser/.local/share/QGIS/QGIS3/profiles/default/python/plugins/qgis_mcp_plugin
 COPY --chown=devuser:devuser forecast_quartz.py /opt/gui-tools/forecast_quartz.py
 COPY --chown=devuser:devuser healthcheck.sh /opt/gui-tools/healthcheck.sh
 COPY supervisord.conf /etc/supervisord.conf

@@ -951,6 +951,9 @@ with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
   fi
 fi
 
+# ── MCP bridge servers: NODE_PATH for baked @modelcontextprotocol/sdk ──
+_MCP_SERVERS_NODE_PATH="/opt/agentbox/mcp/servers/node_modules"
+
 # ── Ontology bridge MCP: register when [skills.ontology] enabled ──
 _ONTOLOGY_BRIDGE="/opt/agentbox/mcp/servers/ontology-bridge.js"
 if [ "${ENABLE_ONTOLOGY:-false}" = "true" ] && [ -f "$_ONTOLOGY_BRIDGE" ] && [ -f "$_MCP_JSON" ]; then
@@ -962,10 +965,56 @@ cfg.setdefault('mcpServers', {})['ontology-bridge'] = {
   'command': 'node',
   'args': ['$_ONTOLOGY_BRIDGE'],
   'type': 'stdio',
-  'env': {'VISIONCLAW_API_URL': '${VISIONCLAW_API_URL:-http://visionclaw-server:4000}'}
+  'env': {
+    'VISIONCLAW_API_URL': '${VISIONCLAW_API_URL:-http://visionclaw-server:4000}',
+    'NODE_PATH': '$_MCP_SERVERS_NODE_PATH',
+  }
 }
 with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
 " 2>/dev/null && echo "  [mcp] Added ontology-bridge → ${VISIONCLAW_API_URL:-http://visionclaw-server:4000}" || true
+    chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
+  fi
+fi
+
+# ── Precedent bridge MCP: governance harness precedent system ──
+_PRECEDENT_BRIDGE="/opt/agentbox/mcp/servers/precedent-bridge.js"
+if [ -f "$_PRECEDENT_BRIDGE" ] && [ -f "$_MCP_JSON" ]; then
+  if ! grep -q "precedent-bridge" "$_MCP_JSON" 2>/dev/null; then
+    python3 -c "
+import json
+with open('$_MCP_JSON') as f: cfg = json.load(f)
+cfg.setdefault('mcpServers', {})['precedent-bridge'] = {
+  'command': 'node',
+  'args': ['$_PRECEDENT_BRIDGE'],
+  'type': 'stdio',
+  'env': {
+    'AGENTBOX_POD_ROOT': '/var/lib/agentbox',
+    'NODE_PATH': '$_MCP_SERVERS_NODE_PATH',
+  }
+}
+with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
+" 2>/dev/null && echo "  [mcp] Added precedent-bridge" || true
+    chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
+  fi
+fi
+
+# ── Harness bridge MCP: VisionFlow harness template tools ──
+_HARNESS_BRIDGE="/opt/agentbox/mcp/servers/harness-bridge.js"
+if [ -f "$_HARNESS_BRIDGE" ] && [ -f "$_MCP_JSON" ]; then
+  if ! grep -q "harness-bridge" "$_MCP_JSON" 2>/dev/null; then
+    python3 -c "
+import json
+with open('$_MCP_JSON') as f: cfg = json.load(f)
+cfg.setdefault('mcpServers', {})['harness-bridge'] = {
+  'command': 'node',
+  'args': ['$_HARNESS_BRIDGE'],
+  'type': 'stdio',
+  'env': {
+    'NODE_PATH': '$_MCP_SERVERS_NODE_PATH',
+  }
+}
+with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
+" 2>/dev/null && echo "  [mcp] Added harness-bridge" || true
     chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
   fi
 fi
@@ -1025,23 +1074,25 @@ WARMPY
   fi
 fi
 
-# ── Perplexity MCP: register official @perplexity-ai/mcp-server if API key set ──
-# The official Perplexity MCP server provides 4 native tools (perplexity_search,
-# perplexity_ask, perplexity_research, perplexity_reason) for quick in-session
-# queries. Only registered when PERPLEXITY_API_KEY is present in the environment.
+# ── Perplexity MCP: register @perplexity-ai/mcp-server if API key set ──
+# Baked via Nix closure at /opt/agentbox/mcp/perplexity/node_modules/.
+# Runs `node .../dist/index.js` directly — no npx (read-only rootfs).
+_PERPLEXITY_ENTRY="/opt/agentbox/mcp/perplexity/node_modules/@perplexity-ai/mcp-server/dist/index.js"
 if [ -n "${PERPLEXITY_API_KEY:-}" ] && [ -f "$_MCP_JSON" ]; then
   if ! grep -q "\"perplexity\"" "$_MCP_JSON" 2>/dev/null; then
     python3 -c "
 import json
 with open('$_MCP_JSON') as f: cfg = json.load(f)
 cfg.setdefault('mcpServers', {})['perplexity'] = {
-  'command': 'npx',
-  'args': ['-y', '@perplexity-ai/mcp-server'],
+  'command': 'node',
+  'args': ['$_PERPLEXITY_ENTRY'],
   'type': 'stdio',
-  'env': {'PERPLEXITY_API_KEY': '${PERPLEXITY_API_KEY}'}
+  'env': {
+    'PERPLEXITY_API_KEY': '${PERPLEXITY_API_KEY}',
+  }
 }
 with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
-" 2>/dev/null && echo "  [mcp] Added perplexity → @perplexity-ai/mcp-server" || true
+" 2>/dev/null && echo "  [mcp] Added perplexity → $_PERPLEXITY_ENTRY" || true
     chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
   fi
 else

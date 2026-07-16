@@ -1,0 +1,14 @@
+{
+  "name": "agentbox-perplexity-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Nix closure wrapper for @perplexity-ai/mcp-server. Pins the upstream package so it runs from the baked node_modules without npx.",
+  "main": "node_modules/@perplexity-ai/mcp-server/dist/index.js",
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@perplexity-ai/mcp-server": "^0.9.0"
+  },
+  "license": "AGPL-3.0-only"
+}

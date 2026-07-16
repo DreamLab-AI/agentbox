@@ -1,0 +1,13 @@
+{
+  "name": "agentbox-mcp-servers",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "MCP bridge servers for agentbox (ontology-bridge, precedent-bridge, governance-bridge, harness-bridge). Each server is an ESM module using the MCP SDK stdio transport.",
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "license": "AGPL-3.0-only"
+}

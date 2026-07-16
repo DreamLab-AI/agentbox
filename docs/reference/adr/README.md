@@ -50,6 +50,7 @@ Older records use `**Status:**` markdown; ADR-023 onward carry YAML frontmatter
 | [034](ADR-034-headroom-rust-crate-integration.md) | Headroom Rust crate integration (content-aware compression) | Proposed | [PRD-016](../prd/PRD-016-context-compression-caching.md) · [DDD-014](../ddd/DDD-014-compression-cache-domain.md) |
 | [035](ADR-035-project-tracking-telemetry-and-nostr-kind.md) | Project tracking — port-bound telemetry + kind-30841 | Accepted | [PRD-017](../prd/PRD-017-sovereign-project-tracking.md) · [DDD-015](../ddd/DDD-015-project-tracking-domain.md) |
 | [036](ADR-036-ruvector-capability-adoption-and-learning-loop.md) | RuVector capability adoption and learning loop | Proposed | [PRD-018](../prd/PRD-018-ruvector-native-memory-and-learning.md) · [DDD-016](../ddd/DDD-016-memory-learning-domain.md) |
+| [038](ADR-038-aict-structured-coreutils-mcp.md) | AICT structured-coreutils MCP — trial, do not bake | Proposed | — |
 
 ## See also
 
