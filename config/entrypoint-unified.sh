@@ -188,6 +188,10 @@ if [ ! -f /home/devuser/.config/git/config ]; then
 	helper = !gh auth git-credential
 [credential "https://gist.github.com"]
 	helper = !gh auth git-credential
+[url "https://github.com/"]
+	insteadOf = git@github.com:
+[safe]
+	directory = *
 GITCFG
 fi
 chown -R 1000:1000 /home/devuser/.config/git 2>/dev/null || true
