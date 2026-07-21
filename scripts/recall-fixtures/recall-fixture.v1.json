@@ -19,23 +19,23 @@
   },
   "baseline": {
     "self_recall": [
-      141,
+      177,
       200
     ],
     "true_recall": [
-      87,
+      109,
       120
     ],
     "exact_token_delta_median": 6,
     "status": "frozen-operative",
     "frozen_at": "2026-07-21",
-    "frozen_by": "queen (Phase 0 ops, PRD-020)",
-    "note": "Operative baseline frozen on measured live reality (median-of-3, deterministic across 6 runs, bge-small-en-v1.5, 178,428 rows). The v1 audit numbers (188/200, 119/120, 2026-07-04) are NON-COMPARABLE: measured pre-ruvnet-kb-ingest (~46k rows vs 178k) on an unstratified probe. The ADR-040 D2 spec band (187/118) remains the aspirational target pending recall-recovery work (param_tuning/ef_search, W-C). Stratified truth: ruvnet-kb 79/80; small telemetry namespaces near 0 — global HNSW reachability is the recovery target."
+    "frozen_by": "queen (W-D closure: post-reindex ratchet)",
+    "note": "Re-frozen after root-cause fix: live HNSW graph was degraded by churn (141/87 pre); non-concurrent REINDEX at m=16/ef_construction=128 (4m51s) recovered +36 self / +22 true. Band ratcheted to protect the recovery. History: v1 audit 188/119 (46k rows, pre-ingest, non-comparable); first freeze 141/87 (degraded graph). Ops lesson: rebuild the HNSW index after bulk ingests/deletions; NEVER use CREATE INDEX CONCURRENTLY with this AM (verified double-insertion bug)."
   },
   "band": {
-    "self_recall_min": 139,
+    "self_recall_min": 175,
     "self_recall_of": 200,
-    "true_recall_min": 85,
+    "true_recall_min": 107,
     "true_recall_of": 120,
     "exact_token_hybrid_delta_min": 0,
     "median_of": 3,
@@ -586,5 +586,5 @@
       "ground_truth_hits": 74
     }
   ],
-  "fixture_hash": "sha256-a7038796363e11c97cd8842295fe0642d7bc5630ab1aad84788f544ff66d70ab"
+  "fixture_hash": "sha256-30a729ba3d26e221814de1ceea3d3da6e5928c23befd0d1673690265221cbc2b"
 }
