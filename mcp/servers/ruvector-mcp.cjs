@@ -174,7 +174,7 @@ function parseVal(v) {
 // mandated external-pg path; it injects its pool, embedding transport, notifier
 // and helpers so the extracted logic behaves byte-for-byte as before.
 
-const { memStore, memRetrieve, memList, memSearch, memDelete, memSweepEpisodic } = createMemoryTools({
+const { memStore, memRetrieve, memList, memSearch, memDelete, memSweepEpisodic, memSonaHealth } = createMemoryTools({
   backend: 'external-pg',
   deps: {
     pool,
@@ -419,6 +419,15 @@ if (gates.healthTool()) {
     description: 'Read-only ruvector-postgres diagnostics: is_healthy, health_status, system_metrics, simd_info. No auto-remediation.',
     inputSchema: { type: 'object', properties: {} },
   });
+  // ADR-040 D4 (§3.3): read-only SONA diagnostics sibling. Rides the existing
+  // healthTool gate (no new gate — map bind) so the default-off tool list stays
+  // byte-identical to Phase 0. Read-only, fail-open, no remediation; surfaces
+  // SONA accumulation + the 256-vs-384 dim mismatch as advisories only.
+  TOOLS.push({
+    name: 'sona_health',
+    description: "Read-only SONA diagnostics for the 'agentbox_memory' scope: state, trajectories_buffered/dropped, patterns_stored, buffer_success_rate, embedding_dim, and advisories (engine_not_accumulating, embedding_dim_mismatch). No remediation; fail-open to { available:false }.",
+    inputSchema: { type: 'object', properties: {} },
+  });
 }
 
 if (gates.episodicTtlSweep()) {
@@ -496,6 +505,12 @@ async function executeTool(name, args = {}) {
       case 'memory_health':
         if (!gates.healthTool()) return unknownTool(name);
         return await memHealth();
+
+      case 'sona_health':
+        // ADR-040 D4 (§3.3): read-only, fail-open SONA diagnostics. Rides the
+        // healthTool gate; gate off → honest unknown_tool (byte-identical Phase 0).
+        if (!gates.healthTool()) return unknownTool(name);
+        return await memSonaHealth();
 
       case 'memory_sweep_episodic':
         if (!gates.episodicTtlSweep()) return unknownTool(name);
