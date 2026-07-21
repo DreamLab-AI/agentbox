@@ -1,6 +1,6 @@
 # DDD-018: Learning Consumers and Model Lifecycle Domain
 
-**Status**: Proposed / Draft v1 — NOT implemented (nothing in this domain has shipped)
+**Status**: Live in production since 2026-07-21 for the aggregation/distillation/harness aggregates (EffectivenessAggregation, DistilledPattern, RecallHarnessRun all have real instances; I14–I23 enforced in shipped code). EmbeddingMigration closed without cutover (evaluation rejected migration; index rebuild fixed recall — see PRD-020 amendment). MiningRun executed once, terminally: candidates yielded nothing importable, I15/I16/I23 held throughout.
 **Date**: 2026-07-21
 **Repo**: `github.com/DreamLab-AI/agentbox`
 **Bounded Context**: Learning Consumers & Model Lifecycle (the materialisation, distillation, evaluation, migration, and mining layer over DDD-016's honest producer/store)

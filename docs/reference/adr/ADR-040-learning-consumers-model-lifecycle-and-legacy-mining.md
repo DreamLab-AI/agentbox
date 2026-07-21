@@ -1,7 +1,7 @@
 ---
 id: ADR-040
 title: "Learning consumers, model lifecycle, and legacy mining"
-status: proposed
+status: implemented
 date: 2026-07-21
 type: architecture
 author: Dr John O'Hare
@@ -24,7 +24,7 @@ review_trigger: >-
 
 # ADR-040 — Learning consumers, model lifecycle, and legacy mining
 
-**Status:** Proposed (v1) — **NOT implemented.** This is a plan; nothing below has shipped. No manifest flag has been added, no sweep runs, no harness exists, no candidate has been mined. The v1 triple (PRD-018 / ADR-036 / DDD-016) shipped on 2026-07-05; this v2 triple (PRD-020 / ADR-040 / DDD-018) proposes what to build *next* on top of it.
+**Status:** Implemented 2026-07-21/22 (D1, D2, D6 live; D3 closed off-by-measurement; D4 blocked upstream at the engine, feeder shipped; D5 reserved as decided; D7 closed — migration rejected on evidence, recall root-cause fixed by index rebuild instead; D8 closed — archive audited, nothing imported by the honesty gate). Landing record: PRD-020 amendment. Verdict updates vs the re-evaluation table: attention re-rank ADOPT-NOW→**CLOSED-NO-BENEFIT** (blend proven an identity on the L2-normalised corpus); SONA ADOPT-NOW-behind-harness→**BLOCKED-UPSTREAM** (engine hardcodes 256-dim); embedding EVALUATE→**EVALUATED-STAY** (bge-small retained; the recall deficit was HNSW graph degradation — rebuild recovered self 141→177/200, true 87→109/120). New ops law from the field: rebuild the HNSW index after bulk ingests/deletions; never `CREATE INDEX CONCURRENTLY` on this AM (double-insertion verified).
 **Date:** 2026-07-21
 **Repo:** DreamLab-AI/agentbox
 **Related:** PRD-020 (Learning consumers and corpus uplift — product goals, the five workstreams, measurable acceptance), DDD-018 (Learning-consumers and model-lifecycle domain — new invariants I14–I23, the aggregator/harness/mining aggregates), PRD-018 / ADR-036 / DDD-016 (the shipped v1 triple this succeeds — severed loop closed additively, D1–D8, invariants I01–I13 + I-GOV), ADR-015 *and its 2026-07-04 amendment* (MCP-RuVector mandate; embeddings via Xinference `bge-small-en-v1.5`, 384-dim), ADR-035 (project-tracking — the additive-substrate precedent), DDD-005 (the `DistilledLesson` / `ExecutionTrace` URN-reuse precedent), ADR-027 (default-secure posture), ADR-029 (fail-open egress precedent).

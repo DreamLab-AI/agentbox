@@ -1,7 +1,30 @@
 # PRD-020: RuVector Learning Consumers and Corpus Uplift
 
-**Status:** Proposed / Draft v1 — NOT implemented (nothing in this document has shipped)
+**Status:** Draft v1 — W-A/W-B/W-C/W-D/W-E landed or closed 2026-07-21/22 (see amendment below)
 **Date:** 2026-07-21
+
+## Amendment (2026-07-22) — landing record
+
+Executed by the v2 mesh + queen ops (commits `f621a3ed`, `6317e473`, `bd655ea0`):
+**W-B** harness live (`agentbox.sh ruvector recall`; operative baseline measured, then
+ratcheted to 175/200 self · 107/120 true after the W-D root-cause fix; PASS median-of-3).
+**W-A** aggregation sweep live (`aggregate_sweep=true`; 12 aggregates past the Wilson
+floor from 8,839 steps; 30-min loop). **W-C**: `pattern_distillation` ENABLED (13
+`judge:trajectory` patterns, all embedded — the patterns table's first machine-distilled
+rows); `attention_rerank` OFF **by measurement** (corpus exactly L2-normalised ⇒
+attention blend is an identity, max deviation 4×10⁻⁷); `sona_learn/apply` BLOCKED
+upstream (engine hardcodes embedding_dim=256; 384-dim learns verified
+accepted-but-discarded); `param_tuning` reserved. **W-D**: migration REJECTED on
+evidence (sample A/B: both Qwen3 rejected — instruction prefix collapses exact-token
+recall; bge-m3's sole win redundant with hybrid); the live recall gap was **HNSW graph
+degradation**, fixed by a non-concurrent rebuild at m=16/ef_construction=128 (4m51s):
+self 141→177/200, true 87→109/120. Stack stays bge-small-en-v1.5/384. Upstream bug
+found: `CREATE INDEX CONCURRENTLY` double-inserts on this AM — never use it.
+**W-E**: archive fully restored + audited in isolation; outcome labels 100% degenerate,
+zero output text, structural yield generic — **nothing imported** (a correct result;
+`allow_legacy_mining_import` stays false). Deferred: durable supervisord scheduling
+(flake.nix blocks staged, needs image rebuild), stdio gate injection via entrypoint
+(edits held pending another session's uncommitted work on the same files).
 **Repo:** [github.com/DreamLab-AI/agentbox](https://github.com/DreamLab-AI/agentbox)
 **Related:** PRD-018 (RuVector-native memory and learning — the **shipped predecessor**; this PRD is its v2 successor and consumes the corpus PRD-018's producer now generates), ADR-040 (Learning consumers, model lifecycle and legacy mining — this PRD's decision record; it fires ADR-036's `review_trigger` as the ninth capability-adoption decision), DDD-018 (Learning-consumers and model-lifecycle domain — this PRD's domain model, continuing DDD-016's invariants at I14+), ADR-036 (RuVector capability adoption and learning loop — the eight decisions D1–D8 this PRD builds on; its `review_trigger` names exactly the promotions below), DDD-016 (Memory-learning domain — the invariants I01–I13 + I-GOV that remain law), PRD-001 (Capabilities and adapters), PRD-008 (Code-as-Harness — URN-reuse precedent), PRD-017 (Sovereign project tracking — additive-substrate precedent), ADR-005 (Pluggable adapter architecture — dispatch contract and observability), ADR-008 (Privacy filter routing — fail-closed on the trajectory/mining write paths), ADR-012 (JSON-LD 1.1 adoption), ADR-013 (Canonical URI grammar — the 18 kinds), ADR-015 (MCP RuVector mandate + its 2026-07-04 embedding-pipeline amendment), PRD-011 (Ontology bridge — the class corpus the sixth stream would link against)
 
