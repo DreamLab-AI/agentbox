@@ -9,11 +9,18 @@
  * Backed by: pg module (searched in workspace, management-api, or global)
  * Embeddings: xinference /v1/embeddings (bge-small-en-v1.5, 384-dim)
  * Connection: $RUVECTOR_PG_CONNINFO or defaults to docker service name
+ *
+ * PRD-020 (v2) note: the aggregation sweep (W-A) and the recall-regression harness
+ * (W-B) run OUT-OF-PROCESS — a gated self-loop / future supervisord program and
+ * `agentbox.sh ruvector recall`, never MCP tools. This server registers no new tool
+ * for them (tool registration stays byte-identical to PRD-018 — PRD-020 metric 1);
+ * it only READS the two wired Phase-0 gates (RUVECTOR_AGGREGATE_SWEEP,
+ * RUVECTOR_AGGREGATE_SWEEP_INTERVAL_MINS) so the manifest→env contract is visible here.
  */
 
 const readline = require('readline');
 const { createMemoryTools } = require('./lib/memory-tools');
-const { gates } = require('./lib/ruvector-gates');
+const { gates, boolGate, intGate } = require('./lib/ruvector-gates');
 const { createHybridTools } = require('./lib/memory-hybrid');
 const { createHealthTools } = require('./lib/memory-health');
 
@@ -423,6 +430,26 @@ if (gates.episodicTtlSweep()) {
       properties: { namespace: { type: 'string', description: 'Optional: scope the sweep to one namespace. Omit to sweep all (non-protected).' } },
     },
   });
+}
+
+// ── PRD-020 / ADR-040 D1 (W-A) Phase-0 gate plumbing — read-only, registers no tool ──
+// The v2 aggregation sweep and recall harness run OUT-OF-PROCESS (a gated self-loop /
+// future supervisord program + `agentbox.sh ruvector recall`), NOT as MCP tools. This
+// server therefore adds no tool here — the TOOLS list above is byte-identical to the
+// PRD-018 build when the Phase-0 gates are off, and (because these gates register no
+// tool at all) also when they are on (PRD-020 metric 1). We only READ the two wired
+// gates so the manifest→env contract is observable from the governed server; the
+// out-of-process sweep (scripts/ruvector-aggregate-sweep.mjs) reads the same env via
+// the shared ruvector-gates boolGate/intGate, so the surfaces cannot drift. Reading a
+// gate never touches retrieval geometry.
+const phase0 = {
+  aggregateSweep:             () => boolGate('RUVECTOR_AGGREGATE_SWEEP'),
+  aggregateSweepIntervalMins: () => Math.max(1, intGate('RUVECTOR_AGGREGATE_SWEEP_INTERVAL_MINS', 30)),
+};
+if (phase0.aggregateSweep()) {
+  // Informational only, and only when an operator has opted in (default-off state is
+  // silent → byte-identical boot). The sweep itself lives out-of-process.
+  log('INFO', `PRD-020 W-A: aggregate_sweep gate ON (interval ${phase0.aggregateSweepIntervalMins()}m) — distillation runs out-of-process; no MCP tool registered here`);
 }
 
 // Advertised tool names. Only the memory_* tools are genuinely backed by

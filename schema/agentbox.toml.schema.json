@@ -446,7 +446,10 @@
             "metadata_gin": { "type": "boolean", "description": "PRD-018/ADR-036 D6: require/build the GIN on metadata jsonb for tag retrieval (built by a D5 hygiene op). Injected as RUVECTOR_METADATA_GIN." },
             "health_tool": { "type": "boolean", "description": "PRD-018/ADR-036 D6: expose the memory_health read-only diagnostics tool. Injected as RUVECTOR_HEALTH_TOOL." },
             "episodic_ttl_sweep": { "type": "boolean", "description": "PRD-018/ADR-036 D6: honour TTL and sweep expired episodic entries (this is the delete implementation). Injected as RUVECTOR_EPISODIC_TTL_SWEEP." },
-            "memory_orient": { "type": "boolean", "description": "PRD-018/ADR-036 D6: expose the memory_orient OODA cold-start tool (semantic + effectiveness aggregates + episodic bundle). Injected as RUVECTOR_MEMORY_ORIENT." }
+            "memory_orient": { "type": "boolean", "description": "PRD-018/ADR-036 D6: expose the memory_orient OODA cold-start tool (semantic + effectiveness aggregates + episodic bundle). Injected as RUVECTOR_MEMORY_ORIENT." },
+            "embedding_dual_write": { "type": "boolean", "description": "PRD-020/ADR-040 D7: dual-write new memory_store embeddings to the parallel candidate column during an embedding migration (I17). Default false. Injected as RUVECTOR_EMBEDDING_DUAL_WRITE." },
+            "embedding_active_column": { "type": "string", "enum": ["embedding", "embedding_m3"], "default": "embedding", "description": "PRD-020/ADR-040 D7: which embedding column retrieval reads. Cutover and rollback are both a flip of this selector; default 'embedding' is today's 384-dim column (I17, I22)." },
+            "graph_backbone": { "type": "boolean", "description": "PRD-020/ADR-040 D9: reserved ADOPT-LATER — ontology-backbone property graph over _ruvector_ tables. Default false; harness-gated (I14)." }
           }
         },
         "solid_pod_rs": {
@@ -1125,8 +1128,15 @@
         "recency_half_life_days": { "type": "integer", "minimum": 1, "description": "Recency half-life (days) for aggregation and the hybrid recency term. Default 14. Injected as RUVECTOR_RECENCY_HALF_LIFE_DAYS.", "default": 14 },
         "feed_retrieval": { "type": "boolean", "description": "Effectiveness aggregates re-rank memory_search. Consumer of record_trajectories — enabling this ahead of the producer is flagged W066. Injected as RUVECTOR_FEED_RETRIEVAL." },
         "feed_routing": { "type": "boolean", "description": "Aggregates surface as advisory [INTELLIGENCE] hints, never a hard gate. Consumer of record_trajectories — enabling this ahead of the producer is flagged W066. Injected as RUVECTOR_FEED_ROUTING." },
-        "sona_enabled": { "type": "boolean", "description": "Reserved (ADOPT-LATER); wraps ruvector_sona_learn behind a recall-regression harness. Default false." },
-        "relevance_feedback": { "type": "boolean", "description": "Reserved (ADOPT-LATER); wraps ruvector_enable_learning/ruvector_record_feedback. Default false." }
+        "sona_enabled": { "type": "boolean", "description": "SUPERSEDED by ADR-040 D4 (split into sona_learn_enabled / sona_apply_enabled). Kept for manifest compatibility; default false." },
+        "relevance_feedback": { "type": "boolean", "description": "SUPERSEDED by ADR-040 D5 (renamed param_tuning_enabled — the module is an HNSW ef_search auto-tuner, not content relevance). Kept for manifest compatibility; default false." },
+        "aggregate_sweep": { "type": "boolean", "description": "PRD-020/ADR-040 D1: enable the scheduled aggregation sweep (scripts/ruvector-aggregate-sweep.mjs) that materialises EffectivenessAggregates from trajectory_steps via the governed writer (I19-I21). Default false. Injected as RUVECTOR_AGGREGATE_SWEEP." },
+        "aggregate_sweep_interval_mins": { "type": "integer", "minimum": 1, "default": 30, "description": "PRD-020/ADR-040 D1: sweep cadence in minutes. Default 30. Injected as RUVECTOR_AGGREGATE_SWEEP_INTERVAL_MINS." },
+        "pattern_distillation": { "type": "boolean", "description": "PRD-020/ADR-040 D6: distil judged trajectories into DistilledPattern records with provenance tiers (I18). Default false. Injected as RUVECTOR_PATTERN_DISTILLATION." },
+        "attention_rerank": { "type": "boolean", "description": "PRD-020/ADR-040 D4: stateless attention_score re-rank on retrieval. Harness-gated geometry change (I14). Default false. Injected as RUVECTOR_ATTENTION_RERANK." },
+        "sona_learn_enabled": { "type": "boolean", "description": "PRD-020/ADR-040 D4: feed judged trajectories to ruvector_sona_learn (no retrieval effect; safe side of the split). Default false. Injected as RUVECTOR_SONA_LEARN_ENABLED." },
+        "sona_apply_enabled": { "type": "boolean", "description": "PRD-020/ADR-040 D4: apply SONA Micro-LoRA transform on the query path. Harness-gated geometry change (I14, I22). Default false. Injected as RUVECTOR_SONA_APPLY_ENABLED." },
+        "param_tuning_enabled": { "type": "boolean", "description": "PRD-020/ADR-040 D5: HNSW ef_search auto-tuning via the extension's learning module (renamed from relevance_feedback). Harness-gated (I14). Default false. Injected as RUVECTOR_PARAM_TUNING_ENABLED." }
       }
     },
     "memory_hygiene": {
@@ -1136,7 +1146,10 @@
       "properties": {
         "allow_namespace_repair": { "type": "boolean", "description": "Enable the non-dry-run repair-namespaces path (~178k swapped namespace/value rows)." },
         "allow_embedding_backfill": { "type": "boolean", "description": "Enable the non-dry-run backfill-embeddings path (NULL-embedding rows recomputed via Xinference)." },
-        "allow_legacy_archival": { "type": "boolean", "description": "Enable the non-dry-run archive-legacy path (frozen legacy telemetry dumped to cold storage then deleted from the hot table)." }
+        "allow_legacy_archival": { "type": "boolean", "description": "Enable the non-dry-run archive-legacy path (frozen legacy telemetry dumped to cold storage then deleted from the hot table)." },
+        "allow_embedding_m3_backfill": { "type": "boolean", "description": "PRD-020/ADR-040 D7: enable the non-dry-run parallel-column backfill re-embed during an embedding migration (I17). Dry-run by default." },
+        "allow_legacy_mining_import": { "type": "boolean", "description": "PRD-020/ADR-040 D8: enable the non-dry-run import of provenance-marked MinedCandidates into the legacy-mined-candidates namespace (I15, I23). Dry-run by default." },
+        "allow_pattern_graduation": { "type": "boolean", "description": "PRD-020/ADR-040 D8: enable the non-dry-run graduation of corroborated candidates (confidence replaced by real Wilson bound, never blended; I16). Dry-run by default." }
       }
     },
     "project_tracking": {

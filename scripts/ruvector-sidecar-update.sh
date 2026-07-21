@@ -61,6 +61,18 @@
 #                       Dry-run shows the SQL, current index presence, and the
 #                       ~365k-cost seq-scan EXPLAIN it eliminates.
 #
+# Evaluation ops (PRD-020 / ADR-040 D2 / W-B). Read-only — no DB writes.
+#   recall [--runs N] [--k K] [--fixture PATH] [--json] [--build-fixture]
+#                       Recall-regression harness — the mandatory gate for
+#                       every retrieval-geometry change. Runs the frozen
+#                       QuerySetFixture (self-recall@10; true-recall@10 vs a
+#                       forced exact scan; exact-token hybrid≥pure) against
+#                       the live HNSW index; prints per-class median-of-3
+#                       scores + PASS/FAIL against the no-regression band
+#                       (exit non-zero on FAIL). Evidence under backups/
+#                       ruvector-sidecar/recall-runs/. --build-fixture
+#                       (one-shot) re-samples the corpus + writes the fixture.
+#
 # The image pin lives in agentbox.toml [integrations.ruvector_external].image
 # (source of truth — flake.nix composeText reads it) and is mirrored in the
 # checked-in docker-compose.yml. Both are updated together here.
@@ -1109,6 +1121,37 @@ cmd_build_metadata_gin() {
     echo -e "${GREEN}build-metadata-gin complete.${NC}"
 }
 
+# 7. recall — the recall-regression harness (ADR-040 D2 / W-B). READ-ONLY: it
+#    never writes an aggregate, a fixture row, or a schema change. It runs the
+#    frozen QuerySetFixture against the live HNSW index and prints per-class
+#    median-of-3 scores + PASS/FAIL against the no-regression band; per-run
+#    evidence lands under backups/ruvector-sidecar/recall-runs/. No gate — a
+#    pure read is always safe to run. Env resolved from .mcp.json exactly like
+#    aggregate-effectiveness (RUVECTOR_PG_CONNINFO, XINFERENCE_ENDPOINT, …).
+cmd_recall() {
+    require_prod_running
+    command -v node >/dev/null || die "node required for recall"
+
+    local harness="${REPO_DIR}/scripts/ruvector-recall-harness.mjs"
+    [[ -f "$harness" ]] || die "recall harness not found: ${harness}"
+
+    # Resolve the governed MCP env (.mcp.json pattern). Empty output is fine —
+    # the harness falls back to the documented defaults.
+    local -a envp=()
+    mapfile -t envp < <(mcp_env_pairs || true)
+
+    info "recall — recall-regression harness (ADR-040 D2 / W-B, read-only)"
+    echo "  fixture   : scripts/recall-fixtures/recall-fixture.v1.json (frozen, checked in)"
+    echo "  classes   : self-recall@10 / true-recall@10 (vs forced exact scan) / exact-token"
+    echo "  gate      : median-of-3 no-regression band; PASS exit 0, FAIL non-zero"
+    echo "  artifact  : backups/ruvector-sidecar/recall-runs/<utc>.json"
+    echo "  env       : ${#envp[@]} key(s) from .mcp.json"
+
+    # Pass all remaining args through (--runs, --k, --fixture, --json,
+    # --build-fixture, --force, --help). The harness sets its own exit code.
+    env "${envp[@]}" node "$harness" "$@"
+}
+
 # ── dispatch ─────────────────────────────────────────────────────────────────
 
 case "${1:-status}" in
@@ -1123,8 +1166,9 @@ case "${1:-status}" in
     archive-legacy)       shift || true; cmd_archive_legacy "$@" ;;
     aggregate-effectiveness) shift || true; cmd_aggregate_effectiveness "$@" ;;
     build-metadata-gin)   shift || true; cmd_build_metadata_gin "$@" ;;
+    recall)   shift || true; cmd_recall "$@" ;;
     -h|--help|help)
-        sed -n '2,69p' "$0" | sed 's/^# \{0,1\}//'
+        sed -n '2,81p' "$0" | sed 's/^# \{0,1\}//'
         ;;
-    *) die "unknown subcommand: $1 (status|check|test|update|rollback|migrate-trajectories|repair-namespaces|backfill-embeddings|archive-legacy|aggregate-effectiveness|build-metadata-gin)" ;;
+    *) die "unknown subcommand: $1 (status|check|test|update|rollback|migrate-trajectories|repair-namespaces|backfill-embeddings|archive-legacy|aggregate-effectiveness|build-metadata-gin|recall)" ;;
 esac
