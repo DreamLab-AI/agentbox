@@ -1003,6 +1003,7 @@ Docs: docs/reference/prd/PRD-001-capabilities-and-adapters.md §Providers" \
     "openrouter" "OpenRouter"          "$(on_off providers.openrouter.enabled)" \
     "context7"   "Context7"            "$(on_off providers.context7.enabled)" \
     "brave"      "Brave Search"        "$(on_off providers.brave.enabled)" \
+    "ceramic"    "Ceramic Search"      "$(on_off providers.ceramic.enabled)" \
     "github"     "GitHub"              "$(on_off providers.github.enabled)" \
     "zai"        "Z.AI"                "$(on_off providers.zai.enabled)")"
 
@@ -1015,6 +1016,7 @@ Docs: docs/reference/prd/PRD-001-capabilities-and-adapters.md §Providers" \
     [openrouter]="OPENROUTER_API_KEY"
     [context7]="CONTEXT7_API_KEY"
     [brave]="BRAVE_API_KEY"
+    [ceramic]="CERAMIC_API_KEY"
     [github]="GITHUB_TOKEN"
     [zai]="ZAI_API_KEY"
   )
@@ -1028,7 +1030,7 @@ Docs: docs/reference/prd/PRD-001-capabilities-and-adapters.md §Providers" \
     [zai]="Run \`claude-zai login\` (or \`zai-cli login\`) inside the container\nafter first boot. The Z.AI / GLM wrapper opens a browser session\nand persists tokens under /home/zai-user/.zai/."
   )
 
-  for pname in anthropic openai gemini deepseek perplexity openrouter context7 brave github zai; do
+  for pname in anthropic openai gemini deepseek perplexity openrouter context7 brave ceramic github zai; do
     if echo "${raw_prov}" | grep -qw "${pname}"; then
       state_set_bool "providers.${pname}.enabled" "true"
       local env_var="${PROV_ENV[${pname}]}"

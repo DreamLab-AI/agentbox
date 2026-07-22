@@ -243,6 +243,7 @@ PROVIDERS = {
     "openrouter": "OPENROUTER_API_KEY",
     "context7":   "CONTEXT7_API_KEY",
     "brave":      "BRAVE_API_KEY",
+    "ceramic":    "CERAMIC_API_KEY",
     "github":     "GITHUB_TOKEN",
     "zai":        "ZAI_API_KEY",
 }

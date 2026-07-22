@@ -1,5 +1,47 @@
 # Env + Setup Consolidation Plan — 2026-07-15
 
+> **EXECUTED 2026-07-22** (PRD-024 C-8, final-mile sprint Tick 1). Status against
+> this plan's own verdicts:
+> - `.env.example` is now the canonical merge target: all 58 keys enumerated in
+>   §3 are present except the ones §5 flags stale/host-specific (`PLAYWRIGHT_*`,
+>   `CHROMIUM_PATH`, `SCREENSHOT_DIR`, `VIEWPORT_*`, `VISIONCLAW_HOST`,
+>   `VISIONCLAW_COMPOSE_PATH`), which are deliberately omitted and documented in
+>   a "REMOVED" footer rather than carried across verbatim, per §5.
+> - `GOOGLE_API_KEY` / `OPENROUTER_API_KEY` are already the canonical names
+>   across the wizard (`scripts/tui-write-manifest.py`, `scripts/start-agentbox.sh`)
+>   from an earlier pass on this same date-stamp — verified still true.
+> - Correctness fix beyond §3: the file previously committed as `.env.example`
+>   (at commit `050b076c`) had accidentally kept a draft "proposed replacement,
+>   mv this into place" header and a stale "FILES TO REMOVE" footer describing
+>   files that were *already* removed in that same commit — both corrected.
+> - Also fixed two real drift bugs found while merging: the `.env.example`
+>   ComfyUI section used invented var names (`COMFYUI_API_ENDPOINT`,
+>   `COMFYUI_LOCAL_ENDPOINT`) that no code reads; the real consumed name is
+>   `COMFYUI_URL` (`skills/comfyui/**`, `management-api/utils/comfyui-manager.js`).
+>   Corrected, with the `COMFYUI_OUTPUT_DIR` vs `COMFYUI_OUTPUTS` drift
+>   documented in-line (same pattern as the existing `OPENROUTER_KEY` /
+>   `OPENROUTER_API_KEY` note) rather than silently picking one.
+> - Per this tick's brief (append-only culture): **none of the 9 files were
+>   deleted.** `.env.template`, `.env.template.common`, `skills/env.sample`,
+>   `skills/echoloop/.env.example` (hard-deleted at `050b076c`) were
+>   **restored as deprecation-pointer stubs** pointing back at `.env.example`.
+>   `skills/ontology-enrich/.env.example` got the same stub treatment instead
+>   of deletion. `.env.template.oci` is kept (its own file, OCI-only) with its
+>   broken back-reference to the now-retired `.env.template.common` repointed
+>   at `.env.example`. `.env.solid-pods.example`/`.template` are kept as the
+>   distinct sidecar scope, each now with a one-line cross-reference to the
+>   master template (§4's "reference the master").
+> - Wizard: `CERAMIC_API_KEY` added as provider `ceramic` in
+>   `scripts/tui-write-manifest.py` (`PROVIDERS` dict) and
+>   `scripts/start-agentbox.sh` (checklist row, `PROV_ENV`, provider loop).
+>   `scripts/provision-agent-stacks.py` was left untouched — its per-profile
+>   `env` lists are stack/tool provisioning, not the general provider-key
+>   registry the wizard prompts from, and ceramic-search isn't stack-specific.
+> - E016 (`openmed`) schema fix is **owned by a different agent this tick**
+>   (C-6) — not touched here; `node scripts/agentbox-config-validate.js`
+>   passes clean at time of writing (0 errors, 3 unrelated advisories), so
+>   this env work introduces no new validator errors.
+
 Seeded by: `CERAMIC_API_KEY` missing from the runtime env (the ceramic-search skill and
 research agents can't authenticate). Root cause is broader: the env/config surface has
 **sprawled into ~9 tracked template files across 3 disagreeing key vocabularies**, and the
