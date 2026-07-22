@@ -92,3 +92,27 @@ in this ADR stale; the mandate itself stands, but the mechanism is corrected:
   Consolidation onto the mandated copy is the recorded intent.
 
 Full audit findings: `~/workspace/docs/ruvector-system-reference.md`.
+
+## Amendment (2026-07-22) — reindex ops law and recall harness
+
+The v2 learning-uplift work ([PRD-020](../prd/PRD-020-ruvector-learning-consumers-and-corpus-uplift.md) / [ADR-040](ADR-040-learning-consumers-model-lifecycle-and-legacy-mining.md)) established two operating facts that now attach to this mandate:
+
+- **Reindex ops law.** The HNSW index on `memory_entries.embedding` degrades under
+  write churn: after a bulk ingest or deletion, recall falls **silently** (live
+  self-recall dropped to 141/200 before it was caught) and is recovered only by a
+  **non-concurrent** index rebuild (`m=16`, `ef_construction=128`, ~5 min).
+  `ef_search` tuning did nothing. **Never run `CREATE INDEX CONCURRENTLY` on the
+  ruvector HNSW access method** — it double-inserts (every tuple is indexed twice;
+  verified live). This is the settled operating procedure for the mandated store:
+  rebuild non-concurrently after any bulk op, never concurrently.
+- **Recall harness now exists.** `./agentbox.sh ruvector recall` runs a stratified
+  fixture (median-of-3) against a **frozen band — self ≥175/200 · true ≥107/120 ·
+  exact-token Δ≥0** — and is THE gate for any change to retrieval geometry (index
+  params, embedding model, re-rank). The audit-era 188/200 was a **pre-ingest**
+  number and is not the current bar; live post-rebuild is 177/200 · 109/120.
+
+The embedding pipeline is unchanged from the 2026-07-04 amendment: Xinference
+`bge-small-en-v1.5` (384-dim). A v2 A/B (ADR-040 D7 / PRD-020 W-D) evaluated
+Qwen3-0.6B/4B and `bge-m3` against it and **rejected all three** — the Qwen3
+instruction prefix collapses exact-token recall and `bge-m3`'s sole win was
+redundant with hybrid scoring. bge-small stays the mandated pipeline.
