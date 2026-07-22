@@ -675,9 +675,18 @@ if [ -f "$_RUVECTOR_MCP" ]; then
 }
 MCPEOF
     chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
+    chmod 600 "$_MCP_JSON" 2>/dev/null || true   # MCP-3: baked API key / bearer token — owner-only on shared volume
     echo "  [mcp] Wrote $_MCP_JSON → ruvector-mcp.cjs (ruvector-postgres + xinference)"
   fi
 fi
+
+# ── MCP-3 (audit P1, security): .mcp.json holds literal secrets (Perplexity API
+#    key, email-gateway bearer token) that Claude Code cannot resolve from $VARS
+#    at server-spawn time, so literal expansion is unavoidable. It sits on a
+#    shared multi-user volume — enforce owner-only mode on EVERY boot, before any
+#    secret is injected, covering pre-existing world-readable files left by images
+#    built before this fix and the idempotent-skip / node-absent paths above. ──
+[ -f "$_MCP_JSON" ] && chmod 600 "$_MCP_JSON" 2>/dev/null || true
 
 # ── PRD-018 / ADR-036 D6: inject the RuVector memory gate env into .mcp.json ──
 # The gate env-var contract (booleans on iff '1'/'true') read from agentbox.toml
@@ -752,6 +761,7 @@ if (changed) { fs.writeFileSync(f, JSON.stringify(s, null, 2)); console.log('  [
 else { console.log('  [mcp] PRD-018 RuVector memory gate env already current'); }
 MCPGATEJS
   chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
+  chmod 600 "$_MCP_JSON" 2>/dev/null || true   # MCP-3: baked API key / bearer token — owner-only on shared volume
 fi
 
 # ── ADR-036 D2 / PRD-018 Phase 0: de-register the ungoverned ruvector fork ──
@@ -783,6 +793,11 @@ if doomed:
     json.dump(cfg, open(path, "w"), indent=2)
     print("  [mcp] De-registered ungoverned ruvector fork: " + ", ".join(doomed) + " (ADR-036 D2)")
 PYEOF
+  # MCP-3 (audit P1, security): Claude Code caches the resolved MCP config —
+  # including the literal Perplexity key and email-gateway bearer token — into
+  # this per-user state file. It is world-readable by default on the shared
+  # volume; enforce owner-only mode on every boot.
+  chmod 600 "$_USER_CLAUDE_JSON" 2>/dev/null || true
 fi
 
 # ── Live Nostr session mirror: register the hook in settings.json ──
@@ -948,6 +963,7 @@ cfg.setdefault('mcpServers', {})['browser-gpu'] = {'type': 'sse', 'url': '$_BROW
 with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
 " 2>/dev/null && echo "  [mcp] Added browser-gpu → $_BROWSER_MCP_URL" || true
     chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
+    chmod 600 "$_MCP_JSON" 2>/dev/null || true   # MCP-3: baked API key / bearer token — owner-only on shared volume
   else
     echo "  [mcp] browsercontainer not reachable — skipping browser-gpu MCP"
   fi
@@ -970,6 +986,7 @@ cfg.setdefault('mcpServers', {})['agentic-qe'] = {
 with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
 " 2>/dev/null && echo "  [mcp] Added agentic-qe → aqe mcp" || true
     chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
+    chmod 600 "$_MCP_JSON" 2>/dev/null || true   # MCP-3: baked API key / bearer token — owner-only on shared volume
   fi
 fi
 
@@ -999,6 +1016,7 @@ cfg.setdefault('mcpServers', {})['ontology-bridge'] = {
 with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
 " 2>/dev/null && echo "  [mcp] Upserted ontology-bridge → ${VISIONCLAW_API_URL:-http://visionclaw-server:4000}" || true
     chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
+    chmod 600 "$_MCP_JSON" 2>/dev/null || true   # MCP-3: baked API key / bearer token — owner-only on shared volume
 fi
 
 # ── Precedent bridge MCP: governance harness precedent system ──
@@ -1020,6 +1038,7 @@ cfg.setdefault('mcpServers', {})['precedent-bridge'] = {
 with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
 " 2>/dev/null && echo "  [mcp] Added precedent-bridge" || true
     chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
+    chmod 600 "$_MCP_JSON" 2>/dev/null || true   # MCP-3: baked API key / bearer token — owner-only on shared volume
   fi
 fi
 
@@ -1041,6 +1060,7 @@ cfg.setdefault('mcpServers', {})['harness-bridge'] = {
 with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
 " 2>/dev/null && echo "  [mcp] Added harness-bridge" || true
     chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
+    chmod 600 "$_MCP_JSON" 2>/dev/null || true   # MCP-3: baked API key / bearer token — owner-only on shared volume
   fi
 fi
 
@@ -1071,6 +1091,7 @@ cfg.setdefault('mcpServers', {})['email-gateway'] = {
 with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
 " 2>/dev/null && echo "  [mcp] Added email-gateway → $_EMAIL_GW_URL/mcp" || true
     chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
+    chmod 600 "$_MCP_JSON" 2>/dev/null || true   # MCP-3: baked API key / bearer token — owner-only on shared volume
     # Warm-up (best-effort, detached): prime the gateway's local LLM backend and
     # open a session NOW, so the first Claude Code session's MCP `initialize`
     # handshake is fast instead of paying the cold-start latency that used to trip
@@ -1119,6 +1140,7 @@ cfg.setdefault('mcpServers', {})['perplexity'] = {
 with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
 " 2>/dev/null && echo "  [mcp] Added perplexity → $_PERPLEXITY_ENTRY" || true
     chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
+    chmod 600 "$_MCP_JSON" 2>/dev/null || true   # MCP-3: baked API key / bearer token — owner-only on shared volume
   fi
 else
   [ -z "${PERPLEXITY_API_KEY:-}" ] && echo "  [mcp] PERPLEXITY_API_KEY not set — skipping perplexity MCP"
@@ -1157,6 +1179,7 @@ cfg.setdefault('mcpServers', {})['ruvnet-brain'] = {
 with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
 " 2>/dev/null && echo "  [mcp] Added ruvnet-brain → $_RB_MCP_DIR/server.js (namespace: $_RB_NS)" || true
     chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
+    chmod 600 "$_MCP_JSON" 2>/dev/null || true   # MCP-3: baked API key / bearer token — owner-only on shared volume
   fi
 
   # Phase 2: Protect the corpus namespace — reference data must not be
@@ -1178,6 +1201,7 @@ if cf is not None:
         print('  [ruvnet-brain] protected namespace $_RB_NS in claude-flow env')
 " 2>/dev/null || true
     chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
+    chmod 600 "$_MCP_JSON" 2>/dev/null || true   # MCP-3: baked API key / bearer token — owner-only on shared volume
   fi
 
   # Phase 3: Register grounding hook on UserPromptSubmit
