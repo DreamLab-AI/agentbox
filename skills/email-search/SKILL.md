@@ -17,7 +17,7 @@ description: >-
 
 ## What this is
 A local, self-contained MCP gateway that searches the owner's personal email archive. All
-reading and reasoning happen **locally** (abliterated Qwen + bge-m3 retrieval). The gateway
+reading and reasoning happen **locally** (Gemma 4 31B dense + bge-m3 retrieval). The gateway
 exposes **three tools across two access tiers**:
 
 | Tool | Returns | Egress filter |

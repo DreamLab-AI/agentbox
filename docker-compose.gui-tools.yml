@@ -49,6 +49,10 @@ services:
       - "0.0.0.0:9877:9877"
     networks:
       - visionclaw
+    volumes:
+      # Shared exchange volume: agentbox writes .blend / raster files here,
+      # Blender and QGIS read them (and write render outputs back).
+      - gui-tools-exchange:/home/devuser/exchange
     shm_size: '2gb'
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -57,3 +61,6 @@ networks:
   visionclaw:
     external: true
     name: visionclaw_network
+
+volumes:
+  gui-tools-exchange:

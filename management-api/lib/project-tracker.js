@@ -56,7 +56,13 @@ const DEFAULT_SCAN_DIRS = Object.freeze(['/projects', '/home/devuser/workspace/p
 // these is `local`; one whose realpath escapes (a symlink into the host's
 // /mnt/** github mount) is `github-mount`. Privacy: we never leak the host
 // path — only the slug (basename) and this coarse source classification.
-const CONTAINER_ROOTS = Object.freeze(['/home/devuser/workspace', '/projects']);
+// $WORKSPACE is read per classification (not frozen at require time) so the
+// canonical "use $WORKSPACE, never a literal home path" rule holds and tests
+// can pin a scratch workspace. /projects is the shared host-mount tree.
+const FALLBACK_WORKSPACE = '/home/devuser/workspace';
+function containerRoots() {
+  return [process.env.WORKSPACE || FALLBACK_WORKSPACE, '/projects'];
+}
 
 const COMMIT_WINDOW_DAYS = 30;
 
@@ -283,7 +289,7 @@ class ProjectTracker {
   _classifySource(repoPath) {
     let real = repoPath;
     try { real = fs.realpathSync(repoPath); } catch { /* use the literal path */ }
-    const inside = CONTAINER_ROOTS.some(
+    const inside = containerRoots().some(
       (root) => real === root || real.startsWith(root + path.sep),
     );
     return inside ? 'local' : 'github-mount';

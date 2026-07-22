@@ -30,29 +30,38 @@ function makePgStub() {
 
       if (s.startsWith('CREATE TABLE')) return { rows: [], rowCount: 0 };
 
+      // Readiness probe: the adapter verifies memory_entries exists before
+      // any operation (it never creates it — the table is owned by ruvector).
+      if (s.startsWith('SELECT 1 FROM information_schema.tables')) {
+        return { rows: [{ '?column?': 1 }], rowCount: 1 };
+      }
+
+      // Mirrors the adapter's upsert: (id, namespace, key, value::jsonb,
+      // source_type, metadata). value arrives pre-JSON.stringify'd.
       if (s.startsWith('INSERT INTO memory_entries')) {
-        const [key, namespace, value] = params;
-        tables.set(`${key}::${namespace}`, { key, namespace, value, stored_at: new Date() });
+        const [, namespace, key, value] = params;
+        tables.set(`${key}::${namespace}`, { key, namespace, value, created_at: new Date() });
         return { rows: [], rowCount: 1 };
       }
 
-      if (s.startsWith('SELECT key, value, namespace, stored_at FROM memory_entries WHERE key')) {
-        const [key, namespace] = params;
-        const row = tables.get(`${key}::${namespace}`);
-        return { rows: row ? [row] : [] };
-      }
-
-      if (s.startsWith('SELECT key, value, namespace, stored_at,')) {
-        // search
-        const [pattern, namespace, limit] = params;
+      // search — distinguished from retrieve by the scoring CASE expression
+      if (s.startsWith('SELECT key, value, namespace, created_at, (CASE')) {
+        const [pattern, namespace, , limit] = params;
         const term = pattern.replace(/%/g, '').toLowerCase();
         const results = [];
         for (const row of tables.values()) {
-          if (row.namespace === namespace && row.value.toLowerCase().includes(term)) {
+          if (row.namespace === namespace && String(row.value).toLowerCase().includes(term)) {
             results.push({ ...row, score: '1.0' });
           }
         }
         return { rows: results.slice(0, limit) };
+      }
+
+      // retrieve — WHERE key = $1 AND namespace = $2 AND source_type = $3
+      if (s.startsWith('SELECT key, value, namespace, created_at FROM memory_entries WHERE key')) {
+        const [key, namespace] = params;
+        const row = tables.get(`${key}::${namespace}`);
+        return { rows: row ? [row] : [] };
       }
 
       if (s.startsWith('DELETE FROM memory_entries')) {

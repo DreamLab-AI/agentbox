@@ -114,6 +114,12 @@ in
     sha256,
     nodeModulesHash,
     bin,
+    # Extra bin aliases: attrset of wrapper name → package-relative entry
+    # path (e.g. a bin shipped by a DEPENDENCY inside node_modules). Each
+    # emits an additional $out/bin/<name> wrapper over the same tree. Only
+    # stage 3 (the wrapper derivation) changes — the tarball and
+    # node_modules FODs and their pinned hashes are untouched.
+    extraBins ? {},
     extraEnv ? {},
     # Strip devDependencies (and peerDependencies/peerDependenciesMeta)
     # from package.json before `npm install`. Required for upstream
@@ -364,6 +370,20 @@ in
       exec ${pkgs.nodejs_22}/bin/node $out/lib/${pname}/$entry "\$@"
       WRAPPER
         chmod +x $out/bin/${bin}
+
+        # Extra bin aliases (see extraBins docstring above).
+        ${lib.concatStringsSep "\n" (lib.mapAttrsToList (aliasName: relEntry: ''
+        if [ ! -f "$out/lib/${pname}/${relEntry}" ]; then
+          echo "ERROR extraBins: ${relEntry} not found in ${pkgName}@${version} tree" >&2
+          exit 1
+        fi
+        cat > $out/bin/${aliasName} <<WRAPPER
+      #!/bin/sh
+      ${envPreamble}
+      exec ${pkgs.nodejs_22}/bin/node $out/lib/${pname}/${relEntry} "\$@"
+      WRAPPER
+        chmod +x $out/bin/${aliasName}
+        '') extraBins)}
 
         runHook postInstall
       '';

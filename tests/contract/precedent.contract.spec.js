@@ -12,6 +12,10 @@
  *
  * Uses an in-memory store — no RuVector, no filesystem, no network.
  *
+ * Runner: node:test (`npm run test:node` from management-api/). Excluded
+ * from the jest sweep via testPathIgnorePatterns — under jest, node:test
+ * registers zero jest tests and the suite reports a false failure.
+ *
  * @see management-api/lib/precedent-service.js
  * @see mcp/servers/precedent-bridge.js
  */

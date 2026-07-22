@@ -7,9 +7,19 @@
  * Files rotate daily: $WORKSPACE/events/YYYY-MM-DD.jsonl
  * Subscription handlers are in-process (for the same process instance).
  *
- * Event schema: { ts, session_id, execution_id, kind, payload }
+ * Event schema: { ts, session_id, execution_id, kind, payload,
+ *                 seq, prev_hash, hash }
+ *
+ * The last three fields are the ADR-039 tamper-evidence chain:
+ * hash = SHA256(prev_hash ‖ canonical_json(record − chain fields)), threading
+ * across daily rotation and process restarts (tail resumed from the newest
+ * file on first append). Edits, splices and reorders become detectable via
+ * GET /v1/system/audit-chain. Chain state only advances on a successful
+ * write, so a failed append never leaves the on-disk chain pointing at a
+ * record that was never persisted.
  *
  * @see ADR-005 §events slot
+ * @see ADR-039 §D3 (hash-chained events log)
  * @see PRD-001 §Capabilities and adapters
  */
 
@@ -20,6 +30,7 @@ const { BaseAdapter } = require('../base');
 const { NotFound, ValidationError } = require('../errors');
 const CONTRACT_VERSIONS = require('../contract-versions');
 const uris = require('../../lib/uris');
+const auditChain = require('../../lib/audit-chain');
 
 const REQUIRED_FIELDS = ['kind'];
 
@@ -35,6 +46,7 @@ class LocalJsonlEventsAdapter extends BaseAdapter {
     this._dir = opts.eventsDir || path.join(workspace, 'events');
     this._appendFn = opts.appendFn || null;
     this._subscribers = new Map(); // id -> { filter, handler }
+    this._chain = null; // lazy { prevHash, seq } — resumed from disk tail
   }
 
   /**
@@ -50,14 +62,20 @@ class LocalJsonlEventsAdapter extends BaseAdapter {
     if (!event || !event.kind) {
       throw new ValidationError('event.kind is required');
     }
+    if (!this._chain) this._initChain();
     const record = {
       ts: new Date().toISOString(),
       session_id: event.session_id || null,
       execution_id: event.execution_id || null,
       kind: event.kind,
       payload: event.payload || {},
+      seq: this._chain.seq,
     };
-    this._append(record);
+    record.prev_hash = this._chain.prevHash;
+    record.hash = auditChain.hashRecord(this._chain.prevHash, record);
+    if (this._append(record)) {
+      this._chain = { prevHash: record.hash, seq: record.seq + 1 };
+    }
     // Notify in-process subscribers
     for (const { filter, handler } of this._subscribers.values()) {
       if (!filter || !filter.kind || filter.kind === record.kind) {
@@ -96,19 +114,37 @@ class LocalJsonlEventsAdapter extends BaseAdapter {
     return path.join(this._dir, `${date}.jsonl`);
   }
 
-  /** @private */
+  /**
+   * Resume the hash chain from the newest on-disk record (or genesis).
+   * With an injected appendFn (tests) there is no disk state to resume.
+   * @private
+   */
+  _initChain() {
+    if (this._appendFn) {
+      this._chain = { prevHash: auditChain.GENESIS_HASH, seq: 0 };
+      return;
+    }
+    this._chain = auditChain.readTail(this._dir);
+  }
+
+  /**
+   * @private
+   * @returns {boolean} true when the record was persisted (chain may advance)
+   */
   _append(record) {
     const line = JSON.stringify(record) + '\n';
     if (this._appendFn) {
       this._appendFn(this._filePath(), line);
-      return;
+      return true;
     }
     try {
       fs.mkdirSync(this._dir, { recursive: true });
       fs.appendFileSync(this._filePath(), line, 'utf8');
+      return true;
     } catch (err) {
       // Non-fatal: event is still dispatched to in-process subscribers
       process.stderr.write(`[events/local-jsonl] write failed: ${err.message}\n`);
+      return false;
     }
   }
 }

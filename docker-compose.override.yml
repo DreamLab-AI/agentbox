@@ -107,6 +107,9 @@ services:
       # in place. Run `agentbox.sh migrate-workspace` to rsync into an
       # agentbox-owned named volume and detach the external MAD reference.
       - mad-workspace:/home/devuser/workspace
+      # Shared exchange with gui-tools sidecar (Blender/QGIS MCP).
+      # Sidecar mounts the same volume at /home/devuser/exchange.
+      - gui-tools-exchange:/home/devuser/gui-tools
 
     # Resource provisioning — host: 376G RAM, 32 cores, 3x GPU (98G VRAM), 1.9T disk
     # Highly provisioned for agentic browser workloads with WebGPU inference.
@@ -161,3 +164,4 @@ volumes:
   mad-workspace:
     external: true
     name: multi-agent-docker_workspace
+  gui-tools-exchange:

@@ -869,6 +869,20 @@ async function start() {
       }
     }
 
+    // ── System surface (ADR-039 — docBox back-port) ─────────────────────────
+    // /v1/system renders the live gate map (surfaces + modules with state and
+    // apply-class) over the parsed manifest and resolved adapters;
+    // /v1/system/audit-chain verifies the hash-chained events JSONL log.
+    // Always mounted (core observability, like /v1/uri); authed, read-only.
+    {
+      try {
+        await app.register(require('./routes/system'), { logger, manifest, adapters: resolvedAdapters });
+        logger.debug({ event: 'system.mounted' }, 'System surface ready at /v1/system');
+      } catch (err) {
+        logger.error({ err: err.message }, 'System surface failed to mount');
+      }
+    }
+
     // ── WS7 voice→actor binding (PRD-014 Seam B / B3; COM-15 producer) ──────
     // /v1/voice-intent maps a plain-text transcript to an agent intent, un-gates
     // behind a MANDATE (ADR-037 D7, no longer the blanket voice_intent flag), and

@@ -38,5 +38,5 @@ def _start():
     return None
 
 # start on the main thread once the event loop is up
-bpy.app.timers.register(_start, first_interval=2.0)
+bpy.app.timers.register(_start, first_interval=2.0, persistent=True)
 print("BLENDERMCP_STARTUP_QUEUED")

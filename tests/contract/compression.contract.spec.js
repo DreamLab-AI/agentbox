@@ -295,9 +295,17 @@ describe('Compression availability', () => {
     expect(() => freshHeadroom()).not.toThrow();
   });
 
-  it('isAvailable() returns true when addon is present and compression enabled', () => {
-    const h = freshHeadroom();
-    expect(h.isAvailable()).toBe(true);
+  // Native-tier: isAvailable() requires the real addon at its Nix path AND
+  // [compression].enabled=true — headroom has no injection seam for either,
+  // so this is only testable where the addon is installed.
+  (nativeAvailable ? it : it.skip)('isAvailable() returns true when addon is present and compression enabled', () => {
+    const restoreManifest = patchManifest(enabledManifest());
+    try {
+      const h = freshHeadroom();
+      expect(h.isAvailable()).toBe(true);
+    } finally {
+      restoreManifest();
+    }
   });
 
   it('events slot hard-gate fires even when isAvailable is true', () => {

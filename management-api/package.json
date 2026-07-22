@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "test": "jest"
+    "test": "jest && npm run test:node",
+    "test:node": "node --test ../tests/contract/harness-bridge.contract.spec.js ../tests/contract/precedent.contract.spec.js ../tests/contract/upstream_vectors/all_fixtures.test.js"
   },
   "jest": {
     "roots": [
@@ -22,7 +23,10 @@
     "rootDir": "..",
     "testPathIgnorePatterns": [
       "/node_modules/",
-      "/docker/"
+      "/docker/",
+      "/tests/contract/upstream_vectors/",
+      "/tests/contract/harness-bridge.contract.spec.js",
+      "/tests/contract/precedent.contract.spec.js"
     ],
     "watchPathIgnorePatterns": [
       "/node_modules/",
@@ -39,7 +43,7 @@
   "devDependencies": {
     "jest": "^29.7.0",
     "portfinder": "^1.0.38",
-    "ws": "^8.17.1"
+    "ws": "^8.21.1"
   },
   "dependencies": {
     "@fastify/cors": "^9.0.1",
@@ -53,11 +57,11 @@
     "@opentelemetry/sdk-node": "0.50.0",
     "fastify": "^4.26.0",
     "jsonld": "^8.3.2",
+    "nostr-tools": "^2.23.3",
+    "pg": "^8.13.1",
     "pino": "^8.19.0",
     "pino-pretty": "^11.0.0",
     "prom-client": "^15.1.0",
-    "nostr-tools": "^2.23.3",
-    "pg": "^8.13.1",
     "uuid": "^9.0.1"
   }
 }

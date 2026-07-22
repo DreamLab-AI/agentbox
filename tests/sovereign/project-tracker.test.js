@@ -210,9 +210,19 @@ describe('gitMetadata — reads a real git repo without a shell', () => {
 
 describe('ProjectTracker.scan — URN minting via uris.js', () => {
   let root;
+  let savedWorkspace;
   beforeAll(() => {
     root = mkTempRoot('scan-urn');
     initRepo(root, 'alpha', { commits: 2, remote: 'https://github.com/example/alpha.git' });
+    // Pin $WORKSPACE to the scratch root so the classifier reads this scan
+    // root as inside the container workspace (source: 'local'), matching the
+    // realpath the classifier compares against.
+    savedWorkspace = process.env.WORKSPACE;
+    process.env.WORKSPACE = fs.realpathSync(root);
+  });
+  afterAll(() => {
+    if (savedWorkspace === undefined) delete process.env.WORKSPACE;
+    else process.env.WORKSPACE = savedWorkspace;
   });
 
   it('mints an owner-scoped thing URN matching the ADR-035 project shape', async () => {

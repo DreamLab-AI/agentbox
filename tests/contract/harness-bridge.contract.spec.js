@@ -12,6 +12,10 @@
  * Uses fixture template JSON files in a temp directory.  No network,
  * no MCP transport — we import handleTool directly from the server module.
  *
+ * Runner: node:test (`npm run test:node` from management-api/). Excluded
+ * from the jest sweep via testPathIgnorePatterns — under jest, node:test
+ * registers zero jest tests and the suite reports a false failure.
+ *
  * @see ADR-004  (harness engineering framework)
  * @see PRD-harness-engineering  (M2 FR2.3, FR2.4)
  * @see harness-bridge.js  (MCP server under test)

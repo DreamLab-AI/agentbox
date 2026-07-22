@@ -15,11 +15,18 @@
 //   ./agentbox.sh ruvnet-brain status
 //
 // Idempotence: the corpus release tag is stamped in a `ruvnet/manifest` row;
-// matching tag + non-empty corpus → fast no-op. Chunks are content-addressed
+// matching tag + non-empty corpus + zero recorded failures → fast no-op (a
+// manifest carrying failed chunks triggers an incremental healing re-run).
+// Downloads are verified against the release's published .sha256 digest
+// before extraction (mismatch = fatal; absent digest = warn, or fatal with
+// RUVNET_BRAIN_REQUIRE_DIGEST=1). Chunks are content-addressed
 // (key = ruvnet/<repo>/<sha256-12>), so re-ingest only embeds NEW/changed
 // chunks; unchanged rows get a metadata version bump; rows absent from the
-// new corpus are pruned. Safe to re-run at every boot / after every build —
-// this IS the "bleeding edge at build time" reconciliation.
+// new corpus are pruned. Embed/upsert failures retry with backoff, then
+// bisect to isolate poison passages; the prune is skipped entirely if
+// failures exceed RUVNET_BRAIN_MAX_FAILED_CHUNKS (default 1000). Safe to
+// re-run at every boot / after every build — this IS the "bleeding edge at
+// build time" reconciliation.
 
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
@@ -112,10 +119,59 @@ async function waitXinference(maxSecs = 180) {
   return false;
 }
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Unpaired-surrogate sanitiser. Upstream's chunker splits surrogate pairs
+// across chunk boundaries (lone low surrogate at position 0 observed), which
+// breaks BOTH sinks: Xinference 500s the embed batch (Python UTF-8 encode
+// rejects lone surrogates) and Postgres rejects the stored value
+// (JSON.stringify emits the lone surrogate as a \uDXXX escape, which the
+// jsonb parser refuses to decode). Deterministic, so retries can't help —
+// replace unpaired surrogates with U+FFFD at the source, in mapPassage.
+const wellFormed = (s) => {
+  const t = s.toWellFormed ? s.toWellFormed() : s
+    .replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/g, '�')
+    .replace(/(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '�');
+  // NUL is a valid Unicode scalar (toWellFormed keeps it) but Postgres
+  // text/jsonb cannot store it — "unsupported Unicode escape sequence".
+  return t.replace(/\u0000/g, '');
+};
+
+// The EMBED_TRUNC substring can re-split a valid pair at the boundary
+// ('\ud83d' at position 1998 observed), so the embed input is sanitised
+// again after the cut.
+const embedText = (s) => wellFormed(s.substring(0, EMBED_TRUNC));
+
+// ── Release digest verification ──────────────────────────────────────────────
+// Upstream publishes <asset>.sha256 alongside the zip. A mismatch is fatal
+// (this corpus is treated as ground truth by the grounding hook); a release
+// without a digest asset only warns unless RUVNET_BRAIN_REQUIRE_DIGEST=1.
+function verifyDigest(zipPath, releaseUrl) {
+  let expected = null;
+  try {
+    const out = execFileSync('curl', ['-fsSL', '--retry', '2', '--max-time', '60', `${releaseUrl}.sha256`], { encoding: 'utf8' });
+    expected = (out.match(/\b[0-9a-f]{64}\b/i) || [null])[0];
+  } catch { /* digest asset absent or unreachable */ }
+  if (!expected) {
+    if (process.env.RUVNET_BRAIN_REQUIRE_DIGEST === '1') die(`no .sha256 digest at ${releaseUrl}.sha256 and RUVNET_BRAIN_REQUIRE_DIGEST=1`);
+    log('WARN: no .sha256 digest published for this release — skipping download verification');
+    return;
+  }
+  const actual = execFileSync('sha256sum', [zipPath], { encoding: 'utf8' }).split(/\s+/)[0];
+  if (actual.toLowerCase() !== expected.toLowerCase()) {
+    rmSync(zipPath, { force: true });
+    die(`download sha256 mismatch: expected ${expected}, got ${actual} — refusing to ingest`);
+  }
+  log(`download digest verified (sha256 ${expected.slice(0, 12)}…)`);
+}
+
 // ── Release version discovery ────────────────────────────────────────────────
 // The /releases/latest/download/ URL 302s through /releases/download/<tag>/…;
-// the tag in the Location header is the corpus version.
+// the tag in the Location header is the corpus version. Pinned URLs already
+// carry the tag in the path, so no network round-trip is needed for them.
 function discoverVersion(url) {
+  const pinned = url.match(/\/releases\/download\/([^/]+)\//);
+  if (pinned) return Promise.resolve(decodeURIComponent(pinned[1]));
   return new Promise((resolvePromise) => {
     const u = new URL(url);
     const mod = u.protocol === 'https:' ? https : http;
@@ -142,7 +198,7 @@ function mapPassage(p, fileRepo) {
   if (!text || typeof text !== 'string' || text.trim().length < 10) return null;
   const repo = String(p.repo ?? p.repository ?? fileRepo ?? 'unknown').toLowerCase();
   const path = String(p.path ?? p.file ?? p.source ?? p.loc ?? '');
-  return { text: text.trim(), repo, path };
+  return { text: wellFormed(text.trim()), repo, path: wellFormed(path) };
 }
 
 async function* streamJsonl(file) {
@@ -204,13 +260,19 @@ async function main() {
     await pool.end(); return;
   }
 
-  // 1. Version reconciliation — the every-boot fast path.
+  // 1. Version reconciliation — the every-boot fast path. A manifest that
+  //    recorded failures does NOT no-op: the incremental re-run only embeds
+  //    the missing keys, healing the gap without a full --force re-embed.
   const remoteVersion = await discoverVersion(RELEASE_URL);
   const manifest = await manifestRow();
   const existingCount = await corpusCount();
+  const priorFailures = (manifest?.failed_chunks || 0) + (manifest?.failed_batches || 0);
   if (!FORCE && remoteVersion && manifest?.corpus_version === remoteVersion && existingCount > 0) {
-    log(`corpus up to date (${remoteVersion}, ${existingCount} chunks) — nothing to do`);
-    await pool.end(); return;
+    if (!priorFailures) {
+      log(`corpus up to date (${remoteVersion}, ${existingCount} chunks) — nothing to do`);
+      await pool.end(); return;
+    }
+    log(`corpus at ${remoteVersion} but manifest records ${priorFailures} failed batch(es)/chunk(s) — re-running incremental ingest to heal`);
   }
   if (!remoteVersion && !FORCE && existingCount > 0) {
     log('release version undiscoverable (offline?) and corpus non-empty — keeping current corpus');
@@ -229,18 +291,21 @@ async function main() {
   const extractDir = join(STAGING, 'passages');
   rmSync(extractDir, { recursive: true, force: true });
   mkdirSync(extractDir, { recursive: true });
-  log(`downloading ${RELEASE_URL} → ${zipPath} (~512 MB, be patient)`);
+  log(`downloading ${RELEASE_URL} → ${zipPath} (hundreds of MB, be patient)`);
   execFileSync('curl', ['-fSL', '--retry', '3', '--max-time', '1800', '-o', zipPath, RELEASE_URL], { stdio: ['ignore', 'ignore', 'inherit'] });
+  verifyDigest(zipPath, RELEASE_URL);
   log('extracting *.passages.jsonl');
   try {
-    execFileSync('unzip', ['-oj', zipPath, '*.passages.jsonl', '-d', extractDir], { stdio: ['ignore', 'ignore', 'inherit'] });
+    // Exclude macOS AppleDouble junk (__MACOSX/, ._*) — upstream zips are built
+    // on macOS and ship binary resource forks matching *.passages.jsonl.
+    execFileSync('unzip', ['-oj', zipPath, '*.passages.jsonl', '-x', '__MACOSX/*', '._*', '*/._*', '-d', extractDir], { stdio: ['ignore', 'ignore', 'inherit'] });
   } catch (e) {
     // unzip exits 11 when no entries match — surface a clear error.
     die(`no *.passages.jsonl entries found in bundle (${e.message})`);
   }
   rmSync(zipPath, { force: true }); // DB is the destination; don't hoard 512 MB on the volume
 
-  const files = readdirSync(extractDir).filter((f) => f.endsWith('.passages.jsonl'));
+  const files = readdirSync(extractDir).filter((f) => f.endsWith('.passages.jsonl') && !f.startsWith('._'));
   if (!files.length) die('extraction produced no passage files');
   log(`${files.length} passage file(s): ${files.join(', ')}`);
 
@@ -250,7 +315,8 @@ async function main() {
 
   // 5. Stream, embed (new only), upsert. Content-addressed keys make this
   //    incremental: unchanged chunk → metadata version bump only.
-  let seen = 0, inserted = 0, skipped = 0, failedBatches = 0;
+  let seen = 0, inserted = 0, skipped = 0, failedChunks = 0;
+  const MAX_FAILED = Math.max(0, Number(process.env.RUVNET_BRAIN_MAX_FAILED_CHUNKS) || 1000);
   const seenKeys = new Set();
   const versionBumpKeys = [];
 
@@ -289,19 +355,39 @@ async function main() {
     );
   };
 
+  // Embed+upsert with retry (transient Xinference/pg hiccups) then bisection
+  // (isolate poison passages instead of dropping the whole batch). Exceeding
+  // MAX_FAILED aborts before the prune, leaving the existing corpus intact.
+  const processBatch = async (batch) => {
+    let lastErr = null;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const embs = await embedBatch(batch.map((b) => embedText(b.text)));
+        await insertBatch(batch, embs);
+        inserted += batch.length;
+        return;
+      } catch (e) {
+        lastErr = e;
+        if (attempt < 3) await sleep(attempt * 2000);
+      }
+    }
+    if (batch.length > 1) {
+      log(`WARN: batch of ${batch.length} failed 3 attempts (${lastErr.message}) — bisecting`);
+      const mid = Math.ceil(batch.length / 2);
+      await processBatch(batch.slice(0, mid));
+      await processBatch(batch.slice(mid));
+      return;
+    }
+    failedChunks++;
+    log(`WARN: chunk ${batch[0].key} permanently failed (${lastErr.message}) — skipped`);
+    if (failedChunks > MAX_FAILED) die(`${failedChunks} failed chunks exceeds RUVNET_BRAIN_MAX_FAILED_CHUNKS=${MAX_FAILED} — aborting before prune (existing corpus left intact)`);
+  };
+
   let pending = [];
   const flushPending = async () => {
     if (!pending.length) return;
-    const batch = pending.splice(0);
-    try {
-      const embs = await embedBatch(batch.map((b) => b.text.substring(0, EMBED_TRUNC)));
-      await insertBatch(batch, embs);
-      inserted += batch.length;
-    } catch (e) {
-      failedBatches++;
-      log(`WARN: batch of ${batch.length} failed (${e.message}) — continuing`);
-    }
-    if (seen % 5000 < BATCH) log(`progress: ${seen} seen, ${inserted} embedded+upserted, ${skipped} unchanged`);
+    await processBatch(pending.splice(0));
+    if (seen % 5000 < BATCH) log(`progress: ${seen} seen, ${inserted} embedded+upserted, ${skipped} unchanged, ${failedChunks} failed`);
   };
 
   for (const f of files) {
@@ -327,7 +413,7 @@ async function main() {
   await flushBump();
 
   if (!seenKeys.size) die('corpus parse produced zero usable passages — aborting before prune');
-  if (failedBatches > 0 && inserted === 0 && skipped === 0) die(`all ${failedBatches} batches failed — aborting before prune`);
+  if (failedChunks > 0 && inserted === 0 && skipped === 0) die(`all ${failedChunks} chunks failed — aborting before prune`);
 
   // 6. Prune rows that vanished from the new corpus (stale version stamp).
   const pruned = await pool.query(
@@ -343,7 +429,7 @@ async function main() {
     corpus_version: version,
     ingested_at: new Date().toISOString(),
     chunks: seenKeys.size, embedded: inserted, unchanged: skipped,
-    pruned: pruned.rowCount, failed_batches: failedBatches,
+    pruned: pruned.rowCount, failed_chunks: failedChunks,
     source: RELEASE_URL, ...(urn ? { dataset_urn: urn } : {}),
   };
   await pool.query(
@@ -356,7 +442,7 @@ async function main() {
 
   rmSync(extractDir, { recursive: true, force: true });
   writeFileSync(join(STAGING, 'last-ingest.json'), JSON.stringify(manifestValue, null, 2));
-  log(`done: ${seenKeys.size} chunks (${inserted} embedded, ${skipped} unchanged, ${pruned.rowCount} pruned, ${failedBatches} failed batches) → namespace ${NAMESPACE} @ ${version}`);
+  log(`done: ${seenKeys.size} chunks (${inserted} embedded, ${skipped} unchanged, ${pruned.rowCount} pruned, ${failedChunks} failed chunks) → namespace ${NAMESPACE} @ ${version}`);
   await pool.end();
 }
 

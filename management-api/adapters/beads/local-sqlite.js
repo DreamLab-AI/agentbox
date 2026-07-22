@@ -13,11 +13,22 @@
 
 const os = require('os');
 const path = require('path');
+const crypto = require('crypto');
 const Database = require('better-sqlite3');
 const { BaseAdapter } = require('../base');
 const { NotFound, AlreadyClaimed } = require('../errors');
 const CONTRACT_VERSIONS = require('../contract-versions');
 const uris = require('../../lib/uris');
+
+/**
+ * URN scope must be a 64-hex BIP-340 pubkey (ADR-013). `actor` is a free
+ * attribution label ('alice', an agent name…) stored on the row — it is only
+ * usable as the URN scope when it already IS a pubkey.
+ */
+function scopePubkey(actor) {
+  if (typeof actor === 'string' && /^[0-9a-f]{64}$/i.test(actor)) return actor.toLowerCase();
+  return process.env.AGENTBOX_PUBKEY || '0'.repeat(64);
+}
 
 const SCHEMA = `
   CREATE TABLE IF NOT EXISTS beads (
@@ -67,9 +78,11 @@ class LocalSqliteBeadsAdapter extends BaseAdapter {
   async createEpic(opts = {}) {
     if (!opts.title) throw new Error('title is required');
     const now = new Date().toISOString();
-    const pubkey = opts.actor || process.env.AGENTBOX_PUBKEY || '0'.repeat(64);
+    const pubkey = scopePubkey(opts.actor);
     const row = {
-      id: uris.mint({ kind: 'bead', pubkey, payload: { title: opts.title, type: 'epic', ts: now } }),
+      // nonce: content-addressing over {title,type,ts} alone collides when two
+      // same-title beads are minted within one ISO-millisecond (UNIQUE id).
+      id: uris.mint({ kind: 'bead', pubkey, payload: { title: opts.title, type: 'epic', ts: now, nonce: crypto.randomUUID() } }),
       title: opts.title,
       type: 'epic',
       parent_id: null,
@@ -103,9 +116,9 @@ class LocalSqliteBeadsAdapter extends BaseAdapter {
     const parent = this._db.prepare('SELECT id FROM beads WHERE id = ?').get(opts.parent_id);
     if (!parent) throw new NotFound('epic', opts.parent_id);
     const now = new Date().toISOString();
-    const childPubkey = opts.actor || process.env.AGENTBOX_PUBKEY || '0'.repeat(64);
+    const childPubkey = scopePubkey(opts.actor);
     const row = {
-      id: uris.mint({ kind: 'bead', pubkey: childPubkey, payload: { title: opts.title, type: 'child', parent: opts.parent_id, ts: now } }),
+      id: uris.mint({ kind: 'bead', pubkey: childPubkey, payload: { title: opts.title, type: 'child', parent: opts.parent_id, ts: now, nonce: crypto.randomUUID() } }),
       title: opts.title,
       type: 'child',
       parent_id: opts.parent_id,
