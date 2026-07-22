@@ -15,7 +15,7 @@
 
 **Maintainer**: [John O'Hare](https://github.com/jjohare) · **Upstream IP**: [Melvin Carvalho](https://github.com/melvincarvalho) ([JSS](https://github.com/JavaScriptSolidServer/JavaScriptSolidServer), [DID:Nostr](https://github.com/nicholasgasior/did-nostr)) · [MAINTAINERS.md](MAINTAINERS.md)
 
-[Quickstart](#quickstart) · [Why Agentbox](#why-agentbox) · [Capabilities](#included-capabilities) · [Sovereign Architecture](#the-sovereign-data-stack) · [Docs](docs/README.md)
+[Quickstart](#quickstart) · [Why Agentbox](#why-agentbox) · [Capabilities](#included-capabilities) · [Sovereign data stack](#the-sovereign-data-stack) · [Status](#status--remaining-work) · [Docs](docs/README.md)
 
 </div>
 
@@ -23,19 +23,69 @@
 
 ## What is Agentbox?
 
-Agentbox is a hardened, fully reproducible Linux container environment built specifically to host, orchestrate, and trace autonomous AI agents.
+Agentbox is the **room the agents occupy**: a hardened, byte-for-byte reproducible Linux container built to host, orchestrate, and trace autonomous AI agents. Three verbs describe what it exists to give an operator — **reproduce** the runtime from a single manifest, **audit** every durable action back to a cryptographic identity, and **control** what agents may touch through explicit, fail-closed gates.
 
-Instead of juggling custom Dockerfiles, scattered API keys, and brittle dependency scripts, **everything in Agentbox is driven by a single `agentbox.toml` manifest**. You declare the agents you want, the tools they need — from browser automation to 3D rendering — and the storage backends they use. Agentbox builds a byte-for-byte reproducible image using Nix, spins up the environment, and routes durable agent writes (memory, pods, beads, events) through a local privacy-redaction filter and cryptographic audit trails.
+Instead of custom Dockerfiles, scattered API keys, and brittle dependency scripts, **everything in Agentbox is driven by one `agentbox.toml` manifest**. You declare the agents you want, the tools they need — from browser automation to 3D rendering — and the storage backends they use. Nix builds a reproducible image; the runtime mints each agent its own `did:nostr` key at spawn and routes every durable write (memory, pods, beads, events) through a local privacy-redaction filter and cryptographic audit trail.
+
+Why the identity spine matters: when an agent acts, an operator has to answer *which* agent did it, and prove it later. Agentbox roots every resource, action, and event in one `did:nostr` keypair, so the graph of what happened is the audit trail — not a log you have to trust.
+
+---
+
+## Where Agentbox sits in the ecosystem
+
+Agentbox is one component of **[VisionFlow](https://github.com/DreamLab-AI/VisionFlow)** — a seven-repo effort built on a simple wager: hierarchy was an information-routing protocol bounded by human bandwidth, AI collapses the cost of that routing toward zero, and so the human role is not eliminated but **promoted from router to judgment broker**. Machines carry coordination; humans keep judgment at the intersections. Agentbox is the runtime layer of that mesh — it runs the agents; the siblings render, govern, store, and publish what they do.
+
+| Repo | Role |
+|:-----|:-----|
+| [VisionFlow](https://github.com/DreamLab-AI/VisionFlow) | Ecosystem canon — ADRs, PRDs, compatibility matrix, vision report, marketing site |
+| [VisionClaw](https://github.com/DreamLab-AI/VisionClaw) | Flagship engine — OWL 2 EL + Whelk reasoning, 82 CUDA kernels of GPU graph physics, one React Three Fiber renderer shared desktop↔headset; renders the embodied agent loop |
+| **Agentbox** (this repo) | **Sovereign agent runtime — Nix-built container, `did:nostr` identities, 116 skills, RuVector memory, Solid pod bridge, sovereign mesh** |
+| [solid-pod-rs](https://github.com/DreamLab-AI/solid-pod-rs) | Rust Solid pod server — the personal-data-sovereignty layer under each human's and agent's own key |
+| [nostr-rust-forum](https://github.com/DreamLab-AI/nostr-rust-forum) | Nostr-native forum + relay — the one place a human decision gets cryptographically signed |
+| [dreamlab-ai-website](https://github.com/DreamLab-AI/dreamlab-ai-website) | DreamLab AI company website — the commercial face, a thin consumer of the forum kit |
+| [narrativegoldmine](https://github.com/DreamLab-AI/knowledgeGraph) | The published public knowledge graph at [narrativegoldmine.com](https://narrativegoldmine.com) |
+
+**Independent convergence.** In July 2026 Block (Jack Dorsey) launched [Buzz](https://github.com/block/buzz) — a self-hosted, Nostr-native team-chat + AI-agent + git platform in Rust. It arrives independently at the same substrate this ecosystem has built since 2022: Nostr events as source of truth, agents as first-class signed participants with their own keypairs, NIP-42/98 auth, kind-based extensibility. Agentbox mints exactly that per-agent keypair at spawn. What Buzz does not carry is our differentiation — OWL 2 EL / KG ontology grounding, Solid-pod personal-data sovereignty, immersive 3D embodiment, and closed memory/learning loops. Buzz is ahead of us in one place worth naming: its NIP-42 relay gate is wired end-to-end today, whereas cross-relay mesh federation is designed, not shipped, on both sides.
+
+---
+
+## Architecture
+
+One manifest composes the image; every durable action flows through the adapter dispatch pipeline, is stamped with the agent's identity, and lands on the sovereign substrate.
+
+```mermaid
+flowchart TB
+    MAN["agentbox.toml manifest"] --> NIX["Nix flake to reproducible OCI image"]
+    NIX --> RT["Runtime container (non-root, read-only rootfs)"]
+    RT --> AG["Agents, each with its own did:nostr key"]
+    AG --> MW["Adapter dispatch: privacy filter, URN mint, JSON-LD, OTLP"]
+    MW --> SLOTS
+    subgraph SLOTS["Five pluggable adapter slots"]
+        MEM["memory"]
+        POD["pods"]
+        EVT["events"]
+        BEAD["beads"]
+        ORC["orchestrator"]
+    end
+    SLOTS --> SUB
+    subgraph SUB["Sovereign substrate"]
+        SP["solid-pod-rs (git-marks, block-trails)"]
+        RV["RuVector memory (bge-small 384-dim)"]
+        NR["nostr-rs-relay :7777"]
+    end
+    SUB --> FED["Sovereign mesh: allowlisted relay, Tailscale, CF tunnel"]
+```
+
+Every durable-state integration goes through one of the five adapter slots — never a hardcoded backend. Each slot resolves to `local-*`, `external`, or `off`, so the same manifest runs entirely standalone on a laptop (SQLite + local JSONL) or federates into a cloud mesh (Postgres pgvector + HTTP event sinks) by flipping a TOML switch. Observability, the privacy filter ([ADR-008](docs/reference/adr/ADR-008-privacy-filter-routing.md)), and the JSON-LD encoder wrap every dispatch in that order.
+
+---
 
 ## Why Agentbox?
 
-Most agent runtimes are just a collection of tools with no provenance, privacy, or reproducible state. Agentbox is built differently:
-
-- 🚀 **Batteries Included (via MCP)**: Out-of-the-box support for Claude Code, Codex, Gemini, DeepSeek, and ruflo. Instantly equip them with 90+ skills including the browsercontainer sidecar (chrome-devtools-mcp), ComfyUI, QGIS, Blender, LaTeX, and Jupyter via the Model Context Protocol (MCP).
-- 🔒 **Privacy by Default**: An embedded `openai/privacy-filter` sidecar sits in the adapter-dispatch path, redacting PII and secrets _before_ durable writes hit memory or pods. Policy is **per slot** — `strict` (redact-then-write, fail-closed) for `memory` and `pods`, `soft` for `events`/`beads`, `off` for the `orchestrator` control plane. It is not a universal interceptor on every tool call; see [ADR-008](docs/reference/adr/ADR-008-privacy-filter-routing.md).
-- 🛡️ **Hardened & Reproducible**: Built with Nix flakes. The `pg` Node module is baked into the image (no `npm install pg` at boot); a small set of `npx -y` CLI aliases is the one remaining runtime-fetch path, pending SRI pinning ([tracked in `lib/npm-cli.nix`](lib/npm-cli.nix)). Runs as non-root (uid 1000) with a read-only root filesystem, `cap_drop: ALL`, `no-new-privileges:true`, and a **supplemental seccomp denylist** (47 high-risk syscall denials layered on Docker's default profile — not a replacement allowlist; the container runtime is the security boundary). Published ports bind host-loopback only ([ADR-027](docs/reference/adr/ADR-027-default-secure-posture.md)).
-- 🔗 **Sovereign Data & Auditability**: Agents own their data cryptographically. Every generated file, memory, and action is stamped with a `did:nostr` identity and stored in an embedded Solid Pod (`solid-pod-rs`). As of the `solid-pod-rs 0.5.0-alpha.0` provenance release, the pod substrate makes agent actions **traceable by construction**: every write is a **git-mark** (write-as-commit + PROV-O sidecar), and high-value or disputed records can become **block-trails** — tamper-evident, hash-chained provenance trails with an optional Bitcoin (taproot) anchor. See [The Sovereign Data Stack](#the-sovereign-data-stack).
-- 🔌 **Pluggable Adapters**: Run entirely standalone on a laptop (SQLite + local JSONL), or effortlessly federate into a cloud mesh (Postgres pgvector + HTTP event sinks) by flipping a TOML switch.
+- 🔒 **Privacy by default.** An embedded `openai/privacy-filter` sidecar sits in the adapter-dispatch path, redacting PII and secrets *before* durable writes hit memory or pods. Policy is **per slot** — `strict` (redact-then-write, fail-closed) for `memory` and `pods`, `soft` for `events`/`beads`, `off` for the `orchestrator` control plane. It is not a universal interceptor on every tool call; see [ADR-008](docs/reference/adr/ADR-008-privacy-filter-routing.md).
+- 🛡️ **Hardened and reproducible.** Built with Nix flakes. Runs as non-root (uid 1000) with a read-only root filesystem, `cap_drop: ALL`, `no-new-privileges:true`, and a **supplemental seccomp denylist** (47 high-risk syscall denials layered on Docker's default profile — not a replacement allowlist; the container runtime is the security boundary). Published ports bind host-loopback only ([ADR-027](docs/reference/adr/ADR-027-default-secure-posture.md)). One remaining runtime-fetch path — a small set of `npx -y` CLI aliases — is tracked for SRI pinning in [`lib/npm-cli.nix`](lib/npm-cli.nix).
+- 🔗 **Sovereign data and auditability.** Every generated file, memory, and action is stamped with a `did:nostr` identity and can be stored in an embedded Solid pod ([solid-pod-rs](https://github.com/DreamLab-AI/solid-pod-rs)). The provenance substrate makes writes traceable by construction: each write lands as a **git-mark** (write-as-commit + provenance sidecar), and high-value or disputed records can become **block-trails** — tamper-evident, hash-chained trails with an optional Bitcoin (taproot) anchor. See [The Sovereign Data Stack](#the-sovereign-data-stack).
+- 🔌 **Pluggable adapters.** Five durable-state slots (beads, pods, memory, events, orchestrator), each `local` / `external` / `off`. Standalone or federated is one TOML switch, and the contract test harness must pass for all three implementation classes per slot.
 
 ---
 
@@ -43,15 +93,13 @@ Most agent runtimes are just a collection of tools with no provenance, privacy, 
 
 ### Interactive onboarding (recommended)
 
-Use the browser-based setup wizard to configure your manifest, select your tools, and boot the container:
-
 ```sh
 git clone https://github.com/DreamLab-AI/agentbox.git
 cd agentbox
 ./scripts/start-agentbox.sh
 ```
 
-The wizard opens in your default browser — no dependencies beyond Python 3 (for the local HTTP server). It renders all `agentbox.toml` sections with schema-validated form controls and the DreamLab glassmorphism design system. Pass `--tui` to use the legacy terminal wizard instead.
+The browser-based wizard renders every `agentbox.toml` section with schema-validated form controls (no dependency beyond Python 3 for the local HTTP server). Pass `--tui` for the legacy terminal wizard.
 
 <div align="center">
 <img src="docs/images/setup-wizard-overview.png" alt="Setup Wizard" width="720" />
@@ -78,398 +126,130 @@ cd agentbox
 ./agentbox.sh health
 ```
 
-Next steps:
-
-- [Configuration guide](docs/user/configuration.md)
-- [Provider and API key setup](docs/user/providers.md)
-- [Desktop mode and VNC access](docs/user/running.md)
+Next steps: [Configuration](docs/user/configuration.md) · [Providers and API keys](docs/user/providers.md) · [Desktop mode and VNC](docs/user/running.md)
 
 ---
 
 ## Included Capabilities
 
-Your `agentbox.toml` manifest toggles capabilities on or off. Disabled features add zero bloat to your final image.
+Your `agentbox.toml` manifest toggles capabilities on or off. Disabled features add zero bloat to the final image.
 
 | Category | Highlights |
 | :--- | :--- |
 | **Agent toolchains** | `claude-code`, `ruflo`, `antigravity` (agy), `agentic-qe`, `openai-codex` |
-| **Consultants** | Meta-router for named external consultations: DeepSeek, Perplexity, Z.AI, Antigravity |
+| **Consultants** | Meta-router for named external consultations: DeepSeek, Perplexity, Z.AI (GLM), Antigravity |
 | **Browser and web** | External browsercontainer sidecar (chrome-devtools-mcp, Chrome Beta 149+, GPU-accelerated) |
 | **Media and design** | Local ComfyUI (or external URL), ImageMagick, FFmpeg |
 | **Spatial and 3D** | QGIS geospatial analysis, Blender modelling, 3D Gaussian Splatting |
 | **Data science and docs** | PyTorch, Jupyter Lab, LaTeX, Mermaid rendering |
-| **Code-as-Harness** | Persistent Python kernel MCP, ExpeL post-task lesson distillation, Voyager verified-skill library, SWE-agent ACI MCP, execution-gated tree-search (PRD-008) |
-| **Knowledge grounding** | RuvNet Brain corpus (~90k source chunks, 21+ RuvNet ecosystem repos) ingested into the shared ruvector-postgres sidecar under the write-protected `ruvnet-kb` namespace — `search_ruvnet` MCP + UserPromptSubmit grounding hook prevent hallucination about ruflo/ruvector/agentdb-family tooling; corpus reconciles against the latest upstream release at every boot |
-| **Governance** | Agent Control Surface Protocol (kinds 31400-31405) — cross-repo human-in-the-loop integration with the DreamLab forum and the host project's broker via the embedded relay. The agentbox producer (`management-api/lib/agent-control-surface.js`) mints and publishes the panel events; see [sovereign mesh](docs/developer/sovereign-mesh.md). |
-| **Consumer Economy** | Governed outbound payment pipeline (PRD-015 Phase 1): `lib/pay402.js` pure 402-scheme classifier (`agentbox-ledger`/`x402`/`l402`/`unknown`), spend-policy middleware (fail-closed caps + allowlist), native payer (NIP-98 ledger debit, idempotent single retry), receipt + activity URNs minted on every spend attempt, `/.well-known/x402.json` discovery manifest, additive `accepts[]` in 402 challenges, `skills/payment-router` skill. Lightning-first: NWC/L402 is the only planned real-money rail; no native EVM/USDC. [ADR-032](docs/reference/adr/ADR-032-402-scheme-grammar.md), [PRD-015](docs/reference/prd/PRD-015-consumer-broadcast-economy.md). |
-| **Embodied agent loop** | Bi-directional `/wss/agent-events` channel (ADR-014) — agents emit a canonical `agent_action` signal (identity preserved per ADR-013) that a host project renders as a live agent actor (coloured beam + transient attractive edge), and consume inbound user-interaction events so agents become user-aware. A privacy-safe memory-flash beacon (env-gated on `VISIONCLAW_API_URL`) fires the host's embedding-cloud visual on every RuVector access. See [ADR-014](docs/reference/adr/ADR-014-bidirectional-graph-state-ingress.md), [ADR-026](docs/reference/adr/ADR-026-cross-substrate-agent-loop-seams.md), [PRD-014](docs/reference/prd/PRD-014-embodied-agent-loop.md). |
+| **Code-as-Harness** | Persistent Python kernel MCP, ExpeL post-task lesson distillation, Voyager verified-skill library, SWE-agent ACI MCP, execution-gated tree-search ([PRD-008](docs/reference/prd/PRD-008-code-as-harness-integration.md)) |
+| **Knowledge grounding** | RuvNet Brain corpus (~90k source chunks, 21+ RuvNet ecosystem repos) in the shared ruvector-postgres sidecar under the write-protected `ruvnet-kb` namespace — `search_ruvnet` MCP + a UserPromptSubmit grounding hook prevent hallucination about ruflo/ruvector/agentdb tooling |
+| **Governance** | Agent Control Surface Protocol (kinds 31400–31405) — cross-repo human-in-the-loop integration with the DreamLab forum via the embedded relay; the producer (`management-api/lib/agent-control-surface.js`) mints and publishes the panel events. See [sovereign mesh](docs/developer/sovereign-mesh.md) |
+| **Consumer economy** | Governed outbound payment pipeline ([PRD-015](docs/reference/prd/PRD-015-consumer-broadcast-economy.md) Phase 1): 402-scheme classifier, fail-closed spend-policy middleware, receipt + activity URNs on every spend attempt, `/.well-known/x402.json` discovery. Lightning-first — NWC/L402 is the only planned real-money rail. [ADR-032](docs/reference/adr/ADR-032-402-scheme-grammar.md) |
+| **Embodied agent loop** | Bi-directional `/wss/agent-events` channel ([ADR-014](docs/reference/adr/ADR-014-bidirectional-graph-state-ingress.md)) — agents emit a canonical `agent_action` signal a host renders as a live actor (coloured beam + transient edge), and consume inbound user-interaction events. See [ADR-026](docs/reference/adr/ADR-026-cross-substrate-agent-loop-seams.md), [PRD-014](docs/reference/prd/PRD-014-embodied-agent-loop.md) |
 | **Operations** | OTLP tracing, Prometheus metrics (`:9091/metrics`), Tailscale VPN integration |
 
-### Consumer Economy Pipeline (PRD-015 Phase 1)
-
-When an agent encounters an HTTP 402 from a peer node or external service, the consumer pipeline takes over: `lib/pay402.js` classifies the challenge as `agentbox-ledger`, `x402`, `l402`, or `unknown` — a pure function with fail-closed semantics (attacker-controlled bytes never become money). A spend-policy middleware checks per-call caps, daily budgets, origin allowlists, and approval thresholds from `[payments.consumer]` in the manifest before any rail is invoked. For `agentbox-ledger` challenges (in-mesh, Phase 1), the native payer debits the Web Ledger via NIP-98 with an idempotency key and retries the original request once. A receipt URN and a PROV-O activity URN are minted through `lib/uris.js` on every spend attempt — paid, denied, failed, or pending — so the audit trail has no gaps. The broadcast side emits an additive `accepts[]` block in 402 challenges (byte-compatible with existing clients) and generates `/.well-known/x402.json` at boot so external crawlers can discover gated services. The `skills/payment-router` skill wraps all of this as `payFetch()` — a 402-aware drop-in for `fetch()`. Configuration:
-
-```toml
-[payments.consumer]
-enabled = true
-max_sats_per_call = 100
-daily_budget_sats = 1000
-approval_threshold_sats = 50
-
-[payments.broadcast]
-well_known = true
-accepts_block = true
-
-[skills.payment_router]
-enabled = true
-```
-
-Phase 3 adds Lightning settlement via NWC (NIP-47) for L402 invoices — the only planned real-money rail. See [economy-loop.md](docs/developer/economy-loop.md) and [PRD-015](docs/reference/prd/PRD-015-consumer-broadcast-economy.md).
-
-### Code-as-Harness (PRD-008)
-
-A persistent IPython kernel MCP exposes six tools (`kernel.exec`, `kernel.list_vars`, `kernel.inspect`, `kernel.reset`, `kernel.interrupt`, `kernel.install_pkg`) so that variable state, imported modules, and computed DataFrames survive across tool calls within a session. An ExpeL post-task hook distils completed trajectories into reusable `DistilledLesson` records in RuVector. A Voyager verified-skill library accumulates assertion-passing Python functions for retrieval and injection at future task start. A SWE-agent-style ACI MCP provides bounded file viewing, compact-diff editing, budget-capped search, structured test execution, and task submission for autonomous repo-level bug-fixing. An execution-gated tree-search skill generates N candidates, executes each in a fresh kernel session, and scores by assertion-pass rate. Multi-tier memory uses OWL2-typed RuVector namespaces (semantic / procedural / episodic) with no schema changes. All records carry `did:nostr` identity and PROV-O action receipts. Phase 1 (`code_interpreter`, `codeact`, `expel_lesson_extraction`) and Phase 2 (`voyager_skill_library`, `aci_shell`, `tree_search_coder`) are both live in the shipped manifest — PRD-008 Phase 2 graduated from scaffold to enabled on 2026-07-05. `aci_shell` builds as a proper npm closure (`makeNpmService`, pinned `@modelcontextprotocol/sdk`). See `docs/developer/code-as-harness.md` for the operator guide.
-
-### Project Tracking (PRD-017)
-
-Agentbox hosts many git repositories (workspace projects and host-mount checkouts). Project tracking gives them a helm-grade status layer — a project grid (language, last commit, 30-day commit activity, open issues, stars), AI primers/synopses, and GitHub + local sync — but re-expressed entirely on agentbox's own substrate rather than a bolt-on dashboard. Each scanned repo becomes a content-addressed `urn:agentbox:thing:<pubkey>:project-<sha>` (minted through `lib/uris.js`, **no new URN kind**). Status is exposed three ways: ten `agentbox_project_*` Prometheus series on the existing port-bound `/metrics` (**no new port**); the `/v1/projects` HTTP surface (list, detail, activity, scan, primer, publish — JSON-LD when linked-data is on); and **kind-30841**, an addressable Nostr digest (sibling of the kind-30840 session summary) that signs per-project status to the operator's `did:nostr` and dual-writes it to the pod + relay. Durable state rides the existing memory (primers) and events (scans) adapter slots; primers and GitHub enrichment are the only external hops and are independently gated. `[project_tracking]` is enabled in the shipped manifest, including `nostr_publish` (kind-30841 digests); `github_enrichment` (needs `GITHUB_TOKEN`) and `primer_on_scan` stay off. See ADR-035 / PRD-017 / DDD-015.
+Deep-dives: [Code-as-Harness](docs/developer/code-as-harness.md) · [Consumer economy loop](docs/developer/economy-loop.md) · [Project tracking](docs/reference/adr/ADR-035-project-tracking-telemetry-and-nostr-kind.md)
 
 ---
 
 ## The Sovereign Data Stack
 
-The core differentiator of Agentbox is the **Identity and Tracing Mesh**.
+The core differentiator of Agentbox is the **identity and tracing mesh**.
 
-When an agent acts, how do you know _which_ agent did it? How do you prove it later? Without an identity root, audit logs are meaningless.
+Agentbox generates a BIP-340 secp256k1 keypair at bootstrap. The agent's public key becomes a `did:nostr:<hex-pubkey>` identity, and **every resource, action, and event is rooted in it**. From that single root, 18 kinds of `urn:agentbox:<kind>:[<scope>:]<local>` identifiers name every entity: pods, credentials, receipts, activities, events, memories, skills, governance docs, and more. Owner-scoped kinds embed the hex pubkey — `urn:agentbox:credential:<hex-pubkey>:<sha256-12-…>` means that credential was issued by that agent and no other. Content-addressed kinds are deterministic: the same payload always produces the same URN, so re-emitting never double-counts.
 
-Agentbox solves this by generating a BIP-340 secp256k1 keypair at bootstrap. The agent's public key becomes a `did:nostr:<hex-pubkey>` identity. **Every resource, action, and event in the system is rooted in this cryptographic identity.**
+| Surface | Where the DID appears |
+|:--------|:----------------------|
+| Login + relay auth | Nostr relay NIP-42 / NIP-98 HTTP signatures |
+| WAC principal | Solid pod `acl:agent` field |
+| DID Document | `GET /.well-known/did.json` |
+| Provenance author | git-mark commits + activity URNs |
 
-From that single root, 18 kinds of `urn:agentbox:<kind>:[<scope>:]<local>` identifiers name every entity: pods, credentials, receipts, activities, events, memories, skills, architecture docs, and more. Owner-scoped kinds embed the hex pubkey — `urn:agentbox:credential:<hex-pubkey>:<sha256-12-…>` means that credential was issued by that agent and no other. Content-addressed kinds are deterministic: the same payload always produces the same URN, so re-emitting never double-counts and signed credentials keep a stable `@id` across JCS canonicalisation.
+All URNs are minted through [`management-api/lib/uris.js`](management-api/lib/uris.js) — ad-hoc `format!()` or template-literal construction is prohibited. Because Agentbox uses canonical URIs and JSON-LD, the built-in [linked-object viewer](docs/user/linked-object-viewer.md) at `/lo/*` navigates the graph of an agent's memories, decisions, and credentials; `/v1/uri/<urn>` resolves any URN to its current HTTP representation (best-effort: 307/404/410).
 
-<details>
-<summary><b>Identity root diagram</b></summary>
+**Provenance substrate.** The `solid-pod-rs` provenance release upgrades the pod backend into a trust ledger: git-marks make provenance the default (not an afterthought), and block-trails scale traceability from free (git/hash-chain) to settlement-grade (Bitcoin taproot anchor) per record. The deeper wiring — receipts carrying `git_commit_sha` + block-height trailers and crossing those trailers across the host-graph boundary — is the next increment, tracked in [economy-loop.md](docs/developer/economy-loop.md#what-remains).
 
-```mermaid
-flowchart TB
-    KP[secp256k1 keypair\nBIP-340 x-only]
-    HEX[64-char hex pubkey]
-    DID[did:nostr:hex-pubkey\nPrimary agent DID]
-    KP --> HEX
-    HEX --> DID
-
-    subgraph identity["Identity surfaces"]
-        POD_ID[Solid pod identity\nWAC agent field]
-        RELAY_ID[Nostr relay NIP-42\nNIP-98 HTTP auth]
-        DID_DOC[DID Document\nGET /.well-known/did.json]
-    end
-
-    DID --> POD_ID
-    DID --> RELAY_ID
-    DID --> DID_DOC
-
-    subgraph owned["Owner-scoped URNs — hex pubkey in scope"]
-        CRED[urn:agentbox:credential\nhex-pubkey:sha256-12-...]
-        RECEIPT[urn:agentbox:receipt\nhex-pubkey:sha256-12-...]
-        ACTIVITY[urn:agentbox:activity\nhex-pubkey:sha256-12-...]
-        BEAD[urn:agentbox:bead\nhex-pubkey:sha256-12-...]
-        EVENT[urn:agentbox:event\nhex-pubkey:sha256-12-...]
-        MANDATE[urn:agentbox:mandate\nhex-pubkey:sha256-12-...]
-        AGENT[urn:agentbox:agent\nhex-pubkey:sha256-12-...]
-        ENVELOP[urn:agentbox:envelope\nhex-pubkey:sha256-12-...]
-    end
-
-    DID --> CRED
-    DID --> RECEIPT
-    DID --> ACTIVITY
-    DID --> BEAD
-    DID --> EVENT
-    DID --> MANDATE
-    DID --> AGENT
-    DID --> ENVELOP
-```
-
-</details>
-
-<details>
-<summary><b>Request lifecycle and adapter dispatch pipeline</b></summary>
-
-Every request through the management API follows a rigorous lifecycle: identity verification → adapter routing → privacy redaction → JSON-LD encoding → OTLP tracing.
-
-> **Note:** illustrative composite. Each stage (NIP-98 verification, the
-> privacy filter, `uris.mint`, the JSON-LD encoder, OTLP spans) is implemented
-> as adapter middleware, but `POST /v1/pods/:id/resources` is not itself a
-> management-api route — pod resource writes go to solid-pod-rs directly or
-> through the pods adapter from other routes.
-
-```mermaid
-sequenceDiagram
-    participant AG as Agent did:nostr:hex
-    participant MA as management-api
-    participant AR as adapter resolver
-    participant PF as privacy filter
-    participant UM as uris.mint
-    participant PO as solid-pod-rs
-    participant OT as OTLP exporter
-
-    AG->>MA: POST /v1/pods/:id/resources NIP-98 signed
-    MA->>OT: span open agentbox.adapter.pods.write
-    MA->>AR: resolve slot=pods
-    AR->>PF: write(slot=pods payload=data)
-    PF->>PF: policy=strict redact via opf-router
-    PF-->>AR: redacted payload
-    AR->>UM: mint kind=pod pubkey=hex payload=redacted
-    UM-->>AR: urn:agentbox:pod:hex:sha256-12-abc
-    AR->>PO: PUT resource atomic rename
-    PO-->>AR: 201 ETag
-    AR->>UM: mint kind=activity pubkey=hex action=write
-    UM-->>AR: urn:agentbox:activity:hex:sha256-12-def
-    MA->>OT: span close resource-urn=urn:agentbox:pod:...
-    MA-->>AG: 201 JSON-LD @id=urn:agentbox:pod:hex:sha256-12-abc
-```
-
-</details>
-
-<details>
-<summary><b>Full URN kind taxonomy (18 kinds)</b></summary>
-
-```mermaid
-flowchart LR
-    subgraph identity_k["Identity"]
-        POD_K[pod]
-        AGENT_K[agent]
-    end
-
-    subgraph comms["Communications"]
-        ENVELOPE_K[envelope]
-        EVENT_K[event]
-        RECEIPT_K[receipt]
-    end
-
-    subgraph state["Durable state"]
-        BEAD_K[bead]
-        MEMORY_K[memory]
-        DATASET_K[dataset]
-        THING_K[thing]
-    end
-
-    subgraph auth["Auth and trust"]
-        CRED_K[credential]
-        MANDATE_K[mandate]
-        MCP_K[mcp]
-    end
-
-    subgraph trace["Tracing"]
-        ACTIVITY_K[activity]
-        SKILL_K[skill]
-    end
-
-    subgraph docs["Governance docs"]
-        ADR_K[adr]
-        PRD_K[prd]
-        DDD_K[ddd]
-        META_K[meta]
-    end
-```
-
-| Kind | Owner-scoped | Content-addressed | Example URN |
-|------|:---:|:---:|-------------|
-| `pod` | yes | yes | `urn:agentbox:pod:hex:sha256-12-abc` |
-| `envelope` | yes | yes | `urn:agentbox:envelope:hex:sha256-12-abc` |
-| `credential` | yes | yes | `urn:agentbox:credential:hex:sha256-12-abc` |
-| `mandate` | yes | yes | `urn:agentbox:mandate:hex:sha256-12-abc` |
-| `receipt` | yes | yes | `urn:agentbox:receipt:hex:sha256-12-abc` |
-| `activity` | yes | yes | `urn:agentbox:activity:hex:sha256-12-abc` |
-| `event` | yes | yes | `urn:agentbox:event:hex:sha256-12-abc` |
-| `bead` | yes | yes | `urn:agentbox:bead:hex:sha256-12-abc` |
-| `agent` | yes | no | `urn:agentbox:agent:hex:agent-name` |
-| `mcp` | no | no | `urn:agentbox:mcp:server-slug` |
-| `memory` | yes | no | `urn:agentbox:memory:hex:name` |
-| `skill` | no | no | `urn:agentbox:skill:slug` |
-| `dataset` | yes | no | `urn:agentbox:dataset:hex:name` |
-| `thing` | yes | no | `urn:agentbox:thing:hex:name` |
-| `adr` | no | no | `urn:agentbox:adr:ADR-013` |
-| `prd` | no | no | `urn:agentbox:prd:PRD-006` |
-| `ddd` | no | no | `urn:agentbox:ddd:DDD-004` |
-| `meta` | no | no | `urn:agentbox:meta:slug` |
-
-</details>
-
-Because Agentbox uses canonical URIs and Linked Data (JSON-LD), you can spin up the built-in [linked-object viewer](docs/user/linked-object-viewer.md) at `/lo/*` to navigate the graph of your agent's memories, architectural decisions, and credentials. The `/v1/uri/<urn>` resolver maps any URN to its current HTTP representation.
-
-### Verifiable provenance and value transfer (substrate)
-
-The `solid-pod-rs 0.5.0-alpha.0` provenance release upgrades the pod backend into a **global trust ledger for the agentic mesh**. Two substrate capabilities are now available beneath the identity layer:
-
-- **git-marks** — every pod write lands as a commit, with a PROV-O sidecar recording who wrote what, when. Provenance is the default, not an afterthought.
-- **block-trails** — tamper-evident, hash-chained provenance trails. The cheap git-mark/hash-chain holds always; a Bitcoin (taproot) anchor is opt-in for high-value or disputed records, so traceability scales from free to settlement-grade per record.
-
-This makes the owner-scoped agent URNs minted by [`management-api/lib/uris.js`](management-api/lib/uris.js) — `urn:agentbox:activity` (what an agent did), `urn:agentbox:receipt` (what it was paid for), `urn:agentbox:credential` (what it was authorised to do) — eligible to become **trail states**: cheap by default, Bitcoin-anchored on demand. Value transfer across the mesh rides the same substrate — the sovereign, Bitcoin-settled (sats / Lightning, no EVM) [402 economy](docs/developer/economy-loop.md) (PRD-015 / ADR-032) now settles through the pod's routed web-ledger / order-book / AMM with replay protection.
-
-> The substrate capability is available now via the pin. The deeper wiring — receipts carrying `git_commit_sha` + block-height trailers, and crossing those trailers across the host-graph boundary — is the next increment, tracked in [economy-loop.md](docs/developer/economy-loop.md#what-remains).
-
-Deeper reading:
-
-- [Identity and tracing mesh](docs/developer/identity-mesh.md)
-- [ADR-013 — Canonical URI grammar](docs/reference/adr/ADR-013-canonical-uri-grammar.md)
-- [ADR-005 — Pluggable adapter architecture](docs/reference/adr/ADR-005-pluggable-adapter-architecture.md)
-- [PRD-006 — Linked-data interfaces](docs/reference/prd/PRD-006-linked-data-interfaces.md)
+Deeper reading: [Identity and tracing mesh](docs/developer/identity-mesh.md) · [ADR-013 — Canonical URI grammar](docs/reference/adr/ADR-013-canonical-uri-grammar.md) · [ADR-005 — Pluggable adapter architecture](docs/reference/adr/ADR-005-pluggable-adapter-architecture.md) · [PRD-006 — Linked-data interfaces](docs/reference/prd/PRD-006-linked-data-interfaces.md)
 
 ---
 
 ## Federation Transports
 
-Agentbox participates in all three DreamLab federation transport strata. Each stratum is independently enabled via `agentbox.toml` and `.env` configuration.
+Agentbox participates in three federation strata, each enabled independently via `agentbox.toml` and `.env`.
 
-```mermaid
-graph LR
-    subgraph "This Agentbox"
-        TS["Tailscale\nuserspace-networking"]
-        NR["nostr-rs-relay\n:7777"]
-        MA["management-api\n:9090"]
-    end
-
-    TS <-->|"WireGuard\nMagicDNS"| OTHER["Other Agentboxes\nsolid-pod-rs hosts"]
-    NR <-->|"NIP-01 WS"| RELAY["Private/Public\nNostr Relays"]
-    MA -->|"CF Tunnel\nHTTPS"| CF["Cloudflare Edge"]
-```
-
-### Stratum 1 — Tailscale (Private Mesh)
-
-Each agentbox container joins the tailnet with its own identity using `--tun=userspace-networking` (no `/dev/net/tun` needed). The container's MagicDNS hostname (configured via `[networking].hostname` in `agentbox.toml`) becomes the service discovery address for other mesh participants.
+- **Stratum 1 — Tailscale (private mesh).** Each container joins the tailnet with `--tun=userspace-networking` (no `/dev/net/tun`). Its MagicDNS hostname (from `[networking].hostname`) becomes the service-discovery address. Tailscale ACLs control access at this layer; `did:nostr` signatures are not evaluated here.
+- **Stratum 2 — Nostr relays.** The embedded `nostr-rs-relay` (`:7777`) is both local event store and mesh relay. Governance events (kinds 31400–31405) stay on private relays; public relays provide censorship-resistant fallback. Traffic is authenticated via NIP-98/NIP-42 `did:nostr` Schnorr signatures.
+- **Stratum 3 — Cloudflare tunnels (edge ↔ local).** A CF tunnel exposes the in-container solid-pod-rs to Workers services without opening public ports. Full runbook: [Native pod tunnel](docs/user/solid-pod-sidecar.md).
 
 ```toml
 # agentbox.toml
 [networking]
 tailscale = true
-hostname = "agentbox-london"
+hostname  = "agentbox-london"
 
-# .env
-TAILSCALE_AUTHKEY=tskey-auth-...
-```
-
-**Security:** Tailscale runs inside the container, isolated from host networking. Tailscale ACLs control access — `did:nostr` signatures are not evaluated at this layer.
-
-### Stratum 2 — Nostr Relays (All Components)
-
-The embedded `nostr-rs-relay` (`:7777`) serves as both a local event store and a mesh relay. Peer relays are configured in `agentbox.toml`:
-
-```toml
 [mesh]
 peer_relays = [
-    "ws://agentbox-paris.tailnet-name.ts.net:7777",   # Tailscale peer
-    "wss://relay.damus.io",                             # Public relay
+    "ws://agentbox-paris.tailnet-name.ts.net:7777",  # Tailscale peer
+    "wss://relay.damus.io",                          # Public relay
 ]
 ```
 
-All relay traffic is authenticated via NIP-98/NIP-42 `did:nostr` Schnorr signatures. Private relays keep governance events (kinds 31400-31405) within the organisation. Public relays provide censorship-resistant message passing when private infrastructure is unavailable.
-
-### Stratum 3 — Cloudflare Tunnels (Edge ↔ Local)
-
-A Cloudflare tunnel exposes the in-container solid-pod-rs to CF Workers services (nostr-rust-forum, dreamlab-ai-website) without opening ports to the public internet. The connector is the `docker-compose.solid-pods.yml` overlay (not the base compose file):
-
-```
-# .env.solid-pods — consumed only by the cloudflared-pod overlay service
-CLOUDFLARE_TUNNEL_TOKEN=eyJ...
-
-# .env (root) — optional public base URL override for the pod server +
-# management-api provisioning responses; defaults to the manifest base_url
-SOLID_POD_PUBLIC_URL=https://pods-native.dreamlab-ai.com
-```
-
-The CF Zero-Trust Public Hostname must target `http://agentbox:8484`. CF Workers reach the local agentbox through the tunnel for pod provisioning, resource access, and NIP-05 federated resolution. Full runbook: [Native pod tunnel](docs/user/solid-pod-sidecar.md).
-
-See [Tailscale guide](docs/user/tailscale.md) · [Mesh deployment](docs/user/mesh-deployment.md) · [Identity mesh](docs/developer/identity-mesh.md)
+See [Tailscale guide](docs/user/tailscale.md) · [Mesh deployment](docs/user/mesh-deployment.md) · [Sovereign mesh](docs/developer/sovereign-mesh.md)
 
 ---
 
 ## Documentation
 
-### For operators
+**Operators** — [Quickstart](docs/user/quickstart.md) · [Installation](docs/user/installation.md) · [Configuration](docs/user/configuration.md) · [Running](docs/user/running.md) · [Providers](docs/user/providers.md) · [Backup and restore](docs/user/backup-restore.md) · [Troubleshooting](docs/user/troubleshooting.md)
 
-- [Quickstart](docs/user/quickstart.md)
-- [Installation](docs/user/installation.md)
-- [Configuration](docs/user/configuration.md)
-- [Running](docs/user/running.md)
-- [Providers](docs/user/providers.md)
-- [Backup and restore](docs/user/backup-restore.md)
-- [Troubleshooting](docs/user/troubleshooting.md)
+**Sovereign / linked data** — [Sovereign stack](docs/user/sovereign-stack.md) · [Solid pod](docs/user/solid-pod.md) · [Nostr relay](docs/user/nostr-relay.md) · [Privacy filter](docs/user/privacy-filter.md) · [Linked-data interfaces](docs/user/linked-data.md) · [Canonical URIs](docs/user/uris.md) · [Linked-object viewer](docs/user/linked-object-viewer.md) · [Consultants](docs/user/consultants.md)
 
-### For sovereign data and linked data
+**Developers** — [Architecture](docs/developer/architecture.md) · [Identity and tracing mesh](docs/developer/identity-mesh.md) · [Adapter pattern](docs/developer/adapters.md) · [Sovereign mesh](docs/developer/sovereign-mesh.md) · [Ecosystem integration](docs/developer/ecosystem.md) · [Testing](docs/developer/testing.md) · [Backlog / next steps](docs/developer/backlog.md)
 
-- [Sovereign stack](docs/user/sovereign-stack.md)
-- [Solid pod](docs/user/solid-pod.md)
-- [Nostr relay](docs/user/nostr-relay.md)
-- [Privacy filter](docs/user/privacy-filter.md)
-- [Linked-data interfaces](docs/user/linked-data.md)
-- [Canonical URIs](docs/user/uris.md)
-- [JSON-LD linked-object viewer](docs/user/linked-object-viewer.md)
-- [Consultants](docs/user/consultants.md)
-
-### For developers
-
-- [Architecture overview](docs/developer/architecture.md)
-- [Identity and tracing mesh](docs/developer/identity-mesh.md)
-- [Adapter pattern](docs/developer/adapters.md)
-- [Sovereign mesh](docs/developer/sovereign-mesh.md)
-- [Ecosystem integration](docs/developer/ecosystem.md)
-- [Testing](docs/developer/testing.md)
-
-### Canonical specs
-
-- [ADR index](docs/reference/adr/)
-- [PRD index](docs/reference/prd/)
-- [DDD index](docs/reference/ddd/)
-- [Docs hub](docs/README.md)
+**Reference** — [ADR index](docs/reference/adr/) · [PRD index](docs/reference/prd/) · [DDD index](docs/reference/ddd/) · [System audit 2026-07-15](docs/reference/audit-2026-07-15.md) · [Docs hub](docs/README.md)
 
 ---
 
-## Platforms
+## Status & remaining work
 
-| Target | Build | Run | Notes |
-| --- | --- | --- | --- |
-| Linux x86_64 | Native | Native | Full support, richest local feature set |
-| Linux aarch64 | Native | Native | Supported, subject to feature-specific gates |
-| macOS | Compose/dev tooling | Docker Desktop/OrbStack/Colima | CPU or remote-GPU paths |
-| Windows | Compose/dev tooling | Docker Desktop + WSL2 | WSL2 is the practical path |
-| Remote Linux | Native or registry | Native | OCI/Fly/Hetzner/bare workflows supported |
+Honest state as of **2026-07-22**. Maturity words follow the ADR-002 ladder (*scaffolded / integrated / released*); the cross-repo work register is VisionClaw's [`docs/TODO-unified.md`](https://github.com/DreamLab-AI/VisionClaw), and agentbox detail lives in [docs/developer/backlog.md](docs/developer/backlog.md).
+
+| Capability | Maturity | Honest boundary |
+|:-----------|:---------|:----------------|
+| Reproducible Nix container | released | Byte-for-byte image build; non-root, read-only rootfs, seccomp denylist. |
+| Skills | released | **116** skills (validator schema fix landed 2026-07-22, C-6 — corrected from 115). |
+| `did:nostr` identity spine | integrated | One keypair as login + WAC principal + provenance author + DID subject + payment account. |
+| NIP-59 session mirror | released | Per-turn session mirror to the operator's phone via gift-wrapped self-DM. |
+| RuVector semantic memory | integrated | Shared ruvector-postgres sidecar, bge-small-en-v1.5 (384-dim, client-side embeddings). |
+| Learning loop | integrated | Capture→distil is **closed** (405 trajectories / 8,806 judged steps → 12 Wilson aggregates → 13 distilled patterns). The `feed_retrieval` / `feed_routing` consumers remain the open gates (`false`, awaiting the Wilson data floor, D-1). |
+| ACSP signed governance (kinds 31400–31405) | integrated | Producer live; the forum's admin key publishes the Decision. Serves one use case today (ontology concept elevation) — narrower than a universal HITL claim. |
+| Consumer economy (PRD-015) | integrated | Phase 1 shipped (in-mesh `agentbox-ledger` debit). Lightning settlement via NWC/L402 is Phase 3 — **not yet shipped**. |
+| Code-as-Harness (PRD-008) | integrated | Phase 1 + 2 enabled in the manifest, **except** `tree-search-coder` — armed but unauthored; author or disarm (C-4). |
+| Sovereign mesh | integrated (single-node) | Condense scheduler + relay allowlist live after the round-1 rebuild. The allowlist is baked but inert until the T-6 image rebuild exposes it fully; cross-relay / cross-org federation is **designed, not shipped**. |
+
+Landed on 2026-07-22 (Tick-1): MCP-registry projection (C-5), secrets `0600` hardening (C-7), env consolidation (C-8). The next-rebuild payload (T-6) is entrypoint/source enforcement plus full mesh-allowlist exposure. A nix GPU library-path fallback (C-9) is pending if in-container GPU is wanted.
 
 ---
 
 ## Contributing
 
 1. Read [docs/developer/architecture.md](docs/developer/architecture.md).
-2. Validate the manifest before changing build or runtime behavior.
+2. Validate the manifest before changing build or runtime behaviour.
 3. Prefer manifest-gated additions over ad hoc runtime mutation.
 4. Treat hardening, probe semantics, URI grammar, and linked-data surfaces as architectural changes — propose them via an ADR.
-
-## Part of VisionFlow
-
-Agentbox is the **harness engineering** substrate of the [VisionFlow](https://github.com/DreamLab-AI/VisionFlow) coordination platform — a federated architecture for human–AI intelligence built on `did:nostr` identity, OWL 2 EL reasoning, and Nostr message passing. agentbox runs the agents; VisionClaw renders the embodied agent loop; solid-pod-rs stores sovereignly; the forum and website provide governance and operator surfaces.
-
-| Substrate | Repository | Role |
-|:----------|:-----------|:-----|
-| **VisionFlow** | [DreamLab-AI/VisionFlow](https://github.com/DreamLab-AI/VisionFlow) | Umbrella canon — ecosystem guide and coordination architecture |
-| **VisionClaw** | [DreamLab-AI/VisionClaw](https://github.com/DreamLab-AI/VisionClaw) | Knowledge engineering — OWL 2 EL, 92 CUDA kernels, XR; renders the embodied agent loop |
-| **Agentbox** | **[DreamLab-AI/agentbox](https://github.com/DreamLab-AI/agentbox)** | **Harness engineering — Nix, 90+ skills, sovereign pods; runs the agents** |
-| **solid-pod-rs** | [DreamLab-AI/solid-pod-rs](https://github.com/DreamLab-AI/solid-pod-rs) | Cryptographic foundation — JSS Rust port, DID:Nostr |
-| **nostr-rust-forum** | [DreamLab-AI/nostr-rust-forum](https://github.com/DreamLab-AI/nostr-rust-forum) | Forum kit — passkey auth, governance events |
-| **dreamlab-ai-website** | [DreamLab-AI/dreamlab-ai-website](https://github.com/DreamLab-AI/dreamlab-ai-website) | Branded deployment — React, WASM, Cloudflare Workers |
-
-Deeper reading: [Ecosystem integration guide](docs/developer/ecosystem.md)
 
 ---
 
 ## License
 
-Core project: [AGPL-3.0](LICENSE).
-
-Using agentbox as a hosted service — including running it on behalf of other users — requires you to make the full source (including any modifications) available to those users. Self-hosted and internal use carry no additional obligations beyond the standard copyleft terms.
-
-Optional components (`linkedobjects/browser`, `solid-pod-rs`) are also AGPL-3.0 and therefore consistent with the project license. Other bundled components are MIT or Apache-2.0. See [Licensing details](docs/developer/licensing.md) for the full matrix.
+Core project: [AGPL-3.0](LICENSE). Running Agentbox as a hosted service — including on behalf of other users — requires you to make the full source (including modifications) available to those users. Self-hosted and internal use carry no obligations beyond the standard copyleft terms. Optional components (`linkedobjects/browser`, `solid-pod-rs`) are also AGPL-3.0; other bundled components are MIT or Apache-2.0. See [Licensing details](docs/developer/licensing.md) for the full matrix.
 
 ---
 
 <div align="center">
+
+**Part of [VisionFlow](https://github.com/DreamLab-AI/VisionFlow)** — agentbox runs the agents; [VisionClaw](https://github.com/DreamLab-AI/VisionClaw) renders the embodied agent loop; [solid-pod-rs](https://github.com/DreamLab-AI/solid-pod-rs) stores sovereignly; the [forum](https://github.com/DreamLab-AI/nostr-rust-forum) and [website](https://github.com/DreamLab-AI/dreamlab-ai-website) provide governance and operator surfaces.
 
 [Documentation](docs/README.md) · [Issues](https://github.com/DreamLab-AI/agentbox/issues) · [Releases](https://github.com/DreamLab-AI/agentbox/releases) · [Container Registry](https://github.com/DreamLab-AI/agentbox/pkgs/container/agentbox)
 
