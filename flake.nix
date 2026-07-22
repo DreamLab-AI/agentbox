@@ -1321,6 +1321,24 @@ startsecs=0
 priority=233
 stdout_logfile=/var/log/ruvector-pattern-distill.log
 stderr_logfile=/var/log/ruvector-pattern-distill.error.log
+
+# C7 / ADR-113: the durable landing for the condensation-index staleness
+# scheduler. Nothing re-ran ontology-condense-refresh.sh on GitHubSync/elevation,
+# so the class index silently went stale. This loop re-runs the refresh when the
+# logseq corpus is newer than the last condense output, or past the max-age floor.
+# Safe to autostart: it self-gates on ONTOLOGY_CONDENSE_SCHEDULE *and* _ENABLED
+# (both baked into imageEnv, inherited from PID 1), exits fast when off, is
+# flock-serialised against concurrent refreshes, and is fail-open per tick.
+[program:ontology-condense-scheduler]
+command=${pkgs.nodejs_22}/bin/node /opt/agentbox/scripts/ontology-condense-scheduler.mjs --loop
+user=devuser
+environment=HOME="/home/devuser"
+autostart=true
+autorestart=true
+startsecs=0
+priority=234
+stdout_logfile=/var/log/ontology-condense-scheduler.log
+stderr_logfile=/var/log/ontology-condense-scheduler.error.log
         '';
 
         jupyterServiceBlock = ''
@@ -2582,6 +2600,14 @@ ${ragflowNetworkDecl}
           "ONTOLOGY_CONDENSE_STYLE=${((skillsCfg.ontology or {}).condense or {}).style or "openai"}"
           "ONTOLOGY_CONDENSE_N_BLOCKS=${toString (((skillsCfg.ontology or {}).condense or {}).n_blocks or 3)}"
           "ONTOLOGY_CONDENSE_CONCURRENCY=${toString (((skillsCfg.ontology or {}).condense or {}).max_concurrency or 1)}"
+          # C7 / ADR-113: staleness scheduler for the condensation index. Nothing
+          # re-runs the refresh on GitHubSync/elevation, so the class index goes
+          # stale silently. The scheduler (scripts/ontology-condense-scheduler.mjs)
+          # self-gates on ONTOLOGY_CONDENSE_SCHEDULE *and* _ENABLED, so leaving this
+          # off is byte-identical to today.
+          "ONTOLOGY_CONDENSE_SCHEDULE=${boolEnv (((skillsCfg.ontology or {}).condense or {}).schedule_enabled or false)}"
+          "ONTOLOGY_CONDENSE_SCHEDULE_INTERVAL_MINS=${toString (((skillsCfg.ontology or {}).condense or {}).schedule_interval_mins or 60)}"
+          "ONTOLOGY_CONDENSE_SCHEDULE_MAX_AGE_HOURS=${toString (((skillsCfg.ontology or {}).condense or {}).schedule_max_age_hours or 24)}"
           "AGENTBOX_KERNEL_WHEELHOUSE=/var/lib/agentbox/code-interpreter-wheelhouse"
           "AGENTBOX_CODE_HARNESS_DIR=/var/lib/agentbox/code-harness"
           # ─────────────────────────────────────────────────────────────────

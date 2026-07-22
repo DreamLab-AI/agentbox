@@ -278,6 +278,25 @@
                   "maximum": 16,
                   "description": "Parallel in-flight requests. MUST be 1 for a single-context diffusion server (DiffusionGemma serialises internally; fan-out only queues). Raise only for a true multi-worker endpoint.",
                   "default": 1
+                },
+                "schedule_enabled": {
+                  "type": "boolean",
+                  "description": "C7 / ADR-113: run the staleness scheduler (scripts/ontology-condense-scheduler.mjs) that re-runs the condensation refresh when the logseq corpus is newer than the last condense output (the GitHubSync/elevation trigger) or past the max-age floor. Self-gates on this AND condense.enabled; safe to autostart. Vanilla default: off.",
+                  "default": false
+                },
+                "schedule_interval_mins": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1440,
+                  "description": "Scheduler tick cadence in minutes (jittered ±20% to avoid thundering-herd rebuilds). Each tick only rebuilds when the index is stale, so a short cadence is cheap.",
+                  "default": 60
+                },
+                "schedule_max_age_hours": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 720,
+                  "description": "Safety floor: rebuild the condensation index once it is older than this even if the corpus has not changed, so a missed file-mtime signal cannot leave the index permanently stale.",
+                  "default": 24
                 }
               }
             }

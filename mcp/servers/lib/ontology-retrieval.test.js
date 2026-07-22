@@ -3,8 +3,15 @@
 // Run: node --test agentbox/mcp/servers/lib/ontology-retrieval.test.js
 const test = require('node:test');
 const assert = require('node:assert');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 const budget = require('./ontology-budget');
-const { createOntologyRetrieval, createTtlCache, breadcrumb, serialiseTurtle, defaultSeedFn, defaultExpandFn } = require('./ontology-retrieval');
+const { createOntologyRetrieval, createTtlCache, breadcrumb, serialiseTurtle, defaultSeedFn, defaultExpandFn, createTelemetrySink } = require('./ontology-retrieval');
+
+function tmpJsonl(tag) {
+  return path.join(os.tmpdir(), `ont-tel-${tag}-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}.jsonl`);
+}
 
 const SEEDS = [
   { iri: 'https://narrativegoldmine.com/ns/v1#smart-contract', label: 'Smart Contract', domain: 'blockchain', maturity: 'mature', summary: 'A self-executing agreement.', relations: ['enables', 'requires', 'subClassOf'] },
@@ -142,6 +149,65 @@ test('defaultSeedFn: unwraps the {success,data:{results}} VisionClaw envelope', 
   const seeds = await defaultSeedFn(fakeFetch)({ query: 'x' });
   assert.strictEqual(seeds.length, 1);
   assert.strictEqual(seeds[0].iri, 'urn:ngm:class:x');
+});
+
+test('telemetry: fail_open increments fail_open_count AND lands in the JSONL (ADR-119)', async () => {
+  const file = tmpJsonl('failopen');
+  const sink = createTelemetrySink({ filePath: file });
+  const ret = createOntologyRetrieval({
+    seedFn: async () => { throw { error: 'ontology_unavailable' }; },
+    telemetry: sink,
+  });
+  const r = await ret.ask({ query: 'x' });
+  assert.strictEqual(r.degraded, true, 'seed failure degrades');
+
+  // In-memory counter is observable...
+  const snap = ret.getTelemetrySnapshot();
+  assert.strictEqual(snap.fail_open_count, 1, 'fail_open_count observable in memory');
+  assert.strictEqual(snap.fail_open_seed, 1, 'per-stage counter incremented');
+  assert.ok(snap.canary_ok >= 1, 'startup canary ran');
+
+  // ...and the record durably landed in the JSONL trail.
+  const lines = fs.readFileSync(file, 'utf-8').trim().split('\n').map((l) => JSON.parse(l));
+  assert.ok(lines.some((l) => l.event === 'canary'), 'canary liveness record written + read back');
+  const fo = lines.find((l) => l.event === 'fail_open');
+  assert.ok(fo, 'fail_open record present in JSONL');
+  assert.strictEqual(fo.detail.stage, 'seed');
+  assert.strictEqual(fo.detail.cause, 'availability');
+  assert.strictEqual(fo.counters.fail_open, 1, 'counters snapshot embedded per line');
+  assert.ok(typeof fo.ts === 'string' && fo.ts.length > 0, 'timestamp present');
+  fs.unlinkSync(file);
+});
+
+test('telemetry: canary fails OPEN to tmp when the primary dir is unwritable', () => {
+  // A regular file stood in where a directory is expected → mkdirSync throws
+  // ENOTDIR deterministically, exercising the fallback without a real perms setup.
+  const blocker = tmpJsonl('blocker');
+  fs.writeFileSync(blocker, 'not-a-dir');
+  const warnings = [];
+  const sink = createTelemetrySink({
+    filePath: path.join(blocker, 'telemetry', 'x.jsonl'), // unwritable (parent is a file)
+    warn: (m) => warnings.push(m),
+  });
+  const snap = sink.canary(); // must not throw
+  assert.strictEqual(snap.canary_ok, 1, 'fell back to a writable tmp sink');
+  assert.strictEqual(snap.file_enabled, true);
+  assert.ok(snap.path.startsWith(os.tmpdir()), 'active path repointed to tmp');
+  assert.ok(warnings.some((w) => w.includes('CANARY FALLBACK')), 'loud warning emitted');
+  fs.unlinkSync(blocker);
+});
+
+test('telemetry: ask + cache_hit events are counted and observable', async () => {
+  const file = tmpJsonl('ask');
+  const sink = createTelemetrySink({ filePath: file });
+  const ret = createOntologyRetrieval({ seedFn: async () => SEEDS, telemetry: sink });
+  await ret.ask({ query: 'repeat', model_tier: 'sonnet' });
+  await ret.ask({ query: 'repeat', model_tier: 'sonnet' }); // served from cache
+  const snap = ret.getTelemetrySnapshot();
+  assert.strictEqual(snap.ask, 1, 'one real ask');
+  assert.strictEqual(snap.cache_hit, 1, 'one cache hit');
+  assert.strictEqual(snap.fail_open_count, 0, 'no fail-open on the happy path');
+  fs.unlinkSync(file);
 });
 
 test('defaultExpandFn: unwraps responses, merges outgoing + children (children first)', async () => {

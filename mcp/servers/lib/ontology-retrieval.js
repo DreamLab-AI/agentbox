@@ -13,6 +13,7 @@
 // without a live RuVector/VisionClaw and wireable to the real ones in prod.
 
 const budget = require('./ontology-budget');
+const { createTelemetrySink } = require('./ontology-telemetry');
 
 const VC_PREFIXES = [
   'PREFIX vc: <https://narrativegoldmine.com/ns/v1#>',
@@ -117,7 +118,9 @@ function breadcrumb(seeds) {
  *   cache    optional TTL cache (get/set)
  *   clock    optional () => ms
  *   minMaturity  default 'established' (gate)
- *   telemetry    optional { record(event) }
+ *   telemetry    optional sink { record(event), snapshot?() }. Defaults to the
+ *                real file+memory liveness sink (ADR-119) — NOT a no-op — so
+ *                fail_open records land in JSONL and fail_open_count is observable.
  */
 function createOntologyRetrieval(deps = {}) {
   const seedFn = deps.seedFn || (async () => []);
@@ -125,7 +128,7 @@ function createOntologyRetrieval(deps = {}) {
   const cache = deps.cache || createTtlCache({ clock: deps.clock });
   const clock = deps.clock || (() => Date.now());
   const minRank = MATURITY_RANK[deps.minMaturity || 'established'] ?? 4;
-  const telemetry = deps.telemetry || { record() {} };
+  const telemetry = deps.telemetry || createTelemetrySink({ clock });
 
   async function ask(rawReq = {}) {
     const t0 = clock();
@@ -228,7 +231,12 @@ function createOntologyRetrieval(deps = {}) {
     return out;
   }
 
-  return { ask, _cache: cache };
+  /** Observable liveness/counter surface (ADR-119). null if the sink lacks one. */
+  function getTelemetrySnapshot() {
+    return typeof telemetry.snapshot === 'function' ? telemetry.snapshot() : null;
+  }
+
+  return { ask, _cache: cache, getTelemetrySnapshot };
 }
 
 // ── Default transport + wiring (so any process gets one identical brain) ─────
@@ -334,13 +342,21 @@ function defaultExpandFn(vcFetch) {
  */
 function createDefaultRetrieval(opts = {}) {
   const vcFetch = opts.vcFetch || makeVcFetch(opts);
+  // Real default liveness sink (ADR-119) — never the old no-op. Run the startup
+  // canary NOW so the writable-sink verdict is observable at boot; loud on
+  // failure but fail-open (never blocks retrieval — ADR-112 / PRD-020).
+  const telemetry = opts.telemetry || createTelemetrySink({
+    clock: opts.clock,
+    filePath: opts.telemetryPath,
+  });
+  if (typeof telemetry.canary === 'function') telemetry.canary();
   return createOntologyRetrieval({
     seedFn: defaultSeedFn(vcFetch),
     expandFn: defaultExpandFn(vcFetch),
     cache: opts.cache,
     clock: opts.clock,
     minMaturity: opts.minMaturity,
-    telemetry: opts.telemetry,
+    telemetry,
   });
 }
 
@@ -355,6 +371,7 @@ function classifyCause(err) {
 module.exports = {
   createOntologyRetrieval,
   createDefaultRetrieval,
+  createTelemetrySink,
   makeVcFetch,
   defaultSeedFn,
   defaultExpandFn,

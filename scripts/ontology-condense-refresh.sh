@@ -30,6 +30,27 @@ if [ "${ONTOLOGY_CONDENSE_ENABLED:-false}" != "true" ]; then
   exit 0
 fi
 
+# Mutual exclusion (C7 / ADR-113): the scheduler, the entrypoint, and a manual
+# operator invocation can all reach here. The condense pass is a long serialised
+# LLM run; two overlapping runs would double the load and race on the shared
+# CLASSES/ALIASES/CONDENSED outputs. Take an exclusive, non-blocking lock and
+# SKIP (not fail) if another refresh already holds it — idempotent + fail-open.
+# flock's fd-based lock auto-releases on process exit; the mkdir fallback traps.
+LOCK="${ONTOLOGY_CONDENSE_LOCK:-$(dirname "$ALIASES")/.ontology-condense.lock}"
+if command -v flock >/dev/null 2>&1 && exec 9>"$LOCK" 2>/dev/null; then
+  if ! flock -n 9; then
+    echo "[condense-refresh] another refresh holds the lock ($LOCK) — skipping." >&2
+    exit 0
+  fi
+else
+  LOCKDIR="$LOCK.d"
+  if ! mkdir "$LOCKDIR" 2>/dev/null; then
+    echo "[condense-refresh] a refresh is already running ($LOCKDIR) — skipping." >&2
+    exit 0
+  fi
+  trap 'rmdir "$LOCKDIR" 2>/dev/null || true' EXIT
+fi
+
 echo "[condense-refresh] 1/3 index-build (deterministic parse)…" >&2
 node "$LIB/ontology-index-build.js" "${ONTOLOGY_PAGES_DIR:-}" "$CLASSES" >/dev/null
 

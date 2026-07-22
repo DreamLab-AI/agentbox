@@ -221,11 +221,30 @@ const TOOLS = [
 // Seed = anonymous /api/ontology-agent/discover; expand = authed SPARQL k-hop
 // (client LIMIT until the WS-0/ADR-117 server clamp lands). Fail-open.
 const retrieval = createDefaultRetrieval();
+// ADR-119 startup canary verdict (fired inside createDefaultRetrieval): log the
+// writable-sink state loudly at boot so a dead liveness sink is not silent.
+try {
+  const _snap = typeof retrieval.getTelemetrySnapshot === 'function' ? retrieval.getTelemetrySnapshot() : null;
+  if (_snap) {
+    console.error(`[ontology-bridge] ontology_ask telemetry: canary ${_snap.canary_ok ? 'OK' : 'FAILED'}, ` +
+      `sink ${_snap.file_enabled ? _snap.path : 'IN-MEMORY-ONLY'}, fail_open_count=${_snap.fail_open_count}`);
+  }
+} catch { /* fail-open: telemetry logging must never block boot */ }
 
 async function handleTool(name, args) {
   switch (name) {
-    case 'ontology_health':
-      return vcFetch('/api/ontology/health');
+    case 'ontology_health': {
+      const health = await vcFetch('/api/ontology/health');
+      // Attach the local ontology_ask liveness telemetry (ADR-119) so
+      // fail_open_count and the canary verdict are observable without a
+      // separate surface. Additive + namespaced — never mutates VC's shape.
+      const snap = typeof retrieval.getTelemetrySnapshot === 'function'
+        ? retrieval.getTelemetrySnapshot() : null;
+      if (snap && health && typeof health === 'object' && !Array.isArray(health)) {
+        return { ...health, _agentbox_ontology_ask_telemetry: snap };
+      }
+      return health;
+    }
 
     case 'ontology_search': {
       const params = new URLSearchParams({

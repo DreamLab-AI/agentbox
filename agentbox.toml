@@ -117,7 +117,16 @@ ingress_policy   = "allowlist"        # allowlist | signed-only | open
 # (The operator pubkey is NOT auto-added at boot; that older claim matched no
 # code.) Add 64-char hex pubkeys to admit them. Baked into the supervisor env
 # at nix build time (flake.nix relayAllowedPubkeysCsv) — changes need a rebuild.
-allowed_pubkeys  = []
+allowed_pubkeys  = [
+  # Populated 2026-07-22 from the dreamlab-ai D1 whitelist + forum-config (Tock-0 staging;
+  # baked at nix build — takes effect at the next image rebuild).
+  "6407eed80e2a8646e41a5ddba0ae6619425fc54af40e2b30482b9623c682425a",  # operator-jjohare — human admin (Dr John O'Hare)
+  "11ed64225dd5e2c5e18f61ad43d5ad9272d08739d3a20dd25886197b0738663c",  # visionclaw-server — governance publisher (key-split pending, ADR-040 D3)
+  "cd37af940054d7b2dc979b6f51296db1ca2c34d2a234f35bc6a84888a69a1f88",  # beema — forum admin
+  "a3af4977eb4c93bc7270b9e48cac69e8e6c18bb3bcb4ec3aaeeee360c3efd954",  # RedDread — forum admin (house admin; remove if misidentified)
+  "2de44d5622eef79519ac078f6e227a85aecbaefd561e4e50c5f51dfadbf916e9",  # junkiejarvis — agentbox-bridge forum agent
+  "a5f2a38c44c654b7d7d7c99744e061e02c4402fbc2444d4d5813b7c00eda4beb",  # mobile — operator's phone (Amethyst/Amber; npub15he28rzyce2t047hext5fcrpuqkygqhmcfzy6n2czwmuqrk6f04sgr03mf)
+]
 # Mobile bridge kinds: 1059 = NIP-59 gift wrap (phone→agent encrypted envelope),
 # 30840 = addressable session-summary (the durable conversation record, dual-written
 # to relay + pod). 30841 = addressable project-tracking digest (per-project status,
@@ -611,6 +620,17 @@ endpoint = "http://192.168.2.48:8084/v1"   # operator LAN model (Gemma 4 31B den
 model = "gemma-4-31B-it-qat"
 style = "openai"                            # openai | ollama
 max_concurrency = 2                         # llama.cpp serves multiple KV slots
+# C7 / ADR-113: the condensation index has no natural trigger — nothing re-runs
+# it when GitHubSync/elevation rewrites the logseq corpus, so the class index
+# silently goes stale. This wires a manifest-gated staleness scheduler
+# (scripts/ontology-condense-scheduler.mjs) that re-runs ontology-condense-refresh.sh
+# when the corpus is newer than the last condense output, or on a max-age safety
+# floor. Idempotent, flock-serialised, fail-open. Runs as an operator-started
+# detached loop today (no image rebuild) and is durably staged as a supervisord
+# program for the next image (mirrors the ruvector-aggregate-sweep pattern).
+schedule_enabled = true                     # run the periodic staleness scheduler
+schedule_interval_mins = 60                 # tick cadence (jittered ±20%)
+schedule_max_age_hours = 24                 # rebuild even without corpus change past this age
 
 [skills.harness]
 # Harness Engineering MCP bridge (ADR-004). Agents inspect harness templates
