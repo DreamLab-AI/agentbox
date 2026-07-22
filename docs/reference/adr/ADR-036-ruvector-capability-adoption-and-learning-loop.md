@@ -14,7 +14,7 @@ review_trigger: a ninth capability-adoption decision is needed (forces a re-eval
 
 # ADR-036 — RuVector capability adoption and learning loop
 
-**Status:** Proposed (v1) — D1–D6 implemented 2026-07-05 (see amendment below)
+**Status:** Implemented — D1–D6 realised 2026-07-05 (see amendments below)
 **Date:** 2026-07-04
 **Repo:** DreamLab-AI/agentbox
 **Related:** PRD-018 (RuVector-native memory and learning — product goals, adoption menu, retrieval UX, hygiene programme), DDD-016 (Memory-learning domain — ubiquitous language, aggregates, invariants), PRD-001 (Capabilities and adapters — the five-slot product spec), ADR-005 (Pluggable adapter architecture + observability middleware), ADR-008 (Privacy filter routing), ADR-012 (JSON-LD encoder), ADR-013 (Canonical URI grammar — the 18 kinds), ADR-015 (MCP RuVector mandate) **and its 2026-07-04 amendment** (embedding-pipeline correction: Xinference/bge-small-en-v1.5, two MCP copies), ADR-035 (Project tracking — the additive-substrate precedent this ADR follows), DDD-003 (Sovereign data-stack invariants), DDD-004 (Adapter middleware ordering, §L08), ADR-027 (Default-secure posture), ADR-029 (Fail-open egress precedent)

@@ -1,6 +1,6 @@
 ---
 title: Architecture Decision Records
-description: Index of all 35 agentbox ADRs (ADR-001..035) with status and the PRD/DDD they tie into.
+description: Index of all 40 agentbox ADRs (ADR-001..040) with status and the PRD/DDD they tie into.
 ---
 
 # Architecture Decision Records
@@ -27,16 +27,16 @@ Older records use `**Status:**` markdown; ADR-023 onward carry YAML frontmatter
 | [011](ADR-011-consultation-mcps.md) | Consultation MCP servers as the meta-router | Accepted | [PRD-005](../prd/PRD-005-meta-router-consultants.md) |
 | [012](ADR-012-jsonld-federation-grammar.md) | JSON-LD 1.1 as the federation interchange grammar | Accepted | [PRD-006](../prd/PRD-006-linked-data-interfaces.md) · [DDD-004](../ddd/DDD-004-linked-data-interchange-domain.md) |
 | [013](ADR-013-canonical-uri-grammar.md) | Canonical URI grammar and resolver | Accepted | [PRD-006](../prd/PRD-006-linked-data-interfaces.md) · [DDD-004](../ddd/DDD-004-linked-data-interchange-domain.md) |
-| [014](ADR-014-bidirectional-graph-state-ingress.md) | Bi-directional graph-state ingress for agent reaction | Accepted | [PRD-006](../prd/PRD-006-linked-data-interfaces.md) · [DDD-004](../ddd/DDD-004-linked-data-interchange-domain.md) |
+| [014](ADR-014-bidirectional-graph-state-ingress.md) | Bi-directional graph-state ingress for agent reaction | Accepted (Phases 1–3 realised) | [PRD-006](../prd/PRD-006-linked-data-interfaces.md) · [DDD-004](../ddd/DDD-004-linked-data-interchange-domain.md) |
 | [015](ADR-015-mcp-ruvector-mandate.md) | Mandate ruvector-postgres for MCP memory backend | Accepted | — |
 | [016](ADR-016-license-consolidation.md) | License consolidation — AGPL-3.0-only end-to-end | Accepted | — |
-| [017](ADR-017-multi-tenant-did-nostr-pods.md) | Multi-tenant did:nostr pods | Proposed | [PRD-007](../prd/PRD-007-multi-tenant-federation.md) · [DDD-011](../ddd/DDD-011-multi-tenant-federation-domain.md) |
+| [017](ADR-017-multi-tenant-did-nostr-pods.md) | Multi-tenant did:nostr pods | Accepted (partially realised 2026-07-03) | [PRD-007](../prd/PRD-007-multi-tenant-federation.md) · [DDD-011](../ddd/DDD-011-multi-tenant-federation-domain.md) |
 | [018](ADR-018-persistent-code-interpreter-mcp.md) | Persistent code-interpreter MCP and CodeAct skill | Accepted | [PRD-008](../prd/PRD-008-code-as-harness-integration.md) · [DDD-005](../ddd/DDD-005-code-execution-domain.md) |
 | [019](ADR-019-experiential-skill-learning.md) | Experiential skill learning — distilled lessons | Accepted | [PRD-008](../prd/PRD-008-code-as-harness-integration.md) · [DDD-005](../ddd/DDD-005-code-execution-domain.md) |
-| [020](ADR-020-aci-mcp-tree-search.md) | ACI MCP and execution-gated tree-search | Proposed | [PRD-008](../prd/PRD-008-code-as-harness-integration.md) · [DDD-005](../ddd/DDD-005-code-execution-domain.md) |
+| [020](ADR-020-aci-mcp-tree-search.md) | ACI MCP and execution-gated tree-search | Accepted (S1) / Proposed (S2) 2026-07-03 | [PRD-008](../prd/PRD-008-code-as-harness-integration.md) · [DDD-005](../ddd/DDD-005-code-execution-domain.md) |
 | [021](ADR-021-llm-resource-marketplace-kinds.md) | LLM resource marketplace — Nostr kind schema | Accepted | [PRD-009](../prd/PRD-009-llm-resource-marketplace.md) · [DDD-006](../ddd/DDD-006-llm-marketplace-domain.md) |
 | [022](ADR-022-runtime-integrity-hardening.md) | Runtime integrity hardening | Accepted | [PRD-010](../prd/PRD-010-runtime-integrity-hardening.md) · [DDD-007](../ddd/DDD-007-runtime-integrity-domain.md) |
-| [023](ADR-023-ontology-bridge.md) | VisionClaw ontology bridge via MCP | Proposed | [PRD-011](../prd/PRD-011-ontology-bridge.md) · [DDD-008](../ddd/DDD-008-ontology-bridge-domain.md) |
+| [023](ADR-023-ontology-bridge.md) | VisionClaw ontology bridge via MCP | Accepted (implemented 2026-07-03) | [PRD-011](../prd/PRD-011-ontology-bridge.md) · [DDD-008](../ddd/DDD-008-ontology-bridge-domain.md) |
 | [024](ADR-024-setup-dashboard.md) | Setup wizard and operations dashboard architecture | Accepted | [PRD-012](../prd/PRD-012-setup-dashboard.md) · [DDD-009](../ddd/DDD-009-setup-dashboard-domain.md) |
 | [025](ADR-025-multi-harness-tmux-architecture.md) | Multi-harness tmux architecture | Accepted | [PRD-013](../prd/PRD-013-multi-harness-tmux-architecture.md) · [DDD-010](../ddd/DDD-010-multi-harness-coordination-domain.md) |
 | [026](ADR-026-cross-substrate-agent-loop-seams.md) | Cross-substrate agent-loop seams | Accepted (partial) | [PRD-014](../prd/PRD-014-embodied-agent-loop.md) · [DDD-012](../ddd/DDD-012-sovereign-knowledge-elevation-domain.md) |
@@ -47,10 +47,13 @@ Older records use `**Status:**` markdown; ADR-023 onward carry YAML frontmatter
 | [031](ADR-031-adapter-contract-enforcement.md) | Adapter contract enforcement — the merge gate is executable | Accepted | [PRD-001](../prd/PRD-001-capabilities-and-adapters.md) |
 | [032](ADR-032-402-scheme-grammar.md) | The 402 payment challenge & scheme-detection grammar | Accepted | [PRD-015](../prd/PRD-015-consumer-broadcast-economy.md) |
 | [033](ADR-033-did-nostr-multikey-convergence.md) | did:nostr Multikey convergence | Accepted | [PRD-015](../prd/PRD-015-consumer-broadcast-economy.md) |
-| [034](ADR-034-headroom-rust-crate-integration.md) | Headroom Rust crate integration (content-aware compression) | Proposed | [PRD-016](../prd/PRD-016-context-compression-caching.md) · [DDD-014](../ddd/DDD-014-compression-cache-domain.md) |
+| [034](ADR-034-headroom-rust-crate-integration.md) | Headroom Rust crate integration (content-aware compression) | Accepted (implemented 2026-07-03) | [PRD-016](../prd/PRD-016-context-compression-caching.md) · [DDD-014](../ddd/DDD-014-compression-cache-domain.md) |
 | [035](ADR-035-project-tracking-telemetry-and-nostr-kind.md) | Project tracking — port-bound telemetry + kind-30841 | Accepted | [PRD-017](../prd/PRD-017-sovereign-project-tracking.md) · [DDD-015](../ddd/DDD-015-project-tracking-domain.md) |
-| [036](ADR-036-ruvector-capability-adoption-and-learning-loop.md) | RuVector capability adoption and learning loop | Proposed | [PRD-018](../prd/PRD-018-ruvector-native-memory-and-learning.md) · [DDD-016](../ddd/DDD-016-memory-learning-domain.md) |
+| [036](ADR-036-ruvector-capability-adoption-and-learning-loop.md) | RuVector capability adoption and learning loop | Implemented | [PRD-018](../prd/PRD-018-ruvector-native-memory-and-learning.md) · [DDD-016](../ddd/DDD-016-memory-learning-domain.md) |
+| [037](ADR-037-gap-close-agentbox-decisions.md) | Gap-Close sprint — agentbox slice decisions | Proposed | [PRD-019](../prd/PRD-019-gap-close-agentbox.md) · [DDD-017](../ddd/DDD-017-gap-close-agentbox-context.md) |
 | [038](ADR-038-aict-structured-coreutils-mcp.md) | AICT structured-coreutils MCP — trial, do not bake | Proposed | — |
+| [039](ADR-039-docbox-backported-surfaces.md) | docBox back-ports — apply-class taxonomy, /v1/system, hash-chained events | Accepted | — |
+| [040](ADR-040-learning-consumers-model-lifecycle-and-legacy-mining.md) | Learning consumers, model lifecycle, and legacy mining | Implemented | [PRD-020](../prd/PRD-020-ruvector-learning-consumers-and-corpus-uplift.md) · [DDD-018](../ddd/DDD-018-learning-consumers-and-model-lifecycle-domain.md) |
 
 ## See also
 

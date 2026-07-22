@@ -21,7 +21,7 @@ flowchart LR
     R -->|"domains"| DDD["reference/ddd/"]
 ```
 
-Agentbox is a sovereign, manifest-driven headless agent runtime: 113 skills, an 18-kind URN namespace, five pluggable adapter slots, and an embedded did:nostr / solid-pod / Nostr-relay substrate. The reference shelf below is the authoritative record — 35 ADRs, 17 PRDs, 15 DDDs, 2 QE reviews.
+Agentbox is a sovereign, manifest-driven headless agent runtime: 113 skills, an 18-kind URN namespace, five pluggable adapter slots, and an embedded did:nostr / solid-pod / Nostr-relay substrate. The reference shelf below is the authoritative record — 40 ADRs, 20 PRDs + 1 remediation, 18 DDDs, 2 QE reviews.
 
 ---
 
@@ -141,28 +141,33 @@ These are the authoritative sources of truth. Anything in `user/` or `developer/
 | ADR-011 | [Consultation MCP servers](reference/adr/ADR-011-consultation-mcps.md) | Accepted | Coordinator + named-consultant pattern; rejects transparent API rewriting as the meta-router |
 | ADR-012 | [JSON-LD 1.1 as the federation interchange grammar](reference/adr/ADR-012-jsonld-federation-grammar.md) | Accepted | JSON-LD as the third cross-cutting middleware after observability and privacy; LION subset for hand-authored docs |
 | ADR-013 | [Canonical URI grammar and resolver](reference/adr/ADR-013-canonical-uri-grammar.md) | Accepted | `did:nostr:<pubkey>` + `urn:agentbox:<kind>:[<scope>:]<local>`; uniqueness unconditional, resolvability best-effort; `/v1/uri/<urn>` resolver |
-| ADR-014 | [Bi-directional graph-state ingress](reference/adr/ADR-014-bidirectional-graph-state-ingress.md) | Accepted | Bi-directional graph-state ingress for agent reaction |
+| ADR-014 | [Bi-directional graph-state ingress](reference/adr/ADR-014-bidirectional-graph-state-ingress.md) | Accepted — Phases 1–3 realised (2026-07-03) | Bi-directional graph-state ingress for agent reaction |
 | ADR-015 | [MCP ruvector-postgres mandate](reference/adr/ADR-015-mcp-ruvector-mandate.md) | Accepted | `ruvector-mcp.cjs` fails closed if PostgreSQL is unreachable; no silent sql.js fallback |
 | ADR-016 | [License consolidation](reference/adr/ADR-016-license-consolidation.md) | Accepted | AGPL-3.0-only end-to-end; aggregation analysis for all third-party components |
-| ADR-017 | [Multi-tenant did:nostr pods](reference/adr/ADR-017-multi-tenant-did-nostr-pods.md) | Proposed | Per-tenant did:nostr identity; pod-per-tenant allocation and NIP-98 scoping |
+| ADR-017 | [Multi-tenant did:nostr pods](reference/adr/ADR-017-multi-tenant-did-nostr-pods.md) | Accepted (partially realised — 2026-07-03) | Per-tenant did:nostr identity; pod-per-tenant allocation and NIP-98 scoping |
 | ADR-018 | [Persistent code-interpreter MCP](reference/adr/ADR-018-persistent-code-interpreter-mcp.md) | Accepted | Long-lived kernel sessions + CodeAct skill; execution-trace URN emission |
 | ADR-019 | [Experiential skill learning](reference/adr/ADR-019-experiential-skill-learning.md) | Accepted | Distilled lessons and verified skill library from execution traces |
-| ADR-020 | [ACI MCP tree-search](reference/adr/ADR-020-aci-mcp-tree-search.md) | Proposed | ACI MCP and execution-gated tree-search for agent capability improvement |
+| ADR-020 | [ACI MCP tree-search](reference/adr/ADR-020-aci-mcp-tree-search.md) | Accepted for Surface 1 / Proposed for Surface 2 (2026-07-03) | ACI MCP and execution-gated tree-search for agent capability improvement |
 | ADR-021 | [LLM resource marketplace kinds](reference/adr/ADR-021-llm-resource-marketplace-kinds.md) | Accepted | Nostr kind schema for LLM resource listings, bids, and receipts |
 | ADR-022 | [Runtime integrity hardening](reference/adr/ADR-022-runtime-integrity-hardening.md) | Accepted | Immutable image digests, SBOM attestation, and supply-chain verification |
-| ADR-023 | [Ontology bridge](reference/adr/ADR-023-ontology-bridge.md) | Proposed | Host-project ontology bridge via MCP; BC20 anti-corruption layer |
+| ADR-023 | [Ontology bridge](reference/adr/ADR-023-ontology-bridge.md) | Accepted (implemented — realised 2026-07-03) | Host-project ontology bridge via MCP; BC20 anti-corruption layer |
 | ADR-024 | [Setup dashboard architecture](reference/adr/ADR-024-setup-dashboard.md) | Accepted | Setup wizard and operations dashboard — browser-based, zero-dependency |
 | ADR-025 | [Multi-harness tmux architecture](reference/adr/ADR-025-multi-harness-tmux-architecture.md) | Accepted | Multi-harness tmux layout for parallel agent workstreams |
-| ADR-026 | [Cross-substrate agent-loop seams](reference/adr/ADR-026-cross-substrate-agent-loop-seams.md) | Accepted (partial) | The five seams across the substrate mesh; BC20 ingest converges on the `/wss/agent-events` WS contract and retires `:9500` |
-| ADR-027 | [Default-secure posture and runtime-isolation roadmap](reference/adr/ADR-027-default-secure-posture.md) | Accepted | Loopback-publish + auth-default-on, supplemental seccomp denylist, no runtime sudo, secret-via-tmpfs; gVisor/WASI proposed |
+| ADR-026 | [Cross-substrate agent-loop seams](reference/adr/ADR-026-cross-substrate-agent-loop-seams.md) | Accepted (partially realised) | The five seams across the substrate mesh; BC20 ingest converges on the `/wss/agent-events` WS contract and retires `:9500` |
+| ADR-027 | [Default-secure posture and runtime-isolation roadmap](reference/adr/ADR-027-default-secure-posture.md) | Accepted (S1–S3 realised 2026-06-11) | Loopback-publish + auth-default-on, supplemental seccomp denylist, no runtime sudo, secret-via-tmpfs; gVisor/WASI proposed |
 | ADR-028 | [Per-user agent fabric](reference/adr/ADR-028-per-user-agent-fabric.md) | Accepted | Pod-sourced identity, RuVector memory, and heartbeat autonomy for per-user agents; gated by `[sovereign_mesh].per_user_agents` |
 | ADR-029 | [Session-mirror live egress](reference/adr/ADR-029-session-mirror-live-egress.md) | Accepted | Per-turn NIP-59 gift-wrapped self-DM under a derived child key; live sibling of the kind-30840 digest, no external LLM hop, fail-open |
 | ADR-030 | [Sovereign-mesh manifest boundary](reference/adr/ADR-030-sovereign-mesh-manifest-boundary.md) | Accepted | `[sovereign_mesh]` as one subsystem gate (default off; env override per R7); the one external data hop is the mobile-bridge Z.AI summarisation |
 | ADR-031 | [Adapter contract enforcement](reference/adr/ADR-031-adapter-contract-enforcement.md) | Accepted | The merge gate is executable: `isReal:false` banned, stateful loopbacks for federated legs, registered time-boxed exemptions, middleware-bypass coverage |
 | ADR-032 | [402 challenge & scheme-detection grammar](reference/adr/ADR-032-402-scheme-grammar.md) | Accepted | Pure-function 402 classifier (`agentbox-ledger`/`x402`/`l402`/`unknown`), frozen byte-fixture corpus, additive `accepts[]` emission, Lightning-first settlement — companion to PRD-015 |
 | ADR-033 | [did:nostr Multikey convergence](reference/adr/ADR-033-did-nostr-multikey-convergence.md) | Accepted | Single canonical DID Document form; supersedes ADR-074 D2 verificationMethod shape, retains D1 |
-| ADR-034 | [Headroom Rust crate integration](reference/adr/ADR-034-headroom-rust-crate-integration.md) | Proposed | Content-aware context compression via N-API; companion to PRD-016 |
+| ADR-034 | [Headroom Rust crate integration](reference/adr/ADR-034-headroom-rust-crate-integration.md) | Accepted (implemented — realised 2026-07-03) | Content-aware context compression via N-API; companion to PRD-016 |
 | ADR-035 | [Project-tracking telemetry & kind-30841](reference/adr/ADR-035-project-tracking-telemetry-and-nostr-kind.md) | Accepted | Port-bound `agentbox_project_*` metrics + addressable kind-30841 digest; no new URN kind, port, or adapter slot |
+| ADR-036 | [RuVector capability adoption & learning loop](reference/adr/ADR-036-ruvector-capability-adoption-and-learning-loop.md) | Implemented | Eight capability-adoption decisions (D1–D6); honest learning loop wired additively on the memory + events slots; retrieval + learning gates live |
+| ADR-037 | [Gap-Close sprint — agentbox slice decisions](reference/adr/ADR-037-gap-close-agentbox-decisions.md) | Proposed | Eight local decisions for agentbox's nine gap-close items — where each wire attaches and which existing contract it consumes |
+| ADR-038 | [AICT structured-coreutils MCP](reference/adr/ADR-038-aict-structured-coreutils-mcp.md) | Proposed (trial, do not bake) | Evaluate AICT structured-coreutils MCP as a bounded trial only — redundant with Claude Code's native tools; do not bake into the immutable image |
+| ADR-039 | [docBox back-ports — apply-class, /v1/system, hash-chained events](reference/adr/ADR-039-docbox-backported-surfaces.md) | Accepted | Back-port three docBox conventions: apply-class taxonomy, `/v1/system` live gate map, hash-chained events log |
+| ADR-040 | [Learning consumers, model lifecycle & legacy mining](reference/adr/ADR-040-learning-consumers-model-lifecycle-and-legacy-mining.md) | Implemented | v2 learning consumers — Wilson aggregator, pattern distiller, recall harness, model-lifecycle and legacy-mining decisions; migration rejected on evidence |
 
 ### Product requirements (PRD)
 
@@ -185,6 +190,9 @@ These are the authoritative sources of truth. Anything in `user/` or `developer/
 | PRD-015 | [Consumer & broadcast economy surfaces](reference/prd/PRD-015-consumer-broadcast-economy.md) | Phase 1 shipped — outbound 402 payment consumer (detect → policy → pay → receipt) and service-discovery broadcast (well-known manifest, standards-shaped challenges) |
 | PRD-016 | [Context compression & caching](reference/prd/PRD-016-context-compression-caching.md) | Headroom hybrid Rust+Python compression integration; companion to ADR-034 and DDD-014 (Draft) |
 | PRD-017 | [Sovereign project tracking](reference/prd/PRD-017-sovereign-project-tracking.md) | Helm-grade project tracking re-expressed on the three sovereign substrates — no new kind, port, or adapter slot (Draft) |
+| PRD-018 | [RuVector-native memory and learning](reference/prd/PRD-018-ruvector-native-memory-and-learning.md) | RuVector-native memory and an honest learning loop — hybrid retrieval, typed metadata, trajectory producer; additive on the memory + events slots (Draft v1 — Phases 0–2 shipped 2026-07-05) |
+| PRD-019 | [Gap-Close sprint — agentbox slice](reference/prd/PRD-019-gap-close-agentbox.md) | agentbox's nine owned gap-close items — wiring built-but-unwired producers to their consumers (Draft v1 — WorkPackageMinted) |
+| PRD-020 | [RuVector learning consumers and corpus uplift](reference/prd/PRD-020-ruvector-learning-consumers-and-corpus-uplift.md) | v2 learning consumers + corpus uplift — Wilson aggregator, pattern distillation, recall harness, model lifecycle, legacy mining (Draft v1 — W-A–W-E landed/closed 2026-07-21/22) |
 | PRD-REMEDIATION-001 | [Default-secure posture remediation](reference/prd/PRD-REMEDIATION-001.md) | Second-pass hardening: loopback publish, auth-default-on, zai allowlist, no runtime escalation, secret-via-tmpfs, doc truth-up |
 
 ### Domain design (DDD)
@@ -206,6 +214,9 @@ These are the authoritative sources of truth. Anything in `user/` or `developer/
 | DDD-013 | [Hardening boundary domain](reference/ddd/DDD-013-hardening-boundary-domain.md) | NetworkEdgePolicy + PrivilegeModel + SecretMaterialisation + DefenceInDepthLayer aggregates |
 | DDD-014 | [Compression & cache domain](reference/ddd/DDD-014-compression-cache-domain.md) | Context-compression bounded context; middleware ordering after the JSON-LD encoder (Proposed) |
 | DDD-015 | [Project-tracking domain](reference/ddd/DDD-015-project-tracking-domain.md) | TrackedProject + ProjectScan + CommitWindow + ProjectPrimer + TrackingDigest; rides memory + events slots |
+| DDD-016 | [Memory & learning domain](reference/ddd/DDD-016-memory-learning-domain.md) | Semantic memory store + honest learning loop; trajectory producer, effectiveness aggregates; rides memory + events slots |
+| DDD-017 | [Gap-Close agentbox context](reference/ddd/DDD-017-gap-close-agentbox-context.md) | agentbox's gap-close slice — the nine owned items and the local aggregates their wires touch; conformist to three upstream contexts |
+| DDD-018 | [Learning-consumers & model-lifecycle domain](reference/ddd/DDD-018-learning-consumers-and-model-lifecycle-domain.md) | EffectivenessAggregation + DistilledPattern + RecallHarnessRun + EmbeddingMigration + MiningRun; consumer/lifecycle layer over DDD-016 (invariants I14–I23) |
 
 ### QE reviews
 

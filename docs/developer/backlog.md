@@ -1,5 +1,11 @@
 # Backlog / Next Steps
 
+> **Combined register (2026-07-22):** this backlog and the VisionClaw remediation
+> ladder now share a single unified TODO with a six-state unblock taxonomy:
+> `../../../docs/TODO-unified.md` (governed by PRD-024 / ADR-133). Entries below
+> remain authoritative for agentbox detail; the unified register is the
+> cross-repo view the final-mile sprint works from.
+
 Living document for known gaps and deferred decisions. Each entry carries the
 date it was identified and what unblocks it. Remove entries when done; move
 decisions into an ADR when they become architectural.

@@ -16,9 +16,9 @@ docs explain and operationalise what these files decide.
 
 | Catalogue | Count | Contents |
 |-----------|-------|----------|
-| [Architecture Decision Records](adr/README.md) | 35 | ADR-001..035 — the *why* behind each structural choice |
-| [Product Requirement Documents](prd/README.md) | 17 + 1 remediation | PRD-001..017 plus PRD-REMEDIATION-001 — the *what* and *acceptance criteria* |
-| [Domain-Driven Design models](ddd/README.md) | 15 | DDD-001..015 — bounded contexts, aggregates, invariants |
+| [Architecture Decision Records](adr/README.md) | 40 | ADR-001..040 — the *why* behind each structural choice |
+| [Product Requirement Documents](prd/README.md) | 20 + 1 remediation | PRD-001..020 plus PRD-REMEDIATION-001 — the *what* and *acceptance criteria* |
+| [Domain-Driven Design models](ddd/README.md) | 18 | DDD-001..018 — bounded contexts, aggregates, invariants |
 | [QE reviews](qe-reviews/README.md) | 2 | QE-001..002 — traceability and re-verification gates |
 | [Extension vocabulary](_vocab/agbx.md) | — | `agbx:` term registry and the v1 JSON-LD context |
 
