@@ -1027,7 +1027,7 @@ source_code_header   = ""        # default = upstream repo URL (AGPL §13)
 enabled             = true                                           # master gate; /v1/projects → 503 when off
 scan_dirs           = ["/projects", "/home/devuser/workspace/project"]  # one-level-deep git-repo discovery roots
 scan_interval_hours = 6                                              # periodic re-scan; 0 = on-demand only (no scheduler)
-github_enrichment   = false                                         # pull open issues + stars via GITHUB_TOKEN (one external hop)
+github_enrichment   = true                                          # pull open issues + stars via GITHUB_TOKEN (one external hop) — enabled 2026-07-22: token validated live (HTTP 200) and present in runtime env + .env (0600); E-2 cleared. Boot apply-class (ADR-039).
 primer_model        = "glm-5.2"                                     # Z.AI/GLM model for primers/synopses (→ consultant, ADR-011)
 primer_on_scan      = false                                         # auto-generate primers for new projects during a scan
 nostr_publish       = true                                          # publish kind-30841 digests to the operator's did:nostr

@@ -61,7 +61,6 @@ posture/exposure choice, not a technical gap:
 |---|---|---|
 | ComfyUI | `integrations.comfyui_external` / `skills.media.comfyui_builtin` | No ComfyUI service on `visionclaw_network` (builtin also needs a heavy image rebuild + source hash) |
 | KG elevation / ontology axioms | `sovereign_mesh.kg_elevation`, `skills.ontology.direct_axiom_load` | `visionclaw-server:4000` unreachable |
-| GitHub enrichment | `project_tracking.github_enrichment` | `GITHUB_TOKEN` unset |
 | Ollama sidecar | `providers.ollama.sidecar` | Confirm whether host ollama on :11434 exists; sidecar off is correct while it does |
 | Nagual QE | `toolchains.nagual_qe` | Upstream sqlx 0.9 `SqlSafeStr` compilation error |
 
@@ -77,6 +76,12 @@ _None currently — see below for the two items closed on 2026-07-22._
   `http://localhost:9997` when `getent hosts xinference` fails (host-side
   invocation), `http://xinference:9997` otherwise; an explicit
   `XINFERENCE_ENDPOINT` env var always wins.
+- ~~GitHub enrichment blocked on `GITHUB_TOKEN` unset~~ — cleared 2026-07-22:
+  a valid token (validated HTTP 200 against api.github.com) is present in the
+  runtime env and `.env` (0600); `[project_tracking].github_enrichment = true`,
+  applies at next boot. Note: the token is a broad-scope classic PAT
+  (admin:org/repo/workflow) — consider swapping for a fine-grained read-only
+  PAT scoped to issues+metadata.
 - ~~`docs/user/browser.md` names a linked-data viewer doc, not browser
   automation~~ — fixed 2026-07-22: content moved to
   `docs/user/linked-object-viewer.md`; `browser.md` is now a short redirect
