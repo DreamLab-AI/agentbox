@@ -714,6 +714,65 @@
               "description": "Entity classes to redact. Empty = all eight."
             }
           }
+        },
+        "openmed": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Optional clinical/PHI redaction sidecar layered onto the ADR-008 privacy-filter seam (the local-clinical backend above). Default off; gated by three fail-closed prerequisites. ruvnet/helix helix-openmed Rust policy + helix-wasm unicode-safe gates + an ONNX runtime, run as its own sidecar (docker-compose.openmed.yml / ./agentbox.sh openmed <up|down|health>). Reuses the existing wrapWithPrivacyFilter middleware.",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "Enable the OpenMed clinical-PHI sidecar. The boot probe fail-closes unless license_acknowledged, onnx_runtime_present, and governance_acknowledged are all true."
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535,
+              "default": 9093,
+              "description": "Loopback port for the OpenMed sidecar."
+            },
+            "model_artifact": {
+              "type": "string",
+              "default": "",
+              "description": "Content-addressed model artifact reference provisioned into the sidecar (never committed to this repo). Empty until the operator provisions it."
+            },
+            "artifact_lock_sha256": {
+              "type": "string",
+              "default": "",
+              "description": "SHA-256 lock for model_artifact. Empty until the operator provisions it."
+            },
+            "hmac_key_tag": {
+              "type": "string",
+              "description": "ADR-029 child-key derivation tag for the HMAC key OpenMed requires. Default agentbox-openmed-v1."
+            },
+            "license_acknowledged": {
+              "type": "boolean",
+              "default": false,
+              "description": "Prerequisite 1/3 (fail-closed): helix is pre-release (v0.1.0) with an unresolved LICENSE. Set true only after the operator has verified the licence permits this use."
+            },
+            "onnx_runtime_present": {
+              "type": "boolean",
+              "default": false,
+              "description": "Prerequisite 2/3 (fail-closed): records that an ONNX runtime is provisioned in the sidecar image (none is packaged in the base image yet)."
+            },
+            "governance_acknowledged": {
+              "type": "boolean",
+              "default": false,
+              "description": "Prerequisite 3/3 (fail-closed): a passing gate is NOT HIPAA Safe Harbor / Expert Determination. Set true only after the operator has decided the compliance posture being claimed."
+            },
+            "policy": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Which privacy-filter slots route to the clinical redactor when active. Values: strict | soft | off.",
+              "properties": {
+                "pods":     { "type": "string", "enum": ["strict", "soft", "off"] },
+                "memory":   { "type": "string", "enum": ["strict", "soft", "off"] },
+                "inbound":  { "type": "string", "enum": ["strict", "soft", "off"] },
+                "outbound": { "type": "string", "enum": ["strict", "soft", "off"] }
+              }
+            }
+          }
         }
       }
     },

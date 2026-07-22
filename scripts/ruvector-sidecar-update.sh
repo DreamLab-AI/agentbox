@@ -156,7 +156,22 @@ is_on() { [[ "${1:-}" == "1" || "${1:-}" == "true" ]]; }
 # Double single-quotes so a value can be embedded in a SQL literal safely.
 sql_quote() { local s="${1//\'/\'\'}"; printf '%s' "$s"; }
 
-XINFERENCE_ENDPOINT="${XINFERENCE_ENDPOINT:-http://xinference:9997}"
+# Xinference lives on the compose DNS name 'xinference' when this script runs
+# inside the container mesh, but that name does not resolve when the script is
+# invoked host-side (e.g. from tab 6) — the 2026-07-05 backfill-embeddings run
+# needed XINFERENCE_ENDPOINT=http://localhost:9997 by hand. Detect host-side
+# execution via `getent hosts xinference` and fall back to localhost; an
+# explicit XINFERENCE_ENDPOINT in the environment always wins (the ${VAR:-...}
+# expansion below only evaluates the getent probe when XINFERENCE_ENDPOINT is
+# unset or empty).
+xinference_default_endpoint() {
+    if getent hosts xinference >/dev/null 2>&1; then
+        echo "http://xinference:9997"
+    else
+        echo "http://localhost:9997"
+    fi
+}
+XINFERENCE_ENDPOINT="${XINFERENCE_ENDPOINT:-$(xinference_default_endpoint)}"
 XINFERENCE_MODEL="bge-small-en-v1.5"
 
 # The frozen legacy / dead-hooks selection (verified live: ~1.84M rows).

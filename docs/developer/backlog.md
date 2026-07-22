@@ -67,11 +67,18 @@ posture/exposure choice, not a technical gap:
 
 ## Minor follow-ups
 
-- `scripts/ruvector-sidecar-update.sh` backfill-embeddings curls Xinference from
-  the host, where the compose DNS name `xinference:9997` does not resolve —
-  the 2026-07-05 run needed `XINFERENCE_ENDPOINT=http://localhost:9997`.
-  Default the endpoint to localhost when running host-side (or docker-exec the
-  curl) so quarantining doesn't trigger spuriously.
-- `docs/user/browser.md` names a linked-data viewer doc, not browser
-  automation (banner added 2026-07-05); consider renaming to
-  `linked-object-viewer.md` with a redirect stub to kill the collision.
+_None currently — see below for the two items closed on 2026-07-22._
+
+## Done
+
+- ~~`scripts/ruvector-sidecar-update.sh` backfill-embeddings curls Xinference
+  from the host, where the compose DNS name `xinference:9997` does not
+  resolve~~ — fixed 2026-07-22: `XINFERENCE_ENDPOINT` now defaults to
+  `http://localhost:9997` when `getent hosts xinference` fails (host-side
+  invocation), `http://xinference:9997` otherwise; an explicit
+  `XINFERENCE_ENDPOINT` env var always wins.
+- ~~`docs/user/browser.md` names a linked-data viewer doc, not browser
+  automation~~ — fixed 2026-07-22: content moved to
+  `docs/user/linked-object-viewer.md`; `browser.md` is now a short redirect
+  stub (kept because existing links point at it); `docs/README.md` and
+  `README.md` updated to link the new filename.

@@ -5,7 +5,9 @@
   "mcpServers": {
     "aci-shell": {
       "command": "node",
-      "args": ["/opt/agentbox/mcp/aci-shell/server.js"],
+      "args": [
+        "/opt/agentbox/mcp/aci-shell/server.js"
+      ],
       "type": "stdio",
       "env": {
         "ACI_WORKSPACE_ROOT": "${ACI_WORKSPACE_ROOT:-/home/devuser/workspace/project}",
@@ -18,11 +20,21 @@
       },
       "description": "SWE-agent-style Agent-Computer Interface MCP. 5 tools (view_file/edit_file/search_repo/run_tests/submit). Phase 2 surface — off by default (manifest gate [skills.aci_shell]). Composes with code-interpreter MCP for verified edits.",
       "protocol": "stdio",
-      "version": "0.1.0"
+      "version": "0.1.0",
+      "x-agentbox-managed-by": "projector",
+      "x-agentbox-gate": "env:ENABLE_ACI_SHELL",
+      "x-agentbox-requires": [
+        {
+          "file": "/opt/agentbox/mcp/aci-shell/server.js"
+        }
+      ]
     },
     "code-interpreter": {
       "command": "python3",
-      "args": ["-u", "/opt/agentbox/mcp/code-interpreter/server.py"],
+      "args": [
+        "-u",
+        "/opt/agentbox/mcp/code-interpreter/server.py"
+      ],
       "type": "stdio",
       "env": {
         "RUVECTOR_PG_CONNINFO": "${RUVECTOR_PG_CONNINFO}",
@@ -33,11 +45,21 @@
       },
       "description": "Persistent Python code-interpreter MCP — 6 tools (kernel.exec/list_vars/inspect/reset/interrupt/install_pkg). One kernel per session, lazy spawn, idle watchdog. Wheelhouse-only package install (no PyPI). Trace-as-reward verification signal for ExpeL + Voyager.",
       "protocol": "stdio",
-      "version": "0.1.0"
+      "version": "0.1.0",
+      "x-agentbox-managed-by": "projector",
+      "x-agentbox-gate": "env:ENABLE_CODE_INTERPRETER",
+      "x-agentbox-requires": [
+        {
+          "file": "/opt/agentbox/mcp/code-interpreter/server.py"
+        }
+      ]
     },
     "claude-flow": {
       "command": "ruflo",
-      "args": ["mcp", "start"],
+      "args": [
+        "mcp",
+        "start"
+      ],
       "type": "stdio",
       "env": {
         "RUVECTOR_PG_HOST": "ruvector-postgres",
@@ -50,27 +72,44 @@
         "PGDATABASE": "ruvector",
         "PGUSER": "ruvector",
         "PGPASSWORD": "ruvector"
-      }
+      },
+      "x-agentbox-managed-by": "bespoke",
+      "x-agentbox-note": "governed ruvector-mcp.cjs — entrypoint writes this from scratch (memory mandate, gate-reconciled env); registry entry is reference only"
     },
     "ruv-swarm": {
       "command": "npx",
-      "args": ["ruv-swarm@latest", "mcp", "start"],
-      "type": "stdio"
+      "args": [
+        "ruv-swarm@latest",
+        "mcp",
+        "start"
+      ],
+      "type": "stdio",
+      "x-agentbox-managed-by": "reference",
+      "x-agentbox-note": "npx network installer — not registrable on the read-only rootfs"
     },
     "imagemagick": {
       "command": "python3",
-      "args": ["-u", "/home/devuser/.claude/skills/imagemagick/mcp-server/server.py"],
+      "args": [
+        "-u",
+        "/home/devuser/.claude/skills/imagemagick/mcp-server/server.py"
+      ],
       "type": "stdio",
       "env": {
         "IMAGEMAGICK_TIMEOUT": "300"
       },
       "description": "Image processing with format conversion, resizing, cropping, batch operations",
       "protocol": "fastmcp",
-      "version": "2.0.0"
+      "version": "2.0.0",
+      "x-agentbox-managed-by": "reference",
+      "x-agentbox-gate": "env:ENABLE_IMAGEMAGICK",
+      "x-agentbox-note": "skill-local mcp-server under ~/.claude/skills/imagemagick — registered by the skill, not the boot projector"
     },
     "qgis": {
       "command": "python3",
-      "args": ["-u", "/home/devuser/.claude/skills/qgis/mcp-server/server.py"],
+      "args": [
+        "-u",
+        "/home/devuser/.claude/skills/qgis/mcp-server/server.py"
+      ],
       "type": "stdio",
       "env": {
         "QGIS_HOST": "localhost",
@@ -79,17 +118,25 @@
       },
       "description": "Geospatial analysis and GIS operations via QGIS",
       "protocol": "fastmcp",
-      "version": "2.0.0"
+      "version": "2.0.0",
+      "x-agentbox-managed-by": "reference",
+      "x-agentbox-gate": "env:ENABLE_QGIS",
+      "x-agentbox-note": "GPU-sidecar / skill-local mcp-server — proxy pattern, not boot-projected"
     },
     "browser-gpu": {
       "url": "http://browsercontainer:8931/sse",
       "type": "sse",
       "description": "Browser automation via external browsercontainer sidecar (chrome-devtools-mcp)",
-      "version": "2.0.0"
+      "version": "2.0.0",
+      "x-agentbox-managed-by": "bespoke",
+      "x-agentbox-note": "entrypoint registers via a browsercontainer /health reachability probe"
     },
     "web-summary": {
       "command": "python3",
-      "args": ["-u", "/home/devuser/.claude/skills/web-summary/mcp-server/server.py"],
+      "args": [
+        "-u",
+        "/home/devuser/.claude/skills/web-summary/mcp-server/server.py"
+      ],
       "type": "stdio",
       "env": {
         "ZAI_URL": "http://localhost:9600/chat",
@@ -97,11 +144,15 @@
       },
       "description": "URL summarization with YouTube transcripts and topic generation",
       "protocol": "fastmcp",
-      "version": "2.0.0"
+      "version": "2.0.0",
+      "x-agentbox-managed-by": "reference",
+      "x-agentbox-note": "skill-local mcp-server (needs zai sidecar) — not boot-projected"
     },
     "comfyui": {
       "command": "node",
-      "args": ["/home/devuser/.claude/skills/comfyui/mcp-server/server.js"],
+      "args": [
+        "/home/devuser/.claude/skills/comfyui/mcp-server/server.js"
+      ],
       "type": "stdio",
       "env": {
         "COMFYUI_URL": "http://192.168.0.51:8188",
@@ -112,11 +163,16 @@
       },
       "description": "AI image and video generation with ComfyUI workflows (remote SAM3D GPU)",
       "protocol": "mcp-sdk",
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "x-agentbox-managed-by": "reference",
+      "x-agentbox-gate": "env:ENABLE_COMFYUI_EXTERNAL",
+      "x-agentbox-note": "skill-local mcp-server (remote GPU) — not boot-projected"
     },
     "blender": {
       "command": "node",
-      "args": ["/home/devuser/.claude/skills/blender/tools/mcp-blender-client.js"],
+      "args": [
+        "/home/devuser/.claude/skills/blender/tools/mcp-blender-client.js"
+      ],
       "type": "stdio",
       "env": {
         "BLENDER_HOST": "localhost",
@@ -124,11 +180,17 @@
       },
       "description": "3D modeling, scene creation, and rendering via Blender",
       "protocol": "tcp-proxy",
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "x-agentbox-managed-by": "reference",
+      "x-agentbox-gate": "env:ENABLE_BLENDER",
+      "x-agentbox-note": "GPU-sidecar tcp-proxy (gui-tools) — not boot-projected"
     },
     "gemini-url-context": {
       "command": "python3",
-      "args": ["-u", "/home/devuser/.claude/skills/gemini-url-context/mcp-server/server.py"],
+      "args": [
+        "-u",
+        "/home/devuser/.claude/skills/gemini-url-context/mcp-server/server.py"
+      ],
       "type": "stdio",
       "env": {
         "GOOGLE_API_KEY": "${GOOGLE_API_KEY}",
@@ -137,11 +199,16 @@
       },
       "description": "URL expansion and analysis using Gemini 2.5 Flash URL Context API",
       "protocol": "fastmcp",
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "x-agentbox-managed-by": "reference",
+      "x-agentbox-note": "skill-local mcp-server (needs GOOGLE_API_KEY) — not boot-projected"
     },
     "notebooklm": {
       "command": "python3",
-      "args": ["-u", "/home/devuser/.claude/skills/notebooklm/mcp-server/server.py"],
+      "args": [
+        "-u",
+        "/home/devuser/.claude/skills/notebooklm/mcp-server/server.py"
+      ],
       "type": "stdio",
       "env": {
         "NOTEBOOKLM_STORAGE_DIR": "/home/devuser/.notebooklm",
@@ -149,11 +216,15 @@
       },
       "description": "Google NotebookLM: notebooks, sources, chat, audio/video/slides/quiz generation",
       "protocol": "fastmcp",
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "x-agentbox-managed-by": "reference",
+      "x-agentbox-note": "skill-local mcp-server — not boot-projected"
     },
     "linkedin": {
       "command": "uvx",
-      "args": ["linkedin-scraper-mcp"],
+      "args": [
+        "linkedin-scraper-mcp"
+      ],
       "type": "stdio",
       "env": {
         "TIMEOUT": "${LINKEDIN_TIMEOUT}",
@@ -161,11 +232,16 @@
       },
       "description": "LinkedIn profile, job, company scraping and messaging via browser automation",
       "protocol": "stdio",
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "x-agentbox-managed-by": "reference",
+      "x-agentbox-note": "uvx network installer — not registrable offline"
     },
     "defense-security": {
       "command": "npx",
-      "args": ["-y", "defense-mcp-server"],
+      "args": [
+        "-y",
+        "defense-mcp-server"
+      ],
       "type": "stdio",
       "env": {
         "DEFENSE_MCP_DRY_RUN": "${DEFENSE_MCP_DRY_RUN}",
@@ -175,11 +251,16 @@
       },
       "description": "Linux defensive security: 31 modules, 250+ actions for hardening, compliance, forensics",
       "protocol": "stdio",
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "x-agentbox-managed-by": "reference",
+      "x-agentbox-note": "npx network installer — not registrable offline"
     },
     "reddit": {
       "command": "npx",
-      "args": ["-y", "reddit-mcp-buddy"],
+      "args": [
+        "-y",
+        "reddit-mcp-buddy"
+      ],
       "type": "stdio",
       "env": {
         "REDDIT_CLIENT_ID": "${REDDIT_CLIENT_ID}",
@@ -189,11 +270,17 @@
       },
       "description": "Reddit browsing, search, user analysis, and post details with comment threads",
       "protocol": "stdio",
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "x-agentbox-managed-by": "reference",
+      "x-agentbox-note": "npx network installer — not registrable offline"
     },
     "meta-xr-sdk": {
       "command": "npx",
-      "args": ["@meta-quest/hzdb", "mcp", "server"],
+      "args": [
+        "@meta-quest/hzdb",
+        "mcp",
+        "server"
+      ],
       "type": "stdio",
       "env": {
         "ADB_PATH": "${ADB_PATH}",
@@ -201,11 +288,15 @@
       },
       "description": "Meta Quest VR/AR: 40+ tools for device management, app deployment, performance profiling, docs search, and agentic VR development",
       "protocol": "stdio",
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "x-agentbox-managed-by": "reference",
+      "x-agentbox-note": "npx network installer — not registrable offline"
     },
     "unreal-engine": {
       "command": "soft-ue-cli",
-      "args": ["mcp-serve"],
+      "args": [
+        "mcp-serve"
+      ],
       "type": "stdio",
       "env": {
         "SOFT_UE_HOST": "127.0.0.1",
@@ -213,11 +304,15 @@
       },
       "description": "Unreal Engine 5 automation: 60+ tools for actors, Blueprints, materials, PIE, rendering, profiling",
       "protocol": "stdio",
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "x-agentbox-managed-by": "reference",
+      "x-agentbox-note": "external UE CLI — not present in this image"
     },
     "clipcannon": {
       "command": "clipcannon",
-      "args": ["serve"],
+      "args": [
+        "serve"
+      ],
       "type": "stdio",
       "env": {
         "CLIPCANNON_DATA_DIR": "/home/devuser/.clipcannon",
@@ -226,29 +321,41 @@
       },
       "description": "AI video editor: 51 tools across 12 categories (project, understanding, discovery, editing, rendering, audio, voice, avatar, video gen, billing, disk, config). 22-stage analysis DAG, 14 ML models, 5 embedding spaces, voice clone, lip-sync, AI music, text-to-video, Voice Agent. 626 tests. Local GPU",
       "protocol": "stdio",
-      "version": "0.1.0"
+      "version": "0.1.0",
+      "x-agentbox-managed-by": "reference",
+      "x-agentbox-note": "external clipcannon CLI — not present in this image"
     },
     "scrapling": {
       "command": "scrapling",
-      "args": ["mcp"],
+      "args": [
+        "mcp"
+      ],
       "type": "stdio",
       "env": {
         "CURL_CA_BUNDLE": "/etc/ca-certificates/extracted/tls-ca-bundle.pem"
       },
       "description": "Adaptive web scraping: 9 MCP tools, anti-bot bypass (Cloudflare Turnstile), stealth browser, spider framework",
       "protocol": "stdio",
-      "version": "0.4.3"
+      "version": "0.4.3",
+      "x-agentbox-managed-by": "reference",
+      "x-agentbox-note": "external scrapling CLI — not present in this image"
     },
     "context7": {
       "command": "npx",
-      "args": ["-y", "@upstash/context7-mcp@latest"],
+      "args": [
+        "-y",
+        "@upstash/context7-mcp@latest"
+      ],
       "type": "stdio",
       "env": {
         "CONTEXT7_API_KEY": "${CONTEXT7_API_KEY}"
       },
       "description": "Version-specific documentation for 800+ libraries. Two tools: resolve-library-id and query-docs. Eliminates hallucination in agent code generation.",
       "protocol": "stdio",
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "x-agentbox-managed-by": "reference",
+      "x-agentbox-gate": "envset:CONTEXT7_API_KEY",
+      "x-agentbox-note": "npx @upstash/context7-mcp network installer — not registrable on the read-only rootfs; provider gate providers.context7"
     },
     "codebase-memory": {
       "command": "codebase-memory-mcp",
@@ -259,7 +366,15 @@
       },
       "description": "Code intelligence: 14 MCP tools for call graphs, architecture overview, git diff risk scoring. 99.2% token reduction vs grep. Persistent SQLite index.",
       "protocol": "stdio",
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "x-agentbox-managed-by": "projector",
+      "x-agentbox-gate": "env:ENABLE_CODEBASE_MEMORY",
+      "x-agentbox-requires": [
+        {
+          "bin": "codebase-memory-mcp"
+        }
+      ],
+      "x-agentbox-note": "MCP-2: manifest-ON + CLAUDE.md USE-FIRST; binary present in image, so projected here"
     },
     "consultant-codex": {
       "command": "sh",
@@ -273,7 +388,17 @@
       },
       "description": "Codex consultant (PRD-005 / ADR-011): second-opinion code reasoning, refactors, test generation via OpenAI Codex Rust CLI. Tools: consult, health, cost_estimate. Inherits OPENAI_API_KEY from session env.",
       "protocol": "stdio",
-      "version": "0.1.0"
+      "version": "0.1.0",
+      "x-agentbox-managed-by": "projector",
+      "x-agentbox-gate": "env:AGENTBOX_CONSULTANTS_ENABLED",
+      "x-agentbox-requires": [
+        {
+          "bin": "codex"
+        },
+        {
+          "file": "/opt/agentbox/mcp/consultants/package/codex/server.js"
+        }
+      ]
     },
     "consultant-antigravity": {
       "command": "sh",
@@ -287,7 +412,17 @@
       },
       "description": "Antigravity consultant (PRD-005 / ADR-011): 1M-token context, long-document analysis via Google Antigravity CLI (agy). Tools: consult, health, cost_estimate. Inherits GOOGLE_API_KEY from session env or uses web-based Pro login.",
       "protocol": "stdio",
-      "version": "0.2.0"
+      "version": "0.2.0",
+      "x-agentbox-managed-by": "projector",
+      "x-agentbox-gate": "env:AGENTBOX_CONSULTANTS_ENABLED",
+      "x-agentbox-requires": [
+        {
+          "bin": "agy"
+        },
+        {
+          "file": "/opt/agentbox/mcp/consultants/package/antigravity/server.js"
+        }
+      ]
     },
     "consultant-zai": {
       "command": "sh",
@@ -302,18 +437,43 @@
       },
       "description": "Z.AI/GLM consultant (PRD-005 / ADR-011): Anthropic-API-compatible Chinese-language reasoning via claude-zai; reasoning_effort maps to a Claude Code thinking budget. Tools: consult, health, cost_estimate. Inherits ZAI_ANTHROPIC_API_KEY (or ZAI_API_KEY) and ZAI_URL from session env.",
       "protocol": "stdio",
-      "version": "0.1.0"
+      "version": "0.1.0",
+      "x-agentbox-managed-by": "projector",
+      "x-agentbox-gate": "env:AGENTBOX_CONSULTANTS_ENABLED",
+      "x-agentbox-requires": [
+        {
+          "bin": [
+            "claude-zai",
+            "zai"
+          ]
+        },
+        {
+          "file": "/opt/agentbox/mcp/consultants/package/zai/server.js"
+        }
+      ]
     },
     "consultant-perplexity": {
       "command": "node",
-      "args": ["/opt/agentbox/mcp/consultants/package/perplexity/server.js"],
+      "args": [
+        "/opt/agentbox/mcp/consultants/package/perplexity/server.js"
+      ],
       "type": "stdio",
       "env": {
         "AGENTBOX_PERPLEXITY_MODEL": "${AGENTBOX_PERPLEXITY_MODEL:-sonar-pro}"
       },
       "description": "Perplexity consultant (PRD-005 / ADR-011): live web research with citations via Perplexity HTTPS API (sonar-pro). Tools: consult, health, cost_estimate. Inherits PERPLEXITY_API_KEY from session env.",
       "protocol": "stdio",
-      "version": "0.1.0"
+      "version": "0.1.0",
+      "x-agentbox-managed-by": "projector",
+      "x-agentbox-gate": "env:AGENTBOX_CONSULTANTS_ENABLED",
+      "x-agentbox-requires": [
+        {
+          "envset": "PERPLEXITY_API_KEY"
+        },
+        {
+          "file": "/opt/agentbox/mcp/consultants/package/perplexity/server.js"
+        }
+      ]
     },
     "web-researcher": {
       "command": "web-researcher-mcp",
@@ -334,22 +494,45 @@
       "description": "Multi-source web research: 8 tools (web/image/news/academic/patent/sequential search, scrape_page, search_and_scrape). 4-tier extraction; headless-browser tier DISABLED -- agents delegate to `browser` skill (browsercontainer) for JS-rendered pages. Pluggable backends (Google/Brave/Serper/SearXNG/SearchAPI) with multi-provider routing + circuit breakers.",
       "protocol": "stdio",
       "version": "1.0.0",
-      "upstream": "https://github.com/zoharbabin/web-researcher-mcp"
+      "upstream": "https://github.com/zoharbabin/web-researcher-mcp",
+      "x-agentbox-managed-by": "projector",
+      "x-agentbox-gate": "requires",
+      "x-agentbox-requires": [
+        {
+          "bin": "web-researcher-mcp"
+        }
+      ],
+      "x-agentbox-note": "package-gated (skills.research.web_researcher): binary is baked only when the gate is on"
     },
     "consultant-deepseek": {
       "command": "node",
-      "args": ["/opt/agentbox/mcp/consultants/package/deepseek/server.js"],
+      "args": [
+        "/opt/agentbox/mcp/consultants/package/deepseek/server.js"
+      ],
       "type": "stdio",
       "env": {
         "AGENTBOX_DEEPSEEK_MODEL": "${AGENTBOX_DEEPSEEK_MODEL:-deepseek-reasoner}"
       },
       "description": "DeepSeek consultant (PRD-005 / ADR-011): math + reasoning chain transparency via DeepSeek HTTPS API (deepseek-reasoner). Tools: consult, health, cost_estimate. Inherits DEEPSEEK_API_KEY (and optional DEEPSEEK_BASE_URL) from session env.",
       "protocol": "stdio",
-      "version": "0.1.0"
+      "version": "0.1.0",
+      "x-agentbox-managed-by": "projector",
+      "x-agentbox-gate": "env:AGENTBOX_CONSULTANTS_ENABLED",
+      "x-agentbox-requires": [
+        {
+          "envset": "DEEPSEEK_API_KEY"
+        },
+        {
+          "file": "/opt/agentbox/mcp/consultants/package/deepseek/server.js"
+        }
+      ]
     },
     "perplexity": {
       "command": "npx",
-      "args": ["-y", "@perplexity-ai/mcp-server"],
+      "args": [
+        "-y",
+        "@perplexity-ai/mcp-server"
+      ],
       "type": "stdio",
       "env": {
         "PERPLEXITY_API_KEY": "${PERPLEXITY_API_KEY}"
@@ -357,7 +540,9 @@
       "description": "Official Perplexity AI MCP server — 4 tools: perplexity_search (web search with citations), perplexity_ask (single question), perplexity_research (deep research), perplexity_reason (step-by-step reasoning). Requires PERPLEXITY_API_KEY. Complements the perplexity-research skill's richer three-API surface for quick native-tool access.",
       "protocol": "stdio",
       "version": "1.0.0",
-      "upstream": "https://www.npmjs.com/package/@perplexity-ai/mcp-server"
+      "upstream": "https://www.npmjs.com/package/@perplexity-ai/mcp-server",
+      "x-agentbox-managed-by": "bespoke",
+      "x-agentbox-note": "entrypoint registers from baked closure when PERPLEXITY_API_KEY is set"
     }
   },
   "visionclaw": {

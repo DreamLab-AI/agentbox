@@ -133,3 +133,7 @@ needs the trajectory hook enabled (`RUVECTOR_RECORD_TRAJECTORIES`) against live
 agent traffic with the management-API reachable, which this build container does not
 provide. The earlier "rides both envelopes" wording is corrected above rather than
 deleted.
+
+---
+
+> **Amendment (2026-07-22, K-2 registration sweep):** `CANARY-AB-CTC` is now REGISTERED and armed on the live VisionClaw LivenessHarness (`POST /api/canary/register` → 200, `sha_at_registration: c889bdf6`, confirmed via `GET /api/canary/status`). `visionclaw-server:4000` became reachable 2026-07-22 (PRD-024 Tock 0). The **live fire** remains pending-live-session per the honesty rule — registration and observation are separate claims.

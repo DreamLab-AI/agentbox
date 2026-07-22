@@ -1234,6 +1234,44 @@ else
     && echo "  [ruvnet-brain] MCP closure not found at $_RB_MCP_DIR — skipping"
 fi
 
+# ── MCP registry projection (MCP-1 / MCP-2): project .mcp.json FROM skills/mcp.json ──
+# audit-2026-07-15 MCP-1: skills/mcp.json (the 28-server registry) had NO runtime
+# consumer — ~19 gated servers registered nowhere the harness reads. This makes the
+# registry the SOURCE and the entrypoint its PROJECTOR (same shape as
+# registered-skills.txt + reconcile-skills.sh for skills). It ONLY touches servers
+# the registry marks x-agentbox-managed-by="projector"; the bespoke blocks above
+# (claude-flow, browser-gpu, perplexity, agentic-qe, ontology/precedent/harness,
+# email-gateway, ruvnet-brain) are left byte-identical for their gates. MCP-2:
+# codebase-memory is projected here (binary present + ENABLE_CODEBASE_MEMORY on).
+# Reconcile-not-append: a managed server whose gate/requires now fail is removed
+# (closes the add-only rot of MCP-6 for the projected set). Runs AFTER the bespoke
+# blocks so it sees the full target. Fail-open. Next-rebuild payload (baked to
+# /opt/agentbox/scripts). Perms: writeFileSync preserves the existing mode (600).
+_MCP_PROJECTOR="/opt/agentbox/scripts/project-mcp-servers.mjs"
+_MCP_REGISTRY="${SKILLS_TREE:-/opt/agentbox/skills}/mcp.json"
+if [ -f "$_MCP_PROJECTOR" ] && [ -f "$_MCP_REGISTRY" ] && [ -f "$_MCP_JSON" ] && command -v node >/dev/null 2>&1; then
+  # Master consultant gate ([consultants].enabled) — no ENABLE_ var is exported for
+  # it, so derive it from the manifest here (best-effort; default off). Per-provider
+  # bin/key requires in the registry then gate each consultant individually.
+  _CONSULTANTS_ON=0
+  if [ -f "${AGENTBOX_CONFIG:-}" ] && command -v python3 >/dev/null 2>&1; then
+    _CONSULTANTS_ON=$(python3 - "$AGENTBOX_CONFIG" <<'PYEOF' 2>/dev/null || echo 0
+import sys, tomllib
+try:
+    c = tomllib.load(open(sys.argv[1], "rb"))
+    print(1 if c.get("consultants", {}).get("enabled", False) else 0)
+except Exception:
+    print(0)
+PYEOF
+)
+  fi
+  AGENTBOX_CONSULTANTS_ENABLED="$_CONSULTANTS_ON" \
+  MCP_REGISTRY="$_MCP_REGISTRY" MCP_JSON="$_MCP_JSON" \
+  SKILLS_TREE="${SKILLS_TREE:-/opt/agentbox/skills}" WORKSPACE="$WORKSPACE" \
+    node "$_MCP_PROJECTOR" 2>&1 | sed 's/^/  [mcp] /' || true
+  chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
+fi
+
 # ── Xinference embedding sidecar: wait for readiness + ensure model loaded ──
 # xinference does NOT persist launched models across its own restarts, so this
 # boot-time launch is the only thing that loads ${EMBEDDING_MODEL}. The
@@ -1506,6 +1544,26 @@ if [ -f "$_RECONCILE_SKILLS" ]; then
   REGISTERED_SKILLS_MANIFEST="${SKILLS_TREE:-/opt/agentbox/skills}/registered-skills.txt" \
     bash "$_RECONCILE_SKILLS" 2>&1 | sed 's/^/  [skills] /' || true
   chown -h 1000:1000 /home/devuser/.claude/skills/* 2>/dev/null || true
+fi
+
+# ── SK-2: collapse the divergent ancestor skill roots ──────────────────────
+# reconcile-skills.sh (above) projects the canonical set into ~/.claude/skills.
+# This projects the SAME single canonical source (/opt/agentbox/skills) into the
+# ancestor roots the Skill tool ALSO reads when launched from a nested CWD
+# ($WORKSPACE and $WORKSPACE/project), so the visible set no longer depends on the
+# launch directory (audit-2026-07-15 SK-2). Baked-named entries become canonical
+# links (a rebuild can never leave a stale snapshot on a root); the project-local
+# overlay — the 56 AQE/testing/v3 uniques that exist nowhere else — is PRESERVED
+# as an intentional overlay layer; superseded real dirs move to a recoverable
+# .superseded/ sidecar. Boot-phase, idempotent, fail-open, non-destructive.
+_SKILL_ROOTS_PROJECTOR="/opt/agentbox/scripts/project-skill-roots.mjs"
+if [ -f "$_SKILL_ROOTS_PROJECTOR" ] && command -v node >/dev/null 2>&1; then
+  SKILLS_TREE="${SKILLS_TREE:-/opt/agentbox/skills}" \
+  WORKSPACE="$WORKSPACE" \
+  SKILL_ROOT_TARGETS="$WORKSPACE/.claude/skills:$WORKSPACE/project/.claude/skills" \
+    node "$_SKILL_ROOTS_PROJECTOR" 2>&1 | sed 's/^/  [skill-roots] /' || true
+  chown -h 1000:1000 "$WORKSPACE/.claude/skills"/* 2>/dev/null || true
+  chown -h 1000:1000 "$WORKSPACE/project/.claude/skills"/* 2>/dev/null || true
 fi
 
 # ---------------------------------------------------------------------------

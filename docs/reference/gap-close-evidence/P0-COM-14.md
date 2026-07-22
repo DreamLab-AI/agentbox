@@ -117,3 +117,7 @@ return-shape assertions still pass across local-process-manager, stdio-bridge an
 - **In-container reality:** `nostr-tools ^2.23.3` is a management-api dependency, so the mint path is
   live in the real container; the `did:nostr:local` fallback only applies where node/nostr-tools are
   absent (fail-open).
+
+---
+
+> **Amendment (2026-07-22, K-2 registration sweep):** `CANARY-AB-DID` is now REGISTERED and armed on the live VisionClaw LivenessHarness (`POST /api/canary/register` → 200, `sha_at_registration: c889bdf6`, confirmed via `GET /api/canary/status`). `visionclaw-server:4000` became reachable 2026-07-22 (PRD-024 Tock 0). The **live fire** remains pending-live-session per the honesty rule — registration and observation are separate claims.

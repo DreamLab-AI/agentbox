@@ -294,7 +294,7 @@ flowchart LR
 
 </details>
 
-Because Agentbox uses canonical URIs and Linked Data (JSON-LD), you can spin up the built-in [Linked-Data browser](docs/user/browser.md) at `/lo/*` to navigate the graph of your agent's memories, architectural decisions, and credentials. The `/v1/uri/<urn>` resolver maps any URN to its current HTTP representation.
+Because Agentbox uses canonical URIs and Linked Data (JSON-LD), you can spin up the built-in [linked-object viewer](docs/user/linked-object-viewer.md) at `/lo/*` to navigate the graph of your agent's memories, architectural decisions, and credentials. The `/v1/uri/<urn>` resolver maps any URN to its current HTTP representation.
 
 ### Verifiable provenance and value transfer (substrate)
 
@@ -402,7 +402,7 @@ See [Tailscale guide](docs/user/tailscale.md) · [Mesh deployment](docs/user/mes
 - [Privacy filter](docs/user/privacy-filter.md)
 - [Linked-data interfaces](docs/user/linked-data.md)
 - [Canonical URIs](docs/user/uris.md)
-- [JSON-LD browser](docs/user/browser.md)
+- [JSON-LD linked-object viewer](docs/user/linked-object-viewer.md)
 - [Consultants](docs/user/consultants.md)
 
 ### For developers

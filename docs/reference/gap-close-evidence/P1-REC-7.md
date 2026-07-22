@@ -114,3 +114,7 @@ OK: tests/sovereign/effectiveness-learning.test.js
 - **Out-of-repo exclusion recorded** here and to be carried in the compatibility matrix
   (PRD-019 REC-7 AC5): the claude-flow-CLI banner and router confidence are not
   agentbox's REC-7 closure.
+
+---
+
+> **Amendment (2026-07-22, K-2 registration sweep):** `CANARY-AB-LEARN` is now REGISTERED and armed on the live VisionClaw LivenessHarness (`POST /api/canary/register` → 200, `sha_at_registration: c889bdf6`, confirmed via `GET /api/canary/status`). `visionclaw-server:4000` became reachable 2026-07-22 (PRD-024 Tock 0). The **live fire** remains pending-live-session per the honesty rule — registration and observation are separate claims.

@@ -124,3 +124,7 @@ No other unclassified `{success:false}` return remains in the file (`grep -n
 earlier evidence under-counted; the taxonomy library and the trajectory-hook path
 are unchanged. The "two sites" wording is corrected above rather than deleted.
 `CANARY-AB-MAST` remains **pending-live-session** as recorded above.
+
+---
+
+> **Amendment (2026-07-22, K-2 registration sweep):** `CANARY-AB-MAST` is now REGISTERED and armed on the live VisionClaw LivenessHarness (`POST /api/canary/register` → 200, `sha_at_registration: c889bdf6`, confirmed via `GET /api/canary/status`). `visionclaw-server:4000` became reachable 2026-07-22 (PRD-024 Tock 0). The **live fire** remains pending-live-session per the honesty rule — registration and observation are separate claims.

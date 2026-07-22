@@ -144,3 +144,7 @@ claim is corrected here rather than deleted.
   pre-existing `E016` keys PRD-019 scopes out (§Out of Scope: `ruvnet_brain`,
   `mcp_startup_timeout_ms`, `mcp_tool_timeout_ms`); no new error, no `diversity`
   error — drift-neutral (no `agentbox.toml`/schema change).
+
+---
+
+> **Amendment (2026-07-22, K-2 registration sweep):** `CANARY-AB-DIVERSITY` is now REGISTERED and armed on the live VisionClaw LivenessHarness (`POST /api/canary/register` → 200, `sha_at_registration: c889bdf6`, confirmed via `GET /api/canary/status`). `visionclaw-server:4000` became reachable 2026-07-22 (PRD-024 Tock 0). The **live fire** remains pending-live-session per the honesty rule — registration and observation are separate claims.
