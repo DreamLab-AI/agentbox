@@ -349,6 +349,15 @@ metadata_gin       = true    # require/build the GIN on metadata jsonb for tag r
 health_tool        = true    # expose memory_health read-only diagnostics
 episodic_ttl_sweep = true    # honour TTL, sweep expired episodic entries (implements delete)
 memory_orient      = true    # memory_orient OODA cold-start bundle (semantic + effectiveness aggregates + episodic)
+# ── PRD-020 / ADR-040 D10: v2 model-lifecycle & graph gates (all default-off, W-B-gated) ──
+# Retrieval-geometry keys extend this existing sidecar section. Every one defaults to
+# today's post-PRD-018 behaviour, so a manifest with all v2 keys at default is byte-
+# identical to the shipped product (PRD-020 metric 1). Phase 0 wires only the aggregate
+# sweep (in [memory_learning] below); the three keys here are declared and RESERVED —
+# each is gated on a passing W-B recall-harness run (I14) before its consumer may flip on.
+embedding_dual_write    = false        # W-D/D7: dual-embed new writes through bge-m3 into embedding_m3 (evaluation only; RESERVED)
+embedding_active_column = "embedding"  # W-D/D7: retrieval reads this column; cutover selector (default = current 384-dim; RESERVED)
+graph_backbone          = false        # D9: ontology-backbone Cypher/SPARQL traversal in memory_orient (ADOPT-LATER, RESERVED — not landed in v2)
 
 # ── PRD-018 / ADR-036 D6: memory learning loop (top-level table, default-off) ──
 # The agentbox-owned hook (config/hooks/trajectory-recorder.cjs) records real
@@ -365,8 +374,22 @@ aggregate_min_samples  = 20      # Wilson-bound sample floor before an aggregate
 recency_half_life_days = 14      # recency half-life for aggregation and the hybrid recency term
 feed_retrieval         = false   # effectiveness aggregates re-rank memory_search
 feed_routing           = false   # aggregates surface as advisory [INTELLIGENCE] hints
-sona_enabled           = false   # ADOPT-LATER, reserved (wraps ruvector_sona_learn behind a recall harness)
-relevance_feedback     = false   # ADOPT-LATER, reserved (wraps ruvector_enable_learning/record_feedback)
+sona_enabled           = false   # SUPERSEDED by sona_learn_enabled/sona_apply_enabled (ADR-040 D4); kept default-off for back-compat
+relevance_feedback     = false   # SUPERSEDED by param_tuning_enabled (ADR-040 D5); kept default-off for back-compat
+# ── PRD-020 / ADR-040 D10: v2 learning-consumer additions (all default-off) ──
+# aggregate_sweep + aggregate_sweep_interval_mins are WIRED in Phase 0: the entrypoint
+# mirrors them into RUVECTOR_AGGREGATE_SWEEP / RUVECTOR_AGGREGATE_SWEEP_INTERVAL_MINS for
+# the OUT-OF-PROCESS Wilson/recency sweep (scripts/ruvector-aggregate-sweep.mjs — a self-
+# loop now, a supervisord program in the image). The remaining keys are declared and
+# RESERVED; each geometry-changing consumer is gated on a passing W-B recall-harness run
+# (I14) before it may flip on. The sweep and the recall harness are NOT MCP tools.
+aggregate_sweep               = true    # W-A/D1: ENABLED 2026-07-21 (Phase 0 ops, queen) — scheduled Wilson/recency aggregator live
+aggregate_sweep_interval_mins = 30      # W-A/D1: sweep cadence in minutes (out-of-process self-loop / future supervisord program)
+pattern_distillation          = true    # W-C/D6: ENABLED 2026-07-21 (queen) — 13 patterns live, provenance judge:trajectory, all embedded
+attention_rerank              = false   # W-C/D3: MEASURED 2026-07-21 — attention_score = cos/sqrt(384) on L2-normalised corpus (max diff 4e-7): blend is an identity, zero benefit. Stays off BY MEASUREMENT (I14).
+sona_learn_enabled            = false   # W-C/D4: BLOCKED 2026-07-21 — engine hardcodes embedding_dim=256; 384-dim learns accepted-but-discarded (verified live). Feeder proven; flip only after an image with configurable dim.
+sona_apply_enabled            = false   # W-C/D4: BLOCKED with sona_learn (256-dim engine) + harness-gated (I14). Passthrough-safe but pointless until the engine accumulates.
+param_tuning_enabled          = false   # W-C/D5: HNSW ef_search/probes auto-tuner (renamed from v1 relevance_feedback; RESERVED)
 
 # ── PRD-018 / ADR-036 D6: data hygiene ops (top-level table, default-off) ──
 # These flags ONLY enable the non-dry-run path of `agentbox.sh ruvector <op>`;
@@ -377,6 +400,10 @@ relevance_feedback     = false   # ADOPT-LATER, reserved (wraps ruvector_enable_
 allow_namespace_repair   = false  # non-dry-run repair-namespaces (completed 2026-07-05: 178,238 rows un-swapped)
 allow_embedding_backfill = false  # non-dry-run backfill-embeddings (completed 2026-07-05: 36 rows embedded, 0 NULL remain)
 allow_legacy_archival    = false  # non-dry-run archive-legacy (completed 2026-07-05: 2,014,173 rows → cold archive)
+# ── PRD-020 / ADR-040 D10: v2 hygiene-op gates (all default-off; enable only the non-dry-run path) ──
+allow_embedding_m3_backfill = false  # W-D/D7: non-dry-run backfill-embedding-m3 into the parallel 1024-dim column (RESERVED)
+allow_legacy_mining_import  = false  # W-E/D8: non-dry-run import of mined candidates into legacy-mined-candidates (RESERVED)
+allow_pattern_graduation    = false  # W-E/D8: non-dry-run graduation of corroborated candidates into patterns (RESERVED)
 
 [integrations.comfyui_external]
 enabled = false
@@ -575,16 +602,15 @@ direct_axiom_load = false
 # enriches the PUSH Class-Summary cache (search optimisation) and RuVector
 # ns:ontology-classes. Replaces the old Haiku mesh with an operator-supplied
 # endpoint. OpenAI-compatible (/chat/completions) or ollama (/api/chat).
-# Vanilla agentbox ships this OFF — it is operator infrastructure. DiffusionGemma
-# holds a single model context and SERIALISES requests, so max_concurrency MUST
-# stay 1; never fan out against a diffusion server.
+# Vanilla agentbox ships this OFF — it is operator infrastructure. Gemma 4 31B
+# is a standard autoregressive LM (llama.cpp, multi-slot) — concurrency can
+# be raised if the KV budget allows.
 [skills.ontology.condense]
 enabled = true
-endpoint = "http://192.168.2.48:8084/v1"   # operator LAN model (DiffusionGemma 26B-A4B)
-model = "diffusiongemma-26B-A4B-it-Q8_0"
+endpoint = "http://192.168.2.48:8084/v1"   # operator LAN model (Gemma 4 31B dense, llama.cpp)
+model = "gemma-4-31B-it-qat"
 style = "openai"                            # openai | ollama
-n_blocks = 3                                # DiffusionGemma answer sizing (256 tok/block); ignored by ollama
-max_concurrency = 1                         # single-context server → never parallelise
+max_concurrency = 2                         # llama.cpp serves multiple KV slots
 
 [skills.harness]
 # Harness Engineering MCP bridge (ADR-004). Agents inspect harness templates
@@ -991,7 +1017,7 @@ metrics             = true                                          # emit the a
 claude = true
 claude_code = true
 ruflo = true
-claude_flow = true
+claude_flow = true  # legacy alias gate: claude-flow IS ruflo (upstream rename, github.com/ruvnet/ruflo) — either gate bakes the ONE consolidated closure, which ships `ruflo` + `claude-flow` + `claude-flow-mcp` bins
 agentic_qe = true
 nagual_qe = false  # disabled: upstream sqlx 0.9 SqlSafeStr compilation error
 codebase_memory = true

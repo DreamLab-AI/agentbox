@@ -616,6 +616,13 @@ _ML_FEED_RETRIEVAL=$(_ab_toml_bool memory_learning feed_retrieval)
 _ML_FEED_ROUTING=$(_ab_toml_bool memory_learning feed_routing)
 _ML_AGG_MIN=$(_ab_toml_int memory_learning aggregate_min_samples 20)
 _ML_HALFLIFE=$(_ab_toml_int memory_learning recency_half_life_days 14)
+_ML_AGG_SWEEP=$(_ab_toml_bool memory_learning aggregate_sweep)
+_ML_AGG_SWEEP_INT=$(_ab_toml_int memory_learning aggregate_sweep_interval_mins 30)
+_ML_ATTENTION_RERANK=$(_ab_toml_bool memory_learning attention_rerank)
+_ML_SONA_LEARN=$(_ab_toml_bool memory_learning sona_learn_enabled)
+_ML_SONA_APPLY=$(_ab_toml_bool memory_learning sona_apply_enabled)
+_ML_PARAM_TUNING=$(_ab_toml_bool memory_learning param_tuning_enabled)
+_ML_PATTERN_DISTILL=$(_ab_toml_bool memory_learning pattern_distillation)
 
 # ── MCP server config: ensure .mcp.json always points to ruvector-mcp.cjs ──
 # Claude Code resolves .mcp.json by walking up from cwd.  We write one at
@@ -688,6 +695,10 @@ if [ -f "$_MCP_JSON" ] && command -v node >/dev/null 2>&1; then
   ML_ENABLED="$_ML_ENABLED" ML_RECORD_TRAJ="$_ML_RECORD_TRAJ" \
   ML_FEED_RETRIEVAL="$_ML_FEED_RETRIEVAL" ML_FEED_ROUTING="$_ML_FEED_ROUTING" \
   ML_AGG_MIN="$_ML_AGG_MIN" ML_HALFLIFE="$_ML_HALFLIFE" \
+  ML_AGG_SWEEP="$_ML_AGG_SWEEP" ML_AGG_SWEEP_INT="$_ML_AGG_SWEEP_INT" \
+  ML_ATTENTION_RERANK="$_ML_ATTENTION_RERANK" ML_SONA_LEARN="$_ML_SONA_LEARN" \
+  ML_SONA_APPLY="$_ML_SONA_APPLY" ML_PARAM_TUNING="$_ML_PARAM_TUNING" \
+  ML_PATTERN_DISTILL="$_ML_PATTERN_DISTILL" \
   RV_CONN="host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=${RUVECTOR_PG_PASSWORD:-ruvector}" \
   RV_NODE_PATH="$_PG_NODE_PATH" RV_XINF="$XINFERENCE_ENDPOINT" RV_EMB="$EMBEDDING_MODEL" \
   node <<'MCPGATEJS' || true
@@ -710,6 +721,13 @@ const gates = {
   RUVECTOR_FEED_ROUTING:            process.env.ML_FEED_ROUTING,
   RUVECTOR_AGGREGATE_MIN_SAMPLES:   process.env.ML_AGG_MIN,
   RUVECTOR_RECENCY_HALF_LIFE_DAYS:  process.env.ML_HALFLIFE,
+  RUVECTOR_AGGREGATE_SWEEP:             process.env.ML_AGG_SWEEP,
+  RUVECTOR_AGGREGATE_SWEEP_INTERVAL_MINS: process.env.ML_AGG_SWEEP_INT,
+  RUVECTOR_ATTENTION_RERANK:            process.env.ML_ATTENTION_RERANK,
+  RUVECTOR_SONA_LEARN_ENABLED:          process.env.ML_SONA_LEARN,
+  RUVECTOR_SONA_APPLY_ENABLED:          process.env.ML_SONA_APPLY,
+  RUVECTOR_PARAM_TUNING_ENABLED:        process.env.ML_PARAM_TUNING,
+  RUVECTOR_PATTERN_DISTILLATION:        process.env.ML_PATTERN_DISTILL,
 };
 let changed = false;
 for (const [k, v] of Object.entries(gates)) {
@@ -958,10 +976,11 @@ fi
 # ── MCP bridge servers: NODE_PATH for baked @modelcontextprotocol/sdk ──
 _MCP_SERVERS_NODE_PATH="/opt/agentbox/mcp/servers/node_modules"
 
-# ── Ontology bridge MCP: register when [skills.ontology] enabled ──
+# ── Ontology bridge MCP: upsert when [skills.ontology] enabled ──
+# Always overwrite (no grep guard) so env-var changes (auth tokens, pubkey)
+# propagate on every boot instead of being frozen at first registration.
 _ONTOLOGY_BRIDGE="/opt/agentbox/mcp/servers/ontology-bridge.js"
 if [ "${ENABLE_ONTOLOGY:-false}" = "true" ] && [ -f "$_ONTOLOGY_BRIDGE" ] && [ -f "$_MCP_JSON" ]; then
-  if ! grep -q "ontology-bridge" "$_MCP_JSON" 2>/dev/null; then
     python3 -c "
 import json
 with open('$_MCP_JSON') as f: cfg = json.load(f)
@@ -971,13 +990,15 @@ cfg.setdefault('mcpServers', {})['ontology-bridge'] = {
   'type': 'stdio',
   'env': {
     'VISIONCLAW_API_URL': '${VISIONCLAW_API_URL:-http://visionclaw-server:4000}',
+    'VISIONCLAW_DEV_TOKEN': '${VISIONCLAW_DEV_TOKEN:-}',
+    'AGENTBOX_PUBKEY': '${AGENTBOX_PUBKEY:-}',
+    'AGENTBOX_ONTOLOGY_DIRECT_LOAD': '${AGENTBOX_ONTOLOGY_DIRECT_LOAD:-false}',
     'NODE_PATH': '$_MCP_SERVERS_NODE_PATH',
   }
 }
 with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
-" 2>/dev/null && echo "  [mcp] Added ontology-bridge → ${VISIONCLAW_API_URL:-http://visionclaw-server:4000}" || true
+" 2>/dev/null && echo "  [mcp] Upserted ontology-bridge → ${VISIONCLAW_API_URL:-http://visionclaw-server:4000}" || true
     chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
-  fi
 fi
 
 # ── Precedent bridge MCP: governance harness precedent system ──

@@ -147,30 +147,39 @@
         #    nix-prefetch-url https://registry.npmjs.org/ruvector/-/ruvector-0.2.25.tgz
         ruvectorPkg = mkNpmCli {
           pkgName         = "ruvector";
-          version         = "0.2.34";
-          sha256          = "sha256-lXvClsufT38cpyPAKZCiBbqpzYilG2OYudaVdo5WUco=";
-          nodeModulesHash = "sha256-Eft92d17aEoqCJppSI3SVK59IPZtPbe/F9nr2Al8cnY=";
+          version         = "0.2.35";
+          sha256          = "sha256-e15YrZn/PdnfmiYv80iyFZ+p+sCoxOV3td1MHJ7rBGk=";
+          nodeModulesHash = "sha256-I9idMYvZonacczkYXa5e9jEV5L2KYaOxobxbk28jbdk=";
           bin             = "ruvector";
         };
 
-        # 2. @claude-flow/cli — gated by toolchains.claude_flow.
-        #    nix-prefetch-url https://registry.npmjs.org/%40claude-flow/cli/-/cli-3.6.12.tgz
-        claudeFlowPkg = mkNpmCli {
-          pkgName         = "@claude-flow/cli";
-          version         = "3.26.1";
-          sha256          = "sha256-Yor16SS9nMN1L7Js6vL+yh5CpuEuIdTXn38LN5WnEeY=";
-          nodeModulesHash = "sha256-FtWmKiZFERQvNQdbB3NhcUFlTC19kN/vGD7pbn/DY4A=";
-          bin             = "claude-flow";
-        };
-
-        # 3. ruflo — gated by toolchains.ruflo.
-        #    nix-prefetch-url https://registry.npmjs.org/ruflo/-/ruflo-3.6.12.tgz
+        # 2+3. ruflo — gated by toolchains.ruflo OR toolchains.claude_flow.
+        #
+        #    CONSOLIDATED (2026-07-19): claude-flow IS ruflo. Upstream renamed
+        #    the project (github.com/ruvnet/ruflo; "Claude Flow is now Ruflo")
+        #    and the `ruflo` npm package is a thin wrapper whose ONLY
+        #    dependency is `@claude-flow/cli` — the previous separate
+        #    claudeFlowPkg baked the identical tool a second time (~10 MB +
+        #    full transitive tree duplicated in the image). One closure now
+        #    ships all three bins: `ruflo` (canonical) plus `claude-flow` /
+        #    `claude-flow-mcp` aliased via extraBins into the inner
+        #    @claude-flow/cli — every existing `claude-flow hooks …` call
+        #    site keeps working. Both manifest gates remain honoured (either
+        #    one pulls the single package in). Beware if ever re-splitting:
+        #    the scoped tarball basename is `cli-<ver>.tgz`, and the unscoped
+        #    `claude-flow` npm package is a third artefact of the same code.
+        #
+        #    nix-prefetch-url https://registry.npmjs.org/ruflo/-/ruflo-3.32.8.tgz
         rufloPkg = mkNpmCli {
           pkgName         = "ruflo";
-          version         = "3.26.1";
-          sha256          = "sha256-alT9GTZpXme9rFF8NbJsitaTlPvK8lltQ7y+o4yCQtE=";
-          nodeModulesHash = "sha256-IO61yDAcHIrTX8Kf/igb+ryosmQFAwja0tlJAVtAdVs=";
+          version         = "3.32.8";
+          sha256          = "sha256-evCHjKnEz8ulqZvtWYRPBGdEQgbJPi5f8l/wINWoIxc=";
+          nodeModulesHash = "sha256-3lbcsgqaM0XQAlwhMXQS3cvf3gxSUgfW7rT+Eq6IjhQ=";
           bin             = "ruflo";
+          extraBins = {
+            "claude-flow"     = "node_modules/@claude-flow/cli/bin/cli.js";
+            "claude-flow-mcp" = "node_modules/@claude-flow/cli/bin/mcp-server.js";
+          };
         };
 
         # 4. agentic-qe — gated by toolchains.agentic_qe.
@@ -178,12 +187,16 @@
         #    templates to $HOME/.claude/agents/ — it must run as the runtime user
         #    after container start, NOT at Nix build time. Add to agentbox.sh init:
         #      [[ "${ENABLE_AGENTIC_QE:-false}" == "true" ]] && aqe init --auto || true
-        #    nix-prefetch-url https://registry.npmjs.org/agentic-qe/-/agentic-qe-3.9.18.tgz
+        #    nix-prefetch-url https://registry.npmjs.org/agentic-qe/-/agentic-qe-3.13.0.tgz
+        #    3.13.0 (2026-07-18): QE-Court multi-vendor adversarial review
+        #    (Codex/GPT + Cognitum + Claude), Codex CLI provider via `codex
+        #    exec`, @huggingface/transformers demoted to optional peer (4 HIGH
+        #    CVEs resolved; deliberately NOT re-added — ADR-015 one-embedder).
         agenticQePkg = mkNpmCli {
           pkgName         = "agentic-qe";
-          version         = "3.12.2";
-          sha256          = "sha256-8n4515jWaOwYWTGUsyoeHRHR31QKQuXOG5u0CMMGl3U=";
-          nodeModulesHash = "sha256-JzNSPFweSD/TQ7nlZE3VxtQeoeey7Y931vf9QhncXvI=";
+          version         = "3.13.0";
+          sha256          = "sha256-5P+s2kDQJVWVAFnG6dM73lPCM4QHasdMAgPmDgks7Uc=";
+          nodeModulesHash = "sha256-OUEJwR60hLpfJsdmf7+9fkCa3qjS0PDRU5Jz5Ew8pc0=";
           bin             = "aqe";
         };
 
@@ -220,7 +233,7 @@
           pkgName         = "@mermaid-js/mermaid-cli";
           version         = "11.16.0";
           sha256          = "sha256-ZdeVGRv5ymypCkCh6jA1SmpJHiBmdMr9TZ3mL+kHVDk=";
-          nodeModulesHash = "sha256-JIYR/HKW4w28QiGF/Nf+9Fckv/jySaamKzmJL5Afh8Y=";
+          nodeModulesHash = "sha256-5kfThmLpbeZlzwSLXbkCBMZlp568FX3f88OOKzkM8h8=";
           bin             = "mmdc";
         };
 
@@ -255,8 +268,9 @@
         # set via nagualQePackages.
         npmCliAlwaysPackages = [ ruvectorPkg wranglerPkg ];
         npmCliGatedPackages =
-          lib.optionals (toolchainCfg.claude_flow or false)       [ claudeFlowPkg ]
-          ++ lib.optionals (toolchainCfg.ruflo or false)           [ rufloPkg ]
+          # ruflo ships the claude-flow bins too (consolidated, see rufloPkg) —
+          # either gate pulls in the single closure, never both twice.
+          lib.optionals ((toolchainCfg.ruflo or false) || (toolchainCfg.claude_flow or false)) [ rufloPkg ]
           ++ lib.optionals (toolchainCfg.agentic_qe or false)      [ agenticQePkg ]
           ++ lib.optionals (toolchainCfg.codebase_memory or false)  [ codebaseMemoryPkg ]
           ++ lib.optionals (docsCfg.mermaid or false)              [ mermaidCliPkg ];
@@ -285,7 +299,7 @@
           # Prefetched 2026-04-24 against management-api/package-lock.json.
           # Refresh via: nix run nixpkgs#prefetch-npm-deps -- management-api/package-lock.json
           # Prefetched 2026-06-02. Refresh: nix run nixpkgs#prefetch-npm-deps -- management-api/package-lock.json
-          npmDepsHash = "sha256-eLoqnV7Tk2k951TiEzHSTjhIonMcVyrQS6YY66YMfIo=";
+          npmDepsHash = "sha256-ABa09UHD4MjGFA/jFN05MAmCza1KrEXdOwH7BrBdKos=";
           # Vendor the canonical NostrBridge into lib/ so the in-process
           # JunkieJarvis agent (server.js) can require('./lib/nostr-bridge') and
           # resolve nostr-tools + ws from THIS package's node_modules. A bare
@@ -623,17 +637,17 @@
         #   first build will print the correct vendorHash to substitute.
         webResearcherMcpPkg = pkgs.buildGoModule rec {
           pname   = "web-researcher-mcp";
-          # Bumped 1.33.0 -> 1.36.4. Hashes need refresh on first host build:
-          #   nix-prefetch-github zoharbabin web-researcher-mcp --rev v1.36.4
+          # Bumped 1.37.5 -> 1.43.0 (2026-07-19). Hashes refresh on bump:
+          #   nix-prefetch-github zoharbabin web-researcher-mcp --rev v1.43.0
           #   then `nix build` once with lib.fakeHash for vendorHash.
-          version = "1.37.5";  # bump together with hashes below
+          version = "1.43.0";  # bump together with hashes below
           src = pkgs.fetchFromGitHub {
             owner = "zoharbabin";
             repo  = "web-researcher-mcp";
             rev   = "v${version}";
-            hash  = "sha256-cjWmIMj4j4HjIbUGjjS3MCKUwHR9u332wbIQR8g+mjM=";
+            hash  = "sha256-BxN04tejRS7l+Clji64NN+K7124vcD6hnPjUiWf7h5o=";
           };
-          vendorHash = "sha256-JsLlBCZQhij/ivcU6pjcWDzh1Z4hORCzJghre+ai49k=";
+          vendorHash = "sha256-YnUplHxHiOdQa3D2xTk4MSleSYqvOdptHUL4EZ4+Vuw=";
           subPackages = [ "cmd/web-researcher-mcp" ];
           # Strip the auto-Chromium download path — we never use tier 4.
           ldflags = [ "-s" "-w" ];
@@ -1285,6 +1299,28 @@ autorestart=true
 priority=231
 stdout_logfile=/var/log/blender-mcp.log
 stderr_logfile=/var/log/blender-mcp.error.log
+
+[program:ruvector-aggregate-sweep]
+command=${pkgs.nodejs_22}/bin/node /opt/agentbox/scripts/ruvector-aggregate-sweep.mjs --loop
+user=devuser
+environment=HOME="/home/devuser"
+autostart=true
+autorestart=true
+startsecs=0
+priority=232
+stdout_logfile=/var/log/ruvector-aggregate-sweep.log
+stderr_logfile=/var/log/ruvector-aggregate-sweep.error.log
+
+[program:ruvector-pattern-distill]
+command=${pkgs.nodejs_22}/bin/node /opt/agentbox/scripts/ruvector-pattern-distill.mjs --loop
+user=devuser
+environment=HOME="/home/devuser"
+autostart=true
+autorestart=true
+startsecs=0
+priority=233
+stdout_logfile=/var/log/ruvector-pattern-distill.log
+stderr_logfile=/var/log/ruvector-pattern-distill.error.log
         '';
 
         jupyterServiceBlock = ''
@@ -2779,11 +2815,32 @@ ${ragflowNetworkDecl}
             pkgs.nix-init  # scaffold buildRustPackage/buildPythonPackage expressions from URLs
           ];
 
+          # wasm32 cross-compile fix.
+          #
+          # The Nix cc-wrapper injects the native glibc `-isystem` even when clang
+          # targets wasm32-unknown-unknown (the wrapper is not multi-target aware
+          # and warns as much). So the `cc`-crate build of secp256k1-sys pulls
+          # glibc's <stdint.h> -> <gnu/stubs.h> -> <gnu/stubs-32.h>, which does not
+          # exist (Nix glibc ships no 32-bit multilib), and dies with
+          # "fatal error: 'gnu/stubs-32.h' file not found".
+          #
+          # Point the cc crate at the UNWRAPPED clang for the wasm target only, so
+          # it uses just its freestanding builtin headers (no injected glibc) —
+          # exactly how upstream CI's plain clang behaves. `pkgs.clang.cc` is the
+          # unwrapped compiler behind `pkgs.clang` (line 449), so the version stays
+          # in lockstep with the wrapper. No AR override is needed (the default ar
+          # archives wasm objects fine). Verified in-container:
+          #   cargo check --target wasm32-unknown-unknown -p nostr-bbs-forum-client
+          # now compiles secp256k1-sys cleanly (was the gnu/stubs-32.h failure).
+          CC_wasm32_unknown_unknown = "${pkgs.clang.cc}/bin/clang";
+          CFLAGS_wasm32_unknown_unknown = "--target=wasm32-unknown-unknown";
+
           shellHook = ''
             echo "Agentbox development shell"
             echo "Manifest: agentbox.toml"
             echo "Build runtime: nix build .#runtime"
             echo "Build desktop: nix build .#desktop"
+            echo "wasm32 cross-compile: unwrapped clang wired for secp256k1-sys (CC_wasm32_unknown_unknown)"
           '';
         };
       });
