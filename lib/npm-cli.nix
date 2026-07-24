@@ -310,13 +310,13 @@ in
         # shell — a piped `while` is a subshell where `exit 1` cannot fail the
         # derivation, which is exactly how the broken binary shipped silently.
         while read -r _bsq3; do
-          if [ -f "$_bsq3/binding.gyp" ] && [ ! -e "$_bsq3/build/Release/better_sqlite3.node" ]; then
-            # Start from a clean build/. better-sqlite3's published tarball can
-            # carry a stale build/ whose generated Makefile encodes node-header
-            # paths (relative, calibrated for some other store layout) that do
-            # not resolve here, so `make` can abort on a phantom regen rule
-            # before compiling. A fresh, self-consistent `node-gyp rebuild`
-            # regenerates everything against THIS build's node + nodedir.
+          _has_build_binary=false
+          [ -e "$_bsq3/build/Release/better_sqlite3.node" ] && _has_build_binary=true
+          _has_prebuild=false
+          [ -e "$_bsq3/prebuilds/linux-x64.node" ] && _has_prebuild=true
+
+          if [ -f "$_bsq3/binding.gyp" ] && [ "$_has_build_binary" = false ] && [ "$_has_prebuild" = false ]; then
+            # No native binary at all — compile from source.
             rm -rf "$_bsq3/build"
             if ( cd "$_bsq3" \
                  && PATH="${pkgs.nodejs_22}/bin:$PATH" \
@@ -325,13 +325,12 @@ in
                && [ -e "$_bsq3/build/Release/better_sqlite3.node" ]; then
               echo "better-sqlite3 native bridge: built ''${_bsq3#$out/lib/${pname}/}" >&2
             else
-              # Fail loud. Without this binary agentdb silently falls back to a
-              # data-losing WASM SQLite backend (e.g. agentic-qe fleet_init dies
-              # locating the binding). Never ship that state — break the build.
               echo "ERROR better-sqlite3 native bridge: FAILED to build ''${_bsq3#$out/lib/${pname}/}" >&2
               echo "      agentdb would silently use the data-losing WASM fallback — aborting." >&2
               exit 1
             fi
+          elif [ "$_has_prebuild" = true ]; then
+            echo "better-sqlite3 native bridge: prebuild present ''${_bsq3#$out/lib/${pname}/}" >&2
           fi
         done < <(find "$out/lib/${pname}" -type d -path '*/node_modules/better-sqlite3')
 

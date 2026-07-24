@@ -149,7 +149,7 @@
           pkgName         = "ruvector";
           version         = "0.2.35";
           sha256          = "sha256-e15YrZn/PdnfmiYv80iyFZ+p+sCoxOV3td1MHJ7rBGk=";
-          nodeModulesHash = "sha256-I9idMYvZonacczkYXa5e9jEV5L2KYaOxobxbk28jbdk=";
+          nodeModulesHash = "sha256-oUM9TpRuNT3Iz1wIw6ZVugx2tgiEE+jeMF6FU+j8xk8=";
           bin             = "ruvector";
         };
 
@@ -174,7 +174,7 @@
           pkgName         = "ruflo";
           version         = "3.32.8";
           sha256          = "sha256-evCHjKnEz8ulqZvtWYRPBGdEQgbJPi5f8l/wINWoIxc=";
-          nodeModulesHash = "sha256-3lbcsgqaM0XQAlwhMXQS3cvf3gxSUgfW7rT+Eq6IjhQ=";
+          nodeModulesHash = "sha256-PT3ng0nvIVI4xBr7xRgzyeNobCl6X8lgau3TCaGnEok=";
           bin             = "ruflo";
           extraBins = {
             "claude-flow"     = "node_modules/@claude-flow/cli/bin/cli.js";
@@ -196,14 +196,12 @@
         #    in .agentic-qe/llm-config.json (upstream issue #568). Required by
         #    the ADR-041 [model_routing] boot projection; do not downgrade
         #    below 3.13.1 while model_routing.aqe_agent_overrides is on.
-        #    nodeModulesHash is fakeHash pending the bump rebuild — resolve on
-        #    the build host: ./scripts/prefetch-hashes.sh --cli (the tarball
-        #    sha256 below is real, computed from the registry artefact).
+        #    nodeModulesHash resolved 2026-07-24 during the ADR-041 rebuild.
         agenticQePkg = mkNpmCli {
           pkgName         = "agentic-qe";
           version         = "3.13.1";
           sha256          = "sha256-Ak+YqfgwdwbV2V8n4bFHz/VUkskSOxIg19Ce0u7oFeA=";
-          nodeModulesHash = lib.fakeHash;
+          nodeModulesHash = "sha256-swB4JAeSGIdQbDzvjHMieyYOb2uqY4a+wFKW69gxCx0=";
           bin             = "aqe";
         };
 
@@ -240,7 +238,7 @@
           pkgName         = "@mermaid-js/mermaid-cli";
           version         = "11.16.0";
           sha256          = "sha256-ZdeVGRv5ymypCkCh6jA1SmpJHiBmdMr9TZ3mL+kHVDk=";
-          nodeModulesHash = "sha256-5kfThmLpbeZlzwSLXbkCBMZlp568FX3f88OOKzkM8h8=";
+          nodeModulesHash = "sha256-pC6vah8n3XTNGI0JfjpVRnSIPsKJ183lMwZZ21eC3Ho=";
           bin             = "mmdc";
         };
 
