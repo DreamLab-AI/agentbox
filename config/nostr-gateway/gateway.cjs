@@ -110,6 +110,7 @@ const seen = new Set(); const seenOrder = []; // FIFO-evicted dedupe of wrap ids
 function markSeen(id) { if (!id || seen.has(id)) return false; seen.add(id); seenOrder.push(id); if (seenOrder.length > 20000) seen.delete(seenOrder.shift()); return true; }
 let pending = null;      // staged write action
 let armed = false;       // true after the first EOSE — gates out the initial history batch
+let coldBoot = true;     // cleared after the first arm; reconnects then stay armed (seen-set dedupes)
 
 const HELP = [
   '🛰 agentbox control gateway',
@@ -233,7 +234,7 @@ function onMessage(ws, raw) {
   if (t === 'AUTH') return authenticate(ws, rest[0]);
   if (t === 'EVENT') return handleWrap(ws, rest[1]);
   if (t === 'CLOSED') { const r = rest[1] || ''; log('CLOSED', r); if (/auth/i.test(r)) { /* AUTH frame will follow */ } return; }
-  if (t === 'EOSE') { if (!armed) { armed = true; log('armed — now live, backlog skipped'); } return; }
+  if (t === 'EOSE') { if (!armed) { armed = true; coldBoot = false; log('armed — now live, backlog skipped'); } return; }
   if (t === 'OK' || t === 'NOTICE') return;
 }
 
@@ -241,7 +242,11 @@ function onMessage(ws, raw) {
 let ws;
 function connect() {
   ws = new WS(relayUrl);
-  ws.on('open', () => { armed = false; log('connected', relayUrl); subscribe(ws); });
+  // Only a cold boot skips the relay's stored batch (could be ~2 days of gift-wrap
+  // history). A reconnect stays armed: the process-global `seen` set already dedupes
+  // everything handled this run, so re-fetched history is ignored while a command
+  // sent during the disconnect gap — not yet seen — is dispatched, not dropped.
+  ws.on('open', () => { if (coldBoot) armed = false; log('connected', relayUrl); subscribe(ws); });
   ws.on('message', (d) => onMessage(ws, typeof d === 'string' ? d : d.toString('utf8')));
   ws.on('close', () => { log('closed; reconnect in 5s'); setTimeout(connect, 5000); });
   ws.on('error', (e) => { log('ws error', e.message); try { ws.close(); } catch { /* noop */ } });
