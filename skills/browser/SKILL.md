@@ -42,6 +42,7 @@ claude mcp add browser-gpu --transport sse http://browsercontainer:8931/sse
 - WebGPU/WebGL rendering validation
 - Console log monitoring
 - Multi-tab workflows
+- Mermaid diagram rendering (via `/render-mermaid` HTTP endpoint; see `mermaid-diagrams` skill)
 
 ## When Not To Use
 

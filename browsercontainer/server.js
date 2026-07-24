@@ -14,13 +14,20 @@
 'use strict';
 
 const http = require('http');
-const { spawn } = require('child_process');
+const { spawn, execFile } = require('child_process');
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
 
 const log = (msg) => process.stderr.write(`[browsercontainer] ${msg}\n`);
 
 const PORT = parseInt(process.env.SIDECAR_PORT || '8931', 10);
 const CDP_PORT = parseInt(process.env.CDP_PORT || '9222', 10);
+const EXCHANGE_DIR = process.env.EXCHANGE_DIR || '/home/devuser/exchange';
+const MMDC_PUPPETEER_CONFIG = '/opt/browsercontainer/puppeteer-mermaid.json';
+const MMDC_FORMATS = new Set(['svg', 'png', 'pdf']);
+const MMDC_THEMES = new Set(['default', 'dark', 'forest', 'neutral']);
 
 // ---------------------------------------------------------------------------
 // Wait for Chrome CDP to be reachable before accepting sessions
@@ -132,6 +139,50 @@ class Session {
 }
 
 // ---------------------------------------------------------------------------
+// Mermaid rendering — mmdc (puppeteer + system chromium) → shared exchange dir
+// ---------------------------------------------------------------------------
+
+function renderMermaid({ definition, format, theme }) {
+  return new Promise((resolve) => {
+    if (typeof definition !== 'string' || !definition.trim()) {
+      return resolve({ ok: false, error: 'definition must be a non-empty string' });
+    }
+    const fmt = MMDC_FORMATS.has(format) ? format : 'svg';
+    const thm = MMDC_THEMES.has(theme) ? theme : 'default';
+
+    const stamp = `${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+    const inputPath = path.join(os.tmpdir(), `mermaid-${stamp}.mmd`);
+    const filename = `mermaid-${stamp}.${fmt}`;
+    const outputPath = path.join(EXCHANGE_DIR, filename);
+
+    const cleanup = () => { try { fs.unlinkSync(inputPath); } catch {} };
+
+    try {
+      fs.mkdirSync(EXCHANGE_DIR, { recursive: true });
+      fs.writeFileSync(inputPath, definition, 'utf8');
+    } catch (err) {
+      cleanup();
+      return resolve({ ok: false, error: `write failed: ${err.message}` });
+    }
+
+    execFile('mmdc', [
+      '-i', inputPath,
+      '-o', outputPath,
+      '-e', fmt,
+      '-t', thm,
+      '--puppeteerConfigFile', MMDC_PUPPETEER_CONFIG,
+    ], { timeout: 30000, env: process.env }, (err, _stdout, stderr) => {
+      cleanup();
+      if (err) {
+        log(`mermaid render failed: ${err.message} ${stderr || ''}`.trim());
+        return resolve({ ok: false, error: (stderr && stderr.trim()) || err.message });
+      }
+      resolve({ ok: true, path: outputPath, filename });
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
 // HTTP server
 // ---------------------------------------------------------------------------
 
@@ -180,6 +231,25 @@ async function main() {
           chrome: false,
           connector: 'chrome-devtools-mcp',
         }));
+      });
+      return;
+    }
+
+    if (url.pathname === '/render-mermaid' && req.method === 'POST') {
+      let body = '';
+      req.on('data', c => body += c);
+      req.on('end', async () => {
+        let parsed;
+        try {
+          parsed = JSON.parse(body || '{}');
+        } catch {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: false, error: 'invalid JSON body' }));
+          return;
+        }
+        const result = await renderMermaid(parsed);
+        res.writeHead(result.ok ? 200 : 500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(result));
       });
       return;
     }

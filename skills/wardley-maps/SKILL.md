@@ -102,7 +102,7 @@ See [references/data-mapper.md](references/data-mapper.md)
 
 ### Mermaid `wardley-beta` (default)
 
-Emit `.mmd` text; render with `mmdc` from the `mermaid-diagrams` skill.
+Emit `.mmd` text; render via the browsercontainer sidecar (see `mermaid-diagrams` skill).
 
 ```
 wardley-beta
@@ -133,9 +133,9 @@ evolve "Eval / Guardrails" 0.40
 Render:
 
 ```bash
-mmdc -i map.mmd -o map.svg                                # vector
-mmdc -i map.mmd -o map.png -w 2000 -H 1200 -b transparent # high-DPI raster
-mmdc -i map.mmd -o map.pdf                                # LaTeX inclusion
+mmdc-sidecar.sh -i map.mmd -o map.svg                     # vector
+mmdc-sidecar.sh -i map.mmd -o map.png -e png              # raster
+mmdc-sidecar.sh -i map.mmd -o map.pdf                     # LaTeX inclusion
 ```
 
 Grammar reference (Mermaid 11.15.0): https://mermaid.js.org/syntax/wardleyMap.html
@@ -258,30 +258,12 @@ audience -> "Distribution"
 | Refusal | Human-only, premium positioning | AI Tools absent from map |
 | Middle | Selective AI augmentation | AI Tools in custom/emerging |
 
-### Step 2 — Render via browser sidecar (not mmdc)
-
-**IMPORTANT:** `mmdc` 11.14.0 in the Nix store has a broken puppeteer dependency — use the browser sidecar instead.
-
-```python
-# HTML wrapper for Mermaid CDN rendering
-html = f"""<!DOCTYPE html>
-<html><head>
-<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
-<script>mermaid.initialize({{startOnLoad:true, theme:'default'}});</script>
-</head><body style="background:white;margin:0;padding:20px">
-<div class="mermaid" id="map">
-{mmd_content}
-</div></body></html>"""
-
-# Write wrapper, open in browser sidecar, screenshot at 2x
-# browser_navigate({"url": f"file://{html_path}"})
-# browser_take_screenshot({"filename": "wardley_map.png", "width": 2200, "height": 1400})
-```
+### Step 2 — Render via browsercontainer sidecar
 
 ```bash
-# Or from a running browser session:
-# Navigate to the HTML file, then screenshot
-agentbox.sh browsercontainer up   # ensure sidecar is running
+mmdc-sidecar.sh -i map.mmd -o figures/wardley/creative_industries.png
+# Or for vector output:
+mmdc-sidecar.sh -i map.mmd -o figures/wardley/creative_industries.svg
 ```
 
 ### Step 3 — Include in LaTeX

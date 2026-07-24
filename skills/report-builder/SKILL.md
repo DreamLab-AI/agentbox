@@ -222,9 +222,8 @@ python3 -c "import fitz; doc=fitz.open('diagram.pdf'); doc[0].get_pixmap(dpi=200
 
 #### Mermaid Diagrams
 ```bash
-# If mmdc available:
-mmdc -i diagram.mmd -o diagram.png -w 2000 -H 1200 --backgroundColor transparent
-# Fallback: use Python mermaid-py or skip
+# Render via browsercontainer sidecar
+mmdc-sidecar.sh -i diagram.mmd -o diagram.png
 ```
 
 #### Nano Banana Infographic Upgrade

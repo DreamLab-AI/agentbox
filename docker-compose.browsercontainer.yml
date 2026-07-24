@@ -56,8 +56,14 @@ services:
     shm_size: '2gb'
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    volumes:
+      # Shared exchange volume — mermaid renders here for agentbox/gui-tools pickup.
+      - gui-tools-exchange:/home/devuser/exchange
 
 networks:
   visionclaw:
     external: true
     name: visionclaw_network
+
+volumes:
+  gui-tools-exchange:

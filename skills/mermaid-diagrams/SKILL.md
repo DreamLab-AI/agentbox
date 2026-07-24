@@ -26,18 +26,40 @@ Create, render, and export production-quality diagrams from text using the Merma
 - For photo editing or raster image manipulation -- use the imagemagick skill
 - For 3D scene visualisation -- use the blender skill instead
 
-## Prerequisites
+## Rendering Architecture
+
+Mermaid rendering routes through the **browsercontainer sidecar**, which has
+Chromium + puppeteer. The agentbox image carries `mmdc` in the Nix store but
+cannot render locally (no browser). Use the sidecar wrapper or the HTTP API.
+
+### Preferred: sidecar wrapper (drop-in mmdc replacement)
 
 ```bash
-# Check if mmdc is available
-mmdc --version
-
-# If not installed:
-npm install -g @mermaid-js/mermaid-cli
+# Same interface as mmdc — delegates to browsercontainer over HTTP
+mmdc-sidecar.sh -i diagram.mmd -o diagram.png
+mmdc-sidecar.sh -i diagram.mmd -o diagram.svg -t dark
+mmdc-sidecar.sh -i diagram.mmd -o diagram.pdf
 ```
 
-Required: `mmdc` (Mermaid CLI) -- installed globally via npm.
-Optional: Chromium/Puppeteer (bundled with mmdc for headless rendering).
+The wrapper POSTs to `http://browsercontainer:8931/render-mermaid`, which
+renders via the sidecar's Chromium. Output files pass through the shared
+`gui-tools-exchange` volume (agentbox: `/home/devuser/gui-tools`,
+browsercontainer: `/home/devuser/exchange`).
+
+### Alternative: direct HTTP API
+
+```bash
+curl -s -X POST http://browsercontainer:8931/render-mermaid \
+  -H 'Content-Type: application/json' \
+  -d '{"definition":"flowchart LR; A-->B-->C","format":"svg","theme":"default"}' \
+| jq -r '.filename'
+# Output file appears at /home/devuser/gui-tools/<filename>
+```
+
+### Prerequisites
+
+- `browsercontainer` sidecar running (`agentbox.sh browsercontainer up`)
+- Shared `gui-tools-exchange` volume mounted in both containers
 
 ---
 
@@ -56,22 +78,23 @@ flowchart TD
 EOF
 
 # Render to PNG (default)
-mmdc -i diagram.mmd -o diagram.png
+mmdc-sidecar.sh -i diagram.mmd -o diagram.png
 
 # Render to SVG (scalable)
-mmdc -i diagram.mmd -o diagram.svg
+mmdc-sidecar.sh -i diagram.mmd -o diagram.svg
 
 # Render to PDF (for LaTeX inclusion)
-mmdc -i diagram.mmd -o diagram.pdf
+mmdc-sidecar.sh -i diagram.mmd -o diagram.pdf
 
-# High-resolution with custom dimensions
-mmdc -i diagram.mmd -o diagram.png -w 2000 -H 1200 -b transparent
+# High-resolution
+mmdc-sidecar.sh -i diagram.mmd -o diagram.png -e png -t dark
 ```
 
 ### Inline rendering (no file needed)
 
 ```bash
-echo 'flowchart LR; A-->B-->C' | mmdc -i - -o quick.png
+echo 'flowchart LR; A-->B-->C' > /tmp/quick.mmd
+mmdc-sidecar.sh -i /tmp/quick.mmd -o quick.png
 ```
 
 ---
@@ -155,7 +178,7 @@ evolve "LLM API" 0.80
 Render:
 
 ```bash
-mmdc -i wardley.mmd -o wardley.svg
+mmdc-sidecar.sh -i wardley.mmd -o wardley.svg
 ```
 
 ---
@@ -189,7 +212,7 @@ cat > mermaid-dark.json << 'EOF'
 EOF
 
 # Render with dark theme
-mmdc -i diagram.mmd -o diagram.png -t dark -C mermaid-dark.json -w 2000 -H 1200 -b '#0B2545'
+mmdc-sidecar.sh -i diagram.mmd -o diagram.png -t dark
 ```
 
 ### Light Theme (academic papers)
@@ -211,7 +234,7 @@ cat > mermaid-light.json << 'EOF'
 }
 EOF
 
-mmdc -i diagram.mmd -o diagram.png -t default -C mermaid-light.json -w 1600 -H 1000
+mmdc-sidecar.sh -i diagram.mmd -o diagram.png
 ```
 
 ### Per-node styling (inline)
@@ -390,18 +413,13 @@ C4Context
 
 ## Rendering Options
 
-### Command-line reference
+### Sidecar wrapper flags
 
 ```bash
-mmdc -i <input.mmd> -o <output.png|svg|pdf>
-    -w <width>            # Output width in pixels (default: 800)
-    -H <height>           # Output height in pixels
-    -t <theme>             # dark | default | forest | neutral | base
-    -C <config.json>       # Custom theme configuration
-    -b <background>        # Background colour (hex or 'transparent')
-    -s <scale>             # CSS scale factor
-    -f                     # Force overwrite
-    -q                     # Quiet mode
+mmdc-sidecar.sh -i <input.mmd> -o <output.png|svg|pdf>
+    -e <format>           # svg | png | pdf (inferred from -o extension if omitted)
+    -t <theme>            # dark | default | forest | neutral
+    --help                # Usage information
 ```
 
 ### Batch rendering
@@ -409,7 +427,7 @@ mmdc -i <input.mmd> -o <output.png|svg|pdf>
 ```bash
 # Render all .mmd files in a directory
 for f in diagrams/*.mmd; do
-    mmdc -i "$f" -o "${f%.mmd}.png" -w 2000 -t dark -b '#0B2545'
+    mmdc-sidecar.sh -i "$f" -o "${f%.mmd}.png" -t dark
 done
 ```
 
@@ -417,10 +435,10 @@ done
 
 ```bash
 # Render as PDF for vector quality in LaTeX
-mmdc -i diagram.mmd -o diagram.pdf -w 2000
+mmdc-sidecar.sh -i diagram.mmd -o diagram.pdf
 
-# Or render as high-DPI PNG
-mmdc -i diagram.mmd -o diagram.png -w 3000 -H 2000 -s 2
+# Or render as SVG and convert
+mmdc-sidecar.sh -i diagram.mmd -o diagram.svg
 ```
 
 Then in LaTeX:
@@ -454,19 +472,18 @@ This skill is called by the **report-builder** skill during Phase 4 (VISUALISE):
 
 ## Troubleshooting
 
-### mmdc not found
+### Sidecar not reachable
 ```bash
-npm install -g @mermaid-js/mermaid-cli
+# Ensure browsercontainer is running
+agentbox.sh browsercontainer up
+# Check health
+curl -s http://browsercontainer:8931/health | jq .
 ```
 
-### Rendering fails with Puppeteer error
+### Rendering returns an error
+The sidecar logs show mmdc stderr. Check with:
 ```bash
-# mmdc needs chromium for headless rendering
-# On headless servers, ensure DISPLAY is set or use --puppeteerConfigFile
-cat > puppeteer.json << 'EOF'
-{"args": ["--no-sandbox", "--disable-setuid-sandbox"]}
-EOF
-mmdc -i diagram.mmd -o out.png -p puppeteer.json
+agentbox.sh browsercontainer logs | tail -20
 ```
 
 ### Text truncated in nodes

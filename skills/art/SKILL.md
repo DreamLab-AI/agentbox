@@ -304,8 +304,8 @@ Workflow for enhancing rendered diagrams (TikZ, Mermaid, matplotlib) for publica
 pdflatex -interaction=nonstopmode diagram.tex
 convert -density 300 diagram.pdf -quality 95 diagram_base.png
 
-# Mermaid via browser sidecar (mmdc 11.14.0 has broken puppeteer)
-# See browser skill for sidecar screenshot workflow
+# Mermaid via browsercontainer sidecar
+mmdc-sidecar.sh -i diagram.mmd -o diagram_base.png
 
 # matplotlib
 plt.savefig("chart_base.png", dpi=150, bbox_inches="tight")

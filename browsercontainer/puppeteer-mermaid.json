@@ -1,0 +1,5 @@
+{
+  "executablePath": "/usr/sbin/chromium",
+  "headless": "shell",
+  "args": ["--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage"]
+}
