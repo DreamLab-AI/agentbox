@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/DreamLab-AI/agentbox/schema/agentbox.toml.schema.json",
   "title": "agentbox manifest",
-  "description": "JSON Schema for agentbox.toml — the manifest-driven configuration for the agentbox container.",
+  "description": "JSON Schema for agentbox.toml \u2014 the manifest-driven configuration for the agentbox container.",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -13,12 +13,16 @@
         "orchestration": {
           "type": "string",
           "description": "Agent orchestrator implementation.",
-          "examples": ["ruflo-v3"]
+          "examples": [
+            "ruflo-v3"
+          ]
         },
         "vector_db": {
           "type": "string",
           "description": "Local retrieval engine.",
-          "examples": ["ruvector-embedded"]
+          "examples": [
+            "ruvector-embedded"
+          ]
         }
       }
     },
@@ -30,7 +34,10 @@
       "properties": {
         "mode": {
           "type": "string",
-          "enum": ["standalone", "client"],
+          "enum": [
+            "standalone",
+            "client"
+          ],
           "description": "Deployment shape: standalone (all local fallbacks) or client (federated with host mesh). DEPRECATED: set mesh.mode instead."
         },
         "external_url": {
@@ -46,28 +53,48 @@
       "properties": {
         "beads": {
           "type": "string",
-          "enum": ["local-sqlite", "external", "off"],
+          "enum": [
+            "local-sqlite",
+            "external",
+            "off"
+          ],
           "description": "Structured agent-work receipts adapter."
         },
         "pods": {
           "type": "string",
-          "enum": ["local-solid-rs", "external", "off"],
-          "description": "Durable linked-data storage adapter. local-solid-rs is the first-class first-party implementation (ADR-010); external federates with a host-provided Solid server; off returns AdapterDisabled. The legacy local-jss Python stub was removed in 2026-04-25 — operators with old manifests must flip to local-solid-rs and add the [security.exceptions.solid-pod-rs] writable-volume block."
+          "enum": [
+            "local-solid-rs",
+            "external",
+            "off"
+          ],
+          "description": "Durable linked-data storage adapter. local-solid-rs is the first-class first-party implementation (ADR-010); external federates with a host-provided Solid server; off returns AdapterDisabled. The legacy local-jss Python stub was removed in 2026-04-25 \u2014 operators with old manifests must flip to local-solid-rs and add the [security.exceptions.solid-pod-rs] writable-volume block."
         },
         "memory": {
           "type": "string",
-          "enum": ["embedded-ruvector", "external-pg", "off"],
+          "enum": [
+            "embedded-ruvector",
+            "external-pg",
+            "off"
+          ],
           "description": "Vector memory adapter. Default (and recommended) value is external-pg backed by ruvector-postgres. embedded-ruvector is a per-session cache only and is not a durable source of truth.",
           "default": "external-pg"
         },
         "events": {
           "type": "string",
-          "enum": ["local-jsonl", "external", "off"],
+          "enum": [
+            "local-jsonl",
+            "external",
+            "off"
+          ],
           "description": "Agent lifecycle event sink adapter."
         },
         "orchestrator": {
           "type": "string",
-          "enum": ["local-process-manager", "stdio-bridge", "off"],
+          "enum": [
+            "local-process-manager",
+            "stdio-bridge",
+            "off"
+          ],
           "description": "Agent spawn and monitor channel adapter."
         }
       }
@@ -78,7 +105,12 @@
       "properties": {
         "backend": {
           "type": "string",
-          "enum": ["none", "ollama-rocm", "ollama-cuda", "local-cuda"],
+          "enum": [
+            "none",
+            "ollama-rocm",
+            "ollama-cuda",
+            "local-cuda"
+          ],
           "description": "GPU backend selection."
         }
       }
@@ -93,7 +125,13 @@
         },
         "stack": {
           "type": "string",
-          "enum": ["hyprland-wayland", "x11-openbox", "xorg-nvidia", "i3", "x11"],
+          "enum": [
+            "hyprland-wayland",
+            "x11-openbox",
+            "xorg-nvidia",
+            "i3",
+            "x11"
+          ],
           "description": "Desktop stack selection. Default is x11-openbox. hyprland-wayland is available but not the recommended default for containerised deployments.",
           "default": "x11-openbox"
         },
@@ -123,18 +161,26 @@
         },
         "log_level": {
           "type": "string",
-          "enum": ["trace", "debug", "info", "warn", "error"],
+          "enum": [
+            "trace",
+            "debug",
+            "info",
+            "warn",
+            "error"
+          ],
           "description": "Structured log verbosity."
         }
       }
     },
     "providers": {
       "type": "object",
-      "description": "API-provider credential gates. Each key is a provider name. Known provider keys include: anthropic, openai, gemini, zai, perplexity, deepseek, ollama, xinference. ollama does not require an API key — set enabled=true and sidecar=true; env_var may be omitted (W040). xinference is similar: set sidecar=true and supply an optional_env_vars base-URL override.",
+      "description": "API-provider credential gates. Each key is a provider name. Known provider keys include: anthropic, openai, gemini, zai, perplexity, deepseek, ollama, xinference. ollama does not require an API key \u2014 set enabled=true and sidecar=true; env_var may be omitted (W040). xinference is similar: set sidecar=true and supply an optional_env_vars base-URL override.",
       "additionalProperties": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["enabled"],
+        "required": [
+          "enabled"
+        ],
         "properties": {
           "enabled": {
             "type": "boolean",
@@ -146,13 +192,19 @@
           },
           "optional_env_vars": {
             "type": "array",
-            "items": { "type": "string" },
+            "items": {
+              "type": "string"
+            },
             "description": "Names of optional supplementary env vars (e.g. base URL overrides).",
             "default": []
           },
           "auth_mode": {
             "type": "string",
-            "enum": ["api_key", "oauth", "web_login"],
+            "enum": [
+              "api_key",
+              "oauth",
+              "web_login"
+            ],
             "default": "api_key",
             "description": "Credential model. \"api_key\" requires env_var to be set at boot (E017). \"oauth\" defers auth to an in-container CLI flow (e.g. `claude login`, `codex login`, `claude-zai login`) and skips the env-var check. Only currently honoured for anthropic, openai, and zai providers; other providers force api_key (W040)."
           },
@@ -172,20 +224,39 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "playwright": { "type": "boolean" },
-            "qe_browser": { "type": "boolean" },
-            "agent_browser": { "type": "boolean" },
-            "sidecar_mcp_url": { "type": "string", "description": "MCP SSE URL for external browser sidecar." },
-            "sidecar_cdp_host": { "type": "string", "description": "CDP host for external browser sidecar." },
-            "sidecar_cdp_port": { "type": "integer", "description": "CDP port for external browser sidecar." }
+            "playwright": {
+              "type": "boolean"
+            },
+            "qe_browser": {
+              "type": "boolean"
+            },
+            "agent_browser": {
+              "type": "boolean"
+            },
+            "sidecar_mcp_url": {
+              "type": "string",
+              "description": "MCP SSE URL for external browser sidecar."
+            },
+            "sidecar_cdp_host": {
+              "type": "string",
+              "description": "CDP host for external browser sidecar."
+            },
+            "sidecar_cdp_port": {
+              "type": "integer",
+              "description": "CDP port for external browser sidecar."
+            }
           }
         },
         "media": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "ffmpeg": { "type": "boolean" },
-            "imagemagick": { "type": "boolean" },
+            "ffmpeg": {
+              "type": "boolean"
+            },
+            "imagemagick": {
+              "type": "boolean"
+            },
             "comfyui_builtin": {
               "type": "boolean",
               "description": "Install ComfyUI as a built-in supervisor service on localhost:8188. Mutually exclusive with integrations.comfyui_external.enabled (E007)."
@@ -196,8 +267,12 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "blender": { "type": "boolean" },
-            "qgis": { "type": "boolean" },
+            "blender": {
+              "type": "boolean"
+            },
+            "qgis": {
+              "type": "boolean"
+            },
             "gaussian_splatting": {
               "type": "boolean",
               "description": "Requires gpu.backend=local-cuda (E006)."
@@ -208,17 +283,27 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "pytorch": { "type": "boolean" },
-            "jupyter": { "type": "boolean" }
+            "pytorch": {
+              "type": "boolean"
+            },
+            "jupyter": {
+              "type": "boolean"
+            }
           }
         },
         "docs": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "latex": { "type": "boolean" },
-            "mermaid": { "type": "boolean" },
-            "report_builder": { "type": "boolean" }
+            "latex": {
+              "type": "boolean"
+            },
+            "mermaid": {
+              "type": "boolean"
+            },
+            "report_builder": {
+              "type": "boolean"
+            }
           }
         },
         "ontology": {
@@ -227,7 +312,7 @@
           "properties": {
             "enabled": {
               "type": "boolean",
-              "description": "VisionClaw ontology bridge — OWL2 DL class lookup, knowledge graph query, SPARQL (ADR-023)."
+              "description": "VisionClaw ontology bridge \u2014 OWL2 DL class lookup, knowledge graph query, SPARQL (ADR-023)."
             },
             "visionclaw_api_url": {
               "type": "string",
@@ -242,7 +327,7 @@
             "condense": {
               "type": "object",
               "additionalProperties": false,
-              "description": "Offline ontology condensation (PRD-020 WS-2). A cheap LOCAL LLM summarises every knowledge-graph class into one retrieval sentence + synonyms, enriching the search-optimisation cache. OPERATOR INFRASTRUCTURE — leave disabled unless you run your own model endpoint. The endpoint is never baked with secrets; it is a plain LAN URL.",
+              "description": "Offline ontology condensation (PRD-020 WS-2). A cheap LOCAL LLM summarises every knowledge-graph class into one retrieval sentence + synonyms, enriching the search-optimisation cache. OPERATOR INFRASTRUCTURE \u2014 leave disabled unless you run your own model endpoint. The endpoint is never baked with secrets; it is a plain LAN URL.",
               "properties": {
                 "enabled": {
                   "type": "boolean",
@@ -261,7 +346,10 @@
                 },
                 "style": {
                   "type": "string",
-                  "enum": ["openai", "ollama"],
+                  "enum": [
+                    "openai",
+                    "ollama"
+                  ],
                   "description": "Wire protocol: 'openai' POSTs /chat/completions; 'ollama' POSTs /api/chat.",
                   "default": "openai"
                 },
@@ -288,7 +376,7 @@
                   "type": "integer",
                   "minimum": 1,
                   "maximum": 1440,
-                  "description": "Scheduler tick cadence in minutes (jittered ±20% to avoid thundering-herd rebuilds). Each tick only rebuilds when the index is stale, so a short cadence is cheap.",
+                  "description": "Scheduler tick cadence in minutes (jittered \u00b120% to avoid thundering-herd rebuilds). Each tick only rebuilds when the index is stale, so a short cadence is cheap.",
                   "default": 60
                 },
                 "schedule_max_age_hours": {
@@ -315,7 +403,7 @@
         "codeact": {
           "type": "object",
           "additionalProperties": true,
-          "description": "CodeAct skill — plan-execute-reflect loops (PRD-008)."
+          "description": "CodeAct skill \u2014 plan-execute-reflect loops (PRD-008)."
         },
         "voyager_skill_library": {
           "type": "object",
@@ -337,7 +425,10 @@
           "additionalProperties": false,
           "description": "Design skills (open-design pipeline, design-audit).",
           "properties": {
-            "open_design": { "type": "boolean", "description": "Structured intake pipeline, brand specs, dimensional critique gate." }
+            "open_design": {
+              "type": "boolean",
+              "description": "Structured intake pipeline, brand specs, dimensional critique gate."
+            }
           }
         },
         "harness": {
@@ -345,8 +436,13 @@
           "additionalProperties": false,
           "description": "Harness Engineering MCP bridge (ADR-004).",
           "properties": {
-            "enabled": { "type": "boolean" },
-            "template_dir": { "type": "string", "description": "Path to harness template directory." }
+            "enabled": {
+              "type": "boolean"
+            },
+            "template_dir": {
+              "type": "string",
+              "description": "Path to harness template directory."
+            }
           }
         },
         "precedent": {
@@ -354,9 +450,19 @@
           "additionalProperties": false,
           "description": "Governance precedent system for promoted decisions.",
           "properties": {
-            "enabled": { "type": "boolean" },
-            "namespace": { "type": "string", "description": "RuVector namespace for precedent storage." },
-            "similarity_threshold": { "type": "number", "minimum": 0, "maximum": 1, "description": "Minimum similarity for precedent matching." }
+            "enabled": {
+              "type": "boolean"
+            },
+            "namespace": {
+              "type": "string",
+              "description": "RuVector namespace for precedent storage."
+            },
+            "similarity_threshold": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Minimum similarity for precedent matching."
+            }
           }
         },
         "email_search": {
@@ -364,10 +470,23 @@
           "additionalProperties": false,
           "description": "Private Email Search MCP gateway.",
           "properties": {
-            "enabled": { "type": "boolean" },
-            "gateway_url": { "type": "string", "description": "URL of the email search gateway." },
-            "mcp_startup_timeout_ms": { "type": "integer", "minimum": 0, "description": "MCP startup handshake ceiling (ms) exported to the container as MCP_TIMEOUT via flake.nix. The gateway reasons locally with an LLM and holds SSE streams open; raise this so a slow-but-healthy gateway is not disabled at session start." },
-            "mcp_tool_timeout_ms": { "type": "integer", "minimum": 0, "description": "MCP per-tool-call ceiling (ms) exported to the container as MCP_TOOL_TIMEOUT via flake.nix. Covers 30s+ local-LLM reasoning per call." }
+            "enabled": {
+              "type": "boolean"
+            },
+            "gateway_url": {
+              "type": "string",
+              "description": "URL of the email search gateway."
+            },
+            "mcp_startup_timeout_ms": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "MCP startup handshake ceiling (ms) exported to the container as MCP_TIMEOUT via flake.nix. The gateway reasons locally with an LLM and holds SSE streams open; raise this so a slow-but-healthy gateway is not disabled at session start."
+            },
+            "mcp_tool_timeout_ms": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "MCP per-tool-call ceiling (ms) exported to the container as MCP_TOOL_TIMEOUT via flake.nix. Covers 30s+ local-LLM reasoning per call."
+            }
           }
         },
         "ruvnet_brain": {
@@ -375,13 +494,34 @@
           "additionalProperties": false,
           "description": "RuvNet Brain source-grounded knowledge corpus ingested into the shared ruvector-postgres sidecar (namespace-scoped pgvector, Xinference bge-small-en-v1.5, ADR-015). Surfaces the search_ruvnet MCP tool and an optional UserPromptSubmit grounding hook.",
           "properties": {
-            "enabled": { "type": "boolean" },
-            "namespace": { "type": "string", "description": "RuVector namespace the corpus is ingested under (appended to RUVECTOR_PROTECTED_NAMESPACES so agents cannot overwrite it via memory_store)." },
-            "auto_ingest": { "type": "boolean", "description": "Reconcile the corpus against the latest upstream release at boot (backgrounded, after the Xinference readiness gate)." },
-            "grounding_hook": { "type": "boolean", "description": "Register the UserPromptSubmit grounding hook that detects RuvNet mentions and classical-substitute anti-patterns and injects a search-first directive." },
-            "kb_release_url": { "type": "string", "description": "GitHub release asset URL for the corpus archive." },
-            "staging_path": { "type": "string", "description": "Download/extract scratch path (named volume); used only during ingest." },
-            "embed_batch": { "type": "integer", "minimum": 1, "description": "Passages per Xinference /v1/embeddings call during ingest." }
+            "enabled": {
+              "type": "boolean"
+            },
+            "namespace": {
+              "type": "string",
+              "description": "RuVector namespace the corpus is ingested under (appended to RUVECTOR_PROTECTED_NAMESPACES so agents cannot overwrite it via memory_store)."
+            },
+            "auto_ingest": {
+              "type": "boolean",
+              "description": "Reconcile the corpus against the latest upstream release at boot (backgrounded, after the Xinference readiness gate)."
+            },
+            "grounding_hook": {
+              "type": "boolean",
+              "description": "Register the UserPromptSubmit grounding hook that detects RuvNet mentions and classical-substitute anti-patterns and injects a search-first directive."
+            },
+            "kb_release_url": {
+              "type": "string",
+              "description": "GitHub release asset URL for the corpus archive."
+            },
+            "staging_path": {
+              "type": "string",
+              "description": "Download/extract scratch path (named volume); used only during ingest."
+            },
+            "embed_batch": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Passages per Xinference /v1/embeddings call during ingest."
+            }
           }
         },
         "payment_router": {
@@ -408,16 +548,21 @@
             },
             "default": {
               "type": "string",
-              "enum": ["escalation"],
+              "enum": [
+                "escalation"
+              ],
               "default": "escalation",
-              "description": "Disposition for an action class absent from the classes table. Only 'escalation' is honoured — an unclassified action is escalation-required (blocks pending review), never permissive (ADR-037 D2)."
+              "description": "Disposition for an action class absent from the classes table. Only 'escalation' is honoured \u2014 an unclassified action is escalation-required (blocks pending review), never permissive (ADR-037 D2)."
             },
             "classes": {
               "type": "object",
-              "description": "The classification table: action-class key → authority_class. recoverable actions proceed without a blocking wait; zero-tolerance actions block on a signed 31402 response. An action class not listed here is escalation-required by default.",
+              "description": "The classification table: action-class key \u2192 authority_class. recoverable actions proceed without a blocking wait; zero-tolerance actions block on a signed 31402 response. An action class not listed here is escalation-required by default.",
               "additionalProperties": {
                 "type": "string",
-                "enum": ["recoverable", "zero-tolerance"]
+                "enum": [
+                  "recoverable",
+                  "zero-tolerance"
+                ]
               }
             }
           }
@@ -428,19 +573,45 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "claude": { "type": "boolean" },
-        "claude_code": { "type": "boolean" },
-        "ruflo": { "type": "boolean" },
-        "claude_flow": { "type": "boolean" },
-        "agentic_qe": { "type": "boolean" },
-        "nagual_qe": { "type": "boolean" },
-        "codebase_memory": { "type": "boolean" },
-        "rust": { "type": "boolean" },
-        "antigravity_cli": { "type": "boolean" },
-        "codex": { "type": "boolean" },
-        "code_server": { "type": "boolean" },
-        "cuda": { "type": "boolean" },
-        "gemini_cli": { "type": "boolean" }
+        "claude": {
+          "type": "boolean"
+        },
+        "claude_code": {
+          "type": "boolean"
+        },
+        "ruflo": {
+          "type": "boolean"
+        },
+        "claude_flow": {
+          "type": "boolean"
+        },
+        "agentic_qe": {
+          "type": "boolean"
+        },
+        "nagual_qe": {
+          "type": "boolean"
+        },
+        "codebase_memory": {
+          "type": "boolean"
+        },
+        "rust": {
+          "type": "boolean"
+        },
+        "antigravity_cli": {
+          "type": "boolean"
+        },
+        "codex": {
+          "type": "boolean"
+        },
+        "code_server": {
+          "type": "boolean"
+        },
+        "cuda": {
+          "type": "boolean"
+        },
+        "gemini_cli": {
+          "type": "boolean"
+        }
       }
     },
     "integrations": {
@@ -452,23 +623,66 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "enabled": { "type": "boolean" },
+            "enabled": {
+              "type": "boolean"
+            },
             "conninfo": {
               "type": "string",
               "description": "PostgreSQL DSN for external RuVector. Required when adapters.memory=external-pg (E002)."
             },
-            "manage_sidecar": { "type": "boolean", "description": "When true, compose owns the ruvector-postgres sidecar container." },
-            "image": { "type": "string", "description": "Docker image for the managed sidecar." },
-            "data_volume": { "type": "string", "description": "Named Docker volume holding the production dataset." },
-            "hybrid_search": { "type": "boolean", "description": "PRD-018/ADR-036 D6: enable memory_hybrid_search (DIY fusion: ruvector_hybrid_score + PG FTS). Default false ⇒ pure-vector search only. Injected as RUVECTOR_HYBRID_SEARCH." },
-            "typed_metadata": { "type": "boolean", "description": "PRD-018/ADR-036 D6: write structured metadata (importance/tags/memory_type/ttl_seconds) on memory_store. Default false ⇒ metadata stays {}. Injected as RUVECTOR_TYPED_METADATA." },
-            "metadata_gin": { "type": "boolean", "description": "PRD-018/ADR-036 D6: require/build the GIN on metadata jsonb for tag retrieval (built by a D5 hygiene op). Injected as RUVECTOR_METADATA_GIN." },
-            "health_tool": { "type": "boolean", "description": "PRD-018/ADR-036 D6: expose the memory_health read-only diagnostics tool. Injected as RUVECTOR_HEALTH_TOOL." },
-            "episodic_ttl_sweep": { "type": "boolean", "description": "PRD-018/ADR-036 D6: honour TTL and sweep expired episodic entries (this is the delete implementation). Injected as RUVECTOR_EPISODIC_TTL_SWEEP." },
-            "memory_orient": { "type": "boolean", "description": "PRD-018/ADR-036 D6: expose the memory_orient OODA cold-start tool (semantic + effectiveness aggregates + episodic bundle). Injected as RUVECTOR_MEMORY_ORIENT." },
-            "embedding_dual_write": { "type": "boolean", "description": "PRD-020/ADR-040 D7: dual-write new memory_store embeddings to the parallel candidate column during an embedding migration (I17). Default false. Injected as RUVECTOR_EMBEDDING_DUAL_WRITE." },
-            "embedding_active_column": { "type": "string", "enum": ["embedding", "embedding_m3"], "default": "embedding", "description": "PRD-020/ADR-040 D7: which embedding column retrieval reads. Cutover and rollback are both a flip of this selector; default 'embedding' is today's 384-dim column (I17, I22)." },
-            "graph_backbone": { "type": "boolean", "description": "PRD-020/ADR-040 D9: reserved ADOPT-LATER — ontology-backbone property graph over _ruvector_ tables. Default false; harness-gated (I14)." }
+            "manage_sidecar": {
+              "type": "boolean",
+              "description": "When true, compose owns the ruvector-postgres sidecar container."
+            },
+            "image": {
+              "type": "string",
+              "description": "Docker image for the managed sidecar."
+            },
+            "data_volume": {
+              "type": "string",
+              "description": "Named Docker volume holding the production dataset."
+            },
+            "hybrid_search": {
+              "type": "boolean",
+              "description": "PRD-018/ADR-036 D6: enable memory_hybrid_search (DIY fusion: ruvector_hybrid_score + PG FTS). Default false \u21d2 pure-vector search only. Injected as RUVECTOR_HYBRID_SEARCH."
+            },
+            "typed_metadata": {
+              "type": "boolean",
+              "description": "PRD-018/ADR-036 D6: write structured metadata (importance/tags/memory_type/ttl_seconds) on memory_store. Default false \u21d2 metadata stays {}. Injected as RUVECTOR_TYPED_METADATA."
+            },
+            "metadata_gin": {
+              "type": "boolean",
+              "description": "PRD-018/ADR-036 D6: require/build the GIN on metadata jsonb for tag retrieval (built by a D5 hygiene op). Injected as RUVECTOR_METADATA_GIN."
+            },
+            "health_tool": {
+              "type": "boolean",
+              "description": "PRD-018/ADR-036 D6: expose the memory_health read-only diagnostics tool. Injected as RUVECTOR_HEALTH_TOOL."
+            },
+            "episodic_ttl_sweep": {
+              "type": "boolean",
+              "description": "PRD-018/ADR-036 D6: honour TTL and sweep expired episodic entries (this is the delete implementation). Injected as RUVECTOR_EPISODIC_TTL_SWEEP."
+            },
+            "memory_orient": {
+              "type": "boolean",
+              "description": "PRD-018/ADR-036 D6: expose the memory_orient OODA cold-start tool (semantic + effectiveness aggregates + episodic bundle). Injected as RUVECTOR_MEMORY_ORIENT."
+            },
+            "embedding_dual_write": {
+              "type": "boolean",
+              "description": "PRD-020/ADR-040 D7: dual-write new memory_store embeddings to the parallel candidate column during an embedding migration (I17). Default false. Injected as RUVECTOR_EMBEDDING_DUAL_WRITE."
+            },
+            "embedding_active_column": {
+              "type": "string",
+              "enum": [
+                "embedding",
+                "embedding_m3"
+              ],
+              "default": "embedding",
+              "description": "PRD-020/ADR-040 D7: which embedding column retrieval reads. Cutover and rollback are both a flip of this selector; default 'embedding' is today's 384-dim column (I17, I22)."
+            },
+            "graph_backbone": {
+              "type": "boolean",
+              "description": "PRD-020/ADR-040 D9: reserved ADOPT-LATER \u2014 ontology-backbone property graph over _ruvector_ tables. Default false; harness-gated (I14)."
+            }
           }
         },
         "solid_pod_rs": {
@@ -476,37 +690,118 @@
           "additionalProperties": false,
           "description": "First-party Rust Solid Protocol 0.11 server (ADR-010). Consumed by the pods adapter when adapters.pods=local-solid-rs.",
           "properties": {
-            "port":                  { "type": "integer", "minimum": 1, "maximum": 65535 },
-            "bind":                  { "type": "string" },
-            "storage":               { "type": "string", "enum": ["fs", "memory", "s3"] },
-            "storage_root":          { "type": "string" },
-            "base_url":              { "type": "string" },
-            "enable_oidc":           { "type": "boolean" },
-            "enable_schnorr_verify": { "type": "boolean" },
-            "enable_dpop_cache":     { "type": "boolean", "description": "Requires enable_oidc=true (E033)." },
-            "notifications":         { "type": "string", "enum": ["websocket", "webhook", "off"] },
-            "log_level":             { "type": "string", "enum": ["trace", "debug", "info", "warn", "error"] },
-            "enable_did_nostr":       { "type": "boolean", "description": "did:nostr resolver — maps did:nostr:<pubkey> (BIP-340 x-only hex) to Solid WebIDs with alsoKnownAs cross-verification (Sprint 6 upstream)." },
-            "enable_webhook_signing": { "type": "boolean", "description": "RFC 9421 Ed25519 signing of outbound Solid Notification webhooks (Sprint 6)." },
-            "enable_rate_limit":      { "type": "boolean", "description": "Sliding-window LRU rate limiter (Sprint 7)." },
-            "enable_quota":           { "type": "boolean", "description": "Per-pod storage quota via .quota.json sidecar (Sprint 8 P0)." },
-            "jss_v04_compat":         { "type": "boolean", "description": "JavaScriptSolidServer v0.4 configuration/behaviour compatibility (Sprint 6-9)." },
-            "rate_limit_per_sec":     { "type": "integer", "minimum": 1, "description": "Per-connection token-bucket ceiling when enable_rate_limit=true." },
-            "quota_default_bytes":    { "type": "integer", "minimum": 0, "description": "Default per-pod storage ceiling when enable_quota=true." },
-            "allowed_origins":        { "type": "string", "description": "CORS allowlist for native pod mesh (comma-separated)." },
-            "admin_key_env":          { "type": "string", "description": "Env var name holding the admin provisioning PSK." },
-            "sign_requests":          { "type": "boolean", "description": "Originate signed NIP-98 from the pods adapter." },
-            "enable_mcp":             { "type": "boolean", "description": "Enable MCP 2025-03-26 tool surface at POST /mcp." }
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            },
+            "bind": {
+              "type": "string"
+            },
+            "storage": {
+              "type": "string",
+              "enum": [
+                "fs",
+                "memory",
+                "s3"
+              ]
+            },
+            "storage_root": {
+              "type": "string"
+            },
+            "base_url": {
+              "type": "string"
+            },
+            "enable_oidc": {
+              "type": "boolean"
+            },
+            "enable_schnorr_verify": {
+              "type": "boolean"
+            },
+            "enable_dpop_cache": {
+              "type": "boolean",
+              "description": "Requires enable_oidc=true (E033)."
+            },
+            "notifications": {
+              "type": "string",
+              "enum": [
+                "websocket",
+                "webhook",
+                "off"
+              ]
+            },
+            "log_level": {
+              "type": "string",
+              "enum": [
+                "trace",
+                "debug",
+                "info",
+                "warn",
+                "error"
+              ]
+            },
+            "enable_did_nostr": {
+              "type": "boolean",
+              "description": "did:nostr resolver \u2014 maps did:nostr:<pubkey> (BIP-340 x-only hex) to Solid WebIDs with alsoKnownAs cross-verification (Sprint 6 upstream)."
+            },
+            "enable_webhook_signing": {
+              "type": "boolean",
+              "description": "RFC 9421 Ed25519 signing of outbound Solid Notification webhooks (Sprint 6)."
+            },
+            "enable_rate_limit": {
+              "type": "boolean",
+              "description": "Sliding-window LRU rate limiter (Sprint 7)."
+            },
+            "enable_quota": {
+              "type": "boolean",
+              "description": "Per-pod storage quota via .quota.json sidecar (Sprint 8 P0)."
+            },
+            "jss_v04_compat": {
+              "type": "boolean",
+              "description": "JavaScriptSolidServer v0.4 configuration/behaviour compatibility (Sprint 6-9)."
+            },
+            "rate_limit_per_sec": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Per-connection token-bucket ceiling when enable_rate_limit=true."
+            },
+            "quota_default_bytes": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Default per-pod storage ceiling when enable_quota=true."
+            },
+            "allowed_origins": {
+              "type": "string",
+              "description": "CORS allowlist for native pod mesh (comma-separated)."
+            },
+            "admin_key_env": {
+              "type": "string",
+              "description": "Env var name holding the admin provisioning PSK."
+            },
+            "sign_requests": {
+              "type": "boolean",
+              "description": "Originate signed NIP-98 from the pods adapter."
+            },
+            "enable_mcp": {
+              "type": "boolean",
+              "description": "Enable MCP 2025-03-26 tool surface at POST /mcp."
+            }
           }
         },
         "external_orchestrator": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "enabled": { "type": "boolean" },
+            "enabled": {
+              "type": "boolean"
+            },
             "protocol": {
               "type": "string",
-              "enum": ["stdio", "http", "mcp"],
+              "enum": [
+                "stdio",
+                "http",
+                "mcp"
+              ],
               "description": "Wire protocol for external orchestrator."
             }
           }
@@ -516,22 +811,34 @@
           "additionalProperties": false,
           "description": "Required when adapters.events=external (E005).",
           "properties": {
-            "enabled": { "type": "boolean" },
-            "url": { "type": "string" },
+            "enabled": {
+              "type": "boolean"
+            },
+            "url": {
+              "type": "string"
+            },
             "relay_urls": {
               "type": "array",
-              "items": { "type": "string" },
+              "items": {
+                "type": "string"
+              },
               "description": "Nostr relay URL list."
             },
-            "mcp_endpoint": { "type": "string" }
+            "mcp_endpoint": {
+              "type": "string"
+            }
           }
         },
         "external_network": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "enabled": { "type": "boolean" },
-            "network": { "type": "string" }
+            "enabled": {
+              "type": "boolean"
+            },
+            "network": {
+              "type": "string"
+            }
           }
         },
         "comfyui_external": {
@@ -560,18 +867,38 @@
       "additionalProperties": false,
       "description": "Consultant-tier MCP servers (PRD-005 / ADR-011). Each enabled consultant runs as a stdio-transport MCP server registered under skills/mcp.json so the Claude / ruflo coordinator can invoke it via the consult/health/cost_estimate tools.",
       "properties": {
-        "enabled": { "type": "boolean", "description": "Master gate. Setting any sub-consultant to enabled=true requires this to be true (E036)." },
-        "log_dir": { "type": "string", "description": "JSONL audit-log root. Default /var/lib/agentbox/consultations." },
-        "intelligence_signal": { "type": "boolean", "description": "When true, every successful consultation also writes an ADR-043 QualitySignal file to /workspace/profiles/<stack>/intelligence/data/." },
+        "enabled": {
+          "type": "boolean",
+          "description": "Master gate. Setting any sub-consultant to enabled=true requires this to be true (E036)."
+        },
+        "log_dir": {
+          "type": "string",
+          "description": "JSONL audit-log root. Default /var/lib/agentbox/consultations."
+        },
+        "intelligence_signal": {
+          "type": "boolean",
+          "description": "When true, every successful consultation also writes an ADR-043 QualitySignal file to /workspace/profiles/<stack>/intelligence/data/."
+        },
         "codex": {
           "type": "object",
           "additionalProperties": false,
           "description": "OpenAI Codex Rust CLI subprocess consultant. Requires providers.openai (E035) and toolchains.codex (E037).",
           "properties": {
-            "enabled":    { "type": "boolean" },
-            "model":      { "type": "string" },
-            "home":       { "type": "string", "description": "CODEX_HOME path under the user-isolated openai-user account." },
-            "timeout_ms": { "type": "integer", "minimum": 1000, "maximum": 600000 }
+            "enabled": {
+              "type": "boolean"
+            },
+            "model": {
+              "type": "string"
+            },
+            "home": {
+              "type": "string",
+              "description": "CODEX_HOME path under the user-isolated openai-user account."
+            },
+            "timeout_ms": {
+              "type": "integer",
+              "minimum": 1000,
+              "maximum": 600000
+            }
           }
         },
         "antigravity": {
@@ -579,15 +906,31 @@
           "additionalProperties": false,
           "description": "Google Antigravity CLI (agy) subprocess consultant. Requires providers.gemini (E035) and toolchains.antigravity_cli (E037).",
           "properties": {
-            "enabled":    { "type": "boolean" },
+            "enabled": {
+              "type": "boolean"
+            },
             "model": {
               "type": "string",
-              "enum": ["gemini-3.5-flash", "gemini-3.5-pro", "gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash", "gemini-1.5-pro"],
+              "enum": [
+                "gemini-3.5-flash",
+                "gemini-3.5-pro",
+                "gemini-2.5-flash",
+                "gemini-2.5-pro",
+                "gemini-2.0-flash",
+                "gemini-1.5-pro"
+              ],
               "default": "gemini-3.5-flash",
               "description": "Gemini model used by the Antigravity CLI subprocess. gemini-3.5-flash is the current recommended default."
             },
-            "home":       { "type": "string", "description": "Antigravity CLI home directory." },
-            "timeout_ms": { "type": "integer", "minimum": 1000, "maximum": 600000 }
+            "home": {
+              "type": "string",
+              "description": "Antigravity CLI home directory."
+            },
+            "timeout_ms": {
+              "type": "integer",
+              "minimum": 1000,
+              "maximum": 600000
+            }
           }
         },
         "zai": {
@@ -595,20 +938,40 @@
           "additionalProperties": false,
           "description": "Z.AI / GLM via Anthropic-compatible claude-zai subprocess. Requires providers.zai (E035).",
           "properties": {
-            "enabled":    { "type": "boolean" },
+            "enabled": {
+              "type": "boolean"
+            },
             "model": {
               "type": "string",
-              "enum": ["glm-5.2", "glm-5", "glm-4-plus", "glm-4", "glm-4-air", "glm-4-flash"],
+              "enum": [
+                "glm-5.2",
+                "glm-5",
+                "glm-4-plus",
+                "glm-4",
+                "glm-4-air",
+                "glm-4-flash"
+              ],
               "default": "glm-5.2",
               "description": "Z.AI / GLM model identifier. glm-5 is superseded by glm-5.2; glm-5.2 is the current recommended default."
             },
             "reasoning_effort": {
               "type": "string",
-              "enum": ["low", "medium", "high"],
+              "enum": [
+                "low",
+                "medium",
+                "high"
+              ],
               "description": "GLM-5.2 reasoning depth. Mapped by the consultant to a Claude Code thinking budget (MAX_THINKING_TOKENS); the Z.AI Anthropic-compatible endpoint translates the thinking block into GLM reasoning_effort. Omit for the endpoint default."
             },
-            "home":       { "type": "string", "description": "HOME under the zai-user isolation." },
-            "timeout_ms": { "type": "integer", "minimum": 1000, "maximum": 600000 }
+            "home": {
+              "type": "string",
+              "description": "HOME under the zai-user isolation."
+            },
+            "timeout_ms": {
+              "type": "integer",
+              "minimum": 1000,
+              "maximum": 600000
+            }
           }
         },
         "perplexity": {
@@ -616,9 +979,17 @@
           "additionalProperties": false,
           "description": "Perplexity HTTPS API consultant. Requires providers.perplexity (E035).",
           "properties": {
-            "enabled":    { "type": "boolean" },
-            "model":      { "type": "string" },
-            "timeout_ms": { "type": "integer", "minimum": 1000, "maximum": 600000 }
+            "enabled": {
+              "type": "boolean"
+            },
+            "model": {
+              "type": "string"
+            },
+            "timeout_ms": {
+              "type": "integer",
+              "minimum": 1000,
+              "maximum": 600000
+            }
           }
         },
         "deepseek": {
@@ -626,14 +997,26 @@
           "additionalProperties": false,
           "description": "DeepSeek HTTPS API consultant. Requires providers.deepseek (E035).",
           "properties": {
-            "enabled":    { "type": "boolean" },
+            "enabled": {
+              "type": "boolean"
+            },
             "model": {
               "type": "string",
-              "enum": ["deepseek-v4-0324", "deepseek-v3", "deepseek-r1", "deepseek-chat", "deepseek-coder"],
+              "enum": [
+                "deepseek-v4-0324",
+                "deepseek-v3",
+                "deepseek-r1",
+                "deepseek-chat",
+                "deepseek-coder"
+              ],
               "default": "deepseek-v4-0324",
-              "description": "DeepSeek model identifier. deepseek-reasoner is retired — use deepseek-v4-0324."
+              "description": "DeepSeek model identifier. deepseek-reasoner is retired \u2014 use deepseek-v4-0324."
             },
-            "timeout_ms": { "type": "integer", "minimum": 1000, "maximum": 600000 }
+            "timeout_ms": {
+              "type": "integer",
+              "minimum": 1000,
+              "maximum": 600000
+            }
           }
         },
         "gemini": {
@@ -641,15 +1024,148 @@
           "additionalProperties": false,
           "description": "Google Gemini API consultant. Requires providers.gemini (E035) and toolchains.gemini_cli (E037).",
           "properties": {
-            "enabled":    { "type": "boolean" },
+            "enabled": {
+              "type": "boolean"
+            },
             "model": {
               "type": "string",
-              "enum": ["gemini-3.5-flash", "gemini-3.5-pro", "gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash"],
+              "enum": [
+                "gemini-3.5-flash",
+                "gemini-3.5-pro",
+                "gemini-2.5-flash",
+                "gemini-2.5-pro",
+                "gemini-2.0-flash",
+                "gemini-1.5-pro",
+                "gemini-1.5-flash"
+              ],
               "default": "gemini-3.5-flash",
               "description": "Gemini model identifier. gemini-2.5-pro is the previous default; gemini-3.5-flash is the current recommended default."
             },
-            "home":       { "type": "string", "description": "Gemini CLI home directory." },
-            "timeout_ms": { "type": "integer", "minimum": 1000, "maximum": 600000 }
+            "home": {
+              "type": "string",
+              "description": "Gemini CLI home directory."
+            },
+            "timeout_ms": {
+              "type": "integer",
+              "minimum": 1000,
+              "maximum": 600000
+            }
+          }
+        }
+      }
+    },
+    "model_routing": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Per-activity Claude/Codex model routing (ADR-041). One policy, boot-time projections: agentic-qe agentOverrides (.agentic-qe/llm-config.json, issue #568), AQE provider env, and the experimental claude-flow-codex dual-run surface. Pattern adapted from pacphi/agentic-kit; mechanism is upstream.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Master gate. When false no projection is written and the QE fleet keeps upstream defaults. Apply class: boot."
+        },
+        "primary_host": {
+          "type": "string",
+          "enum": [
+            "claude",
+            "codex"
+          ],
+          "description": "Which host leads. The primary host being unavailable is a failure; the alternate being unavailable is a warning."
+        },
+        "aqe_agent_overrides": {
+          "type": "boolean",
+          "description": "Materialise the routes into the workspace .agentic-qe/llm-config.json agentOverrides map at every boot (sanitised by agentic-qe's own loader; API keys never written)."
+        },
+        "dual_run": {
+          "type": "boolean",
+          "description": "EXPERIMENTAL: enable the claude-flow-codex dual-run collaboration swarm surface. Leave false: upstream pins CLAUDE_FLOW_DB_PATH to local SQLite (ruflo #2766), conflicting with the ADR-015 postgres memory mandate."
+        },
+        "aqe_llm_provider": {
+          "type": "string",
+          "enum": [
+            "claude-code",
+            "claude",
+            "codex",
+            "openai",
+            "gemini",
+            "openrouter",
+            "azure-openai",
+            "bedrock",
+            "cognitum",
+            "ollama",
+            "onnx"
+          ],
+          "description": "AQE_LLM_PROVIDER default for unrouted fleet work. Subscription-tier providers (claude-code, codex, ollama, onnx) cost $0 marginal."
+        },
+        "aqe_fallback_chain": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+(,[a-z0-9-]+)*$",
+          "description": "Ordered comma-separated AQE_LLM_FALLBACK_CHAIN. Prefer a cross-vendor hop before local fallbacks."
+        },
+        "routes": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "activity \u2192 \"host:model\" (+ optional \" -> host:model\" escalation). Defaults grounded in upstream @claude-flow/codex CollaborationTemplates; packaging/release are kit-originated gap-fills. Models are soft defaults.",
+          "properties": {
+            "specification": {
+              "type": "string",
+              "pattern": "^(claude|codex):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex):[A-Za-z0-9._-]+)?$",
+              "description": "\"host:model\" with an optional \" -> host:model\" escalation rung (cross-vendor preferred)."
+            },
+            "architecture": {
+              "type": "string",
+              "pattern": "^(claude|codex):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex):[A-Za-z0-9._-]+)?$",
+              "description": "\"host:model\" with an optional \" -> host:model\" escalation rung (cross-vendor preferred)."
+            },
+            "design": {
+              "type": "string",
+              "pattern": "^(claude|codex):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex):[A-Za-z0-9._-]+)?$",
+              "description": "\"host:model\" with an optional \" -> host:model\" escalation rung (cross-vendor preferred)."
+            },
+            "implementation": {
+              "type": "string",
+              "pattern": "^(claude|codex):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex):[A-Za-z0-9._-]+)?$",
+              "description": "\"host:model\" with an optional \" -> host:model\" escalation rung (cross-vendor preferred)."
+            },
+            "testing": {
+              "type": "string",
+              "pattern": "^(claude|codex):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex):[A-Za-z0-9._-]+)?$",
+              "description": "\"host:model\" with an optional \" -> host:model\" escalation rung (cross-vendor preferred)."
+            },
+            "review": {
+              "type": "string",
+              "pattern": "^(claude|codex):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex):[A-Za-z0-9._-]+)?$",
+              "description": "\"host:model\" with an optional \" -> host:model\" escalation rung (cross-vendor preferred)."
+            },
+            "security-scan": {
+              "type": "string",
+              "pattern": "^(claude|codex):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex):[A-Za-z0-9._-]+)?$",
+              "description": "\"host:model\" with an optional \" -> host:model\" escalation rung (cross-vendor preferred)."
+            },
+            "security-analysis": {
+              "type": "string",
+              "pattern": "^(claude|codex):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex):[A-Za-z0-9._-]+)?$",
+              "description": "\"host:model\" with an optional \" -> host:model\" escalation rung (cross-vendor preferred)."
+            },
+            "documentation": {
+              "type": "string",
+              "pattern": "^(claude|codex):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex):[A-Za-z0-9._-]+)?$",
+              "description": "\"host:model\" with an optional \" -> host:model\" escalation rung (cross-vendor preferred)."
+            },
+            "debugging": {
+              "type": "string",
+              "pattern": "^(claude|codex):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex):[A-Za-z0-9._-]+)?$",
+              "description": "\"host:model\" with an optional \" -> host:model\" escalation rung (cross-vendor preferred)."
+            },
+            "packaging": {
+              "type": "string",
+              "pattern": "^(claude|codex):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex):[A-Za-z0-9._-]+)?$",
+              "description": "\"host:model\" with an optional \" -> host:model\" escalation rung (cross-vendor preferred)."
+            },
+            "release": {
+              "type": "string",
+              "pattern": "^(claude|codex):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex):[A-Za-z0-9._-]+)?$",
+              "description": "\"host:model\" with an optional \" -> host:model\" escalation rung (cross-vendor preferred)."
+            }
           }
         }
       }
@@ -665,7 +1181,11 @@
         },
         "mode": {
           "type": "string",
-          "enum": ["off", "local-gpu", "local-cpu"],
+          "enum": [
+            "off",
+            "local-gpu",
+            "local-cpu"
+          ],
           "description": "off disables the sidecar; local-gpu requires a CUDA/ROCm backend (E023); local-cpu runs BF16 on CPU."
         },
         "port": {
@@ -676,7 +1196,11 @@
         },
         "dtype": {
           "type": "string",
-          "enum": ["bf16", "f32", "q4"],
+          "enum": [
+            "bf16",
+            "f32",
+            "q4"
+          ],
           "description": "Inference precision. q4 is CPU-only (E024)."
         },
         "model": {
@@ -688,13 +1212,62 @@
           "additionalProperties": false,
           "description": "Per-adapter-slot redaction policy. Values: strict | soft | off (E025).",
           "properties": {
-            "pods":         { "type": "string", "enum": ["strict", "soft", "off"] },
-            "memory":       { "type": "string", "enum": ["strict", "soft", "off"] },
-            "events":       { "type": "string", "enum": ["strict", "soft", "off"] },
-            "beads":        { "type": "string", "enum": ["strict", "soft", "off"] },
-            "orchestrator": { "type": "string", "enum": ["strict", "soft", "off"] },
-            "inbound":      { "type": "string", "enum": ["strict", "soft", "off"] },
-            "outbound":     { "type": "string", "enum": ["strict", "soft", "off"] }
+            "pods": {
+              "type": "string",
+              "enum": [
+                "strict",
+                "soft",
+                "off"
+              ]
+            },
+            "memory": {
+              "type": "string",
+              "enum": [
+                "strict",
+                "soft",
+                "off"
+              ]
+            },
+            "events": {
+              "type": "string",
+              "enum": [
+                "strict",
+                "soft",
+                "off"
+              ]
+            },
+            "beads": {
+              "type": "string",
+              "enum": [
+                "strict",
+                "soft",
+                "off"
+              ]
+            },
+            "orchestrator": {
+              "type": "string",
+              "enum": [
+                "strict",
+                "soft",
+                "off"
+              ]
+            },
+            "inbound": {
+              "type": "string",
+              "enum": [
+                "strict",
+                "soft",
+                "off"
+              ]
+            },
+            "outbound": {
+              "type": "string",
+              "enum": [
+                "strict",
+                "soft",
+                "off"
+              ]
+            }
           }
         },
         "entities": {
@@ -706,9 +1279,14 @@
               "items": {
                 "type": "string",
                 "enum": [
-                  "account_number", "private_address", "private_email",
-                  "private_person", "private_phone", "private_url",
-                  "private_date", "secret"
+                  "account_number",
+                  "private_address",
+                  "private_email",
+                  "private_person",
+                  "private_phone",
+                  "private_url",
+                  "private_date",
+                  "secret"
                 ]
               },
               "description": "Entity classes to redact. Empty = all eight."
@@ -766,10 +1344,38 @@
               "additionalProperties": false,
               "description": "Which privacy-filter slots route to the clinical redactor when active. Values: strict | soft | off.",
               "properties": {
-                "pods":     { "type": "string", "enum": ["strict", "soft", "off"] },
-                "memory":   { "type": "string", "enum": ["strict", "soft", "off"] },
-                "inbound":  { "type": "string", "enum": ["strict", "soft", "off"] },
-                "outbound": { "type": "string", "enum": ["strict", "soft", "off"] }
+                "pods": {
+                  "type": "string",
+                  "enum": [
+                    "strict",
+                    "soft",
+                    "off"
+                  ]
+                },
+                "memory": {
+                  "type": "string",
+                  "enum": [
+                    "strict",
+                    "soft",
+                    "off"
+                  ]
+                },
+                "inbound": {
+                  "type": "string",
+                  "enum": [
+                    "strict",
+                    "soft",
+                    "off"
+                  ]
+                },
+                "outbound": {
+                  "type": "string",
+                  "enum": [
+                    "strict",
+                    "soft",
+                    "off"
+                  ]
+                }
               }
             }
           }
@@ -779,48 +1385,158 @@
     "sovereign_mesh": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Sovereign-mesh subsystem (boundary: ADR-030) — Nostr identity, NIP-98 auth, inter-agent messaging, and the mobile agent bridge, gated as one subsystem (default off; env var remains the runtime override per the R7 fix). The phone↔agent path is pure Nostr (an Android Amethyst+Amber client talks to the embedded relay below); the device holds its own key plus a NIP-26 delegation from [operator], so no private key ships to the phone. Inbound NIP-59 gift wraps (kind 1059) are unwrapped by services/nostr-pod-bridge and persisted to the pod inbox; the durable conversation record is a kind-30840 session-summary dual-written to the relay and the pod. The whole mesh makes exactly one external data hop — the mobile_bridge Z.AI summarisation (ADR-030 D3); the per-turn live mirror (ADR-029) has none. This replaced the retired Telegram/CTM mirror.",
+      "description": "Sovereign-mesh subsystem (boundary: ADR-030) \u2014 Nostr identity, NIP-98 auth, inter-agent messaging, and the mobile agent bridge, gated as one subsystem (default off; env var remains the runtime override per the R7 fix). The phone\u2194agent path is pure Nostr (an Android Amethyst+Amber client talks to the embedded relay below); the device holds its own key plus a NIP-26 delegation from [operator], so no private key ships to the phone. Inbound NIP-59 gift wraps (kind 1059) are unwrapped by services/nostr-pod-bridge and persisted to the pod inbox; the durable conversation record is a kind-30840 session-summary dual-written to the relay and the pod. The whole mesh makes exactly one external data hop \u2014 the mobile_bridge Z.AI summarisation (ADR-030 D3); the per-turn live mirror (ADR-029) has none. This replaced the retired Telegram/CTM mirror.",
       "properties": {
-        "enabled": { "type": "boolean" },
-        "solid_pod": { "type": "boolean" },
-        "nostr_bridge": { "type": "boolean" },
-        "https_bridge": { "type": "boolean" },
-        "publish_agent_events": { "type": "boolean" },
-        "voice_intent": { "type": "boolean", "description": "WS7 (PRD-014 Seam B): bind a voice transcript to an agent intent and emit the canonical agent_action notification at POST /v1/voice-intent. Off → 503. Default false." },
-        "kg_elevation": { "type": "boolean", "description": "WS6 (PRD-014 Seam D): scan the personal KG for elevation candidates and return GOVERNED ontology-propose descriptors at POST /v1/kg-elevation/scan. Off → 503. Default false." },
-        "junkiejarvis": { "type": "boolean", "description": "JunkieJarvis forum agent — rides the management-api process and answers forum mentions over Nostr. Requires BOTH this gate AND the JUNKIEJARVIS_ENABLED=true env var; the env var remains the runtime override, so deployments without a manifest keep working. Default false." },
-        "per_user_agents": { "type": "boolean", "description": "Per-user agent sessions (per-user-agent.js + run-per-user-agent.cjs): one Claude session per pod user, spawned on inbound relay messages. Canonical gate for ADR-028 (Per-User Agent Fabric, Accepted) — this key, [sovereign_mesh].per_user_agents, is the gate, NOT a top-level [per_user_agents] table (see ADR-028 gate-key alignment + ADR-030). Default false." },
+        "enabled": {
+          "type": "boolean"
+        },
+        "solid_pod": {
+          "type": "boolean"
+        },
+        "nostr_bridge": {
+          "type": "boolean"
+        },
+        "https_bridge": {
+          "type": "boolean"
+        },
+        "publish_agent_events": {
+          "type": "boolean"
+        },
+        "voice_intent": {
+          "type": "boolean",
+          "description": "WS7 (PRD-014 Seam B): bind a voice transcript to an agent intent and emit the canonical agent_action notification at POST /v1/voice-intent. Off \u2192 503. Default false."
+        },
+        "kg_elevation": {
+          "type": "boolean",
+          "description": "WS6 (PRD-014 Seam D): scan the personal KG for elevation candidates and return GOVERNED ontology-propose descriptors at POST /v1/kg-elevation/scan. Off \u2192 503. Default false."
+        },
+        "junkiejarvis": {
+          "type": "boolean",
+          "description": "JunkieJarvis forum agent \u2014 rides the management-api process and answers forum mentions over Nostr. Requires BOTH this gate AND the JUNKIEJARVIS_ENABLED=true env var; the env var remains the runtime override, so deployments without a manifest keep working. Default false."
+        },
+        "per_user_agents": {
+          "type": "boolean",
+          "description": "Per-user agent sessions (per-user-agent.js + run-per-user-agent.cjs): one Claude session per pod user, spawned on inbound relay messages. Canonical gate for ADR-028 (Per-User Agent Fabric, Accepted) \u2014 this key, [sovereign_mesh].per_user_agents, is the gate, NOT a top-level [per_user_agents] table (see ADR-028 gate-key alignment + ADR-030). Default false."
+        },
         "operator": {
           "type": "object",
           "additionalProperties": true,
-          "description": "Operator (human owner) Nostr identity. Its pubkey is added to the relay allowlist, granted NIP-98 operator access, used as the WebID owner in pod ACLs, and — for the mobile bridge — tagged as the NIP-26 delegator: the phone signs with its own key under a delegation from this pubkey, so no operator private key ever ships to the device. Private key is never stored here; pass it via OPERATOR_NOSTR_PRIVKEY or NIP-07/NIP-46 remote signing."
+          "description": "Operator (human owner) Nostr identity. Its pubkey is added to the relay allowlist, granted NIP-98 operator access, used as the WebID owner in pod ACLs, and \u2014 for the mobile bridge \u2014 tagged as the NIP-26 delegator: the phone signs with its own key under a delegation from this pubkey, so no operator private key ever ships to the device. Private key is never stored here; pass it via OPERATOR_NOSTR_PRIVKEY or NIP-07/NIP-46 remote signing."
         },
         "relay": {
           "type": "object",
           "additionalProperties": false,
-          "description": "Embedded Nostr relay — the ingress point for the mobile agent bridge. An Android Amethyst+Amber client connects here over NIP-01; signature-verified events addressed to a local npub are unwrapped (NIP-59 gift wraps) by services/nostr-pod-bridge and written to the pod inbox. See ADR-009 and PRD-004.",
+          "description": "Embedded Nostr relay \u2014 the ingress point for the mobile agent bridge. An Android Amethyst+Amber client connects here over NIP-01; signature-verified events addressed to a local npub are unwrapped (NIP-59 gift wraps) by services/nostr-pod-bridge and written to the pod inbox. See ADR-009 and PRD-004.",
           "properties": {
-            "enabled":          { "type": "boolean", "description": "Turn the embedded relay on. Required for the mobile bridge, inter-agent messaging, and mesh federation." },
-            "implementation":   { "type": "string",  "enum": ["nostr-rs-relay", "external", "off"], "description": "Relay backend. nostr-rs-relay is the bundled plain relay; the Nix-built nostr-pod-bridge binary wraps it with NIP-59 unwrap + pod-inbox writes for the mobile path. rnostr was dropped from the enum because no flake supervisor branch wires it up." },
-            "port":             { "type": "integer", "minimum": 1, "maximum": 65535 },
-            "bind":             { "type": "string",  "description": "Loopback or 0.0.0.0. See E029. Keep loopback for standalone; the phone reaches it via the HTTPS/Tailscale bridge, not a raw exposed port." },
-            "expose":           { "type": "boolean", "description": "Publish the port in docker-compose." },
-            "data_dir":         { "type": "string" },
-            "ingress_policy":   { "type": "string",  "enum": ["allowlist", "signed-only", "open"], "description": "Who may publish. 'allowlist' (default) accepts only allowed_pubkeys (+ own npub); the phone's delegated pubkey is accepted via its NIP-26 tag from the operator. 'signed-only' accepts any valid signature; 'open' disables NIP-42 AUTH." },
-            "allowed_pubkeys":  { "type": "array",   "items": { "type": "string" }, "description": "Hex pubkeys permitted to publish under 'allowlist'. Empty = self only; the operator pubkey is auto-added at boot. Add the phone's pubkey here for direct (non-delegated) mobile access." },
-            "allowed_kinds":    { "type": "array",   "items": { "type": "integer", "minimum": 0 }, "description": "Event kinds the relay accepts. Mobile bridge essentials: 1059 (NIP-59 gift wrap, the encrypted phone→agent envelope) and 30840 (the addressable session-summary that is the durable conversation record dual-written to relay + pod)." },
-            "pod_bridge":       { "type": "boolean", "description": "When true, every verified event targeting a local npub is persisted to pods/<npub>/events/inbox/<id>.json — the durable mailbox the agent reads. This is what makes the mobile bridge survive a relay restart." },
-            "external_fanout":  { "type": "string",  "enum": ["bidirectional", "publish-only", "subscribe-only", "off"], "description": "Outbound replication to the forum_relay_url / NOSTR_RELAYS fan-out list. 'off' keeps the relay loopback-only (matches federation standalone)." },
-            "max_event_bytes":  { "type": "integer", "minimum": 1024 },
-            "messages_per_sec": { "type": "integer", "minimum": 1 },
-            "retention_days":   { "type": "integer", "minimum": 0 },
-            "allow_nip04":      { "type": "boolean", "description": "Legacy unencrypted DMs. Warned by E031." },
-            "info_description": { "type": "string" },
-            "info_contact":     { "type": "string" },
-            "forum_relay_url":  { "type": "string", "description": "Private relay URL for governance event exchange with the forum." },
-            "intent_command":   { "type": "string", "description": "PRD-014 Seam B/B3: deterministic responder command spawned per voice-origin agent-intent event (kinds 38000-38099). Empty (default) → marker-only path, byte-identical to prior behaviour." },
-            "intent_args":      { "type": "string", "description": "PRD-014 Seam B/B3: extra leading args (space-separated) passed to intent_command." },
-            "agent_event_auth": { "type": "string", "enum": ["off", "nip98"], "description": "PRD-014 Seam B/B4: per-agent did:nostr auth on POST /v1/agent-events/emit. 'off' keeps caller-asserted/env-defaulted attribution; 'nip98' requires a kind-27235 header and stamps source_urn from the verified pubkey." }
+            "enabled": {
+              "type": "boolean",
+              "description": "Turn the embedded relay on. Required for the mobile bridge, inter-agent messaging, and mesh federation."
+            },
+            "implementation": {
+              "type": "string",
+              "enum": [
+                "nostr-rs-relay",
+                "external",
+                "off"
+              ],
+              "description": "Relay backend. nostr-rs-relay is the bundled plain relay; the Nix-built nostr-pod-bridge binary wraps it with NIP-59 unwrap + pod-inbox writes for the mobile path. rnostr was dropped from the enum because no flake supervisor branch wires it up."
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            },
+            "bind": {
+              "type": "string",
+              "description": "Loopback or 0.0.0.0. See E029. Keep loopback for standalone; the phone reaches it via the HTTPS/Tailscale bridge, not a raw exposed port."
+            },
+            "expose": {
+              "type": "boolean",
+              "description": "Publish the port in docker-compose."
+            },
+            "data_dir": {
+              "type": "string"
+            },
+            "ingress_policy": {
+              "type": "string",
+              "enum": [
+                "allowlist",
+                "signed-only",
+                "open"
+              ],
+              "description": "Who may publish. 'allowlist' (default) accepts only allowed_pubkeys (+ own npub); the phone's delegated pubkey is accepted via its NIP-26 tag from the operator. 'signed-only' accepts any valid signature; 'open' disables NIP-42 AUTH."
+            },
+            "allowed_pubkeys": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Hex pubkeys permitted to publish under 'allowlist'. Empty = self only; the operator pubkey is auto-added at boot. Add the phone's pubkey here for direct (non-delegated) mobile access."
+            },
+            "allowed_kinds": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "description": "Event kinds the relay accepts. Mobile bridge essentials: 1059 (NIP-59 gift wrap, the encrypted phone\u2192agent envelope) and 30840 (the addressable session-summary that is the durable conversation record dual-written to relay + pod)."
+            },
+            "pod_bridge": {
+              "type": "boolean",
+              "description": "When true, every verified event targeting a local npub is persisted to pods/<npub>/events/inbox/<id>.json \u2014 the durable mailbox the agent reads. This is what makes the mobile bridge survive a relay restart."
+            },
+            "external_fanout": {
+              "type": "string",
+              "enum": [
+                "bidirectional",
+                "publish-only",
+                "subscribe-only",
+                "off"
+              ],
+              "description": "Outbound replication to the forum_relay_url / NOSTR_RELAYS fan-out list. 'off' keeps the relay loopback-only (matches federation standalone)."
+            },
+            "max_event_bytes": {
+              "type": "integer",
+              "minimum": 1024
+            },
+            "messages_per_sec": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "retention_days": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "allow_nip04": {
+              "type": "boolean",
+              "description": "Legacy unencrypted DMs. Warned by E031."
+            },
+            "info_description": {
+              "type": "string"
+            },
+            "info_contact": {
+              "type": "string"
+            },
+            "forum_relay_url": {
+              "type": "string",
+              "description": "Private relay URL for governance event exchange with the forum."
+            },
+            "intent_command": {
+              "type": "string",
+              "description": "PRD-014 Seam B/B3: deterministic responder command spawned per voice-origin agent-intent event (kinds 38000-38099). Empty (default) \u2192 marker-only path, byte-identical to prior behaviour."
+            },
+            "intent_args": {
+              "type": "string",
+              "description": "PRD-014 Seam B/B3: extra leading args (space-separated) passed to intent_command."
+            },
+            "agent_event_auth": {
+              "type": "string",
+              "enum": [
+                "off",
+                "nip98"
+              ],
+              "description": "PRD-014 Seam B/B4: per-agent did:nostr auth on POST /v1/agent-events/emit. 'off' keeps caller-asserted/env-defaulted attribution; 'nip98' requires a kind-27235 header and stamps source_urn from the verified pubkey."
+            }
           }
         },
         "mobile_bridge": {
@@ -830,7 +1546,7 @@
           "properties": {
             "enabled": {
               "type": "boolean",
-              "description": "Register the nostr-session-summary SessionEnd hook. Still no-ops at runtime unless the bridge secrets (AGENTBOX_BRIDGE_SK / AGENTBOX_BRIDGE_RECIPIENT_PUBKEY / AGENTBOX_POD_ROOT / AGENTBOX_ADMIN_PUBKEY) and a Z.AI key are present. Default false. Privacy note: when true, the transcript is sent to the Z.AI endpoint for summarisation — the one external hop on this path."
+              "description": "Register the nostr-session-summary SessionEnd hook. Still no-ops at runtime unless the bridge secrets (AGENTBOX_BRIDGE_SK / AGENTBOX_BRIDGE_RECIPIENT_PUBKEY / AGENTBOX_POD_ROOT / AGENTBOX_ADMIN_PUBKEY) and a Z.AI key are present. Default false. Privacy note: when true, the transcript is sent to the Z.AI endpoint for summarisation \u2014 the one external hop on this path."
             },
             "summary_model": {
               "type": "string",
@@ -849,7 +1565,11 @@
             },
             "provisioning_policy": {
               "type": "string",
-              "enum": ["closed", "invite-only", "open"],
+              "enum": [
+                "closed",
+                "invite-only",
+                "open"
+              ],
               "description": "Trust model for accepting new user pubkeys. See E055/E056/E057/W058."
             },
             "invite_kind": {
@@ -875,7 +1595,9 @@
             },
             "admin_pubkeys": {
               "type": "array",
-              "items": { "type": "string" },
+              "items": {
+                "type": "string"
+              },
               "description": "Pubkeys (hex or npub) granted admin role over user pods. Operator pubkey auto-added at boot."
             }
           }
@@ -885,14 +1607,43 @@
           "additionalProperties": false,
           "description": "Git-versioned pods. When enabled, each pod directory is git-initted at provisioning time (solid-pod-rs alpha.12, JSS #466/#469/#471). See docs/user/git-pods.md.",
           "properties": {
-            "enabled":           { "type": "boolean", "description": "Auto-init pods as git repos at provisioning time." },
-            "auto_init":         { "type": "boolean", "description": "Run git init -b <default_branch> at POST /pods." },
-            "default_branch":    { "type": "string",  "description": "Initial branch name. JSS #471 pins this to 'main'." },
-            "http_backend":      { "type": "string",  "description": "Path or name of the git-http-backend CGI binary." },
-            "http_route_prefix": { "type": "string",  "description": "Management-API route prefix for pod git HTTP (must start with '/')." },
-            "max_push_mb":       { "type": "integer", "minimum": 1, "description": "Per-push body size limit in MB." },
-            "auth_mode":         { "type": "string",  "enum": ["nip98", "off"], "description": "Auth mode for git operations. 'nip98' requires a NIP-98 bearer token." },
-            "read_public":       { "type": "boolean", "description": "Allow unauthenticated clone of pods (upload-pack). Default false." }
+            "enabled": {
+              "type": "boolean",
+              "description": "Auto-init pods as git repos at provisioning time."
+            },
+            "auto_init": {
+              "type": "boolean",
+              "description": "Run git init -b <default_branch> at POST /pods."
+            },
+            "default_branch": {
+              "type": "string",
+              "description": "Initial branch name. JSS #471 pins this to 'main'."
+            },
+            "http_backend": {
+              "type": "string",
+              "description": "Path or name of the git-http-backend CGI binary."
+            },
+            "http_route_prefix": {
+              "type": "string",
+              "description": "Management-API route prefix for pod git HTTP (must start with '/')."
+            },
+            "max_push_mb": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Per-push body size limit in MB."
+            },
+            "auth_mode": {
+              "type": "string",
+              "enum": [
+                "nip98",
+                "off"
+              ],
+              "description": "Auth mode for git operations. 'nip98' requires a NIP-98 bearer token."
+            },
+            "read_public": {
+              "type": "boolean",
+              "description": "Allow unauthenticated clone of pods (upload-pack). Default false."
+            }
           }
         }
       }
@@ -918,15 +1669,21 @@
               "properties": {
                 "tmpfs": {
                   "type": "array",
-                  "items": { "type": "string" },
+                  "items": {
+                    "type": "string"
+                  },
                   "description": "Additional tmpfs mount paths beyond the hardened baseline."
                 },
                 "writable_volumes": {
                   "type": "array",
-                  "items": { "type": "string" },
+                  "items": {
+                    "type": "string"
+                  },
                   "description": "Named volume mount strings."
                 },
-                "reason": { "type": "string" }
+                "reason": {
+                  "type": "string"
+                }
               }
             },
             "gpu-rocm": {
@@ -936,15 +1693,21 @@
               "properties": {
                 "devices": {
                   "type": "array",
-                  "items": { "type": "string" },
+                  "items": {
+                    "type": "string"
+                  },
                   "description": "Host device paths to expose (e.g. /dev/kfd, /dev/dri)."
                 },
                 "writable_volumes": {
                   "type": "array",
-                  "items": { "type": "string" },
+                  "items": {
+                    "type": "string"
+                  },
                   "description": "Named volume mount strings."
                 },
-                "reason": { "type": "string" }
+                "reason": {
+                  "type": "string"
+                }
               }
             },
             "gpu-cuda": {
@@ -954,7 +1717,9 @@
               "properties": {
                 "runtime": {
                   "type": "string",
-                  "enum": ["nvidia"],
+                  "enum": [
+                    "nvidia"
+                  ],
                   "description": "Docker runtime override."
                 },
                 "device_requests": {
@@ -964,21 +1729,34 @@
                     "type": "object",
                     "additionalProperties": false,
                     "properties": {
-                      "driver": { "type": "string" },
-                      "count": { "type": "integer" },
+                      "driver": {
+                        "type": "string"
+                      },
+                      "count": {
+                        "type": "integer"
+                      },
                       "capabilities": {
                         "type": "array",
-                        "items": { "type": "array", "items": { "type": "string" } }
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
                       }
                     }
                   }
                 },
                 "writable_volumes": {
                   "type": "array",
-                  "items": { "type": "string" },
+                  "items": {
+                    "type": "string"
+                  },
                   "description": "Named volume mount strings for CUDA-specific writable paths."
                 },
-                "reason": { "type": "string" }
+                "reason": {
+                  "type": "string"
+                }
               }
             },
             "gaussian-splatting": {
@@ -988,15 +1766,21 @@
               "properties": {
                 "inherits": {
                   "type": "array",
-                  "items": { "type": "string" },
+                  "items": {
+                    "type": "string"
+                  },
                   "description": "Exception names whose deltas are merged first."
                 },
                 "writable_volumes": {
                   "type": "array",
-                  "items": { "type": "string" },
+                  "items": {
+                    "type": "string"
+                  },
                   "description": "Named volume mount strings."
                 },
-                "reason": { "type": "string" }
+                "reason": {
+                  "type": "string"
+                }
               }
             },
             "playwright": {
@@ -1006,12 +1790,16 @@
               "properties": {
                 "cap_add": {
                   "type": "array",
-                  "items": { "type": "string" },
+                  "items": {
+                    "type": "string"
+                  },
                   "description": "Linux capabilities to add (minimum: SYS_ADMIN for Chromium sandbox)."
                 },
                 "writable_volumes": {
                   "type": "array",
-                  "items": { "type": "string" },
+                  "items": {
+                    "type": "string"
+                  },
                   "description": "Named volume mount strings."
                 },
                 "reason": {
@@ -1027,7 +1815,9 @@
               "properties": {
                 "writable_volumes": {
                   "type": "array",
-                  "items": { "type": "string" },
+                  "items": {
+                    "type": "string"
+                  },
                   "description": "Named volume mount strings appended to the service volumes list."
                 },
                 "reason": {
@@ -1043,10 +1833,14 @@
               "properties": {
                 "writable_volumes": {
                   "type": "array",
-                  "items": { "type": "string" },
+                  "items": {
+                    "type": "string"
+                  },
                   "description": "Named volume mount strings for the SQLite database and WAL."
                 },
-                "reason": { "type": "string" }
+                "reason": {
+                  "type": "string"
+                }
               }
             },
             "solid-pod-rs": {
@@ -1056,10 +1850,14 @@
               "properties": {
                 "writable_volumes": {
                   "type": "array",
-                  "items": { "type": "string" },
+                  "items": {
+                    "type": "string"
+                  },
                   "description": "Named volume mount strings for the .meta/.acl sidecars and atomic-rename temp files."
                 },
-                "reason": { "type": "string" }
+                "reason": {
+                  "type": "string"
+                }
               }
             },
             "tailscale": {
@@ -1069,15 +1867,21 @@
               "properties": {
                 "cap_add": {
                   "type": "array",
-                  "items": { "type": "string" },
+                  "items": {
+                    "type": "string"
+                  },
                   "description": "Linux capabilities to add (NET_ADMIN for userspace tun)."
                 },
                 "writable_volumes": {
                   "type": "array",
-                  "items": { "type": "string" },
+                  "items": {
+                    "type": "string"
+                  },
                   "description": "Named volume mount strings for durable node state."
                 },
-                "reason": { "type": "string" }
+                "reason": {
+                  "type": "string"
+                }
               }
             },
             "consultants": {
@@ -1087,10 +1891,14 @@
               "properties": {
                 "writable_volumes": {
                   "type": "array",
-                  "items": { "type": "string" },
+                  "items": {
+                    "type": "string"
+                  },
                   "description": "Named volume mount strings for JSONL audit logs."
                 },
-                "reason": { "type": "string" }
+                "reason": {
+                  "type": "string"
+                }
               }
             }
           }
@@ -1104,7 +1912,10 @@
       "properties": {
         "mode": {
           "type": "string",
-          "enum": ["standalone", "client"],
+          "enum": [
+            "standalone",
+            "client"
+          ],
           "description": "Deployment shape: standalone (all local fallbacks) or client (federated with host mesh).",
           "default": "standalone"
         },
@@ -1114,27 +1925,39 @@
         },
         "peer_urls": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "List of peer mesh URLs for bidirectional federation."
         },
         "peer_relays": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Peer relay URLs (ws:// or wss://) for relay-level federation. For tailnet federation use MagicDNS hostnames; for Cloudflare-tunnel federation use the public wss:// URL."
         },
         "federated_kinds": {
           "type": "array",
-          "items": { "type": "integer", "minimum": 0 },
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
           "description": "Nostr event kinds replicated across the federation."
         },
         "allowed_remote_dids": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "did:nostr:<hex> of trusted peers permitted to federate."
         },
         "subscribed_kinds": {
           "type": "array",
-          "items": { "type": "integer", "minimum": 0 },
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
           "description": "Subset of federated_kinds to pull from peers; empty = all."
         },
         "honor_remote_moderation": {
@@ -1143,7 +1966,11 @@
         },
         "auth_mode": {
           "type": "string",
-          "enum": ["nip98", "api_key", "none"],
+          "enum": [
+            "nip98",
+            "api_key",
+            "none"
+          ],
           "description": "Authentication mode for mesh federation. Default nip98.",
           "default": "nip98"
         },
@@ -1165,9 +1992,18 @@
       "additionalProperties": false,
       "description": "Networking configuration (Tailscale, host gateway).",
       "properties": {
-        "tailscale": { "type": "boolean", "description": "Enable Tailscale userspace networking. WARNING: bypasses did:nostr identity boundary." },
-        "hostname": { "type": "string", "description": "MagicDNS hostname on the tailnet. Must be unique per instance." },
-        "host_gateway": { "type": "boolean", "description": "Gate /etc/hosts host-gateway alias (host.docker.internal). Default false for air-gapped deployments." }
+        "tailscale": {
+          "type": "boolean",
+          "description": "Enable Tailscale userspace networking. WARNING: bypasses did:nostr identity boundary."
+        },
+        "hostname": {
+          "type": "string",
+          "description": "MagicDNS hostname on the tailnet. Must be unique per instance."
+        },
+        "host_gateway": {
+          "type": "boolean",
+          "description": "Gate /etc/hosts host-gateway alias (host.docker.internal). Default false for air-gapped deployments."
+        }
       }
     },
     "llm_marketplace": {
@@ -1175,11 +2011,32 @@
       "additionalProperties": false,
       "description": "LLM Resource Marketplace (kinds 38300-38305). Mesh-wide negotiation of LLM compute resources between did:nostr identities.",
       "properties": {
-        "enabled": { "type": "boolean", "description": "Enable the LLM marketplace subsystem." },
-        "auto_advertise": { "type": "boolean", "description": "Auto-publish kind-38300 capability events for available models on relay startup." },
-        "max_grant_ttl": { "type": "integer", "minimum": 0, "description": "Maximum grant TTL in seconds. Grants exceeding this are clamped." },
-        "max_tokens_per_grant": { "type": "integer", "minimum": 0, "description": "Maximum token allocation per grant. 0 = unlimited." },
-        "pricing_mode": { "type": "string", "enum": ["operator", "market"], "description": "operator = operator-set pricing; market = accept mesh best-offer." }
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable the LLM marketplace subsystem."
+        },
+        "auto_advertise": {
+          "type": "boolean",
+          "description": "Auto-publish kind-38300 capability events for available models on relay startup."
+        },
+        "max_grant_ttl": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum grant TTL in seconds. Grants exceeding this are clamped."
+        },
+        "max_tokens_per_grant": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum token allocation per grant. 0 = unlimited."
+        },
+        "pricing_mode": {
+          "type": "string",
+          "enum": [
+            "operator",
+            "market"
+          ],
+          "description": "operator = operator-set pricing; market = accept mesh best-offer."
+        }
       }
     },
     "memory": {
@@ -1189,7 +2046,10 @@
       "properties": {
         "admin_access_mode": {
           "type": "string",
-          "enum": ["permissive", "scoped"],
+          "enum": [
+            "permissive",
+            "scoped"
+          ],
           "description": "permissive = admin sees all namespaces; scoped = all callers restricted to their own pubkey namespace.",
           "default": "permissive"
         }
@@ -1198,23 +2058,74 @@
     "memory_learning": {
       "type": "object",
       "additionalProperties": false,
-      "description": "RuVector-native learning loop (PRD-018 / ADR-036 D6, DDD-016). The agentbox-owned hook records real (state, action, outcome, duration) trajectory tuples and aggregates per-action effectiveness (Wilson lower-bound + recency decay) onto the memory slot — no new adapter slot, no new table. Every flag is default-off: a manifest with enabled=false is byte-identical to the pre-PRD-018 product (PRD-018 metric 1). The entrypoint injects each key into the RUVECTOR_* gate env of the governed ruvector-mcp server and registers config/hooks/trajectory-recorder.cjs only when enabled AND record_trajectories are both true.",
+      "description": "RuVector-native learning loop (PRD-018 / ADR-036 D6, DDD-016). The agentbox-owned hook records real (state, action, outcome, duration) trajectory tuples and aggregates per-action effectiveness (Wilson lower-bound + recency decay) onto the memory slot \u2014 no new adapter slot, no new table. Every flag is default-off: a manifest with enabled=false is byte-identical to the pre-PRD-018 product (PRD-018 metric 1). The entrypoint injects each key into the RUVECTOR_* gate env of the governed ruvector-mcp server and registers config/hooks/trajectory-recorder.cjs only when enabled AND record_trajectories are both true.",
       "properties": {
-        "enabled": { "type": "boolean", "description": "Master gate for the learning loop. Off ⇒ no hook registered, no aggregation, no consumers. Injected as RUVECTOR_MEMORY_LEARNING_ENABLED." },
-        "record_trajectories": { "type": "boolean", "description": "The agentbox hook writes to trajectories/trajectory_steps. Injected as RUVECTOR_RECORD_TRAJECTORIES." },
-        "aggregate_min_samples": { "type": "integer", "minimum": 1, "description": "Wilson-bound sample floor before an aggregate influences retrieval. Default 20. Injected as RUVECTOR_AGGREGATE_MIN_SAMPLES.", "default": 20 },
-        "recency_half_life_days": { "type": "integer", "minimum": 1, "description": "Recency half-life (days) for aggregation and the hybrid recency term. Default 14. Injected as RUVECTOR_RECENCY_HALF_LIFE_DAYS.", "default": 14 },
-        "feed_retrieval": { "type": "boolean", "description": "Effectiveness aggregates re-rank memory_search. Consumer of record_trajectories — enabling this ahead of the producer is flagged W066. Injected as RUVECTOR_FEED_RETRIEVAL." },
-        "feed_routing": { "type": "boolean", "description": "Aggregates surface as advisory [INTELLIGENCE] hints, never a hard gate. Consumer of record_trajectories — enabling this ahead of the producer is flagged W066. Injected as RUVECTOR_FEED_ROUTING." },
-        "sona_enabled": { "type": "boolean", "description": "SUPERSEDED by ADR-040 D4 (split into sona_learn_enabled / sona_apply_enabled). Kept for manifest compatibility; default false." },
-        "relevance_feedback": { "type": "boolean", "description": "SUPERSEDED by ADR-040 D5 (renamed param_tuning_enabled — the module is an HNSW ef_search auto-tuner, not content relevance). Kept for manifest compatibility; default false." },
-        "aggregate_sweep": { "type": "boolean", "description": "PRD-020/ADR-040 D1: enable the scheduled aggregation sweep (scripts/ruvector-aggregate-sweep.mjs) that materialises EffectivenessAggregates from trajectory_steps via the governed writer (I19-I21). Default false. Injected as RUVECTOR_AGGREGATE_SWEEP." },
-        "aggregate_sweep_interval_mins": { "type": "integer", "minimum": 1, "default": 30, "description": "PRD-020/ADR-040 D1: sweep cadence in minutes. Default 30. Injected as RUVECTOR_AGGREGATE_SWEEP_INTERVAL_MINS." },
-        "pattern_distillation": { "type": "boolean", "description": "PRD-020/ADR-040 D6: distil judged trajectories into DistilledPattern records with provenance tiers (I18). Default false. Injected as RUVECTOR_PATTERN_DISTILLATION." },
-        "attention_rerank": { "type": "boolean", "description": "PRD-020/ADR-040 D4: stateless attention_score re-rank on retrieval. Harness-gated geometry change (I14). Default false. Injected as RUVECTOR_ATTENTION_RERANK." },
-        "sona_learn_enabled": { "type": "boolean", "description": "PRD-020/ADR-040 D4: feed judged trajectories to ruvector_sona_learn (no retrieval effect; safe side of the split). Default false. Injected as RUVECTOR_SONA_LEARN_ENABLED." },
-        "sona_apply_enabled": { "type": "boolean", "description": "PRD-020/ADR-040 D4: apply SONA Micro-LoRA transform on the query path. Harness-gated geometry change (I14, I22). Default false. Injected as RUVECTOR_SONA_APPLY_ENABLED." },
-        "param_tuning_enabled": { "type": "boolean", "description": "PRD-020/ADR-040 D5: HNSW ef_search auto-tuning via the extension's learning module (renamed from relevance_feedback). Harness-gated (I14). Default false. Injected as RUVECTOR_PARAM_TUNING_ENABLED." }
+        "enabled": {
+          "type": "boolean",
+          "description": "Master gate for the learning loop. Off \u21d2 no hook registered, no aggregation, no consumers. Injected as RUVECTOR_MEMORY_LEARNING_ENABLED."
+        },
+        "record_trajectories": {
+          "type": "boolean",
+          "description": "The agentbox hook writes to trajectories/trajectory_steps. Injected as RUVECTOR_RECORD_TRAJECTORIES."
+        },
+        "aggregate_min_samples": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Wilson-bound sample floor before an aggregate influences retrieval. Default 20. Injected as RUVECTOR_AGGREGATE_MIN_SAMPLES.",
+          "default": 20
+        },
+        "recency_half_life_days": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Recency half-life (days) for aggregation and the hybrid recency term. Default 14. Injected as RUVECTOR_RECENCY_HALF_LIFE_DAYS.",
+          "default": 14
+        },
+        "feed_retrieval": {
+          "type": "boolean",
+          "description": "Effectiveness aggregates re-rank memory_search. Consumer of record_trajectories \u2014 enabling this ahead of the producer is flagged W066. Injected as RUVECTOR_FEED_RETRIEVAL."
+        },
+        "feed_routing": {
+          "type": "boolean",
+          "description": "Aggregates surface as advisory [INTELLIGENCE] hints, never a hard gate. Consumer of record_trajectories \u2014 enabling this ahead of the producer is flagged W066. Injected as RUVECTOR_FEED_ROUTING."
+        },
+        "sona_enabled": {
+          "type": "boolean",
+          "description": "SUPERSEDED by ADR-040 D4 (split into sona_learn_enabled / sona_apply_enabled). Kept for manifest compatibility; default false."
+        },
+        "relevance_feedback": {
+          "type": "boolean",
+          "description": "SUPERSEDED by ADR-040 D5 (renamed param_tuning_enabled \u2014 the module is an HNSW ef_search auto-tuner, not content relevance). Kept for manifest compatibility; default false."
+        },
+        "aggregate_sweep": {
+          "type": "boolean",
+          "description": "PRD-020/ADR-040 D1: enable the scheduled aggregation sweep (scripts/ruvector-aggregate-sweep.mjs) that materialises EffectivenessAggregates from trajectory_steps via the governed writer (I19-I21). Default false. Injected as RUVECTOR_AGGREGATE_SWEEP."
+        },
+        "aggregate_sweep_interval_mins": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 30,
+          "description": "PRD-020/ADR-040 D1: sweep cadence in minutes. Default 30. Injected as RUVECTOR_AGGREGATE_SWEEP_INTERVAL_MINS."
+        },
+        "pattern_distillation": {
+          "type": "boolean",
+          "description": "PRD-020/ADR-040 D6: distil judged trajectories into DistilledPattern records with provenance tiers (I18). Default false. Injected as RUVECTOR_PATTERN_DISTILLATION."
+        },
+        "attention_rerank": {
+          "type": "boolean",
+          "description": "PRD-020/ADR-040 D4: stateless attention_score re-rank on retrieval. Harness-gated geometry change (I14). Default false. Injected as RUVECTOR_ATTENTION_RERANK."
+        },
+        "sona_learn_enabled": {
+          "type": "boolean",
+          "description": "PRD-020/ADR-040 D4: feed judged trajectories to ruvector_sona_learn (no retrieval effect; safe side of the split). Default false. Injected as RUVECTOR_SONA_LEARN_ENABLED."
+        },
+        "sona_apply_enabled": {
+          "type": "boolean",
+          "description": "PRD-020/ADR-040 D4: apply SONA Micro-LoRA transform on the query path. Harness-gated geometry change (I14, I22). Default false. Injected as RUVECTOR_SONA_APPLY_ENABLED."
+        },
+        "param_tuning_enabled": {
+          "type": "boolean",
+          "description": "PRD-020/ADR-040 D5: HNSW ef_search auto-tuning via the extension's learning module (renamed from relevance_feedback). Harness-gated (I14). Default false. Injected as RUVECTOR_PARAM_TUNING_ENABLED."
+        }
       }
     },
     "memory_hygiene": {
@@ -1222,27 +2133,73 @@
       "additionalProperties": false,
       "description": "Data hygiene operations gate (PRD-018 / ADR-036 D6, D5). Each flag ONLY enables the non-dry-run path of the corresponding `agentbox.sh ruvector <op>` subcommand; every op is dry-run by default and inherits the audited snapshot + auto-rollback flow of scripts/ruvector-sidecar-update.sh. An absent block or a false flag is fail-closed (dry-run only).",
       "properties": {
-        "allow_namespace_repair": { "type": "boolean", "description": "Enable the non-dry-run repair-namespaces path (~178k swapped namespace/value rows)." },
-        "allow_embedding_backfill": { "type": "boolean", "description": "Enable the non-dry-run backfill-embeddings path (NULL-embedding rows recomputed via Xinference)." },
-        "allow_legacy_archival": { "type": "boolean", "description": "Enable the non-dry-run archive-legacy path (frozen legacy telemetry dumped to cold storage then deleted from the hot table)." },
-        "allow_embedding_m3_backfill": { "type": "boolean", "description": "PRD-020/ADR-040 D7: enable the non-dry-run parallel-column backfill re-embed during an embedding migration (I17). Dry-run by default." },
-        "allow_legacy_mining_import": { "type": "boolean", "description": "PRD-020/ADR-040 D8: enable the non-dry-run import of provenance-marked MinedCandidates into the legacy-mined-candidates namespace (I15, I23). Dry-run by default." },
-        "allow_pattern_graduation": { "type": "boolean", "description": "PRD-020/ADR-040 D8: enable the non-dry-run graduation of corroborated candidates (confidence replaced by real Wilson bound, never blended; I16). Dry-run by default." }
+        "allow_namespace_repair": {
+          "type": "boolean",
+          "description": "Enable the non-dry-run repair-namespaces path (~178k swapped namespace/value rows)."
+        },
+        "allow_embedding_backfill": {
+          "type": "boolean",
+          "description": "Enable the non-dry-run backfill-embeddings path (NULL-embedding rows recomputed via Xinference)."
+        },
+        "allow_legacy_archival": {
+          "type": "boolean",
+          "description": "Enable the non-dry-run archive-legacy path (frozen legacy telemetry dumped to cold storage then deleted from the hot table)."
+        },
+        "allow_embedding_m3_backfill": {
+          "type": "boolean",
+          "description": "PRD-020/ADR-040 D7: enable the non-dry-run parallel-column backfill re-embed during an embedding migration (I17). Dry-run by default."
+        },
+        "allow_legacy_mining_import": {
+          "type": "boolean",
+          "description": "PRD-020/ADR-040 D8: enable the non-dry-run import of provenance-marked MinedCandidates into the legacy-mined-candidates namespace (I15, I23). Dry-run by default."
+        },
+        "allow_pattern_graduation": {
+          "type": "boolean",
+          "description": "PRD-020/ADR-040 D8: enable the non-dry-run graduation of corroborated candidates (confidence replaced by real Wilson bound, never blended; I16). Dry-run by default."
+        }
       }
     },
     "project_tracking": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Sovereign project tracking (PRD-017 / ADR-035 / DDD-015). Helm-grade status grid, commit activity, primers/synopses and GitHub/local repo sync re-expressed on the existing sovereign substrates — no new URN kind, no new port, no new adapter slot. Disabled by default: when enabled=false the /v1/projects route returns 503 and no scan, metric, or nostr publish runs.",
+      "description": "Sovereign project tracking (PRD-017 / ADR-035 / DDD-015). Helm-grade status grid, commit activity, primers/synopses and GitHub/local repo sync re-expressed on the existing sovereign substrates \u2014 no new URN kind, no new port, no new adapter slot. Disabled by default: when enabled=false the /v1/projects route returns 503 and no scan, metric, or nostr publish runs.",
       "properties": {
-        "enabled": { "type": "boolean", "description": "Master gate; /v1/projects → 503 when off." },
-        "scan_dirs": { "type": "array", "items": { "type": "string" }, "description": "One-level-deep git-repo discovery roots." },
-        "scan_interval_hours": { "type": "integer", "minimum": 0, "description": "Periodic re-scan interval in hours; 0 = on-demand only (no scheduler)." },
-        "github_enrichment": { "type": "boolean", "description": "Pull open issues + stars via GITHUB_TOKEN (one external hop)." },
-        "primer_model": { "type": "string", "description": "Z.AI/GLM model for primers/synopses (routed through the consultant tier, ADR-011)." },
-        "primer_on_scan": { "type": "boolean", "description": "Auto-generate primers for new projects during a scan." },
-        "nostr_publish": { "type": "boolean", "description": "Publish kind-30841 addressable project digests to the operator's did:nostr." },
-        "metrics": { "type": "boolean", "description": "Emit the agentbox_project_* gauges on the port-bound /metrics." }
+        "enabled": {
+          "type": "boolean",
+          "description": "Master gate; /v1/projects \u2192 503 when off."
+        },
+        "scan_dirs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "One-level-deep git-repo discovery roots."
+        },
+        "scan_interval_hours": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Periodic re-scan interval in hours; 0 = on-demand only (no scheduler)."
+        },
+        "github_enrichment": {
+          "type": "boolean",
+          "description": "Pull open issues + stars via GITHUB_TOKEN (one external hop)."
+        },
+        "primer_model": {
+          "type": "string",
+          "description": "Z.AI/GLM model for primers/synopses (routed through the consultant tier, ADR-011)."
+        },
+        "primer_on_scan": {
+          "type": "boolean",
+          "description": "Auto-generate primers for new projects during a scan."
+        },
+        "nostr_publish": {
+          "type": "boolean",
+          "description": "Publish kind-30841 addressable project digests to the operator's did:nostr."
+        },
+        "metrics": {
+          "type": "boolean",
+          "description": "Emit the agentbox_project_* gauges on the port-bound /metrics."
+        }
       }
     },
     "features": {
@@ -1255,12 +2212,38 @@
           "additionalProperties": false,
           "description": "Post-task experiential learning. Distils lessons per completed trajectory into RuVector (ADR-019).",
           "properties": {
-            "enabled": { "type": "boolean", "description": "Enable ExpeL lesson extraction after task completion." },
-            "max_lessons_per_task": { "type": "integer", "minimum": 1, "description": "Cap on lessons extracted per trajectory." },
-            "min_confidence": { "type": "number", "minimum": 0, "maximum": 1, "description": "Minimum confidence to store a lesson." },
-            "confidence_floor": { "type": "number", "minimum": 0, "maximum": 1, "description": "Below this, lesson is auto-archived." },
-            "archive_after_days": { "type": "integer", "minimum": 0, "description": "Lessons below floor demoted to *-archive after this many days." },
-            "contradiction_sample_rate": { "type": "number", "minimum": 0, "maximum": 1, "description": "Fraction of retrievals sampled for LLM-judge contradiction check." }
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable ExpeL lesson extraction after task completion."
+            },
+            "max_lessons_per_task": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Cap on lessons extracted per trajectory."
+            },
+            "min_confidence": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Minimum confidence to store a lesson."
+            },
+            "confidence_floor": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Below this, lesson is auto-archived."
+            },
+            "archive_after_days": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Lessons below floor demoted to *-archive after this many days."
+            },
+            "contradiction_sample_rate": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Fraction of retrievals sampled for LLM-judge contradiction check."
+            }
           }
         }
       }
@@ -1270,19 +2253,51 @@
       "additionalProperties": false,
       "description": "Payment system configuration (Web Ledger / DREAM token).",
       "properties": {
-        "enabled": { "type": "boolean", "description": "Enable the payment subsystem." },
-        "backend": { "type": "string", "enum": ["solid-pod-rs", "external", "off"], "description": "Payment backend. solid-pod-rs proxies to local pod." },
-        "base_cost_sats": { "type": "integer", "minimum": 0, "description": "Base cost unit in satoshis." },
-        "dream_per_sat": { "type": "integer", "minimum": 1, "description": "DREAM token exchange rate per satoshi." },
-        "hold_buffer_ratio": { "type": "number", "minimum": 1, "description": "Hold buffer ratio for payment pre-auth." },
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable the payment subsystem."
+        },
+        "backend": {
+          "type": "string",
+          "enum": [
+            "solid-pod-rs",
+            "external",
+            "off"
+          ],
+          "description": "Payment backend. solid-pod-rs proxies to local pod."
+        },
+        "base_cost_sats": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Base cost unit in satoshis."
+        },
+        "dream_per_sat": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "DREAM token exchange rate per satoshi."
+        },
+        "hold_buffer_ratio": {
+          "type": "number",
+          "minimum": 1,
+          "description": "Hold buffer ratio for payment pre-auth."
+        },
         "tiers": {
           "type": "object",
           "additionalProperties": false,
           "description": "Cost tier multipliers.",
           "properties": {
-            "inference": { "type": "integer", "minimum": 0 },
-            "image_gen": { "type": "integer", "minimum": 0 },
-            "analytics": { "type": "integer", "minimum": 0 }
+            "inference": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "image_gen": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "analytics": {
+              "type": "integer",
+              "minimum": 0
+            }
           }
         },
         "token": {
@@ -1290,10 +2305,21 @@
           "additionalProperties": false,
           "description": "DREAM token configuration.",
           "properties": {
-            "ticker": { "type": "string" },
-            "rate": { "type": "integer", "minimum": 1 },
-            "supply": { "type": "integer", "minimum": 0 },
-            "issuer": { "type": "string", "description": "Populated from OPERATOR_NOSTR_PUBKEY at runtime." }
+            "ticker": {
+              "type": "string"
+            },
+            "rate": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "supply": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "issuer": {
+              "type": "string",
+              "description": "Populated from OPERATOR_NOSTR_PUBKEY at runtime."
+            }
           }
         },
         "consumer": {
@@ -1318,23 +2344,30 @@
             "approval_threshold_sats": {
               "type": "integer",
               "minimum": 0,
-              "description": "Calls whose cost exceeds this threshold have request.requiresApproval=true set. The call is NOT denied — downstream handlers may choose to gate or log it."
+              "description": "Calls whose cost exceeds this threshold have request.requiresApproval=true set. The call is NOT denied \u2014 downstream handlers may choose to gate or log it."
             },
             "allow_origins": {
               "type": "array",
-              "items": { "type": "string" },
+              "items": {
+                "type": "string"
+              },
               "description": "Origin allowlist. When non-empty, only listed origins may spend. Requests from unlisted origins are rejected with HTTP 402 origin-not-allowed. Empty list means any origin is allowed.",
               "default": []
             },
             "deny_origins": {
               "type": "array",
-              "items": { "type": "string" },
+              "items": {
+                "type": "string"
+              },
               "description": "Origin denylist. Checked before allow_origins. Requests from a listed origin are rejected with HTTP 402 origin-denied.",
               "default": []
             },
             "external_router": {
               "type": "string",
-              "enum": ["off", "cinderwright"],
+              "enum": [
+                "off",
+                "cinderwright"
+              ],
               "description": "External payment-router integration. off disables any outbound routing; cinderwright enables the Cinderwright Lightning router sidecar.",
               "default": "off"
             }
@@ -1343,7 +2376,7 @@
         "broadcast": {
           "type": "object",
           "additionalProperties": false,
-          "description": "Payment broadcast configuration — controls whether this agentbox advertises payment capabilities on the mesh.",
+          "description": "Payment broadcast configuration \u2014 controls whether this agentbox advertises payment capabilities on the mesh.",
           "properties": {
             "enabled": {
               "type": "boolean",
@@ -1363,7 +2396,9 @@
             },
             "index_submit": {
               "type": "string",
-              "enum": ["off"],
+              "enum": [
+                "off"
+              ],
               "description": "Payment index submission mode. Only 'off' is currently implemented.",
               "default": "off"
             }
@@ -1381,21 +2416,55 @@
       "additionalProperties": false,
       "description": "Content-aware compression for agent context windows and storage (PRD-016, ADR-034). Uses in-process Rust N-API bindings (headroom-napi crate).",
       "properties": {
-        "enabled": { "type": "boolean", "description": "Build headroom-napi crate and activate compression middleware." },
-        "backend": { "type": "string", "enum": ["sqlite", "memory"], "description": "CCR cache backend." },
-        "ttl_minutes": { "type": "integer", "minimum": 1, "description": "CCR cache TTL in minutes." },
-        "max_entries": { "type": "integer", "minimum": 1, "description": "CCR store capacity (LRU eviction)." },
-        "target_ratio": { "type": "number", "minimum": 0.01, "maximum": 1, "description": "Compression target ratio (e.g. 0.15 = keep ~15%)." },
+        "enabled": {
+          "type": "boolean",
+          "description": "Build headroom-napi crate and activate compression middleware."
+        },
+        "backend": {
+          "type": "string",
+          "enum": [
+            "sqlite",
+            "memory"
+          ],
+          "description": "CCR cache backend."
+        },
+        "ttl_minutes": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "CCR cache TTL in minutes."
+        },
+        "max_entries": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "CCR store capacity (LRU eviction)."
+        },
+        "target_ratio": {
+          "type": "number",
+          "minimum": 0.01,
+          "maximum": 1,
+          "description": "Compression target ratio (e.g. 0.15 = keep ~15%)."
+        },
         "slots": {
           "type": "object",
           "additionalProperties": false,
           "description": "Per-adapter-slot compression toggles.",
           "properties": {
-            "memory": { "type": "boolean" },
-            "pods": { "type": "boolean" },
-            "events": { "type": "boolean", "description": "NEVER compress audit trail." },
-            "beads": { "type": "boolean" },
-            "orchestrator": { "type": "boolean" }
+            "memory": {
+              "type": "boolean"
+            },
+            "pods": {
+              "type": "boolean"
+            },
+            "events": {
+              "type": "boolean",
+              "description": "NEVER compress audit trail."
+            },
+            "beads": {
+              "type": "boolean"
+            },
+            "orchestrator": {
+              "type": "boolean"
+            }
           }
         },
         "algorithms": {
@@ -1403,9 +2472,18 @@
           "additionalProperties": false,
           "description": "Available compression algorithms.",
           "properties": {
-            "smart_crusher": { "type": "boolean", "description": "JSON array compression." },
-            "log_compressor": { "type": "boolean", "description": "Template-based log compression." },
-            "diff_compressor": { "type": "boolean", "description": "Unified diff compression." }
+            "smart_crusher": {
+              "type": "boolean",
+              "description": "JSON array compression."
+            },
+            "log_compressor": {
+              "type": "boolean",
+              "description": "Template-based log compression."
+            },
+            "diff_compressor": {
+              "type": "boolean",
+              "description": "Unified diff compression."
+            }
           }
         }
       }
@@ -1413,7 +2491,7 @@
     "linked_data": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Linked-Data interchange surfaces (PRD-006 / ADR-012 / DDD-004). When [linked_data].enabled = false (default), no surface emits or consumes JSON-LD and zero behaviour changes vs. the pre-PRD-006 product. Each per-surface gate accepts on | emit | off. Validation rules: E040–E049.",
+      "description": "Linked-Data interchange surfaces (PRD-006 / ADR-012 / DDD-004). When [linked_data].enabled = false (default), no surface emits or consumes JSON-LD and zero behaviour changes vs. the pre-PRD-006 product. Each per-surface gate accepts on | emit | off. Validation rules: E040\u2013E049.",
       "properties": {
         "enabled": {
           "type": "boolean",
@@ -1421,62 +2499,103 @@
         },
         "pods": {
           "type": "string",
-          "enum": ["on", "emit", "off"],
-          "description": "S1 — Solid pod resource representations. Requires adapters.pods ∈ {local-solid-rs, external} (E041)."
+          "enum": [
+            "on",
+            "emit",
+            "off"
+          ],
+          "description": "S1 \u2014 Solid pod resource representations. Requires adapters.pods \u2208 {local-solid-rs, external} (E041)."
         },
         "events": {
           "type": "string",
-          "enum": ["on", "emit", "off"],
-          "description": "S2 — Nostr envelope payloads. Requires [sovereign_mesh.relay].enabled = true (E042)."
+          "enum": [
+            "on",
+            "emit",
+            "off"
+          ],
+          "description": "S2 \u2014 Nostr envelope payloads. Requires [sovereign_mesh.relay].enabled = true (E042)."
         },
         "credentials": {
           "type": "string",
-          "enum": ["emit", "off"],
-          "description": "S3 — W3C Verifiable Credentials. JCS canonicalisation required (E043)."
+          "enum": [
+            "emit",
+            "off"
+          ],
+          "description": "S3 \u2014 W3C Verifiable Credentials. JCS canonicalisation required (E043)."
         },
         "did_documents": {
           "type": "string",
-          "enum": ["emit", "off"],
-          "description": "S4 — DID Documents at /.well-known/did.json. Requires sovereign_mesh.solid_pod = true (E044)."
+          "enum": [
+            "emit",
+            "off"
+          ],
+          "description": "S4 \u2014 DID Documents at /.well-known/did.json. Requires sovereign_mesh.solid_pod = true (E044)."
         },
         "provenance": {
           "type": "string",
-          "enum": ["emit", "off"],
-          "description": "S5 — PROV-O receipts emitted parallel to the events adapter."
+          "enum": [
+            "emit",
+            "off"
+          ],
+          "description": "S5 \u2014 PROV-O receipts emitted parallel to the events adapter."
         },
         "capability_descriptors": {
           "type": "string",
-          "enum": ["emit", "off"],
-          "description": "S6 — W3C WoT Thing Descriptions for MCP servers."
+          "enum": [
+            "emit",
+            "off"
+          ],
+          "description": "S6 \u2014 W3C WoT Thing Descriptions for MCP servers."
         },
         "skill_metadata": {
           "type": "string",
-          "enum": ["emit", "off"],
-          "description": "S7 — Schema.org HowTo encoding for skills (build-time only)."
+          "enum": [
+            "emit",
+            "off"
+          ],
+          "description": "S7 \u2014 Schema.org HowTo encoding for skills (build-time only)."
         },
         "payments": {
           "type": "string",
-          "enum": ["on", "emit", "off"],
-          "description": "S8 — agentic-payment mandates and receipts (VC + ODRL). JCS canonicalisation required (E043)."
+          "enum": [
+            "on",
+            "emit",
+            "off"
+          ],
+          "description": "S8 \u2014 agentic-payment mandates and receipts (VC + ODRL). JCS canonicalisation required (E043)."
         },
         "memory_catalogue": {
           "type": "string",
-          "enum": ["emit", "off"],
-          "description": "S9 — DCAT-3 memory namespace catalogue at /v1/memory/catalogue."
+          "enum": [
+            "emit",
+            "off"
+          ],
+          "description": "S9 \u2014 DCAT-3 memory namespace catalogue at /v1/memory/catalogue."
         },
         "architecture_docs": {
           "type": "string",
-          "enum": ["emit", "off"],
-          "description": "S10 — ADR/PRD/DDD frame frontmatter (build-time only)."
+          "enum": [
+            "emit",
+            "off"
+          ],
+          "description": "S10 \u2014 ADR/PRD/DDD frame frontmatter (build-time only)."
         },
         "http_meta": {
           "type": "string",
-          "enum": ["emit", "off"],
-          "description": "S11 — Content-negotiated JSON-LD on /v1/meta and /v1/agent-events."
+          "enum": [
+            "emit",
+            "off"
+          ],
+          "description": "S11 \u2014 Content-negotiated JSON-LD on /v1/meta and /v1/agent-events."
         },
         "default_form": {
           "type": "string",
-          "enum": ["compacted", "expanded", "flattened", "framed"],
+          "enum": [
+            "compacted",
+            "expanded",
+            "flattened",
+            "framed"
+          ],
           "description": "Default JSON-LD form when a surface does not pin one. Default compacted."
         },
         "context_catalogue": {
@@ -1485,17 +2604,27 @@
         },
         "context_cache_mode": {
           "type": "string",
-          "enum": ["image", "bind", "off"],
+          "enum": [
+            "image",
+            "bind",
+            "off"
+          ],
           "description": "How the catalogue reaches the runtime. image (read-only image layer; default), bind (host bind-mount), off (rejected when any user-touching surface is on; E046)."
         },
         "unknown_context_policy": {
           "type": "string",
-          "enum": ["fail-closed", "fail-open"],
+          "enum": [
+            "fail-closed",
+            "fail-open"
+          ],
           "description": "What to do when an UnpinnedContextIRI appears in input. Default fail-closed (E047 warns when fail-open is paired with pods=on)."
         },
         "canonicalisation": {
           "type": "string",
-          "enum": ["jcs", "none"],
+          "enum": [
+            "jcs",
+            "none"
+          ],
           "description": "Canonicalisation mode. jcs is required when credentials or payments surface is enabled (E043)."
         },
         "round_trip_in_dispatch": {
@@ -1504,7 +2633,9 @@
         },
         "contexts": {
           "type": "object",
-          "additionalProperties": { "type": "string" },
+          "additionalProperties": {
+            "type": "string"
+          },
           "description": "Operator overrides for context IRIs. Each value MUST resolve to a pinned ContextDocument in lib/linked-data-contexts.nix (E045)."
         },
         "did": {
@@ -1514,12 +2645,22 @@
           "properties": {
             "method": {
               "type": "string",
-              "enum": ["nostr", "key", "web"],
+              "enum": [
+                "nostr",
+                "key",
+                "web"
+              ],
               "description": "DID method. nostr is the default sovereign method; requires the did-nostr Cargo feature (E049)."
             },
             "service_endpoints": {
               "type": "array",
-              "items": { "type": "string", "enum": ["pod", "relay"] },
+              "items": {
+                "type": "string",
+                "enum": [
+                  "pod",
+                  "relay"
+                ]
+              },
               "description": "Which agentbox services to publish in the DID Document service array."
             },
             "publish_to_well_known": {
@@ -1531,11 +2672,13 @@
         "privacy_handoff": {
           "type": "object",
           "additionalProperties": false,
-          "description": "Privacy filter handoff (documentation only — the order is fixed in code).",
+          "description": "Privacy filter handoff (documentation only \u2014 the order is fixed in code).",
           "properties": {
             "order": {
               "type": "string",
-              "enum": ["after"],
+              "enum": [
+                "after"
+              ],
               "description": "Always after. The validator rejects any other value (E048)."
             }
           }
@@ -1543,11 +2686,15 @@
         "viewer": {
           "type": "object",
           "additionalProperties": false,
-          "description": "Linked-Object Viewer slot (S12, PRD-006 §15). Mounts a JSON-LD-aware browser at /lo/* that renders every PRD-006 surface. Pane manifest at /lo/manifest.json. Default off. Validation rules: E050–E054, W053.",
+          "description": "Linked-Object Viewer slot (S12, PRD-006 \u00a715). Mounts a JSON-LD-aware browser at /lo/* that renders every PRD-006 surface. Pane manifest at /lo/manifest.json. Default off. Validation rules: E050\u2013E054, W053.",
           "properties": {
             "mode": {
               "type": "string",
-              "enum": ["off", "local-linkedobjects", "external"],
+              "enum": [
+                "off",
+                "local-linkedobjects",
+                "external"
+              ],
               "description": "off (default), local-linkedobjects (bundle linkedobjects/browser into the image at /opt/agentbox/browser; AGPL-3.0), external (operator-supplied URL)."
             },
             "mount_path": {
@@ -1573,7 +2720,9 @@
             },
             "extra_panes": {
               "type": "array",
-              "items": { "type": "string" },
+              "items": {
+                "type": "string"
+              },
               "description": "Operator-supplied pane URLs or filesystem paths layered on top of built-in + upstream panes."
             },
             "upstream_panes_visible": {
@@ -1582,7 +2731,7 @@
             },
             "source_code_header": {
               "type": "string",
-              "description": "Override for the Source-Code response header. Default = upstream repo URL (AGPL §13 compliance)."
+              "description": "Override for the Source-Code response header. Default = upstream repo URL (AGPL \u00a713 compliance)."
             }
           }
         }

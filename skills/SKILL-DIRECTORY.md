@@ -1,6 +1,6 @@
 # Skill Directory -- Comprehensive Inventory and Decision Tree
 
-> **116 active skills** (`uk-solar-planner` added 2026-07-15 — UK ground-mounted solar farm planning, composing qgis + blender with PVGIS/quartz-solar-forecast/OpenDSS; `ruvnet-brain` added 2026-07-07 — RuvNet-ecosystem source corpus (~90k chunks, 21+ repos) in the ruvector-postgres sidecar, `search_ruvnet` MCP + grounding hook; `pdf-signing` added 2026-07-06 — open-source cryptographic PDF signing (pyHanko/PAdES), self-signed identity + visible panel + trust/eIDAS upgrade path; `leptos` added 2026-06-28 — Leptos full-stack Rust web playbook + 0.7/0.8 reference; `ceramic-search` added 2026-06-20 — Ceramic.ai keyword web search with rich page extracts; `ontology-augment` added 2026-06-14). 18 formerly deprecated/archived skills removed (see table below for history).
+> **117 active skills** (`token-audit` added 2026-07-24 — comprehensive Claude Code usage audit from local transcripts, adapted MIT from pacphi/agentic-kit, with `ruflo-daemon-gc.py` + `npx-stale-scan.sh` hygiene companions; `uk-solar-planner` added 2026-07-15 — UK ground-mounted solar farm planning, composing qgis + blender with PVGIS/quartz-solar-forecast/OpenDSS; `ruvnet-brain` added 2026-07-07 — RuvNet-ecosystem source corpus (~90k chunks, 21+ repos) in the ruvector-postgres sidecar, `search_ruvnet` MCP + grounding hook; `pdf-signing` added 2026-07-06 — open-source cryptographic PDF signing (pyHanko/PAdES), self-signed identity + visible panel + trust/eIDAS upgrade path; `leptos` added 2026-06-28 — Leptos full-stack Rust web playbook + 0.7/0.8 reference; `ceramic-search` added 2026-06-20 — Ceramic.ai keyword web search with rich page extracts; `ontology-augment` added 2026-06-14). 18 formerly deprecated/archived skills removed (see table below for history).
 > Updated 2026-07-22. Reference this file from CLAUDE.md for intelligent routing.
 
 ---
@@ -30,13 +30,13 @@
 
 ---
 
-## Artefact 1: Categorised Skill Inventory (116 Active Skills)
+## Artefact 1: Categorised Skill Inventory (117 Active Skills)
 
 ### Context, Discovery, and Session Management
 
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
-| `skill-router` | No | **Unified dispatcher** for 116 skills. `/route [task]` classifies intent and routes to optimal skill. Single entry point | Don't know which skill to use — describe your task and get routed |
+| `skill-router` | No | **Unified dispatcher** for 117 skills. `/route [task]` classifies intent and routes to optimal skill. Single entry point | Don't know which skill to use — describe your task and get routed |
 | `lazy-fetch` | Yes | 25 MCP tools: context hydration, plan tracking, blueprints, PRD-to-sprints, security scanning, persistent memory | Starting a new session, managing context across tasks, tracking phased plans, running autonomous PRD execution |
 | `skill-builder` | No | Create new Claude Code skills with YAML frontmatter and progressive disclosure | Building new custom skills for the skills directory |
 | `skill-tuning` | No | Empirically optimize an existing skill against a measurable reward via the SkillOpt loop + noise-robust held-out A/B (single-optimizer vs mesh arms). Live harness in skillopt-lab | Tuning a skill by evidence — raising an agent's success rate on a bounded scoreable task, not eyeballing prose |
@@ -102,6 +102,7 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 | `agentdb-advanced` | No | QUIC sync, multi-database, custom distance metrics, hybrid search, MMR diversity, **9 RL algorithms** (Decision Transformer, Q-Learning, SARSA, Actor-Critic, Federated, etc.) | Distributed AI systems, cross-network AgentDB sync, self-learning agents with RL |
 | `ruvector-catalog` | No | Architect's playbook for 200+ RuVector capabilities across 14 domains, migration paths, 3 access paths (npm/WASM/NAPI) | "What RuVector tools can help with X?", technology recommendations, migration from aging tech |
 | `ruvnet-brain` | Yes | Source-grounded RuvNet-ecosystem corpus (~90k chunks, 21+ repos: ruflo, ruvector, safla, agentdb, agentic-flow, sparc, …) living in the ruvector-postgres sidecar under write-protected namespace `ruvnet-kb`. `search_ruvnet` (repo filter, file attribution) + `ruvnet_brain_status`; same data via `memory_search({namespace: "ruvnet-kb"})`. Grounding hook auto-injects search-first directives on RuvNet mentions | Any question about how a RuvNet tool actually works — search before asserting; verifying capability claims before substituting classical alternatives (Pinecone/LangChain/hnswlib) |
+| `token-audit` | No | Comprehensive Claude Code usage audit from local transcripts (`~/.claude/projects/**/*.jsonl`): tokens by day/model/project, tool + MCP usage, subagent fan-out, cache efficiency, startup context tax, hourly activity, runaway-daemon cross-reference. Stdlib-only Python (adapted MIT from pacphi/agentic-kit). Companions: `/opt/agentbox/scripts/ruflo-daemon-gc.py` (pid-reuse-guarded reap), `npx-stale-scan.sh` | "Where are my tokens going", hitting plan limits, suspected runaway automation, usage breakdown requests |
 | `agentdb-memory-patterns` | No | Session memory, long-term storage, pattern learning, context management | Stateful agents, chat systems, intelligent assistants |
 | `agentdb-vector-search` | No | HNSW indexing (150x faster), quantization, caching, batch ops, RAG pipelines | Semantic search, RAG systems, scaling to millions of vectors |
 
@@ -289,7 +290,7 @@ Answer these questions in order. Stop at the first match.
 
 ```
 Q0: Unsure which skill handles your task?
-    --> /route [describe task]  (skill-router — intelligent dispatcher for all 116 skills)
+    --> /route [describe task]  (skill-router — intelligent dispatcher for all 117 skills)
 
 Q1: Is the task about an EXISTING skill that is deprecated?
     YES --> Use its replacement (see Deprecated table above)

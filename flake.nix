@@ -187,16 +187,23 @@
         #    templates to $HOME/.claude/agents/ — it must run as the runtime user
         #    after container start, NOT at Nix build time. Add to agentbox.sh init:
         #      [[ "${ENABLE_AGENTIC_QE:-false}" == "true" ]] && aqe init --auto || true
-        #    nix-prefetch-url https://registry.npmjs.org/agentic-qe/-/agentic-qe-3.13.0.tgz
+        #    nix-prefetch-url https://registry.npmjs.org/agentic-qe/-/agentic-qe-3.13.1.tgz
         #    3.13.0 (2026-07-18): QE-Court multi-vendor adversarial review
         #    (Codex/GPT + Cognitum + Claude), Codex CLI provider via `codex
         #    exec`, @huggingface/transformers demoted to optional peer (4 HIGH
         #    CVEs resolved; deliberately NOT re-added — ADR-015 one-embedder).
+        #    3.13.1 (2026-07-23): on-disk per-agent LLM routing — agentOverrides
+        #    in .agentic-qe/llm-config.json (upstream issue #568). Required by
+        #    the ADR-041 [model_routing] boot projection; do not downgrade
+        #    below 3.13.1 while model_routing.aqe_agent_overrides is on.
+        #    nodeModulesHash is fakeHash pending the bump rebuild — resolve on
+        #    the build host: ./scripts/prefetch-hashes.sh --cli (the tarball
+        #    sha256 below is real, computed from the registry artefact).
         agenticQePkg = mkNpmCli {
           pkgName         = "agentic-qe";
-          version         = "3.13.0";
-          sha256          = "sha256-5P+s2kDQJVWVAFnG6dM73lPCM4QHasdMAgPmDgks7Uc=";
-          nodeModulesHash = "sha256-OUEJwR60hLpfJsdmf7+9fkCa3qjS0PDRU5Jz5Ew8pc0=";
+          version         = "3.13.1";
+          sha256          = "sha256-Ak+YqfgwdwbV2V8n4bFHz/VUkskSOxIg19Ce0u7oFeA=";
+          nodeModulesHash = lib.fakeHash;
           bin             = "aqe";
         };
 

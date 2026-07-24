@@ -121,6 +121,11 @@ state = {
     "consultants.zai.enabled":        g("consultants", "zai", "enabled",        default=False),
     "consultants.perplexity.enabled": g("consultants", "perplexity", "enabled", default=False),
     "consultants.deepseek.enabled":   g("consultants", "deepseek", "enabled",   default=False),
+    # ── model routing (ADR-041) ──────────────────────────────────────────────────
+    "model_routing.enabled":             g("model_routing", "enabled",             default=False),
+    "model_routing.primary_host":        g("model_routing", "primary_host",        default="claude"),
+    "model_routing.aqe_agent_overrides": g("model_routing", "aqe_agent_overrides", default=True),
+    "model_routing.dual_run":            g("model_routing", "dual_run",            default=False),
     "privacy_filter.enabled":            g("privacy_filter", "enabled",            default=False),
     "privacy_filter.mode":               g("privacy_filter", "mode",               default="off"),
     "privacy_filter.port":               str(g("privacy_filter", "port",           default=9092)),

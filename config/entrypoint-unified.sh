@@ -972,21 +972,37 @@ fi
 # ── Agentic-QE MCP: register the fleet server when the toolchain is enabled ──
 # PATH-resolved `aqe mcp` (never a raw /nix/store path: rebuild GC deletes old
 # versioned paths and a pinned path breaks every persisted .mcp.json).
+# The env block is RECONCILED every boot (not add-if-missing): ADR-041 model
+# routing sets AQE_LLM_PROVIDER on it, and a stale env must follow the manifest.
 if [ "${ENABLE_AGENTIC_QE:-false}" = "true" ] && command -v aqe >/dev/null 2>&1 && [ -f "$_MCP_JSON" ]; then
-  if ! grep -q "agentic-qe" "$_MCP_JSON" 2>/dev/null; then
-    python3 -c "
+  _MR_ENABLED=$(_ab_toml_bool model_routing enabled)
+  _MR_AQE_PROVIDER="$(_ab_toml_val model_routing aqe_llm_provider)"
+  python3 -c "
 import json
 with open('$_MCP_JSON') as f: cfg = json.load(f)
-cfg.setdefault('mcpServers', {})['agentic-qe'] = {
-  'command': 'aqe',
-  'args': ['mcp'],
-  'type': 'stdio',
-  'env': {'AQE_MEMORY_BACKEND': 'memory', 'AQE_VERBOSE': 'false', 'NODE_NO_WARNINGS': '1'}
-}
+srv = cfg.setdefault('mcpServers', {}).setdefault('agentic-qe', {
+  'command': 'aqe', 'args': ['mcp'], 'type': 'stdio'})
+env = srv.setdefault('env', {})
+env.update({'AQE_MEMORY_BACKEND': 'memory', 'AQE_VERBOSE': 'false', 'NODE_NO_WARNINGS': '1'})
+if '$_MR_ENABLED' == '1' and '$_MR_AQE_PROVIDER':
+    env['AQE_LLM_PROVIDER'] = '$_MR_AQE_PROVIDER'
+else:
+    env.pop('AQE_LLM_PROVIDER', None)
 with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
-" 2>/dev/null && echo "  [mcp] Added agentic-qe → aqe mcp" || true
-    chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
-    chmod 600 "$_MCP_JSON" 2>/dev/null || true   # MCP-3: baked API key / bearer token — owner-only on shared volume
+" 2>/dev/null && echo "  [mcp] Reconciled agentic-qe → aqe mcp (routing env: ${_MR_ENABLED})" || true
+  chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
+  chmod 600 "$_MCP_JSON" 2>/dev/null || true   # MCP-3: baked API key / bearer token — owner-only on shared volume
+
+  # ── ADR-041 model routing: project [model_routing.routes] into every
+  # .agentic-qe/llm-config.json under the workspace (agentOverrides, aqe #568).
+  # Fail-open: the script always exits 0; a projection failure never blocks
+  # boot — the fleet then keeps upstream defaults. Runs as devuser so the
+  # written files stay workspace-owned.
+  if [ "$_MR_ENABLED" = "1" ]; then
+    runuser -u devuser -- env WORKSPACE="$WORKSPACE" \
+      python3 /opt/agentbox/scripts/model-routing-project.py \
+        --manifest "$AGENTBOX_CONFIG" --workspace "$WORKSPACE" 2>&1 \
+      | sed 's/^/  /' || true
   fi
 fi
 
@@ -1598,6 +1614,11 @@ export OPENSSL_INCLUDE_DIR="${OPENSSL_INCLUDE_DIR:-}"
 export XINFERENCE_ENDPOINT="${XINFERENCE_ENDPOINT}"
 export XINFERENCE_READY="${XINFERENCE_READY:-false}"
 export EMBEDDING_MODEL="${EMBEDDING_MODEL}"
+# Belt-and-braces vs ruflo daemon token burn (upstream #2661 already ships
+# AI workers opt-in-by-default + a machine-wide budget; this pins the opt-out
+# explicitly so an enabled plugin — ruflo-loop-workers / ruflo-autopilot —
+# can never flip headless Claude launches on without an operator export).
+export RUFLO_DAEMON_AI_WORKERS="${RUFLO_DAEMON_AI_WORKERS:-0}"
 EOF
 mkdir -p "/home/devuser/workspace/.cargo" "/home/devuser/workspace/.tmp" 2>/dev/null || true
 chown devuser:devuser "/home/devuser/workspace/.cargo" "/home/devuser/workspace/.tmp" 2>/dev/null || true

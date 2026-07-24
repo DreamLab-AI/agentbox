@@ -314,6 +314,34 @@ budget into GLM's own `reasoning_effort` parameter. Leave unset to fall back
 to the endpoint default. Note: ZCode (`zcode.z.ai`) is Z.AI's own desktop/web
 IDE, not a CLI — it is not part of this integration path.
 
+## `[model_routing]` and `[model_routing.routes]`
+
+One per-activity Claude/Codex routing policy, projected at every boot into
+agentic-qe's on-disk per-agent overrides ([ADR-041](../reference/adr/ADR-041-model-routing-one-policy-many-projections.md);
+requires agentic-qe ≥ 3.13.1, upstream issue #568). Both wizards expose the
+gates; the routes render schema-driven in the browser wizard.
+
+```toml
+[model_routing]
+enabled             = true
+primary_host        = "claude"       # which host LEADS (absence severity follows leadership)
+aqe_agent_overrides = true           # project routes into .agentic-qe/llm-config.json every boot
+dual_run            = false          # EXPERIMENTAL — leave off (ruflo #2766 pins local SQLite)
+aqe_llm_provider    = "claude-code"  # AQE_LLM_PROVIDER for unrouted fleet work ($0 subscription)
+aqe_fallback_chain  = "claude-code,codex"
+
+[model_routing.routes]
+architecture   = "claude:claude-opus-4-8"
+implementation = "codex:gpt-5.5 -> claude:claude-opus-4-8"   # optional cross-vendor escalation rung
+# … 12 activities total; models are soft defaults — tune freely
+```
+
+The written `.agentic-qe/llm-config.json` files are **managed artefacts**
+(stamped `_managedBy`): the projector replaces the managed keys
+(`agentOverrides`, `defaultProvider`, `fallbackChain`) at every boot and
+preserves everything else. Edit the manifest, never the JSON. API keys are
+never written to the file (agentic-qe's own loader also strips them).
+
 ## `[project_tracking]`
 
 Helm-grade project tracking re-expressed on the sovereign substrate — no new

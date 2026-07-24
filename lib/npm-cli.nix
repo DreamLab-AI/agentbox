@@ -335,6 +335,29 @@ in
           fi
         done < <(find "$out/lib/${pname}" -type d -path '*/node_modules/better-sqlite3')
 
+        # ---- aidefence presence probe (ruflo #2670 / upstream ADR-165) ---
+        # Prompt-injection defence in ruflo is structurally easy to lose:
+        # @claude-flow/aidefence is an OPTIONAL dependency, lazily import()ed,
+        # and every gate fails OPEN when it is absent — #2670 shipped a tree
+        # where the defence was silently dead. The #2670 fix added a zero-dep
+        # built-in engine (builtin-aidefence.js) inside @claude-flow/cli.
+        # Whenever this closure ships @claude-flow/cli, assert that at least
+        # one of the two engines is actually present; a future version bump
+        # that drops both must break the build, not ship a container whose
+        # injection defence no-ops. (Probe mirrors `claude-flow doctor`.)
+        while read -r _cfcli; do
+          _aid_pkg="$(dirname "$(dirname "$_cfcli")")/@claude-flow/aidefence"
+          _aid_builtin="$(find "$_cfcli" -name 'builtin-aidefence.js' -print -quit 2>/dev/null)"
+          if [ -d "$_aid_pkg" ] || [ -n "$_aid_builtin" ]; then
+            echo "aidefence probe: engine present in ''${_cfcli#$out/lib/${pname}/} ($([ -d "$_aid_pkg" ] && echo package || echo builtin))" >&2
+          else
+            echo "ERROR aidefence probe: neither @claude-flow/aidefence nor builtin-aidefence.js" >&2
+            echo "      found under ''${_cfcli#$out/lib/${pname}/} — injection defence would fail OPEN" >&2
+            echo "      at runtime (ruflo #2670). Never ship that state — aborting." >&2
+            exit 1
+          fi
+        done < <(find "$out/lib/${pname}" -type d -path '*/node_modules/@claude-flow/cli')
+
         # Resolve the entry-point from package.json "bin" field.
         # We use node to parse it so we handle both string and object forms.
         # Empty-string literals are written via [].join() to sidestep Nix

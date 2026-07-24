@@ -734,6 +734,46 @@ section_consultants() {
 }
 
 # ════════════════════════════════════════════════════════════════════════════════
+# SECTION 2c — model routing (ADR-041)
+# Per-activity Claude/Codex routing policy, projected at boot into agentic-qe
+# agentOverrides. Only offered when both hosts are in the picture; the
+# per-activity routes themselves live in [model_routing.routes] (schema-driven
+# in the browser wizard; hand-edit agentbox.toml for the TUI path).
+# ════════════════════════════════════════════════════════════════════════════════
+section_model_routing() {
+  # Without the codex toolchain there is only one host — nothing to route.
+  if [[ "$(state_get toolchains.codex)" != "true" ]]; then
+    state_set_bool "model_routing.enabled" "false"
+    return 0
+  fi
+
+  if ! wt_yesno "Model routing (ADR-041)" \
+    "Enable per-activity Claude/Codex model routing?\n\nOne policy maps each kind of work to the host + model that suits it\n(Claude: specification, architecture, design, review, security\nanalysis, debugging - Codex: implementation, testing, security scan,\ndocumentation, packaging). At boot it is projected into agentic-qe's\nagentOverrides (.agentic-qe/llm-config.json, aqe >= 3.13.1) so the QE\nfleet routes work across both subscriptions at \$0 marginal cost.\n\nDefaults are grounded in upstream @claude-flow/codex collaboration\ntemplates; tune per activity in [model_routing.routes]."; then
+    state_set_bool "model_routing.enabled" "false"
+    return 0
+  fi
+
+  state_set_bool "model_routing.enabled" "true"
+  state_set_bool "model_routing.aqe_agent_overrides" "true"
+
+  local primary
+  primary="$(wt_menu "Model routing — primary host" \
+    "Which host LEADS? The primary being unavailable is a failure;\nthe alternate being unavailable is only a warning. Codex-primary\nmirrors the default table (Codex drives, Claude is the alternate)." \
+    14 72 2 \
+    "claude" "Claude leads (default; Codex is the alternate)" \
+    "codex"  "Codex leads (Claude is the alternate)")"
+  state_set "model_routing.primary_host" "${primary:-claude}"
+
+  # dual_run stays OFF here on purpose: the upstream claude-flow-codex
+  # dual-run surface pins CLAUDE_FLOW_DB_PATH to local SQLite (ruflo #2766),
+  # which conflicts with the ADR-015 postgres memory mandate. Flip it in
+  # agentbox.toml only for experiments.
+  state_set_bool "model_routing.dual_run" "false"
+
+  validate_candidate
+}
+
+# ════════════════════════════════════════════════════════════════════════════════
 # SECTION 3b — privacy filter (ADR-008)
 # Skipped entirely when the host cannot realistically run the sidecar.
 # ════════════════════════════════════════════════════════════════════════════════
@@ -1684,6 +1724,7 @@ SECTIONS=(
   section_skills
   section_providers
   section_consultants
+  section_model_routing
   section_operator_identity
   section_observability
   section_integrations
@@ -1698,7 +1739,7 @@ SECTIONS=(
 
 SECTION_NAMES=(
   "Federation" "Adapters" "GPU" "Privacy Filter" "Desktop"
-  "Toolchains" "Skills" "Providers" "Consultants" "Operator Identity"
+  "Toolchains" "Skills" "Providers" "Consultants" "Model Routing" "Operator Identity"
   "Observability" "Integrations" "Sovereign Mesh" "Nostr Relay"
   "Multi-User Pods" "Linked-Data" "Code-as-Harness" "Payments" "Networking"
 )

@@ -210,6 +210,36 @@ lines += [
     "",
 ]
 
+# ── model routing (ADR-041) ─────────────────────────────────────────────────────
+# Gate keys come from the wizard; the per-activity routes table is emitted only
+# for fresh installs (the deep-merge below preserves an operator-tuned
+# [model_routing.routes] from an existing manifest — wizard keys win, extra
+# keys round-trip untouched).
+lines += [
+    "[model_routing]",
+    f'enabled             = {b("model_routing.enabled")}',
+    f'primary_host        = {q("model_routing.primary_host", "claude")}',
+    f'aqe_agent_overrides = {b("model_routing.aqe_agent_overrides")}',
+    f'dual_run            = {b("model_routing.dual_run")}',
+    'aqe_llm_provider    = "claude-code"',
+    'aqe_fallback_chain  = "claude-code,codex"',
+    "",
+    "[model_routing.routes]",
+    'specification     = "claude:claude-sonnet-5"',
+    'architecture      = "claude:claude-opus-4-8"',
+    'design            = "claude:claude-opus-4-8"',
+    'implementation    = "codex:gpt-5.5 -> claude:claude-opus-4-8"',
+    'testing           = "codex:gpt-5.5 -> claude:claude-opus-4-8"',
+    'review            = "claude:claude-sonnet-5"',
+    'security-scan     = "codex:gpt-5.5"',
+    'security-analysis = "claude:claude-opus-4-8"',
+    'documentation     = "codex:gpt-5.5"',
+    'debugging         = "claude:claude-opus-4-8"',
+    'packaging         = "codex:gpt-5.5"',
+    'release           = "claude:claude-sonnet-5"',
+    "",
+]
+
 # ── privacy filter (ADR-008) ────────────────────────────────────────────────────
 lines += [
     "[privacy_filter]",

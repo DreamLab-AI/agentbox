@@ -828,6 +828,48 @@ enabled = true
 model   = "deepseek-v4-0324"
 timeout_ms = 120000
 
+# ── Model routing (ADR-041) ────────────────────────────────────────────────────
+# One per-activity Claude/Codex routing policy, many projections (pattern
+# adapted from pacphi/agentic-kit ADR-0001; the mechanism itself is upstream:
+# agentic-qe ≥3.13.1 agentOverrides (#568) + @claude-flow/codex dual-mode).
+# The entrypoint reconciles the enabled projections every boot (apply: boot):
+#   1. agentOverrides → workspace .agentic-qe/llm-config.json (sanitised by
+#      aqe's own loader; never carries API keys)
+#   2. AQE_LLM_PROVIDER + AQE_LLM_FALLBACK_CHAIN on the agentic-qe MCP env
+#   3. dual_run: claude-flow-codex collaboration swarms — EXPERIMENTAL, off:
+#      upstream pins CLAUDE_FLOW_DB_PATH to local SQLite (ruflo #2766), which
+#      conflicts with the ADR-015 postgres memory mandate.
+# Hosts are subscription-tier ($0 marginal): claude → claude-code provider,
+# codex → codex provider (`codex exec`, [consultants.codex] auth home).
+# Escalation rungs prefer the CROSS-VENDOR hop (same principle as the ADR-011
+# model-diversity "anti-fox" seam / aqe qe-court vendor diversity).
+[model_routing]
+enabled = true
+primary_host = "claude"           # which host leads; absence of the primary is a failure, of the alternate a warning
+aqe_agent_overrides = true        # projection 1+2: materialise routes + provider env for the QE fleet
+dual_run = false                  # projection 3: EXPERIMENTAL (ruflo #2766) — leave off until upstream unpins local sqlite
+aqe_llm_provider = "claude-code"  # AQE_LLM_PROVIDER default for unrouted fleet work (subscription, $0)
+aqe_fallback_chain = "claude-code,codex"  # ordered AQE_LLM_FALLBACK_CHAIN — cross-vendor before local
+
+# activity = "host:model" with an optional " -> host:model" escalation rung.
+# Defaults grounded in upstream @claude-flow/codex CollaborationTemplates
+# (Claude: reasoning/review; Codex: execution); packaging/release are
+# kit-originated gap-fills (agentic-kit ADR-0002), flagged as such.
+# Models are SOFT defaults (last verified 2026-07-24) — tune per activity.
+[model_routing.routes]
+specification     = "claude:claude-sonnet-5"
+architecture      = "claude:claude-opus-4-8"
+design            = "claude:claude-opus-4-8"
+implementation    = "codex:gpt-5.5 -> claude:claude-opus-4-8"
+testing           = "codex:gpt-5.5 -> claude:claude-opus-4-8"
+review            = "claude:claude-sonnet-5"
+security-scan     = "codex:gpt-5.5"
+security-analysis = "claude:claude-opus-4-8"
+documentation     = "codex:gpt-5.5"
+debugging         = "claude:claude-opus-4-8"
+packaging         = "codex:gpt-5.5"          # kit-originated activity (no upstream template)
+release           = "claude:claude-sonnet-5" # kit-originated activity (no upstream template)
+
 # ── Privacy filter ──────────────────────────────────────────────────────────────
 # Local PII redaction sidecar using openai/privacy-filter (1.5B MoE, Apache-2.0).
 # See docs/reference/adr/ADR-008-privacy-filter-routing.md for the routing layer
