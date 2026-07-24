@@ -33,6 +33,15 @@
  * and the reply echoes exactly what was typed where, so the operator course-
  * corrects after the fact instead of pre-confirming every line.
  *
+ * Lifecycle model: the C2 owns the whole session lifecycle, not just routing.
+ * It can SPAWN a new agent tab anywhere under ~/workspace (tmux new-window at
+ * that cwd, then a launcher typed into the fish shell: `dsp` → claude
+ * --dangerously-skip-permissions (default), or `codex` / `zai`, optionally
+ * sending a first instruction once the prompt is up) and EXIT a tab's session
+ * (types its exit verb — /exit, /quit for codex — at the prompt; the window
+ * and shell stay for reuse). Spawn targets are confined to the ~/workspace
+ * subtree — realpath-checked, so symlinks cannot escape it.
+ *
  * Token model: /tabs and /peek are ZERO-token. /report and instruction-routing
  * each spend ONE bounded headless Sonnet call (Sonnet minimum — Haiku misreads
  * noisy pane scrollback). Idle cost is a WebSocket, nothing more.
@@ -140,6 +149,11 @@ const HELP = [
   '                   picks the tab and sends it, asking only if unsure',
   '  /tab <n> <text>  force a specific tab (skips routing)',
   '  /say <text>      broadcast to every Claude tab',
+  '',
+  'LIFECYCLE (spawn/exit sessions — also routable, e.g. "/start claude in project2"):',
+  '  /spawn <dir> [agent] [text]  new tab: cd ~/workspace/<dir>, launch agent',
+  '                   (dsp=claude default · codex · zai), send text once booted',
+  '  /exit <n>        end tab n\'s session (/exit — /quit for codex); shell stays',
   '  /help            this message',
 ].join('\n');
 
@@ -152,7 +166,7 @@ function allWindows() {
   const out = sh('tmux', ['list-windows', '-a', '-F', '#{window_index}\t#{window_name}\t#{pane_current_command}']);
   return out.trim().split('\n').filter(Boolean).map((l) => l.split('\t'));
 }
-function claudeWindows() { return allWindows().filter((p) => /claude|node/i.test(p[2] || '')); }
+function agentWindows() { return allWindows().filter((p) => /claude|node|codex|zai/i.test(p[2] || '')); }
 function capture(idx, scrollback = 45, keep = 40) {
   return stripAnsi(sh('tmux', ['capture-pane', '-p', '-t', String(idx), '-S', `-${scrollback}`])).split('\n').slice(-keep).join('\n');
 }
@@ -215,11 +229,26 @@ function dispatch(ws, text) {
       // Broadcast to every Claude tab, immediately (no confirm).
       const instr = sanitize(after);
       if (!instr) return reply(ws, 'usage: /say <text>');
-      const wins = claudeWindows();
+      const wins = agentWindows();
       if (!wins.length) return reply(ws, 'no active Claude tabs');
       wins.forEach((p) => sendKeys(p[0], instr));
       const states = wins.map((p) => `  tab ${p[0]} ${STATE_BADGE[paneState(p[0])]}`).join('\n');
       return reply(ws, `✔ broadcast → tabs ${wins.map((p) => p[0]).join(',')}: "${instr}"\n${states}`);
+    }
+    if (verb === 'spawn' || verb === 'cd') {
+      // /spawn <dir> [agent] [instruction] — agent word optional, defaults dsp.
+      const parts = after.split(/\s+/);
+      const dir = parts[0] || '';
+      let rest = after.replace(/^\S+\s*/, '');
+      let agentName = 'dsp';
+      const maybe = (rest.split(/\s+/)[0] || '').toLowerCase();
+      if (AGENTS[maybe]) { agentName = maybe; rest = rest.replace(/^\S+\s*/, ''); }
+      return doSpawn(ws, dir, agentName, rest, `explicit /${verb}`);
+    }
+    if (verb === 'exit' || verb === 'quit') {
+      const idx = (after.split(/\s+/)[0] || '');
+      if (!/^\d+$/.test(idx)) return reply(ws, 'usage: /exit <n>');
+      return doExit(ws, idx, 'explicit /exit');
     }
     // Anything else after '/' is a free-form instruction → the C2 agent routes it.
     return routeInstruction(ws, body.trim());
@@ -242,6 +271,78 @@ function doSend(ws, idx, msg, why) {
   return reply(ws, `${flag}✔ tab ${idx} ${win[1]} ← "${clean}"  ${STATE_BADGE[st]}${why ? '\n↳ ' + String(why).slice(0, 120) : ''}`);
 }
 
+// ── lifecycle: spawn / exit agent sessions ──────────────────────────────────
+// Launchers the C2 may start in a fresh tab. 'dsp' is the fish alias for
+// claude --dangerously-skip-permissions; codex and zai are their own CLIs.
+// exit is what to type at the agent's prompt to end its session; match tells
+// us (via pane_current_command) which exit verb a running tab needs.
+const AGENTS = {
+  dsp:    { launch: 'dsp',   exit: '/exit' },
+  claude: { launch: 'dsp',   exit: '/exit' },
+  codex:  { launch: 'codex', exit: '/quit' },
+  zai:    { launch: 'zai',   exit: '/exit' },
+};
+const WORKSPACE = path.join(HOME, 'workspace');
+
+function workspaceDirs() {
+  try {
+    return fs.readdirSync(WORKSPACE, { withFileTypes: true })
+      .filter((d) => d.isDirectory() && !d.name.startsWith('.')).map((d) => d.name).sort().join(', ');
+  } catch { return '(unreadable)'; }
+}
+
+// Resolve an operator-supplied path to a real directory strictly inside
+// ~/workspace — the C2 may cd anywhere in the workspace subtree, nowhere else.
+function resolveWorkspaceDir(spec) {
+  const raw = String(spec || '').trim().replace(/^~\/?(workspace\/?)?/, '').replace(/^workspace(\/|$)/, '');
+  const abs = path.resolve(WORKSPACE, raw || '.');
+  let real; try { real = fs.realpathSync(abs); } catch { return { err: `no such directory under ~/workspace: ${raw || '.'}` }; }
+  if (real !== WORKSPACE && !real.startsWith(WORKSPACE + path.sep)) return { err: `outside ~/workspace: ${raw}` };
+  try { if (!fs.statSync(real).isDirectory()) return { err: `not a directory: ${raw}` }; } catch { return { err: `unreadable: ${raw}` }; }
+  return { dir: real, rel: '~/' + path.relative(HOME, real) };
+}
+
+// New tmux window at cwd → type the launcher → (optionally) send the first
+// instruction once the agent reaches a prompt. Boot detection is generic:
+// pane_current_command has left the shell and the pane looks idle.
+function doSpawn(ws, dirSpec, agentName, instr, why) {
+  const agent = AGENTS[(agentName || 'dsp').toLowerCase()];
+  if (!agent) return reply(ws, `unknown agent "${agentName}" — one of: ${Object.keys(AGENTS).join(', ')}`);
+  const r = resolveWorkspaceDir(dirSpec);
+  if (r.err) return reply(ws, `⚠ ${r.err}\ntop-level dirs: ${workspaceDirs()}`);
+  const name = path.basename(r.dir);
+  const idx = sh('tmux', ['new-window', '-d', '-P', '-F', '#{window_index}', '-c', r.dir, '-n', name]).trim();
+  if (!/^\d+$/.test(idx)) return reply(ws, '⚠ tmux would not open a window');
+  sendKeys(idx, agent.launch);
+  const follow = sanitize(instr);
+  reply(ws, `🚀 tab ${idx} ${name} · ${r.rel} · launching ${agent.launch}${follow ? `\n⏳ will send "${follow}" once it boots` : ''}${why ? '\n↳ ' + String(why).slice(0, 120) : ''}`);
+  if (!follow) return;
+  let polls = 0;
+  const timer = setInterval(() => {
+    polls += 1;
+    const cmd = (allWindows().find((w) => w[0] === idx) || [])[2] || '';
+    if (polls >= 2 && cmd && !/fish|bash|sh$/i.test(cmd) && paneState(idx) === 'idle') {
+      clearInterval(timer); sendKeys(idx, follow); reply(ws, `✔ tab ${idx} ← "${follow}"`);
+    } else if (polls >= 20) {
+      clearInterval(timer); reply(ws, `⚠ tab ${idx}: agent didn't reach a prompt in 60s — /peek ${idx}, then /tab ${idx} <text>`);
+    }
+  }, 3000);
+}
+
+// End a tab's agent session gracefully by typing its exit verb at the prompt.
+// The tmux window (and its fish shell) stays open for a later /spawn. A ⏸ or
+// ● tab is still sent the verb — the echo flags it so the operator can /peek.
+function doExit(ws, idx, why) {
+  const win = allWindows().find((w) => w[0] === String(idx));
+  if (!win) return reply(ws, `no tab ${idx}`);
+  if (!/claude|node|codex|zai/i.test(win[2] || '')) return reply(ws, `tab ${idx} ${win[1]} [${win[2]}] isn't running an agent`);
+  const verb = /codex/i.test(win[2]) ? AGENTS.codex.exit : AGENTS.dsp.exit;
+  const st = paneState(idx);
+  sendKeys(idx, verb);
+  const flag = st !== 'idle' ? `⚠ tab was ${STATE_BADGE[st]} — exit may queue or answer a dialog; /peek ${idx} to check\n` : '';
+  return reply(ws, `${flag}👋 tab ${idx} ${win[1]} ← ${verb}${why ? '\n↳ ' + String(why).slice(0, 120) : ''}`);
+}
+
 // Pull the first {...} object out of a headless model reply (it may wrap the
 // JSON in prose or fences despite instructions).
 function parseDecision(stdout) {
@@ -255,24 +356,32 @@ function parseDecision(stdout) {
 // message was really a question) hands off to the read-only report path.
 function routeInstruction(ws, instr) {
   if (!instr) return reply(ws, HELP);
-  const wins = claudeWindows();
-  if (!wins.length) return reply(ws, '📋 no active Claude tabs to instruct');
-  const blocks = wins.map(([idx, name]) => `### tab ${idx} — ${name} [${STATE_BADGE[paneState(idx)]}]\n${capture(idx, 40, 30)}`).join('\n\n');
+  const wins = agentWindows();
+  const blocks = wins.length
+    ? wins.map(([idx, name]) => `### tab ${idx} — ${name} [${STATE_BADGE[paneState(idx)]}]\n${capture(idx, 40, 30)}`).join('\n\n')
+    : '(no agent tabs running — "spawn" is the only way to start one)';
   const prior = pendingRoute && (nowSec() - pendingRoute.at < CONFIRM_TTL) ? pendingRoute.instr : null;
   const prompt = [
-    'You are the command-and-control dispatcher for a tmux fleet of Claude Code agents,',
-    "relaying for an operator on their phone. Decide what to do with the operator's message.",
+    'You are the command-and-control dispatcher for a tmux fleet of coding agents (Claude Code,',
+    "Codex, Z.AI), relaying for an operator on their phone. Decide what to do with the operator's message.",
     'Return ONLY one JSON object — no prose, no markdown fences — in one of these shapes:',
     '{"action":"send","tab":<index>,"message":"<exact instruction to type into that tab>","why":"<short reason>"}',
     "  when one tab clearly owns this instruction. Put the operator's intent, faithfully, in \"message\".",
+    '{"action":"spawn","dir":"<path relative to ~/workspace>","agent":"dsp|codex|zai","message":"<optional first instruction>","why":"<short reason>"}',
+    '  when the operator wants a NEW agent session somewhere in the workspace (cd there and start it).',
+    '  Agent "dsp" is Claude Code — the default unless they name codex or zai. Pick the dir from the',
+    '  WORKSPACE DIRS list; leave "message" empty if they gave no task yet.',
+    '{"action":"exit","tab":<index>,"why":"<short reason>"}',
+    '  when the operator wants to END the session in a tab (its exit verb is typed at its prompt).',
     '{"action":"clarify","ask":"<one short question naming the candidate tabs>"}',
     '  when it is genuinely ambiguous, no tab fits, or the best-match tab is ⏸ WAITING on a',
     '  permission dialog (typing would answer the dialog — never send blindly, ask first).',
     '{"action":"report","question":"<the operator\'s question>"}',
     '  when the message is really a QUESTION about the fleet, not an instruction to run.',
-    prior ? `\nThe operator has an UNRESOLVED earlier instruction: "${prior}". Their new message may be the clarification — if so, resolve it and "send".` : '',
+    prior ? `\nThe operator has an UNRESOLVED earlier instruction: "${prior}". Their new message may be the clarification — if so, resolve it and act.` : '',
     '\nOPERATOR MESSAGE: ' + instr,
-    '\nFLEET (one block per Claude tab: index, name, live state badge, recent scrollback):\n' + blocks,
+    '\nWORKSPACE DIRS (valid spawn targets, relative to ~/workspace): ' + workspaceDirs(),
+    '\nFLEET (one block per agent tab: index, name, live state badge, recent scrollback):\n' + blocks,
   ].filter(Boolean).join('\n');
   reply(ws, '⏳ routing…');
   execFile(CLAUDE_BIN, ['-p', '--model', MODEL, prompt],
@@ -282,6 +391,12 @@ function routeInstruction(ws, instr) {
       const d = parseDecision(stdout);
       if (!d || !d.action) { pendingRoute = { instr, at: nowSec() }; return reply(ws, "🤔 couldn't decide — rephrase, or force it with /tab <n> <text>"); }
       if (d.action === 'report') { pendingRoute = null; return doReport(ws, String(d.question || instr).trim()); }
+      if (d.action === 'spawn') { pendingRoute = null; return doSpawn(ws, String(d.dir || ''), String(d.agent || 'dsp'), d.message || '', d.why || 'routed'); }
+      if (d.action === 'exit') {
+        const idx = String(d.tab);
+        if (!/^\d+$/.test(idx) || !wins.some((w) => w[0] === idx)) { pendingRoute = { instr, at: nowSec() }; return reply(ws, `🤔 tab ${idx} isn't in the fleet — reply /<tab> or /exit <n>`); }
+        pendingRoute = null; return doExit(ws, idx, d.why || 'routed');
+      }
       if (d.action === 'clarify') { pendingRoute = { instr, at: nowSec() }; return reply(ws, '❓ ' + String(d.ask || 'which tab?').slice(0, 300) + '\n(reply /<tab> or /<more detail>)'); }
       if (d.action === 'send') {
         const idx = String(d.tab);
@@ -315,7 +430,7 @@ function doReport(ws, arg) {
       + 'IDLE / ERRORED (quote the error), (4) anything the operator should act on. '
       + 'No preamble, no markdown.\n\n### tab ' + single + ` (${STATE_BADGE[paneState(single)]})\n` + scroll;
   } else {
-    const wins = claudeWindows();
+    const wins = agentWindows();
     if (!wins.length) return reply(ws, '📋 no active Claude tabs');
     const blocks = wins.map(([idx, name]) => `### tab ${idx} (${name}) [${STATE_BADGE[paneState(idx)]}]\n${capture(idx, 60, 50)}`).join('\n\n');
     prompt = question
