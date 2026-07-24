@@ -238,6 +238,7 @@ added to the image, the bridge falls back to its pre-ADR-009 behaviour
 
 ## Further reading
 
+- [Nostr control gateway — drive the tmux fleet from your phone](nostr-control-gateway.md)
 - [PRD-004 — External agent messaging](../reference/prd/PRD-004-external-agent-messaging.md)
 - [ADR-009 — Embedded Nostr relay and pod-inbox bridge](../reference/adr/ADR-009-embedded-nostr-relay.md)
 - [DDD-003 — Sovereign messaging domain](../reference/ddd/DDD-003-sovereign-messaging-domain.md)

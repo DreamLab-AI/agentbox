@@ -1316,6 +1316,24 @@ priority=232
 stdout_logfile=/var/log/ruvector-aggregate-sweep.log
 stderr_logfile=/var/log/ruvector-aggregate-sweep.error.log
 
+; Nostr control gateway — inbound half of the session mirror. AUTHs to the cloud
+; relay as the operator, receives gift-wrapped command DMs from the operator's
+; phone (Amethyst), executes them against the tmux fleet and DMs replies back.
+; The operator secret (AGENTBOX_PRIVKEY_HEX) is injected into the process
+; environment by the entrypoint launcher and inherited here — never written into
+; the generated supervisor text. Off switch: AGENTBOX_NOSTR_GATEWAY=0.
+[program:nostr-gateway]
+command=${pkgs.nodejs_22}/bin/node /opt/agentbox/config/nostr-gateway/gateway.cjs
+directory=/opt/agentbox/config/nostr-gateway
+user=devuser
+environment=HOME="/home/devuser"
+autostart=true
+autorestart=true
+startsecs=3
+priority=234
+stdout_logfile=/var/log/nostr-gateway.log
+stderr_logfile=/var/log/nostr-gateway.error.log
+
 [program:ruvector-pattern-distill]
 command=${pkgs.nodejs_22}/bin/node /opt/agentbox/scripts/ruvector-pattern-distill.mjs --loop
 user=devuser

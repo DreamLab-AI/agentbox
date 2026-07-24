@@ -826,6 +826,24 @@ else { console.log('  [mirror] nostr-live-mirror hooks already registered'); }
 MIRRORJS
 fi
 
+# ── Fleet control plane: register the SessionStart hook (tab naming + gateway) ──
+# config/hooks/fleet-session-start.sh names each Claude tmux window by its project
+# and ensures the Nostr control gateway is running (belt-and-braces to the
+# supervised [program:nostr-gateway]). Idempotent, fail-open. Off: AGENTBOX_NOSTR_GATEWAY=0.
+_FLEET_HOOK="/opt/agentbox/config/hooks/fleet-session-start.sh"
+if [ -f "$_FLEET_HOOK" ] && command -v node >/dev/null 2>&1; then
+  FLEET_HOOK="$_FLEET_HOOK" SETTINGS="$_CLAUDE_SETTINGS" node <<'FLEETJS' || true
+const fs = require('fs');
+const f = process.env.SETTINGS, cmd = `bash ${process.env.FLEET_HOOK}`;
+let s = {}; try { s = JSON.parse(fs.readFileSync(f, 'utf8')); } catch {}
+s.hooks = s.hooks || {};
+s.hooks.SessionStart = s.hooks.SessionStart || [];
+const has = s.hooks.SessionStart.some((g) => (g.hooks || []).some((h) => String(h.command || '').includes('fleet-session-start.sh')));
+if (!has) { s.hooks.SessionStart.push({ hooks: [{ type: 'command', command: `${cmd} || true`, timeout: 8000 }] }); fs.writeFileSync(f, JSON.stringify(s, null, 2)); console.log('  [fleet] registered fleet-session-start hook in settings.json'); }
+else { console.log('  [fleet] fleet-session-start hook already registered'); }
+FLEETJS
+fi
+
 # ── PRD-018 / ADR-036 D6 (D1): register the learning-loop trajectory hook ──
 # config/hooks/trajectory-recorder.cjs records (action, outcome, duration) tuples
 # into the trajectory tables. Registered on Stop + SubagentStop: it grades from the

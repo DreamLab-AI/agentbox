@@ -93,7 +93,7 @@
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, realpathSync } from 'node:fs';
 import http from 'node:http';
 import crypto from 'node:crypto';
 
@@ -661,7 +661,10 @@ async function main() {
 }
 
 const isDirect = (() => {
-  try { return process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url); }
+  // realpath both sides: /opt/agentbox/scripts is a symlink into the Nix store,
+  // and Node dereferences the main module (no --preserve-symlinks-main), so a
+  // lexical compare of argv[1] vs import.meta.url never matches under supervisord.
+  try { return process.argv[1] && realpathSync(resolve(process.argv[1])) === realpathSync(fileURLToPath(import.meta.url)); }
   catch { return false; }
 })();
 
