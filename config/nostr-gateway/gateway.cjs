@@ -18,17 +18,30 @@
  *      else is dropped. This is the RCE gate: injecting into a tmux Claude tab
  *      means "an agent will now do what the message says", so nothing but the
  *      operator's own key may drive it.
- *   3. Freshness — |now - rumor.created_at| <= FRESH_WINDOW → no replay of an
- *      old command.
+ *   3. Arm-after-EOSE — only wraps arriving after the first EOSE run, so a
+ *      cold boot never replays the (timestamp-randomized) gift-wrap backlog.
  *   4. De-dup by event id → a re-broadcast cannot re-fire.
  *   5. Sigil — only messages starting with '/' are commands; ordinary thread
- *      text is ignored.
- *   6. Two-step confirm — any WRITE into a worker tab (/tab, /say) is staged
- *      and only executes on a following /confirm.
+ *      text (and our own replies, which never start with '/') are ignored.
  *
- * Token model: everything deterministic (auth/unwrap/dispatch/tmux) costs ZERO
- * model tokens. Only /report spends a single bounded headless Haiku call to
- * summarise pane captures. Idle cost is a WebSocket, nothing more.
+ * Control model: the operator talks naturally, prefixed with '/'. Read verbs
+ * (/tabs, /report, /peek) are fast deterministic capture-pane reads. Anything
+ * else is a free-form INSTRUCTION: a bounded Sonnet C2 call reads the fleet
+ * (tab list + live state + scrollback) and decides which tab it is for, then
+ * sends it — asking a clarifying question only when it is genuinely unsure or
+ * the target is mid-dialog. No /confirm gate: instructions execute immediately
+ * and the reply echoes exactly what was typed where, so the operator course-
+ * corrects after the fact instead of pre-confirming every line.
+ *
+ * Token model: /tabs and /peek are ZERO-token. /report and instruction-routing
+ * each spend ONE bounded headless Sonnet call (Sonnet minimum — Haiku misreads
+ * noisy pane scrollback). Idle cost is a WebSocket, nothing more.
+ *
+ * Observability model: reporting is READ-ONLY by construction — /tabs, /peek and
+ * /report only ever capture-pane, never send keys, so a busy agent can be
+ * interrogated without injecting into its prompt. Only an explicit instruction
+ * (routed, or /tab // /say) ever sends keys, and the reply always shows the
+ * target's pre-send state badge.
  *
  * Reuses the mirror's child-key derivation and the vendored nostr-tools/ws in
  * management-api/node_modules — no new dependencies. Fail-open throughout: any
@@ -48,12 +61,12 @@ const KIND_DM_RUMOR = 14;
 const KIND_AUTH = 22242;   // NIP-42
 const MAX_BODY = 3500;
 const WRAP_LOOKBACK = 50 * 3600; // NIP-59 randomizes gift-wrap timestamps up to ~48h into the PAST; query wider or the relay filters them out
-const CONFIRM_TTL = 300;   // staged write expires after 5 min
+const CONFIRM_TTL = 300;   // an unresolved clarification / pending route expires after 5 min
 const HOME = os.homedir();
 const INBOX = path.join(HOME, '.claude', 'nostr-inbox');
 const LOCK = path.join(INBOX, 'gateway.lock');
 const AUDIT = path.join(INBOX, 'commands.jsonl');
-const MODEL = process.env.NOSTR_GATEWAY_MODEL || 'claude-haiku-4-5-20251001';
+const MODEL = process.env.NOSTR_GATEWAY_MODEL || 'claude-sonnet-5'; // C2 reporter: Sonnet minimum (operator requirement — Haiku misreads pane state)
 const CLAUDE_BIN = process.env.CLAUDE_BIN || 'claude';
 
 function log(...a) { try { process.stdout.write(`[gw ${new Date().toISOString()}] ${a.join(' ')}\n`); } catch { /* noop */ } }
@@ -108,19 +121,26 @@ for (const s of ['SIGINT', 'SIGTERM']) process.on(s, () => process.exit(0));
 // ── state ───────────────────────────────────────────────────────────────────
 const seen = new Set(); const seenOrder = []; // FIFO-evicted dedupe of wrap ids
 function markSeen(id) { if (!id || seen.has(id)) return false; seen.add(id); seenOrder.push(id); if (seenOrder.length > 20000) seen.delete(seenOrder.shift()); return true; }
-let pending = null;      // staged write action
+let pendingRoute = null; // { instr, at } — an instruction the C2 asked the operator to clarify
 let armed = false;       // true after the first EOSE — gates out the initial history batch
 let coldBoot = true;     // cleared after the first arm; reconnects then stay armed (seen-set dedupes)
 
 const HELP = [
-  '🛰 agentbox control gateway',
-  '/tabs            list the tmux fleet',
-  '/report          Haiku summary of what each Claude tab is doing',
-  '/tab <n> <text>  send an instruction to tab n (needs /confirm)',
-  '/say <text>      broadcast to all Claude tabs (needs /confirm)',
-  '/confirm         execute the staged write',
-  '/cancel          drop the staged write',
-  '/help            this message',
+  '🛰 agentbox C2 — prefix everything with /, then just talk',
+  '',
+  'ASK (read-only · never disturbs a tab):',
+  '  /tabs            list the fleet (● busy · ⏸ waiting · ○ idle)',
+  '  /report          one-line Sonnet summary per Claude tab',
+  '  /report <n>      deep read-only report on tab n',
+  '  /report <quest.> answer a question from the panes',
+  '  /peek <n> [k]    raw last k lines of tab n (zero tokens)',
+  '',
+  'INSTRUCT (C2 routes it, executes immediately, echoes what it sent):',
+  '  /<instruction>   e.g. "/run the tests on the website tab" — the agent',
+  '                   picks the tab and sends it, asking only if unsure',
+  '  /tab <n> <text>  force a specific tab (skips routing)',
+  '  /say <text>      broadcast to every Claude tab',
+  '  /help            this message',
 ].join('\n');
 
 // ── shell helpers ───────────────────────────────────────────────────────────
@@ -128,15 +148,34 @@ function sh(cmd, args) { try { return execFileSync(cmd, args, { encoding: 'utf8'
 function stripAnsi(s) { return String(s).replace(/\[[0-9;?]*[a-zA-Z]/g, ''); }
 function sanitize(s) { return String(s || '').replace(/[\r\n\t]+/g, ' ').replace(/[`$\\]/g, '').trim().slice(0, 500); }
 
-function listTabs() {
-  const out = sh('tmux', ['list-windows', '-a', '-F', '#{window_index}: #{window_name} [#{pane_current_command}]']);
-  return '🖥 tabs\n' + (out.trim() || '(none)');
-}
-function claudeWindows() {
+function allWindows() {
   const out = sh('tmux', ['list-windows', '-a', '-F', '#{window_index}\t#{window_name}\t#{pane_current_command}']);
-  return out.trim().split('\n').filter(Boolean).map((l) => l.split('\t')).filter((p) => /claude|node/i.test(p[2] || ''));
+  return out.trim().split('\n').filter(Boolean).map((l) => l.split('\t'));
 }
-function capture(idx) { return stripAnsi(sh('tmux', ['capture-pane', '-p', '-t', idx, '-S', '-45'])).split('\n').slice(-40).join('\n'); }
+function claudeWindows() { return allWindows().filter((p) => /claude|node/i.test(p[2] || '')); }
+function capture(idx, scrollback = 45, keep = 40) {
+  return stripAnsi(sh('tmux', ['capture-pane', '-p', '-t', String(idx), '-S', `-${scrollback}`])).split('\n').slice(-keep).join('\n');
+}
+
+// Deterministic pane-state heuristic (zero tokens): Claude Code shows
+// "esc to interrupt" in its footer while streaming/working, and permission
+// dialogs render "Do you want …" with numbered options. Everything else is
+// treated as idle-at-prompt. Advisory only — it gates nothing, it informs.
+function paneState(idx) {
+  const tail = capture(idx, 20, 15);
+  if (/esc to interrupt|Interrupting/i.test(tail)) return 'busy';
+  if (/Do you want|❯\s*1\.|\(y\/n\)|waiting for (your|approval)/i.test(tail)) return 'waiting';
+  return 'idle';
+}
+const STATE_BADGE = { busy: '● busy', waiting: '⏸ waiting on prompt', idle: '○ idle' };
+
+function listTabs() {
+  const lines = allWindows().map(([idx, name, cmd]) => {
+    const base = `${idx}: ${name} [${cmd}]`;
+    return /claude|node/i.test(cmd || '') ? `${base} ${STATE_BADGE[paneState(idx)]}` : base;
+  });
+  return '🖥 tabs\n' + (lines.join('\n') || '(none)');
+}
 function sendKeys(idx, text) { sh('tmux', ['send-keys', '-t', idx, '-l', text]); sh('tmux', ['send-keys', '-t', idx, 'Enter']); }
 
 // ── crypto: reply on the live authed socket ─────────────────────────────────
@@ -157,47 +196,142 @@ function dispatch(ws, text) {
   try {
     if (verb === '' || verb === 'help') return reply(ws, HELP);
     if (verb === 'tabs') return reply(ws, listTabs());
-    if (verb === 'report') return doReport(ws);
+    if (verb === 'report') return doReport(ws, after.trim());
+    if (verb === 'peek') {
+      const [idx, kRaw] = after.split(/\s+/);
+      if (!/^\d+$/.test(idx || '')) return reply(ws, 'usage: /peek <n> [lines]');
+      const k = Math.min(Math.max(parseInt(kRaw, 10) || 20, 5), 60);
+      const tail = capture(idx, k + 5, k).trim() || '(pane empty)';
+      return reply(ws, `👁 tab ${idx} · last ${k} lines · ${STATE_BADGE[paneState(idx)]}\n${tail}`.slice(0, MAX_BODY));
+    }
     if (verb === 'tab') {
+      // Explicit override: operator names the tab, so skip routing and send now.
       const idx = (after.split(/\s+/)[0] || '');
-      const instr = sanitize(after.replace(/^\S+\s*/, ''));
-      if (!/^\d+$/.test(idx) || !instr) return reply(ws, 'usage: /tab <n> <instruction>');
-      pending = { type: 'tab', idx, text: instr, at: nowSec() };
-      return reply(ws, `⚠ staged → tab ${idx}:\n"${instr}"\n\n/confirm to send · /cancel to drop`);
+      const instr = after.replace(/^\S+\s*/, '');
+      if (!/^\d+$/.test(idx) || !instr.trim()) return reply(ws, 'usage: /tab <n> <instruction>');
+      return doSend(ws, idx, instr, 'explicit /tab');
     }
     if (verb === 'say') {
+      // Broadcast to every Claude tab, immediately (no confirm).
       const instr = sanitize(after);
       if (!instr) return reply(ws, 'usage: /say <text>');
-      const idxs = claudeWindows().map((p) => p[0]);
-      pending = { type: 'say', idxs, text: instr, at: nowSec() };
-      return reply(ws, `⚠ staged broadcast → tabs ${idxs.join(',')}:\n"${instr}"\n\n/confirm · /cancel`);
+      const wins = claudeWindows();
+      if (!wins.length) return reply(ws, 'no active Claude tabs');
+      wins.forEach((p) => sendKeys(p[0], instr));
+      const states = wins.map((p) => `  tab ${p[0]} ${STATE_BADGE[paneState(p[0])]}`).join('\n');
+      return reply(ws, `✔ broadcast → tabs ${wins.map((p) => p[0]).join(',')}: "${instr}"\n${states}`);
     }
-    if (verb === 'confirm') return doConfirm(ws);
-    if (verb === 'cancel') { pending = null; return reply(ws, '✖ cancelled'); }
-    return reply(ws, `? unknown: /${verb}\n\n${HELP}`);
+    // Anything else after '/' is a free-form instruction → the C2 agent routes it.
+    return routeInstruction(ws, body.trim());
   } catch (e) { log('dispatch error', e.message); reply(ws, '⚠ ' + e.message.slice(0, 120)); }
 }
 
-function doConfirm(ws) {
-  if (!pending) return reply(ws, 'nothing staged');
-  if (nowSec() - pending.at > CONFIRM_TTL) { pending = null; return reply(ws, 'staged action expired — re-issue it'); }
-  const p = pending; pending = null;
-  if (p.type === 'tab') { sendKeys(p.idx, p.text); return reply(ws, `✔ sent → tab ${p.idx}`); }
-  if (p.type === 'say') { p.idxs.forEach((i) => sendKeys(i, p.text)); return reply(ws, `✔ broadcast → tabs ${p.idxs.join(',')}`); }
+// Send keys to one tab immediately and echo exactly what was typed + the tab's
+// pre-send state, so the operator can course-correct with a follow-up (this
+// transparency-after is what replaces the old /confirm gate). A tab that was
+// ⏸ waiting on a permission dialog is flagged loudly — the routed path avoids
+// those by clarifying first; an explicit /tab respects the operator's choice.
+function doSend(ws, idx, msg, why) {
+  const win = allWindows().find((w) => w[0] === String(idx));
+  if (!win) return reply(ws, `no tab ${idx}`);
+  const clean = sanitize(msg);
+  if (!clean) return reply(ws, 'nothing to send');
+  const st = paneState(idx);
+  sendKeys(idx, clean);
+  const flag = st === 'waiting' ? `🛑 tab was ⏸ WAITING on a dialog — text may have answered it; /peek ${idx} to check\n` : '';
+  return reply(ws, `${flag}✔ tab ${idx} ${win[1]} ← "${clean}"  ${STATE_BADGE[st]}${why ? '\n↳ ' + String(why).slice(0, 120) : ''}`);
 }
 
-function doReport(ws) {
+// Pull the first {...} object out of a headless model reply (it may wrap the
+// JSON in prose or fences despite instructions).
+function parseDecision(stdout) {
+  const m = String(stdout).match(/\{[\s\S]*\}/);
+  if (!m) return null;
+  try { return JSON.parse(m[0]); } catch { return null; }
+}
+
+// Free-form instruction → one bounded Sonnet call decides the target tab from
+// live fleet state and either sends it, asks a clarifying question, or (if the
+// message was really a question) hands off to the read-only report path.
+function routeInstruction(ws, instr) {
+  if (!instr) return reply(ws, HELP);
   const wins = claudeWindows();
-  if (!wins.length) return reply(ws, '📋 no active Claude tabs');
-  const blocks = wins.map(([idx, name]) => `### tab ${idx} (${name})\n${capture(idx)}`).join('\n\n');
-  const prompt = 'You are a terse ops dispatcher. For each tmux tab below, output exactly ONE line: '
-    + '"tab <n> <project>: <what it is doing / BLOCKED on X / idle>". No preamble, no markdown, max 14 words per line.\n\n' + blocks;
-  reply(ws, '⏳ compiling report…');
+  if (!wins.length) return reply(ws, '📋 no active Claude tabs to instruct');
+  const blocks = wins.map(([idx, name]) => `### tab ${idx} — ${name} [${STATE_BADGE[paneState(idx)]}]\n${capture(idx, 40, 30)}`).join('\n\n');
+  const prior = pendingRoute && (nowSec() - pendingRoute.at < CONFIRM_TTL) ? pendingRoute.instr : null;
+  const prompt = [
+    'You are the command-and-control dispatcher for a tmux fleet of Claude Code agents,',
+    "relaying for an operator on their phone. Decide what to do with the operator's message.",
+    'Return ONLY one JSON object — no prose, no markdown fences — in one of these shapes:',
+    '{"action":"send","tab":<index>,"message":"<exact instruction to type into that tab>","why":"<short reason>"}',
+    "  when one tab clearly owns this instruction. Put the operator's intent, faithfully, in \"message\".",
+    '{"action":"clarify","ask":"<one short question naming the candidate tabs>"}',
+    '  when it is genuinely ambiguous, no tab fits, or the best-match tab is ⏸ WAITING on a',
+    '  permission dialog (typing would answer the dialog — never send blindly, ask first).',
+    '{"action":"report","question":"<the operator\'s question>"}',
+    '  when the message is really a QUESTION about the fleet, not an instruction to run.',
+    prior ? `\nThe operator has an UNRESOLVED earlier instruction: "${prior}". Their new message may be the clarification — if so, resolve it and "send".` : '',
+    '\nOPERATOR MESSAGE: ' + instr,
+    '\nFLEET (one block per Claude tab: index, name, live state badge, recent scrollback):\n' + blocks,
+  ].filter(Boolean).join('\n');
+  reply(ws, '⏳ routing…');
   execFile(CLAUDE_BIN, ['-p', '--model', MODEL, prompt],
-    { timeout: 60000, maxBuffer: 1 << 20, env: { ...process.env, AGENTBOX_LIVE_MIRROR: '0', AGENTBOX_NOSTR_GATEWAY: '0' } },
+    { timeout: 90000, maxBuffer: 1 << 20, env: { ...process.env, AGENTBOX_LIVE_MIRROR: '0', AGENTBOX_NOSTR_GATEWAY: '0' } },
+    (err, stdout) => {
+      if (err) { log('route err', err.message); return reply(ws, '⚠ routing failed: ' + err.message.slice(0, 120)); }
+      const d = parseDecision(stdout);
+      if (!d || !d.action) { pendingRoute = { instr, at: nowSec() }; return reply(ws, "🤔 couldn't decide — rephrase, or force it with /tab <n> <text>"); }
+      if (d.action === 'report') { pendingRoute = null; return doReport(ws, String(d.question || instr).trim()); }
+      if (d.action === 'clarify') { pendingRoute = { instr, at: nowSec() }; return reply(ws, '❓ ' + String(d.ask || 'which tab?').slice(0, 300) + '\n(reply /<tab> or /<more detail>)'); }
+      if (d.action === 'send') {
+        const idx = String(d.tab);
+        if (!/^\d+$/.test(idx) || !wins.some((w) => w[0] === idx)) { pendingRoute = { instr, at: nowSec() }; return reply(ws, `🤔 tab ${idx} isn't in the fleet — reply /<tab> or /tab <n> <text>`); }
+        pendingRoute = null;
+        return doSend(ws, idx, d.message || instr, d.why || 'routed');
+      }
+      pendingRoute = { instr, at: nowSec() };
+      return reply(ws, '🤔 unclear — reply /<tab> or /tab <n> <text>');
+    });
+}
+
+// /report            → fleet mode: one Sonnet line per Claude tab.
+// /report <n>        → deep mode: ~220 lines of one tab's scrollback, summarised.
+// /report <question> → answer the operator's question from fleet pane captures
+//                      (the audit log shows this is how it gets used from the
+//                      phone: "/report what are you working on").
+// All are pure capture-pane reads — reporting NEVER sends keys to a tab, so
+// the operator can interrogate a busy agent without disturbing it.
+function doReport(ws, arg) {
+  const single = /^\d+$/.test(arg || '') ? arg : null;
+  const question = !single && (arg || '').trim() ? (arg || '').trim().slice(0, 300) : null;
+  let prompt;
+  if (single) {
+    const scroll = capture(single, 250, 220).trim();
+    if (!scroll) return reply(ws, `📋 tab ${single}: pane empty or not found`);
+    prompt = 'You are an ops dispatcher reporting to the operator\'s phone. Below is the recent '
+      + 'terminal scrollback of ONE Claude Code agent. Report in at most 8 short plain-text lines: '
+      + '(1) what task it is working on, (2) the latest concrete thing it did or output, '
+      + '(3) its state — WORKING / WAITING on a question or permission dialog (quote the question) / '
+      + 'IDLE / ERRORED (quote the error), (4) anything the operator should act on. '
+      + 'No preamble, no markdown.\n\n### tab ' + single + ` (${STATE_BADGE[paneState(single)]})\n` + scroll;
+  } else {
+    const wins = claudeWindows();
+    if (!wins.length) return reply(ws, '📋 no active Claude tabs');
+    const blocks = wins.map(([idx, name]) => `### tab ${idx} (${name}) [${STATE_BADGE[paneState(idx)]}]\n${capture(idx, 60, 50)}`).join('\n\n');
+    prompt = question
+      ? 'You are an ops dispatcher reporting to the operator\'s phone. Answer the operator\'s question '
+        + 'using ONLY the tmux pane captures below (one per Claude agent tab). Cite tabs by number. '
+        + 'Plain text, max 10 short lines, no preamble, no markdown.\n\nQUESTION: ' + question + '\n\n' + blocks
+      : 'You are a terse ops dispatcher. For each tmux tab below, output exactly ONE line: '
+        + '"tab <n> <project>: <what it is doing / WAITING on X / idle>". The bracketed state badge is a '
+        + 'deterministic hint — trust the scrollback over it if they disagree. No preamble, no markdown, max 16 words per line.\n\n' + blocks;
+  }
+  reply(ws, single ? `⏳ compiling deep report on tab ${single}…` : question ? '⏳ checking the fleet…' : '⏳ compiling fleet report…');
+  execFile(CLAUDE_BIN, ['-p', '--model', MODEL, prompt],
+    { timeout: 90000, maxBuffer: 1 << 20, env: { ...process.env, AGENTBOX_LIVE_MIRROR: '0', AGENTBOX_NOSTR_GATEWAY: '0' } },
     (err, stdout) => {
       if (err) { log('report err', err.message); return reply(ws, '⚠ report failed: ' + err.message.slice(0, 120)); }
-      reply(ws, '📋 report\n' + String(stdout).trim().slice(0, MAX_BODY));
+      reply(ws, `📋 report${single ? ' · tab ' + single : ''}\n` + String(stdout).trim().slice(0, MAX_BODY));
     });
 }
 

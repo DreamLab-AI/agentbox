@@ -5,30 +5,38 @@ your phone as gift-wrapped DMs. The **control gateway** is the inbound half: it
 lets you send **commands back in** from Amethyst (or any Nostr client) and have
 them executed against the agentbox tmux fleet, with replies DM'd to your phone.
 
-Type `/tabs` in your mirror thread → get the list of running agents back. Type
-`/report` → get a one-line Haiku summary of what every Claude tab is doing. Type
-`/tab 3 run the tests` → (after `/confirm`) that instruction is typed into tab 3.
+Prefix everything with `/`, then just talk. `/tabs` lists the running agents.
+`/report` gives a one-line Sonnet summary of what every Claude tab is doing.
+`/run the tests on the website tab` — no tab number needed — is **routed by a
+Sonnet command-and-control agent** that reads the fleet, picks the right tab, and
+types it in immediately; it only asks you a question if it genuinely can't tell.
 
 ## How it works
 
 ```
  Amethyst (you, signing as the operator key)
-   │  /report          ← a DM in your mirror thread
+   │  /run the tests on the website   ← a DM in your mirror thread
    ▼
  dreamlab cloud relay (NIP-42 AUTH-gated)
    │  kind-1059 gift wrap, #p = operator
    ▼
- ┌─ nostr-gateway daemon (supervised) ──────────────────────┐
- │  AUTHs as operator · unwraps · authorises · dispatches   │
- │   • deterministic commands (/tabs, /tab, /say) → tmux    │  ZERO model tokens
- │   • /report → one bounded headless Haiku call            │  only /report spends
- │  replies via gift wrap → your phone                      │
- └──────────────────────────────────────────────────────────┘
+ ┌─ nostr-gateway daemon (supervised) ─────────────────────────────┐
+ │  AUTHs as operator · unwraps · authorises                       │
+ │   • reads  (/tabs, /peek)        → capture-pane   ZERO tokens    │
+ │   • /report                      → one Sonnet call (read-only)   │
+ │   • free-form instruction        → Sonnet C2 routes to a tab,    │
+ │                                    sends it, or asks if unsure   │
+ │   • /tab <n>, /say               → send immediately (no confirm) │
+ │  replies via gift wrap → your phone (echoes what it sent where)  │
+ └─────────────────────────────────────────────────────────────────┘
 ```
 
 The gateway is a Node daemon (`config/nostr-gateway/gateway.cjs`) that reuses the
 mirror's key derivation and the vendored `nostr-tools`. It runs as the supervised
 `[program:nostr-gateway]` and is also self-healed by the `SessionStart` hook.
+Reporting and instruction-routing each spend one bounded headless **Sonnet** call
+(Sonnet minimum — Haiku misreads noisy pane scrollback); `/tabs` and `/peek` are
+zero-token.
 
 ## Setup
 
@@ -42,19 +50,33 @@ Add the relay as a **DM / private-messaging relay** in Amethyst (the NIP-17
 
 ## Commands
 
+Everything is prefixed with `/`. Reads never touch a tab; instructions are routed
+by the C2 agent and execute immediately.
+
+**Ask** — read-only, never disturbs a running agent:
+
 | Command | Effect | Cost |
 |---------|--------|------|
+| `/tabs` | list the fleet with live state (● busy · ⏸ waiting · ○ idle) | none |
+| `/report` | one-line Sonnet summary of each Claude tab | one Sonnet call |
+| `/report <n>` | deep read-only report on tab _n_ | one Sonnet call |
+| `/report <question>` | answer a question from the panes | one Sonnet call |
+| `/peek <n> [k]` | raw last _k_ lines of tab _n_ (default 20) | none |
 | `/help` | list commands | none |
-| `/tabs` | list the tmux fleet (index · name · running command) | none |
-| `/report` | one-line summary of each Claude tab (Haiku) | one bounded Haiku call |
-| `/tab <n> <text>` | stage an instruction for tab _n_ | none |
-| `/say <text>` | stage a broadcast to all Claude tabs | none |
-| `/confirm` | execute the staged write | none |
-| `/cancel` | drop the staged write | none |
 
-Any **write** into a worker tab (`/tab`, `/say`) is staged and only runs after a
-following `/confirm` — a two-step guard so a fat-fingered message can't fire an
-instruction. Read-only commands (`/tabs`, `/report`) run immediately.
+**Instruct** — the C2 agent routes it and sends it, echoing what it did:
+
+| Command | Effect | Cost |
+|---------|--------|------|
+| `/<instruction>` | free-form — the Sonnet C2 agent picks the tab and sends it, asking only if unsure | one Sonnet call |
+| `/tab <n> <text>` | force a specific tab (skips routing) | none |
+| `/say <text>` | broadcast to every Claude tab | none |
+
+There is **no `/confirm` gate**. An instruction runs immediately and the reply
+echoes exactly what was typed into which tab, with that tab's pre-send state, so
+you course-correct with a follow-up rather than pre-approving every line. The
+router will **not** blind-send into a tab that is ⏸ waiting on a permission dialog
+— it asks first, because typed text there would answer the dialog.
 
 ## Security
 
@@ -66,8 +88,13 @@ Every inbound wrap must pass, in order:
    other sender (e.g. website signup DMs, which are also operator-addressed) is
    dropped. This is the RCE gate: a command types into a live Claude tab, so only
    your own key may issue one.
-3. **Sigil** — only messages starting with `/` are commands.
+3. **Sigil** — only messages starting with `/` are commands. This is also what
+   stops the daemon ingesting its **own** replies (they never start with `/`).
 4. **Replay guard** — see the timestamp note below.
+
+Instead of a pre-execution `/confirm`, writes are guarded by **transparency-after
+and reversibility**: every send echoes the exact text and target tab, and the C2
+router refuses to blind-send into a tab mid-permission-dialog (it asks first).
 
 The daemon fails open: any missing precondition (no operator key, deps absent)
 exits 0, so it is never a hard dependency of the box. Off switch:
@@ -95,7 +122,7 @@ gift-wrap delivery mysteriously stop working.
 | `AGENTBOX_GATEWAY_IDENTITY` | `operator` | `operator` = self-DM (recommended); `gateway` = a dedicated whitelisted bot key you DM as a contact |
 | `AGENTBOX_GATEWAY_KEY_TAG` | `agentbox-gateway-v1` | HMAC tag for the derived key in `gateway` mode |
 | `AGENTBOX_GATEWAY_REPLY_TO` | operator pubkey | where replies are sent |
-| `NOSTR_GATEWAY_MODEL` | `claude-haiku-4-5-20251001` | model for `/report` |
+| `NOSTR_GATEWAY_MODEL` | `claude-sonnet-5` | C2 model for `/report` and instruction-routing (Sonnet minimum — Haiku misreads pane state) |
 | `NOSTR_MIRROR_RELAY` | dreamlab cloud relay | relay override (shared with the mirror) |
 
 ### Dedicated-identity mode
