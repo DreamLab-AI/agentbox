@@ -239,6 +239,10 @@ function dispatch(ws, text) {
       // /spawn <dir> [agent] [instruction] — agent word optional, defaults dsp.
       const parts = after.split(/\s+/);
       const dir = parts[0] || '';
+      // Operators use /spawn conversationally ("/spawn report on thermals…").
+      // If the first word isn't a real workspace dir, this wasn't the strict
+      // form — give the whole message to the C2 router instead of erroring.
+      if (dir && resolveWorkspaceDir(dir).err) return routeInstruction(ws, body.trim());
       let rest = after.replace(/^\S+\s*/, '');
       let agentName = 'dsp';
       const maybe = (rest.split(/\s+/)[0] || '').toLowerCase();
