@@ -50,7 +50,11 @@
  * /report only ever capture-pane, never send keys, so a busy agent can be
  * interrogated without injecting into its prompt. Only an explicit instruction
  * (routed, or /tab // /say) ever sends keys, and the reply always shows the
- * target's pre-send state badge.
+ * target's pre-send state badge. Sends are no longer fire-and-forget: each
+ * instructed tab gets a watcher that polls its pane until the agent settles
+ * (idle again, or stopped on a dialog), then DMs ONE automatic deep report —
+ * the result flows back without the operator having to /report. Broadcasts
+ * (/say) are exempt — N simultaneous reports would drown the thread.
  *
  * Reuses the mirror's child-key derivation and the vendored nostr-tools/ws in
  * management-api/node_modules — no new dependencies. Fail-open throughout: any
@@ -146,7 +150,8 @@ const HELP = [
   '',
   'INSTRUCT (C2 routes it, executes immediately, echoes what it sent):',
   '  /<instruction>   e.g. "/run the tests on the website tab" — the agent',
-  '                   picks the tab and sends it, asking only if unsure',
+  '                   picks the tab and sends it, asking only if unsure;',
+  '                   a report DMs back automatically when the tab settles',
   '  /tab <n> <text>  force a specific tab (skips routing)',
   '  /say <text>      broadcast to every Claude tab',
   '',
@@ -271,8 +276,39 @@ function doSend(ws, idx, msg, why) {
   if (!clean) return reply(ws, 'nothing to send');
   const st = paneState(idx);
   sendKeys(idx, clean);
+  watchTab(idx);
   const flag = st === 'waiting' ? `🛑 tab was ⏸ WAITING on a dialog — text may have answered it; /peek ${idx} to check\n` : '';
   return reply(ws, `${flag}✔ tab ${idx} ${win[1]} ← "${clean}"  ${STATE_BADGE[st]}${why ? '\n↳ ' + String(why).slice(0, 120) : ''}`);
+}
+
+// ── auto-report: close the loop on fire-and-forget sends ────────────────────
+// After an instruction lands in a tab, poll that pane until the agent settles
+// — back to idle, or stopped on a permission dialog — then DM ONE automatic
+// deep report. One watcher per tab; a newer instruction replaces the watch.
+// Phases: settling (≤90s for the agent to visibly start; a fast answer that
+// never trips the busy heuristic still reports at the 90s mark) → running →
+// settled. A 45-min cap ends marathon watches with a still-running report.
+// Replies use the module-global `ws` at fire time, so a socket reconnect
+// between send and settle cannot strand the report on a dead connection.
+const watchers = new Map(); // tab idx → interval handle
+function watchTab(idx) {
+  const key = String(idx);
+  if (watchers.has(key)) clearInterval(watchers.get(key));
+  const started = nowSec();
+  let sawBusy = false;
+  const iv = setInterval(() => {
+    const stop = () => { clearInterval(iv); watchers.delete(key); };
+    let st; try { st = paneState(key); } catch { st = 'idle'; }
+    if (st === 'busy') {
+      sawBusy = true;
+      if (nowSec() - started > 2700) { stop(); doReport(ws, key, 'still running after 45 min — watch ended'); }
+      return;
+    }
+    if (!sawBusy && nowSec() - started < 90) return; // agent hasn't started yet
+    stop();
+    doReport(ws, key, st === 'waiting' ? '⏸ stopped on a dialog' : 'settled');
+  }, 5000);
+  watchers.set(key, iv);
 }
 
 // ── lifecycle: spawn / exit agent sessions ──────────────────────────────────
@@ -326,7 +362,7 @@ function doSpawn(ws, dirSpec, agentName, instr, why) {
     polls += 1;
     const cmd = (allWindows().find((w) => w[0] === idx) || [])[2] || '';
     if (polls >= 2 && cmd && !/fish|bash|sh$/i.test(cmd) && paneState(idx) === 'idle') {
-      clearInterval(timer); sendKeys(idx, follow); reply(ws, `✔ tab ${idx} ← "${follow}"`);
+      clearInterval(timer); sendKeys(idx, follow); watchTab(idx); reply(ws, `✔ tab ${idx} ← "${follow}"`);
     } else if (polls >= 20) {
       clearInterval(timer); reply(ws, `⚠ tab ${idx}: agent didn't reach a prompt in 60s — /peek ${idx}, then /tab ${idx} <text>`);
     }
@@ -420,7 +456,10 @@ function routeInstruction(ws, instr) {
 //                      phone: "/report what are you working on").
 // All are pure capture-pane reads — reporting NEVER sends keys to a tab, so
 // the operator can interrogate a busy agent without disturbing it.
-function doReport(ws, arg) {
+// The optional `auto` arg marks a watcher-fired report: the interim "⏳" is
+// skipped (the operator didn't just ask for anything) and the result leads
+// with 🔔 + why the watch ended, so unsolicited DMs are self-explaining.
+function doReport(ws, arg, auto) {
   const single = /^\d+$/.test(arg || '') ? arg : null;
   const question = !single && (arg || '').trim() ? (arg || '').trim().slice(0, 300) : null;
   let prompt;
@@ -445,12 +484,13 @@ function doReport(ws, arg) {
         + '"tab <n> <project>: <what it is doing / WAITING on X / idle>". The bracketed state badge is a '
         + 'deterministic hint — trust the scrollback over it if they disagree. No preamble, no markdown, max 16 words per line.\n\n' + blocks;
   }
-  reply(ws, single ? `⏳ compiling deep report on tab ${single}…` : question ? '⏳ checking the fleet…' : '⏳ compiling fleet report…');
+  if (!auto) reply(ws, single ? `⏳ compiling deep report on tab ${single}…` : question ? '⏳ checking the fleet…' : '⏳ compiling fleet report…');
   execFile(CLAUDE_BIN, ['-p', '--model', MODEL, prompt],
     { timeout: 90000, maxBuffer: 1 << 20, env: { ...process.env, AGENTBOX_LIVE_MIRROR: '0', AGENTBOX_NOSTR_GATEWAY: '0' } },
     (err, stdout) => {
       if (err) { log('report err', err.message); return reply(ws, '⚠ report failed: ' + err.message.slice(0, 120)); }
-      reply(ws, `📋 report${single ? ' · tab ' + single : ''}\n` + String(stdout).trim().slice(0, MAX_BODY));
+      const head = auto ? `🔔 tab ${single} ${auto} — auto-report` : `📋 report${single ? ' · tab ' + single : ''}`;
+      reply(ws, head + '\n' + String(stdout).trim().slice(0, MAX_BODY));
     });
 }
 
