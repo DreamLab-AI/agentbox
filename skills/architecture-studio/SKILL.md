@@ -1,11 +1,12 @@
 ---
 name: architecture-studio
 description: >
-  AEC (Architecture, Engineering, Construction) studio with 36 skills and 7 specialist agents.
-  Single entry point via /studio [task]. Covers site planning, NYC zoning/due diligence,
-  workplace programming, sustainability (EPD/GWP), materials research, FF&E schedules,
-  specifications (CSI), and presentations. From AlpacaLabsLLC/skills-for-architects.
-  Use when designing buildings, site planning, zoning analysis, or sustainability assessments (AEC domain).
+  AEC (Architecture, Engineering, Construction) studio for building and site work.
+  Use when designing a building, planning or assessing a site, running NYC zoning or
+  property due diligence, programming workplace space from headcount, comparing material
+  sustainability (EPD/embodied carbon), building FF&E schedules, or writing CSI
+  specifications — the physical-building AEC domain, not software architecture or UI
+  design. Entry point: /studio [task], or call any sub-skill directly.
 version: 1.0.0
 author: AlpacaLabs LLC
 tags:

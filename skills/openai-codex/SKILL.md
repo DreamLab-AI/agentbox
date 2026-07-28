@@ -1,6 +1,6 @@
 ---
 name: openai-codex
-description: "Delegates complex coding and reasoning tasks to OpenAI Codex (GPT-5.4). Use when delegating complex coding or reasoning tasks to OpenAI Codex (GPT-5.4) as a second opinion."
+description: "Delegate a coding or reasoning task to OpenAI Codex (GPT-5.4) via MCP for a second opinion from a non-Claude model. Use when you want to cross-check a hard algorithm, design, or refactor against a different frontier model, or get an independent bug/security/performance review of a code snippet. Not for tasks Claude handles directly, chain-of-thought traces (use deepseek-reasoning), live web research (use perplexity-research), or GitHub-PR review swarms (use github-code-review)."
 mcp_server: true
 protocol: stdio
 entry_point: mcp-server/server.js

@@ -1,6 +1,6 @@
 ---
-name: PyTorch ML
-description: "Deep learning with PyTorch - model training, GPU acceleration, and data science workflows. Use when training deep learning models with PyTorch, using GPU acceleration, or doing data science workflows."
+name: pytorch-ml
+description: "Train and fine-tune deep learning models in PyTorch with CUDA GPU acceleration — nn.Module definition, training loops, DataLoaders, checkpointing, mixed-precision (AMP), and transfer learning with torchvision/torchaudio pretrained models. Use when writing PyTorch model code, building a training loop or custom Dataset/DataLoader, moving tensors/models to a GPU device, fine-tuning a pretrained CNN/ResNet/Transformer, adding autocast/GradScaler mixed precision, or saving/loading checkpoints. Triggers: 'train a PyTorch model', 'nn.Module', 'DataLoader', '.to(device)', 'fine-tune ResNet', 'CUDA out of memory during training', 'mixed precision'. Not for custom CUDA kernels (cuda skill), Stable Diffusion/FLUX image generation (comfyui), notebook data exploration (jupyter-notebooks), or cloud-sandbox distributed training (flow-nexus-neural)."
 ---
 
 # PyTorch ML Skill

@@ -1,74 +1,39 @@
 ---
 name: mermaid-diagrams
-description: "Create, render, and export professional diagrams-as-code using Mermaid 11.15.0+. Supports 26 diagram types: flowcharts, sequence, class, state, ER, Gantt, journey, mindmap, timeline, architecture, C4, Sankey, Kanban, gitgraph, **wardley-beta** (strategy maps, native since 11.14.0; hyphenated names + de-sanitised text since 11.15.0), and more. Renders to PNG/SVG/PDF via mmdc CLI. Use when creating system architecture diagrams, process flows, data models, project timelines, Wardley strategy maps, org charts, or any visual diagram from text. Integrates with report-builder skill for LaTeX document inclusion and Nano Banana infographic upgrade."
+description: "Create, render, and export diagrams as code with Mermaid — flowcharts, sequence, class, ER, state, Gantt, C4, architecture, mindmap, and Wardley maps — to PNG/SVG/PDF. Use when turning text into a version-controlled system architecture diagram, process flow, data model, sequence diagram, project timeline, or strategy map."
 ---
 
 # Mermaid Diagrams — Professional Diagrams as Code
 
-Create, render, and export production-quality diagrams from text using the Mermaid diagramming language. Supports 25 diagram types with dark/light themes, custom styling, and multiple export formats.
+Create, render, and export production-quality diagrams from text using the Mermaid
+diagramming language. 25 diagram types, dark/light themes, custom styling, and
+PNG/SVG/PDF export via the browsercontainer sidecar.
 
-## When to Use This Skill
+## When to Use
 
-- Creating system architecture or infrastructure diagrams
-- Drawing sequence diagrams for API interactions
-- Building entity-relationship models for databases
-- Designing flowcharts for business processes or decision trees
-- Planning project timelines with Gantt charts
-- Documenting user journeys or state machines
-- Creating class diagrams for software design
-- Building mindmaps for brainstorming or knowledge mapping
+- System architecture / infrastructure diagrams
+- Sequence diagrams for API interactions
+- Entity-relationship models for databases
+- Flowcharts for business processes or decision trees
+- Gantt project timelines and roadmaps
+- User journeys, state machines, class diagrams, mindmaps
+- Wardley strategy maps (see also the `wardley-maps` skill)
 - Any visual diagram that should be version-controlled as code
 
 ## When Not To Use
 
-- For publication-quality mathematical figures -- use TikZ/PGFPlots directly
-- For interactive or animated diagrams -- Mermaid produces static output only
-- For photo editing or raster image manipulation -- use the imagemagick skill
-- For 3D scene visualisation -- use the blender skill instead
-
-## Rendering Architecture
-
-Mermaid rendering routes through the **browsercontainer sidecar**, which has
-Chromium + puppeteer. The agentbox image carries `mmdc` in the Nix store but
-cannot render locally (no browser). Use the sidecar wrapper or the HTTP API.
-
-### Preferred: sidecar wrapper (drop-in mmdc replacement)
-
-```bash
-# Same interface as mmdc — delegates to browsercontainer over HTTP
-mmdc-sidecar.sh -i diagram.mmd -o diagram.png
-mmdc-sidecar.sh -i diagram.mmd -o diagram.svg -t dark
-mmdc-sidecar.sh -i diagram.mmd -o diagram.pdf
-```
-
-The wrapper POSTs to `http://browsercontainer:8931/render-mermaid`, which
-renders via the sidecar's Chromium. Output files pass through the shared
-`gui-tools-exchange` volume (agentbox: `/home/devuser/gui-tools`,
-browsercontainer: `/home/devuser/exchange`).
-
-### Alternative: direct HTTP API
-
-```bash
-curl -s -X POST http://browsercontainer:8931/render-mermaid \
-  -H 'Content-Type: application/json' \
-  -d '{"definition":"flowchart LR; A-->B-->C","format":"svg","theme":"default"}' \
-| jq -r '.filename'
-# Output file appears at /home/devuser/gui-tools/<filename>
-```
-
-### Prerequisites
-
-- `browsercontainer` sidecar running (`agentbox.sh browsercontainer up`)
-- Shared `gui-tools-exchange` volume mounted in both containers
-
----
+- Publication-quality mathematical figures — use TikZ/PGFPlots directly
+- Interactive or animated diagrams — Mermaid produces static output only
+- Photo editing or raster manipulation — use the `imagemagick` skill
+- 3D scene visualisation — use the `blender` skill
 
 ## Quick Start
 
-### Render a diagram
+Rendering routes through the **browsercontainer sidecar** (Chromium + puppeteer);
+`mmdc` cannot render locally. Use the `mmdc-sidecar.sh` drop-in wrapper.
 
 ```bash
-# Create a .mmd file
+# Author a diagram
 cat > diagram.mmd << 'EOF'
 flowchart TD
     A[User Request] --> B{Auth Check}
@@ -77,433 +42,33 @@ flowchart TD
     C --> E[Return Response]
 EOF
 
-# Render to PNG (default)
-mmdc-sidecar.sh -i diagram.mmd -o diagram.png
-
-# Render to SVG (scalable)
-mmdc-sidecar.sh -i diagram.mmd -o diagram.svg
-
-# Render to PDF (for LaTeX inclusion)
-mmdc-sidecar.sh -i diagram.mmd -o diagram.pdf
-
-# High-resolution
-mmdc-sidecar.sh -i diagram.mmd -o diagram.png -e png -t dark
+# Render (format inferred from output extension)
+mmdc-sidecar.sh -i diagram.mmd -o diagram.png            # raster
+mmdc-sidecar.sh -i diagram.mmd -o diagram.svg -t dark    # scalable, dark theme
+mmdc-sidecar.sh -i diagram.mmd -o diagram.pdf            # for LaTeX inclusion
 ```
 
-### Inline rendering (no file needed)
-
-```bash
-echo 'flowchart LR; A-->B-->C' > /tmp/quick.mmd
-mmdc-sidecar.sh -i /tmp/quick.mmd -o quick.png
-```
-
----
-
-## Supported Diagram Types (25)
-
-### Core Diagrams
-
-| Type | Keyword | Best For |
-|------|---------|----------|
-| **Flowchart** | `flowchart TD/LR` | Process flows, decision trees, system architecture |
-| **Sequence** | `sequenceDiagram` | API calls, message passing, protocol flows |
-| **Class** | `classDiagram` | Object-oriented design, data models |
-| **State** | `stateDiagram-v2` | State machines, lifecycle management |
-| **ER** | `erDiagram` | Database schema, data relationships |
-
-### Planning & Management
-
-| Type | Keyword | Best For |
-|------|---------|----------|
-| **Gantt** | `gantt` | Project timelines, sprint planning |
-| **Journey** | `journey` | User experience mapping, customer journeys |
-| **Timeline** | `timeline` | Historical events, roadmaps, milestones |
-| **Kanban** | `kanban` | Task boards, workflow status |
-| **Requirement** | `requirementDiagram` | Requirements traceability |
-
-### Architecture & Systems
-
-| Type | Keyword | Best For |
-|------|---------|----------|
-| **Architecture** | `architecture-beta` | Infrastructure layouts, cloud architecture |
-| **C4 Context** | `C4Context` | System context, container, component views |
-| **Block** | `block-beta` | Block diagrams, system decomposition |
-| **Mindmap** | `mindmap` | Brainstorming, knowledge maps, topic hierarchies |
-
-### Data & Metrics
-
-| Type | Keyword | Best For |
-|------|---------|----------|
-| **Pie** | `pie` | Proportional data, budget allocation |
-| **XY Chart** | `xychart-beta` | Line/bar charts from data |
-| **Sankey** | `sankey-beta` | Flow quantities, resource distribution |
-| **Quadrant** | `quadrantChart` | Priority matrices, competitive analysis |
-| **Radar** | `radar-beta` | Multi-dimensional comparison |
-
-### Development
-
-| Type | Keyword | Best For |
-|------|---------|----------|
-| **GitGraph** | `gitGraph` | Branch strategies, release flows |
-| **Packet** | `packet-beta` | Network packet structure |
-| **ZenUML** | `zenuml` | UML sequence (alternative syntax) |
-
-### Strategy
-
-| Type | Keyword | Best For |
-|------|---------|----------|
-| **Wardley** | `wardley-beta` | Value-chain + evolution maps (Simon Wardley). Requires mmdc 11.14.0+; 11.15.0 needed for hyphenated names and de-sanitised labels. See the `wardley-maps` skill for input-to-map orchestration. |
-
-#### Wardley quick example
-
-```mermaid
-wardley-beta
-title Example -- AI assistant
-size [900, 600]
-evolution genesis / concept -> custom / emerging -> product / converging -> commodity / accepted
-
-anchor user [0.95, 0.40]
-
-component "Chat UI" [0.85, 0.40] label [10, -8]
-component "LLM API" [0.55, 0.40] label [10, -8]
-component "GPU cluster" [0.20, 0.40] label [10, -8]
-
-user -> "Chat UI"
-"Chat UI" -> "LLM API"
-"LLM API" -> "GPU cluster"
-
-evolve "LLM API" 0.80
-```
-
-Render:
-
-```bash
-mmdc-sidecar.sh -i wardley.mmd -o wardley.svg
-```
-
----
-
-## Professional Styling
-
-### Dark Theme (report-builder compatible)
-
-```bash
-# Create dark theme config
-cat > mermaid-dark.json << 'EOF'
-{
-  "theme": "dark",
-  "themeVariables": {
-    "primaryColor": "#2471A3",
-    "primaryTextColor": "#FFFFFF",
-    "primaryBorderColor": "#5DADE2",
-    "lineColor": "#ABB2B9",
-    "secondaryColor": "#1B4F72",
-    "tertiaryColor": "#0B2545",
-    "background": "#0B2545",
-    "mainBkg": "#13315C",
-    "nodeBorder": "#5DADE2",
-    "clusterBkg": "#1B4F72",
-    "clusterBorder": "#2471A3",
-    "titleColor": "#FFFFFF",
-    "edgeLabelBackground": "#13315C",
-    "fontSize": "14px"
-  }
-}
-EOF
-
-# Render with dark theme
-mmdc-sidecar.sh -i diagram.mmd -o diagram.png -t dark
-```
-
-### Light Theme (academic papers)
-
-```bash
-cat > mermaid-light.json << 'EOF'
-{
-  "theme": "default",
-  "themeVariables": {
-    "primaryColor": "#D6EAF8",
-    "primaryTextColor": "#0B2545",
-    "primaryBorderColor": "#1B4F72",
-    "lineColor": "#566573",
-    "secondaryColor": "#FADBD8",
-    "tertiaryColor": "#D5F5E3",
-    "fontSize": "13px",
-    "fontFamily": "serif"
-  }
-}
-EOF
-
-mmdc-sidecar.sh -i diagram.mmd -o diagram.png
-```
-
-### Per-node styling (inline)
-
-```mermaid
-flowchart TD
-    A[Leakage Crisis]:::crisis --> B[Infrastructure Decay]:::infra
-    B --> C[Regulatory Response]:::regulation
-
-    classDef crisis fill:#E74C3C,stroke:#C0392B,color:#FFF
-    classDef infra fill:#566573,stroke:#2C3E50,color:#FFF
-    classDef regulation fill:#8E44AD,stroke:#6C3483,color:#FFF
-```
-
----
-
-## Templates by Use Case
-
-### System Architecture
-
-```mermaid
-flowchart TB
-    subgraph Frontend["Frontend Layer"]
-        UI[Web App] --> API[API Gateway]
-    end
-    subgraph Backend["Backend Services"]
-        API --> Auth[Auth Service]
-        API --> Data[Data Service]
-        API --> Queue[Message Queue]
-    end
-    subgraph Storage["Data Layer"]
-        Data --> DB[(PostgreSQL)]
-        Data --> Cache[(Redis)]
-        Queue --> Worker[Worker Pool]
-    end
-
-    style Frontend fill:#D6EAF8,stroke:#1B4F72
-    style Backend fill:#D5F5E3,stroke:#1E8449
-    style Storage fill:#FCF3CF,stroke:#D4AC0D
-```
-
-### API Sequence
-
-```mermaid
-sequenceDiagram
-    actor User
-    participant App as Web App
-    participant API as API Server
-    participant DB as Database
-    participant Cache as Redis Cache
-
-    User->>App: Submit Request
-    App->>API: POST /api/data
-    API->>Cache: Check cache
-    alt Cache hit
-        Cache-->>API: Cached data
-    else Cache miss
-        API->>DB: Query
-        DB-->>API: Results
-        API->>Cache: Store in cache
-    end
-    API-->>App: JSON Response
-    App-->>User: Display Results
-```
-
-### Database ER Diagram
-
-```mermaid
-erDiagram
-    WATER_COMPANY ||--o{ TREATMENT_WORKS : operates
-    WATER_COMPANY ||--o{ PIPE_NETWORK : owns
-    WATER_COMPANY {
-        string company_id PK
-        string name
-        float leakage_mld
-        float gearing_pct
-        string ea_rating
-    }
-    PIPE_NETWORK ||--o{ DMA : contains
-    PIPE_NETWORK {
-        string network_id PK
-        float length_km
-        int age_years
-        string material
-    }
-    DMA ||--o{ SENSOR : monitors
-    DMA {
-        string dma_id PK
-        float flow_mld
-        float night_flow
-        int burst_count
-    }
-```
-
-### Project Gantt
-
-```mermaid
-gantt
-    title UK Water Sector Investment Roadmap
-    dateFormat YYYY
-    axisFormat %Y
-
-    section AMP8 (2025-2030)
-        Smart metering rollout    :2025, 2030
-        CSO upgrades (2,500)      :2025, 2030
-        New super-regulator       :2026, 2028
-        Thames Tideway opens      :milestone, 2025, 0d
-
-    section AMP9 (2030-2035)
-        RAPID schemes deliver     :2030, 2035
-        Bathing water CSO target  :milestone, 2035, 0d
-
-    section AMP10 (2035-2040)
-        SESRO reservoir           :2035, 2040
-        Ecological CSO targets    :milestone, 2040, 0d
-
-    section AMP11-12 (2040-2050)
-        50% leakage reduction     :2040, 2050
-        PCC 110 l/p/d target      :milestone, 2050, 0d
-```
-
-### Wardley-style Mindmap
-
-```mermaid
-mindmap
-  root((UK Water Sector))
-    Leakage
-      2,869 Ml/d E&W
-      Acoustic detection
-      AI/ML prediction
-      Smart metering
-    Sewage
-      3.6M spill hours
-      CSO infrastructure
-      Nature-based solutions
-      Thames Tideway
-    Infrastructure
-      £104bn PR24
-      0.14% renewal rate
-      Lead pipes
-      Digital twins
-    Climate
-      4.9 Gl/d deficit 2055
-      2025 drought record
-      RAPID schemes
-      Demand management
-    Regulation
-      Ofwat abolished
-      Super-regulator
-      88 Cunliffe recommendations
-      Water Reform Bill 2026
-```
-
-### C4 Context Diagram
-
-```mermaid
-C4Context
-    title UK Water Sector — System Context
-
-    Person(customer, "Customer", "16M households in E&W")
-    Person(regulator, "Regulator", "Ofwat / EA / DWI")
-
-    System(waterco, "Water Company", "Treats and distributes water, manages sewerage")
-    System_Ext(environment, "Natural Environment", "Rivers, aquifers, rainfall")
-    System_Ext(climate, "Climate System", "Temperature, rainfall patterns")
-
-    Rel(customer, waterco, "Pays bills, reports leaks")
-    Rel(waterco, customer, "Delivers water, removes sewage")
-    Rel(regulator, waterco, "Sets targets, enforces compliance")
-    Rel(environment, waterco, "Provides raw water")
-    Rel(waterco, environment, "Discharges treated effluent, CSO spills")
-    Rel(climate, environment, "Modifies availability")
-```
-
----
-
-## Rendering Options
-
-### Sidecar wrapper flags
-
-```bash
-mmdc-sidecar.sh -i <input.mmd> -o <output.png|svg|pdf>
-    -e <format>           # svg | png | pdf (inferred from -o extension if omitted)
-    -t <theme>            # dark | default | forest | neutral
-    --help                # Usage information
-```
-
-### Batch rendering
-
-```bash
-# Render all .mmd files in a directory
-for f in diagrams/*.mmd; do
-    mmdc-sidecar.sh -i "$f" -o "${f%.mmd}.png" -t dark
-done
-```
-
-### For LaTeX inclusion
-
-```bash
-# Render as PDF for vector quality in LaTeX
-mmdc-sidecar.sh -i diagram.mmd -o diagram.pdf
-
-# Or render as SVG and convert
-mmdc-sidecar.sh -i diagram.mmd -o diagram.svg
-```
-
-Then in LaTeX:
-```latex
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=\textwidth]{diagrams/diagram.pdf}
-  \caption{System architecture diagram.}
-  \label{fig:system-arch}
-\end{figure}
-```
-
----
-
-## Integration with Report Builder
-
-This skill is called by the **report-builder** skill during Phase 4 (VISUALISE):
-
-1. Mermaid `.mmd` files are created during chapter writing
-2. Rendered to PNG via `mmdc` with dark or light theme
-3. Optionally sent to Nano Banana for infographic upgrade (3 iterations)
-4. Best version (original or infographic) selected for inclusion
-5. Wired into LaTeX via `\includegraphics`
-
-```bash
-# Report builder integration
-~/.claude/skills/report-builder/scripts/asset_audit.sh  # Verifies all diagrams referenced
-```
-
----
-
-## Troubleshooting
-
-### Sidecar not reachable
-```bash
-# Ensure browsercontainer is running
-agentbox.sh browsercontainer up
-# Check health
-curl -s http://browsercontainer:8931/health | jq .
-```
-
-### Rendering returns an error
-The sidecar logs show mmdc stderr. Check with:
-```bash
-agentbox.sh browsercontainer logs | tail -20
-```
-
-### Text truncated in nodes
-Wrap long labels in quotes: `A["Long label that needs wrapping"]`
-
-### Special characters break syntax
-Escape with quotes: `A["Node with {braces} and [brackets]"]`
-
-### Diagram too complex
-Split into subgraphs or multiple diagrams. Keep under 40 nodes per diagram.
-
----
-
-## Best Practices
-
-1. **Use meaningful IDs**: `userAuth` not `A`, `paymentGateway` not `B`
-2. **Keep it simple**: Under 30-40 nodes per diagram; split complex ones
-3. **Consistent direction**: `TD` for hierarchies, `LR` for processes, `BT` for bottom-up
-4. **Colour with purpose**: Use `classDef` for semantic meaning (red=error, green=success)
-5. **Version control**: `.mmd` files are plain text — diff-friendly in git
-6. **Theme consistency**: Use the same config across all diagrams in a project
-7. **Label edges**: Always label arrows to show relationships: `A -->|"sends data"| B`
-8. **Subgraphs for grouping**: Use subgraphs to create logical sections
+Prerequisite: `browsercontainer` sidecar running (`agentbox.sh browsercontainer up`)
+with the shared `gui-tools-exchange` volume mounted. Health check:
+`curl -s http://browsercontainer:8931/health | jq .`
+
+## Reference (load on demand)
+
+- **[references/diagram-types.md](references/diagram-types.md)** — the 25 diagram
+  types, their keywords, best-fit use, and a Wardley map example.
+- **[references/styling-and-templates.md](references/styling-and-templates.md)** —
+  dark/light theme configs, per-node `classDef` styling, copy-paste templates
+  (architecture, sequence, ER, Gantt, mindmap, C4), and best practices.
+- **[references/rendering-and-integration.md](references/rendering-and-integration.md)** —
+  sidecar architecture, HTTP API, wrapper flags, batch rendering, LaTeX inclusion,
+  report-builder integration, and troubleshooting.
+
+Bundled assets: `scripts/render.sh`, `resources/templates/{theme-dark,theme-light,puppeteer}.json`.
+
+## Best Practices (short)
+
+- Meaningful IDs (`userAuth`, not `A`); keep diagrams under ~40 nodes — split when larger.
+- `TD` for hierarchies, `LR` for processes; label edges to show relationships.
+- Use `classDef` for semantic colour (red=error, green=success); keep one theme per project.
+- `.mmd` files are plain text — commit them for diff-friendly version control.
+</content>

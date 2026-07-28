@@ -1,6 +1,6 @@
 ---
 name: ontology-core
-description: "Foundation library for Logseq ontology manipulation with OWL2 DL TTL export. Use when manipulating Logseq ontology structures or exporting to OWL2 DL TTL format."
+description: "Author and export the Logseq mainKnowledgeGraph ontology to OWL2 DL Turtle for WebVOWL/VisionClaw. Use when writing or fixing OntologyBlock entries, generating or debugging output/ontology.ttl, sanitizing IRI local names or literals, resolving Turtle prefix-not-bound errors, or validating the 6 narrativegoldmine source-domain prefixes (ai/bc/mv/rb/tc/ngm). This is the data/build layer — not ontology-enrich (validate existing data) or ontology-augment (query the live OWL graph)."
 version: 2.0.0
 author: Claude Code
 tags: [ontology, owl2, logseq, ttl, webvowl, validation]
@@ -8,143 +8,49 @@ tags: [ontology, owl2, logseq, ttl, webvowl, validation]
 
 # Ontology Core Library
 
-**Foundation for Logseq ontology manipulation with OWL2 DL TTL export.**
+Foundation for Logseq ontology manipulation with OWL2 DL TTL export — parsing,
+validation, and Turtle generation for the mainKnowledgeGraph corpus targeting
+VisionClaw/WebVOWL compatibility.
 
-## When Not To Use
+## When to use
 
-- For enriching or validating existing ontology data -- use ontology-enrich instead
-- For general knowledge graph work unrelated to Logseq/OWL2 -- use standard RDF tools
-- For VisionClaw graph rendering -- this is the data layer, not the display layer
+- Writing or fixing `OntologyBlock` entries in the Logseq corpus.
+- Generating `output/ontology.ttl` or debugging a Turtle parse error.
+- Sanitizing IRI local names / literals, or resolving a `Prefix … not bound` error.
+- Validating that `source-domain` uses one of the 6 valid prefixes.
 
-## Overview
+## When not to use
 
-Production-quality ontology parsing, validation, and TTL generation for the mainKnowledgeGraph corpus targeting VisionClaw/WebVOWL compatibility.
+- Enriching or validating existing ontology data → use `ontology-enrich`.
+- Grounding reasoning in / querying the live DreamLab OWL graph → use `ontology-augment`.
+- General knowledge-graph work unrelated to Logseq/OWL2 → use standard RDF tools.
+- VisionClaw graph rendering → this is the data layer, not the display layer.
 
-## Valid Domain Prefixes
+## Quick path
 
-**CRITICAL**: Only these 6 source-domain values are valid:
+1. Parse / edit blocks with the shipped Python in `src/`:
+   - `ontology_parser.py` — read OntologyBlock structures
+   - `ontology_modifier.py` — field-preserving edits
+   - `owl2_validator.py` — OWL2 DL validation
+2. Author blocks to the gold-standard shape and export to a single
+   `output/ontology.ttl` (git handles versioning — no `-v14` filenames).
+3. Keep `@prefix` declarations at line 1 and `source-domain` to one of the 6
+   valid prefixes below.
 
-| Prefix | Full Name | Namespace URI |
-|--------|-----------|---------------|
-| `ai` | Artificial Intelligence | `http://narrativegoldmine.com/ai#` |
-| `bc` | Blockchain | `http://narrativegoldmine.com/blockchain#` |
-| `mv` | Metaverse | `http://narrativegoldmine.com/metaverse#` |
-| `rb` | Robotics | `http://narrativegoldmine.com/robotics#` |
-| `tc` | Telecollaboration | `http://narrativegoldmine.com/telecollaboration#` |
-| `ngm` | Core Ontology | `http://narrativegoldmine.com/ontology#` |
+## Valid source-domain prefixes
 
-**INVALID values** (must be fixed in source):
-- `blockchain` → use `bc`
-- `metaverse` → use `mv`
-- `telecollaboration` → use `tc`
+Only these 6 values are valid; anything else must be fixed in source (e.g.
+`blockchain` → `bc`, `metaverse` → `mv`, `telecollaboration` → `tc`):
 
-## OntologyBlock Format (Gold Standard)
+`ai` · `bc` · `mv` · `rb` · `tc` · `ngm` — all under `http://narrativegoldmine.com/…#`.
 
-```markdown
-- ### OntologyBlock
-  id:: [kebab-case-slug]-ontology
-  collapsed:: true
-	- ontology:: true
-	- term-id:: [DOMAIN]-[NNNN]
-	- preferred-term:: [Title Case Term Name]
-	- source-domain:: [ai|bc|mv|rb|tc|ngm]
-	- status:: [draft|active|deprecated|stub]
-	- public-access:: true
-	- definition:: [Complete definition - NO WikiLinks, NO source:: refs]
-	- maturity:: [draft|mature|stable]
-	- owl:class:: [domain]:[PascalCaseClassName]
-	- owl:physicality:: [ConceptualEntity|VirtualEntity|PhysicalEntity]
-	- owl:role:: [Concept|Process|Agent|Artifact]
-	- belongsToDomain:: [[DomainName]], [[DisruptiveTechDomain]]
-	- #### Relationships
-	  id:: [slug]-relationships
-	  collapsed:: true
-		- is-subclass-of:: [[ParentConcept]]
-		- enables:: [[RelatedConcept]]
-		- requires:: [[Dependency]]
-```
-
-## TTL Generation Rules
-
-### 1. @prefix MUST come FIRST
-
-WebVOWL format detection requires `@prefix` declarations at line 1:
-
-```turtle
-@prefix ai: <http://narrativegoldmine.com/ai#> .
-@prefix bc: <http://narrativegoldmine.com/blockchain#> .
-...
-
-# Comments and metadata come AFTER prefixes
-```
-
-### 2. Local Name Sanitization
-
-IRI fragments cannot contain special characters:
-
-```python
-def sanitize_local_name(value: str) -> str:
-    """Sanitize for Turtle local name."""
-    value = value.replace(' ', '')
-    value = value.replace('-', '')
-    value = value.replace('&', 'And')  # Analytics&Reporting -> AnalyticsAndReporting
-    value = value.replace('/', '')
-    value = value.replace('(', '')
-    value = value.replace(')', '')
-    return value
-```
-
-### 3. Literal Sanitization
-
-rdfs:comment and rdfs:label must be clean:
-
-```python
-def sanitize_literal(value: str) -> str:
-    """Escape for Turtle literal."""
-    # Strip WikiLinks: [[Term]] -> Term
-    value = re.sub(r'\[\[([^\]]+)\]\]', r'\1', value)
-    # Remove leaked source:: refs
-    value = re.sub(r'\s*-?\s*source::\s*.*$', '', value)
-    # Escape Turtle special chars
-    value = value.replace('\\', '\\\\')
-    value = value.replace('"', '\\"')
-    value = value.replace('\n', '\\n')
-    return value.strip()
-```
-
-## Output Files
-
-- **Single file**: `output/ontology.ttl` (git provides versioning)
-- **No versioned filenames** like ontology-v14.ttl
-
-## Converter Location
-
-```
-Ontology-Tools/tools/converters/convert-to-turtle.py
-```
-
-## Common Errors and Fixes
-
-| Error | Root Cause | Fix |
-|-------|-----------|-----|
-| `Prefix "data:" not bound` | Old versioned TTL files | Use single `ontology.ttl` |
-| `Prefix "blockchain:" not bound` | `source-domain:: blockchain` | Change to `bc` |
-| `Prefix ":" not bound` | Bare colon in property decls | Use `ngm:` prefix |
-| `Bad syntax (']' expected)` | `&` in local name | Use `sanitize_local_name()` |
-| `unexpected token '#'` | Comments before @prefix | @prefix MUST come first |
-
-## Cross-Cutting Domains
-
-Use `belongsToDomain` for cross-cutting classification:
-
-```markdown
-- belongsToDomain:: [[AIApplicationsDomain]], [[DisruptiveTechDomain]]
-```
-
-This allows pages to have a primary domain (via `source-domain`) while also being tagged for cross-cutting queries.
+Full namespace table, OntologyBlock gold-standard format, TTL sanitization code,
+the error→fix catalog, and cross-cutting-domain rules live in
+[references/ttl-authoring.md](references/ttl-authoring.md).
 
 ## References
 
+- Detailed authoring & TTL rules: [references/ttl-authoring.md](references/ttl-authoring.md)
 - Converter: `Ontology-Tools/tools/converters/convert-to-turtle.py`
 - Parser: `Ontology-Tools/tools/lib/ontology_block_parser.py`
 - Loader: `Ontology-Tools/tools/lib/ontology_loader.py`

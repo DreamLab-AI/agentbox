@@ -1,6 +1,6 @@
 ---
 name: ontology-enrich
-description: "Validation, enrichment, and TTL generation for Logseq ontology with VisionClaw/WebVOWL compatibility. Use when validating, enriching, or generating TTL for Logseq ontology with VisionClaw/WebVOWL compatibility."
+description: "Validate and enrich the Logseq mainKnowledgeGraph ontology and generate WebVOWL-ready TTL. Use when fixing source-domain prefixes (ai/bc/mv/rb/tc/ngm), regenerating output/ontology.ttl, debugging WebVOWL 'prefix not bound' or bad-syntax parse errors, checking orphan is-subclass-of targets, or making pages meet VisionClaw github_sync field requirements."
 version: 2.0.0
 category: ontology
 layer: 1

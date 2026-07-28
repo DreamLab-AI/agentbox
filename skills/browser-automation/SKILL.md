@@ -1,74 +1,37 @@
 ---
 name: browser-automation
 description: >
-  Browser automation meta-skill with GPU sidecar integration. Routes tasks to the
-  right tool: browsercontainer sidecar (Chrome Beta 149+, chrome-devtools-mcp 40+ tools,
-  NVIDIA Vulkan GPU at browsercontainer:8931) for all browser automation including
-  WebGPU/WebGL testing; chrome-cdp for raw CDP scripting. Use when automating
-  browsers, testing UIs, or debugging web apps.
+  Router for browser-automation tasks — picks the right tool and points to the
+  canonical sidecar setup. Use when driving a real browser: navigating pages,
+  clicking, filling forms, taking screenshots, reading console or network traffic,
+  debugging a web UI, or validating WebGPU/WebGL/GPU rendering on hardware. Sends
+  GPU and standard automation to the browsercontainer sidecar, raw CDP scripting
+  to chrome-cdp, and AQE injection scanning to qe-browser.
 ---
 
-## GPU Browser Sidecar (browsercontainer)
+# Browser Automation — routing meta-skill
 
-For WebGPU/WebGL/3D testing with hardware GPU, use the `browsercontainer` sidecar.
-It runs Chrome Beta 149+ with NVIDIA RTX 6000 (Vulkan/ANGLE) and exposes
-Google's `chrome-devtools-mcp` (40+ tools) over MCP SSE.
+This skill decides *which* browser tool fits the task. The sidecar connection,
+registration, and management details are owned by the **`browser`** skill
+(`../browser/SKILL.md`); the full sidecar reference is in
+[`references/sidecar.md`](references/sidecar.md). Don't restate them here.
 
-### Connection from agentbox
+## Quick path
 
-```bash
-# MCP SSE (chrome-devtools-mcp — preferred for agents)
-http://browsercontainer:8931/sse
+- **Any browser automation** (WebGPU/WebGL tests, GPU rendering, console/network
+  monitoring, performance traces, form automation, DOM inspection, accessibility
+  snapshots) → **browsercontainer sidecar** via `http://browsercontainer:8931/sse`.
+  Setup: see the `browser` skill or `references/sidecar.md`.
+- **Raw CDP scripting** against live tabs → `chrome-cdp` skill (`cdp-sidecar.sh`).
+- **AQE injection scanning / typed QE assertions** → `qe-browser` skill.
 
-# CDP direct (for cdp.mjs scripts)
-browsercontainer:9222
+## When not to use
 
-# VNC desktop (visual debugging)
-vnc://localhost:5903   # from host
-```
+- Fetching page content without interaction — use WebFetch, curl, or web-summary.
+- API testing — use curl or httpx.
+- Building UI components — use daisyui or ui-ux-pro-max-skill.
 
-### Register as MCP server
-
-Add to `.mcp.json` in the project or `~/.claude/.mcp.json` globally:
-
-```json
-{
-  "mcpServers": {
-    "browser-gpu": {
-      "url": "http://browsercontainer:8931/sse"
-    }
-  }
-}
-```
-
-### Sidecar management
-
-```bash
-agentbox.sh browsercontainer up        # start
-agentbox.sh browsercontainer health    # check all 5 services
-agentbox.sh browsercontainer cdp       # list CDP tabs
-agentbox.sh browsercontainer shell     # shell into container
-agentbox.sh browsercontainer rebuild   # full rebuild
-agentbox.sh browsercontainer down      # stop
-```
-
-### chrome-devtools-mcp capabilities
-
-Screenshots, accessibility snapshots, console reading, JS evaluation, performance
-traces, memory profiling, DOM inspection, network monitoring, input simulation,
-WebMCP discovery (Chrome 149+), extension management. Experimental flags enabled:
-`--category-experimental-webmcp`, `--experimental-vision`, `--experimental-memory`.
-
-**Priority order:**
-1. **Sidecar (browsercontainer)** — all browser automation: WebGPU/WebGL tests, GPU rendering, console monitoring, performance traces, form automation, DOM inspection, accessibility snapshots
-
-## When Not To Use
-
-- Fetching page content without interaction — use WebFetch, curl, web-summary
-- API testing — use curl or httpx
-- Building UI components — use daisyui or ui-ux-pro-max-skill
-
-## Niche Tools
+## Niche tools
 
 | Tool | When still useful |
 |------|-------------------|
@@ -76,18 +39,7 @@ WebMCP discovery (Chrome 149+), extension management. Experimental flags enabled
 | **qe-browser** | AQE fleet integration, injection scanning |
 | **host-webserver-debug** | Docker-to-host HTTPS bridge |
 
-## Environment — Sidecar
-
-| Setting | Value |
-|---------|-------|
-| Display | `:2` (Xvfb, 1920x1080) |
-| VNC | Port 5903, no password |
-| Chrome | Beta 149+ (Arch, AUR) |
-| GPU | NVIDIA RTX 6000 (Vulkan/ANGLE) |
-| MCP | chrome-devtools-mcp via SSE bridge |
-| Network | `visionclaw_network` (Docker) |
-
-## Decision Tree
+## Decision tree
 
 ```
 START: Browser task?
@@ -109,3 +61,6 @@ START: Browser task?
 └─ AQE fleet injection scanning?
    └─ qe-browser
 ```
+
+Full sidecar setup, capabilities, and environment table:
+[`references/sidecar.md`](references/sidecar.md).

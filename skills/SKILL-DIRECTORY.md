@@ -1,6 +1,6 @@
 # Skill Directory -- Comprehensive Inventory and Decision Tree
 
-> **117 active skills** (`token-audit` added 2026-07-24 — comprehensive Claude Code usage audit from local transcripts, adapted MIT from pacphi/agentic-kit, with `ruflo-daemon-gc.py` + `npx-stale-scan.sh` hygiene companions; `uk-solar-planner` added 2026-07-15 — UK ground-mounted solar farm planning, composing qgis + blender with PVGIS/quartz-solar-forecast/OpenDSS; `ruvnet-brain` added 2026-07-07 — RuvNet-ecosystem source corpus (~90k chunks, 21+ repos) in the ruvector-postgres sidecar, `search_ruvnet` MCP + grounding hook; `pdf-signing` added 2026-07-06 — open-source cryptographic PDF signing (pyHanko/PAdES), self-signed identity + visible panel + trust/eIDAS upgrade path; `leptos` added 2026-06-28 — Leptos full-stack Rust web playbook + 0.7/0.8 reference; `ceramic-search` added 2026-06-20 — Ceramic.ai keyword web search with rich page extracts; `ontology-augment` added 2026-06-14). 18 formerly deprecated/archived skills removed (see table below for history).
+> **118 active skills** (`gcloud` added 2026-07-28 — Google Cloud CLI (gcloud/gsutil/bq) provisioned in the nix flake `basePackages`; operator-interactive auth, impersonation-over-keys, creds in the writable `~/.config/gcloud`; carries the canonical `campaignbuilder` VPS-behind-IAP deploy runbook; `token-audit` added 2026-07-24 — comprehensive Claude Code usage audit from local transcripts, adapted MIT from pacphi/agentic-kit, with `ruflo-daemon-gc.py` + `npx-stale-scan.sh` hygiene companions; `uk-solar-planner` added 2026-07-15 — UK ground-mounted solar farm planning, composing qgis + blender with PVGIS/quartz-solar-forecast/OpenDSS; `ruvnet-brain` added 2026-07-07 — RuvNet-ecosystem source corpus (~90k chunks, 21+ repos) in the ruvector-postgres sidecar, `search_ruvnet` MCP + grounding hook; `pdf-signing` added 2026-07-06 — open-source cryptographic PDF signing (pyHanko/PAdES), self-signed identity + visible panel + trust/eIDAS upgrade path; `leptos` added 2026-06-28 — Leptos full-stack Rust web playbook + 0.7/0.8 reference; `ceramic-search` added 2026-06-20 — Ceramic.ai keyword web search with rich page extracts; `ontology-augment` added 2026-06-14). 18 formerly deprecated/archived skills removed (see table below for history).
 > Updated 2026-07-22. Reference this file from CLAUDE.md for intelligent routing.
 
 ---
@@ -257,6 +257,7 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 | `flow-nexus-platform` | No | Authentication, sandboxes, app deployment, payments, challenges on Flow Nexus | Managing Flow Nexus accounts, sandboxes, and deployments ⚠️ NOT INSTALLED — requires Flow Nexus account |
 | `hermes-scheduler` | No | Recurring task scheduling, cron jobs for Claude Code agents, routine automation | Scheduling periodic agent tasks, autonomous routines |
 | `cost-estimation` | No | GPU endpoint cost tiers, agent job estimate-hold-run-settle lifecycle, DREAM/sats token conversion, COCOMO-hybrid infrastructure valuation, /pay/.estimate integration | Pricing inference/image-gen/analytics endpoints, agent job cost planning, DREAM token economics |
+| `gcloud` | No | Google Cloud CLI (gcloud/gsutil/bq) — Compute Engine, IAP, Secret Manager, Cloud Run, Artifact Registry. Nix-provisioned; interactive/operator auth, creds in writable `~/.config/gcloud`; impersonation-over-keys. Canonical `campaignbuilder` VPS-behind-IAP deploy | Deploying to or operating Google Cloud: standing up a VM behind IAP, granting/impersonating a deploy SA, GCP secrets, the campaignbuilder deployment |
 
 ### Systems Programming
 
@@ -673,6 +674,10 @@ Q3: What infrastructure task?
     |
     +-- Schedule recurring Claude Code tasks, cron jobs, autonomous routines
     |   --> hermes-scheduler
+    |
+    +-- Google Cloud: deploy a VM behind IAP, impersonate a deploy SA, GCP secrets,
+    |   the campaignbuilder VPS deployment
+    |   --> gcloud
     |
     +-- Creating new skills for this system
         --> skill-builder

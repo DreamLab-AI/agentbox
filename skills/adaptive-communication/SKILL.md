@@ -1,6 +1,6 @@
 ---
 name: adaptive-communication
-description: Use when detecting ambiguous user intent, hedging language, open-ended framing, personal context before requests, or when unsure whether user wants exploration vs direct answer. Applies to all conversations.
+description: Calibrate response style to the user's communication register — transactional/direct vs relational/high-context — and decide whether to answer, explore, or ask a clarifying question first. Use when a request is ambiguously framed: hedging ("maybe", "wondering if", "I think"), open-ended or trailing phrasing, a question that implies an unstated need ("do you know anything about X?"), or personal/emotional context stated before the actual ask. Skip for clear, bounded, imperative requests where the intent and format are already explicit.
 ---
 
 # Adaptive Communication

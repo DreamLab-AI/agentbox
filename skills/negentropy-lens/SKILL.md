@@ -1,14 +1,12 @@
 ---
 name: negentropy-lens
 description: >
-  A decision-support framework that evaluates systems, architectures, and strategies through the
-  entropy (decay) vs negentropy (growth) lens, while surfacing tacit knowledge gaps. Use this skill
-  whenever the user is making architecture decisions, evaluating system designs, reviewing technical
-  approaches, choosing between options, auditing existing systems, or planning strategies. Also
-  trigger when the user explicitly asks to "apply the negentropy lens", mentions "entropy",
-  "negentropy", "tacit knowledge", "knowledge engine", or "flip the switch". Nudge activation
-  when you detect the user is at a decision point — even if they haven't asked for this lens —
-  by briefly noting the entropic/negentropic dimension before proceeding.
+  Evaluate systems, architectures, and strategies through the entropy (decay) vs
+  negentropy (growth) lens, surfacing tacit-knowledge gaps and unstated assumptions.
+  Use when making or reviewing an architecture decision, evaluating a system design or
+  technical approach, choosing between options, auditing an existing system, or planning
+  strategy — or when the user asks to "apply the negentropy lens" or mentions entropy,
+  negentropy, or tacit knowledge.
 ---
 
 # Negentropy Lens
@@ -19,6 +17,15 @@ compounding value, increasing order).
 
 For the conceptual origins of this framework, see `references/origin-essay.md`.
 
+### When to reach for it
+
+Beyond the explicit triggers in the description, this lens earns its keep unprompted at
+decision points. If you notice the user is weighing options, committing to an architecture,
+or accepting a design without questioning it, a brief note on the entropic/negentropic
+dimension is usually welcome — surface it in a sentence or two and let them decide whether to
+go deeper (see **Soft nudges** below). Read the room: skip the nudge when it would derail a
+focused task or when the user clearly just wants an answer.
+
 ## Core Principle
 
 Every system exists in one of two states. Every decision either accelerates entropy or drives
@@ -28,14 +35,16 @@ about direction.
 
 ## Term Definitions
 
-On first use in every output, define these three terms inline using parentheses:
+The first time each term appears in an output aimed at the user, define it inline in
+parentheses so the analysis stays legible to a fresh reader:
 
 - **Entropy** (the natural tendency of systems toward decay, disorder, and complexity without value)
 - **Negentropy** (the deliberate reversal of decay — growth, compounding value, increasing order)
 - **Tacit knowledge** (the unwritten, unspoken knowledge of how things actually work — assumptions,
   workarounds, and institutional memory that never make it into documentation)
 
-After the first parenthetical definition, use the terms freely without repeating the definition.
+After the first parenthetical definition, use the terms freely without repeating it. For a
+quick nudge or a reader already fluent in the vocabulary, the definitions can be dropped.
 
 ## The Two States
 
@@ -87,7 +96,9 @@ For each component and for the system as a whole, classify:
 
 ### Phase 3: Surface the Tacit Layer
 
-This is non-negotiable. Every decision analysis must probe for tacit knowledge.
+This is the phase most analyses skip, and skipping it is where the lens loses most of its
+value — a full decision analysis should probe for tacit knowledge rather than stopping at the
+explicit requirements. For a quick nudge, at least ask the first question or two.
 
 Ask these questions — of the user, of the design, of the system:
 

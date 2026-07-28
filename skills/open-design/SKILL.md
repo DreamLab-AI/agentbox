@@ -1,6 +1,6 @@
 ---
-name: "Open Design"
-description: "Design production pipeline with structured intake, brand-system enforcement, and 5-dimensional quality gates. Use when generating web prototypes, landing pages, dashboards, mobile mockups, presentations, or any visual artifact. Combines structured questioning, design-system token enforcement, P0/P1/P2 checklists, and anti-slop critique. Supports 129 brand specifications and 64 surface types."
+name: open-design
+description: "Generate brand-constrained, quality-gated visual artifacts instead of freestyle output. Use when the user asks for a web prototype, landing/marketing page, SaaS dashboard, mobile mockup, slide deck, email template, or any HTML visual artifact that must look professional and stay on-brand. Composes from a design-system library with a structured intake and self-critique gate."
 ---
 
 # Open Design — Production Design Pipeline
@@ -33,9 +33,11 @@ Route to this skill when the user asks for UI mockups, visual documentation, des
 
 ## Workflow
 
-### Phase 1 — Structured Intake (Never Skip)
+### Phase 1 — Structured Intake
 
-Before generating anything, collect these five dimensions:
+Ground the work in these five dimensions before generating. They are the highest-leverage
+step — a weak intake is the usual root cause of generic output — so resist the urge to skip
+straight to HTML.
 
 | Dimension | Question | Why |
 |-----------|----------|-----|
@@ -45,7 +47,10 @@ Before generating anything, collect these five dimensions:
 | **Brand** | Existing design system? Logo/colors/fonts? | Enforces token consistency |
 | **Scale** | How many screens/sections? One-shot or system? | Scopes the deliverable |
 
-If the user provides a clear brief covering all five, proceed. Otherwise, ask concise questions to fill gaps. Never generate on incomplete context.
+If the user's brief already covers all five, proceed. Otherwise ask a couple of concise
+questions to fill the gaps rather than guessing — generating on thin context is how you end
+up reworking. For a fast throwaway or an explicit "just show me something" request, it is fine
+to pick sensible defaults and note the assumptions instead of blocking on questions.
 
 ### Phase 2 — Design System Resolution
 
@@ -107,7 +112,10 @@ Does this push past the median? Unexpected layout or typographic moves that earn
 - Cite specific elements as evidence
 - Conservative production work may legitimately score 5 on Innovation
 
-**Gate**: All dimensions must score ≥6. If any dimension scores ≤5, fix before emitting.
+**Gate**: Treat ≥6 on every dimension as the bar for finished work — a dimension scoring ≤5
+is a signal to fix it before emitting, not a rule to game. Innovation is the one dimension
+where a deliberate, conservative 5 can be the right call (see the scoring note above); the
+others rarely should be. If you ship below the bar, say why in the one-line summary.
 
 ### Phase 5 — P0/P1/P2 Checklist
 

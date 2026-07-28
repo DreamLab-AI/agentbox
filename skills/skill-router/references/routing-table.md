@@ -1,0 +1,204 @@
+# skill-router — Routing Table (reference)
+
+> **Generated artefact.** Each row's skill description below is a condensed restatement of
+> that skill's own front-matter `description`. It is therefore **drift-prone**: whenever a
+> skill's front-matter description changes, this table must be **regenerated** so the trigger
+> phrases here stay in sync with the source of truth. Do not hand-edit rows to diverge from
+> the owning skill's description — fix the description upstream, then regenerate this file.
+> After any batch of skill-description edits (see `../../UPGRADE-PLAN-c5.md` §5), re-derive
+> this table from the finalized front-matter.
+
+This table is loaded on demand by `SKILL.md`; the parent skill holds only the decision
+procedure. Classify the user's request against the sections below and route to the named
+skill / consultant / MCP tool.
+
+## Code Development
+
+**Methodology selection** (sequential phases — not competing skills):
+| Phase | Route to | Key trigger |
+|-------|----------|-------------|
+| You have a PRD → need docs + optional build | `prd2build` | "I have a PRD", "generate documentation" |
+| Artifact chain traceability across a sprint | `bhil-methodology` | "SPEC/ADR/TASK chain", "artifact traceability" |
+| Systematic 5-phase development | `sparc-methodology` | "spec through deployment", "SPARC" |
+| Multi-agent dev + quality gates (code execution) | `build-with-quality` | "implement", "feature", "TDD", "quality gates" |
+| Truth-score only | `verification-quality` | "verify", "rollback safety", "confidence score" |
+
+**Debugging & diagnosis:**
+| If the request involves... | Route to |
+|---|---|
+| Hard bug, intermittent failure, performance regression, "can't reproduce" | `build-with-quality` (debugging entry — see DEBUGGING-PROTOCOL.md) |
+| Stress-test a plan or design, adversarial questioning, "grill me" | `build-with-quality` (design interrogation — see DEBUGGING-PROTOCOL.md) |
+| Requirements ambiguous before building, clarify decision tree | `build-with-quality` (design interrogation) |
+
+**Other code tasks:**
+| If the request involves... | Route to |
+|---|---|
+| Large codebase structural analysis (call graphs, diff impact) | `codebase-memory` (permanent project upgrade) |
+| Version-specific external library docs while coding | `context7` |
+| Rust systems programming | `rust-development` |
+| WASM + JS graphics interop | `wasm-js` |
+| CUDA GPU kernel development | `cuda` |
+| React/Next.js/TypeScript/Tailwind conventions | `bencium-code-conventions` |
+| Validate docs against codebase | `docs-alignment` |
+| Large codebase structure (500+ files): call graphs, architecture overview, diff blast radius | `codebase-memory` (permanent project upgrade) |
+| Version-specific external library docs while coding, "use context7", anti-hallucination | `context7` |
+
+## GitHub Operations
+| If the request involves... | Route to |
+|---|---|
+| PR review with AI agents | `github-code-review` |
+| Cut a release, changelog, deploy | `github-release-management` |
+| Create/modify GitHub Actions workflows | `github-workflow-automation` |
+| Issues, project boards, sprints | `github-project-management` |
+| Cross-repo sync, org-wide automation | `github-multi-repo` |
+
+## Multi-Agent / Swarm
+| If the request involves... | Route to |
+|---|---|
+| Parallel agents (mesh, hierarchical, adaptive) | `swarm-advanced` |
+| Queen-led consensus, Byzantine fault tolerance | `hive-mind-advanced` |
+| Cloud swarm on Flow Nexus | `flow-nexus-swarm` |
+| Sequential pipeline (step N → step N+1) | `stream-chain` |
+| Hook automation (pre/post task, session) | `hooks-automation` |
+| Lock-free multi-agent VCS (Jujutsu) | `agentic-jujutsu` |
+
+## Consultants — explicit second opinion from another LLM
+
+Use a consultant when the coordinator wants a labelled answer from a
+specific external model. The response is returned with provenance so the
+caller knows who said it. Specified by [PRD-005 / ADR-011](../../../docs/reference/adr/ADR-011-consultation-mcps.md).
+
+| If the request involves... | Route to |
+|---|---|
+| Code reasoning, refactor, test gen — second opinion (OpenAI Codex CLI) | `codex` consultant via `mcp__agentbox-consultants__codex_consult` |
+| Long-document or codebase-wide analysis (1M-token Gemini) | `gemini` consultant |
+| Chinese-language reasoning, low-cost second opinion (Z.AI / GLM-5.2) | `zai` consultant |
+| Live-web research with citations (Perplexity) | `perplexity` consultant |
+| Math + transparent chain-of-thought (DeepSeek-reasoner) | `deepseek` consultant |
+| User says "ask <name>", "consult <name>", "second opinion from <name>" | matching consultant |
+| User says "get a second opinion" without naming | `auto-consultant` agent template (classifier picks) |
+
+Manual call form (slash-command): `/consult <name> "<question>"` (e.g.
+`/consult deepseek "verify this proof of …"`). Operator guide:
+[docs/user/consultants.md](../../../docs/user/consultants.md).
+
+## Research, Web, and Content
+| If the request involves... | Route to |
+|---|---|
+| Live web search with citations | `perplexity-research` |
+| Analyse/summarise specific URLs | `gemini-url-context` |
+| YouTube transcripts, article summaries | `web-summary` |
+| NotebookLM: notebooks, podcasts, slides, quizzes | `notebooklm` |
+| LinkedIn profiles, jobs, companies, messaging | `linkedin` |
+| Reddit browsing, search, user analysis | `reddit` |
+| SEO audit, keyword research, schema markup, GEO | `toprank` |
+| Current/version-specific docs for external library (Next.js, React, Supabase, etc.) | `context7` |
+
+## Economics
+| If the request involves... | Route to |
+|---|---|
+| GPU endpoint cost estimation, inference/image-gen/analytics pricing | `cost-estimation` |
+| Agent job cost lifecycle (estimate, hold, settle, refund) | `cost-estimation` |
+| MRC20 DREAM token buy/withdraw calculations | `cost-estimation` |
+| Infrastructure replacement value, COCOMO-hybrid valuation | `cost-estimation` |
+
+## Documents and Reports
+| If the request involves... | Route to |
+|---|---|
+| Research report, white paper, policy brief | `report-builder` |
+| Academic paper, Beamer presentation, LaTeX | `latex-documents` |
+| Diagrams (flowchart, ER, sequence, Gantt, mindmap) | `mermaid-diagrams` |
+| Publication-quality academic figures | `paperbanana` |
+| Isometric network/infra diagrams | `fossflow` |
+| Strategic Wardley maps | `wardley-maps` |
+| Validate docs against codebase | `docs-alignment` |
+
+## Media, 3D, and Art
+| If the request involves... | Route to |
+|---|---|
+| Video/audio transcode, edit, stream | `ffmpeg-processing` |
+| Image format conversion, resize, batch | `imagemagick` |
+| AI image/video generation (SD, FLUX) | `comfyui` |
+| 3D modelling and rendering | `blender` |
+| Game development (Godot/Unity/Unreal) | `game-dev` |
+| "Unreal Engine", "UE5", "spawn actor", "blueprint", "PIE session" | `unreal-engine` (60+ MCP tools for direct editor control) |
+| 3D Gaussian Splatting | `lichtfeld-studio` |
+| Blog headers, infographics, editorial art, comics | `art` (Nano Banana 2) |
+| Real-world geography → Minecraft worlds | `terracraft` |
+| "Make a video", full video production, explainers, trailers, TTS, avatars, podcast-to-video | `open-montage` |
+| "Meeting recap", "live transcription", "meeting copilot", "coaching during meeting", "record this call" | `echoloop` |
+| "Edit this video", "find the best moments", "highlight reel", "add captions", "clone voice", "lip sync", "render for TikTok" | `clipcannon` (51 MCP tools, local GPU) |
+
+## Browser Automation
+| If the request involves... | Route to |
+|---|---|
+| Unsure which browser tool | `browser-automation` (meta-skill) |
+| WebGPU, WebGL, GPU rendering, 3D graph testing, VisionClaw | `browsercontainer` (hardware GPU, native NVIDIA Vulkan, SSE at browsercontainer:8931) |
+| Desktop Chrome with login state | `claude --chrome` (built-in) |
+| Page navigation, form-fill, screenshots | `browser` / `playwright` (both via sidecar) |
+| QE-grade browser: typed assertions (16 kinds), visual-diff baseline, prompt-injection scan, semantic intent finder | `qe-browser` (AQE fleet, Vibium engine — `aqe init` to install) |
+| Inspect live Chromium tabs | `chrome-cdp` |
+| Host web server from Docker | `host-webserver-debug` |
+| Web scraping, crawling, anti-bot bypass, Cloudflare Turnstile, infra monitoring, spider framework | `scrapling` (MCP: 9 tools) |
+
+## AI/ML
+| If the request involves... | Route to |
+|---|---|
+| PyTorch deep learning, model training | `pytorch-ml` |
+| Cloud neural training (Flow Nexus) | `flow-nexus-neural` |
+| Jupyter notebook experiments | `jupyter-notebooks` |
+| Reinforcement learning agents (Decision Transformer, Q-Learning, SARSA, etc.) | `agentdb-advanced` (RL Plugins section) |
+| Delegate reasoning to DeepSeek | `deepseek-reasoning` |
+| Delegate coding to GPT-5.4 (simple MCP bridge) | `openai-codex` |
+| "Consult with OpenAI", "talk to codex", "ask GPT-5.4", code review by Codex, adversarial review, rescue when stuck | `codex-companion` (`/codex:review`, `/codex:rescue`) |
+
+## Memory and Learning
+| If the request involves... | Route to |
+|---|---|
+| Session/long-term agent memory | `agentdb-memory-patterns` |
+| Semantic vector search, RAG, HNSW | `agentdb-vector-search` |
+| Distributed multi-DB sync, QUIC, hybrid search | `agentdb-advanced` |
+| Reinforcement learning plugins (9 RL algorithms) | `agentdb-advanced` (RL Plugins section) |
+| Session context, plan tracking, blueprints | `lazy-fetch` |
+| "What RuVector tool helps with X?" | `ruvector-catalog` |
+
+## Infrastructure
+| If the request involves... | Route to |
+|---|---|
+| Flow Nexus platform management | `flow-nexus-platform` |
+| Swarm performance profiling | `performance-analysis` |
+| Creating new skills | `skill-builder` |
+
+## UI/UX Design
+| If the request involves... | Route to |
+|---|---|
+| General UI/UX (palettes, fonts, styles) | `ui-ux-pro-max-skill` |
+| daisyUI / Tailwind components | `daisyui` |
+| Enterprise UX (WCAG, regulated, ask-first) | `bencium-controlled-ux-designer` |
+| Bold creative UX, production frontend, anti-AI-slop, shadcn/Tailwind implementation | `bencium-creative` (`--design` for direction, `--build` for code, default=both) |
+| Visual design audit / polish | `design-audit` |
+| Typography enforcement | `typography` |
+| AI-first relationship interfaces | `relationship-design` |
+
+## Software Architecture
+| If the request involves... | Route to |
+|---|---|
+| First-principles design, genuinely new things | `renaissance-architecture` |
+| Domain modelling, systems thinking | `human-architect-mindset` |
+| Over-engineering / vanity check | `vanity-engineering-review` |
+| Entropy vs negentropy evaluation | `negentropy-lens` |
+| Communication style detection | `adaptive-communication` |
+
+## Domain-Specific
+| If the request involves... | Route to |
+|---|---|
+| Geospatial GIS, maps | `qgis` |
+| Ontology creation (Logseq → OWL2) | `ontology-core` |
+| Ontology validation and enrichment | `ontology-enrich` |
+| AEO (AI search citation optimisation) | `bencium-aeo` |
+| AEC (architecture, construction, zoning, sustainability) | `architecture-studio` (`/studio [task]`) |
+
+## Security
+| If the request involves... | Route to |
+|---|---|
+| Linux hardening, compliance, forensics | `defense-security` |

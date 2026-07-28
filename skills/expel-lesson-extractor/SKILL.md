@@ -1,15 +1,13 @@
 ---
 name: expel-lesson-extractor
 description: >
-  Post-task experiential learning. After each completed task with an
-  observable terminal outcome (success or explicit failure), distil 0-N
-  generalisable lessons from the trajectory + ExecutionTraces and store
-  them in RuVector namespace `code-harness-lessons` as ex:DistilledLesson
-  records (memory_type=semantic, durable). Lessons are surfaced at task
-  start by the skill-router for similar scopes. Confidence decremented on
-  contradiction (LLM-judge sampled 1/10 retrievals, floor 0.3, archive
-  below). Privacy filter applied to all trace evidence before write
-  (per ADR-008 + ADR-019).
+  Post-task experiential learning: distil 0-N generalisable IF/THEN lessons
+  from a completed task's trajectory and store them so they surface at the
+  start of similar future tasks. Use as a post-task hook (automatic) for
+  non-trivial tasks with an observable terminal outcome, or manually to
+  record a specific lesson after a complex or failed task. Skip trivial
+  (<3 tool calls) or interrupted tasks. Mechanics, schema, gates and
+  privacy/contradiction handling are in the body.
 version: 0.1.0
 related_skills:
   - codeact

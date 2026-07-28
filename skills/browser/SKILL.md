@@ -1,9 +1,10 @@
 ---
 name: browser
 description: >
-  Browser automation via the external browsercontainer sidecar (chrome-devtools-mcp).
-  Use for navigating web pages, screenshots, accessibility snapshots, form-filling,
-  JavaScript evaluation, and WebGPU rendering validation. Connects over MCP SSE.
+  Drive a real Chrome via the browsercontainer sidecar over MCP SSE. Use when a task
+  needs a live browser — navigate, click, fill forms, screenshot, read the accessibility
+  tree, run JavaScript in-page, or validate WebGPU/WebGL rendering. Canonical owner of the
+  sidecar connection details the chrome-cdp / playwright / browser-automation skills reference.
 version: 2.0.0
 triggers:
   - /browser
@@ -20,7 +21,10 @@ All browser automation runs on the external `browsercontainer` sidecar via
 `chrome-devtools-mcp` (40+ tools) over MCP SSE. No local browser is installed
 in the agentbox image.
 
-## Connection
+## Connection (canonical)
+
+This is the canonical sidecar-connection block; the `chrome-cdp`, `playwright`,
+and `browser-automation` skills point here rather than restating it.
 
 ```
 MCP SSE:  http://browsercontainer:8931/sse   (chrome-devtools-mcp)
@@ -98,53 +102,6 @@ curl -s http://browsercontainer:9222/json/list | jq '.[].url'
 
 ## LaTeX and Diagram Workflows
 
-### Mermaid Rendering Workaround
-
-**`mmdc` 11.14.0 in the Nix store has a broken puppeteer dependency.** Use the browser sidecar instead to render `.mmd` files:
-
-```python
-mmd_content = pathlib.Path("map.mmd").read_text()
-html = f"""<!DOCTYPE html>
-<html><head>
-<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
-<script>mermaid.initialize({{startOnLoad:true,theme:'default'}});</script>
-</head><body style="background:white;margin:0;padding:20px">
-<div class="mermaid">{mmd_content}</div>
-</body></html>"""
-
-html_path = "/tmp/mermaid_render.html"
-pathlib.Path(html_path).write_text(html)
-```
-
-Then in the browser sidecar:
-```javascript
-browser_navigate({ url: `file://${html_path}` })
-// Wait for Mermaid to render (evaluate or snapshot to verify)
-browser_evaluate({ expression: "document.querySelector('.mermaid svg') !== null" })
-browser_take_screenshot({ filename: "/tmp/wardley_map.png" })
-// For high-DPI: use viewport scaling or take at larger viewport width
-```
-
-For 2x resolution, set a wider viewport before screenshotting:
-```javascript
-browser_evaluate({ expression: "document.body.style.zoom='200%'" })
-browser_take_screenshot({ filename: "/tmp/wardley_map_2x.png" })
-```
-
-### PDF Preview During LaTeX Builds
-
-Use the sidecar to visually verify LaTeX output during iterative builds:
-
-```javascript
-// Open the compiled PDF
-browser_navigate({ url: "file:///path/to/book/main.pdf" })
-
-// Screenshot specific pages for spot-checking
-browser_take_screenshot({ filename: "/tmp/page_check.png" })
-
-// Use browser_evaluate to jump to a specific page (PDF.js viewer)
-browser_evaluate({ expression: "PDFViewerApplication.page = 42" })
-browser_take_screenshot({ filename: "/tmp/page_42.png" })
-```
-
-This is the correct approach for arXiv/book builds — no local PDF viewer required.
+Rendering Mermaid `.mmd` files (works around the broken Nix `mmdc`) and
+spot-checking compiled LaTeX/PDF pages via the sidecar are covered in
+[`references/latex-diagram-workflows.md`](references/latex-diagram-workflows.md).

@@ -1,7 +1,7 @@
 ---
 name: relationship-design
-description: Design AI-first interfaces that build ongoing relationships through memory, trust evolution, and collaborative planning, not just isolated screen interactions
-when_to_use: when user explicitly requests agentic UX design, relationship-centric design, or mentions designing for memory, trust evolution, or long-term user relationships; ONLY use when specifically asked, not for general UI/UX tasks
+description: Design AI-first interfaces around ongoing user relationships — persistent memory, graduated trust, and human+AI collaborative planning — instead of isolated screens. Use for agentic/relationship-centric UX work: systems that learn and remember across sessions, trust-evolution flows, memory/forgetting controls, or relationship-quality metrics. Best reserved for when relationship design is the ask; general one-off UI/UX tasks usually don't need it.
+when_to_use: agentic UX design, relationship-centric design, or designing for memory, trust evolution, or long-term user relationships. Reserve for when relationship design is genuinely the ask rather than reaching for it on routine UI/UX tasks.
 version: 1.0.0
 ---
 
@@ -15,7 +15,7 @@ Traditional UX optimizes individual screens and isolated interactions. Agentic U
 
 **Core principle:** Every interaction builds on learned preferences and user history. Systems don't just respond—they develop understanding that compounds over time.
 
-**Announce at start:** "I'm using the Relationship Design skill to create an agentic, memory-aware interface that builds long-term relationships with users."
+When it helps orient the user, signal the frame you're working in — e.g. "Applying relationship-centric (agentic, memory-aware) design here, not just screen-level UX." Skip the announcement when it would be noise.
 
 ## When to Use
 

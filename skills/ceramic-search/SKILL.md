@@ -1,12 +1,11 @@
 ---
 name: ceramic-search
 description: >
-  Ceramic Search API client for high-recall keyword web search with rich page
-  extracts (up to 8k chars per result). Returns 10 structured results per query
-  with title, URL, and long-form description. Exact-match keyword engine — best
-  for LLM-augmented retrieval where you need dense source context, not a
-  synthesized answer. Complements perplexity-research (authoritative primary
-  sources) and web-researcher (verifiable citations + lenses).
+  Keyword web search that returns long page extracts for grounding an LLM in
+  dense source context rather than a synthesized answer. Use when you need
+  exact-match keyword retrieval over the live web — specific entities, dates,
+  or locations — and want raw source text to feed into a prompt or agent
+  pipeline. Not for conversational/semantic queries or citation verification.
 version: 1.0.0
 triggers:
   - /ceramic
@@ -22,21 +21,19 @@ exact-match engine that returns 10 results with rich page extracts (up to 8,000
 characters per result). The long descriptions make it particularly useful as an
 LLM retrieval source where you need dense context, not just snippets.
 
-## Search Priority (this skill is PRIMARY)
+## Choosing a search skill
 
-```
-1. ceramic-search  (this) — DEFAULT for all web search. Keyword, fast, rich extracts
-2. perplexity-research    — Secondary. Authoritative sources, academic/policy filters, synthesized answers
-3. Claude WebSearch       — Tertiary fallback. Built-in, no API key, synthesized
-★  Complex/important?     — Run ALL THREE in parallel, dedupe + cross-verify
-```
+Ceramic is a strong default when you want dense source text to feed back into a
+prompt — keyword, fast, rich extracts. It is not the only choice; pick by intent,
+and for anything complex or high-stakes, run more than one engine in parallel and
+cross-verify.
 
 | Need | Skill |
 |------|-------|
-| **Default web search** — keyword, 10 results, up to 8k char extracts, fast exact matching | **`ceramic-search`** (this — primary) |
-| **Authoritative sources**, academic/policy filters, synthesized answer | **`perplexity-research`** (secondary) |
-| **Quick built-in fallback**, no API key needed | **Claude WebSearch** (tertiary) |
-| **Complex or important** — cross-engine triangulation | **All three in parallel** |
+| **Dense keyword retrieval** — long extracts to ground an LLM, fast exact matching | **`ceramic-search`** (this) |
+| **Authoritative sources**, academic/policy filters, synthesized answer | **`perplexity-research`** |
+| **Quick built-in fallback**, no API key needed | **Claude WebSearch** |
+| **Complex or important** — cross-engine triangulation | run several in parallel, dedupe + cross-verify |
 | **Verifiable citations** — you pick the engine + trusted-domain lenses, full source reading, citation audit | **`web-researcher`** |
 | **Multi-agent deep report** — fan-out + adversarial verification + cited synthesis | **`deep-research`** |
 | Expand a single known URL | **`gemini-url-context`** / **`web-summary`** |

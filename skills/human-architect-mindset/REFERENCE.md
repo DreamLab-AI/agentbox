@@ -853,3 +853,139 @@ For each AI task:
 - [ ] Success is verifiable
 - [ ] Scope is bounded
 - [ ] Context is provided
+
+---
+
+## AI-First Tooling Catalog
+
+Reference tables for Pillar 5 (AI-First Development). Default to simplicity;
+adopt a tool only when it genuinely benefits the project.
+
+### Tools to Evaluate
+
+| Category | Tools | When to Consider |
+|----------|-------|------------------|
+| **Performance** | Rust, WASM | CPU-intensive, latency-critical paths |
+| **Multi-Agent** | claude-flow | Complex workflows, parallel tasks |
+| **Persistence** | agentdb | Agent state, cross-session memory |
+| **Vector Search** | ruvector, pgvector | RAG, semantic search, embeddings |
+| **Edge LLMs** | Phi-3, Gemma 2B, TinyLlama | On-device, offline, privacy-sensitive |
+| **Browser AI** | WebLLM, Transformers.js, ONNX | In-browser inference, low latency |
+| **Agent SDK** | Claude Agent SDK | Custom agents, tool use, MCP |
+
+### Self-Learning Patterns
+
+| Pattern | Implementation | Use Case |
+|---------|----------------|----------|
+| **Feedback loops** | Collect user corrections | Improve accuracy over time |
+| **Preference learning** | Track choices, apply patterns | Personalization without config |
+| **Error correction** | Feed mistakes back | Reduce repeat errors |
+| **Domain adaptation** | Fine-tune on usage | Specialize to vocabulary |
+| **A/B experimentation** | Test variations | Optimize prompts/behavior |
+| **Implicit signals** | Edits, time, acceptance | Infer satisfaction silently |
+
+### User-Facing Skills (End-User Benefits)
+
+Consider whether your app should expose skills like:
+- **Interpretation skills** - Help users understand complex AI outputs
+- **Action skills** - Turn AI suggestions into concrete next steps
+- **Transformation skills** - Convert outputs to different formats (code, docs, emails)
+- **Validation skills** - Help users verify AI claims or check accuracy
+- **Learning skills** - Teach users to get better results from AI
+- **Domain skills** - App-specific workflows (e.g., "/legal-review", "/code-refactor")
+
+### Project-Specific SKILLS.md Pattern
+
+Create a `SKILLS.md` in your project root to:
+- Document app-specific patterns for AI context
+- Capture domain vocabulary and constraints
+- Define project-specific trigger words
+- Record architectural decisions
+- Enable faster onboarding (human and AI)
+- Maintain consistent behavior across sessions
+
+### Continuous Verification Architecture
+
+Plan for automated testing loops:
+- **Pre-commit hooks** - Run affected tests before commit
+- **Watch mode** - Continuous testing during development
+- **Regression suites** - Per-feature test coverage
+- **Integration tests** - API contract verification
+- **Visual regression** - UI consistency checks
+- **Rollback triggers** - Automatic revert on test failure
+
+---
+
+## AI Operational Loyalty
+
+When working with AI assistants (like Claude), establish operational loyalty
+within technical constraints. The loyalty is yours; AI is the tool.
+
+### What AI CAN Commit To
+
+**Prioritizing Your Stated Architecture**
+- Recommending solutions that fit YOUR chosen patterns, not generic "best practices"
+- Flagging when a suggestion would break YOUR architectural commitments
+- Respecting YOUR technical debt repayment priorities
+
+**Protecting Your Commitments**
+- Warning before suggesting changes that would break API contracts
+- Highlighting when "optimization" would betray existing decisions
+- Asking: "You committed to X. This would change that. Proceed?"
+
+**Remembering Within Context**
+- Maintaining consistency within a conversation
+- Referencing earlier decisions
+- Not contradicting guidance you've established
+
+### What AI CANNOT Commit To
+
+**Cross-Session Memory**
+- AI doesn't remember previous conversations (technical limitation)
+- Each session starts fresh
+- YOU must re-establish architectural context
+
+**Ignoring Safety Constraints**
+- AI will not bypass safety rails for "loyalty"
+- This is non-negotiable
+
+**Permanent Commitment**
+- AI weights can update
+- Corporate priorities can shift
+- Training can change behavior
+
+### How to Operationalize AI Loyalty
+
+1. **Document your commitments** - Put architectural decisions in files AI can read (CLAUDE.md, ARCHITECTURE.md)
+2. **Re-establish context** - At session start, remind AI of key commitments:
+   > "We use React, not Vue. We maintain backwards compatibility. We don't add dependencies without justification."
+3. **Challenge AI recommendations** - When AI suggests changes, ask:
+   > "Does this honor our existing architectural commitments?"
+4. **Make AI flag betrayals** - Instruct AI:
+   > "Before suggesting changes that break existing patterns, explicitly flag them."
+
+### The Honest Truth
+
+AI operational loyalty is:
+- **Real** within a session with proper context
+- **Fragile** across sessions (memory resets)
+- **Conditional** on safety constraints
+- **Valuable** when you maintain the architecture documentation that enables it
+
+You cannot make AI truly loyal. But you can make AI operationally useful for
+maintaining YOUR loyalty to your architecture.
+
+**The loyalty is yours. AI is the tool.**
+
+---
+
+## The Human-Only Decisions
+
+No matter how good AI gets, humans must still:
+
+1. **Decide WHAT to build** - Product vision, strategy
+2. **Understand WHETHER it solves the problem** - Domain expertise
+3. **Navigate corporate reality** - Politics, approvals, relationships
+4. **Prevent system collapse** - Systems thinking across boundaries
+5. **Make value judgments** - Tradeoffs, priorities, ethics
+6. **Maintain irrational loyalty** - Commitments that persist despite "optimization"

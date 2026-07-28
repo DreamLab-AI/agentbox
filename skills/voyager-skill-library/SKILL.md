@@ -1,15 +1,14 @@
 ---
 name: voyager-skill-library
 description: >
-  Verified, executable skill primitives stored in RuVector under namespace
-  `code-harness-skills` as ex:VerifiedSkill records (memory_type=procedural).
-  A candidate skill (function + assertions + ≥1 example) is written only
-  after VerificationGate passes: (a) all assertions execute clean under a
-  fresh KernelSession via the code-interpreter MCP, (b) ≥1 example runs
-  without exception, (c) sandbox_check.py finds no banned APIs. Skills are
-  immutable + versioned (urn:agentbox:skill:<scope>:<name>:v<n>); old
-  versions archived after 30 days. Retrieved at task start by CodeAct
-  and injected as ICL prelude.
+  Store and retrieve verified, executable Python skill primitives (a function
+  plus assertions plus at least one example) in the code-harness procedural
+  memory tier. Use when a reusable utility, parser, validator, or algorithm has
+  proven general-purpose across tasks and should be verification-gated and
+  persisted for future reuse, or when retrieving such helper functions at task
+  start to inject as a CodeAct prelude. Covers the VerificationGate write path,
+  the VerifiedSkill record schema, immutable versioning, and task-start
+  retrieval — details in the body.
 version: 0.1.0
 related_skills:
   - codeact

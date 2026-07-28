@@ -1,7 +1,7 @@
 ---
 name: payment-router
 version: 1.0.0
-description: "402-aware outbound payment pipeline"
+description: "Wrap outbound fetch with a transparent HTTP 402 detect-classify-pay-retry loop so a skill or adapter can call cost-gated external resources without inline payment logic. Use when a request may return 402 Payment Required, when calling metered/paid APIs advertising an x402, l402, or agentbox-ledger challenge, or when you need operator-capped, fail-closed spend on the agentbox Lightning ledger rail."
 gate: skills.payment_router.enabled
 dependencies:
   - cost-estimation

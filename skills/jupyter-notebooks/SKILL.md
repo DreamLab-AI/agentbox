@@ -1,6 +1,6 @@
 ---
-name: Jupyter Notebooks
-description: "Comprehensive Jupyter notebook operations - create, execute, and analyze notebooks with full cell manipulation. Use when creating, executing, or analysing Jupyter notebooks with full cell manipulation."
+name: jupyter-notebooks
+description: "Programmatically build and run Jupyter .ipynb notebooks end-to-end via the jupyter-notebooks MCP server — add/delete/move/update cells, execute cells or whole notebooks, manage kernel state, capture outputs, and export to HTML/PDF/Python. Use when authoring or executing a notebook from Claude (data-analysis or ML pipelines, reproducible research docs, tutorial/educational notebooks), driving cell and kernel operations, or converting a .ipynb to another format. Not for one-off edits to a single already-open notebook (use NotebookEdit) or non-interactive production code."
 ---
 
 # Jupyter Notebooks Skill

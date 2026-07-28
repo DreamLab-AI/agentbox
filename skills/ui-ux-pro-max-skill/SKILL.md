@@ -1,6 +1,6 @@
 ---
 name: ui-ux-pro-max
-description: "UI/UX design intelligence. 50 styles, 21 palettes, 50 font pairings, 20 charts, 9 stacks (React, Next.js, Vue, Svelte, SwiftUI, React Native, Flutter, Tailwind, shadcn/ui). Actions: plan, build, create, design, implement, review, fix, improve, optimise, enhance, refactor, check UI/UX code. Projects: website, landing page, dashboard, admin panel, e-commerce, SaaS, portfolio, blog, mobile app, .html, .tsx, .vue, .svelte. Elements: button, modal, navbar, sidebar, card, table, form, chart. Styles: glassmorphism, claymorphism, minimalism, brutalism, neumorphism, bento grid, dark mode, responsive, skeuomorphism, flat design. Topics: color palette, accessibility, animation, layout, typography, font pairing, spacing, hover, shadow, gradient. Integrations: shadcn/ui MCP for component search and examples. Use when designing UI/UX: palettes, fonts, layouts, components, or implementing with React/Next.js/Vue/Svelte/Flutter."
+description: "UI/UX design intelligence for web and mobile: recommends styles, colour palettes, font pairings, layouts, and chart types, plus stack-specific implementation guidance (React, Next.js, Vue, Svelte, SwiftUI, React Native, Flutter, Tailwind, shadcn/ui). Use when designing, building, reviewing, or refining a UI — landing pages, dashboards, admin panels, SaaS, e-commerce, portfolios, mobile apps — or when choosing palettes, typography, components, spacing, animation, or accessibility fixes. Not for backend-only code, 3D (blender), text-to-image (comfyui), or diagrams (mermaid-diagrams)."
 ---
 
 # UI/UX Pro Max - Design Intelligence
@@ -15,6 +15,15 @@ Reference these guidelines when:
 - Reviewing code for UX issues
 - Building landing pages or dashboards
 - Implementing accessibility requirements
+
+**Trigger vocabulary** (folded here from the routing description so nothing is lost):
+- **Actions**: plan, build, create, design, implement, review, fix, improve, optimise, enhance, refactor, check UI/UX code.
+- **Projects / files**: website, landing page, dashboard, admin panel, e-commerce, SaaS, portfolio, blog, mobile app, `.html`, `.tsx`, `.vue`, `.svelte`.
+- **Elements**: button, modal, navbar, sidebar, card, table, form, chart.
+- **Styles**: glassmorphism, claymorphism, minimalism, brutalism, neumorphism, bento grid, dark mode, responsive, skeuomorphism, flat design.
+- **Topics**: color palette, accessibility, animation, layout, typography, font pairing, spacing, hover, shadow, gradient.
+- **Integrations**: shadcn/ui MCP for component search and examples.
+- **Scale**: 50+ styles, 97 color palettes, 57 font pairings, 99 UX guidelines, 25 chart types across 9 technology stacks.
 
 ## When Not To Use
 

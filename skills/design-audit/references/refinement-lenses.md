@@ -14,7 +14,7 @@ asks for one specific kind of change.
 2. **Ground** in context: read `DESIGN.md`/`MASTER.md` tokens, and recall prior
    decisions from RuVector (`memory_search namespace:project-state "design <lens>"`).
 3. **Apply** only the transformation that lens owns — do not silently widen scope.
-4. **Gate** the result through `../open-design/references/anti-slop-rules.md` and
+4. **Gate** the result through `../../open-design/references/anti-slop-rules.md` and
    `scripts/slop-detect.py` (in open-design) before presenting.
 5. **Persist** the decision: `memory_store namespace:project-state` with the lens,
    the change, and the rationale — so the next session inherits the intent.
@@ -26,7 +26,7 @@ asks for one specific kind of change.
 | **bolder** | "more striking", "make it pop", "too timid", "more confident" | Increase contrast between hierarchy levels; enlarge the primary focal point ≥2× the second; commit one decisive flourish. Never add a second competing flourish. |
 | **quieter** | "calm it down", "too busy", "tone it down", "more restraint" | Reduce accent uses to ≤2 per viewport; remove decorative gradients/shadows; widen whitespace; collapse competing focal points to one. |
 | **colorize** | "needs colour", "palette feels flat", "more life" | Derive tones from the 6 DESIGN.md tokens via `color-mix()` — no new raw hex. One accent, applied with intent. Verify contrast. |
-| **typeset** | "fix the type", "typography pass", "tighten the text" | Enforce Butterick rules (see `../typography`): line-length 65–75ch, line-height 1.5–1.75, letter-spacing floor, one display + one body face, tabular numerics. |
+| **typeset** | "fix the type", "typography pass", "tighten the text" | Enforce Butterick rules (see `../../typography`): line-length 65–75ch, line-height 1.5–1.75, letter-spacing floor, one display + one body face, tabular numerics. |
 | **layout** | "fix the layout", "spacing is off", "alignment", "grid" | Establish a grid; vary section widths (full-bleed → narrow → wide); kill monotonous spacing; lock every element to the baseline. |
 | **animate** | "add motion", "make it feel alive", "transitions" | `transform`/`opacity` only, 150–300ms ease-out; respect `prefers-reduced-motion`; motion must enhance, never decorate. Bans bounce/elastic. |
 | **delight** | "add personality", "a moment of delight", "feels sterile" | One earned micro-interaction or detail that serves the thesis — not confetti. Subtract if it competes with the primary action. |
@@ -36,7 +36,7 @@ asks for one specific kind of change.
 | **onboard** | "first-run", "onboarding", "getting started" | Guide a new user to first value; progressive disclosure; the empty state *is* the onboarding. |
 | **optimize** | "feels slow", "perf", "heavy", "jank" | Reserve space for async content (no layout shift); lazy-load + `srcset`; `transform`/`opacity` motion; audit bundle/asset weight. |
 | **adapt** | "make it responsive", "mobile", "tablet", "fits everywhere" | Fluid reflow (not just breakpoints) at 375/768/1024/1440; ≥44px touch targets; no mobile-amputation; no horizontal scroll. |
-| **document** | "document the design", "design system doc", "spec this" | Emit/update `DESIGN.md` per `../open-design/references/design-system-schema.md`; capture tokens, type scale, components. |
+| **document** | "document the design", "design system doc", "spec this" | Emit/update `DESIGN.md` per `../../open-design/references/design-system-schema.md`; capture tokens, type scale, components. |
 | **overdrive** | "go further", "push it", "make it unforgettable" | Deliberately raise the Innovation dimension: one unexpected layout/typographic move that *earns* its place within the thesis. Highest risk — gate hardest. |
 
 ## Scope discipline
@@ -56,5 +56,5 @@ distill → clarify → typeset → layout → quieter → harden → animate
 ```
 
 Apply one at a time, gate each, persist each. Stop when the five-dimensional
-critique (`../open-design/references/critique-dimensions.md`) holds ≥7 across the
+critique (`../../open-design/references/critique-dimensions.md`) holds ≥7 across the
 board and `slop-detect.py` reports clean.

@@ -1,6 +1,6 @@
 ---
-name: Hooks Automation
-description: "Automated coordination, formatting, and learning from Claude Code operations using intelligent hooks. Use when setting up pre/post task hooks, session handoffs between agents, Git commit gating, memory coordination, or neural pattern training."
+name: hooks-automation
+description: "Automate coordination, formatting, and learning around Claude Code operations with hooks. Use when setting up pre/post task hooks, session handoffs between agents, Git commit gating, memory coordination, or neural pattern training."
 ---
 
 # Hooks Automation

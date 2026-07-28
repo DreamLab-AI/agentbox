@@ -449,6 +449,7 @@
           iproute2        # ip, ss — modern network introspection
           iputils         # ping, ping6, tracepath — basic reachability tests
           docker-client   # docker CLI for talking to host daemon via mounted /var/run/docker.sock
+          google-cloud-sdk # gcloud/gsutil/bq — GCP CLI for deploys (Compute Engine, IAP, Secret Manager, Cloud Run); see skills/gcloud
           gnumake
           gcc
           clang

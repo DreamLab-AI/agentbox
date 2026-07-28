@@ -1,16 +1,14 @@
 ---
 name: email-search
 description: >-
-  Answer questions about the owner's private personal email archive via the local
-  Private Email MCP Gateway. TRIGGER when the user asks anything that requires looking
-  in their personal email — "did I get an invoice from X", "when did Y email me about Z",
-  "find the thread about my flight", "what's my account number with the bank", "summarize
-  what HMRC sent me", "search for anyone called <name> in my email". The gateway runs
-  locally and reasons over the mail archive with a local model. It exposes TWO access tiers:
-  `ask_email` returns privacy-sanitized, schema-abstracted results (default, safe); and the
-  break-glass pair `fetch_email_raw` / `fetch_email_by_ref` return RAW verbatim mail (real
-  senders, subjects, dates, links, full text) and are gated by an owner-allow-listed Nostr
-  pubkey capability token. SKIP for sending email, calendar, or non-personal/work mailboxes.
+  Search and answer questions about the owner's private personal email archive via the
+  local Private Email MCP Gateway. Use when the user asks anything that needs looking in
+  their personal mail — "did I get an invoice from X", "when did Y email me about Z", "find
+  the thread about my flight", "what's my account number with the bank", "summarize what
+  HMRC sent me", "search for anyone called <name> in my email" — or wants new mail pulled in
+  now (password resets, one-time codes, verification links). Defaults to privacy-sanitized
+  answers; verbatim raw mail is an owner-authorised break-glass tier (see body). Skip for
+  sending email, calendar, or work/non-personal mailboxes.
 ---
 
 # Private Email Search (on-demand MCP gateway)

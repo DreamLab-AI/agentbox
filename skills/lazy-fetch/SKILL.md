@@ -3,12 +3,13 @@ skill: lazy-fetch
 name: lazy-fetch
 version: 1.0.0
 description: >-
-  Context management, plan tracking, blueprints, and progressive discovery
-  companion for Claude Code sessions. Provides 25 MCP tools for context
-  hydration, phased task planning, deterministic+agentic workflow blueprints,
-  persistent memory (bridged to RuVector), security scanning, and autonomous
-  PRD-to-sprints execution. Ported from Lazy-Fetch by Clemens865.
-  Use when hydrating session context, tracking phased task plans, running blueprints, or doing progressive discovery in Claude Code sessions.
+  Context, persistence, and process-tracking companion for single-agent Claude
+  Code sessions. Use when hydrating session context (git/plan/memory), tracking
+  phased read/plan/implement/validate/document task plans, running blueprint
+  workflows, doing progressive file discovery, persisting decisions across
+  sessions, running a quick security scan before committing, or building
+  autonomously from a PRD. Not for multi-agent swarms or hive-mind — use ruflo
+  for those.
 tags:
   - context-management
   - plan-tracking
@@ -35,7 +36,8 @@ Lazy Fetch solves three things that Claude Code sessions lack out of the box:
 **context**, **persistence**, and **process tracking**.
 
 Built from analysing 18 agentic coding frameworks, it extracts only the patterns
-that actually work and combines them into a lightweight CLI + MCP server.
+that actually work and combines them into a lightweight CLI + MCP server (25 MCP
+tools). Ported from Lazy-Fetch by Clemens865.
 
 **Key capabilities:**
 

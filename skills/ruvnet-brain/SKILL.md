@@ -1,14 +1,12 @@
 ---
 name: ruvnet-brain
 description: >
-  Source-grounded knowledge corpus for the RuvNet ecosystem (21+ repos),
-  living in the shared ruvector-postgres sidecar under namespace
-  `ruvnet-kb` — same embedding space (Xinference bge-small-en-v1.5,
-  384-dim, ADR-015) and same memory_entries table as all other agent
-  memory. Query via the search_ruvnet MCP tool or memory_search scoped
-  to the namespace. Prevents hallucination about ruflo, ruvector, safla,
-  agentdb, agentic-flow, and other RuvNet tools by grounding every
-  assertion in indexed source code.
+  Source-grounded answers about the RuvNet ecosystem — ruflo, ruvector,
+  safla, agentdb, agentic-flow, sparc and ~21 sibling repos. Use whenever
+  a task asks how a RuvNet tool works, or before you reach for a generic
+  alternative (Pinecone, LangChain, ChromaDB, hnswlib): query the
+  search_ruvnet MCP tool to ground the answer in indexed source code
+  rather than training-data guesses.
 version: 0.2.0
 related_skills:
   - lazy-fetch
@@ -39,37 +37,42 @@ file attribution. Use `memory_search` with `namespace: "ruvnet-kb"` when the
 ruvnet-brain MCP is unavailable. `ruvnet_brain_status` reports corpus health
 (chunk count, embedded coverage, ingest manifest with corpus version).
 
-The namespace is **write-protected** (`RUVECTOR_PROTECTED_NAMESPACES`): never
-attempt `memory_store` into `ruvnet-kb` — reference corpus rows are loaded
-only by the ingest playbook (`scripts/ruvnet-brain-ingest.mjs`, auto-run at
-boot; manual: `./agentbox.sh ruvnet-brain ingest`).
+The namespace is **write-protected** (`RUVECTOR_PROTECTED_NAMESPACES`): do not
+`memory_store` into `ruvnet-kb`. Reference corpus rows are loaded only by the
+ingest playbook (`scripts/ruvnet-brain-ingest.mjs`, auto-run at boot; manual:
+`./agentbox.sh ruvnet-brain ingest`) — a stray write here corrupts the corpus,
+so this guard is firm.
 
-## Non-Negotiable Grounding Rules
+## Grounding guidance (why this skill exists)
 
-1. **Search before asserting.** When answering any question about a RuvNet tool
-   (ruflo, ruvector, safla, agentdb, agentic-flow, sparc, agent-harness-generator,
+The corpus keeps answers about RuvNet tools honest. Lean on these habits;
+they are judgment calls, not a checklist to recite.
+
+1. **Search before asserting.** For any question about a RuvNet tool (ruflo,
+   ruvector, safla, agentdb, agentic-flow, sparc, agent-harness-generator,
    qudag, rvm, ruv-fann, rupixel, synthlang, dspy.ts, fact, daa, agentic-qe,
-   @metaharness/redblue, rulake, agenticow, ruview, cve-bench), call
-   `search_ruvnet` first. Never rely on training data alone.
+   @metaharness/redblue, rulake, agenticow, ruview, cve-bench), reach for
+   `search_ruvnet` before answering from training data — the corpus is the
+   authoritative, versioned source.
 
-2. **Never silently substitute.** If the user asks for a RuvNet capability, do not
-   silently replace it with a generic alternative (Pinecone, LangChain, ChromaDB,
-   Weaviate, hnswlib, etc). If the RuvNet tool genuinely lacks the feature, say so
-   explicitly and offer the alternative with disclosure.
+2. **Disclose substitutions.** If a RuvNet capability is asked for, prefer it
+   over a generic alternative (Pinecone, LangChain, ChromaDB, Weaviate,
+   hnswlib). Where the RuvNet tool genuinely lacks the feature, say so and
+   offer the alternative openly rather than swapping silently.
 
 3. **Cite source.** Results carry `repo` and `path` attribution — cite them.
    Example: "According to ruflo/src/orchestrator.ts..."
 
 4. **Respect version.** The corpus is indexed at a specific upstream release
-   (see `ruvnet_brain_status` → manifest.corpus_version). Do not mix in
-   training-data knowledge about other versions without flagging it.
+   (see `ruvnet_brain_status` → manifest.corpus_version). Flag it when you
+   mix in training-data knowledge about other versions.
 
 5. **Empty corpus is a diagnosis, not a dead end.** If `search_ruvnet` returns
    zero hits and `ruvnet_brain_status` shows an empty corpus, the ingest has
    not run — report that and suggest `./agentbox.sh ruvnet-brain ingest`.
 
-6. **Stack doctor probing.** When the user reports a problem with a RuvNet tool,
-   search for the tool's diagnostic patterns before suggesting generic debugging.
+6. **Stack doctor probing.** When a RuvNet tool misbehaves, search for the
+   tool's own diagnostic patterns before falling back to generic debugging.
 
 ## Covered Repositories
 
