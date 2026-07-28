@@ -54,6 +54,7 @@ Local lifecycle commands:
   ${GREEN}gui-tools${NC}        Manage GPU Blender + QGIS sidecar [up|down|logs|health|status|rebuild|shell|gpu]
   ${GREEN}openmed${NC}          Manage optional clinical-PHI redaction sidecar [up|down|logs|health|status|rebuild|shell]
   ${GREEN}xr-runtime${NC}       Manage Monado OpenXR + Godot XR test runtime [up|down|logs|health|status|rebuild|shell|gpu|vnc]
+  ${GREEN}android${NC}          [EXPERIMENTAL, gated] redroid Android/Play sidecar [up|down|logs|status|screencap|shell|id] — needs AGENTBOX_ENABLE_ANDROID=1
   ${GREEN}preflight${NC}        Validate the local environment + manifest before `up` (W021 audit, missing host paths, override drift)
 
 Options:
@@ -570,6 +571,11 @@ GUI_TOOLS_FILE="${SCRIPT_DIR}/docker-compose.gui-tools.yml"
 GUI_TOOLS_COMPOSE_ARGS=(--project-name agentbox -f "$GUI_TOOLS_FILE")
 OPENMED_FILE="${SCRIPT_DIR}/docker-compose.openmed.yml"
 OPENMED_COMPOSE_ARGS=(--project-name agentbox -f "$OPENMED_FILE")
+# EXPERIMENTAL, GATED OFF: Android (redroid) sidecar — a genuine Play client.
+# The compose service is behind the `android` profile and cmd_android additionally
+# requires AGENTBOX_ENABLE_ANDROID=1. See docs/user/android.md.
+ANDROID_FILE="${SCRIPT_DIR}/docker-compose.android.yml"
+ANDROID_COMPOSE_ARGS=(--project-name agentbox -f "$ANDROID_FILE" --profile android)
 # Standard ports — MAD has been deprecated; no port remap needed.
 # All services bind to their canonical ports inside the container; the
 # operator's docker-compose.override.yml may further restrict by adding
@@ -1029,6 +1035,118 @@ cmd_health() {
         echo -e "${YELLOW}Note: jq not found; showing raw response.${NC}"
         printf '%s\n' "$response"
     fi
+}
+
+# ---------------------------------------------------------------------------
+# android (redroid) sidecar lifecycle — EXPERIMENTAL, GATED OFF
+# ---------------------------------------------------------------------------
+# A genuine Play-certifiable Android 13 (x86_64) on the host kernel via binder.
+# Purpose: be a real Google Play client for app extraction (incl. paid apps that
+# refuse synthetic clients like apkeep/gpapi). Drive headlessly with
+# `docker exec ... screencap|input`. Full playbook:
+#   docs/user/android.md
+# Two guards: compose `--profile android` (in ANDROID_COMPOSE_ARGS) AND the
+# AGENTBOX_ENABLE_ANDROID=1 env check below.
+
+cmd_android() {
+    local subcmd="${1:-help}"
+    shift 2>/dev/null || true
+    local NAME="agentbox-android"
+
+    # GUARD 2: refuse mutating actions unless explicitly enabled.
+    case "$subcmd" in
+        up|rebuild)
+            if [[ "${AGENTBOX_ENABLE_ANDROID:-0}" != "1" ]]; then
+                echo -e "${RED}android sidecar is gated off.${NC}"
+                echo "It runs a privileged Android container holding a live Google session."
+                echo "To enable for this invocation:"
+                echo -e "  ${GREEN}AGENTBOX_ENABLE_ANDROID=1 $0 android up${NC}"
+                echo "Prerequisites & sign-in playbook: docs/user/android.md"
+                exit 1
+            fi
+            # Preflight: binder must be exposed by the host kernel.
+            if ! grep -qw binder /proc/filesystems 2>/dev/null; then
+                echo -e "${RED}Host kernel does not expose binder (needed by redroid).${NC}"
+                echo "Load it on the host: sudo modprobe binder_linux devices=\"binder,hwbinder,vndbinder\""
+                exit 1
+            fi
+            ;;
+    esac
+
+    case "$subcmd" in
+        up)
+            if ! docker image inspect "${ANDROID_IMAGE:-redroid/redroid:13-mtg}" >/dev/null 2>&1; then
+                echo -e "${RED}GApps image ${ANDROID_IMAGE:-redroid/redroid:13-mtg} not found.${NC}"
+                echo "Build it once with redroid-script (see the playbook), then retry."
+                exit 1
+            fi
+            echo -e "${CYAN}Starting android (redroid) sidecar...${NC}"
+            docker compose "${ANDROID_COMPOSE_ARGS[@]}" up -d
+            echo -e "${CYAN}Waiting for Android boot (sys.boot_completed)...${NC}"
+            local deadline=$(( $(date +%s) + 180 ))
+            while [[ $(date +%s) -lt $deadline ]]; do
+                [[ "$(docker exec "$NAME" getprop sys.boot_completed 2>/dev/null | tr -d '\r')" == "1" ]] && {
+                    echo -e "${GREEN}Android booted.${NC} ABI: $(docker exec "$NAME" getprop ro.product.cpu.abilist 2>/dev/null)"
+                    echo -e "  ${GREEN}adb   :${NC} 127.0.0.1:5555 (loopback only)"
+                    echo -e "  ${GREEN}drive :${NC} docker exec $NAME screencap -p >f.png ; docker exec $NAME input tap X Y"
+                    echo -e "  ${GREEN}next  :${NC} $0 android id   # GSF ID to certify at google.com/android/uncertified"
+                    return 0
+                }
+                sleep 5
+            done
+            echo -e "${RED}Boot timed out. Check: $0 android logs${NC}"; exit 1
+            ;;
+        down)
+            echo -e "${CYAN}Stopping android sidecar...${NC}"
+            docker compose "${ANDROID_COMPOSE_ARGS[@]}" down
+            echo -e "${GREEN}Stopped. (data volume kept; 'docker volume rm agentbox_android-data' to wipe)${NC}"
+            ;;
+        logs)   docker compose "${ANDROID_COMPOSE_ARGS[@]}" logs -f --tail 100 ;;
+        status) docker compose "${ANDROID_COMPOSE_ARGS[@]}" ps ;;
+        rebuild)
+            docker compose "${ANDROID_COMPOSE_ARGS[@]}" down
+            cmd_android up
+            ;;
+        shell)  docker exec -it "$NAME" sh ;;
+        id)
+            # GSF device id for Play-Protect certification (register at
+            # https://www.google.com/android/uncertified). sqlite3 in-image can
+            # crash, so read the db out and parse on the host side.
+            docker cp "$NAME:/data/data/com.google.android.gsf/databases/gservices.db" /tmp/gservices.db 2>/dev/null \
+              && python3 -c "import sqlite3;print('GSF android_id:',dict(sqlite3.connect('/tmp/gservices.db').execute('select name,value from main').fetchall()).get('android_id'))" \
+              || echo -e "${RED}GMS not checked in yet — let it run a minute after first boot.${NC}"
+            ;;
+        screencap)
+            local dest="${1:-android-frame.png}"
+            docker exec "$NAME" screencap -p > "$dest" 2>/dev/null && echo -e "${GREEN}saved ${dest}${NC}"
+            ;;
+        help|*)
+            cat <<AND_HELP
+${CYAN}Android (redroid) sidecar — EXPERIMENTAL, gated off${NC}
+
+A genuine, Play-certifiable Android 13 (x86_64) for use as a real Google Play
+client (app extraction, incl. paid apps that reject synthetic clients).
+
+Usage: AGENTBOX_ENABLE_ANDROID=1 $0 android <command>
+
+  up          Start the sidecar and wait for boot (gated: needs the env flag)
+  down        Stop it (keeps the /data volume)
+  logs        Follow container logs
+  status      docker compose ps
+  rebuild     down + up
+  shell       sh inside the Android container
+  id          Print GSF device id to register at google.com/android/uncertified
+  screencap [file]  Grab the framebuffer (default android-frame.png)
+
+Drive the UI headlessly:
+  docker exec agentbox-android screencap -p > f.png
+  docker exec agentbox-android input tap <x> <y>
+  docker exec agentbox-android input text 'hello'
+
+Full sign-in + extraction playbook: docs/user/android.md
+AND_HELP
+            ;;
+    esac
 }
 
 # ---------------------------------------------------------------------------
@@ -1496,7 +1614,7 @@ while [[ $# -gt 0 ]]; do
             usage
             exit 0
             ;;
-        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser|backup|restore|up|down|build|rebuild|update|ruvector|logs|shell|health|browsercontainer|gui-tools|openmed|xr-runtime|migrate-workspace|preflight)
+        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser|backup|restore|up|down|build|rebuild|update|ruvector|logs|shell|health|browsercontainer|gui-tools|openmed|xr-runtime|android|migrate-workspace|preflight)
             CMD="$1"
             shift
             break
@@ -1644,6 +1762,7 @@ case "${CMD:-}" in
     gui-tools)         cmd_gui_tools "$@" ;;
     openmed)           cmd_openmed "$@" ;;
     xr-runtime)        cmd_xr_runtime "$@" ;;
+    android)           cmd_android "$@" ;;
     migrate-workspace) cmd_migrate_workspace "$@" ;;
     preflight)         cmd_preflight "$@" ;;
     *)                 usage ;;

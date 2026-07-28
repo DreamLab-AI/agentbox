@@ -72,6 +72,7 @@ You have a machine, you want agentbox running on it, ideally with as little fuss
 | Feature guides | |
 |---|---|
 | [3DGS (COLMAP + METIS + LichtFeld)](user/3dgs.md) | 3D Gaussian Splatting pipeline |
+| [Android (redroid) sidecar](user/android.md) | **Experimental, gated** — genuine Play-certifiable Android 13 (x86_64) as a real Play client for owned-app extraction |
 | [Blender](user/blender.md) | Blender toolchain |
 | [ComfyUI](user/comfyui.md) | Built-in vs external ComfyUI |
 | [LaTeX](user/latex.md) | TeX Live full |

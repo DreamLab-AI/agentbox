@@ -1,0 +1,54 @@
+# Android sidecar (redroid / remote-android) — EXPERIMENTAL, GATED OFF.
+#
+# A genuine, Play-Protect-certifiable Android 13 (x86_64) running natively on
+# the host kernel via binderfs (no KVM, no emulation). Its purpose is to be a
+# *real* Google Play client: it holds a signed-in Google account and can
+# download/extract apps the account legitimately owns — including PAID apps
+# whose Play delivery backend refuses synthetic clients (apkeep/gpapi return
+# DF-DFERH-01). Drive it headlessly with `docker exec ... screencap|input`.
+#
+# GATING (two independent guards, both must be lifted):
+#   1. compose profile `android` — this service never starts on a plain
+#      `docker compose up`; it requires `--profile android`.
+#   2. agentbox.sh refuses `android up` unless AGENTBOX_ENABLE_ANDROID=1.
+#
+# PREREQUISITES (see docs/user/android.md):
+#   - Host kernel exposes binder: `grep binder /proc/filesystems` → `nodev binder`.
+#   - A GApps image built once via redroid-script (produces redroid/redroid:13-mtg).
+#     Set ANDROID_IMAGE to override the tag.
+services:
+  android:
+    profiles: ["android"]            # GUARD 1: opt-in compose profile
+    image: ${ANDROID_IMAGE:-redroid/redroid:13-mtg}
+    container_name: agentbox-android
+    hostname: agentbox-android
+    restart: "no"                    # disposable by design; never auto-restart
+    privileged: true                 # binder + Android init require it
+    # redroid reads ABI/boot props as init cmdline args, NOT env. The full
+    # abilist TRIPLE is mandatory on the 32+64 image: omitting abilist32 makes
+    # the 32-bit zygote SIGABRT ("Unable to determine ABI list from property
+    # ro.product.cpu.abilist32") and system_server never starts.
+    command:
+      - androidboot.use_memfd=1
+      - ro.product.cpu.abilist=x86_64,arm64-v8a,x86,armeabi-v7a,armeabi
+      - ro.product.cpu.abilist64=x86_64,arm64-v8a
+      - ro.product.cpu.abilist32=x86,armeabi-v7a,armeabi
+      - ro.setupwizard.mode=DISABLED
+    ports:
+      # adb over TCP. Bound to loopback only — this is an authenticated Google
+      # session; never expose it on 0.0.0.0. Prefer `docker exec` for control.
+      - "127.0.0.1:5555:5555"
+    volumes:
+      # Persist /data so a signed-in account + installed apps survive restarts.
+      # Comment out for a truly ephemeral rig (fresh device every `up`).
+      - android-data:/data
+    networks:
+      - visionclaw
+
+networks:
+  visionclaw:
+    external: true
+    name: visionclaw_network
+
+volumes:
+  android-data:
