@@ -20,8 +20,19 @@
  *      operator's own key may drive it.
  *   3. Arm-after-EOSE — only wraps arriving after the first EOSE run, so a
  *      cold boot never replays the (timestamp-randomized) gift-wrap backlog.
- *   4. De-dup by event id → a re-broadcast cannot re-fire.
- *   5. Sigil — only messages starting with '/' are commands; ordinary thread
+ *   4. De-dup by event id — in-memory for this run, PLUS a durable
+ *      executed-command store (nostr-inbox/executed.json): a wrap id that has
+ *      ever executed can never re-fire, across restarts AND relay re-serves.
+ *      Memory alone is not enough — the 15s keep-warm re-REQ re-fetches the
+ *      whole lookback window and the in-memory set FIFO-evicts, so a
+ *      long-running armed process saw days-old commands come back as "new"
+ *      (verified replay burst 2026-07-28, commands.jsonl).
+ *   5. Freshness — the INNER rumor's created_at is real time (NIP-59
+ *      randomizes only the outer wrap/seal), so a command whose rumor is older
+ *      than CMD_FRESH_WINDOW never executes, only logs. This is the
+ *      authoritative replay gate: whatever the relay re-serves, history is
+ *      stale by construction. Gates 3–4 are noise/token savers on top.
+ *   6. Sigil — only messages starting with '/' are commands; ordinary thread
  *      text (and our own replies, which never start with '/') are ignored.
  *
  * Control model: the operator talks naturally, prefixed with '/'. Read verbs
@@ -79,7 +90,12 @@ const HOME = os.homedir();
 const INBOX = path.join(HOME, '.claude', 'nostr-inbox');
 const LOCK = path.join(INBOX, 'gateway.lock');
 const AUDIT = path.join(INBOX, 'commands.jsonl');
-const MODEL = process.env.NOSTR_GATEWAY_MODEL || 'claude-sonnet-5'; // C2 reporter: Sonnet minimum (operator requirement — Haiku misreads pane state)
+const CMD_FRESH_WINDOW = 600; // max age (s) of a command's inner rumor — older never executes (replay gate)
+const EXEC_FILE = path.join(INBOX, 'executed.json'); // durable wrap-id store of executed commands
+// C2 model: Sonnet is the FLOOR (operator requirement — Haiku misreads noisy
+// pane scrollback). The env var may raise it, never lower it below Sonnet.
+const MODEL_RAW = process.env.NOSTR_GATEWAY_MODEL || 'claude-sonnet-5';
+const MODEL = /haiku/i.test(MODEL_RAW) ? 'claude-sonnet-5' : MODEL_RAW;
 const CLAUDE_BIN = process.env.CLAUDE_BIN || 'claude';
 
 function log(...a) { try { process.stdout.write(`[gw ${new Date().toISOString()}] ${a.join(' ')}\n`); } catch { /* noop */ } }
@@ -134,6 +150,18 @@ for (const s of ['SIGINT', 'SIGTERM']) process.on(s, () => process.exit(0));
 // ── state ───────────────────────────────────────────────────────────────────
 const seen = new Set(); const seenOrder = []; // FIFO-evicted dedupe of wrap ids
 function markSeen(id) { if (!id || seen.has(id)) return false; seen.add(id); seenOrder.push(id); if (seenOrder.length > 20000) seen.delete(seenOrder.shift()); return true; }
+
+// Durable replay guard: wrap ids of EXECUTED commands only (rare — mirror
+// traffic never lands here), keyed to the rumor's real timestamp so the file
+// self-prunes. Written BEFORE dispatch → at-most-once even across a crash.
+let executed = { ids: {} };
+try { const j = JSON.parse(fs.readFileSync(EXEC_FILE, 'utf8')); if (j && j.ids) executed = j; } catch { /* first run */ }
+function recordExecuted(id, ts) {
+  executed.ids[id] = ts;
+  const cut = nowSec() - 7 * 86400;
+  for (const k of Object.keys(executed.ids)) if (executed.ids[k] < cut) delete executed.ids[k];
+  try { fs.writeFileSync(EXEC_FILE + '.tmp', JSON.stringify(executed)); fs.renameSync(EXEC_FILE + '.tmp', EXEC_FILE); } catch { /* fail-open */ }
+}
 let pendingRoute = null; // { instr, at } — an instruction the C2 asked the operator to clarify
 let armed = false;       // true after the first EOSE — gates out the initial history batch
 let coldBoot = true;     // cleared after the first arm; reconnects then stay armed (seen-set dedupes)
@@ -512,11 +540,20 @@ function handleWrap(ws, wrap) {
   if (String(rumor.pubkey || '').toLowerCase() !== commanderPub) return; // only the operator may command
   const text = String(rumor.content || '').trim();
   if (!text.startsWith('/')) return;                                 // no sigil → not a command (also skips our own replies)
-  // Replay guard: gift-wrap timestamps are randomized, so freshness can't gate.
-  // The initial query returns up to WRAP_LOOKBACK of history; those pre-EOSE
-  // wraps are marked seen but NOT executed, so a restart never replays days of
-  // commands. Only commands arriving after the first EOSE (genuinely new) run.
+  // Replay guards, in order of authority (the relay re-serves stored history
+  // on every keep-warm re-REQ, so "it arrived" never implies "it is new"):
+  //   a. durable executed store — this exact wrap already ran, maybe in a
+  //      previous process lifetime;
+  //   b. rumor freshness — the OUTER wrap timestamp is randomized (NIP-59) but
+  //      the INNER rumor carries real time, so replayed history is stale by
+  //      construction and can never execute, however it reaches us;
+  //   c. arm-after-EOSE — cold-boot backlog is skipped without spending a log
+  //      line per event on gates a/b.
   if (!armed) { log('backlog cmd skipped:', text.slice(0, 40)); return; }
+  if (executed.ids[wrap.id]) { log('replayed cmd skipped (already executed):', text.slice(0, 40)); return; }
+  const age = nowSec() - Number(rumor.created_at || 0);
+  if (age > CMD_FRESH_WINDOW) { log(`stale cmd skipped (age ${Math.round(age / 60)}m):`, text.slice(0, 40)); return; }
+  recordExecuted(wrap.id, Number(rumor.created_at) || nowSec());
   audit(text);
   dispatch(ws, text);
 }
