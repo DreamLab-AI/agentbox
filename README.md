@@ -29,6 +29,8 @@ Instead of custom Dockerfiles, scattered API keys, and brittle dependency script
 
 Why the identity spine matters: when an agent acts, an operator has to answer *which* agent did it, and prove it later. Agentbox roots every resource, action, and event in one `did:nostr` keypair, so the graph of what happened is the audit trail — not a log you have to trust.
 
+The second spine is semantic. An agent loop is unbounded by construction, so Agentbox bounds it twice: fail-closed gates on what an agent may *touch*, and a live ontology bridge to VisionClaw's OWL 2 EL graph so what an agent *asserts* is checked against formal semantics rather than prose. The industry now calls this arrangement **neurosymbolic** — thin agents on a shared semantic layer, instead of thick agents with hand-wired context.
+
 ---
 
 ## Where Agentbox sits in the ecosystem
