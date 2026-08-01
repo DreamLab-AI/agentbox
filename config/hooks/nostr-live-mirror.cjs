@@ -398,7 +398,10 @@ async function main() {
     const rumor = {
       kind: KIND_DM_RUMOR,
       content: body,
-      tags: [['p', recipient]],
+      // The inbound gateway ignores Agentbox-originated mirrors. Without this
+      // provenance tag, an operator-self-DM mirror would be mistaken for a new
+      // chat message and fed back into tab 0.
+      tags: [['p', recipient], ['client', 'agentbox-live-mirror']],
       created_at: Math.floor(Date.now() / 1000),
     };
     // Recipient FIRST in the wrap's ["p"] tag → passes the relay whitelist gate.

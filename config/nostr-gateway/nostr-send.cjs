@@ -53,7 +53,7 @@ function readInput() {
 
 (async () => {
   const text = (await readInput()) || '(empty)';
-  const rumor = { kind: KIND_DM_RUMOR, created_at: nowSec(), tags: [['p', pub]], content: text.slice(0, 3500), pubkey: pub };
+  const rumor = { kind: KIND_DM_RUMOR, created_at: nowSec(), tags: [['p', pub], ['client', 'agentbox-nostr-send']], content: text.slice(0, 3500), pubkey: pub };
   const wrap = tools.nip59.wrapEvent(rumor, sk, pub);
   const ws = new WS(relay);
   const done = (code) => { try { ws.close(); } catch { /* noop */ } process.exit(code); };

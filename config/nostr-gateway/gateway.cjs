@@ -32,8 +32,10 @@
  *      than CMD_FRESH_WINDOW never executes, only logs. This is the
  *      authoritative replay gate: whatever the relay re-serves, history is
  *      stale by construction. Gates 3–4 are noise/token savers on top.
- *   6. Sigil — only messages starting with '/' are commands; ordinary thread
- *      text (and our own replies, which never start with '/') are ignored.
+ *   6. Grammar + provenance — '/' selects an explicit fleet-control command;
+ *      ordinary operator text is chat routed only to tab 0. Every Agentbox
+ *      egress message carries a client tag and is ignored on re-ingress, so
+ *      mirrored replies cannot feed themselves back into the agent.
  *
  * Control model: the operator talks naturally, prefixed with '/'. Read verbs
  * (/tabs, /report, /peek) are fast deterministic capture-pane reads. Anything
@@ -97,6 +99,9 @@ const EXEC_FILE = path.join(INBOX, 'executed.json'); // durable wrap-id store of
 const MODEL_RAW = process.env.NOSTR_GATEWAY_MODEL || 'claude-sonnet-5';
 const MODEL = /haiku/i.test(MODEL_RAW) ? 'claude-sonnet-5' : MODEL_RAW;
 const CLAUDE_BIN = process.env.CLAUDE_BIN || 'claude';
+// The tab-0 bridge is the common ingress/feed for voice, browser text, and
+// Nostr.  Keeping it local means Nostr adds no exposed HTTP surface.
+const TAB0_BRIDGE_URL = (process.env.AGENTBOX_TAB0_BRIDGE_URL || 'http://127.0.0.1:8971').replace(/\/$/, '');
 
 function log(...a) { try { process.stdout.write(`[gw ${new Date().toISOString()}] ${a.join(' ')}\n`); } catch { /* noop */ } }
 function nowSec() { return Math.floor(Date.now() / 1000); }
@@ -227,7 +232,7 @@ function sendKeys(idx, text) { sh('tmux', ['send-keys', '-t', idx, '-l', text]);
 
 // ── crypto: reply on the live authed socket ─────────────────────────────────
 function buildWrap(text) {
-  const rumor = { kind: KIND_DM_RUMOR, created_at: nowSec(), tags: [['p', replyTo]], content: String(text).slice(0, MAX_BODY), pubkey: pub };
+  const rumor = { kind: KIND_DM_RUMOR, created_at: nowSec(), tags: [['p', replyTo], ['client', 'agentbox-nostr-gateway']], content: String(text).slice(0, MAX_BODY), pubkey: pub };
   return tools.nip59.wrapEvent(rumor, sk, replyTo); // gateway → operator (your phone)
 }
 function reply(ws, text) { try { ws.send(JSON.stringify(['EVENT', buildWrap(text)])); log('reply:', text.slice(0, 60).replace(/\n/g, ' ⏎ ')); } catch (e) { log('reply failed', e.message); } }
@@ -307,6 +312,31 @@ function doSend(ws, idx, msg, why) {
   watchTab(idx);
   const flag = st === 'waiting' ? `🛑 tab was ⏸ WAITING on a dialog — text may have answered it; /peek ${idx} to check\n` : '';
   return reply(ws, `${flag}✔ tab ${idx} ${win[1]} ← "${clean}"  ${STATE_BADGE[st]}${why ? '\n↳ ' + String(why).slice(0, 120) : ''}`);
+}
+
+// Ordinary operator Nostr text is chat with the main agent, not a fleet
+// command.  Route it through the same bridge used by the voice console so it
+// is visible in the shared transcript.  Slash-prefixed text remains the
+// explicit fleet-control protocol above.
+async function chatTab0(ws, msg) {
+  const clean = sanitize(msg);
+  if (!clean) return reply(ws, 'nothing to send');
+  const st = paneState('0');
+  try {
+    const response = await fetch(`${TAB0_BRIDGE_URL}/tab0/send`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ text: clean, source: 'nostr' }),
+    });
+    if (!response.ok) throw new Error(`bridge returned ${response.status}`);
+    watchTab('0');
+    reply(ws, `💬 tab 0 ← "${clean}"  ${STATE_BADGE[st]}`);
+  } catch (e) {
+    // Keep the control plane useful during a bridge restart; the fallback does
+    // not mirror the input in the browser feed, but still reaches tab 0.
+    log('tab-0 bridge unavailable:', e.message);
+    doSend(ws, '0', clean, 'Nostr chat (bridge unavailable)');
+  }
 }
 
 // ── auto-report: close the loop on fire-and-forget sends ────────────────────
@@ -538,8 +568,9 @@ function handleWrap(ws, wrap) {
   let rumor; try { rumor = tools.nip59.unwrapEvent(wrap, sk); } catch { return; } // not ours to decrypt (e.g. signup DMs) — silent
   if (!rumor) return;
   if (String(rumor.pubkey || '').toLowerCase() !== commanderPub) return; // only the operator may command
+  if (Array.isArray(rumor.tags) && rumor.tags.some((tag) => tag[0] === 'client' && /^agentbox-/.test(String(tag[1] || '')))) return;
   const text = String(rumor.content || '').trim();
-  if (!text.startsWith('/')) return;                                 // no sigil → not a command (also skips our own replies)
+  if (!text) return;
   // Replay guards, in order of authority (the relay re-serves stored history
   // on every keep-warm re-REQ, so "it arrived" never implies "it is new"):
   //   a. durable executed store — this exact wrap already ran, maybe in a
@@ -549,13 +580,14 @@ function handleWrap(ws, wrap) {
   //      construction and can never execute, however it reaches us;
   //   c. arm-after-EOSE — cold-boot backlog is skipped without spending a log
   //      line per event on gates a/b.
-  if (!armed) { log('backlog cmd skipped:', text.slice(0, 40)); return; }
-  if (executed.ids[wrap.id]) { log('replayed cmd skipped (already executed):', text.slice(0, 40)); return; }
+  if (!armed) { log('backlog message skipped:', text.slice(0, 40)); return; }
+  if (executed.ids[wrap.id]) { log('replayed message skipped (already executed):', text.slice(0, 40)); return; }
   const age = nowSec() - Number(rumor.created_at || 0);
   if (age > CMD_FRESH_WINDOW) { log(`stale cmd skipped (age ${Math.round(age / 60)}m):`, text.slice(0, 40)); return; }
   recordExecuted(wrap.id, Number(rumor.created_at) || nowSec());
   audit(text);
-  dispatch(ws, text);
+  if (text.startsWith('/')) dispatch(ws, text);
+  else void chatTab0(ws, text);
 }
 function onMessage(ws, raw) {
   let m; try { m = JSON.parse(raw); } catch { return; }
