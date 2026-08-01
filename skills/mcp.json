@@ -511,9 +511,9 @@
       ],
       "type": "stdio",
       "env": {
-        "AGENTBOX_DEEPSEEK_MODEL": "${AGENTBOX_DEEPSEEK_MODEL:-deepseek-reasoner}"
+        "AGENTBOX_DEEPSEEK_MODEL": "${AGENTBOX_DEEPSEEK_MODEL:-deepseek-v4-flash}"
       },
-      "description": "DeepSeek consultant (PRD-005 / ADR-011): math + reasoning chain transparency via DeepSeek HTTPS API (deepseek-reasoner). Tools: consult, health, cost_estimate. Inherits DEEPSEEK_API_KEY (and optional DEEPSEEK_BASE_URL) from session env.",
+      "description": "DeepSeek consultant (PRD-005 / ADR-011): DeepSeek V4 Flash (currently the 0731 revision) via the official HTTPS API. Tools: consult, health, cost_estimate. Inherits DEEPSEEK_API_KEY (and optional DEEPSEEK_BASE_URL) from session env.",
       "protocol": "stdio",
       "version": "0.1.0",
       "x-agentbox-managed-by": "projector",

@@ -405,6 +405,8 @@
 
         boolEnv = value: if value then "true" else "false";
 
+        systemscapePkg = import ./lib/systemscape.nix { inherit lib pkgs; };
+
         basePackages = with pkgs; [
           bash
           fish
@@ -428,6 +430,7 @@
           file
           tree
           tmux
+          systemscapePkg
           # tmux session persistence + monitoring plugins (PRD-013 F15-F19)
           tmuxPlugins.resurrect
           tmuxPlugins.continuum
@@ -2237,7 +2240,7 @@ ${agentboxPorts}
       - OPENAI_API_KEY=''${OPENAI_API_KEY:-ollama}
       - OPENAI_BASE_URL=''${OPENAI_BASE_URL:-${defaultLlmBaseUrl}/v1}
       - OLLAMA_BASE_URL=''${OLLAMA_BASE_URL:-${defaultLlmBaseUrl}}
-      - OLLAMA_MODEL=''${OLLAMA_MODEL:-qwen2.5:32b-instruct}
+      - OLLAMA_MODEL=''${OLLAMA_MODEL:-gemma-4-31B-it-qat}
       - GOOGLE_API_KEY=''${GOOGLE_API_KEY:-}
       - GOOGLE_GEMINI_API_KEY=''${GOOGLE_GEMINI_API_KEY:-}
       - GEMINI_API_KEY=''${GEMINI_API_KEY:-}

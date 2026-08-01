@@ -1003,14 +1003,14 @@
             "model": {
               "type": "string",
               "enum": [
-                "deepseek-v4-0324",
+                "deepseek-v4-flash",
                 "deepseek-v3",
                 "deepseek-r1",
                 "deepseek-chat",
                 "deepseek-coder"
               ],
-              "default": "deepseek-v4-0324",
-              "description": "DeepSeek model identifier. deepseek-reasoner is retired \u2014 use deepseek-v4-0324."
+              "default": "deepseek-v4-flash",
+              "description": "Official DeepSeek API model identifier. deepseek-v4-flash currently serves the DeepSeek-V4-Flash-0731 revision."
             },
             "timeout_ms": {
               "type": "integer",

@@ -205,7 +205,7 @@ lines += [
     "",
     "[consultants.deepseek]",
     f'enabled = {b("consultants.deepseek.enabled")}',
-    'model      = "deepseek-v4-0324"',
+    'model      = "deepseek-v4-flash"',
     'timeout_ms = 120000',
     "",
 ]

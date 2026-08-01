@@ -27,7 +27,7 @@ try {
 const API_KEY = config.apiKey;
 // Use standard endpoint with reasoner model instead of special endpoint
 const BASE_URL = 'https://api.deepseek.com';
-const MODEL = 'deepseek-reasoner'; // Reasoner model with thinking capability
+const MODEL = 'deepseek-v4-flash'; // DeepSeek-V4-Flash-0731 via the stable API id
 
 class DeepSeekClient {
   constructor() {
@@ -36,7 +36,7 @@ class DeepSeekClient {
   }
 
   async makeRequest(messages, options = {}) {
-    // For deepseek-reasoner: temperature, top_p, etc. are not supported
+    // Use provider defaults for V4 Flash thinking mode.
     const requestBody = {
       model: MODEL,
       messages,
@@ -110,7 +110,7 @@ class DeepSeekClient {
 
     const response = await this.makeRequest(messages, { maxTokens: 2048 });
 
-    // deepseek-reasoner returns reasoning_content (CoT) + content (answer)
+    // DeepSeek V4 Flash returns reasoning_content (CoT) + content (answer)
     const message = response.choices[0].message;
 
     return {

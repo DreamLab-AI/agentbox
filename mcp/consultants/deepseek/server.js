@@ -5,7 +5,7 @@
  * Consultant: deepseek (DeepSeek HTTPS API).
  *
  * Direct HTTPS to api.deepseek.com (or DEEPSEEK_BASE_URL override).
- * deepseek-reasoner returns the model's chain-of-thought in
+ * deepseek-v4-flash returns the model's chain-of-thought in
  * `message.reasoning_content` separately from `message.content`; we
  * fold the reasoning into the response under a `<reasoning>...</reasoning>`
  * preamble so the coordinator can choose to inspect it.
@@ -16,7 +16,7 @@
 const { BaseConsultant } = require('../shared/consultant-base');
 
 const ENDPOINT = process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com';
-const MODEL    = process.env.AGENTBOX_DEEPSEEK_MODEL || 'deepseek-reasoner';
+const MODEL    = process.env.AGENTBOX_DEEPSEEK_MODEL || 'deepseek-v4-flash';
 
 const PRICE_PER_1K_PROMPT     = 0.00055;
 const PRICE_PER_1K_COMPLETION = 0.00219;
@@ -99,7 +99,7 @@ async function estimateCost({ question_size, expected_response_size }) {
 
 const consultant = new BaseConsultant({
   name:        'deepseek',
-  description: 'DeepSeek deepseek-reasoner (HTTPS API) — transparent chain-of-thought, strong on math + code reasoning',
+  description: 'DeepSeek V4 Flash (HTTPS API; currently DeepSeek-V4-Flash-0731) — thinking, math, and agentic coding',
   model:       MODEL,
   callConsult,
   healthCheck,

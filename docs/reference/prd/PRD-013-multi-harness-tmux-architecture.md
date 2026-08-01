@@ -66,7 +66,7 @@ Consultants remain a first-class path. The MCP relay pattern is cost-effective f
 | Consultant | Model | MCP Relay (kept) | Direct Tab (new) |
 |------------|-------|-------------------|------------------|
 | `antigravity` | gemini-3.5-flash | Quick queries via Claude | Window 10: sustained Gemini coding sessions |
-| `deepseek` | deepseek-v4-0324 | Quick queries via Claude | Window 11: sustained DeepSeek coding sessions |
+| `deepseek` | deepseek-v4-flash | Quick queries via Claude | Window 11: sustained DeepSeek coding sessions |
 | `zai` | glm-5.2 | Quick queries via Claude | Window 9: already exists |
 | `perplexity` | sonar-pro | Quick queries via Claude | Window 12: sustained research sessions |
 | `codex` | gpt-5.5 | Quick queries via Claude | Window 8: Codex CLI (upgrade to v0.134.0) |
@@ -84,7 +84,7 @@ Consultants remain a first-class path. The MCP relay pattern is cost-effective f
 | ID | Requirement | Priority |
 |----|-------------|----------|
 | F01 | Add Window 10: **Antigravity** — Google Gemini 3.5 Flash coding agent via `antigravity` CLI or `@google/gemini-cli`. Profile at `profiles/antigravity/`. Auth: OAuth browser flow (print URL for local completion) or `GOOGLE_GEMINI_API_KEY` | P0 |
-| F02 | Add Window 11: **DeepSeek** — DeepSeek v4 (deepseek-v4-0324) via CodeWhale CLI (`npm i -g codewhale`, 35k stars). Profile at `profiles/deepseek/`. Auth: `DEEPSEEK_API_KEY` | P0 |
+| F02 | Add Window 11: **DeepSeek** — DeepSeek v4 (deepseek-v4-flash) via CodeWhale CLI (`npm i -g codewhale`, 35k stars). Profile at `profiles/deepseek/`. Auth: `DEEPSEEK_API_KEY` | P0 |
 | F03 | Add Window 12: **Perplexity** — Research agent via `perplexity` CLI or interactive shell with official MCP. Profile at `profiles/perplexity/`. Auth: `PERPLEXITY_API_KEY` | P1 |
 | F04 | Add Window 13: **Ollama** — Local LLM agent via Nanocoder (`npm i -g @nanocollective/nanocoder --provider ollama`). Profile at `profiles/ollama/`. Auth: none (network-local) | P1 |
 | F05 | Upgrade Window 8 **Codex CLI** from v0.128.0 to v0.134.0. Already profile-isolated | P1 |
@@ -236,7 +236,7 @@ Shared resources:
 | Tab | Harness CLI | Package | Auth |
 |-----|-------------|---------|------|
 | 10 | `antigravity` or `gemini` | `@google/gemini-cli` (104k stars), gemini-3.5-flash | OAuth or `GOOGLE_GEMINI_API_KEY` |
-| 11 | `codewhale` | `codewhale` npm (35k stars), deepseek-v4-0324 | `DEEPSEEK_API_KEY` |
+| 11 | `codewhale` | `codewhale` npm (35k stars), deepseek-v4-flash | `DEEPSEEK_API_KEY` |
 | 12 | `perplexity` shell + MCP | `@perplexity-ai/mcp-server` (2.2k stars) | `PERPLEXITY_API_KEY` |
 | 13 | `nanocoder` | `@nanocollective/nanocoder` (2k stars) | None (Ollama network-local) |
 

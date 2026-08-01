@@ -825,7 +825,7 @@ timeout_ms = 60000
 
 [consultants.deepseek]
 enabled = true
-model   = "deepseek-v4-0324"
+model   = "deepseek-v4-flash" # currently serves DeepSeek-V4-Flash-0731
 timeout_ms = 120000
 
 # ── Model routing (ADR-041) ────────────────────────────────────────────────────

@@ -85,11 +85,18 @@ tmux send-keys -t "${SESSION}:4" "supervisorctl tail -f management-api" C-m
 tmux split-window -v -t "${SESSION}:4" -c "$WORKSPACE_DIR"
 
 # ============================================================================
-# Window 5: System — resource monitor
+# Window 5: System — SystemScape history + detailed live process telemetry
 # ============================================================================
 tmux new-window -t "${SESSION}:5" -n "System" -c "$WORKSPACE_DIR"
-# Prefer btm (bottom) if available, fall back to htop
-tmux send-keys -t "${SESSION}:5" "command -v btm >/dev/null && btm || htop" C-m
+# SystemScape provides the correlation view: rotating peak-hold history for
+# thermal, GPU, power, CPU, memory, disk IO, and network. Restart after an unexpected
+# exit so a transient sensor/terminal problem does not leave a dead dashboard.
+tmux send-keys -t "${SESSION}:5" "while true; systemscape; printf '\\nSystemScape exited (%s); restarting in 2s — Ctrl-C for shell\\n' \"\$status\"; sleep 2; end" C-m
+# Retain bottom's strengths (process tree, per-core load, disk/network rates)
+# in a narrower companion pane. Focus either pane and press Ctrl-Space z to zoom.
+tmux split-window -h -p 38 -t "${SESSION}:5" -c "$WORKSPACE_DIR"
+tmux send-keys -t "${SESSION}:5.1" "command -v btm >/dev/null && btm --basic || htop" C-m
+tmux select-pane -t "${SESSION}:5.0"
 
 # ============================================================================
 # Window 6: VNC — connection info
@@ -273,7 +280,7 @@ fi
 # ============================================================================
 # Window 11: DeepSeek — CodeWhale CLI (profile-isolated)
 # Auth: DEEPSEEK_API_KEY from env
-# CLI: codewhale — model: deepseek-v4-0324
+# CLI: codewhale — model: deepseek-v4-flash (DeepSeek-V4-Flash-0731)
 # ============================================================================
 DS_WORKSPACE="${WORKSPACE}"
 DS_PROFILE="${DS_WORKSPACE}/profiles/deepseek"
@@ -283,7 +290,7 @@ mkdir -p "${DS_CODEWHALE_DIR}" "${DS_PROFILE}/.cache/starship"
 # R-005: profile dir ownership fixed by entrypoint root phase; runtime sudo removed.
 
 if [ -n "${DEEPSEEK_API_KEY:-}" ]; then
-  _ds_status="DEEPSEEK_API_KEY set — model: deepseek-v4-0324"
+  _ds_status="DEEPSEEK_API_KEY set — model: deepseek-v4-flash (0731)"
 else
   _ds_status="WARNING: DEEPSEEK_API_KEY not set — add it to your .env file"
 fi
@@ -294,7 +301,7 @@ fi
 tmux new-window -t "${SESSION}:11" -n "DeepSeek" -c "${WORKTREE_BASE}/deepseek"
 tmux send-keys -t "${SESSION}:11" "echo '  DeepSeek Profile — CodeWhale CLI'" C-m
 tmux send-keys -t "${SESSION}:11" "echo '  ${_ds_status}'" C-m
-tmux send-keys -t "${SESSION}:11" "echo '  Run: codewhale  (deepseek-v4-0324, 64k ctx, strong reasoning)'" C-m
+tmux send-keys -t "${SESSION}:11" "echo '  Run: codewhale  (deepseek-v4-flash / 0731, 1M ctx)'" C-m
 tmux send-keys -t "${SESSION}:11" "echo ''" C-m
 tmux send-keys -t "${SESSION}:11" "export HOME=${DS_PROFILE}" C-m
 tmux send-keys -t "${SESSION}:11" "export CLAUDE_CONFIG_DIR=${DS_PROFILE}/.claude" C-m
@@ -341,15 +348,15 @@ fi
 # ============================================================================
 # Window 13: Ollama — Local/LAN LLM harness (profile-isolated)
 # Auth: none (network-local). Points at the operator's LAN model server.
-# Default: DiffusionGemma at 192.168.2.48:8084 (OpenAI-compatible /v1).
+# Default: self-hosted Gemma 4 at 192.168.2.48:8084 (OpenAI-compatible /v1).
 # Override: set OLLAMA_BASE_URL and OLLAMA_MODEL in .env to use a different
 # endpoint (e.g. host ollama at :11434, or any OpenAI-compatible server).
 # CLI: nanocoder --provider ollama --model <model>
 # ============================================================================
 OL_WORKSPACE="${WORKSPACE}"
 OL_PROFILE="${OL_WORKSPACE}/profiles/ollama"
-# Default to DiffusionGemma on the LAN; operator overrides via env.
-_OL_MODEL="${OLLAMA_MODEL:-diffusiongemma-26B-A4B-it-Q8_0}"
+# Default to the advertised Gemma 4 model on the LAN; operator overrides via env.
+_OL_MODEL="${OLLAMA_MODEL:-gemma-4-31B-it-qat}"
 _OL_BASE_URL="${OLLAMA_BASE_URL:-http://192.168.2.48:8084/v1}"
 
 mkdir -p "${OL_PROFILE}" "${OL_PROFILE}/.cache/starship"
@@ -359,7 +366,7 @@ mkdir -p "${OL_PROFILE}" "${OL_PROFILE}/.cache/starship"
 [ -L "${OL_PROFILE}/projects" ] || ln -sfn "${SHARED_PROJECTS_ROOT:-/projects}" "${OL_PROFILE}/projects" 2>/dev/null || true
 
 tmux new-window -t "${SESSION}:13" -n "Ollama" -c "${WORKTREE_BASE}/ollama"
-tmux send-keys -t "${SESSION}:13" "echo '  Ollama Profile — LAN LLM Harness (DiffusionGemma)'" C-m
+tmux send-keys -t "${SESSION}:13" "echo '  Ollama Profile — LAN LLM Harness (Gemma 4)'" C-m
 tmux send-keys -t "${SESSION}:13" "echo '  Endpoint: ${_OL_BASE_URL}'" C-m
 tmux send-keys -t "${SESSION}:13" "echo '  Model:    ${_OL_MODEL}'" C-m
 tmux send-keys -t "${SESSION}:13" "echo '  Run: nanocoder --provider ollama --model ${_OL_MODEL}'" C-m

@@ -13,7 +13,7 @@ automatic via the `auto-consultant` agent template).
 | `antigravity` | Google Antigravity CLI (`agy`) subprocess | 1M-token context, long-document analysis | `GOOGLE_API_KEY` or web login |
 | `zai`        | `claude-zai` (Anthropic-API-compatible Z.AI/GLM) | Chinese-language, low-cost reasoning | `ZAI_ANTHROPIC_API_KEY`, `ZAI_URL` |
 | `perplexity` | Perplexity HTTPS API (`sonar-pro`) | live web research with citations | `PERPLEXITY_API_KEY` |
-| `deepseek`   | DeepSeek HTTPS API (`deepseek-reasoner`) | math + reasoning chain transparency | `DEEPSEEK_API_KEY`, optional `DEEPSEEK_BASE_URL` |
+| `deepseek`   | DeepSeek HTTPS API (`deepseek-v4-flash`, currently 0731) | thinking, math, and agentic coding | `DEEPSEEK_API_KEY`, optional `DEEPSEEK_BASE_URL` |
 
 Specified by [PRD-005](../../docs/reference/prd/PRD-005-meta-router-consultants.md)
 and [ADR-011](../../docs/reference/adr/ADR-011-consultation-mcps.md). Operator
