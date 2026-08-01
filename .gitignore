@@ -8,7 +8,10 @@ pods/
 cache/
 
 # Node.js
-node_modules/
+# Ignore dependency trees and runtime-created node_modules symlinks. A trailing
+# slash matches directories only, allowing container-local absolute symlinks to
+# appear as untracked files.
+node_modules
 npm-debug.log*
 .npm
 .pnpm-store/
