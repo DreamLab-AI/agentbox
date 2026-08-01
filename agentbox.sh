@@ -1581,7 +1581,7 @@ cmd_preflight() {
     fi
 
     echo -e "${CYAN}Preflight: checking host bind targets...${NC}"
-    for hostpath in "${HOME}/.claude" "${HOME}/.config/claude" "/mnt/mldata/githubs/AR-AI-Knowledge-Graph"; do
+    for hostpath in "${HOME}/.claude" "${HOME}/.config/claude" "${HOME}/.codex/auth.json" "/mnt/mldata/githubs/AR-AI-Knowledge-Graph"; do
         if [[ ! -e "$hostpath" ]]; then
             echo -e "${YELLOW}  ! $hostpath does not exist — bind will create it root-owned${NC}"
         else

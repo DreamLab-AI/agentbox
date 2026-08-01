@@ -518,7 +518,7 @@ Each one should expose:
 
 ## 9. Terminal Workflow
 
-The container runs a tmux session (`agentbox`) with 10 pre-configured windows:
+The container runs a tmux session (`agentbox`) with 15 pre-configured windows:
 
 | Window | Name | Purpose |
 |--------|------|---------|
@@ -532,6 +532,11 @@ The container runs a tmux session (`agentbox`) with 10 pre-configured windows:
 | 7 | Git | Project git status |
 | 8 | OpenRouter | Claude Code via free OpenRouter models |
 | 9 | ZAI | Claude Code via Z.AI GLM relay |
+| 10 | Antigravity | Google Gemini CLI |
+| 11 | DeepSeek | CodeWhale CLI |
+| 12 | Perplexity | Research shell |
+| 13 | Ollama | Local/LAN LLM harness |
+| 14 | Codex | OpenAI Codex CLI with host-shared credentials, native skills, and RuVector MCP |
 
 Attach from inside the container:
 

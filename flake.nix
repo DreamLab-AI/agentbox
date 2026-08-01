@@ -1153,6 +1153,21 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           cp -r ${./mcp} $out/opt/agentbox/mcp
 
           cp -r ${skillsTree} $out/opt/agentbox/skills
+
+          ${lib.optionalString (toolchainCfg.codex or false) ''
+          # Codex-native progressive-disclosure projection. Codex scans the
+          # machine/admin root /etc/codex/skills directly; keep the curated
+          # corpus canonical under /opt and expose only registered skills as
+          # links. This is deliberately independent of ~/.claude/skills.
+          mkdir -p $out/etc/codex/skills
+          while IFS= read -r raw; do
+            name="''${raw%%#*}"
+            name="$(printf '%s' "$name" | tr -d '[:space:]')"
+            [ -n "$name" ] || continue
+            [ -f "$out/opt/agentbox/skills/$name/SKILL.md" ] || continue
+            ln -s "/opt/agentbox/skills/$name" "$out/etc/codex/skills/$name"
+          done < $out/opt/agentbox/skills/codex-registered-skills.txt
+          ''}
           cp -r ${./scripts} $out/opt/agentbox/scripts
           cp -r ${./config} $out/opt/agentbox/config
           cp -r ${./https-bridge} $out/opt/agentbox/https-bridge

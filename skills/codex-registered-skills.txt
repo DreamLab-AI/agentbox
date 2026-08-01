@@ -1,0 +1,37 @@
+# codex-registered-skills.txt — Codex-native progressive-disclosure surface
+#
+# This manifest is intentionally independent of registered-skills.txt (the
+# Claude Code surface). Codex initially budgets at most 2% of context for skill
+# metadata, so expose a compact set of high-value workflows plus skill-router;
+# the remaining baked corpus stays available on demand through the router and
+# /opt/agentbox/skills/SKILL-DIRECTORY.md.
+
+# Discovery and general software delivery
+skill-router
+lazy-fetch
+build-with-quality
+codebase-memory
+agentdb-memory-patterns
+verification-quality
+docs-alignment
+
+# Coding and repository workflows
+rust-development
+agentic-jujutsu
+github-code-review
+github-workflow-automation
+security-testing
+leptos
+
+# Browser, spatial, and design workflows
+browser
+browser-automation
+playwright
+qgis
+blender
+open-design
+prose-sanitiser
+
+# Knowledge and shared-memory workflows
+ontology-augment
+ruvnet-brain

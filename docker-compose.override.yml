@@ -65,7 +65,8 @@ services:
     # solid-data, sovereign-identities, agentbox-secrets), feature-exception
     # writable volumes (codeserver-config, ctm-config, nostr-relay-data,
     # tailscale-state, ./projects, /home/devuser/workspace bind).
-    # Override owns: host bind mounts (project tree, .claude, .config/claude),
+    # Override owns: host bind mounts (project tree, .claude, .config/claude,
+    # Codex auth cache),
     # the MAD workspace external alias (until migrated, Q43), and any
     # operator-specific paths.
     volumes:
@@ -84,6 +85,11 @@ services:
       # updates won't persist.
       - ${HOME}/.claude:/home/devuser/.claude:rw
       - ${HOME}/.config/claude:/home/devuser/.config/claude:rw
+      # Share only Codex's credential cache, not the complete host .codex tree.
+      # Container-specific MCP/trust settings remain in the container while
+      # ChatGPT/API login and token refresh are shared with the host. The host
+      # file must exist before compose starts (agentbox.sh preflight checks it).
+      - ${HOME}/.codex/auth.json:/home/devuser/.codex/auth.json:rw
       # Second mount surfaces the host's .claude at the host-side path so
       # Claude Code's plugin registry (installed_plugins.json,
       # known_marketplaces.json), which persists absolute host paths,

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # tmux Workspace Auto-Start for Agentbox
-# Creates 14 windows with fish shell — MAD-style tab layout
+# Creates 15 windows with fish shell — MAD-style tab layout
 #
 # Replaces Zellij layouts; fish shell configs (config.fish,
 # bashrc.agentbox) are sourced automatically by fish in each window.
@@ -44,7 +44,7 @@ tmux send-keys -t "${SESSION}:0" "export CLAUDE_CONFIG_DIR=/home/devuser/.claude
 
 # Welcome dashboard — gum renders a styled panel, falls back to plain text
 if command -v gum >/dev/null 2>&1; then
-  WELCOME_CMD="clear; gum style --border rounded --border-foreground '#7aa2f7' --padding '1 2' --margin '1 0' --bold --foreground '#a9b1d6' \"\$(printf '  AGENTBOX\\n\\n  Project: $PROJECT\\n  Shell:   fish + starship\\n  Tabs:    Claude · Agent · Services · Build · Logs · System · VNC · Git · OpenRouter · ZAI · Antigravity · DeepSeek · Perplexity · Ollama\\n\\n  agentbox-help    quick reference\\n  svc-status       service health\\n  cf-doctor        system diagnostics')\""
+  WELCOME_CMD="clear; gum style --border rounded --border-foreground '#7aa2f7' --padding '1 2' --margin '1 0' --bold --foreground '#a9b1d6' \"\$(printf '  AGENTBOX\\n\\n  Project: $PROJECT\\n  Shell:   fish + starship\\n  Tabs:    Claude · Agent · Services · Build · Logs · System · VNC · Git · OpenRouter · ZAI · Antigravity · DeepSeek · Perplexity · Ollama · Codex\\n\\n  agentbox-help    quick reference\\n  svc-status       service health\\n  cf-doctor        system diagnostics')\""
   tmux send-keys -t "${SESSION}:0" "$WELCOME_CMD" C-m
 else
   tmux send-keys -t "${SESSION}:0" "echo ''" C-m
@@ -368,6 +368,20 @@ tmux send-keys -t "${SESSION}:13" "export HOME=${OL_PROFILE}" C-m
 tmux send-keys -t "${SESSION}:13" "export CLAUDE_CONFIG_DIR=${OL_PROFILE}/.claude" C-m
 tmux send-keys -t "${SESSION}:13" "export OLLAMA_BASE_URL=${_OL_BASE_URL}" C-m
 tmux send-keys -t "${SESSION}:13" "export OLLAMA_MODEL=${_OL_MODEL}" C-m
+
+# ============================================================================
+# Window 14: Codex — OpenAI Codex CLI with host-shared file credentials
+# CODEX_HOME remains /home/devuser/.codex. Compose mounts only auth.json from
+# the host, while entrypoint-generated MCP config and sessions stay isolated.
+# ============================================================================
+tmux new-window -t "${SESSION}:14" -n "Codex" -c "$PROJECT"
+tmux send-keys -t "${SESSION}:14" "export CODEX_HOME=/home/devuser/.codex" C-m
+if command -v codex >/dev/null 2>&1; then
+  tmux send-keys -t "${SESSION}:14" "codex login status || true" C-m
+  tmux send-keys -t "${SESSION}:14" "echo '  Run: codex  (host credentials; Agentbox skills + RuVector MCP enabled)'" C-m
+else
+  tmux send-keys -t "${SESSION}:14" "echo '  Codex CLI is disabled — set toolchains.codex=true and rebuild'" C-m
+fi
 
 # ============================================================================
 # Git Worktree Setup — isolate harness tabs from the primary working tree

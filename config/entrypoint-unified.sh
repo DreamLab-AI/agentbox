@@ -1405,12 +1405,13 @@ fi
 
 # ── Codex CLI MCP wiring: write ruvector-mcp into ~/.codex/config.toml ──
 # Codex CLI reads MCP servers from [mcp_servers.<name>] tables in config.toml.
-# We append the claude-flow server so Codex shares the same ruvector-postgres
-# memory infrastructure that Claude Code uses via .mcp.json above.
+# Register the exact same server executable used by Claude, under a Codex-native
+# name. This guarantees identical read/write schemas, embedding model, namespace
+# semantics, metadata gates, and external ruvector-postgres rows.
 _CODEX_CONFIG="$CODEX_HOME/config.toml"
 if [ "${ENABLE_CODEX:-false}" = "true" ] && [ -f "$_RUVECTOR_MCP" ]; then
   mkdir -p "$CODEX_HOME" 2>/dev/null || true
-  if [ ! -f "$_CODEX_CONFIG" ] || ! grep -q 'mcp_servers' "$_CODEX_CONFIG" 2>/dev/null; then
+  if [ ! -f "$_CODEX_CONFIG" ] || ! grep -q '^\[mcp_servers\.agentbox-memory\]$' "$_CODEX_CONFIG" 2>/dev/null; then
     # Seed config.toml with project trust + MCP servers if it doesn't exist yet.
     # If it exists but lacks mcp_servers, append the MCP block.
     if [ ! -f "$_CODEX_CONFIG" ]; then
@@ -1424,37 +1425,42 @@ trust_level = "trusted"
 CODEXCFG
     fi
     cat >> "$_CODEX_CONFIG" <<CODEXMCP
-[mcp_servers.claude-flow]
+[mcp_servers.agentbox-memory]
 command = "node"
 args = ["$_RUVECTOR_MCP"]
 startup_timeout_sec = 15
-required = false
+required = true
 
-[mcp_servers.claude-flow.env]
+[mcp_servers.agentbox-memory.env]
 RUVECTOR_PG_CONNINFO = "host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=$RUVECTOR_PG_PASSWORD"
 NODE_PATH = "$_PG_NODE_PATH"
 XINFERENCE_ENDPOINT = "$XINFERENCE_ENDPOINT"
 EMBEDDING_MODEL = "$EMBEDDING_MODEL"
 CODEXMCP
     chown 1000:1000 "$_CODEX_CONFIG" 2>/dev/null || true
-    echo "  [mcp] Wrote Codex MCP config → $_CODEX_CONFIG (claude-flow → ruvector-mcp.cjs)"
+    echo "  [mcp] Wrote Codex MCP config → $_CODEX_CONFIG (agentbox-memory → ruvector-mcp.cjs)"
   fi
   # Global AGENTS.md: tells the Codex LLM about the available MCP tools
   _CODEX_AGENTS="$CODEX_HOME/AGENTS.md"
-  if [ ! -f "$_CODEX_AGENTS" ]; then
-    cat > "$_CODEX_AGENTS" <<'AGENTSEOF'
+  cat > "$_CODEX_AGENTS" <<'AGENTSEOF'
 # Agentbox Global Instructions
 
-## Shared Memory (MCP)
+## RuVector shared memory (MCP)
 
-A `claude-flow` MCP server is connected to ruvector-postgres (pgvector).
-Use `memory_search` before starting tasks and `memory_store` after success.
+`agentbox-memory` is the mandatory shared-memory MCP server. It runs the same
+`ruvector-mcp.cjs` implementation as Claude Code and therefore reads and writes
+the same external ruvector-postgres rows and schema. Use its MCP tools only;
+never use raw SQL or the ruvector CLI because those bypass the 384-dimensional
+bge-small-en-v1.5 embedding pipeline and make rows invisible to HNSW retrieval.
 
-Tools: `memory_store`, `memory_retrieve`, `memory_list`, `memory_search`.
-Namespaces: `patterns`, `project-state`, `tasks`, `default`.
+Before substantive work, call `memory_search` (or `memory_orient` when exposed).
+After a verified result, call `memory_store`. Preserve the tool's exact schema:
+`memory_store` requires string `key` and `value`, with optional `namespace` and
+`ttl`; `memory_search` requires `query`, with optional `namespace`, `limit`, and
+`source_type`. Standard namespaces include `patterns`, `project-state`, `tasks`,
+and `default`. Never write to protected namespace `ruvnet-kb`.
 AGENTSEOF
-    chown 1000:1000 "$_CODEX_AGENTS" 2>/dev/null || true
-  fi
+  chown 1000:1000 "$_CODEX_AGENTS" 2>/dev/null || true
 fi
 
 if command -v ruflo >/dev/null 2>&1; then

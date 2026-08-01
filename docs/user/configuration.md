@@ -679,7 +679,8 @@ Validates the local environment before `up`. Catches W021 gate failures, missing
 Checks performed:
 - `docker compose config` succeeds (compose merges cleanly).
 - `nix build .#compose --no-link` succeeds (W021 audit gate satisfied).
-- Host bind target paths exist (`~/.claude`, `~/.config/claude`, configured project path).
+- Host bind target paths exist (`~/.claude`, `~/.config/claude`,
+  `~/.codex/auth.json`, configured project path).
 - External volumes are present on the Docker daemon.
 
 Run `preflight` before `up` whenever you change `agentbox.toml`, the override file, or `.env`.
@@ -729,6 +730,7 @@ services:
       - COMFYUI_API_ENDPOINT=http://comfyui:8188
     volumes:
       - ${HOME}/.claude:/home/devuser/.claude:rw
+      - ${HOME}/.codex/auth.json:/home/devuser/.codex/auth.json:rw
     deploy:
       resources:
         limits:
@@ -752,6 +754,17 @@ volumes:
 ```
 
 The plugin registry absolute-path problem (host paths baked into plugin metadata) makes the full scoped approach complex. The current `:rw` flat mount is the pragmatic default; treat it as a known surface and ensure your host `.claude` does not contain long-lived secrets that should not reach the container.
+
+### `${HOME}/.codex/auth.json` bind mount
+
+The override shares only Codex's file-backed credential cache as `:rw`. This
+lets the in-container CLI reuse the host's ChatGPT/API login and persist token
+refreshes without importing or modifying the host's `config.toml`, sessions,
+logs, or MCP definitions. Run `codex login` on the host first and confirm
+`~/.codex/auth.json` exists; keyring-only host credentials cannot be mounted.
+Treat this file as a secret. The container generates its own Codex configuration
+under `/home/devuser/.codex`, registers the shared RuVector MCP server there,
+and discovers the curated skill set independently from `/etc/codex/skills`.
 
 ```toml
 [security]
