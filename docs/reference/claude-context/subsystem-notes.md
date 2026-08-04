@@ -112,3 +112,54 @@ All minted through `management-api/lib/uris.js`. Three surfaces:
 3. **Custom-kind nostr** — **kind-30841** addressable project digest (NIP-33, `d`-tag = project slug), signed by the agent key and dual-written to pod + relay by `services/nostr-pod-bridge` (`track` subcommand), driven by `config/hooks/project-tracking-publish.cjs`. Sibling of kind-30840; communicates per-project status to the operator's `did:nostr`. Added to `[sovereign_mesh.relay].allowed_kinds`.
 
 Durable state rides the existing **memory** (primers) and **events** (scans) adapter slots — never a new slot. Primers and GitHub enrichment are the only external hops and are independently gated. Disabled by default. Project tracking is the sixth participant in the `did:nostr` identity mesh.
+
+## Voice Plane (tab0-bridge + Unmute loop + AoE operator console)
+
+Fully local voice control of the agent plane, re-homed into **`agentbox/voice/`**
+and re-imagined as a single first-class **operator cockpit** — the voice loop and
+the AoE session board as co-equals, not a voice strip beside a log (Decision D0 /
+ADR-044). It lives in agentbox because everything it wires — tab0-bridge, the AoE
+plane, the NIP-98 proxy, management-api governance — is agentbox's. The Kyutai
+Unmute fork stays an external build context (`voice-stack/unmute` clone, 26 GB,
+not vendored). Three cooperating parts, one conversation surface:
+
+- **tab0-bridge** (`config/tab0-bridge/`, canonical; auto-deployed to
+  `~/workspace/tab0-bridge` and kept alive by fleet-session-start.sh →
+  deploy.sh on every SessionStart, port 8971; turn-sink hooks registered by
+  the entrypoint) — the single conversation/event hub.
+  OpenAI-compatible `/v1/chat/completions` backs the voice loop with headless
+  `claude -p` (subscription OAuth — the empty `ANTHROPIC_API_KEY` must be
+  deleted from child envs or credential resolution breaks); `/hook/turn` sinks
+  Claude Code Stop/UserPromptSubmit hooks; `/feed` (WS) + `/turns` serve the
+  live transcript; `/tab0/send` is the only key-sending path (window 0 only);
+  `/tabs/:n` are read-only pane captures; `/nostr/{status,events,send}`
+  expose the Nostr plane to the browser console.
+- **Kyutai Unmute stack** (external `voice-stack/unmute` clone, forked frontend +
+  backend, STT/TTS on local GPU; layered via `voice/unmute-override.yml`) — the
+  speech loop. Its "LLM" is the bridge, and it now carries `BRIDGE_TOKEN` as
+  `KYUTAI_LLM_API_KEY` so the bridge's global auth (security finding 1) admits
+  its `/v1/chat/completions` calls. The stock long-silence nudge is disabled
+  (`UNMUTE_USER_SILENCE_TIMEOUT=0`) and the bridge additionally short-circuits
+  `"..."` silence markers: the meta-controller is quiet unless called upon.
+- **Operator console** (`voice/console/`, Caddy `docker-compose.voice.yml`, one
+  self-signed TLS origin on :8444; :8443 = stock Unmute debug UI). ONE origin,
+  ONE credential — a NIP-98 header signed via `window.nostr` (NIP-07) or a
+  break-glass bearer, forwarded by Caddy to every upstream. Same-origin routes:
+  `/embed` voice strip (forked Unmute frontend, no vendor branding) + `/api/*`
+  (backend), `/feed`+`/bridge/*` (tab0-bridge), **`/aoe/*`** the AoE session
+  board via the NIP-98 proxy (:9096 → :9095) rendered by our own client (AoE's
+  dashboard sets `frame-ancestors 'none'`, so it can't be iframed), and
+  **`/approvals/*`** governance (management-api :9090; Approve/Deny is
+  operator-gated, finding 2). Voice targets ANY session, retargeted by click or
+  spoken intent; injection goes bridge `/tab0/send` → the `tab0` coordinator.
+- **Lifecycle**: `./agentbox.sh voice <up|down|logs|health|status|certs|rebuild|shell>`
+  — a sidecar with its own lifecycle (like browsercontainer). `voice up`
+  generates the self-signed cert (certs gitignored, never committed) and
+  composes the Unmute clone's compose + `voice/unmute-override.yml` +
+  `docker-compose.voice.yml` into one project. Manifest state: `[voice]` in
+  `agentbox.toml` (apply-class sidecar). Full detail: `voice/README.md`.
+
+The meta-controller never orchestrates: it relays spoken intents to the target
+session, summarises what comes back, and reports others read-only. Loop safety:
+gateway/mirror/nostr-send egress all carry client tags and are dropped on
+re-ingress (see nostr-gateway header).

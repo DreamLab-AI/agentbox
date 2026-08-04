@@ -1,0 +1,111 @@
+# Compose override for the Kyutai Unmute stack → agentbox voice meta-controller.
+#
+# Layered onto the unmute clone's own docker-compose.yml. Driven by
+# `./agentbox.sh voice up`, which composes, in one project:
+#   <unmute-clone>/docker-compose.yml + voice/unmute-override.yml (this file)
+#   + docker-compose.voice.yml (the caddy console)
+# Run manually from the clone:
+#   cd ~/workspace/project/voice-stack/unmute
+#   docker compose --project-name agentbox-voice \
+#     -f docker-compose.yml \
+#     -f ~/workspace/project/agentbox/voice/unmute-override.yml \
+#     -f ~/workspace/project/agentbox/docker-compose.voice.yml \
+#     up -d --build
+#
+# HOST-PATH NOTE: the docker CLI drives the HOST daemon, so every bind SOURCE
+# resolves on the host filesystem — NOT the container's. VOICE_HOST_ROOT is the
+# host path mapping to the container's ~/workspace/project (default below);
+# agentbox.sh voice exports it. The unmute clone lives at
+# ${VOICE_HOST_ROOT}/voice-stack/unmute. Relative binds in the stock compose
+# would resolve against the container cwd and be auto-created as empty host
+# dirs — silently wrong; keep these absolute-via-env.
+#
+# What it changes vs stock Unmute:
+#   - drops the vLLM `llm` service (profiles: disabled)
+#   - backend "LLM" = tab0-bridge http://agentbox:8971 on visionclaw_network
+#   - carries BRIDGE_TOKEN as the OpenAI-style key so the bridge's global auth
+#     (Part A finding 1) admits the backend's /v1/chat/completions calls
+#   - pins STT/TTS to the RTX A6000 (host CUDA device 0)
+#   - moves traefik off host port 80 → 8990
+# The caddy voice-console (:8443/:8444) now lives in docker-compose.voice.yml.
+
+services:
+  llm:
+    profiles: ["disabled"]
+
+  backend:
+    # Stock unmute ships no restart policy — without unless-stopped a host
+    # reboot or daemon restart leaves the whole voice plane down.
+    restart: unless-stopped
+    environment:
+      - KYUTAI_LLM_URL=http://agentbox:8971
+      # tab0-bridge now enforces global auth (Part A finding 1). The Unmute
+      # backend is an on-network caller of /v1/chat/completions — it must
+      # present the bearer. Unmute forwards KYUTAI_LLM_API_KEY as the OpenAI
+      # Authorization: Bearer; the bridge accepts BRIDGE_TOKEN as that bearer.
+      # Empty ⇒ no header ⇒ 401 once the bridge is locked down: set BRIDGE_TOKEN.
+      - KYUTAI_LLM_API_KEY=${BRIDGE_TOKEN:-}
+      # 0 disables the "..." long-silence nudge — the voice agent stays quiet
+      # unless spoken to (the bridge also drops "..." turns, belt and braces).
+      - UNMUTE_USER_SILENCE_TIMEOUT=0
+      # Global speaking pace, all voices: server-side WSOLA time-stretch
+      # (unmute/tts/time_stretch.py) — >1 is faster, pitch preserved.
+      # Operator preference: very fast. Clamped to [0.5, 3].
+      - UNMUTE_TTS_SPEED=1.4
+      # Fast-iteration barge-in profile (operator preference):
+      #   session-start VAD grace 3s → 0.5s
+      #   VAD trigger threshold 0.4 → 0.6 (fires on shorter speech)
+      #   client audio lead 4 → 2 frames (~160ms residue after interrupt;
+      #   the embed also hard-resets its buffer on the interrupt event)
+      - UNMUTE_UNINTERRUPTIBLE_SEC=0.5
+      - UNMUTE_INTERRUPT_PAUSE_THRESHOLD=0.6
+      - UNMUTE_AUDIO_LEAD_FRAMES=2
+    volumes: !override
+      - ${VOICE_HOST_ROOT:?set VOICE_HOST_ROOT to your host workspace path (agentbox.sh voice sets it; see voice/README.md)}/voice-stack/unmute/unmute:/app/unmute
+    networks:
+      - default
+      - visionclaw
+
+  frontend:
+    restart: unless-stopped
+    volumes: !override
+      - ${VOICE_HOST_ROOT:?set VOICE_HOST_ROOT to your host workspace path (agentbox.sh voice sets it; see voice/README.md)}/voice-stack/unmute/frontend/src:/app/src
+
+  stt:
+    restart: unless-stopped
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+    volumes: !override
+      - ${VOICE_HOST_ROOT:?set VOICE_HOST_ROOT to your host workspace path (agentbox.sh voice sets it; see voice/README.md)}/voice-stack/unmute/volumes/hf-cache:/root/.cache/huggingface
+      - ${VOICE_HOST_ROOT:?set VOICE_HOST_ROOT to your host workspace path (agentbox.sh voice sets it; see voice/README.md)}/voice-stack/unmute/volumes/cargo-registry-stt:/root/.cargo/registry
+      - ${VOICE_HOST_ROOT:?set VOICE_HOST_ROOT to your host workspace path (agentbox.sh voice sets it; see voice/README.md)}/voice-stack/unmute/volumes/stt-target:/app/target
+      - ${VOICE_HOST_ROOT:?set VOICE_HOST_ROOT to your host workspace path (agentbox.sh voice sets it; see voice/README.md)}/voice-stack/unmute/volumes/uv-cache:/root/.cache/uv
+      - /tmp/models/:/models
+      - ${VOICE_HOST_ROOT:?set VOICE_HOST_ROOT to your host workspace path (agentbox.sh voice sets it; see voice/README.md)}/voice-stack/unmute/volumes/stt-logs:/tmp/unmute_logs
+
+  tts:
+    restart: unless-stopped
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+    volumes: !override
+      - ${VOICE_HOST_ROOT:?set VOICE_HOST_ROOT to your host workspace path (agentbox.sh voice sets it; see voice/README.md)}/voice-stack/unmute/volumes/hf-cache:/root/.cache/huggingface
+      - ${VOICE_HOST_ROOT:?set VOICE_HOST_ROOT to your host workspace path (agentbox.sh voice sets it; see voice/README.md)}/voice-stack/unmute/volumes/cargo-registry-tts:/root/.cargo/registry
+      - ${VOICE_HOST_ROOT:?set VOICE_HOST_ROOT to your host workspace path (agentbox.sh voice sets it; see voice/README.md)}/voice-stack/unmute/volumes/tts-target:/app/target
+      - ${VOICE_HOST_ROOT:?set VOICE_HOST_ROOT to your host workspace path (agentbox.sh voice sets it; see voice/README.md)}/voice-stack/unmute/volumes/uv-cache:/root/.cache/uv
+      - /tmp/models/:/models
+      - ${VOICE_HOST_ROOT:?set VOICE_HOST_ROOT to your host workspace path (agentbox.sh voice sets it; see voice/README.md)}/voice-stack/unmute/volumes/tts-logs:/tmp/unmute_logs
+
+  traefik:
+    restart: unless-stopped
+    # Host daemon requires docker API >= 1.40; traefik v3.3.1 negotiates too
+    # low without this. (Our TLS origins bypass traefik anyway — caddy routes
+    # straight to backend/frontend — this just keeps the stock :8990 entry sane.)
+    environment:
+      - DOCKER_API_VERSION=1.44
+    ports: !override
+      - "8990:80"
+
+networks:
+  visionclaw:
+    external: true
+    name: visionclaw_network

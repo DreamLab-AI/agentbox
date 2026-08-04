@@ -1163,6 +1163,20 @@ tool          = "claude"
 view          = "terminal"
 eager_mandate = false
 
+# ── Voice + AoE operator console (ADR-044) ───────────────────────────────────
+# Documentation-as-data for the voice plane. This is a SIDECAR with its own
+# lifecycle (./agentbox.sh voice up|down|...), NOT part of ./agentbox.sh up —
+# so `enabled` here is descriptive state for /v1/system, not a boot gate. The
+# caddy console (docker-compose.voice.yml) plus the external Kyutai Unmute
+# speech stack (voice-stack/unmute clone, layered via voice/unmute-override.yml)
+# give one same-origin operator cockpit unifying the voice loop and the AoE
+# session board. See agentbox/voice/README.md.
+[voice]
+enabled              = false            # sidecar state (apply-class: sidecar — its own lifecycle, not `agentbox up`)
+console_port         = 8444             # operator cockpit origin (self-signed TLS; mic secure-context)
+debug_port           = 8443             # stock Unmute demo UI (diagnostics only)
+unmute_build_context = "../voice-stack/unmute"  # external Kyutai fork clone (26 GB, not vendored); override VOICE_UNMUTE_DIR
+
 [toolchains]
 claude = true
 claude_code = true

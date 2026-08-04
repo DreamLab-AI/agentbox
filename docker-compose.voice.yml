@@ -1,0 +1,64 @@
+# docker-compose.voice.yml — agentbox voice + AoE operator console (sidecar).
+#
+# Pattern mirrors docker-compose.browsercontainer.yml: a standalone,
+# runtime-managed compose file driven by `./agentbox.sh voice <up|down|...>`.
+# Its own lifecycle (apply-class: sidecar) — it is NOT part of `agentbox.sh up`.
+#
+# This file owns the AGENTBOX-native part of the voice plane: the Caddy
+# operator origin (:8444 console, :8443 stock-Unmute debug) that consolidates
+# every surface same-origin — the voice /embed strip, the AoE session board
+# (via the NIP-98 proxy), governance approvals, and the tab0-bridge feed.
+#
+# The Kyutai Unmute speech stack (STT/TTS/backend/frontend) is an EXTERNAL
+# build context — the kyutai-labs/unmute clone at voice-stack/unmute (26 GB,
+# its own .git, deliberately NOT vendored). agentbox.sh voice up layers, in
+# one compose project:
+#     <unmute-clone>/docker-compose.yml   (upstream services + build contexts)
+#   + voice/unmute-override.yml           (agentbox tweaks: LLM=tab0-bridge, GPU pin)
+#   + docker-compose.voice.yml            (this file: the caddy console)
+# so `frontend`/`backend` resolve on the shared project network and the
+# console reaches them by service name.
+#
+# FOLLOW-UP (documented, ADR-044): pin the Unmute fork to a build-arg commit /
+# published image the way browsercontainer/Dockerfile pins Chrome, so the
+# console no longer depends on an out-of-tree working clone.
+#
+# HOST-PATH NOTE: the docker CLI here drives the HOST daemon, so every bind
+# SOURCE resolves on the host filesystem. VOICE_HOST_ROOT is the host path that
+# maps to the container's ~/workspace/project (default below); agentbox.sh
+# exports it. Bind TARGETS are container-internal to the caddy service.
+
+services:
+  voice-console:
+    image: caddy:2
+    container_name: voice-console
+    hostname: voice-console
+    restart: unless-stopped
+    ports:
+      # :8443 stock Unmute debug UI; :8444 the operator console (self-signed TLS)
+      - "0.0.0.0:8443:8443"
+      - "0.0.0.0:8444:8444"
+    volumes:
+      - ${VOICE_HOST_ROOT:?set VOICE_HOST_ROOT to your host workspace path (agentbox.sh voice sets it; see voice/README.md)}/agentbox/voice/console/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${VOICE_HOST_ROOT:?set VOICE_HOST_ROOT to your host workspace path (agentbox.sh voice sets it; see voice/README.md)}/agentbox/voice/console/site:/srv:ro
+      - ${VOICE_HOST_ROOT:?set VOICE_HOST_ROOT to your host workspace path (agentbox.sh voice sets it; see voice/README.md)}/agentbox/voice/console/certs:/certs:ro
+      - voice-console-data:/data
+    healthcheck:
+      # Caddy answers TLS on :8444 even before upstreams are up; a 200/30x on
+      # the static root is enough to call the console live.
+      test: ["CMD", "wget", "--no-check-certificate", "-qO-", "https://localhost:8444/"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks:
+      - default
+      - visionclaw
+
+volumes:
+  voice-console-data:
+
+networks:
+  visionclaw:
+    external: true
+    name: visionclaw_network

@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>agentbox · interaction plane</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body class="voice-idle">
+
+<!-- ── top bar ─────────────────────────────────────────────────────────── -->
+<header id="topbar">
+  <div id="brand">
+    <span class="mark">AGENTBOX</span><span class="sub">interaction plane</span>
+  </div>
+  <div id="chips">
+    <span class="chip" id="chip-aoe"    title="Agent of Empires session daemon (via NIP-98 proxy)">aoe</span>
+    <span class="chip" id="chip-bridge" title="tab0-bridge voice meta-controller">bridge</span>
+    <span class="chip" id="chip-voice"  title="Unmute STT/TTS backend">voice</span>
+    <span class="chip" id="chip-nostr"  title="Nostr gateway + mirror">nostr</span>
+  </div>
+  <div id="auth-badge">
+    <span id="auth-state" title="operator credential for /aoe and /approvals">no key</span>
+    <button class="btn-ghost" id="auth-open" type="button">Auth</button>
+  </div>
+</header>
+
+<!-- ── cockpit ─────────────────────────────────────────────────────────── -->
+<div id="layout">
+
+  <!-- main stage: AoE session board / opened-session detail -->
+  <section id="stage">
+    <div id="board-wrap">
+      <div class="sec-head">
+        <h2>Sessions</h2>
+        <span class="count" id="board-count">0</span>
+        <span class="spacer"></span>
+        <button class="btn-ghost" id="board-refresh" type="button" title="refresh now">↻</button>
+      </div>
+      <div id="board" class="scroll"></div>
+      <div id="board-empty" hidden>No live AoE sessions — or the daemon is unreachable. The bridge and voice loop still work.</div>
+    </div>
+
+    <div id="detail" hidden>
+      <div id="detail-head">
+        <div class="ring" id="detail-ring">•</div>
+        <div class="titles">
+          <div id="detail-title">—</div>
+          <div id="detail-sub"></div>
+        </div>
+        <div class="view-toggle" role="tablist">
+          <button id="tab-term" class="on" type="button">Terminal</button>
+          <button id="tab-diff" type="button">Diff</button>
+        </div>
+        <button id="detail-close" type="button" title="back to board" aria-label="close session view">✕</button>
+      </div>
+      <div id="detail-body">
+        <pre id="term" class="mono scroll" aria-live="polite"></pre>
+        <pre id="diff" class="mono scroll" hidden></pre>
+      </div>
+      <form id="detail-send" autocomplete="off">
+        <span class="to" id="detail-to">→ session</span>
+        <input id="detail-text" placeholder="type into this session…">
+        <button class="send" type="submit">send</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- right rail: persistent voice presence + transcript + approvals + nostr -->
+  <aside id="rail">
+
+    <section class="rail-panel" id="voice-panel">
+      <div class="sec-head"><h2>Voice</h2><span class="spacer"></span></div>
+      <div class="voice-hero">
+        <div class="orb" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
+            <path d="M19 10v1a7 7 0 0 1-14 0v-1"/><path d="M12 18v4"/>
+          </svg>
+        </div>
+        <div class="voice-copy">
+          <div id="voice-state-label">Idle</div>
+          <div id="voice-aim">aimed at <b id="voice-aim-name">tab0 coordinator</b></div>
+        </div>
+      </div>
+      <iframe id="voice-embed" src="/embed" allow="microphone; autoplay" title="voice interface"></iframe>
+    </section>
+
+    <section class="rail-panel" id="feed-panel">
+      <div class="sec-head"><h2>Transcript</h2><span class="spacer"></span><span class="label" id="feed-state">connecting…</span></div>
+      <div id="feed" class="scroll"></div>
+    </section>
+
+    <section class="rail-panel" id="appr-panel">
+      <div class="sec-head"><h2>Approvals</h2><span class="count" id="appr-count">0</span></div>
+      <div id="approvals" class="scroll">
+        <div id="appr-empty">No governance requests pending.</div>
+      </div>
+    </section>
+
+    <section class="rail-panel" id="nostr-panel">
+      <div class="sec-head"><h2>Nostr</h2><span class="spacer"></span><span class="label" id="nostr-state">…</span></div>
+      <div id="nostr-body">
+        <div id="nostr-events" class="scroll"></div>
+        <form id="nostr-send" autocomplete="off">
+          <input id="nostr-text" placeholder="DM the operator thread…">
+          <button class="send" type="submit">send</button>
+        </form>
+      </div>
+    </section>
+
+  </aside>
+</div>
+
+<!-- ── auth dialog ─────────────────────────────────────────────────────── -->
+<dialog id="auth-dialog">
+  <form method="dialog" class="dlg-in">
+    <h3>Operator credential</h3>
+    <p>
+      <code>/aoe/*</code> and <code>/approvals/*</code> require an operator identity.
+      Preferred: a <b>NIP-98</b> header signed by a browser Nostr key
+      (<span id="nip07-state" class="tag-no">NIP-07 not detected</span>).
+      Reads use the break-glass bearer when set (to avoid a signer prompt on every poll);
+      authoritative actions (approve / deny, inject) sign a fresh NIP-98 request.
+    </p>
+    <div>
+      <label for="bearer-in">Break-glass bearer (session only)</label>
+      <div class="row" style="margin-top:6px">
+        <input id="bearer-in" type="text" placeholder="paste bearer token…" autocomplete="off">
+      </div>
+    </div>
+    <p class="faint" style="font-size:11.5px">
+      Stored in this tab's <code>sessionStorage</code> only — cleared when the tab closes.
+      Approvals decisions are operator-gated server-side and <b>always</b> require a NIP-98 signature
+      (a bearer alone cannot release a governance gate).
+    </p>
+    <div class="dlg-actions">
+      <button value="clear" class="btn-ghost" type="submit">Clear</button>
+      <button value="save" class="send" type="submit">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script src="/app.js"></script>
+</body>
+</html>

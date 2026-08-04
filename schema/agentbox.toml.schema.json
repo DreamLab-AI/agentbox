@@ -2290,6 +2290,33 @@
         }
       }
     },
+    "voice": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Voice + AoE operator console (ADR-044). A sidecar with its own lifecycle (./agentbox.sh voice up|down|...), NOT part of ./agentbox.sh up — so 'enabled' is descriptive state for /v1/system, not a boot gate. A Caddy console (docker-compose.voice.yml) plus the external Kyutai Unmute speech stack (voice-stack/unmute clone, layered via voice/unmute-override.yml) give one same-origin operator cockpit unifying the voice loop and the AoE session board. See agentbox/voice/README.md.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Descriptive sidecar state (apply-class: sidecar). Managed at runtime via ./agentbox.sh voice, not by the boot reconciler."
+        },
+        "console_port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "description": "Operator cockpit origin (self-signed TLS; a mic secure-context is mandatory). Default 8444."
+        },
+        "debug_port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "description": "Stock Unmute demo UI origin, diagnostics only. Default 8443."
+        },
+        "unmute_build_context": {
+          "type": "string",
+          "description": "Path to the external Kyutai Unmute fork clone (26 GB, its own .git, not vendored). Relative to the agentbox checkout, or overridden at runtime via VOICE_UNMUTE_DIR."
+        }
+      }
+    },
     "features": {
       "type": "object",
       "additionalProperties": false,

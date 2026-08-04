@@ -53,6 +53,7 @@ Local lifecycle commands:
   ${GREEN}browsercontainer${NC} Manage GPU browser container [up|down|logs|health|status|rebuild|shell|gpu]
   ${GREEN}gui-tools${NC}        Manage GPU Blender + QGIS sidecar [up|down|logs|health|status|rebuild|shell|gpu]
   ${GREEN}openmed${NC}          Manage optional clinical-PHI redaction sidecar [up|down|logs|health|status|rebuild|shell]
+  ${GREEN}voice${NC}            Manage voice + AoE operator console (Caddy :8444) + Unmute stack [up|down|logs|health|status|certs|rebuild|shell]
   ${GREEN}xr-runtime${NC}       Manage Monado OpenXR + Godot XR test runtime [up|down|logs|health|status|rebuild|shell|gpu|vnc]
   ${GREEN}android${NC}          [EXPERIMENTAL, gated] redroid Android/Play sidecar [up|down|logs|status|screencap|shell|id] — needs AGENTBOX_ENABLE_ANDROID=1
   ${GREEN}preflight${NC}        Validate the local environment + manifest before `up` (W021 audit, missing host paths, override drift)
@@ -571,6 +572,22 @@ GUI_TOOLS_FILE="${SCRIPT_DIR}/docker-compose.gui-tools.yml"
 GUI_TOOLS_COMPOSE_ARGS=(--project-name agentbox -f "$GUI_TOOLS_FILE")
 OPENMED_FILE="${SCRIPT_DIR}/docker-compose.openmed.yml"
 OPENMED_COMPOSE_ARGS=(--project-name agentbox -f "$OPENMED_FILE")
+# Voice + AoE operator console sidecar (its own lifecycle, like browsercontainer).
+# The caddy console lives in docker-compose.voice.yml; the Kyutai Unmute speech
+# stack is an external build context (voice-stack/unmute clone) layered via
+# voice/unmute-override.yml. VOICE_UNMUTE_DIR is the container path to that clone
+# (bind SOURCES inside the compose resolve on the HOST — see voice/README.md).
+VOICE_FILE="${SCRIPT_DIR}/docker-compose.voice.yml"
+VOICE_OVERRIDE_FILE="${SCRIPT_DIR}/voice/unmute-override.yml"
+VOICE_CONSOLE_DIR="${SCRIPT_DIR}/voice/console"
+VOICE_UNMUTE_DIR="${VOICE_UNMUTE_DIR:-$(dirname "$SCRIPT_DIR")/voice-stack/unmute}"
+# HOST path mapping to the container's ~/workspace/project — compose bind SOURCES
+# resolve on the host docker daemon, so they must be host paths. The product config
+# (docker-compose.voice.yml / voice/unmute-override.yml) references VOICE_HOST_ROOT
+# and fails fast if unset; this operator-runtime script supplies the deployment
+# default. Override VOICE_HOST_ROOT in the environment if your checkout differs.
+VOICE_HOST_ROOT="${VOICE_HOST_ROOT:-/mnt/mldata/githubs/AR-AI-Knowledge-Graph}"
+export VOICE_HOST_ROOT
 # EXPERIMENTAL, GATED OFF: Android (redroid) sidecar — a genuine Play client.
 # The compose service is behind the `android` profile and cmd_android additionally
 # requires AGENTBOX_ENABLE_ANDROID=1. See docs/user/android.md.
@@ -1614,7 +1631,7 @@ while [[ $# -gt 0 ]]; do
             usage
             exit 0
             ;;
-        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser|backup|restore|up|down|build|rebuild|update|ruvector|logs|shell|health|browsercontainer|gui-tools|openmed|xr-runtime|android|migrate-workspace|preflight)
+        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser|backup|restore|up|down|build|rebuild|update|ruvector|logs|shell|health|browsercontainer|gui-tools|openmed|voice|xr-runtime|android|migrate-workspace|preflight)
             CMD="$1"
             shift
             break
@@ -1733,6 +1750,158 @@ OM_HELP
     esac
 }
 
+# ---------------------------------------------------------------------------
+# voice lifecycle — voice + AoE operator console (Caddy :8444/:8443) + the
+# external Kyutai Unmute speech stack. Own lifecycle, like browsercontainer.
+# ---------------------------------------------------------------------------
+
+# Generate a self-signed TLS pair for the console origin if one is absent.
+# Mic capture needs a secure context, so the operator origin must be HTTPS;
+# the cert/key are gitignored (certs/, *.pem) and never committed.
+_voice_ensure_certs() {
+    local certdir="${VOICE_CONSOLE_DIR}/certs"
+    if [[ -f "${certdir}/cert.pem" && -f "${certdir}/key.pem" ]]; then
+        return 0
+    fi
+    echo -e "${CYAN}Generating self-signed TLS cert for the voice console (certs/ is gitignored)...${NC}"
+    mkdir -p "$certdir"
+    if ! command -v openssl >/dev/null 2>&1; then
+        echo -e "${RED}openssl not found — cannot generate the console cert.${NC}"
+        echo "Install openssl or drop a cert.pem/key.pem pair in ${certdir}/."
+        return 1
+    fi
+    # SAN covers localhost + the container hostname so the cert validates from
+    # the laptop/tailnet as well as loopback. 825-day validity (browser cap).
+    openssl req -x509 -newkey rsa:2048 -nodes \
+        -keyout "${certdir}/key.pem" -out "${certdir}/cert.pem" \
+        -days 825 -subj "/CN=agentbox-voice-console" \
+        -addext "subjectAltName=DNS:localhost,DNS:agentbox,DNS:voice-console,IP:127.0.0.1" \
+        >/dev/null 2>&1 || {
+            echo -e "${RED}Cert generation failed.${NC}"
+            return 1
+        }
+    chmod 600 "${certdir}/key.pem"
+    echo -e "${GREEN}Cert written to ${certdir}/ (self-signed; accept once in the browser).${NC}"
+}
+
+# Assemble the compose invocation. The caddy console (this repo) always
+# participates; the Unmute clone's compose + our override are layered in only
+# when the clone is present (26 GB external build context, not vendored).
+_voice_compose_args() {
+    VOICE_COMPOSE_ARGS=(--project-name agentbox-voice)
+    if [[ -f "${VOICE_UNMUTE_DIR}/docker-compose.yml" ]]; then
+        VOICE_COMPOSE_ARGS+=(-f "${VOICE_UNMUTE_DIR}/docker-compose.yml" -f "$VOICE_OVERRIDE_FILE")
+    fi
+    VOICE_COMPOSE_ARGS+=(-f "$VOICE_FILE")
+}
+
+cmd_voice() {
+    local subcmd="${1:-help}"
+    shift 2>/dev/null || true
+    _voice_compose_args
+
+    case "$subcmd" in
+        up)
+            _voice_ensure_certs || exit 1
+            if [[ ! -f "${VOICE_UNMUTE_DIR}/docker-compose.yml" ]]; then
+                echo -e "${YELLOW}Unmute clone not found at ${VOICE_UNMUTE_DIR}.${NC}"
+                echo -e "${YELLOW}Bringing up the console only — the /embed voice strip and /api routes"
+                echo -e "will 502 until the speech stack is present. Clone it with:${NC}"
+                echo "  git clone https://github.com/kyutai-labs/unmute ${VOICE_UNMUTE_DIR}"
+            fi
+            if [[ -z "${BRIDGE_TOKEN:-}" ]]; then
+                echo -e "${YELLOW}BRIDGE_TOKEN is unset — the Unmute backend will call tab0-bridge"
+                echo -e "without a bearer; once the bridge enforces auth those calls 401."
+                echo -e "Export BRIDGE_TOKEN (same value the bridge uses) before 'voice up'.${NC}"
+            fi
+            echo -e "${CYAN}Building and starting the voice console + speech stack...${NC}"
+            docker compose "${VOICE_COMPOSE_ARGS[@]}" up -d --build
+            local deadline=$(( $(date +%s) + 60 )) ready=0
+            echo -e "${CYAN}Waiting for the console origin (https://localhost:8444)...${NC}"
+            while [[ $(date +%s) -lt $deadline ]]; do
+                if curl -skf https://localhost:8444/ >/dev/null 2>&1; then ready=1; break; fi
+                sleep 2
+            done
+            if [[ "$ready" -eq 0 ]]; then
+                echo -e "${RED}Console did not answer on :8444 within 60s.${NC}"
+                echo "Check logs: $0 voice logs"
+                exit 1
+            fi
+            echo -e "${GREEN}Voice console is up.${NC}"
+            echo -e "  ${GREEN}Console  :${NC} https://<host>:8444  (operator cockpit — accept the self-signed cert)"
+            echo -e "  ${GREEN}Debug UI :${NC} https://<host>:8443  (stock Unmute demo)"
+            echo -e "  Routes: /embed (voice) · /feed+/bridge (tab0-bridge) · /aoe/* (sessions) · /approvals/* (governance)"
+            ;;
+        down)
+            echo -e "${CYAN}Stopping the voice console + speech stack...${NC}"
+            docker compose "${VOICE_COMPOSE_ARGS[@]}" down
+            echo -e "${GREEN}Voice stack stopped.${NC}"
+            ;;
+        logs)
+            docker compose "${VOICE_COMPOSE_ARGS[@]}" logs -f --tail 100
+            ;;
+        status)
+            docker compose "${VOICE_COMPOSE_ARGS[@]}" ps
+            ;;
+        health)
+            if curl -skf https://localhost:8444/ >/dev/null 2>&1; then
+                echo -e "${GREEN}voice console healthy${NC} (https://localhost:8444)"
+            else
+                echo -e "${RED}voice console not responding at https://localhost:8444${NC}"
+                exit 1
+            fi
+            # Upstreams are best-effort — report but don't fail on them.
+            if curl -skf https://localhost:8444/api/v1/health >/dev/null 2>&1; then
+                echo -e "${GREEN}Unmute backend reachable via /api${NC}"
+            else
+                echo -e "${YELLOW}Unmute backend not reachable via /api (speech stack down?)${NC}"
+            fi
+            ;;
+        certs)
+            rm -f "${VOICE_CONSOLE_DIR}/certs/cert.pem" "${VOICE_CONSOLE_DIR}/certs/key.pem"
+            _voice_ensure_certs || exit 1
+            echo -e "${YELLOW}Restart the console to load the new cert: $0 voice down && $0 voice up${NC}"
+            ;;
+        rebuild)
+            _voice_ensure_certs || exit 1
+            docker compose "${VOICE_COMPOSE_ARGS[@]}" down
+            docker compose "${VOICE_COMPOSE_ARGS[@]}" build --no-cache
+            cmd_voice up
+            ;;
+        shell)
+            docker exec -it voice-console sh
+            ;;
+        help|*)
+            cat <<VOICE_HELP
+${CYAN}voice — voice + AoE operator console (Caddy :8444) + Kyutai Unmute speech stack${NC}
+
+Usage: $0 voice <command>
+
+  ${GREEN}up${NC}        Generate certs if absent, then build + start console + speech stack
+  ${GREEN}down${NC}      Stop the voice stack
+  ${GREEN}logs${NC}      Follow logs
+  ${GREEN}status${NC}    Compose ps
+  ${GREEN}health${NC}    Check the console origin (and, best-effort, the Unmute backend)
+  ${GREEN}certs${NC}     Regenerate the self-signed console TLS pair (certs/ is gitignored)
+  ${GREEN}rebuild${NC}   Full rebuild (down + build --no-cache + up)
+  ${GREEN}shell${NC}     Shell into the caddy console container
+
+The operator cockpit consolidates every surface same-origin on :8444:
+  /embed voice strip · /feed+/bridge tab0-bridge · /aoe/* AoE sessions (via the
+  NIP-98 proxy :9096) · /approvals/* governance (:9090). :8443 is the stock
+  Unmute debug UI. Sign in with a NIP-98 header (window.nostr) or break-glass
+  bearer. See agentbox/voice/README.md.
+
+The Kyutai Unmute fork is an external build context (not vendored). Set its
+location with VOICE_UNMUTE_DIR (default: ../voice-stack/unmute relative to the
+agentbox checkout). VOICE_HOST_ROOT is the HOST path mapping to the container's
+~/workspace/project — override it if your checkout is not at the default host
+path. Export BRIDGE_TOKEN so the Unmute backend can authenticate to tab0-bridge.
+VOICE_HELP
+            ;;
+    esac
+}
+
 # Execute command
 case "${CMD:-}" in
     ssh)           cmd_ssh "$@" ;;
@@ -1761,6 +1930,7 @@ case "${CMD:-}" in
     browsercontainer)  cmd_browsercontainer "$@" ;;
     gui-tools)         cmd_gui_tools "$@" ;;
     openmed)           cmd_openmed "$@" ;;
+    voice)             cmd_voice "$@" ;;
     xr-runtime)        cmd_xr_runtime "$@" ;;
     android)           cmd_android "$@" ;;
     migrate-workspace) cmd_migrate_workspace "$@" ;;
