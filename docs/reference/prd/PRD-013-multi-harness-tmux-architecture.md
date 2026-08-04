@@ -1,5 +1,7 @@
 # PRD-013: Multi-Harness tmux Architecture and Documentation Revamp
 
+> Superseded in part by [ADR-042](../adr/ADR-042-agent-of-empires-interaction-plane.md) / [PRD-021](PRD-021-interaction-surface-consolidation.md) (2026-08-04): the MAD tmux window layout is replaced by the Agent of Empires interaction plane; the consultant dual-path model (N06) and the profile-isolation invariant carry forward unchanged.
+
 **Status:** Draft v1
 **Date:** 2026-05-27
 **Author:** DreamLab AI

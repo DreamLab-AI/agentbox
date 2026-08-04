@@ -1,6 +1,6 @@
 ---
 title: Architecture Decision Records
-description: Index of all 40 agentbox ADRs (ADR-001..040) with status and the PRD/DDD they tie into.
+description: Index of the agentbox ADRs (ADR-001..044) with status and the PRD/DDD they tie into.
 ---
 
 # Architecture Decision Records
@@ -54,6 +54,9 @@ Older records use `**Status:**` markdown; ADR-023 onward carry YAML frontmatter
 | [038](ADR-038-aict-structured-coreutils-mcp.md) | AICT structured-coreutils MCP — trial, do not bake | Proposed | — |
 | [039](ADR-039-docbox-backported-surfaces.md) | docBox back-ports — apply-class taxonomy, /v1/system, hash-chained events | Accepted | — |
 | [040](ADR-040-learning-consumers-model-lifecycle-and-legacy-mining.md) | Learning consumers, model lifecycle, and legacy mining | Implemented | [PRD-020](../prd/PRD-020-ruvector-learning-consumers-and-corpus-uplift.md) · [DDD-018](../ddd/DDD-018-learning-consumers-and-model-lifecycle-domain.md) |
+| [042](ADR-042-agent-of-empires-interaction-plane.md) | Agent of Empires as the interaction plane — overlay-only adoption | Proposed | [PRD-021](../prd/PRD-021-interaction-surface-consolidation.md) · [DDD-019](../ddd/DDD-019-interaction-plane-domain.md) |
+| [043](ADR-043-session-identity-binding.md) | Session identity binding — sovereign mechanisms at the AoE session boundary | Proposed | [PRD-021](../prd/PRD-021-interaction-surface-consolidation.md) · [DDD-019](../ddd/DDD-019-interaction-plane-domain.md) |
+| [044](ADR-044-voice-plane-aoe-repoint.md) | Voice-plane repoint — tab0-bridge injection onto the AoE API | Proposed | [PRD-021](../prd/PRD-021-interaction-surface-consolidation.md) · [DDD-019](../ddd/DDD-019-interaction-plane-domain.md) |
 
 ## See also
 

@@ -16,9 +16,9 @@ docs explain and operationalise what these files decide.
 
 | Catalogue | Count | Contents |
 |-----------|-------|----------|
-| [Architecture Decision Records](adr/README.md) | 40 | ADR-001..040 — the *why* behind each structural choice |
-| [Product Requirement Documents](prd/README.md) | 20 + 1 remediation | PRD-001..020 plus PRD-REMEDIATION-001 — the *what* and *acceptance criteria* |
-| [Domain-Driven Design models](ddd/README.md) | 18 | DDD-001..018 — bounded contexts, aggregates, invariants |
+| [Architecture Decision Records](adr/README.md) | 43 | ADR-001..044 — the *why* behind each structural choice |
+| [Product Requirement Documents](prd/README.md) | 21 + 1 remediation | PRD-001..021 plus PRD-REMEDIATION-001 — the *what* and *acceptance criteria* |
+| [Domain-Driven Design models](ddd/README.md) | 19 | DDD-001..019 — bounded contexts, aggregates, invariants |
 | [QE reviews](qe-reviews/README.md) | 2 | QE-001..002 — traceability and re-verification gates |
 | [Extension vocabulary](_vocab/agbx.md) | — | `agbx:` term registry and the v1 JSON-LD context |
 
@@ -47,6 +47,7 @@ review verifies traceability.
 | Consumer & broadcast economy | [015](prd/PRD-015-consumer-broadcast-economy.md) | [021](adr/ADR-021-llm-resource-marketplace-kinds.md), [032](adr/ADR-032-402-scheme-grammar.md), [033](adr/ADR-033-did-nostr-multikey-convergence.md) | [006](ddd/DDD-006-llm-marketplace-domain.md) | — |
 | Context compression & caching | [016](prd/PRD-016-context-compression-caching.md) | [034](adr/ADR-034-headroom-rust-crate-integration.md) | [014](ddd/DDD-014-compression-cache-domain.md) | — |
 | Sovereign project tracking | [017](prd/PRD-017-sovereign-project-tracking.md) | [035](adr/ADR-035-project-tracking-telemetry-and-nostr-kind.md) | [015](ddd/DDD-015-project-tracking-domain.md) | — |
+| Interaction-surface consolidation | [021](prd/PRD-021-interaction-surface-consolidation.md) | [042](adr/ADR-042-agent-of-empires-interaction-plane.md), [043](adr/ADR-043-session-identity-binding.md), [044](adr/ADR-044-voice-plane-aoe-repoint.md) | [019](ddd/DDD-019-interaction-plane-domain.md) | — |
 | Default-secure remediation | [REMEDIATION-001](prd/PRD-REMEDIATION-001.md) | [027](adr/ADR-027-default-secure-posture.md) | [013](ddd/DDD-013-hardening-boundary-domain.md) | — |
 
 Foundational and cross-cutting ADRs sit outside any single domain slice:

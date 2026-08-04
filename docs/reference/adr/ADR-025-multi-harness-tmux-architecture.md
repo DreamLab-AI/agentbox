@@ -1,5 +1,7 @@
 # ADR-025: Multi-Harness tmux Architecture
 
+> Superseded in part by [ADR-042](ADR-042-agent-of-empires-interaction-plane.md) / [PRD-021](../prd/PRD-021-interaction-surface-consolidation.md) (2026-08-04): the MAD tmux window layout is replaced by the Agent of Empires interaction plane; the consultant dual-path model (§3.2) and the profile-isolation invariant carry forward unchanged.
+
 **Status:** Accepted
 **Date:** 2026-05-27
 **Author:** Agentbox team

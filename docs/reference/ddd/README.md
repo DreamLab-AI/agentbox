@@ -1,6 +1,6 @@
 ---
 title: Domain-Driven Design models
-description: Index of the 18 agentbox DDD bounded-context models (DDD-001..018) with status and decision chains.
+description: Index of the 19 agentbox DDD bounded-context models (DDD-001..019) with status and decision chains.
 ---
 
 # Domain-Driven Design models
@@ -31,6 +31,7 @@ drove the context and the ADRs whose decisions it realises.
 | [016](DDD-016-memory-learning-domain.md) | Memory & Learning Domain | Draft v1 (live in production 2026-07-05) | [PRD-018](../prd/PRD-018-ruvector-native-memory-and-learning.md) · [ADR-036](../adr/ADR-036-ruvector-capability-adoption-and-learning-loop.md) |
 | [017](DDD-017-gap-close-agentbox-context.md) | Gap-Close Sprint — agentbox bounded-context view | Draft v1 (WorkPackageMinted) | [PRD-019](../prd/PRD-019-gap-close-agentbox.md) · [ADR-037](../adr/ADR-037-gap-close-agentbox-decisions.md) |
 | [018](DDD-018-learning-consumers-and-model-lifecycle-domain.md) | Learning Consumers and Model Lifecycle Domain | Live in production (2026-07-21) | [PRD-020](../prd/PRD-020-ruvector-learning-consumers-and-corpus-uplift.md) · [ADR-040](../adr/ADR-040-learning-consumers-model-lifecycle-and-legacy-mining.md) |
+| [019](DDD-019-interaction-plane-domain.md) | Interaction Plane Domain | Proposed | [PRD-021](../prd/PRD-021-interaction-surface-consolidation.md) · [ADR-042](../adr/ADR-042-agent-of-empires-interaction-plane.md), [ADR-043](../adr/ADR-043-session-identity-binding.md), [ADR-044](../adr/ADR-044-voice-plane-aoe-repoint.md) |
 
 ## See also
 
