@@ -40,9 +40,11 @@
  */
 
 const acs = require('./agent-control-surface');
+const authz = require('./authz');
 
 const ACTION_RESPONSE_KIND = acs.kinds.ACTION_RESPONSE; // 31403 — we CONSUME
 const DEFAULT_TIMEOUT_MS = 120000;
+const DECIDED_CACHE_MAX = 512; // bound the decided-request cache
 
 function _parseContent(raw) {
   if (raw == null) return {};
@@ -142,7 +144,6 @@ function buildAuthorityConsumer(opts = {}) {
   const defaultTimeoutMs = Number.isFinite(opts.defaultTimeoutMs) ? opts.defaultTimeoutMs : DEFAULT_TIMEOUT_MS;
 
   const sm = (manifest.sovereign_mesh) || {};
-  const relayCfg = sm.relay || {};
   const bridgeEnabled = sm.nostr_bridge === true || opts.bridgeFactory != null;
   const relays = String(process.env.NOSTR_RELAYS || '')
     .split(',').map((r) => r.trim()).filter(Boolean);
@@ -159,17 +160,10 @@ function buildAuthorityConsumer(opts = {}) {
 
   // Approval allowlist: only a 31403 from an allowlisted pubkey (mobile
   // delegated key OR the operator delegation key the dashboard signs with) may
-  // release the gate. Sourced from the relay allowlist + the operator pubkey.
-  const allow = new Set();
-  const opPubkey = (process.env.AGENTBOX_X_ONLY_PUBKEY_HEX || process.env.AGENTBOX_PUBKEY || '').toLowerCase();
-  if (/^[0-9a-f]{64}$/.test(opPubkey)) allow.add(opPubkey);
-  const cfgAllow = Array.isArray(relayCfg.allowed_pubkeys) ? relayCfg.allowed_pubkeys : [];
-  const envAllow = String(process.env.AGENTBOX_RELAY_ALLOWED_PUBKEYS || process.env.AGENTBOX_APPROVAL_ALLOWLIST || '')
-    .split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
-  for (const pk of [...cfgAllow, ...envAllow]) {
-    const lower = String(pk).toLowerCase();
-    if (/^[0-9a-f]{64}$/.test(lower)) allow.add(lower);
-  }
+  // release the gate. The predicate is now the ONE shared policy in lib/authz.js
+  // (approvalAllowlist), so the relay consumer and the HTTP front doors
+  // (routes/approvals.js, routes/mandate.js) enforce exactly the same set.
+  const allow = authz.approvalAllowlist(manifest);
 
   const verifyEvent = opts.verifyEvent || ((event) => {
     try {
@@ -184,6 +178,24 @@ function buildAuthorityConsumer(opts = {}) {
   const pendingByKey = new Map();
   /** @type {Map<string, object>} requestId → { request, panelId, caseId, requesterPubkey, createdAt } */
   const openRequests = new Map();
+  /**
+   * @type {Map<string, object>} requestId → { outcome, response_event_id, decided_at }
+   * Records requests a verified 31403 has ALREADY answered — whether from the
+   * dashboard front door or the mobile path — so the HTTP surface can return 409
+   * (already decided) instead of silently re-signing a second decision. Bounded
+   * FIFO so it cannot grow without limit.
+   */
+  const decided = new Map();
+
+  function _markDecided(requestId, meta) {
+    if (typeof requestId !== 'string' || !requestId) return;
+    if (decided.has(requestId)) { decided.delete(requestId); } // refresh recency
+    decided.set(requestId, meta || {});
+    while (decided.size > DECIDED_CACHE_MAX) {
+      const oldest = decided.keys().next().value;
+      decided.delete(oldest);
+    }
+  }
 
   // Lazily-connected { bridge, signer }; the subscription is installed once.
   let ready = null;
@@ -269,6 +281,22 @@ function buildAuthorityConsumer(opts = {}) {
       _removeEntry(entry);
       entry.resolve(responseEvent);
     }
+
+    // Record the decision so the HTTP surface reports 409 (already decided) and
+    // never signs a second 31403 for the same request — regardless of whether a
+    // local awaitDecision waiter existed. Covers the mobile path too: a verified
+    // 31403 answered on Amethyst marks the open request decided + closes it.
+    const decidedIds = new Set();
+    const refId = _tagVal(responseEvent, 'e');
+    if (refId) decidedIds.add(refId);
+    for (const entry of resolved) if (entry.requestId) decidedIds.add(entry.requestId);
+    if (decidedIds.size) {
+      const outcome = String(_parseContent(responseEvent.content).outcome || '').toLowerCase() || null;
+      for (const rid of decidedIds) {
+        _markDecided(rid, { outcome, response_event_id: responseEvent.id || null, decided_at: Math.floor(Date.now() / 1000) });
+        openRequests.delete(rid);
+      }
+    }
     return resolved.size > 0;
   }
 
@@ -345,6 +373,16 @@ function buildAuthorityConsumer(opts = {}) {
     return openRequests.get(requestId) || null;
   }
 
+  /** True iff a verified 31403 has already answered this request. */
+  function isDecided(requestId) {
+    return decided.has(requestId);
+  }
+
+  /** The recorded decision for a request, or null. */
+  function getDecision(requestId) {
+    return decided.get(requestId) || null;
+  }
+
   /**
    * The dashboard signing front door: sign a kind-31403 decision for `requestId`
    * with the operator delegation key and publish it. The consumer's own
@@ -360,11 +398,25 @@ function buildAuthorityConsumer(opts = {}) {
    */
   async function signAndPublishDecision(p = {}) {
     const open = openRequests.get(p.requestId);
+    // Fail-closed: never sign a decision for a request that is not currently
+    // pending. An unknown id, or one a prior 31403 already answered, must NOT
+    // produce a second signed decision (finding 2). The HTTP route maps this to
+    // 404/409 before calling in; the throw is the belt-and-braces last line.
+    if (!open) {
+      if (decided.has(p.requestId)) {
+        const err = new Error(`request ${p.requestId} has already been decided`);
+        err.code = 'ALREADY_DECIDED';
+        throw err;
+      }
+      const err = new Error(`request ${p.requestId} is not pending (unknown or expired)`);
+      err.code = 'NOT_PENDING';
+      throw err;
+    }
     const unsigned = buildActionResponse({
       requestId: p.requestId,
-      panelId: open ? open.panelId : undefined,
-      caseId: open ? open.caseId : undefined,
-      requesterPubkey: open ? open.requesterPubkey : undefined,
+      panelId: open.panelId,
+      caseId: open.caseId,
+      requesterPubkey: open.requesterPubkey,
       outcome: p.outcome,
       reasoning: p.reasoning,
     });
@@ -372,6 +424,14 @@ function buildAuthorityConsumer(opts = {}) {
     const signed = await bridge.publish(unsigned, signer);
     // Release local waiters immediately (do not wait for the loopback echo).
     try { handleInboundDecision(signed); } catch (_) { /* ignore */ }
+    // Belt-and-braces: mark decided + close the open request even if the signed
+    // event did not round-trip through handleInboundDecision (e.g. a verify stub).
+    _markDecided(p.requestId, {
+      outcome: String(p.outcome || '').toLowerCase() || null,
+      response_event_id: signed && signed.id ? signed.id : null,
+      decided_at: Math.floor(Date.now() / 1000),
+    });
+    openRequests.delete(p.requestId);
     return signed;
   }
 
@@ -381,6 +441,8 @@ function buildAuthorityConsumer(opts = {}) {
     verifyEvent,
     listPending,
     getPending,
+    isDecided,
+    getDecision,
     signAndPublishDecision,
     buildActionResponse,
     // test/introspection

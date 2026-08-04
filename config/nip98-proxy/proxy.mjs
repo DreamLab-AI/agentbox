@@ -56,6 +56,10 @@ const BIND = process.env.NIP98_PROXY_HOST || '0.0.0.0';
 const UPSTREAM_URL = process.env.AOE_UPSTREAM || 'http://127.0.0.1:9095';
 const BREAK_GLASS = process.env.NIP98_PROXY_ALLOW_BEARER || '';
 const BREAK_GLASS_PUBKEY = process.env.NIP98_PROXY_BEARER_PUBKEY || 'break-glass';
+// Upper bound on the request body we buffer for NIP-98 payload verification
+// (Finding 4). Bounds memory against a hostile large-body upload; oversize
+// requests are rejected 413 before any upstream contact. Default 25 MiB.
+const MAX_BODY_BYTES = Number.parseInt(process.env.NIP98_PROXY_MAX_BODY || String(25 * 1024 * 1024), 10);
 
 let upstream;
 try {
@@ -142,8 +146,11 @@ function signedUrlFor(req) {
  * Verify a request's identity. Returns { ok, pubkey, mode, reason }.
  * `bearerToken` lets the WS path pass a token pulled from the query string
  * (browsers cannot set Authorization on the WS handshake).
+ * `rawBody` (Buffer) is the exact request body; it is passed to verifyNip98 so
+ * the signed `payload` tag is verified against hex(sha256(body)) (Finding 4).
+ * WS upgrades and GETs carry no body → undefined/empty.
  */
-function verifyIdentity(req, bearerToken) {
+function verifyIdentity(req, bearerToken, rawBody) {
   const authHeader = req.headers.authorization || '';
 
   // Break-glass bearer (explicit opt-in only).
@@ -162,7 +169,7 @@ function verifyIdentity(req, bearerToken) {
     const url = signedUrlFor(req);
     let result;
     try {
-      result = NostrBridge.verifyNip98(authHeader, req.method || 'GET', url);
+      result = NostrBridge.verifyNip98(authHeader, req.method || 'GET', url, rawBody);
     } catch (err) {
       return { ok: false, reason: `nip98_verify_error: ${err.message}` };
     }
@@ -195,52 +202,88 @@ const HOP_BY_HOP = new Set([
 ]);
 
 const server = http.createServer((req, res) => {
-  const auth = verifyIdentity(req);
-  if (!auth.ok) {
-    log('warn', 'request rejected', { method: req.method, url: req.url, reason: auth.reason, ip: clientIp(req) });
-    res.writeHead(401, { 'content-type': 'application/json' });
-    res.end(JSON.stringify({
-      error: 'Unauthorized',
-      message: 'NIP-98 (kind-27235) Authorization header required to reach the interaction plane',
-    }));
-    return;
-  }
+  // Finding 4: buffer the request body BEFORE authenticating so the NIP-98
+  // `payload` tag is verified against the exact bytes the client signed, then
+  // forward those same bytes upstream. GET/HEAD requests carry no body, so the
+  // 'end' fires immediately with an empty buffer — no added latency. The buffer
+  // is size-capped to bound memory; oversize bodies are 413'd before any
+  // upstream contact.
+  const chunks = [];
+  let total = 0;
+  let aborted = false;
 
-  // Build upstream headers: drop hop-by-hop + Authorization, inject identity.
-  const headers = {};
-  for (const [key, value] of Object.entries(req.headers)) {
-    if (HOP_BY_HOP.has(key.toLowerCase())) continue;
-    if (key.toLowerCase() === 'x-agentbox-pubkey') continue; // never trust an inbound claim
-    headers[key] = value;
-  }
-  headers.host = `${upstream.hostname}:${upstream.port}`;
-  headers['x-forwarded-for'] = appendXff(req.headers['x-forwarded-for'], clientIp(req));
-  headers['x-forwarded-proto'] = (req.headers['x-forwarded-proto'] || 'http').split(',')[0].trim();
-  headers['x-agentbox-pubkey'] = auth.pubkey;
-  headers['x-agentbox-auth-mode'] = auth.mode;
-
-  const proxyReq = http.request({
-    hostname: upstream.hostname,
-    port: upstream.port,
-    method: req.method,
-    path: req.url,
-    headers,
-  }, (proxyRes) => {
-    res.writeHead(proxyRes.statusCode || 502, proxyRes.headers);
-    proxyRes.pipe(res);
-  });
-
-  proxyReq.on('error', (err) => {
-    log('error', 'upstream request failed', { url: req.url, error: err.message });
-    if (!res.headersSent) {
-      res.writeHead(502, { 'content-type': 'application/json' });
-      res.end(JSON.stringify({ error: 'BadGateway', message: 'interaction-plane upstream unreachable' }));
-    } else {
-      res.destroy();
+  const forward = (rawBody) => {
+    const auth = verifyIdentity(req, undefined, rawBody);
+    if (!auth.ok) {
+      log('warn', 'request rejected', { method: req.method, url: req.url, reason: auth.reason, ip: clientIp(req) });
+      res.writeHead(401, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({
+        error: 'Unauthorized',
+        message: 'NIP-98 (kind-27235) Authorization header required to reach the interaction plane',
+      }));
+      return;
     }
-  });
 
-  req.pipe(proxyReq);
+    // Build upstream headers: drop hop-by-hop + Authorization, inject identity.
+    const headers = {};
+    for (const [key, value] of Object.entries(req.headers)) {
+      if (HOP_BY_HOP.has(key.toLowerCase())) continue;
+      if (key.toLowerCase() === 'content-length') continue; // recomputed from the buffered body
+      if (key.toLowerCase() === 'x-agentbox-pubkey') continue; // never trust an inbound claim
+      headers[key] = value;
+    }
+    headers.host = `${upstream.hostname}:${upstream.port}`;
+    headers['x-forwarded-for'] = appendXff(req.headers['x-forwarded-for'], clientIp(req));
+    headers['x-forwarded-proto'] = (req.headers['x-forwarded-proto'] || 'http').split(',')[0].trim();
+    headers['x-agentbox-pubkey'] = auth.pubkey;
+    headers['x-agentbox-auth-mode'] = auth.mode;
+    // We resend a fixed buffer (transfer-encoding was hop-by-hop and dropped), so
+    // declare an accurate content-length only when there is a body to send.
+    if (rawBody.length > 0) headers['content-length'] = String(rawBody.length);
+
+    const proxyReq = http.request({
+      hostname: upstream.hostname,
+      port: upstream.port,
+      method: req.method,
+      path: req.url,
+      headers,
+    }, (proxyRes) => {
+      res.writeHead(proxyRes.statusCode || 502, proxyRes.headers);
+      proxyRes.pipe(res);
+    });
+
+    proxyReq.on('error', (err) => {
+      log('error', 'upstream request failed', { url: req.url, error: err.message });
+      if (!res.headersSent) {
+        res.writeHead(502, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ error: 'BadGateway', message: 'interaction-plane upstream unreachable' }));
+      } else {
+        res.destroy();
+      }
+    });
+
+    if (rawBody.length > 0) proxyReq.write(rawBody);
+    proxyReq.end();
+  };
+
+  req.on('data', (chunk) => {
+    if (aborted) return;
+    total += chunk.length;
+    if (total > MAX_BODY_BYTES) {
+      aborted = true;
+      log('warn', 'request body too large', { url: req.url, bytes: total, limit: MAX_BODY_BYTES, ip: clientIp(req) });
+      res.writeHead(413, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ error: 'PayloadTooLarge', message: `request body exceeds ${MAX_BODY_BYTES} bytes` }));
+      req.destroy();
+      return;
+    }
+    chunks.push(chunk);
+  });
+  req.on('end', () => {
+    if (aborted) return;
+    forward(chunks.length ? Buffer.concat(chunks, total) : Buffer.alloc(0));
+  });
+  req.on('error', () => { aborted = true; });
 });
 
 // ─── WebSocket upgrade proxying (live-ws + acp/ws) ─────────────────────────────

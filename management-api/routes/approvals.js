@@ -28,8 +28,19 @@
  * Builder C's front-end targets exactly these two endpoints.
  */
 
+const authz = require('../lib/authz');
+
 async function approvalsRoutes(fastify, options) {
   const { logger } = options;
+
+  // Manifest for the approval allowlist. The route is registered with only
+  // { logger } today (server.js), so load the manifest here as a fallback; a
+  // future server.js edit can pass options.manifest and this becomes a no-op.
+  let manifest = options.manifest;
+  if (!manifest) {
+    try { manifest = require('../adapters/manifest-loader').loadManifest(); }
+    catch (_) { manifest = {}; }
+  }
 
   /** The authority consumer, injected at registration or decorated on fastify. */
   function consumer() {
@@ -107,6 +118,9 @@ async function approvalsRoutes(fastify, options) {
           },
         },
         401: { type: 'object', properties: { error: { type: 'string' }, message: { type: 'string' } } },
+        403: { type: 'object', properties: { error: { type: 'string' }, message: { type: 'string' } } },
+        404: { type: 'object', properties: { error: { type: 'string' }, message: { type: 'string' } } },
+        409: { type: 'object', additionalProperties: true, properties: { error: { type: 'string' }, message: { type: 'string' } } },
         503: { type: 'object', properties: { error: { type: 'string' }, message: { type: 'string' } } },
       },
     },
@@ -122,6 +136,21 @@ async function approvalsRoutes(fastify, options) {
       });
     }
 
+    // Finding 2 (Critical): a VERIFIED NIP-98 signature is not enough — the
+    // signer must be on the approval allowlist (the operator or a delegated
+    // approver). Any other authenticated key is Forbidden, never allowed to
+    // release a governance gate.
+    if (!authz.isApprover(request.auth.pubkey, manifest)) {
+      logger.warn(
+        { event: 'approvals.forbidden', requestId: request.params.id, pubkey: request.auth.pubkey },
+        'approvals: decide refused — signer is not on the approval allowlist',
+      );
+      return reply.code(403).send({
+        error: 'forbidden_not_approver',
+        message: 'This NIP-98 key is not on the approval allowlist (ADR-043 D4.7 — operator/allowlisted keys only).',
+      });
+    }
+
     const c = consumer();
     if (!c || typeof c.signAndPublishDecision !== 'function') {
       return reply.code(503).send({
@@ -131,6 +160,26 @@ async function approvalsRoutes(fastify, options) {
     }
 
     const { id } = request.params;
+
+    // A request that a prior 31403 already answered must not be re-decided
+    // (409) — check BEFORE the pending lookup, since a decided request is no
+    // longer pending. Then an id the gate never opened (or that expired) is 404.
+    if (typeof c.isDecided === 'function' && c.isDecided(id)) {
+      const prior = typeof c.getDecision === 'function' ? c.getDecision(id) : null;
+      return reply.code(409).send({
+        error: 'already_decided',
+        message: 'This request has already been decided (a signed 31403 was published).',
+        request_event_id: id,
+        outcome: prior && prior.outcome ? prior.outcome : undefined,
+        response_event_id: prior && prior.response_event_id ? prior.response_event_id : undefined,
+      });
+    }
+    if (typeof c.getPending === 'function' && !c.getPending(id)) {
+      return reply.code(404).send({
+        error: 'unknown_request',
+        message: 'No open kind-31402 request with that id is awaiting a decision.',
+      });
+    }
     const body = request.body || {};
     // Normalise the dashboard's `decision`/`deny` spelling onto the canonical
     // 31403 `outcome`/`reject` vocabulary (ADR-043 D4.7 semantics).
@@ -148,6 +197,15 @@ async function approvalsRoutes(fastify, options) {
     try {
       signed = await c.signAndPublishDecision({ requestId: id, outcome, reasoning });
     } catch (err) {
+      // Safety net for the fail-closed throws — the guards above normally catch
+      // these first, but a race (a decision landing between the check and the
+      // sign) still maps to the correct status rather than a 502.
+      if (err && err.code === 'ALREADY_DECIDED') {
+        return reply.code(409).send({ error: 'already_decided', message: err.message, request_event_id: id });
+      }
+      if (err && err.code === 'NOT_PENDING') {
+        return reply.code(404).send({ error: 'unknown_request', message: err.message });
+      }
       logger.warn({ err: err.message, requestId: id }, 'approvals: failed to sign/publish 31403 decision');
       return reply.code(502).send({ error: 'sign_publish_failed', message: err.message });
     }

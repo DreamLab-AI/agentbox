@@ -140,6 +140,10 @@ describe('NostrBridge.verifyNip98', () => {
   beforeEach(() => {
     mockVerifyEventResult  = true;
     mockLastVerifyEventArg = null;
+    // Finding 4 replay defence keys on the event id; makeNip98Token() reuses a
+    // fixed id across these independent assertions, so clear the cache between
+    // them (the dedicated replay test below drives it deliberately).
+    NostrBridge._resetReplayCache();
   });
 
   it('accepts a structurally valid, in-window event with matching method and URL', () => {
@@ -230,6 +234,74 @@ describe('NostrBridge.verifyNip98', () => {
     // The u tag ends with the path — should still pass
     const result = NostrBridge.verifyNip98(header, 'GET', '/v1/test');
     expect(result.valid).toBe(true);
+  });
+
+  // ── Finding 4: request-body / payload-tag binding ────────────────────────
+  const sha256hex = (s) => require('crypto').createHash('sha256').update(s).digest('hex');
+
+  it('accepts a POST whose payload tag equals sha256(rawBody)', () => {
+    const body = JSON.stringify({ decision: 'approve' });
+    const header = makeNip98Token({
+      id: 'payload-ok',
+      tags: [['u', 'http://localhost/v1/x'], ['method', 'POST'], ['payload', sha256hex(body)]],
+    });
+    const result = NostrBridge.verifyNip98(header, 'POST', 'http://localhost/v1/x', body);
+    expect(result.valid).toBe(true);
+  });
+
+  it('rejects a POST whose body was substituted under a captured header', () => {
+    const signedBody = JSON.stringify({ decision: 'approve' });
+    const tamperedBody = JSON.stringify({ decision: 'deny' });
+    const header = makeNip98Token({
+      id: 'payload-tamper',
+      tags: [['u', 'http://localhost/v1/x'], ['method', 'POST'], ['payload', sha256hex(signedBody)]],
+    });
+    const result = NostrBridge.verifyNip98(header, 'POST', 'http://localhost/v1/x', tamperedBody);
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/payload hash mismatch/);
+  });
+
+  it('rejects a POST that carries a body but no payload tag', () => {
+    const body = JSON.stringify({ decision: 'approve' });
+    const header = makeNip98Token({
+      id: 'payload-missing',
+      tags: [['u', 'http://localhost/v1/x'], ['method', 'POST']],
+    });
+    const result = NostrBridge.verifyNip98(header, 'POST', 'http://localhost/v1/x', body);
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/missing payload tag/);
+  });
+
+  it('stays backward-compatible when no rawBody is supplied (3-arg call)', () => {
+    const header = makeNip98Token({
+      id: 'no-body-arg',
+      tags: [['u', 'http://localhost/v1/x'], ['method', 'POST']],
+    });
+    const result = NostrBridge.verifyNip98(header, 'POST', 'http://localhost/v1/x');
+    expect(result.valid).toBe(true);
+  });
+
+  // ── Finding 4: replay defence ────────────────────────────────────────────
+  it('rejects a replayed event id inside the freshness window', () => {
+    const header = makeNip98Token({
+      id: 'replay-target',
+      tags: [['u', 'http://localhost/v1/x'], ['method', 'GET']],
+    });
+    const first = NostrBridge.verifyNip98(header, 'GET', 'http://localhost/v1/x');
+    expect(first.valid).toBe(true);
+    const second = NostrBridge.verifyNip98(header, 'GET', 'http://localhost/v1/x');
+    expect(second.valid).toBe(false);
+    expect(second.error).toMatch(/replay/);
+  });
+
+  it('does not cache the id of an event that fails signature verification', () => {
+    mockVerifyEventResult = false;
+    const header = makeNip98Token({ id: 'bad-sig-id' });
+    NostrBridge.verifyNip98(header, 'GET', 'http://localhost/v1/test'); // rejected at sig
+    // A subsequent genuine event that happens to reuse the id is NOT a replay.
+    mockVerifyEventResult = true;
+    const ok = NostrBridge.verifyNip98(header, 'GET', 'http://localhost/v1/test');
+    expect(ok.valid).toBe(true);
   });
 });
 

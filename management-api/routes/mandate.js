@@ -35,6 +35,7 @@ const fs = require('fs');
 const path = require('path');
 
 const mandateLib = require('../lib/mandate');
+const authz = require('../lib/authz');
 
 // ── Registry (durable mint-if-absent + revocation state) ─────────────────────
 //
@@ -97,6 +98,12 @@ function _loadSigner(manifest, logger) {
   if (_signerCache !== null) return _signerCache;
   const stack = _operatorStack(manifest);
   if (!stack) {
+    if (logger && logger.warn) {
+      logger.warn(
+        { event: 'mandate.signer-unavailable', reason: 'no-signer-stack' },
+        'mandate: no operator signer stack configured (AGENTBOX_STACK/PROFILE/sign_stack) — mandates will be minted UNSIGNED (fail-open).',
+      );
+    }
     _signerCache = false;
     return false;
   }
@@ -192,6 +199,12 @@ async function createSignedMandate(args = {}) {
       if (logger && logger.warn) logger.warn({ err: err.message }, 'mandate: signMandate failed (record kept unsigned)');
     }
   }
+  if (!signedEvent && logger && logger.warn) {
+    logger.warn(
+      { event: 'mandate.unsigned-mint', urn, issuer, agent, container },
+      'mandate: UNSIGNED mandate minted (operator signer unavailable) — the kind-30078 envelope is absent; re-mint once the signer is restored (ADR-043 D4.5 fail-open).',
+    );
+  }
 
   const reg = _loadRegistry();
   reg[_registryKey(agent, container)] = {
@@ -236,6 +249,12 @@ async function revokeMandate(args = {}) {
       if (logger && logger.warn) logger.warn({ err: err.message }, 'mandate: revoke sign failed');
     }
   }
+  if (!signedEvent && logger && logger.warn) {
+    logger.warn(
+      { event: 'mandate.unsigned-revoke', urn: revokedRecord.urn },
+      'mandate: UNSIGNED revocation recorded (operator signer unavailable) — the revoking kind-30078 was not published; re-publish once the signer is restored.',
+    );
+  }
 
   reg[key] = {
     record: revokedRecord,
@@ -271,9 +290,15 @@ async function mandateRoutes(fastify, options) {
   };
 
   // ── POST /v1/mandate — create + sign ──────────────────────────────────────
+  // Finding 3: creating a mandate binds the operator's own delegation authority
+  // to an agent, so it is OPERATOR-ONLY. Any other authenticated principal is
+  // Forbidden (403). The issuer is always the authenticated operator — a
+  // caller-supplied issuer that disagrees is rejected 400 (never sign an
+  // operator-key mandate for an arbitrary issuer).
   fastify.post('/v1/mandate', {
+    preHandler: authz.requireOperator({ manifest }),
     schema: {
-      description: 'Create and sign a scoped agent-delegation mandate (kind-30078 revocable)',
+      description: 'Create and sign a scoped agent-delegation mandate (kind-30078 revocable). Operator-only.',
       tags: ['mandate'],
       body: {
         type: 'object',
@@ -299,13 +324,34 @@ async function mandateRoutes(fastify, options) {
           },
         },
         400: { type: 'object', properties: { error: { type: 'string' }, message: { type: 'string' } } },
+        403: { type: 'object', properties: { error: { type: 'string' }, message: { type: 'string' } } },
       },
     },
   }, async (request, reply) => {
     const body = request.body || {};
-    // The authenticated caller's pubkey is the default issuer when present
-    // (a NIP-98 operator call), else the box operator pubkey.
-    const issuer = body.issuer || (request.auth && request.auth.pubkey) || _operatorPubkey();
+    // The issuer is the authenticated operator, full stop. `authenticatedPubkey`
+    // is the operator's NIP-98 signer pubkey, or the operator pubkey when the
+    // operator bearer is used. A caller-supplied `issuer` is accepted only when
+    // it equals that identity — otherwise 400 (finding 3): the operator key must
+    // never sign a mandate attributing itself as an arbitrary third-party issuer.
+    const effectiveIssuer = authz.authenticatedPubkey(request) || _operatorPubkey();
+    if (body.issuer) {
+      let suppliedHex = null;
+      let operatorHex = null;
+      try { suppliedHex = mandateLib.normalisePubkey(body.issuer); } catch (_) { suppliedHex = null; }
+      try { operatorHex = mandateLib.normalisePubkey(effectiveIssuer); } catch (_) { operatorHex = null; }
+      if (!suppliedHex || !operatorHex || suppliedHex.toLowerCase() !== operatorHex.toLowerCase()) {
+        logger.warn(
+          { event: 'mandate.issuer-mismatch', supplied: body.issuer, operator: effectiveIssuer, pubkey: request.auth && request.auth.pubkey },
+          'mandate: create refused — caller-supplied issuer disagrees with the authenticated operator',
+        );
+        return reply.code(400).send({
+          error: 'issuer_mismatch',
+          message: 'A caller-supplied issuer must equal the authenticated operator identity; the operator key never signs a mandate for an arbitrary issuer.',
+        });
+      }
+    }
+    const issuer = effectiveIssuer;
     try {
       const result = await createSignedMandate({
         issuer,
@@ -326,9 +372,11 @@ async function mandateRoutes(fastify, options) {
   });
 
   // ── POST /v1/mandate/revoke ───────────────────────────────────────────────
+  // Operator-only (finding 3): revoking a delegation is an operator authority.
   fastify.post('/v1/mandate/revoke', {
+    preHandler: authz.requireOperator({ manifest }),
     schema: {
-      description: 'Revoke a mandate by urn, or by (agent, container)',
+      description: 'Revoke a mandate by urn, or by (agent, container). Operator-only.',
       tags: ['mandate'],
       body: {
         type: 'object',
@@ -349,6 +397,8 @@ async function mandateRoutes(fastify, options) {
             signed_event: { type: ['object', 'null'], additionalProperties: true },
           },
         },
+        400: { type: 'object', properties: { error: { type: 'string' }, message: { type: 'string' } } },
+        403: { type: 'object', properties: { error: { type: 'string' }, message: { type: 'string' } } },
         404: { type: 'object', properties: { error: { type: 'string' } } },
       },
     },
@@ -369,9 +419,12 @@ async function mandateRoutes(fastify, options) {
   });
 
   // ── GET /v1/mandate — list active mandates ────────────────────────────────
+  // Operator-only (finding 3): the mandate registry enumerates every delegation
+  // the operator has granted — not a list an arbitrary session may read.
   fastify.get('/v1/mandate', {
+    preHandler: authz.requireOperator({ manifest }),
     schema: {
-      description: 'List mandates currently recorded in the local registry',
+      description: 'List mandates currently recorded in the local registry. Operator-only.',
       tags: ['mandate'],
       response: {
         200: {
@@ -381,6 +434,7 @@ async function mandateRoutes(fastify, options) {
             count: { type: 'integer' },
           },
         },
+        403: { type: 'object', properties: { error: { type: 'string' }, message: { type: 'string' } } },
       },
     },
   }, async (request, reply) => {

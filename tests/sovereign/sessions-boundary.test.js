@@ -114,6 +114,43 @@ describe('/v1/sessions/boundary', () => {
     expect(a.pubkey).not.toBe(b.pubkey);
   });
 
+  // Finding 5 (security-remediation): the record filename is sha256(id), not a
+  // character-sanitised form. The old _safeId collapsed every char outside
+  // [A-Za-z0-9._-] to '_', so two DISTINCT ids that differ only in such a char
+  // (here `coll/x` vs `coll_x`) mapped to ONE file — the second create silently
+  // overwrote the first session's identity record. This asserts they now persist
+  // as two independent records and neither clobbers the other.
+  it('distinct ids that collided under _safeId keep independent records', async () => {
+    const slash = (await app.inject({
+      method: 'POST', url: '/v1/sessions/boundary',
+      payload: { phase: 'create', session_id: 'coll/x', slug: 'collalpha' },
+    })).json();
+    const under = (await app.inject({
+      method: 'POST', url: '/v1/sessions/boundary',
+      payload: { phase: 'create', session_id: 'coll_x', slug: 'collbeta' },
+    })).json();
+
+    // Distinct slugs ⇒ distinct derived pubkeys (mock derives from profile).
+    expect(slash.pubkey).not.toBe(under.pubkey);
+
+    // Two distinct files on disk — the old scheme would have produced one.
+    const sha = (s) => crypto.createHash('sha256').update(s).digest('hex');
+    const dir = path.join(tmpState, 'sessions');
+    expect(fs.existsSync(path.join(dir, `${sha('coll/x')}.json`))).toBe(true);
+    expect(fs.existsSync(path.join(dir, `${sha('coll_x')}.json`))).toBe(true);
+
+    // Re-create `coll/x`: it must resolve to ITS OWN record (collalpha), proving
+    // `coll_x` (collbeta) did not overwrite it. Under the old collision this
+    // would have returned collbeta's pubkey.
+    const reuse = (await app.inject({
+      method: 'POST', url: '/v1/sessions/boundary',
+      payload: { phase: 'create', session_id: 'coll/x', slug: 'collalpha' },
+    })).json();
+    expect(reuse.reused).toBe(true);
+    expect(reuse.pubkey).toBe(slash.pubkey);
+    expect(reuse.pubkey).not.toBe(under.pubkey);
+  });
+
   it('turn creates + claims a child under the session epic', async () => {
     const res = await app.inject({
       method: 'POST', url: '/v1/sessions/boundary',

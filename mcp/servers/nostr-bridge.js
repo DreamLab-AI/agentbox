@@ -79,6 +79,48 @@ const DEFAULT_BACKOFF_FACTOR   = 2;
 const MAX_JITTER_MS            = 500;
 const VERIFY_NIP98_WINDOW_S    = 60;
 
+// ─── NIP-98 replay defence (Finding 4) ──────────────────────────────────────────
+//
+// A signed kind-27235 token is a bearer credential for its 60-second freshness
+// window: absent replay protection an attacker who captures one valid header can
+// replay it verbatim until it expires. This module-level LRU records the id of
+// every *signature-verified* event and rejects a second sighting of the same id
+// inside the window. It intentionally mirrors the tight window in
+// src/utils/nip98.rs (TOKEN_MAX_AGE_SECONDS = 60); the timestamp window bounds
+// how long an id must be remembered, so the TTL equals the window.
+//
+// Keyed on the event id, populated only AFTER Schnorr verification so a forged
+// token can never poison the cache. Insertion order is chronological and the TTL
+// is constant, so expiries are monotonic and the prefix-sweep prune is O(expired).
+const REPLAY_TTL_MS        = VERIFY_NIP98_WINDOW_S * 1000;
+const REPLAY_MAX_ENTRIES   = 20000;
+const _replayCache         = new Map(); // eventId → expiryEpochMs
+
+function _pruneReplayCache(now) {
+  for (const [id, exp] of _replayCache) {
+    if (exp <= now) _replayCache.delete(id);
+    else break; // monotonic expiry ⇒ first live entry ends the sweep
+  }
+}
+
+/**
+ * Record a verified event id and report whether it is a replay.
+ * @param {string} id - hex event id (trusted: set post-verifyEvent).
+ * @returns {boolean} true if this id was already seen inside the window.
+ */
+function _recordReplayId(id) {
+  const now = Date.now();
+  _pruneReplayCache(now);
+  const existing = _replayCache.get(id);
+  if (existing !== undefined && existing > now) return true; // live duplicate → replay
+  _replayCache.set(id, now + REPLAY_TTL_MS);
+  if (_replayCache.size > REPLAY_MAX_ENTRIES) {
+    const oldest = _replayCache.keys().next().value;
+    if (oldest !== undefined) _replayCache.delete(oldest);
+  }
+  return false;
+}
+
 /**
  * Manages one WebSocket connection to a single Nostr relay.
  * Handles reconnection with exponential backoff.
@@ -406,9 +448,15 @@ class NostrBridge {
    * @param {string} authHeader - The raw Authorization header value.
    * @param {string} method     - Expected HTTP method (e.g. 'GET').
    * @param {string} url        - Expected request URL (full or path).
+   * @param {string|Buffer} [rawBody] - The EXACT request body bytes. When
+   *   supplied and non-empty, a `payload` tag equal to hex(sha256(rawBody)) is
+   *   MANDATORY and is verified (Finding 4) — this binds the body to the
+   *   signature and closes the replay-with-substituted-body vector. Mirrors the
+   *   payload semantics of src/utils/nip98.rs. A caller that omits this argument
+   *   (undefined) opts out of body binding — legacy behaviour, unchanged.
    * @returns {{ valid: boolean, pubkey: string|null, error: string|null }}
    */
-  static verifyNip98(authHeader, method, url) {
+  static verifyNip98(authHeader, method, url, rawBody) {
     if (!authHeader || !authHeader.startsWith('Nostr ')) {
       return { valid: false, pubkey: null, error: 'missing or malformed Nostr header' };
     }
@@ -457,6 +505,37 @@ class NostrBridge {
       return { valid: false, pubkey: null, error: 'url tag mismatch' };
     }
 
+    // ── Payload binding (Finding 4) ──────────────────────────────────────────
+    // Bind the request body to the signature. When the caller supplies the raw
+    // body and it is non-empty, the signed `payload` tag (hex(sha256(body)),
+    // matching src/utils/nip98.rs::compute_payload_hash) is REQUIRED and must
+    // match — otherwise the body could be swapped under a captured header. A
+    // caller that passes no body (rawBody === undefined) is exempt: the check
+    // degrades to the prior header-only behaviour, so existing 3-arg callers and
+    // GET requests are unaffected.
+    if (rawBody !== undefined && rawBody !== null) {
+      const buf = Buffer.isBuffer(rawBody)
+        ? rawBody
+        : Buffer.from(typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody), 'utf8');
+      const payloadTag = getTag('payload');
+      if (buf.length > 0) {
+        if (!payloadTag) {
+          return { valid: false, pubkey: null, error: 'missing payload tag for request body' };
+        }
+        const computed = crypto.createHash('sha256').update(buf).digest('hex');
+        if (computed !== payloadTag) {
+          return { valid: false, pubkey: null, error: 'payload hash mismatch' };
+        }
+      } else if (payloadTag) {
+        // Empty body but the token commits to a payload — only valid if it is
+        // the hash of the empty string; otherwise the body was substituted away.
+        const computed = crypto.createHash('sha256').update(buf).digest('hex');
+        if (computed !== payloadTag) {
+          return { valid: false, pubkey: null, error: 'payload hash mismatch' };
+        }
+      }
+    }
+
     // Schnorr signature verification via nostr-tools
     // Uses constant-time secp256k1 verification internally — no timing oracle.
     try {
@@ -469,7 +548,24 @@ class NostrBridge {
       return { valid: false, pubkey: null, error: `signature verification failed: ${err.message}` };
     }
 
+    // ── Replay defence (Finding 4) ───────────────────────────────────────────
+    // Only genuine, signature-verified events reach here, so caching their ids
+    // cannot be poisoned by forged tokens. A second sighting of the same id
+    // inside the freshness window is a replay.
+    if (event.id && _recordReplayId(String(event.id))) {
+      return { valid: false, pubkey: null, error: 'replayed NIP-98 event id' };
+    }
+
     return { valid: true, pubkey: event.pubkey, error: null };
+  }
+
+  /**
+   * Clear the NIP-98 replay cache. Test-only hook so suites that reuse a fixed
+   * event id across independent assertions are not tripped by replay defence.
+   * @private
+   */
+  static _resetReplayCache() {
+    _replayCache.clear();
   }
 
   /**

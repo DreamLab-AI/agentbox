@@ -42,7 +42,13 @@ function verifyNip98Header(header, request) {
 
   // Full path: delegate to NostrBridge for Schnorr signature verification.
   if (nostrBridge) {
-    const result = nostrBridge.verifyNip98(header, request.method, requestUrl);
+    // Finding 4: pass the RAW request body so verifyNip98 can bind it to the
+    // signed `payload` tag. `request.rawBody` is the exact received bytes,
+    // preserved by registerRawBody()'s content-type parser (a re-serialised
+    // `request.body` would not reproduce the signer's byte stream). When it is
+    // absent (parser not registered, or the auth hook ran before body parsing)
+    // verifyNip98 falls back to header-only verification — no false rejects.
+    const result = nostrBridge.verifyNip98(header, request.method, requestUrl, request.rawBody);
     if (!result.valid) return null;
     // Re-decode the event to return the full event object in the result, as
     // the auth result consumers may inspect event.tags or event.pubkey.
@@ -162,4 +168,42 @@ function createAuthMiddleware(validToken, options = {}) {
   };
 }
 
-module.exports = { createAuthMiddleware };
+/**
+ * Register a content-type parser that preserves the RAW request body as a
+ * Buffer on `request.rawBody` while still delivering parsed JSON to route
+ * handlers.
+ *
+ * Finding 4: the NIP-98 `payload` tag commits to hex(sha256(rawBody)), so the
+ * verifier needs the exact bytes the client signed — Fastify's parsed
+ * `request.body` is a re-materialised object and cannot reproduce them.
+ *
+ * WIRING (server owner): Fastify parses the body AFTER the `onRequest` phase,
+ * so for body binding to take effect on the management-api the auth hook must
+ * consume `request.rawBody` at `preValidation` (or `preHandler`), not
+ * `onRequest`; and this parser must be registered on the app. Both are
+ * no-ops for GET/HEAD (no body) and fully backward-compatible: without them the
+ * verifier simply skips body binding.
+ *
+ * @param {import('fastify').FastifyInstance} app
+ */
+function registerRawBody(app) {
+  app.addContentTypeParser(
+    'application/json',
+    { parseAs: 'buffer' },
+    (req, body, done) => {
+      req.rawBody = body; // Buffer of the exact received bytes
+      if (!body || body.length === 0) {
+        done(null, {});
+        return;
+      }
+      try {
+        done(null, JSON.parse(body.toString('utf8')));
+      } catch (err) {
+        err.statusCode = 400;
+        done(err);
+      }
+    }
+  );
+}
+
+module.exports = { createAuthMiddleware, registerRawBody };

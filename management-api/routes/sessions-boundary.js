@@ -33,6 +33,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const uris = require('../lib/uris');
 const agentIdentity = require('../lib/agent-identity');
@@ -48,28 +49,65 @@ function _sessionsDir() {
   return path.join(_stateDir(), 'sessions');
 }
 
-function _safeId(id) {
+// Finding 5: the record filename is the SHA-256 hex of the AoE session id, not a
+// character-sanitised form of it. The old _safeId() collapsed every character
+// outside [A-Za-z0-9._-] to '_' and truncated to 128 chars, so distinct ids
+// (e.g. "a/b" and "a_b", or two long ids sharing a 128-char prefix) mapped to
+// ONE file — one session silently overwriting another's identity record. A hash
+// is injective for our purposes and yields a fixed-length, path-safe name. The
+// ORIGINAL id is preserved inside the record (`record.session_id`).
+function _hashId(id) {
+  return crypto.createHash('sha256').update(String(id == null ? '' : id)).digest('hex');
+}
+
+// Legacy (pre-Finding-5) filename, retained ONLY so records written by an
+// earlier build remain readable across the upgrade. Never written any more.
+function _legacyId(id) {
   return String(id || '').replace(/[^A-Za-z0-9._-]/g, '_').slice(0, 128) || 'unknown';
 }
 
 function _recordPath(sessionId) {
-  return path.join(_sessionsDir(), `${_safeId(sessionId)}.json`);
+  return path.join(_sessionsDir(), `${_hashId(sessionId)}.json`);
+}
+
+function _legacyRecordPath(sessionId) {
+  return path.join(_sessionsDir(), `${_legacyId(sessionId)}.json`);
 }
 
 function _readRecord(sessionId) {
+  // Prefer the canonical hashed path; fall back to a legacy file so existing
+  // sessions keep resolving until their next write migrates them.
   try {
     return JSON.parse(fs.readFileSync(_recordPath(sessionId), 'utf8'));
+  } catch (_) { /* fall through to legacy */ }
+  try {
+    return JSON.parse(fs.readFileSync(_legacyRecordPath(sessionId), 'utf8'));
   } catch (_) {
     return null;
   }
 }
 
 function _writeRecord(sessionId, record) {
+  // Atomic + private: write to a unique temp file with mode 0600, then rename
+  // into place (rename is atomic within a directory, so a concurrent reader
+  // never sees a half-written record). Migrate off any legacy-named file.
+  const dir = _sessionsDir();
+  const finalPath = _recordPath(sessionId);
+  const tmpPath = path.join(dir, `.${_hashId(sessionId)}.${process.pid}.${Date.now()}.tmp`);
   try {
-    fs.mkdirSync(_sessionsDir(), { recursive: true });
-    fs.writeFileSync(_recordPath(sessionId), JSON.stringify(record, null, 2), 'utf8');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(tmpPath, JSON.stringify(record, null, 2), { encoding: 'utf8', mode: 0o600 });
+    fs.renameSync(tmpPath, finalPath);
+    // writeFileSync honours `mode` only when creating the file; enforce 0600 in
+    // case the temp file pre-existed with a looser umask-derived mode.
+    try { fs.chmodSync(finalPath, 0o600); } catch (_) { /* best-effort */ }
+    const legacyPath = _legacyRecordPath(sessionId);
+    if (legacyPath !== finalPath) {
+      try { fs.unlinkSync(legacyPath); } catch (_) { /* no legacy file — fine */ }
+    }
     return true;
   } catch (_) {
+    try { fs.unlinkSync(tmpPath); } catch (_) { /* temp may not exist */ }
     return false;
   }
 }

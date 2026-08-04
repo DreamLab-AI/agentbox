@@ -35,8 +35,42 @@ WS5 of [PRD-021](../../docs/reference/prd/PRD-021-interaction-surface-consolidat
   same-host POST needs no auth (D8 route 2, direct-loopback break-glass). The
   NIP-98 reverse proxy that is the sole ingress to `:9095` (ADR-043 D6) is a
   deployment concern in front of the bridge, not implemented here.
-- **Untouched (D9):** the Unmute `/v1/chat/completions` + `/v1/models` LLM
-  contract, the `/hook/turn` sink, `/feed`/`/turns`, and the `/nostr/*` surface.
+- **Untouched (D9):** the *shape* of the Unmute `/v1/chat/completions` +
+  `/v1/models` LLM contract, the `/hook/turn` sink, `/feed`/`/turns`, and the
+  `/nostr/*` surface. The injection seam itself (`sendToTab0()` fail-open to
+  tmux) is byte-for-byte preserved. These surfaces now sit behind the global
+  auth gate below, but the request/response bodies are unchanged.
+
+## Auth model and bind (ADR-044 finding 1)
+
+The bridge fronts the coordinator `claude -p` backend and the `/tab0/send`
+injection seam, so an unauthenticated non-loopback listener is a remote code
+path. Auth is therefore global, with two carriers and one hard startup gate:
+
+- **`BRIDGE_TOKEN`** — when set, every surface **except `/health`** requires it,
+  including the Unmute LLM contract (`/v1/chat/completions`, `/v1/models`), the
+  `/feed` WebSocket, `/tab0/send`, `/nostr/*`, `/turns`, `/tabs*`, and
+  `/aoe/sessions`. Missing/wrong token → `401` (HTTP) or a rejected upgrade (WS).
+- **Bearer header** — `Authorization: Bearer <BRIDGE_TOKEN>`. Carried by:
+  - the **Unmute backend**, which sends `KYUTAI_LLM_API_KEY=$BRIDGE_TOKEN` as the
+    OpenAI-style bearer when it calls `/v1/chat/completions` over the docker
+    network (set in `agentbox/voice/unmute-override.yml`);
+  - the **console via Caddy**, which forwards `Authorization` on `/aoe/*` etc.;
+  - any CLI caller.
+- **`?token=<BRIDGE_TOKEN>` query param** — for **browser WebSocket** clients,
+  which cannot set request headers on the `/feed` upgrade. Connect to
+  `wss://…/feed?token=<TOKEN>`. Accepted on any surface as a fallback to the
+  header.
+- **`BRIDGE_BIND`** (default `0.0.0.0`) — the listen interface. `0.0.0.0` keeps
+  the bridge reachable at `agentbox:8971` for the Unmute backend. A **non-loopback
+  bind with no `BRIDGE_TOKEN` set is refused at startup** (`process.exit(1)`) —
+  that would expose the injection seam and the `claude -p` backend to the network
+  unauthenticated. A loopback bind (`127.0.0.1`/`::1`/`localhost`) is the
+  token-optional dev path; there the gate is open.
+
+Note the AoE-daemon "loopback, no token" line in the injection-seam section above
+is about the bridge → AoE hop (`:9095`), a separate loopback concern, and is not
+affected by the bridge's own inbound auth.
 
 **Deploy target is the workspace volume, not this directory.** The bridge
 runs from `~/workspace/tab0-bridge` (persistent volume, survives image

@@ -46,8 +46,23 @@ const MODEL = process.env.BRIDGE_MODEL || 'haiku';
 const TMUX_SESSION = process.env.BRIDGE_TMUX_SESSION || 'agentbox';
 const TAB0 = `${TMUX_SESSION}:0`;
 const TOKEN = process.env.BRIDGE_TOKEN || '';
+// Bind interface (ADR-044 finding 1). Default `0.0.0.0` so the Unmute backend
+// can reach `agentbox:8971` over the docker network; a loopback bind
+// (127.0.0.1/::1/localhost) is the token-optional dev path. A non-loopback bind
+// without a BRIDGE_TOKEN exposes the injection seam + `claude -p` backend to the
+// network unauthenticated, so we refuse to start in that configuration.
+const BIND = process.env.BRIDGE_BIND || '0.0.0.0';
+const BIND_IS_LOOPBACK = BIND === '127.0.0.1' || BIND === '::1' || BIND === 'localhost';
 const MAX_TURNS = 300;
 const CLAUDE_TIMEOUT_MS = 90_000;
+
+if (!TOKEN && !BIND_IS_LOOPBACK) {
+  console.error(
+    `[tab0-bridge] refusing to start: BRIDGE_BIND=${BIND} is non-loopback but BRIDGE_TOKEN is unset. ` +
+    'Set BRIDGE_TOKEN (the Unmute backend carries it as KYUTAI_LLM_API_KEY) or bind to 127.0.0.1.',
+  );
+  process.exit(1);
+}
 
 // ---------------------------------------------------------------- AoE plane
 // Agent of Empires interaction plane (ADR-042/ADR-044). The daemon binds
@@ -556,9 +571,22 @@ function json(res, code, obj) {
   res.end(JSON.stringify(obj));
 }
 
+// Global gate (ADR-044 finding 1). Every surface except `/health` requires the
+// bearer when a BRIDGE_TOKEN is set. Two carriers:
+//   - `Authorization: Bearer <TOKEN>` — the Unmute backend (KYUTAI_LLM_API_KEY),
+//     the console over Caddy (which forwards Authorization), and CLI callers.
+//   - `?token=<TOKEN>` query param — browser WebSocket clients, which cannot set
+//     request headers on the `/feed` upgrade.
+// When no TOKEN is set (loopback dev only — a non-loopback bind without one is
+// refused at startup) the gate is open.
 function authorised(req) {
   if (!TOKEN) return true;
-  return (req.headers.authorization || '') === `Bearer ${TOKEN}`;
+  if ((req.headers.authorization || '') === `Bearer ${TOKEN}`) return true;
+  try {
+    const u = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+    if (u.searchParams.get('token') === TOKEN) return true;
+  } catch { /* malformed URL — treat as unauthorised */ }
+  return false;
 }
 
 const server = http.createServer(async (req, res) => {
@@ -569,6 +597,9 @@ const server = http.createServer(async (req, res) => {
       let tabCount = 0; try { tabCount = listTabs().length; } catch { /* tmux down */ }
       return json(res, 200, { ok: true, backend: 'claude-cli', model: MODEL, tabs: tabCount, turns: turns.length });
     }
+    // Global auth gate (ADR-044 finding 1): everything past /health requires the
+    // bearer, including the Unmute LLM contract (/v1/chat/completions, /v1/models).
+    if (!authorised(req)) return json(res, 401, { error: 'unauthorised' });
     if ((path === '/v1/models' || path === '/models') && req.method === 'GET') {
       return json(res, 200, { object: 'list', data: [{ id: 'tab0-meta', object: 'model', owned_by: 'agentbox' }] });
     }
@@ -593,7 +624,6 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { turns: turns.slice(-n) });
     }
     if (path === '/tab0/send' && req.method === 'POST') {
-      if (!authorised(req)) return json(res, 401, { error: 'unauthorised' });
       const { text, source } = await readBody(req);
       return json(res, 200, { ok: true, sent: await sendToTab0(text, source) });
     }
@@ -605,7 +635,6 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { events: nostrEvents(n) });
     }
     if (path === '/nostr/send' && req.method === 'POST') {
-      if (!authorised(req)) return json(res, 401, { error: 'unauthorised' });
       const { text } = await readBody(req);
       const clean = String(text || '').trim().slice(0, 3500);
       if (!clean) return json(res, 400, { error: 'empty text' });
@@ -642,7 +671,14 @@ const server = http.createServer(async (req, res) => {
 
 // ---------------------------------------------------------------- websocket feed
 
-const wss = new WebSocketServer({ server, path: '/feed' });
+// WebSocket-upgrade auth (ADR-044 finding 1). verifyClient rejects the `/feed`
+// upgrade with 401 when the bearer is missing; browser clients pass it as
+// `/feed?token=<TOKEN>` since they cannot set the Authorization header.
+const wss = new WebSocketServer({
+  server,
+  path: '/feed',
+  verifyClient: (info) => authorised(info.req),
+});
 function broadcast(evt) {
   const data = JSON.stringify(evt);
   for (const ws of wss.clients) if (ws.readyState === 1) ws.send(data);
@@ -651,8 +687,8 @@ wss.on('connection', (ws) => {
   ws.send(JSON.stringify({ type: 'snapshot', turns: turns.slice(-50) }));
 });
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`tab0-bridge listening on :${PORT} (backend=claude-cli, model=${MODEL}, session=${TMUX_SESSION}, auth=${TOKEN ? 'token' : 'open'}, aoe=${AOE_BASE})`);
+server.listen(PORT, BIND, () => {
+  console.log(`tab0-bridge listening on ${BIND}:${PORT} (backend=claude-cli, model=${MODEL}, session=${TMUX_SESSION}, auth=${TOKEN ? 'token' : 'open'}, aoe=${AOE_BASE})`);
   // Resolve and pin the AoE coordinator session id (ADR-044 D2). Fail-open: if
   // AoE is not up yet, the injection seam falls back to tmux and the interval
   // below picks the id up once the daemon is running.
