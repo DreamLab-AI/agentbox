@@ -206,6 +206,11 @@ async function approvalsRoutes(fastify, options) {
       if (err && err.code === 'NOT_PENDING') {
         return reply.code(404).send({ error: 'unknown_request', message: err.message });
       }
+      if (err && err.code === 'DECISION_IN_FLIGHT') {
+        // Finding 4: a concurrent call already claimed this request and is
+        // publishing its 31403. Return 409 (conflict), not 502 — nothing failed.
+        return reply.code(409).send({ error: 'decision_in_flight', message: err.message, request_event_id: id });
+      }
       logger.warn({ err: err.message, requestId: id }, 'approvals: failed to sign/publish 31403 decision');
       return reply.code(502).send({ error: 'sign_publish_failed', message: err.message });
     }

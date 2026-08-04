@@ -9,7 +9,7 @@ const fastify = require('fastify');
 const cors = require('@fastify/cors');
 const rateLimit = require('@fastify/rate-limit');
 const websocket = require('@fastify/websocket');
-const { createAuthMiddleware } = require('./middleware/auth');
+const { createAuthMiddleware, registerRawBody } = require('./middleware/auth');
 // payment-gate: registered as preHandler on GPU-metered routes (comfyui, tasks)
 const contractVersions = require('./adapters/contract-versions');
 const { resolveAdapters, SLOTS } = require('./adapters/index');
@@ -90,6 +90,15 @@ const app = fastify({
   // param ceiling so every ADR-013 identifier round-trips as a path segment.
   maxParamLength: 512
 });
+
+// Finding 1 (NIP-98 body binding): register a content-type parser that
+// preserves the EXACT received bytes on `request.rawBody` (a Buffer) while
+// still delivering parsed JSON to route handlers. verifyNip98Header consumes
+// `request.rawBody` to enforce the payload-tag == sha256(rawBody) binding.
+// Must run before routes register their own parsers; harmless for bodyless
+// GET/HEAD. Paired with moving the auth hook to `preValidation` (below) so it
+// runs AFTER Fastify has parsed the body and populated `request.rawBody`.
+registerRawBody(app);
 
 // Initialize managers
 const processManager = new ProcessManager(logger);
@@ -209,7 +218,13 @@ const authMiddleware = createAuthMiddleware(API_KEY, {
   authMode: process.env.MANAGEMENT_API_AUTH_MODE || 'hybrid'
 });
 
-app.addHook('onRequest', async (request, reply) => {
+// Finding 1: run auth at `preValidation`, NOT `onRequest`. Fastify parses the
+// body (and populates `request.rawBody` via registerRawBody's parser) between
+// onRequest and preValidation, so only here does verifyNip98Header receive the
+// exact signed bytes and the NIP-98 payload-tag == sha256(rawBody) binding
+// engage for POST/PUT/PATCH. Auth-exempt paths, 404s, and bodyless GETs are
+// unchanged — the phase moved, the decision logic did not.
+app.addHook('preValidation', async (request, reply) => {
   // Skip auth for probe and observability endpoints (public, no key required)
   if (
     request.url === '/livez' ||

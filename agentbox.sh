@@ -606,6 +606,90 @@ HEALTH_URL="http://localhost:${MGMT_PORT}/health"
 # profile path (./config/seccomp-agentbox.json) resolves correctly.
 cd "$SCRIPT_DIR"
 
+# ---------------------------------------------------------------------------
+# BRIDGE_TOKEN — single source of truth (security audit Finding 2)
+# ---------------------------------------------------------------------------
+# The tab0-bridge authenticates every write surface with BRIDGE_TOKEN. It must
+# exist in .env BEFORE the agentbox container starts, because compose loads .env
+# as env_file -> PID-1 -> supervisord -> the supervised [program:tab0-bridge]
+# inherits it. `voice up` reads the SAME .env so the Unmute backend
+# (KYUTAI_LLM_API_KEY) and the console break-glass bearer
+# (NIP98_PROXY_ALLOW_BEARER) present the matching token — no more silent 401s.
+ENV_FILE="${SCRIPT_DIR}/.env"
+
+_gen_token() {
+    if command -v openssl >/dev/null 2>&1; then
+        openssl rand -hex 32
+    else
+        head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n'
+    fi
+}
+
+# Read BRIDGE_TOKEN straight from .env — the AUTHORITATIVE source, because the
+# agentbox container loads .env as its compose env_file (a shell-exported
+# BRIDGE_TOKEN never reaches the container). Prints the value or nothing.
+_bridge_token_from_file() {
+    [[ -f "$ENV_FILE" ]] || return 0
+    local line
+    line=$(grep -E '^[[:space:]]*BRIDGE_TOKEN[[:space:]]*=' "$ENV_FILE" 2>/dev/null | tail -1)
+    [[ -n "$line" ]] || return 0
+    local val="${line#*=}"
+    val="${val%%#*}"                        # drop trailing inline comment
+    val="${val#"${val%%[![:space:]]*}"}"    # ltrim
+    val="${val%"${val##*[![:space:]]}"}"    # rtrim
+    val="${val%\"}"; val="${val#\"}"         # strip surrounding double quotes
+    val="${val%\'}"; val="${val#\'}"         # strip surrounding single quotes
+    printf '%s' "$val"
+}
+
+# Resolve BRIDGE_TOKEN for read-only consumers (voice up): .env first (what the
+# running container actually enforces), ambient env only as a courtesy fallback.
+_read_bridge_token() {
+    local val
+    val=$(_bridge_token_from_file)
+    if [[ -n "$val" ]]; then
+        printf '%s' "$val"
+        return 0
+    fi
+    [[ -n "${BRIDGE_TOKEN:-}" ]] && printf '%s' "$BRIDGE_TOKEN"
+    return 0
+}
+
+# Ensure .env carries a non-empty BRIDGE_TOKEN, generating and persisting one on
+# first use. .env is authoritative, so an already-persisted value always wins;
+# otherwise adopt an ambient BRIDGE_TOKEN (if the operator set one) or generate,
+# and write it into .env so the container inherits it. Exports for this process.
+_ensure_bridge_token() {
+    local tok
+    tok=$(_bridge_token_from_file)
+    if [[ -n "$tok" ]]; then
+        export BRIDGE_TOKEN="$tok"
+        return 0
+    fi
+    tok="${BRIDGE_TOKEN:-}"
+    [[ -n "$tok" ]] || tok=$(_gen_token)
+    if [[ -z "$tok" ]]; then
+        echo -e "${RED}Could not generate BRIDGE_TOKEN (no openssl or /dev/urandom).${NC}" >&2
+        return 1
+    fi
+    if ! touch "$ENV_FILE" 2>/dev/null; then
+        echo -e "${RED}Cannot write ${ENV_FILE} to persist BRIDGE_TOKEN.${NC}" >&2
+        return 1
+    fi
+    if grep -qE '^[[:space:]]*BRIDGE_TOKEN[[:space:]]*=' "$ENV_FILE" 2>/dev/null; then
+        local tmp="${ENV_FILE}.tmp.$$"
+        grep -vE '^[[:space:]]*BRIDGE_TOKEN[[:space:]]*=' "$ENV_FILE" > "$tmp" 2>/dev/null || true
+        printf 'BRIDGE_TOKEN=%s\n' "$tok" >> "$tmp"
+        mv "$tmp" "$ENV_FILE"
+    else
+        printf '\n# tab0-bridge shared bearer — auto-generated (security audit Finding 2).\n# Single source of truth: the container bridge inherits it via compose env_file;\n# `voice up` reads it for KYUTAI_LLM_API_KEY + NIP98_PROXY_ALLOW_BEARER.\nBRIDGE_TOKEN=%s\n' "$tok" >> "$ENV_FILE"
+    fi
+    chmod 600 "$ENV_FILE" 2>/dev/null || true
+    export BRIDGE_TOKEN="$tok"
+    echo -e "${GREEN}Persisted BRIDGE_TOKEN to .env (shared tab0-bridge bearer).${NC}"
+    return 0
+}
+
 cmd_up() {
     local do_build=0
     local do_registry=0
@@ -677,6 +761,12 @@ cmd_up() {
             docker rm -f ruvector-postgres >/dev/null
         fi
     fi
+
+    # Finding 2: mint/persist the shared tab0-bridge bearer into .env BEFORE the
+    # container reads .env as env_file, so the supervised bridge starts
+    # authenticated on its 0.0.0.0 bind. Best-effort — a failure here only
+    # disables the voice/nostr bridge, not the core stack.
+    _ensure_bridge_token || echo -e "${YELLOW}Continuing without BRIDGE_TOKEN — tab0-bridge will not start on a non-loopback bind.${NC}"
 
     echo -e "${CYAN}Starting Docker stack...${NC}"
     docker compose "${COMPOSE_ARGS[@]}" up -d
@@ -1809,11 +1899,27 @@ cmd_voice() {
                 echo -e "will 502 until the speech stack is present. Clone it with:${NC}"
                 echo "  git clone https://github.com/kyutai-labs/unmute ${VOICE_UNMUTE_DIR}"
             fi
-            if [[ -z "${BRIDGE_TOKEN:-}" ]]; then
-                echo -e "${YELLOW}BRIDGE_TOKEN is unset — the Unmute backend will call tab0-bridge"
-                echo -e "without a bearer; once the bridge enforces auth those calls 401."
-                echo -e "Export BRIDGE_TOKEN (same value the bridge uses) before 'voice up'.${NC}"
+            # Finding 2: read the SAME BRIDGE_TOKEN the running bridge enforces
+            # (env override, else .env) and wire it into both consumers. FAIL
+            # LOUD when absent — warning-and-continuing shipped a stack whose
+            # every LLM call and every break-glass request 401s.
+            BRIDGE_TOKEN="$(_read_bridge_token)"
+            if [[ -z "$BRIDGE_TOKEN" ]]; then
+                echo -e "${RED}BRIDGE_TOKEN is unset/empty — refusing to start the voice stack.${NC}" >&2
+                echo -e "${RED}The Unmute backend and console must present the SAME bearer that the${NC}" >&2
+                echo -e "${RED}running tab0-bridge enforces, or every call 401s. Bring the agentbox${NC}" >&2
+                echo -e "${RED}stack up first ('$0 up' generates and persists BRIDGE_TOKEN to .env),${NC}" >&2
+                echo -e "${RED}or set BRIDGE_TOKEN in .env to the value the bridge is using.${NC}" >&2
+                exit 1
             fi
+            export BRIDGE_TOKEN
+            # KYUTAI_LLM_API_KEY: the bearer the Unmute backend presents to the
+            # bridge (interpolated by voice/unmute-override.yml). NIP98_PROXY_ALLOW_BEARER:
+            # the console break-glass bearer the in-container nip98-proxy honours
+            # — set it in .env for that proxy; exported here so the voice compose
+            # and console surfaces resolve the same single secret.
+            export KYUTAI_LLM_API_KEY="$BRIDGE_TOKEN"
+            export NIP98_PROXY_ALLOW_BEARER="$BRIDGE_TOKEN"
             echo -e "${CYAN}Building and starting the voice console + speech stack...${NC}"
             docker compose "${VOICE_COMPOSE_ARGS[@]}" up -d --build
             local deadline=$(( $(date +%s) + 60 )) ready=0
@@ -1896,7 +2002,10 @@ The Kyutai Unmute fork is an external build context (not vendored). Set its
 location with VOICE_UNMUTE_DIR (default: ../voice-stack/unmute relative to the
 agentbox checkout). VOICE_HOST_ROOT is the HOST path mapping to the container's
 ~/workspace/project — override it if your checkout is not at the default host
-path. Export BRIDGE_TOKEN so the Unmute backend can authenticate to tab0-bridge.
+path. BRIDGE_TOKEN is the single shared bearer: '$0 up' generates and persists
+it to .env, and 'voice up' reads that same value to authenticate the Unmute
+backend (KYUTAI_LLM_API_KEY) and the console break-glass (NIP98_PROXY_ALLOW_BEARER).
+'voice up' fails fast if BRIDGE_TOKEN is missing.
 VOICE_HELP
             ;;
     esac

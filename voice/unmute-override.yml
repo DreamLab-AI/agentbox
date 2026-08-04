@@ -44,6 +44,13 @@ services:
       # present the bearer. Unmute forwards KYUTAI_LLM_API_KEY as the OpenAI
       # Authorization: Bearer; the bridge accepts BRIDGE_TOKEN as that bearer.
       # Empty ⇒ no header ⇒ 401 once the bridge is locked down: set BRIDGE_TOKEN.
+      # BRIDGE_TOKEN is the single shared secret (security audit Finding 2):
+      # `agentbox.sh up` mints it into .env; `agentbox.sh voice up` reads that
+      # same value, exports it, and REFUSES to start when empty — so this
+      # interpolation is never silently blank in the supported path.
+      # (Left as :- so `voice down/logs/status` work without the token; `voice
+      # up` guarantees it is set, and the bridge fails closed on a tokenless
+      # non-loopback bind regardless.)
       - KYUTAI_LLM_API_KEY=${BRIDGE_TOKEN:-}
       # 0 disables the "..." long-silence nudge — the voice agent stays quiet
       # unless spoken to (the bridge also drops "..." turns, belt and braces).

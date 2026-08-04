@@ -414,6 +414,35 @@ if [ -d "$ONTO_PAGES" ] && [ -f "$ONTO_BUILDER" ]; then
     || echo "[5c/8] ontology PUSH cache refresh skipped (non-fatal)"
 fi
 
+# Phase 5e — tab0-bridge shared bearer (security audit Finding 2, belt-and-braces).
+# The supported path is `agentbox.sh up`, which mints BRIDGE_TOKEN into .env
+# BEFORE the container reads it (compose env_file -> PID 1 -> supervisord ->
+# [program:tab0-bridge]). This block only self-heals a container started outside
+# agentbox.sh (direct `docker compose up`) whose .env carries no token: without
+# it the bridge, bound 0.0.0.0, would refuse to start (server.mjs). We generate
+# a STABLE token into the secrets volume (same lifecycle as the mgmt key) and
+# export it so PID 1 — and the supervised bridge that inherits its env — has it.
+# Only runs when the supervisor owns the bridge (gate sentinel from imageEnv).
+# NOTE: in this degraded path `voice up` (which reads .env) will fail loud until
+# the operator aligns BRIDGE_TOKEN in .env — by design, never a silent 401.
+if [ "${AGENTBOX_TAB0_BRIDGE_SUPERVISED:-0}" = "1" ] && [ -z "${BRIDGE_TOKEN:-}" ]; then
+  BRIDGE_TOKEN_FILE="${BRIDGE_TOKEN_FILE:-/var/lib/agentbox/secrets/bridge-token}"
+  if [ -f "$BRIDGE_TOKEN_FILE" ]; then
+    BRIDGE_TOKEN="$(cat "$BRIDGE_TOKEN_FILE")"
+  else
+    mkdir -p "$(dirname "$BRIDGE_TOKEN_FILE")"
+    if command -v openssl >/dev/null 2>&1; then
+      BRIDGE_TOKEN="$(openssl rand -hex 32)"
+    else
+      BRIDGE_TOKEN="$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+    fi
+    printf '%s' "$BRIDGE_TOKEN" > "$BRIDGE_TOKEN_FILE"
+    chmod 0600 "$BRIDGE_TOKEN_FILE"
+    echo "[bootstrap] Generated tab0-bridge BRIDGE_TOKEN -> $BRIDGE_TOKEN_FILE (set it in .env to reach the bridge from voice/console)"
+  fi
+  export BRIDGE_TOKEN
+fi
+
 echo "[5b/8] Starting supervisord..."
 exec supervisord -c /etc/supervisord.conf -n
 

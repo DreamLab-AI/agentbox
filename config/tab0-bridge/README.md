@@ -72,20 +72,58 @@ Note the AoE-daemon "loopback, no token" line in the injection-seam section abov
 is about the bridge → AoE hop (`:9095`), a separate loopback concern, and is not
 affected by the bridge's own inbound auth.
 
+### BRIDGE_TOKEN — one shared source of truth (security audit Finding 2)
+
+`BRIDGE_TOKEN` is a **single secret** minted once and read by every party:
+
+- **`agentbox.sh up`** generates it (`openssl rand -hex 32`) and persists it to
+  the repo **`.env`** on first use (idempotent). `.env` is the compose
+  `env_file`, so the value flows `.env → compose → PID 1 → supervisord →
+  [program:tab0-bridge]` and the in-container bridge inherits it — it is **never**
+  written into the generated supervisor text.
+- **`agentbox.sh voice up`** reads the **same** `.env` value and exports it as
+  `KYUTAI_LLM_API_KEY` (the Unmute backend's bearer) and
+  `NIP98_PROXY_ALLOW_BEARER` (the console break-glass bearer the in-container
+  nip98-proxy honours). It **fails fast** (non-zero exit) when the token is
+  missing — the old warn-and-continue shipped a stack that 401'd on every call.
+- For a container started outside `agentbox.sh` (direct `docker compose up`) whose
+  `.env` has no token, `entrypoint-unified.sh` self-heals: it mints a **stable**
+  token into the secrets volume (`/var/lib/agentbox/secrets/bridge-token`) and
+  exports it so the bridge still starts authenticated. Set that value in `.env`
+  to let `voice up`/console reach it.
+
+To key the console break-glass off the same secret, set
+`NIP98_PROXY_ALLOW_BEARER=${BRIDGE_TOKEN}` in `.env` so the supervised
+nip98-proxy inside the container accepts it.
+
 **Deploy target is the workspace volume, not this directory.** The bridge
 runs from `~/workspace/tab0-bridge` (persistent volume, survives image
 rebuilds) so its Claude CLI OAuth cwd and `node_modules` stay stable.
 
-**Lifecycle is automated — edit HERE, never the workspace copy.**
-`deploy.sh` reconciles the workspace copy from this canonical source
-(md5 compare — the image has no cmp/diff), installs deps on a fresh volume,
-and (re)starts the bridge when it is down or its code changed. It is invoked
-fire-and-forget by `config/hooks/fleet-session-start.sh` (job 3) on every
-Claude SessionStart, same belt-and-braces pattern as the Nostr gateway.
-Off switch: `AGENTBOX_TAB0_BRIDGE=0`. Manual run is always safe:
+**Lifecycle is supervisor-owned (security audit Finding 3), edit HERE, never
+the workspace copy.** `flake.nix` ships a manifest-gated `[program:tab0-bridge]`
+supervisor block (gate `[sovereign_mesh].enabled`) that is the **canonical
+owner**: it runs `deploy.sh reconcile` (copy this canonical source into the
+`~/workspace/tab0-bridge` volume via md5 compare — the image has no cmp/diff —
+and install prod deps) and then execs `node server.mjs` in the foreground so
+`autorestart` applies. A clean checkout/rebuild therefore always has a committed
+launcher.
+
+`deploy.sh` has two modes:
+
+- `deploy.sh reconcile` — copy source + install deps only (what supervisor runs).
+- `deploy.sh` — reconcile, then **belt-and-braces** launch **only** when
+  supervisor does not own the process. When `AGENTBOX_TAB0_BRIDGE_SUPERVISED=1`
+  (set in `imageEnv` on the same gate) it reconciles files and defers the
+  process lifecycle to supervisor, so there is never a double launch.
+
+`config/hooks/fleet-session-start.sh` (Job 3) invokes `deploy.sh` fire-and-forget
+on every Claude SessionStart as belt-and-braces reconciliation — a no-op for the
+running process under supervisor, still a full launch on a non-supervised
+deployment. Off switch: `AGENTBOX_TAB0_BRIDGE=0`. Manual run is always safe:
 
 ```sh
-bash config/tab0-bridge/deploy.sh   # idempotent; restarts only on change
+bash config/tab0-bridge/deploy.sh   # idempotent; defers to supervisor when it owns the bridge
 ```
 
 Claude Code hooks (`Stop`/`UserPromptSubmit` → `turn-sink.cjs` at the

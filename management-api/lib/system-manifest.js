@@ -65,6 +65,9 @@ const CATALOGUE = [
   { id: 'interaction-plane', name: 'Interaction plane (Agent of Empires)', layer: 'surface',
     gate: 'interaction_plane', service: 'aoe-serve', apply_class: 'boot',
     summary: 'AoE serve dashboard + session manager (loopback :9095) behind the NIP-98 proxy that is its sole ingress; declarative [[interaction_plane.session_seeds]] replace the MAD tmux harness, each binding a did:nostr/URN/beads-epic/scoped-namespace at create (PRD-021/ADR-042/ADR-043). Daemon + proxy + seeds are boot-class; the aoe-with-web binary is a rebuild-class flake input (see aoe-serve-binary).' },
+  { id: 'tab0-bridge', name: 'tab0-bridge (voice/nostr meta-controller)', layer: 'surface',
+    gate: 'sovereign_mesh', service: 'tab0-bridge', apply_class: 'boot',
+    summary: 'Voice/nostr meta-controller for tmux window 0 (:8971, ADR-044): OpenAI-compatible /v1/chat/completions LLM surface for the Unmute backend, /feed console WebSocket, and the tab0 injection seam onto the interaction plane (fail-open to tmux send-keys). Supervisor is the canonical owner ([program:tab0-bridge] runs deploy.sh reconcile then execs the bridge); the fleet SessionStart hook Job 3 is belt-and-braces reconciliation. Authenticated by the shared BRIDGE_TOKEN — minted into .env by `agentbox.sh up`, inherited via compose env_file, and read by `voice up` for KYUTAI_LLM_API_KEY + NIP98_PROXY_ALLOW_BEARER (security audit Findings 2 & 3).' },
 
   // ── Modules — optional capabilities, manifest-gated ───────────────────────
   { id: 'ruflo', name: 'ruflo CLI (= claude-flow)', layer: 'module',

@@ -186,6 +186,15 @@ function buildAuthorityConsumer(opts = {}) {
    * FIFO so it cannot grow without limit.
    */
   const decided = new Map();
+  /**
+   * @type {Set<string>} requestIds a signAndPublishDecision call has CLAIMED
+   * and not yet finished. Finding 4: a decision claim is taken synchronously
+   * (before the first await), so a concurrent POST for the same id sees the
+   * claim and rejects DECISION_IN_FLIGHT instead of publishing a second signed
+   * 31403. Cleared on success (id moves to `decided`) or on publish failure
+   * (pending restored so a retry can succeed).
+   */
+  const inFlight = new Set();
 
   function _markDecided(requestId, meta) {
     if (typeof requestId !== 'string' || !requestId) return;
@@ -397,6 +406,17 @@ function buildAuthorityConsumer(opts = {}) {
    * @returns {Promise<object>} the signed 31403 event
    */
   async function signAndPublishDecision(p = {}) {
+    // Finding 4 (concurrent double-sign): reject a call for a request another
+    // in-flight call has already claimed, BEFORE inspecting openRequests — the
+    // claim below removes the id from openRequests, so a concurrent call would
+    // otherwise misread it as NOT_PENDING. Node is single-threaded, so this
+    // check + the synchronous claim below (both before the first await) form a
+    // sufficient mutual exclusion; no lock library is needed.
+    if (inFlight.has(p.requestId)) {
+      const err = new Error(`request ${p.requestId} is already being decided`);
+      err.code = 'DECISION_IN_FLIGHT';
+      throw err;
+    }
     const open = openRequests.get(p.requestId);
     // Fail-closed: never sign a decision for a request that is not currently
     // pending. An unknown id, or one a prior 31403 already answered, must NOT
@@ -412,26 +432,46 @@ function buildAuthorityConsumer(opts = {}) {
       err.code = 'NOT_PENDING';
       throw err;
     }
-    const unsigned = buildActionResponse({
-      requestId: p.requestId,
-      panelId: open.panelId,
-      caseId: open.caseId,
-      requesterPubkey: open.requesterPubkey,
-      outcome: p.outcome,
-      reasoning: p.reasoning,
-    });
-    const { bridge, signer } = await ensureReady();
-    const signed = await bridge.publish(unsigned, signer);
-    // Release local waiters immediately (do not wait for the loopback echo).
+
+    // ATOMIC CLAIM (synchronous, pre-await): take ownership of the request so a
+    // concurrent call for the same id trips the DECISION_IN_FLIGHT guard above.
+    // Removing it from openRequests here also means a concurrent call cannot
+    // re-read it as pending.
+    inFlight.add(p.requestId);
+    openRequests.delete(p.requestId);
+
+    let signed;
+    try {
+      const unsigned = buildActionResponse({
+        requestId: p.requestId,
+        panelId: open.panelId,
+        caseId: open.caseId,
+        requesterPubkey: open.requesterPubkey,
+        outcome: p.outcome,
+        reasoning: p.reasoning,
+      });
+      const { bridge, signer } = await ensureReady();
+      signed = await bridge.publish(unsigned, signer);
+    } catch (err) {
+      // Publish (or signer/bridge readiness, or response build) FAILED: restore
+      // the pending state and release the claim so a retry can succeed. Nothing
+      // was signed and published, so the request is genuinely still open.
+      openRequests.set(p.requestId, open);
+      inFlight.delete(p.requestId);
+      throw err;
+    }
+
+    // SUCCESS: release local waiters immediately (do not wait for the loopback
+    // echo), then mark decided and drop the claim. openRequests was already
+    // cleared by the claim; handleInboundDecision is idempotent against it.
     try { handleInboundDecision(signed); } catch (_) { /* ignore */ }
-    // Belt-and-braces: mark decided + close the open request even if the signed
-    // event did not round-trip through handleInboundDecision (e.g. a verify stub).
     _markDecided(p.requestId, {
       outcome: String(p.outcome || '').toLowerCase() || null,
       response_event_id: signed && signed.id ? signed.id : null,
       decided_at: Math.floor(Date.now() / 1000),
     });
     openRequests.delete(p.requestId);
+    inFlight.delete(p.requestId);
     return signed;
   }
 

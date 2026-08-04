@@ -1792,6 +1792,36 @@ priority=46
 stdout_logfile=/var/log/nip98-proxy.log
 stderr_logfile=/var/log/nip98-proxy.error.log
 ''}
+${lib.optionalString (sovereignCfg.enabled or false) ''
+
+; tab0-bridge — voice/nostr meta-controller for tmux window 0 (ADR-044).
+; Finding 3 (security audit 2026-08): SUPERVISOR is the canonical owner of the
+; bridge process so a clean checkout/rebuild always has a committed launcher.
+; The command reconciles the writable workspace copy from the baked, immutable
+; source (deploy.sh reconcile: copy source + install prod deps into
+; ~/workspace/tab0-bridge, no launch) and then execs the bridge in the
+; FOREGROUND so autorestart applies. The fleet SessionStart hook (Job 3) stays
+; as belt-and-braces reconciliation and defers process ownership to supervisor
+; via AGENTBOX_TAB0_BRIDGE_SUPERVISED (set in imageEnv on this same gate).
+; BRIDGE_TOKEN and BRIDGE_BIND are INHERITED from PID 1's environment (compose
+; env_file .env -> supervisord -> this child) — never written into the
+; generated supervisor text, the same discipline as the nostr-gateway operator
+; secret. On a non-loopback bind the bridge refuses to start without a
+; BRIDGE_TOKEN (server.mjs), so Finding 2 guarantees the token is present in
+; .env before the container starts. Off switch: AGENTBOX_TAB0_BRIDGE=0 (honoured
+; by deploy.sh). Gate: [sovereign_mesh].enabled (rebuild-class — CLAUDE.md).
+[program:tab0-bridge]
+command=${pkgs.bash}/bin/bash -c '${pkgs.bash}/bin/bash /opt/agentbox/config/tab0-bridge/deploy.sh reconcile && exec ${pkgs.nodejs_22}/bin/node "''${WORKSPACE:-/home/devuser/workspace}/tab0-bridge/server.mjs"'
+directory=/opt/agentbox/config/tab0-bridge
+user=devuser
+environment=HOME="/home/devuser",AGENTBOX_TAB0_BRIDGE_SUPERVISED="1"
+autostart=true
+autorestart=true
+startsecs=3
+priority=236
+stdout_logfile=/var/log/tab0-bridge.log
+stderr_logfile=/var/log/tab0-bridge.error.log
+''}
 
 [program:tmux-autostart]
 command=/opt/agentbox/config/tmux-autostart.sh
@@ -2621,6 +2651,10 @@ ${ragflowNetworkDecl}
           "MANAGEMENT_API_AUTH_MODE=hybrid"
           # MANAGEMENT_API_KEY intentionally not set here — sourced from .env at runtime
           "SOVEREIGN_MESH_ENABLED=${boolEnv (sovereignCfg.enabled or false)}"
+          # Finding 3: when the supervisor owns [program:tab0-bridge] (same gate),
+          # the fleet SessionStart hook Job 3 must reconcile files only and defer
+          # process ownership to supervisor. deploy.sh reads this sentinel.
+          "AGENTBOX_TAB0_BRIDGE_SUPERVISED=${if (sovereignCfg.enabled or false) then "1" else "0"}"
           "SOLID_POD_ENABLED=${boolEnv (sovereignCfg.solid_pod or false)}"
           "SOLID_POD_ROOT=/var/lib/solid"
           "SOLID_POD_PORT=8484"
