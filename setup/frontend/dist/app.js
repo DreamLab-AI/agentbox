@@ -62,6 +62,19 @@
     return h > 0 ? `${h}h ${m}m` : `${m}m`;
   }
 
+  // Age of an event given a created_at (unix seconds or ms) → "12s"/"4m"/"2h"/"3d".
+  function fmtAge(ts) {
+    if (!ts && ts !== 0) return '—';
+    let ms = Number(ts);
+    if (!isFinite(ms)) return '—';
+    if (ms < 1e12) ms *= 1000;            // seconds → ms
+    let d = Math.max(0, Math.floor((Date.now() - ms) / 1000));
+    if (d < 60) return `${d}s`;
+    if (d < 3600) return `${Math.floor(d / 60)}m`;
+    if (d < 86400) return `${Math.floor(d / 3600)}h`;
+    return `${Math.floor(d / 86400)}d`;
+  }
+
   // ─── TOML Parser (minimal, handles agentbox.toml shape) ──────
 
   function parseTOML(text) {
@@ -587,16 +600,18 @@
   async function pollDashboard() {
     try {
       const prefix = state.standalone ? '' : '/proxy';
-      const [health, status, tasks] = await Promise.allSettled([
+      const [health, status, tasks, approvals] = await Promise.allSettled([
         api(`${prefix}/health`),
         api(`${prefix}/v1/status`),
         api(`${prefix}/v1/tasks`),
+        api(`${prefix}/v1/approvals`),
       ]);
 
       renderStatusCards(status.value);
       renderServiceGrid(status.value);
       renderTaskList(tasks.value);
       renderAdapters(health.value);
+      renderApprovals(approvals.status === 'fulfilled' ? approvals.value : null);
       setConnected(true);
     } catch {
       setConnected(false);
@@ -706,6 +721,84 @@
       const cls = st === 'healthy' ? 'green' : st === 'off' ? '' : 'amber';
       return `<span class="tag ${cls}">${icons[s]} ${s}: ${st}</span>`;
     }).join(' ');
+  }
+
+  // ─── Pending Approvals (authority gate — ADR-043 D4.7) ───────
+  // Renders open kind-31402 ActionRequests and posts a signed decision via
+  // /v1/approvals/:id/decide. Builder B owns those endpoints; field extraction
+  // is defensive so it survives minor contract shape differences.
+
+  const approvalsBusy = new Set();   // ids with an in-flight decision
+
+  function approvalField(a, keys) {
+    for (const k of keys) {
+      const parts = k.split('.');
+      let v = a;
+      for (const p of parts) v = (v == null ? undefined : v[p]);
+      if (v !== undefined && v !== null && v !== '') return v;
+    }
+    return null;
+  }
+
+  function renderApprovals(list) {
+    const el = $('#approval-list');
+    const ct = $('#approval-count');
+    if (!el) return;
+    const items = Array.isArray(list) ? list : (list && Array.isArray(list.approvals) ? list.approvals : []);
+    if (ct) ct.textContent = items.length;
+    if (!items.length) {
+      el.innerHTML = '<p style="text-align:center;color:var(--text-tertiary);padding:var(--sp-8);">No pending approvals</p>';
+      return;
+    }
+    el.innerHTML = items.map(a => {
+      const id = approvalField(a, ['id', 'request_event_id', 'event_id', 'requestId', 'd']);
+      const cls = approvalField(a, ['action_class', 'actionClass', 'authority_class', 'class', 'fields.action_class', 'subject_kind']);
+      const target = approvalField(a, ['target', 'subject', 'subject_id', 'subjectId', 'title', 'fields.target']);
+      const requester = approvalField(a, ['requester', 'requester_did', 'did', 'pubkey', 'author', 'actor']);
+      const created = approvalField(a, ['created_at', 'timestamp', 'ts', 'age_start']);
+      const reqShort = requester ? String(requester).replace(/^did:nostr:/, '').slice(0, 16) : 'unknown';
+      const busy = id != null && approvalsBusy.has(String(id));
+      const idAttr = id != null ? esc(String(id)) : '';
+      return `<div class="approval-card task-card" data-approval-id="${idAttr}">
+        <div class="task-info">
+          <span class="task-title">${esc(cls || 'action')}${target ? ` → ${esc(String(target))}` : ''}</span>
+          <span class="task-meta mono">${esc(reqShort)}${requester ? '…' : ''} · ${esc(fmtAge(created))} ago</span>
+        </div>
+        <div class="flex gap-4" style="align-items:center;">
+          <button class="btn btn-primary approval-decide" data-decision="approve" data-approval-id="${idAttr}" ${busy || !id ? 'disabled' : ''}>Approve</button>
+          <button class="btn btn-ghost approval-decide" data-decision="deny" data-approval-id="${idAttr}" ${busy || !id ? 'disabled' : ''}>Deny</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  async function decideApproval(id, decision) {
+    if (!id || approvalsBusy.has(String(id))) return;
+    approvalsBusy.add(String(id));
+    const row = $(`.approval-card[data-approval-id="${CSS.escape(String(id))}"]`);
+    if (row) $$('.approval-decide', row).forEach(b => { b.disabled = true; });
+    try {
+      const prefix = state.standalone ? '' : '/proxy';
+      await api(`${prefix}/v1/approvals/${encodeURIComponent(id)}/decide`, {
+        method: 'POST',
+        body: JSON.stringify({ decision }),
+      });
+      // Optimistically drop the row; the next poll reconciles authoritatively.
+      if (row) row.remove();
+      const ct = $('#approval-count');
+      if (ct) ct.textContent = Math.max(0, (parseInt(ct.textContent, 10) || 1) - 1);
+    } catch (e) {
+      alert(`Decision failed: ${e.message}`);
+      if (row) $$('.approval-decide', row).forEach(b => { b.disabled = false; });
+    } finally {
+      approvalsBusy.delete(String(id));
+    }
+  }
+
+  function onApprovalClick(e) {
+    const btn = e.target.closest('.approval-decide');
+    if (!btn || btn.disabled) return;
+    decideApproval(btn.dataset.approvalId, btn.dataset.decision);
   }
 
   function renderEvents() {
@@ -837,6 +930,9 @@
     $$('[data-action]').forEach(b =>
       b.addEventListener('click', () => handleAction(b.dataset.action))
     );
+
+    // Pending-approvals decisions (delegated so it survives poll re-renders).
+    $('#approval-list')?.addEventListener('click', onApprovalClick);
 
     $('#raw-modal')?.addEventListener('click', e => {
       if (e.target === e.currentTarget) e.currentTarget.close();

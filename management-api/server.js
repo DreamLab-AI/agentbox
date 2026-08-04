@@ -31,6 +31,12 @@ const { initTracing, shutdown: shutdownTracing } = require('./observability/trac
 const projectMetrics = require('./observability/project-metrics');
 const { ProjectTracker } = require('./lib/project-tracker');
 const { PrimerGenerator } = require('./lib/project-primer');
+// Interaction plane (PRD-021 / ADR-043) — session identity binding + the
+// authority approval loop. The authority consumer (D4.7) is the canonical
+// awaitDecision seam wired into buildAuthorityGate at boot.
+const { buildAuthorityGate } = require('./lib/authority');
+const { buildAuthorityConsumer } = require('./lib/authority-consumer');
+const governanceWaiter = require('./lib/governance-decision-waiter');
 
 // Configuration
 const PORT = process.env.MANAGEMENT_API_PORT || 9090;
@@ -76,7 +82,13 @@ const app = fastify({
   logger,
   requestIdLogLabel: 'reqId',
   disableRequestLogging: false,
-  trustProxy: true
+  trustProxy: true,
+  // Canonical agentbox URNs carried as path params (/v1/uri/:urn,
+  // /v1/beads/:id, …) are scope-bearing and content-addressed — e.g.
+  // `urn:agentbox:bead:<64-hex>:sha256-12-<12>` is ~105 chars, over
+  // find-my-way's 100-char default, which would 404 a valid id. Raise the
+  // param ceiling so every ADR-013 identifier round-trips as a path segment.
+  maxParamLength: 512
 });
 
 // Initialize managers
@@ -271,7 +283,11 @@ app.register(require('@fastify/swagger'), {
       { name: 'agent-events', description: 'Real-time agent action event streaming' },
       { name: 'projects', description: 'Project tracking — scan, status, commit activity, primers, kind-30841 nostr digests (PRD-017)' },
       { name: 'git-bridge', description: 'BC20 Git Bridge — clone, enrichment submission, broker polling (PRD-013 G5)' },
-      { name: 'pod-git', description: 'Per-user pod git HTTP smart protocol (JSS #466/#469/#471, alpha.12)' }
+      { name: 'pod-git', description: 'Per-user pod git HTTP smart protocol (JSS #466/#469/#471, alpha.12)' },
+      { name: 'beads', description: 'Beads work-ledger — epics, children, claim, close (ADR-043 D4.3)' },
+      { name: 'mandate', description: 'Scoped WAC agent-delegation mandates (ADR-043 D4.5)' },
+      { name: 'approvals', description: 'Pending authority-gate approvals — signed 31403 decisions (ADR-043 D4.7)' },
+      { name: 'interaction-plane', description: 'AoE session-boundary identity binding (PRD-021 / ADR-043)' }
     ]
   }
 });
@@ -1019,6 +1035,79 @@ async function start() {
         logger.debug({ event: 'well-known.x402-mounted', enabled }, 'x402 well-known route mounted at /.well-known/x402.json');
       } catch (err) {
         logger.error({ err: err.message }, 'x402 well-known route failed to mount');
+      }
+    }
+
+    // ── Interaction plane: identity binding + approval loop (PRD-021 WS3) ───
+    // The authority consumer (ADR-043 D4.7) is the canonical awaitDecision
+    // seam: it publishes the gate's kind-31402 to the embedded relay and awaits
+    // a Schnorr-verified, allowlisted kind-31403. It is null when the sovereign
+    // bridge/relays/signer are unavailable — the shared gate then falls back to
+    // the governance-decision waiter (fed by the relay consumer) so behaviour is
+    // unchanged where the consumer cannot be wired. Both are decorated so the
+    // approvals route (the dashboard signing front door) and broker-bridge pick
+    // them up.
+    {
+      try {
+        const authorityConsumer = buildAuthorityConsumer({ manifest, logger });
+        const authorityGate = buildAuthorityGate(manifest, {
+          logger,
+          publishActionRequest: authorityConsumer ? authorityConsumer.publishActionRequest : undefined,
+          awaitDecision: authorityConsumer
+            ? authorityConsumer.awaitDecision
+            : ((signedRequest, opts) => governanceWaiter.awaitDecision(signedRequest, opts)),
+          verifyEvent: authorityConsumer ? authorityConsumer.verifyEvent : undefined,
+        });
+        app.decorate('authorityConsumer', authorityConsumer);
+        app.decorate('authorityGate', authorityGate);
+        logger.info({ event: 'authority-consumer.boot', wired: !!authorityConsumer },
+          `Authority approval loop ${authorityConsumer ? 'wired to the embedded relay' : 'falling back to the governance waiter'}`);
+      } catch (err) {
+        logger.error({ err: err.message }, 'Authority consumer/gate failed to build (approvals will be inert)');
+        app.decorate('authorityConsumer', null);
+      }
+    }
+
+    // ── Beads work-ledger REST surface (ADR-043 D4.3, PRD-021 F3-3) ─────────
+    // Mounts /v1/beads over the beads adapter slot; self-gates 503 when the
+    // slot resolves "off" (the running default until the WS3 rebuild flip).
+    {
+      try {
+        await app.register(require('./routes/beads'), { logger });
+        const impl = resolvedAdapters && resolvedAdapters.beads ? resolvedAdapters.beads._implName : 'off';
+        logger.debug({ event: 'beads.mounted', impl }, 'Beads route ready at /v1/beads');
+      } catch (err) {
+        logger.error({ err: err.message }, 'Beads route failed to mount');
+      }
+    }
+
+    // ── Scoped WAC mandate surface (ADR-043 D4.5, PRD-021 F3-5) ─────────────
+    {
+      try {
+        await app.register(require('./routes/mandate'), { logger, manifest });
+        logger.debug({ event: 'mandate.mounted' }, 'Mandate route ready at /v1/mandate');
+      } catch (err) {
+        logger.error({ err: err.message }, 'Mandate route failed to mount');
+      }
+    }
+
+    // ── AoE session-boundary shim endpoint (ADR-043 D4.1-D4.5, PRD-021 WS3) ─
+    {
+      try {
+        await app.register(require('./routes/sessions-boundary'), { logger, manifest });
+        logger.debug({ event: 'sessions-boundary.mounted' }, 'Session-boundary route ready at /v1/sessions/boundary');
+      } catch (err) {
+        logger.error({ err: err.message }, 'Session-boundary route failed to mount');
+      }
+    }
+
+    // ── Pending-approvals dashboard surface (ADR-043 D4.7, PRD-021 F3-6) ────
+    {
+      try {
+        await app.register(require('./routes/approvals'), { logger });
+        logger.debug({ event: 'approvals.mounted' }, 'Approvals route ready at /v1/approvals');
+      } catch (err) {
+        logger.error({ err: err.message }, 'Approvals route failed to mount');
       }
     }
 

@@ -9,7 +9,13 @@ vector_db = "ruvector-embedded"
 # classes — `local-*`, `external`, or `off` — see docs/user/configuration.md
 # for the full matrix and trade-offs.
 [adapters]
-beads        = "off"
+# beads: flipped off → local-sqlite for PRD-021 WS3 / ADR-043 D4.3. Activating the
+# work-ledger slot binds every AoE session boundary to a durable beads epic
+# (session create → createEpic, task/turn units → createChild/claim, session end →
+# close), each id minted through management-api/lib/uris.js. REBUILD-class: adapter
+# selection is resolved at Nix image composition, so this only takes effect after
+# ./agentbox.sh rebuild + container recreate (ADR-039 / system-manifest.js).
+beads        = "local-sqlite"
 pods         = "local-solid-rs"
 memory       = "external-pg"
 events       = "local-jsonl"
@@ -312,8 +318,15 @@ comfyui_builtin = false
 #
 # This flag is baked at Nix build time into MEMORY_ADMIN_ACCESS_MODE.
 # Changing it requires a `nix build` + container recreate.
+#
+# PRD-021 WS3 / ADR-043 D4.4: flipped permissive → scoped so one AoE session
+# cannot read another session's per-project namespace
+# (user:<pubkey>:proj:<repo-slug>:<ns>). The operator keeps a documented
+# break-glass path — in scoped mode the bearer admin maps to the operator's own
+# pubkey namespace (AGENTBOX_X_ONLY_PUBKEY_HEX / AGENTBOX_PUBKEY), so
+# cross-session inspection stays possible but auditable. REBUILD-class.
 [memory]
-admin_access_mode = "permissive"
+admin_access_mode = "scoped"
 
 # ── RuVector PostgreSQL (external memory backend) ──────────────────────────────
 # Used when adapters.memory = "external-pg". Shared with the host container mesh
@@ -1074,6 +1087,81 @@ primer_model        = "glm-5.2"                                     # Z.AI/GLM m
 primer_on_scan      = false                                         # auto-generate primers for new projects during a scan
 nostr_publish       = true                                          # publish kind-30841 digests to the operator's did:nostr
 metrics             = true                                          # emit the agentbox_project_* gauges on the port-bound /metrics
+
+# ── Interaction plane — Agent of Empires (PRD-021 / ADR-042/043/044) ──────────
+# AoE is the canonical interaction plane: `aoe serve` creates, monitors, attaches,
+# and reviews interactive agent sessions, superseding the hand-rolled MAD tmux
+# harness (PRD-013 / ADR-025). Adopted as an OVERLAY — a pinned flake input
+# (flake.nix inputs.aoe), a supervised daemon, a NIP-98 reverse proxy, and the
+# declarative session seeds below — with ZERO patches to the AoE crate (ADR-042 D2).
+#
+# The daemon binary is REBUILD-class (flake input → Nix image composition); the
+# daemon + config + session seeds are BOOT-class (reconciled by the entrypoint every
+# boot). With enabled = false the daemon never starts and no seeds are provisioned.
+#
+# Identity binding (ADR-043): each session seed derives a distinct did:nostr
+# (AGENTBOX_PROFILE=<slug> → agent-identity.js loadOrMint), a session URN
+# (urn:agentbox:activity:<scope>:session-<sha256-12> via uris.js), a beads epic,
+# and a scoped memory namespace user:<pubkey>:proj:<repo>:<ns> at create time.
+[interaction_plane]
+enabled     = true                  # master gate; false ⇒ no daemon, no seeds (apply-class boot)
+port        = 9095                  # aoe serve bind (127.0.0.1 only, behind proxy); NOT 8080 (code-server) / 7777 (relay)
+dashboard   = "on"                  # aoe serve web dashboard (absorbs the never-deployed PRD-012 setup/ops dashboard)
+proxy_auth  = "nip98"               # sole-ingress reverse proxy verifies NIP-98 → session pubkey (WS4 / ADR-043 D4.6)
+proxy_port  = 9096                  # nip98-proxy listen port — the ONLY ingress to :9095 (N-05, invariant); free (adjacent to mgmt-api 9090)
+
+# Declarative sessions replacing tmux-autostart harness windows 8–14 (WS2). Each
+# seed becomes an AoE session under SESSION_PREFIX aoe_. eager_mandate defaults
+# false (mandates are lazy, minted on first pod write — ADR-043 D4.5); flip true
+# only for known pod-writers. Perplexity has NO seed — retired to MCP (F2-6).
+[[interaction_plane.session_seeds]]
+slug          = "codex"               # native ACP agent (was tab 14)
+tool          = "codex"
+worktree      = true
+eager_mandate = false
+
+[[interaction_plane.session_seeds]]
+slug          = "antigravity"         # native gemini --acp (was tab 10); model aligned to gemini-3.5-flash (F2-8)
+tool          = "gemini"
+worktree      = true
+eager_mandate = false
+
+[[interaction_plane.session_seeds]]
+slug          = "openrouter"          # claude binary redirected (was tab 8) — env_allowlist is load-bearing (F2-4, N-01)
+tool          = "claude"
+worktree      = false
+env_allowlist = ["ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN"]
+eager_mandate = false
+
+[[interaction_plane.session_seeds]]
+slug          = "zai"                 # claude → api.z.ai/api/anthropic (was tab 9); same allowlist guard
+tool          = "claude"
+worktree      = false
+env_allowlist = ["ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN"]
+eager_mandate = false
+
+[[interaction_plane.session_seeds]]
+slug          = "deepseek"            # custom_agent (codewhale, was tab 11), agent_detect_as = codex
+tool          = "custom:codewhale"
+worktree      = true
+detect_as     = "codex"
+eager_mandate = false
+
+[[interaction_plane.session_seeds]]
+slug          = "ollama"              # custom_agent (nanocoder, was tab 13) → LAN llama.cpp
+tool          = "custom:nanocoder"
+worktree      = true
+detect_as     = "claude"
+eager_mandate = false
+
+# tab-0 coordinator: named, special, TERMINAL VIEW. AoE's default ACP structured
+# view has no tmux pane, so POST /send returns 400 acp_mode_unsupported (F5-3);
+# terminal view is required for the voice send-keys / /send path (ADR-044).
+[interaction_plane.coordinator]
+slug          = "tab0"
+tool          = "claude"
+view          = "terminal"
+eager_mandate = false
 
 [toolchains]
 claude = true

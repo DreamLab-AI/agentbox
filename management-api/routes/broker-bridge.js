@@ -229,7 +229,11 @@ async function brokerBridgeRoutes(fastify, options) {
   // shared governance-decision waiter fed by the ONE relay subscription
   // (relay-consumer.js 31403 branch → governance-decision-waiter.notify).
   const manifest = options.manifest || _safeLoadManifest();
-  const authorityGate = options.authorityGate || buildAuthorityGate(manifest, {
+  // Prefer the boot-built shared gate (ADR-043 D4.7 — wired to the authority
+  // consumer's embedded-relay awaitDecision); fall back to a locally-built gate
+  // over the governance-decision waiter when the shared one is absent (tests /
+  // consumer unwired).
+  const authorityGate = options.authorityGate || fastify.authorityGate || buildAuthorityGate(manifest, {
     logger,
     publishActionRequest: options.publishActionRequest,
     awaitDecision: options.awaitDecision

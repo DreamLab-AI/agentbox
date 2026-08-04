@@ -4,7 +4,7 @@ Agentbox is a standalone sovereign agent-container product (`github.com/DreamLab
 
 ## Architecture in one paragraph
 
-`agentbox.toml` drives build composition and is the *running* configuration, not a template — check it directly. Runtime is profile-based (tmux + fish, MAD-style tabs); profile isolation replaced Linux pseudo-user isolation. Durable state goes through five adapter slots (beads, pods, memory, events, orchestrator; [ADR-005](docs/reference/adr/ADR-005-pluggable-adapter-architecture.md)), each resolving to `local-*`, `external`, or `off`; `federation.mode` selects standalone vs client. Full spec: [PRD-001](docs/reference/prd/PRD-001-capabilities-and-adapters.md).
+`agentbox.toml` drives build composition and is the *running* configuration, not a template — check it directly. Runtime is profile-based (tmux + fish); profile isolation replaced Linux pseudo-user isolation. The **interaction plane is Agent of Empires** (`[interaction_plane]` gate, PRD-021/ADR-042): `aoe serve` on loopback `:9095` behind a sole-ingress NIP-98 proxy (`:9096`) owns interactive-session lifecycle, superseding the MAD-style per-provider harness tabs in place — each session binds a `did:nostr` + URN + beads epic + scoped memory namespace at create (ADR-043). Durable state goes through five adapter slots (beads, pods, memory, events, orchestrator; [ADR-005](docs/reference/adr/ADR-005-pluggable-adapter-architecture.md)), each resolving to `local-*`, `external`, or `off`; `federation.mode` selects standalone vs client. Full spec: [PRD-001](docs/reference/prd/PRD-001-capabilities-and-adapters.md).
 
 ## RuVector memory — operative rules
 
@@ -35,6 +35,10 @@ The image bakes `/opt/agentbox/skills` (118 skills). Skills are the JIT context 
 - [`scripts/sovereign-bootstrap.py`](scripts/sovereign-bootstrap.py): identity generation and pod scaffolding
 - [`scripts/provision-agent-stacks.py`](scripts/provision-agent-stacks.py): stack/profile provisioning
 - [`config/tmux-autostart.sh`](config/tmux-autostart.sh) / [`config/tmux.conf`](config/tmux.conf): tmux session layer
+- [`config/tab0-bridge/`](config/tab0-bridge/): voice/nostr meta-controller for tmux window 0 — canonical source; deploys to `~/workspace/tab0-bridge` (see its README)
+- [`config/nip98-proxy/`](config/nip98-proxy/): sole NIP-98-verifying ingress to the AoE serve loopback port (PRD-021 WS4/ADR-043 D4.6); overlaid to `/opt/agentbox/nip98-proxy`, supervised as `[program:nip98-proxy]`
+- [`config/harness-wrappers/`](config/harness-wrappers/): `agent_command_override` wrappers (openrouter/zai) that pin profile isolation + assert the `ANTHROPIC_BASE_URL` redirect and hard-fail loudly on mis-billing (PRD-021 F2-4/N-01)
+- [`scripts/aoe-seed-sessions.mjs`](scripts/aoe-seed-sessions.mjs): reconciler that provisions `[[interaction_plane.session_seeds]]` as AoE sessions and binds each session boundary's identity (PRD-021 WS2/WS3)
 
 ## URI/URN scheme
 
@@ -70,6 +74,7 @@ The image bakes `/opt/agentbox/skills` (118 skills). Skills are the JIT context 
 | Model routing (Claude/Codex per-activity) | [subsystem-notes §Model Routing](docs/reference/claude-context/subsystem-notes.md) |
 | Consultant tier (Z.AI glm-5.2, reasoning_effort wiring) | [subsystem-notes §Consultant Tier](docs/reference/claude-context/subsystem-notes.md) |
 | Project tracking (kind-30841, telemetry, /v1/projects) | [subsystem-notes §Project Tracking](docs/reference/claude-context/subsystem-notes.md) |
+| Voice plane (tab0-bridge :8971, Unmute loop, :8444 console) | [subsystem-notes §Voice Plane](docs/reference/claude-context/subsystem-notes.md) + [config/tab0-bridge/README.md](config/tab0-bridge/README.md) |
 | Security audit sprint 2026-05-11 (7 fixes) | CHANGELOG.md `[Security Audit Sprint] - 2026-05-11` |
 
 ## Docs to keep in sync

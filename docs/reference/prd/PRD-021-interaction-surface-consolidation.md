@@ -185,7 +185,7 @@ Capture the **actual** running tmux layout (windows 1–3 diverged, fifteenth Co
 Grouped because all three need `nix build` + container recreate:
 - **F1-1** flake input (`aoe-with-web`, apply-class `rebuild`), **F1-3/F1-5** gated supervisord `aoe serve … --port 9095` (`boot`), **F1-4** `[interaction_plane]` table.
 - **F3-3** `adapters.beads = "local-sqlite"` (rebuild-class) and **F3-4** `[memory].admin_access_mode = "scoped"` (rebuild-class, baked env) land here — the single image rebuild carries the daemon binary *and* both identity flips (mesh-identityGap §5).
-- One `./scripts/launch.sh rebuild dev` on the host tab (per `CLAUDE.md` build rules), then verify the daemon is up on `:9095` behind loopback.
+- One `./agentbox.sh rebuild` (down + build + up --build; `nix build .#<variant>` internally, `agentbox.sh:46`) — **not** the host project's `scripts/launch.sh`, which builds VisionClaw in `../`, not agentbox. Then verify the daemon is up on `:9095` behind loopback.
 
 ### Phase 2 — Identity proxy + session-boundary wiring (≈ days 2–3, boot/live-class)
 

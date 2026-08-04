@@ -51,21 +51,55 @@ function _podPath(namespace, key) {
 }
 
 /**
- * Resolve the effective namespace for a request.
+ * Slugify a project/repo identifier for the memory namespace project axis.
+ * Returns '' when no project is supplied (project axis omitted, back-compat).
+ */
+function _projectSlug(project) {
+  if (project === undefined || project === null) return '';
+  const slug = String(project).toLowerCase().replace(/[^a-z0-9._-]/g, '-').replace(/^-+|-+$/g, '').slice(0, 64);
+  return slug;
+}
+
+/**
+ * Resolve the optional project axis for a request from (in priority order) an
+ * explicit body/query `project`, or the `x-agentbox-project` header. Absent →
+ * '' so the namespace grammar is unchanged (backwards compatible).
+ */
+function _resolveProject(req) {
+  const body = req.body || {};
+  const query = req.query || {};
+  const raw = body.project
+    || query.project
+    || (req.headers && (req.headers['x-agentbox-project'] || req.headers['X-Agentbox-Project']))
+    || '';
+  return _projectSlug(raw);
+}
+
+/**
+ * Resolve the effective namespace for a request (ADR-043 D4.4).
  *
  * Bearer auth (admin) in "permissive" mode: namespace used as-is.
  * NIP-98 auth (per-user): always scope to "user:<pubkey>:<namespace>".
  * "scoped" mode: scope all callers regardless of auth method.
+ *
+ * When a project axis is supplied AND the caller carries a user (pubkey) scope,
+ * the project segment is inserted: "user:<pubkey>:proj:<repo-slug>:<namespace>"
+ * — this is the per-project isolation an AoE session writes under. Without a
+ * project the grammar is exactly the historic per-user form (backwards
+ * compatible); a project supplied by an unscoped permissive bearer caller has
+ * no user segment to nest under and is ignored.
  */
-function _effectiveNamespace(req, rawNamespace) {
+function _effectiveNamespace(req, rawNamespace, project) {
+  const proj = project === undefined ? _resolveProject(req) : _projectSlug(project);
+  const projSeg = proj ? `proj:${proj}:` : '';
   const auth = req.auth || {};
   if (auth.mode === 'nip98' && auth.pubkey) {
-    return `user:${auth.pubkey}:${rawNamespace}`;
+    return `user:${auth.pubkey}:${projSeg}${rawNamespace}`;
   }
   if (ADMIN_ACCESS_MODE !== 'permissive') {
     // scoped mode: even bearer admin gets a namespace prefix based on operator pubkey
     const opPubkey = process.env.AGENTBOX_X_ONLY_PUBKEY_HEX || process.env.AGENTBOX_PUBKEY || '';
-    if (opPubkey) return `user:${opPubkey}:${rawNamespace}`;
+    if (opPubkey) return `user:${opPubkey}:${projSeg}${rawNamespace}`;
   }
   return rawNamespace;
 }
@@ -258,3 +292,10 @@ module.exports = async function memoryRoutes(fastify) {
     return reply.code(503).send({ error: 'no-memory-adapter' });
   });
 };
+
+// Test-facing exports of the pure namespace helpers (ADR-043 D4.4). The default
+// export stays the Fastify plugin; these named exports let the namespace
+// derivation be unit-tested without standing up the whole route.
+module.exports._effectiveNamespace = _effectiveNamespace;
+module.exports._projectSlug = _projectSlug;
+module.exports._resolveProject = _resolveProject;

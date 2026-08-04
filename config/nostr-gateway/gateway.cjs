@@ -102,6 +102,16 @@ const CLAUDE_BIN = process.env.CLAUDE_BIN || 'claude';
 // The tab-0 bridge is the common ingress/feed for voice, browser text, and
 // Nostr.  Keeping it local means Nostr adds no exposed HTTP surface.
 const TAB0_BRIDGE_URL = (process.env.AGENTBOX_TAB0_BRIDGE_URL || 'http://127.0.0.1:8971').replace(/\/$/, '');
+// Agent of Empires interaction plane (ADR-042/ADR-044 D5). /spawn creates a
+// managed AoE session (status FSM, optional worktree, serialised send) instead
+// of a raw tmux window, falling open to tmux new-window when the daemon is
+// down. The plain-chat path already rides the tab-0 bridge /tab0/send seam,
+// which is itself repointed onto AoE — so it inherits D1–D3 for free. Loopback,
+// no token (daemon runs --auth none --behind-proxy; break-glass direct route).
+const AOE_PORT = Number(process.env.AGENTBOX_INTERACTION_PLANE_PORT || 9095);
+const AOE_BASE = `http://127.0.0.1:${AOE_PORT}`;
+const AOE_ENABLED = String(process.env.AGENTBOX_INTERACTION_PLANE || '').trim() !== '0';
+const AOE_TIMEOUT_MS = 12000; // create with ?wait=ready blocks until status leaves Starting (~10s)
 
 function log(...a) { try { process.stdout.write(`[gw ${new Date().toISOString()}] ${a.join(' ')}\n`); } catch { /* noop */ } }
 function nowSec() { return Math.floor(Date.now() / 1000); }
@@ -374,12 +384,45 @@ function watchTab(idx) {
 // claude --dangerously-skip-permissions; codex and zai are their own CLIs.
 // exit is what to type at the agent's prompt to end its session; match tells
 // us (via pane_current_command) which exit verb a running tab needs.
+// aoeTool maps the launcher onto AoE's tool enum for POST /api/sessions: dsp/zai
+// are the `claude` binary (zai is redirected via env, still tool=claude), codex
+// is native. Used when /spawn creates an AoE session instead of a tmux window.
 const AGENTS = {
-  dsp:    { launch: 'dsp',   exit: '/exit' },
-  claude: { launch: 'dsp',   exit: '/exit' },
-  codex:  { launch: 'codex', exit: '/quit' },
-  zai:    { launch: 'zai',   exit: '/exit' },
+  dsp:    { launch: 'dsp',   exit: '/exit', aoeTool: 'claude' },
+  claude: { launch: 'dsp',   exit: '/exit', aoeTool: 'claude' },
+  codex:  { launch: 'codex', exit: '/quit', aoeTool: 'codex' },
+  zai:    { launch: 'zai',   exit: '/exit', aoeTool: 'claude' },
 };
+
+// ── AoE interaction-plane client (fail-open) ────────────────────────────────
+async function aoeRequest(method, pathname, body) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), AOE_TIMEOUT_MS);
+  try {
+    const res = await fetch(`${AOE_BASE}${pathname}`, {
+      method,
+      headers: body ? { 'content-type': 'application/json' } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+      signal: ctrl.signal,
+    });
+    const text = await res.text();
+    let json = null; try { json = text ? JSON.parse(text) : null; } catch { /* non-json */ }
+    return { status: res.status, json, text };
+  } finally { clearTimeout(timer); }
+}
+// Create an AoE session at `repoPath` running `tool`, blocking until it leaves
+// Starting. Throws on non-2xx / transport failure → caller falls back to tmux.
+async function aoeCreateSession(repoPath, tool, title) {
+  const r = await aoeRequest('POST', '/api/sessions?wait=ready', { path: repoPath, tool, title });
+  if (r.status !== 200 && r.status !== 201) throw new Error(`aoe create ${r.status}: ${String(r.text).slice(0, 120)}`);
+  const id = r.json && (r.json.id || r.json.session_id);
+  if (!id) throw new Error('aoe create returned no session id');
+  return { id: String(id), status: (r.json && r.json.status) || 'Starting' };
+}
+async function aoeSendSession(id, message) {
+  const r = await aoeRequest('POST', `/api/sessions/${encodeURIComponent(id)}/send`, { message });
+  return r.status === 200;
+}
 const WORKSPACE = path.join(HOME, 'workspace');
 
 function workspaceDirs() {
@@ -403,16 +446,43 @@ function resolveWorkspaceDir(spec) {
 // New tmux window at cwd → type the launcher → (optionally) send the first
 // instruction once the agent reaches a prompt. Boot detection is generic:
 // pane_current_command has left the shell and the pane looks idle.
-function doSpawn(ws, dirSpec, agentName, instr, why) {
+async function doSpawn(ws, dirSpec, agentName, instr, why) {
   const agent = AGENTS[(agentName || 'dsp').toLowerCase()];
   if (!agent) return reply(ws, `unknown agent "${agentName}" — one of: ${Object.keys(AGENTS).join(', ')}`);
   const r = resolveWorkspaceDir(dirSpec);
   if (r.err) return reply(ws, `⚠ ${r.err}\ntop-level dirs: ${workspaceDirs()}`);
   const name = path.basename(r.dir);
+  const follow = sanitize(instr);
+  // Prefer the AoE interaction plane — a managed session with a status FSM and
+  // serialised send replaces the hand-rolled "poll the pane until it boots"
+  // loop. Fail open to a raw tmux window if the daemon is unreachable so a spawn
+  // is never dropped (ADR-044 D5). The whitelist/replay gates upstream in
+  // handleWrap and the ~/workspace realpath confinement are unchanged.
+  if (AOE_ENABLED) {
+    try {
+      const sess = await aoeCreateSession(r.dir, agent.aoeTool, name);
+      const short = sess.id.slice(0, 8);
+      reply(ws, `🚀 aoe ${short} · ${name} · ${r.rel} · ${agent.aoeTool} · ${sess.status}${follow ? `\n⏳ sending "${follow}"` : ''}${why ? '\n↳ ' + String(why).slice(0, 120) : ''}`);
+      if (follow) {
+        let sent = false;
+        try { sent = await aoeSendSession(sess.id, follow); } catch (e) { log('aoe follow-up send failed', e.message); }
+        reply(ws, sent ? `✔ aoe ${short} ← "${follow}"` : `⚠ aoe ${short} is up but the follow-up send failed — check the dashboard`);
+      }
+      return;
+    } catch (e) {
+      log('aoe spawn failed, falling back to tmux new-window:', e.message);
+    }
+  }
+  return doSpawnTmux(ws, r, agent, name, follow, why);
+}
+
+// Legacy fail-open path: new tmux window at cwd → type the launcher → send the
+// first instruction once the agent reaches a prompt. Boot detection is generic:
+// pane_current_command has left the shell and the pane looks idle.
+function doSpawnTmux(ws, r, agent, name, follow, why) {
   const idx = sh('tmux', ['new-window', '-d', '-P', '-F', '#{window_index}', '-c', r.dir, '-n', name]).trim();
   if (!/^\d+$/.test(idx)) return reply(ws, '⚠ tmux would not open a window');
   sendKeys(idx, agent.launch);
-  const follow = sanitize(instr);
   reply(ws, `🚀 tab ${idx} ${name} · ${r.rel} · launching ${agent.launch}${follow ? `\n⏳ will send "${follow}" once it boots` : ''}${why ? '\n↳ ' + String(why).slice(0, 120) : ''}`);
   if (!follow) return;
   let polls = 0;

@@ -104,8 +104,10 @@ The seven interactive harness tabs map onto AoE sessions **config-only, no code*
 | Claude Code (tab 0 + ad-hoc) | **native** `claude` | tab-0 coordinator stays special (terminal view, ADR-044) |
 | Codex (tab 14, gpt-5.5) | **native** `codex` (codex-acp) | also model-routing execution host + consultant-codex — those stay headless (D7) |
 | Gemini / Antigravity (tab 10) | **native** `gemini --acp` | worktree-isolated coding session |
-| OpenRouter (tab 8) | **wrapper script via `agent_command_override`** | `claude` binary redirected via `ANTHROPIC_BASE_URL`/`ANTHROPIC_AUTH_TOKEN`; wrapper hard-fails if the redirect env is missing |
-| ZAI GLM-5.2 (tab 9) | **wrapper script via `agent_command_override`** | same redirect shape; `api.z.ai/api/anthropic`; wrapper hard-fails if the redirect env is missing |
+| OpenRouter (tab 8) | **wrapper script, registered as a distinct `custom_agents` entry** | `claude` binary redirected via `ANTHROPIC_BASE_URL`/`ANTHROPIC_AUTH_TOKEN`; wrapper hard-fails if the redirect env is missing |
+| ZAI GLM-5.2 (tab 9) | **wrapper script, registered as a distinct `custom_agents` entry** | same redirect shape; `api.z.ai/api/anthropic`; wrapper hard-fails if the redirect env is missing |
+
+**Implementation refinement (2026-08-04, as built):** the redirected harnesses are registered as **distinct `custom_agents` entries** (name = slug → wrapper path, `agent_detect_as = "claude"`), *not* as an `agent_command_override` on `claude`. AoE resolves overrides per **agent name**, and the coordinator, OpenRouter, and ZAI all use the `claude` binary — a `claude` override would also redirect the native coordinator's direct-Anthropic path. Distinct custom agents are the collision-free equivalent; `ANTHROPIC_BASE_URL` is deliberately kept out of AoE's global `environment` so the coordinator is never redirected. The wrapper scripts (`config/harness-wrappers/{openrouter,zai}.sh`) are unchanged as the loud hard-fail guard.
 | DeepSeek / codewhale (tab 11) | **`custom_agents`** (tmux view) | optional `agent_detect_as = codex/claude` for status |
 | Ollama-Gemma-LAN / nanocoder (tab 13) | **`custom_agents`** (tmux view) | LAN endpoint `http://192.168.2.48:8084/v1` |
 | Perplexity (tab 12) | **RETIRED** | research shell, never a coding agent, no worktree |

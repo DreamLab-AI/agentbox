@@ -62,6 +62,9 @@ const CATALOGUE = [
   { id: 'metrics', name: 'Prometheus metrics (:9090 /metrics, :9091)', layer: 'surface', gate: null,
     apply_class: 'boot',
     summary: 'Adapter dispatch spans/metrics plus agentbox_project_* gauges; exporters optional (ADR-005).' },
+  { id: 'interaction-plane', name: 'Interaction plane (Agent of Empires)', layer: 'surface',
+    gate: 'interaction_plane', service: 'aoe-serve', apply_class: 'boot',
+    summary: 'AoE serve dashboard + session manager (loopback :9095) behind the NIP-98 proxy that is its sole ingress; declarative [[interaction_plane.session_seeds]] replace the MAD tmux harness, each binding a did:nostr/URN/beads-epic/scoped-namespace at create (PRD-021/ADR-042/ADR-043). Daemon + proxy + seeds are boot-class; the aoe-with-web binary is a rebuild-class flake input (see aoe-serve-binary).' },
 
   // ── Modules — optional capabilities, manifest-gated ───────────────────────
   { id: 'ruflo', name: 'ruflo CLI (= claude-flow)', layer: 'module',
@@ -85,6 +88,9 @@ const CATALOGUE = [
   { id: 'antigravity', name: 'Antigravity CLI', layer: 'module',
     gate: 'toolchains.antigravity_cli', apply_class: 'rebuild',
     summary: 'Gemini consultant harness CLI.' },
+  { id: 'aoe-serve-binary', name: 'AoE serve binary (flake input)', layer: 'module',
+    gate: 'interaction_plane', apply_class: 'rebuild',
+    summary: 'inputs.aoe.packages.aoe-with-web (--features serve = axum + rust-embed dashboard), pinned commit, baked into the image package set — flipping [interaction_plane].enabled changes the Nix composition. Pin discipline: a bump past web/package-lock.json must recompute npmDepsHash (PRD-021 N-08).' },
   { id: 'rust-toolchain', name: 'Rust toolchain', layer: 'module',
     gate: 'toolchains.rust', apply_class: 'rebuild',
     summary: 'cargo/rustc in the image.' },

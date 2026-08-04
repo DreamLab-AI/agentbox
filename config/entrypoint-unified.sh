@@ -624,6 +624,15 @@ _ML_SONA_APPLY=$(_ab_toml_bool memory_learning sona_apply_enabled)
 _ML_PARAM_TUNING=$(_ab_toml_bool memory_learning param_tuning_enabled)
 _ML_PATTERN_DISTILL=$(_ab_toml_bool memory_learning pattern_distillation)
 
+# ── Interaction plane (PRD-021 / ADR-042/043/044) — Agent of Empires gates ──
+# enabled ⇒ the supervised aoe-serve daemon + nip98-proxy are present (flake.nix);
+# this entrypoint seeds the declarative sessions and exports the port hints for
+# children. All-off/absent ⇒ these stay 0/defaults and the boot reconciliation
+# below is skipped (runtime byte-identical to the pre-PRD-021 product).
+_IP_ENABLED=$(_ab_toml_bool interaction_plane enabled)
+_IP_PORT=$(_ab_toml_int interaction_plane port 9095)
+_IP_PROXY_PORT=$(_ab_toml_int interaction_plane proxy_port 9096)
+
 # ── MCP server config: ensure .mcp.json always points to ruvector-mcp.cjs ──
 # Claude Code resolves .mcp.json by walking up from cwd.  We write one at
 # the workspace root so every project inherits ruvector-postgres by default.
@@ -842,6 +851,50 @@ const has = s.hooks.SessionStart.some((g) => (g.hooks || []).some((h) => String(
 if (!has) { s.hooks.SessionStart.push({ hooks: [{ type: 'command', command: `${cmd} || true`, timeout: 8000 }] }); fs.writeFileSync(f, JSON.stringify(s, null, 2)); console.log('  [fleet] registered fleet-session-start hook in settings.json'); }
 else { console.log('  [fleet] fleet-session-start hook already registered'); }
 FLEETJS
+fi
+
+# ── Voice plane: register the tab0-bridge turn-sink hooks ──
+# config/tab0-bridge/turn-sink.cjs forwards UserPromptSubmit/Stop turn text to
+# the tab0-bridge feed (the voice console's live transcript). The bridge itself
+# is deployed/kept alive by fleet-session-start.sh → config/tab0-bridge/deploy.sh,
+# and runs from the workspace volume — so the hook targets the deployed path.
+# Idempotent, fail-open; the sink no-ops fast when the bridge is down.
+_SINK_HOOK="${WORKSPACE:-/home/devuser/workspace}/tab0-bridge/turn-sink.cjs"
+if command -v node >/dev/null 2>&1; then
+  SINK_HOOK="$_SINK_HOOK" SETTINGS="$_CLAUDE_SETTINGS" node <<'SINKJS' || true
+const fs = require('fs');
+const f = process.env.SETTINGS, cmd = `node ${process.env.SINK_HOOK}`;
+let s = {}; try { s = JSON.parse(fs.readFileSync(f, 'utf8')); } catch {}
+s.hooks = s.hooks || {};
+let changed = false;
+for (const evt of ['UserPromptSubmit', 'Stop']) {
+  s.hooks[evt] = s.hooks[evt] || [];
+  const has = s.hooks[evt].some((g) => (g.hooks || []).some((h) => String(h.command || '').includes('turn-sink.cjs')));
+  if (!has) { s.hooks[evt].push({ hooks: [{ type: 'command', command: `${cmd} ${evt} || true`, timeout: 8000 }] }); changed = true; }
+}
+if (changed) { fs.writeFileSync(f, JSON.stringify(s, null, 2)); console.log('  [voice] registered tab0-bridge turn-sink hooks in settings.json'); }
+else { console.log('  [voice] turn-sink hooks already registered'); }
+SINKJS
+fi
+
+# ── Interaction plane: seed the AoE declarative sessions (PRD-021 WS2/WS3) ──
+# When [interaction_plane].enabled, provision the [[interaction_plane.session_seeds]]
+# (+ coordinator) as AoE sessions once the supervised aoe-serve daemon is up. Each
+# seed derives a did:nostr (AGENTBOX_PROFILE=<slug>), a session URN, a beads epic,
+# and a scoped memory namespace at create time (ADR-043). scripts/aoe-seed-sessions.mjs
+# (Builder D) owns the daemon-readiness poll and the create calls; we invoke it
+# fire-and-forget (backgrounded, logged) so a slow or absent daemon never blocks the
+# boot — fail-open, matching the nostr-gateway/voice precedents. Off ⇒ skipped.
+_AOE_SEED="/opt/agentbox/scripts/aoe-seed-sessions.mjs"
+if [ "$_IP_ENABLED" = "1" ] && [ -f "$_AOE_SEED" ] && command -v node >/dev/null 2>&1; then
+  echo "[interaction-plane] seeding AoE sessions (backgrounded; daemon on 127.0.0.1:${_IP_PORT})"
+  AGENTBOX_INTERACTION_PLANE_PORT="$_IP_PORT" \
+  AGENTBOX_INTERACTION_PLANE_PROXY_PORT="$_IP_PROXY_PORT" \
+  AGENTBOX_CONFIG="${AGENTBOX_CONFIG:-/etc/agentbox.toml}" \
+  MANAGEMENT_API_URL="http://127.0.0.1:${MANAGEMENT_API_PORT:-9090}" \
+    nohup node "$_AOE_SEED" >/var/log/aoe-seed-sessions.log 2>&1 &
+elif [ "$_IP_ENABLED" = "1" ]; then
+  echo "[interaction-plane] session seeder $_AOE_SEED not present yet — skipping (fail-open)"
 fi
 
 # ── PRD-018 / ADR-036 D6 (D1): register the learning-loop trajectory hook ──
@@ -1643,6 +1696,12 @@ export EMBEDDING_MODEL="${EMBEDDING_MODEL}"
 # explicitly so an enabled plugin — ruflo-loop-workers / ruflo-autopilot —
 # can never flip headless Claude launches on without an operator export).
 export RUFLO_DAEMON_AI_WORKERS="${RUFLO_DAEMON_AI_WORKERS:-0}"
+# Interaction plane (PRD-021 / ADR-042): expose the AoE daemon + NIP-98 proxy
+# ports so children (voice bridge repoint, session tooling, shells) resolve them
+# without re-parsing agentbox.toml. Empty/defaults when the plane is disabled.
+export AGENTBOX_INTERACTION_PLANE_ENABLED="$_IP_ENABLED"
+export AGENTBOX_INTERACTION_PLANE_PORT="$_IP_PORT"
+export AGENTBOX_INTERACTION_PLANE_PROXY_PORT="$_IP_PROXY_PORT"
 EOF
 mkdir -p "/home/devuser/workspace/.cargo" "/home/devuser/workspace/.tmp" 2>/dev/null || true
 chown devuser:devuser "/home/devuser/workspace/.cargo" "/home/devuser/workspace/.tmp" 2>/dev/null || true

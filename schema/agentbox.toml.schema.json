@@ -2202,6 +2202,94 @@
         }
       }
     },
+    "interaction_plane": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Agent of Empires interaction plane (PRD-021 / ADR-042/043/044). AoE serve daemon (rebuild-class binary via flake input, boot-class daemon + config), a NIP-98 reverse proxy as sole ingress, and declarative session seeds replacing the MAD tmux harness. enabled=false ⇒ no daemon, no seeds.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Master gate; false ⇒ aoe serve never starts and no session seeds are provisioned (apply-class boot)."
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "description": "aoe serve loopback bind port (127.0.0.1, behind proxy). Must NOT be 8080 (code-server) or 7777 (nostr relay)."
+        },
+        "dashboard": {
+          "type": "string",
+          "enum": ["on", "off"],
+          "description": "aoe serve web dashboard (absorbs the PRD-012 setup/ops dashboard)."
+        },
+        "proxy_auth": {
+          "type": "string",
+          "enum": ["nip98", "none"],
+          "description": "Sole-ingress reverse-proxy auth mode; nip98 verifies a kind-27235 header → session pubkey (ADR-043 D4.6)."
+        },
+        "proxy_port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "description": "nip98-proxy listen port — the only ingress to the aoe serve port (N-05 invariant)."
+        },
+        "session_seeds": {
+          "type": "array",
+          "description": "Declarative sessions replacing tmux-autostart harness windows (WS2). Each seed derives a did:nostr, a session URN, a beads epic, and a scoped memory namespace at create time.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["slug", "tool"],
+            "properties": {
+              "slug": {
+                "type": "string",
+                "description": "Session slug → AGENTBOX_PROFILE (per-session did:nostr derivation, ADR-043 D4.1)."
+              },
+              "tool": {
+                "type": "string",
+                "description": "AoE agent key: native ACP (claude|codex|gemini|...) or a custom:<name> agent."
+              },
+              "worktree": {
+                "type": "boolean",
+                "description": "Create a per-session git worktree (AoE's built-in worktree model)."
+              },
+              "env_allowlist": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Env vars forwarded into the session (load-bearing for ANTHROPIC_BASE_URL redirect on OpenRouter/Z.AI — F2-4, N-01)."
+              },
+              "detect_as": {
+                "type": "string",
+                "description": "Status-detection heuristic agent (claude|codex) for custom_agents that fit an existing FSM."
+              },
+              "eager_mandate": {
+                "type": "boolean",
+                "description": "Mint the session mandate at create time rather than lazily on first pod write (ADR-043 D4.5). Default false."
+              }
+            }
+          }
+        },
+        "coordinator": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["slug", "tool"],
+          "description": "The tab-0 coordinator: named, special, terminal view (ACP has no pane → 400 acp_mode_unsupported; terminal view is required for the voice /send path, F5-3 / ADR-044).",
+          "properties": {
+            "slug": { "type": "string", "description": "Coordinator session slug → AGENTBOX_PROFILE." },
+            "tool": { "type": "string", "description": "AoE agent key (claude)." },
+            "view": {
+              "type": "string",
+              "enum": ["terminal", "acp"],
+              "description": "View mode; terminal is required for the send-keys/POST /send voice path."
+            },
+            "eager_mandate": {
+              "type": "boolean",
+              "description": "Mint the mandate at create time rather than lazily (ADR-043 D4.5). Default false."
+            }
+          }
+        }
+      }
+    },
     "features": {
       "type": "object",
       "additionalProperties": false,

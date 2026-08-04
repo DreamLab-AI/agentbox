@@ -80,6 +80,8 @@ flowchart TB
 
 Every durable-state integration goes through one of the five adapter slots — never a hardcoded backend. Each slot resolves to `local-*`, `external`, or `off`, so the same manifest runs entirely standalone on a laptop (SQLite + local JSONL) or federates into a cloud mesh (Postgres pgvector + HTTP event sinks) by flipping a TOML switch. Observability, the privacy filter ([ADR-008](docs/reference/adr/ADR-008-privacy-filter-routing.md)), and the JSON-LD encoder wrap every dispatch in that order.
 
+The **interaction plane** — the way an operator creates, watches, attaches, and reviews interactive agent sessions — is [Agent of Empires](https://github.com/DreamLab-AI/agentbox-of-empires) (AoE), adopted as an overlay under the `[interaction_plane]` gate ([PRD-021](docs/reference/prd/PRD-021-interaction-surface-consolidation.md), [ADR-042](docs/reference/adr/ADR-042-agent-of-empires-interaction-plane.md)). `aoe serve` runs on loopback `:9095` behind a NIP-98-verifying reverse proxy (`:9096`) that is its sole ingress; its TUI + web dashboard supersede the hand-rolled per-provider tmux harness tabs in place. Because AoE has a session manager but no identity, agentbox supplies it at the **session boundary**: every session mints its own `did:nostr`, a session URN, a beads epic, and a scoped per-project memory namespace ([ADR-043](docs/reference/adr/ADR-043-session-identity-binding.md)). The fork stays a clean mirror — zero patches to its crate.
+
 ---
 
 ## Why Agentbox?
@@ -140,6 +142,7 @@ Your `agentbox.toml` manifest toggles capabilities on or off. Disabled features 
 | Category | Highlights |
 | :--- | :--- |
 | **Agent toolchains** | `claude-code`, `ruflo`, `antigravity` (agy), `agentic-qe`, `openai-codex` |
+| **Interaction plane** | [Agent of Empires](https://github.com/DreamLab-AI/agentbox-of-empires) session manager (`[interaction_plane]`) — TUI + web dashboard on loopback `:9095` behind a sole-ingress NIP-98 proxy (`:9096`); declarative `session_seeds` replace the MAD tmux harness tabs, each session bound to its own `did:nostr` / URN / beads epic / scoped namespace ([PRD-021](docs/reference/prd/PRD-021-interaction-surface-consolidation.md), [ADR-042](docs/reference/adr/ADR-042-agent-of-empires-interaction-plane.md)/[043](docs/reference/adr/ADR-043-session-identity-binding.md)/[044](docs/reference/adr/ADR-044-voice-plane-aoe-repoint.md)) |
 | **Consultants** | Meta-router for named external consultations: DeepSeek, Perplexity, Z.AI (GLM), Antigravity |
 | **Browser and web** | External browsercontainer sidecar (chrome-devtools-mcp, Chrome Beta 149+, GPU-accelerated) |
 | **Media and design** | Local ComfyUI (or external URL), ImageMagick, FFmpeg |

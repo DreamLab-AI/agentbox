@@ -81,12 +81,14 @@ graph LR
 
 ```toml
 [adapters]
-beads        = "off"                   # local-sqlite | external | off
+beads        = "local-sqlite"          # local-sqlite | external | off
 pods         = "local-solid-rs"        # local-solid-rs | external | off
 memory       = "external-pg"           # embedded-ruvector | external-pg | off
 events       = "local-jsonl"           # local-jsonl | external | off
 orchestrator = "local-process-manager" # local-process-manager | stdio-bridge | off
 ```
+
+`beads = "local-sqlite"` is the shipped default since [PRD-021](../reference/prd/PRD-021-interaction-surface-consolidation.md) activated the work-ledger slot: every Agent of Empires session boundary maps to a durable beads epic (session create → `createEpic`, task/turn units → `createChild`/`claim`, session end → `close`), exposed over `/v1/beads` and each id minted through `lib/uris.js`. Selecting the beads implementation is resolved at Nix image composition, so a change here is **rebuild-class** (see [`[interaction_plane]`](#interaction_plane) and the rebuild table). Set it back to `off` to disable the ledger and its route.
 
 `pods = "local-solid-rs"` is the only first-party implementation. It runs the
 [`solid-pod-rs`](https://github.com/DreamLab-AI/solid-pod-rs) Rust Solid
@@ -365,6 +367,69 @@ metrics             = true     # agentbox_project_* gauges on the port-bound /me
 metric, and publish path. `github_enrichment` and primer generation are the
 only external hops and are independently gated (a GitHub token and a Z.AI/GLM
 key respectively).
+
+## `[interaction_plane]`
+
+The interaction plane — how interactive agent sessions are created, monitored,
+attached, and reviewed — is [Agent of Empires](https://github.com/DreamLab-AI/agentbox-of-empires)
+(AoE), adopted as an overlay ([PRD-021](../reference/prd/PRD-021-interaction-surface-consolidation.md) /
+[ADR-042](../reference/adr/ADR-042-agent-of-empires-interaction-plane.md) /
+[043](../reference/adr/ADR-043-session-identity-binding.md) /
+[044](../reference/adr/ADR-044-voice-plane-aoe-repoint.md)). It supersedes the
+hand-rolled MAD-style per-provider tmux harness tabs in place. With
+`enabled = false` no daemon starts and no seeds are provisioned — the runtime is
+byte-identical to the pre-PRD-021 product.
+
+```toml
+[interaction_plane]
+enabled    = true    # master gate; false ⇒ no daemon, no seeds (apply-class boot)
+port       = 9095    # aoe serve bind — loopback only, behind the proxy; NOT 8080 (code-server) / 7777 (relay)
+dashboard  = "on"    # aoe serve web dashboard (absorbs the never-deployed setup/ops dashboard)
+proxy_auth = "nip98" # sole-ingress reverse proxy verifies NIP-98 → session pubkey
+proxy_port = 9096    # nip98-proxy listen port — the ONLY ingress to :9095 (hard invariant)
+
+# Declarative sessions replacing the harness windows. Each seed becomes an AoE
+# session and, at create time, binds a did:nostr (AGENTBOX_PROFILE=<slug>), a
+# session URN, a beads epic, and a scoped namespace user:<pubkey>:proj:<repo>:<ns>.
+[[interaction_plane.session_seeds]]
+slug          = "codex"                # native ACP agent
+tool          = "codex"
+worktree      = true
+
+[[interaction_plane.session_seeds]]
+slug          = "openrouter"           # claude binary redirected — env_allowlist is load-bearing
+tool          = "claude"
+worktree      = false
+env_allowlist = ["ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN"]
+
+# … antigravity (gemini), zai, deepseek (custom:codewhale), ollama (custom:nanocoder) …
+
+[interaction_plane.coordinator]
+slug = "tab0"                          # the primary Claude window — named, special, terminal view
+tool = "claude"
+view = "terminal"                      # required for the voice send-keys / /send path
+```
+
+**Sole ingress (hard invariant).** `aoe serve` runs `--auth none --behind-proxy`
+on `127.0.0.1:9095`; only the NIP-98 proxy on `proxy_port` is exposed, and it is
+the *only* process permitted to reach the daemon. Any container-local process
+reaching `:9095` directly would bypass identity — so the daemon port is never
+published (only `proxy_port` is added to the image's exposed ports).
+
+**Identity binding & memory scope.** Because sessions are the identity boundary,
+[`[memory].admin_access_mode`](#adapters) ships as `"scoped"`: one session cannot
+read another session's `user:<pubkey>:proj:<repo-slug>:<ns>` namespace. The
+operator keeps a documented break-glass path — in scoped mode the bearer admin
+maps to the operator's own pubkey namespace (`AGENTBOX_X_ONLY_PUBKEY_HEX` /
+`AGENTBOX_PUBKEY`), so cross-session inspection stays possible but auditable.
+`admin_access_mode` is baked at build time (`MEMORY_ADMIN_ACCESS_MODE`) and is
+**rebuild-class**.
+
+**Apply classes.** The `aoe-with-web` binary is a pinned flake input and
+**rebuild-class**; the daemon, proxy, and session seeds are reconciled every boot
+and **boot-class**. Bumping the flake pin past a `web/package-lock.json` change
+requires recomputing `npmDepsHash` in the same commit. Perplexity has no seed —
+research is retired to `mcp__perplexity` + the `/perplexity-research` skill.
 
 ## `[integrations.<name>]`
 
@@ -823,7 +888,9 @@ The validator runs in three places:
 
 | Change | Rebuild needed? |
 |---|---|
-| `[adapters]` slot swap | No — runtime re-resolves on container restart |
+| `[adapters]` slot swap | Yes for `beads` (implementation resolved at image composition); other slots re-resolve on container restart |
+| `[memory].admin_access_mode` change | Yes — baked into `MEMORY_ADMIN_ACCESS_MODE` at build time |
+| `[interaction_plane].enabled` flip | Yes — pulls/removes the `aoe-with-web` flake input from the image package set (the seeds/daemon/proxy themselves are boot-class) |
 | `[observability]` tweak | No — env vars re-read on restart |
 | `[providers.*]` add/enable | No — boot-time env check only |
 | Adding/removing a `[skills.*]` or `[toolchains]` | Yes — image contents change |

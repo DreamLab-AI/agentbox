@@ -7,6 +7,16 @@
     nix2container.url = "github:nlewo/nix2container";
     rust-overlay.url = "github:oxalica/rust-overlay";
 
+    # Agent of Empires — the interaction plane (PRD-021 / ADR-042). Pinned to a
+    # commit so the web frontend's npmDepsHash is frozen; a pin bump that moves
+    # web/package-lock.json MUST recompute npmDepsHash in the same commit or the
+    # Nix build breaks (N-08). We consume packages.${system}.aoe-with-web
+    # (--features serve = axum + rust-embed baked dashboard); crane + flake-parts
+    # enter only as transitive inputs of this flake — agentbox's flake-utils
+    # outputs are not restructured (ADR-042; mesh-aoeCompat §Seam 1). Overlay-only:
+    # ZERO patches to the AoE crate (N-06). Host `nix build` locks the narHash.
+    aoe.url = "github:DreamLab-AI/agentbox-of-empires/d615b8c8";
+
     # D.9: skills corpus as a content-addressed Nix input.
     # Currently a path-type input (file-system equivalent to ./skills).
     # Future: flip to fetchFromGitHub once DreamLab-AI/agentbox-skills exists:
@@ -18,7 +28,7 @@
     };
   };
 
-  outputs = { self, nixpkgs, flake-utils, nix2container, rust-overlay, skills }:
+  outputs = { self, nixpkgs, flake-utils, nix2container, rust-overlay, skills, aoe }:
     flake-utils.lib.eachSystem [
       "x86_64-linux"
       "aarch64-linux"
@@ -109,6 +119,20 @@
         solidPodRsCfg  = (agentboxConfig.integrations or {}).solid_pod_rs or {};
         podsImpl       = adaptersCfgTop.pods or "local-solid-rs";
         solidPodRsActive = podsImpl == "local-solid-rs";
+
+        # Interaction plane — Agent of Empires (PRD-021 / ADR-042). Gate both the
+        # aoe-with-web package pull AND the two supervisor blocks (aoe-serve +
+        # nip98-proxy) on [interaction_plane].enabled (CLAUDE.md rebuild-gate rule).
+        # The daemon binary is rebuild-class (flake input); the daemon/proxy/config
+        # are boot-class (system-manifest.js).
+        interactionPlaneCfg       = agentboxConfig.interaction_plane or {};
+        interactionPlaneEnabled   = interactionPlaneCfg.enabled or false;
+        interactionPlanePort      = interactionPlaneCfg.port or 9095;
+        interactionPlaneProxyPort = interactionPlaneCfg.proxy_port or 9096;
+        # AoE's serve build (axum + rust-embed dashboard). Referenced lazily and
+        # only on Linux (the container image target); aoe upstream ships
+        # x86_64/aarch64-linux — the daemon never runs on the darwin dev-shell.
+        aoePkg = aoe.packages.${system}.aoe-with-web;
 
         # Provider gates. Ollama sidecar defaults OFF — most deployments
         # already run ollama on the host (docker.internal:11434), and the
@@ -1135,7 +1159,12 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           ++ npmServicePackages
           # PRD-002 §9 Phase 2 — global npm CLI derivations (replaces npm install -g)
           ++ npmCliAlwaysPackages
-          ++ npmCliGatedPackages;
+          ++ npmCliGatedPackages
+          # PRD-021 WS1 — Agent of Empires serve binary (rebuild-class). Gated on
+          # [interaction_plane].enabled and confined to Linux (the image target);
+          # aoePkg is only forced when both hold, so the darwin dev-shell never
+          # demands a darwin aoe-with-web attr.
+          ++ lib.optionals (interactionPlaneEnabled && pkgs.stdenv.isLinux) [ aoePkg ];
 
         # D.9: skillsTree is sourced from inputs.skills (path-type input).
         # Switching to a remote upstream is a one-line inputs change + flake.lock regen.
@@ -1208,6 +1237,19 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           # mcp-server overlays below with "Permission denied". Make the
           # whole copied tree writable once before any overlay runs.
           chmod -R u+w $out/opt/agentbox
+
+          # nip98-proxy (PRD-021 WS4 / ADR-043 D4.6): the sole NIP-98-verifying
+          # ingress to the aoe serve loopback port. Source lives under
+          # config/nip98-proxy (Builder C, proxy.mjs); overlay it at the top-level
+          # /opt/agentbox/nip98-proxy so the supervised [program:nip98-proxy] path
+          # matches the other config-sourced services (https-bridge pattern). Copied
+          # from the already-materialised config tree and guarded, so an absent
+          # source never breaks the image build — the supervisor block only exists
+          # when [interaction_plane].enabled is true.
+          if [ -d "$out/opt/agentbox/config/nip98-proxy" ]; then
+            cp -r "$out/opt/agentbox/config/nip98-proxy" "$out/opt/agentbox/nip98-proxy"
+            chmod -R u+w "$out/opt/agentbox/nip98-proxy"
+          fi
 
           ${lib.optionalString (sovereignCfg.enabled or false) ''
           cp -rL ${nostrBridgePkg}/package/node_modules $out/opt/agentbox/mcp/node_modules
@@ -1710,6 +1752,45 @@ autorestart=true
 priority=220
 stdout_logfile=/var/log/comfyui-builtin.log
 stderr_logfile=/var/log/comfyui-builtin.error.log
+''}
+${lib.optionalString interactionPlaneEnabled ''
+
+; Agent of Empires interaction plane (PRD-021 WS1 / ADR-042). aoe serve creates,
+; monitors, attaches, and reviews interactive agent sessions, superseding the MAD
+; tmux harness. Binds loopback with --auth none --behind-proxy: the ONLY ingress is
+; the [program:nip98-proxy] below (N-05, hard invariant — any process reaching this
+; port directly bypasses identity). Port 9095 is mandatory (8080 = code-server,
+; 7777 = nostr relay). Runs on the shared default tmux socket; the aoe_ session
+; prefix is the collision guard against the agentbox tmux session (F2-1/F2-9).
+[program:aoe-serve]
+command=${aoePkg}/bin/aoe serve --auth none --behind-proxy --host 127.0.0.1 --port ${toString interactionPlanePort}
+directory=/home/devuser/workspace
+user=devuser
+environment=HOME="/home/devuser"
+autostart=true
+autorestart=true
+startsecs=3
+priority=45
+stdout_logfile=/var/log/aoe-serve.log
+stderr_logfile=/var/log/aoe-serve.error.log
+
+; NIP-98 identity proxy (PRD-021 WS4 / ADR-043 D4.6) — the sole ingress to the aoe
+; serve loopback port. Verifies the kind-27235 NIP-98 header (reusing the
+; management-api verifyNip98 contract) and forwards to the daemon with
+; X-Forwarded-For; the verified pubkey is the session identity that AGENTBOX_PROFILE
+; and the per-project memory namespace derive from. Source is Builder C's proxy.mjs,
+; overlaid at /opt/agentbox/nip98-proxy in appRoot.
+[program:nip98-proxy]
+command=${pkgs.nodejs_22}/bin/node /opt/agentbox/nip98-proxy/proxy.mjs
+directory=/opt/agentbox/nip98-proxy
+user=devuser
+environment=HOME="/home/devuser",AOE_UPSTREAM="http://127.0.0.1:${toString interactionPlanePort}",NIP98_PROXY_PORT="${toString interactionPlaneProxyPort}",MANAGEMENT_API_URL="http://127.0.0.1:%(ENV_MANAGEMENT_API_PORT)s"
+autostart=true
+autorestart=true
+startsecs=3
+priority=46
+stdout_logfile=/var/log/nip98-proxy.log
+stderr_logfile=/var/log/nip98-proxy.error.log
 ''}
 
 [program:tmux-autostart]
@@ -2757,6 +2838,12 @@ ${ragflowNetworkDecl}
           "${toString (relayCfg.port or 7777)}/tcp" = {};
         };
 
+        # PRD-021 WS4: expose ONLY the NIP-98 proxy port — the aoe serve port stays
+        # loopback and unexposed (N-05, sole-ingress invariant). Gated on the plane.
+        interactionPlanePorts = lib.optionalAttrs interactionPlaneEnabled {
+          "${toString interactionPlaneProxyPort}/tcp" = {};
+        };
+
         mkImage = { tag, extraPackages ? [], maxLayers ? 100 }:
           n2c.buildImage {
             name = "agentbox";
@@ -2780,7 +2867,7 @@ ${ragflowNetworkDecl}
               Entrypoint = [ "${entrypoint}/bin/entrypoint" ];
               Env = imageEnv;
               WorkingDir = "/home/devuser/workspace";
-              ExposedPorts = commonPorts // sovereignPorts // desktopPorts // dataSciencePorts // relayPorts;
+              ExposedPorts = commonPorts // sovereignPorts // desktopPorts // dataSciencePorts // relayPorts // interactionPlanePorts;
               Labels = {
                 "org.opencontainers.image.title" = "Agentbox";
                 "org.opencontainers.image.description" = "Agentbox modular sovereign agent environment";

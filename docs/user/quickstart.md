@@ -518,11 +518,11 @@ Each one should expose:
 
 ## 9. Terminal Workflow
 
-The container runs a tmux session (`agentbox`) with 15 pre-configured windows:
+The container runs a tmux session (`agentbox`) with operator windows plus a single **Sessions** window for the interaction plane:
 
 | Window | Name | Purpose |
 |--------|------|---------|
-| 0 | Claude | Primary development shell |
+| 0 | Claude | Primary development shell — the interaction-plane coordinator (voice/nostr target) |
 | 1 | Agent | Agent execution workspace |
 | 2 | Services | `supervisorctl status` |
 | 3 | Build | Build/compile workspace |
@@ -530,15 +530,20 @@ The container runs a tmux session (`agentbox`) with 15 pre-configured windows:
 | 5 | System | SystemScape rotating telemetry history + `btm` process attribution companion |
 | 6 | VNC | VNC connection info |
 | 7 | Git | Project git status |
-| 8 | OpenRouter | Claude Code via free OpenRouter models |
-| 9 | ZAI | Claude Code via Z.AI GLM relay |
-| 10 | Antigravity | Google Gemini CLI |
-| 11 | DeepSeek | CodeWhale CLI |
-| 12 | Perplexity | Research shell |
-| 13 | Ollama | Local/LAN LLM harness |
-| 14 | Codex | OpenAI Codex CLI with host-shared credentials, native skills, and RuVector MCP |
+| 8 | Sessions | Agent of Empires — the interaction plane (`aoe` TUI) |
 
-Attach from inside the container:
+The per-provider harness tabs 8–14 (OpenRouter, ZAI, Antigravity, DeepSeek, Perplexity, Ollama, Codex) are **superseded by Agent of Empires** ([PRD-021](../reference/prd/PRD-021-interaction-surface-consolidation.md)/[ADR-042](../reference/adr/ADR-042-agent-of-empires-interaction-plane.md)). Instead of hand-driven tmux windows, interactive agent sessions are now created, monitored, attached, and reviewed through AoE, each with a real status FSM, its own git worktree, a live terminal and diff, and — supplied by agentbox at the session boundary — its own `did:nostr`, session URN, beads epic, and scoped memory namespace ([ADR-043](../reference/adr/ADR-043-session-identity-binding.md)).
+
+### The Sessions window (Agent of Empires)
+
+Enabled by `[interaction_plane].enabled = true` in `agentbox.toml`. The consoles are declared once as `[[interaction_plane.session_seeds]]` (see [Configuration › `[interaction_plane]`](configuration.md)) — codex, antigravity (gemini), openrouter, zai, deepseek, ollama — and reconciled into AoE sessions at boot by `scripts/aoe-seed-sessions.mjs`. Two of them, **openrouter** and **zai**, run the `claude` binary redirected via `ANTHROPIC_BASE_URL`; they launch through the `config/harness-wrappers/` command-override scripts, which pin profile isolation and hard-fail loudly if the redirect is missing — so a routed session can never silently mis-bill to the direct-Anthropic key. **Perplexity is retired** — research now rides `mcp__perplexity` and the `/perplexity-research` skill, not a harness tab.
+
+Two ways in:
+
+- **TUI** — the `aoe` ratatui client in the Sessions window (window 8), or run `aoe` in any shell. Sessions live under the `aoe_` tmux prefix on the shared default socket, so `tmux attach` still works across the estate.
+- **Web dashboard** — `aoe serve` runs on loopback `:9095` and is reached **only** through the NIP-98-verifying reverse proxy on `:9096` (the sole ingress; the daemon port is never exposed). The dashboard absorbs the never-deployed setup/ops dashboard and gives a browser session console with a pending-approvals panel for the authority gate.
+
+Attach the operator session from inside the container:
 
 ```bash
 tmux attach -t agentbox    # or use the alias: ta
