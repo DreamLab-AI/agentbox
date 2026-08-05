@@ -1,7 +1,7 @@
 #!/bin/sh
-# check-ports-loopback.sh — Invariant: every published port in docker-compose.yml
-# binds to 127.0.0.1: (loopback-only, SSH-tunnel model — R-003). Fails on any bare
-# host-all publish like "9090:9090" or "0.0.0.0:...".
+# check-ports-loopback.sh — Invariant: published ports in docker-compose.yml bind
+# to 127.0.0.1 (R-003), except the exact NIP-98 sovereign ingress mapping
+# 9096:9096 approved by ADR-045. Fails on every other host-all publish.
 set -eu
 
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)"
@@ -26,6 +26,7 @@ while IFS= read -r line; do
   [ -n "$val" ] || continue
   case "$val" in
     127.0.0.1:*) : ;;                # loopback — OK
+    9096:9096) : ;;                   # ADR-045 sovereign ingress — exact exception
     *) bad="$bad$val\n" ;;           # anything else (bare or 0.0.0.0) — violation
   esac
 done <<EOF
@@ -35,8 +36,8 @@ EOF
 if [ -n "$bad" ]; then
   echo "FAIL (check-ports-loopback): non-loopback port publish(es) found:" >&2
   printf '%b' "$bad" >&2
-  echo "  All published ports must bind to 127.0.0.1: (R-003 SSH-tunnel model)." >&2
+  echo "  Publishes must bind to 127.0.0.1:, except exact ADR-045 ingress 9096:9096." >&2
   exit 1
 fi
 
-echo "PASS (check-ports-loopback): all published ports bind to 127.0.0.1:"
+echo "PASS (check-ports-loopback): publishes are loopback-only except ADR-045 ingress 9096:9096"

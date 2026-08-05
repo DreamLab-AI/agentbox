@@ -41,7 +41,7 @@ jobs:
       - name: check-nnp (no-new-privileges; no SETUID/SETGID cap_add)
         run: sh scripts/ci/check-nnp.sh
 
-      - name: check-ports-loopback (all publishes bind 127.0.0.1)
+      - name: check-ports-loopback (loopback except ADR-045 NIP-98 ingress)
         run: sh scripts/ci/check-ports-loopback.sh
 
       - name: check-db-password (no :-ruvector default)
