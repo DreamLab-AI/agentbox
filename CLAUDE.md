@@ -37,7 +37,7 @@ The image bakes `/opt/agentbox/skills` (118 skills). Skills are the JIT context 
 - [`config/tmux-autostart.sh`](config/tmux-autostart.sh) / [`config/tmux.conf`](config/tmux.conf): tmux session layer
 - [`config/tab0-bridge/`](config/tab0-bridge/): voice/nostr meta-controller for tmux window 0 — canonical source; deploys to `~/workspace/tab0-bridge` (see its README)
 - [`voice/`](voice/): voice + AoE operator console (ADR-044) — Caddy origin (:8444), console site, `unmute-override.yml`; lifecycle `./agentbox.sh voice`, compose `docker-compose.voice.yml` (see [`voice/README.md`](voice/README.md))
-- [`config/nip98-proxy/`](config/nip98-proxy/): sole NIP-98-verifying ingress to the AoE serve loopback port (PRD-021 WS4/ADR-043 D4.6); overlaid to `/opt/agentbox/nip98-proxy`, supervised as `[program:nip98-proxy]`
+- [`config/nip98-proxy/`](config/nip98-proxy/): sole NIP-98-verifying ingress to the AoE serve loopback port, and the multi-upstream sovereign ingress — LAN-published `:9096`, `/mgmt/` → management-api (PRD-021 WS4/ADR-043 D4.6/ADR-045); overlaid to `/opt/agentbox/nip98-proxy`, supervised as `[program:nip98-proxy]`
 - [`config/harness-wrappers/`](config/harness-wrappers/): `agent_command_override` wrappers (openrouter/zai) that pin profile isolation + assert the `ANTHROPIC_BASE_URL` redirect and hard-fail loudly on mis-billing (PRD-021 F2-4/N-01)
 - [`scripts/aoe-seed-sessions.mjs`](scripts/aoe-seed-sessions.mjs): reconciler that provisions `[[interaction_plane.session_seeds]]` as AoE sessions and binds each session boundary's identity (PRD-021 WS2/WS3)
 

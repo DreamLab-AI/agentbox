@@ -1186,8 +1186,17 @@ fi
 #    (DreamLab-AI/email-mcp-gateway) — that searches the owner's personal mail
 #    locally and returns only privacy-sanitised results.
 #    The bearer token is read from the env inside python3 (never interpolated onto
-#    the command line). GET /health is auth-exempt; we gate registration on it. ──
-_EMAIL_GW_URL="${AGENTBOX_EMAIL_GATEWAY_URL:-}"
+#    the command line). GET /health is auth-exempt; we gate registration on it.
+#    Sanitised because compose env_file overrides the flake-baked value verbatim —
+#    Docker's env-file parser keeps inline `# comments` as part of the value, so a
+#    placeholder line in .env arrives here as garbage and must not win over the
+#    agentbox.toml gateway_url default. ──
+_EMAIL_GW_URL="${AGENTBOX_EMAIL_GATEWAY_URL%%#*}"
+_EMAIL_GW_URL="$(printf '%s' "$_EMAIL_GW_URL" | tr -d '[:space:]')"
+case "$_EMAIL_GW_URL" in
+  http://*|https://*) : ;;
+  *) _EMAIL_GW_URL="http://email-mcp-gateway:8765" ;;
+esac
 if [ "${ENABLE_EMAIL_SEARCH:-false}" = "true" ] \
    && [ -n "$_EMAIL_GW_URL" ] \
    && [ -n "${AGENTBOX_EMAIL_GATEWAY_TOKEN:-}" ] \
@@ -1214,7 +1223,7 @@ with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
     # the session-start timeout (see MCP_TIMEOUT in flake.nix). Token is read from
     # env inside python3 — never placed on the command line / process list. Never
     # blocks boot: fully backgrounded, all errors swallowed.
-    ( python3 - <<'WARMPY'
+    ( AGENTBOX_EMAIL_GATEWAY_URL="$_EMAIL_GW_URL" python3 - <<'WARMPY'
 import os, json, urllib.request
 base = os.environ.get('AGENTBOX_EMAIL_GATEWAY_URL', '').rstrip('/')
 tok = os.environ.get('AGENTBOX_EMAIL_GATEWAY_TOKEN', '')

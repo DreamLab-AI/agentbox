@@ -325,10 +325,10 @@
           name        = "management-api";
           src         = ./management-api;
           entry       = "server.js";
-          # Prefetched 2026-04-24 against management-api/package-lock.json.
+          # Prefetched 2026-08-04 (added better-sqlite3@13.0.2 for the beads
+          # local-sqlite adapter; ships linux-x64 prebuilds, no compile step).
           # Refresh via: nix run nixpkgs#prefetch-npm-deps -- management-api/package-lock.json
-          # Prefetched 2026-06-02. Refresh: nix run nixpkgs#prefetch-npm-deps -- management-api/package-lock.json
-          npmDepsHash = "sha256-ABa09UHD4MjGFA/jFN05MAmCza1KrEXdOwH7BrBdKos=";
+          npmDepsHash = "sha256-XenClzHaTKUA0bZIzSB0X4bA9uv5YiPIoEBCVl75Q/E=";
           # Vendor the canonical NostrBridge into lib/ so the in-process
           # JunkieJarvis agent (server.js) can require('./lib/nostr-bridge') and
           # resolve nostr-tools + ws from THIS package's node_modules. A bare
@@ -1759,11 +1759,14 @@ ${lib.optionalString interactionPlaneEnabled ''
 ; monitors, attaches, and reviews interactive agent sessions, superseding the MAD
 ; tmux harness. Binds loopback with --auth none --behind-proxy: the ONLY ingress is
 ; the [program:nip98-proxy] below (N-05, hard invariant — any process reaching this
-; port directly bypasses identity). Port 9095 is mandatory (8080 = code-server,
+; port directly bypasses identity). --allowed-host must match the Host header the
+; nip98-proxy forwards: proxy.mjs rewrites it to the upstream (127.0.0.1:<port>)
+; before dispatch, so loopback is the correct value here, not the public hostname.
+; Port 9095 is mandatory (8080 = code-server,
 ; 7777 = nostr relay). Runs on the shared default tmux socket; the aoe_ session
 ; prefix is the collision guard against the agentbox tmux session (F2-1/F2-9).
 [program:aoe-serve]
-command=${aoePkg}/bin/aoe serve --auth none --behind-proxy --host 127.0.0.1 --port ${toString interactionPlanePort}
+command=${aoePkg}/bin/aoe serve --auth none --behind-proxy --allowed-host 127.0.0.1 --host 127.0.0.1 --port ${toString interactionPlanePort}
 directory=/home/devuser/workspace
 user=devuser
 environment=HOME="/home/devuser"
@@ -1780,11 +1783,15 @@ stderr_logfile=/var/log/aoe-serve.error.log
 ; X-Forwarded-For; the verified pubkey is the session identity that AGENTBOX_PROFILE
 ; and the per-project memory namespace derive from. Source is Builder C's proxy.mjs,
 ; overlaid at /opt/agentbox/nip98-proxy in appRoot.
+; ADR-045: the proxy is additionally the multi-upstream sovereign ingress —
+; NIP98_PROXY_MGMT_UPSTREAM routes /mgmt/* to the management-api with the same
+; verified-identity headers (the surface keeps its own auth; defence in depth).
+; Published to the LAN as 9096:9096 in docker-compose.yml (D2 exposure policy).
 [program:nip98-proxy]
 command=${pkgs.nodejs_22}/bin/node /opt/agentbox/nip98-proxy/proxy.mjs
 directory=/opt/agentbox/nip98-proxy
 user=devuser
-environment=HOME="/home/devuser",AOE_UPSTREAM="http://127.0.0.1:${toString interactionPlanePort}",NIP98_PROXY_PORT="${toString interactionPlaneProxyPort}",MANAGEMENT_API_URL="http://127.0.0.1:%(ENV_MANAGEMENT_API_PORT)s"
+environment=HOME="/home/devuser",AOE_UPSTREAM="http://127.0.0.1:${toString interactionPlanePort}",NIP98_PROXY_PORT="${toString interactionPlaneProxyPort}",NIP98_PROXY_MGMT_UPSTREAM="http://127.0.0.1:%(ENV_MANAGEMENT_API_PORT)s",MANAGEMENT_API_URL="http://127.0.0.1:%(ENV_MANAGEMENT_API_PORT)s"
 autostart=true
 autorestart=true
 startsecs=3
@@ -1988,20 +1995,30 @@ stderr_logfile=/var/log/tmux-autostart.error.log
 
         # All ports use plain "      - " prefix; the prior single-line heredoc
         # for the first port was getting indent-stripped by Nix.
+        # R-003 (ADR-027): host publish is loopback-only — the SSH tunnel is the
+        # auth layer. The generator previously emitted bare "port:port" (all
+        # interfaces) while the committed compose was hand-hardened to
+        # 127.0.0.1; the loopback prefix now lives here so regeneration cannot
+        # silently un-harden the artefact.
+        # Exception (ADR-045 D2): the NIP-98 sovereign ingress is the ONE
+        # identity-gated LAN door and publishes on all interfaces. :9095
+        # (aoe serve, --auth none) is NEVER published.
         agentboxPorts =
-          "      - \"9090:9090\"\n"
-          + "      - \"9700:9700\"\n"
-          + "      - \"${metricsPort}:${metricsPort}\"\n"
+          lib.optionalString interactionPlaneEnabled
+              "      - \"${toString interactionPlaneProxyPort}:${toString interactionPlaneProxyPort}\"\n"
+          + "      - \"127.0.0.1:9090:9090\"\n"
+          + "      - \"127.0.0.1:9700:9700\"\n"
+          + "      - \"127.0.0.1:${metricsPort}:${metricsPort}\"\n"
           + lib.optionalString (sovereignCfg.enabled or false)
-              "      - \"8484:8484\"\n"
+              "      - \"127.0.0.1:8484:8484\"\n"
           + lib.optionalString (relayEnabled && (relayCfg.expose or false))
-              ("      - \"" + toString (relayCfg.port or 7777) + ":" + toString (relayCfg.port or 7777) + "\"\n")
+              ("      - \"127.0.0.1:" + toString (relayCfg.port or 7777) + ":" + toString (relayCfg.port or 7777) + "\"\n")
           + lib.optionalString (dataScienceCfg.jupyter or false)
-              "      - \"8888:8888\"\n"
+              "      - \"127.0.0.1:8888:8888\"\n"
           + lib.optionalString (desktopCfg.enabled or false)
-              "      - \"5901:5901\"\n"
+              "      - \"127.0.0.1:5901:5901\"\n"
           + lib.optionalString ((toolchainCfg.code_server or false))
-              "      - \"8080:8080\"\n";
+              "      - \"127.0.0.1:8080:8080\"\n";
 
         # agentbox depends_on block — explicit-newline string (heredoc would
         # strip the 4-space common indent and produce flush-left output).

@@ -56,7 +56,7 @@ Local lifecycle commands:
   ${GREEN}voice${NC}            Manage voice + AoE operator console (Caddy :8444) + Unmute stack [up|down|logs|health|status|certs|rebuild|shell]
   ${GREEN}xr-runtime${NC}       Manage Monado OpenXR + Godot XR test runtime [up|down|logs|health|status|rebuild|shell|gpu|vnc]
   ${GREEN}android${NC}          [EXPERIMENTAL, gated] redroid Android/Play sidecar [up|down|logs|status|screencap|shell|id] — needs AGENTBOX_ENABLE_ANDROID=1
-  ${GREEN}preflight${NC}        Validate the local environment + manifest before `up` (W021 audit, missing host paths, override drift)
+  ${GREEN}preflight${NC}        Validate the local environment + manifest before up (W021 audit, missing host paths, override drift)
 
 Options:
   -i, --ip IP      Override instance IP

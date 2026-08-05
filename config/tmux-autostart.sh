@@ -211,9 +211,15 @@ tmux set-environment -t "${SESSION}" HARNESS_MERGE_FN "${_HARNESS_MERGE_SH}"
 tmux send-keys -t "${SESSION}:0" "eval \"\$HARNESS_MERGE_FN\" 2>/dev/null || true" C-m
 
 # ============================================================================
-# Select window 0 (Claude)
+# Landing window: the AoE session plane is THE interaction surface (PRD-021);
+# attach lands on Sessions when the plane is baked in. Window 0 stays the
+# tab0-bridge injection target either way — landing is a view choice only.
 # ============================================================================
-tmux select-window -t "${SESSION}:0"
+if command -v aoe >/dev/null 2>&1; then
+  tmux select-window -t "${SESSION}:8"
+else
+  tmux select-window -t "${SESSION}:0"
+fi
 
 echo "[tmux-autostart] Session '$SESSION' created with 9 windows"
 echo "  0:Claude  1:Agent  2:Services  3:Build  4:Logs  5:System  6:VNC  7:Git  8:Sessions(AoE)"

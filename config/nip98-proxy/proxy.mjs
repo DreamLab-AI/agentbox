@@ -32,7 +32,20 @@
  * Env (Builder A supplies these in the supervisor block):
  *   NIP98_PROXY_PORT           listen port (default 9096; PRD-021 Appendix B sibling proxy)
  *   NIP98_PROXY_HOST           listen bind address (default 0.0.0.0)
- *   AOE_UPSTREAM               upstream base URL (default http://127.0.0.1:9095)
+ *   AOE_UPSTREAM               default upstream base URL (default http://127.0.0.1:9095)
+ *   NIP98_PROXY_ROUTES         ADR-045 multi-upstream routing table: JSON array of
+ *                              {prefix, target, strip?} consulted in order before the
+ *                              default upstream, e.g.
+ *                              [{"prefix":"/mgmt/","target":"http://127.0.0.1:9090"}]
+ *                              strip defaults true (prefix removed before forwarding).
+ *                              Identity verification is identical on every route; the
+ *                              verified pubkey headers are injected regardless of
+ *                              upstream. Malformed JSON is fatal at boot (fail closed).
+ *   NIP98_PROXY_MGMT_UPSTREAM  convenience form of the same: base URL that becomes the
+ *                              {"prefix":"/mgmt/",...} route. Exists because the
+ *                              supervisord environment= syntax cannot safely quote
+ *                              JSON; ignored when NIP98_PROXY_ROUTES already carries
+ *                              a /mgmt/ rule.
  *   NOSTR_BRIDGE_PATH          explicit path to nostr-bridge.js (else candidates tried)
  *   NIP98_PROXY_ALLOW_BEARER   break-glass shared bearer token (unset = disabled)
  *   NIP98_PROXY_BEARER_PUBKEY  pubkey stamped for break-glass requests (default "break-glass")
@@ -72,6 +85,81 @@ try {
 } catch (err) {
   console.error(`[nip98-proxy] invalid AOE_UPSTREAM "${UPSTREAM_URL}": ${err.message}`);
   process.exit(1);
+}
+
+// ─── Multi-upstream routing table (ADR-045 D1) ────────────────────────────────
+// Ordered prefix rules ahead of the default AoE upstream. Auth is route-
+// independent — every request is NIP-98-verified before any route is consulted,
+// and the same identity headers are injected whichever upstream wins. The
+// sole-ingress invariant for :9095 is unchanged; extra routes only ADD
+// identity-gated paths to surfaces that keep their own auth (defence in depth).
+
+function parseUpstreamTarget(raw, label) {
+  const u = new URL(raw);
+  if (u.protocol !== 'http:') throw new Error(`${label}: only http targets are supported (got ${u.protocol})`);
+  return { hostname: u.hostname, port: Number.parseInt(u.port || '80', 10), protocol: u.protocol };
+}
+
+const ROUTES = (() => {
+  const raw = process.env.NIP98_PROXY_ROUTES;
+  if (!raw) return [];
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) throw new Error('expected a JSON array');
+    return parsed.map((r, i) => {
+      if (!r || typeof r.prefix !== 'string' || !r.prefix.startsWith('/') || r.prefix === '/') {
+        throw new Error(`route[${i}]: prefix must be a path starting with "/" (not "/" itself)`);
+      }
+      if (typeof r.target !== 'string') throw new Error(`route[${i}]: target required`);
+      return {
+        prefix: r.prefix.endsWith('/') ? r.prefix : `${r.prefix}/`,
+        strip: r.strip !== false,
+        upstream: parseUpstreamTarget(r.target, `route[${i}].target`),
+      };
+    });
+  } catch (err) {
+    // Fatal, matching invalid AOE_UPSTREAM: a silently dropped route would
+    // surface as confusing 404s from the wrong upstream at the trust boundary.
+    console.error(`[nip98-proxy] invalid NIP98_PROXY_ROUTES: ${err.message}`);
+    process.exit(1);
+  }
+})();
+
+// Supervisord-friendly convenience route (see env docs above).
+if (process.env.NIP98_PROXY_MGMT_UPSTREAM && !ROUTES.some((r) => r.prefix === '/mgmt/')) {
+  try {
+    ROUTES.push({
+      prefix: '/mgmt/',
+      strip: true,
+      upstream: parseUpstreamTarget(process.env.NIP98_PROXY_MGMT_UPSTREAM, 'NIP98_PROXY_MGMT_UPSTREAM'),
+    });
+  } catch (err) {
+    console.error(`[nip98-proxy] invalid NIP98_PROXY_MGMT_UPSTREAM: ${err.message}`);
+    process.exit(1);
+  }
+}
+
+/**
+ * Resolve the upstream + forwarded path for a request URL. First matching
+ * prefix rule wins ("/mgmt" matches its own bare form and "/mgmt/..."); no
+ * match falls through to the default AoE upstream with the path untouched.
+ * The query string always survives stripping (it sits after the path slice).
+ */
+function routeFor(rawUrl) {
+  const url = String(rawUrl || '/');
+  for (const r of ROUTES) {
+    const bare = r.prefix.slice(0, -1);
+    const isBare = url === bare || url.startsWith(`${bare}?`);
+    if (!isBare && !url.startsWith(r.prefix)) continue;
+    let path = url;
+    if (r.strip) {
+      if (isBare) path = url === bare ? '/' : `/${url.slice(bare.length)}`;
+      else path = `/${url.slice(r.prefix.length)}`;
+    }
+    return { upstream: r.upstream, path };
+  }
+  return { upstream, path: url };
 }
 
 function log(level, msg, extra) {
@@ -224,6 +312,9 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    // Resolve the upstream AFTER auth (ADR-045): identity is route-independent.
+    const route = routeFor(req.url);
+
     // Build upstream headers: drop hop-by-hop + Authorization, inject identity.
     const headers = {};
     for (const [key, value] of Object.entries(req.headers)) {
@@ -232,7 +323,7 @@ const server = http.createServer((req, res) => {
       if (key.toLowerCase() === 'x-agentbox-pubkey') continue; // never trust an inbound claim
       headers[key] = value;
     }
-    headers.host = `${upstream.hostname}:${upstream.port}`;
+    headers.host = `${route.upstream.hostname}:${route.upstream.port}`;
     headers['x-forwarded-for'] = appendXff(req.headers['x-forwarded-for'], clientIp(req));
     headers['x-forwarded-proto'] = (req.headers['x-forwarded-proto'] || 'http').split(',')[0].trim();
     headers['x-agentbox-pubkey'] = auth.pubkey;
@@ -242,10 +333,10 @@ const server = http.createServer((req, res) => {
     if (rawBody.length > 0) headers['content-length'] = String(rawBody.length);
 
     const proxyReq = http.request({
-      hostname: upstream.hostname,
-      port: upstream.port,
+      hostname: route.upstream.hostname,
+      port: route.upstream.port,
       method: req.method,
-      path: req.url,
+      path: route.path,
       headers,
     }, (proxyRes) => {
       res.writeHead(proxyRes.statusCode || 502, proxyRes.headers);
@@ -309,10 +400,11 @@ server.on('upgrade', (req, socket, head) => {
     return;
   }
 
-  const upstreamSocket = net.connect(upstream.port, upstream.hostname, () => {
+  const route = routeFor(req.url);
+  const upstreamSocket = net.connect(route.upstream.port, route.upstream.hostname, () => {
     // Rebuild the request line + headers, dropping Authorization and injecting
     // identity, then replay any bytes already read as part of the upgrade.
-    const lines = [`${req.method} ${req.url} HTTP/1.1`];
+    const lines = [`${req.method} ${route.path} HTTP/1.1`];
     const raw = req.rawHeaders;
     for (let i = 0; i < raw.length; i += 2) {
       const name = raw[i];
@@ -320,7 +412,7 @@ server.on('upgrade', (req, socket, head) => {
       const lname = name.toLowerCase();
       if (lname === 'authorization') continue;
       if (lname === 'x-agentbox-pubkey' || lname === 'x-agentbox-auth-mode') continue;
-      if (lname === 'host') { lines.push(`Host: ${upstream.hostname}:${upstream.port}`); continue; }
+      if (lname === 'host') { lines.push(`Host: ${route.upstream.hostname}:${route.upstream.port}`); continue; }
       if (lname === 'x-forwarded-for') continue; // re-emitted below, canonicalised
       lines.push(`${name}: ${value}`);
     }
@@ -353,6 +445,7 @@ server.listen(PORT, BIND, () => {
   log('info', 'nip98-proxy listening', {
     bind: `${BIND}:${PORT}`,
     upstream: `${upstream.hostname}:${upstream.port}`,
+    routes: ROUTES.map((r) => `${r.prefix} -> ${r.upstream.hostname}:${r.upstream.port}${r.strip ? ' (strip)' : ''}`),
     nip98: NostrBridge ? 'enabled' : 'DISABLED (fail-closed)',
     breakGlass: BREAK_GLASS ? 'ENABLED' : 'disabled',
   });
@@ -366,4 +459,4 @@ function shutdown(signal) {
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
 
-export { verifyIdentity, signedUrlFor, constantTimeEqual };
+export { verifyIdentity, signedUrlFor, constantTimeEqual, routeFor };

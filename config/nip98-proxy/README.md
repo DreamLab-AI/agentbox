@@ -1,7 +1,11 @@
 # NIP-98 ingress proxy (`config/nip98-proxy`)
 
-The **sole ingress** to the Agent of Empires (AoE) interaction-plane daemon.
-Implements PRD-021 WS4 and ADR-043 D4.6.
+The **sole ingress** to the Agent of Empires (AoE) interaction-plane daemon —
+and, since [ADR-045](../../docs/reference/adr/ADR-045-sovereign-ingress-npub-front-door.md),
+the **multi-upstream sovereign ingress**: the one identity-gated LAN door
+(published `9096:9096` in `docker-compose.yml`) that can also route
+prefix-matched paths to additional loopback surfaces (`/mgmt/` →
+management-api). Implements PRD-021 WS4 and ADR-043 D4.6.
 
 ## What it does
 
@@ -40,6 +44,25 @@ The proxy binds a reachable interface (`0.0.0.0` by default); the upstream binds
 loopback. Do not expose `:9095` on any routable interface, and do not add a
 second forwarder to it.
 
+## Multi-upstream routing (ADR-045 D1)
+
+An ordered prefix table is consulted **after** identity verification and before
+forwarding; no match falls through to `AOE_UPSTREAM` unchanged. Two equivalent
+configuration forms:
+
+- `NIP98_PROXY_ROUTES` — JSON, e.g.
+  `[{"prefix":"/mgmt/","target":"http://127.0.0.1:9090"}]` (`strip` defaults
+  `true`: the prefix is removed before the upstream hop, query preserved).
+- `NIP98_PROXY_MGMT_UPSTREAM` — base URL that becomes exactly that `/mgmt/`
+  rule. Exists because supervisord's `environment=` syntax cannot safely quote
+  JSON; ignored when `NIP98_PROXY_ROUTES` already carries a `/mgmt/` rule.
+
+Every route gets the same treatment: verified pubkey headers injected,
+`Authorization` dropped, inbound identity claims stripped. Routed surfaces keep
+their own auth — the ingress **adds** identity, it does not replace surface
+checks (defence in depth). Malformed route config is fatal at boot (fail
+closed). Route additions are ADR-worthy events (ADR-045 review trigger).
+
 ## Break-glass bearer (opt-in only)
 
 Before NIP-07 browser signing exists, the operator's browser cannot mint a
@@ -69,7 +92,9 @@ the upstream. A loud `warn` is logged at startup.
 |---|---|---|
 | `NIP98_PROXY_PORT` | `9096` | listen port (PRD-021 Appendix B sibling proxy) |
 | `NIP98_PROXY_HOST` | `0.0.0.0` | listen bind address |
-| `AOE_UPSTREAM` | `http://127.0.0.1:9095` | AoE daemon base URL (loopback) |
+| `AOE_UPSTREAM` | `http://127.0.0.1:9095` | default upstream: AoE daemon base URL (loopback) |
+| `NIP98_PROXY_ROUTES` | *(unset)* | ADR-045 routing table, JSON `[{prefix, target, strip?}]` |
+| `NIP98_PROXY_MGMT_UPSTREAM` | *(unset)* | supervisord-friendly `/mgmt/` route target |
 | `NOSTR_BRIDGE_PATH` | *(candidates)* | explicit path to `nostr-bridge.js` |
 | `NIP98_PROXY_ALLOW_BEARER` | *(unset)* | break-glass shared bearer token |
 | `NIP98_PROXY_BEARER_PUBKEY` | `break-glass` | pubkey stamped for break-glass requests |

@@ -9,6 +9,9 @@
  *   C. valid NIP-98 (kind-27235) → 200, upstream sees the signer's pubkey
  *                                  (skipped gracefully if nostr-tools is unresolvable)
  *   D. WebSocket upgrade         → proxy forwards the upgrade with injected identity
+ *   E. routed prefix (ADR-045)   → /mgmt/* lands on the second upstream with the
+ *                                  prefix stripped, identity injected, auth stripped;
+ *                                  unrouted paths still land on the default upstream
  *
  * Run: node config/nip98-proxy/selftest.mjs
  * Exit code 0 = all assertions passed (skips do not fail the run).
@@ -53,6 +56,16 @@ upstream.on('upgrade', (req, socket) => {
 function once(server, port) {
   return new Promise((res) => server.listen(port, '127.0.0.1', () => res(server.address().port)));
 }
+
+// ─── Fake management-api upstream (ADR-045 routed target) ──────────────────────
+
+let lastMgmtReq = null;
+
+const mgmtUpstream = http.createServer((req, res) => {
+  lastMgmtReq = { method: req.method, url: req.url, headers: { ...req.headers } };
+  res.writeHead(200, { 'content-type': 'application/json' });
+  res.end(JSON.stringify({ ok: true, surface: 'mgmt' }));
+});
 
 // ─── HTTP helper ───────────────────────────────────────────────────────────────
 
@@ -119,10 +132,14 @@ function wsUpgrade(path) {
 
 async function main() {
   const upstreamPort = await once(upstream, 0);
+  const mgmtPort = await once(mgmtUpstream, 0);
 
   process.env.NIP98_PROXY_PORT = String(PROXY_PORT);
   process.env.NIP98_PROXY_HOST = '127.0.0.1';
   process.env.AOE_UPSTREAM = `http://127.0.0.1:${upstreamPort}`;
+  process.env.NIP98_PROXY_ROUTES = JSON.stringify([
+    { prefix: '/mgmt/', target: `http://127.0.0.1:${mgmtPort}` },
+  ]);
   process.env.NIP98_PROXY_ALLOW_BEARER = BREAK_GLASS;
   process.env.NIP98_PROXY_BEARER_PUBKEY = 'operator-break-glass';
 
@@ -199,8 +216,43 @@ async function main() {
     assert(/401/.test(resp), 'D2: unauthenticated WS upgrade rejected 401', JSON.stringify(resp.slice(0, 40)));
   }
 
+  // E. routed prefix → mgmt upstream, prefix stripped, identity injected
+  {
+    lastMgmtReq = null;
+    lastReq = null;
+    const r = await request(`/mgmt/v1/system?probe=1`, { authorization: `Bearer ${BREAK_GLASS}` });
+    assert(r.status === 200 && r.body.includes('"surface":"mgmt"'),
+      'E: /mgmt/* routed to management upstream', `status ${r.status} body ${r.body.slice(0, 60)}`);
+    assert(lastMgmtReq && lastMgmtReq.url === '/v1/system?probe=1',
+      'E: prefix stripped, query preserved', JSON.stringify(lastMgmtReq && lastMgmtReq.url));
+    assert(lastMgmtReq && lastMgmtReq.headers['x-agentbox-pubkey'] === 'operator-break-glass',
+      'E: routed upstream received X-Agentbox-Pubkey');
+    assert(lastMgmtReq && lastMgmtReq.headers.authorization === undefined,
+      'E: Authorization stripped on routed upstream');
+    assert(lastReq === null, 'E: default upstream NOT hit for routed path');
+  }
+
+  // E2. unrouted path still falls through to the default (AoE) upstream
+  {
+    lastMgmtReq = null;
+    lastReq = null;
+    const r = await request('/api/sessions', { authorization: `Bearer ${BREAK_GLASS}` });
+    assert(r.status === 200 && lastReq && lastReq.url === '/api/sessions',
+      'E2: unrouted path reaches default upstream unchanged', JSON.stringify(lastReq && lastReq.url));
+    assert(lastMgmtReq === null, 'E2: routed upstream NOT hit for default path');
+  }
+
+  // E3. unauthenticated routed request → 401 (auth precedes routing)
+  {
+    lastMgmtReq = null;
+    const r = await request('/mgmt/v1/system', {});
+    assert(r.status === 401, 'E3: unauthenticated routed request rejected 401', `got ${r.status}`);
+    assert(lastMgmtReq === null, 'E3: routed upstream never contacted without identity');
+  }
+
   console.log(`\n${failures === 0 ? 'OK' : 'FAILED'} — ${failures} failure(s), ${skips} skip(s)`);
   upstream.close();
+  mgmtUpstream.close();
   process.exit(failures === 0 ? 0 : 1);
 }
 

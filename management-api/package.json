@@ -55,6 +55,7 @@
     "@opentelemetry/auto-instrumentations-node": "0.50.0",
     "@opentelemetry/exporter-trace-otlp-http": "0.50.0",
     "@opentelemetry/sdk-node": "0.50.0",
+    "better-sqlite3": "13.0.2",
     "fastify": "^4.26.0",
     "jsonld": "^8.3.2",
     "nostr-tools": "^2.23.3",

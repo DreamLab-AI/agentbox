@@ -328,11 +328,37 @@ Perplexity has **no seed** — it is retired to MCP (F2-6). The consultant tier 
 
 ---
 
+## Appendix C — Post-sprint amendment: sovereign ingress and LAN exposure (2026-08-05, ADR-045)
+
+The external-surface audit after the sprint found `:9096` unreachable from the
+operator's LAN — the sole-ingress proxy existed but no compose file published
+it, leaving the cockpit (`:8444`) the only LAN door. [ADR-045](../adr/ADR-045-sovereign-ingress-npub-front-door.md)
+amends the posture:
+
+- `docker-compose.yml` publishes **`9096:9096`** (LAN); `:9095` stays sealed.
+- The nip98-proxy becomes a **multi-upstream sovereign ingress**
+  (`NIP98_PROXY_ROUTES`): `/mgmt/` → management-api `:9090` (identity header
+  added, surface auth retained), default → `aoe serve` unchanged.
+- All other web surfaces keep the loopback + SSH-tunnel posture; VNC surfaces
+  are classed agent-facing, not operator control.
+- The DreamLab forum federates at the **identity and async seams only**
+  (shared npub gate, kind-30840 digests); live control stays on same-origin
+  HTTP/WS — nostr transport is rejected for live surfaces.
+
+Two seed-reconciler defects found in the same audit are fixed in
+`scripts/aoe-seed-sessions.mjs`: worktree seeds now skip the daemon-side
+`git submodule update` (which cloned ~900 MB from GitHub inside the create
+request and blew every timeout) in favour of a post-create local
+`--reference --dissociate` init, and the antigravity seed targets AoE's native
+`antigravity` agent (`@google/gemini-cli` is sunset; the Nix package ships
+`agy` — binary-name parity to be verified at the next image rebuild).
+
 ### Cross-references
 
 - [ADR-042 — Agent of Empires interaction plane](../adr/ADR-042-agent-of-empires-interaction-plane.md) — adoption + overlay-only (D1–D3, D6, D7); supersedes ADR-025
 - [ADR-043 — Session identity binding](../adr/ADR-043-session-identity-binding.md) — D4 in full
 - [ADR-044 — Voice-plane AoE repoint](../adr/ADR-044-voice-plane-aoe-repoint.md) — D5
+- [ADR-045 — Sovereign ingress](../adr/ADR-045-sovereign-ingress-npub-front-door.md) — post-sprint amendment (Appendix C)
 - [DDD-019 — Interaction-plane domain](../ddd/DDD-019-interaction-plane-domain.md) — bounded context, aggregates, invariants
 - [PRD-013 — Multi-harness tmux architecture](PRD-013-multi-harness-tmux-architecture.md) — **superseded in part** (the tmux harness layout)
 - [ADR-025 — Multi-harness tmux architecture](../adr/ADR-025-multi-harness-tmux-architecture.md) — **superseded**

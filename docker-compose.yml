@@ -46,7 +46,12 @@ services:
     # R-003: host exposure is loopback-only (SSH-tunnel model) — reached via
     # tunnel; sibling-container access on the docker network is gated by
     # per-service auth, not by host port binding.
+    # Exception (ADR-045 D2): 9096 is the NIP-98 sovereign ingress — the ONE
+    # identity-gated LAN door to the interaction plane (and, via its routing
+    # table, /mgmt/ → management-api). 9095 (aoe serve) is NEVER published:
+    # it binds container-loopback with --auth none behind this proxy (N-05).
     ports:
+      - "9096:9096"
       - "127.0.0.1:9090:9090"
       - "127.0.0.1:9700:9700"
       - "127.0.0.1:9091:9091"

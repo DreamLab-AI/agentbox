@@ -24,6 +24,7 @@
 
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -75,7 +76,10 @@ const PORT = Number(ip.port) || 9095;
 // Appendix-A default set so the reconciler is complete before that table lands.
 const DEFAULT_SEEDS = [
   { slug: 'codex', tool: 'codex', worktree: true },
-  { slug: 'antigravity', tool: 'gemini', worktree: true },
+  // Native AoE `antigravity` agent (16-agent catalogue). @google/gemini-cli is
+  // sunset (2026-06-18); the flake bakes nixpkgs `antigravity` (binary `agy`) —
+  // verify AoE's expected binary name at the next image rebuild (ADR-045 note).
+  { slug: 'antigravity', tool: 'antigravity', worktree: true },
   { slug: 'openrouter', tool: 'claude', worktree: false, env_allowlist: ['ANTHROPIC_BASE_URL', 'ANTHROPIC_AUTH_TOKEN'] },
   { slug: 'zai', tool: 'claude', worktree: false, env_allowlist: ['ANTHROPIC_BASE_URL', 'ANTHROPIC_AUTH_TOKEN'] },
   { slug: 'deepseek', tool: 'custom:codewhale', worktree: true, detect_as: 'codex' },
@@ -192,7 +196,7 @@ function buildCoverage() {
       sessionTools[slug] = name;
       continue;
     }
-    if (tool === 'codex' || tool === 'gemini') {
+    if (tool === 'codex' || tool === 'gemini' || tool === 'antigravity') {
       // Native ACP agent, one session each → a per-agent override that binds
       // AGENTBOX_PROFILE is collision-free.
       overrides[tool] = `env AGENTBOX_PROFILE=${slug} ${tool}`;
@@ -271,6 +275,16 @@ function materialiseConfig(coverage) {
   cfg.sandbox = cfg.sandbox && typeof cfg.sandbox === 'object' ? cfg.sandbox : {};
   cfg.sandbox.enabled_by_default = false;
 
+  // Daemon-side submodule init OFF (2026-08-05): the first init clones the
+  // ~900MB agentbox submodule from GitHub INSIDE the create request (~26min
+  // observed), blowing every client timeout and leaving stray worktrees. The
+  // reconciler instead runs a local --reference --dissociate init right after
+  // each worktree-session create (initWorktreeSubmodules) — same content, no
+  // network. TUI-created worktree sessions inherit this and need a manual
+  // `git submodule update --init` if they want submodule content.
+  cfg.worktree = cfg.worktree && typeof cfg.worktree === 'object' ? cfg.worktree : {};
+  cfg.worktree.init_submodules = false;
+
   fs.mkdirSync(path.dirname(cfgPath), { recursive: true });
   const header =
     '# Managed in part by agentbox scripts/aoe-seed-sessions.mjs (PRD-021 WS2).\n' +
@@ -326,12 +340,77 @@ async function createSession(title, tool, worktree) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
-  }, 15000);
+    // Worktree seeds run `git submodule update --init --recursive` after the
+    // checkout; the first init clones the agentbox submodule, which can take
+    // minutes — 15s aborted mid-create and left stray worktrees/branches.
+  }, 180000);
   if (!r.ok) {
     const text = await r.text().catch(() => '');
     throw new Error(`POST /api/sessions (${title}) → ${r.status} ${text}`.trim());
   }
   return r.json().catch(() => ({}));
+}
+
+/**
+ * Local, network-free submodule init for a freshly created worktree session
+ * (pairs with worktree.init_submodules=false in materialiseConfig). Each
+ * declared submodule is initialised with --reference into the superproject's
+ * module store when one exists (--dissociate copies objects, so the worktree
+ * owns its store and survives a main-repo gc). Fail-open: a missing worktree
+ * or a git error is a warn, never a boot failure.
+ */
+function initWorktreeSubmodules(worktreePath, title) {
+  try {
+    if (!worktreePath || !fs.existsSync(path.join(worktreePath, '.gitmodules'))) return;
+    const listing = execFileSync(
+      'git',
+      ['config', '-f', path.join(worktreePath, '.gitmodules'), '--get-regexp', String.raw`^submodule\..*\.path$`],
+      { encoding: 'utf8' },
+    );
+    for (const line of listing.split('\n')) {
+      const m = line.match(/^submodule\.(.+)\.path (.+)$/);
+      if (!m) continue;
+      const [, name, subPath] = m;
+      const ref = path.join(PROJECT, '.git', 'modules', name);
+      const args = ['-C', worktreePath, 'submodule', 'update', '--init'];
+      if (fs.existsSync(ref)) args.push('--reference', ref, '--dissociate');
+      args.push('--', subPath);
+      execFileSync('git', args, { stdio: 'pipe' });
+      log(`session "${title}": submodule ${name} initialised${fs.existsSync(ref) ? ' from local reference' : ''}.`);
+    }
+  } catch (e) {
+    warn(`session "${title}": local submodule init failed: ${e.message} — worktree usable, submodule content absent (fail-open).`);
+  }
+}
+
+/**
+ * Preflight (2026-08-05 incident): a gitlink (mode 160000) with no .gitmodules
+ * entry makes EVERY `git submodule update --init` in the repo fatal ("No url
+ * found for submodule path"), which silently killed all worktree session
+ * creates. Detect and warn loudly; the fix is `git rm --cached <path>` + commit
+ * in the project repo.
+ */
+function preflightOrphanGitlinks() {
+  try {
+    const staged = execFileSync('git', ['-C', PROJECT, 'ls-files', '-s'], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+    const gitlinks = staged.split('\n')
+      .filter((l) => l.startsWith('160000 '))
+      .map((l) => l.split('\t')[1])
+      .filter(Boolean);
+    if (!gitlinks.length) return;
+    const gm = path.join(PROJECT, '.gitmodules');
+    let declared = new Set();
+    if (fs.existsSync(gm)) {
+      const cfgOut = execFileSync('git', ['config', '-f', gm, '--get-regexp', String.raw`^submodule\..*\.path$`], { encoding: 'utf8' });
+      declared = new Set(cfgOut.split('\n').map((l) => l.split(' ')[1]).filter(Boolean));
+    }
+    const orphans = gitlinks.filter((p) => !declared.has(p));
+    if (orphans.length) {
+      warn(`ORPHAN GITLINK(S) in ${PROJECT}: ${orphans.join(', ')} — every 'git submodule update --init' will fatal until fixed (git rm --cached <path> + commit).`);
+    }
+  } catch (e) {
+    warn(`gitlink preflight failed: ${e.message} (fail-open).`);
+  }
 }
 
 async function reconcileSessions(sessionTools) {
@@ -367,8 +446,14 @@ async function reconcileSessions(sessionTools) {
       continue;
     }
     try {
-      await createSession(d.title, d.tool, d.worktree);
+      const created = await createSession(d.title, d.tool, d.worktree);
       log(`created session "${d.title}" (tool=${d.tool}, worktree=${d.worktree}).`);
+      if (d.worktree) {
+        // Response shapes vary across builds; fall back to AoE's derived layout.
+        const wtPath = (created && (created.path || (created.session && created.session.path)))
+          || path.join(`${PROJECT}-worktrees`, d.title);
+        initWorktreeSubmodules(wtPath, d.title);
+      }
     } catch (e) {
       warn(`create "${d.title}" failed: ${e.message} — continuing (fail-open).`);
     }
@@ -380,6 +465,9 @@ async function reconcileSessions(sessionTools) {
 // ===========================================================================
 async function main() {
   log(`interaction plane enabled — reconciling (port ${PORT}, project ${PROJECT}).`);
+
+  // Pass 0 — loud early warning for the repo state that kills worktree creates.
+  preflightOrphanGitlinks();
 
   // Pass 1
   try { provisionOpenRouter(); } catch (e) { warn(`openrouter provisioning failed: ${e.message}`); }

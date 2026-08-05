@@ -331,7 +331,14 @@ docker exec agentbox ls -la /projects
 
 ## 7. Remote Access & Security
 
-All agentbox ports bind to `127.0.0.1` on the host — they are **not** exposed to the network. Remote access uses SSH tunnels, which provides authentication and encryption without additional VNC passwords or TLS certificates.
+Agentbox is headless; the operator reaches it from LAN devices. Two doors are published to the network, both identity-gated ([ADR-045](../reference/adr/ADR-045-sovereign-ingress-npub-front-door.md)):
+
+| LAN door | What | Auth |
+|---|---|---|
+| `https://<host>:8444` | **Operator cockpit** (voice + AoE session board + approvals) — the primary human surface | one origin, one credential; self-signed TLS; `/aoe/*` re-verified by NIP-98 |
+| `http://<host>:9096` | **Sovereign ingress** — AoE dashboard/API by default, `/mgmt/` → management-api | NIP-98 (kind-27235) signed requests; `NIP98_PROXY_ALLOW_BEARER` break-glass for browsers until NIP-07 signing lands |
+
+The interaction-plane daemon itself (`:9095`, `--auth none`) is **never** published — the ingress is its sole entry (PRD-021 N-05). Everything else binds `127.0.0.1` on the host and is reached over SSH tunnels, which remain the break-glass/diagnostic path.
 
 ```mermaid
 graph LR
@@ -394,14 +401,17 @@ The desktop runs TigerVNC Xvnc with `-SecurityTypes None` (no VNC password) and 
 
 | Service | Container Port | Host Binding | Access |
 |---------|---------------|-------------|--------|
-| Management API | 9090 | 127.0.0.1:9090 | SSH tunnel, NIP-98 auth |
-| VNC Desktop | 5901 | 127.0.0.1:5901 | SSH tunnel |
+| Sovereign ingress (NIP-98) | 9096 | 0.0.0.0:9096 | **LAN**, NIP-98 / bearer break-glass (ADR-045) |
+| Operator cockpit (voice+AoE) | 8444 | 0.0.0.0:8444 | **LAN**, TLS, one-credential origin (ADR-044) |
+| AoE daemon (`aoe serve`) | 9095 | *(never published)* | loopback-only behind the ingress |
+| Management API | 9090 | 127.0.0.1:9090 | SSH tunnel, NIP-98 auth — or LAN via ingress `/mgmt/` |
+| VNC Desktop | 5901 | 127.0.0.1:5901 | SSH tunnel (agent action surface) |
 | Code Server | 8080 | 127.0.0.1:8080 | SSH tunnel |
 | Solid Pod | 8484 | 127.0.0.1:8484 | SSH tunnel, WAC auth |
 | Agent Events | 9700 | 127.0.0.1:9700 | SSH tunnel |
 | Prometheus | 9091 | 127.0.0.1:9091 | SSH tunnel |
 
-All ports are localhost-only on the host. The only way in from the network is through SSH authentication to the host machine. Cross-container calls are token-gated (WS auth is on by default and fails closed). The full default-secure posture — host-loopback publish, auth-default-on, no runtime privilege escalation, secrets in tmpfs files — is recorded in [ADR-027](../reference/adr/ADR-027-default-secure-posture.md).
+Apart from the two identity-gated LAN doors above, ports are localhost-only on the host and reached through SSH authentication to the host machine. Cross-container calls are token-gated (WS auth is on by default and fails closed). The full default-secure posture — host-loopback publish, auth-default-on, no runtime privilege escalation, secrets in tmpfs files — is recorded in [ADR-027](../reference/adr/ADR-027-default-secure-posture.md).
 
 ## Compose File Generation
 
