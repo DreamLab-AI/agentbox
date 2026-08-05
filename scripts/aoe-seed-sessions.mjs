@@ -107,9 +107,10 @@ const WRAPPER_SLUGS = { openrouter: 'openrouter.sh', zai: 'zai.sh' };
 // ===========================================================================
 // Pass 1 — provision OpenRouter/ZAI settings.local.json (N-01 key injection)
 // ===========================================================================
-function writeJsonIfContent(file, obj) {
+function writeJsonIfContent(file, obj, mode = 0o600) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, JSON.stringify(obj, null, 2) + '\n', { mode: 0o600 });
+  fs.writeFileSync(file, JSON.stringify(obj, null, 2) + '\n', { mode });
+  fs.chmodSync(file, mode);
 }
 
 function provisionOpenRouter() {
@@ -167,7 +168,7 @@ function provisionOpenCode() {
     $schema: 'https://opencode.ai/config.json',
     provider: {
       'gemma-lan': {
-        npm: '@ai-sdk/openai',
+        npm: '@ai-sdk/openai-compatible',
         name: 'Gemma 4 31B LAN',
         options: { baseURL: gemmaBase, apiKey: 'not-needed' },
         models: {
@@ -178,7 +179,7 @@ function provisionOpenCode() {
         },
       },
       'deepseek-agent': {
-        npm: '@ai-sdk/openai',
+        npm: '@ai-sdk/openai-compatible',
         name: 'DeepSeek',
         options: { baseURL: deepseekBase, apiKey: '{env:DEEPSEEK_API_KEY}' },
         models: {
@@ -188,7 +189,7 @@ function provisionOpenCode() {
         },
       },
     },
-  });
+  }, 0o644); // Provider config contains references, not secrets; AoE runs OpenCode as devuser.
   log(`provisioned OpenCode providers (Gemma: ${gemmaBase}; DeepSeek: ${deepseekBase}).`);
 }
 

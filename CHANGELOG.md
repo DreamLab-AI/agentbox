@@ -4,8 +4,10 @@
 
 - Route the DeepSeek and LAN Gemma interaction sessions through AoE's native
   OpenCode connector, removing the unavailable CodeWhale/NanoCoder wrappers.
-- Add OpenCode to the image and provision OpenAI Responses-compatible provider
+- Add OpenCode to the image and provision OpenAI Chat Completions-compatible provider
   definitions for DeepSeek and Gemma (`192.168.2.48:8084/v1`).
+- Make the generated OpenCode provider config readable by AoE's unprivileged
+  session user (credentials remain environment references, never file content).
 
 All notable changes to agentbox are documented here. Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Dates are ISO-8601.
 
