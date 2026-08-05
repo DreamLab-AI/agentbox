@@ -534,11 +534,15 @@
           pnpm
         ];
 
-        # Google Antigravity CLI — replaces @google/gemini-cli (sunset 2026-06-18).
-        # Binary: `agy`. Available in nixpkgs as `antigravity` (unfree).
-        # Pro tier web-based login: `agy auth login`.
+        # Google Antigravity CLI (`agy`) — replaces @google/gemini-cli (sunset
+        # 2026-06-18). Pinned upstream release tarball via lib/antigravity-cli.nix.
+        # NOT nixpkgs `antigravity` — that is the Antigravity IDE (a VS Code
+        # fork), a different product sharing the name.
+        # Pro tier web-based login: `agy auth login` (state in ~/.gemini —
+        # tmpfs-mounted below, so re-auth is needed per container boot).
+        antigravityCliLib = import ./lib/antigravity-cli.nix { inherit lib pkgs; };
         antigravityCliPackages = lib.optionals (toolchainCfg.antigravity_cli or false) [
-          pkgs.antigravity
+          (antigravityCliLib.makeAntigravityCli system)
         ];
 
         # OpenAI Codex Rust-native CLI — pinned upstream release asset.
@@ -2200,6 +2204,12 @@ stderr_logfile=/var/log/tmux-autostart.error.log
           "/home/devuser/.codex:mode=755,size=512M,uid=1000,gid=1000"
           # Antigravity CLI home. Model cache + session state; 256M is generous.
           "/home/devuser/.antigravity:mode=755,size=256M,uid=1000,gid=1000"
+          # agy state dir. The Antigravity CLI hard-codes ~/.gemini (its
+          # gemini-cli heritage; no env override — GEMINI_CLI_HOME ignored,
+          # verified 2026-08-05) for logs, crash reports, and the oauth token.
+          # Without this mount agy dies at startup on the read-only home.
+          # tmpfs ⇒ `agy auth login` is needed once per container boot.
+          "/home/devuser/.gemini:mode=755,size=256M,uid=1000,gid=1000"
           # ruflo plugins git cache. Phase 7 sparse-clones github.com/ruvnet/ruflo
           # here; plugins are then symlinked from cache into .claude-flow/plugins.
           # 512M covers the full plugin tree with room for npm artefacts.

@@ -29,8 +29,6 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-const require = createRequire(import.meta.url);
-
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(SCRIPT_DIR, '..'); // dir containing scripts/ + config/
 const WORKSPACE = process.env.WORKSPACE || '/home/devuser/workspace';
@@ -46,11 +44,26 @@ const log = (...a) => console.log(TAG, ...a);
 const warn = (...a) => console.warn(TAG, ...a);
 
 // --- soft dependency: @iarna/toml (parse + stringify) ----------------------
+// The baked copy at /opt/agentbox/scripts has no node_modules chain above it,
+// so resolution relative to import.meta.url fails there. Fall back through the
+// workspace checkouts that do carry a node_modules tree.
+const REQUIRE_BASES = [
+  import.meta.url,
+  path.join(WORKSPACE, 'project', 'agentbox', 'noop.js'),
+  path.join(WORKSPACE, 'project', 'noop.js'),
+  path.join(WORKSPACE, 'noop.js'),
+];
 let TOML = null;
-try {
-  TOML = require('@iarna/toml');
-} catch {
-  warn('@iarna/toml unavailable — cannot parse agentbox.toml or write AoE config; skipping (fail-open).');
+for (const base of REQUIRE_BASES) {
+  try {
+    TOML = createRequire(base)('@iarna/toml');
+    break;
+  } catch {
+    // try next base
+  }
+}
+if (!TOML) {
+  warn(`@iarna/toml unavailable (tried ${REQUIRE_BASES.length} require bases) — cannot parse agentbox.toml or write AoE config; skipping (fail-open).`);
   process.exit(0);
 }
 
@@ -77,7 +90,8 @@ const PORT = Number(ip.port) || 9095;
 const DEFAULT_SEEDS = [
   { slug: 'codex', tool: 'codex', worktree: true },
   // Native AoE `antigravity` agent (16-agent catalogue). @google/gemini-cli is
-  // sunset (2026-06-18); the flake bakes nixpkgs `antigravity` (binary `agy`) —
+  // sunset (2026-06-18); the flake pins the Antigravity CLI (binary `agy`,
+  // lib/antigravity-cli.nix — NOT nixpkgs `antigravity`, which is the IDE) —
   // verify AoE's expected binary name at the next image rebuild (ADR-045 note).
   { slug: 'antigravity', tool: 'antigravity', worktree: true },
   { slug: 'openrouter', tool: 'claude', worktree: false, env_allowlist: ['ANTHROPIC_BASE_URL', 'ANTHROPIC_AUTH_TOKEN'] },
@@ -147,6 +161,28 @@ function aoeConfigPath() {
 }
 
 // Build the per-console coverage from the seeds. Returns { customAgents,
+// Resolve a native-agent binary name for use in a spawn override. AoE spawns
+// via `bash -lc`, whose PATH matches ours closely enough; when the binary
+// isn't on PATH yet (e.g. installed on the persistent workspace volume ahead
+// of the image rebuild that bakes it), fall back to $WORKSPACE/.local/bin and
+// emit the absolute path so the session still starts.
+function resolveAgentBinary(bin) {
+  try {
+    execFileSync('/bin/sh', ['-c', `command -v ${bin}`], { stdio: 'pipe' });
+    return bin;
+  } catch {
+    const fallback = path.join(WORKSPACE, '.local', 'bin', bin);
+    try {
+      fs.accessSync(fallback, fs.constants.X_OK);
+      warn(`binary "${bin}" not on PATH — using workspace fallback ${fallback}.`);
+      return fallback;
+    } catch {
+      warn(`binary "${bin}" not found on PATH or in ${fallback} — session will not start until it is installed.`);
+      return bin;
+    }
+  }
+}
+
 // detectAs, overrides, sessionTools } where sessionTools[slug] is the AoE
 // agent name each session is created with.
 function buildCoverage() {
@@ -198,8 +234,11 @@ function buildCoverage() {
     }
     if (tool === 'codex' || tool === 'gemini' || tool === 'antigravity') {
       // Native ACP agent, one session each → a per-agent override that binds
-      // AGENTBOX_PROFILE is collision-free.
-      overrides[tool] = `env AGENTBOX_PROFILE=${slug} ${tool}`;
+      // AGENTBOX_PROFILE is collision-free. AoE agent name ≠ binary name for
+      // antigravity: the CLI installs as `agy` (nixpkgs `antigravity` is the
+      // IDE — a different product; see lib/antigravity-cli.nix).
+      const bin = resolveAgentBinary(tool === 'antigravity' ? 'agy' : tool);
+      overrides[tool] = `env AGENTBOX_PROFILE=${slug} ${bin}`;
       sessionTools[slug] = tool;
       continue;
     }

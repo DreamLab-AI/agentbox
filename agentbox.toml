@@ -1122,7 +1122,7 @@ eager_mandate = false
 
 [[interaction_plane.session_seeds]]
 slug          = "antigravity"         # native AoE antigravity agent (was tab 10); model aligned to gemini-3.5-flash (F2-8)
-tool          = "antigravity"         # @google/gemini-cli is SUNSET (2026-06-18); flake bakes nixpkgs antigravity (binary agy) — verify binary-name parity at rebuild (ADR-045)
+tool          = "antigravity"         # @google/gemini-cli is SUNSET (2026-06-18); flake pins the Antigravity CLI (binary agy, lib/antigravity-cli.nix — NOT nixpkgs antigravity, which is the IDE); agy state lives in ~/.gemini (tmpfs)
 worktree      = true
 eager_mandate = false
 
