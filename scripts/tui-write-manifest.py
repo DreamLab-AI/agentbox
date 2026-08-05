@@ -313,6 +313,7 @@ lines += [
     f'nagual_qe       = {b("toolchains.nagual_qe")}',
     f'antigravity_cli = {b("toolchains.antigravity_cli")}',
     f'codex           = {b("toolchains.codex")}',
+    f'opencode        = {b("toolchains.opencode")}',
     f'code_server     = {b("toolchains.code_server")}',
     f'codebase_memory = {b("toolchains.codebase_memory")}',
     f'rust            = {b("toolchains.rust")}',

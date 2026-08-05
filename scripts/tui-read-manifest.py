@@ -54,6 +54,7 @@ state = {
     "toolchains.nagual_qe":       g("toolchains", "nagual_qe",       default=True),
     "toolchains.antigravity_cli":  g("toolchains", "antigravity_cli",  default=False),
     "toolchains.codex":           g("toolchains", "codex",           default=False),
+    "toolchains.opencode":        g("toolchains", "opencode",        default=False),
     "toolchains.code_server":     g("toolchains", "code_server",     default=False),
     "toolchains.codebase_memory": g("toolchains", "codebase_memory", default=True),
     "toolchains.rust":            g("toolchains", "rust",            default=True),

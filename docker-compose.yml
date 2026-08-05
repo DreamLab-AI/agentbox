@@ -67,6 +67,10 @@ services:
       - OPENAI_BASE_URL=${OPENAI_BASE_URL:-http://ollama:11434/v1}
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ollama:11434}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-gemma-4-31B-it-qat}
+      - GEMMA_BASE_URL=${GEMMA_BASE_URL:-http://192.168.2.48:8084/v1}
+      - GEMMA_MODEL=${GEMMA_MODEL:-gemma-4-31B-it-qat}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+      - DEEPSEEK_BASE_URL=${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
       - GOOGLE_GEMINI_API_KEY=${GOOGLE_GEMINI_API_KEY:-}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}

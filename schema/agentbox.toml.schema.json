@@ -603,6 +603,9 @@
         "codex": {
           "type": "boolean"
         },
+        "opencode": {
+          "type": "boolean"
+        },
         "code_server": {
           "type": "boolean"
         },
@@ -2248,6 +2251,10 @@
               "tool": {
                 "type": "string",
                 "description": "AoE agent key: native ACP (claude|codex|gemini|...) or a custom:<name> agent."
+              },
+              "model": {
+                "type": "string",
+                "description": "Optional native-agent model selector; for OpenCode use provider/model."
               },
               "worktree": {
                 "type": "boolean",

@@ -554,6 +554,10 @@
           ((toolchainCfg.codex or false) && pkgs.stdenv.isLinux)
           [ (codexLib.makeCodex system) ];
 
+        # OpenCode is an AoE first-class agent. It supplies the native session
+        # lifecycle for OpenAI-compatible Gemma LAN and DeepSeek providers.
+        opencodePackages = lib.optionals (toolchainCfg.opencode or false) [ pkgs.opencode ];
+
         # Anthropic Claude Code native CLI — pinned upstream release binary.
         # See lib/claude-code-binary.nix for the per-arch sha256s and version
         # bump procedure.  Binary is wrapped with makeBinaryWrapper to disable
@@ -1156,6 +1160,7 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           ++ desktopPackages
           ++ antigravityCliPackages
           ++ codexPackages
+          ++ opencodePackages
           ++ claudeCodePackages
           ++ networkingPackages
           ++ gpuCfg.nixPackages
@@ -2379,6 +2384,10 @@ ${agentboxPorts}
       - OPENAI_BASE_URL=''${OPENAI_BASE_URL:-${defaultLlmBaseUrl}/v1}
       - OLLAMA_BASE_URL=''${OLLAMA_BASE_URL:-${defaultLlmBaseUrl}}
       - OLLAMA_MODEL=''${OLLAMA_MODEL:-gemma-4-31B-it-qat}
+      - GEMMA_BASE_URL=''${GEMMA_BASE_URL:-http://192.168.2.48:8084/v1}
+      - GEMMA_MODEL=''${GEMMA_MODEL:-gemma-4-31B-it-qat}
+      - DEEPSEEK_API_KEY=''${DEEPSEEK_API_KEY:-}
+      - DEEPSEEK_BASE_URL=''${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}
       - GOOGLE_API_KEY=''${GOOGLE_API_KEY:-}
       - GOOGLE_GEMINI_API_KEY=''${GOOGLE_GEMINI_API_KEY:-}
       - GEMINI_API_KEY=''${GEMINI_API_KEY:-}

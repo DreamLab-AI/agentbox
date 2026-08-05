@@ -5,9 +5,8 @@
 // Reads [interaction_plane].session_seeds from agentbox.toml and reconciles the
 // Agent-of-Empires (AoE) interaction plane in three passes, all fail-open:
 //
-//   1. Provision the OpenRouter/ZAI profile settings.local.json (the N-01
-//      runtime key-injection the harness wrappers assert), mirroring exactly
-//      what tmux-autostart.sh used to write for windows 8/9.
+//   1. Provision OpenRouter/ZAI profile settings and OpenCode's native provider
+//      connectors for the LAN Gemma and hosted DeepSeek sessions.
 //   2. Materialise AoE's config.toml (custom_agents + agent_command_override +
 //      agent_detect_as for the seven consoles, the AGENTBOX_PROFILE-per-session
 //      env binding, status_hooks → scripts/aoe-session-boundary.cjs, sandbox
@@ -96,8 +95,8 @@ const DEFAULT_SEEDS = [
   { slug: 'antigravity', tool: 'antigravity', worktree: true },
   { slug: 'openrouter', tool: 'claude', worktree: false, env_allowlist: ['ANTHROPIC_BASE_URL', 'ANTHROPIC_AUTH_TOKEN'] },
   { slug: 'zai', tool: 'claude', worktree: false, env_allowlist: ['ANTHROPIC_BASE_URL', 'ANTHROPIC_AUTH_TOKEN'] },
-  { slug: 'deepseek', tool: 'custom:codewhale', worktree: true, detect_as: 'codex' },
-  { slug: 'ollama', tool: 'custom:nanocoder', worktree: true, detect_as: 'claude' },
+  { slug: 'deepseek', tool: 'opencode', model: 'deepseek-agent/deepseek-chat', worktree: true },
+  { slug: 'gemma', tool: 'opencode', model: 'gemma-lan/gemma-4-31B-it-qat', worktree: true },
 ];
 const seeds = Array.isArray(ip.session_seeds) && ip.session_seeds.length ? ip.session_seeds : DEFAULT_SEEDS;
 const coordinator = ip.coordinator || { slug: 'tab0', tool: 'claude', view: 'terminal' };
@@ -152,6 +151,47 @@ function provisionZai() {
   log(`provisioned zai settings.local.json (endpoint: ${endpoint}).`);
 }
 
+function normalizedV1Url(value, fallback) {
+  return (value || fallback).replace(/\/+$/, '').replace(/\/v1$/, '') + '/v1';
+}
+
+// OpenCode is a first-class AoE agent, so provider selection stays in its
+// supported configuration surface instead of inventing custom wrapper agents.
+function provisionOpenCode() {
+  const configHome = process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config');
+  const configPath = path.join(configHome, 'opencode', 'opencode.json');
+  const gemmaBase = normalizedV1Url(process.env.GEMMA_BASE_URL, 'http://192.168.2.48:8084/v1');
+  const deepseekBase = normalizedV1Url(process.env.DEEPSEEK_BASE_URL, 'https://api.deepseek.com/v1');
+  const gemmaModel = process.env.GEMMA_MODEL || 'gemma-4-31B-it-qat';
+  writeJsonIfContent(configPath, {
+    $schema: 'https://opencode.ai/config.json',
+    provider: {
+      'gemma-lan': {
+        npm: '@ai-sdk/openai',
+        name: 'Gemma 4 31B LAN',
+        options: { baseURL: gemmaBase, apiKey: 'not-needed' },
+        models: {
+          [gemmaModel]: {
+            name: 'Gemma 4 31B LAN',
+            limit: { context: 262144, output: 65536 },
+          },
+        },
+      },
+      'deepseek-agent': {
+        npm: '@ai-sdk/openai',
+        name: 'DeepSeek',
+        options: { baseURL: deepseekBase, apiKey: '{env:DEEPSEEK_API_KEY}' },
+        models: {
+          'deepseek-chat': {
+            name: 'DeepSeek V4 Flash',
+          },
+        },
+      },
+    },
+  });
+  log(`provisioned OpenCode providers (Gemma: ${gemmaBase}; DeepSeek: ${deepseekBase}).`);
+}
+
 // ===========================================================================
 // Pass 2 — materialise AoE config.toml
 // ===========================================================================
@@ -198,8 +238,6 @@ function buildCoverage() {
   overrides.claude = `env AGENTBOX_PROFILE=${coordinator.slug || 'tab0'} claude`;
   sessionTools[coordinator.slug || 'tab0'] = 'claude';
 
-  const olModel = process.env.OLLAMA_MODEL || 'gemma-4-31B-it-qat';
-
   for (const seed of seeds) {
     const slug = seed.slug;
     if (WRAPPER_SLUGS[slug]) {
@@ -219,17 +257,15 @@ function buildCoverage() {
     const tool = seed.tool || 'claude';
     if (tool.startsWith('custom:')) {
       const name = tool.slice('custom:'.length);
-      let cmd;
-      if (name === 'codewhale') {
-        cmd = `env AGENTBOX_PROFILE=${slug} codewhale`;
-      } else if (name === 'nanocoder') {
-        cmd = `env AGENTBOX_PROFILE=${slug} sh -c 'nanocoder --provider ollama --model "\${OLLAMA_MODEL:-${olModel}}"'`;
-      } else {
-        cmd = `env AGENTBOX_PROFILE=${slug} ${name}`;
-      }
-      customAgents[name] = cmd;
+      customAgents[name] = `env AGENTBOX_PROFILE=${slug} ${name}`;
       if (seed.detect_as) detectAs[name] = seed.detect_as;
       sessionTools[slug] = name;
+      continue;
+    }
+    if (tool === 'opencode') {
+      // Multiple sessions intentionally share AoE's native OpenCode agent;
+      // their provider/model is selected per session through extra_args.
+      sessionTools[slug] = tool;
       continue;
     }
     if (tool === 'codex' || tool === 'gemini' || tool === 'antigravity') {
@@ -266,10 +302,13 @@ function providerEnvList() {
     'ZAI_ANTHROPIC_API_KEY=$ZAI_ANTHROPIC_API_KEY',
     'ZAI_URL=$ZAI_URL',
     'DEEPSEEK_API_KEY=$DEEPSEEK_API_KEY',
+    'DEEPSEEK_BASE_URL=$DEEPSEEK_BASE_URL',
     'GOOGLE_API_KEY=$GOOGLE_API_KEY',
     'GOOGLE_GEMINI_API_KEY=$GOOGLE_GEMINI_API_KEY',
     'OLLAMA_BASE_URL=$OLLAMA_BASE_URL',
     'OLLAMA_MODEL=$OLLAMA_MODEL',
+    'GEMMA_BASE_URL=$GEMMA_BASE_URL',
+    'GEMMA_MODEL=$GEMMA_MODEL',
     'CODEX_HOME=$CODEX_HOME',
   ];
 }
@@ -366,7 +405,7 @@ async function listSessions() {
   return [];
 }
 
-async function createSession(title, tool, worktree) {
+async function createSession(title, tool, worktree, extraArgs = '') {
   const payload = {
     path: PROJECT,
     tool,
@@ -374,6 +413,7 @@ async function createSession(title, tool, worktree) {
     worktree_enabled: !!worktree,
     idempotency_key: `agentbox-seed-${title}`,
   };
+  if (extraArgs) payload.extra_args = extraArgs;
   if (worktree) payload.create_new_branch = true;
   const r = await fetchWithTimeout(`${BASE}/api/sessions`, {
     method: 'POST',
@@ -476,6 +516,7 @@ async function reconcileSessions(sessionTools) {
       title: seed.slug,
       tool: sessionTools[seed.slug] || seed.slug,
       worktree: seed.worktree === true,
+      extraArgs: seed.model ? `--model ${seed.model}` : '',
     });
   }
 
@@ -485,7 +526,7 @@ async function reconcileSessions(sessionTools) {
       continue;
     }
     try {
-      const created = await createSession(d.title, d.tool, d.worktree);
+      const created = await createSession(d.title, d.tool, d.worktree, d.extraArgs);
       log(`created session "${d.title}" (tool=${d.tool}, worktree=${d.worktree}).`);
       if (d.worktree) {
         // Response shapes vary across builds; fall back to AoE's derived layout.
@@ -511,6 +552,7 @@ async function main() {
   // Pass 1
   try { provisionOpenRouter(); } catch (e) { warn(`openrouter provisioning failed: ${e.message}`); }
   try { provisionZai(); } catch (e) { warn(`zai provisioning failed: ${e.message}`); }
+  try { provisionOpenCode(); } catch (e) { warn(`OpenCode provisioning failed: ${e.message}`); }
 
   // Pass 2
   const coverage = buildCoverage();

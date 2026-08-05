@@ -146,13 +146,13 @@ STACKS = {
         "no_claude_settings": True,
         "extra_dirs": [".antigravity"],
     },
-    # deepseek profile: DeepSeek v4 via CodeWhale.
-    # CodeWhale manages its own config; no .claude/settings.json needed.
+    # deepseek profile: DeepSeek via AoE's first-class OpenCode connector.
     "deepseek": {
-        "tools": ["codewhale", "deepseek"],
+        "tools": ["opencode", "deepseek"],
         "skills": ["skill-router", "lazy-fetch", "codebase-memory"],
-        "env": ["DEEPSEEK_API_KEY"],
+        "env": ["DEEPSEEK_API_KEY", "DEEPSEEK_BASE_URL"],
         "no_claude_settings": True,
+        "extra_dirs": [".config/opencode"],
     },
     # perplexity profile: Perplexity AI research shell.
     # Provides AI-powered research with citations; no .claude/settings.json needed.
@@ -162,14 +162,13 @@ STACKS = {
         "env": ["PERPLEXITY_API_KEY"],
         "no_claude_settings": True,
     },
-    # ollama profile: local LLM via Nanocoder.
-    # Zero-cost local model coding agent; no .claude/settings.json needed.
-    # OLLAMA_BASE_URL defaults to http://localhost:11434 when unset.
-    "ollama": {
-        "tools": ["nanocoder", "ollama"],
+    # gemma profile: LAN llama.cpp via AoE's first-class OpenCode connector.
+    "gemma": {
+        "tools": ["opencode", "gemma"],
         "skills": ["skill-router", "lazy-fetch", "codebase-memory"],
-        "env": ["OLLAMA_BASE_URL", "OLLAMA_MODEL"],
+        "env": ["GEMMA_BASE_URL", "GEMMA_MODEL"],
         "no_claude_settings": True,
+        "extra_dirs": [".config/opencode"],
     },
     # codex profile: OpenAI Codex CLI (GPT-5.5 coding agent).
     # Uses .codex/ config directory; no .claude/settings.json needed.

@@ -1141,17 +1141,17 @@ env_allowlist = ["ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN"]
 eager_mandate = false
 
 [[interaction_plane.session_seeds]]
-slug          = "deepseek"            # custom_agent (codewhale, was tab 11), agent_detect_as = codex
-tool          = "custom:codewhale"
+slug          = "deepseek"            # AoE first-class OpenCode connector → DeepSeek Responses API
+tool          = "opencode"
+model         = "deepseek-agent/deepseek-chat"
 worktree      = true
-detect_as     = "codex"
 eager_mandate = false
 
 [[interaction_plane.session_seeds]]
-slug          = "ollama"              # custom_agent (nanocoder, was tab 13) → LAN llama.cpp
-tool          = "custom:nanocoder"
+slug          = "gemma"               # AoE first-class OpenCode connector → LAN llama.cpp OpenAI API
+tool          = "opencode"
+model         = "gemma-lan/gemma-4-31B-it-qat"
 worktree      = true
-detect_as     = "claude"
 eager_mandate = false
 
 # tab-0 coordinator: named, special, TERMINAL VIEW. AoE's default ACP structured
@@ -1188,6 +1188,7 @@ codebase_memory = true  # MCP-2 (2026-07-22): binary IS baked (codebase-memory-m
 rust = true
 antigravity_cli = true
 codex = true
+opencode = true
 code_server = true
 cuda = true
 

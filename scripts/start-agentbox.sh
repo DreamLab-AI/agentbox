@@ -945,13 +945,14 @@ Docs: docs/reference/prd/PRD-001-capabilities-and-adapters.md §Toolchains" \
     "toolchains.nagual_qe"       "Nagual QE"              "$(on_off toolchains.nagual_qe)" \
     "toolchains.antigravity_cli" "Antigravity CLI (agy)"  "$(on_off toolchains.antigravity_cli)" \
     "toolchains.codex"           "OpenAI Codex Rust CLI"  "$(on_off toolchains.codex)" \
+    "toolchains.opencode"        "OpenCode (AoE native)"   "$(on_off toolchains.opencode)" \
     "toolchains.code_server"     "code-server (VS Code)"  "$(on_off toolchains.code_server)" \
     "toolchains.codebase_memory" "Codebase Memory MCP"    "$(on_off toolchains.codebase_memory)" \
     "toolchains.rust"            "Rust toolchain"         "$(on_off toolchains.rust)" \
     "toolchains.cuda"            "CUDA toolchain"         "$(on_off toolchains.cuda)")"
 
   for key in toolchains.claude toolchains.claude_code toolchains.ruflo toolchains.claude_flow \
-             toolchains.agentic_qe toolchains.nagual_qe toolchains.antigravity_cli toolchains.codex \
+             toolchains.agentic_qe toolchains.nagual_qe toolchains.antigravity_cli toolchains.codex toolchains.opencode \
              toolchains.code_server toolchains.codebase_memory toolchains.rust toolchains.cuda; do
     if echo "${raw}" | grep -qw "${key}"; then
       state_set_bool "${key}" "true"
