@@ -43,15 +43,17 @@ jobs:
 
       - name: Install dependencies
         working-directory: management-api
-        run: npm ci
+        # Rebuild the better-sqlite3 native addon FROM SOURCE against the CI runner's
+        # exact Node ABI. The npm-ci prebuilt binary is ABI-mismatched on this runner and
+        # segfaults on load/use (chronic beads.contract SIGSEGV/require-error, red since
+        # June). ubuntu-latest ships the build toolchain (python3/make/g++).
+        run: |
+          npm ci
+          npm rebuild better-sqlite3 --build-from-source
 
       - name: Run contract test suites
         working-directory: management-api
-        # --runInBand: run in the main process (no worker threads). better-sqlite3 is a
-        # native addon that fails to load / segfaults inside jest worker processes on the
-        # CI runner (chronic beads.contract SIGSEGV, red since June); in-band execution is
-        # the stable path for native modules. Passes 19/19 locally.
-        run: npx jest ../tests/contract/ --testPathPattern='\.contract\.spec\.js$' --ci --forceExit --runInBand
+        run: npx jest ../tests/contract/ --testPathPattern='\.contract\.spec\.js$' --ci --forceExit
 
       - name: Upload coverage
         if: always()
