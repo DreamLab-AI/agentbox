@@ -85,3 +85,40 @@ derived facts are fenced to the `:summary` graph and may not touch `:assert`/`:i
 - Full tool params, budget/tier model (ADR-116), provenance scoping, maturity gate,
   PUSH mechanics, consultant seam, governed writeback: **[REFERENCE.md](REFERENCE.md)**
 - Worked examples with real live outputs + trigger phrasings: **[EXAMPLES.md](EXAMPLES.md)**
+
+## Local route (internal dev path — VisionClaw-free)
+
+When the VisionClaw/Oxigraph service is unreachable (`ontology_health` →
+`ontology_unavailable`), the bridge falls back to a **local backend** that indexes
+the raw Logseq markdown corpus on disk and serves the same read tools plus a real
+**write** path. No production round-trip, no long loop — it reads the JSON-LD
+`Class` block of every page directly.
+
+- **Auto-fallback**: any `ontology_*` / `kg_*` MCP tool that hits a network-family
+  error transparently retries against the local corpus (`_route: "local-fallback"`).
+- **Force local**: set `AGENTBOX_ONTOLOGY_LOCAL=1` to use the local route
+  unconditionally (offline dev).
+- **Corpus path**: `AGENTBOX_ONTOLOGY_LOCAL_PATH` (default the logseq working tree
+  `mainKnowledgeGraph/pages`) — reflects uncommitted edits immediately.
+
+### Use it now from the shell (bypasses the MCP entirely)
+
+```bash
+S=/home/devuser/workspace/project/agentbox/mcp/servers
+node $S/ontology-local.cjs health
+node $S/ontology-local.cjs search "gaussian splatting" --limit 5
+node $S/ontology-local.cjs get 3-d-gaussian-splatting
+node $S/ontology-local.cjs neighbors 3-d-gaussian-splatting --depth 2
+node $S/ontology-local.cjs path <src-slug> <tgt-slug>
+node $S/ontology-local.cjs ask "differentiable rendering" --mode menu
+# WRITE — edits the page's Class block in place (SubClassOf|relatedTo|contrastsWith|requires|partOf|sameAs)
+node $S/ontology-local.cjs add <subject-slug> relatedTo <object-slug>
+```
+
+Backend: `mcp/servers/lib/ontology-local.js`; CLI: `mcp/servers/ontology-local.cjs`.
+
+> **Activation note (MCP tools):** the running MCP loads the baked, read-only
+> `/opt/agentbox/mcp/servers/ontology-bridge.js`. The source edits above live in the
+> repo checkout and become active in-tool only after the agentbox image is rebuilt
+> and the MCP restarts. Until then, use the **CLI** for local search/write — it
+> resolves the repo `lib/` first, so it is live immediately.

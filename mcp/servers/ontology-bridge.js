@@ -18,6 +18,44 @@ import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const propose = require('./ontology-propose.js');
 const { createDefaultRetrieval } = require('./lib/ontology-retrieval.js');
+const { createLocalOntology } = require('./lib/ontology-local.js');
+
+// Local corpus fallback route (internal dev path). When VisionClaw is
+// unreachable the bridge serves reads/writes from the raw markdown corpus on
+// disk; set AGENTBOX_ONTOLOGY_LOCAL=1 to force it unconditionally.
+const FORCE_LOCAL = /^(1|true|yes)$/i.test(process.env.AGENTBOX_ONTOLOGY_LOCAL || '');
+let _local = null;
+function local() {
+  if (!_local) _local = createLocalOntology();
+  return _local;
+}
+// A VisionClaw result counts as a network failure (→ fall back to local) when it
+// carries one of these fail-open error codes. Substantive HTTP errors (400/403)
+// are real answers and are NOT masked by the local route.
+const NET_ERRORS = new Set(['ontology_unavailable', 'ontology_timeout']);
+function isNetErr(r) {
+  return r && typeof r === 'object' && NET_ERRORS.has(r.error);
+}
+// Map each bridge tool to the local backend. Tools absent here have no local
+// equivalent and surface the remote error unchanged.
+function handleLocal(name, args) {
+  const L = local();
+  switch (name) {
+    case 'ontology_health': return { ...L.health(), _route: 'local-fallback' };
+    case 'ontology_search': return L.search(args);
+    case 'ontology_class_get': return L.classGet(args);
+    case 'ontology_class_list': return L.classList(args);
+    case 'ontology_validate': return L.validate(args);
+    case 'ontology_graph_query': return L.graphQuery(args);
+    case 'kg_node_search': return L.nodeSearch(args);
+    case 'kg_neighbors': return L.neighbors(args);
+    case 'kg_pathfind': return L.pathfind(args);
+    case 'ontology_ask': return L.ask(args);
+    case 'ontology_axiom_add': return L.axiomAdd(args);
+    case 'ontology_propose': return L.propose(args);
+    default: return null;
+  }
+}
 
 const API_URL = (process.env.VISIONCLAW_API_URL || 'http://visionclaw-server:4000').replace(/\/$/, '');
 const TIMEOUT_MS = parseInt(process.env.ONTOLOGY_TIMEOUT_MS || '10000', 10);
@@ -231,7 +269,23 @@ try {
   }
 } catch { /* fail-open: telemetry logging must never block boot */ }
 
+// Wrapper: force-local when configured, else try VisionClaw and fall back to the
+// local corpus on a network-family failure. A local handler returning null means
+// "no local equivalent" — surface the remote result unchanged.
 async function handleTool(name, args) {
+  if (FORCE_LOCAL) {
+    const l = handleLocal(name, args);
+    if (l !== null) return l;
+  }
+  const remote = await handleRemote(name, args);
+  if (isNetErr(remote)) {
+    const l = handleLocal(name, args);
+    if (l !== null) return l;
+  }
+  return remote;
+}
+
+async function handleRemote(name, args) {
   switch (name) {
     case 'ontology_health': {
       const health = await vcFetch('/api/ontology/health');
