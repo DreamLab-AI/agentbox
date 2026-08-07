@@ -1485,8 +1485,9 @@ _RB_INGEST="/opt/agentbox/scripts/ruvnet-brain-ingest.mjs"
 if [ "${ENABLE_RUVNET_BRAIN:-false}" = "true" ] \
    && [ "${RUVNET_BRAIN_AUTO_INGEST:-true}" = "true" ] \
    && [ -f "$_RB_INGEST" ] && command -v node >/dev/null 2>&1; then
-  mkdir -p "${RUVNET_BRAIN_STAGING:-/var/lib/agentbox/ruvnet-brain}" 2>/dev/null || true
-  chown -R 1000:1000 "${RUVNET_BRAIN_STAGING:-/var/lib/agentbox/ruvnet-brain}" 2>/dev/null || true
+  # Transient staging under the writable cache root (see flake RUVNET_BRAIN_STAGING).
+  mkdir -p "${RUVNET_BRAIN_STAGING:-/home/devuser/.cache/ruvnet-brain}" 2>/dev/null || true
+  chown -R 1000:1000 "${RUVNET_BRAIN_STAGING:-/home/devuser/.cache/ruvnet-brain}" 2>/dev/null || true
   (
     RUVECTOR_PG_CONNINFO="host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=${RUVECTOR_PG_PASSWORD:-ruvector}" \
     node "$_RB_INGEST" >> /var/log/ruvnet-brain-ingest.log 2>&1

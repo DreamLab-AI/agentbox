@@ -104,8 +104,15 @@ function buildElevationPublisher(manifest, deps = {}) {
   }
 
   // ── Lazy, cached bridge + signer (mirrors lib/pod-signer) ──
-  const getBridgeModule = () =>
-    deps.bridgeModule || require('../../mcp/servers/nostr-bridge');
+  const getBridgeModule = () => {
+    if (deps.bridgeModule) return deps.bridgeModule;
+    // Vendored into lib/ at build time (flake buildPhaseExtra); the sibling
+    // mcp/ path only resolves from the source checkout. A bare
+    // require('../../mcp/servers/nostr-bridge') escapes the packaged
+    // node_modules/agentic-flow-management-api boundary at runtime.
+    try { return require('./nostr-bridge'); }
+    catch { return require('../../mcp/servers/nostr-bridge'); }
+  };
 
   let bridge = deps.bridge || null;
   let signer = deps.signer || null;

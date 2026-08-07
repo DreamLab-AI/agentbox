@@ -1112,14 +1112,40 @@ default_days = ${toString (relayCfg.retention_days or 30)}
 '';
 
         privacyFilterEnabled = privacyFilterCfg.enabled or false;
-        privacyFilterPythonEnv = pkgs.python312.withPackages (ps: with ps; [
-          transformers
-          safetensors
-          tokenizers
-          torch
-          huggingface-hub
-          aiohttp
-          pyyaml
+        # openai/privacy-filter (ADR-008) ships model_type `openai_privacy_filter`,
+        # a built-in architecture ADDED IN Transformers 5.6.0 (its config.json
+        # stamps transformers_version 5.6.0.dev0). nixpkgs' pinned transformers is
+        # 5.5.4, where the arch is absent from CONFIG_MAPPING_NAMES → the sidecar
+        # died at load with "Transformers does not recognize this architecture"
+        # (trust_remote_code is a no-op: the repo has no auto_map / modeling code).
+        # Pin the released 5.6.2 sdist. All 5.6.2 runtime deps are already
+        # satisfied by the pinned closure (verified against requires_dist:
+        # huggingface-hub 1.10.2, tokenizers 0.22.2, safetensors 0.8.0, typer
+        # 0.25.1, regex 2026.4.4, numpy 2.5.0). tiktoken is added for the model's
+        # o200k-family tokenizer (vocab_size 200064). patches=[] because the 5.5.4
+        # patch set will not apply to 5.6.2; doCheck=false because the upstream
+        # test suite needs network + extras (importability is still validated by
+        # nixpkgs' pythonImportsCheck at build). To bump: change version + hash
+        # (sha256 from https://pypi.org/pypi/transformers/<v>/json, SRI-encoded).
+        privacyFilterTransformers = pkgs.python312Packages.transformers.overridePythonAttrs (old: {
+          version = "5.6.2";
+          src = pkgs.python312Packages.fetchPypi {
+            pname = "transformers";
+            version = "5.6.2";
+            hash = "sha256-5lcTTD5aa8AKPDX04mdLtRrfzYmJhJW3iKGFUrrCuRo=";
+          };
+          patches = [ ];
+          doCheck = false;
+        });
+        privacyFilterPythonEnv = pkgs.python312.withPackages (ps: [
+          privacyFilterTransformers
+          ps.safetensors
+          ps.tokenizers
+          ps.torch
+          ps.huggingface-hub
+          ps.aiohttp
+          ps.pyyaml
+          ps.tiktoken
         ]);
         privacyFilterPackages = lib.optionals privacyFilterEnabled [ privacyFilterPythonEnv ];
 
@@ -2317,10 +2343,12 @@ stderr_logfile=/var/log/tmux-autostart.error.log
           "agentbox-secrets:/var/lib/agentbox/secrets"
           "code-harness-data:/var/lib/agentbox/code-harness"
           "agentbox-events:/var/lib/agentbox/events"
-        ]
-        ++ lib.optionals (ruvnetBrainCfg.enabled or false) [
-          "ruvnet-brain-data:/var/lib/agentbox/ruvnet-brain"
         ];
+        # NOTE: no ruvnet-brain-data volume. The corpus persists in
+        # ruvector-postgres; the ingest only needs transient, writable staging,
+        # which now lives under the devuser cache root (RUVNET_BRAIN_STAGING).
+        # A persistent volume here previously mounted read-only / not at all,
+        # hard-failing the boot ingest.
         # Drop entries from exceptionWritableVolumes whose container target
         # path already appears in the baseline. Compare on the second
         # colon-separated field (target).
@@ -2344,8 +2372,7 @@ stderr_logfile=/var/log/tmux-autostart.error.log
         # are auto-derived so every volume referenced in the agentbox service's
         # volumes list has a matching top-level declaration. Without this,
         # docker compose rejects the file with "undefined volume <name>".
-        baselineTopLevelVolumeNames = [ "ruvector-data" "solid-data" "sovereign-identities" "agentbox-secrets" "code-harness-data" "agentbox-events" ]
-          ++ lib.optionals (ruvnetBrainCfg.enabled or false) [ "ruvnet-brain-data" ];
+        baselineTopLevelVolumeNames = [ "ruvector-data" "solid-data" "sovereign-identities" "agentbox-secrets" "code-harness-data" "agentbox-events" ];
         exceptionVolumeNames = lib.unique (
           map (v: lib.head (lib.splitString ":" v)) exceptionWritableVolumes
         );
@@ -2773,7 +2800,9 @@ ${ragflowNetworkDecl}
           "RUVNET_BRAIN_AUTO_INGEST=${boolEnv (ruvnetBrainCfg.auto_ingest or true)}"
           "RUVNET_BRAIN_GROUNDING_HOOK=${boolEnv (ruvnetBrainCfg.grounding_hook or true)}"
           "RUVNET_BRAIN_RELEASE_URL=${ruvnetBrainCfg.kb_release_url or "https://github.com/stuinfla/ruvnet-brain/releases/latest/download/ruvnet-brain.zip"}"
-          "RUVNET_BRAIN_STAGING=${ruvnetBrainCfg.staging_path or "/var/lib/agentbox/ruvnet-brain"}"
+          # Transient download/extract staging (corpus persists in ruvector-postgres).
+          # Default to the writable devuser cache root, not a read-only-rootfs path.
+          "RUVNET_BRAIN_STAGING=${ruvnetBrainCfg.staging_path or "/home/devuser/.cache/ruvnet-brain"}"
           "RUVNET_BRAIN_EMBED_BATCH=${toString (ruvnetBrainCfg.embed_batch or 32)}"
           "ENABLE_ONTOLOGY=${boolEnv ((skillsCfg.ontology or {}).enabled or false)}"
           "VISIONCLAW_API_URL=${(skillsCfg.ontology or {}).visionclaw_api_url or "http://visionclaw-server:4000"}"

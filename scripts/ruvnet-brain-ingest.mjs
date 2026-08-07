@@ -46,7 +46,12 @@ const EMB_MODEL   = process.env.EMBEDDING_MODEL || 'bge-small-en-v1.5';
 const EMB_DIM     = 384;
 const RELEASE_URL = process.env.RUVNET_BRAIN_RELEASE_URL
   || 'https://github.com/stuinfla/ruvnet-brain/releases/latest/download/ruvnet-brain.zip';
-const STAGING     = process.env.RUVNET_BRAIN_STAGING || '/var/lib/agentbox/ruvnet-brain';
+// Transient download/extract staging only — the corpus itself is persisted in
+// ruvector-postgres, so this needs a writable path, not a persistent volume.
+// Default under the devuser cache root (always writable, same root as HF_HOME);
+// the prior /var/lib/agentbox/ruvnet-brain default was a read-only-rootfs path
+// whose named volume did not mount, hard-failing the ingest with EROFS/ENOENT.
+const STAGING     = process.env.RUVNET_BRAIN_STAGING || '/home/devuser/.cache/ruvnet-brain';
 const BATCH       = Math.max(8, Math.min(Number(process.env.RUVNET_BRAIN_EMBED_BATCH) || 32, 128));
 const EMBED_TRUNC = 2000; // chars fed to the embedder (full text kept in value)
 
