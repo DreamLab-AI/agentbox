@@ -1,6 +1,7 @@
 name: Contract tests
 
 on:
+  workflow_dispatch: {}
   pull_request:
     paths:
       - 'management-api/adapters/**'
@@ -16,8 +17,11 @@ on:
       - main
     paths:
       - 'management-api/adapters/**'
+      - 'management-api/package.json'
+      - 'management-api/package-lock.json'
       - 'mcp/nostr-bridge/**'
       - 'tests/contract/**'
+      - '.github/workflows/contract-tests.yml'
 
 concurrency:
   group: contract-tests-${{ github.ref }}
