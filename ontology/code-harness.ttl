@@ -30,7 +30,7 @@
 # @prefix declarations MUST come first (WebVOWL / Turtle parser requirement,
 # per skills/ontology-core/SKILL.md §TTL Generation Rules).
 
-@prefix ex:    <https://ontology.agentbox.dev/> .
+@prefix ex:    <https://narrativegoldmine.com/ns/> .
 @prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix owl:   <http://www.w3.org/2002/07/owl#> .
 @prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
@@ -41,7 +41,7 @@
 # Ontology declaration
 # ---------------------------------------------------------------------------
 
-<https://ontology.agentbox.dev/code-harness>
+<https://narrativegoldmine.com/ns/code-harness>
     a owl:Ontology ;
     rdfs:label "Code Execution and Experiential Learning Ontology" ;
     rdfs:comment """

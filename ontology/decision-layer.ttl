@@ -1,0 +1,149 @@
+# decision-layer.ttl — OWL 2 EL vocabulary for the Decision Layer and
+# temporal provenance of agent decisions (ADR-048 decision layer, ADR-049
+# temporal validity). PROV-O aligned.
+#
+# EL-SAFETY (ADR-047 §3a): this vocabulary MUST remain within the OWL 2 EL
+# profile so the Whelk reasoner can classify it in polynomial time. EL forbids
+# inverse properties, functional properties, and inverse-functional properties.
+# Therefore NO property in this file is declared:
+#     owl:inverseOf | owl:FunctionalProperty | owl:InverseFunctionalProperty
+# owl:TransitiveProperty IS permitted in EL (role composition r ∘ r ⊑ r) and is
+# not used for causal or precedent links: reachability is query-derived and must
+# remain distinguishable from direct evidence.
+#
+# @prefix declarations MUST come first (Turtle parser + WebVOWL requirement,
+# per skills/ontology-core/SKILL.md §TTL Generation Rules).
+
+@prefix dl:    <https://narrativegoldmine.com/ns/dl#> .
+@prefix prov:  <http://www.w3.org/ns/prov#> .
+@prefix owl:   <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+
+# ---------------------------------------------------------------------------
+# Ontology declaration
+# ---------------------------------------------------------------------------
+
+<https://narrativegoldmine.com/ns/dl>
+    a owl:Ontology ;
+    rdfs:label "Decision Layer and Temporal Provenance Ontology" ;
+    rdfs:comment """
+        OWL 2 EL vocabulary for recording agent decisions as PROV-O activities,
+        their causal and precedent relationships, the inputs and governing
+        constraints considered, and the temporal window over which a decision
+        is valid. Related: ADR-047 (EL-profile safety), ADR-048 (decision
+        layer), ADR-049 (temporal validity). Deliberately EL: no inverse,
+        functional, or inverse-functional axioms are asserted anywhere below.
+    """ .
+
+# ---------------------------------------------------------------------------
+# Core class
+# ---------------------------------------------------------------------------
+
+dl:DecisionRecord
+    a owl:Class ;
+    rdfs:subClassOf prov:Activity ;
+    rdfs:label "Decision Record" ;
+    rdfs:comment """
+        A single recorded decision taken by an agent or governance process.
+        Modelled as a prov:Activity so standard PROV-O provenance
+        (prov:wasAssociatedWith, prov:used, prov:generated, prov:startedAtTime)
+        applies unchanged. Causal, precedent, influence, input, and governance
+        relationships are expressed with the dl: object properties below;
+        the temporal validity window is expressed with dl:validFrom/dl:validTo.
+    """ .
+
+# ---------------------------------------------------------------------------
+# Object properties — direct causal and precedent evidence (EL-safe)
+# ---------------------------------------------------------------------------
+
+dl:caused
+    a owl:ObjectProperty ;
+    rdfs:domain dl:DecisionRecord ;
+    rdfs:range dl:DecisionRecord ;
+    rdfs:label "caused" ;
+    rdfs:comment """
+        Direct, evidenced claim that this decision causally led to the target.
+        Not transitive: A causing B and B causing C does not establish that A
+        caused C. Reachability is computed by bounded query and labelled derived.
+    """ .
+
+dl:precedentFor
+    a owl:ObjectProperty ;
+    rdfs:domain dl:DecisionRecord ;
+    rdfs:range dl:DecisionRecord ;
+    rdfs:label "precedent for" ;
+    rdfs:comment """
+        Direct, evidenced claim that the target decision relied on this decision
+        as precedent. Not transitive because applicability is contextual.
+    """ .
+
+# ---------------------------------------------------------------------------
+# Object properties — influence, input, governance (non-transitive, EL-safe)
+# ---------------------------------------------------------------------------
+
+dl:influenced
+    a owl:ObjectProperty ;
+    rdfs:domain dl:DecisionRecord ;
+    rdfs:range dl:DecisionRecord ;
+    rdfs:label "influenced" ;
+    rdfs:comment """
+        This decision influenced the target decision without necessarily
+        causing it. Weaker than dl:caused; intentionally NOT transitive and NOT
+        an inverse of any property.
+    """ .
+
+dl:consideredInput
+    a owl:ObjectProperty ;
+    rdfs:domain dl:DecisionRecord ;
+    rdfs:range prov:Entity ;
+    rdfs:label "considered input" ;
+    rdfs:comment """
+        Relates a decision to a prov:Entity (evidence, dataset, prior artefact,
+        memory record) that was taken into account when the decision was made.
+        Complements prov:used; kept distinct so 'considered but not necessarily
+        acted upon' inputs can be recorded.
+    """ .
+
+dl:governedBy
+    a owl:ObjectProperty ;
+    rdfs:domain dl:DecisionRecord ;
+    rdfs:range prov:Entity ;
+    rdfs:label "governed by" ;
+    rdfs:comment """
+        Relates a decision to a governing constraint, policy, mandate, or
+        constitution shard (a prov:Entity) under whose authority it was taken.
+        No cardinality or functional restriction is asserted — a decision may be
+        governed by several constraints and EL forbids functional axioms.
+    """ .
+
+# ---------------------------------------------------------------------------
+# Datatype properties — temporal validity window (ADR-049)
+# ---------------------------------------------------------------------------
+
+dl:validFrom
+    a owl:DatatypeProperty ;
+    rdfs:domain dl:DecisionRecord ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "valid from" ;
+    rdfs:comment """
+        Inclusive start of the interval over which the decision is in force.
+        xsd:dateTime. Not declared functional (EL forbids it); if single-valued
+        semantics are required, enforce them at write time in the decision
+        store, not in the ontology.
+    """ .
+
+dl:validTo
+    a owl:DatatypeProperty ;
+    rdfs:domain dl:DecisionRecord ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "valid to" ;
+    rdfs:comment """
+        Exclusive end of the interval over which the decision is in force. An
+        absent dl:validTo denotes an open-ended (still-current) decision.
+        xsd:dateTime; not declared functional, per EL safety.
+    """ .
+
+# ---------------------------------------------------------------------------
+# Signatures are provenance-envelope data, not TBox vocabulary; ADR-049 keeps
+# them out of the Whelk-classified graph.

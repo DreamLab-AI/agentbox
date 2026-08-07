@@ -167,6 +167,20 @@
       "protocol": "stdio",
       "version": "0.2.0"
     },
+    "decision-tools": {
+      "command": "node",
+      "args": ["/opt/agentbox/mcp/servers/decision-tools.js"],
+      "type": "stdio",
+      "env": {
+        "VISIONCLAW_API_URL": "${VISIONCLAW_API_URL:-http://visionclaw-server:4000}",
+        "VISIONCLAW_DEV_TOKEN": "${VISIONCLAW_DEV_TOKEN:-}",
+        "AGENTBOX_PUBKEY": "${AGENTBOX_PUBKEY:-}",
+        "ONTOLOGY_TIMEOUT_MS": "${ONTOLOGY_TIMEOUT_MS:-10000}"
+      },
+      "description": "Governed decision-record tools (PRD-022 W-B / ADR-048). Pure CJS request-builder helper (ontology-propose.js pattern) exposing record_decision / trace_decision_chain / analyze_decision_impact / find_similar_decisions / check_decision_rules. Decisions are first-class did:nostr-signed Oxigraph nodes; identity is the authenticated principal (never a client field); direct dl:caused/dl:precedentFor edges are asserted while reachability stays bounded + query-derived (never Whelk-classified). Consumed via the ontology-bridge require() dispatch; activates after image rebuild (live registration is the operator's step).",
+      "protocol": "stdio",
+      "version": "0.1.0"
+    },
     "substrate-tools": {
       "command": "node",
       "args": ["/opt/agentbox/mcp/servers/substrate-tools.js"],

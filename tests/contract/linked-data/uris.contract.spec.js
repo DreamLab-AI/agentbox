@@ -57,6 +57,39 @@ describe('ADR-013 — Canonical URI grammar', () => {
     });
   });
 
+  describe('ADR-048 — decision kind', () => {
+    test('decision mints a scope-required content-addressed URN', () => {
+      const u = uris.mint({
+        kind: 'decision',
+        pubkey: AGENT_PUBKEY,
+        payload: { summary: 'merge X', rationale: 'r' },
+      });
+      expect(u).toMatch(new RegExp(`^urn:agentbox:decision:${AGENT_PUBKEY}:sha256-12-[0-9a-f]{12}$`));
+      expect(uris.isCanonical(u)).toBe(true);
+    });
+
+    test('decision content-addresses the payload (same in → same URN)', () => {
+      const a = uris.mint({ kind: 'decision', pubkey: AGENT_PUBKEY, payload: { s: 'a', n: 1 } });
+      const b = uris.mint({ kind: 'decision', pubkey: AGENT_PUBKEY, payload: { n: 1, s: 'a' } });
+      expect(a).toBe(b);
+    });
+
+    test('decision rejects missing pubkey scope', () => {
+      expect(() => uris.mint({ kind: 'decision', payload: { summary: 's' } }))
+        .toThrow(/pubkey scope/);
+    });
+
+    test('decision requires a payload (content-addressed)', () => {
+      expect(() => uris.mint({ kind: 'decision', pubkey: AGENT_PUBKEY }))
+        .toThrow(/content-addressed/);
+    });
+
+    test('unknown kind still throws (kinds remain closed)', () => {
+      expect(() => uris.mint({ kind: 'verdict', pubkey: AGENT_PUBKEY, payload: { s: 1 } }))
+        .toThrow(uris.UnknownUriKind);
+    });
+  });
+
   describe('L14 — resolver is a pure function', () => {
     test('resolveCanonical never throws on weird input', () => {
       expect(() => uris.resolveCanonical(null)).not.toThrow();

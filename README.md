@@ -163,7 +163,7 @@ Deep-dives: [Code-as-Harness](docs/developer/code-as-harness.md) · [Consumer ec
 
 The core differentiator of Agentbox is the **identity and tracing mesh**.
 
-Agentbox generates a BIP-340 secp256k1 keypair at bootstrap. The agent's public key becomes a `did:nostr:<hex-pubkey>` identity, and **every resource, action, and event is rooted in it**. From that single root, 18 kinds of `urn:agentbox:<kind>:[<scope>:]<local>` identifiers name every entity: pods, credentials, receipts, activities, events, memories, skills, governance docs, and more. Owner-scoped kinds embed the hex pubkey — `urn:agentbox:credential:<hex-pubkey>:<sha256-12-…>` means that credential was issued by that agent and no other. Content-addressed kinds are deterministic: the same payload always produces the same URN, so re-emitting never double-counts.
+Agentbox generates a BIP-340 secp256k1 keypair at bootstrap. The agent's public key becomes a `did:nostr:<hex-pubkey>` identity, and **every resource, action, and event is rooted in it**. From that single root, 19 kinds of `urn:agentbox:<kind>:[<scope>:]<local>` identifiers name every entity: pods, credentials, receipts, activities, events, memories, skills, decisions, governance docs, and more. Owner-scoped kinds embed the hex pubkey — `urn:agentbox:credential:<hex-pubkey>:<sha256-12-…>` means that credential was issued by that agent and no other. Content-addressed kinds are deterministic: the same payload always produces the same URN, so re-emitting never double-counts.
 
 | Surface | Where the DID appears |
 |:--------|:----------------------|
@@ -177,6 +177,23 @@ All URNs are minted through [`management-api/lib/uris.js`](management-api/lib/ur
 **Provenance substrate.** The `solid-pod-rs` provenance release upgrades the pod backend into a trust ledger: git-marks make provenance the default (not an afterthought), and block-trails scale traceability from free (git/hash-chain) to settlement-grade (Bitcoin taproot anchor) per record. The deeper wiring — receipts carrying `git_commit_sha` + block-height trailers and crossing those trailers across the host-graph boundary — is the next increment, tracked in [economy-loop.md](docs/developer/economy-loop.md#what-remains).
 
 Deeper reading: [Identity and tracing mesh](docs/developer/identity-mesh.md) · [ADR-013 — Canonical URI grammar](docs/reference/adr/ADR-013-canonical-uri-grammar.md) · [ADR-005 — Pluggable adapter architecture](docs/reference/adr/ADR-005-pluggable-adapter-architecture.md) · [PRD-006 — Linked-data interfaces](docs/reference/prd/PRD-006-linked-data-interfaces.md)
+
+---
+
+## Semantic Integrity & Decision Intelligence
+
+Context-graph systems record what an agent did in a log an administrator can rewrite. Agentbox's host graph makes every change to shared knowledge pass **three distinct gates** — integrity, reasoning, authorisation — then signs, attributes, and time-stamps what survives. Consistency is not integrity, and neither is permission; the write receipt reports all three verdicts separately (`conflict: pass · whelk: consistent · acsp: pending`).
+
+| Their frame (context graphs) | Our stronger claim |
+|:-----------------------------|:-------------------|
+| Auditable via PROV-O lineage | **Cryptographically sovereign** — writes and decisions attribute to the authenticated `did:nostr`, never a request field; ownership is a multi-key chain, not an editable log |
+| Post-hoc policy validation | **Governed** — ACSP human-in-the-loop authorisation on every mutation, as a distinct gate |
+| Rule engines that validate OWL | **A reasoner that classifies it** — Whelk OWL 2 EL materialised subsumption runs on every proposal before governance sees it |
+| 2D dashboard visualisation | **Multi-user, immersive, multi-surface** — the reasoned graph rendered in XR over self-sovereign links |
+
+Shipped proof point: the pre-merge conflict gate's first run over the live corpus caught **2 subclass cycles and 57 relation contradictions** that structural validation had missed; live against the running store it enumerated 3 further cycles and 92 duplicate concepts as an advisory cleanup backlog while continuing to pass clean proposals. Decisions are first-class graph nodes (`urn:agentbox:decision:*`) with causal links, bounded derived traversal, and idempotent, replay-safe commits.
+
+Deeper reading: [PRD-022 — Semantic integrity, provenance and decision intelligence](docs/reference/prd/PRD-022-semantic-integrity-provenance-decisions.md) · [ADR-047 — Native capability boundary](docs/reference/adr/ADR-047-semantica-tenant-integration-boundary.md) · [ADR-048 — Decision records](docs/reference/adr/ADR-048-decision-records-as-graph-nodes.md) · [ADR-049 — Bi-temporal facts and runtime PROV-O](docs/reference/adr/ADR-049-bitemporal-facts-and-runtime-provenance.md) · [DDD-020 — Semantic integrity domain](docs/reference/ddd/DDD-020-semantic-integrity-provenance-domain.md)
 
 ---
 

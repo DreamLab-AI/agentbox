@@ -43,7 +43,7 @@ The image bakes `/opt/agentbox/skills` (118 skills). Skills are the JIT context 
 
 ## URI/URN scheme
 
-`urn:agentbox:<kind>:[<scope>:]<local>` (scope = 64-char hex pubkey), 18 kinds; identity `did:nostr:<hex-pubkey>`; content addressing `sha256-12-<12hex>`. **All durable identifiers are minted through `management-api/lib/uris.js`** — ad-hoc `format!()`/template-literal URNs are prohibited. Resolvability best-effort via `/v1/uri/<urn>` (307/404/410). Ref: [ADR-013](docs/reference/adr/ADR-013-canonical-uri-grammar.md). The host project's parallel `urn:visionclaw:*` grammar and the BC20 anti-corruption bridge: [subsystem-notes §URI](docs/reference/claude-context/subsystem-notes.md).
+`urn:agentbox:<kind>:[<scope>:]<local>` (scope = 64-char hex pubkey), 19 kinds (`decision` added by ADR-048); identity `did:nostr:<hex-pubkey>`; content addressing `sha256-12-<12hex>`. **All durable identifiers are minted through `management-api/lib/uris.js`** — ad-hoc `format!()`/template-literal URNs are prohibited. Resolvability best-effort via `/v1/uri/<urn>` (307/404/410). Ref: [ADR-013](docs/reference/adr/ADR-013-canonical-uri-grammar.md). The host project's parallel `urn:visionclaw:*` grammar and the BC20 anti-corruption bridge: [subsystem-notes §URI](docs/reference/claude-context/subsystem-notes.md).
 
 ## Rules for changes
 

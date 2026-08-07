@@ -18,8 +18,8 @@
  *   urn:agentbox:<kind>:<scope>:<local>  — opaque content-addressed names
  *     where:
  *       <kind>   ∈ pod | envelope | credential | mandate | receipt |
- *                  activity | event | mcp | memory | skill | adr | prd |
- *                  ddd | thing | dataset | bead
+ *                  activity | event | decision | mcp | memory | skill |
+ *                  adr | prd | ddd | thing | dataset | bead | agent | meta
  *       <scope>  optional; agent pubkey hex or another urn:agentbox: anchor
  *       <local>  ASCII slug or hex/base32 of a content hash
  *
@@ -92,6 +92,9 @@ const KINDS = Object.freeze({
   receipt:    { ownerScope: true,  scopeRequired: true,  contentAddressed: true,  resolvableSurface: 'pods' },
   activity:   { ownerScope: true,  scopeRequired: true,  contentAddressed: true,  resolvableSurface: 'agent-events' },
   event:      { ownerScope: true,  scopeRequired: true,  contentAddressed: true,  resolvableSurface: 'agent-events' },
+  // decision IS-A prov:Activity (ADR-048): mirrors activity's plumbing —
+  // scope-required owner pubkey + content-addressed payload hash.
+  decision:   { ownerScope: true,  scopeRequired: true,  contentAddressed: true,  resolvableSurface: 'agent-events' },
   mcp:        { ownerScope: false, scopeRequired: false, contentAddressed: false, resolvableSurface: 'things' },
   memory:     { ownerScope: true,  scopeRequired: false, contentAddressed: false, resolvableSurface: 'memory' },
   skill:      { ownerScope: false, scopeRequired: false, contentAddressed: false, resolvableSurface: 'skills' },

@@ -15,15 +15,26 @@ review_trigger: VisionClaw restored to service, or semantica major release chang
 > (substrate-vs-prime-semantica), which audited our own substrate against
 > prime-agent and semantica (`github.com/semantica-agi/semantica`). The decision
 > is recorded in RuVector `project-state/prime-agent-semantica-integration-decision`.
+>
+> **Operationalised (2026-08-07) by:** [PRD-022](../prd/PRD-022-semantic-integrity-provenance-decisions.md)
+> (the five workstreams that build the four capabilities), [ADR-047](./ADR-047-semantica-tenant-integration-boundary.md)
+> (resolves the integration boundary in favour of native, capability-first
+> implementation),
+> [ADR-048](./ADR-048-decision-records-as-graph-nodes.md) (decisions-as-nodes),
+> [ADR-049](./ADR-049-bitemporal-facts-and-runtime-provenance.md) (bi-temporal + runtime
+> PROV-O), and [DDD-020](../ddd/DDD-020-semantic-integrity-provenance-domain.md) (BC23,
+> the Semantic Integrity & Provenance domain). This ADR remains the seed *complement,
+> not replace* decision; the boundary question it left to the operator is now closed by ADR-047.
 
 ## Context
 
 `semantica` is an MIT-licensed, Python, graph-native "infrastructure beneath the
 LLM" — an end-to-end pipeline (ingest → extract → conflict-detect → dedup → KG →
 ontology/reasoning/provenance/decisions → polyglot store). It is startlingly
-proximal to VisionClaw's semantic half: its **default RDF backend is embedded
-Oxigraph**, the same store VisionClaw runs, so on storage it is a strict superset
-of ours. It ships, as first-class modules, four capabilities VisionClaw lacks at
+proximal to VisionClaw's semantic half. Its public backend matrix lists
+Blazegraph, Jena and RDF4J, not Oxigraph; its storage and runtime are therefore
+neither a superset of ours nor a premise of this decision. It ships, as
+first-class modules, four interaction patterns VisionClaw lacks at
 the agent-write/runtime layer:
 
 1. **W3C PROV-O provenance on every triple** (we hang `prov:wasAttributedTo` /
@@ -44,11 +55,11 @@ semantica would downgrade the reasoning core.
 
 ## Decision
 
-**Complement, do not replace.** Keep Whelk EL classification as the inference
-core; adopt the four capabilities above as an agent-facing tenant *over* our
-Oxigraph store, registering Whelk *behind* semantica's `SPARQLReasoner` /
-`OntologyValidator` so semantica queries our reasoned graph rather than supplying
-its own weaker inference.
+**Complement, do not replace.** Keep Whelk EL classification and VisionClaw's
+single-writer HTTP boundary. Implement the four capabilities natively in our
+domain model and graph. Semantica is comparative prior art for capability and
+interaction design, not a runtime dependency, canonical schema, storage layer,
+or API contract.
 
 We adopt disciplines/patterns, not a wholesale dependency. Priority order, by
 value-over-cost, is set by the failure modes a multi-agent mesh actually hits:
@@ -69,33 +80,31 @@ our own corpus): `DUPLICATE_CONCEPT`, `SUBCLASS_CYCLE`, `RELATION_CONTRADICTION`
 Its first live run found real defects: **2 subclass cycles** and **57
 subClassOf/contrasts_with contradictions** the structural validator does not catch.
 
-## Integration boundary (open question, with a recommendation)
+## Integration boundary
 
-Semantica is Python; the VisionClaw core is Rust/Oxigraph. Two options for
-capabilities 2–4:
+Semantica is Python; the VisionClaw core is Rust/Oxigraph. Two approaches were
+considered for capabilities 2–4:
 
-- **(A) Co-located Python tenant** — run semantica as a sidecar bound to our
-  Oxigraph store, Whelk registered behind its reasoner. Fast to stand up; reuses
-  its ProvenanceManager / bi-temporal / decision modules as-is. Cost: a second
-  runtime and its dependency surface alongside the Rust engine.
+- **(A) Co-located Python tenant** — rejected. It imports an unproven backend and
+  reasoner seam, conflicts with ADR-023's HTTP single-writer boundary, and lets a
+  reference implementation dictate our operational architecture.
 - **(B) Native Rust reimplementation** — port the 3–4 patterns into the VisionClaw
   core. No second runtime; tighter integration. Cost: significant engineering, and
   we forgo semantica's maintained implementations.
 
-**Recommendation: (A) as the near-term path** once VisionClaw is restored — it
-lets us validate the four capabilities against real traffic cheaply before
-committing to a native port. Revisit (B) only if the Python tenant proves a
-latency or operational burden. This is the one decision this ADR leaves to the
-operator; everything above is settled.
+**Decision: (B), implemented capability-first.** Port only the behaviours and
+interaction contracts proven useful by acceptance tests. Do not mirror
+Semantica's internal classes or persistence shapes. Small disposable comparison
+spikes may run outside production to validate semantics, but they create no
+runtime dependency and have no write credentials.
 
 ## Consequences
 
 - Whelk EL classification stays the inference core; no reasoning downgrade.
 - Pre-merge integrity is available immediately (`pipeline/conflicts.py`), decoupled
   from VisionClaw's availability — the highest-value capability lands first.
-- Our DID/Nostr hierarchical ownership + ACSP governance remain the differentiators
-  semantica lacks (its accountability is PROV-O lineage, not cryptographic
-  sovereignty); the tenant does not replace them.
+- Our DID/Nostr hierarchical ownership + ACSP governance remain the
+  differentiators; external examples inform behaviour but do not replace them.
 - Sequencing depends on ADR-023's VisionClaw restoration and the 8,152-vs-~5,975
   corpus/store drift being resolved (load `ontology-output.ttl` into
   `urn:ngm:graph:ontology:assert`) before capabilities 2–4 are actionable.

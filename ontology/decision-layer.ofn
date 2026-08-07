@@ -1,0 +1,39 @@
+Prefix(dl:=<https://narrativegoldmine.com/ns/dl#>)
+Prefix(prov:=<http://www.w3.org/ns/prov#>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+
+Ontology(<https://narrativegoldmine.com/ns/dl>
+  Annotation(rdfs:comment "Decision-layer vocabulary (ADR-048/ADR-049). OWL 2 EL profile: no inverse, functional, or inverse-functional properties. dl:caused and dl:precedentFor are deliberately NOT transitive - reachability is query-derived and must remain distinguishable from direct evidence. Functional-syntax projection of decision-layer.ttl for the horned-owl/Whelk loader; keep in sync with the TTL.")
+
+  Declaration(Class(dl:DecisionRecord))
+  Declaration(Class(prov:Activity))
+  Declaration(Class(prov:Entity))
+  Declaration(ObjectProperty(dl:caused))
+  Declaration(ObjectProperty(dl:precedentFor))
+  Declaration(ObjectProperty(dl:influenced))
+  Declaration(ObjectProperty(dl:consideredInput))
+  Declaration(ObjectProperty(dl:governedBy))
+  Declaration(DataProperty(dl:validFrom))
+  Declaration(DataProperty(dl:validTo))
+
+  SubClassOf(dl:DecisionRecord prov:Activity)
+
+  ObjectPropertyDomain(dl:caused dl:DecisionRecord)
+  ObjectPropertyRange(dl:caused dl:DecisionRecord)
+  ObjectPropertyDomain(dl:precedentFor dl:DecisionRecord)
+  ObjectPropertyRange(dl:precedentFor dl:DecisionRecord)
+  ObjectPropertyDomain(dl:influenced dl:DecisionRecord)
+  ObjectPropertyDomain(dl:consideredInput dl:DecisionRecord)
+  ObjectPropertyDomain(dl:governedBy dl:DecisionRecord)
+
+  DataPropertyDomain(dl:validFrom prov:Entity)
+  DataPropertyRange(dl:validFrom xsd:dateTime)
+  DataPropertyDomain(dl:validTo prov:Entity)
+  DataPropertyRange(dl:validTo xsd:dateTime)
+
+  AnnotationAssertion(rdfs:comment dl:DecisionRecord "A first-class, did:nostr-attributed agent decision. IS-A prov:Activity so it inherits runtime-provenance plumbing (ADR-048).")
+  AnnotationAssertion(rdfs:comment dl:caused "Direct decision-to-decision causation claim. NOT transitive; ancestry is query-derived (ADR-048).")
+  AnnotationAssertion(rdfs:comment dl:precedentFor "Direct, evidenced precedent claim. NOT transitive (ADR-048).")
+)
