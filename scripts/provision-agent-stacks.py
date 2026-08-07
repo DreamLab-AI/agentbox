@@ -20,12 +20,18 @@ HOOK_ADAPTER = pathlib.Path(
 NOSTR_SUMMARY_HOOK = pathlib.Path(
     os.getenv("AGENTBOX_NOSTR_SUMMARY_HOOK", "/opt/agentbox/config/hooks/nostr-session-summary.py")
 )
+# SessionEnd Z.AI ontology monitor (gated on [ontology_monitor]). Reviews the
+# session's concept-bearing work against the ontology and proposes updates to the
+# forum broker gate as ACSP ActionRequests (kind 31402).
+ONTOLOGY_MONITOR_HOOK = pathlib.Path(
+    os.getenv("AGENTBOX_ONTOLOGY_MONITOR_HOOK", "/opt/agentbox/config/hooks/ontology-monitor.cjs")
+)
 # Writable embedder cache for claude-flow's route/intelligence HNSW recall;
 # unset, @xenova/transformers caches into the read-only Nix store and crashes.
 HF_CACHE = os.getenv("AGENTBOX_HF_CACHE", "/home/devuser/.cache/huggingface")
 
 
-def learning_hooks(mobile_bridge: bool = False) -> dict:
+def learning_hooks(mobile_bridge: bool = False, ontology_monitor: bool = False) -> dict:
     """Claude Code hook wiring for the claude-flow self-learning loop.
 
     Every hook delegates to the baked stdin→CLI adapter, which routes through
@@ -55,6 +61,18 @@ def learning_hooks(mobile_bridge: bool = False) -> dict:
                     {
                         "type": "command",
                         "command": f"python3 {NOSTR_SUMMARY_HOOK} || true",
+                        "timeout": 200000,
+                    }
+                ]
+            }
+        )
+    if ontology_monitor:
+        session_end.append(
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": f"node {ONTOLOGY_MONITOR_HOOK} || true",
                         "timeout": 200000,
                     }
                 ]
@@ -209,7 +227,8 @@ def symlink_shared(target: pathlib.Path, source: pathlib.Path) -> None:
 
 def build_profile(
     name: str, config: dict, mobile_bridge: bool = False, summary_model: str = "",
-    zai_reasoning_effort: str = ""
+    zai_reasoning_effort: str = "", ontology_monitor: bool = False,
+    ontology_monitor_mode: str = "dryrun"
 ) -> None:
     root = WORKSPACE / "profiles" / name
     claude_dir = root / ".claude"
@@ -275,12 +294,17 @@ def build_profile(
             "TRANSFORMERS_CACHE": HF_CACHE,
             "HF_HOME": HF_CACHE,
         },
-        "hooks": learning_hooks(mobile_bridge),
+        "hooks": learning_hooks(mobile_bridge, ontology_monitor),
     }
 
     # Pin the Z.AI summariser model for the phone-mirror hook, when configured.
     if mobile_bridge and summary_model:
         settings["env"]["AGENTBOX_ZAI_MODEL"] = summary_model
+
+    # Enable + configure the SessionEnd ontology monitor for the hook subprocess.
+    if ontology_monitor:
+        settings["env"]["AGENTBOX_ONTOLOGY_MONITOR"] = "1"
+        settings["env"]["AGENTBOX_ONTOLOGY_MONITOR_MODE"] = ontology_monitor_mode
 
     # GLM reasoning depth for the zai consultant (glm-5.2 reasoning_effort).
     # The consultant maps this to a Claude Code thinking budget; the Z.AI
@@ -311,8 +335,16 @@ def main() -> None:
         config.get("consultants", {}).get("zai", {}).get("reasoning_effort", "")
     )
 
+    # SessionEnd Z.AI ontology monitor, gated on [ontology_monitor].
+    om_config = config.get("ontology_monitor", {})
+    ontology_monitor = bool(om_config.get("enabled", False))
+    ontology_monitor_mode = str(om_config.get("mode", "dryrun")) if ontology_monitor else "dryrun"
+
     for name, stack in STACKS.items():
-        build_profile(name, stack, mobile_bridge, summary_model, zai_reasoning_effort)
+        build_profile(
+            name, stack, mobile_bridge, summary_model, zai_reasoning_effort,
+            ontology_monitor, ontology_monitor_mode,
+        )
 
     write_text(WORKSPACE / ".agentbox" / "stack-manifest.json", json.dumps(manifest, indent=2) + "\n")
 

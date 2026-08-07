@@ -86,6 +86,21 @@ per_user_agents = false
 enabled       = false      # register the SessionEnd phone-mirror hook
 summary_model = "glm-5.2"  # Z.AI/GLM model for the digest (→ AGENTBOX_ZAI_MODEL)
 
+# ── Ontology monitor (SessionEnd Z.AI worker → forum broker gate) ─────────────
+# On SessionEnd a Z.AI/GLM worker (ADR-011) reviews the session's concept-bearing
+# work against the ontology via the local corpus route (VisionClaw-free) and, where
+# the corpus looks stale/wrong/missing, proposes a modification to the FORUM BROKER
+# GATE as an ACSP ActionRequest (kind 31402) for human 31403 approval — the governed
+# elevation path (PRD-014), never the ungoverned load backdoor. Disabled by default:
+# enabled=false → the SessionEnd hook is not registered and nothing is reviewed.
+# mode: "dryrun" stages proposals to $AGENTBOX_STATE/ontology-proposals.jsonl (no
+# relay egress); "publish" signs + publishes 31402 live to the forum relay. Even when
+# enabled it stays a silent no-op unless a Z.AI key is present (and, for publish,
+# MANAGEMENT_API_KEY + NOSTR_RELAYS). Hook: config/hooks/ontology-monitor.cjs.
+[ontology_monitor]
+enabled = false      # register the SessionEnd ontology-review hook
+mode    = "dryrun"   # dryrun | publish  (publish emits kind-31402 to the forum broker gate)
+
 # ── Operator identity (optional) ────────────────────────────────────────────────
 # The human operator's Nostr identity. When set, this pubkey is:
 #   - Added to the relay allowlist (can publish events to the embedded relay)
@@ -907,6 +922,13 @@ mode = "local-cpu"
 port = 9092
 dtype = "bf16"
 model = "openai/privacy-filter"
+# openai/privacy-filter ships a custom architecture (model_type
+# "openai_privacy_filter") that stock Transformers rejects with
+# "does not recognize this architecture", leaving the PII filter unavailable
+# (fail-open). The model carries its own modelling code on the Hub, so it must
+# be loaded with trust_remote_code. Keep true while `model` is this checkpoint;
+# set false only if you pin a Transformers-native token-classification model.
+trust_remote_code = true
 
 [privacy_filter.policy]
 pods         = "strict"
