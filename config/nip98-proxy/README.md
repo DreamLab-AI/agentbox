@@ -63,11 +63,49 @@ their own auth — the ingress **adds** identity, it does not replace surface
 checks (defence in depth). Malformed route config is fatal at boot (fail
 closed). Route additions are ADR-worthy events (ADR-045 review trigger).
 
+## NIP-07 browser sessions (`/nip07/*`)
+
+Browsers cannot attach an `Authorization` header to navigations, so per-request
+NIP-98 is impossible for a human at a dashboard. The proxy owns a small
+`/nip07/*` surface (never forwarded upstream) that turns one NIP-07 signature
+into a bounded session:
+
+1. An unauthenticated **browser** GET (`Accept: text/html`) is 302'd to
+   `/nip07/?next=<original path>` instead of the JSON 401 (API clients keep
+   the 401 unchanged).
+2. `GET /nip07/` serves a self-contained handshake page. Its JS waits for a
+   NIP-07 signer (`window.nostr` — podkey or any compliant extension; signers
+   inject asynchronously, so it polls briefly), then asks it to sign a
+   kind-27235 event for `POST /nip07/session`.
+3. `POST /nip07/session` verifies that event through the **same**
+   `NostrBridge.verifyNip98` path as every other request. Only auth mode
+   `nip98` may mint — an existing cookie cannot self-renew and the break-glass
+   bearer cannot launder its sentinel into a pubkey-bound session. On success
+   the proxy sets `agentbox_nip07_session`: HttpOnly, SameSite=Lax, `Secure`
+   when the request arrived over TLS, `Max-Age` = `NIP98_PROXY_SESSION_TTL`.
+4. The cookie is a stateless HMAC token `v1.<pubkey>.<expiry>.<mac>` under a
+   per-boot random secret (override with `NIP98_PROXY_SESSION_SECRET` only if
+   sessions must survive restarts). Expiry is inside the MAC.
+5. Subsequent requests — **including WebSocket upgrades, which carry cookies**
+   — authenticate via the session and are stamped with the real verified
+   pubkey and `X-Agentbox-Auth-Mode: nip07-session`. The session cookie is
+   stripped from the forwarded `Cookie` header on both HTTP and WS paths;
+   upstreams never see the token. `GET /nip07/logout` clears it.
+
+`NIP98_PROXY_ALLOWED_PUBKEYS` (comma-separated hex) is the npub gate of
+ADR-045 D2: when set, only those identities pass NIP-98 verification or mint
+sessions. Unset preserves prior behaviour (any validly-signed pubkey).
+
+**Signer not detected?** NIP-07 extensions inject `window.nostr` into page
+JavaScript only — nothing is visible to the server until the page asks for a
+signature. If the handshake page reports no signer, check the extension is
+enabled for this origin (some signers gate on host/https).
+
 ## Break-glass bearer (opt-in only)
 
-Before NIP-07 browser signing exists, the operator's browser cannot mint a
-NIP-98 header. A **break-glass** bypass is provided *only* when
-`NIP98_PROXY_ALLOW_BEARER=<token>` is set:
+With NIP-07 sessions landed, the bearer's original purpose is served by the
+handshake above — plan its retirement (ADR-045). A **break-glass** bypass
+remains *only* when `NIP98_PROXY_ALLOW_BEARER=<token>` is set:
 
 - A request presenting `Authorization: Bearer <token>` (constant-time compared)
   is accepted and stamped with `X-Agentbox-Pubkey = NIP98_PROXY_BEARER_PUBKEY`
@@ -77,7 +115,9 @@ NIP-98 header. A **break-glass** bypass is provided *only* when
 
 This is a **documented escape hatch, never a default**. Leave
 `NIP98_PROXY_ALLOW_BEARER` unset in any identity-bearing deployment; when unset,
-only verified NIP-98 is accepted. Retire it the moment NIP-07 signing lands.
+only verified NIP-98 (header or NIP-07 session) is accepted. NIP-07 signing has
+now landed, so the bearer's remaining use is emergency access when no signer is
+available — keep it unset unless that emergency is live.
 
 ## Fail-closed
 
@@ -98,6 +138,9 @@ the upstream. A loud `warn` is logged at startup.
 | `NOSTR_BRIDGE_PATH` | *(candidates)* | explicit path to `nostr-bridge.js` |
 | `NIP98_PROXY_ALLOW_BEARER` | *(unset)* | break-glass shared bearer token |
 | `NIP98_PROXY_BEARER_PUBKEY` | `break-glass` | pubkey stamped for break-glass requests |
+| `NIP98_PROXY_SESSION_TTL` | `43200` | NIP-07 browser session lifetime, seconds |
+| `NIP98_PROXY_SESSION_SECRET` | *(random per boot)* | session-cookie HMAC secret; unset = sessions die with the process |
+| `NIP98_PROXY_ALLOWED_PUBKEYS` | *(unset)* | comma-separated hex npub gate for NIP-98 + session minting |
 | `MANAGEMENT_API_URL` | *(unset)* | informational; the proxy does not call it |
 
 `nostr-bridge.js` is resolved from `NOSTR_BRIDGE_PATH`, then the source-tree

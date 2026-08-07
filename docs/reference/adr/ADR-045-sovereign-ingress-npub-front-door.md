@@ -8,8 +8,9 @@ author: Dr John O'Hare
 depends_on: [ADR-042, ADR-043, ADR-044]
 related: [PRD-021, ADR-013, ADR-017, ADR-039]
 review_trigger: >-
-  NIP-07 browser signing lands in the AoE dashboard or the operator cockpit
-  (retire the break-glass bearer and re-verify the WS token path); the DreamLab
+  (fired 2026-08-06: NIP-07 sessions landed in the ingress — see Consequences)
+  the break-glass bearer is enabled in anger or a second browser surface grows
+  its own session scheme (re-verify the one-session-scheme assumption); the DreamLab
   forum ships its nostr user gate (wire the SSO link-through and re-verify the
   shared-npub assumption); a third upstream is added to the ingress routing
   table (re-verify the prefix-match and header-injection semantics per
@@ -133,8 +134,23 @@ The DreamLab forum system and agentbox **share identity, not chrome**:
   path; surface-local auth remains as defence in depth.
 - The routing table is a new (small) attack surface on the trust boundary —
   route additions are ADR-worthy events (review trigger).
-- Until NIP-07 signing lands, browsers still need the break-glass bearer for
-  direct `:9096` use; the cockpit origin masks this for the common case.
+- ~~Until NIP-07 signing lands, browsers still need the break-glass bearer for
+  direct `:9096` use; the cockpit origin masks this for the common case.~~
+  **Superseded 2026-08-06 (first review trigger fired): NIP-07 browser
+  sessions landed in the ingress itself.** The proxy owns a `/nip07/*`
+  handshake surface: unauthenticated browser GETs are redirected to a
+  self-contained page that has the operator's NIP-07 signer (`window.nostr` —
+  podkey or any compliant extension) sign a kind-27235 challenge, verified
+  through the same `NostrBridge.verifyNip98` path, then binds the verified
+  pubkey into an HttpOnly HMAC session cookie (default 12 h, per-boot secret).
+  Cookies ride WebSocket upgrades natively, closing the WS-token gap; the
+  token is stripped before forwarding, and `NIP98_PROXY_ALLOWED_PUBKEYS`
+  provides the npub allowlist this ADR's D2 envisioned. The break-glass
+  bearer is now emergency-only (no signer available) and remains unset by
+  default; sessions are stamped `X-Agentbox-Auth-Mode: nip07-session` so
+  upstream policy can distinguish them from per-request NIP-98. Implementing
+  the flow in the proxy (not the dashboard, not the cockpit) preserved both
+  the overlay-only AoE rule (ADR-042) and the sole-ingress invariant.
 - The forum integration is deliberately loose: nothing in this repo names or
   depends on the forum implementation (host-by-role rule); only the npub gate
   and event kinds are shared contract.

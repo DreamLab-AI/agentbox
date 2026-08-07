@@ -49,7 +49,29 @@
  *   NOSTR_BRIDGE_PATH          explicit path to nostr-bridge.js (else candidates tried)
  *   NIP98_PROXY_ALLOW_BEARER   break-glass shared bearer token (unset = disabled)
  *   NIP98_PROXY_BEARER_PUBKEY  pubkey stamped for break-glass requests (default "break-glass")
+ *   NIP98_PROXY_SESSION_TTL    NIP-07 browser session lifetime in seconds (default 43200 = 12h)
+ *   NIP98_PROXY_SESSION_SECRET HMAC secret for session cookies (default: random per boot —
+ *                              sessions do not survive a proxy restart, by design)
+ *   NIP98_PROXY_ALLOWED_PUBKEYS comma-separated hex pubkeys; when set, only these
+ *                              identities pass NIP-98 verification or may mint a
+ *                              browser session (the npub gate of ADR-045 D2).
+ *                              Unset = any validly-signed pubkey (prior behaviour).
  *   MANAGEMENT_API_URL         informational only (not called by the proxy)
+ *
+ * NIP-07 BROWSER SESSIONS (ADR-045 review trigger "NIP-07 landing"): browsers
+ * cannot attach custom Authorization headers to navigations, so per-request
+ * NIP-98 is impossible for a human at a dashboard. The proxy therefore owns a
+ * small `/nip07/*` surface (never forwarded upstream): GET /nip07/ serves a
+ * self-contained handshake page whose JS asks the user's NIP-07 signer
+ * (window.nostr — e.g. the podkey signer) to sign a kind-27235 event for
+ * POST /nip07/session; the proxy verifies it through the SAME
+ * NostrBridge.verifyNip98 path, then sets an HttpOnly HMAC-signed cookie
+ * binding {pubkey, expiry}. Subsequent requests — including WebSocket
+ * upgrades, which carry cookies — authenticate via that session and are
+ * stamped X-Agentbox-Auth-Mode: nip07-session with the REAL verified pubkey.
+ * The cookie is stripped before forwarding (upstreams never see the token).
+ * Unauthenticated browser GETs (Accept: text/html) are 302'd to the handshake
+ * instead of receiving the JSON 401.
  */
 
 import http from 'node:http';
@@ -73,6 +95,33 @@ const BREAK_GLASS_PUBKEY = process.env.NIP98_PROXY_BEARER_PUBKEY || 'break-glass
 // (Finding 4). Bounds memory against a hostile large-body upload; oversize
 // requests are rejected 413 before any upstream contact. Default 25 MiB.
 const MAX_BODY_BYTES = Number.parseInt(process.env.NIP98_PROXY_MAX_BODY || String(25 * 1024 * 1024), 10);
+
+// NIP-07 browser-session config. A per-boot random secret is the safe default:
+// leaked cookies die with the process and there is exactly one proxy instance
+// (sole-ingress invariant), so cross-instance verification is a non-goal.
+const SESSION_TTL_S = Number.parseInt(process.env.NIP98_PROXY_SESSION_TTL || '43200', 10);
+if (!Number.isSafeInteger(SESSION_TTL_S) || SESSION_TTL_S <= 0) {
+  throw new Error('NIP98_PROXY_SESSION_TTL must be a positive integer');
+}
+const SESSION_SECRET = process.env.NIP98_PROXY_SESSION_SECRET || crypto.randomBytes(32).toString('hex');
+const SESSION_COOKIE = 'agentbox_nip07_session';
+
+// Optional npub gate (ADR-045 D2): restrict which verified identities are
+// accepted at all. Applies to NIP-98 headers and to browser-session minting;
+// the break-glass bearer is orthogonal (its own opt-in, its own sentinel).
+const allowedPubkeyEntries = (process.env.NIP98_PROXY_ALLOWED_PUBKEYS || '')
+  .split(',')
+  .map((s) => s.trim().toLowerCase())
+  .filter(Boolean);
+if (allowedPubkeyEntries.some((s) => !/^[0-9a-f]{64}$/.test(s))) {
+  throw new Error('NIP98_PROXY_ALLOWED_PUBKEYS entries must be 64-character hex pubkeys');
+}
+const ALLOWED_PUBKEYS = new Set(allowedPubkeyEntries);
+
+function pubkeyAllowed(pubkey) {
+  if (ALLOWED_PUBKEYS.size === 0) return true;
+  return ALLOWED_PUBKEYS.has(String(pubkey).toLowerCase());
+}
 
 let upstream;
 try {
@@ -215,6 +264,62 @@ function constantTimeEqual(a, b) {
   return crypto.timingSafeEqual(bufA, bufB);
 }
 
+// ─── NIP-07 browser sessions (cookie mint/verify) ─────────────────────────────
+
+/**
+ * Session token: `v1.<pubkey>.<expiryEpochSeconds>.<hmacHex>` where the HMAC
+ * covers `<pubkey>.<expiry>` under the per-boot secret. Stateless — nothing to
+ * store, nothing to leak beyond the cookie itself, and forgery requires the
+ * secret. Expiry is inside the MAC, so it cannot be extended client-side.
+ */
+function mintSessionToken(pubkey, nowS) {
+  const exp = (nowS ?? Math.floor(Date.now() / 1000)) + SESSION_TTL_S;
+  const mac = crypto.createHmac('sha256', SESSION_SECRET).update(`${pubkey}.${exp}`).digest('hex');
+  return `v1.${pubkey}.${exp}.${mac}`;
+}
+
+function verifySessionToken(token, nowS) {
+  const parts = String(token || '').split('.');
+  if (parts.length !== 4 || parts[0] !== 'v1') return null;
+  const [, pubkey, expStr, mac] = parts;
+  if (!/^[0-9a-f]{64}$/.test(pubkey)) return null;
+  const exp = Number.parseInt(expStr, 10);
+  if (!Number.isFinite(exp) || exp <= (nowS ?? Math.floor(Date.now() / 1000))) return null;
+  const expected = crypto.createHmac('sha256', SESSION_SECRET).update(`${pubkey}.${exp}`).digest('hex');
+  if (!constantTimeEqual(mac, expected)) return null;
+  if (!pubkeyAllowed(pubkey)) return null;
+  return { pubkey, exp };
+}
+
+function parseCookies(header) {
+  const out = {};
+  for (const part of String(header || '').split(';')) {
+    const eq = part.indexOf('=');
+    if (eq === -1) continue;
+    out[part.slice(0, eq).trim()] = part.slice(eq + 1).trim();
+  }
+  return out;
+}
+
+/**
+ * Remove OUR session cookie from a Cookie header before forwarding — upstreams
+ * must never see the token — while preserving any upstream-owned cookies.
+ * Returns null when nothing remains.
+ */
+function stripSessionCookie(header) {
+  if (!header) return null;
+  const kept = String(header)
+    .split(';')
+    .map((s) => s.trim())
+    .filter((s) => s && !s.startsWith(`${SESSION_COOKIE}=`));
+  return kept.length ? kept.join('; ') : null;
+}
+
+function sessionSetCookie(token, req, maxAgeS) {
+  const secure = (req.headers['x-forwarded-proto'] || '').split(',')[0].trim() === 'https' ? '; Secure' : '';
+  return `${SESSION_COOKIE}=${token}; Path=/; Max-Age=${maxAgeS}; HttpOnly; SameSite=Lax${secure}`;
+}
+
 /**
  * Reconstruct the URL the client signed. NIP-98's `u` tag is signed WITHOUT the
  * query string (buildNip98Header strips it; verifyNip98 compares against the
@@ -262,9 +367,23 @@ function verifyIdentity(req, bearerToken, rawBody) {
       return { ok: false, reason: `nip98_verify_error: ${err.message}` };
     }
     if (result && result.valid) {
+      if (!pubkeyAllowed(result.pubkey)) {
+        return { ok: false, reason: 'pubkey_not_allowed' };
+      }
       return { ok: true, pubkey: result.pubkey, mode: 'nip98' };
     }
     return { ok: false, reason: `nip98_invalid: ${(result && result.error) || 'unknown'}` };
+  }
+
+  // NIP-07 browser session cookie (minted by POST /nip07/session after a
+  // verified kind-27235 handshake; see the NIP-07 section in the header docs).
+  const cookies = parseCookies(req.headers.cookie);
+  if (cookies[SESSION_COOKIE]) {
+    const session = verifySessionToken(cookies[SESSION_COOKIE]);
+    if (session) {
+      return { ok: true, pubkey: session.pubkey, mode: 'nip07-session' };
+    }
+    return { ok: false, reason: 'session_invalid_or_expired' };
   }
 
   return { ok: false, reason: 'no_credentials' };
@@ -289,6 +408,171 @@ const HOP_BY_HOP = new Set([
   'proxy-connection', 'te', 'trailer', 'transfer-encoding', 'upgrade',
 ]);
 
+// ─── NIP-07 handshake surface (/nip07/*, proxy-owned, never forwarded) ────────
+
+/**
+ * Only ever redirect back to a same-origin path: absolute URLs and
+ * protocol-relative ("//host") and backslash forms are rejected to keep the
+ * handshake from becoming an open redirect. Browsers normalize backslashes in
+ * special-scheme URLs, so `/\\host` must not be treated as a local path.
+ */
+function safeNextPath(raw) {
+  const next = String(raw || '/');
+  if (!next.startsWith('/') || next.startsWith('//') || next.includes('\\')) return '/';
+  return next;
+}
+
+const HANDSHAKE_PAGE = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agentbox — sign in with Nostr</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center;
+         background: #0d1117; color: #e6edf3;
+         font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 26rem; padding: 2rem; text-align: center; }
+  h1 { font-size: 1.25rem; margin: 0 0 .5rem; }
+  p { color: #9da7b3; margin: .5rem 0 1.25rem; }
+  button { font: inherit; padding: .6rem 1.4rem; border-radius: .5rem; cursor: pointer;
+           border: 1px solid #30363d; background: #7c3aed; color: #fff; }
+  button:disabled { background: #30363d; cursor: default; }
+  #status { margin-top: 1.25rem; font-size: .875rem; color: #9da7b3; min-height: 2.5em;
+            white-space: pre-line; }
+  #status.err { color: #f85149; }
+  code { background: #161b22; padding: .1em .35em; border-radius: .25rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Agentbox interaction plane</h1>
+  <p>This surface is identity-gated. Sign a one-time <code>kind-27235</code>
+     challenge with your NIP-07 signer (podkey, or any
+     <code>window.nostr</code> extension) to start a session.</p>
+  <button id="go">Sign in with Nostr</button>
+  <div id="status">Looking for a NIP-07 signer&hellip;</div>
+</main>
+<script>
+(() => {
+  const status = document.getElementById('status');
+  const btn = document.getElementById('go');
+  const next = new URLSearchParams(location.search).get('next') || '/';
+  const say = (msg, err) => { status.textContent = msg; status.className = err ? 'err' : ''; };
+
+  // Signer extensions inject window.nostr asynchronously — poll briefly
+  // before declaring it absent.
+  function waitForSigner(timeoutMs) {
+    return new Promise((resolve) => {
+      const t0 = Date.now();
+      (function poll() {
+        if (window.nostr && typeof window.nostr.signEvent === 'function') return resolve(window.nostr);
+        if (Date.now() - t0 > timeoutMs) return resolve(null);
+        setTimeout(poll, 200);
+      })();
+    });
+  }
+
+  async function signIn() {
+    btn.disabled = true;
+    const signer = await waitForSigner(3000);
+    if (!signer) {
+      say('No NIP-07 signer detected. Extensions only inject window.nostr into pages they trust — check the signer is enabled for this origin, then retry.', true);
+      btn.disabled = false;
+      return;
+    }
+    try {
+      say('Signer found — requesting signature\\u2026');
+      const url = location.origin + '/nip07/session';
+      const unsigned = {
+        kind: 27235,
+        created_at: Math.floor(Date.now() / 1000),
+        tags: [['u', url], ['method', 'POST']],
+        content: '',
+      };
+      const signed = await signer.signEvent(unsigned);
+      const res = await fetch('/nip07/session', {
+        method: 'POST',
+        headers: { authorization: 'Nostr ' + btoa(JSON.stringify(signed)) },
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        say('Rejected: ' + (body.message || res.status) + '. Check the signer key is one this ingress allows.', true);
+        btn.disabled = false;
+        return;
+      }
+      say('Session started for ' + (body.pubkey || '').slice(0, 16) + '\\u2026 redirecting.');
+      location.assign(body.next || next);
+    } catch (err) {
+      say('Signing failed or was declined: ' + err.message, true);
+      btn.disabled = false;
+    }
+  }
+
+  btn.addEventListener('click', signIn);
+  signIn(); // auto-attempt on load; the button covers declines and late injection
+})();
+</script>
+</body>
+</html>
+`;
+
+/**
+ * Handle the proxy-owned /nip07/* surface. Returns true when the request was
+ * consumed (response written), false to continue into normal proxying.
+ */
+function handleNip07(req, res, rawBody) {
+  const pathOnly = String(req.url || '/').split('?')[0];
+  if (pathOnly !== '/nip07' && !pathOnly.startsWith('/nip07/')) return false;
+
+  if ((pathOnly === '/nip07' || pathOnly === '/nip07/' || pathOnly === '/nip07/login') && req.method === 'GET') {
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
+    res.end(HANDSHAKE_PAGE);
+    return true;
+  }
+
+  if (pathOnly === '/nip07/session' && req.method === 'POST') {
+    const auth = verifyIdentity(req, undefined, rawBody);
+    // Only a live NIP-98 signature mints a session: an existing cookie must not
+    // self-renew (expiry is the point) and break-glass must not launder its
+    // sentinel into a pubkey-bound session.
+    if (!auth.ok || auth.mode !== 'nip98') {
+      log('warn', 'nip07 session mint rejected', { reason: auth.ok ? `mode_${auth.mode}` : auth.reason, ip: clientIp(req) });
+      res.writeHead(401, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({
+        error: 'Unauthorized',
+        message: auth.ok ? 'session minting requires a NIP-98 signature' : `NIP-98 verification failed (${auth.reason})`,
+      }));
+      return true;
+    }
+    const token = mintSessionToken(auth.pubkey);
+    let next = '/';
+    try { next = safeNextPath(new URL(req.url, 'http://x').searchParams.get('next')); } catch { /* default */ }
+    log('info', 'nip07 session minted', { pubkey: auth.pubkey, ttl_s: SESSION_TTL_S, ip: clientIp(req) });
+    res.writeHead(200, {
+      'content-type': 'application/json',
+      'set-cookie': sessionSetCookie(token, req, SESSION_TTL_S),
+      'cache-control': 'no-store',
+    });
+    res.end(JSON.stringify({ ok: true, pubkey: auth.pubkey, expires_in: SESSION_TTL_S, next }));
+    return true;
+  }
+
+  if (pathOnly === '/nip07/logout' && (req.method === 'POST' || req.method === 'GET')) {
+    res.writeHead(req.method === 'GET' ? 302 : 200, {
+      'set-cookie': sessionSetCookie('', req, 0),
+      ...(req.method === 'GET' ? { location: '/nip07/' } : { 'content-type': 'application/json' }),
+    });
+    res.end(req.method === 'GET' ? undefined : JSON.stringify({ ok: true }));
+    return true;
+  }
+
+  res.writeHead(404, { 'content-type': 'application/json' });
+  res.end(JSON.stringify({ error: 'NotFound', message: 'unknown /nip07 endpoint' }));
+  return true;
+}
+
 const server = http.createServer((req, res) => {
   // Finding 4: buffer the request body BEFORE authenticating so the NIP-98
   // `payload` tag is verified against the exact bytes the client signed, then
@@ -301,9 +585,23 @@ const server = http.createServer((req, res) => {
   let aborted = false;
 
   const forward = (rawBody) => {
+    // Proxy-owned NIP-07 handshake surface — consumed here, never forwarded.
+    if (handleNip07(req, res, rawBody)) return;
+
     const auth = verifyIdentity(req, undefined, rawBody);
     if (!auth.ok) {
       log('warn', 'request rejected', { method: req.method, url: req.url, reason: auth.reason, ip: clientIp(req) });
+      // A human at a browser gets the signer handshake instead of raw JSON;
+      // API clients (no text/html Accept) keep the machine-readable 401.
+      const wantsHtml = req.method === 'GET' && String(req.headers.accept || '').includes('text/html');
+      if (wantsHtml) {
+        res.writeHead(302, {
+          location: `/nip07/?next=${encodeURIComponent(safeNextPath(req.url))}`,
+          'cache-control': 'no-store',
+        });
+        res.end();
+        return;
+      }
       res.writeHead(401, { 'content-type': 'application/json' });
       res.end(JSON.stringify({
         error: 'Unauthorized',
@@ -321,6 +619,11 @@ const server = http.createServer((req, res) => {
       if (HOP_BY_HOP.has(key.toLowerCase())) continue;
       if (key.toLowerCase() === 'content-length') continue; // recomputed from the buffered body
       if (key.toLowerCase() === 'x-agentbox-pubkey') continue; // never trust an inbound claim
+      if (key.toLowerCase() === 'cookie') {
+        const kept = stripSessionCookie(value); // upstreams never see the session token
+        if (kept) headers[key] = kept;
+        continue;
+      }
       headers[key] = value;
     }
     headers.host = `${route.upstream.hostname}:${route.upstream.port}`;
@@ -414,6 +717,11 @@ server.on('upgrade', (req, socket, head) => {
       if (lname === 'x-agentbox-pubkey' || lname === 'x-agentbox-auth-mode') continue;
       if (lname === 'host') { lines.push(`Host: ${route.upstream.hostname}:${route.upstream.port}`); continue; }
       if (lname === 'x-forwarded-for') continue; // re-emitted below, canonicalised
+      if (lname === 'cookie') {
+        const kept = stripSessionCookie(value); // upstreams never see the session token
+        if (kept) lines.push(`${name}: ${kept}`);
+        continue;
+      }
       lines.push(`${name}: ${value}`);
     }
     lines.push(`X-Forwarded-For: ${appendXff(req.headers['x-forwarded-for'], clientIp(req))}`);
@@ -448,6 +756,8 @@ server.listen(PORT, BIND, () => {
     routes: ROUTES.map((r) => `${r.prefix} -> ${r.upstream.hostname}:${r.upstream.port}${r.strip ? ' (strip)' : ''}`),
     nip98: NostrBridge ? 'enabled' : 'DISABLED (fail-closed)',
     breakGlass: BREAK_GLASS ? 'ENABLED' : 'disabled',
+    nip07Sessions: `enabled (ttl ${SESSION_TTL_S}s${process.env.NIP98_PROXY_SESSION_SECRET ? ', pinned secret' : ', per-boot secret'})`,
+    allowedPubkeys: ALLOWED_PUBKEYS.size || 'any-valid-signature',
   });
 });
 
@@ -459,4 +769,7 @@ function shutdown(signal) {
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
 
-export { verifyIdentity, signedUrlFor, constantTimeEqual, routeFor };
+export {
+  verifyIdentity, signedUrlFor, constantTimeEqual, routeFor,
+  mintSessionToken, verifySessionToken, stripSessionCookie, safeNextPath,
+};

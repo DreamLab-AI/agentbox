@@ -12,6 +12,10 @@
  *   E. routed prefix (ADR-045)   → /mgmt/* lands on the second upstream with the
  *                                  prefix stripped, identity injected, auth stripped;
  *                                  unrouted paths still land on the default upstream
+ *   F. NIP-07 browser sessions   → handshake page served; browser 401s redirect to
+ *                                  it; session cookies authenticate HTTP + WS with
+ *                                  the real pubkey and are stripped before upstream;
+ *                                  forged/expired cookies and non-NIP-98 mints rejected
  *
  * Run: node config/nip98-proxy/selftest.mjs
  * Exit code 0 = all assertions passed (skips do not fail the run).
@@ -69,12 +73,12 @@ const mgmtUpstream = http.createServer((req, res) => {
 
 // ─── HTTP helper ───────────────────────────────────────────────────────────────
 
-function request(path, headers) {
+function request(path, headers, method = 'GET') {
   return new Promise((resolve, reject) => {
-    const req = http.request({ hostname: '127.0.0.1', port: PROXY_PORT, path, method: 'GET', headers }, (res) => {
+    const req = http.request({ hostname: '127.0.0.1', port: PROXY_PORT, path, method, headers }, (res) => {
       let body = '';
       res.on('data', (c) => { body += c; });
-      res.on('end', () => resolve({ status: res.statusCode, body }));
+      res.on('end', () => resolve({ status: res.statusCode, body, headers: res.headers }));
     });
     req.on('error', reject);
     req.end();
@@ -84,7 +88,8 @@ function request(path, headers) {
 // ─── NIP-98 header (best-effort; needs nostr-tools) ────────────────────────────
 
 function buildNip98(method, url) {
-  const bridgePath = pathResolve(__dirname, '../../mcp/servers/nostr-bridge.js');
+  const bridgePath = process.env.NOSTR_BRIDGE_PATH
+    || pathResolve(__dirname, '../../mcp/servers/nostr-bridge.js');
   let tools;
   try {
     const bridgeRequire = createRequire(bridgePath);
@@ -108,7 +113,7 @@ function buildNip98(method, url) {
 
 // ─── WS upgrade helper (raw socket) ────────────────────────────────────────────
 
-function wsUpgrade(path) {
+function wsUpgrade(path, extraHeaders = '') {
   return new Promise((resolve, reject) => {
     const sock = net.connect(PROXY_PORT, '127.0.0.1', () => {
       sock.write(
@@ -117,7 +122,9 @@ function wsUpgrade(path) {
         'Upgrade: websocket\r\n' +
         'Connection: Upgrade\r\n' +
         'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n' +
-        'Sec-WebSocket-Version: 13\r\n\r\n'
+        'Sec-WebSocket-Version: 13\r\n' +
+        extraHeaders +
+        '\r\n'
       );
     });
     let buf = '';
@@ -143,7 +150,7 @@ async function main() {
   process.env.NIP98_PROXY_ALLOW_BEARER = BREAK_GLASS;
   process.env.NIP98_PROXY_BEARER_PUBKEY = 'operator-break-glass';
 
-  await import('./proxy.mjs');
+  const proxyMod = await import('./proxy.mjs');
   await new Promise((r) => setTimeout(r, 300)); // let it bind
 
   console.log('NIP-98 proxy self-test\n');
@@ -248,6 +255,102 @@ async function main() {
     const r = await request('/mgmt/v1/system', {});
     assert(r.status === 401, 'E3: unauthenticated routed request rejected 401', `got ${r.status}`);
     assert(lastMgmtReq === null, 'E3: routed upstream never contacted without identity');
+  }
+
+  // F. NIP-07 browser sessions ------------------------------------------------
+
+  // F1. handshake page served, unauthenticated
+  {
+    const r = await request('/nip07/', { accept: 'text/html' });
+    assert(r.status === 200 && /window\.nostr/.test(r.body) && /27235/.test(r.body),
+      'F1: handshake page served with NIP-07 signer flow', `status ${r.status}`);
+  }
+
+  // F2. unauthenticated BROWSER GET redirects to the handshake (API 401 covered by A)
+  {
+    const r = await request('/api/sessions', { accept: 'text/html,application/xhtml+xml' });
+    assert(r.status === 302 && String(r.headers.location).startsWith('/nip07/?next=%2Fapi%2Fsessions'),
+      'F2: browser 401 becomes redirect to handshake with next', `status ${r.status} loc ${r.headers.location}`);
+  }
+
+  // F3. session mint requires a live NIP-98 signature (bearer must not launder)
+  {
+    const r = await request('/nip07/session', { authorization: `Bearer ${BREAK_GLASS}` }, 'POST');
+    assert(r.status === 401, 'F3: break-glass bearer cannot mint a session', `got ${r.status}`);
+    const r2 = await request('/nip07/session', {}, 'POST');
+    assert(r2.status === 401, 'F3b: credential-less mint rejected', `got ${r2.status}`);
+  }
+
+  // F4. cookie sessions authenticate HTTP with the real pubkey; token stripped upstream
+  {
+    const pubkey = 'ab'.repeat(32);
+    const token = proxyMod.mintSessionToken(pubkey);
+    lastReq = null;
+    const r = await request('/api/sessions', {
+      cookie: `other=1; agentbox_nip07_session=${token}; theme=dark`,
+    });
+    assert(r.status === 200, 'F4: session cookie accepted 200', `got ${r.status}`);
+    assert(lastReq && lastReq.headers['x-agentbox-pubkey'] === pubkey,
+      'F4: upstream received the session pubkey', JSON.stringify(lastReq && lastReq.headers['x-agentbox-pubkey']));
+    assert(lastReq && lastReq.headers['x-agentbox-auth-mode'] === 'nip07-session',
+      'F4: auth mode stamped nip07-session');
+    assert(lastReq && lastReq.headers.cookie === 'other=1; theme=dark',
+      'F4: session token stripped from upstream Cookie, other cookies kept',
+      JSON.stringify(lastReq && lastReq.headers.cookie));
+  }
+
+  // F5. forged / expired session cookies rejected
+  {
+    const forged = `v1.${'cd'.repeat(32)}.${Math.floor(Date.now() / 1000) + 9999}.${'00'.repeat(32)}`;
+    const r = await request('/api/sessions', { cookie: `agentbox_nip07_session=${forged}` });
+    assert(r.status === 401, 'F5: forged session cookie rejected 401', `got ${r.status}`);
+    const token = proxyMod.mintSessionToken('ef'.repeat(32));
+    const farFuture = Math.floor(Date.now() / 1000) + 10 * 365 * 24 * 3600;
+    assert(proxyMod.verifySessionToken(token, farFuture) === null,
+      'F5b: expired session token verifies null');
+    const [v, pk, exp] = token.split('.');
+    const tampered = [v, pk, String(Number(exp) + 3600), token.split('.')[3]].join('.');
+    assert(proxyMod.verifySessionToken(tampered) === null,
+      'F5c: expiry tampering breaks the MAC');
+  }
+
+  // F6. WS upgrade rides the session cookie
+  {
+    const pubkey = '12'.repeat(32);
+    const token = proxyMod.mintSessionToken(pubkey);
+    lastUpgrade = null;
+    const resp = await wsUpgrade('/sessions/abc/live-ws', `Cookie: agentbox_nip07_session=${token}\r\n`);
+    assert(/101/.test(resp), 'F6: WS upgrade via session cookie completed', JSON.stringify(resp.slice(0, 40)));
+    assert(lastUpgrade && lastUpgrade.headers['x-agentbox-pubkey'] === pubkey,
+      'F6: WS upstream received the session pubkey');
+    assert(lastUpgrade && lastUpgrade.headers.cookie === undefined,
+      'F6: session cookie stripped from WS upstream headers', JSON.stringify(lastUpgrade && lastUpgrade.headers.cookie));
+  }
+
+  // F7. open-redirect guard on next
+  {
+    assert(proxyMod.safeNextPath('/aoe/dash') === '/aoe/dash', 'F7: same-origin path preserved');
+    assert(proxyMod.safeNextPath('https://evil.example/') === '/', 'F7b: absolute URL rejected');
+    assert(proxyMod.safeNextPath('//evil.example/') === '/', 'F7c: protocol-relative rejected');
+    assert(proxyMod.safeNextPath('/\\evil.example/') === '/', 'F7d: backslash URL rejected');
+  }
+
+  // F8. full mint flow via a real NIP-98 signature (needs nostr-tools)
+  {
+    const url = `http://127.0.0.1:${PROXY_PORT}/nip07/session`;
+    const nip98 = buildNip98('POST', url);
+    if (nip98.skip) {
+      skip('F8: NIP-98-signed session mint', nip98.skip);
+    } else {
+      const r = await request('/nip07/session', { authorization: nip98.header }, 'POST');
+      const setCookie = String((r.headers['set-cookie'] || [])[0] || '');
+      assert(r.status === 200 && setCookie.includes('agentbox_nip07_session=v1.') && setCookie.includes('HttpOnly'),
+        'F8: signed handshake mints HttpOnly session cookie', `status ${r.status} cookie ${setCookie.slice(0, 60)}`);
+      const token = setCookie.split(';')[0].split('=').slice(1).join('=');
+      const session = proxyMod.verifySessionToken(token);
+      assert(session && session.pubkey === nip98.pubkey,
+        'F8b: minted session binds the signer pubkey', JSON.stringify(session));
+    }
   }
 
   console.log(`\n${failures === 0 ? 'OK' : 'FAILED'} — ${failures} failure(s), ${skips} skip(s)`);
