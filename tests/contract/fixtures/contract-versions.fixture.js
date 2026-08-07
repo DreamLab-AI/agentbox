@@ -11,7 +11,7 @@
  * Format: MAJOR.MINOR.PATCH  (strict semver, no pre-release suffix)
  */
 const EXPECTED_CONTRACT_VERSIONS = {
-  beads:        '1.0.0',
+  beads:        '1.1.0',
   pods:         '1.0.0',
   memory:       '1.0.0',
   events:       '1.0.0',

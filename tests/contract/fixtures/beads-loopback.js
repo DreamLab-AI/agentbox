@@ -44,6 +44,8 @@ function _id(prefix) {
 function makeBeadsLoopback() {
   /** @type {Map<string, object>} id → bead row */
   const store = new Map();
+  /** @type {Array<{child_id, blocker_id, type}>} work-DAG blocking edges */
+  const deps = [];
 
   function jsonResponse(status, body) {
     return {
@@ -122,9 +124,30 @@ function makeBeadsLoopback() {
     return jsonResponse(200, row);
   }
 
+  function addDependency(childId, payload) {
+    if (!store.has(childId)) return notFound('bead', childId);
+    if (!payload.blocker_id || !store.has(payload.blocker_id)) {
+      return notFound('bead', payload.blocker_id || '?');
+    }
+    const type = payload.type || 'blocks';
+    if (!deps.some((d) => d.child_id === childId && d.blocker_id === payload.blocker_id)) {
+      deps.push({ child_id: childId, blocker_id: payload.blocker_id, type });
+    }
+    return jsonResponse(201, { child_id: childId, blocker_id: payload.blocker_id, type });
+  }
+
+  // A bead is blocked while any 'blocks' edge points at an unclosed blocker.
+  function isBlocked(id) {
+    return deps.some(
+      (d) => d.child_id === id && d.type === 'blocks' &&
+        (store.get(d.blocker_id) || {}).status !== 'closed',
+    );
+  }
+
   function getReady(parentId) {
     const rows = [...store.values()].filter(
-      (r) => r.status === 'open' && r.actor == null && (parentId ? r.parent_id === parentId : true),
+      (r) => r.status === 'open' && r.actor == null &&
+        (parentId ? r.parent_id === parentId : true) && !isBlocked(r.id),
     );
     return jsonResponse(200, rows);
   }
@@ -154,8 +177,12 @@ function makeBeadsLoopback() {
     // POST /v1/beads/children
     if (method === 'POST' && path === '/v1/beads/children') return createChild(body);
 
+    // POST /v1/beads/:id/deps
+    let m = path.match(/^\/v1\/beads\/([^/]+)\/deps$/);
+    if (method === 'POST' && m) return addDependency(decodeURIComponent(m[1]), body);
+
     // POST /v1/beads/:id/claim
-    let m = path.match(/^\/v1\/beads\/([^/]+)\/claim$/);
+    m = path.match(/^\/v1\/beads\/([^/]+)\/claim$/);
     if (method === 'POST' && m) return claim(decodeURIComponent(m[1]), body);
 
     // POST /v1/beads/:id/close

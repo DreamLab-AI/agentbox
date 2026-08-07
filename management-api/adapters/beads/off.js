@@ -19,9 +19,10 @@ class OffBeadsAdapter extends BaseAdapter {
   async createEpic()  { throw new AdapterDisabled('beads'); }
   async createChild() { throw new AdapterDisabled('beads'); }
   async claim()       { throw new AdapterDisabled('beads'); }
-  async close()       { throw new AdapterDisabled('beads'); }
-  async getReady()    { throw new AdapterDisabled('beads'); }
-  async show()        { throw new AdapterDisabled('beads'); }
+  async close()         { throw new AdapterDisabled('beads'); }
+  async addDependency() { throw new AdapterDisabled('beads'); }
+  async getReady()      { throw new AdapterDisabled('beads'); }
+  async show()          { throw new AdapterDisabled('beads'); }
 }
 
 module.exports = { OffBeadsAdapter, AdapterDisabled };

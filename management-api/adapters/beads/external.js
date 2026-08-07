@@ -45,6 +45,10 @@ class ExternalBeadsAdapter extends BaseAdapter {
     return this._post(`/v1/beads/${encodeURIComponent(id)}/close`, { outcome });
   }
 
+  async addDependency(childId, blockerId, type = 'blocks') {
+    return this._post(`/v1/beads/${encodeURIComponent(childId)}/deps`, { blocker_id: blockerId, type });
+  }
+
   async getReady(filter = {}) {
     const qs = filter && filter.parent_id
       ? `?parent_id=${encodeURIComponent(filter.parent_id)}`

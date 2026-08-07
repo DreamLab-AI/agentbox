@@ -177,20 +177,76 @@ class LocalSqliteBeadsAdapter extends BaseAdapter {
   }
 
   /**
-   * Return unclaimed children, optionally filtered by parent_id.
+   * Declare that `childId` is blocked by `blockerId` — a `blocks` edge in the
+   * work-DAG. `getReady` will withhold `childId` until every blocker is closed.
+   *
+   * Note the two distinct "parent" meanings: `beads.parent_id` is the epic→child
+   * *hierarchy*; `bead_deps.parent_id` is the *blocker* in a dependency edge. They
+   * are orthogonal — a child of one epic may be blocked by a child of another.
+   *
+   * Idempotent (INSERT OR IGNORE on the (child_id, parent_id) PK). Rejects a
+   * self-edge and any edge that would close a cycle, keeping the graph a DAG.
+   *
+   * @param {string} childId   - the dependent bead (withheld until unblocked)
+   * @param {string} blockerId - the bead that must close first
+   * @param {string} [type='blocks']
+   * @returns {{ child_id, blocker_id, type }}
+   */
+  async addDependency(childId, blockerId, type = 'blocks') {
+    if (!childId) throw new Error('childId is required');
+    if (!blockerId) throw new Error('blockerId is required');
+    if (childId === blockerId) throw new Error('a bead cannot depend on itself');
+    if (!this._db.prepare('SELECT 1 FROM beads WHERE id = ?').get(childId)) {
+      throw new NotFound('bead', childId);
+    }
+    if (!this._db.prepare('SELECT 1 FROM beads WHERE id = ?').get(blockerId)) {
+      throw new NotFound('bead', blockerId);
+    }
+    // Cycle guard: adding child→blocker closes a cycle iff `blocker` already
+    // (transitively) depends on `child`. Walk blocker's depends-on closure.
+    const cycle = this._db.prepare(
+      `WITH RECURSIVE reach(id) AS (
+         SELECT parent_id FROM bead_deps WHERE child_id = @blocker
+         UNION
+         SELECT bd.parent_id FROM bead_deps bd JOIN reach ON bd.child_id = reach.id
+       )
+       SELECT 1 FROM reach WHERE id = @child LIMIT 1`
+    ).get({ blocker: blockerId, child: childId });
+    if (cycle) {
+      throw new Error(`dependency ${childId} → ${blockerId} would create a cycle`);
+    }
+    this._db.prepare(
+      `INSERT OR IGNORE INTO bead_deps (child_id, parent_id, type) VALUES (?, ?, ?)`
+    ).run(childId, blockerId, type);
+    return { child_id: childId, blocker_id: blockerId, type };
+  }
+
+  /**
+   * Return READY beads: open, unclaimed, and with no *unclosed* blocker.
+   *
+   * "Ready" now honours the bead_deps work-DAG — a bead with an open `blocks`
+   * dependency is withheld until that blocker closes (true `bd` semantics).
+   * A bead with no dependencies behaves exactly as before, so the epic→child
+   * hierarchy filter and all prior callers are unaffected.
+   *
    * @param {object} [filter]
-   * @param {string} [filter.parent_id]
+   * @param {string} [filter.parent_id] - restrict to one epic's children
    * @returns {object[]}
    */
   async getReady(filter = {}) {
+    // A bead is blocked if any 'blocks' edge points at a blocker that is not closed.
+    const unblocked = `NOT EXISTS (
+      SELECT 1 FROM bead_deps d JOIN beads blk ON blk.id = d.parent_id
+      WHERE d.child_id = beads.id AND d.type = 'blocks' AND blk.status != 'closed'
+    )`;
     if (filter && filter.parent_id) {
       const rows = this._db.prepare(
-        `SELECT * FROM beads WHERE status = 'open' AND actor IS NULL AND parent_id = ?`
+        `SELECT * FROM beads WHERE status = 'open' AND actor IS NULL AND parent_id = ? AND ${unblocked}`
       ).all(filter.parent_id);
       return rows.map(r => this._hydrate(r));
     }
     const rows = this._db.prepare(
-      `SELECT * FROM beads WHERE status = 'open' AND actor IS NULL`
+      `SELECT * FROM beads WHERE status = 'open' AND actor IS NULL AND ${unblocked}`
     ).all();
     return rows.map(r => this._hydrate(r));
   }

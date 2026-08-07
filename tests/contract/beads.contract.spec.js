@@ -18,7 +18,7 @@ const { LocalSqliteBeadsAdapter } = require('../../management-api/adapters/beads
 const { ExternalBeadsAdapter }    = require('../../management-api/adapters/beads/external');
 const { OffBeadsAdapter }         = require('../../management-api/adapters/beads/off');
 
-const REQUIRED_METHODS = ['createEpic', 'createChild', 'claim', 'close', 'getReady', 'show'];
+const REQUIRED_METHODS = ['createEpic', 'createChild', 'claim', 'close', 'addDependency', 'getReady', 'show'];
 
 // ---------------------------------------------------------------------------
 // Implementation factories
@@ -136,6 +136,23 @@ for (const { label, makeAdapter, isReal, typedErrors } of IMPLS) {
         const ids = ready.map(r => r.id);
         expect(ids).not.toContain(c1.id);
         expect(ids).toContain(c2.id);
+      });
+
+      it('[M2] addDependency gates readiness — a blocked bead is withheld until its blocker closes', async () => {
+        const epic = await adapter.createEpic({ title: 'Blocked Work' });
+        const blocker = await adapter.createChild({ title: 'Do first', parent_id: epic.id });
+        const dependent = await adapter.createChild({ title: 'Do after', parent_id: epic.id });
+        await adapter.addDependency(dependent.id, blocker.id);
+
+        // While the blocker is open, only the blocker is ready.
+        let readyIds = (await adapter.getReady({ parent_id: epic.id })).map(r => r.id);
+        expect(readyIds).toContain(blocker.id);
+        expect(readyIds).not.toContain(dependent.id);
+
+        // Closing the blocker releases the dependent.
+        await adapter.close(blocker.id, 'done');
+        readyIds = (await adapter.getReady({ parent_id: epic.id })).map(r => r.id);
+        expect(readyIds).toContain(dependent.id);
       });
 
       it('[M2] show returns full epic/child detail', async () => {

@@ -193,6 +193,43 @@ async function beadsRoutes(fastify, options) {
     }
   });
 
+  // ── POST /v1/beads/:id/deps — declare a blocking dependency ───────────────
+  fastify.post('/v1/beads/:id/deps', {
+    schema: {
+      description: 'Declare that bead :id is blocked by another bead; :id stays out of getReady until the blocker closes',
+      tags: ['beads'],
+      params: { type: 'object', required: ['id'], properties: { id: { type: 'string' } } },
+      body: {
+        type: 'object',
+        required: ['blocker_id'],
+        properties: {
+          blocker_id: { type: 'string' },
+          type:       { type: 'string' },
+        },
+      },
+      response: {
+        201: {
+          type: 'object',
+          properties: {
+            child_id:   { type: 'string' },
+            blocker_id: { type: 'string' },
+            type:       { type: 'string' },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    if (gated(reply)) return;
+    try {
+      const body = request.body || {};
+      const edge = await beads().addDependency(request.params.id, body.blocker_id, body.type || 'blocks');
+      reply.code(201).send(edge);
+    } catch (err) {
+      if (sendAdapterError(reply, err)) return;
+      throw err;
+    }
+  });
+
   // ── POST /v1/beads/:id/claim — claim a bead by an actor ───────────────────
   fastify.post('/v1/beads/:id/claim', {
     schema: {
