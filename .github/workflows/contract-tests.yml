@@ -38,22 +38,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Node 20 LTS
+      - name: Set up Node 22 (matches the runtime image — nodejs_22 in flake.nix)
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: management-api/package-lock.json
 
       - name: Install dependencies
         working-directory: management-api
-        # Rebuild the better-sqlite3 native addon FROM SOURCE against the CI runner's
-        # exact Node ABI. The npm-ci prebuilt binary is ABI-mismatched on this runner and
-        # segfaults on load/use (chronic beads.contract SIGSEGV/require-error, red since
-        # June). ubuntu-latest ships the build toolchain (python3/make/g++).
-        run: |
-          npm ci
-          npm rebuild better-sqlite3 --build-from-source
+        run: npm ci
 
       - name: Run contract test suites
         working-directory: management-api
