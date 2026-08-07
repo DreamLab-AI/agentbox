@@ -1,0 +1,40 @@
+{
+  "@context": {
+    "dcterms": "http://purl.org/dc/terms/",
+    "xsd": "http://www.w3.org/2001/XMLSchema#",
+
+    "id": "@id",
+    "type": "@type",
+
+    "title": "dcterms:title",
+    "description": "dcterms:description",
+    "abstract": "dcterms:abstract",
+    "creator": "dcterms:creator",
+    "contributor": "dcterms:contributor",
+    "publisher": "dcterms:publisher",
+    "subject": "dcterms:subject",
+    "identifier": "dcterms:identifier",
+    "format": "dcterms:format",
+    "language": "dcterms:language",
+    "provenance": "dcterms:provenance",
+    "bibliographicCitation": "dcterms:bibliographicCitation",
+
+    "date": { "@id": "dcterms:date", "@type": "xsd:dateTime" },
+    "created": { "@id": "dcterms:created", "@type": "xsd:dateTime" },
+    "modified": { "@id": "dcterms:modified", "@type": "xsd:dateTime" },
+    "issued": { "@id": "dcterms:issued", "@type": "xsd:dateTime" },
+
+    "accessRights": { "@id": "dcterms:accessRights", "@type": "@id" },
+    "rights": "dcterms:rights",
+    "license": { "@id": "dcterms:license", "@type": "@id" },
+    "conformsTo": { "@id": "dcterms:conformsTo", "@type": "@id" },
+
+    "source": { "@id": "dcterms:source", "@type": "@id" },
+    "relation": { "@id": "dcterms:relation", "@type": "@id" },
+    "references": { "@id": "dcterms:references", "@type": "@id" },
+    "replaces": { "@id": "dcterms:replaces", "@type": "@id" },
+    "isReplacedBy": { "@id": "dcterms:isReplacedBy", "@type": "@id" },
+    "isPartOf": { "@id": "dcterms:isPartOf", "@type": "@id" },
+    "hasPart": { "@id": "dcterms:hasPart", "@type": "@id" }
+  }
+}

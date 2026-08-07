@@ -43,6 +43,16 @@ MODE        = os.environ.get("OPF_MODE", "off")
 DTYPE       = os.environ.get("OPF_DTYPE", "bf16")
 MODEL_ID    = os.environ.get("OPF_MODEL", "openai/privacy-filter")
 HF_HOME     = os.environ.get("HF_HOME", "/workspace/.cache/huggingface")
+# openai/privacy-filter publishes a custom architecture (model_type
+# "openai_privacy_filter") that stock Transformers does not recognise —
+# loading it raises ValueError("does not recognize this architecture") and the
+# whole PII filter fails open (unavailable). The model ships its own modelling
+# code on the Hub, so it must be loaded with trust_remote_code. Gated by an env
+# flag (default on) so an operator can pin to a Transformers-native model and
+# turn it back off. See [privacy_filter].trust_remote_code in agentbox.toml.
+TRUST_REMOTE_CODE = os.environ.get("OPF_TRUST_REMOTE_CODE", "1").lower() in (
+    "1", "true", "yes", "on",
+)
 
 ALLOWED_ENTITIES = {
     "account_number", "private_address", "private_email",
@@ -111,6 +121,7 @@ def _load_model() -> None:
             aggregation_strategy="simple",
             device=device,
             torch_dtype=_torch_dtype(),
+            trust_remote_code=TRUST_REMOTE_CODE,
         )
         _device_desc = (
             f"cuda:{device}" if device >= 0 else "cpu"
@@ -165,6 +176,7 @@ async def health(_req: web.Request) -> web.Response:
         "model":   MODEL_ID,
         "device":  _device_desc,
         "dtype":   DTYPE,
+        "trust_remote_code": TRUST_REMOTE_CODE,
     })
 
 async def metrics(_req: web.Request) -> web.Response:

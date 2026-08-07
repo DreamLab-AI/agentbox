@@ -44,11 +44,22 @@ let
 
   catalogue = [
     # ── ActivityStreams 2.0 — S2 (Nostr envelopes), S5 (PROV-O cross-ref) ─────
+    #
+    # Vendored in-tree, NOT fetched. https://www.w3.org/ns/activitystreams
+    # content-negotiates: it returns the JSON-LD @context ONLY when the request
+    # carries `Accept: application/ld+json`. Both pkgs.fetchurl and the
+    # nix-prefetch-url helper omit that header, so the FOD captured the W3C HTML
+    # documentation page instead — the pinned hash was the hash of that HTML,
+    # and ContextResolver.boot then died with
+    #   "…activitystreams is not valid JSON — Unexpected token '<', \"<!DOCTYPE\""
+    # aborting the whole Linked-Data middleware (all surfaces unavailable).
+    # The AS2 context is a frozen 2017 W3C Recommendation; pin the exact bytes
+    # in-tree (fetched with the correct Accept header) so there is no runtime or
+    # build-time content-negotiation dependency. Refresh only on a spec bump.
     {
       name = "activitystreams.context.jsonld";
       iri  = "https://www.w3.org/ns/activitystreams";
-      url  = "https://www.w3.org/ns/activitystreams";
-      sha256 = "sha256-WO4vSsOj1wCj1+F1/VJE2/BlD0JrweVBThw2/UPMpjQ=";
+      path = ../docs/reference/_vocab/activitystreams.context.jsonld;
       vocabulary = "ActivityStreams 2.0";
       authors = "James M Snell, Evan Prodromou";
       status = "W3C Recommendation 2017-05-23";
@@ -140,11 +151,18 @@ let
     }
 
     # ── SKOS — S10 (architecture documentation) ──────────────────────────────
+    #
+    # Vendored in-tree, NOT fetched. The former url (…/skos.rdf) serves RDF/XML,
+    # and DCMI/W3C publish no official JSON-LD @context for SKOS — so the baked
+    # file was RDF/XML and ContextResolver.boot's JSON.parse would abort on it
+    # (it only ever got there once activitystreams above was fixed, since boot
+    # fails on the first bad entry). This is a hand-authored JSON-LD context for
+    # the frozen SKOS namespace covering the full core vocabulary. Keep in sync
+    # with any skos: terms emitted by surfaces/s10-arch-docs.js.
     {
       name = "skos.context.jsonld";
       iri  = "http://www.w3.org/2004/02/skos/core#";
-      url  = "https://www.w3.org/2009/08/skos-reference/skos.rdf";
-      sha256 = "sha256-55YzuNBWSBbO6KmfXJrPmg5vxyV8cgms1oTsrVOondY=";
+      path = ../docs/reference/_vocab/skos.context.jsonld;
       vocabulary = "SKOS Reference";
       authors = "Alistair Miles, Sean Bechhofer";
       status = "W3C Recommendation 2009-08-18";
@@ -152,11 +170,17 @@ let
     }
 
     # ── Dublin Core Terms — S10 (architecture documentation) ─────────────────
+    #
+    # Vendored in-tree, NOT fetched. The former url (…/dublin_core_terms.ttl)
+    # serves Turtle, and DCMI publishes no official JSON-LD @context — so the
+    # baked file was Turtle and ContextResolver.boot's JSON.parse would abort on
+    # it (same first-bad-entry dynamic as the SKOS entry above). This is a
+    # hand-authored JSON-LD context for the frozen DCTERMS namespace covering
+    # the terms emitted by surfaces/s10-arch-docs.js plus the common DC set.
     {
       name = "dcterms.context.jsonld";
       iri  = "http://purl.org/dc/terms/";
-      url  = "https://www.dublincore.org/specifications/dublin-core/dcmi-terms/dublin_core_terms.ttl";
-      sha256 = "sha256-E99AEHLdcBW/nXUWLz5ByBOAdTBLe5zBqh6cFtuXZ5c=";
+      path = ../docs/reference/_vocab/dcterms.context.jsonld;
       vocabulary = "Dublin Core Terms";
       authors = "DCMI Usage Board";
       status = "DCMI Specification 2020-01-20";

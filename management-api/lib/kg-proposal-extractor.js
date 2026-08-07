@@ -41,7 +41,15 @@
 
 const uris = require('./uris');
 const bc20 = require('./bc20-provenance-bridge');
-const { buildProposeRequest } = require('../../mcp/servers/ontology-propose');
+// ontology-propose resolution mirrors the nostr-bridge dual-path in server.js:
+// the Nix build (flake.nix managementApiPkg.buildPhaseExtra) vendors a copy to
+// this package's lib/, because a bare require('../../mcp/servers/...') escapes
+// the packaged node_modules/agentic-flow-management-api boundary at runtime and
+// throws "Cannot find module", unmounting the KG-elevation route. In the source
+// tree (dev/test) that vendored copy is absent, so fall back to the repo path.
+let buildProposeRequest;
+try { ({ buildProposeRequest } = require('./ontology-propose')); }
+catch { ({ buildProposeRequest } = require('../../mcp/servers/ontology-propose')); }
 const { AgentActionType } = require('../utils/agent-event-publisher');
 
 class ExtractError extends Error {

@@ -334,9 +334,17 @@
           # resolve nostr-tools + ws from THIS package's node_modules. A bare
           # require('../mcp/servers/nostr-bridge') escapes the packaged
           # node_modules/agentic-flow-management-api boundary at runtime.
+          # Vendor first-party mcp/servers modules that management-api reaches
+          # via a bare `require('../../mcp/servers/<x>')`. Those relative paths
+          # escape the packaged node_modules/agentic-flow-management-api boundary
+          # at runtime (the built closure only contains ./management-api), so
+          # each such dependency must be copied INTO the package and required as
+          # a package-local module instead. Both files are dependency-free
+          # (stdlib only), so a flat copy is sufficient.
           buildPhaseExtra = ''
             mkdir -p lib
             cp ${./mcp/servers/nostr-bridge.js} lib/nostr-bridge.js
+            cp ${./mcp/servers/ontology-propose.js} lib/ontology-propose.js
           '';
         };
 
@@ -1702,7 +1710,7 @@ ${lib.optionalString privacyFilterEnabled ''
 command=${privacyFilterPythonEnv}/bin/python3 -u /opt/agentbox/scripts/opf-router.py
 directory=/opt/agentbox/scripts
 user=devuser
-environment=HOME="/home/devuser",HF_HOME="/home/devuser/.cache/huggingface",TRANSFORMERS_CACHE="/home/devuser/.cache/huggingface",OPF_PORT="${toString (privacyFilterCfg.port or 9092)}",OPF_MODE="${privacyFilterCfg.mode or "off"}",OPF_DTYPE="${privacyFilterCfg.dtype or "bf16"}",OPF_MODEL="${privacyFilterCfg.model or "openai/privacy-filter"}"
+environment=HOME="/home/devuser",HF_HOME="/home/devuser/.cache/huggingface",TRANSFORMERS_CACHE="/home/devuser/.cache/huggingface",OPF_PORT="${toString (privacyFilterCfg.port or 9092)}",OPF_MODE="${privacyFilterCfg.mode or "off"}",OPF_DTYPE="${privacyFilterCfg.dtype or "bf16"}",OPF_MODEL="${privacyFilterCfg.model or "openai/privacy-filter"}",OPF_TRUST_REMOTE_CODE="${boolEnv (privacyFilterCfg.trust_remote_code or true)}"
 autostart=true
 autorestart=true
 priority=240

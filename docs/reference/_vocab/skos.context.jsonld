@@ -1,0 +1,46 @@
+{
+  "@context": {
+    "skos": "http://www.w3.org/2004/02/skos/core#",
+
+    "id": "@id",
+    "type": "@type",
+
+    "Concept": "skos:Concept",
+    "ConceptScheme": "skos:ConceptScheme",
+    "Collection": "skos:Collection",
+    "OrderedCollection": "skos:OrderedCollection",
+
+    "prefLabel": "skos:prefLabel",
+    "altLabel": "skos:altLabel",
+    "hiddenLabel": "skos:hiddenLabel",
+    "notation": "skos:notation",
+
+    "note": "skos:note",
+    "definition": "skos:definition",
+    "scopeNote": "skos:scopeNote",
+    "example": "skos:example",
+    "historyNote": "skos:historyNote",
+    "editorialNote": "skos:editorialNote",
+    "changeNote": "skos:changeNote",
+
+    "broader": { "@id": "skos:broader", "@type": "@id" },
+    "narrower": { "@id": "skos:narrower", "@type": "@id" },
+    "related": { "@id": "skos:related", "@type": "@id" },
+    "broaderTransitive": { "@id": "skos:broaderTransitive", "@type": "@id" },
+    "narrowerTransitive": { "@id": "skos:narrowerTransitive", "@type": "@id" },
+    "semanticRelation": { "@id": "skos:semanticRelation", "@type": "@id" },
+
+    "inScheme": { "@id": "skos:inScheme", "@type": "@id" },
+    "hasTopConcept": { "@id": "skos:hasTopConcept", "@type": "@id" },
+    "topConceptOf": { "@id": "skos:topConceptOf", "@type": "@id" },
+    "member": { "@id": "skos:member", "@type": "@id" },
+    "memberList": { "@id": "skos:memberList", "@type": "@id", "@container": "@list" },
+
+    "mappingRelation": { "@id": "skos:mappingRelation", "@type": "@id" },
+    "broadMatch": { "@id": "skos:broadMatch", "@type": "@id" },
+    "narrowMatch": { "@id": "skos:narrowMatch", "@type": "@id" },
+    "relatedMatch": { "@id": "skos:relatedMatch", "@type": "@id" },
+    "exactMatch": { "@id": "skos:exactMatch", "@type": "@id" },
+    "closeMatch": { "@id": "skos:closeMatch", "@type": "@id" }
+  }
+}
