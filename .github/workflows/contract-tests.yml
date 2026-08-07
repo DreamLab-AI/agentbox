@@ -47,7 +47,11 @@ jobs:
 
       - name: Run contract test suites
         working-directory: management-api
-        run: npx jest ../tests/contract/ --testPathPattern='\.contract\.spec\.js$' --ci --forceExit
+        # --runInBand: run in the main process (no worker threads). better-sqlite3 is a
+        # native addon that fails to load / segfaults inside jest worker processes on the
+        # CI runner (chronic beads.contract SIGSEGV, red since June); in-band execution is
+        # the stable path for native modules. Passes 19/19 locally.
+        run: npx jest ../tests/contract/ --testPathPattern='\.contract\.spec\.js$' --ci --forceExit --runInBand
 
       - name: Upload coverage
         if: always()

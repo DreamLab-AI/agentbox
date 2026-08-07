@@ -8,7 +8,10 @@
  *      every new v2 gate env, unset, reads OFF; the embedding-column selector
  *      defaults to the current 384-dim "embedding".
  *   2. The 13 new manifest keys are declared, in the correct blocks, at their
- *      behaviour-preserving defaults, and parse from agentbox.toml.
+ *      behaviour-preserving defaults, in the SHIPPED DEFAULT template
+ *      (setup/agentbox.default.toml). The live agentbox.toml is operator-owned —
+ *      operators flip gates on after the relevant recall-harness (I14) pass — so it
+ *      is only checked for KEY DECLARATION (structural sync), not for gate values.
  *   3. The two Phase-0-WIRED gates (aggregate_sweep, aggregate_sweep_interval_mins)
  *      map onto RUVECTOR_AGGREGATE_SWEEP / RUVECTOR_AGGREGATE_SWEEP_INTERVAL_MINS
  *      and parse via the shared boolGate/intGate — the same surface the
@@ -35,7 +38,12 @@ delete process.env.RUVECTOR_PROTECTED_NAMESPACES;
 const { boolGate, intGate } = require('../../mcp/servers/lib/ruvector-gates');
 const { createExternalPgBackend } = require('../../mcp/servers/lib/memory-tools');
 
-const TOML_PATH = path.join(__dirname, '..', '..', 'agentbox.toml');
+// The default-off contract (PRD-020 metric 1) is asserted against the SHIPPED
+// DEFAULT template, not the operator's live config — operators legitimately flip
+// gates on (e.g. aggregate_sweep/pattern_distillation ENABLED 2026-07-21). The
+// live file is checked only for key declaration (structural sync) below.
+const TOML_PATH = path.join(__dirname, '..', '..', 'setup', 'agentbox.default.toml');
+const LIVE_TOML_PATH = path.join(__dirname, '..', '..', 'agentbox.toml');
 
 // ---------------------------------------------------------------------------
 // The v2 gate catalogue: manifest key → block, env name (null = declare-only,
@@ -138,6 +146,18 @@ describe('ruvector v2 gates :: manifest declares all 13 keys (PRD-020 §4 / ADR-
   it('the superseded v1 keys remain (default-off) for back-compat', () => {
     expect(sections['memory_learning'].sona_enabled).toBe('false');
     expect(sections['memory_learning'].relevance_feedback).toBe('false');
+  });
+
+  it('the LIVE agentbox.toml declares all 13 v2 keys (structural sync) with well-formed literals', () => {
+    const live = parseSections(fs.readFileSync(LIVE_TOML_PATH, 'utf8'));
+    for (const { block, key, def } of V2_KEYS) {
+      expect(live[block]).toBeDefined();
+      const val = live[block][key];
+      expect(val).toBeDefined(); // operators may flip the value, but not drop the key
+      if (/^\d+$/.test(def)) expect(val).toMatch(/^\d+$/);            // int gate
+      else if (def.startsWith('"')) expect(val).toMatch(/^".*"$/);   // string selector
+      else expect(['true', 'false']).toContain(val);                 // boolean gate
+    }
   });
 });
 

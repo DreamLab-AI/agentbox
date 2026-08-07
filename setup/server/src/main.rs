@@ -37,9 +37,12 @@ struct SaveRequest {
 }
 
 async fn get_config(State(state): State<AppState>) -> Result<Json<ConfigResponse>, StatusCode> {
+    // Serve the operator's live config if present; otherwise seed a FRESH install
+    // from the shipped behaviour-preserving default (all learning/hygiene gates OFF),
+    // not from the live agentbox.toml which may carry operator enablements.
     let toml_content = tokio::fs::read_to_string(&state.config_path)
         .await
-        .unwrap_or_else(|_| include_str!("../../../agentbox.toml").to_string());
+        .unwrap_or_else(|_| include_str!("../../agentbox.default.toml").to_string());
 
     let schema_str = tokio::fs::read_to_string(&state.schema_path)
         .await
