@@ -345,6 +345,11 @@
             mkdir -p lib
             cp ${./mcp/servers/nostr-bridge.js} lib/nostr-bridge.js
             cp ${./mcp/servers/ontology-propose.js} lib/ontology-propose.js
+            # PRD-010 F16 pod-bridge relay consumer: server.js require('./lib/relay-consumer')
+            # + require('./lib/default-intent-spec'). relay-consumer in turn requires its
+            # vendored sibling ./nostr-bridge (above). default-intent-spec is dependency-free.
+            cp ${./mcp/nostr-bridge/relay-consumer.js} lib/relay-consumer.js
+            cp ${./mcp/nostr-bridge/default-intent-spec.js} lib/default-intent-spec.js
           '';
         };
 

@@ -55,7 +55,12 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { NostrBridge, loadSigner, kinds } = require('../servers/nostr-bridge');
+// Dual-path: when this file is vendored into the management-api package lib/
+// (flake.nix buildPhaseExtra), its sibling is the vendored ./nostr-bridge;
+// in the dev/source tree the canonical module is ../servers/nostr-bridge.
+let NostrBridge, loadSigner, kinds;
+try { ({ NostrBridge, loadSigner, kinds } = require('./nostr-bridge')); }
+catch { ({ NostrBridge, loadSigner, kinds } = require('../servers/nostr-bridge')); }
 
 // ADR-009 §4.2 reserved kind ranges — agent intent/response.
 const AGENT_INTENT_MIN  = 38000;

@@ -1240,8 +1240,17 @@ async function start() {
     if (process.env.AGENTBOX_RELAY_ENABLED === 'true'
         && process.env.AGENTBOX_RELAY_POD_BRIDGE === 'true') {
       try {
-        const { RelayConsumer } = require('../mcp/nostr-bridge/relay-consumer');
-        const { buildDefaultIntentSpec } = require('../mcp/nostr-bridge/default-intent-spec');
+        // Vendored into the package lib/ (flake.nix buildPhaseExtra) so the
+        // primary require resolves inside the packaged
+        // node_modules/agentic-flow-management-api boundary; the bare
+        // ../mcp/nostr-bridge/* fallback is for the dev/source tree only.
+        // Same escape-the-boundary bug already solved for nostr-bridge /
+        // ontology-propose above.
+        let RelayConsumer, buildDefaultIntentSpec;
+        try { ({ RelayConsumer } = require('./lib/relay-consumer')); }
+        catch { ({ RelayConsumer } = require('../mcp/nostr-bridge/relay-consumer')); }
+        try { ({ buildDefaultIntentSpec } = require('./lib/default-intent-spec')); }
+        catch { ({ buildDefaultIntentSpec } = require('../mcp/nostr-bridge/default-intent-spec')); }
         const npubs = (process.env.AGENTBOX_NPUB || '').split(',').filter(Boolean);
         if (npubs.length > 0) {
           // B3: deterministic responder dispatch for voice-origin agent-intent
