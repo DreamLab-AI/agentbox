@@ -91,15 +91,18 @@ summary_model = "glm-5.2"  # Z.AI/GLM model for the digest (→ AGENTBOX_ZAI_MOD
 # work against the ontology via the local corpus route (VisionClaw-free) and, where
 # the corpus looks stale/wrong/missing, proposes a modification to the FORUM BROKER
 # GATE as an ACSP ActionRequest (kind 31402) for human 31403 approval — the governed
-# elevation path (PRD-014), never the ungoverned load backdoor. Disabled by default:
-# enabled=false → the SessionEnd hook is not registered and nothing is reviewed.
-# mode: "dryrun" stages proposals to $AGENTBOX_STATE/ontology-proposals.jsonl (no
-# relay egress); "publish" signs + publishes 31402 live to the forum relay. Even when
-# enabled it stays a silent no-op unless a Z.AI key is present (and, for publish,
+# elevation path (PRD-014), never the ungoverned load backdoor. ON by default:
+# enabled=true → the SessionEnd hook is registered. Proposals are idempotent —
+# fingerprinted (IRI+kind+summary) against a seen-ledger so a finding is never
+# re-emitted across sessions, and panels are NIP-33-keyed by IRI+kind so a repeat
+# replaces its prior panel rather than piling up. mode: "publish" signs + publishes
+# kind-31402 live to the forum broker gate; "dryrun" stages to
+# $AGENTBOX_STATE/ontology-proposals.jsonl (no relay egress). Even when enabled it
+# stays a silent no-op unless a Z.AI key is present (and, for publish,
 # MANAGEMENT_API_KEY + NOSTR_RELAYS). Hook: config/hooks/ontology-monitor.cjs.
 [ontology_monitor]
-enabled = false      # register the SessionEnd ontology-review hook
-mode    = "dryrun"   # dryrun | publish  (publish emits kind-31402 to the forum broker gate)
+enabled = true       # register the SessionEnd ontology-review hook
+mode    = "publish"  # dryrun | publish  (publish emits kind-31402 to the forum broker gate)
 
 # ── Operator identity (optional) ────────────────────────────────────────────────
 # The human operator's Nostr identity. When set, this pubkey is:

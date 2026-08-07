@@ -25,6 +25,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { execSync } = require('child_process');
 
 const BUDGET_MS = parseInt(process.env.AGENTBOX_ONTOLOGY_MONITOR_BUDGET_MS || '180000', 10);
@@ -36,6 +37,34 @@ const ROOT = path.resolve(__dirname, '../..');
 
 function log(m) { try { process.stderr.write(`[ontology-monitor] ${m}\n`); } catch { /* noop */ } }
 function timeLeft() { return DEADLINE - Date.now(); }
+
+// ── idempotency ledger ─────────────────────────────────────────────────────────
+// A proposal is fingerprinted by (class IRI + kind + normalised summary) so the
+// same finding is never re-emitted across sessions. Panels are keyed by IRI+kind
+// (NIP-33 d-tag) so a repeat of the SAME kind for a class REPLACES its prior panel
+// rather than piling up. Ledger lives beside the staged proposals.
+function stateDir() {
+  return process.env.AGENTBOX_STATE || process.env.AGENTBOX_STATE_DIR || '/home/devuser/.agentbox';
+}
+function ledgerPath() { return path.join(stateDir(), 'ontology-proposals-seen.json'); }
+function fingerprint(p) {
+  const norm = String(p.summary || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  return crypto.createHash('sha256').update(`${p.iri}|${p.kind}|${norm}`).digest('hex').slice(0, 24);
+}
+function loadSeen() {
+  try { return new Set(JSON.parse(fs.readFileSync(ledgerPath(), 'utf8'))); } catch { return new Set(); }
+}
+function saveSeen(set) {
+  try {
+    fs.mkdirSync(stateDir(), { recursive: true });
+    fs.writeFileSync(ledgerPath(), JSON.stringify([...set].slice(-5000)));
+  } catch { /* noop */ }
+}
+function panelIdFor(p) {
+  const slug = String(p.iri || '').split(':').pop();
+  const kind = String(p.kind || 'update').replace(/[^a-z0-9-]/gi, '').toLowerCase();
+  return `ontology-${slug}-${kind}`;
+}
 
 // ── gating ───────────────────────────────────────────────────────────────────
 function gatedOff() {
@@ -159,9 +188,6 @@ async function zaiReview(work, concepts) {
 }
 
 // ── emit: 31402 to the forum broker gate (publish) or local queue (dryrun) ─────
-function stateDir() {
-  return process.env.AGENTBOX_STATE || process.env.AGENTBOX_STATE_DIR || '/home/devuser/.agentbox';
-}
 function stageLocally(proposals, sessionId) {
   const dir = stateDir();
   try { fs.mkdirSync(dir, { recursive: true }); } catch { /* noop */ }
@@ -182,10 +208,8 @@ async function publishProposals(proposals, sessionId) {
   try {
     for (const p of proposals) {
       if (timeLeft() < 8000) { log('budget exhausted mid-publish'); break; }
-      const slug = String(p.iri || '').split(':').pop();
-      const panelId = `ontology-${slug}-${(sessionId || 'x').slice(0, 8)}`;
       const evt = acs.buildActionRequest({
-        panelId,
+        panelId: panelIdFor(p),
         category: 'ontology',
         subjectKind: 'ontology-class',
         subjectId: p.iri,
@@ -215,15 +239,21 @@ async function publishProposals(proposals, sessionId) {
     const concepts = matchConcepts(work);
     if (!concepts.length) { log('no ontology concepts touched'); process.exit(0); }
     log(`matched ${concepts.length} concept(s); reviewing via Z.AI`);
-    const proposals = await zaiReview(work, concepts);
-    if (!proposals.length) { log('Z.AI proposed no changes'); process.exit(0); }
+    const raw = await zaiReview(work, concepts);
+    if (!raw.length) { log('Z.AI proposed no changes'); process.exit(0); }
+    // Idempotency: drop proposals already emitted in a prior session.
+    const seen = loadSeen();
+    const fresh = raw.filter((p) => p.iri && !seen.has(fingerprint(p)));
+    if (!fresh.length) { log(`all ${raw.length} proposal(s) already seen — nothing new`); process.exit(0); }
     if (MODE === 'publish') {
-      const n = await publishProposals(proposals, payload.session_id);
+      const n = await publishProposals(fresh, payload.session_id);
       log(`published ${n} ActionRequest(s) (31402) to the forum broker gate`);
     } else {
-      const f = stageLocally(proposals, payload.session_id);
-      log(`dryrun: staged ${proposals.length} proposal(s) → ${f}`);
+      const f = stageLocally(fresh, payload.session_id);
+      log(`dryrun: staged ${fresh.length} proposal(s) → ${f}`);
     }
+    fresh.forEach((p) => seen.add(fingerprint(p)));
+    saveSeen(seen);
   } catch (e) {
     log('fail-open: ' + (e && e.message));
   }
