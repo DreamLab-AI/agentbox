@@ -108,9 +108,21 @@ function _loadSigner(manifest, logger) {
     return false;
   }
   try {
+    // Candidate chain (nix-relocation class, cf. middleware/auth.js): the baked
+    // standalone derivation ships neither ../lib/nostr-bridge nor ../../mcp —
+    // fall through to the app-root overlay path before giving up.
     let loadSigner;
-    try { ({ loadSigner } = require('../lib/nostr-bridge')); }
-    catch { ({ loadSigner } = require('../../mcp/servers/nostr-bridge')); }
+    const signerCandidates = [
+      process.env.NOSTR_BRIDGE_PATH,
+      '../lib/nostr-bridge',
+      '../../mcp/servers/nostr-bridge',
+      '/opt/agentbox/mcp/servers/nostr-bridge.js',
+    ].filter(Boolean);
+    for (const candidate of signerCandidates) {
+      try { ({ loadSigner } = require(candidate)); if (loadSigner) break; }
+      catch { /* try next */ }
+    }
+    if (!loadSigner) throw new Error(`nostr-bridge loadSigner unresolvable (tried ${signerCandidates.length} paths)`);
     _signerCache = loadSigner(stack, {});
     return _signerCache;
   } catch (err) {

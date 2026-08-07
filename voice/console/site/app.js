@@ -6,9 +6,12 @@
 // → management-api governance (:9090).
 //
 // AUTH MODEL
-//   /bridge/* + /feed  — tab0-bridge bearer (BRIDGE_TOKEN). Header for fetch,
-//                        ?token= for the WebSocket upgrade (browsers can't set
-//                        headers on a WS handshake).
+//   /bridge/* + /feed  — tab0-bridge bearer (BRIDGE_TOKEN) when set; otherwise
+//                        a NIP-98 header signed via window.nostr (the bridge
+//                        verifies against its operator/allowlist keys). Header
+//                        for fetch, ?token= / ?auth=<signed NIP-98> for the
+//                        WebSocket upgrade (browsers can't set headers on a WS
+//                        handshake).
 //   /aoe/* + /approvals/* — governed. Preferred: a NIP-98 (kind-27235) header
 //                        signed via window.nostr (NIP-07). The proxy/auth layer
 //                        now runs a replay cache (Part A finding 4), so a signed
@@ -69,7 +72,8 @@ async function sha256hex(str) {
 function stripPrefix(path) {
   if (path.startsWith('/aoe/')) return path.slice(4) || '/';        // /aoe/api/x → /api/x
   if (path.startsWith('/approvals/')) return path.slice(10) || '/'; // /approvals/v1/x → /v1/x
-  return path;
+  if (path.startsWith('/bridge/')) return path.slice(7) || '/';     // /bridge/nostr/x → /nostr/x
+  return path;                                                      // /feed is handle (not handle_path) — unstripped
 }
 
 // Build a NIP-98 Authorization header for a governed request. Signs the
@@ -94,7 +98,17 @@ async function signNip98(method, path, bodyString) {
 async function authHeader(path, method, bodyString, preferBearer) {
   const governed = path.startsWith('/aoe/') || path.startsWith('/approvals/');
   const bearer = getBearer();
-  if (!governed) return bearer ? { Authorization: 'Bearer ' + bearer } : {};
+  if (!governed) {
+    // tab0-bridge surfaces: bearer is the native credential; a NIP-98 header
+    // signed by the operator key is accepted too (bridge allowlist-gated), so
+    // a signer-only session needs no pasted token.
+    if (bearer) return { Authorization: 'Bearer ' + bearer };
+    if (hasNostr()) {
+      try { return { Authorization: await signNip98(method, path, bodyString) }; }
+      catch { return {}; }
+    }
+    return {};
+  }
   if (preferBearer && bearer) return { Authorization: 'Bearer ' + bearer };
   if (hasNostr()) {
     try { return { Authorization: await signNip98(method, path, bodyString) }; }
@@ -189,9 +203,18 @@ function renderTurn(turn) {
 
 let feedWs = null;
 let feedManualClose = false;
-function connectFeed() {
+async function connectFeed() {
   const bearer = getBearer();
-  const url = `wss://${location.host}/feed` + (bearer ? `?token=${encodeURIComponent(bearer)}` : '');
+  let cred = bearer ? `?token=${encodeURIComponent(bearer)}` : '';
+  if (!cred && hasNostr()) {
+    // Browsers cannot set headers on a WS handshake: carry the signed NIP-98
+    // event as ?auth= (the bridge verifies it exactly like the header form).
+    try {
+      const header = await signNip98('GET', '/feed');
+      cred = `?auth=${encodeURIComponent(header.slice('Nostr '.length))}`;
+    } catch { /* signer refused — connect open; bridge will 401 if gated */ }
+  }
+  const url = `wss://${location.host}/feed` + cred;
   feedManualClose = false;
   try { feedWs = new WebSocket(url); } catch { $('feed-state').textContent = 'error'; return; }
   const ws = feedWs;
@@ -653,6 +676,24 @@ setInterval(pollSessions, 4000);
 setInterval(pollApprovals, 8000);
 setInterval(pollNostrEvents, 20000);
 
-// If the signer becomes available late (extension injects after load), reflect it.
+// Signer extensions inject window.nostr asynchronously, usually AFTER the
+// first poll round has already 401'd. Watch briefly for the provider to appear
+// and re-run the whole round once (badge + feed + polls), so first load
+// recovers in ~a second instead of waiting out the poll intervals.
 window.addEventListener('nostr:ready', refreshAuthBadge);
-setTimeout(refreshAuthBadge, 1500);
+(() => {
+  if (hasNostr()) return;
+  let ticks = 0;
+  const watch = setInterval(() => {
+    ticks += 1;
+    if (hasNostr()) {
+      clearInterval(watch);
+      refreshAuthBadge();
+      reconnectFeed();
+      pollHealth(); pollSessions(); pollApprovals(); pollNostrEvents();
+    } else if (ticks >= 40) { // ~10s — no signer coming; badge shows "no key"
+      clearInterval(watch);
+      refreshAuthBadge();
+    }
+  }, 250);
+})();

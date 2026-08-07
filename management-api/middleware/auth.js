@@ -15,11 +15,42 @@
 // structural fallback below is used instead.
 const crypto = require('crypto');
 
+// The relative path only resolves when this file runs from the repo/app-root
+// tree. The baked image packages management-api as its OWN nix derivation
+// (…-management-api-0.0.0/lib/node_modules/agentic-flow-management-api), where
+// `../../mcp` points inside the package and does not exist — so the overlay
+// path and an env override are tried as fallbacks. Same relocation class as
+// aoe-seed-sessions.mjs REQUIRE_BASES and nip98-proxy's candidate list.
 let nostrBridge = null;
-try {
-  const { NostrBridge } = require('../../mcp/servers/nostr-bridge');
-  nostrBridge = NostrBridge;
-} catch { /* sovereign_mesh not enabled or nostr-tools not installed */ }
+{
+  const candidates = [
+    process.env.NOSTR_BRIDGE_PATH,
+    '../../mcp/servers/nostr-bridge',
+    '/opt/agentbox/mcp/servers/nostr-bridge.js',
+  ].filter(Boolean);
+  const failures = [];
+  for (const candidate of candidates) {
+    try {
+      const { NostrBridge } = require(candidate);
+      if (NostrBridge && typeof NostrBridge.verifyNip98 === 'function') {
+        nostrBridge = NostrBridge;
+        break;
+      }
+      failures.push(`${candidate}: loaded but no verifyNip98`);
+    } catch (err) {
+      failures.push(`${candidate}: ${String(err.message).split('\n')[0]}`);
+    }
+  }
+  if (!nostrBridge) {
+    // Loud, once, at startup: without the bridge every NIP-98 header is
+    // rejected (fail closed) and only Bearer auth works — that must never be
+    // a silent degradation again (cockpit 401 storm, 2026-08-07).
+    console.warn(
+      '[management-api] NostrBridge unavailable — NIP-98 auth will be REJECTED, Bearer only. Tried: '
+      + failures.join(' | '),
+    );
+  }
+}
 
 function decodeBase64Json(value) {
   const decoded = Buffer.from(value, 'base64').toString('utf8');

@@ -38,6 +38,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import readline from 'node:readline';
 import { WebSocketServer } from 'ws';
 
@@ -571,20 +572,95 @@ function json(res, code, obj) {
   res.end(JSON.stringify(obj));
 }
 
-// Global gate (ADR-044 finding 1). Every surface except `/health` requires the
-// bearer when a BRIDGE_TOKEN is set. Two carriers:
+// Global gate (ADR-044 finding 1). Every surface except `/health` requires a
+// credential when a BRIDGE_TOKEN is set. Carriers:
 //   - `Authorization: Bearer <TOKEN>` — the Unmute backend (KYUTAI_LLM_API_KEY),
 //     the console over Caddy (which forwards Authorization), and CLI callers.
 //   - `?token=<TOKEN>` query param — browser WebSocket clients, which cannot set
 //     request headers on the `/feed` upgrade.
+//   - `Authorization: Nostr <b64>` — a NIP-98 (kind-27235) event signed by the
+//     operator or an allowlisted key (the cockpit's window.nostr signer, so the
+//     operator never has to paste the bearer). Verified via NostrBridge, same
+//     verifier as the nip98-proxy and management-api; pubkey-gated because this
+//     surface reaches the tab0 injection seam.
+//   - `?auth=<b64>` query param — the same NIP-98 payload for the `/feed` WS
+//     upgrade (headers impossible there; the event's signature + 60s window +
+//     replay cache bound its reuse).
 // When no TOKEN is set (loopback dev only — a non-loopback bind without one is
 // refused at startup) the gate is open.
+
+// NIP-98 verifier + allowed signer set. Fail-open to bearer-only: if the bridge
+// module or key material is absent, Nostr headers are simply not accepted.
+const NostrBridge = (() => {
+  const candidates = [
+    process.env.NOSTR_BRIDGE_PATH,
+    '/opt/agentbox/mcp/servers/nostr-bridge.js',
+    new URL('../../mcp/servers/nostr-bridge.js', import.meta.url).pathname,
+  ].filter(Boolean);
+  for (const candidate of candidates) {
+    try {
+      const mod = createRequire(import.meta.url)(candidate);
+      if (mod?.NostrBridge?.verifyNip98) return mod.NostrBridge;
+    } catch { /* try next */ }
+  }
+  console.warn('[tab0-bridge] NostrBridge unavailable — NIP-98 auth disabled, bearer only.');
+  return null;
+})();
+
+// Keys allowed to drive the bridge over NIP-98: the box operator, the env
+// allowlist (same vars lib/authz.js reads in management-api), and the
+// manifest's [sovereign_mesh.relay].allowed_pubkeys — read directly from
+// agentbox.toml because the flake only bakes that list into the pod-bridge
+// program env, so a container-global env var cannot be assumed here.
+const NIP98_ALLOWED = (() => {
+  const hex = /^[0-9a-f]{64}$/;
+  const keys = new Set();
+  for (const v of [process.env.AGENTBOX_X_ONLY_PUBKEY_HEX, process.env.AGENTBOX_PUBKEY]) {
+    const s = String(v || '').toLowerCase();
+    if (hex.test(s)) keys.add(s);
+  }
+  for (const v of String(process.env.AGENTBOX_RELAY_ALLOWED_PUBKEYS || process.env.AGENTBOX_APPROVAL_ALLOWLIST || '')
+    .split(',').map((s) => s.trim().toLowerCase())) {
+    if (hex.test(v)) keys.add(v);
+  }
+  try {
+    // Targeted extraction, not a TOML parse (the bridge is zero-dep): quoted
+    // 64-hex strings inside the allowed_pubkeys = [ … ] array only.
+    const toml = fs.readFileSync(process.env.AGENTBOX_MANIFEST_PATH || '/etc/agentbox.toml', 'utf8');
+    const arr = toml.match(/allowed_pubkeys\s*=\s*\[([\s\S]*?)\]/);
+    if (arr) {
+      for (const m of arr[1].matchAll(/"([0-9a-f]{64})"/g)) keys.add(m[1]);
+    }
+  } catch { /* no manifest — env/operator keys only */ }
+  return keys;
+})();
+
+function verifyNip98Credential(req, headerValue) {
+  if (!NostrBridge || !headerValue || NIP98_ALLOWED.size === 0) return false;
+  try {
+    // Reconstruct the URL the signer committed to: forwarded proto (Caddy sets
+    // x-forwarded-proto), original Host (Caddy preserves it), path sans query —
+    // the same shape the nip98-proxy verifies (signedUrlFor).
+    const proto = String(req.headers['x-forwarded-proto'] || 'http').split(',')[0].trim();
+    const host = req.headers.host || `127.0.0.1:${PORT}`;
+    const path = String(req.url || '/').split('?')[0];
+    const result = NostrBridge.verifyNip98(headerValue, req.method || 'GET', `${proto}://${host}${path}`);
+    return Boolean(result?.valid && NIP98_ALLOWED.has(String(result.pubkey || '').toLowerCase()));
+  } catch {
+    return false;
+  }
+}
+
 function authorised(req) {
   if (!TOKEN) return true;
-  if ((req.headers.authorization || '') === `Bearer ${TOKEN}`) return true;
+  const header = req.headers.authorization || '';
+  if (header === `Bearer ${TOKEN}`) return true;
+  if (header.startsWith('Nostr ') && verifyNip98Credential(req, header)) return true;
   try {
     const u = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
     if (u.searchParams.get('token') === TOKEN) return true;
+    const wsAuth = u.searchParams.get('auth');
+    if (wsAuth && verifyNip98Credential(req, `Nostr ${wsAuth}`)) return true;
   } catch { /* malformed URL — treat as unauthorised */ }
   return false;
 }
@@ -688,7 +764,7 @@ wss.on('connection', (ws) => {
 });
 
 server.listen(PORT, BIND, () => {
-  console.log(`tab0-bridge listening on ${BIND}:${PORT} (backend=claude-cli, model=${MODEL}, session=${TMUX_SESSION}, auth=${TOKEN ? 'token' : 'open'}, aoe=${AOE_BASE})`);
+  console.log(`tab0-bridge listening on ${BIND}:${PORT} (backend=claude-cli, model=${MODEL}, session=${TMUX_SESSION}, auth=${TOKEN ? 'token' : 'open'}, nip98=${NostrBridge ? `enabled (${NIP98_ALLOWED.size} keys)` : 'off'}, aoe=${AOE_BASE})`);
   // Resolve and pin the AoE coordinator session id (ADR-044 D2). Fail-open: if
   // AoE is not up yet, the injection seam falls back to tmux and the interval
   // below picks the id up once the daemon is running.
