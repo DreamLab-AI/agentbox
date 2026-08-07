@@ -167,6 +167,23 @@
       "protocol": "stdio",
       "version": "0.2.0"
     },
+    "substrate-tools": {
+      "command": "node",
+      "args": ["/opt/agentbox/mcp/servers/substrate-tools.js"],
+      "type": "stdio",
+      "env": {
+        "AGENTBOX_STATE": "${AGENTBOX_STATE:-/home/devuser/.agentbox}",
+        "AGENTBOX_HARNESS_DIR": "${AGENTBOX_HARNESS_DIR:-}",
+        "AGENTBOX_IMMUTABLE_BASE": "${AGENTBOX_IMMUTABLE_BASE:-}",
+        "AGENTBOX_REFINE_OPERATOR": "${AGENTBOX_REFINE_OPERATOR:-did:nostr:jjohare}",
+        "AGENTBOX_SESSION_ID": "${AGENTBOX_SESSION_ID:-}",
+        "AGENTBOX_BEADS_DB": "${AGENTBOX_BEADS_DB:-}",
+        "WORKSPACE": "${WORKSPACE:-/home/devuser/workspace}"
+      },
+      "description": "Prime-agent-inspired substrate capabilities, bound to our IRI/beads/DID/git primitives. 13 tools across three families: continual-harness (refine/refine_validate/refine_rollback/refine_history/refine_list — evidence-anchored, signed, git-rollbackable refines over an immutable CLAUDE.md base), ontology working set (ws_note/ws_get/ws_list/ws_drop/ws_revalidate — session-scoped IRI-keyed digests carried across turns with a drift guard), and typed spawn (spawn_child/spawn_ready/spawn_complete — typed, DID-owned recursive subagent spawning over the beads work-DAG). Local, fail-open; activates after image rebuild.",
+      "protocol": "stdio",
+      "version": "0.1.0"
+    },
     "perplexity": {
       "command": "npx",
       "args": ["-y", "@perplexity-ai/mcp-server"],
