@@ -10,7 +10,7 @@ depends_on: [ADR-048, ADR-049, ADR-047, ADR-023, ADR-033]
 amends: ADR-048
 prd: PRD-022
 domain: DDD-020
-open_question: elevation trigger/gate policy (§Decision — operator to confirm; recommendation = broker-gated, significant-only)
+policy_decided: 2026-08-08 — broker-gated, significant-only (operator confirmed the recommendation)
 review_trigger: decision-record volume makes per-decision broker cases impractical, or the corpus publish policy for decisions changes
 ---
 
@@ -95,7 +95,7 @@ agent decision → governed door (conflict → Whelk → ACSP) → :assert (runt
               → next force_full sync → rebuild_assert_graph re-derives it → :assert (durable)
 ```
 
-## Decision — elevation trigger/gate policy (open; operator to confirm)
+## Decision — elevation trigger/gate policy (DECIDED 2026-08-08: broker-gated, significant-only)
 
 `jjohare/logseq` is public and publishes on merge, so *which* decisions elevate
 and *whether* a human gates each corpus commit is an operator policy, not a
@@ -128,6 +128,13 @@ mutation / has causal edges / ACSP verdict).
   pages in the public corpus. The gate policy above bounds both.
 - Requires `LOGSEQ_PRIVATE_REPO_GITHUB` (the same token the class-elevation loop
   already needs); degrades gracefully (GOV-2 DEGRADED) without it.
+- **Default-OFF, production opt-in.** The `DecisionElevationActor` starts only
+  when `DECISION_ELEVATION_ENABLED=1` **and** `FORUM_RELAY_URL` **and**
+  `ACSP_PANEL_NOSTR_PRIVKEY` are set (mirrors the class `ElevationActor`'s
+  opt-in). Without them the elevation sink is `None`, `maybe_elevate` is a no-op,
+  and decisions commit exactly as before — verified live: a significant decision
+  commits `Ok` with no case and no PR when the panel is disabled. Enabling the
+  live write-half (broker case-open + PR) is therefore operator config, not code.
 
 ## Implementation notes (for the build, once policy is confirmed)
 
