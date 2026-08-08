@@ -20,6 +20,10 @@ Agentbox is one of six repositories in the DreamLab open-source ecosystem — fi
 > agentbox is the runtime that *hosts* code-as-harness, so it is not double-counted. This is why
 > code-as-harness is the **fifth** identity-mesh participant even though there are six repos.
 
+## Semantic integrity & decision intelligence (BC23)
+
+The governed graph-write surface is a **three-gate door** — integrity (pre-merge conflict/entity-resolution), Whelk EL consistency, then ACSP human governance — with every runtime write `did:nostr`-attributed and every agent **decision** a first-class, signed graph node (`urn:agentbox:decision:*`) carrying causal links. Decisions elevate *back into the corpus* (the inverse of the class-elevation loop), so they survive a corpus rebuild like any other class; bi-temporal `state_at(t)` makes the reasoned graph time-travellable. Adds one URN kind (`decision`) and one bounded context (BC23) — no new adapter slot or port. Design: [PRD-022 · ADR-047–050 · DDD-020](../reference/).
+
 ## The embodied agent loop (cross-substrate flagship journey)
 
 The six repositories together realise one flagship journey — **speak to an agent, have it act
