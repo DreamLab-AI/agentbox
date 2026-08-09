@@ -299,18 +299,17 @@ fi
 # EDD evidence-audit / adversarial-review stage through Codex/GPT — a genuinely
 # different model family from the Claude producer (anti-fox separation). The
 # Codex CLI is already baked (nix codex-0.x); auth uses [consultants.codex]
-# (~/.codex). Idempotent; fail-open — a network/plugin hiccup never blocks boot
-# and the skill falls back to a Claude reviewer. (Future: promote to a pinned
-# Nix flake input like `skills`/`aoe` for full reproducibility vs a boot clone.)
+# (~/.codex). The marketplace payload is now Nix-BAKED + PINNED (flake input
+# codexPlugin → /opt/agentbox/plugins/codex-plugin-cc) — no boot clone, no
+# network. We just symlink it into the marketplaces dir and register it.
+# Idempotent; fail-open (skips if the codex toolchain gate baked nothing, and
+# the skill falls back to a Claude reviewer).
+CODEX_MP_SRC="/opt/agentbox/plugins/codex-plugin-cc"
 CODEX_MP_DIR="/home/devuser/.claude/plugins/marketplaces/openai-codex"
-if [ -f "$INSTALLED_JSON" ] && ! grep -q '"codex@openai-codex"' "$INSTALLED_JSON" 2>/dev/null; then
-  if [ ! -d "$CODEX_MP_DIR/.claude-plugin" ]; then
-    git clone --depth 1 https://github.com/openai/codex-plugin-cc "$CODEX_MP_DIR" 2>/dev/null || true
-    # Best-effort build of the optional app-server TS layer; the core review
-    # slash-commands shell out to the baked codex CLI and work without it.
-    ( cd "$CODEX_MP_DIR" && npm ci --no-audit >/dev/null 2>&1 && npm run build >/dev/null 2>&1 ) || true
-  fi
-  if [ -d "$CODEX_MP_DIR/plugins/codex" ]; then
+if [ -d "$CODEX_MP_SRC/.claude-plugin" ] && [ -f "$INSTALLED_JSON" ]; then
+  mkdir -p "$(dirname "$CODEX_MP_DIR")"
+  [ -e "$CODEX_MP_DIR" ] || ln -sfn "$CODEX_MP_SRC" "$CODEX_MP_DIR"
+  if [ -d "$CODEX_MP_DIR/plugins/codex" ] && ! grep -q '"codex@openai-codex"' "$INSTALLED_JSON" 2>/dev/null; then
     python3 - <<PY 2>/dev/null || true
 import json, datetime, sys
 path = "$INSTALLED_JSON"
@@ -332,7 +331,7 @@ if key not in data["plugins"]:
     }]
     with open(path, "w") as f:
         json.dump(data, f, indent=2)
-    print("[bootstrap] Pre-installed codex@openai-codex (codex-plugin-cc)")
+    print("[bootstrap] Registered codex@openai-codex (Nix-baked codex-plugin-cc)")
 PY
   fi
 fi

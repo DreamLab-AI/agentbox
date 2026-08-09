@@ -26,9 +26,20 @@
       url = "path:./skills";
       flake = false;
     };
+
+    # OpenAI Codex plugin for Claude Code (codex-plugin-cc) — pinned + baked so
+    # build-with-quality's EDD adversarial-review stage routes to Codex/GPT via
+    # /codex:adversarial-review (a different model family from the Claude
+    # producer; anti-fox separation). Files-only (commands/agents/hooks) like
+    # `skills`, not a built crate like `aoe` — no build phase. Bump the pin with:
+    #   nix flake lock --update-input codexPlugin
+    codexPlugin = {
+      url = "github:openai/codex-plugin-cc/db52e28f4d9ded852ab3942cea316258ae4ef346";
+      flake = false;
+    };
   };
 
-  outputs = { self, nixpkgs, flake-utils, nix2container, rust-overlay, skills, aoe }:
+  outputs = { self, nixpkgs, flake-utils, nix2container, rust-overlay, skills, aoe, codexPlugin }:
     flake-utils.lib.eachSystem [
       "x86_64-linux"
       "aarch64-linux"
@@ -1247,6 +1258,15 @@ default_days = ${toString (relayCfg.retention_days or 30)}
             [ -f "$out/opt/agentbox/skills/$name/SKILL.md" ] || continue
             ln -s "/opt/agentbox/skills/$name" "$out/etc/codex/skills/$name"
           done < $out/opt/agentbox/skills/codex-registered-skills.txt
+
+          # Bake the pinned codex-plugin-cc marketplace payload (name: openai-codex,
+          # plugin: codex) so /codex:review & /codex:adversarial-review are present
+          # without a boot clone. entrypoint-unified.sh symlinks this into
+          # ~/.claude/plugins/marketplaces/openai-codex and registers it in
+          # installed_plugins.json. Raw files (no build); the core review commands
+          # shell out to the baked codex CLI.
+          mkdir -p $out/opt/agentbox/plugins
+          cp -r ${codexPlugin} $out/opt/agentbox/plugins/codex-plugin-cc
           ''}
           cp -r ${./scripts} $out/opt/agentbox/scripts
           cp -r ${./config} $out/opt/agentbox/config
