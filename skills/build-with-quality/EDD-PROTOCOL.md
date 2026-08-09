@@ -48,8 +48,12 @@ artifact and demands the agent prove each one.
                     inputs/outputs — execution receipts, not narration
        │
        ▼
-  4. AUDIT          Different agent (evidence-auditor, distinct model)
-                    independently verifies evidence against code
+  4. AUDIT          Different agent (evidence-auditor, distinct model) —
+                    run via `/codex:adversarial-review` (Codex/GPT) so the
+                    auditor is a genuinely different model family from the
+                    Claude producer; independently verifies evidence against
+                    code. Fail-open to a Claude reviewer subagent if Codex is
+                    unavailable (note the degraded same-family audit).
        │
        ▼
   5. CHALLENGE      Human reviews adversarially: "what input would break this?"
@@ -69,7 +73,11 @@ artifact and demands the agent prove each one.
   `npm test -- cart.test.ts` and got `PASS 12 tests`" beats "the cart works as
   expected".
 - Step 4 auditor agent MUST be a different agent from Step 2/3 producer.
-  Anti-fox separation is mandatory, not optional.
+  Anti-fox separation is mandatory, not optional. Preferred realization: the
+  auditor runs on **Codex/GPT** via `/codex:adversarial-review` (codex-plugin-cc),
+  a different model family from the Claude producer — the strongest form of
+  anti-fox separation. Fall back to a distinct Claude subagent only if Codex is
+  unavailable, and record that the audit was same-family (weaker).
 - Step 7 is non-skippable for any expectation tagged
   `regression_critical: true`. If you can't stabilize it, you can't ship it.
 

@@ -294,6 +294,49 @@ PY
   fi
 fi
 
+# Pre-install the OpenAI Codex plugin (codex-plugin-cc) so /codex:review and
+# /codex:adversarial-review work on first boot. build-with-quality routes its
+# EDD evidence-audit / adversarial-review stage through Codex/GPT — a genuinely
+# different model family from the Claude producer (anti-fox separation). The
+# Codex CLI is already baked (nix codex-0.x); auth uses [consultants.codex]
+# (~/.codex). Idempotent; fail-open — a network/plugin hiccup never blocks boot
+# and the skill falls back to a Claude reviewer. (Future: promote to a pinned
+# Nix flake input like `skills`/`aoe` for full reproducibility vs a boot clone.)
+CODEX_MP_DIR="/home/devuser/.claude/plugins/marketplaces/openai-codex"
+if [ -f "$INSTALLED_JSON" ] && ! grep -q '"codex@openai-codex"' "$INSTALLED_JSON" 2>/dev/null; then
+  if [ ! -d "$CODEX_MP_DIR/.claude-plugin" ]; then
+    git clone --depth 1 https://github.com/openai/codex-plugin-cc "$CODEX_MP_DIR" 2>/dev/null || true
+    # Best-effort build of the optional app-server TS layer; the core review
+    # slash-commands shell out to the baked codex CLI and work without it.
+    ( cd "$CODEX_MP_DIR" && npm ci --no-audit >/dev/null 2>&1 && npm run build >/dev/null 2>&1 ) || true
+  fi
+  if [ -d "$CODEX_MP_DIR/plugins/codex" ]; then
+    python3 - <<PY 2>/dev/null || true
+import json, datetime, sys
+path = "$INSTALLED_JSON"
+try:
+    with open(path) as f:
+        data = json.load(f)
+except Exception:
+    sys.exit(0)
+data.setdefault("plugins", {})
+key = "codex@openai-codex"
+if key not in data["plugins"]:
+    now = datetime.datetime.utcnow().isoformat() + "Z"
+    data["plugins"][key] = [{
+        "scope": "user",
+        "installPath": "$CODEX_MP_DIR/plugins/codex",
+        "version": "marketplace",
+        "installedAt": now,
+        "lastUpdated": now,
+    }]
+    with open(path, "w") as f:
+        json.dump(data, f, indent=2)
+    print("[bootstrap] Pre-installed codex@openai-codex (codex-plugin-cc)")
+PY
+  fi
+fi
+
 # i3 window manager config
 mkdir -p "$WORKSPACE/.config/i3" 2>/dev/null || true
 if [ -f /opt/agentbox/config/i3/config ] && [ ! -f "$WORKSPACE/.config/i3/config" ]; then
