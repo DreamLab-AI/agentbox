@@ -109,7 +109,7 @@ const TOOLS = [
   },
   {
     name: 'ontology_search',
-    description: 'Search knowledge graph nodes by label substring. Returns paginated results.',
+    description: 'Search ontology classes by relevance (semantic discover). Returns relevance-ranked matches (iri, relevance_score).',
     inputSchema: {
       type: 'object',
       properties: {
@@ -192,7 +192,7 @@ const TOOLS = [
   },
   {
     name: 'kg_node_search',
-    description: 'Search knowledge graph nodes by label, metadata, or node type.',
+    description: 'Search ontology classes by label (relevance-ranked via discover). node_type is best-effort (no server-side filter).',
     inputSchema: {
       type: 'object',
       properties: {
@@ -301,12 +301,15 @@ async function handleRemote(name, args) {
     }
 
     case 'ontology_search': {
-      const params = new URLSearchParams({
-        search: args.query,
-        limit: String(args.limit ?? 20),
-        offset: String(args.offset ?? 0),
+      // The old GET /api/graph/paginated?search= route does not exist (404).
+      // Real search is the anonymous, relevance-ranked discover endpoint —
+      // the same one ontology_ask uses for seeds. `offset` has no server-side
+      // equivalent (results are relevance-ranked top-N), so it is not sent.
+      return vcFetch('/api/ontology-agent/discover', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ query: args.query, limit: args.limit ?? 20 }),
       });
-      return vcFetch(`/api/graph/paginated?${params}`);
     }
 
     case 'ontology_class_get': {
@@ -393,10 +396,14 @@ SELECT ?class ?label ?domain ?quality WHERE {
     }
 
     case 'kg_node_search': {
-      const params = new URLSearchParams({ limit: String(args.limit ?? 20) });
-      if (args.label) params.set('search', args.label);
-      if (args.node_type) params.set('node_type', args.node_type);
-      return vcFetch(`/api/graph/paginated?${params}`);
+      // Same fix as ontology_search: /api/graph/paginated was 404. Route label
+      // search at the anonymous relevance-ranked discover endpoint. `node_type`
+      // has no server-side filter here; `label` is the query.
+      return vcFetch('/api/ontology-agent/discover', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ query: args.label ?? '', limit: args.limit ?? 20 }),
+      });
     }
 
     case 'kg_neighbors': {
