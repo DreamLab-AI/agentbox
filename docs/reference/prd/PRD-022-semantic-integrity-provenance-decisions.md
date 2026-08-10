@@ -252,9 +252,9 @@ The host client (VisionFlow graph renderer) already ships the seams this workstr
 W-A is unblocked *as a batch/corpus guard* and partially shipped. But **wiring W-A as the runtime propose-path guard, and starting W-B/C/D/E, cannot begin** until, in order:
 
 0. **Propose route authenticated (gates even W-A's runtime wiring).** `/api/ontology-agent/propose` is authenticated + NIP-98/signature-verified before any conflict gate or tenant is wired onto it. Wiring an integrity gate onto a forgeable, unauthenticated route would let anyone flood or forge governed writes — the gate would guard a door with no lock (DDD-020 I10). This is step 0 because it is the cheapest and the most dangerous to skip.
-1. **VisionClaw restored** — `visionclaw-server:4000` up; `ontology_health` reports the reasoned store, not the `local-markdown` fallback (memory: VisionClaw currently DOWN, `ontology_health=local-markdown`, 8152 markdown classes).
+1. **VisionClaw restored** — `visionclaw-server:4000` up; `ontology_health` reports the reasoned store, not the `local-markdown` fallback. *(Realised 2026-08-10: VisionClaw is back up and the Whelk EL reasoner is LIVE — `urn:ngm:graph:ontology:inferred` holds ~37k inferred axioms and `/api/ontology/{inferred,inference,metrics,validate}` are reachable. Prior state, now superseded: VisionClaw DOWN, `ontology_health=local-markdown`, 8152 markdown classes.)*
 2. **Drift resolved** — load `ontology-output.ttl` (262k triples, generated, gitignored) into `urn:ngm:graph:ontology:assert` to kill the **8,152-vs-~5,975** corpus/store divergence (the markdown corpus is the fuller source of truth). W-C's `state_at()` over a *drifted* store would return incoherent snapshots.
-3. **Whelk consistency-check re-enabled** in the propose path, and `VISIONCLAW_DEV_TOKEN`/`AGENTBOX_PUBKEY` set (memory: fix-before-extending list).
+3. **Whelk consistency-check re-enabled** in the propose path, and `VISIONCLAW_DEV_TOKEN`/`AGENTBOX_PUBKEY` set (memory: fix-before-extending list). On a dev build `VISIONCLAW_DEV_TOKEN` must be the literal dev-session bearer `dev-session-token` (a bare pubkey as bearer returns 403); release builds authenticate via NIP-98 signing.
 
 Contract and fixture work for W-E can start immediately. Once steps 0–3 pass:
 W-E transaction implementation → W-D (runtime PROV-O) → W-C (bi-temporal,

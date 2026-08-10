@@ -25,6 +25,13 @@ review_trigger: VisionClaw restored to service, or semantica major release chang
 > PROV-O), and [DDD-020](../ddd/DDD-020-semantic-integrity-provenance-domain.md) (BC23,
 > the Semantic Integrity & Provenance domain). This ADR remains the seed *complement,
 > not replace* decision; the boundary question it left to the operator is now closed by ADR-047.
+>
+> **Status update (2026-08-10):** the review trigger ("VisionClaw restored to
+> service") has partly fired. VisionClaw is back up and its **Whelk EL reasoner is
+> now LIVE** — inferred axioms are exposed by default (`urn:ngm:graph:ontology:inferred`
+> holds ~37k inferred axioms; `/api/ontology/{inferred,inference,metrics,hierarchy,validate}`
+> reachable). The "VisionClaw up" gating below is therefore lifted for capabilities
+> 2–4; the corpus/store drift resolution (see Consequences) remains outstanding.
 
 ## Context
 

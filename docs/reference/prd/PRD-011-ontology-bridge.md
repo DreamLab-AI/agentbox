@@ -44,14 +44,14 @@ proxies to VisionClaw's REST API at `http://visionclaw-server:4000/api/`.
 
 | MCP Tool | VisionClaw Endpoint | Purpose |
 |----------|-------------------|---------|
-| `ontology_search` | GET `/graph/paginated` | Search nodes by label/metadata |
+| `ontology_search` | POST `/ontology-agent/discover` | Relevance-ranked semantic search (anonymous) |
 | `ontology_class_get` | GET `/ontology/health` + SPARQL | Get OWL class by IRI |
 | `ontology_class_list` | SPARQL query | List classes in a domain |
 | `ontology_axiom_add` | POST `/ontology/load` | Submit new axiom for reasoning |
 | `ontology_validate` | POST `/ontology/validate` | Validate ontology consistency |
 | `ontology_graph_query` | SPARQL via POST | Execute arbitrary SPARQL SELECT |
 | `ontology_health` | GET `/ontology/health` | Check ontology service status |
-| `kg_node_search` | GET `/graph/paginated` | Knowledge graph node search |
+| `kg_node_search` | POST `/ontology-agent/discover` | Relevance-ranked KG node search (anonymous; `node_type`/`offset` best-effort, no server-side filter) |
 | `kg_neighbors` | SPARQL query | Get node neighbors + edge metadata |
 | `kg_pathfind` | SPARQL + cached SSSP | Shortest path between nodes |
 

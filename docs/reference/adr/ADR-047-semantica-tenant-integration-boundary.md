@@ -16,6 +16,13 @@ review_trigger: a native implementation cannot meet an accepted capability contr
 
 # ADR-047 — Native capability boundary for semantic integrity and provenance
 
+> **Status update (2026-08-10):** the premise for rule 3 ("Whelk remains the
+> classifier") is now realised in the running dev build — the Whelk EL reasoner is
+> LIVE and its inferred graph (`urn:ngm:graph:ontology:inferred`, ~37k axioms) is
+> exposed by default via `/api/ontology/{inferred,inference,metrics,validate}`. The
+> native-capability boundary and the seven rules are unchanged; the classifier they
+> assume is no longer dormant.
+
 ## Context
 
 ADR-046 selected four useful capabilities observed in Semantica: pre-merge

@@ -14,6 +14,14 @@ review_trigger: RDF 1.2 quoted triples become stable in the pinned Oxigraph buil
 
 # ADR-049 — Bi-temporal facts and runtime PROV-O off the reasoned graph
 
+> **Status update (2026-08-10):** the "reasoned graph" this ADR writes provenance
+> *off* is now live — VisionClaw's Whelk EL reasoner runs by default and
+> `urn:ngm:graph:ontology:inferred` holds ~37k materialised axioms. The
+> data-model decision (separate `urn:agentbox:graph:provenance`, portable v1
+> reification, append-only history) is unchanged and still-planned as
+> implementation; only its premise (a running classifier over the asserted graph)
+> has moved from dormant to realised.
+
 ## Context
 
 Runtime assertions need two time axes and provenance that can be joined back to
