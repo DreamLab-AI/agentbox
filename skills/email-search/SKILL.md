@@ -64,6 +64,21 @@ claude mcp add --transport http email-gateway http://email-mcp-gateway:8765/mcp 
 
 First query may be slow (models lazy-load); subsequent queries are fast until idle TTL.
 
+### Backend model endpoints (Aug 2026 network state)
+The gateway reasons **locally**, but its GPU model backends were re-routed in the Aug 2026 estate
+rework (full detail in `dreamlab-cumbria/infrastructure/network/README.md` + `/compute/README.md`):
+
+- **Reasoning LLM** — served on **HP-Desktop** and reached over the LAN at
+  **`http://192.168.2.132:8084`**. HP is now **downstream of machinelearn** with **no LAN IP** of
+  its own; ml DNATs `:8084` to HP `10.10.10.1:8084` over the direct 25 G rail (`hp-nat.service`,
+  with an MSS clamp for the 9000→1500 MTU step-down). HP's old `192.168.2.48:8084` is **dead**.
+- **Embeddings** — served on **machinelearn** at **`:9997`** (`192.168.2.132:9997`).
+
+The gateway container itself is on the `visionclaw_network` bridge at `email-mcp-gateway:8765` and is
+unaffected by the rail move. What the rework changes is the **path to the models it reasons with** —
+so a stale backend URL (anything pointing at `192.168.2.48`) is the top suspect for hangs. See the
+Aug-2026 bullet in [Failure handling](#failure-handling).
+
 ## Tier 1 — `ask_email` (default, sanitized)
 **Input:** `query` (required); optional `date_from`, `date_to` (ISO), `sender`, `folder`, `top_k`.
 
@@ -147,6 +162,16 @@ remains is **where the output goes**:
 ## Failure handling
 - Tool missing → enable `[skills.email_search]` + set token env, or register manually; confirm
   LAN routing to the gateway.
+- **Gateway hangs / `refresh_inbox` 180 s timeouts / whole-session unreachability *after the Aug
+  2026 network rework*** → the **reasoning-LLM route moved**, not the gateway. HP-Desktop left the
+  LAN (it is now downstream of machinelearn over the 25 G rail, no LAN IP), so its model answers only
+  at **`http://192.168.2.132:8084`** (ml DNAT via `hp-nat.service`) — HP's old `192.168.2.48:8084` is
+  dead. Symptom fingerprint: the container is healthy on `visionclaw_network` and `GET /health`
+  answers, but every synthesis stalls to timeout because the model call black-holes. **Fix:** point
+  the gateway's LLM endpoint at `192.168.2.132:8084` (embeddings at ml `:9997`); verify from the
+  gateway host with `curl -s http://192.168.2.132:8084/…` before blaming the harness. Ref:
+  `dreamlab-cumbria/infrastructure/network/experiments/deployed/hp-nat.sh` (the DNAT + MSS-clamp
+  rules) and `/compute/README.md` (`LLM_URL=http://192.168.2.132:8084`).
 - Auth/401 (transport) → bearer token wrong/expired; re-provision.
 - `{"authorized": false}` (capability) → wrong/empty pubkey, or `npub` instead of hex, or key not
   on the gateway allow-list (`PRIVILEGED_NOSTR_PUBKEYS`).
