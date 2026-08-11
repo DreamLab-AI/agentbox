@@ -52,7 +52,7 @@ voice_intent = false
 # WS6 (PRD-014 Seam D): scan the personal KG (via the memory adapter slot) for
 # elevation candidates, emit agent_action LINK beams, and return the GOVERNED
 # ontology-propose descriptors at POST /v1/kg-elevation/scan. Off → 503.
-kg_elevation = false
+kg_elevation = true
 # JunkieJarvis forum agent (management-api/lib/junkiejarvis-agent.js): rides the
 # management-api process and answers forum mentions over Nostr. Requires BOTH
 # this manifest gate AND the JUNKIEJARVIS_ENABLED=true env var — the env var
