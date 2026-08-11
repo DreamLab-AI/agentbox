@@ -69,10 +69,13 @@ The gateway reasons **locally**, and as of Aug 2026 it reasons **through the Ont
 raw model port. The Loom (VisionClaw PRD-025 / ADR-135; agentbox ADR-051) is a portable node with a
 stable, **model-swappable façade** that adds ontology grounding and keeps email content on the LAN.
 
-- **`REASONER_BASE_URL` = `http://loom:8080/v1`** — the Loom sidecar, co-located on
-  `visionclaw_network` (compose service `loom`, profile `loom`; alias `loom` / `ontology-loom`).
-  OpenAI-compatible; note the `/v1` suffix. The Loom scaffold-injects ontology context, then
-  delegates to whatever model is deployed behind it via its own `DISTILL_BACKEND_URL`.
+- **`REASONER_BASE_URL` = `http://192.168.2.132:8084/v1`** — the Loom façade, **colocated with
+  the model on HP-Desktop** (Deployment A: `~/githubs/loom` docker container on `:8084`,
+  delegating to the host Muse on `:8085`). Reached over the LAN via the existing ml DNAT — the
+  SAME endpoint value the gateway historically used, but `:8084` is now the **Loom façade**, not a
+  raw model port. It scaffold-injects ontology context, then delegates to the local model. (A
+  Deployment-B sidecar — `http://loom:8080` on `visionclaw_network`, compose profile `loom` — is
+  the alternative topology when you want the Loom colocated with consumers instead of the model.)
 - **Why the façade, not the model port** — the deployed model changes based on benchmark results and
   plans (Muse ↔ Gemma ↔ next), and swapping it must be **invisible to email**. The Loom is that
   indirection: consumers hold a stable endpoint; the model is a URL behind it. This is the
