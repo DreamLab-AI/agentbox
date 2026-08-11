@@ -2444,7 +2444,7 @@ ${agentboxPorts}
       - OPENAI_BASE_URL=''${OPENAI_BASE_URL:-${defaultLlmBaseUrl}/v1}
       - OLLAMA_BASE_URL=''${OLLAMA_BASE_URL:-${defaultLlmBaseUrl}}
       - OLLAMA_MODEL=''${OLLAMA_MODEL:-gemma-4-31B-it-qat}
-      - GEMMA_BASE_URL=''${GEMMA_BASE_URL:-http://192.168.2.48:8084/v1}
+      - GEMMA_BASE_URL=''${GEMMA_BASE_URL:-http://192.168.2.132:8084/v1}
       - GEMMA_MODEL=''${GEMMA_MODEL:-gemma-4-31B-it-qat}
       - DEEPSEEK_API_KEY=''${DEEPSEEK_API_KEY:-}
       - DEEPSEEK_BASE_URL=''${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}

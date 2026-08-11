@@ -647,7 +647,7 @@ direct_axiom_load = false
 # be raised if the KV budget allows.
 [skills.ontology.condense]
 enabled = true
-endpoint = "http://192.168.2.48:8084/v1"   # operator LAN model (Gemma 4 31B dense, llama.cpp)
+endpoint = "http://192.168.2.132:8084/v1"   # Ontology Loom façade (model-swap door; DNAT via ml). Was the dead .48 host.
 model = "gemma-4-31B-it-qat"
 style = "openai"                            # openai | ollama
 max_concurrency = 2                         # llama.cpp serves multiple KV slots
