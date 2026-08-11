@@ -64,22 +64,34 @@ claude mcp add --transport http email-gateway http://email-mcp-gateway:8765/mcp 
 
 First query may be slow (models lazy-load); subsequent queries are fast until idle TTL.
 
-### Backend model endpoints (Aug 2026 network state)
-The gateway reasons **locally**, but its GPU model backends were re-routed in the Aug 2026 estate
-rework (full detail in `dreamlab-cumbria/infrastructure/network/README.md` + `/compute/README.md`):
+### Backend model endpoint — the Ontology Loom façade (load-bearing, Aug 2026)
+The gateway reasons **locally**, and as of Aug 2026 it reasons **through the Ontology Loom**, not a
+raw model port. The Loom (VisionClaw PRD-025 / ADR-135; agentbox ADR-051) is a portable node with a
+stable, **model-swappable façade** that adds ontology grounding and keeps email content on the LAN.
 
-- **Reasoning LLM** — HP-Desktop's model (`gemma-4-31B-it-qat`), reached over the LAN at
-  **`http://192.168.2.132:8084/v1`**. This is the gateway's **`REASONER_BASE_URL`** (note the `/v1`
-  suffix — it's an OpenAI-compatible endpoint). HP is now **downstream of machinelearn** with **no
-  LAN IP** of its own; ml DNATs `:8084` to HP `10.10.10.1:8084` over the direct 25 G rail
-  (`hp-nat.service`, with an MSS clamp for the 9000→1500 MTU step-down). HP's old
-  `192.168.2.48:8084` is **dead** — reach HP itself via `ssh john@10.10.10.1` from machinelearn.
-- **Embeddings** — served on **machinelearn** at **`:9997`** (bge models on xinference).
+- **`REASONER_BASE_URL` = `http://loom:8080/v1`** — the Loom sidecar, co-located on
+  `visionclaw_network` (compose service `loom`, profile `loom`; alias `loom` / `ontology-loom`).
+  OpenAI-compatible; note the `/v1` suffix. The Loom scaffold-injects ontology context, then
+  delegates to whatever model is deployed behind it via its own `DISTILL_BACKEND_URL`.
+- **Why the façade, not the model port** — the deployed model changes based on benchmark results and
+  plans (Muse ↔ Gemma ↔ next), and swapping it must be **invisible to email**. The Loom is that
+  indirection: consumers hold a stable endpoint; the model is a URL behind it. This is the
+  "no technical debt on upgrade" guarantee — the same reason a stale raw-model URL used to hang the
+  gateway (see the Aug-2026 bullet in [Failure handling](#failure-handling)).
+- **Privacy + grounding as one subunit** — routing through the Loom means email prompts are
+  ontology-grounded (benchmark: static scaffold lifts grounded recall ~3.5×, and ~3–6× faster than
+  cold parametric reasoning) AND never leave the LAN: the Loom delegates only to the LAN/local model
+  behind `DISTILL_BACKEND_URL`, never to a cloud endpoint. The Loom is the email privacy system.
+- **Current model behind the Loom** — Muse-Glimmer-30B (deployed choice: BullshitBench 83 vs 46 —
+  it will not confabulate on the KG's edge cases — and it ties Gemma at 0.94 grounded recall via
+  the Loom's scaffold injection). Reached by the Loom over the LAN rail; HP is downstream of
+  machinelearn with **no LAN IP** (`hp-nat.service` DNAT over the 25 G rail; old `192.168.2.48` is
+  **dead**). To change the model, change the Loom's backend — **the gateway config does not change.**
+- **Embeddings** — served on **machinelearn** at **`:9997`** (bge models on xinference), unchanged.
 
-The gateway container itself is on the `visionclaw_network` bridge at `email-mcp-gateway:8765` and is
-unaffected by the rail move. What the rework changes is the **path to the models it reasons with** —
-so a stale backend URL (anything pointing at `192.168.2.48`) is the top suspect for hangs. See the
-Aug-2026 bullet in [Failure handling](#failure-handling).
+The gateway container is on the `visionclaw_network` bridge at `email-mcp-gateway:8765`. A stale
+`REASONER_BASE_URL` (anything pointing at a raw model port or `192.168.2.48`) is the top suspect for
+hangs — point it at `http://loom:8080/v1` and let the Loom own the model path.
 
 ## Tier 1 — `ask_email` (default, sanitized)
 **Input:** `query` (required); optional `date_from`, `date_to` (ISO), `sender`, `folder`, `top_k`.
