@@ -335,12 +335,94 @@ function defaultExpandFn(vcFetch) {
   };
 }
 
+// ── Loom transport (ADR-051 D1: the one-brain resolves through the Loom) ──────
+// When LOOM_FACADE_URL is set, seed + expand resolve through the Loom's read-truth
+// graph (pyoxigraph over the reasoned generation) instead of VisionClaw. The Loom
+// holds asserted + inferred in one store, so expand needs no named-graph clause.
+// Falls back to VisionClaw transparently when LOOM_FACADE_URL is unset.
+
+function makeLoomFetch(opts = {}) {
+  const base = (opts.loomUrl || process.env.LOOM_FACADE_URL || '').replace(/\/$/, '');
+  const timeoutMs = opts.timeoutMs || parseInt(process.env.ONTOLOGY_TIMEOUT_MS || '10000', 10);
+  const doFetch = opts.fetchImpl || globalThis.fetch;
+  return async function loomFetch(path, { body } = {}) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await doFetch(base + path, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal: controller.signal,
+      });
+      if (!res.ok) {
+        const t = await res.text().catch(() => '');
+        return { error: `loom_http_${res.status}`, message: t || res.statusText };
+      }
+      return await res.json();
+    } catch (err) {
+      if (err.name === 'AbortError') return { error: 'ontology_timeout', message: `no response in ${timeoutMs}ms` };
+      return { error: 'ontology_unavailable', message: err.message };
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+}
+
+const _SUBCLASS = 'http://www.w3.org/2000/01/rdf-schema#subClassOf';
+const _wrapTerm = (v) => (v == null ? '?' : (/^(https?:|urn:|did:)/.test(String(v)) ? `<${v}>` : JSON.stringify(v)));
+
+/** Seed via the Loom's label/title search over the whole reasoned graph. */
+function loomSeedFn(loomFetch) {
+  return async function ({ query, limit }) {
+    const res = await loomFetch('/loom/search', { body: JSON.stringify({ q: query, limit: limit ?? 8 }) });
+    if (res && res.error) throw res;
+    const hits = (res && res.hits) || [];
+    return hits.map((h, i) => ({ iri: h.iri, label: h.label, score: 1 - i * 0.01 })).filter((h) => h.iri);
+  };
+}
+
+/** Expand via the Loom's clamped SPARQL (children-first, hierarchy-complete — ADR-112). */
+function loomExpandFn(loomFetch) {
+  return async function ({ seedIris, depth }) {
+    if (!seedIris || !seedIris.length) return [];
+    const values = seedIris.slice(0, 8).map((i) => `<${i}>`).join(' ');
+    const outLimit = Math.min(80 * Math.max(1, depth || 1), 300);
+    // Loom store merges assert+inferred into one graph — no GRAPH clause needed.
+    const outSparql = `SELECT ?s ?p ?o WHERE { VALUES ?s { ${values} } ?s ?p ?o . } LIMIT ${outLimit}`;
+    const childValues = seedIris.slice(0, 2).map((i) => `<${i}>`).join(' ');
+    const childSparql = `SELECT ?s ?o WHERE { VALUES ?o { ${childValues} } ?s <${_SUBCLASS}> ?o . } LIMIT 60`;
+    const run = async (q) => {
+      const res = await loomFetch('/loom/sparql', { body: JSON.stringify({ query: q }) });
+      if (res && res.error) throw res;
+      return (res && res.rows) || [];
+    };
+    // Children first so the downstream budget clamp never trims them (ADR-112).
+    const childR = await run(childSparql);
+    const outR = await run(outSparql);
+    const children = childR.map((r) => ({ s: `<${r.s}>`, p: `<${_SUBCLASS}>`, o: `<${r.o}>` }));
+    const outgoing = outR.map((r) => ({ s: _wrapTerm(r.s), p: _wrapTerm(r.p), o: _wrapTerm(r.o) }));
+    return [...children, ...outgoing];
+  };
+}
+
 /**
  * The production brain, wired with default transport. Every process (bridge,
  * consultant seam, hook) calls this to obtain ONE identical brain — the
  * "shared library, not a service" realisation of ADR-112.
+ *
+ * ADR-051 D1: when LOOM_FACADE_URL is set the brain grounds through the Loom's
+ * read-truth graph; otherwise it resolves through VisionClaw (unchanged).
  */
 function createDefaultRetrieval(opts = {}) {
+  const loomUrl = opts.loomUrl || process.env.LOOM_FACADE_URL || '';
+  if (loomUrl && !opts.vcFetch) {
+    const loomFetch = opts.loomFetch || makeLoomFetch(opts);
+    const telemetry = opts.telemetry || createTelemetrySink({ clock: opts.clock, filePath: opts.telemetryPath });
+    if (typeof telemetry.canary === 'function') telemetry.canary();
+    return createOntologyRetrieval({
+      seedFn: loomSeedFn(loomFetch),
+      expandFn: loomExpandFn(loomFetch),
+      cache: opts.cache, clock: opts.clock, minMaturity: opts.minMaturity, telemetry,
+    });
+  }
   const vcFetch = opts.vcFetch || makeVcFetch(opts);
   // Real default liveness sink (ADR-119) — never the old no-op. Run the startup
   // canary NOW so the writable-sink verdict is observable at boot; loud on
@@ -375,6 +457,9 @@ module.exports = {
   makeVcFetch,
   defaultSeedFn,
   defaultExpandFn,
+  makeLoomFetch,
+  loomSeedFn,
+  loomExpandFn,
   createTtlCache,
   serialiseTurtle,
   breadcrumb,
