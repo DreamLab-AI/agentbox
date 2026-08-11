@@ -94,3 +94,11 @@ set -q CLAUDE_CONFIG_DIR; or set -gx CLAUDE_CONFIG_DIR /home/devuser/.claude
 
 # Claude Code quick aliases
 alias dsp="claude --dangerously-skip-permissions"
+
+# ── User customizations from the persistent workspace volume ──
+# The rootfs is read-only and ~/.config is tmpfs, so ad-hoc shell tweaks
+# (aliases, ssh shortcuts) die on restart unless they live on the workspace
+# volume. Source a well-known file from there if present.
+if test -f /home/devuser/workspace/.config.fish
+    source /home/devuser/workspace/.config.fish
+end
