@@ -161,7 +161,7 @@ function normalizedV1Url(value, fallback) {
 function provisionOpenCode() {
   const configHome = process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config');
   const configPath = path.join(configHome, 'opencode', 'opencode.json');
-  const gemmaBase = normalizedV1Url(process.env.GEMMA_BASE_URL, 'http://192.168.2.48:8084/v1');
+  const gemmaBase = normalizedV1Url(process.env.GEMMA_BASE_URL, 'http://192.168.2.132:8084/v1');
   const deepseekBase = normalizedV1Url(process.env.DEEPSEEK_BASE_URL, 'https://api.deepseek.com/v1');
   const gemmaModel = process.env.GEMMA_MODEL || 'gemma-4-31B-it-qat';
   writeJsonIfContent(configPath, {

@@ -61,8 +61,9 @@ scripts/cdp-sidecar.sh eval <target> \
 DISPLAY=:1 chromium --remote-debugging-port=9222 --no-sandbox &
 scripts/cdp-connect.sh 9222 list
 
-# Any remote host (or via env vars)
-scripts/cdp-connect.sh 192.168.2.48:9222 list
+# Any remote host (or via env vars). Canonical GPU target is the sidecar:
+# browsercontainer:9223 (raw CDP via socat) — see the browser skill.
+scripts/cdp-connect.sh remote-host.example:9222 list
 export BROWSER_CDP_HOST=browsercontainer BROWSER_CDP_PORT=9222
 scripts/cdp-connect.sh list
 ```
