@@ -116,6 +116,16 @@ services:
       # Shared exchange with gui-tools sidecar (Blender/QGIS MCP).
       # Sidecar mounts the same volume at /home/devuser/exchange.
       - gui-tools-exchange:/home/devuser/gui-tools
+      # Dell R610 "research" LUKS store (/srv/store, XFS 3.64T) over 10G NFS.
+      # Host mounts 192.168.2.5:/srv/store at /mnt/dell (see host /etc/fstab).
+      # rslave propagation makes host NFS (re)mounts flow into the container;
+      # it requires the host mount to be *shared* (mnt-dell-shared.service).
+      # uid/gid 1000 == devuser, so writes into /mnt/dell/shared work rw.
+      - type: bind
+        source: /mnt/dell
+        target: /mnt/dell
+        bind:
+          propagation: rslave
 
     # Resource provisioning — host: 376G RAM, 32 cores, 3x GPU (98G VRAM), 1.9T disk
     # Highly provisioned for agentic browser workloads with WebGPU inference.
