@@ -125,7 +125,7 @@ mode    = "publish"  # dryrun | publish  (publish emits kind-31402 to the forum 
 # The private key is NEVER stored in agentbox.toml — pass it via env var
 # OPERATOR_NOSTR_PRIVKEY or use NIP-07/NIP-46 remote signing.
 [sovereign_mesh.operator]
-pubkey_hex = "11ed64225dd5e2c5e18f61ad43d5ad9272d08739d3a20dd25886197b0738663c"                        # 64-char hex secp256k1 pubkey
+pubkey_hex = "b41654017f6850b13857d19d8ae0e3f88f1365600cab0321e8101c9e92682f7a"                        # 64-char hex secp256k1 pubkey
 npub       = ""                        # bech32 npub (alternative to hex; one is sufficient)
 display_name = ""                      # human-readable name for event tags
 relay_urls = []                        # operator's preferred relays for fan-out
@@ -156,7 +156,7 @@ allowed_pubkeys  = [
   # Populated 2026-07-22 from the dreamlab-ai D1 whitelist + forum-config (Tock-0 staging;
   # baked at nix build — takes effect at the next image rebuild).
   "6407eed80e2a8646e41a5ddba0ae6619425fc54af40e2b30482b9623c682425a",  # operator-jjohare — human admin (Dr John O'Hare)
-  "11ed64225dd5e2c5e18f61ad43d5ad9272d08739d3a20dd25886197b0738663c",  # visionclaw-server — governance publisher (key-split pending, ADR-040 D3)
+  "b41654017f6850b13857d19d8ae0e3f88f1365600cab0321e8101c9e92682f7a",  # visionclaw-server — governance publisher (key-split pending, ADR-040 D3)
   "cd37af940054d7b2dc979b6f51296db1ca2c34d2a234f35bc6a84888a69a1f88",  # beema — forum admin
   "a3af4977eb4c93bc7270b9e48cac69e8e6c18bb3bcb4ec3aaeeee360c3efd954",  # RedDread — forum admin (house admin; remove if misidentified)
   "2de44d5622eef79519ac078f6e227a85aecbaefd561e4e50c5f51dfadbf916e9",  # junkiejarvis — agentbox-bridge forum agent
