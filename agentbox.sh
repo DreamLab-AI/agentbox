@@ -980,7 +980,11 @@ cmd_ruvnet_brain() {
     # container-side password resolution (same form the MCP registration uses).
     local subcmd="${1:-status}"
     shift 2>/dev/null || true
-    local ingest_env='RUVECTOR_PG_CONNINFO="host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=${RUVECTOR_PG_PASSWORD:-ruvector}"'
+    # RUVNET_BRAIN_STAGING must sit on the workspace volume: the baked image's
+    # script defaults to read-only /var/lib, and the repo default ~/.cache is a
+    # 256M tmpfs in this deployment — both too small/unwritable for the ~512MB
+    # corpus zip + extraction. The staging is transient; the DB is the destination.
+    local ingest_env='RUVECTOR_PG_CONNINFO="host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=${RUVECTOR_PG_PASSWORD:-ruvector}" RUVNET_BRAIN_STAGING=/home/devuser/workspace/.tmp/ruvnet-brain-staging'
     case "$subcmd" in
         ingest)
             echo -e "${CYAN}Reconciling RuvNet KB corpus (this embeds via Xinference; new corpus ≈ minutes)...${NC}"
@@ -1721,7 +1725,7 @@ while [[ $# -gt 0 ]]; do
             usage
             exit 0
             ;;
-        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser|backup|restore|up|down|build|rebuild|update|ruvector|logs|shell|health|browsercontainer|gui-tools|openmed|voice|xr-runtime|android|migrate-workspace|preflight)
+        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser|backup|restore|up|down|build|rebuild|update|ruvector|ruvnet-brain|logs|shell|health|browsercontainer|gui-tools|openmed|voice|xr-runtime|android|migrate-workspace|preflight)
             CMD="$1"
             shift
             break
