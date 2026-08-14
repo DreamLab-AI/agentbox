@@ -126,10 +126,35 @@ in
 
       # Copy the vendored lockfile into the source tree before configurePhase
       # so cargo can find it relative to the workspace root.
+      #
+      # The `substituteInPlace` below fixes a live bug found 2026-08-14
+      # (agentbox pod-provisioning investigation): `git_mark_write()` in
+      # crates/solid-pod-rs-server/src/lib.rs derives the pod id from the
+      # FIRST path segment of the write's resource path, assuming LDP
+      # resources are served at `/{pod}/...`. In this deployment (and per
+      # `handle_admin_provision`'s own doc comment, "pod container:
+      # data_root/pods/{pk}/") they are actually served at
+      # `/pods/{pod}/...`, so the extracted "pod id" is always the literal
+      # string "pods", `data_root/pods` has no `.git`, and the git-backed
+      # check silently skips EVERY write — no commit, no `.prov.ttl`
+      # sidecar, ever, regardless of the `git` feature or a correctly
+      # git-init'd pod. Reproduced live: a real NIP-98-authenticated PUT to
+      # a pod with a valid `.git` and valid WAC grant returned 201 Created
+      # but added zero commits. Fix: strip an optional leading `pods/`
+      # segment before reading the pod id (a no-op, so backward compatible,
+      # for any future/alternate deployment that serves pods at the
+      # top-level `/{pod}/...` instead). `--replace-fail` aborts the build
+      # loudly if upstream ever changes this line, rather than silently
+      # shipping the unfixed binary.
       postPatch = ''
         chmod -R u+w .
         cp ${cargoLockFile} Cargo.lock
         chmod u+w Cargo.lock
+        substituteInPlace crates/solid-pod-rs-server/src/lib.rs \
+          --replace-fail \
+            "let trimmed = resource_path.trim_start_matches('/');" \
+            "let trimmed = resource_path.trim_start_matches('/');
+    let trimmed = trimmed.strip_prefix(\"pods/\").unwrap_or(trimmed); // agentbox fix 2026-08-14: LDP writes are served at /pods/{pod}/..., not /{pod}/... — see docs/dream-machine-capability-investigation.md"
       '';
 
       # The workspace member lives under crates/solid-pod-rs-server.
