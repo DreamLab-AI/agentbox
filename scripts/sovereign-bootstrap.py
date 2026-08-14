@@ -379,6 +379,27 @@ def write_agent_repo_identity(identity, repo_root):
     wire_pod_contract_substrate(identity, repo_root)
 
 
+def build_wac_turtle(hex_pubkey):
+    """Render an owner-only WAC authorization as Turtle.
+
+    solid-pod-rs-server's WAC resolver only recognises `.acl` (Turtle,
+    `crates/solid-pod-rs/src/ldp.rs::is_acl_path` — any path ending in
+    literal `.acl`) at two fixed locations for a pod container: the SIBLING
+    file `data_root/pods/{pk}.acl` (`solid-pod-rs-server/src/lib.rs:1580-1582`
+    derives this from the resource path) and, as a courtesy fallback, the
+    inner `data_root/pods/{pk}/.acl` (written by the server's own
+    `/_admin/provision/{pubkey}` handler, `lib.rs:3579-3595`). It does not
+    read JSON-LD and does not read a file named `.acl.json`.
+    """
+    return (
+        "@prefix acl: <http://www.w3.org/ns/auth/acl#> .\n\n"
+        "<#owner> a acl:Authorization ;\n"
+        f"  acl:agent <did:nostr:{hex_pubkey}> ;\n"
+        "  acl:accessTo <./> ; acl:default <./> ;\n"
+        "  acl:mode acl:Read, acl:Write, acl:Append, acl:Control .\n"
+    )
+
+
 def ensure_acl(pod_root, identity):
     pod_dir = pod_root / identity["npub"]
     for relative in [
@@ -410,6 +431,23 @@ def ensure_acl(pod_root, identity):
         ],
     }
     write_json(pod_dir / ".acl.json", acl)
+
+    # The write above (`.acl.json`) is NOT what solid-pod-rs-server's WAC
+    # resolver reads — it only recognises Turtle at a fixed `.acl` path (see
+    # build_wac_turtle docstring). Without this, every write to the pod
+    # (including this agent's own) is WAC-denied — confirmed live 2026-08-14:
+    # a real NIP-98-signed PUT to this agent's own pod returned
+    # `403 wac-allow: user="", public=""` before this fix. Write BOTH
+    # recognised locations, matching the format the server's own
+    # `/_admin/provision/{pubkey}` handler uses for hex-provisioned pods
+    # (`lib.rs:3579-3595`): the sibling file the resolver actually reads, and
+    # the inner file as a courtesy fallback. `.acl.json` above is left in
+    # place (harmless, no reader) rather than removed, to keep this change
+    # purely additive.
+    wac_turtle = build_wac_turtle(identity["x_only_pubkey_hex"])
+    (pod_root / f"{identity['npub']}.acl").write_text(wac_turtle, encoding="utf-8")
+    (pod_dir / ".acl").write_text(wac_turtle, encoding="utf-8")
+
     write_json(
         pod_dir / "profile.json",
         {
@@ -429,6 +467,49 @@ def ensure_acl(pod_root, identity):
         ],
     )
     write_json(pod_dir / "did-nostr.json", did_doc)
+
+
+def ensure_git_provenance_alias(pod_root, identity):
+    """Bridge the two pod-addressing conventions that coexist in this stack.
+
+    This script provisions the agentbox core-agent pod at `pod_root/<npub>`
+    (bech32) — consistent with every OTHER consumer of this pod: the WAC
+    subject/webId URLs above, git-http-backend routing, and
+    `[sovereign_mesh.git] http_route_prefix = "/pods/:npub/"` (agentbox.toml)
+    are all npub-keyed by design.
+
+    solid-pod-rs-server's *own* admin provisioning endpoint
+    (`POST /_admin/provision/{pubkey}`, used by the forum auth-worker for
+    other users) instead requires and creates `data_root/pods/{64-hex}` —
+    and, load-bearingly, so does its git-provenance control API
+    (`pod_repo_path()` in `solid-pod-rs-server/src/lib.rs`, backing
+    `GET /{pod}/_prov/{sha}` and the `/_git/*` routes): it rejects anything
+    that is not exactly 64 lowercase hex chars, so it cannot resolve an
+    npub-named pod directory at all. Confirmed live 2026-08-14: the
+    agentbox-core pod's real gitmark.json/blocktrails.json commit history
+    was unreachable via `_prov` until a `data_root/<hex> -> pods/<npub>`
+    alias was added.
+
+    Rather than rename the pod directory (which would break the npub-keyed
+    consumers above), add that alias here so provisioning does it for every
+    future boot/identity, not just as a one-off manual fix. Purely additive:
+    never touches or removes the npub path. Idempotent — a no-op if the
+    alias already exists (as a symlink or a real directory), and best-effort
+    (a missing alias only affects `_prov`/`_git` debugging surfaces, never
+    the pod's actual read/write path, which stays npub-keyed throughout).
+    """
+    hex_pubkey = identity.get("x_only_pubkey_hex", "")
+    if len(hex_pubkey) != 64 or any(c not in "0123456789abcdef" for c in hex_pubkey):
+        return  # not a well-formed 32-byte x-only pubkey — nothing safe to alias
+    data_root = pod_root.parent
+    alias = data_root / hex_pubkey
+    if alias.exists() or alias.is_symlink():
+        return  # already aliased (or a real dir already lives there) — leave it
+    target = pathlib.Path("pods") / identity["npub"]
+    try:
+        alias.symlink_to(target, target_is_directory=True)
+    except OSError:
+        pass  # best-effort; never block bootstrap over a debugging convenience
 
 
 def write_runtime_env(identity, run_root):
@@ -488,6 +569,7 @@ def main():
     # no key bytes change (ADR-033 I1).
     repo_root = os.getenv("AGENTBOX_AGENT_REPO_ROOT") or str(pod_root / identity["npub"])
     write_agent_repo_identity(identity, repo_root)
+    ensure_git_provenance_alias(pod_root, identity)
 
 
 if __name__ == "__main__":
