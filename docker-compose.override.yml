@@ -90,6 +90,17 @@ services:
       # ChatGPT/API login and token refresh are shared with the host. The host
       # file must exist before compose starts (agentbox.sh preflight checks it).
       - ${HOME}/.codex/auth.json:/home/devuser/.codex/auth.json:rw
+      # ADR-052 prerequisite #1 — SSH access to the isolated HP execution plane
+      # (dream-machine annexe). Read-only bind of a DEDICATED orchestrator
+      # keypair + config + pre-seeded known_hosts; the container rootfs is
+      # read_only, so `.ssh` cannot be provisioned at runtime and arrives here.
+      # In-container agents get non-interactive `ssh john` / `ssh hp` -> HP.
+      # Trust is one-way (estate -> HP); HP holds no estate credentials. The key
+      # is revocable independently of any personal key (drop the matching line
+      # in john@10.10.10.1:~/.ssh/authorized_keys). Host-side layout:
+      # ${HOME}/.ssh/agentbox-hp/{id_ed25519,id_ed25519.pub,config,known_hosts}.
+      # Absent source -> Docker creates an empty dir -> capability simply inert.
+      - ${HOME}/.ssh/agentbox-hp:/home/devuser/.ssh:ro
       # Second mount surfaces the host's .claude at the host-side path so
       # Claude Code's plugin registry (installed_plugins.json,
       # known_marketplaces.json), which persists absolute host paths,
