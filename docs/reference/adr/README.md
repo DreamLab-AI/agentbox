@@ -57,6 +57,16 @@ Older records use `**Status:**` markdown; ADR-023 onward carry YAML frontmatter
 | [042](ADR-042-agent-of-empires-interaction-plane.md) | Agent of Empires as the interaction plane — overlay-only adoption | Proposed | [PRD-021](../prd/PRD-021-interaction-surface-consolidation.md) · [DDD-019](../ddd/DDD-019-interaction-plane-domain.md) |
 | [043](ADR-043-session-identity-binding.md) | Session identity binding — sovereign mechanisms at the AoE session boundary | Proposed | [PRD-021](../prd/PRD-021-interaction-surface-consolidation.md) · [DDD-019](../ddd/DDD-019-interaction-plane-domain.md) |
 | [044](ADR-044-voice-plane-aoe-repoint.md) | Voice-plane repoint — tab0-bridge injection onto the AoE API | Proposed | [PRD-021](../prd/PRD-021-interaction-surface-consolidation.md) · [DDD-019](../ddd/DDD-019-interaction-plane-domain.md) |
+| [045](ADR-045-sovereign-ingress-npub-front-door.md) | Sovereign ingress — one npub-gated front door for external control surfaces | Proposed | — |
+| [046](ADR-046-semantica-complement.md) | Semantica as a complement to VisionClaw (not a replacement) | Proposed | — |
+| [047](ADR-047-semantica-tenant-integration-boundary.md) | Native capability boundary for semantic integrity and provenance | Proposed | — |
+| [048](ADR-048-decision-records-as-graph-nodes.md) | Decision records as first-class, Whelk-classifiable graph nodes | Proposed | — |
+| [049](ADR-049-bitemporal-facts-and-runtime-provenance.md) | Bi-temporal facts and runtime PROV-O off the reasoned graph | Proposed | — |
+| [050](ADR-050-decision-elevation-inverse-corpus-path.md) | Decision elevation — the inverse corpus path | Proposed | — |
+| [051](ADR-051-loom-client-and-deferred-distillation.md) | Loom client and deferred distillation | Proposed | — |
+| [052](ADR-052-dream-machine-hp-annexe.md) | Dream Machine HP annexe | Proposed | — |
+| [053](ADR-053-hex-canonical-pod-naming.md) | Hex-canonical pod naming | Accepted | — |
+| [054](ADR-054-ontology-bridge-write-path-findings.md) | Ontology-bridge write-path findings from the terminology live test | Proposed | VisionFlow ADR-006 · logseq ADR-NG-002 |
 
 ## See also
 
