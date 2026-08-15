@@ -13,6 +13,9 @@ Before publishing:
 - [ ] No negative parallelism
 - [ ] No throat-clearing openers
 - [ ] UK English consistent throughout
+- [ ] No invisible Unicode watermark carriers (`inspect_text.py` clean)
+- [ ] File metadata stripped — no C2PA, EXIF AI-provenance, or XMP tags
+- [ ] (If required) Statistical rewrite applied; meaning verified post-rewrite
 - [ ] (Fiction) at least one subplot doesn't tidily resolve
 - [ ] (Fiction) at least one emotion labelled directly
 - [ ] (Fiction) at least one named real-world reference
