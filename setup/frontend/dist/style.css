@@ -1,5 +1,5 @@
 /* ============================================================
-   AGENTBOX — Setup Wizard & Operations Dashboard
+   AGENTBOX — Pre-boot Setup Wizard
    DreamLab Design System  |  Pure CSS  |  No frameworks
    ============================================================ */
 
@@ -70,12 +70,23 @@
 
   /* Derived colors */
   --text-primary: rgba(255, 255, 255, 0.95);
-  --text-secondary: rgba(255, 255, 255, 0.6);
-  --text-tertiary: rgba(255, 255, 255, 0.38);
+  --text-secondary: rgba(255, 255, 255, 0.72);
+  --text-tertiary: rgba(255, 255, 255, 0.62);
   --text-accent: rgb(var(--dl-accent-amber));
   --border-subtle: rgba(255, 255, 255, 0.06);
   --border-interactive: rgba(255, 255, 255, 0.12);
   --focus-ring: rgba(var(--dl-accent-amber), 0.5);
+
+  /* Cross-surface Agentbox contract; see docs/developer/web-interface-design-system.md. */
+  --agentbox-accent: rgb(var(--dl-accent-amber));
+  --agentbox-focus: rgb(var(--dl-accent-amber));
+  --agentbox-surface: var(--dl-card-bg);
+  --agentbox-foreground: var(--text-primary);
+  --agentbox-muted: var(--text-secondary);
+  --agentbox-success: rgb(var(--dl-accent-green));
+  --agentbox-warning: rgb(var(--dl-accent-amber));
+  --agentbox-danger: rgb(239, 68, 68);
+  --agentbox-radius: var(--radius-sm);
 }
 
 /* ---------------------------------------------------------
@@ -2046,7 +2057,7 @@ dialog#raw-modal[open] {
     --dl-glass-border: rgba(0, 0, 0, 0.06);
     --text-primary: rgba(0, 0, 0, 0.9);
     --text-secondary: rgba(0, 0, 0, 0.6);
-    --text-tertiary: rgba(0, 0, 0, 0.38);
+    --text-tertiary: rgba(0, 0, 0, 0.62);
     --border-subtle: rgba(0, 0, 0, 0.06);
     --border-interactive: rgba(0, 0, 0, 0.12);
     color-scheme: light;
@@ -2155,10 +2166,7 @@ dialog#raw-modal[open] {
 /* ---------------------------------------------------------
    45. DASHBOARD SECTION VISIBILITY
    --------------------------------------------------------- */
-.view-setup .dashboard-only,
-.view-dashboard .setup-only {
-  display: none !important;
-}
+.dashboard-only { display: none !important; }
 
 /* ---------------------------------------------------------
    END — ~1050 lines, pure CSS, DreamLab Design System

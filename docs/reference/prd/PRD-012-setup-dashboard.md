@@ -1,6 +1,6 @@
 # PRD-012: Agentbox Setup Wizard and Operations Dashboard
 
-**Status:** Implemented
+**Status:** Superseded in part by PRD-021 — setup wizard retained; operations dashboard retired
 **Date:** 2026-05-22
 **Author:** Agentbox team
 **Related:** ADR-024 (Setup Dashboard), DDD-009 (Setup Dashboard Domain), PRD-001 (Capabilities and Adapters), ADR-005 (Pluggable Adapter Architecture), ADR-013 (Canonical URI Grammar)
@@ -8,9 +8,9 @@
 ## TL;DR for newcomers
 *Skip if you already know the progressive standalone SPA model.*
 
-This PRD describes the agentbox setup wizard and operations dashboard — a standalone browser-based SPA (HTML/CSS/JS) that works on any platform with zero compiled dependencies. **Pre-boot mode** is a setup wizard that edits `agentbox.toml` with full JSON Schema validation before the container starts — no running container required. **Post-boot mode** is an operations dashboard that connects to the container's management API on port 9090 and surfaces service status, agent events, metrics, pod health, and payment state. The SPA runs in three tiers: (1) pure browser with file picker, (2) any HTTP server (python3) with co-located config, or (3) the optional Rust binary with embedded assets and server-side API proxy.
+This PRD originally described both a setup wizard and an operations dashboard. PRD-021 consolidated operations into the Agentbox operator cockpit and AoE interaction plane. The retained surface is the standalone pre-boot setup wizard: it edits `agentbox.toml` with JSON Schema validation before the container starts and runs either from a file picker, a small localhost server, or the optional Rust binary. The former post-boot dashboard was removed because its duplicated and partly inferred health model could drift from the management API.
 
-**If you remember only one thing:** platform-agnostic browser SPA, two modes — edit the manifest before boot, observe the running system after boot.
+**If you remember only one thing:** this is the platform-agnostic pre-boot manifest editor; use `./agentbox.sh voice open` for running-system operations.
 
 ![Setup Wizard](../../images/setup-wizard-overview.png)
 ![Operations Dashboard](../../images/setup-dashboard.png)

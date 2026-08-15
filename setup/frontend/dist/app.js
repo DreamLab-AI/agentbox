@@ -1,13 +1,9 @@
-// Agentbox Setup Wizard + Operations Dashboard
+// Agentbox pre-boot setup wizard
 // DreamLab AI — https://dreamlab.ai
 (function () {
   'use strict';
 
-  const POLL_INTERVAL = 5000;
-  const MAX_EVENTS = 200;
-
   let state = {
-    mode: 'setup',
     standalone: false,       // true = no Rust server, pure browser
     fileHandle: null,        // File System Access API handle (if available)
     config: null,
@@ -16,11 +12,6 @@
     dirty: false,
     sections: [],
     activeSection: null,
-    dashboardConnected: false,
-    dashboardBaseUrl: '',    // direct mgmt API URL for standalone dashboard
-    events: [],
-    pollTimer: null,
-    eventPollTimer: null,
   };
 
   function $(sel, ctx) { return (ctx || document).querySelector(sel); }
@@ -32,8 +23,7 @@
   }
 
   async function api(path, opts = {}) {
-    const base = state.standalone ? state.dashboardBaseUrl : '/api';
-    const url = state.standalone ? `${base}${path.replace(/^\/proxy/, '')}` : `${base}${path}`;
+    const url = `/api${path}`;
     const res = await fetch(url, {
       headers: { 'Content-Type': 'application/json', ...opts.headers },
       ...opts,
@@ -50,29 +40,6 @@
     const d = document.createElement('div');
     d.textContent = s;
     return d.innerHTML;
-  }
-
-  function fmtTime(ts) {
-    return new Date(ts).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  }
-
-  function fmtUptime(s) {
-    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
-    if (h > 24) return `${Math.floor(h / 24)}d ${h % 24}h`;
-    return h > 0 ? `${h}h ${m}m` : `${m}m`;
-  }
-
-  // Age of an event given a created_at (unix seconds or ms) → "12s"/"4m"/"2h"/"3d".
-  function fmtAge(ts) {
-    if (!ts && ts !== 0) return '—';
-    let ms = Number(ts);
-    if (!isFinite(ms)) return '—';
-    if (ms < 1e12) ms *= 1000;            // seconds → ms
-    let d = Math.max(0, Math.floor((Date.now() - ms) / 1000));
-    if (d < 60) return `${d}s`;
-    if (d < 3600) return `${Math.floor(d / 60)}m`;
-    if (d < 86400) return `${Math.floor(d / 3600)}h`;
-    return `${Math.floor(d / 86400)}d`;
   }
 
   // ─── TOML Parser (minimal, handles agentbox.toml shape) ──────
@@ -129,23 +96,6 @@
     if (typeof v === 'number') return String(v);
     if (Array.isArray(v)) return `[${v.map(toVal).join(', ')}]`;
     return `"${String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
-  }
-
-  // ─── Mode Switching ──────────────────────────────────────────
-
-  function setMode(mode) {
-    state.mode = mode;
-    document.body.classList.toggle('view-setup', mode === 'setup');
-    document.body.classList.toggle('view-dashboard', mode === 'dashboard');
-
-    $$('.mode-toggle button').forEach(b => {
-      b.classList.toggle('active', b.dataset.mode === mode);
-    });
-
-    $('#mode-label').textContent = mode === 'setup' ? 'Configuration Wizard' : 'Operations Dashboard';
-
-    if (mode === 'dashboard') startDashboard();
-    else stopDashboard();
   }
 
   // ─── Standalone Mode: File I/O ───────────────────────────────
@@ -287,11 +237,6 @@
 
     // No server — enter standalone mode
     state.standalone = true;
-
-    // Check URL params for mgmt API URL
-    const params = new URLSearchParams(location.search);
-    const mgmtUrl = params.get('api');
-    if (mgmtUrl) state.dashboardBaseUrl = mgmtUrl.replace(/\/$/, '');
 
     // Check if agentbox.toml is co-located (served by any static server)
     try {
@@ -576,290 +521,6 @@
     btn.closest('.subsection')?.classList.toggle('open');
   });
 
-  // ─── Dashboard ───────────────────────────────────────────────
-
-  function startDashboard() {
-    if (state.standalone && !state.dashboardBaseUrl) {
-      const url = prompt('Management API URL:', 'http://localhost:9090');
-      if (url) state.dashboardBaseUrl = url.replace(/\/$/, '');
-      else { setMode('setup'); return; }
-    }
-    if (state.pollTimer) return;
-    pollDashboard();
-    state.pollTimer = setInterval(pollDashboard, POLL_INTERVAL);
-    pollEvents();
-  }
-
-  function stopDashboard() {
-    clearInterval(state.pollTimer);
-    clearTimeout(state.eventPollTimer);
-    state.pollTimer = null;
-    state.eventPollTimer = null;
-  }
-
-  async function pollDashboard() {
-    try {
-      const prefix = state.standalone ? '' : '/proxy';
-      const [health, status, tasks, approvals] = await Promise.allSettled([
-        api(`${prefix}/health`),
-        api(`${prefix}/v1/status`),
-        api(`${prefix}/v1/tasks`),
-        api(`${prefix}/v1/approvals`),
-      ]);
-
-      renderStatusCards(status.value);
-      renderServiceGrid(status.value);
-      renderTaskList(tasks.value);
-      renderAdapters(health.value);
-      renderApprovals(approvals.status === 'fulfilled' ? approvals.value : null);
-      setConnected(true);
-    } catch {
-      setConnected(false);
-    }
-  }
-
-  async function pollEvents() {
-    if (state.mode !== 'dashboard') return;
-    try {
-      const prefix = state.standalone ? '' : '/proxy';
-      const evts = await api(`${prefix}/v1/agent-events?limit=20`);
-      if (Array.isArray(evts)) {
-        for (const ev of evts) {
-          if (!state.events.find(e => e.id === ev.id)) {
-            state.events.unshift(ev);
-            if (state.events.length > MAX_EVENTS) state.events.pop();
-          }
-        }
-        renderEvents();
-      }
-    } catch { /* container may not be up */ }
-    if (state.mode === 'dashboard') {
-      state.eventPollTimer = setTimeout(pollEvents, 3000);
-    }
-  }
-
-  function renderStatusCards(status) {
-    const el = $('#status-cards');
-    if (!status) {
-      el.innerHTML = '<div class="metric-card"><span class="metric-label">Container</span><span class="metric-number text-pink">Offline</span></div>';
-      return;
-    }
-    el.innerHTML = `
-      <div class="metric-card">
-        <span class="metric-label">Uptime</span>
-        <span class="metric-number">${fmtUptime(status.uptime_seconds || 0)}</span>
-      </div>
-      <div class="metric-card">
-        <span class="metric-label">GPU</span>
-        <span class="metric-number">${esc(status.gpu?.name || 'None')}</span>
-      </div>
-      <div class="metric-card">
-        <span class="metric-label">Memory</span>
-        <span class="metric-number">${status.memory ? `${Math.round(status.memory.used_mb)}/${Math.round(status.memory.total_mb)} MB` : '—'}</span>
-      </div>
-      <div class="metric-card">
-        <span class="metric-label">Tasks</span>
-        <span class="metric-number text-amber">${status.active_tasks ?? 0}</span>
-      </div>`;
-  }
-
-  const SERVICES = [
-    { name: 'Management API', port: 9090, icon: '🔧', core: true },
-    { name: 'RuVector PG',    port: 5432, icon: '🧠', core: true },
-    { name: 'Prometheus',     port: 9091, icon: '📊', core: true },
-    { name: 'Solid Pod',      port: 8484, icon: '🔐', core: false },
-    { name: 'Jupyter Lab',    port: 8888, icon: '📓', core: false },
-    { name: 'Code Server',    port: 8080, icon: '💻', core: false },
-    { name: 'VNC Desktop',    port: 5901, icon: '🖥️', core: false },
-    { name: 'Nostr Relay',    port: 7777, icon: '📡', core: false },
-    { name: 'Privacy Filter', port: 9092, icon: '🔒', core: false },
-  ];
-
-  function renderServiceGrid(status) {
-    const el = $('#service-grid');
-    el.innerHTML = SERVICES.map(svc => {
-      const up = state.dashboardConnected && (svc.core || svc.port === 9090);
-      const cls = up ? 'healthy' : 'offline';
-      return `<div class="service-card" data-tooltip=":${svc.port}">
-        <div class="service-card-header">
-          <span class="service-card-title">${svc.icon} ${svc.name}</span>
-          <span class="service-card-subtitle">:${svc.port}</span>
-        </div>
-        <div class="service-status ${cls}">
-          <span class="dot"></span> ${up ? 'healthy' : 'unknown'}
-        </div>
-      </div>`;
-    }).join('');
-  }
-
-  function renderTaskList(tasks) {
-    const el = $('#task-list');
-    if (!tasks || !Array.isArray(tasks) || !tasks.length) {
-      el.innerHTML = '<p style="text-align:center;color:var(--text-tertiary);padding:var(--sp-8);">No active tasks</p>';
-      return;
-    }
-    el.innerHTML = tasks.map(t => `
-      <div class="task-card">
-        <div class="task-info">
-          <span class="task-title">${esc(t.id || t.taskId || '—')}</span>
-          <span class="task-meta">${esc(t.description || t.command || '')}</span>
-        </div>
-        <span class="tag ${t.status === 'running' ? 'amber' : 'green'}">${esc(t.status || 'unknown')}</span>
-      </div>`).join('');
-  }
-
-  function renderAdapters(health) {
-    const el = $('#adapter-cards');
-    if (!health) {
-      el.innerHTML = '<p style="color:var(--text-tertiary);">Waiting for adapter status…</p>';
-      return;
-    }
-    const slots = ['beads', 'pods', 'memory', 'events', 'orchestrator'];
-    const icons = { beads: '📦', pods: '🗄️', memory: '🧠', events: '📨', orchestrator: '🎯' };
-    el.innerHTML = slots.map(s => {
-      const st = health[s] || 'unknown';
-      const cls = st === 'healthy' ? 'green' : st === 'off' ? '' : 'amber';
-      return `<span class="tag ${cls}">${icons[s]} ${s}: ${st}</span>`;
-    }).join(' ');
-  }
-
-  // ─── Pending Approvals (authority gate — ADR-043 D4.7) ───────
-  // Renders open kind-31402 ActionRequests and posts a signed decision via
-  // /v1/approvals/:id/decide. Builder B owns those endpoints; field extraction
-  // is defensive so it survives minor contract shape differences.
-
-  const approvalsBusy = new Set();   // ids with an in-flight decision
-
-  function approvalField(a, keys) {
-    for (const k of keys) {
-      const parts = k.split('.');
-      let v = a;
-      for (const p of parts) v = (v == null ? undefined : v[p]);
-      if (v !== undefined && v !== null && v !== '') return v;
-    }
-    return null;
-  }
-
-  function renderApprovals(list) {
-    const el = $('#approval-list');
-    const ct = $('#approval-count');
-    if (!el) return;
-    const items = Array.isArray(list) ? list : (list && Array.isArray(list.approvals) ? list.approvals : []);
-    if (ct) ct.textContent = items.length;
-    if (!items.length) {
-      el.innerHTML = '<p style="text-align:center;color:var(--text-tertiary);padding:var(--sp-8);">No pending approvals</p>';
-      return;
-    }
-    el.innerHTML = items.map(a => {
-      const id = approvalField(a, ['id', 'request_event_id', 'event_id', 'requestId', 'd']);
-      const cls = approvalField(a, ['action_class', 'actionClass', 'authority_class', 'class', 'fields.action_class', 'subject_kind']);
-      const target = approvalField(a, ['target', 'subject', 'subject_id', 'subjectId', 'title', 'fields.target']);
-      const requester = approvalField(a, ['requester', 'requester_did', 'did', 'pubkey', 'author', 'actor']);
-      const created = approvalField(a, ['created_at', 'timestamp', 'ts', 'age_start']);
-      const reqShort = requester ? String(requester).replace(/^did:nostr:/, '').slice(0, 16) : 'unknown';
-      const busy = id != null && approvalsBusy.has(String(id));
-      const idAttr = id != null ? esc(String(id)) : '';
-      return `<div class="approval-card task-card" data-approval-id="${idAttr}">
-        <div class="task-info">
-          <span class="task-title">${esc(cls || 'action')}${target ? ` → ${esc(String(target))}` : ''}</span>
-          <span class="task-meta mono">${esc(reqShort)}${requester ? '…' : ''} · ${esc(fmtAge(created))} ago</span>
-        </div>
-        <div class="flex gap-4" style="align-items:center;">
-          <button class="btn btn-primary approval-decide" data-decision="approve" data-approval-id="${idAttr}" ${busy || !id ? 'disabled' : ''}>Approve</button>
-          <button class="btn btn-ghost approval-decide" data-decision="deny" data-approval-id="${idAttr}" ${busy || !id ? 'disabled' : ''}>Deny</button>
-        </div>
-      </div>`;
-    }).join('');
-  }
-
-  async function decideApproval(id, decision) {
-    if (!id || approvalsBusy.has(String(id))) return;
-    approvalsBusy.add(String(id));
-    const row = $(`.approval-card[data-approval-id="${CSS.escape(String(id))}"]`);
-    if (row) $$('.approval-decide', row).forEach(b => { b.disabled = true; });
-    try {
-      const prefix = state.standalone ? '' : '/proxy';
-      await api(`${prefix}/v1/approvals/${encodeURIComponent(id)}/decide`, {
-        method: 'POST',
-        body: JSON.stringify({ decision }),
-      });
-      // Optimistically drop the row; the next poll reconciles authoritatively.
-      if (row) row.remove();
-      const ct = $('#approval-count');
-      if (ct) ct.textContent = Math.max(0, (parseInt(ct.textContent, 10) || 1) - 1);
-    } catch (e) {
-      alert(`Decision failed: ${e.message}`);
-      if (row) $$('.approval-decide', row).forEach(b => { b.disabled = false; });
-    } finally {
-      approvalsBusy.delete(String(id));
-    }
-  }
-
-  function onApprovalClick(e) {
-    const btn = e.target.closest('.approval-decide');
-    if (!btn || btn.disabled) return;
-    decideApproval(btn.dataset.approvalId, btn.dataset.decision);
-  }
-
-  function renderEvents() {
-    const el = $('#event-stream');
-    const ct = $('#event-count');
-    ct.textContent = state.events.length;
-    if (!state.events.length) {
-      el.innerHTML = '<p style="text-align:center;color:var(--text-tertiary);padding:var(--sp-8);">Waiting for agent activity…</p>';
-      return;
-    }
-    el.innerHTML = state.events.slice(0, 50).map(ev => {
-      const time = fmtTime(ev.timestamp || ev.created_at || Date.now());
-      const action = ev.action || ev.type || 'event';
-      const msg = ev.detail || ev.message || ev.data || '';
-      return `<div class="event-entry">
-        <span class="event-time mono">${time}</span>
-        <span class="event-type info">${esc(action)}</span>
-        <span class="event-msg">${esc(String(msg).slice(0, 140))}</span>
-      </div>`;
-    }).join('');
-  }
-
-  function setConnected(ok) {
-    state.dashboardConnected = ok;
-    $$('.connection-indicator').forEach(el => {
-      el.classList.toggle('live', ok);
-      el.classList.toggle('disconnected', !ok);
-    });
-  }
-
-  // ─── Status Badge ────────────────────────────────────────────
-
-  function setStatus(type) {
-    const el = $('#status');
-    el.className = `status-badge ${type}`;
-    const labels = {
-      connected: 'ready',
-      error: 'error',
-      standalone: 'standalone',
-    };
-    el.textContent = labels[type] || 'loading…';
-  }
-
-  // ─── Quick Actions ───────────────────────────────────────────
-
-  const PORT_MAP = {
-    'open-jupyter': 8888,
-    'open-code':    8080,
-    'open-vnc':     5901,
-    'open-lo':      [9090, '/lo/'],
-    'open-metrics': 9091,
-    'open-solid':   8484,
-  };
-
-  function handleAction(action) {
-    const t = PORT_MAP[action];
-    if (!t) return;
-    const url = Array.isArray(t) ? `http://localhost:${t[0]}${t[1]}` : `http://localhost:${t}`;
-    window.open(url, '_blank');
-  }
-
   // ─── Footer Actions ──────────────────────────────────────────
 
   async function saveAndExit() {
@@ -915,10 +576,6 @@
   // ─── Init ────────────────────────────────────────────────────
 
   function init() {
-    $$('.mode-toggle button').forEach(b =>
-      b.addEventListener('click', () => setMode(b.dataset.mode))
-    );
-
     $('#btn-save')?.addEventListener('click', saveAndExit);
     $('#btn-cancel')?.addEventListener('click', quitNoSave);
     $('#btn-raw')?.addEventListener('click', openRawEditor);
@@ -926,13 +583,6 @@
     $('#btn-open')?.addEventListener('click', openFilePicker);
     $('#raw-apply')?.addEventListener('click', applyRaw);
     $('#raw-cancel')?.addEventListener('click', () => $('#raw-modal').close());
-
-    $$('[data-action]').forEach(b =>
-      b.addEventListener('click', () => handleAction(b.dataset.action))
-    );
-
-    // Pending-approvals decisions (delegated so it survives poll re-renders).
-    $('#approval-list')?.addEventListener('click', onApprovalClick);
 
     $('#raw-modal')?.addEventListener('click', e => {
       if (e.target === e.currentTarget) e.currentTarget.close();
@@ -942,9 +592,7 @@
       if (e.key === 'Escape' && $('#raw-modal')?.open) $('#raw-modal').close();
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
-        if (state.mode === 'setup') {
-          state.standalone ? downloadToml() : saveAndExit();
-        }
+        state.standalone ? downloadToml() : saveAndExit();
       }
     });
 

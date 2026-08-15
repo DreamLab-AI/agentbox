@@ -1,8 +1,8 @@
-# Setup Dashboard
+# Setup Wizard
 
-The setup dashboard is a browser-based SPA for editing `agentbox.toml` and
-observing the running container. It ships as a standalone HTML/CSS/JS frontend
-under `setup/frontend/dist/`.
+The setup wizard is a browser-based, pre-boot editor for `agentbox.toml`. It
+ships as a standalone HTML/CSS/JS frontend under `setup/frontend/dist/`.
+Running-system operations moved to the operator cockpit in PRD-021.
 
 ## How to access it
 
@@ -16,30 +16,29 @@ The script copies `agentbox.toml` and the JSON Schema alongside the frontend, th
 serves them via `python3 -m http.server`. It prints the URL to stdout, for example:
 
 ```
-Dashboard: http://127.0.0.1:8765
+AGENTBOX Setup: http://127.0.0.1:8765
 ```
 
 Open that URL in any browser. No Node, Python runtime, or other dependency is
 required beyond Python 3's built-in HTTP server.
 
 If the optional `agentbox-setup` Rust binary is present, it serves the frontend
-on a random `127.0.0.1` port and proxies Management API calls server-side so the
-browser never holds the API key.
+on a random `127.0.0.1` port and writes the validated manifest server-side.
 
 ## What it does
 
-The dashboard edits `agentbox.toml` through a form-based UI generated from the
+The wizard edits `agentbox.toml` through a form-based UI generated from the
 manifest's JSON Schema. Every field shows the type, allowed values, and default.
 Changes are validated on every keystroke; saving writes the TOML back preserving
 comments and key ordering.
 
-Once the container is running the dashboard switches to an operations view: service
-health, real-time agent events, and adapter status sourced from the Management API
-at `localhost:9090`.
+It deliberately has no post-boot operations mode. Once the container is running,
+use `./agentbox.sh voice open`; this prevents setup code from maintaining a
+second, drifting model of service health and governance.
 
 ## Sections
 
-The dashboard renders one card per top-level `agentbox.toml` section:
+The wizard renders one card per top-level `agentbox.toml` section:
 
 | Section | Description |
 |---|---|
@@ -75,3 +74,4 @@ The dashboard renders one card per top-level `agentbox.toml` section:
 - [configuration.md](configuration.md) — full `agentbox.toml` field reference
 - [ADR-024](../reference/adr/ADR-024-setup-dashboard.md) — dashboard architecture decisions
 - [PRD-012](../reference/prd/PRD-012-setup-dashboard.md) — setup wizard product spec
+- [web-interfaces.md](web-interfaces.md) — all running-system browser surfaces
