@@ -19,4 +19,12 @@ if [[ -z "${BROWSER_CDP_URL:-}" ]]; then
   export BROWSER_CDP_URL="${browser_ws/\/\/127.0.0.1:9222/\/\/${browser_ip}:9224}"
 fi
 
+# The remote Chrome must reach the Playwright webServer fixtures (18081/18082),
+# which bind wherever THIS script runs. Inside the agentbox container the
+# spec's default host "agentbox" is correct; from the host, the container-side
+# name for this machine is the browsercontainer's network gateway.
+if [[ -z "${WEB_TEST_HOST:-}" && "$(hostname)" != "agentbox" ]]; then
+  export WEB_TEST_HOST="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.Gateway}}{{end}}' browsercontainer)"
+fi
+
 exec npx playwright test --config playwright.config.js "$@"
