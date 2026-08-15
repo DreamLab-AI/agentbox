@@ -4,7 +4,7 @@ use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 
 use dream_engine::config::RuntimeConfig;
-use dream_engine::engine::{llm_config, ruvector_config, Engine};
+use dream_engine::engine::{fallback_llm_config, llm_config, ruvector_config, Engine};
 
 /// Dream Engine — nightly evidence-gated repository evolution (HP annexe).
 ///
@@ -91,8 +91,10 @@ async fn main() {
         return;
     }
 
+    let llm = llm_config(&runtime);
     let engine = Engine {
-        llm: llm_config(&runtime),
+        llm_fallback: fallback_llm_config(&runtime, &llm),
+        llm,
         ruvector: ruvector_config(&runtime),
         runtime,
         workspace: cli.workspace.clone(),

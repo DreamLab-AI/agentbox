@@ -44,6 +44,9 @@ pub struct Engine {
     pub workspace: PathBuf,
     pub artefact_dir: PathBuf,
     pub llm: LlmConfig,
+    /// Second provider tried when the primary fails both attempts
+    /// (e.g. Z.AI gateway 524s → the self-hosted Loom). None disables.
+    pub llm_fallback: Option<LlmConfig>,
     pub ruvector: RuVectorConfig,
 }
 
@@ -268,17 +271,42 @@ impl Engine {
             ));
         }
 
-        // 6. LLM call.
+        // 6. LLM call: primary (with its internal retry), then the fallback
+        //    provider, and only then a degraded night.
         info!(provider = ?self.llm.provider, model = %self.llm.model, "calling LLM");
+        let mut model_used = self.llm.model.clone();
         let report = match llm::call(&self.llm, &prompt).await {
             Ok(r) => r,
-            Err(e) => {
-                warn!(error = %e, "LLM call failed — recording degraded night");
-                format!(
-                    "# Degraded night\n\nLLM call failed: {}\n\nVERDICT: INCONCLUSIVE",
-                    e
-                )
-            }
+            Err(primary_err) => match &self.llm_fallback {
+                Some(fb) => {
+                    warn!(
+                        error = %primary_err,
+                        fallback_provider = ?fb.provider,
+                        fallback_model = %fb.model,
+                        "primary LLM failed — trying fallback provider"
+                    );
+                    match llm::call(fb, &prompt).await {
+                        Ok(r) => {
+                            model_used = fb.model.clone();
+                            r
+                        }
+                        Err(fb_err) => {
+                            warn!(error = %fb_err, "fallback LLM also failed — recording degraded night");
+                            format!(
+                                "# Degraded night\n\nPrimary LLM failed: {}\nFallback LLM failed: {}\n\nVERDICT: INCONCLUSIVE",
+                                primary_err, fb_err
+                            )
+                        }
+                    }
+                }
+                None => {
+                    warn!(error = %primary_err, "LLM call failed — recording degraded night");
+                    format!(
+                        "# Degraded night\n\nLLM call failed: {}\n\nVERDICT: INCONCLUSIVE",
+                        primary_err
+                    )
+                }
+            },
         };
 
         // 7. Verdict + finding.
@@ -330,7 +358,7 @@ impl Engine {
             finding: finding.clone(),
             verdict: v.as_str().into(),
             witness: if wit_full.is_empty() { wit_short.clone() } else { wit_full },
-            source: format!("hp-annexe-{}", self.llm.model),
+            source: format!("hp-annexe-{}", model_used),
         };
         let stored = match ruvector::store_finding(&self.ruvector, &df).await {
             Ok(s) => s,
@@ -393,6 +421,37 @@ pub fn llm_config(rt: &RuntimeConfig) -> LlmConfig {
             max_tokens: rt.loom_max_tokens,
             api_key: None,
         },
+    }
+}
+
+/// Build the fallback LLM config: the *other* provider, when usable.
+/// zai primary → Loom (always usable, LAN, no key). loom primary → Z.AI only
+/// when a key is present. `DREAM_LLM_FALLBACK=off` disables.
+pub fn fallback_llm_config(rt: &RuntimeConfig, primary: &LlmConfig) -> Option<LlmConfig> {
+    if std::env::var("DREAM_LLM_FALLBACK").is_ok_and(|v| v == "off") {
+        return None;
+    }
+    match primary.provider {
+        Provider::Zai => Some(LlmConfig {
+            provider: Provider::Loom,
+            url: std::env::var("LOOM_URL").unwrap_or_else(|_| rt.loom_url.clone()),
+            model: std::env::var("LOOM_MODEL").unwrap_or_else(|_| rt.loom_model.clone()),
+            max_tokens: rt.loom_max_tokens,
+            api_key: None,
+        }),
+        Provider::Loom => {
+            let key = std::env::var("ZAI_ANTHROPIC_API_KEY")
+                .ok()
+                .or_else(|| std::env::var("ZAI_API_KEY").ok())
+                .filter(|k| !k.is_empty())?;
+            Some(LlmConfig {
+                provider: Provider::Zai,
+                url: std::env::var("ZAI_URL").unwrap_or_else(|_| rt.zai_url.clone()),
+                model: std::env::var("ZAI_MODEL").unwrap_or_else(|_| rt.zai_model.clone()),
+                max_tokens: rt.zai_max_tokens,
+                api_key: Some(key),
+            })
+        }
     }
 }
 
