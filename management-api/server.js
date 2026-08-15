@@ -244,6 +244,13 @@ app.addHook('preValidation', async (request, reply) => {
     return;
   }
 
+  // The OpenAPI description and Swagger UI shell are public documentation.
+  // Individual API requests issued from the UI remain authenticated and the
+  // Authorize control supports bearer and NIP-98 credentials.
+  if (request.url.startsWith('/docs/') || request.url === '/docs') {
+    return;
+  }
+
   // DID documents must be publicly resolvable per the DID-Core spec.
   // The document contains only the public key and service endpoints — no
   // private data. Gate removal is intentional, not an oversight.
@@ -265,12 +272,12 @@ app.register(require('@fastify/swagger'), {
   openapi: {
     openapi: '3.0.0',
     info: {
-      title: 'Agentic Flow Management API',
-      description: 'HTTP API for managing AI agent workflows and MCP tools',
+      title: 'Agentbox Management API',
+      description: 'Sovereign control-plane API for Agentbox sessions, projects, memory, pods, approvals, events, and tools.',
       version: '2.1.0',
       contact: {
-        name: 'Agentic Flow',
-        url: 'https://github.com/ruvnet/agentic-flow'
+        name: 'DreamLab AI',
+        url: 'https://github.com/DreamLab-AI/agentbox'
       }
     },
     servers: [
@@ -281,15 +288,20 @@ app.register(require('@fastify/swagger'), {
     ],
     components: {
       securitySchemes: {
-        apiKey: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          description: 'Break-glass or local operator bearer token. NIP-98 is preferred when the sovereign mesh is enabled.'
+        },
+        nip98: {
           type: 'apiKey',
-          name: 'X-API-Key',
+          name: 'Authorization',
           in: 'header',
-          description: 'API key for authentication'
+          description: 'NIP-98 kind-27235 event encoded as: Nostr <base64-event>. The u, method, payload, timestamp, signer, and replay constraints are verified.'
         }
       }
     },
-    security: [{ apiKey: [] }],
+    security: [{ nip98: [] }, { bearerAuth: [] }],
     tags: [
       { name: 'tasks', description: 'Task management endpoints' },
       { name: 'monitoring', description: 'System monitoring and health' },

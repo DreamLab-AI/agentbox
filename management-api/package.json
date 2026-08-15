@@ -1,7 +1,7 @@
 {
-  "name": "agentic-flow-management-api",
+  "name": "agentbox-management-api",
   "version": "1.0.0",
-  "description": "HTTP Management API for CachyOS Workstation",
+  "description": "Sovereign Agentbox management and governance API",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -38,7 +38,7 @@
     "api",
     "agentic-flow"
   ],
-  "author": "Agentic Flow",
+  "author": "DreamLab AI",
   "license": "AGPL-3.0-only",
   "devDependencies": {
     "jest": "^29.7.0",
