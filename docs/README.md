@@ -35,7 +35,8 @@ You have a machine, you want agentbox running on it, ideally with as little fuss
 | [Quickstart](user/quickstart.md) | First boot in ten minutes |
 | [Installation](user/installation.md) | Per-OS install paths (Linux, macOS, Windows, remote) |
 | [agentbox.sh CLI reference](user/agentbox-cli.md) | The operator entrypoint — local stack management and remote OCI commands |
-| [Setup dashboard](user/setup-dashboard.md) | Browser-based SPA for editing `agentbox.toml` and observing the running container ([ADR-024](reference/adr/ADR-024-setup-dashboard.md)) |
+| [Web interfaces](user/web-interfaces.md) | Operator cockpit, AoE, linked objects, API docs, IDE, notebooks, desktop, and setup wizard |
+| [Setup wizard](user/setup-dashboard.md) | Pre-boot browser editor for `agentbox.toml` ([ADR-024](reference/adr/ADR-024-setup-dashboard.md)) |
 | [Configuration](user/configuration.md) | `agentbox.toml` reference — every section, every key |
 | [Running](user/running.md) | Copy-paste recipes per host × arch × GPU |
 | [Platforms](user/platforms.md) | Compatibility matrix: what works where |

@@ -6,7 +6,8 @@
   "license": "AGPL-3.0-only",
   "scripts": {
     "validate": "node scripts/agentbox-config-validate.js",
-    "test:config": "jest tests/config/semantic-rules.test.js --testEnvironment node"
+    "test:config": "jest tests/config/semantic-rules.test.js --testEnvironment node",
+    "test:web": "bash scripts/test-web-interfaces.sh"
   },
   "jest": {
     "testEnvironment": "node",
