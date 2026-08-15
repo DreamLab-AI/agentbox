@@ -50,6 +50,10 @@ pub struct Engine {
 impl Engine {
     /// Run one full nightly cycle: discover → compile → dispatch → evaluate →
     /// LLM → verdict → persist (report, ledger, witness, RuVector).
+    ///
+    /// Single-repo entry point: forced `--target`, or the alphabetically
+    /// first nominated repo when no target is given. Nightly all-repos
+    /// operation lives in [`Engine::run_night`].
     pub async fn run_cycle(
         &self,
         target: Option<&str>,
@@ -57,9 +61,80 @@ impl Engine {
         date: &str,
         dry_run: bool,
     ) -> Result<CycleResult, EngineError> {
-        info!("cycle start");
+        let repos = self.discover()?;
+        let (repo_name, repo_path) = match target {
+            Some(t) => repos
+                .iter()
+                .find(|(n, _)| n == t)
+                .cloned()
+                .ok_or_else(|| EngineError::UnknownTarget(t.into()))?,
+            None => repos[0].clone(),
+        };
+        self.cycle_repo(&repo_name, &repo_path, day_int, date, dry_run)
+            .await
+    }
 
-        // 1. Discover nominated repos (marker file: dream.config.json).
+    /// One full night: every eligible nominated repo, serially, capped at
+    /// `max_repos_per_night`. A repo whose trailing ledger rows are all
+    /// INCONCLUSIVE (`prune_dry_streak` of them) is on standby and skipped —
+    /// a dry streak means a saturated repo or a broken harness, and either
+    /// way the slot is wasted until a decisive verdict (via a forced
+    /// `--target` run or a harness fix) resets the streak.
+    pub async fn run_night(&self, day_int: u32, date: &str) -> Vec<(String, String)> {
+        let repos = match self.discover() {
+            Ok(r) => r,
+            Err(e) => {
+                warn!(error = %e, "night aborted — no nominated repos");
+                return vec![];
+            }
+        };
+
+        let mut eligible = Vec::new();
+        for (name, path) in &repos {
+            match self.repo_dry_streak(path) {
+                s if s >= self.runtime.prune_dry_streak => {
+                    info!(
+                        repo = %name,
+                        streak = s,
+                        limit = self.runtime.prune_dry_streak,
+                        "standby — INCONCLUSIVE dry streak; skipped (revive via --target or a harness fix)"
+                    );
+                }
+                _ => eligible.push((name.clone(), path.clone())),
+            }
+        }
+
+        if eligible.len() > self.runtime.max_repos_per_night {
+            for (name, _) in &eligible[self.runtime.max_repos_per_night..] {
+                warn!(repo = %name, cap = self.runtime.max_repos_per_night, "over roster cap — skipped tonight");
+            }
+            eligible.truncate(self.runtime.max_repos_per_night);
+        }
+
+        info!(
+            eligible = eligible.len(),
+            nominated = repos.len(),
+            "night start — dreaming each eligible repo serially"
+        );
+
+        let mut outcomes = Vec::new();
+        for (name, path) in eligible {
+            match self.cycle_repo(&name, &path, day_int, date, false).await {
+                Ok(res) => outcomes.push((name, res.verdict.as_str().to_string())),
+                Err(e) => {
+                    warn!(repo = %name, error = %e, "cycle failed — continuing with next repo");
+                    outcomes.push((name, format!("FAILED: {}", e)));
+                }
+            }
+        }
+        info!(
+            summary = %outcomes.iter().map(|(n, v)| format!("{}={}", n, v)).collect::<Vec<_>>().join(", "),
+            "night complete"
+        );
+        outcomes
+    }
+
+    fn discover(&self) -> Result<Vec<(String, PathBuf)>, EngineError> {
         let repos = config::discover_repos(&self.workspace);
         if repos.is_empty() {
             return Err(EngineError::NoRepos(self.workspace.clone()));
@@ -69,19 +144,35 @@ impl Engine {
             repos = %repos.iter().map(|(n, _)| n.as_str()).collect::<Vec<_>>().join(", "),
             "discovered nominated repos"
         );
+        Ok(repos)
+    }
 
-        // 2. Select tonight's repo: forced target or day rotation.
-        let (repo_name, repo_path) = match target {
-            Some(t) => repos
-                .iter()
-                .find(|(n, _)| n == t)
-                .cloned()
-                .ok_or_else(|| EngineError::UnknownTarget(t.into()))?,
-            None => repos[(day_int as usize) % repos.len()].clone(),
+    /// Trailing INCONCLUSIVE streak from the repo's own ledger (0 when the
+    /// ledger is missing/unreadable — never punish a repo for having no
+    /// history yet, or for a ledger path we cannot resolve).
+    fn repo_dry_streak(&self, repo_path: &Path) -> usize {
+        let Ok(cfg) = DreamConfig::load(&repo_path.join("dream.config.json")) else {
+            return 0;
         };
-        info!(repo = %repo_name, "target selected");
+        match std::fs::read_to_string(repo_path.join(&cfg.ledger_path)) {
+            Ok(text) => dry_streak(&text),
+            Err(_) => 0,
+        }
+    }
 
-        // 3. Load config, pick slot, compile the prompt.
+    async fn cycle_repo(
+        &self,
+        repo_name: &str,
+        repo_path: &Path,
+        day_int: u32,
+        date: &str,
+        dry_run: bool,
+    ) -> Result<CycleResult, EngineError> {
+        info!(repo = %repo_name, "cycle start");
+        let repo_name = repo_name.to_string();
+        let repo_path = repo_path.to_path_buf();
+
+        // Load config, pick slot, compile the prompt.
         let cfg = DreamConfig::load(&repo_path.join("dream.config.json"))?;
         let slot = config::tonight_slot(&cfg, day_int).clone();
         let bonuses = config::bonus_dives(&cfg, day_int);
@@ -341,6 +432,29 @@ fn git_head(repo: &Path) -> Option<String> {
     Some(String::from_utf8_lossy(&out.stdout).trim().to_string())
 }
 
+/// Count the trailing run of INCONCLUSIVE verdicts in a ledger. Any decisive
+/// row (ACCEPT or REJECT — a falsified hypothesis is still the system
+/// learning) resets the streak; header/divider/non-table lines are ignored.
+pub fn dry_streak(ledger_text: &str) -> usize {
+    let mut streak = 0usize;
+    for line in ledger_text.lines() {
+        let t = line.trim();
+        if !t.starts_with('|') {
+            continue;
+        }
+        let cells: Vec<&str> = t.split('|').map(str::trim).collect();
+        // | date | deep | finding | issue | pr | evaluated | verdict | ... |
+        // split yields a leading empty cell, so the verdict sits at index 7.
+        let Some(verdict) = cells.get(7) else { continue };
+        match *verdict {
+            "INCONCLUSIVE" => streak += 1,
+            "ACCEPT" | "REJECT" => streak = 0,
+            _ => {} // header, divider, malformed — no effect
+        }
+    }
+    streak
+}
+
 /// Redact HP-side filesystem paths before receipts leave the LAN.
 fn redact(s: &str) -> String {
     s.replace("/home/john", "~")
@@ -383,5 +497,41 @@ mod tests {
         let t = tail(s, 4);
         assert!(t.len() <= 5);
         assert!(s.ends_with(t));
+    }
+
+    const LEDGER_HEADER: &str = "| Date | Deep | Finding | Issue | PR | Evaluated? | Verdict | Effect | Witness | Prior-night fates |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n";
+
+    fn row(verdict: &str) -> String {
+        format!("| 2026-08-15 | deep | finding | NONE | NONE | yes | {} |  | abcd1234 |  |\n", verdict)
+    }
+
+    #[test]
+    fn dry_streak_counts_trailing_inconclusive() {
+        let ledger = format!(
+            "{}{}{}{}",
+            LEDGER_HEADER,
+            row("ACCEPT"),
+            row("INCONCLUSIVE"),
+            row("INCONCLUSIVE")
+        );
+        assert_eq!(dry_streak(&ledger), 2);
+    }
+
+    #[test]
+    fn dry_streak_reset_by_decisive_verdict() {
+        let ledger = format!(
+            "{}{}{}{}",
+            LEDGER_HEADER,
+            row("INCONCLUSIVE"),
+            row("INCONCLUSIVE"),
+            row("REJECT")
+        );
+        assert_eq!(dry_streak(&ledger), 0);
+    }
+
+    #[test]
+    fn dry_streak_empty_and_header_only() {
+        assert_eq!(dry_streak(""), 0);
+        assert_eq!(dry_streak(LEDGER_HEADER), 0);
     }
 }

@@ -118,6 +118,13 @@ pub struct RuntimeConfig {
     pub window_start: u8,
     #[serde(default = "default_window_end")]
     pub window_end: u8,
+    /// Hard cap on repos dreamed per night (serial cycles).
+    #[serde(default = "default_max_repos")]
+    pub max_repos_per_night: usize,
+    /// A repo whose last N ledger rows are ALL INCONCLUSIVE goes to standby
+    /// (skipped in nightly all-repos mode). Decisive verdicts reset the streak.
+    #[serde(default = "default_prune_streak")]
+    pub prune_dry_streak: usize,
 }
 
 fn default_true() -> bool { true }
@@ -132,6 +139,8 @@ fn default_provider() -> String { "zai".into() }
 fn default_memory_namespace() -> String { "dream-cycle".into() }
 fn default_window_start() -> u8 { 1 }
 fn default_window_end() -> u8 { 5 }
+fn default_max_repos() -> usize { 5 }
+fn default_prune_streak() -> usize { 5 }
 
 /// Discover nominated repos — directories under workspace containing dream.config.json.
 pub fn discover_repos(workspace: &Path) -> Vec<(String, PathBuf)> {

@@ -147,6 +147,14 @@ The binary reads the `[dream_machine]` table (window, HP host, annexe dir, model
 | `XINFERENCE_URL` | Embedding endpoint (default `http://192.168.2.132:9997`). | Container env. |
 | `RUST_LOG` | Log filter (default `info`). | Supervisor block / shell. |
 
+## Roster & standby pruning
+
+Every **eligible** nominated repo dreams **every night**, serially, capped at `max_repos_per_night` (default 5 — cycles run 2–8 minutes, so five fit the window comfortably). Eligibility is read from each repo's own ledger: a repo whose trailing `prune_dry_streak` rows (default 5) are **all** INCONCLUSIVE goes to *standby* and is skipped, with the reason logged. The design intent:
+
+- **REJECT is not stagnation.** A falsified hypothesis is the system learning; ACCEPT and REJECT both reset the streak. Only an unbroken run of INCONCLUSIVE nights — a saturated repo or a broken harness — parks a repo.
+- **Standby is reversible, never destructive.** The nomination file and ledger stay untouched. A forced `dream-engine --once --target <repo>` still runs it; any decisive verdict revives it automatically. Fixing the harness gap that caused the streak is the usual revival path.
+- Repos beyond the cap are skipped with a warning (alphabetical order); trim the roster rather than living with a permanent skip.
+
 ## HP hygiene & VRAM runbook
 
 **Annexe cleanup is automatic.** Each successful cycle removes its own night dir on HP (`rm -rf <annexe>/<date>-<repo>`) once the report, ledger row, witness, and memory write are all control-plane side; failed cycles keep the dir for debugging. A retention sweep at dispatch time removes any night dir older than 3 days, so debug leftovers cannot accumulate either. Nothing on HP is a source of truth — every dir under the annexe is disposable at any time.

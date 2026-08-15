@@ -1234,6 +1234,8 @@ unmute_build_context = "../voice-stack/unmute"  # external Kyutai fork clone (26
 # window_start           = 1                          # UTC hour: nightly window open
 # window_end             = 5                          # UTC hour: nightly window close
 # memory_namespace       = "dream-cycle"              # RuVector namespace for accepted/rejected findings
+# max_repos_per_night    = 5                           # roster cap: eligible repos dreamed serially per night
+# prune_dry_streak       = 5                           # standby after N trailing INCONCLUSIVE ledger rows
 # ZAI_ANTHROPIC_API_KEY is a SECRET inherited from the container environment —
 # never write it here. Evaluator discipline: any @metaharness/darwin entrypoint
 # in a target repo's dream.config.json MUST pass `--sandbox mock` (or `agent`) —

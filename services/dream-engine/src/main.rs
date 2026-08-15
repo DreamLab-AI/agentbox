@@ -105,6 +105,17 @@ async fn main() {
     }
 
     let (day_int, date) = day_int_and_date();
+
+    // Bare --once dreams every eligible repo (the nightly shape); --once
+    // --target and --dry-run stay single-repo.
+    if cli.once && cli.target.is_none() && !cli.dry_run {
+        let outcomes = engine.run_night(day_int, &date).await;
+        if outcomes.is_empty() {
+            std::process::exit(1);
+        }
+        return;
+    }
+
     match engine
         .run_cycle(cli.target.as_deref(), day_int, &date, cli.dry_run)
         .await
@@ -141,14 +152,19 @@ async fn run_loop(engine: &Engine, target: Option<&str>) {
         let in_window =
             hour >= engine.runtime.window_start && hour < engine.runtime.window_end;
         if in_window && date != last_run_date {
-            info!(date = %date, "nightly window open — running cycle");
-            match engine.run_cycle(target, day_int, &date, false).await {
-                Ok(res) => info!(
-                    repo = %res.repo,
-                    verdict = res.verdict.as_str(),
-                    "nightly cycle complete"
-                ),
-                Err(e) => error!(error = %e, "nightly cycle failed"),
+            info!(date = %date, "nightly window open");
+            match target {
+                Some(t) => match engine.run_cycle(Some(t), day_int, &date, false).await {
+                    Ok(res) => info!(
+                        repo = %res.repo,
+                        verdict = res.verdict.as_str(),
+                        "nightly cycle complete"
+                    ),
+                    Err(e) => error!(error = %e, "nightly cycle failed"),
+                },
+                None => {
+                    engine.run_night(day_int, &date).await;
+                }
             }
             last_run_date = date;
         }

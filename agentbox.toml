@@ -1516,6 +1516,12 @@ memory_namespace       = "dream-cycle"
 # Recall gate band (ADR-052 §2.4, re-frozen 2026-08-14 post-v4.0.36)
 recall_band_self_min   = 175
 recall_band_true_min   = 102
+# Roster: every eligible nominated repo dreams each night (serial), capped.
+max_repos_per_night    = 5
+# Standby pruning: a repo whose last N ledger rows are ALL INCONCLUSIVE is
+# skipped in nightly mode (REJECT counts as learning and resets the streak;
+# revive via --target or a harness fix that yields a decisive verdict).
+prune_dry_streak       = 5
 
 [security.exceptions.nostr-relay]
 writable_volumes = ["nostr-relay-data:/var/lib/nostr-relay"]

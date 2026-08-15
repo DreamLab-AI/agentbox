@@ -41,9 +41,35 @@ pub struct LlmConfig {
 }
 
 pub async fn call(cfg: &LlmConfig, prompt: &str) -> Result<String, LlmError> {
+    // One retry after a short backoff on transient failures (gateway 5xx like
+    // Cloudflare 524, transport errors, empty bodies). A single retry saved
+    // nights are cheap; hard API errors (4xx) are not retried.
+    let first = dispatch_call(cfg, prompt).await;
+    match first {
+        Err(ref e) if is_transient(e) => {
+            tracing::warn!(error = %e, "transient LLM failure — retrying once in 20s");
+            tokio::time::sleep(Duration::from_secs(20)).await;
+            dispatch_call(cfg, prompt).await
+        }
+        other => other,
+    }
+}
+
+async fn dispatch_call(cfg: &LlmConfig, prompt: &str) -> Result<String, LlmError> {
     match cfg.provider {
         Provider::Zai => call_zai(cfg, prompt).await,
         Provider::Loom => call_loom(cfg, prompt).await,
+    }
+}
+
+fn is_transient(e: &LlmError) -> bool {
+    match e {
+        LlmError::Request(_) | LlmError::EmptyResponse => true,
+        LlmError::Api(msg) => {
+            // HTTP 5xx (incl. Cloudflare 52x) are worth one retry; 4xx are not.
+            msg.contains("HTTP 5")
+        }
+        LlmError::MissingCredentials(_) => false,
     }
 }
 
