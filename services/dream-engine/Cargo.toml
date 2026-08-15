@@ -1,0 +1,35 @@
+[workspace]
+
+[package]
+name = "dream-engine"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+license = "MIT OR Apache-2.0"
+description = "Nightly evidence-gated repository evolution engine for agentbox. Compiles config into deterministic prompts, dispatches to HP annexe, calls LLM, parses verdicts, persists to ledger + RuVector."
+
+[[bin]]
+name = "dream-engine"
+path = "src/main.rs"
+
+[lib]
+name = "dream_engine"
+path = "src/lib.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "process", "fs", "time", "signal"] }
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+sha2 = "0.10"
+chrono = { version = "0.4", features = ["serde"] }
+sqlx = { version = "0.8", features = ["runtime-tokio", "postgres"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+thiserror = "2"
+hex = "0.4"
+toml = "0.8"
+
+[dev-dependencies]
+tempfile = "3"
