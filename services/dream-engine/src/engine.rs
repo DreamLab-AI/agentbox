@@ -122,17 +122,34 @@ impl Engine {
         info!("build + evaluators complete");
 
         // 5. Append evidence receipts to the prompt so the LLM reasons over
-        //    real evaluator output, not imagination.
+        //    real evaluator output, not imagination. The LLM has no shell:
+        //    everything it may cite — receipts, prior ledger rows, the session
+        //    commit — must be in this pack. HP paths are redacted before they
+        //    reach an external provider.
+        let commit = git_head(&repo_path).unwrap_or_default();
         prompt.push_str("\n\n---\n\n# TONIGHT'S EVIDENCE (receipts from the HP annexe)\n\n");
         prompt.push_str(&format!(
+            "## Session commit\n`{}`\n\n",
+            if commit.is_empty() { "unavailable" } else { &commit }
+        ));
+        let ledger_file = repo_path.join(&cfg.ledger_path);
+        if let Ok(ledger_text) = std::fs::read_to_string(&ledger_file) {
+            let rows: Vec<&str> = ledger_text.lines().rev().take(6).collect();
+            let recent: Vec<&str> = rows.into_iter().rev().collect();
+            prompt.push_str(&format!(
+                "## Ledger (most recent rows)\n{}\n\n",
+                recent.join("\n")
+            ));
+        }
+        prompt.push_str(&format!(
             "## Build output (tail)\n```\n{}\n```\n\n",
-            tail(&build_out, 3000)
+            redact(tail(&build_out, 3000))
         ));
         for (name, out) in &eval_outs {
             prompt.push_str(&format!(
                 "## Evaluator `{}` output (tail)\n```\n{}\n```\n\n",
                 name,
-                tail(out, 6000)
+                redact(tail(out, 6000))
             ));
         }
 
@@ -155,7 +172,6 @@ impl Engine {
         info!(verdict = v.as_str(), finding = %finding, "verdict parsed");
 
         // 8. Witness: bind report to the repo's current commit.
-        let commit = git_head(&repo_path).unwrap_or_default();
         let (wit_full, wit_short) = match witness::witness(&report, &commit) {
             Ok(w) => {
                 let s = witness::short(&w).to_string();
@@ -301,6 +317,11 @@ fn git_head(repo: &Path) -> Option<String> {
         return None;
     }
     Some(String::from_utf8_lossy(&out.stdout).trim().to_string())
+}
+
+/// Redact HP-side filesystem paths before receipts leave the LAN.
+fn redact(s: &str) -> String {
+    s.replace("/home/john", "~")
 }
 
 /// Last `max` bytes of a string, on a char boundary.

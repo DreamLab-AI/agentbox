@@ -210,9 +210,11 @@ fn after_colon(line: &str) -> &str {
 /// The chosen text is then whitespace-collapsed, stripped of `|`, and truncated
 /// to 80 characters.
 pub fn sanitise_finding(report: &str, verdict: Verdict) -> String {
-    // 1. Frozen hypothesis ("Given ...").
+    // 1. Frozen hypothesis ("Given ..."). Inline bold ("**Given** the ...")
+    //    leaves a `**` after the word once the prefix is stripped, so drop
+    //    embedded emphasis markers before matching.
     for line in report.lines() {
-        let stripped = strip_markdown(line);
+        let stripped = strip_markdown(line).replace("**", "");
         if stripped.starts_with("Given ") {
             return finalize(&stripped);
         }
@@ -398,5 +400,15 @@ More prose here.
         assert!(finding.chars().count() <= 80);
         assert!(!finding.contains('|'));
         assert!(!finding.contains('\n'));
+    }
+
+    #[test]
+    fn sanitise_matches_bold_hypothesis() {
+        // Real GLM output (loom night, witness 047e2fbc): inline bold around
+        // the keywords defeated the prefix strip and fell through to the
+        // "INCONCLUSIVE — see report" fallback.
+        let report = "> **Given** the `tests/` suite of DreamLab-AI/loom, **when** pytest runs, **then** zero tests exercise triple-loading.\n\nVERDICT: INCONCLUSIVE";
+        let finding = sanitise_finding(report, Verdict::Inconclusive);
+        assert!(finding.starts_with("Given the"), "got: {finding}");
     }
 }
