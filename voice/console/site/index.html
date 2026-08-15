@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="/styles.css">
 </head>
 <body class="voice-idle">
+<a class="skip-link" href="#stage">Skip to sessions</a>
 
 <!-- ── top bar ─────────────────────────────────────────────────────────── -->
 <header id="topbar">
@@ -16,11 +17,18 @@
     <span class="mark">AGENTBOX</span><span class="sub">interaction plane</span>
   </div>
   <div id="chips">
-    <span class="chip" id="chip-aoe"    title="Agent of Empires session daemon (via NIP-98 proxy)">aoe</span>
-    <span class="chip" id="chip-bridge" title="tab0-bridge voice meta-controller">bridge</span>
-    <span class="chip" id="chip-voice"  title="Unmute STT/TTS backend">voice</span>
-    <span class="chip" id="chip-nostr"  title="Nostr gateway + mirror">nostr</span>
+    <span class="chip" id="chip-aoe" role="status" title="Agent of Empires session daemon (via NIP-98 proxy)">aoe</span>
+    <span class="chip" id="chip-bridge" role="status" title="tab0-bridge voice meta-controller">bridge</span>
+    <span class="chip" id="chip-voice" role="status" title="Unmute STT/TTS backend">voice</span>
+    <span class="chip" id="chip-nostr" role="status" title="Nostr gateway + mirror">nostr</span>
   </div>
+  <nav id="surface-nav" aria-label="Agentbox interfaces">
+    <a href="/lo/" data-surface="linked-data-viewer">Objects</a>
+    <a href="/docs/" data-surface="management-api">API</a>
+    <a href="#" data-port="8080" data-surface="code-server">Code</a>
+    <a href="#" data-port="8888" data-surface="jupyter">Jupyter</a>
+    <span data-surface="desktop" title="Use ./agentbox.sh vnc to open the desktop tunnel">Desktop · tunnel</span>
+  </nav>
   <div id="auth-badge">
     <span id="auth-state" title="operator credential for /aoe and /approvals">no key</span>
     <button class="btn-ghost" id="auth-open" type="button">Auth</button>
@@ -31,7 +39,7 @@
 <div id="layout">
 
   <!-- main stage: AoE session board / opened-session detail -->
-  <section id="stage">
+  <main id="stage" tabindex="-1">
     <div id="board-wrap">
       <div class="sec-head">
         <h2>Sessions</h2>
@@ -50,23 +58,24 @@
           <div id="detail-title">—</div>
           <div id="detail-sub"></div>
         </div>
-        <div class="view-toggle" role="tablist">
-          <button id="tab-term" class="on" type="button">Terminal</button>
-          <button id="tab-diff" type="button">Diff</button>
+        <div class="view-toggle" role="tablist" aria-label="Session output view">
+          <button id="tab-term" class="on" type="button" role="tab" aria-selected="true" aria-controls="term" tabindex="0">Terminal</button>
+          <button id="tab-diff" type="button" role="tab" aria-selected="false" aria-controls="diff" tabindex="-1">Diff</button>
         </div>
         <button id="detail-close" type="button" title="back to board" aria-label="close session view">✕</button>
       </div>
       <div id="detail-body">
-        <pre id="term" class="mono scroll" aria-live="polite"></pre>
-        <pre id="diff" class="mono scroll" hidden></pre>
+        <pre id="term" class="mono scroll" role="tabpanel" aria-labelledby="tab-term" aria-live="polite"></pre>
+        <pre id="diff" class="mono scroll" role="tabpanel" aria-labelledby="tab-diff" hidden></pre>
       </div>
       <form id="detail-send" autocomplete="off">
         <span class="to" id="detail-to">→ session</span>
-        <input id="detail-text" placeholder="type into this session…">
+        <label class="sr-only" for="detail-text">Message this session</label>
+        <input id="detail-text" placeholder="type into this session…" autocomplete="off">
         <button class="send" type="submit">send</button>
       </form>
     </div>
-  </section>
+  </main>
 
   <!-- right rail: persistent voice presence + transcript + approvals + nostr -->
   <aside id="rail">
@@ -90,7 +99,7 @@
 
     <section class="rail-panel" id="feed-panel">
       <div class="sec-head"><h2>Transcript</h2><span class="spacer"></span><span class="label" id="feed-state">connecting…</span></div>
-      <div id="feed" class="scroll"></div>
+      <div id="feed" class="scroll" role="log" aria-live="polite" aria-relevant="additions text"></div>
     </section>
 
     <section class="rail-panel" id="appr-panel">
@@ -105,7 +114,8 @@
       <div id="nostr-body">
         <div id="nostr-events" class="scroll"></div>
         <form id="nostr-send" autocomplete="off">
-          <input id="nostr-text" placeholder="DM the operator thread…">
+          <label class="sr-only" for="nostr-text">Message the operator thread over Nostr</label>
+          <input id="nostr-text" placeholder="DM the operator thread…" autocomplete="off">
           <button class="send" type="submit">send</button>
         </form>
       </div>

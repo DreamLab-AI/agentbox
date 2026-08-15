@@ -39,6 +39,7 @@ These commands operate on the local Docker stack.
 | `shell` | Open a shell in the running container. With profile name: opens fish in that profile directory |
 | `health` | Show service health from `/health`. `--json`: raw JSON output |
 | `browsercontainer` | Manage the GPU browser sidecar. Sub-commands: `up`, `down`, `logs`, `health`, `status`, `rebuild`, `shell`, `gpu`, `cdp` |
+| `voice` | Manage and open the HTTPS operator cockpit. Sub-commands: `open`, `up`, `down`, `logs`, `health`, `status`, `certs`, `rebuild`, `shell` |
 | `ruvector` | Manage the ruvector-postgres memory sidecar lifecycle and data-hygiene ops (see below) |
 | `migrate-workspace` | One-shot rsync from the legacy `multi-agent-docker_workspace` volume into `agentbox-workspace`, then patches the override file |
 | `preflight` | Validate the local environment and manifest before `up`: compose merge, Nix flake eval (W021 audit gate), host bind targets, external volumes |

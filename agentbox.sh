@@ -53,7 +53,7 @@ Local lifecycle commands:
   ${GREEN}browsercontainer${NC} Manage GPU browser container [up|down|logs|health|status|rebuild|shell|gpu]
   ${GREEN}gui-tools${NC}        Manage GPU Blender + QGIS sidecar [up|down|logs|health|status|rebuild|shell|gpu]
   ${GREEN}openmed${NC}          Manage optional clinical-PHI redaction sidecar [up|down|logs|health|status|rebuild|shell]
-  ${GREEN}voice${NC}            Manage voice + AoE operator console (Caddy :8444) + Unmute stack [up|down|logs|health|status|certs|rebuild|shell]
+  ${GREEN}voice${NC}            Manage/open the operator cockpit + Unmute stack [open|up|down|logs|health|status|certs|rebuild|shell]
   ${GREEN}xr-runtime${NC}       Manage Monado OpenXR + Godot XR test runtime [up|down|logs|health|status|rebuild|shell|gpu|vnc]
   ${GREEN}android${NC}          [EXPERIMENTAL, gated] redroid Android/Play sidecar [up|down|logs|status|screencap|shell|id] — needs AGENTBOX_ENABLE_ANDROID=1
   ${GREEN}preflight${NC}        Validate the local environment + manifest before up (W021 audit, missing host paths, override drift)
@@ -1895,6 +1895,18 @@ cmd_voice() {
     _voice_compose_args
 
     case "$subcmd" in
+        open)
+            local cockpit_url="https://localhost:8444"
+            if command -v xdg-open >/dev/null 2>&1; then
+                xdg-open "$cockpit_url" >/dev/null 2>&1 &
+            elif command -v open >/dev/null 2>&1; then
+                open "$cockpit_url"
+            else
+                echo -e "${YELLOW}No desktop URL opener found.${NC}"
+            fi
+            echo -e "${GREEN}Operator cockpit:${NC} $cockpit_url"
+            echo "Accept the self-signed certificate once per browser/device."
+            ;;
         up)
             _voice_ensure_certs || exit 1
             if [[ ! -f "${VOICE_UNMUTE_DIR}/docker-compose.yml" ]]; then
@@ -1987,6 +1999,7 @@ ${CYAN}voice — voice + AoE operator console (Caddy :8444) + Kyutai Unmute spee
 
 Usage: $0 voice <command>
 
+  ${GREEN}open${NC}      Open https://localhost:8444 in the local browser
   ${GREEN}up${NC}        Generate certs if absent, then build + start console + speech stack
   ${GREEN}down${NC}      Stop the voice stack
   ${GREEN}logs${NC}      Follow logs
@@ -1997,8 +2010,9 @@ Usage: $0 voice <command>
   ${GREEN}shell${NC}     Shell into the caddy console container
 
 The operator cockpit consolidates every surface same-origin on :8444:
-  /embed voice strip · /feed+/bridge tab0-bridge · /aoe/* AoE sessions (via the
-  NIP-98 proxy :9096) · /approvals/* governance (:9090). :8443 is the stock
+  /embed voice strip · /feed+/bridge tab0-bridge · /aoe/* AoE sessions ·
+  /approvals/* governance · /mgmt/* discovery · /lo/* objects · /docs/* API.
+  :8443 is the stock
   Unmute debug UI. Sign in with a NIP-98 header (window.nostr) or break-glass
   bearer. See agentbox/voice/README.md.
 

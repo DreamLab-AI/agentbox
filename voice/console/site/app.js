@@ -73,6 +73,7 @@ function stripPrefix(path) {
   if (path.startsWith('/aoe/')) return path.slice(4) || '/';        // /aoe/api/x → /api/x
   if (path.startsWith('/approvals/')) return path.slice(10) || '/'; // /approvals/v1/x → /v1/x
   if (path.startsWith('/bridge/')) return path.slice(7) || '/';     // /bridge/nostr/x → /nostr/x
+  if (path.startsWith('/mgmt/')) return path.slice(5) || '/';       // /mgmt/v1/x → /v1/x
   return path;                                                      // /feed is handle (not handle_path) — unstripped
 }
 
@@ -96,7 +97,7 @@ async function signNip98(method, path, bodyString) {
 //   preferBearer=false → writes: prefer NIP-98 (required for approvals), else
 //                        bearer (works for /aoe via break-glass), else nothing.
 async function authHeader(path, method, bodyString, preferBearer) {
-  const governed = path.startsWith('/aoe/') || path.startsWith('/approvals/');
+  const governed = path.startsWith('/aoe/') || path.startsWith('/approvals/') || path.startsWith('/mgmt/');
   const bearer = getBearer();
   if (!governed) {
     // tab0-bridge surfaces: bearer is the native credential; a NIP-98 header
@@ -118,11 +119,24 @@ async function authHeader(path, method, bodyString, preferBearer) {
   return {};
 }
 
-async function authFetch(path, { method = 'GET', json: jsonBody, preferBearer = (method === 'GET') } = {}) {
+const activeRequests = new Map();
+async function authFetch(path, { method = 'GET', json: jsonBody, preferBearer = (method === 'GET'), replace = method === 'GET' } = {}) {
   const bodyString = jsonBody !== undefined ? JSON.stringify(jsonBody) : undefined;
   const headers = await authHeader(path, method, bodyString, preferBearer);
   if (bodyString) headers['content-type'] = 'application/json';
-  return fetch(path, { method, headers, body: bodyString });
+  const key = `${method}:${path}`;
+  let controller;
+  if (replace) {
+    const previous = activeRequests.get(key);
+    if (previous) previous.abort();
+    controller = new AbortController();
+    activeRequests.set(key, controller);
+  }
+  try {
+    return await fetch(path, { method, headers, body: bodyString, signal: controller && controller.signal });
+  } finally {
+    if (controller && activeRequests.get(key) === controller) activeRequests.delete(key);
+  }
 }
 
 // ── toast ────────────────────────────────────────────────────────────────────
@@ -138,22 +152,30 @@ function toast(msg, kind = '') {
 
 // ── health chips ──────────────────────────────────────────────────────────────
 
-function setChip(id, ok, title) { const c = $(id); c.className = 'chip ' + (ok ? 'ok' : 'bad'); if (title) c.title = title; }
+function setChip(id, status, title) {
+  const c = $(id);
+  const state = status === true ? 'ok' : status === false ? 'unavailable' : status;
+  c.className = `chip ${state}`;
+  c.dataset.status = state;
+  const description = `${c.textContent.trim()}: ${state}${title ? ` — ${title}` : ''}`;
+  c.title = description;
+  c.setAttribute('aria-label', description);
+}
 
 async function pollHealth() {
   try {
     const h = await (await authFetch('/bridge/health')).json();
     setChip('chip-bridge', h.ok, `backend ${h.backend} · model ${h.model} · turns ${h.turns}`);
-  } catch { setChip('chip-bridge', false); }
+  } catch { setChip('chip-bridge', 'unavailable'); }
   try {
     const v = await (await fetch('/api/v1/health')).json();
     setChip('chip-voice', !!v.ok);
-  } catch { setChip('chip-voice', false); }
+  } catch { setChip('chip-voice', 'unavailable'); }
   try {
     const n = await (await authFetch('/bridge/nostr/status')).json();
     setChip('chip-nostr', n.gateway === 'armed', `gateway ${n.gateway} · mirror ${n.mirrorKey ? 'present' : 'missing'}`);
     $('nostr-state').textContent = n.gateway;
-  } catch { setChip('chip-nostr', false); $('nostr-state').textContent = 'unreachable'; }
+  } catch { setChip('chip-nostr', 'unavailable'); $('nostr-state').textContent = 'unreachable'; }
 }
 
 // ── voice presence state (derived from the live feed) ─────────────────────────
@@ -203,6 +225,8 @@ function renderTurn(turn) {
 
 let feedWs = null;
 let feedManualClose = false;
+let feedRetry = 0;
+let feedRetryTimer = null;
 async function connectFeed() {
   const bearer = getBearer();
   let cred = bearer ? `?token=${encodeURIComponent(bearer)}` : '';
@@ -218,7 +242,7 @@ async function connectFeed() {
   feedManualClose = false;
   try { feedWs = new WebSocket(url); } catch { $('feed-state').textContent = 'error'; return; }
   const ws = feedWs;
-  ws.onopen = () => { $('feed-state').textContent = 'live'; };
+  ws.onopen = () => { feedRetry = 0; $('feed-state').textContent = 'live'; };
   ws.onmessage = (e) => {
     let msg; try { msg = JSON.parse(e.data); } catch { return; }
     if (msg.type === 'snapshot') msg.turns.forEach(renderTurn);
@@ -227,7 +251,10 @@ async function connectFeed() {
   ws.onclose = () => {
     if (feedManualClose) return;               // deliberate reconnect handles itself
     $('feed-state').textContent = 'reconnecting';
-    setTimeout(connectFeed, 2500);
+    const delay = Math.min(30000, 1000 * (2 ** feedRetry)) + Math.floor(Math.random() * 500);
+    feedRetry += 1;
+    clearTimeout(feedRetryTimer);
+    feedRetryTimer = setTimeout(() => { if (!document.hidden) connectFeed(); }, delay);
   };
   ws.onerror = () => { try { ws.close(); } catch { /* already closing */ } };
 }
@@ -246,6 +273,7 @@ let sessions = [];
 let coordinatorId = null;
 let aimedId = 'coordinator';    // 'coordinator' | AoE session id
 let openId = null;              // opened session detail id (null = board)
+let lastSessionTrigger = null;
 
 const sid = (s) => String(s.id ?? s.session_id ?? s.uuid ?? '');
 const stitle = (s) => s.title || s.slug || s.name || sid(s).slice(0, 8) || 'session';
@@ -309,9 +337,6 @@ function renderBoard() {
     const isCoord = id === coordinatorId;
     const aimed = aimedId === id || (isCoord && aimedId === 'coordinator');
     const card = el('div', 'card ' + stateClass(state) + (aimed ? ' aimed' : ''));
-    card.tabIndex = 0;
-    card.setAttribute('role', 'button');
-    card.setAttribute('aria-label', `open session ${stitle(s)} (${state})`);
 
     if (aimed) card.appendChild(el('span', 'voice-tag', 'voice'));
 
@@ -338,10 +363,8 @@ function renderBoard() {
     actions.appendChild(openBtn); actions.appendChild(aimBtn);
     card.appendChild(actions);
 
-    openBtn.onclick = (e) => { e.stopPropagation(); openSession(id); };
+    openBtn.onclick = (e) => { e.stopPropagation(); lastSessionTrigger = openBtn; openSession(id); };
     aimBtn.onclick = (e) => { e.stopPropagation(); setAim(isCoord ? 'coordinator' : id); };
-    card.onclick = () => openSession(id);
-    card.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSession(id); } };
     board.appendChild(card);
   }
 }
@@ -349,8 +372,8 @@ function renderBoard() {
 async function pollSessions() {
   try {
     const res = await authFetch('/aoe/api/sessions?state=live');
-    if (res.status === 401 || res.status === 403) { setChip('chip-aoe', false, 'unauthorised — set an operator credential'); return; }
-    if (!res.ok) { setChip('chip-aoe', false, 'aoe ' + res.status); return; }
+    if (res.status === 401 || res.status === 403) { setChip('chip-aoe', 'unauthorised', 'set an operator credential'); return; }
+    if (!res.ok) { setChip('chip-aoe', 'degraded', 'aoe ' + res.status); return; }
     const data = await res.json();
     const list = Array.isArray(data) ? data : (data.sessions || data.data || []);
     sessions = list;
@@ -363,7 +386,7 @@ async function pollSessions() {
     setChip('chip-aoe', true, `${list.length} live session(s)`);
     renderBoard();
     if (openId) refreshDetailHead();
-  } catch (err) { setChip('chip-aoe', false, 'aoe unreachable'); }
+  } catch (err) { if (err.name !== 'AbortError') setChip('chip-aoe', 'unavailable', 'aoe unreachable'); }
 }
 
 // ── session detail: terminal (poll /output) + diff ────────────────────────────
@@ -448,6 +471,15 @@ async function pollDetail() {
   }
 }
 
+function scheduleDetailPoll() {
+  clearTimeout(detailTimer);
+  if (!openId) return;
+  detailTimer = setTimeout(async () => {
+    if (!document.hidden) await pollDetail();
+    scheduleDetailPoll();
+  }, 1600);
+}
+
 async function loadDiff() {
   const diff = $('diff');
   diff.textContent = 'loading diff…';
@@ -474,6 +506,10 @@ function setDetailView(v) {
   detailView = v;
   $('tab-term').classList.toggle('on', v === 'term');
   $('tab-diff').classList.toggle('on', v === 'diff');
+  $('tab-term').setAttribute('aria-selected', String(v === 'term'));
+  $('tab-diff').setAttribute('aria-selected', String(v === 'diff'));
+  $('tab-term').tabIndex = v === 'term' ? 0 : -1;
+  $('tab-diff').tabIndex = v === 'diff' ? 0 : -1;
   $('term').hidden = v !== 'term';
   $('diff').hidden = v !== 'diff';
   if (v === 'diff') loadDiff();
@@ -488,15 +524,16 @@ function openSession(id) {
   refreshDetailHead();
   syncDetailTo();
   setDetailView('term');
-  clearInterval(detailTimer);
-  detailTimer = setInterval(pollDetail, 1600);
+  scheduleDetailPoll();
+  $('detail-close').focus();
 }
 
 function closeSession() {
   openId = null;
-  clearInterval(detailTimer);
+  clearTimeout(detailTimer);
   $('detail').hidden = true;
   $('board-wrap').hidden = false;
+  if (lastSessionTrigger && document.contains(lastSessionTrigger)) lastSessionTrigger.focus();
 }
 
 // ── injection: type into the aimed / opened session ───────────────────────────
@@ -538,6 +575,23 @@ function renderApprovals() {
     if (a.requester_pubkey) meta.appendChild(el('span', 'mono', 'by ' + String(a.requester_pubkey).slice(0, 10) + '…'));
     if (a.created_at) meta.appendChild(el('span', '', ageStr(a.created_at) + ' ago'));
     card.appendChild(meta);
+    const detail = document.createElement('details');
+    const summary = el('summary', '', 'Review scope');
+    detail.appendChild(summary);
+    const scope = el('dl', 'a-scope');
+    const fields = [
+      ['Action', a.action_class || a.action || a.kind],
+      ['Target', a.target || a.subject || a.resource],
+      ['Requester', a.requester_did || a.requester_pubkey || a.pubkey],
+      ['Reason', a.reason || a.description || a.summary],
+    ];
+    for (const [label, value] of fields) {
+      if (value == null || value === '') continue;
+      scope.appendChild(el('dt', '', label));
+      scope.appendChild(el('dd', '', typeof value === 'string' ? value : JSON.stringify(value)));
+    }
+    detail.appendChild(scope);
+    card.appendChild(detail);
     const note = el('div', 'a-note');
     const actions = el('div', 'a-actions');
     const approve = el('button', 'approve', 'Approve');
@@ -558,6 +612,12 @@ async function decide(id, decision, card, note, btns) {
     note.textContent = 'A NIP-98 signature is required — approvals cannot be released with a bearer alone. Connect a NIP-07 signer.';
     return;
   }
+  const request = approvals.find((a) => apprId(a) === id);
+  const subject = request ? apprTitle(request) : id;
+  const consequence = decision === 'approve'
+    ? `Approve “${subject}”? This publishes a signed governance decision and may release the blocked action.`
+    : `Deny “${subject}”? This publishes a signed governance decision and keeps the action blocked.`;
+  if (!window.confirm(consequence)) return;
   btns.forEach((b) => (b.disabled = true));
   note.className = 'a-note';
   note.textContent = 'signing decision…';
@@ -654,6 +714,33 @@ $('board-refresh').onclick = () => pollSessions();
 $('detail-close').onclick = closeSession;
 $('tab-term').onclick = () => setDetailView('term');
 $('tab-diff').onclick = () => setDetailView('diff');
+document.querySelector('.view-toggle').addEventListener('keydown', (event) => {
+  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+  event.preventDefault();
+  const next = event.key === 'Home' || event.key === 'ArrowLeft' ? 'term' : 'diff';
+  setDetailView(next);
+  $(next === 'term' ? 'tab-term' : 'tab-diff').focus();
+});
+
+document.querySelectorAll('[data-port]').forEach((link) => {
+  const scheme = link.dataset.port === '8080' || link.dataset.port === '8888' ? 'http:' : location.protocol;
+  link.href = `${scheme}//${location.hostname}:${link.dataset.port}/`;
+});
+
+async function pollSystemView() {
+  try {
+    const res = await authFetch('/mgmt/v1/system');
+    if (!res.ok) return;
+    const data = await res.json();
+    const states = new Map([...(data.surfaces || []), ...(data.modules || [])].map((item) => [item.id, item.state]));
+    document.querySelectorAll('#surface-nav [data-surface]').forEach((link) => {
+      const state = states.get(link.dataset.surface) || 'available';
+      link.dataset.state = state;
+      link.title = `${link.textContent.trim()}: ${state}`;
+      link.setAttribute('aria-label', `${link.textContent.trim()}, ${state}`);
+    });
+  } catch { /* navigation remains usable when system discovery is unavailable */ }
+}
 
 wireForm('detail-send', 'detail-text', (text) => {
   const target = openId === coordinatorId ? 'coordinator' : openId;
@@ -671,10 +758,29 @@ pollHealth();
 pollSessions();
 pollApprovals();
 pollNostrEvents();
-setInterval(pollHealth, 12000);
-setInterval(pollSessions, 4000);
-setInterval(pollApprovals, 8000);
-setInterval(pollNostrEvents, 20000);
+pollSystemView();
+
+const pollSchedule = [
+  [pollHealth, 12000],
+  [pollSessions, 4000],
+  [pollApprovals, 8000],
+  [pollNostrEvents, 20000],
+  [pollSystemView, 30000],
+];
+const pollTimers = new Map();
+function schedulePoll(fn, delay) {
+  clearTimeout(pollTimers.get(fn));
+  pollTimers.set(fn, setTimeout(async () => {
+    if (!document.hidden) await fn();
+    schedulePoll(fn, delay);
+  }, delay));
+}
+pollSchedule.forEach(([fn, delay]) => schedulePoll(fn, delay));
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) return;
+  pollSchedule.forEach(([fn, delay]) => { fn(); schedulePoll(fn, delay); });
+  if (!feedWs || feedWs.readyState > 1) connectFeed();
+});
 
 // Signer extensions inject window.nostr asynchronously, usually AFTER the
 // first poll round has already 401'd. Watch briefly for the provider to appear

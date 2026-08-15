@@ -17,6 +17,9 @@ laptop / phone / tablet browser (tailnet, self-signed TLS)
        ├─ /feed  /bridge/*   tab0-bridge      → agentbox:8971  (turns, tabs, /tab0/send)
        ├─ /aoe/*         AoE sessions         → agentbox:9096  (NIP-98 proxy → :9095)
        └─ /approvals/*   governance           → agentbox:9090  (management-api)
+       ├─ /mgmt/*        system discovery     → agentbox:9090  (authenticated)
+       ├─ /lo/*          linked objects       → agentbox:9090  (public bundle)
+       └─ /docs/*        OpenAPI / Swagger    → agentbox:9090  (public shell)
   └─ https://<host>:8443  stock Unmute demo UI (diagnostics only)
 
 speech stack (external Kyutai Unmute fork, sidecar, on visionclaw_network)
@@ -44,6 +47,7 @@ pin it to a build-arg commit / published image the way
 
 ```bash
 ./agentbox.sh voice up        # gen certs if absent, build + start console + speech stack
+./agentbox.sh voice open      # open the cockpit in the local browser
 ./agentbox.sh voice health    # check the console origin (+ best-effort the Unmute backend)
 ./agentbox.sh voice logs      # follow logs
 ./agentbox.sh voice status    # compose ps
@@ -97,6 +101,9 @@ All served under `https://<host>:8444`, same origin:
 | `/bridge/*` | `agentbox:8971` | tab0-bridge REST — tabs, `/tab0/send`, `nostr/*` |
 | `/aoe/*` | `agentbox:9096` | AoE sessions API + session live-ws (WS), via NIP-98 proxy |
 | `/approvals/*` | `agentbox:9090` | `GET /v1/approvals`, `POST /v1/approvals/:id/decide` |
+| `/mgmt/*` | `agentbox:9090` | Authenticated system discovery, including `GET /v1/system`. |
+| `/lo/*` | `agentbox:9090` | Linked-object viewer bundle and its restricted resolver proxy. |
+| `/docs/*` | `agentbox:9090` | Swagger shell; operations use bearer or NIP-98 via Authorize. |
 
 The **tab-0 coordinator session** the voice `/send` path targets is slug
 `tab0` (`[interaction_plane.coordinator]`, terminal view — required for the

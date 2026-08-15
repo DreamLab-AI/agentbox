@@ -15,6 +15,9 @@
 #   /bridge/*    tab0-bridge REST (tabs, tab0/send, nostr/*) — Authorization forwarded
 #   /aoe/*       AoE sessions via the NIP-98 sole-ingress proxy (agentbox:9096)
 #   /approvals/* management-api governance approvals (agentbox:9090)
+#   /mgmt/*      authenticated management API reads used by the cockpit
+#   /lo/*        public linked-object viewer bundle
+#   /docs/*      public Swagger shell (API operations still authenticate)
 # Mic needs a secure context; the browser shows a one-time warning for the
 # self-signed cert — proceed.
 #
@@ -61,6 +64,17 @@ https://:8444 {
 		reverse_proxy agentbox:9090 {
 			header_up Authorization {http.request.header.Authorization}
 		}
+	}
+	handle_path /mgmt/* {
+		reverse_proxy agentbox:9090 {
+			header_up Authorization {http.request.header.Authorization}
+		}
+	}
+	handle /lo* {
+		reverse_proxy agentbox:9090
+	}
+	handle /docs* {
+		reverse_proxy agentbox:9090
 	}
 	handle /feed {
 		reverse_proxy agentbox:8971 {
