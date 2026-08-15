@@ -336,15 +336,16 @@
           name        = "management-api";
           src         = ./management-api;
           entry       = "server.js";
-          # Prefetched 2026-08-04 (added better-sqlite3@13.0.2 for the beads
-          # local-sqlite adapter; ships linux-x64 prebuilds, no compile step).
+          # Prefetched 2026-08-15 (package renamed agentbox-management-api;
+          # the lockfile root name participates in the FOD hash even though
+          # the dependency set is unchanged).
           # Refresh via: nix run nixpkgs#prefetch-npm-deps -- management-api/package-lock.json
-          npmDepsHash = "sha256-XenClzHaTKUA0bZIzSB0X4bA9uv5YiPIoEBCVl75Q/E=";
+          npmDepsHash = "sha256-fdiCjWe8csuJPvHUxWqAxwh2yW70fuTylMIoY0fQ9rI=";
           # Vendor the canonical NostrBridge into lib/ so the in-process
           # JunkieJarvis agent (server.js) can require('./lib/nostr-bridge') and
           # resolve nostr-tools + ws from THIS package's node_modules. A bare
           # require('../mcp/servers/nostr-bridge') escapes the packaged
-          # node_modules/agentic-flow-management-api boundary at runtime.
+          # node_modules/agentbox-management-api boundary at runtime.
           # Vendor first-party mcp/servers modules that management-api reaches
           # via a bare `require('../../mcp/servers/<x>')`. Those relative paths
           # escape the packaged node_modules/agentic-flow-management-api boundary
