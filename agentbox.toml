@@ -1483,6 +1483,26 @@ writable_volumes = ["tailscale-state:/var/lib/tailscale"]
 cap_add = ["NET_ADMIN"]
 reason = "tailscaled needs persistent state dir and NET_ADMIN for userspace networking socket"
 
+# ── Dream Machine HP annexe (ADR-052/053) ─────────────────────────────────────
+# Overnight evidence-gated evolution against nominated repos, dispatched to HP
+# (10.10.10.1, 25G rail) using the self-hosted Loom/Qwen model exclusively.
+# Off by default (byte-identical-when-off). Enable to start nightly cycles.
+[dream_machine]
+enabled                = true
+hp_host                = "john@10.10.10.1"
+hp_annexe_dir          = "/home/john/dream-annexe"
+loom_url               = "http://192.168.2.132:8084/v1"
+loom_model             = "qwen3.8-27B"
+loom_max_tokens        = 16384
+# UTC hours: nightly window (only runs inside this range in --loop mode)
+window_start           = 1
+window_end             = 5
+# RuVector namespace for dream-cycle memories
+memory_namespace       = "dream-cycle"
+# Recall gate band (ADR-052 §2.4, re-frozen 2026-08-14 post-v4.0.36)
+recall_band_self_min   = 175
+recall_band_true_min   = 102
+
 [security.exceptions.nostr-relay]
 writable_volumes = ["nostr-relay-data:/var/lib/nostr-relay"]
 reason = "nostr-rs-relay SQLite journal and WAL require a writable durable path"

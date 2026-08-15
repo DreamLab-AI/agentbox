@@ -401,7 +401,11 @@ def build_wac_turtle(hex_pubkey):
 
 
 def ensure_acl(pod_root, identity):
-    pod_dir = pod_root / identity["npub"]
+    # ADR-053: hex is the canonical pod directory name.  The x-only pubkey
+    # (64-char lowercase hex) matches every server-side API boundary, the
+    # WAC agent URI (did:nostr:<hex>), and ADR-013's URI grammar.
+    hex_key = identity["x_only_pubkey_hex"]
+    pod_dir = pod_root / hex_key
     for relative in [
         "memory/episodic",
         "memory/semantic",
@@ -412,11 +416,25 @@ def ensure_acl(pod_root, identity):
     ]:
         (pod_dir / relative).mkdir(parents=True, exist_ok=True)
 
-    # ADR-010 Sprint 6 absorption: WAC subject is the did:nostr DID, not the
-    # raw npub. ADR-013 mandates did:nostr:<hex-pubkey> (BIP-340 x-only,
-    # 64 lowercase hex chars) rather than bech32 npub so that non-Nostr
-    # DID resolvers and W3C VC verifiers don't need a bech32 decoder.
-    did = f"did:nostr:{identity['x_only_pubkey_hex']}"
+    # Backward-compat symlink: pods/<npub> → pods/<hex> so that any
+    # remaining npub-keyed consumer (git route prefix, external links)
+    # can still resolve the pod.  Idempotent; no-op if already correct.
+    npub_link = pod_root / identity["npub"]
+    if not npub_link.is_symlink() and not npub_link.exists():
+        try:
+            npub_link.symlink_to(hex_key, target_is_directory=True)
+        except OSError:
+            pass
+    elif npub_link.is_symlink():
+        current = os.readlink(str(npub_link))
+        if current != hex_key:
+            try:
+                npub_link.unlink()
+                npub_link.symlink_to(hex_key, target_is_directory=True)
+            except OSError:
+                pass
+
+    did = f"did:nostr:{hex_key}"
     acl = {
         "@context": "http://www.w3.org/ns/auth/acl#",
         "owner": did,
@@ -432,84 +450,66 @@ def ensure_acl(pod_root, identity):
     }
     write_json(pod_dir / ".acl.json", acl)
 
-    # The write above (`.acl.json`) is NOT what solid-pod-rs-server's WAC
-    # resolver reads — it only recognises Turtle at a fixed `.acl` path (see
-    # build_wac_turtle docstring). Without this, every write to the pod
-    # (including this agent's own) is WAC-denied — confirmed live 2026-08-14:
-    # a real NIP-98-signed PUT to this agent's own pod returned
-    # `403 wac-allow: user="", public=""` before this fix. Write BOTH
-    # recognised locations, matching the format the server's own
-    # `/_admin/provision/{pubkey}` handler uses for hex-provisioned pods
-    # (`lib.rs:3579-3595`): the sibling file the resolver actually reads, and
-    # the inner file as a courtesy fallback. `.acl.json` above is left in
-    # place (harmless, no reader) rather than removed, to keep this change
-    # purely additive.
-    wac_turtle = build_wac_turtle(identity["x_only_pubkey_hex"])
-    (pod_root / f"{identity['npub']}.acl").write_text(wac_turtle, encoding="utf-8")
+    # solid-pod-rs-server's WAC resolver only reads Turtle `.acl` files.
+    # Write BOTH the container-child (pods/<hex>/.acl — canonical location)
+    # and the sidecar (pods/<hex>.acl — what find_effective_acl_dyn actually
+    # probes until the ACL walk bug is fixed upstream).
+    wac_turtle = build_wac_turtle(hex_key)
+    (pod_root / f"{hex_key}.acl").write_text(wac_turtle, encoding="utf-8")
     (pod_dir / ".acl").write_text(wac_turtle, encoding="utf-8")
 
+    port = os.getenv("SOLID_POD_PORT", "8484")
     write_json(
         pod_dir / "profile.json",
         {
             "@context": "https://www.w3.org/ns/solid/terms#",
             "id": did,
-            "webId": f"http://localhost:{os.getenv('SOLID_POD_PORT', '8484')}/pods/{identity['npub']}/profile.json",
+            "webId": f"http://localhost:{port}/{hex_key}/profile.json",
             "alsoKnownAs": [did],
         },
     )
-    # DID document — consumed by solid-pod-rs's did-nostr resolver at
-    # GET /did:nostr:<hex-pubkey>. alsoKnownAs cross-references the pod profile
-    # URI so downstream clients can traverse in either direction.
     did_doc = build_did_document(
         identity,
         also_known_as=[
-            f"http://localhost:{os.getenv('SOLID_POD_PORT', '8484')}/pods/{identity['npub']}/profile.json"
+            f"http://localhost:{port}/{hex_key}/profile.json"
         ],
     )
     write_json(pod_dir / "did-nostr.json", did_doc)
 
 
 def ensure_git_provenance_alias(pod_root, identity):
-    """Bridge the two pod-addressing conventions that coexist in this stack.
+    """Create a data-root hex alias so URL paths /<hex>/... resolve.
 
-    This script provisions the agentbox core-agent pod at `pod_root/<npub>`
-    (bech32) — consistent with every OTHER consumer of this pod: the WAC
-    subject/webId URLs above, git-http-backend routing, and
-    `[sovereign_mesh.git] http_route_prefix = "/pods/:npub/"` (agentbox.toml)
-    are all npub-keyed by design.
+    ADR-053: the canonical pod directory is now pods/<hex>. The server's URL
+    routing strips the leading slash and joins to the data root, so a request
+    for /<hex>/resource resolves to data_root/<hex>/resource. This symlink
+    (data_root/<hex> → pods/<hex>) makes that resolution work without
+    requiring the pod directory to live at the data root.
 
-    solid-pod-rs-server's *own* admin provisioning endpoint
-    (`POST /_admin/provision/{pubkey}`, used by the forum auth-worker for
-    other users) instead requires and creates `data_root/pods/{64-hex}` —
-    and, load-bearingly, so does its git-provenance control API
-    (`pod_repo_path()` in `solid-pod-rs-server/src/lib.rs`, backing
-    `GET /{pod}/_prov/{sha}` and the `/_git/*` routes): it rejects anything
-    that is not exactly 64 lowercase hex chars, so it cannot resolve an
-    npub-named pod directory at all. Confirmed live 2026-08-14: the
-    agentbox-core pod's real gitmark.json/blocktrails.json commit history
-    was unreachable via `_prov` until a `data_root/<hex> -> pods/<npub>`
-    alias was added.
-
-    Rather than rename the pod directory (which would break the npub-keyed
-    consumers above), add that alias here so provisioning does it for every
-    future boot/identity, not just as a one-off manual fix. Purely additive:
-    never touches or removes the npub path. Idempotent — a no-op if the
-    alias already exists (as a symlink or a real directory), and best-effort
-    (a missing alias only affects `_prov`/`_git` debugging surfaces, never
-    the pod's actual read/write path, which stays npub-keyed throughout).
+    Idempotent — no-op if the alias already exists and points to the right
+    target. Best-effort — a missing alias only affects URL-addressed access;
+    direct filesystem operations under pods/<hex>/ are unaffected.
     """
     hex_pubkey = identity.get("x_only_pubkey_hex", "")
     if len(hex_pubkey) != 64 or any(c not in "0123456789abcdef" for c in hex_pubkey):
-        return  # not a well-formed 32-byte x-only pubkey — nothing safe to alias
+        return
     data_root = pod_root.parent
     alias = data_root / hex_pubkey
-    if alias.exists() or alias.is_symlink():
-        return  # already aliased (or a real dir already lives there) — leave it
-    target = pathlib.Path("pods") / identity["npub"]
+    target = pathlib.Path("pods") / hex_pubkey
+    if alias.is_symlink():
+        current = os.readlink(str(alias))
+        if current == str(target):
+            return
+        try:
+            alias.unlink()
+        except OSError:
+            return
+    elif alias.exists():
+        return
     try:
         alias.symlink_to(target, target_is_directory=True)
     except OSError:
-        pass  # best-effort; never block bootstrap over a debugging convenience
+        pass
 
 
 def write_runtime_env(identity, run_root):
@@ -559,15 +559,10 @@ def main():
     ensure_acl(pod_root, identity)
     write_runtime_env(identity, run_root)
 
-    # DreamLab convention (Melvin's create-agent layout): the PER-USER POD is a
-    # full git repo, and the Multikey DID document (agent.did.json) + the signing
-    # key (`git config nostr.privkey`) live at the POD-GIT ROOT. The pod dir is
-    # pod_root/<npub> (the same dir ensure_acl scaffolds). It is git-init'd if
-    # needed and the ADR-124 gitmark/blocktrails contract substrate is anchored
-    # onto it with real commit SHAs. An explicit AGENTBOX_AGENT_REPO_ROOT
-    # override is honoured for non-pod deployments. Additive to identity.env;
-    # no key bytes change (ADR-033 I1).
-    repo_root = os.getenv("AGENTBOX_AGENT_REPO_ROOT") or str(pod_root / identity["npub"])
+    # ADR-053: pod dir is pods/<hex> (canonical). Git repo root co-locates
+    # with the pod directory. An explicit AGENTBOX_AGENT_REPO_ROOT override
+    # is honoured for non-pod deployments.
+    repo_root = os.getenv("AGENTBOX_AGENT_REPO_ROOT") or str(pod_root / identity["x_only_pubkey_hex"])
     write_agent_repo_identity(identity, repo_root)
     ensure_git_provenance_alias(pod_root, identity)
 

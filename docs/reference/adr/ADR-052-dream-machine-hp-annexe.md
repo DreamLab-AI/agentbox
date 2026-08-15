@@ -6,7 +6,7 @@ date: 2026-08-14
 type: integration
 adr_category: architecture
 author: Dr John O'Hare
-depends_on: [ADR-051]
+depends_on: [ADR-051, ADR-053]
 references: [VisionClaw ADR-135, VisionClaw PRD-025, dream-machine ADR-0001, dream-machine ADR-0002]
 investigation: docs/integration/dream-machine-capability-investigation.md
 review_trigger: Qwen3.8 lands behind the Loom façade (model swap on HP :8085), or the first ten annexe nights complete (evaluate the significance-bar and verdict-quality assumptions against real ledger rows)
@@ -109,14 +109,47 @@ the execution plane, and the boundary is **pull-model unidirectional**:
   `john`'s login shell on HP is fish, so remote command strings must be run
   through `ssh john bash -lc '…'`, not passed as bare argv.
 - **Loom verified healthy** (`/health`: scaffold mode, backend reachable,
-  8,143 classes / 286k triples). **Model behind it is still
-  muse-glimmer-30B** (llama.cpp, 262k ctx); Qwen3.8 not yet visible — the
-  swap is pending install and requires no consumer change.
-- **Qwen3.8 install on HP** (operator-led, in progress).
-- **git-mark on-write hook liveness unverified** — the smoke test (one
-  owner-signed NIP-98 PUT, script staged in the session scratchpad) is
-  pending operator execution; the git-mark ledger mirror (§4) must not ship
-  before it passes.
+  8,143 classes / 286k triples). **Qwen3.8 swap is DONE** (verified
+  2026-08-14 ~19:30): `/v1/models` now serves **qwen3.8-27B** and a live
+  `/v1/chat/completions` round-trip through the façade answers correctly —
+  the swap required zero consumer changes, exactly the ADR-135 property this
+  annexe leans on. HP carries 2× Quadro RTX 6000 (24 GB each), both loaded
+  with the model resident. Note the deployed model is **27B-class**
+  (comparable in scale to the Muse-Glimmer-30B it replaced), not the 8B
+  class §6's capability caveat originally assumed — the open question is now
+  agentic tool-traversal quality for this specific model (benchmark per the
+  review trigger), not raw parameter count.
+- **git-mark on-write hook is VERIFIED** (2026-08-14). Owner-signed NIP-98
+  PUT to the agentbox-core pod returns 201 Created with correct Turtle
+  payload. Two issues resolved en route: (a) the smoke test must address the
+  pod by **hex pubkey** in the URL path, not npub (the symlink at
+  `/var/lib/solid/<hex>` resolves to `pods/<npub>/`; there is no top-level
+  npub entry); (b) a **WAC ACL-walk bug in `find_effective_acl_dyn`**
+  (`solid-pod-rs-server/src/lib.rs:1582`) causes the walk to probe
+  `/{container}.acl` instead of `/{container}/.acl` — the pod-root `.acl`
+  (inside the container directory) is invisible to the walk. Workaround: a
+  sidecar copy at `/{hex}.acl` alongside the symlink. The proper fix is to
+  also probe the container-child path in the walk (filed as a solid-pod-rs
+  issue). ADR-053 (hex-canonical naming) inverted the convention: pod directory
+  is now `pods/<hex>/` with npub as backward-compat symlink, eliminating the
+  symlink indirection that caused the walk miss.
+- **Orchestrator is BUILT** (2026-08-14). `dream-machine-nightly.mjs` in
+  `agentbox/scripts/` implements the full control-plane loop: marker-file
+  discovery, dream-machine compile, ssh dispatch to HP (git archive → clone →
+  build → eval), Loom API call, artefact pull-back, ledger append, and HP disk
+  hygiene. Gated by `[dream_machine] enabled` in agentbox.toml (off by
+  default). Modes: `--once`, `--loop`, `--dry-run`.
+- **Rust toolchain on HP is DONE** (2026-08-14). `rustup` installed under
+  `john`'s home (user-level, cargo 1.97.1 / rustc 1.97.1). The orchestrator
+  sources `~/.cargo/env` before every remote command.
+- **Nomination markers authored**: `dream.config.json` committed to
+  `solid-pod-rs` (5 rotation slots: wac-evaluator, storage-backend,
+  provenance-api, did-nostr-resolver, performance-hardening) and
+  `nostr-rust-forum` (4 slots: nip-compliance, forum-thread-model,
+  auth-and-identity, performance-scaling). `autoMerge: false` on both.
+- **Recall band re-frozen** (2026-08-14): self ≥175/200, true ≥102/120
+  (measured 180/106 × 2 runs; gate PASS confirmed). Fixture and harness
+  defaults updated.
 
 ## 4. Optional sovereign mirrors (sequenced after v1)
 
@@ -148,11 +181,15 @@ observatory (report §11) consumes the federated ledger later.
 
 ## 6. Consequences and risks
 
-- An 8B-class model produces weaker hypotheses and more honest INCONCLUSIVE
-  nights than frontier models; acceptable because the pipeline's deterministic
-  spine is library code, the Loom scaffold grounds the research stage
-  (~3.5× recall), and the significance bar keeps noise out of shared memory.
-  Slot rotations should favour small, well-scoped surfaces initially.
+- A self-hosted 27B-class model (qwen3.8-27B, deployed and verified) will
+  still produce weaker hypotheses and more honest INCONCLUSIVE nights than
+  frontier models; acceptable because the pipeline's deterministic spine is
+  library code, the Loom scaffold grounds the research stage (~3.5× recall),
+  and the significance bar keeps noise out of shared memory. The estate's
+  bench history shows agentic tool-traversal is model-dependent at this scale
+  (Gemma strong, Muse weak) — Qwen's traversal quality is unbenchmarked and
+  is the first review-trigger item. Slot rotations should favour small,
+  well-scoped surfaces initially.
 - The model is swappable behind the façade by design — verdict quality can be
   re-benchmarked per model without touching the orchestrator (this is the
   ADR-135 property the annexe leans on).

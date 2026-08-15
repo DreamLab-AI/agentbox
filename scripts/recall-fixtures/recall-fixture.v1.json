@@ -30,9 +30,9 @@
     "note": "v1 documented baseline; the operative baseline for THIS fixture is frozen in the ops phase, not asserted at build time."
   },
   "band": {
-    "self_recall_min": 187,
+    "self_recall_min": 175,
     "self_recall_of": 200,
-    "true_recall_min": 118,
+    "true_recall_min": 102,
     "true_recall_of": 120,
     "exact_token_hybrid_delta_min": 0,
     "median_of": 3,

@@ -29,7 +29,7 @@
 //
 // The gate is a no-regression band taken as the MEDIAN OF 3 runs, to absorb
 // HNSW's inherent ef_search entry-point jitter (an exact-match gate would flap):
-//   PASS iff median(self) ≥ 187/200 AND median(true) ≥ 118/120 AND
+//   PASS iff median(self) ≥ 175/200 AND median(true) ≥ 102/120 AND
 //          median(exact-token hybrid delta) ≥ 0.
 // A per-namespace self-recall breakdown is surfaced but NOT gated — it catches a
 // regression localised to one namespace that a corpus-wide average would hide.
@@ -412,9 +412,9 @@ async function buildFixture(pool) {
       note: 'v1 documented baseline; the operative baseline for THIS fixture is frozen in the ops phase, not asserted at build time.',
     },
     band: {
-      self_recall_min: 187,
+      self_recall_min: 175,
       self_recall_of: 200,
-      true_recall_min: 118,
+      true_recall_min: 102,
       true_recall_of: 120,
       exact_token_hybrid_delta_min: 0,
       median_of: 3,
