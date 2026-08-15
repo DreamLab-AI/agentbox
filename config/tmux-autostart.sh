@@ -223,3 +223,17 @@ fi
 
 echo "[tmux-autostart] Session '$SESSION' created with 9 windows"
 echo "  0:Claude  1:Agent  2:Services  3:Build  4:Logs  5:System  6:VNC  7:Git  8:Sessions(AoE)"
+
+# ============================================================================
+# Dream-engine nightly loop (interim home until the supervisord entry lands at
+# the next image rebuild — see docs/developer/dream-engine.md). Idempotent:
+# skipped when the session already exists or the binary is absent. The 2026-08-15
+# tmux-server restart silently killed the loop; autostart closes that gap.
+# ============================================================================
+DREAM_BIN="$PROJECT/project/agentbox/services/dream-engine/target/release/dream-engine"
+[ -x "$DREAM_BIN" ] || DREAM_BIN="/home/devuser/workspace/project/agentbox/services/dream-engine/target/release/dream-engine"
+if [ -x "$DREAM_BIN" ] && ! tmux $TMUX_ARGS has-session -t dream-engine 2>/dev/null; then
+  tmux $TMUX_ARGS new-session -d -s dream-engine \
+    "RUST_LOG=info $DREAM_BIN --loop 2>&1 | tee -a /home/devuser/workspace/.tmp/dream-annexe-artefacts/loop.log"
+  echo "[tmux-autostart] dream-engine nightly loop started"
+fi
