@@ -128,21 +128,43 @@ async function main() {
     content,
   }, sk);
 
+  // The CF worker relay has been observed OK'ing an event and then failing to
+  // persist it (first digest, 2026-08-15). Never trust the OK alone: publish,
+  // read the event back by id, and republish once if it is missing.
   await new Promise((resolve) => {
     const ws = new WS(RELAY);
-    const bail = setTimeout(() => { console.log('digest: relay timeout — skipped (fail-open)'); try { ws.close(); } catch {} resolve(); }, 20_000);
+    let attempts = 0;
+    let verified = false;
+    const bail = setTimeout(() => { console.log(`digest: ${verified ? 'published+verified' : 'NOT VERIFIED (relay accepted but event unreadable)'}`); try { ws.close(); } catch {} resolve(); }, 45_000);
+    const publish = () => { attempts += 1; ws.send(JSON.stringify(['EVENT', event])); };
+    const verify = () => ws.send(JSON.stringify(['REQ', `vf${attempts}`, { ids: [event.id] }]));
     ws.on('error', () => { clearTimeout(bail); console.log('digest: relay error — skipped (fail-open)'); resolve(); });
     ws.on('message', (raw) => {
       const d = JSON.parse(raw.toString());
       if (d[0] === 'AUTH') {
         ws.send(JSON.stringify(['AUTH', tools.finalizeEvent({ kind: 22242, created_at: now(), tags: [['relay', RELAY], ['challenge', d[1]]], content: '' }, sk)]));
-        setTimeout(() => ws.send(JSON.stringify(['EVENT', event])), 600);
+        setTimeout(publish, 600);
       }
-      if (d[0] === 'OK') {
-        clearTimeout(bail);
-        console.log(`digest: ${d[2] ? 'published' : 'REJECTED'} ${d[1]?.slice(0, 12)}… ${d[3] || ''}`);
-        ws.close();
-        resolve();
+      if (d[0] === 'OK' && d[1] === event.id) {
+        if (!d[2]) { clearTimeout(bail); console.log(`digest: REJECTED ${d[3] || ''}`); ws.close(); resolve(); return; }
+        setTimeout(verify, 2500);
+      }
+      if (d[0] === 'EVENT' && d[2]?.id === event.id) verified = true;
+      if (d[0] === 'EOSE') {
+        if (verified) {
+          clearTimeout(bail);
+          console.log(`digest: published+verified ${event.id.slice(0, 12)}… (attempt ${attempts})`);
+          ws.close();
+          resolve();
+        } else if (attempts < 2) {
+          console.log(`digest: OK'd but not readable — republishing (attempt ${attempts + 1})`);
+          publish();
+        } else {
+          clearTimeout(bail);
+          console.log('digest: NOT VERIFIED after 2 attempts — relay accepted but never persisted');
+          ws.close();
+          resolve();
+        }
       }
     });
   });
