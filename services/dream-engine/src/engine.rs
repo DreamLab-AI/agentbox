@@ -102,8 +102,19 @@ impl Engine {
         }
 
         // 4. Dispatch to the HP annexe: clone, build, run evaluators.
+        //    Hygiene first: sweep night dirs older than 3 days so the annexe
+        //    never accumulates stale clones/build trees (fail-open).
         let night_id = format!("{}-{}", date, repo_name);
         let remote_dir = format!("{}/{}", self.runtime.hp_annexe_dir, night_id);
+        if let Err(e) = dispatch::ssh(
+            &self.runtime.hp_host,
+            &format!(
+                "find {} -maxdepth 1 -type d -name '20*' -mtime +3 -exec rm -rf {{}} + 2>/dev/null; true",
+                self.runtime.hp_annexe_dir
+            ),
+        ) {
+            warn!(error = %e, "annexe retention sweep failed (fail-open)");
+        }
         info!(remote = %remote_dir, "dispatching to HP");
         dispatch::clone_to_hp(&repo_path, &self.runtime.hp_host, &remote_dir, &repo_name)?;
 
@@ -224,6 +235,17 @@ impl Engine {
                 false
             }
         };
+
+        // 12. Clean this night's remote dir — everything worth keeping (report,
+        //     verdict, ledger row, witness, memory) is already control-plane
+        //     side. Kept on failure paths for debugging; removed on success.
+        match dispatch::ssh(
+            &self.runtime.hp_host,
+            &format!("rm -rf {}", remote_dir),
+        ) {
+            Ok(_) => info!(remote = %remote_dir, "HP annexe night dir cleaned"),
+            Err(e) => warn!(error = %e, "HP annexe cleanup failed (fail-open)"),
+        }
 
         info!(
             repo = %repo_name,

@@ -147,6 +147,26 @@ The binary reads the `[dream_machine]` table (window, HP host, annexe dir, model
 | `XINFERENCE_URL` | Embedding endpoint (default `http://192.168.2.132:9997`). | Container env. |
 | `RUST_LOG` | Log filter (default `info`). | Supervisor block / shell. |
 
+## HP hygiene & VRAM runbook
+
+**Annexe cleanup is automatic.** Each successful cycle removes its own night dir on HP (`rm -rf <annexe>/<date>-<repo>`) once the report, ledger row, witness, and memory write are all control-plane side; failed cycles keep the dir for debugging. A retention sweep at dispatch time removes any night dir older than 3 days, so debug leftovers cannot accumulate either. Nothing on HP is a source of truth — every dir under the annexe is disposable at any time.
+
+**Freeing VRAM for GPU work on HP.** The `loom-model` container (qwen3.8-27B) holds ~45 GB across both Quadro RTX 6000s while running. To run GPU code on HP:
+
+```bash
+ssh john@10.10.10.1 "bash -lc 'docker stop loom-model'"   # frees VRAM (~2 min to stop)
+# ... run GPU workload ...
+ssh john@10.10.10.1 "bash -lc 'docker start loom-model'"  # model reload takes a few minutes
+```
+
+Use `docker stop`, **not** `docker pause` — pause freezes the processes but leaves VRAM allocated. While `loom-model` is down:
+
+- The `loom` façade stays up and degrades gracefully (`/health` reports `backend_reachable: false`).
+- Dream cycles on the default `zai` provider are unaffected.
+- The darwin `ruvllm` mutator **silently no-ops** (returns parent code unchanged) — a darwin receipt whose variants are all byte-identical to baseline during a VRAM window is this, not a defect. Prefer scheduling GPU work outside the nightly window (01:00–05:00 UTC).
+
+Verify state before and after: `nvidia-smi --query-gpu=memory.used,memory.total --format=csv,noheader`.
+
 ## Legacy `.mjs` fallback
 
 `scripts/dream-machine-nightly.mjs` is the original Node orchestrator. It is retained as a manual fallback and rollback path only — the supervised, first-party path is the Rust `dream-engine` binary. Reach for the `.mjs` script only if the binary is unavailable; new behaviour lands in the crate.
