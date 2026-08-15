@@ -1494,6 +1494,20 @@ hp_annexe_dir          = "/home/john/dream-annexe"
 loom_url               = "http://192.168.2.132:8084/v1"
 loom_model             = "qwen3.8-27B"
 loom_max_tokens        = 16384
+# LLM provider: "zai" (GLM via Z.AI, Anthropic Messages API — the default) or
+# "loom" (self-hosted Loom façade, OpenAI chat-completions). Override at runtime
+# with DREAM_LLM_PROVIDER. The Z.AI credential ZAI_ANTHROPIC_API_KEY is a SECRET
+# inherited from the container environment — it is never written into agentbox.toml
+# or the generated supervisor block.
+llm_provider           = "zai"
+zai_model              = "glm-5.3"
+zai_max_tokens         = 16384
+# Evaluator-liveness discipline (darwin lesson, ADR-099 upstream): target repos
+# declare their own evaluators in their dream.config.json evaluatorEntrypoints.
+# Any @metaharness/darwin entrypoint MUST pass `--sandbox mock` (or `--sandbox
+# agent`) — the default 'real' sandbox is documented surface-independent, so it
+# emits the same output regardless of the code under test and the night silently
+# no-ops. Every entrypoint must provably produce surface-dependent output.
 # UTC hours: nightly window (only runs inside this range in --loop mode)
 window_start           = 1
 window_end             = 5

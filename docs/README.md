@@ -100,6 +100,7 @@ You are adding a feature, implementing an adapter, or investigating a regression
 | [Code-harness multi-tier memory](developer/code-harness-multi-tier-memory.md) | How kernel state, distilled lessons, and verified skills layer over RuVector |
 | [Economy loop](developer/economy-loop.md) | End-to-end cross-repo demo — an agent pays for a cost-gated pod read, settles via the 402 consumer pipeline, emits URN receipts ([PRD-015](reference/prd/PRD-015-consumer-broadcast-economy.md)) |
 | [Agent control surface panels](developer/agent-control-surface-panels.md) | ACSP panel schema — emit valid Nostr events (kinds 31400-31405) that render governance control panels |
+| [Dream engine](developer/dream-engine.md) | Nightly evidence-gated repo evolution — control plane here / execution plane on the HP annexe ([ADR-052](reference/adr/ADR-052-dream-machine-hp-annexe.md)); `dream.config.json` nomination, verdict + witness, evaluator-liveness discipline |
 
 | Diagrams — cartographic audits | |
 |---|---|

@@ -1213,6 +1213,32 @@ console_port         = 8444             # operator cockpit origin (self-signed T
 debug_port           = 8443             # stock Unmute demo UI (diagnostics only)
 unmute_build_context = "../voice-stack/unmute"  # external Kyutai fork clone (26 GB, not vendored); override VOICE_UNMUTE_DIR
 
+# ── Dream machine — nightly evidence-gated evolution (ADR-052 HP annexe) ──────
+# Overnight repo evolution against nominated repos (drop a dream.config.json in
+# a workspace repo root to nominate it), dispatched to a build/eval annexe host
+# over SSH. HOST-SPECIFIC: this needs an SSH-reachable annexe and an LLM
+# endpoint, so it is commented out in the default template — copy into your
+# agentbox.toml and fill in hp_host/hp_annexe_dir for your estate to enable it.
+# Off keeps the image byte-identical (no dream-engine package, no supervisor
+# block). See docs/developer/dream-engine.md.
+# [dream_machine]
+# enabled                = false
+# hp_host                = "user@annexe-host"        # SSH target for build+evaluators
+# hp_annexe_dir          = "/home/user/dream-annexe"  # remote working root
+# llm_provider           = "zai"                      # "zai" (GLM, Anthropic API) | "loom" (self-hosted façade)
+# zai_model              = "glm-5.3"
+# zai_max_tokens         = 16384
+# loom_url               = "http://127.0.0.1:8084/v1"
+# loom_model             = "qwen3.8-27B"
+# loom_max_tokens        = 16384
+# window_start           = 1                          # UTC hour: nightly window open
+# window_end             = 5                          # UTC hour: nightly window close
+# memory_namespace       = "dream-cycle"              # RuVector namespace for accepted/rejected findings
+# ZAI_ANTHROPIC_API_KEY is a SECRET inherited from the container environment —
+# never write it here. Evaluator discipline: any @metaharness/darwin entrypoint
+# in a target repo's dream.config.json MUST pass `--sandbox mock` (or `agent`) —
+# the default 'real' sandbox is surface-independent and silently no-ops (ADR-099).
+
 [toolchains]
 claude = true
 claude_code = true

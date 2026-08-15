@@ -1064,6 +1064,21 @@
           else null;
         headroomPackages = lib.optionals compressionEnabled [ headroomNapiPkg ];
 
+        # ---------------------------------------------------------------------------
+        # dream-engine — nightly evidence-gated repo evolution (ADR-052 HP annexe).
+        # Gate: dream_machine.enabled = true (default off keeps the image
+        # byte-identical). Built from source via lib/dream-engine.nix
+        # (services/dream-engine crate — self-contained, rustls, no openssl).
+        # Supervised block below dispatches nightly cycles to the HP annexe.
+        # ---------------------------------------------------------------------------
+        dreamMachineCfg = agentboxConfig.dream_machine or {};
+        dreamEngineEnabled = (dreamMachineCfg.enabled or false) == true;
+        dreamEnginePkg =
+          if dreamEngineEnabled
+          then (import ./lib/dream-engine.nix { inherit lib pkgs; })
+          else null;
+        dreamEnginePackages = lib.optionals dreamEngineEnabled [ dreamEnginePkg ];
+
         # Render a config.toml for nostr-rs-relay from manifest fields.
         # Consumed by the supervisor block at /etc/agentbox/nostr-relay.toml.
         # (Unused on the pod_bridge path — the bridge is env-configured.)
@@ -1206,6 +1221,7 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           ++ relayPackages
           ++ solidPodRsPackages
           ++ headroomPackages
+          ++ dreamEnginePackages
           ++ nagualQePackages
           ++ desktopPackages
           ++ antigravityCliPackages
@@ -1820,6 +1836,28 @@ autorestart=true
 priority=220
 stdout_logfile=/var/log/comfyui-builtin.log
 stderr_logfile=/var/log/comfyui-builtin.error.log
+''}
+${lib.optionalString dreamEngineEnabled ''
+
+# Dream machine (ADR-052 HP annexe). Nightly evidence-gated repo evolution:
+# one cycle per UTC night inside [dream_machine].window_start..window_end, then
+# idle. The binary reads [dream_machine] from /etc/agentbox.toml (window + HP
+# settings — that path is the image-materialised manifest, see the etc/ closure
+# above); the environment= line below carries only the Nix-known LLM selection
+# so the provider/model are visible in the supervisor block. SECRETS are NOT
+# written here: ZAI_ANTHROPIC_API_KEY (Z.AI credential) and RUVECTOR_PG_CONNINFO
+# (memory DB) are exported into the process environment by the entrypoint
+# launcher and inherited — same discipline as the nostr-relay agent secret.
+[program:dream-engine]
+command=${dreamEnginePkg}/bin/dream-engine --loop --agentbox-toml /etc/agentbox.toml
+directory=/home/devuser/workspace
+user=devuser
+environment=HOME="/home/devuser",RUST_LOG="info",DREAM_LLM_PROVIDER="${dreamMachineCfg.llm_provider or "zai"}",ZAI_MODEL="${dreamMachineCfg.zai_model or "glm-5.3"}",LOOM_URL="${dreamMachineCfg.loom_url or "http://192.168.2.132:8084/v1"}",LOOM_MODEL="${dreamMachineCfg.loom_model or "qwen3.8-27B"}"
+autostart=true
+autorestart=true
+priority=230
+stdout_logfile=/var/log/dream-engine.log
+stderr_logfile=/var/log/dream-engine.error.log
 ''}
 ${lib.optionalString interactionPlaneEnabled ''
 
