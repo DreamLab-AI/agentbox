@@ -147,6 +147,26 @@ impl Engine {
             summary = %outcomes.iter().map(|(n, v)| format!("{}={}", n, v)).collect::<Vec<_>>().join(", "),
             "night complete"
         );
+
+        // Post the nightly digest to the forum (JunkieJarvis → dreamlab zone,
+        // "chat with agents"). Visibility only — never an approval object.
+        // Fail-open: a digest failure never taints the night.
+        let digest_script = std::env::var("DREAM_DIGEST_SCRIPT").unwrap_or_else(|_| {
+            "/home/devuser/workspace/project/agentbox/scripts/dream-night-digest.mjs".into()
+        });
+        if Path::new(&digest_script).exists() {
+            match Command::new("node")
+                .args([&digest_script, "--date", date])
+                .output()
+            {
+                Ok(out) => {
+                    let tail = String::from_utf8_lossy(&out.stdout);
+                    info!(result = %tail.lines().last().unwrap_or(""), "night digest");
+                }
+                Err(e) => warn!(error = %e, "night digest failed (fail-open)"),
+            }
+        }
+
         Some(outcomes)
     }
 
