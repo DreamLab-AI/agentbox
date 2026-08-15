@@ -21,7 +21,7 @@ struct Cli {
     once: bool,
 
     /// Loop forever, running one cycle per night inside the UTC window.
-    #[arg(long, name = "loop")]
+    #[arg(long = "loop")]
     loop_mode: bool,
 
     /// Compile + select only; no dispatch, no LLM call.
