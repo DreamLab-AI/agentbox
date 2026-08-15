@@ -77,17 +77,18 @@ function ledgerRows() {
   return out.sort((a, b) => a.repo.localeCompare(b.repo));
 }
 
-function compose(repos) {
+// Two styles, DREAM_DIGEST_STYLE env: "plain" (default — narrative English,
+// operator is calibrating trust in the system) or "terse" (icon/table form).
+const STYLE = process.env.DREAM_DIGEST_STYLE || 'plain';
+
+function composeTerse(repos) {
   const icon = v => (v === 'ACCEPT' ? '✅' : v === 'REJECT' ? '❌' : '➖');
-  const head = `🌙 Dream-machine nightly digest — ${date}`;
-  const body = [head, ''];
+  const body = [`🌙 Dream-machine nightly digest — ${date}`, ''];
   if (!repos.length) {
     body.push('No dream cycles ran tonight.');
     return body.join('\n');
   }
   for (const r of repos) {
-    // Last row of the night is the definitive one (earlier rows are degraded
-    // attempts, e.g. provider outages).
     const last = r.rows[r.rows.length - 1];
     body.push(`${icon(last.verdict)} ${r.repo} — ${last.verdict} (${last.deep})`);
     body.push(`   ${last.finding}`);
@@ -100,6 +101,73 @@ function compose(repos) {
   body.push('Reports: workspace/.tmp/dream-annexe-artefacts/<date>-<repo>/report.md · Ledgers: <repo>/docs/dream-cycle/LEDGER.md');
   body.push('Authority: git gates code (human merges); the forum broker gate governs boundary-crossing proposals. This digest is the inbox, not the approval.');
   return body.join('\n');
+}
+
+function composePlain(repos) {
+  const body = [`Dream machine — overnight report for ${date}, in plain English.`, ''];
+  if (!repos.length) {
+    body.push('No dream cycles ran tonight.');
+    return body.join('\n');
+  }
+
+  const decisive = repos.filter(r => ['ACCEPT', 'REJECT'].includes(r.rows[r.rows.length - 1].verdict));
+  const open = repos.filter(r => !decisive.includes(r));
+  const degradedTotal = repos.reduce((n, r) => n + (r.rows.length - 1), 0);
+
+  if (decisive.length) {
+    body.push(`${decisive.length === 1 ? 'One repository' : cap(numberWord(decisive.length)) + ' repositories'} reached a firm conclusion tonight.`);
+    body.push('');
+    for (const r of decisive) {
+      const last = r.rows[r.rows.length - 1];
+      if (last.verdict === 'ACCEPT') {
+        body.push(`${r.repo}: the night's hypothesis was CONFIRMED with solid evidence (the "${last.deep}" investigation). In short: ${sentence(last.finding)} A branch with the proposed change and full report has been staged — it will not be merged until a human reviews it.`);
+      } else {
+        body.push(`${r.repo}: the night's hypothesis was tested and DISPROVED (the "${last.deep}" investigation) — a useful negative result, recorded so future nights don't repeat it. In short: ${sentence(last.finding)}`);
+      }
+      if (last.witness && last.witness !== 'BLOCKED') body.push(`(Evidence fingerprint: ${last.witness}.)`);
+      body.push('');
+    }
+  }
+
+  if (open.length) {
+    body.push(`${open.length === 1 ? 'One night' : cap(numberWord(open.length)) + ' nights'} ended without a firm conclusion — each for a stated reason, not silence.`);
+    body.push('');
+    for (const r of open) {
+      const last = r.rows[r.rows.length - 1];
+      body.push(`${r.repo} ("${last.deep}"): ${sentence(last.finding)}`);
+      if (r.streak >= 4) body.push(`Heads-up: this repo has now had ${numberWord(r.streak)} inconclusive nights in a row. At five it is parked automatically until a night produces a firm answer.`);
+      body.push('');
+    }
+  }
+
+  if (degradedTotal > 0) {
+    body.push(`Note on reliability: ${numberWord(degradedTotal)} earlier attempt${degradedTotal === 1 ? ' was' : 's were'} disrupted today, mostly by the cloud model's gateway timing out; where needed the engine fell back to our own local model, and the results above are from the successful attempts.`);
+    body.push('');
+  }
+
+  body.push('Full reports are on the agentbox host under workspace/.tmp/dream-annexe-artefacts, one folder per repo per night. Nothing is ever merged automatically — staged changes wait for human review.');
+  return body.join('\n');
+}
+
+function sentence(finding) {
+  let s = (finding || '').trim().replace(/\s+/g, ' ');
+  if (!s) return '(no summary captured — see the full report).';
+  // Ledger findings are truncated at 80 chars; make that honest in prose.
+  if (s.length >= 78 && !/[.!?]$/.test(s)) s += '… (summary truncated — full detail in the report).';
+  else if (!/[.!?]$/.test(s)) s += '.';
+  return s;
+}
+
+function numberWord(n) {
+  return ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'][n] || String(n);
+}
+
+function cap(s) {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function compose(repos) {
+  return STYLE === 'terse' ? composeTerse(repos) : composePlain(repos);
 }
 
 // --- publish -------------------------------------------------------------------

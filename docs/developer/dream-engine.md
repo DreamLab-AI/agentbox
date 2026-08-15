@@ -155,6 +155,17 @@ Every **eligible** nominated repo dreams **every night**, serially, capped at `m
 - **Standby is reversible, never destructive.** The nomination file and ledger stay untouched. A forced `dream-engine --once --target <repo>` still runs it; any decisive verdict revives it automatically. Fixing the harness gap that caused the streak is the usual revival path.
 - Repos beyond the cap are skipped with a warning (alphabetical order); trim the roster rather than living with a permanent skip.
 
+## Nightly digest — the decision inbox
+
+After each `run_night` the engine invokes `scripts/dream-night-digest.mjs` (fail-open; `DREAM_DIGEST_SCRIPT` overrides the path). The script reads every nominated repo's ledger for the night, composes one summary, signs it as **JunkieJarvis** (`JUNKIEJARVIS_PRIVKEY_HEX` from agentbox `.env`) and posts it as a kind-42 topic root to the dreamlab zone's **chat with agents** section on the live forum relay (NIP-42 authed).
+
+Governance shape (operator decision, 2026-08-15): **the digest is visibility, not approval**. Authority stays native — git gates code changes (a dream ACCEPT stages a branch/PR; a human merges), and the 31402/31403 forum broker gate governs boundary-crossing proposals (ontology, shared infra). ACCEPT deliberately triggers no automation: it is an evidence verdict, and keying permissions off it would create a verdict-inflation incentive.
+
+- **Style**: `DREAM_DIGEST_STYLE=plain` (default) renders narrative English — one paragraph per repo, firm conclusions first, open questions second, a reliability note, and the standing "nothing merges without a human" footer. `terse` renders the compact icon form. Plain is the default while the operator calibrates trust in the system's outputs.
+- **Delivery is verified, not assumed**: the CF worker relay has been observed OK'ing an event and never persisting it. The script reads its own event back by id and republishes once; it reports `published+verified` or `NOT VERIFIED` honestly.
+- Routing overrides: `DREAM_DIGEST_RELAY`, `DREAM_DIGEST_CHANNEL`, `DREAM_DIGEST_SECTION`.
+- Manual (re-)issue: `node scripts/dream-night-digest.mjs [--date YYYY-MM-DD] [--dry-run]` or `/dream digest`.
+
 ## HP hygiene & VRAM runbook
 
 **Annexe cleanup is automatic.** Each successful cycle removes its own night dir on HP (`rm -rf <annexe>/<date>-<repo>`) once the report, ledger row, witness, and memory write are all control-plane side; failed cycles keep the dir for debugging. A retention sweep at dispatch time removes any night dir older than 3 days, so debug leftovers cannot accumulate either. Nothing on HP is a source of truth — every dir under the annexe is disposable at any time.

@@ -30,6 +30,14 @@ Without a repo: dreams every eligible repo serially (a full night, 10–40 min �
 - standby: `touch /home/devuser/workspace/<repo>/.dream-standby` — parks the repo (skipped nightly, `--target` still works).
 - revive: `rm -f /home/devuser/workspace/<repo>/.dream-standby`. If the repo is also parked by a dry streak (5 trailing INCONCLUSIVE ledger rows), tell the user: only a decisive verdict clears that — suggest `/dream run <repo>` after fixing whatever kept the nights INCONCLUSIVE (usually an evaluator gap; see the repo's last report under `/home/devuser/workspace/.tmp/dream-annexe-artefacts/`).
 
+## `/dream digest [date]`
+
+(Re-)issue the nightly forum digest (JunkieJarvis → dreamlab zone → chat with agents):
+```bash
+node /home/devuser/workspace/project/agentbox/scripts/dream-night-digest.mjs [--date YYYY-MM-DD] [--dry-run]
+```
+Default style is plain English (`DREAM_DIGEST_STYLE=terse` for the compact form). The script verifies its own event is readable back from the relay and says so — report `published+verified`/`NOT VERIFIED` to the user verbatim. To replace an existing digest, first send a kind-5 deletion for the old event id (as JunkieJarvis), then re-run.
+
 ## `/dream nominate <repo>`
 
 Confirm the repo exists under `/home/devuser/workspace/`, then author a `dream.config.json` in its root following the schema in `docs/developer/dream-engine.md`. Non-negotiables: `autoMerge: false`; every `evaluatorEntrypoints` command must be **provably live** (run it once and check it produces surface-dependent output — a silent no-op evaluator is the #1 historical failure); slots reflect the repo's OWN surfaces; anything owned by an upstream/downstream repo is fenced out via an `extraDisciplines` handoff rule. If the roster already has 5 active repos, warn that the cap will skip the excess.
