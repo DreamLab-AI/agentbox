@@ -260,6 +260,15 @@ if [ -d /home/devuser/.claude ] && [ ! -e "$WORKSPACE/.claude" ]; then
   ln -sf /home/devuser/.claude "$WORKSPACE/.claude"
 fi
 
+# /dream slash command — install-if-missing from the canonical repo copy
+# (skills/dream-machine/commands/dream.md). ~/.claude is a host mount, so an
+# existing (possibly user-tuned) copy is never overwritten.
+DREAM_CMD_SRC="$WORKSPACE/project/agentbox/skills/dream-machine/commands/dream.md"
+if [ -f "$DREAM_CMD_SRC" ] && [ ! -f /home/devuser/.claude/commands/dream.md ]; then
+  mkdir -p /home/devuser/.claude/commands
+  cp "$DREAM_CMD_SRC" /home/devuser/.claude/commands/dream.md
+fi
+
 # Pre-install the Anthropic skill-creator plugin so /skill-creator works on
 # first boot. The plugin payload arrives via the host bind-mount of
 # ~/.claude/plugins/marketplaces/claude-plugins-official; we just need to

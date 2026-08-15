@@ -109,9 +109,10 @@ async fn main() {
     // Bare --once dreams every eligible repo (the nightly shape); --once
     // --target and --dry-run stay single-repo.
     if cli.once && cli.target.is_none() && !cli.dry_run {
-        let outcomes = engine.run_night(day_int, &date).await;
-        if outcomes.is_empty() {
-            std::process::exit(1);
+        match engine.run_night(day_int, &date).await {
+            None => info!("dreaming is paused (/dream on to resume)"),
+            Some(outcomes) if outcomes.is_empty() => std::process::exit(1),
+            Some(_) => {}
         }
         return;
     }
@@ -163,7 +164,12 @@ async fn run_loop(engine: &Engine, target: Option<&str>) {
                     Err(e) => error!(error = %e, "nightly cycle failed"),
                 },
                 None => {
-                    engine.run_night(day_int, &date).await;
+                    // A paused night is not consumed: retry the same date
+                    // on the next tick once /dream on removes the flag.
+                    if engine.run_night(day_int, &date).await.is_none() {
+                        tokio::time::sleep(std::time::Duration::from_secs(600)).await;
+                        continue;
+                    }
                 }
             }
             last_run_date = date;

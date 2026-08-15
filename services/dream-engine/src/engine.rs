@@ -80,17 +80,30 @@ impl Engine {
     /// a dry streak means a saturated repo or a broken harness, and either
     /// way the slot is wasted until a decisive verdict (via a forced
     /// `--target` run or a harness fix) resets the streak.
-    pub async fn run_night(&self, day_int: u32, date: &str) -> Vec<(String, String)> {
+    /// Returns `None` when dreaming is paused (the night is NOT consumed —
+    /// the loop retries the same date after `/dream on`).
+    pub async fn run_night(&self, day_int: u32, date: &str) -> Option<Vec<(String, String)>> {
+        // Global kill-switch: `/dream off` touches this file; no restart needed.
+        let pause_flag = Path::new("/home/devuser/.agentbox/dream-paused");
+        if pause_flag.exists() {
+            info!(flag = %pause_flag.display(), "dreaming paused — night skipped (/dream on to resume)");
+            return None;
+        }
+
         let repos = match self.discover() {
             Ok(r) => r,
             Err(e) => {
                 warn!(error = %e, "night aborted — no nominated repos");
-                return vec![];
+                return Some(vec![]);
             }
         };
 
         let mut eligible = Vec::new();
         for (name, path) in &repos {
+            if path.join(".dream-standby").exists() {
+                info!(repo = %name, "standby — manual .dream-standby marker; skipped (/dream revive removes it)");
+                continue;
+            }
             match self.repo_dry_streak(path) {
                 s if s >= self.runtime.prune_dry_streak => {
                     info!(
@@ -131,7 +144,7 @@ impl Engine {
             summary = %outcomes.iter().map(|(n, v)| format!("{}={}", n, v)).collect::<Vec<_>>().join(", "),
             "night complete"
         );
-        outcomes
+        Some(outcomes)
     }
 
     fn discover(&self) -> Result<Vec<(String, PathBuf)>, EngineError> {
