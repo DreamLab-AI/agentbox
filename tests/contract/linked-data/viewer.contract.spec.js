@@ -14,6 +14,10 @@ const os = require('os');
 
 const { resolveViewerImpl, builtInPaneFiles, buildManifest } =
   require('../../../management-api/middleware/linked-data/viewer');
+const {
+  resolveProxyTarget,
+  headersForProxyTarget,
+} = require('../../../management-api/routes/linked-objects');
 
 describe('S12 — Viewer slot', () => {
   describe('L18 — pane registry is data-driven', () => {
@@ -94,6 +98,51 @@ describe('S12 — Viewer slot', () => {
       expect(v.impl).toBe('local-linkedobjects');
       expect(typeof v.buildPaneManifest).toBe('function');
       expect(v.sourceCodeHeader).toContain('linkedobjects/browser');
+    });
+  });
+
+  describe('public proxy boundary', () => {
+    const policy = {
+      apiBase: 'http://127.0.0.1:9090',
+      allowedOrigins: new Set(['http://127.0.0.1:9090', 'http://127.0.0.1:8484']),
+    };
+
+    test('maps URNs and relative API paths to the management origin', () => {
+      expect(resolveProxyTarget('urn:agentbox:thing:abc', policy).href)
+        .toBe('http://127.0.0.1:9090/v1/uri/urn%3Aagentbox%3Athing%3Aabc');
+      expect(resolveProxyTarget('/v1/meta', policy).href)
+        .toBe('http://127.0.0.1:9090/v1/meta');
+    });
+
+    test.each([
+      'https://attacker.example/collect',
+      'http://169.254.169.254/latest/meta-data',
+      'file:///etc/passwd',
+      'http://user:pass@127.0.0.1:9090/v1/meta',
+    ])('rejects unsafe destination %s', (target) => {
+      expect(() => resolveProxyTarget(target, policy)).toThrow(/not allowed|protocol|credentials/);
+    });
+
+    test('allows an explicitly approved pod origin without forwarding the management bearer', () => {
+      const target = resolveProxyTarget('http://127.0.0.1:8484/pods/a', policy);
+      expect(headersForProxyTarget(target, policy.apiBase, 'top-secret'))
+        .toEqual({ Accept: 'application/ld+json, application/json, text/turtle, */*' });
+    });
+
+    test('never permits instance metadata, even when its origin is allowlisted', () => {
+      const misconfigured = {
+        ...policy,
+        allowedOrigins: new Set([...policy.allowedOrigins, 'http://169.254.169.254']),
+      };
+      expect(() => resolveProxyTarget(
+        'http://169.254.169.254/latest/meta-data', misconfigured,
+      )).toThrow(/metadata host not allowed/);
+    });
+
+    test('sends the bearer only to the exact management API origin', () => {
+      const target = resolveProxyTarget('/v1/meta', policy);
+      expect(headersForProxyTarget(target, policy.apiBase, 'top-secret').Authorization)
+        .toBe('Bearer top-secret');
     });
   });
 });

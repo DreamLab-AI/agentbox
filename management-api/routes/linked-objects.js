@@ -52,6 +52,75 @@ const MIME = {
   '.txt':  'text/plain; charset=utf-8',
 };
 
+const PROXY_ACCEPT = 'application/ld+json, application/json, text/turtle, */*';
+
+function isMetadataHost(hostname) {
+  const host = String(hostname || '').toLowerCase().replace(/^\[|\]$/g, '');
+  return host === '169.254.169.254' ||
+    host.startsWith('169.254.') ||
+    host === 'metadata.google.internal' ||
+    host.startsWith('fe8') || host.startsWith('fe9') ||
+    host.startsWith('fea') || host.startsWith('feb');
+}
+
+function proxyPolicyFromEnv() {
+  const apiPort = process.env.MANAGEMENT_API_PORT || '9090';
+  const apiBase = `http://127.0.0.1:${apiPort}`;
+  const podBase = process.env.SOLID_POD_BASE_URL ||
+    `http://127.0.0.1:${process.env.SOLID_POD_PORT || '8484'}`;
+  const configured = (process.env.LINKED_OBJECT_PROXY_ALLOWED_ORIGINS || '')
+    .split(',').map((value) => value.trim()).filter(Boolean);
+  const allowedOrigins = new Set([new URL(apiBase).origin, new URL(podBase).origin]);
+  for (const value of configured) {
+    const url = new URL(value);
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) {
+      throw new Error(`invalid LINKED_OBJECT_PROXY_ALLOWED_ORIGINS entry: ${value}`);
+    }
+    allowedOrigins.add(url.origin);
+  }
+  return { apiBase, allowedOrigins };
+}
+
+function resolveProxyTarget(rawTarget, policy, relativeTo = null) {
+  const raw = String(rawTarget || '').trim();
+  if (!raw) throw new Error('uri-required');
+
+  let target;
+  if (raw.startsWith('urn:')) {
+    target = new URL(`${policy.apiBase}/v1/uri/${encodeURIComponent(raw)}`);
+  } else if (raw.startsWith('/')) {
+    // Concatenation deliberately treats //host/path as an API path, never as
+    // a scheme-relative URL that can escape the management origin.
+    target = new URL(`${policy.apiBase}${raw}`);
+  } else {
+    target = new URL(raw, relativeTo || undefined);
+  }
+
+  if (!['http:', 'https:'].includes(target.protocol)) {
+    throw new Error(`proxy protocol not allowed: ${target.protocol}`);
+  }
+  if (target.username || target.password) {
+    throw new Error('proxy URL credentials are not allowed');
+  }
+  // Cloud instance metadata and IPv6 link-local endpoints remain forbidden
+  // even if an operator accidentally includes their origin in the allowlist.
+  if (isMetadataHost(target.hostname)) {
+    throw new Error(`proxy metadata host not allowed: ${target.hostname}`);
+  }
+  if (!policy.allowedOrigins.has(target.origin)) {
+    throw new Error(`proxy origin not allowed: ${target.origin}`);
+  }
+  return target;
+}
+
+function headersForProxyTarget(target, apiBase, apiKey) {
+  const headers = { Accept: PROXY_ACCEPT };
+  if (apiKey && target.origin === new URL(apiBase).origin) {
+    headers.Authorization = `Bearer ${apiKey}`;
+  }
+  return headers;
+}
+
 function _mime(file) {
   const ext = path.extname(file).toLowerCase();
   return MIME[ext] || 'application/octet-stream';
@@ -138,34 +207,30 @@ async function linkedObjectsRoutes(fastify, options) {
     const rawUri = (req.query.uri || req.query.url || '').trim();
     if (!rawUri) return reply.code(400).send({ error: 'uri-required' });
 
-    const apiKey  = process.env.MANAGEMENT_API_KEY  || '';
-    const apiPort = process.env.MANAGEMENT_API_PORT || '9090';
-    const apiBase = `http://127.0.0.1:${apiPort}`;
+    const apiKey = process.env.MANAGEMENT_API_KEY || '';
+    let policy;
+    try {
+      policy = proxyPolicyFromEnv();
+    } catch (err) {
+      logger.error({ err: err.message }, 'lo/proxy policy is invalid');
+      return reply.code(503).send({ error: 'proxy-policy-invalid' });
+    }
 
-    async function _fetch(url) {
-      const headers = { Accept: 'application/ld+json, application/json, text/turtle, */*' };
-      if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
-      return fetch(url, { headers, redirect: 'manual' });
+    async function _fetch(target) {
+      const headers = headersForProxyTarget(target, policy.apiBase, apiKey);
+      return fetch(target, { headers, redirect: 'manual' });
     }
 
     try {
-      let fetchUrl;
-      if (rawUri.startsWith('urn:')) {
-        fetchUrl = `${apiBase}/v1/uri/${encodeURIComponent(rawUri)}`;
-      } else if (rawUri.startsWith('/')) {
-        fetchUrl = `${apiBase}${rawUri}`;
-      } else {
-        fetchUrl = rawUri;
-      }
-
-      let res = await _fetch(fetchUrl);
+      let target = resolveProxyTarget(rawUri, policy);
+      let res = await _fetch(target);
 
       // Follow a single redirect (covers /v1/uri/<urn> → 307 → content URL)
       if ([301, 302, 307, 308].includes(res.status)) {
         const loc = res.headers.get('location');
         if (loc) {
-          const next = loc.startsWith('/') ? `${apiBase}${loc}` : loc;
-          res = await _fetch(next);
+          target = resolveProxyTarget(loc, policy, target);
+          res = await _fetch(target);
         }
       }
 
@@ -180,7 +245,11 @@ async function linkedObjectsRoutes(fastify, options) {
       return reply.send(body);
     } catch (err) {
       logger.warn({ err: err.message, uri: rawUri }, 'lo/proxy fetch failed');
-      return reply.code(502).send({ error: 'proxy-error', message: err.message });
+      const rejected = /not allowed|uri-required|credentials|protocol/.test(err.message);
+      return reply.code(rejected ? 400 : 502).send({
+        error: rejected ? 'proxy-target-rejected' : 'proxy-error',
+        message: err.message,
+      });
     }
   });
 
@@ -230,3 +299,6 @@ async function linkedObjectsRoutes(fastify, options) {
 }
 
 module.exports = linkedObjectsRoutes;
+module.exports.resolveProxyTarget = resolveProxyTarget;
+module.exports.headersForProxyTarget = headersForProxyTarget;
+module.exports.proxyPolicyFromEnv = proxyPolicyFromEnv;
