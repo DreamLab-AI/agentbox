@@ -388,6 +388,10 @@ app.register(require('./routes/payments'), { prefix: '', logger, metrics });
 // Mesh-wide negotiation of LLM compute resources between did:nostr identities.
 app.register(require('./routes/llm-marketplace'), { prefix: '', logger });
 
+// Dream cockpit panel (ADR-055) — read-only /dream/status over the dream engine's
+// per-repo ledgers. Operator-gated (absent from the auth-skip allowlist above).
+app.register(require('./routes/dream'), { prefix: '', logger });
+
 // Liveness probe — registered early, no sentinel check, event-loop-alive only.
 // Must respond in <100 ms unconditionally.
 app.get('/livez', {

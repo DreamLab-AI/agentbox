@@ -76,6 +76,15 @@ https://:8444 {
 	handle /docs* {
 		reverse_proxy agentbox:9090
 	}
+	# management-api :9090 serves GET /dream/status (ADR-055) — a read-only view
+	# over the dream engine's per-repo ledgers. Operator-gated server-side, so the
+	# console forwards the signed Authorization header (as for /approvals). No path
+	# strip: the API sees /dream/*. The view itself is the static /dream.html below.
+	handle /dream/* {
+		reverse_proxy agentbox:9090 {
+			header_up Authorization {http.request.header.Authorization}
+		}
+	}
 	handle /feed {
 		reverse_proxy agentbox:8971 {
 			header_up Authorization {http.request.header.Authorization}

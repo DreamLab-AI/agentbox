@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>agentbox · dream</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23c2410c'/%3E%3Ctext x='8' y='12' font-size='10' text-anchor='middle' fill='%23fff7ed' font-family='monospace'%3Ea%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="/styles.css">
+<style>
+  /* Local to the dream panel — reuses the console's tokens (ADR-055). */
+  #dream-wrap { max-width: 1100px; margin: 0 auto; padding: 20px 22px 60px; }
+  .dream-repo { border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); margin: 14px 0; overflow: hidden; }
+  .dream-repo > .sec-head { padding: 12px 14px; border-bottom: 1px solid var(--line-soft); }
+  .dream-table { width: 100%; border-collapse: collapse; font: 12.5px/1.5 var(--font-mono); }
+  .dream-table th, .dream-table td { text-align: left; padding: 7px 14px; border-top: 1px solid var(--line-soft); vertical-align: top; }
+  .dream-table th { color: var(--fg-dim); font-weight: 600; text-transform: uppercase; letter-spacing: .1em; font-size: 10.5px; }
+  .v { font-weight: 700; }
+  .v-ACCEPT { color: var(--success); }
+  .v-REJECT { color: var(--error); }
+  .v-INCONCLUSIVE { color: var(--warning); }
+  .dream-empty, .dream-note { color: var(--fg-dim); padding: 10px 14px; font-size: 13px; }
+  .dream-totals { display: flex; gap: 10px; flex-wrap: wrap; margin: 6px 0 2px; }
+  .dream-back { color: var(--fg-dim); text-decoration: none; font: 600 12px/1 var(--font-mono); }
+  .dream-back:hover { color: var(--fg); }
+</style>
+</head>
+<body>
+<header id="topbar">
+  <div id="brand"><span class="mark">AGENTBOX</span><span class="sub">dream · nightly self-improvement</span></div>
+  <div id="chips"><span class="chip" id="dream-state" role="status">loading…</span></div>
+  <nav id="surface-nav"><a class="dream-back" href="/">← cockpit</a></nav>
+  <div id="auth-badge"><button class="btn-ghost" id="dream-refresh" type="button" title="refresh">↻</button></div>
+</header>
+
+<main id="dream-wrap">
+  <div class="sec-head"><h2>Dream ledger</h2><span class="spacer"></span><span class="label" id="dream-sub"></span></div>
+  <div class="dream-totals" id="dream-totals"></div>
+  <div id="dream-repos"></div>
+  <p class="dream-note">
+    Read-only. The dream engine proposes; the merge is a human act — open a draft PR on GitHub to decide.
+    <em>Evaluation is not promotion.</em> (ADR-055)
+  </p>
+</main>
+
+<script>
+'use strict';
+// Self-contained, isolated from app.js so a fault here can never break the live
+// voice cockpit (ADR-055). Auth logic mirrors app.js's read path: reuse the
+// operator's break-glass bearer from this tab's sessionStorage, else sign a
+// NIP-98 header via window.nostr. `/dream/*` is a Caddy `handle` (no prefix
+// strip), so the NIP-98 `u`-tag is the unstripped path.
+const BEARER_KEY = 'agentbox-bearer';
+const $ = (id) => document.getElementById(id);
+const getBearer = () => sessionStorage.getItem(BEARER_KEY) || '';
+const hasNostr = () => typeof window.nostr === 'object' && window.nostr && typeof window.nostr.signEvent === 'function';
+
+async function sha256hex(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+async function signNip98(method, path) {
+  const url = location.origin + path.split('?')[0]; // /dream is unstripped
+  const event = { kind: 27235, created_at: Math.floor(Date.now() / 1000), tags: [['u', url], ['method', method.toUpperCase()]], content: '' };
+  return 'Nostr ' + btoa(JSON.stringify(await window.nostr.signEvent(event)));
+}
+async function authHeader(path) {
+  const bearer = getBearer();
+  if (bearer) return { Authorization: 'Bearer ' + bearer };       // reads prefer bearer (no signer prompt)
+  if (hasNostr()) { try { return { Authorization: await signNip98('GET', path) }; } catch { return {}; } }
+  return {};
+}
+
+function setState(text, cls) {
+  const c = $('dream-state');
+  c.textContent = text;
+  c.className = 'chip' + (cls ? ' ' + cls : '');
+}
+
+/** Build a GitHub link for a `#N` reference if the repo slug is `owner/name`. */
+function refLink(repo, ref, kind) {
+  const m = /^#?(\d+)$/.exec((ref || '').trim());
+  if (!m || !/^[^/\s]+\/[^/\s]+$/.test(repo || '')) return null;
+  const a = document.createElement('a');
+  a.href = `https://github.com/${repo}/${kind === 'issue' ? 'issues' : 'pull'}/${m[1]}`;
+  a.target = '_blank';
+  a.rel = 'noopener';
+  a.textContent = '#' + m[1];
+  return a;
+}
+
+function renderRepo(r) {
+  const card = document.createElement('div');
+  card.className = 'dream-repo';
+  const head = document.createElement('div');
+  head.className = 'sec-head';
+  const h = document.createElement('h2');
+  h.textContent = r.repo || r.dir;
+  head.appendChild(h);
+  const meta = document.createElement('span');
+  meta.className = 'label';
+  meta.style.marginLeft = '10px';
+  const s = r.stats || {};
+  meta.textContent = r.error
+    ? 'config error'
+    : r.ledgerExists
+      ? `${r.rowCount} nights · A${s.ACCEPT || 0}/R${s.REJECT || 0}/I${s.INCONCLUSIVE || 0} · last ${r.lastNight || '—'}`
+      : 'no ledger yet';
+  head.appendChild(meta);
+  card.appendChild(head);
+
+  if (r.error) {
+    const p = document.createElement('div');
+    p.className = 'dream-empty';
+    p.textContent = r.error;
+    card.appendChild(p);
+    return card;
+  }
+  if (!r.latest || !r.latest.length) {
+    const p = document.createElement('div');
+    p.className = 'dream-empty';
+    p.textContent = 'No nights recorded yet.';
+    card.appendChild(p);
+    return card;
+  }
+
+  const table = document.createElement('table');
+  table.className = 'dream-table';
+  const thead = document.createElement('tr');
+  ['Date', 'Deep', 'Verdict', 'Issue', 'PR', 'Finding'].forEach((t) => {
+    const th = document.createElement('th');
+    th.textContent = t;
+    thead.appendChild(th);
+  });
+  table.appendChild(thead);
+  for (const row of r.latest) {
+    const tr = document.createElement('tr');
+    const cells = [row.date, row.deep];
+    cells.forEach((val) => {
+      const td = document.createElement('td');
+      td.textContent = val || '';
+      tr.appendChild(td);
+    });
+    const vtd = document.createElement('td');
+    const v = (row.verdict || '').toUpperCase();
+    vtd.className = 'v v-' + (['ACCEPT', 'REJECT', 'INCONCLUSIVE'].includes(v) ? v : '');
+    vtd.textContent = row.verdict || '';
+    tr.appendChild(vtd);
+    const itd = document.createElement('td');
+    const il = refLink(r.repo, row.issue, 'issue');
+    if (il) itd.appendChild(il); else itd.textContent = row.issue || '';
+    tr.appendChild(itd);
+    const ptd = document.createElement('td');
+    const pl = refLink(r.repo, row.pr, 'pr');
+    if (pl) ptd.appendChild(pl); else ptd.textContent = row.pr || '';
+    tr.appendChild(ptd);
+    const ftd = document.createElement('td');
+    ftd.textContent = row.finding || '';
+    tr.appendChild(ftd);
+    table.appendChild(tr);
+  }
+  card.appendChild(table);
+  return card;
+}
+
+function render(data) {
+  $('dream-sub').textContent = data.generatedAt ? new Date(data.generatedAt).toLocaleString() : '';
+  const totals = $('dream-totals');
+  totals.textContent = '';
+  const t = data.totals || {};
+  [['ACCEPT', 'ok'], ['REJECT', 'unavailable'], ['INCONCLUSIVE', 'degraded']].forEach(([k, cls]) => {
+    const chip = document.createElement('span');
+    chip.className = 'chip ' + cls;
+    chip.textContent = `${k} ${t[k] || 0}`;
+    totals.appendChild(chip);
+  });
+  const repos = $('dream-repos');
+  repos.textContent = '';
+  if (!data.repos || !data.repos.length) {
+    const p = document.createElement('div');
+    p.className = 'dream-empty';
+    p.textContent = 'No nominated repos found (drop a dream.config.json in a repo, or the dream engine is disabled).';
+    repos.appendChild(p);
+    return;
+  }
+  data.repos.forEach((r) => repos.appendChild(renderRepo(r)));
+}
+
+async function load() {
+  setState('loading…');
+  try {
+    const res = await fetch('/dream/status', { headers: await authHeader('/dream/status') });
+    if (res.status === 401 || res.status === 403) {
+      setState('unauthorised', 'unauthorised');
+      $('dream-repos').textContent = '';
+      const p = document.createElement('div');
+      p.className = 'dream-note';
+      p.textContent = 'Operator credential required. Open the cockpit, set a bearer or connect a Nostr key, then reload here.';
+      $('dream-repos').appendChild(p);
+      return;
+    }
+    if (!res.ok) { setState('error ' + res.status, 'unavailable'); return; }
+    const data = await res.json();
+    render(data);
+    setState(`${data.repoCount || 0} repos`, 'ok');
+  } catch (e) {
+    setState('unreachable', 'unavailable');
+  }
+}
+
+$('dream-refresh').addEventListener('click', load);
+load();
+setInterval(load, 30000);
+</script>
+</body>
+</html>
