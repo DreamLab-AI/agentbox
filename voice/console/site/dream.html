@@ -23,6 +23,14 @@
   .dream-totals { display: flex; gap: 10px; flex-wrap: wrap; margin: 6px 0 2px; }
   .dream-back { color: var(--fg-dim); text-decoration: none; font: 600 12px/1 var(--font-mono); }
   .dream-back:hover { color: var(--fg); }
+  #pending-panel { border: 1px solid rgba(245,158,11,.4); border-radius: 10px; background: var(--surface-2); margin: 14px 0 22px; overflow: hidden; }
+  #pending-panel > .sec-head { padding: 12px 14px; border-bottom: 1px solid var(--line-soft); }
+  .pending-item { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; padding: 10px 14px; border-top: 1px solid var(--line-soft); font: 12.5px/1.5 var(--font-mono); }
+  .pending-item .repo { color: var(--fg); font-weight: 700; }
+  .pending-item .meta { color: var(--fg-dim); }
+  .pending-item .finding { color: var(--fg-dim); flex: 1 1 240px; min-width: 0; }
+  .pending-merge { margin-left: auto; white-space: nowrap; color: var(--warning); font-weight: 700; text-decoration: none; border: 1px solid rgba(245,158,11,.5); border-radius: 6px; padding: 4px 10px; }
+  .pending-merge:hover { background: rgba(245,158,11,.12); }
 </style>
 </head>
 <body>
@@ -34,6 +42,11 @@
 </header>
 
 <main id="dream-wrap">
+  <section id="pending-panel" hidden aria-label="Draft PRs awaiting a human merge">
+    <div class="sec-head"><h2>Awaiting your merge</h2><span class="count" id="pending-count">0</span></div>
+    <div class="dream-note" style="padding:8px 14px 4px">Inferred from <code>#N:MERGED</code> fate tokens &mdash; until a night records its fate in token form, a recently-merged PR may still appear here.</div>
+    <div id="dream-pending"></div>
+  </section>
   <div class="sec-head"><h2>Dream ledger</h2><span class="spacer"></span><span class="label" id="dream-sub"></span></div>
   <div class="dream-totals" id="dream-totals"></div>
   <div id="dream-repos"></div>
@@ -163,7 +176,49 @@ function renderRepo(r) {
   return card;
 }
 
+const validRepo = (r) => /^[^/\s]+\/[^/\s]+$/.test(r || '');
+
+// The judgment-broker queue (ADR-056): draft PRs an ACCEPT night proposed that
+// the ledger has not yet recorded merged. The merge stays a human act on GitHub —
+// this links out, it never executes.
+function renderPending(data) {
+  const panel = $('pending-panel');
+  const list = $('dream-pending');
+  list.textContent = '';
+  const pending = (data.repos || []).flatMap((r) => r.pending || []);
+  $('pending-count').textContent = String(pending.length);
+  if (!pending.length) { panel.hidden = true; return; }
+  panel.hidden = false;
+  for (const p of pending) {
+    const item = document.createElement('div');
+    item.className = 'pending-item';
+    const repo = document.createElement('span');
+    repo.className = 'repo';
+    repo.textContent = p.repo || '';
+    item.appendChild(repo);
+    const meta = document.createElement('span');
+    meta.className = 'meta';
+    meta.textContent = `#${p.prNumber} · ${p.date || ''} · ${p.deep || ''}`;
+    item.appendChild(meta);
+    const finding = document.createElement('span');
+    finding.className = 'finding';
+    finding.textContent = p.finding || '';
+    item.appendChild(finding);
+    if (validRepo(p.repo) && /^\d+$/.test(String(p.prNumber))) {
+      const link = document.createElement('a');
+      link.className = 'pending-merge';
+      link.target = '_blank';
+      link.rel = 'noopener';
+      link.href = `https://github.com/${p.repo}/pull/${p.prNumber}`;
+      link.textContent = 'Review & merge on GitHub →';
+      item.appendChild(link);
+    }
+    list.appendChild(item);
+  }
+}
+
 function render(data) {
+  renderPending(data);
   $('dream-sub').textContent = data.generatedAt ? new Date(data.generatedAt).toLocaleString() : '';
   const totals = $('dream-totals');
   totals.textContent = '';

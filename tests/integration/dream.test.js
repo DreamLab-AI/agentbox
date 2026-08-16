@@ -15,6 +15,8 @@ const {
   parseLedger,
   verdictStats,
   latestNights,
+  mergedFromFates,
+  pendingMerges,
   resolveLedgerPath,
   discoverNominatedRepos,
   aggregateDreamStatus,
@@ -27,6 +29,9 @@ const HEADER =
 const SEP = '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |';
 const row = (date, deep, verdict, pr = 'NONE') =>
   `| ${date} | ${deep} | some finding | #1 | ${pr} | yes | ${verdict} |  | abc123 |  |`;
+// Row with a populated Prior-night fates column (last cell) for merge-state tests.
+const rowP = (date, verdict, pr, fates = '') =>
+  `| ${date} | deep | finding | #1 | ${pr} | yes | ${verdict} |  | h | ${fates} |`;
 
 function ledger(rows) {
   return [HEADER, SEP, ...rows].join('\n') + '\n';
@@ -78,6 +83,48 @@ describe('dream-ledger: latestNights', () => {
   });
 });
 
+describe('dream-ledger: pending merges (ADR-056)', () => {
+  test('mergedFromFates parses #N:MERGED tokens, ignores other fates', () => {
+    const { rows } = parseLedger(ledger([
+      rowP('2026-08-14', 'ACCEPT', '#8', '#7:MERGED #6:CLOSED'),
+      rowP('2026-08-15', 'ACCEPT', '#9', '#8:MERGED'),
+    ]));
+    expect([...mergedFromFates(rows)].sort()).toEqual(['7', '8']); // #6 CLOSED not merged
+  });
+
+  test('pending = ACCEPT rows with a PR not recorded merged', () => {
+    const { rows } = parseLedger(ledger([
+      rowP('2026-08-13', 'ACCEPT', '#8', ''),           // pending until merged
+      rowP('2026-08-14', 'REJECT', '#9', ''),           // reject → never pending
+      rowP('2026-08-15', 'ACCEPT', 'NONE', ''),         // no PR → not pending
+      rowP('2026-08-16', 'ACCEPT', '#10', '#8:MERGED'), // #8 now merged; #10 pending
+    ]));
+    const pend = pendingMerges(rows, 'org/repo');
+    expect(pend.map((p) => p.prNumber).sort()).toEqual(['10']);
+    expect(pend[0]).toMatchObject({ repo: 'org/repo', prNumber: '10' });
+  });
+
+  test('last-fate-wins: #8 MERGED then later CLOSED is not counted merged (parsePriorFates parity)', () => {
+    const { rows } = parseLedger(ledger([
+      rowP('2026-08-14', 'ACCEPT', '#8', '#8:MERGED'),
+      rowP('2026-08-15', 'INCONCLUSIVE', 'NONE', '#8:CLOSED'),
+    ]));
+    expect([...mergedFromFates(rows)]).toEqual([]);        // last fate is CLOSED
+    expect(pendingMerges(rows, 'o/r').map((p) => p.prNumber)).toEqual(['8']); // so #8 is still pending
+  });
+
+  test('dedupes a PR mentioned in multiple ACCEPT rows', () => {
+    const { rows } = parseLedger(ledger([rowP('2026-08-14', 'ACCEPT', '#5', ''), rowP('2026-08-15', 'ACCEPT', '#5', '')]));
+    expect(pendingMerges(rows, 'o/r')).toHaveLength(1);
+  });
+
+  test('aggregate exposes a pending total', () => {
+    // covered structurally — the aggregate payload carries totals.pending
+    const { rows } = parseLedger(ledger([rowP('2026-08-14', 'ACCEPT', '#3', '')]));
+    expect(pendingMerges(rows, 'o/r')).toHaveLength(1);
+  });
+});
+
 describe('dream-ledger: resolveLedgerPath (path safety)', () => {
   const repo = '/home/devuser/workspace/example';
   test('accepts a normal repo-relative path', () => {
@@ -102,7 +149,8 @@ describe('dream-ledger: discovery + aggregation (temp workspace)', () => {
     fs.mkdirSync(path.join(a, 'docs', 'dream-cycle'), { recursive: true });
     fs.writeFileSync(path.join(a, 'dream.config.json'), JSON.stringify({ repo: 'org/repo-a' }));
     // Append-only order: oldest first, newest last (as the engine writes it).
-    fs.writeFileSync(path.join(a, 'docs/dream-cycle/LEDGER.md'), ledger([row('2026-08-15', 'sec', 'REJECT'), row('2026-08-16', 'perf', 'ACCEPT')]));
+    // The ACCEPT row names PR #42 with no MERGED fate → one pending human merge.
+    fs.writeFileSync(path.join(a, 'docs/dream-cycle/LEDGER.md'), ledger([row('2026-08-15', 'sec', 'REJECT'), row('2026-08-16', 'perf', 'ACCEPT', '#42')]));
     const b = path.join(ws, 'repo-b');
     fs.mkdirSync(b, { recursive: true });
     fs.writeFileSync(path.join(b, 'dream.config.json'), JSON.stringify({ repo: 'org/repo-b' }));
@@ -125,7 +173,9 @@ describe('dream-ledger: discovery + aggregation (temp workspace)', () => {
     const agg = aggregateDreamStatus(ws, { limit: 5 });
     expect(agg.repoCount).toBe(3);
     expect(agg.totals).toMatchObject({ ACCEPT: 1, REJECT: 1, rows: 2 });
-    expect(agg.repos.find((r) => r.dir === 'repo-a')).toMatchObject({ ledgerExists: true, lastNight: '2026-08-16' });
+    expect(agg.repos.find((r) => r.dir === 'repo-a')).toMatchObject({ ledgerExists: true, lastNight: '2026-08-16', pendingCount: 1 });
+    expect(agg.totals.pending).toBe(1);
+    expect(agg.repos.find((r) => r.dir === 'repo-a').pending[0]).toMatchObject({ prNumber: '42', repo: 'org/repo-a' });
     expect(agg.repos.find((r) => r.dir === 'repo-b')).toMatchObject({ ledgerExists: false, rowCount: 0 });
     expect(agg.repos.find((r) => r.dir === 'repo-d').error).toMatch(/invalid/);
   });

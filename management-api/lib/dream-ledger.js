@@ -149,9 +149,51 @@ function discoverNominatedRepos(workspaceRoot) {
   return repos.sort((a, b) => a.name.localeCompare(b.name));
 }
 
+/** PR number from a ledger PR cell (`#8` / `8` / `PR #8`) → `"8"`, else null. */
+function prNumberOf(pr) {
+  const m = /#?(\d+)/.exec(pr || '');
+  return m ? m[1] : null;
+}
+
+/**
+ * PR numbers whose latest recorded fate is MERGED. Mirrors the engine's
+ * `parsePriorFates` exactly: parse every `#N:FATE` token across all rows,
+ * last-token-wins per PR, then keep those whose final fate is MERGED (so a
+ * `#8:MERGED … #8:CLOSED` sequence is *not* treated as merged).
+ */
+function mergedFromFates(rows) {
+  const fate = new Map();
+  const re = /#(\d+)\s*:\s*(MERGED|CLOSED|OPEN|STALE)\b/gi;
+  for (const r of rows) {
+    let m;
+    while ((m = re.exec(r.priorFates || '')) !== null) fate.set(m[1], m[2].toUpperCase());
+  }
+  const merged = new Set();
+  for (const [pr, f] of fate) if (f === 'MERGED') merged.add(pr);
+  return merged;
+}
+
+/**
+ * The judgment-broker queue (ADR-056): rows awaiting a human merge — verdict
+ * ACCEPT, a real PR, and not yet recorded `#N:MERGED` by any row's fate tokens.
+ * Deduped by PR (latest row's context wins). `repo` is the slug for the GitHub
+ * link the panel builds. Pure signal over the ledger — no network, no merge.
+ */
+function pendingMerges(rows, repo) {
+  const merged = mergedFromFates(rows);
+  const byPr = new Map();
+  for (const r of rows) {
+    if ((r.verdict || '').toUpperCase() !== 'ACCEPT') continue;
+    const n = prNumberOf(r.pr);
+    if (!n || merged.has(n)) continue;
+    byPr.set(n, { repo, prNumber: n, date: r.date, deep: r.deep, finding: r.finding });
+  }
+  return [...byPr.values()];
+}
+
 /** Read + summarise one nominated repo's ledger. Never throws on missing files. */
 function readRepoDreamStatus(entry, { limit = 5 } = {}) {
-  const base = { repo: entry.repo, dir: entry.name, ledgerExists: false, rowCount: 0, stats: verdictStats([]), latest: [], lastNight: null };
+  const base = { repo: entry.repo, dir: entry.name, ledgerExists: false, rowCount: 0, stats: verdictStats([]), latest: [], lastNight: null, pending: [], pendingCount: 0 };
   if (entry.error) return { ...base, error: entry.error };
   let ledgerAbs;
   try {
@@ -181,6 +223,7 @@ function readRepoDreamStatus(entry, { limit = 5 } = {}) {
     return { ...base, error: 'ledger unreadable' };
   }
   const { rows } = parseLedger(md);
+  const pending = pendingMerges(rows, entry.repo);
   return {
     repo: entry.repo,
     dir: entry.name,
@@ -189,6 +232,8 @@ function readRepoDreamStatus(entry, { limit = 5 } = {}) {
     stats: verdictStats(rows),
     latest: latestNights(rows, limit),
     lastNight: rows.length ? rows[rows.length - 1].date : null,
+    pending,
+    pendingCount: pending.length,
   };
 }
 
@@ -206,9 +251,10 @@ function aggregateDreamStatus(workspaceRoot, { limit = 5 } = {}) {
       acc.INCONCLUSIVE += r.stats.INCONCLUSIVE;
       acc.other += r.stats.other;
       acc.rows += r.rowCount;
+      acc.pending += r.pendingCount || 0;
       return acc;
     },
-    { ACCEPT: 0, REJECT: 0, INCONCLUSIVE: 0, other: 0, rows: 0 },
+    { ACCEPT: 0, REJECT: 0, INCONCLUSIVE: 0, other: 0, rows: 0, pending: 0 },
   );
   return { repoCount: repos.length, totals, repos };
 }
@@ -218,6 +264,8 @@ module.exports = {
   parseLedger,
   verdictStats,
   latestNights,
+  mergedFromFates,
+  pendingMerges,
   resolveLedgerPath,
   discoverNominatedRepos,
   readRepoDreamStatus,
