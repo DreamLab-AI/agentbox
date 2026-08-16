@@ -53,6 +53,8 @@ Agentbox is one component of **[VisionFlow](https://github.com/DreamLab-AI/Visio
 
 ---
 
+**Self-improvement.** The fleet dreams: a container-local orchestrator runs a nightly [dream cycle](https://github.com/DreamLab-AI/dream-engine) per repository — evidence-gated improvements proposed as draft PRs a human merges, witnessed and ledgered. It surfaces read-only on the operator cockpit ([ADR-055](docs/reference/adr/ADR-055-dream-cockpit-panel.md), `:8444` → `/dream.html`). Reproduce the run, audit the evidence, control the merge — *evaluation is not promotion*.
+
 ## Architecture
 
 One manifest composes the image; every durable action flows through the adapter dispatch pipeline, is stamped with the agent's identity, and lands on the sovereign substrate.
