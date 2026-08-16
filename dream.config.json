@@ -1,0 +1,50 @@
+{
+  "repo": "DreamLab-AI/agentbox",
+  "cron": "0 3 * * *",
+  "slots": [
+    {
+      "deep": "dream-engine",
+      "scan": ["verdict-parsing", "provider-fallback"]
+    },
+    {
+      "deep": "hooks-pipeline",
+      "scan": ["hook-syntax", "fail-open-discipline"]
+    },
+    {
+      "deep": "sovereign-mesh",
+      "scan": ["nostr-bridge", "relay-slot"]
+    },
+    {
+      "deep": "ontology-monitor",
+      "scan": ["proposal-idempotency", "broker-gate"]
+    }
+  ],
+  "bonusModuli": {
+    "30": "supervisord-service-graph",
+    "60": "nix-derivation-hygiene"
+  },
+  "controlPlaneProbes": [
+    "node --version && cargo --version",
+    "ls services/ config/hooks/ 2>&1 | head -20 || true"
+  ],
+  "buildStep": {
+    "cmd": "cd services/dream-engine && cargo build --release 2>&1 | tail -8",
+    "degradeOnWasmFailure": false
+  },
+  "evaluatorEntrypoints": {
+    "dream-engine-tests": "cd services/dream-engine && cargo test 2>&1 | tail -15",
+    "hooks-syntax": "fail=0; for f in config/hooks/*.cjs; do node --check \"$f\" 2>/dev/null || { echo \"SYNTAX FAIL: $f\"; fail=$((fail+1)); }; done; echo \"hooks-checked: $(ls config/hooks/*.cjs | wc -l)  failures: $fail\"; [ \"$fail\" -eq 0 ] && echo HOOKS-SYNTAX-OK || echo HOOKS-SYNTAX-FAIL"
+  },
+  "competitors": [],
+  "adrConvention": "3-digit",
+  "extraDisciplines": [
+    "self-referential: agentbox contains the dream-engine that dreams it (services/dream-engine). A change to that crate changes the dreamer itself — apply extra review scrutiny, and never let a self-modifying hypothesis bypass the human-merge gate. Still evidence-gated, still witnessed.",
+    "nix-build-out-of-annexe: the full image build (flake.nix) needs nixpkgs and the host build shell (tmux tab 6) — the HP annexe cannot run it. The evaluable surface here is the Rust crates + node hook syntax. Record image/Nix findings as 'HANDOFF (rebuild):' notes; never invent a nix-build evaluator that would silently no-op.",
+    "sibling-path-deps-fenced: services/nostr-pod-bridge path-deps the nostr-rust-forum and solid-pod-rs sibling repos (../../../../), which are NOT in the annexe clone, so that crate cannot build here. Do not evaluate or propose changes to it or its sibling crates — handoff to those repos' own cycles.",
+    "secrets-never-in-report: agentbox holds keys and env; never quote .env, agentbox/.env, or any *_KEY/*_PRIVKEY value into a report, ledger, or gist."
+  ],
+  "ledgerPath": "docs/dream-cycle/LEDGER.md",
+  "branchPrefix": "dream/",
+  "labels": ["dream-cycle", "agentbox-self"],
+  "autoMerge": false
+}
