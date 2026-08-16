@@ -96,7 +96,7 @@ Tonight's deep dive: **{deep}**. Surface scans: **{scans}**.
 ## 26-step pipeline
 
 ### Phase 1 — Orientation (steps 0–2)
-0. Read the ledger at `{ledger_path}`. Note prior-night fates, streaks, repeated directions.
+0. Read the ledger at `{ledger_path}`. Note prior-night fates, streaks, repeated directions. For each PR opened on a prior night that is not yet at a terminal fate, check its current GitHub state and carry it forward into this night's row as a `#<PR>:<FATE>` token (see step 19) — this is how merges are recorded and read.
 0.5. **Capability probe**: for each tool/evaluator/credential, record Available|Blocked|Degraded with evidence. If a capability is blocked, record FALLBACK and adjust scope.
 0.6. **Budget check**: research ≤ ½ token budget, evaluation ≤ ¼.
 1. Summarise the last 5 ledger rows. Identify momentum and stalls.
@@ -130,6 +130,7 @@ Tonight's deep dive: **{deep}**. Surface scans: **{scans}**.
 18. Write the report (this document).
 19. Append one ledger row to `{ledger_path}`:
     `| date | deep | finding (≤80 chars) | issue | PR | evaluated? | verdict | effect | witness | prior-night fates |`
+    The **prior-night fates** column MUST use space-separated `#<PR>:<FATE>` tokens, FATE ∈ `MERGED|CLOSED|OPEN|STALE` (e.g. `#7:MERGED #6:CLOSED`) — the token form ONLY, never prose. This column is machine-read: `ledger signals` derives `zeroMergeStreak` from it, and the operator cockpit's pending-merge queue (ADR-056) treats a `#N:MERGED` token as the merge record. Free prose here is silently ignored, so a merge written as prose is invisible to both.
 20. If ACCEPT: create branch `{branch_prefix}<deep>-<date>`, open draft PR, link issue.
 21. If REJECT or INCONCLUSIVE: no branch, no PR. Record locally.
 22. Publish gist with full report. Create issue summarising the finding.
@@ -258,5 +259,17 @@ mod tests {
         let slot = &cfg.slots[0];
         let prompt = compile(&cfg, slot, 20260815, &[]);
         assert!(prompt.contains("Human-review-only"));
+    }
+
+    #[test]
+    fn prompt_specifies_fate_token_format() {
+        let cfg = test_config();
+        let slot = &cfg.slots[0];
+        let prompt = compile(&cfg, slot, 20260815, &[]);
+        // The prior-night fates column must be instructed in token form so
+        // `ledger signals` (zeroMergeStreak) and the cockpit pending queue
+        // (ADR-056) can machine-read merges. Prose is silently ignored.
+        assert!(prompt.contains("#<PR>:<FATE>"));
+        assert!(prompt.contains("MERGED|CLOSED|OPEN|STALE"));
     }
 }

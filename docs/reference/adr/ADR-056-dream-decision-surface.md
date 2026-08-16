@@ -47,11 +47,19 @@ credentials, no write endpoint. It is pure signal over data we already parse.
 ### Phase 2 — the signed, witnessed decision record (proposed, NOT built)
 
 A `POST /dream/decide` that takes an operator's **NIP-98-signed** attestation
-("`<npub>` approves merging PR #N from dream cycle `<witness>`") and publishes it as a
-governed agent-event via the **existing** `lib/agent-event-publisher` /
-`lib/elevation-publisher` path — witnessed and federated to Nostr, so the mesh holds a
-signed, tamper-evident record of the judgment independent of GitHub. Bound by an
-explicit manifest gate and an authority class.
+("`<npub>` approves merging PR #N from dream cycle `<witness>`"), records it, and
+federates a witnessed, tamper-evident record so the mesh holds a signed judgment
+independent of GitHub. Bound by an explicit manifest gate and an authority class.
+
+**Consolidation (do not reinvent):** a merge approval is an agent-initiated action, so
+Phase 2 routes through the pipeline landed in parallel rather than a bespoke path —
+the [ADR-059](ADR-059-monotonic-agent-action-policy-pipeline.md) monotonic action
+policy pipeline for authorisation, recorded in the
+[ADR-057](ADR-057-replayable-agent-execution-journal.md) replayable execution journal,
+scoped by [ADR-058](ADR-058-lifecycle-scoped-capability-composition.md) capability
+composition, and federated via the existing `lib/agent-event-publisher` /
+`lib/elevation-publisher`. The dream verdict + witness are the action's evidence; the
+journal is where the signed decision durably lives.
 
 **Phase 2 is deferred behind a security sign-off**, because it is a governed *write*
 path in a public runtime. Its boundaries when it lands:
