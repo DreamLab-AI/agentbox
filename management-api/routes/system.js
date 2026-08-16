@@ -19,6 +19,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { buildSystemView } = require('../lib/system-manifest');
+const { buildExecutionCoverage } = require('../lib/execution-coverage');
 const auditChain = require('../lib/audit-chain');
 
 function eventsDir() {
@@ -30,9 +31,16 @@ async function systemRoutes(fastify, options) {
   const { manifest, adapters, logger } = options;
 
   fastify.get('/v1/system', async (request, reply) => {
+    // Live coverage snapshots from the execution subsystems when the server has
+    // wired them; otherwise the block reports the declared contract (ADR-057 D5,
+    // ADR-058 D3, ADR-059 D5). `execution` never claims coverage it cannot prove.
+    const live = (options.execution && typeof options.execution.snapshot === 'function')
+      ? options.execution.snapshot()
+      : {};
     reply.send({
       generated_at: new Date().toISOString(),
       ...buildSystemView(manifest || {}, adapters || null),
+      execution: buildExecutionCoverage(live),
     });
   });
 

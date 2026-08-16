@@ -1,6 +1,6 @@
 ---
 title: Architecture Decision Records
-description: Index of the agentbox ADRs (ADR-001..044) with status and the PRD/DDD they tie into.
+description: Index of the agentbox ADRs (ADR-001..059) with status and the PRD/DDD they tie into.
 ---
 
 # Architecture Decision Records
@@ -67,6 +67,11 @@ Older records use `**Status:**` markdown; ADR-023 onward carry YAML frontmatter
 | [052](ADR-052-dream-machine-hp-annexe.md) | Dream Machine HP annexe | Proposed | — |
 | [053](ADR-053-hex-canonical-pod-naming.md) | Hex-canonical pod naming | Accepted | — |
 | [054](ADR-054-ontology-bridge-write-path-findings.md) | Ontology-bridge write-path findings from the terminology live test | Proposed | VisionFlow ADR-006 · logseq ADR-NG-002 |
+| [055](ADR-055-dream-cockpit-panel.md) | Dream cockpit panel — surface the nightly dream loop on the operator console | Accepted | — |
+| [056](ADR-056-dream-decision-surface.md) | `/dream` decision surface — from inspect to a governed judgment-broker action | Accepted (Phase 1) / Proposed (Phase 2) | — |
+| [057](ADR-057-replayable-agent-execution-journal.md) | Replayable agent execution journal and derived projections | Proposed | [PRD-014](../prd/PRD-014-embodied-agent-loop.md) · [DDD-012](../ddd/DDD-012-sovereign-knowledge-elevation-domain.md) |
+| [058](ADR-058-lifecycle-scoped-capability-composition.md) | Lifecycle-scoped capability composition over the adapter spine | Proposed | [PRD-001](../prd/PRD-001-capabilities-and-adapters.md) · [DDD-010](../ddd/DDD-010-multi-harness-coordination-domain.md) |
+| [059](ADR-059-monotonic-agent-action-policy-pipeline.md) | Monotonic policy pipeline for every agent-initiated action | Proposed | [PRD-003](../prd/PRD-003-runtime-contract-and-container-hardening.md) · [DDD-013](../ddd/DDD-013-hardening-boundary-domain.md) |
 
 ## See also
 

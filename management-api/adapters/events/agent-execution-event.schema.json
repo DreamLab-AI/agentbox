@@ -1,0 +1,102 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://agentbox.dev/schema/agent-execution-event/1.json",
+  "title": "AgentExecutionEvent",
+  "description": "ADR-057 D1 — one canonical, append-only execution journal event. `session_urn + seq` is unique and strictly increasing. Bodies are losslessly JSON-serialisable; corrections append a compensating event rather than mutating. Routes through the ADR-005 events adapter and inherits its privacy/linked-data/observability boundaries.",
+  "type": "object",
+  "required": [
+    "schema",
+    "event_id",
+    "session_urn",
+    "seq",
+    "occurred_at",
+    "harness",
+    "agent_did",
+    "turn",
+    "type",
+    "payload",
+    "privacy_class"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "agentbox.exec-event/1",
+      "description": "Envelope schema id + version. A consumer may depend only on the canonical fields."
+    },
+    "event_id": {
+      "type": "string",
+      "description": "Stable per-event identity for idempotency. A retried append with the same event_id is a no-op. Minted as a urn:agentbox:event when the caller does not supply one."
+    },
+    "session_urn": {
+      "type": "string",
+      "description": "Owning interactive session (urn:agentbox:...). Together with seq forms the unique, strictly increasing key."
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Per-session monotonic sequence. Contiguous from 0; assigned by the journal, never by the caller."
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC timestamp of the recorded fact."
+    },
+    "harness": {
+      "type": "string",
+      "description": "Producing harness: claude | codex | ruflo | mcp | management-api | ..."
+    },
+    "agent_did": {
+      "type": "string",
+      "description": "did:nostr:<hex> of the acting agent identity (ADR-043 session boundary)."
+    },
+    "turn": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Turn ordinal within the session."
+    },
+    "step": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Optional step ordinal within the turn."
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "turn.started",
+        "input.claimed",
+        "input.rejected",
+        "step.started",
+        "model.requested",
+        "assistant.chunk",
+        "assistant.completed",
+        "model.failed",
+        "tool.called",
+        "tool.approval",
+        "tool.completed",
+        "step.completed",
+        "turn.stopping",
+        "turn.completed",
+        "turn.cancelled"
+      ],
+      "description": "Canonical minimum vocabulary (ADR-057 D1). Harness-specific detail rides payload.ext, never a new top-level type a consumer must know."
+    },
+    "payload": {
+      "type": "object",
+      "description": "Losslessly JSON-serialisable event body. Harness-specific fields live under payload.ext.<harness>."
+    },
+    "correlation": {
+      "type": "string",
+      "description": "Optional id grouping related events across sessions/turns."
+    },
+    "causation": {
+      "type": "string",
+      "description": "Optional event_id of the event that caused this one (D4 causation preservation)."
+    },
+    "privacy_class": {
+      "type": "string",
+      "enum": ["public", "internal", "sensitive", "secret"],
+      "description": "Privacy classification consumed by the ADR-008 privacy filter middleware."
+    }
+  }
+}
