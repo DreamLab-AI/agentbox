@@ -1,51 +1,63 @@
 /* agentbox · interaction plane — operator cockpit
-   Design system: "Industrial Warmth" (agentbox-of-empires DESIGN.md), applied
-   here as the unifying aesthetic across the voice presence, the AoE session
-   board and inline governance approvals.
+   Design system: coordination engineering — the VisionFlow / dreamlab-ai palette
+   (near-black surfaces, cyan/purple/emerald/amber accents, purple as the agentbox
+   product accent) applied across the voice presence, the AoE session board and
+   inline governance approvals. Evolved from the earlier "Industrial Warmth" set;
+   the --agentbox-* semantic token names are the stable cross-surface contract
+   (docs/developer/web-interface-design-system.md) — only their values moved.
 
    FONTS: loaded locally / system-fallback only — NO outbound font CDN. On a
    self-signed operator origin a CDN @import is both a mixed-trust request and a
-   fail-open dependency. Satoshi / DM Sans / JetBrains Mono are named first so
-   they are used when installed on the operator's machine; otherwise the stacks
-   degrade to the platform's native sans / mono with no network hit. */
+   fail-open dependency. Inter / JetBrains Mono are named first so they are used
+   when installed on the operator's machine; otherwise the stacks degrade to the
+   platform's native sans / mono with no network hit. */
 
 :root {
-  /* — Industrial Warmth palette — */
-  --amber:        #d97706;   /* brand anchor */
-  --amber-active: #fbbf24;   /* active / running */
+  /* — Coordination-engineering palette (evolved from Industrial Warmth to the
+       VisionFlow / dreamlab-ai design system). Product accent is purple:
+       agentbox's colour in the mesh substrate scheme. Token names are the
+       stable contract (see docs/developer/web-interface-design-system.md);
+       only their values moved. — */
+  --amber:        #f59e0b;   /* running / consequential (warning role) */
+  --amber-active: #fbbf24;   /* active / running, brighter */
   --amber-code:   #f59e0b;   /* data, warnings, code */
-  --teal:         #0d9488;   /* branches, agent nodes, info */
-  --teal-bright:  #2dd4bf;
+  --teal:         #00d4ff;   /* info / waiting / aimed — now cyan-toned */
+  --teal-bright:  #38e0ff;
 
-  --bg:           #020617;   /* deepest surface */
-  --bg-1:         #0f172a;   /* base surface */
-  --surface:      #172033;   /* elevated panels */
-  --surface-2:    #1e293b;   /* cards, raised */
-  --surface-3:    #24324a;   /* hover / active fill */
-  --line:         #24324a;   /* hairline borders */
-  --line-soft:    #1c2740;
+  --cyan:         #00d4ff;   /* info / waiting */
+  --purple:       #8b5cf6;   /* PRODUCT ACCENT — agentbox in the substrate scheme */
+  --purple-bright:#a78bfa;
+  --emerald:      #10b981;   /* healthy / idle */
 
-  --fg:           #f1f5f9;   /* primary text (AA on all surfaces) */
-  --fg-dim:       #94a3b8;   /* secondary text */
-  --fg-faint:     #7c8ba3;   /* tertiary / disabled (≥4.5:1 AA on all surfaces) */
+  --bg:           #0a0a0d;   /* deepest surface (VisionFlow bg-dark) */
+  --bg-1:         #0e0e11;   /* base surface (VisionFlow bg) */
+  --surface:      #14141b;   /* elevated panels */
+  --surface-2:    #1b1c25;   /* cards, raised */
+  --surface-3:    #262735;   /* hover / active fill */
+  --line:         rgba(139,146,165,.17);  /* hairline borders (cool, VisionFlow-toned) */
+  --line-soft:    rgba(139,146,165,.10);
 
-  --success:      #22c55e;
-  --warning:      #f59e0b;
-  --error:        #ef4444;
+  --fg:           #f0eded;   /* primary text (VisionFlow warm white) */
+  --fg-dim:       #9ca3af;   /* secondary text (AA on all surfaces) */
+  --fg-faint:     #8b95a5;   /* tertiary / disabled (≥4.5:1 AA on all surfaces) */
 
-  --radius:       10px;
-  --radius-sm:    7px;
+  --success:      #10b981;   /* emerald */
+  --warning:      #f59e0b;   /* amber */
+  --error:        #e94560;   /* VisionFlow crimson */
+
+  --radius:       12px;
+  --radius-sm:    8px;
   --gap:          4px;       /* 4px density base */
 
-  --font-display: 'Satoshi', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-sans:    'DM Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-sans:    'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-mono:    'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace;
 
-  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(2,6,23,.5);
+  --shadow: 0 1px 2px rgba(0,0,0,.5), 0 12px 32px rgba(0,0,0,.55);
 
   /* Cross-surface Agentbox contract; see docs/developer/web-interface-design-system.md. */
-  --agentbox-accent: var(--amber);
-  --agentbox-focus: var(--amber-active);
+  --agentbox-accent: var(--purple);
+  --agentbox-focus: var(--cyan);
   --agentbox-surface: var(--surface);
   --agentbox-foreground: var(--fg);
   --agentbox-muted: var(--fg-dim);
@@ -60,8 +72,8 @@ html, body { height: 100%; }
 body {
   margin: 0;
   background:
-    radial-gradient(1200px 600px at 82% -8%, rgba(217,119,6,.08), transparent 60%),
-    radial-gradient(900px 500px at -6% 100%, rgba(13,148,136,.07), transparent 55%),
+    radial-gradient(1200px 600px at 82% -8%, rgba(139,92,246,.10), transparent 60%),
+    radial-gradient(900px 500px at -6% 100%, rgba(0,212,255,.06), transparent 55%),
     var(--bg);
   color: var(--fg);
   font: 400 14px/1.5 var(--font-sans);
@@ -111,7 +123,10 @@ body {
   gap: 14px;
   padding: 10px 16px;
   border-bottom: 1px solid var(--line);
-  background: linear-gradient(180deg, rgba(23,32,51,.9), rgba(2,6,23,.6));
+  /* VisionFlow glass nav — translucent near-black with a blur veil. */
+  background: rgba(14,14,17,.72);
+  backdrop-filter: blur(12px) saturate(1.3);
+  -webkit-backdrop-filter: blur(12px) saturate(1.3);
   flex-shrink: 0;
 }
 #brand {
@@ -123,7 +138,7 @@ body {
   font-size: 15px;
   letter-spacing: .02em;
 }
-#brand .mark { color: var(--amber-active); }
+#brand .mark { color: var(--purple-bright); }
 #brand .sub {
   font: 600 10px/1 var(--font-mono);
   letter-spacing: .22em;
@@ -159,9 +174,9 @@ body {
   background: var(--fg-faint);
   box-shadow: 0 0 0 0 transparent;
 }
-.chip.ok  { color: var(--fg); border-color: rgba(34,197,94,.4); }
-.chip.ok::before  { background: var(--success); box-shadow: 0 0 8px rgba(34,197,94,.6); }
-.chip.unavailable { color: var(--fg); border-color: rgba(239,68,68,.45); }
+.chip.ok  { color: var(--fg); border-color: rgba(16,185,129,.4); }
+.chip.ok::before  { background: var(--success); box-shadow: 0 0 8px rgba(16,185,129,.6); }
+.chip.unavailable { color: var(--fg); border-color: rgba(233,69,96,.45); }
 .chip.unavailable::before { background: var(--error); }
 .chip.unauthorised { color: var(--fg); border-color: rgba(245,158,11,.5); }
 .chip.unauthorised::before { background: var(--warning); }
@@ -183,7 +198,7 @@ body {
   background: var(--surface);
   color: var(--fg-dim);
 }
-#auth-state.signed { color: var(--teal-bright); border-color: rgba(45,212,191,.4); }
+#auth-state.signed { color: var(--teal-bright); border-color: rgba(56,224,255,.4); }
 #auth-state.bearer { color: var(--amber-code); border-color: rgba(245,158,11,.4); }
 .btn-ghost {
   font: 600 12px var(--font-sans);
@@ -195,7 +210,7 @@ body {
   color: var(--fg);
   cursor: pointer;
 }
-.btn-ghost:hover { background: var(--surface-3); border-color: var(--amber); }
+.btn-ghost:hover { background: var(--surface-3); border-color: var(--purple); }
 
 /* ─────────────────────────────────────────────── layout ───────────────── */
 #layout {
@@ -212,7 +227,7 @@ body {
 #rail {
   min-height: 0;
   display: flex; flex-direction: column;
-  background: linear-gradient(180deg, rgba(15,23,42,.5), rgba(2,6,23,.2));
+  background: linear-gradient(180deg, rgba(15,23,42,.5), rgba(0,0,0,.2));
 }
 
 /* Section header shared across panels */
@@ -262,7 +277,7 @@ body {
   min-height: 44px;
 }
 .card:hover { border-color: var(--line); background: var(--surface-2); }
-.card.aimed { border-color: var(--teal); box-shadow: inset 0 0 0 1px rgba(13,148,136,.5); }
+.card.aimed { border-color: var(--teal); box-shadow: inset 0 0 0 1px rgba(0,212,255,.5); }
 .card-top { display: flex; align-items: center; gap: 11px; }
 
 /* status-FSM ring */
@@ -275,7 +290,7 @@ body {
   color: var(--c);
   font: 700 14px var(--font-mono);
   position: relative;
-  background: rgba(2,6,23,.4);
+  background: rgba(0,0,0,.4);
 }
 .ring::after {
   content: '';
@@ -312,13 +327,13 @@ body {
   border-radius: 5px;
   border: 1px solid var(--line);
   color: var(--fg-dim);
-  background: rgba(2,6,23,.35);
+  background: rgba(0,0,0,.35);
 }
 .pill.state { text-transform: uppercase; letter-spacing: .08em; }
 .state-running .pill.state { color: var(--amber-active); border-color: rgba(251,191,36,.35); }
-.state-waiting .pill.state { color: var(--teal-bright); border-color: rgba(45,212,191,.35); }
-.state-idle    .pill.state { color: var(--success); border-color: rgba(34,197,94,.35); }
-.state-error   .pill.state { color: var(--error); border-color: rgba(239,68,68,.4); }
+.state-waiting .pill.state { color: var(--teal-bright); border-color: rgba(56,224,255,.35); }
+.state-idle    .pill.state { color: var(--success); border-color: rgba(16,185,129,.35); }
+.state-error   .pill.state { color: var(--error); border-color: rgba(233,69,96,.4); }
 .pill.branch { color: var(--teal-bright); }
 .pill.branch::before { content: '⑂ '; opacity: .7; }
 .pill.age { color: var(--fg-faint); }
@@ -336,7 +351,7 @@ body {
   cursor: pointer;
 }
 .card-actions .mini:hover { background: var(--surface-3); border-color: var(--amber); }
-.card-actions .mini.aim.on { color: var(--teal-bright); border-color: var(--teal); background: rgba(13,148,136,.12); }
+.card-actions .mini.aim.on { color: var(--teal-bright); border-color: var(--teal); background: rgba(0,212,255,.12); }
 .card.aimed .voice-tag {
   position: absolute; top: 10px; right: 12px;
   font: 600 9px var(--font-mono); letter-spacing: .12em; text-transform: uppercase;
@@ -415,7 +430,7 @@ body {
   position: relative; flex-shrink: 0;
   width: 58px; height: 58px; border-radius: 50%;
   display: grid; place-items: center;
-  background: radial-gradient(circle at 50% 40%, rgba(23,32,51,.9), rgba(2,6,23,.9));
+  background: radial-gradient(circle at 50% 40%, rgba(23,32,51,.9), rgba(0,0,0,.9));
   border: 2px solid var(--oc);
   color: var(--oc);
 }
@@ -468,7 +483,7 @@ body {
 .turn.has-more { cursor: pointer; }
 .turn.user          { border-left-color: var(--amber); }
 .turn.assistant     { border-left-color: var(--success); }
-.turn.voice-user    { border-left-color: rgba(45,212,191,.5); opacity: .85; }
+.turn.voice-user    { border-left-color: rgba(56,224,255,.5); opacity: .85; }
 .turn.voice-inject  { border-left-color: var(--teal); }
 .turn.voice-reply   { border-left-color: var(--teal-bright); }
 .turn.nostr-inject,
@@ -499,10 +514,10 @@ body {
   font: 700 12px var(--font-sans);
   border-radius: var(--radius-sm); border: 1px solid transparent; cursor: pointer;
 }
-.appr .approve { background: rgba(34,197,94,.15); color: #86efac; border-color: rgba(34,197,94,.4); }
-.appr .approve:hover { background: rgba(34,197,94,.28); }
-.appr .deny { background: rgba(239,68,68,.13); color: #fca5a5; border-color: rgba(239,68,68,.4); }
-.appr .deny:hover { background: rgba(239,68,68,.26); }
+.appr .approve { background: rgba(16,185,129,.15); color: #86efac; border-color: rgba(16,185,129,.4); }
+.appr .approve:hover { background: rgba(16,185,129,.28); }
+.appr .deny { background: rgba(233,69,96,.13); color: #fca5a5; border-color: rgba(233,69,96,.4); }
+.appr .deny:hover { background: rgba(233,69,96,.26); }
 .appr button:disabled { opacity: .5; cursor: default; }
 .appr .a-note { font: 500 11px var(--font-mono); color: var(--fg-faint); }
 .appr .a-note.err { color: var(--error); }
@@ -526,14 +541,16 @@ input[type=text], input:not([type]) {
   font: 13px var(--font-sans);
 }
 input::placeholder { color: var(--fg-faint); }
-input:focus { outline: none; border-color: var(--amber); box-shadow: 0 0 0 2px rgba(217,119,6,.25); }
+input:focus { outline: none; border-color: var(--purple); box-shadow: 0 0 0 2px rgba(139,92,246,.30); }
 button.send {
   min-height: 40px; min-width: 44px;
-  background: var(--amber); color: #1a1206;
+  /* Primary action → the purple product accent, with AA-safe dark text
+     (white on #8b5cf6 is only ~3.1:1; #150a2a is ~6:1). */
+  background: var(--purple); color: #150a2a;
   border: 0; border-radius: var(--radius-sm);
   padding: 8px 16px; font: 700 13px var(--font-sans); cursor: pointer;
 }
-button.send:hover { background: var(--amber-active); }
+button.send:hover { background: var(--purple-bright); }
 button.send:disabled { opacity: .5; cursor: default; }
 
 /* ───────────────────────────────────── auth dialog ────────────────────── */
@@ -546,7 +563,7 @@ button.send:disabled { opacity: .5; cursor: default; }
   width: min(440px, 92vw);
   box-shadow: var(--shadow);
 }
-#auth-dialog::backdrop { background: rgba(2,6,23,.7); backdrop-filter: blur(2px); }
+#auth-dialog::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(2px); }
 #auth-dialog .dlg-in { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
 #auth-dialog h3 { margin: 0; font-family: var(--font-display); font-size: 17px; }
 #auth-dialog p { margin: 0; font-size: 12.5px; color: var(--fg-dim); line-height: 1.55; }
