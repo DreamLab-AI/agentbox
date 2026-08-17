@@ -2,7 +2,7 @@
 # "Build with Quality" - Optimal project building with integrated quality engineering
 
 name: build-with-quality
-version: 1.2.0
+version: 1.2.1
 description: |
   Combined Claude Code V3 and Agentic QE skill for optimal project building
   with integrated quality engineering. Provides 114+ specialized agents,
@@ -344,6 +344,13 @@ methodologies:
       auditor_model_family_must_differ: true
       auditor_must_run_adversarial_probe: true
       narrative_evidence_auto_rejected: true
+      # Latest model on the local Codex harness (verified 2026-08-17).
+      # ChatGPT-account harness rejects the "-codex" suffixed IDs; gpt-5.4
+      # is both the default and the newest accepted. `spark` maps to
+      # gpt-5.3-codex-spark for cheap/fast runs only — never for the audit.
+      auditor_harness: codex-cli
+      auditor_model: gpt-5.4
+      auditor_invocation: "codex exec -m gpt-5.4"
 
     versioning:
       staleness_threshold_days: 30

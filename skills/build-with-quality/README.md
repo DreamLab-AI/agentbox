@@ -1,10 +1,12 @@
-# Build with Quality Skill (v1.2.0)
+# Build with Quality Skill (v1.2.1)
 
 **[Claude Flow V3](https://github.com/ruvnet/claude-flow/tree/main/v3) + [Agentic QE](https://github.com/proffesor-for-testing/agentic-qe) Combined Skill — now with Expectation-Driven Development**
 
 A powerful skill that combines the development capabilities of [Claude Flow V3](https://github.com/ruvnet/claude-flow/tree/main/v3) with the quality engineering excellence of [Agentic QE](https://github.com/proffesor-for-testing/agentic-qe), enabling optimal project building with integrated quality assurance.
 
 **v1.2.0 introduces Expectation-Driven Development (EDD)** — a design-time conversation layer that wraps DDD/ADR/TDD. Authors plain-text expectations before the coder runs; agents must produce executed evidence (not narration) that each expectation is fulfilled; an auditor agent on a different model family independently verifies; regression-critical expectations are stabilized as automated tests before merge. See [EDD-PROTOCOL.md](./EDD-PROTOCOL.md).
+
+**v1.2.1 pins the adversarial auditor model**: the evidence-auditor runs on **GPT-5.4** via the local Codex harness (`codex exec -m gpt-5.4`) — the latest model the ChatGPT-account harness accepts (the `-codex` suffixed IDs are rejected there; verified 2026-08-17).
 
 ## Quick Links
 

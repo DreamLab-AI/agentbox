@@ -41,10 +41,13 @@ Phase 2.5: EVIDENCE PRODUCTION & AUDIT (NEW v1.2.0 — EDD steps 3-4)
 │   └── Three evidence categories: executable / partial / not-executable
 ├── evidence-auditor (DIFFERENT model family) independently verifies
 │   ├── Mandate: find counter-example, do not confirm
-│   └── RUN VIA CODEX: invoke `/codex:adversarial-review` (Codex/GPT) as the
-│       auditor — GPT is a genuinely different model family from the Claude
-│       producer, which is exactly what the anti-fox rule requires. Fail-open:
-│       if the codex plugin / Codex CLI is unavailable, fall back to a Claude
+│   └── RUN VIA CODEX: invoke `/codex:adversarial-review` — or directly
+│       `codex exec -m gpt-5.4` — as the auditor. **GPT-5.4** is the latest
+│       model the local Codex harness supports (ChatGPT-account harness;
+│       `gpt-5.4-codex` is rejected there — verified 2026-08-17) and is a
+│       genuinely different model family from the Claude producer, which is
+│       exactly what the anti-fox rule requires. Fail-open: if the codex
+│       plugin / Codex CLI is unavailable, fall back to a Claude
 │       `reviewer`/`evidence-auditor` subagent and note the degraded (same-family) audit.
 ├── Human adversarial review (EDD step 5)
 └── Loop back to Phase 2 if gaps found (EDD step 6)

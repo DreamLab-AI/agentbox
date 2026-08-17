@@ -3,7 +3,7 @@ name: build-with-quality
 description: "Implement features with tests and quality gates, debug hard bugs, and stress-test designs. Use when building a feature with TDD/EDD, chasing a stubborn multi-function bug (feedback-loop-first), interrogating a design before coding, or running a coverage/security/accessibility quality-gate pass. Supersedes agentic-qe, reasoningbank-*, and pair-programming."
 license: MIT
 metadata:
-  version: 1.2.0
+  version: 1.2.1
   author: Claude Flow
   tags: [meta-skill, development, qa, edd, tdd, bdd, adr, ddd, agents, quality-gates, evidence, sona, hnsw, coverage, security, accessibility, chaos-testing]
   mcp_server: false

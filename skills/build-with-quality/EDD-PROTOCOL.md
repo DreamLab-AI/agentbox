@@ -49,11 +49,13 @@ artifact and demands the agent prove each one.
        │
        ▼
   4. AUDIT          Different agent (evidence-auditor, distinct model) —
-                    run via `/codex:adversarial-review` (Codex/GPT) so the
-                    auditor is a genuinely different model family from the
-                    Claude producer; independently verifies evidence against
-                    code. Fail-open to a Claude reviewer subagent if Codex is
-                    unavailable (note the degraded same-family audit).
+                    run via `/codex:adversarial-review` or `codex exec -m
+                    gpt-5.4` (GPT-5.4: the latest model on the local Codex
+                    harness) so the auditor is a genuinely different model
+                    family from the Claude producer; independently verifies
+                    evidence against code. Fail-open to a Claude reviewer
+                    subagent if Codex is unavailable (note the degraded
+                    same-family audit).
        │
        ▼
   5. CHALLENGE      Human reviews adversarially: "what input would break this?"
@@ -74,10 +76,13 @@ artifact and demands the agent prove each one.
   expected".
 - Step 4 auditor agent MUST be a different agent from Step 2/3 producer.
   Anti-fox separation is mandatory, not optional. Preferred realization: the
-  auditor runs on **Codex/GPT** via `/codex:adversarial-review` (codex-plugin-cc),
-  a different model family from the Claude producer — the strongest form of
-  anti-fox separation. Fall back to a distinct Claude subagent only if Codex is
-  unavailable, and record that the audit was same-family (weaker).
+  auditor runs on **GPT-5.4** via `/codex:adversarial-review` (codex-plugin-cc)
+  or `codex exec -m gpt-5.4` — the latest model the local Codex harness
+  supports (the `-codex` suffixed IDs are rejected on a ChatGPT-account
+  harness), and a different model family from the Claude producer — the
+  strongest form of anti-fox separation. Fall back to a distinct Claude
+  subagent only if Codex is unavailable, and record that the audit was
+  same-family (weaker).
 - Step 7 is non-skippable for any expectation tagged
   `regression_critical: true`. If you can't stabilize it, you can't ship it.
 
