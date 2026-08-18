@@ -95,7 +95,7 @@ per_user_agents = false
 # at a local GLM endpoint to keep summarisation on-box.
 [sovereign_mesh.mobile_bridge]
 enabled       = false      # register the SessionEnd phone-mirror hook
-summary_model = "glm-5.2"  # Z.AI/GLM model for the digest (→ AGENTBOX_ZAI_MODEL)
+summary_model = "glm-5.3"  # Z.AI/GLM model for the digest (→ AGENTBOX_ZAI_MODEL)
 
 # ── Ontology monitor (SessionEnd Z.AI worker → forum broker gate) ─────────────
 # On SessionEnd a Z.AI/GLM worker (ADR-011) reviews the session's concept-bearing
@@ -855,7 +855,7 @@ timeout_ms = 180000
 
 [consultants.zai]
 enabled = true
-model   = "glm-5.2"
+model   = "glm-5.3"
 reasoning_effort = "high"   # deep thinking: maps to Claude Code MAX_THINKING_TOKENS → GLM reasoning_effort
 home    = "/home/devuser/.zai"
 timeout_ms = 180000
@@ -1119,7 +1119,7 @@ enabled             = true                                           # master ga
 scan_dirs           = ["/projects", "/home/devuser/workspace/project"]  # one-level-deep git-repo discovery roots
 scan_interval_hours = 6                                              # periodic re-scan; 0 = on-demand only (no scheduler)
 github_enrichment   = true                                          # pull open issues + stars via GITHUB_TOKEN (one external hop) — enabled 2026-07-22: token validated live (HTTP 200) and present in runtime env + .env (0600); E-2 cleared. Boot apply-class (ADR-039).
-primer_model        = "glm-5.2"                                     # Z.AI/GLM model for primers/synopses (→ consultant, ADR-011)
+primer_model        = "glm-5.3"                                     # Z.AI/GLM model for primers/synopses (→ consultant, ADR-011)
 primer_on_scan      = false                                         # auto-generate primers for new projects during a scan
 nostr_publish       = true                                          # publish kind-30841 digests to the operator's did:nostr
 metrics             = true                                          # emit the agentbox_project_* gauges on the port-bound /metrics

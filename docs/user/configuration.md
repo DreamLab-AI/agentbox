@@ -301,7 +301,7 @@ intelligence_signal = true   # write ADR-043 QualitySignal files for the SONA le
 
 [consultants.zai]
 enabled          = true
-model            = "glm-5.2"
+model            = "glm-5.3"
 reasoning_effort = "high"   # NEW field: low | medium | high — deep-thinking depth
 home             = "/home/devuser/.zai"
 timeout_ms       = 180000
@@ -310,8 +310,8 @@ timeout_ms       = 180000
 `reasoning_effort` plumbs through `provision-agent-stacks.py` to
 `AGENTBOX_ZAI_REASONING_EFFORT`, passed as an env var to the `consultant-zai`
 MCP, which maps it in `zai/server.js` to Claude Code's `MAX_THINKING_TOKENS`
-(`low` = 4096, `medium` = 10000, `high` = 31999). The Z.AI Anthropic-compatible
-endpoint (`api.z.ai/api/anthropic`) then translates that thinking-token
+(`low` = 4096, `medium` = 10000, `high` = 31999). The Z.AI subscription
+endpoint (`api.z.ai/api/paas/v4`) then translates that thinking-token
 budget into GLM's own `reasoning_effort` parameter. Leave unset to fall back
 to the endpoint default. Note: ZCode (`zcode.z.ai`) is Z.AI's own desktop/web
 IDE, not a CLI — it is not part of this integration path.
@@ -357,7 +357,7 @@ enabled             = true
 scan_dirs           = ["/projects", "/home/devuser/workspace/project"]
 scan_interval_hours = 6        # 0 = on-demand only (no scheduler)
 github_enrichment   = false    # pulls issues + stars via GITHUB_TOKEN — one external hop
-primer_model        = "glm-5.2"
+primer_model        = "glm-5.3"
 primer_on_scan      = false    # auto-generate AI primers for new projects during a scan
 nostr_publish       = true     # publish kind-30841 digests to the operator's did:nostr
 metrics             = true     # agentbox_project_* gauges on the port-bound /metrics

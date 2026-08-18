@@ -41,8 +41,8 @@ const uris = require('./uris');
 // 180s for whole transcripts; a primer prompt is far smaller).
 const ZAI_TIMEOUT_MS = 120_000;
 const ZAI_MAX_TOKENS = 1200;
-const DEFAULT_ZAI_BASE = 'https://api.z.ai/api/anthropic';
-const DEFAULT_MODEL = 'glm-5.2';
+const DEFAULT_ZAI_BASE = 'https://api.z.ai/api/paas/v4';
+const DEFAULT_MODEL = 'glm-5.3';
 const PRIMER_NAMESPACE = 'project-tracking-primers';
 
 // helm's withAISlot cap — at most two consultant generations in flight at once.

@@ -73,7 +73,7 @@ The image bakes `/opt/agentbox/skills` (118 skills). Skills are the JIT context 
 | RuvNet Brain KB (`ruvnet-kb`, ingest, grounding hook) | [subsystem-notes §RuvNet Brain](docs/reference/claude-context/subsystem-notes.md) |
 | System surface `/v1/system`, hash-chained events | [subsystem-notes §System Surface](docs/reference/claude-context/subsystem-notes.md) |
 | Model routing (Claude/Codex per-activity) | [subsystem-notes §Model Routing](docs/reference/claude-context/subsystem-notes.md) |
-| Consultant tier (Z.AI glm-5.2, reasoning_effort wiring) | [subsystem-notes §Consultant Tier](docs/reference/claude-context/subsystem-notes.md) |
+| Consultant tier (Z.AI glm-5.3, reasoning_effort wiring) | [subsystem-notes §Consultant Tier](docs/reference/claude-context/subsystem-notes.md) |
 | Project tracking (kind-30841, telemetry, /v1/projects) | [subsystem-notes §Project Tracking](docs/reference/claude-context/subsystem-notes.md) |
 | Voice + AoE operator console (Caddy :8444, tab0-bridge :8971, Unmute loop) | [voice/README.md](voice/README.md) + [subsystem-notes §Voice Plane](docs/reference/claude-context/subsystem-notes.md) + [config/tab0-bridge/README.md](config/tab0-bridge/README.md) |
 | Security audit sprint 2026-05-11 (7 fixes) | CHANGELOG.md `[Security Audit Sprint] - 2026-05-11` |

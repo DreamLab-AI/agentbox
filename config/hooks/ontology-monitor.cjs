@@ -170,7 +170,7 @@ async function zaiReview(work, concepts) {
     cmd: ZAI_BIN, args: ['-p', prompt],
     env: {
       HOME: process.env.AGENTBOX_ZAI_HOME || '/home/zai-user',
-      ANTHROPIC_BASE_URL: process.env.ZAI_URL || 'https://api.z.ai/api/anthropic',
+      ANTHROPIC_BASE_URL: process.env.ZAI_URL || 'https://api.z.ai/api/paas/v4',
       ANTHROPIC_API_KEY: process.env.ZAI_ANTHROPIC_API_KEY || process.env.ZAI_API_KEY || '',
       ZAI_API_KEY: process.env.ZAI_API_KEY || '',
     },

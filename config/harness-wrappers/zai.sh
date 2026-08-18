@@ -11,8 +11,8 @@
 #     Claude Code reads that profile's runtime-written settings.local.json (its
 #     own ANTHROPIC_BASE_URL + token) and never the global ~/.claude that
 #     carries the direct-Anthropic key (tmux-autostart.sh:170-174, verbatim);
-#   * the Z.AI redirect (api.z.ai/api/anthropic, or the /coding/paas/v4
-#     subscription path) is asserted present and correct, and the wrapper
+#   * the Z.AI redirect (api.z.ai/api/paas/v4, the subscription PaaS
+#     endpoint) is asserted present and correct, and the wrapper
 #     HARD-FAILS LOUDLY if it is missing or points anywhere other than z.ai —
 #     turning the silent mis-billing failure mode (the top sprint risk) into an
 #     immediate, visible launch failure.

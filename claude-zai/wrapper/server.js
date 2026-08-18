@@ -62,7 +62,7 @@ function loadZaiConfig() {
     // Fallback to environment variables
     return {
         apiKey: process.env.ZAI_ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY,
-        baseUrl: process.env.ZAI_BASE_URL || 'https://api.z.ai/api/anthropic',
+        baseUrl: process.env.ZAI_BASE_URL || 'https://api.z.ai/api/paas/v4',
         workerPoolSize: parseInt(process.env.CLAUDE_WORKER_POOL_SIZE || '4', 10),
         maxQueueSize: parseInt(process.env.CLAUDE_MAX_QUEUE_SIZE || '50', 10)
     };
@@ -71,7 +71,7 @@ function loadZaiConfig() {
 const config = loadZaiConfig();
 const WORKER_POOL_SIZE = config.workerPoolSize || parseInt(process.env.CLAUDE_WORKER_POOL_SIZE || '4', 10);
 const MAX_QUEUE_SIZE = config.maxQueueSize || parseInt(process.env.CLAUDE_MAX_QUEUE_SIZE || '50', 10);
-const ZAI_BASE_URL = config.baseUrl || 'https://api.z.ai/api/anthropic';
+const ZAI_BASE_URL = config.baseUrl || 'https://api.z.ai/api/paas/v4';
 const ZAI_API_KEY = config.apiKey;
 
 app.use(bodyParser.json({ limit: '10mb' }));
@@ -263,9 +263,9 @@ const pool = new ClaudeWorkerPool(WORKER_POOL_SIZE);
 app.get('/health', (req, res) => {
     res.json({
         status: 'ok',
-        service: 'z.ai-glm-5.2-wrapper',
+        service: 'z.ai-glm-5.3-wrapper',
         backend: 'Z.AI GLM Coding Plan',
-        defaultModel: 'glm-5.2',
+        defaultModel: 'glm-5.3',
         baseUrl: ZAI_BASE_URL,
         configLoaded: !!config.apiKey,
         ...pool.getStats()

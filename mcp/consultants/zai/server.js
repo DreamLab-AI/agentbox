@@ -17,9 +17,9 @@ const { spawnCli } = require('../shared/spawn-cli');
 
 const ZAI_BIN  = process.env.AGENTBOX_ZAI_BIN  || 'claude-zai';
 const ZAI_HOME = process.env.AGENTBOX_ZAI_HOME || '/home/zai-user';
-const MODEL    = process.env.AGENTBOX_ZAI_MODEL || 'glm-5.2';
+const MODEL    = process.env.AGENTBOX_ZAI_MODEL || 'glm-5.3';
 
-// GLM-5.2 reasoning depth ([consultants.zai].reasoning_effort). claude-zai is
+// GLM reasoning depth ([consultants.zai].reasoning_effort). claude-zai is
 // Claude Code on the wire, so the lever is the extended-thinking budget: the
 // Z.AI Anthropic-compatible endpoint translates the thinking block into GLM
 // reasoning_effort. Unset/unknown → no thinking env, endpoint default.
@@ -43,7 +43,7 @@ async function callConsult({ question, context_excerpt }) {
     args: ['-p', prompt],
     env: {
       HOME:                   ZAI_HOME,
-      ANTHROPIC_BASE_URL:     process.env.ZAI_URL                || 'https://api.z.ai/api/anthropic',
+      ANTHROPIC_BASE_URL:     process.env.ZAI_URL                || 'https://api.z.ai/api/paas/v4',
       ANTHROPIC_API_KEY:      process.env.ZAI_ANTHROPIC_API_KEY  || process.env.ZAI_API_KEY || '',
       ZAI_API_KEY:            process.env.ZAI_API_KEY            || '',
       AGENTBOX_AGENT_ID:      'consultant-zai',

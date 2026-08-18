@@ -51,7 +51,7 @@ timeout_ms = 180000
 
 [consultants.zai]
 enabled          = true
-model            = "glm-5.2"
+model            = "glm-5.3"
 reasoning_effort = "high"   # low | medium | high — deep-thinking depth; see below
 home             = "/home/devuser/.zai"
 timeout_ms       = 180000
@@ -66,15 +66,17 @@ through `provision-agent-stacks.py` to the `AGENTBOX_ZAI_REASONING_EFFORT`
 env var, passed to the `consultant-zai` MCP, which maps it in `zai/server.js`
 to Claude Code's `MAX_THINKING_TOKENS` (`low` = 4096, `medium` = 10000,
 `high` = 31999). The Z.AI Anthropic-compatible endpoint
-(`api.z.ai/api/anthropic`) then translates that thinking-token budget into
+(`api.z.ai/api/paas/v4`) then translates that thinking-token budget into
 GLM's own `reasoning_effort` parameter. Leave the field unset to fall back to
 the endpoint default.
 
-`glm-5.2` remains Z.AI's flagship coding model (1M context) and the model
-used everywhere Z.AI appears in agentbox (`consultants.zai.model`,
+`glm-5.3` is Z.AI's current flagship coding model and the one used everywhere
+Z.AI appears in agentbox (`consultants.zai.model`,
 `project_tracking.primer_model`, `sovereign_mesh.mobile_bridge` summary
-model). **ZCode** (`zcode.z.ai`) is Z.AI's own desktop/web IDE — it is not a
-CLI and does not replace the `claude-zai` wrapper harness; don't confuse the
+model). All traffic routes through the subscription PaaS endpoint
+(`api.z.ai/api/paas/v4`). **ZCode** (`zcode.z.ai`) is Z.AI's own
+desktop/web IDE — it is not a CLI and does not replace the `claude-zai`
+wrapper harness; don't confuse the
 two when reading Z.AI's own docs.
 
 Each enabled consultant requires its provider gate too:

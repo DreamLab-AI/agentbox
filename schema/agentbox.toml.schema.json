@@ -947,6 +947,7 @@
             "model": {
               "type": "string",
               "enum": [
+                "glm-5.3",
                 "glm-5.2",
                 "glm-5",
                 "glm-4-plus",
@@ -954,8 +955,8 @@
                 "glm-4-air",
                 "glm-4-flash"
               ],
-              "default": "glm-5.2",
-              "description": "Z.AI / GLM model identifier. glm-5 is superseded by glm-5.2; glm-5.2 is the current recommended default."
+              "default": "glm-5.3",
+              "description": "Z.AI / GLM model identifier. glm-5.3 is the current recommended default (subscription plan); glm-5.2 is still supported."
             },
             "reasoning_effort": {
               "type": "string",
@@ -1553,7 +1554,7 @@
             },
             "summary_model": {
               "type": "string",
-              "description": "Z.AI / GLM model used to summarise the session (exported as AGENTBOX_ZAI_MODEL to the hook). Default glm-5.2. Point ZAI_URL at a local GLM endpoint to keep summarisation on-box."
+              "description": "Z.AI / GLM model used to summarise the session (exported as AGENTBOX_ZAI_MODEL to the hook). Default glm-5.3. Point ZAI_URL at a local GLM endpoint to keep summarisation on-box."
             }
           }
         },

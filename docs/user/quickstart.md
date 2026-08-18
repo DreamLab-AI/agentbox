@@ -486,7 +486,7 @@ enabled             = true
 scan_dirs           = ["/projects", "/home/devuser/workspace/project"]
 scan_interval_hours = 6          # 0 = on-demand only
 github_enrichment   = false      # set true (with GITHUB_TOKEN) to pull open issues + stars
-primer_model        = "glm-5.2"  # needs a Z.AI/GLM key for primers/synopses
+primer_model        = "glm-5.3"  # needs a Z.AI/GLM key for primers/synopses
 primer_on_scan      = false      # set true to auto-generate primers for new projects during a scan
 nostr_publish       = true       # signs kind-30841 digests to your did:nostr
 metrics             = true

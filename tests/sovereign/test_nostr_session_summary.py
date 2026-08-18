@@ -241,7 +241,7 @@ class _FakeResp:
 def test_summarise_via_zai_builds_request_and_parses(hook, clean_env, monkeypatch):
     monkeypatch.setenv("ZAI_URL", "https://glm.local/api/")
     monkeypatch.setenv("ZAI_ANTHROPIC_API_KEY", "secret-key")
-    monkeypatch.setenv("AGENTBOX_ZAI_MODEL", "glm-5.2")
+    monkeypatch.setenv("AGENTBOX_ZAI_MODEL", "glm-5.3")
 
     captured = {}
 
@@ -259,7 +259,7 @@ def test_summarise_via_zai_builds_request_and_parses(hook, clean_env, monkeypatc
     assert digest == {"summary": "did the thing", "actions": ["edited x"], "actionable_questions": []}
     # trailing slash collapsed, /v1/messages appended
     assert captured["url"] == "https://glm.local/api/v1/messages"
-    assert captured["body"]["model"] == "glm-5.2"
+    assert captured["body"]["model"] == "glm-5.3"
     assert captured["body"]["messages"][0]["content"] == "USER: hi\n\nASSISTANT: done"
     assert captured["headers"]["x-api-key"] == "secret-key"
     assert captured["headers"]["authorization"] == "Bearer secret-key"
@@ -277,8 +277,8 @@ def test_summarise_via_zai_defaults_model_and_endpoint(hook, clean_env, monkeypa
 
     monkeypatch.setattr(hook.urllib.request, "urlopen", fake_urlopen)
     hook.summarise_via_zai("transcript")
-    assert captured["url"] == "https://api.z.ai/api/anthropic/v1/messages"
-    assert captured["model"] == "glm-5.2"
+    assert captured["url"] == "https://api.z.ai/api/paas/v4/v1/messages"
+    assert captured["model"] == "glm-5.3"
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

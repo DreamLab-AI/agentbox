@@ -159,10 +159,10 @@ SUMMARY_SYSTEM = (
 
 
 def summarise_via_zai(transcript: str) -> dict:
-    base = env_first("ZAI_URL").rstrip("/") or "https://api.z.ai/api/anthropic"
+    base = env_first("ZAI_URL").rstrip("/") or "https://api.z.ai/api/paas/v4"
     url = f"{base}/v1/messages"
     api_key = env_first("ZAI_ANTHROPIC_API_KEY", "ZAI_API_KEY")
-    model = env_first("AGENTBOX_ZAI_MODEL") or "glm-5.2"
+    model = env_first("AGENTBOX_ZAI_MODEL") or "glm-5.3"
 
     payload = {
         "model": model,

@@ -126,13 +126,12 @@ STACKS = {
         "env": ["PERPLEXITY_API_KEY", "GOOGLE_API_KEY", "OPENAI_API_KEY"],
     },
     # ZAI profile: Claude Code routed through Z.AI GLM (Anthropic-compatible).
-    # Z.AI has TWO endpoints:
-    #   API (per-token): https://api.z.ai/api/anthropic
-    #   Subscription (flat-rate, GLM Coding Plan): https://api.z.ai/api/coding/paas/v4
-    #     Plans: Lite $9/mo | Pro $27/mo | Max $72/mo (quarterly billing)
-    #     z.ai/subscribe
-    # Set ZAI_URL to the subscription endpoint for flat-rate; leave unset for
-    # the Anthropic-compatible relay (per-token). ZAI_API_KEY is the auth token.
+    # Z.AI subscription endpoint (GLM Coding Plan):
+    #   https://api.z.ai/api/paas/v4
+    #   Plans: Lite $9/mo | Pro $27/mo | Max $72/mo (quarterly billing)
+    #   z.ai/subscribe
+    # ZAI_URL defaults to the subscription PaaS endpoint. ZAI_API_KEY is the
+    # auth token. Profile isolation prevents ANTHROPIC_BASE_URL from leaking.
     # Profile isolation prevents ANTHROPIC_BASE_URL from leaking to main Claude.
     "zai": {
         "tools": ["claude"],
@@ -306,7 +305,7 @@ def build_profile(
         settings["env"]["AGENTBOX_ONTOLOGY_MONITOR"] = "1"
         settings["env"]["AGENTBOX_ONTOLOGY_MONITOR_MODE"] = ontology_monitor_mode
 
-    # GLM reasoning depth for the zai consultant (glm-5.2 reasoning_effort).
+    # GLM reasoning depth for the zai consultant (glm-5.3 reasoning_effort).
     # The consultant maps this to a Claude Code thinking budget; the Z.AI
     # Anthropic-compatible endpoint translates the thinking block to GLM
     # reasoning. Empty = consultant default.

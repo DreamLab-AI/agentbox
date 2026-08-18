@@ -84,7 +84,7 @@ per_user_agents = false
 # at a local GLM endpoint to keep summarisation on-box.
 [sovereign_mesh.mobile_bridge]
 enabled       = false      # register the SessionEnd phone-mirror hook
-summary_model = "glm-5.2"  # Z.AI/GLM model for the digest (→ AGENTBOX_ZAI_MODEL)
+summary_model = "glm-5.3"  # Z.AI/GLM model for the digest (→ AGENTBOX_ZAI_MODEL)
 
 # ── Ontology monitor (SessionEnd Z.AI worker → forum broker gate) ─────────────
 # On SessionEnd a Z.AI/GLM worker (ADR-011) reviews the session's concept-bearing
@@ -642,13 +642,13 @@ direct_axiom_load = false
 # enriches the PUSH Class-Summary cache (search optimisation) and RuVector
 # ns:ontology-classes. Replaces the old Haiku mesh with an operator-supplied
 # endpoint. OpenAI-compatible (/chat/completions) or ollama (/api/chat).
-# Vanilla agentbox ships this OFF — it is operator infrastructure. Gemma 4 31B
-# is a standard autoregressive LM (llama.cpp, multi-slot) — concurrency can
+# Vanilla agentbox ships this OFF — it is operator infrastructure. The model
+# runs behind the Ontology Loom façade (model-swap door) — concurrency can
 # be raised if the KV budget allows.
 [skills.ontology.condense]
 enabled = true
 endpoint = "http://192.168.2.132:8084/v1"   # Ontology Loom façade (model-swap door; DNAT via ml). Was the dead .48 host.
-model = "gemma-4-31B-it-qat"
+model = "qwen3.8-27B"
 style = "openai"                            # openai | ollama
 max_concurrency = 2                         # llama.cpp serves multiple KV slots
 # C7 / ADR-113: the condensation index has no natural trigger — nothing re-runs
@@ -844,7 +844,7 @@ timeout_ms = 180000
 
 [consultants.zai]
 enabled = true
-model   = "glm-5.2"
+model   = "glm-5.3"
 reasoning_effort = "high"   # deep thinking: maps to Claude Code MAX_THINKING_TOKENS → GLM reasoning_effort
 home    = "/home/devuser/.zai"
 timeout_ms = 180000
@@ -1108,7 +1108,7 @@ enabled             = true                                           # master ga
 scan_dirs           = ["/projects", "/home/devuser/workspace/project"]  # one-level-deep git-repo discovery roots
 scan_interval_hours = 6                                              # periodic re-scan; 0 = on-demand only (no scheduler)
 github_enrichment   = true                                          # pull open issues + stars via GITHUB_TOKEN (one external hop) — enabled 2026-07-22: token validated live (HTTP 200) and present in runtime env + .env (0600); E-2 cleared. Boot apply-class (ADR-039).
-primer_model        = "glm-5.2"                                     # Z.AI/GLM model for primers/synopses (→ consultant, ADR-011)
+primer_model        = "glm-5.3"                                     # Z.AI/GLM model for primers/synopses (→ consultant, ADR-011)
 primer_on_scan      = false                                         # auto-generate primers for new projects during a scan
 nostr_publish       = true                                          # publish kind-30841 digests to the operator's did:nostr
 metrics             = true                                          # emit the agentbox_project_* gauges on the port-bound /metrics
@@ -1173,9 +1173,16 @@ worktree      = true
 eager_mandate = false
 
 [[interaction_plane.session_seeds]]
-slug          = "gemma"               # AoE first-class OpenCode connector → LAN llama.cpp OpenAI API
+slug          = "loom"                # AoE first-class OpenCode connector → Loom façade (scaffolded, for knowledge work)
 tool          = "opencode"
-model         = "gemma-lan/gemma-4-31B-it-qat"
+model         = "loom-lan/qwen3.8-27B"
+worktree      = true
+eager_mandate = false
+
+[[interaction_plane.session_seeds]]
+slug          = "loom-raw"            # Raw Qwen via :8085 — no Loom scaffold, for coding tasks
+tool          = "opencode"
+model         = "loom-raw/qwen3.8-27B"
 worktree      = true
 eager_mandate = false
 
