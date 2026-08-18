@@ -6,7 +6,7 @@
 // Agent-of-Empires (AoE) interaction plane in three passes, all fail-open:
 //
 //   1. Provision OpenRouter/ZAI profile settings and OpenCode's native provider
-//      connectors for the LAN Gemma and hosted DeepSeek sessions.
+//      connectors for the Loom LAN and hosted DeepSeek sessions.
 //   2. Materialise AoE's config.toml (custom_agents + agent_command_override +
 //      agent_detect_as for the seven consoles, the AGENTBOX_PROFILE-per-session
 //      env binding, status_hooks → scripts/aoe-session-boundary.cjs, sandbox
@@ -96,7 +96,8 @@ const DEFAULT_SEEDS = [
   { slug: 'openrouter', tool: 'claude', worktree: false, env_allowlist: ['ANTHROPIC_BASE_URL', 'ANTHROPIC_AUTH_TOKEN'] },
   { slug: 'zai', tool: 'claude', worktree: false, env_allowlist: ['ANTHROPIC_BASE_URL', 'ANTHROPIC_AUTH_TOKEN'] },
   { slug: 'deepseek', tool: 'opencode', model: 'deepseek-agent/deepseek-chat', worktree: true },
-  { slug: 'gemma', tool: 'opencode', model: 'gemma-lan/gemma-4-31B-it-qat', worktree: true },
+  { slug: 'loom', tool: 'opencode', model: 'loom-lan/qwen3.8-27B', worktree: true },
+  { slug: 'loom-raw', tool: 'opencode', model: 'loom-raw/qwen3.8-27B', worktree: true },
 ];
 const seeds = Array.isArray(ip.session_seeds) && ip.session_seeds.length ? ip.session_seeds : DEFAULT_SEEDS;
 const coordinator = ip.coordinator || { slug: 'tab0', tool: 'claude', view: 'terminal' };
@@ -141,7 +142,7 @@ function provisionZai() {
     warn('ZAI_API_KEY / ZAI_ANTHROPIC_API_KEY not set — leaving profiles/zai/.claude/settings.local.json as-is (wrapper will hard-fail if empty).');
     return;
   }
-  const endpoint = process.env.ZAI_URL || 'https://api.z.ai/api/anthropic';
+  const endpoint = process.env.ZAI_URL || 'https://api.z.ai/api/paas/v4';
   writeJsonIfContent(settings, {
     env: {
       ANTHROPIC_BASE_URL: endpoint,
@@ -161,20 +162,32 @@ function normalizedV1Url(value, fallback) {
 function provisionOpenCode() {
   const configHome = process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config');
   const configPath = path.join(configHome, 'opencode', 'opencode.json');
-  const gemmaBase = normalizedV1Url(process.env.GEMMA_BASE_URL, 'http://192.168.2.132:8084/v1');
+  const loomBase = normalizedV1Url(process.env.LOOM_BASE_URL || process.env.GEMMA_BASE_URL, 'http://192.168.2.132:8084/v1');
+  const loomRawBase = normalizedV1Url(process.env.LOOM_RAW_BASE_URL, 'http://192.168.2.132:8085/v1');
   const deepseekBase = normalizedV1Url(process.env.DEEPSEEK_BASE_URL, 'https://api.deepseek.com/v1');
-  const gemmaModel = process.env.GEMMA_MODEL || 'gemma-4-31B-it-qat';
+  const loomModel = process.env.LOOM_MODEL || process.env.GEMMA_MODEL || 'qwen3.8-27B';
   writeJsonIfContent(configPath, {
     $schema: 'https://opencode.ai/config.json',
     provider: {
-      'gemma-lan': {
+      'loom-lan': {
         npm: '@ai-sdk/openai-compatible',
-        name: 'Gemma 4 31B LAN',
-        options: { baseURL: gemmaBase, apiKey: 'not-needed' },
+        name: 'Loom LAN',
+        options: { baseURL: loomBase, apiKey: 'not-needed' },
         models: {
-          [gemmaModel]: {
-            name: 'Gemma 4 31B LAN',
-            limit: { context: 262144, output: 65536 },
+          [loomModel]: {
+            name: 'Qwen 3.8 27B',
+            limit: { context: 131072, output: 16384 },
+          },
+        },
+      },
+      'loom-raw': {
+        npm: '@ai-sdk/openai-compatible',
+        name: 'Qwen Raw',
+        options: { baseURL: loomRawBase, apiKey: 'not-needed' },
+        models: {
+          [loomModel]: {
+            name: 'Qwen 3.8 27B (no scaffold)',
+            limit: { context: 131072, output: 16384 },
           },
         },
       },
@@ -190,7 +203,7 @@ function provisionOpenCode() {
       },
     },
   }, 0o644); // Provider config contains references, not secrets; AoE runs OpenCode as devuser.
-  log(`provisioned OpenCode providers (Gemma: ${gemmaBase}; DeepSeek: ${deepseekBase}).`);
+  log(`provisioned OpenCode providers (Loom: ${loomBase}; Loom-raw: ${loomRawBase}; DeepSeek: ${deepseekBase}).`);
 }
 
 // ===========================================================================
@@ -308,6 +321,9 @@ function providerEnvList() {
     'GOOGLE_GEMINI_API_KEY=$GOOGLE_GEMINI_API_KEY',
     'OLLAMA_BASE_URL=$OLLAMA_BASE_URL',
     'OLLAMA_MODEL=$OLLAMA_MODEL',
+    'LOOM_BASE_URL=$LOOM_BASE_URL',
+    'LOOM_RAW_BASE_URL=$LOOM_RAW_BASE_URL',
+    'LOOM_MODEL=$LOOM_MODEL',
     'GEMMA_BASE_URL=$GEMMA_BASE_URL',
     'GEMMA_MODEL=$GEMMA_MODEL',
     'CODEX_HOME=$CODEX_HOME',

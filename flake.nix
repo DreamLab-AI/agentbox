@@ -684,6 +684,20 @@
           binaryen
         ];
 
+        # wasm32 cross-compile wiring for the `cc` crate (secp256k1-sys et al).
+        #
+        # The Nix cc-wrapper injects the native glibc `-isystem` even when clang
+        # targets wasm32-unknown-unknown, so the C build pulls glibc's
+        # <stdint.h> -> <gnu/stubs.h> -> <gnu/stubs-32.h>, which Nix glibc does
+        # not ship (no 32-bit multilib) — "fatal error: 'gnu/stubs-32.h' file
+        # not found". Routing the wasm target at the UNWRAPPED clang
+        # (`pkgs.clang.cc`) uses only its freestanding builtin headers, matching
+        # upstream CI. Defined once here and consumed by BOTH the baked image
+        # env (imageEnv) and the dev shell, so container/CI/agent shells that
+        # never run `nix develop` get the fix too.
+        wasmCrossCC = "${pkgs.clang.cc}/bin/clang";
+        wasmCrossCFLAGS = "--target=wasm32-unknown-unknown";
+
         dbPackages = with pkgs; [
           sqlite
         ];
@@ -2482,9 +2496,12 @@ ${agentboxPorts}
       - OPENAI_API_KEY=''${OPENAI_API_KEY:-ollama}
       - OPENAI_BASE_URL=''${OPENAI_BASE_URL:-${defaultLlmBaseUrl}/v1}
       - OLLAMA_BASE_URL=''${OLLAMA_BASE_URL:-${defaultLlmBaseUrl}}
-      - OLLAMA_MODEL=''${OLLAMA_MODEL:-gemma-4-31B-it-qat}
-      - GEMMA_BASE_URL=''${GEMMA_BASE_URL:-http://192.168.2.132:8084/v1}
-      - GEMMA_MODEL=''${GEMMA_MODEL:-gemma-4-31B-it-qat}
+      - OLLAMA_MODEL=''${OLLAMA_MODEL:-qwen3.8-27B}
+      - LOOM_BASE_URL=''${LOOM_BASE_URL:-http://192.168.2.132:8084/v1}
+      - LOOM_RAW_BASE_URL=''${LOOM_RAW_BASE_URL:-http://192.168.2.132:8085/v1}
+      - LOOM_MODEL=''${LOOM_MODEL:-qwen3.8-27B}
+      - GEMMA_BASE_URL=''${GEMMA_BASE_URL:-}
+      - GEMMA_MODEL=''${GEMMA_MODEL:-}
       - DEEPSEEK_API_KEY=''${DEEPSEEK_API_KEY:-}
       - DEEPSEEK_BASE_URL=''${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}
       - GOOGLE_API_KEY=''${GOOGLE_API_KEY:-}
@@ -2774,6 +2791,12 @@ ${ragflowNetworkDecl}
           "NODE_ENV=production"
           "PYTHONDONTWRITEBYTECODE=1"
           "RUST_BACKTRACE=1"
+          # wasm32 cross-compile fix for the `cc` crate (secp256k1-sys et al) —
+          # see wasmCrossCC above. Baked into the image env so agent/CI shells
+          # inheriting the container environment build `cargo check
+          # --target wasm32-unknown-unknown` cleanly without `nix develop`.
+          "CC_wasm32_unknown_unknown=${wasmCrossCC}"
+          "CFLAGS_wasm32_unknown_unknown=${wasmCrossCFLAGS}"
           "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
           "NIX_SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
           "AGENTBOX_CONFIG=/etc/agentbox.toml"
@@ -3141,25 +3164,13 @@ ${ragflowNetworkDecl}
             pkgs.nix-init  # scaffold buildRustPackage/buildPythonPackage expressions from URLs
           ];
 
-          # wasm32 cross-compile fix.
-          #
-          # The Nix cc-wrapper injects the native glibc `-isystem` even when clang
-          # targets wasm32-unknown-unknown (the wrapper is not multi-target aware
-          # and warns as much). So the `cc`-crate build of secp256k1-sys pulls
-          # glibc's <stdint.h> -> <gnu/stubs.h> -> <gnu/stubs-32.h>, which does not
-          # exist (Nix glibc ships no 32-bit multilib), and dies with
-          # "fatal error: 'gnu/stubs-32.h' file not found".
-          #
-          # Point the cc crate at the UNWRAPPED clang for the wasm target only, so
-          # it uses just its freestanding builtin headers (no injected glibc) —
-          # exactly how upstream CI's plain clang behaves. `pkgs.clang.cc` is the
-          # unwrapped compiler behind `pkgs.clang` (line 449), so the version stays
-          # in lockstep with the wrapper. No AR override is needed (the default ar
-          # archives wasm objects fine). Verified in-container:
-          #   cargo check --target wasm32-unknown-unknown -p nostr-bbs-forum-client
-          # now compiles secp256k1-sys cleanly (was the gnu/stubs-32.h failure).
-          CC_wasm32_unknown_unknown = "${pkgs.clang.cc}/bin/clang";
-          CFLAGS_wasm32_unknown_unknown = "--target=wasm32-unknown-unknown";
+          # wasm32 cross-compile fix — shared with the baked image env via
+          # wasmCrossCC/wasmCrossCFLAGS (defined next to wasmPackages). Points the
+          # `cc` crate at the UNWRAPPED clang for the wasm target so secp256k1-sys
+          # builds without the missing gnu/stubs-32.h. Kept here as well as in
+          # imageEnv so `nix develop` and the container runtime stay identical.
+          CC_wasm32_unknown_unknown = wasmCrossCC;
+          CFLAGS_wasm32_unknown_unknown = wasmCrossCFLAGS;
 
           shellHook = ''
             echo "Agentbox development shell"
