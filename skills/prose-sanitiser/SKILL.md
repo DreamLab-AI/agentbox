@@ -19,25 +19,34 @@ or sampling watermarks, and ship with clean file metadata.
 
 UK English throughout. No exceptions.
 
-Three layers:
+Four layers:
 - **Generative** — apply the Section A principles when drafting new content.
 - **Destructive** — run the Section B audit on existing text.
+- **Simplification** — LLM-driven rewrite to plain English (`simplify`, `declaudish`
+  strengths) for readability without manual line-by-line fixes. Useful as a first pass
+  before the destructive audit, or standalone when the goal is readability not watermark
+  evasion. Inspired by [claudish-to-english](https://github.com/gvzdv/claudish-to-english).
 - **Watermark** — strip technical AI provenance marks (Section E).
 
 ## Quick path
 
 1. **Strip invisible marks first.** Run `inspect_text.py` / `clean_text.py` to
    remove Unicode watermark carriers (Layer A). This is lossless and always safe.
-2. **Scan for stylistic tells.** Run `scripts/slop_scan.py` to catch the
+2. **Simplify (optional, fast path).** If the text is dense AI prose and you want
+   a quick first pass, run `rewrite_text.py --strength simplify` (or `declaudish`
+   for Claude-specific tells). This is an LLM-driven rewrite to plain English
+   that can save manual editing time. Add `--context "the original question"` for
+   better results. Skip this if you prefer manual control.
+3. **Scan for stylistic tells.** Run `scripts/slop_scan.py` to catch the
    mechanical writing tells a regex can see.
-3. **Fix in priority order** — high-severity findings first (see the reference
+4. **Fix in priority order** — high-severity findings first (see the reference
    sections for the full catalogues).
-4. **Do the human read** — narrative defaults, altitude, voice, and whether a
+5. **Do the human read** — narrative defaults, altitude, voice, and whether a
    sentence is actually true. The scanner is blind to all of these.
-5. **Statistical rewrite (optional).** If the text must also defeat token-sampling
+6. **Statistical rewrite (optional).** If the text must also defeat token-sampling
    detectors, run `rewrite_text.py` last — it changes wording, so do it after all
    editorial choices are final.
-6. **Strip file metadata.** Before publication, run `clean_file.py` to remove
+7. **Strip file metadata.** Before publication, run `clean_file.py` to remove
    C2PA manifests, EXIF, XMP, and document properties from exported files.
 
 ```bash
@@ -52,8 +61,12 @@ python3 scripts/slop_scan.py <path> --severity high # only the strongest signals
 python3 scripts/slop_scan.py <path> --json          # machine-readable, for CI
 
 # Layer B — statistical watermark attack (lossy, last)
-python3 rewrite_text.py <path>                      # default strength
-python3 rewrite_text.py <path> --strength minimal   # lightest touch
+python3 rewrite_text.py <path>                      # default strength (paraphrase)
+python3 rewrite_text.py <path> --strength simplify  # plain English, short sentences
+python3 rewrite_text.py <path> --strength declaudish # targets Claude-specific tells
+python3 rewrite_text.py <path> --strength simplify --context "What does X do?"
+python3 rewrite_text.py <path> --strength humanize  # defeat AI detectors
+python3 rewrite_text.py <path> --min-chars 200      # skip short texts
 
 # File metadata
 python3 inspect_file.py <path>                      # report metadata found
@@ -101,7 +114,8 @@ Load the relevant catalogue on demand — don't hold all of it in context at onc
 - [Section B — Destructive Audit](references/destructive-audit.md): the
   mechanical catalogue — em-dash density, "The X" headings, negative parallelism,
   Tier 1/2 vocabulary tables, throat-clearing, hedges, structural tells,
-  transitions, passive voice, UK spelling. Read this when auditing existing text.
+  transitions, passive voice, UK spelling, and Claudish structural patterns
+  (B13). Read this when auditing existing text.
 - [Section C — Narrative Tells (Fiction)](references/narrative-tells.md): the
   StoryScope-derived structural defaults (thematic over-explanation, embodied
   emotion, single-track plots, tidy resolutions, per-model fingerprints, and

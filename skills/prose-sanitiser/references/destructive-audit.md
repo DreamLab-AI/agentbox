@@ -178,3 +178,53 @@ Enforce throughout:
 | analyze | analyse |
 | catalog | catalogue |
 | fulfill | fulfil |
+
+## B13. Claudish Structural Patterns
+
+Patterns specific to Claude-style AI prose that survive Tier 1 vocabulary removal.
+These are the second-order tells: the sentence shapes, connective habits, and
+rhetorical tics that persist even after the banned words are gone. Inspired by
+the [claudish-to-english](https://github.com/gvzdv/claudish-to-english) project.
+
+### B13.1 Filler Openers (non-throat-clearing)
+
+Beyond B6's throat-clearing, Claude favours these mid-text fillers:
+
+| Kill | Replace with |
+|------|-------------|
+| Let's break this down | (delete — just start explaining) |
+| There are several key aspects/considerations | (delete — list the aspects directly) |
+| This is particularly important/relevant | (delete — if it's important, show why) |
+| It's also worth mentioning/highlighting | (delete — just mention it) |
+| Here is where things get interesting | (delete — the reader will decide) |
+
+### B13.2 False Dichotomy Framing
+
+"Whether you're X or Y" constructions create a faux-inclusive frame that
+addresses nobody. "In other words" and "put simply" are condescending rewrites
+of what was just said.
+
+| Kill | Replace with |
+|------|-------------|
+| Whether you're a beginner or an expert | (delete — write for your actual audience) |
+| Think of it as... | (delete — just describe the thing) |
+| In other words | (delete — rewrite the original to be clear the first time) |
+| Put simply / Put differently | (delete — say it clearly once) |
+| To put it in perspective | (delete — the perspective should be self-evident) |
+
+### B13.3 Simplification as a Rewrite Strategy
+
+When the goal is readability rather than watermark evasion, a plain-English
+simplification pass is often more effective than paraphrasing. The `simplify`
+and `declaudish` rewrite strengths target this directly:
+
+```bash
+python3 rewrite_text.py <path> --strength simplify      # plain English, short sentences
+python3 rewrite_text.py <path> --strength declaudish     # targets Claude-specific tells
+python3 rewrite_text.py <path> --strength simplify --context "What does our auth system do?"
+```
+
+The `--context` flag injects the original question or prompt (truncated to 800
+chars) into the rewrite prompt, helping the model make better simplification
+choices by understanding what the prose is trying to answer. Works with any
+strength, most useful with `simplify` and `declaudish`.

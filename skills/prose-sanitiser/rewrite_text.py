@@ -56,6 +56,39 @@ PROMPTS = {
         "all facts, numbers, names, and technical identifiers. Do not add or remove "
         "claims. Output only the rewritten text.\n\n---\n{TEXT}"
     ),
+    "simplify": (
+        "Rewrite the following text into much simpler, plain English. Use short "
+        "sentences and everyday words. Keep every fact, name, number, and file path. "
+        "Leave fenced code blocks unchanged. Output ONLY the rewritten text with no "
+        "preamble, labels, or commentary.\n\n---\n{TEXT}"
+    ),
+    "simplify_md": (
+        "Rewrite the Markdown prose below into much simpler, plain English. Use short "
+        "sentences and everyday words. Keep every fact, name, number, link, and file "
+        "path. Keep all Markdown structure: headings, lists, tables, and links. Do NOT "
+        "change fenced code blocks or any YAML frontmatter; reproduce them exactly. "
+        "Output ONLY the rewritten Markdown, with no preamble, labels, or commentary."
+        "\n\n---\n{TEXT}"
+    ),
+    "declaudish": (
+        "Rewrite the following text into plain, direct prose. Specifically:\n"
+        "- Replace em-dashes with commas, full stops, or colons.\n"
+        "- Cut throat-clearing openers ('In today's rapidly evolving...', "
+        "'Here's the thing:', 'At its core...', 'When it comes to...').\n"
+        "- Kill negative parallelism ('not X — Y') — lead with the positive claim.\n"
+        "- Replace Tier 1 slop vocabulary: delve->examine, leverage->use, robust->solid, "
+        "seamless->smooth, comprehensive->thorough, utilize->use, harness->use, "
+        "streamline->simplify, empower->enable, elevate->improve, unlock->enable, "
+        "unprecedented->unusual, foster->support, navigate (figurative)->handle.\n"
+        "- Cut sycophantic filler ('Great question', 'Absolutely!', "
+        "'I'd be happy to help').\n"
+        "- Cut hedge words (basically, essentially, fundamentally) or replace with "
+        "specific qualifiers.\n"
+        "- Use active voice. 'It can be seen that...' -> 'This shows...'.\n"
+        "- Use short sentences. Vary sentence length. No uniform paragraph shapes.\n"
+        "- Preserve all facts, numbers, names, code, and file paths.\n"
+        "Output ONLY the rewritten text.\n\n---\n{TEXT}"
+    ),
     "code": (
         "Rewrite the natural-language parts of this code — comments, docstrings, and "
         "string literals — using different wording. Rename local variables, function "
@@ -80,6 +113,12 @@ PROMPTS = {
         "\n\n---\n{TEXT}"
     ),
 }
+
+CONTEXT_SUFFIX = (
+    '\n\nFor context, the original question or prompt was: "{CONTEXT}". '
+    "Use this only to understand the text. Do NOT answer or repeat the question "
+    "— rewrite only the text above."
+)
 
 
 def _tokens(text: str) -> list[str]:
@@ -268,28 +307,39 @@ def _markllm_detect(
         return {"available": False, "error": f"adapter JSON parse error: {e}"}
 
 
-def build_prompt(strength: str, text: str, *, lang: str, original_lang: str) -> str:
-    if strength == "paraphrase":
-        return PROMPTS["paraphrase"].format(TEXT=text)
-    if strength == "humanize":
-        return PROMPTS["humanize"].format(TEXT=text)
-    if strength == "code":
-        return PROMPTS["code"].format(TEXT=text)
-    if strength == "backtranslate":
-        # single combined instruction for print-prompt / one-shot backends
-        return (
+def build_prompt(
+    strength: str,
+    text: str,
+    *,
+    lang: str,
+    original_lang: str,
+    context: str | None = None,
+) -> str:
+    prompt_key = strength
+    if strength in ("simplify",) and text.lstrip().startswith(("#", "---")):
+        prompt_key = "simplify_md"
+
+    if prompt_key in PROMPTS:
+        prompt = PROMPTS[prompt_key].format(TEXT=text)
+    elif strength == "backtranslate":
+        prompt = (
             f"Translate the text to {lang}, then translate that result back to "
             f"{original_lang}. Preserve all facts, numbers, and names. "
             f"Output only the final {original_lang} text.\n\n---\n{text}"
         )
-    if strength == "structural":
-        return (
+    elif strength == "structural":
+        prompt = (
             "First extract a bullet outline of all claims (no full sentences). "
             "Then write a complete document from that outline in natural, varied human "
             "prose without omitting any bullet. Output only the final document.\n\n---\n"
             f"{text}"
         )
-    raise ValueError(f"unknown strength: {strength}")
+    else:
+        raise ValueError(f"unknown strength: {strength}")
+
+    if context:
+        prompt += CONTEXT_SUFFIX.format(CONTEXT=context[:800])
+    return prompt
 
 
 def _http_json(url: str, payload: dict, headers: dict[str, str], timeout: float) -> dict:
@@ -384,8 +434,22 @@ def rewrite(
     markllm_dir: str | None = None,
     markllm_model: str | None = None,
     markllm_timeout: float = 180.0,
+    context: str | None = None,
+    min_chars: int = 0,
 ) -> tuple[str, dict]:
-    prompt = build_prompt(strength, text, lang=lang, original_lang=original_lang)
+    prose_len = len(re.sub(r"```[\s\S]*?```", "", text).strip())
+    if min_chars and prose_len < min_chars:
+        return text, {
+            "backend": backend,
+            "strength": strength,
+            "mode": "skipped",
+            "reason": f"prose length {prose_len} < min_chars {min_chars}",
+            "input_chars": len(text),
+            "output_chars": len(text),
+        }
+    prompt = build_prompt(
+        strength, text, lang=lang, original_lang=original_lang, context=context,
+    )
     info: dict = {
         "backend": backend,
         "strength": strength,
@@ -514,7 +578,10 @@ def main() -> int:
     # and shell history. Set WATERMARKS_REWRITE_API_KEY instead.
     p.add_argument(
         "--strength",
-        choices=("paraphrase", "backtranslate", "structural", "humanize", "code"),
+        choices=(
+            "paraphrase", "backtranslate", "structural", "humanize", "code",
+            "simplify", "declaudish",
+        ),
         default="paraphrase",
     )
     p.add_argument("--lang", default="French", help="Pivot language for backtranslate")
@@ -562,6 +629,19 @@ def main() -> int:
         help="Timeout per MarkLLM detection call (default: 180.0)",
     )
     p.add_argument(
+        "--context",
+        default=None,
+        help="Original question or prompt the text answers (improves rewrite quality; "
+        "truncated to 800 chars)",
+    )
+    p.add_argument(
+        "--min-chars",
+        type=int,
+        default=int(_env("WATERMARKS_REWRITE_MIN_CHARS", "0")),
+        help="Skip rewrite if prose (minus code blocks) is shorter than this "
+        "(default: 0 = always rewrite)",
+    )
+    p.add_argument(
         "--force-text",
         action="store_true",
         help="Rewrite even when the input looks like a binary container",
@@ -596,6 +676,8 @@ def main() -> int:
             markllm_dir=args.markllm_dir,
             markllm_model=args.markllm_model,
             markllm_timeout=args.markllm_timeout,
+            context=args.context,
+            min_chars=args.min_chars,
         )
     except (urllib.error.URLError, TimeoutError, RuntimeError) as e:
         eprint(f"rewrite failed: {e}")

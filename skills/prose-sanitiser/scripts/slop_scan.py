@@ -71,6 +71,13 @@ RULES = [
      "pats": [r"\byou'?re\s+absolutely\s+right\b", r"\bgreat\s+question\b",
               r"\bthat'?s\s+a\s+(really\s+)?(interesting|great)\s+(point|question)\b",
               r"\b(certainly|absolutely)!\B", r"\bi'?d\s+be\s+happy\s+to\s+help\b"]},
+    {"id": "claudish-filler", "label": "Claudish filler phrase", "sev": "high",
+     "fix": "Cut the filler. Lead with the substance. See SKILL.md B13.",
+     "pats": [r"\blet'?s\s+break\s+(this|that|it)\s+down\b",
+              r"\bthere\s+are\s+several\s+(key\s+)?(things|aspects|factors|considerations)\b",
+              r"\bthis\s+is\s+particularly\s+(important|relevant|noteworthy|interesting)\b",
+              r"\bit'?s\s+also\s+worth\s+(mentioning|highlighting|emphasizing|emphasising)\b",
+              r"\b(here|this)\s+is\s+where\s+(things|it)\s+(get|gets)\s+(interesting|tricky|complicated)\b"]},
 
     # ---- MEDIUM: hedge words, copula substitution, US spelling ----
     {"id": "hedge-words", "label": "Hedge word", "sev": "medium",
@@ -94,6 +101,13 @@ RULES = [
      "pats": [r"\bit\s+can\s+be\s+seen\s+that\b", r"\bthe\s+decision\s+was\s+made\s+to\b",
               r"\bit\s+(should|must)\s+be\s+noted\b", r"\bit\s+is\s+recommended\s+that\b",
               r"\bis\s+designed\s+to\b"]},
+    {"id": "claudish-structure", "label": "Claudish structural tell", "sev": "medium",
+     "fix": "Simplify. 'Whether X or Y' is often a false dichotomy - pick one. 'Think of it as' is condescending. See SKILL.md B13.",
+     "pats": [r"\bwhether\s+you'?re\b[^.?!]{5,60}?\bor\b",
+              r"\bthink\s+of\s+(it|this)\s+as\b",
+              r"\bin\s+other\s+words\b",
+              r"\bput\s+(simply|differently|another\s+way)\b",
+              r"\bto\s+put\s+(it|this)\s+(simply|differently|another\s+way|in\s+perspective)\b"]},
 
     # ---- LOW: bold-label bullets, Tier-2 singletons (cluster handled below) ----
     {"id": "bold-label-bullet", "label": "Bold-label bullet (**Term:** prefix)", "sev": "low",
