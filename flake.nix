@@ -456,6 +456,22 @@
 
         systemscapePkg = import ./lib/systemscape.nix { inherit lib pkgs; };
 
+        # Supercronic drives the podcast ingestion schedule.  Keep it in the
+        # immutable Nix closure: ~/.local is intentionally a noexec tmpfs, so a
+        # binary downloaded there during bootstrap can never be launched.
+        supercronicPkg = pkgs.stdenvNoCC.mkDerivation {
+          pname = "supercronic";
+          version = "0.2.33";
+          src = pkgs.fetchurl {
+            url = "https://github.com/aptible/supercronic/releases/download/v0.2.33/supercronic-linux-amd64";
+            hash = "sha256-/u+jENpWnIG5nhAnuGsntR5u6atkd0e0kJlkUSDPxnE=";
+          };
+          dontUnpack = true;
+          installPhase = ''
+            install -Dm755 "$src" "$out/bin/supercronic"
+          '';
+        };
+
         basePackages = with pkgs; [
           bash
           fish
@@ -1968,7 +1984,7 @@ stdout_logfile=/var/log/tmux-autostart.log
 stderr_logfile=/var/log/tmux-autostart.error.log
 
 [program:podcast-cron]
-command=/home/devuser/.local/bin/supercronic -split-logs /home/devuser/workspace/project/agentbox/skills/podcast-knowledge-ingest/crontab
+command=${supercronicPkg}/bin/supercronic -split-logs /home/devuser/workspace/project/agentbox/skills/podcast-knowledge-ingest/crontab
 user=devuser
 environment=HOME="/home/devuser",PYTHONPATH="/home/devuser/.local/lib/python3.12/site-packages"
 autostart=true
