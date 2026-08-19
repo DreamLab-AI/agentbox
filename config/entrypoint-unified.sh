@@ -494,6 +494,16 @@ if [ "${AGENTBOX_TAB0_BRIDGE_SUPERVISED:-0}" = "1" ] && [ -z "${BRIDGE_TOKEN:-}"
   export BRIDGE_TOKEN
 fi
 
+# Podcast cron: install supercronic if missing (static Go binary, ~7MB, cached in workspace)
+SUPERCRONIC_BIN="/home/devuser/.local/bin/supercronic"
+if [ ! -x "$SUPERCRONIC_BIN" ]; then
+  echo "[5b/8] Installing supercronic for podcast cron..."
+  mkdir -p "$(dirname "$SUPERCRONIC_BIN")"
+  curl -fsSL "https://github.com/aptible/supercronic/releases/download/v0.2.33/supercronic-linux-amd64" \
+    -o "$SUPERCRONIC_BIN" && chmod +x "$SUPERCRONIC_BIN" \
+    || echo "[5b/8] supercronic download failed — podcast cron will not start"
+fi
+
 echo "[5b/8] Starting supervisord..."
 exec supervisord -c /etc/supervisord.conf -n
 

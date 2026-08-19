@@ -169,7 +169,8 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 | `latex-documents` | No | TeX Live toolchain, Beamer presentations, BibTeX, mathematical typesetting | Academic papers, presentations, publication-quality documents |
 | `latex-book` | No | Convert markdown/HTML manuscripts to arXiv-compliant LaTeX: memoir class, biblatex citations, parallel swarm conversion, UK typography conventions, cite_mapping.json footnote pipeline | Converting a multi-chapter markdown book to LaTeX for arXiv submission or print-ready PDF |
 | `book-publishing` | No | End-to-end book pipeline: markdown → arXiv/KDP/print-ready PDF using parallel agent swarms (LaTeX conversion, BibTeX extraction, TikZ diagrams, matplotlib charts, Wardley maps, Gemini image upcycling, visual verification) | Publishing a book or preparing a full manuscript for academic or commercial publication |
-| `mermaid-diagrams` | No | 25 diagram types, PNG/SVG/PDF via browsercontainer sidecar, dark/light themes | System architecture, flowcharts, ER models, Gantt charts, mindmaps |
+| `diagram-design` | No | Editorial-quality HTML/SVG diagrams: 28 visual types, branded design system, semantic patterns, draw.io/Mermaid import, light/dark/terminal/sketchy variants, accessible animation, self-contained output | Presentation diagrams, blog visuals, branded architecture diagrams, editorial charts, any diagram that will be shared or published |
+| `mermaid-diagrams` | No | Diagrams-as-code routing hub (routes to diagram-design or Mermaid). Mermaid engine: 25 types, PNG/SVG/PDF via browsercontainer sidecar | Quick technical diagrams in code, version-controlled .mmd files, report/LaTeX embeds. Routes to diagram-design for editorial output |
 | `pdf-signing` | No | Cryptographic PDF signing via **pyHanko** (PAdES/eIDAS-aligned): self-signed identity generation (X.509/RSA-3072), visible signature panel, RFC-3161 timestamps, LTV, `pdfsig` verification, PKCS#11/HSM + eIDAS QES upgrade path. Private key stays in `$PDF_SIGNING_KEYS_DIR`, never in the image | "Digitally sign / e-sign this PDF/invoice/contract", a counterparty requires signed documents, generating a signing identity, verifying or timestamping a signature. NOT for stamping a signature image only (imagemagick) or form-fill (pdftk) |
 | `paperbanana` | No | Publication-quality academic figures via multi-agent VLM pipeline (Gemini/OpenAI) | Research paper figures, methodology diagrams, statistical plots |
 | `art` | No | Nano Banana 2 AI art: 16 workflows (editorial, technical diagrams, comics, maps, stats, sketchnotes), style transfer, text rendering | Blog headers, infographics, technical illustrations, editorial art, image editing |
@@ -494,8 +495,11 @@ Q3: What kind of document?
     +-- Cryptographically sign a PDF (invoice, contract) — digital/e-signature
     |   --> pdf-signing  (pyHanko/PAdES; self-signed identity → trust/eIDAS upgrade path)
     |
-    +-- Diagrams only (flowchart, ER, sequence, Gantt, mindmap)
-    |   --> mermaid-diagrams
+    +-- Editorial / branded diagrams (architecture, flowchart, ER, timeline, org chart, 28 types)
+    |   --> diagram-design  (preferred for any shared/published output)
+    |
+    +-- Code-first .mmd diagrams (version-controlled, PNG/SVG/PDF export)
+    |   --> mermaid-diagrams  (routes to diagram-design for editorial needs)
     |
     +-- Publication-quality academic figures (methodology, stats plots)
     |   --> paperbanana
@@ -826,7 +830,7 @@ Some tasks benefit from combining skills. Common compositions:
 | Task Pattern | Primary Skill | Supporting Skill(s) |
 |--------------|---------------|---------------------|
 | Feature with tests and PR review | `build-with-quality` | `github-code-review` |
-| Research report with diagrams | `report-builder` | `mermaid-diagrams`, `paperbanana` |
+| Research report with diagrams | `report-builder` | `diagram-design`, `mermaid-diagrams`, `paperbanana` |
 | Full game project with 3D assets | `game-dev` | `blender`, `comfyui` |
 | Multi-repo release with CI/CD | `github-release-management` | `github-workflow-automation`, `github-multi-repo` |
 | ML model with custom CUDA kernels | `pytorch-ml` | `cuda` |
@@ -834,7 +838,7 @@ Some tasks benefit from combining skills. Common compositions:
 | PRD to working implementation | `prd2build` | `build-with-quality` |
 | Documentation with live web research | `report-builder` | `perplexity-research`, `gemini-url-context` |
 | Visual UI testing after building components | `daisyui` or `ui-ux-pro-max-skill` | `playwright` |
-| Academic paper with AI-generated figures | `latex-documents` | `paperbanana`, `mermaid-diagrams` |
+| Academic paper with AI-generated figures | `latex-documents` | `paperbanana`, `diagram-design`, `mermaid-diagrams` |
 | Creative landing page with proper typography | `bencium-creative` | `typography` |
 | Enterprise app with accessibility audit | `bencium-controlled-ux-designer` | `design-audit` |
 | Architecture review before major refactor | `vanity-engineering-review` | `human-architect-mindset`, `negentropy-lens` |

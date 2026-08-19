@@ -1,0 +1,15 @@
+podcasts:
+  - channel: "@TheAIDailyBrief"
+    name: "AI Daily Brief"
+    focus: "AI industry news, policy, models, companies"
+    output_dir: "/home/devuser/workspace/logseq/ai-daily-brief-transcripts"
+    ontology_dir: "/home/devuser/workspace/logseq/mainKnowledgeGraph/pages"
+
+settings:
+  loom_url: "http://192.168.2.132:8084/v1"
+  loom_model: "qwen3.8-27b"
+  max_assertions_per_episode: 15
+  min_confidence: 0.4
+  quality_threshold: 0.85
+  max_episodes_per_run: 15
+  backlog_batch_size: 50

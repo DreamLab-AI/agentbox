@@ -645,6 +645,11 @@
           pyhanko        # PDF digital signatures (PAdES B-B/B-T/B-LT/B-LTA, CAdES, LTV, PKCS#11)
           pillow         # visible signature appearance / image stamps
           fonttools      # opentype text rendering in the signature panel
+          # Podcast knowledge ingest pipeline (skills/podcast-knowledge-ingest,
+          # skills/podcast-bulk-ingest): yt-dlp downloads transcripts, rdflib
+          # validates/builds the ontology, and requests calls the Loom.
+          yt-dlp         # YouTube transcript/metadata downloader
+          rdflib         # RDF/OWL ontology pipeline — validate, build, query
         ]);
 
         # Closed dependency env for the imagemagick-mcp service (Q14).
@@ -1961,6 +1966,19 @@ startsecs=0
 priority=95
 stdout_logfile=/var/log/tmux-autostart.log
 stderr_logfile=/var/log/tmux-autostart.error.log
+
+[program:podcast-cron]
+command=/home/devuser/.local/bin/supercronic -split-logs /home/devuser/workspace/project/agentbox/skills/podcast-knowledge-ingest/crontab
+user=devuser
+environment=HOME="/home/devuser",PYTHONPATH="/home/devuser/.local/lib/python3.12/site-packages"
+autostart=true
+autorestart=true
+startsecs=0
+priority=250
+stdout_logfile=/var/log/podcast-cron.log
+stderr_logfile=/var/log/podcast-cron.error.log
+stdout_logfile_maxbytes=5MB
+stderr_logfile_maxbytes=5MB
         '';
 
         # ---------------------------------------------------------------------------
