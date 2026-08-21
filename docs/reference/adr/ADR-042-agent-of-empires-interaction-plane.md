@@ -1,7 +1,7 @@
 ---
 id: ADR-042
 title: "Agent of Empires as the interaction plane: overlay-only adoption, supervised daemon, manifest gate"
-status: proposed
+status: accepted  # ratified by operator 2026-08-21; D1-D3+D6 committed 52ab1afa1. Rebuild-class apply (./agentbox.sh rebuild) still pending — deliberately not run from inside the container
 date: 2026-08-04
 type: architecture
 author: Dr John O'Hare

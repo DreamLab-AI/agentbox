@@ -1,7 +1,7 @@
 ---
 id: ADR-037
 title: "Gap-Close sprint — agentbox slice decisions"
-status: proposed
+status: accepted  # ratified by operator 2026-08-21; D1-D8 verified landed (ADR-LANDING-PLAN-2026-08-21 §1.1)
 date: 2026-07-08
 type: architecture
 author: Dr John O'Hare

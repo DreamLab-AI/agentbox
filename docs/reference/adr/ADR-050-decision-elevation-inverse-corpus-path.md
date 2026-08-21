@@ -1,7 +1,7 @@
 ---
 id: ADR-050
 title: Decision elevation — the inverse corpus path for durable, governed decision records
-status: proposed
+status: accepted  # ratified by operator 2026-08-21; write+read halves committed e7771eb90, ships default-OFF. Live enable pending operator env: DECISION_ELEVATION_ENABLED=1, FORUM_RELAY_URL, ACSP_PANEL_NOSTR_PRIVKEY, LOGSEQ_PRIVATE_REPO_GITHUB
 date: 2026-08-08
 type: data-flow
 adr_category: architecture
