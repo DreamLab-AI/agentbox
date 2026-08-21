@@ -34,8 +34,8 @@ Bridges OpenAI GPT-5.4 into the Ruflo multi-agent environment as a first-class M
 ## Usage from Ruflo (devuser)
 
 The MCP bridge makes these tools transparently available to Claude Code and Ruflo agents.
-When devuser invokes `codex_generate`, the request is routed through the MCP server
-running under `openai-user` isolation.
+When devuser invokes `codex_generate`, the request is routed through the MCP server —
+which runs as `devuser` under profile isolation (supervisord-managed), not a pseudo-user.
 
 ## Configuration
 

@@ -61,7 +61,7 @@ Live meeting transcription + AI coaching. Captures dual audio (system speakers +
 
 ```bash
 # Install dependencies
-pip install -r ~/.claude/skills/echoloop/requirements.txt
+pip install -r requirements.txt   # from the echoloop skill directory
 
 # Set API key (uses existing container keys)
 export ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY"  # Already set for devuser
@@ -80,7 +80,7 @@ Our container has PulseAudio on VNC Display :1. For meeting capture:
 
 1. **Virtual audio cable**: Route system audio through PulseAudio monitor
 2. **Set device**: `ECHOLOOP_SYSTEM_DEVICE=<pulse monitor name>`
-3. **Launch**: `DISPLAY=:1 python3 ~/.claude/skills/echoloop/main.py`
+3. **Launch**: `DISPLAY=:1 python3 main.py   # from the echoloop skill directory`
 
 For multi-user scenarios, each user can run their own EchoLoop instance with different audio routing.
 

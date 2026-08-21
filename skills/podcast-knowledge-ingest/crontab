@@ -2,4 +2,4 @@
 # Managed by supervisord via supercronic. Edit this file to change schedule.
 # Channel list: podcasts.yaml (same directory, or --config path)
 
-17 6 * * 1 PYTHONPATH=/home/devuser/.local/lib/python3.12/site-packages /usr/bin/python3 /home/devuser/workspace/project/agentbox/skills/podcast-knowledge-ingest/ingest.py --config /home/devuser/workspace/project/agentbox/skills/podcast-knowledge-ingest/podcasts.yaml 2>&1 | tee -a /home/devuser/workspace/logseq/ai-daily-brief-transcripts/.ingest-log.txt
+17 6 * * 1 /home/devuser/workspace/project/agentbox/skills/podcast-knowledge-ingest/run-ingest.sh 2>&1 | tee -a /home/devuser/workspace/logseq/ai-daily-brief-transcripts/.ingest-log.txt

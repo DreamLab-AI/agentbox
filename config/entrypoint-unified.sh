@@ -1050,6 +1050,38 @@ TRAJUNJS
   chown 1000:1000 "$_CLAUDE_SETTINGS" 2>/dev/null || true
 fi
 
+# ── Dream-inbox surfacing hook (UserPromptSubmit) ──
+# The nightly dream-engine queues operator questions/alerts in
+# workspace/.agentbox/dream-inbox.json; this hook surfaces open items into any
+# Claude session (the loop's channel for asking the human — see
+# skills/dream-machine/commands/dream.md). Default-on, fail-open.
+_DREAM_INBOX_HOOK="/opt/agentbox/config/hooks/dream-inbox-surface.cjs"
+[ -f "$_DREAM_INBOX_HOOK" ] || _DREAM_INBOX_HOOK="/home/devuser/workspace/project/agentbox/config/hooks/dream-inbox-surface.cjs"
+if [ "${DREAM_INBOX_HOOK:-true}" = "true" ] \
+   && [ -f "$_DREAM_INBOX_HOOK" ] && command -v node >/dev/null 2>&1; then
+  mkdir -p /home/devuser/workspace/.agentbox 2>/dev/null || true
+  chown 1000:1000 /home/devuser/workspace/.agentbox 2>/dev/null || true
+  DI_HOOK="$_DREAM_INBOX_HOOK" SETTINGS="$_CLAUDE_SETTINGS" node <<'DINBOXJS' || true
+const fs = require('fs');
+const f = process.env.SETTINGS, cmd = `node ${process.env.DI_HOOK}`;
+let s = {}; try { s = JSON.parse(fs.readFileSync(f, 'utf8')); } catch {}
+s.hooks = s.hooks || {};
+s.hooks.UserPromptSubmit = s.hooks.UserPromptSubmit || [];
+const has = s.hooks.UserPromptSubmit.some((g) =>
+  (g.hooks || []).some((h) => String(h.command || '').includes('dream-inbox-surface.cjs')));
+if (!has) {
+  s.hooks.UserPromptSubmit.push({
+    hooks: [{ type: 'command', command: `${cmd} || true`, timeout: 5000 }]
+  });
+  fs.writeFileSync(f, JSON.stringify(s, null, 2));
+  console.log('  [dream] registered dream-inbox surfacing hook on UserPromptSubmit');
+} else {
+  console.log('  [dream] dream-inbox surfacing hook already registered');
+}
+DINBOXJS
+  chown 1000:1000 "$_CLAUDE_SETTINGS" 2>/dev/null || true
+fi
+
 # ── Self-heal: normalise auto-memory-hook commands to a fail-open form ──
 # ruflo / claude-flow init scaffolds settings.json across projects with hooks
 # like `node "$CLAUDE_PROJECT_DIR/.claude/helpers/auto-memory-hook.mjs" sync`

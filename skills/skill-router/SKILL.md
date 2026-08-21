@@ -1,8 +1,9 @@
 ---
 name: skill-router
 description: >
-  Unified dispatcher for 88+ skills. Use when you don't know which skill to invoke — describe
-  your task and get routed to the optimal skill, agent composition, or MCP tool.
+  Unified dispatcher for the full skills estate. Use when you don't know which skill to invoke —
+  describe your task and get routed to the optimal skill, agent composition, or MCP tool. Not for
+  executing the task itself: it only routes, then hands off to the skill that does the work.
 version: 1.1.0
 author: agentbox-claude
 tags:
@@ -15,7 +16,7 @@ user-invocable: true
 
 # /route — Unified Skill Dispatcher
 
-Describe your task. Get routed to the right skill. You don't need to know 88 skills — just say what you need.
+Describe your task. Get routed to the right skill. You don't need to know the full skills estate — just say what you need.
 
 ## Usage
 

@@ -1,11 +1,17 @@
 ---
 name: web-summary
 description: >
-  Summarize web content including YouTube videos with semantic topic links for
-  Logseq and Obsidian. Uses Z.AI service (port 9600) for cost-effective summarization.
-  Supports markdown, plain text, and note-taking formats.
-  Use when summarising web pages, YouTube transcripts, or extracting key information from URLs.
-version: 2.0.0
+  Summarise a single web page or YouTube video into short/medium/long notes and
+  extract semantic topic links for Logseq or Obsidian. Trigger when the user says
+  "summarise this URL/article/video", "get the YouTube transcript", "pull the key
+  points from this page", or "make Logseq/Obsidian topic links from this". Runs an
+  MCP FastMCP server that scrapes the URL and summarises via the Ontology Loom
+  facade (model-swappable LLM door). NOT for interactive browser automation (use
+  browser/playwright), NOT for multi-URL comparison or structured extraction (use
+  web-researcher scrape_page or the browser sidecar), NOT for broad multi-source
+  cited web search (use perplexity-research/web-researcher), and NOT for text you
+  already hold locally (summarise it directly).
+version: 2.1.0
 author: agentbox-claude
 mcp_server: true
 protocol: fastmcp
@@ -17,57 +23,38 @@ dependencies:
 
 # Web Summary Skill
 
-URL content summarization and topic extraction via FastMCP, using Z.AI service for LLM processing.
+Single-URL content summarisation and topic extraction via a FastMCP server. It
+fetches the page (or YouTube transcript) and summarises it through the Ontology
+Loom facade — the load-bearing, model-swappable LLM door (agentbox ADR-051). The
+former Z.AI service on port 9600 is retired; see `references/architecture.md`.
 
-## When to Use This Skill
+## When to use
 
-- Summarize web articles, blog posts, documentation
-- Extract and summarize YouTube video transcripts
+- Summarise one web article, blog post, or documentation page
+- Extract and summarise a YouTube video transcript
 - Generate semantic topic links for note-taking (Logseq, Obsidian)
-- Create short, medium, or long summaries
-- Extract key concepts from text
+- Produce short, medium, or long summaries; extract key concepts from text
 
-## When Not To Use
+## When not to use
 
-- For interactive browser automation (clicking, filling forms, scraping) -- use the browser or playwright skills instead
-- For multi-URL comparison or structured data extraction from URLs -- use the gemini-url-context skill instead
-- For broad web search across many sources with citations -- use the perplexity-research skill instead
-- For content you already have as local text -- process it directly without the web summary pipeline
-
-## Architecture
-
-```
-┌─────────────────────────────┐
-│  Claude Code / VisionClaw   │
-│  (MCP Client)               │
-└──────────────┬──────────────┘
-               │ MCP Protocol (stdio)
-               ▼
-┌─────────────────────────────┐
-│  Web Summary MCP Server     │
-│  (FastMCP - Python only)    │
-└──────────────┬──────────────┘
-               │ HTTP (port 9600)
-               ▼
-┌─────────────────────────────┐
-│  Z.AI Service               │
-│  (Cost-effective Claude)    │
-└─────────────────────────────┘
-```
+- Interactive browser automation (clicking, filling forms, live scraping) — use the `browser` or `playwright` skills.
+- Multi-URL comparison or structured data extraction from URLs — use `web-researcher` (`scrape_page` / `search_and_scrape`) or the `browser` sidecar for JS-rendered pages.
+- Broad, multi-source web search with citations — use `perplexity-research` or `web-researcher`.
+- Content you already have as local text — summarise it directly without this pipeline.
 
 ## Tools
 
 | Tool | Description |
 |------|-------------|
-| `summarize_url` | Summarize content from any URL (web or YouTube) |
-| `youtube_transcript` | Extract full transcript from YouTube video |
+| `summarize_url` | Summarise content from any single URL (web or YouTube) |
+| `youtube_transcript` | Extract full transcript from a YouTube video |
 | `generate_topics` | Generate semantic topic links from text |
-| `health_check` | Verify Z.AI service connectivity |
+| `health_check` | Verify Ontology Loom facade connectivity |
 
 ## Examples
 
 ```python
-# Summarize a web article
+# Summarise a web article
 summarize_url({
     "url": "https://example.com/article",
     "length": "medium",
@@ -75,63 +62,19 @@ summarize_url({
     "format": "logseq"
 })
 
-# Get YouTube transcript
-youtube_transcript({
-    "video_id": "dQw4w9WgXcQ",  # or full URL
-    "language": "en"
-})
+# Get a YouTube transcript
+youtube_transcript({"video_id": "dQw4w9WgXcQ", "language": "en"})
 
 # Generate topic links
-generate_topics({
-    "text": "Your text content here...",
-    "max_topics": 10,
-    "format": "obsidian"
-})
+generate_topics({"text": "Your text content here...", "max_topics": 10, "format": "obsidian"})
 ```
 
-## Output Formats
+## Output formats
 
-### Logseq
-```markdown
-- [[Topic One]]
-- [[Topic Two]]
-- [[Machine Learning]]
-```
+`logseq` and `obsidian` emit `- [[Topic]]` wiki-links; `plain` emits `- Topic`.
 
-### Obsidian
-```markdown
-- [[Topic One]]
-- [[Topic Two]]
-- [[Machine Learning]]
-```
+## Deeper reference
 
-### Plain
-```markdown
-- Topic One
-- Topic Two
-- Machine Learning
-```
-
-## Environment Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `ZAI_URL` | `http://localhost:9600/chat` | Z.AI service endpoint |
-| `ZAI_TIMEOUT` | `60` | Request timeout in seconds |
-
-## Troubleshooting
-
-**Z.AI connection failed:**
-```bash
-# Check Z.AI service status
-supervisorctl status claude-zai
-
-# Test Z.AI directly
-curl -X POST http://localhost:9600/chat \
-  -H "Content-Type: application/json" \
-  -d '{"prompt": "Hello"}'
-```
-
-## VisionClaw Integration
-
-This skill exposes `web-summary://capabilities` resource for discovery by VisionClaw's MCP TCP client on port 9500.
+Architecture diagram, LLM backend wiring, environment variables (`LLM_URL`,
+`LLM_MODEL`, `LLM_TIMEOUT`), troubleshooting, and VisionClaw integration:
+[`references/architecture.md`](references/architecture.md).

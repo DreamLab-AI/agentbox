@@ -1986,7 +1986,7 @@ stderr_logfile=/var/log/tmux-autostart.error.log
 [program:podcast-cron]
 command=${supercronicPkg}/bin/supercronic -split-logs /home/devuser/workspace/project/agentbox/skills/podcast-knowledge-ingest/crontab
 user=devuser
-environment=HOME="/home/devuser",PYTHONPATH="/home/devuser/.local/lib/python3.12/site-packages"
+environment=HOME="/home/devuser",PATH="${pythonRuntimeEnv}/bin:/usr/local/bin:/bin:/usr/bin"
 autostart=true
 autorestart=true
 startsecs=0

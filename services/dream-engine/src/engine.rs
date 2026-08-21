@@ -6,6 +6,7 @@ use tracing::{info, warn};
 use crate::compile;
 use crate::config::{self, DreamConfig, RuntimeConfig};
 use crate::dispatch;
+use crate::inbox;
 use crate::ledger::{self, LedgerRow};
 use crate::llm::{self, LlmConfig, Provider};
 use crate::ruvector::{self, DreamFinding, RuVectorConfig};
@@ -87,7 +88,7 @@ impl Engine {
     /// the loop retries the same date after `/dream on`).
     pub async fn run_night(&self, day_int: u32, date: &str) -> Option<Vec<(String, String)>> {
         // Global kill-switch: `/dream off` touches this file; no restart needed.
-        let pause_flag = Path::new("/home/devuser/.agentbox/dream-paused");
+        let pause_flag = Path::new("/home/devuser/workspace/.agentbox/dream-paused");
         if pause_flag.exists() {
             info!(flag = %pause_flag.display(), "dreaming paused — night skipped (/dream on to resume)");
             return None;
@@ -147,6 +148,39 @@ impl Engine {
             summary = %outcomes.iter().map(|(n, v)| format!("{}={}", n, v)).collect::<Vec<_>>().join(", "),
             "night complete"
         );
+
+        // Night-health self-check: persist a machine-readable summary and
+        // raise an operator alert on anomalies (hard failures, or a night
+        // with nothing eligible — a silently shrunken roster is itself a
+        // fault). This is the invariant "one honest row per eligible repo".
+        let health = serde_json::json!({
+            "date": date,
+            "outcomes": outcomes.iter().map(|(n, v)| serde_json::json!({"repo": n, "verdict": v})).collect::<Vec<_>>(),
+        });
+        let _ = std::fs::create_dir_all("/home/devuser/workspace/.agentbox");
+        if let Err(e) = std::fs::write(
+            "/home/devuser/workspace/.agentbox/dream-last-night.json",
+            serde_json::to_string_pretty(&health).unwrap_or_default(),
+        ) {
+            warn!(error = %e, "night health summary write failed (fail-open)");
+        }
+        let failures: Vec<&(String, String)> = outcomes
+            .iter()
+            .filter(|(_, v)| v.starts_with("FAILED") || v == "BLOCKED-ENV")
+            .collect();
+        if outcomes.is_empty() || !failures.is_empty() {
+            let text = if outcomes.is_empty() {
+                "Dream night ran with ZERO eligible repos — the whole roster is on standby or dry-streak parked. Decide which repos to revive (/dream revive, or fix evaluators and /dream run).".to_string()
+            } else {
+                format!(
+                    "Dream night had environment failures: {}. The harness needs attention before verdicts can be trusted.",
+                    failures.iter().map(|(n, v)| format!("{}={}", n, v)).collect::<Vec<_>>().join(", ")
+                )
+            };
+            if let Err(e) = inbox::add("alert", "roster", &format!("{}-night", date), date, &text) {
+                warn!(error = %e, "dream inbox write failed (fail-open)");
+            }
+        }
 
         // Post the nightly digest to the forum (JunkieJarvis → dreamlab zone,
         // "chat with agents"). Visibility only — never an approval object.
@@ -215,6 +249,17 @@ impl Engine {
         let mut prompt = compile::compile(&cfg, &slot, day_int, &bonuses);
         info!(chars = prompt.len(), deep = %slot.deep, "prompt compiled");
 
+        // Carry-over: the previous night's own "Next steps" / "Biggest
+        // uncertainty" (and any answered operator questions) are the highest-
+        // signal hypothesis candidates — feed them forward so consecutive
+        // nights compound instead of restarting.
+        let carry = self.carry_over(&repo_name, date);
+        if !carry.is_empty() {
+            prompt.push_str("\n\n## Carry-over from the previous night (verbatim — prefer these as hypothesis candidates when still applicable)\n");
+            prompt.push_str(&carry);
+            info!(chars = carry.len(), "carry-over appended to prompt");
+        }
+
         if dry_run {
             info!("[dry-run] would dispatch — stopping");
             return Ok(CycleResult {
@@ -232,18 +277,69 @@ impl Engine {
         //    Hygiene first: sweep night dirs older than 3 days so the annexe
         //    never accumulates stale clones/build trees (fail-open).
         let night_id = format!("{}-{}", date, repo_name);
-        let remote_dir = format!("{}/{}", self.runtime.hp_annexe_dir, night_id);
+        // Per-run unique remote dir (pid suffix): two engine processes can
+        // never share a workspace, so a duplicate loop degrades to wasted
+        // compute instead of racing rm -rf against a live evaluation
+        // (observed 2026-08-20/21).
+        let remote_dir = format!(
+            "{}/{}-p{}",
+            self.runtime.hp_annexe_dir,
+            night_id,
+            std::process::id()
+        );
         if let Err(e) = dispatch::ssh(
             &self.runtime.hp_host,
             &format!(
                 "find {} -maxdepth 1 -type d -name '20*' -mtime +3 -exec rm -rf {{}} + 2>/dev/null; true",
-                self.runtime.hp_annexe_dir
+                dispatch::shell_quote(&self.runtime.hp_annexe_dir)
             ),
         ) {
             warn!(error = %e, "annexe retention sweep failed (fail-open)");
         }
         info!(remote = %remote_dir, "dispatching to HP");
         dispatch::clone_to_hp(&repo_path, &self.runtime.hp_host, &remote_dir, &repo_name)?;
+
+        // Pre-flight probe: the checkout must exist and be non-empty on HP
+        // before any evaluator runs. A broken environment (vanished cwd,
+        // empty extraction) must become BLOCKED-ENV — a verdict the LLM never
+        // sees and the dry streak never counts — not an INCONCLUSIVE night
+        // full of false-positive evaluator "findings". One re-provision retry.
+        let work_dir = format!("{}/{}", remote_dir, repo_name);
+        let probe = |wd: &str| {
+            dispatch::ssh(
+                &self.runtime.hp_host,
+                &format!(
+                    "test -d {0} && [ -n \"$(ls -A {0})\" ] && echo PREFLIGHT-OK",
+                    dispatch::shell_quote(wd)
+                ),
+            )
+        };
+        let preflight_ok = match probe(&work_dir) {
+            Ok(out) if out.contains("PREFLIGHT-OK") => true,
+            first => {
+                warn!(result = ?first.err().map(|e| e.to_string()), "pre-flight failed — re-provisioning annexe checkout once");
+                let _ = dispatch::ssh(
+                    &self.runtime.hp_host,
+                    &format!("rm -rf {}", dispatch::shell_quote(&remote_dir)),
+                );
+                dispatch::clone_to_hp(&repo_path, &self.runtime.hp_host, &remote_dir, &repo_name)?;
+                matches!(probe(&work_dir), Ok(out) if out.contains("PREFLIGHT-OK"))
+            }
+        };
+        if !preflight_ok {
+            warn!(repo = %repo_name, "pre-flight failed twice — recording BLOCKED-ENV night (no LLM call)");
+            return self
+                .persist_blocked_env(
+                    &cfg,
+                    &repo_name,
+                    &repo_path,
+                    &slot.deep,
+                    &night_id,
+                    date,
+                    &remote_dir,
+                )
+                .await;
+        }
 
         let evaluators: Vec<(&str, &str)> = cfg
             .evaluator_entrypoints
@@ -268,7 +364,11 @@ impl Engine {
         prompt.push_str("\n\n---\n\n# TONIGHT'S EVIDENCE (receipts from the HP annexe)\n\n");
         prompt.push_str(&format!(
             "## Session commit\n`{}`\n\n",
-            if commit.is_empty() { "unavailable" } else { &commit }
+            if commit.is_empty() {
+                "unavailable"
+            } else {
+                &commit
+            }
         ));
         let ledger_file = repo_path.join(&cfg.ledger_path);
         if let Ok(ledger_text) = std::fs::read_to_string(&ledger_file) {
@@ -352,6 +452,16 @@ impl Engine {
         let report_path = night_dir.join("report.md");
         std::fs::write(&report_path, &report)?;
 
+        // 9b. Queue any "Human action recommended" items for the operator —
+        //     the inbox hook surfaces them in the next Claude session,
+        //     whatever its context. Fail-open.
+        for q in inbox::extract_questions(&report) {
+            match inbox::add("question", &repo_name, &night_id, date, &q) {
+                Ok(id) => info!(id = %id, "operator question queued to dream inbox"),
+                Err(e) => warn!(error = %e, "dream inbox write failed (fail-open)"),
+            }
+        }
+
         // 10. Ledger row.
         let ledger_path = repo_path.join(&cfg.ledger_path);
         let row = LedgerRow {
@@ -377,7 +487,11 @@ impl Engine {
             deep: slot.deep.clone(),
             finding: finding.clone(),
             verdict: v.as_str().into(),
-            witness: if wit_full.is_empty() { wit_short.clone() } else { wit_full },
+            witness: if wit_full.is_empty() {
+                wit_short.clone()
+            } else {
+                wit_full
+            },
             source: format!("hp-annexe-{}", model_used),
         };
         let stored = match ruvector::store_finding(&self.ruvector, &df).await {
@@ -393,7 +507,7 @@ impl Engine {
         //     side. Kept on failure paths for debugging; removed on success.
         match dispatch::ssh(
             &self.runtime.hp_host,
-            &format!("rm -rf {}", remote_dir),
+            &format!("rm -rf {}", dispatch::shell_quote(&remote_dir)),
         ) {
             Ok(_) => info!(remote = %remote_dir, "HP annexe night dir cleaned"),
             Err(e) => warn!(error = %e, "HP annexe cleanup failed (fail-open)"),
@@ -417,11 +531,139 @@ impl Engine {
             stored_to_ruvector: stored,
         })
     }
+
+    /// Previous night's carry-over for a repo: the "Next steps" and "Biggest
+    /// uncertainty" lines from its most recent report (excluding tonight),
+    /// plus any answered inbox questions for the repo. Empty string when
+    /// there is nothing to carry.
+    fn carry_over(&self, repo_name: &str, tonight: &str) -> String {
+        let mut out = String::new();
+        let suffix = format!("-{}", repo_name);
+        let mut nights: Vec<String> = std::fs::read_dir(&self.artefact_dir)
+            .map(|rd| {
+                rd.filter_map(|e| e.ok())
+                    .filter_map(|e| e.file_name().into_string().ok())
+                    .filter(|n| n.ends_with(&suffix) && !n.starts_with(tonight))
+                    .collect()
+            })
+            .unwrap_or_default();
+        nights.sort();
+        if let Some(last) = nights.last() {
+            let report = self.artefact_dir.join(last).join("report.md");
+            if let Ok(text) = std::fs::read_to_string(&report) {
+                for marker in ["Next steps", "Biggest uncertainty", "Main lesson"] {
+                    for line in text.lines() {
+                        let t = line.trim();
+                        if t.to_lowercase().contains(&marker.to_lowercase())
+                            && (t.starts_with('-') || t.starts_with('*') || t.starts_with("**"))
+                        {
+                            out.push_str(t);
+                            out.push('\n');
+                        }
+                    }
+                }
+                if !out.is_empty() {
+                    out.insert_str(0, &format!("From `{}/report.md`:\n", last));
+                }
+            }
+        }
+        // Answered operator questions are decisions — always carry them.
+        if let Ok(text) = std::fs::read_to_string(inbox::inbox_path()) {
+            if let Ok(items) = serde_json::from_str::<Vec<inbox::InboxItem>>(&text) {
+                for i in items.iter().filter(|i| {
+                    i.repo == repo_name && i.status == "answered" && !i.answer.is_empty()
+                }) {
+                    out.push_str(&format!(
+                        "Operator answered ({}): Q: {} → A: {}\n",
+                        i.date, i.text, i.answer
+                    ));
+                }
+            }
+        }
+        out
+    }
+
+    /// Persist a BLOCKED-ENV night: minimal report, ledger row, operator
+    /// alert, remote cleanup. No LLM call, no RuVector finding — a broken
+    /// harness is operational state, not knowledge.
+    #[allow(clippy::too_many_arguments)]
+    async fn persist_blocked_env(
+        &self,
+        cfg: &DreamConfig,
+        repo_name: &str,
+        repo_path: &Path,
+        deep: &str,
+        night_id: &str,
+        date: &str,
+        remote_dir: &str,
+    ) -> Result<CycleResult, EngineError> {
+        let finding = format!(
+            "Pre-flight failed twice: annexe checkout {}/{} missing or empty — environment fault, hypothesis untested",
+            remote_dir, repo_name
+        );
+        let report = format!(
+            "# BLOCKED-ENV night — {}\n\nThe HP annexe checkout failed pre-flight twice (missing/empty \
+             working directory). No evaluators were run and no LLM was called; \
+             tonight is an environment fault, not evidence about the repo.\n\n\
+             VERDICT: BLOCKED-ENV\n",
+            night_id
+        );
+        let night_dir = self.artefact_dir.join(night_id);
+        std::fs::create_dir_all(&night_dir)?;
+        let report_path = night_dir.join("report.md");
+        std::fs::write(&report_path, &report)?;
+
+        let ledger_path = repo_path.join(&cfg.ledger_path);
+        ledger::append_row(
+            &ledger_path,
+            &LedgerRow {
+                date: date.into(),
+                deep: deep.into(),
+                finding: finding.clone(),
+                issue: "NONE".into(),
+                pr: "NONE".into(),
+                evaluated: "no".into(),
+                verdict: Verdict::BlockedEnv.as_str().into(),
+                effect: String::new(),
+                witness: "BLOCKED".into(),
+                prior_fates: String::new(),
+            },
+        )?;
+
+        if let Err(e) = inbox::add(
+            "alert",
+            repo_name,
+            night_id,
+            date,
+            &format!(
+                "Dream night for {} was BLOCKED-ENV: the HP annexe checkout could not be provisioned \
+                 (probe failed twice). Check the HP mount / dispatch path before the next window.",
+                repo_name
+            ),
+        ) {
+            warn!(error = %e, "dream inbox write failed (fail-open)");
+        }
+
+        let _ = dispatch::ssh(
+            &self.runtime.hp_host,
+            &format!("rm -rf {}", dispatch::shell_quote(remote_dir)),
+        );
+
+        Ok(CycleResult {
+            repo: repo_name.into(),
+            verdict: Verdict::BlockedEnv,
+            finding,
+            witness_short: "BLOCKED".into(),
+            report_path,
+            ledger_path,
+            stored_to_ruvector: false,
+        })
+    }
 }
 
 /// Build the LLM config from runtime settings + environment.
 pub fn llm_config(rt: &RuntimeConfig) -> LlmConfig {
-    let provider = Provider::from_str(
+    let provider = Provider::parse(
         &std::env::var("DREAM_LLM_PROVIDER").unwrap_or_else(|_| rt.llm_provider.clone()),
     );
     match provider {
@@ -537,7 +779,9 @@ pub fn dry_streak(ledger_text: &str) -> usize {
         let cells: Vec<&str> = t.split('|').map(str::trim).collect();
         // | date | deep | finding | issue | pr | evaluated | verdict | ... |
         // split yields a leading empty cell, so the verdict sits at index 7.
-        let Some(verdict) = cells.get(7) else { continue };
+        let Some(verdict) = cells.get(7) else {
+            continue;
+        };
         match *verdict {
             "INCONCLUSIVE" => streak += 1,
             "ACCEPT" | "REJECT" => streak = 0,
@@ -594,7 +838,10 @@ mod tests {
     const LEDGER_HEADER: &str = "| Date | Deep | Finding | Issue | PR | Evaluated? | Verdict | Effect | Witness | Prior-night fates |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n";
 
     fn row(verdict: &str) -> String {
-        format!("| 2026-08-15 | deep | finding | NONE | NONE | yes | {} |  | abcd1234 |  |\n", verdict)
+        format!(
+            "| 2026-08-15 | deep | finding | NONE | NONE | yes | {} |  | abcd1234 |  |\n",
+            verdict
+        )
     }
 
     #[test]

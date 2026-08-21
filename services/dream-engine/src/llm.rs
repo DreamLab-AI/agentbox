@@ -23,7 +23,7 @@ pub enum Provider {
 }
 
 impl Provider {
-    pub fn from_str(s: &str) -> Self {
+    pub fn parse(s: &str) -> Self {
         match s.to_lowercase().as_str() {
             "loom" => Self::Loom,
             _ => Self::Zai,
@@ -103,7 +103,9 @@ struct ZaiContent {
 }
 
 async fn call_zai(cfg: &LlmConfig, prompt: &str) -> Result<String, LlmError> {
-    let api_key = cfg.api_key.as_deref()
+    let api_key = cfg
+        .api_key
+        .as_deref()
         .filter(|k| !k.is_empty())
         .ok_or_else(|| LlmError::MissingCredentials("ZAI_ANTHROPIC_API_KEY".into()))?;
 
@@ -134,7 +136,11 @@ async fn call_zai(cfg: &LlmConfig, prompt: &str) -> Result<String, LlmError> {
     info!(bytes = text.len(), http_status = %status, "ZAI response received");
 
     if !status.is_success() {
-        return Err(LlmError::Api(format!("HTTP {}: {}", status, &text[..text.len().min(500)])));
+        return Err(LlmError::Api(format!(
+            "HTTP {}: {}",
+            status,
+            &text[..text.len().min(500)]
+        )));
     }
 
     let parsed: ZaiResponse = serde_json::from_str(&text)
@@ -229,7 +235,11 @@ async fn call_loom(cfg: &LlmConfig, prompt: &str) -> Result<String, LlmError> {
     info!(bytes = text.len(), http_status = %status, "Loom response received");
 
     if !status.is_success() {
-        return Err(LlmError::Api(format!("HTTP {}: {}", status, &text[..text.len().min(500)])));
+        return Err(LlmError::Api(format!(
+            "HTTP {}: {}",
+            status,
+            &text[..text.len().min(500)]
+        )));
     }
 
     let parsed: LoomResponse = serde_json::from_str(&text)

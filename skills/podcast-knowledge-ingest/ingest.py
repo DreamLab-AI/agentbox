@@ -265,6 +265,38 @@ def phase_download(podcast: dict, state: dict, max_episodes: int) -> list[Path]:
 # Phase 2: Assertion extraction via Loom
 # ---------------------------------------------------------------------------
 
+_RESOLVED_LOOM_URL: str | None = None
+
+
+def resolve_loom_url(settings: dict) -> str:
+    """Pick the first reachable Loom façade, once per run.
+
+    The LAN address (via machinelearn's hp-nat DNAT) is canonical; the 25G
+    rail address reaches HP directly when the DNAT is down. Both serve the
+    same façade on :8084.
+    """
+    global _RESOLVED_LOOM_URL
+    if _RESOLVED_LOOM_URL:
+        return _RESOLVED_LOOM_URL
+    candidates = [settings.get("loom_url", DEFAULT_LOOM_URL)]
+    candidates += settings.get("loom_fallback_urls", ["http://10.10.10.1:8084/v1"])
+    for url in candidates:
+        if requests is None:
+            break
+        try:
+            base = url.rsplit("/v1", 1)[0]
+            r = requests.get(f"{base}/health", timeout=5)
+            if r.ok and r.json().get("ok"):
+                if url != candidates[0]:
+                    print(f"  Loom primary unreachable, using fallback: {url}", flush=True)
+                _RESOLVED_LOOM_URL = url
+                return url
+        except Exception:
+            continue
+    _RESOLVED_LOOM_URL = candidates[0]
+    return _RESOLVED_LOOM_URL
+
+
 def call_loom(prompt: str, loom_url: str, model: str) -> str | None:
     if requests is None:
         print("  WARNING: requests not available, skipping Loom call", flush=True)
@@ -280,10 +312,14 @@ def call_loom(prompt: str, loom_url: str, model: str) -> str | None:
                     {"role": "user", "content": prompt},
                 ],
                 "temperature": 0.2,
-                "max_tokens": 4096,
+                # Qwen3.8's reasoning tokens count against max_tokens; 4096
+                # truncated real extractions mid-array (finish_reason=length).
+                "max_tokens": 12288,
                 "ontology_budget": 0,
             },
-            timeout=180,
+            # Qwen3.8-27B reasoning over a full episode transcript regularly
+            # exceeds 3 minutes; 180s was producing spurious read timeouts.
+            timeout=600,
         )
         resp.raise_for_status()
         return resp.json()["choices"][0]["message"]["content"]
@@ -304,7 +340,7 @@ def extract_assertions(md_path: Path, settings: dict) -> list[dict]:
     prompt = EXTRACTION_PROMPT.format(transcript=transcript)
     response = call_loom(
         prompt,
-        settings.get("loom_url", DEFAULT_LOOM_URL),
+        resolve_loom_url(settings),
         settings.get("loom_model", DEFAULT_LOOM_MODEL),
     )
     if not response:
@@ -331,8 +367,28 @@ def extract_assertions(md_path: Path, settings: dict) -> list[dict]:
         if not isinstance(assertions, list):
             return []
     except json.JSONDecodeError:
-        print(f"  Failed to parse Loom response as JSON", flush=True)
-        return []
+        # Truncated array (finish_reason=length): salvage the complete
+        # top-level objects and drop the cut-off tail.
+        objs, depth, start = [], 0, None
+        for i, ch in enumerate(response):
+            if ch == '{':
+                if depth == 0:
+                    start = i
+                depth += 1
+            elif ch == '}':
+                depth -= 1
+                if depth == 0 and start is not None:
+                    try:
+                        objs.append(json.loads(response[start:i + 1]))
+                    except json.JSONDecodeError:
+                        pass
+                    start = None
+        if objs:
+            print(f"  Loom response truncated; salvaged {len(objs)} complete assertions", flush=True)
+            assertions = objs
+        else:
+            print(f"  Failed to parse Loom response as JSON", flush=True)
+            return []
 
     # Filter by confidence
     min_conf = settings.get("min_confidence", DEFAULT_MIN_CONFIDENCE)
@@ -606,7 +662,7 @@ def _propose_new_pages(unmatched: list[dict], ontology_dir: Path,
 
     response = call_loom(
         prompt,
-        settings.get("loom_url", DEFAULT_LOOM_URL),
+        resolve_loom_url(settings),
         settings.get("loom_model", DEFAULT_LOOM_MODEL),
     )
     if not response:

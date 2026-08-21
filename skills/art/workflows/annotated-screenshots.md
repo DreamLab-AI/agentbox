@@ -191,7 +191,8 @@ STYLE REQUIREMENTS:
 If you need to generate an annotated screenshot from scratch:
 
 ```bash
-bun run ~/.claude/skills/art/tools/generate-image.ts \
+ART_SKILL="${ART_SKILL:-$( [ -d /opt/agentbox/skills/art ] && echo /opt/agentbox/skills/art || echo ~/.claude/skills/art )}"
+bun run "$ART_SKILL/tools/generate-image.ts" \
   --prompt "[PROMPT describing screenshot with annotations]" \
   --size 2K \
   --aspect-ratio 16:9 \

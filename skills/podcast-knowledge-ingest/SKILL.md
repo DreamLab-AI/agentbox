@@ -1,18 +1,21 @@
 ---
 name: podcast-knowledge-ingest
 description: >
-  Weekly cron job that downloads new podcast episodes, extracts evidence-backed
-  assertions using the Ontology Loom (Qwen 3.8), verifies them via Perplexity,
-  navigates the ontology to find placement, and integrates knowledge into existing
-  pages. Runs against a configured set of YouTube podcasts.
-version: 1.0.0
+  Trigger on "/podcast-ingest", "weekly podcast ingest", "process new podcast
+  episodes into the ontology", or setting up/debugging the podcast-cron schedule.
+  Weekly cron that downloads new episodes from configured YouTube podcasts,
+  extracts evidence-backed assertions via the Ontology Loom (Qwen 3.8), verifies
+  them with Perplexity, and integrates them into ontology pages. NOT for one-off
+  historical backfill (use podcast-bulk-ingest), interactive on-demand transcript
+  fetching (use youtube-transcript-archiver), or non-podcast KG enrichment.
+version: 1.1.0
 triggers:
   - /podcast-ingest
   - weekly podcast ingest
   - podcast knowledge extraction
 cron:
-  schedule: "0 6 * * 1"
-  description: "Every Monday at 06:00 UTC — catches weekend + weekday episodes"
+  schedule: "17 6 * * 1"
+  description: "Every Monday at 06:17 UTC — off-minute to avoid a thundering herd; catches weekend + weekday episodes"
 ---
 
 # Podcast Knowledge Ingest Skill
@@ -56,13 +59,18 @@ podcasts:
     ontology_dir: "/home/devuser/workspace/logseq/mainKnowledgeGraph/pages"
 
 settings:
-  loom_url: "http://192.168.2.132:8084/v1"
+  loom_url: "http://192.168.2.132:8084/v1"          # canonical LAN façade (via ml hp-nat DNAT)
+  loom_fallback_urls: ["http://10.10.10.1:8084/v1"]  # direct 25G-rail path when the DNAT is down
   loom_model: "qwen3.8-27b"
-  max_assertions_per_episode: 5
-  min_confidence: 0.6
+  max_assertions_per_episode: 15
+  min_confidence: 0.4
   quality_threshold: 0.85
   max_episodes_per_run: 15
+  backlog_batch_size: 50
 ```
+
+The Loom URL is resolved once per run by probing `/health` on each candidate in
+order; a fallback hit is logged. Both addresses serve the same façade on HP.
 
 ## Ingest-status lifecycle
 
@@ -131,14 +139,28 @@ For each verified assertion:
 
 ## Cron setup
 
-```bash
-# Register with the container's cron system
-python -m pipeline.podcast_knowledge_ingest --register-cron
+The schedule lives in this skill directory, not in a `pipeline` package — there is
+no `--register-cron` flag on `ingest.py`. Two registration paths exist:
 
-# Or manually via CronCreate MCP tool:
-# Schedule: 0 6 * * 1 (Monday 06:00 UTC)
-# Command: cd /home/devuser/workspace/logseq/ai-daily-brief-transcripts && python /home/devuser/workspace/project/agentbox/skills/podcast-knowledge-ingest/ingest.py --config podcasts.yaml
+**Canonical (agentbox): supervisord + supercronic.** The image runs a
+`[program:podcast-cron]` supervisor block (`supervisord-podcast-cron.conf`) that
+launches `supercronic` against the sibling `crontab` file. That crontab invokes
+`run-ingest.sh`, which resolves a Nix `python3` capable of importing the deps and
+runs `ingest.py --config podcasts.yaml`. To deploy, add the block to
+`/etc/supervisord.conf` at Docker build (see the conf header for the supercronic
+`ADD`/`chmod` lines) — no host crond required. Schedule: Monday 06:17 UTC.
+
+**Legacy (classic crond host only): `cron-setup.sh`.** Installs the same weekly
+line into the user crontab. Do NOT run it inside agentbox — supervisord already
+owns the schedule and you would end up running twice.
+
+```bash
+# Classic-crond host only (never inside agentbox):
+./cron-setup.sh
 ```
+
+Files: `supervisord-podcast-cron.conf`, `crontab`, `run-ingest.sh`, `cron-setup.sh`
+— all in this skill directory.
 
 ## Manual run
 
@@ -155,6 +177,31 @@ python ingest.py --config podcasts.yaml --file the-right-way-to-worry-about-ai.m
 # Force reprocess already-processed files
 python ingest.py --config podcasts.yaml --reprocess
 ```
+
+## Operational lessons (2026-08-21 eval)
+
+Hard-won facts baked into the current code — do not regress them:
+
+- **No `/usr/bin/python3` in the agentbox image.** The image is Nix-composed;
+  the first `python3` on a bare PATH lacks pyyaml. `run-ingest.sh` resolves the
+  interpreter *by capability* (`import yaml, requests`), and the flake's
+  `[program:podcast-cron]` puts `${pythonRuntimeEnv}/bin` first on PATH.
+  Never hardcode an interpreter path or a `~/.local` PYTHONPATH.
+- **Loom timeout must be generous.** Qwen3.8-27B reasoning over a full episode
+  transcript regularly exceeds 3 minutes; `call_loom` uses `timeout=600`.
+  A 180s timeout produced spurious "Read timed out" failures.
+- **Reasoning tokens count against `max_tokens`.** At 4096 the model's
+  `reasoning_content` starved the answer and truncated the JSON array
+  mid-object (`finish_reason=length`). Extraction uses `max_tokens=12288`,
+  and the parser salvages complete top-level objects from a truncated array
+  as a backstop.
+- **Zero assertions ≠ broken pipeline.** Loom connection errors degrade
+  gracefully to "No assertions met threshold" per file. If a whole run yields
+  nothing, check Loom reachability first (`curl <loom>/health`), then the
+  hp-nat DNAT on machinelearn (the `.48`-is-dead / stale-route family of
+  failures — see agentbox email-search skill for the fingerprint).
+- **Supercronic reads the crontab only at start.** After editing `crontab`,
+  `supervisorctl restart podcast-cron`.
 
 ## Relationship to other skills
 

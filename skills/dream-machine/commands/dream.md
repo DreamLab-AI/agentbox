@@ -7,23 +7,51 @@ Parse the argument and act:
 ## `/dream status` (or no argument)
 
 Report, concisely:
-1. **Loop state**: `tmux has-session -t dream-engine 2>/dev/null && echo running || echo stopped` (after image rebuild: `supervisorctl status dream-engine`). Also whether `/home/devuser/.agentbox/dream-paused` exists (paused).
-2. **Roster**: list dirs under `/home/devuser/workspace/` containing `dream.config.json`. For each: manual standby (`.dream-standby` marker present?), dry streak (count trailing INCONCLUSIVE rows in its `docs/dream-cycle/LEDGER.md` — ACCEPT/REJECT reset the count), and the last ledger row (date, deep, verdict, witness).
+1. **Loop state**: `supervisorctl status dream-engine` is the canonical owner; a tmux `dream-engine` session is a fallback that must NOT coexist with it (the engine's singleton lock on 127.0.0.1:49172 makes a duplicate exit, but report it as drift). Also whether `/home/devuser/workspace/.agentbox/dream-paused` exists (paused).
+2. **Roster**: list dirs under `/home/devuser/workspace/` containing `dream.config.json`. For each: manual standby (`.dream-standby` marker present?), dry streak (count trailing INCONCLUSIVE rows in its `docs/dream-cycle/LEDGER.md` — ACCEPT/REJECT reset the count; BLOCKED-ENV rows are environment faults and neither count nor reset), and the last ledger row (date, deep, verdict, witness).
 3. **Tonight**: window is 01:00–05:00 UTC; eligible repos (not paused, not standby, streak < 5, cap 5) all dream serially.
+4. **Last night's health**: `/home/devuser/workspace/.agentbox/dream-last-night.json` (one honest verdict per eligible repo; FAILED/BLOCKED-ENV entries mean the harness, not the repos, needs fixing).
+5. **Inbox**: `node /home/devuser/workspace/project/agentbox/scripts/dream-inbox.mjs list` — open items are questions the loop is waiting on.
+
+## `/dream questions` · `/dream answer <id> <text>` · `/dream dismiss <id>`
+
+The loop's channel to the operator (`workspace/.agentbox/dream-inbox.json`, surfaced automatically into sessions by the `dream-inbox-surface.cjs` hook):
+
+```bash
+node /home/devuser/workspace/project/agentbox/scripts/dream-inbox.mjs list [--all]
+node /home/devuser/workspace/project/agentbox/scripts/dream-inbox.mjs answer <id> "<decision>"
+node /home/devuser/workspace/project/agentbox/scripts/dream-inbox.mjs dismiss <id>
+```
+
+Answered items feed the repo's next night as hypothesis carry-over. For decisions with cross-agent value, additionally `memory_store` the decision to namespace `project-state`.
+
+## `/dream harvest [--days N]`
+
+Weekly value-extraction report — verdict counts, streaks, ACCEPT nights awaiting human merge decisions, inbox state, environment-fault rate:
+
+```bash
+node /home/devuser/workspace/project/agentbox/scripts/dream-harvest.mjs [--days 7]
+```
+
+Present the "ACCEPT nights awaiting human review" list and ask the user which to review; a validated finding nobody merges is value left on the floor.
 
 ## `/dream off` · `/dream on`
 
-- off: `mkdir -p /home/devuser/.agentbox && touch /home/devuser/.agentbox/dream-paused` — the loop skips nights while the flag exists; no process restart. Confirm: "dreaming paused".
-- on: `rm -f /home/devuser/.agentbox/dream-paused`. If the nightly window is still open the same night runs on the next 10-minute tick.
+- off: `mkdir -p /home/devuser/workspace/.agentbox && touch /home/devuser/workspace/.agentbox/dream-paused` — the loop skips nights while the flag exists; no process restart. Confirm: "dreaming paused".
+- on: `rm -f /home/devuser/workspace/.agentbox/dream-paused`. If the nightly window is still open the same night runs on the next 10-minute tick.
 
 ## `/dream run [repo]`
 
-One-shot cycle now, ignoring the window:
+One-shot cycle now, ignoring the window. The engine holds a singleton lock
+(127.0.0.1:49172) so a one-shot cannot race the nightly loop — stop the loop
+first, run, restart:
 ```bash
+supervisorctl stop dream-engine
 cd /home/devuser/workspace/project/agentbox/services/dream-engine && \
-RUST_LOG=info ./target/release/dream-engine --once [--target <repo>] 2>&1 | tail -20
+RUST_LOG=info ./target/release/dream-engine --once [--target <repo>] --agentbox-toml /etc/agentbox.toml 2>&1 | tail -20
+supervisorctl start dream-engine
 ```
-Without a repo: dreams every eligible repo serially (a full night, 10–40 min — warn the user before starting). With a repo: single cycle (2–8 min), works even on standby repos. Report verdict, witness, and whether RuVector stored it.
+Without a repo: dreams every eligible repo serially (a full night, 10–40 min — warn the user before starting). With a repo: single cycle (2–8 min), works even on standby repos. Report verdict, witness, and whether RuVector stored it. Note the engine archives the repo's **HEAD** — uncommitted changes are invisible to the night by design (witness = evaluated tree).
 
 ## `/dream standby <repo>` · `/dream revive <repo>`
 

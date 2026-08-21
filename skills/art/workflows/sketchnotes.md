@@ -295,7 +295,8 @@ CRITICAL: NOT ruler-straight lines. NOT perfect symmetry. NOT drop shadows or gr
 ### Step 5: Execute Generation
 
 ```bash
-bun run ~/.claude/skills/art/tools/generate-image.ts \
+ART_SKILL="${ART_SKILL:-$( [ -d /opt/agentbox/skills/art ] && echo /opt/agentbox/skills/art || echo ~/.claude/skills/art )}"
+bun run "$ART_SKILL/tools/generate-image.ts" \
   --prompt "[YOUR PROMPT]" \
   --size 2K \
   --aspect-ratio 3:4 \

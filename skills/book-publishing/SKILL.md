@@ -1,6 +1,6 @@
 ---
 name: book-publishing
-description: "End-to-end book publishing pipeline from markdown manuscript to arXiv/KDP/print-ready PDF. Orchestrates parallel agent swarms for LaTeX conversion, citation extraction, diagram generation, image upcycling, and visual verification. Use when publishing a book or preparing a manuscript for academic or commercial publication."
+description: "Use when publishing a book, preparing an arXiv submission, formatting a manuscript for KDP, or turning a markdown manuscript into a print-ready PDF. End-to-end pipeline orchestrating parallel agent swarms for LaTeX (memoir) conversion, BibTeX citation extraction, diagram/chart generation, image upcycling, and visual verification. NOT for single-document LaTeX compilation (use latex-documents), general prose editing, or ebook-only EPUB flows."
 triggers:
   - /book-publishing
   - publish book
@@ -82,39 +82,20 @@ All run simultaneously:
 
 ## Stage 4: Image Upcycling
 
-After diagrams exist — submit to Gemini API for enhancement:
+After diagrams exist, upscale them for print. **This container has no configured Gemini
+CLI/API path, so the default is the offline ImageMagick pass** — deterministic and never
+hallucinates text:
 
-```python
-import google.generativeai as genai
-import os, base64
-
-genai.configure(api_key=os.environ["GOOGLE_GEMINI_API_KEY"])
-model = genai.GenerativeModel("gemini-2.0-flash-exp")
-
-with open("diagram.png", "rb") as f:
-    img_data = base64.b64encode(f.read()).decode()
-
-response = model.generate_content([
-    {
-        "inline_data": {
-            "mime_type": "image/png",
-            "data": img_data
-        }
-    },
-    "Enhance this diagram for professional publication. "
-    "Preserve all text labels, data values, and structural relationships exactly. "
-    "Improve visual clarity, contrast, and professional appearance. "
-    "Output at 2x the input resolution minimum."
-])
-# Save response.parts[0] as enhanced PNG
-```
-
-**Fallback (no API):**
 ```bash
-convert diagram.png -resize 200% -sharpen 0x1.0 diagram_hires.png
+convert diagram.png -resize 200% -unsharp 0x1.0 diagram_hires.png
 ```
 
-**Note:** High output resolution (≥2x) mitigates AI text hallucinations in enhanced images.
+Prefer regenerating charts as vector PDF over raster upscaling where possible.
+
+An optional AI enhancement path (current `google-genai` client + a current Gemini image
+model) exists but requires a provisioned API key and must be visually diffed against the
+source — its output can alter text/data. Full code and guardrails:
+[references/image-upcycling.md](references/image-upcycling.md).
 
 ## Stage 5: Build and Verify
 

@@ -110,20 +110,11 @@ async function main() {
     process.exit(1);
   }
 
-  // Step 5: Take screenshot
-  console.log('\n5. Taking screenshot...');
-  try {
-    const { takeScreenshot } = require('../tools/screenshot.js');
-    const result = await takeScreenshot({
-      url: 'https://localhost:3001',
-      outputDir: SCREENSHOT_DIR,
-      fullPage: true
-    });
-    console.log(`   Screenshot saved: ${result.path}`);
-    console.log(`   Page title: ${result.title}`);
-  } catch (err) {
-    console.log(`   Screenshot failed: ${err.message}`);
-  }
+  // Step 5: Screenshot (delegated to the browsercontainer sidecar)
+  console.log('\n5. Screenshot...');
+  console.log('   Screenshots are taken via the browser-gpu MCP tools');
+  console.log('   (mcp__browser-gpu__new_page + take_screenshot) against');
+  console.log('   https://localhost:3001 — this skill no longer bundles a browser.');
 
   // Step 6: Debug CORS
   console.log('\n6. Debugging CORS...');

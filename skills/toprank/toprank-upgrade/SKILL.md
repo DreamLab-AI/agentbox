@@ -118,8 +118,8 @@ When invoked directly as `/toprank-upgrade`:
 
 1. Force a fresh update check (bypass cache and snooze):
 ```bash
-~/.claude/skills/toprank/bin/toprank-update-check --force 2>/dev/null || \
-~/.claude/skills/stockholm/bin/toprank-update-check --force 2>/dev/null || true
+bin/toprank-update-check --force 2>/dev/null || \
+bin/toprank-update-check --force 2>/dev/null || true
 ```
 
 2. If `UPGRADE_AVAILABLE <old> <new>`: follow Steps 2–6 above.

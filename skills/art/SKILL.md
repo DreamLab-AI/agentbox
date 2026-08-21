@@ -79,9 +79,9 @@ The art skill supports multiple visual identities. **Before generating any visua
 
 | Brand | Aesthetic File | Style |
 |-------|---------------|-------|
-| **Default** | `~/.claude/skills/art/aesthetic.md` | Hand-drawn sketch, cream backgrounds, teal/orange accents |
+| **Default** | `aesthetic.md` | Hand-drawn sketch, cream backgrounds, teal/orange accents |
 
-**To add a new aesthetic:** Create a new file at `~/.claude/skills/art/aesthetics/[name].md` using the default aesthetic as a template. See `aesthetics/README.md` for the required format.
+**To add a new aesthetic:** Create a new file at `aesthetics/[name].md` using the default aesthetic as a template. See `aesthetics/README.md` for the required format.
 
 ### Aesthetic Loading Rule
 
@@ -116,8 +116,12 @@ The art skill supports multiple visual identities. **Before generating any visua
 
 **Default model:** nano-banana-2 (Gemini 3.1 Flash Image)
 
+The skill resolves its own location — set `$ART_SKILL` once so every snippet works whether the skill is installed at `~/.claude/skills/art` or baked into the image at `/opt/agentbox/skills/art`:
+
 ```bash
-bun run ~/.claude/skills/art/tools/generate-image.ts \
+ART_SKILL="${ART_SKILL:-$( [ -d /opt/agentbox/skills/art ] && echo /opt/agentbox/skills/art || echo ~/.claude/skills/art )}"
+
+bun run "$ART_SKILL/tools/generate-image.ts" \
   --model nano-banana-2 \
   --prompt "[PROMPT]" \
   --size 2K \
@@ -155,11 +159,11 @@ Use `--size 512px` for fast, cheap previews before committing to full resolution
 
 ```bash
 # 1. Preview at 512px (fast, low cost)
-bun run ~/.claude/skills/art/tools/generate-image.ts \
+bun run "$ART_SKILL/tools/generate-image.ts" \
   --prompt "[PROMPT]" --size 512px --output /tmp/preview.png
 
 # 2. Happy? Regenerate at full size
-bun run ~/.claude/skills/art/tools/generate-image.ts \
+bun run "$ART_SKILL/tools/generate-image.ts" \
   --prompt "[PROMPT]" --size 2K --output /path/to/final.png
 ```
 
@@ -168,7 +172,7 @@ bun run ~/.claude/skills/art/tools/generate-image.ts \
 Add `--thinking` to give the model more reasoning time for complex compositions:
 
 ```bash
-bun run ~/.claude/skills/art/tools/generate-image.ts \
+bun run "$ART_SKILL/tools/generate-image.ts" \
   --prompt "Complex multi-element scene..." \
   --thinking high --output /path/to/output.png
 ```
@@ -180,24 +184,12 @@ bun run ~/.claude/skills/art/tools/generate-image.ts \
 
 Only works with `nano-banana-2`. Thinking is always on (minimal by default). Use `high` when composition accuracy matters more than speed.
 
-### Common Diagram Pitfalls (Avoid These)
+### Common Diagram Pitfalls & Platform Limits
 
-**Learned from 2026-01-16 portfolio diagram session:**
-
-| Pitfall | Problem | Fix |
-|---------|---------|-----|
-| Hex codes in prompts | `#1A8A9B` renders as visible text | Use "teal color" not "#1A8A9B" |
-| Vague flow direction | Arrows go random directions | Explicitly state "LEFT TO RIGHT" or "TOP TO BOTTOM" |
-| Duplicate labels | Text appears both inside and below elements | Specify "SINGLE label BELOW only, not inside" |
-| Implicit positioning | Elements placed confusingly | Use "horizontal row" or "vertical column" explicitly |
-| Assumed numbering | Numbers placed inconsistently | State "numbered 1-7 in sequence" |
-
-**Pre-flight checklist for architecture diagrams:**
-- [ ] No hex codes - use color names only
-- [ ] Flow direction explicitly stated
-- [ ] Label position explicitly stated (inside OR below, not both)
-- [ ] Layout explicitly stated (horizontal/vertical)
-- [ ] Key element highlighting specified
+Generating an architecture/technical diagram, or an image for a specific social/publishing
+platform? Read **[references/output-constraints.md](references/output-constraints.md)** — it
+holds the diagram-pitfall table + pre-flight checklist and the per-platform dimension/size
+constraints with compression commands.
 
 ### Site-Specific Style Override (CRITICAL)
 
@@ -224,7 +216,7 @@ When generating multiple images for the same page/section:
 
 ### Nano Banana Prompting Guide
 
-**For detailed prompting techniques:** `~/.claude/skills/art/nano-banana-guide.md`
+**For detailed prompting techniques:** `nano-banana-guide.md`
 **Applies to both Nano Banana 2 and Nano Banana Pro** — same prompt patterns, same API structure.
 
 Includes:
@@ -263,27 +255,6 @@ What does user need?
 
 ---
 
-## Platform Constraints
-
-| Platform | Dimensions | Max Size | Notes |
-|----------|------------|----------|-------|
-| YouTube thumbnail | 1280x720 (16:9) | **2MB** | Use `--size 1080p` or compress after |
-| LinkedIn post | 1200x627 | 5MB | |
-| Twitter/X post | 1200x675 (16:9) | 5MB | |
-| Newsletter header | 1200x600 | 1MB | Email platform limit |
-| Instagram square | 1080x1080 | 8MB | |
-
-**If generated image exceeds size limit:**
-```bash
-# Compress PNG with pngquant
-pngquant --quality=65-80 --force --output compressed.png original.png
-
-# Or convert to optimized JPEG
-convert original.png -quality 85 compressed.jpg
-```
-
----
-
 ## LinkedIn Slide / Carousel Production
 
 To turn results into a **stunning, faithful, LinkedIn-ready slide deck** (Beamer 4:3 →
@@ -293,85 +264,13 @@ Reusable tooling: `tools/slide-upcycle.sh` + `tools/slide-upcycle-metaprompt.txt
 Key rule: diagrams-as-code (PGFPlots) give exact charts; the upcycle improves *only* the
 visuals — the `--ref` image is authoritative, every number/label is reproduced verbatim.
 
-## Diagram Upcycling via Gemini API
+## Diagram Upcycling (TikZ / Mermaid / matplotlib → publication quality)
 
-Workflow for enhancing rendered diagrams (TikZ, Mermaid, matplotlib) for publication quality:
-
-### Step 1 — Render source diagram to base PNG
-
-```bash
-# TikZ standalone → PNG
-pdflatex -interaction=nonstopmode diagram.tex
-convert -density 300 diagram.pdf -quality 95 diagram_base.png
-
-# Mermaid via browsercontainer sidecar
-mmdc-sidecar.sh -i diagram.mmd -o diagram_base.png
-
-# matplotlib
-plt.savefig("chart_base.png", dpi=150, bbox_inches="tight")
-```
-
-### Step 2 — Submit to Gemini API
-
-```python
-import google.generativeai as genai
-import os, base64, pathlib
-
-genai.configure(api_key=os.environ["GOOGLE_GEMINI_API_KEY"])
-model = genai.GenerativeModel("gemini-2.0-flash-exp")
-
-img_bytes = pathlib.Path("diagram_base.png").read_bytes()
-img_b64 = base64.b64encode(img_bytes).decode()
-
-response = model.generate_content([
-    {
-        "inline_data": {
-            "mime_type": "image/png",
-            "data": img_b64
-        }
-    },
-    "Enhance this diagram for professional publication. "
-    "Preserve all text labels, data values, and structural relationships exactly. "
-    "Improve visual clarity, contrast, line weight, and professional appearance. "
-    "Output at minimum 2x the input resolution."
-])
-
-# Save the enhanced image
-enhanced_data = response.parts[0].inline_data.data
-pathlib.Path("diagram_enhanced.png").write_bytes(base64.b64decode(enhanced_data))
-```
-
-**API key:** `GOOGLE_GEMINI_API_KEY` environment variable
-
-### Step 3 — Fallback (no API / batch processing)
-
-```bash
-# ImageMagick sharpen + upscale
-convert diagram_base.png -resize 200% -sharpen 0x1.0 diagram_hires.png
-
-# Higher quality upscale with unsharp mask
-convert diagram_base.png \
-  -resize 200% \
-  -unsharp 0x0.75+0.75+0.008 \
-  -quality 95 \
-  diagram_hires.png
-```
-
-### Resolution and Text Hallucination Note
-
-**Use ≥2x output resolution.** AI image models hallucinate text at low resolution — labels become garbled. At 2x or higher, text-preservation accuracy is significantly better. Always verify labels in the enhanced output match the original before including in publication.
-
-### Integration with LaTeX (book-publishing pipeline)
-
-```latex
-% In document, after upcycling
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=\textwidth]{figures/diagram_enhanced.png}
-  \caption{Caption here.}
-  \label{fig:diagram}
-\end{figure}
-```
+Enhancing a rendered diagram for print/publication? See
+**[references/diagram-upcycling.md](references/diagram-upcycling.md)** — render-to-PNG,
+upcycle (via `generate-image.ts` with `nano-banana-pro`, or the current `google-genai` SDK
+with `gemini-3-pro-image-preview`), ImageMagick fallback, the ≥2x text-hallucination rule,
+and LaTeX integration.
 
 ---
 
@@ -381,4 +280,4 @@ convert diagram_base.png \
 **Assimilated:** 2026-01-04
 **Adapted:** PAI's dark/neon aesthetic → warm/cream aesthetic
 
-**For complete visual styling rules, ALWAYS read:** `~/.claude/skills/art/aesthetic.md`
+**For complete visual styling rules, ALWAYS read:** `aesthetic.md`

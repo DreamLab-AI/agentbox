@@ -308,7 +308,8 @@ Nano Banana 2 can search the web in real-time during image generation. This mean
 **How to use in our CLI:** Add `--grounded` to enable web search during generation. The API receives `tools: [{ googleSearch: {} }]`, and the response includes grounding metadata — source URLs and the search queries the model used.
 
 ```bash
-bun run ~/.claude/skills/art/tools/generate-image.ts \
+ART_SKILL="${ART_SKILL:-$( [ -d /opt/agentbox/skills/art ] && echo /opt/agentbox/skills/art || echo ~/.claude/skills/art )}"
+bun run "$ART_SKILL/tools/generate-image.ts" \
   --prompt "The Sagrada Familia at golden hour, photorealistic" \
   --grounded --size 2K --output /tmp/sagrada.png
 ```
@@ -413,7 +414,8 @@ The model understands time-related contexts:
 When using `--reference-image` with Nano Banana 2 or Nano Banana Pro:
 
 ```bash
-bun run ~/.claude/skills/art/tools/generate-image.ts \
+ART_SKILL="${ART_SKILL:-$( [ -d /opt/agentbox/skills/art ] && echo /opt/agentbox/skills/art || echo ~/.claude/skills/art )}"
+bun run "$ART_SKILL/tools/generate-image.ts" \
   --model nano-banana-2 \
   --prompt "[Your prompt including style transfer instructions]" \
   --reference-image /path/to/reference.png \

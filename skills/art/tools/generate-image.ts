@@ -207,8 +207,8 @@ ERROR CODES:
   1  General error (invalid arguments, API error, file write error)
 
 MORE INFO:
-  Documentation: ~/.claude/skills/art/SKILL.md
-  Aesthetic: ~/.claude/skills/art/aesthetic.md
+  Documentation: SKILL.md (in this skill's directory)
+  Aesthetic: aesthetic.md (in this skill's directory)
 `);
   process.exit(0);
 }

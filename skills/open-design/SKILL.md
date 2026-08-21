@@ -26,7 +26,7 @@ Route to this skill when the user asks for UI mockups, visual documentation, des
 ## Prerequisites
 
 - A design brief (what to build, for whom)
-- Optional: a DESIGN.md brand specification (see `design-systems/` for 129 ready-made brands)
+- Optional: a DESIGN.md brand specification (see `design-systems/` for the ready-made brand library — count in Design System Library below)
 - If no brand spec provided, the skill generates one using the structured intake
 
 ---
@@ -226,7 +226,7 @@ One sentence before the artifact describing what's delivered. Nothing after.
 
 ## Design System Library
 
-129 brand specifications available in `design-systems/`. Each follows the schema defined in `references/design-system-schema.md`.
+138 brand specifications available in `design-systems/` (one directory each, all carrying a `DESIGN.md`). Each follows the schema defined in `references/design-system-schema.md`. This is the single source of truth for the count — other sections point here rather than restate it.
 
 **Usage:** Specify a brand name to load its tokens:
 - "Use the Linear design system" → loads `design-systems/linear-app/DESIGN.md`
@@ -268,8 +268,10 @@ This skill composes with the existing design skill suite:
 - `references/layouts-web.md` — 8 web section layout skeletons
 - `references/layouts-dashboard.md` — Dashboard layout patterns
 - `references/layouts-mobile.md` — 6 mobile screen archetypes
+- `references/layouts-deck.md` — 7 slide-deck layout skeletons
+- `references/layouts-email.md` — table-based email skeleton (header → hero → body → cta → footer)
 - `references/critique-dimensions.md` — Extended scoring rubric with examples
-- `references/brand-index.md` — Complete catalog of 129 brand specifications
+- `references/brand-index.md` — Complete catalog of the brand specifications (count in Design System Library above)
 - `references/anti-slop-rules.md` — Fast 12-signal slop checklist + remediation
 - `references/slop-rules-catalog.md` — Full 3-layer (CLI/browser/LLM) anti-pattern catalogue, adapted from impeccable
 - `scripts/slop-detect.py` — Zero-dependency deterministic slop scanner (the CLI layer)

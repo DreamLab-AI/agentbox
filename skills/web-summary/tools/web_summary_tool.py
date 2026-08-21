@@ -15,7 +15,9 @@ import re
 
 class WebSummaryTool:
     def __init__(self):
-        self.zai_url = os.environ.get("ZAI_CONTAINER_URL", "http://localhost:9600")
+        # Legacy tool (superseded by mcp-server/server.py). Default now targets
+        # the Ontology Loom facade, not the retired port-9600 Z.AI service.
+        self.zai_url = os.environ.get("LLM_URL", os.environ.get("ZAI_CONTAINER_URL", "http://192.168.2.132:8084/v1"))
         self.google_api_key = os.environ.get("GOOGLE_API_KEY", "")
 
     def extract_youtube_id(self, url: str) -> Optional[str]:

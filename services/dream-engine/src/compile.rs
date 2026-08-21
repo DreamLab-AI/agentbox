@@ -47,9 +47,14 @@ pub fn compile(cfg: &DreamConfig, slot: &Slot, day_int: u32, bonus_dives: &[Stri
     };
 
     let build_section = match &cfg.build_step {
-        Some(bs) => format!("\n## Build step\n```bash\n{}\n```\n{}\n",
+        Some(bs) => format!(
+            "\n## Build step\n```bash\n{}\n```\n{}\n",
             bs.cmd,
-            if bs.degrade_on_wasm_failure { "If WASM compilation fails, degrade gracefully — do not halt." } else { "" }
+            if bs.degrade_on_wasm_failure {
+                "If WASM compilation fails, degrade gracefully — do not halt."
+            } else {
+                ""
+            }
         ),
         None => String::new(),
     };
@@ -171,7 +176,11 @@ End with a structured summary block containing at minimum:
         competitors_section = competitors_section,
         merge_policy = merge_policy,
         branch_prefix = cfg.branch_prefix,
-        labels = if cfg.labels.is_empty() { "none".into() } else { cfg.labels.join(", ") },
+        labels = if cfg.labels.is_empty() {
+            "none".into()
+        } else {
+            cfg.labels.join(", ")
+        },
         discipline_list = disciplines
             .iter()
             .map(|d| format!("- {}", d))
@@ -195,12 +204,21 @@ mod tests {
             repo: "DreamLab-AI/test".into(),
             cron: "0 3 * * *".into(),
             slots: vec![
-                Slot { deep: "compiler-parity".into(), scan: vec!["config-schema".into(), "golden-snapshots".into()] },
-                Slot { deep: "ledger-signals".into(), scan: vec!["witness".into()] },
+                Slot {
+                    deep: "compiler-parity".into(),
+                    scan: vec!["config-schema".into(), "golden-snapshots".into()],
+                },
+                Slot {
+                    deep: "ledger-signals".into(),
+                    scan: vec!["witness".into()],
+                },
             ],
             bonus_moduli: HashMap::new(),
             control_plane_probes: vec![],
-            build_step: Some(crate::config::BuildStep { cmd: "cargo build".into(), degrade_on_wasm_failure: false }),
+            build_step: Some(crate::config::BuildStep {
+                cmd: "cargo build".into(),
+                degrade_on_wasm_failure: false,
+            }),
             evaluator_entrypoints: {
                 let mut m = HashMap::new();
                 m.insert("bench".into(), "cargo test".into());

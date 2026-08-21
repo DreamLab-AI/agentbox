@@ -1,4 +1,6 @@
-# Brand Specification Index — 129 Design Systems
+# Brand Specification Index
+
+The `design-systems/` library holds one directory per brand (count stated in SKILL.md Design System Library).
 
 Specify a brand name during structured intake to load its DESIGN.md tokens.
 

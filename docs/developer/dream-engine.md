@@ -78,13 +78,24 @@ One cycle (`run_cycle`) is a fixed sequence:
 
 The verdict is parsed deterministically from the LLM's free-form markdown. A strict priority order ensures a stray keyword in the body can never override an explicit trailing `VERDICT:` line (a false positive that bit us in production — it has a regression test). Three outcomes:
 
-| Verdict | Meaning | Persistence |
-|---|---|---|
-| `ACCEPT` | The experiment is justified by the evidence. | Ledger row **and** RuVector (`[dream_machine].memory_namespace`, default `dream-cycle`). |
-| `REJECT` | The experiment is refuted by the evidence. | Ledger row **and** RuVector — a refutation is as valuable as an acceptance. |
-| `INCONCLUSIVE` | No decisive evidence (or a degraded/failed night). | Ledger row **only** — not memorable enough to store. |
+| Verdict | Meaning | Persistence | Dry streak |
+|---|---|---|---|
+| `ACCEPT` | The experiment is justified by the evidence. | Ledger row **and** RuVector (importance 0.9). | resets |
+| `REJECT` | The experiment is refuted by the evidence. | Ledger row **and** RuVector (0.7) — a refutation is as valuable as an acceptance. | resets |
+| `INCONCLUSIVE` | Hypothesis tested, evidence insufficient (or a degraded LLM night). | Ledger row **and** RuVector (0.4) — the operational lessons (evaluator traps, false positives) are worth recalling. | counts |
+| `BLOCKED-ENV` | Hypothesis **untested** — the engine's pre-flight probe found the annexe checkout missing/empty twice. No evaluators run, no LLM called. | Ledger row + operator inbox alert only — a broken harness is state, not knowledge. | neither counts nor resets |
 
-The significance bar is exactly `ACCEPT || REJECT`: `store_finding` returns early (`Ok(false)`) for `INCONCLUSIVE`, so the memory namespace only ever accumulates decisive verdicts.
+Splitting "untestable (environment)" out of INCONCLUSIVE is load-bearing: environment faults no longer park healthy repos via the dry streak, and they surface to the operator (dream inbox) instead of masquerading as evidence. The 2026-08-21 `PIN-DRIFT-KITREF` false positive — empty greps in a vanished cwd graded as drift — is the canonical failure this prevents.
+
+### Self-healing & operator loop (2026-08-21)
+
+- **Singleton lock** — the engine binds `127.0.0.1:49172`; a second instance exits instead of racing the shared HP annexe (the 2026-08-20/21 double-loop corruption class). One-shots require stopping the loop first.
+- **Pre-flight probe** — after `clone_to_hp`, the checkout must exist and be non-empty; one re-provision retry, then `BLOCKED-ENV`.
+- **Unique annexe dirs** — remote night dirs carry a `-p<pid>` suffix.
+- **Carry-over** — the previous night's `Next steps` / `Biggest uncertainty` / `Main lesson` lines and any answered operator questions are appended to the next compiled prompt, so nights compound.
+- **Dream inbox** — `workspace/.agentbox/dream-inbox.json`: report "Human action recommended" items and night-health anomalies queue here; the `dream-inbox-surface.cjs` UserPromptSubmit hook surfaces open items into any Claude session; `scripts/dream-inbox.mjs answer` records decisions that feed carry-over.
+- **Night health** — `workspace/.agentbox/dream-last-night.json` records one verdict per eligible repo; zero-eligible nights and FAILED/BLOCKED-ENV outcomes raise inbox alerts.
+- **Harvest** — `scripts/dream-harvest.mjs` (weekly): verdict counts, streaks, pending-ACCEPT review list, env-fault rate.
 
 ## Witness recipe
 
@@ -195,4 +206,4 @@ Verify state before and after: `nvidia-smi --query-gpu=memory.used,memory.total 
 * [ADR-052 — HP annexe execution plane](../reference/adr/ADR-052-dream-machine-hp-annexe.md)
 * [Architecture overview](architecture.md) — manifest → flake → image → runtime
 * `lib/dream-engine.nix` — the buildRustPackage derivation
-* `services/dream-engine/` — the crate (48 hermetic tests)
+* `services/dream-engine/` — the crate (57 hermetic tests)

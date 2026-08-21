@@ -4,7 +4,8 @@ description: >
   Estimate GPU endpoint costs, agent job costs, and MRC20 token operations for the DreamLab AI
   ecosystem. Use when pricing inference/image-gen/analytics endpoints, calculating agent job
   holds and settlements, converting between DREAM tokens and sats, or valuing infrastructure
-  replacement cost. Integrates with pod-worker /pay/.estimate route and khive tagged recall.
+  replacement cost. Integrates with pod-worker /pay/.estimate route and durable RuVector recall
+  of pricing decisions via mcp__claude-flow__memory_*.
 ---
 
 # Cost Estimation
@@ -120,18 +121,31 @@ sats_received = floor(dream_spent / rate)
 
 The rounding asymmetry guarantees the treasury never runs a deficit on token conversions. At scale this produces a micro-margin that funds the reserve pool.
 
-## Using khive for Pricing Decisions
+## Recording Pricing Decisions
 
-Tag all pricing decisions for future recall:
+Durable memory goes through the RuVector MCP tools (`mcp__claude-flow__memory_*`) — never a CLI or
+raw SQL, which bypass the embedding pipeline and leave rows invisible to semantic search. Store
+each pricing decision so other agents and later sessions can recall the rationale:
 
-```bash
-# Store a pricing decision
-khive remember "Set image-gen multiplier to 100x based on A100 cost-per-token benchmarks" \
-  --tags cost,image-gen,pricing,gpu
+```javascript
+// Store a pricing decision (project-facing config lives in project-state;
+// reusable pricing heuristics go in patterns)
+mcp__claude-flow__memory_store({
+  namespace: "project-state",
+  key: "cost-estimation-image-gen-multiplier",
+  value: "Set image-gen multiplier to 100x based on A100 cost-per-token benchmarks (cost, image-gen, pricing, gpu)"
+})
 
-# Recall pricing rationale later
-khive recall --tags cost,pricing --query "why is image gen 100x"
+// Recall pricing rationale later
+mcp__claude-flow__memory_search({
+  namespace: "project-state",
+  query: "why is image gen 100x",
+  limit: 10
+})
 ```
+
+Use `namespace: "patterns"` instead when the decision is a reusable pricing heuristic rather than a
+project-specific configuration fact.
 
 ## Reference
 

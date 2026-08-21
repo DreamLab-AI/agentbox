@@ -30,15 +30,23 @@ Networking rules that actually bite:
    `/mnt/mldata/.../comfyui/...`) are host-accessible only, not from here.
 
 ### Check container status
+
+From the Claude Code container, use the HTTP health check — this is the canonical
+liveness probe and needs no Docker access:
 ```bash
-# From Claude Code container
 ping -c1 comfyui  # Should show IP like 172.18.0.X
 curl -s http://comfyui:8188/system_stats | jq '.devices[0].name'
-
-# From host
-sudo docker ps --filter "name=comfyui"
-sudo docker logs comfyui --tail 20
 ```
+
+> **Docker-daemon diagnostics (no `sudo`).** agentbox mounts the host Docker socket,
+> so plain `docker` talks to the host daemon from inside the container. Do **not**
+> prefix with `sudo` — it is blocked by `no-new-privileges` and will fail:
+> ```bash
+> docker ps --filter "name=comfyui"
+> docker logs comfyui --tail 20
+> ```
+> Prefer the `comfyui:8188` HTTP check above; only fall back to these when the HTTP
+> probe is inconclusive.
 
 ## Quick path
 

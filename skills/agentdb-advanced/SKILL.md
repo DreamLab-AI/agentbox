@@ -63,8 +63,8 @@ const result = await adapter.retrieveWithReasoning(queryEmbedding, {
 
 ## Learn more
 
-- **QUIC Protocol**: docs/quic-synchronization.pdf
-- **Hybrid Search**: docs/hybrid-search-guide.md
+- **QUIC Protocol**: [references/quic-sync.md](./references/quic-sync.md)
+- **Hybrid Search**: [references/search-features.md](./references/search-features.md)
 - See [AgentDB Overview](./docs/agentdb-overview.md#links) for general links.
 
 ---

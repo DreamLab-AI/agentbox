@@ -17,8 +17,8 @@ description: >
 ## Preamble (run first)
 
 ```bash
-_UPD=$(~/.claude/skills/toprank/bin/toprank-update-check 2>/dev/null || \
-       ~/.claude/skills/stockholm/bin/toprank-update-check 2>/dev/null || true)
+_UPD=$(bin/toprank-update-check 2>/dev/null || \
+       bin/toprank-update-check 2>/dev/null || true)
 [ -n "$_UPD" ] && echo "$_UPD" || true
 ```
 

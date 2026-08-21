@@ -84,15 +84,17 @@ Every artifact carries YAML frontmatter with parent/child IDs for machine-action
 
 ## Tools
 
+Run from the skill directory (paths are skill-relative; the baked copy lives at `/opt/agentbox/skills/bhil-methodology/tools/`).
+
 ```bash
 # Initialise a new project with BHIL structure
-bash ~/.claude/skills/bhil-methodology/tools/init.sh
+bash tools/init.sh
 
 # Create a new ADR
-bash ~/.claude/skills/bhil-methodology/tools/new-adr.sh "Use GPT-4o for embeddings"
+bash tools/new-adr.sh "Adopt bge-small-en-v1.5 for RuVector embeddings"
 
 # Validate all artifacts for completeness and traceability
-bash ~/.claude/skills/bhil-methodology/tools/validate-artifacts.sh
+bash tools/validate-artifacts.sh
 ```
 
 ## Integration with Other Skills

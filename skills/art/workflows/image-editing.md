@@ -60,7 +60,8 @@ The goal is [desired outcome].
 ### Step 3: Execute Edit
 
 ```bash
-bun run ~/.claude/skills/art/tools/generate-image.ts \
+ART_SKILL="${ART_SKILL:-$( [ -d /opt/agentbox/skills/art ] && echo /opt/agentbox/skills/art || echo ~/.claude/skills/art )}"
+bun run "$ART_SKILL/tools/generate-image.ts" \
   --prompt "[Your edit prompt]" \
   --reference-image /path/to/source-image.png \
   --size 2K \

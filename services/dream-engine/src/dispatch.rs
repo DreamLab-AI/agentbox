@@ -3,7 +3,7 @@ use std::process::Command;
 use thiserror::Error;
 
 /// Single-quote a string for safe embedding in a shell command line.
-fn shell_quote(s: &str) -> String {
+pub(crate) fn shell_quote(s: &str) -> String {
     format!("'{}'", s.replace('\'', r"'\''"))
 }
 
@@ -24,7 +24,14 @@ pub enum DispatchError {
 pub fn ssh(hp_host: &str, cmd: &str) -> Result<String, DispatchError> {
     let wrapped = format!("bash -lc {}", shell_quote(cmd));
     let output = Command::new("ssh")
-        .args(["-o", "BatchMode=yes", "-o", "ConnectTimeout=10", hp_host, &wrapped])
+        .args([
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "ConnectTimeout=10",
+            hp_host,
+            &wrapped,
+        ])
         .output()?;
 
     if !output.status.success() {
@@ -42,8 +49,10 @@ pub fn ssh(hp_host: &str, cmd: &str) -> Result<String, DispatchError> {
 pub fn scp_to(local: &Path, hp_host: &str, remote: &str) -> Result<(), DispatchError> {
     let output = Command::new("scp")
         .args([
-            "-o", "BatchMode=yes",
-            "-o", "ConnectTimeout=10",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "ConnectTimeout=10",
             local.to_str().unwrap_or(""),
             &format!("{}:{}", hp_host, remote),
         ])
@@ -60,8 +69,10 @@ pub fn scp_to(local: &Path, hp_host: &str, remote: &str) -> Result<(), DispatchE
 pub fn scp_from(hp_host: &str, remote: &str, local: &Path) -> Result<(), DispatchError> {
     let output = Command::new("scp")
         .args([
-            "-o", "BatchMode=yes",
-            "-o", "ConnectTimeout=10",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "ConnectTimeout=10",
             &format!("{}:{}", hp_host, remote),
             local.to_str().unwrap_or(""),
         ])
@@ -91,7 +102,13 @@ pub fn clone_to_hp(
 
     let archive_file = std::fs::File::create(&archive_path)?;
     let status = Command::new("git")
-        .args(["-C", &local_repo.display().to_string(), "archive", "--format=tar.gz", "HEAD"])
+        .args([
+            "-C",
+            &local_repo.display().to_string(),
+            "archive",
+            "--format=tar.gz",
+            "HEAD",
+        ])
         .stdout(archive_file)
         .status()?;
     if !status.success() {
@@ -102,11 +119,15 @@ pub fn clone_to_hp(
     }
 
     let remote_repo = format!("{}/{}", remote_dir, repo_name);
-    ssh(hp_host, &format!("mkdir -p {}", remote_repo))?;
+    ssh(hp_host, &format!("mkdir -p {}", shell_quote(&remote_repo)))?;
     scp_to(&archive_path, hp_host, &format!("{}/", remote_dir))?;
     ssh(
         hp_host,
-        &format!("tar xzf {}/{} -C {}", remote_dir, archive_name, remote_repo),
+        &format!(
+            "tar xzf {} -C {}",
+            shell_quote(&format!("{}/{}", remote_dir, archive_name)),
+            shell_quote(&remote_repo)
+        ),
     )?;
     let _ = std::fs::remove_file(&archive_path);
     Ok(())
@@ -123,14 +144,20 @@ pub fn run_on_hp(
     let work_dir = format!("{}/{}", remote_dir, repo_name);
 
     let build_output = if let Some(cmd) = build_cmd {
-        ssh(hp_host, &format!("cd {} && {}", work_dir, cmd))?
+        ssh(
+            hp_host,
+            &format!("cd {} && {}", shell_quote(&work_dir), cmd),
+        )?
     } else {
         "(no build step)".into()
     };
 
     let mut eval_outputs = Vec::new();
     for (name, cmd) in evaluators {
-        let output = match ssh(hp_host, &format!("cd {} && {}", work_dir, cmd)) {
+        let output = match ssh(
+            hp_host,
+            &format!("cd {} && {}", shell_quote(&work_dir), cmd),
+        ) {
             Ok(out) => out,
             Err(e) => format!("BLOCKED: {}", e),
         };
@@ -138,4 +165,16 @@ pub fn run_on_hp(
     }
 
     Ok((build_output, eval_outputs))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::shell_quote;
+
+    #[test]
+    fn shell_quote_handles_spaces_and_single_quotes() {
+        assert_eq!(shell_quote("plain"), "'plain'");
+        assert_eq!(shell_quote("two words"), "'two words'");
+        assert_eq!(shell_quote("it's"), "'it'\\''s'");
+    }
 }

@@ -8,7 +8,9 @@ description: >
   persisted for future reuse, or when retrieving such helper functions at task
   start to inject as a CodeAct prelude. Covers the VerificationGate write path,
   the VerifiedSkill record schema, immutable versioning, and task-start
-  retrieval — details in the body.
+  retrieval — details in the body. Not for one-off scripts, project-specific
+  domain logic, or functions using banned APIs (subprocess, socket, ctypes,
+  os.system) that cannot pass the VerificationGate.
 version: 0.1.0
 related_skills:
   - codeact
@@ -80,147 +82,26 @@ tier (90-day TTL, decay). No schema migration required.
 
 ## VerifiedSkill Record Schema
 
-Every skill written to RuVector has the following structure. The `skill_urn`
-uses the `skill` kind from ADR-013's 18 valid kinds — no new kind is invented.
+Every skill written to RuVector has a fixed structure, keyed by `skill_urn`
+(the `skill` kind from ADR-013's 19 valid kinds — `decision` added by ADR-048;
+no new kind is invented). Full JSON record, identity-scheme addendum fields,
+field-definition table, and the Activity-record schema:
+**[references/verified-skill-schema.md](references/verified-skill-schema.md)**.
 
-```json
-{
-  "skill_urn": "urn:agentbox:skill:<scope-pubkey>:<name>:v<n>",
-  "ontology_type": "ex:VerifiedSkill",
-  "memory_type": "procedural",
-  "name": "<snake_case_function_name>",
-  "version": 1,
-  "signature": "def normalise_dataframe(df: pd.DataFrame, cols: list) -> pd.DataFrame",
-  "body_python": "import pandas as pd\n\ndef normalise_dataframe(...):\n    ...",
-  "assertions": [
-    "assert isinstance(normalise_dataframe(pd.DataFrame({'a': [1,2]}), ['a']), pd.DataFrame)"
-  ],
-  "examples": [
-    {
-      "input_repr": "pd.DataFrame({'a': [1, 2]}), ['a']",
-      "expected_output_repr": "pd.DataFrame with 'a' column normalised to [0.0, 1.0]",
-      "description": "Normalise a single numeric column"
-    }
-  ],
-  "embed_text": "normalise a DataFrame column to [0, 1] range using min-max scaling",
-  "scope": "data-pipeline",
-  "verified_by": "urn:agentbox:activity:<scope>:trace-<short-id>",
-  "verified_at": "<ISO-8601>",
-  "max_evidence_age_s": 3600,
-  "source_agent": "did:nostr:<hex-pubkey>",
-  "owner_did": "did:nostr:<hex-pubkey>",
-  "action_urn": "urn:agentbox:activity:<scope>:verify-<short-id>",
-  "action_verb": "verify",
-  "usage_count": 0
-}
-```
-
-### Identity scheme fields (addendum)
-
-| Field | Value | Purpose |
-|---|---|---|
-| `owner_did` | `did:nostr:<hex-pubkey>` | WHO created this skill. From env `AGENTBOX_AGENT_DID`. |
-| `action_urn` | `urn:agentbox:activity:<scope>:verify-<short-id>` | WHAT action produced it. |
-| `action_verb` | `"verify"` | Short queryable verb. |
-| `source_agent` | same as `owner_did` | Kept for backwards compat with ADR-019 field list. |
-
-Dev-mode fallback (no sovereign mesh): `owner_did = "did:nostr:local"`,
-scope = `"local"`.
-
-### Field definitions
-
-| Field | Type | Constraints |
-|---|---|---|
-| `skill_urn` | string | `urn:agentbox:skill:<scope>:<name>:v<n>`. Minted via `management-api/lib/uris.js`. |
-| `ontology_type` | string | Always `"ex:VerifiedSkill"`. |
-| `memory_type` | string | Always `"procedural"` — signals durable, executable storage tier. |
-| `name` | string | Snake-case function name; unique within scope. |
-| `version` | int | Monotonically increasing; determined by querying existing records. |
-| `signature` | string | Full Python function signature string. |
-| `body_python` | string | Complete Python function body including imports; self-contained. |
-| `assertions` | list[string] | Python assertion statements verified via `kernel.exec`. |
-| `examples` | list[object] | At least one `{input_repr, expected_output_repr, description}`. |
-| `embed_text` | string | Plain-English description embedded by MiniLM for HNSW search. |
-| `scope` | string | Task domain(s) this skill applies to. |
-| `verified_by` | string | `urn:agentbox:activity:<scope>:trace-<short-id>` — the ExecutionTrace URN proving the gate passed. |
-| `verified_at` | string | ISO 8601 UTC timestamp. |
-| `max_evidence_age_s` | int | From manifest; default 3600. The `verified_by` trace must be younger than this. |
-| `usage_count` | int | Retrieved and used count; incremented post-task. |
+The `embed_text` field is the primary semantic signal, embedded by
+bge-small-en-v1.5 (384-dim, via Xinference) for HNSW search — a plain-English
+description of what the function does, not its signature.
 
 ---
 
 ## VerificationGate Steps
 
-The VerificationGate is the trust signal for the skill library. All three
-conditions must pass before a write is accepted.
-
-### Step 1: Static AST scan (sandbox_check.py)
-
-```bash
-python3 mcp/code-interpreter/sandbox_check.py <candidate_body_file.py>
-```
-
-BannedAPI detected → reject immediately with reason `"static-check-failed"`.
-Banned APIs (v1): `subprocess`, `os.fork`, `os.exec*`, `os.system`, `socket`,
-`ctypes`, `cffi`, `multiprocessing`. See `sandbox_check.py` for full list.
-
-Step 1 always runs first. If it fails, Steps 2 and 3 are not executed.
-
-### Step 2: Kernel assertion execution + evidence URN validation
-
-Spawn a fresh `KernelSession` (via code-interpreter MCP `kernel.reset` first
-to ensure clean state), then:
-
-```python
-# Run the function body
-kernel.exec(body_python)
-
-# Run each assertion
-for assertion in assertions:
-    kernel.exec(assertion)  # Any exception or AssertionError → reject
-```
-
-Any exception or failing assertion → reject with reason `"assertion-failed"`.
-
-**Evidence URN validation (Step 2.5, per ADR-019 §VerificationGate):**
-The `verified_by` URN passed by the submitter must reference a real
-`ex:ExecutionTrace` record retrievable via `memory_retrieve`. That trace must
-have a `created_at` timestamp younger than `max_evidence_age_s`. Stale or
-missing → reject with reason `"stale-evidence"`.
-
-### Step 3: Example execution
-
-For each entry in `examples`, exec the function call and compare the repr of
-the output with `expected_output_repr`. Any mismatch or exception → reject
-with reason `"example-mismatch"`.
-
-### On pass: mint URN and store
-
-```python
-version = current_max_version + 1
-skill_urn = f"urn:agentbox:skill:{scope}:{name}:v{version}"
-
-mcp__ruvector__memory_store(
-    namespace="code-harness-skills",
-    key=f"skill:{scope}:{name}:v{version}",
-    # value = embed_text (semantic hook) + full JSON
-    value=f"{embed_text} | {json.dumps(record)}",
-    source_type="ex:VerifiedSkill",
-    upsert=True,
-)
-```
-
-### On rejection: quarantine
-
-```python
-mcp__ruvector__memory_store(
-    namespace="code-harness-skills-rejected",
-    key=f"rejected:{name}:{short_timestamp}",
-    value=f"Rejected: {reason} | {json.dumps(rejection_record)}",
-    source_type="ex:VerifiedSkillRejected",
-    upsert=False,
-)
-```
+The VerificationGate is the trust signal for the skill library: three
+conditions (static AST scan → kernel assertion + evidence-URN validation →
+example execution) must all pass before a write is accepted; failures are
+quarantined to `code-harness-skills-rejected`. Full step code, banned-API list,
+reject reasons, and the pass/reject store snippets:
+**[references/verification-gate.md](references/verification-gate.md)**.
 
 ---
 
@@ -272,27 +153,11 @@ in parallel at task start. Combined budget ≤ 1,000 tokens.
 
 ## Activity Record Emission (addendum)
 
-For every VerificationGate run (pass or fail), `verify-and-store.py` emits
-an Activity record to `code-harness-activities`:
-
-```json
-{
-  "activity_urn": "urn:agentbox:activity:<scope>:verify-<short-id>",
-  "ontology_type": "ex:Activity",
-  "memory_type": "episodic",
-  "verb": "verify",
-  "subject_did": "did:nostr:<hex-pubkey>",
-  "object_urn": "urn:agentbox:skill:<scope>:<name>:v<n>",
-  "started_at": "<ISO-8601>",
-  "ended_at": "<ISO-8601>",
-  "outcome": "ok|error",
-  "evidence": ["urn:agentbox:activity:<scope>:trace-<short-id>"]
-}
-```
-
-On successful store, a second Activity record is emitted with `verb=store`.
-Activity records carry only URN references — no function bodies, no
-stdout/stderr — so they bypass privacy redaction by design.
+Every VerificationGate run (pass or fail) emits an `ex:Activity` record to
+`code-harness-activities`, carrying only URN references (no function bodies, no
+stdout/stderr) so it bypasses privacy redaction by design; a second record with
+`verb=store` follows on successful store. Activity JSON schema:
+**[references/verified-skill-schema.md](references/verified-skill-schema.md)**.
 
 ---
 
@@ -322,9 +187,9 @@ Validator rules:
   (scheduled archival job).
 - All RuVector writes use `mcp__ruvector__memory_store` exclusively. Never
   raw SQL, never `claude-flow memory *` CLI (ADR-015 mandate).
-- The `embed_text` field is the primary semantic signal embedded by MiniLM
-  for HNSW search. Write it as a plain-English description of what the
-  function does, not its signature.
+- The `embed_text` field is the primary semantic signal embedded by
+  bge-small-en-v1.5 (384-dim, via Xinference) for HNSW search. Write it as a
+  plain-English description of what the function does, not its signature.
 - URNs minted via `management-api/lib/uris.js`. Never construct with ad-hoc
   string formatting in application code.
 - `sandbox_check.py` reused from `mcp/code-interpreter/`. Never duplicate.

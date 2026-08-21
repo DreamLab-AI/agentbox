@@ -1,6 +1,6 @@
 ---
 name: godot-development
-description: "Single-agent Godot 4 development: GDScript, C# scripting, scene editing, node systems, signals, physics, navigation, shaders, export builds. Use for targeted Godot scripting tasks without the full 48-agent game-dev studio. Also covers godot-rust (gdext) for native extensions and OpenXR/WebXR integration."
+description: "Single-agent Godot 4 work: write/debug GDScript or C# scripts, edit scenes and node systems, wire signals, physics, navigation, shaders, export builds, godot-rust (gdext) native extensions, and OpenXR/WebXR integration. Use for targeted Godot scripting without the full game-dev studio. NOT for full multi-system game production with art/audio/QA teams (use game-dev), and NOT a bundled engine — Godot 4 itself is not installed in this container (see Environment)."
 ---
 
 # Godot Development
@@ -18,68 +18,29 @@ Focused single-agent skill for Godot 4 scripting and scene work. For full game p
 | OpenXR / WebXR Godot integration | — |
 | Export build configuration | — |
 
-## Environment
+## Environment (read before running anything)
 
-- **Godot 4**: installed at `/usr/bin/godot4` or via PATH as `godot4`
-- **godot-rust (gdext)**: crates at `crates/visionclaw-xr-gdext/` in VisionClaw project
-- **Export templates**: headless export via `godot4 --export-release`
+- **Godot 4 engine is NOT installed in this container** — there is no `godot4`
+  on PATH nor at `/usr/bin/godot4`. Every `godot4 …` command in this skill must
+  run **host-side** (or on CI), or the engine must be installed separately /
+  gated into the image first. In-container work is limited to editing scripts,
+  scenes, and the Rust extension.
+- **godot-rust (gdext)**: crate `visionclaw-xr-gdext`, source at
+  `xr-client/rust/` in the VisionClaw project — **not** under `crates/` (that
+  holds the separate `visionclaw-xr-presence` crate). Builds with the
+  in-container Rust toolchain.
 
-## Core Capabilities
+## Core capabilities
 
-### GDScript Patterns
+Code patterns and export/OpenXR detail live in
+[`references/patterns.md`](references/patterns.md):
 
-```gdscript
-# Signal declaration and connection
-signal health_changed(new_health: int)
-
-func _ready() -> void:
-    health_changed.connect(_on_health_changed)
-
-func take_damage(amount: int) -> void:
-    health -= amount
-    health_changed.emit(health)
-```
-
-### Scene manipulation
-```bash
-# Headless scene validation
-godot4 --headless --script res://scripts/validate_scene.gd
-```
-
-### gdext (godot-rust) pattern
-```rust
-use godot::prelude::*;
-
-#[derive(GodotClass)]
-#[class(base=Node3D)]
-struct MyNode {
-    base: Base<Node3D>,
-}
-
-#[godot_api]
-impl INode3D for MyNode {
-    fn ready(&mut self) {
-        godot_print!("MyNode ready");
-    }
-}
-```
-
-### Export builds
-```bash
-# Android APK (requires Android SDK configured)
-godot4 --headless --export-release "Android" build/game.apk
-
-# Web (HTML5)
-godot4 --headless --export-release "Web" build/index.html
-```
-
-## OpenXR / WebXR Integration
-
-For Meta Quest or OpenXR development in Godot, this skill works alongside `meta-xr-sdk`:
-- Godot's XRServer and OpenXRInterface
-- XRCamera3D, XRController3D, XROrigin3D node setup
-- Hand tracking via OpenXR hand tracking extension
-- Passthrough configuration
+- GDScript signals, `_ready`, damage/health example
+- Headless scene validation
+- gdext (`GodotClass` / `INode3D`) native-extension skeleton
+- Export builds (Android APK, Web/HTML5) — host-side engine required
+- OpenXR / WebXR: XRServer, `XRCamera3D` / `XRController3D` / `XROrigin3D`,
+  hand tracking, passthrough
 
 ## Related skills
 

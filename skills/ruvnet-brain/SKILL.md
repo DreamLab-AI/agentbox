@@ -22,7 +22,7 @@ depends_on_mcps:
 
 ## Where the corpus lives
 
-The ~136k source chunks (62 repos, corpus **v4.0.36**, reconciled 2026-08-14)
+The ~147k source chunks (186 repos, corpus **v4.2.2-dev**, reconciled 2026-08-21)
 are rows in **ruvector-postgres** (the shared memory sidecar), namespace
 **`ruvnet-kb`**, `source_type = ruvnet-brain-ingest`, `memory_type = semantic`.
 They share the single 384-dim embedding space with every other memory entry,
@@ -89,10 +89,21 @@ Deployment traps (all hit and fixed 2026-08-14 — do not regress):
 - The rebuild is done via `docker exec ruvector-postgres psql` — the agentbox
   container itself has no `psql` binary.
 
-Corpus coverage note: **`dream-machine` is NOT in the upstream corpus** (as of
-v4.0.36) — for it, read the local checkout at
-`/home/devuser/workspace/dream-machine`; an empty `search_ruvnet` result there
-is expected, not a corpus fault. v4.0.36 added, among others: the full
+Corpus coverage note: `dream-machine` **joined the corpus at v4.2.2-dev**
+(2026-08-21; it was absent through v4.0.36) — `search_ruvnet({repo:
+"dream-machine"})` now works, with the local checkout at
+`/home/devuser/workspace/dream-machine` as the fork-accurate source of truth
+(the corpus indexes upstream). For **dreaming/self-improvement-loop questions**
+the corpus anchors are instead: `agentic-qe`
+(`docs/aqe-dream-cycles-neural-learning.md`, `DREAM_SCHEDULER_DESIGN.md`,
+`docs/plans/nightly-learner-implementation-plan.md` — trigger design, insight
+gating, baseline/A-B discipline) and `ruvector`
+(`examples/ruvLLM/docs/SONA/05-MEMORY-DREAMS.md` — generate→evaluate→integrate
+dream pipeline). The deployed nightly loop itself is the agentbox
+`services/dream-engine` (ADR-052, `/dream` command, supervisord-owned since the
+2026-08 rebuild — never also start the old tmux-autostart copy; a duplicate
+loop races HP-annexe dispatch/cleanup and turns nights INCONCLUSIVE, observed
+2026-08-20/21). v4.0.36 added, among others: the full
 `cognitum-*` family, `agentic-security`, `agentic-robotics`, `ruv-gists`,
 `worldgraph`, `skygraph` (62 repos total).
 

@@ -15,7 +15,7 @@ description: >-
 
 ## What this is
 A local, self-contained MCP gateway that searches the owner's personal email archive. All
-reading and reasoning happen **locally** (Gemma 4 31B dense + bge-m3 retrieval). The gateway
+reading and reasoning happen **locally** (Qwen3.8-27B dense + bge-m3 retrieval). The gateway
 exposes **three tools across two access tiers**:
 
 | Tool | Returns | Egress filter |
@@ -71,7 +71,7 @@ stable, **model-swappable façade** that adds ontology grounding and keeps email
 
 - **`REASONER_BASE_URL` = `http://192.168.2.132:8084/v1`** — the Loom façade, **colocated with
   the model on HP-Desktop** (Deployment A: `~/githubs/loom` docker container on `:8084`,
-  delegating to the host Muse on `:8085`). Reached over the LAN via the existing ml DNAT — the
+  delegating to the `loom-model` container on `:8085`). Reached over the LAN via the existing ml DNAT — the
   SAME endpoint value the gateway historically used, but `:8084` is now the **Loom façade**, not a
   raw model port. It scaffold-injects ontology context, then delegates to the local model. (A
   Deployment-B sidecar — `http://loom:8080` on `visionclaw_network`, compose profile `loom` — is
@@ -85,15 +85,16 @@ stable, **model-swappable façade** that adds ontology grounding and keeps email
   ontology-grounded (benchmark: static scaffold lifts grounded recall ~3.5×, and ~3–6× faster than
   cold parametric reasoning) AND never leave the LAN: the Loom delegates only to the LAN/local model
   behind `DISTILL_BACKEND_URL`, never to a cloud endpoint. The Loom is the email privacy system.
-- **Current model behind the Loom** — Muse-Glimmer-30B (deployed choice: BullshitBench 83 vs 46 —
-  it will not confabulate on the KG's edge cases — and it ties Gemma at 0.94 grounded recall via
-  the Loom's scaffold injection). Reached by the Loom over the LAN rail; HP is downstream of
-  machinelearn with **no LAN IP** (`hp-nat.service` DNAT over the 25 G rail; old `192.168.2.48` is
+- **Current model behind the Loom** — **Qwen3.8-27B** (cutover 2026-08-14; runs inside the Loom
+  stack as the `loom-model` container on `:8085`). This is a **swappable** choice behind the Loom
+  façade — earlier deployments (Muse, Gemma) sat here before it, and the next will sit here after,
+  with **zero change to the gateway**. Reached by the Loom over the LAN rail; HP is downstream of
+  machinelearn with **no LAN IP** (`hp-nat.service` DNAT over the 25 G rail; old `192.168.2.48` is <!-- lint-ok -->
   **dead**). To change the model, change the Loom's backend — **the gateway config does not change.**
 - **Embeddings** — served on **machinelearn** at **`:9997`** (bge models on xinference), unchanged.
 
 The gateway container is on the `visionclaw_network` bridge at `email-mcp-gateway:8765`. A stale
-`REASONER_BASE_URL` (anything pointing at a raw model port or `192.168.2.48`) is the top suspect for
+`REASONER_BASE_URL` (anything pointing at a raw model port or `192.168.2.48`) is the top suspect for <!-- lint-ok -->
 hangs — point it at `http://loom:8080/v1` and let the Loom own the model path.
 
 ## Tier 1 — `ask_email` (default, sanitized)
@@ -181,14 +182,16 @@ remains is **where the output goes**:
   LAN routing to the gateway.
 - **Gateway hangs / `refresh_inbox` 180 s timeouts / whole-session unreachability *after the Aug
   2026 network rework*** → the **reasoning-LLM route moved**, not the gateway. **Confirmed + fixed
-  10 Aug 2026:** the gateway's **`REASONER_BASE_URL`** was still `http://192.168.2.48:8084/v1` —
+  10 Aug 2026:** the gateway's **`REASONER_BASE_URL`** was still `http://192.168.2.48:8084/v1` — <!-- lint-ok -->
   HP's dead old LAN IP — so every synthesis black-holed while `GET /health` still answered (container
   healthy on `visionclaw_network`, safeguard + embedder ready). Symptom fingerprint is exactly that
   split: health green, all reasoning calls stall to timeout. **Fix:** set
-  `REASONER_BASE_URL=http://192.168.2.132:8084/v1` (ml DNATs to HP's `gemma-4-31B-it-qat` over the
-  rail) and recreate the container. **Verify** from the gateway host / `visionclaw_network`:
-  `curl -s http://192.168.2.132:8084/v1/models` should return the real model list
-  (`{"models":[{"name":"gemma-4-31B-it-qat"…}]}`). Ref:
+  `REASONER_BASE_URL=http://192.168.2.132:8084/v1` (ml DNATs to the Loom façade on HP, which
+  delegates to the current `loom-model` container on `:8085` over the rail) and recreate the
+  container. **Verify** from the gateway host / `visionclaw_network`:
+  `curl -s http://192.168.2.132:8084/v1/models` should return the real model list — currently
+  Qwen3.8-27B (`{"models":[{"name":"Qwen3.8-27B"…}]}`); the exact name tracks whatever model is
+  deployed behind the Loom, so match it to the current backend rather than a fixed string. Ref:
   `dreamlab-cumbria/infrastructure/network/experiments/deployed/hp-nat.sh` (DNAT + MSS-clamp) and
   `/compute/README.md`.
 - Auth/401 (transport) → bearer token wrong/expired; re-provision.

@@ -37,7 +37,10 @@ struct Cli {
     workspace: PathBuf,
 
     /// Directory for night artefacts (reports, receipts).
-    #[arg(long, default_value = "/home/devuser/workspace/.tmp/dream-annexe-artefacts")]
+    #[arg(
+        long,
+        default_value = "/home/devuser/workspace/.tmp/dream-annexe-artefacts"
+    )]
     artefact_dir: PathBuf,
 
     /// Optional agentbox.toml to read the [dream_machine] table from.
@@ -90,6 +93,19 @@ async fn main() {
         info!("dream_machine.enabled = false — loop mode exiting cleanly");
         return;
     }
+
+    // Singleton guard: exactly one engine may dream. A localhost port bind is
+    // a lock the kernel releases on ANY process death — no stale lockfiles.
+    // Two loops racing the shared HP annexe corrupted nights 2026-08-20/21
+    // (supervisord + a leftover tmux launcher); this makes that class of
+    // fault impossible regardless of who starts us.
+    let _singleton = match std::net::TcpListener::bind("127.0.0.1:49172") {
+        Ok(l) => l,
+        Err(_) => {
+            error!("another dream-engine instance holds the singleton lock (127.0.0.1:49172) — exiting to avoid racing the HP annexe");
+            std::process::exit(if cli.loop_mode { 0 } else { 1 });
+        }
+    };
 
     let llm = llm_config(&runtime);
     let engine = Engine {
@@ -152,8 +168,7 @@ async fn run_loop(engine: &Engine, target: Option<&str>) {
         let hour = now.format("%H").to_string().parse::<u8>().unwrap_or(0);
         let (day_int, date) = day_int_and_date();
 
-        let in_window =
-            hour >= engine.runtime.window_start && hour < engine.runtime.window_end;
+        let in_window = hour >= engine.runtime.window_start && hour < engine.runtime.window_end;
         if in_window && date != last_run_date {
             info!(date = %date, "nightly window open");
             match target {

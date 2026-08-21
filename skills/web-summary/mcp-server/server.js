@@ -21,7 +21,9 @@ class WebSummaryMCPServer {
             stdio: ['pipe', 'pipe', 'pipe'],
             env: {
                 ...process.env,
-                ZAI_CONTAINER_URL: process.env.ZAI_CONTAINER_URL || 'http://localhost:9600',
+                // Legacy Node wrapper (superseded by server.py). LLM base now
+                // points at the Ontology Loom facade, not the dead port-9600 Z.AI.
+                LLM_URL: process.env.LLM_URL || 'http://192.168.2.132:8084/v1',
                 GOOGLE_API_KEY: process.env.GOOGLE_API_KEY || ''
             }
         });

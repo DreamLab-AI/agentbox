@@ -13,7 +13,7 @@ Transform ANY input into a strategic Wardley map for understanding competitive p
 |------|---------|------|
 | **Mermaid `wardley-beta`** *(default)* | `mmdc` 11.15.0+ from the `mermaid-diagrams` skill | Plain `.mmd` files, GitHub-native preview, embed in markdown/LaTeX, version-control friendly |
 | OnlineWardleyMaps (`.owm`) | https://onlinewardleymaps.com or tractorjuice converter | Editing in the canonical web tool, exporting CC-BY-SA assets |
-| Custom HTML/SVG | `scripts/generate_wardley_map.py` here | Bespoke interactivity / report-builder dark-theme dashboards |
+| Custom HTML/SVG | `tools/generate_wardley_map.py` here | Bespoke interactivity / report-builder dark-theme dashboards |
 
 Mermaid 11.15.0 (2026-05-11) finalised `wardley-beta` grammar -- hyphenated
 names render unquoted, label sanitisation no longer mangles parentheses,
@@ -162,8 +162,8 @@ block inheritance, not a converter bug).
 ### Custom HTML/SVG (bespoke interactivity)
 
 ```python
-# scripts/generate_wardley_map.py -- retained for report-builder
-from scripts.generate_wardley_map import WardleyMapGenerator
+# tools/generate_wardley_map.py -- retained for report-builder
+from tools.generate_wardley_map import WardleyMapGenerator
 generator = WardleyMapGenerator()
 map_html = generator.create_map(components, dependencies)
 ```
@@ -215,7 +215,7 @@ See [references/strategic-patterns.md](references/strategic-patterns.md)
 For instant mapping:
 ```python
 # Read the input and generate map immediately
-exec(open('scripts/quick_map.py').read())
+exec(open('tools/quick_map.py').read())
 ```
 
 ## LaTeX Integration

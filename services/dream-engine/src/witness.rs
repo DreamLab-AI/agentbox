@@ -32,8 +32,8 @@ pub fn hash_report(report: &str) -> String {
 /// Trim, lowercase, and validate a commit hash: 7–64 lowercase hex characters.
 fn normalise_commit(commit: &str) -> Result<String, WitnessError> {
     let normalised = commit.trim().to_lowercase();
-    let valid = (7..=64).contains(&normalised.len())
-        && normalised.chars().all(|c| c.is_ascii_hexdigit());
+    let valid =
+        (7..=64).contains(&normalised.len()) && normalised.chars().all(|c| c.is_ascii_hexdigit());
     if valid {
         Ok(normalised)
     } else {
@@ -68,7 +68,9 @@ mod tests {
     fn report_hash_is_64_char_lowercase_hex() {
         let h = hash_report("hello world");
         assert_eq!(h.len(), 64);
-        assert!(h.chars().all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase()));
+        assert!(h
+            .chars()
+            .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase()));
         // Well-known SHA-256 of "hello world".
         assert_eq!(
             h,

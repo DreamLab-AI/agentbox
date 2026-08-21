@@ -2,21 +2,24 @@
 name: web-researcher
 authority_class: recoverable   # REC-6: read-only research; proceeds without an escalation wait
 description: >
-  Multi-source web research via the web-researcher-mcp Go server (tracks upstream
-  v1.33.0) — you pick the search ENGINE and the trusted SOURCES, and every citation
-  is a real, checkable link. ~26 MCP tools: web/image/news/academic/patent/structured
-  search, search_and_scrape, sequential_search; domain search (clinical_search,
-  legal_search/CourtListener, econ_search/World Bank+FRED, filing_search/SEC EDGAR);
-  scrape_page (full PDF/DOCX/PPTX/YouTube/HN, not snippets); citation integrity
-  (verify_citation, audit_bibliography, citation_graph, archive_source/Wayback,
-  format_bibliography APA/MLA/BibTeX/RIS/CSL); a grounded `answer` that cites real
-  sources; research session memory + export. Search LENSES restrict results to
-  trusted domains (academic, clinical, legal, finance, government, journalism, devops,
-  docs). Pluggable backends (Google PSE/Brave/Serper/SearXNG/SearchAPI/Exa) with
-  failover. Use for reputation-attached research needing verifiable citations — the
+  Multi-source web research via the web-researcher-mcp Go server (deployed binary
+  v1.43.0) — you pick the search ENGINE and the trusted SOURCES, and every citation
+  is a real, checkable link. 21 live MCP tools (verified against tools/list):
+  web/image/news/academic/patent search, search_and_scrape, sequential_search,
+  awesome_list_search, brand_research; domain search (clinical_search,
+  legal_search/CourtListener, econ_search/World Bank+FRED); scrape_page (full
+  PDF/DOCX/PPTX/YouTube/HN, not snippets); citation integrity (verify_citation,
+  verify_recommendation, audit_bibliography, citation_graph, archive_source/Wayback,
+  format_bibliography APA/MLA/BibTeX/RIS/CSL); research session memory + export
+  (get_research_session, research_export). Search LENSES restrict results to trusted
+  domains (academic, clinical, legal, finance, government, journalism, devops, docs).
+  Pluggable backends (Google PSE/Brave/Serper/SearXNG/SearchAPI/Exa), DuckDuckGo
+  fallback. Use for reputation-attached research needing verifiable citations — the
   open, auditable, private counterpart to perplexity-research (fast closed synthesis).
-  Headless scrape tier is DISABLED here → delegate JS-rendered pages to the `browser` sidecar.
-version: 1.33.0
+  NOT for quick uncited lookups (use perplexity/ceramic), interactive browser flows or
+  JS-rendered pages (headless scrape tier DISABLED here → delegate to the `browser`
+  sidecar), or grounding in our own ontology (use ontology-augment).
+version: 1.43.0
 triggers:
   - /research
   - web search
@@ -29,7 +32,7 @@ triggers:
   - news search
   - multi-source research
 upstream: https://github.com/zoharbabin/web-researcher-mcp
-upstream_version: 1.33.0
+upstream_version: 1.43.0
 license: MIT
 ---
 
@@ -55,7 +58,7 @@ Verifiable citations needed? → web-researcher (this)
 | **Quick built-in fallback** | **Claude WebSearch** (tertiary) |
 | **Verifiable, reputation-attached research** — real citations, full sources, you control which domains are searched (lenses), private/local; client work, filings, publications, medical/legal/finance | **`web-researcher`** (this) |
 | **Multi-agent deep report** — fan-out + adversarial verification + cited synthesis (orchestrates searchers; can use any of the above as a backend) | **`deep-research`** |
-| Expand a single known URL | **`gemini-url-context`** ; YouTube/page summary → **`web-summary`** |
+| Expand a single known URL | **`scrape_page`** (this skill, full text/PDF/YouTube) ; JS-rendered → **`browser`** sidecar |
 | Interactive browser (login/click/JS render) | **`browser`** / **`playwright`** |
 
 One-liner: **ceramic = primary keyword search with dense extracts; perplexity = secondary, synthesized + authoritative; web-researcher = verifiable citations + lenses; deep-research = the harness over all.**
@@ -66,15 +69,15 @@ One-liner: **ceramic = primary keyword search with dense extracts; perplexity = 
 - Restrict search to trusted sources via **lenses** (PubMed/arXiv/SEC/.gov, not random blogs).
 - Read full articles — web pages, **PDF/DOCX/PPTX, YouTube transcripts, Hacker News** threads.
 - Academic work: real papers + DOIs (`academic_search`), citation neighborhoods (`citation_graph`).
-- Domain search: courts (`legal_search`), trials (`clinical_search`), macro/econ (`econ_search`), SEC (`filing_search`).
+- Domain search: courts (`legal_search`), trials (`clinical_search`), macro/econ (`econ_search`).
 - **Verify** a citation before relying on it (`verify_citation`) or audit a whole reference list (`audit_bibliography`); snapshot a source to Wayback (`archive_source`); export a bibliography (`format_bibliography`).
-- A direct, source-cited `answer` instead of a reading list; structured JSON extraction (`structured_search`).
+- Curated resource discovery (`awesome_list_search`) or a structured company/brand pass (`brand_research`).
 - Session-tracked multi-step digs (`sequential_search`) with recovery + export.
 
 ## When Not To Use
 
 - Quick casual lookup, no citing needed → `perplexity-research` or Claude built-in search.
-- Single known URL summary → `gemini-url-context` or `web-summary`.
+- Single known URL summary → `scrape_page` (this skill); JS-rendered → `browser` sidecar.
 - Interactive browser flows (login, click, form-fill) → `browser` / `playwright`.
 - WebGPU/WebGL rendering validation → `browser` / `chrome-cdp`.
 - Multi-agent report with adversarial verification → `deep-research` (it can call this skill).
@@ -83,24 +86,11 @@ One-liner: **ceramic = primary keyword search with dense extracts; perplexity = 
 
 ## Connection
 
-MCP stdio server registered as `web-researcher` in `mcp/mcp.json`. Binary resolved from
-`$PATH` (Nix-baked when `[skills.research].web_researcher = true`, else
-`go install github.com/zoharbabin/web-researcher-mcp/cmd/web-researcher-mcp@latest`).
-
-```bash
-# Manual registration (auto-registered at boot):
-claude mcp add --scope user --transport stdio web-researcher -- web-researcher-mcp
-```
-
-> **Version gap (read this):** this doc tracks upstream **v1.33.0**, but the **deployed
-> Nix binary is currently v1.2.2** (the original 8 tools: web/image/news/academic/patent/
-> sequential search + scrape_page + search_and_scrape). The newer tools below (domain
-> search, citation integrity, `answer`, session/memory) and the expanded lens set go live
-> only after bumping the `flake.nix` pin (`webResearcherMcpPkg`: `version = "1.33.0"`,
-> rev `v1.33.0` = commit `8ccf4c7e`, refresh `hash` + `vendorHash` via
-> `nix-prefetch-github zoharbabin web-researcher-mcp --rev v1.33.0` and the first build's
-> printed `vendorHash`) and rebuilding agentbox. Until then, **only the 8 v1.2.2 tools are
-> live** — run `tools/list` (Health Check) to confirm what the server actually exposes.
+MCP stdio server registered as `web-researcher` in `mcp/mcp.json`. Deployed binary is
+**`web-researcher-mcp-1.43.0`** (Nix-baked, resolved from `$PATH`); the full v1.33+
+toolset — the 21 tools tabled below — is registered and live, verified against the
+running server's `tools/list`. Registration, version-bump (`flake.nix` pin) and
+provider-gating detail: [`references/deployment.md`](references/deployment.md).
 
 ## Tools (live set depends on configured providers — see notes)
 
@@ -112,8 +102,9 @@ claude mcp add --scope user --transport stdio web-researcher -- web-researcher-m
 | `scrape_page` | Read any URL in full — pages, PDF/DOCX/PPTX, YouTube transcripts, HN (API); `mode:raw` for verbatim |
 | `image_search` | Images by size/type/colour/format |
 | `news_search` | Recent news with date controls + source filtering |
-| `structured_search` | Search + extract structured JSON per result (supply a schema) — needs an Exa-class provider |
 | `sequential_search` | Multi-step research that remembers prior findings |
+| `awesome_list_search` | Mine curated GitHub "awesome-*" lists for a topic's canonical resources |
+| `brand_research` | Structured research pass on a company/brand |
 
 **Domain search**
 | Tool | Source |
@@ -124,7 +115,6 @@ claude mcp add --scope user --transport stdio web-researcher -- web-researcher-m
 | `legal_search` | US court opinions/dockets via CourtListener |
 | `clinical_search` | ClinicalTrials.gov (discovery, not medical advice) |
 | `econ_search` | World Bank indicators (keyless) + FRED US macro series |
-| `filing_search` | SEC EDGAR filings + XBRL company facts — needs `EDGAR_CONTACT_EMAIL` |
 
 **Citation integrity & output**
 | Tool | What it does |
@@ -134,16 +124,15 @@ claude mcp add --scope user --transport stdio web-researcher -- web-researcher-m
 | `verify_recommendation` | Check a recommended source before relying on it |
 | `archive_source` | Capture a fresh Wayback snapshot so a cited page stays verifiable (write tool) |
 | `format_bibliography` | APA / MLA / BibTeX / RIS / CSL-JSON (Zotero/EndNote/Mendeley-ready) |
-| `answer` | One synthesized answer **with real citations** (needs an answer-capable provider, e.g. Exa) |
 
-**Session / memory / collaboration** (some are opt-in, consent-gated by the operator)
+**Session / memory**
 | Tool | What it does |
 |------|--------------|
-| `get_research_session` / `research_export` | Recover a session after context loss; export a provenance-tracked report (md/JSON) |
-| `memory_save` / `memory_recall` | Long-term research memory (opt-in) |
-| `workspace_contribute` / `workspace_read` | Shared team workspace (opt-in) |
-| `get_my_analytics` | Per-user usage/limits (opt-in) |
+| `get_research_session` | Recover a session after context loss |
+| `research_export` | Export a provenance-tracked report (md/JSON) |
 
+All 21 tools above are live in the deployed v1.43.0 binary (verified via `tools/list`).
+Some are inert without provider keys — see [`references/deployment.md`](references/deployment.md).
 `docs/TOOLS.md` upstream is the authoritative, CI-verified tool list + schemas.
 
 ## Search Lenses (the differentiator)
@@ -196,9 +185,8 @@ GOOGLE_CUSTOM_SEARCH_API_KEY  GOOGLE_CUSTOM_SEARCH_ID   # PSE (default)
 BRAVE_API_KEY                                           # Brave
 SERPER_API_KEY                                          # Serper.dev
 SEARCHAPI_API_KEY                                       # SearchAPI.io
-EXA_API_KEY                                             # Exa (enables `answer` + `structured_search`)
+EXA_API_KEY                                             # Exa (neural search + citation-graph provider)
 SEARXNG_URL                                             # self-hosted
-EDGAR_CONTACT_EMAIL                                     # enables filing_search (SEC EDGAR)
 ```
 
 Multi-provider routing with per-provider circuit breakers + failover:
@@ -217,20 +205,32 @@ export SEARCH_ROUTING='{"web":"brave,google","news":"brave,serper","images":"goo
 | Trustworthy academic claim | `academic_search` → `verify_citation` → `citation_graph` → `format_bibliography` |
 | Keep a cited source alive | `archive_source` (Wayback) before publishing |
 | Fast casual answer | `perplexity-research` instead |
-| Single known URL | `gemini-url-context` / `web-summary` |
+| Single known URL | `scrape_page` (this skill); JS-rendered → `browser` sidecar |
 | JS-rendered SPA | `scrape_page` → fallback to `browser` skill |
 | Add provenance sidecars to a deliverable | pair with `provenance-tracking` |
 
 ## Health Check
 
+Hold stdin open long enough for the response (the server exits on EOF):
+
 ```bash
-echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | web-researcher-mcp 2>/dev/null | head -1
+{ printf '%s\n' \
+  '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"c","version":"1"}}}' \
+  '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
+  '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'; sleep 3; } \
+  | web-researcher-mcp 2>/dev/null | grep -o '"name":"[a-z_]*"' | sort -u
 ```
 
 ## References
 
-- Upstream (v1.33.0): https://github.com/zoharbabin/web-researcher-mcp
+- Deployment / Nix pin / provider gating: [`references/deployment.md`](references/deployment.md)
+- Upstream (binary v1.43.0): https://github.com/zoharbabin/web-researcher-mcp
 - Authoritative tools: `docs/TOOLS.md` ; deployment: `docs/DEPLOYMENT.md` (upstream)
 - Related skills: `perplexity-research` (fast closed synthesis), `deep-research`
-  (multi-agent harness), `browser`, `gemini-url-context`, `web-summary`,
+  (multi-agent harness), `browser` (JS-rendered pages / interactive flows),
   `provenance-tracking`, `autoresearch`, `ontology-augment`
+
+> Note: `gemini-url-context` / `web-summary` are referenced by some older skill docs but
+> the backing `gemini` CLI is **not on PATH** here — those routes are non-functional
+> pending a gemini CLI install. Use `scrape_page` (this skill) or the `browser` sidecar
+> for single-URL expansion instead.

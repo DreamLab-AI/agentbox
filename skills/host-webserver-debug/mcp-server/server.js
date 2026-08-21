@@ -20,7 +20,9 @@ const http = require('http');
 const https = require('https');
 
 // Import tools
-const { takeScreenshot } = require('../tools/screenshot.js');
+// NOTE: Screenshot/navigation are delegated to the browsercontainer sidecar
+// (browser-gpu MCP tools). The former local-Playwright screenshot tool was
+// removed from this skill — see references/deprecated-local-playwright-screenshot.js.
 const { debugCors } = require('../tools/debug-cors.js');
 
 // State
@@ -162,33 +164,6 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         name: 'bridge_stop',
         description: 'Stop HTTPS bridge proxy',
         inputSchema: { type: 'object', properties: {} }
-      },
-      {
-        name: 'screenshot',
-        description: 'Take screenshot of web page via HTTPS bridge',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            url: {
-              type: 'string',
-              description: 'URL to screenshot (default: https://localhost:3001)',
-              default: 'https://localhost:3001'
-            },
-            filename: {
-              type: 'string',
-              description: 'Output filename (auto-generated if not provided)'
-            },
-            full_page: {
-              type: 'boolean',
-              description: 'Capture full page (default: true)',
-              default: true
-            },
-            output_dir: {
-              type: 'string',
-              description: 'Output directory (default: /tmp/screenshots)'
-            }
-          }
-        }
       },
       {
         name: 'debug_cors',
@@ -338,21 +313,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      case 'screenshot': {
-        const result = await takeScreenshot({
-          url: args.url || 'https://localhost:3001',
-          filename: args.filename,
-          fullPage: args.full_page !== false,
-          outputDir: args.output_dir || '/tmp/screenshots'
-        });
-        return {
-          content: [{
-            type: 'text',
-            text: JSON.stringify(result, null, 2)
-          }]
-        };
-      }
-
       case 'debug_cors': {
         const result = await debugCors({
           url: args.url || 'https://localhost:3001',
@@ -461,15 +421,14 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
         mimeType: 'application/json',
         text: JSON.stringify({
           name: 'host-webserver-debug',
-          version: '1.0.0',
+          version: '1.1.0',
           capabilities: [
             'HTTPS to HTTP bridge proxy',
-            'Screenshot capture',
             'CORS debugging',
             'Health checking',
             'Host IP detection'
           ],
-          display: process.env.DISPLAY || ':1'
+          note: 'Screenshots/navigation delegated to the browsercontainer sidecar (browser-gpu MCP tools)'
         }, null, 2)
       }]
     };

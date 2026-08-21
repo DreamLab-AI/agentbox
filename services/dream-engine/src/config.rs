@@ -58,10 +58,18 @@ pub struct DreamConfig {
     pub auto_merge: bool,
 }
 
-fn default_cron() -> String { "0 3 * * *".into() }
-fn default_adr_convention() -> String { "4-digit".into() }
-fn default_ledger_path() -> String { "docs/dream-cycle/LEDGER.md".into() }
-fn default_branch_prefix() -> String { "dream/".into() }
+fn default_cron() -> String {
+    "0 3 * * *".into()
+}
+fn default_adr_convention() -> String {
+    "4-digit".into()
+}
+fn default_ledger_path() -> String {
+    "docs/dream-cycle/LEDGER.md".into()
+}
+fn default_branch_prefix() -> String {
+    "dream/".into()
+}
 
 impl DreamConfig {
     pub fn load(path: &Path) -> Result<Self, ConfigError> {
@@ -80,9 +88,10 @@ impl DreamConfig {
         }
         for (i, slot) in self.slots.iter().enumerate() {
             if slot.deep.is_empty() {
-                return Err(ConfigError::Validation(
-                    format!("slot[{}].deep must not be empty", i),
-                ));
+                return Err(ConfigError::Validation(format!(
+                    "slot[{}].deep must not be empty",
+                    i
+                )));
             }
         }
         Ok(())
@@ -127,25 +136,55 @@ pub struct RuntimeConfig {
     pub prune_dry_streak: usize,
 }
 
-fn default_true() -> bool { true }
-fn default_hp_host() -> String { "john@10.10.10.1".into() }
-fn default_hp_annexe_dir() -> String { "/home/john/dream-annexe".into() }
-fn default_loom_url() -> String { "http://192.168.2.132:8084/v1".into() }
-fn default_loom_model() -> String { "qwen3.8-27B".into() }
-fn default_max_tokens() -> u32 { 16384 }
-fn default_zai_url() -> String { "https://api.z.ai/api/anthropic".into() }
-fn default_zai_model() -> String { "glm-5.3".into() }
-fn default_provider() -> String { "zai".into() }
-fn default_memory_namespace() -> String { "dream-cycle".into() }
-fn default_window_start() -> u8 { 1 }
-fn default_window_end() -> u8 { 5 }
-fn default_max_repos() -> usize { 5 }
-fn default_prune_streak() -> usize { 5 }
+fn default_true() -> bool {
+    true
+}
+fn default_hp_host() -> String {
+    "john@10.10.10.1".into()
+}
+fn default_hp_annexe_dir() -> String {
+    "/home/john/dream-annexe".into()
+}
+fn default_loom_url() -> String {
+    "http://192.168.2.132:8084/v1".into()
+}
+fn default_loom_model() -> String {
+    "qwen3.8-27B".into()
+}
+fn default_max_tokens() -> u32 {
+    16384
+}
+fn default_zai_url() -> String {
+    "https://api.z.ai/api/anthropic".into()
+}
+fn default_zai_model() -> String {
+    "glm-5.3".into()
+}
+fn default_provider() -> String {
+    "zai".into()
+}
+fn default_memory_namespace() -> String {
+    "dream-cycle".into()
+}
+fn default_window_start() -> u8 {
+    1
+}
+fn default_window_end() -> u8 {
+    5
+}
+fn default_max_repos() -> usize {
+    5
+}
+fn default_prune_streak() -> usize {
+    5
+}
 
 /// Discover nominated repos — directories under workspace containing dream.config.json.
 pub fn discover_repos(workspace: &Path) -> Vec<(String, PathBuf)> {
     let mut repos = Vec::new();
-    let Ok(entries) = std::fs::read_dir(workspace) else { return repos };
+    let Ok(entries) = std::fs::read_dir(workspace) else {
+        return repos;
+    };
     for entry in entries.flatten() {
         let path = entry.path();
         if path.is_dir() && path.join("dream.config.json").exists() {
@@ -189,9 +228,18 @@ mod tests {
             repo: "test/repo".into(),
             cron: default_cron(),
             slots: vec![
-                Slot { deep: "a".into(), scan: vec![] },
-                Slot { deep: "b".into(), scan: vec![] },
-                Slot { deep: "c".into(), scan: vec![] },
+                Slot {
+                    deep: "a".into(),
+                    scan: vec![],
+                },
+                Slot {
+                    deep: "b".into(),
+                    scan: vec![],
+                },
+                Slot {
+                    deep: "c".into(),
+                    scan: vec![],
+                },
             ],
             bonus_moduli: HashMap::new(),
             control_plane_probes: vec![],
@@ -218,7 +266,10 @@ mod tests {
         let cfg = DreamConfig {
             repo: "test/repo".into(),
             cron: default_cron(),
-            slots: vec![Slot { deep: "a".into(), scan: vec![] }],
+            slots: vec![Slot {
+                deep: "a".into(),
+                scan: vec![],
+            }],
             bonus_moduli: mods,
             control_plane_probes: vec![],
             build_step: None,

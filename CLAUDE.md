@@ -25,7 +25,7 @@ Full audited state (learning loop, gates, corpus history): [ruvector-memory-stat
 
 ## Skills — progressive discovery
 
-The image bakes `/opt/agentbox/skills` (118 skills). Skills are the JIT context layer: trigger-led descriptions route, `references/` subdirs hold depth loaded on demand — keep it that way when adding or editing skills (no monolith SKILL.md; relocate depth to `references/`, never cull). Directory + routing: [skills/SKILL-DIRECTORY.md](skills/SKILL-DIRECTORY.md); upgrade rationale: [skills/UPGRADE-PLAN-c5.md](skills/UPGRADE-PLAN-c5.md).
+The image bakes `/opt/agentbox/skills` (118 skills). Skills are the JIT context layer: trigger-led descriptions route, `references/` subdirs hold depth loaded on demand — keep it that way when adding or editing skills (no monolith SKILL.md; relocate depth to `references/`, never cull; skill docs use skill-relative paths, never `~/.claude/skills/<name>/`). Gate: `skills/lint-skills.sh` must pass before a rebuild. Directory + routing: [skills/SKILL-DIRECTORY.md](skills/SKILL-DIRECTORY.md); upgrade rationale: [skills/UPGRADE-PLAN-c5.md](skills/UPGRADE-PLAN-c5.md).
 
 ## Canonical runtime files
 

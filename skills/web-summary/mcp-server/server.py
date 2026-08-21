@@ -3,7 +3,9 @@
 Web Summary MCP Server - FastMCP Implementation
 
 Consolidated Python-only implementation (eliminates Node.js wrapper).
-Uses Z.AI service (port 9600) for cost-effective summarization.
+Uses the Ontology Loom facade (OpenAI-compatible /v1/chat/completions) for
+summarization. The Loom is the load-bearing, model-swappable LLM door
+(agentbox ADR-051); the previous Z.AI service on port 9600 is retired.
 
 Features:
 - URL content summarization
@@ -31,8 +33,16 @@ logging.basicConfig(
 logger = logging.getLogger("web-summary-mcp")
 
 # Environment configuration
-ZAI_URL = os.environ.get("ZAI_URL", "http://localhost:9600/chat")
-ZAI_TIMEOUT = int(os.environ.get("ZAI_TIMEOUT", "60"))
+# LLM_URL is the OpenAI-compatible base of the Ontology Loom facade. The facade
+# grounds each call in the ontology and delegates to whatever model sits behind
+# it, so consumers never change when the model is swapped. ZAI_URL is still read
+# for backward compatibility but no longer defaults to the dead port-9600 service.
+LLM_URL = os.environ.get(
+    "LLM_URL",
+    os.environ.get("ZAI_URL", "http://192.168.2.132:8084/v1"),
+).rstrip("/")
+LLM_MODEL = os.environ.get("LLM_MODEL", "loom")
+LLM_TIMEOUT = int(os.environ.get("LLM_TIMEOUT", os.environ.get("ZAI_TIMEOUT", "120")))
 USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36"
 
 # Initialize FastMCP server
@@ -140,35 +150,50 @@ async def fetch_url_content(url: str) -> dict:
             return {"success": False, "error": str(e)}
 
 
-async def call_zai(prompt: str, max_tokens: int = 2000) -> dict:
-    """Call Z.AI service for LLM processing."""
-    async with httpx.AsyncClient(timeout=ZAI_TIMEOUT) as client:
+async def call_llm(prompt: str, max_tokens: int = 2000) -> dict:
+    """Call the Ontology Loom facade (OpenAI-compatible chat/completions)."""
+    # Reasoning models behind the Loom need generous headroom; 400 truncates
+    # some of them to empty (see agentbox CLAUDE.md bench note).
+    max_tokens = max(max_tokens, 1536)
+    async with httpx.AsyncClient(timeout=LLM_TIMEOUT) as client:
         try:
             response = await client.post(
-                ZAI_URL,
+                f"{LLM_URL}/chat/completions",
                 json={
-                    "prompt": prompt,
-                    "max_tokens": max_tokens
+                    "model": LLM_MODEL,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "max_tokens": max_tokens,
                 },
-                headers={"Content-Type": "application/json"}
+                headers={"Content-Type": "application/json"},
             )
 
             if response.status_code == 200:
                 data = response.json()
-                return {
-                    "success": True,
-                    "content": data.get("content", data.get("response", ""))
-                }
+                content = ""
+                try:
+                    content = data["choices"][0]["message"]["content"]
+                except (KeyError, IndexError, TypeError):
+                    # Tolerate non-standard shapes from a swapped-in backend.
+                    content = data.get("content", data.get("response", ""))
+                return {"success": True, "content": content}
             else:
-                return {"success": False, "error": f"Z.AI returned {response.status_code}"}
+                return {"success": False, "error": f"Loom facade returned {response.status_code}"}
 
         except httpx.ConnectError:
             return {
                 "success": False,
-                "error": "Cannot connect to Z.AI service on port 9600. Check: supervisorctl status claude-zai"
+                "error": (
+                    f"Cannot connect to the Ontology Loom facade at {LLM_URL}. "
+                    "Check the facade health: curl -s http://192.168.2.132:8084/health "
+                    "(override with LLM_URL). Do not target the dead HP address 192.168.2.48."
+                ),
             }
         except Exception as e:
             return {"success": False, "error": str(e)}
+
+
+# Backward-compatible alias for any external caller still importing call_zai.
+call_zai = call_llm
 
 
 def is_youtube_url(url: str) -> bool:
@@ -267,8 +292,8 @@ Content:
 
 Provide the summary in {params.format} format."""
 
-    # Call Z.AI for summarization
-    summary_result = await call_zai(prompt)
+    # Call the Loom facade for summarisation
+    summary_result = await call_llm(prompt)
     if not summary_result["success"]:
         return summary_result
 
@@ -287,7 +312,7 @@ Return them as a comma-separated list.
 Summary:
 {summary_result['content']}"""
 
-        topic_result = await call_zai(topic_prompt, max_tokens=500)
+        topic_result = await call_llm(topic_prompt, max_tokens=500)
         if topic_result["success"]:
             topics = [t.strip() for t in topic_result["content"].split(",")]
             result["topics"] = topics
@@ -322,7 +347,7 @@ Focus on specific, meaningful concepts rather than generic terms.
 Text:
 {params.text[:10000]}"""
 
-    result = await call_zai(prompt, max_tokens=500)
+    result = await call_llm(prompt, max_tokens=500)
     if not result["success"]:
         return result
 
@@ -341,15 +366,15 @@ async def health_check() -> dict:
     """
     Check web-summary service health.
 
-    Verifies Z.AI service connectivity and reports configuration.
+    Verifies Ontology Loom facade connectivity and reports configuration.
     """
-    zai_result = await call_zai("Say 'OK' if you can hear me.", max_tokens=10)
+    llm_result = await call_llm("Say 'OK' if you can hear me.", max_tokens=10)
 
     return {
-        "success": zai_result["success"],
-        "zai_url": ZAI_URL,
-        "zai_status": "connected" if zai_result["success"] else "disconnected",
-        "error": zai_result.get("error")
+        "success": llm_result["success"],
+        "llm_url": LLM_URL,
+        "llm_status": "connected" if llm_result["success"] else "disconnected",
+        "error": llm_result.get("error")
     }
 
 
@@ -365,7 +390,7 @@ def get_capabilities() -> str:
         "version": "2.0.0",
         "protocol": "fastmcp",
         "tools": ["summarize_url", "youtube_transcript", "generate_topics", "health_check"],
-        "zai_integration": True,
+        "llm_backend": "ontology-loom-facade",
         "supported_formats": ["markdown", "plain", "logseq", "obsidian"],
         "visionclaw_compatible": True
     }

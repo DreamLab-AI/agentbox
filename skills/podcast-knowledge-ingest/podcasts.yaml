@@ -7,6 +7,7 @@ podcasts:
 
 settings:
   loom_url: "http://192.168.2.132:8084/v1"
+  loom_fallback_urls: ["http://10.10.10.1:8084/v1"]
   loom_model: "qwen3.8-27b"
   max_assertions_per_episode: 15
   min_confidence: 0.4

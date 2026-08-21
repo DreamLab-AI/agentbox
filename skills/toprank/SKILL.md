@@ -54,7 +54,7 @@ AI-powered SEO and SEM automation through 6 specialised skills with Google Searc
 
 ```bash
 # Install dependencies
-pip install -r ~/.claude/skills/toprank/requirements.txt
+pip install -r requirements.txt (from the toprank skill directory)
 
 # Authenticate with Google Search Console
 gcloud auth application-default login

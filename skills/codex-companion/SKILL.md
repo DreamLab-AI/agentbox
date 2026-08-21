@@ -5,8 +5,11 @@ description: >
   "consult with openai", "talk to codex", "ask gpt-5.4", "get a second opinion
   from openai", "delegate to codex", "openai review", or "codex rescue". Provides
   code reviews, adversarial reviews, rescue operations (when Claude is stuck),
-  and GPT-5.4 task delegation with structured prompting. Uses the openai-user
-  isolation for API key management. From openai/codex-plugin-cc.
+  and GPT-5.4 task delegation with structured prompting. Runs the baked Codex
+  CLI under the current profile; auth resolves from ~/.codex ([consultants.codex])
+  wired by the entrypoint. NOT for non-code tasks (research/content/design →
+  dedicated skills), simple one-off edits Claude can finish alone, or DeepSeek
+  reasoning (→ deepseek-reasoning). From openai/codex-plugin-cc.
 version: 1.0.0
 author: OpenAI (adapted for Agentbox)
 tags:
@@ -22,7 +25,7 @@ env_vars:
 
 # Codex Companion
 
-OpenAI's official Codex plugin for Claude Code, adapted for our multi-user container. Delegates code review, adversarial review, and rescue tasks to GPT-5.4 via the Codex CLI.
+OpenAI's official Codex plugin for Claude Code, adapted for the Agentbox container. Delegates code review, adversarial review, and rescue tasks to GPT-5.4 via the Codex CLI.
 
 ## When to Use This Skill
 
@@ -41,13 +44,14 @@ OpenAI's official Codex plugin for Claude Code, adapted for our multi-user conta
 
 ## Container Integration
 
-This skill leverages our `openai-user` (UID 1002) for API key isolation:
+Codex runs under the current tmux profile — there is no separate pseudo-user (the
+`openai-user`/`as-openai`/UID-1002 model is retired). The baked Codex CLI reads its
+credentials from `CODEX_HOME` (`~/.codex`), where the entrypoint wires
+`[consultants.codex]` auth and the `agentbox-memory` MCP server on first boot. Set
+`OPENAI_API_KEY` in the environment only if you are overriding that baked auth.
 
 ```bash
-# The openai-user has OPENAI_API_KEY pre-configured in the entrypoint
-as-openai   # Switch to openai-user context
-
-# Or run Codex commands directly (the skill handles user switching)
+# Codex commands run in-place; no user switch needed
 /codex:review              # Review working tree changes
 /codex:adversarial-review  # Challenge the implementation approach
 /codex:rescue [task]       # Hand a stuck task to Codex
@@ -76,7 +80,7 @@ The `codex-rescue` subagent activates proactively when:
 - Deeper root-cause investigation is needed
 - A substantial coding task should be delegated
 
-The rescue agent uses the `gpt-5-4-prompting` skill to compose tight, structured Codex prompts with XML tags, output contracts, and verification loops.
+The rescue agent uses this skill's bundled prompting reference library (`skills/gpt-5-4-prompting/` — prompt blocks, recipes, and antipatterns) to compose tight, structured Codex prompts with XML tags, output contracts, and verification loops.
 
 ## GPT-5.4 Prompting Patterns
 
@@ -106,16 +110,14 @@ Reviews follow a structured JSON schema (`review-output.schema.json`) with:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `OPENAI_API_KEY` | Yes | OpenAI API key (pre-configured for `openai-user`) |
+| `OPENAI_API_KEY` | No | Optional override; auth normally resolves from `~/.codex` (`[consultants.codex]`) wired by the entrypoint |
 | `CODEX_MODEL` | No | Override model (default: GPT-5.4, `spark` maps to `gpt-5.3-codex-spark`) |
 
 ## Setup
 
 ```bash
-# If running as devuser, the openai-user key is available via:
-as-openai   # Switch user context
-
-# Or configure directly:
+# Auth is wired by the entrypoint (~/.codex / [consultants.codex]); no setup
+# is normally needed. To (re)configure the Codex CLI or supply your own key:
 /codex:setup
 
 # Verify:

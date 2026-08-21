@@ -17,6 +17,12 @@ pub enum Verdict {
     Accept,
     Reject,
     Inconclusive,
+    /// The environment (annexe checkout, evaluators) was broken before the
+    /// hypothesis could be tested. Distinct from Inconclusive: it never
+    /// counts toward a repo's dry streak — a broken harness must not park a
+    /// healthy repo — and it is raised by the engine's pre-flight probe, not
+    /// parsed from an LLM report.
+    BlockedEnv,
 }
 
 impl Verdict {
@@ -26,6 +32,7 @@ impl Verdict {
             Verdict::Accept => "ACCEPT",
             Verdict::Reject => "REJECT",
             Verdict::Inconclusive => "INCONCLUSIVE",
+            Verdict::BlockedEnv => "BLOCKED-ENV",
         }
     }
 
@@ -338,7 +345,10 @@ do more
 
     #[test]
     fn defaults_to_inconclusive() {
-        assert_eq!(parse_verdict("nothing decisive here"), Verdict::Inconclusive);
+        assert_eq!(
+            parse_verdict("nothing decisive here"),
+            Verdict::Inconclusive
+        );
     }
 
     #[test]
@@ -362,7 +372,10 @@ More prose here.
     fn sanitise_strips_blockquote_from_given() {
         let report = "> Given the flag is off, no requests should be made.";
         let finding = sanitise_finding(report, Verdict::Reject);
-        assert_eq!(finding, "Given the flag is off, no requests should be made.");
+        assert_eq!(
+            finding,
+            "Given the flag is off, no requests should be made."
+        );
     }
 
     #[test]

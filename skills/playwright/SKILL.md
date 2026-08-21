@@ -5,7 +5,10 @@ description: >
   browsercontainer sidecar (chrome-devtools-mcp, 40+ tools). Use for navigating pages,
   clicking elements, filling forms, taking screenshots, executing JavaScript, accessibility
   snapshots, and WebGPU rendering validation. Visual access via VNC on port 5903.
-  Hardware-accelerated Chrome Beta 149+ with NVIDIA Vulkan/ANGLE.
+  Hardware-accelerated Chrome Beta 149+ with NVIDIA Vulkan/ANGLE. NOT a local
+  Playwright install — there is no local browser or `playwright` npm dependency;
+  all automation routes through the sidecar MCP. Not for summarising page content
+  without interaction (use web-summary) or API testing without a browser (use curl).
 ---
 
 # Playwright Skill (Sidecar)
@@ -128,3 +131,11 @@ The sidecar is on `visionclaw_network` and discoverable by hostname `browsercont
 ```bash
 vncviewer localhost:5903   # no password, Display :2
 ```
+
+## Legacy note
+
+There is **no local Playwright install**. Older Node scripts that
+`require('playwright')` and `chromium.launch()` a local browser are retired and
+kept only as historical examples under
+[`references/legacy-local-scripts/`](references/legacy-local-scripts/). Drive all
+new automation through the sidecar MCP tools above.

@@ -20,7 +20,7 @@ High-performance WebAssembly graphics with JavaScript interoperability for web a
 - For server-side CUDA GPU compute -- use the cuda skill instead
 - For non-graphical WASM modules (data processing, crypto) -- the rust-development skill with wasm32 target is sufficient
 - For browser automation and testing -- use the playwright or browser skills instead
-- For UI component design guidelines -- use the ui-ux-pro-max skill instead
+- For UI component design guidance (styles, palettes, typography, layout) -- use the ui-ux-pro-max-skill skill instead; for auditing/polishing an existing interface -- use the design-audit skill
 
 ## Architecture Pattern
 

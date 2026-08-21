@@ -41,7 +41,7 @@ pub struct LedgerRow {
     pub pr: String,
     /// `"yes"`, `"no"`, or `"blocked"`.
     pub evaluated: String,
-    /// `"ACCEPT"`, `"REJECT"`, or `"INCONCLUSIVE"`.
+    /// `"ACCEPT"`, `"REJECT"`, `"INCONCLUSIVE"`, or `"BLOCKED-ENV"`.
     pub verdict: String,
     pub effect: String,
     /// The short (12-char) witness.
@@ -52,7 +52,7 @@ pub struct LedgerRow {
 /// Escape a cell so it can never break the markdown table: `|` becomes `\|` and
 /// any newline (or carriage return) becomes a space.
 pub fn escape_cell(s: &str) -> String {
-    s.replace('|', "\\|").replace('\n', " ").replace('\r', " ")
+    s.replace('|', "\\|").replace(['\n', '\r'], " ")
 }
 
 /// Render one table row (without trailing newline).

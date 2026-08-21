@@ -141,6 +141,7 @@ voice/console/certs/
 # Generated
 generated/
 screenshots/
+test-results/
 
 # Hardened skill directory rules (prevent build artefacts)
 skills/**/node_modules/

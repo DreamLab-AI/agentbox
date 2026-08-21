@@ -53,7 +53,7 @@ and policy recommendations. Target audience: government policy makers."
 ### 2. Preflight
 
 ```bash
-python3 ~/.claude/skills/report-builder/scripts/preflight.py
+python3 scripts/preflight.py   # from the report-builder skill directory
 ```
 
 Preflight reports which tools and API keys are available and degrades gracefully

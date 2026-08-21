@@ -44,9 +44,18 @@ pub struct DreamFinding {
 const EMBEDDING_MODEL: &str = "bge-small-en-v1.5";
 const EMBEDDING_DIMS: usize = 384;
 
-/// Significance bar: only ACCEPT / REJECT verdicts warrant persistence.
-fn is_significant(verdict: &str) -> bool {
-    matches!(verdict.to_uppercase().as_str(), "ACCEPT" | "REJECT")
+/// Decisive verdicts get high importance; INCONCLUSIVE nights are stored too
+/// (at lower importance) — their operational lessons (evaluator traps, false
+/// positives) are exactly what day-time agents need recalled. Only
+/// BLOCKED-ENV is excluded: a broken harness is operational state, not
+/// knowledge, and it already alerts via the dream inbox.
+fn importance_for(verdict: &str) -> Option<f64> {
+    match verdict.to_uppercase().as_str() {
+        "ACCEPT" => Some(0.9),
+        "REJECT" => Some(0.7),
+        "INCONCLUSIVE" => Some(0.4),
+        _ => None,
+    }
 }
 
 /// Format an embedding vector as a ruvector literal: "[0.123,0.456,...]".
@@ -83,9 +92,7 @@ struct EmbeddingData {
 }
 
 async fn fetch_embedding(cfg: &RuVectorConfig, text: &str) -> Result<Vec<f32>, RuVectorError> {
-    let client = Client::builder()
-        .timeout(Duration::from_secs(30))
-        .build()?;
+    let client = Client::builder().timeout(Duration::from_secs(30)).build()?;
 
     let body = EmbeddingRequest {
         model: EMBEDDING_MODEL.into(),
@@ -111,8 +118,9 @@ async fn fetch_embedding(cfg: &RuVectorConfig, text: &str) -> Result<Vec<f32>, R
         )));
     }
 
-    let parsed: EmbeddingResponse = serde_json::from_str(&raw)
-        .map_err(|e| RuVectorError::Embedding(format!("JSON parse error ({}B): {}", raw.len(), e)))?;
+    let parsed: EmbeddingResponse = serde_json::from_str(&raw).map_err(|e| {
+        RuVectorError::Embedding(format!("JSON parse error ({}B): {}", raw.len(), e))
+    })?;
 
     if let Some(err) = parsed.error {
         return Err(RuVectorError::Embedding(format!("API error: {}", err)));
@@ -155,15 +163,15 @@ async fn ensure_project(pool: &sqlx::PgPool) -> Result<i32, RuVectorError> {
 /// Returns `Ok(false)` when skipped by the significance bar (verdict not
 /// ACCEPT/REJECT), `Ok(true)` when stored.
 pub async fn store_finding(cfg: &RuVectorConfig, f: &DreamFinding) -> Result<bool, RuVectorError> {
-    // 1. Significance bar.
-    if !is_significant(&f.verdict) {
+    // 1. Storage bar: everything except BLOCKED-ENV (operational, not knowledge).
+    let Some(importance) = importance_for(&f.verdict) else {
         info!(
             verdict = %f.verdict,
             night_id = %f.night_id,
-            "skipping finding below significance bar (verdict not ACCEPT/REJECT)"
+            "skipping finding (verdict is operational, not knowledge)"
         );
         return Ok(false);
-    }
+    };
 
     // 2. Embedding from xinference, validated to exactly 384 floats.
     let embed_input = format!("{}: {}", f.deep, f.finding);
@@ -191,7 +199,6 @@ pub async fn store_finding(cfg: &RuVectorConfig, f: &DreamFinding) -> Result<boo
     // 5. Build key / value / metadata.
     let key = format!("dream-{}", f.night_id);
     let verdict_upper = f.verdict.to_uppercase();
-    let importance = if verdict_upper == "ACCEPT" { 0.9 } else { 0.7 };
 
     let value = serde_json::json!({
         "repo": f.repo,
@@ -252,20 +259,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn significance_bar_accepts_accept_reject() {
-        assert!(is_significant("ACCEPT"));
-        assert!(is_significant("REJECT"));
-        // Case-insensitive.
-        assert!(is_significant("accept"));
-        assert!(is_significant("Reject"));
-    }
-
-    #[test]
-    fn significance_bar_rejects_others() {
-        assert!(!is_significant("INCONCLUSIVE"));
-        assert!(!is_significant("inconclusive"));
-        assert!(!is_significant(""));
-        assert!(!is_significant("MAYBE"));
+    fn importance_tiers() {
+        assert_eq!(importance_for("ACCEPT"), Some(0.9));
+        assert_eq!(importance_for("Reject"), Some(0.7));
+        assert_eq!(importance_for("inconclusive"), Some(0.4));
+        // Operational verdicts are not knowledge.
+        assert_eq!(importance_for("BLOCKED-ENV"), None);
+        assert_eq!(importance_for(""), None);
     }
 
     #[test]

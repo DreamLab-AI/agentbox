@@ -6,14 +6,12 @@
   "scripts": {
     "start": "node mcp-server/server.js",
     "bridge": "node tools/https-proxy.js",
-    "screenshot": "node tools/screenshot.js",
     "debug-cors": "node tools/debug-cors.js",
     "example": "node examples/basic-usage.js"
   },
   "keywords": ["mcp", "https", "proxy", "debug", "cors", "docker", "host"],
   "license": "MIT",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0",
-    "playwright": "^1.40.0"
+    "@modelcontextprotocol/sdk": "^1.0.0"
   }
 }
