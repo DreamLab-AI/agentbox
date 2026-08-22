@@ -325,12 +325,18 @@ function buildCalendarEvent(spec, createdAt) {
 
 const LLM_TIMEOUT_MS = 25000;
 const CANNED_APOLOGY = 'Sorry — I had a glitch reaching my brain just then. Try me again in a moment, or ask john if it persists.';
+// Reasoning models (Qwen via the Ontology Loom) spend budget on
+// reasoning_content first; a small cap truncates the actual reply to empty.
+// Bench-verified floor is 1536 (see workspace compute notes).
+const LLM_MAX_TOKENS = Number(process.env.JUNKIEJARVIS_LLM_MAX_TOKENS) || 1536;
+// How often a DM asker gets a fresh apology while the brain is down.
+const APOLOGY_COOLDOWN_MS = 30 * 60 * 1000;
 
 /**
  * Call the configured LLM provider. Provider-flexible:
  *   - ANTHROPIC_API_KEY → Anthropic messages API (default model claude-haiku-4-5-20251001).
  *   - else OLLAMA_BASE_URL → its /api/chat.
- * 15s timeout, fail-open: returns CANNED_APOLOGY on any failure.
+ * 15s timeout, fail-open: returns null on any failure (no fake reply text).
  *
  * @param {string} userText
  * @param {object} [opts]  { model, fetchImpl, system }
@@ -338,7 +344,7 @@ const CANNED_APOLOGY = 'Sorry — I had a glitch reaching my brain just then. Tr
  */
 async function callLlm(userText, opts = {}) {
   const fetchImpl = opts.fetchImpl || (typeof fetch === 'function' ? fetch : null);
-  if (!fetchImpl) return CANNED_APOLOGY;
+  if (!fetchImpl) return null;
   // Inject the current wall-clock so the model can resolve relative dates
   // ("next Friday 7pm") into the integer Unix timestamps the create_event
   // directive requires. Without this the model emits <placeholder> tokens and
@@ -380,17 +386,17 @@ async function callLlm(userText, opts = {}) {
         },
         body: JSON.stringify({
           model: model || 'claude-haiku-4-5-20251001',
-          max_tokens: 300,
+          max_tokens: LLM_MAX_TOKENS,
           system,
           messages: [{ role: 'user', content: String(userText || '').slice(0, 4000) }],
         }),
         signal: controller.signal,
       });
-      if (!res.ok) return CANNED_APOLOGY;
+      if (!res.ok) return null;
       const json = await res.json();
       const block = Array.isArray(json.content) ? json.content.find((b) => b.type === 'text') : null;
       const out = block && typeof block.text === 'string' ? block.text.trim() : '';
-      return out || CANNED_APOLOGY;
+      return out || null;
     }
 
     // OpenAI-compatible chat completions (Z.AI/GLM, OpenAI, or any compatible
@@ -416,7 +422,7 @@ async function callLlm(userText, opts = {}) {
         headers: { 'content-type': 'application/json', authorization: `Bearer ${oaiKey}` },
         body: JSON.stringify({
           model: oaiModel,
-          max_tokens: 300,
+          max_tokens: LLM_MAX_TOKENS,
           stream: false,
           ...(isZai ? { thinking: { type: 'disabled' } } : {}),
           messages: [
@@ -426,13 +432,13 @@ async function callLlm(userText, opts = {}) {
         }),
         signal: controller.signal,
       });
-      if (!res.ok) return CANNED_APOLOGY;
+      if (!res.ok) return null;
       const json = await res.json();
       const out = json && Array.isArray(json.choices) && json.choices[0] && json.choices[0].message
         && typeof json.choices[0].message.content === 'string'
         ? json.choices[0].message.content.trim()
         : '';
-      return out || CANNED_APOLOGY;
+      return out || null;
     }
 
     if (process.env.OLLAMA_BASE_URL) {
@@ -450,18 +456,18 @@ async function callLlm(userText, opts = {}) {
         }),
         signal: controller.signal,
       });
-      if (!res.ok) return CANNED_APOLOGY;
+      if (!res.ok) return null;
       const json = await res.json();
       const out = json && json.message && typeof json.message.content === 'string'
         ? json.message.content.trim()
         : '';
-      return out || CANNED_APOLOGY;
+      return out || null;
     }
 
     // No provider configured.
-    return CANNED_APOLOGY;
+    return null;
   } catch {
-    return CANNED_APOLOGY;
+    return null;
   } finally {
     clearTimeout(timer);
   }
@@ -524,6 +530,12 @@ class JunkieJarvisAgent {
     );
     this.ignore.add(this.pubkey); // never answer self
     this._seen = new Set();
+    this._apologisedAt = new Map();
+    // Relay subscriptions replay recent backlog on (re)connect and the dedup
+    // set above is in-memory only — without a time floor every restart
+    // re-answers old mentions (observed: 14 replies in one second at boot).
+    // Grace covers clock skew and events in flight during the restart.
+    this._startedAt = Math.floor(Date.now() / 1000) - 120;
     this._seenOrder = [];
     this._dedupCap = deps.dedupCap || DEFAULT_DEDUP_CAP;
     this._subIds = [];
@@ -649,10 +661,21 @@ class JunkieJarvisAgent {
     // Dedup on the inner rumor id too (the wrap id is random per relay).
     if (this._dedup(rumor.id)) return;
 
+    if ((rumor.created_at || 0) < this._startedAt) return; // backlog replay
     const userText = typeof rumor.content === 'string' ? rumor.content : '';
     if (!userText.trim()) return;
 
     const reply = await this._think(userText, { zone: null });
+    if (reply == null) {
+      const last = this._apologisedAt.get(asker) || 0;
+      if (Date.now() - last < APOLOGY_COOLDOWN_MS) {
+        this.logger.warn({ asker }, 'junkiejarvis brain unavailable — apology suppressed (cooldown)');
+        return;
+      }
+      this._apologisedAt.set(asker, Date.now());
+      await this._sendDm(asker, CANNED_APOLOGY);
+      return;
+    }
     await this._sendDm(asker, reply);
   }
 
@@ -681,12 +704,18 @@ class JunkieJarvisAgent {
     const asker = event.pubkey;
     if (this._shouldIgnore(asker)) return;
 
+    if ((event.created_at || 0) < this._startedAt) return; // backlog replay — already answered (or stale)
+
     const userText = typeof event.content === 'string' ? event.content.replace(/@junkiejarvis\b/gi, '').trim() : '';
     if (!userText) return;
 
     const root = channelRootTag(event);
     const zone = channelZone(event);
     const reply = await this._think(userText, { zone });
+    if (reply == null) {
+      this.logger.warn({ asker }, 'junkiejarvis brain unavailable — staying silent in channel');
+      return;
+    }
     await this._sendChannelReply(event, root, zone, asker, reply);
   }
 
@@ -735,8 +764,13 @@ class JunkieJarvisAgent {
       llmText = await this.llm(userText, { fetchImpl: this.fetchImpl, system: SYSTEM_PROMPT });
     } catch (err) {
       this._logErr('llm', err);
-      llmText = CANNED_APOLOGY;
+      llmText = null;
     }
+    // Brain down → null. The CALLER decides what a failure looks like on its
+    // surface: channels stay silent (an apology posted into a public channel on
+    // every retry is spam — 25 copies shipped before this guard existed), DMs
+    // apologise at most once per asker per cooldown.
+    if (!llmText) return null;
 
     const { directive, reply } = parseDirective(llmText);
     let body = reply || llmText || CANNED_APOLOGY;

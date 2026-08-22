@@ -335,7 +335,7 @@ describe('JunkieJarvisAgent._think', () => {
     expect(bridge.published[0].tags.find((t) => t[0] === 'zone')[1]).toBe('business');
   });
 
-  test('LLM failure surfaces the canned apology (fail-open)', async () => {
+  test('LLM failure yields null from _think (caller decides the surface)', async () => {
     const bridge = makeBridge();
     const agent = new JunkieJarvisAgent({
       bridge,
@@ -344,8 +344,54 @@ describe('JunkieJarvisAgent._think', () => {
       llm: async () => { throw new Error('llm down'); },
     });
     const reply = await agent._think('hi', { zone: null });
-    expect(reply).toBe(CANNED_APOLOGY);
+    expect(reply).toBeNull();
     expect(bridge.published.length).toBe(0);
+  });
+
+  test('brain failure in a channel mention publishes NOTHING (no apology spam)', async () => {
+    const bridge = makeBridge();
+    const agent = new JunkieJarvisAgent({
+      bridge,
+      signer: fakeSigner,
+      logger: silentLogger,
+      llm: async () => { throw new Error('llm down'); },
+    });
+    await agent._handleChannel({
+      id: 'ev1',
+      kind: kinds.KIND_CHANNEL_MESSAGE,
+      pubkey: 'asker'.padEnd(64, '0'),
+      content: '@junkiejarvis hello?',
+      tags: [['p', agent.pubkey], ['e', 'root1', '', 'root']],
+      created_at: Math.floor(Date.now() / 1000),
+    });
+    expect(bridge.published.length).toBe(0);
+  });
+
+  test('brain failure in a DM apologises once, then suppresses within cooldown', async () => {
+    const bridge = makeBridge();
+    const agent = new JunkieJarvisAgent({
+      bridge,
+      signer: fakeSigner,
+      logger: silentLogger,
+      llm: async () => { throw new Error('llm down'); },
+    });
+    const asker = 'a'.repeat(64);
+    const sent = [];
+    agent._sendDm = async (to, text) => { sent.push({ to, text }); };
+    const reply1 = await agent._think('hi', { zone: null });
+    expect(reply1).toBeNull();
+    // Simulate the DM handler's failure branch twice.
+    for (let i = 0; i < 2; i++) {
+      if ((await agent._think('hi', { zone: null })) == null) {
+        const last = agent._apologisedAt.get(asker) || 0;
+        if (Date.now() - last >= 30 * 60 * 1000 || last === 0) {
+          agent._apologisedAt.set(asker, Date.now());
+          await agent._sendDm(asker, CANNED_APOLOGY);
+        }
+      }
+    }
+    expect(sent.length).toBe(1);
+    expect(sent[0].text).toBe(CANNED_APOLOGY);
   });
 
   test('detail request lifts the truncation cap', async () => {
@@ -457,6 +503,7 @@ describe('JunkieJarvisAgent channel reply threading', () => {
       pubkey: ASKER,
       content: '@junkiejarvis where is the events page?',
       tags: [['e', 'channel-root', 'wss://r', 'root'], ['section', 'friends']],
+      created_at: Math.floor(Date.now() / 1000),
     };
     await agent._handleChannel(srcEvent);
     expect(bridge.published.length).toBe(1);
