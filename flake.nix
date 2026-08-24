@@ -1995,6 +1995,24 @@ stdout_logfile=/var/log/podcast-cron.log
 stderr_logfile=/var/log/podcast-cron.error.log
 stdout_logfile_maxbytes=5MB
 stderr_logfile_maxbytes=5MB
+
+; Nightly Cloudflare forum backup → NAS (dreamlab-ai-website issue #48).
+; The crontab and script live in the mounted website repo, so schedule and
+; behaviour are editable without an image rebuild — only this stanza is baked.
+; The script fails loud (exit 2) until CLOUDFLARE_API_TOKEN/ACCOUNT_ID land in
+; the agentbox .env; jq/curl/gzip come from the base PATH.
+[program:forum-backup-cron]
+command=${supercronicPkg}/bin/supercronic -split-logs /home/devuser/workspace/dreamlab-ai-website/scripts/backup/crontab
+user=devuser
+environment=HOME="/home/devuser",PATH="/usr/local/bin:/bin:/usr/bin"
+autostart=true
+autorestart=true
+startsecs=0
+priority=250
+stdout_logfile=/var/log/forum-backup-cron.log
+stderr_logfile=/var/log/forum-backup-cron.error.log
+stdout_logfile_maxbytes=5MB
+stderr_logfile_maxbytes=5MB
         '';
 
         # ---------------------------------------------------------------------------
