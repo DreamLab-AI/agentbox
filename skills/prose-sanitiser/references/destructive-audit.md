@@ -15,10 +15,10 @@ Replace with:
 Acceptable uses: attribution lines, dialogue interruption, deliberate rhetorical
 pause in a presentation heading.
 
-## B2. "The" Heading Disease
+## B2. "The" Heading & Opener Disease
 
-**Rule:** Never start a heading with "The" unless it's a proper noun ("The
-Guardian", "The Loop").
+**Rule (headings):** Never start a heading with "The" unless it's a proper noun
+("The Guardian", "The Loop").
 
 | Before | After |
 |--------|-------|
@@ -26,6 +26,24 @@ Guardian", "The Loop").
 | The Uncomfortable Question | One Awkward Question |
 | The VisionFlow Stack | VisionFlow Stack |
 | The 80/10 Gap | 80/10 Gap |
+
+**Rule (openers — HIGH):** Do not open a sentence, paragraph, list item, figure
+caption or table cell with "The &lt;lowercase noun&gt;". It is the model's default
+definitional throat-clear ("The production-node paired study measures...", "The
+measured design choices follow...", "The system is a served node...") and it
+stacks — dozens per document, all in the same cadence, none in a human's voice.
+Recast so the real subject or action leads. A capitalised proper noun after "The"
+(The Loom, The Guardian) is fine and is left alone.
+
+| Before | After |
+|--------|-------|
+| The production-node paired study lifts quality by +0.27. | Holding the model fixed and varying only the serving path lifts quality by +0.27. |
+| The measured design choices follow from deployment requirements. | Each design choice follows from a deployment requirement. |
+| The fallback is disabled by default. | Semantic fallback stays off by default. |
+| The system is a served node operating over a corpus. | A served node operates over the corpus. |
+
+The scanner flags line-initial `The` + a lowercase word (`the-opener`, HIGH). It
+cannot see mid-paragraph sentence openers — those need the human read.
 
 ## B3. Negative Parallelism
 
@@ -40,6 +58,8 @@ Guardian", "The Loop").
 Invert: lead with the positive claim. Or just delete the negative half.
 
 ## B4. Tier 1 Banned Vocabulary
+
+> `honest` / `honestly` / `honesty` is Tier 1 at HIGH weight: prose that keeps telling the reader it is honest is a hallmark AI tell — transparent work shows its receipts and never says the word. Repair by deleting the claim and letting the disclosed method carry it; at most one load-bearing use per document.
 
 Flag and replace every instance:
 
