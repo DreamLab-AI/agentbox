@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-08-16
-- **Relates to:** [ADR-044](ADR-044-operator-console.md) (operator cockpit `:8444`),
+- **Relates to:** [ADR-044](ADR-044-voice-plane-aoe-repoint.md) (voice plane + operator console, Caddy :8444),
   [ADR-052](ADR-052-dream-machine-hp-annexe.md) (dream engine + HP annexe),
   [ADR-045](ADR-045-sovereign-ingress-npub-front-door.md) (ingress posture)
 

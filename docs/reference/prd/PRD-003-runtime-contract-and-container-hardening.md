@@ -115,7 +115,7 @@ Returns `200 {"ready": true, "since": "<ISO-8601>", "requirements": [...]}` only
 
 1. The `BootstrapCompleted` sentinel (`/run/agentbox/bootstrap.done`) exists and is readable — written by `entrypoint-unified.sh` at the end of stage B.
 2. Every adapter whose manifest slot is not `"off"` has completed `connect()` without error.
-3. Required writable mounts are present and writable: `/workspace`, `/projects`, `/var/lib/ruvector`.
+3. Required writable mounts are present and writable: `/home/devuser/workspace`, `/projects`, `/var/lib/ruvector`.
 4. If `[sovereign_mesh].enabled = true` and `publish_agent_events = true`: at least one Nostr relay in `NOSTR_RELAYS` is reachable (WebSocket connect within 3 s).
 
 Returns `503 {"ready": false, "reason": "<short-string>", "missing": [<per-requirement detail>]}` while any condition is unmet. No auth.
@@ -208,7 +208,7 @@ Capability-specific exceptions, such as GPU and desktop modes, must be explicit 
 
 #### Supervisord user model (updated in commit `2341480c`)
 
-Supervisord runs as PID 1 root. Every long-running supervised service carries an explicit `user=devuser` directive so processes drop to uid 1000 before exec. The `user: "1000:1000"` compose field is absent. This allows the entrypoint to perform root-only boot operations (tmpfs dir creation, setuid wrapper provisioning, `chown -R 1000:1000` on runtime directories, TLS cert generation) before dropping privileges per service. The auto-generated `agentbox-secrets` named volume holds the management-api key at `/var/lib/agentbox/secrets` and is not mixed with the general workspace.
+Supervisord runs as PID 1 root. Every long-running supervised service carries an explicit `user=devuser` directive so processes drop to uid 1000 before exec. The `user: "1000:1000"` compose field is absent. This allows the entrypoint to perform root-only boot operations (tmpfs dir creation, `chown -R 1000:1000` on runtime directories, TLS cert generation) before dropping privileges per service — see PRD-REMEDIATION-001 R-005/SEC-001 for the SETUID/SETGID `cap_add` posture that replaced setuid wrapper provisioning. The auto-generated `agentbox-secrets` named volume holds the management-api key at `/var/lib/agentbox/secrets` and is not mixed with the general workspace.
 
 #### Baseline compose fields (applied to all non-exceptional services)
 
@@ -281,7 +281,7 @@ cap_add  = ["SYS_ADMIN"]    # Chromium sandbox — see ADR-007 SYS_ADMIN alterna
 [security.exceptions.code-server]
 # Parent gate: [toolchains].code_server = true
 reason   = "code-server writes extension state to ~/.local/share/code-server"
-writable_volumes = ["/workspace/.local/share/code-server"]
+writable_volumes = ["/home/devuser/workspace/.local/share/code-server"]
 cap_add  = []
 
 [security.exceptions.nostr-relay]

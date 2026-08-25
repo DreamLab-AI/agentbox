@@ -185,7 +185,7 @@ Rebuilds the entire search index from the Catalog:
 | Aspect | V2 | V3 |
 |--------|-----|-----|
 | Role | Core domain, primary query path | Supporting domain, CLI secondary interface |
-| Embedding type | Dense 384-dim (all-MiniLM-L6-v2) | Sparse TF-IDF (full vocabulary) |
+| Embedding type | Dense 384-dim (all-MiniLM-L6-v2) | Sparse TF-IDF (full vocabulary) | <!-- lint-ok: third-party/meta fact, not a RuVector claim -->
 | Index format | HNSW binary file | In-memory sparse vectors (no external binary) |
 | Query expansion | None | PSI synonym integration |
 | Intent classification | None | Three-way classifier (problem/technology/out-of-scope) |

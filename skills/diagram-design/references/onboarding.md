@@ -51,10 +51,12 @@ Gate-only choices use the same finish:
 
 ### Step 1 — fetch the page
 
-Use `agent-browser` (preferred) or a plain `fetch`. If the site has multiple pages worth sampling (landing + blog + product), fetch 2–3 and merge the palette signals.
+Use the browsercontainer sidecar MCP (preferred) or a plain `fetch`. If the site has multiple pages worth sampling (landing + blog + product), fetch 2–3 and merge the palette signals.
 
-```bash
-agent-browser navigate https://example.com --screenshot out.png --html out.html
+```javascript
+browser_navigate({ url: "https://example.com" })
+browser_take_screenshot({ filename: "out.png", fullPage: true })
+browser_snapshot()
 ```
 
 ---
@@ -195,7 +197,7 @@ Use the installed-skill location exposed by the current agent when available. Ot
 
 **Claude Code:**
 
-1. `~/.claude/skills/<skill-name>/` (user install)
+1. `~/.claude/skills/<skill-name>/` (user install) <!-- lint-ok: third-party/meta fact, not a RuVector claim -->
 2. `.claude/skills/<skill-name>/` (project install)
 
 Finally, check any path the user provides explicitly. If the skill is still not found, ask the user to confirm the name or provide its path.

@@ -10,7 +10,7 @@ npx agentdb@latest init ./vectors.db
 
 # Custom dimensions for different embedding models
 npx agentdb@latest init ./vectors.db --dimension 768  # sentence-transformers
-npx agentdb@latest init ./vectors.db --dimension 384  # all-MiniLM-L6-v2
+npx agentdb@latest init ./vectors.db --dimension 384  # all-MiniLM-L6-v2 <!-- lint-ok: third-party/meta fact, not a RuVector claim -->
 
 # Use preset configurations
 npx agentdb@latest init ./vectors.db --preset small   # <10K vectors

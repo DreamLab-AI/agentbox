@@ -756,7 +756,7 @@ Hardening baseline is applied unconditionally. Feature-specific privilege expans
 
 ### Supervisord user model (commit `2341480c`)
 
-Supervisord runs as PID 1 root. Long-running supervised services drop to `devuser` (uid 1000) via per-program `user=devuser` directives. Root is needed at boot only for: tmpfs dir creation, setuid sudo wrapper provisioning, TLS cert generation, and `chown -R 1000:1000` on runtime directories. After those one-shot operations complete, no agent-facing process runs as root.
+Supervisord runs as PID 1 root. Long-running supervised services drop to `devuser` (uid 1000) via per-program `user=devuser` directives. Root is needed at boot only for: tmpfs dir creation, SETUID/SETGID capability use for supervisord privilege drop (ADR-027 amendment), TLS cert generation, and `chown -R 1000:1000` on runtime directories. After those one-shot operations complete, no agent-facing process runs as root.
 
 The `user: "1000:1000"` compose field is absent from the generated service block. `no-new-privileges:true` remains the baseline security option.
 
@@ -922,7 +922,7 @@ The container runs with `read_only: true` on its root filesystem. All paths that
 | `/home/devuser/.codex` | 512 MB | OpenAI Codex CLI session state and git pack cache |
 | `/home/devuser/.antigravity` | 256 MB | Antigravity CLI model cache and session state |
 | `/var/cache` | 512 MB | Ruflo plugin git sparse-clone cache |
-| `/usr/local/bin` | 8 MB | Setuid sudo wrapper (exec+suid flags required) |
+| `/usr/local/bin` | 8 MB | Writable, exec-allowed bin for runtime-provisioned wrappers/MCP shims — no setuid binaries |
 | `/app/mcp-logs` | 100 MB | MCP server log output |
 
 **Total baseline: ~2.43 GB.**

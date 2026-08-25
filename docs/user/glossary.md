@@ -192,7 +192,7 @@ flowchart LR
   [DDD-003](../reference/ddd/DDD-003-sovereign-messaging-domain.md).
 - **Profile** — an isolated agent workspace under
   `workspace/profiles/<stack>/` with its own HOME directory, per-profile
-  config files, and symlinks to the shared `/workspace` and `/projects`
+  config files, and symlinks to the shared `/home/devuser/workspace` and `/projects`
   mounts. Each profile is provisioned by `scripts/provision-agent-stacks.py`.
   Profiles share the same image; isolation is filesystem-level, not
   container-level.
@@ -285,7 +285,9 @@ flowchart LR
 - **tmux** — the terminal multiplexer agentbox uses for its MAD-style
   multi-tab workspace. The session launches 10 windows automatically:
   Claude, Agent, Services, Build, Logs, System, VNC, Git, OpenRouter, ZAI.
-  Attach with `tmux attach -t agentbox` or use the `ta` alias.
+  Attach with `tmux attach -t agentbox` or use the `ta` alias. **Legacy
+  pre-PRD-021 model** — the current interaction plane is Agent of Empires
+  (AoE); see [ADR-042](../reference/adr/ADR-042-agent-of-empires-interaction-plane.md).
 
 ## Common confusions
 

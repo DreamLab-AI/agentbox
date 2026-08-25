@@ -11,7 +11,7 @@ The skill auto-detects and reports on available tools. Run the preflight check:
 
 ```bash
 # The skill runs this automatically — or invoke manually:
-python3 ~/.claude/skills/report-builder/scripts/preflight.py
+python3 scripts/preflight.py   # from the report-builder skill directory
 ```
 
 ### Required
@@ -25,7 +25,7 @@ python3 ~/.claude/skills/report-builder/scripts/preflight.py
 - **Gemini API key** (`GOOGLE_GEMINI_API_KEY`) — enables Nano Banana infographic generation
 - **Perplexity API key** (`PERPLEXITY_API_KEY`) — enables real-time web research
 - **Mermaid CLI** (`mmdc`) — enables Mermaid diagram rendering
-- **Multi-user LLMs** (gemini-user, openai-user, deepseek-user) — enables cross-LLM review
+- **Alternate model routes** (gemini, openai/codex, deepseek profiles) — enables cross-LLM review
 - **Claude Flow MCP** — enables swarm coordination, memory, hooks
 - **UI/UX Pro Max skill** — enables professional design system guidance
 

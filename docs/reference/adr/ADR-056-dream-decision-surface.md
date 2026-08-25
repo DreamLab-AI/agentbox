@@ -3,7 +3,7 @@
 - **Status:** Accepted (Phase 1); Proposed (Phase 2)
 - **Date:** 2026-08-16
 - **Builds on:** [ADR-055](ADR-055-dream-cockpit-panel.md) (read-only `/dream` panel),
-  [ADR-044](ADR-044-operator-console.md) (cockpit), the approvals/authority governance
+  [ADR-044](ADR-044-voice-plane-aoe-repoint.md) (voice plane + operator console, Caddy :8444), the approvals/authority governance
   path (NIP-98 + agent-event/elevation publisher)
 
 ## Context

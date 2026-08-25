@@ -227,7 +227,15 @@ coverage), MEDIUM (latent defect or gap), LOW (documentation / cosmetic).
 
 ---
 
-### Finding 1 — CRITICAL: Beads slot has no `local-*` implementation tested against a real manifest value
+### Finding 1 — RESOLVED (was CRITICAL): Beads slot has no `local-*` implementation tested against a real manifest value
+
+> **Resolved** (verified 2026-08-25). `external` is now driven by a stateful
+> loopback (`fixtures/beads-loopback`) rather than a canned-body stub — the
+> adapter still constructs every request, emits headers, parses the JSON body,
+> and maps 404/409 to typed `NotFound`/`AlreadyClaimed`. `IMPLS` marks it
+> `isReal: true` (`beads.contract.spec.js:38-49`), so the M2 behavioural
+> assertions now run for `external` too. The text below describes the
+> pre-fix state and is retained for audit history.
 
 **File:** `tests/contract/beads.contract.spec.js:68-76`
 **Classification:** Contract test coverage gap — missing first-class impl class
@@ -421,7 +429,7 @@ representation of agentbox.toml.
 
 | # | Severity | File:line | Description | Classification |
 |---|---|---|---|---|
-| 1 | CRITICAL | tests/contract/beads.contract.spec.js:68 | beads `external` impl has zero M2 behavioural assertions; all skipped because `isReal=false` | Contract coverage gap |
+| 1 | RESOLVED (verified 2026-08-25) | tests/contract/beads.contract.spec.js:38 | ~~zero M2 assertions~~ — `external` now uses a stateful loopback, `isReal=true`, M2 assertions run | Contract coverage gap — fixed |
 | 2 | HIGH | tests/contract/orchestrator.contract.spec.js:45 | `stdio-bridge` impl tests with write-only stub; federated spawn path never verified | Contract coverage gap |
 | 3 | HIGH | tests/contract/README.md:9 | README still lists retired `local-jss` pods impl in slot matrix | Documentation drift |
 | 4 | RESOLVED (`f518120e`) | middleware/privacy-filter.js:114 + encoder.js:128 | ~~Module-load sentinel~~ — now a per-dispatch payload marker; fail-closed slots throw `MiddlewareOrderViolation` | Middleware ordering — fixed |

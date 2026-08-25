@@ -183,7 +183,7 @@ lines += [
     "[consultants.codex]",
     f'enabled = {b("consultants.codex.enabled")}',
     'model      = "gpt-5.4"',
-    'home       = "/home/openai-user/.codex"',
+    'home       = "/home/devuser/.codex"',
     'timeout_ms = 180000',
     "",
     "[consultants.antigravity]",

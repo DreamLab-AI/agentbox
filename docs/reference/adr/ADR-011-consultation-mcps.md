@@ -16,6 +16,15 @@
 Anthropic-compatible endpoint translates the thinking block to GLM
 `reasoning_effort`.
 
+## Amendment (2026-08-25) — per-user CLI dirs row is legacy
+
+The "Per-user CLI dirs" row in the primitives table below (`openai-user`,
+`gemini-user`, `zai-user`) describes the retired pseudo-user isolation model.
+Profile isolation (`$WORKSPACE/profiles/<name>`, per-profile `HOME` and
+`CLAUDE_CONFIG_DIR`) is the runtime path — see ADR-025. Treat
+that row as historical context for why "per-consultant isolation" mattered,
+not as a description of the current container.
+
 ## TL;DR for newcomers
 *Skip if you already know why "consultants" beats "meta-router" for agentbox.*
 

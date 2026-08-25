@@ -375,7 +375,7 @@ On landing, update together (the `CLAUDE.md` §"Docs To Keep In Sync" list appli
 - [`README.md`](../../../README.md)
 - [`docs/user/quickstart.md`](../../user/quickstart.md)
 - [`CLAUDE.md`](../../../CLAUDE.md) (agentbox — the RuVector-memory section)
-- [`docs/ruvector-system-reference.md`](../../../../docs/ruvector-system-reference.md) — the 2026-07-21 state (producer live, aggregator absent, consumers off, bge-m3 idle, 11G archive unmined) and, on landing, the entries this PRD closes
+- [`docs/ruvector-system-reference.md`](../../../../../docs/ruvector-system-reference.md) <!-- target lives outside this repo checkout; boundary-crossing link --> — the 2026-07-21 state (producer live, aggregator absent, consumers off, bge-m3 idle, 11G archive unmined) and, on landing, the entries this PRD closes
 - this PRD-020, [ADR-040](../adr/ADR-040-learning-consumers-model-lifecycle-and-legacy-mining.md), [DDD-018](../ddd/DDD-018-learning-consumers-and-model-lifecycle-domain.md)
 - [PRD-018](PRD-018-ruvector-native-memory-and-learning.md), [ADR-036](../adr/ADR-036-ruvector-capability-adoption-and-learning-loop.md), [DDD-016](../ddd/DDD-016-memory-learning-domain.md) — the shipped predecessor triple; ADR-036's `review_trigger` is fired by ADR-040
 
@@ -394,6 +394,6 @@ On landing, update together (the `CLAUDE.md` §"Docs To Keep In Sync" list appli
 - [ADR-012 — JSON-LD 1.1 adoption](../adr/ADR-012-jsonld-federation-grammar.md)
 - [ADR-013 — Canonical URI grammar](../adr/ADR-013-canonical-uri-grammar.md)
 - [ADR-015 — MCP RuVector mandate](../adr/ADR-015-mcp-ruvector-mandate.md) (amended 2026-07-04)
-- [`docs/ruvector-system-reference.md`](../../../../docs/ruvector-system-reference.md) — verified ground truth
+- [`docs/ruvector-system-reference.md`](../../../../../docs/ruvector-system-reference.md) — verified ground truth
 - [`management-api/lib/uris.js`](../../../management-api/lib/uris.js) — URN minting
 - [`scripts/ruvector-sidecar-update.sh`](../../../scripts/ruvector-sidecar-update.sh) — the gated snapshot/rehearse/swap/rollback machinery every DB-touching phase reuses

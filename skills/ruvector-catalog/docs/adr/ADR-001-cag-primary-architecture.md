@@ -69,7 +69,7 @@ Specifically:
 
 ### Alternative A: RAG with Neural Embeddings (Rejected)
 
-Replace TF-IDF with ONNX-based neural embeddings (e.g., all-MiniLM-L6-v2) for the HNSW index.
+Replace TF-IDF with ONNX-based neural embeddings (e.g., all-MiniLM-L6-v2) for the HNSW index. <!-- lint-ok: third-party/meta fact, not a RuVector claim -->
 
 **Why rejected**: For a catalog of 80 technologies (~25KB of text), adding an ONNX runtime dependency, model download, and embedding pipeline introduces significant complexity for marginal benefit over CAG. The benchmarks show that Claude's native language understanding already outperforms TF-IDF RAG. Neural embeddings would improve RAG quality but still cannot match CAG's cross-reference reasoning on a catalog this small.
 

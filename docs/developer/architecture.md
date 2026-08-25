@@ -120,7 +120,7 @@ Stage A — one-shot, exec-chained, ends with supervisord
 
   Phase 0: stage-dispatch (AGENTBOX_BOOTSTRAP_STAGE="B" → jump to Stage B)
   Phase 0.5: /opt/agentbox writable? emit ImmutableRootWritable, strict-mode fails
-  Phase 1: mkdir -p writable roots (/workspace, /var/lib/*, /tmp/screenshots)
+  Phase 1: mkdir -p writable roots ($WORKSPACE (/home/devuser/workspace), /var/lib/*, /tmp/screenshots)
   Phase 2: auto-generate MANAGEMENT_API_KEY if unset/sentinel
   Phase 3: python3 sovereign-bootstrap.py (Nostr identity)
   Phase 4: workspace defaults (tmux, .config, README)

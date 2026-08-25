@@ -86,7 +86,7 @@ Owns the invariant that no privilege is gained after boot.
 
 ```
 PrivilegeModel
-  +-- capAdd: string[]                 // MUST NOT contain "SETUID" or "SETGID"
+  +-- capAdd: string[]                 // SETUID/SETGID permitted only for root PID 1's own privilege-drop use
   +-- noNewPrivileges: boolean         // MUST be true
   +-- rootWindows: RootWindow[]
   |     +-- RootWindow
@@ -99,7 +99,7 @@ PrivilegeModel
 ```
 
 **Invariants:**
-- I04: `capAdd` contains neither `SETUID` nor `SETGID`.
+- I04: `capAdd` MAY contain `SETUID`/`SETGID` when held solely by root PID 1 (supervisord) for its own privilege-drop to `devuser`. Their use by any non-root process is prohibited — enforced by `noNewPrivileges: true` and the absence of setuid binaries, not by the bare presence of the caps in `cap_add`.
 - I05: `noNewPrivileges` is `true`.
 - I06: `escalationPaths` is empty. Every `RootWindow.phase` is `"boot"`; no runtime root window exists.
 
@@ -153,7 +153,7 @@ DefenceInDepthLayer
 | `SecretEnvLeak` | A governed secret is found in `/proc/<pid>/environ` | Entrypoint audit; readiness probe |
 | `PostureOverclaim` | A doc asserts a stronger guarantee than the code enforces | Doc-alignment lint (R-040) |
 | `DefenceClassificationDrift` | A defence-in-depth or telemetry component is described or wired as the boundary | Security review; CI lint |
-| `RuntimeEscalationDetected` | `SETUID`/`SETGID` reappears in `cap_add`, or a setuid sudo path is found | `nix build` validation; entrypoint audit |
+| `RuntimeEscalationDetected` | `SETUID`/`SETGID` is used by a non-root process, `no-new-privileges:true` is missing, a setuid binary is found, or a setuid sudo path is found | `nix build` validation; entrypoint audit |
 
 ## Anti-Corruption Layer
 

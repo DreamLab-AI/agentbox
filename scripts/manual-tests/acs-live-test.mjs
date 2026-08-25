@@ -1,3 +1,4 @@
+// manual smoke test — run ad hoc, not in CI
 // Live Agent Control Surface test: publish a PanelDefinition + PanelState +
 // ActionRequest (kinds 31400/31401/31402) from the registered agentbox operator
 // agent to the production DreamLab relay, exercising the full ACSP pipeline:

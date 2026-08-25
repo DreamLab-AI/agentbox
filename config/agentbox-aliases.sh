@@ -14,7 +14,7 @@ alias cf-hive="claude-flow hive-mind spawn"
 alias cf-spawn="claude-flow hive-mind spawn"
 alias cf-status="claude-flow hive-mind status"
 alias cf-help="claude-flow --help"
-alias cf-memory="claude-flow memory"
+alias cf-memory="claude-flow memory"  # read/debug only — writes MUST use MCP memory_* (CLI bypasses embeddings)
 alias cf-hooks="claude-flow hooks"
 alias cf-doctor="claude-flow doctor --fix"
 alias cf-daemon="claude-flow daemon start"
@@ -155,11 +155,11 @@ alias svc-log="sudo /opt/venv/bin/supervisorctl tail"
 
 # === SOVEREIGN / PROFILE HELPERS ===
 alias pod-root="cd /var/lib/solid/pods"
-alias profiles="cd /workspace/profiles"
-alias profile-claude="cd /workspace/profiles/claude-core"
-alias profile-ruflo="cd /workspace/profiles/ruflo-orchestrator"
-alias profile-qe="cd /workspace/profiles/qe-fleet"
-alias profile-docs="cd /workspace/profiles/docs-latex"
+alias profiles="cd /home/devuser/workspace/profiles"
+alias profile-claude="cd /home/devuser/workspace/profiles/claude-core"
+alias profile-ruflo="cd /home/devuser/workspace/profiles/ruflo-orchestrator"
+alias profile-qe="cd /home/devuser/workspace/profiles/qe-fleet"
+alias profile-docs="cd /home/devuser/workspace/profiles/docs-latex"
 
 # === ANTIGRAVITY CLI (Google, replaces gemini-cli) ===
 alias zantigravity='zellij action launch-or-focus-plugin -- antigravity'

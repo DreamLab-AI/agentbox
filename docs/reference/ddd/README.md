@@ -1,6 +1,6 @@
 ---
 title: Domain-Driven Design models
-description: Index of the 19 agentbox DDD bounded-context models (DDD-001..019) with status and decision chains.
+description: Index of the 20 agentbox DDD bounded-context models (DDD-001..020) with status and decision chains.
 ---
 
 # Domain-Driven Design models
@@ -32,6 +32,7 @@ drove the context and the ADRs whose decisions it realises.
 | [017](DDD-017-gap-close-agentbox-context.md) | Gap-Close Sprint — agentbox bounded-context view | Draft v1 (WorkPackageMinted) | [PRD-019](../prd/PRD-019-gap-close-agentbox.md) · [ADR-037](../adr/ADR-037-gap-close-agentbox-decisions.md) |
 | [018](DDD-018-learning-consumers-and-model-lifecycle-domain.md) | Learning Consumers and Model Lifecycle Domain | Live in production (2026-07-21) | [PRD-020](../prd/PRD-020-ruvector-learning-consumers-and-corpus-uplift.md) · [ADR-040](../adr/ADR-040-learning-consumers-model-lifecycle-and-legacy-mining.md) |
 | [019](DDD-019-interaction-plane-domain.md) | Interaction Plane Domain | Proposed | [PRD-021](../prd/PRD-021-interaction-surface-consolidation.md) · [ADR-042](../adr/ADR-042-agent-of-empires-interaction-plane.md), [ADR-043](../adr/ADR-043-session-identity-binding.md), [ADR-044](../adr/ADR-044-voice-plane-aoe-repoint.md) |
+| [020](DDD-020-semantic-integrity-provenance-domain.md) | Semantic Integrity & Provenance Domain | Proposed | [PRD-022](../prd/PRD-022-semantic-integrity-provenance-decisions.md) · [ADR-046](../adr/ADR-046-semantica-complement.md), [ADR-047](../adr/ADR-047-semantica-tenant-integration-boundary.md), [ADR-048](../adr/ADR-048-decision-records-as-graph-nodes.md), [ADR-049](../adr/ADR-049-bitemporal-facts-and-runtime-provenance.md) |
 
 ## See also
 

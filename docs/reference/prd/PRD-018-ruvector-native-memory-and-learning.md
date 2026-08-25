@@ -302,7 +302,7 @@ On landing, update together (the `CLAUDE.md` §"Docs To Keep In Sync" list appli
 - [`README.md`](../../../README.md)
 - [`docs/user/quickstart.md`](../../user/quickstart.md)
 - [`CLAUDE.md`](../../../CLAUDE.md) (agentbox)
-- [`docs/ruvector-system-reference.md`](../../../../docs/ruvector-system-reference.md) — §5 rot-table entries #3, #4, #5, #6, #11, #12 move to "addressed by PRD-018"
+- [`docs/ruvector-system-reference.md`](../../../../../docs/ruvector-system-reference.md) <!-- target lives outside this repo checkout; boundary-crossing link --> — §5 rot-table entries #3, #4, #5, #6, #11, #12 move to "addressed by PRD-018"
 - this PRD-018, [ADR-036](../adr/ADR-036-ruvector-capability-adoption-and-learning-loop.md), [DDD-016](../ddd/DDD-016-memory-learning-domain.md)
 - ADR-015 is already amended (2026-07-04, embedding pipeline correction); ADR-036 declares `depends_on: [ADR-005, ADR-008, ADR-012, ADR-013, ADR-015]`.
 
@@ -320,6 +320,6 @@ On landing, update together (the `CLAUDE.md` §"Docs To Keep In Sync" list appli
 - [ADR-015 — MCP RuVector mandate](../adr/ADR-015-mcp-ruvector-mandate.md) (amended 2026-07-04)
 - [DDD-003 — Sovereign messaging domain](../ddd/DDD-003-sovereign-messaging-domain.md)
 - [DDD-004 — Linked-data interchange domain](../ddd/DDD-004-linked-data-interchange-domain.md)
-- [`docs/ruvector-system-reference.md`](../../../../docs/ruvector-system-reference.md) — verified ground truth (7-agent audit, 2026-07-04)
+- [`docs/ruvector-system-reference.md`](../../../../../docs/ruvector-system-reference.md) — verified ground truth (7-agent audit, 2026-07-04)
 - [`management-api/lib/uris.js`](../../../management-api/lib/uris.js) — URN minting
 - [`scripts/ruvector-sidecar-update.sh`](../../../scripts/ruvector-sidecar-update.sh) — the gated snapshot/rehearse/swap/rollback machinery the hygiene ops reuse

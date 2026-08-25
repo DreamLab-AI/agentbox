@@ -91,7 +91,7 @@ This skill is called by the **report-builder** skill during Phase 4 (VISUALISE):
 
 ```bash
 # Report builder integration
-~/.claude/skills/report-builder/scripts/asset_audit.sh  # Verifies all diagrams referenced
+../../report-builder/scripts/asset_audit.sh  # Verifies all diagrams referenced
 ```
 
 ---

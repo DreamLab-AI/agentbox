@@ -130,7 +130,7 @@ After HNSW returns top-k candidates, a re-ranking step applies:
 
 ### Alternative A: Neural Embeddings (Deferred to V3.1)
 
-Replace TF-IDF with neural embeddings from a small transformer model (e.g., all-MiniLM-L6-v2 via ONNX).
+Replace TF-IDF with neural embeddings from a small transformer model (e.g., all-MiniLM-L6-v2 via ONNX). <!-- lint-ok: third-party/meta fact, not a RuVector claim -->
 
 **Why deferred**: Adds an ONNX runtime dependency (~50MB) and a model file (~25MB). For a 200-technology catalog, this is disproportionate infrastructure. Sparse TF-IDF with field weighting achieves B+ quality at zero external dependency cost. Neural embeddings become worthwhile when the catalog exceeds 500 technologies or when the CLI is the primary interface (neither condition is true for V3).
 

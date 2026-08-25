@@ -37,7 +37,7 @@ coordination model in Claude Flow.
 host=ruvector-postgres port=5432 user=ruvector database=ruvector
 
 # Hive memory tables: memory_entries (1.17M+), consensus, session_state
-# Features: pgvector, HNSW indexing, 384-dim embeddings (all-MiniLM-L6-v2)
+# Features: pgvector, HNSW indexing, 384-dim embeddings (all-MiniLM-L6-v2) <!-- lint-ok: third-party/meta fact, not a RuVector claim -->
 ```
 
 ## Consensus Mechanisms

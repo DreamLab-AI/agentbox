@@ -223,7 +223,8 @@ CapabilityArtifact {
   // fatal only when toolchains.ruflo = true in manifest
 }
 // Other Class B members: @claude-flow/cli, agentic-qe, nagual-qe,
-//   codebase-memory-mcp, agent-browser, ruvector, @mermaid-js/mermaid-cli
+//   codebase-memory-mcp, agent-browser [RETIRED — superseded by the
+//   browsercontainer sidecar; do not package], ruvector, @mermaid-js/mermaid-cli
 // Note: @mermaid-js/mermaid-cli requires PUPPETEER_SKIP_DOWNLOAD=1 +
 //   PUPPETEER_EXECUTABLE_PATH=${pkgs.chromium}/bin/chromium at build time.
 ```
@@ -231,6 +232,8 @@ CapabilityArtifact {
 ### Class C — Skill MCP server (local npm + manifest gate)
 
 Combines Class A packaging with Class B conditionality: local source, `buildNpmPackage`, enabled only when the parent skill flag is true in agentbox.toml.
+
+**[RETIRED — superseded by the browsercontainer sidecar (chrome-devtools-mcp, GPU Chrome); kept for historical rationale, do not package.]**
 
 ```
 CapabilityArtifact {
@@ -254,6 +257,8 @@ CapabilityArtifact {
 ### Class D — Pre-fetched browser/runtime bundle
 
 A static binary bundle sourced from a Nix derivation (`pkgs.playwright-driver.browsers`), not from npm. Already partially present in `flake.nix`; requires `imageEnv` to set `PLAYWRIGHT_BROWSERS_PATH` to the store path.
+
+**[RETIRED — superseded by the browsercontainer sidecar; kept for historical rationale, do not package.]**
 
 ```
 CapabilityArtifact {

@@ -142,7 +142,7 @@ CREATE INDEX idx_memories_tags ON memories USING GIN (tags);
 | **Message layer underused** | KHIVE has `send()` / `inbox()` / `request()` for inter-agent messaging but we never used it — all coordination happened via memory | If we add messaging, make it pull-based (inbox polling) not push-based (WebSocket) for CF Worker compat |
 | **No TTL on memories** | KHIVE memories persist forever; no automatic cleanup | RuVector has TTL support — episodic memories should auto-expire |
 | **Limited full-text content** | Early KHIVE versions truncated to 200 chars; v2 fixed this | Always return full content by default |
-| **No embedding model control** | KHIVE uses a fixed embedding model internally | RuVector uses MiniLM-L6-v2 (384-dim) via xinference — we could offer model selection per namespace for domain-specific embeddings |
+| **No embedding model control** | KHIVE uses a fixed embedding model internally | RuVector uses bge-small-en-v1.5 (384-dim) via xinference — we could offer model selection per namespace for domain-specific embeddings |
 
 ## 4. Mapping to URI/URN Addressing
 

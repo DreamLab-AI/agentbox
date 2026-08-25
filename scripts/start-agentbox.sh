@@ -1067,8 +1067,8 @@ Docs: docs/reference/prd/PRD-001-capabilities-and-adapters.md §Providers" \
   declare -A OAUTH_CAPABLE=( [anthropic]=1 [openai]=1 [zai]=1 )
   declare -A OAUTH_HINT=(
     [anthropic]="Run \`claude login\` inside the container after first boot.\nThe Claude Code CLI completes an OAuth handshake in your browser\nand stores the session token under /home/devuser/.claude/."
-    [openai]="Run \`codex login\` inside the container after first boot.\nThe Codex Rust CLI completes an OAuth handshake in your browser\nand stores credentials under /home/openai-user/.codex/auth.json."
-    [zai]="Run \`claude-zai login\` (or \`zai-cli login\`) inside the container\nafter first boot. The Z.AI / GLM wrapper opens a browser session\nand persists tokens under /home/zai-user/.zai/."
+    [openai]="Run \`codex login\` inside the container after first boot.\nThe Codex Rust CLI completes an OAuth handshake in your browser\nand stores credentials under /home/devuser/.codex/auth.json."
+    [zai]="Run \`claude-zai login\` (or \`zai-cli login\`) inside the container\nafter first boot. The Z.AI / GLM wrapper opens a browser session\nand persists tokens under /home/devuser/.zai/."
   )
 
   for pname in anthropic openai gemini deepseek perplexity openrouter context7 brave ceramic github zai; do
