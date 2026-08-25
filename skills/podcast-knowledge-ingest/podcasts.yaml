@@ -12,5 +12,7 @@ settings:
   max_assertions_per_episode: 15
   min_confidence: 0.4
   quality_threshold: 0.85
+  # Uncapped 2026-08-25 after reviewing the first live-capped runs: 140 ledger
+  # pages landed, 0 curated pages modified, idempotency verified.
   max_episodes_per_run: 15
   backlog_batch_size: 50

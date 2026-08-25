@@ -5,14 +5,18 @@ description: >
   episodes into the ontology", or setting up/debugging the podcast-cron schedule.
   Weekly cron that downloads new episodes from configured YouTube podcasts,
   extracts evidence-backed assertions via the Ontology Loom (Qwen 3.8), verifies
-  them with Perplexity, and integrates them into ontology pages. NOT for one-off
-  historical backfill (use podcast-bulk-ingest), interactive on-demand transcript
+  them with Perplexity, and lands them on podcast-evidence ledger pages. Also
+  trigger on "promote podcast evidence", "ledger promotion", or "podcast
+  candidate dossiers" — the promote.py stage that pre-filters accumulated
+  ledger evidence into scored proposal dossiers. NOT for one-off historical
+  backfill (use podcast-bulk-ingest), interactive on-demand transcript
   fetching (use youtube-transcript-archiver), or non-podcast KG enrichment.
-version: 1.1.0
+version: 1.2.0
 triggers:
   - /podcast-ingest
   - weekly podcast ingest
   - podcast knowledge extraction
+  - ledger promotion
 cron:
   schedule: "17 6 * * 1"
   description: "Every Monday at 06:17 UTC — off-minute to avoid a thundering herd; catches weekend + weekday episodes"
@@ -202,6 +206,28 @@ Hard-won facts baked into the current code — do not regress them:
   failures — see agentbox email-search skill for the fingerprint).
 - **Supercronic reads the crontab only at start.** After editing `crontab`,
   `supervisorctl restart podcast-cron`.
+
+## Promotion stage (`promote.py`)
+
+Downstream of ingest: topics whose ledger accumulates enough evidence
+(≥5 assertions across ≥2 episodes by default) become *candidates*; each is
+drafted into a splice edit via the Loom, then pre-filtered by two instruments
+— a blind before/after quality judge (Gemini, rubric-A prose + rubric-B
+informativeness) and a lexical answer-completeness gate. Survivors land as
+scored dossiers with assertion-fingerprint provenance, shaped for the
+ontology-bridge governed proposal queue; nothing edits curated pages directly.
+
+```bash
+# Candidacy scan only (no network, no writes):
+python3 promote.py --pages-dir <graph pages dir> --proposals-dir promotions/proposals --dry-run
+
+# Full run, capped:
+python3 promote.py --pages-dir <graph pages dir> --proposals-dir promotions/proposals --limit 3
+```
+
+Idempotent per assertion-fingerprint set; instrument outages defer (retry next
+run) rather than reject. Full contract, thresholds, dossier JSON shape, and the
+live E2E test record: [references/promotion.md](references/promotion.md).
 
 ## Relationship to other skills
 
