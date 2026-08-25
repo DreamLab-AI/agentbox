@@ -549,7 +549,10 @@ def run_gemini_judge(prompt: str, api_key: str, timeout: int = 120) -> str | Non
             {"role": "user", "content": prompt},
         ],
         "temperature": 0.0,
-        "max_tokens": 1024,
+        # 1024 truncated rubric-B JSON mid-object on large before/after pages
+        # (first live run, topic 'anthropic') — the estate-wide lesson is
+        # max_tokens >= 1536 for judge/reasoning calls.
+        "max_tokens": 2048,
         "response_format": {"type": "json_object"},
     }).encode()
     req = urllib.request.Request(
@@ -876,6 +879,28 @@ def run(args: argparse.Namespace) -> int:
         print(f"\n[{slug}] assembling dossier: {len(candidate.assertions)} assertions, "
               f"{len(candidate.episodes)} episodes")
 
+        # Cap the material handed to draft + completeness. Splicing a hundred+
+        # assertions into one section is unintegrable by construction — the
+        # first live run (2026-08-25) showed the three largest topics drafting
+        # at completeness 0.02–0.28 and judging at -2.0. Select the strongest
+        # evidence (confidence desc, then recency); the candidate's FULL
+        # fingerprint set still drives idempotency, so new evidence anywhere
+        # in the topic reopens it.
+        def _conf_float(v):
+            try:
+                return float(v)
+            except (TypeError, ValueError):
+                return 0.0
+
+        dossier_assertions = candidate.assertions
+        if args.max_dossier_assertions and len(dossier_assertions) > args.max_dossier_assertions:
+            dossier_assertions = sorted(
+                dossier_assertions,
+                key=lambda a: (-_conf_float(a.confidence), a.claim_date or "", a.fp),
+            )[: args.max_dossier_assertions]
+            print(f"  capped to {len(dossier_assertions)} strongest assertions for the dossier "
+                  f"(--max-dossier-assertions {args.max_dossier_assertions})")
+
         target_page = pages_dir / target_page_name(candidate.topic)
         reasons: list[str] = []
 
@@ -907,7 +932,7 @@ def run(args: argparse.Namespace) -> int:
             print(f"  DEFER [{slug}]: Loom unreachable — recorded in rejects/, retry-eligible")
             continue
 
-        draft = assemble_draft(candidate.topic, page_text, candidate.assertions, args.loom_url, args.loom_model)
+        draft = assemble_draft(candidate.topic, page_text, dossier_assertions, args.loom_url, args.loom_model)
         if not draft.ok:
             reasons.append(f"draft_failed: {draft.error}")
             clear_slug_outputs(slug, proposals_dir, rejects_dir)
@@ -921,7 +946,7 @@ def run(args: argparse.Namespace) -> int:
 
         print(f"  draft OK ({draft.edit['mode']}, anchor {draft.edit['anchor'][:60]!r}...)")
 
-        completeness, completeness_detail = completeness_score(candidate.assertions, draft.edit["content"])
+        completeness, completeness_detail = completeness_score(dossier_assertions, draft.edit["content"])
         print(f"  completeness: {completeness:.2f}")
 
         judge = judge_before_after(candidate.topic, page_text, draft.spliced_text, args.judge_seed)
@@ -988,6 +1013,9 @@ def main() -> int:
     ap.add_argument("--loom-model", default=DEFAULT_LOOM_MODEL)
     ap.add_argument("--dry-run", action="store_true", help="only run candidacy detection, no Loom/judge calls, no writes")
     ap.add_argument("--limit", type=int, default=None, help="process at most N candidates this run")
+    ap.add_argument("--max-dossier-assertions", type=int, default=12,
+                    help="cap assertions handed to draft/completeness, strongest first "
+                         "(confidence desc, then recency); 0 = uncapped (default 12)")
     args = ap.parse_args()
     return run(args)
 
