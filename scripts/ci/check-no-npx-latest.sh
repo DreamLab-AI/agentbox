@@ -17,10 +17,16 @@ case "$baseline" in ''|*[!0-9]*) baseline=0 ;; esac
 
 # Exclude node_modules and the CI tooling itself (these check scripts contain
 # the literal patterns 'npx -y' / '@latest' in their own source and would
-# otherwise self-inflate the count).
+# otherwise self-inflate the count). Also exclude comment-only occurrences:
+# a comment *describing* the pattern (e.g. flake.nix notes explaining why the
+# code avoids `npx -y`) is not a shipping invocation — only count lines where
+# the match survives stripping everything from an unquoted '#' to EOL.
 matches="$(cd "$ROOT" && grep -rIn -E 'npx -y|@latest' $SCAN 2>/dev/null \
   | grep -vi node_modules \
-  | grep -v '^scripts/ci/' || true)"
+  | grep -v '^scripts/ci/' \
+  | awk -F: '{ line=""; for (i=3;i<=NF;i++) line=line (i>3?":":"") $i;
+               sub(/#.*$/, "", line);
+               if (line ~ /npx -y|@latest/) print }' || true)"
 
 count="$(printf '%s' "$matches" | grep -c . || true)"
 count="${count:-0}"

@@ -40,4 +40,14 @@ if [ -n "$bad" ]; then
   exit 1
 fi
 
+# Long-syntax publishes (published:/host_ip: mapping form) are invisible to the
+# short-syntax parser above and would bypass this gate entirely — forbid the
+# form itself so a bypass is structurally impossible.
+if sed -e 's/[[:space:]]*#.*$//' "$FILE" | grep -nE '^[[:space:]]*(published|host_ip):' ; then
+  echo "FAIL (check-ports-loopback): long-syntax port mapping (published:/host_ip:)" >&2
+  echo "  found — this gate only audits short syntax. Use short syntax" >&2
+  echo "  (\"127.0.0.1:PORT:PORT\") so the loopback invariant stays checkable." >&2
+  exit 1
+fi
+
 echo "PASS (check-ports-loopback): publishes are loopback-only except ADR-045 ingress 9096:9096"
