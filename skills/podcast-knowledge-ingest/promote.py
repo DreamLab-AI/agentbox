@@ -538,7 +538,13 @@ def _item_seed(seed: int, topic: str, rubric: str) -> int:
 
 
 def extract_judge_json(text: str) -> dict | None:
-    return extract_splice_json(text)  # identical fail-closed brace-matching logic
+    obj = extract_splice_json(text)  # identical fail-closed brace-matching logic
+    # Gemini occasionally wraps the verdict object in a one-element JSON array
+    # (observed live 2026-08-25, topic nvidia-h200) — unwrap that shape only;
+    # any other non-dict result stays a fail-closed None.
+    if isinstance(obj, list) and len(obj) == 1 and isinstance(obj[0], dict):
+        return obj[0]
+    return obj if isinstance(obj, dict) else None
 
 
 def run_gemini_judge(prompt: str, api_key: str, timeout: int = 120) -> str | None:
