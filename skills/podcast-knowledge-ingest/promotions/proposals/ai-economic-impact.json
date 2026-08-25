@@ -1,0 +1,198 @@
+{
+  "topic": "AI Economic Impact",
+  "topic_slug": "ai-economic-impact",
+  "status": "candidate_survivor",
+  "reasons": [],
+  "n_assertions": 7,
+  "episodes": [
+    "openai-declares-the-next-phase-of-ai",
+    "the-ai-productivity-boom-finally-shows-up",
+    "the-month-ai-woke-up",
+    "the-week-ai-grew-up",
+    "where-the-economy-thrives-after-ai",
+    "who-will-adapt-best-to-ai-disruption"
+  ],
+  "assertion_fingerprints": [
+    "064b2e15788debd3",
+    "7375375a87a6c2d4",
+    "81b198b0fff73610",
+    "903518dab469174d",
+    "c4354ea7c09ef05d",
+    "cdcf0378ba0a5fc1",
+    "dc5f9e862e44ba49"
+  ],
+  "target_page": "AI Economic Impact.md",
+  "assertions": [
+    {
+      "claim": "The host argues that the agentic transition and its consequent economic changes are likely to be more significant than the initial launch of ChatGPT in shaping the ultimate role of AI in society.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "AI Daily Brief host",
+      "episode": "openai-declares-the-next-phase-of-ai",
+      "claim_date": "2026-06-10",
+      "evidence": "The host states, 'I would argue when it comes to the ultimate shape of AI in society this agentic transition and all the consequent economic changes that come with it is likely to be even more significant than the first.'",
+      "fp": "dc5f9e862e44ba49"
+    },
+    {
+      "claim": "Erik Brynjolfsson argues that the 2025 US data indicates a transition from an AI experimentation phase to a utility phase, where earlier intangible investments begin to manifest as measurable output.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Erik Brynjolfsson",
+      "episode": "the-ai-productivity-boom-finally-shows-up",
+      "claim_date": "2026-02-17",
+      "evidence": "Brynjolfsson stated, 'We are transitioning from an era of AI experimentation to one of utility. We must now focus on understanding its precise mechanics. The productivity revival is not just an indicator of the power of AI. It is a wake-up call to focus on the coming economic transformation.'",
+      "fp": "81b198b0fff73610"
+    },
+    {
+      "claim": "Citron Research published a report titled 'The 2028 Global Intelligence Crisis' articulating a theoretical doom loop scenario leading to economic catastrophe due to AI-driven white-collar job losses.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Citron Research (via AI Daily Brief host)",
+      "episode": "the-month-ai-woke-up",
+      "claim_date": "2026-03-03",
+      "evidence": "The host mentions the report 'articulated a theoretical doom loop scenario that led to utter economic catastrophe' and notes it produced 'a lot of good counter conversation.'",
+      "fp": "c4354ea7c09ef05d"
+    },
+    {
+      "claim": "The AI industry is transitioning from a startup-era phase to one where AI is viewed as critical global economic infrastructure, evidenced by shifts in business models, market reactions, and government policy.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "AI Daily Brief Host",
+      "episode": "the-week-ai-grew-up",
+      "claim_date": "2026-05-02",
+      "evidence": "The host synthesizes multiple data points: 'I think you can see this theme woven throughout... we are entering a different phase of the AI era... the shift out of just the pure startup era of AI into this is critical global economic infrastructure era.'",
+      "fp": "cdcf0378ba0a5fc1"
+    },
+    {
+      "claim": "NLW argues that the dominant discourse on AI jobs is flawed because it focuses on destruction rather than creation, comparing the industry's communication to pharmaceutical commercials that emphasize benefits over risks.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "NLW (Host)",
+      "episode": "where-the-economy-thrives-after-ai",
+      "claim_date": "2026-04-26",
+      "evidence": "I've made the comparison in the past to pharmaceutical commercials... In AI, we're basically exactly the reverse. We spend the first 45 to 50 seconds of our metaphorical commercial... talking about how damn bad society's going to be after AI gets its hooks in. With only this tiny little consideration of the potential benefits.",
+      "fp": "903518dab469174d"
+    },
+    {
+      "claim": "The NBER study's adaptive capacity framework may underestimate structural changes to work because it presupposes a stable economy with similar destination jobs, modeling AI disruption as a localized event rather than a systemic reduction in demand for human cognitive labor.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host of AI Daily Brief",
+      "episode": "who-will-adapt-best-to-ai-disruption",
+      "claim_date": "2026-01-26",
+      "evidence": "The host argues: 'my concern is that it might be underestimating the structural changes to work... Every component of the adaptive capacity index is calibrated in a world where displacement is localized and destination jobs exist... AI, of course, could work differently. If it affects cognitive task categories rather than specific firms or industries, you could see things like simultaneous pressure across related occupations.'",
+      "fp": "7375375a87a6c2d4"
+    },
+    {
+      "claim": "AI disruption may differ from historical labor shocks by creating simultaneous pressure across related cognitive occupations, preventing displaced workers from transitioning into each other's roles and making skill transferability a moving target.",
+      "tier": "3",
+      "confidence": "0.7",
+      "source": "Host of AI Daily Brief",
+      "episode": "who-will-adapt-best-to-ai-disruption",
+      "claim_date": "2026-01-26",
+      "evidence": "The host reasons: 'If it affects cognitive task categories rather than specific firms or industries, you could see things like simultaneous pressure across related occupations. The secretary, customer service rep, insurance claims processor, and office clerk all face exposure at once, meaning they can't absorb each other's displaced workers.'",
+      "fp": "064b2e15788debd3"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "- ### Relationships",
+      "content": "- ### Recent Developments\n  - **[Agentic Transition]** The host argues that the agentic transition and its consequent economic changes are likely to be more significant than the initial launch of ChatGPT in shaping the ultimate role of AI in society. *(Source: AI Daily Brief host, confidence 0.75, tier 2)*\n  - **[Utility Phase]** Erik Brynjolfsson argues that 2025 US data indicates a transition from an AI experimentation phase to a utility phase, where earlier intangible investments begin to manifest as measurable output, serving as a wake-up call for the coming economic transformation. *(Source: Erik Brynjolfsson, confidence 0.85, tier 2)*\n  - **[Infrastructure Shift]** The AI industry is transitioning from a startup-era phase to one where AI is viewed as critical global economic infrastructure, evidenced by shifts in business models, market reactions, and government policy. *(Source: AI Daily Brief Host, confidence 0.85, tier 2)*\n  - **[Doom Loop Scenario]** Citron Research published a report titled 'The 2028 Global Intelligence Crisis' articulating a theoretical doom loop scenario leading to economic catastrophe due to AI-driven white-collar job losses. *(Source: Citron Research (via AI Daily Brief host), confidence 0.85, tier 2)*\n  - **[Discourse Critique]** NLW argues that the dominant discourse on AI jobs is flawed because it focuses on destruction rather than creation, comparing the industry's communication to pharmaceutical commercials that emphasize benefits over risks. *(Source: NLW (Host), confidence 0.8, tier 2)*\n  - **[Structural Change Concern]** The NBER study's adaptive capacity framework may underestimate structural changes to work because it presupposes a stable economy with similar destination jobs, modeling AI disruption as a localized event rather than a systemic reduction in demand for human cognitive labor. *(Source: Host of AI Daily Brief, confidence 0.85, tier 2)*\n  - **[Simultaneous Pressure]** AI disruption may differ from historical labor shocks by creating simultaneous pressure across related cognitive occupations, preventing displaced workers from transitioning into each other's roles and making skill transferability a moving target. *(Source: Host of AI Daily Brief, confidence 0.7, tier 3)*\n- ### Relationships"
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 2.0,
+    "rubric_b_improvement": 2.0,
+    "raw_a": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 4,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 4,
+      "better_version": "B",
+      "improvement": 2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "dc5f9e862e44ba49",
+        "claim": "The host argues that the agentic transition and its consequent economic changes are likely to be more significant than t",
+        "matched": true
+      },
+      {
+        "fp": "81b198b0fff73610",
+        "claim": "Erik Brynjolfsson argues that the 2025 US data indicates a transition from an AI experimentation phase to a utility phas",
+        "matched": true
+      },
+      {
+        "fp": "c4354ea7c09ef05d",
+        "claim": "Citron Research published a report titled 'The 2028 Global Intelligence Crisis' articulating a theoretical doom loop sce",
+        "matched": true
+      },
+      {
+        "fp": "cdcf0378ba0a5fc1",
+        "claim": "The AI industry is transitioning from a startup-era phase to one where AI is viewed as critical global economic infrastr",
+        "matched": true
+      },
+      {
+        "fp": "903518dab469174d",
+        "claim": "NLW argues that the dominant discourse on AI jobs is flawed because it focuses on destruction rather than creation, comp",
+        "matched": true
+      },
+      {
+        "fp": "7375375a87a6c2d4",
+        "claim": "The NBER study's adaptive capacity framework may underestimate structural changes to work because it presupposes a stabl",
+        "matched": true
+      },
+      {
+        "fp": "064b2e15788debd3",
+        "claim": "AI disruption may differ from historical labor shocks by creating simultaneous pressure across related cognitive occupat",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": {
+    "target_page": "AI Economic Impact.md",
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "- ### Relationships",
+      "content": "- ### Recent Developments\n  - **[Agentic Transition]** The host argues that the agentic transition and its consequent economic changes are likely to be more significant than the initial launch of ChatGPT in shaping the ultimate role of AI in society. *(Source: AI Daily Brief host, confidence 0.75, tier 2)*\n  - **[Utility Phase]** Erik Brynjolfsson argues that 2025 US data indicates a transition from an AI experimentation phase to a utility phase, where earlier intangible investments begin to manifest as measurable output, serving as a wake-up call for the coming economic transformation. *(Source: Erik Brynjolfsson, confidence 0.85, tier 2)*\n  - **[Infrastructure Shift]** The AI industry is transitioning from a startup-era phase to one where AI is viewed as critical global economic infrastructure, evidenced by shifts in business models, market reactions, and government policy. *(Source: AI Daily Brief Host, confidence 0.85, tier 2)*\n  - **[Doom Loop Scenario]** Citron Research published a report titled 'The 2028 Global Intelligence Crisis' articulating a theoretical doom loop scenario leading to economic catastrophe due to AI-driven white-collar job losses. *(Source: Citron Research (via AI Daily Brief host), confidence 0.85, tier 2)*\n  - **[Discourse Critique]** NLW argues that the dominant discourse on AI jobs is flawed because it focuses on destruction rather than creation, comparing the industry's communication to pharmaceutical commercials that emphasize benefits over risks. *(Source: NLW (Host), confidence 0.8, tier 2)*\n  - **[Structural Change Concern]** The NBER study's adaptive capacity framework may underestimate structural changes to work because it presupposes a stable economy with similar destination jobs, modeling AI disruption as a localized event rather than a systemic reduction in demand for human cognitive labor. *(Source: Host of AI Daily Brief, confidence 0.85, tier 2)*\n  - **[Simultaneous Pressure]** AI disruption may differ from historical labor shocks by creating simultaneous pressure across related cognitive occupations, preventing displaced workers from transitioning into each other's roles and making skill transferability a moving target. *(Source: Host of AI Daily Brief, confidence 0.7, tier 3)*\n- ### Relationships"
+    },
+    "provenance": {
+      "assertion_fingerprints": [
+        "064b2e15788debd3",
+        "7375375a87a6c2d4",
+        "81b198b0fff73610",
+        "903518dab469174d",
+        "c4354ea7c09ef05d",
+        "cdcf0378ba0a5fc1",
+        "dc5f9e862e44ba49"
+      ],
+      "source_episodes": [
+        "openai-declares-the-next-phase-of-ai",
+        "the-ai-productivity-boom-finally-shows-up",
+        "the-month-ai-woke-up",
+        "the-week-ai-grew-up",
+        "where-the-economy-thrives-after-ai",
+        "who-will-adapt-best-to-ai-disruption"
+      ]
+    },
+    "scores": {
+      "rubric_a_improvement": 2.0,
+      "rubric_b_improvement": 2.0,
+      "completeness": 1.0
+    }
+  }
+}

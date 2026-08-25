@@ -1,0 +1,291 @@
+{
+  "topic": "AI Regulation",
+  "topic_slug": "ai-regulation",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5"
+  ],
+  "n_assertions": 15,
+  "episodes": [
+    "ceo-led-ai-gets-3x-the-roi",
+    "dario-amodei-breaks-his-social-media-silence",
+    "fable-is-back-heres-what-you-should-try-first",
+    "how-deepseek-v4-connects-to-the-us-grid",
+    "mythos-returns-but-not-for-everyone",
+    "the-5-biggest-ai-stories-to-watch-in-december",
+    "the-big-questions-shaping-the-consumer-ai-battle",
+    "the-next-wave-of-enterprise-ai",
+    "the-week-the-ai-story-shifted",
+    "towards-ai-that-can-actually-interact",
+    "white-hot-cursor-doubles-revenue",
+    "why-everyone-is-debating-ai-policy",
+    "why-fable-5-is-the-most-controversial-ai-release-ever",
+    "your-company-doesnt-need-an-ai-strategy"
+  ],
+  "assertion_fingerprints": [
+    "05e0a0b9f5a1b4f8",
+    "263fe465dd7c8bdf",
+    "26b4ccf0a8ec16bf",
+    "273b29d7e2434fae",
+    "31e4785610519e18",
+    "4397c4c427b9bd2e",
+    "47d504e071d6d828",
+    "6216642c96eb61f2",
+    "683fecde77ea2502",
+    "88753b2aaf2ed7d6",
+    "8abe578088dfd2bd",
+    "98e71cd1a3e0f9eb",
+    "9ec7401b736b2386",
+    "a77bf542b4cd8dce",
+    "aef3de3888cb9f2b"
+  ],
+  "target_page": "AI Regulation.md",
+  "assertions": [
+    {
+      "claim": "The US government is actively negotiating with Anthropic regarding the reinstatement of the 'Fable 5' model, with Tom Brown leading discussions while Dario Amodei is sidelined.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "Wired / White House Sources",
+      "episode": "ceo-led-ai-gets-3x-the-roi",
+      "claim_date": "2026-06-25",
+      "evidence": "Prediction markets saw odds of a Fable 5 return by July 1st jump from 15% to 63% following reports of negotiations. The focus is on establishing proof to alleviate administration concerns about jailbreaks.",
+      "fp": "6216642c96eb61f2"
+    },
+    {
+      "claim": "Gavin Baker argues that Dario Amodei's pro-regulatory messaging is inadvertently increasing the odds that AI will be restricted or banned, thereby decreasing the likelihood of a beneficial 'Star Trek-like' future.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Gavin Baker",
+      "episode": "dario-amodei-breaks-his-social-media-silence",
+      "claim_date": "2026-08-18",
+      "evidence": "Baker states: 'I suspect we will see anti-data center advocacy groups running ads using clips of Dario warning about how dangerous AI could be for humans. His good faith efforts in favor of regulation are now increasing the odds that AI will not be beneficial for Americans and humans everywhere.'",
+      "fp": "26b4ccf0a8ec16bf"
+    },
+    {
+      "claim": "The host predicts that Dario Amodei's pro-regulatory rhetoric will be used by anti-data center advocacy groups to run ads warning about AI dangers, potentially hindering AI deployment in the US.",
+      "tier": "3",
+      "confidence": "0.5",
+      "source": "AI Daily Brief Host / Gavin Baker",
+      "episode": "dario-amodei-breaks-his-social-media-silence",
+      "claim_date": "2026-08-18",
+      "evidence": "The host notes: 'I suspect we will see anti-data center advocacy groups running ads using clips of Dario warning about how dangerous AI could be for humans.' This is echoed by Gavin Baker, who argues that Amodei's messaging is increasing the odds of restrictive regulation.",
+      "fp": "8abe578088dfd2bd"
+    },
+    {
+      "claim": "Anthropic's Fable 5 model was cleared for global redeployment on July 1st after the US Department of Commerce lifted export controls that had been in place for approximately 19 days.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Anthropic and US Department of Commerce (reported by AI Daily Brief host)",
+      "episode": "fable-is-back-heres-what-you-should-try-first",
+      "claim_date": "2026-07-02",
+      "evidence": "The transcript details, 'On Tuesday night, Anthropic announced that the government had lifted export controls and cleared them to begin redeploying Fable 5... Beginning today, July 1st, Fable 5 will once again be available to all global users across all paid subscriptions.'",
+      "fp": "263fe465dd7c8bdf"
+    },
+    {
+      "claim": "China blocked Meta's $2 billion acquisition of Manifold on national security grounds, citing concerns about draining AI talent and resources.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Bloomberg / Financial Times / AI Daily Brief Host",
+      "episode": "how-deepseek-v4-connects-to-the-us-grid",
+      "claim_date": "2026-04-28",
+      "evidence": "The transcript states: 'Beijing brought the investigation to its conclusion and blocked Meta's acquisition of Manifold... Chinese officials told the Financial Times that the deal was viewed as a conspiratorial effort to drain China of AI talent and resources.'",
+      "fp": "88753b2aaf2ed7d6"
+    },
+    {
+      "claim": "The risk of AI regulation is not the short-term delay of model releases, but the potential for review processes to become prolonged and arbitrary, placing AI progress at the mercy of the most paranoid stakeholders.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Aaron Levie (Box)",
+      "episode": "mythos-returns-but-not-for-everyone",
+      "claim_date": "2026-06-30",
+      "evidence": "Levie wrote: 'The risk is a year from now, the review process is actually 6 months because a red team has convinced the government they can jailbreak in a novel way... AI progress will begin to be at the mercy of the most paranoid people with government relationships.'",
+      "fp": "4397c4c427b9bd2e"
+    },
+    {
+      "claim": "The host predicts that a more full-throated and clearly articulated anti-AI political position will emerge from the right in the US during December 2025.",
+      "tier": "3",
+      "confidence": "0.55",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-5-biggest-ai-stories-to-watch-in-december",
+      "claim_date": "2025-12-10",
+      "evidence": "The host states, 'I think you're going to start to see a more fullthroatated and clearly articulated anti-AI position from the right... they'll start to put it in political soundbite terms.'",
+      "fp": "273b29d7e2434fae"
+    },
+    {
+      "claim": "The host anticipates that future policy or regulations may emerge around data and memory transportability, allowing users to easily export their context from one AI platform to another.",
+      "tier": "3",
+      "confidence": "0.55",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-big-questions-shaping-the-consumer-ai-battle",
+      "claim_date": "2026-03-05",
+      "evidence": "I would not be surprised if we might see some sort of policy or regulations around data and memory transportability... it is, after all, my memory and context, so shouldn't I be able to, with a single click, be able to transport it to whichever model platform I choose?",
+      "fp": "98e71cd1a3e0f9eb"
+    },
+    {
+      "claim": "The Trump AI executive order explicitly disclaims the creation of a mandatory government licensing, pre-clearance, or permitting requirement for the development of new AI models.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief host",
+      "episode": "the-next-wave-of-enterprise-ai",
+      "claim_date": "2026-06-04",
+      "evidence": "The transcript quotes the order: 'Nothing in this section shall be construed to authorize the creation of a mandatory government licensing, pre-clearance, or permitting requirement for the development of new AI models.'",
+      "fp": "9ec7401b736b2386"
+    },
+    {
+      "claim": "The White House is experiencing internal conflict regarding AI regulation, with some officials pushing for model vetting while others, including a senior official, argue that regulation is a minority view.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Host (AI Daily Brief) citing Politico",
+      "episode": "the-week-the-ai-story-shifted",
+      "claim_date": "2026-05-08",
+      "evidence": "The host reports: 'One senior White House official told Politico, \"There's one or two people who are very intent on government regulations, but they're sort of the minority of the bunch.\"'",
+      "fp": "a77bf542b4cd8dce"
+    },
+    {
+      "claim": "National Economic Council Chairman Kevin Hassett confirmed that the White House is not planning to create an FDA-like bureaucracy to approve AI models, walking back earlier comparisons to drug approval processes.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Kevin Hassett",
+      "episode": "towards-ai-that-can-actually-interact",
+      "claim_date": "2026-05-13",
+      "evidence": "Hassett confirmed that an FDA-type organization is not in the cards, commenting, 'At the White House, nobody has an idea that we should do something like bringing in a giant new bureaucracy to approve AIs.'",
+      "fp": "31e4785610519e18"
+    },
+    {
+      "claim": "Representative Sam Liccardo plans to introduce an amendment to the Defense Production Act prohibiting agencies from retaliating against AI vendors who limit technology deployment to mitigate risks to US citizens.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Sam Liccardo",
+      "episode": "white-hot-cursor-doubles-revenue",
+      "claim_date": "2026-03-05",
+      "evidence": "Silicon Valley representative Sam Liccardo plans to introduce an amendment to the act that would prohibit agencies from 'retaliating against vendors and developers of high-risk technologies such as AI where those vendors seek to limit the deployment of their technology in ways to mitigate the risk to United States citizens.'",
+      "fp": "05e0a0b9f5a1b4f8"
+    },
+    {
+      "claim": "The White House is considering a proposal for a self-governing AI regulatory body modeled after the Financial Industry Regulatory Authority (FINRA), as reported by Bloomberg.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Bloomberg",
+      "episode": "why-everyone-is-debating-ai-policy",
+      "claim_date": "2026-07-29",
+      "evidence": "The transcript notes: 'over the weekend, Bloomberg noted that the White House is also considering a proposal for a self-governing body put forward by Demisabis. Financial industry regulator FINRA is considered the model'.",
+      "fp": "47d504e071d6d828"
+    },
+    {
+      "claim": "If Anthropic establishes itself as the toll booth for frontier model access, the US government is likely to view this as a direct form of competition and act accordingly, potentially leading to more bureaucratic control over AI development.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "Samuel Roman (GMU Law Professor, via AI Daily Brief host)",
+      "episode": "why-fable-5-is-the-most-controversial-ai-release-ever",
+      "claim_date": "2026-06-12",
+      "evidence": "Roman wrote: 'If Anthropic genuinely establishes itself as the toll booth for frontier model access, the state is absolutely going to correctly read that as a direct form of competition and act accordingly. And I'm sorry, but Anthropic just does not win that fight. This means the future direction of models just became much more likely to be determined by a small group of bureaucrats via edict rather than a broad societal discussion.'",
+      "fp": "683fecde77ea2502"
+    },
+    {
+      "claim": "Bernie Sanders unveiled legislation to create a $7 trillion sovereign wealth fund by imposing a one-time 50% tax on the equity of AI companies with more than $200 million in annual AI sales.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Bernie Sanders",
+      "episode": "your-company-doesnt-need-an-ai-strategy",
+      "claim_date": "2026-06-20",
+      "evidence": "The transcript details the bill: 'a $7 trillion... sovereign wealth fund by taxing AI companies... one-time 50% tax on the equity of the largest AI companies... any company with more than 200 million in annual AI sales.'",
+      "fp": "aef3de3888cb9f2b"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "- ### Current Landscape (2026)",
+      "content": "- ### Recent Developments\n  - **US Federal Policy and Deregulation**\n    - The Trump AI executive order explicitly disclaims the creation of a mandatory government licensing, pre-clearance, or permitting requirement for the development of new AI models, stating: \"Nothing in this section shall be construed to authorize the creation of a mandatory government licensing, pre-clearance, or permitting requirement for the development of new AI models.\"\n    - National Economic Council Chairman Kevin Hassett confirmed that the White House is not planning to create an FDA-like bureaucracy to approve AI models, walking back earlier comparisons to drug approval processes. He stated, \"At the White House, nobody has an idea that we should do something like bringing in a giant new bureaucracy to approve AIs.\"\n    - The White House is reportedly considering a proposal for a self-governing AI regulatory body modeled after the Financial Industry Regulatory Authority (FINRA), as reported by Bloomberg.\n    - Internal conflict persists within the White House regarding AI regulation, with some officials pushing for model vetting while others argue that regulation is a minority view. One senior official told Politico, \"There's one or two people who are very intent on government regulations, but they're sort of the minority of the bunch.\"\n  - **Legislative and Judicial Actions**\n    - Representative Sam Liccardo plans to introduce an amendment to the Defense Production Act prohibiting agencies from retaliating against AI vendors who limit technology deployment to mitigate risks to US citizens.\n    - Senator Bernie Sanders unveiled legislation to create a $7 trillion sovereign wealth fund by imposing a one-time 50% tax on the equity of AI companies with more than $200 million in annual AI sales.\n  - **Export Controls and Model Deployment**\n    - Anthropic's Fable 5 model was cleared for global redeployment on July 1st after the US Department of Commerce lifted export controls that had been in place for approximately 19 days. Anthropic announced, \"Beginning today, July 1st, Fable 5 will once again be available to all global users across all paid subscriptions.\"\n    - Prior to the lifting of controls, the US government was actively negotiating with Anthropic regarding the reinstatement of the model, with Tom Brown leading discussions while Dario Amodei was sidelined. Prediction markets saw odds of a Fable 5 return by July 1st jump from 15% to 63% following reports of these negotiations.\n  - **International Enforcement**\n    - China blocked Meta's $2 billion acquisition of Manifold on national security grounds, citing concerns about draining AI talent and resources. Chinese officials told the Financial Times that the deal was viewed as a conspiratorial effort to drain China of AI talent and resources.\n  - **Industry Perspectives on Regulatory Risk**\n    - Aaron Levie (Box) argues that the risk of AI regulation is not the short-term delay of model releases, but the potential for review processes to become prolonged and arbitrary, placing AI progress at the mercy of the most paranoid stakeholders.\n    - Gavin Baker contends that Dario Amodei's pro-regulatory messaging is inadvertently increasing the odds that AI will be restricted or banned, thereby decreasing the likelihood of a beneficial future.\n    - Samuel Roman (GMU Law Professor) warns that if Anthropic establishes itself as the toll booth for frontier model access, the US government is likely to view this as a direct form of competition and act accordingly, potentially leading to more bureaucratic control over AI development."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 4,
+      "relevance": 5,
+      "coherence": 4,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 1,
+      "relevance": 2,
+      "coherence": 1,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "88753b2aaf2ed7d6",
+        "claim": "China blocked Meta's $2 billion acquisition of Manifold on national security grounds, citing concerns about draining AI ",
+        "matched": true
+      },
+      {
+        "fp": "31e4785610519e18",
+        "claim": "National Economic Council Chairman Kevin Hassett confirmed that the White House is not planning to create an FDA-like bu",
+        "matched": true
+      },
+      {
+        "fp": "9ec7401b736b2386",
+        "claim": "The Trump AI executive order explicitly disclaims the creation of a mandatory government licensing, pre-clearance, or pe",
+        "matched": true
+      },
+      {
+        "fp": "aef3de3888cb9f2b",
+        "claim": "Bernie Sanders unveiled legislation to create a $7 trillion sovereign wealth fund by imposing a one-time 50% tax on the ",
+        "matched": true
+      },
+      {
+        "fp": "263fe465dd7c8bdf",
+        "claim": "Anthropic's Fable 5 model was cleared for global redeployment on July 1st after the US Department of Commerce lifted exp",
+        "matched": true
+      },
+      {
+        "fp": "05e0a0b9f5a1b4f8",
+        "claim": "Representative Sam Liccardo plans to introduce an amendment to the Defense Production Act prohibiting agencies from reta",
+        "matched": true
+      },
+      {
+        "fp": "47d504e071d6d828",
+        "claim": "The White House is considering a proposal for a self-governing AI regulatory body modeled after the Financial Industry R",
+        "matched": true
+      },
+      {
+        "fp": "a77bf542b4cd8dce",
+        "claim": "The White House is experiencing internal conflict regarding AI regulation, with some officials pushing for model vetting",
+        "matched": true
+      },
+      {
+        "fp": "4397c4c427b9bd2e",
+        "claim": "The risk of AI regulation is not the short-term delay of model releases, but the potential for review processes to becom",
+        "matched": true
+      },
+      {
+        "fp": "26b4ccf0a8ec16bf",
+        "claim": "Gavin Baker argues that Dario Amodei's pro-regulatory messaging is inadvertently increasing the odds that AI will be res",
+        "matched": true
+      },
+      {
+        "fp": "6216642c96eb61f2",
+        "claim": "The US government is actively negotiating with Anthropic regarding the reinstatement of the 'Fable 5' model, with Tom Br",
+        "matched": true
+      },
+      {
+        "fp": "683fecde77ea2502",
+        "claim": "If Anthropic establishes itself as the toll booth for frontier model access, the US government is likely to view this as",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

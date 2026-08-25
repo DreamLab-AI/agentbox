@@ -1,0 +1,217 @@
+{
+  "topic": "AI Security",
+  "topic_slug": "ai-security",
+  "status": "candidate_survivor",
+  "reasons": [],
+  "n_assertions": 8,
+  "episodes": [
+    "ceo-led-ai-gets-3x-the-roi",
+    "grok-bot-finally-makes-ai-agents-easy",
+    "how-ai-is-changing-how-companies-get-built",
+    "how-to-use-claudes-massive-new-upgrades",
+    "what-google-needs-to-do-at-io-this-week",
+    "why-ceos-need-to-lead-ai-strategy",
+    "why-moltbook-matters"
+  ],
+  "assertion_fingerprints": [
+    "0979e2805af57389",
+    "1fc79b0181dbabdd",
+    "23c21ca0fab51642",
+    "89221a531925abaa",
+    "a28d0e4091441bb7",
+    "ac8fb9fa7bb3a6e8",
+    "e4269d414ffafffc",
+    "e657b161c1b12531"
+  ],
+  "target_page": "AI Security.md",
+  "assertions": [
+    {
+      "claim": "Anthropic accused Alibaba of conducting the 'largest distillation attack ever detected,' involving nearly 29 million model accesses via 25,000 fraudulent accounts between mid-April and early June.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Anthropic Letter to Senate Banking Committee",
+      "episode": "ceo-led-ai-gets-3x-the-roi",
+      "claim_date": "2026-06-25",
+      "evidence": "The letter states the attacks were carried out at an industrial scale to harvest US AI capabilities and repackage them without incurring training costs, posing security risks due to lack of safety guardrails.",
+      "fp": "89221a531925abaa"
+    },
+    {
+      "claim": "Grok Bot's 'computer use' paradigm, where agents operate virtual machines to interact with web apps like humans, creates significant trust and security barriers for users sharing credentials.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "AI Daily Brief Host / Peter Yang",
+      "episode": "grok-bot-finally-makes-ai-agents-easy",
+      "claim_date": "2026-08-13",
+      "evidence": "The host reflects on the 'devastating' potential if something went wrong with account access, noting, 'I would be letting it have access to my actual account to click around and do things.' Peter Yang asks, 'How do you get regular users to trust sharing their credentials and logins with a remote computer?'",
+      "fp": "ac8fb9fa7bb3a6e8"
+    },
+    {
+      "claim": "Anthropic identified a network of 25,000 fraudulent accounts linked to Alibaba that generated nearly 29 million interactions with Claude, which Anthropic accused of being a large-scale distillation attack.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Anthropic (via AI Daily Brief host)",
+      "episode": "how-ai-is-changing-how-companies-get-built",
+      "claim_date": "2026-07-08",
+      "evidence": "Anthropic wrote to Congress accusing Alibaba of carrying out a 'brazenly' large-scale distillation attack. The company claimed to have uncovered 25,000 fraudulent accounts tied to Alibaba that generated almost 29 million interactions with Claude.",
+      "fp": "23c21ca0fab51642"
+    },
+    {
+      "claim": "The widespread adoption of computer use by AI agents will create significant security and identity challenges, including the need to determine whether agents should act on behalf of users or have their own limited identities, and how to triage security events when activity volume is no longer a reliable signal.",
+      "tier": "3",
+      "confidence": "0.65",
+      "source": "Aaron Levie (Box)",
+      "episode": "how-to-use-claudes-massive-new-upgrades",
+      "claim_date": "2026-03-24",
+      "evidence": "Aaron Levie stated: 'There are going to be various hurdles around security, permissions, and access control, identity challenges, and more. For instance, should the agent always act on behalf of the user, or should they have their own identity and limited set of access rights? How do you triage security events when historically volume of activity on a system is no longer a reliable signal of a security issue?'",
+      "fp": "a28d0e4091441bb7"
+    },
+    {
+      "claim": "Security researchers used Claude 3 Mythos to discover and exploit a vulnerability in macOS that granted access to kernel memory, demonstrating the model's ability to generalize across known bug classes.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Security researchers via AI Daily Brief host",
+      "episode": "what-google-needs-to-do-at-io-this-week",
+      "claim_date": "2026-05-18",
+      "evidence": "Security researchers have now used Claude 3 Mythos to find a new way to exploit Apple's operating system. The researchers claim that Mythos was able to link together a pair of bugs to execute an attack that granted access to kernel memory on Mac OS.",
+      "fp": "0979e2805af57389"
+    },
+    {
+      "claim": "The host posits that the increasing focus on cybersecurity and model governance is a direct result of organizations moving from isolated agent deployments to orchestrated agent ecosystems, which require robust data lineage and security architectures.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "Host (AI Daily Brief)",
+      "episode": "why-ceos-need-to-lead-ai-strategy",
+      "claim_date": "2026-01-16",
+      "evidence": "For KPMG, this is all pointing in the direction of moving away from isolated agent deployments towards complete orchestrated agent ecosystems... Half of the leaders surveyed plan to allocate between 10 and 50 million in the coming year to harden model governance, improve data lineage, and secure agentic architectures.",
+      "fp": "e4269d414ffafffc"
+    },
+    {
+      "claim": "David Andre argues that the primary security threat from Moltbook is not the content generated by agents, but the 'tool calls' they execute, such as creating Bitcoin wallets or locking humans out of accounts, which have real-world consequences.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "David Andre",
+      "episode": "why-moltbook-matters",
+      "claim_date": "2026-02-03",
+      "evidence": "It's not what these agents say, it's what they can do... One agent created a Bitcoin wallet and locked its human out. That's not consciousness. That's a tool call... The tokens these agents generate aren't dangerous. The tool calls those tokens trigger are dangerous.",
+      "fp": "e657b161c1b12531"
+    },
+    {
+      "claim": "The host predicts that 2026 might be the 'year of prompt injection' because AI agents are becoming capable of executing code and interacting with APIs, expanding the attack surface exponentially.",
+      "tier": "3",
+      "confidence": "0.65",
+      "source": "Host (AI Daily Brief) citing David Andre",
+      "episode": "why-moltbook-matters",
+      "claim_date": "2026-02-03",
+      "evidence": "David continues, '2026 might be the year of prompt injection. Not because AI is becoming conscious, but because AI is becoming capable. Agents can now browse the web, execute code, manage files, send messages, and interact with APIs.'",
+      "fp": "1fc79b0181dbabdd"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - #### Applications\n\t\t- Enterprise AI system hardening\n\t\t- Secure LLM deployment\n\t\t- AI-powered threat detection\n\t\t- Autonomous system protection\n\t\t- Healthcare AI security\n\t\t- Financial services AI protection",
+      "content": "\n  - #### Recent Developments\n\t\t- **Large-Scale Distillation Attacks**: Anthropic accused Alibaba of conducting the 'largest distillation attack ever detected,' involving nearly 29 million model accesses via 25,000 fraudulent accounts between mid-April and early June. The letter to the Senate Banking Committee stated the attacks were carried out at an industrial scale to harvest US AI capabilities and repackage them without incurring training costs, posing security risks due to the lack of safety guardrails. [source: Anthropic Letter to Senate Banking Committee, confidence 0.95, tier 1]\n\t\t- **AI-Driven Vulnerability Discovery**: Security researchers used Claude 3 Mythos to discover and exploit a vulnerability in macOS that granted access to kernel memory. The researchers claimed the model was able to link together a pair of bugs to execute an attack, demonstrating its ability to generalize across known bug classes. [source: Security researchers via AI Daily Brief host, confidence 0.9, tier 1]\n\t\t- **Agentic Security and Identity Challenges**: The widespread adoption of computer use by AI agents creates significant security and identity challenges. Aaron Levie noted hurdles around permissions, access control, and identity, questioning whether agents should act on behalf of users or have their own limited identities, and how to triage security events when activity volume is no longer a reliable signal. [source: Aaron Levie (Box), confidence 0.65, tier 3]\n\t\t- **Trust Barriers in Agent Deployment**: Grok Bot's 'computer use' paradigm, where agents operate virtual machines to interact with web apps, creates significant trust barriers for users sharing credentials. The host reflected on the 'devastating' potential if something went wrong with account access, highlighting the difficulty of getting regular users to trust sharing their logins with a remote computer. [source: AI Daily Brief Host / Peter Yang, confidence 0.8, tier 2]\n\t\t- **Tool Call Risks**: David Andre argued that the primary security threat from agents like Moltbook is not the content generated, but the 'tool calls' they execute, such as creating Bitcoin wallets or locking humans out of accounts, which have real-world consequences. [source: David Andre, confidence 0.8, tier 2]\n\t\t- **Prompt Injection Expansion**: The host predicted that 2026 might be the 'year of prompt injection' because AI agents are becoming capable of executing code and interacting with APIs, expanding the attack surface exponentially. [source: Host (AI Daily Brief) citing David Andre, confidence 0.65, tier 3]\n\t\t- **Governance Investment**: The increasing focus on cybersecurity and model governance is a direct result of organizations moving from isolated agent deployments to orchestrated agent ecosystems. Half of the leaders surveyed plan to allocate between 10 and 50 million in the coming year to harden model governance, improve data lineage, and secure agentic architectures. [source: Host (AI Daily Brief), confidence 0.75, tier 2]"
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 2.0,
+    "rubric_b_improvement": 2.0,
+    "raw_a": {
+      "factual_grounding": 4,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "A",
+      "improvement": -2
+    },
+    "raw_b": {
+      "factual_grounding": 4,
+      "relevance": 3,
+      "coherence": 5,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 0.875,
+    "detail": [
+      {
+        "fp": "89221a531925abaa",
+        "claim": "Anthropic accused Alibaba of conducting the 'largest distillation attack ever detected,' involving nearly 29 million mod",
+        "matched": true
+      },
+      {
+        "fp": "ac8fb9fa7bb3a6e8",
+        "claim": "Grok Bot's 'computer use' paradigm, where agents operate virtual machines to interact with web apps like humans, creates",
+        "matched": true
+      },
+      {
+        "fp": "23c21ca0fab51642",
+        "claim": "Anthropic identified a network of 25,000 fraudulent accounts linked to Alibaba that generated nearly 29 million interact",
+        "matched": false
+      },
+      {
+        "fp": "a28d0e4091441bb7",
+        "claim": "The widespread adoption of computer use by AI agents will create significant security and identity challenges, including",
+        "matched": true
+      },
+      {
+        "fp": "0979e2805af57389",
+        "claim": "Security researchers used Claude 3 Mythos to discover and exploit a vulnerability in macOS that granted access to kernel",
+        "matched": true
+      },
+      {
+        "fp": "e4269d414ffafffc",
+        "claim": "The host posits that the increasing focus on cybersecurity and model governance is a direct result of organizations movi",
+        "matched": true
+      },
+      {
+        "fp": "e657b161c1b12531",
+        "claim": "David Andre argues that the primary security threat from Moltbook is not the content generated by agents, but the 'tool ",
+        "matched": true
+      },
+      {
+        "fp": "1fc79b0181dbabdd",
+        "claim": "The host predicts that 2026 might be the 'year of prompt injection' because AI agents are becoming capable of executing ",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": {
+    "target_page": "AI Security.md",
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - #### Applications\n\t\t- Enterprise AI system hardening\n\t\t- Secure LLM deployment\n\t\t- AI-powered threat detection\n\t\t- Autonomous system protection\n\t\t- Healthcare AI security\n\t\t- Financial services AI protection",
+      "content": "\n  - #### Recent Developments\n\t\t- **Large-Scale Distillation Attacks**: Anthropic accused Alibaba of conducting the 'largest distillation attack ever detected,' involving nearly 29 million model accesses via 25,000 fraudulent accounts between mid-April and early June. The letter to the Senate Banking Committee stated the attacks were carried out at an industrial scale to harvest US AI capabilities and repackage them without incurring training costs, posing security risks due to the lack of safety guardrails. [source: Anthropic Letter to Senate Banking Committee, confidence 0.95, tier 1]\n\t\t- **AI-Driven Vulnerability Discovery**: Security researchers used Claude 3 Mythos to discover and exploit a vulnerability in macOS that granted access to kernel memory. The researchers claimed the model was able to link together a pair of bugs to execute an attack, demonstrating its ability to generalize across known bug classes. [source: Security researchers via AI Daily Brief host, confidence 0.9, tier 1]\n\t\t- **Agentic Security and Identity Challenges**: The widespread adoption of computer use by AI agents creates significant security and identity challenges. Aaron Levie noted hurdles around permissions, access control, and identity, questioning whether agents should act on behalf of users or have their own limited identities, and how to triage security events when activity volume is no longer a reliable signal. [source: Aaron Levie (Box), confidence 0.65, tier 3]\n\t\t- **Trust Barriers in Agent Deployment**: Grok Bot's 'computer use' paradigm, where agents operate virtual machines to interact with web apps, creates significant trust barriers for users sharing credentials. The host reflected on the 'devastating' potential if something went wrong with account access, highlighting the difficulty of getting regular users to trust sharing their logins with a remote computer. [source: AI Daily Brief Host / Peter Yang, confidence 0.8, tier 2]\n\t\t- **Tool Call Risks**: David Andre argued that the primary security threat from agents like Moltbook is not the content generated, but the 'tool calls' they execute, such as creating Bitcoin wallets or locking humans out of accounts, which have real-world consequences. [source: David Andre, confidence 0.8, tier 2]\n\t\t- **Prompt Injection Expansion**: The host predicted that 2026 might be the 'year of prompt injection' because AI agents are becoming capable of executing code and interacting with APIs, expanding the attack surface exponentially. [source: Host (AI Daily Brief) citing David Andre, confidence 0.65, tier 3]\n\t\t- **Governance Investment**: The increasing focus on cybersecurity and model governance is a direct result of organizations moving from isolated agent deployments to orchestrated agent ecosystems. Half of the leaders surveyed plan to allocate between 10 and 50 million in the coming year to harden model governance, improve data lineage, and secure agentic architectures. [source: Host (AI Daily Brief), confidence 0.75, tier 2]"
+    },
+    "provenance": {
+      "assertion_fingerprints": [
+        "0979e2805af57389",
+        "1fc79b0181dbabdd",
+        "23c21ca0fab51642",
+        "89221a531925abaa",
+        "a28d0e4091441bb7",
+        "ac8fb9fa7bb3a6e8",
+        "e4269d414ffafffc",
+        "e657b161c1b12531"
+      ],
+      "source_episodes": [
+        "ceo-led-ai-gets-3x-the-roi",
+        "grok-bot-finally-makes-ai-agents-easy",
+        "how-ai-is-changing-how-companies-get-built",
+        "how-to-use-claudes-massive-new-upgrades",
+        "what-google-needs-to-do-at-io-this-week",
+        "why-ceos-need-to-lead-ai-strategy",
+        "why-moltbook-matters"
+      ]
+    },
+    "scores": {
+      "rubric_a_improvement": 2.0,
+      "rubric_b_improvement": 2.0,
+      "completeness": 0.875
+    }
+  }
+}

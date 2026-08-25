@@ -1,0 +1,158 @@
+{
+  "topic": "Persona",
+  "topic_slug": "persona",
+  "status": "candidate_survivor",
+  "reasons": [],
+  "n_assertions": 5,
+  "episodes": [
+    "google-says-no-ads-planned-for-gemini",
+    "how-to-build-a-personal-agentic-operating-system",
+    "how-to-build-a-personal-context-mcp"
+  ],
+  "assertion_fingerprints": [
+    "09f9a6f8fb5dd1fb",
+    "19012bfdd5ac2d92",
+    "662a74e04525f24c",
+    "88a52b90cebe4cb1",
+    "b5d9be8e9deb33f6"
+  ],
+  "target_page": "Persona.md",
+  "assertions": [
+    {
+      "claim": "Google is already offering ads in AI search, including a new feature called 'direct offers' that presents personalized discounts in AI mode.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Dan Taylor (Google VP of Global Ads)",
+      "episode": "google-says-no-ads-planned-for-gemini",
+      "claim_date": "2026-01-22",
+      "evidence": "Taylor noted that while Gemini app ads are not planned, AI mode and search in Gemini are converging, and Google is actively testing ad features like direct offers in AI search.",
+      "fp": "88a52b90cebe4cb1"
+    },
+    {
+      "claim": "The 'Identity' layer of an Agent OS is implemented via specific text files that vary by tool, such as 'soul' in Open Claw, 'agents.md' in Cursor, and 'Claude.md' in Claude Code.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Nofar Gaspar",
+      "episode": "how-to-build-a-personal-agentic-operating-system",
+      "claim_date": "2026-04-25",
+      "evidence": "Nofar provides specific naming conventions: 'In Open Claw, it's called soul. In Cursor, it's called agents.md. In Claude code, it's Claude. In GitHub Copilot, it's copilot instructions.'",
+      "fp": "662a74e04525f24c"
+    },
+    {
+      "claim": "The 'Personal Context Portfolio' is a structured set of 10 markdown files designed to serve as a portable, machine-readable representation of an individual's identity, projects, and preferences for AI agents.",
+      "tier": "2",
+      "confidence": "0.95",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-to-build-a-personal-context-mcp",
+      "claim_date": "2026-04-04",
+      "evidence": "The host defines it as 'a structured set of markdown files that together represent you as a context package... effectively, it's API documentation but for you.' The 10 files include identity.md, roles_and_responsibilities.md, current_projects.md, team_and_relationships.md, tools_and_systems.md, communication_style.md, goals_and_priorities.md, preferences_and_constraints.md, domain_knowledge.md, and decision_log.md.",
+      "fp": "09f9a6f8fb5dd1fb"
+    },
+    {
+      "claim": "The 'Personal Context Portfolio App' uses Claude Opus 4.6 to conduct an ongoing interview that dynamically updates all 10 portfolio files simultaneously when a single answer is relevant to multiple dimensions.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-to-build-a-personal-context-mcp",
+      "claim_date": "2026-04-04",
+      "evidence": "The host states: 'It's got two sections, an interview, which is powered by Opus 4.6... when you answer one question, if it's relevant for different portfolio files, that's all going to be added at once.'",
+      "fp": "19012bfdd5ac2d92"
+    },
+    {
+      "claim": "The 'decision_log.md' file in a personal context portfolio is likely the most underrated component, as it provides agents with historical reasoning patterns to improve future decision support.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-to-build-a-personal-context-mcp",
+      "claim_date": "2026-04-04",
+      "evidence": "The host states: 'I actually think that this could end up being the most underrated file. Because when an agent is helping you think through a new decision, knowing how you've decided things before is enormously valuable.'",
+      "fp": "b5d9be8e9deb33f6"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "- ### Content\n  - Personas are typically specified through system prompts and behavioural guardrails that fix tone, allowed topics, and decision style, sometimes reinforced by fine-tuning or retrieval of role-specific knowledge. A well-designed persona improves trust and task fit, while a poorly bounded one can drift, leak instructions, or produce off-brand responses.",
+      "content": "\n- ### Recent Developments\n  - **Implementation via Identity Files**: The 'Identity' layer of an Agent OS is increasingly implemented via specific text files that vary by tool. Naming conventions include 'soul' in Open Claw, 'agents.md' in Cursor, 'Claude.md' in Claude Code, and 'copilot instructions' in GitHub Copilot. [source: Nofar Gaspar, confidence 0.95, tier 1]\n  - **Personal Context Portfolio**: A structured set of 10 markdown files (e.g., `identity.md`, `roles_and_responsibilities.md`, `decision_log.md`) is emerging as a portable, machine-readable representation of an individual's identity and preferences for AI agents, effectively serving as \"API documentation but for you.\" [source: Host (AI Daily Brief), confidence 0.95, tier 2]\n  - **Dynamic Persona Maintenance**: The 'Personal Context Portfolio App' utilizes Claude Opus 4.6 to conduct ongoing interviews that dynamically update all 10 portfolio files simultaneously when a single answer is relevant to multiple dimensions. [source: Host (AI Daily Brief), confidence 0.85, tier 1]\n  - **Decision Logging**: The `decision_log.md` file is considered a critical component for providing agents with historical reasoning patterns, significantly improving future decision support by contextualizing how a user has previously resolved similar issues. [source: Host (AI Daily Brief), confidence 0.8, tier 2]\n  - **Commercial Integration**: Google is actively testing ad features in AI search, including 'direct offers' that present personalized discounts in AI mode, signaling a convergence of AI mode and search where persona-driven personalization intersects with commercial intent. [source: Dan Taylor (Google VP of Global Ads), confidence 0.9, tier 1]"
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 2.0,
+    "rubric_b_improvement": 2.0,
+    "raw_a": {
+      "factual_grounding": 3,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "A",
+      "improvement": -2
+    },
+    "raw_b": {
+      "factual_grounding": 5,
+      "relevance": 4,
+      "coherence": 4,
+      "better_version": "B",
+      "improvement": 2
+    }
+  },
+  "completeness": {
+    "score": 0.6,
+    "detail": [
+      {
+        "fp": "88a52b90cebe4cb1",
+        "claim": "Google is already offering ads in AI search, including a new feature called 'direct offers' that presents personalized d",
+        "matched": false
+      },
+      {
+        "fp": "662a74e04525f24c",
+        "claim": "The 'Identity' layer of an Agent OS is implemented via specific text files that vary by tool, such as 'soul' in Open Cla",
+        "matched": true
+      },
+      {
+        "fp": "09f9a6f8fb5dd1fb",
+        "claim": "The 'Personal Context Portfolio' is a structured set of 10 markdown files designed to serve as a portable, machine-reada",
+        "matched": true
+      },
+      {
+        "fp": "19012bfdd5ac2d92",
+        "claim": "The 'Personal Context Portfolio App' uses Claude Opus 4.6 to conduct an ongoing interview that dynamically updates all 1",
+        "matched": true
+      },
+      {
+        "fp": "b5d9be8e9deb33f6",
+        "claim": "The 'decision_log.md' file in a personal context portfolio is likely the most underrated component, as it provides agent",
+        "matched": false
+      }
+    ]
+  },
+  "ontology_propose_payload": {
+    "target_page": "Persona.md",
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "- ### Content\n  - Personas are typically specified through system prompts and behavioural guardrails that fix tone, allowed topics, and decision style, sometimes reinforced by fine-tuning or retrieval of role-specific knowledge. A well-designed persona improves trust and task fit, while a poorly bounded one can drift, leak instructions, or produce off-brand responses.",
+      "content": "\n- ### Recent Developments\n  - **Implementation via Identity Files**: The 'Identity' layer of an Agent OS is increasingly implemented via specific text files that vary by tool. Naming conventions include 'soul' in Open Claw, 'agents.md' in Cursor, 'Claude.md' in Claude Code, and 'copilot instructions' in GitHub Copilot. [source: Nofar Gaspar, confidence 0.95, tier 1]\n  - **Personal Context Portfolio**: A structured set of 10 markdown files (e.g., `identity.md`, `roles_and_responsibilities.md`, `decision_log.md`) is emerging as a portable, machine-readable representation of an individual's identity and preferences for AI agents, effectively serving as \"API documentation but for you.\" [source: Host (AI Daily Brief), confidence 0.95, tier 2]\n  - **Dynamic Persona Maintenance**: The 'Personal Context Portfolio App' utilizes Claude Opus 4.6 to conduct ongoing interviews that dynamically update all 10 portfolio files simultaneously when a single answer is relevant to multiple dimensions. [source: Host (AI Daily Brief), confidence 0.85, tier 1]\n  - **Decision Logging**: The `decision_log.md` file is considered a critical component for providing agents with historical reasoning patterns, significantly improving future decision support by contextualizing how a user has previously resolved similar issues. [source: Host (AI Daily Brief), confidence 0.8, tier 2]\n  - **Commercial Integration**: Google is actively testing ad features in AI search, including 'direct offers' that present personalized discounts in AI mode, signaling a convergence of AI mode and search where persona-driven personalization intersects with commercial intent. [source: Dan Taylor (Google VP of Global Ads), confidence 0.9, tier 1]"
+    },
+    "provenance": {
+      "assertion_fingerprints": [
+        "09f9a6f8fb5dd1fb",
+        "19012bfdd5ac2d92",
+        "662a74e04525f24c",
+        "88a52b90cebe4cb1",
+        "b5d9be8e9deb33f6"
+      ],
+      "source_episodes": [
+        "google-says-no-ads-planned-for-gemini",
+        "how-to-build-a-personal-agentic-operating-system",
+        "how-to-build-a-personal-context-mcp"
+      ]
+    },
+    "scores": {
+      "rubric_a_improvement": 2.0,
+      "rubric_b_improvement": 2.0,
+      "completeness": 0.6
+    }
+  }
+}

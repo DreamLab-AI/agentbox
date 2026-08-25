@@ -1,0 +1,192 @@
+{
+  "topic": "Workforce Development",
+  "topic_slug": "workforce-development",
+  "status": "candidate_survivor",
+  "reasons": [],
+  "n_assertions": 7,
+  "episodes": [
+    "can-todays-ai-replace-12-of-work",
+    "how-apples-ai-strategy-changes-with-a-new-ceo",
+    "why-deeply-integrating-ai-3xs-likelihood-of-financial-gains-from-ai"
+  ],
+  "assertion_fingerprints": [
+    "193ebaecc173cef6",
+    "3db1c58dc0d29823",
+    "52d16b743147ccea",
+    "66a891e2a391c3f4",
+    "82f1abd86ad41ada",
+    "b048e1da905eec7b",
+    "ed8071636d7fd509"
+  ],
+  "target_page": "Workforce Development.md",
+  "assertions": [
+    {
+      "claim": "Anthropic employees are experiencing 'skill atrophy' concerns, worrying that increased reliance on AI may erode their deeper technical competence and ability to supervise outputs.",
+      "tier": "2",
+      "confidence": "0.88",
+      "source": "Anthropic Economic Index",
+      "episode": "can-todays-ai-replace-12-of-work",
+      "claim_date": "2025-12-05",
+      "evidence": "The transcript mentions: 'people are also worried about the atrophy of deeper skill sets... questions of whether they will lose deeper technical competence or become less able to supervise the outputs.'",
+      "fp": "3db1c58dc0d29823"
+    },
+    {
+      "claim": "Meta is launching a 'Level Up' training program in partnership with CBRE to train fiber technicians for data center construction, aiming to address a nationwide labor shortage.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "Meta (Official Announcement)",
+      "episode": "how-apples-ai-strategy-changes-with-a-new-ceo",
+      "claim_date": "2026-04-22",
+      "evidence": "The host describes the program: 'free 4-week training program... Successful graduates will be offered work opportunities through Meta's contractor network, primarily working on data center construction.'",
+      "fp": "ed8071636d7fd509"
+    },
+    {
+      "claim": "A Section survey of 5,000 white-collar workers in the US, UK, and Canada found that 40% of employees reported saving no time per week from using AI, while 33% of C-suite executives reported saving 4 to 8 hours per week.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Section survey (reported by AI Daily Brief host)",
+      "episode": "why-deeply-integrating-ai-3xs-likelihood-of-financial-gains-from-ai",
+      "claim_date": "2026-01-23",
+      "evidence": "The transcript states: 'surveyed 5,000 white-collar workers... concentrated around October of last year... 33% were saving 4 to 8 hours... 40% said they were saving no time.'",
+      "fp": "82f1abd86ad41ada"
+    },
+    {
+      "claim": "According to the Section survey, only 3% of employees are using AI proficiently, while 97% are classified as AI novices or experimenters.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Section survey (reported by AI Daily Brief host)",
+      "episode": "why-deeply-integrating-ai-3xs-likelihood-of-financial-gains-from-ai",
+      "claim_date": "2026-01-23",
+      "evidence": "The transcript states: 'By Section's metrics, just 3% of employees are using AI proficiently, as opposed to 97% who are either AI novices or AI experimenters.'",
+      "fp": "52d16b743147ccea"
+    },
+    {
+      "claim": "Workday research found that 53% of reinvested time saved from AI is allocated to systems and infrastructure, compared to only 29% allocated to people and workforce development.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Workday survey (reported by AI Daily Brief host)",
+      "episode": "why-deeply-integrating-ai-3xs-likelihood-of-financial-gains-from-ai",
+      "claim_date": "2026-01-23",
+      "evidence": "The transcript states: '53% of reinvestment of the time saved goes into systems versus just 29% for people and workforce development.'",
+      "fp": "b048e1da905eec7b"
+    },
+    {
+      "claim": "In the Workday study, 'augmented strategists'\u2014employees with the highest net productivity gains\u2014are two times as likely to have received substantial skills training compared to other employee groups.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Workday survey (reported by AI Daily Brief host)",
+      "episode": "why-deeply-integrating-ai-3xs-likelihood-of-financial-gains-from-ai",
+      "claim_date": "2026-01-23",
+      "evidence": "The transcript states: 'the augmented strategists... are two times as likely to have received substantial skills training.'",
+      "fp": "66a891e2a391c3f4"
+    },
+    {
+      "claim": "The host posits that companies are often failing to provide employees with the necessary tools and time to experiment, instead 'dropping LLMs on top of their heads' with outdated enterprise deployments.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "AI Daily Brief host",
+      "episode": "why-deeply-integrating-ai-3xs-likelihood-of-financial-gains-from-ai",
+      "claim_date": "2026-01-23",
+      "evidence": "The host states: 'companies are not giving their employees tools to go beyond the most basic of use cases... dropping LLMs on top of their heads, in many cases based on enterprise deployments, LLMs that are a generation or two behind.'",
+      "fp": "193ebaecc173cef6"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  #### Related Concepts\n  - [[owl:Thing]]",
+      "content": "\n\n  ### Recent Developments\n\n  Recent industry surveys and corporate initiatives highlight the evolving landscape of workforce development in the context of AI adoption and spatial computing infrastructure.\n\n  #### AI Proficiency and Time Savings\n  A Section survey of 5,000 white-collar workers in the US, UK, and Canada found that 40% of employees reported saving no time per week from using AI, while 33% of C-suite executives reported saving 4 to 8 hours per week. According to the same survey, only 3% of employees are using AI proficiently, while 97% are classified as AI novices or experimenters.\n\n  #### Reinvestment and Skills Training\n  Workday research found that 53% of reinvested time saved from AI is allocated to systems and infrastructure, compared to only 29% allocated to people and workforce development. In the Workday study, 'augmented strategists'\u2014employees with the highest net productivity gains\u2014are two times as likely to have received substantial skills training compared to other employee groups.\n\n  #### Corporate Training Initiatives\n  Meta is launching a 'Level Up' training program in partnership with CBRE to train fiber technicians for data center construction, aiming to address a nationwide labor shortage. The program offers a free 4-week training course, with successful graduates offered work opportunities through Meta's contractor network, primarily working on data center construction.\n\n  #### Challenges in AI Integration\n  Anthropic employees are experiencing 'skill atrophy' concerns, worrying that increased reliance on AI may erode their deeper technical competence and ability to supervise outputs. Additionally, industry observers note that companies are often failing to provide employees with the necessary tools and time to experiment, instead 'dropping LLMs on top of their heads' with outdated enterprise deployments."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 2.0,
+    "rubric_b_improvement": 2.0,
+    "raw_a": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "3db1c58dc0d29823",
+        "claim": "Anthropic employees are experiencing 'skill atrophy' concerns, worrying that increased reliance on AI may erode their de",
+        "matched": true
+      },
+      {
+        "fp": "ed8071636d7fd509",
+        "claim": "Meta is launching a 'Level Up' training program in partnership with CBRE to train fiber technicians for data center cons",
+        "matched": true
+      },
+      {
+        "fp": "82f1abd86ad41ada",
+        "claim": "A Section survey of 5,000 white-collar workers in the US, UK, and Canada found that 40% of employees reported saving no ",
+        "matched": true
+      },
+      {
+        "fp": "52d16b743147ccea",
+        "claim": "According to the Section survey, only 3% of employees are using AI proficiently, while 97% are classified as AI novices ",
+        "matched": true
+      },
+      {
+        "fp": "b048e1da905eec7b",
+        "claim": "Workday research found that 53% of reinvested time saved from AI is allocated to systems and infrastructure, compared to",
+        "matched": true
+      },
+      {
+        "fp": "66a891e2a391c3f4",
+        "claim": "In the Workday study, 'augmented strategists'\u2014employees with the highest net productivity gains\u2014are two times as likely ",
+        "matched": true
+      },
+      {
+        "fp": "193ebaecc173cef6",
+        "claim": "The host posits that companies are often failing to provide employees with the necessary tools and time to experiment, i",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": {
+    "target_page": "Workforce Development.md",
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  #### Related Concepts\n  - [[owl:Thing]]",
+      "content": "\n\n  ### Recent Developments\n\n  Recent industry surveys and corporate initiatives highlight the evolving landscape of workforce development in the context of AI adoption and spatial computing infrastructure.\n\n  #### AI Proficiency and Time Savings\n  A Section survey of 5,000 white-collar workers in the US, UK, and Canada found that 40% of employees reported saving no time per week from using AI, while 33% of C-suite executives reported saving 4 to 8 hours per week. According to the same survey, only 3% of employees are using AI proficiently, while 97% are classified as AI novices or experimenters.\n\n  #### Reinvestment and Skills Training\n  Workday research found that 53% of reinvested time saved from AI is allocated to systems and infrastructure, compared to only 29% allocated to people and workforce development. In the Workday study, 'augmented strategists'\u2014employees with the highest net productivity gains\u2014are two times as likely to have received substantial skills training compared to other employee groups.\n\n  #### Corporate Training Initiatives\n  Meta is launching a 'Level Up' training program in partnership with CBRE to train fiber technicians for data center construction, aiming to address a nationwide labor shortage. The program offers a free 4-week training course, with successful graduates offered work opportunities through Meta's contractor network, primarily working on data center construction.\n\n  #### Challenges in AI Integration\n  Anthropic employees are experiencing 'skill atrophy' concerns, worrying that increased reliance on AI may erode their deeper technical competence and ability to supervise outputs. Additionally, industry observers note that companies are often failing to provide employees with the necessary tools and time to experiment, instead 'dropping LLMs on top of their heads' with outdated enterprise deployments."
+    },
+    "provenance": {
+      "assertion_fingerprints": [
+        "193ebaecc173cef6",
+        "3db1c58dc0d29823",
+        "52d16b743147ccea",
+        "66a891e2a391c3f4",
+        "82f1abd86ad41ada",
+        "b048e1da905eec7b",
+        "ed8071636d7fd509"
+      ],
+      "source_episodes": [
+        "can-todays-ai-replace-12-of-work",
+        "how-apples-ai-strategy-changes-with-a-new-ceo",
+        "why-deeply-integrating-ai-3xs-likelihood-of-financial-gains-from-ai"
+      ]
+    },
+    "scores": {
+      "rubric_a_improvement": 2.0,
+      "rubric_b_improvement": 2.0,
+      "completeness": 1.0
+    }
+  }
+}

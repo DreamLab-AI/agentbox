@@ -1,0 +1,137 @@
+{
+  "topic": "Metrics",
+  "topic_slug": "metrics",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5"
+  ],
+  "n_assertions": 5,
+  "episodes": [
+    "black-friday-gpt",
+    "can-todays-ai-replace-12-of-work",
+    "claude-code-turns-one",
+    "everything-you-need-to-know-about-ai-tokens",
+    "grok-bot-finally-makes-ai-agents-easy"
+  ],
+  "assertion_fingerprints": [
+    "24351faad2758313",
+    "50f81e32adb28cc8",
+    "8c1d6929108e1904",
+    "935a51a57c0e6a59",
+    "96a500d37e8438bd"
+  ],
+  "target_page": "Metrics.md",
+  "assertions": [
+    {
+      "claim": "Adobe Analytics reported that AI-based traffic to leading retail sites increased by 1,300% in the previous year, though this growth was from an extremely low base.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Adobe Analytics (cited by Host)",
+      "episode": "black-friday-gpt",
+      "claim_date": "2025-11-27",
+      "evidence": "The host states: 'Adobe Analytics found that AI based traffic to leading retail sites was up 1300% last year. That was, of course, off an extremely low base...'",
+      "fp": "96a500d37e8438bd"
+    },
+    {
+      "claim": "Anthropic's internal survey of 132 engineers found that employees self-report using Claude in 60% of their work and achieving a 50% productivity boost.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Anthropic Economic Index / Internal Survey",
+      "episode": "can-todays-ai-replace-12-of-work",
+      "claim_date": "2025-12-05",
+      "evidence": "The transcript states: 'Employees, they say, self-report using Claude in 60% of their work and achieving a 50% productivity boost, which is a 2 to 3x increase from a year ago.'",
+      "fp": "8c1d6929108e1904"
+    },
+    {
+      "claim": "OpenAI's weekly active ChatGPT users stand at 910 million, falling short of the company's target of one billion users for 2025.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "OpenAI Financial Presentation",
+      "episode": "claude-code-turns-one",
+      "claim_date": "2026-02-26",
+      "evidence": "The transcript reports, 'Weekly active chat GBT users are now at 910 million, falling short of the billion user target for 2025.'",
+      "fp": "935a51a57c0e6a59"
+    },
+    {
+      "claim": "Meta consumed between 60 and 74 trillion tokens in a single month, with its top individual user consuming 280 billion tokens.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Nofar Gaspar (citing published data)",
+      "episode": "everything-you-need-to-know-about-ai-tokens",
+      "claim_date": "2026-08-04",
+      "evidence": "The host states, 'They used roughly between 60 to 74 trillion tokens in a single month. And according to the data that was published, the top individual user used 280 billion tokens.'",
+      "fp": "24351faad2758313"
+    },
+    {
+      "claim": "Google's Gemini app has reached 1 billion monthly active users, with 63% of users utilizing the voice interface and 150 million images generated per day.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Sundar Pichai / Google",
+      "episode": "grok-bot-finally-makes-ai-agents-easy",
+      "claim_date": "2026-08-13",
+      "evidence": "CEO Sundar Pichai announced the milestone, stating, '1 billion plus people are now using the Gemini app every month.' The transcript confirms via The Verge that this applies specifically to the app, not just integrated search/YouTube features, and cites specific usage stats: '63% of users are using the voice interface' and '150 million images per day.'",
+      "fp": "50f81e32adb28cc8"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - Quantifying the impact of deployments and incidents on system health.",
+      "content": "\n- ### Recent Developments\n  - Adobe Analytics reported that AI-based traffic to leading retail sites increased by 1,300% in the previous year, though this growth was from an extremely low base.\n  - Anthropic's internal survey of 132 engineers found that employees self-report using Claude in 60% of their work and achieving a 50% productivity boost.\n  - OpenAI's weekly active ChatGPT users stand at 910 million, falling short of the company's target of one billion users for 2025.\n  - Meta consumed between 60 and 74 trillion tokens in a single month, with its top individual user consuming 280 billion tokens.\n  - Google's Gemini app has reached 1 billion monthly active users, with 63% of users utilizing the voice interface and 150 million images generated per day."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 2,
+      "relevance": 2,
+      "coherence": 3,
+      "better_version": "A",
+      "improvement": -2
+    },
+    "raw_b": {
+      "factual_grounding": 3,
+      "relevance": 1,
+      "coherence": 2,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "96a500d37e8438bd",
+        "claim": "Adobe Analytics reported that AI-based traffic to leading retail sites increased by 1,300% in the previous year, though ",
+        "matched": true
+      },
+      {
+        "fp": "8c1d6929108e1904",
+        "claim": "Anthropic's internal survey of 132 engineers found that employees self-report using Claude in 60% of their work and achi",
+        "matched": true
+      },
+      {
+        "fp": "935a51a57c0e6a59",
+        "claim": "OpenAI's weekly active ChatGPT users stand at 910 million, falling short of the company's target of one billion users fo",
+        "matched": true
+      },
+      {
+        "fp": "24351faad2758313",
+        "claim": "Meta consumed between 60 and 74 trillion tokens in a single month, with its top individual user consuming 280 billion to",
+        "matched": true
+      },
+      {
+        "fp": "50f81e32adb28cc8",
+        "claim": "Google's Gemini app has reached 1 billion monthly active users, with 63% of users utilizing the voice interface and 150 ",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

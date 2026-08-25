@@ -1,0 +1,202 @@
+{
+  "topic": "Evaluation Metric",
+  "topic_slug": "evaluation-metric",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5"
+  ],
+  "n_assertions": 9,
+  "episodes": [
+    "autoresearch-agent-loops-and-the-future-of-work",
+    "gemini-3-launches-heres-everything-you-need-to-know",
+    "gpt-52-is-here",
+    "how-people-actually-use-ai-agents",
+    "introducing-maturity-maps-a-new-way-to-measure-ai-adoption",
+    "why-ai-needs-better-benchmarks"
+  ],
+  "assertion_fingerprints": [
+    "0ff2d40c1539986a",
+    "15cbd203ead5d564",
+    "20df046458ff12a2",
+    "4056b2bb4b195b4b",
+    "4dc57b54becc36f2",
+    "686e0a36d0c39efa",
+    "8064429c6b5a8cdb",
+    "bea2098b782bd985",
+    "c51e0328069113bb"
+  ],
+  "target_page": "Evaluation Metric.md",
+  "assertions": [
+    {
+      "claim": "In the 'auto research' system, the AI agent operates in a fixed 5-minute training run cycle, evaluating performance via validation bits per byte (val BPB), and only commits changes to the Git feature branch if the val BPB improves.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Podcast Host / Andrej Karpathy",
+      "episode": "autoresearch-agent-loops-and-the-future-of-work",
+      "claim_date": "2026-08-24",
+      "evidence": "The transcript states: 'Every training run has a fixed 5-minute budget... If the new val BPB is lower than the previous best, the change is kept... If the val BPB is the same or higher, the change is discarded.'",
+      "fp": "686e0a36d0c39efa"
+    },
+    {
+      "claim": "Gemini 3 Pro achieved a score of 37.5% on the Humanity's Last Exam benchmark, surpassing GPT-5.1's score of 26.5%.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Google / AI Daily Brief Host",
+      "episode": "gemini-3-launches-heres-everything-you-need-to-know",
+      "claim_date": "2025-11-18",
+      "evidence": "The transcript explicitly compares the scores: 'on the academic reasoning focused humanities last exam, GPD 51 was at 26.5%. Gemini 3 Pro is at 37.5%.'",
+      "fp": "4dc57b54becc36f2"
+    },
+    {
+      "claim": "While Gemini 3 Pro excels in coding and reasoning, early feedback suggests it may still lag behind Anthropic's models (Sonnet/Haiku) in nuanced creative writing and editorial judgment.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Dan Shipper / Murdan Kland / AI Daily Brief Host",
+      "episode": "gemini-3-launches-heres-everything-you-need-to-know",
+      "claim_date": "2025-11-18",
+      "evidence": "Dan Shipper notes: 'it's not as good of a writer or editor as Sonnet or Haiku.' Murdan Kland concludes: 'this model lacks the taste, restraint, and structural intelligence necessary for challenging creative work.'",
+      "fp": "c51e0328069113bb"
+    },
+    {
+      "claim": "GPT 5.2 Thinking scored 70.9% on GDP Val, an internal OpenAI benchmark for economically valuable knowledge work, compared to 38.8% for GPT 5.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "OpenAI / AI Daily Brief Host",
+      "episode": "gpt-52-is-here",
+      "claim_date": "2025-12-12",
+      "evidence": "The transcript states: 'on GDP Val which is OpenAI's internal measure of economically valuable knowledge work tasks it scored a massive 70.9% up from 38.8% with GPT 5.'",
+      "fp": "bea2098b782bd985"
+    },
+    {
+      "claim": "Critics such as Dan Shipper from Every characterize GPT 5.2 as an 'incremental upgrade' that is less creative and 'surprising' than GPT 5.1, despite its improvements in structured business outputs.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Dan Shipper (Every) / AI Daily Brief Host",
+      "episode": "gpt-52-is-here",
+      "claim_date": "2025-12-12",
+      "evidence": "Shipper stated: 'it's not as good a writer as Opus on our internal benchmarks and that it's in his estimation mostly an incremental upgrade.' Simon Smith compared 5.1 to a 'brilliant, slightly chaotic freelancer' and 5.2 to a 'polished professional.'",
+      "fp": "20df046458ff12a2"
+    },
+    {
+      "claim": "The METER study metric measures the duration of a task as it would take a human to complete it, not the actual time an AI agent takes to complete the task.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief Host",
+      "episode": "how-people-actually-use-ai-agents",
+      "claim_date": "2026-02-19",
+      "evidence": "The host clarifies: 'It is not... a direct measure of how long an AI agent can work for. Instead, it is a measure of the duration of task as it would take a human.'",
+      "fp": "8064429c6b5a8cdb"
+    },
+    {
+      "claim": "Jellyfish's AI coding benchmark used behavioral data for more than 200,000 engineers across 700 companies with 20 million PRs.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Jellyfish (cited by host)",
+      "episode": "introducing-maturity-maps-a-new-way-to-measure-ai-adoption",
+      "claim_date": "2026-04-06",
+      "evidence": "The host lists Jellyfish as an example of a behavioral data source used to inform the Q2 maturity maps, specifying the exact sample size and scope.",
+      "fp": "4056b2bb4b195b4b"
+    },
+    {
+      "claim": "The host predicts that ROI measurement efforts will see the biggest 'glow-up' in the coming quarters.",
+      "tier": "3",
+      "confidence": "0.7",
+      "source": "Host",
+      "episode": "introducing-maturity-maps-a-new-way-to-measure-ai-adoption",
+      "claim_date": "2026-04-06",
+      "evidence": "The host states, 'if I had to make a prediction about one area where you're going to see the biggest glow-up this year, I think there are tons and tons of efforts around ROI measurement.'",
+      "fp": "15cbd203ead5d564"
+    },
+    {
+      "claim": "ARC-AGI 3 scores are calculated using squared efficiency relative to human performance, meaning a model taking 100 steps to solve a task that takes a human 10 steps receives a score of 1%.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Lassana (Scaling AI 1)",
+      "episode": "why-ai-needs-better-benchmarks",
+      "claim_date": "2026-03-27",
+      "evidence": "The scoring of Arc AGI 3 doesn't tell you how many levels the models completed but how efficiently they completed them compared to humans, actually using squared efficiency. Meaning if a human took 10 steps to solve it and the model 100 steps, then the model gets a score of 1%.",
+      "fp": "0ff2d40c1539986a"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  4. **Standardisation initiatives**: The EU AI Act's implementation via ISO/IEC standardisation (ISO/IEC 42001 AI Management Systems; ISO/IEC 22989 AI Concepts and Terminology) is creating harmonised evaluation requirements across EU member states. MLCommons' MLPerf inference benchmarks define reproducible performance metrics for inference hardware and model efficiency across vision, language, and recommender tasks.",
+      "content": "\n\n  ### Recent Developments (2026)\n\n  Recent podcast evidence and industry reports highlight several specific advancements and shifts in evaluation metric practice and benchmarking:\n\n  - **Automated Research Cycles**: In 'auto research' systems, AI agents operate in fixed 5-minute training run cycles, evaluating performance via validation bits per byte (val BPB). Changes are committed to Git feature branches only if the val BPB improves, otherwise they are discarded (Karpathy, 2026).\n  - **Benchmark Performance Updates**: \n    - **Humanity's Last Exam**: Gemini 3 Pro achieved a score of 37.5%, surpassing GPT-5.1's score of 26.5% on this academic reasoning-focused benchmark.\n    - **GDP Val**: GPT 5.2 Thinking scored 70.9% on OpenAI's internal GDP Val benchmark for economically valuable knowledge work, a significant increase from GPT 5's 38.8%.\n    - **ARC-AGI 3**: Scores are calculated using squared efficiency relative to human performance. For example, a model taking 100 steps to solve a task that takes a human 10 steps receives a score of 1%.\n  - **Qualitative Model Comparisons**: While Gemini 3 Pro excels in coding and reasoning, early feedback suggests it may lag behind Anthropic's models (Sonnet/Haiku) in nuanced creative writing and editorial judgment. Similarly, GPT 5.2 is characterized by some critics as an 'incremental upgrade' that is less creative than GPT 5.1, despite improvements in structured business outputs.\n  - **New Metric Definitions**: The METER study metric measures the duration of a task as it would take a human to complete it, rather than the actual time an AI agent takes. This distinction is crucial for evaluating efficiency relative to human baselines.\n  - **Behavioral Data in Evaluation**: Jellyfish's AI coding benchmark utilized behavioral data from over 200,000 engineers across 700 companies with 20 million pull requests to inform maturity maps, highlighting the growing role of large-scale behavioral data in evaluation.\n  - **ROI Measurement**: Industry predictions indicate that ROI measurement efforts will see significant improvements ('glow-up') in the coming quarters, reflecting a maturing focus on the economic value of AI deployments."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 4,
+      "relevance": 5,
+      "coherence": 4,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 2,
+      "relevance": 3,
+      "coherence": 2,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 0.6666666666666666,
+    "detail": [
+      {
+        "fp": "686e0a36d0c39efa",
+        "claim": "In the 'auto research' system, the AI agent operates in a fixed 5-minute training run cycle, evaluating performance via ",
+        "matched": false
+      },
+      {
+        "fp": "4dc57b54becc36f2",
+        "claim": "Gemini 3 Pro achieved a score of 37.5% on the Humanity's Last Exam benchmark, surpassing GPT-5.1's score of 26.5%.",
+        "matched": true
+      },
+      {
+        "fp": "c51e0328069113bb",
+        "claim": "While Gemini 3 Pro excels in coding and reasoning, early feedback suggests it may still lag behind Anthropic's models (S",
+        "matched": true
+      },
+      {
+        "fp": "bea2098b782bd985",
+        "claim": "GPT 5.2 Thinking scored 70.9% on GDP Val, an internal OpenAI benchmark for economically valuable knowledge work, compare",
+        "matched": true
+      },
+      {
+        "fp": "20df046458ff12a2",
+        "claim": "Critics such as Dan Shipper from Every characterize GPT 5.2 as an 'incremental upgrade' that is less creative and 'surpr",
+        "matched": false
+      },
+      {
+        "fp": "8064429c6b5a8cdb",
+        "claim": "The METER study metric measures the duration of a task as it would take a human to complete it, not the actual time an A",
+        "matched": true
+      },
+      {
+        "fp": "4056b2bb4b195b4b",
+        "claim": "Jellyfish's AI coding benchmark used behavioral data for more than 200,000 engineers across 700 companies with 20 millio",
+        "matched": true
+      },
+      {
+        "fp": "15cbd203ead5d564",
+        "claim": "The host predicts that ROI measurement efforts will see the biggest 'glow-up' in the coming quarters.",
+        "matched": false
+      },
+      {
+        "fp": "0ff2d40c1539986a",
+        "claim": "ARC-AGI 3 scores are calculated using squared efficiency relative to human performance, meaning a model taking 100 steps",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

@@ -1,0 +1,135 @@
+{
+  "topic": "Business Intelligence",
+  "topic_slug": "business-intelligence",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5"
+  ],
+  "n_assertions": 5,
+  "episodes": [
+    "can-open-models-solve-corporate-ai-washing",
+    "how-the-best-companies-use-ai",
+    "introducing-maturity-maps-a-new-way-to-measure-ai-adoption"
+  ],
+  "assertion_fingerprints": [
+    "05f23b88435281c1",
+    "2938a9ff2dea2eea",
+    "322dbf26800dbc23",
+    "90340f011e3f3b76",
+    "fc1dbfae66ee721f"
+  ],
+  "target_page": "Business Intelligence.md",
+  "assertions": [
+    {
+      "claim": "Palantir reported quarterly revenue of $1.94 billion, representing a 93% year-over-year increase, with commercial sales growing 149% and net income reaching $1 billion.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Palantir Earnings Report (cited by AI Daily Brief host)",
+      "episode": "can-open-models-solve-corporate-ai-washing",
+      "claim_date": "2026-08-05",
+      "evidence": "The transcript states: 'Quarterly revenue came in at 1.94 billion, up 93% from this time last year... Commercial sales were up 149% year-over-year... net income reaching a billion dollars for the quarter and growing at a 225% annual pace.'",
+      "fp": "90340f011e3f3b76"
+    },
+    {
+      "claim": "A PwC study found that 75% of AI's economic gains are being captured by just 20% of companies, with these leaders being 2.6 times more likely to report that AI improves their ability to reinvent their business model.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "PwC (cited by host)",
+      "episode": "how-the-best-companies-use-ai",
+      "claim_date": "2026-04-20",
+      "evidence": "The transcript explicitly cites a PwC study stating 'three quarters of AI's economic gains were being captured by just 20% of the companies' and notes they were '2.6 times as likely to report that AI improves their ability to reinvent their business model.'",
+      "fp": "05f23b88435281c1"
+    },
+    {
+      "claim": "McKinsey's AI transformation manifesto reports that AI leaders achieved an average 20% EBITDA uplift, reaching break-even in 1-2 years and generating $3 in incremental EBITDA for every $1 invested.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "McKinsey (cited by host)",
+      "episode": "how-the-best-companies-use-ai",
+      "claim_date": "2026-04-20",
+      "evidence": "The host states McKinsey studied 20 AI leader companies and found 'business transformations that came from AI and technology delivered a 20% EBITDA uplift, reaching break even in 1 to 2 years, and generating $3 of incremental EBITDA for every $1 invested.'",
+      "fp": "2938a9ff2dea2eea"
+    },
+    {
+      "claim": "George Zarkadakis argues that while AI has made individuals 10x more productive, no company has become 10x more valuable because institutional AI requires distinct processes for coordination and signal extraction that individual AI lacks.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "George Zarkadakis (a16z opinion piece, cited by host)",
+      "episode": "how-the-best-companies-use-ai",
+      "claim_date": "2026-04-20",
+      "evidence": "Zarkadakis writes, 'AI has made every individual 10x more productive, no company has become 10x more valuable as a result,' and argues institutional AI is 'a different set of processes that make individual AI's value point in the same direction.'",
+      "fp": "322dbf26800dbc23"
+    },
+    {
+      "claim": "88% of sales teams say they use AI, but only 24% have it in their actual revenue workflows.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Host (citing data)",
+      "episode": "introducing-maturity-maps-a-new-way-to-measure-ai-adoption",
+      "claim_date": "2026-04-06",
+      "evidence": "The host provides these specific percentages to describe the 'adoption mirage' in sales functions.",
+      "fp": "fc1dbfae66ee721f"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "Modern BI emphasises self-service exploration and governed metric definitions so that analysts and business users share consistent measures across the enterprise.",
+      "content": "\n- ### Recent Developments\n  - **Palantir Financial Performance**: Palantir reported quarterly revenue of $1.94 billion, representing a 93% year-over-year increase, with commercial sales growing 149% and net income reaching $1 billion. [source: Palantir Earnings Report (cited by AI Daily Brief host), confidence 0.95, tier 1]\n  - **PwC Study on AI Economic Gains**: A PwC study found that 75% of AI's economic gains are being captured by just 20% of companies, with these leaders being 2.6 times more likely to report that AI improves their ability to reinvent their business model. [source: PwC (cited by host), confidence 0.95, tier 1]\n  - **McKinsey AI Transformation Manifesto**: McKinsey's AI transformation manifesto reports that AI leaders achieved an average 20% EBITDA uplift, reaching break-even in 1-2 years and generating $3 in incremental EBITDA for every $1 invested. [source: McKinsey (cited by host), confidence 0.95, tier 1]\n  - **Institutional AI Productivity Gap**: George Zarkadakis argues that while AI has made individuals 10x more productive, no company has become 10x more valuable because institutional AI requires distinct processes for coordination and signal extraction that individual AI lacks. [source: George Zarkadakis (a16z opinion piece, cited by host), confidence 0.85, tier 2]\n  - **Sales Team AI Adoption**: 88% of sales teams say they use AI, but only 24% have it in their actual revenue workflows. [source: Host (citing data), confidence 0.9, tier 1]"
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "90340f011e3f3b76",
+        "claim": "Palantir reported quarterly revenue of $1.94 billion, representing a 93% year-over-year increase, with commercial sales ",
+        "matched": true
+      },
+      {
+        "fp": "05f23b88435281c1",
+        "claim": "A PwC study found that 75% of AI's economic gains are being captured by just 20% of companies, with these leaders being ",
+        "matched": true
+      },
+      {
+        "fp": "2938a9ff2dea2eea",
+        "claim": "McKinsey's AI transformation manifesto reports that AI leaders achieved an average 20% EBITDA uplift, reaching break-eve",
+        "matched": true
+      },
+      {
+        "fp": "322dbf26800dbc23",
+        "claim": "George Zarkadakis argues that while AI has made individuals 10x more productive, no company has become 10x more valuable",
+        "matched": true
+      },
+      {
+        "fp": "fc1dbfae66ee721f",
+        "claim": "88% of sales teams say they use AI, but only 24% have it in their actual revenue workflows.",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

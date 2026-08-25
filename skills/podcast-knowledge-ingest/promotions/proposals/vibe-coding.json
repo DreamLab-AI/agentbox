@@ -1,0 +1,445 @@
+{
+  "topic": "Vibe Coding",
+  "topic_slug": "vibe-coding",
+  "status": "candidate_survivor",
+  "reasons": [],
+  "n_assertions": 24,
+  "episodes": [
+    "the-5-biggest-ai-stories-to-watch-in-december",
+    "the-5-most-impactful-ai-model-releases-of-2025",
+    "the-dawn-of-the-agent-age",
+    "the-state-of-enterprise-ai-the-state-of-enterprise-ai",
+    "the-time-savings-era-of-ai-is-over",
+    "the-ultimate-ai-catch-up-guide",
+    "vibe-coding-gets-an-upgrade",
+    "what-vibe-coding-is-turning-into",
+    "why-2026-is-the-year-of-the-ai-builder-with-lovable-ceo-anton-osika",
+    "why-ai-leads-to-more-work-not-less",
+    "why-claude-cowork-is-a-big-deal",
+    "why-claude-opus-45-changes-whats-possible-with-vibe-coding",
+    "why-every-ai-product-seems-the-same",
+    "why-everyone-is-obsessed-with-claude-code",
+    "you-can-now-vibecode-mobile-apps"
+  ],
+  "assertion_fingerprints": [
+    "192ac01cf44b3c57",
+    "3037581e7737792c",
+    "3a6833602f166052",
+    "3d47de957ca84032",
+    "437b84700f077844",
+    "4739e03cf74493c2",
+    "5fba4a27d275c992",
+    "73faddb91a09116a",
+    "7d51010670500521",
+    "7f5acd7206e66838",
+    "82d6c9997a1a5f19",
+    "85e8644461f1fb0d",
+    "865111d1feac48d8",
+    "918edb46a5019129",
+    "9357b2591045e163",
+    "97902d005862f655",
+    "989a6e53d4afd9b7",
+    "a11193282d3deb56",
+    "a7d254b143876a76",
+    "b292a9d2e57fc4ad",
+    "b2a56d6c9c9e067e",
+    "b48bc52d6e1de1ba",
+    "e21484e85e107ba1",
+    "f5eb924d77ab3b70"
+  ],
+  "target_page": "Vibe Coding.md",
+  "assertions": [
+    {
+      "claim": "The host identifies a shift in the AI discourse from first-order questions about 'vibe coding' to nuanced conversations about the right configuration, speed, autonomy, and control in AI-assisted software development.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-5-biggest-ai-stories-to-watch-in-december",
+      "claim_date": "2025-12-10",
+      "evidence": "The host notes, 'we're going to continue to see this shift away from the first order questions of things like is vibe coding real to more nuance conversation around what the implications are.'",
+      "fp": "5fba4a27d275c992"
+    },
+    {
+      "claim": "The host suggests that the 'vibe coding' paradigm is transitioning from prototyping to production, with organizations building custom internal tools using AI models like Claude Opus 4.5 and Gemini 3.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "Host (AI Daily Brief) citing Base44 and other developers",
+      "episode": "the-5-most-impactful-ai-model-releases-of-2025",
+      "claim_date": "2025-12-27",
+      "evidence": "The host quotes a Base44 user: 'Since we introduced Opus 4.5 and Gemini 3 to base 44, the adoption we're seeing among organizations building their own CRM and project management tools is astonishing.' Another developer notes being '6 to 12 months away from solving software.'",
+      "fp": "7f5acd7206e66838"
+    },
+    {
+      "claim": "The 'vibe coding' paradigm has shifted from being a tool for prototyping to the standard method for software development over the course of January 2026.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-dawn-of-the-agent-age",
+      "claim_date": "2026-02-05",
+      "evidence": "Vibe coding which as a term just turned 1 years old the other day over the course of this month shifted from the thing that you use for prototyping to just the thing that you do.",
+      "fp": "918edb46a5019129"
+    },
+    {
+      "claim": "The 36% growth in non-technical coding-related messages in ChatGPT Enterprise likely represents the bottom end of actual growth, as much 'vibe coding' occurs in external tools or IDEs.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-state-of-enterprise-ai-the-state-of-enterprise-ai",
+      "claim_date": "2025-12-11",
+      "evidence": "The host states: '...I think those numbers are a little soft because as you know, if you are a nontechnical vibe coder, what percentage of your vibe coding are you doing in the main chatbt interface versus in some other tool or IDE or platform?'",
+      "fp": "7d51010670500521"
+    },
+    {
+      "claim": "Claude primary users in the January 2026 survey reported significantly higher agentic AI usage (52%) and vibe coding adoption (87%) compared to ChatGPT primary users (24% and 52%, respectively).",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI DB Intel January AI usage pulse survey",
+      "episode": "the-time-savings-era-of-ai-is-over",
+      "claim_date": "2026-02-14",
+      "evidence": "52% of Claude primary users report agentic AI usage, as opposed to just under a quarter, 24%, for ChatGPT. 87% of Claude users report vibe coding... as opposed to 52% of ChatGPT users.",
+      "fp": "97902d005862f655"
+    },
+    {
+      "claim": "Coding was the most common use case in the January 2026 survey at 36%, with 49.5% of those coding users coming from roles outside of engineering and IT, including 34% of executives and leadership roles.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI DB Intel January AI usage pulse survey",
+      "episode": "the-time-savings-era-of-ai-is-over",
+      "claim_date": "2026-02-14",
+      "evidence": "Coding was, full stop, the number one use case in this survey. It was the most common at 36%... 49.5% of people who reported coding work outside of engineering and IT. 34% of people in executive and leadership roles were coding.",
+      "fp": "3037581e7737792c"
+    },
+    {
+      "claim": "The host predicts that the patterns of non-engineer coding and agentic adoption observed in the January 2026 survey will spread to the broader AI-using market within 6 to 12 months.",
+      "tier": "3",
+      "confidence": "0.65",
+      "source": "AI DB Intel host",
+      "episode": "the-time-savings-era-of-ai-is-over",
+      "claim_date": "2026-02-14",
+      "evidence": "I think we're going to see these patterns come to the rest of the AI using market much faster than one might think... give it 6 to 12 months and let's talk again.",
+      "fp": "b292a9d2e57fc4ad"
+    },
+    {
+      "claim": "Vibe coding tools such as Lovable, Replit, and Baseplate 44 allow non-developers to build, deploy, and host full software applications end-to-end without writing code.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "AI Daily Brief (Host)",
+      "episode": "the-ultimate-ai-catch-up-guide",
+      "claim_date": "2026-04-01",
+      "evidence": "Companies like Lovable, Replit, and Baseplate 44 all allow you to articulate a goal of a software that you'd like developed... and these tools will build it end to end in a way that you can actually launch it, deploy it, add a custom URL, put it on your phone, whatever it is that you want.",
+      "fp": "3a6833602f166052"
+    },
+    {
+      "claim": "Lovable integrated native payment processing into its platform, allowing users to implement PCI Level 1 compliant payment systems by describing their requirements in natural language.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Lovable (Antoine Osika, CEO)",
+      "episode": "vibe-coding-gets-an-upgrade",
+      "claim_date": "2026-04-16",
+      "evidence": "Lovable CEO Antoine Osika stated: \"It's never been easier to go from product to an actual business.\" Linear COO Kristina Cordova noted that the integration handles \"PCI level one. Partnerships with several acquirers per country all over the world, global tax compliance.\"",
+      "fp": "989a6e53d4afd9b7"
+    },
+    {
+      "claim": "Enterprise hardening of vibe coding tools is emerging as a major market opportunity, with companies like Superblocks launching platforms to manage security and permissions for employee-built AI apps.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Superblocks (Brad Menezes, CEO) and Host",
+      "episode": "vibe-coding-gets-an-upgrade",
+      "claim_date": "2026-04-16",
+      "evidence": "Superblocks CEO Brad Menezes argued that \"vibe coding apps have quickly become an attack vector in the enterprise\" and launched Superblocks 2.0 to allow IT to \"audit everything and lock down anything instantly.\" The host predicts this will be \"one of the biggest building opportunities of the rest of 2026.\"",
+      "fp": "b48bc52d6e1de1ba"
+    },
+    {
+      "claim": "The term \"vibe coding\" is becoming obsolete as the distinction between AI-assisted and manual coding blurs, with coding becoming a core primitive for all knowledge work rather than a specialized activity.",
+      "tier": "3",
+      "confidence": "0.7",
+      "source": "Host (AI Daily Brief)",
+      "episode": "vibe-coding-gets-an-upgrade",
+      "claim_date": "2026-04-16",
+      "evidence": "The host states: \"Vibe coding is one of those terms that was extremely useful... but which might ultimately have a fairly short shelf life.\" They argue that \"there is increasingly nothing but vibe coding\" and that the term is running into challenges because \"coding is just the way that everyone builds everything.\"",
+      "fp": "a11193282d3deb56"
+    },
+    {
+      "claim": "Replit announced 'Agent 4,' which generalizes vibe coding beyond traditional software development to include the creation of slides, videos, and other digital artifacts.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "AI Daily Brief host",
+      "episode": "what-vibe-coding-is-turning-into",
+      "claim_date": "2026-03-12",
+      "evidence": "Replit Agent 4... takes the core spark or genesis of vibe coding... and just expands it to all of the different types of things that you could explain in plain English that you want built... effectively anything digital that you might want from sites to slides and beyond.",
+      "fp": "f5eb924d77ab3b70"
+    },
+    {
+      "claim": "Paul Graham, founder of Y Combinator, identified Replit Agent 4 as representing a 'real paradigm shift' that generalizes the concept of vibe coding beyond traditional coding tasks.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Paul Graham",
+      "episode": "what-vibe-coding-is-turning-into",
+      "claim_date": "2026-03-12",
+      "evidence": "Y Combinator founder Paul Graham tweeted that Replit founder Amjad has showed him something that he thought represented a real paradigm shift. Graham confirmed that Agent 4 is that, adding, 'It generalizes the idea of vibe coding beyond what people usually think of as coding.'",
+      "fp": "437b84700f077844"
+    },
+    {
+      "claim": "The number of apps submitted to app stores increased by 24% year-over-year, marking the first meaningful increase since 2015.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "Nathaniel Whittemore, Host of AI Daily Brief",
+      "episode": "why-2026-is-the-year-of-the-ai-builder-with-lovable-ceo-anton-osika",
+      "claim_date": "2025-12-29",
+      "evidence": "The number of apps submitted to app stores this year was up 24% from last year and that's the first time that it's gone up meaningfully since like 2015.",
+      "fp": "9357b2591045e163"
+    },
+    {
+      "claim": "The distinction between 'vibe coding' for non-technical users and agentic coding for professional software engineers is becoming more divergent in terms of use cases and organizational impact.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "Nathaniel Whittemore, Host of AI Daily Brief",
+      "episode": "why-2026-is-the-year-of-the-ai-builder-with-lovable-ceo-anton-osika",
+      "claim_date": "2025-12-29",
+      "evidence": "We're still talking about kind of vibe coding as though it's one thing and I kind of think that the agentic and AI coding for actual technical people and for software engineering departments is wildly different than vibe coding for non-technical users and I kind of think that they're going to be more divergent in the year to come.",
+      "fp": "4739e03cf74493c2"
+    },
+    {
+      "claim": "The study noted spillover effects where engineers spent more time reviewing, correcting, and guiding AI-generated work produced by colleagues, including coaching colleagues who were 'vibe coding'.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Aruna Ranganathan and Shixi Maggie Ye (Berkeley Haas)",
+      "episode": "why-ai-leads-to-more-work-not-less",
+      "claim_date": "2026-02-11",
+      "evidence": "Engineers in turn spent more time reviewing, correcting, and guiding AI-generated or AI-assisted work produced by colleagues. These demands extended beyond formal code review. Engineers increasingly found themselves coaching colleagues who were vibe coding and finishing partially complete pull requests.",
+      "fp": "73faddb91a09116a"
+    },
+    {
+      "claim": "Boris Churny confirmed that the Claude Co-work product was written almost entirely by Claude Code over a period of approximately one and a half weeks.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Boris Churny",
+      "episode": "why-claude-cowork-is-a-big-deal",
+      "claim_date": "2026-01-14",
+      "evidence": "When Thursday AI's Alex Vulov asked how much of Co-work was written by Claude Code, Boris Churny confirmed that 'basically all of it was written by Claude code.'",
+      "fp": "a7d254b143876a76"
+    },
+    {
+      "claim": "The host asserts that the distinction between 'vibe coding' (prototypes) and production-ready code has effectively disappeared or will explode in the next several months due to the capabilities of current agentic coding tools.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "Host",
+      "episode": "why-claude-cowork-is-a-big-deal",
+      "claim_date": "2026-01-14",
+      "evidence": "The host states: 'I am firmly in the camp that that line is basically already gone and if not is going to explode in the next several months.' This is supported by the Das of Menlo Ventures' comment that 'fully polished new products can be built entirely with vibe coding tools like Claude code.'",
+      "fp": "e21484e85e107ba1"
+    },
+    {
+      "claim": "Claude Opus 4.5 enables 'vibe coding' of entire applications end-to-end without users touching implementation details, a capability previous models lacked due to code convolutedness and bugs.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "Dan Shipper / Kieran Classen",
+      "episode": "why-claude-opus-45-changes-whats-possible-with-vibe-coding",
+      "claim_date": "2025-11-26",
+      "evidence": "Dan Shipper writes: 'We have not found that limit yet with Opus 4.5. It seems to be able to vibe code forever.' Kieran Classen writes: 'First time I genuinely believe I can vibe code an entire app end to end without touching the implementation details.'",
+      "fp": "85e8644461f1fb0d"
+    },
+    {
+      "claim": "Replit CEO Amjad Massad introduced Replit Agent 4, emphasizing that software development is now creative work involving design on an infinite canvas and parallel agents.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Amjad Massad (Replit CEO)",
+      "episode": "why-every-ai-product-seems-the-same",
+      "claim_date": "2026-04-10",
+      "evidence": "The host quotes Massad: 'Software isn't merely technical work anymore, it's creative. Introducing Replit Agent 4. Design on an infinite canvas, work with your team, run parallel agents, and ship working apps, sites, slides, and more.'",
+      "fp": "3d47de957ca84032"
+    },
+    {
+      "claim": "In the February AI Usage Pulse Survey, 71.3% of respondents reported vibe coding, while 62% had use cases extending into automated or agentic AI.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "AI Daily Brief (Host)",
+      "episode": "why-every-ai-product-seems-the-same",
+      "claim_date": "2026-04-10",
+      "evidence": "The host states: 'still 71.3% of respondents were vibe coding in February. 62% had some use case that went beyond just assistant into the realm of automated or agentic AI.'",
+      "fp": "82d6c9997a1a5f19"
+    },
+    {
+      "claim": "Google integrated the 'antigravity' coding agent directly into Google AI Studio to support an end-to-end vibe coding experience.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief)",
+      "episode": "why-every-ai-product-seems-the-same",
+      "claim_date": "2026-04-10",
+      "evidence": "The host observes: 'First of all, Google is integrating antigravity directly into Google AI Studio, rather than these things being totally separate experiences.'",
+      "fp": "865111d1feac48d8"
+    },
+    {
+      "claim": "Dan Shipper argued that Opus 4.5 collapsed six months of development work into one week, marking the birth of an 'infinite vibe coding machine' and enabling agent-native apps where features are defined by prompts rather than code.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "Dan Shipper",
+      "episode": "why-everyone-is-obsessed-with-claude-code",
+      "claim_date": "2026-01-09",
+      "evidence": "Dan Shipper wrote a piece called 'Opus 4.5 collapsed 6 months of development work into 1 week' and declared 'We are in a new era of autonomous coding... agent native apps are now possible... This turns new features into an exercise in prompt writing rather than coding.'",
+      "fp": "192ac01cf44b3c57"
+    },
+    {
+      "claim": "Replit's new feature allows novice developers to build mobile apps natively and publish them to the App Store with just a few clicks without leaving the platform.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "Replit",
+      "episode": "you-can-now-vibecode-mobile-apps",
+      "claim_date": "2026-01-19",
+      "evidence": "Replit has launched a new feature designed to streamline the process of vibe coding and pushing mobile apps... after you've built your application, you can publish to the app store with just a few clicks. The pitch is that novice developers can complete the entire process without leaving Replet.",
+      "fp": "b2a56d6c9c9e067e"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "- ### Overview\n  - **[Industry analysis]** The 'Open Claw Coder' agent, initially built for vibe coding via Telegram, did not enter the host's regular rotation after Claude Code released a remote control feature, but a subsequent version that writes to a database proved more useful. *(Source: Host (AI Daily Brief), via AI Daily Brief, 2026-08-24)*",
+      "content": "- ### Recent Developments\n  - **[Paradigm Shift]** The 'vibe coding' paradigm has shifted from being a tool for prototyping to the standard method for software development over the course of January 2026. *(Source: Host (AI Daily Brief), confidence 0.85, tier 2)*\n  - **[Adoption Metrics]** In the February AI Usage Pulse Survey, 71.3% of respondents reported vibe coding, while 62% had use cases extending into automated or agentic AI. *(Source: AI Daily Brief (Host), confidence 0.9, tier 1)*\n  - **[Usage Demographics]** Coding was the most common use case in the January 2026 survey at 36%, with 49.5% of those coding users coming from roles outside of engineering and IT, including 34% of executives and leadership roles. *(Source: AI DB Intel January AI usage pulse survey, confidence 0.95, tier 1)*\n  - **[Platform Comparison]** Claude primary users in the January 2026 survey reported significantly higher agentic AI usage (52%) and vibe coding adoption (87%) compared to ChatGPT primary users (24% and 52%, respectively). *(Source: AI DB Intel January AI usage pulse survey, confidence 0.95, tier 1)*\n  - **[Product Development]** Boris Churny confirmed that the Claude Co-work product was written almost entirely by Claude Code over a period of approximately one and a half weeks. *(Source: Boris Churny, confidence 0.95, tier 1)*\n  - **[Workforce Impact]** The study noted spillover effects where engineers spent more time reviewing, correcting, and guiding AI-generated work produced by colleagues, including coaching colleagues who were 'vibe coding'. *(Source: Aruna Ranganathan and Shixi Maggie Ye (Berkeley Haas), confidence 0.95, tier 1)*\n  - **[Tooling Evolution]** Replit CEO Amjad Massad introduced Replit Agent 4, emphasizing that software development is now creative work involving design on an infinite canvas and parallel agents. *(Source: Amjad Massad (Replit CEO), confidence 0.95, tier 1)*\n  - **[Capability Expansion]** Replit announced 'Agent 4,' which generalizes vibe coding beyond traditional software development to include the creation of slides, videos, and other digital artifacts. *(Source: AI Daily Brief host, confidence 0.9, tier 1)*\n  - **[Mobile Integration]** Replit's new feature allows novice developers to build mobile apps natively and publish them to the App Store with just a few clicks without leaving the platform. *(Source: Replit, confidence 0.9, tier 2)*\n  - **[Market Impact]** The number of apps submitted to app stores increased by 24% year-over-year, marking the first meaningful increase since 2015. *(Source: Nathaniel Whittemore, Host of AI Daily Brief, confidence 0.85, tier 1)*\n  - **[Business Integration]** Lovable integrated native payment processing into its platform, allowing users to implement PCI Level 1 compliant payment systems by describing their requirements in natural language. *(Source: Lovable (Antoine Osika, CEO), confidence 0.9, tier 1)*\n  - **[Efficiency Gains]** Dan Shipper argued that Opus 4.5 collapsed six months of development work into one week, marking the birth of an 'infinite vibe coding machine' and enabling agent-native apps where features are defined by prompts rather than code. *(Source: Dan Shipper, confidence 0.9, tier 2)*"
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 2.0,
+    "rubric_b_improvement": 2.0,
+    "raw_a": {
+      "factual_grounding": 2,
+      "relevance": 3,
+      "coherence": 4,
+      "better_version": "A",
+      "improvement": -2
+    },
+    "raw_b": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "a7d254b143876a76",
+        "claim": "Boris Churny confirmed that the Claude Co-work product was written almost entirely by Claude Code over a period of appro",
+        "matched": true
+      },
+      {
+        "fp": "73faddb91a09116a",
+        "claim": "The study noted spillover effects where engineers spent more time reviewing, correcting, and guiding AI-generated work p",
+        "matched": true
+      },
+      {
+        "fp": "3037581e7737792c",
+        "claim": "Coding was the most common use case in the January 2026 survey at 36%, with 49.5% of those coding users coming from role",
+        "matched": true
+      },
+      {
+        "fp": "97902d005862f655",
+        "claim": "Claude primary users in the January 2026 survey reported significantly higher agentic AI usage (52%) and vibe coding ado",
+        "matched": true
+      },
+      {
+        "fp": "3d47de957ca84032",
+        "claim": "Replit CEO Amjad Massad introduced Replit Agent 4, emphasizing that software development is now creative work involving ",
+        "matched": true
+      },
+      {
+        "fp": "192ac01cf44b3c57",
+        "claim": "Dan Shipper argued that Opus 4.5 collapsed six months of development work into one week, marking the birth of an 'infini",
+        "matched": true
+      },
+      {
+        "fp": "b2a56d6c9c9e067e",
+        "claim": "Replit's new feature allows novice developers to build mobile apps natively and publish them to the App Store with just ",
+        "matched": true
+      },
+      {
+        "fp": "f5eb924d77ab3b70",
+        "claim": "Replit announced 'Agent 4,' which generalizes vibe coding beyond traditional software development to include the creatio",
+        "matched": true
+      },
+      {
+        "fp": "82d6c9997a1a5f19",
+        "claim": "In the February AI Usage Pulse Survey, 71.3% of respondents reported vibe coding, while 62% had use cases extending into",
+        "matched": true
+      },
+      {
+        "fp": "989a6e53d4afd9b7",
+        "claim": "Lovable integrated native payment processing into its platform, allowing users to implement PCI Level 1 compliant paymen",
+        "matched": true
+      },
+      {
+        "fp": "9357b2591045e163",
+        "claim": "The number of apps submitted to app stores increased by 24% year-over-year, marking the first meaningful increase since ",
+        "matched": true
+      },
+      {
+        "fp": "918edb46a5019129",
+        "claim": "The 'vibe coding' paradigm has shifted from being a tool for prototyping to the standard method for software development",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": {
+    "target_page": "Vibe Coding.md",
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "- ### Overview\n  - **[Industry analysis]** The 'Open Claw Coder' agent, initially built for vibe coding via Telegram, did not enter the host's regular rotation after Claude Code released a remote control feature, but a subsequent version that writes to a database proved more useful. *(Source: Host (AI Daily Brief), via AI Daily Brief, 2026-08-24)*",
+      "content": "- ### Recent Developments\n  - **[Paradigm Shift]** The 'vibe coding' paradigm has shifted from being a tool for prototyping to the standard method for software development over the course of January 2026. *(Source: Host (AI Daily Brief), confidence 0.85, tier 2)*\n  - **[Adoption Metrics]** In the February AI Usage Pulse Survey, 71.3% of respondents reported vibe coding, while 62% had use cases extending into automated or agentic AI. *(Source: AI Daily Brief (Host), confidence 0.9, tier 1)*\n  - **[Usage Demographics]** Coding was the most common use case in the January 2026 survey at 36%, with 49.5% of those coding users coming from roles outside of engineering and IT, including 34% of executives and leadership roles. *(Source: AI DB Intel January AI usage pulse survey, confidence 0.95, tier 1)*\n  - **[Platform Comparison]** Claude primary users in the January 2026 survey reported significantly higher agentic AI usage (52%) and vibe coding adoption (87%) compared to ChatGPT primary users (24% and 52%, respectively). *(Source: AI DB Intel January AI usage pulse survey, confidence 0.95, tier 1)*\n  - **[Product Development]** Boris Churny confirmed that the Claude Co-work product was written almost entirely by Claude Code over a period of approximately one and a half weeks. *(Source: Boris Churny, confidence 0.95, tier 1)*\n  - **[Workforce Impact]** The study noted spillover effects where engineers spent more time reviewing, correcting, and guiding AI-generated work produced by colleagues, including coaching colleagues who were 'vibe coding'. *(Source: Aruna Ranganathan and Shixi Maggie Ye (Berkeley Haas), confidence 0.95, tier 1)*\n  - **[Tooling Evolution]** Replit CEO Amjad Massad introduced Replit Agent 4, emphasizing that software development is now creative work involving design on an infinite canvas and parallel agents. *(Source: Amjad Massad (Replit CEO), confidence 0.95, tier 1)*\n  - **[Capability Expansion]** Replit announced 'Agent 4,' which generalizes vibe coding beyond traditional software development to include the creation of slides, videos, and other digital artifacts. *(Source: AI Daily Brief host, confidence 0.9, tier 1)*\n  - **[Mobile Integration]** Replit's new feature allows novice developers to build mobile apps natively and publish them to the App Store with just a few clicks without leaving the platform. *(Source: Replit, confidence 0.9, tier 2)*\n  - **[Market Impact]** The number of apps submitted to app stores increased by 24% year-over-year, marking the first meaningful increase since 2015. *(Source: Nathaniel Whittemore, Host of AI Daily Brief, confidence 0.85, tier 1)*\n  - **[Business Integration]** Lovable integrated native payment processing into its platform, allowing users to implement PCI Level 1 compliant payment systems by describing their requirements in natural language. *(Source: Lovable (Antoine Osika, CEO), confidence 0.9, tier 1)*\n  - **[Efficiency Gains]** Dan Shipper argued that Opus 4.5 collapsed six months of development work into one week, marking the birth of an 'infinite vibe coding machine' and enabling agent-native apps where features are defined by prompts rather than code. *(Source: Dan Shipper, confidence 0.9, tier 2)*"
+    },
+    "provenance": {
+      "assertion_fingerprints": [
+        "192ac01cf44b3c57",
+        "3037581e7737792c",
+        "3a6833602f166052",
+        "3d47de957ca84032",
+        "437b84700f077844",
+        "4739e03cf74493c2",
+        "5fba4a27d275c992",
+        "73faddb91a09116a",
+        "7d51010670500521",
+        "7f5acd7206e66838",
+        "82d6c9997a1a5f19",
+        "85e8644461f1fb0d",
+        "865111d1feac48d8",
+        "918edb46a5019129",
+        "9357b2591045e163",
+        "97902d005862f655",
+        "989a6e53d4afd9b7",
+        "a11193282d3deb56",
+        "a7d254b143876a76",
+        "b292a9d2e57fc4ad",
+        "b2a56d6c9c9e067e",
+        "b48bc52d6e1de1ba",
+        "e21484e85e107ba1",
+        "f5eb924d77ab3b70"
+      ],
+      "source_episodes": [
+        "the-5-biggest-ai-stories-to-watch-in-december",
+        "the-5-most-impactful-ai-model-releases-of-2025",
+        "the-dawn-of-the-agent-age",
+        "the-state-of-enterprise-ai-the-state-of-enterprise-ai",
+        "the-time-savings-era-of-ai-is-over",
+        "the-ultimate-ai-catch-up-guide",
+        "vibe-coding-gets-an-upgrade",
+        "what-vibe-coding-is-turning-into",
+        "why-2026-is-the-year-of-the-ai-builder-with-lovable-ceo-anton-osika",
+        "why-ai-leads-to-more-work-not-less",
+        "why-claude-cowork-is-a-big-deal",
+        "why-claude-opus-45-changes-whats-possible-with-vibe-coding",
+        "why-every-ai-product-seems-the-same",
+        "why-everyone-is-obsessed-with-claude-code",
+        "you-can-now-vibecode-mobile-apps"
+      ]
+    },
+    "scores": {
+      "rubric_a_improvement": 2.0,
+      "rubric_b_improvement": 2.0,
+      "completeness": 1.0
+    }
+  }
+}

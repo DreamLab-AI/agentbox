@@ -1,0 +1,137 @@
+{
+  "topic": "Initial Public Offering",
+  "topic_slug": "initial-public-offering",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5"
+  ],
+  "n_assertions": 5,
+  "episodes": [
+    "openai-declares-the-next-phase-of-ai",
+    "openai-preps-new-garlic-model",
+    "the-ai-chart-everyone-is-getting-wrong",
+    "what-google-needs-to-do-at-io-this-week",
+    "who-cares-about-consumer-ai"
+  ],
+  "assertion_fingerprints": [
+    "37b2766e2ad63f86",
+    "64fe57dcb8df4b22",
+    "6efff18ecb40300e",
+    "b66a058ef6c719fb",
+    "c60f2638dd413c1a"
+  ],
+  "target_page": "Initial Public Offering.md",
+  "assertions": [
+    {
+      "claim": "OpenAI filed its IPO paperwork confidentially on Monday.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief host",
+      "episode": "openai-declares-the-next-phase-of-ai",
+      "claim_date": "2026-06-10",
+      "evidence": "The host states, 'OpenAI has officially thrown their hat in the ring and filed to go public. The company filed their IPO paperwork confidentially on Monday.'",
+      "fp": "6efff18ecb40300e"
+    },
+    {
+      "claim": "Anthropic is preparing for a 2026 IPO and is negotiating a private funding round at a valuation exceeding $300 billion.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "The Financial Times",
+      "episode": "openai-preps-new-garlic-model",
+      "claim_date": "2025-12-04",
+      "evidence": "The Financial Times reports that Anthropic has engaged lawyers and investment banks for a 2026 IPO and is negotiating a round at 'more than a $300 billion valuation', potentially reaching $350 billion.",
+      "fp": "c60f2638dd413c1a"
+    },
+    {
+      "claim": "SpaceX is conducting the largest IPO in history, priced at $135 per share, implying a valuation just shy of $1.8 trillion.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief host citing Bloomberg",
+      "episode": "the-ai-chart-everyone-is-getting-wrong",
+      "claim_date": "2026-06-13",
+      "evidence": "SpaceX was only selling 75 billion worth of stock and reportedly reduced the retail allocation from 30% to 20%. The sale was priced at $135 per share, a flat price set by SpaceX earlier in the process. That pricing implies a valuation just shy of 1.8 billion [sic - context implies trillion based on 'seventh largest company' and comparison to Meta/Tesla], meaning the company will debut as the seventh largest company in the world.",
+      "fp": "b66a058ef6c719fb"
+    },
+    {
+      "claim": "Cerebras stock opened at a $40 billion market capitalization, briefly touched $100 billion, and closed its first day of trading with a 68% gain at a $66 billion valuation.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief host",
+      "episode": "what-google-needs-to-do-at-io-this-week",
+      "claim_date": "2026-05-18",
+      "evidence": "Cerebras began the day as a $40 billion company, touched a hundred billion for a minute, and now has a market cap of 66 billion... the opening trade seeing the stock double in price before settling into a 68% gain at the end of trading.",
+      "fp": "64fe57dcb8df4b22"
+    },
+    {
+      "claim": "The Cerebras IPO is experiencing demand that massively outstrips supply, with private investors seeking $10 billion in allocations against a planned sale of $3.5 billion at a high-end valuation of $26.6 billion.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "Bloomberg",
+      "episode": "who-cares-about-consumer-ai",
+      "claim_date": "2026-05-06",
+      "evidence": "SEC filing stated that the firm plans to sell 3.5 billion at a high-end valuation of 26.6 billion. The problem, according to Bloomberg sources, is that private investors are seeking 10 billion in allocations.",
+      "fp": "37b2766e2ad63f86"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "- Serving as the conceptual baseline for token-based fundraising models.",
+      "content": "- ### Recent Developments\n- OpenAI filed its IPO paperwork confidentially on Monday, officially initiating its process to go public.\n- Anthropic is preparing for a 2026 IPO and is currently negotiating a private funding round at a valuation exceeding $300 billion, with potential to reach $350 billion.\n- SpaceX is conducting the largest IPO in history, priced at $135 per share, implying a valuation just shy of $1.8 trillion and positioning it to debut as the seventh largest company in the world.\n- Cerebras stock opened at a $40 billion market capitalization, briefly touched $100 billion, and closed its first day of trading with a 68% gain at a $66 billion valuation.\n- The Cerebras IPO is experiencing demand that massively outstrips supply, with private investors seeking $10 billion in allocations against a planned sale of $3.5 billion at a high-end valuation of $26.6 billion."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 1,
+      "relevance": 3,
+      "coherence": 4,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "6efff18ecb40300e",
+        "claim": "OpenAI filed its IPO paperwork confidentially on Monday.",
+        "matched": true
+      },
+      {
+        "fp": "c60f2638dd413c1a",
+        "claim": "Anthropic is preparing for a 2026 IPO and is negotiating a private funding round at a valuation exceeding $300 billion.",
+        "matched": true
+      },
+      {
+        "fp": "b66a058ef6c719fb",
+        "claim": "SpaceX is conducting the largest IPO in history, priced at $135 per share, implying a valuation just shy of $1.8 trillio",
+        "matched": true
+      },
+      {
+        "fp": "64fe57dcb8df4b22",
+        "claim": "Cerebras stock opened at a $40 billion market capitalization, briefly touched $100 billion, and closed its first day of ",
+        "matched": true
+      },
+      {
+        "fp": "37b2766e2ad63f86",
+        "claim": "The Cerebras IPO is experiencing demand that massively outstrips supply, with private investors seeking $10 billion in a",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

@@ -1,0 +1,383 @@
+{
+  "topic": "System",
+  "topic_slug": "system",
+  "status": "candidate_rejected",
+  "reasons": [
+    "completeness 0.58 < 0.6"
+  ],
+  "n_assertions": 24,
+  "episodes": [
+    "can-open-models-solve-corporate-ai-washing",
+    "context-graphs-ais-next-big-idea",
+    "everything-you-need-to-know-about-ai-tokens",
+    "gemini-can-now-write-you-a-song",
+    "how-big-a-deal-is-the-usas-ai-genesis-mission",
+    "how-i-built-my-10-agent-openclaw-team",
+    "how-the-best-companies-use-ai",
+    "how-to-build-a-personal-agentic-operating-system"
+  ],
+  "assertion_fingerprints": [
+    "0a4e66b4b9065378",
+    "1309dc81bba0cda2",
+    "243bf33449929d42",
+    "2938a9ff2dea2eea",
+    "322dbf26800dbc23",
+    "3b00a0bb0251d928",
+    "59fef0941d8b2f27",
+    "681880498d17efa2",
+    "6cc85035ded1ea75",
+    "721eb0807aeed690",
+    "83e3df82384c4b28",
+    "89171a65d8256d60",
+    "9335ad756cd07232",
+    "99826be30c14a106",
+    "a045fa1a4d58abd7",
+    "a26d902a312268be",
+    "a51cf33fdd748c2f",
+    "a579f09d7f4e56af",
+    "b35da839955bba3b",
+    "cbe6311de5df8da5",
+    "ce629b716e374fb1",
+    "df06c98490084373",
+    "ecb43a5c752f14bf",
+    "f0e1b71f94c188fc"
+  ],
+  "target_page": "System.md",
+  "assertions": [
+    {
+      "claim": "The ability to use AI for rudimentary security testing on a modest budget could be a game-changer for identifying vulnerabilities in the vast number of outdated systems running critical infrastructure.",
+      "tier": "3",
+      "confidence": "0.55",
+      "source": "AI Daily Brief Host",
+      "episode": "can-open-models-solve-corporate-ai-washing",
+      "claim_date": "2026-08-05",
+      "evidence": "The host states: 'While it is obviously not perfect, the ability to do even rudimentary testing using AI on a modest budget could be an absolute game-changer for this sort of software.'",
+      "fp": "721eb0807aeed690"
+    },
+    {
+      "claim": "Traditional systems of record and data warehouses are insufficient for AI agents because they function as retrospective mirrors rather than transactional front doors, lacking the cross-system context and decision lineage required for autonomous action.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "Jamine Ball",
+      "episode": "context-graphs-ais-next-big-idea",
+      "claim_date": "2026-01-06",
+      "evidence": "Ball's essay 'Long live systems of record' argues that while data lakes/warehouses exist, they live downstream of operational systems (Salesforce, NetSuite, Zendesk). Agents are 'inherently cross-system' and 'action-oriented', meaning they need to know 'which system owns which truth' and the 'contract between those truths' to act correctly.",
+      "fp": "6cc85035ded1ea75"
+    },
+    {
+      "claim": "Agentic workflows consume 5 to 30 times more tokens than simple chat interactions, with poorly designed loops potentially consuming even more.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Nofar Gaspar (citing industry estimates)",
+      "episode": "everything-you-need-to-know-about-ai-tokens",
+      "claim_date": "2026-08-04",
+      "evidence": "The host states, 'agents work autonomously in loops and as such they consume by very widely cited industry estimates 5 to 30 times the tokens of a simple chat.'",
+      "fp": "243bf33449929d42"
+    },
+    {
+      "claim": "Anthropic clarified that the policy change was intended to force third-party businesses to pay for usage through the API, while personal tinkering with agents remains permitted.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Shahipard (Anthropic Representative) via Podcast Host",
+      "episode": "gemini-can-now-write-you-a-song",
+      "claim_date": "2026-03-08",
+      "evidence": "Transcript quotes: 'The intention isn't to block personal tinkering, but rather to force third party businesses to pay for usage through the API.'",
+      "fp": "a579f09d7f4e56af"
+    },
+    {
+      "claim": "Google has developed a new software suite called 'TPU Command Center' to ease TPU compatibility and address the moat created by Nvidia's CUDA ecosystem.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "The Information / AI Daily Brief Host",
+      "episode": "how-big-a-deal-is-the-usas-ai-genesis-mission",
+      "claim_date": "2025-11-30",
+      "evidence": "The report states that 'One of Nvidia's biggest moes is the CUDA developer ecosystem. As part of the information report, they write that Google has developed a new software suite called TPU command center that's designed to make TPU compatibility more easy to navigate.'",
+      "fp": "b35da839955bba3b"
+    },
+    {
+      "claim": "The host built a team of 10 OpenClaw agents using a Mac mini as a dedicated, always-on server to ensure a fresh environment and remote accessibility via Tailscale.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-i-built-my-10-agent-openclaw-team",
+      "claim_date": "2026-02-15",
+      "evidence": "The host explains: 'I did actually go out and buy a Mac mini for this... I wanted a totally fresh environment... and I also did want a dedicated machine that was always on... You'll also set up something like Tailscale for remote access.'",
+      "fp": "ce629b716e374fb1"
+    },
+    {
+      "claim": "The host observes that the 'heartbeat' feature in OpenClaw can be technically unstable, with agents occasionally dropping off and requiring manual resets.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-i-built-my-10-agent-openclaw-team",
+      "claim_date": "2026-02-15",
+      "evidence": "The host mentions: 'I found that heartbeats can be flaky... You will often find that for whatever reason the agent just drops off for a while and you kind of have to reset it.'",
+      "fp": "99826be30c14a106"
+    },
+    {
+      "claim": "The host identifies a significant security risk in the OpenClaw ecosystem, noting that many initial skills and plugins contained malware, though the situation is improving.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-i-built-my-10-agent-openclaw-team",
+      "claim_date": "2026-02-15",
+      "evidence": "The host mentions: 'I haven't started using a bunch of skills which seems to be kind of a good thing given that they found that initially a ton of them had malware... I do think that the security situation is literally getting meaningfully better every single day.'",
+      "fp": "89171a65d8256d60"
+    },
+    {
+      "claim": "The host predicts that off-the-shelf mission control dashboards for managing multiple AI agents will become widely available very soon, reducing the need for custom-built monitoring interfaces.",
+      "tier": "3",
+      "confidence": "0.75",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-i-built-my-10-agent-openclaw-team",
+      "claim_date": "2026-02-15",
+      "evidence": "The host states: 'I am so certain that there are going to be off-the-shelf options for this extremely soon.'",
+      "fp": "a51cf33fdd748c2f"
+    },
+    {
+      "claim": "McKinsey's AI transformation manifesto reports that AI leaders achieved an average 20% EBITDA uplift, reaching break-even in 1-2 years and generating $3 in incremental EBITDA for every $1 invested.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "McKinsey (cited by host)",
+      "episode": "how-the-best-companies-use-ai",
+      "claim_date": "2026-04-20",
+      "evidence": "The host states McKinsey studied 20 AI leader companies and found 'business transformations that came from AI and technology delivered a 20% EBITDA uplift, reaching break even in 1 to 2 years, and generating $3 of incremental EBITDA for every $1 invested.'",
+      "fp": "2938a9ff2dea2eea"
+    },
+    {
+      "claim": "Ramp reports that 99% of its employees use AI daily, but most were initially stuck due to painful and unintuitive setup processes involving terminal configs and MCP servers.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Eric Glyman, Ramp Co-founder (cited by host)",
+      "episode": "how-the-best-companies-use-ai",
+      "claim_date": "2026-04-20",
+      "evidence": "Eric Glyman tweeted, '99% of Ramp uses AI daily, but we noticed most people were stuck. Not because the models weren't good enough, but because the setup was too painful and unintuitive for most.'",
+      "fp": "df06c98490084373"
+    },
+    {
+      "claim": "Ramp's internal AI system, Glass, includes a marketplace called 'Dojo' containing over 350 reusable skills built by colleagues, which are shared across teams to standardize best practices.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Seb Go to Jen, Ramp (cited by host)",
+      "episode": "how-the-best-companies-use-ai",
+      "claim_date": "2026-04-20",
+      "evidence": "The transcript states Glass includes 'a marketplace of 350+ reusable skills built by colleagues' and mentions 'With 350 skills already shared' in the Dojo marketplace.",
+      "fp": "ecb43a5c752f14bf"
+    },
+    {
+      "claim": "OpenAI announced that 50% of the usage of their new Codex app is not specifically about coding, indicating that code-writing capabilities unlock broader knowledge work applications.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "OpenAI (cited by host)",
+      "episode": "how-the-best-companies-use-ai",
+      "claim_date": "2026-04-20",
+      "evidence": "The transcript notes, 'When OpenAI announced their new Codex app, they said that a full 50% of the usage is not about coding specifically.'",
+      "fp": "a045fa1a4d58abd7"
+    },
+    {
+      "claim": "McKinsey argues that more than 70% of talent for AI transformation should be in-house, as every tech and AI transformation is ultimately a people transformation that cannot be fully outsourced to consultants.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "McKinsey (cited by host)",
+      "episode": "how-the-best-companies-use-ai",
+      "claim_date": "2026-04-20",
+      "evidence": "The host notes, 'McKinsey argues that every tech and AI transformation is ultimately a people transformation, suggesting that more than 70% of talent for AI should be in-house.'",
+      "fp": "83e3df82384c4b28"
+    },
+    {
+      "claim": "George Zarkadakis argues that while AI has made individuals 10x more productive, no company has become 10x more valuable because institutional AI requires distinct processes for coordination and signal extraction that individual AI lacks.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "George Zarkadakis (a16z opinion piece, cited by host)",
+      "episode": "how-the-best-companies-use-ai",
+      "claim_date": "2026-04-20",
+      "evidence": "Zarkadakis writes, 'AI has made every individual 10x more productive, no company has become 10x more valuable as a result,' and argues institutional AI is 'a different set of processes that make individual AI's value point in the same direction.'",
+      "fp": "322dbf26800dbc23"
+    },
+    {
+      "claim": "Ramp's design principle for its AI tooling is to 'not limit anyone's upside,' rejecting the conventional approach of simplifying tools for non-technical users in favor of preserving full capability while making complexity invisible.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Seb Go to Jen, Ramp (cited by host)",
+      "episode": "how-the-best-companies-use-ai",
+      "claim_date": "2026-04-20",
+      "evidence": "Seb writes, 'The default approach... for non-technical users is to simplify... We couldn't disagree more. At Ramp, power users thrive on multi-window workflows... The goal isn't to remove complexity, but to make it invisible while preserving full capability.'",
+      "fp": "0a4e66b4b9065378"
+    },
+    {
+      "claim": "Ramp built its internal AI infrastructure in-house rather than buying it because internal productivity is a competitive moat, it allows for same-day speed in fixing issues, and it provides direct insights for their external AI products.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Seb Go to Jen, Ramp (cited by host)",
+      "episode": "how-the-best-companies-use-ai",
+      "claim_date": "2026-04-20",
+      "evidence": "Seb argues, 'Internal productivity is a moat... You do not need to hand your moat to a vendor,' and notes that owning the tool allows them to 'ship fixes the same day' and that 'Solving these problems internally gives us conviction about what works before we ship it.'",
+      "fp": "59fef0941d8b2f27"
+    },
+    {
+      "claim": "McKinsey identifies 'agentic engineering' as the next capability for leading companies to master, involving the ingestion of unstructured data, extension of AI platforms with agentic capabilities, and the codification of repeatable agentic playbooks.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "McKinsey (cited by host)",
+      "episode": "how-the-best-companies-use-ai",
+      "claim_date": "2026-04-20",
+      "evidence": "McKinsey writes, 'Leading companies are moving quickly to master agentic engineering. They are ingesting unstructured data, extending their AI platforms with agentic capabilities, automating guardrails and controls, and rapidly experimenting to codify what works into a repeatable agentic playbook.'",
+      "fp": "a26d902a312268be"
+    },
+    {
+      "claim": "The host predicts that the distinction between 'good,' 'medium,' and 'bad' AI users will disappear as organizations build harnesses that enable every employee to become an AI superuser, fundamentally changing the shape of enterprise AI adoption.",
+      "tier": "3",
+      "confidence": "0.65",
+      "source": "Host (NLW)",
+      "episode": "how-the-best-companies-use-ai",
+      "claim_date": "2026-04-20",
+      "evidence": "The host states, 'you should not limit anyone's endpoint to only one type of those interfaces because of some pre-existing technical limitation they have' and calls this 'one of the most important mental resets.'",
+      "fp": "681880498d17efa2"
+    },
+    {
+      "claim": "The host argues that 'agentic engineering' is no longer just a domain of software development but is becoming a core capability for all knowledge workers, as the ability to write code unlocks broader AI capabilities for non-technical tasks.",
+      "tier": "3",
+      "confidence": "0.65",
+      "source": "Host (NLW)",
+      "episode": "how-the-best-companies-use-ai",
+      "claim_date": "2026-04-20",
+      "evidence": "The host states, 'constraining this to think about agentic engineering as simply a domain of software development is increasingly going to be its own constraint' and that 'for the real leading organizations, agentic engineering is kind of the work of everyone now.'",
+      "fp": "f0e1b71f94c188fc"
+    },
+    {
+      "claim": "Entrepreneur Ryan Carson predicts that by the end of the year, major AI players will offer complete end-to-end 'code factory' solutions that allow startups to build products without duct-taping different tools together.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "Ryan Carson (cited by host)",
+      "episode": "how-the-best-companies-use-ai",
+      "claim_date": "2026-04-20",
+      "evidence": "Ryan Carson wrote, 'I think we'll probably have complete solutions from all the big players by the end of the year that allow you to create an end-to-end code factory for your startup without having to jump around to different tools or duct taping things together.'",
+      "fp": "9335ad756cd07232"
+    },
+    {
+      "claim": "The 'Agentic Operating System' (Agent OS) is a seven-layer framework consisting of Identity, Context, Skills, Memory, Connections, Verification, and Automations.",
+      "tier": "2",
+      "confidence": "0.98",
+      "source": "Nofar Gaspar",
+      "episode": "how-to-build-a-personal-agentic-operating-system",
+      "claim_date": "2026-04-25",
+      "evidence": "Nofar explicitly lists these seven layers: 'The first layer will be identity... then we have the context... skills is how you work... Memory is the next layer... connections... verification... and a great addition... is to add automations.'",
+      "fp": "3b00a0bb0251d928"
+    },
+    {
+      "claim": "Building an Agentic Operating System creates a compounding return where the first agent is difficult to build, but subsequent agents become significantly faster to create because they inherit the underlying foundation.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "Nofar Gaspar",
+      "episode": "how-to-build-a-personal-agentic-operating-system",
+      "claim_date": "2026-04-25",
+      "evidence": "Nofar explains: 'your first agent is hard... but the second agent... takes you an afternoon, because it inherits everything that is relevant... and from here on after, your third, your fifth, and so on, they are each becoming faster and faster.'",
+      "fp": "1309dc81bba0cda2"
+    },
+    {
+      "claim": "Without a regular audit and verification discipline, an Agentic Operating System becomes stale and ineffective within approximately 8 weeks.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Nofar Gaspar",
+      "episode": "how-to-build-a-personal-agentic-operating-system",
+      "claim_date": "2026-04-25",
+      "evidence": "Nofar asserts: 'it's because it's something that without it, your OS has a shelf life of maybe 8 weeks before everything goes stale.'",
+      "fp": "cbe6311de5df8da5"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "- ### Content\n  System \u2014 content pending enrichment.",
+      "content": "- ### Content\n  System \u2014 content pending enrichment.\n- ### Recent Developments\n  - **Agentic Operating System (Agent OS) Framework**: Nofar Gaspar describes a seven-layer framework for agentic systems consisting of Identity, Context, Skills, Memory, Connections, Verification, and Automations. This structure enables a compounding return on investment; while the first agent is difficult to build, subsequent agents become significantly faster to create because they inherit the underlying foundation.\n  - **Ramp's Internal AI Infrastructure**: Ramp reports that 99% of its employees use AI daily, though initial adoption was hindered by painful setup processes involving terminal configs and MCP servers. Their internal system, Glass, features a marketplace called 'Dojo' containing over 350 reusable skills built by colleagues to standardize best practices. Ramp built this infrastructure in-house to maintain a competitive moat, enable same-day issue resolution, and gain direct insights for their external AI products. Their design principle is to 'not limit anyone's upside,' preserving full capability while making complexity invisible.\n  - **Limitations of Traditional Data Systems**: Jamine Ball argues that traditional systems of record and data warehouses are insufficient for AI agents because they function as retrospective mirrors rather than transactional front doors. Agents are 'inherently cross-system' and 'action-oriented,' requiring knowledge of 'which system owns which truth' and the 'contract between those truths' to act correctly.\n  - **Business Impact and Adoption Metrics**: McKinsey's AI transformation manifesto reports that AI leaders achieved an average 20% EBITDA uplift, reaching break-even in 1-2 years and generating $3 in incremental EBITDA for every $1 invested. OpenAI announced that 50% of the usage of their new Codex app is not specifically about coding, indicating that code-writing capabilities unlock broader knowledge work applications.\n  - **Institutional vs. Individual Productivity**: George Zarkadakis argues that while AI has made individuals 10x more productive, no company has become 10x more valuable because institutional AI requires distinct processes for coordination and signal extraction that individual AI lacks.\n  - **Implementation Examples**: The host of AI Daily Brief built a team of 10 OpenClaw agents using a Mac mini as a dedicated, always-on server to ensure a fresh environment and remote accessibility via Tailscale. Additionally, Anthropic clarified that recent policy changes are intended to force third-party businesses to pay for usage through the API, while personal tinkering with agents remains permitted."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 1.0,
+    "rubric_b_improvement": 2.0,
+    "raw_a": {
+      "factual_grounding": 4,
+      "relevance": 4,
+      "coherence": 3,
+      "better_version": "B",
+      "improvement": 1
+    },
+    "raw_b": {
+      "factual_grounding": 4,
+      "relevance": 4,
+      "coherence": 3,
+      "better_version": "B",
+      "improvement": 2
+    }
+  },
+  "completeness": {
+    "score": 0.5833333333333334,
+    "detail": [
+      {
+        "fp": "3b00a0bb0251d928",
+        "claim": "The 'Agentic Operating System' (Agent OS) is a seven-layer framework consisting of Identity, Context, Skills, Memory, Co",
+        "matched": true
+      },
+      {
+        "fp": "2938a9ff2dea2eea",
+        "claim": "McKinsey's AI transformation manifesto reports that AI leaders achieved an average 20% EBITDA uplift, reaching break-eve",
+        "matched": true
+      },
+      {
+        "fp": "df06c98490084373",
+        "claim": "Ramp reports that 99% of its employees use AI daily, but most were initially stuck due to painful and unintuitive setup ",
+        "matched": false
+      },
+      {
+        "fp": "ecb43a5c752f14bf",
+        "claim": "Ramp's internal AI system, Glass, includes a marketplace called 'Dojo' containing over 350 reusable skills built by coll",
+        "matched": false
+      },
+      {
+        "fp": "6cc85035ded1ea75",
+        "claim": "Traditional systems of record and data warehouses are insufficient for AI agents because they function as retrospective ",
+        "matched": false
+      },
+      {
+        "fp": "ce629b716e374fb1",
+        "claim": "The host built a team of 10 OpenClaw agents using a Mac mini as a dedicated, always-on server to ensure a fresh environm",
+        "matched": true
+      },
+      {
+        "fp": "a579f09d7f4e56af",
+        "claim": "Anthropic clarified that the policy change was intended to force third-party businesses to pay for usage through the API",
+        "matched": true
+      },
+      {
+        "fp": "a045fa1a4d58abd7",
+        "claim": "OpenAI announced that 50% of the usage of their new Codex app is not specifically about coding, indicating that code-wri",
+        "matched": true
+      },
+      {
+        "fp": "1309dc81bba0cda2",
+        "claim": "Building an Agentic Operating System creates a compounding return where the first agent is difficult to build, but subse",
+        "matched": true
+      },
+      {
+        "fp": "0a4e66b4b9065378",
+        "claim": "Ramp's design principle for its AI tooling is to 'not limit anyone's upside,' rejecting the conventional approach of sim",
+        "matched": false
+      },
+      {
+        "fp": "322dbf26800dbc23",
+        "claim": "George Zarkadakis argues that while AI has made individuals 10x more productive, no company has become 10x more valuable",
+        "matched": true
+      },
+      {
+        "fp": "59fef0941d8b2f27",
+        "claim": "Ramp built its internal AI infrastructure in-house rather than buying it because internal productivity is a competitive ",
+        "matched": false
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

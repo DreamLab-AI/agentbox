@@ -1,0 +1,693 @@
+{
+  "topic": "AI Adoption",
+  "topic_slug": "ai-adoption",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5"
+  ],
+  "n_assertions": 50,
+  "episodes": [
+    "autoresearch-agent-loops-and-the-future-of-work",
+    "bezos-is-back-to-build-ai",
+    "black-friday-gpt",
+    "can-open-models-solve-corporate-ai-washing",
+    "can-todays-ai-replace-12-of-work",
+    "did-the-super-bowl-as-make-americans-like-ai-any-more",
+    "everything-you-need-to-know-about-ai-tokens",
+    "fable-5-raises-the-bar-for-ai-ambition",
+    "first-impressions-of-the-new-opus-48",
+    "gemini-can-now-write-you-a-song",
+    "google-says-no-ads-planned-for-gemini",
+    "grok-46-shows-how-fast-your-ai-options-are-expanding",
+    "how-ai-is-changing-how-companies-get-built",
+    "how-big-is-the-ai-economy",
+    "how-people-are-using-ai-for-health",
+    "how-to-get-the-most-out-of-fable-5-and-gpt-56-sol",
+    "how-to-help-people-thrive-with-ai",
+    "more-new-ai-models-openai-drops-51-pro-and-codex-pro",
+    "no-one-wins-this-ai-super-bowl",
+    "the-big-questions-shaping-the-consumer-ai-battle",
+    "the-biggest-battle-in-ai-is-for-your-personal-context",
+    "the-dawn-of-the-agent-age",
+    "the-new-ai-org-chart",
+    "the-whole-world-gets-claude-pilled",
+    "what-1250-professionals-said-about-working-with-ai",
+    "where-the-economy-thrives-after-ai",
+    "why-ai-advantage-compounds",
+    "why-deeply-integrating-ai-3xs-likelihood-of-financial-gains-from-ai",
+    "why-only-ai-training-can-save-the-economy",
+    "why-the-ai-bubble-conversation-is-useless",
+    "work-agi-is-the-only-agi-that-matters"
+  ],
+  "assertion_fingerprints": [
+    "0225181ab366ebfb",
+    "10ea4605d2b45bea",
+    "15828ba2bdd8622b",
+    "1ae64af89dfd345f",
+    "2271f1c45202f4b7",
+    "234121680e8f16be",
+    "24351faad2758313",
+    "260b433b764044bb",
+    "26972cf591c5c918",
+    "3482770320fce9cc",
+    "3a0114d553df021b",
+    "3dc0bec42d457582",
+    "3e9be6ad040ee9f9",
+    "45d9c4f79601c8af",
+    "4d8e51c6b8846c3b",
+    "52cfb3cc6874c556",
+    "52d16b743147ccea",
+    "6e9d1994a1fc992b",
+    "7c5c5249fddcf414",
+    "7dd9bc86dacf0f79",
+    "82f1abd86ad41ada",
+    "838138a0dd0acf73",
+    "85f3cb1e5be20e86",
+    "8c1d6929108e1904",
+    "90340f011e3f3b76",
+    "9181d09c9db7b53f",
+    "918edb46a5019129",
+    "91ed352da947a8b4",
+    "96a500d37e8438bd",
+    "9bb4b67f5ec717f3",
+    "9e7e84df8e7d8e71",
+    "a8aec257488f7f6d",
+    "a93d9635d487c438",
+    "ad3837d5ae923ce4",
+    "adfbcc45084ce594",
+    "b13e377cb583c647",
+    "b2339ed30584814b",
+    "b6b2fc5ad774ea75",
+    "bc37a34f070be7f1",
+    "bebde70e3f3739b0",
+    "c29bcd1f8ea86588",
+    "c5e2f3deec51059d",
+    "d3f4b05f225f1df7",
+    "d4f8c87c9b181284",
+    "d6f3c2dfa06dc84a",
+    "d8e9dd251c5c5261",
+    "e0e5bf537aab43fc",
+    "e770ed864516475d",
+    "f146fd358630fc63",
+    "fd2690719eb66294"
+  ],
+  "target_page": "AI Adoption.md",
+  "assertions": [
+    {
+      "claim": "The 'capability overhang'\u2014the gap between current AI capabilities and how companies are using them\u2014is widening to the point where meeting users at their current level of adoption may become a form of malfeasance.",
+      "tier": "3",
+      "confidence": "0.65",
+      "source": "Podcast Host",
+      "episode": "autoresearch-agent-loops-and-the-future-of-work",
+      "claim_date": "2026-08-24",
+      "evidence": "The host states: 'Every week the capability overhang gets bigger... At some point it's so wide that it almost becomes malfeasance to meet them where they are.'",
+      "fp": "d4f8c87c9b181284"
+    },
+    {
+      "claim": "The next major wave of AI impact will come from companies that integrate AI into physical systems and the real economy, rather than just improving digital model capabilities.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "Podcast Host",
+      "episode": "bezos-is-back-to-build-ai",
+      "claim_date": "2025-11-20",
+      "evidence": "The host concludes, 'First wave was models. Next wave is whoever wires them into the real economy,' expressing excitement about Bezos's focus on this area.",
+      "fp": "0225181ab366ebfb"
+    },
+    {
+      "claim": "Adobe Analytics reported that AI-based traffic to leading retail sites increased by 1,300% in the previous year, though this growth was from an extremely low base.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Adobe Analytics (cited by Host)",
+      "episode": "black-friday-gpt",
+      "claim_date": "2025-11-27",
+      "evidence": "The host states: 'Adobe Analytics found that AI based traffic to leading retail sites was up 1300% last year. That was, of course, off an extremely low base...'",
+      "fp": "96a500d37e8438bd"
+    },
+    {
+      "claim": "AI-assisted shopping is expected to see a 520% surge this year, with 53% of shoppers considering using AI for recommendations, deal finding, and gift inspiration.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Adobe (cited by Host)",
+      "episode": "black-friday-gpt",
+      "claim_date": "2025-11-27",
+      "evidence": "The host reports: 'Adobe predicted that we'll see a 520% surge in AI assisted shopping this year... their accompanying survey found that 53% of shoppers were considering using AI for their shopping this year.'",
+      "fp": "260b433b764044bb"
+    },
+    {
+      "claim": "HP's recent layoffs are likely a combination of genuine AI-driven process redesign and standard cost-cutting measures, as the company was already in a downward trajectory and had previously announced similar cuts unrelated to AI.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Host (expert analysis)",
+      "episode": "black-friday-gpt",
+      "claim_date": "2025-11-27",
+      "evidence": "The host argues: 'these layoffs feel like they would have happened even if there had been no AI... HP has been on a downward trajectory for many years... They just finished up a previous cost cutting initiative announced in 2022...'",
+      "fp": "c5e2f3deec51059d"
+    },
+    {
+      "claim": "Palantir reported quarterly revenue of $1.94 billion, representing a 93% year-over-year increase, with commercial sales growing 149% and net income reaching $1 billion.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Palantir Earnings Report (cited by AI Daily Brief host)",
+      "episode": "can-open-models-solve-corporate-ai-washing",
+      "claim_date": "2026-08-05",
+      "evidence": "The transcript states: 'Quarterly revenue came in at 1.94 billion, up 93% from this time last year... Commercial sales were up 149% year-over-year... net income reaching a billion dollars for the quarter and growing at a 225% annual pace.'",
+      "fp": "90340f011e3f3b76"
+    },
+    {
+      "claim": "In May, US employers announced 97,000 job cuts, with 40% attributed to AI, while a separate survey found that one-third of hiring managers who cut roles due to AI had already rehired for similar positions.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "Julie Averill (Former CIO of Lululemon) via The New York Times",
+      "episode": "can-open-models-solve-corporate-ai-washing",
+      "claim_date": "2026-08-05",
+      "evidence": "The transcript quotes Averill: 'In May, she continues, \"US employers announced 97,000 job cuts, and according to one research firm, companies blamed 40% of them on AI. A separate survey found that around 1/3 of hiring managers who had cut a role because of AI had already rehired for the same or a similar one.\"'",
+      "fp": "fd2690719eb66294"
+    },
+    {
+      "claim": "The concept of 'AI washing' is emerging as a significant risk, where companies claim to be doing more with AI than they actually are to meet immediate pressure for results, often leading to ineffective layoffs and strategic misalignment.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Julie Averill (Former CIO of Lululemon)",
+      "episode": "can-open-models-solve-corporate-ai-washing",
+      "claim_date": "2026-08-05",
+      "evidence": "Averill defines 'AI washing' as 'when a company under pressure to immediately show results claims to be doing more with AI than it actually is' and notes that 'The cut is really about freeing up cash, sometimes to spend more on AI.'",
+      "fp": "3482770320fce9cc"
+    },
+    {
+      "claim": "The enterprise conventional wisdom around AI is becoming more directionally correct, moving away from PR-driven 'AI wishing' towards a focus on organizational redesign and long-term value creation.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "AI Daily Brief Host",
+      "episode": "can-open-models-solve-corporate-ai-washing",
+      "claim_date": "2026-08-05",
+      "evidence": "The host concludes: 'For basically the first time since ChatGPT launched, my observation is that the enterprise conventional wisdom around AI is getting more directionally correct. I think our attitudes around the types of things that go into AI wishing and washing are changing radically.'",
+      "fp": "7dd9bc86dacf0f79"
+    },
+    {
+      "claim": "Anthropic's internal survey of 132 engineers found that employees self-report using Claude in 60% of their work and achieving a 50% productivity boost.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Anthropic Economic Index / Internal Survey",
+      "episode": "can-todays-ai-replace-12-of-work",
+      "claim_date": "2025-12-05",
+      "evidence": "The transcript states: 'Employees, they say, self-report using Claude in 60% of their work and achieving a 50% productivity boost, which is a 2 to 3x increase from a year ago.'",
+      "fp": "8c1d6929108e1904"
+    },
+    {
+      "claim": "The majority of American skepticism towards AI is not a hardened principled position but rather a reaction to broader economic anxiety and a lack of clarity on how the technology will affect individual livelihoods.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "Host (AI Daily Brief)",
+      "episode": "did-the-super-bowl-as-make-americans-like-ai-any-more",
+      "claim_date": "2026-02-10",
+      "evidence": "The host states: 'for the vast majority this is not some hardened principled position. This is people rightly understanding that these tools are powerful... They're commenting from a place of larger economic anxiety.'",
+      "fp": "9bb4b67f5ec717f3"
+    },
+    {
+      "claim": "Meta consumed between 60 and 74 trillion tokens in a single month, with its top individual user consuming 280 billion tokens.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Nofar Gaspar (citing published data)",
+      "episode": "everything-you-need-to-know-about-ai-tokens",
+      "claim_date": "2026-08-04",
+      "evidence": "The host states, 'They used roughly between 60 to 74 trillion tokens in a single month. And according to the data that was published, the top individual user used 280 billion tokens.'",
+      "fp": "24351faad2758313"
+    },
+    {
+      "claim": "A study of 20,000 developers found that the heaviest AI users were roughly twice as productive in terms of the amount of production code shipped.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "Nofar Gaspar (citing a study)",
+      "episode": "everything-you-need-to-know-about-ai-tokens",
+      "claim_date": "2026-08-04",
+      "evidence": "The host mentions, 'I've seen a study of 20K developers that found that the heaviest AI users were roughly twice as productive in terms of the of the amount of production code that was shipped.'",
+      "fp": "9181d09c9db7b53f"
+    },
+    {
+      "claim": "The 'most expensive token' is the one that a skilled employee is afraid to spend due to cost anxiety, which stifles innovation and limits the organization to low-stakes use cases.",
+      "tier": "3",
+      "confidence": "0.65",
+      "source": "Nofar Gaspar",
+      "episode": "everything-you-need-to-know-about-ai-tokens",
+      "claim_date": "2026-08-04",
+      "evidence": "The host states, 'I believe that the most expensive token is the one that your best person is afraid to spend.'",
+      "fp": "ad3837d5ae923ce4"
+    },
+    {
+      "claim": "Users are developing a new skill called 'task imagination' to identify and define complex, long-horizon problems suitable for high-capability models like Fable 5.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Nate B. Jones / AI Daily Brief Host",
+      "episode": "fable-5-raises-the-bar-for-ai-ambition",
+      "claim_date": "2026-06-11",
+      "evidence": "Nate B. Jones describes the need for 'task imagination' because 'tools like Fable 5 that can run for 9 hours, 12 hours, days... Do you have anything you can give AI that will take days?'",
+      "fp": "b6b2fc5ad774ea75"
+    },
+    {
+      "claim": "Kirkland & Ellis's decision to build an internal AI platform is primarily a strategic move to prevent 'law wrapper' companies like Harvey from cutting out the middleman and serving clients directly.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "Host Analysis",
+      "episode": "first-impressions-of-the-new-opus-48",
+      "claim_date": "2026-05-30",
+      "evidence": "The host argues that if Harvey automates routine tasks, it can eventually offer those services directly to end-users for better margins. Kirkland's investment is seen as a way to retain control over the value chain and protect their competitive advantage.",
+      "fp": "10ea4605d2b45bea"
+    },
+    {
+      "claim": "Google's strategy of integrating AI across multiple modalities (text, image, video, audio) is a key driver for adoption, often underestimated compared to the focus on single-model capability comparisons.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Aaron Upright via Podcast Host",
+      "episode": "gemini-can-now-write-you-a-song",
+      "claim_date": "2026-03-08",
+      "evidence": "Transcript quotes: 'People underestimate the importance of an easily accessible multimodal platform when it comes to adoption.'",
+      "fp": "c29bcd1f8ea86588"
+    },
+    {
+      "claim": "The enterprise AI market is experiencing a land grab that is expected to ramp up throughout the year.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "Host (AI Daily Brief)",
+      "episode": "google-says-no-ads-planned-for-gemini",
+      "claim_date": "2026-01-22",
+      "evidence": "The host predicts that competition for enterprise business will intensify, driven by partnerships and integrations like the one between OpenAI and ServiceNow.",
+      "fp": "7c5c5249fddcf414"
+    },
+    {
+      "claim": "Samsung integrated Claude Code into its chip design software stack, reducing the time to complete complex system-on-chip verification tasks from three months to two days.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "Korean Outlet Report / AI Daily Brief Host",
+      "episode": "grok-46-shows-how-fast-your-ai-options-are-expanding",
+      "claim_date": "2026-08-13",
+      "evidence": "Reports indicate that in the first three months of integration, development personnel cut complex task times significantly. In one specific example, a second-year engineer completed a month-long task in a single day.",
+      "fp": "838138a0dd0acf73"
+    },
+    {
+      "claim": "RAMP's AI index found that Fable 5 has made up only 6% of tokens purchased by businesses from Anthropic, with the primary reason for low adoption being its high cost and 30-day data retention policy.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "RAMP AI Index / AI Daily Brief Host",
+      "episode": "grok-46-shows-how-fast-your-ai-options-are-expanding",
+      "claim_date": "2026-08-13",
+      "evidence": "RAMP found that Fable 5 represented only 11.4% of dollars spent on Anthropic models. RAMP's lead economist noted that 'more performance is not worth the price tag' for many businesses, and that the 30-day data retention policy for US government safety checks is a significant barrier to enterprise adoption.",
+      "fp": "3e9be6ad040ee9f9"
+    },
+    {
+      "claim": "As the frontier of AI advances, fewer businesses will need the bleeding-edge models for their daily operations, with a growing preference for cheaper, more efficient models that fit into a broader model stack.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "Austin LeBron / AI Daily Brief Host",
+      "episode": "grok-46-shows-how-fast-your-ai-options-are-expanding",
+      "claim_date": "2026-08-13",
+      "evidence": "Austin LeBron noted that 'as the frontier proceeds, fewer and fewer people need the bleeding edge and need it less often.' The host agrees, pointing out that models like Kimmy K3, Grock 4.6, and DeepSeek V4 Pro are an order of magnitude cheaper and fit into a model stack where raw performance is not always the priority.",
+      "fp": "1ae64af89dfd345f"
+    },
+    {
+      "claim": "Solo business applications in high-AI-adoption sectors have risen nearly 27% since early 2024, according to Census Bureau data cited by economist Leah Palashi.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Leah Palashi / Census Bureau (via AI Daily Brief host)",
+      "episode": "how-ai-is-changing-how-companies-get-built",
+      "claim_date": "2026-07-08",
+      "evidence": "Leah Palashi noted that solo business applications in professional services, information, education, finance, and insurance have risen nearly 27% since early 2024. This divergence from flat growth in low-AI sectors like construction emerged only after 2024.",
+      "fp": "f146fd358630fc63"
+    },
+    {
+      "claim": "The efficiency gains observed in AI-native startups and solopreneurs are likely to spill over into other types of organizations, as startups serve as an 'extreme tale' of AI's potential for streamlining operations.",
+      "tier": "3",
+      "confidence": "0.55",
+      "source": "AI Daily Brief Host",
+      "episode": "how-ai-is-changing-how-companies-get-built",
+      "claim_date": "2026-07-08",
+      "evidence": "The host argues that startups are speedrunning experiments in AI efficiency. Given that data shows these companies are getting more successful faster with fewer resources, it is highly likely that parts of this efficiency will find their way into other business environments.",
+      "fp": "b13e377cb583c647"
+    },
+    {
+      "claim": "The AI industry's cumulative revenue growth rate has accelerated 90x, decreasing from 180 days to add a billion dollars in 2023 to less than two days currently.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Exponential View (State of the AI Economy report)",
+      "episode": "how-big-is-the-ai-economy",
+      "claim_date": "2026-06-30",
+      "evidence": "The report compares the time required to add each new additional billion dollars of cumulative revenue between 2023 and the present.",
+      "fp": "26972cf591c5c918"
+    },
+    {
+      "claim": "Companies in the top 25% of AI spenders by revenue share have seen revenue growth of over 100% in the last 3 years, compared to 15-20% for companies with no AI spend.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Exponential View (State of the AI Economy report)",
+      "episode": "how-big-is-the-ai-economy",
+      "claim_date": "2026-06-30",
+      "evidence": "The report identifies a 92% revenue growth differential between high AI intensity companies and non-adopters, using this as a key indicator of the comparative success of high AI adopters.",
+      "fp": "234121680e8f16be"
+    },
+    {
+      "claim": "Between 2023 and 2024, the percentage of American physicians reporting AI use for at least one use case increased from 38% to 66%.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "OpenAI report 'AI as a healthcare ally'",
+      "episode": "how-people-are-using-ai-for-health",
+      "claim_date": "2026-01-10",
+      "evidence": "The transcript notes, 'the percentage of American physicians who reported using AI for at least one use case jumped from 38 to 66%.'",
+      "fp": "45d9c4f79601c8af"
+    },
+    {
+      "claim": "The host argues that the primary takeaway from new model releases is to 'ratchet up one's ambition' and assume no limits on what the model can do to discover its actual capabilities.",
+      "tier": "3",
+      "confidence": "0.75",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-to-get-the-most-out-of-fable-5-and-gpt-56-sol",
+      "claim_date": "2026-07-25",
+      "evidence": "The host states: 'If there is one takeaway from all of these pieces, it is to ratchet up one's ambition and almost to assume no limits on what the newest model can do, so that by trying the biggest, most challenging things you can think of, you can actually figure out what those limits are once they inevitably reveal themselves.'",
+      "fp": "4d8e51c6b8846c3b"
+    },
+    {
+      "claim": "Researchers from ActiveTrack analyzed the digital activity of more than 10,000 workers and found that when people adopted AI, their time spent on email, messaging, and chat apps more than doubled, and their use of business software rose by 94%.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "ActiveTrack researchers",
+      "episode": "how-to-help-people-thrive-with-ai",
+      "claim_date": "2026-07-13",
+      "evidence": "Cited in David Brooks' Atlantic article. The study tracked digital activity of 10,000+ workers, showing a >100% increase in communication app usage and a 94% increase in business software usage post-AI adoption.",
+      "fp": "d6f3c2dfa06dc84a"
+    },
+    {
+      "claim": "The continued improvement in AI model capabilities, particularly in long-horizon tasks, will bolster the case for AI doing more impactful work in 2026 by countering market narratives of an AI bubble.",
+      "tier": "3",
+      "confidence": "0.55",
+      "source": "AI Daily Brief Host",
+      "episode": "more-new-ai-models-openai-drops-51-pro-and-codex-pro",
+      "claim_date": "2025-11-21",
+      "evidence": "The host concludes: 'This bodess well for AI doing even more impactful work in 2026... the story of this week... is that Gemini 3 shows that scaling laws for pre-training are intact... telling all of the skeptics, just wait to see what comes next.'",
+      "fp": "bc37a34f070be7f1"
+    },
+    {
+      "claim": "The public's growing annoyance at AI as \"just another tech thing\" poses a risk to societal preparation for the technology's transformative impact.",
+      "tier": "3",
+      "confidence": "0.55",
+      "source": "AI Daily Brief host",
+      "episode": "no-one-wins-this-ai-super-bowl",
+      "claim_date": "2026-02-08",
+      "evidence": "The host warns: \"there is a tidal wave coming to shore and the net impact of people being annoyed at AI as just another tech thing is that they're not paying attention to it and they're not being prepared for it.\"",
+      "fp": "adfbcc45084ce594"
+    },
+    {
+      "claim": "The host notes that the average number of AI models used by power users is approximately 3.5, with these users spending more than 10 hours a week on AI, which significantly differs from the average consumer.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief) / Monthly AI Usage Pulse Surveys",
+      "episode": "the-big-questions-shaping-the-consumer-ai-battle",
+      "claim_date": "2026-03-05",
+      "evidence": "When we do our monthly AI usage pulse surveys, the people that are responding to those are using an average of something like three and a half models... On average, they're spending more than 10 hours a week using AI.",
+      "fp": "b2339ed30584814b"
+    },
+    {
+      "claim": "AI YouTuber Matthew Berman stated that Google's Personal Intelligence feature makes Gemini his daily driver AI and noted that Google would have been too cautious to release such a feature 18 months ago.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Matthew Berman",
+      "episode": "the-biggest-battle-in-ai-is-for-your-personal-context",
+      "claim_date": "2026-01-15",
+      "evidence": "AI YouTuber Matthew Berman writes, 'Gemini will now be my daily driver AI for the next few weeks, all because of personal intelligence. Google would have never allowed this kind of feature to release just 18 months ago. They would have been too nervous, too much red tape.'",
+      "fp": "15828ba2bdd8622b"
+    },
+    {
+      "claim": "The 'vibe coding' paradigm has shifted from being a tool for prototyping to the standard method for software development over the course of January 2026.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-dawn-of-the-agent-age",
+      "claim_date": "2026-02-05",
+      "evidence": "Vibe coding which as a term just turned 1 years old the other day over the course of this month shifted from the thing that you use for prototyping to just the thing that you do.",
+      "fp": "918edb46a5019129"
+    },
+    {
+      "claim": "The primary barrier to AI agent adoption in daily work is a lack of imagination and limiting beliefs, rather than a lack of technical capability.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "Brandon Gell (via Every podcast)",
+      "episode": "the-new-ai-org-chart",
+      "claim_date": "2026-04-14",
+      "evidence": "The host notes that Brandon Gell had voice calling and email access set up for weeks but only realized he could have his agent call him to walk through emails during a 28-minute walk. 'The capability had been there for weeks. The barrier was a limiting belief he didn't even know he had.'",
+      "fp": "3a0114d553df021b"
+    },
+    {
+      "claim": "The Wall Street Journal reported that Claude is experiencing a surge in adoption among non-technical users, who are using Claude Code for tasks like health data analysis and expense report compiling.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "Wall Street Journal",
+      "episode": "the-whole-world-gets-claude-pilled",
+      "claim_date": "2026-01-21",
+      "evidence": "The Wall Street Journal declared over the weekend that Claude is taking the AI world by storm... It also noted that Claude Code is being deployed for a range of other use cases including health data analysis and expense report compiling.",
+      "fp": "6e9d1994a1fc992b"
+    },
+    {
+      "claim": "The host argues that the low AI adoption and optimism rates in the US represent a major national issue regarding the seriousness with which people are preparing for technological disruption.",
+      "tier": "3",
+      "confidence": "0.7",
+      "source": "AI Daily Brief host",
+      "episode": "the-whole-world-gets-claude-pilled",
+      "claim_date": "2026-01-21",
+      "evidence": "I actually think this is a major national issue. The implications are not just the user numbers for OpenAI and Anthropic. It's about the seriousness with which people are taking the potential disruption for this technology and preparing themselves for it.",
+      "fp": "3dc0bec42d457582"
+    },
+    {
+      "claim": "86% of professionals in the Anthropic study reported that AI saves them time.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Anthropic (cited by host)",
+      "episode": "what-1250-professionals-said-about-working-with-ai",
+      "claim_date": "2025-12-07",
+      "evidence": "Overall, 86% of professionals reported that AI saves them time",
+      "fp": "91ed352da947a8b4"
+    },
+    {
+      "claim": "NLW predicts that the current anxiety over AI-driven job loss will be viewed in 10-30 years as a significant misplacement of collective energy, as the economy transforms rather than collapses.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "NLW (Host)",
+      "episode": "where-the-economy-thrives-after-ai",
+      "claim_date": "2026-04-26",
+      "evidence": "I believe that when we look back a decade, and especially two, three decades from now, this moment of frenetic anxiety will be seen as one of the biggest misplacements of our collective energy that we've ever had.",
+      "fp": "85f3cb1e5be20e86"
+    },
+    {
+      "claim": "96% of US senior leaders surveyed by EY reported seeing AI-driven productivity gains, with 57% reporting significant gains.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "EY Pulse Survey",
+      "episode": "why-ai-advantage-compounds",
+      "claim_date": "2025-12-13",
+      "evidence": "96% of the leaders surveyed are seeing AIdriven productivity gains with 57% of them seeing significant gains.",
+      "fp": "e0e5bf537aab43fc"
+    },
+    {
+      "claim": "Workers who engaged across seven different task types reported five times as much time saved as those using only four task types.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "OpenAI State of Enterprise AI Report",
+      "episode": "why-ai-advantage-compounds",
+      "claim_date": "2025-12-13",
+      "evidence": "Specifically, workers who engaged across seven task types reported five times as much time saved than those using only four task types.",
+      "fp": "2271f1c45202f4b7"
+    },
+    {
+      "claim": "A Section survey of 5,000 white-collar workers in the US, UK, and Canada found that 40% of employees reported saving no time per week from using AI, while 33% of C-suite executives reported saving 4 to 8 hours per week.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Section survey (reported by AI Daily Brief host)",
+      "episode": "why-deeply-integrating-ai-3xs-likelihood-of-financial-gains-from-ai",
+      "claim_date": "2026-01-23",
+      "evidence": "The transcript states: 'surveyed 5,000 white-collar workers... concentrated around October of last year... 33% were saving 4 to 8 hours... 40% said they were saving no time.'",
+      "fp": "82f1abd86ad41ada"
+    },
+    {
+      "claim": "According to the Section survey, only 3% of employees are using AI proficiently, while 97% are classified as AI novices or experimenters.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Section survey (reported by AI Daily Brief host)",
+      "episode": "why-deeply-integrating-ai-3xs-likelihood-of-financial-gains-from-ai",
+      "claim_date": "2026-01-23",
+      "evidence": "The transcript states: 'By Section's metrics, just 3% of employees are using AI proficiently, as opposed to 97% who are either AI novices or AI experimenters.'",
+      "fp": "52d16b743147ccea"
+    },
+    {
+      "claim": "The Section survey identified a 53-point gap in perception of AI policy clarity, with 81% of C-suite officers reporting a clear AI policy compared to only 28% of individual contributors.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Section survey (reported by AI Daily Brief host)",
+      "episode": "why-deeply-integrating-ai-3xs-likelihood-of-financial-gains-from-ai",
+      "claim_date": "2026-01-23",
+      "evidence": "The transcript states: '81% of C-suite officers surveyed said that their company had clear AI policy compared to just 28% of individual contributors, a 53-point gap.'",
+      "fp": "52cfb3cc6874c556"
+    },
+    {
+      "claim": "The host argues that the mainstream narrative of AI underperformance is misleading and that the data actually indicates a widening gap between AI leaders and laggards driven by infrastructure and adoption maturity.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "AI Daily Brief host",
+      "episode": "why-deeply-integrating-ai-3xs-likelihood-of-financial-gains-from-ai",
+      "claim_date": "2026-01-23",
+      "evidence": "The host states: 'The story that I think the data is actually telling is yet more evidence of the widening gap between leaders and laggards... The lens then to read these studies through is not AI overhyped, but instead the very real burden of infrastructure for AI adoption.'",
+      "fp": "a93d9635d487c438"
+    },
+    {
+      "claim": "An EY AI survey found that only 28% of organizations have successfully empowered AI employees to utilize AI to change business processes.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "EY (cited by Host)",
+      "episode": "why-only-ai-training-can-save-the-economy",
+      "claim_date": "2026-06-18",
+      "evidence": "An EY AI survey from this year found that only 28% of organizations have managed to empower AI employees to utilize AI to actually change any sort of business processes.",
+      "fp": "e770ed864516475d"
+    },
+    {
+      "claim": "The MIT report on AI adoption had limited methodology and was a cursory glance at a small dataset, yet it became a dominant force in the AI conversation due to media amplification.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "AI Daily Brief host",
+      "episode": "why-the-ai-bubble-conversation-is-useless",
+      "claim_date": "2025-11-25",
+      "evidence": "The host states that 'the MIT report which had wildly limited methodology and even in the report acknowledged that it was a pretty cursory glance at a very limited set of data... became the most dominant force in the second half of the year in the AI conversation.'",
+      "fp": "d3f4b05f225f1df7"
+    },
+    {
+      "claim": "OpenAI's product division will be renamed to AGI Deployment, reflecting the company's strategic ambitions.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "AI Daily Brief (reporting on OpenAI internal changes)",
+      "episode": "work-agi-is-the-only-agi-that-matters",
+      "claim_date": "2026-03-26",
+      "evidence": "Altman's reduced role seems to put CEO of Applications Fidji Simo in the driver's seat. Her core team, the product division, will be renamed AGI Deployment, clearly in line with the company's ambitions.",
+      "fp": "9e7e84df8e7d8e71"
+    },
+    {
+      "claim": "OpenAI is rolling out ads to all free and Go subscribers in the coming weeks, despite complaints from ad buyers about the lack of a modern ad sales platform and minimal metrics.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "AI Daily Brief (reporting on OpenAI ad strategy)",
+      "episode": "work-agi-is-the-only-agi-that-matters",
+      "claim_date": "2026-03-26",
+      "evidence": "The pilot phase of ads is over, and ads will be rolling out to all free and go subscribers in the coming weeks. Ad buyers have complained that OpenAI doesn't have a modern ad sales platform and are providing very minimal metrics, with multiple ad agency executives saying that they were unable to prove to their clients that ChatGPT ads were working.",
+      "fp": "a8aec257488f7f6d"
+    },
+    {
+      "claim": "The host argues that the current state of AI represents 'task AGI,' where AI excels at specific, discrete tasks but struggles with long strings of tasks requiring human oversight.",
+      "tier": "3",
+      "confidence": "0.7",
+      "source": "AI Daily Brief Host",
+      "episode": "work-agi-is-the-only-agi-that-matters",
+      "claim_date": "2026-03-26",
+      "evidence": "I think effectively what we have, and something that might kind of explain the jagged frontier of AI capability, is almost like we have task AGI. Almost anything that you can ask AI to do that is specific and discreet, it can do really well. The problem is that a lot of work is strings of tasks together where AI capability starts to break down.",
+      "fp": "d8e9dd251c5c5261"
+    },
+    {
+      "claim": "The host predicts that for AI companies, the only type of AGI that currently matters is 'work AGI,' focused on automating knowledge work and enterprise tasks.",
+      "tier": "3",
+      "confidence": "0.65",
+      "source": "AI Daily Brief Host",
+      "episode": "work-agi-is-the-only-agi-that-matters",
+      "claim_date": "2026-03-26",
+      "evidence": "Still, if you can take away anything from all these moves from OpenAI and from the relentless pace of shipping at Claude, is that right now, more than ever for AI companies, the only type of AGI that matters to them is work AGI.",
+      "fp": "bebde70e3f3739b0"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - ### Current Landscape (2026)",
+      "content": "  - ### Recent Developments: Productivity, Usage Depth, and Adoption Metrics (2025-2026)\n\n    Recent empirical data from internal corporate surveys, industry trackers, and academic studies provide granular evidence on the depth of AI integration, productivity impacts, and the widening gap between executive perception and frontline reality.\n\n    #### Productivity and Time-Saving Evidence\n    - **Anthropic Internal Survey**: A survey of 132 Anthropic engineers found that employees self-report using Claude in **60% of their work** and achieving a **50% productivity boost**, representing a 2-3x increase from a year prior. Broader data from the same source indicates that **86% of professionals** report that AI saves them time.\n    - **EY Pulse Survey**: **96% of US senior leaders** surveyed reported seeing AI-driven productivity gains, with **57%** reporting *significant* gains, reinforcing the executive-level confidence in AI ROI despite broader enterprise value-capture gaps.\n    - **OpenAI State of Enterprise AI**: The report highlights a strong correlation between task diversity and value capture: workers who engaged across **seven different task types** reported **five times as much time saved** as those using only four task types, suggesting that breadth of application is a key driver of realized productivity.\n    - **ActiveTrack Research**: Analysis of digital activity for over 10,000 workers revealed that post-AI adoption, time spent on email, messaging, and chat apps **more than doubled**, while use of business software rose by **94%**, indicating a significant shift in workflow composition and communication density.\n\n    #### Adoption Depth and Proficiency Gaps\n    - **Section Survey (5,000 White-Collar Workers, US/UK/Canada)**:\n      - **Proficiency Gap**: Only **3% of employees** are using AI proficiently, while **97%** are classified as novices or experimenters.\n      - **Time Savings Disparity**: **40% of employees** reported saving *no time* per week from AI use, whereas **33% of C-suite executives** reported saving **4 to 8 hours** per week.\n      - **Policy Clarity Gap**: A **53-point gap** exists in perception of AI policy clarity, with **81% of C-suite officers** reporting a clear AI policy compared to only **28% of individual contributors**.\n    - **Healthcare Adoption Surge**: Between 2023 and 2024, the percentage of American physicians reporting AI use for at least one use case jumped from **38% to 66%**, marking a rapid acceleration in clinical AI integration.\n\n    #### Usage Scale and Economic Velocity\n    - **Meta Token Consumption**: Meta consumed between **60 and 74 trillion tokens** in a single month, with its top individual user consuming **280 billion tokens**, illustrating the extreme scale of internal AI utilization in large enterprises.\n    - **Adobe Analytics Retail Traffic**: AI-based traffic to leading retail sites increased by **1,300%** in the previous year, though this growth is noted to be from an extremely low base, signaling the early-stage emergence of AI-driven consumer discovery.\n    - **Exponential View (State of the AI Economy)**: The AI industry's cumulative revenue growth rate has accelerated **90x**, decreasing the time required to add each new billion dollars in cumulative revenue from **180 days in 2023** to **less than two days** currently, reflecting the exponential velocity of AI commercialization.\n\n  - ### Current Landscape (2026)"
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 2,
+      "better_version": "A",
+      "improvement": -2
+    },
+    "raw_b": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 4,
+      "better_version": "B",
+      "improvement": 2
+    }
+  },
+  "completeness": {
+    "score": 0.9166666666666666,
+    "detail": [
+      {
+        "fp": "96a500d37e8438bd",
+        "claim": "Adobe Analytics reported that AI-based traffic to leading retail sites increased by 1,300% in the previous year, though ",
+        "matched": true
+      },
+      {
+        "fp": "8c1d6929108e1904",
+        "claim": "Anthropic's internal survey of 132 engineers found that employees self-report using Claude in 60% of their work and achi",
+        "matched": true
+      },
+      {
+        "fp": "91ed352da947a8b4",
+        "claim": "86% of professionals in the Anthropic study reported that AI saves them time.",
+        "matched": true
+      },
+      {
+        "fp": "2271f1c45202f4b7",
+        "claim": "Workers who engaged across seven different task types reported five times as much time saved as those using only four ta",
+        "matched": true
+      },
+      {
+        "fp": "e0e5bf537aab43fc",
+        "claim": "96% of US senior leaders surveyed by EY reported seeing AI-driven productivity gains, with 57% reporting significant gai",
+        "matched": true
+      },
+      {
+        "fp": "45d9c4f79601c8af",
+        "claim": "Between 2023 and 2024, the percentage of American physicians reporting AI use for at least one use case increased from 3",
+        "matched": true
+      },
+      {
+        "fp": "52cfb3cc6874c556",
+        "claim": "The Section survey identified a 53-point gap in perception of AI policy clarity, with 81% of C-suite officers reporting ",
+        "matched": true
+      },
+      {
+        "fp": "52d16b743147ccea",
+        "claim": "According to the Section survey, only 3% of employees are using AI proficiently, while 97% are classified as AI novices ",
+        "matched": true
+      },
+      {
+        "fp": "82f1abd86ad41ada",
+        "claim": "A Section survey of 5,000 white-collar workers in the US, UK, and Canada found that 40% of employees reported saving no ",
+        "matched": true
+      },
+      {
+        "fp": "26972cf591c5c918",
+        "claim": "The AI industry's cumulative revenue growth rate has accelerated 90x, decreasing from 180 days to add a billion dollars ",
+        "matched": true
+      },
+      {
+        "fp": "d6f3c2dfa06dc84a",
+        "claim": "Researchers from ActiveTrack analyzed the digital activity of more than 10,000 workers and found that when people adopte",
+        "matched": false
+      },
+      {
+        "fp": "24351faad2758313",
+        "claim": "Meta consumed between 60 and 74 trillion tokens in a single month, with its top individual user consuming 280 billion to",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

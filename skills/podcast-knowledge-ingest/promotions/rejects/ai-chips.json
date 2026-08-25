@@ -1,0 +1,184 @@
+{
+  "topic": "AI Chips",
+  "topic_slug": "ai-chips",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0"
+  ],
+  "n_assertions": 8,
+  "episodes": [
+    "how-big-a-deal-is-the-usas-ai-genesis-mission",
+    "how-the-global-ai-race-has-changed",
+    "microsofts-plan-to-make-people-less-angry-about-ai-and-electricity",
+    "nano-banana-2-is-here",
+    "towards-ai-that-can-actually-interact"
+  ],
+  "assertion_fingerprints": [
+    "5172885f4b85914c",
+    "5eb62ce52de56e09",
+    "6461f7d1ac194309",
+    "9430422f34ef5f8b",
+    "9868135092dc6b00",
+    "a1fe6c6d53e3858c",
+    "b35da839955bba3b",
+    "e26d35b9b4f2c02b"
+  ],
+  "target_page": "AI Chips.md",
+  "assertions": [
+    {
+      "claim": "Meta is in talks to order billions of dollars worth of Google TPUs to install in their own data centers in 2027.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "The Information / AI Daily Brief Host",
+      "episode": "how-big-a-deal-is-the-usas-ai-genesis-mission",
+      "claim_date": "2025-11-30",
+      "evidence": "According to sources speaking with The Information, 'Meta is in talks to order billions of dollars worth of TPUs to install in their data centers in 2027.' Google has begun pitching large cloud customers on installing TPUs at their own facilities.",
+      "fp": "9868135092dc6b00"
+    },
+    {
+      "claim": "Google's Gemini 3 model was trained exclusively on TPUs, which has increased market scrutiny of Google's chips as a viable alternative to Nvidia GPUs.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "AI Daily Brief Host / Market Reports",
+      "episode": "how-big-a-deal-is-the-usas-ai-genesis-mission",
+      "claim_date": "2025-11-30",
+      "evidence": "The transcript notes 'the release of Gemini 3 put the chips firmly on people's radar. The new model was trained exclusively on TPUs, leading many to question whether Google's chips could be a viable alternative to Nvidia's GPUs.'",
+      "fp": "6461f7d1ac194309"
+    },
+    {
+      "claim": "Google has developed a new software suite called 'TPU Command Center' to ease TPU compatibility and address the moat created by Nvidia's CUDA ecosystem.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "The Information / AI Daily Brief Host",
+      "episode": "how-big-a-deal-is-the-usas-ai-genesis-mission",
+      "claim_date": "2025-11-30",
+      "evidence": "The report states that 'One of Nvidia's biggest moes is the CUDA developer ecosystem. As part of the information report, they write that Google has developed a new software suite called TPU command center that's designed to make TPU compatibility more easy to navigate.'",
+      "fp": "b35da839955bba3b"
+    },
+    {
+      "claim": "Nvidia is actively countering Google's TPU push by securing large commitments from Anthropic and OpenAI, and may seek to preempt a deal between Google and Meta.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "The Information / AI Daily Brief Host",
+      "episode": "how-big-a-deal-is-the-usas-ai-genesis-mission",
+      "claim_date": "2025-11-30",
+      "evidence": "The transcript reports that 'Nvidia is following the dealmaking closely and have enticed Anthropic and OpenAI to make large commitments to Nvidia GPUs. They also wrote that it's possible that Nvidia will seek to preempt a deal between Google and Meta.'",
+      "fp": "5eb62ce52de56e09"
+    },
+    {
+      "claim": "Zhipu announced in January that it trained its first model exclusively on Huawei chips, serving as a proof of concept for a complete domestic Chinese hardware and software stack for AI training.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Podcast Host",
+      "episode": "how-the-global-ai-race-has-changed",
+      "claim_date": "2026-02-12",
+      "evidence": "The transcript states, 'In January, Zhipu announced that they'd trained their first model exclusively on Huawei chips... the training run was a proof of concept that Huawei does have now a complete hardware and software stack capable of training an AI model.'",
+      "fp": "9430422f34ef5f8b"
+    },
+    {
+      "claim": "The US Commerce Department finalized approval for Nvidia H200 chip exports to China with conditions including third-party inspection of AI capabilities and a limit that Nvidia can ship only 50% as many chips to China as it sells to US customers.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "US Commerce Department / Transcript",
+      "episode": "microsofts-plan-to-make-people-less-angry-about-ai-and-electricity",
+      "claim_date": "2026-01-16",
+      "evidence": "The transcript states: 'The chips will be inspected by a third party testing lab to confirm their AI capabilities before they can be shipped to China. Nvidia is also limited to shipping 50% as many chips to China as they sell to US customers.'",
+      "fp": "a1fe6c6d53e3858c"
+    },
+    {
+      "claim": "Meta has scrapped development plans for its most advanced AI chip due to design roadblocks and is refocusing efforts on a less complicated version of its custom silicon.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "The Information (reported by AI Daily Brief host)",
+      "episode": "nano-banana-2-is-here",
+      "claim_date": "2026-03-02",
+      "evidence": "The transcript states: 'Meta has scrapped development plans for their most advanced AI chip. After struggling with key elements of the chip's design, efforts will be refocused on a less complicated version of the custom silicon.'",
+      "fp": "5172885f4b85914c"
+    },
+    {
+      "claim": "The AI Daily Brief host interprets the absence of Jensen Huang from the US-China trade delegation as a strategic signal that Nvidia's AI chips are off the table for trade negotiations.",
+      "tier": "2",
+      "confidence": "0.7",
+      "source": "AI Daily Brief host",
+      "episode": "towards-ai-that-can-actually-interact",
+      "claim_date": "2026-05-13",
+      "evidence": "Huang's absence could mean that the White House is sending a signal that Nvidia's AI chips are off the table as part of the trade talks... We'll see later this week how much the absence of Jensen is an actual strategic move.",
+      "fp": "e26d35b9b4f2c02b"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "Access depends on a concentrated fabrication supply chain, so export controls and foundry capacity directly shape who can train frontier models.",
+      "content": "\n- ### Recent Developments\n  - **Google TPU Adoption & Ecosystem:** Meta is in talks to order billions of dollars worth of Google TPUs for installation in its own data centers in 2027, as Google pitches large cloud customers on on-premise TPU deployments. Market scrutiny of TPUs as a viable alternative to Nvidia GPUs has intensified following the release of Gemini 3, which was trained exclusively on TPUs. To counter Nvidia's CUDA ecosystem moat, Google has developed a new software suite called \"TPU Command Center\" to simplify TPU compatibility and navigation.\n  - **Nvidia Counter-Moves & Geopolitics:** Nvidia is actively countering the TPU push by securing large commitments from Anthropic and OpenAI and may seek to preempt a potential deal between Google and Meta. In the US-China context, the US Commerce Department finalized approval for Nvidia H200 chip exports to China, subject to third-party inspection of AI capabilities and a limit restricting Nvidia to shipping only 50% as many chips to China as it sells to US customers. The absence of Nvidia CEO Jensen Huang from the US-China trade delegation has been interpreted as a strategic signal that Nvidia's AI chips are off the table for trade negotiations.\n  - **Domestic Stacks & Custom Silicon:** Zhipu announced in January that it trained its first model exclusively on Huawei chips, serving as a proof of concept for a complete domestic Chinese hardware and software stack for AI training. Meanwhile, Meta has scrapped development plans for its most advanced AI chip due to design roadblocks, refocusing efforts on a less complicated version of its custom silicon."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 3,
+      "relevance": 4,
+      "coherence": 5,
+      "better_version": "A",
+      "improvement": -2
+    },
+    "raw_b": {
+      "factual_grounding": 1,
+      "relevance": 3,
+      "coherence": 4,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 0.875,
+    "detail": [
+      {
+        "fp": "9868135092dc6b00",
+        "claim": "Meta is in talks to order billions of dollars worth of Google TPUs to install in their own data centers in 2027.",
+        "matched": true
+      },
+      {
+        "fp": "6461f7d1ac194309",
+        "claim": "Google's Gemini 3 model was trained exclusively on TPUs, which has increased market scrutiny of Google's chips as a viab",
+        "matched": true
+      },
+      {
+        "fp": "b35da839955bba3b",
+        "claim": "Google has developed a new software suite called 'TPU Command Center' to ease TPU compatibility and address the moat cre",
+        "matched": true
+      },
+      {
+        "fp": "5eb62ce52de56e09",
+        "claim": "Nvidia is actively countering Google's TPU push by securing large commitments from Anthropic and OpenAI, and may seek to",
+        "matched": true
+      },
+      {
+        "fp": "9430422f34ef5f8b",
+        "claim": "Zhipu announced in January that it trained its first model exclusively on Huawei chips, serving as a proof of concept fo",
+        "matched": true
+      },
+      {
+        "fp": "a1fe6c6d53e3858c",
+        "claim": "The US Commerce Department finalized approval for Nvidia H200 chip exports to China with conditions including third-part",
+        "matched": true
+      },
+      {
+        "fp": "5172885f4b85914c",
+        "claim": "Meta has scrapped development plans for its most advanced AI chip due to design roadblocks and is refocusing efforts on ",
+        "matched": true
+      },
+      {
+        "fp": "e26d35b9b4f2c02b",
+        "claim": "The AI Daily Brief host interprets the absence of Jensen Huang from the US-China trade delegation as a strategic signal ",
+        "matched": false
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

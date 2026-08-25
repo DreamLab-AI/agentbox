@@ -1,0 +1,154 @@
+# Dossier: Agentic Workflow
+
+- status: `candidate_survivor`
+- target page: `Agentic Workflow.md`
+- assertions: 66 across episodes: autoresearch-agent-loops-and-the-future-of-work, claude-code-is-now-writing-claude-code, fable-5-raises-the-bar-for-ai-ambition, first-impressions-of-the-new-opus-48, gpt-54-first-test-results, grok-bot-finally-makes-ai-agents-easy, harness-engineering-101, how-harness-as-a-service-will-change-agents, how-i-built-my-10-agent-openclaw-team, how-people-actually-use-ai-agents, how-the-4-new-models-released-this-week-will-change-how-you-work, how-to-build-a-personal-agentic-operating-system, how-to-get-the-most-from-ai-this-summer, how-to-get-the-most-out-of-fable-5-and-gpt-56-sol, how-to-help-people-thrive-with-ai, how-to-use-claude-cowork-on-the-go, how-to-use-claudes-massive-new-upgrades, how-to-use-opus-47-and-the-new-codex, is-the-debate-over-anthropics-new-product-about-price-or-existential-dread, surprise-elon-anthropic-team-up-reshapes-ai-race, the-16-coolest-agents-ive-built-so-far, the-5-biggest-ai-stories-to-watch-in-december, the-5-minute-ai-weekly-recap-realignment-week, the-ai-scientist-that-does-6-months-of-work-in-a-day, the-ai-token-shortage-begins, the-best-claude-design-use-cases, the-biggest-battle-in-ai-is-for-your-personal-context, the-month-ai-woke-up, the-next-wave-of-enterprise-ai, the-openclaw-ification-of-ai, the-race-to-put-ai-agents-everywhere, the-rise-of-the-zero-human-company, the-self-driving-company, the-ultimate-ai-catch-up-guide, the-way-we-use-ai-is-changing, what-google-needs-to-do-at-io-this-week, what-the-heck-is-graph-engineering, why-ai-leads-to-more-work-not-less, why-claude-opus-45-changes-whats-possible-with-vibe-coding, will-this-update-from-openai-make-ai-agents-work-better
+
+## Scores
+- judge ok: True  error: None
+- rubric-A improvement (after vs before): 2.0
+- rubric-B improvement (after vs before): 2.0
+- answer-completeness: 1.00
+
+## Assertions
+- **Boris Cherny, creator of Claude Code, released a '/loop' feature on March 7, 2025, allowing users to schedule recurring agentic tasks for up to 3 days, such as auto-fixing build issues or summarizing Slack posts.**
+  - tier 1, confidence 0.92, source Boris Cherny (via podcast transcript), episode `autoresearch-agent-loops-and-the-future-of-work`, fp `9e15edaf2aef81be`
+- **Business functions with measurable outcomes and fast feedback loops, such as advertising, cold outreach, and A/B testing, will be among the first to adopt agentic loops, potentially increasing experiment volume from dozens to thousands per year.**
+  - tier 3, confidence 0.72, source Podcast Host / Eric (via podcast transcript), episode `autoresearch-agent-loops-and-the-future-of-work`, fp `eb588a27906c0977`
+- **Boris Cherny, creator of Claude Code, reported that 100% of his code contributions to the project over the last 30 days were written by Claude Code (Opus 4.5).**
+  - tier 1, confidence 0.95, source Boris Cherny, episode `claude-code-is-now-writing-claude-code`, fp `9dac4f285f91dcd5`
+- **On the Frontier Code benchmark, Claude Fable 5 scored 29.3%, more than double the previous best of 13.4% achieved by Opus 4.8.**
+  - tier 1, confidence 0.95, source AI Daily Brief Host / Cognition, episode `fable-5-raises-the-bar-for-ai-ambition`, fp `c4f6bbbd4d5cd3a8`
+- **Anthropic's 'Dynamic Workflows' feature in Claude Code allows Opus 4.8 to orchestrate hundreds of parallel sub-agents, demonstrated by a 11-day migration of 750,000 lines of code from Zig to Rust with 99.8% test pass rate.**
+  - tier 1, confidence 0.9, source Anthropic / Developer Jared Sumner (reported by host), episode `first-impressions-of-the-new-opus-48`, fp `4e866b2d30a2d150`
+- **GPT-5.4 exhibits significant 'scope creep' and over-verbosity, often expanding tasks beyond user requests and providing excessively detailed responses that increase cognitive burden for the prompter.**
+  - tier 2, confidence 0.85, source Host (Matt Schmidt) / Community Feedback, episode `gpt-54-first-test-results`, fp `f98e71372e490035`
+- **The skill set of 'agent building and orchestration' is emerging as a distinct, in-demand professional competency that is difficult to describe or evaluate using traditional technical metrics.**
+  - tier 3, confidence 0.7, source Host (Matt Schmidt), episode `gpt-54-first-test-results`, fp `7b76fca36df184fd`
+- **Grok Bot, a collaborative product from Cursor and SpaceX AI, allows users to deploy multiple coordinating agents via a Telegram-like interface that operates on a persistent virtual computer.**
+  - tier 2, confidence 0.85, source AI Daily Brief Host / Cursor & SpaceX AI, episode `grok-bot-finally-makes-ai-agents-easy`, fp `359b65f3ad96ae87`
+- **Cursor 3 was launched in early April 2025 as a unified workspace for building software with agents, featuring multi-repo layouts and seamless handoff between local and cloud agents.**
+  - tier 1, confidence 0.95, source Cursor / AI Daily Brief Host, episode `harness-engineering-101`, fp `5fe751cbd3da4b30`
+- **The 'Harness as a Service' (HaaS) category is emerging, where companies sell access to pre-built agent runtimes that handle tool dispatch, sandboxing, and state management, similar to how AWS sells compute.**
+  - tier 2, confidence 0.85, source AI Daily Brief Host, episode `how-harness-as-a-service-will-change-agents`, fp `4e7c055d25e463df`
+- **OpenClaw agents utilize a 'heartbeat' mechanism that triggers autonomous task execution every 30 minutes by default, allowing agents to perform work without active user interaction.**
+  - tier 1, confidence 0.95, source Host (AI Daily Brief), episode `how-i-built-my-10-agent-openclaw-team`, fp `7c2e4cf26015c278`
+- **The host identifies that the most valuable use case for OpenClaw agents is persistent, around-the-clock research and cataloging, rather than complex iterative coding tasks.**
+  - tier 2, confidence 0.85, source Host (AI Daily Brief), episode `how-i-built-my-10-agent-openclaw-team`, fp `25314f7e69cf43e9`
+- **The host predicts that off-the-shelf mission control dashboards for managing multiple AI agents will become widely available very soon, reducing the need for custom-built monitoring interfaces.**
+  - tier 3, confidence 0.75, source Host (AI Daily Brief), episode `how-i-built-my-10-agent-openclaw-team`, fp `a51cf33fdd748c2f`
+- **The host anticipates that project manager agents will evolve from simple to-do list managers into systems that interact with other organizational tools and agents to provide comprehensive project status updates.**
+  - tier 3, confidence 0.7, source Host (AI Daily Brief), episode `how-i-built-my-10-agent-openclaw-team`, fp `03bbd58c00a31f26`
+- **Claude Code is better conceptualized as a 'code-enabled general-purpose agent' rather than a specialized coding tool, as it is the first agent to achieve significant product-market fit.**
+  - tier 2, confidence 0.85, source AI Daily Brief Host, episode `how-people-actually-use-ai-agents`, fp `615411803897d5d4`
+- **GPT Live employs a decoupled architectural pattern where the interaction model delegates complex reasoning, search, or agent tasks to background models like GPT 5.5 or 5.6 while maintaining the conversational flow.**
+  - tier 1, confidence 0.95, source OpenAI / AI Daily Brief Host, episode `how-the-4-new-models-released-this-week-will-change-how-you-work`, fp `85560176da68ff67`
+- **The 'Agentic Operating System' (Agent OS) is a seven-layer framework consisting of Identity, Context, Skills, Memory, Connections, Verification, and Automations.**
+  - tier 2, confidence 0.98, source Nofar Gaspar, episode `how-to-build-a-personal-agentic-operating-system`, fp `3b00a0bb0251d928`
+- **Ethan Mollick asserts that for intensive, high-stakes AI work, there are effectively only two viable primary systems currently: ChatGPT and Claude.**
+  - tier 2, confidence 0.95, source Ethan Mollick (as reported by the AI Daily Brief host), episode `how-to-get-the-most-from-ai-this-summer`, fp `1de0c172fa613582`
+- **In agentic AI systems, permission settings are critical for safety and workflow control, as demonstrated by an instance where ChatGPT autonomously sent an email while Claude only drafted it based on different approval settings.**
+  - tier 2, confidence 0.95, source Ethan Mollick (as reported by the AI Daily Brief host), episode `how-to-get-the-most-from-ai-this-summer`, fp `3824c1419b5237a8`
+- **The 'Lemonade Stand' expedition in the AI Summer Adventure program guides users through creating an AI-staffed microbusiness, including idea generation, business planning with an AI org chart, and demand validation.**
+  - tier 2, confidence 0.9, source AI Daily Brief Host, episode `how-to-get-the-most-from-ai-this-summer`, fp `94bc0e390966d5af`
+- **Agentic loops, which involve well-defined tasks with test builds and diffs that agents can recheck, are more intuitive in software engineering but require specific training to apply effectively in non-technical work.**
+  - tier 2, confidence 0.8, source AI Daily Brief Host, episode `how-to-get-the-most-from-ai-this-summer`, fp `3972cb571c7e9416`
+- **The integration of Codex and ChatGPT introduces 'Steer' and 'Queue' messaging capabilities, allowing users to send instructions to a running agent without waiting for the current task to finish.**
+  - tier 2, confidence 0.9, source OpenAI (via Eric Provencal's prompting guide), episode `how-to-get-the-most-out-of-fable-5-and-gpt-56-sol`, fp `2611308edf42862c`
+- **Claude Devs categorizes agentic loops into four types: turn-based, goal-based, time-based, and proactive, each with different trigger and stop criteria.**
+  - tier 2, confidence 0.9, source Claude Devs (Anthropic), episode `how-to-get-the-most-out-of-fable-5-and-gpt-56-sol`, fp `9c0db586ce474d15`
+- **Matt Schumer recommends using 'loop' strategies with Claude Fable 5, where the model is put on a loop against a specific 'bar' for done, preventing it from stopping at its own lower standard of 'good enough'.**
+  - tier 2, confidence 0.85, source Matt Schumer (AI Practitioner), episode `how-to-get-the-most-out-of-fable-5-and-gpt-56-sol`, fp `f5eef9aa52bb8dfc`
+- **The host predicts that loop-based interaction patterns will expand beyond coding into creative and knowledge work in the coming months.**
+  - tier 3, confidence 0.7, source Host (AI Daily Brief), episode `how-to-get-the-most-out-of-fable-5-and-gpt-56-sol`, fp `61734d2fbb84c65d`
+- **A Section AI proficiency report found that while 69% of workers reported their organization had taken some action on AI agents, only 16% actually use an agentic tool at work, and less than 10% can define an AI agent in their own words.**
+  - tier 1, confidence 0.95, source Section AI proficiency report, episode `how-to-help-people-thrive-with-ai`, fp `1ae0efd9061de00a`
+- **The host predicts that the real benefits of institutionalizing the interaction pattern between engineering and business performers will emerge over several months, as business people begin to think differently about their work and pursue new, orthogonal tasks rather than just optimizing existing ones.**
+  - tier 3, confidence 0.6, source Host (AI Daily Brief), episode `how-to-help-people-thrive-with-ai`, fp `f72458b667a21200`
+- **Anthropic's Claude Co-work Dispatch feature allows users to initiate sessions on their computer and continue monitoring progress and providing approvals from mobile devices while the session remains hosted in a local sandbox.**
+  - tier 1, confidence 0.95, source AI Daily Brief Host, episode `how-to-use-claude-cowork-on-the-go`, fp `6f3d49a99793ba1a`
+- **Anthropic released a feature allowing Claude to control the user's computer, including mouse, keyboard, and screen, to complete tasks in any application.**
+  - tier 1, confidence 0.98, source Anthropic (Felix Riesberg), episode `how-to-use-claudes-massive-new-upgrades`, fp `1d4a4bcc6ac02111`
+- **Anthropic's 'Dispatch' feature for Claude Co-work allows users to maintain a single persistent conversation thread that runs on their local computer, enabling them to message Claude from a phone and receive finished work without resetting context.**
+  - tier 1, confidence 0.95, source Anthropic (Felix Riesberg), episode `how-to-use-claudes-massive-new-upgrades`, fp `9fb68d5c349c3656`
+- **The implementation of computer use and dispatch shifts the user's mental model from operating a tool to delegating tasks to an autonomous agent, fundamentally changing how users structure their workday around asynchronous AI execution.**
+  - tier 2, confidence 0.8, source Gagan Soluja / Pavel Huryn, episode `how-to-use-claudes-massive-new-upgrades`, fp `d90e4d9e3618b29f`
+- **Cat Wu from Anthropic recommends delegating tasks to Opus 4.7 rather than micromanaging, advising users to provide the full goal, constraints, and acceptance criteria up front to avoid reducing quality through progressive clarification.**
+  - tier 2, confidence 0.9, source Cat Wu (Anthropic Claude Code team), episode `how-to-use-opus-47-and-the-new-codex`, fp `13cd42211fe4f85b`
+- **The 'mono-thread' pattern in Codex involves keeping a small number of long-lived threads alive for recurring work streams, where the thread's value increases over time due to improved context compaction.**
+  - tier 2, confidence 0.85, source Nick Bowman (Codex team) and Host (AI Daily Brief), episode `how-to-use-opus-47-and-the-new-codex`, fp `327f9836d9428178`
+- **Boris Tain argues that AI agents have killed the traditional Software Development Life Cycle (SDLC) by collapsing discrete stages into a continuous loop of intent, context, and iteration, rather than merely speeding them up.**
+  - tier 2, confidence 0.85, source Boris Tain, episode `is-the-debate-over-anthropics-new-product-about-price-or-existential-dread`, fp `cec35c94451f8377`
+- **Anthropic's multi-agent orchestration capability allows a lead agent to delegate tasks to specialist sub-agents that operate in parallel on a shared file system, with the lead agent able to monitor and check in on sub-agents mid-workflow.**
+  - tier 1, confidence 0.9, source Anthropic, episode `surprise-elon-anthropic-team-up-reshapes-ai-race`, fp `1ee1db46dc196f50`
+- **The 'Mycroft' agent is designed to function as a 'digital chief AI officer' that builds and continuously updates a company-wide AI strategy and roadmap.**
+  - tier 2, confidence 0.95, source Host (AI Daily Brief), episode `the-16-coolest-agents-ive-built-so-far`, fp `f80a5e27acf4fbac`
+- **Sierra announced that it had reached $100 million in Annual Recurring Revenue (ARR) as part of a press push to claim territory in enterprise customer service AI.**
+  - tier 1, confidence 0.9, source Sierra (cited by Host), episode `the-5-biggest-ai-stories-to-watch-in-december`, fp `4ecc944af86f7814`
+- **The concept of 'loops' as a primary mode of interaction with AI is gaining significant traction, exemplified by Matthew Berman's launch of 'Loop Library' which provides copyable loops for non-engineering functions.**
+  - tier 3, confidence 0.55, source AI Daily Brief host, episode `the-5-minute-ai-weekly-recap-realignment-week`, fp `3e32d1d019ad9515`
+- **Researchers may prefer a real-time collaborative AI interface over long, autonomous runs, as the latter may not align with the iterative nature of scientific inquiry.**
+  - tier 2, confidence 0.7, source Nico McCardi (Analyst/Commentator), episode `the-ai-scientist-that-does-6-months-of-work-in-a-day`, fp `a1a6f4b6922fc0e1`
+- **The optimal balance between autonomous AI agents and real-time human collaboration is a spectrum that will vary by use case and is not yet clearly defined.**
+  - tier 3, confidence 0.6, source Host (AI Daily Brief), episode `the-ai-scientist-that-does-6-months-of-work-in-a-day`, fp `d85c72117db26e88`
+- **Model releases are becoming less significant relative to harness and tooling updates, as the focus shifts to the surfaces and workflows that enable agentic capabilities.**
+  - tier 2, confidence 0.75, source AI Daily Brief host (citing Riley Brown and Greg Eisenberg), episode `the-ai-token-shortage-begins`, fp `8ec15ae3aa8bcfc2`
+- **Claude Design features a 'Socratic design process' where the AI asks clarifying questions and provides multiple theses to help users refine their design intent.**
+  - tier 2, confidence 0.85, source AI Daily Brief host, episode `the-best-claude-design-use-cases`, fp `499426ca1e8445d2`
+- **Anthropic announced Claude Co-work, a simplified version of Claude Code designed for non-technical users that operates within the Claude desktop app.**
+  - tier 1, confidence 0.95, source AI Daily Brief host, episode `the-biggest-battle-in-ai-is-for-your-personal-context`, fp `2e66859506d3d821`
+- **Claude Co-work and Claude Code derive their power from direct access to local desktop context, allowing users to point the AI at relevant computer files rather than manually uploading them.**
+  - tier 2, confidence 0.9, source AI Daily Brief host, episode `the-biggest-battle-in-ai-is-for-your-personal-context`, fp `450580490ffa5e4e`
+- **Andrej Karpathy stated that coding agents did not work effectively before December 2025 but became highly capable in the last two months, significantly disrupting default programming workflows.**
+  - tier 2, confidence 0.95, source Andrej Karpathy (via AI Daily Brief host), episode `the-month-ai-woke-up`, fp `541d49987a6c2094`
+- **Approximately 50% of OpenAI Codex users now run more than one task simultaneously at some point during the day, up from less than one-third in mid-April.**
+  - tier 1, confidence 0.9, source AI Daily Brief host, episode `the-next-wave-of-enterprise-ai`, fp `b3aba9d086b90e41`
+- **The shift from sequential to parallel task execution in AI tools like Codex is enabling individual knowledge workers to operate at the scale of a small team by orchestrating multiple work streams simultaneously.**
+  - tier 2, confidence 0.85, source AI Daily Brief host, episode `the-next-wave-of-enterprise-ai`, fp `0cef50a0c11d7c47`
+- **OpenAI's Codex Sites feature allows users to convert artifacts into shareable, interactive web apps, which the host argues represents a new core knowledge work primitive rather than traditional software engineering.**
+  - tier 2, confidence 0.8, source AI Daily Brief host, episode `the-next-wave-of-enterprise-ai`, fp `4ea9c3f756523f07`
+- **OpenAI's role-specific plugins for functions like sales and investment banking productize best practices by bundling apps and skills used by top performers, effectively serving as product-led education for enterprise users.**
+  - tier 2, confidence 0.8, source AI Daily Brief host, episode `the-next-wave-of-enterprise-ai`, fp `f15a14d24cc61739`
+- **Anthropic released a remote control feature for Claude Code that allows users to initiate tasks in a terminal and manage the session from a mobile device or web interface while the code executes on a local machine.**
+  - tier 1, confidence 0.95, source Anthropic, episode `the-openclaw-ification-of-ai`, fp `6bae03a0dd9c463b`
+- **Perplexity CEO Arvind Srinivas argues that the full potential of agentic systems requires the complete canvas of a computer, bridging local files to cloud systems, rather than just chat interfaces or individual task agents.**
+  - tier 2, confidence 0.85, source Arvind Srinivas (Perplexity CEO), episode `the-race-to-put-ai-agents-everywhere`, fp `c7f00c8288168600`
+- **Ben Broca built the Pulsia platform in approximately one month by 'skipping to the end state' where AI can do everything, rather than iteratively testing limitations, leveraging new models like Opus 4.5 and Codex 5.2.**
+  - tier 2, confidence 0.85, source Ben Broca, episode `the-rise-of-the-zero-human-company`, fp `650933d1457f2b51`
+- **Replit reported a 5.8x increase in lines of code contributed from early January to late June 2025.**
+  - tier 1, confidence 0.95, source Amjad Masad (Replit CEO), episode `the-self-driving-company`, fp `b3d6cd3ce9cc06bb`
+- **The fundamental prerequisite for a 'self-driving company' is not just having capable AI agents, but integrating those agents with all existing organizational systems and data sources.**
+  - tier 2, confidence 0.85, source Host (AI Daily Brief), episode `the-self-driving-company`, fp `84235a5ceb66ac91`
+- **True 'self-driving' company operations are defined by loops where agents have goals set by humans, access to necessary systems, and verifiable criteria to evaluate their progress, rather than just performing isolated tasks.**
+  - tier 2, confidence 0.85, source Host (AI Daily Brief), episode `the-self-driving-company`, fp `8ced546fd9e89864`
+- **The transition to agentic work does not eliminate problems but shifts the nature of the problems organizations must solve, such as managing new bottlenecks in code review or data integration.**
+  - tier 2, confidence 0.8, source Host (AI Daily Brief), episode `the-self-driving-company`, fp `05d322d6f345ac14`
+- **The market will likely productize the internal tools and workflows developed for 'self-driving' companies within 6 to 12 months, making these capabilities accessible to organizations without large engineering teams.**
+  - tier 3, confidence 0.6, source Host (AI Daily Brief), episode `the-self-driving-company`, fp `edb873e952548063`
+- **Companies that implement looping agentic systems connected to real-time customer information will evolve and improve at a rate significantly different from current norms within a few years.**
+  - tier 3, confidence 0.55, source Host (AI Daily Brief), episode `the-self-driving-company`, fp `95bb2103be132bae`
+- **In the AI Daily Brief's February AI usage pulse survey, 97% of respondents reported using AI every day, and more than 60% were using advanced agentic or automation use cases.**
+  - tier 1, confidence 0.95, source AI Daily Brief (Host), episode `the-ultimate-ai-catch-up-guide`, fp `eb744306770978c6`
+- **The 'AI advantage gap' is widening as power users adopt agentic loops and coding tools, resulting in compounding value and higher token consumption, while casual users continue to experience only linear gains from chat interfaces.**
+  - tier 2, confidence 0.75, source AI Daily Brief host, episode `the-way-we-use-ai-is-changing`, fp `54b2c52ab08bc771`
+- **The primary motivation for OpenAI's ChatGPT overhaul is not just revenue or IPO preparation, but a strategic effort to democratize the high-value agentic experiences currently reserved for power users by changing core app interfaces.**
+  - tier 3, confidence 0.6, source AI Daily Brief host, episode `the-way-we-use-ai-is-changing`, fp `89c58f0575825e5f`
+- **The launch of Codex in the ChatGPT mobile app represents a shift from AI as a chat interface to AI agents as persistent operators, where the human role transitions from execution to triage and approval.**
+  - tier 2, confidence 0.8, source AI Daily Brief host and Lapo Cheresi, episode `what-google-needs-to-do-at-io-this-week`, fp `502da0052eaf9d74`
+- **Graph engineering is the discipline of designing how multiple agents, tools, knowledge sources, and humans interact and connect within an agentic system, distinct from loop engineering which focuses on single-agent iteration.**
+  - tier 2, confidence 0.8, source AI Daily Brief Host, episode `what-the-heck-is-graph-engineering`, fp `bb64214894c8a3cc`
+- **The study found that AI use led to increased multitasking, with workers manually writing code while AI generated alternatives, running multiple agents in parallel, or reviving deferred tasks.**
+  - tier 1, confidence 0.95, source Aruna Ranganathan and Shixi Maggie Ye (Berkeley Haas), episode `why-ai-leads-to-more-work-not-less`, fp `2f731fa9be821a94`
+- **Claude Opus 4.5 enables 'vibe coding' of entire applications end-to-end without users touching implementation details, a capability previous models lacked due to code convolutedness and bugs.**
+  - tier 2, confidence 0.75, source Dan Shipper / Kieran Classen, episode `why-claude-opus-45-changes-whats-possible-with-vibe-coding`, fp `85e8644461f1fb0d`
+- **Anthropic introduced agent skills in October 2025 as a mechanism for building specialized agents using organized folders of instructions, scripts, and resources.**
+  - tier 1, confidence 0.95, source Anthropic, episode `will-this-update-from-openai-make-ai-agents-work-better`, fp `c18d8701c0f4b858`
+
+## Draft splice edit
+```json
+{
+  "mode": "insert_after",
+  "anchor": "  37. Gartner (2025). Predicts 2026: Artificial Intelligence. Gartner Research. (40% of enterprise applications will feature task-specific AI agents by end 2026.)",
+  "content": "\n\n  ## Recent Developments (Late 2025 \u2013 Early 2026)\n\n  Recent industry announcements and research highlight a rapid shift toward fully autonomous, computer-level agentic capabilities and new operational paradigms for human-agent collaboration.\n\n  **Computer-Level Autonomy and Control**\n  - **Claude Computer Control:** Anthropic released a feature allowing Claude to directly control the user's computer, including mouse, keyboard, and screen, to complete tasks in any application. As stated by Anthropic\u2019s Felix Riesberg, this gives the agent the ability to \"use any app,\" navigating browsers, filling spreadsheets, and performing any task a user would do sitting at their desk.\n  - **Remote and Mobile Orchestration:** Anthropic introduced a remote control feature for Claude Code, allowing users to initiate tasks in a terminal and manage the session from a mobile device or web interface while the code executes on a local machine. This is complemented by the **Dispatch** feature for Claude Co-work, which maintains a single persistent conversation thread on the user's local computer, enabling users to message Claude from a phone and receive finished work without resetting context.\n\n  **New Agentic Architectures and Frameworks**\n  - **Claude Co-work:** Anthropic announced Claude Co-work, a simplified version of Claude Code designed for non-technical users. It operates within the Claude desktop app, removing the need for terminal interaction and allowing users to initiate sessions in a local sandbox while monitoring progress and providing approvals from mobile devices.\n  - **Agent Skills:** In October 2025, Anthropic introduced agent skills as a mechanism for building specialized agents. Skills are defined as organized folders of instructions, scripts, and resources that agents can discover and load dynamically to perform better at specific tasks.\n  - **Agentic Operating System (Agent OS):** A seven-layer framework has been proposed to structure agentic systems, consisting of Identity, Context, Skills, Memory, Connections, Verification, and Automations. This framework aims to provide a standardized architecture for how agents manage their state, interact with tools, and execute autonomous tasks.\n  - **OpenClaw Heartbeat Mechanism:** OpenClaw agents utilize a 'heartbeat' mechanism that triggers autonomous task execution every 30 minutes by default. This allows agents to perform work without active user interaction, reading a task file and executing listed items on a scheduled basis.\n\n  **Impact on Software Engineering and Workflows**\n  - **100% AI-Generated Codebases:** Boris Cherny, creator of Claude Code, reported that 100% of his code contributions to the project over the last 30 days were written by Claude Code (Opus 4.5). In that period, he landed 259 PRs and 497 commits, with every line of code generated by the agent.\n  - **Workflow Disruption:** Andrej Karpathy noted that coding agents did not work effectively before December 2025 but became highly capable in the subsequent two months, significantly disrupting default programming workflows due to improved long-term coherence and tenacity.\n  - **Increased Multitasking:** Research by Aruna Ranganathan and Shixi Maggie Ye (Berkeley Haas) found that AI use led to increased multitasking in software development. Workers are now manually writing code while AI generates alternatives, running multiple agents in parallel, or reviving long-deferred tasks because AI can handle them in the background.\n\n  **Strategic and Enterprise Agents**\n  - **Mycroft Agent:** A new class of agent, 'Mycroft', is designed to function as a 'digital chief AI officer'. It lives in Slack and the web, conducting intake interviews to build and continuously update a company-wide AI strategy and roadmap, including use cases, data integration, governance, and ROI goals."
+}
+```

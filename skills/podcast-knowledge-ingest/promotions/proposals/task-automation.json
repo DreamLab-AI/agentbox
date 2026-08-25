@@ -1,0 +1,228 @@
+{
+  "topic": "Task Automation",
+  "topic_slug": "task-automation",
+  "status": "candidate_survivor",
+  "reasons": [],
+  "n_assertions": 9,
+  "episodes": [
+    "autoresearch-agent-loops-and-the-future-of-work",
+    "how-ai-starts-doing-the-work-in-2026-with-anthropic-cpo-mike-krieger",
+    "how-to-help-ai-do-your-work-better",
+    "how-to-help-people-thrive-with-ai"
+  ],
+  "assertion_fingerprints": [
+    "1eb03a5923beed19",
+    "3918cff76480e7da",
+    "54fadaf1e285868f",
+    "6b66ff764f3b4264",
+    "875dff316d218d80",
+    "9e15edaf2aef81be",
+    "b6273ab7c5a9f857",
+    "eb588a27906c0977",
+    "fa009ab4bc0709a6"
+  ],
+  "target_page": "Task Automation.md",
+  "assertions": [
+    {
+      "claim": "Boris Cherny, creator of Claude Code, released a '/loop' feature on March 7, 2025, allowing users to schedule recurring agentic tasks for up to 3 days, such as auto-fixing build issues or summarizing Slack posts.",
+      "tier": "1",
+      "confidence": "0.92",
+      "source": "Boris Cherny (via podcast transcript)",
+      "episode": "autoresearch-agent-loops-and-the-future-of-work",
+      "claim_date": "2026-08-24",
+      "evidence": "Cherny wrote: 'Released today, /loop. /loop is a powerful new way to schedule recurring tasks for up to 3 days at a time. E.g., /loop babysit all my PRs, auto-fix build issues...'",
+      "fp": "9e15edaf2aef81be"
+    },
+    {
+      "claim": "Agentic loops are emerging as a fundamental 'work primitive' that will be applied across various industries, not just software development, provided the task has an objective score, fast iteration, and low cost for failed attempts.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Podcast Host",
+      "episode": "autoresearch-agent-loops-and-the-future-of-work",
+      "claim_date": "2026-08-24",
+      "evidence": "The host argues: 'I think you are going to see this loop applied to a huge range of activities... First, there is a score... Second requirement is that iterations are fast and cheap... The person who figures out how to apply this pattern to business problems... is going to build something massive.'",
+      "fp": "875dff316d218d80"
+    },
+    {
+      "claim": "Business functions with measurable outcomes and fast feedback loops, such as advertising, cold outreach, and A/B testing, will be among the first to adopt agentic loops, potentially increasing experiment volume from dozens to thousands per year.",
+      "tier": "3",
+      "confidence": "0.72",
+      "source": "Podcast Host / Eric (via podcast transcript)",
+      "episode": "autoresearch-agent-loops-and-the-future-of-work",
+      "claim_date": "2026-08-24",
+      "evidence": "Eric writes: 'Most marketing teams run around 30 experiments a year. The next generation will run 36,500 plus easily... Modify a variable, deploy it, measure one metric, keep or discard, repeat forever.'",
+      "fp": "eb588a27906c0977"
+    },
+    {
+      "claim": "Anthropic renamed its underlying SDK from 'Claude Code' to 'Claude Agent SDK' after observing that users were applying the tool to non-coding tasks such as bioinformatics, data science, and project management.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Mike Kger (Chief Product Officer, Anthropic)",
+      "episode": "how-ai-starts-doing-the-work-in-2026-with-anthropic-cpo-mike-krieger",
+      "claim_date": "2025-12-24",
+      "evidence": "Kger notes: 'It's why we eventually renamed the underlying SDK to the cloud agent SDK because we realized calling it code was doing it a disservice relative to what kind of use cases we were actually seeing.' He cites internal hackathon projects using Claude Code for bioinformatics and as a 'sur in a box' (likely 'SAR' or similar data analysis tool) and externally as a project manager.",
+      "fp": "54fadaf1e285868f"
+    },
+    {
+      "claim": "Anthropic's strategy for 2026 involves enabling AI to 'reliably take work off your plate' by delegating clean, well-defined job functions (like report preparation) to agents, moving beyond simple chat interactions.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Mike Kger (Chief Product Officer, Anthropic)",
+      "episode": "how-ai-starts-doing-the-work-in-2026-with-anthropic-cpo-mike-krieger",
+      "claim_date": "2025-12-24",
+      "evidence": "Kger summarizes the year's goal: 'Guess reliably take work off your plate.' He elaborates that the 'piece of the job function that has like a clean sort of... all right, great. We need uh we need to prepare this kind of report... Report back to me... is very much around the corner.'",
+      "fp": "6b66ff764f3b4264"
+    },
+    {
+      "claim": "The 'vibe coding' phenomenon, which began in February 2025, is still in an early adoption phase where even heavy users are only just beginning to habitually replace traditional tools (like spreadsheets) with AI-generated applications.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Host (AI Daily Brief) & Mike Kger",
+      "episode": "how-ai-starts-doing-the-work-in-2026-with-anthropic-cpo-mike-krieger",
+      "claim_date": "2025-12-24",
+      "evidence": "The host states: 'we're now I guess 10 months into vibe coding as a named phenomenon... I'm only just now starting to find myself actively ask on on a regular basis like could I be building something to do this instead of using a Google sheet.' Kger agrees, noting the 'lag in terms of just, you know, unwinding and undoing however many years or decades of the way that you've been doing a thing.'",
+      "fp": "3918cff76480e7da"
+    },
+    {
+      "claim": "The 'tool versus colleague' debate is a false binary; the realistic trajectory for 2026 is AI taking on 'clean' job functions with clear inputs and outputs, rather than becoming a fully autonomous generalist colleague.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "Mike Kger (Chief Product Officer, Anthropic)",
+      "episode": "how-ai-starts-doing-the-work-in-2026-with-anthropic-cpo-mike-krieger",
+      "claim_date": "2025-12-24",
+      "evidence": "Kger argues: 'I think that that probably more than anything is what will define the year is you start seeing this already with coding... The more like piece of the job function that has like a clean sort of... all right, great. We need uh we need to prepare this kind of report... is very much around the corner.'",
+      "fp": "fa009ab4bc0709a6"
+    },
+    {
+      "claim": "The 'AI deputization audit' proposes a five-dimension scoring system (frequency/time, teachability, checkability, stakes, and personal integralness) to determine which work tasks are best suited for AI automation, categorizing them into 'deputize' (8-10), 'duet' (4-7), or 'defend' (0-3) tiers.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "AI Daily Brief host",
+      "episode": "how-to-help-ai-do-your-work-better",
+      "claim_date": "2026-08-16",
+      "evidence": "The host details the framework: 'Step two is that for each of those different processes, we're going to give it a score... across a five different dimensions... A score of eight to 10 means that it's very worth considering deputizing... A score of four to 7 I'm calling a duet... when the score is between zero and three... we'll call that a defend.'",
+      "fp": "1eb03a5923beed19"
+    },
+    {
+      "claim": "Researchers from UC Berkeley's Haas School of Business found that when using AI, workers started taking on tasks they had previously outsourced, such as coding and engineering, because these activities became easier to do.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "UC Berkeley's Haas School of Business",
+      "episode": "how-to-help-people-thrive-with-ai",
+      "claim_date": "2026-07-13",
+      "evidence": "The study observed a shift in task allocation, with workers internalizing previously outsourced technical tasks due to AI lowering the barrier to entry.",
+      "fp": "b6273ab7c5a9f857"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - It is a building block for larger automation efforts; combining automated tasks into coordinated sequences leads to workflow and business process automation.",
+      "content": "\n\n- ### Recent Developments\n  - **Agentic Loops as a Work Primitive**: Boris Cherny, creator of Claude Code, released a `/loop` feature on March 7, 2025, enabling users to schedule recurring agentic tasks for up to 3 days (e.g., auto-fixing build issues or summarizing Slack posts). This pattern is emerging as a fundamental \"work primitive\" applicable across industries, provided the task has an objective score, fast iteration, and low cost for failed attempts.\n  - **Expansion Beyond Coding**: Anthropic renamed its underlying SDK from 'Claude Code' to 'Claude Agent SDK' after observing users applying the tool to non-coding tasks such as bioinformatics, data science, and project management. This shift reflects a broader strategy for 2026 to enable AI to \"reliably take work off your plate\" by delegating clean, well-defined job functions (like report preparation) to agents.\n  - **Early Adoption of 'Vibe Coding'**: The 'vibe coding' phenomenon, which began in February 2025, remains in an early adoption phase. Even heavy users are only just beginning to habitually replace traditional tools (like spreadsheets) with AI-generated applications, citing a lag in unwinding decades of established workflows.\n  - **Strategic Frameworks for Automation**: The 'AI deputization audit' proposes a five-dimension scoring system (frequency/time, teachability, checkability, stakes, and personal integralness) to categorize tasks into 'deputize' (8-10), 'duet' (4-7), or 'defend' (0-3) tiers. Meanwhile, business functions with measurable outcomes and fast feedback loops, such as advertising and A/B testing, are expected to be among the first to adopt agentic loops, potentially increasing experiment volume from dozens to thousands per year.\n  - **Impact on Task Allocation**: Research from UC Berkeley's Haas School of Business indicates that AI lowers the barrier to entry for technical tasks, leading workers to internalize previously outsourced activities such as coding and engineering."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 2.0,
+    "rubric_b_improvement": 2.0,
+    "raw_a": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 3,
+      "relevance": 3,
+      "coherence": 4,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 0.6666666666666666,
+    "detail": [
+      {
+        "fp": "9e15edaf2aef81be",
+        "claim": "Boris Cherny, creator of Claude Code, released a '/loop' feature on March 7, 2025, allowing users to schedule recurring ",
+        "matched": true
+      },
+      {
+        "fp": "875dff316d218d80",
+        "claim": "Agentic loops are emerging as a fundamental 'work primitive' that will be applied across various industries, not just so",
+        "matched": true
+      },
+      {
+        "fp": "eb588a27906c0977",
+        "claim": "Business functions with measurable outcomes and fast feedback loops, such as advertising, cold outreach, and A/B testing",
+        "matched": true
+      },
+      {
+        "fp": "54fadaf1e285868f",
+        "claim": "Anthropic renamed its underlying SDK from 'Claude Code' to 'Claude Agent SDK' after observing that users were applying t",
+        "matched": true
+      },
+      {
+        "fp": "6b66ff764f3b4264",
+        "claim": "Anthropic's strategy for 2026 involves enabling AI to 'reliably take work off your plate' by delegating clean, well-defi",
+        "matched": false
+      },
+      {
+        "fp": "3918cff76480e7da",
+        "claim": "The 'vibe coding' phenomenon, which began in February 2025, is still in an early adoption phase where even heavy users a",
+        "matched": true
+      },
+      {
+        "fp": "fa009ab4bc0709a6",
+        "claim": "The 'tool versus colleague' debate is a false binary; the realistic trajectory for 2026 is AI taking on 'clean' job func",
+        "matched": false
+      },
+      {
+        "fp": "1eb03a5923beed19",
+        "claim": "The 'AI deputization audit' proposes a five-dimension scoring system (frequency/time, teachability, checkability, stakes",
+        "matched": true
+      },
+      {
+        "fp": "b6273ab7c5a9f857",
+        "claim": "Researchers from UC Berkeley's Haas School of Business found that when using AI, workers started taking on tasks they ha",
+        "matched": false
+      }
+    ]
+  },
+  "ontology_propose_payload": {
+    "target_page": "Task Automation.md",
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - It is a building block for larger automation efforts; combining automated tasks into coordinated sequences leads to workflow and business process automation.",
+      "content": "\n\n- ### Recent Developments\n  - **Agentic Loops as a Work Primitive**: Boris Cherny, creator of Claude Code, released a `/loop` feature on March 7, 2025, enabling users to schedule recurring agentic tasks for up to 3 days (e.g., auto-fixing build issues or summarizing Slack posts). This pattern is emerging as a fundamental \"work primitive\" applicable across industries, provided the task has an objective score, fast iteration, and low cost for failed attempts.\n  - **Expansion Beyond Coding**: Anthropic renamed its underlying SDK from 'Claude Code' to 'Claude Agent SDK' after observing users applying the tool to non-coding tasks such as bioinformatics, data science, and project management. This shift reflects a broader strategy for 2026 to enable AI to \"reliably take work off your plate\" by delegating clean, well-defined job functions (like report preparation) to agents.\n  - **Early Adoption of 'Vibe Coding'**: The 'vibe coding' phenomenon, which began in February 2025, remains in an early adoption phase. Even heavy users are only just beginning to habitually replace traditional tools (like spreadsheets) with AI-generated applications, citing a lag in unwinding decades of established workflows.\n  - **Strategic Frameworks for Automation**: The 'AI deputization audit' proposes a five-dimension scoring system (frequency/time, teachability, checkability, stakes, and personal integralness) to categorize tasks into 'deputize' (8-10), 'duet' (4-7), or 'defend' (0-3) tiers. Meanwhile, business functions with measurable outcomes and fast feedback loops, such as advertising and A/B testing, are expected to be among the first to adopt agentic loops, potentially increasing experiment volume from dozens to thousands per year.\n  - **Impact on Task Allocation**: Research from UC Berkeley's Haas School of Business indicates that AI lowers the barrier to entry for technical tasks, leading workers to internalize previously outsourced activities such as coding and engineering."
+    },
+    "provenance": {
+      "assertion_fingerprints": [
+        "1eb03a5923beed19",
+        "3918cff76480e7da",
+        "54fadaf1e285868f",
+        "6b66ff764f3b4264",
+        "875dff316d218d80",
+        "9e15edaf2aef81be",
+        "b6273ab7c5a9f857",
+        "eb588a27906c0977",
+        "fa009ab4bc0709a6"
+      ],
+      "source_episodes": [
+        "autoresearch-agent-loops-and-the-future-of-work",
+        "how-ai-starts-doing-the-work-in-2026-with-anthropic-cpo-mike-krieger",
+        "how-to-help-ai-do-your-work-better",
+        "how-to-help-people-thrive-with-ai"
+      ]
+    },
+    "scores": {
+      "rubric_a_improvement": 2.0,
+      "rubric_b_improvement": 2.0,
+      "completeness": 0.6666666666666666
+    }
+  }
+}

@@ -1,0 +1,188 @@
+{
+  "topic": "Market Capitalization",
+  "topic_slug": "market-capitalization",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5"
+  ],
+  "n_assertions": 8,
+  "episodes": [
+    "black-friday-gpt",
+    "how-apples-ai-strategy-changes-with-a-new-ceo",
+    "how-the-escalating-ai-wars-benefit-you",
+    "how-the-global-ai-race-has-changed",
+    "the-5-biggest-ai-stories-to-watch-in-december",
+    "the-biggest-unlocks-of-gpt-images-2",
+    "the-saaspocalypse-continues",
+    "why-ai-users-are-raving-about-glm-52"
+  ],
+  "assertion_fingerprints": [
+    "0c6b08dee0736f5b",
+    "56cdcb2b251aca49",
+    "7ffa774970ab1b69",
+    "808e7ef6337df5c8",
+    "a0d2eb89e1cee232",
+    "b9ba8b3cfac95090",
+    "eb1d2c93472dec2d",
+    "eb561b62ba403229"
+  ],
+  "target_page": "Market Capitalization.md",
+  "assertions": [
+    {
+      "claim": "The odds of Alphabet surpassing Nvidia in market capitalization have surged 20x in the past month, reflecting growing investor concern about Nvidia's competitive position.",
+      "tier": "3",
+      "confidence": "0.7",
+      "source": "Host (citing Polymarket data)",
+      "episode": "black-friday-gpt",
+      "claim_date": "2025-11-27",
+      "evidence": "The transcript states: 'on Poly Market, the odds of Alphabet surpassing Nvidia in market cap this year has surged 20x just this month.'",
+      "fp": "0c6b08dee0736f5b"
+    },
+    {
+      "claim": "Apple's market cap increased 11x under Tim Cook, which is lower than the growth seen at Microsoft (14x), Google (20x), Amazon (28x), and Facebook (35x) during the same period.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "AI Daily Brief Host (citing Polymath on Twitter)",
+      "episode": "how-apples-ai-strategy-changes-with-a-new-ceo",
+      "claim_date": "2026-04-22",
+      "evidence": "The host cites Polymath: 'Cook led Apple through a period where every tech company expanded... Microsoft saw 14x, Google saw 20x, Amazon did 28x, and Facebook did 35x.'",
+      "fp": "56cdcb2b251aca49"
+    },
+    {
+      "claim": "SK Hynix completed the largest ever US IPO for a foreign company, raising $26.5 billion in its Nasdaq debut.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief",
+      "episode": "how-the-escalating-ai-wars-benefit-you",
+      "claim_date": "2026-07-14",
+      "evidence": "The South Korean memory maker raised $26.5 billion on Friday, surpassing Alibaba's 2014 IPO ($25 billion) but falling short of Saudi Aramco's 2019 IPO ($29.4 billion, non-US listing).",
+      "fp": "eb1d2c93472dec2d"
+    },
+    {
+      "claim": "The release of DeepSeek's R1 reasoning model in early 2025 caused a single-day loss of nearly $600 billion in Nvidia's market capitalization, the largest single-day dollar loss in history.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Podcast Host",
+      "episode": "how-the-global-ai-race-has-changed",
+      "claim_date": "2026-02-12",
+      "evidence": "The host states that DeepSeek 'wiped out nearly $600 billion from Nvidia's market cap' and identifies it as 'the single biggest loss in pure dollar terms in a single day in history.'",
+      "fp": "a0d2eb89e1cee232"
+    },
+    {
+      "claim": "The host predicts that Google will surpass Nvidia to become the most valuable company in the world before the current AI narrative cycle ends.",
+      "tier": "3",
+      "confidence": "0.5",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-5-biggest-ai-stories-to-watch-in-december",
+      "claim_date": "2025-12-10",
+      "evidence": "The host states, 'I think before this particular narrative cycle ends, Google flippins Nvidia to become the most valuable company in the world,' attributing this to the strength of the TPU narrative.",
+      "fp": "808e7ef6337df5c8"
+    },
+    {
+      "claim": "SpaceX plans to award Elon Musk a compensation package tied to market cap milestones ranging from $1.1 trillion to $6.6 trillion.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "SpaceX IPO disclosure documents",
+      "episode": "the-biggest-unlocks-of-gpt-images-2",
+      "claim_date": "2026-04-23",
+      "evidence": "SpaceX also plans to award Elon a compensation package with very lofty milestone goals. He could receive tens of millions of shares of SpaceX tied to market cap achievements ranging from $1.1 trillion all the way up to $6.6 trillion.",
+      "fp": "eb561b62ba403229"
+    },
+    {
+      "claim": "Microsoft lost 6.7% of its stock value, resulting in a market cap reduction of 218 billion dollars.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief host",
+      "episode": "the-saaspocalypse-continues",
+      "claim_date": "2026-02-10",
+      "evidence": "Microsoft was another one of the big losers of the software wipeout last week... The stock lost 6.7% losing 218 billion in market cap.",
+      "fp": "b9ba8b3cfac95090"
+    },
+    {
+      "claim": "DeepSeek's R1 release in January 2025 caused Nvidia to lose $589 billion in market cap in a single day.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "AI Daily Brief host",
+      "episode": "why-ai-users-are-raving-about-glm-52",
+      "claim_date": "2026-06-22",
+      "evidence": "Nvidia had the single biggest daily loss in terms of pure numbers with DeepSeek peeling off 589 billion from its market cap in a single day.",
+      "fp": "7ffa774970ab1b69"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - ## About Market Capitalization\n\n  Market capitalisation translates a token's spot price and supply into a single number that investors and analysts use to rank networks by size. The formula is straightforward: circulating supply multiplied by current price. \"Circulating\" is defined narrowly\u2014tokens locked in founder vesting schedules, team allocations under cliff periods, or protocol treasuries are often excluded, though practice varies across data providers, creating significant discrepancies between reported figures.\n\n  In crypto markets the metric gained prominence as a sorting mechanism analogous to its equity market counterpart, and category labels\u2014\"large-cap,\" \"mid-cap,\" \"small-cap\"\u2014migrated wholesale from equities. However, the analogy is imperfect. Equities represent a claim on future cash flows; tokens may or may not confer economic rights. A token with a large market cap but zero transaction utility (or where utility is captured by a different fee token) may be valued purely on speculative demand.\n\n  Market cap interacts directly with governance design in token-weighted voting systems: protocols that grant voting power proportional to holdings implicitly vest more governance authority in entities with large market-cap exposure. This creates alignment but also concentration risk, since large holders can direct protocol evolution in ways that maximise their own positions. DeFi governance forums have extensively debated mechanisms\u2014quadratic voting, delegation, conviction voting\u2014to reduce this concentration.\n\n  Fully diluted valuation (FDV) extends market cap to the total maximum supply rather than circulating supply, and is considered a more conservative measure of long-term network worth. Comparing FDV to current market cap reveals the implied dilution pressure if all remaining tokens enter circulation, a key consideration for investors evaluating early-stage protocols with multi-year vesting schedules.",
+      "content": "  - ## About Market Capitalization\n\n  Market capitalisation translates a token's spot price and supply into a single number that investors and analysts use to rank networks by size. The formula is straightforward: circulating supply multiplied by current price. \"Circulating\" is defined narrowly\u2014tokens locked in founder vesting schedules, team allocations under cliff periods, or protocol treasuries are often excluded, though practice varies across data providers, creating significant discrepancies between reported figures.\n\n  In crypto markets the metric gained prominence as a sorting mechanism analogous to its equity market counterpart, and category labels\u2014\"large-cap,\" \"mid-cap,\" \"small-cap\"\u2014migrated wholesale from equities. However, the analogy is imperfect. Equities represent a claim on future cash flows; tokens may or may not confer economic rights. A token with a large market cap but zero transaction utility (or where utility is captured by a different fee token) may be valued purely on speculative demand.\n\n  Market cap interacts directly with governance design in token-weighted voting systems: protocols that grant voting power proportional to holdings implicitly vest more governance authority in entities with large market-cap exposure. This creates alignment but also concentration risk, since large holders can direct protocol evolution in ways that maximise their own positions. DeFi governance forums have extensively debated mechanisms\u2014quadratic voting, delegation, conviction voting\u2014to reduce this concentration.\n\n  Fully diluted valuation (FDV) extends market cap to the total maximum supply rather than circulating supply, and is considered a more conservative measure of long-term network worth. Comparing FDV to current market cap reveals the implied dilution pressure if all remaining tokens enter circulation, a key consideration for investors evaluating early-stage protocols with multi-year vesting schedules.\n\n  ### Recent Developments in Equity Market Capitalization\n\n  While the concept of market capitalization originated in traditional equity markets, recent events highlight its volatility and predictive utility in the broader tech sector. In early 2025, the release of DeepSeek's R1 reasoning model triggered a historic single-day loss of nearly $600 billion (specifically $589 billion) in Nvidia's market capitalization, marking the largest single-day dollar loss in history. This event underscored how rapidly market cap can adjust to shifts in competitive narratives and technological disruption.\n\n  Concurrently, market dynamics have seen significant shifts among major tech firms. Apple's market cap increased 11x under Tim Cook, a growth rate lower than its peers during the same period: Microsoft (14x), Google (20x), Amazon (28x), and Facebook (35x). In a related development, Microsoft recently lost 6.7% of its stock value, resulting in a market cap reduction of $218 billion. Speculative markets have also reacted to these shifts; odds of Alphabet surpassing Nvidia in market capitalization surged 20x in a single month, reflecting growing investor concern about Nvidia's competitive position. Some analysts predict that Google will surpass Nvidia to become the most valuable company in the world before the current AI narrative cycle ends, driven by the strength of the TPU narrative.\n\n  In the realm of initial public offerings (IPOs), market capitalization milestones continue to set new records. SK Hynix completed the largest ever US IPO for a foreign company, raising $26.5 billion in its Nasdaq debut, surpassing Alibaba's 2014 IPO ($25 billion) but falling short of Saudi Aramco's 2019 IPO ($29.4 billion). Furthermore, compensation structures are increasingly tied to market cap milestones; SpaceX plans to award Elon Musk a compensation package tied to market cap achievements ranging from $1.1 trillion to $6.6 trillion."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 4,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 2,
+      "relevance": 3,
+      "coherence": 1,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 0.875,
+    "detail": [
+      {
+        "fp": "0c6b08dee0736f5b",
+        "claim": "The odds of Alphabet surpassing Nvidia in market capitalization have surged 20x in the past month, reflecting growing in",
+        "matched": true
+      },
+      {
+        "fp": "56cdcb2b251aca49",
+        "claim": "Apple's market cap increased 11x under Tim Cook, which is lower than the growth seen at Microsoft (14x), Google (20x), A",
+        "matched": true
+      },
+      {
+        "fp": "eb1d2c93472dec2d",
+        "claim": "SK Hynix completed the largest ever US IPO for a foreign company, raising $26.5 billion in its Nasdaq debut.",
+        "matched": true
+      },
+      {
+        "fp": "a0d2eb89e1cee232",
+        "claim": "The release of DeepSeek's R1 reasoning model in early 2025 caused a single-day loss of nearly $600 billion in Nvidia's m",
+        "matched": true
+      },
+      {
+        "fp": "808e7ef6337df5c8",
+        "claim": "The host predicts that Google will surpass Nvidia to become the most valuable company in the world before the current AI",
+        "matched": true
+      },
+      {
+        "fp": "eb561b62ba403229",
+        "claim": "SpaceX plans to award Elon Musk a compensation package tied to market cap milestones ranging from $1.1 trillion to $6.6 ",
+        "matched": true
+      },
+      {
+        "fp": "b9ba8b3cfac95090",
+        "claim": "Microsoft lost 6.7% of its stock value, resulting in a market cap reduction of 218 billion dollars.",
+        "matched": true
+      },
+      {
+        "fp": "7ffa774970ab1b69",
+        "claim": "DeepSeek's R1 release in January 2025 caused Nvidia to lose $589 billion in market cap in a single day.",
+        "matched": false
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

@@ -1,0 +1,170 @@
+{
+  "topic": "Knowledge Representation",
+  "topic_slug": "knowledge-representation",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -1.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5"
+  ],
+  "n_assertions": 7,
+  "episodes": [
+    "autoresearch-agent-loops-and-the-future-of-work",
+    "context-graphs-ais-next-big-idea",
+    "how-ai-starts-doing-the-work-in-2026-with-anthropic-cpo-mike-krieger",
+    "how-i-built-my-10-agent-openclaw-team",
+    "how-to-get-the-most-from-ai-this-summer",
+    "the-self-driving-company"
+  ],
+  "assertion_fingerprints": [
+    "2ceab9d5134a7ef9",
+    "59ab619d317d0325",
+    "84235a5ceb66ac91",
+    "a15af5345a214422",
+    "adbaf3c8812c2755",
+    "c23e09146fe0ed65",
+    "c68f22f67a8ef4da"
+  ],
+  "target_page": "Knowledge Representation.md",
+  "assertions": [
+    {
+      "claim": "The role of the human in agentic research loops is shifting from direct code execution to 'arena design,' which involves writing strategy documents (like program.md) and constructing objective evaluation metrics for the agent.",
+      "tier": "2",
+      "confidence": "0.88",
+      "source": "Podcast Host / Andrej Karpathy",
+      "episode": "autoresearch-agent-loops-and-the-future-of-work",
+      "claim_date": "2026-08-24",
+      "evidence": "Karpathy states: 'The human's job becomes write a better memo, and the agent's job is execute research within the frame the memo sets.' The host adds: 'The new high-value skills around agent loops are things like arena design... and evaluator construction.'",
+      "fp": "c23e09146fe0ed65"
+    },
+    {
+      "claim": "Current agentic loops are limited by the lack of a shared semantic memory layer across multiple agents, preventing them from efficiently sharing negative results and coordinating on complex, multi-branch research directions.",
+      "tier": "2",
+      "confidence": "0.82",
+      "source": "Heron / Kathy F (via podcast transcript)",
+      "episode": "autoresearch-agent-loops-and-the-future-of-work",
+      "claim_date": "2026-08-24",
+      "evidence": "Heron writes: 'The missing layer is memory across the swarm... You need a semantic memory layer underneath the branches so Agent 47 knows Agent 12 already tried that direction.' Kathy F adds: 'The real unlock is when these agent researchers can share negative results efficiently.'",
+      "fp": "a15af5345a214422"
+    },
+    {
+      "claim": "The concept of 'context graphs' is defined as a living record of decision traces stitched across entities in time, capturing the 'why' behind business decisions rather than just the 'what'.",
+      "tier": "2",
+      "confidence": "0.95",
+      "source": "Jay Gupta and Ashu Garg (Foundation Capital)",
+      "episode": "context-graphs-ais-next-big-idea",
+      "claim_date": "2026-01-06",
+      "evidence": "The transcript cites their essay 'AI's trillion dollar opportunity context graphs', stating: 'The context graph is the sum total of those decision traces... a living record of decision traces stitched across entities in time.' It distinguishes this from systems of record which capture state (what happened) but not decision lineage (why it was allowed).",
+      "fp": "59ab619d317d0325"
+    },
+    {
+      "claim": "By the end of 2026, early 'glimmers' of AI agents that can fully onboard onto an organization, understand complex relationship dynamics, and autonomously pick up work will emerge, though full autonomy is not yet expected.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "Mike Kger (Chief Product Officer, Anthropic)",
+      "episode": "how-ai-starts-doing-the-work-in-2026-with-anthropic-cpo-mike-krieger",
+      "claim_date": "2025-12-24",
+      "evidence": "Kger predicts: 'Now, is it already going to be at the place where it can onboard onto the organization, understand the understand the problem space, understand the understand the dynamics of all the relationships and just pick up work? No, I don't think we're going to be there. Maybe near near the end of the year, we'll have some kind of early glimmers of there.'",
+      "fp": "c68f22f67a8ef4da"
+    },
+    {
+      "claim": "OpenClaw agents are configured using a set of specific markdown files, including 'soul.md' for personality, 'agents.md' for operating instructions, and 'user.md' for user preferences.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-i-built-my-10-agent-openclaw-team",
+      "claim_date": "2026-02-15",
+      "evidence": "The transcript details: 'Its soul.md file is how the agent thinks and behaves... Agents.md is the employee handbook... User.md is everything the agent knows about you.'",
+      "fp": "adbaf3c8812c2755"
+    },
+    {
+      "claim": "Building a 'Personal Brain' or global identity context for AI assistants involves creating a 150-300 word instruction block that persists across sessions to provide consistent user context.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "AI Daily Brief Host",
+      "episode": "how-to-get-the-most-from-ai-this-summer",
+      "claim_date": "2026-07-27",
+      "evidence": "The 'Pack Your ID' project instructs users to have the AI draft a 'paste-ready global ID block' and install it, ensuring future chats start with knowledge of the user's preferences and background.",
+      "fp": "2ceab9d5134a7ef9"
+    },
+    {
+      "claim": "The fundamental prerequisite for a 'self-driving company' is not just having capable AI agents, but integrating those agents with all existing organizational systems and data sources.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-self-driving-company",
+      "claim_date": "2026-07-23",
+      "evidence": "The fundamental prerequisite for all of this is not just having an agent that can do stuff for you. It's having that agent or those agents integrated with all of your existing systems... Without access to the systems that drive the company, there is no way for an agent to help the company become self-driving.",
+      "fp": "84235a5ceb66ac91"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - Hamilton, W. et al. (2017). Representation Learning on Graphs: Methods and Applications. IEEE Data Engineering Bulletin, 40(3), 52-74.",
+      "content": "\n\n  #### Recent Developments\n  - **Context Graphs and Decision Lineage**: The concept of 'context graphs' has emerged as a living record of decision traces stitched across entities in time, capturing the 'why' behind business decisions rather than just the 'what'. This distinguishes them from traditional systems of record, which capture state (what happened) but not decision lineage (why it was allowed). [source: Jay Gupta and Ashu Garg (Foundation Capital), confidence 0.95, tier 2]\n  - **Semantic Memory for Agentic Swarms**: Current agentic loops are limited by the lack of a shared semantic memory layer across multiple agents, preventing them from efficiently sharing negative results and coordinating on complex, multi-branch research directions. The 'missing layer' is a semantic memory layer underneath the branches so that agents can recognize previously explored directions. [source: Heron / Kathy F (via podcast transcript), confidence 0.82, tier 2]\n  - **Shift to 'Arena Design'**: The role of the human in agentic research loops is shifting from direct code execution to 'arena design,' which involves writing strategy documents (like program.md) and constructing objective evaluation metrics for the agent. The human's job becomes writing a better memo, while the agent's job is to execute research within the frame the memo sets. [source: Podcast Host / Andrej Karpathy, confidence 0.88, tier 2]\n  - **Organizational Integration as Prerequisite**: The fundamental prerequisite for a 'self-driving company' is not just having capable AI agents, but integrating those agents with all existing organizational systems and data sources. Without access to the systems that drive the company, there is no way for an agent to help the company become self-driving. [source: Host (AI Daily Brief), confidence 0.85, tier 2]\n  - **Agent Configuration Standards**: OpenClaw agents are configured using a set of specific markdown files, including 'soul.md' for personality, 'agents.md' for operating instructions, and 'user.md' for user preferences. This structure allows for persistent, consistent agent behavior and user context. [source: Host (AI Daily Brief), confidence 0.95, tier 1]\n  - **Personal Brain and Global Identity**: Building a 'Personal Brain' or global identity context for AI assistants involves creating a 150-300 word instruction block that persists across sessions to provide consistent user context. Projects like 'Pack Your ID' instruct users to have the AI draft a 'paste-ready global ID block' and install it, ensuring future chats start with knowledge of the user's preferences and background. [source: AI Daily Brief Host, confidence 0.85, tier 2]\n  - **2026 Autonomy Trajectory**: By the end of 2026, early 'glimmers' of AI agents that can fully onboard onto an organization, understand complex relationship dynamics, and autonomously pick up work are expected to emerge, though full autonomy is not yet anticipated. [source: Mike Kger (Chief Product Officer, Anthropic), confidence 0.6, tier 3]"
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -1.0,
+    "raw_a": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 4,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 1
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "c23e09146fe0ed65",
+        "claim": "The role of the human in agentic research loops is shifting from direct code execution to 'arena design,' which involves",
+        "matched": true
+      },
+      {
+        "fp": "a15af5345a214422",
+        "claim": "Current agentic loops are limited by the lack of a shared semantic memory layer across multiple agents, preventing them ",
+        "matched": true
+      },
+      {
+        "fp": "59ab619d317d0325",
+        "claim": "The concept of 'context graphs' is defined as a living record of decision traces stitched across entities in time, captu",
+        "matched": true
+      },
+      {
+        "fp": "c68f22f67a8ef4da",
+        "claim": "By the end of 2026, early 'glimmers' of AI agents that can fully onboard onto an organization, understand complex relati",
+        "matched": true
+      },
+      {
+        "fp": "adbaf3c8812c2755",
+        "claim": "OpenClaw agents are configured using a set of specific markdown files, including 'soul.md' for personality, 'agents.md' ",
+        "matched": true
+      },
+      {
+        "fp": "2ceab9d5134a7ef9",
+        "claim": "Building a 'Personal Brain' or global identity context for AI assistants involves creating a 150-300 word instruction bl",
+        "matched": true
+      },
+      {
+        "fp": "84235a5ceb66ac91",
+        "claim": "The fundamental prerequisite for a 'self-driving company' is not just having capable AI agents, but integrating those ag",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

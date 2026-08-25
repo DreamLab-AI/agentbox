@@ -1,0 +1,336 @@
+{
+  "topic": "User Experience",
+  "topic_slug": "user-experience",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5"
+  ],
+  "n_assertions": 19,
+  "episodes": [
+    "gemini-can-now-write-you-a-song",
+    "gpt-54-first-test-results",
+    "how-ai-starts-doing-the-work-in-2026-with-anthropic-cpo-mike-krieger",
+    "how-the-4-new-models-released-this-week-will-change-how-you-work",
+    "how-to-build-a-personal-context-mcp",
+    "is-gpt-52-garlic-coming-this-week",
+    "openai-declares-code-red",
+    "openclaw-goes-to-openai",
+    "the-ai-scientist-that-does-6-months-of-work-in-a-day",
+    "the-big-questions-shaping-the-consumer-ai-battle",
+    "the-way-we-use-ai-is-changing",
+    "what-people-really-want-from-ai",
+    "where-should-claude-opus-5-fit-in-your-model-rotation",
+    "why-claude-cowork-is-a-big-deal",
+    "why-every-ai-product-seems-the-same"
+  ],
+  "assertion_fingerprints": [
+    "25bb75382f4fea05",
+    "3ae29529d4e830c0",
+    "42ffce16166523ad",
+    "54b2c52ab08bc771",
+    "5710977bf083adbc",
+    "6625a2c5efbeb1eb",
+    "6a05b0482af728bd",
+    "6d613236c6855586",
+    "80a42b1cf72a1c0e",
+    "8b7e2f85835e4313",
+    "8b9016f9567294a9",
+    "96e34f2663dce821",
+    "a1a6f4b6922fc0e1",
+    "d12d2fb416b6595f",
+    "d85c72117db26e88",
+    "daa107e8f7069e69",
+    "f3de6ffc5f0fbe7a",
+    "f98e71372e490035",
+    "fce8e7625d05d562"
+  ],
+  "target_page": "User Experience.md",
+  "assertions": [
+    {
+      "claim": "Generated music is likely to play a larger role in social and interactive expression than in professional composition, with platforms like Google positioning AI music as a 'fun, unique way to express yourself' rather than a tool for musical masterpieces.",
+      "tier": "3",
+      "confidence": "0.65",
+      "source": "Podcast Host (analyzing Google's stated goals)",
+      "episode": "gemini-can-now-write-you-a-song",
+      "claim_date": "2026-03-08",
+      "evidence": "Transcript quotes Google: 'The goal of these tracks isn't to create a musical masterpiece, but rather to give you a fun, unique way to express yourself.' The host adds: 'this is actually more of a social feature than anything else.'",
+      "fp": "8b7e2f85835e4313"
+    },
+    {
+      "claim": "GPT-5.4 exhibits significant 'scope creep' and over-verbosity, often expanding tasks beyond user requests and providing excessively detailed responses that increase cognitive burden for the prompter.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host (Matt Schmidt) / Community Feedback",
+      "episode": "gpt-54-first-test-results",
+      "claim_date": "2026-03-06",
+      "evidence": "GPT-5.4 has a tendency to expand the task well beyond what you ask for... I started to notice another issue, which is that 5.4 Thinking was extremely over verbose, to the point of repeating itself even when it's not required... the way that it operates honestly puts a huge cognitive burden on the prompter.",
+      "fp": "f98e71372e490035"
+    },
+    {
+      "claim": "Non-technical users face a 'complexity ladder' gap where they can build simple front-end applications but struggle to transition to production-ready systems requiring data persistence, security, and performance engineering without explicit guidance.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Mike Kger (Chief Product Officer, Anthropic)",
+      "episode": "how-ai-starts-doing-the-work-in-2026-with-anthropic-cpo-mike-krieger",
+      "claim_date": "2025-12-24",
+      "evidence": "Kger observes: 'you still sometimes need to know the right sort of magic incantation words to use... Opus wasn't suggesting that out of the box... it took me saying all right we actually probably need to move to this embedding solution.' He compares this to Instagram's early evolution from UI to backend to performance.",
+      "fp": "6d613236c6855586"
+    },
+    {
+      "claim": "GPT 5.6 Soul is characterized by users as a 'workhorse' model that is extremely diligent and fast, contrasting with Fable 5 which is viewed as a 'wise owl' with higher raw intelligence but slower execution.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Peter Gostev (Arena AI) / AI Daily Brief Host",
+      "episode": "how-the-4-new-models-released-this-week-will-change-how-you-work",
+      "claim_date": "2026-07-10",
+      "evidence": "Peter Gostev wrote: 'Fable is a wise owl who is very thoughtful... GPT 5.6 Soul is like a Rottweiler who will grab the problem by the throat... On pure intelligence? No. But man, I missed it when I wanted to get things done.'",
+      "fp": "5710977bf083adbc"
+    },
+    {
+      "claim": "The interaction pattern with AI is shifting from 'tool use' to 'relationship use,' where voice interfaces collapse the distance between user and model, creating a sense of a 'live cognitive presence.'",
+      "tier": "3",
+      "confidence": "0.5",
+      "source": "Sitebringer / AI Daily Brief Host",
+      "episode": "how-the-4-new-models-released-this-week-will-change-how-you-work",
+      "claim_date": "2026-07-10",
+      "evidence": "Sitebringer wrote, 'GPT live points at the moment AI stops feeling like software and starts feeling like a live cognitive presence... the interaction starts moving from tool use into relationship use.'",
+      "fp": "25bb75382f4fea05"
+    },
+    {
+      "claim": "The 'context repetition tax' not only wastes time but also degrades the quality of AI interactions because users often omit details when manually re-explaining their context to new agents.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-to-build-a-personal-context-mcp",
+      "claim_date": "2026-04-04",
+      "evidence": "The host argues: 'the context repetition tax doesn't just waste time, it also degrades quality... the sheer time and effort it takes to explain everything fully means that there was probably a lot that was left out.'",
+      "fp": "42ffce16166523ad"
+    },
+    {
+      "claim": "OpenAI's Chief Research Officer Mark Chen acknowledged that integrated app suggestions in ChatGPT felt like advertising and stated that the company had turned off such suggestions while improving model precision.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Mark Chen (OpenAI Chief Research Officer)",
+      "episode": "is-gpt-52-garlic-coming-this-week",
+      "claim_date": "2025-12-08",
+      "evidence": "The host quotes Mark Chen's statement: 'I agree that anything that feels like an ad needs to be handled with care and we fell short. We've turned off this kind of suggestion while we improve the model's precision.'",
+      "fp": "f3de6ffc5f0fbe7a"
+    },
+    {
+      "claim": "The focus of OpenAI's upcoming updates will shift away from flashy new features towards improving the chatbot's speed, reliability, and customizability.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "The Verge",
+      "episode": "is-gpt-52-garlic-coming-this-week",
+      "claim_date": "2025-12-08",
+      "evidence": "The host reports that The Verge indicates the focus will shift towards improving speed, reliability, and customizability, citing user complaints about irrelevant app suggestions as evidence of the need for such improvements.",
+      "fp": "6625a2c5efbeb1eb"
+    },
+    {
+      "claim": "Sam Altman identified improving model behavior, specifically minimizing 'over refusals' where ChatGPT declines benign questions, as a key priority in the code red initiative.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "The Information (citing Sam Altman)",
+      "episode": "openai-declares-code-red",
+      "claim_date": "2025-12-03",
+      "evidence": "The transcript reports Altman wanted to 'improve model behavior' and 'minimizing over refusals,' defined as when ChatGPT refuses to answer a benign non-harmful question.",
+      "fp": "d12d2fb416b6595f"
+    },
+    {
+      "claim": "Peter Steinberger aims to build an agent that is accessible to non-technical users (e.g., 'his mom'), which will require broader changes in safety, usability, and access to the latest models and research.",
+      "tier": "3",
+      "confidence": "0.85",
+      "source": "Peter Steinberger (cited by host)",
+      "episode": "openclaw-goes-to-openai",
+      "claim_date": "2026-02-16",
+      "evidence": "Peter Steinberger wrote: 'My next mission is to build an agent that even my mom can use. That will need a much broader change, a lot more thought on how to do it safely, and access to the very latest models and research.'",
+      "fp": "fce8e7625d05d562"
+    },
+    {
+      "claim": "Researchers may prefer a real-time collaborative AI interface over long, autonomous runs, as the latter may not align with the iterative nature of scientific inquiry.",
+      "tier": "2",
+      "confidence": "0.7",
+      "source": "Nico McCardi (Analyst/Commentator)",
+      "episode": "the-ai-scientist-that-does-6-months-of-work-in-a-day",
+      "claim_date": "2025-11-18",
+      "evidence": "Nico McCardi wrote: 'My take is that researchers are looking for more of a real-time collaborator where you're constantly prompting and getting immediate feedback rather than just delegating huge open-ended tasks to agents.'",
+      "fp": "a1a6f4b6922fc0e1"
+    },
+    {
+      "claim": "The optimal balance between autonomous AI agents and real-time human collaboration is a spectrum that will vary by use case and is not yet clearly defined.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-ai-scientist-that-does-6-months-of-work-in-a-day",
+      "claim_date": "2025-11-18",
+      "evidence": "The host stated: 'One of the things that we are figuring out from a user experience expectation standpoint across all these different domains of AI uses is to what extent people want really fast real-time collaboration versus agents that go off and do things on their own. That balance is going to be a toggle and a spectrum.'",
+      "fp": "d85c72117db26e88"
+    },
+    {
+      "claim": "The host argues that 'vibes' (personality and tone) are becoming a more critical differentiator in consumer AI than raw state-of-the-art performance, as many use cases have reached a threshold where 'good enough' performance is sufficient.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-big-questions-shaping-the-consumer-ai-battle",
+      "claim_date": "2026-03-05",
+      "evidence": "I would argue that vibes matter in both work use cases and in personal use cases... if, on average, we've reached a threshold where people aren't going to be jumping around because of model performance, then really vibes are all you're left with.",
+      "fp": "6a05b0482af728bd"
+    },
+    {
+      "claim": "The 'AI advantage gap' is widening as power users adopt agentic loops and coding tools, resulting in compounding value and higher token consumption, while casual users continue to experience only linear gains from chat interfaces.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "AI Daily Brief host",
+      "episode": "the-way-we-use-ai-is-changing",
+      "claim_date": "2026-06-09",
+      "evidence": "The people using agents are seeing compounding value while the people using regular chat continue to see linear gains only... The gap between the value that power users are getting out of AI and that casual users are getting out of AI is increasing fairly dramatically.",
+      "fp": "54b2c52ab08bc771"
+    },
+    {
+      "claim": "81% of respondents in the Anthropic study reported that AI had taken a step towards their stated vision.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Anthropic",
+      "episode": "what-people-really-want-from-ai",
+      "claim_date": "2026-03-20",
+      "evidence": "The transcript states: 'When people were asked then if AI had taken a step towards their stated vision, 81% said yes.'",
+      "fp": "8b9016f9567294a9"
+    },
+    {
+      "claim": "The host argues that dismissing the opinions of AI users as illegitimate for policy discussions is a form of 'intellectual NIMBYism' that ignores the reality of billions of weekly users.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "AI Daily Brief Host",
+      "episode": "what-people-really-want-from-ai",
+      "claim_date": "2026-03-20",
+      "evidence": "The host states: 'This, of course, is intellectual NIMBYism masquerading as methodology critique, and it just doesn't carry water in a world where billions of people are using AI every week.'",
+      "fp": "3ae29529d4e830c0"
+    },
+    {
+      "claim": "Every CEO Dan Shipper described Claude Opus 5 as 'a little more pushy, a little more opinionated' and noted that it often stops too early on long-horizon tasks, making it less reliable than GPT-5.6 for daily use.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "Dan Shipper (Every CEO)",
+      "episode": "where-should-claude-opus-5-fit-in-your-model-rotation",
+      "claim_date": "2026-07-28",
+      "evidence": "Shipper explained the issue by commenting, 'This model's just a little more pushy, a little more opinionated. You can get away with that if you're really smart. If you're not, it's just more annoying.' He also noted, 'If you set it off and go get a sandwich, it just stops too early. It appears that it happens more frequently when you use it with complex existing skills.'",
+      "fp": "96e34f2663dce821"
+    },
+    {
+      "claim": "Claire Vo of the How I AI podcast criticized Claude Co-work for sitting in a 'fuzzy middle' between the power of Claude Code and the simplicity needed for non-technical users, arguing it is not optimized for either audience.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Claire Vo",
+      "episode": "why-claude-cowork-is-a-big-deal",
+      "claim_date": "2026-01-14",
+      "evidence": "Claire Vo wrote: 'The challenge with this sort of thin wrapper on Claude Code UX is that it's not quite optimized for the non-technical and too kneecapped for the TUI build. Co-work right now sits in the fuzzy middle and the team is going to need to optimize for one or the other to win over a new audience.'",
+      "fp": "daa107e8f7069e69"
+    },
+    {
+      "claim": "The 'everything app' approach in AI may not succeed from a product standpoint, as users may prefer focused, specialized tools over consolidated platforms.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "Host (AI Daily Brief)",
+      "episode": "why-every-ai-product-seems-the-same",
+      "claim_date": "2026-04-10",
+      "evidence": "The host states: 'that still doesn't mean that the everything app approach will actually work from a product standpoint.'",
+      "fp": "80a42b1cf72a1c0e"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "- ### Current Landscape (2026)",
+      "content": "- ### Recent Developments (2026)\n  - **AI Agent UX and Reliability**\n    - **OpenAI's Strategic Shift**: OpenAI's Chief Research Officer Mark Chen acknowledged that integrated app suggestions in ChatGPT felt like advertising, stating, \"I agree that anything that feels like an ad needs to be handled with care and we fell short. We've turned off this kind of suggestion while we improve the model's precision.\" This aligns with a broader shift in OpenAI's upcoming updates away from flashy new features towards improving the chatbot's speed, reliability, and customizability, driven by user complaints about irrelevant suggestions.\n    - **Behavioral Refinements**: Sam Altman identified improving model behavior, specifically minimizing \"over refusals\" (where ChatGPT declines benign questions), as a key priority in the \"code red\" initiative. Conversely, GPT-5.4 has been noted for significant \"scope creep\" and over-verbosity, where the model expands tasks beyond user requests and provides excessively detailed responses, placing a \"huge cognitive burden on the prompter.\"\n    - **Model Personality and Utility**: User perceptions of model \"personality\" are influencing adoption. GPT 5.6 Soul is characterized as a \"workhorse\" model that is extremely diligent and fast, contrasting with Fable 5, which is viewed as a \"wise owl\" with higher raw intelligence but slower execution. Dan Shipper (Every CEO) described Claude Opus 5 as \"a little more pushy, a little more opinionated,\" noting it often stops too early on long-horizon tasks, making it less reliable than GPT-5.6 for daily use.\n  - **Accessibility and Usability for Non-Technical Users**\n    - **The Complexity Ladder**: Non-technical users face a \"complexity ladder\" gap where they can build simple front-end applications but struggle to transition to production-ready systems requiring data persistence, security, and performance engineering without explicit guidance. Mike Kger (Anthropic) noted that users often need to know specific \"magic incantation words\" to prompt for necessary backend solutions, comparing this friction to Instagram's early evolution from UI to backend.\n    - **Design Optimization**: Claire Vo (How I AI) criticized Claude Co-work for sitting in a \"fuzzy middle\" between the power of Claude Code and the simplicity needed for non-technical users, arguing it is not optimized for either audience. Peter Steinberger has stated his next mission is to build an agent that \"even my mom can use,\" which will require broader changes in safety, usability, and access to the latest models.\n  - **User Impact and Policy**\n    - **Vision Alignment**: An Anthropic study reported that 81% of respondents felt AI had taken a step towards their stated vision, highlighting the positive impact of current AI UX on user goals.\n    - **Policy Legitimacy**: The \"context repetition tax\"\u2014the time and effort spent re-explaining context to new agents\u2014degrades interaction quality as users omit details. Furthermore, dismissing the opinions of AI users as illegitimate for policy discussions is increasingly viewed as \"intellectual NIMBYism\" that ignores the reality of billions of weekly users.\n\n- ### Current Landscape (2026)"
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 1,
+      "relevance": 3,
+      "coherence": 1,
+      "better_version": "A",
+      "improvement": -2
+    },
+    "raw_b": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    }
+  },
+  "completeness": {
+    "score": 0.8333333333333334,
+    "detail": [
+      {
+        "fp": "f3de6ffc5f0fbe7a",
+        "claim": "OpenAI's Chief Research Officer Mark Chen acknowledged that integrated app suggestions in ChatGPT felt like advertising ",
+        "matched": true
+      },
+      {
+        "fp": "8b9016f9567294a9",
+        "claim": "81% of respondents in the Anthropic study reported that AI had taken a step towards their stated vision.",
+        "matched": true
+      },
+      {
+        "fp": "96e34f2663dce821",
+        "claim": "Every CEO Dan Shipper described Claude Opus 5 as 'a little more pushy, a little more opinionated' and noted that it ofte",
+        "matched": true
+      },
+      {
+        "fp": "d12d2fb416b6595f",
+        "claim": "Sam Altman identified improving model behavior, specifically minimizing 'over refusals' where ChatGPT declines benign qu",
+        "matched": true
+      },
+      {
+        "fp": "daa107e8f7069e69",
+        "claim": "Claire Vo of the How I AI podcast criticized Claude Co-work for sitting in a 'fuzzy middle' between the power of Claude ",
+        "matched": true
+      },
+      {
+        "fp": "fce8e7625d05d562",
+        "claim": "Peter Steinberger aims to build an agent that is accessible to non-technical users (e.g., 'his mom'), which will require",
+        "matched": true
+      },
+      {
+        "fp": "f98e71372e490035",
+        "claim": "GPT-5.4 exhibits significant 'scope creep' and over-verbosity, often expanding tasks beyond user requests and providing ",
+        "matched": false
+      },
+      {
+        "fp": "3ae29529d4e830c0",
+        "claim": "The host argues that dismissing the opinions of AI users as illegitimate for policy discussions is a form of 'intellectu",
+        "matched": true
+      },
+      {
+        "fp": "42ffce16166523ad",
+        "claim": "The 'context repetition tax' not only wastes time but also degrades the quality of AI interactions because users often o",
+        "matched": false
+      },
+      {
+        "fp": "5710977bf083adbc",
+        "claim": "GPT 5.6 Soul is characterized by users as a 'workhorse' model that is extremely diligent and fast, contrasting with Fabl",
+        "matched": true
+      },
+      {
+        "fp": "6625a2c5efbeb1eb",
+        "claim": "The focus of OpenAI's upcoming updates will shift away from flashy new features towards improving the chatbot's speed, r",
+        "matched": true
+      },
+      {
+        "fp": "6d613236c6855586",
+        "claim": "Non-technical users face a 'complexity ladder' gap where they can build simple front-end applications but struggle to tr",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

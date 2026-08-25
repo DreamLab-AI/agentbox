@@ -1,0 +1,153 @@
+{
+  "topic": "Microsoft Copilot",
+  "topic_slug": "microsoft-copilot",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5"
+  ],
+  "n_assertions": 6,
+  "episodes": [
+    "how-harness-as-a-service-will-change-agents",
+    "nano-banana-2-is-here",
+    "val-kilmers-ai-resurrection",
+    "vibe-coding-gets-an-upgrade",
+    "weird-vibes-at-ai-india-summit"
+  ],
+  "assertion_fingerprints": [
+    "14c0909589926ea4",
+    "22a074dbfa203157",
+    "4934d52796dcadd2",
+    "65adc7b0c81d1585",
+    "6bf8a693b140a8b2",
+    "e7f8f7676f6f12c5"
+  ],
+  "target_page": "Microsoft Copilot.md",
+  "assertions": [
+    {
+      "claim": "Microsoft Azure achieved 39% year-over-year revenue growth, and Microsoft reported 20 million paid seats for its Copilot enterprise add-on.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Microsoft Earnings Report / AI Daily Brief",
+      "episode": "how-harness-as-a-service-will-change-agents",
+      "claim_date": "2026-05-01",
+      "evidence": "The transcript states: 'The big story from earnings was 39% growth for Azure' and 'Microsoft now has 20 million paid seats for the enterprise add-on, up from 15 million in January.'",
+      "fp": "6bf8a693b140a8b2"
+    },
+    {
+      "claim": "Microsoft's new 'Copilot tasks' product signals a broader industry trend of 'clawfication,' where AI agents are designed for general consumer use cases rather than just developers and enterprises.",
+      "tier": "3",
+      "confidence": "0.5",
+      "source": "AI Daily Brief host",
+      "episode": "nano-banana-2-is-here",
+      "claim_date": "2026-03-02",
+      "evidence": "The host notes: 'if you wanted any clearer sign that everyone is getting clawfied, look no further than this,' referring to Microsoft's announcement of an agent for mundane tasks like scheduling and study plans.",
+      "fp": "65adc7b0c81d1585"
+    },
+    {
+      "claim": "Microsoft is restructuring its AI organization by combining the consumer and commercial Copilot teams under a new executive, Jacob Andreu, who has been promoted to EVP of Copilot.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief host / Microsoft CEO Satya Nadella",
+      "episode": "val-kilmers-ai-resurrection",
+      "claim_date": "2026-03-24",
+      "evidence": "The transcript notes, 'The team working on the consumer and commercial versions of Copilot will be combined... This combined Copilot team will be led by product experience executive Jacob Andreu who has been promoted to a new role as EVP of Copilot.'",
+      "fp": "22a074dbfa203157"
+    },
+    {
+      "claim": "The Verge's Tom Warren commented that Microsoft's restructure of Copilot can be read as an admission that the company's efforts to separate the consumer and business Copilot experiences had failed over the past couple of years.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Tom Warren (The Verge)",
+      "episode": "val-kilmers-ai-resurrection",
+      "claim_date": "2026-03-24",
+      "evidence": "Warren stated, 'It's hard not to also read this as an admission that Microsoft's efforts to separate the Copilot experience for consumers and businesses has failed over the past couple of years.'",
+      "fp": "4934d52796dcadd2"
+    },
+    {
+      "claim": "Microsoft is testing features inspired by \"Open Claw\" in an enterprise context, with a newly created team exploring the technology under the leadership of Corporate VP Omar Shahine.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Microsoft (Omar Shahine, Corporate VP)",
+      "episode": "vibe-coding-gets-an-upgrade",
+      "claim_date": "2026-04-16",
+      "evidence": "The transcript reports that \"Microsoft is testing features inspired by open claw with a statement from corporate VP Omar Shahine saying that a newly created team is quote exploring the potential of technologies like open claw in an enterprise context.\"",
+      "fp": "14c0909589926ea4"
+    },
+    {
+      "claim": "A common complaint in enterprises is that approved work AI tools are significantly less capable than consumer-grade models like Claude Opus 4.6.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "AI Daily Brief host",
+      "episode": "weird-vibes-at-ai-india-summit",
+      "claim_date": "2026-02-22",
+      "evidence": "Probably the second most frequent complaint we see outside of the I don't have time to learn this stuff is at home I'm using Opus 46 and at work I have a terrible old version of Copilot.",
+      "fp": "e7f8f7676f6f12c5"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - [[Amazon Q]] targets developer and enterprise search use cases on AWS, competing particularly with Copilot's code-assistance and knowledge-retrieval scenarios.\n  - The \"AI pair programmer\" market pioneered by [[GitHub Copilot]] is contested by Cursor, Tabnine, JetBrains AI Assistant, and others \u2014 all using smaller, code-specialist models fine-tuned from open-source foundations including the [[Meta Llama Model Family]].",
+      "content": "\n\n- ### Recent Developments\n  - **Organizational Restructuring** \u2014 Microsoft has combined its consumer and commercial Copilot teams under a new executive, Jacob Andreu, who has been promoted to EVP of Copilot. This consolidation is widely interpreted as an admission that previous efforts to maintain distinct consumer and business Copilot experiences had not been successful.\n  - **Market Traction** \u2014 Recent earnings reports highlight strong adoption, with Microsoft reporting 20 million paid seats for its Copilot enterprise add-on (up from 15 million in January) alongside 39% year-over-year revenue growth for [[Microsoft Azure]].\n  - **Product Expansion** \u2014 The introduction of \"Copilot tasks\" signals a broader industry trend toward \"clawfication,\" where AI agents are designed for general consumer use cases\u2014such as scheduling and study planning\u2014rather than being limited to developer and enterprise workflows.\n  - **Enterprise Innovation** \u2014 Microsoft is testing features inspired by \"Open Claw\" in an enterprise context, with a newly created team led by Corporate VP Omar Shahine exploring the potential of these technologies.\n  - **Capability Gap** \u2014 A recurring enterprise concern is that approved work AI tools are perceived as significantly less capable than consumer-grade models (e.g., Claude Opus 4.6), leading to friction between personal and professional AI usage."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 1,
+      "relevance": 3,
+      "coherence": 4,
+      "better_version": "A",
+      "improvement": -2
+    },
+    "raw_b": {
+      "factual_grounding": 1,
+      "relevance": 2,
+      "coherence": 4,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 0.6666666666666666,
+    "detail": [
+      {
+        "fp": "6bf8a693b140a8b2",
+        "claim": "Microsoft Azure achieved 39% year-over-year revenue growth, and Microsoft reported 20 million paid seats for its Copilot",
+        "matched": true
+      },
+      {
+        "fp": "65adc7b0c81d1585",
+        "claim": "Microsoft's new 'Copilot tasks' product signals a broader industry trend of 'clawfication,' where AI agents are designed",
+        "matched": true
+      },
+      {
+        "fp": "22a074dbfa203157",
+        "claim": "Microsoft is restructuring its AI organization by combining the consumer and commercial Copilot teams under a new execut",
+        "matched": true
+      },
+      {
+        "fp": "4934d52796dcadd2",
+        "claim": "The Verge's Tom Warren commented that Microsoft's restructure of Copilot can be read as an admission that the company's ",
+        "matched": false
+      },
+      {
+        "fp": "14c0909589926ea4",
+        "claim": "Microsoft is testing features inspired by \"Open Claw\" in an enterprise context, with a newly created team exploring the ",
+        "matched": true
+      },
+      {
+        "fp": "e7f8f7676f6f12c5",
+        "claim": "A common complaint in enterprises is that approved work AI tools are significantly less capable than consumer-grade mode",
+        "matched": false
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

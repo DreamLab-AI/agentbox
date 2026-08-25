@@ -1,0 +1,331 @@
+{
+  "topic": "Agentic Coding",
+  "topic_slug": "agentic-coding",
+  "status": "candidate_survivor",
+  "reasons": [],
+  "n_assertions": 15,
+  "episodes": [
+    "ralph-wiggum-clawdbot-and-mac-minis-how-pros-are-vibe-coding-in-2026",
+    "surprise-elon-anthropic-team-up-reshapes-ai-race",
+    "the-10-biggest-ai-stories-of-2025",
+    "the-5-most-impactful-ai-model-releases-of-2025",
+    "the-ai-token-shortage-begins",
+    "the-best-claude-design-use-cases",
+    "the-most-important-ai-news-from-google-io",
+    "vibe-coding-gets-an-upgrade",
+    "why-2026-is-the-year-of-the-ai-builder-with-lovable-ceo-anton-osika",
+    "why-ai-leads-to-more-work-not-less",
+    "why-claude-cowork-is-a-big-deal",
+    "why-google-workspace-cli-is-such-a-big-deal"
+  ],
+  "assertion_fingerprints": [
+    "027f2ff40325e194",
+    "08ca6a149b0f29df",
+    "1e773566df21ed57",
+    "3447daa50aaf4ef9",
+    "4739e03cf74493c2",
+    "629d7a354332dc2e",
+    "66cb2052cbb508fc",
+    "8917e5958324333d",
+    "9dee5972f86db68a",
+    "a12b08244bc9021d",
+    "bbe82227f174c016",
+    "c7b82bbe152b2949",
+    "c7fea167865f1937",
+    "e21484e85e107ba1",
+    "fdf670c57794c8fa"
+  ],
+  "target_page": "Agentic Coding.md",
+  "assertions": [
+    {
+      "claim": "Anthropic revealed that Claude Co-work was written 100% by Claude Code in approximately 10 days.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Host (AI Daily Brief)",
+      "episode": "ralph-wiggum-clawdbot-and-mac-minis-how-pros-are-vibe-coding-in-2026",
+      "claim_date": "2026-01-26",
+      "evidence": "The host states: 'Anthropic dropped Claude Co-work... and revealed that it had been written 100% by Claude Code in just about 10 days.'",
+      "fp": "9dee5972f86db68a"
+    },
+    {
+      "claim": "The primary trend in early 2026 agentic coding is the shift from human-in-the-loop prompting to systems that operate with minimal input, aiming for 'armies of agents' that work autonomously.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "Host (AI Daily Brief)",
+      "episode": "ralph-wiggum-clawdbot-and-mac-minis-how-pros-are-vibe-coding-in-2026",
+      "claim_date": "2026-01-26",
+      "evidence": "The host summarizes: 'It is really all about pushing the boundaries on autonomy... They want nothing less than armies of agents that work while they sleep.'",
+      "fp": "1e773566df21ed57"
+    },
+    {
+      "claim": "The accessibility of agentic coding tools is expected to improve rapidly as GUI-based interfaces like Conductor replace terminal-based workflows, reducing the intimidation factor for non-experts.",
+      "tier": "3",
+      "confidence": "0.7",
+      "source": "Host (AI Daily Brief)",
+      "episode": "ralph-wiggum-clawdbot-and-mac-minis-how-pros-are-vibe-coding-in-2026",
+      "claim_date": "2026-01-26",
+      "evidence": "The host states: 'I think the accessibility of these programs is going to change really really quickly though... there are also other tools like conductor that are replacing the terminal interface with a guey.'",
+      "fp": "c7fea167865f1937"
+    },
+    {
+      "claim": "Boris Cherny, creator of Claude Code, stated that there is no manually written code anywhere in Anthropic's company, with Claude agents coordinating over Slack and resolving issues across the codebase.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "Boris Cherny",
+      "episode": "surprise-elon-anthropic-team-up-reshapes-ai-race",
+      "claim_date": "2026-05-07",
+      "evidence": "The transcript quotes Cherny: 'there's literally no manually written code anywhere in the company anymore. Instead, Claude's coordinate with each other over Slack, code in loops, and resolve issues across the code base.'",
+      "fp": "629d7a354332dc2e"
+    },
+    {
+      "claim": "The host identifies 'vibe coding' as the single biggest AI story of 2025, predicting it represents a fundamental capability shift that will permanently change how knowledge workers operate, rather than a temporary trend.",
+      "tier": "3",
+      "confidence": "0.8",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-10-biggest-ai-stories-of-2025",
+      "claim_date": "2025-12-24",
+      "evidence": "The host states: 'the one that if I had to commit to a single biggest story of the year would absolutely be my number one is the emergence and growing ubiquity of vibe coding... I think this is a fundamental capability shift that will change how a huge portion of knowledge workers do their work forever going forward.'",
+      "fp": "3447daa50aaf4ef9"
+    },
+    {
+      "claim": "Anthropic's Claude Opus 4.5 is characterized by developers as the first model capable of sustained autonomous coding without entering endless error loops, marking a new horizon for software engineering.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief) citing Dan Shipper and other developers",
+      "episode": "the-5-most-impactful-ai-model-releases-of-2025",
+      "claim_date": "2025-12-27",
+      "evidence": "Dan Shipper is quoted: 'Opus 4.5 is the first model that just keeps coding and coding without running into endless loops of errors... It marks a completely new horizon for the craft of programming.' Other developers noted it allows writing software in English.",
+      "fp": "fdf670c57794c8fa"
+    },
+    {
+      "claim": "GitHub Copilot announced a shift from a flat seat-based model to usage-based billing in late April 2026, citing unsustainable inference costs from agentic usage.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "GitHub Copilot announcement (cited by host)",
+      "episode": "the-ai-token-shortage-begins",
+      "claim_date": "2026-06-01",
+      "evidence": "The host quotes the announcement: 'Cop-ilot is not the same product as it was a year ago... Agentic usage is becoming the default, and it brings significantly higher compute and inference demands... GitHub has absorbed much of the escalating inference cost behind that usage, but the current premium request model is no longer sustainable.'",
+      "fp": "bbe82227f174c016"
+    },
+    {
+      "claim": "The rapid adoption of agentic coding over the last 1.5 years may set a pattern for how AI disrupts other areas of knowledge work, though design and other creative fields may be more 'messy' and human-centric.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "AI Daily Brief host",
+      "episode": "the-best-claude-design-use-cases",
+      "claim_date": "2026-04-20",
+      "evidence": "we've gone from vibe coding being a thing just for weekend fun projects to agentic coding being simply the way that you code in just about a year and a half... A lot of other types of knowledge work, people point out, are much more messy and much more human",
+      "fp": "66cb2052cbb508fc"
+    },
+    {
+      "claim": "Google's Antigravity 2.0 was demonstrated by rebuilding the core framework of a working operating system using 93 sub-agents and processing billions of tokens over approximately 12 hours.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "AI Daily Brief host",
+      "episode": "the-most-important-ai-news-from-google-io",
+      "claim_date": "2026-05-20",
+      "evidence": "The host reports: \"To demonstrate the new capabilities of antigravity 2.0, they rebuilt the core framework of a working operating system using 93 sub-agents and processing billions of tokens, with the entire operation taking about 12 hours.\"",
+      "fp": "8917e5958324333d"
+    },
+    {
+      "claim": "Anthropic launched a redesigned Claude Code desktop app featuring a multi-session sidebar, integrated terminal, and drag-and-drop workspace customization to support parallel agentic work.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Anthropic (Felix Riesberg, official announcement)",
+      "episode": "vibe-coding-gets-an-upgrade",
+      "claim_date": "2026-04-16",
+      "evidence": "Anthropic's Felix Riesberg stated: \"Today is a big day. We're launching a new version of Claude Code in the desktop app. It's been redesigned from the ground up for parallel work and is a lot faster.\" The announcement highlighted features like a new sidebar for managing multiple sessions and an integrated terminal.",
+      "fp": "027f2ff40325e194"
+    },
+    {
+      "claim": "The interfaces for agentic coding platforms, including Cursor, Codex, and Claude Code, are converging into a similar \"orchestration command center\" design focused on managing multiple simultaneous sessions.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief) and Riley Brown",
+      "episode": "vibe-coding-gets-an-upgrade",
+      "claim_date": "2026-04-16",
+      "evidence": "Riley Brown wrote: \"Cursor, Codex, and Claude Code desktop app look exactly the same now.\" The host notes that \"the concept that runs through this is shifting the interface for a world in which development is orchestrating multiple agents.\"",
+      "fp": "a12b08244bc9021d"
+    },
+    {
+      "claim": "The distinction between 'vibe coding' for non-technical users and agentic coding for professional software engineers is becoming more divergent in terms of use cases and organizational impact.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "Nathaniel Whittemore, Host of AI Daily Brief",
+      "episode": "why-2026-is-the-year-of-the-ai-builder-with-lovable-ceo-anton-osika",
+      "claim_date": "2025-12-29",
+      "evidence": "We're still talking about kind of vibe coding as though it's one thing and I kind of think that the agentic and AI coding for actual technical people and for software engineering departments is wildly different than vibe coding for non-technical users and I kind of think that they're going to be more divergent in the year to come.",
+      "fp": "4739e03cf74493c2"
+    },
+    {
+      "claim": "Anthropic's agentic coding trends report identifies that non-technical use cases are expanding across organizations, with domain experts implementing solutions directly and productivity gains extending beyond engineering.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Anthropic (Agentic Coding Trends Report)",
+      "episode": "why-ai-leads-to-more-work-not-less",
+      "claim_date": "2026-02-11",
+      "evidence": "Trend seven is that non-technical use cases expand across organizations. That coding capabilities will democratize beyond engineering, that domain experts will implement solutions directly, and the productivity gains will extend across entire organizations.",
+      "fp": "c7b82bbe152b2949"
+    },
+    {
+      "claim": "The host asserts that the distinction between 'vibe coding' (prototypes) and production-ready code has effectively disappeared or will explode in the next several months due to the capabilities of current agentic coding tools.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "Host",
+      "episode": "why-claude-cowork-is-a-big-deal",
+      "claim_date": "2026-01-14",
+      "evidence": "The host states: 'I am firmly in the camp that that line is basically already gone and if not is going to explode in the next several months.' This is supported by the Das of Menlo Ventures' comment that 'fully polished new products can be built entirely with vibe coding tools like Claude code.'",
+      "fp": "e21484e85e107ba1"
+    },
+    {
+      "claim": "The release of the Google Workspace CLI is significant because it provides a 'path of least resistance' for agent builders to integrate Google services, as coding agents already operate in terminal environments.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "AI Daily Brief Host",
+      "episode": "why-google-workspace-cli-is-such-a-big-deal",
+      "claim_date": "2026-03-12",
+      "evidence": "The host argues: 'if you are an agent builder and you want to integrate a new vendor, the path of least resistance is that the vendor has a CLI and your coding agent already being in the terminal can just run the commands. No new protocol to learn, no new integration layer to build.'",
+      "fp": "08ca6a149b0f29df"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "- ### Overview\n  - OpenAI's GPT 5.6 Soul model scored 91.9% on Terminal Bench 2.0 in Ultra settings, beating Claude Mythos by almost four percentage points. *(Source: OpenAI (via AI Daily Brief host), via AI Daily Brief, 2026-08-24)*",
+      "content": "\n- ### Recent Developments\n  - **Anthropic & Claude Ecosystem**\n    - Anthropic revealed that Claude Co-work was written 100% by Claude Code in approximately 10 days. *(Source: Host (AI Daily Brief), confidence 0.95, tier 1)*\n    - Anthropic launched a redesigned Claude Code desktop app featuring a multi-session sidebar, integrated terminal, and drag-and-drop workspace customization to support parallel agentic work. *(Source: Anthropic (Felix Riesberg, official announcement), confidence 0.95, tier 1)*\n    - Anthropic's Claude Opus 4.5 is characterized by developers as the first model capable of sustained autonomous coding without entering endless error loops, marking a new horizon for software engineering. *(Source: Host (AI Daily Brief) citing Dan Shipper and other developers, confidence 0.85, tier 2)*\n    - Anthropic's agentic coding trends report identifies that non-technical use cases are expanding across organizations, with domain experts implementing solutions directly and productivity gains extending beyond engineering. *(Source: Anthropic (Agentic Coding Trends Report), confidence 0.85, tier 2)*\n    - Boris Cherny, creator of Claude Code, stated that there is no manually written code anywhere in Anthropic's company, with Claude agents coordinating over Slack and resolving issues across the codebase. *(Source: Boris Cherny, confidence 0.85, tier 1)*\n  - **Competitor & Industry Moves**\n    - GitHub Copilot announced a shift from a flat seat-based model to usage-based billing in late April 2026, citing unsustainable inference costs from agentic usage. *(Source: GitHub Copilot announcement (cited by host), confidence 0.95, tier 1)*\n    - Google's Antigravity 2.0 was demonstrated by rebuilding the core framework of a working operating system using 93 sub-agents and processing billions of tokens over approximately 12 hours. *(Source: AI Daily Brief host, confidence 0.9, tier 1)*\n    - The release of the Google Workspace CLI is significant because it provides a 'path of least resistance' for agent builders to integrate Google services, as coding agents already operate in terminal environments. *(Source: AI Daily Brief Host, confidence 0.85, tier 2)*\n  - **Trends & Interface Convergence**\n    - The primary trend in early 2026 agentic coding is the shift from human-in-the-loop prompting to systems that operate with minimal input, aiming for 'armies of agents' that work autonomously. *(Source: Host (AI Daily Brief), confidence 0.9, tier 2)*\n    - The interfaces for agentic coding platforms, including Cursor, Codex, and Claude Code, are converging into a similar \"orchestration command center\" design focused on managing multiple simultaneous sessions. *(Source: Host (AI Daily Brief) and Riley Brown, confidence 0.85, tier 2)*\n    - The host identifies 'vibe coding' as the single biggest AI story of 2025, predicting it represents a fundamental capability shift that will permanently change how knowledge workers operate, rather than a temporary trend. *(Source: Host (AI Daily Brief), confidence 0.8, tier 3)*\n    - The distinction between 'vibe coding' for non-technical users and agentic coding for professional software engineers is becoming more divergent in terms of use cases and organizational impact. *(Source: Nathaniel Whittemore, Host of AI Daily Brief, confidence 0.75, tier 2)*"
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 2.0,
+    "rubric_b_improvement": 2.0,
+    "raw_a": {
+      "factual_grounding": 2,
+      "relevance": 3,
+      "coherence": 3,
+      "better_version": "A",
+      "improvement": -2
+    },
+    "raw_b": {
+      "factual_grounding": 3,
+      "relevance": 2,
+      "coherence": 4,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "9dee5972f86db68a",
+        "claim": "Anthropic revealed that Claude Co-work was written 100% by Claude Code in approximately 10 days.",
+        "matched": true
+      },
+      {
+        "fp": "027f2ff40325e194",
+        "claim": "Anthropic launched a redesigned Claude Code desktop app featuring a multi-session sidebar, integrated terminal, and drag",
+        "matched": true
+      },
+      {
+        "fp": "bbe82227f174c016",
+        "claim": "GitHub Copilot announced a shift from a flat seat-based model to usage-based billing in late April 2026, citing unsustai",
+        "matched": true
+      },
+      {
+        "fp": "1e773566df21ed57",
+        "claim": "The primary trend in early 2026 agentic coding is the shift from human-in-the-loop prompting to systems that operate wit",
+        "matched": true
+      },
+      {
+        "fp": "8917e5958324333d",
+        "claim": "Google's Antigravity 2.0 was demonstrated by rebuilding the core framework of a working operating system using 93 sub-ag",
+        "matched": true
+      },
+      {
+        "fp": "fdf670c57794c8fa",
+        "claim": "Anthropic's Claude Opus 4.5 is characterized by developers as the first model capable of sustained autonomous coding wit",
+        "matched": true
+      },
+      {
+        "fp": "c7b82bbe152b2949",
+        "claim": "Anthropic's agentic coding trends report identifies that non-technical use cases are expanding across organizations, wit",
+        "matched": true
+      },
+      {
+        "fp": "08ca6a149b0f29df",
+        "claim": "The release of the Google Workspace CLI is significant because it provides a 'path of least resistance' for agent builde",
+        "matched": true
+      },
+      {
+        "fp": "a12b08244bc9021d",
+        "claim": "The interfaces for agentic coding platforms, including Cursor, Codex, and Claude Code, are converging into a similar \"or",
+        "matched": true
+      },
+      {
+        "fp": "629d7a354332dc2e",
+        "claim": "Boris Cherny, creator of Claude Code, stated that there is no manually written code anywhere in Anthropic's company, wit",
+        "matched": true
+      },
+      {
+        "fp": "3447daa50aaf4ef9",
+        "claim": "The host identifies 'vibe coding' as the single biggest AI story of 2025, predicting it represents a fundamental capabil",
+        "matched": true
+      },
+      {
+        "fp": "4739e03cf74493c2",
+        "claim": "The distinction between 'vibe coding' for non-technical users and agentic coding for professional software engineers is ",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": {
+    "target_page": "Agentic Coding.md",
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "- ### Overview\n  - OpenAI's GPT 5.6 Soul model scored 91.9% on Terminal Bench 2.0 in Ultra settings, beating Claude Mythos by almost four percentage points. *(Source: OpenAI (via AI Daily Brief host), via AI Daily Brief, 2026-08-24)*",
+      "content": "\n- ### Recent Developments\n  - **Anthropic & Claude Ecosystem**\n    - Anthropic revealed that Claude Co-work was written 100% by Claude Code in approximately 10 days. *(Source: Host (AI Daily Brief), confidence 0.95, tier 1)*\n    - Anthropic launched a redesigned Claude Code desktop app featuring a multi-session sidebar, integrated terminal, and drag-and-drop workspace customization to support parallel agentic work. *(Source: Anthropic (Felix Riesberg, official announcement), confidence 0.95, tier 1)*\n    - Anthropic's Claude Opus 4.5 is characterized by developers as the first model capable of sustained autonomous coding without entering endless error loops, marking a new horizon for software engineering. *(Source: Host (AI Daily Brief) citing Dan Shipper and other developers, confidence 0.85, tier 2)*\n    - Anthropic's agentic coding trends report identifies that non-technical use cases are expanding across organizations, with domain experts implementing solutions directly and productivity gains extending beyond engineering. *(Source: Anthropic (Agentic Coding Trends Report), confidence 0.85, tier 2)*\n    - Boris Cherny, creator of Claude Code, stated that there is no manually written code anywhere in Anthropic's company, with Claude agents coordinating over Slack and resolving issues across the codebase. *(Source: Boris Cherny, confidence 0.85, tier 1)*\n  - **Competitor & Industry Moves**\n    - GitHub Copilot announced a shift from a flat seat-based model to usage-based billing in late April 2026, citing unsustainable inference costs from agentic usage. *(Source: GitHub Copilot announcement (cited by host), confidence 0.95, tier 1)*\n    - Google's Antigravity 2.0 was demonstrated by rebuilding the core framework of a working operating system using 93 sub-agents and processing billions of tokens over approximately 12 hours. *(Source: AI Daily Brief host, confidence 0.9, tier 1)*\n    - The release of the Google Workspace CLI is significant because it provides a 'path of least resistance' for agent builders to integrate Google services, as coding agents already operate in terminal environments. *(Source: AI Daily Brief Host, confidence 0.85, tier 2)*\n  - **Trends & Interface Convergence**\n    - The primary trend in early 2026 agentic coding is the shift from human-in-the-loop prompting to systems that operate with minimal input, aiming for 'armies of agents' that work autonomously. *(Source: Host (AI Daily Brief), confidence 0.9, tier 2)*\n    - The interfaces for agentic coding platforms, including Cursor, Codex, and Claude Code, are converging into a similar \"orchestration command center\" design focused on managing multiple simultaneous sessions. *(Source: Host (AI Daily Brief) and Riley Brown, confidence 0.85, tier 2)*\n    - The host identifies 'vibe coding' as the single biggest AI story of 2025, predicting it represents a fundamental capability shift that will permanently change how knowledge workers operate, rather than a temporary trend. *(Source: Host (AI Daily Brief), confidence 0.8, tier 3)*\n    - The distinction between 'vibe coding' for non-technical users and agentic coding for professional software engineers is becoming more divergent in terms of use cases and organizational impact. *(Source: Nathaniel Whittemore, Host of AI Daily Brief, confidence 0.75, tier 2)*"
+    },
+    "provenance": {
+      "assertion_fingerprints": [
+        "027f2ff40325e194",
+        "08ca6a149b0f29df",
+        "1e773566df21ed57",
+        "3447daa50aaf4ef9",
+        "4739e03cf74493c2",
+        "629d7a354332dc2e",
+        "66cb2052cbb508fc",
+        "8917e5958324333d",
+        "9dee5972f86db68a",
+        "a12b08244bc9021d",
+        "bbe82227f174c016",
+        "c7b82bbe152b2949",
+        "c7fea167865f1937",
+        "e21484e85e107ba1",
+        "fdf670c57794c8fa"
+      ],
+      "source_episodes": [
+        "ralph-wiggum-clawdbot-and-mac-minis-how-pros-are-vibe-coding-in-2026",
+        "surprise-elon-anthropic-team-up-reshapes-ai-race",
+        "the-10-biggest-ai-stories-of-2025",
+        "the-5-most-impactful-ai-model-releases-of-2025",
+        "the-ai-token-shortage-begins",
+        "the-best-claude-design-use-cases",
+        "the-most-important-ai-news-from-google-io",
+        "vibe-coding-gets-an-upgrade",
+        "why-2026-is-the-year-of-the-ai-builder-with-lovable-ceo-anton-osika",
+        "why-ai-leads-to-more-work-not-less",
+        "why-claude-cowork-is-a-big-deal",
+        "why-google-workspace-cli-is-such-a-big-deal"
+      ]
+    },
+    "scores": {
+      "rubric_a_improvement": 2.0,
+      "rubric_b_improvement": 2.0,
+      "completeness": 1.0
+    }
+  }
+}

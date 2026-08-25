@@ -1,0 +1,153 @@
+{
+  "topic": "Google DeepMind",
+  "topic_slug": "google-deepmind",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5"
+  ],
+  "n_assertions": 6,
+  "episodes": [
+    "ceo-led-ai-gets-3x-the-roi",
+    "gemini-can-now-write-you-a-song",
+    "google-says-no-ads-planned-for-gemini",
+    "how-apples-ai-strategy-changes-with-a-new-ceo",
+    "why-ai-users-are-raving-about-glm-52"
+  ],
+  "assertion_fingerprints": [
+    "992a523298ef8797",
+    "9b891b00b19f0bd9",
+    "9d4a9b4656dde16d",
+    "cb6667fc0408ba90",
+    "d852ead455034227",
+    "dcc0a0256f47670c"
+  ],
+  "target_page": "Google DeepMind.md",
+  "assertions": [
+    {
+      "claim": "The delay of Google's Gemini 3.5 Pro to July is linked to a significant exodus of senior researchers from DeepMind to Anthropic and OpenAI.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Bloomberg / Business Insider",
+      "episode": "ceo-led-ai-gets-3x-the-roi",
+      "claim_date": "2026-06-25",
+      "evidence": "Researchers Jonas Adler and Alexander Pritzel left for Anthropic, following earlier departures of Noam Shazeer and John Jumper. The delay is attributed to the need to tweak the model based on stress-testing feedback.",
+      "fp": "cb6667fc0408ba90"
+    },
+    {
+      "claim": "Google DeepMind launched Lyria 3, an AI music generation model that supports text, image, and video inputs and generates lyrics in eight languages.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Podcast Host (citing Google DeepMind launch)",
+      "episode": "gemini-can-now-write-you-a-song",
+      "claim_date": "2026-03-08",
+      "evidence": "The transcript states: 'The latest news is that the company has launched an AI music generator called LIIA 3... allows users to generate music clips based on text, images, or video inputs... Lyrics can be generated in eight different languages, including German, French, Spanish, and Hindi.'",
+      "fp": "d852ead455034227"
+    },
+    {
+      "claim": "Google DeepMind CEO Demis Hassabis stated that Google currently has no plans to bring advertising to the Gemini app.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Demis Hassabis (via Alex Heath of Sources)",
+      "episode": "google-says-no-ads-planned-for-gemini",
+      "claim_date": "2026-01-22",
+      "evidence": "Hassabis commented on ChatGPT ads, noting it is interesting they went for them so early, and explicitly stated Google does not have plans for ads in Gemini at the moment.",
+      "fp": "992a523298ef8797"
+    },
+    {
+      "claim": "Google has formed a 'strike team' led by co-founder Sergey Brin to urgently bridge the gap in agentic coding execution, acknowledging that Anthropic currently holds the lead.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "The Information (cited by AI Daily Brief Host)",
+      "episode": "how-apples-ai-strategy-changes-with-a-new-ceo",
+      "claim_date": "2026-04-22",
+      "evidence": "The host reports: 'DeepMind researchers have acknowledged that Anthropic has the lead on coding... Brin told DeepMind staffers, \"To win the final sprint, we must urgently bridge the gap in agentic execution...\"'",
+      "fp": "dcc0a0256f47670c"
+    },
+    {
+      "claim": "Gemini 3.5 Pro is reportedly slated for release on Tuesday, June 30th.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "Leo at Synthwave",
+      "episode": "why-ai-users-are-raving-about-glm-52",
+      "claim_date": "2026-06-22",
+      "evidence": "That model is reportedly slated to be released next Tuesday, June 30th.",
+      "fp": "9d4a9b4656dde16d"
+    },
+    {
+      "claim": "Internal sources at Google DeepMind indicate that staff are demoralized by the lab's perceived fall to third or fourth place in the AI race, particularly after GLM-5.2 overtook Gemini 3.1 Pro on the Artificial Analysis intelligence index.",
+      "tier": "2",
+      "confidence": "0.7",
+      "source": "Leo at Synthwave",
+      "episode": "why-ai-users-are-raving-about-glm-52",
+      "claim_date": "2026-06-22",
+      "evidence": "Leo added that staff were demoralized by Z AI's GLM 5.2 overtaking Gemini 3.1 Pro on the artificial analysis intelligence index. Another source at DeepMind told Leo that Gemini 3.5 Pro is quote not the step change we need to be truly competitive in the race to AGI.",
+      "fp": "9b891b00b19f0bd9"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - **Publication Norms** \u2014 Publishes in Nature, Science, NeurIPS, ICML, ICLR, and other top venues, maintaining academic research norms despite commercial pressures.",
+      "content": "\n\n- ### Recent Developments\n  - **Gemini 3.5 Pro Delay & Researcher Exodus** \u2014 The release of Gemini 3.5 Pro, reportedly slated for June 30th, has been linked to a significant exodus of senior researchers from DeepMind to competitors such as Anthropic and OpenAI. Notable departures include Jonas Adler and Alexander Pritzel (to Anthropic), following earlier exits by Noam Shazeer and John Jumper. The delay is attributed to the need to tweak the model based on stress-testing feedback.\n  - **Lyria 3 Launch** \u2014 Google DeepMind launched Lyria 3, an advanced AI music generation model that supports text, image, and video inputs. The system can generate lyrics in eight different languages, including German, French, Spanish, and Hindi.\n  - **Agentic Coding 'Strike Team'** \u2014 Acknowledging that Anthropic currently holds the lead in agentic coding execution, Google has formed a 'strike team' led by co-founder Sergey Brin. Brin urged DeepMind staffers to \"urgently bridge the gap in agentic execution\" to win the final sprint.\n  - **Gemini Advertising Stance** \u2014 CEO Demis Hassabis stated that Google currently has no plans to bring advertising to the Gemini app. Commenting on the early adoption of ads by competitors like ChatGPT, Hassabis noted it was \"interesting\" they went for them so soon, but confirmed Google does not have plans for ads in Gemini at the moment.\n  - **Internal Morale & Competitive Pressure** \u2014 Internal sources indicate staff are demoralized by the lab's perceived fall to third or fourth place in the AI race, particularly after Z AI's GLM-5.2 overtook Gemini 3.1 Pro on the Artificial Analysis intelligence index. One internal source described Gemini 3.5 Pro as \"not the step change we need to be truly competitive in the race to AGI.\""
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 1,
+      "relevance": 4,
+      "coherence": 4,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "cb6667fc0408ba90",
+        "claim": "The delay of Google's Gemini 3.5 Pro to July is linked to a significant exodus of senior researchers from DeepMind to An",
+        "matched": true
+      },
+      {
+        "fp": "d852ead455034227",
+        "claim": "Google DeepMind launched Lyria 3, an AI music generation model that supports text, image, and video inputs and generates",
+        "matched": true
+      },
+      {
+        "fp": "992a523298ef8797",
+        "claim": "Google DeepMind CEO Demis Hassabis stated that Google currently has no plans to bring advertising to the Gemini app.",
+        "matched": true
+      },
+      {
+        "fp": "dcc0a0256f47670c",
+        "claim": "Google has formed a 'strike team' led by co-founder Sergey Brin to urgently bridge the gap in agentic coding execution, ",
+        "matched": true
+      },
+      {
+        "fp": "9d4a9b4656dde16d",
+        "claim": "Gemini 3.5 Pro is reportedly slated for release on Tuesday, June 30th.",
+        "matched": true
+      },
+      {
+        "fp": "9b891b00b19f0bd9",
+        "claim": "Internal sources at Google DeepMind indicate that staff are demoralized by the lab's perceived fall to third or fourth p",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

@@ -231,6 +231,17 @@ terminal reject also writes `<Topic>.md` into the working graph — the Loom-dra
 prose section plus the attributed evidence bullets, `type:: podcast-news`,
 overwritten on each dossier refresh. The curated main graph is never touched.
 
+Survivors flow onward via `node submit-proposals.mjs` (weekly cron stage 3):
+each dossier's payload is submitted as a governed AMEND proposal
+(Whelk consistency gate → ACSP human approval → PR) through
+`POST /api/ontology-agent/propose`, reusing the ontology-bridge's own request
+builder. Addressing is exact-slug-match only (`urn:ngm:class:<slug>`); target
+pages with no ontology class are reported and skipped — they need a class
+*create* proposal, which stays human-initiated. Idempotent per assertion-
+fingerprint set (`promotions/.submitted.json`). Decision surfacing follows
+ADR-056's split: this pipeline stages and reports; the signature happens on
+the existing governed approval surface, never a second bespoke one.
+
 Idempotent per assertion-fingerprint set; instrument outages defer (retry next
 run) rather than reject. Full contract, thresholds, dossier JSON shape, and the
 live E2E test record: [references/promotion.md](references/promotion.md).

@@ -1,0 +1,160 @@
+{
+  "topic": "US-China AI Competition",
+  "topic_slug": "us-china-ai-competition",
+  "status": "candidate_survivor",
+  "reasons": [],
+  "n_assertions": 5,
+  "episodes": [
+    "what-people-really-want-from-ai",
+    "why-everyone-is-debating-ai-policy",
+    "you-can-now-vibecode-mobile-apps",
+    "your-company-doesnt-need-an-ai-strategy"
+  ],
+  "assertion_fingerprints": [
+    "2b4c107961639d93",
+    "4b86a830c6c79500",
+    "867186335c583516",
+    "93558c1cd95b7bdd",
+    "c71b7d7c950b489f"
+  ],
+  "target_page": "US-China AI Competition.md",
+  "assertions": [
+    {
+      "claim": "Freelance creatives were identified as the group where AI's upside and downside most nearly canceled out, with 23% experiencing benefits and 17% experiencing downsides.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Anthropic",
+      "episode": "what-people-really-want-from-ai",
+      "claim_date": "2026-03-20",
+      "evidence": "The transcript states: 'Freelance creatives were the group where the upside and downside most nearly canceled out. 23% had lived the benefits, but 17% had lived the downside.'",
+      "fp": "867186335c583516"
+    },
+    {
+      "claim": "Axios reported that the Trump administration is considering an executive order requiring US tech companies to only host Chinese AI models if they can guarantee security and take liability for any breaches.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Axios",
+      "episode": "why-everyone-is-debating-ai-policy",
+      "claim_date": "2026-07-29",
+      "evidence": "The transcript states: 'They said the Commerce Department has also circulated draft rules that would leverage supply chain security powers to crack down on Chinese AI... an executive order is also being considered which would require US tech companies to only host Chinese models if they can guarantee security and take liability for any breaches.'",
+      "fp": "2b4c107961639d93"
+    },
+    {
+      "claim": "Ryan Fedic of the American Enterprise Institute argued that the US should focus on industrial variables like high bandwidth memory production and data center construction timelines, rather than model benchmarks, to determine the outcome of the AI race.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Ryan Fedic",
+      "episode": "why-everyone-is-debating-ai-policy",
+      "claim_date": "2026-07-29",
+      "evidence": "Fedic wrote: 'Washington would do well to stop measuring victory in the AI race according to model benchmarks... and start paying attention to the industrial variables which will determine which AI labs are capable of serving intelligence to global publics.'",
+      "fp": "93558c1cd95b7bdd"
+    },
+    {
+      "claim": "Jensen Huang stated that China is well ahead of the US on energy, while the US leads on chips, and that China is right there on infrastructure and AI models.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Jensen Huang",
+      "episode": "you-can-now-vibecode-mobile-apps",
+      "claim_date": "2026-01-19",
+      "evidence": "Jensen Hong recently commented that they're actually ahead in some aspects saying China is well ahead of us on energy. We are way ahead on chips. They're right there on infrastructure and they're right there on AI models and the areas where the US leads are no longer guaranteed.",
+      "fp": "4b86a830c6c79500"
+    },
+    {
+      "claim": "Bloomberg reported that Commerce Secretary Howard Lutnick told ASML that the US government believed one of its EUV machines may have made its way into China.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Bloomberg",
+      "episode": "your-company-doesnt-need-an-ai-strategy",
+      "claim_date": "2026-06-20",
+      "evidence": "The transcript states: 'Bloomberg reports that Commerce Secretary Howard Lutnick last night told ASML that the US government believed that one of its ultraviolet lithography or EUV machines may have somehow made its way into China.'",
+      "fp": "c71b7d7c950b489f"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "- ### Relationships",
+      "content": "- ### Recent Developments\n  - **Regulatory & Security Measures**: Axios reported that the Trump administration is considering an executive order requiring US tech companies to only host Chinese AI models if they can guarantee security and take liability for any breaches. Additionally, the Commerce Department has circulated draft rules leveraging supply chain security powers to crack down on Chinese AI. *(Source: Axios, via podcast evidence, confidence 0.9)*\n  - **Supply Chain & Hardware**: Bloomberg reported that Commerce Secretary Howard Lutnick informed ASML that the US government believes one of its EUV (extreme ultraviolet) lithography machines may have made its way into China. *(Source: Bloomberg, via podcast evidence, confidence 0.9)*\n  - **Strategic Perspectives**: Jensen Huang stated that China is well ahead of the US on energy, while the US leads on chips, and that China is \"right there\" on infrastructure and AI models, noting that areas where the US leads are no longer guaranteed. *(Source: Jensen Huang, via podcast evidence, confidence 0.85)*\n  - **Industrial Variables**: Ryan Fedic of the American Enterprise Institute argued that the US should focus on industrial variables like high bandwidth memory production and data center construction timelines, rather than model benchmarks, to determine the outcome of the AI race. *(Source: Ryan Fedic, via podcast evidence, confidence 0.85)*\n  - **Labor Market Impact**: Freelance creatives were identified as the group where AI's upside and downside most nearly canceled out, with 23% experiencing benefits and 17% experiencing downsides. *(Source: Anthropic, via podcast evidence, confidence 0.95)*"
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 2.0,
+    "rubric_b_improvement": 2.0,
+    "raw_a": {
+      "factual_grounding": 4,
+      "relevance": 3,
+      "coherence": 4,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 4,
+      "relevance": 4,
+      "coherence": 4,
+      "better_version": "B",
+      "improvement": 2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "867186335c583516",
+        "claim": "Freelance creatives were identified as the group where AI's upside and downside most nearly canceled out, with 23% exper",
+        "matched": true
+      },
+      {
+        "fp": "2b4c107961639d93",
+        "claim": "Axios reported that the Trump administration is considering an executive order requiring US tech companies to only host ",
+        "matched": true
+      },
+      {
+        "fp": "93558c1cd95b7bdd",
+        "claim": "Ryan Fedic of the American Enterprise Institute argued that the US should focus on industrial variables like high bandwi",
+        "matched": true
+      },
+      {
+        "fp": "4b86a830c6c79500",
+        "claim": "Jensen Huang stated that China is well ahead of the US on energy, while the US leads on chips, and that China is right t",
+        "matched": true
+      },
+      {
+        "fp": "c71b7d7c950b489f",
+        "claim": "Bloomberg reported that Commerce Secretary Howard Lutnick told ASML that the US government believed one of its EUV machi",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": {
+    "target_page": "US-China AI Competition.md",
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "- ### Relationships",
+      "content": "- ### Recent Developments\n  - **Regulatory & Security Measures**: Axios reported that the Trump administration is considering an executive order requiring US tech companies to only host Chinese AI models if they can guarantee security and take liability for any breaches. Additionally, the Commerce Department has circulated draft rules leveraging supply chain security powers to crack down on Chinese AI. *(Source: Axios, via podcast evidence, confidence 0.9)*\n  - **Supply Chain & Hardware**: Bloomberg reported that Commerce Secretary Howard Lutnick informed ASML that the US government believes one of its EUV (extreme ultraviolet) lithography machines may have made its way into China. *(Source: Bloomberg, via podcast evidence, confidence 0.9)*\n  - **Strategic Perspectives**: Jensen Huang stated that China is well ahead of the US on energy, while the US leads on chips, and that China is \"right there\" on infrastructure and AI models, noting that areas where the US leads are no longer guaranteed. *(Source: Jensen Huang, via podcast evidence, confidence 0.85)*\n  - **Industrial Variables**: Ryan Fedic of the American Enterprise Institute argued that the US should focus on industrial variables like high bandwidth memory production and data center construction timelines, rather than model benchmarks, to determine the outcome of the AI race. *(Source: Ryan Fedic, via podcast evidence, confidence 0.85)*\n  - **Labor Market Impact**: Freelance creatives were identified as the group where AI's upside and downside most nearly canceled out, with 23% experiencing benefits and 17% experiencing downsides. *(Source: Anthropic, via podcast evidence, confidence 0.95)*"
+    },
+    "provenance": {
+      "assertion_fingerprints": [
+        "2b4c107961639d93",
+        "4b86a830c6c79500",
+        "867186335c583516",
+        "93558c1cd95b7bdd",
+        "c71b7d7c950b489f"
+      ],
+      "source_episodes": [
+        "what-people-really-want-from-ai",
+        "why-everyone-is-debating-ai-policy",
+        "you-can-now-vibecode-mobile-apps",
+        "your-company-doesnt-need-an-ai-strategy"
+      ]
+    },
+    "scores": {
+      "rubric_a_improvement": 2.0,
+      "rubric_b_improvement": 2.0,
+      "completeness": 1.0
+    }
+  }
+}

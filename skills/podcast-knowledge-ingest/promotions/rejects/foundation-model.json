@@ -1,0 +1,169 @@
+{
+  "topic": "Foundation Model",
+  "topic_slug": "foundation-model",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -1.0 <= 0.0"
+  ],
+  "n_assertions": 7,
+  "episodes": [
+    "can-open-models-solve-corporate-ai-washing",
+    "harness-engineering-101",
+    "openai-preps-new-garlic-model",
+    "the-5-biggest-ai-stories-to-watch-in-december",
+    "val-kilmers-ai-resurrection",
+    "will-this-update-from-openai-make-ai-agents-work-better"
+  ],
+  "assertion_fingerprints": [
+    "04c02b2497d96f2d",
+    "22b24b2e2fcf20ff",
+    "3306843007b8ed3b",
+    "37a9767778d21d1d",
+    "49875419fe877119",
+    "6b8da46a4e39f1ae",
+    "993b6f450cbfd821"
+  ],
+  "target_page": "Foundation Model.md",
+  "assertions": [
+    {
+      "claim": "Alibaba's Qwen 3.8 Max model has 2.4 trillion parameters and is priced at $2 per million input tokens and $6 per million output tokens.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Alibaba Qwen Release (cited by AI Daily Brief host)",
+      "episode": "can-open-models-solve-corporate-ai-washing",
+      "claim_date": "2026-08-05",
+      "evidence": "The transcript notes: 'this one coming in at 2.4 trillion parameters' and 'Qwen is being priced at $2 per million input and $6 per million output tokens'.",
+      "fp": "04c02b2497d96f2d"
+    },
+    {
+      "claim": "Alibaba's return to open-weights models with Qwen 3.8 Max is a strategic move to dominate the global open-model space, leveraging the recent PR issues of competitors like Anthropic.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "AI Daily Brief Host / Industry Analysts",
+      "episode": "can-open-models-solve-corporate-ai-washing",
+      "claim_date": "2026-08-05",
+      "evidence": "The host notes: 'Chinese labs are clearly taking advantage of Anthropic's recent PR mess and are going all in on open weights. The message is loud. They want Chinese open models to dominate globally.'",
+      "fp": "22b24b2e2fcf20ff"
+    },
+    {
+      "claim": "There is a strategic tension between 'big model' proponents who argue the model contains all the necessary intelligence and 'big harness' proponents who argue the surrounding system is the primary driver of value.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Latent Space / AI Daily Brief Host",
+      "episode": "harness-engineering-101",
+      "claim_date": "2026-04-15",
+      "evidence": "The transcript cites Latent Space's post 'Is Harness Engineering Real?' which frames the debate: 'The central tension... is between big model and big harness.' It quotes Boris Cherny (Claude Code) saying the harness is 'the thinnest possible wrapper' and Jerry Liu (LlamaIndex) saying 'The Model Harness Is Everything.'",
+      "fp": "6b8da46a4e39f1ae"
+    },
+    {
+      "claim": "OpenAI has not completed a successful full-scale training run on a new foundation model since GPT-4.0 in May of the previous year, according to SemiAnalysis.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "SemiAnalysis",
+      "episode": "openai-preps-new-garlic-model",
+      "claim_date": "2025-12-04",
+      "evidence": "The transcript states: 'In a recent research note, semi analysis claimed that OpenAI had not completed a successful full-scale training run on a new foundation model since GPT40 in May of last year.'",
+      "fp": "993b6f450cbfd821"
+    },
+    {
+      "claim": "The host predicts that Apple will not compete meaningfully in AI through its own models but will instead use its balance sheet to buy AI capabilities to ensure its devices do not suffer from a lack of AI features.",
+      "tier": "3",
+      "confidence": "0.5",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-5-biggest-ai-stories-to-watch-in-december",
+      "claim_date": "2025-12-10",
+      "evidence": "The host states, 'I think that every week that goes on, Apple gets farther and farther away from trying to compete in any meaningful way on AI and will at some point just use its balance sheet to buy their way in.'",
+      "fp": "37a9767778d21d1d"
+    },
+    {
+      "claim": "Mustafa Suleyman stated that the model layer will accrue most of the future value and that his objective is to create highly optimized, enterprise-specific model lineages for Microsoft over the next 3 to 5 years.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "Mustafa Suleyman (via CNBC interview cited in transcript)",
+      "episode": "val-kilmers-ai-resurrection",
+      "claim_date": "2026-03-24",
+      "evidence": "Suleyman told CNBC, 'I'm genuinely thrilled about this change precisely because most of the future value is going to accrue to the model layer and my job is to create highly cog-optimized, highly efficient enterprise-specific model lineages for Microsoft over the next 3 to 5 years.'",
+      "fp": "49875419fe877119"
+    },
+    {
+      "claim": "The adoption of Anthropic's skills standard by OpenAI demonstrates a trend where foundation model companies prioritize the speed of development and interoperability over owning proprietary standards.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Host (AI Daily Brief)",
+      "episode": "will-this-update-from-openai-make-ai-agents-work-better",
+      "claim_date": "2025-12-18",
+      "evidence": "The host states: 'This to me is continued evidence that it matters way more to these foundation lab companies to move at the speed of development than to own the standard... OpenAI seems comfortable to let Anthropic create standards like MCP and skills then adopt them later.'",
+      "fp": "3306843007b8ed3b"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - Open challenges as of 2026 centre on the looming data wall (Epoch AI projects the usable stock of public training text could be exhausted between 2026 and 2032, pushing synthetic data), the rising energy and carbon footprint of training (Llama 3.1 405B at roughly 8,930 tons CO2), and durable gaps in reliability on long-running autonomous tasks, provenance and copyright compliance, and systemic-risk evaluation.",
+      "content": "\n\n- ### Recent Developments (2026)\n  - **Alibaba Qwen 3.8 Max**: Alibaba released Qwen 3.8 Max, a foundation model with 2.4 trillion parameters, priced at $2 per million input tokens and $6 per million output tokens. This release marks a strategic return to open-weights models, aimed at dominating the global open-model space and leveraging recent public relations challenges faced by competitors such as Anthropic.\n  - **OpenAI Training Status**: According to a research note by SemiAnalysis, OpenAI has not completed a successful full-scale training run on a new foundation model since GPT-4.0 in May of the previous year, raising questions about the cadence of frontier model releases from the lab.\n  - **Model vs. Harness Debate**: A strategic tension has emerged between proponents of \"big model\" architectures, who argue the model contains all necessary intelligence, and \"big harness\" advocates, who contend the surrounding system is the primary driver of value. This debate is highlighted by industry figures such as Boris Cherny (Claude Code), who describes the harness as \"the thinnest possible wrapper,\" and Jerry Liu (LlamaIndex), who asserts \"The Model Harness Is Everything.\"\n  - **Microsoft's Model Strategy**: Mustafa Suleyman stated that the model layer will accrue most of the future value, with Microsoft's objective being to create highly optimized, enterprise-specific model lineages over the next 3 to 5 years.\n  - **Standardization and Interoperability**: The adoption of Anthropic's skills standard by OpenAI demonstrates a trend where foundation model companies prioritize the speed of development and interoperability over owning proprietary standards, with OpenAI appearing comfortable adopting standards like MCP and skills created by competitors.\n  - **Apple's AI Approach**: Industry analysis suggests Apple is unlikely to compete meaningfully in AI through its own models, instead expected to use its balance sheet to acquire AI capabilities to ensure its devices maintain competitive AI features."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 1.0,
+    "rubric_b_improvement": -1.0,
+    "raw_a": {
+      "factual_grounding": 4,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "A",
+      "improvement": -1
+    },
+    "raw_b": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 1
+    }
+  },
+  "completeness": {
+    "score": 0.8571428571428571,
+    "detail": [
+      {
+        "fp": "04c02b2497d96f2d",
+        "claim": "Alibaba's Qwen 3.8 Max model has 2.4 trillion parameters and is priced at $2 per million input tokens and $6 per million",
+        "matched": true
+      },
+      {
+        "fp": "22b24b2e2fcf20ff",
+        "claim": "Alibaba's return to open-weights models with Qwen 3.8 Max is a strategic move to dominate the global open-model space, l",
+        "matched": true
+      },
+      {
+        "fp": "6b8da46a4e39f1ae",
+        "claim": "There is a strategic tension between 'big model' proponents who argue the model contains all the necessary intelligence ",
+        "matched": true
+      },
+      {
+        "fp": "993b6f450cbfd821",
+        "claim": "OpenAI has not completed a successful full-scale training run on a new foundation model since GPT-4.0 in May of the prev",
+        "matched": true
+      },
+      {
+        "fp": "37a9767778d21d1d",
+        "claim": "The host predicts that Apple will not compete meaningfully in AI through its own models but will instead use its balance",
+        "matched": false
+      },
+      {
+        "fp": "49875419fe877119",
+        "claim": "Mustafa Suleyman stated that the model layer will accrue most of the future value and that his objective is to create hi",
+        "matched": true
+      },
+      {
+        "fp": "3306843007b8ed3b",
+        "claim": "The adoption of Anthropic's skills standard by OpenAI demonstrates a trend where foundation model companies prioritize t",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

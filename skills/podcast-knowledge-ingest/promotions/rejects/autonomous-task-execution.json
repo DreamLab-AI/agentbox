@@ -1,0 +1,251 @@
+{
+  "topic": "Autonomous Task Execution",
+  "topic_slug": "autonomous-task-execution",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5",
+    "completeness 0.42 < 0.6"
+  ],
+  "n_assertions": 12,
+  "episodes": [
+    "how-i-built-my-10-agent-openclaw-team",
+    "how-to-get-the-most-from-ai-this-summer",
+    "ralph-wiggum-clawdbot-and-mac-minis-how-pros-are-vibe-coding-in-2026",
+    "the-month-ai-woke-up",
+    "the-openclaw-ification-of-ai",
+    "the-self-driving-company"
+  ],
+  "assertion_fingerprints": [
+    "145d857a2ed88d0b",
+    "25314f7e69cf43e9",
+    "2f920dde8a5dc043",
+    "54cf6836479e644e",
+    "59c9ac9cd923d641",
+    "7c2e4cf26015c278",
+    "92724143a1fa4441",
+    "94bc0e390966d5af",
+    "99826be30c14a106",
+    "b3c0d87462eb54ac",
+    "bd0b611908f075ad",
+    "f32a3042fc9e137f"
+  ],
+  "target_page": "Autonomous Task Execution.md",
+  "assertions": [
+    {
+      "claim": "OpenClaw agents utilize a 'heartbeat' mechanism that triggers autonomous task execution every 30 minutes by default, allowing agents to perform work without active user interaction.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-i-built-my-10-agent-openclaw-team",
+      "claim_date": "2026-02-15",
+      "evidence": "The host states: 'The default setting for the heartbeat is to fire every 30 minutes. When that happens, the agent reads that file and runs whatever tasks are listed.'",
+      "fp": "7c2e4cf26015c278"
+    },
+    {
+      "claim": "The host identifies that the most valuable use case for OpenClaw agents is persistent, around-the-clock research and cataloging, rather than complex iterative coding tasks.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-i-built-my-10-agent-openclaw-team",
+      "claim_date": "2026-02-15",
+      "evidence": "The host notes that the builder bot was 'one of my least used' because coding projects are 'fairly discrete and very iterative,' whereas research agents 'are literally around the clock surfacing, cataloging, and integrating new resources.'",
+      "fp": "25314f7e69cf43e9"
+    },
+    {
+      "claim": "The host argues that building a team of AI agents is accessible to non-technical users, provided they are willing to invest time in iterative development with an LLM build partner, despite initial negative ROI.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-i-built-my-10-agent-openclaw-team",
+      "claim_date": "2026-02-15",
+      "evidence": "The host states: 'If you have the will and are willing to put in the time, it doesn't matter how non-technical you are. You can go build an agent team with Open Claw right now today without asking anyone permission.'",
+      "fp": "145d857a2ed88d0b"
+    },
+    {
+      "claim": "The host observes that the 'heartbeat' feature in OpenClaw can be technically unstable, with agents occasionally dropping off and requiring manual resets.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-i-built-my-10-agent-openclaw-team",
+      "claim_date": "2026-02-15",
+      "evidence": "The host mentions: 'I found that heartbeats can be flaky... You will often find that for whatever reason the agent just drops off for a while and you kind of have to reset it.'",
+      "fp": "99826be30c14a106"
+    },
+    {
+      "claim": "The 'Lemonade Stand' expedition in the AI Summer Adventure program guides users through creating an AI-staffed microbusiness, including idea generation, business planning with an AI org chart, and demand validation.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "AI Daily Brief Host",
+      "episode": "how-to-get-the-most-from-ai-this-summer",
+      "claim_date": "2026-07-27",
+      "evidence": "The host describes the three sprints: Discovery (extracting ideas), Business Plan (mapping microbusiness with AI staff), and Validation (testing demand with a thin demo).",
+      "fp": "94bc0e390966d5af"
+    },
+    {
+      "claim": "The 'computer use' capability in agentic systems allows AI to directly control a user's mouse, browser, and operating system, enabling tasks like downloading software and creating 3D models without explicit API integration.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Ethan Mollick (as reported by the AI Daily Brief host)",
+      "episode": "how-to-get-the-most-from-ai-this-summer",
+      "claim_date": "2026-07-27",
+      "evidence": "Mollick describes using ChatGPT 5.6 Soul and Codex to 'download a 3D modeling program and use it to create a very particular design,' specifically an otter using a laptop on an airplane in Blender.",
+      "fp": "bd0b611908f075ad"
+    },
+    {
+      "claim": "The concept of 'capability overhang' refers to the gap between what AI can currently do and what users are actually utilizing, a gap that exists even among AI experts and researchers.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "AI Daily Brief Host",
+      "episode": "how-to-get-the-most-from-ai-this-summer",
+      "claim_date": "2026-07-27",
+      "evidence": "The host states, 'there is almost no one on the planet who doesn't have some capability overhang that they are dealing with,' citing the lack of time to explore all new capabilities as AI races ahead.",
+      "fp": "59c9ac9cd923d641"
+    },
+    {
+      "claim": "Claudebot is self-improving, capable of writing its own skills or plugins to acquire new capabilities when requested by the user.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "starhope.com",
+      "episode": "ralph-wiggum-clawdbot-and-mac-minis-how-pros-are-vibe-coding-in-2026",
+      "claim_date": "2026-01-26",
+      "evidence": "The host states: 'Perhaps the most compelling feature is that Claudebot is self-improving. Tell it you want a new capability and it can often write its own skill or plugin to make it happen.'",
+      "fp": "f32a3042fc9e137f"
+    },
+    {
+      "claim": "A project initially named ClaudeBot, briefly MultBot, and finalized as OpenClaw, enabled users to grant AI models access to their systems for autonomous task execution, driving a surge in 'autonomy ambition' among non-developers.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "AI Daily Brief host",
+      "episode": "the-month-ai-woke-up",
+      "claim_date": "2026-03-03",
+      "evidence": "The host describes OpenClaw as the 'biggest, clearest manifestation of the change in autonomy ambition,' noting it allowed users to let models 'actually do meaningful work on their behalf' and that Mac minis became the 'hot new visualization' of this era.",
+      "fp": "b3c0d87462eb54ac"
+    },
+    {
+      "claim": "Anthropic introduced scheduled tasks for Claude Cowork, enabling the AI to automatically complete recurring activities such as morning briefs and weekly spreadsheet updates at specific times.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Anthropic",
+      "episode": "the-openclaw-ification-of-ai",
+      "claim_date": "2026-02-27",
+      "evidence": "Anthropic announced: 'Claude can now complete recurring tasks at specific times automatically. A morning brief, weekly spreadsheet updates, Friday team presentations.'",
+      "fp": "92724143a1fa4441"
+    },
+    {
+      "claim": "Scheduled tasks represent a category change in AI from reactive software that users must prompt to proactive software that performs work autonomously while users are away, effectively becoming a 'labor primitive.'",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Akash Gupta",
+      "episode": "the-openclaw-ification-of-ai",
+      "claim_date": "2026-02-27",
+      "evidence": "Gupta writes: 'Scheduled tasks means Claude stopped being software you talk to and became software that works while you sleep. That's a category change, not a feature update.' Another commentator, Sitebringer, adds: 'Chat was a toy, scheduled task is a labor primitive.'",
+      "fp": "2f920dde8a5dc043"
+    },
+    {
+      "claim": "Replit's AI team built a continual learning system that analyzes user feedback, proposes improvements, and validates wins using benchmarks and A/B tests, enabling the product to self-improve.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Amjad Masad (Replit CEO)",
+      "episode": "the-self-driving-company",
+      "claim_date": "2026-07-23",
+      "evidence": "They built a continual learning system that analyzes user feedback, proposes improvements, and uses a combination of benchmarks and AB tests to validate the wins. Replet agent is self-improving",
+      "fp": "54cf6836479e644e"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  ## Key Challenges and Open Research Problems (2026)",
+      "content": "  ## Recent Developments: Proactive Scheduling and Self-Improving Agents (2026)\n    Recent developments in 2026 have shifted the focus of autonomous task execution from purely reactive, prompt-driven loops to proactive, scheduled, and self-improving architectures. This evolution is characterised by the emergence of \"labor primitives\"\u2014autonomous capabilities that perform work without active user interaction\u2014and the democratisation of agent deployment for non-technical users.\n\n    **Proactive Scheduling and the \"Heartbeat\" Mechanism**\n    A significant architectural shift is the integration of scheduled tasks and \"heartbeat\" mechanisms that trigger autonomous work at regular intervals. Anthropic introduced scheduled tasks for Claude Cowork, enabling the AI to automatically complete recurring activities such as morning briefs, weekly spreadsheet updates, and Friday team presentations at specific times. This represents a category change from reactive software that users must prompt to proactive software that performs work autonomously while users are away, effectively becoming a \"labor primitive.\" Similarly, OpenClaw agents utilize a \"heartbeat\" mechanism that triggers autonomous task execution every 30 minutes by default. When triggered, the agent reads a task file and executes the listed operations, allowing for persistent, around-the-clock research and cataloging. While this enables continuous operation, practitioners note that heartbeat features can be technically unstable, with agents occasionally \"dropping off\" and requiring manual resets to resume coherent task pursuit.\n\n    **Self-Improving Agent Architectures**\n    The frontier of autonomous task execution is expanding to include self-improving systems that modify their own capabilities. Claudebot (now OpenClaw) is noted for its self-improving nature, capable of writing its own skills or plugins to acquire new capabilities when requested by the user. In the enterprise sector, Replit\u2019s AI team has built a continual learning system that analyzes user feedback, proposes improvements, and validates wins using benchmarks and A/B tests, enabling the product to self-improve autonomously. These developments suggest a trajectory where autonomous task execution systems not only execute tasks but also optimise their own tooling and workflows in response to operational feedback.\n\n    **Democratisation and \"Capability Overhang\"**\n    The barrier to entry for building autonomous task execution systems has lowered significantly, driven by frameworks like OpenClaw that allow non-technical users to build agent teams through iterative development with an LLM build partner. This accessibility has led to a surge in \"autonomy ambition\" among non-developers, with personal hardware (such as Mac minis) becoming the standard visualisation of localised agent deployment. However, this rapid expansion has created a \"capability overhang\"\u2014a gap between what AI can currently do and what users are actually utilising. Even among experts, the pace of new capabilities (such as \"computer use\" features that allow AI to directly control mouse, browser, and OS to perform tasks like 3D modeling without explicit API integration) outstrips the time available for exploration and integration, resulting in underutilised potential in both personal and enterprise contexts.\n\n  ## Key Challenges and Open Research Problems (2026)"
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 4,
+      "relevance": 5,
+      "coherence": 2,
+      "better_version": "A",
+      "improvement": -2
+    },
+    "raw_b": {
+      "factual_grounding": 4,
+      "relevance": 4,
+      "coherence": 2,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 0.4166666666666667,
+    "detail": [
+      {
+        "fp": "7c2e4cf26015c278",
+        "claim": "OpenClaw agents utilize a 'heartbeat' mechanism that triggers autonomous task execution every 30 minutes by default, all",
+        "matched": true
+      },
+      {
+        "fp": "25314f7e69cf43e9",
+        "claim": "The host identifies that the most valuable use case for OpenClaw agents is persistent, around-the-clock research and cat",
+        "matched": false
+      },
+      {
+        "fp": "145d857a2ed88d0b",
+        "claim": "The host argues that building a team of AI agents is accessible to non-technical users, provided they are willing to inv",
+        "matched": false
+      },
+      {
+        "fp": "99826be30c14a106",
+        "claim": "The host observes that the 'heartbeat' feature in OpenClaw can be technically unstable, with agents occasionally droppin",
+        "matched": false
+      },
+      {
+        "fp": "94bc0e390966d5af",
+        "claim": "The 'Lemonade Stand' expedition in the AI Summer Adventure program guides users through creating an AI-staffed microbusi",
+        "matched": false
+      },
+      {
+        "fp": "bd0b611908f075ad",
+        "claim": "The 'computer use' capability in agentic systems allows AI to directly control a user's mouse, browser, and operating sy",
+        "matched": false
+      },
+      {
+        "fp": "59c9ac9cd923d641",
+        "claim": "The concept of 'capability overhang' refers to the gap between what AI can currently do and what users are actually util",
+        "matched": false
+      },
+      {
+        "fp": "f32a3042fc9e137f",
+        "claim": "Claudebot is self-improving, capable of writing its own skills or plugins to acquire new capabilities when requested by ",
+        "matched": true
+      },
+      {
+        "fp": "b3c0d87462eb54ac",
+        "claim": "A project initially named ClaudeBot, briefly MultBot, and finalized as OpenClaw, enabled users to grant AI models access",
+        "matched": false
+      },
+      {
+        "fp": "92724143a1fa4441",
+        "claim": "Anthropic introduced scheduled tasks for Claude Cowork, enabling the AI to automatically complete recurring activities s",
+        "matched": true
+      },
+      {
+        "fp": "2f920dde8a5dc043",
+        "claim": "Scheduled tasks represent a category change in AI from reactive software that users must prompt to proactive software th",
+        "matched": true
+      },
+      {
+        "fp": "54cf6836479e644e",
+        "claim": "Replit's AI team built a continual learning system that analyzes user feedback, proposes improvements, and validates win",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

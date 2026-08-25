@@ -1,0 +1,272 @@
+{
+  "topic": "AI Hardware",
+  "topic_slug": "ai-hardware",
+  "status": "candidate_survivor",
+  "reasons": [],
+  "n_assertions": 11,
+  "episodes": [
+    "black-friday-gpt",
+    "ceo-led-ai-gets-3x-the-roi",
+    "claude-code-turns-one",
+    "gemini-can-now-write-you-a-song",
+    "google-says-no-ads-planned-for-gemini",
+    "how-deepseek-v4-connects-to-the-us-grid",
+    "how-the-global-ai-race-has-changed",
+    "the-calm-before-the-agi-storm",
+    "what-google-needs-to-do-at-io-this-week"
+  ],
+  "assertion_fingerprints": [
+    "0f5627e8cb4027d3",
+    "22967aa187bc6488",
+    "2aef78a9dba59e39",
+    "48ef0657d287b8af",
+    "64fe57dcb8df4b22",
+    "67992e3131c7a325",
+    "6d4fee796d35bed6",
+    "ab439ae4d2f22b42",
+    "b75dd19a4cb08056",
+    "e220e6eba30c6398",
+    "f8f8a76edd13e5b6"
+  ],
+  "target_page": "AI Hardware.md",
+  "assertions": [
+    {
+      "claim": "The rise of Google TPU as a viable alternative to Nvidia GPUs is being taken seriously by analysts and competitors, particularly after reports that Gemini 3 was trained on TPUs and Meta may be purchasing them.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Host (industry trend analysis)",
+      "episode": "black-friday-gpt",
+      "claim_date": "2025-11-27",
+      "evidence": "The host states: 'much bigger than that was the news that Gemini 3 was trained on Google Tpus, which had analysts taking those chips seriously as an alternative. That was followed up by news that Meta might be buying a bunch of TPUs from Google.'",
+      "fp": "ab439ae4d2f22b42"
+    },
+    {
+      "claim": "OpenAI has unveiled its first in-house AI chip, codenamed Jalape\u00f1o, developed in collaboration with Broadcom as an ASIC for LLM inference.",
+      "tier": "1",
+      "confidence": "0.98",
+      "source": "OpenAI / Greg Brockman",
+      "episode": "ceo-led-ai-gets-3x-the-roi",
+      "claim_date": "2026-06-25",
+      "evidence": "The chip is described as an integrated processor and the first AI accelerator in a multi-generation compute platform, similar to Google's TPUs but distinct from Nvidia's general-purpose GPUs.",
+      "fp": "48ef0657d287b8af"
+    },
+    {
+      "claim": "OpenAI achieved a 9-month development cycle from initial design to manufacturing tapeout for the Jalape\u00f1o chip, attributed to AI-enhanced design processes.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "OpenAI / Greg Brockman",
+      "episode": "ceo-led-ai-gets-3x-the-roi",
+      "claim_date": "2026-06-25",
+      "evidence": "Brockman credited the speed to AI-enhanced design, noting that the degree to which their models accelerated the process was 'very surprising.'",
+      "fp": "22967aa187bc6488"
+    },
+    {
+      "claim": "OpenAI is developing a family of AI hardware devices, including a smart speaker priced between $200 and $300, with a team of 200 people dedicated to the project.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "The Information / AI Daily Brief Host",
+      "episode": "claude-code-turns-one",
+      "claim_date": "2026-02-26",
+      "evidence": "The host states, 'a team of 200 people is now working on OpenAI's family of devices... The smart speaker is reportedly going to be the first device released by OpenAI and will be priced between $200 and $300.'",
+      "fp": "b75dd19a4cb08056"
+    },
+    {
+      "claim": "Meta has revived plans for a smartwatch under the code name 'Malibu 2,' featuring health tracking and a built-in Meta AI assistant, with a planned release this year.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Podcast Host (citing industry reports)",
+      "episode": "gemini-can-now-write-you-a-song",
+      "claim_date": "2026-03-08",
+      "evidence": "Transcript states: 'Meta has revived the smartwatch under the code name Malibu 2. The watch is said to include health tracking features and a built-in Meta AI assistant... The smartwatch is planned for release this year.'",
+      "fp": "67992e3131c7a325"
+    },
+    {
+      "claim": "Apple reportedly passed on developing a camera-equipped Apple Watch for AI purposes because testers found the prototype impractical due to clothing sleeves obscuring the camera.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "Podcast Host (citing rumors/reports)",
+      "episode": "gemini-can-now-write-you-a-song",
+      "claim_date": "2026-03-08",
+      "evidence": "Transcript states: 'a camera equipped version of the Apple Watch had been passed over as an AI device with testers reportedly finding the prototype impractical due to clothing sleeves obscuring the camera.'",
+      "fp": "0f5627e8cb4027d3"
+    },
+    {
+      "claim": "OpenAI Chief Global Affairs Officer Chris Leane stated that OpenAI is on track to unveil its first hardware device in the latter part of 2026.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "Chris Leane (OpenAI)",
+      "episode": "google-says-no-ads-planned-for-gemini",
+      "claim_date": "2026-01-22",
+      "evidence": "Leane made this statement during an onstage interview with Axios at Davos, though he cautioned that this refers to an unveiling rather than a confirmed product release timeline.",
+      "fp": "6d4fee796d35bed6"
+    },
+    {
+      "claim": "Nvidia became the world's first $5 trillion company, reaching this valuation just 9 months after becoming the first $4 trillion company.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief Host / Market Data",
+      "episode": "how-deepseek-v4-connects-to-the-us-grid",
+      "claim_date": "2026-04-28",
+      "evidence": "The transcript states: 'On the back of increasing demand, Nvidia closed the week at a new all-time high becoming the world's first $5 company just 9 months after they became the first $4 T.'",
+      "fp": "e220e6eba30c6398"
+    },
+    {
+      "claim": "G42 CEO Peng Zhao unveiled a chip using Cerebras's wafer-scale manufacturing process, which is physically larger than Nvidia chips, at the World Government Summit in Dubai.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Podcast Host",
+      "episode": "how-the-global-ai-race-has-changed",
+      "claim_date": "2026-02-12",
+      "evidence": "The transcript notes that 'G42 CEO Peng Zhao unveiled what he called the world's largest AI chip. The moniker was down to the chip using Cerebras's wafer-scale manufacturing process, so the chip is physically larger than Nvidia chips.'",
+      "fp": "f8f8a76edd13e5b6"
+    },
+    {
+      "claim": "The Iranian Revolutionary Guard declared 18 US tech companies, including Nvidia, Apple, Microsoft, and Google, as legitimate targets for retaliation, linking them to AI-enhanced targeting in the war, which has put data center construction plans in the Middle East at risk.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-calm-before-the-agi-storm",
+      "claim_date": "2026-04-08",
+      "evidence": "Last Wednesday, the Iranian Revolutionary Guard declared that 18 US tech companies are now legitimate targets... The list included Nvidia, Apple, Microsoft, and Google... We already saw three Amazon data centers in Bahrain and the UAE hit by drones in the opening salvos of the war, so this threat could make further construction in the Middle East unviable.",
+      "fp": "2aef78a9dba59e39"
+    },
+    {
+      "claim": "Cerebras stock opened at a $40 billion market capitalization, briefly touched $100 billion, and closed its first day of trading with a 68% gain at a $66 billion valuation.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief host",
+      "episode": "what-google-needs-to-do-at-io-this-week",
+      "claim_date": "2026-05-18",
+      "evidence": "Cerebras began the day as a $40 billion company, touched a hundred billion for a minute, and now has a market cap of 66 billion... the opening trade seeing the stock double in price before settling into a 68% gain at the end of trading.",
+      "fp": "64fe57dcb8df4b22"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - sources::\n  - migration-date:: 2026-04-26T00:00:00Z",
+      "content": "\n\n- ### Recent Developments (2025\u20132026)\n  - **OpenAI Jalape\u00f1o Chip**: OpenAI unveiled its first in-house AI chip, codenamed Jalape\u00f1o, developed with Broadcom as an ASIC for LLM inference. The chip represents the first accelerator in a multi-generation compute platform, distinct from general-purpose GPUs. OpenAI achieved a 9-month development cycle from design to tapeout, attributed to AI-enhanced design processes. [source: OpenAI / Greg Brockman, confidence 0.98, tier 1]\n  - **OpenAI Hardware Devices**: OpenAI is developing a family of AI hardware devices, including a smart speaker priced between $200 and $300, with a dedicated team of 200 people. Chief Global Affairs Officer Chris Leane stated the company is on track to unveil its first hardware device in late 2026. [source: The Information / Chris Leane, confidence 0.85, tier 1]\n  - **Google TPU Momentum**: Analysts are taking Google TPUs seriously as a viable alternative to Nvidia GPUs, particularly after reports that Gemini 3 was trained on TPUs and that Meta may be purchasing them. [source: Host (industry trend analysis), confidence 0.8, tier 2]\n  - **Market Valuations**: Nvidia became the world's first $5 trillion company, reaching this milestone just 9 months after becoming the first $4 trillion company. Cerebras stock opened at a $40 billion market capitalization, briefly touched $100 billion, and closed its first day of trading with a 68% gain at a $66 billion valuation. [source: AI Daily Brief Host / Market Data, confidence 0.95, tier 1]\n  - **G42 Wafer-Scale Chip**: G42 CEO Peng Zhao unveiled a chip using Cerebras's wafer-scale manufacturing process, physically larger than Nvidia chips, at the World Government Summit in Dubai. [source: Podcast Host, confidence 0.9, tier 1]\n  - **Meta & Apple AI Devices**: Meta revived plans for a smartwatch under the code name 'Malibu 2,' featuring health tracking and a built-in Meta AI assistant, planned for release this year. Apple reportedly passed on developing a camera-equipped Apple Watch for AI purposes due to prototype impracticality. [source: Podcast Host, confidence 0.85, tier 1]\n  - **Geopolitical Risks**: The Iranian Revolutionary Guard declared 18 US tech companies, including Nvidia, Apple, Microsoft, and Google, as legitimate targets for retaliation, linking them to AI-enhanced targeting. This has put data center construction plans in the Middle East at risk. [source: Host (AI Daily Brief), confidence 0.85, tier 1]"
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 2.0,
+    "rubric_b_improvement": 2.0,
+    "raw_a": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 5,
+      "relevance": 4,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    }
+  },
+  "completeness": {
+    "score": 0.8181818181818182,
+    "detail": [
+      {
+        "fp": "ab439ae4d2f22b42",
+        "claim": "The rise of Google TPU as a viable alternative to Nvidia GPUs is being taken seriously by analysts and competitors, part",
+        "matched": false
+      },
+      {
+        "fp": "48ef0657d287b8af",
+        "claim": "OpenAI has unveiled its first in-house AI chip, codenamed Jalape\u00f1o, developed in collaboration with Broadcom as an ASIC ",
+        "matched": true
+      },
+      {
+        "fp": "22967aa187bc6488",
+        "claim": "OpenAI achieved a 9-month development cycle from initial design to manufacturing tapeout for the Jalape\u00f1o chip, attribut",
+        "matched": true
+      },
+      {
+        "fp": "b75dd19a4cb08056",
+        "claim": "OpenAI is developing a family of AI hardware devices, including a smart speaker priced between $200 and $300, with a tea",
+        "matched": true
+      },
+      {
+        "fp": "67992e3131c7a325",
+        "claim": "Meta has revived plans for a smartwatch under the code name 'Malibu 2,' featuring health tracking and a built-in Meta AI",
+        "matched": true
+      },
+      {
+        "fp": "0f5627e8cb4027d3",
+        "claim": "Apple reportedly passed on developing a camera-equipped Apple Watch for AI purposes because testers found the prototype ",
+        "matched": false
+      },
+      {
+        "fp": "6d4fee796d35bed6",
+        "claim": "OpenAI Chief Global Affairs Officer Chris Leane stated that OpenAI is on track to unveil its first hardware device in th",
+        "matched": true
+      },
+      {
+        "fp": "e220e6eba30c6398",
+        "claim": "Nvidia became the world's first $5 trillion company, reaching this valuation just 9 months after becoming the first $4 t",
+        "matched": true
+      },
+      {
+        "fp": "f8f8a76edd13e5b6",
+        "claim": "G42 CEO Peng Zhao unveiled a chip using Cerebras's wafer-scale manufacturing process, which is physically larger than Nv",
+        "matched": true
+      },
+      {
+        "fp": "2aef78a9dba59e39",
+        "claim": "The Iranian Revolutionary Guard declared 18 US tech companies, including Nvidia, Apple, Microsoft, and Google, as legiti",
+        "matched": true
+      },
+      {
+        "fp": "64fe57dcb8df4b22",
+        "claim": "Cerebras stock opened at a $40 billion market capitalization, briefly touched $100 billion, and closed its first day of ",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": {
+    "target_page": "AI Hardware.md",
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - sources::\n  - migration-date:: 2026-04-26T00:00:00Z",
+      "content": "\n\n- ### Recent Developments (2025\u20132026)\n  - **OpenAI Jalape\u00f1o Chip**: OpenAI unveiled its first in-house AI chip, codenamed Jalape\u00f1o, developed with Broadcom as an ASIC for LLM inference. The chip represents the first accelerator in a multi-generation compute platform, distinct from general-purpose GPUs. OpenAI achieved a 9-month development cycle from design to tapeout, attributed to AI-enhanced design processes. [source: OpenAI / Greg Brockman, confidence 0.98, tier 1]\n  - **OpenAI Hardware Devices**: OpenAI is developing a family of AI hardware devices, including a smart speaker priced between $200 and $300, with a dedicated team of 200 people. Chief Global Affairs Officer Chris Leane stated the company is on track to unveil its first hardware device in late 2026. [source: The Information / Chris Leane, confidence 0.85, tier 1]\n  - **Google TPU Momentum**: Analysts are taking Google TPUs seriously as a viable alternative to Nvidia GPUs, particularly after reports that Gemini 3 was trained on TPUs and that Meta may be purchasing them. [source: Host (industry trend analysis), confidence 0.8, tier 2]\n  - **Market Valuations**: Nvidia became the world's first $5 trillion company, reaching this milestone just 9 months after becoming the first $4 trillion company. Cerebras stock opened at a $40 billion market capitalization, briefly touched $100 billion, and closed its first day of trading with a 68% gain at a $66 billion valuation. [source: AI Daily Brief Host / Market Data, confidence 0.95, tier 1]\n  - **G42 Wafer-Scale Chip**: G42 CEO Peng Zhao unveiled a chip using Cerebras's wafer-scale manufacturing process, physically larger than Nvidia chips, at the World Government Summit in Dubai. [source: Podcast Host, confidence 0.9, tier 1]\n  - **Meta & Apple AI Devices**: Meta revived plans for a smartwatch under the code name 'Malibu 2,' featuring health tracking and a built-in Meta AI assistant, planned for release this year. Apple reportedly passed on developing a camera-equipped Apple Watch for AI purposes due to prototype impracticality. [source: Podcast Host, confidence 0.85, tier 1]\n  - **Geopolitical Risks**: The Iranian Revolutionary Guard declared 18 US tech companies, including Nvidia, Apple, Microsoft, and Google, as legitimate targets for retaliation, linking them to AI-enhanced targeting. This has put data center construction plans in the Middle East at risk. [source: Host (AI Daily Brief), confidence 0.85, tier 1]"
+    },
+    "provenance": {
+      "assertion_fingerprints": [
+        "0f5627e8cb4027d3",
+        "22967aa187bc6488",
+        "2aef78a9dba59e39",
+        "48ef0657d287b8af",
+        "64fe57dcb8df4b22",
+        "67992e3131c7a325",
+        "6d4fee796d35bed6",
+        "ab439ae4d2f22b42",
+        "b75dd19a4cb08056",
+        "e220e6eba30c6398",
+        "f8f8a76edd13e5b6"
+      ],
+      "source_episodes": [
+        "black-friday-gpt",
+        "ceo-led-ai-gets-3x-the-roi",
+        "claude-code-turns-one",
+        "gemini-can-now-write-you-a-song",
+        "google-says-no-ads-planned-for-gemini",
+        "how-deepseek-v4-connects-to-the-us-grid",
+        "how-the-global-ai-race-has-changed",
+        "the-calm-before-the-agi-storm",
+        "what-google-needs-to-do-at-io-this-week"
+      ]
+    },
+    "scores": {
+      "rubric_a_improvement": 2.0,
+      "rubric_b_improvement": 2.0,
+      "completeness": 0.8181818181818182
+    }
+  }
+}

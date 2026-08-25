@@ -1,0 +1,402 @@
+{
+  "topic": "Agent Memory",
+  "topic_slug": "agent-memory",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -1.0 < -0.5"
+  ],
+  "n_assertions": 25,
+  "episodes": [
+    "autoresearch-agent-loops-and-the-future-of-work",
+    "context-graphs-ais-next-big-idea",
+    "gemini-can-now-write-you-a-song",
+    "how-i-built-my-10-agent-openclaw-team",
+    "how-to-build-a-personal-agentic-operating-system",
+    "how-to-build-a-personal-context-mcp",
+    "how-to-get-the-most-from-ai-this-summer",
+    "how-to-learn-ai-with-ai",
+    "how-to-use-opus-47-and-the-new-codex",
+    "ralph-wiggum-clawdbot-and-mac-minis-how-pros-are-vibe-coding-in-2026",
+    "surprise-elon-anthropic-team-up-reshapes-ai-race",
+    "the-ai-scientist-that-does-6-months-of-work-in-a-day",
+    "what-google-needs-to-do-at-io-this-week",
+    "what-vibe-coding-is-turning-into",
+    "will-this-update-from-openai-make-ai-agents-work-better"
+  ],
+  "assertion_fingerprints": [
+    "03a6c1f2eeb0c51a",
+    "09f9a6f8fb5dd1fb",
+    "1176a18e06a16709",
+    "2ceab9d5134a7ef9",
+    "2f51ddd675c83d8c",
+    "327f9836d9428178",
+    "3824c1419b5237a8",
+    "40530c16914cb0d7",
+    "46c62c9d80b2fe0f",
+    "48a245e802e12ea8",
+    "51139cc24f4aff35",
+    "53cda68df37b1c50",
+    "59ab619d317d0325",
+    "61dd170f8cd83dc0",
+    "7c2e4cf26015c278",
+    "8436cef0f9f237c8",
+    "99826be30c14a106",
+    "a15af5345a214422",
+    "a1a36deaf0e4dedb",
+    "adbaf3c8812c2755",
+    "b3adff530c1d4cbe",
+    "b668a3c8190a6c2a",
+    "c18d8701c0f4b858",
+    "c26321e1a3032252",
+    "ffc5c41795aa84d2"
+  ],
+  "target_page": "Agent Memory.md",
+  "assertions": [
+    {
+      "claim": "The 'Ralph Wiggum' technique, popularized by developer Jeffrey Huntley, involves running an AI coding agent in a loop where the agent's output is fed back as input, deliberately terminating the agent before context window exhaustion to externalize memory into files and Git history.",
+      "tier": "2",
+      "confidence": "0.88",
+      "source": "Podcast Host / Jeffrey Huntley",
+      "episode": "autoresearch-agent-loops-and-the-future-of-work",
+      "claim_date": "2026-08-24",
+      "evidence": "The host explains: 'The Ralph loop's solution is to deliberately kill the agent and start fresh before that happens. Memory then doesn't live in the AI context window, it lives in the files... The Git commit history, a progress.txt file...'",
+      "fp": "b668a3c8190a6c2a"
+    },
+    {
+      "claim": "Current agentic loops are limited by the lack of a shared semantic memory layer across multiple agents, preventing them from efficiently sharing negative results and coordinating on complex, multi-branch research directions.",
+      "tier": "2",
+      "confidence": "0.82",
+      "source": "Heron / Kathy F (via podcast transcript)",
+      "episode": "autoresearch-agent-loops-and-the-future-of-work",
+      "claim_date": "2026-08-24",
+      "evidence": "Heron writes: 'The missing layer is memory across the swarm... You need a semantic memory layer underneath the branches so Agent 47 knows Agent 12 already tried that direction.' Kathy F adds: 'The real unlock is when these agent researchers can share negative results efficiently.'",
+      "fp": "a15af5345a214422"
+    },
+    {
+      "claim": "The concept of 'context graphs' is defined as a living record of decision traces stitched across entities in time, capturing the 'why' behind business decisions rather than just the 'what'.",
+      "tier": "2",
+      "confidence": "0.95",
+      "source": "Jay Gupta and Ashu Garg (Foundation Capital)",
+      "episode": "context-graphs-ais-next-big-idea",
+      "claim_date": "2026-01-06",
+      "evidence": "The transcript cites their essay 'AI's trillion dollar opportunity context graphs', stating: 'The context graph is the sum total of those decision traces... a living record of decision traces stitched across entities in time.' It distinguishes this from systems of record which capture state (what happened) but not decision lineage (why it was allowed).",
+      "fp": "59ab619d317d0325"
+    },
+    {
+      "claim": "A test query on Grok Heavy 16 resulted in a 700-word report with nearly 900 references after the 16 sub-agents debated for over a minute.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Ted Suo (xAI Community Promoter) via Podcast Host",
+      "episode": "gemini-can-now-write-you-a-song",
+      "claim_date": "2026-03-08",
+      "evidence": "Transcript states: 'The agents debated the response for a little over a minute and then delivered a 700word report using almost 900 references.'",
+      "fp": "8436cef0f9f237c8"
+    },
+    {
+      "claim": "OpenClaw agents utilize a 'heartbeat' mechanism that triggers autonomous task execution every 30 minutes by default, allowing agents to perform work without active user interaction.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-i-built-my-10-agent-openclaw-team",
+      "claim_date": "2026-02-15",
+      "evidence": "The host states: 'The default setting for the heartbeat is to fire every 30 minutes. When that happens, the agent reads that file and runs whatever tasks are listed.'",
+      "fp": "7c2e4cf26015c278"
+    },
+    {
+      "claim": "OpenClaw agents are configured using a set of specific markdown files, including 'soul.md' for personality, 'agents.md' for operating instructions, and 'user.md' for user preferences.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-i-built-my-10-agent-openclaw-team",
+      "claim_date": "2026-02-15",
+      "evidence": "The transcript details: 'Its soul.md file is how the agent thinks and behaves... Agents.md is the employee handbook... User.md is everything the agent knows about you.'",
+      "fp": "adbaf3c8812c2755"
+    },
+    {
+      "claim": "The host observes that the 'heartbeat' feature in OpenClaw can be technically unstable, with agents occasionally dropping off and requiring manual resets.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-i-built-my-10-agent-openclaw-team",
+      "claim_date": "2026-02-15",
+      "evidence": "The host mentions: 'I found that heartbeats can be flaky... You will often find that for whatever reason the agent just drops off for a while and you kind of have to reset it.'",
+      "fp": "99826be30c14a106"
+    },
+    {
+      "claim": "Effective context curation for AI agents involves maintaining 3-5 focused, single-page files that are dated and updated regularly, rather than creating large, static documents.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "Nofar Gaspar",
+      "episode": "how-to-build-a-personal-agentic-operating-system",
+      "claim_date": "2026-04-25",
+      "evidence": "Nofar advises: 'what actually works here is to have basically three to five focused files, each on a single page... Make it dated and fresh, and update when things change.'",
+      "fp": "51139cc24f4aff35"
+    },
+    {
+      "claim": "The 'Personal Context Portfolio' is a structured set of 10 markdown files designed to serve as a portable, machine-readable representation of an individual's identity, projects, and preferences for AI agents.",
+      "tier": "2",
+      "confidence": "0.95",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-to-build-a-personal-context-mcp",
+      "claim_date": "2026-04-04",
+      "evidence": "The host defines it as 'a structured set of markdown files that together represent you as a context package... effectively, it's API documentation but for you.' The 10 files include identity.md, roles_and_responsibilities.md, current_projects.md, team_and_relationships.md, tools_and_systems.md, communication_style.md, goals_and_priorities.md, preferences_and_constraints.md, domain_knowledge.md, and decision_log.md.",
+      "fp": "09f9a6f8fb5dd1fb"
+    },
+    {
+      "claim": "Claude's initial approach to importing user memory from other services was a copyable prompt designed to ask the previous LLM to list all stored memories and context about the user.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Anthropic (Claude Team)",
+      "episode": "how-to-build-a-personal-context-mcp",
+      "claim_date": "2026-04-04",
+      "evidence": "The transcript describes the feature as 'a copyable prompt that Claude wrote that says basically I'm moving to another service and need to export my data. List every memory you have stored about me...'",
+      "fp": "40530c16914cb0d7"
+    },
+    {
+      "claim": "The 'domain_knowledge.md' file in a personal context portfolio may evolve from a simple log of expertise into a mechanism for imparting that knowledge to future agents, effectively creating a persistent knowledge base.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-to-build-a-personal-context-mcp",
+      "claim_date": "2026-04-04",
+      "evidence": "The host speculates: 'At the beginning, it might be just a log of what you know, but over time, it might actually impart some of that, so your agents in the future know it, too.'",
+      "fp": "53cda68df37b1c50"
+    },
+    {
+      "claim": "In agentic AI systems, permission settings are critical for safety and workflow control, as demonstrated by an instance where ChatGPT autonomously sent an email while Claude only drafted it based on different approval settings.",
+      "tier": "2",
+      "confidence": "0.95",
+      "source": "Ethan Mollick (as reported by the AI Daily Brief host)",
+      "episode": "how-to-get-the-most-from-ai-this-summer",
+      "claim_date": "2026-07-27",
+      "evidence": "Mollick describes a test where both systems were connected to Gmail; ChatGPT sent an email because he had previously granted permission, while Claude waited for approval because it was configured to ask first.",
+      "fp": "3824c1419b5237a8"
+    },
+    {
+      "claim": "Building a 'Personal Brain' or global identity context for AI assistants involves creating a 150-300 word instruction block that persists across sessions to provide consistent user context.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "AI Daily Brief Host",
+      "episode": "how-to-get-the-most-from-ai-this-summer",
+      "claim_date": "2026-07-27",
+      "evidence": "The 'Pack Your ID' project instructs users to have the AI draft a 'paste-ready global ID block' and install it, ensuring future chats start with knowledge of the user's preferences and background.",
+      "fp": "2ceab9d5134a7ef9"
+    },
+    {
+      "claim": "The host recommends using \"handoff documents\" to capture key themes, decisions, and open questions before ending an AI session, as platform memory features are currently unreliable and context windows are limited.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-to-learn-ai-with-ai",
+      "claim_date": "2026-02-14",
+      "evidence": "The host states: \"If you don't capture it, you start from zero next time... you have to explicitly capture the context before you move to a new conversation... treat every working session like a shift handoff.\"",
+      "fp": "ffc5c41795aa84d2"
+    },
+    {
+      "claim": "OpenAI introduced 'heartbeats' in Codex, which are automations that maintain context inside a single thread over time, allowing the agent to wake up in the same conversation with history already in place.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Host (AI Daily Brief) citing Pash from OpenAI",
+      "episode": "how-to-use-opus-47-and-the-new-codex",
+      "claim_date": "2026-04-18",
+      "evidence": "Pash from OpenAI wrote: 'Today we launched heartbeats in Codex, automations that maintain context inside a single thread over time. Instead of each run starting fresh, Codex wakes up in the same conversation with the history and context it needs already in place.'",
+      "fp": "48a245e802e12ea8"
+    },
+    {
+      "claim": "The 'mono-thread' pattern in Codex involves keeping a small number of long-lived threads alive for recurring work streams, where the thread's value increases over time due to improved context compaction.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Nick Bowman (Codex team) and Host (AI Daily Brief)",
+      "episode": "how-to-use-opus-47-and-the-new-codex",
+      "claim_date": "2026-04-18",
+      "evidence": "Nick Bowman wrote: 'My Codex usage has shifted from starting lots of short-lived chats to keeping a small number of threads alive around recurring work streams... with good context compaction, a thread's value increases over time.' The host identifies this as a new paradigm replacing the 'start fresh for every task' model.",
+      "fp": "327f9836d9428178"
+    },
+    {
+      "claim": "The 'Codex Chief of Staff' pattern uses a local folder vault as a durable memory layer, where the agent interviews the user to understand their priorities and then runs on a heartbeat to monitor sources and improve its own instructions over time.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Jason Lu (OpenAI) and Host (AI Daily Brief)",
+      "episode": "how-to-use-opus-47-and-the-new-codex",
+      "claim_date": "2026-04-18",
+      "evidence": "The transcript describes Jason Lu's recipe: 'The Codex chief of staff takes advantage of a local folder vault, which is the durable memory layer... The chief of staff interviews you to get a sense of who you are... it uses your answers to improve the heartbeat prompt, agents.md, and project notes.'",
+      "fp": "03a6c1f2eeb0c51a"
+    },
+    {
+      "claim": "The 'Ralph Wiggum loop' is an autonomous AI coding pattern where each iteration uses a fresh context window, with memory persisted via git history and text files.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Ryan Carson",
+      "episode": "ralph-wiggum-clawdbot-and-mac-minis-how-pros-are-vibe-coding-in-2026",
+      "claim_date": "2026-01-26",
+      "evidence": "The host cites Ryan Carson: 'Ralph is an autonomous AI coding loop that ships features while you sleep. Each iteration is a fresh context window. Memory persists via git history and text files.'",
+      "fp": "b3adff530c1d4cbe"
+    },
+    {
+      "claim": "Anthropic's 'Dreaming' feature is a scheduled memory management process that reviews agent sessions to extract patterns, curate memories, and restructure storage to maintain high signal over time.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Anthropic",
+      "episode": "surprise-elon-anthropic-team-up-reshapes-ai-race",
+      "claim_date": "2026-05-07",
+      "evidence": "The transcript describes Dreaming as 'a scheduled process that reviews your agent sessions and memory stores, extract patterns and curates memories so your agents improve over time' and notes it 'restructures memory so it stays high signal as it evolves.'",
+      "fp": "1176a18e06a16709"
+    },
+    {
+      "claim": "The core innovation of Cosmos is a structured, continuously updated world model that allows it to process orders of magnitude more information than fits in the context of long-context language models.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Edison Scientific (Sam Rodriguez, CEO)",
+      "episode": "the-ai-scientist-that-does-6-months-of-work-in-a-day",
+      "claim_date": "2025-11-18",
+      "evidence": "Sam Rodriguez stated: 'Our core innovation in Cosmos is the use of a structured, continuously updated world model. Cosmos' world model allows it to process orders of magnitude more information than could fit into the context of even the longest context language models.'",
+      "fp": "46c62c9d80b2fe0f"
+    },
+    {
+      "claim": "Cosmos uses a multi-agent architecture where hundreds of AI agents operate in parallel, sharing information through a common 'world model' or 'whiteboard' to maintain coherence during long-term investigations.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Carlos Perez (Analyst/Commentator)",
+      "episode": "the-ai-scientist-that-does-6-months-of-work-in-a-day",
+      "claim_date": "2025-11-18",
+      "evidence": "Carlos Perez explained: 'The team behind Cosmos didn't just try to build a smarter brain. They built a shared consciousness. They call it a structured world model... Think of it like a giant live updating whiteboard. Cosmos unleashes hundreds of AI agents in parallel... Crucially, every other agent can see the whole board.'",
+      "fp": "2f51ddd675c83d8c"
+    },
+    {
+      "claim": "The 'world model' used in Cosmos is likely a knowledge graph to which agents add information, rather than a predictive simulation model as typically understood in AI research.",
+      "tier": "2",
+      "confidence": "0.7",
+      "source": "Simon Smith (Analyst/Commentator)",
+      "episode": "the-ai-scientist-that-does-6-months-of-work-in-a-day",
+      "claim_date": "2025-11-18",
+      "evidence": "Simon Smith noted: 'When I looked at the Cosmos paper, it wasn't clear what world model meant. I got the sense that it's a knowledge graph to which agents add information as they collect it... probably not what most people mean by world model.'",
+      "fp": "61dd170f8cd83dc0"
+    },
+    {
+      "claim": "Context bleed is a significant challenge for AI agents, where accumulated context from past conversations can confuse the model and require users to manually curate or remove irrelevant information.",
+      "tier": "3",
+      "confidence": "0.55",
+      "source": "AI Daily Brief host",
+      "episode": "what-google-needs-to-do-at-io-this-week",
+      "claim_date": "2026-05-18",
+      "evidence": "The host notes, 'When Claude or Codex have all of the context about me, I spend a lot of time telling them to just ignore or remove some past things from their memory because they're no longer relevant. I can't even tell you how confused it gets about my entrepreneurial or builder plans.'",
+      "fp": "c26321e1a3032252"
+    },
+    {
+      "claim": "The 'open clawification' of AI refers to the industry trend of launching highly performant agents with persistent access to user files and systems, primarily to solve agent memory problems.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "AI Daily Brief host",
+      "episode": "what-vibe-coding-is-turning-into",
+      "claim_date": "2026-03-12",
+      "evidence": "The open clawification of everything, by which we really mean companies racing to launch highly performant agents that have access to your actual files and systems and can control those systems... giving agents persistent access to your systems is a good way to solve some of the memory problems that have held back what agents can do.",
+      "fp": "a1a36deaf0e4dedb"
+    },
+    {
+      "claim": "Anthropic introduced agent skills in October 2025 as a mechanism for building specialized agents using organized folders of instructions, scripts, and resources.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Anthropic",
+      "episode": "will-this-update-from-openai-make-ai-agents-work-better",
+      "claim_date": "2025-12-18",
+      "evidence": "The transcript states: 'Back in October, Anthropic introduced agent skills... Specifically, Anthropic writes that skills are organized folders of instructions, scripts, and resources that agents can discover and load dynamically to perform better at specific tasks.'",
+      "fp": "c18d8701c0f4b858"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - ## Research & Literature",
+      "content": "  - ## Recent Developments (2025\u20132026)\n    - **Anthropic Agent Skills (October 2025)** \u2014 Anthropic introduced agent skills as a mechanism for building specialized agents using organized folders of instructions, scripts, and resources. Skills are designed to be discovered and loaded dynamically by agents to perform better at specific tasks, representing a shift toward modular, file-based procedural memory that agents can access on-demand rather than relying solely on static system prompts or fine-tuned weights.\n    - **Context Graphs and Decision Lineage** \u2014 The concept of 'context graphs' has emerged as a framework for capturing the 'why' behind business decisions, defined as a living record of decision traces stitched across entities in time. This approach distinguishes itself from traditional systems of record, which capture state (what happened) but not decision lineage (why it was allowed), offering a richer substrate for semantic memory in enterprise agentic systems.\n    - **Autonomous Heartbeat Mechanisms** \u2014 OpenClaw agents utilize a 'heartbeat' mechanism that triggers autonomous task execution every 30 minutes by default, allowing agents to perform work without active user interaction. Similarly, OpenAI introduced 'heartbeats' in Codex, automations that maintain context inside a single thread over time, enabling the agent to wake up in the same conversation with history and context already in place rather than starting fresh each run.\n    - **Structured Agent Configuration Files** \u2014 OpenClaw agents are configured using specific markdown files: 'soul.md' for personality, 'agents.md' for operating instructions, and 'user.md' for user preferences. This file-based approach to agent identity and memory scoping provides a transparent, editable interface for managing the semantic and procedural layers of an agent's memory.\n    - **Personal Context Portfolio** \u2014 A structured set of 10 markdown files (including identity.md, roles_and_responsibilities.md, current_projects.md, and decision_log.md) has been proposed as a portable, machine-readable representation of an individual's identity, projects, and preferences for AI agents. This 'context package' functions as API documentation for the user, facilitating seamless memory migration and personalization across different agent platforms.\n    - **Permission-Governed Memory Actions** \u2014 In agentic AI systems, permission settings are critical for safety and workflow control. For instance, in a comparative test, ChatGPT autonomously sent an email because permission had been previously granted, while Claude only drafted it because it was configured to ask for approval first. This highlights the importance of memory-scoped permissions in determining whether an agent acts on retrieved context or seeks human-in-the-loop validation.\n    - **Structured World Models for Long-Horizon Context** \u2014 The core innovation of Cosmos is a structured, continuously updated world model that allows it to process orders of magnitude more information than fits in the context of long-context language models. This approach addresses the limitations of pure context-window scaling by maintaining an external, structured representation of the environment that agents can query and update.\n    - **The 'Ralph Wiggum Loop' for Autonomous Coding** \u2014 An autonomous AI coding pattern where each iteration uses a fresh context window, with memory persisted via git history and text files. This pattern demonstrates a practical implementation of episodic memory for coding agents, where the repository state and commit history serve as the persistent memory substrate across independent agent sessions.\n    - **Multi-Agent Debate and Synthesis** \u2014 A test query on Grok Heavy 16 resulted in a 700-word report with nearly 900 references after 16 sub-agents debated for over a minute. This illustrates the potential of multi-agent systems to leverage shared and individual memory streams to produce highly cited, synthesized outputs that exceed the capabilities of a single agent.\n    - **Memory Portability and Export** \u2014 Claude's initial approach to importing user memory from other services was a copyable prompt designed to ask the previous LLM to list all stored memories and context about the user. This 'export prompt' pattern addresses the challenge of memory portability, allowing users to migrate their semantic and episodic memory profiles between different AI service providers.\n    - **Effective Context Curation Practices** \u2014 Effective context curation for AI agents involves maintaining 3-5 focused, single-page files that are dated and updated regularly, rather than creating large, static documents. This practice emphasizes the importance of keeping working memory and semantic memory files fresh and relevant, reducing the risk of agents acting on outdated or irrelevant information.\n\n  - ## Research & Literature"
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -1.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 4,
+      "relevance": 5,
+      "coherence": 4,
+      "better_version": "B",
+      "improvement": 1
+    },
+    "raw_b": {
+      "factual_grounding": 2,
+      "relevance": 3,
+      "coherence": 2,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "c18d8701c0f4b858",
+        "claim": "Anthropic introduced agent skills in October 2025 as a mechanism for building specialized agents using organized folders",
+        "matched": true
+      },
+      {
+        "fp": "59ab619d317d0325",
+        "claim": "The concept of 'context graphs' is defined as a living record of decision traces stitched across entities in time, captu",
+        "matched": true
+      },
+      {
+        "fp": "7c2e4cf26015c278",
+        "claim": "OpenClaw agents utilize a 'heartbeat' mechanism that triggers autonomous task execution every 30 minutes by default, all",
+        "matched": true
+      },
+      {
+        "fp": "adbaf3c8812c2755",
+        "claim": "OpenClaw agents are configured using a set of specific markdown files, including 'soul.md' for personality, 'agents.md' ",
+        "matched": true
+      },
+      {
+        "fp": "09f9a6f8fb5dd1fb",
+        "claim": "The 'Personal Context Portfolio' is a structured set of 10 markdown files designed to serve as a portable, machine-reada",
+        "matched": true
+      },
+      {
+        "fp": "48a245e802e12ea8",
+        "claim": "OpenAI introduced 'heartbeats' in Codex, which are automations that maintain context inside a single thread over time, a",
+        "matched": true
+      },
+      {
+        "fp": "3824c1419b5237a8",
+        "claim": "In agentic AI systems, permission settings are critical for safety and workflow control, as demonstrated by an instance ",
+        "matched": true
+      },
+      {
+        "fp": "46c62c9d80b2fe0f",
+        "claim": "The core innovation of Cosmos is a structured, continuously updated world model that allows it to process orders of magn",
+        "matched": true
+      },
+      {
+        "fp": "b3adff530c1d4cbe",
+        "claim": "The 'Ralph Wiggum loop' is an autonomous AI coding pattern where each iteration uses a fresh context window, with memory",
+        "matched": true
+      },
+      {
+        "fp": "8436cef0f9f237c8",
+        "claim": "A test query on Grok Heavy 16 resulted in a 700-word report with nearly 900 references after the 16 sub-agents debated f",
+        "matched": true
+      },
+      {
+        "fp": "40530c16914cb0d7",
+        "claim": "Claude's initial approach to importing user memory from other services was a copyable prompt designed to ask the previou",
+        "matched": true
+      },
+      {
+        "fp": "51139cc24f4aff35",
+        "claim": "Effective context curation for AI agents involves maintaining 3-5 focused, single-page files that are dated and updated ",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

@@ -1,0 +1,162 @@
+{
+  "topic": "Large Language Model",
+  "topic_slug": "large-language-model",
+  "status": "candidate_survivor",
+  "reasons": [],
+  "n_assertions": 5,
+  "episodes": [
+    "claude-code-is-now-writing-claude-code",
+    "fable-5-raises-the-bar-for-ai-ambition",
+    "how-to-use-claudes-massive-new-upgrades",
+    "the-ai-scientist-that-does-6-months-of-work-in-a-day",
+    "what-we-learned-from-openais-town-hall"
+  ],
+  "assertion_fingerprints": [
+    "545fa7794901236d",
+    "a5139884fb5b12a1",
+    "a8a16471368eb371",
+    "c01b513398547f3c",
+    "c27a40ae6e99f30e"
+  ],
+  "target_page": "Large Language Model.md",
+  "assertions": [
+    {
+      "claim": "xAI's Colossus Supercluster currently operates approximately 230,000 GPUs in a single coherent training cluster, making it the largest in the world.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "AI Daily Brief Host",
+      "episode": "claude-code-is-now-writing-claude-code",
+      "claim_date": "2026-01-03",
+      "evidence": "The host states, 'At the moment, XAI has one data center operational. That is their Colossus Supercluster... it now has around 230,000 GPUs operational in a single coherent training cluster, making it the largest in the world.'",
+      "fp": "a8a16471368eb371"
+    },
+    {
+      "claim": "Anthropic launched Claude Fable 5 on June 9th, introducing a new 'Mythos' class of models positioned above the Opus tier.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief Host / Anthropic Announcement",
+      "episode": "fable-5-raises-the-bar-for-ai-ambition",
+      "claim_date": "2026-06-11",
+      "evidence": "The host states, 'On Tuesday, June 9th, we got Claude Fable 5' and notes the new naming convention includes 'Haiku, Sonnet, Opus, and Fable, as in a class that is above Opus.'",
+      "fp": "c01b513398547f3c"
+    },
+    {
+      "claim": "The 1 million token context window became generally available for both Claude Opus and Claude Sonnet models.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-to-use-claudes-massive-new-upgrades",
+      "claim_date": "2026-03-24",
+      "evidence": "The host states: 'This past month, the 1 million token context window actually became available generally for both Claude Opus and Claude Sonnet.'",
+      "fp": "c27a40ae6e99f30e"
+    },
+    {
+      "claim": "A single run of Cosmos can read 1,500 scientific papers and write 42,000 lines of code.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Edison Scientific (Sam Rodriguez, CEO)",
+      "episode": "the-ai-scientist-that-does-6-months-of-work-in-a-day",
+      "claim_date": "2025-11-18",
+      "evidence": "Sam Rodriguez stated: 'One run can read 1500 papers and write 42,000 lines of code.' Nico McCardi confirmed: 'A single run of Cosmos can execute up to 42,000 lines of code across 166 different data analysis agents and also read 1500 scientific papers using 36 literature review agents.'",
+      "fp": "545fa7794901236d"
+    },
+    {
+      "claim": "Sam Altman acknowledged that GPT-5.2 has a writing style that is unwieldy and difficult to read, stating that the team will make future versions of GPT-5.x much better at writing than GPT-4.5 was.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Sam Altman",
+      "episode": "what-we-learned-from-openais-town-hall",
+      "claim_date": "2026-01-31",
+      "evidence": "Altman said, 'I think we just screwed that up. We will make future versions of GPT-5.x hopefully much better at writing than 4.5 was.'",
+      "fp": "a5139884fb5b12a1"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - Open challenges as of 2026 include residual hallucination (best models around 6% on targeted evals), inference cost and energy, model provenance and data-sovereignty scrutiny (especially for Chinese-origin open weights), and the shift from single-model selection to per-workload routing across mixed open/closed fleets.",
+      "content": "\n- ### Recent Developments (June 2026)\n  - **Anthropic Claude Fable 5** \u2014 Launched on 9 June 2026, introducing a new 'Mythos' class of models positioned above the Opus tier. The updated naming convention now includes Haiku, Sonnet, Opus, and Fable, with Fable representing the highest capability class.\n  - **1M-Token Context GA** \u2014 The 1 million token context window became generally available for both Claude Opus and Claude Sonnet models, moving from premium to standard deployment across Anthropic's flagship lineup.\n  - **xAI Colossus Scale** \u2014 xAI's Colossus Supercluster currently operates approximately 230,000 GPUs in a single coherent training cluster, making it the largest in the world and underscoring the continued escalation of compute infrastructure requirements for frontier training.\n  - **Scientific Automation** \u2014 Edison Scientific's Cosmos system demonstrated the ability to read 1,500 scientific papers and write 42,000 lines of code in a single run, executing across 166 different data analysis agents and 36 literature review agents, highlighting the maturation of LLM-driven scientific discovery pipelines.\n  - **GPT-5.2 Writing Refinement** \u2014 Sam Altman acknowledged that GPT-5.2's writing style is currently unwieldy and difficult to read, stating that the team will make future versions of GPT-5.x much better at writing than GPT-4.5 was, indicating an ongoing focus on stylistic quality in frontier model alignment."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 1.0,
+    "rubric_b_improvement": 2.0,
+    "raw_a": {
+      "factual_grounding": 4,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "A",
+      "improvement": -1
+    },
+    "raw_b": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "a8a16471368eb371",
+        "claim": "xAI's Colossus Supercluster currently operates approximately 230,000 GPUs in a single coherent training cluster, making ",
+        "matched": true
+      },
+      {
+        "fp": "c01b513398547f3c",
+        "claim": "Anthropic launched Claude Fable 5 on June 9th, introducing a new 'Mythos' class of models positioned above the Opus tier",
+        "matched": true
+      },
+      {
+        "fp": "c27a40ae6e99f30e",
+        "claim": "The 1 million token context window became generally available for both Claude Opus and Claude Sonnet models.",
+        "matched": true
+      },
+      {
+        "fp": "545fa7794901236d",
+        "claim": "A single run of Cosmos can read 1,500 scientific papers and write 42,000 lines of code.",
+        "matched": true
+      },
+      {
+        "fp": "a5139884fb5b12a1",
+        "claim": "Sam Altman acknowledged that GPT-5.2 has a writing style that is unwieldy and difficult to read, stating that the team w",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": {
+    "target_page": "Large Language Model.md",
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - Open challenges as of 2026 include residual hallucination (best models around 6% on targeted evals), inference cost and energy, model provenance and data-sovereignty scrutiny (especially for Chinese-origin open weights), and the shift from single-model selection to per-workload routing across mixed open/closed fleets.",
+      "content": "\n- ### Recent Developments (June 2026)\n  - **Anthropic Claude Fable 5** \u2014 Launched on 9 June 2026, introducing a new 'Mythos' class of models positioned above the Opus tier. The updated naming convention now includes Haiku, Sonnet, Opus, and Fable, with Fable representing the highest capability class.\n  - **1M-Token Context GA** \u2014 The 1 million token context window became generally available for both Claude Opus and Claude Sonnet models, moving from premium to standard deployment across Anthropic's flagship lineup.\n  - **xAI Colossus Scale** \u2014 xAI's Colossus Supercluster currently operates approximately 230,000 GPUs in a single coherent training cluster, making it the largest in the world and underscoring the continued escalation of compute infrastructure requirements for frontier training.\n  - **Scientific Automation** \u2014 Edison Scientific's Cosmos system demonstrated the ability to read 1,500 scientific papers and write 42,000 lines of code in a single run, executing across 166 different data analysis agents and 36 literature review agents, highlighting the maturation of LLM-driven scientific discovery pipelines.\n  - **GPT-5.2 Writing Refinement** \u2014 Sam Altman acknowledged that GPT-5.2's writing style is currently unwieldy and difficult to read, stating that the team will make future versions of GPT-5.x much better at writing than GPT-4.5 was, indicating an ongoing focus on stylistic quality in frontier model alignment."
+    },
+    "provenance": {
+      "assertion_fingerprints": [
+        "545fa7794901236d",
+        "a5139884fb5b12a1",
+        "a8a16471368eb371",
+        "c01b513398547f3c",
+        "c27a40ae6e99f30e"
+      ],
+      "source_episodes": [
+        "claude-code-is-now-writing-claude-code",
+        "fable-5-raises-the-bar-for-ai-ambition",
+        "how-to-use-claudes-massive-new-upgrades",
+        "the-ai-scientist-that-does-6-months-of-work-in-a-day",
+        "what-we-learned-from-openais-town-hall"
+      ]
+    },
+    "scores": {
+      "rubric_a_improvement": 1.0,
+      "rubric_b_improvement": 2.0,
+      "completeness": 1.0
+    }
+  }
+}

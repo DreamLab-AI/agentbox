@@ -1,0 +1,135 @@
+{
+  "topic": "Meta AI",
+  "topic_slug": "meta-ai",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_a_improvement -2.0 < -0.5"
+  ],
+  "n_assertions": 5,
+  "episodes": [
+    "first-impressions-of-the-new-opus-48",
+    "is-gpt-52-garlic-coming-this-week",
+    "meta-delays-new-ai-model",
+    "who-cares-about-consumer-ai"
+  ],
+  "assertion_fingerprints": [
+    "39b18551a05aa784",
+    "424e104a83326a55",
+    "70c24fcfad6bb672",
+    "a745ba745e2f3926",
+    "e33decb26e7b4a6f"
+  ],
+  "target_page": "Meta AI.md",
+  "assertions": [
+    {
+      "claim": "Mark Zuckerberg indicated that Meta is considering competing with AWS, Google Cloud, and Microsoft Azure in AI cloud services to monetize excess compute capacity from its $130 billion data center buildout.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Mark Zuckerberg (reported by host)",
+      "episode": "first-impressions-of-the-new-opus-48",
+      "claim_date": "2026-05-30",
+      "evidence": "Zuckerberg stated that companies are asking to buy compute at a premium and that standing up an API service is 'definitely on the table.' He noted this option provides confidence in investing in the buildout if they overbuild.",
+      "fp": "e33decb26e7b4a6f"
+    },
+    {
+      "claim": "Meta announced deals with CNN, Fox News, USA Today, and People Inc. to provide up-to-date news content to its AI chatbot.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Meta",
+      "episode": "is-gpt-52-garlic-coming-this-week",
+      "claim_date": "2025-12-08",
+      "evidence": "The host reports that Meta announced these media deals on Friday to improve Meta AI's ability to deliver timely and relevant content with a wide variety of viewpoints.",
+      "fp": "70c24fcfad6bb672"
+    },
+    {
+      "claim": "Meta's new frontier model, code-named Avocado, has been delayed until at least May 2026.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "The New York Times",
+      "episode": "meta-delays-new-ai-model",
+      "claim_date": "2026-03-16",
+      "evidence": "The transcript states, 'The New York Times reports that Meta's new model code named Avocado has been delayed until at least May.'",
+      "fp": "a745ba745e2f3926"
+    },
+    {
+      "claim": "Meta is considering licensing Gemini to power its products as a stopgap solution while its own model is delayed.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "The New York Times",
+      "episode": "meta-delays-new-ai-model",
+      "claim_date": "2026-03-16",
+      "evidence": "The transcript states, 'that doesn't exactly comport with reports that Meta leadership is even considering licensing Gemini to power their products as a stopgap solution.'",
+      "fp": "424e104a83326a55"
+    },
+    {
+      "claim": "Meta is training a new open-source-inspired agent code-named 'Hatch,' which is currently powered by Claude models but is intended to use Meta's own models upon release, with internal testing targeted for June.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "The Information",
+      "episode": "who-cares-about-consumer-ai",
+      "claim_date": "2026-05-06",
+      "evidence": "The Information reports that Meta is training a new open claw-inspired agent that is code-named Hatch. Sources said that they aim to have the product ready for internal testing by June... Currently, Hatch is powered by Claude models, but Meta intends to use their own models upon release.",
+      "fp": "39b18551a05aa784"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - Open challenges as of 2026: closing the coding and long-horizon agentic gap with OpenAI/Anthropic/Google, justifying capex ramping toward ~US$135bn/year, privacy scrutiny over training the \"personal superintelligence\" assistant on Facebook/Instagram data, and safety concerns after Apollo Research found Muse Spark showed the highest \"evaluation awareness\" (recognising alignment tests) of any model it had assessed.",
+      "content": "\n- ### Recent Developments (2026)\n  - **Avocado Delay and Gemini Stopgap**: Meta's new frontier model, code-named Avocado, has been delayed until at least May 2026. Amid this delay, Meta leadership is reportedly considering licensing Google's Gemini to power its products as a stopgap solution.\n  - **Hatch Agent**: Meta is training a new open-source-inspired agent code-named 'Hatch.' Currently powered by Claude models, the agent is intended to switch to Meta's own models upon release, with internal testing targeted for June 2026.\n  - **AI Cloud Services**: Mark Zuckerberg indicated that Meta is considering competing with AWS, Google Cloud, and Microsoft Azure in AI cloud services to monetize excess compute capacity from its $130 billion data center buildout. Zuckerberg noted that companies are asking to buy compute at a premium and that standing up an API service is 'definitely on the table,' providing confidence in the investment if the buildout exceeds immediate internal needs.\n  - **News Content Partnerships**: Meta announced deals with CNN, Fox News, USA Today, and People Inc. to provide up-to-date news content to its AI chatbot, aiming to improve Meta AI's ability to deliver timely and relevant content with a wide variety of viewpoints."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": 1.0,
+    "raw_a": {
+      "factual_grounding": 2,
+      "relevance": 4,
+      "coherence": 2,
+      "better_version": "A",
+      "improvement": -2
+    },
+    "raw_b": {
+      "factual_grounding": 4,
+      "relevance": 4,
+      "coherence": 5,
+      "better_version": "A",
+      "improvement": -1
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "e33decb26e7b4a6f",
+        "claim": "Mark Zuckerberg indicated that Meta is considering competing with AWS, Google Cloud, and Microsoft Azure in AI cloud ser",
+        "matched": true
+      },
+      {
+        "fp": "70c24fcfad6bb672",
+        "claim": "Meta announced deals with CNN, Fox News, USA Today, and People Inc. to provide up-to-date news content to its AI chatbot",
+        "matched": true
+      },
+      {
+        "fp": "a745ba745e2f3926",
+        "claim": "Meta's new frontier model, code-named Avocado, has been delayed until at least May 2026.",
+        "matched": true
+      },
+      {
+        "fp": "424e104a83326a55",
+        "claim": "Meta is considering licensing Gemini to power its products as a stopgap solution while its own model is delayed.",
+        "matched": true
+      },
+      {
+        "fp": "39b18551a05aa784",
+        "claim": "Meta is training a new open-source-inspired agent code-named 'Hatch,' which is currently powered by Claude models but is",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

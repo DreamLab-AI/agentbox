@@ -13,3 +13,8 @@
 # Idempotent (fingerprint-banked), capped at 15/week; judge-unavailable
 # candidates defer cleanly and retry next week.
 17 8 * * 1 /home/devuser/workspace/project/agentbox/skills/podcast-knowledge-ingest/run-promote.sh 2>&1 | tee -a /home/devuser/workspace/logseq/ai-daily-brief-transcripts/.promote-log.txt
+
+# Stage 3 (Monday 08:47): submit survivor dossiers to the governed ontology
+# proposal queue (Whelk gate -> ACSP human approval). Idempotent per
+# fingerprint set; unresolvable targets are skipped, never guessed.
+47 8 * * 1 cd /home/devuser/workspace/project/agentbox/skills/podcast-knowledge-ingest && node submit-proposals.mjs 2>&1 | tee -a /home/devuser/workspace/logseq/ai-daily-brief-transcripts/.promote-log.txt

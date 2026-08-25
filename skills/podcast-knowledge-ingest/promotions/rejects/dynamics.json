@@ -1,0 +1,253 @@
+{
+  "topic": "Dynamics",
+  "topic_slug": "dynamics",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5"
+  ],
+  "n_assertions": 12,
+  "episodes": [
+    "black-friday-gpt",
+    "chatgpt-55-rumors-start-to-bubble",
+    "does-gemini-31-pro-matter",
+    "first-impressions-of-the-new-opus-48",
+    "google-says-no-ads-planned-for-gemini",
+    "how-deepseek-v4-connects-to-the-us-grid",
+    "how-harness-as-a-service-will-change-agents",
+    "how-people-are-using-ai-for-health",
+    "how-the-escalating-ai-wars-benefit-you"
+  ],
+  "assertion_fingerprints": [
+    "39bd56f3f10dabdb",
+    "3ba2b2888df600af",
+    "459c2862e9ae2cc0",
+    "468198df8844e005",
+    "5873184d2f9fcf06",
+    "68c9168a6eb88df2",
+    "76ccf8a0a12a8410",
+    "99b12da6b5491894",
+    "9e96636f2c1b2fdc",
+    "ce0346059edd71c5",
+    "d80e9d90c927d78b",
+    "da1b4678ba88040d"
+  ],
+  "target_page": "Dynamics.md",
+  "assertions": [
+    {
+      "claim": "Nvidia's stock price dropped by 6% intraday following news of a potential deal between Meta and Google for TPUs, marking the company's largest drawdown since April.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Host (citing market data)",
+      "episode": "black-friday-gpt",
+      "claim_date": "2025-11-27",
+      "evidence": "The transcript states: 'Then on Tuesday, Nvidia stock dropped by 6% intraday on news of that deal with Meta. This was their largest draw down since April.'",
+      "fp": "68c9168a6eb88df2"
+    },
+    {
+      "claim": "Sam Altman issued an internal memo in October warning staff to expect negative public sentiment ('rough vibes') following the launch of Google's new models.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Host (AI Daily Brief)",
+      "episode": "chatgpt-55-rumors-start-to-bubble",
+      "claim_date": "2026-01-15",
+      "evidence": "The host states, 'Back in October, it turns out Sam Alman had warned some staff in a memo that he expected some rough vibes around the launch of Google's new models.'",
+      "fp": "da1b4678ba88040d"
+    },
+    {
+      "claim": "The competitive landscape of frontier AI models has shifted from infrequent major releases to frequent incremental updates, making 'state-of-the-art' benchmark leadership a less significant barometer of a model's overall importance.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host",
+      "episode": "does-gemini-31-pro-matter",
+      "claim_date": "2026-02-21",
+      "evidence": "The host states: 'The context we now all operate in is one where instead of getting big model releases infrequently, we get very incremental model releases much more frequently... state-of-the-art in terms of incremental gains on benchmarks feels less significant as a barometer of a model's importance than it ever has before.'",
+      "fp": "459c2862e9ae2cc0"
+    },
+    {
+      "claim": "The frontier of AI model capabilities is commoditizing rapidly, with benchmark leadership rotating on a weekly basis and major labs converging on comparable intelligence levels.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Akash Gupta (cited by Host)",
+      "episode": "does-gemini-31-pro-matter",
+      "claim_date": "2026-02-21",
+      "evidence": "Akash Gupta writes: 'Best AI model crown now rotates on a weekly basis... The frontier is commoditizing so fast that benchmark leadership lasts weeks, not quarters. Open AAI, Anthropic, and Google are all within singledigit percentage points of each other on most evals.'",
+      "fp": "ce0346059edd71c5"
+    },
+    {
+      "claim": "Google may be strategically accepting a lag in core coding use cases (like agentic coding) because it has a financial stake in Anthropic, allowing it to focus on other areas like multimodal and scientific reasoning.",
+      "tier": "3",
+      "confidence": "0.5",
+      "source": "Simon Smith (cited by Host)",
+      "episode": "does-gemini-31-pro-matter",
+      "claim_date": "2026-02-21",
+      "evidence": "The transcript mentions: 'Simon Smith points out that maybe that suggests that work tasks aren't Google's focus. Indeed, he even goes so far as to speculate. They have a stake in anthropic, so maybe they're okay with that.'",
+      "fp": "5873184d2f9fcf06"
+    },
+    {
+      "claim": "The 'harness' or developer tooling will become a more significant differentiator than raw model capability in the near future, potentially allowing companies with slightly weaker models to compete effectively.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "Host Analysis / Dan Shipper",
+      "episode": "first-impressions-of-the-new-opus-48",
+      "claim_date": "2026-05-30",
+      "evidence": "The host and multiple experts argue that updates to the harness matter as much as model updates. Dan Shipper's decision to stay on Codex despite Opus 4.8's strengths exemplifies this trend.",
+      "fp": "3ba2b2888df600af"
+    },
+    {
+      "claim": "It is increasingly unlikely that custom silicon initiatives by hyperscalers like Meta, OpenAI, and Anthropic will make sense in the context of rapidly accelerating compute needs.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "Host (AI Daily Brief)",
+      "episode": "google-says-no-ads-planned-for-gemini",
+      "claim_date": "2026-01-22",
+      "evidence": "The host argues that the shift toward immediate compute needs means hyperscalers may not have the luxury of waiting for custom chips, leading them to fall back on established players like NVIDIA and AMD.",
+      "fp": "d80e9d90c927d78b"
+    },
+    {
+      "claim": "Agentic AI demand is outstripping the supply of AI compute by potentially several orders of magnitude, leading to rationing and price hikes.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Bloomberg's Steve Haar / AI Daily Brief Host",
+      "episode": "how-deepseek-v4-connects-to-the-us-grid",
+      "claim_date": "2026-04-28",
+      "evidence": "The transcript quotes Steve Haar: 'Suddenly, almost everyone is caught surprised by the sharp rise of agentic AI demand that could outstrip the supply of AI compute by potentially several orders of magnitude, causing maxed-out productive capacity everywhere in the supply chain, and rationing and price hikes on the end users at least in the US.'",
+      "fp": "39bd56f3f10dabdb"
+    },
+    {
+      "claim": "The AI boom is now in full effect, with demand for tokens and compute outpacing supply, causing outages and surging prices across the industry.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Wall Street Journal / AI Daily Brief",
+      "episode": "how-harness-as-a-service-will-change-agents",
+      "claim_date": "2026-05-01",
+      "evidence": "The transcript quotes the WSJ: 'The growing demand for chatbots and other AI-powered tools is outpacing the supply of chips and storage, causing outages and surging prices.'",
+      "fp": "76ccf8a0a12a8410"
+    },
+    {
+      "claim": "The launch of ChatGPT Health is expected to render many existing AI health startups redundant by consolidating triage, nutrition, fitness, and mental health services into a single platform.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Deep Kumar (industry observer)",
+      "episode": "how-people-are-using-ai-for-health",
+      "claim_date": "2026-01-10",
+      "evidence": "The transcript quotes Deep Kumar: 'Most of them will become redundant once this gets adoption. Your medical triaging, nutrition, fitness training, rehab, mental health, all in one place.'",
+      "fp": "468198df8844e005"
+    },
+    {
+      "claim": "Gavin Baker argues that a shift in market share from high-margin frontier labs to cheaper models would increase ROI for end customers and drive incremental token demand, benefiting AI infrastructure providers.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Gavin Baker (investor)",
+      "episode": "how-the-escalating-ai-wars-benefit-you",
+      "claim_date": "2026-07-14",
+      "evidence": "Baker stated that if market share shifts to cheaper models, 'it would increase the ROI on AI spend for end customers by increasing intelligence per dollar, which would drive incremental token demand,' effectively redistributing margin dollars from frontier labs to infrastructure providers.",
+      "fp": "99b12da6b5491894"
+    },
+    {
+      "claim": "The current period of AI competition is characterized by a 'liminal in-between period' where major questions about model value and alternative architectures are creating anxiety and intense competitive dynamics.",
+      "tier": "3",
+      "confidence": "0.7",
+      "source": "AI Daily Brief Host",
+      "episode": "how-the-escalating-ai-wars-benefit-you",
+      "claim_date": "2026-07-14",
+      "evidence": "The host describes the current state as a 'cauldron, that in-between moment' where 'no one has a handle on exactly how things are going to shift next,' leading to 'unstable foundations' and 'lots of anxiety and stress and tension.'",
+      "fp": "9e96636f2c1b2fdc"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "Accurate dynamic models, including inertia, friction, and contact, underpin realistic simulation and high-performance manipulation.",
+      "content": "\n- ### Recent Developments\n  - The competitive landscape of frontier AI models has shifted from infrequent major releases to frequent incremental updates, making 'state-of-the-art' benchmark leadership a less significant barometer of a model's overall importance. The frontier of AI model capabilities is commoditizing rapidly, with benchmark leadership rotating on a weekly basis and major labs converging on comparable intelligence levels.\n  - Agentic AI demand is outstripping the supply of AI compute by potentially several orders of magnitude, leading to rationing and price hikes. The AI boom is now in full effect, with demand for tokens and compute outpacing supply, causing outages and surging prices across the industry.\n  - It is increasingly unlikely that custom silicon initiatives by hyperscalers like Meta, OpenAI, and Anthropic will make sense in the context of rapidly accelerating compute needs, leading them to fall back on established players like NVIDIA and AMD. Nvidia's stock price dropped by 6% intraday following news of a potential deal between Meta and Google for TPUs, marking the company's largest drawdown since April.\n  - The 'harness' or developer tooling will become a more significant differentiator than raw model capability in the near future, potentially allowing companies with slightly weaker models to compete effectively. Google may be strategically accepting a lag in core coding use cases because it has a financial stake in Anthropic, allowing it to focus on other areas like multimodal and scientific reasoning.\n  - Gavin Baker argues that a shift in market share from high-margin frontier labs to cheaper models would increase ROI for end customers and drive incremental token demand, benefiting AI infrastructure providers. The launch of ChatGPT Health is expected to render many existing AI health startups redundant by consolidating triage, nutrition, fitness, and mental health services into a single platform.\n  - Sam Altman issued an internal memo in October warning staff to expect negative public sentiment ('rough vibes') following the launch of Google's new models. The current period of AI competition is characterized by a 'liminal in-between period' where major questions about model value and alternative architectures are creating anxiety and intense competitive dynamics."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "68c9168a6eb88df2",
+        "claim": "Nvidia's stock price dropped by 6% intraday following news of a potential deal between Meta and Google for TPUs, marking",
+        "matched": true
+      },
+      {
+        "fp": "da1b4678ba88040d",
+        "claim": "Sam Altman issued an internal memo in October warning staff to expect negative public sentiment ('rough vibes') followin",
+        "matched": true
+      },
+      {
+        "fp": "459c2862e9ae2cc0",
+        "claim": "The competitive landscape of frontier AI models has shifted from infrequent major releases to frequent incremental updat",
+        "matched": true
+      },
+      {
+        "fp": "ce0346059edd71c5",
+        "claim": "The frontier of AI model capabilities is commoditizing rapidly, with benchmark leadership rotating on a weekly basis and",
+        "matched": true
+      },
+      {
+        "fp": "5873184d2f9fcf06",
+        "claim": "Google may be strategically accepting a lag in core coding use cases (like agentic coding) because it has a financial st",
+        "matched": true
+      },
+      {
+        "fp": "3ba2b2888df600af",
+        "claim": "The 'harness' or developer tooling will become a more significant differentiator than raw model capability in the near f",
+        "matched": true
+      },
+      {
+        "fp": "d80e9d90c927d78b",
+        "claim": "It is increasingly unlikely that custom silicon initiatives by hyperscalers like Meta, OpenAI, and Anthropic will make s",
+        "matched": true
+      },
+      {
+        "fp": "39bd56f3f10dabdb",
+        "claim": "Agentic AI demand is outstripping the supply of AI compute by potentially several orders of magnitude, leading to ration",
+        "matched": true
+      },
+      {
+        "fp": "76ccf8a0a12a8410",
+        "claim": "The AI boom is now in full effect, with demand for tokens and compute outpacing supply, causing outages and surging pric",
+        "matched": true
+      },
+      {
+        "fp": "468198df8844e005",
+        "claim": "The launch of ChatGPT Health is expected to render many existing AI health startups redundant by consolidating triage, n",
+        "matched": true
+      },
+      {
+        "fp": "99b12da6b5491894",
+        "claim": "Gavin Baker argues that a shift in market share from high-margin frontier labs to cheaper models would increase ROI for ",
+        "matched": true
+      },
+      {
+        "fp": "9e96636f2c1b2fdc",
+        "claim": "The current period of AI competition is characterized by a 'liminal in-between period' where major questions about model",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

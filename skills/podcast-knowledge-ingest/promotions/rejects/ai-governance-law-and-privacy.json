@@ -1,0 +1,167 @@
+{
+  "topic": "AI Governance Law and Privacy",
+  "topic_slug": "ai-governance-law-and-privacy",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5"
+  ],
+  "n_assertions": 7,
+  "episodes": [
+    "can-open-models-solve-corporate-ai-washing",
+    "the-5-biggest-ai-stories-to-watch-in-december",
+    "the-next-wave-of-enterprise-ai"
+  ],
+  "assertion_fingerprints": [
+    "1228e7b89df89aab",
+    "253994ea2ffcd5c0",
+    "273b29d7e2434fae",
+    "5f89d8b5a2d2d110",
+    "6ef5ab587c37add3",
+    "94529d5c5249f12a",
+    "9ec7401b736b2386"
+  ],
+  "target_page": "AI Governance Law and Privacy.md",
+  "assertions": [
+    {
+      "claim": "Apple's lawsuit against OpenAI was weakened after Apple admitted its outside lawyers emailed the wrong person at OpenAI, confusing two Asian last names, regarding a prior contact attempt.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "OpenAI Legal Response (cited by AI Daily Brief host)",
+      "episode": "can-open-models-solve-corporate-ai-washing",
+      "claim_date": "2026-08-05",
+      "evidence": "The transcript states: 'Apple had claimed that they contacted OpenAI in February and that we didn't respond. They now admit that their outside lawyers emailed the wrong person after confusing two Asian last names only after we brought this to their attention.'",
+      "fp": "6ef5ab587c37add3"
+    },
+    {
+      "claim": "HP announced 4,000 to 6,000 job cuts in November 2025, which were widely attributed to AI-related workforce reductions.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-5-biggest-ai-stories-to-watch-in-december",
+      "claim_date": "2025-12-10",
+      "evidence": "The host states, 'We saw thousands and thousands of white collar jobs disappear, such as HP announcing 4,000 to 6,000 job cuts.'",
+      "fp": "1228e7b89df89aab"
+    },
+    {
+      "claim": "The host argues that the enterprise AI story of 2025 is that AI and agents are extremely valuable but require serious reorganization, data readiness, and capacity building, creating a growing gap between leaders and laggards.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-5-biggest-ai-stories-to-watch-in-december",
+      "claim_date": "2025-12-10",
+      "evidence": "The host states, 'the story of 2025 when it came to enterprise AI, is that this stuff... is extremely valuable, but not as simple as flipping on some switch... It involves real serious reorganization.'",
+      "fp": "94529d5c5249f12a"
+    },
+    {
+      "claim": "The host predicts that a more full-throated and clearly articulated anti-AI political position will emerge from the right in the US during December 2025.",
+      "tier": "3",
+      "confidence": "0.55",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-5-biggest-ai-stories-to-watch-in-december",
+      "claim_date": "2025-12-10",
+      "evidence": "The host states, 'I think you're going to start to see a more fullthroatated and clearly articulated anti-AI position from the right... they'll start to put it in political soundbite terms.'",
+      "fp": "273b29d7e2434fae"
+    },
+    {
+      "claim": "The Trump AI executive order signed in 2025 requires AI labs to make advanced models available to the government 30 days prior to public release, reduced from a 90-day period in the previous draft.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief host",
+      "episode": "the-next-wave-of-enterprise-ai",
+      "claim_date": "2026-06-04",
+      "evidence": "The transcript states: 'It seems like the only significant change is that companies are encouraged to make their models available 30 days prior to public release as opposed to the draft order, which had asked for a 90-day period.'",
+      "fp": "253994ea2ffcd5c0"
+    },
+    {
+      "claim": "The Trump AI executive order explicitly disclaims the creation of a mandatory government licensing, pre-clearance, or permitting requirement for the development of new AI models.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief host",
+      "episode": "the-next-wave-of-enterprise-ai",
+      "claim_date": "2026-06-04",
+      "evidence": "The transcript quotes the order: 'Nothing in this section shall be construed to authorize the creation of a mandatory government licensing, pre-clearance, or permitting requirement for the development of new AI models.'",
+      "fp": "9ec7401b736b2386"
+    },
+    {
+      "claim": "The NSA has been assigned primary responsibility for testing advanced AI models under the new executive order, with support from various cyber technology and defense agencies.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "AI Daily Brief host",
+      "episode": "the-next-wave-of-enterprise-ai",
+      "claim_date": "2026-06-04",
+      "evidence": "The transcript states: 'The NSA has been assigned primary responsibility for model testing with support from various cyber technology and defense agencies.'",
+      "fp": "5f89d8b5a2d2d110"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - Key open challenges as of 2026 include overlapping jurisdiction between the EU AI Office, the EDPS, national data protection authorities and market surveillance bodies; a patchwork of divergent US state approaches (intent-based Texas vs disclosure-based Colorado vs risk-tiered EU) creating cross-border compliance friction; and unresolved tension between AI training-data practices and GDPR/state privacy obligations.",
+      "content": "\n\n- ### Recent Developments (2025\u20132026)\n  - **US Federal Policy & Executive Action**\n    - The Trump AI executive order, signed in 2025, requires AI labs to make advanced models available to the government 30 days prior to public release, a reduction from the 90-day period proposed in the previous draft.\n    - The order explicitly disclaims the creation of a mandatory government licensing, pre-clearance, or permitting requirement for the development of new AI models, stating: \"Nothing in this section shall be construed to authorize the creation of a mandatory government licensing, pre-clearance, or permitting requirement for the development of new AI models.\"\n    - The NSA has been assigned primary responsibility for testing advanced AI models under the new executive order, with support from various cyber technology and defense agencies.\n    - Political discourse is shifting, with predictions that a more full-throated and clearly articulated anti-AI position will emerge from the right in the US during late 2025, moving into political soundbite terms.\n  - **Corporate & Legal Landscape**\n    - Apple's lawsuit against OpenAI was weakened after Apple admitted its outside lawyers emailed the wrong person at OpenAI, confusing two Asian last names, regarding a prior contact attempt. This admission was made only after the error was brought to their attention.\n    - HP announced 4,000 to 6,000 job cuts in November 2025, which were widely attributed to AI-related workforce reductions, continuing a trend of white-collar job displacement.\n  - **Enterprise AI Adoption**\n    - The dominant narrative for enterprise AI in 2025 is that while AI and agents are extremely valuable, their implementation is not as simple as \"flipping on some switch.\" It involves serious reorganization, data readiness, and capacity building, creating a growing gap between leaders and laggards."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 2,
+      "relevance": 3,
+      "coherence": 4,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 0.8571428571428571,
+    "detail": [
+      {
+        "fp": "6ef5ab587c37add3",
+        "claim": "Apple's lawsuit against OpenAI was weakened after Apple admitted its outside lawyers emailed the wrong person at OpenAI,",
+        "matched": true
+      },
+      {
+        "fp": "1228e7b89df89aab",
+        "claim": "HP announced 4,000 to 6,000 job cuts in November 2025, which were widely attributed to AI-related workforce reductions.",
+        "matched": true
+      },
+      {
+        "fp": "94529d5c5249f12a",
+        "claim": "The host argues that the enterprise AI story of 2025 is that AI and agents are extremely valuable but require serious re",
+        "matched": true
+      },
+      {
+        "fp": "273b29d7e2434fae",
+        "claim": "The host predicts that a more full-throated and clearly articulated anti-AI political position will emerge from the righ",
+        "matched": false
+      },
+      {
+        "fp": "253994ea2ffcd5c0",
+        "claim": "The Trump AI executive order signed in 2025 requires AI labs to make advanced models available to the government 30 days",
+        "matched": true
+      },
+      {
+        "fp": "9ec7401b736b2386",
+        "claim": "The Trump AI executive order explicitly disclaims the creation of a mandatory government licensing, pre-clearance, or pe",
+        "matched": true
+      },
+      {
+        "fp": "5f89d8b5a2d2d110",
+        "claim": "The NSA has been assigned primary responsibility for testing advanced AI models under the new executive order, with supp",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

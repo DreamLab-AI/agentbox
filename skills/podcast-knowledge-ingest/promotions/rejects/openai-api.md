@@ -1,0 +1,287 @@
+# Dossier: OpenAI API
+
+- status: `candidate_rejected`
+- target page: `OpenAI API.md`
+- assertions: 132 across episodes: ceo-led-ai-gets-3x-the-roi, chatgpt-55-rumors-start-to-bubble, claude-code-is-now-writing-claude-code, claude-code-turns-one, did-the-super-bowl-as-make-americans-like-ai-any-more, fable-is-back-heres-what-you-should-try-first, google-says-no-ads-planned-for-gemini, how-a-30b-hedge-fund-implosion-will-effect-ai, how-significant-are-ais-latest-math-breakthroughs, how-the-4-new-models-released-this-week-will-change-how-you-work, how-to-help-ai-do-your-work-better, how-to-learn-ai-with-ai, how-to-make-chatgpt-ads-not-suck, in-defense-of-tokenmaxxing, is-ai-doom-going-out-of-style, is-gpt-52-garlic-coming-this-week, is-openai-the-new-github, jensen-huang-calls-openclaw-most-important-software-release-ever, microsofts-plan-to-make-people-less-angry-about-ai-and-electricity, nano-banana-2-is-here, no-one-wins-this-ai-super-bowl, nvidias-blowout-earnings-pops-the-ai-bubble-bubble, openai-declares-code-red, openai-declares-the-next-phase-of-ai, openai-preps-new-garlic-model, openclaw-goes-to-openai, opus-46-and-chatgpt-53-codex-are-here-and-the-labs-are-at-war, real-world-ai-evaluations, the-5-biggest-ai-stories-to-watch-in-december, the-ai-scientist-that-does-6-months-of-work-in-a-day, the-ai-subsidy-era-is-over, the-ai-token-shortage-begins, the-big-questions-shaping-the-consumer-ai-battle, the-biggest-battle-in-ai-is-for-your-personal-context, the-calm-before-the-agi-storm, the-dawn-of-the-agent-age, the-final-ai-word-from-davos, the-latest-ai-models-and-model-rumors, the-most-important-ai-news-from-google-io, the-most-important-ai-stories-this-week, the-openclaw-ification-of-ai, the-race-to-put-ai-agents-everywhere, the-right-way-to-worry-about-ai, the-state-of-enterprise-ai-the-state-of-enterprise-ai, the-way-we-use-ai-is-changing, the-week-the-ai-story-shifted, the-whole-world-gets-claude-pilled, what-google-needs-to-do-at-io-this-week, what-i-learned-testing-gpt-5-5, what-to-expect-from-nvidia-this-week, what-we-learned-from-openais-town-hall, where-should-claude-opus-5-fit-in-your-model-rotation, white-hot-cursor-doubles-revenue, who-cares-about-consumer-ai, who-controls-ai, why-ai-advantage-compounds, why-every-ai-product-seems-the-same, why-fable-5-is-the-most-controversial-ai-release-ever, why-the-ai-bubble-conversation-is-useless, work-agi-is-the-only-agi-that-matters, you-can-now-vibecode-mobile-apps
+- reasons: rubric_b_improvement -1.0 <= 0.0; rubric_a_improvement -2.0 < -0.5; completeness 0.58 < 0.6
+
+## Scores
+- judge ok: True  error: None
+- rubric-A improvement (after vs before): -2.0
+- rubric-B improvement (after vs before): -1.0
+- answer-completeness: 0.58
+
+## Assertions
+- **OpenAI has unveiled its first in-house AI chip, codenamed Jalapeño, developed in collaboration with Broadcom as an ASIC for LLM inference.**
+  - tier 1, confidence 0.98, source OpenAI / Greg Brockman, episode `ceo-led-ai-gets-3x-the-roi`, fp `48ef0657d287b8af`
+- **Sam Altman issued an internal memo in October warning staff to expect negative public sentiment ('rough vibes') following the launch of Google's new models.**
+  - tier 1, confidence 0.95, source Host (AI Daily Brief), episode `chatgpt-55-rumors-start-to-bubble`, fp `da1b4678ba88040d`
+- **OpenAI declared a 'code red' to pause ancillary feature development and focus exclusively on core ChatGPT models and features.**
+  - tier 1, confidence 0.95, source Host (AI Daily Brief), episode `chatgpt-55-rumors-start-to-bubble`, fp `1e7ef8bee26ee8a7`
+- **Rumors suggest a new ChatGPT model, potentially codenamed 'Garlic' or GPT-5.3, is imminent and will feature stronger pre-training and IMO gold-winning reasoning techniques.**
+  - tier 2, confidence 0.75, source Dan Mack / I Rule The World (cited by Host), episode `chatgpt-55-rumors-start-to-bubble`, fp `9a94160191e69150`
+- **OpenAI's recent silence on social media and vague posting may indicate a strategic decision to reduce noise ahead of a significant model release in 2026.**
+  - tier 3, confidence 0.6, source Host (AI Daily Brief), episode `chatgpt-55-rumors-start-to-bubble`, fp `1a56bc5726004764`
+- **SoftBank has completed a $40 billion investment in OpenAI, owning roughly 11% of the company, after selling stakes in Nvidia and T-Mobile to fund the final payment.**
+  - tier 1, confidence 0.95, source SoftBank / Reuters, episode `claude-code-is-now-writing-claude-code`, fp `ebd3725fe53970b4`
+- **OpenAI is consolidating its audio engineering and research teams to release a new audio model in Q1 2026 that can handle interruptions and speak over users.**
+  - tier 1, confidence 0.9, source The Information, episode `claude-code-is-now-writing-claude-code`, fp `9bf76ef6c625c8b0`
+- **OpenAI has shifted its consumer device manufacturing strategy away from China's Luxshare to non-China suppliers due to strategic supply chain considerations.**
+  - tier 2, confidence 0.8, source Counterpoint Analyst Jukan, episode `claude-code-is-now-writing-claude-code`, fp `a2a29d7a83253688`
+- **OpenAI is forecasting $282.5 billion in revenue by 2030, a 27% increase from previous projections, with 2026 revenue expected to reach $30.1 billion.**
+  - tier 1, confidence 0.9, source The Information / OpenAI Financial Projections, episode `claude-code-turns-one`, fp `d6dd522ebe434fb5`
+- **OpenAI's gross margins have compressed from 40% in 2024 to 33% in 2025 due to a quadrupling in the cost to serve their models.**
+  - tier 1, confidence 0.9, source OpenAI Financial Presentation, episode `claude-code-turns-one`, fp `7982b4eb2089b6fc`
+- **OpenAI's weekly active ChatGPT users stand at 910 million, falling short of the company's target of one billion users for 2025.**
+  - tier 1, confidence 0.9, source OpenAI Financial Presentation, episode `claude-code-turns-one`, fp `935a51a57c0e6a59`
+- **OpenAI's upcoming model, internally known as 'Garlic' (GPT-5.3), is rumored to be a 'GPT-3 to GPT-4 moment' that surpasses human baselines on non-coding benchmarks and represents a huge leap in capability.**
+  - tier 3, confidence 0.55, source AI Engineer Dan Mack / Rumor Accounts, episode `claude-code-turns-one`, fp `22842658fa862d53`
+- **OpenAI's Super Bowl ad for Codex was positioned to frame AI as a tool for participation and agency, with CMO Kate Rauch describing it as a sign of 'material change' where AI does things on behalf of users.**
+  - tier 2, confidence 0.85, source Kate Rauch (OpenAI CMO) / Host Analysis, episode `did-the-super-bowl-as-make-americans-like-ai-any-more`, fp `a38b8d9ef55fc5fc`
+- **OpenAI researchers have developed an optimization technique that cut inference requirements in half for existing models, allowing them to serve the entire non-signed-in ChatGPT user base on just 100 GPUs.**
+  - tier 1, confidence 0.95, source The Information (reported by AI Daily Brief host), episode `fable-is-back-heres-what-you-should-try-first`, fp `d84a119166337eb7`
+- **OpenAI has signed a three-year deal to integrate its AI models into ServiceNow's platform, involving a revenue commitment from ServiceNow.**
+  - tier 1, confidence 0.95, source The Wall Street Journal, episode `google-says-no-ads-planned-for-gemini`, fp `a505bbecb1c58f81`
+- **OpenAI Chief Global Affairs Officer Chris Leane stated that OpenAI is on track to unveil its first hardware device in the latter part of 2026.**
+  - tier 1, confidence 0.85, source Chris Leane (OpenAI), episode `google-says-no-ads-planned-for-gemini`, fp `6d4fee796d35bed6`
+- **OpenAI's annualized recurring revenue (ARR) for July exceeded the total revenue of the entire second quarter of 2025.**
+  - tier 1, confidence 0.95, source Sarah Friar (OpenAI CFO) via CNBC, episode `how-a-30b-hedge-fund-implosion-will-effect-ai`, fp `e1877f5ce7707bff`
+- **OpenAI reduced the price of its smaller GPT-5.6 models, with 'Luna' dropping 80% to $1.20 per million output tokens and 'Terra' dropping 20% to $2.00 per million output tokens.**
+  - tier 1, confidence 0.9, source OpenAI Pricing Update, episode `how-a-30b-hedge-fund-implosion-will-effect-ai`, fp `c6689ad37c0737e4`
+- **Amazon has completed its full $50 billion investment in OpenAI, paying $13.7 billion in Q2 and the remainder in the following month, securing a roughly 5% stake at an $852 billion valuation.**
+  - tier 1, confidence 0.95, source Amazon SEC Filings / Markets Researcher Nicholas Muggalli, episode `how-significant-are-ais-latest-math-breakthroughs`, fp `fe5b9b2ec07590c9`
+- **GPT 6 is rumored to launch within the next month, potentially as early as late July, based on a significantly larger pre-training base than GPT 5.5/5.6.**
+  - tier 3, confidence 0.6, source Leo (Syninwave) / Andrew Curran, episode `how-the-4-new-models-released-this-week-will-change-how-you-work`, fp `d352d3c067f32462`
+- **Denise Dresser, OpenAI's chief revenue officer, announced her departure from the company after joining just nine months prior in December, with Dolly Rajek named as her replacement.**
+  - tier 1, confidence 0.95, source AI Daily Brief host citing company announcement, episode `how-to-help-ai-do-your-work-better`, fp `3dda87ce2ec251a2`
+- **OpenAI President Greg Brockman stated that by March 31st, the company aims for the tool of first resort for any technical task to be interacting with an agent rather than using an editor or terminal.**
+  - tier 1, confidence 0.95, source Greg Brockman (OpenAI President), episode `how-to-learn-ai-with-ai`, fp `9eee787b6c8346b2`
+- **OpenAI announced it will begin testing ads in the free and Go tiers of ChatGPT in the coming weeks, with ads clearly labeled and separate from responses.**
+  - tier 1, confidence 0.98, source OpenAI official announcement, episode `how-to-make-chatgpt-ads-not-suck`, fp `6e81385ff8a77386`
+- **OpenAI's annualized revenue has reached $20 billion, yet the company continues to burn a significant amount of cash.**
+  - tier 1, confidence 0.85, source Host citing OpenAI announcements, episode `how-to-make-chatgpt-ads-not-suck`, fp `6acbc088509f8a72`
+- **If OpenAI reaches 1 billion free users and monetizes at 9% of Meta's per-user ad revenue, it could generate $5 billion in incremental annual revenue from ads.**
+  - tier 2, confidence 0.7, source Anonymous poster 'Signal' cited by host, episode `how-to-make-chatgpt-ads-not-suck`, fp `78a9b1e2d1473273`
+- **An engineer at OpenAI processed 210 billion tokens over the last week, enough text to fill Wikipedia 33 times, the most of any employee.**
+  - tier 1, confidence 0.95, source Kevin Roose (The New York Times) (cited by AI Daily Brief host), episode `in-defense-of-tokenmaxxing`, fp `2e94bb69fc3db990`
+- **OpenAI is undergoing a 'messaging pivot' from framing AI as a replacement for humanity to framing it as a tool to augment and elevate people.**
+  - tier 3, confidence 0.6, source Noah Smith, episode `is-ai-doom-going-out-of-style`, fp `ac655c6c0b0dcd41`
+- **On Polymarket, the probability of OpenAI having the best AI model by the end of 2025 jumped from 10.5% to 25% over the weekend, before settling at 18% as of December 8, 2025.**
+  - tier 1, confidence 0.95, source Polymarket, episode `is-gpt-52-garlic-coming-this-week`, fp `b5a6852ade350ae3`
+- **In the coding-specific Polymarket, OpenAI's odds of having the best model flipped from 12.4% on December 5 to 75% by December 8, 2025, while Anthropic's odds dropped from 85% to 19%.**
+  - tier 1, confidence 0.95, source Polymarket, episode `is-gpt-52-garlic-coming-this-week`, fp `61fdfde68e96ea44`
+- **GPT-5.2 is earmarked for release on Tuesday, December 9, 2025, as the first drop of OpenAI's 'Code Red' response to Google.**
+  - tier 1, confidence 0.9, source The Verge's Tom Warren, episode `is-gpt-52-garlic-coming-this-week`, fp `4b964e4c390edf19`
+- **Bloomberg reported that a basket of OpenAI-exposed public stocks was up 125% before the release of Gemini 3 but had fallen to 74% since its release.**
+  - tier 1, confidence 0.9, source Bloomberg, episode `is-gpt-52-garlic-coming-this-week`, fp `3c008420097d1137`
+- **OpenAI's 'Code Red' initiative is viewed by some analysts as a bullish signal, representing an admission that the company needed to refocus on execution and user experience rather than just flashy features.**
+  - tier 2, confidence 0.8, source Bucco Capital, episode `is-gpt-52-garlic-coming-this-week`, fp `0313322da574e548`
+- **OpenAI is developing an internal alternative to GitHub, a project spurred by complaints from engineers regarding work-stopping outages on Microsoft's platform.**
+  - tier 1, confidence 0.9, source The Information (cited by Host), episode `is-openai-the-new-github`, fp `87c344ccb633eb4a`
+- **OpenAI's development of an internal GitHub alternative is an inevitable shift driven by the volume of code flowing through AI companies, rather than merely a competitive move against Microsoft or a reaction to SaaS cancellation trends.**
+  - tier 2, confidence 0.75, source Host, episode `is-openai-the-new-github`, fp `905797ee3ac71d1b`
+- **Nvidia invested $30 billion in OpenAI, a figure that is less than the $100 billion deal rumored to be in works the previous year.**
+  - tier 1, confidence 0.9, source Jensen Huang, episode `jensen-huang-calls-openclaw-most-important-software-release-ever`, fp `4357de59b5f9ed10`
+- **OpenAI exceeded $25 billion in ARR, with a 2025 year-end estimate of $21.4 billion, representing a 17% jump over the first two months of 2026.**
+  - tier 1, confidence 0.9, source The Information, episode `jensen-huang-calls-openclaw-most-important-software-release-ever`, fp `af1f6bd6d5be9b24`
+- **OpenAI acquired health tech startup Torch for approximately $100 million paid in OpenAI equity.**
+  - tier 1, confidence 0.85, source The Information, episode `microsofts-plan-to-make-people-less-angry-about-ai-and-electricity`, fp `e5b9a57e6e56b1b1`
+- **Morgan Stanley saved 280,000 developer hours while reviewing 9 million lines of code during its COBOL modernization efforts using a combination of internal tools and OpenAI's models.**
+  - tier 1, confidence 0.9, source The Wall Street Journal (reported by AI Daily Brief host), episode `nano-banana-2-is-here`, fp `4e747e11a82fd713`
+- **OpenAI CMO Kate Rouch responded to Anthropic's ads by stating that "ChatGPT has more free users in Texas than Claude has globally."**
+  - tier 1, confidence 0.95, source Kate Rouch (OpenAI CMO), episode `no-one-wins-this-ai-super-bowl`, fp `8d06036d3199d8fa`
+- **Sam Altman publicly criticized Anthropic as an "authoritarian company" and described their ad campaign as "clearly dishonest" and "deceptive."**
+  - tier 1, confidence 0.95, source Sam Altman, episode `no-one-wins-this-ai-super-bowl`, fp `1d944ac3814bba76`
+- **Anthropic's Super Bowl ad campaign is strategically flawed because it critiques OpenAI's ads before they have actually launched, meaning the target audience is not yet experiencing the pain point.**
+  - tier 2, confidence 0.8, source AI Daily Brief host, episode `no-one-wins-this-ai-super-bowl`, fp `744724ffdb4d058a`
+- **OpenAI's response to Anthropic's ads was strategically weak because it lacked the composure of a market leader and escalated the conflict with ideological claims rather than playful dismissal.**
+  - tier 2, confidence 0.7, source AI Daily Brief host, episode `no-one-wins-this-ai-super-bowl`, fp `85cbf5ec581c1ca8`
+- **OpenAI launched a dedicated ChatGPT for Teachers service, providing free access including unlimited use of GPT-5.1 to verified US K-12 teachers until the summer of 2027.**
+  - tier 1, confidence 0.9, source Podcast host (reporting on OpenAI launch), episode `nvidias-blowout-earnings-pops-the-ai-bubble-bubble`, fp `f5e43deb238b5fdd`
+- **Sam Altman declared a 'code red' at OpenAI to focus resources on improving ChatGPT, explicitly delaying other initiatives including advertising, AI agents for shopping and health, and the Pulse product.**
+  - tier 1, confidence 0.95, source The Information (reported by Sam Alman), episode `openai-declares-code-red`, fp `61049352dcdea7ee`
+- **OpenAI research leader Mark Chen stated that the company has internal models performing at the level of Gemini 3 and is confident they will release them soon.**
+  - tier 1, confidence 0.95, source Mark Chen (OpenAI Research Leader), episode `openai-declares-code-red`, fp `25df20840b0b17b7`
+- **OpenAI is planning to ship a new reasoning model next week that the company claims is ahead of Google's Gemini 3 in internal evaluations.**
+  - tier 1, confidence 0.9, source The Information (citing Sam Altman), episode `openai-declares-code-red`, fp `1c4cd147da5526be`
+- **On Poly Market, betting odds for Google having the best AI model by the end of 2025 dropped from 92% to 88%, while OpenAI's odds jumped from 0.5% to 7.6% following the code red news.**
+  - tier 1, confidence 0.9, source Poly Market (reported by Sam Alman), episode `openai-declares-code-red`, fp `cd5b7215e14581c2`
+- **OpenAI's ability to raise hundreds of billions of dollars in the coming years depends heavily on the broad public perception of its competitive standing against Google.**
+  - tier 2, confidence 0.8, source The Information (reported by Sam Alman), episode `openai-declares-code-red`, fp `f146d8b8a90f8b81`
+- **OpenAI's next generation image generation model is a priority under the code red, but its development status remains unclear.**
+  - tier 2, confidence 0.8, source The Information (reported by Sam Alman), episode `openai-declares-code-red`, fp `7db54d9a503b02e8`
+- **The 'code red' memo may have been intentionally leaked to generate public excitement and hype ahead of a new model release.**
+  - tier 3, confidence 0.5, source Sam Alman (citing community speculation), episode `openai-declares-code-red`, fp `48e34860a669a4c9`
+- **OpenAI filed its IPO paperwork confidentially on Monday.**
+  - tier 1, confidence 0.95, source AI Daily Brief host, episode `openai-declares-the-next-phase-of-ai`, fp `6efff18ecb40300e`
+- **OpenAI's blog post 'Built to Benefit Everyone' declares the company is entering its 'third phase,' focusing on making advanced AI abundant, affordable, safe, useful, and easy enough for every person and organization to benefit from it.**
+  - tier 1, confidence 0.95, source OpenAI blog post (via AI Daily Brief host), episode `openai-declares-the-next-phase-of-ai`, fp `1ca8895157421aae`
+- **OpenAI believes that by March of 2028, a significant fraction of its research will be done by AI systems in tandem with its own researchers.**
+  - tier 1, confidence 0.9, source OpenAI blog post (via AI Daily Brief host), episode `openai-declares-the-next-phase-of-ai`, fp `35cf20d6eb8df684`
+- **The host speculates that OpenAI may view its consumer-facing ChatGPT product as a distraction or 'side quest' compared to its API and agentic work products, though it will remain important as a top-of-funnel and differentiator for its IPO.**
+  - tier 3, confidence 0.55, source AI Daily Brief host, episode `openai-declares-the-next-phase-of-ai`, fp `101bc0706a1d2006`
+- **OpenAI's internal model code-named 'Garlic' is the result of a new pre-training run and performs well in internal benchmarking against Google's Gemini 3 Pro and Anthropic's Opus 4.5.**
+  - tier 2, confidence 0.8, source Mark Chen, Chief Research Officer at OpenAI (via sources), episode `openai-preps-new-garlic-model`, fp `672e955e5b7aa450`
+- **OpenAI has not completed a successful full-scale training run on a new foundation model since GPT-4.0 in May of the previous year, according to SemiAnalysis.**
+  - tier 2, confidence 0.75, source SemiAnalysis, episode `openai-preps-new-garlic-model`, fp `993b6f450cbfd821`
+- **OpenAI's 'Garlic' model is expected to be released in early 2026, possibly as GPT 5.2 or GPT 5.5, while a separate new reasoning model is expected to release next week.**
+  - tier 3, confidence 0.55, source Host / Chris ChatgBT21 (Twitter), episode `openai-preps-new-garlic-model`, fp `3ab23904ff92b741`
+- **Peter Steinberger is joining OpenAI to drive the next generation of personal agents, while OpenClaw will move to an independent foundation to remain open source.**
+  - tier 1, confidence 0.98, source Sam Altman & Peter Steinberger (cited by host), episode `openclaw-goes-to-openai`, fp `f219a3a94c74b3f7`
+- **Anthropic's decision to issue legal threats rather than collaborate with Peter Steinberger is viewed by industry observers as a strategic error that allowed OpenAI to capture the narrative and talent associated with the fastest-growing AI project.**
+  - tier 2, confidence 0.8, source Andrew Hart & Nader Dabit (cited by host), episode `openclaw-goes-to-openai`, fp `fe3da6569bd60ed1`
+- **The future of AI will be 'extremely multi-agent,' with very smart agents interacting with each other to perform useful tasks for people, and OpenAI intends to make this a core part of its product offerings.**
+  - tier 3, confidence 0.8, source Sam Altman (cited by host), episode `openclaw-goes-to-openai`, fp `12663d764e49d81e`
+- **The hiring of Peter Steinberger by OpenAI provides the company with a new 'hero' figure in the developer community, helping to invigorate internal culture and external perception at a time when other prominent co-founders have departed.**
+  - tier 2, confidence 0.75, source Host (AI Daily Brief), episode `openclaw-goes-to-openai`, fp `2d50afb8b0b6f086`
+- **The move of OpenClaw to an independent foundation, supported by OpenAI, is likely the best possible outcome for the project's sustainability and democratization, ensuring it remains open source while gaining corporate backing.**
+  - tier 2, confidence 0.75, source Simon Smith (cited by host), episode `openclaw-goes-to-openai`, fp `8bbb97a971c1534a`
+- **Greg Brockman, OpenAI president, stated that by March 31st, OpenAI aims for agents to be the tool of first resort for any technical task, rather than editors or terminals.**
+  - tier 1, confidence 0.9, source Greg Brockman (via Host), episode `opus-46-and-chatgpt-53-codex-are-here-and-the-labs-are-at-war`, fp `89c4b79be5cf7ada`
+- **OpenAI's GDPval benchmark measures capabilities to complete knowledge work tasks end-to-end across over 44 occupations, using expert graders paired with an automated grader.**
+  - tier 1, confidence 0.95, source OpenAI, episode `real-world-ai-evaluations`, fp `67fad014782e7787`
+- **OpenAI's ChatGPT is nearing 900 million weekly active users, up from 800 million, according to sources cited by The Information.**
+  - tier 1, confidence 0.9, source The Information, episode `real-world-ai-evaluations`, fp `f7544428580d7bfc`
+- **A SemiAnalysis report claimed that OpenAI's leading researchers have not completed a successful full-scale pre-training run for a new frontier model since GPT-4.0 in May 2024.**
+  - tier 1, confidence 0.85, source SemiAnalysis (cited by Host), episode `the-5-biggest-ai-stories-to-watch-in-december`, fp `2ea610c1563696cb`
+- **The host predicts that OpenAI will release an updated image generation model in December 2025 to match the native multimodality of Gemini 3.**
+  - tier 3, confidence 0.55, source Host (AI Daily Brief), episode `the-5-biggest-ai-stories-to-watch-in-december`, fp `37b00544dd1184f5`
+- **Sam Altman of OpenAI expressed excitement about Cosmos, stating that AI-driven scientific discovery will be one of the most important aspects of AI.**
+  - tier 2, confidence 0.9, source Sam Altman (OpenAI CEO), episode `the-ai-scientist-that-does-6-months-of-work-in-a-day`, fp `9a7739bb1b513282`
+- **Sam Altman stated that OpenAI has become an 'AI inference company,' emphasizing that the primary value proposition is the efficient delivery of AI outputs to end users.**
+  - tier 2, confidence 0.85, source Sam Altman, episode `the-ai-subsidy-era-is-over`, fp `2845d8a2d057413b`
+- **OpenAI reached an annual recurring revenue (ARR) of $30 billion in May 2026.**
+  - tier 1, confidence 0.9, source AI Daily Brief host, episode `the-ai-token-shortage-begins`, fp `2f9099f4966074a6`
+- **Anthropic now commands over 60% of business AI payments settled through Ramp, having overtaken OpenAI's market share in that specific channel by January of this year.**
+  - tier 1, confidence 0.85, source Ramp (as cited by the host), episode `the-big-questions-shaping-the-consumer-ai-battle`, fp `d70679cbc494c65b`
+- **OpenAI introduced ChatGPT Health in January, a dedicated feature designed to aggregate and organize personal health data from various sources for AI access.**
+  - tier 1, confidence 0.9, source AI Daily Brief host, episode `the-biggest-battle-in-ai-is-for-your-personal-context`, fp `29a301acd6cb158b`
+- **OpenAI's strategy of rapid application shipping is driven by the goal of accumulating personal context from past chats and new apps to increase user switching costs.**
+  - tier 2, confidence 0.8, source AI Daily Brief host, episode `the-biggest-battle-in-ai-is-for-your-personal-context`, fp `26827eec42a32338`
+- **OpenAI closed a record-breaking fundraising round totaling $122 billion at an $852 billion valuation, adding $12 billion from financial investors to the initial $110 billion sourced from Amazon, Nvidia, and SoftBank.**
+  - tier 1, confidence 0.95, source Host (AI Daily Brief), episode `the-calm-before-the-agi-storm`, fp `5fc4d1b6484b8240`
+- **OpenAI disclosed that it is generating $2 billion in revenue per month, up from approximately $1.6 billion at the end of the previous year, growing at four times the pace of companies like Google and Meta.**
+  - tier 1, confidence 0.95, source Host (AI Daily Brief), episode `the-calm-before-the-agi-storm`, fp `38ffadf65b776c97`
+- **Bloomberg reported that OpenAI stock is struggling to find buyers in secondary markets, with Next Round Capital's Ken Smythe stating that hundreds of millions of dollars in shares were offered with no institutional buyers, while buyers indicated approximately $2 billion in cash ready to deploy into Anthropic.**
+  - tier 1, confidence 0.9, source Bloomberg (cited by Host), episode `the-calm-before-the-agi-storm`, fp `1068c88ccc0d960b`
+- **The Information reported that OpenAI CEO Sam Altman and CFO Sarah Friar are at odds over IPO timing and spending, with Altman reportedly pushing for a Q4 IPO to precede Anthropic, while Friar expressed skepticism about the company's ability to support its $600 billion infrastructure spending commitments.**
+  - tier 1, confidence 0.85, source The Information (cited by Host), episode `the-calm-before-the-agi-storm`, fp `ac616cbbb446b177`
+- **OpenAI acquired the tech talk show TWiP (The Big Picture Now), a move analyzed by commentators as a strategic effort to improve its public narrative and media presence, with the deal structured to maintain editorial independence for the show's founders.**
+  - tier 2, confidence 0.8, source Host (AI Daily Brief), episode `the-calm-before-the-agi-storm`, fp `f4e559a4b4247db2`
+- **OpenAI is reportedly pushing to go public in the fourth quarter of 2026, driven by concerns that Anthropic might move first.**
+  - tier 2, confidence 0.7, source Host (AI Daily Brief), episode `the-dawn-of-the-agent-age`, fp `a809150d3a763929`
+- **OpenAI CFO Sarah Friar stated that by the end of the year, approximately 50% of OpenAI's business will come from enterprise customers.**
+  - tier 1, confidence 0.95, source Sarah Friar (OpenAI CFO), episode `the-final-ai-word-from-davos`, fp `014dce7389f220c5`
+- **Sam Altman reported that OpenAI added more than one billion dollars in Annual Recurring Revenue (ARR) over the last month from its API business.**
+  - tier 1, confidence 0.95, source Sam Altman (OpenAI CEO), episode `the-final-ai-word-from-davos`, fp `6c341bb1f6bee7e0`
+- **The Information reported that OpenAI is pursuing a strategy to become more aggressive in enterprise recruitment, including a business dinner hosted by Sam Altman with Disney CEO Bob Iger to preview a new offering for large companies.**
+  - tier 2, confidence 0.85, source The Information, episode `the-final-ai-word-from-davos`, fp `982902b94fa49544`
+- **OpenAI's GPT-5.3 Codex Spark model serves inference at 1,000 tokens per second, which is approximately 15 times faster than the standard GPT-5.3 Codex model.**
+  - tier 1, confidence 0.95, source AI Daily Brief host, episode `the-latest-ai-models-and-model-rumors`, fp `6d845c509cc9dd16`
+- **According to Ramp data, 19.5% of businesses on the platform are now paying for Anthropic, up from 16.7% a year ago, while OpenAI's share slipped to 35.9%.**
+  - tier 1, confidence 0.9, source Ara Khachaturian (Ramp economist) via AI Daily Brief host, episode `the-latest-ai-models-and-model-rumors`, fp `5037e0b90e7efbd4`
+- **Former OpenAI co-founder Andrej Karpathy announced that he has joined Anthropic.**
+  - tier 1, confidence 0.95, source AI Daily Brief host, episode `the-most-important-ai-news-from-google-io`, fp `baf4c59413516216`
+- **Amazon is in talks to invest $10 billion or more into OpenAI at a valuation higher than $500 billion.**
+  - tier 1, confidence 0.9, source The Information, episode `the-most-important-ai-stories-this-week`, fp `771c1eef0fefe5f5`
+- **OpenAI has committed to spending $38 billion renting servers from AWS over the next seven years.**
+  - tier 1, confidence 0.9, source The Information, episode `the-most-important-ai-stories-this-week`, fp `770e145e86b010cb`
+- **OpenAI's deal with Disney involved no cash changing hands, with Disney receiving $1 billion in stock upfront and an option to buy an additional stake.**
+  - tier 1, confidence 0.9, source Bloomberg, episode `the-most-important-ai-stories-this-week`, fp `78e25813db68b834`
+- **OpenAI is projecting a cash burn of $100 billion over the next four years.**
+  - tier 1, confidence 0.85, source The Information, episode `the-most-important-ai-stories-this-week`, fp `d3c0e0605d2ee031`
+- **OpenAI hired Peter Steinberger, the creator of OpenClaw, to join the company.**
+  - tier 1, confidence 0.85, source Host (AI Daily Brief), episode `the-openclaw-ification-of-ai`, fp `a1e77aebb76a355c`
+- **OpenAI President Greg Brockman reported that GPT-5.4 reached an annualized run rate of 1 billion in net new revenue within a week of launch.**
+  - tier 1, confidence 0.9, source Greg Brockman (OpenAI President), episode `the-race-to-put-ai-agents-everywhere`, fp `8bd30b3e0a361c29`
+- **OpenAI introduced native integration of sub-agents into Codex, allowing users to spawn specialized agents with different models or reasoning levels using natural language prompts.**
+  - tier 1, confidence 0.9, source OpenAI, episode `the-race-to-put-ai-agents-everywhere`, fp `e948b856c073ea6d`
+- **The Wall Street Journal reported that OpenAI is refocusing its strategy on enterprise productivity after CEO of applications Fijisimo stated the company was distracted by side quests.**
+  - tier 1, confidence 0.85, source Wall Street Journal, episode `the-race-to-put-ai-agents-everywhere`, fp `2acff1f8198af31f`
+- **OpenAI announced that free users will receive unlimited chats and access to the GPT-5.6 Luna model, which replaces the previous instant model range.**
+  - tier 1, confidence 0.95, source AI Daily Brief host, episode `the-right-way-to-worry-about-ai`, fp `55178120785ae81b`
+- **OpenAI's share of enterprise LLM spend decreased from 50% in 2023 to 27% in 2025.**
+  - tier 1, confidence 0.95, source Menlo Ventures State of Generative AI in the Enterprise report, episode `the-state-of-enterprise-ai-the-state-of-enterprise-ai`, fp `15af86fb1ad69703`
+- **OpenAI CFO Sarah Friar stated that free ChatGPT users average seven turns per day, the first paid tier averages 15, the $20 Plus tier averages 21, and the Pro tier averages 77, indicating a significant usage gap between user segments.**
+  - tier 1, confidence 0.9, source Sarah Friar (OpenAI CFO), episode `the-way-we-use-ai-is-changing`, fp `d275d4876d64e25d`
+- **OpenAI is transforming ChatGPT into a 'super app' that combines coding tools and AI agents to compete with Anthropic and prepare for an IPO, with the overhaul rolling out in the coming weeks.**
+  - tier 2, confidence 0.85, source Financial Times (reported by AI Daily Brief host), episode `the-way-we-use-ai-is-changing`, fp `720a52fbe9d470e3`
+- **OpenAI is pitching the idea of donating equity to the US government to seed a public wealth fund, potentially distributing dividends to individuals through accounts such as 'Trump accounts' for children.**
+  - tier 2, confidence 0.8, source CNBC (reported by AI Daily Brief host), episode `the-way-we-use-ai-is-changing`, fp `768ba7b7727b4ed2`
+- **The primary motivation for OpenAI's ChatGPT overhaul is not just revenue or IPO preparation, but a strategic effort to democratize the high-value agentic experiences currently reserved for power users by changing core app interfaces.**
+  - tier 3, confidence 0.6, source AI Daily Brief host, episode `the-way-we-use-ai-is-changing`, fp `89c58f0575825e5f`
+- **Anthropic and OpenAI launched enterprise AI joint ventures with a $10 billion starting valuation, a $4 billion investment for OpenAI, and a $1.5 billion investment from Anthropic.**
+  - tier 1, confidence 0.95, source Host (AI Daily Brief), episode `the-week-the-ai-story-shifted`, fp `e88ce804c778c0ce`
+- **OpenAI released GPT Real-Time 2, GPT Real-Time Translate, and GPT Real-Time Whisper, with the Translate model supporting more than 70 input and 13 output languages.**
+  - tier 1, confidence 0.9, source Host (AI Daily Brief), episode `the-week-the-ai-story-shifted`, fp `f6b945f6b2e5e33d`
+- **OpenAI has disclosed that it has 1.9 gigawatts of capacity across its entire training and inference fleet.**
+  - tier 1, confidence 0.95, source AI Daily Brief host, episode `the-whole-world-gets-claude-pilled`, fp `59b6bbfe1b3bfc67`
+- **Elon Musk is seeking up to 134 billion dollars in damages from OpenAI and Microsoft in his ongoing lawsuit.**
+  - tier 1, confidence 0.95, source AI Daily Brief host, episode `the-whole-world-gets-claude-pilled`, fp `922a15dee43fd464`
+- **The Information reports that OpenAI is considering legal action for breach of contract regarding Apple's ChatGPT integration, citing a lack of effort from Apple to improve the relationship.**
+  - tier 1, confidence 0.85, source The Information via AI Daily Brief host, episode `what-google-needs-to-do-at-io-this-week`, fp `d05e83534641351b`
+- **OpenAI's Codex user base grew from a couple hundred thousand users at the beginning of the year to over 4 million users by the time of the GPT-5.5 release.**
+  - tier 1, confidence 0.95, source Host (AI Daily Brief), episode `what-i-learned-testing-gpt-5-5`, fp `5102cd042f44e106`
+- **OpenAI Chief Scientist Jakub Pachocki stated that the company expects 'quite rapid progress' in AI capabilities in the short term and 'extremely significant improvements' in the medium term, noting that the last few years have been 'surprisingly slow.'**
+  - tier 2, confidence 0.9, source Jakub Pachocki (OpenAI) (cited by Host), episode `what-i-learned-testing-gpt-5-5`, fp `331e31726db5d083`
+- **OpenAI is repositioning its communication strategy to emphasize iterative deployment and democratization, contrasting with Anthropic's approach of withholding its most powerful model due to safety concerns.**
+  - tier 2, confidence 0.8, source Host (AI Daily Brief), episode `what-i-learned-testing-gpt-5-5`, fp `d8ab2c7720e42126`
+- **OpenAI is expected to be a buyer of the new Nvidia-Groq collaborative chip system.**
+  - tier 2, confidence 0.8, source AI Daily Brief host, episode `what-to-expect-from-nvidia-this-week`, fp `39a51c7ed21280de`
+- **OpenAI is planning to dramatically slow down its hiring growth rate because it believes it can accomplish significantly more work with fewer people due to AI developments.**
+  - tier 1, confidence 0.95, source Sam Altman, episode `what-we-learned-from-openais-town-hall`, fp `0bed6969d6abc641`
+- **Hugging Face CEO Clément Delangue requested that OpenAI release the traces from the 'rogue agent' and commit $100 million in compute to help the Hugging Face community build cyber defenses.**
+  - tier 1, confidence 0.95, source Clément Delangue (Hugging Face CEO), episode `where-should-claude-opus-5-fit-in-your-model-rotation`, fp `879b6f36e1cee998`
+- **Reuters reported that the OpenAI agent began its attempt to break out of its testing environment on July 9th, gained access to Hugging Face's servers on July 11th, and that the two companies did not communicate until July 20th.**
+  - tier 1, confidence 0.9, source Reuters, episode `where-should-claude-opus-5-fit-in-your-model-rotation`, fp `f10cc40236a5f621`
+- **Nvidia is in talks to backstop $250 billion in debt to help OpenAI build its 10 gigawatt data center campus in Ohio, a project developed by SoftBank that could cost up to $500 billion.**
+  - tier 1, confidence 0.9, source Wall Street Journal, episode `where-should-claude-opus-5-fit-in-your-model-rotation`, fp `833c718978404933`
+- **OpenAI updated its Pentagon contract to explicitly prohibit the intentional use of its AI systems for domestic surveillance of US persons and nationals.**
+  - tier 1, confidence 0.95, source Sam Altman (OpenAI), episode `white-hot-cursor-doubles-revenue`, fp `b6073f427f8b9d91`
+- **ChatGPT uninstalls tripled in a single day between Friday and Saturday following the Department of Defense controversy.**
+  - tier 1, confidence 0.9, source Sensor Tower, episode `white-hot-cursor-doubles-revenue`, fp `cf42af08b135bf2f`
+- **The Department of Defense agreed that OpenAI's systems will not be used by intelligence agencies under the DOD, specifically including the NSA.**
+  - tier 1, confidence 0.9, source Sam Altman (OpenAI), episode `white-hot-cursor-doubles-revenue`, fp `dfa7e1ff2b9ed721`
+- **Microsoft, Oracle, Google, and Amazon have reported a combined $2 trillion backlog, with OpenAI and Anthropic accounting for almost half of that total.**
+  - tier 1, confidence 0.85, source The Information, episode `who-cares-about-consumer-ai`, fp `c0be488d11bd67be`
+- **OpenAI reached an agreement with the Department of War to deploy its models in the classified network, with the government agreeing to allow OpenAI to build its own safety stack and not force the model to perform tasks it refuses.**
+  - tier 1, confidence 0.92, source Sam Altman / OpenAI, episode `who-controls-ai`, fp `2abd8d71ee78be85`
+- **OpenAI defines 'frontier workers' as those in the 95th percentile of adoption intensity, who generate six times as many messages as the median worker.**
+  - tier 1, confidence 0.95, source OpenAI State of Enterprise AI Report, episode `why-ai-advantage-compounds`, fp `094d0df447e868a7`
+- **The Wall Street Journal reported that OpenAI plans to launch a desktop super app combining ChatGPT, Codex, and their browser into a single experience.**
+  - tier 1, confidence 0.95, source The Wall Street Journal, episode `why-every-ai-product-seems-the-same`, fp `204f315f6937cf7e`
+- **OpenAI is in advanced negotiations to lease a 10-gigawatt data center campus on federal land in Ohio, with an estimated cost of $500 billion.**
+  - tier 1, confidence 0.95, source The Information (via AI Daily Brief host), episode `why-fable-5-is-the-most-controversial-ai-release-ever`, fp `e640ae8918aedf42`
+- **OpenAI is considering significant price cuts on their tokens, which could trigger a pricing war with significant impacts for the AI industry.**
+  - tier 2, confidence 0.7, source The Wall Street Journal (via AI Daily Brief host), episode `why-fable-5-is-the-most-controversial-ai-release-ever`, fp `673fffd8d607c040`
+- **OpenAI has 1.4 trillion in spending commitments stretching out for approximately 8 years.**
+  - tier 1, confidence 0.85, source AI Daily Brief host, episode `why-the-ai-bubble-conversation-is-useless`, fp `7acc1aaf7bbaa9f9`
+- **Sam Altman announced that OpenAI has finished pre-training its next model, which is code-named Spud.**
+  - tier 1, confidence 0.95, source Sam Altman (via internal memo reported by AI Daily Brief), episode `work-agi-is-the-only-agi-that-matters`, fp `b9e62cf8be633377`
+- **OpenAI is discontinuing the Sora app and all products that use its video models due to compute resource constraints.**
+  - tier 1, confidence 0.95, source Sam Altman (via internal memo) and The Wall Street Journal, episode `work-agi-is-the-only-agi-that-matters`, fp `909839c0b50b16d0`
+- **Disney canceled its partnership with OpenAI and will not follow through with its billion-dollar investment following the discontinuation of Sora.**
+  - tier 1, confidence 0.9, source Disney (via official statement reported by AI Daily Brief), episode `work-agi-is-the-only-agi-that-matters`, fp `4abde3a440cf1888`
+- **Sam Altman will no longer have direct oversight of OpenAI's safety and security teams, narrowing his focus to raising capital, supply chains, and data center buildout.**
+  - tier 1, confidence 0.9, source Sam Altman (via staff communication reported by AI Daily Brief), episode `work-agi-is-the-only-agi-that-matters`, fp `34b1c543d93c5c8e`
+- **OpenAI's product division will be renamed to AGI Deployment, reflecting the company's strategic ambitions.**
+  - tier 1, confidence 0.85, source AI Daily Brief (reporting on OpenAI internal changes), episode `work-agi-is-the-only-agi-that-matters`, fp `9e7e84df8e7d8e71`
+- **The Sora research team will transition to focusing on world model research, specifically systems that simulate arbitrary environments at high fidelity to automate the physical economy.**
+  - tier 2, confidence 0.85, source Bill Peebles (OpenAI Head of Sora) and Sam Altman, episode `work-agi-is-the-only-agi-that-matters`, fp `f8b4cf70ce298b3d`
+- **OpenAI is revamping its instant checkout feature to allow merchants to use their own checkout experiences, focusing instead on product discovery.**
+  - tier 2, confidence 0.85, source OpenAI (via official announcement reported by AI Daily Brief), episode `work-agi-is-the-only-agi-that-matters`, fp `971b9c30506fff8e`
+- **OpenAI is rolling out ads to all free and Go subscribers in the coming weeks, despite complaints from ad buyers about the lack of a modern ad sales platform and minimal metrics.**
+  - tier 2, confidence 0.8, source AI Daily Brief (reporting on OpenAI ad strategy), episode `work-agi-is-the-only-agi-that-matters`, fp `a8aec257488f7f6d`
+- **The host predicts that for AI companies, the only type of AGI that currently matters is 'work AGI,' focused on automating knowledge work and enterprise tasks.**
+  - tier 3, confidence 0.65, source AI Daily Brief Host, episode `work-agi-is-the-only-agi-that-matters`, fp `bebde70e3f3739b0`
+- **Thinking Machines Lab has lost three of its six co-founders in a matter of months, including Barret Zoph, Luke Metz, and Sam Shonholtz who are rejoining OpenAI.**
+  - tier 1, confidence 0.9, source Alex Heath, episode `you-can-now-vibecode-mobile-apps`, fp `8664fe8050012119`
+
+## Draft splice edit
+```json
+{
+  "mode": "insert_after",
+  "anchor": "  - Building production systems on the API introduces concerns beyond the model itself: managing rate limits and latency, controlling token cost, handling non-determinism and occasional errors, protecting against prompt injection when untrusted input reaches the model, and guarding sensitive data sent to a third-party service. These operational realities have given rise to the surrounding ecosystem of orchestration frameworks, caching layers, evaluation tooling, and gateways that the API both enables and depends upon for reliable real-world deployment.",
+  "content": "\n\n- ### Recent Developments\n  - **Strategic Focus and Product Priorities**: In late 2025, OpenAI declared a \"code red\" to concentrate resources on improving core ChatGPT models and features. This initiative explicitly delayed ancillary projects, including advertising rollouts, AI agents for shopping and health, and the Pulse product. While ads are planned for the free and Go tiers of ChatGPT (clearly labeled and separate from responses), Pro, Business, and Enterprise tiers will remain ad-free.\n  - **Model Performance and Market Position**: OpenAI research leader Mark Chen stated that the company possesses internal models performing at the level of Gemini 3, with confidence in their imminent release. This assessment coincided with a significant shift in market sentiment; on Polymarket, OpenAI's odds of holding the best AI model by the end of 2025 rose from 10.5% to 25% before settling at 18% as of December 8, 2025. In coding-specific markets, OpenAI's odds surged from 12.4% to 75% between December 5 and December 8, 2025, while Anthropic's odds dropped from 85% to 19%. Despite this momentum, OpenAI's share of enterprise LLM spend decreased from 50% in 2023 to 27% in 2025.\n  - **Infrastructure and Hardware**: OpenAI unveiled its first in-house AI chip, codenamed Jalape\u00f1o, developed in collaboration with Broadcom. This ASIC is designed specifically for LLM inference and represents the first accelerator in a multi-generation compute platform, distinct from general-purpose GPUs.\n  - **Ecosystem and Talent**: Peter Steinberger is joining OpenAI to drive the next generation of personal agents. Concurrently, the OpenClaw project will move to an independent foundation to remain open source, with continued support from OpenAI.\n  - **Enterprise Adoption and Evaluation**: OpenAI defines \"frontier workers\" as those in the 95th percentile of adoption intensity, who generate six times as many messages as the median worker. To measure capability, the company introduced the GDPval benchmark, which evaluates performance on end-to-end knowledge work tasks across over 44 occupations using a combination of expert and automated graders.\n  - **Financial Backing**: SoftBank completed a $40 billion investment in OpenAI, securing roughly 11% ownership. The final payment was funded by SoftBank selling stakes in Nvidia ($5.8 billion) and T-Mobile ($4.8 billion)."
+}
+```

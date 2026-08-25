@@ -1,0 +1,188 @@
+{
+  "topic": "Multi-Agent Systems",
+  "topic_slug": "multi-agent-systems",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5"
+  ],
+  "n_assertions": 8,
+  "episodes": [
+    "first-impressions-of-the-new-opus-48",
+    "gemini-can-now-write-you-a-song",
+    "openclaw-goes-to-openai",
+    "the-ai-acceleration-gap",
+    "the-dawn-of-the-agent-age",
+    "the-most-important-ai-news-from-google-io",
+    "what-the-heck-is-graph-engineering",
+    "why-ai-leads-to-more-work-not-less"
+  ],
+  "assertion_fingerprints": [
+    "12663d764e49d81e",
+    "4e866b2d30a2d150",
+    "7d17e5f7af5bc0cd",
+    "8917e5958324333d",
+    "a0f65b684ab6a724",
+    "bb64214894c8a3cc",
+    "d216f3cf2ce723c1",
+    "df6dc9ab7e03a21c"
+  ],
+  "target_page": "Multi-Agent Systems.md",
+  "assertions": [
+    {
+      "claim": "Anthropic's 'Dynamic Workflows' feature in Claude Code allows Opus 4.8 to orchestrate hundreds of parallel sub-agents, demonstrated by a 11-day migration of 750,000 lines of code from Zig to Rust with 99.8% test pass rate.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Anthropic / Developer Jared Sumner (reported by host)",
+      "episode": "first-impressions-of-the-new-opus-48",
+      "claim_date": "2026-05-30",
+      "evidence": "The feature uses adversarial agents to check outputs and allows Opus to choose models for subtasks based on complexity. The host cites Anthropic's Dickson Tsai calling it the most significant Claude Code innovation in 2026 so far.",
+      "fp": "4e866b2d30a2d150"
+    },
+    {
+      "claim": "xAI released Grok Heavy 16, a model variant that utilizes 16 sub-agents to debate responses before providing a final answer, increasing from the 4 sub-agents in Grok 4.2.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Podcast Host (citing xAI announcement)",
+      "episode": "gemini-can-now-write-you-a-song",
+      "claim_date": "2026-03-08",
+      "evidence": "Transcript notes: 'XAI has announced a new version of Gro Heavy, and this one goes to 16... Gro Heavy turns the sub agent count all the way up to 16 in a bid to either get better answers or at least burn through a ton of tokens getting an output.'",
+      "fp": "a0f65b684ab6a724"
+    },
+    {
+      "claim": "The future of AI will be 'extremely multi-agent,' with very smart agents interacting with each other to perform useful tasks for people, and OpenAI intends to make this a core part of its product offerings.",
+      "tier": "3",
+      "confidence": "0.8",
+      "source": "Sam Altman (cited by host)",
+      "episode": "openclaw-goes-to-openai",
+      "claim_date": "2026-02-16",
+      "evidence": "Sam Altman stated: 'The future is going to be extremely multi-agent, and it's important to us to support open source as part of that... We expect this will quickly become core to our product offerings.'",
+      "fp": "12663d764e49d81e"
+    },
+    {
+      "claim": "New York Times columnist Kevin Roose described a 'yawning inside outside gap' in AI adoption, noting that San Francisco users are deploying multi-agent Claude swarms while others are still seeking approval to use Copilot in Teams.",
+      "tier": "2",
+      "confidence": "0.95",
+      "source": "Kevin Roose (via AI Daily Brief host)",
+      "episode": "the-ai-acceleration-gap",
+      "claim_date": "2026-01-30",
+      "evidence": "Roose wrote: 'People in San Francisco are putting multi-agent Claude swarms in charge of their lives... People elsewhere are still trying to get approval to use Copilot in Teams, if they're using AI at all.'",
+      "fp": "d216f3cf2ce723c1"
+    },
+    {
+      "claim": "Kevin Roose of the New York Times identified a 'yawning inside outside gap' in AI adoption, where early adopters in San Francisco are using multi-agent swarms while many knowledge workers are still struggling to get approval for basic AI tools.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "Kevin Roose (New York Times)",
+      "episode": "the-dawn-of-the-agent-age",
+      "claim_date": "2026-02-05",
+      "evidence": "Kevin Roose from the New York Times summed it up nicely when he wrote, 'I follow AI adoption pretty closely, and I have never seen such a yawning inside outside gap. People in SF are putting multi-agent clause swarms in charge of their lives... People elsewhere are still trying to get approval to use C-pilot in teams if they're using AI at all.'",
+      "fp": "7d17e5f7af5bc0cd"
+    },
+    {
+      "claim": "Google's Antigravity 2.0 was demonstrated by rebuilding the core framework of a working operating system using 93 sub-agents and processing billions of tokens over approximately 12 hours.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "AI Daily Brief host",
+      "episode": "the-most-important-ai-news-from-google-io",
+      "claim_date": "2026-05-20",
+      "evidence": "The host reports: \"To demonstrate the new capabilities of antigravity 2.0, they rebuilt the core framework of a working operating system using 93 sub-agents and processing billions of tokens, with the entire operation taking about 12 hours.\"",
+      "fp": "8917e5958324333d"
+    },
+    {
+      "claim": "Graph engineering is the discipline of designing how multiple agents, tools, knowledge sources, and humans interact and connect within an agentic system, distinct from loop engineering which focuses on single-agent iteration.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "AI Daily Brief Host",
+      "episode": "what-the-heck-is-graph-engineering",
+      "claim_date": "2026-08-10",
+      "evidence": "The host explains that 'graph engineering is about designing how multiple agents, tools, knowledge sources, and humans interact and connect,' whereas a loop is 'how an individual agent does its job.'",
+      "fp": "bb64214894c8a3cc"
+    },
+    {
+      "claim": "Anthropic's agentic coding trends report predicts that multi-agent systems will replace single-agent workflows, a trend the host notes is currently visible in the rise of tools like Open Claw.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Anthropic (Agentic Coding Trends Report) and Host",
+      "episode": "why-ai-leads-to-more-work-not-less",
+      "claim_date": "2026-02-11",
+      "evidence": "Anthropic's specific prediction is that multi-agent systems will replace single-agent workflows, and that is just happening right now. The rise of Open Claw right now is giving us an absolute preview into what this is going to look like.",
+      "fp": "df6dc9ab7e03a21c"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "- ### Current Landscape (2026)",
+      "content": "- ### Recent Developments\n  - **Anthropic Dynamic Workflows (Claude Code)**: Anthropic's 'Dynamic Workflows' feature in Claude Code allows Opus 4.8 to orchestrate hundreds of parallel sub-agents. This capability was demonstrated by a 11-day migration of 750,000 lines of code from Zig to Rust, achieving a 99.8% test pass rate. The feature utilizes adversarial agents to check outputs and allows Opus to select models for subtasks based on complexity. Anthropic's Dickson Tsai has cited this as the most significant Claude Code innovation in 2026 so far.\n  - **xAI Grok Heavy 16**: xAI released Grok Heavy 16, a model variant that utilizes 16 sub-agents to debate responses before providing a final answer, increasing from the 4 sub-agents used in Grok 4.2. This approach aims to improve answer quality through multi-agent deliberation, albeit at a higher token cost.\n  - **OpenAI's Multi-Agent Vision**: Sam Altman stated that the future of AI will be 'extremely multi-agent,' with very smart agents interacting to perform useful tasks. OpenAI intends to make this a core part of its product offerings, emphasizing the importance of open source support in this transition.\n  - **Adoption Gap**: New York Times columnist Kevin Roose described a 'yawning inside outside gap' in AI adoption, noting that while San Francisco users are deploying multi-agent Claude swarms, many knowledge workers elsewhere are still seeking approval to use basic tools like Copilot in Teams.\n  - **Google Antigravity 2.0**: Google demonstrated Antigravity 2.0 by rebuilding the core framework of a working operating system using 93 sub-agents. The operation processed billions of tokens over approximately 12 hours, showcasing the scale of modern multi-agent orchestration.\n  - **Graph Engineering**: The discipline of 'graph engineering' has emerged, distinct from loop engineering. While loop engineering focuses on single-agent iteration, graph engineering involves designing how multiple agents, tools, knowledge sources, and humans interact and connect within an agentic system.\n  - **Trend Prediction**: Anthropic's agentic coding trends report predicts that multi-agent systems will replace single-agent workflows. This trend is currently visible in the rise of tools like Open Claw, which provide a preview of this architectural shift.\n\n- ### Current Landscape (2026)"
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 3,
+      "relevance": 4,
+      "coherence": 2,
+      "better_version": "A",
+      "improvement": -2
+    },
+    "raw_b": {
+      "factual_grounding": 4,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "4e866b2d30a2d150",
+        "claim": "Anthropic's 'Dynamic Workflows' feature in Claude Code allows Opus 4.8 to orchestrate hundreds of parallel sub-agents, d",
+        "matched": true
+      },
+      {
+        "fp": "a0f65b684ab6a724",
+        "claim": "xAI released Grok Heavy 16, a model variant that utilizes 16 sub-agents to debate responses before providing a final ans",
+        "matched": true
+      },
+      {
+        "fp": "12663d764e49d81e",
+        "claim": "The future of AI will be 'extremely multi-agent,' with very smart agents interacting with each other to perform useful t",
+        "matched": true
+      },
+      {
+        "fp": "d216f3cf2ce723c1",
+        "claim": "New York Times columnist Kevin Roose described a 'yawning inside outside gap' in AI adoption, noting that San Francisco ",
+        "matched": true
+      },
+      {
+        "fp": "7d17e5f7af5bc0cd",
+        "claim": "Kevin Roose of the New York Times identified a 'yawning inside outside gap' in AI adoption, where early adopters in San ",
+        "matched": true
+      },
+      {
+        "fp": "8917e5958324333d",
+        "claim": "Google's Antigravity 2.0 was demonstrated by rebuilding the core framework of a working operating system using 93 sub-ag",
+        "matched": true
+      },
+      {
+        "fp": "bb64214894c8a3cc",
+        "claim": "Graph engineering is the discipline of designing how multiple agents, tools, knowledge sources, and humans interact and ",
+        "matched": true
+      },
+      {
+        "fp": "df6dc9ab7e03a21c",
+        "claim": "Anthropic's agentic coding trends report predicts that multi-agent systems will replace single-agent workflows, a trend ",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

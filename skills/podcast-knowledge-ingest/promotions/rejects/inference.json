@@ -1,0 +1,394 @@
+{
+  "topic": "Inference",
+  "topic_slug": "inference",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0"
+  ],
+  "n_assertions": 24,
+  "episodes": [
+    "ceo-led-ai-gets-3x-the-roi",
+    "claude-code-turns-one",
+    "dario-amodei-breaks-his-social-media-silence",
+    "does-gemini-31-pro-matter",
+    "fable-is-back-heres-what-you-should-try-first",
+    "gemini-3-anticipation-reaches-fever-pitch",
+    "gemini-3-launches-heres-everything-you-need-to-know",
+    "gemini-can-now-write-you-a-song",
+    "gpt-52-is-here",
+    "gpt-54-first-test-results",
+    "grok-46-shows-how-fast-your-ai-options-are-expanding",
+    "grok-bot-finally-makes-ai-agents-easy",
+    "how-a-30b-hedge-fund-implosion-will-effect-ai",
+    "how-ai-starts-doing-the-work-in-2026-with-anthropic-cpo-mike-krieger",
+    "how-apples-ai-strategy-changes-with-a-new-ceo",
+    "how-big-is-the-ai-economy",
+    "how-the-escalating-ai-wars-benefit-you",
+    "how-to-get-the-most-from-ai-this-summer",
+    "how-to-get-the-most-out-of-fable-5-and-gpt-56-sol"
+  ],
+  "assertion_fingerprints": [
+    "0616b00cfd31a6f1",
+    "1150cf73e2dc1daf",
+    "160305380c63e432",
+    "29c56d5e0cd5b147",
+    "3f67d08ddfe7faf7",
+    "453eaa25dfa5385c",
+    "48ef0657d287b8af",
+    "50218448cb212763",
+    "5398af6a5335a0b0",
+    "623a597b1d186a2e",
+    "7982b4eb2089b6fc",
+    "80d5d1cf005463be",
+    "99b12da6b5491894",
+    "a0f65b684ab6a724",
+    "a5bbc3603fea9b57",
+    "ab0ca4fa787ecb5e",
+    "c6689ad37c0737e4",
+    "cfbcf1573d709623",
+    "d4653fb784e29562",
+    "d84a119166337eb7",
+    "d88048892dcfa594",
+    "e7ba4579cb49e3d4",
+    "f1b430c1c33245e4",
+    "fe3b1910aa38f383"
+  ],
+  "target_page": "Inference.md",
+  "assertions": [
+    {
+      "claim": "OpenAI has unveiled its first in-house AI chip, codenamed Jalape\u00f1o, developed in collaboration with Broadcom as an ASIC for LLM inference.",
+      "tier": "1",
+      "confidence": "0.98",
+      "source": "OpenAI / Greg Brockman",
+      "episode": "ceo-led-ai-gets-3x-the-roi",
+      "claim_date": "2026-06-25",
+      "evidence": "The chip is described as an integrated processor and the first AI accelerator in a multi-generation compute platform, similar to Google's TPUs but distinct from Nvidia's general-purpose GPUs.",
+      "fp": "48ef0657d287b8af"
+    },
+    {
+      "claim": "OpenAI's gross margins have compressed from 40% in 2024 to 33% in 2025 due to a quadrupling in the cost to serve their models.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "OpenAI Financial Presentation",
+      "episode": "claude-code-turns-one",
+      "claim_date": "2026-02-26",
+      "evidence": "The host notes, 'OpenAI said that the cost to serve their models quadrupled over the past year, causing a compression in gross margins. Margins fell from 40% in 2024 to 33% in 2025.'",
+      "fp": "7982b4eb2089b6fc"
+    },
+    {
+      "claim": "Z AI's GLM 5.3 is less than a tenth of the cost per token of Fable 5.6 Soul and one-fifth the cost of Chimera 3, though limited real-world testing suggests it may cost around two-thirds of Chimera 3 for equivalent tasks.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "AI Daily Brief Host / User Testing",
+      "episode": "dario-amodei-breaks-his-social-media-silence",
+      "claim_date": "2026-08-18",
+      "evidence": "The transcript notes: 'On a per token basis, GLM 5.3 is less than a tenth of the cost of FableR 5.6 Soul and 1/5 the cost of Chimera 3. In limited testing, some users are finding that GLM 5.3 cost around 2/3 of Chimera 3 or Grok 4.6 for the same task.'",
+      "fp": "0616b00cfd31a6f1"
+    },
+    {
+      "claim": "According to Artificial Analysis, Gemini 3.1 Pro leads their overall intelligence index by four points ahead of Claude Opus 4.6 while costing less than half as much to run.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Artificial Analysis (cited by Host)",
+      "episode": "does-gemini-31-pro-matter",
+      "claim_date": "2026-02-21",
+      "evidence": "The transcript quotes Artificial Analysis: 'Gemini 3.1 Pro preview leads the artificial analysis intelligence index four points ahead of Claude Opus 4.6 while costing less than half as much to run.' It also notes the model led six of the 10 evaluations in the index.",
+      "fp": "a5bbc3603fea9b57"
+    },
+    {
+      "claim": "The most significant gains in AI utility will come from understanding each model's specific strengths and integrating them into a diverse model portfolio, rather than shifting wholesale to a single 'best' model.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "Host",
+      "episode": "does-gemini-31-pro-matter",
+      "claim_date": "2026-02-21",
+      "evidence": "The host concludes: 'the greatest gains will not come from just shifting wholesale from one model to the next as new capabilities emerge, but instead to understand with each model release what that particular model is going to do best and where it should be in your model portfolio.'",
+      "fp": "3f67d08ddfe7faf7"
+    },
+    {
+      "claim": "OpenAI researchers have developed an optimization technique that cut inference requirements in half for existing models, allowing them to serve the entire non-signed-in ChatGPT user base on just 100 GPUs.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "The Information (reported by AI Daily Brief host)",
+      "episode": "fable-is-back-heres-what-you-should-try-first",
+      "claim_date": "2026-07-02",
+      "evidence": "The transcript states, 'The claim is that OpenAI researchers have discovered a new optimization technique that cut their inference requirements in half for existing models. When the technique was applied to ChatGPT users who weren't signed into the service, OpenAI was able to serve that entire user base segment on just 100 GPUs.'",
+      "fp": "d84a119166337eb7"
+    },
+    {
+      "claim": "DeepSeek has open-sourced a speculative decoder system called DeepSpark that speeds up inference by 85% during testing on small models.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "DeepSeek Research Paper (reported by AI Daily Brief host)",
+      "episode": "fable-is-back-heres-what-you-should-try-first",
+      "claim_date": "2026-07-02",
+      "evidence": "The transcript notes, 'many pointed to a new research paper from DeepSeek, which open-sources a speculative decoder system called DeepSpark that can speed up inference by 85% during testing on small models.'",
+      "fp": "ab0ca4fa787ecb5e"
+    },
+    {
+      "claim": "Poly Market odds indicated a 69% probability that Google's Gemini 3 model would be released in the week of the podcast's recording.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Poly Market / Host",
+      "episode": "gemini-3-anticipation-reaches-fever-pitch",
+      "claim_date": "2025-11-18",
+      "evidence": "The host notes: 'Sundar retweeted Poly Market showing 69% odds of the model being released this week with two thinking face emojis.'",
+      "fp": "453eaa25dfa5385c"
+    },
+    {
+      "claim": "Google is expected to be the first company to reach 'Level 3' in the AI capability framework, offering a publicly available product at that scale.",
+      "tier": "3",
+      "confidence": "0.55",
+      "source": "Testing Catalog (X user) / Host",
+      "episode": "gemini-3-anticipation-reaches-fever-pitch",
+      "claim_date": "2025-11-18",
+      "evidence": "The transcript mentions: 'Testing Catalog went one better, adding Google will likely be the first to reach level three and actually make a publicly available product offering at a level three scale very soon.'",
+      "fp": "d88048892dcfa594"
+    },
+    {
+      "claim": "Early user testing indicates Gemini 3 Pro is significantly faster and more consistent than previous models, with 'intelligence per second' described as 'off the charts' compared to GPT-5 Pro.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Matt Schumer / AI Daily Brief Host",
+      "episode": "gemini-3-launches-heres-everything-you-need-to-know",
+      "claim_date": "2025-11-18",
+      "evidence": "Matt Schumer is quoted: 'Feels more consistent and less spiky than previous models. He says it's fast, intelligence per second is off the charts, often outperforming Jeep D5 Pro without the weight.'",
+      "fp": "fe3b1910aa38f383"
+    },
+    {
+      "claim": "xAI released Grok Heavy 16, a model variant that utilizes 16 sub-agents to debate responses before providing a final answer, increasing from the 4 sub-agents in Grok 4.2.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Podcast Host (citing xAI announcement)",
+      "episode": "gemini-can-now-write-you-a-song",
+      "claim_date": "2026-03-08",
+      "evidence": "Transcript notes: 'XAI has announced a new version of Gro Heavy, and this one goes to 16... Gro Heavy turns the sub agent count all the way up to 16 in a bid to either get better answers or at least burn through a ton of tokens getting an output.'",
+      "fp": "a0f65b684ab6a724"
+    },
+    {
+      "claim": "Early testers report that GPT 5.2 Pro offers superior 'willingness to think' and deep reasoning capabilities, but suffers from significant speed penalties that make it less suitable for quick, iterative tasks compared to competitors like Claude Opus 4.5.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Matt Schumer / AI Daily Brief Host",
+      "episode": "gpt-52-is-here",
+      "claim_date": "2025-12-12",
+      "evidence": "Matt Schumer noted: 'Standard 5.2 thinking is slow... My actual workflow has become quick questions go to Claude Opus 4.5 and when I need deep reasoning, I go straight to 5.2 Pro.'",
+      "fp": "e7ba4579cb49e3d4"
+    },
+    {
+      "claim": "GPT-5.4 is OpenAI's most token-efficient reasoning model, using significantly fewer tokens to solve problems compared to GPT-5.2, which translates to reduced costs and faster speeds.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "OpenAI Announcement",
+      "episode": "gpt-54-first-test-results",
+      "claim_date": "2026-03-06",
+      "evidence": "In the first part of the announcement post, they write that GPT-5.4 is our most token efficient reasoning model, using significantly fewer tokens to solve problems when compared to GPT-5.2, translating to reduced token usage and faster speeds.",
+      "fp": "80d5d1cf005463be"
+    },
+    {
+      "claim": "SpaceX AI's Grock 4.6 achieved an Artificial Analysis Intelligence Index score of 61, surpassing GPT 5.6 Soul and Fable 5 on GDPval benchmarks while maintaining a 60% lower per-token cost than GPT 5.6 Soul.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief Host / SpaceX AI / Artificial Analysis",
+      "episode": "grok-46-shows-how-fast-your-ai-options-are-expanding",
+      "claim_date": "2026-08-13",
+      "evidence": "Grock 4.6 jumped 5 points from Grock 4.5 to reach a score of 61. Pricing remains at $2 per million input and $6 per million output tokens. Artificial Analysis testing found it completed benchmark runs at 84 cents per task, making it 32% cheaper than GPT 5.6 Soul and 73% cheaper than Fable 5.",
+      "fp": "29c56d5e0cd5b147"
+    },
+    {
+      "claim": "Grok Bot is currently price-gated to high-tier subscribers, requiring either a $300/month Grok Heavy account or a $200/month Cursor Ultra account, which may limit its immediate mass adoption.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "AI Daily Brief Host",
+      "episode": "grok-bot-finally-makes-ai-agents-easy",
+      "claim_date": "2026-08-13",
+      "evidence": "The host states, 'You're either talking about a $300 a month Grok heavy account that includes it or a $200 a month Cursor Ultra account... at least for the moment, this is pretty well price-gated.' The host speculates this is an 'inference preservation mechanism' rather than a permanent feature.",
+      "fp": "623a597b1d186a2e"
+    },
+    {
+      "claim": "OpenAI reduced the price of its smaller GPT-5.6 models, with 'Luna' dropping 80% to $1.20 per million output tokens and 'Terra' dropping 20% to $2.00 per million output tokens.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "OpenAI Pricing Update",
+      "episode": "how-a-30b-hedge-fund-implosion-will-effect-ai",
+      "claim_date": "2026-08-03",
+      "evidence": "Effective Thursday, OpenAI implemented these price cuts for its smaller model variants while holding 'Soul' prices steady and introducing a new fast mode with a 2.5x speed boost.",
+      "fp": "c6689ad37c0737e4"
+    },
+    {
+      "claim": "A significant barrier to enterprise AI adoption is that many organizations are 'harness-bound,' meaning their custom scaffolding and integration layers limit the model's potential rather than the model's raw capabilities.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Mike Kger (Chief Product Officer, Anthropic)",
+      "episode": "how-ai-starts-doing-the-work-in-2026-with-anthropic-cpo-mike-krieger",
+      "claim_date": "2025-12-24",
+      "evidence": "Kger explains: 'sometimes we'll drop a new model... and they'll say it doesn't look like improve very much and then we'll send some applied AI you know folks to spend time with them and they realize right now we're actually harnessbound and we need to actually let them evolve and let the model do a bit more to like loosen that as well.'",
+      "fp": "160305380c63e432"
+    },
+    {
+      "claim": "Amazon will provide 5 gigawatts of compute using its in-house Trainium chips to Anthropic as part of their new partnership.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief Host",
+      "episode": "how-apples-ai-strategy-changes-with-a-new-ceo",
+      "claim_date": "2026-04-22",
+      "evidence": "The host notes, 'Amazon will provide 5 gigawatts of compute using current and future generations of their in-house Tranium chips.'",
+      "fp": "1150cf73e2dc1daf"
+    },
+    {
+      "claim": "The blended price per million tokens dropped from $17 to $2 between mid-2024 and mid-2026, while the tokens processed per output token increased from 12 to 36.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Exponential View (State of the AI Economy report)",
+      "episode": "how-big-is-the-ai-economy",
+      "claim_date": "2026-06-30",
+      "evidence": "The report links this price decline to increased usage and the viability of previously uneconomical applications, noting that the 'epic capabilities index' rose from 112 to 158 in the same period.",
+      "fp": "50218448cb212763"
+    },
+    {
+      "claim": "AWS is raising prices for EC2 capacity blocks using Nvidia GPUs by 20%, while prices for blocks using Amazon's Trainium chips remain unaffected.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "AWS Announcement",
+      "episode": "how-big-is-the-ai-economy",
+      "claim_date": "2026-06-30",
+      "evidence": "Capacity blocks, introduced in 2023, require advance reservations and are distinct from on-demand rentals. The price hike is a response to supply constraints and surging demand for advanced models.",
+      "fp": "cfbcf1573d709623"
+    },
+    {
+      "claim": "SemiAnalysis reports that the $200/month AI subscription tier currently provides approximately 8,000 max tokens from Anthropic and 14,000 max tokens from OpenAI.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "SemiAnalysis (reported by AI Daily Brief)",
+      "episode": "how-the-escalating-ai-wars-benefit-you",
+      "claim_date": "2026-07-14",
+      "evidence": "SemiAnalysis updated their understanding of token subsidies, finding that the $200/month tier is running at 8,000 in max tokens from Anthropic or a staggering 14,000 in tokens from OpenAI.",
+      "fp": "5398af6a5335a0b0"
+    },
+    {
+      "claim": "Gavin Baker argues that a shift in market share from high-margin frontier labs to cheaper models would increase ROI for end customers and drive incremental token demand, benefiting AI infrastructure providers.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Gavin Baker (investor)",
+      "episode": "how-the-escalating-ai-wars-benefit-you",
+      "claim_date": "2026-07-14",
+      "evidence": "Baker stated that if market share shifts to cheaper models, 'it would increase the ROI on AI spend for end customers by increasing intelligence per dollar, which would drive incremental token demand,' effectively redistributing margin dollars from frontier labs to infrastructure providers.",
+      "fp": "99b12da6b5491894"
+    },
+    {
+      "claim": "Advanced AI models like GPT-5.6 Soul and Codex can perform complex verification tasks with high accuracy, such as checking 195 references in a book manuscript in 30 minutes without hallucinating page numbers or inventing text.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Ethan Mollick (as reported by the AI Daily Brief host)",
+      "episode": "how-to-get-the-most-from-ai-this-summer",
+      "claim_date": "2026-07-27",
+      "evidence": "Mollick reports that the AI 'chased down 195 references' and provided 'pages of notes' where 'every one of the AIs' notes was accurate,' noting the absence of hallucinated errors.",
+      "fp": "f1b430c1c33245e4"
+    },
+    {
+      "claim": "GPT-5.6 introduces a two-dial system for compute allocation: model size (Sole, Terra, Luna) and thinking effort (six levels from none to max).",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "OpenAI (via AI content creator Ollie Leeman's summary of the official guide)",
+      "episode": "how-to-get-the-most-out-of-fable-5-and-gpt-56-sol",
+      "claim_date": "2026-07-25",
+      "evidence": "Ollie Leeman reported that 'There are two separate dials now, which model size, i.e. sole for the hardest problems, terra for everyday business work, and luna for cheap fast tasks, and how hard it thinks. Six effort levels from none to max.'",
+      "fp": "d4653fb784e29562"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - **Quantization:**\n\t\t- Rounding of weights and activations to lower precision representation.",
+      "content": "  - **Quantization:**\n\t\t- Rounding of weights and activations to lower precision representation.\n\n- ### Recent Developments\n  - **Hardware & Infrastructure:**\n    - **OpenAI Jalape\u00f1o Chip:** OpenAI has unveiled its first in-house AI chip, codenamed Jalape\u00f1o, developed in collaboration with Broadcom. Described as an ASIC for LLM inference, it serves as the first AI accelerator in a multi-generation compute platform, distinct from Nvidia's general-purpose GPUs.\n    - **Amazon\u2013Anthropic Partnership:** Amazon will provide 5 gigawatts of compute using its in-house Trainium chips to Anthropic as part of a new partnership.\n    - **AWS Pricing Adjustments:** AWS is raising prices for EC2 capacity blocks using Nvidia GPUs by 20% in response to supply constraints, while prices for blocks using Amazon's Trainium chips remain unaffected.\n  - **Optimization & Efficiency:**\n    - **OpenAI Inference Optimization:** OpenAI researchers developed an optimization technique that cut inference requirements in half for existing models, enabling the service to serve the entire non-signed-in ChatGPT user base on just 100 GPUs.\n    - **GPT-5.4 Token Efficiency:** GPT-5.4 is identified as OpenAI's most token-efficient reasoning model, using significantly fewer tokens to solve problems compared to GPT-5.2, resulting in reduced costs and faster speeds.\n    - **Market Price Trends:** The blended price per million tokens dropped from $17 to $2 between mid-2024 and mid-2026, while tokens processed per output token increased from 12 to 36.\n  - **Model Architecture & Performance:**\n    - **GPT-5.6 Compute Allocation:** GPT-5.6 introduces a two-dial system for compute allocation: model size (Sole, Terra, Luna) and thinking effort (six levels from none to max).\n    - **xAI Grok Heavy 16:** xAI released Grok Heavy 16, a model variant utilizing 16 sub-agents to debate responses before providing a final answer, increasing from the 4 sub-agents in Grok 4.2.\n    - **SpaceX AI Grock 4.6:** Grock 4.6 achieved an Artificial Analysis Intelligence Index score of 61, surpassing GPT 5.6 Soul and Fable 5 on GDPval benchmarks while maintaining a 60% lower per-token cost than GPT 5.6 Soul.\n    - **Gemini 3.1 Pro Performance:** According to Artificial Analysis, Gemini 3.1 Pro leads their overall intelligence index by four points ahead of Claude Opus 4.6 while costing less than half as much to run.\n  - **Financial & Market Context:**\n    - **OpenAI Margins:** OpenAI's gross margins compressed from 40% in 2024 to 33% in 2025 due to a quadrupling in the cost to serve their models.\n    - **Gemini 3 Release Odds:** Poly Market odds indicated a 69% probability that Google's Gemini 3 model would be released in the week of the podcast's recording."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 1.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 4,
+      "relevance": 4,
+      "coherence": 3,
+      "better_version": "B",
+      "improvement": 1
+    },
+    "raw_b": {
+      "factual_grounding": 4,
+      "relevance": 4,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "48ef0657d287b8af",
+        "claim": "OpenAI has unveiled its first in-house AI chip, codenamed Jalape\u00f1o, developed in collaboration with Broadcom as an ASIC ",
+        "matched": true
+      },
+      {
+        "fp": "a0f65b684ab6a724",
+        "claim": "xAI released Grok Heavy 16, a model variant that utilizes 16 sub-agents to debate responses before providing a final ans",
+        "matched": true
+      },
+      {
+        "fp": "1150cf73e2dc1daf",
+        "claim": "Amazon will provide 5 gigawatts of compute using its in-house Trainium chips to Anthropic as part of their new partnersh",
+        "matched": true
+      },
+      {
+        "fp": "d84a119166337eb7",
+        "claim": "OpenAI researchers have developed an optimization technique that cut inference requirements in half for existing models,",
+        "matched": true
+      },
+      {
+        "fp": "d4653fb784e29562",
+        "claim": "GPT-5.6 introduces a two-dial system for compute allocation: model size (Sole, Terra, Luna) and thinking effort (six lev",
+        "matched": true
+      },
+      {
+        "fp": "29c56d5e0cd5b147",
+        "claim": "SpaceX AI's Grock 4.6 achieved an Artificial Analysis Intelligence Index score of 61, surpassing GPT 5.6 Soul and Fable ",
+        "matched": true
+      },
+      {
+        "fp": "453eaa25dfa5385c",
+        "claim": "Poly Market odds indicated a 69% probability that Google's Gemini 3 model would be released in the week of the podcast's",
+        "matched": true
+      },
+      {
+        "fp": "a5bbc3603fea9b57",
+        "claim": "According to Artificial Analysis, Gemini 3.1 Pro leads their overall intelligence index by four points ahead of Claude O",
+        "matched": true
+      },
+      {
+        "fp": "7982b4eb2089b6fc",
+        "claim": "OpenAI's gross margins have compressed from 40% in 2024 to 33% in 2025 due to a quadrupling in the cost to serve their m",
+        "matched": true
+      },
+      {
+        "fp": "80d5d1cf005463be",
+        "claim": "GPT-5.4 is OpenAI's most token-efficient reasoning model, using significantly fewer tokens to solve problems compared to",
+        "matched": true
+      },
+      {
+        "fp": "50218448cb212763",
+        "claim": "The blended price per million tokens dropped from $17 to $2 between mid-2024 and mid-2026, while the tokens processed pe",
+        "matched": true
+      },
+      {
+        "fp": "cfbcf1573d709623",
+        "claim": "AWS is raising prices for EC2 capacity blocks using Nvidia GPUs by 20%, while prices for blocks using Amazon's Trainium ",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

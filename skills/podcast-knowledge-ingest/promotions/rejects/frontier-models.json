@@ -1,0 +1,234 @@
+{
+  "topic": "Frontier Models",
+  "topic_slug": "frontier-models",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5"
+  ],
+  "n_assertions": 11,
+  "episodes": [
+    "bezos-is-back-to-build-ai",
+    "claude-code-turns-one",
+    "does-gemini-31-pro-matter",
+    "how-the-escalating-ai-wars-benefit-you",
+    "is-kimi-k3-really-fable-class",
+    "why-claude-opus-45-changes-whats-possible-with-vibe-coding"
+  ],
+  "assertion_fingerprints": [
+    "06a98566fe4d9697",
+    "22842658fa862d53",
+    "3cdebe80c548de5e",
+    "456303a3a71cbce4",
+    "459c2862e9ae2cc0",
+    "5873184d2f9fcf06",
+    "719376eac3da15e0",
+    "82c4ca951ff14274",
+    "9a471ef3bb5e403f",
+    "a3f73edc8514c1c4",
+    "ce0346059edd71c5"
+  ],
+  "target_page": "Frontier Models.md",
+  "assertions": [
+    {
+      "claim": "Grok 4.1 and 4.1 Thinking surpassed frontier models like Gemini 2.5 Pro, Claude Sonnet 4.5, and GPT-5 on LMArena leaderboards, reversing Grok 4's previous lower ranking.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "LMArena",
+      "episode": "bezos-is-back-to-build-ai",
+      "claim_date": "2025-11-20",
+      "evidence": "The transcript states that 'Grok 4.1 and 4.1 Thinking leapfrogged the other Frontier models' on LMArena boards, whereas 'Grok 4 had been ranked below those models prior to the upgrade.'",
+      "fp": "456303a3a71cbce4"
+    },
+    {
+      "claim": "OpenAI's upcoming model, internally known as 'Garlic' (GPT-5.3), is rumored to be a 'GPT-3 to GPT-4 moment' that surpasses human baselines on non-coding benchmarks and represents a huge leap in capability.",
+      "tier": "3",
+      "confidence": "0.55",
+      "source": "AI Engineer Dan Mack / Rumor Accounts",
+      "episode": "claude-code-turns-one",
+      "claim_date": "2026-02-26",
+      "evidence": "Dan Mack wrote, 'It surpasses human baseline on simple bench of 83.7%... Word has it it is a huge leap. A GPT3 to GPT4 moment again.' Rumor accounts suggest it is 'what we expected from the initial GPT5 release.'",
+      "fp": "22842658fa862d53"
+    },
+    {
+      "claim": "Gemini 3.1 Pro achieved a score of 77.1% on the ARC-AGI 2 benchmark, a significant increase from Gemini 3 Pro's 31.1% score, while maintaining the same pricing of $2 per million input tokens.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Host (citing benchmark data and Akash Gupta's analysis)",
+      "episode": "does-gemini-31-pro-matter",
+      "claim_date": "2026-02-21",
+      "evidence": "The transcript states: 'The jump between Gemini 3 Pro and Gemini 3.1 Pro was from a 31.1% with Gemini 3 to 77.1% on Gemini 31 Pro.' Akash Gupta is quoted saying: 'Google went from 31.1% to 77.1% in 3 months while keeping pricing at $2 per million input tokens... They doubled the intelligence and charged zero incremental cost.'",
+      "fp": "82c4ca951ff14274"
+    },
+    {
+      "claim": "The competitive landscape of frontier AI models has shifted from infrequent major releases to frequent incremental updates, making 'state-of-the-art' benchmark leadership a less significant barometer of a model's overall importance.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host",
+      "episode": "does-gemini-31-pro-matter",
+      "claim_date": "2026-02-21",
+      "evidence": "The host states: 'The context we now all operate in is one where instead of getting big model releases infrequently, we get very incremental model releases much more frequently... state-of-the-art in terms of incremental gains on benchmarks feels less significant as a barometer of a model's importance than it ever has before.'",
+      "fp": "459c2862e9ae2cc0"
+    },
+    {
+      "claim": "Google's primary competitive advantage ('moat') lies in its distribution channels, including 2 billion Chrome users, Android, Workspace, and Cloud, rather than solely in raw model intelligence.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Akash Gupta (cited by Host)",
+      "episode": "does-gemini-31-pro-matter",
+      "claim_date": "2026-02-21",
+      "evidence": "Akash Gupta is quoted: 'Google has 2 billion Chrome users, Android, Workspace, and Cloud. That's the real moat in this chart, not the 77.1%. Whoever makes intelligence ambient and cheap wins.'",
+      "fp": "9a471ef3bb5e403f"
+    },
+    {
+      "claim": "The frontier of AI model capabilities is commoditizing rapidly, with benchmark leadership rotating on a weekly basis and major labs converging on comparable intelligence levels.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Akash Gupta (cited by Host)",
+      "episode": "does-gemini-31-pro-matter",
+      "claim_date": "2026-02-21",
+      "evidence": "Akash Gupta writes: 'Best AI model crown now rotates on a weekly basis... The frontier is commoditizing so fast that benchmark leadership lasts weeks, not quarters. Open AAI, Anthropic, and Google are all within singledigit percentage points of each other on most evals.'",
+      "fp": "ce0346059edd71c5"
+    },
+    {
+      "claim": "Google may be strategically accepting a lag in core coding use cases (like agentic coding) because it has a financial stake in Anthropic, allowing it to focus on other areas like multimodal and scientific reasoning.",
+      "tier": "3",
+      "confidence": "0.5",
+      "source": "Simon Smith (cited by Host)",
+      "episode": "does-gemini-31-pro-matter",
+      "claim_date": "2026-02-21",
+      "evidence": "The transcript mentions: 'Simon Smith points out that maybe that suggests that work tasks aren't Google's focus. Indeed, he even goes so far as to speculate. They have a stake in anthropic, so maybe they're okay with that.'",
+      "fp": "5873184d2f9fcf06"
+    },
+    {
+      "claim": "Leading frontier labs like OpenAI and Anthropic are unlikely to roll over and let the market shift away from them, as evidenced by OpenAI releasing cheaper versions of GPT-5.6 (Terra and Luna) that outperform Chinese models at lower costs.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "AI Daily Brief Host",
+      "episode": "how-the-escalating-ai-wars-benefit-you",
+      "claim_date": "2026-07-14",
+      "evidence": "The host states, 'If you think that OpenAI and Anthropic are just going to roll over and let the market shift away from them, you are nuts,' pointing to the GPT-5.6 announcement where cheaper versions were 'basically better than GLM performance for lower than GLM costs.'",
+      "fp": "719376eac3da15e0"
+    },
+    {
+      "claim": "Artificial Analysis assigned Kimmy K3 an overall intelligence index score of 57, ranking it third overall, three points behind Fable 5 and two points behind GPT 5.6 Soul.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Artificial Analysis (via AI Daily Brief host)",
+      "episode": "is-kimi-k3-really-fable-class",
+      "claim_date": "2026-07-21",
+      "evidence": "The transcript states: 'Artificial analysis confirmed the benchmarks... giving K3 an overall intelligence index score of 57. That put the model in third place, three points behind Fable 5 and two points behind 56 Soul.'",
+      "fp": "a3f73edc8514c1c4"
+    },
+    {
+      "claim": "The release of Kimmy K3 represents a narrowing of the capability gap between Chinese open-weight models and US closed-source frontier models to less than three months.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Jukan (Satrini analyst, via AI Daily Brief host)",
+      "episode": "is-kimi-k3-really-fable-class",
+      "claim_date": "2026-07-21",
+      "evidence": "The transcript quotes Jukan: 'My conclusion so far is that Kimmy K3 may be the first model to narrow the gap with leading US closed source models to less than 3 months.'",
+      "fp": "3cdebe80c548de5e"
+    },
+    {
+      "claim": "Anthropic may be holding back its most capable models to prevent an AI arms race, with internal scores potentially higher than public releases.",
+      "tier": "3",
+      "confidence": "0.5",
+      "source": "Super Dario / Host",
+      "episode": "why-claude-opus-45-changes-whats-possible-with-vibe-coding",
+      "claim_date": "2025-11-26",
+      "evidence": "The transcript states: 'Super Dario pointed out that this may not even be the best model than Anthropic has behind the scenes... Dario can hit sweeb bench scores at will.'",
+      "fp": "06a98566fe4d9697"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "Safety evaluation infrastructure\u2014red-teaming, model cards, responsible scaling policies\u2014has matured but remains contested in methodology.",
+      "content": "\n\n- ### Recent Developments\n  - The competitive landscape of frontier AI models has shifted from infrequent major releases to frequent incremental updates, making \"state-of-the-art\" benchmark leadership a less significant barometer of a model's overall importance. The frontier is commoditizing rapidly, with benchmark leadership rotating on a weekly basis and major labs converging on comparable intelligence levels.\n  - **Gemini 3.1 Pro** achieved a score of 77.1% on the ARC-AGI 2 benchmark, a significant increase from Gemini 3 Pro's 31.1% score, while maintaining the same pricing of $2 per million input tokens. Analysts note that Google \"doubled the intelligence and charged zero incremental cost,\" though its primary competitive advantage remains its distribution channels (2 billion Chrome users, Android, Workspace, and Cloud) rather than solely raw model intelligence.\n  - **Grok 4.1 and 4.1 Thinking** surpassed frontier models like Gemini 2.5 Pro, Claude Sonnet 4.5, and GPT-5 on LMArena leaderboards, reversing Grok 4's previous lower ranking.\n  - **Artificial Analysis** assigned **Kimmy K3** an overall intelligence index score of 57, ranking it third overall. The release of Kimmy K3 represents a narrowing of the capability gap between Chinese open-weight models and US closed-source frontier models to less than three months.\n  - **OpenAI** released cheaper versions of GPT-5.6 (Terra and Luna) that outperform Chinese models at lower costs, signaling that leading labs are unlikely to cede market share. An upcoming model, internally known as 'Garlic' (GPT-5.3), is rumored to be a \"GPT-3 to GPT-4 moment\" that surpasses human baselines on non-coding benchmarks.\n  - **Anthropic** may be holding back its most capable models to prevent an AI arms race, with internal scores potentially higher than public releases. Google may be strategically accepting a lag in core coding use cases due to its financial stake in Anthropic, allowing it to focus on other areas like multimodal and scientific reasoning."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 1,
+      "relevance": 4,
+      "coherence": 4,
+      "better_version": "A",
+      "improvement": -2
+    },
+    "raw_b": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    }
+  },
+  "completeness": {
+    "score": 0.8181818181818182,
+    "detail": [
+      {
+        "fp": "456303a3a71cbce4",
+        "claim": "Grok 4.1 and 4.1 Thinking surpassed frontier models like Gemini 2.5 Pro, Claude Sonnet 4.5, and GPT-5 on LMArena leaderb",
+        "matched": true
+      },
+      {
+        "fp": "22842658fa862d53",
+        "claim": "OpenAI's upcoming model, internally known as 'Garlic' (GPT-5.3), is rumored to be a 'GPT-3 to GPT-4 moment' that surpass",
+        "matched": true
+      },
+      {
+        "fp": "82c4ca951ff14274",
+        "claim": "Gemini 3.1 Pro achieved a score of 77.1% on the ARC-AGI 2 benchmark, a significant increase from Gemini 3 Pro's 31.1% sc",
+        "matched": true
+      },
+      {
+        "fp": "459c2862e9ae2cc0",
+        "claim": "The competitive landscape of frontier AI models has shifted from infrequent major releases to frequent incremental updat",
+        "matched": true
+      },
+      {
+        "fp": "9a471ef3bb5e403f",
+        "claim": "Google's primary competitive advantage ('moat') lies in its distribution channels, including 2 billion Chrome users, And",
+        "matched": true
+      },
+      {
+        "fp": "ce0346059edd71c5",
+        "claim": "The frontier of AI model capabilities is commoditizing rapidly, with benchmark leadership rotating on a weekly basis and",
+        "matched": true
+      },
+      {
+        "fp": "5873184d2f9fcf06",
+        "claim": "Google may be strategically accepting a lag in core coding use cases (like agentic coding) because it has a financial st",
+        "matched": true
+      },
+      {
+        "fp": "719376eac3da15e0",
+        "claim": "Leading frontier labs like OpenAI and Anthropic are unlikely to roll over and let the market shift away from them, as ev",
+        "matched": false
+      },
+      {
+        "fp": "a3f73edc8514c1c4",
+        "claim": "Artificial Analysis assigned Kimmy K3 an overall intelligence index score of 57, ranking it third overall, three points ",
+        "matched": false
+      },
+      {
+        "fp": "3cdebe80c548de5e",
+        "claim": "The release of Kimmy K3 represents a narrowing of the capability gap between Chinese open-weight models and US closed-so",
+        "matched": true
+      },
+      {
+        "fp": "06a98566fe4d9697",
+        "claim": "Anthropic may be holding back its most capable models to prevent an AI arms race, with internal scores potentially highe",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

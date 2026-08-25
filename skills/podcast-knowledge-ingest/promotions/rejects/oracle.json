@@ -1,0 +1,168 @@
+{
+  "topic": "Oracle",
+  "topic_slug": "oracle",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5"
+  ],
+  "n_assertions": 7,
+  "episodes": [
+    "real-world-ai-evaluations",
+    "the-most-important-ai-stories-this-week",
+    "why-fable-5-is-the-most-controversial-ai-release-ever",
+    "why-the-ai-bubble-conversation-is-useless"
+  ],
+  "assertion_fingerprints": [
+    "013415b50a7ca3d7",
+    "149b780fa680a2d2",
+    "6090a54d5a04cada",
+    "6381d4b0186064b4",
+    "ab8b1fdd69e32c66",
+    "d0f6c9875c0cef57",
+    "d3d92b593e856ade"
+  ],
+  "target_page": "Oracle.md",
+  "assertions": [
+    {
+      "claim": "Oracle's capital expenditures for the quarter were approximately $12 billion, up from $8.5 billion in the previous quarter, significantly exceeding analyst expectations of $8.25 billion.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Oracle Earnings Report",
+      "episode": "real-world-ai-evaluations",
+      "claim_date": "2025-12-15",
+      "evidence": "The transcript states: 'capital expenditures were around 12 billion from the quarter, up from 8.5 in the past quarter. Analysts had actually expected a reduction to 8.25 billion.'",
+      "fp": "d0f6c9875c0cef57"
+    },
+    {
+      "claim": "Oracle raised its capital expenditure forecast to $50 billion for the fiscal year ending in November 2026, a $15 billion increase from its previous forecast.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Oracle Earnings Report",
+      "episode": "real-world-ai-evaluations",
+      "claim_date": "2025-12-15",
+      "evidence": "The transcript states: 'Oracle also raised capex forecast to 50 billion for the fiscal year ending in November 2026, which is a $15 billion increase from their previous forecast.'",
+      "fp": "ab8b1fdd69e32c66"
+    },
+    {
+      "claim": "Oracle's stock fell by 11% in after-hours trading following its earnings report, dragging down other AI stocks such as Nvidia, which lost 1% overnight.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Market Data",
+      "episode": "real-world-ai-evaluations",
+      "claim_date": "2025-12-15",
+      "evidence": "The transcript states: 'the stock fell by 11% in after hours trading, and the report seemed to drag down other AI stocks as well with Nvidia losing 1% overnight.'",
+      "fp": "6381d4b0186064b4"
+    },
+    {
+      "claim": "Blue Owl Capital has declined to fund Oracle's $10 billion data center project in Selen Township, Michigan.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "The Financial Times",
+      "episode": "the-most-important-ai-stories-this-week",
+      "claim_date": "2025-12-21",
+      "evidence": "The Financial Times reports that Blue Owl Capital has declined to fund Oracle's next big project, a $10 billion data center in Selen Township, Michigan. Sources said that negotiations have stalled out and the agreement to fund the project will not go forward.",
+      "fp": "149b780fa680a2d2"
+    },
+    {
+      "claim": "Oracle stock is down 45% since its all-time high in September, which coincided with the announcement of their $300 billion OpenAI deal.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "Host (Podcast Transcript)",
+      "episode": "the-most-important-ai-stories-this-week",
+      "claim_date": "2025-12-21",
+      "evidence": "The host states that Oracle stock is down 45% since its all-time high in September, which is of course when they first announced their $300 billion OpenAI deal.",
+      "fp": "6090a54d5a04cada"
+    },
+    {
+      "claim": "Oracle reported $16.5 billion in capital expenditure for the previous quarter, bringing its annual total to $55.7 billion, and plans to raise spending to $70 billion for the coming fiscal year.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Oracle Earnings Call (via AI Daily Brief host)",
+      "episode": "why-fable-5-is-the-most-controversial-ai-release-ever",
+      "claim_date": "2026-06-12",
+      "evidence": "During their Wednesday night earnings call, Oracle reported 16.5 billion in capex spend for the previous quarter, which brings their annual total to 55.7 billion, which was above their $50 billion forecast. Oracle said they plan to raise spending to 70 billion for the coming fiscal year.",
+      "fp": "013415b50a7ca3d7"
+    },
+    {
+      "claim": "The price of Oracle 5-year credit default swaps tripled from 0.4% per year, implying a 6 to 8% chance of Oracle going bankrupt before 2030.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "AI Daily Brief host",
+      "episode": "why-the-ai-bubble-conversation-is-useless",
+      "claim_date": "2025-11-25",
+      "evidence": "The host explains that 'Prior to last week, you could ensure a portfolio of Oracle 5-year debt by paying 0.4% per year. That's now tripled... The pricing currently implies a 6 to8% chance of Oracle going bankrupt sometime before the bonds mature in 2030.'",
+      "fp": "d3d92b593e856ade"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - Oracle manipulation remained the highest-impact DeFi attack vector, with 2025 incidents including the Resupply exploit (~$9.6m via a low-liquidity crcrvUSD vault) and Nitron/Demex (~$950k), plus a Chainlink rsETH/ETH feed bug that mispriced a tiny deposit as $5.8m; the frontier challenge is defending thin-liquidity feeds, TWAP/median manipulation and multi-block MEV, driving adoption of multi-source aggregation, deviation checks and circuit breakers.",
+      "content": "\n\n- ### Oracle Corporation: Financial & Infrastructure Developments\n  - Oracle Corporation reported quarterly capital expenditures of approximately $12 billion, up from $8.5 billion in the previous quarter, significantly exceeding analyst expectations of $8.25 billion.\n  - The company raised its capital expenditure forecast to $50 billion for the fiscal year ending in November 2026, representing a $15 billion increase from its previous forecast.\n  - Following the earnings report, Oracle stock fell by 11% in after-hours trading, dragging down other AI stocks such as Nvidia, which lost 1% overnight.\n  - Oracle stock is down 45% since its all-time high in September, which coincided with the announcement of their $300 billion OpenAI deal.\n  - In a subsequent update, Oracle reported $16.5 billion in capital expenditure for the previous quarter, bringing its annual total to $55.7 billion (above the $50 billion forecast), and plans to raise spending to $70 billion for the coming fiscal year.\n  - Blue Owl Capital has declined to fund Oracle's $10 billion data center project in Selen Township, Michigan, as negotiations stalled and the funding agreement will not go forward.\n  - Oracle 5-year credit default swap prices tripled from 0.4% per year, implying a 6 to 8% chance of Oracle going bankrupt before 2030."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "d0f6c9875c0cef57",
+        "claim": "Oracle's capital expenditures for the quarter were approximately $12 billion, up from $8.5 billion in the previous quart",
+        "matched": true
+      },
+      {
+        "fp": "ab8b1fdd69e32c66",
+        "claim": "Oracle raised its capital expenditure forecast to $50 billion for the fiscal year ending in November 2026, a $15 billion",
+        "matched": true
+      },
+      {
+        "fp": "6381d4b0186064b4",
+        "claim": "Oracle's stock fell by 11% in after-hours trading following its earnings report, dragging down other AI stocks such as N",
+        "matched": true
+      },
+      {
+        "fp": "149b780fa680a2d2",
+        "claim": "Blue Owl Capital has declined to fund Oracle's $10 billion data center project in Selen Township, Michigan.",
+        "matched": true
+      },
+      {
+        "fp": "6090a54d5a04cada",
+        "claim": "Oracle stock is down 45% since its all-time high in September, which coincided with the announcement of their $300 billi",
+        "matched": true
+      },
+      {
+        "fp": "013415b50a7ca3d7",
+        "claim": "Oracle reported $16.5 billion in capital expenditure for the previous quarter, bringing its annual total to $55.7 billio",
+        "matched": true
+      },
+      {
+        "fp": "d3d92b593e856ade",
+        "claim": "The price of Oracle 5-year credit default swaps tripled from 0.4% per year, implying a 6 to 8% chance of Oracle going ba",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

@@ -1,0 +1,282 @@
+{
+  "topic": "Benchmarks",
+  "topic_slug": "benchmarks",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5"
+  ],
+  "n_assertions": 15,
+  "episodes": [
+    "dario-amodei-breaks-his-social-media-silence",
+    "does-gemini-31-pro-matter",
+    "gemini-3-launches-heres-everything-you-need-to-know",
+    "gpt-52-is-here",
+    "introducing-maturity-maps-a-new-way-to-measure-ai-adoption"
+  ],
+  "assertion_fingerprints": [
+    "15cbd203ead5d564",
+    "1ff6ac57c4f0e9f4",
+    "2a36877fb69df590",
+    "318168a7d470b20a",
+    "3b2b9c760568acf6",
+    "4056b2bb4b195b4b",
+    "431d38d125ea42d7",
+    "4dc57b54becc36f2",
+    "82c4ca951ff14274",
+    "b6e067f59559a18b",
+    "bea2098b782bd985",
+    "c6d9019448d5efb3",
+    "e20b3cb8e01417dd",
+    "e669ce27ddf6dfb9",
+    "e69ecce194492514"
+  ],
+  "target_page": "Benchmarks.md",
+  "assertions": [
+    {
+      "claim": "Anthropic's internal 'Model 2' scores 62.8% on the internal V2 AIR&D code benchmark, compared to 50.3% for Mythos 5 and 54.8% for Mythos preview.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Chris GPT / Anthropic Internal Data",
+      "episode": "dario-amodei-breaks-his-social-media-silence",
+      "claim_date": "2026-08-18",
+      "evidence": "The transcript quotes Chris GPT: 'Anthropic's new Model 2 doesn't just slightly outperform Mythos 5 as they stated in the report. It scores 62.8% on Anthropic's internal code benchmark V2 AIR&D benchmark versus 50.3 for Mythos 5 and 54.8 for Mythos preview.'",
+      "fp": "1ff6ac57c4f0e9f4"
+    },
+    {
+      "claim": "Gemini 3.1 Pro achieved a score of 77.1% on the ARC-AGI 2 benchmark, a significant increase from Gemini 3 Pro's 31.1% score, while maintaining the same pricing of $2 per million input tokens.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Host (citing benchmark data and Akash Gupta's analysis)",
+      "episode": "does-gemini-31-pro-matter",
+      "claim_date": "2026-02-21",
+      "evidence": "The transcript states: 'The jump between Gemini 3 Pro and Gemini 3.1 Pro was from a 31.1% with Gemini 3 to 77.1% on Gemini 31 Pro.' Akash Gupta is quoted saying: 'Google went from 31.1% to 77.1% in 3 months while keeping pricing at $2 per million input tokens... They doubled the intelligence and charged zero incremental cost.'",
+      "fp": "82c4ca951ff14274"
+    },
+    {
+      "claim": "Gemini 3.1 Pro scored 80.6% on the SWE-bench Verified agent decoding test, slightly trailing Claude Opus 4.6 which scored 80.8%.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Host (citing benchmark results)",
+      "episode": "does-gemini-31-pro-matter",
+      "claim_date": "2026-02-21",
+      "evidence": "The transcript notes: 'while it wasn't ahead of Opus 4.6 on Swebench verified agent decoding test it was nipping at its heels 80.6% compared to 80.8%.'",
+      "fp": "c6d9019448d5efb3"
+    },
+    {
+      "claim": "Gemini 3.1 Pro lags behind competitors like Claude Sonnet 4.6, Opus 4.6, GPT 5.2, and GLM5 on real-world agentic performance evaluations, specifically the GDP-valve test.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Host (citing Artificial Analysis and skeptical commentators)",
+      "episode": "does-gemini-31-pro-matter",
+      "claim_date": "2026-02-21",
+      "evidence": "The transcript notes: 'While Gemini 3.1 Pro did jump up meaningfully from Gemini 3 Pro, it was behind Sonnet 4.6, Opus 4.6, GPT 5.2, and GLM5.' Commentator Scaling01 is quoted saying 'Gemini 3.1 Pro's GDP vow scores are concerning.'",
+      "fp": "b6e067f59559a18b"
+    },
+    {
+      "claim": "Gemini 3 Pro achieved a score of 37.5% on the Humanity's Last Exam benchmark, surpassing GPT-5.1's score of 26.5%.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Google / AI Daily Brief Host",
+      "episode": "gemini-3-launches-heres-everything-you-need-to-know",
+      "claim_date": "2025-11-18",
+      "evidence": "The transcript explicitly compares the scores: 'on the academic reasoning focused humanities last exam, GPD 51 was at 26.5%. Gemini 3 Pro is at 37.5%.'",
+      "fp": "4dc57b54becc36f2"
+    },
+    {
+      "claim": "Gemini 3 Pro scored 72.7% on the ScreenSpot Pro benchmark, doubling the previous state-of-the-art score of 36.2% held by Sonnet 4.5.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Matt Schumer / AI Daily Brief Host",
+      "episode": "gemini-3-launches-heres-everything-you-need-to-know",
+      "claim_date": "2025-11-18",
+      "evidence": "The transcript notes: 'The previous state-of-the-art was Sonnet 4.5 at 36.2%. Gemini 3 Pro got 72.7%.' Matt Schumer is quoted saying this 'massively accelerated my timeline to full computer using agents.'",
+      "fp": "318168a7d470b20a"
+    },
+    {
+      "claim": "Gemini 3 Pro achieved a score of 31.1% on the ARC-AGI 2 benchmark, compared to 17.6% for GPT-5.1, with a 'deep think' mode pushing the score to 45.1%.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Google / AI Daily Brief Host",
+      "episode": "gemini-3-launches-heres-everything-you-need-to-know",
+      "claim_date": "2025-11-18",
+      "evidence": "The transcript states: 'while GPT51 mustered a 17.6%, Gemini 3 Pro got a 31.1%.' It further adds: 'the deep think mode drove the score on RKGI up to 45.1%.'",
+      "fp": "e669ce27ddf6dfb9"
+    },
+    {
+      "claim": "Gemini 3 Pro is currently ranked number one across all major LMArena leaderboards, including text, vision, web development, coding, and math categories.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "LMArena / AI Daily Brief Host",
+      "episode": "gemini-3-launches-heres-everything-you-need-to-know",
+      "claim_date": "2025-11-18",
+      "evidence": "The transcript cites LMArena: 'Google DeepMind's Gemini 3 Pro is now number one across all major arena leaderboards... Massive gains over Gemini 2.5.'",
+      "fp": "2a36877fb69df590"
+    },
+    {
+      "claim": "GPT 5.2 achieved a score of 55.6% on the SWE-bench Pro coding benchmark, surpassing Claude Opus 4.5's score of 52%.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "OpenAI / AI Daily Brief Host",
+      "episode": "gpt-52-is-here",
+      "claim_date": "2025-12-12",
+      "evidence": "The transcript states: 'In the benchmarks they shared it represented a significant improvement on the coding benchmarks SweetBench Pro hitting 55.6 compared to Opus 4.5's 52%.'",
+      "fp": "431d38d125ea42d7"
+    },
+    {
+      "claim": "GPT 5.2 Pro achieved a state-of-the-art score of 90.5% on the ARC-AGI 2 benchmark at a cost of $11.64 per task, representing a 390x efficiency improvement over a previous unreleased OpenAI model that scored 88% at $4,500 per task.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "ARC Prize / AI Daily Brief Host",
+      "episode": "gpt-52-is-here",
+      "claim_date": "2025-12-12",
+      "evidence": "The transcript notes: 'We verified a new 5.2 Pro extra high state-of-the-art score of 90.5% at $11.64 a task... that represents a 390x efficiency improvement in 1 year.'",
+      "fp": "e20b3cb8e01417dd"
+    },
+    {
+      "claim": "GPT 5.2 Thinking scored 70.9% on GDP Val, an internal OpenAI benchmark for economically valuable knowledge work, compared to 38.8% for GPT 5.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "OpenAI / AI Daily Brief Host",
+      "episode": "gpt-52-is-here",
+      "claim_date": "2025-12-12",
+      "evidence": "The transcript states: 'on GDP Val which is OpenAI's internal measure of economically valuable knowledge work tasks it scored a massive 70.9% up from 38.8% with GPT 5.'",
+      "fp": "bea2098b782bd985"
+    },
+    {
+      "claim": "More than 480 studies and surveys from the last quarter went into the Q2 AI maturity maps.",
+      "tier": "1",
+      "confidence": "0.98",
+      "source": "Host (AI DB / Super Intelligent)",
+      "episode": "introducing-maturity-maps-a-new-way-to-measure-ai-adoption",
+      "claim_date": "2026-04-06",
+      "evidence": "The host explicitly states the number of studies and surveys aggregated for the Q2 maturity maps.",
+      "fp": "e69ecce194492514"
+    },
+    {
+      "claim": "The combined survey respondent base for the Q2 maturity maps exceeds 150,000 professionals across more than 50 countries.",
+      "tier": "1",
+      "confidence": "0.98",
+      "source": "Host (AI DB / Super Intelligent)",
+      "episode": "introducing-maturity-maps-a-new-way-to-measure-ai-adoption",
+      "claim_date": "2026-04-06",
+      "evidence": "The host provides the total respondent count and geographic spread for the sources with explicit sample sizes used in the Q2 maps.",
+      "fp": "3b2b9c760568acf6"
+    },
+    {
+      "claim": "Jellyfish's AI coding benchmark used behavioral data for more than 200,000 engineers across 700 companies with 20 million PRs.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Jellyfish (cited by host)",
+      "episode": "introducing-maturity-maps-a-new-way-to-measure-ai-adoption",
+      "claim_date": "2026-04-06",
+      "evidence": "The host lists Jellyfish as an example of a behavioral data source used to inform the Q2 maturity maps, specifying the exact sample size and scope.",
+      "fp": "4056b2bb4b195b4b"
+    },
+    {
+      "claim": "The host predicts that ROI measurement efforts will see the biggest 'glow-up' in the coming quarters.",
+      "tier": "3",
+      "confidence": "0.7",
+      "source": "Host",
+      "episode": "introducing-maturity-maps-a-new-way-to-measure-ai-adoption",
+      "claim_date": "2026-04-06",
+      "evidence": "The host states, 'if I had to make a prediction about one area where you're going to see the biggest glow-up this year, I think there are tons and tons of efforts around ROI measurement.'",
+      "fp": "15cbd203ead5d564"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  ## Current Landscape (2026)",
+      "content": "  ## Recent Developments (2026)\n  Recent benchmark results and industry data highlight the rapid pace of capability improvement and the increasing sophistication of evaluation methodologies in 2026:\n\n  - **ARC-AGI-2 Efficiency and Performance**: GPT 5.2 Pro achieved a state-of-the-art score of 90.5% on the ARC-AGI 2 benchmark at a cost of $11.64 per task, representing a 390x efficiency improvement over a previous unreleased OpenAI model that scored 88% at $4,500 per task. This underscores the growing importance of cost-efficiency metrics alongside raw capability scores in frontier model evaluations.\n  - **Gemini 3.1 Pro Leap**: Gemini 3.1 Pro achieved a score of 77.1% on the ARC-AGI 2 benchmark, a significant increase from Gemini 3 Pro's 31.1% score, while maintaining the same pricing of $2 per million input tokens. This rapid improvement in intelligence without incremental cost highlights the intensifying competition in the frontier model market.\n  - **Coding and Agentic Benchmarks**: GPT 5.2 achieved a score of 55.6% on the SWE-bench Pro coding benchmark, surpassing Claude Opus 4.5's score of 52%. Additionally, Gemini 3.1 Pro scored 80.6% on the SWE-bench Verified agent decoding test, slightly trailing Claude Opus 4.6 which scored 80.8%, indicating a tight race in agentic coding capabilities.\n  - **Humanity's Last Exam (HLE)**: Gemini 3 Pro achieved a score of 37.5% on the HLE benchmark, surpassing GPT-5.1's score of 26.5%, demonstrating continued progress in academic reasoning and expert-level knowledge tasks.\n  - **Economic Value Metrics**: GPT 5.2 Thinking scored 70.9% on GDP Val, an internal OpenAI benchmark for economically valuable knowledge work, compared to 38.8% for GPT 5. This reflects a shift toward benchmarks that measure real-world economic utility rather than just academic performance.\n  - **Multimodal and Computer Use**: Gemini 3 Pro scored 72.7% on the ScreenSpot Pro benchmark, doubling the previous state-of-the-art score of 36.2% held by Sonnet 4.5. This massive acceleration in computer-use agent capabilities is expected to significantly impact deployment timelines for autonomous agents.\n  - **Human Preference Leaderboards**: Gemini 3 Pro is currently ranked number one across all major LMArena leaderboards, including text, vision, web development, coding, and math categories, reinforcing the correlation between automated benchmark performance and human preference signals.\n  - **Maturity and Industry Data**: The combined survey respondent base for the Q2 2026 AI maturity maps exceeds 150,000 professionals across more than 50 countries, aggregating more than 480 studies and surveys. Notably, Jellyfish's AI coding benchmark used behavioral data for more than 200,000 engineers across 700 companies with 20 million PRs, providing large-scale empirical grounding for industry adoption metrics.\n\n  ## Current Landscape (2026)"
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 4,
+      "relevance": 5,
+      "coherence": 4,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 3,
+      "relevance": 4,
+      "coherence": 2,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 0.8333333333333334,
+    "detail": [
+      {
+        "fp": "3b2b9c760568acf6",
+        "claim": "The combined survey respondent base for the Q2 maturity maps exceeds 150,000 professionals across more than 50 countries",
+        "matched": true
+      },
+      {
+        "fp": "e69ecce194492514",
+        "claim": "More than 480 studies and surveys from the last quarter went into the Q2 AI maturity maps.",
+        "matched": false
+      },
+      {
+        "fp": "318168a7d470b20a",
+        "claim": "Gemini 3 Pro scored 72.7% on the ScreenSpot Pro benchmark, doubling the previous state-of-the-art score of 36.2% held by",
+        "matched": true
+      },
+      {
+        "fp": "4dc57b54becc36f2",
+        "claim": "Gemini 3 Pro achieved a score of 37.5% on the Humanity's Last Exam benchmark, surpassing GPT-5.1's score of 26.5%.",
+        "matched": true
+      },
+      {
+        "fp": "e669ce27ddf6dfb9",
+        "claim": "Gemini 3 Pro achieved a score of 31.1% on the ARC-AGI 2 benchmark, compared to 17.6% for GPT-5.1, with a 'deep think' mo",
+        "matched": false
+      },
+      {
+        "fp": "431d38d125ea42d7",
+        "claim": "GPT 5.2 achieved a score of 55.6% on the SWE-bench Pro coding benchmark, surpassing Claude Opus 4.5's score of 52%.",
+        "matched": true
+      },
+      {
+        "fp": "bea2098b782bd985",
+        "claim": "GPT 5.2 Thinking scored 70.9% on GDP Val, an internal OpenAI benchmark for economically valuable knowledge work, compare",
+        "matched": true
+      },
+      {
+        "fp": "e20b3cb8e01417dd",
+        "claim": "GPT 5.2 Pro achieved a state-of-the-art score of 90.5% on the ARC-AGI 2 benchmark at a cost of $11.64 per task, represen",
+        "matched": true
+      },
+      {
+        "fp": "82c4ca951ff14274",
+        "claim": "Gemini 3.1 Pro achieved a score of 77.1% on the ARC-AGI 2 benchmark, a significant increase from Gemini 3 Pro's 31.1% sc",
+        "matched": true
+      },
+      {
+        "fp": "4056b2bb4b195b4b",
+        "claim": "Jellyfish's AI coding benchmark used behavioral data for more than 200,000 engineers across 700 companies with 20 millio",
+        "matched": true
+      },
+      {
+        "fp": "2a36877fb69df590",
+        "claim": "Gemini 3 Pro is currently ranked number one across all major LMArena leaderboards, including text, vision, web developme",
+        "matched": true
+      },
+      {
+        "fp": "c6d9019448d5efb3",
+        "claim": "Gemini 3.1 Pro scored 80.6% on the SWE-bench Verified agent decoding test, slightly trailing Claude Opus 4.6 which score",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

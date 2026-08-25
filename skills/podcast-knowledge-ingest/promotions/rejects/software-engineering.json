@@ -1,0 +1,323 @@
+{
+  "topic": "Software Engineering",
+  "topic_slug": "software-engineering",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_a_improvement -2.0 < -0.5"
+  ],
+  "n_assertions": 18,
+  "episodes": [
+    "can-todays-ai-replace-12-of-work",
+    "claude-code-is-now-writing-claude-code",
+    "claude-code-turns-one",
+    "how-ai-starts-doing-the-work-in-2026-with-anthropic-cpo-mike-krieger",
+    "how-people-actually-use-ai-agents",
+    "is-kimi-k3-really-fable-class",
+    "the-5-biggest-ai-stories-to-watch-in-december",
+    "the-dawn-of-the-agent-age",
+    "the-self-driving-company",
+    "the-way-we-use-ai-is-changing",
+    "what-we-learned-from-openais-town-hall",
+    "why-2026-is-the-year-of-the-ai-builder-with-lovable-ceo-anton-osika",
+    "why-claude-cowork-is-a-big-deal",
+    "why-claude-opus-45-changes-whats-possible-with-vibe-coding"
+  ],
+  "assertion_fingerprints": [
+    "154bdbf4a340f173",
+    "40d598ad9c6bbda3",
+    "4739e03cf74493c2",
+    "5882fa6a857895e8",
+    "5a8f5569b92d4929",
+    "5cc62f454a2463f8",
+    "5def424b79fe49d9",
+    "5fba4a27d275c992",
+    "6d613236c6855586",
+    "7b1b3493ab5c909d",
+    "8c1d6929108e1904",
+    "9dac4f285f91dcd5",
+    "b1796d4e2166354b",
+    "bb43f891830189c6",
+    "c5cd5d9b9e23138a",
+    "cc2a150bc92117e1",
+    "d4662990e1c33611",
+    "e21484e85e107ba1"
+  ],
+  "target_page": "Software Engineering.md",
+  "assertions": [
+    {
+      "claim": "Anthropic's internal survey of 132 engineers found that employees self-report using Claude in 60% of their work and achieving a 50% productivity boost.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Anthropic Economic Index / Internal Survey",
+      "episode": "can-todays-ai-replace-12-of-work",
+      "claim_date": "2025-12-05",
+      "evidence": "The transcript states: 'Employees, they say, self-report using Claude in 60% of their work and achieving a 50% productivity boost, which is a 2 to 3x increase from a year ago.'",
+      "fp": "8c1d6929108e1904"
+    },
+    {
+      "claim": "Boris Cherny, creator of Claude Code, reported that 100% of his code contributions to the project over the last 30 days were written by Claude Code (Opus 4.5).",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Boris Cherny",
+      "episode": "claude-code-is-now-writing-claude-code",
+      "claim_date": "2026-01-03",
+      "evidence": "Cherny posted, 'In the last 30 days, I landed 259 PRs, 497 commits, 40,000 lines added, 38,000 lines removed. Every single line was written by Claude code in Opus 4.5... 100% of my contributions to Claude Code were written by Claude Code.'",
+      "fp": "9dac4f285f91dcd5"
+    },
+    {
+      "claim": "The profession of software engineering is undergoing a dramatic refactoring where the programmer's role shifts to managing a new abstraction layer of stochastic AI agents, tools, and workflows.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "Andrej Karpathy",
+      "episode": "claude-code-is-now-writing-claude-code",
+      "claim_date": "2026-01-03",
+      "evidence": "Karpathy wrote, 'The profession is being dramatically refactored as the bits contributed by the programmer are increasingly sparse... There's a new programmable layer of abstraction to master... A fundamentally stochastic, failable, unintelligible, and changing entities suddenly intermingled with what used to be good old-fashioned engineering.'",
+      "fp": "5a8f5569b92d4929"
+    },
+    {
+      "claim": "The rapid advancement of AI coding tools is entering a new period in coding history where AI agents can operate autonomously for days, marking a significant inflection point.",
+      "tier": "3",
+      "confidence": "0.75",
+      "source": "AI Daily Brief Host / Boris Cherny",
+      "episode": "claude-code-is-now-writing-claude-code",
+      "claim_date": "2026-01-03",
+      "evidence": "Cherny noted, 'Claude consistently runs for minutes, hours, and days at a time. Software engineering is changing and we're entering a new period in coding history and we're still just getting started.'",
+      "fp": "cc2a150bc92117e1"
+    },
+    {
+      "claim": "Anthropic's API analysis indicates that almost 50% of all tool calls are related to software engineering, making it the dominant use case for their models.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Anthropic API Analysis",
+      "episode": "claude-code-turns-one",
+      "claim_date": "2026-02-26",
+      "evidence": "The transcript notes, 'Anthropic's recent analysis of their API figures found that almost half of all tool calls are related to software engineering. In other words, AI coding is the biggest use case for anthropics models and it's not close.'",
+      "fp": "154bdbf4a340f173"
+    },
+    {
+      "claim": "Boris Churnney, the developer of Claude Code, describes the current state of AI coding as a 'fundamental phase shift' where coding is 'practically solved' for him and will eventually be for everyone.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Boris Churnney",
+      "episode": "claude-code-turns-one",
+      "claim_date": "2026-02-26",
+      "evidence": "Churnney is quoted saying, 'Continuing to trace the exponential, I think what will happen is coding will be generally solved for everyone. Today, coding is practically solved for me and I think it will be the case for everyone regardless of domain.'",
+      "fp": "c5cd5d9b9e23138a"
+    },
+    {
+      "claim": "Non-technical users face a 'complexity ladder' gap where they can build simple front-end applications but struggle to transition to production-ready systems requiring data persistence, security, and performance engineering without explicit guidance.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Mike Kger (Chief Product Officer, Anthropic)",
+      "episode": "how-ai-starts-doing-the-work-in-2026-with-anthropic-cpo-mike-krieger",
+      "claim_date": "2025-12-24",
+      "evidence": "Kger observes: 'you still sometimes need to know the right sort of magic incantation words to use... Opus wasn't suggesting that out of the box... it took me saying all right we actually probably need to move to this embedding solution.' He compares this to Instagram's early evolution from UI to backend to performance.",
+      "fp": "6d613236c6855586"
+    },
+    {
+      "claim": "Software engineering accounts for approximately 50% of all tool calls in Anthropic's agent usage data, while back-office automation is the second largest category at 9.1%.",
+      "tier": "1",
+      "confidence": "0.96",
+      "source": "Anthropic Study / AI Daily Brief Host",
+      "episode": "how-people-actually-use-ai-agents",
+      "claim_date": "2026-02-19",
+      "evidence": "The transcript states: 'software engineering represents around half of the tool calls overall... Back office automation is at number two at 9.1%.'",
+      "fp": "b1796d4e2166354b"
+    },
+    {
+      "claim": "Kimmy K3 is heavily optimized for visual coding tests and UI generation, but may lack the deep architectural understanding required for complex debugging in existing codebases compared to frontier models like Fable 5.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Divium (AI engineer, via AI Daily Brief host)",
+      "episode": "is-kimi-k3-really-fable-class",
+      "claim_date": "2026-07-21",
+      "evidence": "Divium wrote: 'These models are heavily optimized for the exact visual coding tests people keep recycling online... I gave Kimmy K3 a debugging task. It could not identify the bug... I gave the same task to Fable 5 and GPT56... Both found the problem in one shot.'",
+      "fp": "40d598ad9c6bbda3"
+    },
+    {
+      "claim": "The host identifies a shift in the AI discourse from first-order questions about 'vibe coding' to nuanced conversations about the right configuration, speed, autonomy, and control in AI-assisted software development.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-5-biggest-ai-stories-to-watch-in-december",
+      "claim_date": "2025-12-10",
+      "evidence": "The host notes, 'we're going to continue to see this shift away from the first order questions of things like is vibe coding real to more nuance conversation around what the implications are.'",
+      "fp": "5fba4a27d275c992"
+    },
+    {
+      "claim": "Sergey Kerv described Claude Code with Opus 4.5 as a 'watershed moment' that moves software creation from an artisanal craft to an industrial process, comparing it to the Gutenberg press.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "Sergey Kerv",
+      "episode": "the-dawn-of-the-agent-age",
+      "claim_date": "2026-02-05",
+      "evidence": "Sergey Kerv encapsulated this all when he wrote, 'Claude code with Opus45 is a watershed moment, moving software creation from an artisal craftsman activity to a true industrial process. It's the Gutenberg press, the sewing machine, the photo camera.'",
+      "fp": "7b1b3493ab5c909d"
+    },
+    {
+      "claim": "Organizations should start implementing agentic workflows with engineering teams because software development has clear, verifiable structures that are more amenable to AI automation than intangible fields like marketing.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-self-driving-company",
+      "claim_date": "2026-07-23",
+      "evidence": "Start with engineers... the domain in which they work has clear structure around it... Compare that to a software bug where when the code runs, it does something verifiably wrong. That bug is going to be much easier for AI to fix than the much more intangible marketing issue.",
+      "fp": "5882fa6a857895e8"
+    },
+    {
+      "claim": "Claude Code creator Boris Cherny has shifted from prompting AI to writing 'loops' that autonomously prompt the AI, representing a new level of abstraction in AI-assisted software engineering.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Boris Cherny (reported by AI Daily Brief host)",
+      "episode": "the-way-we-use-ai-is-changing",
+      "claim_date": "2026-06-09",
+      "evidence": "Boris Cherney told the host that about 6 months ago, he shifted from writing code by hand to prompting Claude to write all of his code... Now, what's actually evolved up... is the next level of abstraction where I don't prompt Claude anymore. I have loops that are running. They're the ones that are prompting Claude... My job is to write loops.",
+      "fp": "5def424b79fe49d9"
+    },
+    {
+      "claim": "Sam Altman predicts that the role of an engineer will undergo a 'superchange,' with far more people creating far more value by getting computers to do what they want, while demand for software continues to grow.",
+      "tier": "3",
+      "confidence": "0.7",
+      "source": "Sam Altman",
+      "episode": "what-we-learned-from-openais-town-hall",
+      "claim_date": "2026-01-31",
+      "evidence": "Altman commented that 'What it means to be an engineer is going to superchange.' He said there will probably be far more people creating far more value, getting computers to do what they want, while noting that demand for software seems not to be slowing down at all.",
+      "fp": "bb43f891830189c6"
+    },
+    {
+      "claim": "The distinction between 'vibe coding' for non-technical users and agentic coding for professional software engineers is becoming more divergent in terms of use cases and organizational impact.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "Nathaniel Whittemore, Host of AI Daily Brief",
+      "episode": "why-2026-is-the-year-of-the-ai-builder-with-lovable-ceo-anton-osika",
+      "claim_date": "2025-12-29",
+      "evidence": "We're still talking about kind of vibe coding as though it's one thing and I kind of think that the agentic and AI coding for actual technical people and for software engineering departments is wildly different than vibe coding for non-technical users and I kind of think that they're going to be more divergent in the year to come.",
+      "fp": "4739e03cf74493c2"
+    },
+    {
+      "claim": "The host asserts that the distinction between 'vibe coding' (prototypes) and production-ready code has effectively disappeared or will explode in the next several months due to the capabilities of current agentic coding tools.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "Host",
+      "episode": "why-claude-cowork-is-a-big-deal",
+      "claim_date": "2026-01-14",
+      "evidence": "The host states: 'I am firmly in the camp that that line is basically already gone and if not is going to explode in the next several months.' This is supported by the Das of Menlo Ventures' comment that 'fully polished new products can be built entirely with vibe coding tools like Claude code.'",
+      "fp": "e21484e85e107ba1"
+    },
+    {
+      "claim": "Claude Opus 4.5 scored higher than any human candidate on Anthropic's internal performance engineering take-home exam within a 2-hour time limit.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Anthropic announcement post",
+      "episode": "why-claude-opus-45-changes-whats-possible-with-vibe-coding",
+      "claim_date": "2025-11-26",
+      "evidence": "The transcript states: 'Within our prescribed 2-hour time limit, Claude Opus 4.5 scored higher than any human candidate ever.'",
+      "fp": "d4662990e1c33611"
+    },
+    {
+      "claim": "Software engineering as a profession may be largely automated by the first half of next year, with generated code becoming as unchecked as compiler output.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "Adam Wolf (Anthropic)",
+      "episode": "why-claude-opus-45-changes-whats-possible-with-vibe-coding",
+      "claim_date": "2025-11-26",
+      "evidence": "Adam Wolf writes: 'Maybe as soon as the first half of next year, software engineering is done. Soon we won't bother to check generated code for the same reasons we don't check compiler output.'",
+      "fp": "5cc62f454a2463f8"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - **Semantic Versioning (SemVer)** \u2014 Versioning convention (MAJOR.MINOR.PATCH) widely adopted to communicate compatibility guarantees in software releases, directly tied to [[Version Control]] workflows.",
+      "content": "\n\n- ### Recent Developments: AI-Augmented Software Engineering\n  - **Dominance in AI Tool Usage**: Recent data from Anthropic indicates that software engineering accounts for approximately 50% of all tool calls in their agent usage data, making it the dominant use case for their models. Back-office automation follows as the second largest category at 9.1%. This suggests that AI-assisted coding has become the primary driver of LLM adoption in professional workflows.\n  - **Productivity and Adoption Metrics**: An internal survey of 132 engineers at Anthropic found that employees self-report using Claude in 60% of their work, achieving a 50% productivity boost. This represents a 2 to 3x increase in adoption and impact compared to the previous year, highlighting the rapid integration of AI into daily engineering practices.\n  - **Case Study: 100% AI-Generated Contributions**: Boris Cherny, the creator of Claude Code, reported that 100% of his code contributions to the project over the last 30 days were written by Claude Code (Opus 4.5). In this period, he landed 259 PRs, 497 commits, adding 40,000 lines and removing 38,000 lines, with every single line generated by the AI. Cherny describes this as a \"fundamental phase shift\" where coding is \"practically solved\" for him and will eventually be for everyone.\n  - **New Abstraction Layers**: The role of the software engineer is evolving from writing code directly to managing a new abstraction layer of stochastic AI agents. Cherny notes a shift from prompting AI to writing \"loops\" that autonomously prompt the AI, stating, \"My job is to write loops.\" Andrej Karpathy describes this as the profession being \"dramatically refactored\" as the bits contributed by the programmer become increasingly sparse, requiring mastery of a new, failable, and unintelligible programmable layer.\n  - **Industrialization of Software Creation**: Sergey Kerv has described Claude Code with Opus 4.5 as a \"watershed moment\" that moves software creation from an artisanal craft to an industrial process, comparing it to the Gutenberg press or the sewing machine. This shift is moving the discourse from first-order questions about \"vibe coding\" to nuanced conversations about configuration, speed, autonomy, and control.\n  - **Performance Benchmarks**: Claude Opus 4.5 scored higher than any human candidate on Anthropic's internal performance engineering take-home exam within a 2-hour time limit, further cementing the capability of frontier models to handle complex, time-constrained engineering tasks.\n  - **Challenges and Gaps**: Despite these advances, non-technical users face a \"complexity ladder\" gap. While they can build simple front-end applications, transitioning to production-ready systems requiring data persistence, security, and performance engineering often requires explicit guidance and \"magic incantation words\" that models do not always suggest out of the box. Additionally, while some models are optimized for visual coding and UI generation, they may lack the deep architectural understanding required for complex debugging in existing codebases compared to frontier models."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": 2.0,
+    "raw_a": {
+      "factual_grounding": 2,
+      "relevance": 2,
+      "coherence": 4,
+      "better_version": "A",
+      "improvement": -2
+    },
+    "raw_b": {
+      "factual_grounding": 4,
+      "relevance": 3,
+      "coherence": 5,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 0.75,
+    "detail": [
+      {
+        "fp": "b1796d4e2166354b",
+        "claim": "Software engineering accounts for approximately 50% of all tool calls in Anthropic's agent usage data, while back-office",
+        "matched": true
+      },
+      {
+        "fp": "8c1d6929108e1904",
+        "claim": "Anthropic's internal survey of 132 engineers found that employees self-report using Claude in 60% of their work and achi",
+        "matched": true
+      },
+      {
+        "fp": "9dac4f285f91dcd5",
+        "claim": "Boris Cherny, creator of Claude Code, reported that 100% of his code contributions to the project over the last 30 days ",
+        "matched": true
+      },
+      {
+        "fp": "154bdbf4a340f173",
+        "claim": "Anthropic's API analysis indicates that almost 50% of all tool calls are related to software engineering, making it the ",
+        "matched": false
+      },
+      {
+        "fp": "d4662990e1c33611",
+        "claim": "Claude Opus 4.5 scored higher than any human candidate on Anthropic's internal performance engineering take-home exam wi",
+        "matched": true
+      },
+      {
+        "fp": "5a8f5569b92d4929",
+        "claim": "The profession of software engineering is undergoing a dramatic refactoring where the programmer's role shifts to managi",
+        "matched": false
+      },
+      {
+        "fp": "7b1b3493ab5c909d",
+        "claim": "Sergey Kerv described Claude Code with Opus 4.5 as a 'watershed moment' that moves software creation from an artisanal c",
+        "matched": true
+      },
+      {
+        "fp": "c5cd5d9b9e23138a",
+        "claim": "Boris Churnney, the developer of Claude Code, describes the current state of AI coding as a 'fundamental phase shift' wh",
+        "matched": false
+      },
+      {
+        "fp": "5def424b79fe49d9",
+        "claim": "Claude Code creator Boris Cherny has shifted from prompting AI to writing 'loops' that autonomously prompt the AI, repre",
+        "matched": true
+      },
+      {
+        "fp": "5fba4a27d275c992",
+        "claim": "The host identifies a shift in the AI discourse from first-order questions about 'vibe coding' to nuanced conversations ",
+        "matched": true
+      },
+      {
+        "fp": "6d613236c6855586",
+        "claim": "Non-technical users face a 'complexity ladder' gap where they can build simple front-end applications but struggle to tr",
+        "matched": true
+      },
+      {
+        "fp": "40d598ad9c6bbda3",
+        "claim": "Kimmy K3 is heavily optimized for visual coding tests and UI generation, but may lack the deep architectural understandi",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

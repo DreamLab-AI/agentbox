@@ -1,0 +1,175 @@
+{
+  "topic": "Autonomous Coding",
+  "topic_slug": "autonomous-coding",
+  "status": "candidate_survivor",
+  "reasons": [],
+  "n_assertions": 6,
+  "episodes": [
+    "opus-46-and-chatgpt-53-codex-are-here-and-the-labs-are-at-war",
+    "ralph-wiggum-clawdbot-and-mac-minis-how-pros-are-vibe-coding-in-2026",
+    "the-week-the-ai-story-shifted"
+  ],
+  "assertion_fingerprints": [
+    "4f687b4a941f0ccf",
+    "5ef89b55805dec37",
+    "6b420231b7338347",
+    "7567db9c39663513",
+    "b3adff530c1d4cbe",
+    "c78ee7555f0c76b5"
+  ],
+  "target_page": "Autonomous Coding.md",
+  "assertions": [
+    {
+      "claim": "Anthropic's autonomous coding test using Claude Opus 4.6 agent teams to build a C compiler consumed around 2 billion tokens, generated over 140 million output tokens, and cost approximately $20,000.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Anthropic (via Host)",
+      "episode": "opus-46-and-chatgpt-53-codex-are-here-and-the-labs-are-at-war",
+      "claim_date": "2026-02-06",
+      "evidence": "The transcript states, 'Overall, the process consumed around 2 billion tokens, generating over 140 million output tokens, and costing around $20,000 using standard API pricing.'",
+      "fp": "6b420231b7338347"
+    },
+    {
+      "claim": "Max Stoiber from the ChatGPT team stated that the MCP apps feature was built entirely with GPT-5.3 Codex, with zero lines of code written by hand.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "Max Stoiber (via Host)",
+      "episode": "opus-46-and-chatgpt-53-codex-are-here-and-the-labs-are-at-war",
+      "claim_date": "2026-02-06",
+      "evidence": "The transcript notes, 'Max Stoiber from the ChatGPT team shared that a recently announced feature where ChatGPT had full support for MCP apps was built entirely with GPT 5.3 Codex. Max writes zero lines of code written by hand.'",
+      "fp": "c78ee7555f0c76b5"
+    },
+    {
+      "claim": "Cursor built a browser using GPT 5.2 that ran uninterrupted for one week, resulting in over 3 million lines of code across thousands of files.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Michael Troll (Cursor CEO)",
+      "episode": "ralph-wiggum-clawdbot-and-mac-minis-how-pros-are-vibe-coding-in-2026",
+      "claim_date": "2026-01-26",
+      "evidence": "The host quotes Michael Troll: 'we built a browser with GPT 5.2 in Cursor. It ran uninterrupted for one week. It's 3 million plus lines of code across thousands of files.'",
+      "fp": "7567db9c39663513"
+    },
+    {
+      "claim": "Cursor implemented a hierarchical pipeline with 'planner' and 'worker' agents to solve coordination problems, allowing scaling to very large projects without single-agent tunnel vision.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Cursor Blog",
+      "episode": "ralph-wiggum-clawdbot-and-mac-minis-how-pros-are-vibe-coding-in-2026",
+      "claim_date": "2026-01-26",
+      "evidence": "The host explains: 'They created a pipeline where a subset of agents called planners would continuously explore the codebase and create tasks and workers would pick up those tasks... This, they said, solved most of our coordination problems.'",
+      "fp": "5ef89b55805dec37"
+    },
+    {
+      "claim": "The 'Ralph Wiggum loop' is an autonomous AI coding pattern where each iteration uses a fresh context window, with memory persisted via git history and text files.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Ryan Carson",
+      "episode": "ralph-wiggum-clawdbot-and-mac-minis-how-pros-are-vibe-coding-in-2026",
+      "claim_date": "2026-01-26",
+      "evidence": "The host cites Ryan Carson: 'Ralph is an autonomous AI coding loop that ships features while you sleep. Each iteration is a fresh context window. Memory persists via git history and text files.'",
+      "fp": "b3adff530c1d4cbe"
+    },
+    {
+      "claim": "OpenAI's new /goal feature for Codex allows the AI agent to work on a persistent objective across multiple turns until it is achieved, a concept referred to as a 'Ralph loop'.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Host (AI Daily Brief) citing Philip Corry",
+      "episode": "the-week-the-ai-story-shifted",
+      "claim_date": "2026-05-08",
+      "evidence": "The host quotes Philip Corry: 'Philip Corry, who works on Codex at OpenAI, called it our take on the Ralph loop. Keep a goal alive across turns. Don't stop until it's achieved.'",
+      "fp": "4f687b4a941f0ccf"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "- ### Provenance\n\t- updated:: 2026-07-25\n\t- attributedTo:: did:nostr:ontology-mesh\n\t- inferenceRule:: GapMaterialisation",
+      "content": "- ### Recent Developments\n\t- **Anthropic's C Compiler Test**: Anthropic's autonomous coding test using Claude Opus 4.6 agent teams to build a C compiler consumed around 2 billion tokens, generated over 140 million output tokens, and cost approximately $20,000. [source: Anthropic (via Host), confidence 0.9, tier 1]\n\t- **ChatGPT MCP Apps**: Max Stoiber from the ChatGPT team stated that the MCP apps feature was built entirely with GPT-5.3 Codex, with zero lines of code written by hand. [source: Max Stoiber (via Host), confidence 0.85, tier 1]\n\t- **Cursor's Browser Build**: Cursor built a browser using GPT 5.2 that ran uninterrupted for one week, resulting in over 3 million lines of code across thousands of files. [source: Michael Troll (Cursor CEO), confidence 0.95, tier 1]\n\t- **Hierarchical Agent Pipelines**: Cursor implemented a hierarchical pipeline with 'planner' and 'worker' agents to solve coordination problems, allowing scaling to very large projects without single-agent tunnel vision. [source: Cursor Blog, confidence 0.9, tier 1]\n\t- **Ralph Wiggum Loop**: The 'Ralph Wiggum loop' is an autonomous AI coding pattern where each iteration uses a fresh context window, with memory persisted via git history and text files. [source: Ryan Carson, confidence 0.9, tier 1]\n\t- **OpenAI Codex /goal Feature**: OpenAI's new /goal feature for Codex allows the AI agent to work on a persistent objective across multiple turns until it is achieved, a concept referred to as a 'Ralph loop'. [source: Host (AI Daily Brief) citing Philip Corry, confidence 0.9, tier 1]"
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 2.0,
+    "rubric_b_improvement": 2.0,
+    "raw_a": {
+      "factual_grounding": 4,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 3,
+      "relevance": 3,
+      "coherence": 5,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "6b420231b7338347",
+        "claim": "Anthropic's autonomous coding test using Claude Opus 4.6 agent teams to build a C compiler consumed around 2 billion tok",
+        "matched": true
+      },
+      {
+        "fp": "c78ee7555f0c76b5",
+        "claim": "Max Stoiber from the ChatGPT team stated that the MCP apps feature was built entirely with GPT-5.3 Codex, with zero line",
+        "matched": true
+      },
+      {
+        "fp": "7567db9c39663513",
+        "claim": "Cursor built a browser using GPT 5.2 that ran uninterrupted for one week, resulting in over 3 million lines of code acro",
+        "matched": true
+      },
+      {
+        "fp": "5ef89b55805dec37",
+        "claim": "Cursor implemented a hierarchical pipeline with 'planner' and 'worker' agents to solve coordination problems, allowing s",
+        "matched": true
+      },
+      {
+        "fp": "b3adff530c1d4cbe",
+        "claim": "The 'Ralph Wiggum loop' is an autonomous AI coding pattern where each iteration uses a fresh context window, with memory",
+        "matched": true
+      },
+      {
+        "fp": "4f687b4a941f0ccf",
+        "claim": "OpenAI's new /goal feature for Codex allows the AI agent to work on a persistent objective across multiple turns until i",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": {
+    "target_page": "Autonomous Coding.md",
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "- ### Provenance\n\t- updated:: 2026-07-25\n\t- attributedTo:: did:nostr:ontology-mesh\n\t- inferenceRule:: GapMaterialisation",
+      "content": "- ### Recent Developments\n\t- **Anthropic's C Compiler Test**: Anthropic's autonomous coding test using Claude Opus 4.6 agent teams to build a C compiler consumed around 2 billion tokens, generated over 140 million output tokens, and cost approximately $20,000. [source: Anthropic (via Host), confidence 0.9, tier 1]\n\t- **ChatGPT MCP Apps**: Max Stoiber from the ChatGPT team stated that the MCP apps feature was built entirely with GPT-5.3 Codex, with zero lines of code written by hand. [source: Max Stoiber (via Host), confidence 0.85, tier 1]\n\t- **Cursor's Browser Build**: Cursor built a browser using GPT 5.2 that ran uninterrupted for one week, resulting in over 3 million lines of code across thousands of files. [source: Michael Troll (Cursor CEO), confidence 0.95, tier 1]\n\t- **Hierarchical Agent Pipelines**: Cursor implemented a hierarchical pipeline with 'planner' and 'worker' agents to solve coordination problems, allowing scaling to very large projects without single-agent tunnel vision. [source: Cursor Blog, confidence 0.9, tier 1]\n\t- **Ralph Wiggum Loop**: The 'Ralph Wiggum loop' is an autonomous AI coding pattern where each iteration uses a fresh context window, with memory persisted via git history and text files. [source: Ryan Carson, confidence 0.9, tier 1]\n\t- **OpenAI Codex /goal Feature**: OpenAI's new /goal feature for Codex allows the AI agent to work on a persistent objective across multiple turns until it is achieved, a concept referred to as a 'Ralph loop'. [source: Host (AI Daily Brief) citing Philip Corry, confidence 0.9, tier 1]"
+    },
+    "provenance": {
+      "assertion_fingerprints": [
+        "4f687b4a941f0ccf",
+        "5ef89b55805dec37",
+        "6b420231b7338347",
+        "7567db9c39663513",
+        "b3adff530c1d4cbe",
+        "c78ee7555f0c76b5"
+      ],
+      "source_episodes": [
+        "opus-46-and-chatgpt-53-codex-are-here-and-the-labs-are-at-war",
+        "ralph-wiggum-clawdbot-and-mac-minis-how-pros-are-vibe-coding-in-2026",
+        "the-week-the-ai-story-shifted"
+      ]
+    },
+    "scores": {
+      "rubric_a_improvement": 2.0,
+      "rubric_b_improvement": 2.0,
+      "completeness": 1.0
+    }
+  }
+}

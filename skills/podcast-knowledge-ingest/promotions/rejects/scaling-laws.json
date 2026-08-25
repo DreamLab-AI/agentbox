@@ -1,0 +1,267 @@
+{
+  "topic": "Scaling Laws",
+  "topic_slug": "scaling-laws",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5"
+  ],
+  "n_assertions": 13,
+  "episodes": [
+    "dario-amodei-breaks-his-social-media-silence",
+    "does-gemini-31-pro-matter",
+    "fable-is-back-heres-what-you-should-try-first",
+    "gpt-52-is-here",
+    "how-a-30b-hedge-fund-implosion-will-effect-ai",
+    "how-apples-ai-strategy-changes-with-a-new-ceo",
+    "how-big-is-the-ai-economy",
+    "how-harness-as-a-service-will-change-agents",
+    "is-kimi-k3-really-fable-class",
+    "more-new-ai-models-openai-drops-51-pro-and-codex-pro",
+    "the-perils-of-the-ai-exponential",
+    "what-we-learned-from-openais-town-hall"
+  ],
+  "assertion_fingerprints": [
+    "1150cf73e2dc1daf",
+    "22264beff116f5ac",
+    "305bf11977866f27",
+    "3cc161ddb3ba23a7",
+    "3cdebe80c548de5e",
+    "3f9ce124bda4cc6d",
+    "41c1103dc6be91bb",
+    "5109e95b8e2d3c50",
+    "57aeeee2a8180ad1",
+    "ce0346059edd71c5",
+    "cfbcf1573d709623",
+    "e1042901c0b51732",
+    "f3a1aec6d11c916d"
+  ],
+  "target_page": "Scaling Laws.md",
+  "assertions": [
+    {
+      "claim": "Dario Amodei contends that AI structurally tends to concentrate power due to scaling laws, and that open-weight models are insufficient to prevent this because they shift concentration to those with the most compute and chips.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Dario Amodei",
+      "episode": "dario-amodei-breaks-his-social-media-silence",
+      "claim_date": "2026-08-18",
+      "evidence": "Amodei writes: 'My overall view is that AI is structurally a technology that tends to concentrate power for reasons that have nothing to do with regulation, more to do with the extreme implications of the scaling laws. Open weights do help some with this, but are nowhere near a sufficient solution because they simply shift the concentration somewhat to those with the most compute and chips.'",
+      "fp": "3cc161ddb3ba23a7"
+    },
+    {
+      "claim": "Amjad Masad of Replit argues that AI does not structurally centralize power because compute price-performance has grown super-exponentially for 125 years, meaning AGI-level capabilities may not always require data centers.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Amjad Masad",
+      "episode": "dario-amodei-breaks-his-social-media-silence",
+      "claim_date": "2026-08-18",
+      "evidence": "Masad writes: 'The argument that AI structurally centralizes power because it's currently compute hungry ignores 125 years of super exponential growth and compute price performance... Scaling laws are not laws of physics. They're simply empirical relationships observed for particular architectures, objectives, data sets, etc.'",
+      "fp": "305bf11977866f27"
+    },
+    {
+      "claim": "The frontier of AI model capabilities is commoditizing rapidly, with benchmark leadership rotating on a weekly basis and major labs converging on comparable intelligence levels.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Akash Gupta (cited by Host)",
+      "episode": "does-gemini-31-pro-matter",
+      "claim_date": "2026-02-21",
+      "evidence": "Akash Gupta writes: 'Best AI model crown now rotates on a weekly basis... The frontier is commoditizing so fast that benchmark leadership lasts weeks, not quarters. Open AAI, Anthropic, and Google are all within singledigit percentage points of each other on most evals.'",
+      "fp": "ce0346059edd71c5"
+    },
+    {
+      "claim": "AWS is investing $1 billion to create a new unit staffed with forward-deployed engineers (FTEs) to help customers set up and use AI tools, focusing on healthcare, government, and financial services.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AWS Announcement (reported by AI Daily Brief host)",
+      "episode": "fable-is-back-heres-what-you-should-try-first",
+      "claim_date": "2026-07-02",
+      "evidence": "The transcript states, 'AWS announced that they will invest a billion dollars to create a new unit staffed with forward-deployed engineers to help customers set up and use AI tools... She added that AWS will focus on industries with the strongest demand, including healthcare, government, and financial services.'",
+      "fp": "e1042901c0b51732"
+    },
+    {
+      "claim": "The release of GPT 5.2 signals that pre-training scaling is not slowing down, suggesting that the compute supercycle and demand for hardware like Nvidia GPUs are still in an early phase of growth.",
+      "tier": "3",
+      "confidence": "0.65",
+      "source": "Ben Paludan / AI Daily Brief Host",
+      "episode": "gpt-52-is-here",
+      "claim_date": "2025-12-12",
+      "evidence": "Ben Paludan wrote: 'GPT-5.2 is the clearest signal yet that pre-training scaling isn't slowing down... Nvidia's curve is nowhere near flattening. We're still early in the compute supercycle.'",
+      "fp": "57aeeee2a8180ad1"
+    },
+    {
+      "claim": "Amazon raised its capital expenditure (CapEx) forecast for the year from $200 billion to $220 billion, citing increased costs and sustained demand for AI infrastructure.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Amazon Earnings Report / Andy Jassy",
+      "episode": "how-a-30b-hedge-fund-implosion-will-effect-ai",
+      "claim_date": "2026-08-03",
+      "evidence": "CEO Andy Jassy explained the increase as driven by rising costs rather than expanded scope, noting that even at this level, Amazon will not have enough capacity to meet all demand in 2026, 2027, or 2028.",
+      "fp": "22264beff116f5ac"
+    },
+    {
+      "claim": "Amazon will provide 5 gigawatts of compute using its in-house Trainium chips to Anthropic as part of their new partnership.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief Host",
+      "episode": "how-apples-ai-strategy-changes-with-a-new-ceo",
+      "claim_date": "2026-04-22",
+      "evidence": "The host notes, 'Amazon will provide 5 gigawatts of compute using current and future generations of their in-house Tranium chips.'",
+      "fp": "1150cf73e2dc1daf"
+    },
+    {
+      "claim": "AWS is raising prices for EC2 capacity blocks using Nvidia GPUs by 20%, while prices for blocks using Amazon's Trainium chips remain unaffected.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "AWS Announcement",
+      "episode": "how-big-is-the-ai-economy",
+      "claim_date": "2026-06-30",
+      "evidence": "Capacity blocks, introduced in 2023, require advance reservations and are distinct from on-demand rentals. The price hike is a response to supply constraints and surging demand for advanced models.",
+      "fp": "cfbcf1573d709623"
+    },
+    {
+      "claim": "Amazon's AWS revenue grew 28% year-over-year, reaching a $152 billion ARR business, marking its fastest growth in nearly four years.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Amazon Earnings Report / Sheharyar Khan / AI Daily Brief",
+      "episode": "how-harness-as-a-service-will-change-agents",
+      "claim_date": "2026-05-01",
+      "evidence": "The transcript states: 'AWS revenue was up 28% compared to last year' and quotes Sheharyar Khan: 'AWS is now a $152 billion ARR business growing 28% per year. That marks its fastest growth in nearly four years.'",
+      "fp": "f3a1aec6d11c916d"
+    },
+    {
+      "claim": "The release of Kimmy K3 represents a narrowing of the capability gap between Chinese open-weight models and US closed-source frontier models to less than three months.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Jukan (Satrini analyst, via AI Daily Brief host)",
+      "episode": "is-kimi-k3-really-fable-class",
+      "claim_date": "2026-07-21",
+      "evidence": "The transcript quotes Jukan: 'My conclusion so far is that Kimmy K3 may be the first model to narrow the gap with leading US closed source models to less than 3 months.'",
+      "fp": "3cdebe80c548de5e"
+    },
+    {
+      "claim": "Investor Gavin Baker asserts that the release of Gemini 3 is the most important AI data point since the release of GPT-4o because it demonstrates that scaling laws for pre-training are intact.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Gavin Baker",
+      "episode": "more-new-ai-models-openai-drops-51-pro-and-codex-pro",
+      "claim_date": "2025-11-21",
+      "evidence": "The host reports: 'investor Gavin Baker points out, is that Gemini 3 shows that scaling laws for pre-training are intact. He says this is the most important AI data point since the release of 01 [GPT-4o].' Note: '01' is likely a transcription error for '4o' given the context of recent major releases, but the claim is attributed to Baker's assessment of Gemini 3's impact on scaling law narratives.",
+      "fp": "41c1103dc6be91bb"
+    },
+    {
+      "claim": "METR's continuous study found that the time horizon of agentic tasks for AI models was reliably doubling roughly every 7 months, a trend that accelerated to a doubling rate as fast as 3 months for models released at the end of 2024 and early 2025.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "METR (Model Evaluation and Threat Research Lab)",
+      "episode": "the-perils-of-the-ai-exponential",
+      "claim_date": "2026-02-24",
+      "evidence": "METR conducted their study going all the way back to GPT-2 and found that the time horizon of agentic tasks was reliably doubling roughly every 7 months... The original report even suggested that the speed of improvement was accelerating, with the more recent models at the end of 2024 and early 2025 implying a doubling rate as fast as 3 months.",
+      "fp": "3f9ce124bda4cc6d"
+    },
+    {
+      "claim": "Sam Altman forecasts that OpenAI will be able to deliver GPT-5.2-level intelligence at least 100 times less expensive by the end of 2027.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Sam Altman",
+      "episode": "what-we-learned-from-openais-town-hall",
+      "claim_date": "2026-01-31",
+      "evidence": "Altman stated he expects the cost of AI to continue to hyper deflate, forecasting that OpenAI will be able to deliver 'GPT-5 two-level intelligence by the end of 2027 for at least 100 times less.'",
+      "fp": "5109e95b8e2d3c50"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - Debate continues about whether scaling laws are universal physical laws, emergent statistical artefacts of gradient descent, or simply useful approximations that may break down at extreme scale or under distribution shift.",
+      "content": "\n\n- ### Recent Developments\n  - **Empirical Validation and Acceleration**\n    - Investor Gavin Baker identifies the release of Gemini 3 as the most important AI data point since GPT-4o, citing it as evidence that scaling laws for pre-training remain intact.\n    - METR\u2019s continuous study, tracking models back to GPT-2, found that the time horizon of agentic tasks is doubling roughly every 7 months, with recent models (late 2024\u2013early 2025) suggesting an accelerated doubling rate as fast as 3 months.\n    - Analysts note the frontier is commoditizing rapidly, with benchmark leadership rotating weekly and major labs (OpenAI, Anthropic, Google) converging within single-digit percentage points on most evaluations.\n    - The release of Kimmy K3 is cited as narrowing the capability gap between Chinese open-weight models and US closed-source frontier models to less than three months.\n  - **Infrastructure and Compute Economics**\n    - Amazon raised its 2026 capital expenditure forecast from $200 billion to $220 billion, citing sustained demand for AI infrastructure; CEO Andy Jassy noted that even at this level, capacity will not meet all demand through 2028.\n    - AWS revenue grew 28% year-over-year to a $152 billion ARR business, its fastest growth in nearly four years, driven partly by AI demand.\n    - Amazon is providing 5 gigawatts of compute using in-house Trainium chips to Anthropic as part of a new partnership.\n    - AWS is raising prices for EC2 capacity blocks using Nvidia GPUs by 20% due to supply constraints, while Trainium-based block prices remain unaffected.\n    - AWS announced a $1 billion investment in a new unit staffed with forward-deployed engineers to help customers in healthcare, government, and financial services adopt AI tools.\n  - **Cost Trajectories and Power Dynamics**\n    - Sam Altman forecasts that OpenAI will deliver GPT-5.2-level intelligence at least 100 times less expensive by the end of 2027, continuing a trend of hyper-deflation in AI costs.\n    - Dario Amodei argues that AI structurally concentrates power due to the extreme implications of scaling laws, noting that open-weight models are insufficient to prevent this as they merely shift concentration to those with the most compute and chips.\n    - Amjad Masad of Replit counters that AI does not structurally centralize power, arguing that 125 years of super-exponential growth in compute price-performance means AGI-level capabilities may not always require data centers, and that scaling laws are empirical relationships rather than laws of physics."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 4,
+      "relevance": 2,
+      "coherence": 4,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 0.8333333333333334,
+    "detail": [
+      {
+        "fp": "3f9ce124bda4cc6d",
+        "claim": "METR's continuous study found that the time horizon of agentic tasks for AI models was reliably doubling roughly every 7",
+        "matched": true
+      },
+      {
+        "fp": "1150cf73e2dc1daf",
+        "claim": "Amazon will provide 5 gigawatts of compute using its in-house Trainium chips to Anthropic as part of their new partnersh",
+        "matched": true
+      },
+      {
+        "fp": "f3a1aec6d11c916d",
+        "claim": "Amazon's AWS revenue grew 28% year-over-year, reaching a $152 billion ARR business, marking its fastest growth in nearly",
+        "matched": true
+      },
+      {
+        "fp": "e1042901c0b51732",
+        "claim": "AWS is investing $1 billion to create a new unit staffed with forward-deployed engineers (FTEs) to help customers set up",
+        "matched": false
+      },
+      {
+        "fp": "22264beff116f5ac",
+        "claim": "Amazon raised its capital expenditure (CapEx) forecast for the year from $200 billion to $220 billion, citing increased ",
+        "matched": true
+      },
+      {
+        "fp": "5109e95b8e2d3c50",
+        "claim": "Sam Altman forecasts that OpenAI will be able to deliver GPT-5.2-level intelligence at least 100 times less expensive by",
+        "matched": true
+      },
+      {
+        "fp": "cfbcf1573d709623",
+        "claim": "AWS is raising prices for EC2 capacity blocks using Nvidia GPUs by 20%, while prices for blocks using Amazon's Trainium ",
+        "matched": true
+      },
+      {
+        "fp": "3cdebe80c548de5e",
+        "claim": "The release of Kimmy K3 represents a narrowing of the capability gap between Chinese open-weight models and US closed-so",
+        "matched": true
+      },
+      {
+        "fp": "3cc161ddb3ba23a7",
+        "claim": "Dario Amodei contends that AI structurally tends to concentrate power due to scaling laws, and that open-weight models a",
+        "matched": true
+      },
+      {
+        "fp": "41c1103dc6be91bb",
+        "claim": "Investor Gavin Baker asserts that the release of Gemini 3 is the most important AI data point since the release of GPT-4",
+        "matched": true
+      },
+      {
+        "fp": "ce0346059edd71c5",
+        "claim": "The frontier of AI model capabilities is commoditizing rapidly, with benchmark leadership rotating on a weekly basis and",
+        "matched": false
+      },
+      {
+        "fp": "305bf11977866f27",
+        "claim": "Amjad Masad of Replit argues that AI does not structurally centralize power because compute price-performance has grown ",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

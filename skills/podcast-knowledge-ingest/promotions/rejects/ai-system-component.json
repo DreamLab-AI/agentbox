@@ -1,0 +1,248 @@
+{
+  "topic": "AI System Component",
+  "topic_slug": "ai-system-component",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5"
+  ],
+  "n_assertions": 12,
+  "episodes": [
+    "how-i-built-my-10-agent-openclaw-team",
+    "how-people-are-using-ai-for-health",
+    "how-the-best-companies-use-ai",
+    "how-to-get-the-most-from-ai-this-summer"
+  ],
+  "assertion_fingerprints": [
+    "0a4e66b4b9065378",
+    "2ceab9d5134a7ef9",
+    "506b4839f20c960e",
+    "681880498d17efa2",
+    "7764e6bc3953729e",
+    "83e3df82384c4b28",
+    "9335ad756cd07232",
+    "a045fa1a4d58abd7",
+    "a26d902a312268be",
+    "adbaf3c8812c2755",
+    "df06c98490084373",
+    "f0e1b71f94c188fc"
+  ],
+  "target_page": "AI System Component.md",
+  "assertions": [
+    {
+      "claim": "OpenClaw agents are configured using a set of specific markdown files, including 'soul.md' for personality, 'agents.md' for operating instructions, and 'user.md' for user preferences.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-i-built-my-10-agent-openclaw-team",
+      "claim_date": "2026-02-15",
+      "evidence": "The transcript details: 'Its soul.md file is how the agent thinks and behaves... Agents.md is the employee handbook... User.md is everything the agent knows about you.'",
+      "fp": "adbaf3c8812c2755"
+    },
+    {
+      "claim": "ChatGPT Health was built in collaboration with more than 260 physicians from 60 countries who provided feedback on outputs over 600,000 times.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "OpenAI announcement for ChatGPT Health",
+      "episode": "how-people-are-using-ai-for-health",
+      "claim_date": "2026-01-10",
+      "evidence": "The transcript states, 'they built this in collaboration with more than 260 physicians who have practiced in 60 countries who have provided feedback on outputs over 600,000 times.'",
+      "fp": "7764e6bc3953729e"
+    },
+    {
+      "claim": "Ramp reports that 99% of its employees use AI daily, but most were initially stuck due to painful and unintuitive setup processes involving terminal configs and MCP servers.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Eric Glyman, Ramp Co-founder (cited by host)",
+      "episode": "how-the-best-companies-use-ai",
+      "claim_date": "2026-04-20",
+      "evidence": "Eric Glyman tweeted, '99% of Ramp uses AI daily, but we noticed most people were stuck. Not because the models weren't good enough, but because the setup was too painful and unintuitive for most.'",
+      "fp": "df06c98490084373"
+    },
+    {
+      "claim": "OpenAI announced that 50% of the usage of their new Codex app is not specifically about coding, indicating that code-writing capabilities unlock broader knowledge work applications.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "OpenAI (cited by host)",
+      "episode": "how-the-best-companies-use-ai",
+      "claim_date": "2026-04-20",
+      "evidence": "The transcript notes, 'When OpenAI announced their new Codex app, they said that a full 50% of the usage is not about coding specifically.'",
+      "fp": "a045fa1a4d58abd7"
+    },
+    {
+      "claim": "McKinsey argues that more than 70% of talent for AI transformation should be in-house, as every tech and AI transformation is ultimately a people transformation that cannot be fully outsourced to consultants.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "McKinsey (cited by host)",
+      "episode": "how-the-best-companies-use-ai",
+      "claim_date": "2026-04-20",
+      "evidence": "The host notes, 'McKinsey argues that every tech and AI transformation is ultimately a people transformation, suggesting that more than 70% of talent for AI should be in-house.'",
+      "fp": "83e3df82384c4b28"
+    },
+    {
+      "claim": "Ramp's design principle for its AI tooling is to 'not limit anyone's upside,' rejecting the conventional approach of simplifying tools for non-technical users in favor of preserving full capability while making complexity invisible.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Seb Go to Jen, Ramp (cited by host)",
+      "episode": "how-the-best-companies-use-ai",
+      "claim_date": "2026-04-20",
+      "evidence": "Seb writes, 'The default approach... for non-technical users is to simplify... We couldn't disagree more. At Ramp, power users thrive on multi-window workflows... The goal isn't to remove complexity, but to make it invisible while preserving full capability.'",
+      "fp": "0a4e66b4b9065378"
+    },
+    {
+      "claim": "McKinsey identifies 'agentic engineering' as the next capability for leading companies to master, involving the ingestion of unstructured data, extension of AI platforms with agentic capabilities, and the codification of repeatable agentic playbooks.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "McKinsey (cited by host)",
+      "episode": "how-the-best-companies-use-ai",
+      "claim_date": "2026-04-20",
+      "evidence": "McKinsey writes, 'Leading companies are moving quickly to master agentic engineering. They are ingesting unstructured data, extending their AI platforms with agentic capabilities, automating guardrails and controls, and rapidly experimenting to codify what works into a repeatable agentic playbook.'",
+      "fp": "a26d902a312268be"
+    },
+    {
+      "claim": "The host predicts that the distinction between 'good,' 'medium,' and 'bad' AI users will disappear as organizations build harnesses that enable every employee to become an AI superuser, fundamentally changing the shape of enterprise AI adoption.",
+      "tier": "3",
+      "confidence": "0.65",
+      "source": "Host (NLW)",
+      "episode": "how-the-best-companies-use-ai",
+      "claim_date": "2026-04-20",
+      "evidence": "The host states, 'you should not limit anyone's endpoint to only one type of those interfaces because of some pre-existing technical limitation they have' and calls this 'one of the most important mental resets.'",
+      "fp": "681880498d17efa2"
+    },
+    {
+      "claim": "The host argues that 'agentic engineering' is no longer just a domain of software development but is becoming a core capability for all knowledge workers, as the ability to write code unlocks broader AI capabilities for non-technical tasks.",
+      "tier": "3",
+      "confidence": "0.65",
+      "source": "Host (NLW)",
+      "episode": "how-the-best-companies-use-ai",
+      "claim_date": "2026-04-20",
+      "evidence": "The host states, 'constraining this to think about agentic engineering as simply a domain of software development is increasingly going to be its own constraint' and that 'for the real leading organizations, agentic engineering is kind of the work of everyone now.'",
+      "fp": "f0e1b71f94c188fc"
+    },
+    {
+      "claim": "Entrepreneur Ryan Carson predicts that by the end of the year, major AI players will offer complete end-to-end 'code factory' solutions that allow startups to build products without duct-taping different tools together.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "Ryan Carson (cited by host)",
+      "episode": "how-the-best-companies-use-ai",
+      "claim_date": "2026-04-20",
+      "evidence": "Ryan Carson wrote, 'I think we'll probably have complete solutions from all the big players by the end of the year that allow you to create an end-to-end code factory for your startup without having to jump around to different tools or duct taping things together.'",
+      "fp": "9335ad756cd07232"
+    },
+    {
+      "claim": "AI Daily Brief and Super Intelligent have launched 'AI Summer Adventure,' a free, gamified training program featuring 20+ destinations and projects ranging from beginner to advanced levels.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief Host",
+      "episode": "how-to-get-the-most-from-ai-this-summer",
+      "claim_date": "2026-07-27",
+      "evidence": "The host announces the program at summeradventure.ai, detailing features like 'passport' stamps for completion, with tiers ranging from 'day tripper' (1 stamp) to 'globetrotter' (10 stamps).",
+      "fp": "506b4839f20c960e"
+    },
+    {
+      "claim": "Building a 'Personal Brain' or global identity context for AI assistants involves creating a 150-300 word instruction block that persists across sessions to provide consistent user context.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "AI Daily Brief Host",
+      "episode": "how-to-get-the-most-from-ai-this-summer",
+      "claim_date": "2026-07-27",
+      "evidence": "The 'Pack Your ID' project instructs users to have the AI draft a 'paste-ready global ID block' and install it, ensuring future chats start with knowledge of the user's preferences and background.",
+      "fp": "2ceab9d5134a7ef9"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - Breck, E. et al. (2017). The ML Test Score: A Rubric for ML Production Readiness. NIPS 2017 Workshop.",
+      "content": "\n\n  #### Recent Developments\n  - **Agentic Engineering as a Core Capability**: McKinsey identifies 'agentic engineering' as the next capability for leading companies to master, involving the ingestion of unstructured data, extension of AI platforms with agentic capabilities, and the codification of repeatable agentic playbooks. This capability is increasingly viewed not just as a domain of software development but as a core requirement for all knowledge workers, as the ability to write code unlocks broader AI capabilities for non-technical tasks.\n  - **Enterprise Adoption and Talent Strategy**: McKinsey argues that more than 70% of talent for AI transformation should be in-house, emphasizing that every tech and AI transformation is ultimately a people transformation that cannot be fully outsourced to consultants. This shift is supported by the prediction that the distinction between 'good,' 'medium,' and 'bad' AI users will disappear as organizations build harnesses that enable every employee to become an AI superuser.\n  - **User Experience and Setup Friction**: Ramp reports that 99% of its employees use AI daily, but most were initially stuck due to painful and unintuitive setup processes involving terminal configs and MCP servers. Ramp's design principle for its AI tooling is to 'not limit anyone's upside,' rejecting the conventional approach of simplifying tools for non-technical users in favor of preserving full capability while making complexity invisible.\n  - **Broadening Applications of AI Coding Tools**: OpenAI announced that 50% of the usage of their new Codex app is not specifically about coding, indicating that code-writing capabilities unlock broader knowledge work applications. Entrepreneur Ryan Carson predicts that by the end of the year, major AI players will offer complete end-to-end 'code factory' solutions that allow startups to build products without duct-taping different tools together.\n  - **Domain-Specific AI Integration**: ChatGPT Health was built in collaboration with more than 260 physicians from 60 countries who provided feedback on outputs over 600,000 times, highlighting the integration of domain experts in the development and validation of AI system components.\n  - **Configuration and Context Management**: OpenClaw agents are configured using specific markdown files, including 'soul.md' for personality, 'agents.md' for operating instructions, and 'user.md' for user preferences. Additionally, building a 'Personal Brain' or global identity context for AI assistants involves creating a 150-300 word instruction block that persists across sessions to provide consistent user context.\n  - **Training and Gamification**: AI Daily Brief and Super Intelligent have launched 'AI Summer Adventure,' a free, gamified training program featuring 20+ destinations and projects ranging from beginner to advanced levels, designed to enhance user proficiency with AI system components."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 3,
+      "relevance": 2,
+      "coherence": 3,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "adbaf3c8812c2755",
+        "claim": "OpenClaw agents are configured using a set of specific markdown files, including 'soul.md' for personality, 'agents.md' ",
+        "matched": true
+      },
+      {
+        "fp": "7764e6bc3953729e",
+        "claim": "ChatGPT Health was built in collaboration with more than 260 physicians from 60 countries who provided feedback on outpu",
+        "matched": true
+      },
+      {
+        "fp": "df06c98490084373",
+        "claim": "Ramp reports that 99% of its employees use AI daily, but most were initially stuck due to painful and unintuitive setup ",
+        "matched": true
+      },
+      {
+        "fp": "a045fa1a4d58abd7",
+        "claim": "OpenAI announced that 50% of the usage of their new Codex app is not specifically about coding, indicating that code-wri",
+        "matched": true
+      },
+      {
+        "fp": "83e3df82384c4b28",
+        "claim": "McKinsey argues that more than 70% of talent for AI transformation should be in-house, as every tech and AI transformati",
+        "matched": true
+      },
+      {
+        "fp": "0a4e66b4b9065378",
+        "claim": "Ramp's design principle for its AI tooling is to 'not limit anyone's upside,' rejecting the conventional approach of sim",
+        "matched": true
+      },
+      {
+        "fp": "a26d902a312268be",
+        "claim": "McKinsey identifies 'agentic engineering' as the next capability for leading companies to master, involving the ingestio",
+        "matched": true
+      },
+      {
+        "fp": "681880498d17efa2",
+        "claim": "The host predicts that the distinction between 'good,' 'medium,' and 'bad' AI users will disappear as organizations buil",
+        "matched": true
+      },
+      {
+        "fp": "f0e1b71f94c188fc",
+        "claim": "The host argues that 'agentic engineering' is no longer just a domain of software development but is becoming a core cap",
+        "matched": true
+      },
+      {
+        "fp": "9335ad756cd07232",
+        "claim": "Entrepreneur Ryan Carson predicts that by the end of the year, major AI players will offer complete end-to-end 'code fac",
+        "matched": true
+      },
+      {
+        "fp": "506b4839f20c960e",
+        "claim": "AI Daily Brief and Super Intelligent have launched 'AI Summer Adventure,' a free, gamified training program featuring 20",
+        "matched": true
+      },
+      {
+        "fp": "2ceab9d5134a7ef9",
+        "claim": "Building a 'Personal Brain' or global identity context for AI assistants involves creating a 150-300 word instruction bl",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

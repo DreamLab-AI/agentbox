@@ -1,0 +1,152 @@
+{
+  "topic": "AI-Driven Workforce Reduction",
+  "topic_slug": "ai-driven-workforce-reduction",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0"
+  ],
+  "n_assertions": 6,
+  "episodes": [
+    "the-5-biggest-ai-stories-to-watch-in-december",
+    "the-new-ai-org-chart",
+    "what-happens-when-ai-obliterates-your-business-model",
+    "who-cares-about-consumer-ai",
+    "why-agents-still-need-humans"
+  ],
+  "assertion_fingerprints": [
+    "1228e7b89df89aab",
+    "60cc772be582e32f",
+    "df04eeaa78b5377a",
+    "e281fb9d36666570",
+    "e33b34b6c5b4ca12",
+    "e6a8e5cad87154fa"
+  ],
+  "target_page": "AI-Driven Workforce Reduction.md",
+  "assertions": [
+    {
+      "claim": "HP announced 4,000 to 6,000 job cuts in November 2025, which were widely attributed to AI-related workforce reductions.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-5-biggest-ai-stories-to-watch-in-december",
+      "claim_date": "2025-12-10",
+      "evidence": "The host states, 'We saw thousands and thousands of white collar jobs disappear, such as HP announcing 4,000 to 6,000 job cuts.'",
+      "fp": "1228e7b89df89aab"
+    },
+    {
+      "claim": "Block is undergoing a 40% workforce reduction as part of its transition to an AI-driven organizational structure.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-new-ai-org-chart",
+      "claim_date": "2026-04-14",
+      "evidence": "The host notes that Jack Dorsey 'recently made news with the 40% layoffs at Block' in the context of introducing the essay on the new AI org chart.",
+      "fp": "df04eeaa78b5377a"
+    },
+    {
+      "claim": "Tailwind CSS CEO Adam Wathan stated that 75% of the company's engineering team was laid off due to the impact of AI on their business.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Adam Wathan (via GitHub comment cited in transcript)",
+      "episode": "what-happens-when-ai-obliterates-your-business-model",
+      "claim_date": "2026-01-11",
+      "evidence": "CEO Adam Wan responded, 'I totally see the value in the feature... but the reality is that 75% of the people on our engineering team lost their jobs here yesterday because of the brutal impact AI has had on our business.'",
+      "fp": "e33b34b6c5b4ca12"
+    },
+    {
+      "claim": "Coinbase announced a 14% reduction in its workforce, resulting in approximately 700 of its 5,000 employees being laid off.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Brian Armstrong (CEO of Coinbase)",
+      "episode": "who-cares-about-consumer-ai",
+      "claim_date": "2026-05-06",
+      "evidence": "Brian Armstrong tweeted the email he sent to all employees at Coinbase announcing a 14% reduction in the team. That means about 700 of 5,000 people will be laid off.",
+      "fp": "e281fb9d36666570"
+    },
+    {
+      "claim": "Meta laid off 8,000 people and is installing software on US employees' computers to capture mouse movements, clicks, and keystrokes for AI training data.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "Dan Shipper (citing company actions)",
+      "episode": "why-agents-still-need-humans",
+      "claim_date": "2026-05-26",
+      "evidence": "Dan Shipper wrote: 'Meta just laid off 8,000 people and is installing software on US employees' computers to capture mouse movements, clicks, and keystrokes for a higher-quality source of AI training data on advanced knowledge work.'",
+      "fp": "60cc772be582e32f"
+    },
+    {
+      "claim": "Atlassian announced 10% layoffs in March, an event that marked the end of a mini-recovery and preceded the stock heading into a year-to-date low in mid-April.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief)",
+      "episode": "why-agents-still-need-humans",
+      "claim_date": "2026-05-26",
+      "evidence": "The host explained: 'In March, they announced 10% layoffs, and that announcement actually marked the end of a mini recovery over the previous 2 weeks. The stock actually headed into a year-to-date low in mid-April.'",
+      "fp": "e6a8e5cad87154fa"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "- ### Overview\n  - Enterprise software company Atlassian cut roughly 10% of its workforce, or 1,600 jobs, explicitly attributing the decision to AI. *(Source: Mike Cannon-Brookes (CEO of Atlassian) / AI Daily Brief host, via AI Daily Brief, 2026-08-24)*",
+      "content": "\n- ### Recent Developments\n  - HP announced 4,000 to 6,000 job cuts in November 2025, which were widely attributed to AI-related workforce reductions. *(Source: Host (AI Daily Brief), confidence 0.95, tier 1)*\n  - Block is undergoing a 40% workforce reduction as part of its transition to an AI-driven organizational structure. *(Source: Host (AI Daily Brief), confidence 0.9, tier 1)*\n  - Tailwind CSS CEO Adam Wathan stated that 75% of the company's engineering team was laid off due to the impact of AI on their business. *(Source: Adam Wathan (via GitHub comment cited in transcript), confidence 0.95, tier 1)*\n  - Coinbase announced a 14% reduction in its workforce, resulting in approximately 700 of its 5,000 employees being laid off. *(Source: Brian Armstrong (CEO of Coinbase), confidence 0.95, tier 1)*\n  - Meta laid off 8,000 people and is installing software on US employees' computers to capture mouse movements, clicks, and keystrokes for AI training data. *(Source: Dan Shipper (citing company actions), confidence 0.85, tier 1)*\n  - Atlassian announced 10% layoffs in March, an event that marked the end of a mini-recovery and preceded the stock heading into a year-to-date low in mid-April. *(Source: Host (AI Daily Brief), confidence 0.85, tier 1)*"
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 3,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "A",
+      "improvement": -2
+    },
+    "raw_b": {
+      "factual_grounding": 2,
+      "relevance": 3,
+      "coherence": 4,
+      "better_version": "B",
+      "improvement": 2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "1228e7b89df89aab",
+        "claim": "HP announced 4,000 to 6,000 job cuts in November 2025, which were widely attributed to AI-related workforce reductions.",
+        "matched": true
+      },
+      {
+        "fp": "df04eeaa78b5377a",
+        "claim": "Block is undergoing a 40% workforce reduction as part of its transition to an AI-driven organizational structure.",
+        "matched": true
+      },
+      {
+        "fp": "e33b34b6c5b4ca12",
+        "claim": "Tailwind CSS CEO Adam Wathan stated that 75% of the company's engineering team was laid off due to the impact of AI on t",
+        "matched": true
+      },
+      {
+        "fp": "e281fb9d36666570",
+        "claim": "Coinbase announced a 14% reduction in its workforce, resulting in approximately 700 of its 5,000 employees being laid of",
+        "matched": true
+      },
+      {
+        "fp": "60cc772be582e32f",
+        "claim": "Meta laid off 8,000 people and is installing software on US employees' computers to capture mouse movements, clicks, and",
+        "matched": true
+      },
+      {
+        "fp": "e6a8e5cad87154fa",
+        "claim": "Atlassian announced 10% layoffs in March, an event that marked the end of a mini-recovery and preceded the stock heading",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

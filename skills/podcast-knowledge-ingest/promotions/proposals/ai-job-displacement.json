@@ -1,0 +1,285 @@
+{
+  "topic": "AI Job Displacement",
+  "topic_slug": "ai-job-displacement",
+  "status": "candidate_survivor",
+  "reasons": [],
+  "n_assertions": 12,
+  "episodes": [
+    "openai-proposes-a-new-deal",
+    "the-ai-subsidy-era-is-over",
+    "the-anti-ai-movement",
+    "weird-vibes-at-ai-india-summit",
+    "what-1250-professionals-said-about-working-with-ai",
+    "what-people-really-want-from-ai",
+    "who-will-adapt-best-to-ai-disruption"
+  ],
+  "assertion_fingerprints": [
+    "23a0c0c58e42c440",
+    "24b9fc26752b5194",
+    "295412ee6bfb4a45",
+    "3a64e391a217ad39",
+    "449b86ebae489e3a",
+    "6770802587eaa3dd",
+    "6be27b91a035132f",
+    "75b445ca6243720e",
+    "861c58dfea99d1c8",
+    "97a3dcd06eeb66e3",
+    "9d0ec91498278de5",
+    "f4a08c68cd746a4f"
+  ],
+  "target_page": "AI Job Displacement.md",
+  "assertions": [
+    {
+      "claim": "According to the Quinnipiac poll, 70% of Americans believe AI will reduce job opportunities, while only 7% believe it will increase them, creating a 10-to-1 ratio.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Quinnipiac University (cited by host)",
+      "episode": "openai-proposes-a-new-deal",
+      "claim_date": "2026-04-09",
+      "evidence": "The transcript states: '70% believe that AI will reduce job opportunities, which is up 14 percentage points. A mere 7% of respondents believe that AI will increase job opportunities. In other words, Americans believe by a 10-to-1 ratio that AI will reduce rather than increase jobs.'",
+      "fp": "861c58dfea99d1c8"
+    },
+    {
+      "claim": "In AI usage surveys conducted between January and March 2026, 'cost savings' was not listed as a primary benefit, while 'new capabilities' rose from 21.9% to 29.3% as the primary benefit.",
+      "tier": "1",
+      "confidence": "0.8",
+      "source": "AI Daily Brief Host (citing monthly pulse results)",
+      "episode": "the-ai-subsidy-era-is-over",
+      "claim_date": "2026-04-30",
+      "evidence": "The host states that in the last three monthly pulse results, cost savings was nowhere on the list of most important benefits. Time savings dropped from 19.7% to 12.7%, and new capabilities went from 21.9% to 29.3%.",
+      "fp": "24b9fc26752b5194"
+    },
+    {
+      "claim": "A YouGov study found that 63% of Americans think AI will lead to a decrease in the number of jobs available in the US, compared to 7% who think it will increase jobs.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "YouGov",
+      "episode": "the-anti-ai-movement",
+      "claim_date": "2026-02-25",
+      "evidence": "The host states: 'nearly twothirds of Americans in that Yuggov poll, 63% think AI will lead to a decrease in the number of jobs available in the US versus just 7% who think that it will increase the number of jobs.'",
+      "fp": "97a3dcd06eeb66e3"
+    },
+    {
+      "claim": "The host identifies 'job displacement' as the biggest, most broad-based, and politically significant category of anti-AI sentiment, surpassing existential risk or technical skepticism.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "AI Daily Brief Host",
+      "episode": "the-anti-ai-movement",
+      "claim_date": "2026-02-25",
+      "evidence": "The host states: 'I think the category that is by far the biggest, most broad-based, and has potentially the biggest political footprint is those who are concerned about the job displacement potential of AI.'",
+      "fp": "295412ee6bfb4a45"
+    },
+    {
+      "claim": "Sam Altman expressed skepticism about AI-driven job loss, suggesting that some layoffs are 'AI washing' where companies blame AI for cuts they would have made anyway.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "Sam Altman",
+      "episode": "weird-vibes-at-ai-india-summit",
+      "claim_date": "2026-02-22",
+      "evidence": "Altman expressed skepticism over the present fear of AI job loss remarking, 'I don't know what the exact percentage is, but there's some AI washing where people are blaming AI for layoffs that they would otherwise do. And then there's some real displacement by AI of different kinds of jobs.'",
+      "fp": "6be27b91a035132f"
+    },
+    {
+      "claim": "Professionals in the general workforce generally prefer to preserve tasks that define their professional identity while delegating routine work to AI, envisioning a future where they oversee AI systems.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Anthropic (cited by host)",
+      "episode": "what-1250-professionals-said-about-working-with-ai",
+      "claim_date": "2025-12-07",
+      "evidence": "People from the general workforce want to preserve tasks that define their professional identity while delegating routine work to AI. They envision futures where routine tasks are automated and their roles shift to overseeing AI systems.",
+      "fp": "3a64e391a217ad39"
+    },
+    {
+      "claim": "Jobs and economy concerns represented 22.3% of worries in the Anthropic study, ranking second after unreliability.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Anthropic",
+      "episode": "what-people-really-want-from-ai",
+      "claim_date": "2026-03-20",
+      "evidence": "The transcript states: 'Number two after unreliability, representing 22.3% of worries.'",
+      "fp": "23a0c0c58e42c440"
+    },
+    {
+      "claim": "A National Bureau of Economic Research study found that 6.1 million US workers face both high exposure to AI disruption and low adaptive capacity for job transitions.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "National Bureau of Economic Research study",
+      "episode": "who-will-adapt-best-to-ai-disruption",
+      "claim_date": "2026-01-26",
+      "evidence": "The transcript states: 'Yet 6.1 million workers still face both high exposure and low adaptive capacity.' The host summarizes the study's findings on the quadrant of workers with high vulnerability and low adaptive capacity.",
+      "fp": "6770802587eaa3dd"
+    },
+    {
+      "claim": "86% of the US workers identified as having high AI exposure and low adaptive capacity are women.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "National Bureau of Economic Research study",
+      "episode": "who-will-adapt-best-to-ai-disruption",
+      "claim_date": "2026-01-26",
+      "evidence": "The transcript explicitly states: 'among this group with high exposure and low adaptive capacity 86% of these most vulnerable workers are women.'",
+      "fp": "f4a08c68cd746a4f"
+    },
+    {
+      "claim": "The NBER study identified that 26.5 million US workers have high AI exposure but also high adaptive capacity, including occupations like software developers, financial managers, and lawyers.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "National Bureau of Economic Research study",
+      "episode": "who-will-adapt-best-to-ai-disruption",
+      "claim_date": "2026-01-26",
+      "evidence": "The transcript states: 'the quadrant of workers who had high vulnerability to AI disruption, but also a high adaptive capacity represented around 26.5 million workers. This included occupation such as software developers, financial managers, lawyers...'",
+      "fp": "9d0ec91498278de5"
+    },
+    {
+      "claim": "The NBER study analyzed approximately 350 jobs representing about 96% of American employment to create its composite measure of adaptive capacity.",
+      "tier": "1",
+      "confidence": "0.92",
+      "source": "National Bureau of Economic Research study",
+      "episode": "who-will-adapt-best-to-ai-disruption",
+      "claim_date": "2026-01-26",
+      "evidence": "The transcript states: 'They looked across something like 350 jobs representing about 96% of American employment.'",
+      "fp": "449b86ebae489e3a"
+    },
+    {
+      "claim": "Vulnerability to AI disruption with low adaptive capacity is geographically concentrated in college towns and state capitals, with places like Laramie, Wyoming, and Carson City, Nevada, having 5 to 7% of their local workforce in this high-vulnerability category.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "National Bureau of Economic Research study",
+      "episode": "who-will-adapt-best-to-ai-disruption",
+      "claim_date": "2026-01-26",
+      "evidence": "The transcript states: 'vulnerability is concentrated in places like college towns and state capitals... Places like Laram, Wyoming, Stillwater, Oklahoma, Springfield, Illinois, and Carson City, Nevada have something like 5 to 7% of their local workforce being in this high vulnerability category.'",
+      "fp": "75b445ca6243720e"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "- ### Overview\n  - **[Emerging signal]** A world where AI displaces 8 million workers may be harder to handle socially and economically than a world where it displaces 80 million, because limited displacement does not force a wholesale economic restructuring. *(Source: Ezra Klein, via AI Daily Brief, 2026-08-24)*",
+      "content": "- ### Recent Developments\n  - **Public Perception & Sentiment**\n    - A Quinnipiac poll found that 70% of Americans believe AI will reduce job opportunities, while only 7% believe it will increase them, creating a 10-to-1 ratio. *(Source: Quinnipiac University, confidence 0.95)*\n    - A YouGov study similarly found that 63% of Americans think AI will lead to a decrease in the number of jobs available in the US, compared to 7% who think it will increase jobs. *(Source: YouGov, confidence 0.95)*\n    - The AI Daily Brief host identifies 'job displacement' as the biggest, most broad-based, and politically significant category of anti-AI sentiment, surpassing existential risk or technical skepticism. *(Source: AI Daily Brief Host, confidence 0.8)*\n  - **Workforce Vulnerability & Adaptive Capacity (NBER Study)**\n    - A National Bureau of Economic Research study analyzed approximately 350 jobs representing about 96% of American employment to create its composite measure of adaptive capacity. *(Source: NBER, confidence 0.92)*\n    - The study found that 6.1 million US workers face both high exposure to AI disruption and low adaptive capacity for job transitions. *(Source: NBER, confidence 0.95)*\n    - Among this high-vulnerability, low-adaptive-capacity group, 86% are women. *(Source: NBER, confidence 0.95)*\n    - Conversely, 26.5 million US workers have high AI exposure but also high adaptive capacity, including occupations like software developers, financial managers, and lawyers. *(Source: NBER, confidence 0.95)*\n    - Vulnerability to AI disruption with low adaptive capacity is geographically concentrated in college towns and state capitals, with places like Laramie, Wyoming, and Carson City, Nevada, having 5 to 7% of their local workforce in this high-vulnerability category. *(Source: NBER, confidence 0.9)*\n  - **Corporate & Professional Perspectives**\n    - Sam Altman expressed skepticism about AI-driven job loss, suggesting that some layoffs are 'AI washing' where companies blame AI for cuts they would have made anyway, while acknowledging some real displacement exists. *(Source: Sam Altman, confidence 0.9)*\n    - In AI usage surveys conducted between January and March 2026, 'cost savings' was not listed as a primary benefit, while 'new capabilities' rose from 21.9% to 29.3% as the primary benefit. *(Source: AI Daily Brief Host, confidence 0.8)*\n    - An Anthropic study found that jobs and economy concerns represented 22.3% of worries, ranking second after unreliability. *(Source: Anthropic, confidence 0.95)*\n    - Professionals in the general workforce generally prefer to preserve tasks that define their professional identity while delegating routine work to AI, envisioning a future where they oversee AI systems. *(Source: Anthropic, confidence 0.85)*"
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 2.0,
+    "rubric_b_improvement": 2.0,
+    "raw_a": {
+      "factual_grounding": 2,
+      "relevance": 3,
+      "coherence": 4,
+      "better_version": "A",
+      "improvement": -2
+    },
+    "raw_b": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "861c58dfea99d1c8",
+        "claim": "According to the Quinnipiac poll, 70% of Americans believe AI will reduce job opportunities, while only 7% believe it wi",
+        "matched": true
+      },
+      {
+        "fp": "24b9fc26752b5194",
+        "claim": "In AI usage surveys conducted between January and March 2026, 'cost savings' was not listed as a primary benefit, while ",
+        "matched": true
+      },
+      {
+        "fp": "97a3dcd06eeb66e3",
+        "claim": "A YouGov study found that 63% of Americans think AI will lead to a decrease in the number of jobs available in the US, c",
+        "matched": true
+      },
+      {
+        "fp": "295412ee6bfb4a45",
+        "claim": "The host identifies 'job displacement' as the biggest, most broad-based, and politically significant category of anti-AI",
+        "matched": true
+      },
+      {
+        "fp": "6be27b91a035132f",
+        "claim": "Sam Altman expressed skepticism about AI-driven job loss, suggesting that some layoffs are 'AI washing' where companies ",
+        "matched": true
+      },
+      {
+        "fp": "3a64e391a217ad39",
+        "claim": "Professionals in the general workforce generally prefer to preserve tasks that define their professional identity while ",
+        "matched": true
+      },
+      {
+        "fp": "23a0c0c58e42c440",
+        "claim": "Jobs and economy concerns represented 22.3% of worries in the Anthropic study, ranking second after unreliability.",
+        "matched": true
+      },
+      {
+        "fp": "6770802587eaa3dd",
+        "claim": "A National Bureau of Economic Research study found that 6.1 million US workers face both high exposure to AI disruption ",
+        "matched": true
+      },
+      {
+        "fp": "f4a08c68cd746a4f",
+        "claim": "86% of the US workers identified as having high AI exposure and low adaptive capacity are women.",
+        "matched": true
+      },
+      {
+        "fp": "9d0ec91498278de5",
+        "claim": "The NBER study identified that 26.5 million US workers have high AI exposure but also high adaptive capacity, including ",
+        "matched": true
+      },
+      {
+        "fp": "449b86ebae489e3a",
+        "claim": "The NBER study analyzed approximately 350 jobs representing about 96% of American employment to create its composite mea",
+        "matched": true
+      },
+      {
+        "fp": "75b445ca6243720e",
+        "claim": "Vulnerability to AI disruption with low adaptive capacity is geographically concentrated in college towns and state capi",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": {
+    "target_page": "AI Job Displacement.md",
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "- ### Overview\n  - **[Emerging signal]** A world where AI displaces 8 million workers may be harder to handle socially and economically than a world where it displaces 80 million, because limited displacement does not force a wholesale economic restructuring. *(Source: Ezra Klein, via AI Daily Brief, 2026-08-24)*",
+      "content": "- ### Recent Developments\n  - **Public Perception & Sentiment**\n    - A Quinnipiac poll found that 70% of Americans believe AI will reduce job opportunities, while only 7% believe it will increase them, creating a 10-to-1 ratio. *(Source: Quinnipiac University, confidence 0.95)*\n    - A YouGov study similarly found that 63% of Americans think AI will lead to a decrease in the number of jobs available in the US, compared to 7% who think it will increase jobs. *(Source: YouGov, confidence 0.95)*\n    - The AI Daily Brief host identifies 'job displacement' as the biggest, most broad-based, and politically significant category of anti-AI sentiment, surpassing existential risk or technical skepticism. *(Source: AI Daily Brief Host, confidence 0.8)*\n  - **Workforce Vulnerability & Adaptive Capacity (NBER Study)**\n    - A National Bureau of Economic Research study analyzed approximately 350 jobs representing about 96% of American employment to create its composite measure of adaptive capacity. *(Source: NBER, confidence 0.92)*\n    - The study found that 6.1 million US workers face both high exposure to AI disruption and low adaptive capacity for job transitions. *(Source: NBER, confidence 0.95)*\n    - Among this high-vulnerability, low-adaptive-capacity group, 86% are women. *(Source: NBER, confidence 0.95)*\n    - Conversely, 26.5 million US workers have high AI exposure but also high adaptive capacity, including occupations like software developers, financial managers, and lawyers. *(Source: NBER, confidence 0.95)*\n    - Vulnerability to AI disruption with low adaptive capacity is geographically concentrated in college towns and state capitals, with places like Laramie, Wyoming, and Carson City, Nevada, having 5 to 7% of their local workforce in this high-vulnerability category. *(Source: NBER, confidence 0.9)*\n  - **Corporate & Professional Perspectives**\n    - Sam Altman expressed skepticism about AI-driven job loss, suggesting that some layoffs are 'AI washing' where companies blame AI for cuts they would have made anyway, while acknowledging some real displacement exists. *(Source: Sam Altman, confidence 0.9)*\n    - In AI usage surveys conducted between January and March 2026, 'cost savings' was not listed as a primary benefit, while 'new capabilities' rose from 21.9% to 29.3% as the primary benefit. *(Source: AI Daily Brief Host, confidence 0.8)*\n    - An Anthropic study found that jobs and economy concerns represented 22.3% of worries, ranking second after unreliability. *(Source: Anthropic, confidence 0.95)*\n    - Professionals in the general workforce generally prefer to preserve tasks that define their professional identity while delegating routine work to AI, envisioning a future where they oversee AI systems. *(Source: Anthropic, confidence 0.85)*"
+    },
+    "provenance": {
+      "assertion_fingerprints": [
+        "23a0c0c58e42c440",
+        "24b9fc26752b5194",
+        "295412ee6bfb4a45",
+        "3a64e391a217ad39",
+        "449b86ebae489e3a",
+        "6770802587eaa3dd",
+        "6be27b91a035132f",
+        "75b445ca6243720e",
+        "861c58dfea99d1c8",
+        "97a3dcd06eeb66e3",
+        "9d0ec91498278de5",
+        "f4a08c68cd746a4f"
+      ],
+      "source_episodes": [
+        "openai-proposes-a-new-deal",
+        "the-ai-subsidy-era-is-over",
+        "the-anti-ai-movement",
+        "weird-vibes-at-ai-india-summit",
+        "what-1250-professionals-said-about-working-with-ai",
+        "what-people-really-want-from-ai",
+        "who-will-adapt-best-to-ai-disruption"
+      ]
+    },
+    "scores": {
+      "rubric_a_improvement": 2.0,
+      "rubric_b_improvement": 2.0,
+      "completeness": 1.0
+    }
+  }
+}

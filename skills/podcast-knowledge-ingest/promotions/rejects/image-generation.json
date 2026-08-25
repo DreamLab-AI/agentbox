@@ -1,0 +1,135 @@
+{
+  "topic": "Image Generation",
+  "topic_slug": "image-generation",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5"
+  ],
+  "n_assertions": 5,
+  "episodes": [
+    "nano-banana-2-is-here",
+    "openai-declares-code-red",
+    "the-5-biggest-ai-stories-to-watch-in-december"
+  ],
+  "assertion_fingerprints": [
+    "37b00544dd1184f5",
+    "50e90ffba5f610a1",
+    "7db54d9a503b02e8",
+    "88c748368c0c58b5",
+    "c94a2fcd2892d0dc"
+  ],
+  "target_page": "Image Generation.md",
+  "assertions": [
+    {
+      "claim": "Google's Nano Banana 2, formally known as Gemini 3.1 Flash Image, is priced at approximately half the cost of Nano Banana Pro and delivers outputs in seconds.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief host / Google release",
+      "episode": "nano-banana-2-is-here",
+      "claim_date": "2026-03-02",
+      "evidence": "The transcript states: 'Nano Banana 2 is around half the cost of Nano Banana Pro and delivers outputs in seconds.' It also notes the model is 'Gemini 3.1 Flash Image' and applies the 'cost and speed advantages of Google's flash models'.",
+      "fp": "88c748368c0c58b5"
+    },
+    {
+      "claim": "Nano Banana 2 supports the integration of up to five characters and 14 objects from source images and supports outputs up to 4K resolution.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief host / Google release",
+      "episode": "nano-banana-2-is-here",
+      "claim_date": "2026-03-02",
+      "evidence": "The transcript explicitly lists these professional-grade features: 'ability to integrate up to five characters and 14 objects from source images' and 'supports outputs up to 4K'.",
+      "fp": "c94a2fcd2892d0dc"
+    },
+    {
+      "claim": "VentureBeat argues that Nano Banana 2 represents the maturation of AI image generation from a creative novelty into a production-ready infrastructure component, driven by efficiency rather than pure capability.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "VentureBeat (reported by AI Daily Brief host)",
+      "episode": "nano-banana-2-is-here",
+      "claim_date": "2026-03-02",
+      "evidence": "The transcript quotes VentureBeat: 'Nano Banana 2 doesn't represent a generational leap in image generation quality. What it represents is the maturation of AI image generation from a creative novelty into a production-ready infrastructure component.'",
+      "fp": "50e90ffba5f610a1"
+    },
+    {
+      "claim": "OpenAI's next generation image generation model is a priority under the code red, but its development status remains unclear.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "The Information (reported by Sam Alman)",
+      "episode": "openai-declares-code-red",
+      "claim_date": "2025-12-03",
+      "evidence": "The transcript states, 'Altman said that other key priorities covered by the code red include the image generating AI... No mention on how far along their next version of image gen is.'",
+      "fp": "7db54d9a503b02e8"
+    },
+    {
+      "claim": "The host predicts that OpenAI will release an updated image generation model in December 2025 to match the native multimodality of Gemini 3.",
+      "tier": "3",
+      "confidence": "0.55",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-5-biggest-ai-stories-to-watch-in-december",
+      "claim_date": "2025-12-10",
+      "evidence": "The host states, 'I think if OpenAI has an updated image generation model, they will release it this month... my answer would be yes,' citing the utility of integrated image generation in Gemini 3.",
+      "fp": "37b00544dd1184f5"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - ## Runway Gen 3\n  - [Introducing Gen-3 Alpha: A New Frontier for Video Generation (runwayml.com)](https://runwayml.com/blog/introducing-gen-3-alpha/)",
+      "content": "\n\n  - ## Recent Developments\n  - **Google Nano Banana 2 (Gemini 3.1 Flash Image)**\n    - Priced at approximately half the cost of Nano Banana Pro, with outputs delivered in seconds, leveraging the cost and speed advantages of Google's flash models.\n    - Supports the integration of up to five characters and 14 objects from source images.\n    - Supports outputs up to 4K resolution.\n    - VentureBeat argues that Nano Banana 2 represents the maturation of AI image generation from a creative novelty into a production-ready infrastructure component, driven by efficiency rather than pure capability.\n  - **OpenAI Image Generation**\n    - OpenAI's next generation image generation model is a priority under the company's \"code red,\" though its development status remains unclear.\n    - Predictions suggest OpenAI may release an updated image generation model in December 2025 to match the native multimodality of Gemini 3."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 1,
+      "relevance": 3,
+      "coherence": 4,
+      "better_version": "A",
+      "improvement": -2
+    },
+    "raw_b": {
+      "factual_grounding": 1,
+      "relevance": 2,
+      "coherence": 3,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "88c748368c0c58b5",
+        "claim": "Google's Nano Banana 2, formally known as Gemini 3.1 Flash Image, is priced at approximately half the cost of Nano Banan",
+        "matched": true
+      },
+      {
+        "fp": "c94a2fcd2892d0dc",
+        "claim": "Nano Banana 2 supports the integration of up to five characters and 14 objects from source images and supports outputs u",
+        "matched": true
+      },
+      {
+        "fp": "50e90ffba5f610a1",
+        "claim": "VentureBeat argues that Nano Banana 2 represents the maturation of AI image generation from a creative novelty into a pr",
+        "matched": true
+      },
+      {
+        "fp": "7db54d9a503b02e8",
+        "claim": "OpenAI's next generation image generation model is a priority under the code red, but its development status remains unc",
+        "matched": true
+      },
+      {
+        "fp": "37b00544dd1184f5",
+        "claim": "The host predicts that OpenAI will release an updated image generation model in December 2025 to match the native multim",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

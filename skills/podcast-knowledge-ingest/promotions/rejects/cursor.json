@@ -1,0 +1,272 @@
+{
+  "topic": "Cursor",
+  "topic_slug": "cursor",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5"
+  ],
+  "n_assertions": 14,
+  "episodes": [
+    "harness-engineering-101",
+    "how-the-4-new-models-released-this-week-will-change-how-you-work",
+    "meta-delays-new-ai-model",
+    "ralph-wiggum-clawdbot-and-mac-minis-how-pros-are-vibe-coding-in-2026",
+    "the-biggest-unlocks-of-gpt-images-2",
+    "white-hot-cursor-doubles-revenue"
+  ],
+  "assertion_fingerprints": [
+    "116d7618b980dd74",
+    "39c4c6600691570c",
+    "455e19a678373508",
+    "5ef89b55805dec37",
+    "5fe751cbd3da4b30",
+    "6aeb3a25164453cc",
+    "7567db9c39663513",
+    "94a28af9db5d25d0",
+    "96f3a8c1ab764d7f",
+    "a225ee0a9a9e6675",
+    "cddc2bfdcd397b53",
+    "e092194657b7653a",
+    "f34315e8b8137846",
+    "fd8de3bd5c88177a"
+  ],
+  "target_page": "Cursor.md",
+  "assertions": [
+    {
+      "claim": "Cursor 3 was launched in early April 2025 as a unified workspace for building software with agents, featuring multi-repo layouts and seamless handoff between local and cloud agents.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Cursor / AI Daily Brief Host",
+      "episode": "harness-engineering-101",
+      "claim_date": "2026-04-15",
+      "evidence": "The transcript cites Cursor's announcement: 'We're introducing Cursor 3, a unified workspace for building software with agents... It's faster, cleaner, and more powerful with a multi-repo layout, seamless handoff between local and cloud agents.'",
+      "fp": "5fe751cbd3da4b30"
+    },
+    {
+      "claim": "xAI's Grock 4.5 is the first model resulting from the collaboration between xAI and Cursor, specifically trained for coding and agentic engineering tasks.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "xAI / Cursor / AI Daily Brief Host",
+      "episode": "how-the-4-new-models-released-this-week-will-change-how-you-work",
+      "claim_date": "2026-07-10",
+      "evidence": "The transcript identifies Grock 4.5 as 'the first output of the new collaboration between SpaceX and Cursor' and states xAI called it 'their first model trained specifically for coding and agents.'",
+      "fp": "f34315e8b8137846"
+    },
+    {
+      "claim": "xAI has hired Andrew Milich and Jason Ginsburg, former heads of product for engineering at Cursor, to report directly to Elon Musk.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "The Information",
+      "episode": "meta-delays-new-ai-model",
+      "claim_date": "2026-03-16",
+      "evidence": "The transcript states, 'Sources speaking with The Information say that Andrew Milich and Jason Ginsburg have joined xAI and will report directly to Elon Musk.'",
+      "fp": "39c4c6600691570c"
+    },
+    {
+      "claim": "Cursor is in talks for a new funding round at a $50 billion valuation, nearly doubling its previous $29.3 billion valuation.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Bloomberg",
+      "episode": "meta-delays-new-ai-model",
+      "claim_date": "2026-03-16",
+      "evidence": "The transcript reports, 'Bloomberg reports that Cursor is in talks for a new funding round that would almost double their valuation. Cursor's last round in November brought in 2.3 billion at a $29.3 billion valuation.'",
+      "fp": "94a28af9db5d25d0"
+    },
+    {
+      "claim": "Cursor CEO Michael Truelove has positioned the company in a 'wartime' state, focusing on automated coding tools and training its own state-of-the-art models to reduce dependency on other labs.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "Michael Truelove",
+      "episode": "meta-delays-new-ai-model",
+      "claim_date": "2026-03-16",
+      "evidence": "The transcript notes, 'CEO Michael Truelove is positioning the company... for Cursor, it is, in his words, wartime. That means a product overhaul to focus on automated coding tools, as well as an ambitious project to train their own state-of-the-art models.'",
+      "fp": "fd8de3bd5c88177a"
+    },
+    {
+      "claim": "Cursor built a browser using GPT 5.2 that ran uninterrupted for one week, resulting in over 3 million lines of code across thousands of files.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Michael Troll (Cursor CEO)",
+      "episode": "ralph-wiggum-clawdbot-and-mac-minis-how-pros-are-vibe-coding-in-2026",
+      "claim_date": "2026-01-26",
+      "evidence": "The host quotes Michael Troll: 'we built a browser with GPT 5.2 in Cursor. It ran uninterrupted for one week. It's 3 million plus lines of code across thousands of files.'",
+      "fp": "7567db9c39663513"
+    },
+    {
+      "claim": "In Cursor's multi-agent experiment, a flat coordination structure caused 20 agents to slow down to the effective throughput of two or three due to locking mechanisms.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Cursor Blog",
+      "episode": "ralph-wiggum-clawdbot-and-mac-minis-how-pros-are-vibe-coding-in-2026",
+      "claim_date": "2026-01-26",
+      "evidence": "The host reports: 'The locking mechanism they implemented... ended up becoming a bottleneck. As they put it, 20 agents would slow down to the effective throughput of two or three with most time spent waiting.'",
+      "fp": "455e19a678373508"
+    },
+    {
+      "claim": "Cursor implemented a hierarchical pipeline with 'planner' and 'worker' agents to solve coordination problems, allowing scaling to very large projects without single-agent tunnel vision.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Cursor Blog",
+      "episode": "ralph-wiggum-clawdbot-and-mac-minis-how-pros-are-vibe-coding-in-2026",
+      "claim_date": "2026-01-26",
+      "evidence": "The host explains: 'They created a pipeline where a subset of agents called planners would continuously explore the codebase and create tasks and workers would pick up those tasks... This, they said, solved most of our coordination problems.'",
+      "fp": "5ef89b55805dec37"
+    },
+    {
+      "claim": "SpaceX has been granted the rights to acquire Cursor at a $60 billion valuation, with a $10 billion payment for collaborative work if the acquisition does not proceed.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "SpaceX announcement on X",
+      "episode": "the-biggest-unlocks-of-gpt-images-2",
+      "claim_date": "2026-04-23",
+      "evidence": "The post also announced, and obviously this is the part that everyone focused on, that SpaceX had been granted the rights to acquire Cursor at a $60 billion valuation later this year. And if the acquisition doesn't go through, SpaceX will pay Cursor $10 billion for their collaborative work.",
+      "fp": "96f3a8c1ab764d7f"
+    },
+    {
+      "claim": "Cursor has been operating at a loss on every Claude and OpenAI token served, driving the company to develop an in-house state-of-the-art model and seek additional compute resources.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "AI Daily Brief Host",
+      "episode": "the-biggest-unlocks-of-gpt-images-2",
+      "claim_date": "2026-04-23",
+      "evidence": "Reports have suggested that they are making a loss on every Claude and Open AI token they serve, so much of this year has been focused on developing a state-of-the-art in-house model. And of course, beyond just the training runs, Cursor will need access to a ton of additional compute as they scale up revenue.",
+      "fp": "e092194657b7653a"
+    },
+    {
+      "claim": "The partnership between SpaceX and Cursor is strategically beneficial for XAI because Cursor provides a data pipeline and product distribution that can help XAI catch up in the AI coding space and generate revenue.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "AI Daily Brief Host",
+      "episode": "the-biggest-unlocks-of-gpt-images-2",
+      "claim_date": "2026-04-23",
+      "evidence": "Cursor would provide a huge data pipeline to help XAI catch up. A joint Cursor XAI coding model could be exactly the kind of product that could help return XAI to relevancy. XAI has already taken a look under the hood at Cursor with Musk poaching two senior engineering leaders last month.",
+      "fp": "cddc2bfdcd397b53"
+    },
+    {
+      "claim": "Cursor surpassed $2 billion in annual recurring revenue (ARR) in February 2026, doubling its revenue in three months.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Bloomberg",
+      "episode": "white-hot-cursor-doubles-revenue",
+      "claim_date": "2026-03-05",
+      "evidence": "Sources tell Bloomberg that Cursor surpassed 2 billion in ARR for February, doubling in 3 months.",
+      "fp": "a225ee0a9a9e6675"
+    },
+    {
+      "claim": "60% of Cursor's revenue is derived from corporate customers, with growth driven by new sign-ups and existing customers adding seats.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Bloomberg",
+      "episode": "white-hot-cursor-doubles-revenue",
+      "claim_date": "2026-03-05",
+      "evidence": "Their source said that 60% of Cursor revenue is coming from corporate customers with a rise in both new company sign-ups and existing customers adding more seats.",
+      "fp": "6aeb3a25164453cc"
+    },
+    {
+      "claim": "Cursor is particularly well-suited for large codebases shared across many engineers, offering distinct advantages over Claude Code in certain enterprise contexts.",
+      "tier": "2",
+      "confidence": "0.7",
+      "source": "Job van der Voort (Promote)",
+      "episode": "white-hot-cursor-doubles-revenue",
+      "claim_date": "2026-03-05",
+      "evidence": "Job van der Voort, the CEO of talent startup Promote, also noted that there's actually some meaningful differences between Cursor and Claude Code in the enterprise, commenting, 'Cursor is amazing for large code bases shared across many engineers.'",
+      "fp": "116d7618b980dd74"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  ## Current Landscape (2026)",
+      "content": "  ## Recent Developments (2026)\n    Recent disclosures and product announcements have significantly altered the strategic landscape for Cursor, introducing major corporate partnerships, new funding milestones, and internal engineering insights.\n\n    - **SpaceX Acquisition Rights and xAI Collaboration**: In a major strategic shift, SpaceX has been granted the rights to acquire Cursor at a $60 billion valuation. The agreement includes a provision that if the acquisition does not proceed, SpaceX will pay Cursor $10 billion for collaborative work. This partnership is strategically beneficial for xAI, as Cursor provides a critical data pipeline and product distribution channel to help xAI catch up in the AI coding space. The first tangible output of this collaboration is xAI's Grock 4.5, described as the first model trained specifically for coding and agentic engineering tasks. To further integrate the teams, xAI has hired Andrew Milich and Jason Ginsburg, former heads of product for engineering at Cursor, to report directly to Elon Musk.\n    - **Revenue and Valuation Milestones**: Cursor surpassed $2 billion in annual recurring revenue (ARR) in February 2026, effectively doubling its revenue in just three months. This growth is driven significantly by the enterprise sector, with 60% of Cursor's revenue now derived from corporate customers, fueled by both new sign-ups and existing customers adding seats. Concurrently, Cursor is in talks for a new funding round at a $50 billion valuation, nearly doubling its previous $29.3 billion valuation from the November 2025 Series D.\n    - **Cursor 3 Launch**: In early April 2025, Cursor launched Cursor 3, a unified workspace for building software with agents. The release featured a multi-repo layout and seamless handoff between local and cloud agents, positioning the product as a faster, cleaner, and more powerful environment for agentic development.\n    - **Multi-Agent Engineering Insights**: Cursor shared internal findings from its multi-agent experiments, noting that a flat coordination structure caused 20 agents to slow down to the effective throughput of two or three due to locking mechanisms. To solve this, the team implemented a hierarchical pipeline with 'planner' and 'worker' agents, where planners continuously explore the codebase and create tasks for workers to execute. This architecture solved most coordination problems and enabled scaling to very large projects without single-agent tunnel vision.\n    - **Strategic Positioning**: CEO Michael Truell (referred to as Michael Truelove in some transcripts) has positioned the company in a 'wartime' state. This focus involves a product overhaul centered on automated coding tools and an ambitious project to train Cursor's own state-of-the-art models, aiming to reduce dependency on external labs.\n    - **Autonomous Coding Scale**: Demonstrating the capabilities of its agentic infrastructure, Cursor built a browser using GPT 5.2 that ran uninterrupted for one week. The resulting codebase comprised over 3 million lines of code across thousands of files, highlighting the potential for long-horizon autonomous software generation.\n\n  ## Current Landscape (2026)"
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 3,
+      "relevance": 5,
+      "coherence": 4,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 1,
+      "relevance": 3,
+      "coherence": 2,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "7567db9c39663513",
+        "claim": "Cursor built a browser using GPT 5.2 that ran uninterrupted for one week, resulting in over 3 million lines of code acro",
+        "matched": true
+      },
+      {
+        "fp": "a225ee0a9a9e6675",
+        "claim": "Cursor surpassed $2 billion in annual recurring revenue (ARR) in February 2026, doubling its revenue in three months.",
+        "matched": true
+      },
+      {
+        "fp": "39c4c6600691570c",
+        "claim": "xAI has hired Andrew Milich and Jason Ginsburg, former heads of product for engineering at Cursor, to report directly to",
+        "matched": true
+      },
+      {
+        "fp": "5fe751cbd3da4b30",
+        "claim": "Cursor 3 was launched in early April 2025 as a unified workspace for building software with agents, featuring multi-repo",
+        "matched": true
+      },
+      {
+        "fp": "96f3a8c1ab764d7f",
+        "claim": "SpaceX has been granted the rights to acquire Cursor at a $60 billion valuation, with a $10 billion payment for collabor",
+        "matched": true
+      },
+      {
+        "fp": "f34315e8b8137846",
+        "claim": "xAI's Grock 4.5 is the first model resulting from the collaboration between xAI and Cursor, specifically trained for cod",
+        "matched": true
+      },
+      {
+        "fp": "455e19a678373508",
+        "claim": "In Cursor's multi-agent experiment, a flat coordination structure caused 20 agents to slow down to the effective through",
+        "matched": true
+      },
+      {
+        "fp": "5ef89b55805dec37",
+        "claim": "Cursor implemented a hierarchical pipeline with 'planner' and 'worker' agents to solve coordination problems, allowing s",
+        "matched": true
+      },
+      {
+        "fp": "6aeb3a25164453cc",
+        "claim": "60% of Cursor's revenue is derived from corporate customers, with growth driven by new sign-ups and existing customers a",
+        "matched": true
+      },
+      {
+        "fp": "94a28af9db5d25d0",
+        "claim": "Cursor is in talks for a new funding round at a $50 billion valuation, nearly doubling its previous $29.3 billion valuat",
+        "matched": true
+      },
+      {
+        "fp": "fd8de3bd5c88177a",
+        "claim": "Cursor CEO Michael Truelove has positioned the company in a 'wartime' state, focusing on automated coding tools and trai",
+        "matched": true
+      },
+      {
+        "fp": "cddc2bfdcd397b53",
+        "claim": "The partnership between SpaceX and Cursor is strategically beneficial for XAI because Cursor provides a data pipeline an",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

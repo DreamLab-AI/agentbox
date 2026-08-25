@@ -1,0 +1,194 @@
+{
+  "topic": "ai-application",
+  "topic_slug": "ai-application",
+  "status": "candidate_survivor",
+  "reasons": [],
+  "n_assertions": 7,
+  "episodes": [
+    "gemini-3-launches-heres-everything-you-need-to-know",
+    "gpt-54-first-test-results",
+    "how-big-is-the-ai-economy",
+    "how-people-are-using-ai-for-health"
+  ],
+  "assertion_fingerprints": [
+    "29597e91e5971b41",
+    "4111299bde106992",
+    "468198df8844e005",
+    "6559b387530602a3",
+    "7b76fca36df184fd",
+    "98dacfd04b44d37e",
+    "a55bec223cbc309b"
+  ],
+  "target_page": "ai-application.md",
+  "assertions": [
+    {
+      "claim": "Google's Gemini app reached 650 million monthly active users and 13 million developers have built with their models as of the Gemini 3 launch.",
+      "tier": "1",
+      "confidence": "0.98",
+      "source": "Google (Sundar Pichai announcement)",
+      "episode": "gemini-3-launches-heres-everything-you-need-to-know",
+      "claim_date": "2025-11-18",
+      "evidence": "The transcript states: 'The Gemini app is now up to 650 million users per month. That's about 50 million more than last we heard. And Sundar also said that 13 million developers have now built with their models.'",
+      "fp": "a55bec223cbc309b"
+    },
+    {
+      "claim": "Google released 'Anti-gravity,' a new agentic development platform (IDE) that allows AI agents to autonomously plan and execute software tasks while directly accessing the editor, terminal, and browser.",
+      "tier": "1",
+      "confidence": "0.98",
+      "source": "Google (Logan Kilpatrick / Josh Woodward)",
+      "episode": "gemini-3-launches-heres-everything-you-need-to-know",
+      "claim_date": "2025-11-18",
+      "evidence": "The transcript describes the launch: 'Today, we're releasing Google Anti-gravity, our new agentic development platform... its agents have been elevated to a dedicated surface and given direct access to the editor, terminal, and browser.'",
+      "fp": "98dacfd04b44d37e"
+    },
+    {
+      "claim": "Google's 'Anti-gravity' IDE represents a strategic shift in the developer tooling market, potentially challenging established competitors like Cursor by integrating browser control and autonomous agent planning directly into the development workflow.",
+      "tier": "3",
+      "confidence": "0.7",
+      "source": "AI Daily Brief Host / Max Weinbach",
+      "episode": "gemini-3-launches-heres-everything-you-need-to-know",
+      "claim_date": "2025-11-18",
+      "evidence": "The host asks: 'So, is this the end for Cursor?' Max Weinbach reports: 'The anti-gravity IDE from Google is my favorite one now... it's been outperforming cursor and Windsor for me.'",
+      "fp": "6559b387530602a3"
+    },
+    {
+      "claim": "The skill set of 'agent building and orchestration' is emerging as a distinct, in-demand professional competency that is difficult to describe or evaluate using traditional technical metrics.",
+      "tier": "3",
+      "confidence": "0.7",
+      "source": "Host (Matt Schmidt)",
+      "episode": "gpt-54-first-test-results",
+      "claim_date": "2026-03-06",
+      "evidence": "I've been recognizing around that is that this new skill set of agent building and agent orchestration is going to be more and more in demand from all sorts of different types of organizations. However, it is really this new types of skill set. It's not easy to describe necessarily... The people who are going to be hiring or contracting for it aren't necessarily going to be really easily able to describe exactly even what they're looking for.",
+      "fp": "7b76fca36df184fd"
+    },
+    {
+      "claim": "Value in the AI economy is shifting up the stack, with the percentage of AI revenue from the app and model layer increasing almost 3x over the last year.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Exponential View (State of the AI Economy report)",
+      "episode": "how-big-is-the-ai-economy",
+      "claim_date": "2026-06-30",
+      "evidence": "While revenue remains concentrated around chips, the report notes that hosting and foundation model revenues are rising, and app revenue (e.g., from Cursor) is beginning to show up significantly.",
+      "fp": "29597e91e5971b41"
+    },
+    {
+      "claim": "The launch of ChatGPT Health is expected to render many existing AI health startups redundant by consolidating triage, nutrition, fitness, and mental health services into a single platform.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Deep Kumar (industry observer)",
+      "episode": "how-people-are-using-ai-for-health",
+      "claim_date": "2026-01-10",
+      "evidence": "The transcript quotes Deep Kumar: 'Most of them will become redundant once this gets adoption. Your medical triaging, nutrition, fitness training, rehab, mental health, all in one place.'",
+      "fp": "468198df8844e005"
+    },
+    {
+      "claim": "AI will not replace critical healthcare services like hospitals or OB units but will serve as a near-term bridge to help underserved populations navigate access gaps and reduce clinician burnout.",
+      "tier": "3",
+      "confidence": "0.7",
+      "source": "OpenAI report 'AI as a healthcare ally'",
+      "episode": "how-people-are-using-ai-for-health",
+      "claim_date": "2026-01-10",
+      "evidence": "The transcript quotes the report: 'AI, they write, will not on its own reopen a shuttered hospital... But it can make a near-term contribution by helping people in underserved areas interpret information, prepare for care, and navigate gaps in access.'",
+      "fp": "4111299bde106992"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "The category is closely coupled to AI infrastructure (the compute and serving platforms enabling deployment) and AI safety (the governance constraints on what applications may do).",
+      "content": "\n\n### Recent Developments\n\n*   **Gemini Scale and Developer Adoption:** As of the Gemini 3 launch, Google's Gemini app reached 650 million monthly active users, an increase of approximately 50 million from previous reports. Additionally, 13 million developers have built applications using Google's models [source: Google (Sundar Pichai announcement), confidence 0.98, tier 1].\n*   **Agentic Development Platforms:** Google released \"Anti-gravity,\" a new agentic development platform (IDE) that enables AI agents to autonomously plan and execute software tasks with direct access to the editor, terminal, and browser. This launch represents a strategic shift in developer tooling, potentially challenging established competitors like Cursor by integrating browser control and autonomous agent planning directly into the workflow [source: Google (Logan Kilpatrick / Josh Woodward), confidence 0.98, tier 1; AI Daily Brief Host / Max Weinbach, confidence 0.7, tier 3].\n*   **Emerging Competencies:** \"Agent building and orchestration\" is emerging as a distinct, in-demand professional competency. This skill set is difficult to describe or evaluate using traditional technical metrics, creating challenges for organizations seeking to hire or contract for these roles [source: Host (Matt Schmidt), confidence 0.7, tier 3].\n*   **Economic Value Shift:** Value in the AI economy is shifting up the stack, with the percentage of AI revenue from the app and model layer increasing almost 3x over the last year. While revenue remains concentrated around chips, hosting, foundation model, and app-layer revenues (e.g., from Cursor) are rising significantly [source: Exponential View (State of the AI Economy report), confidence 0.8, tier 2].\n*   **Healthcare AI Consolidation:** The launch of ChatGPT Health is expected to render many existing AI health startups redundant by consolidating triage, nutrition, fitness, and mental health services into a single platform. However, AI is not expected to replace critical healthcare services like hospitals or OB units; instead, it serves as a near-term bridge to help underserved populations navigate access gaps and reduce clinician burnout [source: Deep Kumar (industry observer), confidence 0.8, tier 2; OpenAI report 'AI as a healthcare ally', confidence 0.7, tier 3]."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 2.0,
+    "rubric_b_improvement": 2.0,
+    "raw_a": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "a55bec223cbc309b",
+        "claim": "Google's Gemini app reached 650 million monthly active users and 13 million developers have built with their models as o",
+        "matched": true
+      },
+      {
+        "fp": "98dacfd04b44d37e",
+        "claim": "Google released 'Anti-gravity,' a new agentic development platform (IDE) that allows AI agents to autonomously plan and ",
+        "matched": true
+      },
+      {
+        "fp": "6559b387530602a3",
+        "claim": "Google's 'Anti-gravity' IDE represents a strategic shift in the developer tooling market, potentially challenging establ",
+        "matched": true
+      },
+      {
+        "fp": "7b76fca36df184fd",
+        "claim": "The skill set of 'agent building and orchestration' is emerging as a distinct, in-demand professional competency that is",
+        "matched": true
+      },
+      {
+        "fp": "29597e91e5971b41",
+        "claim": "Value in the AI economy is shifting up the stack, with the percentage of AI revenue from the app and model layer increas",
+        "matched": true
+      },
+      {
+        "fp": "468198df8844e005",
+        "claim": "The launch of ChatGPT Health is expected to render many existing AI health startups redundant by consolidating triage, n",
+        "matched": true
+      },
+      {
+        "fp": "4111299bde106992",
+        "claim": "AI will not replace critical healthcare services like hospitals or OB units but will serve as a near-term bridge to help",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": {
+    "target_page": "ai-application.md",
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "The category is closely coupled to AI infrastructure (the compute and serving platforms enabling deployment) and AI safety (the governance constraints on what applications may do).",
+      "content": "\n\n### Recent Developments\n\n*   **Gemini Scale and Developer Adoption:** As of the Gemini 3 launch, Google's Gemini app reached 650 million monthly active users, an increase of approximately 50 million from previous reports. Additionally, 13 million developers have built applications using Google's models [source: Google (Sundar Pichai announcement), confidence 0.98, tier 1].\n*   **Agentic Development Platforms:** Google released \"Anti-gravity,\" a new agentic development platform (IDE) that enables AI agents to autonomously plan and execute software tasks with direct access to the editor, terminal, and browser. This launch represents a strategic shift in developer tooling, potentially challenging established competitors like Cursor by integrating browser control and autonomous agent planning directly into the workflow [source: Google (Logan Kilpatrick / Josh Woodward), confidence 0.98, tier 1; AI Daily Brief Host / Max Weinbach, confidence 0.7, tier 3].\n*   **Emerging Competencies:** \"Agent building and orchestration\" is emerging as a distinct, in-demand professional competency. This skill set is difficult to describe or evaluate using traditional technical metrics, creating challenges for organizations seeking to hire or contract for these roles [source: Host (Matt Schmidt), confidence 0.7, tier 3].\n*   **Economic Value Shift:** Value in the AI economy is shifting up the stack, with the percentage of AI revenue from the app and model layer increasing almost 3x over the last year. While revenue remains concentrated around chips, hosting, foundation model, and app-layer revenues (e.g., from Cursor) are rising significantly [source: Exponential View (State of the AI Economy report), confidence 0.8, tier 2].\n*   **Healthcare AI Consolidation:** The launch of ChatGPT Health is expected to render many existing AI health startups redundant by consolidating triage, nutrition, fitness, and mental health services into a single platform. However, AI is not expected to replace critical healthcare services like hospitals or OB units; instead, it serves as a near-term bridge to help underserved populations navigate access gaps and reduce clinician burnout [source: Deep Kumar (industry observer), confidence 0.8, tier 2; OpenAI report 'AI as a healthcare ally', confidence 0.7, tier 3]."
+    },
+    "provenance": {
+      "assertion_fingerprints": [
+        "29597e91e5971b41",
+        "4111299bde106992",
+        "468198df8844e005",
+        "6559b387530602a3",
+        "7b76fca36df184fd",
+        "98dacfd04b44d37e",
+        "a55bec223cbc309b"
+      ],
+      "source_episodes": [
+        "gemini-3-launches-heres-everything-you-need-to-know",
+        "gpt-54-first-test-results",
+        "how-big-is-the-ai-economy",
+        "how-people-are-using-ai-for-health"
+      ]
+    },
+    "scores": {
+      "rubric_a_improvement": 2.0,
+      "rubric_b_improvement": 2.0,
+      "completeness": 1.0
+    }
+  }
+}

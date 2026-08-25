@@ -1,0 +1,219 @@
+{
+  "topic": "Token Economics",
+  "topic_slug": "token-economics",
+  "status": "candidate_rejected",
+  "reasons": [
+    "completeness 0.30 < 0.6"
+  ],
+  "n_assertions": 10,
+  "episodes": [
+    "beating-the-ai-doom-cycle",
+    "everything-you-need-to-know-about-ai-tokens",
+    "fable-5-raises-the-bar-for-ai-ambition",
+    "first-impressions-of-the-new-opus-48",
+    "how-a-30b-hedge-fund-implosion-will-effect-ai",
+    "how-the-escalating-ai-wars-benefit-you",
+    "the-next-wave-of-enterprise-ai",
+    "the-way-we-use-ai-is-changing"
+  ],
+  "assertion_fingerprints": [
+    "140844c5d6f21d30",
+    "2ece0ca02e0f5fed",
+    "5398af6a5335a0b0",
+    "54880e4134f077c4",
+    "7029093f150a349d",
+    "8848a28beba40d74",
+    "8ee9455a6d365f95",
+    "d895dd26a8fc5a52",
+    "fac5eb254c68a1d6",
+    "fcf655ad7c68f3f7"
+  ],
+  "target_page": "Token Economics.md",
+  "assertions": [
+    {
+      "claim": "GitHub Copilot users have reported that their usage-based billing costs would be significantly higher than their current flat-rate subscriptions, with one user estimating a jump from $451 to $11,432.22.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "GitHub Copilot Subreddit Users (cited by AI Daily Brief Host)",
+      "episode": "beating-the-ai-doom-cycle",
+      "claim_date": "2026-08-24",
+      "evidence": "The host cites specific user data: 'Marzipan9239... showed that while their current billing was $451, their usage based billing would be $11,432.22. Yusuke's current billing was 39, but their usage based billing would be $5,851.77.'",
+      "fp": "fac5eb254c68a1d6"
+    },
+    {
+      "claim": "Uber burned through its entire 2026 AI coding budget in approximately four months.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Nofar Gaspar",
+      "episode": "everything-you-need-to-know-about-ai-tokens",
+      "claim_date": "2026-08-04",
+      "evidence": "The host mentions, 'Uber launched also an adoption leaderboard and burned through the entire 2026 AI coding budget in about 4 months.'",
+      "fp": "7029093f150a349d"
+    },
+    {
+      "claim": "The industry is transitioning from a 'token maximizing' era to a 'token smart' era, where the focus shifts from raw usage volume to optimizing cost per accepted task and protecting 'tokens that teach.'",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Nofar Gaspar",
+      "episode": "everything-you-need-to-know-about-ai-tokens",
+      "claim_date": "2026-08-04",
+      "evidence": "The host argues, 'I want to direct all of us to be in and I call it the token smart era. Meaning that you need to spend wisely and not sparingly and understand what creates value and where usage quietly leaks.'",
+      "fp": "54880e4134f077c4"
+    },
+    {
+      "claim": "The industry is entering a 'token scarcity era' where users must become 'token efficiency optimizers' by matching specific use cases to appropriate model tiers to manage costs.",
+      "tier": "3",
+      "confidence": "0.7",
+      "source": "AI Daily Brief Host",
+      "episode": "fable-5-raises-the-bar-for-ai-ambition",
+      "claim_date": "2026-06-11",
+      "evidence": "The host predicts: 'In this paradigm of token efficiency, we as individuals are going to have to to some extent become token efficiency optimizers ourselves by understanding which use cases require different models.'",
+      "fp": "fcf655ad7c68f3f7"
+    },
+    {
+      "claim": "The AI industry is transitioning from a 'subsidy era' to a 'scarcity era' of token management, influencing corporate decisions to build internal AI platforms to control costs and data.",
+      "tier": "3",
+      "confidence": "0.55",
+      "source": "Host Analysis",
+      "episode": "first-impressions-of-the-new-opus-48",
+      "claim_date": "2026-05-30",
+      "evidence": "The host suggests that Kirkland's investment is partly driven by the emerging priority on token management as different arrangements between AI providers and consumers are negotiated. This is a forward-looking interpretation of current market dynamics.",
+      "fp": "d895dd26a8fc5a52"
+    },
+    {
+      "claim": "The current surge in AI revenue contradicts recent media narratives that corporate America is cutting back on AI spending, as most enterprises are still in the early stages of adoption with significant room for growth.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-a-30b-hedge-fund-implosion-will-effect-ai",
+      "claim_date": "2026-08-03",
+      "evidence": "The host argues that while some companies are optimizing token budgets, the vast majority of the user base is still on an upswing. The 'stopping spending' narrative is a misinterpretation of companies creating more complex AI usage architectures to manage future costs.",
+      "fp": "8848a28beba40d74"
+    },
+    {
+      "claim": "SemiAnalysis reports that the $200/month AI subscription tier currently provides approximately 8,000 max tokens from Anthropic and 14,000 max tokens from OpenAI.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "SemiAnalysis (reported by AI Daily Brief)",
+      "episode": "how-the-escalating-ai-wars-benefit-you",
+      "claim_date": "2026-07-14",
+      "evidence": "SemiAnalysis updated their understanding of token subsidies, finding that the $200/month tier is running at 8,000 in max tokens from Anthropic or a staggering 14,000 in tokens from OpenAI.",
+      "fp": "5398af6a5335a0b0"
+    },
+    {
+      "claim": "The cost of high-bandwidth memory for AI servers has more than doubled so far this year due to rapid growth in token use and AI supply chain shortages.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "AI Daily Brief host",
+      "episode": "the-next-wave-of-enterprise-ai",
+      "claim_date": "2026-06-04",
+      "evidence": "The transcript states: 'The cost of high-bandwidth memory for AI servers has more than doubled so far this year'",
+      "fp": "8ee9455a6d365f95"
+    },
+    {
+      "claim": "The second half of 2026 will be defined by the challenge of wrestling agentic AI opportunities into workable, cost-effective approaches, as the industry transitions from a subsidy era to a scarcity era of token usage.",
+      "tier": "3",
+      "confidence": "0.7",
+      "source": "AI Daily Brief host",
+      "episode": "the-next-wave-of-enterprise-ai",
+      "claim_date": "2026-06-04",
+      "evidence": "The host states: 'In different ways both OpenAI and Microsoft showed off big plays yesterday to those ends and I certainly don't anticipate that's the last we'll be hearing about. And it's very clear that the race for the next wave of enterprise AI adoption is fully on.'",
+      "fp": "140844c5d6f21d30"
+    },
+    {
+      "claim": "The 'token subsidy era' is ending, transitioning into a 'token scarcity era' where AI business models are shifting to charge for actual token consumption, fundamentally changing how value is captured and distributed.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "AI Daily Brief host",
+      "episode": "the-way-we-use-ai-is-changing",
+      "claim_date": "2026-06-09",
+      "evidence": "If you've been listening to this show at all over the last few weeks, the number one most dominant and most important theme has been the shift from the token subsidy era to the token scarcity era where the business models are all shifting to sell people the tokens that they're actually consuming.",
+      "fp": "2ece0ca02e0f5fed"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  ### Uniswap (UNI)\n  - Governance token with treasury control\n  - No direct fee accrual to holders\n  - Value from governance rights and potential fee switch",
+      "content": "\n\n  ## AI Token Economics & Compute Scarcity (2026)\n\n  The concept of \"token economics\" is expanding beyond blockchain into the AI infrastructure sector, where the unit of value is the computational token. In 2026, the industry is undergoing a structural shift from a \"token subsidy era\" to a \"token scarcity era,\" fundamentally altering how value is captured and distributed in AI business models.\n\n  ### The Shift to Usage-Based Scarcity\n  - **End of Subsidies**: AI providers are transitioning from flat-rate subscriptions to models that charge for actual token consumption, mirroring the supply-demand dynamics of blockchain networks.\n  - **Cost Volatility**: High-bandwidth memory (HBM) costs for AI servers have more than doubled in 2026 due to rapid token usage growth and supply chain shortages, directly impacting the marginal cost of token generation.\n  - **Corporate Response**: Enterprises are building internal AI platforms to control costs and data, acting as \"token efficiency optimizers\" who match specific use cases to appropriate model tiers.\n\n  ### Market Dynamics & User Impact\n  - **Billing Disparities**: Early adopters of usage-based billing report significant cost increases compared to flat-rate models. For example, GitHub Copilot users have estimated jumps from ~$450 to over $11,000 monthly, highlighting the risk of unoptimized token usage.\n  - **Budget Exhaustion**: High-volume users, such as Uber, have reported burning through annual AI coding budgets in as little as four months, necessitating a shift from \"token maximizing\" to \"token smart\" strategies.\n  - **Subscription Limits**: Current premium tiers (e.g., $200/month) provide limited token allowances (approx. 8,000\u201314,000 max tokens depending on provider), forcing users to prioritize high-value tasks.\n\n  ### Strategic Implications\n  - **Value Optimization**: The focus is shifting from raw usage volume to optimizing cost per accepted task and protecting \"tokens that teach\" (high-value training data).\n  - **Agentic AI Challenges**: The second half of 2026 is defined by the challenge of making agentic AI cost-effective, as autonomous agents consume tokens at rates that require rigorous economic governance.\n  - **Revenue Growth**: Despite cost optimization efforts, overall AI revenue continues to surge as the majority of enterprises remain in early adoption stages, indicating a long-term growth trajectory for token-based compute markets."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 2.0,
+    "rubric_b_improvement": 2.0,
+    "raw_a": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 4,
+      "relevance": 3,
+      "coherence": 4,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 0.3,
+    "detail": [
+      {
+        "fp": "fac5eb254c68a1d6",
+        "claim": "GitHub Copilot users have reported that their usage-based billing costs would be significantly higher than their current",
+        "matched": false
+      },
+      {
+        "fp": "7029093f150a349d",
+        "claim": "Uber burned through its entire 2026 AI coding budget in approximately four months.",
+        "matched": false
+      },
+      {
+        "fp": "54880e4134f077c4",
+        "claim": "The industry is transitioning from a 'token maximizing' era to a 'token smart' era, where the focus shifts from raw usag",
+        "matched": true
+      },
+      {
+        "fp": "fcf655ad7c68f3f7",
+        "claim": "The industry is entering a 'token scarcity era' where users must become 'token efficiency optimizers' by matching specif",
+        "matched": false
+      },
+      {
+        "fp": "d895dd26a8fc5a52",
+        "claim": "The AI industry is transitioning from a 'subsidy era' to a 'scarcity era' of token management, influencing corporate dec",
+        "matched": false
+      },
+      {
+        "fp": "8848a28beba40d74",
+        "claim": "The current surge in AI revenue contradicts recent media narratives that corporate America is cutting back on AI spendin",
+        "matched": false
+      },
+      {
+        "fp": "5398af6a5335a0b0",
+        "claim": "SemiAnalysis reports that the $200/month AI subscription tier currently provides approximately 8,000 max tokens from Ant",
+        "matched": false
+      },
+      {
+        "fp": "8ee9455a6d365f95",
+        "claim": "The cost of high-bandwidth memory for AI servers has more than doubled so far this year due to rapid growth in token use",
+        "matched": true
+      },
+      {
+        "fp": "140844c5d6f21d30",
+        "claim": "The second half of 2026 will be defined by the challenge of wrestling agentic AI opportunities into workable, cost-effec",
+        "matched": false
+      },
+      {
+        "fp": "2ece0ca02e0f5fed",
+        "claim": "The 'token subsidy era' is ending, transitioning into a 'token scarcity era' where AI business models are shifting to ch",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

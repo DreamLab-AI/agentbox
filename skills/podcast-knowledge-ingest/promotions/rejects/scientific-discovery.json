@@ -1,0 +1,149 @@
+{
+  "topic": "Scientific Discovery",
+  "topic_slug": "scientific-discovery",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0"
+  ],
+  "n_assertions": 6,
+  "episodes": [
+    "how-big-a-deal-is-the-usas-ai-genesis-mission",
+    "the-ai-scientist-that-does-6-months-of-work-in-a-day"
+  ],
+  "assertion_fingerprints": [
+    "6bdc5c24139c1bff",
+    "8539d2c23be5f2ed",
+    "9a7739bb1b513282",
+    "9c85a89fd10ed4a8",
+    "b128245fc9f2bc50",
+    "c8b17ce8f54d4a51"
+  ],
+  "target_page": "Scientific Discovery.md",
+  "assertions": [
+    {
+      "claim": "President Trump signed an executive order launching the 'Genesis mission,' a national AI science program described as comparable in urgency to the Manhattan Project.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "White House Executive Order / AI Daily Brief Host",
+      "episode": "how-big-a-deal-is-the-usas-ai-genesis-mission",
+      "claim_date": "2025-11-30",
+      "evidence": "The transcript states: 'President Trump has now officially signed an executive order to launch a national AI science program known as the Genesis mission.' The order argues the race for global tech dominance requires a 'historic national effort comparable in urgency and ambition to the Manhattan project.'",
+      "fp": "9c85a89fd10ed4a8"
+    },
+    {
+      "claim": "Edison Scientific announced an AI system called Cosmos that claims to perform work equivalent to six months of a PhD or postdoctoral scientist in a single run.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Edison Scientific (Sam Rodriguez, CEO)",
+      "episode": "the-ai-scientist-that-does-6-months-of-work-in-a-day",
+      "claim_date": "2025-11-18",
+      "evidence": "Sam Rodriguez stated: 'Users estimate Cosmos does 6 months of work in a single day.' The blog post adds: 'a single Cosmos run can accomplish work equivalent to 6 months of a PhD or post-docctoral scientist.'",
+      "fp": "8539d2c23be5f2ed"
+    },
+    {
+      "claim": "Cosmos has made seven discoveries so far, with three reproducing unpublished human findings and four being net new validated contributions to the scientific literature.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Edison Scientific (Sam Rodriguez, CEO)",
+      "episode": "the-ai-scientist-that-does-6-months-of-work-in-a-day",
+      "claim_date": "2025-11-18",
+      "evidence": "Sam Rodriguez stated: 'Cosmos has made seven discoveries so far... Three of the discoveries reproduced unpublished findings and four are net new validated contributions to the scientific literature.'",
+      "fp": "6bdc5c24139c1bff"
+    },
+    {
+      "claim": "Sam Altman of OpenAI expressed excitement about Cosmos, stating that AI-driven scientific discovery will be one of the most important aspects of AI.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "Sam Altman (OpenAI CEO)",
+      "episode": "the-ai-scientist-that-does-6-months-of-work-in-a-day",
+      "claim_date": "2025-11-18",
+      "evidence": "Sam Altman tweeted: 'This is exciting. I expect we're going to see a lot more things like this and it will be one of the most important aspects of AI. Congrats to the future house team.'",
+      "fp": "9a7739bb1b513282"
+    },
+    {
+      "claim": "Computational biologist Zachary Flamholtz reported that Cosmos understood his research question with the same nuance and scientific context as he did, leading him to reimagine his career.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Zachary Flamholtz (Computational Biologist)",
+      "episode": "the-ai-scientist-that-does-6-months-of-work-in-a-day",
+      "claim_date": "2025-11-18",
+      "evidence": "Flamholtz wrote: 'From the well structured discovery report, it was obvious that Cosmos understood my research question on par with my own understanding. This was new for me and AI tools... my experience with Cosmos is causing me to reimagine what my career will look like.'",
+      "fp": "b128245fc9f2bc50"
+    },
+    {
+      "claim": "AI-driven scientific discovery is likely to become a major focus of AI development, with increasing emphasis on autonomous and semi-autonomous research capabilities.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-ai-scientist-that-does-6-months-of-work-in-a-day",
+      "claim_date": "2025-11-18",
+      "evidence": "The host noted: 'I think that this will be a theme that we keep coming back to.' Sam Altman's comments and the launch of Cosmos suggest that scientific discovery is a key area of interest for major AI labs.",
+      "fp": "c8b17ce8f54d4a51"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "- ### Provenance",
+      "content": "- ### Recent Developments\n  - **Genesis Mission**: President Trump signed an executive order launching the 'Genesis mission,' a national AI science program described as comparable in urgency to the Manhattan Project. The order argues that the race for global tech dominance requires a 'historic national effort comparable in urgency and ambition to the Manhattan project.' [source: White House Executive Order / AI Daily Brief Host, confidence 0.95, tier 1]\n  - **Edison Scientific's Cosmos**: Edison Scientific announced an AI system called Cosmos that claims to perform work equivalent to six months of a PhD or postdoctoral scientist in a single run. CEO Sam Rodriguez stated, 'Users estimate Cosmos does 6 months of work in a single day.' [source: Edison Scientific (Sam Rodriguez, CEO), confidence 0.95, tier 1]\n  - **Cosmos Validation Results**: Cosmos has made seven discoveries so far, with three reproducing unpublished human findings and four being net new validated contributions to the scientific literature. [source: Edison Scientific (Sam Rodriguez, CEO), confidence 0.9, tier 1]\n  - **Industry Endorsement**: Sam Altman of OpenAI expressed excitement about Cosmos, stating that AI-driven scientific discovery will be one of the most important aspects of AI. [source: Sam Altman (OpenAI CEO), confidence 0.9, tier 2]\n  - **Researcher Impact**: Computational biologist Zachary Flamholtz reported that Cosmos understood his research question with the same nuance and scientific context as he did, leading him to reimagine his career. [source: Zachary Flamholtz (Computational Biologist), confidence 0.8, tier 2]\n  - **Future Trajectory**: AI-driven scientific discovery is likely to become a major focus of AI development, with increasing emphasis on autonomous and semi-autonomous research capabilities. [source: Host (AI Daily Brief), confidence 0.6, tier 3]\n\n- ### Provenance"
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 1.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 4,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "A",
+      "improvement": -1
+    },
+    "raw_b": {
+      "factual_grounding": 4,
+      "relevance": 4,
+      "coherence": 2,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "9c85a89fd10ed4a8",
+        "claim": "President Trump signed an executive order launching the 'Genesis mission,' a national AI science program described as co",
+        "matched": true
+      },
+      {
+        "fp": "8539d2c23be5f2ed",
+        "claim": "Edison Scientific announced an AI system called Cosmos that claims to perform work equivalent to six months of a PhD or ",
+        "matched": true
+      },
+      {
+        "fp": "6bdc5c24139c1bff",
+        "claim": "Cosmos has made seven discoveries so far, with three reproducing unpublished human findings and four being net new valid",
+        "matched": true
+      },
+      {
+        "fp": "9a7739bb1b513282",
+        "claim": "Sam Altman of OpenAI expressed excitement about Cosmos, stating that AI-driven scientific discovery will be one of the m",
+        "matched": true
+      },
+      {
+        "fp": "b128245fc9f2bc50",
+        "claim": "Computational biologist Zachary Flamholtz reported that Cosmos understood his research question with the same nuance and",
+        "matched": true
+      },
+      {
+        "fp": "c8b17ce8f54d4a51",
+        "claim": "AI-driven scientific discovery is likely to become a major focus of AI development, with increasing emphasis on autonomo",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

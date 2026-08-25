@@ -1,0 +1,451 @@
+{
+  "topic": "Enterprise AI Adoption",
+  "topic_slug": "enterprise-ai-adoption",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_a_improvement -1.0 < -0.5"
+  ],
+  "n_assertions": 29,
+  "episodes": [
+    "beating-the-ai-doom-cycle",
+    "can-open-models-solve-corporate-ai-washing",
+    "harness-engineering-101",
+    "how-to-learn-ai-with-ai",
+    "is-the-debate-over-anthropics-new-product-about-price-or-existential-dread",
+    "meta-delays-new-ai-model",
+    "the-10-biggest-ai-stories-of-2025",
+    "the-5-biggest-ai-stories-to-watch-in-december",
+    "the-big-questions-shaping-the-consumer-ai-battle",
+    "the-big-ways-ai-just-changed",
+    "the-final-ai-word-from-davos",
+    "the-most-important-ai-lesson-for-businesses-from-2025",
+    "the-new-ai-org-chart",
+    "the-next-wave-of-enterprise-ai",
+    "the-state-of-ai-q2-2026",
+    "the-state-of-enterprise-ai-the-state-of-enterprise-ai",
+    "weird-vibes-at-ai-india-summit",
+    "why-ceos-need-to-lead-ai-strategy",
+    "why-everyone-is-obsessed-with-claude-code",
+    "why-fable-5-is-the-most-controversial-ai-release-ever",
+    "your-company-doesnt-need-an-ai-strategy"
+  ],
+  "assertion_fingerprints": [
+    "014dce7389f220c5",
+    "140844c5d6f21d30",
+    "28e994f16f69572d",
+    "2c2a7b98021e10ac",
+    "491870ace13520a5",
+    "58de793127217103",
+    "5eac3c6b3d9658fb",
+    "74283132de1fe5d4",
+    "755c9ded2dd3779d",
+    "75add3c32e2b9ea4",
+    "7f2dac4aa87764da",
+    "84b63b4c806619f1",
+    "8df3e8125a98c4f2",
+    "94529d5c5249f12a",
+    "9949c60552b27e7e",
+    "a171b6a8b42ce8fc",
+    "a8a5e2e358a7bde9",
+    "ae576ff4cdb3e384",
+    "c2f494617ea3821b",
+    "cdf990d11bf5ccdb",
+    "cf16608c893078ff",
+    "d64fc610a9455126",
+    "d70679cbc494c65b",
+    "d871591e8469a958",
+    "df04eeaa78b5377a",
+    "f15a14d24cc61739",
+    "f160062e86ebec72",
+    "f5bff09605b13810",
+    "f8b0df4670fcc3a7"
+  ],
+  "target_page": "Enterprise AI Adoption.md",
+  "assertions": [
+    {
+      "claim": "Citadel CEO Ken Griffin reported that AI agents are completing high-level financial research tasks that previously took master's or PhD holders weeks or months in a matter of hours or days, resulting in a 15-25% productivity boost for the firm.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Ken Griffin (Citadel CEO)",
+      "episode": "beating-the-ai-doom-cycle",
+      "claim_date": "2026-08-24",
+      "evidence": "Griffin stated at a Stanford Business School discussion: 'work that we would usually do with people with master's and PhDs in finance over the course of weeks or months is being done by AI agents over the course of hours or days. He said the firm is seeing a 15 to 25% productivity boost.'",
+      "fp": "a171b6a8b42ce8fc"
+    },
+    {
+      "claim": "Enterprise AI adoption has shifted from counting use cases to addressing complex governance, cost provisioning, and model routing strategies, indicating a maturation of organizational AI capabilities.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "AI Daily Brief Host (based on KPMG Tech and Innovation Symposium)",
+      "episode": "can-open-models-solve-corporate-ai-washing",
+      "claim_date": "2026-08-05",
+      "evidence": "The host states: 'When I was there for their 2025 edition, we were still genuinely talking about things like the percentage of organizations that had one, two, or three AI use cases. This year we were talking about how organizations are handling the complex governance issues... and whether they should be looking into fine-tuning open-weights models.'",
+      "fp": "74283132de1fe5d4"
+    },
+    {
+      "claim": "Open-weights models will increasingly become a standard part of enterprise AI strategies, with companies developing specific policies for their use, fine-tuning, and integration alongside proprietary models.",
+      "tier": "3",
+      "confidence": "0.65",
+      "source": "AI Daily Brief Host",
+      "episode": "can-open-models-solve-corporate-ai-washing",
+      "claim_date": "2026-08-05",
+      "evidence": "The host notes: 'Just yesterday I saw a Forbes guest op-ed about why leaders should learn about open weight models... Increasingly we have companies that are offering access not only to cheaper models, but to the ability to customize and fine-tune them based on your organization's unique needs and data.'",
+      "fp": "75add3c32e2b9ea4"
+    },
+    {
+      "claim": "For enterprise leaders, harness engineering reframes AI adoption from selecting the best model to designing the best environment for agents to work in, as the model and tools are necessary but insufficient without the right environment.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "AI Daily Brief Host",
+      "episode": "harness-engineering-101",
+      "claim_date": "2026-04-15",
+      "evidence": "The host states: 'If you're an enterprise leader, the mental model matters because it reframes AI adoption from pick the best model to pick the best environment for agents to work in... The environment you put them in is going to determine the output quality.'",
+      "fp": "f160062e86ebec72"
+    },
+    {
+      "claim": "Tribe CEO Jaclyn Rice Nelson reported that while her non-technical team members used Claude Co-work to achieve previously impossible tasks, they often had to pair with engineers for hours to obtain the final output.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Jaclyn Rice Nelson (Tribe CEO)",
+      "episode": "how-to-learn-ai-with-ai",
+      "claim_date": "2026-02-14",
+      "evidence": "The host references a post by Jaclyn Rice Nelson where she describes her team's experience: \"many of the team had actually paired with engineers for hours to get the output that they eventually got.\"",
+      "fp": "84b63b4c806619f1"
+    },
+    {
+      "claim": "The host posits that AI inference costs are beginning to resemble labor costs rather than software costs, as the scale of agentic engineering makes previously ignorable cost profiles significant.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "Host (AI Daily Brief)",
+      "episode": "is-the-debate-over-anthropics-new-product-about-price-or-existential-dread",
+      "claim_date": "2026-03-11",
+      "evidence": "The host states: 'I think increasingly, and especially AI coding weaves itself deeper into how we do work, cost profiles which were somewhat ignorable before become not ignorable anymore. Another way of saying it is that AI inference costs start to look a little bit closer to labor cost than to software costs.'",
+      "fp": "cf16608c893078ff"
+    },
+    {
+      "claim": "The host predicts massive expansions in forward-deployed engineering departments and partnerships with consulting firms to address enterprise AI implementation lags.",
+      "tier": "3",
+      "confidence": "0.7",
+      "source": "Host (AI Daily Brief)",
+      "episode": "meta-delays-new-ai-model",
+      "claim_date": "2026-03-16",
+      "evidence": "The host states, 'I predict you are going to see massive expansions in the forward-deployed engineering departments of these firms, partnerships with all the existing consulting firms, new venture spin-ups like this, all at once and more.'",
+      "fp": "2c2a7b98021e10ac"
+    },
+    {
+      "claim": "A MIT report claimed that 95% of generative AI pilots are failing, a conclusion the host argues is methodologically flawed because it inferred failure from the absence of revenue acceleration mentions in public company earnings reports and ~50 convenience interviews.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-10-biggest-ai-stories-of-2025",
+      "claim_date": "2025-12-24",
+      "evidence": "The host critiques the study's methodology: 'it looked at recent earnings report of public companies... paired that with around 50 convenience interviews... the idea that an organization not mentioning revenue gains from AI in a report means that their pilots are failing is absolutely ludicrous.'",
+      "fp": "f8b0df4670fcc3a7"
+    },
+    {
+      "claim": "Accenture announced a partnership to equip tens of thousands of its professionals with ChatGPT Enterprise and to have the largest number of professionals upskilled through OpenAI certifications.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Accenture/OpenAI (cited by Host)",
+      "episode": "the-5-biggest-ai-stories-to-watch-in-december",
+      "claim_date": "2025-12-10",
+      "evidence": "The host notes the announcement: 'Accenture to equip tens of thousands of its professionals with chatbt enterprise and have the largest number of professionals upskilled through OpenAI certifications.'",
+      "fp": "58de793127217103"
+    },
+    {
+      "claim": "The host argues that the enterprise AI story of 2025 is that AI and agents are extremely valuable but require serious reorganization, data readiness, and capacity building, creating a growing gap between leaders and laggards.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-5-biggest-ai-stories-to-watch-in-december",
+      "claim_date": "2025-12-10",
+      "evidence": "The host states, 'the story of 2025 when it came to enterprise AI, is that this stuff... is extremely valuable, but not as simple as flipping on some switch... It involves real serious reorganization.'",
+      "fp": "94529d5c5249f12a"
+    },
+    {
+      "claim": "Anthropic now commands over 60% of business AI payments settled through Ramp, having overtaken OpenAI's market share in that specific channel by January of this year.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "Ramp (as cited by the host)",
+      "episode": "the-big-questions-shaping-the-consumer-ai-battle",
+      "claim_date": "2026-03-05",
+      "evidence": "Figures from Ramp seem to back this up... by January of this year, products had overtaken OpenAI, and as of their most recent numbers, Anthropic now commands over 60% of business AI payments settled through Ramp.",
+      "fp": "d70679cbc494c65b"
+    },
+    {
+      "claim": "A Glean report found that workers spend an average of 6.4 hours per week on 'bot sitting,' which involves feeding context, checking outputs, and rerunning underwhelming AI results.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-big-ways-ai-just-changed",
+      "claim_date": "2026-07-07",
+      "evidence": "Glean found workers in their survey spending an average of 6.4 hours per week making AI usable through things like feeding it context, checking its outputs, and rerunning underwhelming results.",
+      "fp": "9949c60552b27e7e"
+    },
+    {
+      "claim": "OpenAI CFO Sarah Friar stated that by the end of the year, approximately 50% of OpenAI's business will come from enterprise customers.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Sarah Friar (OpenAI CFO)",
+      "episode": "the-final-ai-word-from-davos",
+      "claim_date": "2026-01-27",
+      "evidence": "The transcript notes: 'In a Davos session, OpenAI CFO Sarah Friar said that by the end of the year, approximately 50% of their business will come from enterprise customers.'",
+      "fp": "014dce7389f220c5"
+    },
+    {
+      "claim": "Deloitte's 2025 Emerging Technology Trends report found that 30% of organizations were exploring agent options, 38% were piloting solutions, and only 11% had agents actively in production.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Deloitte 2025 Emerging Technology Trends report",
+      "episode": "the-most-important-ai-lesson-for-businesses-from-2025",
+      "claim_date": "2025-12-28",
+      "evidence": "Deloitte's 2025 emerging technology trends however which based on my research was conducted between June and July of this year found that 30% of organizations exploring agent options and 38% piloting solutions but only 11% actively had agents in production.",
+      "fp": "d64fc610a9455126"
+    },
+    {
+      "claim": "Block is undergoing a 40% workforce reduction as part of its transition to an AI-driven organizational structure.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-new-ai-org-chart",
+      "claim_date": "2026-04-14",
+      "evidence": "The host notes that Jack Dorsey 'recently made news with the 40% layoffs at Block' in the context of introducing the essay on the new AI org chart.",
+      "fp": "df04eeaa78b5377a"
+    },
+    {
+      "claim": "Anthropic's Project Glasswing has expanded access to its Mythos model by adding 150 new partners across 15 countries, including sectors such as energy, water, communications, healthcare, and computer hardware.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "AI Daily Brief host",
+      "episode": "the-next-wave-of-enterprise-ai",
+      "claim_date": "2026-06-04",
+      "evidence": "The transcript states: 'Anthropic has just expanded access to Mythos adding 150 new partners. This new announcement, Anthropic is rolling Mythos out to firms across 15 countries with the expanding group of partners including new sectors...'",
+      "fp": "d871591e8469a958"
+    },
+    {
+      "claim": "OpenAI's Codex reached 5 million weekly active users, with non-technical knowledge workers adopting the tool at a three times faster pace than developers.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "AI Daily Brief host",
+      "episode": "the-next-wave-of-enterprise-ai",
+      "claim_date": "2026-06-04",
+      "evidence": "The transcript states: 'Codex was growing, hitting 5 million weekly active users, but that the biggest source of its growth was not developers, but non-technical knowledge workers, who are now adopting Codex at a three times faster pace than developers are.'",
+      "fp": "c2f494617ea3821b"
+    },
+    {
+      "claim": "Microsoft's MAI models are strategically positioned to offer state-of-the-art performance at significantly lower costs, with Mustafa Suleyman claiming that tuned MAI models outperformed GPT-5.5 on quality while being 10x lower on cost for McKinsey's tasks.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "AI Daily Brief host",
+      "episode": "the-next-wave-of-enterprise-ai",
+      "claim_date": "2026-06-04",
+      "evidence": "The transcript quotes Mustafa Suleyman: 'When we tuned our models for McKinsey's tasks, MAI delivered the highest win rate outperforming GPT-5.5 on quality while being 10x lower on cost.'",
+      "fp": "8df3e8125a98c4f2"
+    },
+    {
+      "claim": "OpenAI's role-specific plugins for functions like sales and investment banking productize best practices by bundling apps and skills used by top performers, effectively serving as product-led education for enterprise users.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "AI Daily Brief host",
+      "episode": "the-next-wave-of-enterprise-ai",
+      "claim_date": "2026-06-04",
+      "evidence": "The host states: 'You can almost think about the role-specific plugins as organized bundles of features that were already available, but presented in a way that requires much less setup... this becomes sort of product-led education, where the salesperson... can start to imitate those best practices'",
+      "fp": "f15a14d24cc61739"
+    },
+    {
+      "claim": "The second half of 2026 will be defined by the challenge of wrestling agentic AI opportunities into workable, cost-effective approaches, as the industry transitions from a subsidy era to a scarcity era of token usage.",
+      "tier": "3",
+      "confidence": "0.7",
+      "source": "AI Daily Brief host",
+      "episode": "the-next-wave-of-enterprise-ai",
+      "claim_date": "2026-06-04",
+      "evidence": "The host states: 'In different ways both OpenAI and Microsoft showed off big plays yesterday to those ends and I certainly don't anticipate that's the last we'll be hearing about. And it's very clear that the race for the next wave of enterprise AI adoption is fully on.'",
+      "fp": "140844c5d6f21d30"
+    },
+    {
+      "claim": "Anthropic's share of first-time enterprise AI buyers reached 70% in Q1 2026, compared to 25% for OpenAI and 5% for others.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "AI Daily Brief host",
+      "episode": "the-state-of-ai-q2-2026",
+      "claim_date": "2026-03-31",
+      "evidence": "The host reports, 'Based on ramp statistics, Anthropic's share of first time enterprise AI buyers jumped to 70% with OpenAI at 25% and others at around 5%.'",
+      "fp": "28e994f16f69572d"
+    },
+    {
+      "claim": "OpenAI's ChatGPT Enterprise seats increased by 900% year-over-year.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "OpenAI State of Enterprise AI report",
+      "episode": "the-state-of-enterprise-ai-the-state-of-enterprise-ai",
+      "claim_date": "2025-12-11",
+      "evidence": "The host states: 'ChatGPT enterprise seats have increased 900% year-over-year.'",
+      "fp": "f5bff09605b13810"
+    },
+    {
+      "claim": "76% of enterprise AI use cases are now purchased from vendors rather than built internally, reversing a 2024 trend toward in-house development.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Menlo Ventures State of Generative AI in the Enterprise report",
+      "episode": "the-state-of-enterprise-ai-the-state-of-enterprise-ai",
+      "claim_date": "2025-12-11",
+      "evidence": "The host reports: '...in this study, they found 76% of AI use cases being purchased rather than built internally.'",
+      "fp": "ae576ff4cdb3e384"
+    },
+    {
+      "claim": "The 'boom vs. bubble' debate in AI is currently unresolvable because the metrics that would prove a bubble (e.g., OpenAI's $1.4 trillion in commitments) are too far in the future, making enterprise adoption the key near-term indicator.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-state-of-enterprise-ai-the-state-of-enterprise-ai",
+      "claim_date": "2025-12-11",
+      "evidence": "The host explains: '...there's really no way to prove if it is a bubble in the sense that the things that would show us that, for example, open AAI isn't going to be able to meet its 1.4 4 trillion in commitments are so far in the future...'",
+      "fp": "491870ace13520a5"
+    },
+    {
+      "claim": "The primary barrier to enterprise AI adoption is a lack of dedicated time for employees to learn new tools, rather than a lack of tool utility.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "AI Daily Brief host",
+      "episode": "weird-vibes-at-ai-india-summit",
+      "claim_date": "2026-02-22",
+      "evidence": "The biggest issue that we find across all of our surveys at AI Daily Brief, as well as everything we do at Super Intelligent, is the problem of time. People inside enterprises report that they don't have time to learn the technology that would save them time... They simply expect people to figure out that time on their own.",
+      "fp": "a8a5e2e358a7bde9"
+    },
+    {
+      "claim": "KPMG's Q4 2025 pulse survey reported that 26% of organizations had deployed AI agents, a decrease from 42% in Q3 2025 but a significant increase from 11% in Q1 2025.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "KPMG Quarterly Pulse Survey",
+      "episode": "why-ceos-need-to-lead-ai-strategy",
+      "claim_date": "2026-01-16",
+      "evidence": "In Q1, 11% of organizations reported deploying agents... In Q2, the number was 33%. In Q3, the number was 42%. In this poll survey, the number was 26%.",
+      "fp": "cdf990d11bf5ccdb"
+    },
+    {
+      "claim": "Ethan Mollick argued that managing AI agents is fundamentally a management problem requiring teachable skills such as specifying goals, providing context, and dividing tasks.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Ethan Mollick",
+      "episode": "why-everyone-is-obsessed-with-claude-code",
+      "claim_date": "2026-01-09",
+      "evidence": "Ethan Mollick writes, 'When you see how people use Claude Code, Codex, etc., it becomes clear that managing agents is really a management problem. Can you specify goals? Can you provide context? Can you divide up tasks? Can you give feedback? These are teachable skills.'",
+      "fp": "5eac3c6b3d9658fb"
+    },
+    {
+      "claim": "Microsoft restricted its employees from using Claude and Copilot due to concerns over Anthropic's 30-day data retention policy for enterprise customers.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "The Verge (via AI Daily Brief host)",
+      "episode": "why-fable-5-is-the-most-controversial-ai-release-ever",
+      "claim_date": "2026-06-12",
+      "evidence": "It took about 1 hour before The Verge reported that Microsoft had started restricting employees from using Fable 5 and C-Pilot because of those data retention concerns.",
+      "fp": "7f2dac4aa87764da"
+    },
+    {
+      "claim": "Accenture reported a 2% drop in bookings for the third quarter, causing its stock to tumble by 18% on Thursday to its lowest level in almost a decade.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Accenture Earnings Report",
+      "episode": "your-company-doesnt-need-an-ai-strategy",
+      "claim_date": "2026-06-20",
+      "evidence": "The transcript states: 'Accenture reported a 2% drop in bookings for the third quarter... That was enough to send the stock tumbling by 18% on Thursday, reaching its lowest level in almost a decade.'",
+      "fp": "755c9ded2dd3779d"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "    - **The dominant failure mode**: Organisations treating AI adoption as an IT project rather than an operating model transformation \u2014 deploying tools without redesigning workflows, measuring tool adoption rather than business outcomes, and investing in AI literacy training without addressing work design.",
+      "content": "  - ## Recent Developments (2025\u20132026)\n    - **Shift to Vendor-Led Procurement**: Menlo Ventures' *State of Generative AI in the Enterprise* report indicates a significant reversal in build-vs-buy dynamics, with 76% of enterprise AI use cases now purchased from vendors rather than built internally, reversing a 2024 trend toward in-house development.\n    - **Enterprise Seat Growth**: OpenAI's *State of Enterprise AI* report highlights explosive adoption metrics, noting that ChatGPT Enterprise seats increased by 900% year-over-year. OpenAI CFO Sarah Friar further stated at Davos that by the end of the year, approximately 50% of OpenAI's business will come from enterprise customers.\n    - **Agent Deployment Maturity**: Deloitte's 2025 *Emerging Technology Trends* report (fielded June\u2013July 2025) found that while 30% of organizations were exploring agent options and 38% were piloting solutions, only 11% had agents actively in production. KPMG's Q4 2025 pulse survey reported that 26% of organizations had deployed AI agents, a decrease from 42% in Q3 2025 but a significant increase from 11% in Q1 2025, suggesting volatility in reported deployment metrics.\n    - **Market Consolidation and Vendor Share**: Anthropic's share of first-time enterprise AI buyers reached 70% in Q1 2026, compared to 25% for OpenAI and 5% for others, indicating a strong preference for specific model providers among new adopters.\n    - **Productivity and Workforce Impact**: Citadel CEO Ken Griffin reported that AI agents are completing high-level financial research tasks that previously took master's or PhD holders weeks or months in a matter of hours or days, resulting in a 15\u201325% productivity boost for the firm. Conversely, Block is undergoing a 40% workforce reduction as part of its transition to an AI-driven organizational structure, illustrating the structural impact of AI on headcount.\n    - **Service Sector Volatility**: Accenture reported a 2% drop in bookings for the third quarter, causing its stock to tumble by 18% to its lowest level in almost a decade, highlighting market sensitivity to AI-driven service delivery shifts. In response, Accenture announced a partnership to equip tens of thousands of its professionals with ChatGPT Enterprise and to have the largest number of professionals upskilled through OpenAI certifications.\n    - **Operational Friction**: Tribe CEO Jaclyn Rice Nelson reported that while her non-technical team members used Claude Co-work to achieve previously impossible tasks, they often had to pair with engineers for hours to obtain the final output, underscoring the persistent integration gap between AI capabilities and operational workflows.\n    - **Methodological Debate on ROI**: A MIT report claimed that 95% of generative AI pilots are failing, a conclusion critics argue is methodologically flawed because it inferred failure from the absence of revenue acceleration mentions in public company earnings reports and approximately 50 convenience interviews, rather than direct measurement of pilot outcomes."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -1.0,
+    "rubric_b_improvement": 2.0,
+    "raw_a": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 4,
+      "better_version": "B",
+      "improvement": 1
+    },
+    "raw_b": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 4,
+      "better_version": "B",
+      "improvement": 2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "ae576ff4cdb3e384",
+        "claim": "76% of enterprise AI use cases are now purchased from vendors rather than built internally, reversing a 2024 trend towar",
+        "matched": true
+      },
+      {
+        "fp": "f5bff09605b13810",
+        "claim": "OpenAI's ChatGPT Enterprise seats increased by 900% year-over-year.",
+        "matched": true
+      },
+      {
+        "fp": "d64fc610a9455126",
+        "claim": "Deloitte's 2025 Emerging Technology Trends report found that 30% of organizations were exploring agent options, 38% were",
+        "matched": true
+      },
+      {
+        "fp": "cdf990d11bf5ccdb",
+        "claim": "KPMG's Q4 2025 pulse survey reported that 26% of organizations had deployed AI agents, a decrease from 42% in Q3 2025 bu",
+        "matched": true
+      },
+      {
+        "fp": "014dce7389f220c5",
+        "claim": "OpenAI CFO Sarah Friar stated that by the end of the year, approximately 50% of OpenAI's business will come from enterpr",
+        "matched": true
+      },
+      {
+        "fp": "755c9ded2dd3779d",
+        "claim": "Accenture reported a 2% drop in bookings for the third quarter, causing its stock to tumble by 18% on Thursday to its lo",
+        "matched": true
+      },
+      {
+        "fp": "a171b6a8b42ce8fc",
+        "claim": "Citadel CEO Ken Griffin reported that AI agents are completing high-level financial research tasks that previously took ",
+        "matched": true
+      },
+      {
+        "fp": "58de793127217103",
+        "claim": "Accenture announced a partnership to equip tens of thousands of its professionals with ChatGPT Enterprise and to have th",
+        "matched": true
+      },
+      {
+        "fp": "f8b0df4670fcc3a7",
+        "claim": "A MIT report claimed that 95% of generative AI pilots are failing, a conclusion the host argues is methodologically flaw",
+        "matched": true
+      },
+      {
+        "fp": "84b63b4c806619f1",
+        "claim": "Tribe CEO Jaclyn Rice Nelson reported that while her non-technical team members used Claude Co-work to achieve previousl",
+        "matched": true
+      },
+      {
+        "fp": "28e994f16f69572d",
+        "claim": "Anthropic's share of first-time enterprise AI buyers reached 70% in Q1 2026, compared to 25% for OpenAI and 5% for other",
+        "matched": true
+      },
+      {
+        "fp": "df04eeaa78b5377a",
+        "claim": "Block is undergoing a 40% workforce reduction as part of its transition to an AI-driven organizational structure.",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

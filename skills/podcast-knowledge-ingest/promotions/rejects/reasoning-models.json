@@ -1,0 +1,137 @@
+{
+  "topic": "Reasoning Models",
+  "topic_slug": "reasoning-models",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5"
+  ],
+  "n_assertions": 5,
+  "episodes": [
+    "openai-declares-code-red",
+    "the-10-biggest-ai-stories-of-2025",
+    "the-5-most-impactful-ai-model-releases-of-2025",
+    "what-people-are-actually-using-ai-for-right-now",
+    "why-ai-users-are-raving-about-glm-52"
+  ],
+  "assertion_fingerprints": [
+    "1c4cd147da5526be",
+    "7ffa774970ab1b69",
+    "89bd2e6f12083fd6",
+    "8cd9465140c72771",
+    "944fdf63a52d38bd"
+  ],
+  "target_page": "Reasoning Models.md",
+  "assertions": [
+    {
+      "claim": "OpenAI is planning to ship a new reasoning model next week that the company claims is ahead of Google's Gemini 3 in internal evaluations.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "The Information (citing Sam Altman)",
+      "episode": "openai-declares-code-red",
+      "claim_date": "2025-12-03",
+      "evidence": "The transcript states, 'Altman said that the company is planning to ship a new reasoning model next week that they claim is ahead of Google's Gemini 3 in OpenAI's internal evaluations.'",
+      "fp": "1c4cd147da5526be"
+    },
+    {
+      "claim": "According to OpenRouter data, reasoning tokens grew from zero at the start of 2025 to over 50% of the 100 trillion total tokens consumed by the end of the year.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Host (AI Daily Brief) citing OpenRouter",
+      "episode": "the-10-biggest-ai-stories-of-2025",
+      "claim_date": "2025-12-24",
+      "evidence": "The host states: 'Over the course of the year and 100 trillion tokens from a starting point of basically zero at the beginning of the year, reasoning tokens now represent over 50% of the total consumed.'",
+      "fp": "89bd2e6f12083fd6"
+    },
+    {
+      "claim": "According to OpenRouter data, reasoning models represented over half of all model usage by November 2025, up from effectively zero on January 1st.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Host (AI Daily Brief) citing OpenRouter",
+      "episode": "the-5-most-impactful-ai-model-releases-of-2025",
+      "claim_date": "2025-12-27",
+      "evidence": "The host notes: 'Starting from a base point of effectively zero on January 1st by November reasoning models represented over half of all usage according to open router.'",
+      "fp": "8cd9465140c72771"
+    },
+    {
+      "claim": "Reasoning model token usage increased from negligible levels to over 50% of tokens consumed during 2025.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "OpenRouter and a16z",
+      "episode": "what-people-are-actually-using-ai-for-right-now",
+      "claim_date": "2025-12-09",
+      "evidence": "The host states: 'reasoning model token usage went from basically negligible to now over 50% of tokens consumed.'",
+      "fp": "944fdf63a52d38bd"
+    },
+    {
+      "claim": "DeepSeek's R1 release in January 2025 caused Nvidia to lose $589 billion in market cap in a single day.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "AI Daily Brief host",
+      "episode": "why-ai-users-are-raving-about-glm-52",
+      "claim_date": "2026-06-22",
+      "evidence": "Nvidia had the single biggest daily loss in terms of pure numbers with DeepSeek peeling off 589 billion from its market cap in a single day.",
+      "fp": "7ffa774970ab1b69"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - These models are usually trained with reinforcement learning against checkable rewards, learning to plan, self-check, and backtrack within a long chain of thought. The approach excels on mathematics, competitive coding, and scientific reasoning, at the cost of higher latency and token consumption per query.",
+      "content": "\n- ### Recent Developments\n  - **Adoption Surge (2025):** According to OpenRouter data, reasoning model usage has seen explosive growth. Reasoning tokens grew from effectively zero at the start of 2025 to over 50% of the 100 trillion total tokens consumed by the end of the year. By November 2025, reasoning models represented over half of all model usage, up from a negligible baseline on January 1st.\n  - **Market Impact:** The release of DeepSeek's R1 in January 2025 had significant market implications, causing Nvidia to lose $589 billion in market cap in a single day, marking the single biggest daily loss in terms of pure numbers for the company.\n  - **Competitive Landscape:** OpenAI is planning to ship a new reasoning model that the company claims is ahead of Google's Gemini 3 in internal evaluations, according to statements by Sam Altman."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 1,
+      "relevance": 4,
+      "coherence": 4,
+      "better_version": "A",
+      "improvement": -2
+    },
+    "raw_b": {
+      "factual_grounding": 2,
+      "relevance": 4,
+      "coherence": 4,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 0.8,
+    "detail": [
+      {
+        "fp": "1c4cd147da5526be",
+        "claim": "OpenAI is planning to ship a new reasoning model next week that the company claims is ahead of Google's Gemini 3 in inte",
+        "matched": true
+      },
+      {
+        "fp": "89bd2e6f12083fd6",
+        "claim": "According to OpenRouter data, reasoning tokens grew from zero at the start of 2025 to over 50% of the 100 trillion total",
+        "matched": true
+      },
+      {
+        "fp": "8cd9465140c72771",
+        "claim": "According to OpenRouter data, reasoning models represented over half of all model usage by November 2025, up from effect",
+        "matched": true
+      },
+      {
+        "fp": "944fdf63a52d38bd",
+        "claim": "Reasoning model token usage increased from negligible levels to over 50% of tokens consumed during 2025.",
+        "matched": false
+      },
+      {
+        "fp": "7ffa774970ab1b69",
+        "claim": "DeepSeek's R1 release in January 2025 caused Nvidia to lose $589 billion in market cap in a single day.",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

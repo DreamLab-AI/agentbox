@@ -1,0 +1,623 @@
+{
+  "topic": "Large Language Models",
+  "topic_slug": "large-language-models",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5"
+  ],
+  "n_assertions": 44,
+  "episodes": [
+    "autoresearch-agent-loops-and-the-future-of-work",
+    "black-friday-gpt",
+    "can-open-models-solve-corporate-ai-washing",
+    "dario-amodei-breaks-his-social-media-silence",
+    "does-gemini-31-pro-matter",
+    "everything-you-need-to-know-about-ai-tokens",
+    "fable-is-back-heres-what-you-should-try-first",
+    "gemini-3-anticipation-reaches-fever-pitch",
+    "gemini-3-launches-heres-everything-you-need-to-know",
+    "gpt-52-is-here",
+    "gpt-54-first-test-results",
+    "grok-46-shows-how-fast-your-ai-options-are-expanding",
+    "how-ai-starts-doing-the-work-in-2026-with-anthropic-cpo-mike-krieger",
+    "how-big-a-deal-is-the-usas-ai-genesis-mission",
+    "how-deepseek-v4-connects-to-the-us-grid",
+    "how-harness-as-a-service-will-change-agents",
+    "how-i-built-my-10-agent-openclaw-team",
+    "how-significant-are-ais-latest-math-breakthroughs",
+    "how-to-get-the-most-from-ai-this-summer",
+    "mythos-returns-but-not-for-everyone",
+    "the-big-questions-shaping-the-consumer-ai-battle",
+    "the-next-wave-of-enterprise-ai",
+    "the-state-of-enterprise-ai-the-state-of-enterprise-ai",
+    "the-ultimate-ai-catch-up-guide",
+    "why-claude-opus-45-changes-whats-possible-with-vibe-coding",
+    "why-google-workspace-cli-is-such-a-big-deal",
+    "work-agi-is-the-only-agi-that-matters"
+  ],
+  "assertion_fingerprints": [
+    "04c02b2497d96f2d",
+    "145d857a2ed88d0b",
+    "1aeb1152a243aa6b",
+    "1de0c172fa613582",
+    "20df046458ff12a2",
+    "29c56d5e0cd5b147",
+    "2a36877fb69df590",
+    "2a9328758b095176",
+    "32ebb74ef2751e32",
+    "38b03c36bcc1d038",
+    "3b484384f894ed9d",
+    "49bba4c4387211d1",
+    "52cbe856e36448f9",
+    "53ffbac2ade1807a",
+    "54fadaf1e285868f",
+    "62424b53a1cfb5e9",
+    "6461f7d1ac194309",
+    "65855bbff4046521",
+    "6a05b0482af728bd",
+    "6db8fe1cb55e6016",
+    "6f96de96871bacdb",
+    "7515eaac807ef54d",
+    "7a7e90a2a673c0a5",
+    "7effcd888af5b5fd",
+    "88684249a3a81844",
+    "8b2bb39e751a6f0e",
+    "9682beb1ab537722",
+    "a55bec223cbc309b",
+    "a5bbc3603fea9b57",
+    "adbd6555ce1c169e",
+    "b8dedf37be420846",
+    "bc7d546643581f81",
+    "c44e0f534feee9d0",
+    "c51e0328069113bb",
+    "c6d9019448d5efb3",
+    "c8a45e6fcab08599",
+    "cb29338cd0e900ba",
+    "d84a119166337eb7",
+    "e669ce27ddf6dfb9",
+    "f3394dfbf78da878",
+    "f6b97c6164692e9c",
+    "f97a93fbcf9a30b7",
+    "fe3b1910aa38f383",
+    "ff9345a449431316"
+  ],
+  "target_page": "Large Language Models.md",
+  "assertions": [
+    {
+      "claim": "Andrej Karpathy released a project called 'auto research' on March 7, 2025, which is a minimal repository of approximately 630 lines of code designed to train a small LLM on a single GPU using an autonomous AI agent loop.",
+      "tier": "1",
+      "confidence": "0.98",
+      "source": "Andrej Karpathy (via podcast transcript)",
+      "episode": "autoresearch-agent-loops-and-the-future-of-work",
+      "claim_date": "2026-08-24",
+      "evidence": "Karpathy tweeted: 'I packaged up the auto research project into a new self-contained minimal repo... One file version of around 630 lines of code... The goal is to engineer your agents to make the fastest research project indefinitely.'",
+      "fp": "32ebb74ef2751e32"
+    },
+    {
+      "claim": "OpenAI used reinforcement learning to train a specialized version of GPT-5 Mini for its new shopping research feature, which outperformed the full-size GPT-5 Thinking model in internal product accuracy benchmarks.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Host (citing OpenAI technical details)",
+      "episode": "black-friday-gpt",
+      "claim_date": "2025-11-27",
+      "evidence": "The transcript states: 'OpenAI actually used reinforcement learning to train a version of GPT5 Mini to perform high-quality product research. In their internal benchmarking of product accuracy, the model outperformed the full size of GPT5 thinking.'",
+      "fp": "c8a45e6fcab08599"
+    },
+    {
+      "claim": "Alibaba's Qwen 3.8 Max model has 2.4 trillion parameters and is priced at $2 per million input tokens and $6 per million output tokens.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Alibaba Qwen Release (cited by AI Daily Brief host)",
+      "episode": "can-open-models-solve-corporate-ai-washing",
+      "claim_date": "2026-08-05",
+      "evidence": "The transcript notes: 'this one coming in at 2.4 trillion parameters' and 'Qwen is being priced at $2 per million input and $6 per million output tokens'.",
+      "fp": "04c02b2497d96f2d"
+    },
+    {
+      "claim": "Independent testing of Qwen 3.8 Max has yielded mixed results, with some users reporting it as 'unusable' or significantly slower and less stable than competitors like Kimmy K3 and GPT 5.6, despite strong self-reported benchmarks.",
+      "tier": "2",
+      "confidence": "0.7",
+      "source": "Independent Developers (Datum, Pavel Huryn) / AI Daily Brief Host",
+      "episode": "can-open-models-solve-corporate-ai-washing",
+      "claim_date": "2026-08-05",
+      "evidence": "Datum writes: 'Qwen 3.8 max is unusable... extremely slow, unstable, and burns through usage like crazy.' Pavel Huryn found it fixed only 19 out of 105 bugs compared to 33 for GPT 5.6 Luna, and noted high costs and instability.",
+      "fp": "1aeb1152a243aa6b"
+    },
+    {
+      "claim": "Z AI's GLM 5.3 model scores 28.3% on Terminal Bench 3.0, placing it approximately five points behind frontier models like Fable 5 and GPT 5.6 Soul, but 11 points ahead of Kimik 3.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief Host / Z AI Benchmark Data",
+      "episode": "dario-amodei-breaks-his-social-media-silence",
+      "claim_date": "2026-08-18",
+      "evidence": "The transcript explicitly states: 'On coding, GLM 5.3 scores 28.3% on Terminal Bench 3.0. That puts it around five points behind the Frontier with Fable 5 and GPT 5.6 Soul, but 11 points ahead of Kimik 3.'",
+      "fp": "38b03c36bcc1d038"
+    },
+    {
+      "claim": "According to Artificial Analysis, Gemini 3.1 Pro leads their overall intelligence index by four points ahead of Claude Opus 4.6 while costing less than half as much to run.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Artificial Analysis (cited by Host)",
+      "episode": "does-gemini-31-pro-matter",
+      "claim_date": "2026-02-21",
+      "evidence": "The transcript quotes Artificial Analysis: 'Gemini 3.1 Pro preview leads the artificial analysis intelligence index four points ahead of Claude Opus 4.6 while costing less than half as much to run.' It also notes the model led six of the 10 evaluations in the index.",
+      "fp": "a5bbc3603fea9b57"
+    },
+    {
+      "claim": "In a January AI usage survey, 87% of respondents reported using ChatGPT in the previous month, 80% used Gemini, and 80% used Claude, but Gemini ranked third in primary model usage at 16.1%.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Host (citing internal survey results)",
+      "episode": "does-gemini-31-pro-matter",
+      "claim_date": "2026-02-21",
+      "evidence": "The transcript states: 'Gemini in fact matched Claude with 80% of respondents having used it sometime last month, both falling slightly behind ChatgBT which was at 87%. However, in terms of the number of people reporting that it was their primary model, Gemini was down in third at 16.1%.'",
+      "fp": "bc7d546643581f81"
+    },
+    {
+      "claim": "Gemini 3.1 Pro scored 80.6% on the SWE-bench Verified agent decoding test, slightly trailing Claude Opus 4.6 which scored 80.8%.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Host (citing benchmark results)",
+      "episode": "does-gemini-31-pro-matter",
+      "claim_date": "2026-02-21",
+      "evidence": "The transcript notes: 'while it wasn't ahead of Opus 4.6 on Swebench verified agent decoding test it was nipping at its heels 80.6% compared to 80.8%.'",
+      "fp": "c6d9019448d5efb3"
+    },
+    {
+      "claim": "Databricks found that Sonnet 5 was 1.7 times cheaper per token than Opus 4.8, but Opus 4.8 was cheaper per accepted task ($1.94 vs $2.09) because Sonnet required more iterations to achieve the same results.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Nofar Gaspar (citing Databricks experiment)",
+      "episode": "everything-you-need-to-know-about-ai-tokens",
+      "claim_date": "2026-08-04",
+      "evidence": "The host details, 'Sonnet 5. It was 1.7 times cheaper per token than Opus 4.8. However, Sonnet cost around $2 per task or 2 2.09 per task versus 1.94 for Opus.'",
+      "fp": "62424b53a1cfb5e9"
+    },
+    {
+      "claim": "OpenAI researchers have developed an optimization technique that cut inference requirements in half for existing models, allowing them to serve the entire non-signed-in ChatGPT user base on just 100 GPUs.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "The Information (reported by AI Daily Brief host)",
+      "episode": "fable-is-back-heres-what-you-should-try-first",
+      "claim_date": "2026-07-02",
+      "evidence": "The transcript states, 'The claim is that OpenAI researchers have discovered a new optimization technique that cut their inference requirements in half for existing models. When the technique was applied to ChatGPT users who weren't signed into the service, OpenAI was able to serve that entire user base segment on just 100 GPUs.'",
+      "fp": "d84a119166337eb7"
+    },
+    {
+      "claim": "Business Insider reported that insiders described the upcoming Gemini 3 model as 'extremely impressive,' suggesting it could help Google reclaim the top spot in the generative AI market.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Business Insider / Host",
+      "episode": "gemini-3-anticipation-reaches-fever-pitch",
+      "claim_date": "2025-11-18",
+      "evidence": "The transcript quotes Business Insider: 'If Gemini 3 is a smash hit, and right now, insiders tell Business Insider that the new model is extremely impressive, then it could give Google a shot at taking the top spot...'",
+      "fp": "f3394dfbf78da878"
+    },
+    {
+      "claim": "OpenAI employees' visible excitement about Google's rumored Gemini 3 release is interpreted as a signal that OpenAI has a highly competitive model ('absolute monster') lined up for December.",
+      "tier": "2",
+      "confidence": "0.7",
+      "source": "Host",
+      "episode": "gemini-3-anticipation-reaches-fever-pitch",
+      "claim_date": "2025-11-18",
+      "evidence": "The host reasons: 'if even an OpenAI employee is this chilled about Google's rumored Gemini 3, you don't need a decoder ring to see what's going on. OpenAI must have an absolute monster model lined up for December.'",
+      "fp": "f6b97c6164692e9c"
+    },
+    {
+      "claim": "Gemini 3 is anticipated to be the best and increasingly popular AI model for a considerable time, with neither OpenAI nor Anthropic having a strong answer soon.",
+      "tier": "3",
+      "confidence": "0.5",
+      "source": "Chubby (X user) / Host",
+      "episode": "gemini-3-anticipation-reaches-fever-pitch",
+      "claim_date": "2025-11-18",
+      "evidence": "The transcript quotes: 'Chubby wrote, \"Edgy take. Neither OpenAI nor Anthropic will have a good answer to Gemini 3 anytime soon. Gemini will remain the best and increasingly popular AI model for a considerable time.\"'",
+      "fp": "cb29338cd0e900ba"
+    },
+    {
+      "claim": "Google's Gemini app reached 650 million monthly active users and 13 million developers have built with their models as of the Gemini 3 launch.",
+      "tier": "1",
+      "confidence": "0.98",
+      "source": "Google (Sundar Pichai announcement)",
+      "episode": "gemini-3-launches-heres-everything-you-need-to-know",
+      "claim_date": "2025-11-18",
+      "evidence": "The transcript states: 'The Gemini app is now up to 650 million users per month. That's about 50 million more than last we heard. And Sundar also said that 13 million developers have now built with their models.'",
+      "fp": "a55bec223cbc309b"
+    },
+    {
+      "claim": "Gemini 3 Pro achieved a score of 31.1% on the ARC-AGI 2 benchmark, compared to 17.6% for GPT-5.1, with a 'deep think' mode pushing the score to 45.1%.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Google / AI Daily Brief Host",
+      "episode": "gemini-3-launches-heres-everything-you-need-to-know",
+      "claim_date": "2025-11-18",
+      "evidence": "The transcript states: 'while GPT51 mustered a 17.6%, Gemini 3 Pro got a 31.1%.' It further adds: 'the deep think mode drove the score on RKGI up to 45.1%.'",
+      "fp": "e669ce27ddf6dfb9"
+    },
+    {
+      "claim": "Gemini 3 Pro is currently ranked number one across all major LMArena leaderboards, including text, vision, web development, coding, and math categories.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "LMArena / AI Daily Brief Host",
+      "episode": "gemini-3-launches-heres-everything-you-need-to-know",
+      "claim_date": "2025-11-18",
+      "evidence": "The transcript cites LMArena: 'Google DeepMind's Gemini 3 Pro is now number one across all major arena leaderboards... Massive gains over Gemini 2.5.'",
+      "fp": "2a36877fb69df590"
+    },
+    {
+      "claim": "Early user testing indicates Gemini 3 Pro is significantly faster and more consistent than previous models, with 'intelligence per second' described as 'off the charts' compared to GPT-5 Pro.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Matt Schumer / AI Daily Brief Host",
+      "episode": "gemini-3-launches-heres-everything-you-need-to-know",
+      "claim_date": "2025-11-18",
+      "evidence": "Matt Schumer is quoted: 'Feels more consistent and less spiky than previous models. He says it's fast, intelligence per second is off the charts, often outperforming Jeep D5 Pro without the weight.'",
+      "fp": "fe3b1910aa38f383"
+    },
+    {
+      "claim": "Gemini 3 Pro's agentic coding capabilities allow it to build complex, functional applications (such as a Game Boy emulator and 3D Lego editor) in a single prompt, including UI, logic, and assets.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "PO Shirano / AI Daily Brief Host",
+      "episode": "gemini-3-launches-heres-everything-you-need-to-know",
+      "claim_date": "2025-11-18",
+      "evidence": "PO Shirano writes: 'I asked Gemini 3 Pro to create a 3D Lego editor. In one shot, it nailed the UI, complex spatial logic, and all the functionality.' He also notes it 'built a fully functional Game Boy emulator.'",
+      "fp": "ff9345a449431316"
+    },
+    {
+      "claim": "While Gemini 3 Pro excels in coding and reasoning, early feedback suggests it may still lag behind Anthropic's models (Sonnet/Haiku) in nuanced creative writing and editorial judgment.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Dan Shipper / Murdan Kland / AI Daily Brief Host",
+      "episode": "gemini-3-launches-heres-everything-you-need-to-know",
+      "claim_date": "2025-11-18",
+      "evidence": "Dan Shipper notes: 'it's not as good of a writer or editor as Sonnet or Haiku.' Murdan Kland concludes: 'this model lacks the taste, restraint, and structural intelligence necessary for challenging creative work.'",
+      "fp": "c51e0328069113bb"
+    },
+    {
+      "claim": "GPT 5.2 demonstrates significantly improved long-context retention, maintaining performance above 90% at 256K context length, whereas GPT 5.1 degraded from 90% at 8K to less than 50% at 256K.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "OpenAI / AI Daily Brief Host",
+      "episode": "gpt-52-is-here",
+      "claim_date": "2025-12-12",
+      "evidence": "The transcript details: 'On needles in a haystack test where the performance of 5.1 degraded from about 90% at 8K context to less than 50% at 256K context with 5.2 thinking it barely nudged down from 108K to something it appears is above 90 on the 256K context.'",
+      "fp": "65855bbff4046521"
+    },
+    {
+      "claim": "GPT 5.2 exhibits a 30-40% reduction in hallucinations compared to its predecessor, GPT 5.1.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "OpenAI / AI Daily Brief Host",
+      "episode": "gpt-52-is-here",
+      "claim_date": "2025-12-12",
+      "evidence": "The transcript states: 'Another important change they found that GPT 5.2 had roughly 30 to 40% less hallucination.'",
+      "fp": "6f96de96871bacdb"
+    },
+    {
+      "claim": "OpenAI has positioned GPT 5.2 primarily as a model for professional and enterprise use, emphasizing its ability to handle economically valuable tasks like spreadsheets, presentations, and complex project management.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "OpenAI Leadership (Fidji Simo, Greg Brockman) / AI Daily Brief Host",
+      "episode": "gpt-52-is-here",
+      "claim_date": "2025-12-12",
+      "evidence": "Fidji Simo stated 5.2 was about 'unlocking even more economic value for people.' Greg Brockman described it as 'the most advanced frontier model for professional work and long running agents.'",
+      "fp": "53ffbac2ade1807a"
+    },
+    {
+      "claim": "Critics such as Dan Shipper from Every characterize GPT 5.2 as an 'incremental upgrade' that is less creative and 'surprising' than GPT 5.1, despite its improvements in structured business outputs.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Dan Shipper (Every) / AI Daily Brief Host",
+      "episode": "gpt-52-is-here",
+      "claim_date": "2025-12-12",
+      "evidence": "Shipper stated: 'it's not as good a writer as Opus on our internal benchmarks and that it's in his estimation mostly an incremental upgrade.' Simon Smith compared 5.1 to a 'brilliant, slightly chaotic freelancer' and 5.2 to a 'polished professional.'",
+      "fp": "20df046458ff12a2"
+    },
+    {
+      "claim": "The iterative release strategy (e.g., GPT-5.1, 5.2, 5.3, 5.4) has become the industry standard for major AI providers to manage expectations and avoid the backlash associated with over-promising on single major updates.",
+      "tier": "3",
+      "confidence": "0.75",
+      "source": "Host (Matt Schmidt)",
+      "episode": "gpt-54-first-test-results",
+      "claim_date": "2026-03-06",
+      "evidence": "Ever since the release of GPT 5, all the big model providers got the memo that trying to promise too much in each update rather than just being very incremental was a pretty scary proposition. That's what got us the 51, 52, 53, now 54 kind of paradigm. But of course, it's not just Open AI doing that. Google and Anthropic are both on that same plan as well.",
+      "fp": "f97a93fbcf9a30b7"
+    },
+    {
+      "claim": "SpaceX AI's Grock 4.6 achieved an Artificial Analysis Intelligence Index score of 61, surpassing GPT 5.6 Soul and Fable 5 on GDPval benchmarks while maintaining a 60% lower per-token cost than GPT 5.6 Soul.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief Host / SpaceX AI / Artificial Analysis",
+      "episode": "grok-46-shows-how-fast-your-ai-options-are-expanding",
+      "claim_date": "2026-08-13",
+      "evidence": "Grock 4.6 jumped 5 points from Grock 4.5 to reach a score of 61. Pricing remains at $2 per million input and $6 per million output tokens. Artificial Analysis testing found it completed benchmark runs at 84 cents per task, making it 32% cheaper than GPT 5.6 Soul and 73% cheaper than Fable 5.",
+      "fp": "29c56d5e0cd5b147"
+    },
+    {
+      "claim": "Elon Musk announced that Grock 4.7 is 'significantly better' than 4.6 and will be ready in 3 to 4 weeks, claiming it will 'exceed all current models' due to the unique nature of SpaceX's training corpus.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "Elon Musk / AI Daily Brief Host",
+      "episode": "grok-46-shows-how-fast-your-ai-options-are-expanding",
+      "claim_date": "2026-08-13",
+      "evidence": "Musk tweeted that initial training for Grock 4.7 is complete and they are adding a 'massive amount of SpaceX company data' in supplemental training. He stated, 'I would be shocked if any model is better at real world engineering than 4.7.'",
+      "fp": "6db8fe1cb55e6016"
+    },
+    {
+      "claim": "Anthropic renamed its underlying SDK from 'Claude Code' to 'Claude Agent SDK' after observing that users were applying the tool to non-coding tasks such as bioinformatics, data science, and project management.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Mike Kger (Chief Product Officer, Anthropic)",
+      "episode": "how-ai-starts-doing-the-work-in-2026-with-anthropic-cpo-mike-krieger",
+      "claim_date": "2025-12-24",
+      "evidence": "Kger notes: 'It's why we eventually renamed the underlying SDK to the cloud agent SDK because we realized calling it code was doing it a disservice relative to what kind of use cases we were actually seeing.' He cites internal hackathon projects using Claude Code for bioinformatics and as a 'sur in a box' (likely 'SAR' or similar data analysis tool) and externally as a project manager.",
+      "fp": "54fadaf1e285868f"
+    },
+    {
+      "claim": "Google's Gemini 3 model was trained exclusively on TPUs, which has increased market scrutiny of Google's chips as a viable alternative to Nvidia GPUs.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "AI Daily Brief Host / Market Reports",
+      "episode": "how-big-a-deal-is-the-usas-ai-genesis-mission",
+      "claim_date": "2025-11-30",
+      "evidence": "The transcript notes 'the release of Gemini 3 put the chips firmly on people's radar. The new model was trained exclusively on TPUs, leading many to question whether Google's chips could be a viable alternative to Nvidia's GPUs.'",
+      "fp": "6461f7d1ac194309"
+    },
+    {
+      "claim": "DeepSeek V4 Pro is a 1.6 trillion parameter model with a 1 million token context window, priced at $1.74 per million input tokens and $3.48 per million output tokens.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief Host / DeepSeek Release",
+      "episode": "how-deepseek-v4-connects-to-the-us-grid",
+      "claim_date": "2026-04-28",
+      "evidence": "The transcript details: 'There is a 1.6 trillion parameter model called V4 Pro... Both versions have a million token context window... DeepSeek is pricing the Pro model at 174 per million input tokens and 348 per million output tokens.'",
+      "fp": "2a9328758b095176"
+    },
+    {
+      "claim": "Sam Altman stated that the harness and the model are no longer separable, noting that he often cannot determine whether a successful agent outcome was due to the model or the harness.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "Sam Altman (via AI Daily Brief)",
+      "episode": "how-harness-as-a-service-will-change-agents",
+      "claim_date": "2026-05-01",
+      "evidence": "The transcript quotes Altman: 'I no longer think of the harness and the model as these entirely separable things... I don't know how much credit [was it the model or the harness].'",
+      "fp": "7effcd888af5b5fd"
+    },
+    {
+      "claim": "The host argues that the most effective method for non-technical users to build AI agent systems is to use a Large Language Model (like Claude) as a 'build partner' or coach, rather than following traditional tutorials.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-i-built-my-10-agent-openclaw-team",
+      "claim_date": "2026-02-15",
+      "evidence": "The host states: 'I watched exactly zero YouTube videos... the best way to learn some new thing in AI or to build some new thing in AI is to just let the AI help.'",
+      "fp": "7a7e90a2a673c0a5"
+    },
+    {
+      "claim": "The host argues that building a team of AI agents is accessible to non-technical users, provided they are willing to invest time in iterative development with an LLM build partner, despite initial negative ROI.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-i-built-my-10-agent-openclaw-team",
+      "claim_date": "2026-02-15",
+      "evidence": "The host states: 'If you have the will and are willing to put in the time, it doesn't matter how non-technical you are. You can go build an agent team with Open Claw right now today without asking anyone permission.'",
+      "fp": "145d857a2ed88d0b"
+    },
+    {
+      "claim": "OpenAI's unreleased 'Astra' model solved or made substantial progress on 10 open questions in mathematics, with a total token spend of roughly $2,000 (averaging $200 per solution).",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "OpenAI / Gnome Brown",
+      "episode": "how-significant-are-ais-latest-math-breakthroughs",
+      "claim_date": "2026-08-04",
+      "evidence": "OpenAI disclosed that Astra solved problems in fields like high-dimensional geometry and group theory. The cost was approximately $2,000 at 'sole' API rates, and the arguments were formalized in Lean certificates for verification.",
+      "fp": "49bba4c4387211d1"
+    },
+    {
+      "claim": "Ethan Mollick asserts that for intensive, high-stakes AI work, there are effectively only two viable primary systems currently: ChatGPT and Claude.",
+      "tier": "2",
+      "confidence": "0.95",
+      "source": "Ethan Mollick (as reported by the AI Daily Brief host)",
+      "episode": "how-to-get-the-most-from-ai-this-summer",
+      "claim_date": "2026-07-27",
+      "evidence": "Mollick's 'opinionated guide' explicitly states that for real intensive work, the choices are limited to ChatGPT or Claude, noting that Gemini is 'officially out of the rankings' for this tier.",
+      "fp": "1de0c172fa613582"
+    },
+    {
+      "claim": "Google has fallen behind in the frontier AI race, lacking a leading frontier model and a direct competitor to OpenAI's Codex or Anthropic's Claude Code.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "Ethan Mollick (as reported by the AI Daily Brief host)",
+      "episode": "how-to-get-the-most-from-ai-this-summer",
+      "claim_date": "2026-07-27",
+      "evidence": "Mollick writes that Google 'has no leading frontier model and has nothing close to Codex and Code,' which is why he does not suggest Gemini as a primary system for intensive work.",
+      "fp": "adbd6555ce1c169e"
+    },
+    {
+      "claim": "The API costs for GPT 5.6 Soul are $5 per million input tokens and $30 per million output tokens.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "OpenAI (via AI Daily Brief host)",
+      "episode": "mythos-returns-but-not-for-everyone",
+      "claim_date": "2026-06-30",
+      "evidence": "The transcript notes: 'API costs for Soul remain the same as GPT 5.5 at $5 per million input tokens and 30 per million output tokens.'",
+      "fp": "52cbe856e36448f9"
+    },
+    {
+      "claim": "OpenAI announced GPT-5.3 Instant, an update to their everyday chatbot model designed to reduce unnecessary refusals and overly defensive preambles to provide more direct answers.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "OpenAI (as reported by the host)",
+      "episode": "the-big-questions-shaping-the-consumer-ai-battle",
+      "claim_date": "2026-03-05",
+      "evidence": "Open AI announced GPT 5.3 Instant... The model had already been optimized for speed, but the tweaks are seemingly intended to make chatbot sessions a little more natural. Open AI says that they've reduced unnecessary refusals and toned down, quote, overly defensive or moralizing preambles before answering the question.",
+      "fp": "9682beb1ab537722"
+    },
+    {
+      "claim": "The host argues that 'vibes' (personality and tone) are becoming a more critical differentiator in consumer AI than raw state-of-the-art performance, as many use cases have reached a threshold where 'good enough' performance is sufficient.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-big-questions-shaping-the-consumer-ai-battle",
+      "claim_date": "2026-03-05",
+      "evidence": "I would argue that vibes matter in both work use cases and in personal use cases... if, on average, we've reached a threshold where people aren't going to be jumping around because of model performance, then really vibes are all you're left with.",
+      "fp": "6a05b0482af728bd"
+    },
+    {
+      "claim": "Microsoft released MAI Thinking 1, a 1-trillion parameter model using a mixture of experts architecture, which the company positioned in the performance range of Anthropic's Sonnet 4.6 to Opus 4.6 models.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "AI Daily Brief host",
+      "episode": "the-next-wave-of-enterprise-ai",
+      "claim_date": "2026-06-04",
+      "evidence": "The transcript states: 'The headliner was MAI Thinking 1, a 1-trillion parameter model using a mixture of experts architecture for inference optimization that Microsoft tried to place as a model somewhere in the Sonnet 4.6 to Opus 4.6 type of range.'",
+      "fp": "8b2bb39e751a6f0e"
+    },
+    {
+      "claim": "Average reasoning token consumption per organization increased by 320x over the past 12 months according to OpenAI data.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "OpenAI State of Enterprise AI report",
+      "episode": "the-state-of-enterprise-ai-the-state-of-enterprise-ai",
+      "claim_date": "2025-12-11",
+      "evidence": "The host notes: 'In the past 12 months, they found that average reasoning token consumption per organization is up 320x.'",
+      "fp": "c44e0f534feee9d0"
+    },
+    {
+      "claim": "Between 2021 and 2025, the hallucination rate of state-of-the-art AI models decreased from 21.8% to approximately 0.7%, representing a 96% reduction.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "AI Daily Brief (Host)",
+      "episode": "the-ultimate-ai-catch-up-guide",
+      "claim_date": "2026-04-01",
+      "evidence": "Between 2021 and 2025, state-of-the-art models went from 21.8% hallucination to just about 0.7% hallucination. A 96% reduction in 4 years.",
+      "fp": "b8dedf37be420846"
+    },
+    {
+      "claim": "The major US AI labs have all identified a path to continue the exponential pace of LLM improvement in the near future, effectively canceling the possibility of an 'AI winter'.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "Ethan Mollick / Andrew Curran",
+      "episode": "why-claude-opus-45-changes-whats-possible-with-vibe-coding",
+      "claim_date": "2025-11-26",
+      "evidence": "Ethan Mollick writes: 'The main lesson of the past few weeks is that the big four US labs all seem to have figured out a path forward in continuing the exponential pace of LLM improvement.' Andrew Curran writes: 'AI winter is canled. Try again next year.'",
+      "fp": "3b484384f894ed9d"
+    },
+    {
+      "claim": "Google released Gemini 3.1 Pro, Gemini 3.1 Deep Think, Gemini 3.1 Flash, and Nano Banana 2 during the current year.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "AI Daily Brief Host",
+      "episode": "why-google-workspace-cli-is-such-a-big-deal",
+      "claim_date": "2026-03-12",
+      "evidence": "The host lists these specific model releases as part of Google's 'furiously shipping' strategy: 'We got Gemini 3.1 Pro, as well as Gemini 3.1 Deep Think, and Gemini 3.1 Flash. We also got Nano Banana 2.'",
+      "fp": "88684249a3a81844"
+    },
+    {
+      "claim": "Jensen Huang stated that he believes AGI has already been achieved, citing the ability of current AI to create and run successful technology companies.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Jensen Huang (via Lex Fridman podcast appearance)",
+      "episode": "work-agi-is-the-only-agi-that-matters",
+      "claim_date": "2026-03-26",
+      "evidence": "Jensen responded, 'I think it's now. I think we've achieved AGI. It is not out of the question that a claw was able to create a web service, some interesting little app that all of a sudden, you know, a few billion people used for 50 cents, and then it went out of business again shortly after.'",
+      "fp": "7515eaac807ef54d"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  Large Language Models \u2014 content pending enrichment.",
+      "content": "\n\n- ### Recent Developments\n  - **Google Gemini Scale & Performance**: As of the Gemini 3 launch, the Gemini app reached 650 million monthly active users, with 13 million developers building on their models. Gemini 3 Pro achieved a 31.1% score on the ARC-AGI 2 benchmark (45.1% in 'deep think' mode), outperforming GPT-5.1's 17.6%.\n  - **OpenAI Model Updates & Optimization**: OpenAI announced GPT-5.3 Instant, optimized to reduce unnecessary refusals and defensive preambles. They also released GPT-5.6 Soul with API costs of $5 per million input tokens and $30 per million output tokens. Researchers developed an optimization technique that halved inference requirements, allowing the non-signed-in ChatGPT user base to be served on just 100 GPUs. Additionally, an unreleased model, 'Astra', solved or made substantial progress on 10 open mathematics questions for a total token spend of roughly $2,000.\n  - **Competitive Landscape & Pricing**: DeepSeek V4 Pro is a 1.6 trillion parameter model with a 1 million token context window, priced at $1.74 per million input tokens and $3.48 per million output tokens. Alibaba's Qwen 3.8 Max features 2.4 trillion parameters, priced at $2 per million input tokens and $6 per million output tokens. Ethan Mollick notes that for intensive, high-stakes work, the primary viable systems remain ChatGPT and Claude.\n  - **Research & Adoption Trends**: OpenAI data indicates average reasoning token consumption per organization increased by 320x over the past 12 months. OpenAI used reinforcement learning to train a specialized GPT-5 Mini for shopping research, which outperformed the full-size GPT-5 Thinking model in internal accuracy benchmarks. Andrej Karpathy released 'auto research' (March 7, 2025), a ~630-line minimal repository for training a small LLM on a single GPU using an autonomous AI agent loop."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 5,
+      "relevance": 4,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    }
+  },
+  "completeness": {
+    "score": 0.6666666666666666,
+    "detail": [
+      {
+        "fp": "a55bec223cbc309b",
+        "claim": "Google's Gemini app reached 650 million monthly active users and 13 million developers have built with their models as o",
+        "matched": true
+      },
+      {
+        "fp": "32ebb74ef2751e32",
+        "claim": "Andrej Karpathy released a project called 'auto research' on March 7, 2025, which is a minimal repository of approximate",
+        "matched": false
+      },
+      {
+        "fp": "e669ce27ddf6dfb9",
+        "claim": "Gemini 3 Pro achieved a score of 31.1% on the ARC-AGI 2 benchmark, compared to 17.6% for GPT-5.1, with a 'deep think' mo",
+        "matched": true
+      },
+      {
+        "fp": "c8a45e6fcab08599",
+        "claim": "OpenAI used reinforcement learning to train a specialized version of GPT-5 Mini for its new shopping research feature, w",
+        "matched": true
+      },
+      {
+        "fp": "c44e0f534feee9d0",
+        "claim": "Average reasoning token consumption per organization increased by 320x over the past 12 months according to OpenAI data.",
+        "matched": true
+      },
+      {
+        "fp": "9682beb1ab537722",
+        "claim": "OpenAI announced GPT-5.3 Instant, an update to their everyday chatbot model designed to reduce unnecessary refusals and ",
+        "matched": false
+      },
+      {
+        "fp": "2a9328758b095176",
+        "claim": "DeepSeek V4 Pro is a 1.6 trillion parameter model with a 1 million token context window, priced at $1.74 per million inp",
+        "matched": true
+      },
+      {
+        "fp": "52cbe856e36448f9",
+        "claim": "The API costs for GPT 5.6 Soul are $5 per million input tokens and $30 per million output tokens.",
+        "matched": true
+      },
+      {
+        "fp": "d84a119166337eb7",
+        "claim": "OpenAI researchers have developed an optimization technique that cut inference requirements in half for existing models,",
+        "matched": false
+      },
+      {
+        "fp": "1de0c172fa613582",
+        "claim": "Ethan Mollick asserts that for intensive, high-stakes AI work, there are effectively only two viable primary systems cur",
+        "matched": false
+      },
+      {
+        "fp": "49bba4c4387211d1",
+        "claim": "OpenAI's unreleased 'Astra' model solved or made substantial progress on 10 open questions in mathematics, with a total ",
+        "matched": true
+      },
+      {
+        "fp": "04c02b2497d96f2d",
+        "claim": "Alibaba's Qwen 3.8 Max model has 2.4 trillion parameters and is priced at $2 per million input tokens and $6 per million",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

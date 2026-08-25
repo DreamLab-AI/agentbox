@@ -1,0 +1,137 @@
+{
+  "topic": "Perception",
+  "topic_slug": "perception",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5",
+    "completeness 0.40 < 0.6"
+  ],
+  "n_assertions": 5,
+  "episodes": [
+    "dario-amodei-breaks-his-social-media-silence",
+    "did-the-super-bowl-as-make-americans-like-ai-any-more",
+    "first-impressions-of-the-new-opus-48",
+    "how-harness-as-a-service-will-change-agents"
+  ],
+  "assertion_fingerprints": [
+    "1aeeda09ea5a1f07",
+    "1c4ebb7925e73fa0",
+    "55ceaeacf1da7ee8",
+    "da210755ec6532e3",
+    "e5af51e88848e674"
+  ],
+  "target_page": "Perception.md",
+  "assertions": [
+    {
+      "claim": "Dario Amodei argues that the public's negative view of AI is fundamentally a crisis of trust in institutions, not a result of AI leaders' messaging, and that the only way to restore trust is through tangible delivery of benefits like curing diseases.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Dario Amodei",
+      "episode": "dario-amodei-breaks-his-social-media-silence",
+      "claim_date": "2026-08-18",
+      "evidence": "Amodei states: 'I think it is fundamentally a crisis of trust... I don't think that a glitzy marketing campaign... is the way to win back that trust... The thing that will work is actually curing cancer... The most accurate criticism... is that we haven't yet delivered on our big promises.'",
+      "fp": "55ceaeacf1da7ee8"
+    },
+    {
+      "claim": "According to an Edelman study, only 32% of Americans trust AI.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Edelman (cited by host)",
+      "episode": "did-the-super-bowl-as-make-americans-like-ai-any-more",
+      "claim_date": "2026-02-10",
+      "evidence": "The host explicitly cites an Edelman study stating that 'only 32% trust it' in the context of American perceptions of AI.",
+      "fp": "1c4ebb7925e73fa0"
+    },
+    {
+      "claim": "Anthropic's Super Bowl ad failed to land effectively because the general public lacked the context that it was a critique of OpenAI's upcoming ad-supported ChatGPT, leading many to interpret it as a generic critique of AI's commercialization.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Host (AI Daily Brief)",
+      "episode": "did-the-super-bowl-as-make-americans-like-ai-any-more",
+      "claim_date": "2026-02-10",
+      "evidence": "The host argues that 'the vast majority of people who did enjoy this were going to be those who interpreted it as a critique of AI in general' and that viewers described reactions as 'WTF, signaling confusion.'",
+      "fp": "e5af51e88848e674"
+    },
+    {
+      "claim": "GPT-5.6 could plausibly become the stronger overall model than Claude Opus 4.8 if OpenAI maintains its current trajectory, as the combination of GPT-5.5 and Codex has shifted momentum to OpenAI among power users.",
+      "tier": "3",
+      "confidence": "0.5",
+      "source": "Host Analysis / Chubbyonx",
+      "episode": "first-impressions-of-the-new-opus-48",
+      "claim_date": "2026-05-30",
+      "evidence": "The host notes that first impressions of Opus 4.8 are unlikely to shift momentum back to Anthropic. Chubbyonx wrote that Anthropic is 'increasingly playing catch-up' and that GPT-5.6 could become the stronger model.",
+      "fp": "da210755ec6532e3"
+    },
+    {
+      "claim": "Microsoft is facing a narrative challenge where it is being lumped in with 'SaaS apocalypse' stocks, and investors are demanding clearer evidence of AI-powered products beyond Azure to justify its valuation.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Gene Munster / AI Daily Brief",
+      "episode": "how-harness-as-a-service-will-change-agents",
+      "claim_date": "2026-05-01",
+      "evidence": "The transcript quotes Gene Munster: 'Microsoft is in a tight spot because they can't shake the negative narrative... they need to make a statement... that they have AI-powered products beyond Azure that customers must have. Copilot has been a miss.'",
+      "fp": "1aeeda09ea5a1f07"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - Ethical considerations around [[Computer Vision]] perception \u2014 bias in training data, surveillance misuse, and consent \u2014 are increasingly subject to regulatory scrutiny and standardisation efforts.",
+      "content": "\n\n- ### Public Perception and Trust\n  - Public trust in AI remains low, with an Edelman study indicating that only 32% of Americans trust the technology.\n  - Dario Amodei argues that this negative public view is fundamentally a crisis of trust in institutions rather than a result of AI leaders' messaging, asserting that tangible delivery of benefits\u2014such as curing diseases\u2014is the only effective way to restore confidence.\n  - Communication challenges persist, as illustrated by the mixed reception of Anthropic's Super Bowl ad, which many viewers interpreted as a generic critique of AI commercialization due to a lack of context regarding its specific target.\n  - Corporate narratives are also under pressure; Microsoft faces investor scrutiny as it is grouped with 'SaaS apocalypse' stocks, with analysts noting that products like Copilot have yet to provide sufficient evidence of AI-driven value beyond Azure to justify its valuation."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    }
+  },
+  "completeness": {
+    "score": 0.4,
+    "detail": [
+      {
+        "fp": "55ceaeacf1da7ee8",
+        "claim": "Dario Amodei argues that the public's negative view of AI is fundamentally a crisis of trust in institutions, not a resu",
+        "matched": true
+      },
+      {
+        "fp": "1c4ebb7925e73fa0",
+        "claim": "According to an Edelman study, only 32% of Americans trust AI.",
+        "matched": true
+      },
+      {
+        "fp": "e5af51e88848e674",
+        "claim": "Anthropic's Super Bowl ad failed to land effectively because the general public lacked the context that it was a critiqu",
+        "matched": false
+      },
+      {
+        "fp": "da210755ec6532e3",
+        "claim": "GPT-5.6 could plausibly become the stronger overall model than Claude Opus 4.8 if OpenAI maintains its current trajector",
+        "matched": false
+      },
+      {
+        "fp": "1aeeda09ea5a1f07",
+        "claim": "Microsoft is facing a narrative challenge where it is being lumped in with 'SaaS apocalypse' stocks, and investors are d",
+        "matched": false
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

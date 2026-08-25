@@ -1,0 +1,233 @@
+{
+  "topic": "Geopolitics",
+  "topic_slug": "geopolitics",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0"
+  ],
+  "n_assertions": 11,
+  "episodes": [
+    "ceo-led-ai-gets-3x-the-roi",
+    "fable-5-raises-the-bar-for-ai-ambition",
+    "fable-5-shut-down-by-us-government",
+    "how-deepseek-v4-connects-to-the-us-grid",
+    "how-the-escalating-ai-wars-benefit-you",
+    "microsofts-plan-to-make-people-less-angry-about-ai-and-electricity"
+  ],
+  "assertion_fingerprints": [
+    "29fb8184b24bc74d",
+    "432ecc7842a21d64",
+    "59b87ee88411acc7",
+    "71259c2cc92a0e49",
+    "829c57b4ff236b5e",
+    "88753b2aaf2ed7d6",
+    "89221a531925abaa",
+    "8ae9c376f63b920b",
+    "c918d8484f704b1c",
+    "d21b59a50b535d77",
+    "d3657d9ce8c33ae3"
+  ],
+  "target_page": "Geopolitics.md",
+  "assertions": [
+    {
+      "claim": "Anthropic accused Alibaba of conducting the 'largest distillation attack ever detected,' involving nearly 29 million model accesses via 25,000 fraudulent accounts between mid-April and early June.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Anthropic Letter to Senate Banking Committee",
+      "episode": "ceo-led-ai-gets-3x-the-roi",
+      "claim_date": "2026-06-25",
+      "evidence": "The letter states the attacks were carried out at an industrial scale to harvest US AI capabilities and repackage them without incurring training costs, posing security risks due to lack of safety guardrails.",
+      "fp": "89221a531925abaa"
+    },
+    {
+      "claim": "Anthropic's decision to limit Claude's effectiveness on Frontier LLM development tasks is a strategic move to prevent competitors, particularly Chinese labs, from using their research to develop lower-cost alternatives.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "AI Daily Brief Host / Anthropic System Card",
+      "episode": "fable-5-raises-the-bar-for-ai-ambition",
+      "claim_date": "2026-06-11",
+      "evidence": "The host analyzes the system card's mention of limiting effectiveness on 'Frontier LLM development' and states: 'This is in my estimation very clearly a response to Chinese models using anthropics research to develop lowercost alternatives.'",
+      "fp": "59b87ee88411acc7"
+    },
+    {
+      "claim": "Industry experts and policy analysts criticize the US government's export control strategy as incoherent and self-defeating, arguing it fails to enforce existing controls on chips while arbitrarily restricting model access, thereby stifling US AI development.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Chris Miller (Council on Foreign Relations); Dean Ball; Transcript analysis",
+      "episode": "fable-5-shut-down-by-us-government",
+      "claim_date": "2026-06-13",
+      "evidence": "Chris Miller wrote: 'The Department of Commerce's export control strategy has been completely incoherent and sabotaging... It is sending powerful AI chips to China, not enforcing controls that would prevent Chinese smuggling... and preventing US AI companies from releasing their own models.' Dean Ball noted the hypocrisy of an administration that exports chips to China while banning non-Americans from using US models.",
+      "fp": "71259c2cc92a0e49"
+    },
+    {
+      "claim": "The suspension of access to frontier models for foreign nationals will accelerate the trend toward 'sovereign AI,' where nation-states and middle powers will prioritize building domestic AI capabilities to avoid dependence on US-controlled technology.",
+      "tier": "3",
+      "confidence": "0.78",
+      "source": "Hemant Mohapatra; Alex Petropoulos; Garry Tan; Transcript analysis",
+      "episode": "fable-5-shut-down-by-us-government",
+      "claim_date": "2026-06-13",
+      "evidence": "Hemant Mohapatra wrote: 'The sovereign AI's real moment is here. Nation states will soon start needing citizenship and or security clearances to work on their next state-of-the-art models.' Alex Petropoulos stated: 'This should be a warning shot for all middle powers. Your access to frontier AI systems is not guaranteed. You need to build and pull your leverage to secure access.' Garry Tan noted that procurement officers in Brussels, Tokyo, and S\u00e3o Paulo now have a 'defensible argument for sovereign AI hedging.'",
+      "fp": "432ecc7842a21d64"
+    },
+    {
+      "claim": "The export control directive may lead to a 'Balkanization' of technology, creating a digital iron curtain where access to frontier intelligence is divided by citizenship and nationality, rather than just economic status.",
+      "tier": "3",
+      "confidence": "0.7",
+      "source": "Ben Murphy (Harvard); Mall (via X); Transcript analysis",
+      "episode": "fable-5-shut-down-by-us-government",
+      "claim_date": "2026-06-13",
+      "evidence": "Ben Murphy wrote: 'This is another step on the Balkanization of technology.' Mall stated: 'The scariest part of this whole story is the dystopia looming on the horizon. It is the way the US government is literally creating a caste system based on access to intelligence... This is a new kind of iron curtain, digital, intellectual.'",
+      "fp": "8ae9c376f63b920b"
+    },
+    {
+      "claim": "China blocked Meta's $2 billion acquisition of Manifold on national security grounds, citing concerns about draining AI talent and resources.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Bloomberg / Financial Times / AI Daily Brief Host",
+      "episode": "how-deepseek-v4-connects-to-the-us-grid",
+      "claim_date": "2026-04-28",
+      "evidence": "The transcript states: 'Beijing brought the investigation to its conclusion and blocked Meta's acquisition of Manifold... Chinese officials told the Financial Times that the deal was viewed as a conspiratorial effort to drain China of AI talent and resources.'",
+      "fp": "88753b2aaf2ed7d6"
+    },
+    {
+      "claim": "The US-China AI competition is entering a new phase characterized by mutual protectionism, with China curbing US investment and the US treating grid infrastructure as a defense asset.",
+      "tier": "3",
+      "confidence": "0.65",
+      "source": "AI Daily Brief Host",
+      "episode": "how-deepseek-v4-connects-to-the-us-grid",
+      "claim_date": "2026-04-28",
+      "evidence": "The transcript concludes: 'You take all these things together and we are clearly entering a new phase of the China-US AI competition.'",
+      "fp": "829c57b4ff236b5e"
+    },
+    {
+      "claim": "US enterprise adoption of Chinese open-source models like DeepSeek poses a geopolitical security risk if those labs change architectures or cut off access.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "Matthew Berman / AI Daily Brief Host",
+      "episode": "how-deepseek-v4-connects-to-the-us-grid",
+      "claim_date": "2026-04-28",
+      "evidence": "The transcript cites Matthew Berman: 'If US enterprise companies build their AI strategy on top of Chinese open source models, that's a big geopolitical security risk. If those Chinese AI labs change their architecture or cut us off, we're suddenly in a really bad spot.'",
+      "fp": "d3657d9ce8c33ae3"
+    },
+    {
+      "claim": "The US Commerce Department has eased export controls to allow the UAE government and approved companies to access advanced AI chips without a license.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "US Commerce Department (reported by AI Daily Brief)",
+      "episode": "how-the-escalating-ai-wars-benefit-you",
+      "claim_date": "2026-07-14",
+      "evidence": "A rule change posted on Friday stated that the UAE government and approved companies will now be able to access advanced AI chips without a license, citing new technology protection measures under an export deal signed in May of the previous year.",
+      "fp": "d21b59a50b535d77"
+    },
+    {
+      "claim": "Chinese customs officials have instructed agents that Nvidia H200 chips are not permitted to enter China, with one Reuters source describing the directive as 'basically a ban for now.'",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Reuters",
+      "episode": "microsofts-plan-to-make-people-less-angry-about-ai-and-electricity",
+      "claim_date": "2026-01-16",
+      "evidence": "The transcript reports that Reuters sources said tech companies were summoned to meetings where they were told not to order chips unless necessary, and that the wording from officials was severe enough to constitute a temporary ban.",
+      "fp": "29fb8184b24bc74d"
+    },
+    {
+      "claim": "Geopolitical strategist Ray Gojan argues that China's restriction on Nvidia H200 imports is a power play to extract larger concessions from the US to dismantle tech controls ahead of April trade negotiations.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Ray Gojan",
+      "episode": "microsofts-plan-to-make-people-less-angry-about-ai-and-electricity",
+      "claim_date": "2026-01-16",
+      "evidence": "The transcript quotes Gojan: 'Bijing is pushing to see what bigger concessions they can get to dismantle US-led tech controls.'",
+      "fp": "c918d8484f704b1c"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "The resulting dynamics shape investment, regulation, and the diffusion of frontier capabilities.",
+      "content": "\n- ### Recent Developments\n  - **US-China Strategic Decoupling & Export Controls**: The US-China AI competition is entering a new phase characterized by mutual protectionism. China has blocked Meta's $2 billion acquisition of Manifold on national security grounds, citing concerns about draining AI talent, while the US treats grid infrastructure as a defense asset. Recent directives include the US Commerce Department easing controls to allow the UAE government and approved companies to access advanced AI chips without a license, and Chinese customs officials effectively banning Nvidia H200 chips from entering China. Analysts like Ray Gojan argue China's import restrictions are a power play to extract larger concessions from the US to dismantle tech controls ahead of trade negotiations.\n  - **Model Access & Sovereign AI**: The suspension of access to frontier models for foreign nationals is accelerating the trend toward \"sovereign AI,\" where nation-states prioritize building domestic capabilities to avoid dependence on US-controlled technology. This shift is described as a \"Balkanization\" of technology, creating a digital iron curtain where access to frontier intelligence is divided by citizenship. Experts note that procurement officers in Brussels, Tokyo, and S\u00e3o Paulo now have a \"defensible argument for sovereign AI hedging.\"\n  - **Intellectual Property & Distillation**: Anthropic has accused Alibaba of conducting the \"largest distillation attack ever detected,\" involving nearly 29 million model accesses via 25,000 fraudulent accounts to harvest US AI capabilities at an industrial scale. In response, Anthropic has strategically limited Claude's effectiveness on Frontier LLM development tasks to prevent competitors, particularly Chinese labs, from using their research to develop lower-cost alternatives.\n  - **Policy Criticism & Security Risks**: Industry experts criticize the US export control strategy as incoherent, arguing it fails to enforce existing controls on chips while arbitrarily restricting model access, thereby stifling US AI development. Additionally, the US enterprise adoption of Chinese open-source models like DeepSeek poses a geopolitical security risk if those labs change architectures or cut off access, leaving US companies in a vulnerable position."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 4,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 1,
+      "relevance": 4,
+      "coherence": 4,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 0.7272727272727273,
+    "detail": [
+      {
+        "fp": "89221a531925abaa",
+        "claim": "Anthropic accused Alibaba of conducting the 'largest distillation attack ever detected,' involving nearly 29 million mod",
+        "matched": true
+      },
+      {
+        "fp": "59b87ee88411acc7",
+        "claim": "Anthropic's decision to limit Claude's effectiveness on Frontier LLM development tasks is a strategic move to prevent co",
+        "matched": true
+      },
+      {
+        "fp": "71259c2cc92a0e49",
+        "claim": "Industry experts and policy analysts criticize the US government's export control strategy as incoherent and self-defeat",
+        "matched": true
+      },
+      {
+        "fp": "432ecc7842a21d64",
+        "claim": "The suspension of access to frontier models for foreign nationals will accelerate the trend toward 'sovereign AI,' where",
+        "matched": true
+      },
+      {
+        "fp": "8ae9c376f63b920b",
+        "claim": "The export control directive may lead to a 'Balkanization' of technology, creating a digital iron curtain where access t",
+        "matched": false
+      },
+      {
+        "fp": "88753b2aaf2ed7d6",
+        "claim": "China blocked Meta's $2 billion acquisition of Manifold on national security grounds, citing concerns about draining AI ",
+        "matched": true
+      },
+      {
+        "fp": "829c57b4ff236b5e",
+        "claim": "The US-China AI competition is entering a new phase characterized by mutual protectionism, with China curbing US investm",
+        "matched": true
+      },
+      {
+        "fp": "d3657d9ce8c33ae3",
+        "claim": "US enterprise adoption of Chinese open-source models like DeepSeek poses a geopolitical security risk if those labs chan",
+        "matched": true
+      },
+      {
+        "fp": "d21b59a50b535d77",
+        "claim": "The US Commerce Department has eased export controls to allow the UAE government and approved companies to access advanc",
+        "matched": true
+      },
+      {
+        "fp": "29fb8184b24bc74d",
+        "claim": "Chinese customs officials have instructed agents that Nvidia H200 chips are not permitted to enter China, with one Reute",
+        "matched": false
+      },
+      {
+        "fp": "c918d8484f704b1c",
+        "claim": "Geopolitical strategist Ray Gojan argues that China's restriction on Nvidia H200 imports is a power play to extract larg",
+        "matched": false
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

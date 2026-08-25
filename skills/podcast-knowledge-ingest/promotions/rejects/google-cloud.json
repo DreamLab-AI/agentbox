@@ -1,0 +1,220 @@
+{
+  "topic": "Google Cloud",
+  "topic_slug": "google-cloud",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0"
+  ],
+  "n_assertions": 10,
+  "episodes": [
+    "in-defense-of-tokenmaxxing",
+    "the-calm-before-the-agi-storm",
+    "the-most-important-ai-news-from-google-io",
+    "the-way-we-use-ai-is-changing",
+    "the-week-the-ai-story-shifted",
+    "the-whole-world-gets-claude-pilled",
+    "where-should-claude-opus-5-fit-in-your-model-rotation",
+    "who-cares-about-consumer-ai",
+    "why-the-ai-bubble-conversation-is-useless"
+  ],
+  "assertion_fingerprints": [
+    "0de60cadf9e1bcef",
+    "0e92943983db11e2",
+    "103467591f7406b8",
+    "16af9d2243c0c1f5",
+    "1cfb9be87790da4e",
+    "33ebc23f1e9770da",
+    "444ad05819b62c7a",
+    "981cefd36afc939a",
+    "b91b43ec8c8b20f5",
+    "bbdfa3212db24a2a"
+  ],
+  "target_page": "Google Cloud.md",
+  "assertions": [
+    {
+      "claim": "Google Cloud is hiring hundreds of forward deployed engineers to help customers embrace agent development, a move described by CEO Thomas Kurian as a response to rapidly growing demand for enterprise AI products.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Thomas Kurian (Google Cloud CEO) via LinkedIn (cited by AI Daily Brief host)",
+      "episode": "in-defense-of-tokenmaxxing",
+      "claim_date": "2026-05-14",
+      "evidence": "Google Cloud CEO Thomas Kurian wrote in a LinkedIn post, 'While having FTEs is not new for Google Cloud, the demand from customers and partners for Google Enterprise AI products and Google engineers to help them embrace agent development is growing very rapidly.'",
+      "fp": "1cfb9be87790da4e"
+    },
+    {
+      "claim": "Google released Gemma 4, an open-source model family including a 31B dense model ranked number three on the Arena AI text leaderboard for open-source models, which Google claims delivers frontier-level capabilities with significantly less hardware overhead.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-calm-before-the-agi-storm",
+      "claim_date": "2026-04-08",
+      "evidence": "Google actually increased its open-source capabilities with the release of Gemma 4... The 31B model is currently ranked at number three on the Arena AI text leaderboard for open-source models... Google writing, 'This new level of intelligence per parameter means achieving frontier-level capabilities with significantly less hardware overhead.'",
+      "fp": "981cefd36afc939a"
+    },
+    {
+      "claim": "Google acquired DeepMind in 2014 for $500 million.",
+      "tier": "1",
+      "confidence": "0.98",
+      "source": "AI Daily Brief host",
+      "episode": "the-most-important-ai-news-from-google-io",
+      "claim_date": "2026-05-20",
+      "evidence": "The host notes: \"Back in 2014, they acquired DeepMind for a then massive $500 million, but problematically, it was not their only AI effort.\"",
+      "fp": "bbdfa3212db24a2a"
+    },
+    {
+      "claim": "Google's Gemini app reached 900 million monthly active users in April, up from 400 million in May of the previous year.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "AI Daily Brief host",
+      "episode": "the-most-important-ai-news-from-google-io",
+      "claim_date": "2026-05-20",
+      "evidence": "The host reports: \"The Gemini app has jumped from 400 million monthly active users back in May last year to 900 million users last month in April.\"",
+      "fp": "103467591f7406b8"
+    },
+    {
+      "claim": "SpaceX disclosed in an SEC filing that Google agreed to pay $920 million per month to rent compute, with the deal running from October 2025 through June 2029 and granting access to at least 110,000 Nvidia GPUs.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "SpaceX SEC filing (reported by AI Daily Brief host)",
+      "episode": "the-way-we-use-ai-is-changing",
+      "claim_date": "2026-06-09",
+      "evidence": "In an SEC filing, SpaceX disclosed that Google had agreed to pay 920 million a month to rent compute. The deal will run from October of this year through June of 2029, and grants access to at least 110,000 Nvidia GPUs.",
+      "fp": "0de60cadf9e1bcef"
+    },
+    {
+      "claim": "Google Cloud's $462 billion backlog includes a 5-gigawatt deal with Anthropic worth $200 billion over several years.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-week-the-ai-story-shifted",
+      "claim_date": "2026-05-08",
+      "evidence": "The host notes: 'we also knew that that deal had contributed to the $462 billion backlog for Google Cloud... reporting that it was worth 200 billion over years.'",
+      "fp": "b91b43ec8c8b20f5"
+    },
+    {
+      "claim": "A survey commissioned by Google and conducted by Ipsos found that 66% of respondents had used AI in the past 12 months, up from 48% in 2024 and 28% in 2023.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Ipsos (commissioned by Google)",
+      "episode": "the-whole-world-gets-claude-pilled",
+      "claim_date": "2026-01-21",
+      "evidence": "According to a new survey commissioned by Google and conducted by Ipsos, AI users are now in the majority. 66% of respondents said they had used AI in the past 12 months compared to 48% in the 2024 poll and 28% in 2023.",
+      "fp": "444ad05819b62c7a"
+    },
+    {
+      "claim": "Google has disclosed agreements to guarantee up to $44 billion worth of lease payments on data centers owned by third parties, more than doubling these guarantees over the past 6 months from zero one year ago.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "Wall Street Journal / Host",
+      "episode": "where-should-claude-opus-5-fit-in-your-model-rotation",
+      "claim_date": "2026-07-28",
+      "evidence": "Last week they disclosed agreements to guarantee up to $44 billion worth of lease payments on data centers owned by third parties. Google has more than doubled these guarantees over the past 6 months, up from zero 1 year ago.",
+      "fp": "16af9d2243c0c1f5"
+    },
+    {
+      "claim": "Anthropic has committed to spending $200 billion with Google Cloud over a five-year period.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "The Information",
+      "episode": "who-cares-about-consumer-ai",
+      "claim_date": "2026-05-06",
+      "evidence": "The Information now reports the deal is worth 200 billion spread across 5 years. And indeed represents the lion's share of the 462 billion-dollar backlog Google announced last week during earnings.",
+      "fp": "33ebc23f1e9770da"
+    },
+    {
+      "claim": "Google's current run rate for capital expenditure is 95 billion for the year, which would amount to 750 billion over an 8-year period.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "AI Daily Brief host",
+      "episode": "why-the-ai-bubble-conversation-is-useless",
+      "claim_date": "2025-11-25",
+      "evidence": "The host calculates that 'at Google's current run rate of 95 billion for this year, they'd be at 750 billion over those 8 years.'",
+      "fp": "0e92943983db11e2"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - Open challenges as of 2026 centre on acute compute supply constraints (Google plans to lean on third-party capacity as a bridge into 2027), balancing TPU allocation between frontier model development and external cloud demand, and the governance and security of large-scale multi-agent deployments as A2A/MCP interoperability becomes a baseline expectation.",
+      "content": "\n\n- ### Recent Developments (2026)\n  - **Enterprise AI Demand & Workforce** \u2014 Google Cloud is hiring hundreds of forward deployed engineers to help customers embrace agent development. CEO Thomas Kurian described this as a response to rapidly growing demand for enterprise AI products, noting that while having FTEs is not new, the demand from customers and partners for Google Enterprise AI products and engineers to help them embrace agent development is growing very rapidly.\n  - **Gemini App Growth** \u2014 The Gemini app reached 900 million monthly active users in April 2026, up from 400 million in May of the previous year, reflecting a significant acceleration in consumer adoption of Google's AI interface.\n  - **Open-Source Model Release** \u2014 Google released Gemma 4, an open-source model family including a 31B dense model. The 31B model is currently ranked number three on the Arena AI text leaderboard for open-source models, with Google claiming it delivers frontier-level capabilities with significantly less hardware overhead.\n  - **Major Infrastructure & Compute Deals** \u2014\n    - **SpaceX Compute Lease**: SpaceX disclosed in an SEC filing that Google agreed to pay $920 million per month to rent compute. The deal runs from October 2025 through June 2029 and grants access to at least 110,000 Nvidia GPUs.\n    - **Anthropic Partnership**: Anthropic has committed to spending $200 billion with Google Cloud over a five-year period. This 5-gigawatt deal represents the lion's share of Google Cloud's $462 billion backlog announced during recent earnings.\n    - **Data Centre Guarantees**: Google has disclosed agreements to guarantee up to $44 billion worth of lease payments on data centers owned by third parties. These guarantees have more than doubled over the past 6 months, up from zero one year ago.\n  - **Capital Expenditure Trajectory** \u2014 Google's current run rate for capital expenditure is $95 billion for the year. At this pace, Google would reach $750 billion in cumulative capex over an 8-year period, underscoring the massive scale of its infrastructure build-out.\n  - **AI Adoption Survey** \u2014 A survey commissioned by Google and conducted by Ipsos found that 66% of respondents had used AI in the past 12 months, up from 48% in 2024 and 28% in 2023, indicating that AI users are now in the majority."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 4,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "A",
+      "improvement": -2
+    },
+    "raw_b": {
+      "factual_grounding": 1,
+      "relevance": 3,
+      "coherence": 4,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 0.8,
+    "detail": [
+      {
+        "fp": "1cfb9be87790da4e",
+        "claim": "Google Cloud is hiring hundreds of forward deployed engineers to help customers embrace agent development, a move descri",
+        "matched": true
+      },
+      {
+        "fp": "981cefd36afc939a",
+        "claim": "Google released Gemma 4, an open-source model family including a 31B dense model ranked number three on the Arena AI tex",
+        "matched": true
+      },
+      {
+        "fp": "bbdfa3212db24a2a",
+        "claim": "Google acquired DeepMind in 2014 for $500 million.",
+        "matched": false
+      },
+      {
+        "fp": "103467591f7406b8",
+        "claim": "Google's Gemini app reached 900 million monthly active users in April, up from 400 million in May of the previous year.",
+        "matched": true
+      },
+      {
+        "fp": "0de60cadf9e1bcef",
+        "claim": "SpaceX disclosed in an SEC filing that Google agreed to pay $920 million per month to rent compute, with the deal runnin",
+        "matched": true
+      },
+      {
+        "fp": "b91b43ec8c8b20f5",
+        "claim": "Google Cloud's $462 billion backlog includes a 5-gigawatt deal with Anthropic worth $200 billion over several years.",
+        "matched": false
+      },
+      {
+        "fp": "444ad05819b62c7a",
+        "claim": "A survey commissioned by Google and conducted by Ipsos found that 66% of respondents had used AI in the past 12 months, ",
+        "matched": true
+      },
+      {
+        "fp": "16af9d2243c0c1f5",
+        "claim": "Google has disclosed agreements to guarantee up to $44 billion worth of lease payments on data centers owned by third pa",
+        "matched": true
+      },
+      {
+        "fp": "33ebc23f1e9770da",
+        "claim": "Anthropic has committed to spending $200 billion with Google Cloud over a five-year period.",
+        "matched": true
+      },
+      {
+        "fp": "0e92943983db11e2",
+        "claim": "Google's current run rate for capital expenditure is 95 billion for the year, which would amount to 750 billion over an ",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

@@ -1,0 +1,45 @@
+# Dossier: Code Generation
+
+- status: `candidate_rejected`
+- target page: `Code Generation.md`
+- assertions: 11 across episodes: dario-amodei-breaks-his-social-media-silence, gpt-52-is-here, gpt-54-first-test-results, how-harness-as-a-service-will-change-agents, how-the-4-new-models-released-this-week-will-change-how-you-work, is-gpt-52-garlic-coming-this-week, meta-delays-new-ai-model, the-ai-scientist-that-does-6-months-of-work-in-a-day, why-ai-users-are-raving-about-glm-52
+- reasons: rubric_b_improvement -2.0 <= 0.0; rubric_a_improvement -2.0 < -0.5
+
+## Scores
+- judge ok: True  error: None
+- rubric-A improvement (after vs before): -2.0
+- rubric-B improvement (after vs before): -2.0
+- answer-completeness: 1.00
+
+## Assertions
+- **Anthropic's internal 'Model 2' scores 62.8% on the internal V2 AIR&D code benchmark, compared to 50.3% for Mythos 5 and 54.8% for Mythos preview.**
+  - tier 1, confidence 0.9, source Chris GPT / Anthropic Internal Data, episode `dario-amodei-breaks-his-social-media-silence`, fp `1ff6ac57c4f0e9f4`
+- **GPT 5.2 achieved a score of 55.6% on the SWE-bench Pro coding benchmark, surpassing Claude Opus 4.5's score of 52%.**
+  - tier 1, confidence 0.95, source OpenAI / AI Daily Brief Host, episode `gpt-52-is-here`, fp `431d38d125ea42d7`
+- **The release of GPT-5.4 shifts the competitive balance in the coding agent market back toward OpenAI, reversing a period where Anthropic's Claude Code and Opus 4.5 were perceived as superior.**
+  - tier 2, confidence 0.85, source The Every / Host Analysis, episode `gpt-54-first-test-results`, fp `03f3289779f13e18`
+- **GPT-5.4 demonstrates a notable weakness in front-end UI design and visual taste, producing outputs described as 'tasteless' and 'muddy' compared to competitors like Claude and Gemini.**
+  - tier 2, confidence 0.85, source Host / Ben Davis / Matt Schumer, episode `gpt-54-first-test-results`, fp `131837a45c3f9390`
+- **The Codex CLI experience for GPT-5.4 offers significantly less friction and better transparency than Claude Code, featuring fewer approval prompts and interstitial status updates during long-running tasks.**
+  - tier 2, confidence 0.85, source Host / Mark Tenenholtz, episode `gpt-54-first-test-results`, fp `5966cd3b4d44a118`
+- **A new report from Endor Labs found that GPT-5.5 operating within Cursor's harness achieved a 23.5% score on a security correctness benchmark, narrowly beating Cursor with Opus 4.7 (22.9%).**
+  - tier 1, confidence 0.92, source Endor Labs / AI Daily Brief, episode `how-harness-as-a-service-will-change-agents`, fp `3e463fe7775ed389`
+- **xAI's Grock 4.5 is the first model resulting from the collaboration between xAI and Cursor, specifically trained for coding and agentic engineering tasks.**
+  - tier 1, confidence 0.95, source xAI / Cursor / AI Daily Brief Host, episode `how-the-4-new-models-released-this-week-will-change-how-you-work`, fp `f34315e8b8137846`
+- **In the coding-specific Polymarket, OpenAI's odds of having the best model flipped from 12.4% on December 5 to 75% by December 8, 2025, while Anthropic's odds dropped from 85% to 19%.**
+  - tier 1, confidence 0.95, source Polymarket, episode `is-gpt-52-garlic-coming-this-week`, fp `61fdfde68e96ea44`
+- **Elon Musk expects xAI to catch up and exceed its competitors in coding capabilities by the middle of the year.**
+  - tier 2, confidence 0.85, source Elon Musk, episode `meta-delays-new-ai-model`, fp `1ada4adcf8df6469`
+- **A single run of Cosmos can read 1,500 scientific papers and write 42,000 lines of code.**
+  - tier 1, confidence 0.95, source Edison Scientific (Sam Rodriguez, CEO), episode `the-ai-scientist-that-does-6-months-of-work-in-a-day`, fp `545fa7794901236d`
+- **GLM-5.2 websites produced 25% more characters and lines of code than Claude Fable 5, with an average generation time approximately double that of Fable 5.**
+  - tier 1, confidence 0.9, source Design Arena, episode `why-ai-users-are-raving-about-glm-52`, fp `b32b58be56c3a4e1`
+
+## Draft splice edit
+```json
+{
+  "mode": "insert_after",
+  "anchor": "  ## Key Terminology",
+  "content": "  ## Recent Developments (Late 2025 \u2013 Early 2026)\n\n  The competitive landscape for frontier code generation models has shifted rapidly in the final quarter of 2025 and early 2026, marked by intense benchmark competition between OpenAI, Anthropic, and emerging collaborations.\n\n  **OpenAI\u2019s Reclaiming of the Coding Lead:** The release of GPT-5.4 significantly shifted the competitive balance in the coding agent market back toward OpenAI, reversing a period where Anthropic\u2019s Claude Code and Opus 4.5 were perceived as superior. This shift was quantified in the coding-specific Polymarket, where OpenAI\u2019s odds of having the best model flipped from 12.4% on December 5 to 75% by December 8, 2025, while Anthropic\u2019s odds dropped from 85% to 19%. GPT 5.2 had already demonstrated strong performance, achieving a score of 55.6% on the SWE-bench Pro coding benchmark, surpassing Claude Opus 4.5\u2019s score of 52%. However, GPT-5.4 has been noted for a notable weakness in front-end UI design and visual taste, with outputs described as \u201ctasteless\u201d and \u201cmuddy\u201d compared to competitors like Claude and Gemini. Despite this, the Codex CLI experience for GPT-5.4 offers significantly less friction and better transparency than Claude Code, featuring fewer approval prompts and interstitial status updates during long-running tasks.\n\n  **Anthropic\u2019s Internal Benchmarks and Security Performance:** Anthropic\u2019s internal \u201cModel 2\u201d scores 62.8% on the internal V2 AIR&D code benchmark, compared to 50.3% for Mythos 5 and 54.8% for Mythos preview. In terms of security correctness, a report from Endor Labs found that GPT-5.5 operating within Cursor\u2019s harness achieved a 23.5% score on a security correctness benchmark, narrowly beating Cursor with Opus 4.7 (22.9%).\n\n  **New Collaborations and Specialised Models:** xAI\u2019s Grock 4.5 is the first model resulting from the collaboration between xAI and Cursor, specifically trained for coding and agentic engineering tasks. Elon Musk expects xAI to catch up and exceed its competitors in coding capabilities by the middle of the year. In the scientific domain, a single run of Edison Scientific\u2019s Cosmos can read 1,500 scientific papers and write 42,000 lines of code, executing across 166 different data analysis agents. Additionally, GLM-5.2 websites produced 25% more characters and lines of code than Claude Fable 5, with an average generation time approximately double that of Fable 5.\n\n  ## Key Terminology"
+}
+```

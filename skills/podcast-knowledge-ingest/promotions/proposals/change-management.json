@@ -1,0 +1,232 @@
+{
+  "topic": "Change Management",
+  "topic_slug": "change-management",
+  "status": "candidate_survivor",
+  "reasons": [],
+  "n_assertions": 9,
+  "episodes": [
+    "ceo-led-ai-gets-3x-the-roi",
+    "context-graphs-ais-next-big-idea",
+    "the-self-driving-company",
+    "weird-vibes-at-ai-india-summit",
+    "why-agents-make-every-job-a-startup",
+    "why-deeply-integrating-ai-3xs-likelihood-of-financial-gains-from-ai"
+  ],
+  "assertion_fingerprints": [
+    "05d322d6f345ac14",
+    "193ebaecc173cef6",
+    "58ef64e2c75c96b8",
+    "8f78bacf4f2634bd",
+    "a057527447af50ca",
+    "a8a5e2e358a7bde9",
+    "b048e1da905eec7b",
+    "d45916b88e6beebc",
+    "f9ccea994fbd2699"
+  ],
+  "target_page": "Change Management.md",
+  "assertions": [
+    {
+      "claim": "Employee resistance to AI agents in the United States has increased significantly from 5% to 20%, contrasting with executive optimism about workforce integration.",
+      "tier": "3",
+      "confidence": "0.65",
+      "source": "KPMG Quarterly Pulse Survey",
+      "episode": "ceo-led-ai-gets-3x-the-roi",
+      "claim_date": "2026-06-25",
+      "evidence": "While 71% of executives report good progress toward an integrated AI-human workforce, the sharp rise in employee resistance suggests a potential disconnect in adoption readiness.",
+      "fp": "58ef64e2c75c96b8"
+    },
+    {
+      "claim": "The role of the individual contributor in enterprise AI will shift to 'manager of agents,' requiring new responsibilities for providing oversight, escalation paths, and coordination between various agents, similar to managing human teams.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "Aaron Levy (Box)",
+      "episode": "context-graphs-ais-next-big-idea",
+      "claim_date": "2026-01-06",
+      "evidence": "In his essay 'The Era of Context,' Levy states: 'The individual contributor of today becomes the manager of agents in the future. Their new responsibilities will be providing the oversight and escalation paths, a meaningful amount of coordination throughout the work that the agents are doing, and shephering work between the various agents.'",
+      "fp": "d45916b88e6beebc"
+    },
+    {
+      "claim": "The transition to agentic work does not eliminate problems but shifts the nature of the problems organizations must solve, such as managing new bottlenecks in code review or data integration.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-self-driving-company",
+      "claim_date": "2026-07-23",
+      "evidence": "Many organizations that try to move towards this self-driving modality will get stopped when they realize that by moving to this agentic way of working, they're not giving up on problems. They're switching the problems that they have to deal with.",
+      "fp": "05d322d6f345ac14"
+    },
+    {
+      "claim": "A 'pull' adoption strategy, where engineers use AI agents in public spaces like Slack, is more effective for driving cross-organizational adoption than a 'push' mandate, as it allows other teams to observe benefits firsthand.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-self-driving-company",
+      "claim_date": "2026-07-23",
+      "evidence": "Their approach was clearly pull not push... by using public spaces like Slack for engineers to interact with the new self-driving system, they allowed others from other parts of the organization to see the benefits... People inherently... are going to be in many cases reluctant to change... by creating spaces where people can see not only the results... a lot of that skepticism can be dealt with in advance.",
+      "fp": "8f78bacf4f2634bd"
+    },
+    {
+      "claim": "The primary barrier to enterprise AI adoption is a lack of dedicated time for employees to learn new tools, rather than a lack of tool utility.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "AI Daily Brief host",
+      "episode": "weird-vibes-at-ai-india-summit",
+      "claim_date": "2026-02-22",
+      "evidence": "The biggest issue that we find across all of our surveys at AI Daily Brief, as well as everything we do at Super Intelligent, is the problem of time. People inside enterprises report that they don't have time to learn the technology that would save them time... They simply expect people to figure out that time on their own.",
+      "fp": "a8a5e2e358a7bde9"
+    },
+    {
+      "claim": "The host asserts that organizations will need to design new architectures of support, including prioritization tools, pacing infrastructure, and cross-functional coordination systems, to prevent burnout and manage the output of AI agents.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "AI Daily Brief Host",
+      "episode": "why-agents-make-every-job-a-startup",
+      "claim_date": "2026-05-05",
+      "evidence": "If we want agents to unlock the infinite backlog, we have to design entirely new architectures of support around them... New types of support for prioritization and helping people figure out what matters. New types of support to help people in a dynamic and evolving way uncover what are sustainable rhythms... Organizations will also need to get better at transmitting value and unlocks from one part of the organization to another.",
+      "fp": "a057527447af50ca"
+    },
+    {
+      "claim": "Workday research found that 53% of reinvested time saved from AI is allocated to systems and infrastructure, compared to only 29% allocated to people and workforce development.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Workday survey (reported by AI Daily Brief host)",
+      "episode": "why-deeply-integrating-ai-3xs-likelihood-of-financial-gains-from-ai",
+      "claim_date": "2026-01-23",
+      "evidence": "The transcript states: '53% of reinvestment of the time saved goes into systems versus just 29% for people and workforce development.'",
+      "fp": "b048e1da905eec7b"
+    },
+    {
+      "claim": "Employees whose managers explicitly expect AI usage are 2.6 times more AI proficient than the baseline employee in the Section study, which is the strongest multiplier identified.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Section survey (reported by AI Daily Brief host)",
+      "episode": "why-deeply-integrating-ai-3xs-likelihood-of-financial-gains-from-ai",
+      "claim_date": "2026-01-23",
+      "evidence": "The transcript states: 'by far the biggest multiplier comes from employees whose managers explicitly expect AI usage, who are 2.6 times more AI proficient than the baseline employee in the study.'",
+      "fp": "f9ccea994fbd2699"
+    },
+    {
+      "claim": "The host posits that companies are often failing to provide employees with the necessary tools and time to experiment, instead 'dropping LLMs on top of their heads' with outdated enterprise deployments.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "AI Daily Brief host",
+      "episode": "why-deeply-integrating-ai-3xs-likelihood-of-financial-gains-from-ai",
+      "claim_date": "2026-01-23",
+      "evidence": "The host states: 'companies are not giving their employees tools to go beyond the most basic of use cases... dropping LLMs on top of their heads, in many cases based on enterprise deployments, LLMs that are a generation or two behind.'",
+      "fp": "193ebaecc173cef6"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - Governance of change at enterprise scale demands integration with enterprise architecture, programme management, and risk management functions so that individual changes are evaluated for cumulative systemic effects, avoiding the fragmented adoption that produces technical debt and conflicting process variants.",
+      "content": "\n- ### Recent Developments\n  - Recent survey data highlights a growing disconnect between executive optimism and employee readiness in AI adoption. While 71% of executives report good progress toward an integrated AI-human workforce, employee resistance to AI agents in the United States has increased significantly from 5% to 20%, suggesting a potential gap in adoption readiness that change management programmes must address through targeted communication and support. [source: KPMG Quarterly Pulse Survey, confidence 0.65, tier 3]\n  - The role of the individual contributor in enterprise AI is shifting toward that of a 'manager of agents,' requiring new responsibilities for providing oversight, escalation paths, and coordination between various agents, similar to managing human teams. As noted by Aaron Levy (Box), this transition redefines professional identity and demands new competencies in supervising autonomous systems. [source: Aaron Levy (Box), confidence 0.9, tier 2]\n  - The transition to agentic work does not eliminate organisational problems but shifts their nature, such as managing new bottlenecks in code review or data integration. Change management must therefore anticipate that moving to self-driving modalities introduces new categories of operational friction rather than simply removing existing ones. [source: Host (AI Daily Brief), confidence 0.8, tier 2]\n  - Evidence suggests that a 'pull' adoption strategy, where engineers use AI agents in public spaces like Slack, is more effective for driving cross-organizational adoption than a 'push' mandate. By allowing other teams to observe benefits firsthand, organisations can mitigate inherent reluctance to change and address skepticism in advance. [source: Host (AI Daily Brief), confidence 0.8, tier 2]\n  - A primary barrier to enterprise AI adoption is identified as a lack of dedicated time for employees to learn new tools, rather than a lack of tool utility. Many companies fail to provide the necessary tools and time to experiment, instead 'dropping LLMs on top of their heads' with outdated enterprise deployments, which hinders effective [[Workforce Development]]. [source: AI Daily Brief host, confidence 0.8, tier 2]\n  - Workday research indicates an imbalance in how time saved from AI is reinvested: 53% is allocated to systems and infrastructure, compared to only 29% for people and workforce development. This disparity suggests that change management strategies may be under-investing in the human capital required to sustain technological gains. [source: Workday survey (reported by AI Daily Brief host), confidence 0.95, tier 1]\n  - Managerial expectation is a significant driver of proficiency; employees whose managers explicitly expect AI usage are 2.6 times more AI proficient than the baseline employee. This highlights the critical role of leadership in signalling priority and shaping [[Human Factors]] within the change process. [source: Section survey (reported by AI Daily Brief host), confidence 0.9, tier 1]\n  - To prevent burnout and manage the output of AI agents, organisations will need to design new architectures of support, including prioritization tools, pacing infrastructure, and cross-functional coordination systems. These structural changes are essential to translating AI capabilities into sustainable [[Operational Efficiency]] and value. [source: AI Daily Brief Host, confidence 0.8, tier 2]"
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 2.0,
+    "rubric_b_improvement": 2.0,
+    "raw_a": {
+      "factual_grounding": 4,
+      "relevance": 4,
+      "coherence": 5,
+      "better_version": "A",
+      "improvement": -2
+    },
+    "raw_b": {
+      "factual_grounding": 4,
+      "relevance": 3,
+      "coherence": 5,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "58ef64e2c75c96b8",
+        "claim": "Employee resistance to AI agents in the United States has increased significantly from 5% to 20%, contrasting with execu",
+        "matched": true
+      },
+      {
+        "fp": "d45916b88e6beebc",
+        "claim": "The role of the individual contributor in enterprise AI will shift to 'manager of agents,' requiring new responsibilitie",
+        "matched": true
+      },
+      {
+        "fp": "05d322d6f345ac14",
+        "claim": "The transition to agentic work does not eliminate problems but shifts the nature of the problems organizations must solv",
+        "matched": true
+      },
+      {
+        "fp": "8f78bacf4f2634bd",
+        "claim": "A 'pull' adoption strategy, where engineers use AI agents in public spaces like Slack, is more effective for driving cro",
+        "matched": true
+      },
+      {
+        "fp": "a8a5e2e358a7bde9",
+        "claim": "The primary barrier to enterprise AI adoption is a lack of dedicated time for employees to learn new tools, rather than ",
+        "matched": true
+      },
+      {
+        "fp": "a057527447af50ca",
+        "claim": "The host asserts that organizations will need to design new architectures of support, including prioritization tools, pa",
+        "matched": true
+      },
+      {
+        "fp": "b048e1da905eec7b",
+        "claim": "Workday research found that 53% of reinvested time saved from AI is allocated to systems and infrastructure, compared to",
+        "matched": true
+      },
+      {
+        "fp": "f9ccea994fbd2699",
+        "claim": "Employees whose managers explicitly expect AI usage are 2.6 times more AI proficient than the baseline employee in the S",
+        "matched": true
+      },
+      {
+        "fp": "193ebaecc173cef6",
+        "claim": "The host posits that companies are often failing to provide employees with the necessary tools and time to experiment, i",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": {
+    "target_page": "Change Management.md",
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - Governance of change at enterprise scale demands integration with enterprise architecture, programme management, and risk management functions so that individual changes are evaluated for cumulative systemic effects, avoiding the fragmented adoption that produces technical debt and conflicting process variants.",
+      "content": "\n- ### Recent Developments\n  - Recent survey data highlights a growing disconnect between executive optimism and employee readiness in AI adoption. While 71% of executives report good progress toward an integrated AI-human workforce, employee resistance to AI agents in the United States has increased significantly from 5% to 20%, suggesting a potential gap in adoption readiness that change management programmes must address through targeted communication and support. [source: KPMG Quarterly Pulse Survey, confidence 0.65, tier 3]\n  - The role of the individual contributor in enterprise AI is shifting toward that of a 'manager of agents,' requiring new responsibilities for providing oversight, escalation paths, and coordination between various agents, similar to managing human teams. As noted by Aaron Levy (Box), this transition redefines professional identity and demands new competencies in supervising autonomous systems. [source: Aaron Levy (Box), confidence 0.9, tier 2]\n  - The transition to agentic work does not eliminate organisational problems but shifts their nature, such as managing new bottlenecks in code review or data integration. Change management must therefore anticipate that moving to self-driving modalities introduces new categories of operational friction rather than simply removing existing ones. [source: Host (AI Daily Brief), confidence 0.8, tier 2]\n  - Evidence suggests that a 'pull' adoption strategy, where engineers use AI agents in public spaces like Slack, is more effective for driving cross-organizational adoption than a 'push' mandate. By allowing other teams to observe benefits firsthand, organisations can mitigate inherent reluctance to change and address skepticism in advance. [source: Host (AI Daily Brief), confidence 0.8, tier 2]\n  - A primary barrier to enterprise AI adoption is identified as a lack of dedicated time for employees to learn new tools, rather than a lack of tool utility. Many companies fail to provide the necessary tools and time to experiment, instead 'dropping LLMs on top of their heads' with outdated enterprise deployments, which hinders effective [[Workforce Development]]. [source: AI Daily Brief host, confidence 0.8, tier 2]\n  - Workday research indicates an imbalance in how time saved from AI is reinvested: 53% is allocated to systems and infrastructure, compared to only 29% for people and workforce development. This disparity suggests that change management strategies may be under-investing in the human capital required to sustain technological gains. [source: Workday survey (reported by AI Daily Brief host), confidence 0.95, tier 1]\n  - Managerial expectation is a significant driver of proficiency; employees whose managers explicitly expect AI usage are 2.6 times more AI proficient than the baseline employee. This highlights the critical role of leadership in signalling priority and shaping [[Human Factors]] within the change process. [source: Section survey (reported by AI Daily Brief host), confidence 0.9, tier 1]\n  - To prevent burnout and manage the output of AI agents, organisations will need to design new architectures of support, including prioritization tools, pacing infrastructure, and cross-functional coordination systems. These structural changes are essential to translating AI capabilities into sustainable [[Operational Efficiency]] and value. [source: AI Daily Brief Host, confidence 0.8, tier 2]"
+    },
+    "provenance": {
+      "assertion_fingerprints": [
+        "05d322d6f345ac14",
+        "193ebaecc173cef6",
+        "58ef64e2c75c96b8",
+        "8f78bacf4f2634bd",
+        "a057527447af50ca",
+        "a8a5e2e358a7bde9",
+        "b048e1da905eec7b",
+        "d45916b88e6beebc",
+        "f9ccea994fbd2699"
+      ],
+      "source_episodes": [
+        "ceo-led-ai-gets-3x-the-roi",
+        "context-graphs-ais-next-big-idea",
+        "the-self-driving-company",
+        "weird-vibes-at-ai-india-summit",
+        "why-agents-make-every-job-a-startup",
+        "why-deeply-integrating-ai-3xs-likelihood-of-financial-gains-from-ai"
+      ]
+    },
+    "scores": {
+      "rubric_a_improvement": 2.0,
+      "rubric_b_improvement": 2.0,
+      "completeness": 1.0
+    }
+  }
+}

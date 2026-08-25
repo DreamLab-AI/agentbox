@@ -1,0 +1,194 @@
+{
+  "topic": "Data Integration",
+  "topic_slug": "data-integration",
+  "status": "candidate_survivor",
+  "reasons": [],
+  "n_assertions": 7,
+  "episodes": [
+    "how-ai-starts-doing-the-work-in-2026-with-anthropic-cpo-mike-krieger",
+    "how-big-a-deal-is-the-usas-ai-genesis-mission",
+    "how-people-are-using-ai-for-health",
+    "the-biggest-battle-in-ai-is-for-your-personal-context"
+  ],
+  "assertion_fingerprints": [
+    "384af742b8278da2",
+    "4c31e09e3528c7b7",
+    "5129e5370d59bb05",
+    "8fcdacaf9b7d2e12",
+    "91692268be3d00c3",
+    "9a361db97d219f8a",
+    "a22d0d9bbc484472"
+  ],
+  "target_page": "Data Integration.md",
+  "assertions": [
+    {
+      "claim": "The primary blocker for enterprises moving from AI pilots to production scale is 'distributability,' the challenge of embedding agentic primitives (skills, memory, storage) into existing legacy systems and specific cloud regulatory constraints.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Mike Kger (Chief Product Officer, Anthropic)",
+      "episode": "how-ai-starts-doing-the-work-in-2026-with-anthropic-cpo-mike-krieger",
+      "claim_date": "2025-12-24",
+      "evidence": "Kger says: 'a lot of the work that we're doing for next is the word we're even using is distributability... if we want to bring our intelligence and our even our agentic primitives... into actual enterprise workloads, we need to really actually embed and meet them where they are.'",
+      "fp": "4c31e09e3528c7b7"
+    },
+    {
+      "claim": "Enterprises are moving beyond 'V1' AI integration (sprinkling chatbots on surfaces) to 'agent-native' product redesigns, which requires rethinking fundamental product architecture to unlock full AI potential.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Mike Kger (Chief Product Officer, Anthropic)",
+      "episode": "how-ai-starts-doing-the-work-in-2026-with-anthropic-cpo-mike-krieger",
+      "claim_date": "2025-12-24",
+      "evidence": "Kger states: 'I think all of these enterprises... is kind of going beyond V1 which was like let's kind of sprinkle AI on these different surfaces... to do we need to rethink some fundamental pieces of the product to be more agent native... have you unlocked the full power of your product to any AI that is sort of running on top or alongside it.'",
+      "fp": "a22d0d9bbc484472"
+    },
+    {
+      "claim": "2026 will be characterized by an 'infrastructure year' for enterprises, where the focus shifts from model selection to building the necessary connectors (MCP, data lineage, permissions) to enable reliable agent participation in business processes.",
+      "tier": "3",
+      "confidence": "0.55",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-ai-starts-doing-the-work-in-2026-with-anthropic-cpo-mike-krieger",
+      "claim_date": "2025-12-24",
+      "evidence": "The host states: 'it feels to me like we're poised a little bit for um enterprises to almost go through their kind of infra the structure year in 26... figuring out what are the missing connector bits is going to be I think a lot of 2026 which is great we have MCPs... the next turn is that's maybe on the retrieval side can you actually start taking action.'",
+      "fp": "9a361db97d219f8a"
+    },
+    {
+      "claim": "The Genesis mission aims to train scientific foundation models and create AI agents to automate research workflows by consolidating data from the NSF, NIST, and NIH.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "White House Executive Order / AI Daily Brief Host",
+      "episode": "how-big-a-deal-is-the-usas-ai-genesis-mission",
+      "claim_date": "2025-11-30",
+      "evidence": "The order lays out a two-fold goal: 'To train scientific foundation models, and create AI agents to test new hypotheses, automate research workflows, and accelerate scientific breakthroughs.' Data sets from these agencies, some dating to the 1940s, will be cleaned for machine readability.",
+      "fp": "5129e5370d59bb05"
+    },
+    {
+      "claim": "OpenAI's strategy for ChatGPT Health is to create a 'health graph' by integrating external data sources like EHRs and Apple Health, thereby generating high switching costs through data continuity.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Akos Gupta (analyst/commentator)",
+      "episode": "how-people-are-using-ai-for-health",
+      "claim_date": "2026-01-10",
+      "evidence": "The transcript quotes Akos Gupta: 'This is a data mode play disguised as a feature launch... Open AAI is building the health graph... This creates a switching cost that's almost impossible to replicate.'",
+      "fp": "8fcdacaf9b7d2e12"
+    },
+    {
+      "claim": "Google announced 'Personal Intelligence' for the Gemini app, allowing users to securely connect Google apps like Gmail, Photos, and YouTube to provide tailored answers.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Sundar Pichai",
+      "episode": "the-biggest-battle-in-ai-is-for-your-personal-context",
+      "claim_date": "2026-01-15",
+      "evidence": "Yesterday, CEO Sundarbachai tweeted, 'Answering a top request from our users, we're introducing personal intelligence in the Gemini app. You can now securely connect to Google apps for an even more helpful experience.'",
+      "fp": "384af742b8278da2"
+    },
+    {
+      "claim": "Anthropic utilizes connectors, powered by the Model Context Protocol, to link Claude Co-work to external data sources such as Google Drive.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "AI Daily Brief host",
+      "episode": "the-biggest-battle-in-ai-is-for-your-personal-context",
+      "claim_date": "2026-01-15",
+      "evidence": "for that, Claude gives you access to things via what they call connectors. Connectors are ways to link things like Google Drive, obviously powered by the model context protocol.",
+      "fp": "91692268be3d00c3"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - **Schema evolution** is a chronic operational challenge: source schemas change without notice, breaking downstream consumers. Solutions include schema registries (Confluent Schema Registry), backward-compatible Avro/Protobuf schemas, and contract testing.",
+      "content": "\n\n- ### Recent Developments\n  - **Enterprise AI Infrastructure (2026)** \u2014 Industry leaders characterize 2026 as an \"infrastructure year\" for enterprises, where the focus shifts from model selection to building the necessary connectors (MCP, data lineage, permissions) to enable reliable agent participation in business processes. The primary blocker for moving from AI pilots to production scale is identified as \"distributability\"\u2014the challenge of embedding agentic primitives (skills, memory, storage) into existing legacy systems while meeting specific cloud regulatory constraints. Enterprises are moving beyond \"V1\" AI integration (sprinkling chatbots on surfaces) to \"agent-native\" product redesigns, which requires rethinking fundamental product architecture to unlock full AI potential. [source: Mike Kger (Chief Product Officer, Anthropic), confidence 0.85, tier 2; Host (AI Daily Brief), confidence 0.55, tier 3]\n  - **Scientific Data Consolidation (Genesis Mission)** \u2014 The Genesis mission aims to train scientific foundation models and create AI agents to automate research workflows by consolidating data from the NSF, NIST, and NIH. The initiative involves cleaning datasets from these agencies, some dating to the 1940s, for machine readability to enable AI agents to test new hypotheses and accelerate scientific breakthroughs. [source: White House Executive Order / AI Daily Brief Host, confidence 0.9, tier 1]\n  - **Health Graph Integration (OpenAI)** \u2014 OpenAI's strategy for ChatGPT Health is to create a \"health graph\" by integrating external data sources like EHRs and Apple Health. This approach generates high switching costs through data continuity, effectively turning a feature launch into a data-mode play that is difficult for competitors to replicate. [source: Akos Gupta (analyst/commentator), confidence 0.85, tier 2]\n  - **Personal Intelligence (Google)** \u2014 Google announced \"Personal Intelligence\" for the Gemini app, allowing users to securely connect Google apps like Gmail, Photos, and YouTube to provide tailored answers. This represents a significant shift in consumer-facing data integration, leveraging existing user data estates to enhance AI responsiveness. [source: Sundar Pichai, confidence 0.95, tier 1]\n  - **Model Context Protocol (Anthropic)** \u2014 Anthropic utilizes connectors, powered by the Model Context Protocol (MCP), to link Claude Co-work to external data sources such as Google Drive. This exemplifies the emerging standard for real-time, governed data federation in agentic workflows. [source: AI Daily Brief host, confidence 0.85, tier 1]"
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 2.0,
+    "rubric_b_improvement": 2.0,
+    "raw_a": {
+      "factual_grounding": 4,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "A",
+      "improvement": -2
+    },
+    "raw_b": {
+      "factual_grounding": 4,
+      "relevance": 4,
+      "coherence": 4,
+      "better_version": "B",
+      "improvement": 2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "4c31e09e3528c7b7",
+        "claim": "The primary blocker for enterprises moving from AI pilots to production scale is 'distributability,' the challenge of em",
+        "matched": true
+      },
+      {
+        "fp": "a22d0d9bbc484472",
+        "claim": "Enterprises are moving beyond 'V1' AI integration (sprinkling chatbots on surfaces) to 'agent-native' product redesigns,",
+        "matched": true
+      },
+      {
+        "fp": "9a361db97d219f8a",
+        "claim": "2026 will be characterized by an 'infrastructure year' for enterprises, where the focus shifts from model selection to b",
+        "matched": true
+      },
+      {
+        "fp": "5129e5370d59bb05",
+        "claim": "The Genesis mission aims to train scientific foundation models and create AI agents to automate research workflows by co",
+        "matched": true
+      },
+      {
+        "fp": "8fcdacaf9b7d2e12",
+        "claim": "OpenAI's strategy for ChatGPT Health is to create a 'health graph' by integrating external data sources like EHRs and Ap",
+        "matched": true
+      },
+      {
+        "fp": "384af742b8278da2",
+        "claim": "Google announced 'Personal Intelligence' for the Gemini app, allowing users to securely connect Google apps like Gmail, ",
+        "matched": true
+      },
+      {
+        "fp": "91692268be3d00c3",
+        "claim": "Anthropic utilizes connectors, powered by the Model Context Protocol, to link Claude Co-work to external data sources su",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": {
+    "target_page": "Data Integration.md",
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - **Schema evolution** is a chronic operational challenge: source schemas change without notice, breaking downstream consumers. Solutions include schema registries (Confluent Schema Registry), backward-compatible Avro/Protobuf schemas, and contract testing.",
+      "content": "\n\n- ### Recent Developments\n  - **Enterprise AI Infrastructure (2026)** \u2014 Industry leaders characterize 2026 as an \"infrastructure year\" for enterprises, where the focus shifts from model selection to building the necessary connectors (MCP, data lineage, permissions) to enable reliable agent participation in business processes. The primary blocker for moving from AI pilots to production scale is identified as \"distributability\"\u2014the challenge of embedding agentic primitives (skills, memory, storage) into existing legacy systems while meeting specific cloud regulatory constraints. Enterprises are moving beyond \"V1\" AI integration (sprinkling chatbots on surfaces) to \"agent-native\" product redesigns, which requires rethinking fundamental product architecture to unlock full AI potential. [source: Mike Kger (Chief Product Officer, Anthropic), confidence 0.85, tier 2; Host (AI Daily Brief), confidence 0.55, tier 3]\n  - **Scientific Data Consolidation (Genesis Mission)** \u2014 The Genesis mission aims to train scientific foundation models and create AI agents to automate research workflows by consolidating data from the NSF, NIST, and NIH. The initiative involves cleaning datasets from these agencies, some dating to the 1940s, for machine readability to enable AI agents to test new hypotheses and accelerate scientific breakthroughs. [source: White House Executive Order / AI Daily Brief Host, confidence 0.9, tier 1]\n  - **Health Graph Integration (OpenAI)** \u2014 OpenAI's strategy for ChatGPT Health is to create a \"health graph\" by integrating external data sources like EHRs and Apple Health. This approach generates high switching costs through data continuity, effectively turning a feature launch into a data-mode play that is difficult for competitors to replicate. [source: Akos Gupta (analyst/commentator), confidence 0.85, tier 2]\n  - **Personal Intelligence (Google)** \u2014 Google announced \"Personal Intelligence\" for the Gemini app, allowing users to securely connect Google apps like Gmail, Photos, and YouTube to provide tailored answers. This represents a significant shift in consumer-facing data integration, leveraging existing user data estates to enhance AI responsiveness. [source: Sundar Pichai, confidence 0.95, tier 1]\n  - **Model Context Protocol (Anthropic)** \u2014 Anthropic utilizes connectors, powered by the Model Context Protocol (MCP), to link Claude Co-work to external data sources such as Google Drive. This exemplifies the emerging standard for real-time, governed data federation in agentic workflows. [source: AI Daily Brief host, confidence 0.85, tier 1]"
+    },
+    "provenance": {
+      "assertion_fingerprints": [
+        "384af742b8278da2",
+        "4c31e09e3528c7b7",
+        "5129e5370d59bb05",
+        "8fcdacaf9b7d2e12",
+        "91692268be3d00c3",
+        "9a361db97d219f8a",
+        "a22d0d9bbc484472"
+      ],
+      "source_episodes": [
+        "how-ai-starts-doing-the-work-in-2026-with-anthropic-cpo-mike-krieger",
+        "how-big-a-deal-is-the-usas-ai-genesis-mission",
+        "how-people-are-using-ai-for-health",
+        "the-biggest-battle-in-ai-is-for-your-personal-context"
+      ]
+    },
+    "scores": {
+      "rubric_a_improvement": 2.0,
+      "rubric_b_improvement": 2.0,
+      "completeness": 1.0
+    }
+  }
+}

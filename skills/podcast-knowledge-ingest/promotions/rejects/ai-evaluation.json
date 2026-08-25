@@ -1,0 +1,235 @@
+{
+  "topic": "AI Evaluation",
+  "topic_slug": "ai-evaluation",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5"
+  ],
+  "n_assertions": 11,
+  "episodes": [
+    "dario-amodei-breaks-his-social-media-silence",
+    "fable-5-raises-the-bar-for-ai-ambition",
+    "how-significant-are-ais-latest-math-breakthroughs",
+    "introducing-maturity-maps-a-new-way-to-measure-ai-adoption",
+    "real-world-ai-evaluations",
+    "why-ai-needs-better-benchmarks",
+    "why-claude-opus-45-changes-whats-possible-with-vibe-coding"
+  ],
+  "assertion_fingerprints": [
+    "29f961ae02f7d83b",
+    "3b2b9c760568acf6",
+    "4beba9f035d0afd1",
+    "636512f4e04a21b8",
+    "67fad014782e7787",
+    "8eab191a2ad012d3",
+    "a10ca98cedeac4e7",
+    "ac83b84cdae2b1d6",
+    "c76f5e02f2d78252",
+    "d4662990e1c33611",
+    "fe5b9b2ec07590c9"
+  ],
+  "target_page": "AI Evaluation.md",
+  "assertions": [
+    {
+      "claim": "Anthropic reported Q2 revenue of $11.5 billion, representing a 14x increase year-over-year, with investors expecting a $2 trillion valuation for its upcoming IPO.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Financial Times / Anthropic Investor Meetings",
+      "episode": "dario-amodei-breaks-his-social-media-silence",
+      "claim_date": "2026-08-18",
+      "evidence": "The transcript states: 'Anthropic told investors that revenue was up 14x compared to a year ago, reaching 11.5 billion in Q2... The other big number is 2 trillion, which is the valuation that Anthropic investors said that they expect from the IPO.'",
+      "fp": "29f961ae02f7d83b"
+    },
+    {
+      "claim": "The 'Frontier Code' benchmark was designed to address the issue of 'unmergeable slop' in AI-generated code by evaluating scope, discipline, style, and adherence to standards.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Cognition / Shaun Wang / AI Daily Brief Host",
+      "episode": "fable-5-raises-the-bar-for-ai-ambition",
+      "claim_date": "2026-06-11",
+      "evidence": "Shaun Wang is quoted saying 'more than half of SweetBench results is unmmergeable slop.' The benchmark uses 'a combination of unit tests and assessments of scope, discipline, style, and adherence to codebased standards.'",
+      "fp": "c76f5e02f2d78252"
+    },
+    {
+      "claim": "The performance gap between state-of-the-art models is becoming less visible in standard benchmarks and more apparent in the ability to handle previously impossible or extremely complex tasks.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "AI Daily Brief Host",
+      "episode": "fable-5-raises-the-bar-for-ai-ambition",
+      "claim_date": "2026-06-11",
+      "evidence": "The host notes: 'We are increasingly in a shifted paradigm... where the state-of-the-art doesn't reveal itself across the entire spectrum of tasks, but instead within the context of some things that weren't possible before.'",
+      "fp": "4beba9f035d0afd1"
+    },
+    {
+      "claim": "Amazon has completed its full $50 billion investment in OpenAI, paying $13.7 billion in Q2 and the remainder in the following month, securing a roughly 5% stake at an $852 billion valuation.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Amazon SEC Filings / Markets Researcher Nicholas Muggalli",
+      "episode": "how-significant-are-ais-latest-math-breakthroughs",
+      "claim_date": "2026-08-04",
+      "evidence": "SEC filings disclosed the completion of the investment. The initial announcement in late February had $15 billion paid upfront with $35 billion contingent on milestones. The full deployment secures a ~5% stake at an $852 billion valuation.",
+      "fp": "fe5b9b2ec07590c9"
+    },
+    {
+      "claim": "The combined survey respondent base for the Q2 maturity maps exceeds 150,000 professionals across more than 50 countries.",
+      "tier": "1",
+      "confidence": "0.98",
+      "source": "Host (AI DB / Super Intelligent)",
+      "episode": "introducing-maturity-maps-a-new-way-to-measure-ai-adoption",
+      "claim_date": "2026-04-06",
+      "evidence": "The host provides the total respondent count and geographic spread for the sources with explicit sample sizes used in the Q2 maps.",
+      "fp": "3b2b9c760568acf6"
+    },
+    {
+      "claim": "The host identifies an 'adoption embedding gap' where high claimed adoption coexists with low depth and utilization across all function-specific surveys.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host",
+      "episode": "introducing-maturity-maps-a-new-way-to-measure-ai-adoption",
+      "claim_date": "2026-04-06",
+      "evidence": "The host states this is the 'most dominant finding' across all sources, describing it as an 'applied capability overhang' even within individual organizations.",
+      "fp": "ac83b84cdae2b1d6"
+    },
+    {
+      "claim": "OpenAI's GDPval benchmark measures capabilities to complete knowledge work tasks end-to-end across over 44 occupations, using expert graders paired with an automated grader.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "OpenAI",
+      "episode": "real-world-ai-evaluations",
+      "claim_date": "2025-12-15",
+      "evidence": "The transcript states: 'GDP val modeled performance against a set of economically valuable tasks representing over 44 occupations... They rely on expert graders... paired those human graders with an automated grader.'",
+      "fp": "67fad014782e7787"
+    },
+    {
+      "claim": "Artificial Analysis developed an AI-based grading pipeline for the GDPval tasks to allow the benchmark to be run autonomously and at scale on any LLM.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "Artificial Analysis",
+      "episode": "real-world-ai-evaluations",
+      "claim_date": "2025-12-15",
+      "evidence": "The transcript states: 'artificial analysis has completed an evaluation harness based on that set of GDP val tasks to allow the benchmark to be run on any LLM... relying on an AI based grading pipeline.'",
+      "fp": "a10ca98cedeac4e7"
+    },
+    {
+      "claim": "The host argues that traditional AI benchmarks are often saturated, gameable, and disconnected from the real world, making them poor indicators of actual model utility.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief)",
+      "episode": "real-world-ai-evaluations",
+      "claim_date": "2025-12-15",
+      "evidence": "The transcript states: 'I'm not a super fan of benchmarks... Many of them are saturated... Many of them can be gamed. Mostly though they just don't really exist and operate in the real world.'",
+      "fp": "636512f4e04a21b8"
+    },
+    {
+      "claim": "The rapid saturation of benchmarks like ARC-AGI 2 and SWE-Bench indicates that AI models are progressing faster than the evaluation infrastructure can adapt, necessitating continuous innovation in measurement methodologies.",
+      "tier": "3",
+      "confidence": "0.75",
+      "source": "AI Daily Brief host",
+      "episode": "why-ai-needs-better-benchmarks",
+      "claim_date": "2026-03-27",
+      "evidence": "The idea of trying to solve benchmark saturation is probably as simple as not assuming that benchmarks are going to last all that long. Just as we need innovation in the way that we build these models, we're going to need innovation in the way that we measure them.",
+      "fp": "8eab191a2ad012d3"
+    },
+    {
+      "claim": "Claude Opus 4.5 scored higher than any human candidate on Anthropic's internal performance engineering take-home exam within a 2-hour time limit.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Anthropic announcement post",
+      "episode": "why-claude-opus-45-changes-whats-possible-with-vibe-coding",
+      "claim_date": "2025-11-26",
+      "evidence": "The transcript states: 'Within our prescribed 2-hour time limit, Claude Opus 4.5 scored higher than any human candidate ever.'",
+      "fp": "d4662990e1c33611"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  ## Research & Literature",
+      "content": "  ## Recent Developments (2026)\n    Recent industry and evaluation developments highlight the accelerating divergence between model capabilities and traditional benchmarking infrastructure, as well as the growing economic scale of the AI sector.\n\n    - **Economic Scale and Investment**: The commercial footprint of frontier AI has expanded significantly. Anthropic reported Q2 revenue of $11.5 billion, a 14x year-over-year increase, with investors anticipating a $2 trillion valuation for its upcoming IPO. Concurrently, Amazon completed its full $50 billion investment in OpenAI, securing a roughly 5% stake at an $852 billion valuation, with SEC filings confirming the final payment of $13.7 billion in Q2.\n    - **New Evaluation Paradigms**: To address the limitations of saturated and gameable static benchmarks, new evaluation methodologies are emerging. OpenAI\u2019s **GDPval** benchmark measures the ability to complete knowledge work tasks end-to-end across over 44 occupations, utilizing a hybrid of expert human graders and automated scoring. To facilitate autonomous and scalable testing, Artificial Analysis has developed an AI-based grading pipeline for GDPval tasks. Additionally, Cognition\u2019s **Frontier Code** benchmark has been introduced to evaluate AI-generated code for \"scope, discipline, style, and adherence to standards,\" specifically targeting the issue of \"unmergeable slop\" where a majority of generated code fails to integrate cleanly into existing codebases.\n    - **Benchmark Saturation and Capability Shifts**: Industry observers note that the performance gap between state-of-the-art models is becoming less visible in standard benchmarks and more apparent in the ability to handle previously impossible or extremely complex tasks. The rapid saturation of benchmarks like ARC-AGI 2 and SWE-Bench indicates that AI models are progressing faster than the evaluation infrastructure can adapt, necessitating continuous innovation in measurement methodologies. This shift is exemplified by Anthropic\u2019s internal performance engineering take-home exam, where Claude Opus 4.5 scored higher than any human candidate within a 2-hour time limit, suggesting that traditional human-expert baselines are being surpassed in specialized technical domains.\n    - **Adoption and Utilization Gaps**: Despite high claimed adoption rates, a significant \"adoption embedding gap\" persists, where high visibility coexists with low depth and utilization across function-specific surveys. This \"applied capability overhang\" is identified as the most dominant finding in recent maturity maps, which now draw from a combined respondent base exceeding 150,000 professionals across more than 50 countries.\n\n  ## Research & Literature"
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 1,
+      "relevance": 3,
+      "coherence": 2,
+      "better_version": "A",
+      "improvement": -2
+    },
+    "raw_b": {
+      "factual_grounding": 1,
+      "relevance": 3,
+      "coherence": 2,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 0.8181818181818182,
+    "detail": [
+      {
+        "fp": "29f961ae02f7d83b",
+        "claim": "Anthropic reported Q2 revenue of $11.5 billion, representing a 14x increase year-over-year, with investors expecting a $",
+        "matched": true
+      },
+      {
+        "fp": "c76f5e02f2d78252",
+        "claim": "The 'Frontier Code' benchmark was designed to address the issue of 'unmergeable slop' in AI-generated code by evaluating",
+        "matched": true
+      },
+      {
+        "fp": "4beba9f035d0afd1",
+        "claim": "The performance gap between state-of-the-art models is becoming less visible in standard benchmarks and more apparent in",
+        "matched": true
+      },
+      {
+        "fp": "fe5b9b2ec07590c9",
+        "claim": "Amazon has completed its full $50 billion investment in OpenAI, paying $13.7 billion in Q2 and the remainder in the foll",
+        "matched": false
+      },
+      {
+        "fp": "3b2b9c760568acf6",
+        "claim": "The combined survey respondent base for the Q2 maturity maps exceeds 150,000 professionals across more than 50 countries",
+        "matched": true
+      },
+      {
+        "fp": "ac83b84cdae2b1d6",
+        "claim": "The host identifies an 'adoption embedding gap' where high claimed adoption coexists with low depth and utilization acro",
+        "matched": true
+      },
+      {
+        "fp": "67fad014782e7787",
+        "claim": "OpenAI's GDPval benchmark measures capabilities to complete knowledge work tasks end-to-end across over 44 occupations, ",
+        "matched": true
+      },
+      {
+        "fp": "a10ca98cedeac4e7",
+        "claim": "Artificial Analysis developed an AI-based grading pipeline for the GDPval tasks to allow the benchmark to be run autonom",
+        "matched": true
+      },
+      {
+        "fp": "636512f4e04a21b8",
+        "claim": "The host argues that traditional AI benchmarks are often saturated, gameable, and disconnected from the real world, maki",
+        "matched": false
+      },
+      {
+        "fp": "8eab191a2ad012d3",
+        "claim": "The rapid saturation of benchmarks like ARC-AGI 2 and SWE-Bench indicates that AI models are progressing faster than the",
+        "matched": true
+      },
+      {
+        "fp": "d4662990e1c33611",
+        "claim": "Claude Opus 4.5 scored higher than any human candidate on Anthropic's internal performance engineering take-home exam wi",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

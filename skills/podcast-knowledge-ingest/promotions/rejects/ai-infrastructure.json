@@ -1,0 +1,834 @@
+{
+  "topic": "AI Infrastructure",
+  "topic_slug": "ai-infrastructure",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5"
+  ],
+  "n_assertions": 62,
+  "episodes": [
+    "beating-the-ai-doom-cycle",
+    "ceo-led-ai-gets-3x-the-roi",
+    "claude-code-is-now-writing-claude-code",
+    "did-the-super-bowl-as-make-americans-like-ai-any-more",
+    "everything-you-need-to-know-about-ai-tokens",
+    "fable-is-back-heres-what-you-should-try-first",
+    "grok-46-shows-how-fast-your-ai-options-are-expanding",
+    "grok-bot-finally-makes-ai-agents-easy",
+    "how-a-30b-hedge-fund-implosion-will-effect-ai",
+    "how-ai-is-changing-how-companies-get-built",
+    "how-apples-ai-strategy-changes-with-a-new-ceo",
+    "how-big-a-deal-is-the-usas-ai-genesis-mission",
+    "how-big-is-the-ai-economy",
+    "how-deepseek-v4-connects-to-the-us-grid",
+    "how-harness-as-a-service-will-change-agents",
+    "how-the-best-companies-use-ai",
+    "how-the-escalating-ai-wars-benefit-you",
+    "how-the-global-ai-race-has-changed",
+    "in-defense-of-tokenmaxxing",
+    "is-ai-doom-going-out-of-style",
+    "is-openai-the-new-github",
+    "microsoft-changing-ai-targets",
+    "microsofts-plan-to-make-people-less-angry-about-ai-and-electricity",
+    "nvidias-blowout-earnings-pops-the-ai-bubble-bubble",
+    "real-world-ai-evaluations",
+    "the-anti-ai-movement",
+    "the-best-way-to-talk-to-your-agents",
+    "the-final-ai-word-from-davos",
+    "the-most-important-ai-lesson-for-businesses-from-2025",
+    "the-right-way-to-worry-about-ai",
+    "the-social-network-for-agents-just-got-acquired",
+    "the-way-we-use-ai-is-changing",
+    "what-google-needs-to-do-at-io-this-week",
+    "why-ai-hasnt-increased-unemployment-according-to-anthropic",
+    "why-ceos-need-to-lead-ai-strategy",
+    "why-deeply-integrating-ai-3xs-likelihood-of-financial-gains-from-ai",
+    "why-everyone-is-debating-ai-policy",
+    "why-only-ai-training-can-save-the-economy",
+    "why-the-ai-bubble-conversation-is-useless",
+    "you-can-now-vibecode-mobile-apps"
+  ],
+  "assertion_fingerprints": [
+    "00b9a8617751aec7",
+    "01621afa5cde212d",
+    "0a321adf837d1c91",
+    "0e92943983db11e2",
+    "10502ab0769d5e2e",
+    "14a8f513a1f8bf22",
+    "193ebaecc173cef6",
+    "1a5c2f1f16b3486a",
+    "1b7a40319df21f1c",
+    "1f10fa87508e4a00",
+    "22264beff116f5ac",
+    "22394e07e2a9fe39",
+    "227cfa41be0b0504",
+    "29038ca0128b2a3f",
+    "29328be7e690feb0",
+    "29d400b508db7a99",
+    "2ece0ca02e0f5fed",
+    "306baded820c22c9",
+    "35b93a80fe49113a",
+    "3b7d4fdfc1f246bd",
+    "460521f987c0a5e4",
+    "478aea096f274a10",
+    "4848c4fb3347134b",
+    "4920eadf9eee1124",
+    "49bef3473633d220",
+    "4b86a830c6c79500",
+    "4c852747271fc05a",
+    "52fd89cc6950889a",
+    "57eb98607fb94fea",
+    "5970d25f3e04940f",
+    "59fef0941d8b2f27",
+    "5e9b4f09c105a0c5",
+    "6a4c550e9d726d9e",
+    "76ccf8a0a12a8410",
+    "79fdc3deaa203bda",
+    "845d0ad23bb3af45",
+    "88b1d152af69d534",
+    "896faf7011e60207",
+    "8d8348fc1049f37e",
+    "905797ee3ac71d1b",
+    "924ad15023445d23",
+    "93558c1cd95b7bdd",
+    "94f3178873e5ed4c",
+    "972856ebbbcadf12",
+    "97b99a495408a10b",
+    "9fb85fdf8dd14a34",
+    "9fcbeebca9bd3cff",
+    "a59a7fb43e60b65f",
+    "ab8b1fdd69e32c66",
+    "bbc054bb2e9eaed3",
+    "bd4181a0f50317e7",
+    "bdf7f0139b771560",
+    "bf2dd8a115b49f4d",
+    "c09b42d6c88b6b0b",
+    "d0f6c9875c0cef57",
+    "d21b59a50b535d77",
+    "d27402fea2d92744",
+    "e1042901c0b51732",
+    "e4bd3fee82ff1d94",
+    "e6f9b4dfae12e93b",
+    "e9e296437e36a8a7",
+    "ed8071636d7fd509"
+  ],
+  "target_page": "AI Infrastructure.md",
+  "assertions": [
+    {
+      "claim": "The AI industry is experiencing a 'structural compute shortage' involving electricity, memory, and chips, which is forcing a shift from subsidized flat-rate pricing to market-based token pricing to allocate scarce resources.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "AI Daily Brief Host",
+      "episode": "beating-the-ai-doom-cycle",
+      "claim_date": "2026-08-24",
+      "evidence": "The host argues: 'We are at the very beginning of a structural compute shortage... the only mechanism for solving it in the short term is to use market forces, i.e. to raise the cost of tokens sufficiently so that all of the tokens that are available flow to the people who are most willing to pay for them.'",
+      "fp": "22394e07e2a9fe39"
+    },
+    {
+      "claim": "Micron reported 445% year-over-year revenue growth and a 74% quarter-over-quarter jump, guiding for a further 22% revenue increase in the next quarter.",
+      "tier": "1",
+      "confidence": "0.98",
+      "source": "Micron Earnings Report",
+      "episode": "ceo-led-ai-gets-3x-the-roi",
+      "claim_date": "2026-06-25",
+      "evidence": "Micron disclosed four long-term contracts with large customers locking in high memory prices and 56% gross margins, with forecasts for gross margins to expand to 86% in Q4.",
+      "fp": "1f10fa87508e4a00"
+    },
+    {
+      "claim": "OpenAI is continuing to increase Nvidia GPU orders despite the launch of its custom Jalape\u00f1o chip, as compute demand remains 'insatiable.'",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "Greg Brockman / Hock Tan",
+      "episode": "ceo-led-ai-gets-3x-the-roi",
+      "claim_date": "2026-06-25",
+      "evidence": "Brockman stated OpenAI 'cannot get compute fast enough,' and Broadcom CEO Hock Tan noted that demand from customers is 'much more than we can address' through 2028.",
+      "fp": "bd4181a0f50317e7"
+    },
+    {
+      "claim": "xAI has purchased a third data center facility in southern Mississippi, bringing their total training compute capacity to nearly 2 gigawatts.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "The Information / Elon Musk",
+      "episode": "claude-code-is-now-writing-claude-code",
+      "claim_date": "2026-01-03",
+      "evidence": "The transcript states, 'The Information reports that XAI has purchased a large warehouse in southern Mississippi... Elon Musk is clearly setting his sights on dominating training compute. Confirming the reports earlier this week, he posted XAI has bought a third building... We'll take XAI's training compute to almost 2 GW.'",
+      "fp": "924ad15023445d23"
+    },
+    {
+      "claim": "SoftBank's acquisition of Digital Bridge is a strategic move to secure an in-house private equity partner to ensure a continuous funding pipeline for its AI infrastructure projects.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "AI Daily Brief Host",
+      "episode": "claude-code-is-now-writing-claude-code",
+      "claim_date": "2026-01-03",
+      "evidence": "The host analyzes, 'The acquisition is clearly part and parcel of SoftBank's larger AI buildout... SoftBank will have an in-house private equity partner to ensure a pipeline of funding to their AI projects.'",
+      "fp": "5e9b4f09c105a0c5"
+    },
+    {
+      "claim": "Brookfield is spinning off its cloud business to leverage its vertical integration in energy and real estate to lower the cost of AI infrastructure compared to pure-play cloud providers.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "The Information / Reuters",
+      "episode": "claude-code-is-now-writing-claude-code",
+      "claim_date": "2026-01-03",
+      "evidence": "The transcript states, 'The overall idea is to lower the cost of AI infrastructure by leveraging Brookfield's scale and vertical integration... A cloud business would allow the company to control inputs of the AI value chain in a way inaccessible to pure play cloud providers.'",
+      "fp": "a59a7fb43e60b65f"
+    },
+    {
+      "claim": "xAI is constructing its own natural gas power plant to power its AI infrastructure, which will be one of the first dedicated to this purpose.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "AI Daily Brief Host",
+      "episode": "claude-code-is-now-writing-claude-code",
+      "claim_date": "2026-01-03",
+      "evidence": "The transcript states, 'XAI is also making progress in constructing their own natural gas power plant in the surrounding area. This will be one of the first power plants built specifically to power AI infrastructure.'",
+      "fp": "3b7d4fdfc1f246bd"
+    },
+    {
+      "claim": "The founder of crypto.com spent $70 million to purchase the ai.com domain, making it the most expensive domain purchase of all time.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief)",
+      "episode": "did-the-super-bowl-as-make-americans-like-ai-any-more",
+      "claim_date": "2026-02-10",
+      "evidence": "The host states, 'the founder of crypto.com spent $70 million to buy the domain, making it, I believe, the most expensive domain purchase of all time.'",
+      "fp": "29038ca0128b2a3f"
+    },
+    {
+      "claim": "An unnamed company ran up a $500 million cloud bill due to a lack of usage limits, according to TechCrunch.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "Nofar Gaspar (citing TechCrunch)",
+      "episode": "everything-you-need-to-know-about-ai-tokens",
+      "claim_date": "2026-08-04",
+      "evidence": "The host states, 'there was another company unnamed but according to TechCrunch, they ran up 500 million dollars of cloud bill with no usage limits in place.'",
+      "fp": "6a4c550e9d726d9e"
+    },
+    {
+      "claim": "AWS is investing $1 billion to create a new unit staffed with forward-deployed engineers (FTEs) to help customers set up and use AI tools, focusing on healthcare, government, and financial services.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AWS Announcement (reported by AI Daily Brief host)",
+      "episode": "fable-is-back-heres-what-you-should-try-first",
+      "claim_date": "2026-07-02",
+      "evidence": "The transcript states, 'AWS announced that they will invest a billion dollars to create a new unit staffed with forward-deployed engineers to help customers set up and use AI tools... She added that AWS will focus on industries with the strongest demand, including healthcare, government, and financial services.'",
+      "fp": "e1042901c0b51732"
+    },
+    {
+      "claim": "CoreWeave reported a $104 billion backlog in compute demand, with revenue doubling year-over-year to $2.6 billion for the quarter, while cash burn also doubled to $5.7 billion per quarter.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "CoreWeave Earnings Report / AI Daily Brief Host",
+      "episode": "grok-46-shows-how-fast-your-ai-options-are-expanding",
+      "claim_date": "2026-08-13",
+      "evidence": "CoreWeave's backlog grew by $25 billion since the end of June. The company's revenue reached $2.6 billion for the quarter, and cash burn is now running at $5.7 billion per quarter.",
+      "fp": "e6f9b4dfae12e93b"
+    },
+    {
+      "claim": "Nebius recorded 454% year-over-year revenue growth to reach $582 million, with its CEO stating that the company could sell its entire 2027 compute capacity today due to tight supply.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Nebius Earnings Report / AI Daily Brief Host",
+      "episode": "grok-46-shows-how-fast-your-ai-options-are-expanding",
+      "claim_date": "2026-08-13",
+      "evidence": "Nebius' earnings per share beat analyst forecasts by 83%. CEO Arcade Velo stated that demand is 'enormous' and that auctions for Blackwell Compute cleared at 15% above the previous record price for Hopper Compute.",
+      "fp": "35b93a80fe49113a"
+    },
+    {
+      "claim": "Tencent tripled its capital expenditure on AI infrastructure to $7.8 billion in the past quarter, with its President stating the company could monetize the compute by selling to outside customers but is prioritizing internal needs.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Tencent Earnings Call / AI Daily Brief Host",
+      "episode": "grok-46-shows-how-fast-your-ai-options-are-expanding",
+      "claim_date": "2026-08-13",
+      "evidence": "Tencent spent $7.8 billion on AI infrastructure in the last quarter. Chief Strategy Officer James Mitchell stated they are allocating a 'very substantial portion' of new compute to their own models and applications.",
+      "fp": "e9e296437e36a8a7"
+    },
+    {
+      "claim": "Nvidia has launched a $500 billion financing platform involving Apollo, BlackRock, and Blackstone to standardize data center debt, with Nvidia GPUs accepted as collateral.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Nvidia / Jensen Huang",
+      "episode": "grok-bot-finally-makes-ai-agents-easy",
+      "claim_date": "2026-08-13",
+      "evidence": "The transcript reports, 'Nvidia is putting together a $500 billion platform... The details... appear that Nvidia GPUs will be accepted as collateral.' Jensen Huang stated, 'Today, we are helping create a new class of productive investable infrastructure, AI factories.'",
+      "fp": "bf2dd8a115b49f4d"
+    },
+    {
+      "claim": "The token router market is experiencing a bidding war, with Open Router valued at $10 billion and multiple large software companies actively seeking acquisitions to secure infrastructure speed.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "The Information / Industry Executives",
+      "episode": "grok-bot-finally-makes-ai-agents-easy",
+      "claim_date": "2026-08-13",
+      "evidence": "The transcript states, 'Open Router's $10 billion price tag has apparently triggered a bidding war... Snowflake is reportedly in the market alongside Base 10, Cloudflare, and Vercel.' Dean Mai of Myriad Ventures calls it a 'seller's market,' and Ari Jacoby of Concentric AI notes being approached by seven companies in two weeks.",
+      "fp": "478aea096f274a10"
+    },
+    {
+      "claim": "Amazon raised its capital expenditure (CapEx) forecast for the year from $200 billion to $220 billion, citing increased costs and sustained demand for AI infrastructure.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Amazon Earnings Report / Andy Jassy",
+      "episode": "how-a-30b-hedge-fund-implosion-will-effect-ai",
+      "claim_date": "2026-08-03",
+      "evidence": "CEO Andy Jassy explained the increase as driven by rising costs rather than expanded scope, noting that even at this level, Amazon will not have enough capacity to meet all demand in 2026, 2027, or 2028.",
+      "fp": "22264beff116f5ac"
+    },
+    {
+      "claim": "Nvidia has introduced a new business model where it guarantees demand for unused GPUs from neoclouds in exchange for a revenue cut, aiming to solve financing bottlenecks for AI infrastructure.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Nvidia (via AI Daily Brief host)",
+      "episode": "how-ai-is-changing-how-companies-get-built",
+      "claim_date": "2026-07-08",
+      "evidence": "Nvidia announced it will rent back unused GPUs at a guaranteed rate if neoclouds fail to find market demand, taking a cut of revenue for all GPU rentals. The first two neoclouds in this program are Fermis (deploying 170,000 GPUs in Indonesia) and Sharon AAI (deploying 40,000 GB300 GPUs).",
+      "fp": "29328be7e690feb0"
+    },
+    {
+      "claim": "Nvidia's new demand-backstopping model is distinct from the dot-com era vendor financing because Nvidia is not directly financing its own hardware or taking on the default risk of the neoclouds, but rather providing anchor demand to unlock third-party financing.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "Rich Dupri / 247 Wall Street (via AI Daily Brief host)",
+      "episode": "how-ai-is-changing-how-companies-get-built",
+      "claim_date": "2026-07-08",
+      "evidence": "Rich Dupri argued that the biggest constraint is financing, not demand. Nvidia's initiative solves this bottleneck by providing anchor demand, allowing projects to access financing from other sources. Nvidia is not taking on default risk, and the backstop is a few billion dollars against $80 billion in quarterly revenue.",
+      "fp": "88b1d152af69d534"
+    },
+    {
+      "claim": "Amazon is committing $25 billion to Anthropic, consisting of an immediate $5 billion commitment and $20 billion tied to commercial milestones.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief Host",
+      "episode": "how-apples-ai-strategy-changes-with-a-new-ceo",
+      "claim_date": "2026-04-22",
+      "evidence": "The transcript details the deal structure: 'The deal consists of 5 billion of commitment now and an additional 20 billion tied to commercial milestones.'",
+      "fp": "4920eadf9eee1124"
+    },
+    {
+      "claim": "Meta is launching a 'Level Up' training program in partnership with CBRE to train fiber technicians for data center construction, aiming to address a nationwide labor shortage.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "Meta (Official Announcement)",
+      "episode": "how-apples-ai-strategy-changes-with-a-new-ceo",
+      "claim_date": "2026-04-22",
+      "evidence": "The host describes the program: 'free 4-week training program... Successful graduates will be offered work opportunities through Meta's contractor network, primarily working on data center construction.'",
+      "fp": "ed8071636d7fd509"
+    },
+    {
+      "claim": "The Department of Energy (DOE) is tasked with creating a 'closed-loop AI experimentation platform' that integrates national supercomputers and data assets to power robotic laboratories.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "White House Executive Order / AI Daily Brief Host",
+      "episode": "how-big-a-deal-is-the-usas-ai-genesis-mission",
+      "claim_date": "2025-11-30",
+      "evidence": "The order instructs the DOE to 'create a closedloop AI experimentation platform that integrates our nation's worldclass supercomputers and unique data assets to generate scientific foundation models and power robotic laboratories.'",
+      "fp": "97b99a495408a10b"
+    },
+    {
+      "claim": "The structural AI capacity shortage is so severe that even if Nvidia doubled its output, Meta would still be short on compute due to the velocity of its AI workload curve.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Sha Bulour (Futurum Equities) / AI Daily Brief Host",
+      "episode": "how-big-a-deal-is-the-usas-ai-genesis-mission",
+      "claim_date": "2025-11-30",
+      "evidence": "Sha Bulour writes: 'Even if Nvidia doubled output, Meta would still be short on compute. That's how steep the structural AI capacity shortage actually is.' He attributes this to Meta's training cycles, video understanding systems, and tens of billions of daily inference calls.",
+      "fp": "0a321adf837d1c91"
+    },
+    {
+      "claim": "Hyperscaler and neo-cloud capital expenditure (CapEx) is projected to reach $848 billion this year, with cumulative spending since 2020 reaching $2 trillion.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Exponential View (State of the AI Economy report)",
+      "episode": "how-big-is-the-ai-economy",
+      "claim_date": "2026-06-30",
+      "evidence": "The report notes that while the majority of this funding still comes from balance sheet cash, external funding sources like debt are rising as free cash flow is depleted.",
+      "fp": "9fcbeebca9bd3cff"
+    },
+    {
+      "claim": "Amazon committed $5 billion upfront and $20 billion contingent to Anthropic, with Anthropic agreeing to spend $100 billion on AWS over the coming decade.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief Host / Mirae Securities Note",
+      "episode": "how-deepseek-v4-connects-to-the-us-grid",
+      "claim_date": "2026-04-28",
+      "evidence": "The transcript notes: 'Amazon committed 5 billion up front with a further 20 billion contingent... That deal also saw Anthropic commit to spending a hundred billion with AWS over the coming decade.'",
+      "fp": "01621afa5cde212d"
+    },
+    {
+      "claim": "Goldman Sachs predicted that data centers' share of US electricity demand would rise from 6% to 11% by 2030, identifying power as a key bottleneck for AI.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Goldman Sachs / Business Insider",
+      "episode": "how-deepseek-v4-connects-to-the-us-grid",
+      "claim_date": "2026-04-28",
+      "evidence": "The transcript states: 'GS identified that one of the biggest constraints to the future of AI development was going to be electricity itself. Anticipating that data center's share of electricity demand in the US would go from about 6% today to about double that to 11% by 2030.'",
+      "fp": "896faf7011e60207"
+    },
+    {
+      "claim": "Google's infrastructure is now processing 16 billion tokens per minute, a 60% quarter-over-quarter increase.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Google Earnings Report / AI Daily Brief",
+      "episode": "how-harness-as-a-service-will-change-agents",
+      "claim_date": "2026-05-01",
+      "evidence": "The transcript notes: 'Google's infrastructure is now processing 16 billion tokens a minute, up 60% quarter-over-quarter.'",
+      "fp": "57eb98607fb94fea"
+    },
+    {
+      "claim": "Meta reported 33% year-over-year revenue growth, its highest since 2021, but its stock dropped 5% due to concerns over increased capital expenditure.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Meta Earnings Report / AI Daily Brief",
+      "episode": "how-harness-as-a-service-will-change-agents",
+      "claim_date": "2026-05-01",
+      "evidence": "The transcript states: 'Quarterly revenue came in at 56.3 billion, up 33% over the past year' and 'Meta was the biggest loser from the big tech earnings... sent the stock plummeting by 5% in overnight trading.'",
+      "fp": "c09b42d6c88b6b0b"
+    },
+    {
+      "claim": "Amazon's custom silicon business (Trainium) is now one of the top three data center chip businesses in the world, with an estimated $50 billion ARR if it were a standalone revenue-generating entity.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Andy Jassy (via AI Daily Brief)",
+      "episode": "how-harness-as-a-service-will-change-agents",
+      "claim_date": "2026-05-01",
+      "evidence": "The transcript quotes Jassy: 'As best as we can tell, our custom silicon business is now one of the top three data center chip businesses in the world... if their chips were a standalone business... they would be sitting at 50 billion in ARR.'",
+      "fp": "4848c4fb3347134b"
+    },
+    {
+      "claim": "The AI boom is now in full effect, with demand for tokens and compute outpacing supply, causing outages and surging prices across the industry.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Wall Street Journal / AI Daily Brief",
+      "episode": "how-harness-as-a-service-will-change-agents",
+      "claim_date": "2026-05-01",
+      "evidence": "The transcript quotes the WSJ: 'The growing demand for chatbots and other AI-powered tools is outpacing the supply of chips and storage, causing outages and surging prices.'",
+      "fp": "76ccf8a0a12a8410"
+    },
+    {
+      "claim": "Ramp built its internal AI infrastructure in-house rather than buying it because internal productivity is a competitive moat, it allows for same-day speed in fixing issues, and it provides direct insights for their external AI products.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Seb Go to Jen, Ramp (cited by host)",
+      "episode": "how-the-best-companies-use-ai",
+      "claim_date": "2026-04-20",
+      "evidence": "Seb argues, 'Internal productivity is a moat... You do not need to hand your moat to a vendor,' and notes that owning the tool allows them to 'ship fixes the same day' and that 'Solving these problems internally gives us conviction about what works before we ship it.'",
+      "fp": "59fef0941d8b2f27"
+    },
+    {
+      "claim": "The US Commerce Department has eased export controls to allow the UAE government and approved companies to access advanced AI chips without a license.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "US Commerce Department (reported by AI Daily Brief)",
+      "episode": "how-the-escalating-ai-wars-benefit-you",
+      "claim_date": "2026-07-14",
+      "evidence": "A rule change posted on Friday stated that the UAE government and approved companies will now be able to access advanced AI chips without a license, citing new technology protection measures under an export deal signed in May of the previous year.",
+      "fp": "d21b59a50b535d77"
+    },
+    {
+      "claim": "Nvidia's H200 chips have been fully approved for export to China, with Chinese labs reportedly ordering hundreds of thousands of units to build large-scale training clusters.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Podcast Host",
+      "episode": "how-the-global-ai-race-has-changed",
+      "claim_date": "2026-02-12",
+      "evidence": "The host reports that 'Nvidia's H200 chips have been fully approved for export into China' and that 'Chinese labs have reportedly ordered H200s by the hundreds of thousands.'",
+      "fp": "79fdc3deaa203bda"
+    },
+    {
+      "claim": "Google is in exploratory talks with SpaceX and other rocket companies to launch data centers into space, with plans to have first prototypes in orbit by next year.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Wall Street Journal (cited by AI Daily Brief host)",
+      "episode": "in-defense-of-tokenmaxxing",
+      "claim_date": "2026-05-14",
+      "evidence": "The Wall Street Journal reports that Google is in talks with SpaceX to launch data centers into space... with Google planning to have their first prototypes in orbit by next year.",
+      "fp": "9fb85fdf8dd14a34"
+    },
+    {
+      "claim": "Anthropic's annual recurring revenue (ARR) exploded from $9 billion to over $44 billion in 2026, according to a report by SemiAnalysis.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "SemiAnalysis",
+      "episode": "is-ai-doom-going-out-of-style",
+      "claim_date": "2026-05-05",
+      "evidence": "The transcript states: 'SemiAnalysis, who is seen as extremely well-sourced, published that Anthropic's ARR had this year, quote, \"Exploded from 9 billion to over 44 billion today.\"'",
+      "fp": "00b9a8617751aec7"
+    },
+    {
+      "claim": "Morgan Stanley raised its forecast for hyperscaler capital expenditure (CapEx) to $805 billion for 2026 and $1.1 trillion for 2027.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Morgan Stanley",
+      "episode": "is-ai-doom-going-out-of-style",
+      "claim_date": "2026-05-05",
+      "evidence": "Analyst Holger Shapitz is quoted in the transcript: 'Morgan Stanley has again raised its CapEx forecast for the five hyperscalers and now expects them to spend about 805 billion this year, up from a previous estimate of 765 billion. For next year, the forecast has been lifted from 951 billion to 1.1 trillion.'",
+      "fp": "d27402fea2d92744"
+    },
+    {
+      "claim": "OpenAI's development of an internal GitHub alternative is an inevitable shift driven by the volume of code flowing through AI companies, rather than merely a competitive move against Microsoft or a reaction to SaaS cancellation trends.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "Host",
+      "episode": "is-openai-the-new-github",
+      "claim_date": "2026-03-05",
+      "evidence": "The host states: 'I'm not sure any of that's true. Feels to me like it might just be the start of an inevitable shift in this category given how much code is pumping through these companies' coffers.'",
+      "fp": "905797ee3ac71d1b"
+    },
+    {
+      "claim": "Nvidia CEO Jensen Huang stated that the AI race does not have a definitive finish line, arguing that the end state is AI becoming infrastructure rather than a superpower claiming dominance.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "Jensen Huang (via Joe Rogan interview)",
+      "episode": "microsoft-changing-ai-targets",
+      "claim_date": "2025-12-06",
+      "evidence": "Huang questioned the framing, adding, 'The question is, what's there? I don't think anybody really knows.' Huang's view tends to be that the end state for AI is not about a superpower claiming dominance. It's more about AI becoming infrastructure, fading into the background as the technology improves.",
+      "fp": "306baded820c22c9"
+    },
+    {
+      "claim": "The host predicts that Microsoft and other big tech companies should go beyond merely covering their own electricity costs to actively invest in community goodwill, as the cost is a negligible fraction of total data center expenses.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "Host (AI Daily Brief)",
+      "episode": "microsofts-plan-to-make-people-less-angry-about-ai-and-electricity",
+      "claim_date": "2026-01-16",
+      "evidence": "The host states: 'I think Chimath is right. I think they should be going way beyond just paying their own share and frankly just buying the goodwill of the community that they are in. Ultimately, that is such a small fraction of the cost of these data centers that doing it to me just seems like a no-brainer.'",
+      "fp": "52fd89cc6950889a"
+    },
+    {
+      "claim": "Nvidia CFO Colette Kress stated the company has visibility to $500 billion in Blackwell and Rubin revenue from the start of the year through the end of calendar year 2026.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Nvidia CFO Colette Kress (via earnings call transcript)",
+      "episode": "nvidias-blowout-earnings-pops-the-ai-bubble-bubble",
+      "claim_date": "2025-11-21",
+      "evidence": "The transcript quotes Kress: 'We currently have visibility to half a trillion in Blackwell and Rubin revenue from the start of this year through the end of calendar year 2026.'",
+      "fp": "227cfa41be0b0504"
+    },
+    {
+      "claim": "Nvidia countered Michael Burry's short thesis on chip depreciation by noting that A100 GPUs from six years ago are still operating at 100% utilization rates.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "Nvidia (via earnings call transcript)",
+      "episode": "nvidias-blowout-earnings-pops-the-ai-bubble-bubble",
+      "claim_date": "2025-11-21",
+      "evidence": "The transcript states: 'Nvidia also responded directly to Michael Bur's short thesis regarding the rapid depreciation of chips, noting that A100s from 6 years ago are still in operation at 100% utilization rates.'",
+      "fp": "e4bd3fee82ff1d94"
+    },
+    {
+      "claim": "Oracle's capital expenditures for the quarter were approximately $12 billion, up from $8.5 billion in the previous quarter, significantly exceeding analyst expectations of $8.25 billion.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Oracle Earnings Report",
+      "episode": "real-world-ai-evaluations",
+      "claim_date": "2025-12-15",
+      "evidence": "The transcript states: 'capital expenditures were around 12 billion from the quarter, up from 8.5 in the past quarter. Analysts had actually expected a reduction to 8.25 billion.'",
+      "fp": "d0f6c9875c0cef57"
+    },
+    {
+      "claim": "Oracle raised its capital expenditure forecast to $50 billion for the fiscal year ending in November 2026, a $15 billion increase from its previous forecast.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Oracle Earnings Report",
+      "episode": "real-world-ai-evaluations",
+      "claim_date": "2025-12-15",
+      "evidence": "The transcript states: 'Oracle also raised capex forecast to 50 billion for the fiscal year ending in November 2026, which is a $15 billion increase from their previous forecast.'",
+      "fp": "ab8b1fdd69e32c66"
+    },
+    {
+      "claim": "In New Brunswick, New Jersey, a proposed data center project was cancelled after hundreds of residents attended a planning meeting to oppose it.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Ben Zobiaak (Organizer)",
+      "episode": "the-anti-ai-movement",
+      "claim_date": "2026-02-25",
+      "evidence": "The host reports that videos of the event went viral, and organizer Ben Zobiaak wrote: 'A data center in New Brunswick was canled [sic] tonight when hundreds of residents showed up. When we fight big tech and private equity, we win.'",
+      "fp": "49bef3473633d220"
+    },
+    {
+      "claim": "TSMC reported 17.5% annualized sales growth for April, marking its slowest pace of growth since October of the previous year and roughly half of analyst forecasts.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "TSMC earnings report (reported by AI Daily Brief host)",
+      "episode": "the-best-way-to-talk-to-your-agents",
+      "claim_date": "2026-05-12",
+      "evidence": "The host states: 'The Taiwanese chipmaker reported 17.5% annualized sales growth for April, which is the slowest pace since last October. And while 17 and a half percent growth isn't slow per se, it was around half of what analysts had forecast.'",
+      "fp": "972856ebbbcadf12"
+    },
+    {
+      "claim": "Major housing developers, including the Pulte Group, are testing the installation of micro data centers on newly built homes in partnership with Nvidia and Span to address compute shortages.",
+      "tier": "3",
+      "confidence": "0.7",
+      "source": "AI Daily Brief host (citing industry reports)",
+      "episode": "the-best-way-to-talk-to-your-agents",
+      "claim_date": "2026-05-12",
+      "evidence": "The host states: 'Major housing developers, including the Pulte Group, have entered a testing phase with partners including Nvidia and California startup Span to install micro data centers on newly built homes.'",
+      "fp": "460521f987c0a5e4"
+    },
+    {
+      "claim": "Nvidia's Jensen Huang argued at Davos that the demand for chips and energy infrastructure required for AI represents a significant moment of job creation.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Jensen Huang (Nvidia CEO)",
+      "episode": "the-final-ai-word-from-davos",
+      "claim_date": "2026-01-27",
+      "evidence": "The transcript notes: 'Reuters summed up that voice as jobs, jobs, jobs... a specific reference to Nvidia's Jensen Huang, who basically made the argument that the amount of demand for chips, the infrastructure layer that needs to be built, the energy infrastructure that needs to be built to service it, is all a big moment of job creation.'",
+      "fp": "10502ab0769d5e2e"
+    },
+    {
+      "claim": "Deloitte's 2025 report states that inference costs have dropped 280-fold over the last two years, yet overall enterprise AI spending is growing explosively because usage has outpaced cost reduction.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Deloitte 2025 Emerging Technology Trends report",
+      "episode": "the-most-important-ai-lesson-for-businesses-from-2025",
+      "claim_date": "2025-12-28",
+      "evidence": "While inference costs have plummeted, dropping 280fold over the last 2 years, enterprises are experiencing explosive growth in overall AI spending. The reason is straightforward. Usage in the form of inference has dramatically outpaced cost reduction.",
+      "fp": "94f3178873e5ed4c"
+    },
+    {
+      "claim": "71% of organizations are in the midst of modernizing core infrastructure to support AI, with nearly a quarter investing between 6% and 10% of annual revenue in this effort.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Deloitte 2025 Emerging Technology Trends report",
+      "episode": "the-most-important-ai-lesson-for-businesses-from-2025",
+      "claim_date": "2025-12-28",
+      "evidence": "71% of organizations that were surveyed are in the midst of modernizing core infrastructure to support AI. And nearly a quarter of them are investing between 6 and 10% of annual revenue in modernizing those core enterprise systems.",
+      "fp": "bbc054bb2e9eaed3"
+    },
+    {
+      "claim": "Nvidia is considering reducing the memory specifications of its next-generation Rubin Ultra GPU due to concerns about securing enough high-bandwidth memory for production.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "The Information",
+      "episode": "the-right-way-to-worry-about-ai",
+      "claim_date": "2026-08-13",
+      "evidence": "The Information again reports that Nvidia is considering slashing the specs on Rubin. Currently, Nvidia has three different variants of their next generation of flagship GPU, the Rubin Ultra under testing, and sources said that some of the test units include less memory than originally announced.",
+      "fp": "4c852747271fc05a"
+    },
+    {
+      "claim": "Oracle delivered 400 MW of data center capacity in the previous quarter, with 90% of that capacity delivered on time.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Oracle Co-CEO Clay Magouirk",
+      "episode": "the-social-network-for-agents-just-got-acquired",
+      "claim_date": "2026-03-14",
+      "evidence": "Co-CEO Clay Magouirk reported that 400 MW of capacity had been delivered in the previous quarter, with 90% of that capacity delivered on time.",
+      "fp": "8d8348fc1049f37e"
+    },
+    {
+      "claim": "Nvidia and SK Hynix signed a two-year deal securing Nvidia's memory supply, with SK Hynix remaining Nvidia's largest memory supplier and joining as a design partner for new memory chips for physical AI and AI infrastructure.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Nvidia and SK Hynix press conference (reported by AI Daily Brief host)",
+      "episode": "the-way-we-use-ai-is-changing",
+      "claim_date": "2026-06-09",
+      "evidence": "Jensen Huang has secured Nvidia's memory supply in a new multi-year deal with SK Hynix. The two-year deal will deepen ties between the two companies. SK Hynix will continue to be Nvidia's largest memory supplier... Nvidia will join as a design partner on new memory chips for physical AI, personal AI, and AI infrastructure.",
+      "fp": "845d0ad23bb3af45"
+    },
+    {
+      "claim": "The 'token subsidy era' is ending, transitioning into a 'token scarcity era' where AI business models are shifting to charge for actual token consumption, fundamentally changing how value is captured and distributed.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "AI Daily Brief host",
+      "episode": "the-way-we-use-ai-is-changing",
+      "claim_date": "2026-06-09",
+      "evidence": "If you've been listening to this show at all over the last few weeks, the number one most dominant and most important theme has been the shift from the token subsidy era to the token scarcity era where the business models are all shifting to sell people the tokens that they're actually consuming.",
+      "fp": "2ece0ca02e0f5fed"
+    },
+    {
+      "claim": "Nvidia's stock is up 20% over the past 7 days, pushing the company close to a $6 trillion valuation as markets remain bullish on AI.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "AI Daily Brief host",
+      "episode": "what-google-needs-to-do-at-io-this-week",
+      "claim_date": "2026-05-18",
+      "evidence": "Nvidia is very quietly having a major surge as the markets get mega bullish on AI. The stock is up 20% over the past 7 days, pushing the world's largest company close to a $6 trillion valuation.",
+      "fp": "1b7a40319df21f1c"
+    },
+    {
+      "claim": "SpaceX AI is expanding its data center business in Texas, with plans for a campus at a similar or greater scale to its Memphis site, which operates at around 1 GW.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "The Information (reported by AI Daily Brief host)",
+      "episode": "why-ai-hasnt-increased-unemployment-according-to-anthropic",
+      "claim_date": "2026-07-25",
+      "evidence": "A source said that the new Texas campus will be at a similar or greater scale to the Memphis site, which is currently operating at around 1 GW across the two Colossus data centers.",
+      "fp": "5970d25f3e04940f"
+    },
+    {
+      "claim": "According to KPMG's Q4 2025 survey, 41% of leaders cited a lack of organizational infrastructure as a challenge for agentic AI, a figure that more than tripled in the last two quarters.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "KPMG Quarterly Pulse Survey",
+      "episode": "why-ceos-need-to-lead-ai-strategy",
+      "claim_date": "2026-01-16",
+      "evidence": "41% cited a lack of organizational infrastructure, which more than tripled in the last two quarters, as a challenge when it comes to agentic AI.",
+      "fp": "14a8f513a1f8bf22"
+    },
+    {
+      "claim": "The host posits that companies are often failing to provide employees with the necessary tools and time to experiment, instead 'dropping LLMs on top of their heads' with outdated enterprise deployments.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "AI Daily Brief host",
+      "episode": "why-deeply-integrating-ai-3xs-likelihood-of-financial-gains-from-ai",
+      "claim_date": "2026-01-23",
+      "evidence": "The host states: 'companies are not giving their employees tools to go beyond the most basic of use cases... dropping LLMs on top of their heads, in many cases based on enterprise deployments, LLMs that are a generation or two behind.'",
+      "fp": "193ebaecc173cef6"
+    },
+    {
+      "claim": "Ryan Fedic of the American Enterprise Institute argued that the US should focus on industrial variables like high bandwidth memory production and data center construction timelines, rather than model benchmarks, to determine the outcome of the AI race.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Ryan Fedic",
+      "episode": "why-everyone-is-debating-ai-policy",
+      "claim_date": "2026-07-29",
+      "evidence": "Fedic wrote: 'Washington would do well to stop measuring victory in the AI race according to model benchmarks... and start paying attention to the industrial variables which will determine which AI labs are capable of serving intelligence to global publics.'",
+      "fp": "93558c1cd95b7bdd"
+    },
+    {
+      "claim": "In Q1 2026, AI data centers, hardware, and networking accounted for 1.4% of US GDP, doubling from 0.7% and becoming the leading driver of US private investment growth.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Host (AI Daily Brief)",
+      "episode": "why-only-ai-training-can-save-the-economy",
+      "claim_date": "2026-06-18",
+      "evidence": "AI data centers, hardware, and networking hit 1.4% of US GDP in Q1 2026, doubling from 0.7% and making AI infrastructure the leading driver of US private investment growth.",
+      "fp": "bdf7f0139b771560"
+    },
+    {
+      "claim": "Nvidia reported revenue growth at a 62% annualized pace in its most recent earnings report.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief host",
+      "episode": "why-the-ai-bubble-conversation-is-useless",
+      "claim_date": "2025-11-25",
+      "evidence": "The host states that Nvidia 'delivered a jaw-dropping beat with revenue growth at a 62% annualized pace.'",
+      "fp": "29d400b508db7a99"
+    },
+    {
+      "claim": "Google's current run rate for capital expenditure is 95 billion for the year, which would amount to 750 billion over an 8-year period.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "AI Daily Brief host",
+      "episode": "why-the-ai-bubble-conversation-is-useless",
+      "claim_date": "2025-11-25",
+      "evidence": "The host calculates that 'at Google's current run rate of 95 billion for this year, they'd be at 750 billion over those 8 years.'",
+      "fp": "0e92943983db11e2"
+    },
+    {
+      "claim": "Z.ai unveiled a new image model trained entirely on Huawei chips and software, serving as a proof of concept for a fully capable Chinese AI development stack.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Z.ai",
+      "episode": "you-can-now-vibecode-mobile-apps",
+      "claim_date": "2026-01-19",
+      "evidence": "Earlier this week, ZAI unveiled their new first model trained entirely on Huawei chips and software. The model was a relatively small image model. So, this wasn't a Frontier LLM training run, but the announcement was a proof of concept that Huawei now has a fully capable AI development stack.",
+      "fp": "1a5c2f1f16b3486a"
+    },
+    {
+      "claim": "Jensen Huang stated that China is well ahead of the US on energy, while the US leads on chips, and that China is right there on infrastructure and AI models.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Jensen Huang",
+      "episode": "you-can-now-vibecode-mobile-apps",
+      "claim_date": "2026-01-19",
+      "evidence": "Jensen Hong recently commented that they're actually ahead in some aspects saying China is well ahead of us on energy. We are way ahead on chips. They're right there on infrastructure and they're right there on AI models and the areas where the US leads are no longer guaranteed.",
+      "fp": "4b86a830c6c79500"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "- ### Current Landscape (2026)",
+      "content": "- ### Recent Developments (2026)\n  - **Memory and Accelerator Economics**: Micron reported 445% year-over-year revenue growth and a 74% quarter-over-quarter jump, guiding for a further 22% revenue increase in the next quarter. The company disclosed four long-term contracts with large customers locking in high memory prices and 56% gross margins, with forecasts for gross margins to expand to 86% in Q4.\n  - **Nvidia Revenue Visibility**: Nvidia CFO Colette Kress stated the company has visibility to $500 billion in Blackwell and Rubin revenue from the start of the year through the end of calendar year 2026. Nvidia reported revenue growth at a 62% annualized pace in its most recent earnings report.\n  - **Oracle Capex Surge**: Oracle raised its capital expenditure forecast to $50 billion for the fiscal year ending in November 2026, a $15 billion increase from its previous forecast. Oracle's capital expenditures for the quarter were approximately $12 billion, up from $8.5 billion in the previous quarter, significantly exceeding analyst expectations of $8.25 billion. Oracle delivered 400 MW of data center capacity in the previous quarter, with 90% of that capacity delivered on time.\n  - **Enterprise Adoption and Infrastructure Modernization**: According to Deloitte's 2025 report, inference costs have dropped 280-fold over the last two years, yet overall enterprise AI spending is growing explosively because usage has outpaced cost reduction. 71% of organizations are in the midst of modernizing core infrastructure to support AI, with nearly a quarter investing between 6% and 10% of annual revenue in this effort.\n  - **Training Compute Expansion**: xAI has purchased a third data center facility in southern Mississippi, bringing their total training compute capacity to nearly 2 gigawatts.\n  - **Agentic AI Challenges**: According to KPMG's Q4 2025 survey, 41% of leaders cited a lack of organizational infrastructure as a challenge for agentic AI, a figure that more than tripled in the last two quarters.\n  - **Strategic Partnerships**: Amazon is committing $25 billion to Anthropic, consisting of an immediate $5 billion commitment and $20 billion tied to commercial milestones. Anthropic agreed to spend $100 billion on AWS over the coming decade.\n"
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 4,
+      "relevance": 4,
+      "coherence": 2,
+      "better_version": "A",
+      "improvement": -2
+    },
+    "raw_b": {
+      "factual_grounding": 4,
+      "relevance": 5,
+      "coherence": 4,
+      "better_version": "B",
+      "improvement": 2
+    }
+  },
+  "completeness": {
+    "score": 0.9166666666666666,
+    "detail": [
+      {
+        "fp": "1f10fa87508e4a00",
+        "claim": "Micron reported 445% year-over-year revenue growth and a 74% quarter-over-quarter jump, guiding for a further 22% revenu",
+        "matched": true
+      },
+      {
+        "fp": "227cfa41be0b0504",
+        "claim": "Nvidia CFO Colette Kress stated the company has visibility to $500 billion in Blackwell and Rubin revenue from the start",
+        "matched": true
+      },
+      {
+        "fp": "29d400b508db7a99",
+        "claim": "Nvidia reported revenue growth at a 62% annualized pace in its most recent earnings report.",
+        "matched": true
+      },
+      {
+        "fp": "ab8b1fdd69e32c66",
+        "claim": "Oracle raised its capital expenditure forecast to $50 billion for the fiscal year ending in November 2026, a $15 billion",
+        "matched": true
+      },
+      {
+        "fp": "d0f6c9875c0cef57",
+        "claim": "Oracle's capital expenditures for the quarter were approximately $12 billion, up from $8.5 billion in the previous quart",
+        "matched": true
+      },
+      {
+        "fp": "94f3178873e5ed4c",
+        "claim": "Deloitte's 2025 report states that inference costs have dropped 280-fold over the last two years, yet overall enterprise",
+        "matched": true
+      },
+      {
+        "fp": "bbc054bb2e9eaed3",
+        "claim": "71% of organizations are in the midst of modernizing core infrastructure to support AI, with nearly a quarter investing ",
+        "matched": true
+      },
+      {
+        "fp": "924ad15023445d23",
+        "claim": "xAI has purchased a third data center facility in southern Mississippi, bringing their total training compute capacity t",
+        "matched": true
+      },
+      {
+        "fp": "14a8f513a1f8bf22",
+        "claim": "According to KPMG's Q4 2025 survey, 41% of leaders cited a lack of organizational infrastructure as a challenge for agen",
+        "matched": true
+      },
+      {
+        "fp": "8d8348fc1049f37e",
+        "claim": "Oracle delivered 400 MW of data center capacity in the previous quarter, with 90% of that capacity delivered on time.",
+        "matched": true
+      },
+      {
+        "fp": "4920eadf9eee1124",
+        "claim": "Amazon is committing $25 billion to Anthropic, consisting of an immediate $5 billion commitment and $20 billion tied to ",
+        "matched": true
+      },
+      {
+        "fp": "01621afa5cde212d",
+        "claim": "Amazon committed $5 billion upfront and $20 billion contingent to Anthropic, with Anthropic agreeing to spend $100 billi",
+        "matched": false
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

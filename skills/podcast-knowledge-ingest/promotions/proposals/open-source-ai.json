@@ -1,0 +1,177 @@
+{
+  "topic": "Open Source AI",
+  "topic_slug": "open-source-ai",
+  "status": "candidate_survivor",
+  "reasons": [],
+  "n_assertions": 6,
+  "episodes": [
+    "mythos-returns-but-not-for-everyone",
+    "the-latest-ai-models-and-model-rumors",
+    "where-should-claude-opus-5-fit-in-your-model-rotation",
+    "why-everyone-is-debating-ai-policy"
+  ],
+  "assertion_fingerprints": [
+    "4951a6c5a1ad987e",
+    "603b9f39373b7a8b",
+    "6a38967ceddd1132",
+    "7c64e3963217aa51",
+    "8397ed5ccbfb3154",
+    "ee9732d543bb2794"
+  ],
+  "target_page": "Open Source AI.md",
+  "assertions": [
+    {
+      "claim": "China is employing a 'Huawei strategy' in open-source AI, offering models and infrastructure at low or no cost to encourage the global south to adopt incompatible AI stacks.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Emily Weinstein (Former Commerce Department official)",
+      "episode": "mythos-returns-but-not-for-everyone",
+      "claim_date": "2026-06-30",
+      "evidence": "Weinstein said: 'I think we're seeing another example of the Huawei strategy in the context of open-source AI models. China is able to offer not even just the models, but often the underlying or associated infrastructure at either no cost or significantly lower cost.'",
+      "fp": "6a38967ceddd1132"
+    },
+    {
+      "claim": "Shawn Wang (Swyx) predicts that DeepSeek V4's release will be a pivotal moment for open-source AI, potentially changing his long-held cynical stance on the sector's progress.",
+      "tier": "3",
+      "confidence": "0.75",
+      "source": "Shawn Wang (Swyx) via AI Daily Brief host",
+      "episode": "the-latest-ai-models-and-model-rumors",
+      "claim_date": "2026-02-17",
+      "evidence": "Shawn Wang, aka Swyx, explained why this release was such a big deal. He wrote, 'I've been cynical on open-source AI for the last 3 years... Deep Seek version 4 next week is probably the moment I really change my stance for the first time.'",
+      "fp": "7c64e3963217aa51"
+    },
+    {
+      "claim": "Deep Seek suspended its fundraising round, which was planned at a $70 billion valuation, after comments from CEO Li Yuanfeng were leaked, potentially derailing plans to go public.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Bloomberg / Host",
+      "episode": "where-should-claude-opus-5-fit-in-your-model-rotation",
+      "claim_date": "2026-07-28",
+      "evidence": "Deep Seek has now informed potential investors that they won't move forward with this funding round, which could also derail plans to go public in the coming months. Bloomberg writes that Deep Seek may resume fundraising at a later date, but it made clear that the suspension was tied to investors leaking the comments. Deep Seek had planned to raise money at a $70 billion valuation, a substantial markup to the $50 billion round that took place earlier this year.",
+      "fp": "8397ed5ccbfb3154"
+    },
+    {
+      "claim": "Dean Ball, former policy adviser to the Trump administration and now head of strategic futures at OpenAI, stated that openweight models are inherently decelerationist and effectively ungovernable, arguing they deter further AI capital expenditure by reducing the premium for frontier models.",
+      "tier": "2",
+      "confidence": "0.95",
+      "source": "Dean Ball",
+      "episode": "why-everyone-is-debating-ai-policy",
+      "claim_date": "2026-07-29",
+      "evidence": "Ball wrote: 'Openweight models are inherently decelerationist... I suspect the reason they are is that they know openweight models are effectively ungovernable... openweight models deter further AI capex.'",
+      "fp": "603b9f39373b7a8b"
+    },
+    {
+      "claim": "President Xi Jinping endorsed an open-source approach to global AI at the first World AI Conference in Beijing, stating that global AI governance must uphold openness and win-win cooperation.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "President Xi Jinping",
+      "episode": "why-everyone-is-debating-ai-policy",
+      "claim_date": "2026-07-29",
+      "evidence": "The transcript quotes Xi: 'global AI governance must uphold openness and win-win cooperation to drive innovation and development... We must seize this rare historic opportunity, encourage open source development, openness, cooperation, and sharing'.",
+      "fp": "4951a6c5a1ad987e"
+    },
+    {
+      "claim": "Investor Hib Keshi argued that China's strategy of releasing frontier-level openweight models is a form of economic dumping, intended to kill local competition by subsidizing their own industry to produce at a loss.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Hib Keshi",
+      "episode": "why-everyone-is-debating-ai-policy",
+      "claim_date": "2026-07-29",
+      "evidence": "Keshi stated: 'releasing the weights for a frontier level model is effectively dumping... if all of the Chinese labs are extremely unprofitable and they are and they are encouraged at a state level to remain unprofitable it is likely to have large and reverberating economic consequences on USI as well.'",
+      "fp": "ee9732d543bb2794"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "- ### Relationships",
+      "content": "- ### Recent Developments\n  - **China's 'Huawei Strategy' in Open-Source AI**: China is employing a strategy analogous to Huawei's past infrastructure plays, offering AI models and associated infrastructure at low or no cost to encourage the Global South to adopt incompatible AI stacks. Emily Weinstein, a former Commerce Department official, noted, \"I think we're seeing another example of the Huawei strategy in the context of open-source AI models. China is able to offer not even just the models, but often the underlying or associated infrastructure at either no cost or significantly lower cost.\" *(Source: Emily Weinstein, confidence 0.8, tier 2)*\n  - **DeepSeek V4 as a Pivotal Moment**: Shawn Wang (Swyx) predicts that the release of DeepSeek V4 will be a pivotal moment for open-source AI, potentially changing his long-held cynical stance on the sector's progress. Wang explained, \"I've been cynical on open-source AI for the last 3 years... Deep Seek version 4 next week is probably the moment I really change my stance for the first time.\" *(Source: Shawn Wang (Swyx) via AI Daily Brief host, confidence 0.75, tier 3)*\n  - **DeepSeek Suspends $70B Fundraising Round**: Deep Seek suspended its fundraising round, which was planned at a $70 billion valuation, after comments from CEO Li Yuanfeng were leaked, potentially derailing plans to go public. Bloomberg reports that Deep Seek informed potential investors they would not move forward with the funding round, a substantial markup to the $50 billion round earlier this year, and that the suspension was tied to investors leaking the comments. *(Source: Bloomberg / Host, confidence 0.9, tier 1)*\n  - **Governance and Capex Implications**: Dean Ball, former policy adviser to the Trump administration and now head of strategic futures at OpenAI, stated that openweight models are inherently decelerationist and effectively ungovernable. Ball argued, \"Openweight models are inherently decelerationist... I suspect the reason they are is that they know openweight models are effectively ungovernable... openweight models deter further AI capex.\" *(Source: Dean Ball, confidence 0.95, tier 2)*\n  - **State Endorsement of Openness**: President Xi Jinping endorsed an open-source approach to global AI at the first World AI Conference in Beijing, stating that global AI governance must uphold openness and win-win cooperation. The transcript quotes Xi: \"global AI governance must uphold openness and win-win cooperation to drive innovation and development... We must seize this rare historic opportunity, encourage open source development, openness, cooperation, and sharing.\" *(Source: President Xi Jinping, confidence 0.95, tier 1)*\n  - **Economic Dumping Concerns**: Investor Hib Keshi argued that China's strategy of releasing frontier-level openweight models is a form of economic dumping, intended to kill local competition by subsidizing their own industry to produce at a loss. Keshi stated, \"releasing the weights for a frontier level model is effectively dumping... if all of the Chinese labs are extremely unprofitable and they are and they are encouraged at a state level to remain unprofitable it is likely to have large and reverberating economic consequences on USI as well.\" *(Source: Hib Keshi, confidence 0.8, tier 2)*\n- ### Relationships"
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 2.0,
+    "rubric_b_improvement": 2.0,
+    "raw_a": {
+      "factual_grounding": 2,
+      "relevance": 3,
+      "coherence": 3,
+      "better_version": "A",
+      "improvement": -2
+    },
+    "raw_b": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 4,
+      "better_version": "B",
+      "improvement": 2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "6a38967ceddd1132",
+        "claim": "China is employing a 'Huawei strategy' in open-source AI, offering models and infrastructure at low or no cost to encour",
+        "matched": true
+      },
+      {
+        "fp": "7c64e3963217aa51",
+        "claim": "Shawn Wang (Swyx) predicts that DeepSeek V4's release will be a pivotal moment for open-source AI, potentially changing ",
+        "matched": true
+      },
+      {
+        "fp": "8397ed5ccbfb3154",
+        "claim": "Deep Seek suspended its fundraising round, which was planned at a $70 billion valuation, after comments from CEO Li Yuan",
+        "matched": true
+      },
+      {
+        "fp": "603b9f39373b7a8b",
+        "claim": "Dean Ball, former policy adviser to the Trump administration and now head of strategic futures at OpenAI, stated that op",
+        "matched": true
+      },
+      {
+        "fp": "4951a6c5a1ad987e",
+        "claim": "President Xi Jinping endorsed an open-source approach to global AI at the first World AI Conference in Beijing, stating ",
+        "matched": true
+      },
+      {
+        "fp": "ee9732d543bb2794",
+        "claim": "Investor Hib Keshi argued that China's strategy of releasing frontier-level openweight models is a form of economic dump",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": {
+    "target_page": "Open Source AI.md",
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "- ### Relationships",
+      "content": "- ### Recent Developments\n  - **China's 'Huawei Strategy' in Open-Source AI**: China is employing a strategy analogous to Huawei's past infrastructure plays, offering AI models and associated infrastructure at low or no cost to encourage the Global South to adopt incompatible AI stacks. Emily Weinstein, a former Commerce Department official, noted, \"I think we're seeing another example of the Huawei strategy in the context of open-source AI models. China is able to offer not even just the models, but often the underlying or associated infrastructure at either no cost or significantly lower cost.\" *(Source: Emily Weinstein, confidence 0.8, tier 2)*\n  - **DeepSeek V4 as a Pivotal Moment**: Shawn Wang (Swyx) predicts that the release of DeepSeek V4 will be a pivotal moment for open-source AI, potentially changing his long-held cynical stance on the sector's progress. Wang explained, \"I've been cynical on open-source AI for the last 3 years... Deep Seek version 4 next week is probably the moment I really change my stance for the first time.\" *(Source: Shawn Wang (Swyx) via AI Daily Brief host, confidence 0.75, tier 3)*\n  - **DeepSeek Suspends $70B Fundraising Round**: Deep Seek suspended its fundraising round, which was planned at a $70 billion valuation, after comments from CEO Li Yuanfeng were leaked, potentially derailing plans to go public. Bloomberg reports that Deep Seek informed potential investors they would not move forward with the funding round, a substantial markup to the $50 billion round earlier this year, and that the suspension was tied to investors leaking the comments. *(Source: Bloomberg / Host, confidence 0.9, tier 1)*\n  - **Governance and Capex Implications**: Dean Ball, former policy adviser to the Trump administration and now head of strategic futures at OpenAI, stated that openweight models are inherently decelerationist and effectively ungovernable. Ball argued, \"Openweight models are inherently decelerationist... I suspect the reason they are is that they know openweight models are effectively ungovernable... openweight models deter further AI capex.\" *(Source: Dean Ball, confidence 0.95, tier 2)*\n  - **State Endorsement of Openness**: President Xi Jinping endorsed an open-source approach to global AI at the first World AI Conference in Beijing, stating that global AI governance must uphold openness and win-win cooperation. The transcript quotes Xi: \"global AI governance must uphold openness and win-win cooperation to drive innovation and development... We must seize this rare historic opportunity, encourage open source development, openness, cooperation, and sharing.\" *(Source: President Xi Jinping, confidence 0.95, tier 1)*\n  - **Economic Dumping Concerns**: Investor Hib Keshi argued that China's strategy of releasing frontier-level openweight models is a form of economic dumping, intended to kill local competition by subsidizing their own industry to produce at a loss. Keshi stated, \"releasing the weights for a frontier level model is effectively dumping... if all of the Chinese labs are extremely unprofitable and they are and they are encouraged at a state level to remain unprofitable it is likely to have large and reverberating economic consequences on USI as well.\" *(Source: Hib Keshi, confidence 0.8, tier 2)*\n- ### Relationships"
+    },
+    "provenance": {
+      "assertion_fingerprints": [
+        "4951a6c5a1ad987e",
+        "603b9f39373b7a8b",
+        "6a38967ceddd1132",
+        "7c64e3963217aa51",
+        "8397ed5ccbfb3154",
+        "ee9732d543bb2794"
+      ],
+      "source_episodes": [
+        "mythos-returns-but-not-for-everyone",
+        "the-latest-ai-models-and-model-rumors",
+        "where-should-claude-opus-5-fit-in-your-model-rotation",
+        "why-everyone-is-debating-ai-policy"
+      ]
+    },
+    "scores": {
+      "rubric_a_improvement": 2.0,
+      "rubric_b_improvement": 2.0,
+      "completeness": 1.0
+    }
+  }
+}

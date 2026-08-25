@@ -1,0 +1,279 @@
+{
+  "topic": "Benchmarking",
+  "topic_slug": "benchmarking",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5"
+  ],
+  "n_assertions": 14,
+  "episodes": [
+    "bezos-is-back-to-build-ai",
+    "can-open-models-solve-corporate-ai-washing",
+    "dario-amodei-breaks-his-social-media-silence",
+    "does-gemini-31-pro-matter",
+    "gemini-can-now-write-you-a-song",
+    "grok-46-shows-how-fast-your-ai-options-are-expanding",
+    "how-deepseek-v4-connects-to-the-us-grid",
+    "how-harness-as-a-service-will-change-agents",
+    "how-significant-are-ais-latest-math-breakthroughs",
+    "how-the-4-new-models-released-this-week-will-change-how-you-work",
+    "what-i-learned-testing-gpt-5-5",
+    "why-ai-advantage-compounds",
+    "why-claude-opus-45-changes-whats-possible-with-vibe-coding"
+  ],
+  "assertion_fingerprints": [
+    "05de74da34cfdb21",
+    "1aeb1152a243aa6b",
+    "38b03c36bcc1d038",
+    "3e463fe7775ed389",
+    "456303a3a71cbce4",
+    "5676e52575dff934",
+    "78ea42ed20f4c442",
+    "7f30a31a9d955a9e",
+    "8436cef0f9f237c8",
+    "a5bbc3603fea9b57",
+    "c1b91c222c638c2d",
+    "ebbb30efb0952ec0",
+    "eed0debac32af677",
+    "fcf45c19535f6256"
+  ],
+  "target_page": "Benchmarking.md",
+  "assertions": [
+    {
+      "claim": "Grok 4.1 and 4.1 Thinking surpassed frontier models like Gemini 2.5 Pro, Claude Sonnet 4.5, and GPT-5 on LMArena leaderboards, reversing Grok 4's previous lower ranking.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "LMArena",
+      "episode": "bezos-is-back-to-build-ai",
+      "claim_date": "2025-11-20",
+      "evidence": "The transcript states that 'Grok 4.1 and 4.1 Thinking leapfrogged the other Frontier models' on LMArena boards, whereas 'Grok 4 had been ranked below those models prior to the upgrade.'",
+      "fp": "456303a3a71cbce4"
+    },
+    {
+      "claim": "Independent testing of Qwen 3.8 Max has yielded mixed results, with some users reporting it as 'unusable' or significantly slower and less stable than competitors like Kimmy K3 and GPT 5.6, despite strong self-reported benchmarks.",
+      "tier": "2",
+      "confidence": "0.7",
+      "source": "Independent Developers (Datum, Pavel Huryn) / AI Daily Brief Host",
+      "episode": "can-open-models-solve-corporate-ai-washing",
+      "claim_date": "2026-08-05",
+      "evidence": "Datum writes: 'Qwen 3.8 max is unusable... extremely slow, unstable, and burns through usage like crazy.' Pavel Huryn found it fixed only 19 out of 105 bugs compared to 33 for GPT 5.6 Luna, and noted high costs and instability.",
+      "fp": "1aeb1152a243aa6b"
+    },
+    {
+      "claim": "Z AI's GLM 5.3 model scores 28.3% on Terminal Bench 3.0, placing it approximately five points behind frontier models like Fable 5 and GPT 5.6 Soul, but 11 points ahead of Kimik 3.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief Host / Z AI Benchmark Data",
+      "episode": "dario-amodei-breaks-his-social-media-silence",
+      "claim_date": "2026-08-18",
+      "evidence": "The transcript explicitly states: 'On coding, GLM 5.3 scores 28.3% on Terminal Bench 3.0. That puts it around five points behind the Frontier with Fable 5 and GPT 5.6 Soul, but 11 points ahead of Kimik 3.'",
+      "fp": "38b03c36bcc1d038"
+    },
+    {
+      "claim": "According to Artificial Analysis, Gemini 3.1 Pro leads their overall intelligence index by four points ahead of Claude Opus 4.6 while costing less than half as much to run.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Artificial Analysis (cited by Host)",
+      "episode": "does-gemini-31-pro-matter",
+      "claim_date": "2026-02-21",
+      "evidence": "The transcript quotes Artificial Analysis: 'Gemini 3.1 Pro preview leads the artificial analysis intelligence index four points ahead of Claude Opus 4.6 while costing less than half as much to run.' It also notes the model led six of the 10 evaluations in the index.",
+      "fp": "a5bbc3603fea9b57"
+    },
+    {
+      "claim": "A test query on Grok Heavy 16 resulted in a 700-word report with nearly 900 references after the 16 sub-agents debated for over a minute.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Ted Suo (xAI Community Promoter) via Podcast Host",
+      "episode": "gemini-can-now-write-you-a-song",
+      "claim_date": "2026-03-08",
+      "evidence": "Transcript states: 'The agents debated the response for a little over a minute and then delivered a 700word report using almost 900 references.'",
+      "fp": "8436cef0f9f237c8"
+    },
+    {
+      "claim": "Chinese AI models often show a significant gap between their benchmark performance and real-world agentic behavior, falling short of frontier models like Sonnet and Opus in practical applications.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Flo Crell (Lindy Founder) via Podcast Host",
+      "episode": "gemini-can-now-write-you-a-song",
+      "claim_date": "2026-03-08",
+      "evidence": "Transcript quotes: 'every time we've evaluated them, we found the same thing that their real life performance for agentic behavior and outside of coding use cases falls extremely short of what they show on the Avals... they're still at least one generation behind.'",
+      "fp": "ebbb30efb0952ec0"
+    },
+    {
+      "claim": "Leaked benchmarks for DeepSeek V4 Pro show it scoring 87.9% on Terminal Bench 2.1, but independent testing by Artificial Analysis found it scored only 53, trailing behind Kimmy K3 and Muark 1.2.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "Leaked Benchmarks / Artificial Analysis / AI Daily Brief Host",
+      "episode": "grok-46-shows-how-fast-your-ai-options-are-expanding",
+      "claim_date": "2026-08-13",
+      "evidence": "The leaked benchmarks claimed DeepSeek V4 Pro was just 0.1% behind Fable on Terminal Bench 2.1. However, Artificial Analysis's benchmark run was 'pretty disappointing' with a score of 53, and user reports described the model as 'benchmax slop' that struggled with simple tasks.",
+      "fp": "c1b91c222c638c2d"
+    },
+    {
+      "claim": "DeepSeek V4 is not state-of-the-art compared to US frontier models but offers a new Pareto frontier by providing near-frontier performance at a fraction of the cost.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Leo Synth Wave / Simon Willison / AI Daily Brief Host",
+      "episode": "how-deepseek-v4-connects-to-the-us-grid",
+      "claim_date": "2026-04-28",
+      "evidence": "The transcript cites Leo Synth Wave: 'New Pareto frontier, a lot cheaper than 5.4 and Opus 4.6 for comparable performance.' Simon Willison is quoted as saying it is 'almost on the frontier at a fraction of the price.'",
+      "fp": "eed0debac32af677"
+    },
+    {
+      "claim": "A new report from Endor Labs found that GPT-5.5 operating within Cursor's harness achieved a 23.5% score on a security correctness benchmark, narrowly beating Cursor with Opus 4.7 (22.9%).",
+      "tier": "1",
+      "confidence": "0.92",
+      "source": "Endor Labs / AI Daily Brief",
+      "episode": "how-harness-as-a-service-will-change-agents",
+      "claim_date": "2026-05-01",
+      "evidence": "The transcript states: 'The cursor plus GPT-5.5 combination achieved a score of 23.5% on the security section, which narrowly beat out the previous leader, which was cursor and Opus 4.7 with a score of 22.9%.'",
+      "fp": "3e463fe7775ed389"
+    },
+    {
+      "claim": "The 'capability overhang' of existing models is increasing, as weaker models can often reproduce frontier model discoveries if given the right conceptual hints, suggesting the gap between model generations is narrowing in specific tasks.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Dan Shipper / Kevin Madura",
+      "episode": "how-significant-are-ais-latest-math-breakthroughs",
+      "claim_date": "2026-08-04",
+      "evidence": "Dan Shipper's experiment showed that GPT 5.6 could roughly recreate Astra's results with hints. Kevin Madura noted that this indicates the capability overhang of existing models is only getting bigger, as the value of new models may lie in their ability to start 'farther from the answer.'",
+      "fp": "5676e52575dff934"
+    },
+    {
+      "claim": "Grock 4.5 achieves near-frontier performance at significantly lower costs, costing 31 cents per task on the Artificial Analysis index compared to $1.80 for Opus 4.8 and $2.75 for Fable 5.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Artificial Analysis / AI Daily Brief Host",
+      "episode": "how-the-4-new-models-released-this-week-will-change-how-you-work",
+      "claim_date": "2026-07-10",
+      "evidence": "The host cites specific benchmark data: 'Grock 4.5 was by far the most costefficient run of the NearFrontier models. It cost 31 cents per task... as compared to 180 for Opus 48 and 275 for Fable 5.'",
+      "fp": "7f30a31a9d955a9e"
+    },
+    {
+      "claim": "GPT-5.5 underperformed Anthropic's Opus 4.7 on the SWE-bench Pro benchmark, leading to debate about the benchmark's validity, with OpenAI's Tibo arguing that 'SWE-bench is not representative of anything real.'",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief)",
+      "episode": "what-i-learned-testing-gpt-5-5",
+      "claim_date": "2026-04-24",
+      "evidence": "The host notes: 'The most discussed negative benchmark was SWE-bench Pro, where 5.5 significantly underperformed Opus 4.7... Tibo on the Codex team at OpenAI clapped back, \"You'll be missing out if you think SWE-bench is representative of anything real.\"'",
+      "fp": "fcf45c19535f6256"
+    },
+    {
+      "claim": "In the AI ROI benchmarking survey, use cases reporting eight different benefit types had a mean ROI of 3.65, compared to 3.13 for use cases with only one benefit type.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI ROI Benchmarking Survey",
+      "episode": "why-ai-advantage-compounds",
+      "claim_date": "2025-12-13",
+      "evidence": "Those whose use cases had just one benefit type had a mean ROI of 3.13. Those who reported four benefit types had a mean ROI of 3.35. And those who reported eight benefit types saw a mean ROI of 3.65.",
+      "fp": "05de74da34cfdb21"
+    },
+    {
+      "claim": "Claude Opus 4.5 achieved a score of 52 on SWE-bench Pro, compared to 43.6 for Sonnet 4.5 and 36% for GPT-5.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "Igor Cotenkov / Host",
+      "episode": "why-claude-opus-45-changes-whats-possible-with-vibe-coding",
+      "claim_date": "2025-11-26",
+      "evidence": "The transcript states: 'Igor Cotenkov points out that... Opus gets a 52 where Sonnet 45 got 43.6 and GPT5 got just 36%.'",
+      "fp": "78ea42ed20f4c442"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - **Capacity planning** \u2014 Benchmarks inform how a system scales with load, supporting infrastructure sizing and cost modelling.",
+      "content": "\n\n- ### Recent Developments\n  - **AI Model Benchmarking** \u2014 Recent industry reports and podcast discussions highlight the rapid evolution of AI model benchmarks, particularly in coding, agentic behavior, and cost-efficiency.\n    - **Coding & Agentic Performance**: Z AI's GLM 5.3 scores 28.3% on Terminal Bench 3.0, placing it approximately five points behind frontier models like Fable 5 and GPT 5.6 Soul, but 11 points ahead of Kimik 3. In a separate evaluation, Claude Opus 4.5 achieved a score of 52 on SWE-bench Pro, compared to 43.6 for Sonnet 4.5 and 36% for GPT-5. However, GPT-5.5 underperformed Anthropic's Opus 4.7 on SWE-bench Pro, sparking debate about the benchmark's validity, with OpenAI's Tibo arguing that \"SWE-bench is not representative of anything real.\"\n    - **Security & Intelligence Indices**: A report from Endor Labs found that GPT-5.5 operating within Cursor's harness achieved a 23.5% score on a security correctness benchmark, narrowly beating Cursor with Opus 4.7 (22.9%). According to Artificial Analysis, Gemini 3.1 Pro leads their overall intelligence index by four points ahead of Claude Opus 4.6 while costing less than half as much to run.\n    - **Cost-Efficiency & Pareto Frontiers**: Grok 4.5 achieves near-frontier performance at significantly lower costs, costing 31 cents per task on the Artificial Analysis index compared to $1.80 for Opus 4.8 and $2.75 for Fable 5. Similarly, DeepSeek V4 is not state-of-the-art compared to US frontier models but offers a new Pareto frontier by providing near-frontier performance at a fraction of the cost.\n    - **Benchmark Validity & Real-World Gaps**: Chinese AI models often show a significant gap between their benchmark performance and real-world agentic behavior, falling short of frontier models like Sonnet and Opus in practical applications. Additionally, the \"capability overhang\" of existing models is increasing, as weaker models can often reproduce frontier model discoveries if given the right conceptual hints, suggesting the gap between model generations is narrowing in specific tasks.\n    - **ROI & Multi-Benefit Use Cases**: In the AI ROI benchmarking survey, use cases reporting eight different benefit types had a mean ROI of 3.65, compared to 3.13 for use cases with only one benefit type, indicating that broader benefit realization correlates with higher return on investment."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 1,
+      "relevance": 3,
+      "coherence": 4,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 0.8333333333333334,
+    "detail": [
+      {
+        "fp": "05de74da34cfdb21",
+        "claim": "In the AI ROI benchmarking survey, use cases reporting eight different benefit types had a mean ROI of 3.65, compared to",
+        "matched": true
+      },
+      {
+        "fp": "38b03c36bcc1d038",
+        "claim": "Z AI's GLM 5.3 model scores 28.3% on Terminal Bench 3.0, placing it approximately five points behind frontier models lik",
+        "matched": true
+      },
+      {
+        "fp": "3e463fe7775ed389",
+        "claim": "A new report from Endor Labs found that GPT-5.5 operating within Cursor's harness achieved a 23.5% score on a security c",
+        "matched": true
+      },
+      {
+        "fp": "a5bbc3603fea9b57",
+        "claim": "According to Artificial Analysis, Gemini 3.1 Pro leads their overall intelligence index by four points ahead of Claude O",
+        "matched": true
+      },
+      {
+        "fp": "8436cef0f9f237c8",
+        "claim": "A test query on Grok Heavy 16 resulted in a 700-word report with nearly 900 references after the 16 sub-agents debated f",
+        "matched": false
+      },
+      {
+        "fp": "7f30a31a9d955a9e",
+        "claim": "Grock 4.5 achieves near-frontier performance at significantly lower costs, costing 31 cents per task on the Artificial A",
+        "matched": true
+      },
+      {
+        "fp": "456303a3a71cbce4",
+        "claim": "Grok 4.1 and 4.1 Thinking surpassed frontier models like Gemini 2.5 Pro, Claude Sonnet 4.5, and GPT-5 on LMArena leaderb",
+        "matched": false
+      },
+      {
+        "fp": "78ea42ed20f4c442",
+        "claim": "Claude Opus 4.5 achieved a score of 52 on SWE-bench Pro, compared to 43.6 for Sonnet 4.5 and 36% for GPT-5.",
+        "matched": true
+      },
+      {
+        "fp": "ebbb30efb0952ec0",
+        "claim": "Chinese AI models often show a significant gap between their benchmark performance and real-world agentic behavior, fall",
+        "matched": true
+      },
+      {
+        "fp": "fcf45c19535f6256",
+        "claim": "GPT-5.5 underperformed Anthropic's Opus 4.7 on the SWE-bench Pro benchmark, leading to debate about the benchmark's vali",
+        "matched": true
+      },
+      {
+        "fp": "eed0debac32af677",
+        "claim": "DeepSeek V4 is not state-of-the-art compared to US frontier models but offers a new Pareto frontier by providing near-fr",
+        "matched": true
+      },
+      {
+        "fp": "5676e52575dff934",
+        "claim": "The 'capability overhang' of existing models is increasing, as weaker models can often reproduce frontier model discover",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

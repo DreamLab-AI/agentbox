@@ -1,0 +1,151 @@
+{
+  "topic": "World Model",
+  "topic_slug": "world-model",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -1.0 < -0.5"
+  ],
+  "n_assertions": 6,
+  "episodes": [
+    "the-ai-scientist-that-does-6-months-of-work-in-a-day",
+    "the-new-ai-org-chart",
+    "why-google-workspace-cli-is-such-a-big-deal"
+  ],
+  "assertion_fingerprints": [
+    "416cfde28e95b4ae",
+    "46c62c9d80b2fe0f",
+    "4b18eda5364b9447",
+    "61dd170f8cd83dc0",
+    "a4969ad7a1f6e905",
+    "f335a7d390a97b5c"
+  ],
+  "target_page": "World Model.md",
+  "assertions": [
+    {
+      "claim": "The core innovation of Cosmos is a structured, continuously updated world model that allows it to process orders of magnitude more information than fits in the context of long-context language models.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Edison Scientific (Sam Rodriguez, CEO)",
+      "episode": "the-ai-scientist-that-does-6-months-of-work-in-a-day",
+      "claim_date": "2025-11-18",
+      "evidence": "Sam Rodriguez stated: 'Our core innovation in Cosmos is the use of a structured, continuously updated world model. Cosmos' world model allows it to process orders of magnitude more information than could fit into the context of even the longest context language models.'",
+      "fp": "46c62c9d80b2fe0f"
+    },
+    {
+      "claim": "The 'world model' used in Cosmos is likely a knowledge graph to which agents add information, rather than a predictive simulation model as typically understood in AI research.",
+      "tier": "2",
+      "confidence": "0.7",
+      "source": "Simon Smith (Analyst/Commentator)",
+      "episode": "the-ai-scientist-that-does-6-months-of-work-in-a-day",
+      "claim_date": "2025-11-18",
+      "evidence": "Simon Smith noted: 'When I looked at the Cosmos paper, it wasn't clear what world model meant. I got the sense that it's a knowledge graph to which agents add information as they collect it... probably not what most people mean by world model.'",
+      "fp": "61dd170f8cd83dc0"
+    },
+    {
+      "claim": "Block's proposed organizational model replaces traditional hierarchy with four core components: capabilities, a world model, an intelligence layer, and interfaces.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Jack Dorsey, Roelof Botha",
+      "episode": "the-new-ai-org-chart",
+      "claim_date": "2026-04-14",
+      "evidence": "The essay states: 'Instead of product teams building predetermined roadmaps, you build four things. First, capabilities... Second, a world model... Third, an intelligence layer... Fourth, interfaces... The value is in the model and the intelligence.'",
+      "fp": "a4969ad7a1f6e905"
+    },
+    {
+      "claim": "A centralized 'world model' that holds a company's understanding may eventually converge with distributed, personally-owned agent intelligence.",
+      "tier": "3",
+      "confidence": "0.55",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-new-ai-org-chart",
+      "claim_date": "2026-04-14",
+      "evidence": "The host notes that while Dorsey envisions a centralized model and Every suggests a distributed one, 'I'm not sure in the long run that these things don't converge a little bit more than they appear for now.'",
+      "fp": "4b18eda5364b9447"
+    },
+    {
+      "claim": "Google's Genie 3 world model allows users to interact with a generated environment, such as a pirate colony, for approximately 60 seconds.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "AI Daily Brief Host",
+      "episode": "why-google-workspace-cli-is-such-a-big-deal",
+      "claim_date": "2026-03-12",
+      "evidence": "The host describes testing the model: 'in just about a minute of waiting, I can be walking through a pirate colony during the Golden Age of Piracy. It's only for 60 seconds...'",
+      "fp": "f335a7d390a97b5c"
+    },
+    {
+      "claim": "The release of Google's Genie 3 world model contributed to a decline in gaming company stocks on Wall Street, signaling early investor concerns about the disruption of traditional software and SaaS models.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "AI Daily Brief Host",
+      "episode": "why-google-workspace-cli-is-such-a-big-deal",
+      "claim_date": "2026-03-12",
+      "evidence": "The host notes: 'when this was released, the very beginning signs of the SaaS apocalypse on Wall Street as investors started to tank gaming company stocks.'",
+      "fp": "416cfde28e95b4ae"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - A key challenge is world model accuracy under distribution shift: models trained in simulation may diverge from real-world dynamics, causing policies to fail on deployment. Techniques such as domain randomisation, system identification, and sim-to-real transfer address this gap. Large-scale video generation models are increasingly explored as general-purpose world models trained on internet-scale data, with implications for [[Embodied AI Simulation]] research and the development of truly general [[Autonomous Agent]] systems.",
+      "content": "- ### Recent Developments\n  - Recent industry and research developments have expanded the application and interpretation of world models beyond traditional reinforcement learning contexts. Google's Genie 3 world model allows users to interact with generated environments, such as a pirate colony, for approximately 60 seconds, demonstrating real-time interactive simulation capabilities. The release of Genie 3 contributed to a decline in gaming company stocks on Wall Street, signaling early investor concerns about the disruption of traditional software and SaaS models.\n  - In the enterprise and organizational design space, Block's proposed organizational model replaces traditional hierarchy with four core components: capabilities, a world model, an intelligence layer, and interfaces. In this context, the world model serves as a centralized repository for the company's understanding, a concept that may eventually converge with distributed, personally-owned agent intelligence. Additionally, the Cosmos system introduces a structured, continuously updated world model that allows it to process orders of magnitude more information than fits in the context of long-context language models. Analysts note that this implementation is likely a knowledge graph to which agents add information, rather than a predictive simulation model as typically understood in AI research."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -1.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 1
+    },
+    "raw_b": {
+      "factual_grounding": 2,
+      "relevance": 3,
+      "coherence": 4,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "46c62c9d80b2fe0f",
+        "claim": "The core innovation of Cosmos is a structured, continuously updated world model that allows it to process orders of magn",
+        "matched": true
+      },
+      {
+        "fp": "61dd170f8cd83dc0",
+        "claim": "The 'world model' used in Cosmos is likely a knowledge graph to which agents add information, rather than a predictive s",
+        "matched": true
+      },
+      {
+        "fp": "a4969ad7a1f6e905",
+        "claim": "Block's proposed organizational model replaces traditional hierarchy with four core components: capabilities, a world mo",
+        "matched": true
+      },
+      {
+        "fp": "4b18eda5364b9447",
+        "claim": "A centralized 'world model' that holds a company's understanding may eventually converge with distributed, personally-ow",
+        "matched": true
+      },
+      {
+        "fp": "f335a7d390a97b5c",
+        "claim": "Google's Genie 3 world model allows users to interact with a generated environment, such as a pirate colony, for approxi",
+        "matched": true
+      },
+      {
+        "fp": "416cfde28e95b4ae",
+        "claim": "The release of Google's Genie 3 world model contributed to a decline in gaming company stocks on Wall Street, signaling ",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

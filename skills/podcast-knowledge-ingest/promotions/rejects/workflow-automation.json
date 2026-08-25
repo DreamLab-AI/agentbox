@@ -1,0 +1,279 @@
+{
+  "topic": "Workflow Automation",
+  "topic_slug": "workflow-automation",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5"
+  ],
+  "n_assertions": 14,
+  "episodes": [
+    "fable-5-raises-the-bar-for-ai-ambition",
+    "gpt-54-first-test-results",
+    "how-to-build-a-personal-agentic-operating-system",
+    "how-to-help-people-thrive-with-ai",
+    "how-to-use-claudes-massive-new-upgrades",
+    "how-to-use-opus-47-and-the-new-codex",
+    "opus-46-and-chatgpt-53-codex-are-here-and-the-labs-are-at-war",
+    "the-dawn-of-the-agent-age",
+    "the-new-ai-org-chart",
+    "the-openclaw-ification-of-ai",
+    "vibe-coding-gets-an-upgrade",
+    "why-everyone-is-obsessed-with-claude-code",
+    "your-company-doesnt-need-an-ai-strategy"
+  ],
+  "assertion_fingerprints": [
+    "187a5fbfe8cbaeeb",
+    "3a0114d553df021b",
+    "3cbe8ede88cce505",
+    "5cf5a1017dac9d5a",
+    "6488cf5f0f37803c",
+    "71987eb04a4ee3af",
+    "724474cfc0011758",
+    "75847b30e690a1f7",
+    "89c4b79be5cf7ada",
+    "9cfbc1dad3418fc7",
+    "a84da9e354fdea7c",
+    "bb24a6f64b937bf8",
+    "cbdea461466d5428",
+    "fd0299def7302a82"
+  ],
+  "target_page": "Workflow Automation.md",
+  "assertions": [
+    {
+      "claim": "The release of Fable 5 marks a shift from 'tasks' to 'responsibilities' in how users interact with AI, where models run autonomous loops rather than executing single prompts.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Felix Ryberg (Anthropic) / AI Daily Brief Host",
+      "episode": "fable-5-raises-the-bar-for-ai-ambition",
+      "claim_date": "2026-06-11",
+      "evidence": "Felix Ryberg states: 'With Fable 5, I've personally moved on to responsibilities or loops. I no longer tell Claude to investigate a particular crash report. It runs a loop watching every crash report that comes in.'",
+      "fp": "a84da9e354fdea7c"
+    },
+    {
+      "claim": "GPT-5.4 is positioned as a model for professional work, integrating directly with enterprise tools like Excel, Factiva, and S&P Global, signaling a strategic push into the finance and knowledge work sectors.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Brad Lightcap (OpenAI CEO) / Host",
+      "episode": "gpt-54-first-test-results",
+      "claim_date": "2026-03-06",
+      "evidence": "CEO Brad Lightcap... tweeted, 'The team worked extremely hard to make GPT 5.4 great for finance. It's much improved for financial modeling and analysis, integrates directly into Excel, and connects to Factiva, Delupa, S&P Global, and many more.'",
+      "fp": "fd0299def7302a82"
+    },
+    {
+      "claim": "The 'Skills' layer of an Agent OS consists of reusable instruction sets or workflows that define how an agent performs specific tasks, such as weekly status updates or meeting prep.",
+      "tier": "2",
+      "confidence": "0.95",
+      "source": "Nofar Gaspar",
+      "episode": "how-to-build-a-personal-agentic-operating-system",
+      "claim_date": "2026-04-25",
+      "evidence": "Nofar defines a skill as 'a reusable instruction set for the AI or workflow that you do repeatedly' and notes that 'every knowledge worker easily has 20 or 30 of these patterns.'",
+      "fp": "cbdea461466d5428"
+    },
+    {
+      "claim": "Uber's 'agentic pods' program reduced capital allocation across 150 cities from 15 hours to 30 minutes, financial pacing reports from two days to 10 minutes, and marketing web quality assurance from two weeks to 50 minutes.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Praveen Napali, Uber CTO",
+      "episode": "how-to-help-people-thrive-with-ai",
+      "claim_date": "2026-07-13",
+      "evidence": "Specific time reduction metrics from Uber's agentic pods: 15 hours to 30 minutes (capital allocation), 2 days to 10 minutes (financial pacing), 2 weeks to 50 minutes (marketing QA).",
+      "fp": "9cfbc1dad3418fc7"
+    },
+    {
+      "claim": "The host identifies 'AI champions' as key to driving AI adoption within organizations, arguing that their value lies not in promoting AI but in demonstrating what is possible by pairing with business functions to fundamentally change workflows.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-to-help-people-thrive-with-ai",
+      "claim_date": "2026-07-13",
+      "evidence": "The host references a Wall Street Journal CIO Journal article on AI champions and argues that their role should be to show, not just tell, by helping business functions reimagine their work using AI.",
+      "fp": "71987eb04a4ee3af"
+    },
+    {
+      "claim": "Computer use and the ability to write and run code on the fly are the ultimate primitives for AI agents to automate real-world enterprise work, as most tasks require traversing multiple applications and data sources.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Aaron Levie (Box)",
+      "episode": "how-to-use-claudes-massive-new-upgrades",
+      "claim_date": "2026-03-24",
+      "evidence": "Aaron Levie wrote: 'Computer use and the ability to write and run code on the fly are the ultimate primitives for agents to be able to take on more and more tasks and knowledge work. Most work requires hopping between multiple applications and working with broad sets of data in a workflow, and agents will need to be able to traverse these systems to be able to effectively automate any real work in the enterprise.'",
+      "fp": "5cf5a1017dac9d5a"
+    },
+    {
+      "claim": "The term 'vibe coding' is evolving to reflect a broader trend where all knowledge work is becoming coding work, as evidenced by the expansion of coding agents like Codex into general productivity tasks.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-to-use-opus-47-and-the-new-codex",
+      "claim_date": "2026-04-18",
+      "evidence": "The host states: 'the problem with the term vibe coding ended up not actually being that all coding became vibe coding, but that all knowledge work is becoming coding work.'",
+      "fp": "75847b30e690a1f7"
+    },
+    {
+      "claim": "Greg Brockman, OpenAI president, stated that by March 31st, OpenAI aims for agents to be the tool of first resort for any technical task, rather than editors or terminals.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Greg Brockman (via Host)",
+      "episode": "opus-46-and-chatgpt-53-codex-are-here-and-the-labs-are-at-war",
+      "claim_date": "2026-02-06",
+      "evidence": "The transcript quotes Greg Brockman: 'By March 31st, we're aiming that one, for any technical task, the tool of first resort for humans is interacting with an agent rather than using an editor or terminal.'",
+      "fp": "89c4b79be5cf7ada"
+    },
+    {
+      "claim": "Brent Behore of Permanent Equity reported that two projects that previously failed after 100+ hours of work over 3 months were completed in 20 minutes using Claude Co-work.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Brent Behore (Permanent Equity)",
+      "episode": "the-dawn-of-the-agent-age",
+      "claim_date": "2026-02-05",
+      "evidence": "What failed with 100 plus hours over 3 months led by a tech professional took a couple no code private equity scrubs 20 minutes to complete flawlessly.",
+      "fp": "187a5fbfe8cbaeeb"
+    },
+    {
+      "claim": "The primary barrier to AI agent adoption in daily work is a lack of imagination and limiting beliefs, rather than a lack of technical capability.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "Brandon Gell (via Every podcast)",
+      "episode": "the-new-ai-org-chart",
+      "claim_date": "2026-04-14",
+      "evidence": "The host notes that Brandon Gell had voice calling and email access set up for weeks but only realized he could have his agent call him to walk through emails during a 28-minute walk. 'The capability had been there for weeks. The barrier was a limiting belief he didn't even know he had.'",
+      "fp": "3a0114d553df021b"
+    },
+    {
+      "claim": "Notion launched custom agents described as an 'AI team that never sleeps,' which are autonomous, model-agnostic, and can be triggered by schedules, Slack messages, or Notion comments.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Notion",
+      "episode": "the-openclaw-ification-of-ai",
+      "claim_date": "2026-02-27",
+      "evidence": "Notion announced: 'Notion calls custom agents the AI team that never sleeps. They're autonomous, built for teams, and easy for anyone to build. Give them a job, set a trigger or schedule, and they'll get it done round the clock.'",
+      "fp": "6488cf5f0f37803c"
+    },
+    {
+      "claim": "Trigger-based AI agents, where specific real-world events (like a permit filing or usage drop) automatically invoke AI workflows, represent a significant opportunity for new startup companies.",
+      "tier": "3",
+      "confidence": "0.65",
+      "source": "Greg Eisenberg (Startup Ideas Pod)",
+      "episode": "vibe-coding-gets-an-upgrade",
+      "claim_date": "2026-04-16",
+      "evidence": "Greg Eisenberg wrote: \"The model is the commodity, the trigger is the product, and whoever maps the most valuable real-world events to the most specific industry workflows is going to build something massive.\" He cited examples like a \"customer's usage drops 40% in a week\" as a trigger.",
+      "fp": "3cbe8ede88cce505"
+    },
+    {
+      "claim": "Damien Player predicted that in 2026, Opus 4.5 will enable one person to do the work of five people for $200 a month, making headcount a liability and manual workflows obsolete.",
+      "tier": "3",
+      "confidence": "0.7",
+      "source": "Damien Player",
+      "episode": "why-everyone-is-obsessed-with-claude-code",
+      "claim_date": "2026-01-09",
+      "evidence": "Damien Player writes, 'Things I'm bearish on in 2026 because of Claude Code. One, massive teams. Opus 4.5 can now do the work of five people for $200 a month. Headcount is a liability now. Two, manual workflows. If a human touches the same task twice, it should be automated.'",
+      "fp": "724474cfc0011758"
+    },
+    {
+      "claim": "OpenAI's Codex introduced a 'record and replay' feature that allows users to demonstrate a recurring task, which the AI then converts into an inspectable and editable skill.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "OpenAI",
+      "episode": "your-company-doesnt-need-an-ai-strategy",
+      "claim_date": "2026-06-20",
+      "evidence": "The transcript states: 'Codex's Thursday update was a new feature called record and replay that they describe as letting you show Codex a recurring task... which Codex then turns that demo into an inspectable, editable skill.'",
+      "fp": "bb24a6f64b937bf8"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - **Security surface**: automation expands the attack surface by granting service accounts broad permissions; [[Least Privilege]] and secrets management ([[Secrets Management]]) are critical controls.",
+      "content": "\n\n- ### Recent Developments\n  - **Enterprise Productivity Gains**: Brent Behore of Permanent Equity reported that two projects that previously failed after 100+ hours of work over 3 months were completed in 20 minutes using Claude Co-work. Similarly, Uber's 'agentic pods' program, led by CTO Praveen Napali, reduced capital allocation across 150 cities from 15 hours to 30 minutes, financial pacing reports from two days to 10 minutes, and marketing web quality assurance from two weeks to 50 minutes.\n  - **Autonomous Agent Platforms**: Notion launched custom agents described as an 'AI team that never sleeps,' which are autonomous, model-agnostic, and can be triggered by schedules, Slack messages, or Notion comments. This aligns with the shift from 'tasks' to 'responsibilities' noted by Felix Ryberg of Anthropic, who stated that with Fable 5, users move to autonomous loops where models run continuously rather than executing single prompts.\n  - **Agent Operating Systems and Skills**: The 'Skills' layer of an Agent OS, as defined by Nofar Gaspar, consists of reusable instruction sets or workflows that define how an agent performs specific tasks, such as weekly status updates or meeting prep. OpenAI's Codex introduced a 'record and replay' feature that allows users to demonstrate a recurring task, which the AI then converts into an inspectable and editable skill.\n  - **Strategic Shifts in AI Interaction**: Greg Brockman, OpenAI president, stated that by March 31st, OpenAI aims for agents to be the tool of first resort for any technical task, rather than editors or terminals. GPT-5.4 is positioned as a model for professional work, integrating directly with enterprise tools like Excel, Factiva, and S&P Global, signaling a strategic push into the finance and knowledge work sectors.\n  - **Foundational Primitives and Adoption**: Aaron Levie of Box identified computer use and the ability to write and run code on the fly as the ultimate primitives for AI agents to automate real-world enterprise work, as most tasks require traversing multiple applications and data sources. The primary barrier to adoption is often identified as a lack of imagination and limiting beliefs rather than technical capability, with 'AI champions' playing a key role in demonstrating what is possible by pairing with business functions to fundamentally change workflows. Damien Player predicted that in 2026, Opus 4.5 will enable one person to do the work of five people for $200 a month, making headcount a liability and manual workflows obsolete."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 5,
+      "relevance": 4,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    }
+  },
+  "completeness": {
+    "score": 0.9166666666666666,
+    "detail": [
+      {
+        "fp": "187a5fbfe8cbaeeb",
+        "claim": "Brent Behore of Permanent Equity reported that two projects that previously failed after 100+ hours of work over 3 month",
+        "matched": true
+      },
+      {
+        "fp": "6488cf5f0f37803c",
+        "claim": "Notion launched custom agents described as an 'AI team that never sleeps,' which are autonomous, model-agnostic, and can",
+        "matched": true
+      },
+      {
+        "fp": "cbdea461466d5428",
+        "claim": "The 'Skills' layer of an Agent OS consists of reusable instruction sets or workflows that define how an agent performs s",
+        "matched": true
+      },
+      {
+        "fp": "9cfbc1dad3418fc7",
+        "claim": "Uber's 'agentic pods' program reduced capital allocation across 150 cities from 15 hours to 30 minutes, financial pacing",
+        "matched": true
+      },
+      {
+        "fp": "89c4b79be5cf7ada",
+        "claim": "Greg Brockman, OpenAI president, stated that by March 31st, OpenAI aims for agents to be the tool of first resort for an",
+        "matched": true
+      },
+      {
+        "fp": "bb24a6f64b937bf8",
+        "claim": "OpenAI's Codex introduced a 'record and replay' feature that allows users to demonstrate a recurring task, which the AI ",
+        "matched": true
+      },
+      {
+        "fp": "fd0299def7302a82",
+        "claim": "GPT-5.4 is positioned as a model for professional work, integrating directly with enterprise tools like Excel, Factiva, ",
+        "matched": true
+      },
+      {
+        "fp": "5cf5a1017dac9d5a",
+        "claim": "Computer use and the ability to write and run code on the fly are the ultimate primitives for AI agents to automate real",
+        "matched": true
+      },
+      {
+        "fp": "a84da9e354fdea7c",
+        "claim": "The release of Fable 5 marks a shift from 'tasks' to 'responsibilities' in how users interact with AI, where models run ",
+        "matched": true
+      },
+      {
+        "fp": "3a0114d553df021b",
+        "claim": "The primary barrier to AI agent adoption in daily work is a lack of imagination and limiting beliefs, rather than a lack",
+        "matched": true
+      },
+      {
+        "fp": "71987eb04a4ee3af",
+        "claim": "The host identifies 'AI champions' as key to driving AI adoption within organizations, arguing that their value lies not",
+        "matched": false
+      },
+      {
+        "fp": "724474cfc0011758",
+        "claim": "Damien Player predicted that in 2026, Opus 4.5 will enable one person to do the work of five people for $200 a month, ma",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

@@ -1,0 +1,178 @@
+{
+  "topic": "Frontier AI",
+  "topic_slug": "frontier-ai",
+  "status": "candidate_deferred",
+  "reasons": [
+    "draft_failed: splice_validation_failed: anchor not found verbatim: '  - benchmark contamination (e.g. SWE-bench) is eroding trust in headline capability numbers.'"
+  ],
+  "n_assertions": 13,
+  "episodes": [
+    "can-todays-ai-replace-12-of-work",
+    "dario-amodei-breaks-his-social-media-silence",
+    "fable-5-shut-down-by-us-government",
+    "first-impressions-of-the-new-opus-48",
+    "grok-46-shows-how-fast-your-ai-options-are-expanding",
+    "should-we-be-scared-of-anthropics-mythos",
+    "why-ai-users-are-raving-about-glm-52",
+    "why-everyone-is-debating-ai-policy"
+  ],
+  "assertion_fingerprints": [
+    "15a17795bd461629",
+    "1ff6ac57c4f0e9f4",
+    "2064c68a3d04f143",
+    "39fa465dfc182ae0",
+    "43da569cfad3f4fa",
+    "6db8fe1cb55e6016",
+    "729f0c21c0fef804",
+    "732bca4b2984df70",
+    "92119ca85f6f3764",
+    "bb557976c6d97fc2",
+    "f8afecf3c3363ea7",
+    "fa08dbb2498e9249",
+    "fc4eaa9282458d3b"
+  ],
+  "target_page": "Frontier AI.md",
+  "assertions": [
+    {
+      "claim": "Dario Amodei asserts that AI model capabilities are following an exponential trajectory similar to Moore's Law, with no expected inflection point in improvement.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "Dario Amodei (Anthropic CEO)",
+      "episode": "can-todays-ai-replace-12-of-work",
+      "claim_date": "2025-12-05",
+      "evidence": "Amodei stated: 'I think the models are just going to get more and more capable at everything... I don't think there's any privilege point around there's no point at which the models start to do something different.'",
+      "fp": "bb557976c6d97fc2"
+    },
+    {
+      "claim": "Anthropic disclosed in its second risk report that it has three significant unreleased models as of mid-July, including 'Model 2' which is described as 'somewhat more capable than Mythos 5' and is not planned for public release.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Anthropic Risk Report / AI Daily Brief Host",
+      "episode": "dario-amodei-breaks-his-social-media-silence",
+      "claim_date": "2026-08-18",
+      "evidence": "The transcript states: 'As of mid-July, Anthropic had three significant unreleased models... Anthropic also disclosed a model known as Model 2, which they described as... somewhat more capable than Mythos 5... Anthropic said they have no plans for releasing this model publicly.'",
+      "fp": "43da569cfad3f4fa"
+    },
+    {
+      "claim": "Anthropic's internal 'Model 2' scores 62.8% on the internal V2 AIR&D code benchmark, compared to 50.3% for Mythos 5 and 54.8% for Mythos preview.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Chris GPT / Anthropic Internal Data",
+      "episode": "dario-amodei-breaks-his-social-media-silence",
+      "claim_date": "2026-08-18",
+      "evidence": "The transcript quotes Chris GPT: 'Anthropic's new Model 2 doesn't just slightly outperform Mythos 5 as they stated in the report. It scores 62.8% on Anthropic's internal code benchmark V2 AIR&D benchmark versus 50.3 for Mythos 5 and 54.8 for Mythos preview.'",
+      "fp": "1ff6ac57c4f0e9f4"
+    },
+    {
+      "claim": "The export control directive is expected to create a precedent for 'capability thought crimes,' where future frontier models may require government clearance or security vetting before release, fundamentally changing the deployment landscape for AI.",
+      "tier": "3",
+      "confidence": "0.75",
+      "source": "Sterling Crispin; Aaron Levie; Transcript analysis",
+      "episode": "fable-5-shut-down-by-us-government",
+      "claim_date": "2026-06-13",
+      "evidence": "Sterling Crispin wrote: 'The worst thing about this Fable situation is that it just created precedents for capability thought crimes and drew a clear line in the sand going forward. Are the next round of models going to need DOW clearance before release?' Aaron Levie stated: 'The government is starting to deem some models too powerful for certain uses, which creates a precedent for a range of possible controls in the future.'",
+      "fp": "732bca4b2984df70"
+    },
+    {
+      "claim": "Anthropic closed a Series H round at a $965 billion valuation, surpassing OpenAI, with run-rate revenue crossing $47 billion.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Anthropic (reported by host)",
+      "episode": "first-impressions-of-the-new-opus-48",
+      "claim_date": "2026-05-30",
+      "evidence": "The host states this officially makes Anthropic more valuable than OpenAI. The valuation more than doubled from $380 billion in February. Revenue figures were updated to reflect the $47 billion run rate.",
+      "fp": "fa08dbb2498e9249"
+    },
+    {
+      "claim": "The frontier AI race has expanded to include XAI and multiple Chinese open-weight labs, with the 'vibe' shifting from Anthropic being far ahead to all-time high model competition in just four weeks.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Nathan Lambert / AI Daily Brief Host",
+      "episode": "grok-46-shows-how-fast-your-ai-options-are-expanding",
+      "claim_date": "2026-08-13",
+      "evidence": "Nathan Lambert noted that the shift from 'Anthropic is so far ahead' to 'model competition back to all-time highs' took like 4 weeks. The host agrees, noting that a credible list of frontier labs now includes XAI and Chinese labs, not just the big three US closed labs.",
+      "fp": "2064c68a3d04f143"
+    },
+    {
+      "claim": "Elon Musk announced that Grock 4.7 is 'significantly better' than 4.6 and will be ready in 3 to 4 weeks, claiming it will 'exceed all current models' due to the unique nature of SpaceX's training corpus.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "Elon Musk / AI Daily Brief Host",
+      "episode": "grok-46-shows-how-fast-your-ai-options-are-expanding",
+      "claim_date": "2026-08-13",
+      "evidence": "Musk tweeted that initial training for Grock 4.7 is complete and they are adding a 'massive amount of SpaceX company data' in supplemental training. He stated, 'I would be shocked if any model is better at real world engineering than 4.7.'",
+      "fp": "6db8fe1cb55e6016"
+    },
+    {
+      "claim": "The US government's involvement in model releases is creating a 'state-of-the-art' gap, where the public's perception of the frontier is lagging behind the actual capabilities of top labs like Anthropic and OpenAI.",
+      "tier": "3",
+      "confidence": "0.65",
+      "source": "AI Daily Brief Host",
+      "episode": "grok-46-shows-how-fast-your-ai-options-are-expanding",
+      "claim_date": "2026-08-13",
+      "evidence": "The host notes that 'the only reason we don't have updates of them [GPT 5.6 and Fable 5] is that we're now past the threshold where the US government is going to be involved in every big new model release.' This means that the models being compared in the public sphere are already several months old.",
+      "fp": "fc4eaa9282458d3b"
+    },
+    {
+      "claim": "Google is likely shifting its focus from releasing a competent Gemini 3.5 Pro to working on a scaled-up Gemini 4, as catching up with the current frontier would be seen as a failure.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "AI Daily Brief Host / Leo (Leaker)",
+      "episode": "grok-46-shows-how-fast-your-ai-options-are-expanding",
+      "claim_date": "2026-08-13",
+      "evidence": "The host notes that Google is already a couple of months behind on Gemini 3.5 Pro and that 'just catching up would be seen as a failure.' Reports from leakers suggest teams are shifting to work on the scaled-up Gemini 4, which is a riskier but more strategic move.",
+      "fp": "92119ca85f6f3764"
+    },
+    {
+      "claim": "The podcast host predicts that the 'more people having access' scenario for advanced AI models is the one that will ultimately play out, despite current restrictions, due to competitive pressures and the nature of technological diffusion.",
+      "tier": "3",
+      "confidence": "0.5",
+      "source": "Podcast Host (AI Daily Brief)",
+      "episode": "should-we-be-scared-of-anthropics-mythos",
+      "claim_date": "2026-04-09",
+      "evidence": "The host states: 'whether Anthropic agrees or not, it seems likely that the more people having access scenario is the one that will play out.' This is supported by the observation that 'The competition is now forcing frontier labs to catch up and move forward.'",
+      "fp": "f8afecf3c3363ea7"
+    },
+    {
+      "claim": "A new, more capable version of Anthropic's Mythos model has emerged from training, potentially to be named Mythos 5.1 or Mythos 6.",
+      "tier": "2",
+      "confidence": "0.65",
+      "source": "Andrew Curran",
+      "episode": "why-ai-users-are-raving-about-glm-52",
+      "claim_date": "2026-06-22",
+      "evidence": "A new, more capable version of Mythos has emerged from training. I don't know whether it will be called Mythos 5.1 or Mythos 6, or if Anthropic will keep it internal to accelerate further development, but it has arrived.",
+      "fp": "15a17795bd461629"
+    },
+    {
+      "claim": "Elon Musk predicts that a full Chinese Mythos-class model will be available by Q1 of next year, while Z AI's Theofanidis argues it will take even less time.",
+      "tier": "3",
+      "confidence": "0.5",
+      "source": "Elon Musk / Theofanidis",
+      "episode": "why-ai-users-are-raving-about-glm-52",
+      "claim_date": "2026-06-22",
+      "evidence": "After TR suggested that we'd see a full Chinese mythos by November or December of this year, Elon Musk argued that it would actually be Q1. When the The of Z AI responded that it won't take that long.",
+      "fp": "39fa465dfc182ae0"
+    },
+    {
+      "claim": "The White House has established a de facto licensing regime for frontier AI models, where the timing and scope of releases are influenced by government officials, despite official claims that the process is voluntary.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief)",
+      "episode": "why-everyone-is-debating-ai-policy",
+      "claim_date": "2026-07-29",
+      "evidence": "The host notes: 'the White House can pretend that this regime is voluntary all at once. But functionally speaking, that is no longer the case... the quote unquote voluntary regime that seemed to be over the last month... becomes actually something more formalized in the future.'",
+      "fp": "729f0c21c0fef804"
+    }
+  ],
+  "draft": {
+    "ok": false,
+    "error": "splice_validation_failed: anchor not found verbatim: '  - benchmark contamination (e.g. SWE-bench) is eroding trust in headline capability numbers.'",
+    "edit": null
+  },
+  "judge": null,
+  "completeness": {
+    "score": 0.0,
+    "detail": []
+  },
+  "ontology_propose_payload": null
+}

@@ -1,0 +1,160 @@
+{
+  "topic": "AI Licensing Regime",
+  "topic_slug": "ai-licensing-regime",
+  "status": "candidate_survivor",
+  "reasons": [],
+  "n_assertions": 5,
+  "episodes": [
+    "mythos-returns-but-not-for-everyone",
+    "the-big-ways-ai-just-changed",
+    "the-week-ai-grew-up",
+    "why-everyone-is-debating-ai-policy"
+  ],
+  "assertion_fingerprints": [
+    "25a1d16e10615bf1",
+    "3851a00ef72fa9d0",
+    "445ed9c42736954b",
+    "729f0c21c0fef804",
+    "79c62c5ea6fd5692"
+  ],
+  "target_page": "AI Licensing Regime.md",
+  "assertions": [
+    {
+      "claim": "Commerce Secretary Howard Lutnick determined that appropriate safeguards are in place to permit certain trusted partners to access the Claude Mythos 5 model.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Howard Lutnick (Commerce Secretary) via letter to Anthropic",
+      "episode": "mythos-returns-but-not-for-everyone",
+      "claim_date": "2026-06-30",
+      "evidence": "Lutnick's letter states: 'I have determined that appropriate safeguards are in place to permit certain trusted partners to access the Claude Mythos 5 model.'",
+      "fp": "3851a00ef72fa9d0"
+    },
+    {
+      "claim": "Frontier AI models are now subject to a licensing regime that has not been passed by Congress, established in an executive order, or fully articulated in public.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "AI Daily Brief Host",
+      "episode": "mythos-returns-but-not-for-everyone",
+      "claim_date": "2026-06-30",
+      "evidence": "The host states: 'It's a licensing regime that hasn't been passed by Congress, established in an executive order, or even fully articulated in public. At this moment, it is a licensing model based on the whims of Howard Lutnick.'",
+      "fp": "25a1d16e10615bf1"
+    },
+    {
+      "claim": "OpenAI announced that GPT-5.6 would be a set of three different models, with the US government approving access to each wave of new users and companies.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-big-ways-ai-just-changed",
+      "claim_date": "2026-07-07",
+      "evidence": "OpenAI announced that GPT-5.6 would actually be a set of three different models, but that for the time being, the US government would be approving every wave of new companies and people to have access to the model.",
+      "fp": "79c62c5ea6fd5692"
+    },
+    {
+      "claim": "The US government is restricting the rollout of new AI models based on policy considerations, marking the first known case of such a licensing regime in the US.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Dean Ball (AI Politics and Governance Expert)",
+      "episode": "the-week-ai-grew-up",
+      "claim_date": "2026-05-02",
+      "evidence": "The host quotes Dean Ball: 'The government restricting the release of AI models is a type of licensing regime. It's an informal, highly improvised licensing regime, but a licensing regime nonetheless.'",
+      "fp": "445ed9c42736954b"
+    },
+    {
+      "claim": "The White House has established a de facto licensing regime for frontier AI models, where the timing and scope of releases are influenced by government officials, despite official claims that the process is voluntary.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief)",
+      "episode": "why-everyone-is-debating-ai-policy",
+      "claim_date": "2026-07-29",
+      "evidence": "The host notes: 'the White House can pretend that this regime is voluntary all at once. But functionally speaking, that is no longer the case... the quote unquote voluntary regime that seemed to be over the last month... becomes actually something more formalized in the future.'",
+      "fp": "729f0c21c0fef804"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "- ### Overview\n  - The US government lifted its block on the Mythos model for approximately 100 selected institutions, including major US companies and government agencies. *(Source: News outlets (via podcast host), via AI Daily Brief, 2026-08-24)*",
+      "content": "- ### Recent Developments\n  - Commerce Secretary Howard Lutnick determined that appropriate safeguards are in place to permit certain trusted partners to access the Claude Mythos 5 model. *(Source: Howard Lutnick (Commerce Secretary) via letter to Anthropic, confidence 0.95, tier 1)*\n  - Frontier AI models are now subject to a licensing regime that has not been passed by Congress, established in an executive order, or fully articulated in public. *(Source: AI Daily Brief Host, confidence 0.85, tier 2)*\n  - OpenAI announced that GPT-5.6 would be a set of three different models, with the US government approving access to each wave of new users and companies. *(Source: Host (AI Daily Brief), confidence 0.85, tier 1)*\n  - The US government is restricting the rollout of new AI models based on policy considerations, marking the first known case of such a licensing regime in the US. *(Source: Dean Ball (AI Politics and Governance Expert), confidence 0.8, tier 2)*\n  - The White House has established a de facto licensing regime for frontier AI models, where the timing and scope of releases are influenced by government officials, despite official claims that the process is voluntary. *(Source: Host (AI Daily Brief), confidence 0.85, tier 2)*"
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 2.0,
+    "rubric_b_improvement": 2.0,
+    "raw_a": {
+      "factual_grounding": 2,
+      "relevance": 3,
+      "coherence": 4,
+      "better_version": "A",
+      "improvement": -2
+    },
+    "raw_b": {
+      "factual_grounding": 3,
+      "relevance": 2,
+      "coherence": 4,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "3851a00ef72fa9d0",
+        "claim": "Commerce Secretary Howard Lutnick determined that appropriate safeguards are in place to permit certain trusted partners",
+        "matched": true
+      },
+      {
+        "fp": "25a1d16e10615bf1",
+        "claim": "Frontier AI models are now subject to a licensing regime that has not been passed by Congress, established in an executi",
+        "matched": true
+      },
+      {
+        "fp": "79c62c5ea6fd5692",
+        "claim": "OpenAI announced that GPT-5.6 would be a set of three different models, with the US government approving access to each ",
+        "matched": true
+      },
+      {
+        "fp": "445ed9c42736954b",
+        "claim": "The US government is restricting the rollout of new AI models based on policy considerations, marking the first known ca",
+        "matched": true
+      },
+      {
+        "fp": "729f0c21c0fef804",
+        "claim": "The White House has established a de facto licensing regime for frontier AI models, where the timing and scope of releas",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": {
+    "target_page": "AI Licensing Regime.md",
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "- ### Overview\n  - The US government lifted its block on the Mythos model for approximately 100 selected institutions, including major US companies and government agencies. *(Source: News outlets (via podcast host), via AI Daily Brief, 2026-08-24)*",
+      "content": "- ### Recent Developments\n  - Commerce Secretary Howard Lutnick determined that appropriate safeguards are in place to permit certain trusted partners to access the Claude Mythos 5 model. *(Source: Howard Lutnick (Commerce Secretary) via letter to Anthropic, confidence 0.95, tier 1)*\n  - Frontier AI models are now subject to a licensing regime that has not been passed by Congress, established in an executive order, or fully articulated in public. *(Source: AI Daily Brief Host, confidence 0.85, tier 2)*\n  - OpenAI announced that GPT-5.6 would be a set of three different models, with the US government approving access to each wave of new users and companies. *(Source: Host (AI Daily Brief), confidence 0.85, tier 1)*\n  - The US government is restricting the rollout of new AI models based on policy considerations, marking the first known case of such a licensing regime in the US. *(Source: Dean Ball (AI Politics and Governance Expert), confidence 0.8, tier 2)*\n  - The White House has established a de facto licensing regime for frontier AI models, where the timing and scope of releases are influenced by government officials, despite official claims that the process is voluntary. *(Source: Host (AI Daily Brief), confidence 0.85, tier 2)*"
+    },
+    "provenance": {
+      "assertion_fingerprints": [
+        "25a1d16e10615bf1",
+        "3851a00ef72fa9d0",
+        "445ed9c42736954b",
+        "729f0c21c0fef804",
+        "79c62c5ea6fd5692"
+      ],
+      "source_episodes": [
+        "mythos-returns-but-not-for-everyone",
+        "the-big-ways-ai-just-changed",
+        "the-week-ai-grew-up",
+        "why-everyone-is-debating-ai-policy"
+      ]
+    },
+    "scores": {
+      "rubric_a_improvement": 2.0,
+      "rubric_b_improvement": 2.0,
+      "completeness": 1.0
+    }
+  }
+}

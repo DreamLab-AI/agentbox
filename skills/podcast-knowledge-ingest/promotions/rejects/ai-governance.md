@@ -1,0 +1,173 @@
+# Dossier: AI Governance
+
+- status: `candidate_rejected`
+- target page: `AI Governance.md`
+- assertions: 75 across episodes: can-open-models-solve-corporate-ai-washing, ceo-led-ai-gets-3x-the-roi, dario-amodei-breaks-his-social-media-silence, did-the-super-bowl-as-make-americans-like-ai-any-more, everything-you-need-to-know-about-ai-tokens, fable-5-raises-the-bar-for-ai-ambition, fable-5-shut-down-by-us-government, gemini-3-launches-heres-everything-you-need-to-know, gemini-can-now-write-you-a-song, gpt-52-is-here, grok-46-shows-how-fast-your-ai-options-are-expanding, grok-bot-finally-makes-ai-agents-easy, harness-engineering-101, how-ai-is-changing-how-companies-get-built, how-ai-starts-doing-the-work-in-2026-with-anthropic-cpo-mike-krieger, how-significant-are-ais-latest-math-breakthroughs, how-the-escalating-ai-wars-benefit-you, introducing-maturity-maps-a-new-way-to-measure-ai-adoption, is-kimi-k3-really-fable-class, mythos-returns-but-not-for-everyone, nvidias-blowout-earnings-pops-the-ai-bubble-bubble, openai-proposes-a-new-deal, should-we-be-scared-of-anthropics-mythos, the-month-ai-woke-up, the-new-ai-org-chart, the-right-way-to-worry-about-ai, the-way-we-use-ai-is-changing, the-week-the-ai-story-shifted, weird-vibes-at-ai-india-summit, what-i-learned-testing-gpt-5-5, what-people-really-want-from-ai, what-the-pope-actually-said-about-ai, where-the-economy-thrives-after-ai, white-hot-cursor-doubles-revenue, who-controls-ai, why-agents-make-every-job-a-startup, why-ai-advantage-compounds, why-ceos-need-to-lead-ai-strategy, why-deeply-integrating-ai-3xs-likelihood-of-financial-gains-from-ai, why-everyone-is-debating-ai-policy, your-company-doesnt-need-an-ai-strategy
+- reasons: rubric_b_improvement -2.0 <= 0.0
+
+## Scores
+- judge ok: True  error: None
+- rubric-A improvement (after vs before): 2.0
+- rubric-B improvement (after vs before): -2.0
+- answer-completeness: 0.92
+
+## Assertions
+- **Palantir CEO Alex Karp argues that Palantir's success is driven by a demand for 'AI sovereignty,' where organizations require maximal control over their data, prompts, and business intelligence to avoid being exploited by language model labs.**
+  - tier 2, confidence 0.8, source Alex Karp (Palantir CEO), episode `can-open-models-solve-corporate-ai-washing`, fp `f7c31fcf921c26a7`
+- **Enterprise AI adoption has shifted from counting use cases to addressing complex governance, cost provisioning, and model routing strategies, indicating a maturation of organizational AI capabilities.**
+  - tier 2, confidence 0.8, source AI Daily Brief Host (based on KPMG Tech and Innovation Symposium), episode `can-open-models-solve-corporate-ai-washing`, fp `74283132de1fe5d4`
+- **The concept of 'AI washing' is emerging as a significant risk, where companies claim to be doing more with AI than they actually are to meet immediate pressure for results, often leading to ineffective layoffs and strategic misalignment.**
+  - tier 2, confidence 0.8, source Julie Averill (Former CIO of Lululemon), episode `can-open-models-solve-corporate-ai-washing`, fp `3482770320fce9cc`
+- **Organizations with clear CEO accountability for AI strategy are three times more likely to report ROI from their AI initiatives.**
+  - tier 1, confidence 0.95, source KPMG Quarterly Pulse Survey, episode `ceo-led-ai-gets-3x-the-roi`, fp `125e6bb9bf3d9fa9`
+- **Anthropic disclosed in its second risk report that it has three significant unreleased models as of mid-July, including 'Model 2' which is described as 'somewhat more capable than Mythos 5' and is not planned for public release.**
+  - tier 1, confidence 0.95, source Anthropic Risk Report / AI Daily Brief Host, episode `dario-amodei-breaks-his-social-media-silence`, fp `43da569cfad3f4fa`
+- **Dario Amodei argues that the public's negative view of AI is fundamentally a crisis of trust in institutions, not a result of AI leaders' messaging, and that the only way to restore trust is through tangible delivery of benefits like curing diseases.**
+  - tier 2, confidence 0.85, source Dario Amodei, episode `dario-amodei-breaks-his-social-media-silence`, fp `55ceaeacf1da7ee8`
+- **Dario Amodei contends that AI structurally tends to concentrate power due to scaling laws, and that open-weight models are insufficient to prevent this because they shift concentration to those with the most compute and chips.**
+  - tier 2, confidence 0.85, source Dario Amodei, episode `dario-amodei-breaks-his-social-media-silence`, fp `3cc161ddb3ba23a7`
+- **Gavin Baker argues that Dario Amodei's pro-regulatory messaging is inadvertently increasing the odds that AI will be restricted or banned, thereby decreasing the likelihood of a beneficial 'Star Trek-like' future.**
+  - tier 2, confidence 0.8, source Gavin Baker, episode `dario-amodei-breaks-his-social-media-silence`, fp `26b4ccf0a8ec16bf`
+- **Amjad Masad of Replit argues that AI does not structurally centralize power because compute price-performance has grown super-exponentially for 125 years, meaning AGI-level capabilities may not always require data centers.**
+  - tier 2, confidence 0.8, source Amjad Masad, episode `dario-amodei-breaks-his-social-media-silence`, fp `305bf11977866f27`
+- **A Pew study found that 59% of Americans have little or no confidence that companies will develop AI responsibly.**
+  - tier 1, confidence 0.95, source Pew Research Center (cited by host), episode `did-the-super-bowl-as-make-americans-like-ai-any-more`, fp `35c9e1c0511ffd06`
+- **The industry is transitioning from a 'token maximizing' era to a 'token smart' era, where the focus shifts from raw usage volume to optimizing cost per accepted task and protecting 'tokens that teach.'**
+  - tier 2, confidence 0.8, source Nofar Gaspar, episode `everything-you-need-to-know-about-ai-tokens`, fp `54880e4134f077c4`
+- **Anthropic requires a 30-day data retention and human review policy for all prompts and outputs generated by Mythos-class models.**
+  - tier 1, confidence 0.95, source Anthropic System Card / AI Daily Brief Host, episode `fable-5-raises-the-bar-for-ai-ambition`, fp `b0101c330a93cd59`
+- **Anthropic's decision to limit Claude's effectiveness on Frontier LLM development tasks is a strategic move to prevent competitors, particularly Chinese labs, from using their research to develop lower-cost alternatives.**
+  - tier 2, confidence 0.8, source AI Daily Brief Host / Anthropic System Card, episode `fable-5-raises-the-bar-for-ai-ambition`, fp `59b87ee88411acc7`
+- **The US Department of Commerce issued an export control directive suspending access to Anthropic's Fable 5 and Mythos 5 models for all foreign nationals, including foreign-national Anthropic employees, citing national security authorities.**
+  - tier 1, confidence 0.98, source Anthropic official tweet and blog post; Wall Street Journal, episode `fable-5-shut-down-by-us-government`, fp `ee7e3b86539e8188`
+- **Anthropic argues that the government's reaction is disproportionate because the identified jailbreaks are non-universal and the capabilities they reveal are already widely available from other models, including OpenAI's GPT-5.5.**
+  - tier 2, confidence 0.88, source Anthropic blog post; Host analysis, episode `fable-5-shut-down-by-us-government`, fp `feae9e8375a89b88`
+- **Industry experts and policy analysts criticize the US government's export control strategy as incoherent and self-defeating, arguing it fails to enforce existing controls on chips while arbitrarily restricting model access, thereby stifling US AI development.**
+  - tier 2, confidence 0.85, source Chris Miller (Council on Foreign Relations); Dean Ball; Transcript analysis, episode `fable-5-shut-down-by-us-government`, fp `71259c2cc92a0e49`
+- **Many industry observers believe the directive is driven by personal animosity or a desire to force regulatory compliance from Anthropic, rather than purely technical security concerns, citing the government's recent shift in rhetoric regarding AI oversight.**
+  - tier 2, confidence 0.8, source Josh Pigford; Kirsten Davies (Dept of War CIO); Transcript analysis, episode `fable-5-shut-down-by-us-government`, fp `d44ab68debfb2ac5`
+- **The suspension of access to frontier models for foreign nationals will accelerate the trend toward 'sovereign AI,' where nation-states and middle powers will prioritize building domestic AI capabilities to avoid dependence on US-controlled technology.**
+  - tier 3, confidence 0.78, source Hemant Mohapatra; Alex Petropoulos; Garry Tan; Transcript analysis, episode `fable-5-shut-down-by-us-government`, fp `432ecc7842a21d64`
+- **The export control directive is expected to create a precedent for 'capability thought crimes,' where future frontier models may require government clearance or security vetting before release, fundamentally changing the deployment landscape for AI.**
+  - tier 3, confidence 0.75, source Sterling Crispin; Aaron Levie; Transcript analysis, episode `fable-5-shut-down-by-us-government`, fp `732bca4b2984df70`
+- **The export control directive may lead to a 'Balkanization' of technology, creating a digital iron curtain where access to frontier intelligence is divided by citizenship and nationality, rather than just economic status.**
+  - tier 3, confidence 0.7, source Ben Murphy (Harvard); Mall (via X); Transcript analysis, episode `fable-5-shut-down-by-us-government`, fp `8ae9c376f63b920b`
+- **Google CEO Sundar Pichai acknowledged 'irrationality' in the current AI boom, stating that while there may be excess investment, the underlying technology will be as profound as the internet.**
+  - tier 2, confidence 0.95, source Sundar Pichai (via BBC interview), episode `gemini-3-launches-heres-everything-you-need-to-know`, fp `c2141070d133ddef`
+- **The launch of Gemini 3 is expected to alleviate 'AI bubble' concerns among investors by demonstrating that the industry has not hit a capability plateau.**
+  - tier 2, confidence 0.85, source AI Daily Brief Host / Simon Smith, episode `gemini-3-launches-heres-everything-you-need-to-know`, fp `1b7bc810904c88e2`
+- **Anthropic clarified that the policy change was intended to force third-party businesses to pay for usage through the API, while personal tinkering with agents remains permitted.**
+  - tier 1, confidence 0.9, source Shahipard (Anthropic Representative) via Podcast Host, episode `gemini-can-now-write-you-a-song`, fp `a579f09d7f4e56af`
+- **The controversy over Anthropic's OAuth token restrictions highlights a broader industry trend toward 'walled gardens' where AI labs restrict how their models are used in third-party agent frameworks.**
+  - tier 2, confidence 0.8, source Podcast Host, episode `gemini-can-now-write-you-a-song`, fp `4a011d62578780be`
+- **Walt Disney has entered a 3-year licensing agreement with OpenAI, granting access to over 200 characters for Sora video generation, including a 1-year exclusivity period and a $1 billion equity investment in OpenAI.**
+  - tier 1, confidence 0.95, source AI Daily Brief Host / Industry Announcement, episode `gpt-52-is-here`, fp `bc44692facef56ee`
+- **OpenAI has positioned GPT 5.2 primarily as a model for professional and enterprise use, emphasizing its ability to handle economically valuable tasks like spreadsheets, presentations, and complex project management.**
+  - tier 2, confidence 0.9, source OpenAI Leadership (Fidji Simo, Greg Brockman) / AI Daily Brief Host, episode `gpt-52-is-here`, fp `53ffbac2ade1807a`
+- **The Disney-OpenAI partnership is expected to serve as a major legitimizing signal for AI as a creative tool, potentially influencing the broader media industry's adoption of generative AI in 2026.**
+  - tier 3, confidence 0.55, source Andrew Curran / AI Daily Brief Host, episode `gpt-52-is-here`, fp `e59fcbe835dbe2cb`
+- **The US White House is expected to expand its model testing framework to cover open models, aiming to ensure that open models reaching the capabilities of frontier models like GPT 5.6 are added to the safety testing regime.**
+  - tier 1, confidence 0.85, source Wired / White House Officials / AI Daily Brief Host, episode `grok-46-shows-how-fast-your-ai-options-are-expanding`, fp `00a30b3de8366497`
+- **The US government's involvement in model releases is creating a 'state-of-the-art' gap, where the public's perception of the frontier is lagging behind the actual capabilities of top labs like Anthropic and OpenAI.**
+  - tier 3, confidence 0.65, source AI Daily Brief Host, episode `grok-46-shows-how-fast-your-ai-options-are-expanding`, fp `fc4eaa9282458d3b`
+- **Anthropic has implemented invisible watermarks in all generated text from its new models to comply with the EU AI Act, with the watermark embedded in the text itself rather than metadata to persist through copying and editing.**
+  - tier 1, confidence 0.95, source AI Daily Brief Host / Anthropic Policy, episode `grok-bot-finally-makes-ai-agents-easy`, fp `c1b24fa45fd467f0`
+- **For enterprise leaders, harness engineering reframes AI adoption from selecting the best model to designing the best environment for agents to work in, as the model and tools are necessary but insufficient without the right environment.**
+  - tier 2, confidence 0.8, source AI Daily Brief Host, episode `harness-engineering-101`, fp `f160062e86ebec72`
+- **Tesla has implemented a policy limiting employees to $200 per week in AI token spending, as some software engineers were previously incurring thousands of dollars in weekly costs.**
+  - tier 1, confidence 0.95, source The Information (via AI Daily Brief host), episode `how-ai-is-changing-how-companies-get-built`, fp `f59dc3c827c97109`
+- **Anthropic is prioritizing 'horizontal agents' for enterprise use, focusing on repetitive, regulatory-compliant back-office tasks (like KYC) rather than just creative co-pilot tasks, requiring bespoke deployment of applied AI engineers.**
+  - tier 2, confidence 0.85, source Mike Kger (Chief Product Officer, Anthropic), episode `how-ai-starts-doing-the-work-in-2026-with-anthropic-cpo-mike-krieger`, fp `2c7956aaf620e4c3`
+- **The 'AI kill switch' bill currently before Congress would grant the Department of Homeland Security the power to order the shutdown of rogue AI agents.**
+  - tier 2, confidence 0.85, source HuggingFace CEO Clem Dang / Congressional Proposals, episode `how-significant-are-ais-latest-math-breakthroughs`, fp `64f718ad1fe7bbfa`
+- **The proliferation of AI bug hunting and the discovery of vulnerabilities in AI agents will likely become a prime focus for Washington policymakers in the coming weeks.**
+  - tier 3, confidence 0.65, source AI Daily Brief Host, episode `how-significant-are-ais-latest-math-breakthroughs`, fp `45e4069fd877fc92`
+- **Microsoft CEO Satya Nadella argues that the current AI model regime transfers economic value from knowledge creators to model providers by allowing providers to learn from customer usage data.**
+  - tier 2, confidence 0.85, source Satya Nadella (Microsoft CEO), episode `how-the-escalating-ai-wars-benefit-you`, fp `6b463bde96b73115`
+- **More than 480 studies and surveys from the last quarter went into the Q2 AI maturity maps.**
+  - tier 1, confidence 0.98, source Host (AI DB / Super Intelligent), episode `introducing-maturity-maps-a-new-way-to-measure-ai-adoption`, fp `e69ecce194492514`
+- **Deloitte found that 93% of AI spend goes to infrastructure with only 7% going to anything related to people.**
+  - tier 1, confidence 0.95, source Deloitte (cited by host), episode `introducing-maturity-maps-a-new-way-to-measure-ai-adoption`, fp `328ce4e3fceafe90`
+- **In customer service, 72% of leaders said that their AI training was adequate while 55% of their employees disagreed.**
+  - tier 1, confidence 0.9, source Host (citing a study), episode `introducing-maturity-maps-a-new-way-to-measure-ai-adoption`, fp `6f4f923a5c68e650`
+- **88% of sales teams say they use AI, but only 24% have it in their actual revenue workflows.**
+  - tier 1, confidence 0.9, source Host (citing data), episode `introducing-maturity-maps-a-new-way-to-measure-ai-adoption`, fp `fc1dbfae66ee721f`
+- **Only 23% of operations groups have a formal AI strategy.**
+  - tier 1, confidence 0.9, source Host (citing a study), episode `introducing-maturity-maps-a-new-way-to-measure-ai-adoption`, fp `bdc1565bbda3d615`
+- **69% of CFOs report advanced or established AI risk governance frameworks.**
+  - tier 1, confidence 0.9, source Host (citing data), episode `introducing-maturity-maps-a-new-way-to-measure-ai-adoption`, fp `5d0007cfe5d159d0`
+- **50% of AI agents are unmonitored and 88% of organizations have had security incidents.**
+  - tier 1, confidence 0.9, source Host (citing data), episode `introducing-maturity-maps-a-new-way-to-measure-ai-adoption`, fp `b1ca9f791398ac58`
+- **The host identifies an 'adoption embedding gap' where high claimed adoption coexists with low depth and utilization across all function-specific surveys.**
+  - tier 2, confidence 0.85, source Host, episode `introducing-maturity-maps-a-new-way-to-measure-ai-adoption`, fp `ac83b84cdae2b1d6`
+- **The host argues that data is not just one pillar of AI maturity but the 'floor constraint' that caps all other dimensions.**
+  - tier 2, confidence 0.85, source Host, episode `introducing-maturity-maps-a-new-way-to-measure-ai-adoption`, fp `f1420f0641214e83`
+- **The host predicts that ROI measurement efforts will see the biggest 'glow-up' in the coming quarters.**
+  - tier 3, confidence 0.7, source Host, episode `introducing-maturity-maps-a-new-way-to-measure-ai-adoption`, fp `15cbd203ead5d564`
+- **The host suggests that finance may eventually 'catapult' ahead of other functions in deployment depth because they will deploy AI more safely and effectively due to their existing governance structures.**
+  - tier 3, confidence 0.6, source Host, episode `introducing-maturity-maps-a-new-way-to-measure-ai-adoption`, fp `db2a0164e947b6a5`
+- **Kimmy K3 has significantly fewer visible safety guardrails and cyber-risk mitigations compared to US frontier models like Fable 5, making it the least constrained frontier-class model broadly accessible.**
+  - tier 2, confidence 0.85, source Signal and Tyler John (via AI Daily Brief host), episode `is-kimi-k3-really-fable-class`, fp `292b18e3f727abb7`
+- **The open-sourcing of Kimmy K3 will not lead to widespread societal chaos, despite its high capabilities and lack of guardrails.**
+  - tier 3, confidence 0.5, source Theo Jaffy (AI content creator, via AI Daily Brief host), episode `is-kimi-k3-really-fable-class`, fp `5a87b671e8d4a935`
+- **Frontier AI models are now subject to a licensing regime that has not been passed by Congress, established in an executive order, or fully articulated in public.**
+  - tier 2, confidence 0.85, source AI Daily Brief Host, episode `mythos-returns-but-not-for-everyone`, fp `25a1d16e10615bf1`
+- **A draft executive order leaked to the press proposes banning states from passing their own AI regulations by empowering the Justice Department to challenge state laws as unconstitutional restrictions on interstate commerce.**
+  - tier 2, confidence 0.85, source Leaked draft document (via podcast host), episode `nvidias-blowout-earnings-pops-the-ai-bubble-bubble`, fp `6217d48fcb346af5`
+- **OpenAI released a policy document titled 'Industrial Policy for the Intelligence Age' which is structured around two main areas: building an open economy and building a resilient society.**
+  - tier 1, confidence 0.98, source OpenAI (cited by host), episode `openai-proposes-a-new-deal`, fp `5bcacfcfa8b0bc88`
+- **Anthropic's red team leader Newton Cheng stated that the cybersecurity risks posed by Claude Mythos are an industry-wide problem requiring action from both private corporations and governments, not just Anthropic.**
+  - tier 2, confidence 0.9, source Newton Cheng (Anthropic Red Team Leader), episode `should-we-be-scared-of-anthropics-mythos`, fp `3f09c9dd83c118b8`
+- **The podcast host argues that the fear surrounding Claude Mythos is less useful than nuance, suggesting that the model is a tool rather than a god, and that the collective wisdom of humanity will find a way forward without heavy-handed legislation.**
+  - tier 2, confidence 0.8, source Podcast Host (AI Daily Brief), episode `should-we-be-scared-of-anthropics-mythos`, fp `182c9c6623018a4e`
+- **A dispute arose between Anthropic and the US White House over AI usage standards, with Anthropic seeking redline carve-outs for autonomous weapons and domestic mass surveillance, while the White House preferred a standard of 'any lawful uses.'**
+  - tier 2, confidence 0.85, source AI Daily Brief host, episode `the-month-ai-woke-up`, fp `8863dae0a6d63520`
+- **Personal ownership of AI agents creates a 'trust layer' in organizations that generic corporate AI governance cannot replicate.**
+  - tier 2, confidence 0.8, source Dan Shipper (via Every podcast), episode `the-new-ai-org-chart`, fp `4764b8cdf097451d`
+- **Unilateral pauses by individual companies or countries are ineffective for managing AI risks because the most safety-focused companies are the ones prone to pausing, leaving less cautious actors to drive progress.**
+  - tier 3, confidence 0.55, source Rune (OpenAI), episode `the-right-way-to-worry-about-ai`, fp `9a0f1870d5ae8af9`
+- **OpenAI is pitching the idea of donating equity to the US government to seed a public wealth fund, potentially distributing dividends to individuals through accounts such as 'Trump accounts' for children.**
+  - tier 2, confidence 0.8, source CNBC (reported by AI Daily Brief host), episode `the-way-we-use-ai-is-changing`, fp `768ba7b7727b4ed2`
+- **Government involvement in AI through equity stakes or nationalization risks accelerating 'corporate government fusion' and creating a system with totalistic power over information and human behavior, akin to a social credit system.**
+  - tier 3, confidence 0.65, source David Sacks (reported by AI Daily Brief host), episode `the-way-we-use-ai-is-changing`, fp `ce79d4d8588513f1`
+- **The White House is experiencing internal conflict regarding AI regulation, with some officials pushing for model vetting while others, including a senior official, argue that regulation is a minority view.**
+  - tier 2, confidence 0.8, source Host (AI Daily Brief) citing Politico, episode `the-week-the-ai-story-shifted`, fp `a77bf542b4cd8dce`
+- **The AI Impact Summit was held in New Delhi, marking the first time the event was hosted in a developing country.**
+  - tier 1, confidence 0.95, source AI Daily Brief host, episode `weird-vibes-at-ai-india-summit`, fp `f750e79a8a23f452`
+- **OpenAI is repositioning its communication strategy to emphasize iterative deployment and democratization, contrasting with Anthropic's approach of withholding its most powerful model due to safety concerns.**
+  - tier 2, confidence 0.8, source Host (AI Daily Brief), episode `what-i-learned-testing-gpt-5-5`, fp `d8ab2c7720e42126`
+- **The host argues that dismissing the opinions of AI users as illegitimate for policy discussions is a form of 'intellectual NIMBYism' that ignores the reality of billions of weekly users.**
+  - tier 2, confidence 0.85, source AI Daily Brief Host, episode `what-people-really-want-from-ai`, fp `3ae29529d4e830c0`
+- **The NSA and CIA are reportedly more flexible on AI guardrails than the Pentagon, as they are technically prohibited from gathering intelligence within US borders and thus more comfortable with outright bans on domestic surveillance.**
+  - tier 2, confidence 0.85, source The New York Times, episode `what-the-pope-actually-said-about-ai`, fp `50bd7e19577d64f7`
+- **NLW argues that the dominant discourse on AI jobs is flawed because it focuses on destruction rather than creation, comparing the industry's communication to pharmaceutical commercials that emphasize benefits over risks.**
+  - tier 2, confidence 0.8, source NLW (Host), episode `where-the-economy-thrives-after-ai`, fp `903518dab469174d`
+- **OpenAI updated its Pentagon contract to explicitly prohibit the intentional use of its AI systems for domestic surveillance of US persons and nationals.**
+  - tier 1, confidence 0.95, source Sam Altman (OpenAI), episode `white-hot-cursor-doubles-revenue`, fp `b6073f427f8b9d91`
+- **Legal experts argue that the Department of War's 'immediate' supply chain risk designation for Anthropic is likely invalid because it fails to meet the procedural requirements of 10 USC 3252, such as completing a risk assessment and notifying Congress.**
+  - tier 2, confidence 0.8, source Charlie Bullock (Senior Research Fellow) / Host, episode `who-controls-ai`, fp `5719d26517db1777`
+- **The host asserts that organizations will need to design new architectures of support, including prioritization tools, pacing infrastructure, and cross-functional coordination systems, to prevent burnout and manage the output of AI agents.**
+  - tier 2, confidence 0.8, source AI Daily Brief Host, episode `why-agents-make-every-job-a-startup`, fp `a057527447af50ca`
+- **65% of leaders in the EY survey stated their organization struggles to directly attribute specific productivity gains to AI adoption.**
+  - tier 1, confidence 0.95, source EY Pulse Survey, episode `why-ai-advantage-compounds`, fp `104ffb8db7be053a`
+- **BCG's AI Radar survey found that 72% of CEOs stated they are the main decision-maker on AI in their organization, signaling a shift from CIO-led to CEO-led AI initiatives.**
+  - tier 1, confidence 0.95, source BCG AI Radar, episode `why-ceos-need-to-lead-ai-strategy`, fp `31a4a306b7172d2a`
+- **The Section survey identified a 53-point gap in perception of AI policy clarity, with 81% of C-suite officers reporting a clear AI policy compared to only 28% of individual contributors.**
+  - tier 1, confidence 0.95, source Section survey (reported by AI Daily Brief host), episode `why-deeply-integrating-ai-3xs-likelihood-of-financial-gains-from-ai`, fp `52cfb3cc6874c556`
+- **PwC found that CEOs whose organizations have established strong AI foundations, such as responsible AI frameworks and enterprise-wide integration environments, are three times more likely to report meaningful financial returns.**
+  - tier 1, confidence 0.9, source PwC survey (reported by AI Daily Brief host), episode `why-deeply-integrating-ai-3xs-likelihood-of-financial-gains-from-ai`, fp `afd5c27fa1778589`
+- **The host predicts that the perception gap between executives and employees regarding AI support and strategy will not self-correct, as the C-suite is largely not recognizing the problem.**
+  - tier 3, confidence 0.6, source AI Daily Brief host, episode `why-deeply-integrating-ai-3xs-likelihood-of-financial-gains-from-ai`, fp `99cf4b9149fcf616`
+- **Chris Fall, the head of the Center for AI Standards and Innovation, resigned from his position in the Trump administration, with NIST Director Arvin Raman filling the role on an interim basis.**
+  - tier 1, confidence 0.9, source CNBC, episode `why-everyone-is-debating-ai-policy`, fp `c8e815f168268293`
+- **Politico reported that negotiations between the White House and Anthropic have shifted towards designing a framework to assess the severity of security flaws in AI models.**
+  - tier 1, confidence 0.95, source Politico, episode `your-company-doesnt-need-an-ai-strategy`, fp `9ca105437005a34e`
+
+## Draft splice edit
+```json
+{
+  "mode": "insert_after",
+  "anchor": "  - Cath, C. et al. (2018). Governing artificial intelligence: ethical, legal and technical opportunities and challenges. Philosophical Transactions of the Royal Society A.",
+  "content": "\n\n  ### Recent Developments\n\n  #### Regulatory and Policy Actions\n  - **US Export Controls on Anthropic Models**: The US Department of Commerce issued an export control directive suspending access to Anthropic's Fable 5 and Mythos 5 models for all foreign nationals, including foreign-national Anthropic employees, citing national security authorities. Anthropic confirmed the abrupt disabling of these models for all customers to ensure compliance, following a letter from Commerce Secretary Howard Lutnick to CEO Dario Amodei.\n  - **OpenAI Pentagon Contract Update**: OpenAI updated its contract with the US Department of Defense to explicitly prohibit the intentional use of its AI systems for domestic surveillance of US persons and nationals, aligning with applicable laws.\n  - **OpenAI Industrial Policy Document**: OpenAI released a policy document titled 'Industrial Policy for the Intelligence Age', structured around two main areas: building an open economy and building a resilient society.\n\n  #### Industry and Corporate Governance\n  - **Disney-OpenAI Licensing Agreement**: Walt Disney entered a 3-year licensing agreement with OpenAI, granting access to over 200 characters for Sora video generation. The deal includes a 1-year exclusivity period and a $1 billion equity investment by Disney in OpenAI.\n  - **Shift to CEO-Led AI Strategy**: BCG's AI Radar survey found that 72% of CEOs stated they are the main decision-maker on AI in their organization, signaling a significant shift from CIO-led to CEO-led AI initiatives.\n  - **Investment Allocation Imbalance**: Deloitte research indicates that 93% of AI spend goes to infrastructure, with only 7% allocated to people-related initiatives, highlighting a potential bottleneck in human capital development.\n\n  #### Maturity, Perception, and Public Trust\n  - **Q2 AI Maturity Data**: More than 480 studies and surveys were aggregated into the Q2 AI maturity maps, providing a comprehensive view of current organizational AI capabilities.\n  - **Productivity Attribution Challenges**: An EY Pulse Survey revealed that 65% of leaders stated their organization struggles to directly attribute specific productivity gains to AI adoption.\n  - **Internal Policy Clarity Gap**: A Section survey identified a 53-point gap in the perception of AI policy clarity, with 81% of C-suite officers reporting a clear AI policy compared to only 28% of individual contributors.\n  - **Public Confidence**: A Pew Research Center study found that 59% of Americans have little or no confidence that companies will develop AI responsibly.\n  - **Market Sentiment**: Google CEO Sundar Pichai acknowledged 'irrationality' in the current AI boom, noting that while there may be excess investment, the underlying technology is expected to be as profound as the internet.\n\n  #### Global Governance Forums\n  - **AI Impact Summit in New Delhi**: The AI Impact Summit was held in New Delhi, marking the first time the event was hosted in a developing country, following previous iterations in the UK, France, and South Korea."
+}
+```

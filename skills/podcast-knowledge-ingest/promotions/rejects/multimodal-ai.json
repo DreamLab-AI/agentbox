@@ -1,0 +1,345 @@
+{
+  "topic": "Multimodal AI",
+  "topic_slug": "multimodal-ai",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0"
+  ],
+  "n_assertions": 20,
+  "episodes": [
+    "chatgpt-55-rumors-start-to-bubble",
+    "does-gemini-31-pro-matter",
+    "gemini-can-now-write-you-a-song",
+    "gpt-52-is-here",
+    "gpt-54-first-test-results",
+    "is-this-the-best-ai-video-model-in-the-world",
+    "jensen-huang-calls-openclaw-most-important-software-release-ever",
+    "nano-banana-2-is-here",
+    "the-5-biggest-ai-stories-to-watch-in-december",
+    "the-dawn-of-the-agent-age",
+    "the-most-important-ai-news-from-google-io",
+    "the-openclaw-ification-of-ai",
+    "why-claude-cowork-is-a-big-deal",
+    "why-every-ai-product-seems-the-same"
+  ],
+  "assertion_fingerprints": [
+    "131837a45c3f9390",
+    "17ca2d238d7479ce",
+    "1d22c2a3c0f79017",
+    "37b00544dd1184f5",
+    "433a6ca7a97b5a2c",
+    "5dab90ad2da9f0ef",
+    "7f7396e5e3a299ea",
+    "86add0eb8e921dac",
+    "8c21ae059029ac3a",
+    "94e458b4097b2cea",
+    "a2d9d8ba1f11f6e8",
+    "b99a8896b2154a7f",
+    "b9e29528bfd39a48",
+    "bc44692facef56ee",
+    "c29bcd1f8ea86588",
+    "c94a2fcd2892d0dc",
+    "d852ead455034227",
+    "dd03a840f92f7653",
+    "e59fcbe835dbe2cb",
+    "e875e1ed31c153c0"
+  ],
+  "target_page": "Multimodal AI.md",
+  "assertions": [
+    {
+      "claim": "Google's Veo 3.1 has introduced an 'ingredients to video' feature allowing users to upload reference images for characters, props, and backgrounds to guide generation.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Host (AI Daily Brief)",
+      "episode": "chatgpt-55-rumors-start-to-bubble",
+      "claim_date": "2026-01-15",
+      "evidence": "The transcript details, 'The feature allows users to upload reference images for characters, props, and background to guide the video generation... Vio can also now use ingredients to video when generating vertical videos for mobile.'",
+      "fp": "8c21ae059029ac3a"
+    },
+    {
+      "claim": "Google Labs' announcement of the 'Photoshoot' feature for the Promelli app received 12.2 million views, significantly outperforming CEO Sundar Pichai's announcement of Gemini 3.1 Pro which received approximately 1 million views.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "Host (citing social media metrics)",
+      "episode": "does-gemini-31-pro-matter",
+      "claim_date": "2026-02-21",
+      "evidence": "The transcript states: 'whereas CEO Sundar Pichai's tweet announcing 3.1 had around 1 million views, the Google Labs tweet announcing photo shoot has 12.2 million views at the time of recording.'",
+      "fp": "17ca2d238d7479ce"
+    },
+    {
+      "claim": "Gemini 3.1 Pro is particularly strong in multimodal and visual tasks, such as generating complex SVGs, creating landing pages, and performing technical simulations like heat transfer analysis from CAD files.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host (citing user feedback and Google DeepMind examples)",
+      "episode": "does-gemini-31-pro-matter",
+      "claim_date": "2026-02-21",
+      "evidence": "The transcript cites designer Mang 2: 'Gemini 3.1 Pro is an absolute beast for creating landing pages.' It also mentions Jeff Dean sharing an example of '3.1 Pro doing heat transfer analysis based on a CAD file... and then turning that heat transfer analysis... into a visual representation.'",
+      "fp": "7f7396e5e3a299ea"
+    },
+    {
+      "claim": "Google DeepMind launched Lyria 3, an AI music generation model that supports text, image, and video inputs and generates lyrics in eight languages.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Podcast Host (citing Google DeepMind launch)",
+      "episode": "gemini-can-now-write-you-a-song",
+      "claim_date": "2026-03-08",
+      "evidence": "The transcript states: 'The latest news is that the company has launched an AI music generator called LIIA 3... allows users to generate music clips based on text, images, or video inputs... Lyrics can be generated in eight different languages, including German, French, Spanish, and Hindi.'",
+      "fp": "d852ead455034227"
+    },
+    {
+      "claim": "Google's strategy of integrating AI across multiple modalities (text, image, video, audio) is a key driver for adoption, often underestimated compared to the focus on single-model capability comparisons.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Aaron Upright via Podcast Host",
+      "episode": "gemini-can-now-write-you-a-song",
+      "claim_date": "2026-03-08",
+      "evidence": "Transcript quotes: 'People underestimate the importance of an easily accessible multimodal platform when it comes to adoption.'",
+      "fp": "c29bcd1f8ea86588"
+    },
+    {
+      "claim": "Lyria 3's ability to generate audio that aligns with video inputs (video-to-audio alignment) represents a significant technical challenge in multimodal serving and low-latency inference.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "Chaien Xhiao via Podcast Host",
+      "episode": "gemini-can-now-write-you-a-song",
+      "claim_date": "2026-03-08",
+      "evidence": "Transcript quotes: 'Video to audio alignment is the real flex here... Lia 3 probably relies on some crazy high throughput infr to keep the latency low enough for creative workflows.'",
+      "fp": "dd03a840f92f7653"
+    },
+    {
+      "claim": "Walt Disney has entered a 3-year licensing agreement with OpenAI, granting access to over 200 characters for Sora video generation, including a 1-year exclusivity period and a $1 billion equity investment in OpenAI.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief Host / Industry Announcement",
+      "episode": "gpt-52-is-here",
+      "claim_date": "2025-12-12",
+      "evidence": "The transcript details: 'it's a 3-year licensing agreement including 1 year exclusivity... Disney is also going to make a billion-dollar equity investment into OpenAI.'",
+      "fp": "bc44692facef56ee"
+    },
+    {
+      "claim": "The Disney-OpenAI partnership is expected to serve as a major legitimizing signal for AI as a creative tool, potentially influencing the broader media industry's adoption of generative AI in 2026.",
+      "tier": "3",
+      "confidence": "0.55",
+      "source": "Andrew Curran / AI Daily Brief Host",
+      "episode": "gpt-52-is-here",
+      "claim_date": "2025-12-12",
+      "evidence": "Curran argued: 'as soon as Disney forms this partnership... it will use its immense media power to broadcast that AI is a legitimate creative tool... whoever wins it will have immense main character energy in 2026.'",
+      "fp": "e59fcbe835dbe2cb"
+    },
+    {
+      "claim": "GPT-5.4 demonstrates a notable weakness in front-end UI design and visual taste, producing outputs described as 'tasteless' and 'muddy' compared to competitors like Claude and Gemini.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host / Ben Davis / Matt Schumer",
+      "episode": "gpt-54-first-test-results",
+      "claim_date": "2026-03-06",
+      "evidence": "Ben Davis... said, 'It is hilariously bad at UI stuff.' Matt Schumer said, 'Front-end taste is far behind Opus 46 and Gemini 3.1 Pro.'... Claude pulled no punches in critiquing what we had gotten from 54. The card backgrounds are muddy gradient blobs, the colors are dull and washed out... the whole thing looks like a dark mode template from 2023.",
+      "fp": "131837a45c3f9390"
+    },
+    {
+      "claim": "Former Google senior engineer Ray Dao identified native audiovisual code generation as the key differentiator of Seedance 2.0, noting that competitors typically handle audio in post-production.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Ray Dao",
+      "episode": "is-this-the-best-ai-video-model-in-the-world",
+      "claim_date": "2026-02-13",
+      "evidence": "Ray Dao commented: 'What actually sets this apart is native audiovisisual code generation. Competitors handle audio in post-prouction, but Bite Dance generates it alongside the video.'",
+      "fp": "b99a8896b2154a7f"
+    },
+    {
+      "claim": "Google's Notebook LM can now create fully animated 'cinematic video overviews' that orchestrate the Gemini 3 family of models to generate voiceover, images, and video.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Google",
+      "episode": "jensen-huang-calls-openclaw-most-important-software-release-ever",
+      "claim_date": "2026-03-07",
+      "evidence": "Google announced that Notebook LM can create cinematic video overviews, describing how Gemini acts as a creative director making hundreds of structural and stylistic decisions.",
+      "fp": "e875e1ed31c153c0"
+    },
+    {
+      "claim": "Robert Scoble demonstrated a 5-minute cinematic video overview generated by Notebook LM that summarized AI chatter on X, featuring custom animations and real photos.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Robert Scoble",
+      "episode": "jensen-huang-calls-openclaw-most-important-software-release-ever",
+      "claim_date": "2026-03-07",
+      "evidence": "Scoble shared a video based on summarizing AI chatter on X, noting that while he analyzed tweets and generated the script externally, the rest was straight from Notebook LM.",
+      "fp": "5dab90ad2da9f0ef"
+    },
+    {
+      "claim": "Nano Banana 2 supports the integration of up to five characters and 14 objects from source images and supports outputs up to 4K resolution.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief host / Google release",
+      "episode": "nano-banana-2-is-here",
+      "claim_date": "2026-03-02",
+      "evidence": "The transcript explicitly lists these professional-grade features: 'ability to integrate up to five characters and 14 objects from source images' and 'supports outputs up to 4K'.",
+      "fp": "c94a2fcd2892d0dc"
+    },
+    {
+      "claim": "The host predicts that OpenAI will release an updated image generation model in December 2025 to match the native multimodality of Gemini 3.",
+      "tier": "3",
+      "confidence": "0.55",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-5-biggest-ai-stories-to-watch-in-december",
+      "claim_date": "2025-12-10",
+      "evidence": "The host states, 'I think if OpenAI has an updated image generation model, they will release it this month... my answer would be yes,' citing the utility of integrated image generation in Gemini 3.",
+      "fp": "37b00544dd1184f5"
+    },
+    {
+      "claim": "Moonshot's Kimi K2.5 is one of the first leading open-weight models to be multimodal, featuring agent swarms and performing close to state-of-the-art at approximately one-fifth the price of other leading models.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-dawn-of-the-agent-age",
+      "claim_date": "2026-02-05",
+      "evidence": "Moonshot's Kimmy K25 had lots of people stand up and take notice. It was one of the first leading openweight models to be multimodal. It has advanced forward-looking features like agent swarms and just in general, it's incredibly close to the state-of-the-art for about the fifth of the price of the other leading models.",
+      "fp": "a2d9d8ba1f11f6e8"
+    },
+    {
+      "claim": "Google is positioning its new Omni model as a family of generative AI models capable of 'anything-to-anything' multimodal generation, rather than just a video model.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "AI Daily Brief host",
+      "episode": "the-most-important-ai-news-from-google-io",
+      "claim_date": "2026-05-20",
+      "evidence": "The host explains: \"Google is positioning it as a new family of generative AI models that are eventually an anything-to-anything truly multimodal medium... Omni at full strength will be able to take any input or any combination of inputs to produce whatever output you need.\"",
+      "fp": "86add0eb8e921dac"
+    },
+    {
+      "claim": "Perplexity launched 'Perplexity Computer,' a system that unifies AI capabilities to research, design, code, and deploy projects end-to-end by orchestrating multiple models in parallel.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Perplexity",
+      "episode": "the-openclaw-ification-of-ai",
+      "claim_date": "2026-02-27",
+      "evidence": "Perplexity announced: 'Computer unifies every current AI capability into one system. It can research, design, code, deploy, and manage any project end-to-end. Computer orchestrates models to run agents in parallel, leveraging Opus to match each task to the model best suited for it.'",
+      "fp": "1d22c2a3c0f79017"
+    },
+    {
+      "claim": "Ethan Mollick argued that Claude's gaps in image creation and voice generation have become less significant because Claude Code can use APIs to call external services like Nano Banana or Eleven Labs when needed.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Ethan Mollick",
+      "episode": "why-claude-cowork-is-a-big-deal",
+      "claim_date": "2026-01-14",
+      "evidence": "Ethan Mollick wrote: 'Claude's gaps in image creation and voice became less important when Claude code just uses APIs to go to nanobanana or chatgage gen whenever it needs a picture mate or 11 Labs API whenever it needs a voice.'",
+      "fp": "b9e29528bfd39a48"
+    },
+    {
+      "claim": "Google Labs launched an updated version of its creative canvas tool, Stitch, featuring an AI-native canvas, native voice integration, and instant prototypes.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Google Labs",
+      "episode": "why-every-ai-product-seems-the-same",
+      "claim_date": "2026-04-10",
+      "evidence": "The host notes: 'On Wednesday, Google Labs tweeted, \"Meet the new Stitch, your vibe design partner.\" Now, the upgrades that they promised... included an AI native canvas, a smarter design agent, native voice integration... and instant prototypes.'",
+      "fp": "433a6ca7a97b5a2c"
+    },
+    {
+      "claim": "Google is leveraging its unique advantages in multimodal capabilities and access to the YouTube corpus to differentiate its vibe coding experience, particularly in real-time multiplayer game development.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "Host (AI Daily Brief)",
+      "episode": "why-every-ai-product-seems-the-same",
+      "claim_date": "2026-04-10",
+      "evidence": "The host notes: 'they also are clearly trying to compete in areas where they are just in a class of their own, specifically around everything having to do with multimodal. Anything that benefits from having access to the entire corpus of YouTube, for example.'",
+      "fp": "94e458b4097b2cea"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  **Remaining Limitations**\n\n  Current implementations remain constrained by data fusion efficiency, computational resource requirements, and the challenge of establishing meaningful cross-modal pattern recognition without introducing spurious correlations across disparate data types.",
+      "content": "\n\n  ## Recent Developments (2026)\n\n  Recent industry announcements and technical releases highlight the rapid maturation of multimodal AI capabilities, particularly in video generation, cross-modal orchestration, and open-weight model accessibility.\n\n  **Video Generation and Creative Tools**\n\n  *   **Walt Disney & OpenAI Partnership:** Walt Disney has entered a 3-year licensing agreement with OpenAI, granting access to over 200 characters for Sora video generation. The deal includes a 1-year exclusivity period and a $1 billion equity investment by Disney in OpenAI, signaling a major convergence between traditional media IP and generative AI infrastructure.\n  *   **Google Veo 3.1 'Ingredients to Video':** Google's Veo 3.1 has introduced an 'ingredients to video' feature, allowing users to upload reference images for characters, props, and backgrounds to guide generation. This feature also supports vertical video generation for mobile platforms, enhancing control over visual consistency.\n  *   **Nano Banana 2:** This model supports the integration of up to five characters and 14 objects from source images, with output resolutions up to 4K, catering to professional-grade visual production needs.\n  *   **Seedance 2.0:** Former Google senior engineer Ray Dao identified native audiovisual code generation as the key differentiator of Seedance 2.0. Unlike competitors who typically handle audio in post-production, Seedance generates audio alongside the video, offering a more integrated creative workflow.\n  *   **Google Notebook LM:** The platform can now create fully animated 'cinematic video overviews' that orchestrate the Gemini 3 family of models to generate voiceover, images, and video. Gemini acts as a creative director, making hundreds of structural and stylistic decisions to produce coherent narratives.\n\n  **Multimodal Orchestration and Open Models**\n\n  *   **Perplexity Computer:** Perplexity launched 'Perplexity Computer,' a system that unifies AI capabilities to research, design, code, and deploy projects end-to-end. It orchestrates multiple models in parallel, leveraging specific models (such as Opus) to match each task to the best-suited architecture.\n  *   **Moonshot Kimi K2.5:** One of the first leading open-weight models to be multimodal, Kimi K2.5 features agent swarms and performs close to state-of-the-art levels at approximately one-fifth the price of other leading models, democratizing access to high-performance multimodal inference.\n  *   **Google DeepMind Lyria 3:** An AI music generation model that supports text, image, and video inputs, generating lyrics in eight languages including German, French, Spanish, and Hindi. This expands multimodal interaction into the auditory and linguistic domains simultaneously.\n  *   **Google Labs Stitch:** An updated creative canvas tool featuring an AI-native canvas, native voice integration, and instant prototypes, positioning AI as a direct design partner rather than just a generation tool.\n\n  **Model Capabilities and Ecosystem Integration**\n\n  *   **Gemini 3.1 Pro:** Noted for its strength in multimodal and visual tasks, including generating complex SVGs, creating landing pages, and performing technical simulations such as heat transfer analysis from CAD files, subsequently converting that analysis into visual representations.\n  *   **API-Driven Multimodality:** Ethan Mollick argued that gaps in specific models (such as Claude's image or voice generation) are becoming less significant as coding agents can use APIs to call external services (e.g., Nano Banana for images, Eleven Labs for voice) when needed, effectively creating a modular multimodal ecosystem.\n  *   **Market Attention:** Google Labs' announcement of the 'Photoshoot' feature for the Promelli app received 12.2 million views, significantly outperforming CEO Sundar Pichai's announcement of Gemini 3.1 Pro (approx. 1 million views), indicating high public interest in practical, creative multimodal applications."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 3,
+      "relevance": 4,
+      "coherence": 4,
+      "better_version": "A",
+      "improvement": -2
+    },
+    "raw_b": {
+      "factual_grounding": 4,
+      "relevance": 3,
+      "coherence": 4,
+      "better_version": "B",
+      "improvement": 2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "bc44692facef56ee",
+        "claim": "Walt Disney has entered a 3-year licensing agreement with OpenAI, granting access to over 200 characters for Sora video ",
+        "matched": true
+      },
+      {
+        "fp": "8c21ae059029ac3a",
+        "claim": "Google's Veo 3.1 has introduced an 'ingredients to video' feature allowing users to upload reference images for characte",
+        "matched": true
+      },
+      {
+        "fp": "1d22c2a3c0f79017",
+        "claim": "Perplexity launched 'Perplexity Computer,' a system that unifies AI capabilities to research, design, code, and deploy p",
+        "matched": true
+      },
+      {
+        "fp": "c94a2fcd2892d0dc",
+        "claim": "Nano Banana 2 supports the integration of up to five characters and 14 objects from source images and supports outputs u",
+        "matched": true
+      },
+      {
+        "fp": "e875e1ed31c153c0",
+        "claim": "Google's Notebook LM can now create fully animated 'cinematic video overviews' that orchestrate the Gemini 3 family of m",
+        "matched": true
+      },
+      {
+        "fp": "d852ead455034227",
+        "claim": "Google DeepMind launched Lyria 3, an AI music generation model that supports text, image, and video inputs and generates",
+        "matched": true
+      },
+      {
+        "fp": "433a6ca7a97b5a2c",
+        "claim": "Google Labs launched an updated version of its creative canvas tool, Stitch, featuring an AI-native canvas, native voice",
+        "matched": true
+      },
+      {
+        "fp": "b9e29528bfd39a48",
+        "claim": "Ethan Mollick argued that Claude's gaps in image creation and voice generation have become less significant because Clau",
+        "matched": true
+      },
+      {
+        "fp": "a2d9d8ba1f11f6e8",
+        "claim": "Moonshot's Kimi K2.5 is one of the first leading open-weight models to be multimodal, featuring agent swarms and perform",
+        "matched": true
+      },
+      {
+        "fp": "b99a8896b2154a7f",
+        "claim": "Former Google senior engineer Ray Dao identified native audiovisual code generation as the key differentiator of Seedanc",
+        "matched": true
+      },
+      {
+        "fp": "17ca2d238d7479ce",
+        "claim": "Google Labs' announcement of the 'Photoshoot' feature for the Promelli app received 12.2 million views, significantly ou",
+        "matched": true
+      },
+      {
+        "fp": "7f7396e5e3a299ea",
+        "claim": "Gemini 3.1 Pro is particularly strong in multimodal and visual tasks, such as generating complex SVGs, creating landing ",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

@@ -1,0 +1,770 @@
+{
+  "topic": "Model Performance",
+  "topic_slug": "model-performance",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5"
+  ],
+  "n_assertions": 57,
+  "episodes": [
+    "autoresearch-agent-loops-and-the-future-of-work",
+    "can-open-models-solve-corporate-ai-washing",
+    "chatgpt-55-rumors-start-to-bubble",
+    "dario-amodei-breaks-his-social-media-silence",
+    "does-gemini-31-pro-matter",
+    "everything-you-need-to-know-about-ai-tokens",
+    "fable-5-raises-the-bar-for-ai-ambition",
+    "gemini-3-anticipation-reaches-fever-pitch",
+    "gemini-3-launches-heres-everything-you-need-to-know",
+    "gpt-52-is-here",
+    "gpt-54-first-test-results",
+    "grok-46-shows-how-fast-your-ai-options-are-expanding",
+    "how-ai-starts-doing-the-work-in-2026-with-anthropic-cpo-mike-krieger",
+    "how-deepseek-v4-connects-to-the-us-grid",
+    "how-googles-ai-leaders-leaving-could-lead-to-better-ai-models-for-you",
+    "how-harness-as-a-service-will-change-agents",
+    "how-significant-are-ais-latest-math-breakthroughs",
+    "how-the-4-new-models-released-this-week-will-change-how-you-work",
+    "how-to-get-the-most-from-ai-this-summer",
+    "how-to-help-ai-do-your-work-better",
+    "how-to-use-opus-47-and-the-new-codex",
+    "is-kimi-k3-really-fable-class",
+    "openai-declares-code-red",
+    "opus-46-and-chatgpt-53-codex-are-here-and-the-labs-are-at-war",
+    "real-world-ai-evaluations",
+    "the-5-biggest-ai-stories-to-watch-in-december",
+    "the-most-important-ai-news-from-google-io",
+    "the-most-important-ai-stories-this-week",
+    "the-next-wave-of-enterprise-ai",
+    "the-ultimate-ai-catch-up-guide",
+    "what-i-learned-testing-gpt-5-5"
+  ],
+  "assertion_fingerprints": [
+    "032e4e4fa61ae6e2",
+    "180f64c5054a39df",
+    "1aeb1152a243aa6b",
+    "1b44e2319ef3b569",
+    "1b7bc810904c88e2",
+    "1de0c172fa613582",
+    "1ff6ac57c4f0e9f4",
+    "20df046458ff12a2",
+    "25df20840b0b17b7",
+    "29c56d5e0cd5b147",
+    "29de865d717678df",
+    "2a8af0fe9620d50e",
+    "318168a7d470b20a",
+    "38b03c36bcc1d038",
+    "431d38d125ea42d7",
+    "49bba4c4387211d1",
+    "5676e52575dff934",
+    "5f5bbfd42db5b8f7",
+    "62424b53a1cfb5e9",
+    "636512f4e04a21b8",
+    "65855bbff4046521",
+    "6d613236c6855586",
+    "6f96de96871bacdb",
+    "790f99ea3eb95b25",
+    "7f30a31a9d955a9e",
+    "7f7396e5e3a299ea",
+    "80d5d1cf005463be",
+    "82c4ca951ff14274",
+    "8df3e8125a98c4f2",
+    "92f516885a0f4e88",
+    "97de5bfff46c78f7",
+    "9ab7f0e9eadaf86b",
+    "9b81e828ff33a61f",
+    "a55bec223cbc309b",
+    "a5bbc3603fea9b57",
+    "b6e067f59559a18b",
+    "b8dedf37be420846",
+    "b98bca07e5cd96ec",
+    "bd482179b044483f",
+    "bea2098b782bd985",
+    "c51e0328069113bb",
+    "c6d9019448d5efb3",
+    "cb29338cd0e900ba",
+    "d5fc534d8765b2d0",
+    "d7e51269ea5c3d5f",
+    "e0dd8a1590b972b7",
+    "e20b3cb8e01417dd",
+    "e7ba4579cb49e3d4",
+    "e8b76ccb8f0f19ea",
+    "eed0debac32af677",
+    "f069a87989ee5a44",
+    "f1b430c1c33245e4",
+    "f3394dfbf78da878",
+    "f40ce2a9afc996c1",
+    "f6b97c6164692e9c",
+    "fc48ac2c482b45f6",
+    "fe3b1910aa38f383"
+  ],
+  "target_page": "Model Performance.md",
+  "assertions": [
+    {
+      "claim": "Karpathy's shared session of the 'auto research' loop resulted in 83 experiments, of which 15 were kept, driving the validation BPB from 0.9979 down to 0.9697.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Andrej Karpathy (via podcast transcript)",
+      "episode": "autoresearch-agent-loops-and-the-future-of-work",
+      "claim_date": "2026-08-24",
+      "evidence": "The host notes: 'The session that Andre shared showed 83 experiments, of which 15 had improvements that they kept, and which drove the val BPB from 0.9979 down to 0.9697.'",
+      "fp": "d7e51269ea5c3d5f"
+    },
+    {
+      "claim": "Independent testing of Qwen 3.8 Max has yielded mixed results, with some users reporting it as 'unusable' or significantly slower and less stable than competitors like Kimmy K3 and GPT 5.6, despite strong self-reported benchmarks.",
+      "tier": "2",
+      "confidence": "0.7",
+      "source": "Independent Developers (Datum, Pavel Huryn) / AI Daily Brief Host",
+      "episode": "can-open-models-solve-corporate-ai-washing",
+      "claim_date": "2026-08-05",
+      "evidence": "Datum writes: 'Qwen 3.8 max is unusable... extremely slow, unstable, and burns through usage like crazy.' Pavel Huryn found it fixed only 19 out of 105 bugs compared to 33 for GPT 5.6 Luna, and noted high costs and instability.",
+      "fp": "1aeb1152a243aa6b"
+    },
+    {
+      "claim": "Anthropic's Claude Opus 4.5 is being positioned as a potential candidate for the most important model release of 2025 due to sustained positive reception.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief)",
+      "episode": "chatgpt-55-rumors-start-to-bubble",
+      "claim_date": "2026-01-15",
+      "evidence": "The host states, 'The opinion on this model has done nothing but go up... So much so that in a lastminute upset I actually said that I thought it might end up being the most important model release of 2025.'",
+      "fp": "e0dd8a1590b972b7"
+    },
+    {
+      "claim": "Z AI's GLM 5.3 model scores 28.3% on Terminal Bench 3.0, placing it approximately five points behind frontier models like Fable 5 and GPT 5.6 Soul, but 11 points ahead of Kimik 3.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief Host / Z AI Benchmark Data",
+      "episode": "dario-amodei-breaks-his-social-media-silence",
+      "claim_date": "2026-08-18",
+      "evidence": "The transcript explicitly states: 'On coding, GLM 5.3 scores 28.3% on Terminal Bench 3.0. That puts it around five points behind the Frontier with Fable 5 and GPT 5.6 Soul, but 11 points ahead of Kimik 3.'",
+      "fp": "38b03c36bcc1d038"
+    },
+    {
+      "claim": "Z AI's GLM 5.3 overtook Fable 5 on the Cyber Gym cybersecurity benchmark, jumping seven points from its predecessor, GLM 5.2.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief Host / Z AI Benchmark Data",
+      "episode": "dario-amodei-breaks-his-social-media-silence",
+      "claim_date": "2026-08-18",
+      "evidence": "The transcript notes: 'That makes their performance gains on cybersecurity benchmark Cyber Gym a bit more interesting, jumping seven points from their predecessor to actually overtake Fable 5.'",
+      "fp": "1b44e2319ef3b569"
+    },
+    {
+      "claim": "Anthropic's internal 'Model 2' scores 62.8% on the internal V2 AIR&D code benchmark, compared to 50.3% for Mythos 5 and 54.8% for Mythos preview.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Chris GPT / Anthropic Internal Data",
+      "episode": "dario-amodei-breaks-his-social-media-silence",
+      "claim_date": "2026-08-18",
+      "evidence": "The transcript quotes Chris GPT: 'Anthropic's new Model 2 doesn't just slightly outperform Mythos 5 as they stated in the report. It scores 62.8% on Anthropic's internal code benchmark V2 AIR&D benchmark versus 50.3 for Mythos 5 and 54.8 for Mythos preview.'",
+      "fp": "1ff6ac57c4f0e9f4"
+    },
+    {
+      "claim": "Nathan Lambert argues that the AI community should stop being surprised by strong performance from Chinese labs, as they are genuinely good at what they do rather than just relying on distillation or benchmark maxing.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Nathan Lambert",
+      "episode": "dario-amodei-breaks-his-social-media-silence",
+      "claim_date": "2026-08-18",
+      "evidence": "Lambert wrote: 'The simplest explanation... is that Z AI is very good at what they do. Lambert's point is that we need to stop writing off the Chinese labs as only performing well because of distillation or benchmark maxing, arguing that when we do so, we underestimate what they're actually capable of.'",
+      "fp": "bd482179b044483f"
+    },
+    {
+      "claim": "Gemini 3.1 Pro achieved a score of 77.1% on the ARC-AGI 2 benchmark, a significant increase from Gemini 3 Pro's 31.1% score, while maintaining the same pricing of $2 per million input tokens.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Host (citing benchmark data and Akash Gupta's analysis)",
+      "episode": "does-gemini-31-pro-matter",
+      "claim_date": "2026-02-21",
+      "evidence": "The transcript states: 'The jump between Gemini 3 Pro and Gemini 3.1 Pro was from a 31.1% with Gemini 3 to 77.1% on Gemini 31 Pro.' Akash Gupta is quoted saying: 'Google went from 31.1% to 77.1% in 3 months while keeping pricing at $2 per million input tokens... They doubled the intelligence and charged zero incremental cost.'",
+      "fp": "82c4ca951ff14274"
+    },
+    {
+      "claim": "According to Artificial Analysis, Gemini 3.1 Pro leads their overall intelligence index by four points ahead of Claude Opus 4.6 while costing less than half as much to run.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Artificial Analysis (cited by Host)",
+      "episode": "does-gemini-31-pro-matter",
+      "claim_date": "2026-02-21",
+      "evidence": "The transcript quotes Artificial Analysis: 'Gemini 3.1 Pro preview leads the artificial analysis intelligence index four points ahead of Claude Opus 4.6 while costing less than half as much to run.' It also notes the model led six of the 10 evaluations in the index.",
+      "fp": "a5bbc3603fea9b57"
+    },
+    {
+      "claim": "Gemini 3.1 Pro scored 80.6% on the SWE-bench Verified agent decoding test, slightly trailing Claude Opus 4.6 which scored 80.8%.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Host (citing benchmark results)",
+      "episode": "does-gemini-31-pro-matter",
+      "claim_date": "2026-02-21",
+      "evidence": "The transcript notes: 'while it wasn't ahead of Opus 4.6 on Swebench verified agent decoding test it was nipping at its heels 80.6% compared to 80.8%.'",
+      "fp": "c6d9019448d5efb3"
+    },
+    {
+      "claim": "Gemini 3.1 Pro is particularly strong in multimodal and visual tasks, such as generating complex SVGs, creating landing pages, and performing technical simulations like heat transfer analysis from CAD files.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host (citing user feedback and Google DeepMind examples)",
+      "episode": "does-gemini-31-pro-matter",
+      "claim_date": "2026-02-21",
+      "evidence": "The transcript cites designer Mang 2: 'Gemini 3.1 Pro is an absolute beast for creating landing pages.' It also mentions Jeff Dean sharing an example of '3.1 Pro doing heat transfer analysis based on a CAD file... and then turning that heat transfer analysis... into a visual representation.'",
+      "fp": "7f7396e5e3a299ea"
+    },
+    {
+      "claim": "Gemini 3.1 Pro lags behind competitors like Claude Sonnet 4.6, Opus 4.6, GPT 5.2, and GLM5 on real-world agentic performance evaluations, specifically the GDP-valve test.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Host (citing Artificial Analysis and skeptical commentators)",
+      "episode": "does-gemini-31-pro-matter",
+      "claim_date": "2026-02-21",
+      "evidence": "The transcript notes: 'While Gemini 3.1 Pro did jump up meaningfully from Gemini 3 Pro, it was behind Sonnet 4.6, Opus 4.6, GPT 5.2, and GLM5.' Commentator Scaling01 is quoted saying 'Gemini 3.1 Pro's GDP vow scores are concerning.'",
+      "fp": "b6e067f59559a18b"
+    },
+    {
+      "claim": "Databricks found that Sonnet 5 was 1.7 times cheaper per token than Opus 4.8, but Opus 4.8 was cheaper per accepted task ($1.94 vs $2.09) because Sonnet required more iterations to achieve the same results.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Nofar Gaspar (citing Databricks experiment)",
+      "episode": "everything-you-need-to-know-about-ai-tokens",
+      "claim_date": "2026-08-04",
+      "evidence": "The host details, 'Sonnet 5. It was 1.7 times cheaper per token than Opus 4.8. However, Sonnet cost around $2 per task or 2 2.09 per task versus 1.94 for Opus.'",
+      "fp": "62424b53a1cfb5e9"
+    },
+    {
+      "claim": "Claude Fable 5 achieved a score of 80.3% on SWE-bench Pro, significantly outperforming GPT-5.5 (58.6%) and Opus 4.8 (69.2%).",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief Host / Benchmark Data",
+      "episode": "fable-5-raises-the-bar-for-ai-ambition",
+      "claim_date": "2026-06-11",
+      "evidence": "The transcript explicitly lists: 'On Swebench Pro, GPT55 scores a 58.6, Opus 48 scores a 69.2 and Mythos and Fable 5 are all the way up at 80.3%.'",
+      "fp": "9ab7f0e9eadaf86b"
+    },
+    {
+      "claim": "Business Insider reported that insiders described the upcoming Gemini 3 model as 'extremely impressive,' suggesting it could help Google reclaim the top spot in the generative AI market.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Business Insider / Host",
+      "episode": "gemini-3-anticipation-reaches-fever-pitch",
+      "claim_date": "2025-11-18",
+      "evidence": "The transcript quotes Business Insider: 'If Gemini 3 is a smash hit, and right now, insiders tell Business Insider that the new model is extremely impressive, then it could give Google a shot at taking the top spot...'",
+      "fp": "f3394dfbf78da878"
+    },
+    {
+      "claim": "OpenAI employees' visible excitement about Google's rumored Gemini 3 release is interpreted as a signal that OpenAI has a highly competitive model ('absolute monster') lined up for December.",
+      "tier": "2",
+      "confidence": "0.7",
+      "source": "Host",
+      "episode": "gemini-3-anticipation-reaches-fever-pitch",
+      "claim_date": "2025-11-18",
+      "evidence": "The host reasons: 'if even an OpenAI employee is this chilled about Google's rumored Gemini 3, you don't need a decoder ring to see what's going on. OpenAI must have an absolute monster model lined up for December.'",
+      "fp": "f6b97c6164692e9c"
+    },
+    {
+      "claim": "Gemini 3 is anticipated to be the best and increasingly popular AI model for a considerable time, with neither OpenAI nor Anthropic having a strong answer soon.",
+      "tier": "3",
+      "confidence": "0.5",
+      "source": "Chubby (X user) / Host",
+      "episode": "gemini-3-anticipation-reaches-fever-pitch",
+      "claim_date": "2025-11-18",
+      "evidence": "The transcript quotes: 'Chubby wrote, \"Edgy take. Neither OpenAI nor Anthropic will have a good answer to Gemini 3 anytime soon. Gemini will remain the best and increasingly popular AI model for a considerable time.\"'",
+      "fp": "cb29338cd0e900ba"
+    },
+    {
+      "claim": "Google's Gemini app reached 650 million monthly active users and 13 million developers have built with their models as of the Gemini 3 launch.",
+      "tier": "1",
+      "confidence": "0.98",
+      "source": "Google (Sundar Pichai announcement)",
+      "episode": "gemini-3-launches-heres-everything-you-need-to-know",
+      "claim_date": "2025-11-18",
+      "evidence": "The transcript states: 'The Gemini app is now up to 650 million users per month. That's about 50 million more than last we heard. And Sundar also said that 13 million developers have now built with their models.'",
+      "fp": "a55bec223cbc309b"
+    },
+    {
+      "claim": "Gemini 3 Pro scored 72.7% on the ScreenSpot Pro benchmark, doubling the previous state-of-the-art score of 36.2% held by Sonnet 4.5.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Matt Schumer / AI Daily Brief Host",
+      "episode": "gemini-3-launches-heres-everything-you-need-to-know",
+      "claim_date": "2025-11-18",
+      "evidence": "The transcript notes: 'The previous state-of-the-art was Sonnet 4.5 at 36.2%. Gemini 3 Pro got 72.7%.' Matt Schumer is quoted saying this 'massively accelerated my timeline to full computer using agents.'",
+      "fp": "318168a7d470b20a"
+    },
+    {
+      "claim": "Early user testing indicates Gemini 3 Pro is significantly faster and more consistent than previous models, with 'intelligence per second' described as 'off the charts' compared to GPT-5 Pro.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Matt Schumer / AI Daily Brief Host",
+      "episode": "gemini-3-launches-heres-everything-you-need-to-know",
+      "claim_date": "2025-11-18",
+      "evidence": "Matt Schumer is quoted: 'Feels more consistent and less spiky than previous models. He says it's fast, intelligence per second is off the charts, often outperforming Jeep D5 Pro without the weight.'",
+      "fp": "fe3b1910aa38f383"
+    },
+    {
+      "claim": "The launch of Gemini 3 is expected to alleviate 'AI bubble' concerns among investors by demonstrating that the industry has not hit a capability plateau.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "AI Daily Brief Host / Simon Smith",
+      "episode": "gemini-3-launches-heres-everything-you-need-to-know",
+      "claim_date": "2025-11-18",
+      "evidence": "The host states: 'the AI bubble narrative did not get worse today... this appears to be at first glance a pretty significant jump in capabilities.' Simon Smith is quoted: 'So, I guess we haven't hit a wall.'",
+      "fp": "1b7bc810904c88e2"
+    },
+    {
+      "claim": "While Gemini 3 Pro excels in coding and reasoning, early feedback suggests it may still lag behind Anthropic's models (Sonnet/Haiku) in nuanced creative writing and editorial judgment.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Dan Shipper / Murdan Kland / AI Daily Brief Host",
+      "episode": "gemini-3-launches-heres-everything-you-need-to-know",
+      "claim_date": "2025-11-18",
+      "evidence": "Dan Shipper notes: 'it's not as good of a writer or editor as Sonnet or Haiku.' Murdan Kland concludes: 'this model lacks the taste, restraint, and structural intelligence necessary for challenging creative work.'",
+      "fp": "c51e0328069113bb"
+    },
+    {
+      "claim": "GPT 5.2 achieved a score of 55.6% on the SWE-bench Pro coding benchmark, surpassing Claude Opus 4.5's score of 52%.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "OpenAI / AI Daily Brief Host",
+      "episode": "gpt-52-is-here",
+      "claim_date": "2025-12-12",
+      "evidence": "The transcript states: 'In the benchmarks they shared it represented a significant improvement on the coding benchmarks SweetBench Pro hitting 55.6 compared to Opus 4.5's 52%.'",
+      "fp": "431d38d125ea42d7"
+    },
+    {
+      "claim": "GPT 5.2 Pro achieved a state-of-the-art score of 90.5% on the ARC-AGI 2 benchmark at a cost of $11.64 per task, representing a 390x efficiency improvement over a previous unreleased OpenAI model that scored 88% at $4,500 per task.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "ARC Prize / AI Daily Brief Host",
+      "episode": "gpt-52-is-here",
+      "claim_date": "2025-12-12",
+      "evidence": "The transcript notes: 'We verified a new 5.2 Pro extra high state-of-the-art score of 90.5% at $11.64 a task... that represents a 390x efficiency improvement in 1 year.'",
+      "fp": "e20b3cb8e01417dd"
+    },
+    {
+      "claim": "GPT 5.2 Thinking scored 70.9% on GDP Val, an internal OpenAI benchmark for economically valuable knowledge work, compared to 38.8% for GPT 5.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "OpenAI / AI Daily Brief Host",
+      "episode": "gpt-52-is-here",
+      "claim_date": "2025-12-12",
+      "evidence": "The transcript states: 'on GDP Val which is OpenAI's internal measure of economically valuable knowledge work tasks it scored a massive 70.9% up from 38.8% with GPT 5.'",
+      "fp": "bea2098b782bd985"
+    },
+    {
+      "claim": "GPT 5.2 demonstrates significantly improved long-context retention, maintaining performance above 90% at 256K context length, whereas GPT 5.1 degraded from 90% at 8K to less than 50% at 256K.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "OpenAI / AI Daily Brief Host",
+      "episode": "gpt-52-is-here",
+      "claim_date": "2025-12-12",
+      "evidence": "The transcript details: 'On needles in a haystack test where the performance of 5.1 degraded from about 90% at 8K context to less than 50% at 256K context with 5.2 thinking it barely nudged down from 108K to something it appears is above 90 on the 256K context.'",
+      "fp": "65855bbff4046521"
+    },
+    {
+      "claim": "GPT 5.2 exhibits a 30-40% reduction in hallucinations compared to its predecessor, GPT 5.1.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "OpenAI / AI Daily Brief Host",
+      "episode": "gpt-52-is-here",
+      "claim_date": "2025-12-12",
+      "evidence": "The transcript states: 'Another important change they found that GPT 5.2 had roughly 30 to 40% less hallucination.'",
+      "fp": "6f96de96871bacdb"
+    },
+    {
+      "claim": "Early testers report that GPT 5.2 Pro offers superior 'willingness to think' and deep reasoning capabilities, but suffers from significant speed penalties that make it less suitable for quick, iterative tasks compared to competitors like Claude Opus 4.5.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Matt Schumer / AI Daily Brief Host",
+      "episode": "gpt-52-is-here",
+      "claim_date": "2025-12-12",
+      "evidence": "Matt Schumer noted: 'Standard 5.2 thinking is slow... My actual workflow has become quick questions go to Claude Opus 4.5 and when I need deep reasoning, I go straight to 5.2 Pro.'",
+      "fp": "e7ba4579cb49e3d4"
+    },
+    {
+      "claim": "Critics such as Dan Shipper from Every characterize GPT 5.2 as an 'incremental upgrade' that is less creative and 'surprising' than GPT 5.1, despite its improvements in structured business outputs.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Dan Shipper (Every) / AI Daily Brief Host",
+      "episode": "gpt-52-is-here",
+      "claim_date": "2025-12-12",
+      "evidence": "Shipper stated: 'it's not as good a writer as Opus on our internal benchmarks and that it's in his estimation mostly an incremental upgrade.' Simon Smith compared 5.1 to a 'brilliant, slightly chaotic freelancer' and 5.2 to a 'polished professional.'",
+      "fp": "20df046458ff12a2"
+    },
+    {
+      "claim": "GPT-5.4 is OpenAI's most token-efficient reasoning model, using significantly fewer tokens to solve problems compared to GPT-5.2, which translates to reduced costs and faster speeds.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "OpenAI Announcement",
+      "episode": "gpt-54-first-test-results",
+      "claim_date": "2026-03-06",
+      "evidence": "In the first part of the announcement post, they write that GPT-5.4 is our most token efficient reasoning model, using significantly fewer tokens to solve problems when compared to GPT-5.2, translating to reduced token usage and faster speeds.",
+      "fp": "80d5d1cf005463be"
+    },
+    {
+      "claim": "SpaceX AI's Grock 4.6 achieved an Artificial Analysis Intelligence Index score of 61, surpassing GPT 5.6 Soul and Fable 5 on GDPval benchmarks while maintaining a 60% lower per-token cost than GPT 5.6 Soul.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief Host / SpaceX AI / Artificial Analysis",
+      "episode": "grok-46-shows-how-fast-your-ai-options-are-expanding",
+      "claim_date": "2026-08-13",
+      "evidence": "Grock 4.6 jumped 5 points from Grock 4.5 to reach a score of 61. Pricing remains at $2 per million input and $6 per million output tokens. Artificial Analysis testing found it completed benchmark runs at 84 cents per task, making it 32% cheaper than GPT 5.6 Soul and 73% cheaper than Fable 5.",
+      "fp": "29c56d5e0cd5b147"
+    },
+    {
+      "claim": "Anthropic's product development principle is to 'ride the exponential,' which involves building products that are useful today but designed to naturally improve as model capabilities increase, often resulting in the deletion of scaffolding code over time.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Mike Kger (Chief Product Officer, Anthropic)",
+      "episode": "how-ai-starts-doing-the-work-in-2026-with-anthropic-cpo-mike-krieger",
+      "claim_date": "2025-12-24",
+      "evidence": "Kger states: 'we have um product principles inside Enthropic and one of them is ride the exponential... it's been interesting even on the cloud code side we've deleted parts of the harness over time rather than added to it because the model can do more.'",
+      "fp": "f069a87989ee5a44"
+    },
+    {
+      "claim": "Non-technical users face a 'complexity ladder' gap where they can build simple front-end applications but struggle to transition to production-ready systems requiring data persistence, security, and performance engineering without explicit guidance.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Mike Kger (Chief Product Officer, Anthropic)",
+      "episode": "how-ai-starts-doing-the-work-in-2026-with-anthropic-cpo-mike-krieger",
+      "claim_date": "2025-12-24",
+      "evidence": "Kger observes: 'you still sometimes need to know the right sort of magic incantation words to use... Opus wasn't suggesting that out of the box... it took me saying all right we actually probably need to move to this embedding solution.' He compares this to Instagram's early evolution from UI to backend to performance.",
+      "fp": "6d613236c6855586"
+    },
+    {
+      "claim": "DeepSeek V4 is not state-of-the-art compared to US frontier models but offers a new Pareto frontier by providing near-frontier performance at a fraction of the cost.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Leo Synth Wave / Simon Willison / AI Daily Brief Host",
+      "episode": "how-deepseek-v4-connects-to-the-us-grid",
+      "claim_date": "2026-04-28",
+      "evidence": "The transcript cites Leo Synth Wave: 'New Pareto frontier, a lot cheaper than 5.4 and Opus 4.6 for comparable performance.' Simon Willison is quoted as saying it is 'almost on the frontier at a fraction of the price.'",
+      "fp": "eed0debac32af677"
+    },
+    {
+      "claim": "Meta's Muse Spark 1.2 model achieved a score of 82.9% on Terminal Bench 2.1 and 59.3% on Deep Sue, placing it between OpenAI's Opus 5 and GPT-5.6 Tera on the former and trailing the latter by approximately five points on the latter.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief Host",
+      "episode": "how-googles-ai-leaders-leaving-could-lead-to-better-ai-models-for-you",
+      "claim_date": "2026-08-08",
+      "evidence": "The transcript explicitly states: 'It scored 82.9% on Terminal Bench 2.1, placing it between Opus 5 and GPT-5.6 Tera. On Deep Sue, it scored 59.3%, placing it behind Opus 5 and GPT-5.6 Tera, trailing by around five points.'",
+      "fp": "29de865d717678df"
+    },
+    {
+      "claim": "Switching GPT-5.5 from its native Codex harness to Cursor's harness increased its functionality benchmark score from 61.5% to 87.2%.",
+      "tier": "1",
+      "confidence": "0.92",
+      "source": "Endor Labs / AI Daily Brief",
+      "episode": "how-harness-as-a-service-will-change-agents",
+      "claim_date": "2026-05-01",
+      "evidence": "The transcript states: 'GPT-5.5 went from 61.5% to 87.2% by switching to cursor.'",
+      "fp": "b98bca07e5cd96ec"
+    },
+    {
+      "claim": "DeepSeek V4 Flash scored 50 on the Artificial Analysis Intelligence Index, costing only 3 cents per task, which is significantly cheaper than competitors like GLM 5.2 at 59 cents per task.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Artificial Analysis Intelligence Index / DeepSeek",
+      "episode": "how-significant-are-ais-latest-math-breakthroughs",
+      "claim_date": "2026-08-04",
+      "evidence": "The model achieved a score of 50, a 10-point jump over the previous iteration. It logged 3 cents per task on the AA benchmark, compared to 59 cents for GLM 5.2, 36 cents for MetaMU Spark, and 5 cents for GPT 5.6 Luna.",
+      "fp": "180f64c5054a39df"
+    },
+    {
+      "claim": "OpenAI's unreleased 'Astra' model solved or made substantial progress on 10 open questions in mathematics, with a total token spend of roughly $2,000 (averaging $200 per solution).",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "OpenAI / Gnome Brown",
+      "episode": "how-significant-are-ais-latest-math-breakthroughs",
+      "claim_date": "2026-08-04",
+      "evidence": "OpenAI disclosed that Astra solved problems in fields like high-dimensional geometry and group theory. The cost was approximately $2,000 at 'sole' API rates, and the arguments were formalized in Lean certificates for verification.",
+      "fp": "49bba4c4387211d1"
+    },
+    {
+      "claim": "Domains with high verifiability, such as math, cyber, and code, are prone to automation first because they offer clearer reward signals and scalable testing, unlike domains with changing internal and external factors.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Aaron Levy (Box)",
+      "episode": "how-significant-are-ais-latest-math-breakthroughs",
+      "claim_date": "2026-08-04",
+      "evidence": "Levy explains that verifiable fields allow for objective testing of model results, which provides better training signals and operational feedback. In contrast, fields like legal or marketing rely on opinions and risk levels, making them harder to automate with current AI.",
+      "fp": "9b81e828ff33a61f"
+    },
+    {
+      "claim": "The 'capability overhang' of existing models is increasing, as weaker models can often reproduce frontier model discoveries if given the right conceptual hints, suggesting the gap between model generations is narrowing in specific tasks.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Dan Shipper / Kevin Madura",
+      "episode": "how-significant-are-ais-latest-math-breakthroughs",
+      "claim_date": "2026-08-04",
+      "evidence": "Dan Shipper's experiment showed that GPT 5.6 could roughly recreate Astra's results with hints. Kevin Madura noted that this indicates the capability overhang of existing models is only getting bigger, as the value of new models may lie in their ability to start 'farther from the answer.'",
+      "fp": "5676e52575dff934"
+    },
+    {
+      "claim": "Grock 4.5 achieves near-frontier performance at significantly lower costs, costing 31 cents per task on the Artificial Analysis index compared to $1.80 for Opus 4.8 and $2.75 for Fable 5.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Artificial Analysis / AI Daily Brief Host",
+      "episode": "how-the-4-new-models-released-this-week-will-change-how-you-work",
+      "claim_date": "2026-07-10",
+      "evidence": "The host cites specific benchmark data: 'Grock 4.5 was by far the most costefficient run of the NearFrontier models. It cost 31 cents per task... as compared to 180 for Opus 48 and 275 for Fable 5.'",
+      "fp": "7f30a31a9d955a9e"
+    },
+    {
+      "claim": "Ethan Mollick asserts that for intensive, high-stakes AI work, there are effectively only two viable primary systems currently: ChatGPT and Claude.",
+      "tier": "2",
+      "confidence": "0.95",
+      "source": "Ethan Mollick (as reported by the AI Daily Brief host)",
+      "episode": "how-to-get-the-most-from-ai-this-summer",
+      "claim_date": "2026-07-27",
+      "evidence": "Mollick's 'opinionated guide' explicitly states that for real intensive work, the choices are limited to ChatGPT or Claude, noting that Gemini is 'officially out of the rankings' for this tier.",
+      "fp": "1de0c172fa613582"
+    },
+    {
+      "claim": "Advanced AI models like GPT-5.6 Soul and Codex can perform complex verification tasks with high accuracy, such as checking 195 references in a book manuscript in 30 minutes without hallucinating page numbers or inventing text.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Ethan Mollick (as reported by the AI Daily Brief host)",
+      "episode": "how-to-get-the-most-from-ai-this-summer",
+      "claim_date": "2026-07-27",
+      "evidence": "Mollick reports that the AI 'chased down 195 references' and provided 'pages of notes' where 'every one of the AIs' notes was accurate,' noting the absence of hallucinated errors.",
+      "fp": "f1b430c1c33245e4"
+    },
+    {
+      "claim": "Google improved the coding benchmark score for Gemini 3.7 Flash from 48.6% to 65.3% on the Deep Sweep benchmark compared to its predecessor, Gemini 3.6 Flash.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief host citing Google benchmark data",
+      "episode": "how-to-help-ai-do-your-work-better",
+      "claim_date": "2026-08-16",
+      "evidence": "The transcript notes: 'On the benchmarks, Google made some solid gains over 3.6 flash, most notably improving their score on coding benchmark Deep Sweep from 48.6 to 65.3%'.",
+      "fp": "790f99ea3eb95b25"
+    },
+    {
+      "claim": "Anthropic's Opus 4.7 model achieved a score of 80.6% on the Office QA Pro benchmark, up from 57.1% for the previous version.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Host (AI Daily Brief) citing benchmark data",
+      "episode": "how-to-use-opus-47-and-the-new-codex",
+      "claim_date": "2026-04-18",
+      "evidence": "The transcript lists specific benchmark improvements: 'Office QA Pro from 57.1 to 80.6%'.",
+      "fp": "e8b76ccb8f0f19ea"
+    },
+    {
+      "claim": "On the Deepu coding benchmark, Kimmy K3 scored 67.5, placing it 8.5 points ahead of Opus 4.8 and 2.5 points behind Fable 5.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief host",
+      "episode": "is-kimi-k3-really-fable-class",
+      "claim_date": "2026-07-21",
+      "evidence": "The transcript reports: 'K3 scored 67.5, which put it 8.5 points ahead of Opus 48 and a half point ahead of GPT55. It's 2.5 points behind Fable 5'.",
+      "fp": "d5fc534d8765b2d0"
+    },
+    {
+      "claim": "OpenAI research leader Mark Chen stated that the company has internal models performing at the level of Gemini 3 and is confident they will release them soon.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Mark Chen (OpenAI Research Leader)",
+      "episode": "openai-declares-code-red",
+      "claim_date": "2025-12-03",
+      "evidence": "In a podcast appearance, Mark Chen said, 'We have models internally that perform at the level of Gemini 3, and we're pretty confident that we will release them soon, and we can release successor models that are even better.'",
+      "fp": "25df20840b0b17b7"
+    },
+    {
+      "claim": "OpenAI's GPT-5.3 Codex scored 77.3% on Terminal Bench 2.0, surpassing Codex 5.2's 64% and Claude Opus 4.6's 65.4%.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "OpenAI (via Host)",
+      "episode": "opus-46-and-chatgpt-53-codex-are-here-and-the-labs-are-at-war",
+      "claim_date": "2026-02-06",
+      "evidence": "The transcript notes, 'The model claims a new absolutely state-of-the-art score of 77.3% on Terminal Bench 2.0, which beats Codex 5.2 at 64% and is, if true, much higher than Opus 4.6 at 65.4%.'",
+      "fp": "92f516885a0f4e88"
+    },
+    {
+      "claim": "Andy Henny stated that GPT-5.3 Codex is roughly three times more token efficient than GPT-5.2, using 1/3 the tokens for similar intelligence.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Andy Henny (via Host)",
+      "episode": "opus-46-and-chatgpt-53-codex-are-here-and-the-labs-are-at-war",
+      "claim_date": "2026-02-06",
+      "evidence": "The transcript quotes Andy Henny: 'The biggest 5.3 Codex news is that it's roughly three times more token efficient. 5.3 high is smarter than 5.2 high, but uses 1/3 the tokens, making it faster and letting your weekly limit last about three times longer.'",
+      "fp": "fc48ac2c482b45f6"
+    },
+    {
+      "claim": "The host argues that traditional AI benchmarks are often saturated, gameable, and disconnected from the real world, making them poor indicators of actual model utility.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief)",
+      "episode": "real-world-ai-evaluations",
+      "claim_date": "2025-12-15",
+      "evidence": "The transcript states: 'I'm not a super fan of benchmarks... Many of them are saturated... Many of them can be gamed. Mostly though they just don't really exist and operate in the real world.'",
+      "fp": "636512f4e04a21b8"
+    },
+    {
+      "claim": "DeepSeek released V3.2, a reasoning-first model for agents, which is reported to be approximately 30 times cheaper than Gemini 3.0 Pro.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-5-biggest-ai-stories-to-watch-in-december",
+      "claim_date": "2025-12-10",
+      "evidence": "The host notes that 'people are putting at roughly 30 times cheaper than Gemini 3.0 Pro' in response to arguments about the model's relevance and benchmarks.",
+      "fp": "f40ce2a9afc996c1"
+    },
+    {
+      "claim": "Gemini 3.5 Flash is approximately three times faster than Gemini 3.1 Pro while delivering similar performance.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "AI Daily Brief host",
+      "episode": "the-most-important-ai-news-from-google-io",
+      "claim_date": "2026-05-20",
+      "evidence": "The host states: \"3.5 Flash is around three times faster than 3.1 Pro while delivering similar performance.\"",
+      "fp": "97de5bfff46c78f7"
+    },
+    {
+      "claim": "Google's Gemini 3 Flash model outperforms the previous generation Gemini 2.5 Pro while being three times faster and operating at a fraction of the cost.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Sundar Pichai (Google CEO)",
+      "episode": "the-most-important-ai-stories-this-week",
+      "claim_date": "2025-12-21",
+      "evidence": "Sundar Pichai tweeted: 'We're back in a flash. Gemini 3 Flash is our latest model with frontier intelligence built for lightning speed and pushing the pareto frontier of performance and efficiency. It outperforms 2.5 Pro while being three times faster at a fraction of the cost.'",
+      "fp": "5f5bbfd42db5b8f7"
+    },
+    {
+      "claim": "Microsoft's MAI models are strategically positioned to offer state-of-the-art performance at significantly lower costs, with Mustafa Suleyman claiming that tuned MAI models outperformed GPT-5.5 on quality while being 10x lower on cost for McKinsey's tasks.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "AI Daily Brief host",
+      "episode": "the-next-wave-of-enterprise-ai",
+      "claim_date": "2026-06-04",
+      "evidence": "The transcript quotes Mustafa Suleyman: 'When we tuned our models for McKinsey's tasks, MAI delivered the highest win rate outperforming GPT-5.5 on quality while being 10x lower on cost.'",
+      "fp": "8df3e8125a98c4f2"
+    },
+    {
+      "claim": "Between 2021 and 2025, the hallucination rate of state-of-the-art AI models decreased from 21.8% to approximately 0.7%, representing a 96% reduction.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "AI Daily Brief (Host)",
+      "episode": "the-ultimate-ai-catch-up-guide",
+      "claim_date": "2026-04-01",
+      "evidence": "Between 2021 and 2025, state-of-the-art models went from 21.8% hallucination to just about 0.7% hallucination. A 96% reduction in 4 years.",
+      "fp": "b8dedf37be420846"
+    },
+    {
+      "claim": "AI capabilities are currently doubling roughly every 4 months.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "AI Daily Brief (Host)",
+      "episode": "the-ultimate-ai-catch-up-guide",
+      "claim_date": "2026-04-01",
+      "evidence": "capabilities are doubling roughly every 4 months. Meaning that even if it doesn't do great on your task at the moment, it probably will be before too long.",
+      "fp": "2a8af0fe9620d50e"
+    },
+    {
+      "claim": "Anthropic published a postmortem on recent Claude Code quality issues on the same day as the GPT-5.5 release, confirming that users had experienced a decline in model performance, which was attributed to 'slop' shipped in the harness rather than the model itself.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief)",
+      "episode": "what-i-learned-testing-gpt-5-5",
+      "claim_date": "2026-04-24",
+      "evidence": "The host states: 'on the same day that 5.5 came out, the team at Anthropic published a postmortem around recent Claude code quality issues... Theo again writes, \"Confirmed that Claude code got dumber, not Claude. They shipped slop and it made the models worse.\"'",
+      "fp": "032e4e4fa61ae6e2"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - However, limitations remain in complex reasoning, logic tasks, and robustness under diverse operational conditions.\n  - Standards and frameworks for model evaluation are becoming more comprehensive, incorporating expert human review alongside automated metrics to better reflect practical utility.",
+      "content": "\n\n  ### Recent Developments (2025\u20132026)\n\n  - **Gemini 3 Launch Metrics**: Google's Gemini app reached 650 million monthly active users, and 13 million developers have built with their models as of the Gemini 3 launch. (Source: Google / Sundar Pichai announcement, confidence 0.98, tier 1)\n  - **Gemini 3 Pro Benchmark Performance**: Gemini 3 Pro scored 72.7% on the ScreenSpot Pro benchmark, doubling the previous state-of-the-art score of 36.2% held by Sonnet 4.5. (Source: Matt Schumer / AI Daily Brief Host, confidence 0.95, tier 1)\n  - **OpenAI Internal Models**: OpenAI research leader Mark Chen stated that the company has internal models performing at the level of Gemini 3 and is confident they will release them soon. (Source: Mark Chen (OpenAI Research Leader), confidence 0.95, tier 1)\n  - **GPT 5.2 Coding Benchmarks**: GPT 5.2 achieved a score of 55.6% on the SWE-bench Pro coding benchmark, surpassing Claude Opus 4.5's score of 52%. (Source: OpenAI / AI Daily Brief Host, confidence 0.95, tier 1)\n  - **GPT 5.2 Thinking Economic Value**: GPT 5.2 Thinking scored 70.9% on GDP Val, an internal OpenAI benchmark for economically valuable knowledge work, compared to 38.8% for GPT 5. (Source: OpenAI / AI Daily Brief Host, confidence 0.95, tier 1)\n  - **GPT 5.2 Pro Efficiency**: GPT 5.2 Pro achieved a state-of-the-art score of 90.5% on the ARC-AGI 2 benchmark at a cost of $11.64 per task, representing a 390x efficiency improvement over a previous unreleased OpenAI model that scored 88% at $4,500 per task. (Source: ARC Prize / AI Daily Brief Host, confidence 0.95, tier 1)\n  - **Gemini 3 Flash Efficiency**: Google's Gemini 3 Flash model outperforms the previous generation Gemini 2.5 Pro while being three times faster and operating at a fraction of the cost. (Source: Sundar Pichai (Google CEO), confidence 0.95, tier 1)\n  - **Gemini 3.1 Pro Progress**: Gemini 3.1 Pro achieved a score of 77.1% on the ARC-AGI 2 benchmark, a significant increase from Gemini 3 Pro's 31.1% score, while maintaining the same pricing of $2 per million input tokens. (Source: Host (citing benchmark data and Akash Gupta's analysis), confidence 0.95, tier 1)\n  - **Anthropic Opus 4.7 Improvements**: Anthropic's Opus 4.7 model achieved a score of 80.6% on the Office QA Pro benchmark, up from 57.1% for the previous version. (Source: Host (AI Daily Brief) citing benchmark data, confidence 0.95, tier 1)\n  - **Claude Fable 5 Performance**: Claude Fable 5 achieved a score of 80.3% on SWE-bench Pro, significantly outperforming GPT-5.5 (58.6%) and Opus 4.8 (69.2%). (Source: AI Daily Brief Host / Benchmark Data, confidence 0.95, tier 1)\n  - **Deepu Coding Benchmark**: On the Deepu coding benchmark, Kimmy K3 scored 67.5, placing it 8.5 points ahead of Opus 4.8 and 2.5 points behind Fable 5. (Source: AI Daily Brief host, confidence 0.95, tier 1)\n  - **High-Stakes AI System Selection**: Ethan Mollick asserts that for intensive, high-stakes AI work, there are effectively only two viable primary systems currently: ChatGPT and Claude. (Source: Ethan Mollick (as reported by the AI Daily Brief host), confidence 0.95, tier 2)"
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 1,
+      "relevance": 4,
+      "coherence": 3,
+      "better_version": "A",
+      "improvement": -2
+    },
+    "raw_b": {
+      "factual_grounding": 1,
+      "relevance": 3,
+      "coherence": 2,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "a55bec223cbc309b",
+        "claim": "Google's Gemini app reached 650 million monthly active users and 13 million developers have built with their models as o",
+        "matched": true
+      },
+      {
+        "fp": "318168a7d470b20a",
+        "claim": "Gemini 3 Pro scored 72.7% on the ScreenSpot Pro benchmark, doubling the previous state-of-the-art score of 36.2% held by",
+        "matched": true
+      },
+      {
+        "fp": "25df20840b0b17b7",
+        "claim": "OpenAI research leader Mark Chen stated that the company has internal models performing at the level of Gemini 3 and is ",
+        "matched": true
+      },
+      {
+        "fp": "431d38d125ea42d7",
+        "claim": "GPT 5.2 achieved a score of 55.6% on the SWE-bench Pro coding benchmark, surpassing Claude Opus 4.5's score of 52%.",
+        "matched": true
+      },
+      {
+        "fp": "bea2098b782bd985",
+        "claim": "GPT 5.2 Thinking scored 70.9% on GDP Val, an internal OpenAI benchmark for economically valuable knowledge work, compare",
+        "matched": true
+      },
+      {
+        "fp": "e20b3cb8e01417dd",
+        "claim": "GPT 5.2 Pro achieved a state-of-the-art score of 90.5% on the ARC-AGI 2 benchmark at a cost of $11.64 per task, represen",
+        "matched": true
+      },
+      {
+        "fp": "5f5bbfd42db5b8f7",
+        "claim": "Google's Gemini 3 Flash model outperforms the previous generation Gemini 2.5 Pro while being three times faster and oper",
+        "matched": true
+      },
+      {
+        "fp": "82c4ca951ff14274",
+        "claim": "Gemini 3.1 Pro achieved a score of 77.1% on the ARC-AGI 2 benchmark, a significant increase from Gemini 3 Pro's 31.1% sc",
+        "matched": true
+      },
+      {
+        "fp": "e8b76ccb8f0f19ea",
+        "claim": "Anthropic's Opus 4.7 model achieved a score of 80.6% on the Office QA Pro benchmark, up from 57.1% for the previous vers",
+        "matched": true
+      },
+      {
+        "fp": "9ab7f0e9eadaf86b",
+        "claim": "Claude Fable 5 achieved a score of 80.3% on SWE-bench Pro, significantly outperforming GPT-5.5 (58.6%) and Opus 4.8 (69.",
+        "matched": true
+      },
+      {
+        "fp": "d5fc534d8765b2d0",
+        "claim": "On the Deepu coding benchmark, Kimmy K3 scored 67.5, placing it 8.5 points ahead of Opus 4.8 and 2.5 points behind Fable",
+        "matched": true
+      },
+      {
+        "fp": "1de0c172fa613582",
+        "claim": "Ethan Mollick asserts that for intensive, high-stakes AI work, there are effectively only two viable primary systems cur",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

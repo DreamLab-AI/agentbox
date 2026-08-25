@@ -1,0 +1,162 @@
+{
+  "topic": "Cloud Infrastructure",
+  "topic_slug": "cloud-infrastructure",
+  "status": "candidate_survivor",
+  "reasons": [],
+  "n_assertions": 5,
+  "episodes": [
+    "dario-amodei-breaks-his-social-media-silence",
+    "how-big-a-deal-is-the-usas-ai-genesis-mission",
+    "the-5-biggest-ai-stories-to-watch-in-december",
+    "the-social-network-for-agents-just-got-acquired",
+    "vibe-coding-gets-an-upgrade"
+  ],
+  "assertion_fingerprints": [
+    "3fb242f63dd261fa",
+    "40966de3853a8866",
+    "58ef63a5d19a07d8",
+    "c1b79b3ca7f101fa",
+    "d17a1d561bb227e9"
+  ],
+  "target_page": "Cloud Infrastructure.md",
+  "assertions": [
+    {
+      "claim": "Morningstar analyst Molic Khan notes that even if enterprises consolidate on open-weight models, they still require cloud infrastructure for workloads, data storage, and security, which remains a tailwind for cloud infrastructure companies.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Molic Khan / Morningstar",
+      "episode": "dario-amodei-breaks-his-social-media-silence",
+      "claim_date": "2026-08-18",
+      "evidence": "Khan wrote: 'If an enterprise were to consolidate its entire AI stack on open weight models, it would still need cloud infrastructure to run those workloads, store data, manage security, and access to resources, etc. All tailwinds to cloud infrastructure companies.'",
+      "fp": "d17a1d561bb227e9"
+    },
+    {
+      "claim": "Amazon announced a $50 billion investment to expand AI and supercomputing facilities for US government customers, adding 1.3 gigawatts of AI capacity.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Amazon / AWS CEO Matt Garman",
+      "episode": "how-big-a-deal-is-the-usas-ai-genesis-mission",
+      "claim_date": "2025-11-30",
+      "evidence": "Amazon announced they will spend 'up to $50 billion to expand their AI and supercomputing facilities for US government customers.' The expansion is expected to add 'a total of 1.3 gawatts of AI capacity' to AWS regions servicing government demand.",
+      "fp": "c1b79b3ca7f101fa"
+    },
+    {
+      "claim": "The host predicts that AWS will focus on cloud infrastructure leadership rather than model releases at its December 2025 Re:Invent conference to compete with Google Cloud and Microsoft Azure.",
+      "tier": "3",
+      "confidence": "0.55",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-5-biggest-ai-stories-to-watch-in-december",
+      "claim_date": "2025-12-10",
+      "evidence": "The host states, 'I kind of think AWS might really try to focus down on their cloud leadership... instead of trying to compete on all the fronts, including the model front.'",
+      "fp": "58ef63a5d19a07d8"
+    },
+    {
+      "claim": "Oracle's revenue related to server rental increased 84% year-over-year to reach $4.9 billion for the quarter.",
+      "tier": "1",
+      "confidence": "0.98",
+      "source": "Oracle Co-CEO Clay Magouirk",
+      "episode": "the-social-network-for-agents-just-got-acquired",
+      "claim_date": "2026-03-14",
+      "evidence": "Revenue related to server rental is up 84% year-over-year to reach 4.9 billion for the quarter.",
+      "fp": "3fb242f63dd261fa"
+    },
+    {
+      "claim": "Anthropic introduced \"Claude Code routines,\" which are saved configurations that can be triggered via GitHub events or APIs to execute tasks on Anthropic-managed cloud infrastructure.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Anthropic (Noa Weiman, official documentation)",
+      "episode": "vibe-coding-gets-an-upgrade",
+      "claim_date": "2026-04-16",
+      "evidence": "Noa Weiman announced: \"Claude Code routines are here. In addition to a schedule, you can now trigger templated agents via GitHub event or API with our infrastructure and your MCP and repos.\" Anthropic's docs describe routines as executing on cloud infrastructure so they \"keep working when your laptop is closed.\"",
+      "fp": "40966de3853a8866"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - Oracle Cloud",
+      "content": "\n\n  ## Recent Developments\n\n  - **Amazon AWS Government Expansion:** Amazon announced a $50 billion investment to expand AI and supercomputing facilities for US government customers, adding 1.3 gigawatts of AI capacity to AWS regions servicing government demand. [source: Amazon / AWS CEO Matt Garman, confidence 0.95, tier 1]\n  - **Oracle Server Rental Growth:** Oracle's revenue related to server rental increased 84% year-over-year to reach $4.9 billion for the quarter. [source: Oracle Co-CEO Clay Magouirk, confidence 0.98, tier 1]\n  - **Anthropic Claude Code Routines:** Anthropic introduced \"Claude Code routines,\" saved configurations triggered via GitHub events or APIs to execute tasks on Anthropic-managed cloud infrastructure, ensuring workflows continue even when local devices are offline. [source: Anthropic (Noa Weiman, official documentation), confidence 0.95, tier 1]\n  - **Market Analysis:** Morningstar analyst Molic Khan notes that even if enterprises consolidate on open-weight models, they still require cloud infrastructure for workloads, data storage, and security, which remains a tailwind for cloud infrastructure companies. [source: Molic Khan / Morningstar, confidence 0.8, tier 2]\n  - **AWS Strategy Prediction:** Industry observers predict that AWS will focus on cloud infrastructure leadership rather than model releases at its December 2025 Re:Invent conference to compete with Google Cloud and Microsoft Azure. [source: Host (AI Daily Brief), confidence 0.55, tier 3]"
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 2.0,
+    "rubric_b_improvement": 1.0,
+    "raw_a": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 4,
+      "relevance": 4,
+      "coherence": 5,
+      "better_version": "A",
+      "improvement": -1
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "d17a1d561bb227e9",
+        "claim": "Morningstar analyst Molic Khan notes that even if enterprises consolidate on open-weight models, they still require clou",
+        "matched": true
+      },
+      {
+        "fp": "c1b79b3ca7f101fa",
+        "claim": "Amazon announced a $50 billion investment to expand AI and supercomputing facilities for US government customers, adding",
+        "matched": true
+      },
+      {
+        "fp": "58ef63a5d19a07d8",
+        "claim": "The host predicts that AWS will focus on cloud infrastructure leadership rather than model releases at its December 2025",
+        "matched": true
+      },
+      {
+        "fp": "3fb242f63dd261fa",
+        "claim": "Oracle's revenue related to server rental increased 84% year-over-year to reach $4.9 billion for the quarter.",
+        "matched": true
+      },
+      {
+        "fp": "40966de3853a8866",
+        "claim": "Anthropic introduced \"Claude Code routines,\" which are saved configurations that can be triggered via GitHub events or A",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": {
+    "target_page": "Cloud Infrastructure.md",
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - Oracle Cloud",
+      "content": "\n\n  ## Recent Developments\n\n  - **Amazon AWS Government Expansion:** Amazon announced a $50 billion investment to expand AI and supercomputing facilities for US government customers, adding 1.3 gigawatts of AI capacity to AWS regions servicing government demand. [source: Amazon / AWS CEO Matt Garman, confidence 0.95, tier 1]\n  - **Oracle Server Rental Growth:** Oracle's revenue related to server rental increased 84% year-over-year to reach $4.9 billion for the quarter. [source: Oracle Co-CEO Clay Magouirk, confidence 0.98, tier 1]\n  - **Anthropic Claude Code Routines:** Anthropic introduced \"Claude Code routines,\" saved configurations triggered via GitHub events or APIs to execute tasks on Anthropic-managed cloud infrastructure, ensuring workflows continue even when local devices are offline. [source: Anthropic (Noa Weiman, official documentation), confidence 0.95, tier 1]\n  - **Market Analysis:** Morningstar analyst Molic Khan notes that even if enterprises consolidate on open-weight models, they still require cloud infrastructure for workloads, data storage, and security, which remains a tailwind for cloud infrastructure companies. [source: Molic Khan / Morningstar, confidence 0.8, tier 2]\n  - **AWS Strategy Prediction:** Industry observers predict that AWS will focus on cloud infrastructure leadership rather than model releases at its December 2025 Re:Invent conference to compete with Google Cloud and Microsoft Azure. [source: Host (AI Daily Brief), confidence 0.55, tier 3]"
+    },
+    "provenance": {
+      "assertion_fingerprints": [
+        "3fb242f63dd261fa",
+        "40966de3853a8866",
+        "58ef63a5d19a07d8",
+        "c1b79b3ca7f101fa",
+        "d17a1d561bb227e9"
+      ],
+      "source_episodes": [
+        "dario-amodei-breaks-his-social-media-silence",
+        "how-big-a-deal-is-the-usas-ai-genesis-mission",
+        "the-5-biggest-ai-stories-to-watch-in-december",
+        "the-social-network-for-agents-just-got-acquired",
+        "vibe-coding-gets-an-upgrade"
+      ]
+    },
+    "scores": {
+      "rubric_a_improvement": 2.0,
+      "rubric_b_improvement": 1.0,
+      "completeness": 1.0
+    }
+  }
+}

@@ -1,0 +1,255 @@
+{
+  "topic": "Future Of Work",
+  "topic_slug": "future-of-work",
+  "status": "candidate_survivor",
+  "reasons": [],
+  "n_assertions": 10,
+  "episodes": [
+    "claude-code-is-now-writing-claude-code",
+    "fable-5-raises-the-bar-for-ai-ambition",
+    "how-significant-are-ais-latest-math-breakthroughs",
+    "how-to-learn-ai-with-ai",
+    "the-new-jobs-ai-will-create",
+    "what-1250-professionals-said-about-working-with-ai",
+    "where-the-economy-thrives-after-ai",
+    "why-ai-leads-to-more-work-not-less",
+    "why-claude-opus-45-changes-whats-possible-with-vibe-coding"
+  ],
+  "assertion_fingerprints": [
+    "00367fc5fefe7024",
+    "0795b2748230feea",
+    "3dc52150c95b2930",
+    "5cc62f454a2463f8",
+    "6ffeb2c2360c9812",
+    "76bd22de5c61b1e9",
+    "85f3cb1e5be20e86",
+    "889bf7c6adcbd340",
+    "8e892c09b5e87f78",
+    "c169de5d0c61502a"
+  ],
+  "target_page": "Future Of Work.md",
+  "assertions": [
+    {
+      "claim": "Developers who fail to adopt the new AI-assisted programming paradigms are experiencing a 'skill issue' that limits their potential productivity by a factor of 10.",
+      "tier": "3",
+      "confidence": "0.7",
+      "source": "Andrej Karpathy",
+      "episode": "claude-code-is-now-writing-claude-code",
+      "claim_date": "2026-01-03",
+      "evidence": "Karpathy stated, 'I have a sense that I could be 10x more powerful if I just properly string together what has become available over the last year... and a failure to claim the boost feels decidedly like skill issue.'",
+      "fp": "3dc52150c95b2930"
+    },
+    {
+      "claim": "AI applications in 2027 will look fundamentally different from those in 2026 due to the shift from task-based to responsibility-based AI interactions.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "Felix Ryberg (Anthropic)",
+      "episode": "fable-5-raises-the-bar-for-ai-ambition",
+      "claim_date": "2026-06-11",
+      "evidence": "Felix Ryberg states: 'Predictions are a dangerous game, but I really believe our industry's apps in 2027 will look very very different from the ones we have today.'",
+      "fp": "76bd22de5c61b1e9"
+    },
+    {
+      "claim": "The 'narrow superintelligence' of models like Astra, which can be far smarter than humans in specific areas like math while remaining limited elsewhere, will lead to a 'strange dynamic' where the hardest work is automated first.",
+      "tier": "3",
+      "confidence": "0.7",
+      "source": "AI Daily Brief Host / Prince (AI Commentator)",
+      "episode": "how-significant-are-ais-latest-math-breakthroughs",
+      "claim_date": "2026-08-04",
+      "evidence": "The host and commentator Prince argue that the verifiability of math and code makes them prime targets for automation, even if they are high-value fields. This creates a duality where AI plows through hard problems while humans struggle to understand or verify the results.",
+      "fp": "6ffeb2c2360c9812"
+    },
+    {
+      "claim": "The host predicts that the \"agent first\" work paradigm will become the standard for technical tasks, driven by the rapid improvement in AI capabilities and the shift in how companies like OpenAI structure their internal workflows.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-to-learn-ai-with-ai",
+      "claim_date": "2026-02-14",
+      "evidence": "The host connects Greg Brockman's statement to a broader trend: \"I've been thinking about a lot recently anyways is how to give people better resources for self-directed learning around what I see as this shifted paradigm of AI.\"",
+      "fp": "c169de5d0c61502a"
+    },
+    {
+      "claim": "The host asserts that the AI jobs question is fundamentally an AI economy question that must be discussed in terms of both labor supply and demand, arguing that increased AI supply will drive increased demand and thus more human work.",
+      "tier": "2",
+      "confidence": "0.95",
+      "source": "AI Daily Brief Host",
+      "episode": "the-new-jobs-ai-will-create",
+      "claim_date": "2026-05-11",
+      "evidence": "The host concludes, 'My argument in a nutshell then is that the AI jobs question, which is really an AI economy question, can't be discussed only in terms of labor supply. It also has to be discussed in terms of demand... more demand, even in a scenario of AGI, means more human work ahead, too.'",
+      "fp": "8e892c09b5e87f78"
+    },
+    {
+      "claim": "The host argues that upskilling and retraining programs must be designed with the understanding that specific skills may be obsoleted by future AI models, such as GPT-7.",
+      "tier": "3",
+      "confidence": "0.55",
+      "source": "Host (AI Daily Brief)",
+      "episode": "what-1250-professionals-said-about-working-with-ai",
+      "claim_date": "2025-12-07",
+      "evidence": "It is not going to be particularly useful if we design a bunch of training programs that just get obiated by GBT7.",
+      "fp": "889bf7c6adcbd340"
+    },
+    {
+      "claim": "The durable jobs of the future will be in the relational sector, including roles such as nurses, therapists, teachers, and experience designers, where the human element is the product itself.",
+      "tier": "3",
+      "confidence": "0.7",
+      "source": "Alex Imas",
+      "episode": "where-the-economy-thrives-after-ai",
+      "claim_date": "2026-04-26",
+      "evidence": "The durable jobs of the future won't be about monitoring AI systems or prompt engineering. Those are transitional roles in the automated sector. The durable jobs will be in the relational sector... Nurses, therapists, teachers, boutique fitness instructors, personal chefs, bespoke tailors, craft brewers, live performers, spiritual guides, child care workers, and many varieties of hospitality and care work.",
+      "fp": "0795b2748230feea"
+    },
+    {
+      "claim": "NLW predicts that the current anxiety over AI-driven job loss will be viewed in 10-30 years as a significant misplacement of collective energy, as the economy transforms rather than collapses.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "NLW (Host)",
+      "episode": "where-the-economy-thrives-after-ai",
+      "claim_date": "2026-04-26",
+      "evidence": "I believe that when we look back a decade, and especially two, three decades from now, this moment of frenetic anxiety will be seen as one of the biggest misplacements of our collective energy that we've ever had.",
+      "fp": "85f3cb1e5be20e86"
+    },
+    {
+      "claim": "The host predicts that in 2026, organizations will hire 'vibe coders' specifically to work on non-engineering issues, acting as internal deployed agents to help people in different parts of the organization solve problems.",
+      "tier": "3",
+      "confidence": "0.65",
+      "source": "Host (AI Daily Brief)",
+      "episode": "why-ai-leads-to-more-work-not-less",
+      "claim_date": "2026-02-11",
+      "evidence": "One of my predictions for 2026 was that I thought that we would actually see vibe coders hired specifically to work on non-engineering issues. Basically, internally deployed vibers that help people in different parts of the organization use software to solve their problems.",
+      "fp": "00367fc5fefe7024"
+    },
+    {
+      "claim": "Software engineering as a profession may be largely automated by the first half of next year, with generated code becoming as unchecked as compiler output.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "Adam Wolf (Anthropic)",
+      "episode": "why-claude-opus-45-changes-whats-possible-with-vibe-coding",
+      "claim_date": "2025-11-26",
+      "evidence": "Adam Wolf writes: 'Maybe as soon as the first half of next year, software engineering is done. Soon we won't bother to check generated code for the same reasons we don't check compiler output.'",
+      "fp": "5cc62f454a2463f8"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - updated:: 2026-06-15",
+      "content": "\n- ### Recent Developments\n  - **Productivity and Skill Gaps**: Andrej Karpathy argues that developers failing to adopt new AI-assisted programming paradigms face a \"skill issue\" that limits their potential productivity by a factor of 10, suggesting that the failure to claim this boost is a critical professional gap. [source: Andrej Karpathy, confidence 0.7, tier 3]\n  - **Shift to Responsibility-Based AI**: Felix Ryberg (Anthropic) predicts that AI applications in 2027 will look fundamentally different from those in 2026 due to a shift from task-based to responsibility-based AI interactions. [source: Felix Ryberg (Anthropic), confidence 0.6, tier 3]\n  - **Narrow Superintelligence and Automation Dynamics**: Commentators note that \"narrow superintelligence\" in models like Astra creates a \"strange dynamic\" where the hardest, most verifiable work (such as math and code) is automated first, even if it is high-value, leading to a duality where AI solves hard problems while humans struggle to verify results. [source: AI Daily Brief Host / Prince (AI Commentator), confidence 0.7, tier 3]\n  - **Agent-First Work Paradigm**: The \"agent first\" work paradigm is predicted to become the standard for technical tasks, driven by rapid AI capability improvements and shifts in how companies like OpenAI structure internal workflows. [source: Host (AI Daily Brief), confidence 0.6, tier 3]\n  - **AI Economy and Labor Demand**: The AI jobs question is fundamentally an AI economy question that must consider both labor supply and demand; increased AI supply is expected to drive increased demand, resulting in more human work even in scenarios involving AGI. [source: AI Daily Brief Host, confidence 0.95, tier 2]\n  - **Upskilling Obsolescence**: Retraining programs must account for the rapid obsolescence of specific skills by future models (e.g., GPT-7), making static training designs less effective. [source: Host (AI Daily Brief), confidence 0.55, tier 3]\n  - **Durable Jobs in the Relational Sector**: Durable future jobs are expected to be in the relational sector (nurses, therapists, teachers, experience designers), where the human element is the product, rather than in transitional roles like prompt engineering or AI monitoring. [source: Alex Imas, confidence 0.7, tier 3]\n  - **Perspective on AI Anxiety**: Current anxiety over AI-driven job loss is predicted to be viewed in 10-30 years as a significant misplacement of collective energy, as the economy transforms rather than collapses. [source: NLW (Host), confidence 0.6, tier 3]\n  - **Rise of 'Vibe Coders'**: Organizations are predicted to hire \"vibe coders\" specifically for non-engineering issues, acting as internal deployed agents to help various departments solve problems using software. [source: Host (AI Daily Brief), confidence 0.65, tier 3]\n  - **Automation of Software Engineering**: Software engineering as a profession may be largely automated by the first half of next year, with generated code becoming as unchecked as compiler output. [source: Adam Wolf (Anthropic), confidence 0.6, tier 3]"
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 2.0,
+    "rubric_b_improvement": 2.0,
+    "raw_a": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 4,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 4,
+      "relevance": 5,
+      "coherence": 4,
+      "better_version": "B",
+      "improvement": 2
+    }
+  },
+  "completeness": {
+    "score": 0.7,
+    "detail": [
+      {
+        "fp": "3dc52150c95b2930",
+        "claim": "Developers who fail to adopt the new AI-assisted programming paradigms are experiencing a 'skill issue' that limits thei",
+        "matched": true
+      },
+      {
+        "fp": "76bd22de5c61b1e9",
+        "claim": "AI applications in 2027 will look fundamentally different from those in 2026 due to the shift from task-based to respons",
+        "matched": true
+      },
+      {
+        "fp": "6ffeb2c2360c9812",
+        "claim": "The 'narrow superintelligence' of models like Astra, which can be far smarter than humans in specific areas like math wh",
+        "matched": false
+      },
+      {
+        "fp": "c169de5d0c61502a",
+        "claim": "The host predicts that the \"agent first\" work paradigm will become the standard for technical tasks, driven by the rapid",
+        "matched": true
+      },
+      {
+        "fp": "8e892c09b5e87f78",
+        "claim": "The host asserts that the AI jobs question is fundamentally an AI economy question that must be discussed in terms of bo",
+        "matched": false
+      },
+      {
+        "fp": "889bf7c6adcbd340",
+        "claim": "The host argues that upskilling and retraining programs must be designed with the understanding that specific skills may",
+        "matched": false
+      },
+      {
+        "fp": "0795b2748230feea",
+        "claim": "The durable jobs of the future will be in the relational sector, including roles such as nurses, therapists, teachers, a",
+        "matched": true
+      },
+      {
+        "fp": "85f3cb1e5be20e86",
+        "claim": "NLW predicts that the current anxiety over AI-driven job loss will be viewed in 10-30 years as a significant misplacemen",
+        "matched": true
+      },
+      {
+        "fp": "00367fc5fefe7024",
+        "claim": "The host predicts that in 2026, organizations will hire 'vibe coders' specifically to work on non-engineering issues, ac",
+        "matched": true
+      },
+      {
+        "fp": "5cc62f454a2463f8",
+        "claim": "Software engineering as a profession may be largely automated by the first half of next year, with generated code becomi",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": {
+    "target_page": "Future Of Work.md",
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - updated:: 2026-06-15",
+      "content": "\n- ### Recent Developments\n  - **Productivity and Skill Gaps**: Andrej Karpathy argues that developers failing to adopt new AI-assisted programming paradigms face a \"skill issue\" that limits their potential productivity by a factor of 10, suggesting that the failure to claim this boost is a critical professional gap. [source: Andrej Karpathy, confidence 0.7, tier 3]\n  - **Shift to Responsibility-Based AI**: Felix Ryberg (Anthropic) predicts that AI applications in 2027 will look fundamentally different from those in 2026 due to a shift from task-based to responsibility-based AI interactions. [source: Felix Ryberg (Anthropic), confidence 0.6, tier 3]\n  - **Narrow Superintelligence and Automation Dynamics**: Commentators note that \"narrow superintelligence\" in models like Astra creates a \"strange dynamic\" where the hardest, most verifiable work (such as math and code) is automated first, even if it is high-value, leading to a duality where AI solves hard problems while humans struggle to verify results. [source: AI Daily Brief Host / Prince (AI Commentator), confidence 0.7, tier 3]\n  - **Agent-First Work Paradigm**: The \"agent first\" work paradigm is predicted to become the standard for technical tasks, driven by rapid AI capability improvements and shifts in how companies like OpenAI structure internal workflows. [source: Host (AI Daily Brief), confidence 0.6, tier 3]\n  - **AI Economy and Labor Demand**: The AI jobs question is fundamentally an AI economy question that must consider both labor supply and demand; increased AI supply is expected to drive increased demand, resulting in more human work even in scenarios involving AGI. [source: AI Daily Brief Host, confidence 0.95, tier 2]\n  - **Upskilling Obsolescence**: Retraining programs must account for the rapid obsolescence of specific skills by future models (e.g., GPT-7), making static training designs less effective. [source: Host (AI Daily Brief), confidence 0.55, tier 3]\n  - **Durable Jobs in the Relational Sector**: Durable future jobs are expected to be in the relational sector (nurses, therapists, teachers, experience designers), where the human element is the product, rather than in transitional roles like prompt engineering or AI monitoring. [source: Alex Imas, confidence 0.7, tier 3]\n  - **Perspective on AI Anxiety**: Current anxiety over AI-driven job loss is predicted to be viewed in 10-30 years as a significant misplacement of collective energy, as the economy transforms rather than collapses. [source: NLW (Host), confidence 0.6, tier 3]\n  - **Rise of 'Vibe Coders'**: Organizations are predicted to hire \"vibe coders\" specifically for non-engineering issues, acting as internal deployed agents to help various departments solve problems using software. [source: Host (AI Daily Brief), confidence 0.65, tier 3]\n  - **Automation of Software Engineering**: Software engineering as a profession may be largely automated by the first half of next year, with generated code becoming as unchecked as compiler output. [source: Adam Wolf (Anthropic), confidence 0.6, tier 3]"
+    },
+    "provenance": {
+      "assertion_fingerprints": [
+        "00367fc5fefe7024",
+        "0795b2748230feea",
+        "3dc52150c95b2930",
+        "5cc62f454a2463f8",
+        "6ffeb2c2360c9812",
+        "76bd22de5c61b1e9",
+        "85f3cb1e5be20e86",
+        "889bf7c6adcbd340",
+        "8e892c09b5e87f78",
+        "c169de5d0c61502a"
+      ],
+      "source_episodes": [
+        "claude-code-is-now-writing-claude-code",
+        "fable-5-raises-the-bar-for-ai-ambition",
+        "how-significant-are-ais-latest-math-breakthroughs",
+        "how-to-learn-ai-with-ai",
+        "the-new-jobs-ai-will-create",
+        "what-1250-professionals-said-about-working-with-ai",
+        "where-the-economy-thrives-after-ai",
+        "why-ai-leads-to-more-work-not-less",
+        "why-claude-opus-45-changes-whats-possible-with-vibe-coding"
+      ]
+    },
+    "scores": {
+      "rubric_a_improvement": 2.0,
+      "rubric_b_improvement": 2.0,
+      "completeness": 0.7
+    }
+  }
+}

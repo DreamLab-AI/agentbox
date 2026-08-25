@@ -1,0 +1,220 @@
+{
+  "topic": "Data Governance",
+  "topic_slug": "data-governance",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5"
+  ],
+  "n_assertions": 10,
+  "episodes": [
+    "can-open-models-solve-corporate-ai-washing",
+    "context-graphs-ais-next-big-idea",
+    "gemini-3-anticipation-reaches-fever-pitch",
+    "how-ai-starts-doing-the-work-in-2026-with-anthropic-cpo-mike-krieger",
+    "how-people-are-using-ai-for-health",
+    "the-new-jobs-ai-will-create",
+    "why-2026-is-the-year-of-the-ai-builder-with-lovable-ceo-anton-osika",
+    "why-fable-5-is-the-most-controversial-ai-release-ever"
+  ],
+  "assertion_fingerprints": [
+    "2a1852a9fdf57ee4",
+    "587f0f40c1d42503",
+    "5e57a49fe92e2f10",
+    "6cc85035ded1ea75",
+    "7f2dac4aa87764da",
+    "7fae59eb4fc52b59",
+    "8493b25e2c61daaf",
+    "8cac297bde2fa14a",
+    "aab035533e12f48d",
+    "ac1a51ca70edeaab"
+  ],
+  "target_page": "Data Governance.md",
+  "assertions": [
+    {
+      "claim": "Researchers used Claude to identify a decades-old vulnerability in DNA evidence databases, revealing that the software, created in 1995, lacks modern tamper-evident protections.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Forensic Science Research (cited by AI Daily Brief host)",
+      "episode": "can-open-models-solve-corporate-ai-washing",
+      "claim_date": "2026-08-05",
+      "evidence": "The transcript states: 'A group of researchers have found that they could alter the files using code written by Claude... The core issue is that this database software was created in 1995 and includes none of the tamper-evident protections of modern software.'",
+      "fp": "ac1a51ca70edeaab"
+    },
+    {
+      "claim": "Traditional systems of record and data warehouses are insufficient for AI agents because they function as retrospective mirrors rather than transactional front doors, lacking the cross-system context and decision lineage required for autonomous action.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "Jamine Ball",
+      "episode": "context-graphs-ais-next-big-idea",
+      "claim_date": "2026-01-06",
+      "evidence": "Ball's essay 'Long live systems of record' argues that while data lakes/warehouses exist, they live downstream of operational systems (Salesforce, NetSuite, Zendesk). Agents are 'inherently cross-system' and 'action-oriented', meaning they need to know 'which system owns which truth' and the 'contract between those truths' to act correctly.",
+      "fp": "6cc85035ded1ea75"
+    },
+    {
+      "claim": "Michael Bur announced the liquidation of his hedge fund in a letter to investors dated October 27th, stating his value estimations were no longer in sync with markets.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Michael Bur / Host",
+      "episode": "gemini-3-anticipation-reaches-fever-pitch",
+      "claim_date": "2025-11-18",
+      "evidence": "The host reports: 'In a letter to investors dated October 27th, Bur said that he would be liquidating the fund and returning capital. He acknowledged, \"My estimation of value in securities is not now and has not been for some time in sync with markets.\"'",
+      "fp": "5e57a49fe92e2f10"
+    },
+    {
+      "claim": "Berkshire Hathaway's purchase of Google stock is interpreted as a signal that the firm views Google as a strong medium-to-long-term US tech leader, rather than a speculative bet on the AI bubble.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Host",
+      "episode": "gemini-3-anticipation-reaches-fever-pitch",
+      "claim_date": "2025-11-18",
+      "evidence": "The host analyzes: 'It's also frankly not the kind of position you would put on if you believe the music is about to stop on a massive bubble in that sector... suggests that Berkshire thinks Google will have a strong position as a US tech leader in the medium to long term.'",
+      "fp": "7fae59eb4fc52b59"
+    },
+    {
+      "claim": "Data annotation and lineage are becoming critical 'missing connector bits' for enterprise AI, as organizations must make their data stores more 'AI-friendly' to enable effective retrieval and action by agents.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Mike Kger (Chief Product Officer, Anthropic)",
+      "episode": "how-ai-starts-doing-the-work-in-2026-with-anthropic-cpo-mike-krieger",
+      "claim_date": "2025-12-24",
+      "evidence": "Kger cites a bank CTO who said they had to 'rethink not just the data storage piece... but also the sort of data annotation and sort of lineage piece to be more AI friendly so that when you asked you know Claude to hey help me construct you know a dashboard on this... it [made] a huge huge way to a actually making that a useful sort of product.'",
+      "fp": "8493b25e2c61daaf"
+    },
+    {
+      "claim": "ChatGPT Health features a dedicated, isolated storage environment where health conversations and memories do not flow back into non-health chats.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "OpenAI product announcement",
+      "episode": "how-people-are-using-ai-for-health",
+      "claim_date": "2026-01-10",
+      "evidence": "The transcript explains, 'health information and memories do not flow back into non-health chats and non-health conversations can't access files, conversations, or memories created within health.'",
+      "fp": "587f0f40c1d42503"
+    },
+    {
+      "claim": "There is a significant gap in transparency regarding who at OpenAI can decrypt and view user health data, with critics noting the lack of specific answers to these privacy questions.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Josh Long (developer/commentator)",
+      "episode": "how-people-are-using-ai-for-health",
+      "claim_date": "2026-01-10",
+      "evidence": "The transcript quotes Josh Long: 'So far, zero response from anyone at OpenAI regarding who at the company can decrypt and view your health data and for what purposes. That's concerning to say the least.'",
+      "fp": "2a1852a9fdf57ee4"
+    },
+    {
+      "claim": "The host predicts the emergence of a 'health data operations specialist' role responsible for managing the reliability, integration, and governance of AI-driven health data, estimating this could create 20,000 to 40,000 new jobs.",
+      "tier": "3",
+      "confidence": "0.85",
+      "source": "AI Daily Brief Host",
+      "episode": "the-new-jobs-ai-will-create",
+      "claim_date": "2026-05-11",
+      "evidence": "The host states, 'the health data operations specialist owns reliability, integration, governance, and clinical usability of that layer... you're talking about net new 20,000, 30,000, 40,000 jobs.'",
+      "fp": "8cac297bde2fa14a"
+    },
+    {
+      "claim": "Lovable's product strategy prioritizes security, data governance, and user experience features as 'timeless' investments that add value irrespective of underlying model intelligence.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "Anton Osika, CEO of Lovable",
+      "episode": "why-2026-is-the-year-of-the-ai-builder-with-lovable-ceo-anton-osika",
+      "claim_date": "2025-12-29",
+      "evidence": "It's security and like like data governance, making sure that you you as the someone that built it are fully confident about where does my who has access to my data and that the UX of the product and number of capabilities are the the things that I see as the main areas that are are completely timeless and where we generally invest most of our time.",
+      "fp": "aab035533e12f48d"
+    },
+    {
+      "claim": "Microsoft restricted its employees from using Claude and Copilot due to concerns over Anthropic's 30-day data retention policy for enterprise customers.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "The Verge (via AI Daily Brief host)",
+      "episode": "why-fable-5-is-the-most-controversial-ai-release-ever",
+      "claim_date": "2026-06-12",
+      "evidence": "It took about 1 hour before The Verge reported that Microsoft had started restricting employees from using Fable 5 and C-Pilot because of those data retention concerns.",
+      "fp": "7f2dac4aa87764da"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - **AI amplification of risk** \u2014 [[Machine Learning]] models trained on poorly governed data propagate errors and biases at scale, raising the stakes for governance failures",
+      "content": "\n\n- ### Recent Developments\n  - **AI-Driven Vulnerability Discovery in Legacy Systems**\n    - Researchers used Claude to identify a decades-old vulnerability in DNA evidence databases, revealing that the software, created in 1995, lacks modern tamper-evident protections. This highlights the critical need for governance frameworks to address legacy system security and data integrity.\n  - **Limitations of Traditional Data Warehouses for AI Agents**\n    - Traditional systems of record and data warehouses are insufficient for AI agents because they function as retrospective mirrors rather than transactional front doors. They lack the cross-system context and decision lineage required for autonomous action, necessitating new governance models that define system ownership and data contracts.\n  - **Data Annotation and Lineage as Critical Connectors**\n    - Data annotation and lineage are becoming critical 'missing connector bits' for enterprise AI. Organizations must make their data stores more 'AI-friendly' to enable effective retrieval and action by agents, emphasizing the operational importance of metadata and provenance in governance.\n  - **Emergence of Health Data Operations Roles**\n    - The host predicts the emergence of a 'health data operations specialist' role responsible for managing the reliability, integration, and governance of AI-driven health data, estimating this could create 20,000 to 40,000 new jobs. This reflects the growing specialization in data governance for sensitive domains.\n  - **Security and Governance as Timeless Product Investments**\n    - Lovable's product strategy prioritizes security, data governance, and user experience features as 'timeless' investments that add value irrespective of underlying model intelligence, underscoring the enduring importance of governance in product development.\n  - **Corporate Data Retention and Access Controls**\n    - Microsoft restricted its employees from using Claude and Copilot due to concerns over Anthropic's 30-day data retention policy for enterprise customers. This incident illustrates the practical impact of data retention policies on enterprise governance and tool adoption.\n  - **Transparency Gaps in AI Health Data**\n    - There is a significant gap in transparency regarding who at OpenAI can decrypt and view user health data, with critics noting the lack of specific answers to these privacy questions. This highlights the ongoing challenges in ensuring accountability and transparency in AI data governance."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 3,
+      "relevance": 2,
+      "coherence": 2,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 0.7,
+    "detail": [
+      {
+        "fp": "ac1a51ca70edeaab",
+        "claim": "Researchers used Claude to identify a decades-old vulnerability in DNA evidence databases, revealing that the software, ",
+        "matched": true
+      },
+      {
+        "fp": "6cc85035ded1ea75",
+        "claim": "Traditional systems of record and data warehouses are insufficient for AI agents because they function as retrospective ",
+        "matched": true
+      },
+      {
+        "fp": "5e57a49fe92e2f10",
+        "claim": "Michael Bur announced the liquidation of his hedge fund in a letter to investors dated October 27th, stating his value e",
+        "matched": false
+      },
+      {
+        "fp": "7fae59eb4fc52b59",
+        "claim": "Berkshire Hathaway's purchase of Google stock is interpreted as a signal that the firm views Google as a strong medium-t",
+        "matched": false
+      },
+      {
+        "fp": "8493b25e2c61daaf",
+        "claim": "Data annotation and lineage are becoming critical 'missing connector bits' for enterprise AI, as organizations must make",
+        "matched": true
+      },
+      {
+        "fp": "587f0f40c1d42503",
+        "claim": "ChatGPT Health features a dedicated, isolated storage environment where health conversations and memories do not flow ba",
+        "matched": false
+      },
+      {
+        "fp": "2a1852a9fdf57ee4",
+        "claim": "There is a significant gap in transparency regarding who at OpenAI can decrypt and view user health data, with critics n",
+        "matched": true
+      },
+      {
+        "fp": "8cac297bde2fa14a",
+        "claim": "The host predicts the emergence of a 'health data operations specialist' role responsible for managing the reliability, ",
+        "matched": true
+      },
+      {
+        "fp": "aab035533e12f48d",
+        "claim": "Lovable's product strategy prioritizes security, data governance, and user experience features as 'timeless' investments",
+        "matched": true
+      },
+      {
+        "fp": "7f2dac4aa87764da",
+        "claim": "Microsoft restricted its employees from using Claude and Copilot due to concerns over Anthropic's 30-day data retention ",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

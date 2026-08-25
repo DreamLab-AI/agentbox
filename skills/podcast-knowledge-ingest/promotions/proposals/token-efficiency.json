@@ -1,0 +1,323 @@
+{
+  "topic": "Token Efficiency",
+  "topic_slug": "token-efficiency",
+  "status": "candidate_survivor",
+  "reasons": [],
+  "n_assertions": 14,
+  "episodes": [
+    "is-ai-doom-going-out-of-style",
+    "just-how-good-is-gpt-6-going-to-be",
+    "more-new-ai-models-openai-drops-51-pro-and-codex-pro",
+    "opus-46-and-chatgpt-53-codex-are-here-and-the-labs-are-at-war",
+    "real-world-ai-evaluations",
+    "the-best-way-to-talk-to-your-agents",
+    "the-models-trying-to-replace-fable",
+    "the-most-important-ai-news-from-google-io",
+    "where-should-claude-opus-5-fit-in-your-model-rotation",
+    "why-claude-opus-45-changes-whats-possible-with-vibe-coding",
+    "why-google-workspace-cli-is-such-a-big-deal",
+    "why-only-ai-training-can-save-the-economy",
+    "will-this-update-from-openai-make-ai-agents-work-better",
+    "your-company-doesnt-need-an-ai-strategy"
+  ],
+  "assertion_fingerprints": [
+    "22c5def77d501107",
+    "310b6453808ac59e",
+    "45f898f5925c1337",
+    "7569808022fe6d90",
+    "7fae46be10ed9e38",
+    "8b1df57571c2f8f5",
+    "987d7d471d3cd7f9",
+    "ab2ec03d2d6c7504",
+    "af693d63eaf2020d",
+    "c3e9ac0c7f868ca8",
+    "de9f4af862cc7e98",
+    "f10efb8b2c5ad264",
+    "fc48ac2c482b45f6",
+    "fe6eac78d51dff07"
+  ],
+  "target_page": "Token Efficiency.md",
+  "assertions": [
+    {
+      "claim": "Atlassian's AI search tool Rovo is more token-efficient than Retrieval-Augmented Generation (RAG) because it leverages existing structured knowledge graphs in Jira.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Host (AI Daily Brief)",
+      "episode": "is-ai-doom-going-out-of-style",
+      "claim_date": "2026-05-05",
+      "evidence": "The host notes: 'Rovo can tap into the existing knowledge graph in Jira... This reduces dependence on token-hungry rag that enterprises use.'",
+      "fp": "c3e9ac0c7f868ca8"
+    },
+    {
+      "claim": "Google released Gemini 3.6 Flash, which used 17% fewer tokens than Gemini 3.5 Flash on the Artificial Analysis benchmark.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief host",
+      "episode": "just-how-good-is-gpt-6-going-to-be",
+      "claim_date": "2026-07-23",
+      "evidence": "The transcript states: 'On the artificial analysis benchmark run, the model used 17% fewer tokens than 3.5 flash.'",
+      "fp": "ab2ec03d2d6c7504"
+    },
+    {
+      "claim": "GPT-5.1 Codex Max with medium reasoning effort achieves better performance than GPT-5.1 Codex with the same reasoning effort while using 30% fewer thinking tokens on the SweetBench Verified benchmark.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "OpenAI",
+      "episode": "more-new-ai-models-openai-drops-51-pro-and-codex-pro",
+      "claim_date": "2025-11-21",
+      "evidence": "The transcript states: 'they write on sweet bench verified codeex max with medium reasoning achieves better performance than GPT51 codecs with the same reasoning effort while using 30% fewer thinking tokens.'",
+      "fp": "987d7d471d3cd7f9"
+    },
+    {
+      "claim": "Andy Henny stated that GPT-5.3 Codex is roughly three times more token efficient than GPT-5.2, using 1/3 the tokens for similar intelligence.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Andy Henny (via Host)",
+      "episode": "opus-46-and-chatgpt-53-codex-are-here-and-the-labs-are-at-war",
+      "claim_date": "2026-02-06",
+      "evidence": "The transcript quotes Andy Henny: 'The biggest 5.3 Codex news is that it's roughly three times more token efficient. 5.3 high is smarter than 5.2 high, but uses 1/3 the tokens, making it faster and letting your weekly limit last about three times longer.'",
+      "fp": "fc48ac2c482b45f6"
+    },
+    {
+      "claim": "GPT-5.1 underperformed GPT-5 on the GDPvala benchmark, landing in fourth place, despite using half as many tokens to complete the tasks.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Artificial Analysis",
+      "episode": "real-world-ai-evaluations",
+      "claim_date": "2025-12-15",
+      "evidence": "The transcript notes: 'GPT51 underperformed GPT5, but still did well enough to land in fourth place... artificial analysis noted that the model used half as many tokens to complete the tasks.'",
+      "fp": "310b6453808ac59e"
+    },
+    {
+      "claim": "A major counter-argument to adopting HTML for agent workflows is that it consumes significantly more tokens than Markdown, potentially increasing costs for users and providers.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Josh Dawes (cited by AI Daily Brief host)",
+      "episode": "the-best-way-to-talk-to-your-agents",
+      "claim_date": "2026-05-12",
+      "evidence": "The host quotes Josh Dawes: 'The cynic in me can't help but note that HTML will cost way more tokens than markdown.' The host notes this was 'one of the big strands of the conversation.'",
+      "fp": "af693d63eaf2020d"
+    },
+    {
+      "claim": "The shift from chat-based AI to agentic workloads has led to an explosion in token costs, forcing application-layer companies to develop sophisticated routing and management strategies to maintain viable business models.",
+      "tier": "3",
+      "confidence": "0.65",
+      "source": "Harvey President Gabe Perriello (cited by AI Daily Brief host)",
+      "episode": "the-models-trying-to-replace-fable",
+      "claim_date": "2026-06-19",
+      "evidence": "What actually happened is AI got much more expensive than people realized at the time. The shift from chat to agents led to an explosion in costs. One user could trigger hundreds of agents and each of those agents could trigger more agents. Agents started running longer and more autonomously. On top of that, frontier models like Mythos are getting more expensive, not less. The problem for application layer companies like Harvey is how do you take that large token cost and convert it into something useful for your customers?",
+      "fp": "45f898f5925c1337"
+    },
+    {
+      "claim": "Gemini 3.5 Flash used about 3.5 times more tokens than GPT-5.5 Medium for Artificial Analysis intelligence index tests.",
+      "tier": "1",
+      "confidence": "0.88",
+      "source": "AI Daily Brief host",
+      "episode": "the-most-important-ai-news-from-google-io",
+      "claim_date": "2026-05-20",
+      "evidence": "The host reports: \"It used about three and a half times more tokens for those tests than GPT 5.5 medium, which as many are starting to point out is kind of an indictment of the value proposition of speed and cost.\"",
+      "fp": "22c5def77d501107"
+    },
+    {
+      "claim": "Claude Opus 5 is priced at $5 per million input tokens and $25 per million output tokens, inheriting the same pricing structure as Opus 4.8.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Host / Anthropic",
+      "episode": "where-should-claude-opus-5-fit-in-your-model-rotation",
+      "claim_date": "2026-07-28",
+      "evidence": "Regarding costs, Opus 5 inherits the same pricing structure as Opus 4.8 at $5 per million input tokens and 25 per million output tokens.",
+      "fp": "f10efb8b2c5ad264"
+    },
+    {
+      "claim": "Claude Opus 4.5 is significantly more token-efficient than Sonnet 4.5, using 76% fewer output reasoning tokens for the same complex tasks on SWE-bench Verified at medium effort.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Alex Albert / Simon Willis",
+      "episode": "why-claude-opus-45-changes-whats-possible-with-vibe-coding",
+      "claim_date": "2025-11-26",
+      "evidence": "The transcript states: 'Alex Albert, who said on SweetBench verified at medium effort, Opus 4.5 beats Sonnet 4.5 while using 76% fewer output tokens.'",
+      "fp": "fe6eac78d51dff07"
+    },
+    {
+      "claim": "One developer measured that loading MCP servers into an agent's context window consumed 37,000 tokens and 20% of the context before any work began, due to 142 tools being loaded.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "Kanika (via AI Daily Brief Host)",
+      "episode": "why-google-workspace-cli-is-such-a-big-deal",
+      "claim_date": "2026-03-12",
+      "evidence": "The transcript reports: 'One developer measured 142 tools loaded, 37,000 tokens consumed, and 20% of context gone before work even starts.'",
+      "fp": "8b1df57571c2f8f5"
+    },
+    {
+      "claim": "Uber implemented a $1,500 per month cap per employee for AI spending after blowing through its entire AI budget in the first four months of the year.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Host (AI Daily Brief)",
+      "episode": "why-only-ai-training-can-save-the-economy",
+      "claim_date": "2026-06-18",
+      "evidence": "Uber has been the big held-up example, first making news for blowing through their entire AI budget in the first 4 months, and eventually moving to a $1,500 a month cap per employee.",
+      "fp": "7569808022fe6d90"
+    },
+    {
+      "claim": "Simon Willison argued that Anthropic's skills mechanism may be a bigger deal than the Model Context Protocol (MCP) due to its simplicity and lower token overhead.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Simon Willison",
+      "episode": "will-this-update-from-openai-make-ai-agents-work-better",
+      "claim_date": "2025-12-18",
+      "evidence": "The transcript cites Willison's post: 'Claude skills are awesome, maybe a bigger deal than MCP... The most significant [limitation of MCP] is in terms of token usage... Skills have the exact same advantage [as CLI tools], only now I don't even need to implement a new CLI tool.'",
+      "fp": "de9f4af862cc7e98"
+    },
+    {
+      "claim": "The host predicts that as token costs increase, organizations will face a temptation to impose strict token spend limits and bias towards known ROI, which may hinder the experimentation needed to discover optimal AI integration strategies.",
+      "tier": "3",
+      "confidence": "0.75",
+      "source": "AI Daily Brief Host",
+      "episode": "your-company-doesnt-need-an-ai-strategy",
+      "claim_date": "2026-06-20",
+      "evidence": "The host states: 'There is going to be, I believe, a temptation to respond to increasing token costs with strict token spend limits and biases towards known ROI... We don't honestly know the best approaches to rebuilding companies around AI agents... Experimentation and productive failures will be required.'",
+      "fp": "7fae46be10ed9e38"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "- ### Relationships",
+      "content": "- ### Recent Developments\n  - **GPT-5.1 vs. GPT-5 Efficiency:** GPT-5.1 underperformed GPT-5 on the GDPvala benchmark, landing in fourth place, despite using half as many tokens to complete the tasks. *(Source: Artificial Analysis, 2026-08-24)*\n  - **Gemini 3.6 Flash Token Reduction:** Google released Gemini 3.6 Flash, which used 17% fewer tokens than Gemini 3.5 Flash on the Artificial Analysis benchmark. *(Source: AI Daily Brief, 2026-08-24)*\n  - **Claude Opus 5 Pricing:** Claude Opus 5 is priced at $5 per million input tokens and $25 per million output tokens, inheriting the same pricing structure as Opus 4.8. *(Source: Anthropic, 2026-08-24)*\n  - **GPT-5.1 Codex Max Performance:** GPT-5.1 Codex Max with medium reasoning effort achieves better performance than GPT-5.1 Codex with the same reasoning effort while using 30% fewer thinking tokens on the SweetBench Verified benchmark. *(Source: OpenAI, 2026-08-24)*\n  - **Uber AI Spending Cap:** Uber implemented a $1,500 per month cap per employee for AI spending after blowing through its entire AI budget in the first four months of the year. *(Source: AI Daily Brief, 2026-08-24)*\n  - **Gemini 3.5 Flash vs. GPT-5.5 Medium:** Gemini 3.5 Flash used about 3.5 times more tokens than GPT-5.5 Medium for Artificial Analysis intelligence index tests, raising questions about the value proposition of speed and cost. *(Source: AI Daily Brief, 2026-08-24)*\n  - **Anthropic Skills vs. MCP:** Simon Willison argued that Anthropic's skills mechanism may be a bigger deal than the Model Context Protocol (MCP) due to its simplicity and lower token overhead. *(Source: Simon Willison, 2026-08-24)*\n  - **MCP Context Window Overhead:** One developer measured that loading MCP servers into an agent's context window consumed 37,000 tokens and 20% of the context before any work began, due to 142 tools being loaded. *(Source: Kanika via AI Daily Brief, 2026-08-24)*\n  - **HTML vs. Markdown Token Cost:** A major counter-argument to adopting HTML for agent workflows is that it consumes significantly more tokens than Markdown, potentially increasing costs for users and providers. *(Source: Josh Dawes via AI Daily Brief, 2026-08-24)*\n  - **Claude Opus 4.5 vs. Sonnet 4.5:** Claude Opus 4.5 is significantly more token-efficient than Sonnet 4.5, using 76% fewer output reasoning tokens for the same complex tasks on SWE-bench Verified at medium effort. *(Source: Alex Albert via Simon Willis, 2026-08-24)*\n  - **GPT-5.3 Codex Efficiency:** Andy Henny stated that GPT-5.3 Codex is roughly three times more token efficient than GPT-5.2, using 1/3 the tokens for similar intelligence. *(Source: Andy Henny via AI Daily Brief, 2026-08-24)*\n  - **Atlassian Rovo vs. RAG:** Atlassian's AI search tool Rovo is more token-efficient than Retrieval-Augmented Generation (RAG) because it leverages existing structured knowledge graphs in Jira. *(Source: AI Daily Brief, 2026-08-24)*\n- ### Relationships"
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 2.0,
+    "rubric_b_improvement": 2.0,
+    "raw_a": {
+      "factual_grounding": 5,
+      "relevance": 4,
+      "coherence": 4,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 3,
+      "relevance": 2,
+      "coherence": 4,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "310b6453808ac59e",
+        "claim": "GPT-5.1 underperformed GPT-5 on the GDPvala benchmark, landing in fourth place, despite using half as many tokens to com",
+        "matched": true
+      },
+      {
+        "fp": "ab2ec03d2d6c7504",
+        "claim": "Google released Gemini 3.6 Flash, which used 17% fewer tokens than Gemini 3.5 Flash on the Artificial Analysis benchmark",
+        "matched": true
+      },
+      {
+        "fp": "f10efb8b2c5ad264",
+        "claim": "Claude Opus 5 is priced at $5 per million input tokens and $25 per million output tokens, inheriting the same pricing st",
+        "matched": true
+      },
+      {
+        "fp": "987d7d471d3cd7f9",
+        "claim": "GPT-5.1 Codex Max with medium reasoning effort achieves better performance than GPT-5.1 Codex with the same reasoning ef",
+        "matched": true
+      },
+      {
+        "fp": "7569808022fe6d90",
+        "claim": "Uber implemented a $1,500 per month cap per employee for AI spending after blowing through its entire AI budget in the f",
+        "matched": true
+      },
+      {
+        "fp": "22c5def77d501107",
+        "claim": "Gemini 3.5 Flash used about 3.5 times more tokens than GPT-5.5 Medium for Artificial Analysis intelligence index tests.",
+        "matched": true
+      },
+      {
+        "fp": "de9f4af862cc7e98",
+        "claim": "Simon Willison argued that Anthropic's skills mechanism may be a bigger deal than the Model Context Protocol (MCP) due t",
+        "matched": true
+      },
+      {
+        "fp": "8b1df57571c2f8f5",
+        "claim": "One developer measured that loading MCP servers into an agent's context window consumed 37,000 tokens and 20% of the con",
+        "matched": true
+      },
+      {
+        "fp": "af693d63eaf2020d",
+        "claim": "A major counter-argument to adopting HTML for agent workflows is that it consumes significantly more tokens than Markdow",
+        "matched": true
+      },
+      {
+        "fp": "fe6eac78d51dff07",
+        "claim": "Claude Opus 4.5 is significantly more token-efficient than Sonnet 4.5, using 76% fewer output reasoning tokens for the s",
+        "matched": true
+      },
+      {
+        "fp": "fc48ac2c482b45f6",
+        "claim": "Andy Henny stated that GPT-5.3 Codex is roughly three times more token efficient than GPT-5.2, using 1/3 the tokens for ",
+        "matched": true
+      },
+      {
+        "fp": "c3e9ac0c7f868ca8",
+        "claim": "Atlassian's AI search tool Rovo is more token-efficient than Retrieval-Augmented Generation (RAG) because it leverages e",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": {
+    "target_page": "Token Efficiency.md",
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "- ### Relationships",
+      "content": "- ### Recent Developments\n  - **GPT-5.1 vs. GPT-5 Efficiency:** GPT-5.1 underperformed GPT-5 on the GDPvala benchmark, landing in fourth place, despite using half as many tokens to complete the tasks. *(Source: Artificial Analysis, 2026-08-24)*\n  - **Gemini 3.6 Flash Token Reduction:** Google released Gemini 3.6 Flash, which used 17% fewer tokens than Gemini 3.5 Flash on the Artificial Analysis benchmark. *(Source: AI Daily Brief, 2026-08-24)*\n  - **Claude Opus 5 Pricing:** Claude Opus 5 is priced at $5 per million input tokens and $25 per million output tokens, inheriting the same pricing structure as Opus 4.8. *(Source: Anthropic, 2026-08-24)*\n  - **GPT-5.1 Codex Max Performance:** GPT-5.1 Codex Max with medium reasoning effort achieves better performance than GPT-5.1 Codex with the same reasoning effort while using 30% fewer thinking tokens on the SweetBench Verified benchmark. *(Source: OpenAI, 2026-08-24)*\n  - **Uber AI Spending Cap:** Uber implemented a $1,500 per month cap per employee for AI spending after blowing through its entire AI budget in the first four months of the year. *(Source: AI Daily Brief, 2026-08-24)*\n  - **Gemini 3.5 Flash vs. GPT-5.5 Medium:** Gemini 3.5 Flash used about 3.5 times more tokens than GPT-5.5 Medium for Artificial Analysis intelligence index tests, raising questions about the value proposition of speed and cost. *(Source: AI Daily Brief, 2026-08-24)*\n  - **Anthropic Skills vs. MCP:** Simon Willison argued that Anthropic's skills mechanism may be a bigger deal than the Model Context Protocol (MCP) due to its simplicity and lower token overhead. *(Source: Simon Willison, 2026-08-24)*\n  - **MCP Context Window Overhead:** One developer measured that loading MCP servers into an agent's context window consumed 37,000 tokens and 20% of the context before any work began, due to 142 tools being loaded. *(Source: Kanika via AI Daily Brief, 2026-08-24)*\n  - **HTML vs. Markdown Token Cost:** A major counter-argument to adopting HTML for agent workflows is that it consumes significantly more tokens than Markdown, potentially increasing costs for users and providers. *(Source: Josh Dawes via AI Daily Brief, 2026-08-24)*\n  - **Claude Opus 4.5 vs. Sonnet 4.5:** Claude Opus 4.5 is significantly more token-efficient than Sonnet 4.5, using 76% fewer output reasoning tokens for the same complex tasks on SWE-bench Verified at medium effort. *(Source: Alex Albert via Simon Willis, 2026-08-24)*\n  - **GPT-5.3 Codex Efficiency:** Andy Henny stated that GPT-5.3 Codex is roughly three times more token efficient than GPT-5.2, using 1/3 the tokens for similar intelligence. *(Source: Andy Henny via AI Daily Brief, 2026-08-24)*\n  - **Atlassian Rovo vs. RAG:** Atlassian's AI search tool Rovo is more token-efficient than Retrieval-Augmented Generation (RAG) because it leverages existing structured knowledge graphs in Jira. *(Source: AI Daily Brief, 2026-08-24)*\n- ### Relationships"
+    },
+    "provenance": {
+      "assertion_fingerprints": [
+        "22c5def77d501107",
+        "310b6453808ac59e",
+        "45f898f5925c1337",
+        "7569808022fe6d90",
+        "7fae46be10ed9e38",
+        "8b1df57571c2f8f5",
+        "987d7d471d3cd7f9",
+        "ab2ec03d2d6c7504",
+        "af693d63eaf2020d",
+        "c3e9ac0c7f868ca8",
+        "de9f4af862cc7e98",
+        "f10efb8b2c5ad264",
+        "fc48ac2c482b45f6",
+        "fe6eac78d51dff07"
+      ],
+      "source_episodes": [
+        "is-ai-doom-going-out-of-style",
+        "just-how-good-is-gpt-6-going-to-be",
+        "more-new-ai-models-openai-drops-51-pro-and-codex-pro",
+        "opus-46-and-chatgpt-53-codex-are-here-and-the-labs-are-at-war",
+        "real-world-ai-evaluations",
+        "the-best-way-to-talk-to-your-agents",
+        "the-models-trying-to-replace-fable",
+        "the-most-important-ai-news-from-google-io",
+        "where-should-claude-opus-5-fit-in-your-model-rotation",
+        "why-claude-opus-45-changes-whats-possible-with-vibe-coding",
+        "why-google-workspace-cli-is-such-a-big-deal",
+        "why-only-ai-training-can-save-the-economy",
+        "will-this-update-from-openai-make-ai-agents-work-better",
+        "your-company-doesnt-need-an-ai-strategy"
+      ]
+    },
+    "scores": {
+      "rubric_a_improvement": 2.0,
+      "rubric_b_improvement": 2.0,
+      "completeness": 1.0
+    }
+  }
+}

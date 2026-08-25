@@ -1,0 +1,156 @@
+{
+  "topic": "Claude Co-work",
+  "topic_slug": "claude-co-work",
+  "status": "candidate_survivor",
+  "reasons": [],
+  "n_assertions": 5,
+  "episodes": [
+    "the-saaspocalypse-continues",
+    "why-claude-cowork-is-a-big-deal"
+  ],
+  "assertion_fingerprints": [
+    "20f25d3f1d7271e2",
+    "343d81ecd1633b06",
+    "7465b42682438225",
+    "942bec78f7bff4c2",
+    "daa107e8f7069e69"
+  ],
+  "target_page": "Claude Co-work.md",
+  "assertions": [
+    {
+      "claim": "Thomson Reuters stock fell 20% following the release of the legal plugin for Claude Co-work.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "AI Daily Brief host",
+      "episode": "the-saaspocalypse-continues",
+      "claim_date": "2026-02-10",
+      "evidence": "Thomson Reuters has said that AI is delivering tangible benefits... Their stock fell 20% just last week.",
+      "fp": "343d81ecd1633b06"
+    },
+    {
+      "claim": "Anthropic announced Claude Co-work, a product designed to allow non-developers to use Claude for non-coding tasks by providing access to local files and connectors.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Anthropic",
+      "episode": "why-claude-cowork-is-a-big-deal",
+      "claim_date": "2026-01-14",
+      "evidence": "Anthropic's announcement post states: 'When we released Claude code, we expected developers to use it for coding. They did and then quickly began using it for almost everything else. This prompted us to build co-work, a simpler way for anyone, not just developers, to work with Claude in the very same way.'",
+      "fp": "7465b42682438225"
+    },
+    {
+      "claim": "Claude Co-work is currently available only in research preview to users with Max accounts, which start at a subscription cost of $100 per month.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Host",
+      "episode": "why-claude-cowork-is-a-big-deal",
+      "claim_date": "2026-01-14",
+      "evidence": "The host states: 'Right now, Co-Wowork is only available in research preview to people with Max accounts, which start at a h 100 bucks a month.'",
+      "fp": "20f25d3f1d7271e2"
+    },
+    {
+      "claim": "Lenny Rachitsky used Claude Co-work to analyze 320 podcast transcripts, a task that took approximately 15 minutes to complete and involved processing between 450 and 600 hours of content.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Lenny Rachitsky",
+      "episode": "why-claude-cowork-is-a-big-deal",
+      "claim_date": "2026-01-14",
+      "evidence": "Lenny Rachitsky stated: 'I asked it to go through every Lenny's podcast episode and pull out the 10 most important themes... I gave it access to a folder with 320 transcripts... 15 minutes later, he had his list.' The host contextualized this as 'between 450 and 600 hours of content.'",
+      "fp": "942bec78f7bff4c2"
+    },
+    {
+      "claim": "Claire Vo of the How I AI podcast criticized Claude Co-work for sitting in a 'fuzzy middle' between the power of Claude Code and the simplicity needed for non-technical users, arguing it is not optimized for either audience.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Claire Vo",
+      "episode": "why-claude-cowork-is-a-big-deal",
+      "claim_date": "2026-01-14",
+      "evidence": "Claire Vo wrote: 'The challenge with this sort of thin wrapper on Claude Code UX is that it's not quite optimized for the non-technical and too kneecapped for the TUI build. Co-work right now sits in the fuzzy middle and the team is going to need to optimize for one or the other to win over a new audience.'",
+      "fp": "daa107e8f7069e69"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "- ### Overview\n  - Anthropic's Claude Co-work feature is now available on Windows with full parity to macOS, including file access, multi-step task execution, plugins, and MCP connectors. *(Source: AI Daily Brief host, via AI Daily Brief, 2026-08-24)*",
+      "content": "- ### Recent Developments\n  - **Product Announcement & Positioning**: Anthropic announced Claude Co-work as a product designed to allow non-developers to use Claude for non-coding tasks by providing access to local files and connectors. The company noted that after the release of Claude Code, users quickly began using it for tasks beyond coding, prompting the creation of Co-work as \"a simpler way for anyone, not just developers, to work with Claude in the very same way.\" *(Source: Anthropic, confidence 0.95, tier 1)*\n  - **Availability & Pricing**: Claude Co-work is currently available only in research preview to users with Max accounts, which start at a subscription cost of $100 per month. *(Source: AI Daily Brief host, confidence 0.9, tier 1)*\n  - **Market Impact**: The release of the legal plugin for Claude Co-work contributed to a 20% drop in Thomson Reuters stock, as the company highlighted that AI is delivering tangible benefits to its operations. *(Source: AI Daily Brief host, confidence 0.9, tier 1)*\n  - **User Case Study**: Lenny Rachitsky utilized Claude Co-work to analyze 320 podcast transcripts, a task involving between 450 and 600 hours of content that was completed in approximately 15 minutes. *(Source: Lenny Rachitsky, confidence 0.9, tier 1)*\n  - **Critical Reception**: Claire Vo of the How I AI podcast criticized the feature for occupying a \"fuzzy middle\" between the power of Claude Code and the simplicity required for non-technical users, arguing it is not optimized for either audience. *(Source: Claire Vo, confidence 0.85, tier 2)*"
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 2.0,
+    "rubric_b_improvement": 2.0,
+    "raw_a": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 3,
+      "relevance": 2,
+      "coherence": 4,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 0.8,
+    "detail": [
+      {
+        "fp": "343d81ecd1633b06",
+        "claim": "Thomson Reuters stock fell 20% following the release of the legal plugin for Claude Co-work.",
+        "matched": true
+      },
+      {
+        "fp": "7465b42682438225",
+        "claim": "Anthropic announced Claude Co-work, a product designed to allow non-developers to use Claude for non-coding tasks by pro",
+        "matched": true
+      },
+      {
+        "fp": "20f25d3f1d7271e2",
+        "claim": "Claude Co-work is currently available only in research preview to users with Max accounts, which start at a subscription",
+        "matched": true
+      },
+      {
+        "fp": "942bec78f7bff4c2",
+        "claim": "Lenny Rachitsky used Claude Co-work to analyze 320 podcast transcripts, a task that took approximately 15 minutes to com",
+        "matched": false
+      },
+      {
+        "fp": "daa107e8f7069e69",
+        "claim": "Claire Vo of the How I AI podcast criticized Claude Co-work for sitting in a 'fuzzy middle' between the power of Claude ",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": {
+    "target_page": "Claude Co-work.md",
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "- ### Overview\n  - Anthropic's Claude Co-work feature is now available on Windows with full parity to macOS, including file access, multi-step task execution, plugins, and MCP connectors. *(Source: AI Daily Brief host, via AI Daily Brief, 2026-08-24)*",
+      "content": "- ### Recent Developments\n  - **Product Announcement & Positioning**: Anthropic announced Claude Co-work as a product designed to allow non-developers to use Claude for non-coding tasks by providing access to local files and connectors. The company noted that after the release of Claude Code, users quickly began using it for tasks beyond coding, prompting the creation of Co-work as \"a simpler way for anyone, not just developers, to work with Claude in the very same way.\" *(Source: Anthropic, confidence 0.95, tier 1)*\n  - **Availability & Pricing**: Claude Co-work is currently available only in research preview to users with Max accounts, which start at a subscription cost of $100 per month. *(Source: AI Daily Brief host, confidence 0.9, tier 1)*\n  - **Market Impact**: The release of the legal plugin for Claude Co-work contributed to a 20% drop in Thomson Reuters stock, as the company highlighted that AI is delivering tangible benefits to its operations. *(Source: AI Daily Brief host, confidence 0.9, tier 1)*\n  - **User Case Study**: Lenny Rachitsky utilized Claude Co-work to analyze 320 podcast transcripts, a task involving between 450 and 600 hours of content that was completed in approximately 15 minutes. *(Source: Lenny Rachitsky, confidence 0.9, tier 1)*\n  - **Critical Reception**: Claire Vo of the How I AI podcast criticized the feature for occupying a \"fuzzy middle\" between the power of Claude Code and the simplicity required for non-technical users, arguing it is not optimized for either audience. *(Source: Claire Vo, confidence 0.85, tier 2)*"
+    },
+    "provenance": {
+      "assertion_fingerprints": [
+        "20f25d3f1d7271e2",
+        "343d81ecd1633b06",
+        "7465b42682438225",
+        "942bec78f7bff4c2",
+        "daa107e8f7069e69"
+      ],
+      "source_episodes": [
+        "the-saaspocalypse-continues",
+        "why-claude-cowork-is-a-big-deal"
+      ]
+    },
+    "scores": {
+      "rubric_a_improvement": 2.0,
+      "rubric_b_improvement": 2.0,
+      "completeness": 0.8
+    }
+  }
+}

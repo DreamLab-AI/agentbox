@@ -1,0 +1,187 @@
+{
+  "topic": "Microsoft",
+  "topic_slug": "microsoft",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0"
+  ],
+  "n_assertions": 8,
+  "episodes": [
+    "how-a-30b-hedge-fund-implosion-will-effect-ai",
+    "microsofts-plan-to-make-people-less-angry-about-ai-and-electricity",
+    "the-ai-subsidy-era-is-over",
+    "the-calm-before-the-agi-storm",
+    "the-saaspocalypse-continues",
+    "the-whole-world-gets-claude-pilled",
+    "what-google-needs-to-do-at-io-this-week",
+    "your-company-doesnt-need-an-ai-strategy"
+  ],
+  "assertion_fingerprints": [
+    "048593bf4a31737f",
+    "123185f1b2b6b92e",
+    "39f7b92f2ee6d14e",
+    "89e1d541aff165f6",
+    "a5da3f1522ecb434",
+    "b9ba8b3cfac95090",
+    "bd05d769538f94ad",
+    "be0d00b26170ae1d"
+  ],
+  "target_page": "Microsoft.md",
+  "assertions": [
+    {
+      "claim": "Microsoft's Azure division reached $100 billion in annualized recurring revenue (ARR) for the first time, representing approximately 25% of forward revenue.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Microsoft Earnings Report",
+      "episode": "how-a-30b-hedge-fund-implosion-will-effect-ai",
+      "claim_date": "2026-08-03",
+      "evidence": "CFO Amy Hood presented earnings showing Azure's ARR hit the $100 billion mark. The company emphasized capital discipline, forecasting it would remain cash flow positive for at least the next year despite high capex.",
+      "fp": "a5da3f1522ecb434"
+    },
+    {
+      "claim": "Microsoft announced a five-part 'community first AI infrastructure' plan, led by Vice Chair and President Brad Smith, to ensure data centers do not increase local electricity prices and to invest in local communities.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Microsoft blog post / Brad Smith",
+      "episode": "microsofts-plan-to-make-people-less-angry-about-ai-and-electricity",
+      "claim_date": "2026-01-16",
+      "evidence": "The transcript details the five pillars: paying utility rates to cover costs without passing them on, minimizing water use and replenishing more than used, creating local jobs, adding to the tax base for public services, and investing in local AI training and nonprofits.",
+      "fp": "bd05d769538f94ad"
+    },
+    {
+      "claim": "Meta and Microsoft have both increased their AI capital expenditure by 400% while reducing headcount by 10% and 7% respectively, signaling a transition from human labor to silicon-based intelligence.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "Peter Diamandis (via Chandra Duggarala)",
+      "episode": "the-ai-subsidy-era-is-over",
+      "claim_date": "2026-04-30",
+      "evidence": "Peter Diamandis wrote, 'Headcounts are dropping. Meta down 10%, Microsoft down 7%, both companies up 400% AI capex. This isn't a layoff, it's the transition from neurons to silicon.'",
+      "fp": "123185f1b2b6b92e"
+    },
+    {
+      "claim": "Microsoft released three new models for transcription, voice, and image generation, marking its return to the model training game after the unreleased MAI-1 preview, with plans to deploy them internally for cost-cutting in products like Microsoft Teams.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-calm-before-the-agi-storm",
+      "claim_date": "2026-04-08",
+      "evidence": "On Thursday, Microsoft released three new models built for transcription, voice, and image generation... Microsoft plans to deploy them under the hood as a cost-cutting measure in products like Microsoft Teams... The last model for Microsoft was MAI-1 preview, which was showcased last August but never publicly released.",
+      "fp": "be0d00b26170ae1d"
+    },
+    {
+      "claim": "Microsoft lost 6.7% of its stock value, resulting in a market cap reduction of 218 billion dollars.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief host",
+      "episode": "the-saaspocalypse-continues",
+      "claim_date": "2026-02-10",
+      "evidence": "Microsoft was another one of the big losers of the software wipeout last week... The stock lost 6.7% losing 218 billion in market cap.",
+      "fp": "b9ba8b3cfac95090"
+    },
+    {
+      "claim": "Anthropic is reportedly raising a funding round that values the company at 350 billion dollars, with approximately 15 billion dollars coming from Microsoft and Nvidia.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "AI Daily Brief host",
+      "episode": "the-whole-world-gets-claude-pilled",
+      "claim_date": "2026-01-21",
+      "evidence": "That round that we've been hearing about that values Anthropic at 350 billion is apparently getting supersized up to potentially 25 billion. That includes about 15 from Microsoft and Nvidia and another 10 from VCs and other investors.",
+      "fp": "048593bf4a31737f"
+    },
+    {
+      "claim": "Microsoft has begun canceling Claude Code licenses, shifting developers to GitHub Copilot CLI, with licenses terminating at the end of June to align with the start of Microsoft's new financial year.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "The Verge via AI Daily Brief host",
+      "episode": "what-google-needs-to-do-at-io-this-week",
+      "claim_date": "2026-05-18",
+      "evidence": "Microsoft has begun canceling Claude code licenses, shifting their developers across to the GitHub Copilot CLI instead. Sources told The Verge that Anthropic's tools were extremely popular... The licenses will be terminated at the end of June, just in time for the beginning of Microsoft's new financial year.",
+      "fp": "89e1d541aff165f6"
+    },
+    {
+      "claim": "Microsoft CEO Satya Nadella published a blog post titled 'A Frontier Without an Ecosystem Is Not Stable' which has been viewed 65 million times.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Satya Nadella",
+      "episode": "your-company-doesnt-need-an-ai-strategy",
+      "claim_date": "2026-06-20",
+      "evidence": "The transcript states: 'Microsoft CEO Satya Nadella took to Twitter to drop the following blog post. It's called A Frontier Without an Ecosystem Is Not Stable, and has now been seen 65 million times.'",
+      "fp": "39f7b92f2ee6d14e"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - The company participates in graphics and interoperability standards and contributes to the wider ecosystem of APIs and runtimes used in immersive computing. Its platforms are widely used across enterprise and consumer software.",
+      "content": "\n\n- ### Recent Developments\n  - **Azure Revenue Milestone**: Microsoft's Azure division reached $100 billion in annualized recurring revenue (ARR) for the first time, representing approximately 25% of forward revenue. CFO Amy Hood presented earnings emphasizing capital discipline, forecasting the company would remain cash flow positive for at least the next year despite high capital expenditure. [source: Microsoft Earnings Report, confidence 0.95, tier 1]\n  - **Community-First AI Infrastructure**: Microsoft announced a five-part 'community first AI infrastructure' plan led by Vice Chair and President Brad Smith. The pillars include paying utility rates to cover costs without passing them on, minimizing and replenishing water use, creating local jobs, adding to the local tax base, and investing in local AI training and nonprofits. [source: Microsoft blog post / Brad Smith, confidence 0.95, tier 1]\n  - **AI Capital Expenditure & Headcount**: Microsoft increased its AI capital expenditure by 400% while reducing headcount by 7%, signaling a transition from human labor to silicon-based intelligence. [source: Peter Diamandis (via Chandra Duggarala), confidence 0.75, tier 2]\n  - **New Model Releases**: Microsoft released three new models for transcription, voice, and image generation, marking its return to model training after the unreleased MAI-1 preview. These models are planned for internal deployment in products like Microsoft Teams as a cost-cutting measure. [source: Host (AI Daily Brief), confidence 0.9, tier 1]\n  - **Market Performance**: Microsoft lost 6.7% of its stock value, resulting in a market cap reduction of $218 billion. [source: AI Daily Brief host, confidence 0.95, tier 1]\n  - **Anthropic Investment**: Microsoft is participating in a funding round for Anthropic, which values the company at $350 billion. Microsoft and Nvidia are contributing approximately $15 billion to the round. [source: AI Daily Brief host, confidence 0.85, tier 2]\n  - **Developer Tooling Shift**: Microsoft has begun canceling Claude Code licenses, shifting developers to GitHub Copilot CLI. Licenses are terminating at the end of June to align with the start of Microsoft's new financial year. [source: The Verge via AI Daily Brief host, confidence 0.85, tier 1]\n  - **Ecosystem Strategy**: CEO Satya Nadella published a blog post titled 'A Frontier Without an Ecosystem Is Not Stable,' which has been viewed 65 million times. [source: Satya Nadella, confidence 0.95, tier 1]"
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 3,
+      "relevance": 4,
+      "coherence": 5,
+      "better_version": "A",
+      "improvement": -2
+    },
+    "raw_b": {
+      "factual_grounding": 1,
+      "relevance": 3,
+      "coherence": 4,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 0.75,
+    "detail": [
+      {
+        "fp": "a5da3f1522ecb434",
+        "claim": "Microsoft's Azure division reached $100 billion in annualized recurring revenue (ARR) for the first time, representing a",
+        "matched": true
+      },
+      {
+        "fp": "bd05d769538f94ad",
+        "claim": "Microsoft announced a five-part 'community first AI infrastructure' plan, led by Vice Chair and President Brad Smith, to",
+        "matched": false
+      },
+      {
+        "fp": "123185f1b2b6b92e",
+        "claim": "Meta and Microsoft have both increased their AI capital expenditure by 400% while reducing headcount by 10% and 7% respe",
+        "matched": true
+      },
+      {
+        "fp": "be0d00b26170ae1d",
+        "claim": "Microsoft released three new models for transcription, voice, and image generation, marking its return to the model trai",
+        "matched": true
+      },
+      {
+        "fp": "b9ba8b3cfac95090",
+        "claim": "Microsoft lost 6.7% of its stock value, resulting in a market cap reduction of 218 billion dollars.",
+        "matched": true
+      },
+      {
+        "fp": "048593bf4a31737f",
+        "claim": "Anthropic is reportedly raising a funding round that values the company at 350 billion dollars, with approximately 15 bi",
+        "matched": false
+      },
+      {
+        "fp": "89e1d541aff165f6",
+        "claim": "Microsoft has begun canceling Claude Code licenses, shifting developers to GitHub Copilot CLI, with licenses terminating",
+        "matched": true
+      },
+      {
+        "fp": "39f7b92f2ee6d14e",
+        "claim": "Microsoft CEO Satya Nadella published a blog post titled 'A Frontier Without an Ecosystem Is Not Stable' which has been ",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

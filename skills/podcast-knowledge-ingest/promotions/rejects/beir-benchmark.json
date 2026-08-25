@@ -1,0 +1,168 @@
+{
+  "topic": "BEIR Benchmark",
+  "topic_slug": "beir-benchmark",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5"
+  ],
+  "n_assertions": 7,
+  "episodes": [
+    "fable-5-raises-the-bar-for-ai-ambition",
+    "gpt-54-first-test-results",
+    "harness-engineering-101",
+    "where-should-claude-opus-5-fit-in-your-model-rotation"
+  ],
+  "assertion_fingerprints": [
+    "23976822c3eb2c8b",
+    "66c6a644e25c8ac6",
+    "681dfde1e1f9370a",
+    "89cdf42983f1c5f8",
+    "9ab7f0e9eadaf86b",
+    "c4f6bbbd4d5cd3a8",
+    "d0c7e243aaf9a226"
+  ],
+  "target_page": "BEIR Benchmark.md",
+  "assertions": [
+    {
+      "claim": "Claude Fable 5 achieved a score of 80.3% on SWE-bench Pro, significantly outperforming GPT-5.5 (58.6%) and Opus 4.8 (69.2%).",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief Host / Benchmark Data",
+      "episode": "fable-5-raises-the-bar-for-ai-ambition",
+      "claim_date": "2026-06-11",
+      "evidence": "The transcript explicitly lists: 'On Swebench Pro, GPT55 scores a 58.6, Opus 48 scores a 69.2 and Mythos and Fable 5 are all the way up at 80.3%.'",
+      "fp": "9ab7f0e9eadaf86b"
+    },
+    {
+      "claim": "On the Frontier Code benchmark, Claude Fable 5 scored 29.3%, more than double the previous best of 13.4% achieved by Opus 4.8.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief Host / Cognition",
+      "episode": "fable-5-raises-the-bar-for-ai-ambition",
+      "claim_date": "2026-06-11",
+      "evidence": "The host notes: 'On a new benchmark... Frontier Code, GBT55 is at just a 5.7%. Opus 48 is at 13.4% and Mythos and Fable 5 are more than double that at 29.3%.'",
+      "fp": "c4f6bbbd4d5cd3a8"
+    },
+    {
+      "claim": "GPT-5.4 achieved a 75% score on the OSWorld verified benchmark, surpassing the human-level performance baseline of 72.4% and significantly exceeding GPT-5.2's 47.3%.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Rahul Agrawal (citing OpenAI data)",
+      "episode": "gpt-54-first-test-results",
+      "claim_date": "2026-03-06",
+      "evidence": "On OSWorld verified, it hit 75%, which is above human-level performance at 72.4%, and a massive jump from GPT-5.2's 47.3%.",
+      "fp": "23976822c3eb2c8b"
+    },
+    {
+      "claim": "GPT-5.4 achieved a win rate of 69.2% to 70.8% against industry professionals on the GDP eval benchmark, rising to 82-83% when ties are included.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Ethan Mollick / OpenAI Data",
+      "episode": "gpt-54-first-test-results",
+      "claim_date": "2026-03-06",
+      "evidence": "The win rate versus industry professionals was 49.8% for GPT-5.2, 60% for 5.2 Pro, and between 69.2% and 70.8% for the GPT-5.4 family. That's just wins when it comes to ties, that number rises to 82 to 83%.",
+      "fp": "d0c7e243aaf9a226"
+    },
+    {
+      "claim": "Blitzcy achieved a 66.5% performance score on SWE-bench Pro, significantly outperforming GPT-5.4's 57.7% score.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief Host / Blitzcy",
+      "episode": "harness-engineering-101",
+      "claim_date": "2026-04-15",
+      "evidence": "The transcript states: 'Blitzcy... recently released a 66.5% performance on SWE-bench Pro. That is much higher than, for example, GPT-5.4's 57.7.'",
+      "fp": "66c6a644e25c8ac6"
+    },
+    {
+      "claim": "Claude Opus 5 scored 70.6% on the OSWorld 2.0 computer use benchmark, significantly outperforming Fable 5 (55.7%) and GPT-5.6-Soul (62.6%).",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Host / Benchmark Data",
+      "episode": "where-should-claude-opus-5-fit-in-your-model-rotation",
+      "claim_date": "2026-07-28",
+      "evidence": "For computer use on OSWorld 2.0, Opus 5 had a significant edge over its rivals. Fable 5 scored a 55.7% and GPT-5.6-Soul scored 62.6%, but Opus 5 came in over the top with a 70.6%.",
+      "fp": "681dfde1e1f9370a"
+    },
+    {
+      "claim": "Claude Opus 5 achieved a state-of-the-art score of 30.2% on ARC-AGI 3, significantly surpassing the previous high score of 7.8% by GPT-5.6 Soul.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "ARC Prize / Host",
+      "episode": "where-should-claude-opus-5-fit-in-your-model-rotation",
+      "claim_date": "2026-07-28",
+      "evidence": "Opus 5 is the new state of the art on ARC-AGI 3 with a score of 30.2%. This absolutely demolished all the other models. The previous high score was GPT-5.6 Soul at 7.8%, with Opus 4.8 at 1.5, GPT-5.5 at 1.1%, and nothing else above one.",
+      "fp": "89cdf42983f1c5f8"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - ## Current Landscape (2026)",
+      "content": "  - ## Recent Developments\n    - **Claude Fable 5** has emerged as a dominant performer in recent coding and reasoning benchmarks. On SWE-bench Pro, it achieved a score of 80.3%, significantly outperforming GPT-5.5 (58.6%) and Opus 4.8 (69.2%). Furthermore, on the Frontier Code benchmark, Claude Fable 5 scored 29.3%, more than double the previous best of 13.4% achieved by Opus 4.8, while GPT-5.5 managed only 5.7%.\n    - **GPT-5.4** demonstrated substantial progress in computer use and professional task evaluation. It achieved a 75% score on the OSWorld verified benchmark, surpassing the human-level performance baseline of 72.4% and significantly exceeding GPT-5.2's 47.3%. On the GDP eval benchmark, GPT-5.4 achieved a win rate of 69.2% to 70.8% against industry professionals, rising to 82-83% when ties are included, a marked improvement over GPT-5.2's 49.8%.\n    - **Blitzcy** recently released a model achieving a 66.5% performance score on SWE-bench Pro, significantly outperforming GPT-5.4's 57.7% score on the same benchmark.\n    - **Claude Opus 5** has set new state-of-the-art records in both computer use and abstract reasoning. It scored 70.6% on the OSWorld 2.0 computer use benchmark, significantly outperforming Fable 5 (55.7%) and GPT-5.6-Soul (62.6%). Additionally, Claude Opus 5 achieved a state-of-the-art score of 30.2% on ARC-AGI 3, significantly surpassing the previous high score of 7.8% by GPT-5.6 Soul (with Opus 4.8 at 1.5% and GPT-5.5 at 1.1%)."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 4,
+      "relevance": 5,
+      "coherence": 4,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 1,
+      "relevance": 1,
+      "coherence": 2,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "9ab7f0e9eadaf86b",
+        "claim": "Claude Fable 5 achieved a score of 80.3% on SWE-bench Pro, significantly outperforming GPT-5.5 (58.6%) and Opus 4.8 (69.",
+        "matched": true
+      },
+      {
+        "fp": "c4f6bbbd4d5cd3a8",
+        "claim": "On the Frontier Code benchmark, Claude Fable 5 scored 29.3%, more than double the previous best of 13.4% achieved by Opu",
+        "matched": true
+      },
+      {
+        "fp": "23976822c3eb2c8b",
+        "claim": "GPT-5.4 achieved a 75% score on the OSWorld verified benchmark, surpassing the human-level performance baseline of 72.4%",
+        "matched": true
+      },
+      {
+        "fp": "d0c7e243aaf9a226",
+        "claim": "GPT-5.4 achieved a win rate of 69.2% to 70.8% against industry professionals on the GDP eval benchmark, rising to 82-83%",
+        "matched": true
+      },
+      {
+        "fp": "66c6a644e25c8ac6",
+        "claim": "Blitzcy achieved a 66.5% performance score on SWE-bench Pro, significantly outperforming GPT-5.4's 57.7% score.",
+        "matched": true
+      },
+      {
+        "fp": "681dfde1e1f9370a",
+        "claim": "Claude Opus 5 scored 70.6% on the OSWorld 2.0 computer use benchmark, significantly outperforming Fable 5 (55.7%) and GP",
+        "matched": true
+      },
+      {
+        "fp": "89cdf42983f1c5f8",
+        "claim": "Claude Opus 5 achieved a state-of-the-art score of 30.2% on ARC-AGI 3, significantly surpassing the previous high score ",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

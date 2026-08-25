@@ -1,0 +1,181 @@
+{
+  "topic": "Consumer AI Adoption",
+  "topic_slug": "consumer-ai-adoption",
+  "status": "candidate_survivor",
+  "reasons": [],
+  "n_assertions": 6,
+  "episodes": [
+    "openai-declares-code-red",
+    "openai-declares-the-next-phase-of-ai",
+    "openclaw-goes-to-openai",
+    "the-big-questions-shaping-the-consumer-ai-battle",
+    "the-most-important-ai-news-from-google-io",
+    "who-cares-about-consumer-ai"
+  ],
+  "assertion_fingerprints": [
+    "1d14e53248116344",
+    "6a05b0482af728bd",
+    "a7ef570132b67cda",
+    "c9df47f286abb85d",
+    "f76a8436418572a0",
+    "fce8e7625d05d562"
+  ],
+  "target_page": "Consumer AI Adoption.md",
+  "assertions": [
+    {
+      "claim": "The absence of coding models from the reported code red priorities suggests OpenAI may view general consumer usage, not coding, as the primary front in its battle with Google.",
+      "tier": "2",
+      "confidence": "0.7",
+      "source": "Sam Alman (Host Analysis)",
+      "episode": "openai-declares-code-red",
+      "claim_date": "2025-12-03",
+      "evidence": "The host notes that 'no mention of coding models' was made and speculates that 'they don't see that as a major front in their battle with Google,' citing Google's gains in monthly downloads and time per session in general usage.",
+      "fp": "a7ef570132b67cda"
+    },
+    {
+      "claim": "The host suggests that consumer AI and work-related agentic AI are fundamentally different and should be discussed as separate categories, as the impact of agentic AI on society and business models is vastly greater.",
+      "tier": "2",
+      "confidence": "0.7",
+      "source": "AI Daily Brief host",
+      "episode": "openai-declares-the-next-phase-of-ai",
+      "claim_date": "2026-06-10",
+      "evidence": "The host states, 'I wonder if we have officially hit the point where considering consumer AI... as part and parcel of the same thing as work AI... is just fundamentally wrong... it is also clear that there is no comparison between that and the sheer tonnage of impact that agentic work-related AI... are going to have on the face of society.'",
+      "fp": "1d14e53248116344"
+    },
+    {
+      "claim": "Peter Steinberger aims to build an agent that is accessible to non-technical users (e.g., 'his mom'), which will require broader changes in safety, usability, and access to the latest models and research.",
+      "tier": "3",
+      "confidence": "0.85",
+      "source": "Peter Steinberger (cited by host)",
+      "episode": "openclaw-goes-to-openai",
+      "claim_date": "2026-02-16",
+      "evidence": "Peter Steinberger wrote: 'My next mission is to build an agent that even my mom can use. That will need a much broader change, a lot more thought on how to do it safely, and access to the very latest models and research.'",
+      "fp": "fce8e7625d05d562"
+    },
+    {
+      "claim": "The host argues that 'vibes' (personality and tone) are becoming a more critical differentiator in consumer AI than raw state-of-the-art performance, as many use cases have reached a threshold where 'good enough' performance is sufficient.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-big-questions-shaping-the-consumer-ai-battle",
+      "claim_date": "2026-03-05",
+      "evidence": "I would argue that vibes matter in both work use cases and in personal use cases... if, on average, we've reached a threshold where people aren't going to be jumping around because of model performance, then really vibes are all you're left with.",
+      "fp": "6a05b0482af728bd"
+    },
+    {
+      "claim": "Google reduced the price of its Ultra AI subscription plan from $250 to $200 per month and introduced a new $100 plan.",
+      "tier": "1",
+      "confidence": "0.92",
+      "source": "AI Daily Brief host",
+      "episode": "the-most-important-ai-news-from-google-io",
+      "claim_date": "2026-05-20",
+      "evidence": "The host states: \"Google made hay about the fact that they had dropped the price of Ultra from $250 to $200 a month, as well as offering a new $100 plan.\"",
+      "fp": "c9df47f286abb85d"
+    },
+    {
+      "claim": "Total weekly active users of AI applications have grown from approximately 100 million at the beginning of 2024 to 1.2 billion in 2026, representing a 20x increase in two years.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief)",
+      "episode": "who-cares-about-consumer-ai",
+      "claim_date": "2026-05-06",
+      "evidence": "The total weekly active users of AI has gone from about 100 million at the beginning of 2024 to 1.2 billion in 2026. You're talking about a 20x plus increase in 2 years.",
+      "fp": "f76a8436418572a0"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "- ### Overview\n  - **[Emerging signal]** The vast majority of Suno's $200 million in revenue is net new revenue from individual consumer use, rather than spend diverted from working musicians. *(Source: Podcast host (analysis), via AI Daily Brief, 2026-08-24)*",
+      "content": "\n- ### Recent Developments\n  - **[Market Growth]** Total weekly active users of AI applications have grown from approximately 100 million at the beginning of 2024 to 1.2 billion in 2026, representing a 20x increase in two years. *(Source: Host (AI Daily Brief), 2026-08-24)*\n  - **[Pricing Strategy]** Google reduced the price of its Ultra AI subscription plan from $250 to $200 per month and introduced a new $100 plan. *(Source: AI Daily Brief host, 2026-08-24)*\n  - **[Competitive Focus]** The absence of coding models from reported code red priorities suggests OpenAI may view general consumer usage, not coding, as the primary front in its battle with Google, citing Google's gains in monthly downloads and time per session in general usage. *(Source: Sam Alman (Host Analysis), 2026-08-24)*\n  - **[Differentiation]** 'Vibes' (personality and tone) are becoming a more critical differentiator in consumer AI than raw state-of-the-art performance, as many use cases have reached a threshold where 'good enough' performance is sufficient. *(Source: Host (AI Daily Brief), 2026-08-24)*\n  - **[Categorization]** Consumer AI and work-related agentic AI are fundamentally different and should be discussed as separate categories, as the impact of agentic AI on society and business models is vastly greater. *(Source: AI Daily Brief host, 2026-08-24)*\n  - **[Accessibility]** Peter Steinberger aims to build an agent accessible to non-technical users, which will require broader changes in safety, usability, and access to the latest models and research. *(Source: Peter Steinberger (cited by host), 2026-08-24)*"
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 2.0,
+    "rubric_b_improvement": 2.0,
+    "raw_a": {
+      "factual_grounding": 3,
+      "relevance": 3,
+      "coherence": 4,
+      "better_version": "A",
+      "improvement": -2
+    },
+    "raw_b": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "a7ef570132b67cda",
+        "claim": "The absence of coding models from the reported code red priorities suggests OpenAI may view general consumer usage, not ",
+        "matched": true
+      },
+      {
+        "fp": "1d14e53248116344",
+        "claim": "The host suggests that consumer AI and work-related agentic AI are fundamentally different and should be discussed as se",
+        "matched": true
+      },
+      {
+        "fp": "fce8e7625d05d562",
+        "claim": "Peter Steinberger aims to build an agent that is accessible to non-technical users (e.g., 'his mom'), which will require",
+        "matched": true
+      },
+      {
+        "fp": "6a05b0482af728bd",
+        "claim": "The host argues that 'vibes' (personality and tone) are becoming a more critical differentiator in consumer AI than raw ",
+        "matched": true
+      },
+      {
+        "fp": "c9df47f286abb85d",
+        "claim": "Google reduced the price of its Ultra AI subscription plan from $250 to $200 per month and introduced a new $100 plan.",
+        "matched": true
+      },
+      {
+        "fp": "f76a8436418572a0",
+        "claim": "Total weekly active users of AI applications have grown from approximately 100 million at the beginning of 2024 to 1.2 b",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": {
+    "target_page": "Consumer AI Adoption.md",
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "- ### Overview\n  - **[Emerging signal]** The vast majority of Suno's $200 million in revenue is net new revenue from individual consumer use, rather than spend diverted from working musicians. *(Source: Podcast host (analysis), via AI Daily Brief, 2026-08-24)*",
+      "content": "\n- ### Recent Developments\n  - **[Market Growth]** Total weekly active users of AI applications have grown from approximately 100 million at the beginning of 2024 to 1.2 billion in 2026, representing a 20x increase in two years. *(Source: Host (AI Daily Brief), 2026-08-24)*\n  - **[Pricing Strategy]** Google reduced the price of its Ultra AI subscription plan from $250 to $200 per month and introduced a new $100 plan. *(Source: AI Daily Brief host, 2026-08-24)*\n  - **[Competitive Focus]** The absence of coding models from reported code red priorities suggests OpenAI may view general consumer usage, not coding, as the primary front in its battle with Google, citing Google's gains in monthly downloads and time per session in general usage. *(Source: Sam Alman (Host Analysis), 2026-08-24)*\n  - **[Differentiation]** 'Vibes' (personality and tone) are becoming a more critical differentiator in consumer AI than raw state-of-the-art performance, as many use cases have reached a threshold where 'good enough' performance is sufficient. *(Source: Host (AI Daily Brief), 2026-08-24)*\n  - **[Categorization]** Consumer AI and work-related agentic AI are fundamentally different and should be discussed as separate categories, as the impact of agentic AI on society and business models is vastly greater. *(Source: AI Daily Brief host, 2026-08-24)*\n  - **[Accessibility]** Peter Steinberger aims to build an agent accessible to non-technical users, which will require broader changes in safety, usability, and access to the latest models and research. *(Source: Peter Steinberger (cited by host), 2026-08-24)*"
+    },
+    "provenance": {
+      "assertion_fingerprints": [
+        "1d14e53248116344",
+        "6a05b0482af728bd",
+        "a7ef570132b67cda",
+        "c9df47f286abb85d",
+        "f76a8436418572a0",
+        "fce8e7625d05d562"
+      ],
+      "source_episodes": [
+        "openai-declares-code-red",
+        "openai-declares-the-next-phase-of-ai",
+        "openclaw-goes-to-openai",
+        "the-big-questions-shaping-the-consumer-ai-battle",
+        "the-most-important-ai-news-from-google-io",
+        "who-cares-about-consumer-ai"
+      ]
+    },
+    "scores": {
+      "rubric_a_improvement": 2.0,
+      "rubric_b_improvement": 2.0,
+      "completeness": 1.0
+    }
+  }
+}

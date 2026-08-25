@@ -1,0 +1,277 @@
+{
+  "topic": "Multi-Agent System",
+  "topic_slug": "multi-agent-system",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5"
+  ],
+  "n_assertions": 14,
+  "episodes": [
+    "autoresearch-agent-loops-and-the-future-of-work",
+    "grok-bot-finally-makes-ai-agents-easy",
+    "how-i-built-my-10-agent-openclaw-team",
+    "moltbook-the-agent-social-nework-is-the-craziest-ai-phenomena-yet",
+    "opus-46-and-chatgpt-53-codex-are-here-and-the-labs-are-at-war",
+    "ralph-wiggum-clawdbot-and-mac-minis-how-pros-are-vibe-coding-in-2026",
+    "the-ai-scientist-that-does-6-months-of-work-in-a-day",
+    "the-dawn-of-the-agent-age",
+    "the-race-to-put-ai-agents-everywhere",
+    "what-vibe-coding-is-turning-into",
+    "why-moltbook-matters"
+  ],
+  "assertion_fingerprints": [
+    "03bbd58c00a31f26",
+    "0a13c9a37a34de40",
+    "1f8209f3546ef3da",
+    "2f51ddd675c83d8c",
+    "359b65f3ad96ae87",
+    "36f5ae4e3167d920",
+    "455e19a678373508",
+    "7567db9c39663513",
+    "8e0fd714dc09f703",
+    "a15af5345a214422",
+    "a71ced906c93833a",
+    "cfabedd96ee7268b",
+    "e948b856c073ea6d",
+    "eaeaaa640d75c9e1"
+  ],
+  "target_page": "Multi-Agent System.md",
+  "assertions": [
+    {
+      "claim": "Current agentic loops are limited by the lack of a shared semantic memory layer across multiple agents, preventing them from efficiently sharing negative results and coordinating on complex, multi-branch research directions.",
+      "tier": "2",
+      "confidence": "0.82",
+      "source": "Heron / Kathy F (via podcast transcript)",
+      "episode": "autoresearch-agent-loops-and-the-future-of-work",
+      "claim_date": "2026-08-24",
+      "evidence": "Heron writes: 'The missing layer is memory across the swarm... You need a semantic memory layer underneath the branches so Agent 47 knows Agent 12 already tried that direction.' Kathy F adds: 'The real unlock is when these agent researchers can share negative results efficiently.'",
+      "fp": "a15af5345a214422"
+    },
+    {
+      "claim": "The next evolution of autonomous research will involve asynchronous, massive collaboration among agents, moving beyond single-threaded Git commits to a more complex, agent-native social network structure for sharing insights and code.",
+      "tier": "3",
+      "confidence": "0.75",
+      "source": "Andrej Karpathy / Dan Romero (via podcast transcript)",
+      "episode": "autoresearch-agent-loops-and-the-future-of-work",
+      "claim_date": "2026-08-24",
+      "evidence": "Karpathy states: 'The next step for auto research... is that it has to be asynchronously massive collaborative for agents... GitHub is almost but not really suited for this.' Dan Romero wonders if it will look 'closer to a social network than to a new version of GitHub.'",
+      "fp": "8e0fd714dc09f703"
+    },
+    {
+      "claim": "Grok Bot, a collaborative product from Cursor and SpaceX AI, allows users to deploy multiple coordinating agents via a Telegram-like interface that operates on a persistent virtual computer.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "AI Daily Brief Host / Cursor & SpaceX AI",
+      "episode": "grok-bot-finally-makes-ai-agents-easy",
+      "claim_date": "2026-08-13",
+      "evidence": "The host describes Grok Bot as allowing users to 'spin up multiple agents for different tasks' that 'coordinate and interact with one another.' It works in 'their own virtual computer' and can 'sign into web apps and operate software without APIs.' The host notes it is 'one of the first products from the combined efforts of Cursor and SpaceX AI.'",
+      "fp": "359b65f3ad96ae87"
+    },
+    {
+      "claim": "The 'AI teammate' metaphor may be counterproductive for enterprise workflows, with some experts arguing that shared workspaces and integrated skills are more effective than managing dozens of individual agents.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "Fletcher Richman (Type.com) / AI Daily Brief Host",
+      "episode": "grok-bot-finally-makes-ai-agents-easy",
+      "claim_date": "2026-08-13",
+      "evidence": "Fletcher Richman states, 'having dozens of AI teammates is actually counterproductive. It's a vanity metric. Instead, teams need a shared workspace... Grokbot is pretty slick, but it's not how people are going to work.' The host agrees that there are 'two very different modes' for personal vs. team agentic support.",
+      "fp": "0a13c9a37a34de40"
+    },
+    {
+      "claim": "The host anticipates that project manager agents will evolve from simple to-do list managers into systems that interact with other organizational tools and agents to provide comprehensive project status updates.",
+      "tier": "3",
+      "confidence": "0.7",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-i-built-my-10-agent-openclaw-team",
+      "claim_date": "2026-02-15",
+      "evidence": "The host describes a 'phase two' where agents 'will be interacting with other systems to be able to also inform me of the state of those projects beyond just what I'm doing with them.'",
+      "fp": "03bbd58c00a31f26"
+    },
+    {
+      "claim": "Moltbook, a social network for AI agents, reached 2,129 AI agents, 200+ communities, and 10,000+ posts within 48 hours of its launch.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Moltbook official Twitter account (cited by host)",
+      "episode": "moltbook-the-agent-social-nework-is-the-craziest-ai-phenomena-yet",
+      "claim_date": "2026-01-31",
+      "evidence": "The transcript quotes a Moltbook tweet from Friday morning: 'Today, Moltbook has 2,129 AI agents, 200 plus communities, and 10,000 plus posts.'",
+      "fp": "eaeaaa640d75c9e1"
+    },
+    {
+      "claim": "Anthropic introduced a feature called 'agent teams' that allows users to coordinate multiple Claude instances to work on separate tasks contributing to a whole.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Anthropic (via Host)",
+      "episode": "opus-46-and-chatgpt-53-codex-are-here-and-the-labs-are-at-war",
+      "claim_date": "2026-02-06",
+      "evidence": "The transcript explains, 'The feature basically allows users to set a whole team of Claude's to work on a particular problem, including a coordination layer to ensure they're working on separate tasks that all contribute to the whole.'",
+      "fp": "cfabedd96ee7268b"
+    },
+    {
+      "claim": "Cursor built a browser using GPT 5.2 that ran uninterrupted for one week, resulting in over 3 million lines of code across thousands of files.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Michael Troll (Cursor CEO)",
+      "episode": "ralph-wiggum-clawdbot-and-mac-minis-how-pros-are-vibe-coding-in-2026",
+      "claim_date": "2026-01-26",
+      "evidence": "The host quotes Michael Troll: 'we built a browser with GPT 5.2 in Cursor. It ran uninterrupted for one week. It's 3 million plus lines of code across thousands of files.'",
+      "fp": "7567db9c39663513"
+    },
+    {
+      "claim": "In Cursor's multi-agent experiment, a flat coordination structure caused 20 agents to slow down to the effective throughput of two or three due to locking mechanisms.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Cursor Blog",
+      "episode": "ralph-wiggum-clawdbot-and-mac-minis-how-pros-are-vibe-coding-in-2026",
+      "claim_date": "2026-01-26",
+      "evidence": "The host reports: 'The locking mechanism they implemented... ended up becoming a bottleneck. As they put it, 20 agents would slow down to the effective throughput of two or three with most time spent waiting.'",
+      "fp": "455e19a678373508"
+    },
+    {
+      "claim": "Cosmos uses a multi-agent architecture where hundreds of AI agents operate in parallel, sharing information through a common 'world model' or 'whiteboard' to maintain coherence during long-term investigations.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Carlos Perez (Analyst/Commentator)",
+      "episode": "the-ai-scientist-that-does-6-months-of-work-in-a-day",
+      "claim_date": "2025-11-18",
+      "evidence": "Carlos Perez explained: 'The team behind Cosmos didn't just try to build a smarter brain. They built a shared consciousness. They call it a structured world model... Think of it like a giant live updating whiteboard. Cosmos unleashes hundreds of AI agents in parallel... Crucially, every other agent can see the whole board.'",
+      "fp": "2f51ddd675c83d8c"
+    },
+    {
+      "claim": "Moltbook, a social network for AI agents, reached over 100,000 agents by the end of its launch day and currently has over 1.5 million agents.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-dawn-of-the-agent-age",
+      "claim_date": "2026-02-05",
+      "evidence": "By the end of the day, when I posted my episode about it, there were over a 100,000. Moltbook now has over a million and a half agents.",
+      "fp": "1f8209f3546ef3da"
+    },
+    {
+      "claim": "OpenAI introduced native integration of sub-agents into Codex, allowing users to spawn specialized agents with different models or reasoning levels using natural language prompts.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "OpenAI",
+      "episode": "the-race-to-put-ai-agents-everywhere",
+      "claim_date": "2026-03-18",
+      "evidence": "The OpenAI developers account writes, 'You can accelerate your workflow by spinning up specialized agents to keep your main context window clean, tackle different parts of a task in parallel, steer individual individual agents as work unfolds.' LLM Junky and Well writes, 'you can just prompt your agent to spawn whatever model or reasoning level you want with only natural language.'",
+      "fp": "e948b856c073ea6d"
+    },
+    {
+      "claim": "Modern agentic products like Perplexity Computer and Replit Agent 4 are not single agents but multi-agent systems that dynamically spin up specialized subagents to execute complex, multi-step workflows.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "AI Daily Brief host",
+      "episode": "what-vibe-coding-is-turning-into",
+      "claim_date": "2026-03-12",
+      "evidence": "Replit 4 and Perplexity AI computer aren't an agent. They are an entire team of agents that get spun up in a purpose-built way to solve whatever it is the challenge or achieve whatever it is the goal that the prompter has put to them.",
+      "fp": "36f5ae4e3167d920"
+    },
+    {
+      "claim": "Moltbook, a social network for AI agents, grew from approximately 2,000 agents on Friday morning to 100,000 agents by the evening of the same day, and reached 1.5 million agents by the time of the podcast recording.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Host (AI Daily Brief)",
+      "episode": "why-moltbook-matters",
+      "claim_date": "2026-02-03",
+      "evidence": "By midday on Friday when I was recording my episode, those 2,000 agents had become 30,000. And by the time the episode got published that evening, it was up to 100,000. At this point, we are at 1.5 million.",
+      "fp": "a71ced906c93833a"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - Reliability remains the frontier rather than framework choice: a January 2026 arXiv large-scale study of 42K commits and 4.7K issues across eight leading MAS found agent-coordination challenges account for ~10% of issues, with recurring emergent failure modes (agents disagreeing, corrupted shared state, runaway loops) driving emphasis on eval pipelines, budget caps, replayable traces and human-in-the-loop checkpoints.",
+      "content": "\n\n- ### Recent Developments (2026)\n  - **Cursor\u2019s Autonomous Browser Build** \u2014 Cursor CEO Michael Troll reported that the team built a browser using GPT 5.2 within Cursor that ran uninterrupted for one week, generating over 3 million lines of code across thousands of files. This long-horizon autonomous execution highlights both the potential scale of LLM-driven MAS and the engineering challenges of maintaining coherence over extended periods.\n  - **Moltbook: Social Networking for Agents** \u2014 Moltbook, a social network designed specifically for AI agents, experienced explosive growth, reaching 2,129 agents, 200+ communities, and 10,000+ posts within 48 hours of launch. By the evening of its launch day, the user base had grown to over 100,000 agents, and by the time of recent reporting, it had reached 1.5 million agents. This demonstrates the emergence of agent-native social structures and peer-to-peer interaction layers distinct from human-centric platforms.\n  - **Anthropic\u2019s \u2018Agent Teams\u2019** \u2014 Anthropic introduced a feature allowing users to coordinate multiple Claude instances to work on separate tasks contributing to a whole. This includes a coordination layer that ensures agents are working on distinct sub-tasks, effectively productizing the MAS pattern of task decomposition and parallel execution for enterprise and consumer use.\n  - **OpenAI Codex Sub-Agents** \u2014 OpenAI introduced native integration of sub-agents into Codex, enabling users to spawn specialized agents with different models or reasoning levels using natural language prompts. This allows for dynamic resource allocation and context window management, where specialized agents handle specific parts of a task in parallel to keep the main context clean.\n  - **Coordination Bottlenecks in Flat Architectures** \u2014 In a multi-agent experiment, Cursor found that a flat coordination structure caused 20 agents to slow down to the effective throughput of two or three due to locking mechanisms. This highlights a critical engineering challenge in MAS: as agent count increases, naive synchronization strategies can become severe bottlenecks, necessitating more sophisticated coordination protocols or hierarchical structures.\n  - **Grok Bot: Persistent Virtual Environments** \u2014 Grok Bot, a collaborative product from Cursor and SpaceX AI, allows users to deploy multiple coordinating agents via a Telegram-like interface operating on a persistent virtual computer. Agents can sign into web apps and operate software without APIs, showcasing the integration of MAS with persistent, stateful execution environments.\n  - **The Memory Gap** \u2014 Current agentic loops are limited by the lack of a shared semantic memory layer across multiple agents. Experts note that agents cannot efficiently share negative results or coordinate on complex, multi-branch research directions without a semantic memory layer that allows one agent to know what another has already tried. This is identified as a key missing component for next-generation autonomous research systems.\n  - **Cosmos: Shared World Models** \u2014 The Cosmos system uses a multi-agent architecture where hundreds of AI agents operate in parallel, sharing information through a common \u2018world model\u2019 or \u2018whiteboard.\u2019 This structured, live-updating shared state allows every agent to see the whole board, maintaining coherence during long-term investigations and representing a shift toward \u2018shared consciousness\u2019 in MAS design.\n  - **Productized Multi-Agent Systems** \u2014 Modern agentic products like Perplexity Computer and Replit Agent 4 are not single agents but multi-agent systems that dynamically spin up specialized subagents to execute complex, multi-step workflows. This trend indicates that MAS is becoming the default architecture for high-end AI products, rather than a specialized research niche.\n  - **Agent-Native Collaboration Networks** \u2014 Andrej Karpathy and other commentators suggest that the next evolution of autonomous research will involve asynchronous, massive collaboration among agents, moving beyond single-threaded Git commits to a more complex, agent-native social network structure for sharing insights and code. This implies a fundamental shift in how software development and research collaboration are structured in the agentic era."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 4,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 3,
+      "relevance": 4,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    }
+  },
+  "completeness": {
+    "score": 0.9166666666666666,
+    "detail": [
+      {
+        "fp": "7567db9c39663513",
+        "claim": "Cursor built a browser using GPT 5.2 that ran uninterrupted for one week, resulting in over 3 million lines of code acro",
+        "matched": true
+      },
+      {
+        "fp": "eaeaaa640d75c9e1",
+        "claim": "Moltbook, a social network for AI agents, reached 2,129 AI agents, 200+ communities, and 10,000+ posts within 48 hours o",
+        "matched": true
+      },
+      {
+        "fp": "a71ced906c93833a",
+        "claim": "Moltbook, a social network for AI agents, grew from approximately 2,000 agents on Friday morning to 100,000 agents by th",
+        "matched": false
+      },
+      {
+        "fp": "cfabedd96ee7268b",
+        "claim": "Anthropic introduced a feature called 'agent teams' that allows users to coordinate multiple Claude instances to work on",
+        "matched": true
+      },
+      {
+        "fp": "455e19a678373508",
+        "claim": "In Cursor's multi-agent experiment, a flat coordination structure caused 20 agents to slow down to the effective through",
+        "matched": true
+      },
+      {
+        "fp": "1f8209f3546ef3da",
+        "claim": "Moltbook, a social network for AI agents, reached over 100,000 agents by the end of its launch day and currently has ove",
+        "matched": true
+      },
+      {
+        "fp": "e948b856c073ea6d",
+        "claim": "OpenAI introduced native integration of sub-agents into Codex, allowing users to spawn specialized agents with different",
+        "matched": true
+      },
+      {
+        "fp": "359b65f3ad96ae87",
+        "claim": "Grok Bot, a collaborative product from Cursor and SpaceX AI, allows users to deploy multiple coordinating agents via a T",
+        "matched": true
+      },
+      {
+        "fp": "a15af5345a214422",
+        "claim": "Current agentic loops are limited by the lack of a shared semantic memory layer across multiple agents, preventing them ",
+        "matched": true
+      },
+      {
+        "fp": "2f51ddd675c83d8c",
+        "claim": "Cosmos uses a multi-agent architecture where hundreds of AI agents operate in parallel, sharing information through a co",
+        "matched": true
+      },
+      {
+        "fp": "36f5ae4e3167d920",
+        "claim": "Modern agentic products like Perplexity Computer and Replit Agent 4 are not single agents but multi-agent systems that d",
+        "matched": true
+      },
+      {
+        "fp": "8e0fd714dc09f703",
+        "claim": "The next evolution of autonomous research will involve asynchronous, massive collaboration among agents, moving beyond s",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

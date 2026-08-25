@@ -1,0 +1,200 @@
+{
+  "topic": "Human-AI Collaboration",
+  "topic_slug": "human-ai-collaboration",
+  "status": "candidate_survivor",
+  "reasons": [],
+  "n_assertions": 7,
+  "episodes": [
+    "beating-the-ai-doom-cycle",
+    "can-todays-ai-replace-12-of-work",
+    "how-to-learn-ai-with-ai",
+    "towards-ai-that-can-actually-interact",
+    "why-2026-is-the-year-of-the-ai-builder-with-lovable-ceo-anton-osika",
+    "why-everyone-is-obsessed-with-claude-code",
+    "work-agi-is-the-only-agi-that-matters"
+  ],
+  "assertion_fingerprints": [
+    "0c103b00f75ab85d",
+    "27b0124d7390e7b7",
+    "4193b569cdcd894a",
+    "4283cf1c4e4b6782",
+    "5eac3c6b3d9658fb",
+    "799e9d39905093fe",
+    "d8e9dd251c5c5261"
+  ],
+  "target_page": "Human-AI Collaboration.md",
+  "assertions": [
+    {
+      "claim": "OpenAI and Anthropic are launching massive consulting efforts and joint centers of excellence with firms like Accenture, Deloitte, and PwC to bridge the gap between AI capabilities and corporate integration, certifying thousands of professionals.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "AI Daily Brief Host / Paul Bloom",
+      "episode": "beating-the-ai-doom-cycle",
+      "claim_date": "2026-08-24",
+      "evidence": "The host notes: 'Open AI and Anthropic launching massive consulting efforts... Paul Bloom nailed it when he jokingly tweeted... Anthropic... working with companies like Accenture, Deloitte, PWC, and others to build joint centers of excellence and training and certify 30,000 PWC professionals on Claude.'",
+      "fp": "4193b569cdcd894a"
+    },
+    {
+      "claim": "Anthropic engineers are developing 'intuitions for AI delegation,' preferring to delegate easily verifiable tasks to build trust before handling complex work.",
+      "tier": "2",
+      "confidence": "0.88",
+      "source": "Anthropic Economic Index / Host Analysis",
+      "episode": "can-todays-ai-replace-12-of-work",
+      "claim_date": "2025-12-05",
+      "evidence": "The transcript notes: 'Engineers tend to delegate tasks that are easily verifiable where they can relatively easily snip check on correctness and many describe a trust progression starting with simple tasks.'",
+      "fp": "0c103b00f75ab85d"
+    },
+    {
+      "claim": "The host identifies a trend where users are shifting from drafting content themselves and having AI comment, to letting AI draft first and then reacting, leveraging the AI's \"near infinite output capacity\" to explore ideas broadly.",
+      "tier": "3",
+      "confidence": "0.65",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-to-learn-ai-with-ai",
+      "claim_date": "2026-02-14",
+      "evidence": "The host states: \"I think increasingly we're shifting in the other direction where the flow that makes the most sense is to let the AI draft and then to react. take advantage of that near infinite output capacity to go wide first.\"",
+      "fp": "27b0124d7390e7b7"
+    },
+    {
+      "claim": "Thinking Machines Lab argues that current AI systems create a 'collaboration bottleneck' because they experience reality in a single thread, forcing users to batch thoughts and adapt to the model rather than the interface adapting to the user.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "Thinking Machines Lab",
+      "episode": "towards-ai-that-can-actually-interact",
+      "claim_date": "2026-05-13",
+      "evidence": "They write, 'Today's models experience reality in a single thread... This creates a narrow channel for human-AI collaboration that limits how much of a person's knowledge, intent, and judgment can reach the model.'",
+      "fp": "4283cf1c4e4b6782"
+    },
+    {
+      "claim": "The most valuable skills for software engineers in the AI era will be the ability to reason about complex systems with AI assistance and to exercise human creativity and judgment in user experience design.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Anton Osika, CEO of Lovable",
+      "episode": "why-2026-is-the-year-of-the-ai-builder-with-lovable-ceo-anton-osika",
+      "claim_date": "2025-12-29",
+      "evidence": "The other thing is like how big of complex systems can you like reason about together with AI... I do think also if or many fields like human creativity or like oh is this a good thing... That type of creativity is going to be super super important in creating the best user experiences.",
+      "fp": "799e9d39905093fe"
+    },
+    {
+      "claim": "Ethan Mollick argued that managing AI agents is fundamentally a management problem requiring teachable skills such as specifying goals, providing context, and dividing tasks.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Ethan Mollick",
+      "episode": "why-everyone-is-obsessed-with-claude-code",
+      "claim_date": "2026-01-09",
+      "evidence": "Ethan Mollick writes, 'When you see how people use Claude Code, Codex, etc., it becomes clear that managing agents is really a management problem. Can you specify goals? Can you provide context? Can you divide up tasks? Can you give feedback? These are teachable skills.'",
+      "fp": "5eac3c6b3d9658fb"
+    },
+    {
+      "claim": "The host argues that the current state of AI represents 'task AGI,' where AI excels at specific, discrete tasks but struggles with long strings of tasks requiring human oversight.",
+      "tier": "3",
+      "confidence": "0.7",
+      "source": "AI Daily Brief Host",
+      "episode": "work-agi-is-the-only-agi-that-matters",
+      "claim_date": "2026-03-26",
+      "evidence": "I think effectively what we have, and something that might kind of explain the jagged frontier of AI capability, is almost like we have task AGI. Almost anything that you can ask AI to do that is specific and discreet, it can do really well. The problem is that a lot of work is strings of tasks together where AI capability starts to break down.",
+      "fp": "d8e9dd251c5c5261"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "- Teaming with autonomous systems where [[Human Oversight]] remains essential.",
+      "content": "- Teaming with autonomous systems where [[Human Oversight]] remains essential.\n- ### Recent Developments\n- **Enterprise Integration & Consulting:** OpenAI and Anthropic are launching massive consulting efforts and joint centers of excellence with firms like Accenture, Deloitte, and PwC to bridge the gap between AI capabilities and corporate integration, certifying thousands of professionals (e.g., 30,000 PwC professionals on Claude). [source: AI Daily Brief Host / Paul Bloom, confidence 0.8, tier 2]\n- **Delegation Heuristics:** Anthropic engineers are developing 'intuitions for AI delegation,' preferring to delegate easily verifiable tasks to build trust before handling complex work, describing a trust progression that starts with simple tasks. [source: Anthropic Economic Index / Host Analysis, confidence 0.88, tier 2]\n- **Workflow Inversion:** A trend is emerging where users shift from drafting content themselves and having AI comment, to letting AI draft first and then reacting, leveraging the AI's \"near infinite output capacity\" to explore ideas broadly. [source: Host (AI Daily Brief), confidence 0.65, tier 3]\n- **Collaboration Bottlenecks:** Thinking Machines Lab argues that current AI systems create a 'collaboration bottleneck' because they experience reality in a single thread, forcing users to batch thoughts and adapt to the model rather than the interface adapting to the user. [source: Thinking Machines Lab, confidence 0.9, tier 2]\n- **Evolving Skill Sets:** The most valuable skills for software engineers in the AI era are identified as the ability to reason about complex systems with AI assistance and to exercise human creativity and judgment in user experience design. [source: Anton Osika, CEO of Lovable, confidence 0.8, tier 2]\n- **Management as a Core Skill:** Ethan Mollick argues that managing AI agents is fundamentally a management problem requiring teachable skills such as specifying goals, providing context, dividing tasks, and giving feedback. [source: Ethan Mollick, confidence 0.85, tier 2]\n- **Task AGI Limitations:** The current state of AI is described as 'task AGI,' where AI excels at specific, discrete tasks but struggles with long strings of tasks requiring continuous human oversight. [source: AI Daily Brief Host, confidence 0.7, tier 3]"
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 1.0,
+    "rubric_b_improvement": 2.0,
+    "raw_a": {
+      "factual_grounding": 3,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "A",
+      "improvement": -1
+    },
+    "raw_b": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 4,
+      "better_version": "B",
+      "improvement": 2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "4193b569cdcd894a",
+        "claim": "OpenAI and Anthropic are launching massive consulting efforts and joint centers of excellence with firms like Accenture,",
+        "matched": true
+      },
+      {
+        "fp": "0c103b00f75ab85d",
+        "claim": "Anthropic engineers are developing 'intuitions for AI delegation,' preferring to delegate easily verifiable tasks to bui",
+        "matched": true
+      },
+      {
+        "fp": "27b0124d7390e7b7",
+        "claim": "The host identifies a trend where users are shifting from drafting content themselves and having AI comment, to letting ",
+        "matched": true
+      },
+      {
+        "fp": "4283cf1c4e4b6782",
+        "claim": "Thinking Machines Lab argues that current AI systems create a 'collaboration bottleneck' because they experience reality",
+        "matched": true
+      },
+      {
+        "fp": "799e9d39905093fe",
+        "claim": "The most valuable skills for software engineers in the AI era will be the ability to reason about complex systems with A",
+        "matched": true
+      },
+      {
+        "fp": "5eac3c6b3d9658fb",
+        "claim": "Ethan Mollick argued that managing AI agents is fundamentally a management problem requiring teachable skills such as sp",
+        "matched": true
+      },
+      {
+        "fp": "d8e9dd251c5c5261",
+        "claim": "The host argues that the current state of AI represents 'task AGI,' where AI excels at specific, discrete tasks but stru",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": {
+    "target_page": "Human-AI Collaboration.md",
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "- Teaming with autonomous systems where [[Human Oversight]] remains essential.",
+      "content": "- Teaming with autonomous systems where [[Human Oversight]] remains essential.\n- ### Recent Developments\n- **Enterprise Integration & Consulting:** OpenAI and Anthropic are launching massive consulting efforts and joint centers of excellence with firms like Accenture, Deloitte, and PwC to bridge the gap between AI capabilities and corporate integration, certifying thousands of professionals (e.g., 30,000 PwC professionals on Claude). [source: AI Daily Brief Host / Paul Bloom, confidence 0.8, tier 2]\n- **Delegation Heuristics:** Anthropic engineers are developing 'intuitions for AI delegation,' preferring to delegate easily verifiable tasks to build trust before handling complex work, describing a trust progression that starts with simple tasks. [source: Anthropic Economic Index / Host Analysis, confidence 0.88, tier 2]\n- **Workflow Inversion:** A trend is emerging where users shift from drafting content themselves and having AI comment, to letting AI draft first and then reacting, leveraging the AI's \"near infinite output capacity\" to explore ideas broadly. [source: Host (AI Daily Brief), confidence 0.65, tier 3]\n- **Collaboration Bottlenecks:** Thinking Machines Lab argues that current AI systems create a 'collaboration bottleneck' because they experience reality in a single thread, forcing users to batch thoughts and adapt to the model rather than the interface adapting to the user. [source: Thinking Machines Lab, confidence 0.9, tier 2]\n- **Evolving Skill Sets:** The most valuable skills for software engineers in the AI era are identified as the ability to reason about complex systems with AI assistance and to exercise human creativity and judgment in user experience design. [source: Anton Osika, CEO of Lovable, confidence 0.8, tier 2]\n- **Management as a Core Skill:** Ethan Mollick argues that managing AI agents is fundamentally a management problem requiring teachable skills such as specifying goals, providing context, dividing tasks, and giving feedback. [source: Ethan Mollick, confidence 0.85, tier 2]\n- **Task AGI Limitations:** The current state of AI is described as 'task AGI,' where AI excels at specific, discrete tasks but struggles with long strings of tasks requiring continuous human oversight. [source: AI Daily Brief Host, confidence 0.7, tier 3]"
+    },
+    "provenance": {
+      "assertion_fingerprints": [
+        "0c103b00f75ab85d",
+        "27b0124d7390e7b7",
+        "4193b569cdcd894a",
+        "4283cf1c4e4b6782",
+        "5eac3c6b3d9658fb",
+        "799e9d39905093fe",
+        "d8e9dd251c5c5261"
+      ],
+      "source_episodes": [
+        "beating-the-ai-doom-cycle",
+        "can-todays-ai-replace-12-of-work",
+        "how-to-learn-ai-with-ai",
+        "towards-ai-that-can-actually-interact",
+        "why-2026-is-the-year-of-the-ai-builder-with-lovable-ceo-anton-osika",
+        "why-everyone-is-obsessed-with-claude-code",
+        "work-agi-is-the-only-agi-that-matters"
+      ]
+    },
+    "scores": {
+      "rubric_a_improvement": 1.0,
+      "rubric_b_improvement": 2.0,
+      "completeness": 1.0
+    }
+  }
+}

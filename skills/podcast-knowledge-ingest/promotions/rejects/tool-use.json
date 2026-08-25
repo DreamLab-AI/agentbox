@@ -1,0 +1,278 @@
+{
+  "topic": "Tool Use",
+  "topic_slug": "tool-use",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5"
+  ],
+  "n_assertions": 14,
+  "episodes": [
+    "can-todays-ai-replace-12-of-work",
+    "claude-code-turns-one",
+    "does-gemini-31-pro-matter",
+    "gpt-54-first-test-results",
+    "how-i-built-my-10-agent-openclaw-team",
+    "how-people-actually-use-ai-agents",
+    "how-to-learn-ai-with-ai",
+    "how-to-use-claudes-massive-new-upgrades",
+    "moltbook-the-agent-social-nework-is-the-craziest-ai-phenomena-yet",
+    "what-people-are-actually-using-ai-for-right-now",
+    "why-ai-hasnt-increased-unemployment-according-to-anthropic",
+    "why-claude-opus-45-changes-whats-possible-with-vibe-coding"
+  ],
+  "assertion_fingerprints": [
+    "139765e80b32ab28",
+    "154bdbf4a340f173",
+    "25a283758127a576",
+    "47ea8d9c1f8fa2bc",
+    "5966cd3b4d44a118",
+    "5a17520baf8f5cf5",
+    "89171a65d8256d60",
+    "9d46bcefb2894770",
+    "b1796d4e2166354b",
+    "b6e067f59559a18b",
+    "bd595f92d72ca941",
+    "cc3911a34131c654",
+    "e21c7e1151d11d61",
+    "e51469863d706890"
+  ],
+  "target_page": "Tool Use.md",
+  "assertions": [
+    {
+      "claim": "The complexity of tasks handled by Claude Code has increased significantly over six months, with the number of consecutive tool calls more than doubling.",
+      "tier": "1",
+      "confidence": "0.92",
+      "source": "Anthropic Economic Index",
+      "episode": "can-todays-ai-replace-12-of-work",
+      "claim_date": "2025-12-05",
+      "evidence": "The transcript reports: 'The number of consecutive tool calls cloud code can make more than doubled and the amount of human input needed to accomplish a given task has decreased significantly.'",
+      "fp": "5a17520baf8f5cf5"
+    },
+    {
+      "claim": "Anthropic's API analysis indicates that almost 50% of all tool calls are related to software engineering, making it the dominant use case for their models.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Anthropic API Analysis",
+      "episode": "claude-code-turns-one",
+      "claim_date": "2026-02-26",
+      "evidence": "The transcript notes, 'Anthropic's recent analysis of their API figures found that almost half of all tool calls are related to software engineering. In other words, AI coding is the biggest use case for anthropics models and it's not close.'",
+      "fp": "154bdbf4a340f173"
+    },
+    {
+      "claim": "Gemini 3.1 Pro lags behind competitors like Claude Sonnet 4.6, Opus 4.6, GPT 5.2, and GLM5 on real-world agentic performance evaluations, specifically the GDP-valve test.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Host (citing Artificial Analysis and skeptical commentators)",
+      "episode": "does-gemini-31-pro-matter",
+      "claim_date": "2026-02-21",
+      "evidence": "The transcript notes: 'While Gemini 3.1 Pro did jump up meaningfully from Gemini 3 Pro, it was behind Sonnet 4.6, Opus 4.6, GPT 5.2, and GLM5.' Commentator Scaling01 is quoted saying 'Gemini 3.1 Pro's GDP vow scores are concerning.'",
+      "fp": "b6e067f59559a18b"
+    },
+    {
+      "claim": "GPT-5.4's new tool search mechanism reduced total token usage by 47% on 250 tasks from Scale's MCP Atlas while maintaining the same accuracy as previous methods.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "OpenAI Announcement",
+      "episode": "gpt-54-first-test-results",
+      "claim_date": "2026-03-06",
+      "evidence": "They evaluated 250 tasks from Scale's MCP Atlas and found that this new configuration had the same accuracy, but reduced total token usage by 47%.",
+      "fp": "25a283758127a576"
+    },
+    {
+      "claim": "The Codex CLI experience for GPT-5.4 offers significantly less friction and better transparency than Claude Code, featuring fewer approval prompts and interstitial status updates during long-running tasks.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host / Mark Tenenholtz",
+      "episode": "gpt-54-first-test-results",
+      "claim_date": "2026-03-06",
+      "evidence": "Mark Tenenholz... called them the real hero. 'So much less friction than the previous approval system'... Codex did a much better job of letting you know what was going on as it was building. It actually has not just reasoning traces, but almost interstitial updates around what it's doing.",
+      "fp": "5966cd3b4d44a118"
+    },
+    {
+      "claim": "The host identifies a significant security risk in the OpenClaw ecosystem, noting that many initial skills and plugins contained malware, though the situation is improving.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-i-built-my-10-agent-openclaw-team",
+      "claim_date": "2026-02-15",
+      "evidence": "The host mentions: 'I haven't started using a bunch of skills which seems to be kind of a good thing given that they found that initially a ton of them had malware... I do think that the security situation is literally getting meaningfully better every single day.'",
+      "fp": "89171a65d8256d60"
+    },
+    {
+      "claim": "Anthropic defines an agent for the purposes of their study as 'an AI system equipped with tools that allow it to take actions,' focusing analysis on individual tool calls rather than inferred architectures.",
+      "tier": "1",
+      "confidence": "0.98",
+      "source": "Anthropic Study",
+      "episode": "how-people-actually-use-ai-agents",
+      "claim_date": "2026-02-19",
+      "evidence": "The transcript quotes the study: 'An agent is an AI system equipped with tools that allow it to take actions... we instead perform our analysis at the level of individual tool calls.'",
+      "fp": "9d46bcefb2894770"
+    },
+    {
+      "claim": "Software engineering accounts for approximately 50% of all tool calls in Anthropic's agent usage data, while back-office automation is the second largest category at 9.1%.",
+      "tier": "1",
+      "confidence": "0.96",
+      "source": "Anthropic Study / AI Daily Brief Host",
+      "episode": "how-people-actually-use-ai-agents",
+      "claim_date": "2026-02-19",
+      "evidence": "The transcript states: 'software engineering represents around half of the tool calls overall... Back office automation is at number two at 9.1%.'",
+      "fp": "b1796d4e2166354b"
+    },
+    {
+      "claim": "The host suggests that users should use their primary AI partner to write prompts and specifications for other AI tools (e.g., using Claude to write prompts for Gemini's Nano Banana Pro), while verifying the output to ensure accuracy.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-to-learn-ai-with-ai",
+      "claim_date": "2026-02-14",
+      "evidence": "The host states: \"Use your AI partner to write the prompts for your other AI partners... Not only is it going to be more precise, it's going to be a lot faster... Take the time to click the file that it wrote... and make sure that it accurately says what you want it to.\"",
+      "fp": "139765e80b32ab28"
+    },
+    {
+      "claim": "Anthropic's computer use capability is designed to prioritize existing API connectors for precision, only falling back to controlling the mouse, keyboard, and screen when a specific connector is not available for a task.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "Anthropic",
+      "episode": "how-to-use-claudes-massive-new-upgrades",
+      "claim_date": "2026-03-24",
+      "evidence": "Anthropic's announcement blog states: 'When using your computer, they say, Claude will reach for the most precise tool first, starting with existing connectors to services like Slack or Google Calendar. However, when Claude finds that there is not a connector set up, it can control browser, mouse, keyboard, and screen to complete different tasks.'",
+      "fp": "47ea8d9c1f8fa2bc"
+    },
+    {
+      "claim": "OpenClaw agents demonstrated emergent tool-use capabilities by autonomously converting voice memos to text using FFmpeg and OpenAI's Whisper API without explicit user configuration.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Peter Steinberger (creator of OpenClaw)",
+      "episode": "moltbook-the-agent-social-nework-is-the-craziest-ai-phenomena-yet",
+      "claim_date": "2026-01-31",
+      "evidence": "Steinberger described an instance where he sent a voice memo, and the agent identified the file format, used FFmpeg to convert it to Wave, found an OpenAI key in the environment, and used curl to send it to Whisper for transcription.",
+      "fp": "bd595f92d72ca941"
+    },
+    {
+      "claim": "The share of LLM requests that invoke tools rose from around 0% at the beginning of 2025 to 15% by the end of the year.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "OpenRouter and a16z",
+      "episode": "what-people-are-actually-using-ai-for-right-now",
+      "claim_date": "2025-12-09",
+      "evidence": "The host reports: 'the share of requests that invoke tools rose steadily throughout the year from around 0% at the beginning of the year to 15% now.'",
+      "fp": "cc3911a34131c654"
+    },
+    {
+      "claim": "Anthropic has expanded its voice mode to Opus and Sonnet models and enabled compatibility with connectors like Gmail and Slack.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Anthropic (reported by AI Daily Brief host)",
+      "episode": "why-ai-hasnt-increased-unemployment-according-to-anthropic",
+      "claim_date": "2026-07-25",
+      "evidence": "Anthropic has finally made their voice mode available for their Opus and Sonnet models rather than just Haiku... Anthropic's voice mode is now compatible with connectors, allowing it to tap into apps like Gmail, Slack, or Notion to do things like check your calendar or email mid-conversation.",
+      "fp": "e51469863d706890"
+    },
+    {
+      "claim": "Anthropic released three new features for agentic tool use: a tool search tool, programmatic tool calling, and tool use examples.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Anthropic announcement post",
+      "episode": "why-claude-opus-45-changes-whats-possible-with-vibe-coding",
+      "claim_date": "2025-11-26",
+      "evidence": "The transcript lists: 'A tool search tool... Programmatic tool calling... and tool use examples which provide a universal standard for demonstrating how to effectively use a given tool.'",
+      "fp": "e21c7e1151d11d61"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - Security became the dominant frontier concern: prompt injection ranks #1 on OWASP's 2025 LLM Top 10 with tool abuse as the primary attack surface, and Check Point's August 2026 analysis of Cloudflare Code Mode found five vulnerabilities in the workerd runtime (two rated Critical), underscoring the risk of giving models a code-execution sandbox over live tools.",
+      "content": "\n\n- ### Recent Developments and Industry Insights (2025\u20132026)\n  - **Adoption Metrics and Usage Patterns**\n    - The share of LLM requests that invoke tools rose from approximately 0% at the beginning of 2025 to 15% by the end of the year, according to data from OpenRouter and a16z.\n    - Anthropic's analysis of API usage indicates that software engineering accounts for approximately 50% of all tool calls, making it the dominant use case for their models. Back-office automation follows as the second largest category at 9.1%.\n    - Anthropic defines an agent for the purposes of their study as \"an AI system equipped with tools that allow it to take actions,\" focusing their analysis on individual tool calls rather than inferred architectures.\n  - **New Features and Capabilities**\n    - Anthropic released three new features for agentic tool use: a tool search tool, programmatic tool calling, and tool use examples, the latter providing a universal standard for demonstrating how to effectively use a given tool.\n    - GPT-5.4 introduced a new tool search mechanism that reduced total token usage by 47% on 250 tasks from Scale's MCP Atlas while maintaining the same accuracy as previous methods.\n    - Anthropic expanded its voice mode to Opus and Sonnet models and enabled compatibility with connectors like Gmail and Slack, allowing the model to tap into apps to check calendars or email mid-conversation.\n    - Anthropic's computer use capability is designed to prioritize existing API connectors for precision, only falling back to controlling the mouse, keyboard, and screen when a specific connector is not available for a task.\n  - **Agent Complexity and Autonomy**\n    - The complexity of tasks handled by Claude Code has increased significantly over six months, with the number of consecutive tool calls more than doubling and the amount of human input needed to accomplish a given task decreasing significantly.\n    - OpenClaw agents demonstrated emergent tool-use capabilities by autonomously converting voice memos to text using FFmpeg and OpenAI's Whisper API without explicit user configuration, identifying file formats and environment keys to execute the pipeline.\n  - **Developer Experience and Best Practices**\n    - The Codex CLI experience for GPT-5.4 is reported to offer significantly less friction and better transparency than Claude Code, featuring fewer approval prompts and interstitial status updates during long-running tasks.\n    - Industry practitioners suggest using a primary AI partner to write prompts and specifications for other AI tools (e.g., using Claude to write prompts for Gemini's Nano Banana Pro), while verifying the output to ensure accuracy."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 2,
+      "relevance": 4,
+      "coherence": 3,
+      "better_version": "A",
+      "improvement": -2
+    },
+    "raw_b": {
+      "factual_grounding": 4,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "9d46bcefb2894770",
+        "claim": "Anthropic defines an agent for the purposes of their study as 'an AI system equipped with tools that allow it to take ac",
+        "matched": true
+      },
+      {
+        "fp": "b1796d4e2166354b",
+        "claim": "Software engineering accounts for approximately 50% of all tool calls in Anthropic's agent usage data, while back-office",
+        "matched": true
+      },
+      {
+        "fp": "e21c7e1151d11d61",
+        "claim": "Anthropic released three new features for agentic tool use: a tool search tool, programmatic tool calling, and tool use ",
+        "matched": true
+      },
+      {
+        "fp": "cc3911a34131c654",
+        "claim": "The share of LLM requests that invoke tools rose from around 0% at the beginning of 2025 to 15% by the end of the year.",
+        "matched": true
+      },
+      {
+        "fp": "154bdbf4a340f173",
+        "claim": "Anthropic's API analysis indicates that almost 50% of all tool calls are related to software engineering, making it the ",
+        "matched": true
+      },
+      {
+        "fp": "25a283758127a576",
+        "claim": "GPT-5.4's new tool search mechanism reduced total token usage by 47% on 250 tasks from Scale's MCP Atlas while maintaini",
+        "matched": true
+      },
+      {
+        "fp": "e51469863d706890",
+        "claim": "Anthropic has expanded its voice mode to Opus and Sonnet models and enabled compatibility with connectors like Gmail and",
+        "matched": true
+      },
+      {
+        "fp": "5a17520baf8f5cf5",
+        "claim": "The complexity of tasks handled by Claude Code has increased significantly over six months, with the number of consecuti",
+        "matched": true
+      },
+      {
+        "fp": "47ea8d9c1f8fa2bc",
+        "claim": "Anthropic's computer use capability is designed to prioritize existing API connectors for precision, only falling back t",
+        "matched": true
+      },
+      {
+        "fp": "bd595f92d72ca941",
+        "claim": "OpenClaw agents demonstrated emergent tool-use capabilities by autonomously converting voice memos to text using FFmpeg ",
+        "matched": true
+      },
+      {
+        "fp": "5966cd3b4d44a118",
+        "claim": "The Codex CLI experience for GPT-5.4 offers significantly less friction and better transparency than Claude Code, featur",
+        "matched": true
+      },
+      {
+        "fp": "139765e80b32ab28",
+        "claim": "The host suggests that users should use their primary AI partner to write prompts and specifications for other AI tools ",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

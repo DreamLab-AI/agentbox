@@ -1,0 +1,262 @@
+{
+  "topic": "AI-Augmented Software Engineering",
+  "topic_slug": "ai-augmented-software-engineering",
+  "status": "candidate_rejected",
+  "reasons": [
+    "completeness 0.50 < 0.6"
+  ],
+  "n_assertions": 13,
+  "episodes": [
+    "how-i-built-my-10-agent-openclaw-team",
+    "how-significant-are-ais-latest-math-breakthroughs",
+    "how-to-get-the-most-from-ai-this-summer",
+    "how-to-help-people-thrive-with-ai",
+    "how-to-use-claudes-massive-new-upgrades",
+    "how-to-use-opus-47-and-the-new-codex",
+    "surprise-elon-anthropic-team-up-reshapes-ai-race",
+    "what-the-heck-is-graph-engineering"
+  ],
+  "assertion_fingerprints": [
+    "145d857a2ed88d0b",
+    "146baae1ae8740d0",
+    "25314f7e69cf43e9",
+    "3972cb571c7e9416",
+    "3bac757169fb21a8",
+    "629d7a354332dc2e",
+    "75847b30e690a1f7",
+    "7a7e90a2a673c0a5",
+    "7f1db07aa6226c1d",
+    "94bc0e390966d5af",
+    "b09d2e6d5667f811",
+    "b6273ab7c5a9f857",
+    "f1b430c1c33245e4"
+  ],
+  "target_page": "AI-Augmented Software Engineering.md",
+  "assertions": [
+    {
+      "claim": "The host identifies that the most valuable use case for OpenClaw agents is persistent, around-the-clock research and cataloging, rather than complex iterative coding tasks.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-i-built-my-10-agent-openclaw-team",
+      "claim_date": "2026-02-15",
+      "evidence": "The host notes that the builder bot was 'one of my least used' because coding projects are 'fairly discrete and very iterative,' whereas research agents 'are literally around the clock surfacing, cataloging, and integrating new resources.'",
+      "fp": "25314f7e69cf43e9"
+    },
+    {
+      "claim": "The host argues that the most effective method for non-technical users to build AI agent systems is to use a Large Language Model (like Claude) as a 'build partner' or coach, rather than following traditional tutorials.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-i-built-my-10-agent-openclaw-team",
+      "claim_date": "2026-02-15",
+      "evidence": "The host states: 'I watched exactly zero YouTube videos... the best way to learn some new thing in AI or to build some new thing in AI is to just let the AI help.'",
+      "fp": "7a7e90a2a673c0a5"
+    },
+    {
+      "claim": "The host argues that building a team of AI agents is accessible to non-technical users, provided they are willing to invest time in iterative development with an LLM build partner, despite initial negative ROI.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-i-built-my-10-agent-openclaw-team",
+      "claim_date": "2026-02-15",
+      "evidence": "The host states: 'If you have the will and are willing to put in the time, it doesn't matter how non-technical you are. You can go build an agent team with Open Claw right now today without asking anyone permission.'",
+      "fp": "145d857a2ed88d0b"
+    },
+    {
+      "claim": "The role of human mathematicians is shifting from solving problems to verifying AI outputs, a transition that may be demotivating for those who entered the field for deep, long-term problem-solving.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Pushman Kuetsky / AI Daily Brief Host",
+      "episode": "how-significant-are-ais-latest-math-breakthroughs",
+      "claim_date": "2026-08-04",
+      "evidence": "Kuetsky argues that LLMs destroy the traditional incentives in mathematics by 'oneshotting' problems that took months or years to solve. The host notes that while AI will boost scientific progress, the human aspect of the job is changing, potentially leading to a 'depressing' short-term impact on the profession.",
+      "fp": "3bac757169fb21a8"
+    },
+    {
+      "claim": "Advanced AI models like GPT-5.6 Soul and Codex can perform complex verification tasks with high accuracy, such as checking 195 references in a book manuscript in 30 minutes without hallucinating page numbers or inventing text.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Ethan Mollick (as reported by the AI Daily Brief host)",
+      "episode": "how-to-get-the-most-from-ai-this-summer",
+      "claim_date": "2026-07-27",
+      "evidence": "Mollick reports that the AI 'chased down 195 references' and provided 'pages of notes' where 'every one of the AIs' notes was accurate,' noting the absence of hallucinated errors.",
+      "fp": "f1b430c1c33245e4"
+    },
+    {
+      "claim": "The 'Lemonade Stand' expedition in the AI Summer Adventure program guides users through creating an AI-staffed microbusiness, including idea generation, business planning with an AI org chart, and demand validation.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "AI Daily Brief Host",
+      "episode": "how-to-get-the-most-from-ai-this-summer",
+      "claim_date": "2026-07-27",
+      "evidence": "The host describes the three sprints: Discovery (extracting ideas), Business Plan (mapping microbusiness with AI staff), and Validation (testing demand with a thin demo).",
+      "fp": "94bc0e390966d5af"
+    },
+    {
+      "claim": "Agentic loops, which involve well-defined tasks with test builds and diffs that agents can recheck, are more intuitive in software engineering but require specific training to apply effectively in non-technical work.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "AI Daily Brief Host",
+      "episode": "how-to-get-the-most-from-ai-this-summer",
+      "claim_date": "2026-07-27",
+      "evidence": "The host notes that applying loops to non-technical work is 'less intuitive' and introduces the 'Loop' expedition to teach users how to build these feedback cycles in their specific domains.",
+      "fp": "3972cb571c7e9416"
+    },
+    {
+      "claim": "Uber CTO Praveen Napali stated that 99% of Uber's engineers use AI tools, more than 70% of pull requests are attributed to local or cloud agents, and engineers have built 2,500-plus agent skills across the software development life cycle.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Praveen Napali, Uber CTO",
+      "episode": "how-to-help-people-thrive-with-ai",
+      "claim_date": "2026-07-13",
+      "evidence": "Specific metrics from Napali's tweet: 99% engineer adoption, >70% of PRs from agents, 2,500+ agent skills built.",
+      "fp": "b09d2e6d5667f811"
+    },
+    {
+      "claim": "Researchers from UC Berkeley's Haas School of Business found that when using AI, workers started taking on tasks they had previously outsourced, such as coding and engineering, because these activities became easier to do.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "UC Berkeley's Haas School of Business",
+      "episode": "how-to-help-people-thrive-with-ai",
+      "claim_date": "2026-07-13",
+      "evidence": "The study observed a shift in task allocation, with workers internalizing previously outsourced technical tasks due to AI lowering the barrier to entry.",
+      "fp": "b6273ab7c5a9f857"
+    },
+    {
+      "claim": "The ability of AI teams to rapidly learn from open-source projects and implement features on a daily basis suggests that a fundamentally different software development process is possible, with large strategic implications for the industry.",
+      "tier": "3",
+      "confidence": "0.65",
+      "source": "Ethan Mollick",
+      "episode": "how-to-use-claudes-massive-new-upgrades",
+      "claim_date": "2026-03-24",
+      "evidence": "Ethan Mollick wrote: 'The ability of the Claude team to learn from things like open Claude and implement features like this on a daily basis is a very strong argument that for AI-powered coding teams, a very different software development process is possible with large strategic implications.'",
+      "fp": "146baae1ae8740d0"
+    },
+    {
+      "claim": "The term 'vibe coding' is evolving to reflect a broader trend where all knowledge work is becoming coding work, as evidenced by the expansion of coding agents like Codex into general productivity tasks.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-to-use-opus-47-and-the-new-codex",
+      "claim_date": "2026-04-18",
+      "evidence": "The host states: 'the problem with the term vibe coding ended up not actually being that all coding became vibe coding, but that all knowledge work is becoming coding work.'",
+      "fp": "75847b30e690a1f7"
+    },
+    {
+      "claim": "Boris Cherny, creator of Claude Code, stated that there is no manually written code anywhere in Anthropic's company, with Claude agents coordinating over Slack and resolving issues across the codebase.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "Boris Cherny",
+      "episode": "surprise-elon-anthropic-team-up-reshapes-ai-race",
+      "claim_date": "2026-05-07",
+      "evidence": "The transcript quotes Cherny: 'there's literally no manually written code anywhere in the company anymore. Instead, Claude's coordinate with each other over Slack, code in loops, and resolve issues across the code base.'",
+      "fp": "629d7a354332dc2e"
+    },
+    {
+      "claim": "Anthropic claims that users of Claude Code's auto mode ship 25% more pull requests compared to non-users.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "Anthropic",
+      "episode": "what-the-heck-is-graph-engineering",
+      "claim_date": "2026-08-10",
+      "evidence": "Anthropic suggests there are significant benefits to using auto mode, claiming that 'auto mode users ship 25% more PRs.'",
+      "fp": "7f1db07aa6226c1d"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - migration-date:: 2026-04-26T00:00:00Z",
+      "content": "\n\n- ### Recent Developments\n  - **Industry Adoption Metrics (Uber):** Uber CTO Praveen Napali reported that 99% of Uber's engineers use AI tools, with more than 70% of pull requests attributed to local or cloud agents. Additionally, engineers have built over 2,500 agent skills across the software development life cycle. [source: Praveen Napali, Uber CTO, confidence 0.95, tier 1]\n  - **Shift in Task Allocation (UC Berkeley):** Researchers from UC Berkeley's Haas School of Business found that AI usage leads workers to internalize previously outsourced technical tasks, such as coding and engineering, as AI lowers the barrier to entry for these activities. [source: UC Berkeley's Haas School of Business, confidence 0.9, tier 1]\n  - **Autonomous Codebases (Anthropic):** Boris Cherny, creator of Claude Code, stated that there is no manually written code anywhere in Anthropic's company, with Claude agents coordinating over Slack and resolving issues across the codebase. Anthropic also claims that users of Claude Code's auto mode ship 25% more pull requests compared to non-users. [source: Boris Cherny / Anthropic, confidence 0.85, tier 1]\n  - **Verification Capabilities:** Advanced AI models like GPT-5.6 Soul and Codex can perform complex verification tasks with high accuracy. Ethan Mollick reported that an AI model checked 195 references in a book manuscript in 30 minutes without hallucinating page numbers or inventing text, providing accurate pages of notes. [source: Ethan Mollick (as reported by the AI Daily Brief host), confidence 0.9, tier 1]\n  - **Process Implications:** Ethan Mollick argued that the ability of AI teams to rapidly learn from open-source projects and implement features daily suggests a fundamentally different software development process is possible, with large strategic implications for the industry. [source: Ethan Mollick, confidence 0.65, tier 3]\n  - **Agentic Loops and Non-Technical Access:** Agentic loops, involving well-defined tasks with test builds and diffs, are intuitive in software engineering but require specific training for non-technical work. The host of AI Daily Brief noted that building AI agent teams is accessible to non-technical users who use an LLM as a 'build partner' rather than following traditional tutorials, with the most valuable use cases often being persistent research and cataloging rather than discrete coding tasks. [source: AI Daily Brief Host, confidence 0.85, tier 2]"
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 2.0,
+    "rubric_b_improvement": 2.0,
+    "raw_a": {
+      "factual_grounding": 3,
+      "relevance": 4,
+      "coherence": 4,
+      "better_version": "A",
+      "improvement": -2
+    },
+    "raw_b": {
+      "factual_grounding": 3,
+      "relevance": 3,
+      "coherence": 4,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 0.5,
+    "detail": [
+      {
+        "fp": "b09d2e6d5667f811",
+        "claim": "Uber CTO Praveen Napali stated that 99% of Uber's engineers use AI tools, more than 70% of pull requests are attributed ",
+        "matched": true
+      },
+      {
+        "fp": "b6273ab7c5a9f857",
+        "claim": "Researchers from UC Berkeley's Haas School of Business found that when using AI, workers started taking on tasks they ha",
+        "matched": false
+      },
+      {
+        "fp": "94bc0e390966d5af",
+        "claim": "The 'Lemonade Stand' expedition in the AI Summer Adventure program guides users through creating an AI-staffed microbusi",
+        "matched": false
+      },
+      {
+        "fp": "f1b430c1c33245e4",
+        "claim": "Advanced AI models like GPT-5.6 Soul and Codex can perform complex verification tasks with high accuracy, such as checki",
+        "matched": true
+      },
+      {
+        "fp": "145d857a2ed88d0b",
+        "claim": "The host argues that building a team of AI agents is accessible to non-technical users, provided they are willing to inv",
+        "matched": false
+      },
+      {
+        "fp": "25314f7e69cf43e9",
+        "claim": "The host identifies that the most valuable use case for OpenClaw agents is persistent, around-the-clock research and cat",
+        "matched": false
+      },
+      {
+        "fp": "7a7e90a2a673c0a5",
+        "claim": "The host argues that the most effective method for non-technical users to build AI agent systems is to use a Large Langu",
+        "matched": false
+      },
+      {
+        "fp": "629d7a354332dc2e",
+        "claim": "Boris Cherny, creator of Claude Code, stated that there is no manually written code anywhere in Anthropic's company, wit",
+        "matched": true
+      },
+      {
+        "fp": "7f1db07aa6226c1d",
+        "claim": "Anthropic claims that users of Claude Code's auto mode ship 25% more pull requests compared to non-users.",
+        "matched": true
+      },
+      {
+        "fp": "3972cb571c7e9416",
+        "claim": "Agentic loops, which involve well-defined tasks with test builds and diffs that agents can recheck, are more intuitive i",
+        "matched": true
+      },
+      {
+        "fp": "3bac757169fb21a8",
+        "claim": "The role of human mathematicians is shifting from solving problems to verifying AI outputs, a transition that may be dem",
+        "matched": false
+      },
+      {
+        "fp": "146baae1ae8740d0",
+        "claim": "The ability of AI teams to rapidly learn from open-source projects and implement features on a daily basis suggests that",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

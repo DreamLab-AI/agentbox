@@ -1,0 +1,290 @@
+{
+  "topic": "National Ai Strategy",
+  "topic_slug": "national-ai-strategy",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5"
+  ],
+  "n_assertions": 15,
+  "episodes": [
+    "in-defense-of-tokenmaxxing",
+    "is-gpt-52-garlic-coming-this-week",
+    "more-new-ai-models-openai-drops-51-pro-and-codex-pro",
+    "nvidias-blowout-earnings-pops-the-ai-bubble-bubble",
+    "openai-declares-the-next-phase-of-ai",
+    "the-dawn-of-the-agent-age",
+    "the-most-important-ai-lesson-for-businesses-from-2025",
+    "the-new-ai-org-chart",
+    "the-social-network-for-agents-just-got-acquired",
+    "the-time-savings-era-of-ai-is-over",
+    "why-agents-still-need-humans",
+    "why-claude-opus-45-changes-whats-possible-with-vibe-coding",
+    "why-google-workspace-cli-is-such-a-big-deal"
+  ],
+  "assertion_fingerprints": [
+    "1ca8895157421aae",
+    "26a20df35f94ffd9",
+    "3912129c42a6629b",
+    "39e21081706e8956",
+    "3cc02b485cb47f16",
+    "41b58ceae1a6f6f9",
+    "59fcf2647d5687cb",
+    "69727c9c13e79a52",
+    "786b776d2829aa0e",
+    "953b49bcf85cb158",
+    "a926323f10e9547b",
+    "d9f5abfcaa0c27e5",
+    "dc0a5f8fdc6431e6",
+    "e6a8e5cad87154fa",
+    "fb98c96f16941c4d"
+  ],
+  "target_page": "National Ai Strategy.md",
+  "assertions": [
+    {
+      "claim": "Companies that incentivize token experimentation, even at the cost of some fraud or waste, will likely outperform those that sit out of fear of wasting tokens, as the learning value is essential for adapting to the agentic era.",
+      "tier": "3",
+      "confidence": "0.7",
+      "source": "AI Daily Brief host",
+      "episode": "in-defense-of-tokenmaxxing",
+      "claim_date": "2026-05-14",
+      "evidence": "Would I bet on the long-term success of companies that incentivize this sort of token experimentation, even at the cost of some fraud and wasted tokens on the way, over the companies that sit it out out of fear of wasting tokens? Without question.",
+      "fp": "39e21081706e8956"
+    },
+    {
+      "claim": "Apple's senior VP of machine learning and AI strategy, John Giannandrea, is leaving the company, contributing to a major loss of AI talent in Cupertino.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Apple Announcement",
+      "episode": "is-gpt-52-garlic-coming-this-week",
+      "claim_date": "2025-12-08",
+      "evidence": "The host notes that last week it was learned that John Giannandrea, Apple's head of AI, would be leaving the company, alongside other departures from the AI team.",
+      "fp": "3912129c42a6629b"
+    },
+    {
+      "claim": "OpenAI's release of GPT-5.1 Codex Max and GPT-5.1 Pro is strategically focused on demonstrating new approaches like compaction in high-value use cases like coding, rather than directly competing with Gemini 3 on general-purpose capabilities.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "AI Daily Brief Host",
+      "episode": "more-new-ai-models-openai-drops-51-pro-and-codex-pro",
+      "claim_date": "2025-11-21",
+      "evidence": "The host analyzes: 'OpenAI is not trying to steal Gemini's general thunder with this... but instead they chose to release the two update models that are most specifically about very discreet types of work. They are showing off some new approaches... like this compaction that hint at where the future of general models is headed.'",
+      "fp": "a926323f10e9547b"
+    },
+    {
+      "claim": "The US administration plans to roll out an executive order known as the 'Genesis mission,' which Department of Energy Chief of Staff Carl Co described as equivalent in importance to the Manhattan Project or the space race.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Carl Co (DOE Chief of Staff) via podcast host",
+      "episode": "nvidias-blowout-earnings-pops-the-ai-bubble-bubble",
+      "claim_date": "2025-11-21",
+      "evidence": "The transcript states: 'Department of Energy Chief of Staff Carl Co said the administration views the AI race as being just as important as the Manhattan project or the space race. He said, \"We see the Genesis mission as equivalent.\"'",
+      "fp": "d9f5abfcaa0c27e5"
+    },
+    {
+      "claim": "OpenAI's blog post 'Built to Benefit Everyone' declares the company is entering its 'third phase,' focusing on making advanced AI abundant, affordable, safe, useful, and easy enough for every person and organization to benefit from it.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "OpenAI blog post (via AI Daily Brief host)",
+      "episode": "openai-declares-the-next-phase-of-ai",
+      "claim_date": "2026-06-10",
+      "evidence": "The host quotes the post: 'Now they declare we are entering the third phase... The central question now is how to make advanced AI abundant, affordable, safe, useful and easy enough for every person and organization to benefit from it.'",
+      "fp": "1ca8895157421aae"
+    },
+    {
+      "claim": "OpenAI CEO Sam Altman stated that while Moltbook may be a passing fad, he has high conviction that the agentic assistant use case represented by OpenClaw will be a key component of AI's future.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "Sam Altman (OpenAI CEO)",
+      "episode": "the-dawn-of-the-agent-age",
+      "claim_date": "2026-02-05",
+      "evidence": "OpenAI CEO Sam Alman said that while Maltbook may be a passing fad, he didn't think OpenClaw was effectively that he has high conviction that this sort of agentic assistant use case is going to be a key thing for AI.",
+      "fp": "953b49bcf85cb158"
+    },
+    {
+      "claim": "42% of organizations reported they are still developing their agentic strategy roadmap, while 35% have no formal strategy at all.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Deloitte 2025 Emerging Technology Trends report",
+      "episode": "the-most-important-ai-lesson-for-businesses-from-2025",
+      "claim_date": "2025-12-28",
+      "evidence": "42% of organizations said that they are still developing their agentic strategy roadmap with more than a third 35% having no formal strategy at all.",
+      "fp": "fb98c96f16941c4d"
+    },
+    {
+      "claim": "48% of organizations cited the searchability of data and 47% cited the reusability of data as challenges to their AI strategy.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Survey cited in Deloitte 2025 report",
+      "episode": "the-most-important-ai-lesson-for-businesses-from-2025",
+      "claim_date": "2025-12-28",
+      "evidence": "In another survey earlier this year, 48% of organizations cited the searchability of data and 47% the reusability of data as challenges to AI strategy.",
+      "fp": "3cc02b485cb47f16"
+    },
+    {
+      "claim": "Block's top-down organizational design and Every's bottom-up agent adoption represent two different approaches to the same goal of replacing hierarchical information routing.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-new-ai-org-chart",
+      "claim_date": "2026-04-14",
+      "evidence": "The host analyzes the two cases: 'Every is exploring a bottom-up approach while Block is designing from the top-down... They might be working towards the same destination, but they're starting from different places.'",
+      "fp": "dc0a5f8fdc6431e6"
+    },
+    {
+      "claim": "Companies that do not develop a deep, compounding understanding of their operations through AI will be absorbed by more intelligent competitors.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "Jack Dorsey, Roelof Botha",
+      "episode": "the-new-ai-org-chart",
+      "claim_date": "2026-04-14",
+      "evidence": "The essay warns: 'If the answer is nothing, AI is just a cost optimization story. You cut headcount, improve margins for a few quarters, and eventually get absorbed by something smarter.'",
+      "fp": "786b776d2829aa0e"
+    },
+    {
+      "claim": "Reports suggest a strategic divide within Meta between Alexander Wang's research-first approach to developing a leading frontier model and the product-integration-first approach represented by CTO Andrew Bosworth and Chief Product Officer Chris Cox.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "AI Daily Brief host",
+      "episode": "the-social-network-for-agents-just-got-acquired",
+      "claim_date": "2026-03-14",
+      "evidence": "The tension, if these reports are correct, is around on the one side, said to be represented by Wang, a research-first approach... and on the other side, call it a product and integration-first approach, said to be represented by CTO Andrew Bosworth and Chief Product Officer Chris Cox.",
+      "fp": "41b58ceae1a6f6f9"
+    },
+    {
+      "claim": "The host predicts that agentic AI adoption will accelerate in 2026 and 2027, driven by leadership adoption and the crossing of an 'agentic threshold' in user behavior.",
+      "tier": "3",
+      "confidence": "0.75",
+      "source": "AI DB Intel host",
+      "episode": "the-time-savings-era-of-ai-is-over",
+      "claim_date": "2026-02-14",
+      "evidence": "I feel very comfortable arguing that the evidence here suggests that agentic adoption will accelerate... All of this should be a priority for this year and next year's AI strategy if it's not already.",
+      "fp": "26a20df35f94ffd9"
+    },
+    {
+      "claim": "Atlassian announced 10% layoffs in March, an event that marked the end of a mini-recovery and preceded the stock heading into a year-to-date low in mid-April.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief)",
+      "episode": "why-agents-still-need-humans",
+      "claim_date": "2026-05-26",
+      "evidence": "The host explained: 'In March, they announced 10% layoffs, and that announcement actually marked the end of a mini recovery over the previous 2 weeks. The stock actually headed into a year-to-date low in mid-April.'",
+      "fp": "e6a8e5cad87154fa"
+    },
+    {
+      "claim": "Anthropic's strategy focuses heavily on coding as the primary high-value use case for large language models, distinguishing it from competitors who spread efforts across multiple domains.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Host / Brian Atwood",
+      "episode": "why-claude-opus-45-changes-whats-possible-with-vibe-coding",
+      "claim_date": "2025-11-26",
+      "evidence": "The host notes: 'Anthropic has certainly behaved as such [coding is high value].' Brian Atwood is quoted: 'Anthropic is a vertical AI company... They rightly identified that coding is the number one use case for LLMs right now and are overwhelmingly focused on it.'",
+      "fp": "69727c9c13e79a52"
+    },
+    {
+      "claim": "Google's strategy for AI competition relies on three main pillars: multimodality (text, images, video, world models), advanced scientific use cases, and deep integration with existing user context within the Google ecosystem.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "AI Daily Brief Host",
+      "episode": "why-google-workspace-cli-is-such-a-big-deal",
+      "claim_date": "2026-03-12",
+      "evidence": "The host synthesizes Google's recent moves: 'One aspect of it is absolutely multimodality... Additionally, they're pushing for some very advanced and scientific use cases... Another pillar of the strategy, I think, is also deep integration with the context they already have about you.'",
+      "fp": "59fcf2647d5687cb"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "- ### Applications\n  - Coordinating cross-ministry AI investment and regulation.\n  - Directing sovereign compute and data infrastructure programmes.\n  - Setting trustworthy-AI guardrails for industry.\n  - Benchmarking national competitiveness against peer economies.",
+      "content": "- ### Recent Developments\n  - **US 'Genesis Mission' Executive Order**: The US administration plans to roll out an executive order known as the 'Genesis mission,' which Department of Energy Chief of Staff Carl Co described as equivalent in importance to the Manhattan Project or the space race, signaling a high-level national commitment to AI leadership.\n  - **Organizational Strategy Gaps**: According to the Deloitte 2025 Emerging Technology Trends report, 42% of organizations are still developing their agentic strategy roadmap, while 35% have no formal strategy at all. Additionally, 48% of organizations cited the searchability of data and 47% cited the reusability of data as key challenges to their AI strategy.\n  - **Corporate Strategic Focuses**:\n    - **OpenAI**: Declared entry into its 'third phase,' focusing on making advanced AI abundant, affordable, safe, useful, and easy for every person and organization to benefit from. CEO Sam Altman expressed high conviction that agentic assistant use cases (represented by OpenClaw) will be a key component of AI's future. Recent releases of GPT-5.1 Codex Max and GPT-5.1 Pro are strategically focused on demonstrating new approaches like compaction in high-value use cases like coding.\n    - **Anthropic**: Strategy focuses heavily on coding as the primary high-value use case for large language models, distinguishing it from competitors who spread efforts across multiple domains.\n    - **Google**: Strategy relies on three main pillars: multimodality (text, images, video, world models), advanced scientific use cases, and deep integration with existing user context within the Google ecosystem.\n    - **Meta**: Reports suggest a strategic divide between Alexander Wang's research-first approach to developing a leading frontier model and the product-integration-first approach represented by CTO Andrew Bosworth and Chief Product Officer Chris Cox.\n  - **Talent and Market Shifts**: Apple's senior VP of machine learning and AI strategy, John Giannandrea, is leaving the company, contributing to a major loss of AI talent. Atlassian announced 10% layoffs in March, marking the end of a mini-recovery and preceding a year-to-date stock low in mid-April.\n  - **Future Outlook**: Predictions suggest that agentic AI adoption will accelerate in 2026 and 2027, driven by leadership adoption and the crossing of an 'agentic threshold' in user behavior, making it a priority for upcoming national and corporate AI strategies."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 2,
+      "relevance": 2,
+      "coherence": 3,
+      "better_version": "A",
+      "improvement": -2
+    },
+    "raw_b": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    }
+  },
+  "completeness": {
+    "score": 0.75,
+    "detail": [
+      {
+        "fp": "fb98c96f16941c4d",
+        "claim": "42% of organizations reported they are still developing their agentic strategy roadmap, while 35% have no formal strateg",
+        "matched": true
+      },
+      {
+        "fp": "1ca8895157421aae",
+        "claim": "OpenAI's blog post 'Built to Benefit Everyone' declares the company is entering its 'third phase,' focusing on making ad",
+        "matched": false
+      },
+      {
+        "fp": "3912129c42a6629b",
+        "claim": "Apple's senior VP of machine learning and AI strategy, John Giannandrea, is leaving the company, contributing to a major",
+        "matched": true
+      },
+      {
+        "fp": "3cc02b485cb47f16",
+        "claim": "48% of organizations cited the searchability of data and 47% cited the reusability of data as challenges to their AI str",
+        "matched": true
+      },
+      {
+        "fp": "953b49bcf85cb158",
+        "claim": "OpenAI CEO Sam Altman stated that while Moltbook may be a passing fad, he has high conviction that the agentic assistant",
+        "matched": true
+      },
+      {
+        "fp": "a926323f10e9547b",
+        "claim": "OpenAI's release of GPT-5.1 Codex Max and GPT-5.1 Pro is strategically focused on demonstrating new approaches like comp",
+        "matched": false
+      },
+      {
+        "fp": "d9f5abfcaa0c27e5",
+        "claim": "The US administration plans to roll out an executive order known as the 'Genesis mission,' which Department of Energy Ch",
+        "matched": true
+      },
+      {
+        "fp": "e6a8e5cad87154fa",
+        "claim": "Atlassian announced 10% layoffs in March, an event that marked the end of a mini-recovery and preceded the stock heading",
+        "matched": false
+      },
+      {
+        "fp": "69727c9c13e79a52",
+        "claim": "Anthropic's strategy focuses heavily on coding as the primary high-value use case for large language models, distinguish",
+        "matched": true
+      },
+      {
+        "fp": "59fcf2647d5687cb",
+        "claim": "Google's strategy for AI competition relies on three main pillars: multimodality (text, images, video, world models), ad",
+        "matched": true
+      },
+      {
+        "fp": "26a20df35f94ffd9",
+        "claim": "The host predicts that agentic AI adoption will accelerate in 2026 and 2027, driven by leadership adoption and the cross",
+        "matched": true
+      },
+      {
+        "fp": "41b58ceae1a6f6f9",
+        "claim": "Reports suggest a strategic divide within Meta between Alexander Wang's research-first approach to developing a leading ",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

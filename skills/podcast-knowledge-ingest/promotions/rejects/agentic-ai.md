@@ -1,0 +1,181 @@
+# Dossier: Agentic AI
+
+- status: `candidate_rejected`
+- target page: `Agentic AI.md`
+- assertions: 79 across episodes: autoresearch-agent-loops-and-the-future-of-work, black-friday-gpt, can-todays-ai-replace-12-of-work, ceo-led-ai-gets-3x-the-roi, did-the-super-bowl-as-make-americans-like-ai-any-more, does-gemini-31-pro-matter, everything-you-need-to-know-about-ai-tokens, fable-5-raises-the-bar-for-ai-ambition, fable-is-back-heres-what-you-should-try-first, gemini-can-now-write-you-a-song, google-says-no-ads-planned-for-gemini, grok-bot-finally-makes-ai-agents-easy, how-ai-starts-doing-the-work-in-2026-with-anthropic-cpo-mike-krieger, how-apples-ai-strategy-changes-with-a-new-ceo, how-big-is-the-ai-economy, how-deepseek-v4-connects-to-the-us-grid, how-googles-ai-leaders-leaving-could-lead-to-better-ai-models-for-you, how-to-build-a-personal-agentic-operating-system, how-to-get-the-most-from-ai-this-summer, how-to-help-people-thrive-with-ai, how-to-use-claudes-massive-new-upgrades, in-defense-of-tokenmaxxing, is-ai-doom-going-out-of-style, is-this-the-best-ai-video-model-in-the-world, nano-banana-2-is-here, nvidias-blowout-earnings-pops-the-ai-bubble-bubble, openai-declares-the-next-phase-of-ai, openclaw-goes-to-openai, surprise-elon-anthropic-team-up-reshapes-ai-race, the-5-biggest-ai-stories-to-watch-in-december, the-ai-productivity-boom-finally-shows-up, the-ai-subsidy-era-is-over, the-ai-token-shortage-begins, the-big-questions-shaping-the-consumer-ai-battle, the-biggest-unlocks-of-gpt-images-2, the-calm-before-the-agi-storm, the-dawn-of-the-agent-age, the-month-ai-woke-up, the-most-important-ai-lesson-for-businesses-from-2025, the-openclaw-ification-of-ai, the-state-of-ai-q2-2026, the-state-of-enterprise-ai-the-state-of-enterprise-ai, the-time-savings-era-of-ai-is-over, towards-ai-that-can-actually-interact, what-google-needs-to-do-at-io-this-week, what-i-learned-testing-gpt-5-5, why-agents-make-every-job-a-startup, why-ai-advantage-compounds, why-ai-leads-to-more-work-not-less, why-ai-needs-better-benchmarks, why-ceos-need-to-lead-ai-strategy, why-claude-cowork-is-a-big-deal, why-claude-opus-45-changes-whats-possible-with-vibe-coding, why-every-ai-product-seems-the-same, why-moltbook-matters
+- reasons: rubric_b_improvement -1.0 <= 0.0; rubric_a_improvement -1.0 < -0.5
+
+## Scores
+- judge ok: True  error: None
+- rubric-A improvement (after vs before): -1.0
+- rubric-B improvement (after vs before): -1.0
+- answer-completeness: 0.92
+
+## Assertions
+- **Agentic loops are emerging as a fundamental 'work primitive' that will be applied across various industries, not just software development, provided the task has an objective score, fast iteration, and low cost for failed attempts.**
+  - tier 2, confidence 0.85, source Podcast Host, episode `autoresearch-agent-loops-and-the-future-of-work`, fp `875dff316d218d80`
+- **The 'capability overhang'—the gap between current AI capabilities and how companies are using them—is widening to the point where meeting users at their current level of adoption may become a form of malfeasance.**
+  - tier 3, confidence 0.65, source Podcast Host, episode `autoresearch-agent-loops-and-the-future-of-work`, fp `d4f8c87c9b181284`
+- **HP announced plans to reduce its headcount by 4,000 to 6,000 employees by 2028, representing a 10% workforce reduction, citing AI adoption and process redesign as key drivers.**
+  - tier 1, confidence 0.95, source HP (cited by Host), episode `black-friday-gpt`, fp `bdac227c1894ec54`
+- **Redesigning business processes from the ground up with agentic AI is more effective for achieving productivity gains than simply applying AI to existing workflows.**
+  - tier 3, confidence 0.7, source HP CEO Enrique Lores (cited by Host), episode `black-friday-gpt`, fp `38b089a7b6040d43`
+- **The complexity of tasks handled by Claude Code has increased significantly over six months, with the number of consecutive tool calls more than doubling.**
+  - tier 1, confidence 0.92, source Anthropic Economic Index, episode `can-todays-ai-replace-12-of-work`, fp `5a17520baf8f5cf5`
+- **Claude Tag is being criticized for creating vendor lock-in by deeply embedding organizational context into Anthropic's ecosystem, making migration difficult.**
+  - tier 2, confidence 0.8, source Ashwin Goel / Mark Andreessen Horowitz, episode `ceo-led-ai-gets-3x-the-roi`, fp `eb994d3873d85b55`
+- **OpenAI's Super Bowl ad for Codex was positioned to frame AI as a tool for participation and agency, with CMO Kate Rauch describing it as a sign of 'material change' where AI does things on behalf of users.**
+  - tier 2, confidence 0.85, source Kate Rauch (OpenAI CMO) / Host Analysis, episode `did-the-super-bowl-as-make-americans-like-ai-any-more`, fp `a38b8d9ef55fc5fc`
+- **Gemini 3.1 Pro lags behind competitors like Claude Sonnet 4.6, Opus 4.6, GPT 5.2, and GLM5 on real-world agentic performance evaluations, specifically the GDP-valve test.**
+  - tier 2, confidence 0.8, source Host (citing Artificial Analysis and skeptical commentators), episode `does-gemini-31-pro-matter`, fp `b6e067f59559a18b`
+- **McKinsey estimates that approximately 60% of the cost of agentic tasks is tied to checking, refining, and regenerating answers after the first response.**
+  - tier 1, confidence 0.85, source Nofar Gaspar (citing McKinsey), episode `everything-you-need-to-know-about-ai-tokens`, fp `9bf17b0812626dbd`
+- **Agentic workflows consume 5 to 30 times more tokens than simple chat interactions, with poorly designed loops potentially consuming even more.**
+  - tier 2, confidence 0.8, source Nofar Gaspar (citing industry estimates), episode `everything-you-need-to-know-about-ai-tokens`, fp `243bf33449929d42`
+- **The release of Fable 5 marks a shift from 'tasks' to 'responsibilities' in how users interact with AI, where models run autonomous loops rather than executing single prompts.**
+  - tier 2, confidence 0.85, source Felix Ryberg (Anthropic) / AI Daily Brief Host, episode `fable-5-raises-the-bar-for-ai-ambition`, fp `a84da9e354fdea7c`
+- **AI applications in 2027 will look fundamentally different from those in 2026 due to the shift from task-based to responsibility-based AI interactions.**
+  - tier 3, confidence 0.6, source Felix Ryberg (Anthropic), episode `fable-5-raises-the-bar-for-ai-ambition`, fp `76bd22de5c61b1e9`
+- **Anthropic announced Claude Sonnet 5, which scores 53 on the Artificial Analysis Intelligence Index, placing it one point behind Claude Opus 4.7 and two points behind GPT 5.5.**
+  - tier 1, confidence 0.9, source Artificial Analysis Benchmarks (reported by AI Daily Brief host), episode `fable-is-back-heres-what-you-should-try-first`, fp `0954a8523f69329b`
+- **Chinese AI models often show a significant gap between their benchmark performance and real-world agentic behavior, falling short of frontier models like Sonnet and Opus in practical applications.**
+  - tier 2, confidence 0.85, source Flo Crell (Lindy Founder) via Podcast Host, episode `gemini-can-now-write-you-a-song`, fp `ebbb30efb0952ec0`
+- **The integration of AI models into platforms like ServiceNow represents a different approach to the agentic business model compared to trying to be the platform itself, and this year will see many experiments in how this shakes out.**
+  - tier 2, confidence 0.75, source Host (AI Daily Brief), episode `google-says-no-ads-planned-for-gemini`, fp `909385065a5494b3`
+- **Grok Bot's 'computer use' paradigm, where agents operate virtual machines to interact with web apps like humans, creates significant trust and security barriers for users sharing credentials.**
+  - tier 2, confidence 0.8, source AI Daily Brief Host / Peter Yang, episode `grok-bot-finally-makes-ai-agents-easy`, fp `ac8fb9fa7bb3a6e8`
+- **Anthropic's internal 'Claude CLI' tool, later released as Claude Code, overtook all other internal coding tools between September and December of the previous year due to its design for longer model horizons.**
+  - tier 1, confidence 0.95, source Mike Kger (Chief Product Officer, Anthropic), episode `how-ai-starts-doing-the-work-in-2026-with-anthropic-cpo-mike-krieger`, fp `91ecb5baf4d45c3f`
+- **The rise of open-source agent harnesses like 'Open Claw' has driven significant demand for Apple hardware, specifically the Mac Mini, which has sold out in stores.**
+  - tier 2, confidence 0.8, source AI Daily Brief Host, episode `how-apples-ai-strategy-changes-with-a-new-ceo`, fp `1b9c09de4482d754`
+- **The transition from chat to agentic AI is multiplying token usage, with agentic coding tasks consuming approximately 1,200 times the tokens of a standard chat task.**
+  - tier 2, confidence 0.85, source Exponential View (State of the AI Economy report), episode `how-big-is-the-ai-economy`, fp `c4b1e93c2f7fddc9`
+- **Meta signed a multi-billion dollar deal to rent Amazon's Graviton 5 CPUs, which are optimized for agentic workloads, rather than Tranium ASICs.**
+  - tier 1, confidence 0.9, source AI Daily Brief Host / Meta Announcement, episode `how-deepseek-v4-connects-to-the-us-grid`, fp `902e58fe031a3c5e`
+- **Agentic AI demand is outstripping the supply of AI compute by potentially several orders of magnitude, leading to rationing and price hikes.**
+  - tier 2, confidence 0.8, source Bloomberg's Steve Haar / AI Daily Brief Host, episode `how-deepseek-v4-connects-to-the-us-grid`, fp `39bd56f3f10dabdb`
+- **Meta's Muse Code harness utilizes sub-agents that run in parallel isolated work trees, allowing the system to build context over time and execute long-horizon tasks, such as a 24-hour kernel optimization run involving over 1,000 tool calls.**
+  - tier 1, confidence 0.9, source Mark Zuckerberg / Meta (cited by AI Daily Brief Host), episode `how-googles-ai-leaders-leaving-could-lead-to-better-ai-models-for-you`, fp `2c9d261e6a78c3e7`
+- **Agentic AI tools are converging on a common set of capabilities, making the underlying user-defined system more important than the specific tool or model chosen.**
+  - tier 2, confidence 0.95, source Nofar Gaspar, episode `how-to-build-a-personal-agentic-operating-system`, fp `4e1520e68c0b6d62`
+- **The interaction paradigm for AI is shifting from 'chatting' with a model to 'managing' agents, requiring users to delegate work and act as supervisors rather than conversational partners.**
+  - tier 2, confidence 0.85, source AI Daily Brief Host, episode `how-to-get-the-most-from-ai-this-summer`, fp `50acf7b1f7b82165`
+- **Uber CTO Praveen Napali stated that 99% of Uber's engineers use AI tools, more than 70% of pull requests are attributed to local or cloud agents, and engineers have built 2,500-plus agent skills across the software development life cycle.**
+  - tier 1, confidence 0.95, source Praveen Napali, Uber CTO, episode `how-to-help-people-thrive-with-ai`, fp `b09d2e6d5667f811`
+- **The rapid adoption of features like remote control and dispatch by Anthropic represents a 'Claudification' trend, where the company is aggressively implementing interaction patterns and agent behaviors previously popularized by the open-source project Open Claude.**
+  - tier 2, confidence 0.85, source Host (AI Daily Brief), episode `how-to-use-claudes-massive-new-upgrades`, fp `7d991a3f74943e43`
+- **Computer use and the ability to write and run code on the fly are the ultimate primitives for AI agents to automate real-world enterprise work, as most tasks require traversing multiple applications and data sources.**
+  - tier 2, confidence 0.85, source Aaron Levie (Box), episode `how-to-use-claudes-massive-new-upgrades`, fp `5cf5a1017dac9d5a`
+- **Google announced a new agentic suite for Android users called Gemini Intelligence, which includes a major upgrade to the Gemini assistant and a feature called personal intelligence.**
+  - tier 1, confidence 0.95, source AI Daily Brief host, episode `in-defense-of-tokenmaxxing`, fp `52ef057ed166584b`
+- **The shift from assisted AI to agentic AI represents a more significant disruption than the ChatGPT moment, changing knowledge work from producing things to setting up conditions for agents to produce things.**
+  - tier 2, confidence 0.8, source AI Daily Brief host, episode `in-defense-of-tokenmaxxing`, fp `ba5a4cd836bc260e`
+- **The shift from selling AI 'seats' to selling 'tokens' is the key factor allowing AI companies to justify trillions of dollars in infrastructure buildout.**
+  - tier 2, confidence 0.8, source Host (AI Daily Brief), episode `is-ai-doom-going-out-of-style`, fp `acf6d10d0e950fe8`
+- **Data Bricks CEO Ali Godsy stated that 25% of the company's $5.4 billion ARR is attributed to Data Bricks AI products, and that 80% of databases on the platform are being built by AI agents.**
+  - tier 1, confidence 0.9, source Ali Godsy (Data Bricks CEO) and Dear Drabosa (CNBC), episode `is-this-the-best-ai-video-model-in-the-world`, fp `4a5345bd34a2cdd9`
+- **Microsoft's new 'Copilot tasks' product signals a broader industry trend of 'clawfication,' where AI agents are designed for general consumer use cases rather than just developers and enterprises.**
+  - tier 3, confidence 0.5, source AI Daily Brief host, episode `nano-banana-2-is-here`, fp `65adc7b0c81d1585`
+- **Jensen Huang argued that the world is undergoing three simultaneous platform shifts: from CPU to GPU accelerated computing, from classic ML to generative AI, and from generative AI to agentic and physical AI.**
+  - tier 2, confidence 0.95, source Jensen Huang (via earnings call transcript), episode `nvidias-blowout-earnings-pops-the-ai-bubble-bubble`, fp `0365f4208b55ea92`
+- **The host argues that the agentic transition and its consequent economic changes are likely to be more significant than the initial launch of ChatGPT in shaping the ultimate role of AI in society.**
+  - tier 2, confidence 0.75, source AI Daily Brief host, episode `openai-declares-the-next-phase-of-ai`, fp `dc5f9e862e44ba49`
+- **The host suggests that consumer AI and work-related agentic AI are fundamentally different and should be discussed as separate categories, as the impact of agentic AI on society and business models is vastly greater.**
+  - tier 2, confidence 0.7, source AI Daily Brief host, episode `openai-declares-the-next-phase-of-ai`, fp `1d14e53248116344`
+- **Agentic platforms like OpenClaw, Claude Code, and Codex are currently generating more positive energy and adoption momentum in enterprise C-suite discussions than any technology since the launch of ChatGPT.**
+  - tier 2, confidence 0.7, source Ali Kay Miller (cited by host), episode `openclaw-goes-to-openai`, fp `57c0dd0b10a673f2`
+- **The competitive landscape in AI has shifted from model capability comparisons to a focus on agent harnesses and workflows, with the competition between Codex and Claude Code being more significant than Opus versus GPT.**
+  - tier 2, confidence 0.8, source AI Daily Brief Host, episode `surprise-elon-anthropic-team-up-reshapes-ai-race`, fp `f3ff9f9e18dca091`
+- **The host identifies a shift in the AI discourse from first-order questions about 'vibe coding' to nuanced conversations about the right configuration, speed, autonomy, and control in AI-assisted software development.**
+  - tier 2, confidence 0.8, source Host (AI Daily Brief), episode `the-5-biggest-ai-stories-to-watch-in-december`, fp `5fba4a27d275c992`
+- **The host identifies a trend that the conversation about AI's impact on workers is shifting from anecdote and supposition to actual evidence, driven by the urgency of the discourse and the evolution of agentic capabilities.**
+  - tier 3, confidence 0.55, source AI Daily Brief Host, episode `the-ai-productivity-boom-finally-shows-up`, fp `be4d9cc7cd50e15b`
+- **SemiAnalysis identified Claude Code as the inflection point for AI agents, predicting it would drive exceptional revenue growth for Anthropic in 2026 and enable the company to outgrow OpenAI.**
+  - tier 2, confidence 0.8, source SemiAnalysis, episode `the-ai-subsidy-era-is-over`, fp `dc1d133bd2c29ee0`
+- **The most relevant economic unit for AI companies has shifted from the 'seat' to the 'token,' as revenue is now driven by API consumption rather than subscription conversions.**
+  - tier 2, confidence 0.85, source AI Daily Brief host, episode `the-ai-token-shortage-begins`, fp `a6285e3649f44b5e`
+- **Claude Code has rolled out a voice mode capability, which is live for approximately 5% of users and will ramp up over the coming weeks.**
+  - tier 1, confidence 0.95, source Tariq from Anthropic (as cited by the host), episode `the-big-questions-shaping-the-consumer-ai-battle`, fp `0d8c9727fce54fce`
+- **The host predicts that the expansion of agentic AI to non-technical 'normies' will be radically underestimated, with millions of non-developers already diving into tools like Claude Code despite discomfort.**
+  - tier 3, confidence 0.6, source Host (AI Daily Brief), episode `the-big-questions-shaping-the-consumer-ai-battle`, fp `d997e22625b05534`
+- **GPT Image 2.0 is the first image model whose primary impact is expected to be its integration into agentic stacks and enterprise workflows, rather than standalone viral consumer moments.**
+  - tier 2, confidence 0.8, source AI Daily Brief Host, episode `the-biggest-unlocks-of-gpt-images-2`, fp `9f09a358ca780de5`
+- **An update to Claude Code inadvertently included 512,000 lines of source code, revealing unreleased features such as 'Kairos,' an always-on background agent with memory consolidation and proactive modes, and a virtual pet feature called 'Buddies.'**
+  - tier 1, confidence 0.9, source Host (AI Daily Brief), episode `the-calm-before-the-agi-storm`, fp `69d26d38a7290eba`
+- **Brent Behore of Permanent Equity reported that two projects that previously failed after 100+ hours of work over 3 months were completed in 20 minutes using Claude Co-work.**
+  - tier 1, confidence 0.95, source Brent Behore (Permanent Equity), episode `the-dawn-of-the-agent-age`, fp `187a5fbfe8cbaeeb`
+- **OpenAI CEO Sam Altman stated that while Moltbook may be a passing fad, he has high conviction that the agentic assistant use case represented by OpenClaw will be a key component of AI's future.**
+  - tier 2, confidence 0.9, source Sam Altman (OpenAI CEO), episode `the-dawn-of-the-agent-age`, fp `953b49bcf85cb158`
+- **A project initially named ClaudeBot, briefly MultBot, and finalized as OpenClaw, enabled users to grant AI models access to their systems for autonomous task execution, driving a surge in 'autonomy ambition' among non-developers.**
+  - tier 2, confidence 0.9, source AI Daily Brief host, episode `the-month-ai-woke-up`, fp `b3c0d87462eb54ac`
+- **Deloitte's 2025 Emerging Technology Trends report found that 30% of organizations were exploring agent options, 38% were piloting solutions, and only 11% had agents actively in production.**
+  - tier 1, confidence 0.95, source Deloitte 2025 Emerging Technology Trends report, episode `the-most-important-ai-lesson-for-businesses-from-2025`, fp `d64fc610a9455126`
+- **42% of organizations reported they are still developing their agentic strategy roadmap, while 35% have no formal strategy at all.**
+  - tier 1, confidence 0.95, source Deloitte 2025 Emerging Technology Trends report, episode `the-most-important-ai-lesson-for-businesses-from-2025`, fp `fb98c96f16941c4d`
+- **Gartner predicts that by 2028, agents will make 15% of work decisions autonomously and a third of software applications will have Agentic AI integrated.**
+  - tier 1, confidence 0.9, source Gartner, episode `the-most-important-ai-lesson-for-businesses-from-2025`, fp `8fa402cf94fd3ae0`
+- **Gartner predicts that over 40% of agentic AI projects will fail by 2027 due to challenges with legacy systems that cannot support modern AI execution.**
+  - tier 1, confidence 0.9, source Gartner, episode `the-most-important-ai-lesson-for-businesses-from-2025`, fp `e0dbd2b32b5f3578`
+- **True value from agentic AI comes from redesigning operations end-to-end rather than simply layering agents onto existing workflows.**
+  - tier 2, confidence 0.9, source Host (AI Daily Brief) / Deloitte, episode `the-most-important-ai-lesson-for-businesses-from-2025`, fp `788de8b7d441e4b4`
+- **The 'OpenClaw-ification' of AI refers to a paradigm shift where major AI products are adopting fundamental agentic primitives—such as remote interaction, persistent memory, and scheduled autonomous work—rather than simply copying a single competitor's features.**
+  - tier 2, confidence 0.8, source Host (AI Daily Brief), episode `the-openclaw-ification-of-ai`, fp `e18fcb8363effe70`
+- **Setting up OpenClaw manually provides a better educational understanding of agentic AI primitives than using abstracted, productized versions of these features from major companies.**
+  - tier 2, confidence 0.75, source Host (AI Daily Brief), episode `the-openclaw-ification-of-ai`, fp `3f9657687e0c5797`
+- **The 'OpenClaw-ification' trend will continue throughout the year, with OpenClaw being recognized not as a temporary hype phase but as the starting point for a new era of AI interaction.**
+  - tier 3, confidence 0.55, source Host (AI Daily Brief), episode `the-openclaw-ification-of-ai`, fp `dc5d240f0478534f`
+- **The host characterizes Q1 2026 as the 'AI second moment,' defined by the transition from viable chatbot assistants to workable agentic systems.**
+  - tier 2, confidence 0.8, source AI Daily Brief host, episode `the-state-of-ai-q2-2026`, fp `56077366548187d5`
+- **Only 16% of enterprise AI deployments qualify as true agentic systems, with 39% being fixed-sequence workflows and just 8% being multi-agent systems.**
+  - tier 1, confidence 0.95, source Menlo Ventures State of Generative AI in the Enterprise report, episode `the-state-of-enterprise-ai-the-state-of-enterprise-ai`, fp `619506fed02f8ef5`
+- **Claude primary users in the January 2026 survey reported significantly higher agentic AI usage (52%) and vibe coding adoption (87%) compared to ChatGPT primary users (24% and 52%, respectively).**
+  - tier 1, confidence 0.95, source AI DB Intel January AI usage pulse survey, episode `the-time-savings-era-of-ai-is-over`, fp `97902d005862f655`
+- **In the January 2026 survey, 37.6% of respondents reported agentic AI usage, a significant increase from the 14% agentic usage rate observed in the 5,000-plus use cases from the previous AI ROI benchmarking survey.**
+  - tier 1, confidence 0.95, source AI DB Intel January AI usage pulse survey, episode `the-time-savings-era-of-ai-is-over`, fp `0c75a1057e4705e4`
+- **57% of C-suite respondents in the January 2026 survey reported agentic AI usage, compared to 32% of VPs and directors, indicating that leadership roles are leading the adoption of agentic workflows.**
+  - tier 1, confidence 0.95, source AI DB Intel January AI usage pulse survey, episode `the-time-savings-era-of-ai-is-over`, fp `736a56ed92de22eb`
+- **The AI Daily Brief host predicts that the 'background agent' paradigm, where AI performs tasks passively while other work proceeds, is likely to become an important part of the future of AI systems.**
+  - tier 3, confidence 0.6, source AI Daily Brief host, episode `towards-ai-that-can-actually-interact`, fp `6e856d77fff91ec8`
+- **OpenAI's Codex has grown from a couple hundred thousand to more than 4 million weekly users, representing a significant increase in token spend and a shift toward agentic workflows.**
+  - tier 1, confidence 0.9, source AI Daily Brief host, episode `what-google-needs-to-do-at-io-this-week`, fp `1c3df0339bb2b33b`
+- **GPT-5.5 demonstrated the ability to run continuous agentic tasks for over 8 hours without stopping, a significant improvement over previous models that typically failed after 30 minutes to 3 hours.**
+  - tier 1, confidence 0.9, source Peter Gostev (arena.ai) (cited by Host), episode `what-i-learned-testing-gpt-5-5`, fp `879abb09601d9387`
+- **Aaron Levie, CEO of Box, stated that AI makes it easy to explore more than before, resulting in users doing far more work rather than less.**
+  - tier 2, confidence 0.95, source Aaron Levie, episode `why-agents-make-every-job-a-startup`, fp `ea28643af669ebc6`
+- **The host argues that the primary constraint in the current agentic era is not model quality, but the number of hours per day humans can feed work to the systems, making time the bottleneck.**
+  - tier 2, confidence 0.85, source AI Daily Brief Host, episode `why-agents-make-every-job-a-startup`, fp `49a30e8ff9e0d2da`
+- **The host argues that AI agents change the nature of work by allowing individuals to replicate themselves infinitely, turning the 'infinite backlog' of potential tasks into a contemporary failure rather than a theoretical future concept.**
+  - tier 2, confidence 0.85, source AI Daily Brief Host, episode `why-agents-make-every-job-a-startup`, fp `97337a3c757fd43b`
+- **Only 16% of enterprise AI deployments qualify as agentic, where an LLM plans, executes, observes feedback, and adapts behavior.**
+  - tier 1, confidence 0.95, source Menlo State of Generative AI in the Enterprise Report, episode `why-ai-advantage-compounds`, fp `654a84a6014e2a15`
+- **Anthropic's agentic coding trends report predicts that multi-agent systems will replace single-agent workflows, a trend the host notes is currently visible in the rise of tools like Open Claw.**
+  - tier 2, confidence 0.85, source Anthropic (Agentic Coding Trends Report) and Host, episode `why-ai-leads-to-more-work-not-less`, fp `df6dc9ab7e03a21c`
+- **ARC-AGI 3 consists of 135 simple graphical games that require AI agents to manipulate grids in real time without explicit instructions.**
+  - tier 1, confidence 0.95, source AI Daily Brief host, episode `why-ai-needs-better-benchmarks`, fp `999394a05b278fd8`
+- **The METR Long Task benchmark is effectively saturated because AI agents can now complete tasks that take human developers 10 hours, exhausting the available test set.**
+  - tier 2, confidence 0.85, source AI Daily Brief host, episode `why-ai-needs-better-benchmarks`, fp `b08e2b1f3e3ebe48`
+- **The transition from knowledge-based benchmarks to functional benchmarks reflects the shift in AI development from static knowledge recall to agentic tool use and real-world task execution.**
+  - tier 2, confidence 0.85, source AI Daily Brief host, episode `why-ai-needs-better-benchmarks`, fp `a9e915dc217c26eb`
+- **In a separate AI ROI benchmarking survey analyzing over 5,000 use cases, approximately 56% were classified as assisted, 30-31% as automations, and just under 14% as truly agentic AI.**
+  - tier 1, confidence 0.9, source Host's AI ROI Benchmarking Survey, episode `why-ceos-need-to-lead-ai-strategy`, fp `640da50f4ad17a52`
+- **The host argues that the drop in reported AI agent deployment rates from 42% in Q3 2025 to 26% in Q4 2025 is primarily due to a maturation in terminology, where organizations are now distinguishing between simple automations and true agentic systems.**
+  - tier 2, confidence 0.8, source Host (AI Daily Brief), episode `why-ceos-need-to-lead-ai-strategy`, fp `d792de420e4dddbc`
+- **Anthropic announced Claude Co-work, a product designed to allow non-developers to use Claude for non-coding tasks by providing access to local files and connectors.**
+  - tier 1, confidence 0.95, source Anthropic, episode `why-claude-cowork-is-a-big-deal`, fp `7465b42682438225`
+- **Lord of a few predicted that other major tech companies including OpenAI, Google, Microsoft, and Apple will follow Anthropic's lead in releasing similar agentic desktop tools, shifting the entire world economy over 12 months.**
+  - tier 3, confidence 0.5, source Lord of a few, episode `why-claude-cowork-is-a-big-deal`, fp `757e8358b1e7a792`
+- **Anthropic released three new features for agentic tool use: a tool search tool, programmatic tool calling, and tool use examples.**
+  - tier 1, confidence 0.95, source Anthropic announcement post, episode `why-claude-opus-45-changes-whats-possible-with-vibe-coding`, fp `e21c7e1151d11d61`
+- **In the February AI Usage Pulse Survey, 71.3% of respondents reported vibe coding, while 62% had use cases extending into automated or agentic AI.**
+  - tier 1, confidence 0.9, source AI Daily Brief (Host), episode `why-every-ai-product-seems-the-same`, fp `82d6c9997a1a5f19`
+- **The host predicts that 2026 might be the 'year of prompt injection' because AI agents are becoming capable of executing code and interacting with APIs, expanding the attack surface exponentially.**
+  - tier 3, confidence 0.65, source Host (AI Daily Brief) citing David Andre, episode `why-moltbook-matters`, fp `1fc79b0181dbabdd`
+
+## Draft splice edit
+```json
+{
+  "mode": "insert_after",
+  "anchor": "  ## Commercial Ecosystem Summary (2026)",
+  "content": "  ## Recent Developments (2025\u20132026)\n    Recent industry signals and product announcements from 2025\u20132026 illustrate the rapid maturation of agentic AI from experimental pilots to core enterprise infrastructure, while simultaneously highlighting the gap between strategic intent and production deployment.\n\n    **Platform and Product Evolution**\n    Jensen Huang (NVIDIA) has framed the current technological moment as three simultaneous platform shifts: from CPU to GPU accelerated computing, from classic ML to generative AI, and from generative AI to agentic and physical AI. This framing positions agentic AI not as a niche application layer, but as the next foundational computing paradigm. On the product side, Anthropic has expanded its agentic offerings significantly. The release of **Claude Co-work** extends agentic capabilities beyond developers to non-technical users, providing access to local files and connectors for general knowledge work. Early adopters have reported dramatic efficiency gains; for instance, Permanent Equity reported that tasks previously failing after 100+ hours of human effort were completed in 20 minutes using Claude Co-work. Internally, Anthropic\u2019s **Claude Code** (originally the internal 'Claude CLI') overtook all other internal coding tools between September and December 2025, driven by its design for longer model horizons and sustained autonomous operation. Additionally, Anthropic introduced three new features for agentic tool use: a **tool search tool**, **programmatic tool calling**, and **tool use examples**, the latter providing a universal standard for demonstrating effective tool integration.\n\n    **Enterprise Adoption and Strategy Gaps**\n    Despite high-profile successes, enterprise adoption remains uneven. A Menlo Ventures State of Generative AI in the Enterprise report found that only **16%** of enterprise AI deployments qualify as true agentic systems (where an LLM plans, executes, observes feedback, and adapts), with 39% being fixed-sequence workflows and just 8% being multi-agent systems. Deloitte\u2019s 2025 Emerging Technology Trends report corroborates this, finding that while 30% of organizations are exploring agent options and 38% are piloting solutions, only **11%** have agents actively in production. Furthermore, **42%** of organizations reported they are still developing their agentic strategy roadmap, and **35%** have no formal strategy at all, indicating a significant maturity gap in organizational governance.\n\n    **Workforce and Economic Impact**\n    The economic impact of agentic AI is beginning to manifest in workforce planning. HP announced plans to reduce its headcount by **4,000 to 6,000 employees** (a 10% workforce reduction) by 2028, citing AI adoption and process redesign as key drivers. CEO Enrique Lores noted that redesigning processes with agentic AI could have a \"very significant impact\" on operational efficiency. This aligns with broader trends where agentic AI is shifting from a productivity booster to a structural driver of organizational change.\n\n    **Usage Trends**\n    Adoption is accelerating at the individual level. An AI DB Intel January 2026 survey found that **37.6%** of respondents reported agentic AI usage, a significant increase from the 14% agentic usage rate observed in the previous AI ROI benchmarking survey (which covered 5,000+ use cases). Notably, adoption is led by senior leadership: **57%** of C-suite respondents reported agentic AI usage, compared to 32% of VPs and directors, suggesting that executive-level experimentation is driving broader organizational exploration.\n\n  ## Commercial Ecosystem Summary (2026)"
+}
+```

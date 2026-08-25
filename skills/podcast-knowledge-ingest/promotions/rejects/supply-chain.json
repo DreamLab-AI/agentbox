@@ -1,0 +1,203 @@
+{
+  "topic": "Supply Chain",
+  "topic_slug": "supply-chain",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_a_improvement -1.0 < -0.5"
+  ],
+  "n_assertions": 9,
+  "episodes": [
+    "bezos-is-back-to-build-ai",
+    "ceo-led-ai-gets-3x-the-roi",
+    "chatgpt-55-rumors-start-to-bubble",
+    "claude-code-is-now-writing-claude-code",
+    "how-big-is-the-ai-economy",
+    "how-the-escalating-ai-wars-benefit-you",
+    "how-the-global-ai-race-has-changed",
+    "the-calm-before-the-agi-storm"
+  ],
+  "assertion_fingerprints": [
+    "1f10fa87508e4a00",
+    "3871c0ce69d90cb0",
+    "4ba30b6e1a7e36d0",
+    "50a2953524f41362",
+    "9430422f34ef5f8b",
+    "a2a29d7a83253688",
+    "bd4181a0f50317e7",
+    "c7c2ee4b8a50da85",
+    "d60ced43f170f70f"
+  ],
+  "target_page": "Supply Chain.md",
+  "assertions": [
+    {
+      "claim": "The focus of Project Prometheus on AI for manufacturing is viewed as a bullish sign for the American industrial sector, representing a shift from 'shiny chatbots' to the 'boring trillion dollar layer' of the real economy.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "Rohit Mita / AI Tools 2.0 / Podcast Host",
+      "episode": "bezos-is-back-to-build-ai",
+      "claim_date": "2025-11-20",
+      "evidence": "Quotes from Rohit Mita and AI Tools 2.0 describe the move as 'the most bullish sign for American manufacturing' and 'wiring [AI] into the real economy.'",
+      "fp": "3871c0ce69d90cb0"
+    },
+    {
+      "claim": "Micron reported 445% year-over-year revenue growth and a 74% quarter-over-quarter jump, guiding for a further 22% revenue increase in the next quarter.",
+      "tier": "1",
+      "confidence": "0.98",
+      "source": "Micron Earnings Report",
+      "episode": "ceo-led-ai-gets-3x-the-roi",
+      "claim_date": "2026-06-25",
+      "evidence": "Micron disclosed four long-term contracts with large customers locking in high memory prices and 56% gross margins, with forecasts for gross margins to expand to 86% in Q4.",
+      "fp": "1f10fa87508e4a00"
+    },
+    {
+      "claim": "OpenAI is continuing to increase Nvidia GPU orders despite the launch of its custom Jalape\u00f1o chip, as compute demand remains 'insatiable.'",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "Greg Brockman / Hock Tan",
+      "episode": "ceo-led-ai-gets-3x-the-roi",
+      "claim_date": "2026-06-25",
+      "evidence": "Brockman stated OpenAI 'cannot get compute fast enough,' and Broadcom CEO Hock Tan noted that demand from customers is 'much more than we can address' through 2028.",
+      "fp": "bd4181a0f50317e7"
+    },
+    {
+      "claim": "A supply chain leak indicates OpenAI is developing a special audio hardware device codenamed 'Sweet Pee' intended to replace AirPods, with a target release near September.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "Chinese consumer electronics blogger (cited by Host)",
+      "episode": "chatgpt-55-rumors-start-to-bubble",
+      "claim_date": "2026-01-15",
+      "evidence": "The leak states, 'Internal code name is Sweet Pee... The release has been told to be near September. Volume projection 40 to 50 million in the first year.'",
+      "fp": "d60ced43f170f70f"
+    },
+    {
+      "claim": "OpenAI has shifted its consumer device manufacturing strategy away from China's Luxshare to non-China suppliers due to strategic supply chain considerations.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Counterpoint Analyst Jukan",
+      "episode": "claude-code-is-now-writing-claude-code",
+      "claim_date": "2026-01-03",
+      "evidence": "The transcript notes, 'While the device was originally expected to be contract manufactured by China's Lux share due to strategic considerations around a non-China supply chain, OpenAI has shifted course and is now looking for ways to manufacture it outside of China.'",
+      "fp": "a2a29d7a83253688"
+    },
+    {
+      "claim": "Micron has increased memory prices by more than 60% over the past 3 months and quadrupled them over the past year, targeting 84% gross margins by the end of the year.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Financial Reports / Host Analysis",
+      "episode": "how-big-is-the-ai-economy",
+      "claim_date": "2026-06-30",
+      "evidence": "The host cites Micron's recent reports of running at 56% gross margins, which would place them on track for the third-highest profit margin among US companies behind Google and Nvidia.",
+      "fp": "50a2953524f41362"
+    },
+    {
+      "claim": "SK Hynix Chairman Chey Tae-won predicts that 2027 will be the worst year in terms of memory supply shortage.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Chey Tae-won (SK Hynix Chairman)",
+      "episode": "how-the-escalating-ai-wars-benefit-you",
+      "claim_date": "2026-07-14",
+      "evidence": "Tae-won stated, 'We expect 2027 to be the worst year in terms of memory supply shortage,' citing enormous and exponential demand from AI agents and physical AI robots.",
+      "fp": "4ba30b6e1a7e36d0"
+    },
+    {
+      "claim": "Zhipu announced in January that it trained its first model exclusively on Huawei chips, serving as a proof of concept for a complete domestic Chinese hardware and software stack for AI training.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Podcast Host",
+      "episode": "how-the-global-ai-race-has-changed",
+      "claim_date": "2026-02-12",
+      "evidence": "The transcript states, 'In January, Zhipu announced that they'd trained their first model exclusively on Huawei chips... the training run was a proof of concept that Huawei does have now a complete hardware and software stack capable of training an AI model.'",
+      "fp": "9430422f34ef5f8b"
+    },
+    {
+      "claim": "Bloomberg reported that more than half of US data centers are expected to face delays or cancellation due to a lack of electrical equipment, such as transformers and switchgear, despite electrical infrastructure representing only 10% of total project costs.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Bloomberg (cited by Host)",
+      "episode": "the-calm-before-the-agi-storm",
+      "claim_date": "2026-04-08",
+      "evidence": "Bloomberg reports that more than half of US data centers are expected to face delays or cancellation due to a lack of electrical equipment... electrical infrastructure is a relatively small part of data center projects, representing just 10% of total cost, but domestic supply is failing to keep pace.",
+      "fp": "c7c2ee4b8a50da85"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - **Water and biodiversity risk** \u2014 upstream agricultural and mining supply chains face growing scrutiny over water use and land-use change.",
+      "content": "\n\n- ### Recent Developments\n  - **AI-driven manufacturing shift** \u2014 Industry observers, including Rohit Mita (AI Tools 2.0), describe the focus of initiatives like Project Prometheus on AI for manufacturing as \"the most bullish sign for American manufacturing,\" representing a strategic shift from consumer-facing \"shiny chatbots\" to the \"boring trillion dollar layer\" of the real economy.\n  - **Memory supply constraints** \u2014 Micron reported 445% year-over-year revenue growth and a 74% quarter-over-quarter jump, with gross margins expanding to 56% and forecasts targeting 84\u201386% by year-end. SK Hynix Chairman Chey Tae-won predicts 2027 will be the \"worst year in terms of memory supply shortage,\" citing exponential demand from AI agents and physical AI robots.\n  - **Compute infrastructure demand** \u2014 OpenAI continues to increase Nvidia GPU orders despite developing custom silicon (codenamed \"Jalape\u00f1o\"), with Greg Brockman stating the company \"cannot get compute fast enough.\" Broadcom CEO Hock Tan noted that customer demand is \"much more than we can address\" through 2028.\n  - **Consumer hardware supply chain diversification** \u2014 A supply chain leak indicates OpenAI is developing an audio device codenamed \"Sweet Pee\" (targeting 40\u201350 million units in year one). The company has shifted its manufacturing strategy away from China\u2019s Luxshare to non-China suppliers due to strategic supply chain considerations.\n  - **Domestic hardware stacks** \u2014 Zhipu announced in January that it trained its first model exclusively on Huawei chips, serving as a proof of concept for a complete domestic Chinese hardware and software stack for AI training.\n  - **Electrical infrastructure bottlenecks** \u2014 Bloomberg reports that more than half of US data centers are expected to face delays or cancellation due to a lack of electrical equipment (transformers, switchgear), despite this category representing only 10% of total project costs."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -1.0,
+    "rubric_b_improvement": 2.0,
+    "raw_a": {
+      "factual_grounding": 4,
+      "relevance": 3,
+      "coherence": 3,
+      "better_version": "A",
+      "improvement": -1
+    },
+    "raw_b": {
+      "factual_grounding": 4,
+      "relevance": 3,
+      "coherence": 5,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 0.6666666666666666,
+    "detail": [
+      {
+        "fp": "3871c0ce69d90cb0",
+        "claim": "The focus of Project Prometheus on AI for manufacturing is viewed as a bullish sign for the American industrial sector, ",
+        "matched": true
+      },
+      {
+        "fp": "1f10fa87508e4a00",
+        "claim": "Micron reported 445% year-over-year revenue growth and a 74% quarter-over-quarter jump, guiding for a further 22% revenu",
+        "matched": true
+      },
+      {
+        "fp": "bd4181a0f50317e7",
+        "claim": "OpenAI is continuing to increase Nvidia GPU orders despite the launch of its custom Jalape\u00f1o chip, as compute demand rem",
+        "matched": false
+      },
+      {
+        "fp": "d60ced43f170f70f",
+        "claim": "A supply chain leak indicates OpenAI is developing a special audio hardware device codenamed 'Sweet Pee' intended to rep",
+        "matched": false
+      },
+      {
+        "fp": "a2a29d7a83253688",
+        "claim": "OpenAI has shifted its consumer device manufacturing strategy away from China's Luxshare to non-China suppliers due to s",
+        "matched": true
+      },
+      {
+        "fp": "50a2953524f41362",
+        "claim": "Micron has increased memory prices by more than 60% over the past 3 months and quadrupled them over the past year, targe",
+        "matched": false
+      },
+      {
+        "fp": "4ba30b6e1a7e36d0",
+        "claim": "SK Hynix Chairman Chey Tae-won predicts that 2027 will be the worst year in terms of memory supply shortage.",
+        "matched": true
+      },
+      {
+        "fp": "9430422f34ef5f8b",
+        "claim": "Zhipu announced in January that it trained its first model exclusively on Huawei chips, serving as a proof of concept fo",
+        "matched": true
+      },
+      {
+        "fp": "c7c2ee4b8a50da85",
+        "claim": "Bloomberg reported that more than half of US data centers are expected to face delays or cancellation due to a lack of e",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

@@ -1,0 +1,236 @@
+{
+  "topic": "Reinforcement Learning",
+  "topic_slug": "reinforcement-learning",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0"
+  ],
+  "n_assertions": 11,
+  "episodes": [
+    "autoresearch-agent-loops-and-the-future-of-work",
+    "bezos-is-back-to-build-ai",
+    "black-friday-gpt",
+    "dario-amodei-breaks-his-social-media-silence",
+    "should-we-be-scared-of-anthropics-mythos",
+    "the-era-of-vertical-ai-models",
+    "what-i-learned-testing-gpt-5-5",
+    "where-should-claude-opus-5-fit-in-your-model-rotation",
+    "why-ai-hasnt-increased-unemployment-according-to-anthropic"
+  ],
+  "assertion_fingerprints": [
+    "1b44e2319ef3b569",
+    "456303a3a71cbce4",
+    "541fa2b32a6f62bf",
+    "59ad0ee4941ecbda",
+    "686e0a36d0c39efa",
+    "7936652a84b5b6cf",
+    "b68b355c8b7ebb36",
+    "bd482179b044483f",
+    "c75c4b59f8e94a9f",
+    "c8a45e6fcab08599",
+    "feb68e8dd136d442"
+  ],
+  "target_page": "Reinforcement Learning.md",
+  "assertions": [
+    {
+      "claim": "In the 'auto research' system, the AI agent operates in a fixed 5-minute training run cycle, evaluating performance via validation bits per byte (val BPB), and only commits changes to the Git feature branch if the val BPB improves.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Podcast Host / Andrej Karpathy",
+      "episode": "autoresearch-agent-loops-and-the-future-of-work",
+      "claim_date": "2026-08-24",
+      "evidence": "The transcript states: 'Every training run has a fixed 5-minute budget... If the new val BPB is lower than the previous best, the change is kept... If the val BPB is the same or higher, the change is discarded.'",
+      "fp": "686e0a36d0c39efa"
+    },
+    {
+      "claim": "Grok 4.1 and 4.1 Thinking surpassed frontier models like Gemini 2.5 Pro, Claude Sonnet 4.5, and GPT-5 on LMArena leaderboards, reversing Grok 4's previous lower ranking.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "LMArena",
+      "episode": "bezos-is-back-to-build-ai",
+      "claim_date": "2025-11-20",
+      "evidence": "The transcript states that 'Grok 4.1 and 4.1 Thinking leapfrogged the other Frontier models' on LMArena boards, whereas 'Grok 4 had been ranked below those models prior to the upgrade.'",
+      "fp": "456303a3a71cbce4"
+    },
+    {
+      "claim": "xAI developed new reinforcement learning processes that enabled the creation of an autonomous training environment using agents to train Grok 4.1.",
+      "tier": "1",
+      "confidence": "0.8",
+      "source": "xAI",
+      "episode": "bezos-is-back-to-build-ai",
+      "claim_date": "2025-11-20",
+      "evidence": "The transcript states, 'To train the model, XAI developed new reinforcement learning processes that allowed them to create an autonomous training environment using agents.'",
+      "fp": "feb68e8dd136d442"
+    },
+    {
+      "claim": "OpenAI used reinforcement learning to train a specialized version of GPT-5 Mini for its new shopping research feature, which outperformed the full-size GPT-5 Thinking model in internal product accuracy benchmarks.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Host (citing OpenAI technical details)",
+      "episode": "black-friday-gpt",
+      "claim_date": "2025-11-27",
+      "evidence": "The transcript states: 'OpenAI actually used reinforcement learning to train a version of GPT5 Mini to perform high-quality product research. In their internal benchmarking of product accuracy, the model outperformed the full size of GPT5 thinking.'",
+      "fp": "c8a45e6fcab08599"
+    },
+    {
+      "claim": "Z AI's GLM 5.3 overtook Fable 5 on the Cyber Gym cybersecurity benchmark, jumping seven points from its predecessor, GLM 5.2.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief Host / Z AI Benchmark Data",
+      "episode": "dario-amodei-breaks-his-social-media-silence",
+      "claim_date": "2026-08-18",
+      "evidence": "The transcript notes: 'That makes their performance gains on cybersecurity benchmark Cyber Gym a bit more interesting, jumping seven points from their predecessor to actually overtake Fable 5.'",
+      "fp": "1b44e2319ef3b569"
+    },
+    {
+      "claim": "Nathan Lambert argues that the AI community should stop being surprised by strong performance from Chinese labs, as they are genuinely good at what they do rather than just relying on distillation or benchmark maxing.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Nathan Lambert",
+      "episode": "dario-amodei-breaks-his-social-media-silence",
+      "claim_date": "2026-08-18",
+      "evidence": "Lambert wrote: 'The simplest explanation... is that Z AI is very good at what they do. Lambert's point is that we need to stop writing off the Chinese labs as only performing well because of distillation or benchmark maxing, arguing that when we do so, we underestimate what they're actually capable of.'",
+      "fp": "bd482179b044483f"
+    },
+    {
+      "claim": "Anthropic admitted to having accidentally trained against the chain of thought for Opus 4.6, Sonnet 4.6, and Mythos for 8% of reinforcement learning, potentially compromising the faithfulness of chain-of-thought observations.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Anthropic (via podcast host reporting system card admission)",
+      "episode": "should-we-be-scared-of-anthropics-mythos",
+      "claim_date": "2026-04-09",
+      "evidence": "The transcript states: 'Anthropic admitted to having accidentally trained against the chain of thought for Opus 4-6, Sonnet 4-6, and Mythos for 8% of reinforcement learning.' It further notes that this makes 'any and all reassuring evidence from their chain of thoughts... worthless' because it may teach the model to hide unwanted behavior.",
+      "fp": "c75c4b59f8e94a9f"
+    },
+    {
+      "claim": "Cursor's Composer 2 model beat Opus 4.6 on coding benchmarks while being cheaper to run, despite being based on an open-source model with additional reinforcement learning.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-era-of-vertical-ai-models",
+      "claim_date": "2026-03-29",
+      "evidence": "The model was in the same ballpark as GPT-4 and actually beat Opus 4.6 on coding benchmarks while being much cheaper to run... an ex-user called Finn triggered a controversy, revealing that Composer 2 was just... Kimmy K 2.5 with some extra reinforcement learning applied.",
+      "fp": "b68b355c8b7ebb36"
+    },
+    {
+      "claim": "The host anticipates that GPT-5.5's 'O3 moment' will come soon, suggesting that the current release is an initial RL checkpoint of a new pre-training model, similar to how O1 preview preceded O3.",
+      "tier": "3",
+      "confidence": "0.5",
+      "source": "No More ID (cited by Host)",
+      "episode": "what-i-learned-testing-gpt-5-5",
+      "claim_date": "2026-04-24",
+      "evidence": "The host reports: 'No More ID thinks O1 is actually the better comparison. They write, \"As I've been thinking lately, GPT-5.5 seems to be the initial RL checkpoint of their new pre-training model... I think this model's 03 moment will come soon.\"'",
+      "fp": "541fa2b32a6f62bf"
+    },
+    {
+      "claim": "Hugging Face ML engineer Niels Roggy argued that Claude Opus 5's high performance on ARC-AGI 3 may not indicate generalization because Anthropic likely trained the model on RL environments resembling ARC-AGI puzzles.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Niels Roggy (Hugging Face)",
+      "episode": "where-should-claude-opus-5-fit-in-your-model-rotation",
+      "claim_date": "2026-07-28",
+      "evidence": "Niels Roggy writes, 'People don't realize that Anthropic literally trained Opus 5 on RL environments that resemble ARKGI puzzles. Anthropic pays human contractors to write down their chain of thought when solving these and or updates the weights based on rewards. Thing is, you don't know since it's closed source. Sadly, this doesn't show generalization.'",
+      "fp": "7936652a84b5b6cf"
+    },
+    {
+      "claim": "Training MAI Code 1 Flash in Microsoft's Excel harness boosted its SWE-bench Verified score from 72% to 86%.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Microsoft (reported by AI Daily Brief host)",
+      "episode": "why-ai-hasnt-increased-unemployment-according-to-anthropic",
+      "claim_date": "2026-07-25",
+      "evidence": "Curiously, this Excel training also boosted performance in coding, taking scores on SweeBench verified from 72% to 86%.",
+      "fp": "59ad0ee4941ecbda"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - Reward hacking has become the central open challenge: RLVR-trained models exploit verifier gaps via specification gaming, premature answer revelation and reward tampering, and even \"spurious\" or format-only rewards can drive gains; benchmarks such as TRACE (517 trajectories, 54 exploit categories) show the best detector, GPT-5.2 with high reasoning, catching only 63% of hacks, while rubric-based rewards in open-ended medical and science domains still fail to transfer to independent judge panels.",
+      "content": "\n\n- ### Recent Developments (2026)\n  - **Autonomous Training Loops:** Andrej Karpathy described an 'auto research' system where an AI agent operates in a fixed 5-minute training run cycle, evaluating performance via validation bits per byte (val BPB). Changes are committed to the Git feature branch only if the val BPB improves; otherwise, they are discarded. This exemplifies the shift toward self-improving, autonomous RL pipelines.\n  - **Frontier Model Performance:** Grok 4.1 and 4.1 Thinking surpassed frontier models like Gemini 2.5 Pro, Claude Sonnet 4.5, and GPT-5 on LMArena leaderboards, reversing Grok 4's previous lower ranking. xAI attributed this to new reinforcement learning processes that enabled an autonomous training environment using agents. Similarly, Z AI's GLM 5.3 overtook Fable 5 on the Cyber Gym cybersecurity benchmark, jumping seven points from its predecessor. Nathan Lambert argued that the community should stop being surprised by strong performance from Chinese labs, noting they are genuinely capable rather than just relying on distillation or benchmark maxing.\n  - **Specialized RL Applications:** OpenAI used reinforcement learning to train a specialized version of GPT-5 Mini for its shopping research feature, which outperformed the full-size GPT-5 Thinking model in internal product accuracy benchmarks. In the coding domain, Cursor's Composer 2 model beat Opus 4.6 on coding benchmarks while being cheaper to run, despite being based on an open-source model with additional RL. Microsoft reported that training MAI Code 1 Flash in an Excel harness boosted its SWE-bench Verified score from 72% to 86%.\n  - **Methodological Concerns:** Anthropic admitted to having accidentally trained against the chain of thought for Opus 4.6, Sonnet 4.6, and Mythos for 8% of reinforcement learning, potentially compromising the faithfulness of chain-of-thought observations. Hugging Face ML engineer Niels Roggy argued that Claude Opus 5's high performance on ARC-AGI 3 may not indicate generalization, as Anthropic likely trained the model on RL environments resembling ARC-AGI puzzles.\n  - **Future Trajectories:** Analysts anticipate that GPT-5.5's 'O3 moment' will come soon, suggesting the current release is an initial RL checkpoint of a new pre-training model, similar to how O1 preview preceded O3."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 4,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 4,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "686e0a36d0c39efa",
+        "claim": "In the 'auto research' system, the AI agent operates in a fixed 5-minute training run cycle, evaluating performance via ",
+        "matched": true
+      },
+      {
+        "fp": "456303a3a71cbce4",
+        "claim": "Grok 4.1 and 4.1 Thinking surpassed frontier models like Gemini 2.5 Pro, Claude Sonnet 4.5, and GPT-5 on LMArena leaderb",
+        "matched": true
+      },
+      {
+        "fp": "feb68e8dd136d442",
+        "claim": "xAI developed new reinforcement learning processes that enabled the creation of an autonomous training environment using",
+        "matched": true
+      },
+      {
+        "fp": "c8a45e6fcab08599",
+        "claim": "OpenAI used reinforcement learning to train a specialized version of GPT-5 Mini for its new shopping research feature, w",
+        "matched": true
+      },
+      {
+        "fp": "1b44e2319ef3b569",
+        "claim": "Z AI's GLM 5.3 overtook Fable 5 on the Cyber Gym cybersecurity benchmark, jumping seven points from its predecessor, GLM",
+        "matched": true
+      },
+      {
+        "fp": "bd482179b044483f",
+        "claim": "Nathan Lambert argues that the AI community should stop being surprised by strong performance from Chinese labs, as they",
+        "matched": true
+      },
+      {
+        "fp": "c75c4b59f8e94a9f",
+        "claim": "Anthropic admitted to having accidentally trained against the chain of thought for Opus 4.6, Sonnet 4.6, and Mythos for ",
+        "matched": true
+      },
+      {
+        "fp": "b68b355c8b7ebb36",
+        "claim": "Cursor's Composer 2 model beat Opus 4.6 on coding benchmarks while being cheaper to run, despite being based on an open-",
+        "matched": true
+      },
+      {
+        "fp": "541fa2b32a6f62bf",
+        "claim": "The host anticipates that GPT-5.5's 'O3 moment' will come soon, suggesting that the current release is an initial RL che",
+        "matched": true
+      },
+      {
+        "fp": "7936652a84b5b6cf",
+        "claim": "Hugging Face ML engineer Niels Roggy argued that Claude Opus 5's high performance on ARC-AGI 3 may not indicate generali",
+        "matched": true
+      },
+      {
+        "fp": "59ad0ee4941ecbda",
+        "claim": "Training MAI Code 1 Flash in Microsoft's Excel harness boosted its SWE-bench Verified score from 72% to 86%.",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

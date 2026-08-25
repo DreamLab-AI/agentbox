@@ -1,0 +1,239 @@
+{
+  "topic": "Context Window",
+  "topic_slug": "context-window",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5"
+  ],
+  "n_assertions": 11,
+  "episodes": [
+    "autoresearch-agent-loops-and-the-future-of-work",
+    "chatgpt-55-rumors-start-to-bubble",
+    "gpt-54-first-test-results",
+    "harness-engineering-101",
+    "how-to-learn-ai-with-ai",
+    "how-to-use-claudes-massive-new-upgrades",
+    "opus-46-and-chatgpt-53-codex-are-here-and-the-labs-are-at-war",
+    "surprise-elon-anthropic-team-up-reshapes-ai-race",
+    "the-latest-ai-models-and-model-rumors",
+    "what-people-are-actually-using-ai-for-right-now",
+    "why-google-workspace-cli-is-such-a-big-deal"
+  ],
+  "assertion_fingerprints": [
+    "1b51a245c16f691f",
+    "29d54871ac1af921",
+    "33fac27c087a2ab2",
+    "64411a428072e8f0",
+    "81dfd1ecd761881c",
+    "8b1df57571c2f8f5",
+    "b668a3c8190a6c2a",
+    "c27a40ae6e99f30e",
+    "d025e3671507fd9f",
+    "f76728c1cf934cf6",
+    "ffc5c41795aa84d2"
+  ],
+  "target_page": "Context Window.md",
+  "assertions": [
+    {
+      "claim": "The 'Ralph Wiggum' technique, popularized by developer Jeffrey Huntley, involves running an AI coding agent in a loop where the agent's output is fed back as input, deliberately terminating the agent before context window exhaustion to externalize memory into files and Git history.",
+      "tier": "2",
+      "confidence": "0.88",
+      "source": "Podcast Host / Jeffrey Huntley",
+      "episode": "autoresearch-agent-loops-and-the-future-of-work",
+      "claim_date": "2026-08-24",
+      "evidence": "The host explains: 'The Ralph loop's solution is to deliberately kill the agent and start fresh before that happens. Memory then doesn't live in the AI context window, it lives in the files... The Git commit history, a progress.txt file...'",
+      "fp": "b668a3c8190a6c2a"
+    },
+    {
+      "claim": "DeepSeek V4 is expected to be released in mid-February with a heavy focus on coding performance and long context windows.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "The Information (cited by Host)",
+      "episode": "chatgpt-55-rumors-start-to-bubble",
+      "claim_date": "2026-01-15",
+      "evidence": "The report states, 'DeepSseek V4 will be released in midFebruary and will have a heavy focus on coding performance... V4 will showcase DeepSeek's advances in handling extremely long context windows.'",
+      "fp": "d025e3671507fd9f"
+    },
+    {
+      "claim": "GPT-5.4 features a 1 million token context window, which was confirmed after earlier rumors suggested a 2 million token limit.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "The Information / OpenAI",
+      "episode": "gpt-54-first-test-results",
+      "claim_date": "2026-03-06",
+      "evidence": "Rumors have been flying that there was a 2 million token context window, whereas The Information's reporting from the last couple of days suggested it was just 1 million... As the information had it in that leak, we do indeed get a 1 million token context window.",
+      "fp": "1b51a245c16f691f"
+    },
+    {
+      "claim": "OpenAI's internal beta for a software product with zero manually written code revealed that 'progressive disclosure' of context is a key challenge in harness design, requiring agents to access minimum necessary information to avoid crowding the context window.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "OpenAI / AI Daily Brief Host",
+      "episode": "harness-engineering-101",
+      "claim_date": "2026-04-15",
+      "evidence": "The transcript discusses OpenAI's post 'harness engineering leveraging Codex in an agent-first world' and notes their experiment with 'progressive disclosure' where skills unfold context only when needed.",
+      "fp": "33fac27c087a2ab2"
+    },
+    {
+      "claim": "The host recommends using \"handoff documents\" to capture key themes, decisions, and open questions before ending an AI session, as platform memory features are currently unreliable and context windows are limited.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-to-learn-ai-with-ai",
+      "claim_date": "2026-02-14",
+      "evidence": "The host states: \"If you don't capture it, you start from zero next time... you have to explicitly capture the context before you move to a new conversation... treat every working session like a shift handoff.\"",
+      "fp": "ffc5c41795aa84d2"
+    },
+    {
+      "claim": "The 1 million token context window became generally available for both Claude Opus and Claude Sonnet models.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-to-use-claudes-massive-new-upgrades",
+      "claim_date": "2026-03-24",
+      "evidence": "The host states: 'This past month, the 1 million token context window actually became available generally for both Claude Opus and Claude Sonnet.'",
+      "fp": "c27a40ae6e99f30e"
+    },
+    {
+      "claim": "Claude Opus 4.6 supports a 1 million token context window.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Anthropic (via Host)",
+      "episode": "opus-46-and-chatgpt-53-codex-are-here-and-the-labs-are-at-war",
+      "claim_date": "2026-02-06",
+      "evidence": "The transcript states, 'Opus 4.6 now supports million token context windows.'",
+      "fp": "81dfd1ecd761881c"
+    },
+    {
+      "claim": "If models can maintain 'infinite' context windows, they can continually learn from experience, a functional distinction that may collapse the line between continual learning and AGI.",
+      "tier": "3",
+      "confidence": "0.55",
+      "source": "Dan McCarty / AI Daily Brief Host",
+      "episode": "surprise-elon-anthropic-team-up-reshapes-ai-race",
+      "claim_date": "2026-05-07",
+      "evidence": "Dan McCarty is quoted: 'Infinite context means AI systems that continually learn and when that arrives it'll be much harder to deny that we haven't arrived at AGI.'",
+      "fp": "f76728c1cf934cf6"
+    },
+    {
+      "claim": "GPT-5.3 Codex Spark has a 128K context window, does not support multimodal inputs, and is unable to complete long-horizon tasks.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief host",
+      "episode": "the-latest-ai-models-and-model-rumors",
+      "claim_date": "2026-02-17",
+      "evidence": "The model only has a 128K context window, can't accept multimodal inputs, and it can't complete long horizon tasks.",
+      "fp": "64411a428072e8f0"
+    },
+    {
+      "claim": "The average number of prompt tokens per request grew approximately 4x over the course of 2025, from around 1,500 tokens to 6,000 tokens.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "OpenRouter and a16z",
+      "episode": "what-people-are-actually-using-ai-for-right-now",
+      "claim_date": "2025-12-09",
+      "evidence": "The host notes: 'The average number of prompt tokens per request... grew about 4x over the course of the year from around 1.5,000 tokens to 6,000 tokens.'",
+      "fp": "29d54871ac1af921"
+    },
+    {
+      "claim": "One developer measured that loading MCP servers into an agent's context window consumed 37,000 tokens and 20% of the context before any work began, due to 142 tools being loaded.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "Kanika (via AI Daily Brief Host)",
+      "episode": "why-google-workspace-cli-is-such-a-big-deal",
+      "claim_date": "2026-03-12",
+      "evidence": "The transcript reports: 'One developer measured 142 tools loaded, 37,000 tokens consumed, and 20% of context gone before work even starts.'",
+      "fp": "8b1df57571c2f8f5"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - Standards and frameworks for context window usage remain emergent, with ongoing efforts to standardise tokenisation methods and benchmarking protocols for context window performance.",
+      "content": "\n\n  ## Recent Developments (2025\u20132026)\n\n  - **GPT-5.4 Context Window**: GPT-5.4 features a 1 million token context window, confirmed after earlier rumors suggested a 2 million token limit. [source: The Information / OpenAI, confidence 0.9, tier 1]\n  - **Claude 1M Token GA**: The 1 million token context window became generally available for both Claude Opus and Claude Sonnet models. Claude Opus 4.6 specifically supports a 1 million token context window. [source: Host (AI Daily Brief) / Anthropic, confidence 0.9\u20130.95, tier 1]\n  - **DeepSeek V4**: Expected to be released in mid-February with a heavy focus on coding performance and long context windows, showcasing advances in handling extremely long contexts. [source: The Information (cited by Host), confidence 0.85, tier 1]\n  - **GPT-5.3 Codex Spark**: Features a 128K context window, does not support multimodal inputs, and is unable to complete long-horizon tasks. [source: AI Daily Brief host, confidence 0.95, tier 1]\n  - **Token Usage Growth**: The average number of prompt tokens per request grew approximately 4x over the course of 2025, from around 1,500 tokens to 6,000 tokens. [source: OpenRouter and a16z, confidence 0.95, tier 1]\n  - **MCP Overhead**: One developer measured that loading MCP servers into an agent's context window consumed 37,000 tokens and 20% of the context before any work began, due to 142 tools being loaded. [source: Kanika (via AI Daily Brief Host), confidence 0.85, tier 1]\n\n  ### Context Management Strategies\n\n  - **The 'Ralph Wiggum' Technique**: Popularized by developer Jeffrey Huntley, this involves running an AI coding agent in a loop where the agent's output is fed back as input, deliberately terminating the agent before context window exhaustion to externalize memory into files and Git history. [source: Podcast Host / Jeffrey Huntley, confidence 0.88, tier 2]\n  - **Progressive Disclosure**: OpenAI's internal beta for a software product with zero manually written code revealed that 'progressive disclosure' of context is a key challenge in harness design, requiring agents to access minimum necessary information to avoid crowding the context window. [source: OpenAI / AI Daily Brief Host, confidence 0.85, tier 2]\n  - **Handoff Documents**: The host recommends using \"handoff documents\" to capture key themes, decisions, and open questions before ending an AI session, as platform memory features are currently unreliable and context windows are limited. [source: Host (AI Daily Brief), confidence 0.85, tier 2]\n\n  ### Theoretical Implications\n\n  - **Infinite Context and AGI**: If models can maintain 'infinite' context windows, they can continually learn from experience, a functional distinction that may collapse the line between continual learning and AGI. As Dan McCarty notes: 'Infinite context means AI systems that continually learn and when that arrives it'll be much harder to deny that we haven't arrived at AGI.' [source: Dan McCarty / AI Daily Brief Host, confidence 0.55, tier 3]"
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 1,
+      "relevance": 3,
+      "coherence": 2,
+      "better_version": "A",
+      "improvement": -2
+    },
+    "raw_b": {
+      "factual_grounding": 4,
+      "relevance": 4,
+      "coherence": 4,
+      "better_version": "B",
+      "improvement": 2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "b668a3c8190a6c2a",
+        "claim": "The 'Ralph Wiggum' technique, popularized by developer Jeffrey Huntley, involves running an AI coding agent in a loop wh",
+        "matched": true
+      },
+      {
+        "fp": "d025e3671507fd9f",
+        "claim": "DeepSeek V4 is expected to be released in mid-February with a heavy focus on coding performance and long context windows",
+        "matched": true
+      },
+      {
+        "fp": "1b51a245c16f691f",
+        "claim": "GPT-5.4 features a 1 million token context window, which was confirmed after earlier rumors suggested a 2 million token ",
+        "matched": true
+      },
+      {
+        "fp": "33fac27c087a2ab2",
+        "claim": "OpenAI's internal beta for a software product with zero manually written code revealed that 'progressive disclosure' of ",
+        "matched": true
+      },
+      {
+        "fp": "ffc5c41795aa84d2",
+        "claim": "The host recommends using \"handoff documents\" to capture key themes, decisions, and open questions before ending an AI s",
+        "matched": true
+      },
+      {
+        "fp": "c27a40ae6e99f30e",
+        "claim": "The 1 million token context window became generally available for both Claude Opus and Claude Sonnet models.",
+        "matched": true
+      },
+      {
+        "fp": "81dfd1ecd761881c",
+        "claim": "Claude Opus 4.6 supports a 1 million token context window.",
+        "matched": true
+      },
+      {
+        "fp": "f76728c1cf934cf6",
+        "claim": "If models can maintain 'infinite' context windows, they can continually learn from experience, a functional distinction ",
+        "matched": true
+      },
+      {
+        "fp": "64411a428072e8f0",
+        "claim": "GPT-5.3 Codex Spark has a 128K context window, does not support multimodal inputs, and is unable to complete long-horizo",
+        "matched": true
+      },
+      {
+        "fp": "29d54871ac1af921",
+        "claim": "The average number of prompt tokens per request grew approximately 4x over the course of 2025, from around 1,500 tokens ",
+        "matched": true
+      },
+      {
+        "fp": "8b1df57571c2f8f5",
+        "claim": "One developer measured that loading MCP servers into an agent's context window consumed 37,000 tokens and 20% of the con",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

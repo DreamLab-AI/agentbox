@@ -1,0 +1,187 @@
+{
+  "topic": "AI Ethics",
+  "topic_slug": "ai-ethics",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5",
+    "completeness 0.25 < 0.6"
+  ],
+  "n_assertions": 8,
+  "episodes": [
+    "beating-the-ai-doom-cycle",
+    "how-to-make-chatgpt-ads-not-suck",
+    "is-ai-doom-going-out-of-style",
+    "the-big-questions-shaping-the-consumer-ai-battle",
+    "val-kilmers-ai-resurrection",
+    "what-the-pope-actually-said-about-ai"
+  ],
+  "assertion_fingerprints": [
+    "15a7211544f763b0",
+    "55be13bd2c213256",
+    "7522201546b5c694",
+    "7abf16664efb7c08",
+    "ac655c6c0b0dcd41",
+    "c23cc2d92da8e7be",
+    "c2535ccab6df66b4",
+    "e991f85b5f67bef2"
+  ],
+  "target_page": "AI Ethics.md",
+  "assertions": [
+    {
+      "claim": "Public backlash against AI is intensifying, evidenced by commencement speakers like Eric Schmidt and Gloria Cordfield being booed for mentioning AI's impact on jobs and society.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "AI Daily Brief Host / Journalists",
+      "episode": "beating-the-ai-doom-cycle",
+      "claim_date": "2026-08-24",
+      "evidence": "The transcript details: 'the graduating class at the University of Arizona loudly booed Google co-founder Eric Schmidt... Gloria Cordfield... was loudly booed at the University of Central Florida graduation.'",
+      "fp": "7abf16664efb7c08"
+    },
+    {
+      "claim": "OpenAI's advertising strategy is guided by principles of answer independence, conversational privacy, and mission alignment, ensuring ads do not influence AI responses.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "OpenAI official announcement",
+      "episode": "how-to-make-chatgpt-ads-not-suck",
+      "claim_date": "2026-01-20",
+      "evidence": "The transcript details OpenAI's stated principles: 'responses in chat GPT will not be influenced by ads,' 'Your conversations are private from advertisers,' and 'Our mission... is to ensure AGI benefits all of humanity.'",
+      "fp": "55be13bd2c213256"
+    },
+    {
+      "claim": "OpenAI is undergoing a 'messaging pivot' from framing AI as a replacement for humanity to framing it as a tool to augment and elevate people.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "Noah Smith",
+      "episode": "is-ai-doom-going-out-of-style",
+      "claim_date": "2026-05-05",
+      "evidence": "Noah Smith is quoted: 'This is a huge messaging pivot. For many years, replacing humanity was the explicit stated goal of OpenAI as a company and of a large number of top people in the AI industry. Very glad to see this rhetorical pivot.'",
+      "fp": "ac655c6c0b0dcd41"
+    },
+    {
+      "claim": "QuitGPT.org reports that 2.5 million people have participated in a boycott of ChatGPT following OpenAI's deal with the Pentagon.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "QuitGPT.org (as cited by the host)",
+      "episode": "the-big-questions-shaping-the-consumer-ai-battle",
+      "claim_date": "2026-03-05",
+      "evidence": "QuitGPT.org argues that 2.5 million people have taken part in their boycott, and certainly the actual uninstall numbers, as well as the insane growth in app downloads on Anthropic, suggest that this is not all just bluster.",
+      "fp": "7522201546b5c694"
+    },
+    {
+      "claim": "The host suggests that the partisan divide in American politics is currently a more powerful driver of consumer AI adoption choices than specific discrete AI ethical issues.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-big-questions-shaping-the-consumer-ai-battle",
+      "claim_date": "2026-03-05",
+      "evidence": "I think that there is some evidence this week that the partisan cleave is more powerful than specific discrete AI issues... part of the reason that the Quit ChatGPT campaign is being resonant right now is that just a couple of weeks ago it started to get into progressive and liberal circles that Greg Brockman was one of Trump's biggest donors.",
+      "fp": "e991f85b5f67bef2"
+    },
+    {
+      "claim": "Raymond Arroyo criticized the AI-generated Val Kilmer performance as 'digital necromancy,' arguing it denies the actor's uniquely human choices and saddles the deceased with a performance he has no agency over.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Raymond Arroyo",
+      "episode": "val-kilmers-ai-resurrection",
+      "claim_date": "2026-03-24",
+      "evidence": "Arroyo wrote, 'This digital necromancy is a very bad idea... The AI Val Kilmer will be denied all of those uniquely human and very personal choices... the deceased Kilmer will be saddled with a performance in a role he has no agency over.'",
+      "fp": "c23cc2d92da8e7be"
+    },
+    {
+      "claim": "Pope Leo XIV released his first encyclical, 'Magnifica Humanitatis', which argues that human value cannot be reduced to intelligence benchmarks and that AI systems lack the relational and spiritual perspective of human beings.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "Pope Leo XIV",
+      "episode": "what-the-pope-actually-said-about-ai",
+      "claim_date": "2026-05-27",
+      "evidence": "The host summarizes the central argument: 'The central argument that underpins the entirety of Magnificat Humanitatis is that human value cannot be reduced to an intelligence benchmark... So-called artificial intelligences do not undergo experiences, do not possess a body, do not feel joy or pain... they lack the effective, relational, and spiritual perspective through which human beings grow in wisdom.'",
+      "fp": "c2535ccab6df66b4"
+    },
+    {
+      "claim": "The encyclical 'Magnifica Humanitatis' warns that the control of health data by entities creates structural leverage over future markets and needs, describing it as a potential instrument of dominance rather than a common good.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "Pope Leo XIV",
+      "episode": "what-the-pope-actually-said-about-ai",
+      "claim_date": "2026-05-27",
+      "evidence": "The transcript quotes paragraph 178: 'Those who control the health data of entire peoples, often collected under the pretext of aid, research, and innovation, possess a structural leverage over the future for they can shape needs and markets. They can decide before others to whom medicines, investments, and protections will be allocated.'",
+      "fp": "15a7211544f763b0"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - Bender, E. et al. (2021). On the Dangers of Stochastic Parrots: Can Language Models Be Too Big? FAccT 2021.",
+      "content": "\n\n  #### Recent Developments\n\n  - **Public Backlash and Political Polarization**: Public sentiment toward AI is increasingly shaped by political divides rather than discrete ethical issues. This is evidenced by commencement speakers like Eric Schmidt and Gloria Cordfield being booed for discussing AI's societal impact. Additionally, the QuitGPT.org boycott, which claims 2.5 million participants following OpenAI's deal with the Pentagon, has gained traction partly due to the partisan resonance of OpenAI executives' political affiliations.\n  - **OpenAI\u2019s Strategic Shifts**: OpenAI has adopted a \"messaging pivot\" from framing AI as a replacement for humanity to positioning it as a tool for human augmentation. Concurrently, its advertising strategy is guided by principles of answer independence and conversational privacy, ensuring that ads do not influence AI responses or compromise user data.\n  - **Religious and Philosophical Critiques**: Pope Leo XIV\u2019s encyclical *Magnifica Humanitatis* argues that human value cannot be reduced to intelligence benchmarks, emphasizing that AI lacks the relational and spiritual perspective inherent to human wisdom. The document also warns that the control of health data by private entities creates structural leverage over future markets, potentially serving as an instrument of dominance rather than a common good.\n  - **Ethical Concerns in Media**: Critics like Raymond Arroyo have condemned AI-generated performances of deceased actors, such as Val Kilmer, as \"digital necromancy.\" This practice is argued to deny the actor\u2019s uniquely human choices and saddle the deceased with a performance over which they have no agency."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 1,
+      "relevance": 3,
+      "coherence": 4,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 0.25,
+    "detail": [
+      {
+        "fp": "7abf16664efb7c08",
+        "claim": "Public backlash against AI is intensifying, evidenced by commencement speakers like Eric Schmidt and Gloria Cordfield be",
+        "matched": false
+      },
+      {
+        "fp": "55be13bd2c213256",
+        "claim": "OpenAI's advertising strategy is guided by principles of answer independence, conversational privacy, and mission alignm",
+        "matched": true
+      },
+      {
+        "fp": "ac655c6c0b0dcd41",
+        "claim": "OpenAI is undergoing a 'messaging pivot' from framing AI as a replacement for humanity to framing it as a tool to augmen",
+        "matched": false
+      },
+      {
+        "fp": "7522201546b5c694",
+        "claim": "QuitGPT.org reports that 2.5 million people have participated in a boycott of ChatGPT following OpenAI's deal with the P",
+        "matched": false
+      },
+      {
+        "fp": "e991f85b5f67bef2",
+        "claim": "The host suggests that the partisan divide in American politics is currently a more powerful driver of consumer AI adopt",
+        "matched": false
+      },
+      {
+        "fp": "c23cc2d92da8e7be",
+        "claim": "Raymond Arroyo criticized the AI-generated Val Kilmer performance as 'digital necromancy,' arguing it denies the actor's",
+        "matched": false
+      },
+      {
+        "fp": "c2535ccab6df66b4",
+        "claim": "Pope Leo XIV released his first encyclical, 'Magnifica Humanitatis', which argues that human value cannot be reduced to ",
+        "matched": false
+      },
+      {
+        "fp": "15a7211544f763b0",
+        "claim": "The encyclical 'Magnifica Humanitatis' warns that the control of health data by entities creates structural leverage ove",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

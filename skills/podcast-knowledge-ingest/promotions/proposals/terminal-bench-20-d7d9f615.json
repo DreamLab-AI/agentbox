@@ -1,0 +1,160 @@
+{
+  "topic": "Terminal Bench 2.0",
+  "topic_slug": "terminal-bench-20-d7d9f615",
+  "status": "candidate_survivor",
+  "reasons": [],
+  "n_assertions": 5,
+  "episodes": [
+    "opus-46-and-chatgpt-53-codex-are-here-and-the-labs-are-at-war",
+    "should-we-be-scared-of-anthropics-mythos",
+    "the-most-important-ai-news-from-google-io",
+    "what-i-learned-testing-gpt-5-5"
+  ],
+  "assertion_fingerprints": [
+    "06d5907e5bfab51f",
+    "39cc2ff69ddcdeb9",
+    "92f516885a0f4e88",
+    "ae318036831a3217",
+    "bb674acd17d3c2b3"
+  ],
+  "target_page": "Terminal Bench 2.0.md",
+  "assertions": [
+    {
+      "claim": "Anthropic claims Claude Opus 4.6 achieved the leading score on the Terminal Bench 2.0 benchmark.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Anthropic (via Host)",
+      "episode": "opus-46-and-chatgpt-53-codex-are-here-and-the-labs-are-at-war",
+      "claim_date": "2026-02-06",
+      "evidence": "The transcript states, 'they claim the leading score on the Agent and Coding benchmark Terminal Bench 2.0'.",
+      "fp": "39cc2ff69ddcdeb9"
+    },
+    {
+      "claim": "OpenAI's GPT-5.3 Codex scored 77.3% on Terminal Bench 2.0, surpassing Codex 5.2's 64% and Claude Opus 4.6's 65.4%.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "OpenAI (via Host)",
+      "episode": "opus-46-and-chatgpt-53-codex-are-here-and-the-labs-are-at-war",
+      "claim_date": "2026-02-06",
+      "evidence": "The transcript notes, 'The model claims a new absolutely state-of-the-art score of 77.3% on Terminal Bench 2.0, which beats Codex 5.2 at 64% and is, if true, much higher than Opus 4.6 at 65.4%.'",
+      "fp": "92f516885a0f4e88"
+    },
+    {
+      "claim": "Anthropic's Claude Mythos model scored 92.1% on Terminal Bench 2.0 when the timeout window was extended to 4 hours, compared to 82% under standard conditions.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Anthropic (via podcast host reporting benchmark results)",
+      "episode": "should-we-be-scared-of-anthropics-mythos",
+      "claim_date": "2026-04-09",
+      "evidence": "The transcript states: 'Anthropic ran the benchmark again using improvements from terminal bench 2.1 and extending the timeout window to 4 hours, and under those conditions, Mythos scored not an 82% but a 92.1%.'",
+      "fp": "bb674acd17d3c2b3"
+    },
+    {
+      "claim": "Gemini 3.5 Flash scored 76.2% on the Terminal Bench 2.0 benchmark, compared to 70.3% for Gemini 3.1 Pro.",
+      "tier": "1",
+      "confidence": "0.92",
+      "source": "AI Daily Brief host",
+      "episode": "the-most-important-ai-news-from-google-io",
+      "claim_date": "2026-05-20",
+      "evidence": "The host reports: \"It scored 76.2% on Terminal Bench 2.0 compared to 70.3% for Gemini 3.1 Pro, but beating Opus 4.7 but falling short of GPT 5.5.\"",
+      "fp": "ae318036831a3217"
+    },
+    {
+      "claim": "GPT-5.5 scored 82.7% on the Terminal Bench 2.0 agentic coding benchmark, compared to 69.4% for Anthropic's Opus 4.7.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Host (AI Daily Brief)",
+      "episode": "what-i-learned-testing-gpt-5-5",
+      "claim_date": "2026-04-24",
+      "evidence": "The transcript notes: 'whereas Opus 4.7 scored a 69.4% on Terminal Bench 2.0, an agentic coding benchmark, GPT-5.5 scored an 82.7.'",
+      "fp": "06d5907e5bfab51f"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "- ### Overview\n  - OpenAI's GPT 5.6 Soul model scored 91.9% on Terminal Bench 2.0 in Ultra settings, beating Claude Mythos by almost four percentage points. *(Source: OpenAI (via AI Daily Brief host), via AI Daily Brief, 2026-08-24)*",
+      "content": "- ### Recent Developments\n  - GPT-5.5 scored 82.7% on the Terminal Bench 2.0 agentic coding benchmark, compared to 69.4% for Anthropic's Opus 4.7. *(Source: Host (AI Daily Brief), 2026-08-24)*\n  - Gemini 3.5 Flash scored 76.2% on the Terminal Bench 2.0 benchmark, compared to 70.3% for Gemini 3.1 Pro. *(Source: AI Daily Brief host, 2026-08-24)*\n  - OpenAI's GPT-5.3 Codex scored 77.3% on Terminal Bench 2.0, surpassing Codex 5.2's 64% and Claude Opus 4.6's 65.4%. *(Source: OpenAI (via Host), 2026-08-24)*\n  - Anthropic's Claude Mythos model scored 92.1% on Terminal Bench 2.0 when the timeout window was extended to 4 hours, compared to 82% under standard conditions. *(Source: Anthropic (via podcast host reporting benchmark results), 2026-08-24)*\n  - Anthropic claims Claude Opus 4.6 achieved the leading score on the Terminal Bench 2.0 benchmark. *(Source: Anthropic (via Host), 2026-08-24)*"
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 2.0,
+    "rubric_b_improvement": 2.0,
+    "raw_a": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 4,
+      "relevance": 3,
+      "coherence": 5,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "39cc2ff69ddcdeb9",
+        "claim": "Anthropic claims Claude Opus 4.6 achieved the leading score on the Terminal Bench 2.0 benchmark.",
+        "matched": true
+      },
+      {
+        "fp": "92f516885a0f4e88",
+        "claim": "OpenAI's GPT-5.3 Codex scored 77.3% on Terminal Bench 2.0, surpassing Codex 5.2's 64% and Claude Opus 4.6's 65.4%.",
+        "matched": true
+      },
+      {
+        "fp": "bb674acd17d3c2b3",
+        "claim": "Anthropic's Claude Mythos model scored 92.1% on Terminal Bench 2.0 when the timeout window was extended to 4 hours, comp",
+        "matched": true
+      },
+      {
+        "fp": "ae318036831a3217",
+        "claim": "Gemini 3.5 Flash scored 76.2% on the Terminal Bench 2.0 benchmark, compared to 70.3% for Gemini 3.1 Pro.",
+        "matched": true
+      },
+      {
+        "fp": "06d5907e5bfab51f",
+        "claim": "GPT-5.5 scored 82.7% on the Terminal Bench 2.0 agentic coding benchmark, compared to 69.4% for Anthropic's Opus 4.7.",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": {
+    "target_page": "Terminal Bench 2.0.md",
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "- ### Overview\n  - OpenAI's GPT 5.6 Soul model scored 91.9% on Terminal Bench 2.0 in Ultra settings, beating Claude Mythos by almost four percentage points. *(Source: OpenAI (via AI Daily Brief host), via AI Daily Brief, 2026-08-24)*",
+      "content": "- ### Recent Developments\n  - GPT-5.5 scored 82.7% on the Terminal Bench 2.0 agentic coding benchmark, compared to 69.4% for Anthropic's Opus 4.7. *(Source: Host (AI Daily Brief), 2026-08-24)*\n  - Gemini 3.5 Flash scored 76.2% on the Terminal Bench 2.0 benchmark, compared to 70.3% for Gemini 3.1 Pro. *(Source: AI Daily Brief host, 2026-08-24)*\n  - OpenAI's GPT-5.3 Codex scored 77.3% on Terminal Bench 2.0, surpassing Codex 5.2's 64% and Claude Opus 4.6's 65.4%. *(Source: OpenAI (via Host), 2026-08-24)*\n  - Anthropic's Claude Mythos model scored 92.1% on Terminal Bench 2.0 when the timeout window was extended to 4 hours, compared to 82% under standard conditions. *(Source: Anthropic (via podcast host reporting benchmark results), 2026-08-24)*\n  - Anthropic claims Claude Opus 4.6 achieved the leading score on the Terminal Bench 2.0 benchmark. *(Source: Anthropic (via Host), 2026-08-24)*"
+    },
+    "provenance": {
+      "assertion_fingerprints": [
+        "06d5907e5bfab51f",
+        "39cc2ff69ddcdeb9",
+        "92f516885a0f4e88",
+        "ae318036831a3217",
+        "bb674acd17d3c2b3"
+      ],
+      "source_episodes": [
+        "opus-46-and-chatgpt-53-codex-are-here-and-the-labs-are-at-war",
+        "should-we-be-scared-of-anthropics-mythos",
+        "the-most-important-ai-news-from-google-io",
+        "what-i-learned-testing-gpt-5-5"
+      ]
+    },
+    "scores": {
+      "rubric_a_improvement": 2.0,
+      "rubric_b_improvement": 2.0,
+      "completeness": 1.0
+    }
+  }
+}

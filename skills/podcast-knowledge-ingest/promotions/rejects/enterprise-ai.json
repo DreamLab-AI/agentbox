@@ -1,0 +1,748 @@
+{
+  "topic": "Enterprise Ai",
+  "topic_slug": "enterprise-ai",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5"
+  ],
+  "n_assertions": 55,
+  "episodes": [
+    "can-open-models-solve-corporate-ai-washing",
+    "ceo-led-ai-gets-3x-the-roi",
+    "context-graphs-ais-next-big-idea",
+    "does-gemini-31-pro-matter",
+    "fable-5-raises-the-bar-for-ai-ambition",
+    "first-impressions-of-the-new-opus-48",
+    "google-says-no-ads-planned-for-gemini",
+    "grok-46-shows-how-fast-your-ai-options-are-expanding",
+    "grok-bot-finally-makes-ai-agents-easy",
+    "how-a-30b-hedge-fund-implosion-will-effect-ai",
+    "how-ai-is-changing-how-companies-get-built",
+    "how-ai-starts-doing-the-work-in-2026-with-anthropic-cpo-mike-krieger",
+    "how-harness-as-a-service-will-change-agents",
+    "how-the-escalating-ai-wars-benefit-you",
+    "how-to-build-a-personal-context-mcp",
+    "how-to-get-the-most-out-of-fable-5-and-gpt-56-sol",
+    "how-to-use-claudes-massive-new-upgrades",
+    "in-defense-of-tokenmaxxing",
+    "nano-banana-2-is-here",
+    "opus-46-and-chatgpt-53-codex-are-here-and-the-labs-are-at-war",
+    "the-5-biggest-ai-stories-to-watch-in-december",
+    "the-dawn-of-the-agent-age",
+    "the-race-to-put-ai-agents-everywhere",
+    "the-state-of-enterprise-ai-the-state-of-enterprise-ai",
+    "what-google-needs-to-do-at-io-this-week",
+    "what-i-learned-testing-gpt-5-5",
+    "why-agents-make-every-job-a-startup",
+    "why-ai-advantage-compounds",
+    "why-ai-users-are-raving-about-glm-52",
+    "why-deeply-integrating-ai-3xs-likelihood-of-financial-gains-from-ai",
+    "will-this-update-from-openai-make-ai-agents-work-better"
+  ],
+  "assertion_fingerprints": [
+    "085215961be7984a",
+    "0a13c9a37a34de40",
+    "1277d9b62202396f",
+    "160305380c63e432",
+    "1ae64af89dfd345f",
+    "1babadd55d6d11a2",
+    "1bd3d39f15855c4d",
+    "271ee7066307276d",
+    "2bb6a02babf927bc",
+    "2c7956aaf620e4c3",
+    "34965c40bc12dd13",
+    "35772fea3f45b1ac",
+    "3cc9a7d5c1001ff7",
+    "3e9be6ad040ee9f9",
+    "3f67d08ddfe7faf7",
+    "46d926041ad5233d",
+    "4d38bd531076c80e",
+    "4ecc944af86f7814",
+    "501470bc32d68998",
+    "50e90ffba5f610a1",
+    "55b8c8cf1fd81571",
+    "58ef63a5d19a07d8",
+    "5c50d577ab0e91e6",
+    "5cf5a1017dac9d5a",
+    "6b463bde96b73115",
+    "6c10855e946c1bf5",
+    "7c5c5249fddcf414",
+    "7d17e5f7af5bc0cd",
+    "7dd9bc86dacf0f79",
+    "8848a28beba40d74",
+    "8d49b19bde41dba0",
+    "90340f011e3f3b76",
+    "909385065a5494b3",
+    "9be166eccc349925",
+    "a22d0d9bbc484472",
+    "a38abd222cb9aa16",
+    "a505bbecb1c58f81",
+    "a93d9635d487c438",
+    "afd5c27fa1778589",
+    "b0101c330a93cd59",
+    "b0430b606d4d8226",
+    "ba53e2a37f3f5c24",
+    "bc22449a7bf06bce",
+    "c7c796e6897f1050",
+    "c802d9f24bb9423a",
+    "cf80a0cc2a2567c8",
+    "d8607ece9a71dcb7",
+    "db4adc4ad5eafef4",
+    "e0e5bf537aab43fc",
+    "e46ec70fc70e1978",
+    "eafc103f7d799fde",
+    "eb994d3873d85b55",
+    "f0a744eb95381bb3",
+    "f59dc3c827c97109",
+    "f7c31fcf921c26a7"
+  ],
+  "target_page": "Enterprise Ai.md",
+  "assertions": [
+    {
+      "claim": "Palantir reported quarterly revenue of $1.94 billion, representing a 93% year-over-year increase, with commercial sales growing 149% and net income reaching $1 billion.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Palantir Earnings Report (cited by AI Daily Brief host)",
+      "episode": "can-open-models-solve-corporate-ai-washing",
+      "claim_date": "2026-08-05",
+      "evidence": "The transcript states: 'Quarterly revenue came in at 1.94 billion, up 93% from this time last year... Commercial sales were up 149% year-over-year... net income reaching a billion dollars for the quarter and growing at a 225% annual pace.'",
+      "fp": "90340f011e3f3b76"
+    },
+    {
+      "claim": "Palantir CEO Alex Karp argues that Palantir's success is driven by a demand for 'AI sovereignty,' where organizations require maximal control over their data, prompts, and business intelligence to avoid being exploited by language model labs.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Alex Karp (Palantir CEO)",
+      "episode": "can-open-models-solve-corporate-ai-washing",
+      "claim_date": "2026-08-05",
+      "evidence": "Karp stated: 'Every organization in the world is awakening to the risks of handing the creators of language models the keys to their institutions... The demand from our partners is clear. It is for control over data, the prompts that the models ingest, and more fundamentally the organizational and business intelligence, their alpha.'",
+      "fp": "f7c31fcf921c26a7"
+    },
+    {
+      "claim": "Google DeepMind's chief strategy officer argues that current AI capital expenditures are a 'down payment on recursive self-improvement' and represent the 'biggest scientific bet civilization has ever made,' rather than a short-term revenue play.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "Google DeepMind Chief Strategy Officer",
+      "episode": "can-open-models-solve-corporate-ai-washing",
+      "claim_date": "2026-08-05",
+      "evidence": "The transcript notes: 'Just TechCrunch said that RSI was a key part of the investment thesis... he argues that the capex build-out is not about near-term revenue, but instead the, quote, biggest scientific bet civilization has ever made.'",
+      "fp": "46d926041ad5233d"
+    },
+    {
+      "claim": "AI cost optimization is evolving into a formal discipline involving model routing, fine-tuning, and hybrid model strategies, rather than simple cost caps or single-vendor reliance.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "AI Daily Brief Host / Industry Observers",
+      "episode": "can-open-models-solve-corporate-ai-washing",
+      "claim_date": "2026-08-05",
+      "evidence": "The host states: 'AI cost optimization is now a discipline not a hack. Companies are exploring what combination of third-party and internal solutions is going to be the right way to handle this and whether or not a router is even the right solution.'",
+      "fp": "1babadd55d6d11a2"
+    },
+    {
+      "claim": "The enterprise conventional wisdom around AI is becoming more directionally correct, moving away from PR-driven 'AI wishing' towards a focus on organizational redesign and long-term value creation.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "AI Daily Brief Host",
+      "episode": "can-open-models-solve-corporate-ai-washing",
+      "claim_date": "2026-08-05",
+      "evidence": "The host concludes: 'For basically the first time since ChatGPT launched, my observation is that the enterprise conventional wisdom around AI is getting more directionally correct. I think our attitudes around the types of things that go into AI wishing and washing are changing radically.'",
+      "fp": "7dd9bc86dacf0f79"
+    },
+    {
+      "claim": "KPMG's Quarterly Pulse Survey found that 76% of senior leaders report AI is driving meaningful business value, a 12-point increase from the previous quarter.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "KPMG Quarterly Pulse Survey",
+      "episode": "ceo-led-ai-gets-3x-the-roi",
+      "claim_date": "2026-06-25",
+      "evidence": "The survey indicates a shift in organizational maturity, with the percentage of organizations in the 'driving adoption' stage jumping from 13% to 22%.",
+      "fp": "e46ec70fc70e1978"
+    },
+    {
+      "claim": "Claude Tag is being criticized for creating vendor lock-in by deeply embedding organizational context into Anthropic's ecosystem, making migration difficult.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Ashwin Goel / Mark Andreessen Horowitz",
+      "episode": "ceo-led-ai-gets-3x-the-roi",
+      "claim_date": "2026-06-25",
+      "evidence": "Critics argue that once an agentic system has access to extensive organizational permissions and context, the barrier to switching providers becomes very high, resembling a 'convenience until you try to cancel' scenario.",
+      "fp": "eb994d3873d85b55"
+    },
+    {
+      "claim": "Context engineering is a critical enterprise AI focus for 2026, involving the design of systems to ensure agents have access to the right data and can interoperate on it, which requires substantial organizational change management.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief) / Aaron Levy",
+      "episode": "context-graphs-ais-next-big-idea",
+      "claim_date": "2026-01-06",
+      "evidence": "The host identifies context engineering as a 'key prediction for enterprise AI in 2026.' Levy supports this by stating that 'Designing our systems to get agents access to that data and ensuring that all of our agents can interoperate on that data is going to be incredibly important.'",
+      "fp": "1277d9b62202396f"
+    },
+    {
+      "claim": "The most significant gains in AI utility will come from understanding each model's specific strengths and integrating them into a diverse model portfolio, rather than shifting wholesale to a single 'best' model.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "Host",
+      "episode": "does-gemini-31-pro-matter",
+      "claim_date": "2026-02-21",
+      "evidence": "The host concludes: 'the greatest gains will not come from just shifting wholesale from one model to the next as new capabilities emerge, but instead to understand with each model release what that particular model is going to do best and where it should be in your model portfolio.'",
+      "fp": "3f67d08ddfe7faf7"
+    },
+    {
+      "claim": "Anthropic requires a 30-day data retention and human review policy for all prompts and outputs generated by Mythos-class models.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Anthropic System Card / AI Daily Brief Host",
+      "episode": "fable-5-raises-the-bar-for-ai-ambition",
+      "claim_date": "2026-06-11",
+      "evidence": "The transcript notes: 'Prompts submitted to and outputs generated by mythos class models are retained for 30 days for trust and safety purposes on every platform where these models are offered.'",
+      "fp": "b0101c330a93cd59"
+    },
+    {
+      "claim": "Kirkland & Ellis is planning to spend $500 million over 3-4 years to build an internal AI platform, with $100 million allocated for the current year.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Financial Times (reported by host)",
+      "episode": "first-impressions-of-the-new-opus-48",
+      "claim_date": "2026-05-30",
+      "evidence": "The host cites the Financial Times reporting that the world's biggest law firm is planning this spend. The firm has ~4,000 attorneys and $10.6 billion in revenue. The platform is internally facing, not a commercial product, and involves 180 outside tech professionals.",
+      "fp": "55b8c8cf1fd81571"
+    },
+    {
+      "claim": "OpenAI has signed a three-year deal to integrate its AI models into ServiceNow's platform, involving a revenue commitment from ServiceNow.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "The Wall Street Journal",
+      "episode": "google-says-no-ads-planned-for-gemini",
+      "claim_date": "2026-01-22",
+      "evidence": "The WSJ reported that ServiceNow users will be able to choose OpenAI's models within the platform, and the deal includes a financial commitment from ServiceNow.",
+      "fp": "a505bbecb1c58f81"
+    },
+    {
+      "claim": "The integration of AI models into platforms like ServiceNow represents a different approach to the agentic business model compared to trying to be the platform itself, and this year will see many experiments in how this shakes out.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "Host (AI Daily Brief)",
+      "episode": "google-says-no-ads-planned-for-gemini",
+      "claim_date": "2026-01-22",
+      "evidence": "The host notes that integrating technology inside other delivery platforms is a distinct strategy from building the platform, and predicts significant experimentation in enterprise AI deployment models.",
+      "fp": "909385065a5494b3"
+    },
+    {
+      "claim": "The enterprise AI market is experiencing a land grab that is expected to ramp up throughout the year.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "Host (AI Daily Brief)",
+      "episode": "google-says-no-ads-planned-for-gemini",
+      "claim_date": "2026-01-22",
+      "evidence": "The host predicts that competition for enterprise business will intensify, driven by partnerships and integrations like the one between OpenAI and ServiceNow.",
+      "fp": "7c5c5249fddcf414"
+    },
+    {
+      "claim": "RAMP's AI index found that Fable 5 has made up only 6% of tokens purchased by businesses from Anthropic, with the primary reason for low adoption being its high cost and 30-day data retention policy.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "RAMP AI Index / AI Daily Brief Host",
+      "episode": "grok-46-shows-how-fast-your-ai-options-are-expanding",
+      "claim_date": "2026-08-13",
+      "evidence": "RAMP found that Fable 5 represented only 11.4% of dollars spent on Anthropic models. RAMP's lead economist noted that 'more performance is not worth the price tag' for many businesses, and that the 30-day data retention policy for US government safety checks is a significant barrier to enterprise adoption.",
+      "fp": "3e9be6ad040ee9f9"
+    },
+    {
+      "claim": "As the frontier of AI advances, fewer businesses will need the bleeding-edge models for their daily operations, with a growing preference for cheaper, more efficient models that fit into a broader model stack.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "Austin LeBron / AI Daily Brief Host",
+      "episode": "grok-46-shows-how-fast-your-ai-options-are-expanding",
+      "claim_date": "2026-08-13",
+      "evidence": "Austin LeBron noted that 'as the frontier proceeds, fewer and fewer people need the bleeding edge and need it less often.' The host agrees, pointing out that models like Kimmy K3, Grock 4.6, and DeepSeek V4 Pro are an order of magnitude cheaper and fit into a model stack where raw performance is not always the priority.",
+      "fp": "1ae64af89dfd345f"
+    },
+    {
+      "claim": "The 'AI teammate' metaphor may be counterproductive for enterprise workflows, with some experts arguing that shared workspaces and integrated skills are more effective than managing dozens of individual agents.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "Fletcher Richman (Type.com) / AI Daily Brief Host",
+      "episode": "grok-bot-finally-makes-ai-agents-easy",
+      "claim_date": "2026-08-13",
+      "evidence": "Fletcher Richman states, 'having dozens of AI teammates is actually counterproductive. It's a vanity metric. Instead, teams need a shared workspace... Grokbot is pretty slick, but it's not how people are going to work.' The host agrees that there are 'two very different modes' for personal vs. team agentic support.",
+      "fp": "0a13c9a37a34de40"
+    },
+    {
+      "claim": "The current surge in AI revenue contradicts recent media narratives that corporate America is cutting back on AI spending, as most enterprises are still in the early stages of adoption with significant room for growth.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-a-30b-hedge-fund-implosion-will-effect-ai",
+      "claim_date": "2026-08-03",
+      "evidence": "The host argues that while some companies are optimizing token budgets, the vast majority of the user base is still on an upswing. The 'stopping spending' narrative is a misinterpretation of companies creating more complex AI usage architectures to manage future costs.",
+      "fp": "8848a28beba40d74"
+    },
+    {
+      "claim": "Tesla has implemented a policy limiting employees to $200 per week in AI token spending, as some software engineers were previously incurring thousands of dollars in weekly costs.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "The Information (via AI Daily Brief host)",
+      "episode": "how-ai-is-changing-how-companies-get-built",
+      "claim_date": "2026-07-08",
+      "evidence": "The Information reported that Tesla will limit employees to $200 per week in token spending. Sources indicated that some software engineers were routinely racking up thousands of dollars in token costs each week prior to the policy.",
+      "fp": "f59dc3c827c97109"
+    },
+    {
+      "claim": "Alibaba has banned its employees from using Claude Code, citing 'backdoor risks' and adding it to a list of high-risk software with security vulnerabilities.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Alibaba (via AI Daily Brief host)",
+      "episode": "how-ai-is-changing-how-companies-get-built",
+      "claim_date": "2026-07-08",
+      "evidence": "An internal memo from Alibaba stated that Claude Code was discovered to carry backdoor risks. The ban was announced on a Friday and expected to come into force by the end of that week.",
+      "fp": "1bd3d39f15855c4d"
+    },
+    {
+      "claim": "The open-weight model argument is gaining mainstream traction, with enterprise buyers and investors increasingly considering the viability of open models as a risk mitigation strategy against proprietary providers.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "AI Daily Brief Host",
+      "episode": "how-ai-is-changing-how-companies-get-built",
+      "claim_date": "2026-07-08",
+      "evidence": "The host notes that while one interview isn't enough to change minds, the discourse around open-weight models (driven by Karp's comments) is causing enterprise buying leads and Wall Street investors to pay attention. The host suggests the playing field is becoming more open in a 'token scarcity' era.",
+      "fp": "eafc103f7d799fde"
+    },
+    {
+      "claim": "A significant barrier to enterprise AI adoption is that many organizations are 'harness-bound,' meaning their custom scaffolding and integration layers limit the model's potential rather than the model's raw capabilities.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Mike Kger (Chief Product Officer, Anthropic)",
+      "episode": "how-ai-starts-doing-the-work-in-2026-with-anthropic-cpo-mike-krieger",
+      "claim_date": "2025-12-24",
+      "evidence": "Kger explains: 'sometimes we'll drop a new model... and they'll say it doesn't look like improve very much and then we'll send some applied AI you know folks to spend time with them and they realize right now we're actually harnessbound and we need to actually let them evolve and let the model do a bit more to like loosen that as well.'",
+      "fp": "160305380c63e432"
+    },
+    {
+      "claim": "Anthropic is prioritizing 'horizontal agents' for enterprise use, focusing on repetitive, regulatory-compliant back-office tasks (like KYC) rather than just creative co-pilot tasks, requiring bespoke deployment of applied AI engineers.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Mike Kger (Chief Product Officer, Anthropic)",
+      "episode": "how-ai-starts-doing-the-work-in-2026-with-anthropic-cpo-mike-krieger",
+      "claim_date": "2025-12-24",
+      "evidence": "Kger states: 'enterprises getting more interested in rolling out what we've been calling horizontal agents... seeing also a lot more interest now in great we have, you know, this repetitive back office task... we've been deploying, you know, applied AI and engineers into these enterprises to help them get those agents running.'",
+      "fp": "2c7956aaf620e4c3"
+    },
+    {
+      "claim": "Enterprises are moving beyond 'V1' AI integration (sprinkling chatbots on surfaces) to 'agent-native' product redesigns, which requires rethinking fundamental product architecture to unlock full AI potential.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Mike Kger (Chief Product Officer, Anthropic)",
+      "episode": "how-ai-starts-doing-the-work-in-2026-with-anthropic-cpo-mike-krieger",
+      "claim_date": "2025-12-24",
+      "evidence": "Kger states: 'I think all of these enterprises... is kind of going beyond V1 which was like let's kind of sprinkle AI on these different surfaces... to do we need to rethink some fundamental pieces of the product to be more agent native... have you unlocked the full power of your product to any AI that is sort of running on top or alongside it.'",
+      "fp": "a22d0d9bbc484472"
+    },
+    {
+      "claim": "Google Cloud reported 63% year-over-year revenue growth and a $460 billion backlog in new orders, up from $240 billion at the end of Q4.",
+      "tier": "1",
+      "confidence": "0.98",
+      "source": "Google Earnings Report / AI Daily Brief",
+      "episode": "how-harness-as-a-service-will-change-agents",
+      "claim_date": "2026-05-01",
+      "evidence": "The transcript states: 'Google Cloud has experienced 63% revenue growth over the past year. They also reported a $460 billion backlog in new orders, up from 240 at the end of Q4.'",
+      "fp": "db4adc4ad5eafef4"
+    },
+    {
+      "claim": "Microsoft CEO Satya Nadella argues that the current AI model regime transfers economic value from knowledge creators to model providers by allowing providers to learn from customer usage data.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Satya Nadella (Microsoft CEO)",
+      "episode": "how-the-escalating-ai-wars-benefit-you",
+      "claim_date": "2026-07-14",
+      "evidence": "Nadella wrote that 'in consuming intelligence, you are creating intelligence, and what you create should belong to you,' criticizing the status quo where model providers reserve the right to learn from customer interaction data while imposing restrictive terms on distillation.",
+      "fp": "6b463bde96b73115"
+    },
+    {
+      "claim": "Applied Compute found that the gap between having data and having data in a format usable by AI systems is enormous, as most enterprise data was not structured for AI consumption.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Michael Chan (Applied Compute)",
+      "episode": "how-to-build-a-personal-context-mcp",
+      "claim_date": "2026-04-04",
+      "evidence": "Michael Chan's article 'What to expect when you're deploying AI in the enterprise' states: 'The gap between we have data and we have data in a format that an AI system can learn from is enormous... Most enterprise data was never structured with AI consumption in mind.'",
+      "fp": "3cc9a7d5c1001ff7"
+    },
+    {
+      "claim": "Organizations that are lagging in AI adoption tend to operate without providing their AI systems access to relevant context, often just 'dropping copilot on people's heads' rather than becoming AI-native.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-to-build-a-personal-context-mcp",
+      "claim_date": "2026-04-04",
+      "evidence": "The host states: 'One of the big differentiators between organizations that are leading and organizations that are lagging is that the lagging organizations tend to operate without their AI systems having access to context... they're dropping copilot on people's heads and hoping it all works out.'",
+      "fp": "8d49b19bde41dba0"
+    },
+    {
+      "claim": "The host suggests that organizations face a similar challenge to individuals in leveraging new AI models, often defaulting to existing use cases rather than unlocking new categories of work.",
+      "tier": "3",
+      "confidence": "0.7",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-to-get-the-most-out-of-fable-5-and-gpt-56-sol",
+      "claim_date": "2026-07-25",
+      "evidence": "The host states: 'It is so easy, especially in a business or work context, to default to using AI for the things that we're already using AI for... But ultimately to do that same work. The unlock, of course, is a new relationship with work and even unlocking new categories of work that weren't possible before.'",
+      "fp": "2bb6a02babf927bc"
+    },
+    {
+      "claim": "Computer use and the ability to write and run code on the fly are the ultimate primitives for AI agents to automate real-world enterprise work, as most tasks require traversing multiple applications and data sources.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Aaron Levie (Box)",
+      "episode": "how-to-use-claudes-massive-new-upgrades",
+      "claim_date": "2026-03-24",
+      "evidence": "Aaron Levie wrote: 'Computer use and the ability to write and run code on the fly are the ultimate primitives for agents to be able to take on more and more tasks and knowledge work. Most work requires hopping between multiple applications and working with broad sets of data in a workflow, and agents will need to be able to traverse these systems to be able to effectively automate any real work in the enterprise.'",
+      "fp": "5cf5a1017dac9d5a"
+    },
+    {
+      "claim": "Computer use capabilities are particularly valuable for enterprises with legacy software that lacks native AI or API integrations, as agents can now interact with these older applications through standard GUI controls.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "Peter Gustaff",
+      "episode": "how-to-use-claudes-massive-new-upgrades",
+      "claim_date": "2026-03-24",
+      "evidence": "Peter Gustaff wrote: 'This is another domino to fall. Computer use of arbitrary apps, not just your browser. This is a big deal for a lot of corporates who have custom crappy apps from 20 or 30 years ago.'",
+      "fp": "5c50d577ab0e91e6"
+    },
+    {
+      "claim": "Token maxing is a practical necessity for enterprises because it incentivizes the experimentation required to overcome the 'capability overhang' and learn how to effectively use agentic AI.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "AI Daily Brief host",
+      "episode": "in-defense-of-tokenmaxxing",
+      "claim_date": "2026-05-14",
+      "evidence": "I actually want to do go farther and actually defend token maxing as a practice... there are very good reasons to encourage people to experiment more... creating incentive structures around experimentation might now be a practical necessity.",
+      "fp": "4d38bd531076c80e"
+    },
+    {
+      "claim": "VentureBeat argues that Nano Banana 2 represents the maturation of AI image generation from a creative novelty into a production-ready infrastructure component, driven by efficiency rather than pure capability.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "VentureBeat (reported by AI Daily Brief host)",
+      "episode": "nano-banana-2-is-here",
+      "claim_date": "2026-03-02",
+      "evidence": "The transcript quotes VentureBeat: 'Nano Banana 2 doesn't represent a generational leap in image generation quality. What it represents is the maturation of AI image generation from a creative novelty into a production-ready infrastructure component.'",
+      "fp": "50e90ffba5f610a1"
+    },
+    {
+      "claim": "Box reported that Claude Opus 4.6 represented a 10% jump over Opus 4.5 on their hardest knowledge work tasks.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "Box (via Host)",
+      "episode": "opus-46-and-chatgpt-53-codex-are-here-and-the-labs-are-at-war",
+      "claim_date": "2026-02-06",
+      "evidence": "The transcript states, 'Box is there and Levy said that overall Opus 4.6 represented a 10% jump over Opus 4.5 on their hardest knowledge work tasks.'",
+      "fp": "b0430b606d4d8226"
+    },
+    {
+      "claim": "Sierra announced that it had reached $100 million in Annual Recurring Revenue (ARR) as part of a press push to claim territory in enterprise customer service AI.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Sierra (cited by Host)",
+      "episode": "the-5-biggest-ai-stories-to-watch-in-december",
+      "claim_date": "2025-12-10",
+      "evidence": "The host mentions 'the recent Sierra announcement that the company had reached $100 million in ARR as part of a broader press push.'",
+      "fp": "4ecc944af86f7814"
+    },
+    {
+      "claim": "The host predicts that AWS will focus on cloud infrastructure leadership rather than model releases at its December 2025 Re:Invent conference to compete with Google Cloud and Microsoft Azure.",
+      "tier": "3",
+      "confidence": "0.55",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-5-biggest-ai-stories-to-watch-in-december",
+      "claim_date": "2025-12-10",
+      "evidence": "The host states, 'I kind of think AWS might really try to focus down on their cloud leadership... instead of trying to compete on all the fronts, including the model front.'",
+      "fp": "58ef63a5d19a07d8"
+    },
+    {
+      "claim": "Kevin Roose of the New York Times identified a 'yawning inside outside gap' in AI adoption, where early adopters in San Francisco are using multi-agent swarms while many knowledge workers are still struggling to get approval for basic AI tools.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "Kevin Roose (New York Times)",
+      "episode": "the-dawn-of-the-agent-age",
+      "claim_date": "2026-02-05",
+      "evidence": "Kevin Roose from the New York Times summed it up nicely when he wrote, 'I follow AI adoption pretty closely, and I have never seen such a yawning inside outside gap. People in SF are putting multi-agent clause swarms in charge of their lives... People elsewhere are still trying to get approval to use C-pilot in teams if they're using AI at all.'",
+      "fp": "7d17e5f7af5bc0cd"
+    },
+    {
+      "claim": "Nvidia CEO Jensen Huang stated that every software company in the world needs to have an Open Claw strategy.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Jensen Huang (Nvidia CEO)",
+      "episode": "the-race-to-put-ai-agents-everywhere",
+      "claim_date": "2026-03-18",
+      "evidence": "Jensen Huang said explicitly at the GTC event, 'Every software company in the world needs to have an Open Claw strategy.'",
+      "fp": "c7c796e6897f1050"
+    },
+    {
+      "claim": "The host predicts that Q2 will be defined by a sprint to productize agents for broader enterprise diffusion, with experimentation on the right level of complexity for different user types.",
+      "tier": "3",
+      "confidence": "0.6",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-race-to-put-ai-agents-everywhere",
+      "claim_date": "2026-03-18",
+      "evidence": "If Q1 was a realization that agents are here and a mass wide-scale experimentation with the form factors and design patterns introduced by Open Claw, Q2 is set up to be an absolute sprint to productize those agents and get them ready for broader diffusion especially within the enterprise. I'm not sure I know where the right complexity band is going to be or if it's going to be a spectrum of different types of complexity for different users.",
+      "fp": "35772fea3f45b1ac"
+    },
+    {
+      "claim": "AI is not merely a software category but a total systems change that will have a significantly larger total addressable market than SaaS because it remakes work rather than just replacing software.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief)",
+      "episode": "the-state-of-enterprise-ai-the-state-of-enterprise-ai",
+      "claim_date": "2025-12-11",
+      "evidence": "The host argues: '...AI doesn't [fit on a Gartner Magic Quadrant]. It is a total systems change enabled by a broad and diverse category of software that should ultimately have a significantly larger total addressable market than the SAS market...'",
+      "fp": "9be166eccc349925"
+    },
+    {
+      "claim": "AI is diverging into 'normal' consumer technology and 'abnormal' work technology, with work AI experiencing a category shift in how knowledge work is accomplished that does not resemble previous technological disruptions.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "AI Daily Brief host",
+      "episode": "what-google-needs-to-do-at-io-this-week",
+      "claim_date": "2026-05-18",
+      "evidence": "The host argues that as a consumer technology, AI is ultimately normal, but when it comes to work, AI is an extremely abnormal technology. 'If I am correct in this assertion... that big chunks of knowledge work are moving from doing the thing to managing AI agents that do the thing for us, that is a category shift in how we work.'",
+      "fp": "501470bc32d68998"
+    },
+    {
+      "claim": "GPT-5.5 is considered a 'knowledge work model' that excels in writing, debugging code, researching, analyzing data, and operating software, with a 10 percentage point jump in accuracy on enterprise content tasks compared to GPT-5.4.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief)",
+      "episode": "what-i-learned-testing-gpt-5-5",
+      "claim_date": "2026-04-24",
+      "evidence": "The host states: 'In other words, this is a knowledge work model.' and later, 'on their knowledge work of vowels, the 5.5 model saw a 10 percentage point jump on accuracy on enterprise content tasks compared to GPT-5.4.'",
+      "fp": "c802d9f24bb9423a"
+    },
+    {
+      "claim": "Aaron Levie announced that Box is hiring and retraining for new 'agent engineering' roles, described as internal FTEs who wire up internal systems and build secure, governed agents for business processes.",
+      "tier": "2",
+      "confidence": "0.95",
+      "source": "Aaron Levie",
+      "episode": "why-agents-make-every-job-a-startup",
+      "claim_date": "2026-05-05",
+      "evidence": "On Thursday, he tweeted, 'Starting to hire and retrain for new agent engineering roles for internal functions... It looks something like an internal FTE whose job it is to wire up internal systems and get agents working with them effectively. The person will be extremely technical and capable of building secure governed agents for internal workflows that connect to business systems like Box, Salesforce, Workday, etc.'",
+      "fp": "34965c40bc12dd13"
+    },
+    {
+      "claim": "96% of US senior leaders surveyed by EY reported seeing AI-driven productivity gains, with 57% reporting significant gains.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "EY Pulse Survey",
+      "episode": "why-ai-advantage-compounds",
+      "claim_date": "2025-12-13",
+      "evidence": "96% of the leaders surveyed are seeing AIdriven productivity gains with 57% of them seeing significant gains.",
+      "fp": "e0e5bf537aab43fc"
+    },
+    {
+      "claim": "96% of leaders in the EY survey reported significant measurable improvements in overall financial performance, with only 4% reporting no measurable improvements.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "EY Pulse Survey",
+      "episode": "why-ai-advantage-compounds",
+      "claim_date": "2025-12-13",
+      "evidence": "96% of those surveyed are also seeing significant measurable improvements in overall financial performance with only 4% saying they're seeing no measurable improvements in overall financial performance.",
+      "fp": "a38abd222cb9aa16"
+    },
+    {
+      "claim": "In 2024, 34% of leaders expected their organizations to spend $10 million or more on AI, but in 2025, only 23% reported actually doing so.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "EY Pulse Survey",
+      "episode": "why-ai-advantage-compounds",
+      "claim_date": "2025-12-13",
+      "evidence": "In 24, a little over a third at 34% of leaders said that their organizations would spend 10 million on AI, but the number in reality was only 23%.",
+      "fp": "cf80a0cc2a2567c8"
+    },
+    {
+      "claim": "The number of weekly users of custom GPTs and projects in enterprise settings increased by 19x, with about one-fifth of all enterprise messages now going through these tools.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "OpenAI State of Enterprise AI Report",
+      "episode": "why-ai-advantage-compounds",
+      "claim_date": "2025-12-13",
+      "evidence": "The number of weekly users of custom GPTs and projects was up 19x. About a fifth of all enterprise messages now are going through custom GPTs or through projects.",
+      "fp": "f0a744eb95381bb3"
+    },
+    {
+      "claim": "71% of organizations investing $10 million or more in AI reported significant productivity gains, compared to 52% of those investing less than $10 million.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "EY Pulse Survey",
+      "episode": "why-ai-advantage-compounds",
+      "claim_date": "2025-12-13",
+      "evidence": "For those investing less than 10 million, 52% said their organization had seen significant AI productivity gains and that number jumped to 71% for those investing 10 million or more.",
+      "fp": "ba53e2a37f3f5c24"
+    },
+    {
+      "claim": "The host argues that AI advantage compounds because leading organizations reinvest productivity gains into further AI capabilities, creating a flywheel that widens the gap with lagging competitors.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief)",
+      "episode": "why-ai-advantage-compounds",
+      "claim_date": "2025-12-13",
+      "evidence": "The leaders aren't taking profits. They're buying more AI. They're reinvesting 47% of their gains back into AI capabilities, creating a flywheel that makes them impossible to catch.",
+      "fp": "085215961be7984a"
+    },
+    {
+      "claim": "The combination of intense workloads, compute shortages, and the viability of models slightly behind the state-of-the-art is driving a flowering of diverse model architectures and setups within companies.",
+      "tier": "3",
+      "confidence": "0.55",
+      "source": "AI Daily Brief host",
+      "episode": "why-ai-users-are-raving-about-glm-52",
+      "claim_date": "2026-06-22",
+      "evidence": "The combination of workloads getting so much more intense, meaning so much more costly, plus the double-edged sword of models getting powerful enough that they're subject to government review and restriction, while also meaning that models just behind them are probably going to be viable for a lot of use cases, means just this incredible potential flowering of new diverse model architectures and setups inside companies.",
+      "fp": "d8607ece9a71dcb7"
+    },
+    {
+      "claim": "A PwC survey of nearly 4,500 CEOs found that only 12% reported AI had delivered both cost and revenue benefits, while 56% reported no significant financial benefit.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "PwC survey (reported by AI Daily Brief host)",
+      "episode": "why-deeply-integrating-ai-3xs-likelihood-of-financial-gains-from-ai",
+      "claim_date": "2026-01-23",
+      "evidence": "The transcript states: 'just 12% of CEOs said AI had delivered both cost and revenue while 56% more than half of the nearly 4,500 CEOs polled said they had seen no significant financial benefit so far.'",
+      "fp": "6c10855e946c1bf5"
+    },
+    {
+      "claim": "Companies in the top 12% of AI adopters, which report both revenue increases and cost reductions, are 2.6 times more likely to have embedded AI into their core processes compared to other companies.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "PwC survey (reported by AI Daily Brief host)",
+      "episode": "why-deeply-integrating-ai-3xs-likelihood-of-financial-gains-from-ai",
+      "claim_date": "2026-01-23",
+      "evidence": "The transcript states: 'Those vanguard companies... are 2.6 times more likely to have embedded AI into their core processes. 44% of those companies say that they are deploying AI to a large extent versus just 17%.'",
+      "fp": "271ee7066307276d"
+    },
+    {
+      "claim": "PwC found that CEOs whose organizations have established strong AI foundations, such as responsible AI frameworks and enterprise-wide integration environments, are three times more likely to report meaningful financial returns.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "PwC survey (reported by AI Daily Brief host)",
+      "episode": "why-deeply-integrating-ai-3xs-likelihood-of-financial-gains-from-ai",
+      "claim_date": "2026-01-23",
+      "evidence": "The transcript quotes PwC: 'Foundations matter as much as scale. CEOs whose organizations have established strong AI foundations... are three times more likely to report meaningful financial returns.'",
+      "fp": "afd5c27fa1778589"
+    },
+    {
+      "claim": "The host argues that the mainstream narrative of AI underperformance is misleading and that the data actually indicates a widening gap between AI leaders and laggards driven by infrastructure and adoption maturity.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "AI Daily Brief host",
+      "episode": "why-deeply-integrating-ai-3xs-likelihood-of-financial-gains-from-ai",
+      "claim_date": "2026-01-23",
+      "evidence": "The host states: 'The story that I think the data is actually telling is yet more evidence of the widening gap between leaders and laggards... The lens then to read these studies through is not AI overhyped, but instead the very real burden of infrastructure for AI adoption.'",
+      "fp": "a93d9635d487c438"
+    },
+    {
+      "claim": "The widespread adoption of mutual standards like MCP and skills is expected to be a key accelerator for AI agent maturity and proliferation in 2026.",
+      "tier": "3",
+      "confidence": "0.55",
+      "source": "Host (AI Daily Brief)",
+      "episode": "will-this-update-from-openai-make-ai-agents-work-better",
+      "claim_date": "2025-12-18",
+      "evidence": "The host concludes: 'One of the things that will accelerate us heading into 2026 is the common adoption of these mutual standards... we are so barely scratching the surface of what's possible.'",
+      "fp": "bc22449a7bf06bce"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - ## Current Landscape (2026)",
+      "content": "  - ## Recent Developments\n    - **Google Cloud Growth**: Google Cloud reported 63% year-over-year revenue growth and a $460 billion backlog in new orders, up from $240 billion at the end of Q4, underscoring the accelerating enterprise demand for AI infrastructure. [source: Google Earnings Report / AI Daily Brief, confidence 0.98, tier 1]\n    - **EY Pulse Survey Findings**: \n      - 96% of leaders reported significant measurable improvements in overall financial performance, with only 4% reporting no measurable improvements. [source: EY Pulse Survey, confidence 0.95, tier 1]\n      - 96% of US senior leaders reported seeing AI-driven productivity gains, with 57% reporting significant gains. [source: EY Pulse Survey, confidence 0.95, tier 1]\n      - 71% of organizations investing $10 million or more in AI reported significant productivity gains, compared to 52% of those investing less than $10 million. [source: EY Pulse Survey, confidence 0.95, tier 1]\n      - In 2024, 34% of leaders expected their organizations to spend $10 million or more on AI, but in 2025, only 23% reported actually doing so. [source: EY Pulse Survey, confidence 0.95, tier 1]\n    - **OpenAI Enterprise Adoption**: The number of weekly users of custom GPTs and projects in enterprise settings increased by 19x, with about one-fifth of all enterprise messages now going through these tools. [source: OpenAI State of Enterprise AI Report, confidence 0.95, tier 1]\n    - **ServiceNow\u2013OpenAI Partnership**: OpenAI has signed a three-year deal to integrate its AI models into ServiceNow's platform, involving a revenue commitment from ServiceNow. [source: The Wall Street Journal, confidence 0.95, tier 1]\n    - **PwC CEO Survey**: A PwC survey of nearly 4,500 CEOs found that only 12% reported AI had delivered both cost and revenue benefits, while 56% reported no significant financial benefit. [source: PwC survey (reported by AI Daily Brief host), confidence 0.95, tier 1]\n    - **Nvidia Strategy**: Nvidia CEO Jensen Huang stated that every software company in the world needs to have an Open Claw strategy. [source: Jensen Huang (Nvidia CEO), confidence 0.95, tier 1]\n    - **Data Readiness Gap**: Applied Compute found that the gap between having data and having data in a format usable by AI systems is enormous, as most enterprise data was not structured for AI consumption. [source: Michael Chan (Applied Compute), confidence 0.95, tier 1]\n    - **Box Agent Engineering**: Aaron Levie announced that Box is hiring and retraining for new 'agent engineering' roles, described as internal FTEs who wire up internal systems and build secure, governed agents for business processes. [source: Aaron Levie, confidence 0.95, tier 2]\n    - **Kirkland & Ellis Investment**: Kirkland & Ellis is planning to spend $500 million over 3-4 years to build an internal AI platform, with $100 million allocated for the current year. [source: Financial Times (reported by host), confidence 0.95, tier 1]"
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 3,
+      "relevance": 4,
+      "coherence": 2,
+      "better_version": "A",
+      "improvement": -2
+    },
+    "raw_b": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 4,
+      "better_version": "B",
+      "improvement": 2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "db4adc4ad5eafef4",
+        "claim": "Google Cloud reported 63% year-over-year revenue growth and a $460 billion backlog in new orders, up from $240 billion a",
+        "matched": true
+      },
+      {
+        "fp": "a38abd222cb9aa16",
+        "claim": "96% of leaders in the EY survey reported significant measurable improvements in overall financial performance, with only",
+        "matched": true
+      },
+      {
+        "fp": "ba53e2a37f3f5c24",
+        "claim": "71% of organizations investing $10 million or more in AI reported significant productivity gains, compared to 52% of tho",
+        "matched": true
+      },
+      {
+        "fp": "cf80a0cc2a2567c8",
+        "claim": "In 2024, 34% of leaders expected their organizations to spend $10 million or more on AI, but in 2025, only 23% reported ",
+        "matched": true
+      },
+      {
+        "fp": "e0e5bf537aab43fc",
+        "claim": "96% of US senior leaders surveyed by EY reported seeing AI-driven productivity gains, with 57% reporting significant gai",
+        "matched": true
+      },
+      {
+        "fp": "f0a744eb95381bb3",
+        "claim": "The number of weekly users of custom GPTs and projects in enterprise settings increased by 19x, with about one-fifth of ",
+        "matched": true
+      },
+      {
+        "fp": "a505bbecb1c58f81",
+        "claim": "OpenAI has signed a three-year deal to integrate its AI models into ServiceNow's platform, involving a revenue commitmen",
+        "matched": true
+      },
+      {
+        "fp": "6c10855e946c1bf5",
+        "claim": "A PwC survey of nearly 4,500 CEOs found that only 12% reported AI had delivered both cost and revenue benefits, while 56",
+        "matched": true
+      },
+      {
+        "fp": "c7c796e6897f1050",
+        "claim": "Nvidia CEO Jensen Huang stated that every software company in the world needs to have an Open Claw strategy.",
+        "matched": true
+      },
+      {
+        "fp": "3cc9a7d5c1001ff7",
+        "claim": "Applied Compute found that the gap between having data and having data in a format usable by AI systems is enormous, as ",
+        "matched": true
+      },
+      {
+        "fp": "34965c40bc12dd13",
+        "claim": "Aaron Levie announced that Box is hiring and retraining for new 'agent engineering' roles, described as internal FTEs wh",
+        "matched": true
+      },
+      {
+        "fp": "55b8c8cf1fd81571",
+        "claim": "Kirkland & Ellis is planning to spend $500 million over 3-4 years to build an internal AI platform, with $100 million al",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

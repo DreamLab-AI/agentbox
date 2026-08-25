@@ -1,0 +1,313 @@
+{
+  "topic": "Hardware",
+  "topic_slug": "hardware",
+  "status": "candidate_survivor",
+  "reasons": [],
+  "n_assertions": 14,
+  "episodes": [
+    "chatgpt-55-rumors-start-to-bubble",
+    "claude-code-is-now-writing-claude-code",
+    "claude-code-turns-one",
+    "google-says-no-ads-planned-for-gemini",
+    "how-apples-ai-strategy-changes-with-a-new-ceo",
+    "how-big-a-deal-is-the-usas-ai-genesis-mission",
+    "how-big-is-the-ai-economy",
+    "how-googles-ai-leaders-leaving-could-lead-to-better-ai-models-for-you",
+    "how-the-escalating-ai-wars-benefit-you"
+  ],
+  "assertion_fingerprints": [
+    "18bbe1d0c211fffc",
+    "1b9c09de4482d754",
+    "42038c83e1d06816",
+    "4ea19b6247e44401",
+    "598a59d6251feed0",
+    "9bf76ef6c625c8b0",
+    "9dcbca1691457b96",
+    "a2a29d7a83253688",
+    "bfc325f95bdf62e5",
+    "ca88a0ac21df8cef",
+    "cc6dfc429d56370f",
+    "d21b59a50b535d77",
+    "d60ced43f170f70f",
+    "eb1d2c93472dec2d"
+  ],
+  "target_page": "Hardware.md",
+  "assertions": [
+    {
+      "claim": "A supply chain leak indicates OpenAI is developing a special audio hardware device codenamed 'Sweet Pee' intended to replace AirPods, with a target release near September.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "Chinese consumer electronics blogger (cited by Host)",
+      "episode": "chatgpt-55-rumors-start-to-bubble",
+      "claim_date": "2026-01-15",
+      "evidence": "The leak states, 'Internal code name is Sweet Pee... The release has been told to be near September. Volume projection 40 to 50 million in the first year.'",
+      "fp": "d60ced43f170f70f"
+    },
+    {
+      "claim": "OpenAI is consolidating its audio engineering and research teams to release a new audio model in Q1 2026 that can handle interruptions and speak over users.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "The Information",
+      "episode": "claude-code-is-now-writing-claude-code",
+      "claim_date": "2026-01-03",
+      "evidence": "The transcript notes, 'OpenAI has consolidated engineering product and research teams to overhaul their audio models... a new audio model to drive voice mode is expected to be released in the first quarter of this year... It will reportedly handle interruption more easily and can even speak over the user when appropriate.'",
+      "fp": "9bf76ef6c625c8b0"
+    },
+    {
+      "claim": "OpenAI has shifted its consumer device manufacturing strategy away from China's Luxshare to non-China suppliers due to strategic supply chain considerations.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Counterpoint Analyst Jukan",
+      "episode": "claude-code-is-now-writing-claude-code",
+      "claim_date": "2026-01-03",
+      "evidence": "The transcript notes, 'While the device was originally expected to be contract manufactured by China's Lux share due to strategic considerations around a non-China supply chain, OpenAI has shifted course and is now looking for ways to manufacture it outside of China.'",
+      "fp": "a2a29d7a83253688"
+    },
+    {
+      "claim": "OpenAI's hardware strategy is being designed in a secretive, Apple-like manner at a separate office, with a culture of 'need-to-know' information sharing that has caused internal friction.",
+      "tier": "3",
+      "confidence": "0.5",
+      "source": "AI Daily Brief Host",
+      "episode": "claude-code-turns-one",
+      "claim_date": "2026-02-26",
+      "evidence": "The host notes, 'The device is being designed at a separate office away from OpenAI's headquarters... Johnny Ives design studio, Lovefront, is slow to revise the designs and shares few details with the main organization.'",
+      "fp": "cc6dfc429d56370f"
+    },
+    {
+      "claim": "Analyst Jeff Puh of Highong Securities reported that Meta is deprioritizing the deployment of its custom silicon.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Jeff Puh (Highong Securities)",
+      "episode": "google-says-no-ads-planned-for-gemini",
+      "claim_date": "2026-01-22",
+      "evidence": "Puh's research note indicates Meta is scaling back its in-house chip program, a shift that aligns with a broader trend among hyperscalers to focus on immediate compute needs over self-sufficiency.",
+      "fp": "598a59d6251feed0"
+    },
+    {
+      "claim": "Apple's AI strategy is viewed by some experts as a deliberate 'wait and see' approach to avoid burning capital without a comparative advantage, unlike competitors such as Meta.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Alex E Mac (Chicago Booth Professor)",
+      "episode": "how-apples-ai-strategy-changes-with-a-new-ceo",
+      "claim_date": "2026-04-22",
+      "evidence": "Mac argues: 'Apple's strategy was always going to be wait out the race... and make a deal with who they perceived to be the most compatible with its hardware, instead of burning through huge amounts of money without any comparative advantage.'",
+      "fp": "9dcbca1691457b96"
+    },
+    {
+      "claim": "The rise of open-source agent harnesses like 'Open Claw' has driven significant demand for Apple hardware, specifically the Mac Mini, which has sold out in stores.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "AI Daily Brief Host",
+      "episode": "how-apples-ai-strategy-changes-with-a-new-ceo",
+      "claim_date": "2026-04-22",
+      "evidence": "The host states: 'a huge number of people raced out to get dedicated hardware for their Open Claws, and of course, the device of choice was the Mac Mini. So much so that it led to the Mac Mini being sold out.'",
+      "fp": "1b9c09de4482d754"
+    },
+    {
+      "claim": "OpenAI's new AI device is expected to be available within two years, according to Jony Ive.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Jony Ive / Emerson Collective Demo Day",
+      "episode": "how-big-a-deal-is-the-usas-ai-genesis-mission",
+      "claim_date": "2025-11-30",
+      "evidence": "The transcript states: 'Substantively, the biggest news was a timeline with IV stating the device could be available within 2 years.'",
+      "fp": "bfc325f95bdf62e5"
+    },
+    {
+      "claim": "Sam Altman and Jony Ive have finalized the design of OpenAI's first consumer AI device, which Altman describes as having a 'total contextual awareness' and a calm, non-intimidating user experience.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Sam Altman / Jony Ive / Emerson Collective Demo Day",
+      "episode": "how-big-a-deal-is-the-usas-ai-genesis-mission",
+      "claim_date": "2025-11-30",
+      "evidence": "Altman and Ive said they've 'nailed the design of their AI device.' Altman described the key feature as 'total contextual awareness' and compared the desired user experience to 'sitting in the most beautiful cabin by a lake' rather than the 'dopamine drip' of modern devices.",
+      "fp": "42038c83e1d06816"
+    },
+    {
+      "claim": "Global semiconductor market revenue is projected to reach $1.5 trillion in 2026, nearly doubling from $792 billion in the previous year.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Exponential View (State of the AI Economy report)",
+      "episode": "how-big-is-the-ai-economy",
+      "claim_date": "2026-06-30",
+      "evidence": "The report attributes this surge to a 'compute supercycle' driven by AI demand, which is reigniting growth in the US power sector and hardware markets.",
+      "fp": "18bbe1d0c211fffc"
+    },
+    {
+      "claim": "Anthropic is establishing an in-house chip design team to co-design hardware and models for improved efficiency, with Samsung being considered as a manufacturing partner.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Business Insider / Anthropic Spokesperson (cited by AI Daily Brief Host)",
+      "episode": "how-googles-ai-leaders-leaving-could-lead-to-better-ai-models-for-you",
+      "claim_date": "2026-08-08",
+      "evidence": "The transcript states: 'Business Insider reports that Anthropic is beginning to staff up the new team with a spokesperson confirming the move... According to earlier reports, Samsung is being considered as a manufacturing partner.'",
+      "fp": "4ea19b6247e44401"
+    },
+    {
+      "claim": "The US Commerce Department has eased export controls to allow the UAE government and approved companies to access advanced AI chips without a license.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "US Commerce Department (reported by AI Daily Brief)",
+      "episode": "how-the-escalating-ai-wars-benefit-you",
+      "claim_date": "2026-07-14",
+      "evidence": "A rule change posted on Friday stated that the UAE government and approved companies will now be able to access advanced AI chips without a license, citing new technology protection measures under an export deal signed in May of the previous year.",
+      "fp": "d21b59a50b535d77"
+    },
+    {
+      "claim": "SK Hynix completed the largest ever US IPO for a foreign company, raising $26.5 billion in its Nasdaq debut.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "AI Daily Brief",
+      "episode": "how-the-escalating-ai-wars-benefit-you",
+      "claim_date": "2026-07-14",
+      "evidence": "The South Korean memory maker raised $26.5 billion on Friday, surpassing Alibaba's 2014 IPO ($25 billion) but falling short of Saudi Aramco's 2019 IPO ($29.4 billion, non-US listing).",
+      "fp": "eb1d2c93472dec2d"
+    },
+    {
+      "claim": "Apple's lawsuit against OpenAI signals that the AI race is entering a new phase where hardware, not just models, has become a strategic battleground.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Ricky Ho (commentator) / AI Daily Brief Host",
+      "episode": "how-the-escalating-ai-wars-benefit-you",
+      "claim_date": "2026-07-14",
+      "evidence": "The host notes that Ricky Ho is right to view the lawsuit as a signal that the AI race is shifting to hardware. The host adds that the competitive dynamics are shifting because 'model is not the only vector of competition anymore.'",
+      "fp": "ca88a0ac21df8cef"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - Open challenges as of 2026 remain waveguide field-of-view and brightness, all-day battery within eyewear thermal/weight budgets (~50g on 155mAh cells), on-device versus cloud AI inference, and weak consumer demand for high-end headsets despite chip and display gains.",
+      "content": "\n- ### Recent Developments (2026)\n  - **Market Scale and Investment**\n    - Global semiconductor market revenue is projected to reach **$1.5 trillion in 2026**, nearly doubling from $792 billion in the previous year, driven by a \"compute supercycle\" fueled by AI demand that is reigniting growth in the US power sector and hardware markets.\n    - **SK Hynix** completed the largest ever US IPO for a foreign company, raising **$26.5 billion** in its Nasdaq debut, surpassing Alibaba's 2014 IPO but falling short of Saudi Aramco's 2019 listing.\n  - **Consumer AI Hardware and Devices**\n    - **OpenAI** has finalized the design of its first consumer AI device with Jony Ive, described by Sam Altman as featuring \"total contextual awareness\" and a calm, non-intimidating user experience. The device is expected to be available within **two years**.\n    - Supply chain leaks indicate OpenAI is developing a special audio hardware device codenamed **'Sweet Pee'** intended to replace AirPods, with a target release near September and a first-year volume projection of 40\u201350 million units.\n    - OpenAI has shifted its consumer device manufacturing strategy away from China's Luxshare to non-China suppliers due to strategic supply chain considerations.\n    - The rise of open-source agent harnesses like 'Open Claw' has driven significant demand for Apple hardware, specifically the **Mac Mini**, which has sold out in stores due to users seeking dedicated hardware for their agents.\n  - **Silicon Strategy and Custom Chips**\n    - Analyst Jeff Puh of Highong Securities reported that **Meta** is deprioritizing the deployment of its custom silicon, scaling back its in-house chip program to focus on immediate compute needs over self-sufficiency.\n    - **Anthropic** is establishing an in-house chip design team to co-design hardware and models for improved efficiency, with **Samsung** being considered as a manufacturing partner.\n    - **Apple's** AI strategy is viewed by some experts as a deliberate \"wait and see\" approach to avoid burning capital without a comparative advantage, focusing instead on partnering with the most compatible AI providers for its hardware.\n  - **Regulatory and Export Controls**\n    - The US Commerce Department has eased export controls to allow the **UAE government** and approved companies to access advanced AI chips without a license, citing new technology protection measures under an export deal signed in May of the previous year."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 2.0,
+    "rubric_b_improvement": 2.0,
+    "raw_a": {
+      "factual_grounding": 4,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 4,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    }
+  },
+  "completeness": {
+    "score": 0.9166666666666666,
+    "detail": [
+      {
+        "fp": "d21b59a50b535d77",
+        "claim": "The US Commerce Department has eased export controls to allow the UAE government and approved companies to access advanc",
+        "matched": true
+      },
+      {
+        "fp": "eb1d2c93472dec2d",
+        "claim": "SK Hynix completed the largest ever US IPO for a foreign company, raising $26.5 billion in its Nasdaq debut.",
+        "matched": true
+      },
+      {
+        "fp": "bfc325f95bdf62e5",
+        "claim": "OpenAI's new AI device is expected to be available within two years, according to Jony Ive.",
+        "matched": true
+      },
+      {
+        "fp": "9bf76ef6c625c8b0",
+        "claim": "OpenAI is consolidating its audio engineering and research teams to release a new audio model in Q1 2026 that can handle",
+        "matched": false
+      },
+      {
+        "fp": "598a59d6251feed0",
+        "claim": "Analyst Jeff Puh of Highong Securities reported that Meta is deprioritizing the deployment of its custom silicon.",
+        "matched": true
+      },
+      {
+        "fp": "18bbe1d0c211fffc",
+        "claim": "Global semiconductor market revenue is projected to reach $1.5 trillion in 2026, nearly doubling from $792 billion in th",
+        "matched": true
+      },
+      {
+        "fp": "4ea19b6247e44401",
+        "claim": "Anthropic is establishing an in-house chip design team to co-design hardware and models for improved efficiency, with Sa",
+        "matched": true
+      },
+      {
+        "fp": "42038c83e1d06816",
+        "claim": "Sam Altman and Jony Ive have finalized the design of OpenAI's first consumer AI device, which Altman describes as having",
+        "matched": true
+      },
+      {
+        "fp": "d60ced43f170f70f",
+        "claim": "A supply chain leak indicates OpenAI is developing a special audio hardware device codenamed 'Sweet Pee' intended to rep",
+        "matched": true
+      },
+      {
+        "fp": "a2a29d7a83253688",
+        "claim": "OpenAI has shifted its consumer device manufacturing strategy away from China's Luxshare to non-China suppliers due to s",
+        "matched": true
+      },
+      {
+        "fp": "1b9c09de4482d754",
+        "claim": "The rise of open-source agent harnesses like 'Open Claw' has driven significant demand for Apple hardware, specifically ",
+        "matched": true
+      },
+      {
+        "fp": "9dcbca1691457b96",
+        "claim": "Apple's AI strategy is viewed by some experts as a deliberate 'wait and see' approach to avoid burning capital without a",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": {
+    "target_page": "Hardware.md",
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - Open challenges as of 2026 remain waveguide field-of-view and brightness, all-day battery within eyewear thermal/weight budgets (~50g on 155mAh cells), on-device versus cloud AI inference, and weak consumer demand for high-end headsets despite chip and display gains.",
+      "content": "\n- ### Recent Developments (2026)\n  - **Market Scale and Investment**\n    - Global semiconductor market revenue is projected to reach **$1.5 trillion in 2026**, nearly doubling from $792 billion in the previous year, driven by a \"compute supercycle\" fueled by AI demand that is reigniting growth in the US power sector and hardware markets.\n    - **SK Hynix** completed the largest ever US IPO for a foreign company, raising **$26.5 billion** in its Nasdaq debut, surpassing Alibaba's 2014 IPO but falling short of Saudi Aramco's 2019 listing.\n  - **Consumer AI Hardware and Devices**\n    - **OpenAI** has finalized the design of its first consumer AI device with Jony Ive, described by Sam Altman as featuring \"total contextual awareness\" and a calm, non-intimidating user experience. The device is expected to be available within **two years**.\n    - Supply chain leaks indicate OpenAI is developing a special audio hardware device codenamed **'Sweet Pee'** intended to replace AirPods, with a target release near September and a first-year volume projection of 40\u201350 million units.\n    - OpenAI has shifted its consumer device manufacturing strategy away from China's Luxshare to non-China suppliers due to strategic supply chain considerations.\n    - The rise of open-source agent harnesses like 'Open Claw' has driven significant demand for Apple hardware, specifically the **Mac Mini**, which has sold out in stores due to users seeking dedicated hardware for their agents.\n  - **Silicon Strategy and Custom Chips**\n    - Analyst Jeff Puh of Highong Securities reported that **Meta** is deprioritizing the deployment of its custom silicon, scaling back its in-house chip program to focus on immediate compute needs over self-sufficiency.\n    - **Anthropic** is establishing an in-house chip design team to co-design hardware and models for improved efficiency, with **Samsung** being considered as a manufacturing partner.\n    - **Apple's** AI strategy is viewed by some experts as a deliberate \"wait and see\" approach to avoid burning capital without a comparative advantage, focusing instead on partnering with the most compatible AI providers for its hardware.\n  - **Regulatory and Export Controls**\n    - The US Commerce Department has eased export controls to allow the **UAE government** and approved companies to access advanced AI chips without a license, citing new technology protection measures under an export deal signed in May of the previous year."
+    },
+    "provenance": {
+      "assertion_fingerprints": [
+        "18bbe1d0c211fffc",
+        "1b9c09de4482d754",
+        "42038c83e1d06816",
+        "4ea19b6247e44401",
+        "598a59d6251feed0",
+        "9bf76ef6c625c8b0",
+        "9dcbca1691457b96",
+        "a2a29d7a83253688",
+        "bfc325f95bdf62e5",
+        "ca88a0ac21df8cef",
+        "cc6dfc429d56370f",
+        "d21b59a50b535d77",
+        "d60ced43f170f70f",
+        "eb1d2c93472dec2d"
+      ],
+      "source_episodes": [
+        "chatgpt-55-rumors-start-to-bubble",
+        "claude-code-is-now-writing-claude-code",
+        "claude-code-turns-one",
+        "google-says-no-ads-planned-for-gemini",
+        "how-apples-ai-strategy-changes-with-a-new-ceo",
+        "how-big-a-deal-is-the-usas-ai-genesis-mission",
+        "how-big-is-the-ai-economy",
+        "how-googles-ai-leaders-leaving-could-lead-to-better-ai-models-for-you",
+        "how-the-escalating-ai-wars-benefit-you"
+      ]
+    },
+    "scores": {
+      "rubric_a_improvement": 2.0,
+      "rubric_b_improvement": 2.0,
+      "completeness": 0.9166666666666666
+    }
+  }
+}

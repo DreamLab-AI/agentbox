@@ -1,0 +1,201 @@
+{
+  "topic": "Reasoning",
+  "topic_slug": "reasoning",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5"
+  ],
+  "n_assertions": 9,
+  "episodes": [
+    "chatgpt-55-rumors-start-to-bubble",
+    "does-gemini-31-pro-matter",
+    "everything-you-need-to-know-about-ai-tokens",
+    "gemini-3-launches-heres-everything-you-need-to-know",
+    "gpt-52-is-here"
+  ],
+  "assertion_fingerprints": [
+    "4dc57b54becc36f2",
+    "7f7396e5e3a299ea",
+    "9a94160191e69150",
+    "9bf17b0812626dbd",
+    "c5be28a08d0f3df1",
+    "e20b3cb8e01417dd",
+    "e669ce27ddf6dfb9",
+    "e7ba4579cb49e3d4",
+    "f6f27f41e5ee46ff"
+  ],
+  "target_page": "Reasoning.md",
+  "assertions": [
+    {
+      "claim": "Rumors suggest a new ChatGPT model, potentially codenamed 'Garlic' or GPT-5.3, is imminent and will feature stronger pre-training and IMO gold-winning reasoning techniques.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "Dan Mack / I Rule The World (cited by Host)",
+      "episode": "chatgpt-55-rumors-start-to-bubble",
+      "claim_date": "2026-01-15",
+      "evidence": "Dan Mack tweeted, 'GBT 53 cenamed garlic coming soon... expected to be a doozy, likely with stronger pre-training and the IMO gold winning reasoning techniques.'",
+      "fp": "9a94160191e69150"
+    },
+    {
+      "claim": "Gemini 3.1 Pro is particularly strong in multimodal and visual tasks, such as generating complex SVGs, creating landing pages, and performing technical simulations like heat transfer analysis from CAD files.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host (citing user feedback and Google DeepMind examples)",
+      "episode": "does-gemini-31-pro-matter",
+      "claim_date": "2026-02-21",
+      "evidence": "The transcript cites designer Mang 2: 'Gemini 3.1 Pro is an absolute beast for creating landing pages.' It also mentions Jeff Dean sharing an example of '3.1 Pro doing heat transfer analysis based on a CAD file... and then turning that heat transfer analysis... into a visual representation.'",
+      "fp": "7f7396e5e3a299ea"
+    },
+    {
+      "claim": "McKinsey estimates that approximately 60% of the cost of agentic tasks is tied to checking, refining, and regenerating answers after the first response.",
+      "tier": "1",
+      "confidence": "0.85",
+      "source": "Nofar Gaspar (citing McKinsey)",
+      "episode": "everything-you-need-to-know-about-ai-tokens",
+      "claim_date": "2026-08-04",
+      "evidence": "The host states, 'I think according to McKinsey, they estimate that they're roughly around 60% of an agentic tasks cost is tied to the checking and refining and the like regeneration of the answers after the first response.'",
+      "fp": "9bf17b0812626dbd"
+    },
+    {
+      "claim": "Reasoning tokens, which represent the model's internal thinking process, are billed at output rates and can add 4 to 20 times the cost of a request compared to standard input/output.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Nofar Gaspar",
+      "episode": "everything-you-need-to-know-about-ai-tokens",
+      "claim_date": "2026-08-04",
+      "evidence": "The host explains, 'For the most part it's going to be invisible to you, but it's billed at the output rates... and those can add between 4 to 20X cost per request.'",
+      "fp": "c5be28a08d0f3df1"
+    },
+    {
+      "claim": "Gemini 3 Pro achieved a score of 37.5% on the Humanity's Last Exam benchmark, surpassing GPT-5.1's score of 26.5%.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Google / AI Daily Brief Host",
+      "episode": "gemini-3-launches-heres-everything-you-need-to-know",
+      "claim_date": "2025-11-18",
+      "evidence": "The transcript explicitly compares the scores: 'on the academic reasoning focused humanities last exam, GPD 51 was at 26.5%. Gemini 3 Pro is at 37.5%.'",
+      "fp": "4dc57b54becc36f2"
+    },
+    {
+      "claim": "Gemini 3 Pro achieved a score of 31.1% on the ARC-AGI 2 benchmark, compared to 17.6% for GPT-5.1, with a 'deep think' mode pushing the score to 45.1%.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Google / AI Daily Brief Host",
+      "episode": "gemini-3-launches-heres-everything-you-need-to-know",
+      "claim_date": "2025-11-18",
+      "evidence": "The transcript states: 'while GPT51 mustered a 17.6%, Gemini 3 Pro got a 31.1%.' It further adds: 'the deep think mode drove the score on RKGI up to 45.1%.'",
+      "fp": "e669ce27ddf6dfb9"
+    },
+    {
+      "claim": "The significant improvement in Gemini 3's screen understanding and agentic capabilities is expected to accelerate the timeline for the deployment of fully autonomous computer-use agents.",
+      "tier": "3",
+      "confidence": "0.75",
+      "source": "Matt Schumer / AI Daily Brief Host",
+      "episode": "gemini-3-launches-heres-everything-you-need-to-know",
+      "claim_date": "2025-11-18",
+      "evidence": "Matt Schumer states regarding the ScreenSpot Pro score: 'It just massively accelerated my timeline to full computer using agents.'",
+      "fp": "f6f27f41e5ee46ff"
+    },
+    {
+      "claim": "GPT 5.2 Pro achieved a state-of-the-art score of 90.5% on the ARC-AGI 2 benchmark at a cost of $11.64 per task, representing a 390x efficiency improvement over a previous unreleased OpenAI model that scored 88% at $4,500 per task.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "ARC Prize / AI Daily Brief Host",
+      "episode": "gpt-52-is-here",
+      "claim_date": "2025-12-12",
+      "evidence": "The transcript notes: 'We verified a new 5.2 Pro extra high state-of-the-art score of 90.5% at $11.64 a task... that represents a 390x efficiency improvement in 1 year.'",
+      "fp": "e20b3cb8e01417dd"
+    },
+    {
+      "claim": "Early testers report that GPT 5.2 Pro offers superior 'willingness to think' and deep reasoning capabilities, but suffers from significant speed penalties that make it less suitable for quick, iterative tasks compared to competitors like Claude Opus 4.5.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Matt Schumer / AI Daily Brief Host",
+      "episode": "gpt-52-is-here",
+      "claim_date": "2025-12-12",
+      "evidence": "Matt Schumer noted: 'Standard 5.2 thinking is slow... My actual workflow has become quick questions go to Claude Opus 4.5 and when I need deep reasoning, I go straight to 5.2 Pro.'",
+      "fp": "e7ba4579cb49e3d4"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "      - Constitutional reasoning \u2014 Anthropic introduces Constitutional AI extensions to Extended Thinking, enabling reasoning chains that explicitly cite safety-relevant considerations during multi-step task execution.",
+      "content": "\n  - ### Recent Developments (2026)\n    - **Benchmark Performance and Efficiency Gains**\n      - GPT-5.2 Pro achieved a state-of-the-art score of 90.5% on the ARC-AGI 2 benchmark at a cost of $11.64 per task, representing a 390x efficiency improvement over a previous unreleased OpenAI model that scored 88% at $4,500 per task (ARC Prize / AI Daily Brief, confidence 0.95).\n      - Gemini 3 Pro achieved a score of 31.1% on the ARC-AGI 2 benchmark, compared to 17.6% for GPT-5.1, with a 'deep think' mode pushing the score to 45.1% (Google / AI Daily Brief, confidence 0.95).\n      - Gemini 3 Pro achieved a score of 37.5% on the Humanity's Last Exam benchmark, surpassing GPT-5.1's score of 26.5% (Google / AI Daily Brief, confidence 0.95).\n    - **Model Capabilities and Agentic Acceleration**\n      - Gemini 3.1 Pro is particularly strong in multimodal and visual tasks, such as generating complex SVGs, creating landing pages, and performing technical simulations like heat transfer analysis from CAD files (Host citing user feedback and Google DeepMind examples, confidence 0.85).\n      - The significant improvement in Gemini 3's screen understanding and agentic capabilities is expected to accelerate the timeline for the deployment of fully autonomous computer-use agents (Matt Schumer / AI Daily Brief, confidence 0.75).\n      - Early testers report that GPT 5.2 Pro offers superior 'willingness to think' and deep reasoning capabilities, but suffers from significant speed penalties that make it less suitable for quick, iterative tasks compared to competitors like Claude Opus 4.5 (Matt Schumer / AI Daily Brief, confidence 0.85).\n    - **Economic and Operational Implications**\n      - McKinsey estimates that approximately 60% of the cost of agentic tasks is tied to checking, refining, and regenerating answers after the first response (Nofar Gaspar citing McKinsey, confidence 0.85).\n      - Reasoning tokens, which represent the model's internal thinking process, are billed at output rates and can add 4 to 20 times the cost of a request compared to standard input/output (Nofar Gaspar, confidence 0.85).\n    - **Upcoming Releases**\n      - Rumors suggest a new ChatGPT model, potentially codenamed 'Garlic' or GPT-5.3, is imminent and will feature stronger pre-training and IMO gold-winning reasoning techniques (Dan Mack / I Rule The World, confidence 0.75)."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 4,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 4,
+      "relevance": 5,
+      "coherence": 4,
+      "better_version": "B",
+      "improvement": 2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "9a94160191e69150",
+        "claim": "Rumors suggest a new ChatGPT model, potentially codenamed 'Garlic' or GPT-5.3, is imminent and will feature stronger pre",
+        "matched": true
+      },
+      {
+        "fp": "7f7396e5e3a299ea",
+        "claim": "Gemini 3.1 Pro is particularly strong in multimodal and visual tasks, such as generating complex SVGs, creating landing ",
+        "matched": true
+      },
+      {
+        "fp": "9bf17b0812626dbd",
+        "claim": "McKinsey estimates that approximately 60% of the cost of agentic tasks is tied to checking, refining, and regenerating a",
+        "matched": true
+      },
+      {
+        "fp": "c5be28a08d0f3df1",
+        "claim": "Reasoning tokens, which represent the model's internal thinking process, are billed at output rates and can add 4 to 20 ",
+        "matched": true
+      },
+      {
+        "fp": "4dc57b54becc36f2",
+        "claim": "Gemini 3 Pro achieved a score of 37.5% on the Humanity's Last Exam benchmark, surpassing GPT-5.1's score of 26.5%.",
+        "matched": true
+      },
+      {
+        "fp": "e669ce27ddf6dfb9",
+        "claim": "Gemini 3 Pro achieved a score of 31.1% on the ARC-AGI 2 benchmark, compared to 17.6% for GPT-5.1, with a 'deep think' mo",
+        "matched": true
+      },
+      {
+        "fp": "f6f27f41e5ee46ff",
+        "claim": "The significant improvement in Gemini 3's screen understanding and agentic capabilities is expected to accelerate the ti",
+        "matched": true
+      },
+      {
+        "fp": "e20b3cb8e01417dd",
+        "claim": "GPT 5.2 Pro achieved a state-of-the-art score of 90.5% on the ARC-AGI 2 benchmark at a cost of $11.64 per task, represen",
+        "matched": true
+      },
+      {
+        "fp": "e7ba4579cb49e3d4",
+        "claim": "Early testers report that GPT 5.2 Pro offers superior 'willingness to think' and deep reasoning capabilities, but suffer",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}

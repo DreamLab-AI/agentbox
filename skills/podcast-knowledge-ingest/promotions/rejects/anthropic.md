@@ -1,0 +1,319 @@
+# Dossier: Anthropic
+
+- status: `candidate_rejected`
+- target page: `Anthropic.md`
+- assertions: 148 across episodes: can-todays-ai-replace-12-of-work, ceo-led-ai-gets-3x-the-roi, chatgpt-55-rumors-start-to-bubble, claude-code-turns-one, dario-amodei-breaks-his-social-media-silence, did-the-super-bowl-as-make-americans-like-ai-any-more, fable-5-raises-the-bar-for-ai-ambition, fable-5-shut-down-by-us-government, fable-is-back-heres-what-you-should-try-first, first-impressions-of-the-new-opus-48, gemini-can-now-write-you-a-song, grok-bot-finally-makes-ai-agents-easy, harness-engineering-101, how-a-30b-hedge-fund-implosion-will-effect-ai, how-ai-is-changing-how-companies-get-built, how-ai-starts-doing-the-work-in-2026-with-anthropic-cpo-mike-krieger, how-apples-ai-strategy-changes-with-a-new-ceo, how-big-is-the-ai-economy, how-deepseek-v4-connects-to-the-us-grid, how-googles-ai-leaders-leaving-could-lead-to-better-ai-models-for-you, how-people-actually-use-ai-agents, how-the-4-new-models-released-this-week-will-change-how-you-work, how-to-use-claudes-massive-new-upgrades, in-defense-of-tokenmaxxing, is-ai-doom-going-out-of-style, is-gpt-52-garlic-coming-this-week, is-the-debate-over-anthropics-new-product-about-price-or-existential-dread, jensen-huang-calls-openclaw-most-important-software-release-ever, just-how-good-is-gpt-6-going-to-be, meta-delays-new-ai-model, nano-banana-2-is-here, no-one-wins-this-ai-super-bowl, openai-preps-new-garlic-model, openclaw-goes-to-openai, pro-worker-ai, ralph-wiggum-clawdbot-and-mac-minis-how-pros-are-vibe-coding-in-2026, should-we-be-scared-of-anthropics-mythos, surprise-elon-anthropic-team-up-reshapes-ai-race, the-ai-subsidy-era-is-over, the-ai-token-shortage-begins, the-best-claude-design-use-cases, the-best-way-to-talk-to-your-agents, the-big-questions-shaping-the-consumer-ai-battle, the-biggest-battle-in-ai-is-for-your-personal-context, the-calm-before-the-agi-storm, the-dawn-of-the-agent-age, the-latest-ai-models-and-model-rumors, the-month-ai-woke-up, the-most-important-ai-news-from-google-io, the-next-wave-of-enterprise-ai, the-state-of-enterprise-ai-the-state-of-enterprise-ai, the-way-we-use-ai-is-changing, the-week-the-ai-story-shifted, the-whole-world-gets-claude-pilled, towards-ai-that-can-actually-interact, val-kilmers-ai-resurrection, what-1250-professionals-said-about-working-with-ai, what-google-needs-to-do-at-io-this-week, what-i-learned-testing-gpt-5-5, what-people-are-actually-using-ai-for-right-now, what-people-really-want-from-ai, what-we-learned-from-openais-town-hall, where-should-claude-opus-5-fit-in-your-model-rotation, white-hot-cursor-doubles-revenue, who-cares-about-consumer-ai, who-controls-ai, why-agents-still-need-humans, why-ai-users-are-raving-about-glm-52, why-claude-cowork-is-a-big-deal, why-claude-opus-45-changes-whats-possible-with-vibe-coding, why-fable-5-is-the-most-controversial-ai-release-ever, why-moltbook-matters, your-company-doesnt-need-an-ai-strategy
+- reasons: rubric_b_improvement -2.0 <= 0.0; rubric_a_improvement -1.0 < -0.5
+
+## Scores
+- judge ok: True  error: None
+- rubric-A improvement (after vs before): -1.0
+- rubric-B improvement (after vs before): -2.0
+- answer-completeness: 1.00
+
+## Assertions
+- **Anthropic's internal survey of 132 engineers found that employees self-report using Claude in 60% of their work and achieving a 50% productivity boost.**
+  - tier 1, confidence 0.95, source Anthropic Economic Index / Internal Survey, episode `can-todays-ai-replace-12-of-work`, fp `8c1d6929108e1904`
+- **Anthropic accused Alibaba of conducting the 'largest distillation attack ever detected,' involving nearly 29 million model accesses via 25,000 fraudulent accounts between mid-April and early June.**
+  - tier 1, confidence 0.95, source Anthropic Letter to Senate Banking Committee, episode `ceo-led-ai-gets-3x-the-roi`, fp `89221a531925abaa`
+- **The delay of Google's Gemini 3.5 Pro to July is linked to a significant exodus of senior researchers from DeepMind to Anthropic and OpenAI.**
+  - tier 2, confidence 0.85, source Bloomberg / Business Insider, episode `ceo-led-ai-gets-3x-the-roi`, fp `cb6667fc0408ba90`
+- **The US government is actively negotiating with Anthropic regarding the reinstatement of the 'Fable 5' model, with Tom Brown leading discussions while Dario Amodei is sidelined.**
+  - tier 2, confidence 0.75, source Wired / White House Sources, episode `ceo-led-ai-gets-3x-the-roi`, fp `6216642c96eb61f2`
+- **Anthropic has expanded its internal Labs team into a full-blown incubator, aiming to double its headcount within six months.**
+  - tier 1, confidence 0.95, source Host (AI Daily Brief), episode `chatgpt-55-rumors-start-to-bubble`, fp `1a17dcdefa7973b6`
+- **Anthropic's Claude Opus 4.5 is being positioned as a potential candidate for the most important model release of 2025 due to sustained positive reception.**
+  - tier 2, confidence 0.85, source Host (AI Daily Brief), episode `chatgpt-55-rumors-start-to-bubble`, fp `e0dd8a1590b972b7`
+- **Anthropic's expansion of its Labs team is driven by a need to align its product philosophy with the rapid pace of AI advancement, allowing for more experimental and 'mold-breaking' development.**
+  - tier 2, confidence 0.85, source Daniela Amodei (cited by Host), episode `chatgpt-55-rumors-start-to-bubble`, fp `40640855b3dec426`
+- **Anthropic's Claude Code is generating $2.5 billion in annual recurring revenue (ARR) one year after its launch.**
+  - tier 1, confidence 0.95, source AI Daily Brief Host, episode `claude-code-turns-one`, fp `45529d813abf295f`
+- **Anthropic's API analysis indicates that almost 50% of all tool calls are related to software engineering, making it the dominant use case for their models.**
+  - tier 1, confidence 0.95, source Anthropic API Analysis, episode `claude-code-turns-one`, fp `154bdbf4a340f173`
+- **Anthropic disclosed in its second risk report that it has three significant unreleased models as of mid-July, including 'Model 2' which is described as 'somewhat more capable than Mythos 5' and is not planned for public release.**
+  - tier 1, confidence 0.95, source Anthropic Risk Report / AI Daily Brief Host, episode `dario-amodei-breaks-his-social-media-silence`, fp `43da569cfad3f4fa`
+- **An iSpot survey of 500 viewers found that Anthropic's Super Bowl ad had a likeability score in the bottom 3% compared with Super Bowl ads over the past 5 years.**
+  - tier 1, confidence 0.9, source iSpot / Adweek (cited by host), episode `did-the-super-bowl-as-make-americans-like-ai-any-more`, fp `7d492cb500e7c2a0`
+- **Anthropic's Super Bowl ad failed to land effectively because the general public lacked the context that it was a critique of OpenAI's upcoming ad-supported ChatGPT, leading many to interpret it as a generic critique of AI's commercialization.**
+  - tier 2, confidence 0.8, source Host (AI Daily Brief), episode `did-the-super-bowl-as-make-americans-like-ai-any-more`, fp `e5af51e88848e674`
+- **Anthropic launched Claude Fable 5 on June 9th, introducing a new 'Mythos' class of models positioned above the Opus tier.**
+  - tier 1, confidence 0.95, source AI Daily Brief Host / Anthropic Announcement, episode `fable-5-raises-the-bar-for-ai-ambition`, fp `c01b513398547f3c`
+- **Anthropic implemented safeguards that automatically route requests related to cybersecurity, biology, chemistry, or distillation to Claude Opus 4.8 instead of Fable 5.**
+  - tier 1, confidence 0.95, source Anthropic Blog Post / AI Daily Brief Host, episode `fable-5-raises-the-bar-for-ai-ambition`, fp `e9c9bf6dacce9ff0`
+- **The US Department of Commerce issued an export control directive suspending access to Anthropic's Fable 5 and Mythos 5 models for all foreign nationals, including foreign-national Anthropic employees, citing national security authorities.**
+  - tier 1, confidence 0.98, source Anthropic official tweet and blog post; Wall Street Journal, episode `fable-5-shut-down-by-us-government`, fp `ee7e3b86539e8188`
+- **Anthropic implemented a 30-day customer data retention policy for Fable 5 to enable the research and mitigation of jailbreaks, a measure they described as carrying real costs but necessary for their defense-in-depth strategy.**
+  - tier 1, confidence 0.92, source Anthropic blog post, episode `fable-5-shut-down-by-us-government`, fp `891cf7fb96a8e051`
+- **A significant portion of Anthropic's technical staff, including prominent figures like Andrej Karpathy, are not US citizens and are therefore prohibited from interacting with Fable 5 and Mythos 5 under the new export control directive.**
+  - tier 1, confidence 0.9, source Rishi Sharma (via X); Transcript analysis, episode `fable-5-shut-down-by-us-government`, fp `6d49b73c53e02d54`
+- **Many industry observers believe the directive is driven by personal animosity or a desire to force regulatory compliance from Anthropic, rather than purely technical security concerns, citing the government's recent shift in rhetoric regarding AI oversight.**
+  - tier 2, confidence 0.8, source Josh Pigford; Kirsten Davies (Dept of War CIO); Transcript analysis, episode `fable-5-shut-down-by-us-government`, fp `d44ab68debfb2ac5`
+- **The directive poses a significant risk to the US AI investment thesis and the broader US economy, as it introduces uncertainty that may deter capital expenditure on frontier models and reduce the global market share of US AI companies.**
+  - tier 3, confidence 0.72, source Daniel Woo; GDP (via X); Host analysis, episode `fable-5-shut-down-by-us-government`, fp `942b57d61ae03111`
+- **Anthropic's Fable 5 model was cleared for global redeployment on July 1st after the US Department of Commerce lifted export controls that had been in place for approximately 19 days.**
+  - tier 1, confidence 0.95, source Anthropic and US Department of Commerce (reported by AI Daily Brief host), episode `fable-is-back-heres-what-you-should-try-first`, fp `263fe465dd7c8bdf`
+- **Anthropic has trained a new classifier for Fable 5 with a claimed 99% success rate in blocking the specific behavior described in the Amazon jailbreak report, which has been tested with the Commerce Department Center for AI Standards and Innovation.**
+  - tier 1, confidence 0.9, source Anthropic (reported by AI Daily Brief host), episode `fable-is-back-heres-what-you-should-try-first`, fp `03f8672753d404ad`
+- **Anthropic closed a Series H round at a $965 billion valuation, surpassing OpenAI, with run-rate revenue crossing $47 billion.**
+  - tier 1, confidence 0.95, source Anthropic (reported by host), episode `first-impressions-of-the-new-opus-48`, fp `fa08dbb2498e9249`
+- **Anthropic updated its terms of service to prohibit the use of OAuth tokens from Claude Free, Pro, or Max accounts in third-party products, tools, or services, including the Agent SDK.**
+  - tier 1, confidence 0.95, source Podcast Host (citing Anthropic policy change), episode `gemini-can-now-write-you-a-song`, fp `6a394866420b2c13`
+- **Anthropic clarified that the policy change was intended to force third-party businesses to pay for usage through the API, while personal tinkering with agents remains permitted.**
+  - tier 1, confidence 0.9, source Shahipard (Anthropic Representative) via Podcast Host, episode `gemini-can-now-write-you-a-song`, fp `a579f09d7f4e56af`
+- **Anthropic has implemented invisible watermarks in all generated text from its new models to comply with the EU AI Act, with the watermark embedded in the text itself rather than metadata to persist through copying and editing.**
+  - tier 1, confidence 0.95, source AI Daily Brief Host / Anthropic Policy, episode `grok-bot-finally-makes-ai-agents-easy`, fp `c1b24fa45fd467f0`
+- **Anthropic's 'Managed Agents' service is designed with stable interfaces to decouple the agent loop ('brain') from the execution environment ('hands'), allowing harnesses to be updated independently as models improve.**
+  - tier 1, confidence 0.95, source Anthropic / AI Daily Brief Host, episode `harness-engineering-101`, fp `28672308ceda8241`
+- **Anthropic is operating at an estimated annualized recurring revenue (ARR) run rate of $71 billion, up from $47 billion in May 2025.**
+  - tier 1, confidence 0.85, source Axios citing Funda data, episode `how-a-30b-hedge-fund-implosion-will-effect-ai`, fp `d8e09a5d48565e62`
+- **Anthropic is projected to end the year with $100 to $150 billion in revenue, which would eclipse the combined revenue-generating capacity of Tesla and SpaceX.**
+  - tier 3, confidence 0.5, source Dwarkesh Patel (cited by Host), episode `how-a-30b-hedge-fund-implosion-will-effect-ai`, fp `881d6f6ae87d0fda`
+- **Anthropic identified a network of 25,000 fraudulent accounts linked to Alibaba that generated nearly 29 million interactions with Claude, which Anthropic accused of being a large-scale distillation attack.**
+  - tier 1, confidence 0.9, source Anthropic (via AI Daily Brief host), episode `how-ai-is-changing-how-companies-get-built`, fp `23c21ca0fab51642`
+- **Anthropic's internal 'Claude CLI' tool, later released as Claude Code, overtook all other internal coding tools between September and December of the previous year due to its design for longer model horizons.**
+  - tier 1, confidence 0.95, source Mike Kger (Chief Product Officer, Anthropic), episode `how-ai-starts-doing-the-work-in-2026-with-anthropic-cpo-mike-krieger`, fp `91ecb5baf4d45c3f`
+- **Anthropic renamed its underlying SDK from 'Claude Code' to 'Claude Agent SDK' after observing that users were applying the tool to non-coding tasks such as bioinformatics, data science, and project management.**
+  - tier 1, confidence 0.9, source Mike Kger (Chief Product Officer, Anthropic), episode `how-ai-starts-doing-the-work-in-2026-with-anthropic-cpo-mike-krieger`, fp `54fadaf1e285868f`
+- **Anthropic's product development principle is to 'ride the exponential,' which involves building products that are useful today but designed to naturally improve as model capabilities increase, often resulting in the deletion of scaffolding code over time.**
+  - tier 2, confidence 0.85, source Mike Kger (Chief Product Officer, Anthropic), episode `how-ai-starts-doing-the-work-in-2026-with-anthropic-cpo-mike-krieger`, fp `f069a87989ee5a44`
+- **Amazon is committing $25 billion to Anthropic, consisting of an immediate $5 billion commitment and $20 billion tied to commercial milestones.**
+  - tier 1, confidence 0.95, source AI Daily Brief Host, episode `how-apples-ai-strategy-changes-with-a-new-ceo`, fp `4920eadf9eee1124`
+- **Anthropic's codebase is now approximately 100% written by AI, whereas Google's coding agents write around half of its code.**
+  - tier 2, confidence 0.8, source Boris Cherney (Anthropic) and Nat Ashkenazi (Google CFO), episode `how-apples-ai-strategy-changes-with-a-new-ceo`, fp `7a880f79b9a9aeb0`
+- **Anthropic has renegotiated its pricing agreement with Amazon, shifting from a raw computing-hour wholesale rate to a token-based pricing model similar to other large customers.**
+  - tier 1, confidence 0.85, source The Information, episode `how-big-is-the-ai-economy`, fp `3a421d7374183624`
+- **Google has confirmed a $40 billion investment deal with Anthropic, consisting of $10 billion upfront and $30 billion contingent on commercial milestones.**
+  - tier 1, confidence 0.95, source AI Daily Brief Host / Press Confirmation, episode `how-deepseek-v4-connects-to-the-us-grid`, fp `e6a10ec722ab96f3`
+- **Amazon committed $5 billion upfront and $20 billion contingent to Anthropic, with Anthropic agreeing to spend $100 billion on AWS over the coming decade.**
+  - tier 1, confidence 0.95, source AI Daily Brief Host / Mirae Securities Note, episode `how-deepseek-v4-connects-to-the-us-grid`, fp `01621afa5cde212d`
+- **Anthropic's recent deals with Amazon and Google are driven by a need to secure compute resources, binding the company deeply to those who possess physical infrastructure.**
+  - tier 2, confidence 0.85, source Mirae Securities / AI Daily Brief Host, episode `how-deepseek-v4-connects-to-the-us-grid`, fp `9b0dfcbc3f2a3e3f`
+- **Anthropic is establishing an in-house chip design team to co-design hardware and models for improved efficiency, with Samsung being considered as a manufacturing partner.**
+  - tier 1, confidence 0.9, source Business Insider / Anthropic Spokesperson (cited by AI Daily Brief Host), episode `how-googles-ai-leaders-leaving-could-lead-to-better-ai-models-for-you`, fp `4ea19b6247e44401`
+- **Anthropic's study 'Measuring AI Agent Autonomy in Practice' found that the median Claude Code turn duration is approximately 45 seconds, while the 99.9th percentile turn duration increased from 25 minutes to 45 minutes between October and January.**
+  - tier 1, confidence 0.98, source Anthropic Study / AI Daily Brief Host, episode `how-people-actually-use-ai-agents`, fp `5d4b8490a6e4b6ba`
+- **Anthropic's Fable 5.1 is expected to release in the coming weeks, targeting a similar window to GPT 6, as part of a competitive response to OpenAI's advancements.**
+  - tier 3, confidence 0.55, source Leo (Syninwave), episode `how-the-4-new-models-released-this-week-will-change-how-you-work`, fp `43e1d15de474e28d`
+- **Anthropic released a feature allowing Claude to control the user's computer, including mouse, keyboard, and screen, to complete tasks in any application.**
+  - tier 1, confidence 0.98, source Anthropic (Felix Riesberg), episode `how-to-use-claudes-massive-new-upgrades`, fp `1d4a4bcc6ac02111`
+- **The rapid adoption of features like remote control and dispatch by Anthropic represents a 'Claudification' trend, where the company is aggressively implementing interaction patterns and agent behaviors previously popularized by the open-source project Open Claude.**
+  - tier 2, confidence 0.85, source Host (AI Daily Brief), episode `how-to-use-claudes-massive-new-upgrades`, fp `7d991a3f74943e43`
+- **The ability of AI teams to rapidly learn from open-source projects and implement features on a daily basis suggests that a fundamentally different software development process is possible, with large strategic implications for the industry.**
+  - tier 3, confidence 0.65, source Ethan Mollick, episode `how-to-use-claudes-massive-new-upgrades`, fp `146baae1ae8740d0`
+- **Anthropic reports that legal professionals have become the most engaged users among knowledge workers for Claude, with lawyers now the most frequent users of any profession other than software engineers.**
+  - tier 1, confidence 0.9, source Mark Pike (Anthropic Associate General Counsel) (cited by AI Daily Brief host), episode `in-defense-of-tokenmaxxing`, fp `11ecdcaaf98fabd0`
+- **Anthropic's annual recurring revenue (ARR) exploded from $9 billion to over $44 billion in 2026, according to a report by SemiAnalysis.**
+  - tier 1, confidence 0.95, source SemiAnalysis, episode `is-ai-doom-going-out-of-style`, fp `00b9a8617751aec7`
+- **Anthropic's inference margins have increased to 70%, up from 38% the previous year.**
+  - tier 1, confidence 0.85, source SemiAnalysis, episode `is-ai-doom-going-out-of-style`, fp `141ec55f548f2fc6`
+- **In the coding-specific Polymarket, OpenAI's odds of having the best model flipped from 12.4% on December 5 to 75% by December 8, 2025, while Anthropic's odds dropped from 85% to 19%.**
+  - tier 1, confidence 0.95, source Polymarket, episode `is-gpt-52-garlic-coming-this-week`, fp `61fdfde68e96ea44`
+- **Anthropic's Claude Code Review feature is billed based on token usage, with reviews averaging $15 to $25 depending on PR size, codebase complexity, and verification needs.**
+  - tier 1, confidence 0.98, source Anthropic (via Claude Code Review documentation), episode `is-the-debate-over-anthropics-new-product-about-price-or-existential-dread`, fp `1490dd8034642042`
+- **Boris Cherny, creator of Claude Code, stated that code output per Anthropic engineer is up 200% this year and that code reviews were the bottleneck.**
+  - tier 1, confidence 0.95, source Boris Cherny, episode `is-the-debate-over-anthropics-new-product-about-price-or-existential-dread`, fp `3fe505bbc97fe63f`
+- **Cognition's Devon Review announcement tweet received approximately 1,000 bookmarks and 750,000 views, while Anthropic's Claude Code Review announcement received nearly 14 million views.**
+  - tier 1, confidence 0.92, source Host (AI Daily Brief), episode `is-the-debate-over-anthropics-new-product-about-price-or-existential-dread`, fp `1512cf10e33853ea`
+- **Broadloom's Todd Sonders argues that Anthropic is acting like the 'new Amazon,' building on its platform and then developing in-house versions of third-party products to consolidate market power and absorb competitors.**
+  - tier 3, confidence 0.7, source Todd Sonders, episode `is-the-debate-over-anthropics-new-product-about-price-or-existential-dread`, fp `d7de7207f0f06b3c`
+- **Anthropic surpassed $19 billion in Annual Recurring Revenue (ARR), more than doubling their run rate since the end of last year.**
+  - tier 1, confidence 0.9, source Bloomberg, episode `jensen-huang-calls-openclaw-most-important-software-release-ever`, fp `31b4ee36fecc7a7a`
+- **Jensen Huang stated that Nvidia's $10 billion investment in Anthropic late last year was probably their last direct investment in the company.**
+  - tier 1, confidence 0.85, source Jensen Huang, episode `jensen-huang-calls-openclaw-most-important-software-release-ever`, fp `c137d0ef7c162bc1`
+- **An Anthropic researcher used the model Fable to disprove the Jacobian conjecture, a long-standing problem in mathematics first posed in 1939.**
+  - tier 1, confidence 0.9, source Levante (Anthropic researcher) (via AI Daily Brief host), episode `just-how-good-is-gpt-6-going-to-be`, fp `98f43e03924234b1`
+- **Anthropic is in talks with Blackstone and other PE firms to launch an AI consulting venture to sell its technology to corporate customers.**
+  - tier 2, confidence 0.85, source The Information, episode `meta-delays-new-ai-model`, fp `b3a83d20e0e44403`
+- **Daily sign-ups for Anthropic's Claude have tripled since November, while the total number of paid subscribers has more than doubled since October.**
+  - tier 1, confidence 0.9, source The Information (reported by AI Daily Brief host), episode `nano-banana-2-is-here`, fp `a80ebae34971c25e`
+- **Anthropic released its first-ever set of Super Bowl commercials, all of which focused on OpenAI's planned ads and closed with the tagline "Ads are coming, but not to Claude."**
+  - tier 1, confidence 0.95, source AI Daily Brief host, episode `no-one-wins-this-ai-super-bowl`, fp `b2221d590db7dea4`
+- **A Claude Code plugin incident caused a loss of billions of dollars in global market value during the same week as the Super Bowl ad controversy.**
+  - tier 1, confidence 0.85, source AI Daily Brief host, episode `no-one-wins-this-ai-super-bowl`, fp `85e3ac0d12da11b9`
+- **Anthropic's Super Bowl ad campaign is strategically flawed because it critiques OpenAI's ads before they have actually launched, meaning the target audience is not yet experiencing the pain point.**
+  - tier 2, confidence 0.8, source AI Daily Brief host, episode `no-one-wins-this-ai-super-bowl`, fp `744724ffdb4d058a`
+- **Anthropic's ad campaign risks reinforcing public skepticism that AI is merely a tool for tech billionaires to control life and extract money, rather than highlighting the technology's benefits.**
+  - tier 2, confidence 0.75, source AI Daily Brief host, episode `no-one-wins-this-ai-super-bowl`, fp `f5e4d38c3979e31b`
+- **Anthropic's aggressive advertising strategy is a departure from the brand identity it has cultivated over the past three years, which was characterized by an insurgent and non-petty approach.**
+  - tier 2, confidence 0.7, source AI Daily Brief host, episode `no-one-wins-this-ai-super-bowl`, fp `f0ba46ad9c9cc5b0`
+- **Anthropic has acquired developer tool startup Bun to accelerate Claude Code.**
+  - tier 1, confidence 0.95, source Anthropic, episode `openai-preps-new-garlic-model`, fp `12f218285e74d378`
+- **Anthropic is preparing for a 2026 IPO and is negotiating a private funding round at a valuation exceeding $300 billion.**
+  - tier 1, confidence 0.9, source The Financial Times, episode `openai-preps-new-garlic-model`, fp `c60f2638dd413c1a`
+- **Anthropic issued a cease and desist letter to Peter Steinberger regarding the use of the name 'Claude bot' due to copyright implications, leading to the project's renaming to Multibot and later OpenClaw.**
+  - tier 1, confidence 0.9, source Host (AI Daily Brief), episode `openclaw-goes-to-openai`, fp `ac9e9d8f573db6e0`
+- **Anthropic's decision to issue legal threats rather than collaborate with Peter Steinberger is viewed by industry observers as a strategic error that allowed OpenAI to capture the narrative and talent associated with the fastest-growing AI project.**
+  - tier 2, confidence 0.8, source Andrew Hart & Nader Dabit (cited by host), episode `openclaw-goes-to-openai`, fp `fe3da6569bd60ed1`
+- **Anthropic's research report 'Labor Market Impacts of AI' introduced a new measure called 'observed exposure' that combines theoretical LLM capability with real-world usage data to assess AI displacement risk.**
+  - tier 1, confidence 0.9, source Anthropic, episode `pro-worker-ai`, fp `4a030dca96104efc`
+- **Anthropic revealed that Claude Co-work was written 100% by Claude Code in approximately 10 days.**
+  - tier 1, confidence 0.95, source Host (AI Daily Brief), episode `ralph-wiggum-clawdbot-and-mac-minis-how-pros-are-vibe-coding-in-2026`, fp `9dee5972f86db68a`
+- **Anthropic announced 'Project Glasswing,' a limited release of Claude Mythos to 40 partners including AWS, Apple, Microsoft, and Nvidia, to focus on defensive cybersecurity applications.**
+  - tier 1, confidence 0.95, source Anthropic (via podcast host reporting announcement details), episode `should-we-be-scared-of-anthropics-mythos`, fp `b83816ff85fc35dd`
+- **Anthropic's red team leader Newton Cheng stated that the cybersecurity risks posed by Claude Mythos are an industry-wide problem requiring action from both private corporations and governments, not just Anthropic.**
+  - tier 2, confidence 0.9, source Newton Cheng (Anthropic Red Team Leader), episode `should-we-be-scared-of-anthropics-mythos`, fp `3f09c9dd83c118b8`
+- **Anthropic's CEO Dario Amodei stated that the company experienced 80x annualized growth in revenue and usage in the first quarter of the current year, significantly exceeding their planned 10x annual growth rate.**
+  - tier 1, confidence 0.95, source Dario Amodei (Anthropic CEO), episode `surprise-elon-anthropic-team-up-reshapes-ai-race`, fp `b373797afa1ebedd`
+- **Anthropic has begun metering computing supply to users during peak hours to manage frequent outages and performance decreases caused by high agentic usage.**
+  - tier 1, confidence 0.9, source Wall Street Journal / Anthropic, episode `the-ai-subsidy-era-is-over`, fp `26bb0af6a78feac4`
+- **Anthropic reached an annualized revenue run rate of $47 billion as of May 2026, up from $3 billion at the beginning of 2025.**
+  - tier 1, confidence 0.9, source AI Daily Brief host, episode `the-ai-token-shortage-begins`, fp `adf3411dabd46407`
+- **Anthropic closed a $65 million fundraising round in May 2026, valuing the company at just under $1 trillion.**
+  - tier 1, confidence 0.85, source AI Daily Brief host, episode `the-ai-token-shortage-begins`, fp `66d21a33383c7921`
+- **SpaceX's AI division (XAI) agreed to allow Anthropic to use its Colossus 1 and Colossus 2 data centers to provide additional compute capacity for Claude.**
+  - tier 1, confidence 0.85, source AI Daily Brief host, episode `the-ai-token-shortage-begins`, fp `dde1db7846522c3a`
+- **Anthropic partnered with Blackstone, Hellman & Friedman, and Goldman Sachs to launch an enterprise AI consulting firm, with Anthropic holding a smaller stake than OpenAI holds in its own deployment venture.**
+  - tier 1, confidence 0.8, source AI Daily Brief host, episode `the-ai-token-shortage-begins`, fp `a1292bddbdc22d90`
+- **Anthropic released Claude Design on a Friday, shortly after the release of Claude Opus 4.7.**
+  - tier 1, confidence 0.95, source AI Daily Brief host, episode `the-best-claude-design-use-cases`, fp `72a7f5f6edfd1e08`
+- **Anthropic's Chief Product Officer, Mike Krieger, resigned from the board of Figma shortly before the launch of Claude Design.**
+  - tier 1, confidence 0.9, source AI Daily Brief host, episode `the-best-claude-design-use-cases`, fp `a1acc3cb49caa9d4`
+- **Anthropic is considering a final private funding round before its IPO, with sources indicating the round could raise up to $50 billion at a pre-money valuation of $900 billion.**
+  - tier 1, confidence 0.95, source Financial Times (reported by AI Daily Brief host), episode `the-best-way-to-talk-to-your-agents`, fp `d3acd7f1b2ec0b17`
+- **Bloomberg reported that Anthropic reached $19 billion in Annual Recurring Revenue (ARR), more than double their $9 billion run rate from the end of 2025.**
+  - tier 1, confidence 0.9, source Bloomberg (as cited by the host), episode `the-big-questions-shaping-the-consumer-ai-battle`, fp `506a4c1f2b29bb77`
+- **Anthropic now commands over 60% of business AI payments settled through Ramp, having overtaken OpenAI's market share in that specific channel by January of this year.**
+  - tier 1, confidence 0.85, source Ramp (as cited by the host), episode `the-big-questions-shaping-the-consumer-ai-battle`, fp `d70679cbc494c65b`
+- **Anthropic announced Claude Co-work, a simplified version of Claude Code designed for non-technical users that operates within the Claude desktop app.**
+  - tier 1, confidence 0.95, source AI Daily Brief host, episode `the-biggest-battle-in-ai-is-for-your-personal-context`, fp `2e66859506d3d821`
+- **Anthropic launched Claude for Healthcare, which includes new connectors specifically designed to integrate personal health data.**
+  - tier 1, confidence 0.85, source AI Daily Brief host, episode `the-biggest-battle-in-ai-is-for-your-personal-context`, fp `5e88c0968ce3fcd7`
+- **Bloomberg reported that OpenAI stock is struggling to find buyers in secondary markets, with Next Round Capital's Ken Smythe stating that hundreds of millions of dollars in shares were offered with no institutional buyers, while buyers indicated approximately $2 billion in cash ready to deploy into Anthropic.**
+  - tier 1, confidence 0.9, source Bloomberg (cited by Host), episode `the-calm-before-the-agi-storm`, fp `1068c88ccc0d960b`
+- **An update to Claude Code inadvertently included 512,000 lines of source code, revealing unreleased features such as 'Kairos,' an always-on background agent with memory consolidation and proactive modes, and a virtual pet feature called 'Buddies.'**
+  - tier 1, confidence 0.9, source Host (AI Daily Brief), episode `the-calm-before-the-agi-storm`, fp `69d26d38a7290eba`
+- **Anthropic announced that as of Saturday, users will no longer be able to use their Claude subscriptions to manage third-party tools like OpenClaude, requiring them to switch to a pay-per-token API basis for such usage.**
+  - tier 1, confidence 0.9, source Host (AI Daily Brief), episode `the-calm-before-the-agi-storm`, fp `1f3676c1124e6254`
+- **Anthropic released Claude Co-work, a product described as 'Claude Code for everyone else,' which was built in approximately 10 days primarily by Claude Code itself.**
+  - tier 1, confidence 0.95, source Host (AI Daily Brief), episode `the-dawn-of-the-agent-age`, fp `08ad2eb547b83724`
+- **Anthropic announced that Claude will remain ad-free, a decision that was widely interpreted as a competitive counter to OpenAI's introduction of advertising in ChatGPT.**
+  - tier 2, confidence 0.85, source Host (AI Daily Brief), episode `the-dawn-of-the-agent-age`, fp `c1aa6ba12f401ac1`
+- **OpenAI is reportedly pushing to go public in the fourth quarter of 2026, driven by concerns that Anthropic might move first.**
+  - tier 2, confidence 0.7, source Host (AI Daily Brief), episode `the-dawn-of-the-agent-age`, fp `a809150d3a763929`
+- **Anthropic closed its latest funding round at $30 billion, achieving a post-money valuation of $380 billion.**
+  - tier 1, confidence 0.95, source AI Daily Brief host, episode `the-latest-ai-models-and-model-rumors`, fp `b054a1ce2fbe15fd`
+- **Anthropic's annual recurring revenue (ARR) grew from $1 billion in January 2025 to $14 billion at the time of the report.**
+  - tier 1, confidence 0.95, source AI Daily Brief host, episode `the-latest-ai-models-and-model-rumors`, fp `3a6cd9be80d5bae1`
+- **According to Ramp data, 19.5% of businesses on the platform are now paying for Anthropic, up from 16.7% a year ago, while OpenAI's share slipped to 35.9%.**
+  - tier 1, confidence 0.9, source Ara Khachaturian (Ramp economist) via AI Daily Brief host, episode `the-latest-ai-models-and-model-rumors`, fp `5037e0b90e7efbd4`
+- **79% of Anthropic's customers are also OpenAI customers, and both companies have nearly identical churn rates of 4%.**
+  - tier 1, confidence 0.9, source AI Daily Brief host, episode `the-latest-ai-models-and-model-rumors`, fp `fb954f44feabb14b`
+- **Anthropic announced a $1 million donation to a newly founded social welfare organization called Public First Action to support public education about AI and promote safeguards.**
+  - tier 1, confidence 0.9, source AI Daily Brief host, episode `the-latest-ai-models-and-model-rumors`, fp `f2b1688608c1f591`
+- **IBM experienced its worst single-day stock drop in 25 years following an Anthropic blog post about its Cobalt tool.**
+  - tier 1, confidence 0.85, source AI Daily Brief host, episode `the-month-ai-woke-up`, fp `a6b24b8ea06f51a1`
+- **A dispute arose between Anthropic and the US White House over AI usage standards, with Anthropic seeking redline carve-outs for autonomous weapons and domestic mass surveillance, while the White House preferred a standard of 'any lawful uses.'**
+  - tier 2, confidence 0.85, source AI Daily Brief host, episode `the-month-ai-woke-up`, fp `8863dae0a6d63520`
+- **President Trump and Defense Secretary Pete Hoekstra announced that the US government would designate Anthropic a 'supply chain risk,' potentially forcing other government contractors to drop relationships with the company.**
+  - tier 2, confidence 0.8, source AI Daily Brief host, episode `the-month-ai-woke-up`, fp `152dda4d5f6669ed`
+- **Former OpenAI co-founder Andrej Karpathy announced that he has joined Anthropic.**
+  - tier 1, confidence 0.95, source AI Daily Brief host, episode `the-most-important-ai-news-from-google-io`, fp `baf4c59413516216`
+- **Anthropic's Project Glasswing has expanded access to its Mythos model by adding 150 new partners across 15 countries, including sectors such as energy, water, communications, healthcare, and computer hardware.**
+  - tier 1, confidence 0.9, source AI Daily Brief host, episode `the-next-wave-of-enterprise-ai`, fp `d871591e8469a958`
+- **Anthropic's delay in releasing Mythos-level capabilities to the general public is due to the lack of existing robust safeguards to prevent misuse of the model's cyber capabilities, a challenge no other AI developer has yet solved.**
+  - tier 2, confidence 0.85, source AI Daily Brief host, episode `the-next-wave-of-enterprise-ai`, fp `291ab512b59494de`
+- **Anthropic holds an estimated 40% share of enterprise LLM spend in 2025, up from 24% in 2024 and 12% in 2023.**
+  - tier 1, confidence 0.95, source Menlo Ventures State of Generative AI in the Enterprise report, episode `the-state-of-enterprise-ai-the-state-of-enterprise-ai`, fp `061373ac5d90ce7b`
+- **Anthropic's revenue run rate increased from $3 million last year to $47 billion currently, driven by a shift from seat-based pricing to usage-based pricing for AI agents.**
+  - tier 1, confidence 0.85, source AI Daily Brief host (citing industry data), episode `the-way-we-use-ai-is-changing`, fp `2a091fa7e468a738`
+- **Anthropic and OpenAI launched enterprise AI joint ventures with a $10 billion starting valuation, a $4 billion investment for OpenAI, and a $1.5 billion investment from Anthropic.**
+  - tier 1, confidence 0.95, source Host (AI Daily Brief), episode `the-week-the-ai-story-shifted`, fp `e88ce804c778c0ce`
+- **Google Cloud's $462 billion backlog includes a 5-gigawatt deal with Anthropic worth $200 billion over several years.**
+  - tier 1, confidence 0.9, source Host (AI Daily Brief), episode `the-week-the-ai-story-shifted`, fp `b91b43ec8c8b20f5`
+- **Boris Cherny, the creator of Claude Code, stated that the tool's recent breakthrough is the result of a year of hard work and that the team is just getting started.**
+  - tier 2, confidence 0.95, source Boris Cherny, episode `the-whole-world-gets-claude-pilled`, fp `fab8d63ad590e003`
+- **Anthropic and Amazon's new Carlyle data center is expected to reach 1 gigawatt of capacity in the first quarter of the current year.**
+  - tier 1, confidence 0.9, source AI Daily Brief host, episode `the-whole-world-gets-claude-pilled`, fp `54d69fec3f646539`
+- **The Wall Street Journal reported that Claude is experiencing a surge in adoption among non-technical users, who are using Claude Code for tasks like health data analysis and expense report compiling.**
+  - tier 2, confidence 0.9, source Wall Street Journal, episode `the-whole-world-gets-claude-pilled`, fp `6e9d1994a1fc992b`
+- **Anthropic is reportedly raising a funding round that values the company at 350 billion dollars, with approximately 15 billion dollars coming from Microsoft and Nvidia.**
+  - tier 2, confidence 0.85, source AI Daily Brief host, episode `the-whole-world-gets-claude-pilled`, fp `048593bf4a31737f`
+- **Anthropic updated its support documentation to state that it does not permit Special Purpose Vehicles (SPVs) to acquire its stock and that any transfer of shares to an SPV is void under its transfer restrictions.**
+  - tier 1, confidence 0.95, source Anthropic Support Documentation, episode `towards-ai-that-can-actually-interact`, fp `149bbaf5e2747436`
+- **Anthropic's notice regarding unauthorized stock sales and SPVs triggered a significant price drop, cutting the price of Anthropic stock on gray secondary markets in half.**
+  - tier 1, confidence 0.85, source AI Daily Brief host, episode `towards-ai-that-can-actually-interact`, fp `514556ef0c8f6692`
+- **Anthropic updated its Cowork Dispatch tool to add support for launching and monitoring Claude code sessions, blurring the line between its Cowork and Claude code product lines.**
+  - tier 1, confidence 0.95, source AI Daily Brief host / Anthropic's Felix Risberg, episode `val-kilmers-ai-resurrection`, fp `1fb332e7eef0d038`
+- **Anthropic conducted a study interviewing 1,250 professionals about their experiences working with AI.**
+  - tier 1, confidence 0.9, source Anthropic (cited by host), episode `what-1250-professionals-said-about-working-with-ai`, fp `e2174083b865a215`
+- **The Financial Times reports that Anthropic is raising $30 billion at a $900 billion valuation, a round co-led by Sequoia and Altimeter, which would nearly triple their previous $380 billion Series G valuation.**
+  - tier 1, confidence 0.9, source Financial Times via AI Daily Brief host, episode `what-google-needs-to-do-at-io-this-week`, fp `f27df5a436599eb8`
+- **Anthropic published a postmortem on recent Claude Code quality issues on the same day as the GPT-5.5 release, confirming that users had experienced a decline in model performance, which was attributed to 'slop' shipped in the harness rather than the model itself.**
+  - tier 2, confidence 0.85, source Host (AI Daily Brief), episode `what-i-learned-testing-gpt-5-5`, fp `032e4e4fa61ae6e2`
+- **OpenAI is repositioning its communication strategy to emphasize iterative deployment and democratization, contrasting with Anthropic's approach of withholding its most powerful model due to safety concerns.**
+  - tier 2, confidence 0.8, source Host (AI Daily Brief), episode `what-i-learned-testing-gpt-5-5`, fp `d8ab2c7720e42126`
+- **Anthropic's Claude is used for over 80% of programming tasks and almost zero roleplay on OpenRouter.**
+  - tier 2, confidence 0.85, source Tengan (Chain of Thought AI newsletter), episode `what-people-are-actually-using-ai-for-right-now`, fp `45b875c9ddbdf1ca`
+- **Anthropic conducted a qualitative study of 81,000 people using an AI interviewer to assess their attitudes toward AI.**
+  - tier 1, confidence 0.95, source Anthropic, episode `what-people-really-want-from-ai`, fp `e3a59b2e61e6f157`
+- **The Anthropic AI study was conducted in December and included respondents from 159 countries using 70 languages.**
+  - tier 1, confidence 0.95, source Anthropic, episode `what-people-really-want-from-ai`, fp `f8f6a9cc45b11d3d`
+- **Anthropic's use of an AI interviewer for the study removed interviewer bias and allowed for consistent structure across 159 countries and 70 languages, a scale unattainable by human research teams.**
+  - tier 2, confidence 0.85, source Drag AI Labs, episode `what-people-really-want-from-ai`, fp `a0d4e8e60c3392b1`
+- **The host predicts that the ability to interview 81,000 people in a week using AI will have implications far beyond understanding AI attitudes, signaling a new era of large-scale qualitative research.**
+  - tier 3, confidence 0.7, source AI Daily Brief Host, episode `what-people-really-want-from-ai`, fp `717303732b708709`
+- **Anthropic CEO Dario Amodei released a 21,000-word essay titled 'The Adolescence of Technology' on Monday.**
+  - tier 1, confidence 0.95, source Dario Amodei, episode `what-we-learned-from-openais-town-hall`, fp `63bca249f0d457f0`
+- **Anthropic removed 80% of the system prompt for Claude Opus 5 and Fable 5, finding that this resulted in zero change to coding benchmarks and reduced conflicts with user prompts.**
+  - tier 1, confidence 0.95, source Tarek (Anthropic), episode `where-should-claude-opus-5-fit-in-your-model-rotation`, fp `6c02450d20bba2e9`
+- **Claude Opus 5 is priced at $5 per million input tokens and $25 per million output tokens, inheriting the same pricing structure as Opus 4.8.**
+  - tier 1, confidence 0.95, source Host / Anthropic, episode `where-should-claude-opus-5-fit-in-your-model-rotation`, fp `f10efb8b2c5ad264`
+- **The Claude app experienced a 37% increase in downloads on Friday and a 51% increase on Saturday, contributing to its rise to number one in the App Store.**
+  - tier 1, confidence 0.9, source Sensor Tower, episode `white-hot-cursor-doubles-revenue`, fp `44f08eba7c453135`
+- **The US Treasury, State Department, and Department of Health and Human Services have suspended the use of Claude following a presidential directive.**
+  - tier 1, confidence 0.9, source Treasury Secretary Scott Bessent, episode `white-hot-cursor-doubles-revenue`, fp `372bfa1b0f1be01a`
+- **Claude Code reached $2.5 billion in ARR within eight months of its launch.**
+  - tier 1, confidence 0.85, source Didi Das (Menlo Ventures), episode `white-hot-cursor-doubles-revenue`, fp `dd9d70635ebf03fe`
+- **Anthropic has committed to spending $200 billion with Google Cloud over a five-year period.**
+  - tier 1, confidence 0.9, source The Information, episode `who-cares-about-consumer-ai`, fp `33ebc23f1e9770da`
+- **Microsoft, Oracle, Google, and Amazon have reported a combined $2 trillion backlog, with OpenAI and Anthropic accounting for almost half of that total.**
+  - tier 1, confidence 0.85, source The Information, episode `who-cares-about-consumer-ai`, fp `c0be488d11bd67be`
+- **President Donald Trump directed all federal agencies to immediately cease all use of Anthropic's technology, establishing a 6-month phase-out period for agencies like the Department of War.**
+  - tier 1, confidence 0.98, source President Donald Trump (via Truth Social post), episode `who-controls-ai`, fp `efebaa700a2d2644`
+- **Defense Secretary Pete Hegseth designated Anthropic as a supply chain risk to national security, prohibiting any contractor, supplier, or partner doing business with the US military from conducting commercial activity with Anthropic.**
+  - tier 1, confidence 0.95, source Defense Secretary Pete Hegseth, episode `who-controls-ai`, fp `0670b1e5a0c5f939`
+- **More than 200 Google and OpenAI staff signed a petition supporting Anthropic's red lines against domestic surveillance and autonomous weapons.**
+  - tier 1, confidence 0.85, source Host / AI Daily Brief, episode `who-controls-ai`, fp `01de70f65d6e78ae`
+- **The Department of War's supply chain risk designation for Anthropic could inadvertently restrict Anthropic's ability to serve models via cloud providers like AWS, Google Cloud, and Azure, as these companies also do business with the US military.**
+  - tier 2, confidence 0.75, source Prinz / Dan Primack (Axios) / Host, episode `who-controls-ai`, fp `14e19fd19d47d685`
+- **Anthropic CEO Dario Amodei has warned that AI could wipe out up to half of all entry-level white-collar jobs.**
+  - tier 1, confidence 0.9, source Dario Amodei (CEO of Anthropic), episode `why-agents-still-need-humans`, fp `556b3508a97abe25`
+- **Nobel laureate John Jumper, who led the AlphaFold team at DeepMind, announced his departure for Anthropic on Friday.**
+  - tier 1, confidence 0.95, source AI Daily Brief host, episode `why-ai-users-are-raving-about-glm-52`, fp `ed15a0765841f314`
+- **A new, more capable version of Anthropic's Mythos model has emerged from training, potentially to be named Mythos 5.1 or Mythos 6.**
+  - tier 2, confidence 0.65, source Andrew Curran, episode `why-ai-users-are-raving-about-glm-52`, fp `15a17795bd461629`
+- **Claude Sonnet 5 is nearing release, as indicated by the appearance of its slug on an Anthropic partner provider.**
+  - tier 2, confidence 0.6, source Leo at Synthwave, episode `why-ai-users-are-raving-about-glm-52`, fp `80b9b6d5a886abb4`
+- **Anthropic announced Claude Co-work, a product designed to allow non-developers to use Claude for non-coding tasks by providing access to local files and connectors.**
+  - tier 1, confidence 0.95, source Anthropic, episode `why-claude-cowork-is-a-big-deal`, fp `7465b42682438225`
+- **Claude Opus 4.5 achieved a score of 80.9% on the SWE-bench Verified benchmark.**
+  - tier 1, confidence 0.95, source Anthropic launch post / Host, episode `why-claude-opus-45-changes-whats-possible-with-vibe-coding`, fp `5b6f82cffac76d54`
+- **Claude Opus 4.5 reduced the cost per million input tokens from $15 to $5 and per million output tokens from $75 to $25 compared to its predecessor.**
+  - tier 1, confidence 0.95, source Host, episode `why-claude-opus-45-changes-whats-possible-with-vibe-coding`, fp `99332fe02fbd8e53`
+- **In a survey of 18 staff members, the mean self-estimated productivity improvement from using Claude Opus 4.5 in Claude Code was 220%.**
+  - tier 1, confidence 0.9, source Anthropic announcement post, episode `why-claude-opus-45-changes-whats-possible-with-vibe-coding`, fp `aba863df56d82f8b`
+- **Anthropic's strategy focuses heavily on coding as the primary high-value use case for large language models, distinguishing it from competitors who spread efforts across multiple domains.**
+  - tier 2, confidence 0.8, source Host / Brian Atwood, episode `why-claude-opus-45-changes-whats-possible-with-vibe-coding`, fp `69727c9c13e79a52`
+- **Anthropic's low-key launch strategy for major model releases is likely intended to appeal to a developer audience that prefers peer recommendation over high-hype social distribution.**
+  - tier 2, confidence 0.7, source Host, episode `why-claude-opus-45-changes-whats-possible-with-vibe-coding`, fp `5cf07c02fc2608de`
+- **Anthropic may be holding back its most capable models to prevent an AI arms race, with internal scores potentially higher than public releases.**
+  - tier 3, confidence 0.5, source Super Dario / Host, episode `why-claude-opus-45-changes-whats-possible-with-vibe-coding`, fp `06a98566fe4d9697`
+- **Anthropic walked back its policy of silently degrading Claude's effectiveness for Frontier LLM development requests, stating they made the wrong trade-off and would make safeguards visible.**
+  - tier 1, confidence 0.95, source Anthropic (via Wired, cited by AI Daily Brief host), episode `why-fable-5-is-the-most-controversial-ai-release-ever`, fp `35954d162ca54440`
+- **Broadcom, Blackstone, and Apollo are launching a $35 billion fund to finance 1 gigawatt of AI compute capacity, with the first project delivered to Anthropic.**
+  - tier 1, confidence 0.9, source AI Daily Brief host, episode `why-fable-5-is-the-most-controversial-ai-release-ever`, fp `3be2a06b35292c66`
+- **The assistant platform originally known as Claudebot was renamed to OpenClaw due to copyright concerns from Anthropic.**
+  - tier 1, confidence 0.9, source Host (AI Daily Brief), episode `why-moltbook-matters`, fp `ce9d98d36bcefa39`
+- **Logan Graham from Anthropic describes Moltbook as a 'very good one for safety' because it allows researchers and the public to learn from how the system breaks, without expecting it to lead to uncontrolled catastrophic proliferation.**
+  - tier 2, confidence 0.8, source Logan Graham, episode `why-moltbook-matters`, fp `b9b47b93a5c33a80`
+- **Politico reported that negotiations between the White House and Anthropic have shifted towards designing a framework to assess the severity of security flaws in AI models.**
+  - tier 1, confidence 0.95, source Politico, episode `your-company-doesnt-need-an-ai-strategy`, fp `9ca105437005a34e`
+
+## Draft splice edit
+```json
+{
+  "mode": "insert_after",
+  "anchor": "  ## Current Landscape (2026)",
+  "content": "  ## Recent Developments (2025\u20132026)\n\n  The following developments, drawn from verified podcast and primary-source evidence, reflect recent shifts in Anthropic's product capabilities, market position, and regulatory environment.\n\n  ### Product and Technical Advances\n\n  - **Claude Opus 4.5 Performance and Pricing**: Claude Opus 4.5 achieved a score of 80.9% on the SWE-bench Verified benchmark, described by Anthropic team members as a \"world record\" in the category. Concurrently, the model saw significant cost reductions compared to its predecessor, with the price per million input tokens dropping from $15 to $5 and per million output tokens from $75 to $25.\n  - **Computer Use Capability**: Anthropic released a feature allowing Claude to directly control the user's computer, including mouse, keyboard, and screen. As stated by Anthropic's Felix Riesberg, this gives the model \"the ability to use any app,\" enabling it to open applications, navigate browsers, and fill in spreadsheets to complete tasks autonomously.\n  - **Claude Code Review Pricing**: The Claude Code Review feature is billed based on token usage. According to official documentation, reviews average $15 to $25, scaling with pull request size, codebase complexity, and the number of issues requiring verification.\n  - **Acquisition of Bun**: Anthropic acquired developer tool startup Bun to accelerate Claude Code. The company stated that bringing the Bun team on board would help rebuild the developer stack with an \"AI-first approach.\"\n  - **Agent Autonomy Metrics**: Anthropic's study \"Measuring AI Agent Autonomy in Practice\" found that the median Claude Code turn duration is approximately 45 seconds. However, the 99.9th percentile turn duration increased significantly from 25 minutes to 45 minutes between October and January, indicating a growing tail of highly autonomous, long-running agent sessions.\n\n  ### Market Position and Internal Adoption\n\n  - **Enterprise Market Share**: According to the Menlo Ventures State of Generative AI in the Enterprise report, Anthropic holds an estimated 40% share of enterprise LLM spend in 2025, up from 24% in 2024 and 12% in 2023.\n  - **Internal Productivity**: An internal survey of 132 Anthropic engineers found that employees self-report using Claude in 60% of their work and achieving a 50% productivity boost, representing a 2 to 3x increase from the previous year.\n  - **Coding Model Odds**: In the coding-specific Polymarket, sentiment shifted dramatically in December 2025. OpenAI's odds of having the best model flipped from 12.4% on December 5 to 75% by December 8, while Anthropic's odds dropped from 85% to 19% over the same period.\n  - **Claude Code Internal Adoption**: Anthropic's Chief Product Officer, Mike Kger, noted that the internal \"Claude CLI\" tool (later released as Claude Code) overtook all other internal coding tools between September and December of the previous year. This was attributed to its design for longer model horizons, betting that models would be able to \"cook for longer\" to solve complex tasks.\n\n  ### Regulatory and Government Actions\n\n  - **Federal Agency Phase-Out**: President Donald Trump directed all federal agencies to immediately cease all use of Anthropic's technology. A Truth Social post stated: \"I am directing every federal agency in the United States government to immediately cease all use of Anthropic's technology... There will be a 6-month phase-out period for agencies like the Department of War who are using Anthropic's products at various levels.\"\n  - **Export Control Directive**: The US Department of Commerce issued an export control directive suspending access to Anthropic's Fable 5 and Mythos 5 models for all foreign nationals, including foreign-national Anthropic employees. Citing national security authorities, Commerce Secretary Howard Lutnick announced the models were subject to export restrictions, forcing Anthropic to abruptly disable these models for all customers to ensure compliance.\n\n  ## Current Landscape (2026)"
+}
+```

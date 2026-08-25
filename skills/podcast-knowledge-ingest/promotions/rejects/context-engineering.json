@@ -1,0 +1,263 @@
+{
+  "topic": "Context Engineering",
+  "topic_slug": "context-engineering",
+  "status": "candidate_rejected",
+  "reasons": [
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5"
+  ],
+  "n_assertions": 13,
+  "episodes": [
+    "context-graphs-ais-next-big-idea",
+    "harness-engineering-101",
+    "how-harness-as-a-service-will-change-agents",
+    "how-the-best-companies-use-ai",
+    "how-to-build-a-personal-agentic-operating-system",
+    "how-to-build-a-personal-context-mcp",
+    "the-best-way-to-talk-to-your-agents",
+    "where-should-claude-opus-5-fit-in-your-model-rotation"
+  ],
+  "assertion_fingerprints": [
+    "0a4e66b4b9065378",
+    "1277d9b62202396f",
+    "3a277c720e16df25",
+    "3cc9a7d5c1001ff7",
+    "51139cc24f4aff35",
+    "5e177accd5d1376a",
+    "681880498d17efa2",
+    "6c02450d20bba2e9",
+    "8d49b19bde41dba0",
+    "d4055c4721e713d6",
+    "d63e694c96030c43",
+    "df06c98490084373",
+    "df22d980c215229f"
+  ],
+  "target_page": "Context Engineering.md",
+  "assertions": [
+    {
+      "claim": "Context engineering is a critical enterprise AI focus for 2026, involving the design of systems to ensure agents have access to the right data and can interoperate on it, which requires substantial organizational change management.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief) / Aaron Levy",
+      "episode": "context-graphs-ais-next-big-idea",
+      "claim_date": "2026-01-06",
+      "evidence": "The host identifies context engineering as a 'key prediction for enterprise AI in 2026.' Levy supports this by stating that 'Designing our systems to get agents access to that data and ensuring that all of our agents can interoperate on that data is going to be incredibly important.'",
+      "fp": "1277d9b62202396f"
+    },
+    {
+      "claim": "Harness engineering is defined as the practice of leveraging configuration points (such as skills, MCP servers, sub-agents, and memory files) to customize and improve a coding agent's output quality and reliability.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "Kyle (humanlayer.dev) / AI Daily Brief Host",
+      "episode": "harness-engineering-101",
+      "claim_date": "2026-04-15",
+      "evidence": "The transcript quotes Kyle: 'Harness engineering... describes the practice of leveraging these configuration points to customize and improve your coding agent's output quality and reliability.' It is described as a subset of context engineering.",
+      "fp": "d4055c4721e713d6"
+    },
+    {
+      "claim": "Harness engineering is a subset of context engineering that primarily involves leveraging harness configuration points to carefully manage the context window of coding agents.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Kyle (humanlayer.dev) / AI Daily Brief Host",
+      "episode": "harness-engineering-101",
+      "claim_date": "2026-04-15",
+      "evidence": "The transcript states: 'They continue by arguing that harness engineering is the subset of context engineering which primarily involves leveraging harness configuration points to carefully manage the context window of coding agents.'",
+      "fp": "5e177accd5d1376a"
+    },
+    {
+      "claim": "The agent landscape has evolved through three phases: the 'weights phase' (model scaling), the 'context phase' (prompt engineering/RAG), and the current 'harness engineering phase' (environment optimization).",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Akshay (via AI Daily Brief)",
+      "episode": "how-harness-as-a-service-will-change-agents",
+      "claim_date": "2026-05-01",
+      "evidence": "The transcript summarizes Akshay's argument: 'In phase one... everything was about the model... In phase two... you can change what the model sees... But... gets us to the third phase, the harness engineering phase.'",
+      "fp": "d63e694c96030c43"
+    },
+    {
+      "claim": "Ramp reports that 99% of its employees use AI daily, but most were initially stuck due to painful and unintuitive setup processes involving terminal configs and MCP servers.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Eric Glyman, Ramp Co-founder (cited by host)",
+      "episode": "how-the-best-companies-use-ai",
+      "claim_date": "2026-04-20",
+      "evidence": "Eric Glyman tweeted, '99% of Ramp uses AI daily, but we noticed most people were stuck. Not because the models weren't good enough, but because the setup was too painful and unintuitive for most.'",
+      "fp": "df06c98490084373"
+    },
+    {
+      "claim": "Ramp implements a 24-hour synthesis and cleanup pipeline that mines users' previous sessions and connects tools like Slack, Notion, and Calendar to maintain persistent memory and context for AI agents.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Seb Go to Jen, Ramp (cited by host)",
+      "episode": "how-the-best-companies-use-ai",
+      "claim_date": "2026-04-20",
+      "evidence": "Seb writes, 'Under the hood, we also run a synthesis and cleanup pipeline every 24 hours mining users' previous sessions and connecting tools like Slack, Notion, and Calendar for updates.'",
+      "fp": "3a277c720e16df25"
+    },
+    {
+      "claim": "Ramp's design principle for its AI tooling is to 'not limit anyone's upside,' rejecting the conventional approach of simplifying tools for non-technical users in favor of preserving full capability while making complexity invisible.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Seb Go to Jen, Ramp (cited by host)",
+      "episode": "how-the-best-companies-use-ai",
+      "claim_date": "2026-04-20",
+      "evidence": "Seb writes, 'The default approach... for non-technical users is to simplify... We couldn't disagree more. At Ramp, power users thrive on multi-window workflows... The goal isn't to remove complexity, but to make it invisible while preserving full capability.'",
+      "fp": "0a4e66b4b9065378"
+    },
+    {
+      "claim": "The host predicts that the distinction between 'good,' 'medium,' and 'bad' AI users will disappear as organizations build harnesses that enable every employee to become an AI superuser, fundamentally changing the shape of enterprise AI adoption.",
+      "tier": "3",
+      "confidence": "0.65",
+      "source": "Host (NLW)",
+      "episode": "how-the-best-companies-use-ai",
+      "claim_date": "2026-04-20",
+      "evidence": "The host states, 'you should not limit anyone's endpoint to only one type of those interfaces because of some pre-existing technical limitation they have' and calls this 'one of the most important mental resets.'",
+      "fp": "681880498d17efa2"
+    },
+    {
+      "claim": "Effective context curation for AI agents involves maintaining 3-5 focused, single-page files that are dated and updated regularly, rather than creating large, static documents.",
+      "tier": "2",
+      "confidence": "0.9",
+      "source": "Nofar Gaspar",
+      "episode": "how-to-build-a-personal-agentic-operating-system",
+      "claim_date": "2026-04-25",
+      "evidence": "Nofar advises: 'what actually works here is to have basically three to five focused files, each on a single page... Make it dated and fresh, and update when things change.'",
+      "fp": "51139cc24f4aff35"
+    },
+    {
+      "claim": "Applied Compute found that the gap between having data and having data in a format usable by AI systems is enormous, as most enterprise data was not structured for AI consumption.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Michael Chan (Applied Compute)",
+      "episode": "how-to-build-a-personal-context-mcp",
+      "claim_date": "2026-04-04",
+      "evidence": "Michael Chan's article 'What to expect when you're deploying AI in the enterprise' states: 'The gap between we have data and we have data in a format that an AI system can learn from is enormous... Most enterprise data was never structured with AI consumption in mind.'",
+      "fp": "3cc9a7d5c1001ff7"
+    },
+    {
+      "claim": "Organizations that are lagging in AI adoption tend to operate without providing their AI systems access to relevant context, often just 'dropping copilot on people's heads' rather than becoming AI-native.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief)",
+      "episode": "how-to-build-a-personal-context-mcp",
+      "claim_date": "2026-04-04",
+      "evidence": "The host states: 'One of the big differentiators between organizations that are leading and organizations that are lagging is that the lagging organizations tend to operate without their AI systems having access to context... they're dropping copilot on people's heads and hoping it all works out.'",
+      "fp": "8d49b19bde41dba0"
+    },
+    {
+      "claim": "The AI Daily Brief host argues that the shift from Markdown to HTML for agent communication reflects a broader change in knowledge work, where the operator's role is shifting from producing final outputs to 'staging' or 'scaffolding' conditions for agents to execute tasks.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "AI Daily Brief host",
+      "episode": "the-best-way-to-talk-to-your-agents",
+      "claim_date": "2026-05-12",
+      "evidence": "The host states: 'My argument, in short, is that the reason that HTML is going to be... a better format... has to do with the very nature of the type of work we do... our jobs are shifting from producing a thing to giving an agent all that it needs to produce the thing on our behalf.'",
+      "fp": "df22d980c215229f"
+    },
+    {
+      "claim": "Anthropic removed 80% of the system prompt for Claude Opus 5 and Fable 5, finding that this resulted in zero change to coding benchmarks and reduced conflicts with user prompts.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Tarek (Anthropic)",
+      "episode": "where-should-claude-opus-5-fit-in-your-model-rotation",
+      "claim_date": "2026-07-28",
+      "evidence": "Tarek wrote that Anthropic had removed 80% of the system prompt for Opus 5 and Fable 5 and Claude Code. He said this resulted in zero change to their coding benchmarks, meaning basically that Anthropic found that they had been over-constraining Claude and potentially conflicting with user prompts and skills.",
+      "fp": "6c02450d20bba2e9"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "  - ### Current Landscape (2026)",
+      "content": "  - ### Recent Developments and Industry Insights (2025-2026)\n\n    Recent practitioner discourse and industry reports have further refined the scope of context engineering, highlighting its critical role in enterprise AI adoption and the emergence of specialized sub-disciplines.\n\n    **Enterprise AI and the Context Gap**: Context engineering is increasingly identified as a primary focus for enterprise AI in 2026. Aaron Levy and industry analysts note that the central challenge is no longer just model capability, but \"designing our systems to get agents access to that data and ensuring that all of our agents can interoperate on that data.\" Michael Chan of Applied Compute emphasizes that \"the gap between we have data and we have data in a format that an AI system can learn from is enormous,\" as most enterprise data was never structured with AI consumption in mind. Organizations lagging in AI adoption are often characterized by \"dropping copilot on people's heads\" without providing their AI systems access to relevant context, whereas leading organizations are becoming \"AI-native\" by engineering the information environment proactively.\n\n    **Harness Engineering**: A new sub-discipline, \"harness engineering,\" has emerged as a specific subset of context engineering. Defined by Kyle of HumanLayer, it involves \"leveraging configuration points (such as skills, MCP servers, sub-agents, and memory files) to customize and improve a coding agent's output quality and reliability.\" This marks a shift in the agent landscape from the \"weights phase\" (model scaling) and the \"context phase\" (prompt engineering/RAG) to the current \"harness engineering phase,\" where the focus is on optimizing the agent's environment and configuration to manage the context window effectively.\n\n    **System Prompt Optimization**: Anthropic\u2019s recent work on Claude Opus 5 and Fable 5 revealed that removing 80% of the system prompt resulted in zero change to coding benchmarks. This finding suggests that previous system prompts were \"over-constraining\" the model and potentially conflicting with user prompts and skills, reinforcing the context engineering principle that less, more precise context often outperforms verbose, static instructions.\n\n    **Practical Context Curation**: Effective context curation for AI agents is shifting away from large, static documents toward dynamic, focused resources. Nofar Gaspar advises maintaining \"three to five focused files, each on a single page,\" that are \"dated and fresh, and updated when things change.\" This approach ensures that the context provided to agents remains relevant and actionable, reducing the risk of context rot and distraction.\n\n    **Tooling and User Experience**: Industry leaders like Ramp are rethinking how AI tools are deployed. Eric Glyman, Ramp\u2019s co-founder, notes that while 99% of employees use AI daily, many were initially \"stuck\" due to \"painful and unintuitive setup processes\" involving terminal configs and MCP servers. Ramp\u2019s design principle is to \"not limit anyone's upside,\" making complexity invisible while preserving full capability, rather than simplifying tools for non-technical users. Under the hood, Ramp implements a 24-hour synthesis and cleanup pipeline that mines users' previous sessions and connects tools like Slack, Notion, and Calendar to maintain persistent memory and context for AI agents.\n\n    **Shift in Knowledge Work**: The evolution of agent communication formats, such as the shift from Markdown to HTML, reflects a broader change in knowledge work. The operator\u2019s role is shifting from \"producing a thing\" to \"staging\" or \"scaffolding\" conditions for agents to execute tasks, a fundamental redefinition of human-AI collaboration that is central to the practice of context engineering."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 3,
+      "relevance": 4,
+      "coherence": 3,
+      "better_version": "A",
+      "improvement": -2
+    },
+    "raw_b": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 4,
+      "better_version": "B",
+      "improvement": 2
+    }
+  },
+  "completeness": {
+    "score": 0.8333333333333334,
+    "detail": [
+      {
+        "fp": "3cc9a7d5c1001ff7",
+        "claim": "Applied Compute found that the gap between having data and having data in a format usable by AI systems is enormous, as ",
+        "matched": false
+      },
+      {
+        "fp": "3a277c720e16df25",
+        "claim": "Ramp implements a 24-hour synthesis and cleanup pipeline that mines users' previous sessions and connects tools like Sla",
+        "matched": true
+      },
+      {
+        "fp": "df06c98490084373",
+        "claim": "Ramp reports that 99% of its employees use AI daily, but most were initially stuck due to painful and unintuitive setup ",
+        "matched": true
+      },
+      {
+        "fp": "6c02450d20bba2e9",
+        "claim": "Anthropic removed 80% of the system prompt for Claude Opus 5 and Fable 5, finding that this resulted in zero change to c",
+        "matched": true
+      },
+      {
+        "fp": "d4055c4721e713d6",
+        "claim": "Harness engineering is defined as the practice of leveraging configuration points (such as skills, MCP servers, sub-agen",
+        "matched": true
+      },
+      {
+        "fp": "51139cc24f4aff35",
+        "claim": "Effective context curation for AI agents involves maintaining 3-5 focused, single-page files that are dated and updated ",
+        "matched": true
+      },
+      {
+        "fp": "1277d9b62202396f",
+        "claim": "Context engineering is a critical enterprise AI focus for 2026, involving the design of systems to ensure agents have ac",
+        "matched": false
+      },
+      {
+        "fp": "8d49b19bde41dba0",
+        "claim": "Organizations that are lagging in AI adoption tend to operate without providing their AI systems access to relevant cont",
+        "matched": true
+      },
+      {
+        "fp": "5e177accd5d1376a",
+        "claim": "Harness engineering is a subset of context engineering that primarily involves leveraging harness configuration points t",
+        "matched": true
+      },
+      {
+        "fp": "0a4e66b4b9065378",
+        "claim": "Ramp's design principle for its AI tooling is to 'not limit anyone's upside,' rejecting the conventional approach of sim",
+        "matched": true
+      },
+      {
+        "fp": "d63e694c96030c43",
+        "claim": "The agent landscape has evolved through three phases: the 'weights phase' (model scaling), the 'context phase' (prompt e",
+        "matched": true
+      },
+      {
+        "fp": "df22d980c215229f",
+        "claim": "The AI Daily Brief host argues that the shift from Markdown to HTML for agent communication reflects a broader change in",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": null
+}
