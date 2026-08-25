@@ -25,7 +25,7 @@ it.
 """
 import os, re, sys, json, argparse
 
-EXTS = {".md", ".markdown", ".mdx", ".txt", ".rst", ".text"}
+EXTS = {".md", ".markdown", ".mdx", ".txt", ".rst", ".text", ".tex"}
 SKIP_DIRS = {"node_modules", ".git", "dist", "build", ".next", "out", "vendor",
              "coverage", ".svelte-kit", ".astro", ".turbo", ".cache",
              "__pycache__", "site-packages"}
@@ -47,10 +47,21 @@ RULES = [
               r"|unlock(?:s|ing|ed)?|unleash(?:es|ing|ed)?|streamline(?:s|d)?|streamlining"
               r"|empower(?:s|ing|ed|ment)?|elevate(?:s|d)?|elevating|paradigm|unprecedented"
               r"|synergy|synergies|foster(?:s|ing|ed)?|underscore(?:s|d)?|underscoring"
-              r"|game-changing|enterprise-scale|enterprise-grade|extraordinary)\b"]},
+              r"|game-changing|enterprise-scale|enterprise-grade|extraordinary"
+              r"|honest(?:ly)?|honesty)\b"]},
     {"id": "the-heading", "label": "\"The X\" heading", "sev": "high",
      "fix": "Drop the leading 'The' unless it is a proper noun (The Guardian). See SKILL.md B2.",
-     "pats": [r"^#{1,6}\s+The\s+\S"], "cased": True},
+     "pats": [r"^#{1,6}\s+The\s+\S",
+              r"\\(?:sub)*section\*?\{The\s", r"\\paragraph\*?\{The\s",
+              r"\\caption\{The\s"], "cased": True},
+    {"id": "the-opener", "label": "\"The X\" sentence/paragraph opener", "sev": "high",
+     "fix": "Don't open with 'The <lowercase noun>'. Recast so the subject leads, or name the "
+            "thing directly ('The production-node paired study lifts...' -> 'Holding the model "
+            "constant and varying only the serving path lifts...'). Proper nouns (The Loom) are "
+            "fine. See SKILL.md B2.",
+     # line-initial "The" + a lowercase word = the definitional/throat-clearing opener; a
+     # capitalised follower (The Loom, The Guardian) is a proper noun and is left alone.
+     "pats": [r"^\s*The\s+[a-z]"], "cased": True},
     {"id": "negative-parallelism", "label": "Negative parallelism (not X - Y / not just X but Y)", "sev": "high",
      "fix": "Lead with the positive claim, or delete the negative half. See SKILL.md B3.",
      "pats": [r"\bnot\s+(just|only|merely|simply)\b[^.?!]{1,60}?(,?\s*but\b|\s+—)",
@@ -200,7 +211,8 @@ def scan_file(fp, rules, min_sev):
         word_count += len(re.findall(r"\S+", stripped))
 
         # File-level accumulation.
-        n_em = line.count(EMDASH)
+        # unicode em-dash plus LaTeX-source "---" (both render as an em-dash)
+        n_em = line.count(EMDASH) + line.count("---")
         if n_em:
             emdash_total += n_em
             if is_list_line(line):

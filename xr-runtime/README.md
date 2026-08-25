@@ -13,6 +13,20 @@ external `visionclaw_network`, managed through `agentbox.sh xr-runtime …`. It 
 
 [Monado]: https://monado.dev
 
+> **This sidecar is the headless/CI route, NOT the primary on-device validator (updated 2026-08-22).**
+> The **real** headset validation is now done on a **physical HTC VIVE Pro via
+> SteamVR on HP-Desktop** — native X11, NVIDIA 580, **Godot 4.6.1** on the
+> **Compatibility (OpenGL) renderer** — where the client achieved its first working
+> both-eyes render on 2026-08-22 (branch `xr-vive-runtime`; see
+> `docs/adr/ADR-136-desktop-openxr-vive-validation-target.md` and PRD-008 §7.4). A
+> lighthouse-tracked VIVE receipt is stronger than this Monado *simulated*-HMD one,
+> which remains the software/CI fallback for workstations with no headset. Note the
+> desktop VIVE path is forced onto the **Compatibility renderer** because the
+> RD/Vulkan **multiview tonemapper is broken** on that stack (glow off) — the same
+> tonemapper-under-multiview family of problem the "Known risks" section below
+> describes for Monado, but fatal-to-submission on real SteamVR rather than just
+> log noise.
+
 ## Why this exists
 
 The Godot client's boot script (`xr_boot.gd`) hard-fails without an OpenXR
@@ -167,11 +181,23 @@ failed identically on a real Quest, none was catchable without an OpenXR runtime
   static-call-by-string, and the cdylib is a hard dependency of this scene, so the
   defensive guard was a fiction. This would have failed identically on a Quest.
 
-### Open finding — the client has no production network transport
+### ~~Open finding — the client has no production network transport~~ — STALE, RESOLVED
+
+> **STALE as of 2026-08-22 — the transport is wired and working live.** This
+> finding was true at first bring-up but has since been closed: a real
+> `tokio-tungstenite` `WsTransport` (`TungsteniteWsTransport`) and a real Nostr
+> signer (`NostrAuth`) exist and are test-covered (ADR-102 / PRD-019); the godot
+> classes drive `poll()` each `_physics_process`, and `XR_BACKEND_WS` is read and
+> dialled. On the VIVE Pro bring-up (2026-08-22, branch `xr-vive-runtime`) the
+> client streamed the live **V3 graph** and drove **server-authoritative drag /
+> `PinNodePositions` GPU injection** end to end against the backend — so the
+> client↔backend path is no longer unimplemented. The original text is kept below
+> for history; treat every "does not exist / never called / no production adapter"
+> claim in it as **superseded**.
 
 The most important discovery, and exactly the "untested architecture / spec may
-be wrong" risk this runtime exists to catch. **It is not yet fixed** because it
-is a missing subsystem, not a bug, and the fix needs the backend WS protocol +
+be wrong" risk this runtime exists to catch. **[HISTORICAL — see the STALE note
+above; this was true only at first bring-up.]** It needed the backend WS protocol +
 a real signer — design decisions, not a mechanical repair:
 
 - The gdext godot classes (`BinaryProtocolClient`, `PresenceClientNode`) are pure

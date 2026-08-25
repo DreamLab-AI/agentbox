@@ -65,13 +65,44 @@ TIER 3 — Notable predictions and emerging signals (confidence 0.4-0.59):
   Contrarian positions backed by reasoning (not mere speculation).
 
 For each item, return a JSON object with:
-- "claim": a clear statement (one sentence)
+- "claim": a clear statement (one sentence). It MUST state the SAME number, metric,
+  attributed role, and named entity that its evidence supports — never round, convert,
+  paraphrase a figure, or re-attribute to a different person/company. If the evidence is
+  itself garbled or ambiguous, keep the claim faithful and add "[sic]" rather than inventing
+  a corrected value. (PC-5)
 - "tier": 1, 2, or 3
 - "source": who reported/said this — the host counts for analysis and predictions
+- "source_authority": one of primary | secondary | single-source | rumour | hedged —
+  how well-attributed the claim is. A single unconfirmed report or a hedged/speculative
+  aside is NOT primary, however confident it sounds. Confidence must not exceed what the
+  authority supports. (PC-3)
+- "volatility": one of durable | snapshot | speculative. durable = a structural trend or
+  insight that outlives the episode; snapshot = a dated figure (price, rank, MAU, launch %,
+  funding round, benchmark score) that is stale within weeks; speculative = unshipped,
+  future, or opinion. This is independent of confidence — a claim can be well-sourced AND
+  fast-decaying. (PC-4)
 - "evidence": supporting data points, quotes, reasoning, or context
 - "context": 1-2 sentences of surrounding context from the transcript
 - "confidence": your confidence this is accurately captured (0.0-1.0)
-- "ontology_terms": 2-4 key concepts that would help locate this in an AI/tech ontology
+- "ontology_terms": 2-4 key concepts that would help locate this in an AI/tech ontology.
+  Give SPECIFIC named entities or multi-word concepts, never bare generic words or short
+  acronyms (not "Model", "Base", "API", "GAN", "State"): a wrong-sense link is worse than
+  no link. Prefer fewer, precise terms over more, loose ones. (PC-1)
+
+Transcription and phrasing hygiene (PC-2):
+- Transcripts are auto-captioned. Normalise obvious speech-to-text garbles of KNOWN names and
+  version numbers in the claim, source, and ontology_terms — e.g. "Opus 48" -> "Opus 4.8",
+  "GPT 55" -> "GPT-5.5", "Ilia Sutskaver" -> "Ilya Sutskever", "Ethan Malik" -> "Ethan Mollick".
+  Keep the raw garbled form ONLY inside the verbatim evidence quote, never in structured fields.
+- Keep claims neutral and checkable: move promotional or hype phrasing ("a marvel", "fabled
+  intelligence at half the price") into the evidence quote and state the claim plainly.
+- If a named concept is clearly the subject of a durable claim, include it as an ontology_term
+  so it can anchor a link — but only if it is specific (PC-1), never to force a generic link.
+- The show's regular host is the most-mentioned speaker; normalise host and recurring-guest
+  names to their correct spelling rather than an ASR variant. (PC-9)
+- State only relationships the evidence supports. Do NOT infer ownership, agency, or partnership
+  edges between correctly-named entities that the transcript does not assert (e.g. do not say one
+  company owns another's asset merely because their founders are linked). (PC-10)
 
 Return a JSON array. Prefer breadth — capture the full range of useful knowledge
 in the episode. If genuinely nothing is extractable, return [].
@@ -315,7 +346,13 @@ def call_loom(prompt: str, loom_url: str, model: str) -> str | None:
                 # Qwen3.8's reasoning tokens count against max_tokens; 4096
                 # truncated real extractions mid-array (finish_reason=length).
                 "max_tokens": 12288,
-                "ontology_budget": 0,
+                # Scaffold injection ON (default budget): grounded extraction
+                # resolves ~60% of ontology_terms to existing KG pages vs ~22%
+                # raw (3-episode A/B, 2026-08-22). verbatim:false blocks the
+                # Loom's retrieval short-circuit, which otherwise answers
+                # transcript prompts from the scaffold without calling the
+                # model at all (the failure ontology_budget:0 was masking).
+                "loom_options": {"verbatim": False},
             },
             # Qwen3.8-27B reasoning over a full episode transcript regularly
             # exceeds 3 minutes; 180s was producing spurious read timeouts.
@@ -478,13 +515,286 @@ def build_evidence_paragraph(assertion: dict, url: str = "") -> str:
     return para
 
 
-def phase_integrate(verified: dict[str, list[dict]], ontology_dir: Path | None,
-                    settings: dict, state: dict, dry_run: bool = False):
-    """Integrate verified assertions into ontology pages.
+def _build_page_index(ontology_dir: Path) -> dict[str, tuple[Path, float]]:
+    """slug -> (path, quality) for every non-ledger page, quality parsed once.
 
-    In cron mode this does file-level matching by ontology_terms.
-    In agent mode the caller should use ontology_search MCP tool for better
-    semantic placement."""
+    Built once per run and reused across episodes — the previous per-episode
+    rebuild re-read every substring-matching page per term per assertion,
+    which is near-quadratic IO on a large graph.
+    """
+    index: dict[str, tuple[Path, float]] = {}
+    for p in ontology_dir.glob("*.md"):
+        if p.stem.startswith("podcast-evidence"):
+            continue
+        content = p.read_text(errors="replace")
+        q_match = re.search(r'"quality":\s*([\d.]+)', content)
+        quality = float(q_match.group(1)) if q_match else 0.5
+        index[p.stem.lower().replace(" ", "-")] = (p, quality)
+    return index
+
+
+# Generic single-word tokens and bare acronyms that resolve to a real page but
+# almost always mean something else in context — linking them injects false
+# graph edges (RUNBOOK PC-1). Only ever matched by EXACT slug, never substring.
+_LINK_STOPWORDS = {
+    "model", "base", "value", "logic", "curve", "safe", "rest", "api", "uri",
+    "url", "gan", "uma", "raft", "core", "state", "scale", "chain", "node",
+    "agent", "token", "graph", "data", "cloud", "edge", "stack", "layer",
+    "loop", "flow", "field", "space", "vector", "signal", "policy", "target",
+}
+
+
+def _resolve_ontology_term(term: str, page_index: dict[str, tuple[Path, float]]) -> Path | None:
+    """Resolve a single ontology_term to the best-matching existing page.
+
+    Exact slug match first. Substring matching is then gated for specificity
+    (RUNBOOK PC-1): a wrong-sense link is worse than no link, because it mints
+    a false graph edge. We therefore (a) refuse substring matches for terms
+    that are a single generic noun / bare acronym, and (b) require the term to
+    be a substring of the page slug (not the reverse — 'gan' must not match
+    'organisation'), preferring the HIGHEST-quality candidate.
+    """
+    slug = term.lower().replace(" ", "-")
+    tokens = [t for t in slug.split("-") if t]
+
+    # A single generic noun or bare acronym is refused outright, even when an
+    # exact page of that slug exists: those pages ([[GAN]], [[Model]], [[API]])
+    # are near-always wrong-sense in a podcast claim and mint false edges (PC-1).
+    if len(tokens) < 2 and (slug in _LINK_STOPWORDS or len(slug) <= 4):
+        return None
+
+    if slug in page_index:
+        return page_index[slug][0]
+
+    best_match = None
+    best_quality = -1.0
+    for page_slug, (page_path, quality) in page_index.items():
+        # directional: the term must appear within the page slug, and cover a
+        # substantial fraction of it, so a short term cannot claim a long page.
+        if slug in page_slug and len(slug) >= 0.5 * len(page_slug):
+            if quality > best_quality:
+                best_match = page_path
+                best_quality = quality
+    return best_match
+
+
+def _extract_episode_meta(md_path: Path) -> dict:
+    """Pull title / date / YouTube URL out of a downloaded transcript file."""
+    content = md_path.read_text()
+    title_match = re.search(r'^#\s+(.+)$', content, re.MULTILINE)
+    url_match = re.search(r'\*\*YouTube\*\*:\s*(\S+)', content)
+    date_match = re.search(r'\*\*Date\*\*:\s*(\S+)', content)
+    return {
+        "title": title_match.group(1).strip() if title_match else md_path.stem,
+        "url": url_match.group(1).strip() if url_match else "",
+        "episode_date": date_match.group(1).strip() if date_match else "",
+    }
+
+
+LEDGER_FP_MARKER = "<!-- assertion-fp: {fp} -->"
+LEDGER_FP_RE = re.compile(r'<!-- assertion-fp:\s*([0-9a-f]+)\s*-->')
+
+
+def _ledger_page_path(ontology_dir: Path, episode_slug: str) -> Path:
+    return ontology_dir / f"podcast-evidence___{episode_slug}.md"
+
+
+def _build_ledger_header(episode_slug: str, meta: dict, today: str) -> str:
+    lines = ["public:: true", ""]
+    lines.append(f"# AI Daily Brief — {meta['title']}")
+    lines.append("")
+    lines.append(f"title:: AI Daily Brief — {meta['title']}")
+    lines.append("source:: AI Daily Brief")
+    if meta.get("url"):
+        lines.append(f"episode-url:: {meta['url']}")
+    if meta.get("episode_date"):
+        lines.append(f"episode-date:: {meta['episode_date']}")
+    lines.append(f"ingest-date:: {today}")
+    lines.append("")
+    return "\n".join(lines) + "\n"
+
+
+def _build_ledger_bullet(assertion: dict, page_index: dict[str, tuple[Path, float]], today: str,
+                         episode_date: str = "") -> tuple[str, list[str]]:
+    """Build one ledger bullet block for an assertion.
+
+    Returns (bullet_text, resolved_topic_titles) — resolved_topic_titles is
+    used by the caller to decide whether an assertion counted as "matched"
+    for the unmatched/new-page-proposal path.
+    """
+    claim = assertion.get("claim", "")
+    tier = assertion.get("tier", 1)
+    tier_label = TIER_LABELS.get(tier, "")
+    confidence = assertion.get("confidence", "")
+    source = assertion.get("source", "unknown")
+    fp = assertion.get("fingerprint", "")
+
+    resolved_titles = []
+    for term in assertion.get("ontology_terms", []):
+        page = _resolve_ontology_term(term, page_index)
+        if page:
+            resolved_titles.append(page.stem)
+
+    wikilinks = " ".join(f"[[{t}]]" for t in resolved_titles)
+    tier_prefix = f"**[{tier_label}]** " if tier_label else ""
+    bullet_first_line = f"- {tier_prefix}{claim}"
+    if wikilinks:
+        bullet_first_line += f" {wikilinks}"
+
+    sub_lines = [
+        f"  tier:: {tier}",
+        f"  confidence:: {confidence}",
+        f"  source:: {source}",
+    ]
+    authority = assertion.get("source_authority", "")
+    if authority:
+        sub_lines.append(f"  source-authority:: {authority}")
+    volatility = assertion.get("volatility", "")
+    if volatility:
+        sub_lines.append(f"  volatility:: {volatility}")
+    sub_lines += [
+        # the date the claim was made (episode air date), not the ingest date —
+        # the page header's ingest-date:: carries the run date.
+        f"  claim-date:: {episode_date or today}",
+    ]
+    evidence = assertion.get("evidence", "")
+    if evidence and evidence != claim:
+        sub_lines.append(f"  evidence:: {evidence}")
+    sub_lines.append(f"  {LEDGER_FP_MARKER.format(fp=fp)}")
+
+    bullet = bullet_first_line + "\n" + "\n".join(sub_lines) + "\n"
+    return bullet, resolved_titles
+
+
+def write_assertion_ledger(episode_filename: str, verified_assertions: list[dict],
+                           ontology_dir: Path, state: dict, today: str,
+                           page_index: dict[str, tuple[Path, float]] | None = None) -> tuple[int, list[dict]]:
+    """Write/append verified assertions for one episode as a ledger page.
+
+    Returns (n_bullets_written, unmatched_assertions) — unmatched assertions
+    (zero resolved ontology_terms) are still written to the ledger, but are
+    also handed back so the caller can still run the new-page-proposal path
+    for them, unchanged from the old inline-editing behaviour.
+    """
+    episode_slug = Path(episode_filename).stem
+    # episode transcript files live in the podcast output_dir, not ontology_dir;
+    # the caller passes the resolved Path in via verified_assertions[i]['_episode_path']
+    meta_path = next((a.get("_episode_path") for a in verified_assertions if a.get("_episode_path")), None)
+    meta = _extract_episode_meta(Path(meta_path)) if meta_path else {"title": episode_slug, "url": "", "episode_date": ""}
+
+    ledger_path = _ledger_page_path(ontology_dir, episode_slug)
+
+    existing_content = ledger_path.read_text() if ledger_path.exists() else ""
+    existing_fps = set(LEDGER_FP_RE.findall(existing_content))
+
+    if page_index is None:
+        page_index = _build_page_index(ontology_dir)
+
+    unmatched: list[dict] = []
+    new_bullets = []
+    for assertion in verified_assertions:
+        fp = assertion.get("fingerprint", "")
+        if not fp:
+            # An assertion without a fingerprint would be re-appended on every
+            # run (dedup keys on fp) yet invisible to promote.py's candidacy
+            # scan — synthesise the canonical fingerprint instead.
+            fp = assertion_fingerprint(assertion.get("source", ""), assertion.get("claim", ""))
+            assertion["fingerprint"] = fp
+        if fp in existing_fps:
+            continue  # already in the ledger from a prior run — idempotent
+        bullet, resolved_titles = _build_ledger_bullet(assertion, page_index, today,
+                                                       episode_date=meta.get("episode_date", ""))
+        new_bullets.append(bullet)
+        if not resolved_titles:
+            unmatched.append({**assertion, "_source_file": episode_filename})
+        if fp:
+            state.setdefault("assertions", {})[fp] = {
+                "claim": assertion.get("claim", ""),
+                "integrated_into": ledger_path.name,
+                "date": today,
+            }
+
+    if not new_bullets:
+        return 0, unmatched
+
+    if existing_content:
+        # Append after existing content — never touch prior bullets.
+        content = existing_content.rstrip("\n") + "\n" + "\n".join(new_bullets)
+    else:
+        content = _build_ledger_header(episode_slug, meta, today) + "\n".join(new_bullets)
+
+    ledger_path.write_text(content.rstrip("\n") + "\n")
+    return len(new_bullets), unmatched
+
+
+def phase_integrate(verified: dict[str, list[dict]], ontology_dir: Path | None,
+                    settings: dict, state: dict, dry_run: bool = False,
+                    episode_paths: dict[str, Path] | None = None):
+    """Land verified assertions into the graph as a per-episode assertion
+    ledger page (option 4), instead of editing curated ontology pages.
+
+    Curated pages are never modified. Each episode with verified assertions
+    gets one `podcast-evidence___<episode-slug>.md` ledger page containing
+    one bullet per assertion, [[wikilinked]] to whichever ontology_terms
+    resolve to an existing page. Unresolved-topic assertions still land in
+    the ledger, and are additionally handed to _propose_new_pages exactly as
+    before so genuinely new concepts can still get a proposed ontology page.
+    """
+    if not ontology_dir or not ontology_dir.exists():
+        print("  No ontology directory configured, skipping integration.", flush=True)
+        return
+
+    today = datetime.now().strftime("%Y-%m-%d")
+    episode_paths = episode_paths or {}
+    total_integrated = 0
+    all_unmatched: list[dict] = []
+    page_index = _build_page_index(ontology_dir) if not dry_run else None
+
+    for filename, assertions in verified.items():
+        if dry_run:
+            print(f"    [DRY RUN] Would write ledger for {filename}: {len(assertions)} assertions", flush=True)
+            for a in assertions:
+                print(f"      Claim: {a.get('claim', '')[:100]}", flush=True)
+            continue
+
+        # Tag each assertion with its source transcript path so the ledger
+        # writer can pull episode title/date/URL out of it.
+        ep_path = episode_paths.get(filename)
+        tagged = [{**a, "_episode_path": str(ep_path) if ep_path else None} for a in assertions]
+
+        n_written, unmatched = write_assertion_ledger(filename, tagged, ontology_dir, state, today, page_index)
+        total_integrated += n_written
+        all_unmatched.extend(unmatched)
+        if n_written:
+            print(f"    Ledger updated for {filename}: {n_written} new assertions ({_ledger_page_path(ontology_dir, Path(filename).stem).name})", flush=True)
+        else:
+            print(f"    Ledger for {filename}: nothing new (idempotent re-run)", flush=True)
+
+    print(f"  Total assertions landed in ledger: {total_integrated}", flush=True)
+
+    # Phase 4b: Propose new pages for assertions whose ontology_terms didn't
+    # resolve to any existing page — unchanged from the old behaviour.
+    unmatched = all_unmatched
+    if unmatched and not dry_run:
+        _propose_new_pages(unmatched, ontology_dir, settings, state, today)
+    elif unmatched and dry_run:
+        print(f"\n  [DRY RUN] {len(unmatched)} assertions had no placement — would propose new pages:", flush=True)
+        seen_topics = set()
+        for a in unmatched:
+            topic = a.get("ontology_terms", ["unknown"])[0]
+            if topic not in seen_topics:
+                seen_topics.add(topic)
+                print(f"    → {topic}: {a.get('claim', '')[:80]}", flush=True)
+
+
+def _phase_integrate_inline_legacy(verified: dict[str, list[dict]], ontology_dir: Path | None,
+                    settings: dict, state: dict, dry_run: bool = False):
+    """DEPRECATED — the old judged-harmful inline-page-editing integration.
+
+    Kept only for reference/rollback; unreachable from run(). A blind
+    LLM-judged before/after showed every inline insertion mechanic degrades
+    curated pages, hence the graph-native assertion ledger in
+    phase_integrate() above. Do not call this."""
     if not ontology_dir or not ontology_dir.exists():
         print("  No ontology directory configured, skipping integration.", flush=True)
         return
@@ -548,11 +858,6 @@ def phase_integrate(verified: dict[str, list[dict]], ontology_dir: Path | None,
             inserted = False
             for marker in insert_markers:
                 if f"- {marker}" in content:
-                    evidence_block = (
-                        f"  - {para} "
-                        f"*(Source: {assertion.get('source', 'unknown')}, "
-                        f"via AI Daily Brief, {today})*\n"
-                    )
                     content = content.replace(
                         f"- {marker}",
                         f"  - {para} *(Source: {assertion.get('source', 'unknown')}, via AI Daily Brief, {today})*\n- {marker}",
@@ -572,17 +877,8 @@ def phase_integrate(verified: dict[str, list[dict]], ontology_dir: Path | None,
 
     print(f"  Total assertions integrated: {total_integrated}", flush=True)
 
-    # Phase 4b: Propose new pages for unmatched assertions
     if unmatched and not dry_run:
         _propose_new_pages(unmatched, ontology_dir, settings, state, today)
-    elif unmatched and dry_run:
-        print(f"\n  [DRY RUN] {len(unmatched)} assertions had no placement — would propose new pages:", flush=True)
-        seen_topics = set()
-        for a in unmatched:
-            topic = a.get("ontology_terms", ["unknown"])[0]
-            if topic not in seen_topics:
-                seen_topics.add(topic)
-                print(f"    → {topic}: {a.get('claim', '')[:80]}", flush=True)
 
 
 NEW_PAGE_TEMPLATE = '''public:: true
@@ -858,8 +1154,9 @@ def run(config: dict, dry_run: bool = False, target_file: str | None = None,
 
         # Phase 4: Integrate
         ontology_dir = Path(podcast.get("ontology_dir", "")) if podcast.get("ontology_dir") else None
+        episode_paths = {f.name: f for f in all_files}
         print(f"\n--- Phase 4: Ontology integration ---", flush=True)
-        phase_integrate(verified, ontology_dir, settings, state, dry_run)
+        phase_integrate(verified, ontology_dir, settings, state, dry_run, episode_paths=episode_paths)
 
         # Phase 5: Mark complete
         phase_mark_complete(all_files, verified)

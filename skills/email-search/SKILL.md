@@ -91,6 +91,18 @@ stable, **model-swappable façade** that adds ontology grounding and keeps email
   with **zero change to the gateway**. Reached by the Loom over the LAN rail; HP is downstream of
   machinelearn with **no LAN IP** (`hp-nat.service` DNAT over the 25 G rail; old `192.168.2.48` is <!-- lint-ok -->
   **dead**). To change the model, change the Loom's backend — **the gateway config does not change.**
+  - **Backend-swap runbook** (verified 2026-08-25, Gemma↔Qwen). The serving model is a host-network
+    `loom-model` container binding `:8085`; alternates are parked as `loom-model-<name>bak`
+    (`Exited`). Only one can hold `:8085`, so swap by stop-park-promote-start over `ssh john@10.10.10.1`:
+    `docker stop loom-model` → `docker rename loom-model loom-model-<old>bak` →
+    `docker rename loom-model-<new>bak loom-model` → `docker start loom-model`. Both carry
+    `restart-policy=unless-stopped`, so a manually-stopped alternate stays down and won't fight for
+    the port. Confirm the target's GGUF first (`docker inspect <c> --format '{{range .Config.Env}}…'`
+    — check `MAIN_GGUF`/`ALIAS`) so you promote the right one. Verify:
+    `curl -s :8084/v1/models` shows the new alias and `/health` shows `backend_reachable:true`, then
+    smoke-test a real `/v1/chat/completions` (reasoning models need `max_tokens≥2048` or they return
+    empty). Gotcha: HP's login shell is fish — `set -e` in the SSH heredoc errors harmlessly; the
+    `docker` lines still run. Swap is reversible: the parked `<old>bak` container restores the same way.
 - **Embeddings** — served on **machinelearn** at **`:9997`** (bge models on xinference), unchanged.
 
 The gateway container is on the `visionclaw_network` bridge at `email-mcp-gateway:8765`. A stale
