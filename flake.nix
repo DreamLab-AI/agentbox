@@ -851,7 +851,7 @@
         };
 
         # Perplexity MCP: pins @perplexity-ai/mcp-server so the entrypoint
-        # runs `node .../dist/index.js` instead of `npx -y` (which fails on
+        # runs `node .../dist/index.js` instead of an on-demand npx fetch (which fails on
         # a read-only rootfs). Gated on PERPLEXITY_API_KEY at the entrypoint.
         # Refresh hash: nix run nixpkgs#prefetch-npm-deps -- mcp/perplexity/package-lock.json
         perplexityMcpPkg = npmServicesLib.makeNpmService {
@@ -1381,7 +1381,7 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           cp -rL ${mcpServersPkg}/package/node_modules $out/opt/agentbox/mcp/servers/node_modules
 
           # Perplexity MCP: bake @perplexity-ai/mcp-server so the entrypoint
-          # uses `node .../dist/index.js` instead of `npx -y`.
+          # uses `node .../dist/index.js` instead of an on-demand npx fetch.
           mkdir -p $out/opt/agentbox/mcp/perplexity
           cp -rL ${perplexityMcpPkg}/package/node_modules $out/opt/agentbox/mcp/perplexity/node_modules
 
