@@ -37,6 +37,7 @@ import os
 import random
 import re
 import sys
+import textwrap
 import urllib.error
 import urllib.request
 from collections import defaultdict
@@ -1000,8 +1001,49 @@ def run(args: argparse.Namespace) -> int:
             print(f"  SURVIVOR [{slug}] -> {out_dir / (slug + '.json')}")
         else:
             print(f"  REJECT [{slug}] ({'; '.join(reasons)}) -> {out_dir / (slug + '.json')}")
+            if args.working_graph_dir:
+                wg_path = write_working_page(Path(args.working_graph_dir), data)
+                print(f"  news page -> {wg_path}")
 
     return 0
+
+
+def write_working_page(working_dir: Path, data: dict) -> Path:
+    """Rejected-from-ontology != worthless: land the processed news as a
+    Logseq page in the working graph. Overwritten on each refresh of the
+    topic's dossier (same idempotency cycle as the dossier itself); the
+    curated main graph is never touched by this path."""
+    working_dir.mkdir(parents=True, exist_ok=True)
+    topic = data["topic"]
+    draft_content = ""
+    if data.get("draft", {}).get("ok") and data["draft"].get("edit"):
+        draft_content = textwrap.dedent(data["draft"]["edit"].get("content", "")).strip()
+    lines = [
+        "public:: false",
+        "type:: podcast-news",
+        f"topic:: {topic}",
+        "source:: AI Daily Brief (podcast-knowledge-ingest promotion stage)",
+        f"promotion-status:: {data['status']}",
+        f"episodes:: {len(data.get('episodes', []))}",
+        f"assertions:: {data.get('n_assertions', 0)}",
+        "",
+        f"# {topic} — processed news",
+        "",
+    ]
+    if draft_content:
+        lines += [draft_content, ""]
+    lines.append("## Evidence")
+    for a in data.get("assertions", []):
+        lines.append(f"- {a['claim']}")
+        lines.append(f"  source:: {a.get('source', '')}")
+        lines.append(f"  episode:: {a.get('episode', '')}")
+        lines.append(f"  confidence:: {a.get('confidence', '')}")
+        if a.get("claim_date"):
+            lines.append(f"  claim-date:: {a['claim_date']}")
+    safe_name = topic.replace("/", "___")
+    path = working_dir / f"{safe_name}.md"
+    path.write_text("\n".join(lines) + "\n")
+    return path
 
 
 def main() -> int:
@@ -1019,6 +1061,9 @@ def main() -> int:
     ap.add_argument("--loom-model", default=DEFAULT_LOOM_MODEL)
     ap.add_argument("--dry-run", action="store_true", help="only run candidacy detection, no Loom/judge calls, no writes")
     ap.add_argument("--limit", type=int, default=None, help="process at most N candidates this run")
+    ap.add_argument("--working-graph-dir", default=None,
+                    help="if set, rejected candidates also land their processed news as a "
+                         "Logseq page here (e.g. ~/workspace/logseq/workingGraph/pages)")
     ap.add_argument("--max-dossier-assertions", type=int, default=12,
                     help="cap assertions handed to draft/completeness, strongest first "
                          "(confidence desc, then recency); 0 = uncapped (default 12)")

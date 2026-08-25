@@ -221,9 +221,15 @@ ontology-bridge governed proposal queue; nothing edits curated pages directly.
 # Candidacy scan only (no network, no writes):
 python3 promote.py --pages-dir <graph pages dir> --proposals-dir promotions/proposals --dry-run
 
-# Full run, capped:
-python3 promote.py --pages-dir <graph pages dir> --proposals-dir promotions/proposals --limit 3
+# Canonical full run — rejects land as readable news pages in the working graph:
+python3 promote.py --pages-dir <graph pages dir> --proposals-dir promotions/proposals \
+  --working-graph-dir ~/workspace/logseq/workingGraph/pages --limit 15
 ```
+
+Rejected-from-ontology is not discarded: with `--working-graph-dir`, every
+terminal reject also writes `<Topic>.md` into the working graph — the Loom-drafted
+prose section plus the attributed evidence bullets, `type:: podcast-news`,
+overwritten on each dossier refresh. The curated main graph is never touched.
 
 Idempotent per assertion-fingerprint set; instrument outages defer (retry next
 run) rather than reject. Full contract, thresholds, dossier JSON shape, and the
