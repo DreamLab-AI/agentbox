@@ -276,7 +276,11 @@ a second `accepts[]` entry advertises it without touching the first.
   pays L402 invoices through an operator-configured wallet connection. Chosen
   because it reuses the nostr identity/transport substrate (NIP-47 rides the
   same relays and key discipline as everything else here) and needs no
-  resident node.
+  resident node. *2026-08-25:* a resident node now exists regardless — the LAN
+  Bitcoin node at 192.168.2.27 (solid-pod-rs ADR-061; successor to VM 107,
+  Core-Lightning `hsm_secret` preserved for it). C10's sovereign-preferred
+  deployment is NWC pointed at that node's own Core-Lightning rather than a
+  custodial wallet; the no-node NWC path remains valid for podless deployments.
 - ~~**C11 x402 rail (EIP-3009).**~~ **Rejected in v1.2** (see §11): no native
   EVM/USDC signing rail will be built. x402 challenges remain fully
   *detectable* (C1) so agents can name what a foreign service wants, and
