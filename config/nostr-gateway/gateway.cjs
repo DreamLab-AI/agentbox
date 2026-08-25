@@ -632,11 +632,42 @@ function authenticate(ws, challenge) {
     log('AUTH sent'); setTimeout(() => subscribe(ws), 200); // re-REQ after auth
   } catch (e) { log('AUTH failed', e.message); }
 }
+// ── website enquiry/signup notifications ────────────────────────────────────
+// The dreamlab-ai.com signup + contact forms deliver NIP-17 wraps to the SAME
+// admin inbox this gateway reads (src/lib/nostr.ts in the website repo). They
+// arrive from ephemeral per-session keys, so the commander gate would silently
+// drop them — the RADHWAN enquiry of 2026-08-17 sat unseen for 8 days. Detect
+// them by payload shape and forward a summary DM to the operator's phone.
+// Dedupe rides the durable executed store (7-day prune ≥ the relay's re-serve
+// lookback), and unlike commands there is NO freshness gate: an enquiry that
+// lands while the gateway is down must still notify on the next cold boot.
+function notifyEnquiry(ws, wrap, rumor) {
+  const text = String(rumor.content || '');
+  const subject = (Array.isArray(rumor.tags) ? rumor.tags : []).find((t) => t[0] === 'subject')?.[1] || '';
+  const isForm = /"type":\s*"contact_(signup|enquiry)"/.test(text) || /^DreamLab website/i.test(subject);
+  if (!isForm) return false;
+  if (executed.ids[wrap.id]) return true;                              // already notified
+  recordExecuted(wrap.id, Number(rumor.created_at) || nowSec());
+  let f = {}; try { f = JSON.parse(text.slice(text.indexOf('{'))); } catch { /* non-JSON body — raw fallback */ }
+  if (f.source === 'ops_verification_probe' || f.test === true) return true; // ops probes: swallow silently
+  const kind = f.type === 'contact_signup' ? 'signup' : 'enquiry';
+  const when = new Date((Number(rumor.created_at) || nowSec()) * 1000).toISOString().slice(0, 16) + 'Z';
+  const body = f.name || f.email
+    ? `name: ${f.name || '—'}\nemail: ${f.email || '—'}`
+      + (f.engagement_type ? `\ntype: ${f.engagement_type}` : '')
+      + (f.message ? `\nmessage: ${String(f.message).slice(0, 500)}` : '')
+    : text.slice(0, 500);
+  log(`website ${kind} forwarded (${when})`);
+  reply(ws, `🔔 website ${kind} · ${when}\n${body}`);
+  return true;
+}
+
 function handleWrap(ws, wrap) {
   if (!wrap || wrap.kind !== KIND_GIFT_WRAP) return;
   if (!markSeen(wrap.id)) return;                                     // already handled
-  let rumor; try { rumor = tools.nip59.unwrapEvent(wrap, sk); } catch { return; } // not ours to decrypt (e.g. signup DMs) — silent
+  let rumor; try { rumor = tools.nip59.unwrapEvent(wrap, sk); } catch { return; } // not ours to decrypt — silent
   if (!rumor) return;
+  if (notifyEnquiry(ws, wrap, rumor)) return;                          // website form → phone, never a command
   if (String(rumor.pubkey || '').toLowerCase() !== commanderPub) return; // only the operator may command
   if (Array.isArray(rumor.tags) && rumor.tags.some((tag) => tag[0] === 'client' && /^agentbox-/.test(String(tag[1] || '')))) return;
   const text = String(rumor.content || '').trim();
