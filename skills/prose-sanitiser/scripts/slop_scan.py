@@ -38,6 +38,14 @@ IGNORE_MARK = "slop-ignore"
 # the report in false positives.
 # ---------------------------------------------------------------------------
 RULES = [
+    {"id": "preamble-label", "label": "Preamble setup label (announcing the explanation)", "sev": "medium",
+     "fix": "Delete the label and let the explanation stand on its own. A heading or opener like "
+            "'In plain terms' / 'Put simply' / 'In essence' announces that clarity is coming instead "
+            "of delivering it - the plain statement should simply be the text. See references/destructive-audit.md B15.",
+     "pats": [r"\bin plain (?:terms|english|language)\b", r"\bput simply\b", r"\bsimply put\b",
+              r"\bin essence\b", r"\bin a nutshell\b", r"\bat a high level\b",
+              r"\bin other words\b", r"\bto put it (?:another way|simply|plainly)\b",
+              r"\bthe idea in brief\b", r"\blong story short\b"]},
     {"id": "insider-voice", "label": "Insider voice in external document (audience leakage)", "sev": "medium",
      "fix": "Negotiation stance, critique of the counterparty's drafting, or strategy narration "
             "leaking into an externally facing document. Restate neutrally: describe the decision "

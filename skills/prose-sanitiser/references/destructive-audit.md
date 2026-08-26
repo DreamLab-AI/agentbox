@@ -278,3 +278,19 @@ Audience judgement is required: these phrases are often *correct* in internal me
 risk registers. The scanner flags them at medium severity; keep or kill by asking who
 the reader is. When one document family has both internal and external variants, sweep
 the external one after every edit pass — insider lines migrate in during rewrites.
+
+## B15 — Preamble setup labels (announcing the explanation)
+
+Headings and openers that promise clarity instead of delivering it: "In plain terms",
+"Put simply", "Simply put", "In essence", "In a nutshell", "At a high level", "In other
+words", "To put it another way". As a heading, the label frames the following paragraph
+as a translation of something harder — which either insults the surrounding prose (why
+wasn't *it* plain?) or pads the structure. As a sentence opener, it is throat-clearing
+before the actual claim.
+
+The fix is deletion, not substitution: the plain statement should simply be the text,
+placed where the label was. If a section genuinely needs a lay summary and a formal
+treatment, name the content, not the register — "Rule" and "Behaviour" beat "In plain
+terms" and "The maths". The one legitimate use is contrast a reader needs flagged
+(e.g. translating a quoted legal clause immediately after quoting it); even then,
+prefer a colon after the quote to a labelled sub-heading.

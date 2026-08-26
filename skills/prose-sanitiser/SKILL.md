@@ -115,7 +115,7 @@ Load the relevant catalogue on demand — don't hold all of it in context at onc
   mechanical catalogue — em-dash density, "The X" headings, negative parallelism,
   Tier 1/2 vocabulary tables, throat-clearing, hedges, structural tells,
   transitions, passive voice, UK spelling, and Claudish structural patterns
-  (B13), and insider voice in external documents (B14). Read this when auditing existing text.
+  (B13), insider voice in external documents (B14), and preamble setup labels (B15). Read this when auditing existing text.
 - [Section C — Narrative Tells (Fiction)](references/narrative-tells.md): the
   StoryScope-derived structural defaults (thematic over-explanation, embodied
   emotion, single-track plots, tidy resolutions, per-model fingerprints, and
