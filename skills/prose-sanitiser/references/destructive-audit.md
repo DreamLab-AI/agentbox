@@ -248,3 +248,33 @@ The `--context` flag injects the original question or prompt (truncated to 800
 chars) into the rewrite prompt, helping the model make better simplification
 choices by understanding what the prose is trying to answer. Works with any
 strength, most useful with `simplify` and `declaudish`.
+
+## B14 — Insider voice in external documents (audience leakage)
+
+A class of tell specific to documents that cross an organisational boundary: client
+deliverables, partner correspondence, published specs. The text narrates the *author's
+side* of a relationship instead of the shared subject — negotiation stance, critique of
+the counterparty's drafting, strategic framing that only makes sense to the sending
+team.
+
+Symptoms:
+- Headings or sentences that characterise the other party's text: "a decision the
+  wording leaves to X", "parts of the suite read as though", "the spec quietly
+  reassigns".
+- Adversarial-lawyer constructions: "on any reading we can construct", "keeps that
+  freedom open", "worth being clear-eyed on".
+- Suspicion framing of future behaviour: "later versions do not silently become the
+  baseline", "so the price and roadmap stay honest with each other".
+- Internal risk vocabulary escaping: "landmine", "scope creep", "the trap", "smuggled
+  in".
+
+The fix is not softening — it is re-aiming. Describe the decision, mechanism or rule
+neutrally, as a property of the shared system rather than a move in a negotiation:
+"a decision the wording leaves to X" → "an interpretation for X's approval"; "do not
+silently become the baseline" → "take effect only through change control, so the
+baseline and the document set stay aligned".
+
+Audience judgement is required: these phrases are often *correct* in internal memos and
+risk registers. The scanner flags them at medium severity; keep or kill by asking who
+the reader is. When one document family has both internal and external variants, sweep
+the external one after every edit pass — insider lines migrate in during rewrites.

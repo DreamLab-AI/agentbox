@@ -38,6 +38,18 @@ IGNORE_MARK = "slop-ignore"
 # the report in false positives.
 # ---------------------------------------------------------------------------
 RULES = [
+    {"id": "insider-voice", "label": "Insider voice in external document (audience leakage)", "sev": "medium",
+     "fix": "Negotiation stance, critique of the counterparty's drafting, or strategy narration "
+            "leaking into an externally facing document. Restate neutrally: describe the decision "
+            "or mechanism, not your read of the other side. Only applies to client/public-facing "
+            "text; internal memos are exempt - judge by audience. See references/destructive-audit.md B14.",
+     "pats": [r"\bthe wording leaves\b", r"\breads? as though\b",
+              r"\bsilently become\b", r"\bdo not silently\b",
+              r"\bwe can construct\b", r"\bkeeps? that freedom\b",
+              r"\bworth being clear-eyed\b", r"\bsmuggl(?:e[sd]?|ing)\b",
+              r"\bquietly (?:assume[sd]?|become[s]?|expand(?:s|ed)?|reassign(?:s|ed)?)\b",
+              r"\bhonest (?:consequence|with each other)\b",
+              r"\blandmine[s]?\b", r"\bscope[- ]creep\b"]},
     # ---- HIGH: Tier-1 vocabulary and the strongest structural tells ----
     {"id": "tier1-vocab", "label": "Tier-1 banned vocabulary", "sev": "high",
      "fix": "Replace with a plain word (delve->look at, leverage->use, robust->solid, seamless->smooth, utilise->use). See SKILL.md B4.",
