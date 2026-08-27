@@ -297,7 +297,7 @@ impl Engine {
             warn!(error = %e, "annexe retention sweep failed (fail-open)");
         }
         info!(remote = %remote_dir, "dispatching to HP");
-        dispatch::clone_to_hp(&repo_path, &self.runtime.hp_host, &remote_dir, &repo_name)?;
+        clone_repo_and_siblings(&self.runtime.hp_host, &repo_path, &remote_dir, &repo_name, &cfg.annexe_include)?;
 
         // Pre-flight probe: the checkout must exist and be non-empty on HP
         // before any evaluator runs. A broken environment (vanished cwd,
@@ -322,7 +322,7 @@ impl Engine {
                     &self.runtime.hp_host,
                     &format!("rm -rf {}", dispatch::shell_quote(&remote_dir)),
                 );
-                dispatch::clone_to_hp(&repo_path, &self.runtime.hp_host, &remote_dir, &repo_name)?;
+                clone_repo_and_siblings(&self.runtime.hp_host, &repo_path, &remote_dir, &repo_name, &cfg.annexe_include)?;
                 matches!(probe(&work_dir), Ok(out) if out.contains("PREFLIGHT-OK"))
             }
         };
@@ -753,6 +753,38 @@ fn conninfo_to_url(conninfo: &str) -> String {
         }
     }
     format!("postgres://{}:{}@{}:{}/{}", user, pass, host, port, db)
+}
+
+/// ADR-060: clone the target repo to the annexe, plus any `annexe_include`
+/// sibling repos its build/evaluators need. Each sibling extracts alongside the
+/// target under `remote_dir/<name>`, mirroring the workspace, so a Cargo
+/// `path = "../<name>"` resolves the same on the annexe as locally. A missing or
+/// unreadable sibling is warned and skipped — the build then fails legibly
+/// rather than the night crashing.
+fn clone_repo_and_siblings(
+    hp_host: &str,
+    repo_path: &Path,
+    remote_dir: &str,
+    repo_name: &str,
+    annexe_include: &[String],
+) -> Result<(), dispatch::DispatchError> {
+    dispatch::clone_to_hp(repo_path, hp_host, remote_dir, repo_name)?;
+    let workspace_root = repo_path.parent();
+    for inc in annexe_include {
+        // The annexe layout name = the final path component (matches `../<name>`).
+        let name = Path::new(inc).file_name().and_then(|s| s.to_str()).unwrap_or(inc);
+        let sibling = match workspace_root {
+            Some(root) => root.join(inc),
+            None => PathBuf::from(inc),
+        };
+        if !sibling.is_dir() {
+            warn!(sibling = %inc, "annexe_include: sibling not found locally — skipping (build may fail on its path-deps)");
+            continue;
+        }
+        info!(sibling = %name, "annexe_include: shipping sibling to annexe");
+        dispatch::clone_to_hp(&sibling, hp_host, remote_dir, name)?;
+    }
+    Ok(())
 }
 
 fn git_head(repo: &Path) -> Option<String> {

@@ -220,6 +220,7 @@ mod tests {
                 cmd: "cargo build".into(),
                 degrade_on_wasm_failure: false,
             }),
+            annexe_include: vec![],
             evaluator_entrypoints: {
                 let mut m = HashMap::new();
                 m.insert("bench".into(), "cargo test".into());

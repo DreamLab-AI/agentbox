@@ -40,6 +40,14 @@ pub struct DreamConfig {
     pub control_plane_probes: Vec<String>,
     #[serde(default)]
     pub build_step: Option<BuildStep>,
+    /// Sibling workspace repos (names relative to the workspace root) this repo's
+    /// build/evaluators need — e.g. a crate with a Cargo `path = "../<sibling>"`
+    /// dep on another repo. Each is archived from its own HEAD and extracted
+    /// alongside the target on the annexe, mirroring the workspace layout
+    /// (`remote_dir/<repo>` + `remote_dir/<sibling>`), so those path-deps resolve
+    /// (ADR-060). Empty ⇒ current behaviour, byte-for-byte.
+    #[serde(default)]
+    pub annexe_include: Vec<String>,
     #[serde(default)]
     pub evaluator_entrypoints: HashMap<String, String>,
     #[serde(default)]
@@ -223,6 +231,18 @@ mod tests {
     use super::*;
 
     #[test]
+    fn annexe_include_parses_and_defaults() {
+        let absent: DreamConfig =
+            serde_json::from_str(r#"{"repo":"o/r","slots":[{"deep":"d","scan":[]}]}"#).unwrap();
+        assert!(absent.annexe_include.is_empty(), "absent → empty (byte-identical when off)");
+        let present: DreamConfig = serde_json::from_str(
+            r#"{"repo":"o/r","slots":[{"deep":"d","scan":[]}],"annexeInclude":["nostr-rust-forum","solid-pod-rs"]}"#,
+        )
+        .unwrap();
+        assert_eq!(present.annexe_include, vec!["nostr-rust-forum".to_string(), "solid-pod-rs".to_string()]);
+    }
+
+    #[test]
     fn slot_rotation() {
         let cfg = DreamConfig {
             repo: "test/repo".into(),
@@ -244,6 +264,7 @@ mod tests {
             bonus_moduli: HashMap::new(),
             control_plane_probes: vec![],
             build_step: None,
+            annexe_include: vec![],
             evaluator_entrypoints: HashMap::new(),
             competitors: vec![],
             adr_convention: default_adr_convention(),
@@ -273,6 +294,7 @@ mod tests {
             bonus_moduli: mods,
             control_plane_probes: vec![],
             build_step: None,
+            annexe_include: vec![],
             evaluator_entrypoints: HashMap::new(),
             competitors: vec![],
             adr_convention: default_adr_convention(),
@@ -297,6 +319,7 @@ mod tests {
             bonus_moduli: HashMap::new(),
             control_plane_probes: vec![],
             build_step: None,
+            annexe_include: vec![],
             evaluator_entrypoints: HashMap::new(),
             competitors: vec![],
             adr_convention: default_adr_convention(),

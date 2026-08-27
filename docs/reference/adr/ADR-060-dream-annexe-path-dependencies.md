@@ -1,7 +1,8 @@
 # ADR-060: Dream annexe — evaluate workspace / path-dependency repos
 
-- **Status:** Proposed (needs the live HP annexe to validate — do not ship blind)
-- **Date:** 2026-08-26
+- **Status:** Accepted — mechanism built + unit-tested (2026-08-27). Per-repo
+  config (agentbox) validated on the live annexe by one `/dream run agentbox`.
+- **Date:** 2026-08-26 (built 2026-08-27)
 - **Relates to:** [ADR-052](ADR-052-dream-machine-hp-annexe.md) (dream engine + HP annexe),
   the one-week dreaming audit (2026-08-26)
 
@@ -22,7 +23,27 @@ runs → the night is INCONCLUSIVE by construction, every night, until the dry-s
 breaker benches the repo (nostr-rust-forum hit streak 7). This is the **single biggest
 lever** in the audit: fixing it flips three repos from unevaluable to evaluable.
 
-## Decision (proposed)
+## Findings from the build (2026-08-27)
+
+Investigating the actual repos corrected the audit's blanket "path-deps" reading:
+
+- **agentbox** is the genuine external-sibling case: `services/nostr-pod-bridge`
+  has Cargo `path`-deps on **nostr-rust-forum** and **solid-pod-rs** (separate
+  workspace repos), absent from agentbox's lone archive — so its `sovereign-mesh`
+  slot went INCONCLUSIVE 4 nights and parked it. Fixed here: `annexeInclude:
+  ["nostr-rust-forum", "solid-pod-rs"]` **plus** a `sovereign-mesh-bridge`
+  evaluator (`cargo build` on the bridge) — shipping the siblings alone is inert
+  without an evaluator that actually builds against them.
+- **solid-pod-rs**'s `../solid-pod-rs-*` deps are **internal `crates/` members**,
+  fully inside its own archive — they resolve already; its INCONCLUSIVE cause is
+  elsewhere (evaluator), *not* path-deps. No `annexeInclude` needed.
+- **nostr-rust-forum** has **no** `../` path-deps; its blocker is the `perf`
+  evaluator (`cargo bench -p nostr-bbs-core`), a separate fix.
+
+So the mechanism unblocks agentbox specifically; the other two Rust repos need
+per-repo evaluator work, not sibling shipping.
+
+## Decision
 
 Let a repo **declare the sibling paths its build needs**, and ship them alongside it.
 

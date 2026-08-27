@@ -46,6 +46,7 @@ Any repository under the workspace root is nominated by dropping a `dream.config
 | `slots` | array (required) | Rotating focus areas. Each is `{ "deep": "<theme>", "scan": ["<area>", …] }`. Tonight's slot = `dayInt % slots.length`. |
 | `bonusModuli` | map | `{ "<modulus>": "<extra dive>" }`. A dive fires when `dayInt % modulus == 0` — periodic deep passes layered on the daily slot. |
 | `buildStep` | object | `{ "cmd": "<build command>", "degradeOnWasmFailure": false }`. Run on the annexe before evaluators. |
+| `annexeInclude` | array | Sibling workspace repos this repo's build/evaluators need — e.g. a crate with a Cargo `path = "../<sibling>"` dep on another repo. Each is archived from its own HEAD and extracted alongside the target on the annexe (`remote_dir/<repo>` + `remote_dir/<sibling>`), mirroring the workspace so the path-deps resolve ([ADR-060](../reference/adr/ADR-060-dream-annexe-path-dependencies.md)). Empty/absent ⇒ unchanged. Shipping siblings only helps if an evaluator actually builds against them. |
 | `evaluatorEntrypoints` | map | `{ "<name>": "<command>" }`. Each is run on the annexe; its stdout tail becomes evidence. **This is the load-bearing field** — see [evaluator liveness](#evaluator-liveness-the-1-failure-mode). |
 | `competitors` | array | Named comparators the prompt asks the model to beat. |
 | `adrConvention` | string | ADR numbering convention (default `"4-digit"`). |
