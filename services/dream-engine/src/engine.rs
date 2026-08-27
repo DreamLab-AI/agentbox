@@ -9,6 +9,7 @@ use crate::dispatch;
 use crate::inbox;
 use crate::ledger::{self, LedgerRow};
 use crate::llm::{self, LlmConfig, Provider};
+use crate::persist;
 use crate::ruvector::{self, DreamFinding, RuVectorConfig};
 use crate::verdict::{self, Verdict};
 use crate::witness;
@@ -462,6 +463,35 @@ impl Engine {
             }
         }
 
+        // 9c. Persist the candidate as a DRAFT PR (ADR-061) — only on ACCEPT,
+        //     only when enabled, only if the report carries a candidate patch.
+        //     Fail-open: a push/PR failure never fails the night; the win still
+        //     lands in the report/ledger/memory. The merge stays human.
+        let mut pr_ref = "NONE".to_string();
+        if matches!(v, Verdict::Accept) && self.runtime.persist_accepts {
+            match persist::extract_patch(&report) {
+                Some(patch) => {
+                    let branch = persist::branch_name(&slot.deep, date);
+                    let title = format!("dream({}): {}", slot.deep, tail(&finding, 60));
+                    let body = format!(
+                        "Draft PR opened by the dream engine on an ACCEPT night ({night_id}). \
+                         Witness `{wit_short}`. A human decides the merge — evaluation is not \
+                         promotion.\n\n**Finding:** {finding}"
+                    );
+                    match persist::persist_accept(&repo_path, &cfg.repo, &branch, &patch, &title, &body) {
+                        Ok(out) => {
+                            info!(branch = %out.branch, pushed = out.pushed, pr = ?out.pr_url, "candidate persisted as draft PR");
+                            pr_ref = out.pr_url.clone().unwrap_or_else(|| {
+                                if out.pushed { format!("branch:{}", out.branch) } else { "PERSIST-LOCAL".into() }
+                            });
+                        }
+                        Err(e) => warn!(error = %e, "persist failed (fail-open) — win in report/ledger only"),
+                    }
+                }
+                None => info!("ACCEPT night carries no candidate patch — nothing to persist"),
+            }
+        }
+
         // 10. Ledger row.
         let ledger_path = repo_path.join(&cfg.ledger_path);
         let row = LedgerRow {
@@ -469,7 +499,7 @@ impl Engine {
             deep: slot.deep.clone(),
             finding: finding.clone(),
             issue: "NONE".into(),
-            pr: "NONE".into(),
+            pr: pr_ref.clone(),
             evaluated: "yes".into(),
             verdict: v.as_str().into(),
             effect: String::new(),

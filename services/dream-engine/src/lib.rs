@@ -5,6 +5,7 @@ pub mod engine;
 pub mod inbox;
 pub mod ledger;
 pub mod llm;
+pub mod persist;
 pub mod ruvector;
 pub mod verdict;
 pub mod witness;

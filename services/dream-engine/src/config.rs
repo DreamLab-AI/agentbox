@@ -142,6 +142,11 @@ pub struct RuntimeConfig {
     /// (skipped in nightly all-repos mode). Decisive verdicts reset the streak.
     #[serde(default = "default_prune_streak")]
     pub prune_dry_streak: usize,
+    /// On an ACCEPT night, push the candidate as a `dream/*` branch + DRAFT PR
+    /// (ADR-061) so the win becomes a reviewable artifact instead of an
+    /// evaporating report. Draft only — the merge stays human.
+    #[serde(default = "default_true")]
+    pub persist_accepts: bool,
 }
 
 fn default_true() -> bool {
