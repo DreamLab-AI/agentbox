@@ -5,3 +5,4 @@
 | 2026-08-17 | hooks-pipeline | Given the six config/hooks/*.cjs hooks are syntactically valid at d4f5905, when  | NONE | NONE | yes | INCONCLUSIVE |  | c3a5b17b759e |  |
 | 2026-08-18 | sovereign-mesh | Given the sovereign-mesh surfaces (nostr-bridge, relay-slot) are path-dependent  | NONE | NONE | yes | INCONCLUSIVE |  | 8bfd1da98223 |  |
 | 2026-08-18 | sovereign-mesh | Given the annexe clone at `8a495e4` cannot resolve the sibling path dependencies | NONE | NONE | yes | INCONCLUSIVE |  | 4becd512f2e4 |  |
+| 2026-08-27 | ontology-monitor | Given the 2026-08-27 annexe bundle at commit `11d91abd` (green build, 64/64 drea | NONE | NONE | yes | INCONCLUSIVE |  | c004af3ed500 |  |
