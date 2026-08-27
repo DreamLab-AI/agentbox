@@ -135,6 +135,7 @@ Tonight's deep dive: **{deep}**. Surface scans: **{scans}**.
 18. Write the report (this document).
 19. Append one ledger row to `{ledger_path}`:
     `| date | deep | finding (≤80 chars) | issue | PR | evaluated? | verdict | effect | witness | prior-night fates |`
+    The **finding** column MUST be a concrete, self-contained ≤80-char statement of what tonight established — NEVER `INCONCLUSIVE — see report`, `see gist`, or any bare pointer. The ledger is the only cross-night memory; a row that points elsewhere is a lost night. For an INCONCLUSIVE night, name the blocker itself (e.g. `annexe cannot resolve sibling path-deps`, `perf deep has no evaluator`, `Loom timeout`) so the dry-streak and duplicate-direction signals can read it and stop retrying a dead end.
     The **prior-night fates** column MUST use space-separated `#<PR>:<FATE>` tokens, FATE ∈ `MERGED|CLOSED|OPEN|STALE` (e.g. `#7:MERGED #6:CLOSED`) — the token form ONLY, never prose. This column is machine-read: `ledger signals` derives `zeroMergeStreak` from it, and the operator cockpit's pending-merge queue (ADR-056) treats a `#N:MERGED` token as the merge record. Free prose here is silently ignored, so a merge written as prose is invisible to both.
 20. If ACCEPT: create branch `{branch_prefix}<deep>-<date>`, open draft PR, link issue.
 21. If REJECT or INCONCLUSIVE: no branch, no PR. Record locally.
@@ -289,5 +290,17 @@ mod tests {
         // (ADR-056) can machine-read merges. Prose is silently ignored.
         assert!(prompt.contains("#<PR>:<FATE>"));
         assert!(prompt.contains("MERGED|CLOSED|OPEN|STALE"));
+    }
+
+    #[test]
+    fn prompt_forbids_opaque_findings() {
+        let cfg = test_config();
+        let slot = &cfg.slots[0];
+        let prompt = compile(&cfg, slot, 20260815, &[]);
+        // The finding column must be concrete — "see report" is banned so the ledger
+        // stays useful as cross-night memory and INCONCLUSIVE blockers stay legible
+        // to the dry-streak / duplicate-direction signals.
+        assert!(prompt.contains("see report"));
+        assert!(prompt.contains("name the blocker itself"));
     }
 }
