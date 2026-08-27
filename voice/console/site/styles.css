@@ -27,6 +27,7 @@
   --cyan:         #00d4ff;   /* info / waiting */
   --purple:       #8b5cf6;   /* PRODUCT ACCENT — agentbox in the substrate scheme */
   --purple-bright:#a78bfa;
+  --purple-deep:  #6d28d9;   /* accent BG for white text — AA-safe (white ≈7.1:1) */
   --emerald:      #10b981;   /* healthy / idle */
 
   --bg:           #0a0a0d;   /* deepest surface (VisionFlow bg-dark) */
@@ -43,7 +44,7 @@
 
   --success:      #10b981;   /* emerald */
   --warning:      #f59e0b;   /* amber */
-  --error:        #e94560;   /* VisionFlow crimson */
+  --error:        #f43f5e;   /* crimson (VisionFlow-toned, AA-safe as text ≥4.6:1) */
 
   --radius:       12px;
   --radius-sm:    8px;
@@ -176,7 +177,7 @@ body {
 }
 .chip.ok  { color: var(--fg); border-color: rgba(16,185,129,.4); }
 .chip.ok::before  { background: var(--success); box-shadow: 0 0 8px rgba(16,185,129,.6); }
-.chip.unavailable { color: var(--fg); border-color: rgba(233,69,96,.45); }
+.chip.unavailable { color: var(--fg); border-color: rgba(244,63,94,.45); }
 .chip.unavailable::before { background: var(--error); }
 .chip.unauthorised { color: var(--fg); border-color: rgba(245,158,11,.5); }
 .chip.unauthorised::before { background: var(--warning); }
@@ -333,7 +334,7 @@ body {
 .state-running .pill.state { color: var(--amber-active); border-color: rgba(251,191,36,.35); }
 .state-waiting .pill.state { color: var(--teal-bright); border-color: rgba(56,224,255,.35); }
 .state-idle    .pill.state { color: var(--success); border-color: rgba(16,185,129,.35); }
-.state-error   .pill.state { color: var(--error); border-color: rgba(233,69,96,.4); }
+.state-error   .pill.state { color: var(--error); border-color: rgba(244,63,94,.4); }
 .pill.branch { color: var(--teal-bright); }
 .pill.branch::before { content: '⑂ '; opacity: .7; }
 .pill.age { color: var(--fg-faint); }
@@ -516,8 +517,8 @@ body {
 }
 .appr .approve { background: rgba(16,185,129,.15); color: #86efac; border-color: rgba(16,185,129,.4); }
 .appr .approve:hover { background: rgba(16,185,129,.28); }
-.appr .deny { background: rgba(233,69,96,.13); color: #fca5a5; border-color: rgba(233,69,96,.4); }
-.appr .deny:hover { background: rgba(233,69,96,.26); }
+.appr .deny { background: rgba(244,63,94,.13); color: #fca5a5; border-color: rgba(244,63,94,.4); }
+.appr .deny:hover { background: rgba(244,63,94,.26); }
 .appr button:disabled { opacity: .5; cursor: default; }
 .appr .a-note { font: 500 11px var(--font-mono); color: var(--fg-faint); }
 .appr .a-note.err { color: var(--error); }
@@ -544,13 +545,14 @@ input::placeholder { color: var(--fg-faint); }
 input:focus { outline: none; border-color: var(--purple); box-shadow: 0 0 0 2px rgba(139,92,246,.30); }
 button.send {
   min-height: 40px; min-width: 44px;
-  /* Primary action → the purple product accent, with AA-safe dark text
-     (white on #8b5cf6 is only ~3.1:1; #150a2a is ~6:1). */
-  background: var(--purple); color: #150a2a;
+  /* Primary action → deep purple with white text. axe measured dark text (#150a2a)
+     on the lighter accent #8b5cf6 at 4.47:1 — just under WCAG AA; white on the
+     deeper #6d28d9 is ~7.1:1. Hover stays a mid-purple that also clears AA (~5.8:1). */
+  background: var(--purple-deep); color: #fff;
   border: 0; border-radius: var(--radius-sm);
   padding: 8px 16px; font: 700 13px var(--font-sans); cursor: pointer;
 }
-button.send:hover { background: var(--purple-bright); }
+button.send:hover { background: #7c3aed; }
 button.send:disabled { opacity: .5; cursor: default; }
 
 /* ───────────────────────────────────── auth dialog ────────────────────── */
