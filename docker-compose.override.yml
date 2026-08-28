@@ -76,6 +76,7 @@ services:
       - ${PROJECT_DIR_2}:/home/devuser/workspace/project2:rw
       - ${PROJECT_DIR_3}:/home/devuser/workspace/project3:rw
       - ${PROJECT_DIR_4}:/home/devuser/workspace/project4:rw
+      - ${PROJECT_DIR_5}:/home/devuser/workspace/project5:rw
       # Q20 (escalation accepted-with-mitigation): the writable bind to the
       # host's .claude is required for plugin install state, OAuth token
       # refresh, and settings updates. The risk that a compromised in-container
