@@ -59,7 +59,7 @@ jobs:
         run: sh scripts/ci/check-no-npx-latest.sh
 
       - name: lint-skills (skill estate structure gate — required before rebuild)
-        run: sh skills/lint-skills.sh
+        run: bash skills/lint-skills.sh
 
       - name: check-manifest-catalogue (ADR-039 gate-path parity)
         run: node scripts/ci/check-manifest-catalogue.js
