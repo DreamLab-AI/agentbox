@@ -1,5 +1,6 @@
 pub mod compile;
 pub mod config;
+pub mod context;
 pub mod dispatch;
 pub mod engine;
 pub mod inbox;

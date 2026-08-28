@@ -5,6 +5,7 @@ use tracing::{info, warn};
 
 use crate::compile;
 use crate::config::{self, DreamConfig, RuntimeConfig};
+use crate::context;
 use crate::dispatch;
 use crate::inbox;
 use crate::ledger::{self, LedgerRow};
@@ -401,16 +402,53 @@ impl Engine {
                 recent.join("\n")
             ));
         }
-        prompt.push_str(&format!(
-            "## Build output (tail)\n```\n{}\n```\n\n",
-            redact(tail(&build_out, 3000))
-        ));
-        for (name, out) in &eval_outs {
-            prompt.push_str(&format!(
-                "## Evaluator `{}` output (tail)\n```\n{}\n```\n\n",
-                name,
-                redact(tail(out, 6000))
-            ));
+        // 5b. Self-GC context governance (ADR-070): persist tonight's receipts
+        //     untruncated as sidecars, then let a side-channel planner call
+        //     assign fold/mask/prune/restore over tonight's and prior nights'
+        //     receipt objects. The governed pack replaces the blind tail()
+        //     truncation below. Fail-open at every stage: any error lands on
+        //     the legacy path, and the sidecars are still written (recoverable
+        //     evidence is worth keeping even when governance is off).
+        let night_dir = self.artefact_dir.join(&night_id);
+        let mut governed_pack: Option<String> = None;
+        match std::fs::create_dir_all(&night_dir).and_then(|_| {
+            context::persist_receipts(&night_dir, &night_id, &build_out, &eval_outs)
+        }) {
+            Ok(mut objects) => {
+                if context::enabled() {
+                    objects.extend(context::load_prior_objects(
+                        &self.artefact_dir,
+                        &repo_name,
+                        date,
+                    ));
+                    governed_pack = context::govern(
+                        &self.llm,
+                        self.llm_fallback.as_ref(),
+                        &objects,
+                        &slot.deep,
+                        &slot.scan.join(", "),
+                        redact,
+                    )
+                    .await;
+                }
+            }
+            Err(e) => warn!(error = %e, "receipt sidecar persist failed (fail-open)"),
+        }
+        match governed_pack {
+            Some(pack) => prompt.push_str(&pack),
+            None => {
+                prompt.push_str(&format!(
+                    "## Build output (tail)\n```\n{}\n```\n\n",
+                    redact(tail(&build_out, 3000))
+                ));
+                for (name, out) in &eval_outs {
+                    prompt.push_str(&format!(
+                        "## Evaluator `{}` output (tail)\n```\n{}\n```\n\n",
+                        name,
+                        redact(tail(out, 6000))
+                    ));
+                }
+            }
         }
 
         // 6. LLM call: primary (with its internal retry), then the fallback
