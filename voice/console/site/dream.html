@@ -90,15 +90,24 @@ function setState(text, cls) {
   c.className = 'chip' + (cls ? ' ' + cls : '');
 }
 
-/** Build a GitHub link for a `#N` reference if the repo slug is `owner/name`. */
+/**
+ * Build a GitHub link for a ledger reference. Accepts a bare `#N` (resolved
+ * against the repo's own slug) or a cross-repo `owner/name#N` (annexe nights
+ * sometimes file dream-cycle issues/PRs against the upstream repo — the ref
+ * carries its true home so the link resolves).
+ */
 function refLink(repo, ref, kind) {
-  const m = /^#?(\d+)$/.exec((ref || '').trim());
-  if (!m || !/^[^/\s]+\/[^/\s]+$/.test(repo || '')) return null;
+  const raw = (ref || '').trim();
+  const cross = /^([^/\s#]+\/[^/\s#]+)#(\d+)$/.exec(raw);
+  const bare = /^#?(\d+)$/.exec(raw);
+  const slug = cross ? cross[1] : repo;
+  const num = cross ? cross[2] : bare && bare[1];
+  if (!num || !/^[^/\s]+\/[^/\s]+$/.test(slug || '')) return null;
   const a = document.createElement('a');
-  a.href = `https://github.com/${repo}/${kind === 'issue' ? 'issues' : 'pull'}/${m[1]}`;
+  a.href = `https://github.com/${slug}/${kind === 'issue' ? 'issues' : 'pull'}/${num}`;
   a.target = '_blank';
   a.rel = 'noopener';
-  a.textContent = '#' + m[1];
+  a.textContent = cross && slug !== repo ? `${slug}#${num}` : '#' + num;
   return a;
 }
 

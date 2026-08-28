@@ -174,13 +174,33 @@ function mergedFromFates(rows) {
 }
 
 /**
- * The judgment-broker queue (ADR-056): rows awaiting a human merge — verdict
- * ACCEPT, a real PR, and not yet recorded `#N:MERGED` by any row's fate tokens.
- * Deduped by PR (latest row's context wins). `repo` is the slug for the GitHub
- * link the panel builds. Pure signal over the ledger — no network, no merge.
+ * PR numbers whose latest recorded fate is terminal — MERGED or CLOSED. A
+ * candidate can be resolved without merging (consolidated into another PR,
+ * superseded, rejected by the human gate); either way it has left the queue.
+ * Same last-token-wins parse as `mergedFromFates`.
+ */
+function resolvedFromFates(rows) {
+  const fate = new Map();
+  const re = /#(\d+)\s*:\s*(MERGED|CLOSED|OPEN|STALE)\b/gi;
+  for (const r of rows) {
+    let m;
+    while ((m = re.exec(r.priorFates || '')) !== null) fate.set(m[1], m[2].toUpperCase());
+  }
+  const resolved = new Set();
+  for (const [pr, f] of fate) if (f === 'MERGED' || f === 'CLOSED') resolved.add(pr);
+  return resolved;
+}
+
+/**
+ * The judgment-broker queue (ADR-056): rows awaiting a human decision — verdict
+ * ACCEPT, a real PR, and no terminal `#N:MERGED` / `#N:CLOSED` fate recorded by
+ * any row's fate tokens (CLOSED counts: a consolidated-elsewhere candidate is
+ * decided, not awaiting review). Deduped by PR (latest row's context wins).
+ * `repo` is the slug for the GitHub link the panel builds. Pure signal over
+ * the ledger — no network, no merge.
  */
 function pendingMerges(rows, repo) {
-  const merged = mergedFromFates(rows);
+  const merged = resolvedFromFates(rows);
   const byPr = new Map();
   for (const r of rows) {
     if ((r.verdict || '').toUpperCase() !== 'ACCEPT') continue;
@@ -265,6 +285,7 @@ module.exports = {
   verdictStats,
   latestNights,
   mergedFromFates,
+  resolvedFromFates,
   pendingMerges,
   resolveLedgerPath,
   discoverNominatedRepos,

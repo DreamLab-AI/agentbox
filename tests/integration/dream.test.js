@@ -16,6 +16,7 @@ const {
   verdictStats,
   latestNights,
   mergedFromFates,
+  resolvedFromFates,
   pendingMerges,
   resolveLedgerPath,
   discoverNominatedRepos,
@@ -109,8 +110,27 @@ describe('dream-ledger: pending merges (ADR-056)', () => {
       rowP('2026-08-14', 'ACCEPT', '#8', '#8:MERGED'),
       rowP('2026-08-15', 'INCONCLUSIVE', 'NONE', '#8:CLOSED'),
     ]));
-    expect([...mergedFromFates(rows)]).toEqual([]);        // last fate is CLOSED
-    expect(pendingMerges(rows, 'o/r').map((p) => p.prNumber)).toEqual(['8']); // so #8 is still pending
+    expect([...mergedFromFates(rows)]).toEqual([]);        // last fate is CLOSED, not merged
+    // but CLOSED is still terminal — #8 has left the queue either way
+    expect(pendingMerges(rows, 'o/r')).toHaveLength(0);
+  });
+
+  test('CLOSED is terminal: a consolidated-elsewhere candidate leaves the queue', () => {
+    const { rows } = parseLedger(ledger([
+      rowP('2026-08-14', 'ACCEPT', '#8', ''),
+      rowP('2026-08-15', 'ACCEPT', '#10', '#8:CLOSED'),   // #8 closed unmerged; #10 pending
+    ]));
+    expect(pendingMerges(rows, 'o/r').map((p) => p.prNumber)).toEqual(['10']);
+    expect([...resolvedFromFates(rows)]).toEqual(['8']);
+  });
+
+  test('OPEN and STALE fates do not clear the queue', () => {
+    const { rows } = parseLedger(ledger([
+      rowP('2026-08-14', 'ACCEPT', '#8', ''),
+      rowP('2026-08-15', 'INCONCLUSIVE', 'NONE', '#8:OPEN'),
+      rowP('2026-08-16', 'INCONCLUSIVE', 'NONE', '#8:STALE'),
+    ]));
+    expect(pendingMerges(rows, 'o/r').map((p) => p.prNumber)).toEqual(['8']);
   });
 
   test('dedupes a PR mentioned in multiple ACCEPT rows', () => {
