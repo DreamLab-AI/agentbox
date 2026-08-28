@@ -160,3 +160,5 @@ portfinder-*.tgz
 # OpenMed provisioned model + helix pipeline (licence-gated, never committed)
 openmed-sidecar/model/
 openmed-sidecar/server/
+# Podcast promotion pipeline runtime state and generated dossiers
+skills/podcast-knowledge-ingest/promotions/

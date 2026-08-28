@@ -77,6 +77,7 @@
 import http from 'node:http';
 import net from 'node:net';
 import crypto from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve as pathResolve } from 'node:path';
@@ -149,31 +150,90 @@ function parseUpstreamTarget(raw, label) {
   return { hostname: u.hostname, port: Number.parseInt(u.port || '80', 10), protocol: u.protocol };
 }
 
-const ROUTES = (() => {
-  const raw = process.env.NIP98_PROXY_ROUTES;
-  if (!raw) return [];
-  let parsed;
+function normalizeRoute(r, i, source) {
+  if (!r || typeof r.prefix !== 'string' || !r.prefix.startsWith('/') || r.prefix === '/') {
+    throw new Error(`${source} route[${i}]: prefix must be a path starting with "/" (not "/" itself)`);
+  }
+  if (typeof r.target !== 'string') throw new Error(`${source} route[${i}]: target required`);
+  // ADR-069 credential exchange: a route may name an env var whose value is
+  // injected upstream as `Authorization: Bearer <token>`, REPLACING whatever
+  // the browser sent. The operator authenticates to the proxy (NIP-98 /
+  // NIP-07 session); the proxy authenticates to the upstream with a secret
+  // the browser never holds (e.g. tab0-bridge's BRIDGE_TOKEN).
+  let bearer = null;
+  if (r.bearer_env !== undefined || r.bearerEnv !== undefined) {
+    const envName = String(r.bearer_env ?? r.bearerEnv);
+    const token = process.env[envName];
+    if (!token) {
+      throw new Error(`${source} route[${i}]: bearer_env ${envName} is not set in the proxy environment (fail closed)`);
+    }
+    bearer = token;
+  }
+  return {
+    prefix: r.prefix.endsWith('/') ? r.prefix : `${r.prefix}/`,
+    strip: r.strip !== false,
+    upstream: parseUpstreamTarget(r.target, `${source} route[${i}].target`),
+    bearer,
+  };
+}
+
+// Boot-class config file (ADR-069): the supervisord environment= line is baked
+// at image build and cannot safely carry JSON. The entrypoint projects
+// agentbox.toml [interaction_plane.proxy] into this file every boot; when it
+// exists it extends ROUTES and the pubkey allowlist without a rebuild.
+const CONFIG_FILE = process.env.NIP98_PROXY_CONFIG_FILE
+  || '/home/devuser/workspace/.agentbox/nip98-proxy-config.json';
+
+const FILE_CONFIG = (() => {
+  let raw;
   try {
-    parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) throw new Error('expected a JSON array');
-    return parsed.map((r, i) => {
-      if (!r || typeof r.prefix !== 'string' || !r.prefix.startsWith('/') || r.prefix === '/') {
-        throw new Error(`route[${i}]: prefix must be a path starting with "/" (not "/" itself)`);
+    raw = readFileSync(CONFIG_FILE, 'utf-8');
+  } catch {
+    return { routes: [], allowedPubkeys: [] }; // absent file = no extra config
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    const routes = Array.isArray(parsed.routes) ? parsed.routes : [];
+    const allowed = Array.isArray(parsed.allowedPubkeys) ? parsed.allowedPubkeys : [];
+    for (const pk of allowed) {
+      if (!/^[0-9a-f]{64}$/i.test(String(pk))) {
+        throw new Error(`allowedPubkeys entry ${pk} is not a 64-char hex pubkey`);
       }
-      if (typeof r.target !== 'string') throw new Error(`route[${i}]: target required`);
-      return {
-        prefix: r.prefix.endsWith('/') ? r.prefix : `${r.prefix}/`,
-        strip: r.strip !== false,
-        upstream: parseUpstreamTarget(r.target, `route[${i}].target`),
-      };
-    });
+    }
+    return { routes, allowedPubkeys: allowed.map((p) => String(p).toLowerCase()) };
   } catch (err) {
-    // Fatal, matching invalid AOE_UPSTREAM: a silently dropped route would
-    // surface as confusing 404s from the wrong upstream at the trust boundary.
-    console.error(`[nip98-proxy] invalid NIP98_PROXY_ROUTES: ${err.message}`);
+    // Fatal: a silently dropped route/allowlist at the trust boundary is worse
+    // than a loud crash-loop (matches NIP98_PROXY_ROUTES failure semantics).
+    console.error(`[nip98-proxy] invalid config file ${CONFIG_FILE}: ${err.message}`);
     process.exit(1);
   }
 })();
+
+const ROUTES = (() => {
+  const out = [];
+  const raw = process.env.NIP98_PROXY_ROUTES;
+  try {
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) throw new Error('expected a JSON array');
+      parsed.forEach((r, i) => out.push(normalizeRoute(r, i, 'NIP98_PROXY_ROUTES')));
+    }
+    FILE_CONFIG.routes.forEach((r, i) => {
+      const norm = normalizeRoute(r, i, CONFIG_FILE);
+      if (!out.some((existing) => existing.prefix === norm.prefix)) out.push(norm); // env wins on conflict
+    });
+    return out;
+  } catch (err) {
+    // Fatal, matching invalid AOE_UPSTREAM: a silently dropped route would
+    // surface as confusing 404s from the wrong upstream at the trust boundary.
+    console.error(`[nip98-proxy] invalid routes: ${err.message}`);
+    process.exit(1);
+  }
+})();
+
+// Merge config-file allowlist entries into the env-derived set (ADR-069):
+// either source alone activates the npub gate; entries are unioned.
+for (const pk of FILE_CONFIG.allowedPubkeys) ALLOWED_PUBKEYS.add(pk);
 
 // Supervisord-friendly convenience route (see env docs above).
 if (process.env.NIP98_PROXY_MGMT_UPSTREAM && !ROUTES.some((r) => r.prefix === '/mgmt/')) {
@@ -206,9 +266,9 @@ function routeFor(rawUrl) {
       if (isBare) path = url === bare ? '/' : `/${url.slice(bare.length)}`;
       else path = `/${url.slice(r.prefix.length)}`;
     }
-    return { upstream: r.upstream, path };
+    return { upstream: r.upstream, path, bearer: r.bearer };
   }
-  return { upstream, path: url };
+  return { upstream, path: url, bearer: null };
 }
 
 function log(level, msg, extra) {
@@ -631,6 +691,13 @@ const server = http.createServer((req, res) => {
     headers['x-forwarded-proto'] = (req.headers['x-forwarded-proto'] || 'http').split(',')[0].trim();
     headers['x-agentbox-pubkey'] = auth.pubkey;
     headers['x-agentbox-auth-mode'] = auth.mode;
+    // ADR-069 credential exchange: for routes that declare a bearer, inject the
+    // upstream's own token when the operator authenticated by session cookie or
+    // break-glass (those carry no upstream-verifiable credential). A genuine
+    // NIP-98 header passes through untouched — upstreams like management-api
+    // re-verify the signature themselves, and governance decisions REQUIRE the
+    // operator's signed identity (a bearer alone must never release a gate).
+    if (route.bearer && auth.mode !== 'nip98') headers.authorization = `Bearer ${route.bearer}`;
     // We resend a fixed buffer (transfer-encoding was hop-by-hop and dropped), so
     // declare an accurate content-length only when there is a body to send.
     if (rawBody.length > 0) headers['content-length'] = String(rawBody.length);
@@ -728,6 +795,9 @@ server.on('upgrade', (req, socket, head) => {
     lines.push(`X-Forwarded-Proto: ${(req.headers['x-forwarded-proto'] || 'http').split(',')[0].trim()}`);
     lines.push(`X-Agentbox-Pubkey: ${auth.pubkey}`);
     lines.push(`X-Agentbox-Auth-Mode: ${auth.mode}`);
+    // ADR-069 credential exchange (WS): the upstream's own bearer, never the
+    // browser's; nip98-signed upgrades pass their own header (same rule as HTTP).
+    if (route.bearer && auth.mode !== 'nip98') lines.push(`Authorization: Bearer ${route.bearer}`);
     upstreamSocket.write(lines.join('\r\n') + '\r\n\r\n');
     if (head && head.length) upstreamSocket.write(head);
 

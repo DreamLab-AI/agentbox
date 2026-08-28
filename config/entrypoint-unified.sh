@@ -1189,6 +1189,36 @@ with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
   fi
 fi
 
+# ── ADR-069: project [interaction_plane.proxy] → nip98-proxy config file ──
+# Boot-class route + allowlist config for the sovereign ingress (supervisord
+# environment= cannot carry JSON). The proxy reads this at startup and fails
+# closed on malformed content. Reconciled every boot; absent section ⇒ file
+# removed (proxy then runs on baked env alone).
+_NIP98_CFG="/home/devuser/workspace/.agentbox/nip98-proxy-config.json"
+if [ -f "$AGENTBOX_CONFIG" ] && command -v python3 >/dev/null 2>&1; then
+  python3 - "$AGENTBOX_CONFIG" "$_NIP98_CFG" <<'PYEOF' 2>&1 | sed 's/^/  /' || true
+import json, os, sys, tomllib
+cfg_path, out_path = sys.argv[1], sys.argv[2]
+with open(cfg_path, 'rb') as f:
+    cfg = tomllib.load(f)
+proxy = (cfg.get('interaction_plane') or {}).get('proxy') or {}
+routes = proxy.get('routes') or []
+allowed = proxy.get('allowed_pubkeys') or []
+if not routes and not allowed:
+    if os.path.exists(out_path):
+        os.unlink(out_path)
+        print('[nip98-proxy] config section absent — removed stale config file')
+    sys.exit(0)
+out = {'routes': routes, 'allowedPubkeys': allowed}
+os.makedirs(os.path.dirname(out_path), exist_ok=True)
+with open(out_path, 'w') as f:
+    json.dump(out, f, indent=2)
+print(f'[nip98-proxy] projected {len(routes)} route(s), {len(allowed)} allowlisted pubkey(s)')
+PYEOF
+  chown 1000:1000 "$_NIP98_CFG" 2>/dev/null || true
+  chmod 600 "$_NIP98_CFG" 2>/dev/null || true
+fi
+
 # ── MCP bridge servers: NODE_PATH for baked @modelcontextprotocol/sdk ──
 _MCP_SERVERS_NODE_PATH="/opt/agentbox/mcp/servers/node_modules"
 
@@ -1716,6 +1746,21 @@ PYEOF
     done <<EOF
 $_PLUGIN_LIST
 EOF
+  fi
+
+  # --- Step 2b: Bridge baked MetaHarness package into the plugin's local
+  # resolution path (ADR-063/064). The ruflo-metaharness plugin resolves the
+  # `metaharness` npm package by walking up node_modules from its scripts dir
+  # (offline path (a) in _invoke.mjs findLocalPackageDir); without this link
+  # it falls through to the networked cache-install path and degrades on this
+  # offline container. The Nix closure ships the package at <store>/lib/metaharness.
+  if command -v metaharness >/dev/null 2>&1 && [ -d "$_PLUGIN_DIR/ruflo-metaharness" ]; then
+    _mh_pkg="$(dirname "$(dirname "$(readlink -f "$(command -v metaharness)")")")/lib/metaharness"
+    if [ -f "$_mh_pkg/package.json" ]; then
+      mkdir -p "$_PLUGIN_DIR/ruflo-metaharness/node_modules" 2>/dev/null || true
+      ln -sfn "$_mh_pkg" "$_PLUGIN_DIR/ruflo-metaharness/node_modules/metaharness" 2>/dev/null || true
+      echo "  [plugin] Bridged baked metaharness -> ruflo-metaharness/node_modules"
+    fi
   fi
 
   # --- Step 3: Write installed.json manifest for MCP server ---

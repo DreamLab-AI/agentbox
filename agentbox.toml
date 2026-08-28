@@ -1135,6 +1135,48 @@ dashboard   = "on"                  # aoe serve web dashboard (absorbs the never
 proxy_auth  = "nip98"               # sole-ingress reverse proxy verifies NIP-98 → session pubkey (WS4 / ADR-043 D4.6)
 proxy_port  = 9096                  # nip98-proxy listen port — the ONLY ingress to :9095 (N-05, invariant); free (adjacent to mgmt-api 9090)
 
+# ── Unified operator auth (ADR-069: dreamlab-ai auth adoption) ──────────────
+# The nip98-proxy is the ONE authenticator for every operator surface on the
+# :8444 console origin. Projected every boot into
+# workspace/.agentbox/nip98-proxy-config.json (boot apply class, no rebuild).
+# allowed_pubkeys activates the npub gate (ADR-045 D2) — the dreamlab identity
+# roster's operator key. Empty list = any validly-signed key (NOT recommended).
+[interaction_plane.proxy]
+allowed_pubkeys = [
+  "6407eed80e2a8646e41a5ddba0ae6619425fc54af40e2b30482b9623c682425a",  # operator-jjohare (dreamlab roster)
+  "11ed64225dd5e2c5e18f61ad43d5ad9272d08739d3a20dd25886197b0738663c",  # agentbox sovereign / house key (browsercontainer Podkey vault)
+]
+
+# Routes beyond the default AoE upstream. bearer_env names an env var whose
+# value replaces the browser credential upstream (credential exchange at the
+# trust boundary — the browser NEVER holds BRIDGE_TOKEN).
+[[interaction_plane.proxy.routes]]
+prefix = "/approvals"
+target = "http://127.0.0.1:9090"
+bearer_env = "MANAGEMENT_API_KEY"   # session-cookie reads; signed NIP-98 passes through (governance gates need the signature)
+
+[[interaction_plane.proxy.routes]]
+prefix = "/bridge"
+target = "http://127.0.0.1:8971"
+bearer_env = "BRIDGE_TOKEN"
+
+[[interaction_plane.proxy.routes]]
+prefix = "/dream"
+target = "http://127.0.0.1:9090"
+strip  = false
+bearer_env = "MANAGEMENT_API_KEY"
+
+[[interaction_plane.proxy.routes]]
+prefix = "/mgmt"
+target = "http://127.0.0.1:9090"
+bearer_env = "MANAGEMENT_API_KEY"
+
+[[interaction_plane.proxy.routes]]
+prefix = "/feed"
+target = "http://127.0.0.1:8971"
+strip  = false
+bearer_env = "BRIDGE_TOKEN"
+
 # Declarative sessions replacing tmux-autostart harness windows 8–14 (WS2). Each
 # seed becomes an AoE session under SESSION_PREFIX aoe_. eager_mandate defaults
 # false (mandates are lazy, minted on first pod write — ADR-043 D4.5); flip true
@@ -1215,6 +1257,7 @@ claude_code = true
 ruflo = true
 claude_flow = true  # legacy alias gate: claude-flow IS ruflo (upstream rename, github.com/ruvnet/ruflo) — either gate bakes the ONE consolidated closure, which ships `ruflo` + `claude-flow` + `claude-flow-mcp` bins
 agentic_qe = true
+metaharness = true  # ADR-064: bakes metaharness@0.3.2 + @metaharness/darwin@0.8.3 CLIs (the versions the ruflo-metaharness plugin pins); pin discipline per ADR-067
 nagual_qe = false  # disabled: upstream sqlx 0.9 SqlSafeStr compilation error
 codebase_memory = true  # MCP-2 (2026-07-22): binary IS baked (codebase-memory-mcp on PATH); the boot MCP-registry projector now registers it, so the CLAUDE.md "USE FIRST" mandate is truthful next rebuild — gate kept ON (not flipped)
 rust = true
@@ -1395,6 +1438,15 @@ enabled = false
 
 [[plugins.packages]]
 name = "ruflo-cost-tracker"
+enabled = true
+
+# --- MetaHarness integration (ADR-062/063) ---
+# Read/audit skills work from the git tree alone; score/genome/evolve/
+# security-bench need the toolchains.metaharness baked binaries (ADR-064).
+# Darwin invocations MUST pass --sandbox mock|agent (ADR-065); darwin is
+# proposer-only, promotion via the ADR-061 draft-PR chokepoint (ADR-066).
+[[plugins.packages]]
+name = "ruflo-metaharness"
 enabled = true
 
 # --- IPFS registry plugins (non-git) ---

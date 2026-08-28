@@ -43,7 +43,11 @@ let operatorPubkey = null; // cached x-only hex once the signer reveals it
 function refreshAuthBadge() {
   const badge = $('auth-state');
   badge.className = '';
-  if (operatorPubkey) {
+  if (sessionActive) {
+    badge.classList.add('signed');
+    badge.textContent = 'session';
+    badge.title = 'NIP-07 session cookie active (dreamlab auth) — click to re-authenticate';
+  } else if (operatorPubkey) {
     badge.classList.add('signed');
     badge.textContent = 'nostr ' + operatorPubkey.slice(0, 8) + '…';
     badge.title = 'signed NIP-98 as ' + operatorPubkey;
@@ -70,11 +74,12 @@ async function sha256hex(str) {
 // Map a browser path to the upstream-visible path Caddy forwards after
 // handle_path strips the route prefix.
 function stripPrefix(path) {
+  // ADR-069: /approvals /bridge /mgmt /feed now reach the nip98-proxy with
+  // their prefixes intact (Caddy `handle`, not `handle_path`) — the proxy
+  // verifies the u-tag against the unstripped path, then strips per its own
+  // route table. Only /aoe is still prefix-stripped by Caddy.
   if (path.startsWith('/aoe/')) return path.slice(4) || '/';        // /aoe/api/x → /api/x
-  if (path.startsWith('/approvals/')) return path.slice(10) || '/'; // /approvals/v1/x → /v1/x
-  if (path.startsWith('/bridge/')) return path.slice(7) || '/';     // /bridge/nostr/x → /nostr/x
-  if (path.startsWith('/mgmt/')) return path.slice(5) || '/';       // /mgmt/v1/x → /v1/x
-  return path;                                                      // /feed is handle (not handle_path) — unstripped
+  return path;
 }
 
 // Build a NIP-98 Authorization header for a governed request. Signs the
@@ -97,6 +102,7 @@ async function signNip98(method, path, bodyString) {
 //   preferBearer=false → writes: prefer NIP-98 (required for approvals), else
 //                        bearer (works for /aoe via break-glass), else nothing.
 async function authHeader(path, method, bodyString, preferBearer) {
+  if (sessionActive) return {}; // ADR-069: HttpOnly session cookie is the credential
   const governed = path.startsWith('/aoe/') || path.startsWith('/approvals/') || path.startsWith('/mgmt/');
   const bearer = getBearer();
   if (!governed) {
@@ -118,6 +124,22 @@ async function authHeader(path, method, bodyString, preferBearer) {
   if (bearer) return { Authorization: 'Bearer ' + bearer };
   return {};
 }
+
+// ── ADR-069 NIP-07 session (dreamlab-ai auth) ────────────────────────────────
+// The proxy mints an HttpOnly HMAC session cookie at /nip07/ (sign-in with a
+// browser Nostr signer). When a session is live, fetches and websockets need
+// no Authorization header — the cookie IS the operator credential. Signing and
+// break-glass remain as fallbacks for cookie-less contexts.
+let sessionActive = false;
+async function probeSession() {
+  try {
+    const r = await fetch('/approvals/v1/approvals', { credentials: 'same-origin' });
+    sessionActive = r.ok;
+  } catch { sessionActive = false; }
+  refreshAuthBadge();
+  return sessionActive;
+}
+function loginUrl() { return '/nip07/?next=' + encodeURIComponent(location.pathname); }
 
 const activeRequests = new Map();
 async function authFetch(path, { method = 'GET', json: jsonBody, preferBearer = (method === 'GET'), replace = method === 'GET' } = {}) {
@@ -687,6 +709,14 @@ function wireForm(formId, inputId, handler) {
 // ── auth dialog ────────────────────────────────────────────────────────────────
 
 function openAuthDialog() {
+  if (new URLSearchParams(location.search).get('breakglass') === '1') {
+    $('breakglass-row').hidden = false;
+  }
+  const loginBtn = $('nip07-login');
+  if (loginBtn && !loginBtn.dataset.wired) {
+    loginBtn.dataset.wired = '1';
+    loginBtn.onclick = () => { location.href = loginUrl(); };
+  }
   $('bearer-in').value = getBearer();
   $('nip07-state').textContent = hasNostr() ? 'NIP-07 detected' : 'NIP-07 not detected';
   $('nip07-state').className = hasNostr() ? 'tag-ok' : 'tag-no';
@@ -755,6 +785,7 @@ refreshAuthBadge();
 setVoiceState('idle');
 connectFeed();
 pollHealth();
+probeSession().then((ok) => { if (ok) reconnectFeed(); });
 pollSessions();
 pollApprovals();
 pollNostrEvents();

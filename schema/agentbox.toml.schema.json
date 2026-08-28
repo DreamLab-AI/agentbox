@@ -588,6 +588,10 @@
         "agentic_qe": {
           "type": "boolean"
         },
+        "metaharness": {
+          "type": "boolean",
+          "description": "Bake the MetaHarness and Darwin runtime CLIs (ADR-064)."
+        },
         "nagual_qe": {
           "type": "boolean"
         },
@@ -1210,6 +1214,10 @@
         "model": {
           "type": "string",
           "description": "HF model id. Default openai/privacy-filter."
+        },
+        "trust_remote_code": {
+          "type": "boolean",
+          "description": "Allow a pinned Hugging Face model to load its custom architecture implementation."
         },
         "policy": {
           "type": "object",
@@ -2206,6 +2214,31 @@
         }
       }
     },
+    "dream_machine": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Nightly evidence-gated dream-engine runtime configuration (ADR-052/053/061).",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "hp_host": { "type": "string" },
+        "hp_annexe_dir": { "type": "string" },
+        "loom_url": { "type": "string", "pattern": "^https?://" },
+        "loom_model": { "type": "string" },
+        "loom_max_tokens": { "type": "integer", "minimum": 1 },
+        "llm_provider": { "type": "string", "enum": ["zai", "loom"] },
+        "zai_url": { "type": "string", "pattern": "^https?://" },
+        "zai_model": { "type": "string" },
+        "zai_max_tokens": { "type": "integer", "minimum": 1 },
+        "window_start": { "type": "integer", "minimum": 0, "maximum": 23 },
+        "window_end": { "type": "integer", "minimum": 0, "maximum": 23 },
+        "memory_namespace": { "type": "string" },
+        "recall_band_self_min": { "type": "integer", "minimum": 0 },
+        "recall_band_true_min": { "type": "integer", "minimum": 0 },
+        "max_repos_per_night": { "type": "integer", "minimum": 1 },
+        "prune_dry_streak": { "type": "integer", "minimum": 1 },
+        "persist_accepts": { "type": "boolean" }
+      }
+    },
     "interaction_plane": {
       "type": "object",
       "additionalProperties": false,
@@ -2242,6 +2275,54 @@
           "minimum": 1,
           "maximum": 65535,
           "description": "nip98-proxy listen port \u2014 the only ingress to the aoe serve port (N-05 invariant)."
+        },
+        "proxy": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Boot-projected unified operator authentication and upstream routing policy (ADR-069).",
+          "properties": {
+            "allowed_pubkeys": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[0-9a-fA-F]{64}$"
+              },
+              "uniqueItems": true,
+              "description": "Hex Nostr public keys permitted to authenticate. Empty means any valid signer."
+            },
+            "routes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "prefix",
+                  "target"
+                ],
+                "properties": {
+                  "prefix": {
+                    "type": "string",
+                    "pattern": "^/",
+                    "description": "Request-path prefix handled by this route."
+                  },
+                  "target": {
+                    "type": "string",
+                    "pattern": "^https?://",
+                    "description": "HTTP(S) upstream origin."
+                  },
+                  "strip": {
+                    "type": "boolean",
+                    "description": "Strip the matching prefix before forwarding."
+                  },
+                  "bearer_env": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+                    "description": "Environment variable whose bearer replaces the operator credential upstream."
+                  }
+                }
+              }
+            }
+          }
         },
         "session_seeds": {
           "type": "array",

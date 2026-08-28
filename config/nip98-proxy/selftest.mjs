@@ -141,6 +141,9 @@ async function main() {
   const upstreamPort = await once(upstream, 0);
   const mgmtPort = await once(mgmtUpstream, 0);
 
+  // Hermetic: never inherit the operator's live boot-projected config file
+  // (its allowlist would 401 the selftest's ephemeral signer — ADR-069).
+  process.env.NIP98_PROXY_CONFIG_FILE = '/nonexistent-selftest-isolated.json';
   process.env.NIP98_PROXY_PORT = String(PROXY_PORT);
   process.env.NIP98_PROXY_HOST = '127.0.0.1';
   process.env.AOE_UPSTREAM = `http://127.0.0.1:${upstreamPort}`;

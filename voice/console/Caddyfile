@@ -60,13 +60,17 @@ https://:8444 {
 	# management-api :9090 serves GET /v1/approvals and
 	# POST /v1/approvals/:id/decide. The console signs a NIP-98 request; the
 	# decision is operator/allowlist-gated server-side.
-	handle_path /approvals/* {
-		reverse_proxy agentbox:9090 {
+	# ADR-069: unified operator auth — approvals ride the sovereign ingress.
+	# Prefix kept; the proxy's /approvals route strips it after verifying identity.
+	handle /approvals/* {
+		reverse_proxy agentbox:9096 {
 			header_up Authorization {http.request.header.Authorization}
 		}
 	}
-	handle_path /mgmt/* {
-		reverse_proxy agentbox:9090 {
+	# ADR-069: /mgmt now rides the proxy like every authed surface (it had
+	# bypassed it straight to :9090 — inconsistent with the sole-ingress model).
+	handle /mgmt/* {
+		reverse_proxy agentbox:9096 {
 			header_up Authorization {http.request.header.Authorization}
 		}
 	}
@@ -80,20 +84,30 @@ https://:8444 {
 	# over the dream engine's per-repo ledgers. Operator-gated server-side, so the
 	# console forwards the signed Authorization header (as for /approvals). No path
 	# strip: the API sees /dream/*. The view itself is the static /dream.html below.
+	# ADR-069: dream status rides the proxy like every authed surface (the
+	# direct :9090 route made session-cookie operators 401 → the dream↔cockpit
+	# "circle"). No strip: the API sees /dream/*.
 	handle /dream/* {
-		reverse_proxy agentbox:9090 {
+		reverse_proxy agentbox:9096 {
 			header_up Authorization {http.request.header.Authorization}
 		}
 	}
+	# ADR-069: feed rides the proxy; BRIDGE_TOKEN is injected server-side
+	# (credential exchange) — the browser never holds the bridge secret.
 	handle /feed {
-		reverse_proxy agentbox:8971 {
+		reverse_proxy agentbox:9096 {
 			header_up Authorization {http.request.header.Authorization}
 		}
 	}
-	handle_path /bridge/* {
-		reverse_proxy agentbox:8971 {
+	handle /bridge/* {
+		reverse_proxy agentbox:9096 {
 			header_up Authorization {http.request.header.Authorization}
 		}
+	}
+	# ADR-069: NIP-07 login handshake page + session mint — proxy-owned surface.
+	# Same-origin so the HttpOnly session cookie binds to this console origin.
+	handle /nip07/* {
+		reverse_proxy agentbox:9096
 	}
 	handle {
 		root * /srv

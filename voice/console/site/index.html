@@ -130,14 +130,16 @@
   <form method="dialog" class="dlg-in">
     <h3>Operator credential</h3>
     <p>
-      <code>/aoe/*</code> and <code>/approvals/*</code> require an operator identity.
-      Preferred: a <b>NIP-98</b> header signed by a browser Nostr key
-      (<span id="nip07-state" class="tag-no">NIP-07 not detected</span>).
-      Reads use the break-glass bearer when set (to avoid a signer prompt on every poll);
-      authoritative actions (approve / deny, inject) sign a fresh NIP-98 request.
+      Preferred: <b>sign in with your Nostr key</b> (Podkey / any NIP-07 signer,
+      <span id="nip07-state" class="tag-no">NIP-07 not detected</span>) — mints an
+      HttpOnly session cookie covering every console surface, fetch and websocket
+      alike, for 12&nbsp;h. No per-request signing, no pasted secrets.
     </p>
-    <div>
-      <label for="bearer-in">Break-glass bearer (session only)</label>
+    <div class="dlg-actions" style="justify-content:flex-start">
+      <button id="nip07-login" class="send" type="button">Sign in with Nostr</button>
+    </div>
+    <div id="breakglass-row" hidden>
+      <label for="bearer-in">Break-glass bearer (emergency only — append <code>?breakglass=1</code> to reveal)</label>
       <div class="row" style="margin-top:6px">
         <input id="bearer-in" type="text" placeholder="paste bearer token…" autocomplete="off">
       </div>

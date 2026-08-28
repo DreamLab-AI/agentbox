@@ -182,9 +182,9 @@
         #    nix-prefetch-url https://registry.npmjs.org/ruvector/-/ruvector-0.2.25.tgz
         ruvectorPkg = mkNpmCli {
           pkgName         = "ruvector";
-          version         = "0.2.35";
-          sha256          = "sha256-e15YrZn/PdnfmiYv80iyFZ+p+sCoxOV3td1MHJ7rBGk=";
-          nodeModulesHash = "sha256-oUM9TpRuNT3Iz1wIw6ZVugx2tgiEE+jeMF6FU+j8xk8=";
+          version         = "0.3.0";
+          sha256          = "sha256-WJY5s7nvQaZBQJaJbSI8PVZh4PfYriGlTUME2mOcQEc=";
+          nodeModulesHash = "sha256-zLY6A17xMIpTslu4K2Y+KG19+3hIBvfr6PfJKt2IbAg=";
           bin             = "ruvector";
         };
 
@@ -204,17 +204,51 @@
         #    the scoped tarball basename is `cli-<ver>.tgz`, and the unscoped
         #    `claude-flow` npm package is a third artefact of the same code.
         #
-        #    nix-prefetch-url https://registry.npmjs.org/ruflo/-/ruflo-3.32.8.tgz
+        #    nix-prefetch-url https://registry.npmjs.org/ruflo/-/ruflo-3.38.20.tgz
+        #    3.38.20 (2026-08-24): closes the ADR-064 CLI↔plugin-tree skew —
+        #    the boot-cloned plugin cache tracks the same release line, so
+        #    plugins/ruflo-metaharness and the baked CLI now agree.
         rufloPkg = mkNpmCli {
           pkgName         = "ruflo";
-          version         = "3.32.8";
-          sha256          = "sha256-evCHjKnEz8ulqZvtWYRPBGdEQgbJPi5f8l/wINWoIxc=";
-          nodeModulesHash = "sha256-PT3ng0nvIVI4xBr7xRgzyeNobCl6X8lgau3TCaGnEok=";
+          version         = "3.38.20";
+          sha256          = "sha256-secbxYLZ8uA0Vb7h8RYamkH4qhizG+4mO17ylQ2aYOM=";
+          nodeModulesHash = "sha256-rQEa1yfPuRPNqkXSNZLltBjU4J0P59l2gzm7VTk7Ms4=";
           bin             = "ruflo";
           extraBins = {
             "claude-flow"     = "node_modules/@claude-flow/cli/bin/cli.js";
             "claude-flow-mcp" = "node_modules/@claude-flow/cli/bin/mcp-server.js";
           };
+        };
+
+        # 3b+3c. metaharness runtime binaries — gated by toolchains.metaharness
+        #    (ADR-062/063/064). Bakes the CLIs the ruflo-metaharness plugin
+        #    skills shell out to, at the versions the plugin tree pins
+        #    (metaharness@~0.3.0, @metaharness/darwin@~0.8.0 — verified against
+        #    the 3.38.20 plugin cache). Without these the plugin's
+        #    score/genome/evolve/security-bench paths degrade gracefully
+        #    ({degraded:true}) on this offline container. NEVER @latest
+        #    (ADR-067); darwin invocations must pass --sandbox mock|agent
+        #    (ADR-065; agentbox.toml [dream_machine] note).
+        #    nix-prefetch-url https://registry.npmjs.org/metaharness/-/metaharness-0.3.2.tgz
+        metaharnessPkg = mkNpmCli {
+          pkgName         = "metaharness";
+          version         = "0.3.2";
+          sha256          = "sha256-BJNgg/cM4D1G4Pj42/6wNcQ4rdTtdKpyTgYsC2KNR5I=";
+          nodeModulesHash = "sha256-IaSgl7/hCbfONamyYDWgQzHm+iYuhHXuH/wIkjbr9pM=";
+          bin             = "metaharness";
+          extraBins = {
+            # own-package bin — path is package-root-relative (dependency bins
+            # use node_modules/<dep>/… like rufloPkg's @claude-flow/cli).
+            "harness" = "dist/harness-bin.js";
+          };
+        };
+        #    nix-prefetch-url https://registry.npmjs.org/%40metaharness/darwin/-/darwin-0.8.3.tgz
+        metaharnessDarwinPkg = mkNpmCli {
+          pkgName         = "@metaharness/darwin";
+          version         = "0.8.3";
+          sha256          = "sha256-k/pb1mzN6Wzy+/7exSp1oSo5cbQfKn/6rcue3tq2kGI=";
+          nodeModulesHash = "sha256-sSETXmwHRcsJMPq413fMj0mlxXUNnR2/6Srof/Ds/nE=";
+          bin             = "metaharness-darwin";
         };
 
         # 4. agentic-qe — gated by toolchains.agentic_qe.
@@ -234,9 +268,9 @@
         #    nodeModulesHash resolved 2026-07-24 during the ADR-041 rebuild.
         agenticQePkg = mkNpmCli {
           pkgName         = "agentic-qe";
-          version         = "3.13.1";
-          sha256          = "sha256-Ak+YqfgwdwbV2V8n4bFHz/VUkskSOxIg19Ce0u7oFeA=";
-          nodeModulesHash = "sha256-swB4JAeSGIdQbDzvjHMieyYOb2uqY4a+wFKW69gxCx0=";
+          version         = "3.13.12";
+          sha256          = "sha256-l1OKbvij0zWQFmkVh8tg5J/fWug3xpFem/s0WZtKqdo=";
+          nodeModulesHash = "sha256-ceqRqIu38eaA/OheM68uAmSilkN6AbteC4lZGV9qkSQ=";
           bin             = "aqe";
         };
 
@@ -250,9 +284,9 @@
         #    nix-prefetch-url https://registry.npmjs.org/codebase-memory-mcp/-/codebase-memory-mcp-0.6.0.tgz
         codebaseMemoryPkg = mkNpmCli {
           pkgName         = "codebase-memory-mcp";
-          version         = "0.9.0";
-          sha256          = "sha256-/sb2gPJmLt6kjOSEf/EV7cjCXw0to8pv37j/Etzn2Es=";
-          nodeModulesHash = "sha256-tBHj4iyTOb1rMyp2lH0MghP4lzBowXSYJsYbKcro/c0=";
+          version         = "0.10.8";
+          sha256          = "sha256-C68m1vT9SrZuIoL1t/K7oi1+CMV7tUhMNuESIoRFOZA=";
+          nodeModulesHash = "sha256-1seDTzkcR6n0VQ/B7w29iSKMbtFz1s5a9kkoePWHYy4=";
           bin             = "codebase-memory-mcp";
         };
 
@@ -273,7 +307,7 @@
           pkgName         = "@mermaid-js/mermaid-cli";
           version         = "11.16.0";
           sha256          = "sha256-ZdeVGRv5ymypCkCh6jA1SmpJHiBmdMr9TZ3mL+kHVDk=";
-          nodeModulesHash = "sha256-pC6vah8n3XTNGI0JfjpVRnSIPsKJ183lMwZZ21eC3Ho=";
+          nodeModulesHash = "sha256-9rr9HapzW5Rpse8oHbF7g+oWPFv7FlwEhRe8hwYqbzk=";
           bin             = "mmdc";
         };
 
@@ -282,19 +316,19 @@
         # remote deploys). Version bump: set version below, set BOTH hashes to
         # lib.fakeHash, run ./scripts/prefetch-hashes.sh (resolves them in one
         # sweep), then rebuild; Renovate auto-detects the bump.
-        #   nix-prefetch-url https://registry.npmjs.org/wrangler/-/wrangler-4.78.0.tgz
+        #   nix-prefetch-url https://registry.npmjs.org/wrangler/-/wrangler-4.125.0.tgz
         #
-        # PIN: 4.78.0 is the last release before wrangler upstream added
-        # `@cloudflare/codemod@1.1.0` to devDependencies (4.79.0+). That
-        # package is not published to the public npm registry, so even
-        # `npm install --production` fails resolving the dev tree before
-        # pruning. Bump only after upstream either publishes codemod or
-        # removes it from devDependencies.
+        # Former PIN at 4.78.0 (private @cloudflare/codemod in devDependencies,
+        # 4.79.0+) lifted 2026-08-27: 4.127.0 no longer lists codemod in
+        # devDependencies (verified against the registry manifest).
         wranglerPkg = mkNpmCli {
           pkgName         = "wrangler";
-          version         = "4.78.0";
-          sha256          = "sha256-tC1kgCS3jQSKkgGChKOrVPMTZkZ4p3x+D3rtK3j/NJk=";
-          nodeModulesHash = "sha256-2CEp4AC0WjpjuGqiCDyxpDNFAZDZoGj++wh3mLnBdQQ=";
+          # 4.125.0 not 4.127.0: freshness gate — 4.127.0 published <72h before
+          # this rebuild (2026-08-27); 4.125.0 (2026-08-20) is the newest release
+          # outside the window. Bump forward at the next rebuild.
+          version         = "4.125.0";
+          sha256          = "sha256-/pM8fMq69B568wUTjx3p/Sv7HghMfi/VC6PQynekRQI=";
+          nodeModulesHash = "sha256-f4vsU6kn7/3wnL6u2D8YQdC3gK8wf8sCLv4t2twbWWA=";
           bin             = "wrangler";
           # wrangler's devDependencies reference private @cloudflare/*
           # packages not on the public npm registry — strip them so npm
@@ -311,6 +345,7 @@
           # ruflo ships the claude-flow bins too (consolidated, see rufloPkg) —
           # either gate pulls in the single closure, never both twice.
           lib.optionals ((toolchainCfg.ruflo or false) || (toolchainCfg.claude_flow or false)) [ rufloPkg ]
+          ++ lib.optionals (toolchainCfg.metaharness or false)     [ metaharnessPkg metaharnessDarwinPkg ]
           ++ lib.optionals (toolchainCfg.agentic_qe or false)      [ agenticQePkg ]
           ++ lib.optionals (toolchainCfg.codebase_memory or false)  [ codebaseMemoryPkg ]
           ++ lib.optionals (docsCfg.mermaid or false)              [ mermaidCliPkg ];

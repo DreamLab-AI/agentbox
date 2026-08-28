@@ -407,6 +407,15 @@ in
         chmod +x $out/bin/${aliasName}
         '') extraBins)}
 
+        # Prune dangling symlinks left by `npm install --production
+        # --ignore-scripts` (optional platform-native deps like sharp create
+        # links to packages npm never installed). nixpkgs' noBrokenSymlinks
+        # fixup hard-fails on them (first hit: wrangler 4.125.0 →
+        # @img/sharp-linux-x64). Pruning here (stage 3, post-copy) leaves the
+        # stage-2 FOD — and therefore nodeModulesHash — untouched.
+        find "$out/lib/${pname}" -xtype l -print -delete 2>/dev/null | \
+          sed 's/^/  pruned dangling symlink: /' >&2 || true
+
         runHook postInstall
       '';
 

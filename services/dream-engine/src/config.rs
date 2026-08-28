@@ -102,6 +102,22 @@ impl DreamConfig {
                 )));
             }
         }
+        // ADR-065: darwin's default `--sandbox real` is surface-independent
+        // (nicheEntropy 0) — the night runs green while learning nothing.
+        // Reject rather than silently no-op; only mock|agent exercise the
+        // evolved surfaces.
+        for (name, cmd) in &self.evaluator_entrypoints {
+            let is_darwin =
+                cmd.contains("@metaharness/darwin") || cmd.contains("metaharness-darwin");
+            if is_darwin && !cmd.contains("--sandbox mock") && !cmd.contains("--sandbox agent") {
+                return Err(ConfigError::Validation(format!(
+                    "evaluatorEntrypoints[{}]: @metaharness/darwin entrypoints must pass \
+                     --sandbox mock or --sandbox agent (ADR-065; the default 'real' sandbox \
+                     is surface-independent and silently no-ops the night)",
+                    name
+                )));
+            }
+        }
         Ok(())
     }
 }
@@ -335,5 +351,57 @@ mod tests {
             auto_merge: false,
         };
         assert!(cfg.validate().is_err());
+    }
+
+    fn cfg_with_evaluator(cmd: &str) -> DreamConfig {
+        let mut evals = HashMap::new();
+        evals.insert("fitness".into(), cmd.to_string());
+        DreamConfig {
+            repo: "test/repo".into(),
+            cron: default_cron(),
+            slots: vec![Slot {
+                deep: "a".into(),
+                scan: vec![],
+            }],
+            bonus_moduli: HashMap::new(),
+            control_plane_probes: vec![],
+            build_step: None,
+            annexe_include: vec![],
+            evaluator_entrypoints: evals,
+            competitors: vec![],
+            adr_convention: default_adr_convention(),
+            extra_disciplines: vec![],
+            ledger_path: default_ledger_path(),
+            branch_prefix: default_branch_prefix(),
+            labels: vec![],
+            auto_merge: false,
+        }
+    }
+
+    #[test]
+    fn rejects_darwin_evaluator_without_sandbox_flag() {
+        // ADR-065: bare darwin invocation (implicit --sandbox real) is rejected.
+        let cfg = cfg_with_evaluator("npx -y @metaharness/darwin@~0.8.0 evolve .");
+        assert!(cfg.validate().is_err());
+        // Explicit real is equally rejected.
+        let cfg = cfg_with_evaluator("metaharness-darwin evolve . --sandbox real");
+        assert!(cfg.validate().is_err());
+    }
+
+    #[test]
+    fn accepts_darwin_evaluator_with_mock_or_agent_sandbox() {
+        let cfg = cfg_with_evaluator("metaharness-darwin evolve . --sandbox mock");
+        assert!(cfg.validate().is_ok());
+        let cfg = cfg_with_evaluator("node /opt/darwin/cli.js evolve . --sandbox agent");
+        // non-darwin command string without the marker is not gated…
+        assert!(cfg.validate().is_ok());
+        let cfg = cfg_with_evaluator("npx -y @metaharness/darwin@~0.8.0 evolve . --sandbox agent");
+        assert!(cfg.validate().is_ok());
+    }
+
+    #[test]
+    fn non_darwin_evaluators_unaffected() {
+        let cfg = cfg_with_evaluator("cargo test --workspace");
+        assert!(cfg.validate().is_ok());
     }
 }

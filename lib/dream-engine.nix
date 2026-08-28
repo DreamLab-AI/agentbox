@@ -50,8 +50,11 @@ pkgs.rustPlatform.buildRustPackage {
   # is no openssl link and no pkg-config probe.
 
   # Tests are hermetic (config parsing, slot rotation, witness hashing,
-  # conninfo→URL, verdict parsing — no network, no Postgres). 48/48 green.
+  # conninfo→URL, verdict parsing — no network, no Postgres). The ADR-061
+  # persist tests additionally shell out to `git` (worktree/branch isolation),
+  # so git must be present in the check environment.
   doCheck = true;
+  nativeCheckInputs = [ pkgs.git ];
 
   meta = with lib; {
     description = "Nightly evidence-gated repository evolution engine for agentbox (HP annexe, ADR-052) — compiles config into deterministic prompts, dispatches to HP, calls an LLM, parses verdicts, persists ledger + witness + RuVector";

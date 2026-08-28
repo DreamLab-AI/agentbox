@@ -72,6 +72,15 @@ Older records use `**Status:**` markdown; ADR-023 onward carry YAML frontmatter
 | [057](ADR-057-replayable-agent-execution-journal.md) | Replayable agent execution journal and derived projections | Proposed | [PRD-014](../prd/PRD-014-embodied-agent-loop.md) · [DDD-012](../ddd/DDD-012-sovereign-knowledge-elevation-domain.md) |
 | [058](ADR-058-lifecycle-scoped-capability-composition.md) | Lifecycle-scoped capability composition over the adapter spine | Proposed | [PRD-001](../prd/PRD-001-capabilities-and-adapters.md) · [DDD-010](../ddd/DDD-010-multi-harness-coordination-domain.md) |
 | [059](ADR-059-monotonic-agent-action-policy-pipeline.md) | Monotonic policy pipeline for every agent-initiated action | Proposed | [PRD-003](../prd/PRD-003-runtime-contract-and-container-hardening.md) · [DDD-013](../ddd/DDD-013-hardening-boundary-domain.md) |
+| [060](ADR-060-dream-annexe-path-dependencies.md) | Dream annexe — evaluate workspace / path-dependency repos | Accepted | [ADR-052](ADR-052-dream-machine-hp-annexe.md) |
+| [061](ADR-061-dream-persist-accept-as-draft-pr.md) | Dream persist ACCEPT as draft PR | Accepted | [ADR-052](ADR-052-dream-machine-hp-annexe.md) |
+| [062](ADR-062-metaharness-adoption-posture.md) | MetaHarness adoption posture — two-tier maturity, subprocess-only | Proposed | ruflo#ADR-150/321 |
+| [063](ADR-063-enable-ruflo-metaharness-plugin.md) | Enable ruflo-metaharness plugin (boot-apply, read/audit tier) | Proposed | [062](ADR-062-metaharness-adoption-posture.md) |
+| [064](ADR-064-bake-metaharness-runtime-binaries.md) | Bake MetaHarness runtime binaries into the Nix closure (rebuild) | Proposed | [063](ADR-063-enable-ruflo-metaharness-plugin.md) |
+| [065](ADR-065-dream-darwin-evaluator-liveness.md) | Dream-engine darwin evaluator liveness contract | Proposed | [ADR-052](ADR-052-dream-machine-hp-annexe.md) · metaharness#ADR-099 |
+| [066](ADR-066-metaharness-governance-boundaries.md) | MetaHarness governance — proposer-only darwin, human-gated promotion | Proposed | [061](ADR-061-dream-persist-accept-as-draft-pr.md) · metaharness#ADR-322 |
+| [067](ADR-067-metaharness-pin-discipline.md) | MetaHarness pin discipline + cross-repo ADR namespacing | Proposed | [064](ADR-064-bake-metaharness-runtime-binaries.md) |
+| [068](ADR-068-kernel-tooldispatcher-deferral.md) | Kernel ToolDispatcher deferral (non-goal) | Proposed | [ADR-005](ADR-005-pluggable-adapter-architecture.md) |
 
 ## See also
 
