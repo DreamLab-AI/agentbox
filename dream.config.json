@@ -4,19 +4,31 @@
   "slots": [
     {
       "deep": "dream-engine",
-      "scan": ["verdict-parsing", "provider-fallback"]
+      "scan": [
+        "verdict-parsing",
+        "provider-fallback"
+      ]
     },
     {
       "deep": "hooks-pipeline",
-      "scan": ["hook-syntax", "fail-open-discipline"]
+      "scan": [
+        "hook-syntax",
+        "fail-open-discipline"
+      ]
     },
     {
       "deep": "sovereign-mesh",
-      "scan": ["nostr-bridge", "relay-slot"]
+      "scan": [
+        "nostr-bridge",
+        "relay-slot"
+      ]
     },
     {
       "deep": "ontology-monitor",
-      "scan": ["proposal-idempotency", "broker-gate"]
+      "scan": [
+        "proposal-idempotency",
+        "broker-gate"
+      ]
     }
   ],
   "bonusModuli": {
@@ -31,11 +43,14 @@
     "cmd": "cd services/dream-engine && cargo build --release 2>&1 | tail -8",
     "degradeOnWasmFailure": false
   },
-  "annexeInclude": ["nostr-rust-forum", "solid-pod-rs"],
+  "annexeInclude": [
+    "nostr-rust-forum",
+    "solid-pod-rs"
+  ],
   "evaluatorEntrypoints": {
     "dream-engine-tests": "cd services/dream-engine && cargo test 2>&1 | tail -15",
     "sovereign-mesh-bridge": "cd services/nostr-pod-bridge && cargo build --release 2>&1 | tail -12",
-    "hooks-syntax": "fail=0; for f in config/hooks/*.cjs; do node --check \"$f\" 2>/dev/null || { echo \"SYNTAX FAIL: $f\"; fail=$((fail+1)); }; done; echo \"hooks-checked: $(ls config/hooks/*.cjs | wc -l)  failures: $fail\"; [ \"$fail\" -eq 0 ] && echo HOOKS-SYNTAX-OK || echo HOOKS-SYNTAX-FAIL"
+    "hooks-syntax": "bash scripts/dream-hooks-syntax.sh"
   },
   "competitors": [],
   "adrConvention": "3-digit",
@@ -47,6 +62,9 @@
   ],
   "ledgerPath": "docs/dream-cycle/LEDGER.md",
   "branchPrefix": "dream/",
-  "labels": ["dream-cycle", "agentbox-self"],
+  "labels": [
+    "dream-cycle",
+    "agentbox-self"
+  ],
   "autoMerge": false
 }
