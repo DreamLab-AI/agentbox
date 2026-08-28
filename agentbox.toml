@@ -1144,6 +1144,7 @@ proxy_port  = 9096                  # nip98-proxy listen port — the ONLY ingre
 [interaction_plane.proxy]
 allowed_pubkeys = [
   "6407eed80e2a8646e41a5ddba0ae6619425fc54af40e2b30482b9623c682425a",  # operator-jjohare (dreamlab roster)
+  "b41654017f6850b13857d19d8ae0e3f88f1365600cab0321e8101c9e92682f7a",  # visionclaw-server governance publisher / active NIP-07 signer
   "11ed64225dd5e2c5e18f61ad43d5ad9272d08739d3a20dd25886197b0738663c",  # agentbox sovereign / house key (browsercontainer Podkey vault)
 ]
 
