@@ -254,9 +254,84 @@ function truncateReply(text, maxChars) {
 
 /** Detect whether the asker explicitly wants a detailed/long answer. */
 function wantsDetail(text) {
-  return /\b(in detail|full details|long version|explain (?:fully|in full)|tell me everything|elaborate|more detail)\b/i.test(
+  return /\b(in detail|in depth|full details|long version|explain (?:fully|in full)|tell me everything|elaborate|more detail|deeply introspect|comprehensive report|analyse deeply|analyze deeply)\b/i.test(
     typeof text === 'string' ? text : ''
   );
+}
+
+// ─── Public ontology escape lane (pure) ─────────────────────────────────────
+
+const ONTOLOGY_LOOKUP_PREFIX =
+  'Ontology lookup — deterministic public record. No model generation.';
+
+/**
+ * Keep the verbatim path deliberately narrow: an explicit, short definition
+ * request may receive the canonical public ontology block. Analytical intent
+ * must be delegated to the model with the same block as context instead.
+ *
+ * @param {string} text
+ * @returns {boolean}
+ */
+function isOntologyLookupIntent(text) {
+  const t = typeof text === 'string' ? text.trim() : '';
+  if (!t || t.split(/\s+/).length > 16) return false;
+  const lookupShape = /^(?:ontology\s+lookup\s*:|define\b|definition\s+of\b|meaning\s+of\b|what\s+(?:is|are)\b)/i.test(t);
+  if (!lookupShape) return false;
+  const analytical = /\b(?:how|why|analyse|analyze|analysis|introspect|evaluate|assess|compare|contrast|implications?|impact|risks?|secure|security|report|recommend|strategy|design|relationship|apply|use cases?|pros?\s+and\s+cons?)\b/i.test(t);
+  return !analytical;
+}
+
+/** True only for a response produced by the tool-inert ontology lane. */
+function isOntologyLookupReply(text) {
+  return typeof text === 'string' && text.startsWith(ONTOLOGY_LOOKUP_PREFIX);
+}
+
+/** Extract assistant text from an OpenAI-compatible response. */
+function openAiResponseText(json) {
+  return json && Array.isArray(json.choices) && json.choices[0] && json.choices[0].message
+    && typeof json.choices[0].message.content === 'string'
+    ? json.choices[0].message.content.trim()
+    : '';
+}
+
+/** Detect Loom's retrieval-only response from either its model or telemetry. */
+function isLoomVerbatim(json) {
+  return Boolean(json && (
+    json.model === 'loom-verbatim'
+    || (json.loom && json.loom.served_mode === 'verbatim')
+  ));
+}
+
+/**
+ * Turn Loom's machine-oriented verbatim envelope into honest public copy. The
+ * source IRI and snapshot stay visible; unavailable hashes are never invented.
+ * Markdown headings are flattened because the website chat renders plain text.
+ *
+ * @param {object} json
+ * @returns {string}
+ */
+function formatOntologyLookup(json) {
+  const raw = openAiResponseText(json);
+  const body = raw
+    .replace(/^_Served verbatim from the Ontology Loom \([^\n]*\); no model generation was performed\._\s*/i, '')
+    .replace(/^#{1,6}\s+/gm, '')
+    .trim();
+  const seed = json && json.loom && json.loom.grounding
+    && Array.isArray(json.loom.grounding.seeds)
+    ? json.loom.grounding.seeds.find((s) => s && typeof s.iri === 'string')
+    : null;
+  const source = seed ? seed.iri : null;
+  const snapshot = json && json.loom && json.loom.generation
+    && typeof json.loom.generation.id === 'string'
+    ? json.loom.generation.id
+    : null;
+  const provenance = [
+    source ? `Source: ${source}` : null,
+    snapshot ? `Snapshot: ${snapshot}` : null,
+  ].filter(Boolean).join(' · ');
+  return [ONTOLOGY_LOOKUP_PREFIX, provenance, body]
+    .filter(Boolean)
+    .join('\n\n');
 }
 
 /**
@@ -417,28 +492,56 @@ async function callLlm(userText, opts = {}) {
       const isZai = /z\.ai|bigmodel/.test(base);
       const oaiModel = model
         || (isZai ? 'glm-4.6' : 'gpt-4o-mini');
+      const requestBody = {
+        model: oaiModel,
+        max_tokens: LLM_MAX_TOKENS,
+        stream: false,
+        ...(isZai ? { thinking: { type: 'disabled' } } : {}),
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: String(userText || '').slice(0, 4000) },
+        ],
+      };
       const res = await fetchImpl(`${base}/chat/completions`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', authorization: `Bearer ${oaiKey}` },
-        body: JSON.stringify({
-          model: oaiModel,
-          max_tokens: LLM_MAX_TOKENS,
-          stream: false,
-          ...(isZai ? { thinking: { type: 'disabled' } } : {}),
-          messages: [
-            { role: 'system', content: system },
-            { role: 'user', content: String(userText || '').slice(0, 4000) },
-          ],
-        }),
+        body: JSON.stringify(requestBody),
         signal: controller.signal,
       });
       if (!res.ok) return null;
       const json = await res.json();
-      const out = json && Array.isArray(json.choices) && json.choices[0] && json.choices[0].message
-        && typeof json.choices[0].message.content === 'string'
-        ? json.choices[0].message.content.trim()
-        : '';
-      return out || null;
+      const out = openAiResponseText(json);
+      if (!isLoomVerbatim(json)) return out || null;
+
+      // Loom has positively identified itself with a retrieval-only response.
+      // Short definition requests keep that deterministic answer. Everything
+      // analytical gets one explicit opt-out retry so the same scaffold becomes
+      // model context. We only send Loom-private fields after this identification,
+      // avoiding unknown-field failures on ordinary OpenAI-compatible providers.
+      const fallback = formatOntologyLookup(json);
+      if (isOntologyLookupIntent(userText)) return fallback;
+
+      try {
+        const retry = await fetchImpl(`${base}/chat/completions`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', authorization: `Bearer ${oaiKey}` },
+          body: JSON.stringify({
+            ...requestBody,
+            loom_options: { verbatim: false },
+            // Qwen's thinking mode otherwise exceeds the website's 30-second
+            // reply window. This is the standard llama.cpp/Qwen request knob.
+            chat_template_kwargs: { enable_thinking: false },
+          }),
+          signal: controller.signal,
+        });
+        if (!retry.ok) return fallback;
+        const retriedJson = await retry.json();
+        if (isLoomVerbatim(retriedJson)) return fallback;
+        return openAiResponseText(retriedJson) || fallback;
+      } catch {
+        // Generation is optional; the published snapshot is the escape lane.
+        return fallback;
+      }
     }
 
     if (process.env.OLLAMA_BASE_URL) {
@@ -772,7 +875,12 @@ class JunkieJarvisAgent {
     // apologise at most once per asker per cooldown.
     if (!llmText) return null;
 
-    const { directive, reply } = parseDirective(llmText);
+    // Public ontology blocks are data, never instructions. Skip directive
+    // parsing entirely even if a future canonical definition contains JSON that
+    // resembles a tool call.
+    const { directive, reply } = isOntologyLookupReply(llmText)
+      ? { directive: null, reply: llmText }
+      : parseDirective(llmText);
     let body = reply || llmText || CANNED_APOLOGY;
 
     // Deterministic guard against spurious calendar events: only honour a
@@ -905,11 +1013,15 @@ module.exports = {
   normaliseEventDirective,
   truncateReply,
   wantsDetail,
+  isOntologyLookupIntent,
+  isOntologyLookupReply,
+  formatOntologyLookup,
   buildCalendarEvent,
   // constants
   hasSchedulingIntent,
   SYSTEM_PROMPT,
   CANNED_APOLOGY,
+  ONTOLOGY_LOOKUP_PREFIX,
   JUNKIEJARVIS_PUBKEY,
   PROFILE_METADATA,
   VALID_ZONES,
