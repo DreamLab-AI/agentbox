@@ -202,6 +202,27 @@ impl Engine {
             }
         }
 
+        // Forum-suggestions tenant: mine the community feature-suggestions
+        // thread, triage each new post with the LLM against the action-vs-risk
+        // policy, queue handoffs, and reply inline as JunkieJarvis. Same
+        // workspace-script pattern as the digest (the script is the live code;
+        // this binary only schedules it). Fail-open; opt out with
+        // DREAM_FORUM_SUGGESTIONS=0.
+        if std::env::var("DREAM_FORUM_SUGGESTIONS").as_deref() != Ok("0") {
+            let forum_script = std::env::var("DREAM_FORUM_SCRIPT").unwrap_or_else(|_| {
+                "/home/devuser/workspace/project/agentbox/scripts/dream-forum-suggestions.mjs".into()
+            });
+            if Path::new(&forum_script).exists() {
+                match Command::new("node").arg(&forum_script).output() {
+                    Ok(out) => {
+                        let tail = String::from_utf8_lossy(&out.stdout);
+                        info!(result = %tail.lines().last().unwrap_or(""), "forum suggestions");
+                    }
+                    Err(e) => warn!(error = %e, "forum suggestions failed (fail-open)"),
+                }
+            }
+        }
+
         Some(outcomes)
     }
 
