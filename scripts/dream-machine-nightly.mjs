@@ -14,6 +14,7 @@ import { execSync, spawn } from 'node:child_process';
 import { join, basename, dirname } from 'node:path';
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 import http from 'node:http';
 
 // ---------------------------------------------------------------------------
@@ -29,7 +30,10 @@ const LLM_PROVIDER = process.env.DREAM_LLM_PROVIDER || 'zai';
 const LOOM_URL = process.env.LOOM_URL || 'http://192.168.2.132:8084/v1';
 const LOOM_MODEL = process.env.LOOM_MODEL || 'qwen3.8-27B';
 const LOOM_MAX_TOKENS = parseInt(process.env.LOOM_MAX_TOKENS || '16384', 10);
-const ZAI_URL = process.env.ZAI_URL || 'https://api.z.ai/api/paas/v4';
+// Coding Plan subscription endpoint, Anthropic Messages protocol (callZai posts
+// to /v1/messages with x-api-key). NOT api.z.ai/api/paas/v4 — that is the
+// per-token general API and speaks OpenAI protocol only.
+const ZAI_URL = process.env.ZAI_URL || 'https://api.z.ai/api/anthropic';
 const ZAI_API_KEY = process.env.ZAI_ANTHROPIC_API_KEY || process.env.ZAI_API_KEY || '';
 const ZAI_MODEL = process.env.ZAI_MODEL || 'glm-5.3';
 const ZAI_MAX_TOKENS = parseInt(process.env.ZAI_MAX_TOKENS || '16384', 10);
@@ -666,6 +670,19 @@ async function runOnce(opts = {}) {
   } catch { /* best effort */ }
 
   log('INFO', 'cycle complete');
+
+  // Forum-suggestions tenant (dream-forum-suggestions.mjs): mine the community
+  // feature-suggestions thread, triage vs risk, reply inline as JunkieJarvis.
+  // Fail-open — forum weather never blocks the repo cycle. Opt out with
+  // DREAM_FORUM_SUGGESTIONS=0.
+  if (process.env.DREAM_FORUM_SUGGESTIONS !== '0') {
+    try {
+      const forumScript = join(dirname(fileURLToPath(import.meta.url)), 'dream-forum-suggestions.mjs');
+      execSync(`node ${forumScript}${opts.dryRun ? ' --dry-run' : ''}`, { encoding: 'utf8', timeout: 1_800_000, stdio: 'inherit' });
+    } catch (e) {
+      log('WARN', `forum-suggestions tenant failed (non-fatal): ${e.message}`);
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
