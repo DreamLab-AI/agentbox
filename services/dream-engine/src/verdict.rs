@@ -188,12 +188,17 @@ fn strip_markdown(line: &str) -> String {
     t.trim_end_matches([' ', '`', '*']).to_string()
 }
 
-/// Collapse a candidate finding to a table-safe, single-line, ≤80-char string.
+/// Collapse a candidate finding to a table-safe single line: pipes stripped,
+/// whitespace collapsed. Length is bounded by the callers, not here.
 fn finalize(s: &str) -> String {
     let no_pipe = s.replace('|', "");
-    let collapsed = no_pipe.split_whitespace().collect::<Vec<_>>().join(" ");
-    collapsed.chars().take(80).collect()
+    no_pipe.split_whitespace().collect::<Vec<_>>().join(" ")
 }
+
+/// Upper bound for the full finding (memory rows, PR bodies). Generous enough
+/// to never lose a real hypothesis; a bound at all so a runaway report line
+/// cannot bloat the memory row or embedding input.
+const FINDING_FULL_MAX: usize = 1000;
 
 /// Extract the text after the first colon in `line`, or the whole line if there
 /// is none.
@@ -217,6 +222,23 @@ fn after_colon(line: &str) -> &str {
 /// The chosen text is then whitespace-collapsed, stripped of `|`, and truncated
 /// to 80 characters.
 pub fn sanitise_finding(report: &str, verdict: Verdict) -> String {
+    select_finding(report, verdict).chars().take(80).collect()
+}
+
+/// The same finding selection as [`sanitise_finding`], without the 80-char
+/// ledger-cell cap. Used for RuVector memory rows and PR bodies, where the
+/// audit trail should carry the whole hypothesis (bounded at
+/// [`FINDING_FULL_MAX`] chars).
+pub fn sanitise_finding_full(report: &str, verdict: Verdict) -> String {
+    select_finding(report, verdict)
+        .chars()
+        .take(FINDING_FULL_MAX)
+        .collect()
+}
+
+/// Select and collapse the finding line per the preference order documented on
+/// [`sanitise_finding`]; unbounded length.
+fn select_finding(report: &str, verdict: Verdict) -> String {
     // 1. Frozen hypothesis ("Given ..."). Inline bold ("**Given** the ...")
     //    leaves a `**` after the word once the prefix is stripped, so drop
     //    embedded emphasis markers before matching.
@@ -404,6 +426,22 @@ More prose here.
         let report = "# Heading\n\nThe system behaved as expected under load.\n";
         let finding = sanitise_finding(report, Verdict::Accept);
         assert_eq!(finding, "The system behaved as expected under load.");
+    }
+
+    #[test]
+    fn sanitise_full_keeps_whole_hypothesis_past_80_chars() {
+        let hypothesis = format!("Given {}", "a long clause ".repeat(12).trim_end());
+        let report = format!("{hypothesis}\nVERDICT: ACCEPT\n");
+        assert!(hypothesis.chars().count() > 80);
+        assert_eq!(sanitise_finding_full(&report, Verdict::Accept), hypothesis);
+        // Cell variant is the same text, capped.
+        assert_eq!(
+            sanitise_finding(&report, Verdict::Accept),
+            hypothesis.chars().take(80).collect::<String>()
+        );
+        // Full variant is still bounded.
+        let runaway = format!("Given {}\nVERDICT: ACCEPT\n", "x ".repeat(2000));
+        assert!(sanitise_finding_full(&runaway, Verdict::Accept).chars().count() <= 1000);
     }
 
     #[test]

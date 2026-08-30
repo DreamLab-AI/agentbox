@@ -492,6 +492,7 @@ impl Engine {
         // 7. Verdict + finding.
         let v = verdict::parse_verdict(&report);
         let finding = verdict::sanitise_finding(&report, v);
+        let finding_full = verdict::sanitise_finding_full(&report, v);
         info!(verdict = v.as_str(), finding = %finding, "verdict parsed");
 
         // 8. Witness: bind report to the repo's current commit.
@@ -535,7 +536,7 @@ impl Engine {
                     let body = format!(
                         "Draft PR opened by the dream engine on an ACCEPT night ({night_id}). \
                          Witness `{wit_short}`. A human decides the merge — evaluation is not \
-                         promotion.\n\n**Finding:** {finding}"
+                         promotion.\n\n**Finding:** {finding_full}"
                     );
                     match persist::persist_accept(&repo_path, &cfg.repo, &branch, &patch, &title, &body) {
                         Ok(out) => {
@@ -574,7 +575,7 @@ impl Engine {
             repo: repo_name.clone(),
             date: date.into(),
             deep: slot.deep.clone(),
-            finding: finding.clone(),
+            finding: finding_full,
             verdict: v.as_str().into(),
             witness: if wit_full.is_empty() {
                 wit_short.clone()
