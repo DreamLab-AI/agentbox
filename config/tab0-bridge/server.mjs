@@ -67,11 +67,47 @@ if (!TOKEN && !BIND_IS_LOOPBACK) {
 
 // ---------------------------------------------------------------- AoE plane
 // Agent of Empires interaction plane (ADR-042/ADR-044). The daemon binds
-// loopback `:9095` under `--auth none --behind-proxy`, so a same-host request
-// needs no token (this is ADR-044 D8 route 2, the break-glass direct-loopback
-// path; the NIP-98 proxy route is a deployment concern in front of the bridge).
+// loopback `:9095` under `--auth token --behind-proxy` (N-05: loopback is no
+// longer the boundary). This break-glass direct-loopback path (ADR-044 D8 route 2)
+// now authenticates with the daemon's shared-secret token, read from its own state
+// file (serve.url) and sent as `Authorization: Bearer`; the NIP-98 proxy route is a
+// deployment concern in front of the bridge.
 const AOE_PORT = Number(process.env.AGENTBOX_INTERACTION_PLANE_PORT || 9095);
 const AOE_BASE = `http://127.0.0.1:${AOE_PORT}`;
+// N-05: generated agent instructions and the Bash allowlist drive the daemon
+// THROUGH this wrapper, never `curl :9095` directly — the wrapper adds the
+// `Authorization: Bearer` token so the literal secret never lands in a prompt,
+// log, or transcript. Absolute path so it resolves from the coordinator's cwd.
+const AOE_CURL = process.env.AGENTBOX_AOE_CURL || '/opt/agentbox/scripts/aoe-curl.sh';
+// DUPLICATED VERBATIM (modulo the fs accessor) in 4 runtime consumers of :9095 —
+// no shared-lib path spans all four deploy locations. KEEP IN SYNC:
+//   config/nip98-proxy/proxy.mjs · config/nostr-gateway/gateway.cjs
+//   config/tab0-bridge/server.mjs · scripts/aoe-seed-sessions.mjs
+// Read-then-stat with a single retry on mtime skew (guards a torn read while the
+// daemon rewrites the file on restart); a transient stat/read error keeps the
+// last-good cache (NEVER caches null on error). Callers MUST fail closed on null.
+const AOE_TOKEN_FILE = process.env.AGENTBOX_AOE_TOKEN_FILE
+  || path.join(process.env.HOME || '/home/devuser', '.config', 'agent-of-empires', 'serve.url');
+let _aoeTokenCache = { mtimeMs: -1, token: null, valid: false };
+function readAoeToken() {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    let stBefore;
+    try { stBefore = fs.statSync(AOE_TOKEN_FILE); }
+    catch { return _aoeTokenCache.valid ? _aoeTokenCache.token : null; }
+    if (_aoeTokenCache.valid && stBefore.mtimeMs === _aoeTokenCache.mtimeMs) return _aoeTokenCache.token;
+    let raw, stAfter;
+    try {
+      raw = fs.readFileSync(AOE_TOKEN_FILE, 'utf-8');
+      stAfter = fs.statSync(AOE_TOKEN_FILE);
+    } catch { return _aoeTokenCache.valid ? _aoeTokenCache.token : null; }
+    if (stBefore.mtimeMs !== stAfter.mtimeMs) continue; // file changed under us → retry once
+    const m = /[?&]token=([0-9a-fA-F]{64})(?:[&#\s]|$)/.exec(raw); // aoe mints a 32-byte (64-hex) token
+    const token = m ? m[1] : null;
+    _aoeTokenCache = { mtimeMs: stAfter.mtimeMs, token, valid: true };
+    return token;
+  }
+  return _aoeTokenCache.valid ? _aoeTokenCache.token : null;
+}
 // The declaratively-named coordinator seed (PRD-021 Appendix A / ADR-042
 // `session_seeds`). The seed reconciler (scripts/aoe-seed-sessions.mjs) creates
 // the coordinator session with title == `[interaction_plane.coordinator].slug`,
@@ -148,9 +184,13 @@ async function aoeRequest(method, pathname, body) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), AOE_TIMEOUT_MS);
   try {
+    const tok = readAoeToken();
+    if (!tok) throw new Error('AoE token unavailable (N-05 fail-closed) — not sending unauthenticated request');
+    const headers = { authorization: `Bearer ${tok}` };
+    if (body) headers['content-type'] = 'application/json';
     const res = await fetch(`${AOE_BASE}${pathname}`, {
       method,
-      headers: body ? { 'content-type': 'application/json' } : undefined,
+      headers,
       body: body ? JSON.stringify(body) : undefined,
       signal: ctrl.signal,
     });
@@ -331,14 +371,14 @@ function metaSystemPrompt() {
         '1. Relay user intents into the coordinator: rewrite the spoken request as one',
         '   clear, self-contained written prompt, then POST it to the coordinator session',
         '   by running exactly (JSON-escape any quotes in the prompt):',
-        `   curl -s ${AOE_BASE}/api/sessions/${aoeSessionId}/send -X POST -H 'content-type: application/json' -d '{"message":"<prompt>"}'`,
+        `   ${AOE_CURL} POST /api/sessions/${aoeSessionId}/send '{"message":"<prompt>"}'`,
         '   Then confirm briefly. Coordinator turns take minutes; tell the user you will',
         '   have status when they ask.',
         '2. Report coordinator status: read its pane with',
-        `   curl -s '${AOE_BASE}/api/sessions/${aoeSessionId}/output?lines=60&format=text'`,
+        `   ${AOE_CURL} GET '/api/sessions/${aoeSessionId}/output?lines=60&format=text'`,
         '   or fetch recent turn summaries with `curl -s http://127.0.0.1:8971/turns?n=8`.',
         '3. Report the fleet: list managed sessions and their status with',
-        `   curl -s '${AOE_BASE}/api/sessions?state=live'`,
+        `   ${AOE_CURL} GET '/api/sessions?state=live'`,
         `   and read any legacy window with \`tmux list-windows -t ${TMUX_SESSION}\` and`,
         `   \`tmux capture-pane -p -t ${TMUX_SESSION}:<n> -S -60\`, summarised in a sentence.`,
       ]
@@ -397,14 +437,18 @@ function metaAllowedTools() {
     `Bash(tmux list-windows*)`,
     `Bash(tmux capture-pane*)`,
     'Bash(curl -s http://127.0.0.1:8971/*)',
-    `Bash(curl -s ${AOE_BASE}/api/sessions)`,
-    `Bash(curl -s ${AOE_BASE}/api/sessions?*)`,
-    `Bash(curl -s '${AOE_BASE}/api/sessions?*)`,
+    // AoE access is via the token-injecting wrapper only (N-05); direct curl :9095
+    // is deliberately NOT allowlisted so a generated instruction cannot bypass auth.
+    // The wrapper is positional (METHOD PATH [BODY]) and loopback-pinned, so it
+    // cannot be pointed off-box even with an arbitrary PATH argument.
+    `Bash(${AOE_CURL} GET /api/sessions)`,
+    `Bash(${AOE_CURL} GET /api/sessions?*)`,
+    `Bash(${AOE_CURL} GET '/api/sessions?*)`,
   ];
   if (aoeSessionId) {
-    tools.push(`Bash(curl -s ${AOE_BASE}/api/sessions/${aoeSessionId}/output*)`);
-    tools.push(`Bash(curl -s '${AOE_BASE}/api/sessions/${aoeSessionId}/output*)`);
-    tools.push(`Bash(curl -s ${AOE_BASE}/api/sessions/${aoeSessionId}/send*)`);
+    tools.push(`Bash(${AOE_CURL} GET /api/sessions/${aoeSessionId}/output*)`);
+    tools.push(`Bash(${AOE_CURL} GET '/api/sessions/${aoeSessionId}/output*)`);
+    tools.push(`Bash(${AOE_CURL} POST /api/sessions/${aoeSessionId}/send*)`);
   }
   return tools.join(',');
 }

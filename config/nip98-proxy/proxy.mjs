@@ -2,8 +2,11 @@
 /**
  * NIP-98 identity ingress proxy for the Agent of Empires (AoE) interaction plane.
  *
- * PRD-021 WS4 / ADR-043 D4.6. This is the SOLE INGRESS to the AoE daemon
- * (`aoe serve --auth none --behind-proxy --host 127.0.0.1 --port 9095`).
+ * PRD-021 WS4 / ADR-043 D4.6. This is the SOLE IDENTITY INGRESS to the AoE daemon
+ * (`aoe serve --auth token --behind-proxy --host 127.0.0.1 --port 9095`). The
+ * daemon runs `--auth token` (N-05: loopback is no longer the boundary); this
+ * proxy reads the daemon's shared-secret token from its state file (serve.url) and
+ * injects it as `Authorization: Bearer` on every AoE-upstream request.
  *
  * Every HTTP request and every WebSocket upgrade is authenticated by verifying a
  * kind-27235 NIP-98 `Authorization` header (`Nostr <base64(json(event))>`) with
@@ -77,7 +80,7 @@
 import http from 'node:http';
 import net from 'node:net';
 import crypto from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve as pathResolve } from 'node:path';
@@ -136,6 +139,54 @@ try {
   console.error(`[nip98-proxy] invalid AOE_UPSTREAM "${UPSTREAM_URL}": ${err.message}`);
   process.exit(1);
 }
+
+// ─── AoE daemon shared-secret token (N-05 boundary) ───────────────────────────
+// The aoe serve daemon runs `--auth token`: loopback binding is NO LONGER the
+// security boundary — every request to :9095 must carry the daemon's token. aoe
+// mints the token at launch into its state file (`serve.url`, `.../?token=<hex>`);
+// it is NOT env-settable, so consumers READ it there and inject it as
+// `Authorization: Bearer`. Callers MUST fail closed when this returns null (503 /
+// refuse) so enforcement does NOT depend on the daemon's auth mode.
+//
+// DUPLICATED VERBATIM (modulo the fs accessor) in 4 runtime consumers of :9095 —
+// no shared-lib path spans all four deploy locations. KEEP IN SYNC:
+//   config/nip98-proxy/proxy.mjs · config/nostr-gateway/gateway.cjs
+//   config/tab0-bridge/server.mjs · scripts/aoe-seed-sessions.mjs
+// Read-then-stat with a single retry on mtime skew (guards a torn read while the
+// daemon rewrites the file on restart); a transient stat/read error keeps the
+// last-good cache (NEVER caches null on error) so the next call retries.
+const AOE_TOKEN_FILE = process.env.AOE_TOKEN_FILE
+  || '/home/devuser/.config/agent-of-empires/serve.url';
+let _aoeTokenCache = { mtimeMs: -1, token: null, valid: false };
+function readAoeToken() {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    let stBefore;
+    try { stBefore = statSync(AOE_TOKEN_FILE); }
+    catch { return _aoeTokenCache.valid ? _aoeTokenCache.token : null; }
+    if (_aoeTokenCache.valid && stBefore.mtimeMs === _aoeTokenCache.mtimeMs) return _aoeTokenCache.token;
+    let raw, stAfter;
+    try {
+      raw = readFileSync(AOE_TOKEN_FILE, 'utf-8');
+      stAfter = statSync(AOE_TOKEN_FILE);
+    } catch { return _aoeTokenCache.valid ? _aoeTokenCache.token : null; }
+    if (stBefore.mtimeMs !== stAfter.mtimeMs) continue; // file changed under us → retry once
+    const m = /[?&]token=([0-9a-fA-F]{64})(?:[&#\s]|$)/.exec(raw); // aoe mints a 32-byte (64-hex) token
+    const token = m ? m[1] : null;
+    _aoeTokenCache = { mtimeMs: stAfter.mtimeMs, token, valid: true };
+    return token;
+  }
+  return _aoeTokenCache.valid ? _aoeTokenCache.token : null;
+}
+// Residual risks (accepted, reviewed round-2):
+//  (a) Last-good caching on a transient read error is DELIBERATE. A stale token
+//      simply 401s at the daemon (fail closed downstream); file deletion is NOT a
+//      revocation mechanism — the daemon's in-memory accept list is. So returning
+//      the last-good token on a blip avoids spurious 503s without weakening auth.
+//  (b) mtimeMs-only change detection can theoretically miss a same-millisecond
+//      rewrite. Consequence is bounded: a stale token → 401 at the daemon, which
+//      self-heals on the next mtime change (any later read re-parses).
+//  (c) Boot stays non-fatal on a chmod failure (operator disposition); the
+//      entrypoint [N-05-VIOLATION] marker is the alarm, not a boot block.
 
 // ─── Multi-upstream routing table (ADR-045 D1) ────────────────────────────────
 // Ordered prefix rules ahead of the default AoE upstream. Auth is route-
@@ -266,9 +317,9 @@ function routeFor(rawUrl) {
       if (isBare) path = url === bare ? '/' : `/${url.slice(bare.length)}`;
       else path = `/${url.slice(r.prefix.length)}`;
     }
-    return { upstream: r.upstream, path, bearer: r.bearer };
+    return { upstream: r.upstream, path, bearer: r.bearer, isAoe: false };
   }
-  return { upstream, path: url, bearer: null };
+  return { upstream, path: url, bearer: null, isAoe: true };
 }
 
 function log(level, msg, extra) {
@@ -698,6 +749,22 @@ const server = http.createServer((req, res) => {
     // re-verify the signature themselves, and governance decisions REQUIRE the
     // operator's signed identity (a bearer alone must never release a gate).
     if (route.bearer && auth.mode !== 'nip98') headers.authorization = `Bearer ${route.bearer}`;
+    // N-05 boundary: the AoE daemon runs `--auth token` and cannot verify a NIP-98
+    // `Authorization: Nostr …` header itself — the proxy IS its authenticator. So
+    // for the default AoE upstream we UNCONDITIONALLY replace Authorization with
+    // the daemon's shared-secret token (all auth modes, including nip98). Fail
+    // CLOSED locally when no token is available: respond 503 and never forward, so
+    // enforcement holds even if the daemon were (mis)started with --auth none.
+    if (route.isAoe) {
+      const aoeTok = readAoeToken();
+      if (!aoeTok) {
+        log('error', 'AoE token unavailable — refusing to forward (N-05 fail-closed)', { url: req.url });
+        res.writeHead(503, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ error: 'ServiceUnavailable', message: 'AoE token unavailable' }));
+        return;
+      }
+      headers.authorization = `Bearer ${aoeTok}`;
+    }
     // We resend a fixed buffer (transfer-encoding was hop-by-hop and dropped), so
     // declare an accurate content-length only when there is a body to send.
     if (rawBody.length > 0) headers['content-length'] = String(rawBody.length);
@@ -771,6 +838,19 @@ server.on('upgrade', (req, socket, head) => {
   }
 
   const route = routeFor(req.url);
+  // N-05: the AoE upstream needs its shared-secret token on the WS handshake too
+  // (aoe cannot verify a NIP-98 header). Fail closed BEFORE connecting: 503 the
+  // handshake if no token is available, so the live-ws never opens unauthenticated.
+  let aoeWsToken = null;
+  if (route.isAoe) {
+    aoeWsToken = readAoeToken();
+    if (!aoeWsToken) {
+      log('error', 'AoE token unavailable — refusing ws upgrade (N-05 fail-closed)', { url: req.url });
+      try { socket.write('HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\n\r\n'); } catch { /* socket may be gone */ }
+      socket.destroy();
+      return;
+    }
+  }
   const upstreamSocket = net.connect(route.upstream.port, route.upstream.hostname, () => {
     // Rebuild the request line + headers, dropping Authorization and injecting
     // identity, then replay any bytes already read as part of the upgrade.
@@ -798,6 +878,7 @@ server.on('upgrade', (req, socket, head) => {
     // ADR-069 credential exchange (WS): the upstream's own bearer, never the
     // browser's; nip98-signed upgrades pass their own header (same rule as HTTP).
     if (route.bearer && auth.mode !== 'nip98') lines.push(`Authorization: Bearer ${route.bearer}`);
+    if (route.isAoe) lines.push(`Authorization: Bearer ${aoeWsToken}`); // N-05: aoe daemon token
     upstreamSocket.write(lines.join('\r\n') + '\r\n\r\n');
     if (head && head.length) upstreamSocket.write(head);
 

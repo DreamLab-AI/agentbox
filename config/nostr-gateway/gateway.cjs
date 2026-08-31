@@ -106,10 +106,43 @@ const TAB0_BRIDGE_URL = (process.env.AGENTBOX_TAB0_BRIDGE_URL || 'http://127.0.0
 // managed AoE session (status FSM, optional worktree, serialised send) instead
 // of a raw tmux window, falling open to tmux new-window when the daemon is
 // down. The plain-chat path already rides the tab-0 bridge /tab0/send seam,
-// which is itself repointed onto AoE — so it inherits D1–D3 for free. Loopback,
-// no token (daemon runs --auth none --behind-proxy; break-glass direct route).
+// which is itself repointed onto AoE — so it inherits D1–D3 for free. The daemon
+// now runs `--auth token` (N-05: loopback is no longer the boundary), so this
+// direct :9095 route authenticates with the daemon's shared-secret token, read
+// from aoe's own state file (serve.url) — the same token the nip98-proxy injects.
+// A co-resident process that cannot read the token file can no longer drive the
+// daemon even though the port is loopback-reachable.
 const AOE_PORT = Number(process.env.AGENTBOX_INTERACTION_PLANE_PORT || 9095);
 const AOE_BASE = `http://127.0.0.1:${AOE_PORT}`;
+// DUPLICATED VERBATIM (modulo the fs accessor) in 4 runtime consumers of :9095 —
+// no shared-lib path spans all four deploy locations. KEEP IN SYNC:
+//   config/nip98-proxy/proxy.mjs · config/nostr-gateway/gateway.cjs
+//   config/tab0-bridge/server.mjs · scripts/aoe-seed-sessions.mjs
+// Read-then-stat with a single retry on mtime skew (guards a torn read while the
+// daemon rewrites the file on restart); a transient stat/read error keeps the
+// last-good cache (NEVER caches null on error). Callers MUST fail closed on null.
+const AOE_TOKEN_FILE = process.env.AGENTBOX_AOE_TOKEN_FILE
+  || path.join(HOME, '.config', 'agent-of-empires', 'serve.url');
+let _aoeTokenCache = { mtimeMs: -1, token: null, valid: false };
+function readAoeToken() {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    let stBefore;
+    try { stBefore = fs.statSync(AOE_TOKEN_FILE); }
+    catch { return _aoeTokenCache.valid ? _aoeTokenCache.token : null; }
+    if (_aoeTokenCache.valid && stBefore.mtimeMs === _aoeTokenCache.mtimeMs) return _aoeTokenCache.token;
+    let raw, stAfter;
+    try {
+      raw = fs.readFileSync(AOE_TOKEN_FILE, 'utf-8');
+      stAfter = fs.statSync(AOE_TOKEN_FILE);
+    } catch { return _aoeTokenCache.valid ? _aoeTokenCache.token : null; }
+    if (stBefore.mtimeMs !== stAfter.mtimeMs) continue; // file changed under us → retry once
+    const m = /[?&]token=([0-9a-fA-F]{64})(?:[&#\s]|$)/.exec(raw); // aoe mints a 32-byte (64-hex) token
+    const token = m ? m[1] : null;
+    _aoeTokenCache = { mtimeMs: stAfter.mtimeMs, token, valid: true };
+    return token;
+  }
+  return _aoeTokenCache.valid ? _aoeTokenCache.token : null;
+}
 const AOE_ENABLED = String(process.env.AGENTBOX_INTERACTION_PLANE || '').trim() !== '0';
 const AOE_TIMEOUT_MS = 12000; // create with ?wait=ready blocks until status leaves Starting (~10s)
 
@@ -399,9 +432,13 @@ async function aoeRequest(method, pathname, body) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), AOE_TIMEOUT_MS);
   try {
+    const tok = readAoeToken();
+    if (!tok) throw new Error('AoE token unavailable (N-05 fail-closed) — not sending unauthenticated request');
+    const headers = { authorization: `Bearer ${tok}` };
+    if (body) headers['content-type'] = 'application/json';
     const res = await fetch(`${AOE_BASE}${pathname}`, {
       method,
-      headers: body ? { 'content-type': 'application/json' } : undefined,
+      headers,
       body: body ? JSON.stringify(body) : undefined,
       signal: ctrl.signal,
     });

@@ -1568,7 +1568,7 @@ stderr_logfile=/var/log/ruvector-aggregate-sweep.error.log
 command=${pkgs.nodejs_22}/bin/node /opt/agentbox/config/nostr-gateway/gateway.cjs
 directory=/opt/agentbox/config/nostr-gateway
 user=devuser
-environment=HOME="/home/devuser"
+environment=HOME="/home/devuser",AGENTBOX_AOE_TOKEN_FILE="/home/devuser/.config/agent-of-empires/serve.url"
 autostart=true
 autorestart=true
 startsecs=3
@@ -1960,16 +1960,21 @@ ${lib.optionalString interactionPlaneEnabled ''
 
 ; Agent of Empires interaction plane (PRD-021 WS1 / ADR-042). aoe serve creates,
 ; monitors, attaches, and reviews interactive agent sessions, superseding the MAD
-; tmux harness. Binds loopback with --auth none --behind-proxy: the ONLY ingress is
-; the [program:nip98-proxy] below (N-05, hard invariant — any process reaching this
-; port directly bypasses identity). --allowed-host must match the Host header the
-; nip98-proxy forwards: proxy.mjs rewrites it to the upstream (127.0.0.1:<port>)
-; before dispatch, so loopback is the correct value here, not the public hostname.
-; Port 9095 is mandatory (8080 = code-server,
-; 7777 = nostr relay). Runs on the shared default tmux socket; the aoe_ session
-; prefix is the collision guard against the agentbox tmux session (F2-1/F2-9).
+; tmux harness. Binds loopback with --auth token --behind-proxy (N-05): loopback is
+; NO LONGER the boundary — every request to :9095 must carry the daemon's token, so
+; a co-resident process that never reads the token file cannot drive sessions even
+; though the port is loopback-reachable. The token is minted by the daemon at launch
+; into its state file (~/.config/agent-of-empires/serve.url); it is not env-settable,
+; so the sole ingress [program:nip98-proxy] and the break-glass nostr-gateway READ it
+; from there and inject it as `Authorization: Bearer`. The nip98-proxy remains the
+; only IDENTITY ingress (NIP-98 → pubkey); the token is defence-in-depth beneath it.
+; --allowed-host must match the Host header the nip98-proxy forwards: proxy.mjs
+; rewrites it to the upstream (127.0.0.1:<port>) before dispatch, so loopback is the
+; correct value here, not the public hostname. Port 9095 is mandatory (8080 =
+; code-server, 7777 = nostr relay). Runs on the shared default tmux socket; the aoe_
+; session prefix is the collision guard against the agentbox tmux session (F2-1/F2-9).
 [program:aoe-serve]
-command=${aoePkg}/bin/aoe serve --auth none --behind-proxy --allowed-host 127.0.0.1 --host 127.0.0.1 --port ${toString interactionPlanePort}
+command=${aoePkg}/bin/aoe serve --auth token --behind-proxy --allowed-host 127.0.0.1 --host 127.0.0.1 --port ${toString interactionPlanePort}
 directory=/home/devuser/workspace
 user=devuser
 environment=HOME="/home/devuser"
@@ -1994,7 +1999,7 @@ stderr_logfile=/var/log/aoe-serve.error.log
 command=${pkgs.nodejs_22}/bin/node /opt/agentbox/nip98-proxy/proxy.mjs
 directory=/opt/agentbox/nip98-proxy
 user=devuser
-environment=HOME="/home/devuser",AOE_UPSTREAM="http://127.0.0.1:${toString interactionPlanePort}",NIP98_PROXY_PORT="${toString interactionPlaneProxyPort}",NIP98_PROXY_MGMT_UPSTREAM="http://127.0.0.1:%(ENV_MANAGEMENT_API_PORT)s",MANAGEMENT_API_URL="http://127.0.0.1:%(ENV_MANAGEMENT_API_PORT)s"
+environment=HOME="/home/devuser",AOE_UPSTREAM="http://127.0.0.1:${toString interactionPlanePort}",AOE_TOKEN_FILE="/home/devuser/.config/agent-of-empires/serve.url",NIP98_PROXY_PORT="${toString interactionPlaneProxyPort}",NIP98_PROXY_MGMT_UPSTREAM="http://127.0.0.1:%(ENV_MANAGEMENT_API_PORT)s",MANAGEMENT_API_URL="http://127.0.0.1:%(ENV_MANAGEMENT_API_PORT)s"
 autostart=true
 autorestart=true
 startsecs=3
@@ -2236,7 +2241,7 @@ stderr_logfile_maxbytes=5MB
         # silently un-harden the artefact.
         # Exception (ADR-045 D2): the NIP-98 sovereign ingress is the ONE
         # identity-gated LAN door and publishes on all interfaces. :9095
-        # (aoe serve, --auth none) is NEVER published.
+        # (aoe serve, --auth token) is NEVER published.
         agentboxPorts =
           lib.optionalString interactionPlaneEnabled
               "      - \"${toString interactionPlaneProxyPort}:${toString interactionPlaneProxyPort}\"\n"

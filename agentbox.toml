@@ -1130,10 +1130,20 @@ metrics             = true                                          # emit the a
 # and a scoped memory namespace user:<pubkey>:proj:<repo>:<ns> at create time.
 [interaction_plane]
 enabled     = true                  # master gate; false ⇒ no daemon, no seeds (apply-class boot)
-port        = 9095                  # aoe serve bind (127.0.0.1 only, behind proxy); NOT 8080 (code-server) / 7777 (relay)
+port        = 9095                  # aoe serve bind (127.0.0.1, --auth token behind proxy); NOT 8080 (code-server) / 7777 (relay)
 dashboard   = "on"                  # aoe serve web dashboard (absorbs the never-deployed PRD-012 setup/ops dashboard)
 proxy_auth  = "nip98"               # sole-ingress reverse proxy verifies NIP-98 → session pubkey (WS4 / ADR-043 D4.6)
-proxy_port  = 9096                  # nip98-proxy listen port — the ONLY ingress to :9095 (N-05, invariant); free (adjacent to mgmt-api 9090)
+proxy_port  = 9096                  # nip98-proxy listen port — the sole IDENTITY ingress to :9095 (N-05); free (adjacent to mgmt-api 9090)
+# N-05 (revised): loopback is NO LONGER the boundary for :9095. aoe serve runs
+# `--auth token`, so every request to :9095 must carry the daemon's shared-secret
+# token (minted at launch into ~/.config/agent-of-empires/serve.url). The nip98-proxy
+# (:9096) is still the only IDENTITY ingress — it verifies NIP-98 then injects the
+# token upstream; the break-glass nostr-gateway reads the same token file. A
+# co-resident process that cannot read that owner-only (0700) file can no longer
+# drive the daemon merely because the port is loopback-reachable. Residual limit:
+# processes running as the SAME devuser can still read the token file — the token
+# raises the bar (no free loopback access) but does not isolate same-uid peers;
+# per-process isolation remains future work.
 
 # ── Unified operator auth (ADR-069: dreamlab-ai auth adoption) ──────────────
 # The nip98-proxy is the ONE authenticator for every operator surface on the

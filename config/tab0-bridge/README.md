@@ -31,10 +31,13 @@ WS5 of [PRD-021](../../docs/reference/prd/PRD-021-interaction-surface-consolidat
   the resolved coordinator id (send never targets an arbitrary session); the
   read-only `tmux list-windows`/`capture-pane` commands stay for legacy windows
   on the shared socket (D6).
-- Loopback, no token: the daemon runs `--auth none --behind-proxy`, so a
-  same-host POST needs no auth (D8 route 2, direct-loopback break-glass). The
-  NIP-98 reverse proxy that is the sole ingress to `:9095` (ADR-043 D6) is a
-  deployment concern in front of the bridge, not implemented here.
+- Loopback + token: the daemon runs `--auth token --behind-proxy` (N-05: loopback
+  is no longer the boundary), so a same-host POST authenticates with the daemon's
+  shared-secret token, read from its state file (`serve.url`,
+  override `AGENTBOX_AOE_TOKEN_FILE`) and sent as `Authorization: Bearer` (D8
+  route 2, direct-loopback break-glass). The NIP-98 reverse proxy that is the sole
+  identity ingress to `:9095` (ADR-043 D6) is a deployment concern in front of the
+  bridge, not implemented here.
 - **Untouched (D9):** the *shape* of the Unmute `/v1/chat/completions` +
   `/v1/models` LLM contract, the `/hook/turn` sink, `/feed`/`/turns`, and the
   `/nostr/*` surface. The injection seam itself (`sendToTab0()` fail-open to

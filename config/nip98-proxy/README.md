@@ -10,8 +10,13 @@ management-api). Implements PRD-021 WS4 and ADR-043 D4.6.
 ## What it does
 
 `proxy.mjs` is a dependency-light node HTTP + WebSocket reverse proxy. It sits in
-front of `aoe serve` (which runs `--auth none --behind-proxy --host 127.0.0.1
+front of `aoe serve` (which runs `--auth token --behind-proxy --host 127.0.0.1
 --port 9095`, ADR-042 D3) and does one job: **verify identity, then forward**.
+The daemon's `--auth token` means loopback is no longer the boundary (N-05,
+revised): the proxy reads the daemon's shared-secret token from its state file
+(`~/.config/agent-of-empires/serve.url`, override `AOE_TOKEN_FILE`) and injects it
+as `Authorization: Bearer` on every AoE-upstream request. Absent token file
+(daemon still starting) ⇒ no header ⇒ daemon 401s (fail closed).
 
 For every HTTP request and every WebSocket upgrade it:
 

@@ -13,7 +13,8 @@
 //      OFF) into ~/.config/agent-of-empires/config.toml, merging non-managed
 //      keys so a running daemon's own settings survive.
 //   3. Idempotently ensure the seeded sessions exist on the daemon
-//      (127.0.0.1:<port>, --auth none loopback, token-free): match by title,
+//      (127.0.0.1:<port>, --auth token loopback; token read from serve.url and
+//      sent as Authorization: Bearer): match by title,
 //      skip existing, create missing, NEVER kill.
 //
 // Overlay-only (ADR-042 N-06): zero AoE src/ patches — this is all config +
@@ -395,18 +396,63 @@ function materialiseConfig(coverage) {
 // ===========================================================================
 const BASE = `http://127.0.0.1:${PORT}`;
 
+// N-05: the aoe daemon runs `--auth token`; loopback is no longer the boundary.
+// Read the daemon's shared-secret token from its own state file (serve.url) and
+// inject it as `Authorization: Bearer`. This script runs at BOOT, before the daemon
+// has written serve.url — so daemonReady() polls for the token below, and
+// fetchWithTimeout FAILS CLOSED (throws) rather than send an unauthenticated request.
+//
+// DUPLICATED VERBATIM (modulo the fs accessor) in 4 runtime consumers of :9095 —
+// no shared-lib path spans all four deploy locations. KEEP IN SYNC:
+//   config/nip98-proxy/proxy.mjs · config/nostr-gateway/gateway.cjs
+//   config/tab0-bridge/server.mjs · scripts/aoe-seed-sessions.mjs
+// Read-then-stat with a single retry on mtime skew (guards a torn read while the
+// daemon rewrites the file on restart); a transient stat/read error keeps the
+// last-good cache (NEVER caches null on error). Callers MUST fail closed on null.
+const AOE_TOKEN_FILE = process.env.AGENTBOX_AOE_TOKEN_FILE
+  || path.join(os.homedir(), '.config', 'agent-of-empires', 'serve.url');
+let _aoeTokenCache = { mtimeMs: -1, token: null, valid: false };
+function readAoeToken() {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    let stBefore;
+    try { stBefore = fs.statSync(AOE_TOKEN_FILE); }
+    catch { return _aoeTokenCache.valid ? _aoeTokenCache.token : null; }
+    if (_aoeTokenCache.valid && stBefore.mtimeMs === _aoeTokenCache.mtimeMs) return _aoeTokenCache.token;
+    let raw, stAfter;
+    try {
+      raw = fs.readFileSync(AOE_TOKEN_FILE, 'utf-8');
+      stAfter = fs.statSync(AOE_TOKEN_FILE);
+    } catch { return _aoeTokenCache.valid ? _aoeTokenCache.token : null; }
+    if (stBefore.mtimeMs !== stAfter.mtimeMs) continue; // file changed under us → retry once
+    const m = /[?&]token=([0-9a-fA-F]{64})(?:[&#\s]|$)/.exec(raw); // aoe mints a 32-byte (64-hex) token
+    const token = m ? m[1] : null;
+    _aoeTokenCache = { mtimeMs: stAfter.mtimeMs, token, valid: true };
+    return token;
+  }
+  return _aoeTokenCache.valid ? _aoeTokenCache.token : null;
+}
+
 function fetchWithTimeout(url, opts = {}, ms = 4000) {
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), ms);
-  return fetch(url, { ...opts, signal: ctl.signal }).finally(() => clearTimeout(t));
+  const tok = readAoeToken();
+  if (!tok) { // fail closed — never send an unauthenticated request to the daemon
+    clearTimeout(t);
+    return Promise.reject(new Error('AoE token unavailable (N-05 fail-closed)'));
+  }
+  const headers = { ...(opts.headers || {}), authorization: `Bearer ${tok}` };
+  return fetch(url, { ...opts, headers, signal: ctl.signal }).finally(() => clearTimeout(t));
 }
 
-async function daemonReady(retries = 10, delayMs = 1000) {
+// Startup grace: at boot the daemon may not have written serve.url yet, so poll for
+// BOTH the token file and a live daemon before reconciling. fetchWithTimeout throws
+// while the token is absent; daemonReady() catches and retries across the window.
+async function daemonReady(retries = 20, delayMs = 1000) {
   for (let i = 0; i < retries; i++) {
     try {
       const r = await fetchWithTimeout(`${BASE}/api/sessions?state=all`, {}, 2000);
       if (r.ok) return true;
-    } catch { /* not up yet */ }
+    } catch { /* daemon or token not up yet */ }
     await new Promise((res) => setTimeout(res, delayMs));
   }
   return false;

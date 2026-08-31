@@ -403,6 +403,40 @@ fi
 mkdir -p /run/agentbox
 chown 1000:1000 /run/agentbox 2>/dev/null || true
 
+# N-05 boundary hardening: the aoe serve daemon runs `--auth token` and writes its
+# shared-secret token into ~/.config/agent-of-empires/serve.url at launch. That
+# token is now the security boundary for :9095 (loopback alone is not), so keep its
+# directory owner-only (0700) — the nip98-proxy and nostr-gateway read it as the
+# same devuser; nothing else should. Best-effort: the daemon recreates the dir if
+# absent, and mode is re-asserted here every boot before supervisord starts it.
+_AOE_CFG_DIR=/home/devuser/.config/agent-of-empires
+mkdir -p "$_AOE_CFG_DIR" 2>/dev/null || true
+chown 1000:1000 "$_AOE_CFG_DIR" 2>/dev/null || true
+chmod 0700 "$_AOE_CFG_DIR" 2>/dev/null || true
+# Verify (non-fatal): a wrong mode/owner means the token file is readable beyond
+# devuser — log a LOUD grep-able marker but never block boot. Expect 700 + uid 1000.
+if [ -d "$_AOE_CFG_DIR" ]; then
+  _AOE_MODE="$(stat -c '%a' "$_AOE_CFG_DIR" 2>/dev/null || echo '???')"
+  _AOE_OWN="$(stat -c '%u' "$_AOE_CFG_DIR" 2>/dev/null || echo '???')"
+  if [ "$_AOE_MODE" != "700" ] || [ "$_AOE_OWN" != "1000" ]; then
+    echo "[N-05-VIOLATION] AoE token dir $_AOE_CFG_DIR has mode=$_AOE_MODE owner=$_AOE_OWN (expected 700/1000) — token file may be readable beyond devuser" >&2
+  fi
+  # Also check serve.url itself if the daemon already wrote it (e.g. after a restart
+  # with a persisted config volume). The 0700 dir already gates access, so a looser
+  # file mode is not a boot failure — just alarm on it. Expect uid 1000 and no
+  # group/world read bits (mode & 077 == 0).
+  _AOE_URL_FILE="$_AOE_CFG_DIR/serve.url"
+  if [ -f "$_AOE_URL_FILE" ]; then
+    _URL_MODE="$(stat -c '%a' "$_AOE_URL_FILE" 2>/dev/null || echo '???')"
+    _URL_OWN="$(stat -c '%u' "$_AOE_URL_FILE" 2>/dev/null || echo '???')"
+    # low two octal digits = group+other perms; any non-zero means group/world access
+    _URL_GO="$(printf '%s' "$_URL_MODE" | sed -E 's/^.*([0-9])([0-9])$/\1\2/')"
+    if [ "$_URL_OWN" != "1000" ] || { [ "$_URL_GO" != "00" ] && [ "$_URL_GO" != "??" ]; }; then
+      echo "[N-05-VIOLATION] AoE token file $_AOE_URL_FILE has mode=$_URL_MODE owner=$_URL_OWN (expected uid 1000, no group/world read) — shared-secret token may be exposed" >&2
+    fi
+  fi
+fi
+
 # Phase 5c — Inherit the sovereign agent identity into PID 1.
 # sovereign-bootstrap.py (Phase 3) wrote /run/agentbox/identity.env, including
 # AGENTBOX_BRIDGE_RECIPIENT_PUBKEY / AGENTBOX_BRIDGE_SK for the nostr-pod-bridge
