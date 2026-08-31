@@ -27,9 +27,31 @@ legacy-number redirect table).
 governing document **in the same change**, and regenerate this index (the host
 project's `scripts/adr-index-gen.js` — it fails CI on invalid frontmatter).
 
-_2 record(s). Regenerate with_ `node scripts/adr-index-gen.js agentbox/docs/adr`.
+_24 record(s). Regenerate with_ `node scripts/adr-index-gen.js agentbox/docs/adr`.
 
-| ID | Title | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
-|----|-------|------|----------|------|------------|------------|---------------|-------|------|
-| [ADR-2001](ADR-2001-corpus-consolidation.md) | Consolidate the documentation corpus onto a thin living ADR series | 2026-08-31 | accepted | partial | staged | — | — | jjohare | agentbox |
-| [ADR-2002](ADR-2002-aoe-token-auth-boundary.md) | AoE interaction plane requires token auth — loopback is not a boundary | 2026-08-31 | accepted | complete | staged | — | — | jjohare | agentbox |
+| ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
+|----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|
+| [ADR-2001](ADR-2001-corpus-consolidation.md) | Consolidate the documentation corpus onto a thin living ADR series | — | 2026-08-31 | accepted | partial | staged | — | — | jjohare | agentbox |
+| [ADR-2002](ADR-2002-aoe-token-auth-boundary.md) | AoE interaction plane requires token auth — loopback is not a boundary | — | 2026-08-31 | accepted | complete | staged | — | — | jjohare | agentbox |
+| [ADR-2003](ADR-2003-nix-flake-composition.md) | Compose the whole image from agentbox.toml via one Nix flake, with honest per-gate apply-classes | BASELINE-container | 2026-08-31 | accepted | complete | live | — | — | jjohare | agentbox |
+| [ADR-2004](ADR-2004-five-adapter-slots.md) | Durable state rides exactly five adapter slots; orchestrator boot-probe failure is fatal, the other four degrade to off | BASELINE-container | 2026-08-31 | accepted | complete | live | — | — | jjohare | agentbox |
+| [ADR-2005](ADR-2005-dispatch-middleware-order.md) | Every adapter dispatch is wrapped in a fixed order — observability, then privacy filter, then JSON-LD encoder | BASELINE-container | 2026-08-31 | accepted | complete | live | — | — | jjohare | agentbox |
+| [ADR-2006](ADR-2006-nixgl-gpu-wrap.md) | Nix GPU binaries are nixGL-wrapped by appending host driver dirs to LD_LIBRARY_PATH with --suffix, CUDA-only, gated on gpu.backend | BASELINE-container | 2026-08-31 | accepted | complete | live | — | — | jjohare | agentbox |
+| [ADR-2007](ADR-2007-profile-isolation.md) | Runtime isolation is profile-based (per-profile HOME + CLAUDE_CONFIG_DIR), not Linux pseudo-users | BASELINE-container | 2026-08-31 | accepted | complete | live | — | — | jjohare | agentbox |
+| [ADR-2008](ADR-2008-mcp-projector-reconcile.md) | skills/mcp.json is the MCP source of truth; the projector reconciles (removes stale) rather than appends | BASELINE-container | 2026-08-31 | accepted | complete | live | — | — | jjohare | agentbox |
+| [ADR-2009](ADR-2009-nip98-proxy-identity-boundary.md) | The nip98-proxy is the single fail-closed identity boundary | INGRESS-identity | 2026-08-31 | accepted | complete | live | — | — | jjohare | agentbox |
+| [ADR-2010](ADR-2010-bearer-gated-behind-nip98.md) | Per-route bearer credentials are gated so a signed NIP-98 identity always reaches the upstream gate | INGRESS-identity | 2026-08-31 | accepted | complete | live | — | — | jjohare | agentbox |
+| [ADR-2011](ADR-2011-hex-canonical-identity.md) | Hex-canonical identity — 64-hex BIP-340 x-only is the sole storage/URL identity, npub is display-only | INGRESS-identity | 2026-08-31 | accepted | complete | live | — | — | jjohare | agentbox |
+| [ADR-2012](ADR-2012-relay-allowlist-only-ingress.md) | Relay ingress is allowlist-only with no fallback and no auto-add | INGRESS-identity | 2026-08-31 | accepted | complete | live | — | — | jjohare | agentbox |
+| [ADR-2013](ADR-2013-loopback-publish-except-9096.md) | Every host port publish binds 127.0.0.1 except the single :9096 sovereign ingress, CI-enforced | INGRESS-identity | 2026-08-31 | accepted | complete | live | — | — | jjohare | agentbox |
+| [ADR-2014](ADR-2014-memory-mcp-only-fail-closed.md) | Durable memory is MCP-only and the store fails closed | LEARNING-memory | 2026-08-31 | accepted | complete | live | — | — | jjohare | agentbox |
+| [ADR-2015](ADR-2015-trajectory-recorder-transcript-driven.md) | The trajectory recorder is transcript-driven and fails open except on honesty and privacy | LEARNING-memory | 2026-08-31 | accepted | complete | live | — | — | jjohare | agentbox |
+| [ADR-2016](ADR-2016-wilson-lower-bound-raw-floor.md) | Aggregate eligibility is a Wilson lower bound floored on the raw observation count | LEARNING-memory | 2026-08-31 | accepted | complete | live | — | — | jjohare | agentbox |
+| [ADR-2017](ADR-2017-consumer-behind-producer-w066.md) | Learning consumers may never be enabled ahead of their producer | LEARNING-memory | 2026-08-31 | accepted | complete | live | — | — | jjohare | agentbox |
+| [ADR-2018](ADR-2018-recall-harness-merge-gate.md) | The recall harness is the mandatory merge gate for any retrieval-geometry change | LEARNING-memory | 2026-08-31 | accepted | complete | live | — | — | jjohare | agentbox |
+| [ADR-2019](ADR-2019-model-lifecycle-384-dim-freeze.md) | Model-lifecycle freeze — 384-dim bge is the active column, SONA and attention-rerank stay off | LEARNING-memory | 2026-08-31 | accepted | none | inactive | — | — | jjohare | agentbox |
+| [ADR-2020](ADR-2020-capability-gating.md) | Optional capabilities are manifest-gated and byte-identical-when-off; execution-gated tools are spend-capped and never auto-routed | GOVERNANCE-capabilities | 2026-08-31 | accepted | complete | live | — | — | jjohare | agentbox |
+| [ADR-2021](ADR-2021-skills-jit-context-lint.md) | Skills are JIT context — no monolith SKILL.md, depth relocated to references/, enforced by lint before rebuild | GOVERNANCE-capabilities | 2026-08-31 | accepted | complete | live | — | — | jjohare | agentbox |
+| [ADR-2022](ADR-2022-governed-ontology-writes.md) | Governed ontology writes only — the ungoverned axiom-load backdoor stays disabled outside bootstrap | GOVERNANCE-capabilities | 2026-08-31 | accepted | complete | live | — | — | jjohare | agentbox |
+| [ADR-2023](ADR-2023-loom-facade.md) | The Loom is a façade — consumers hold the :8084 door and the model is a swappable URL behind it | GOVERNANCE-capabilities | 2026-08-31 | accepted | partial | live | — | — | jjohare | agentbox |
+| [ADR-2024](ADR-2024-dream-cycle-gating.md) | Dream cycles are evidence-gated and human-merge-gated, and darwin evaluators must emit surface-dependent output | GOVERNANCE-capabilities | 2026-08-31 | accepted | partial | live | — | — | jjohare | agentbox |
