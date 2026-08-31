@@ -3,7 +3,7 @@ name: build-with-quality
 description: "Implement features with tests and quality gates, debug hard bugs, and stress-test designs. Use when building a feature with TDD/EDD, chasing a stubborn multi-function bug (feedback-loop-first), interrogating a design before coding, or running a coverage/security/accessibility quality-gate pass. Supersedes agentic-qe, reasoningbank-*, and pair-programming."
 license: MIT
 metadata:
-  version: 1.2.1
+  version: 1.3.0
   author: Claude Flow
   tags: [meta-skill, development, qa, edd, tdd, bdd, adr, ddd, agents, quality-gates, evidence, sona, hnsw, coverage, security, accessibility, chaos-testing]
   mcp_server: false
@@ -103,8 +103,11 @@ and the per-agent coordination hooks.
   hands proven scenarios off to them for permanent regression coverage — it does not
   replace them.
 - **DDD / ADR / TDD** — bounded contexts and tactical patterns; graph-backed ADRs
-  with `depends_on`/`amends`/`supersedes`; Red-Green-Refactor with TDD agents that
-  also stabilize proven EDD expectations into tests. See
+  with `depends_on`/`amends`/`supersedes` **plus a verification/staleness contract**
+  (`verified_commit` + `verified_paths` so CI catches a record drifting from its
+  code — an ADR you can't falsify against the code is documentation, not a
+  control); Red-Green-Refactor with TDD agents that also stabilize proven EDD
+  expectations into tests. See
   [references/methodologies.md](./references/methodologies.md).
 
 ## Related skills (complementary)

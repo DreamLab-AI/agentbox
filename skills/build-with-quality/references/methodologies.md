@@ -45,6 +45,44 @@ mcp__claude-flow__memory_store({
 })
 ```
 
+### Keeping ADRs honest — the verification/staleness contract
+
+Status tracking and the supersession graph keep the ledger *internally*
+consistent; `ruflo adr check` validates that axis (no orphaned `supersedes`,
+no broken chains). It does **not** stop a record drifting from the code it
+describes — an ADR can have a perfect lineage graph and still lie about what the
+system does. Add a second, orthogonal axis: consistency with the code.
+
+- **`verified_commit` + `verified_paths`.** Each code-bearing record carries the
+  full 40-char SHA at which its claims were checked and the repo-relative paths
+  it inspected. CI fails the record when any governed path changed since —
+  `git diff <verified_commit>..HEAD -- <verified_paths>` must be empty.
+- **An unpopulated gate is vacuous.** A record with no `verified_paths` is never
+  checked. Advertising "CI-enforced staleness" while records omit paths is
+  marketing, not enforcement — populate paths on every code-bearing record, or
+  drop the claim. (An opt-in check that no record opts into governs nothing.)
+- **Commit sequencing.** A record's `verified_commit` must be a commit whose
+  governed paths are *unchanged since it*. Land code changes first, then point
+  the record at that SHA — never the reverse, or the record flags its own
+  arming commit as stale on the next run.
+- **Proposed/rejected records verify nothing.** An empty `verified_commit` is
+  their honest state; the generator/validator must accept it rather than force a
+  dishonest SHA onto an unbuilt decision.
+- **Code is authority.** When a governed path changes and the gate fires,
+  classify the drift before touching the record — an adversarial reviewer on a
+  *different model family* (the EDD anti-fox rule) is the cheap way: **cosmetic**
+  (formatting, import reorder, test line-wrapping) → re-verify and bump the SHA
+  with a one-line note; **semantic** (behaviour changed) → re-open the decision.
+  The gate says "this code moved, re-confirm the record," not "this record is
+  wrong" — so the common case is a bounded re-verification, not a rewrite.
+- **Mint new architectural decisions as `proposed`, not `accepted`.**
+  Ratification is the owner's act; an agent proposes, a human accepts.
+
+The payoff is a ledger that cannot silently rot: the first time governed code
+moves under a record, CI names the record and the exact path, and the fix is a
+scoped re-verify rather than an audit. An ADR you cannot falsify against the
+code is documentation, not a control.
+
 ## Test-Driven Development (TDD)
 - **Red-Green-Refactor**: Strict cycle enforcement with TDD-specific agents
 - **Test Patterns**: Unit, integration, and contract test templates
