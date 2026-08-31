@@ -216,7 +216,7 @@ Use stubbed memcached in-process for CI speed.
 
 ## Adding a new slot (rare)
 
-This is an ADR-level decision. Open an ADR proposal first (`docs/reference/adr/ADR-NNN-<name>.md`) covering:
+This is an ADR-level decision. Open an ADR proposal first (`docs/archive/adr/ADR-NNN-<name>.md`) covering:
 
 - Why the slot is needed (what use-case requires this durable-state concern)
 - Proposed method set

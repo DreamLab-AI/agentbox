@@ -66,7 +66,7 @@ skill / consultant / MCP tool.
 
 Use a consultant when the coordinator wants a labelled answer from a
 specific external model. The response is returned with provenance so the
-caller knows who said it. Specified by [PRD-005 / ADR-011](../../../docs/reference/adr/ADR-011-consultation-mcps.md).
+caller knows who said it. Specified by [PRD-005 / ADR-011](../../../docs/archive/adr/ADR-011-consultation-mcps.md).
 
 | If the request involves... | Route to |
 |---|---|

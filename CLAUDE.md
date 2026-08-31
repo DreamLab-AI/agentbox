@@ -4,7 +4,7 @@ Agentbox is a standalone sovereign agent-container product (`github.com/DreamLab
 
 ## Architecture in one paragraph
 
-`agentbox.toml` drives build composition and is the *running* configuration, not a template — check it directly. Runtime is profile-based (tmux + fish); profile isolation replaced Linux pseudo-user isolation. The **interaction plane is Agent of Empires** (`[interaction_plane]` gate, PRD-021/ADR-042): `aoe serve` on loopback `:9095` behind a sole-ingress NIP-98 proxy (`:9096`) owns interactive-session lifecycle, superseding the MAD-style per-provider harness tabs in place — each session binds a `did:nostr` + URN + beads epic + scoped memory namespace at create (ADR-043). Durable state goes through five adapter slots (beads, pods, memory, events, orchestrator; [ADR-005](docs/reference/adr/ADR-005-pluggable-adapter-architecture.md)), each resolving to `local-*`, `external`, or `off`; `federation.mode` selects standalone vs client. Full spec: [PRD-001](docs/reference/prd/PRD-001-capabilities-and-adapters.md).
+`agentbox.toml` drives build composition and is the *running* configuration, not a template — check it directly. Runtime is profile-based (tmux + fish); profile isolation replaced Linux pseudo-user isolation. The **interaction plane is Agent of Empires** (`[interaction_plane]` gate, PRD-021/ADR-042): `aoe serve` on loopback `:9095` behind a sole-ingress NIP-98 proxy (`:9096`) owns interactive-session lifecycle, superseding the MAD-style per-provider harness tabs in place — each session binds a `did:nostr` + URN + beads epic + scoped memory namespace at create (ADR-043). Durable state goes through five adapter slots (beads, pods, memory, events, orchestrator; [ADR-005](docs/archive/adr/ADR-005-pluggable-adapter-architecture.md)), each resolving to `local-*`, `external`, or `off`; `federation.mode` selects standalone vs client. Full spec: [PRD-001](docs/archive/prd/PRD-001-capabilities-and-adapters.md).
 
 ## RuVector memory — operative rules
 
@@ -43,7 +43,7 @@ The image bakes `/opt/agentbox/skills` (118 skills). Skills are the JIT context 
 
 ## URI/URN scheme
 
-`urn:agentbox:<kind>:[<scope>:]<local>` (scope = 64-char hex pubkey), 19 kinds (`decision` added by ADR-048); identity `did:nostr:<hex-pubkey>`; content addressing `sha256-12-<12hex>`. **All durable identifiers are minted through `management-api/lib/uris.js`** — ad-hoc `format!()`/template-literal URNs are prohibited. Resolvability best-effort via `/v1/uri/<urn>` (307/404/410). Ref: [ADR-013](docs/reference/adr/ADR-013-canonical-uri-grammar.md). The host project's parallel `urn:visionclaw:*` grammar and the BC20 anti-corruption bridge: [subsystem-notes §URI](docs/reference/claude-context/subsystem-notes.md).
+`urn:agentbox:<kind>:[<scope>:]<local>` (scope = 64-char hex pubkey), 19 kinds (`decision` added by ADR-048); identity `did:nostr:<hex-pubkey>`; content addressing `sha256-12-<12hex>`. **All durable identifiers are minted through `management-api/lib/uris.js`** — ad-hoc `format!()`/template-literal URNs are prohibited. Resolvability best-effort via `/v1/uri/<urn>` (307/404/410). Ref: [ADR-013](docs/archive/adr/ADR-013-canonical-uri-grammar.md). The host project's parallel `urn:visionclaw:*` grammar and the BC20 anti-corruption bridge: [subsystem-notes §URI](docs/reference/claude-context/subsystem-notes.md).
 
 ## Rules for changes
 
@@ -80,4 +80,4 @@ The image bakes `/opt/agentbox/skills` (118 skills). Skills are the JIT context 
 
 ## Docs to keep in sync
 
-When architecture changes, update together: [`README.md`](README.md), [`docs/user/quickstart.md`](docs/user/quickstart.md), [`CLAUDE.md`](CLAUDE.md), [`browsercontainer/README.md`](browsercontainer/README.md), [`docs/developer/code-as-harness.md`](docs/developer/code-as-harness.md), [`docs/developer/ecosystem.md`](docs/developer/ecosystem.md), and the relevant ADR/PRD/DDD in `docs/reference/`.
+When architecture changes, update together: [`README.md`](README.md), [`docs/user/quickstart.md`](docs/user/quickstart.md), [`CLAUDE.md`](CLAUDE.md), [`browsercontainer/README.md`](browsercontainer/README.md), [`docs/developer/code-as-harness.md`](docs/developer/code-as-harness.md), [`docs/developer/ecosystem.md`](docs/developer/ecosystem.md), the living ground-truth docs in `docs/` (BASELINE-container, INGRESS-identity, LEARNING-memory, GOVERNANCE-capabilities), and a thin decision record in `docs/adr/` (template + generated index; legacy corpus frozen at `docs/archive/`).

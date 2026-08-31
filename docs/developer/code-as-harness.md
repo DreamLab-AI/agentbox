@@ -218,14 +218,14 @@ These questions remain unresolved even with Phase 2 live; none blocked the rollo
 
 | Document | Location |
 |---|---|
-| PRD-008 — Code-as-Harness integration | `docs/reference/prd/PRD-008-code-as-harness-integration.md` |
-| ADR-018 — Persistent code-interpreter MCP | `docs/reference/adr/ADR-018-persistent-code-interpreter-mcp.md` |
-| ADR-019 — Experiential skill learning | `docs/reference/adr/ADR-019-experiential-skill-learning.md` |
-| ADR-020 — ACI MCP and tree-search (stub) | `docs/reference/adr/ADR-020-aci-mcp-tree-search.md` |
-| DDD-005 — Code-execution domain | `docs/reference/ddd/DDD-005-code-execution-domain.md` |
-| ADR-013 — Canonical URI grammar | `docs/reference/adr/ADR-013-canonical-uri-grammar.md` |
-| ADR-008 — Privacy filter | `docs/reference/adr/ADR-008-privacy-filter.md` |
-| DDD-004 — Linked-data interchange | `docs/reference/ddd/DDD-004-linked-data-interchange-domain.md` |
+| PRD-008 — Code-as-Harness integration | `docs/archive/prd/PRD-008-code-as-harness-integration.md` |
+| ADR-018 — Persistent code-interpreter MCP | `docs/archive/adr/ADR-018-persistent-code-interpreter-mcp.md` |
+| ADR-019 — Experiential skill learning | `docs/archive/adr/ADR-019-experiential-skill-learning.md` |
+| ADR-020 — ACI MCP and tree-search (stub) | `docs/archive/adr/ADR-020-aci-mcp-tree-search.md` |
+| DDD-005 — Code-execution domain | `docs/archive/ddd/DDD-005-code-execution-domain.md` |
+| ADR-013 — Canonical URI grammar | `docs/archive/adr/ADR-013-canonical-uri-grammar.md` |
+| ADR-008 — Privacy filter | `docs/archive/adr/ADR-008-privacy-filter.md` |
+| DDD-004 — Linked-data interchange | `docs/archive/ddd/DDD-004-linked-data-interchange-domain.md` |
 | CodeAct skill | `skills/codeact/` |
 | ExpeL lesson-extractor skill | `skills/expel-lesson-extractor/` |
 | Voyager skill library | `skills/voyager-skill-library/` |

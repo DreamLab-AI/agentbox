@@ -81,7 +81,7 @@ Hand-authored JSON-LD documents (skill `SKILL.md` frontmatter, ADR/PRD/DDD front
 Lint with:
 
 ```sh
-node management-api/middleware/linked-data/lion-linter.js docs/reference/adr/*.md
+node management-api/middleware/linked-data/lion-linter.js docs/archive/adr/*.md
 ```
 
 CI runs the linter on every `.md` with a JSON-LD frontmatter block.

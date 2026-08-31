@@ -2,8 +2,9 @@
 
 # Architecture Decision Records
 
-_1 record(s). Regenerate with_ `node scripts/adr-index-gen.js agentbox/docs/next/adr`.
+_2 record(s). Regenerate with_ `node scripts/adr-index-gen.js agentbox/docs/adr`.
 
 | ID | Title | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|------|----------|------|------------|------------|---------------|-------|------|
 | [ADR-2001](ADR-2001-corpus-consolidation.md) | Consolidate the documentation corpus onto a thin living ADR series | 2026-08-31 | accepted | partial | staged | — | — | jjohare | agentbox |
+| [ADR-2002](ADR-2002-aoe-token-auth-boundary.md) | AoE interaction plane requires token auth — loopback is not a boundary | 2026-08-31 | accepted | complete | staged | — | — | jjohare | agentbox |

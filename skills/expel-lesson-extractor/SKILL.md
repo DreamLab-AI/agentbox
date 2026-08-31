@@ -89,7 +89,7 @@ ADR-015).
 - `skills/agentdb-memory-patterns/SKILL.md` — memory_type discriminator details.
 - `ontology/code-harness.ttl` — OWL2 class declarations.
 - `docs/developer/code-harness-multi-tier-memory.md` — namespace / class table.
-- `docs/reference/adr/ADR-019-experiential-skill-learning.md` — canonical decision.
-- `docs/reference/prd/PRD-008-code-as-harness-integration.md` §3.4 / §7 Track B.
-- `docs/reference/ddd/DDD-005-code-execution-domain.md` §DistilledLesson aggregate.
+- `docs/archive/adr/ADR-019-experiential-skill-learning.md` — canonical decision.
+- `docs/archive/prd/PRD-008-code-as-harness-integration.md` §3.4 / §7 Track B.
+- `docs/archive/ddd/DDD-005-code-execution-domain.md` §DistilledLesson aggregate.
 - `tests/code-harness/lesson-retrieval-queries.json` — C3 acceptance test fixture.

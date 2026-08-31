@@ -5,12 +5,12 @@
 These DDD records drifted from the code and were retired in the archive cut of
 2026-08-31. They are kept read-only for history and to resolve inbound cross-references.
 
-The living decision surface is **`docs/next/`**:
-- Container baseline .............. docs/next/BASELINE-container.md
-- Ingress & identity .............. docs/next/INGRESS-identity.md
-- Memory & learning ............... docs/next/LEARNING-memory.md
-- Capability governance ........... docs/next/GOVERNANCE-capabilities.md
-- New ADR ledger .................. docs/next/adr/
+The living decision surface is **`docs/`**:
+- Container baseline .............. docs/BASELINE-container.md
+- Ingress & identity .............. docs/INGRESS-identity.md
+- Memory & learning ............... docs/LEARNING-memory.md
+- Capability governance ........... docs/GOVERNANCE-capabilities.md
+- New ADR ledger .................. docs/adr/
 
-New decisions go in `docs/next/adr/` using `docs/next/adr/TEMPLATE.md`.
-See the host project's `docs/next/MIGRATION-plan.md` for the redirect table.
+New decisions go in `docs/adr/` using `docs/adr/TEMPLATE.md`.
+See the host project's `docs/MIGRATION-plan.md` for the redirect table.

@@ -40,11 +40,11 @@ process); the operator alert fires at 400 MB RSS.
 ## References
 
 - ADR-018: Persistent code-interpreter MCP and CodeAct skill
-  (`docs/reference/adr/ADR-018-persistent-code-interpreter-mcp.md`)
+  (`docs/archive/adr/ADR-018-persistent-code-interpreter-mcp.md`)
 - DDD-005: Code Execution and Experiential Learning Domain
-  (`docs/reference/ddd/DDD-005-code-execution-domain.md`)
+  (`docs/archive/ddd/DDD-005-code-execution-domain.md`)
 - PRD-008 §3.3 and §7 Phase 2a acceptance criteria
-  (`docs/reference/prd/PRD-008-code-as-harness-integration.md`)
+  (`docs/archive/prd/PRD-008-code-as-harness-integration.md`)
 - arxiv:2402.01030 -- CodeAct: Executable Code Actions Elicit Better LLM Agents
 - arxiv:2312.04474 -- Chain of Code: Reasoning with Language Model Executed Code
 - arxiv:2211.12588 -- Program of Thoughts Prompting

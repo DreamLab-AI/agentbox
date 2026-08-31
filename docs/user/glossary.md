@@ -83,7 +83,7 @@ flowchart LR
   contents. Two builds of the same manifest with the same `flake.lock`
   produce byte-identical image hashes.
 - **DDD** — Domain-Driven Design. Used in agentbox for the canonical
-  state-model specs under [`docs/reference/ddd/`](../reference/ddd/).
+  state-model specs under [`docs/archive/ddd/`](../reference/ddd/).
 - **Embedded relay** — the optional `nostr-rs-relay` supervisord program on
   loopback `:7777`, turning the container into its own Nostr endpoint. Every
   accepted event is persisted to the pod mailbox. Spec:

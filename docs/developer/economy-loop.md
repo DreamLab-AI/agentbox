@@ -251,9 +251,9 @@ is not yet wired**:
 - [`docs/developer/identity-mesh.md`](identity-mesh.md) — the five `did:nostr`
   participants (solid-pod-rs, nostr-rust-forum, the host project, dreamlab-ai-website,
   code-as-harness).
-- [`docs/reference/adr/ADR-005-pluggable-adapter-architecture.md`](../reference/adr/ADR-005-pluggable-adapter-architecture.md)
+- [`docs/archive/adr/ADR-005-pluggable-adapter-architecture.md`](../reference/adr/ADR-005-pluggable-adapter-architecture.md)
   — the pods slot contract.
-- [`docs/reference/adr/ADR-013-canonical-uri-grammar.md`](../reference/adr/ADR-013-canonical-uri-grammar.md)
+- [`docs/archive/adr/ADR-013-canonical-uri-grammar.md`](../reference/adr/ADR-013-canonical-uri-grammar.md)
   — the URN grammar every `@id` follows.
 - solid-pod-rs `crates/solid-pod-rs-server/src/lib.rs` — `enforce_read`,
   `charge_granted_payment`, `debit_ledger` (the consumption path).

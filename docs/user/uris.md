@@ -164,7 +164,7 @@ Stable on the skill id. Resolvable when `[linked_data].skill_metadata = "emit"`.
 urn:agentbox:adr:013
 ```
 
-Resolves to `/docs/reference/adr/013.md` when `[linked_data].architecture_docs = "emit"`.
+Resolves to `/docs/archive/adr/013.md` when `[linked_data].architecture_docs = "emit"`.
 
 ### The runtime meta document
 

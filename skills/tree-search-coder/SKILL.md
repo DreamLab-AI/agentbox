@@ -102,12 +102,12 @@ span schema: **[references/algorithm.md](references/algorithm.md)**.
 
 ### External references
 
-- `docs/reference/adr/ADR-020-aci-mcp-tree-search.md` — Surface 2 decision, the
+- `docs/archive/adr/ADR-020-aci-mcp-tree-search.md` — Surface 2 decision, the
   7-step algorithm, manifest gates, validator codes E052/W051/W052,
   observability, and the negative-routing requirement (Open Question 5).
-- `docs/reference/adr/ADR-018-persistent-code-interpreter-mcp.md` — the kernel
+- `docs/archive/adr/ADR-018-persistent-code-interpreter-mcp.md` — the kernel
   MCP (`kernel.exec`, `kernel.reset`) that verifies every branch (hard dep).
-- `docs/reference/prd/PRD-008-code-as-harness-integration.md` — §3.6 tree-search
+- `docs/archive/prd/PRD-008-code-as-harness-integration.md` — §3.6 tree-search
   record schema, §7 acceptance criteria F1–F3, §8 router-collision risk row, §9
   observability.
 - `skills/codeact/SKILL.md` — the single-trajectory stateful loop this skill

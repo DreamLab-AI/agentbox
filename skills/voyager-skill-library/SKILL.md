@@ -205,6 +205,6 @@ Validator rules:
 - `skills/codeact/SKILL.md` — retrieves skills at task start.
 - `ontology/code-harness.ttl` — OWL2 class declarations.
 - `docs/developer/code-harness-multi-tier-memory.md` — namespace / class table.
-- `docs/reference/adr/ADR-019-experiential-skill-learning.md` — canonical decision.
-- `docs/reference/prd/PRD-008-code-as-harness-integration.md` §3.5 / §7 Phase 2b.
-- `docs/reference/ddd/DDD-005-code-execution-domain.md` §VerifiedSkill aggregate.
+- `docs/archive/adr/ADR-019-experiential-skill-learning.md` — canonical decision.
+- `docs/archive/prd/PRD-008-code-as-harness-integration.md` §3.5 / §7 Phase 2b.
+- `docs/archive/ddd/DDD-005-code-execution-domain.md` §VerifiedSkill aggregate.
