@@ -12,32 +12,20 @@ decisions into an ADR when they become architectural.
 
 ## Open TODOs
 
-### tree-search-coder implementation missing (identified 2026-07-05)
+_Both prior entries resolved and reviewed into the unified register 2026-08-31 —
+kept here struck-through for agentbox-local history._
 
-`[skills.tree_search_coder].enabled = true` in the manifest and the flake bakes
-`ENABLE_TREE_SEARCH_CODER=true` into the supervisor environment, but nothing
-consumes it: `skills/tree-search-coder/` (SKILL.md + implementation) has never
-been authored. The gate is armed but inert.
+### ~~tree-search-coder implementation missing~~ **DONE 2026-08-31** (register C-4)
 
-Next steps:
-1. Author the skill per ADR-020 §tree-search / PRD-008 §3.3: N candidates,
-   each executed in a fresh code-interpreter kernel, scored by assertion pass;
-   respect the existing manifest tunables (`max_candidates = 5`,
-   `per_branch_timeout_s = 60`, `spend_cap_usd = 0.50`).
-2. Add a phase-6 closure probe (or entrypoint check) if the implementation
-   ships as an npm/python closure — follow the `mcp/aci-shell` makeNpmService
-   pattern (pinned deps, lockfile, `npmDepsHash`, appRoot overlay).
-3. Until then the gate may stay on (harmless) — or flip it off if manifest
-   honesty is preferred over readiness.
+Authored per ADR-020 Surface 2: `skills/tree-search-coder/SKILL.md` + 4 references
+(execution-gated best-of-N, `spend_cap_usd` halt, audit JSONL); registered in
+SKILL-DIRECTORY, schema, `agentbox.toml`, `system-manifest.js`. Validators green.
 
-### memory_learning consumers — corpus-gated (expected, not a defect)
+### ~~memory_learning consumers — corpus-gated~~ **PARTIAL** (register D-1)
 
-`feed_retrieval` / `feed_routing` stay `false` until the trajectory corpus
-clears the Wilson floor (`aggregate_min_samples = 20` per action pattern).
-Recording started 2026-07-05. Next steps once samples accumulate:
-1. `./agentbox.sh ruvector aggregate-effectiveness` (dry-run first).
-2. Flip `feed_retrieval = true`, restart, observe re-ranking quality.
-3. Then `feed_routing = true` for advisory [INTELLIGENCE] hints.
+Floor cleared (78 aggregates ≥20); `feed_retrieval = true` applied 2026-08-31,
+recall gate re-run PASS. Remaining: observation window, then flip `feed_routing`.
+Tracked as D-1 in `../../../docs/TODO-unified.md`.
 
 ## Deferred operator decisions (held 2026-07-05)
 
