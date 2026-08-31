@@ -1,9 +1,11 @@
 {
   "topic": "Computer Use",
   "topic_slug": "computer-use",
-  "status": "candidate_deferred",
+  "status": "candidate_rejected",
   "reasons": [
-    "draft_failed: splice_validation_failed: anchor not found verbatim: '  - Computer Use aligns with broader agentic paradigms that use tool-use to extend language model capability beyond text generation into real-world action execution.'"
+    "rubric_b_improvement -2.0 <= 0.0",
+    "rubric_a_improvement -2.0 < -0.5",
+    "completeness 0.58 < 0.6"
   ],
   "n_assertions": 14,
   "episodes": [
@@ -175,14 +177,98 @@
     }
   ],
   "draft": {
-    "ok": false,
-    "error": "splice_validation_failed: anchor not found verbatim: '  - Computer Use aligns with broader agentic paradigms that use tool-use to extend language model capability beyond text generation into real-world action execution.'",
-    "edit": null
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "- ### Provenance",
+      "content": "- ### Recent Developments\n  - **Anthropic Claude Computer Use**: Anthropic released a feature allowing Claude to control the user's computer, including mouse, keyboard, and screen, to complete tasks in any application. Felix Riesberg stated, \"Today we're releasing a feature that allows Claude to control your computer, mouse, keyboard, and screen, giving it the ability to use any app.\" The official announcement noted that users can enable Claude to open apps, navigate browsers, and fill in spreadsheets. The feature prioritizes existing API connectors for precision, falling back to direct GUI control only when a specific connector is unavailable. The announcement tweet received 40 million views and 62,000 bookmarks within 16 hours.\n  - **OpenAI Codex & GPT Models**: OpenAI's Codex application now supports computer use on Mac, allowing the agent to see, click, and type across any app with its own cursor (Windows support is planned). Performance on the OSWorld verified benchmark has improved significantly across model generations: GPT-5.2 scored 47.3%, GPT-5.3 Codex scored 64.7%, and GPT-5.4 achieved 75%, surpassing the human-level baseline of 72.4%.\n  - **Benchmark Comparisons**: On the OSWorld 2.0 computer use benchmark, Claude Opus 5 scored 70.6%, outperforming Fable 5 (55.7%) and GPT-5.6-Soul (62.6%). Anthropic's Opus 4.7 model also showed improvement, rising from 72.7% to 78% on the OS World computer use benchmark.\n  - **Enterprise Adoption & Trust**: ServiceNow President Almet Zavery indicated that OpenAI's computer use agents will be granted access to IT tasks, such as remote computer restarts, to function as automated IT support. Aaron Levie of Box described computer use and on-the-fly code execution as the \"ultimate primitives\" for agents to automate real-world enterprise work, which typically requires traversing multiple applications. However, experts note that the bottleneck for automation is shifting from technical feasibility to user trust, particularly regarding credential sharing and the security of agents operating in live desktop environments.\n\n- ### Provenance"
+    }
   },
-  "judge": null,
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": -2.0,
+    "rubric_b_improvement": -2.0,
+    "raw_a": {
+      "factual_grounding": 5,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "B",
+      "improvement": 2
+    },
+    "raw_b": {
+      "factual_grounding": 1,
+      "relevance": 4,
+      "coherence": 4,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
   "completeness": {
-    "score": 0.0,
-    "detail": []
+    "score": 0.5833333333333334,
+    "detail": [
+      {
+        "fp": "1d4a4bcc6ac02111",
+        "claim": "Anthropic released a feature allowing Claude to control the user's computer, including mouse, keyboard, and screen, to c",
+        "matched": true
+      },
+      {
+        "fp": "23976822c3eb2c8b",
+        "claim": "GPT-5.4 achieved a 75% score on the OSWorld verified benchmark, surpassing the human-level performance baseline of 72.4%",
+        "matched": true
+      },
+      {
+        "fp": "1b4e61e90ed57bbc",
+        "claim": "The official Claude announcement tweet for the computer use feature received 40 million views and 62,000 bookmarks withi",
+        "matched": true
+      },
+      {
+        "fp": "01c51a3e716d66e6",
+        "claim": "OpenAI's Codex application now supports computer use on Mac, allowing the agent to see, click, and type across any app o",
+        "matched": true
+      },
+      {
+        "fp": "b45874e3f195d253",
+        "claim": "Anthropic's Opus 4.7 model achieved a score of 78% on the OS World computer use benchmark, up from 72.7% for the previou",
+        "matched": false
+      },
+      {
+        "fp": "681dfde1e1f9370a",
+        "claim": "Claude Opus 5 scored 70.6% on the OSWorld 2.0 computer use benchmark, significantly outperforming Fable 5 (55.7%) and GP",
+        "matched": true
+      },
+      {
+        "fp": "0b936abc8122c3f0",
+        "claim": "ServiceNow President Almet Zavery stated that OpenAI's computer use agents will be granted access to IT tasks, such as r",
+        "matched": true
+      },
+      {
+        "fp": "2c14f954174c16fa",
+        "claim": "GPT-5.3 Codex scored 64.7% on the OS World benchmark, almost doubling the performance of GPT 5.2.",
+        "matched": false
+      },
+      {
+        "fp": "47ea8d9c1f8fa2bc",
+        "claim": "Anthropic's computer use capability is designed to prioritize existing API connectors for precision, only falling back t",
+        "matched": false
+      },
+      {
+        "fp": "5cf5a1017dac9d5a",
+        "claim": "Computer use and the ability to write and run code on the fly are the ultimate primitives for AI agents to automate real",
+        "matched": false
+      },
+      {
+        "fp": "3da38a9d4be08eb9",
+        "claim": "The improvement in computer use capabilities is shifting the bottleneck for automation from technical feasibility to use",
+        "matched": true
+      },
+      {
+        "fp": "ac8fb9fa7bb3a6e8",
+        "claim": "Grok Bot's 'computer use' paradigm, where agents operate virtual machines to interact with web apps like humans, creates",
+        "matched": false
+      }
+    ]
   },
   "ontology_propose_payload": null
 }

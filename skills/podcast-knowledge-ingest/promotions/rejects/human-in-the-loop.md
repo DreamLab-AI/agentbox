@@ -3,7 +3,7 @@
 - status: `candidate_deferred`
 - target page: `Human in the Loop.md`
 - assertions: 15 across episodes: autoresearch-agent-loops-and-the-future-of-work, context-graphs-ais-next-big-idea, how-ai-starts-doing-the-work-in-2026-with-anthropic-cpo-mike-krieger, how-people-actually-use-ai-agents, how-to-get-the-most-from-ai-this-summer, pro-worker-ai, surprise-elon-anthropic-team-up-reshapes-ai-race, what-1250-professionals-said-about-working-with-ai, what-google-needs-to-do-at-io-this-week, what-the-heck-is-graph-engineering, why-agents-make-every-job-a-startup, why-ai-hasnt-increased-unemployment-according-to-anthropic
-- reasons: draft_failed: splice_validation_failed: anchor not found verbatim: '  - **Financial Services**: Regulatory guidance often expects human decision-makers for consequential financial decisions\n  - **Employment Law**: Many jurisdictions restrict fully automated hiring or dismissal decisions'
+- reasons: draft_failed: splice_validation_failed: anchor not found verbatim: '  - **Employment Law**: Many jurisdictions restrict fully automated hiring or dismissal decisions'
 
 ## Scores
 - judge ok: None  error: None
@@ -43,4 +43,4 @@
 - **Anthropic research indicates that even after 6 months of use, users are more likely to interact with Claude as a thought partner, suggesting that human oversight remains essential for complex tasks.**
   - tier 2, confidence 0.85, source Peter McCrory (Anthropic), episode `why-ai-hasnt-increased-unemployment-according-to-anthropic`, fp `e102e9a6551325a2`
 
-## Draft failed: splice_validation_failed: anchor not found verbatim: '  - **Financial Services**: Regulatory guidance often expects human decision-makers for consequential financial decisions\n  - **Employment Law**: Many jurisdictions restrict fully automated hiring or dismissal decisions'
+## Draft failed: splice_validation_failed: anchor not found verbatim: '  - **Employment Law**: Many jurisdictions restrict fully automated hiring or dismissal decisions'

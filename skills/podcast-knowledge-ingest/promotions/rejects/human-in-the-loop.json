@@ -3,7 +3,7 @@
   "topic_slug": "human-in-the-loop",
   "status": "candidate_deferred",
   "reasons": [
-    "draft_failed: splice_validation_failed: anchor not found verbatim: '  - **Financial Services**: Regulatory guidance often expects human decision-makers for consequential financial decisions\\n  - **Employment Law**: Many jurisdictions restrict fully automated hiring or dismissal decisions'"
+    "draft_failed: splice_validation_failed: anchor not found verbatim: '  - **Employment Law**: Many jurisdictions restrict fully automated hiring or dismissal decisions'"
   ],
   "n_assertions": 15,
   "episodes": [
@@ -192,7 +192,7 @@
   ],
   "draft": {
     "ok": false,
-    "error": "splice_validation_failed: anchor not found verbatim: '  - **Financial Services**: Regulatory guidance often expects human decision-makers for consequential financial decisions\\n  - **Employment Law**: Many jurisdictions restrict fully automated hiring or dismissal decisions'",
+    "error": "splice_validation_failed: anchor not found verbatim: '  - **Employment Law**: Many jurisdictions restrict fully automated hiring or dismissal decisions'",
     "edit": null
   },
   "judge": null,

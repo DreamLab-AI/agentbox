@@ -2,6 +2,11 @@
 # Managed by supervisord via supercronic. Edit this file to change schedule.
 # Channel list: podcasts.yaml (same directory, or --config path)
 
+# supercronic runs jobs via /bin/sh with only the supervisor PATH, which lacks
+# coreutils (tee/dirname) and node — all three jobs exited 127 on 2026-08-31
+# before this line existed. Pinned store paths, same convention as supervisord.conf.
+PATH=/nix/store/cp7wjv1pl4wapfk48svvizxd089v9h0a-coreutils-9.11/bin:/nix/store/iz3fzlgfvqac5cmw7w1wp0c6sw57hq9g-nodejs-22.23.1/bin:/nix/store/wl1y7g0gdy9zhhrjijcqjw0hq58px851-python3-3.12.13-env/bin:/usr/local/bin:/bin:/usr/bin
+
 # LIVE with assertion-ledger integration (option 4) since 2026-08-23: curated
 # pages are never edited; assertions land on podcast-evidence___* ledger pages
 # with [[Topic]] wikilinks (sandbox e2e verified: 0 curated pages modified,
