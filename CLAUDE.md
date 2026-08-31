@@ -2,6 +2,8 @@
 
 Agentbox is a standalone sovereign agent-container product (`github.com/DreamLab-AI/agentbox`): Nix-composed image, manifest-gated features, pluggable durable-state adapters, sovereign identity (`did:nostr`). This file holds the constraints and gotchas you can't discover from the file system; deep subsystem state lives in the linked references.
 
+**Architecture ground truth (consolidated 2026-08-31):** the ADR pack for any domain = its living governing document in `docs/` (BASELINE-container, INGRESS-identity, LEARNING-memory, GOVERNANCE-capabilities — their *Invariants* are the compliance surface) + the `docs/adr/` ledger records amending it. `docs/archive/` is rationale/history only, never authority. Routing table + decision process: `docs/adr/README.md`.
+
 ## Architecture in one paragraph
 
 `agentbox.toml` drives build composition and is the *running* configuration, not a template — check it directly. Runtime is profile-based (tmux + fish); profile isolation replaced Linux pseudo-user isolation. The **interaction plane is Agent of Empires** (`[interaction_plane]` gate, PRD-021/ADR-042): `aoe serve` on loopback `:9095` behind a sole-ingress NIP-98 proxy (`:9096`) owns interactive-session lifecycle, superseding the MAD-style per-provider harness tabs in place — each session binds a `did:nostr` + URN + beads epic + scoped memory namespace at create (ADR-043). Durable state goes through five adapter slots (beads, pods, memory, events, orchestrator; [ADR-005](docs/archive/adr/ADR-005-pluggable-adapter-architecture.md)), each resolving to `local-*`, `external`, or `off`; `federation.mode` selects standalone vs client. Full spec: [PRD-001](docs/archive/prd/PRD-001-capabilities-and-adapters.md).
