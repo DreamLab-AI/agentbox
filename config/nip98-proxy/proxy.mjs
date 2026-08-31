@@ -328,6 +328,32 @@ function log(level, msg, extra) {
   stream.write(`${JSON.stringify(line)}\n`);
 }
 
+/**
+ * Redact credential-bearing query params before a URL reaches the logs. A
+ * signed NIP-98 event (?auth=) is replayable within its freshness window and a
+ * break-glass token (?access_token=/?bearer=) is a live secret — neither
+ * belongs in log lines.
+ */
+function redactUrlCreds(rawUrl) {
+  return String(rawUrl || '').replace(
+    /([?&])(auth|access_token|bearer)=[^&]*/gi,
+    '$1$2=REDACTED'
+  );
+}
+
+/**
+ * Strip credential query params from a path before it is forwarded upstream.
+ * The proxy has already consumed and verified them; forwarding them would put
+ * a replayable signed event / live token in upstream logs and access traces.
+ */
+function stripUrlCreds(path) {
+  const stripped = String(path || '').replace(
+    /([?&])(auth|access_token|bearer)=[^&]*/gi,
+    '$1'
+  ).replace(/[?&]+$/, '').replace(/\?&/, '?').replace(/&&+/g, '&');
+  return stripped === '' ? '/' : stripped;
+}
+
 // ─── NIP-98 verifier: reuse NostrBridge.verifyNip98 (same path as auth.js) ─────
 
 function loadNostrBridge() {
@@ -701,7 +727,7 @@ const server = http.createServer((req, res) => {
 
     const auth = verifyIdentity(req, undefined, rawBody);
     if (!auth.ok) {
-      log('warn', 'request rejected', { method: req.method, url: req.url, reason: auth.reason, ip: clientIp(req) });
+      log('warn', 'request rejected', { method: req.method, url: redactUrlCreds(req.url), reason: auth.reason, ip: clientIp(req) });
       // A human at a browser gets the signer handshake instead of raw JSON;
       // API clients (no text/html Accept) keep the machine-readable 401.
       const wantsHtml = req.method === 'GET' && String(req.headers.accept || '').includes('text/html');
@@ -773,7 +799,7 @@ const server = http.createServer((req, res) => {
       hostname: route.upstream.hostname,
       port: route.upstream.port,
       method: req.method,
-      path: route.path,
+      path: stripUrlCreds(route.path),
       headers,
     }, (proxyRes) => {
       res.writeHead(proxyRes.statusCode || 502, proxyRes.headers);
@@ -817,17 +843,29 @@ const server = http.createServer((req, res) => {
 // ─── WebSocket upgrade proxying (live-ws + acp/ws) ─────────────────────────────
 
 server.on('upgrade', (req, socket, head) => {
-  // Browsers cannot set Authorization on a WS handshake, so accept a break-glass
-  // token from the query string as well (only meaningful when break-glass is on).
+  // Browsers cannot set Authorization on a WS handshake, so accept credentials
+  // from the query string: a break-glass token (?access_token=/?bearer=, only
+  // meaningful when break-glass is on) or a signed NIP-98 event (?auth=, the
+  // console's signer-only carrier — regression fix: this carrier was lost when
+  // /feed moved behind this proxy under ADR-069; the tab0-bridge accepted it,
+  // the proxy did not). The ?auth= value is lifted into the Authorization
+  // header so it flows through verifyIdentity's canonical NIP-98 path —
+  // identical signature/URL-binding/allowlist checks as the header form
+  // (signedUrlFor strips the query, matching what the signer committed to).
+  // Query credentials are WS-handshake-only; HTTP requests must use headers.
   let queryToken = null;
   try {
     const u = new URL(req.url, `http://${req.headers.host || '127.0.0.1'}`);
     queryToken = u.searchParams.get('access_token') || u.searchParams.get('bearer');
-  } catch { /* malformed URL → no query token */ }
+    const nip98Param = u.searchParams.get('auth');
+    if (nip98Param && !req.headers.authorization) {
+      req.headers.authorization = `Nostr ${nip98Param}`;
+    }
+  } catch { /* malformed URL → no query credentials */ }
 
   const auth = verifyIdentity(req, queryToken);
   if (!auth.ok) {
-    log('warn', 'ws upgrade rejected', { url: req.url, reason: auth.reason, ip: clientIp(req) });
+    log('warn', 'ws upgrade rejected', { url: redactUrlCreds(req.url), reason: auth.reason, ip: clientIp(req) });
     socket.write(
       'HTTP/1.1 401 Unauthorized\r\n' +
       'Connection: close\r\n' +
@@ -854,7 +892,7 @@ server.on('upgrade', (req, socket, head) => {
   const upstreamSocket = net.connect(route.upstream.port, route.upstream.hostname, () => {
     // Rebuild the request line + headers, dropping Authorization and injecting
     // identity, then replay any bytes already read as part of the upgrade.
-    const lines = [`${req.method} ${route.path} HTTP/1.1`];
+    const lines = [`${req.method} ${stripUrlCreds(route.path)} HTTP/1.1`];
     const raw = req.rawHeaders;
     for (let i = 0; i < raw.length; i += 2) {
       const name = raw[i];
@@ -923,4 +961,5 @@ process.on('SIGINT', () => shutdown('SIGINT'));
 export {
   verifyIdentity, signedUrlFor, constantTimeEqual, routeFor,
   mintSessionToken, verifySessionToken, stripSessionCookie, safeNextPath,
+  redactUrlCreds, stripUrlCreds,
 };

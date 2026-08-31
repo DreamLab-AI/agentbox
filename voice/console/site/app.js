@@ -112,7 +112,20 @@ async function authHeader(path, method, bodyString, preferBearer) {
     if (bearer) return { Authorization: 'Bearer ' + bearer };
     if (hasNostr()) {
       try { return { Authorization: await signNip98(method, path, bodyString) }; }
-      catch { return {}; }
+      catch (err) {
+        // A silent {} here turns signer throttling/refusal into invisible
+        // no_credentials rejections at the proxy — the 2026-08-31 cockpit
+        // "everything red" failure mode. Surface it on the auth badge.
+        console.warn('[auth] NIP-07 signing failed for', method, path, '—', err && err.message);
+        const badge = $('auth-state');
+        if (badge && !sessionActive) {
+          badge.className = '';
+          badge.textContent = 'signer error';
+          badge.title = 'NIP-07 signing failed (' + ((err && err.message) || 'refused/throttled')
+            + ') — click to sign in and mint a session cookie instead';
+        }
+        return {};
+      }
     }
     return {};
   }

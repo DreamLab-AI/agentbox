@@ -26,6 +26,8 @@ import net from 'node:net';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve as pathResolve } from 'node:path';
+import { writeFileSync, unlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 
 const require = createRequire(import.meta.url);
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -153,6 +155,14 @@ async function main() {
   process.env.NIP98_PROXY_ALLOW_BEARER = BREAK_GLASS;
   process.env.NIP98_PROXY_BEARER_PUBKEY = 'operator-break-glass';
 
+  // N-05: default-upstream (AoE) forwards fail closed without the daemon's
+  // shared-secret token. Provision a fake serve.url so the selftest exercises
+  // the injection path hermetically (the fake upstream ignores the bearer).
+  const aoeTokenFile = pathResolve(tmpdir(), `selftest-aoe-serve-${process.pid}.url`);
+  writeFileSync(aoeTokenFile, `http://127.0.0.1:${upstreamPort}/?token=${'ab'.repeat(32)}\n`);
+  process.env.AOE_TOKEN_FILE = aoeTokenFile;
+  process.on('exit', () => { try { unlinkSync(aoeTokenFile); } catch { /* gone */ } });
+
   const proxyMod = await import('./proxy.mjs');
   await new Promise((r) => setTimeout(r, 300)); // let it bind
 
@@ -172,8 +182,12 @@ async function main() {
     assert(lastReq && lastReq.headers['x-agentbox-pubkey'] === 'operator-break-glass',
       'B: upstream received X-Agentbox-Pubkey', JSON.stringify(lastReq && lastReq.headers['x-agentbox-pubkey']));
     assert(lastReq && !!lastReq.headers['x-forwarded-for'], 'B: upstream received X-Forwarded-For');
-    assert(lastReq && lastReq.headers.authorization === undefined,
-      'B: Authorization header stripped before upstream', JSON.stringify(lastReq && lastReq.headers.authorization));
+    // N-05: the client's Authorization is stripped, and the proxy injects the
+    // AoE daemon's shared-secret token toward the default upstream — the
+    // upstream must see the daemon token, never the client credential.
+    assert(lastReq && lastReq.headers.authorization === `Bearer ${'ab'.repeat(32)}`,
+      'B: client Authorization replaced by injected AoE daemon token',
+      JSON.stringify(lastReq && lastReq.headers.authorization));
   }
 
   // B2. wrong bearer → 401
@@ -224,6 +238,43 @@ async function main() {
   {
     const resp = await wsUpgrade('/sessions/abc/live-ws');
     assert(/401/.test(resp), 'D2: unauthenticated WS upgrade rejected 401', JSON.stringify(resp.slice(0, 40)));
+  }
+
+  // D3. WS upgrade with a signed NIP-98 event as ?auth= (the console's
+  // signer-only carrier — browsers cannot set headers on a WS handshake).
+  // Same verification path as the header form; the u tag is signed without
+  // the query string, matching signedUrlFor's stripped reconstruction.
+  {
+    const url = `http://127.0.0.1:${PROXY_PORT}/sessions/abc/live-ws`;
+    const nip98 = buildNip98('GET', url);
+    if (nip98.skip) {
+      skip('D3: WS upgrade via ?auth= NIP-98 accepted', nip98.skip);
+    } else {
+      lastUpgrade = null;
+      const b64 = nip98.header.slice('Nostr '.length);
+      const resp = await wsUpgrade(`/sessions/abc/live-ws?auth=${encodeURIComponent(b64)}`);
+      assert(/101/.test(resp), 'D3: WS upgrade via ?auth= NIP-98 accepted (101)', JSON.stringify(resp.slice(0, 40)));
+      assert(lastUpgrade && lastUpgrade.headers['x-agentbox-pubkey'] === nip98.pubkey,
+        'D3: upstream upgrade received the signer pubkey',
+        JSON.stringify(lastUpgrade && lastUpgrade.headers['x-agentbox-pubkey']));
+      assert(lastUpgrade && !/auth=/.test(lastUpgrade.url || ''),
+        'D3: consumed ?auth= credential stripped from the forwarded URL',
+        JSON.stringify(lastUpgrade && lastUpgrade.url));
+    }
+  }
+
+  // D4. WS upgrade with a forged ?auth= event → 401 (verification is real,
+  // not presence-of-parameter).
+  {
+    const forged = {
+      kind: 27235, created_at: Math.floor(Date.now() / 1000),
+      tags: [['u', `http://127.0.0.1:${PROXY_PORT}/sessions/abc/live-ws`], ['method', 'GET']],
+      content: '', id: '00'.repeat(32), sig: '00'.repeat(64),
+      pubkey: '11'.repeat(32),
+    };
+    const b64 = Buffer.from(JSON.stringify(forged), 'utf8').toString('base64');
+    const resp = await wsUpgrade(`/sessions/abc/live-ws?auth=${encodeURIComponent(b64)}`);
+    assert(/401/.test(resp), 'D4: forged ?auth= WS upgrade rejected 401', JSON.stringify(resp.slice(0, 40)));
   }
 
   // E. routed prefix → mgmt upstream, prefix stripped, identity injected
