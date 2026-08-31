@@ -1,10 +1,10 @@
 # Identity, Tracing, and Security Mesh
 
-Agentbox's sovereign data stack is built on one invariant: every entity, action, and event in the system has a stable identifier rooted in a single cryptographic identity. This document explains the full chain from keypair generation to federated URI resolution, covering the identity root, the 18-kind URN namespace, the adapter dispatch pipeline, the request lifecycle, credential issuance, and federation boundary semantics.
+Agentbox's sovereign data stack is built on one invariant: every entity, action, and event in the system has a stable identifier rooted in a single cryptographic identity. This document explains the full chain from keypair generation to federated URI resolution, covering the identity root, the 19-kind URN namespace, the adapter dispatch pipeline, the request lifecycle, credential issuance, and federation boundary semantics.
 
 The identity root is a BIP-340 secp256k1 keypair generated once at bootstrap by `scripts/sovereign-bootstrap.py`. The x-only public key — serialised as 64 lowercase hex characters — becomes `did:nostr:<hex-pubkey>`: the agent's primary DID. This DID is accepted by the embedded Nostr relay (NIP-42 AUTH), by the Solid pod server (NIP-98 HTTP auth, WAC policy subjects), by every verifiable credential issued or received, and by every content-addressed URN that carries the pubkey as its scope segment. Nothing in the system uses a different identity for the same agent. The hex pubkey is the canonical form everywhere except at the Nostr relay wire boundary and in legacy pod filesystem paths, where bech32 `npub` appears and is converted at the edge.
 
-From the identity root, 18 kinds of `urn:agentbox:<kind>:[<scope>:]<local>` names cover every other entity the system emits. Owner-scoped kinds embed the hex pubkey as the scope segment and derive the local part from `sha256-12-<first 12 hex chars of SHA-256(stableStringify(payload))>`. This means the same resource always has the same name — re-emitting the same credential subject produces the same URN. Different resources always have different names. Stable-on-identity kinds (skills, MCP servers, ADRs) use a public immutable label as the local part and carry no scope. All minting goes through `management-api/lib/uris.js`; no surface invents ad-hoc IDs.
+From the identity root, 19 kinds of `urn:agentbox:<kind>:[<scope>:]<local>` names cover every other entity the system emits. Owner-scoped kinds embed the hex pubkey as the scope segment and derive the local part from `sha256-12-<first 12 hex chars of SHA-256(stableStringify(payload))>`. This means the same resource always has the same name — re-emitting the same credential subject produces the same URN. Different resources always have different names. Stable-on-identity kinds (skills, MCP servers, ADRs) use a public immutable label as the local part and carry no scope. All minting goes through `management-api/lib/uris.js`; no surface invents ad-hoc IDs.
 
 Every adapter dispatch passes through three mandatory middleware layers in a fixed order: (1) observability opens an OTLP span; (2) the privacy filter optionally redacts PII from the payload before any write; (3) the JSON-LD encoder wraps the output with stable `@id` values drawn from the URI grammar. The privacy filter runs before the encoder so the encoder never sees raw PII. The OTLP span carries the resource URN as an attribute, so every trace in the observability backend is directly linked to the named entity that was acted on.
 
@@ -61,7 +61,7 @@ The pubkey hex is not validated cryptographically at the URI layer — `uris.js`
 
 ## URN Kind Taxonomy
 
-All 18 kinds fall into five categories. The `ownerScope` and `contentAddressed` flags determine the mint shape.
+All 19 kinds fall into five categories (the `decision` kind was added by ADR-048). The `ownerScope` and `contentAddressed` flags determine the mint shape.
 
 ```mermaid
 flowchart LR
@@ -99,6 +99,7 @@ flowchart LR
         ADR_K[adr\ndoc-number]
         PRD_K[prd\ndoc-number]
         DDD_K[ddd\ndoc-number]
+        DECISION_K[decision\ndoc-label]
         META_K[meta\nruntime]
     end
 
@@ -123,6 +124,7 @@ flowchart LR
 | `adr` | no | no | docs | Architecture decision record |
 | `prd` | no | no | docs | Product requirements document |
 | `ddd` | no | no | docs | Domain design document |
+| `decision` | no | no | docs | Decision record as a first-class, Whelk-classifiable graph node (ADR-048) |
 | `thing` | optional | no | things | Generic named thing |
 | `dataset` | yes | no | memory | Named dataset owned by an agent |
 | `bead` | yes | yes | beads | Work bead; content-addressed (`sha256-12`) to match the host's converged bead grammar so BC20 crosses it structurally (uris.js, 2026-06-09) |

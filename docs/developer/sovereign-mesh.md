@@ -151,9 +151,9 @@ Asserted by `tests/sovereign/memory-flash-notifier.test.js`.
 
 ## Key handling
 
-The private key is stored encrypted at `/workspace/profiles/<stack>/nostr.key.enc`
+The private key is stored encrypted at `/home/devuser/workspace/profiles/<stack>/nostr.key.enc`
 (AES-256-GCM, passphrase = PBKDF2-SHA256 over `MANAGEMENT_API_KEY` + profile salt,
-100 000 iterations). The salt lives at `/workspace/profiles/<stack>/nostr.salt`.
+100 000 iterations). The salt lives at `/home/devuser/workspace/profiles/<stack>/nostr.salt`.
 
 `loadSigner(stack)` decrypts the key into memory, derives the passphrase key,
 then zeroes the PBKDF2 output before returning. The raw hex private key is held

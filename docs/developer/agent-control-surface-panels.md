@@ -301,7 +301,7 @@ re-activates a revoked agent.
   `mcp/servers/nostr-bridge.js` exposes `buildNip98Header(url, method,
   signer, body)` for this.
 - In agentbox, the per-profile key lives encrypted at
-  `/workspace/profiles/<stack>/nostr.key.enc` (AES-256-GCM, passphrase
+  `/home/devuser/workspace/profiles/<stack>/nostr.key.enc` (AES-256-GCM, passphrase
   derived from `MANAGEMENT_API_KEY` + profile salt). `loadSigner(stack)`
   decrypts it and returns a `{ sign(event) }` closure — the raw key never
   leaves the module.

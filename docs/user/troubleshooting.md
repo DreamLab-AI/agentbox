@@ -77,7 +77,7 @@ If inbound events never appear in `pods/<npub>/events/inbox/`:
 The sidecar loaded but something in the model-load path failed. Usually one of:
 
 1. **HuggingFace weights not cached.** First boot pulls ~3 GB into
-   `/workspace/.cache/huggingface`. If the container was rebuilt with a
+   `/home/devuser/workspace/.cache/huggingface`. If the container was rebuilt with a
    fresh workspace volume, the cache is empty. Give it a few minutes:
    ```sh
    docker exec agentbox tail -f /var/log/opf-router.log

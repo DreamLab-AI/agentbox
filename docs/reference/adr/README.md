@@ -1,6 +1,6 @@
 ---
 title: Architecture Decision Records
-description: Index of the agentbox ADRs (ADR-001..059) with status and the PRD/DDD they tie into.
+description: Index of the agentbox ADRs (ADR-001..072) with status and the PRD/DDD they tie into.
 ---
 
 # Architecture Decision Records
@@ -54,6 +54,7 @@ Older records use `**Status:**` markdown; ADR-023 onward carry YAML frontmatter
 | [038](ADR-038-aict-structured-coreutils-mcp.md) | AICT structured-coreutils MCP — trial, do not bake | Proposed | — |
 | [039](ADR-039-docbox-backported-surfaces.md) | docBox back-ports — apply-class taxonomy, /v1/system, hash-chained events | Accepted | — |
 | [040](ADR-040-learning-consumers-model-lifecycle-and-legacy-mining.md) | Learning consumers, model lifecycle, and legacy mining | Implemented | [PRD-020](../prd/PRD-020-ruvector-learning-consumers-and-corpus-uplift.md) · [DDD-018](../ddd/DDD-018-learning-consumers-and-model-lifecycle-domain.md) |
+| [041](ADR-041-model-routing-one-policy-many-projections.md) | Model routing — one per-activity Claude/Codex policy, many boot projections | Implemented | [PRD-005](../prd/PRD-005-meta-router-consultants.md) · [ADR-011](ADR-011-consultation-mcps.md) |
 | [042](ADR-042-agent-of-empires-interaction-plane.md) | Agent of Empires as the interaction plane — overlay-only adoption | Proposed | [PRD-021](../prd/PRD-021-interaction-surface-consolidation.md) · [DDD-019](../ddd/DDD-019-interaction-plane-domain.md) |
 | [043](ADR-043-session-identity-binding.md) | Session identity binding — sovereign mechanisms at the AoE session boundary | Proposed | [PRD-021](../prd/PRD-021-interaction-surface-consolidation.md) · [DDD-019](../ddd/DDD-019-interaction-plane-domain.md) |
 | [044](ADR-044-voice-plane-aoe-repoint.md) | Voice-plane repoint — tab0-bridge injection onto the AoE API | Proposed | [PRD-021](../prd/PRD-021-interaction-surface-consolidation.md) · [DDD-019](../ddd/DDD-019-interaction-plane-domain.md) |
@@ -81,6 +82,10 @@ Older records use `**Status:**` markdown; ADR-023 onward carry YAML frontmatter
 | [066](ADR-066-metaharness-governance-boundaries.md) | MetaHarness governance — proposer-only darwin, human-gated promotion | Proposed | [061](ADR-061-dream-persist-accept-as-draft-pr.md) · metaharness#ADR-322 |
 | [067](ADR-067-metaharness-pin-discipline.md) | MetaHarness pin discipline + cross-repo ADR namespacing | Proposed | [064](ADR-064-bake-metaharness-runtime-binaries.md) |
 | [068](ADR-068-kernel-tooldispatcher-deferral.md) | Kernel ToolDispatcher deferral (non-goal) | Proposed | [ADR-005](ADR-005-pluggable-adapter-architecture.md) |
+| [069](ADR-069-unified-operator-auth-dreamlab-adoption.md) | Unified operator auth — dreamlab-ai auth adoption on the :8444 console | Accepted (implementing) | [043](ADR-043-session-identity-binding.md) · [045](ADR-045-sovereign-ingress-npub-front-door.md) · [PRD-021](../prd/PRD-021-interaction-surface-consolidation.md) |
+| [070](ADR-070-self-gc-dream-evidence-governance.md) | Self-GC evidence governance for the dream engine | Accepted | [052](ADR-052-dream-machine-hp-annexe.md) · [061](ADR-061-dream-persist-accept-as-draft-pr.md) · [065](ADR-065-dream-darwin-evaluator-liveness.md) |
+| [071](ADR-071-swarm-telemetry-contract-for-xr.md) | Swarm-telemetry contract as consumed by the XR visualiser | Proposed | [051](ADR-051-loom-client-and-deferred-distillation.md) · VisionClaw ADR-140 |
+| [072](ADR-072-evaluator-before-schedule.md) | Evaluator-before-schedule for dream-cycle deeps | Proposed | [052](ADR-052-dream-machine-hp-annexe.md) · [065](ADR-065-dream-darwin-evaluator-liveness.md) |
 
 ## See also
 

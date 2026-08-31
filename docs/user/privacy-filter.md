@@ -153,7 +153,7 @@ curl -s http://localhost:9091/metrics | grep '^opf_'
   write after `docker compose up` can take a few seconds extra. Subsequent
   writes are <20 ms (GPU) or 40-100 ms (CPU, 4-core).
 - **Weights cache.** The first build pulls ~3 GB of weights into
-  `/workspace/.cache/huggingface`. That cache persists across restarts;
+  `/home/devuser/workspace/.cache/huggingface`. That cache persists across restarts;
   delete it to force a fresh download.
 - **`local-gpu` with `gpu.backend=ollama-cuda`.** The sidecar itself runs
   inside the agentbox container, so it needs CUDA libraries available

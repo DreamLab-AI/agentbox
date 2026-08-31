@@ -16,9 +16,9 @@ docs explain and operationalise what these files decide.
 
 | Catalogue | Count | Contents |
 |-----------|-------|----------|
-| [Architecture Decision Records](adr/README.md) | 43 | ADR-001..044 — the *why* behind each structural choice |
-| [Product Requirement Documents](prd/README.md) | 21 + 1 remediation | PRD-001..021 plus PRD-REMEDIATION-001 — the *what* and *acceptance criteria* |
-| [Domain-Driven Design models](ddd/README.md) | 19 | DDD-001..019 — bounded contexts, aggregates, invariants |
+| [Architecture Decision Records](adr/README.md) | 72 | ADR-001..072 — the *why* behind each structural choice |
+| [Product Requirement Documents](prd/README.md) | 22 + 1 remediation | PRD-001..022 plus PRD-REMEDIATION-001 — the *what* and *acceptance criteria* |
+| [Domain-Driven Design models](ddd/README.md) | 20 | DDD-001..020 — bounded contexts, aggregates, invariants |
 | [QE reviews](qe-reviews/README.md) | 2 | QE-001..002 — traceability and re-verification gates |
 | [Extension vocabulary](_vocab/agbx.md) | — | `agbx:` term registry and the v1 JSON-LD context |
 
@@ -34,7 +34,7 @@ review verifies traceability.
 | Immutable bootstrap | [002](prd/PRD-002-immutable-runtime-bootstrap.md) | [006](adr/ADR-006-immutable-runtime-bootstrap.md) | [001](ddd/DDD-001-immutable-bootstrap-domain.md) | — |
 | Runtime contract & hardening | [003](prd/PRD-003-runtime-contract-and-container-hardening.md) | [007](adr/ADR-007-runtime-contract-and-container-hardening.md) | [002](ddd/DDD-002-runtime-contract-domain.md) | — |
 | Sovereign messaging | [004](prd/PRD-004-external-agent-messaging.md) | [008](adr/ADR-008-privacy-filter-routing.md), [009](adr/ADR-009-embedded-nostr-relay.md), [010](adr/ADR-010-rust-solid-pod-adoption.md) | [003](ddd/DDD-003-sovereign-messaging-domain.md) | — |
-| Meta-router & consultants | [005](prd/PRD-005-meta-router-consultants.md) | [011](adr/ADR-011-consultation-mcps.md) | — | — |
+| Meta-router & consultants | [005](prd/PRD-005-meta-router-consultants.md) | [011](adr/ADR-011-consultation-mcps.md), [041](adr/ADR-041-model-routing-one-policy-many-projections.md) | — | — |
 | Linked-data interfaces | [006](prd/PRD-006-linked-data-interfaces.md) | [012](adr/ADR-012-jsonld-federation-grammar.md), [013](adr/ADR-013-canonical-uri-grammar.md), [014](adr/ADR-014-bidirectional-graph-state-ingress.md) | [004](ddd/DDD-004-linked-data-interchange-domain.md) | — |
 | Multi-tenant federation | [007](prd/PRD-007-multi-tenant-federation.md) | [017](adr/ADR-017-multi-tenant-did-nostr-pods.md) | [011](ddd/DDD-011-multi-tenant-federation-domain.md) | — |
 | Code-as-harness | [008](prd/PRD-008-code-as-harness-integration.md) | [018](adr/ADR-018-persistent-code-interpreter-mcp.md), [019](adr/ADR-019-experiential-skill-learning.md), [020](adr/ADR-020-aci-mcp-tree-search.md) | [005](ddd/DDD-005-code-execution-domain.md) | [001](qe-reviews/QE-001-code-as-harness-traceability-review.md), [002](qe-reviews/QE-002-code-as-harness-reverification.md) |
@@ -47,13 +47,22 @@ review verifies traceability.
 | Consumer & broadcast economy | [015](prd/PRD-015-consumer-broadcast-economy.md) | [021](adr/ADR-021-llm-resource-marketplace-kinds.md), [032](adr/ADR-032-402-scheme-grammar.md), [033](adr/ADR-033-did-nostr-multikey-convergence.md) | [006](ddd/DDD-006-llm-marketplace-domain.md) | — |
 | Context compression & caching | [016](prd/PRD-016-context-compression-caching.md) | [034](adr/ADR-034-headroom-rust-crate-integration.md) | [014](ddd/DDD-014-compression-cache-domain.md) | — |
 | Sovereign project tracking | [017](prd/PRD-017-sovereign-project-tracking.md) | [035](adr/ADR-035-project-tracking-telemetry-and-nostr-kind.md) | [015](ddd/DDD-015-project-tracking-domain.md) | — |
-| Interaction-surface consolidation | [021](prd/PRD-021-interaction-surface-consolidation.md) | [042](adr/ADR-042-agent-of-empires-interaction-plane.md), [043](adr/ADR-043-session-identity-binding.md), [044](adr/ADR-044-voice-plane-aoe-repoint.md) | [019](ddd/DDD-019-interaction-plane-domain.md) | — |
+| RuVector memory & learning | [018](prd/PRD-018-ruvector-native-memory-and-learning.md) | [036](adr/ADR-036-ruvector-capability-adoption-and-learning-loop.md) | [016](ddd/DDD-016-memory-learning-domain.md) | — |
+| Gap-Close agentbox slice | [019](prd/PRD-019-gap-close-agentbox.md) | [037](adr/ADR-037-gap-close-agentbox-decisions.md) | [017](ddd/DDD-017-gap-close-agentbox-context.md) | — |
+| Learning consumers & corpus uplift | [020](prd/PRD-020-ruvector-learning-consumers-and-corpus-uplift.md) | [040](adr/ADR-040-learning-consumers-model-lifecycle-and-legacy-mining.md) | [018](ddd/DDD-018-learning-consumers-and-model-lifecycle-domain.md) | — |
+| Interaction-surface consolidation | [021](prd/PRD-021-interaction-surface-consolidation.md) | [042](adr/ADR-042-agent-of-empires-interaction-plane.md), [043](adr/ADR-043-session-identity-binding.md), [044](adr/ADR-044-voice-plane-aoe-repoint.md), [045](adr/ADR-045-sovereign-ingress-npub-front-door.md), [069](adr/ADR-069-unified-operator-auth-dreamlab-adoption.md) | [019](ddd/DDD-019-interaction-plane-domain.md) | — |
+| Semantic integrity & provenance | [022](prd/PRD-022-semantic-integrity-provenance-decisions.md) | [046](adr/ADR-046-semantica-complement.md), [047](adr/ADR-047-semantica-tenant-integration-boundary.md), [048](adr/ADR-048-decision-records-as-graph-nodes.md), [049](adr/ADR-049-bitemporal-facts-and-runtime-provenance.md), [050](adr/ADR-050-decision-elevation-inverse-corpus-path.md) | [020](ddd/DDD-020-semantic-integrity-provenance-domain.md) | — |
+| Dream engine & MetaHarness | — | [052](adr/ADR-052-dream-machine-hp-annexe.md), [055](adr/ADR-055-dream-cockpit-panel.md), [056](adr/ADR-056-dream-decision-surface.md), [060](adr/ADR-060-dream-annexe-path-dependencies.md), [061](adr/ADR-061-dream-persist-accept-as-draft-pr.md), [062](adr/ADR-062-metaharness-adoption-posture.md)–[067](adr/ADR-067-metaharness-pin-discipline.md), [070](adr/ADR-070-self-gc-dream-evidence-governance.md), [071](adr/ADR-071-swarm-telemetry-contract-for-xr.md), [072](adr/ADR-072-evaluator-before-schedule.md) | — | — |
 | Default-secure remediation | [REMEDIATION-001](prd/PRD-REMEDIATION-001.md) | [027](adr/ADR-027-default-secure-posture.md) | [013](ddd/DDD-013-hardening-boundary-domain.md) | — |
 
 Foundational and cross-cutting ADRs sit outside any single domain slice:
 [001](adr/ADR-001-nixos-flakes.md) (Nix flakes), [002](adr/ADR-002-ruvector-standalone.md) and [015](adr/ADR-015-mcp-ruvector-mandate.md) (RuVector),
 [003](adr/ADR-003-guidance-control-plane.md) (guidance control plane), [004](adr/ADR-004-upstream-sync.md) (upstream sync),
-[016](adr/ADR-016-license-consolidation.md) (licensing), [030](adr/ADR-030-sovereign-mesh-manifest-boundary.md) (sovereign-mesh manifest).
+[016](adr/ADR-016-license-consolidation.md) (licensing), [030](adr/ADR-030-sovereign-mesh-manifest-boundary.md) (sovereign-mesh manifest),
+[038](adr/ADR-038-aict-structured-coreutils-mcp.md) (AICT trial) and [039](adr/ADR-039-docbox-backported-surfaces.md) (docBox back-ports),
+[051](adr/ADR-051-loom-client-and-deferred-distillation.md) (Loom client), [053](adr/ADR-053-hex-canonical-pod-naming.md) (pod naming),
+[057](adr/ADR-057-replayable-agent-execution-journal.md)–[059](adr/ADR-059-monotonic-agent-action-policy-pipeline.md) (execution journal, lifecycle composition, action policy),
+[068](adr/ADR-068-kernel-tooldispatcher-deferral.md) (ToolDispatcher non-goal).
 
 ```mermaid
 flowchart LR

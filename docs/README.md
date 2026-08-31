@@ -21,7 +21,7 @@ flowchart LR
     R -->|"domains"| DDD["reference/ddd/"]
 ```
 
-Agentbox is a sovereign, manifest-driven headless agent runtime: 113 skills, an 18-kind URN namespace, five pluggable adapter slots, and an embedded did:nostr / solid-pod / Nostr-relay substrate. The reference shelf below is the authoritative record — 40 ADRs, 20 PRDs + 1 remediation, 18 DDDs, 2 QE reviews.
+Agentbox is a sovereign, manifest-driven headless agent runtime: ~118 skills, a 19-kind URN namespace, five pluggable adapter slots, and an embedded did:nostr / solid-pod / Nostr-relay substrate. The interaction plane is Agent of Empires (`aoe serve` on loopback `:9095` behind the sole-ingress NIP-98 proxy `:9096`; PRD-021 / ADR-042). The reference shelf below is the authoritative record — 72 ADRs, 22 PRDs + 1 remediation, 20 DDDs, 2 QE reviews.
 
 ---
 
@@ -87,7 +87,7 @@ You are adding a feature, implementing an adapter, or investigating a regression
 | Architecture | |
 |---|---|
 | [Architecture overview](developer/architecture.md) | How it all fits together — manifest → flake → image → runtime |
-| [Identity and tracing mesh](developer/identity-mesh.md) | secp256k1 identity root, 18-kind URN namespace, adapter dispatch pipeline, credential provenance, federation invariants |
+| [Identity and tracing mesh](developer/identity-mesh.md) | secp256k1 identity root, 19-kind URN namespace, adapter dispatch pipeline, credential provenance, federation invariants |
 | [Adapter pattern](developer/adapters.md) | Five slots × three classes; how to write a new impl |
 | [Native pod mesh](developer/native-pod-mesh.md) | In-container git-versioned `solid-pod-rs` tier — architecture + wiring ([PRD-007](reference/prd/PRD-007-multi-tenant-federation.md) / [ADR-010](reference/adr/ADR-010-rust-solid-pod-adoption.md)) |
 | [Sovereign mesh](developer/sovereign-mesh.md) | Nostr client + NIP-98 auth + relay pool internals |
@@ -172,6 +172,38 @@ These are the authoritative sources of truth. Anything in `user/` or `developer/
 | ADR-038 | [AICT structured-coreutils MCP](reference/adr/ADR-038-aict-structured-coreutils-mcp.md) | Proposed (trial, do not bake) | Evaluate AICT structured-coreutils MCP as a bounded trial only — redundant with Claude Code's native tools; do not bake into the immutable image |
 | ADR-039 | [docBox back-ports — apply-class, /v1/system, hash-chained events](reference/adr/ADR-039-docbox-backported-surfaces.md) | Accepted | Back-port three docBox conventions: apply-class taxonomy, `/v1/system` live gate map, hash-chained events log |
 | ADR-040 | [Learning consumers, model lifecycle & legacy mining](reference/adr/ADR-040-learning-consumers-model-lifecycle-and-legacy-mining.md) | Implemented | v2 learning consumers — Wilson aggregator, pattern distiller, recall harness, model-lifecycle and legacy-mining decisions; migration rejected on evidence |
+| ADR-041 | [Model routing — one policy, many projections](reference/adr/ADR-041-model-routing-one-policy-many-projections.md) | Implemented | One per-activity Claude/Codex routing policy projected into per-boot MCP configs |
+| ADR-042 | [Agent of Empires as the interaction plane](reference/adr/ADR-042-agent-of-empires-interaction-plane.md) | Proposed | Overlay-only adoption of AoE as the interactive-session lifecycle owner, superseding per-provider harness tabs |
+| ADR-043 | [Session identity binding](reference/adr/ADR-043-session-identity-binding.md) | Proposed | Bind `did:nostr` + URN + beads epic + scoped memory namespace at each AoE session boundary |
+| ADR-044 | [Voice-plane repoint](reference/adr/ADR-044-voice-plane-aoe-repoint.md) | Proposed | Re-point the tab0-bridge voice injection seam onto the AoE API |
+| ADR-045 | [Sovereign ingress — npub front door](reference/adr/ADR-045-sovereign-ingress-npub-front-door.md) | Proposed | One npub-gated NIP-98 front door for all external control surfaces |
+| ADR-046 | [Semantica as a complement to VisionClaw](reference/adr/ADR-046-semantica-complement.md) | Proposed | Semantica complements, not replaces, VisionClaw |
+| ADR-047 | [Native capability boundary for semantic integrity](reference/adr/ADR-047-semantica-tenant-integration-boundary.md) | Proposed | Native boundary for semantic integrity and provenance |
+| ADR-048 | [Decision records as graph nodes](reference/adr/ADR-048-decision-records-as-graph-nodes.md) | Proposed | Decision records as first-class, Whelk-classifiable graph nodes; adds the `decision` URN kind |
+| ADR-049 | [Bi-temporal facts and runtime PROV-O](reference/adr/ADR-049-bitemporal-facts-and-runtime-provenance.md) | Proposed | Bi-temporal facts and runtime PROV-O off the reasoned graph |
+| ADR-050 | [Decision elevation — inverse corpus path](reference/adr/ADR-050-decision-elevation-inverse-corpus-path.md) | Proposed | The inverse corpus path for decision elevation |
+| ADR-051 | [Loom client and deferred distillation](reference/adr/ADR-051-loom-client-and-deferred-distillation.md) | Proposed | Ontology Loom client with deferred distillation |
+| ADR-052 | [Dream Machine HP annexe](reference/adr/ADR-052-dream-machine-hp-annexe.md) | Proposed | Execution plane for the nightly dream loop on the HP annexe |
+| ADR-053 | [Hex-canonical pod naming](reference/adr/ADR-053-hex-canonical-pod-naming.md) | Accepted | Hex-canonical pod directory naming |
+| ADR-054 | [Ontology-bridge write-path findings](reference/adr/ADR-054-ontology-bridge-write-path-findings.md) | Proposed | Findings from the terminology live test of the ontology-bridge write path |
+| ADR-055 | [Dream cockpit panel](reference/adr/ADR-055-dream-cockpit-panel.md) | Accepted | Surface the nightly dream loop on the operator console |
+| ADR-056 | [`/dream` decision surface](reference/adr/ADR-056-dream-decision-surface.md) | Accepted (Phase 1) / Proposed (Phase 2) | From inspect to a governed judgment-broker action |
+| ADR-057 | [Replayable agent execution journal](reference/adr/ADR-057-replayable-agent-execution-journal.md) | Proposed | Replayable execution journal and derived projections |
+| ADR-058 | [Lifecycle-scoped capability composition](reference/adr/ADR-058-lifecycle-scoped-capability-composition.md) | Proposed | Compose capabilities by lifecycle scope over the adapter spine |
+| ADR-059 | [Monotonic agent-action policy pipeline](reference/adr/ADR-059-monotonic-agent-action-policy-pipeline.md) | Proposed | Monotonic policy pipeline for every agent-initiated action |
+| ADR-060 | [Dream annexe path dependencies](reference/adr/ADR-060-dream-annexe-path-dependencies.md) | Accepted | Evaluate workspace / path-dependency repos for the dream annexe |
+| ADR-061 | [Dream persist ACCEPT as draft PR](reference/adr/ADR-061-dream-persist-accept-as-draft-pr.md) | Accepted | Persist an ACCEPT night's candidate as a draft PR |
+| ADR-062 | [MetaHarness adoption posture](reference/adr/ADR-062-metaharness-adoption-posture.md) | Proposed | Two-tier maturity, subprocess-only MetaHarness adoption |
+| ADR-063 | [Enable ruflo-metaharness plugin](reference/adr/ADR-063-enable-ruflo-metaharness-plugin.md) | Accepted | Boot-apply, read/audit tier of the ruflo-metaharness plugin |
+| ADR-064 | [Bake MetaHarness runtime binaries](reference/adr/ADR-064-bake-metaharness-runtime-binaries.md) | Accepted | Bake MetaHarness runtime binaries into the Nix closure (rebuild-apply) |
+| ADR-065 | [Darwin evaluator liveness contract](reference/adr/ADR-065-dream-darwin-evaluator-liveness.md) | Accepted | Dream-engine darwin evaluator liveness contract |
+| ADR-066 | [MetaHarness governance boundaries](reference/adr/ADR-066-metaharness-governance-boundaries.md) | Proposed | Proposer-only darwin, human-gated promotion |
+| ADR-067 | [MetaHarness pin discipline](reference/adr/ADR-067-metaharness-pin-discipline.md) | Proposed | Pin discipline and cross-repo ADR namespacing |
+| ADR-068 | [Kernel ToolDispatcher deferral](reference/adr/ADR-068-kernel-tooldispatcher-deferral.md) | Proposed (non-goal) | Recorded non-goal: kernel ToolDispatcher deferral |
+| ADR-069 | [Unified operator auth](reference/adr/ADR-069-unified-operator-auth-dreamlab-adoption.md) | Accepted (implementing) | dreamlab-ai auth adoption on the :8444 console |
+| ADR-070 | [Self-GC evidence governance](reference/adr/ADR-070-self-gc-dream-evidence-governance.md) | Accepted | Indexed context objects + side-channel lifecycle planning for the dream engine |
+| ADR-071 | [Swarm-telemetry contract for XR](reference/adr/ADR-071-swarm-telemetry-contract-for-xr.md) | Proposed | Producer-side contract agents must emit for the XR swarm visualiser |
+| ADR-072 | [Evaluator-before-schedule for dream-cycle deeps](reference/adr/ADR-072-evaluator-before-schedule.md) | Proposed | A deep is schedulable only if it names a checked-in, runnable, decidable evaluator |
 
 ### Product requirements (PRD)
 
@@ -197,6 +229,8 @@ These are the authoritative sources of truth. Anything in `user/` or `developer/
 | PRD-018 | [RuVector-native memory and learning](reference/prd/PRD-018-ruvector-native-memory-and-learning.md) | RuVector-native memory and an honest learning loop — hybrid retrieval, typed metadata, trajectory producer; additive on the memory + events slots (Draft v1 — Phases 0–2 shipped 2026-07-05) |
 | PRD-019 | [Gap-Close sprint — agentbox slice](reference/prd/PRD-019-gap-close-agentbox.md) | agentbox's nine owned gap-close items — wiring built-but-unwired producers to their consumers (Draft v1 — WorkPackageMinted) |
 | PRD-020 | [RuVector learning consumers and corpus uplift](reference/prd/PRD-020-ruvector-learning-consumers-and-corpus-uplift.md) | v2 learning consumers + corpus uplift — Wilson aggregator, pattern distillation, recall harness, model lifecycle, legacy mining (Draft v1 — W-A–W-E landed/closed 2026-07-21/22) |
+| PRD-021 | [Interaction-surface consolidation around Agent of Empires](reference/prd/PRD-021-interaction-surface-consolidation.md) | Consolidate interactive-session surfaces onto AoE (`:9095`/`:9096`), binding sovereign identity at each session boundary |
+| PRD-022 | [Semantic integrity, provenance and decision intelligence](reference/prd/PRD-022-semantic-integrity-provenance-decisions.md) | Decision records as graph nodes, bi-temporal facts + runtime PROV-O, and decision elevation |
 | PRD-REMEDIATION-001 | [Default-secure posture remediation](reference/prd/PRD-REMEDIATION-001.md) | Second-pass hardening: loopback publish, auth-default-on, zai allowlist, no runtime escalation, secret-via-tmpfs, doc truth-up |
 
 ### Domain design (DDD)
@@ -221,6 +255,8 @@ These are the authoritative sources of truth. Anything in `user/` or `developer/
 | DDD-016 | [Memory & learning domain](reference/ddd/DDD-016-memory-learning-domain.md) | Semantic memory store + honest learning loop; trajectory producer, effectiveness aggregates; rides memory + events slots |
 | DDD-017 | [Gap-Close agentbox context](reference/ddd/DDD-017-gap-close-agentbox-context.md) | agentbox's gap-close slice — the nine owned items and the local aggregates their wires touch; conformist to three upstream contexts |
 | DDD-018 | [Learning-consumers & model-lifecycle domain](reference/ddd/DDD-018-learning-consumers-and-model-lifecycle-domain.md) | EffectivenessAggregation + DistilledPattern + RecallHarnessRun + EmbeddingMigration + MiningRun; consumer/lifecycle layer over DDD-016 (invariants I14–I23) |
+| DDD-019 | [Interaction plane domain](reference/ddd/DDD-019-interaction-plane-domain.md) | AoE session boundary — SessionBoundary + identity/URN/beads/memory bindings (PRD-021) |
+| DDD-020 | [Semantic integrity & provenance domain](reference/ddd/DDD-020-semantic-integrity-provenance-domain.md) | DecisionNode + bi-temporal facts + PROV-O provenance + decision elevation (PRD-022) |
 
 ### QE reviews
 

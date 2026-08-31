@@ -205,7 +205,7 @@ The agentbox `runtime-pane` renders the resolved adapter map, observability bind
 Three lines plus an ES module:
 
 ```js
-// /workspace/profiles/default/viewer/panes/billing.js
+// /home/devuser/workspace/profiles/default/viewer/panes/billing.js
 import { html, render } from '/lo/losos/html.js';
 
 export default {
@@ -233,7 +233,7 @@ export default {
 ```toml
 # agentbox.toml
 [linked_data.viewer]
-extra_panes = ["/workspace/profiles/default/viewer/panes/billing.js"]
+extra_panes = ["/home/devuser/workspace/profiles/default/viewer/panes/billing.js"]
 ```
 
 The pane manifest picks it up on the next `/lo/manifest.json` request. No image rebuild.
@@ -319,8 +319,8 @@ curl -sI "http://<host>:9090/v1/uri/$(jq -rn --arg u "$URI" '$u | @uri')"
 ### Add a custom pane without rebuilding
 
 ```sh
-mkdir -p /workspace/profiles/default/viewer/panes
-cat > /workspace/profiles/default/viewer/panes/billing.js <<EOF
+mkdir -p /home/devuser/workspace/profiles/default/viewer/panes
+cat > /home/devuser/workspace/profiles/default/viewer/panes/billing.js <<EOF
 import { html, render } from '/lo/losos/html.js';
 export default {
   id: 'billing', label: 'Billing', icon: '💳',

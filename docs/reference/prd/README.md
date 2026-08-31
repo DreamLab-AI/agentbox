@@ -1,6 +1,6 @@
 ---
 title: Product Requirement Documents
-description: Index of the 21 agentbox PRDs (PRD-001..021) plus PRD-REMEDIATION-001, with status and decision chains.
+description: Index of the 22 agentbox PRDs (PRD-001..022) plus PRD-REMEDIATION-001, with status and decision chains.
 ---
 
 # Product Requirement Documents
@@ -34,7 +34,8 @@ shipped the default-secure posture.
 | [018](PRD-018-ruvector-native-memory-and-learning.md) | RuVector-native memory and learning | Draft v1 (Phases 0–2 shipped 2026-07-05) | [ADR-036](../adr/ADR-036-ruvector-capability-adoption-and-learning-loop.md) · [DDD-016](../ddd/DDD-016-memory-learning-domain.md) |
 | [019](PRD-019-gap-close-agentbox.md) | Gap-Close Sprint — agentbox slice | Draft v1 (WorkPackageMinted) | [ADR-037](../adr/ADR-037-gap-close-agentbox-decisions.md) · [DDD-017](../ddd/DDD-017-gap-close-agentbox-context.md) |
 | [020](PRD-020-ruvector-learning-consumers-and-corpus-uplift.md) | RuVector learning consumers and corpus uplift | Draft v1 (W-A–W-E landed 2026-07-21/22) | [ADR-040](../adr/ADR-040-learning-consumers-model-lifecycle-and-legacy-mining.md) · [DDD-018](../ddd/DDD-018-learning-consumers-and-model-lifecycle-domain.md) |
-| [021](PRD-021-interaction-surface-consolidation.md) | Interaction-surface consolidation around Agent of Empires | Proposed | [ADR-042](../adr/ADR-042-agent-of-empires-interaction-plane.md), [ADR-043](../adr/ADR-043-session-identity-binding.md), [ADR-044](../adr/ADR-044-voice-plane-aoe-repoint.md) · [DDD-019](../ddd/DDD-019-interaction-plane-domain.md) |
+| [021](PRD-021-interaction-surface-consolidation.md) | Interaction-surface consolidation around Agent of Empires | Proposed | [ADR-042](../adr/ADR-042-agent-of-empires-interaction-plane.md), [ADR-043](../adr/ADR-043-session-identity-binding.md), [ADR-044](../adr/ADR-044-voice-plane-aoe-repoint.md), [ADR-045](../adr/ADR-045-sovereign-ingress-npub-front-door.md), [ADR-069](../adr/ADR-069-unified-operator-auth-dreamlab-adoption.md) · [DDD-019](../ddd/DDD-019-interaction-plane-domain.md) |
+| [022](PRD-022-semantic-integrity-provenance-decisions.md) | Semantic integrity, provenance and decision intelligence | Draft v1 | [ADR-047](../adr/ADR-047-semantica-tenant-integration-boundary.md), [ADR-048](../adr/ADR-048-decision-records-as-graph-nodes.md), [ADR-049](../adr/ADR-049-bitemporal-facts-and-runtime-provenance.md), [ADR-050](../adr/ADR-050-decision-elevation-inverse-corpus-path.md) · [DDD-020](../ddd/DDD-020-semantic-integrity-provenance-domain.md) |
 | [REMEDIATION-001](PRD-REMEDIATION-001.md) | Default-secure posture remediation | Shipped (Phase 0–4) | [ADR-027](../adr/ADR-027-default-secure-posture.md) · [DDD-013](../ddd/DDD-013-hardening-boundary-domain.md) |
 
 ## See also

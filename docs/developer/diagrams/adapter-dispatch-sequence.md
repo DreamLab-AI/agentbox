@@ -105,7 +105,7 @@ flowchart TD
     TOML --> ML --> RI
 
     RI -->|slot 'beads'| BEADS_PICK{adapters.beads}
-    BEADS_PICK -->|"local-sqlite"| BLS[adapters/beads/local-sqlite.js<br/>LocalSqliteBeadsAdapter<br/>better-sqlite3 at /workspace/beads.db]
+    BEADS_PICK -->|"local-sqlite"| BLS[adapters/beads/local-sqlite.js<br/>LocalSqliteBeadsAdapter<br/>better-sqlite3 at /home/devuser/workspace/beads.db]
     BEADS_PICK -->|"external"| BEX[adapters/beads/external.js<br/>ExternalBeadsAdapter<br/>HTTP POST to federation.external_url/v1/beads/*]
     BEADS_PICK -->|"off"| BOFF[adapters/beads/off.js<br/>OffBeadsAdapter → AdapterDisabled]
     BEADS_PICK -->|"off" + no off.js| BPH[adapters/beads/placeholder.js<br/>fallback — requireImpl:108]
@@ -121,7 +121,7 @@ flowchart TD
     MEM_PICK -->|"off"| MOFF[adapters/memory/off.js<br/>OffMemoryAdapter → AdapterDisabled]
 
     RI -->|slot 'events'| EVT_PICK{adapters.events}
-    EVT_PICK -->|"local-jsonl"| ELJ[adapters/events/local-jsonl.js<br/>LocalJsonlEventsAdapter<br/>fs.appendFileSync to /workspace/events/*.jsonl]
+    EVT_PICK -->|"local-jsonl"| ELJ[adapters/events/local-jsonl.js<br/>LocalJsonlEventsAdapter<br/>fs.appendFileSync to /home/devuser/workspace/events/*.jsonl]
     EVT_PICK -->|"external"| EEX[adapters/events/external.js<br/>ExternalEventsAdapter<br/>HTTP POST to opts.url]
     EVT_PICK -->|"off"| EOFF[adapters/events/off.js<br/>OffEventsAdapter → dispatch no-op, subscribe throws]
 

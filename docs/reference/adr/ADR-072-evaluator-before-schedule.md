@@ -1,8 +1,9 @@
-# ADR-001: Evaluator-before-schedule for dream-cycle deeps
+# ADR-072: Evaluator-before-schedule for dream-cycle deeps
 
 - Status: Proposed (dream night 2026-08-29, slot 1; human review required)
 - Deciders: human maintainers of DreamLab-AI/agentbox
-- Evidence: docs/dream-cycle/LEDGER.md rows 2026-08-17 .. 2026-08-29
+- Relates to: [ADR-052](ADR-052-dream-machine-hp-annexe.md) (HP annexe), [ADR-065](ADR-065-dream-darwin-evaluator-liveness.md) (evaluator liveness contract)
+- Evidence: ../../dream-cycle/LEDGER.md rows 2026-08-17 .. 2026-08-29
 
 ## Context
 
