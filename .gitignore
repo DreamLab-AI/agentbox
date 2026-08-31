@@ -162,3 +162,8 @@ openmed-sidecar/model/
 openmed-sidecar/server/
 # Podcast promotion pipeline runtime state and generated dossiers
 skills/podcast-knowledge-ingest/promotions/
+
+# runtime junk / secrets — never commit
+**/.claude-flow/
+**/.agentic-qe/
+*.key.pem
