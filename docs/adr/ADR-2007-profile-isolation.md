@@ -7,7 +7,8 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: cbe7335b9
+verified_commit: 960394b145fc2f9ab1c3191b682f87079c712e9e
+verified_paths: [config/harness-wrappers/zai.sh, config/harness-wrappers/openrouter.sh]
 owner: jjohare
 review_trigger: A proposal to reintroduce Linux pseudo-user isolation as the primary model, or a harness wrapper omitting the redirect assertion
 repo: agentbox

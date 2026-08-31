@@ -30,7 +30,7 @@ governing document **in the same change**, and regenerate this index
 supersession edges, and stale `verified_commit`+`verified_paths` claims all
 fail the build).
 
-_24 record(s). Regenerate with_ `node scripts/adr-index-gen.js agentbox/docs/adr`.
+_27 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 
 | ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|
@@ -58,3 +58,6 @@ _24 record(s). Regenerate with_ `node scripts/adr-index-gen.js agentbox/docs/adr
 | [ADR-2022](ADR-2022-governed-ontology-writes.md) | Governed ontology writes only — the ungoverned axiom-load backdoor stays disabled outside bootstrap | GOVERNANCE-capabilities | 2026-08-31 | accepted | complete | live | — | — | jjohare | agentbox |
 | [ADR-2023](ADR-2023-loom-facade.md) | The Loom is a façade — consumers hold the :8084 door and the model is a swappable URL behind it | GOVERNANCE-capabilities | 2026-08-31 | accepted | partial | live | — | — | jjohare | agentbox |
 | [ADR-2024](ADR-2024-dream-cycle-gating.md) | Dream cycles are evidence-gated and human-merge-gated, and darwin evaluators must emit surface-dependent output | GOVERNANCE-capabilities | 2026-08-31 | accepted | partial | live | — | — | jjohare | agentbox |
+| [ADR-2025](ADR-2025-cross-repo-federation-contract.md) | Cross-repo federation contract: sha12 content address, urn:agentbox grammar, closed inbound kind-map | PROTOCOL-registry | 2026-08-31 | proposed | none | inactive | — | — | jjohare | agentbox |
+| [ADR-2026](ADR-2026-session-mirror-egress-boundary.md) | Session-mirror cloud egress boundary | SECURITY-profiles | 2026-08-31 | proposed | none | inactive | — | — | jjohare | agentbox |
+| [ADR-2027](ADR-2027-secret-custody-rotation-break-glass.md) | Secret custody, rotation, and break-glass lifecycle | SECURITY-profiles | 2026-08-31 | proposed | none | inactive | — | — | jjohare | agentbox |

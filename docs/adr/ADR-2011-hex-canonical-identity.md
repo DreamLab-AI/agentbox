@@ -7,7 +7,8 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: cbe7335b9
+verified_commit: 960394b145fc2f9ab1c3191b682f87079c712e9e
+verified_paths: [management-api/lib/agent-identity.js, config/nip98-proxy/proxy.mjs]
 owner: jjohare
 review_trigger: A durable identity appears in bech32/npub form in storage or a URL, or the did:nostr:local fallback fires in production
 repo: agentbox

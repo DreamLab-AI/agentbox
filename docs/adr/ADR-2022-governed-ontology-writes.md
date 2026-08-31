@@ -7,7 +7,8 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: cbe7335b9
+verified_commit: 960394b145fc2f9ab1c3191b682f87079c712e9e
+verified_paths: [agentbox.toml]
 owner: jjohare
 review_trigger: any change to direct_axiom_load default, or the authority-class of ontology_axiom_load
 repo: agentbox

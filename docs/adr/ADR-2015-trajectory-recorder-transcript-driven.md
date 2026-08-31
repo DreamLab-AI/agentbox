@@ -7,7 +7,8 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: cbe7335b9
+verified_commit: 960394b145fc2f9ab1c3191b682f87079c712e9e
+verified_paths: [config/hooks/trajectory-recorder.cjs, config/hooks/lib/trajectory-util.cjs]
 owner: jjohare
 review_trigger: A Claude Code build lands where a successful Bash tool_response carries an exit code, or the redaction pattern set changes
 repo: agentbox
