@@ -233,6 +233,14 @@ let
         CUDA_ROOT                   = "${cudaCompat}";
         CUDA_LIBRARY_PATH           = "${cudaCompat}";
         LIBCLANG_PATH               = "${clangLib}/lib";
+        # C-9 / GPU-1 / GPU-2: nix RUNPATHs exclude /usr/lib, where the
+        # nvidia-container-toolkit injects libcuda/libnvcuvid/libGLX_nvidia.
+        # Supervised GPU services (comfyui torch, blender-mcp) are not
+        # wrapProgram-wrapped binaries, so inject the driver dirs here — the
+        # service-side counterpart to lib/gpu-wrap.nix for CLI binaries.
+        # Appended semantics: nix libs stay authoritative via RUNPATH; this
+        # only fills the missing driver libs (dlopen scans the full path).
+        LD_LIBRARY_PATH             = "/usr/lib:/usr/lib/x86_64-linux-gnu:/run/opengl-driver/lib";
         # Vulkan ICD path set by NVIDIA Container Runtime when
         # NVIDIA_DRIVER_CAPABILITIES includes "graphics".
         # Explicit fallback covers edge cases where the runtime doesn't

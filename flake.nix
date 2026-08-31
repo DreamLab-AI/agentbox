@@ -158,6 +158,21 @@
                    (agentboxConfig.gpu.backend or "none")
                    (toolchainCfg.cuda or false);
 
+        # GPU library-path wrapper (C-9 / GPU-1 / GPU-2). Nix binaries carry
+        # nix-store RUNPATHs and never search /usr/lib, where the
+        # nvidia-container-toolkit injects libcuda/libGLX_nvidia — so every nix
+        # GPU binary silently CPU-falls-back. gpuWrap.wrapGpuBins* appends the
+        # host driver dirs to LD_LIBRARY_PATH (nixGL-style), mirroring the
+        # existing start-xorg-nvidia.sh precedent. Only applied when a CUDA/GL
+        # backend is actually selected; on backend=none the packages pass
+        # through unwrapped (wrapping is inert without injected driver libs).
+        gpuWrap    = import ./lib/gpu-wrap.nix { inherit lib pkgs; };
+        gpuActive  = (agentboxConfig.gpu.backend or "none") == "local-cuda";
+        wrapGpuBin = pkg: bins:
+          if gpuActive then gpuWrap.wrapGpuBins { inherit pkg bins; } else pkg;
+        wrapGpuAll = pkg:
+          if gpuActive then gpuWrap.wrapGpuBinsAll { inherit pkg; } else pkg;
+
         # ---------------------------------------------------------------------------
         # PRD-002 §9 Phase 2 — global npm CLI derivations via lib/npm-cli.nix.
         #
@@ -954,20 +969,31 @@
         ];
 
         mediaPackages = with pkgs;
-          lib.optionals (mediaCfg.ffmpeg or false) [ ffmpeg ]
+          # ffmpeg carries NVENC/NVDEC/CUDA-filter support but dlopens
+          # libcuda/libnvcuvid at runtime — GPU-wrapped so it stops erroring
+          # "Cannot load libcuda.so.1" and CPU-falling-back (C-9).
+          lib.optionals (mediaCfg.ffmpeg or false)
+            [ (wrapGpuBin ffmpeg [ "ffmpeg" "ffprobe" "ffplay" ]) ]
           ++ lib.optionals (mediaCfg.imagemagick or false) [ imagemagick ]
           ++ comfyuiPackages;
 
         spatialPackages =
           lib.optionals (spatialCfg.qgis or false) [
-            pkgs.qgis
+            # QGIS GL viewport routes through glvnd → injected NVIDIA GLX.
+            (wrapGpuBin pkgs.qgis [ "qgis" ])
             pkgs.python312Packages.pyqt5
           ]
           ++ lib.optionals (spatialCfg.blender or false) [
-            pkgs.blender
+            # Blender Cycles CUDA/OptiX + GL viewport — the reference case: bare
+            # nix Blender reports "CUEW initialization failed" and sees 0 GPUs;
+            # wrapped it enumerates all CUDA devices (verified live 2026-08-31).
+            (wrapGpuBin pkgs.blender [ "blender" ])
           ]
-          # 3DGS stack: only when gaussian_splatting=true (requires local-cuda via E006)
-          ++ gauss3dPackages;
+          # 3DGS stack: only when gaussian_splatting=true (requires local-cuda via E006).
+          # colmap (CUDA SfM/MVS) + lichtfeld (CUDA) need the wrapper; metis is
+          # CPU-only but wrapping is inert for it. Bin names are upstream-versioned,
+          # so wrap every executable (wrapGpuAll).
+          ++ map wrapGpuAll gauss3dPackages;
 
         dataSciencePackages =
           lib.optionals (dataScienceCfg.pytorch or false) [
