@@ -345,6 +345,27 @@ PY
   fi
 fi
 
+# Codex sandbox mode: codex's built-in bwrap sandbox cannot start under this
+# container's no-new-privileges + seccomp policy ("bwrap: Failed to make /
+# slave: Operation not permitted"), which turns every `codex exec` into a hard
+# BLOCK. The agentbox container itself is the isolation boundary, so default
+# codex to no inner sandbox. Idempotent and operator-respecting: only written
+# when the key is absent. NB: TOML top-level keys must precede any [section]
+# header, so the key is PREPENDED, never appended.
+CODEX_CFG="$CODEX_HOME/config.toml"
+if [ ! -f "$CODEX_CFG" ]; then
+  mkdir -p "$CODEX_HOME"
+  printf '# agentbox: the container is the sandbox; bwrap is unavailable under no-new-privileges\nsandbox_mode = "danger-full-access"\n' > "$CODEX_CFG"
+  echo "[bootstrap] Seeded codex config.toml (sandbox_mode = danger-full-access)"
+elif ! grep -q '^[[:space:]]*sandbox_mode[[:space:]]*=' "$CODEX_CFG"; then
+  _codex_tmp="$(mktemp)"
+  {
+    printf '# agentbox: the container is the sandbox; bwrap is unavailable under no-new-privileges\nsandbox_mode = "danger-full-access"\n\n'
+    cat "$CODEX_CFG"
+  } > "$_codex_tmp" && cat "$_codex_tmp" > "$CODEX_CFG" && rm -f "$_codex_tmp"
+  echo "[bootstrap] Prepended sandbox_mode = danger-full-access to codex config.toml"
+fi
+
 # i3 window manager config
 mkdir -p "$WORKSPACE/.config/i3" 2>/dev/null || true
 if [ -f /opt/agentbox/config/i3/config ] && [ ! -f "$WORKSPACE/.config/i3/config" ]; then

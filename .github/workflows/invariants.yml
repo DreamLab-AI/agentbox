@@ -6,7 +6,8 @@ name: Security Invariants
 on:
   push:
     paths:
-      - 'docker-compose.yml'
+      - 'docker-compose*.yml'
+      - 'docs/adr/**'
       - 'config/seccomp-agentbox.json'
       - 'config/entrypoint-unified.sh'
       - 'management-api/**'
@@ -26,8 +27,10 @@ jobs:
   invariants:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout (full history — ADR staleness gate diffs old commits)
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -63,3 +66,6 @@ jobs:
 
       - name: check-manifest-catalogue (ADR-039 gate-path parity)
         run: node scripts/ci/check-manifest-catalogue.js
+
+      - name: validate-adr-ledger (frontmatter, supersession reciprocity, verified_commit staleness)
+        run: node scripts/adr-index-gen.js docs/adr --check

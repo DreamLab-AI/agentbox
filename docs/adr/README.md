@@ -24,8 +24,11 @@ legacy-number redirect table).
 
 **Making a decision:** copy [`TEMPLATE.md`](TEMPLATE.md) to `ADR-NNNN-slug.md`
 (next free number), fill the three-axis status honestly, update the affected
-governing document **in the same change**, and regenerate this index (the host
-project's `scripts/adr-index-gen.js` — it fails CI on invalid frontmatter).
+governing document **in the same change**, and regenerate this index
+(`node scripts/adr-index-gen.js docs/adr` — CI-enforced via
+`.github/workflows/invariants.yml`: invalid frontmatter, asymmetric
+supersession edges, and stale `verified_commit`+`verified_paths` claims all
+fail the build).
 
 _24 record(s). Regenerate with_ `node scripts/adr-index-gen.js agentbox/docs/adr`.
 
@@ -43,7 +46,7 @@ _24 record(s). Regenerate with_ `node scripts/adr-index-gen.js agentbox/docs/adr
 | [ADR-2010](ADR-2010-bearer-gated-behind-nip98.md) | Per-route bearer credentials are gated so a signed NIP-98 identity always reaches the upstream gate | INGRESS-identity | 2026-08-31 | accepted | complete | live | — | — | jjohare | agentbox |
 | [ADR-2011](ADR-2011-hex-canonical-identity.md) | Hex-canonical identity — 64-hex BIP-340 x-only is the sole storage/URL identity, npub is display-only | INGRESS-identity | 2026-08-31 | accepted | complete | live | — | — | jjohare | agentbox |
 | [ADR-2012](ADR-2012-relay-allowlist-only-ingress.md) | Relay ingress is allowlist-only with no fallback and no auto-add | INGRESS-identity | 2026-08-31 | accepted | complete | live | — | — | jjohare | agentbox |
-| [ADR-2013](ADR-2013-loopback-publish-except-9096.md) | Every host port publish binds 127.0.0.1 except the single :9096 sovereign ingress, CI-enforced | INGRESS-identity | 2026-08-31 | accepted | complete | live | — | — | jjohare | agentbox |
+| [ADR-2013](ADR-2013-loopback-publish-except-9096.md) | Every compose publish binds 127.0.0.1 unless on the sanctioned-exposure list, CI-enforced across all overlays | INGRESS-identity | 2026-08-31 | accepted | complete | live | — | — | jjohare | agentbox |
 | [ADR-2014](ADR-2014-memory-mcp-only-fail-closed.md) | Durable memory is MCP-only and the store fails closed | LEARNING-memory | 2026-08-31 | accepted | complete | live | — | — | jjohare | agentbox |
 | [ADR-2015](ADR-2015-trajectory-recorder-transcript-driven.md) | The trajectory recorder is transcript-driven and fails open except on honesty and privacy | LEARNING-memory | 2026-08-31 | accepted | complete | live | — | — | jjohare | agentbox |
 | [ADR-2016](ADR-2016-wilson-lower-bound-raw-floor.md) | Aggregate eligibility is a Wilson lower bound floored on the raw observation count | LEARNING-memory | 2026-08-31 | accepted | complete | live | — | — | jjohare | agentbox |
