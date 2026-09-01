@@ -10,3 +10,5 @@
 | 2026-08-29 | hooks-pipeline | Given the 2026-08-28 operator conversion of evaluators to checked-in scripts (`s | NONE | https://github.com/DreamLab-AI/agentbox/pull/3 | yes | ACCEPT |  | 69475221dcc4 |  |
 | 2026-08-30 | sovereign-mesh | Given the annexe clone at `fbb2a2b6` does not contain the sibling repos `nostr-r | NONE | NONE | yes | INCONCLUSIVE |  | ace358d25f71 |  |
 | 2026-08-31 | ontology-monitor | Given PR #3 was opened as a draft on 2026-08-29 with only a human empowered to m | NONE | NONE | yes | ACCEPT |  | dfa31471d47e |  |
+| 2026-09-01 | hooks-pipeline | Given the 2026-08-28 conversion of evaluator entrypoints to checked-in scripts ( | NONE | NONE | yes | ACCEPT |  | 36eaf8b908f7 |  |
+| 2026-09-01 | ledger-signals | fate reconciliation (operator): PR #3 was merged by human 2026-08-29T13:56Z (merge commit `55e96ea`), 16 minutes after opening — the annexe has no GitHub read so nights 08-30..09-01 carried the stale draft-open state forward; recording the terminal fate so the pending-merge queue clears | NONE | NONE | no | INCONCLUSIVE |  | operator | #3:MERGED |
