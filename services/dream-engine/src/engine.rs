@@ -761,7 +761,7 @@ pub fn llm_config(rt: &RuntimeConfig) -> LlmConfig {
             provider,
             url: std::env::var("ZAI_URL").unwrap_or_else(|_| rt.zai_url.clone()),
             model: std::env::var("ZAI_MODEL").unwrap_or_else(|_| rt.zai_model.clone()),
-            max_tokens: rt.zai_max_tokens,
+            max_tokens: env_u32("ZAI_MAX_TOKENS", rt.zai_max_tokens),
             api_key: std::env::var("ZAI_ANTHROPIC_API_KEY")
                 .ok()
                 .or_else(|| std::env::var("ZAI_API_KEY").ok()),
@@ -770,10 +770,19 @@ pub fn llm_config(rt: &RuntimeConfig) -> LlmConfig {
             provider,
             url: std::env::var("LOOM_URL").unwrap_or_else(|_| rt.loom_url.clone()),
             model: std::env::var("LOOM_MODEL").unwrap_or_else(|_| rt.loom_model.clone()),
-            max_tokens: rt.loom_max_tokens,
+            max_tokens: env_u32("LOOM_MAX_TOKENS", rt.loom_max_tokens),
             api_key: None,
         },
     }
+}
+
+/// Parse a u32 env override, falling back to the toml value on absence or
+/// garbage (a mis-set override must not silently zero the token budget).
+fn env_u32(name: &str, default: u32) -> u32 {
+    std::env::var(name)
+        .ok()
+        .and_then(|v| v.trim().parse().ok())
+        .unwrap_or(default)
 }
 
 /// Build the fallback LLM config: the *other* provider, when usable.
@@ -788,7 +797,7 @@ pub fn fallback_llm_config(rt: &RuntimeConfig, primary: &LlmConfig) -> Option<Ll
             provider: Provider::Loom,
             url: std::env::var("LOOM_URL").unwrap_or_else(|_| rt.loom_url.clone()),
             model: std::env::var("LOOM_MODEL").unwrap_or_else(|_| rt.loom_model.clone()),
-            max_tokens: rt.loom_max_tokens,
+            max_tokens: env_u32("LOOM_MAX_TOKENS", rt.loom_max_tokens),
             api_key: None,
         }),
         Provider::Loom => {
@@ -800,7 +809,7 @@ pub fn fallback_llm_config(rt: &RuntimeConfig, primary: &LlmConfig) -> Option<Ll
                 provider: Provider::Zai,
                 url: std::env::var("ZAI_URL").unwrap_or_else(|_| rt.zai_url.clone()),
                 model: std::env::var("ZAI_MODEL").unwrap_or_else(|_| rt.zai_model.clone()),
-                max_tokens: rt.zai_max_tokens,
+                max_tokens: env_u32("ZAI_MAX_TOKENS", rt.zai_max_tokens),
                 api_key: Some(key),
             })
         }
@@ -947,6 +956,17 @@ mod tests {
             url,
             "postgres://ruvector:ruvector@ruvector-postgres:5432/ruvector"
         );
+    }
+
+    #[test]
+    fn env_u32_falls_back_on_absence_and_garbage() {
+        assert_eq!(env_u32("DREAM_TEST_UNSET_VAR", 16384), 16384);
+        std::env::set_var("DREAM_TEST_GARBAGE_VAR", "not-a-number");
+        assert_eq!(env_u32("DREAM_TEST_GARBAGE_VAR", 16384), 16384);
+        std::env::set_var("DREAM_TEST_OK_VAR", " 32768 ");
+        assert_eq!(env_u32("DREAM_TEST_OK_VAR", 16384), 32768);
+        std::env::remove_var("DREAM_TEST_GARBAGE_VAR");
+        std::env::remove_var("DREAM_TEST_OK_VAR");
     }
 
     #[test]

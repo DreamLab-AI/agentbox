@@ -256,5 +256,19 @@ async fn call_loom(cfg: &LlmConfig, prompt: &str) -> Result<String, LlmError> {
         info!(reasoning_chars = reasoning.len(), "Loom reasoning block");
     }
 
-    first.message.content.ok_or(LlmError::EmptyResponse)
+    let content = first.message.content.ok_or(LlmError::EmptyResponse)?;
+
+    // A scaffold-mode façade answers 200 with verbatim ontology retrieval and
+    // no model generation (2026-09-01: two nights parsed this junk into
+    // INCONCLUSIVE verdicts). Refuse it loudly rather than returning it as a
+    // model response.
+    if content.contains("no model generation was performed") {
+        return Err(LlmError::Api(
+            "Loom served scaffold retrieval without model generation \
+             (façade in scaffold mode or model backend unavailable)"
+                .into(),
+        ));
+    }
+
+    Ok(content)
 }
