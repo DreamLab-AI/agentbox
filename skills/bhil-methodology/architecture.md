@@ -29,7 +29,7 @@ sprint: S-01
 | Database | [e.g., PostgreSQL] | [X.X] | [ADR-NNN] |
 | Vector store | [e.g., RuVector] | [X.X] | [ADR-NNN] |
 | LLM provider | [e.g., Anthropic] | — | [ADR-NNN] |
-| Primary model | [e.g., claude-sonnet-4] | — | [ADR-NNN] |
+| Primary model | [e.g., claude-sonnet-5] | — | [ADR-NNN] |
 | Eval framework | [e.g., Promptfoo] | [X.X] | — |
 | CI/CD | GitHub Actions | — | — |
 

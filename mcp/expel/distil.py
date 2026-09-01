@@ -204,7 +204,7 @@ def _call_llm_extractor(
     #
     # Example (not executed here):
     #   response = mcp__claude_flow__model_call(
-    #       model="claude-haiku-4-5",   # Tier 2 — simple extraction task
+    #       model="claude-haiku-4-5-20251001",  # Tier 2 — simple extraction task
     #       messages=[{"role": "user", "content": prompt}],
     #       max_tokens=512,
     #   )

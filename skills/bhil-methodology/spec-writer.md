@@ -1,7 +1,7 @@
 ---
 name: spec-writer
 description: Specialized subagent for drafting technical specifications from approved PRDs. Invoked by the orchestrator when a PRD has been approved and needs a technical specification drafted. Produces structured SPEC files with API contracts, data models, and acceptance criteria.
-model: claude-sonnet-4-20250514
+model: claude-sonnet-5
 tools:
   - Read
   - Write

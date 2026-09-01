@@ -45,7 +45,7 @@ export const DEFAULT_CONFIG = {
   // LLM integration
   llm: {
     provider: process.env.LLM_PROVIDER || 'anthropic',
-    model: process.env.LLM_MODEL || 'claude-sonnet-4-5-20250929',
+    model: process.env.LLM_MODEL || 'claude-sonnet-5',
     temperature: parseFloat(process.env.LLM_TEMPERATURE || '0.7'),
     maxTokens: parseInt(process.env.LLM_MAX_TOKENS || '4096', 10),
     zaiUrl: process.env.ZAI_URL || 'http://localhost:9600/chat',

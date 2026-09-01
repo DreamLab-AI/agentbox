@@ -72,7 +72,7 @@ Edit `.claude-flow/config/swarm.json` to match your orchestration ADR:
   "topology": "hierarchical",
   "queen": {
     "type": "Tactical",
-    "model": "claude-opus-4-20250514",
+    "model": "claude-fable-5-1",
     "description": "Orchestrates task decomposition and delegates to workers"
   },
   "workers": [

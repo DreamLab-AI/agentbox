@@ -71,9 +71,11 @@ latest=$(latest_gh_release "google-antigravity/antigravity-cli" "v")
 print_row "antigravity" "${pinned_agy:-???}" "$latest"
 
 section "Claude Code (@anthropic-ai/claude-code)"
-pinned=$(grep -oE '@anthropic-ai/claude-code@[0-9.]+' claude-zai/Dockerfile 2>/dev/null | head -1 | sed 's/.*@//')
 latest=$(latest_npm "@anthropic-ai/claude-code")
-print_row "@anthropic-ai/claude-code" "${pinned:-???}" "$latest"
+pinned=$(grep -oE 'claudeCodeVersion\s*=\s*"[^"]+"' lib/claude-code-binary.nix | head -1 | sed 's/.*"\(.*\)"/\1/')
+print_row "claude-code (runtime)" "${pinned:-???}" "$latest"
+pinned_sidecar=$(grep -oE '@anthropic-ai/claude-code@[0-9.]+' claude-zai/Dockerfile 2>/dev/null | head -1 | sed 's/.*@//')
+print_row "claude-code (zai sidecar)" "${pinned_sidecar:-???}" "$latest"
 
 section "ComfyUI (comfyanonymous/ComfyUI)"
 pinned=$(grep -oE 'comfyuiRev\s*=\s*"v?[0-9.]+"' flake.nix | head -1 | sed 's/.*"v\?\([0-9.]*\)"/\1/')

@@ -1,4 +1,4 @@
-FROM node:20-slim
+FROM node:22-slim
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -17,8 +17,8 @@ RUN useradd -m -s /bin/bash claude && \
 # SECURITY: @anthropic-ai/claude-code is pinned to a verified version.
 # If upstream ships a malicious release, this pin blocks auto-upgrade.
 # Rotate via a PR only; do not auto-update.
-# Bumped 2.1.47 -> 2.1.195 (2026-06-28).
-RUN npm install -g @anthropic-ai/claude-code@2.1.195
+# Bumped to 2.1.257 for Claude Fable 5.1 support (2026-09-01).
+RUN npm install -g @anthropic-ai/claude-code@2.1.257
 
 # Create app directory
 WORKDIR /app

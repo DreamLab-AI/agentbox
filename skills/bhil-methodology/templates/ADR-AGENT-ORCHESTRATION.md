@@ -108,7 +108,7 @@ Each agent is defined in `.claude/agents/[agent-name].md`:
 ---
 name: [orchestrator-name]
 description: "[When this agent is invoked]"
-model: claude-opus-4  # Reserve Opus for orchestration
+model: claude-fable-5-1  # Reserve Fable for demanding orchestration
 tools: [Task, Read, Write]
 ---
 ```
@@ -118,7 +118,7 @@ tools: [Task, Read, Write]
 ---
 name: [worker-name]
 description: "[Specialized capability]"
-model: claude-sonnet-4  # Use Sonnet for workers
+model: claude-sonnet-5  # Use Sonnet for workers
 tools: [Read, Grep, WebSearch]
 ---
 ```

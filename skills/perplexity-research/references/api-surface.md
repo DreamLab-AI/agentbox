@@ -84,7 +84,7 @@ results = search(query, domain_filter=UK_ECOLOGY_DOMAINS, country="GB")
 Multi-step research with model-driven reasoning, web search tools, and citation extraction.
 
 ```python
-def agent_research(prompt, instructions=None, model="anthropic/claude-sonnet-4-6",
+def agent_research(prompt, instructions=None, model="anthropic/claude-sonnet-5",
                    preset=None, max_steps=5, reasoning_effort="medium",
                    search_domains=None, country="GB"):
     payload = {
@@ -139,7 +139,7 @@ def agent_research(prompt, instructions=None, model="anthropic/claude-sonnet-4-6
 **Agent presets**: `"pro-search"` for deep research with maximum web search steps.
 
 **Model options**: Any model string accepted by Perplexity (e.g.
-`"anthropic/claude-sonnet-4-6"`, `"gpt-4.1"`). When using `preset`, omit `model`.
+`"anthropic/claude-sonnet-5"`, `"gpt-4.1"`). When using `preset`, omit `model`.
 
 ---
 

@@ -19,7 +19,7 @@ prompts:
 # MODEL CONFIGURATION
 # ============================================================
 providers:
-  - id: anthropic:claude-sonnet-4-20250514
+  - id: anthropic:claude-sonnet-5
     config:
       temperature: 0.1          # Low temp for consistent eval
       max_tokens: 1000

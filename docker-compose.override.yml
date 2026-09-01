@@ -65,8 +65,8 @@ services:
     # solid-data, sovereign-identities, agentbox-secrets), feature-exception
     # writable volumes (codeserver-config, ctm-config, nostr-relay-data,
     # tailscale-state, ./projects, /home/devuser/workspace bind).
-    # Override owns: host bind mounts (project tree, .claude, .config/claude,
-    # Codex auth cache),
+    # Override owns: host bind mounts (project tree, .claude, .claude.json,
+    # .config/claude, Codex auth cache),
     # the MAD workspace external alias (until migrated, Q43), and any
     # operator-specific paths.
     volumes:
@@ -85,6 +85,10 @@ services:
       # untrusted code in agentbox should mount :ro and accept that plugin
       # updates won't persist.
       - ${HOME}/.claude:/home/devuser/.claude:rw
+      # Claude Code 2.1.257 still keeps workspace trust and UI state in the
+      # legacy top-level file. Mount it explicitly because the hardened rootfs
+      # cannot recreate /home/devuser/.claude.json after a migration/backup.
+      - ${HOME}/.claude.json:/home/devuser/.claude.json:rw
       - ${HOME}/.config/claude:/home/devuser/.config/claude:rw
       # Share only Codex's credential cache, not the complete host .codex tree.
       # Container-specific MCP/trust settings remain in the container while

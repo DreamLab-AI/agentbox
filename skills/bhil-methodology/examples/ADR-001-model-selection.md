@@ -73,7 +73,7 @@ The RAG-powered enterprise knowledge chat feature (PRD-001) requires a language 
 
 ## Decision outcome
 
-**Chosen model: Claude Sonnet 4 (claude-sonnet-4-20250514)**
+**Chosen model: Claude Sonnet 5 (`claude-sonnet-5`)**
 
 **Rationale:** Claude Sonnet 4 achieves a faithfulness score of 0.91 — exceeding the ≥0.85 requirement — while staying within the 5,000ms latency budget (P95: 2,800ms) and the $0.05/query cost ceiling ($0.018/query at the 1,000 query/day volume). Claude Haiku 4.5 was 73% cheaper but failed the faithfulness requirement (0.74 vs. ≥0.85), generating ungrounded claims in 26% of test cases. Claude Opus 4 achieved marginally higher faithfulness (0.93) but exceeded the latency budget under load and was 5× more expensive.
 
@@ -82,7 +82,7 @@ The RAG-powered enterprise knowledge chat feature (PRD-001) requires a language 
 ## Configuration
 
 ```yaml
-model: "claude-sonnet-4-20250514"
+model: "claude-sonnet-5"
 temperature: 0.1
 max_tokens: 1024
 top_p: 0.95

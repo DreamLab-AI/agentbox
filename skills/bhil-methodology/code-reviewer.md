@@ -1,7 +1,7 @@
 ---
 name: code-reviewer
 description: Specialized subagent for reviewing Claude Code implementation output against the originating SPEC and ADRs. Invoked after a task implementation session completes. Produces a structured review report with pass/fail determination and required changes.
-model: claude-sonnet-4-20250514
+model: claude-sonnet-5
 tools:
   - Read
   - Glob

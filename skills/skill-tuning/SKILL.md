@@ -159,8 +159,8 @@ Root: `/home/devuser/workspace/skillopt-lab` · venv: `.venv/bin/python`
 | Plumbing smoke (no LLM/cargo) | `rust-task/smoke_prediction.py` | verify trajectory capture before a real run |
 | Splits | `rust-task/data/{train,val,test}/items.json` | item ids per split |
 
-**Models:** target `claude-haiku-4-5-20251001`; optimizer/author `claude-opus-4-8`;
-mesh second tier `claude-sonnet-4-6`.
+**Models:** target `claude-haiku-4-5-20251001`; optimizer/author `claude-fable-5-1`;
+mesh second tier `claude-sonnet-5`.
 
 **Run Arm A (trainer):**
 ```bash
