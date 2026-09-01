@@ -70,7 +70,7 @@ Phase 1 surfaces require `[skills.code_interpreter] enabled = true` (kernel MCP)
 | `verification-quality` | No | Truth scoring (0.0-1.0), automatic rollback at 0.95 threshold, CI/CD export | Ensuring code correctness with truth-score verification and auto-rollback |
 | `docs-alignment` | No | 15-agent swarm for documentation validation, Diataxis framework, link coverage, Mermaid diagrams | Validating and modernising project documentation against codebase |
 | `security-testing` | No | OWASP Top 10 validation, auth/authorisation testing, API security, dependency CVE scanning, secrets detection, SAST/DAST | Application-layer security testing for web services and APIs (not Linux hardening — use `defense-security` for that) |
-| `prose-sanitiser` | No | Remove LLM writing fingerprints: em-dash overuse, "The X" headings, tier-1 slop vocabulary, sycophantic filler, structural tells. Enforces UK English | Cleaning public-facing content, docs, articles, or presentations that should read as human-authored |
+| `prose-sanitiser` | No | Remove LLM writing fingerprints: em-dash overuse, "The X" headings, tier-1 slop vocabulary, sycophantic filler, structural tells. Substance-first editorial method, draft review (keep/revise/ask-author/cut), interview-driven co-writing. Enforces UK English | Cleaning public-facing content, docs, articles, or presentations that should read as human-authored; reviewing or co-writing drafts; fixing hollow or generic prose |
 
 ### Testing and QA
 

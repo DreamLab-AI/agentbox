@@ -7,7 +7,10 @@ description: >
   English. Use when writing or editing public-facing content — blog posts, docs,
   tutorials, articles, presentations — or short fiction, or when asked to
   "sanitise this", "de-slop", "remove AI tells", "strip watermarks", "remove
-  provenance", or "make this read human".
+  provenance", or "make this read human". Also covers substance-first editing,
+  draft review without rewriting, and interview-driven co-writing — use when a
+  piece reads generic or hollow, or when asked to "review this draft" or
+  "co-write this with me".
 ---
 
 # Prose Sanitiser
@@ -19,8 +22,11 @@ or sampling watermarks, and ship with clean file metadata.
 
 UK English throughout. No exceptions.
 
-Four layers:
+Five layers:
 - **Generative** — apply the Section A principles when drafting new content.
+- **Editorial** — substance-first diagnosis and repair (Section F), plus review
+  and co-write workflows (Section G). De-slopping cannot supply a missing point;
+  this layer finds and fixes the hollow piece before style work starts.
 - **Destructive** — run the Section B audit on existing text.
 - **Simplification** — LLM-driven rewrite to plain English (`simplify`, `declaudish`
   strengths) for readability without manual line-by-line fixes. Useful as a first pass
@@ -30,6 +36,10 @@ Four layers:
 
 ## Quick path
 
+0. **Triage substance before style.** If the piece reads hollow rather than
+   merely slopped — generic claims, no mechanism, nothing only this author could
+   say — start with Section F (or Section G to review/interview). Steps 1–7
+   remove tells; they cannot supply a missing point.
 1. **Strip invisible marks first.** Run `inspect_text.py` / `clean_text.py` to
    remove Unicode watermark carriers (Layer A). This is lossless and always safe.
 2. **Simplify (optional, fast path).** If the text is dense AI prose and you want
@@ -86,7 +96,8 @@ The watermark tools (`inspect_text.py`, `clean_text.py`, `rewrite_text.py`,
 `inspect_file.py`, `clean_file.py`, `audit_dir.py`) come from
 [watermarks-remover](https://github.com/guillaumemeyer/watermarks-remover). Core
 text cleaning needs only Python 3.10+ stdlib; `c2patool`, `exiftool`, and `qpdf`
-extend file metadata coverage when present on PATH.
+extend file metadata coverage when present on PATH. Sections F and G are adapted
+from Addy Osmani's [clarity](https://github.com/addyosmani/clarity) (MIT).
 
 ## Don't launder slop into new slop (second-order defaults)
 
@@ -129,3 +140,15 @@ Load the relevant catalogue on demand — don't hold all of it in context at onc
   pixel-domain image watermarks, aggregate auditing, and the HTTP service API.
   Read this when stripping machine-detectable marks or preparing files for
   publication.
+- [Section F — Editorial Method](references/editorial-method.md): substance
+  before style — truth/ownership safeguards, the job of the piece and its
+  register, the order of work (truth → substance → development → sentences →
+  craft), the high-value diagnoses (importance without mechanism, flatten and
+  relation tests, structural regularity), putting craft back, and per-medium
+  routing. Read this when a piece is hollow or generic, or before any
+  substantial rewrite.
+- [Section G — Review and Co-write](references/review-and-cowrite.md): critique
+  without rewriting (keep/revise/ask-author/cut verdicts) and the perspective
+  interview for building drafts from the author's own material, with provenance
+  notes and `[TK]` gap markers. Read this when asked to review a draft or
+  co-write.

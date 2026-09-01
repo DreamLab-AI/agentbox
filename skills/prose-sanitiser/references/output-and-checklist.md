@@ -7,6 +7,11 @@ Before publishing:
 - [ ] Title promises something specific
 - [ ] Opening hooks in 30 seconds (no warm-up)
 - [ ] Every claim is backed by a specific example, number, or quote
+- [ ] The most important claim has evidence, mechanism, example, or honest
+      uncertainty beside it (Section F)
+- [ ] No fact, attribution, scope, condition, quotation, or link drifted during
+      editing; any gaps marked `[TK: question]`, never filled in
+- [ ] The ending stops on the last useful thought, not a recap or send-off
 - [ ] All Tier 1 vocabulary removed
 - [ ] Em-dash count under threshold; no em-dashes in lists
 - [ ] No "The X" headings (unless proper noun)

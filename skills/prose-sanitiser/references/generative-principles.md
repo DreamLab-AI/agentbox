@@ -47,3 +47,13 @@ Adjust the opening, the level of detail, and the takeaway:
 Only write about what you have done in production. If exploring, say so. The
 reader can tell when prose is generated from a vague middle distance rather
 than from concrete recall.
+
+## A6. Know the job of the piece
+
+Before drafting, name the reader, the outcome, the register, and the source
+material only this author can supply. The register decides what the piece owes
+(an argument owes a disputable thesis; a guide owes correct steps; a reference
+page may be neutral). Full framing and register table:
+[Section F — Editorial Method](editorial-method.md). For drafting with an
+author's own material, use the perspective interview in
+[Section G](review-and-cowrite.md).
