@@ -116,7 +116,11 @@ services:
       - /var/log:mode=755,size=128M,uid=1000,gid=1000
       - /var/log/supervisor:mode=755,size=64M,uid=1000,gid=1000
       - /var/lib/https-bridge:mode=755,size=8M,uid=1000,gid=1000
-      - /home/devuser/.cache:mode=755,size=256M,uid=1000,gid=1000
+      # 1G: opf-router's HF pull (openai/privacy-filter) filled the old 256M
+      # ceiling at boot and starved every other tool's cache (uv/pip/npm).
+      # NB the full BF16 weights are ~3G — local-cpu mode still needs HF_HOME
+      # on disk-backed storage to actually load; 1G just stops the collateral.
+      - /home/devuser/.cache:mode=755,size=1G,uid=1000,gid=1000
       - /home/devuser/.local:mode=755,size=128M,uid=1000,gid=1000
       - /home/devuser/.config:mode=755,size=64M,uid=1000,gid=1000
       - /home/devuser/.claude-flow:mode=755,size=64M,uid=1000,gid=1000
