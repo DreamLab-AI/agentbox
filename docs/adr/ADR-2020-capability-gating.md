@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 1ee6f6f1a9be19f7331643727a08e4061665532c
+verified_commit: d19073a82c319f7be01cf61d31521598dc044da5
 verified_paths: [agentbox.toml, skills/tree-search-coder/SKILL.md]
 owner: jjohare
 review_trigger: any new optional skill/feature block added to agentbox.toml, or any change to the tree-search-coder spend/route posture
