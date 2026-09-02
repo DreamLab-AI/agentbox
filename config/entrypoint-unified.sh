@@ -1059,6 +1059,29 @@ else { console.log('  [fleet] fleet-session-start hook already registered'); }
 FLEETJS
 fi
 
+# ── Workspace trust seed: pre-accept Claude Code's folder-trust dialog ──
+# The "Do you trust the files in this folder?" gate blocks any unattended
+# session (tmux teammate panes, background agents, cron `claude -p`) started
+# in a checkout that has not been trusted yet (2026-09-02: ten worker panes
+# sat dead for an hour). config/hooks/trust-seed.cjs marks the workspace root
+# and every git checkout/worktree under it as trusted in ~/.claude.json. Runs
+# once here at boot and again on every SessionStart so new worktrees are
+# covered. Idempotent, fail-open. Off: AGENTBOX_TRUST_SEED=0.
+_TRUST_HOOK="/opt/agentbox/config/hooks/trust-seed.cjs"
+if [ "${AGENTBOX_TRUST_SEED:-1}" != "0" ] && [ -f "$_TRUST_HOOK" ] && command -v node >/dev/null 2>&1; then
+  node "$_TRUST_HOOK" 2>&1 | sed 's/^/  /' || true
+  TRUST_HOOK="$_TRUST_HOOK" SETTINGS="$_CLAUDE_SETTINGS" node <<'TRUSTJS' || true
+const fs = require('fs');
+const f = process.env.SETTINGS, cmd = `node ${process.env.TRUST_HOOK}`;
+let s = {}; try { s = JSON.parse(fs.readFileSync(f, 'utf8')); } catch {}
+s.hooks = s.hooks || {};
+s.hooks.SessionStart = s.hooks.SessionStart || [];
+const has = s.hooks.SessionStart.some((g) => (g.hooks || []).some((h) => String(h.command || '').includes('trust-seed.cjs')));
+if (!has) { s.hooks.SessionStart.push({ hooks: [{ type: 'command', command: `${cmd} || true`, timeout: 8000, continueOnError: true }] }); fs.writeFileSync(f, JSON.stringify(s, null, 2)); console.log('  [trust] registered trust-seed SessionStart hook in settings.json'); }
+else { console.log('  [trust] trust-seed hook already registered'); }
+TRUSTJS
+fi
+
 # ── Voice plane: register the tab0-bridge turn-sink hooks ──
 # config/tab0-bridge/turn-sink.cjs forwards UserPromptSubmit/Stop turn text to
 # the tab0-bridge feed (the voice console's live transcript). The bridge itself
