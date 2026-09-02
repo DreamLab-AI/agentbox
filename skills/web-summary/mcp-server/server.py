@@ -10,7 +10,7 @@ summarization. The Loom is the load-bearing, model-swappable LLM door
 Features:
 - URL content summarization
 - YouTube transcript extraction
-- Semantic topic generation for Logseq/Obsidian
+- Semantic topic generation for the Obsidian vault
 - VisionClaw integration via MCP resources
 """
 
@@ -49,7 +49,7 @@ USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0.0.
 mcp = FastMCP(
     "web-summary",
     version="2.0.0",
-    description="Summarize web content including YouTube videos with semantic topic links for Logseq/Obsidian"
+    description="Summarize web content including YouTube videos with semantic topic links for an Obsidian vault"
 )
 
 # =============================================================================
@@ -61,7 +61,7 @@ class SummarizeUrlParams(BaseModel):
     url: str = Field(..., description="URL to summarize (web page or YouTube video)")
     length: str = Field(default="medium", description="Summary length: short, medium, long")
     include_topics: bool = Field(default=True, description="Include semantic topic links")
-    format: str = Field(default="markdown", description="Output format: markdown, plain, logseq")
+    format: str = Field(default="markdown", description="Output format: markdown, plain, obsidian (logseq is a legacy synonym of obsidian)")
 
     @field_validator('url')
     @classmethod
@@ -102,7 +102,7 @@ class TopicsParams(BaseModel):
     """Parameters for topic generation."""
     text: str = Field(..., description="Text to analyze for topics")
     max_topics: int = Field(default=10, ge=1, le=50, description="Maximum topics to extract")
-    format: str = Field(default="logseq", description="Output format: logseq, obsidian, plain")
+    format: str = Field(default="obsidian", description="Output format: obsidian (default), plain; logseq is a legacy synonym of obsidian (ADR-2028 D4)")
 
 
 # =============================================================================
@@ -229,13 +229,15 @@ async def fetch_youtube_transcript(video_id: str, language: str = "en") -> dict:
 
 
 def format_topics(topics: List[str], format_type: str) -> str:
-    """Format topics for different note-taking systems."""
-    if format_type == "logseq":
+    """Format topics for the vault.
+
+    `obsidian` is the default (ADR-2028 D4); `logseq` is a legacy synonym kept
+    for callers pinned to the old name — both emit identical `[[wikilink]]`
+    syntax, which is format-neutral. Anything else emits plain bullets.
+    """
+    if format_type in ("obsidian", "logseq"):
         return "\n".join([f"- [[{topic}]]" for topic in topics])
-    elif format_type == "obsidian":
-        return "\n".join([f"- [[{topic}]]" for topic in topics])
-    else:
-        return "\n".join([f"- {topic}" for topic in topics])
+    return "\n".join([f"- {topic}" for topic in topics])
 
 
 # =============================================================================
@@ -249,7 +251,7 @@ async def summarize_url(params: SummarizeUrlParams) -> dict:
 
     Use for creating summaries of web articles, blog posts, documentation,
     or YouTube video transcripts. Optionally generates semantic topics for
-    note-taking systems like Logseq or Obsidian.
+    note-taking systems — the Obsidian vault by default.
     """
     url = params.url
 
@@ -337,8 +339,8 @@ async def generate_topics(params: TopicsParams) -> dict:
     """
     Generate semantic topic links from text.
 
-    Use for extracting key concepts and creating linked notes in Logseq,
-    Obsidian, or other knowledge management systems.
+    Use for extracting key concepts and creating linked notes in the Obsidian
+    vault, or other knowledge management systems.
     """
     prompt = f"""Extract the top {params.max_topics} key topics/concepts from this text.
 Return them as a comma-separated list of single words or short phrases (2-3 words max).
@@ -391,7 +393,7 @@ def get_capabilities() -> str:
         "protocol": "fastmcp",
         "tools": ["summarize_url", "youtube_transcript", "generate_topics", "health_check"],
         "llm_backend": "ontology-loom-facade",
-        "supported_formats": ["markdown", "plain", "logseq", "obsidian"],
+        "supported_formats": ["markdown", "plain", "obsidian", "logseq (legacy synonym)"],
         "visionclaw_compatible": True
     }
     return json.dumps(capabilities, indent=2)

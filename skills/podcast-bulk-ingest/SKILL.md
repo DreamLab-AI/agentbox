@@ -135,7 +135,7 @@ python bulk_ingest.py <channel> [options]
 
 ```bash
 # Backfill 9 months of AI Daily Brief with enrichment
-python bulk_ingest.py @TheAIDailyBrief --months 9 --output-dir ai-daily-brief-transcripts --enrich --assets
+python bulk_ingest.py @TheAIDailyBrief --months 9 --output-dir "$VAULT_TRANSCRIPTS" --enrich --assets
 
 # Just transcripts for a different podcast, last 3 months
 python bulk_ingest.py @lexfridman --months 3 --output-dir lexfridman

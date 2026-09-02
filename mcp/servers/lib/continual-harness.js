@@ -52,11 +52,16 @@ function defaultImmutableBase() {
     return process.env.AGENTBOX_IMMUTABLE_BASE.split(':').filter(Boolean).map((p) => path.resolve(p));
   }
   const home = process.env.HOME || '/home/devuser';
-  return [
+  const bases = [
     path.join(home, '.claude', 'CLAUDE.md'),
     path.join(home, 'workspace', 'CLAUDE.md'),
-    path.join(home, 'workspace', 'logseq', 'CLAUDE.md'),
-  ].map((p) => path.resolve(p));
+  ];
+  // ADR-2028: the corpus tier of the immutable base is the vault's own
+  // CLAUDE.md, located through the [vault] path authority rather than a
+  // hard-coded corpus path. Same optional semantics as the other two entries —
+  // an absent file (or an unconfigured vault) simply contributes no layer.
+  if (process.env.VAULT_ROOT) bases.push(path.join(process.env.VAULT_ROOT, 'CLAUDE.md'));
+  return bases.map((p) => path.resolve(p));
 }
 
 function defaultOperator() {

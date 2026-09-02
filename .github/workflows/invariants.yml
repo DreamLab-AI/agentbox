@@ -15,6 +15,9 @@ on:
       - 'scripts/**'
       - 'flake.nix'
       - 'skills/**'
+      - 'mcp/**'
+      - 'schema/**'
+      - 'setup/agentbox.default.toml'
       - 'agentbox.toml'
       - '.github/workflows/invariants.yml'
   pull_request:
@@ -66,6 +69,12 @@ jobs:
 
       - name: check-manifest-catalogue (ADR-039 gate-path parity)
         run: node scripts/ci/check-manifest-catalogue.js
+
+      - name: check-no-logseq-paths (ADR-2028 — [vault] is the only corpus path authority)
+        run: sh scripts/ci/check-no-logseq-paths.sh
+
+      - name: vault-frontmatter unit tests (VAULT-corpus-format V2/V5 writer contract)
+        run: node --test mcp/servers/lib/__tests__/*.test.js
 
       - name: validate-adr-ledger (frontmatter, supersession reciprocity, verified_commit staleness)
         run: node scripts/adr-index-gen.js docs/adr --check

@@ -1,15 +1,20 @@
 ---
 title: Agentbox Container Baseline
 doc_id: AB-BASELINE
-version: 0.1.1
+version: 0.2.1
 status: draft-for-ratification
 verified_commit: 73540faa0
 changelog:
+  - 0.2.1 (2026-09-02) — ADR-2028 amendment: `[vault].working` (second vault root, exported as VAULT_WORKING_ROOT/VAULT_WORKING_PAGES) and `[vault].transcripts` (podcast transcript store outside both vaults, VAULT_TRANSCRIPTS) for the sibling-vault corpus layout of jjohare/visionGraph; podcast-knowledge-ingest reads only these.
+  - 0.2.0 (2026-09-02) — ADR-2028/2029: [vault] manifest section is the single corpus path authority (entrypoint exports VAULT_ROOT/VAULT_PAGES/VAULT_FORMAT/VAULT_TUI; system-manifest reports the resolved vault as two entries, vault=boot and vault-tui=rebuild); tmux window 9 "Notes" row added.
   - 0.1.1 (2026-08-31) — correct AoE :9095 to --auth token (live at 73540faa0, was mis-stated as --auth none/staged); boot-probe non-orchestrator failure sets health 'degraded' (impl→off), not 'off'.
 sources:
   - agentbox/flake.nix
   - agentbox/lib/gpu-wrap.nix
   - agentbox/management-api/lib/system-manifest.js
+  - agentbox/config/entrypoint-unified.sh
+  - agentbox/schema/agentbox.toml.schema.json
+  - agentbox/scripts/ci/check-no-logseq-paths.sh
   - agentbox/management-api/adapters/index.js
   - agentbox/management-api/adapters/base.js
   - agentbox/management-api/adapters/contract-versions.js
@@ -46,7 +51,8 @@ Supervisord runs as PID 1 root; every long-running program drops to `user=devuse
 | `aoe-serve` (`:1971`) | Agent-of-Empires interaction plane, `--auth token --behind-proxy` | `127.0.0.1:9095` (never published) |
 | `nip98-proxy` (`:1993`) | sole NIP-98 ingress to `:9095`, multi-upstream `/mgmt/*` router | `:9096` (LAN-published) |
 | `tab0-bridge` (`:2023`) | voice/nostr meta-controller for tmux window 0 | `:8971` |
-| `tmux-autostart` (`:2036`) | primary operator terminal surface | — |
+| `tmux-autostart` (`:2036`) | primary operator terminal surface; window 0 is the tab0-bridge target, window 9 **"Notes"** is the vault TUI | — |
+| └ window 9 "Notes" | Rune markdown TUI opened at `$VAULT_ROOT` when `[vault].tui = "rune"` and the binary is present; otherwise prints the same rebuild notice the Sessions window uses (ADR-2029) | — |
 | `solid-pod` (`:1794`) | solid-pod-rs sovereign storage, NIP-98 | `127.0.0.1:8484` |
 | `https-bridge` (`:1811`) | pod HTTPS bridge | — |
 | `nostr-relay` (`:1848`/`:1860`) | sovereign relay | `7777` (gated expose) |
@@ -100,6 +106,49 @@ Not supervised inside the box — external compose services on `visionclaw_netwo
 
 `GET /v1/system` (ADR-039) serves the live view. `management-api/lib/system-manifest.js` holds a hand-authored `CATALOGUE` of 14 surfaces + ~35 modules; the *catalogue* is documentation-as-data but the *state* of each entry is introspected from the parsed `agentbox.toml` at request time (`stateOf`, `:232`), so state can never drift from the manifest even if the catalogue does. Each entry carries a `gate` (dotted toml path, section gates resolve via `.enabled`), a `service` (supervisor program / sidecar), and an honest `apply_class`. The five adapter slots are emitted as `core` layer with their resolved `impl` + `contract_version` (`:267`).
 
+#### `[vault]` — the authored-corpus path authority (ADR-2028)
+
+`[vault]` is a top-level manifest section and the **single** path authority for
+the authored knowledge corpus: `root` (absolute vault root), `pages` (relative,
+default `pages`), `format` (`obsidian` | `logseq-legacy`, read-tolerance only)
+and `tui` (`rune` | `none`, ADR-2029). It is schema-validated
+(`schema/agentbox.toml.schema.json`, `root` required).
+
+`config/entrypoint-unified.sh` resolves it once — before any consumer runs, via
+the hoisted `_ab_toml_val` reader — and exports `VAULT_ROOT`, `VAULT_PAGES`
+(= `root/pages`), `VAULT_FORMAT` and `VAULT_TUI`. Supervised programs inherit
+them from PID 1; tmux windows and interactive shells pick them up from the
+Phase-8 runtime-env file (`/run/agentbox/runtime-env.sh`, sourced by
+`/etc/profile.d` for bash and `conf.d` for fish). `ONTOLOGY_PAGES_DIR` is
+derived from `VAULT_PAGES` and survives one release as an explicit override.
+
+The section is catalogued as **two** entries, because its keys have genuinely
+different apply classes and one entry claiming `boot` for both would tell an
+operator that flipping `tui = "rune"` and restarting gets them the Rune TUI —
+it does not (ADR-039 honesty rule, triggered by ADR-2020's review_trigger for a
+new optional manifest block):
+
+| Entry | Gate | Apply class | Why |
+|---|---|---|---|
+| `vault` | `vault.format` | `boot` | `root`/`pages`/`format` are read once by the entrypoint at container start |
+| `vault-tui` | `vault.tui` | `rebuild` | `tui` decides the Nix package set (ADR-2029); `none` → `rune` needs `./agentbox.sh rebuild` |
+
+`stateOf` treats a mode string of `off` **or** `none` as off, so the vanilla
+default (`tui = "none"`) reports `vault-tui` as `off`, not `on`.
+`buildSystemView` also emits a top-level `vault` block with the resolved
+`root`/`pages`/`format`/`tui` plus the `VAULT_ROOT` this process actually
+booted with, so `/v1/system` and the doctor can show drift between the manifest
+and the running container.
+
+Absent `[vault]` is **fail-loud, not fail-quiet**: the boot prints
+`[vault] disabled — no [vault] in agentbox.toml`, the ontology PUSH-cache
+refresh is skipped, and every corpus consumer (`ontology-local.js`,
+`ontology-index-build.js`, the condensation scheduler and refresh, the
+page-writing skills) disables itself with one clear line rather than indexing a
+stale or empty tree. `scripts/ci/check-no-logseq-paths.sh` fails the build on
+any re-introduced hard-coded corpus path outside `docs/archive/` and
+`docs/adr/`.
+
 ### MCP projection (skills/mcp.json)
 
 `skills/mcp.json` (v2.0.0) is a 30-server registry and the *source of truth*; `scripts/project-mcp-servers.mjs` is the projector that upserts entries into `.mcp.json` at boot. Three ownership classes (`x-agentbox-managed-by`): **projector** (9 servers — gate-evaluated against boot env, `x-agentbox-requires` presence-checked, `${VAR}` expanded, reconciled not appended — a server whose gate/requires now fail is *removed*); **bespoke** (3 — claude-flow, browser-gpu, perplexity — hand-written entrypoint blocks, never touched); **reference** (16 — skill-local or npx network-installer servers, documented but not auto-projected). This closes audit MCP-1/MCP-2 (the registry previously had no runtime consumer; codebase-memory was manifest-ON yet registered nowhere).
@@ -124,6 +173,7 @@ Not supervised inside the box — external compose services on `visionclaw_netwo
 - GPU wrapping applies only when `gpu.backend == "local-cuda"`; `--suffix` (never `--prefix`) on `LD_LIBRARY_PATH`.
 - Manifest state is always introspected from `agentbox.toml`, never hard-coded in the catalogue (`system-manifest.js:11`).
 - Adding a gate means gating both the Nix package set and the supervisor block, plus a `system-manifest.js` catalogue entry with an honest apply-class.
+- `[vault].root` is the only default corpus path; no consumer hard-codes one, and an absent `[vault]` disables consumers loudly rather than falling back to a literal (ADR-2028, `project/docs/VAULT-corpus-format.md` Invariant 3, gated by `scripts/ci/check-no-logseq-paths.sh`).
 
 ## Change process
 

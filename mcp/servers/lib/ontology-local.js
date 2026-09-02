@@ -1,7 +1,7 @@
 'use strict';
 // ontology-local.js — a local, VisionClaw-free backend for the ontology-bridge.
 //
-// Indexes the raw Logseq markdown corpus (the JSON-LD `Class` block in each page)
+// Indexes the authored vault corpus (the JSON-LD `Class` block in each page)
 // straight off disk and serves the ontology-bridge read tools, plus a real WRITE
 // path that edits the markdown in place. This is the "internal development route"
 // (ADR-119 companion): when VisionClaw/Oxigraph is unreachable, the bridge falls
@@ -10,16 +10,25 @@
 //
 // Activation: the bridge uses this automatically when a VisionClaw call returns a
 // network-family error, or unconditionally when AGENTBOX_ONTOLOGY_LOCAL=1.
-// Corpus path: AGENTBOX_ONTOLOGY_LOCAL_PATH (default: the logseq working tree).
+//
+// Corpus path (ADR-2028): VAULT_PAGES, the manifest [vault] path authority the
+// entrypoint resolves. AGENTBOX_ONTOLOGY_LOCAL_PATH stays as an explicit
+// override for a scratch corpus. There is no hard-coded fallback: with neither
+// set there is no corpus, and this backend serves an empty index rather than
+// silently indexing a stale tree (fail-loud, ADR-2028 D3).
+//
+// Writes emit V2 frontmatter (VAULT-corpus-format §V5) via lib/vault-frontmatter.
 //
 // Pure Node core modules only — no deps, so it loads in any agentbox context.
 
 const fs = require('fs');
 const path = require('path');
+const { ensureFrontmatter } = require('./vault-frontmatter');
 
 const DEFAULT_CORPUS =
   process.env.AGENTBOX_ONTOLOGY_LOCAL_PATH ||
-  '/home/devuser/workspace/logseq/mainKnowledgeGraph/pages';
+  process.env.VAULT_PAGES ||
+  '';
 
 const JSONLD_RE = /```json-ld\s*\n([\s\S]*?)```/g;
 
@@ -48,9 +57,28 @@ function createLocalOntology(corpusDir = DEFAULT_CORPUS) {
     return null;
   }
 
+  // ADR-2028 D3: no vault configured (or the configured root is gone) is a
+  // visible, once-per-process line and an empty index — never a throw that
+  // takes the whole ontology-bridge down, and never a stale hard-coded path.
+  let warnedNoCorpus = false;
   function corpusFiles() {
-    return fs.readdirSync(corpusDir).filter((f) => f.endsWith('.md'))
-      .map((f) => path.join(corpusDir, f));
+    if (!corpusDir) {
+      if (!warnedNoCorpus) {
+        warnedNoCorpus = true;
+        console.error('[ontology-local] no corpus path — set [vault].root in agentbox.toml (VAULT_PAGES) or AGENTBOX_ONTOLOGY_LOCAL_PATH; serving an empty index');
+      }
+      return [];
+    }
+    try {
+      return fs.readdirSync(corpusDir).filter((f) => f.endsWith('.md'))
+        .map((f) => path.join(corpusDir, f));
+    } catch (err) {
+      if (!warnedNoCorpus) {
+        warnedNoCorpus = true;
+        console.error(`[ontology-local] corpus unreadable at ${corpusDir} (${err.code || err.message}); serving an empty index`);
+      }
+      return [];
+    }
   }
 
   function newestMtime(files) {
@@ -309,9 +337,19 @@ function createLocalOntology(corpusDir = DEFAULT_CORPUS) {
     block.provenance.lastLocalEdit = { rel, target: objIri, via: 'ontology-local' };
 
     const newRaw = JSON.stringify(block, null, 2);
-    fs.writeFileSync(subj.path, text.replace(cb.raw, newRaw + '\n'), 'utf8');
+    let next = text.replace(cb.raw, newRaw + '\n');
+    // VAULT-corpus-format §V5 / Invariant 1: a writer that touches a page leaves
+    // it in vault format. The page carries a formal class, so `owl-class` is the
+    // gate (V4 clause 2) and no `public` key is invented; a legacy leading
+    // `key:: value` block is converted here, and only the LEADING block.
+    const fm = ensureFrontmatter(next, { 'owl-class': subj.iri });
+    next = fm.text;
+    fs.writeFileSync(subj.path, next, 'utf8');
     idx = null; // force reindex
-    return { backend: 'local-markdown', changed: true, subject: subj.iri, relation: rel, object: objIri, file: subj.file };
+    return {
+      backend: 'local-markdown', changed: true, subject: subj.iri, relation: rel,
+      object: objIri, file: subj.file, frontmatter_converted: fm.converted,
+    };
   }
 
   // propose() locally == a direct, provenance-tagged edit (write target: markdown)

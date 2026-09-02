@@ -3,7 +3,7 @@
 # (PRD-020 WS-2 / ADR-113). Operator-gated; NOT run on boot (it is a long,
 # serialised LLM pass against a local model). Three deterministic stages:
 #
-#   1. index-build  : parse the logseq corpus → compact class records (no LLM)
+#   1. index-build  : parse the vault corpus → compact class records (no LLM)
 #   2. condense     : cheap LOCAL LLM → {iri:[synonyms]} aliases + condensed text
 #   3. index-build  : re-run, folding the aliases into the PUSH Class-Summary cache
 #
@@ -13,7 +13,10 @@
 #
 # Config comes from the [skills.ontology.condense] env baked by flake.nix:
 #   ONTOLOGY_CONDENSE_ENABLED / _ENDPOINT / _MODEL / _STYLE / _N_BLOCKS / _CONCURRENCY
-# Override the corpus + outputs via env: ONTOLOGY_PAGES_DIR, ONTOLOGY_ALIASES.
+#
+# Corpus path (ADR-2028): VAULT_PAGES — the [vault] path authority the entrypoint
+# resolves from agentbox.toml. ONTOLOGY_PAGES_DIR remains the explicit override
+# for one release. Outputs: ONTOLOGY_ALIASES / ONTOLOGY_CONDENSED_OUT.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -51,13 +54,25 @@ else
   trap 'rmdir "$LOCKDIR" 2>/dev/null || true' EXIT
 fi
 
-echo "[condense-refresh] 1/3 index-build (deterministic parse)…" >&2
-node "$LIB/ontology-index-build.js" "${ONTOLOGY_PAGES_DIR:-}" "$CLASSES" >/dev/null
+# ADR-2028 D3: fail loud, not quiet. With no vault there is nothing to condense,
+# and running the pass anyway would burn a long LLM run on an empty directory.
+PAGES="${ONTOLOGY_PAGES_DIR:-${VAULT_PAGES:-}}"
+if [ -z "$PAGES" ]; then
+  echo "[condense-refresh] [vault] disabled — no corpus path (set [vault].root in agentbox.toml, or ONTOLOGY_PAGES_DIR). Nothing to do." >&2
+  exit 0
+fi
+if [ ! -d "$PAGES" ]; then
+  echo "[condense-refresh] corpus path does not exist: $PAGES — check [vault].root. Nothing to do." >&2
+  exit 0
+fi
+
+echo "[condense-refresh] 1/3 index-build (deterministic parse of $PAGES)…" >&2
+node "$LIB/ontology-index-build.js" "$PAGES" "$CLASSES" >/dev/null
 
 echo "[condense-refresh] 2/3 condense via ${ONTOLOGY_CONDENSE_ENDPOINT:-?} (serialised)…" >&2
 node "$LIB/ontology-condense.js" "$CLASSES" "$ALIASES" "$CONDENSED"
 
 echo "[condense-refresh] 3/3 index-build (fold aliases into PUSH cache)…" >&2
-ONTOLOGY_ALIASES="$ALIASES" node "$LIB/ontology-index-build.js" "${ONTOLOGY_PAGES_DIR:-}" "$CLASSES" >/dev/null
+ONTOLOGY_ALIASES="$ALIASES" node "$LIB/ontology-index-build.js" "$PAGES" "$CLASSES" >/dev/null
 
 echo "[condense-refresh] done. aliases=$ALIASES condensed=$CONDENSED" >&2

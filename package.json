@@ -7,6 +7,7 @@
   "scripts": {
     "validate": "node scripts/agentbox-config-validate.js",
     "test:config": "jest tests/config/semantic-rules.test.js --testEnvironment node",
+    "test:vault": "node --test mcp/servers/lib/__tests__/*.test.js",
     "test:web": "bash scripts/test-web-interfaces.sh"
   },
   "jest": {

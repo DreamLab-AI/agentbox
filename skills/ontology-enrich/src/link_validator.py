@@ -4,6 +4,7 @@ Wiki-link validation and automatic fixing for ontology files.
 Detects broken [[wiki-link]] references and suggests/applies fixes.
 """
 
+import os
 import logging
 import re
 from pathlib import Path
@@ -33,13 +34,18 @@ class LinkValidator:
 
     WIKI_LINK_PATTERN = re.compile(r'\[\[([^\]]+)\]\]')
 
-    def __init__(self, knowledge_graph_root: str = "mainKnowledgeGraph/pages"):
+    # ADR-2028: the corpus root defaults to the vault path authority the
+    # entrypoint exported (VAULT_PAGES), not a hard-coded graph directory.
+    def __init__(self, knowledge_graph_root: str = ""):
         """
         Initialize link validator.
 
         Args:
-            knowledge_graph_root: Root directory for knowledge graph pages
+            knowledge_graph_root: Root directory for knowledge graph pages.
+                Defaults to $VAULT_PAGES — the [vault] path authority resolved
+                from agentbox.toml (ADR-2028). Never a hard-coded corpus path.
         """
+        knowledge_graph_root = knowledge_graph_root or os.environ.get("VAULT_PAGES", "")
         self.kg_root = Path(knowledge_graph_root)
         logger.info(f"LinkValidator initialized with root: {self.kg_root}")
 
@@ -160,7 +166,7 @@ class LinkValidator:
             True if target file exists
         """
         # Convert wiki-link to file path
-        # Format: [[AI_Agent]] → mainKnowledgeGraph/pages/AI_Agent.md
+        # Format: [[AI_Agent]] → $VAULT_PAGES/AI_Agent.md
 
         target_file = self.kg_root / f"{link_target}.md"
         exists = target_file.exists()

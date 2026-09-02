@@ -157,7 +157,7 @@ class WebSummaryTool:
                 "error": f"Z.AI summarization failed: {str(e)}"
             }
 
-    def generate_topics(self, text: str, max_topics: int = 10, format: str = "logseq") -> Dict[str, Any]:
+    def generate_topics(self, text: str, max_topics: int = 10, format: str = "obsidian") -> Dict[str, Any]:
         """Generate semantic topic links from text - DEPRECATED: Migrating to new ontology system"""
         return {
             "success": False,

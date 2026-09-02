@@ -27,7 +27,8 @@ validation:
 
 links:
   # Link validation
-  knowledge_graph_root: "mainKnowledgeGraph/pages"
+  # ADR-2028: the vault path authority; empty means "take $VAULT_PAGES".
+  knowledge_graph_root: "${VAULT_PAGES}"
 
   # Auto-fix settings
   auto_fix_threshold: 0.8

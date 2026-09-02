@@ -1,6 +1,6 @@
 ---
 name: ontology-enrich
-description: "Validate and enrich the Logseq mainKnowledgeGraph ontology and generate WebVOWL-ready TTL. Use when fixing source-domain prefixes (ai/bc/mv/rb/tc/ngm), regenerating output/ontology.ttl, debugging WebVOWL 'prefix not bound' or bad-syntax parse errors, checking orphan is-subclass-of targets, or making pages meet VisionClaw github_sync field requirements."
+description: "Validate and enrich the vault knowledge-graph ontology and generate WebVOWL-ready TTL. Use when fixing source-domain prefixes (ai/bc/mv/rb/tc/ngm), regenerating output/ontology.ttl, debugging WebVOWL 'prefix not bound' or bad-syntax parse errors, checking orphan is-subclass-of targets, or making pages meet VisionClaw github_sync field requirements."
 version: 2.0.0
 category: ontology
 layer: 1
@@ -21,12 +21,17 @@ tags:
 ## When Not To Use
 
 - For creating new ontology schemas from scratch -- use ontology-core instead
-- For general data validation unrelated to Logseq ontology -- use standard validation tools
+- For general data validation unrelated to the vault ontology -- use standard validation tools
 - For VisionClaw graph rendering -- this handles data, not display
 
 ## Purpose
 
-Validated enrichment and TTL generation for mainKnowledgeGraph corpus with VisionClaw/WebVOWL compatibility.
+Validated enrichment and TTL generation for the authored vault corpus with
+VisionClaw/WebVOWL compatibility. The shell examples below use `$VAULT_PAGES` —
+the `[vault]` path authority resolved from `agentbox.toml` (ADR-2028); export it
+or substitute your vault's `pages/` directory. `source-domain::` and friends are
+the legacy Logseq property spelling, still matched on read during the bounded
+transition window; in vault pages these are frontmatter keys (`source-domain:`).
 
 ## Key Workflows
 
@@ -36,7 +41,7 @@ Validated enrichment and TTL generation for mainKnowledgeGraph corpus with Visio
 
 ```bash
 # Find invalid source-domain values
-grep -rhn "source-domain::" mainKnowledgeGraph/pages/*.md | \
+grep -rhn "source-domain::" "$VAULT_PAGES"/*.md | \
   sed 's/.*source-domain::\s*//' | sort | uniq -c | sort -rn
 
 # Valid: ai, bc, mv, rb, tc, ngm
@@ -46,15 +51,15 @@ grep -rhn "source-domain::" mainKnowledgeGraph/pages/*.md | \
 **Fix invalid values**:
 ```bash
 # blockchain -> bc
-grep -rln "source-domain:: blockchain" mainKnowledgeGraph/pages/*.md | \
+grep -rln "source-domain:: blockchain" "$VAULT_PAGES"/*.md | \
   xargs -I {} sed -i 's/source-domain:: blockchain/source-domain:: bc/g' {}
 
 # metaverse -> mv
-grep -rln "source-domain:: metaverse" mainKnowledgeGraph/pages/*.md | \
+grep -rln "source-domain:: metaverse" "$VAULT_PAGES"/*.md | \
   xargs -I {} sed -i 's/source-domain:: metaverse/source-domain:: mv/g' {}
 
 # telecollaboration -> tc
-grep -rln "source-domain:: telecollaboration" mainKnowledgeGraph/pages/*.md | \
+grep -rln "source-domain:: telecollaboration" "$VAULT_PAGES"/*.md | \
   xargs -I {} sed -i 's/source-domain:: telecollaboration/source-domain:: tc/g' {}
 ```
 
@@ -62,7 +67,7 @@ grep -rln "source-domain:: telecollaboration" mainKnowledgeGraph/pages/*.md | \
 
 ```bash
 python3 Ontology-Tools/tools/converters/convert-to-turtle.py \
-  mainKnowledgeGraph/pages/ \
+  "$VAULT_PAGES"/ \
   output/ontology.ttl
 ```
 
@@ -113,10 +118,10 @@ Output: 2-3 sentence definition suitable for ontology.
 
 ```bash
 # Find pages with all fields on one line
-grep -l "ontology:: true.*term-id::" mainKnowledgeGraph/pages/*.md
+grep -l "ontology:: true.*term-id::" "$VAULT_PAGES"/*.md
 
 # Find pages with & in relationships
-grep -rn "enables.*&\|requires.*&\|has-part.*&" mainKnowledgeGraph/pages/*.md
+grep -rn "enables.*&\|requires.*&\|has-part.*&" "$VAULT_PAGES"/*.md
 ```
 
 ## Relationship Best Practices
@@ -125,10 +130,10 @@ grep -rn "enables.*&\|requires.*&\|has-part.*&" mainKnowledgeGraph/pages/*.md
 
 ```bash
 # Check for orphan relationships
-grep -rn "is-subclass-of::" mainKnowledgeGraph/pages/*.md | \
+grep -rn "is-subclass-of::" "$VAULT_PAGES"/*.md | \
   sed 's/.*\[\[\([^]]*\)\]\].*/\1/' | sort | uniq | \
   while read term; do
-    if ! ls "mainKnowledgeGraph/pages/$term.md" 2>/dev/null; then
+    if ! ls "$VAULT_PAGES/$term.md" 2>/dev/null; then
       echo "ORPHAN: $term"
     fi
   done
@@ -177,12 +182,12 @@ VisionClaw's `github_sync_service.rs` expects:
 # validate-ontology.sh
 
 echo "=== Checking source-domain values ==="
-grep -rhn "source-domain::" mainKnowledgeGraph/pages/*.md | \
+grep -rhn "source-domain::" "$VAULT_PAGES"/*.md | \
   sed 's/.*source-domain::\s*//' | sort | uniq -c | sort -rn
 
 echo "=== Regenerating TTL ==="
 python3 Ontology-Tools/tools/converters/convert-to-turtle.py \
-  mainKnowledgeGraph/pages/ output/ontology.ttl
+  "$VAULT_PAGES"/ output/ontology.ttl
 
 echo "=== Checking for unbound prefixes ==="
 grep -c "blockchain:\|metaverse:\|data:" output/ontology.ttl && \
@@ -198,4 +203,4 @@ head -1 output/ontology.ttl | grep -q "@prefix" && \
 - Converter: `Ontology-Tools/tools/converters/convert-to-turtle.py`
 - Workflow: `.github/workflows/publish.yml`
 - TTL Output: `output/ontology.ttl`
-- Domain pages: `mainKnowledgeGraph/pages/*Domain.md`
+- Domain pages: `$VAULT_PAGES/*Domain.md`

@@ -1,20 +1,22 @@
 ---
 name: ontology-core
-description: "Author and export the Logseq mainKnowledgeGraph ontology to OWL2 DL Turtle for WebVOWL/VisionClaw. Use when writing or fixing OntologyBlock entries, generating or debugging output/ontology.ttl, sanitizing IRI local names or literals, resolving Turtle prefix-not-bound errors, or validating the 6 narrativegoldmine source-domain prefixes (ai/bc/mv/rb/tc/ngm). This is the data/build layer — not ontology-enrich (validate existing data) or ontology-augment (query the live OWL graph)."
+description: "Author and export the vault knowledge-graph ontology to OWL2 DL Turtle for WebVOWL/VisionClaw. Use when writing or fixing OntologyBlock entries, generating or debugging output/ontology.ttl, sanitizing IRI local names or literals, resolving Turtle prefix-not-bound errors, or validating the 6 narrativegoldmine source-domain prefixes (ai/bc/mv/rb/tc/ngm). This is the data/build layer — not ontology-enrich (validate existing data) or ontology-augment (query the live OWL graph)."
 version: 2.0.0
 author: Claude Code
-tags: [ontology, owl2, logseq, ttl, webvowl, validation]
+tags: [ontology, owl2, vault, obsidian, ttl, webvowl, validation]
 ---
 
 # Ontology Core Library
 
-Foundation for Logseq ontology manipulation with OWL2 DL TTL export — parsing,
-validation, and Turtle generation for the mainKnowledgeGraph corpus targeting
-VisionClaw/WebVOWL compatibility.
+Foundation for vault ontology manipulation with OWL2 DL TTL export — parsing,
+validation, and Turtle generation for the authored corpus under `$VAULT_PAGES`
+(the `[vault]` path authority, ADR-2028), targeting VisionClaw/WebVOWL
+compatibility. The parser still accepts legacy Logseq property blocks on read
+during the bounded transition window (VAULT-corpus-format Invariant 6).
 
 ## When to use
 
-- Writing or fixing `OntologyBlock` entries in the Logseq corpus.
+- Writing or fixing `OntologyBlock` entries in the vault corpus.
 - Generating `output/ontology.ttl` or debugging a Turtle parse error.
 - Sanitizing IRI local names / literals, or resolving a `Prefix … not bound` error.
 - Validating that `source-domain` uses one of the 6 valid prefixes.
@@ -23,7 +25,7 @@ VisionClaw/WebVOWL compatibility.
 
 - Enriching or validating existing ontology data → use `ontology-enrich`.
 - Grounding reasoning in / querying the live DreamLab OWL graph → use `ontology-augment`.
-- General knowledge-graph work unrelated to Logseq/OWL2 → use standard RDF tools.
+- General knowledge-graph work unrelated to the vault ontology/OWL2 → use standard RDF tools.
 - VisionClaw graph rendering → this is the data layer, not the display layer.
 
 ## Quick path

@@ -2,9 +2,9 @@
 name: web-summary
 description: >
   Summarise a single web page or YouTube video into short/medium/long notes and
-  extract semantic topic links for Logseq or Obsidian. Trigger when the user says
+  extract semantic topic links for an Obsidian vault. Trigger when the user says
   "summarise this URL/article/video", "get the YouTube transcript", "pull the key
-  points from this page", or "make Logseq/Obsidian topic links from this". Runs an
+  points from this page", or "make vault/Obsidian topic links from this". Runs an
   MCP FastMCP server that scrapes the URL and summarises via the Ontology Loom
   facade (model-swappable LLM door). NOT for interactive browser automation (use
   browser/playwright), NOT for multi-URL comparison or structured extraction (use
@@ -32,7 +32,7 @@ former Z.AI service on port 9600 is retired; see `references/architecture.md`.
 
 - Summarise one web article, blog post, or documentation page
 - Extract and summarise a YouTube video transcript
-- Generate semantic topic links for note-taking (Logseq, Obsidian)
+- Generate semantic topic links for note-taking in the vault (Obsidian)
 - Produce short, medium, or long summaries; extract key concepts from text
 
 ## When not to use
@@ -59,7 +59,7 @@ summarize_url({
     "url": "https://example.com/article",
     "length": "medium",
     "include_topics": True,
-    "format": "logseq"
+    "format": "obsidian"
 })
 
 # Get a YouTube transcript
@@ -71,7 +71,14 @@ generate_topics({"text": "Your text content here...", "max_topics": 10, "format"
 
 ## Output formats
 
-`logseq` and `obsidian` emit `- [[Topic]]` wiki-links; `plain` emits `- Topic`.
+`obsidian` is the **default** (ADR-2028 D4) and emits `- [[Topic]]` wiki-links
+ready to paste into a vault page; `plain` emits `- Topic`.
+
+`logseq` is **legacy**: it is still selectable and emits the identical
+`- [[Topic]]` wiki-link syntax, but it is retained only for callers pinned to
+the old name and should not be used in new work. Pages this skill's output
+lands in carry V2 YAML frontmatter — see `project/docs/VAULT-corpus-format.md`
+§V2.
 
 ## Deeper reference
 

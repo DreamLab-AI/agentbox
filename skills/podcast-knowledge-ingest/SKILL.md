@@ -50,6 +50,31 @@ YouTube ──yt-dlp──► Markdown ──Loom──► Assertions ──Perp
 | ontology-bridge MCP | Navigate graph, find placement | Free (local) |
 | Direct file edit | Integrate knowledge into ontology pages | Free |
 
+## Page format
+
+Every page this skill writes is a vault page: V2 YAML frontmatter, then the
+body (`project/docs/VAULT-corpus-format.md` §V2/§V5, ADR-2028 D4). No writer
+emits `key:: value` Logseq property lines.
+
+New ontology page (`NEW_PAGE_TEMPLATE` in `ingest.py`):
+
+```markdown
+---
+public: true
+---
+
+# {title}
+```json-ld
+{ "@type": "Page", ... }
+```
+```
+
+Assertion-ledger page (`_build_ledger_header`) carries the episode metadata as
+frontmatter keys — `public: true` (a real YAML boolean, never the string
+`"true"`), `title`, `source`, `episode-url`, `episode-date`, `ingest-date`.
+Working-graph reject pages (`write_working_page` in `promote.py`) carry
+`public: false`, keeping them outside the KG gate (Invariant 2, fail-closed).
+
 ## Configuration
 
 `podcasts.yaml` in the skill directory or the target output directory:
@@ -59,8 +84,11 @@ podcasts:
   - channel: "@TheAIDailyBrief"
     name: "AI Daily Brief"
     focus: "AI industry news, policy, models, companies"
-    output_dir: "/home/devuser/workspace/logseq/ai-daily-brief-transcripts"
-    ontology_dir: "/home/devuser/workspace/logseq/mainKnowledgeGraph/pages"
+    # Paths derive from the vault path authority (ADR-2028). ingest.py expands
+    # ${VAULT_TRANSCRIPTS} / ${VAULT_PAGES} / ${VAULT_WORKING_PAGES} — the values agentbox.toml's [vault]
+    # section resolves to — so relocating the vault relocates this output.
+    output_dir: "${VAULT_TRANSCRIPTS}"
+    ontology_dir: "${VAULT_PAGES}"
 
 settings:
   loom_url: "http://192.168.2.132:8084/v1"          # canonical LAN façade (via ml hp-nat DNAT)
@@ -222,14 +250,15 @@ ontology-bridge governed proposal queue; nothing edits curated pages directly.
 python3 promote.py --pages-dir <graph pages dir> --proposals-dir promotions/proposals --dry-run
 
 # Canonical full run — rejects land as readable news pages in the working graph:
-python3 promote.py --pages-dir <graph pages dir> --proposals-dir promotions/proposals \
-  --working-graph-dir ~/workspace/logseq/workingGraph/pages --limit 15
+python3 promote.py --pages-dir "$VAULT_PAGES" --proposals-dir promotions/proposals \
+  --working-graph-dir "$VAULT_WORKING_PAGES" --limit 15
 ```
 
 Rejected-from-ontology is not discarded: with `--working-graph-dir`, every
 terminal reject also writes `<Topic>.md` into the working graph — the Loom-drafted
-prose section plus the attributed evidence bullets, `type:: podcast-news`,
-overwritten on each dossier refresh. The curated main graph is never touched.
+prose section plus the attributed evidence bullets, `type: podcast-news` in the
+frontmatter, overwritten on each dossier refresh. The curated main graph is
+never touched.
 
 Survivors flow onward via `node submit-proposals.mjs` (weekly cron stage 3):
 each dossier's payload is submitted as a governed AMEND proposal
