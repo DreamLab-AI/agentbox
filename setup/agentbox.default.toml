@@ -693,9 +693,12 @@ schedule_max_age_hours = 24                 # rebuild even without corpus change
 root   = "/home/devuser/workspace/vault"   # Obsidian vault root (bind-mounted)
 pages  = "pages"                            # authored pages, relative to root
 format = "obsidian"                         # obsidian | logseq-legacy (read-tolerance only)
-tui    = "none"                             # rune | none — vanilla ships none: "rune" is a
-                                            # REBUILD-class Rust package (~80 MB) the operator
-                                            # opts into in their live agentbox.toml (ADR-2029).
+# Vanilla ships no TUI: rune is a REBUILD-class Rust package (~80 MB) that the
+# operator opts into in their live agentbox.toml (ADR-2029). Keep the trailing
+# comment below free of double quotes — the runtime manifest-loader strips
+# inline comments with /#[^"]*$/, so a quoted word in a trailing comment leaks
+# into the parsed value (management-api/adapters/manifest-loader.js:35).
+tui    = "none"                             # rune | none — see ADR-2029
 
 [skills.harness]
 # Harness Engineering MCP bridge (ADR-004). Agents inspect harness templates

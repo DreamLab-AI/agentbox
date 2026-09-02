@@ -5,7 +5,7 @@ version: 0.2.0
 status: draft-for-ratification
 verified_commit: 73540faa0
 changelog:
-  - 0.2.0 (2026-09-02) — ADR-2028/2029: [vault] manifest section is the single corpus path authority (entrypoint exports VAULT_ROOT/VAULT_PAGES/VAULT_FORMAT/VAULT_TUI; system-manifest reports the resolved vault); tmux window 9 "Notes" row added.
+  - 0.2.0 (2026-09-02) — ADR-2028/2029: [vault] manifest section is the single corpus path authority (entrypoint exports VAULT_ROOT/VAULT_PAGES/VAULT_FORMAT/VAULT_TUI; system-manifest reports the resolved vault as two entries, vault=boot and vault-tui=rebuild); tmux window 9 "Notes" row added.
   - 0.1.1 (2026-08-31) — correct AoE :9095 to --auth token (live at 73540faa0, was mis-stated as --auth none/staged); boot-probe non-orchestrator failure sets health 'degraded' (impl→off), not 'off'.
 sources:
   - agentbox/flake.nix
@@ -121,8 +121,20 @@ Phase-8 runtime-env file (`/run/agentbox/runtime-env.sh`, sourced by
 `/etc/profile.d` for bash and `conf.d` for fish). `ONTOLOGY_PAGES_DIR` is
 derived from `VAULT_PAGES` and survives one release as an explicit override.
 
-The catalogue entry `vault` is gated on `vault.format` (apply class `boot`), and
-`buildSystemView` emits a top-level `vault` block with the resolved
+The section is catalogued as **two** entries, because its keys have genuinely
+different apply classes and one entry claiming `boot` for both would tell an
+operator that flipping `tui = "rune"` and restarting gets them the Rune TUI —
+it does not (ADR-039 honesty rule, triggered by ADR-2020's review_trigger for a
+new optional manifest block):
+
+| Entry | Gate | Apply class | Why |
+|---|---|---|---|
+| `vault` | `vault.format` | `boot` | `root`/`pages`/`format` are read once by the entrypoint at container start |
+| `vault-tui` | `vault.tui` | `rebuild` | `tui` decides the Nix package set (ADR-2029); `none` → `rune` needs `./agentbox.sh rebuild` |
+
+`stateOf` treats a mode string of `off` **or** `none` as off, so the vanilla
+default (`tui = "none"`) reports `vault-tui` as `off`, not `on`.
+`buildSystemView` also emits a top-level `vault` block with the resolved
 `root`/`pages`/`format`/`tui` plus the `VAULT_ROOT` this process actually
 booted with, so `/v1/system` and the doctor can show drift between the manifest
 and the running container.

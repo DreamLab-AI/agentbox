@@ -203,9 +203,19 @@ const CATALOGUE = [
   { id: 'ontology', name: 'Ontology bridge', layer: 'module',
     gate: 'skills.ontology', apply_class: 'boot',
     summary: 'ontology_ask / governed writeback MCP bridge (PRD-020 binding).' },
+  // ADR-2020 review_trigger (a new optional block in agentbox.toml) — the
+  // [vault] section is split across TWO catalogue entries because its keys have
+  // genuinely different apply classes (ADR-039 honesty rule): root/pages/format
+  // are read once by the entrypoint at container boot, whereas tui decides the
+  // Nix package set and only takes effect after a rebuild. One entry claiming
+  // 'boot' for both would tell an operator that flipping tui = "rune" and
+  // restarting gets them the Rune TUI, which it does not.
   { id: 'vault', name: 'Authored corpus (vault)', layer: 'module',
     gate: 'vault.format', apply_class: 'boot',
-    summary: 'ADR-2028: [vault] is the single path authority for the authored corpus. The entrypoint exports VAULT_ROOT/VAULT_PAGES/VAULT_FORMAT/VAULT_TUI to every supervised program and tmux window; resolved values are in the top-level `vault` block of this view.' },
+    summary: 'ADR-2028: [vault].root/pages/format are the single path authority for the authored corpus. The entrypoint reads them at boot and exports VAULT_ROOT/VAULT_PAGES/VAULT_FORMAT to every supervised program and tmux window; resolved values are in the top-level `vault` block of this view.' },
+  { id: 'vault-tui', name: 'Vault TUI (Rune, tmux window 9 "Notes")', layer: 'module',
+    gate: 'vault.tui', apply_class: 'rebuild',
+    summary: 'ADR-2029: [vault].tui = "rune" puts the Rune markdown TUI in the Nix package set and opens tmux window 9 "Notes" at the vault root. REBUILD-class — the package set is resolved at image composition, so "none" -> "rune" needs ./agentbox.sh rebuild, not a restart.' },
   { id: 'aci-shell', name: 'ACI shell', layer: 'module',
     gate: 'skills.aci_shell', apply_class: 'rebuild',
     summary: 'Code-as-harness ACI sessions; npm closure baked via makeNpmService.' },
@@ -245,9 +255,11 @@ function stateOf(manifest, entry) {
   const value = resolveGate(manifest, entry.gate);
   if (value === true) return 'on';
   if (value === false) return 'off';
-  // Mode-string gates (e.g. linked_data.viewer.mode): any mode other than
-  // "off" means the surface is active.
-  if (typeof value === 'string') return value === 'off' ? 'off' : 'on';
+  // Mode-string gates (e.g. linked_data.viewer.mode, vault.tui): any mode other
+  // than an explicit off-mode means the surface is active. Both spellings count
+  // as off — "none" is the conventional disabled value for a mode string that
+  // names a thing rather than a state (vault.tui = "rune" | "none").
+  if (typeof value === 'string') return (value === 'off' || value === 'none') ? 'off' : 'on';
   return 'available'; // gate absent from the manifest — catalogued but unconfigured
 }
 
