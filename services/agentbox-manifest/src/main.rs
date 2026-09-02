@@ -154,7 +154,28 @@ enum Command {
     },
 }
 
+/// Rust installs `SIG_IGN` for `SIGPIPE` at startup, which turns a closed
+/// downstream pipe into a panic-with-backtrace on the next `println!` instead
+/// of a quiet death. The entrypoint pipes this binary into `sed` and consumes
+/// `plugin-list` through command substitution, and a backtrace in the boot log
+/// would be both alarming and useless. Restoring the default makes it behave
+/// like every other tool in the pipeline — the same thing CPython does by
+/// raising BrokenPipeError and exiting.
+fn restore_default_sigpipe() {
+    const SIGPIPE: i32 = 13;
+    const SIG_DFL: usize = 0;
+    extern "C" {
+        fn signal(signum: i32, handler: usize) -> usize;
+    }
+    // Safety: setting a signal disposition to the default is always valid, and
+    // this runs before any thread is spawned.
+    unsafe {
+        signal(SIGPIPE, SIG_DFL);
+    }
+}
+
 fn main() -> ExitCode {
+    restore_default_sigpipe();
     match run(Cli::parse().command) {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {

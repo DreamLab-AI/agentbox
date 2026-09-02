@@ -10,8 +10,21 @@ CONFIG_FILE="${ROOT_DIR}/agentbox.toml"
 ENV_EXAMPLE="${ROOT_DIR}/.env.example"
 ENV_FILE="${ROOT_DIR}/.env"
 VALIDATOR="${SCRIPT_DIR}/agentbox-config-validate.js"
-TUI_READ="${SCRIPT_DIR}/tui-read-manifest.py"
-TUI_WRITE="${SCRIPT_DIR}/tui-write-manifest.py"
+# The TUI manifest helpers are subcommands of the agentbox-manifest binary
+# (services/agentbox-manifest), which replaced tui-{read,write}-manifest.py.
+# Prefer a PATH-resolved binary; fall back to a local debug/release build so the
+# wizard still runs from a source checkout outside the image.
+MANIFEST_BIN="$(command -v agentbox-manifest 2>/dev/null || true)"
+for _cand in "${ROOT_DIR}/services/agentbox-manifest/target/release/agentbox-manifest" \
+             "${ROOT_DIR}/services/agentbox-manifest/target/debug/agentbox-manifest"; do
+  [[ -n "${MANIFEST_BIN}" ]] && break
+  [[ -x "${_cand}" ]] && MANIFEST_BIN="${_cand}"
+done
+if [[ -z "${MANIFEST_BIN}" ]]; then
+  echo "agentbox-manifest not found on PATH; build it with:" >&2
+  echo "  cargo build --release --manifest-path services/agentbox-manifest/Cargo.toml" >&2
+  exit 1
+fi
 TMP_DIR="$(mktemp -d)"
 STATE_JSON="${TMP_DIR}/state.json"
 CANDIDATE_TOML="${TMP_DIR}/candidate.toml"
@@ -194,32 +207,15 @@ set_env_value() {
 # ── state helpers (thin wrappers around JSON) ──────────────────────────────────
 
 state_get() {
-  python3 -c "
-import json,sys
-d=json.load(open(sys.argv[1]))
-v=d.get(sys.argv[2])
-print('' if v is None else ('true' if v is True else ('false' if v is False else str(v))))
-" "${STATE_JSON}" "$1" 2>/dev/null || true
+  "${MANIFEST_BIN}" state-get "${STATE_JSON}" "$1" 2>/dev/null || true
 }
 
 state_set() {
-  python3 -c "
-import json,sys,pathlib
-p=pathlib.Path(sys.argv[1])
-d=json.loads(p.read_text())
-d[sys.argv[2]]=sys.argv[3]
-p.write_text(json.dumps(d,indent=2))
-" "${STATE_JSON}" "$1" "$2"
+  "${MANIFEST_BIN}" state-set "${STATE_JSON}" "$1" "$2"
 }
 
 state_set_bool() {
-  python3 -c "
-import json,sys,pathlib
-p=pathlib.Path(sys.argv[1])
-d=json.loads(p.read_text())
-d[sys.argv[2]]=(sys.argv[3].lower()=='true')
-p.write_text(json.dumps(d,indent=2))
-" "${STATE_JSON}" "$1" "$2"
+  "${MANIFEST_BIN}" state-set-bool "${STATE_JSON}" "$1" "$2"
 }
 
 # ── TUI wrappers (gum → whiptail → plain text) ───────────────────────────────
@@ -373,7 +369,7 @@ wt_msgbox() {
 # Returns 0 if validator passed; on errors, shows blocking msgbox + retry.
 # On warnings-only, shows an info msgbox but lets the section advance.
 validate_candidate() {
-  python3 "${TUI_WRITE}" "${STATE_JSON}" "${CANDIDATE_TOML}" "${CONFIG_FILE}"
+  "${MANIFEST_BIN}" tui-write "${STATE_JSON}" "${CANDIDATE_TOML}" "${CONFIG_FILE}"
   local all_out rc
   all_out="$(node "${VALIDATOR}" "${CANDIDATE_TOML}" 2>&1 >/dev/null)" && rc=0 || rc=$?
   if [[ "${rc}" != "0" ]]; then
@@ -456,7 +452,11 @@ if [[ "${1:-}" != "--tui" ]]; then
       else echo "Open ${url} in your browser."; fi
     }
 
-    # Try python3 http.server for a proper localhost origin (needed for fetch)
+    # Try python3 http.server for a proper localhost origin (needed for fetch).
+    # Deliberately still Python: this is a throwaway static file server for the
+    # browser wizard, not config munging, and it is already guarded + has a
+    # graceful fallback below. Replacing it would mean embedding an HTTP server
+    # in agentbox-manifest for no boot-path benefit.
     if command_exists python3; then
       SETUP_PORT=$(python3 -c 'import socket; s=socket.socket(); s.bind(("",0)); print(s.getsockname()[1]); s.close()')
       echo ""
@@ -523,7 +523,7 @@ else
 fi
 
 # ── load existing manifest → state.json ───────────────────────────────────────
-python3 "${TUI_READ}" "${CONFIG_FILE}" "${STATE_JSON}"
+"${MANIFEST_BIN}" tui-read "${CONFIG_FILE}" "${STATE_JSON}"
 # Apply detected GPU default only when manifest currently has "none"
 [[ "$(state_get 'gpu.backend')" == "none" ]] && state_set "gpu.backend" "${DETECTED_GPU}"
 
@@ -1276,6 +1276,12 @@ _patch_operator_toml() {
     "${hex}" "${npub}" "${name}")"
 
   # If the section already exists, replace it; otherwise insert after [sovereign_mesh]
+  #
+  # Still Python: unlike every other manifest site, this is *text surgery* that
+  # must preserve the surrounding file's comments and spacing verbatim. The
+  # agentbox-manifest path parses and re-emits, which would strip them. Porting
+  # this needs a comment-preserving editor (toml_edit) and is its own change;
+  # it is wizard-only and never runs at boot.
   if grep -q '^\[sovereign_mesh\.operator\]' "${file}" 2>/dev/null; then
     # Remove existing block (from header to next section or EOF)
     python3 -c "
@@ -1785,7 +1791,7 @@ done
 # ════════════════════════════════════════════════════════════════════════════════
 # SUMMARY — read-only view before committing
 # ════════════════════════════════════════════════════════════════════════════════
-python3 "${TUI_WRITE}" "${STATE_JSON}" "${CANDIDATE_TOML}" "${CONFIG_FILE}"
+"${MANIFEST_BIN}" tui-write "${STATE_JSON}" "${CANDIDATE_TOML}" "${CONFIG_FILE}"
 _patch_operator_toml "${CANDIDATE_TOML}"
 
 if [[ -n "${GUM}" ]]; then
@@ -1806,7 +1812,7 @@ if ! wt_yesno "Confirm Save" "Save configuration to agentbox.toml? The existing 
 fi
 
 # Final validation + atomic write
-python3 "${TUI_WRITE}" "${STATE_JSON}" "${CANDIDATE_TOML}" "${CONFIG_FILE}"
+"${MANIFEST_BIN}" tui-write "${STATE_JSON}" "${CANDIDATE_TOML}" "${CONFIG_FILE}"
 _patch_operator_toml "${CANDIDATE_TOML}"
 if ! node "${VALIDATOR}" "${CANDIDATE_TOML}" 2>&1; then
   echo "Final validation failed. No changes written."

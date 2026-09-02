@@ -11,7 +11,8 @@
 #
 # We build it from source via `buildRustPackage` (same pattern as
 # lib/solid-pod-rs.nix) and provide a `nagual-qe` symlink alongside the
-# canonical `nagual` binary so existing tooling (provision-agent-stacks.py,
+# canonical `nagual` binary so existing tooling (the agentbox-manifest
+# provision-stacks subcommand,
 # config/artifact-probes.json) keeps working without rename churn.
 #
 # Version-bump procedure:
@@ -110,7 +111,7 @@ in
 
       postInstall = ''
         # Stable `nagual-qe` alias next to the canonical `nagual` binary.
-        # provision-agent-stacks.py and artifact-probes both reference this
+        # The provision-stacks subcommand and artifact-probes both reference this
         # name; preserve it across the npm→Rust transition.
         if [ -f $out/bin/nagual ]; then
           ln -sf nagual $out/bin/nagual-qe

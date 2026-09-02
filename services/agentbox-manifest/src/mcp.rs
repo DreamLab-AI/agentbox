@@ -38,12 +38,56 @@ pub fn set_server(file: &Path, name: &str) -> Result<(), String> {
     std::io::stdin()
         .read_to_string(&mut spec_text)
         .map_err(|e| format!("reading spec from stdin: {e}"))?;
+    let spec_text = expand_env_placeholders(&spec_text);
     let spec: Value =
         serde_json::from_str(&spec_text).map_err(|e| format!("spec is not valid JSON: {e}"))?;
 
     let mut cfg = load_strict(file)?;
     jsonio::mcp_servers_mut(&mut cfg).insert(name.to_string(), spec);
     jsonio::write(file, &cfg, false).map_err(|e| format!("{}: {e}", file.display()))
+}
+
+/// Substitute `${VAR}` with the JSON-escaped value of that environment
+/// variable, or the empty string when it is unset (`os.environ.get(x, '')`).
+///
+/// This exists so a secret can reach the spec without passing through argv.
+/// The entrypoint's heredocs let the shell expand ordinary paths and URLs, but
+/// escape the placeholder for anything sensitive (`\${AGENTBOX_EMAIL_GATEWAY_TOKEN}`),
+/// so the value is read here, inside the process — the property the Python had,
+/// and one two of today's `python3 -c` sites had already lost by interpolating
+/// an API key straight onto the command line.
+///
+/// Escaping matters as much as the indirection: a token containing a quote or
+/// a backslash would otherwise produce invalid JSON. The substitution is
+/// JSON-escaped with the surrounding quotes stripped, because placeholders only
+/// ever appear inside string literals.
+fn expand_env_placeholders(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(start) = rest.find("${") {
+        out.push_str(&rest[..start]);
+        let after = &rest[start + 2..];
+        match after.find('}') {
+            Some(end) => {
+                let name = &after[..end];
+                let value = std::env::var(name).unwrap_or_default();
+                let escaped = serde_json::to_string(&value).unwrap_or_else(|_| "\"\"".into());
+                // Strip exactly one quote from each end. `trim_matches('"')`
+                // would strip *every* trailing quote, so a value ending in `"`
+                // lost its own escaped quote and left a dangling backslash that
+                // ran the JSON string off the end of the line.
+                out.push_str(&escaped[1..escaped.len() - 1]);
+                rest = &after[end + 1..];
+            }
+            // An unterminated `${` is literal text, not a placeholder.
+            None => {
+                out.push_str(&rest[start..]);
+                return out;
+            }
+        }
+    }
+    out.push_str(rest);
+    out
 }
 
 /// Reconcile the `agentic-qe` entry and its env block every boot.
@@ -219,5 +263,55 @@ mod tests {
         assert!(references_foreign_ruvector(
             &json!({ "command": "/usr/local/bin/ruvector-mcp" })
         ));
+    }
+
+    #[test]
+    fn env_placeholders_expand_from_the_process_environment() {
+        std::env::set_var("ABM_TEST_TOKEN", "s3cr3t");
+        assert_eq!(
+            expand_env_placeholders(r#"{"h":"Bearer ${ABM_TEST_TOKEN}"}"#),
+            r#"{"h":"Bearer s3cr3t"}"#
+        );
+    }
+
+    #[test]
+    fn an_unset_variable_expands_to_the_empty_string() {
+        std::env::remove_var("ABM_TEST_ABSENT");
+        assert_eq!(
+            expand_env_placeholders(r#"{"k":"${ABM_TEST_ABSENT}"}"#),
+            r#"{"k":""}"#
+        );
+    }
+
+    #[test]
+    fn a_quote_in_the_value_is_escaped_not_injected() {
+        std::env::set_var("ABM_TEST_QUOTED", "a\"b\\c");
+        let out = expand_env_placeholders(r#"{"k":"${ABM_TEST_QUOTED}"}"#);
+        let v: Value = serde_json::from_str(&out).expect("stays valid JSON");
+        assert_eq!(v["k"], "a\"b\\c");
+    }
+
+    #[test]
+    fn an_unterminated_placeholder_is_left_alone() {
+        assert_eq!(expand_env_placeholders("${OOPS"), "${OOPS");
+    }
+
+    #[test]
+    fn a_value_ending_in_a_quote_keeps_its_escape() {
+        // Regression: `trim_matches('"')` ate the escaped trailing quote as
+        // well as the delimiter, producing `pk-\"quoted\` — an unterminated
+        // JSON string.
+        std::env::set_var("ABM_TEST_TRAILING", "pk-\"quoted\"");
+        let out = expand_env_placeholders(r#"{"k":"${ABM_TEST_TRAILING}"}"#);
+        let v: Value = serde_json::from_str(&out).expect("stays valid JSON");
+        assert_eq!(v["k"], "pk-\"quoted\"");
+    }
+
+    #[test]
+    fn a_value_that_is_only_quotes_survives() {
+        std::env::set_var("ABM_TEST_QUOTES", "\"\"\"");
+        let out = expand_env_placeholders(r#"{"k":"${ABM_TEST_QUOTES}"}"#);
+        let v: Value = serde_json::from_str(&out).expect("stays valid JSON");
+        assert_eq!(v["k"], "\"\"\"");
     }
 }
