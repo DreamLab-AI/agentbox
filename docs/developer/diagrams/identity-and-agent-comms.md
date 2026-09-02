@@ -528,7 +528,7 @@ path re-enables the Telegram path:
 | `config/hooks/nostr-session-summary.py` | 5 | `retired Telegram/CTM mirror` |
 | `services/nostr-pod-bridge/src/lib.rs` | 326 | `/// Layout mirrors the retired Telegram digest:` |
 | `scripts/agentbox-config-validate.js` | 373-374 | E014 tombstone comment |
-| `scripts/provision-agent-stacks.py` | 39 | Docstring reference |
+| `services/agentbox-manifest/src/stacks_env.rs` | — | Doc-comment reference |
 
 No `CTM_BOT_TOKEN`, `CTM_TELEGRAM_CHAT_ID`, or `ctm` binary references remain
 in executable paths. The tombstone in `agentbox-config-validate.js` lines

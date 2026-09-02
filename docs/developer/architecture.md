@@ -124,7 +124,7 @@ Stage A — one-shot, exec-chained, ends with supervisord
   Phase 2: auto-generate MANAGEMENT_API_KEY if unset/sentinel
   Phase 3: python3 sovereign-bootstrap.py (Nostr identity)
   Phase 4: workspace defaults (tmux, .config, README)
-  Phase 5: provision-agent-stacks.py; validate-artifacts.sh; exec supervisord
+  Phase 5: agentbox-manifest provision-stacks; validate-artifacts.sh; exec supervisord
 
 Stage B — supervisord [program:bootstrap] (same script, AGENTBOX_BOOTSTRAP_STAGE=B)
 
