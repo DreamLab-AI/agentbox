@@ -4,29 +4,34 @@ description: >
   Summarise a single web page or YouTube video into short/medium/long notes and
   extract semantic topic links for an Obsidian vault. Trigger when the user says
   "summarise this URL/article/video", "get the YouTube transcript", "pull the key
-  points from this page", or "make vault/Obsidian topic links from this". Runs an
-  MCP FastMCP server that scrapes the URL and summarises via the Ontology Loom
-  facade (model-swappable LLM door). NOT for interactive browser automation (use
-  browser/playwright), NOT for multi-URL comparison or structured extraction (use
-  web-researcher scrape_page or the browser sidecar), NOT for broad multi-source
-  cited web search (use perplexity-research/web-researcher), and NOT for text you
-  already hold locally (summarise it directly).
-version: 2.1.0
+  points from this page", or "make vault/Obsidian topic links from this". Runs the
+  `web-summary` subcommand of `agentbox-mcp` (a Rust rmcp server) that scrapes the
+  URL and summarises via the Ontology Loom facade (model-swappable LLM door). NOT
+  for interactive browser automation (use browser/playwright), NOT for multi-URL
+  comparison or structured extraction (use web-researcher scrape_page or the
+  browser sidecar), NOT for broad multi-source cited web search (use
+  perplexity-research/web-researcher), and NOT for text you already hold locally
+  (summarise it directly).
+version: 2.2.0
 author: agentbox-claude
 mcp_server: true
-protocol: fastmcp
-entry_point: mcp-server/server.py
+protocol: rmcp
+entry_point: agentbox-mcp web-summary
 dependencies:
-  - httpx
-  - youtube-transcript-api
+  - agentbox-mcp
 ---
 
 # Web Summary Skill
 
-Single-URL content summarisation and topic extraction via a FastMCP server. It
-fetches the page (or YouTube transcript) and summarises it through the Ontology
-Loom facade — the load-bearing, model-swappable LLM door (agentbox ADR-051). The
-former Z.AI service on port 9600 is retired; see `references/architecture.md`.
+Single-URL content summarisation and topic extraction via the `web-summary`
+subcommand of `agentbox-mcp` — a single Rust `rmcp` binary
+(`services/agentbox-mcp`) that also serves the `imagemagick` and
+`gemini-url-context` skills. It replaces the former Python FastMCP server
+one-for-one, including its own direct YouTube transcript fetch (watch page +
+timedtext, no `youtube-transcript-api` dependency). It fetches the page (or
+YouTube transcript) and summarises it through the Ontology Loom facade — the
+load-bearing, model-swappable LLM door (agentbox ADR-051). The former Z.AI
+service on port 9600 is retired; see `references/architecture.md`.
 
 ## When to use
 
