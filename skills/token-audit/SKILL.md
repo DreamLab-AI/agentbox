@@ -29,7 +29,7 @@ mentions surprising usage.
 1. **Run the engine** (baked at the skills tree; stdlib-only Python 3):
 
    ```bash
-   python3 /opt/agentbox/skills/token-audit/scripts/token-audit.py --days 7
+   token-audit --days 7
    ```
 
    - Honour any window the user gives ("past month" → `--days 30`).
@@ -59,8 +59,8 @@ mentions surprising usage.
    section is unexpected. If daemons are listed and the user authorises:
 
    ```bash
-   python3 /opt/agentbox/scripts/ruflo-daemon-gc.py           # preview
-   python3 /opt/agentbox/scripts/ruflo-daemon-gc.py --kill    # stop them
+   ruflo-daemon-gc           # preview
+   ruflo-daemon-gc --kill    # stop them
    ```
 
    Then re-run the audit to confirm.

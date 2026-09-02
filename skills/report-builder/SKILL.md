@@ -53,7 +53,7 @@ and policy recommendations. Target audience: government policy makers."
 ### 2. Preflight
 
 ```bash
-python3 scripts/preflight.py   # from the report-builder skill directory
+report-preflight   # on PATH from the agentbox-ops crate
 ```
 
 Preflight reports which tools and API keys are available and degrades gracefully
@@ -92,7 +92,7 @@ are in [`references/pipeline.md`](references/pipeline.md).
 
 | Script | Purpose |
 |--------|---------|
-| `scripts/preflight.py` | Check all prerequisites and API keys |
+| `report-preflight` | Check all prerequisites and API keys |
 | `scripts/compile_report.sh` | Full LaTeX build pipeline with verification |
 | `scripts/asset_audit.sh` | Check all figures referenced and present |
 

@@ -22,7 +22,7 @@ depends_on_mcps:
 # Voyager Verified Skill Library
 
 **Status: Phase 2 scaffolding. The SKILL.md and verification implementation
-(`mcp/voyager/verify-and-store.py`) ship now. The VerificationGate write path
+(the `voyager-gate` binary) ship now. The VerificationGate write path
 will be activated only after Phase 1 (expel-lesson-extractor) has been
 validated and `skills.code_interpreter.enabled = true` is confirmed live
 (ADR-019 §Rollout, PRD-008 §6 Phase 2b).**
@@ -185,8 +185,8 @@ Validator rules:
 
 ## Implementation Notes
 
-- The implementation lives at `mcp/voyager/verify-and-store.py` (Phase 2
-  write-gate implementation). The scheduled archival job is not yet
+- The implementation lives in `services/agentbox-ops/src/voyager/` plus
+  `src/bin/voyager-gate.rs` (Phase 2 write-gate implementation). The scheduled archival job is not yet
   implemented.
 - All RuVector writes use `mcp__ruvector__memory_store` exclusively. Never
   raw SQL, never `claude-flow memory *` CLI (ADR-015 mandate).
@@ -201,7 +201,7 @@ Validator rules:
 
 ## Related Files
 
-- `mcp/voyager/verify-and-store.py` — VerificationGate + RuVector write.
+- `voyager-gate` (crate `services/agentbox-ops`) — VerificationGate + RuVector write.
 - `mcp/code-interpreter/sandbox_check.py` — static AST scanner (reused).
 - `skills/expel-lesson-extractor/SKILL.md` — Phase 1 lesson extractor.
 - `skills/codeact/SKILL.md` — retrieves skills at task start.

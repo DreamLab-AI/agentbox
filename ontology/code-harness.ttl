@@ -116,7 +116,7 @@ ex:DistilledLesson
         memory_type = "semantic" — durable, no TTL.
         URN kind: memory. Example: urn:agentbox:memory:<scope>:lesson-<sha256-12>
         IRI mapping: <https://urn.agentbox.dev/memory/<scope>/lesson-<sha256-12>>
-        Source: mcp/expel/distil.py (Phase 1).
+        Source: expel-distil binary, services/agentbox-ops (Phase 1).
         Invariants: DDD-005 I08-I12.
     """ ;
     ex:memoryType "semantic" .
@@ -139,7 +139,7 @@ ex:VerifiedSkill
         URN kind: skill. Example: urn:agentbox:skill:<scope>:<name>:v<n>
         Archived URN: urn:agentbox:skill:<scope>:<name>:v<n>:archived
         IRI mapping: <https://urn.agentbox.dev/skill/<scope>/<name>/v<n>>
-        Source: mcp/voyager/verify-and-store.py (Phase 2).
+        Source: voyager-gate binary, services/agentbox-ops (Phase 2).
         Invariants: DDD-005 I13-I15.
     """ ;
     ex:memoryType "procedural" .

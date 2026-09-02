@@ -69,7 +69,7 @@ const STOP = new Set([
 ]);
 
 /**
- * Code-as-harness lesson records (mcp/expel/distil.py) are written to the
+ * Code-as-harness lesson records (the expel-distil binary) are written to the
  * `code-harness-lessons` namespace as `"<rule> | <json>"` where the JSON is an
  * `ex:DistilledLesson` aggregate (DDD-005). Distil already mints the lesson's
  * own canonical `urn:agentbox:memory:<scope>:lesson-<sha256-12>` (per the
@@ -284,7 +284,7 @@ function buildProposalDescriptor(norm, score, opts = {}) {
       score: score.score,
       reasons: score.reasons,
       governed_path: propose_request.path,
-      // The originating experiential lesson URN (already minted by distil.py
+      // The originating experiential lesson URN (already minted by expel-distil
       // through the memory kind), preserving the experiential→governed link.
       ...(norm.lesson_urn ? { source_lesson_urn: norm.lesson_urn } : {}),
       ...(typeof norm.confidence === 'number' ? { lesson_confidence: norm.confidence } : {}),

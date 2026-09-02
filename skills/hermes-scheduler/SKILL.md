@@ -19,18 +19,16 @@ Jobs persist across restarts.
 
 ## Quick start
 
-The scheduler is a single baked script at
-`/opt/agentbox/skills/hermes-scheduler/scripts/scheduler.py`.
+The scheduler is a single baked binary,
+`hermes-scheduler` (on PATH from the `agentbox-ops` crate).
 
 ```bash
-SCHED=/opt/agentbox/skills/hermes-scheduler/scripts/scheduler.py
-
-python3 "$SCHED" start                     # start daemon (60s tick)
-python3 "$SCHED" add \
+hermes-scheduler start                     # start daemon (60s tick)
+hermes-scheduler add \
   --prompt "check disk usage and alert if over 80%" \
   --schedule "every 30m" --name "disk-monitor"
-python3 "$SCHED" list                       # list jobs
-python3 "$SCHED" status                     # daemon status
+hermes-scheduler list                       # list jobs
+hermes-scheduler status                     # daemon status
 ```
 
 Schedules accept durations (`30m`, one-shot), intervals (`every 2h`), cron

@@ -129,7 +129,7 @@ Enrichment and asset phases parallelise well.
 
 ## Implementation
 
-The core download logic is in `archiver.py` (this directory). It can be run
+The core download logic is in the `yt-transcript-archive` binary. It can be run
 standalone or invoked by agents.
 
 ### Key design decisions
