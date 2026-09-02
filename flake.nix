@@ -506,6 +506,20 @@
 
         systemscapePkg = import ./lib/systemscape.nix { inherit lib pkgs; };
 
+        # ---------------------------------------------------------------------------
+        # rune — first-class markdown TUI for the Obsidian vault (ADR-2029).
+        # Gate: [vault].tui = "rune". Read defensively: the [vault] section is
+        # absent from older manifests, and the gate is honest — without it the
+        # binary is not in the image and tmux window 9 ("Notes") prints its
+        # rebuild notice instead of launching the editor.
+        # The import is lazy, so lib/rune.nix is only realised when the gate is on.
+        # ---------------------------------------------------------------------------
+        vaultCfg = agentboxConfig.vault or {};
+        vaultTui = vaultCfg.tui or "none";
+        runeActive = vaultTui == "rune";
+        runePkg = import ./lib/rune.nix { inherit lib pkgs; };
+        runePackages = lib.optionals runeActive [ runePkg ];
+
         # Supercronic drives the podcast ingestion schedule.  Keep it in the
         # immutable Nix closure: ~/.local is intentionally a noexec tmpfs, so a
         # binary downloaded there during bootstrap can never be launched.
@@ -1320,6 +1334,8 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           ++ headroomPackages
           ++ dreamEnginePackages
           ++ nagualQePackages
+          # rune markdown TUI — gated on [vault].tui = "rune" (ADR-2029)
+          ++ runePackages
           ++ desktopPackages
           ++ antigravityCliPackages
           ++ codexPackages

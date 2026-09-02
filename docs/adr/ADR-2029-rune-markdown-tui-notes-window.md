@@ -3,8 +3,8 @@ id: ADR-2029
 title: "Rune is the first-class markdown TUI; tmux window 9 \"Notes\" opens it at the vault root"
 date: 2026-09-02
 decision_status: proposed
-implementation_status: none
-activation_status: inactive
+implementation_status: complete
+activation_status: staged
 supersedes: []
 superseded_by: []
 verified_commit:
@@ -60,16 +60,36 @@ and builds from source here in 90 s. Its CLI is `rune [-w <dir>] [file...]`.
 - Rune has no config file; keybindings and theme are compiled in (Ctrl chords
   mirror every ⌘ chord, so the Linux/tmux path is Ctrl). Its crash-recovery
   store is a global SQLite at `$HOME/Library/Application Support/rune/rune-v2.db`
-  on every OS (not XDG); it lives under the devuser home and survives session
-  restarts, not image rebuilds.
+  on every OS (not XDG). `/home/devuser` is a read-only layer in this
+  container, so with the real HOME Rune starts degraded ("history disabled —
+  storage unavailable") and loses exactly the journal and external-change
+  bookkeeping this ADR values. The Notes window therefore runs the Rune
+  process alone with `HOME=$WORKSPACE/.rune-home` (the pane shell keeps the
+  real HOME); the journal lives at
+  `~/workspace/.rune-home/Library/Application Support/rune/rune-v2.db` on the
+  bind mount and survives both session restarts and image rebuilds.
+  `~/.local` was rejected as the home because it is a small noexec tmpfs.
 - Rune auto-detects the vault root by climbing to the nearest `.obsidian` or
   `.git` marker, so `rune` launched anywhere inside the vault behaves the same
   as `rune -w "$VAULT_ROOT"`; the window passes `-w` explicitly anyway.
 
 ## Verification
 
-`bash -n config/tmux-autostart.sh`; a dry run on a scratch socket
-(`tmux -L adr2029 ...`) shows window 9 named "Notes" and, with `rune`
-present, a running `rune` process (EXP-V07). `nix build .#rune` on the host
-succeeds with the recorded hashes. `implementation_status: complete` when both
-hold and `verified_commit` is recorded.
+2026-09-02, on the `obsidian` branch: `bash -n config/tmux-autostart.sh`
+clean; dry runs on a private `TMUX_TMPDIR` socket showed (a) rune present +
+vault present → 10 windows, `9:Notes` running
+`.cargo/bin/rune -w <vault>` with the normal keybinding footer and the
+recovery DB created under `.rune-home`; (b) rune absent + vault missing →
+the window falls back to `$WORKSPACE` (tmux refuses `-c` on a missing
+directory) and prints the rebuild notice. The binary is resolved in bash
+(`command -v rune`, then `$WORKSPACE/.cargo/bin/rune`) and PATH is passed
+with `tmux new-window -e`, because panes run fish. Hashes in `lib/rune.nix`
+were computed in a throwaway `nixos/nix` container fed over stdin (no bind
+mounts — the DinD source-mount trap): `nix-prefetch-url --unpack` for the
+source (tag and commit archives hash identically), `cargoHash` from the
+fake-hash mismatch against the repo's pinned nixpkgs
+(`9ae611a455b90cf061d8f332b977e387bda8e1ca`), then a **complete** build of
+`rune-1.4.0` (77.7 MB stripped, `rune 1.4.0`) with the real hashes. Gate
+evaluation: `[vault].tui = "rune"` → `runeActive=true`; section absent →
+`false`. `implementation_status: complete` when the rebuilt image is booted
+and `verified_commit` is recorded.

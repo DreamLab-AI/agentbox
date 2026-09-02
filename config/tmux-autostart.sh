@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
 # tmux Workspace Auto-Start for Agentbox
-# Creates the operator windows (0-7) + a single AoE "Sessions" window — the
-# interaction plane is now Agent of Empires (PRD-021/ADR-042), which supersedes
-# the MAD-style per-provider harness tabs 8-14 (ADR-025, superseded in place).
+# Creates the operator windows (0-7), the AoE "Sessions" window (8) and the
+# vault "Notes" window (9) — the interaction plane is now Agent of Empires
+# (PRD-021/ADR-042), which supersedes the MAD-style per-provider harness tabs
+# 8-14 (ADR-025, superseded in place); Notes is the Rune markdown TUI over the
+# Obsidian vault (ADR-2029).
+#
+#   0:Claude  1:Agent  2:Services  3:Build  4:Logs
+#   5:System  6:VNC    7:Git       8:Sessions(AoE)  9:Notes(Rune)
 #
 # Replaces Zellij layouts; fish shell configs (config.fish,
 # bashrc.agentbox) are sourced automatically by fish in each window.
@@ -15,6 +20,8 @@ WORKSPACE="${WORKSPACE:-/home/devuser/workspace}"
 PROJECT="${WORKSPACE}/project"
 [ -d "$PROJECT" ] || PROJECT="${WORKSPACE}"
 WORKSPACE_DIR="${WORKSPACE}"
+# Obsidian vault root — the Notes window's working directory (ADR-2029).
+VAULT_ROOT="${VAULT_ROOT:-${WORKSPACE}/vault}"
 FISH="$(which fish 2>/dev/null || echo fish)"
 
 # Agentbox install root (dir containing config/ + scripts/). Resolved relative to
@@ -53,7 +60,7 @@ tmux send-keys -t "${SESSION}:0" "export CLAUDE_CONFIG_DIR=/home/devuser/.claude
 
 # Welcome dashboard — gum renders a styled panel, falls back to plain text
 if command -v gum >/dev/null 2>&1; then
-  WELCOME_CMD="clear; gum style --border rounded --border-foreground '#7aa2f7' --padding '1 2' --margin '1 0' --bold --foreground '#a9b1d6' \"\$(printf '  AGENTBOX\\n\\n  Project: $PROJECT\\n  Shell:   fish + starship\\n  Tabs:    Claude · Agent · Services · Build · Logs · System · VNC · Git · Sessions (AoE)\\n\\n  Interactive agent sessions live in the Sessions tab (Agent of Empires).\\n  agentbox-help    quick reference\\n  svc-status       service health\\n  cf-doctor        system diagnostics')\""
+  WELCOME_CMD="clear; gum style --border rounded --border-foreground '#7aa2f7' --padding '1 2' --margin '1 0' --bold --foreground '#a9b1d6' \"\$(printf '  AGENTBOX\\n\\n  Project: $PROJECT\\n  Shell:   fish + starship\\n  Tabs:    Claude · Agent · Services · Build · Logs · System · VNC · Git · Sessions (AoE) · Notes\\n\\n  Interactive agent sessions live in the Sessions tab (Agent of Empires).\\n  Vault pages open in the Notes tab (Rune markdown TUI).\\n  agentbox-help    quick reference\\n  svc-status       service health\\n  cf-doctor        system diagnostics')\""
   tmux send-keys -t "${SESSION}:0" "$WELCOME_CMD" C-m
 else
   tmux send-keys -t "${SESSION}:0" "echo ''" C-m
@@ -62,6 +69,7 @@ else
   tmux send-keys -t "${SESSION}:0" "echo '  │                                             │'" C-m
   tmux send-keys -t "${SESSION}:0" "echo '  │  Project: $PROJECT'" C-m
   tmux send-keys -t "${SESSION}:0" "echo '  │  Sessions tab   Agent of Empires plane       │'" C-m
+  tmux send-keys -t "${SESSION}:0" "echo '  │  Notes tab      Rune markdown TUI (vault)    │'" C-m
   tmux send-keys -t "${SESSION}:0" "echo '  │  agentbox-help   quick reference             │'" C-m
   tmux send-keys -t "${SESSION}:0" "echo '  │  svc-status      service health              │'" C-m
   tmux send-keys -t "${SESSION}:0" "echo '  └─────────────────────────────────────────────┘'" C-m
@@ -168,6 +176,83 @@ else
 fi
 
 # ============================================================================
+# Window 9: Notes — Rune, the vault's markdown TUI (ADR-2029)
+# ----------------------------------------------------------------------------
+# Opens at the Obsidian vault root so [[wikilinks]], frontmatter, tables and
+# embeds resolve. Rune also climbs to the nearest .obsidian/.git marker on its
+# own, but -w is passed explicitly so the window does not depend on that.
+#
+# Presence-detect mirrors the Sessions window (ADR-042): run the binary when it
+# exists, otherwise print the rebuild notice. Two sources satisfy the check —
+# the baked Nix package (gated on [vault].tui = "rune") and, until the image is
+# rebuilt, the interim source build in ~/workspace/.cargo/bin (ADR-2029 D4).
+# The entrypoint adds that directory to PATH globally; the window re-adds it via
+# `new-window -e` so this script also works when launched standalone.
+# ============================================================================
+NOTES_CARGO_BIN="${WORKSPACE}/.cargo/bin"
+# Resolve the binary in this (bash) script rather than relying on the pane's
+# shell: panes run fish, whose PATH syntax differs, and send-keys would race the
+# shell's own startup.
+RUNE_BIN="$(command -v rune 2>/dev/null || true)"
+if [ -z "$RUNE_BIN" ] && [ -x "${NOTES_CARGO_BIN}/rune" ]; then
+  RUNE_BIN="${NOTES_CARGO_BIN}/rune"
+fi
+
+# tmux refuses -c on a missing directory. The vault may not be materialised yet
+# on a fresh checkout, so fall back to the workspace root instead of losing the
+# window entirely, and say so.
+NOTES_CWD="$VAULT_ROOT"
+NOTES_VAULT_MISSING=""
+if [ ! -d "$NOTES_CWD" ]; then
+  NOTES_CWD="$WORKSPACE_DIR"
+  NOTES_VAULT_MISSING="1"
+fi
+
+NOTES_ARGS=()
+if [ -d "$NOTES_CARGO_BIN" ]; then
+  NOTES_ARGS+=( -e "PATH=${NOTES_CARGO_BIN}:${PATH}" )
+fi
+
+tmux new-window -t "${SESSION}:9" -n "Notes" -c "$NOTES_CWD" "${NOTES_ARGS[@]}"
+
+if [ -n "$NOTES_VAULT_MISSING" ]; then
+  tmux send-keys -t "${SESSION}:9" "echo '  Vault ${VAULT_ROOT} does not exist yet — opening ${NOTES_CWD} instead.'" C-m
+fi
+
+if [ -n "$RUNE_BIN" ]; then
+  # Rune keeps its crash journal, persistent undo and 3-way-merge bookkeeping in
+  # ONE global SQLite database at "$HOME/Library/Application Support/rune/
+  # rune-v2.db" — macOS-shaped on every OS, not XDG, not per-vault. Here
+  # /home/devuser is a read-only layer, so under the real HOME that database
+  # cannot be created and Rune starts degraded, banner "history disabled —
+  # storage unavailable": no undo across restarts and no external-change merge
+  # bookkeeping, which is exactly what makes it safe for an agent and the
+  # operator to edit the same page. Point HOME at a writable directory for the
+  # rune process only — the pane's shell keeps the real HOME. The workspace bind
+  # mount is the durable choice; ~/.local is a tmpfs and would not survive a
+  # container restart. Fail-open: if the directory cannot be made, launch
+  # unmodified and let Rune degrade as before.
+  NOTES_RUNE_HOME="${WORKSPACE}/.rune-home"
+  NOTES_LAUNCH="${RUNE_BIN}"
+  if mkdir -p "$NOTES_RUNE_HOME" 2>/dev/null; then
+    NOTES_LAUNCH="env HOME='${NOTES_RUNE_HOME}' ${RUNE_BIN}"
+  fi
+  tmux send-keys -t "${SESSION}:9" "echo '  Notes — Rune markdown TUI over ${NOTES_CWD} (ADR-2029; ^C quits, F1 help)'" C-m
+  tmux send-keys -t "${SESSION}:9" "${NOTES_LAUNCH} -w '${NOTES_CWD}'" C-m
+else
+  tmux send-keys -t "${SESSION}:9" "echo '  Notes — Rune markdown TUI over the vault'" C-m
+  tmux send-keys -t "${SESSION}:9" "echo ''" C-m
+  tmux send-keys -t "${SESSION}:9" "echo '  The rune binary is not present in this image.'" C-m
+  tmux send-keys -t "${SESSION}:9" "echo '  The Notes editor needs the rebuilt image:'" C-m
+  tmux send-keys -t "${SESSION}:9" "echo '    set [vault].tui = \"rune\" in agentbox.toml,'" C-m
+  tmux send-keys -t "${SESSION}:9" "echo '    then rebuild on the host (./agentbox.sh rebuild) to bake rune.'" C-m
+  tmux send-keys -t "${SESSION}:9" "echo ''" C-m
+  tmux send-keys -t "${SESSION}:9" "echo '  Until then, a source build satisfies this window:'" C-m
+  tmux send-keys -t "${SESSION}:9" "echo '    cargo install --git https://github.com/aka-rider/rune --tag v1.4.0 rune-cli'" C-m
+  tmux send-keys -t "${SESSION}:9" "echo '  It installs to ${NOTES_CARGO_BIN}; reopen this window afterwards to pick it up.'" C-m
+fi
+
+# ============================================================================
 # Harness-merge helper — reworked for the AoE per-session worktree model.
 # Under ADR-042, AoE owns per-session git worktrees; a worktree session's branch
 # is derived from its title slug (docs/guides/worktrees.md). This helper merges
@@ -221,8 +306,8 @@ else
   tmux select-window -t "${SESSION}:0"
 fi
 
-echo "[tmux-autostart] Session '$SESSION' created with 9 windows"
-echo "  0:Claude  1:Agent  2:Services  3:Build  4:Logs  5:System  6:VNC  7:Git  8:Sessions(AoE)"
+echo "[tmux-autostart] Session '$SESSION' created with 10 windows"
+echo "  0:Claude  1:Agent  2:Services  3:Build  4:Logs  5:System  6:VNC  7:Git  8:Sessions(AoE)  9:Notes(Rune)"
 
 # ============================================================================
 # Dream-engine nightly loop — FALLBACK ONLY. Since the 2026-08 image rebuild
