@@ -101,26 +101,6 @@ class DocumentationAligner:
             '--output', str(output_path)
         ])
 
-    def archive_working(self) -> bool:
-        """Run working document detection."""
-        output_path = self.output_dir / 'archive-report.json'
-        self.reports['archive'] = output_path
-
-        return self.run_script('archive_working_docs.py', [
-            '--root', str(self.project_root),
-            '--output', str(output_path)
-        ])
-
-    def scan_stubs(self) -> bool:
-        """Run stub scanning."""
-        output_path = self.output_dir / 'stubs-report.json'
-        self.reports['stubs'] = output_path
-
-        return self.run_script('scan_stubs.py', [
-            '--root', str(self.project_root),
-            '--output', str(output_path)
-        ])
-
     def generate_report(self) -> bool:
         """Generate final report."""
         output_path = self.project_root / 'docs' / 'DOCUMENTATION_ISSUES.md'
@@ -167,8 +147,6 @@ class DocumentationAligner:
             'links': self.validate_links(),
             'mermaid': self.check_mermaid(),
             'ascii': self.detect_ascii(),
-            'archive': self.archive_working(),
-            'stubs': self.scan_stubs(),
         }
 
         results['report'] = self.generate_report()

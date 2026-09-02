@@ -110,8 +110,11 @@ reject reasons, and the pass/reject store snippets:
 `VerifiedSkill` records are **immutable**. An updated skill body is stored under
 a new URN `urn:agentbox:skill:<scope>:<name>:v<n+1>`. The previous version is
 retained in `code-harness-skills` until it is demoted to
-`code-harness-skills-archive` by `mcp/voyager/archive-old-versions.py` after
-`[skills.voyager_skill_library].archive_after_days` days (default 30).
+`code-harness-skills-archive` after
+`[skills.voyager_skill_library].archive_after_days` days (default 30). The
+demotion job is **not currently implemented** — the previous Python
+`archive-old-versions.py` was removed as dead code (it had no scheduler entry).
+Archival is a design commitment awaiting a scheduled implementation.
 
 Archived skill URN suffix: `urn:agentbox:skill:<scope>:<name>:v<n>:archived`
 (same URN identity, `:archived` suffix signals tier, per addendum).
@@ -183,8 +186,8 @@ Validator rules:
 ## Implementation Notes
 
 - The implementation lives at `mcp/voyager/verify-and-store.py` (Phase 2
-  write-gate implementation) and `mcp/voyager/archive-old-versions.py`
-  (scheduled archival job).
+  write-gate implementation). The scheduled archival job is not yet
+  implemented.
 - All RuVector writes use `mcp__ruvector__memory_store` exclusively. Never
   raw SQL, never `claude-flow memory *` CLI (ADR-015 mandate).
 - The `embed_text` field is the primary semantic signal embedded by
@@ -199,7 +202,6 @@ Validator rules:
 ## Related Files
 
 - `mcp/voyager/verify-and-store.py` — VerificationGate + RuVector write.
-- `mcp/voyager/archive-old-versions.py` — scheduled archival cron job.
 - `mcp/code-interpreter/sandbox_check.py` — static AST scanner (reused).
 - `skills/expel-lesson-extractor/SKILL.md` — Phase 1 lesson extractor.
 - `skills/codeact/SKILL.md` — retrieves skills at task start.

@@ -104,8 +104,8 @@ Detail lives in `references/` — pull the file that matches the task:
 
 Bundled runnable assets in this directory:
 - `generate.py` — FLUX 2 one-shot generator (quick path above).
-- `generate_anima.py` + `anima_workflow.json` / `anima_import_workflow.json` — working
-  sample animation workflow and driver.
+- `anima_workflow.json` / `anima_import_workflow.json` — working sample animation
+  workflow graphs, kept as reference structures for `generate.py`.
 - `mcp-server/` — ComfyUI MCP server surface.
 
 ## Integration with other skills
