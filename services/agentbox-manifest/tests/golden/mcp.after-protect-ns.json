@@ -1,0 +1,107 @@
+{
+  "mcpServers": {
+    "claude-flow": {
+      "command": "node",
+      "args": [
+        "/opt/agentbox/mcp/servers/ruvector-mcp.cjs"
+      ],
+      "type": "stdio",
+      "env": {
+        "RUVECTOR_PG_CONNINFO": "host=x",
+        "NODE_PATH": "/np",
+        "RUVECTOR_PROTECTED_NAMESPACES": "governance-precedents,ruvnet-kb"
+      }
+    },
+    "ruvector": {
+      "command": "node",
+      "args": [
+        "/home/devuser/.claude/ruvector-mcp.cjs"
+      ],
+      "type": "stdio"
+    },
+    "browser-gpu": {
+      "type": "sse",
+      "url": "http://browsercontainer:8931/sse"
+    },
+    "agentic-qe": {
+      "command": "aqe",
+      "args": [
+        "mcp"
+      ],
+      "type": "stdio",
+      "env": {
+        "AQE_MEMORY_BACKEND": "memory",
+        "AQE_VERBOSE": "false",
+        "NODE_NO_WARNINGS": "1",
+        "AQE_LLM_PROVIDER": "claude-code"
+      }
+    },
+    "ontology-bridge": {
+      "command": "node",
+      "args": [
+        "/opt/agentbox/mcp/servers/ontology-bridge.js"
+      ],
+      "type": "stdio",
+      "env": {
+        "VISIONCLAW_API_URL": "http://visionclaw-server:4000",
+        "VISIONCLAW_DEV_TOKEN": "",
+        "AGENTBOX_PUBKEY": "",
+        "AGENTBOX_ONTOLOGY_DIRECT_LOAD": "false",
+        "NODE_PATH": "/opt/agentbox/mcp/servers/node_modules"
+      }
+    },
+    "precedent-bridge": {
+      "command": "node",
+      "args": [
+        "/opt/agentbox/mcp/servers/precedent-bridge.js"
+      ],
+      "type": "stdio",
+      "env": {
+        "AGENTBOX_POD_ROOT": "/var/lib/agentbox",
+        "NODE_PATH": "/opt/agentbox/mcp/servers/node_modules"
+      }
+    },
+    "harness-bridge": {
+      "command": "node",
+      "args": [
+        "/opt/agentbox/mcp/servers/harness-bridge.js"
+      ],
+      "type": "stdio",
+      "env": {
+        "NODE_PATH": "/opt/agentbox/mcp/servers/node_modules"
+      }
+    },
+    "email-gateway": {
+      "type": "http",
+      "url": "http://email-mcp-gateway:8765/mcp",
+      "headers": {
+        "Authorization": "Bearer tok-123"
+      }
+    },
+    "perplexity": {
+      "command": "node",
+      "args": [
+        "/opt/agentbox/mcp/perplexity/node_modules/@perplexity-ai/mcp-server/dist/index.js"
+      ],
+      "type": "stdio",
+      "env": {
+        "PERPLEXITY_API_KEY": "pk-1"
+      }
+    },
+    "ruvnet-brain": {
+      "command": "node",
+      "args": [
+        "/opt/agentbox/mcp/ruvnet-brain/server.js"
+      ],
+      "type": "stdio",
+      "env": {
+        "RUVECTOR_PG_CONNINFO": "host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=ruvector",
+        "XINFERENCE_ENDPOINT": "http://xinference:9997",
+        "EMBEDDING_MODEL": "bge-small-en-v1.5",
+        "RUVNET_BRAIN_NAMESPACE": "ruvnet-kb",
+        "NODE_PATH": "/opt/agentbox/mcp/ruvnet-brain/node_modules",
+        "NODE_NO_WARNINGS": "1"
+      }
+    }
+  }
+}

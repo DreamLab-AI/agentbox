@@ -1,0 +1,1637 @@
+[core]
+orchestration = "ruflo-v3"
+vector_db = "ruvector-embedded"
+
+# ── Five-slot adapter architecture (ADR-005) ───────────────────────────────────
+# local-solid-rs is the first-class pod implementation (ADR-010); the legacy
+# local-jss Python stub was retired 2026-04-25 and is no longer accepted by
+# the schema. Each adapter slot resolves to one of three implementation
+# classes — `local-*`, `external`, or `off` — see docs/user/configuration.md
+# for the full matrix and trade-offs.
+[adapters]
+# beads: flipped off → local-sqlite for PRD-021 WS3 / ADR-043 D4.3. Activating the
+# work-ledger slot binds every AoE session boundary to a durable beads epic
+# (session create → createEpic, task/turn units → createChild/claim, session end →
+# close), each id minted through management-api/lib/uris.js. REBUILD-class: adapter
+# selection is resolved at Nix image composition, so this only takes effect after
+# ./agentbox.sh rebuild + container recreate (ADR-039 / system-manifest.js).
+beads        = "local-sqlite"
+pods         = "local-solid-rs"
+memory       = "external-pg"
+events       = "local-jsonl"
+orchestrator = "local-process-manager"
+
+# ── Sovereign-mesh subsystem (boundary: ADR-030) ──────────────────────────────
+# One manifest-gated subsystem umbrellaing every Nostr-identity-and-relay feature
+# (relay, operator identity, per_user_agents, junkiejarvis, mobile_bridge, git,
+# multi_user). Gate semantics: default off; the env var remains the runtime
+# override (R7 fix) so manifest-absent deployments keep working. The whole mesh
+# makes exactly ONE external data hop — the [sovereign_mesh.mobile_bridge] Z.AI
+# summarisation (ADR-030 D3). The per-turn live mirror (ADR-029) belongs to this
+# subsystem too but is gated by recipient-pubkey env presence, not a manifest key.
+[sovereign_mesh]
+enabled = true
+solid_pod = true
+nostr_bridge = true
+https_bridge = true
+publish_agent_events = true
+# WS7 (PRD-014 Seam B): bind a voice transcript to an agent intent and emit the
+# canonical agent_action notification at POST /v1/voice-intent. Off → 503.
+voice_intent = false
+# WS6 (PRD-014 Seam D): scan the personal KG (via the memory adapter slot) for
+# elevation candidates, emit agent_action LINK beams, and return the GOVERNED
+# ontology-propose descriptors at POST /v1/kg-elevation/scan. Off → 503.
+kg_elevation = true
+# JunkieJarvis forum agent (management-api/lib/junkiejarvis-agent.js): rides the
+# management-api process and answers forum mentions over Nostr. Requires BOTH
+# this manifest gate AND the JUNKIEJARVIS_ENABLED=true env var — the env var
+# remains the runtime override, so existing deployments keep working when the
+# manifest is absent.
+# Gate semantics + subsystem boundary: ADR-030.
+junkiejarvis = false
+# Per-user agent sessions (management-api/lib/per-user-agent.js +
+# scripts/run-per-user-agent.cjs): one Claude session per pod user, spawned on
+# inbound relay messages. Manifest declaration of the live feature gate.
+# Canonical gate for ADR-028 (Per-User Agent Fabric, Accepted): this key —
+# [sovereign_mesh].per_user_agents — is the gate, NOT a top-level [per_user_agents]
+# table. See ADR-028 "Gate-key alignment" + ADR-030.
+per_user_agents = false
+
+# ── Mobile agent bridge (replaces the retired Telegram/CTM mirror) ────────────
+# The phone↔agent path is now pure Nostr, not Telegram. An Android Nostr client
+# (Amethyst + Amber signer) talks to the embedded relay below; the phone holds
+# its OWN key plus a NIP-26 delegation signed by [sovereign_mesh.operator], so
+# the operator never ships a private key to the device. Inbound NIP-59 gift wraps
+# (kind 1059) are unwrapped by the Rust bridge (services/nostr-pod-bridge, which
+# consumes nostr-bbs-core + solid-pod-rs-nostr) and persisted to the pod inbox.
+# The durable record of a conversation is a kind-30840 session-summary event
+# dual-written to the relay and the pod, NOT a chat transcript held in agentbox.
+# Ingress knobs live under [sovereign_mesh.relay] and identity under
+# [sovereign_mesh.operator]; the egress phone-mirror toggle lives under
+# [sovereign_mesh.mobile_bridge] below.
+
+# ── Mobile bridge egress (session-summary phone mirror) ───────────────────────
+# Egress half of the bridge: on SessionEnd a hook distils the transcript into a
+# curated digest (summary + actions + actionable questions, NOT the full
+# transcript) via the paid Z.AI/GLM consultant (ADR-011), then pipes it into
+# `nostr-pod-bridge summarise`, which signs a kind-30840 and dual-writes it to
+# the relay + pod. Disabled by default: when enabled=false the SessionEnd hook
+# is not registered and no transcript ever leaves the box. Even when enabled it
+# stays a silent no-op at runtime unless the bridge secrets (AGENTBOX_BRIDGE_SK /
+# AGENTBOX_BRIDGE_RECIPIENT_PUBKEY / AGENTBOX_POD_ROOT / AGENTBOX_ADMIN_PUBKEY)
+# and a Z.AI key are present. Privacy note: when enabled, the transcript is sent
+# to ZAI_URL for summarisation — the one external hop on this path. Point ZAI_URL
+# at a local GLM endpoint to keep summarisation on-box.
+[sovereign_mesh.mobile_bridge]
+enabled       = false      # register the SessionEnd phone-mirror hook
+summary_model = "glm-5.3"  # Z.AI/GLM model for the digest (→ AGENTBOX_ZAI_MODEL)
+
+# ── Ontology monitor (SessionEnd Z.AI worker → forum broker gate) ─────────────
+# On SessionEnd a Z.AI/GLM worker (ADR-011) reviews the session's concept-bearing
+# work against the ontology via the local corpus route (VisionClaw-free) and, where
+# the corpus looks stale/wrong/missing, proposes a modification to the FORUM BROKER
+# GATE as an ACSP ActionRequest (kind 31402) for human 31403 approval — the governed
+# elevation path (PRD-014), never the ungoverned load backdoor. ON by default:
+# enabled=true → the SessionEnd hook is registered. Proposals are idempotent —
+# fingerprinted (IRI+kind+summary) against a seen-ledger so a finding is never
+# re-emitted across sessions, and panels are NIP-33-keyed by IRI+kind so a repeat
+# replaces its prior panel rather than piling up. mode: "publish" signs + publishes
+# kind-31402 live to the forum broker gate; "dryrun" stages to
+# $AGENTBOX_STATE/ontology-proposals.jsonl (no relay egress). Even when enabled it
+# stays a silent no-op unless a Z.AI key is present (and, for publish,
+# MANAGEMENT_API_KEY + NOSTR_RELAYS). Hook: config/hooks/ontology-monitor.cjs.
+[ontology_monitor]
+enabled = true       # register the SessionEnd ontology-review hook
+mode    = "publish"  # dryrun | publish  (publish emits kind-31402 to the forum broker gate)
+
+# ── Operator identity (optional) ────────────────────────────────────────────────
+# The human operator's Nostr identity. When set, this pubkey is:
+#   - Added to the relay allowlist (can publish events to the embedded relay)
+#   - Granted operator-level access to management API via NIP-98
+#   - Tagged as the delegator on NIP-26 agent delegations
+#   - Used as the WebID owner in Solid pod ACLs
+# If omitted, the agentbox runs in autonomous mode (self-signed identity only).
+# The private key is NEVER stored in agentbox.toml — pass it via env var
+# OPERATOR_NOSTR_PRIVKEY or use NIP-07/NIP-46 remote signing.
+[sovereign_mesh.operator]
+pubkey_hex = "b41654017f6850b13857d19d8ae0e3f88f1365600cab0321e8101c9e92682f7a"                        # 64-char hex secp256k1 pubkey
+npub       = ""                        # bech32 npub (alternative to hex; one is sufficient)
+display_name = ""                      # human-readable name for event tags
+relay_urls = []                        # operator's preferred relays for fan-out
+
+# ── Embedded Nostr relay (PRD-004 / ADR-009 / DDD-003) ──────────────────────────
+# Gives external agents and humans a durable path to talk to internal agents.
+# Every signature-verified event targeting a local npub is persisted to the
+# pod mailbox at pods/<npub>/events/inbox/<id>.json. Outbound messages written
+# to events/outbox/ are signed by the sovereign identity and published to
+# the embedded relay plus (optionally) the NOSTR_RELAYS fan-out list.
+#
+# Default shape: nostr-rs-relay on loopback :7777, allowlist ingress, pod-bridge
+# on, no external fan-out (matches [federation].mode = "standalone").
+[sovereign_mesh.relay]
+enabled          = true
+implementation   = "nostr-rs-relay"   # nostr-rs-relay | rnostr | external | off
+port             = 7777
+bind             = "127.0.0.1"
+expose           = false
+data_dir         = "/var/lib/nostr-relay"
+ingress_policy   = "allowlist"        # allowlist | signed-only | open
+# Strict allowlist consumed by nostr-pod-bridge authorize() — there is NO
+# fallback and NO auto-add: empty = every inbound relay event is dropped.
+# (The operator pubkey is NOT auto-added at boot; that older claim matched no
+# code.) Add 64-char hex pubkeys to admit them. Baked into the supervisor env
+# at nix build time (flake.nix relayAllowedPubkeysCsv) — changes need a rebuild.
+allowed_pubkeys  = [
+  # Populated 2026-07-22 from the dreamlab-ai D1 whitelist + forum-config (Tock-0 staging;
+  # baked at nix build — takes effect at the next image rebuild).
+  "6407eed80e2a8646e41a5ddba0ae6619425fc54af40e2b30482b9623c682425a",  # operator-jjohare — human admin (Dr John O'Hare)
+  "b41654017f6850b13857d19d8ae0e3f88f1365600cab0321e8101c9e92682f7a",  # visionclaw-server — governance publisher (key-split pending, ADR-040 D3)
+  "cd37af940054d7b2dc979b6f51296db1ca2c34d2a234f35bc6a84888a69a1f88",  # beema — forum admin
+  "a3af4977eb4c93bc7270b9e48cac69e8e6c18bb3bcb4ec3aaeeee360c3efd954",  # RedDread — forum admin (house admin; remove if misidentified)
+  "2de44d5622eef79519ac078f6e227a85aecbaefd561e4e50c5f51dfadbf916e9",  # junkiejarvis — agentbox-bridge forum agent
+  "a5f2a38c44c654b7d7d7c99744e061e02c4402fbc2444d4d5813b7c00eda4beb",  # mobile — operator's phone (Amethyst/Amber; npub15he28rzyce2t047hext5fcrpuqkygqhmcfzy6n2czwmuqrk6f04sgr03mf)
+]
+# Mobile bridge kinds: 1059 = NIP-59 gift wrap (phone→agent encrypted envelope),
+# 30840 = addressable session-summary (the durable conversation record, dual-written
+# to relay + pod). 30841 = addressable project-tracking digest (per-project status,
+# PRD-017 / ADR-035 §D3, dual-written to relay + pod, d-tag = project slug).
+# 27235 = NIP-98 HTTP auth. 38xxx = agent-intent/event surfaces.
+allowed_kinds    = [1, 1059, 30078, 30840, 30841, 27235, 31400, 31401, 31402, 31403, 31404, 31405, 38000, 38100, 38200, 38201, 38300, 38301, 38302, 38303, 38304, 38305]
+pod_bridge       = true
+external_fanout  = "bidirectional"     # bidirectional | publish-only | subscribe-only | off
+# PRD-014 Seam B / B3 — deterministic responder dispatch for voice-origin
+# agent-intent events (kinds 38000-38099). Empty (default) → marker-only path,
+# byte-identical to prior behaviour. Set to a command and the relay consumer
+# spawns it per intent, passing the addressed actor + the Schnorr-verified
+# did:nostr:<signer> as AGENTBOX_INTENT_SOURCE_URN (unforgeable attribution).
+intent_command   = ""                  # e.g. "claude-flow"; "" = disabled
+intent_args      = ""                  # extra leading args, space-separated
+# PRD-014 Seam B / B4 — per-agent did:nostr auth on POST /v1/agent-events/emit.
+# "off" (default) keeps caller-asserted/env-defaulted attribution. "nip98"
+# requires a kind-27235 header and stamps source_urn from the verified pubkey.
+agent_event_auth = "nip98"             # off | nip98 — IR1: default hardened; operator CLI is unaffected (in-process path)
+# Private point-to-point relay for governance event exchange with the forum.
+# Set via NOSTR_RELAYS env var at runtime; this field documents the target.
+forum_relay_url  = "wss://dreamlab-nostr-relay.solitary-paper-764d.workers.dev"
+max_event_bytes  = 131072
+messages_per_sec = 5
+retention_days   = 30
+allow_nip04      = false
+info_description = "Agentbox sovereign relay"
+info_contact     = ""
+
+# ── Multi-tenant did:nostr user pods (PRD-007, ADR-017) ─────────────────────
+# When enabled, agentbox hosts per-user pods at pods/<pubkey-hex>/ for each
+# successfully AUTH'd did:nostr identity. When disabled (default), only the
+# operator pubkey gets a pod (legacy single-tenant). Provisioning policy
+# selects the trust model for accepting new users.
+# ─── Git-versioned pods (JSS #466/#469/#471, solid-pod-rs alpha.12) ────────
+# When enabled, each pod directory is `git init -b main`'d at provisioning
+# time via solid_pod_rs_git::init::GitAutoInit. The management-api exposes
+# a `GET|POST /pods/:npub/.git/*` HTTP smart-protocol endpoint backed by
+# git-http-backend CGI, authenticated via NIP-98 bearer.
+#
+# enabled = true  : auto-init runs at POST /pods (ADR-017 provisioning path)
+# enabled = false : pods are plain directories — no git history
+#
+# See docs/user/git-pods.md for clone instructions.
+[sovereign_mesh.git]
+enabled        = true           # safe to enable; git binary is present in agentbox
+auto_init      = true           # git init -b main at provisioning (solid-pod-rs alpha.12)
+default_branch = "main"         # pinned per JSS #471 contract
+http_backend   = "git-http-backend"   # CGI path (default on Debian/Ubuntu/CachyOS)
+http_route_prefix = "/pods"     # management-api mounts at /pods/:npub/.git/*
+max_push_mb    = 100            # per-push body limit; git itself also has pack limits
+auth_mode      = "nip98"        # bearer NIP-98 token required for write operations
+read_public    = false          # set true to allow unauthenticated clone of public pods
+
+[sovereign_mesh.multi_user]
+enabled                     = false                  # opt-in (ADR-017 / PRD-007)
+provisioning_policy         = "closed"               # closed | invite-only | open
+invite_kind                 = 30910                  # NIP-58 invite event kind
+invite_validity_seconds     = 86400                  # 24 hours
+max_users                   = 100                    # safety cap; per-container scale target
+suspend_inactive_after_days = 90                     # admin policy
+admin_pubkeys               = []                     # operator pubkey auto-added at boot
+
+# ── Mesh federation (PRD-010 Phase 3 / ADR-073) ─────────────────────────────
+# Controls cross-substrate federation behaviour. Requires
+# [sovereign_mesh.relay].enabled = true and [sovereign_mesh.nostr_bridge] = true.
+#
+# mode values:
+#   "standalone"  — no federation; relay is loopback-only (default)
+#   "federated"   — relay exposed externally; accepts peer connections (documented
+#                   only: schema/agentbox.toml.schema.json currently accepts
+#                   standalone | client, so "federated" fails validation E016)
+#   "client"      — subscribes to peers but does not accept inbound
+[mesh]
+mode = "standalone"
+# Peer relay URLs. For tailnet federation, use MagicDNS hostnames:
+#   peer_relays = ["ws://agentbox-02.tailnet-name.ts.net:7777"]
+# For Cloudflare tunnel federation, use the public wss:// URL.
+peer_relays = []
+federated_kinds = [1, 1059, 30001, 30050, 30078, 30910, 31400, 31401, 31402, 31403, 31404, 31405, 38000, 38100, 38300, 38301, 38302, 38304]
+allowed_remote_dids = []                 # did:nostr:<hex> of trusted peers
+subscribed_kinds = []                    # subset of federated_kinds to pull; empty = all
+honor_remote_moderation = false          # accept kind-30910 bans from peers
+
+# ── Networking ─────────────────────────────────────────────────────────────────
+# Tailscale provides direct encrypted access to the agentbox from any device
+# on your tailnet — no port-forwarding, no SSH tunnels, no firewall rules.
+# Uses userspace networking by default (no /dev/net/tun needed).
+#
+# SECURITY WARNING: Tailscale bypasses the did:nostr identity boundary.
+# Traffic arriving over the tailnet is authenticated by Tailscale ACLs, not
+# by Nostr keypair signatures. This is convenient for dev but weakens the
+# sovereign-mesh trust model. For production deployments, prefer the
+# did:nostr + NIP-98 auth path and leave tailscale = false.
+#
+# Auth: set TAILSCALE_AUTHKEY in .env (create at https://login.tailscale.com/admin/settings/keys)
+# or omit to use interactive login via `docker exec agentbox tailscale up`.
+[networking]
+# Default off — see SECURITY WARNING above. Operators who need Tailscale on
+# their own deployment should override in agentbox.local.toml or set
+# TAILSCALE_AUTHKEY in .env and flip this to true. Leaving it false also
+# removes the NET_ADMIN cap_add and the [security.exceptions.tailscale]
+# block from the active set, tightening the default attack surface.
+tailscale = true
+# MagicDNS hostname on the tailnet. Must be unique per instance.
+# This becomes the service discovery name for federation:
+#   solid-pod-rs at http://agentbox.tailnet-name.ts.net:8484
+#   nostr relay at ws://agentbox.tailnet-name.ts.net:7777
+#   management API at http://agentbox.tailnet-name.ts.net:9090
+# When tailscale = true, the entrypoint runs `tailscale up --hostname <this>`.
+hostname = "agentbox"
+# Gate /etc/hosts host-gateway alias (host.docker.internal:host-gateway).
+# Default false — air-gapped and hardened deployments must opt in. When
+# false, OPENAI_BASE_URL must point at a Docker-DNS-resolvable name
+# (e.g. ollama:11434 if [providers.ollama].sidecar = true) or the agent
+# fails closed at the LLM call site.
+host_gateway = false
+
+# ── LLM Resource Marketplace (kinds 38300-38305) ──────────────────────────────
+# Mesh-wide negotiation of LLM compute resources between did:nostr identities.
+# Providers advertise available models; consumers discover and request access;
+# grants are tracked with token budgets and usage receipts that integrate with
+# the Web Ledger payment rails in solid-pod-rs.
+#
+# Kind allocation (NIP-01 parameterised replaceable range 30000-39999):
+#   38300  LLM Capability Advertisement  (replaceable, d-tag = model)
+#   38301  LLM Capability Request
+#   38302  LLM Grant
+#   38303  LLM Deny
+#   38304  LLM Usage Receipt
+#   38305  LLM Grant Revocation
+#
+# Federated kinds: 38300 (ads), 38301 (requests), 38302 (grants), 38304 (receipts)
+# Non-federated:   38303 (deny) and 38305 (revoke) are point-to-point only
+[llm_marketplace]
+enabled = true
+# Auto-advertise this node's available models on relay startup.
+# When true, the management-api publishes kind-38300 events for each
+# model listed in [providers.*] that has a valid API key.
+auto_advertise = true
+# Maximum grant TTL in seconds. Grants exceeding this are clamped.
+max_grant_ttl = 86400
+# Maximum token allocation per grant. Zero = unlimited.
+max_tokens_per_grant = 0
+# Cost tier — maps to Web Ledger DREAM token pricing.
+# "operator" = operator-set pricing; "market" = accept mesh best-offer.
+pricing_mode = "operator"
+
+[desktop]
+enabled = true
+stack = "x11-openbox"
+resolution = "1920x1080"
+# WebGPU flag retained for desktop apps (QGIS, Blender) that use GPU.
+# Browser automation is handled exclusively by the external browsercontainer
+# sidecar — no local chromium/playwright/agent-browser in the image.
+webgpu = true
+
+[skills.browser]
+agent_browser = true
+playwright = false   # superseded by the browsercontainer sidecar (browser / browser-automation skills)
+qe_browser = true
+# All browser automation routes through the external browsercontainer sidecar.
+# MCP SSE: http://browsercontainer:8931/sse (chrome-devtools-mcp 40+ tools)
+# CDP: browsercontainer:9222 | VNC: :5903
+# Start: agentbox.sh browsercontainer up
+sidecar_mcp_url = "http://browsercontainer:8931/sse"
+sidecar_cdp_host = "browsercontainer"
+sidecar_cdp_port = 9222
+
+[skills.media]
+ffmpeg = true
+imagemagick = true
+comfyui_builtin = false
+
+# ── Memory access control ──────────────────────────────────────────────────────
+# Controls whether RuVector memory entries are scoped per authenticated caller.
+#
+# admin_access_mode values:
+#   "permissive" — the admin/devuser (Bearer token) sees and writes all
+#                  namespaces without any pubkey prefix. NIP-98 callers are
+#                  still scoped to their own pubkey namespace.
+#   "scoped"     — ALL callers (including admin) are restricted to their own
+#                  pubkey-prefixed namespace. Stronger isolation, breaks
+#                  cross-agent admin inspection.
+#
+# This flag is baked at Nix build time into MEMORY_ADMIN_ACCESS_MODE.
+# Changing it requires a `nix build` + container recreate.
+#
+# PRD-021 WS3 / ADR-043 D4.4: flipped permissive → scoped so one AoE session
+# cannot read another session's per-project namespace
+# (user:<pubkey>:proj:<repo-slug>:<ns>). The operator keeps a documented
+# break-glass path — in scoped mode the bearer admin maps to the operator's own
+# pubkey namespace (AGENTBOX_X_ONLY_PUBKEY_HEX / AGENTBOX_PUBKEY), so
+# cross-session inspection stays possible but auditable. REBUILD-class.
+[memory]
+admin_access_mode = "scoped"
+
+# ── RuVector PostgreSQL (external memory backend) ──────────────────────────────
+# Used when adapters.memory = "external-pg". Shared with the host container mesh
+# via visionclaw_network network. The ruvector-postgres container runs pgvector.
+#
+# The password is sourced from the RUVECTOR_PG_PASSWORD env var at runtime
+# (Q6: single source of truth). The conninfo template here uses the
+# manifest-time placeholder so static analysis can read the connection
+# string structure; the entrypoint substitutes the live password before
+# the management-api consumes it.
+[integrations.ruvector_external]
+enabled  = true
+conninfo = "postgresql://ruvector:@@RUVECTOR_PG_PASSWORD@@@ruvector-postgres:5432/ruvector"
+# When true, the generated compose owns the ruvector-postgres sidecar:
+# service block + healthcheck + depends_on, so `agentbox.sh up`/`rebuild`
+# always brings the memory backend up with the stack. When false, an
+# external deployment (host mesh) must provide ruvector-postgres on
+# visionclaw_network. Incident 2026-06-09: the sidecar container was
+# deleted and nothing recreated it — 2M+ memory entries unreachable
+# until a manual `docker run`. This flag closes that gap.
+manage_sidecar = true
+# Pinned tag@digest (upstream publishes linux/amd64 only). A floating :latest
+# here silently drifts from what is actually deployed — the running sidecar
+# was one image release behind before this pin. Bump ONLY via
+# `./agentbox.sh ruvector update`, which rehearses the new image against a
+# pg_basebackup snapshot of the production dataset before swapping.
+image          = "ruvnet/ruvector-postgres:2.0.5@sha256:7fb09d439d82fccbe6e0035d09f91c9dce456bb2d70cb2e8d6afb12a6afa2051"
+# Pre-existing volume holding the production dataset (PG17, 2M+ rows).
+# The compose volume declaration reuses it by name; do NOT rename
+# without a migration.
+data_volume    = "ruvector_postgres_data_v2"
+# ── PRD-018 / ADR-036 D6: RuVector-native retrieval upgrades (all default-off) ──
+# Six retrieval flags extend this existing sidecar section. Default state == today:
+# pure-vector `<=>` search, no typed metadata, no learning, no ops. Each new
+# behaviour is opt-in and checked at its own code path before running, so a
+# manifest with all six false is byte-identical to the pre-PRD-018 product
+# (PRD-018 metric 1). The entrypoint mirrors each flag into the RUVECTOR_* gate
+# env of the governed ruvector-mcp server in the generated .mcp.json.
+hybrid_search      = true    # memory_hybrid_search (DIY fusion: ruvector_hybrid_score + PG FTS)
+typed_metadata     = true    # honour importance/tags/memory_type/ttl on memory_store (else metadata stays {})
+metadata_gin       = true    # require/build the GIN on metadata jsonb for tag retrieval (built by a D5 hygiene op)
+health_tool        = true    # expose memory_health read-only diagnostics
+episodic_ttl_sweep = true    # honour TTL, sweep expired episodic entries (implements delete)
+memory_orient      = true    # memory_orient OODA cold-start bundle (semantic + effectiveness aggregates + episodic)
+# ── PRD-020 / ADR-040 D10: v2 model-lifecycle & graph gates (all default-off, W-B-gated) ──
+# Retrieval-geometry keys extend this existing sidecar section. Every one defaults to
+# today's post-PRD-018 behaviour, so a manifest with all v2 keys at default is byte-
+# identical to the shipped product (PRD-020 metric 1). Phase 0 wires only the aggregate
+# sweep (in [memory_learning] below); the three keys here are declared and RESERVED —
+# each is gated on a passing W-B recall-harness run (I14) before its consumer may flip on.
+embedding_dual_write    = false        # W-D/D7: dual-embed new writes through bge-m3 into embedding_m3 (evaluation only; RESERVED)
+embedding_active_column = "embedding"  # W-D/D7: retrieval reads this column; cutover selector (default = current 384-dim; RESERVED)
+graph_backbone          = false        # D9: ontology-backbone Cypher/SPARQL traversal in memory_orient (ADOPT-LATER, RESERVED — not landed in v2)
+
+# ── PRD-018 / ADR-036 D6: memory learning loop (top-level table, default-off) ──
+# The agentbox-owned hook (config/hooks/trajectory-recorder.cjs) records real
+# (state, action, outcome, duration) tuples into the purpose-built trajectory
+# tables, and effectiveness is aggregated (Wilson lower-bound + recency decay)
+# onto the memory slot (namespace memory-learning-aggregates) — no new slot, no
+# new table. Master gate off = no hook registered, no aggregation, no consumers.
+# Do NOT enable a consumer (feed_retrieval/feed_routing) ahead of its producer
+# (record_trajectories); the validator flags that as W066.
+[memory_learning]
+enabled                = true    # master gate for the learning loop
+record_trajectories    = true    # agentbox hook writes trajectories/trajectory_steps
+aggregate_min_samples  = 20      # Wilson-bound sample floor before an aggregate influences retrieval
+recency_half_life_days = 14      # recency half-life for aggregation and the hybrid recency term
+feed_retrieval         = true    # D-1: ENABLED 2026-08-31 — Wilson floor cleared (78 aggregates ≥20 samples, applied same day); recall gate run post-flip per I14. feed_routing stays off until an observation window passes.
+feed_routing           = false   # aggregates surface as advisory [INTELLIGENCE] hints
+sona_enabled           = false   # SUPERSEDED by sona_learn_enabled/sona_apply_enabled (ADR-040 D4); kept default-off for back-compat
+relevance_feedback     = false   # SUPERSEDED by param_tuning_enabled (ADR-040 D5); kept default-off for back-compat
+# ── PRD-020 / ADR-040 D10: v2 learning-consumer additions (all default-off) ──
+# aggregate_sweep + aggregate_sweep_interval_mins are WIRED in Phase 0: the entrypoint
+# mirrors them into RUVECTOR_AGGREGATE_SWEEP / RUVECTOR_AGGREGATE_SWEEP_INTERVAL_MINS for
+# the OUT-OF-PROCESS Wilson/recency sweep (scripts/ruvector-aggregate-sweep.mjs — a self-
+# loop now, a supervisord program in the image). The remaining keys are declared and
+# RESERVED; each geometry-changing consumer is gated on a passing W-B recall-harness run
+# (I14) before it may flip on. The sweep and the recall harness are NOT MCP tools.
+aggregate_sweep               = true    # W-A/D1: ENABLED 2026-07-21 (Phase 0 ops, queen) — scheduled Wilson/recency aggregator live
+aggregate_sweep_interval_mins = 30      # W-A/D1: sweep cadence in minutes (out-of-process self-loop / future supervisord program)
+pattern_distillation          = true    # W-C/D6: ENABLED 2026-07-21 (queen) — 13 patterns live, provenance judge:trajectory, all embedded
+attention_rerank              = false   # W-C/D3: MEASURED 2026-07-21 — attention_score = cos/sqrt(384) on L2-normalised corpus (max diff 4e-7): blend is an identity, zero benefit. Stays off BY MEASUREMENT (I14).
+sona_learn_enabled            = false   # W-C/D4: BLOCKED 2026-07-21 — engine hardcodes embedding_dim=256; 384-dim learns accepted-but-discarded (verified live). Feeder proven; flip only after an image with configurable dim.
+sona_apply_enabled            = false   # W-C/D4: BLOCKED with sona_learn (256-dim engine) + harness-gated (I14). Passthrough-safe but pointless until the engine accumulates.
+param_tuning_enabled          = false   # W-C/D5: HNSW ef_search/probes auto-tuner (renamed from v1 relevance_feedback; RESERVED)
+
+# ── PRD-018 / ADR-036 D6: data hygiene ops (top-level table, default-off) ──
+# These flags ONLY enable the non-dry-run path of `agentbox.sh ruvector <op>`;
+# every op is dry-run by default and inherits the audited snapshot + auto-rollback
+# flow of scripts/ruvector-sidecar-update.sh. An absent block or a false flag is
+# fail-closed (dry-run only) — the op refuses to mutate.
+[memory_hygiene]
+allow_namespace_repair   = false  # non-dry-run repair-namespaces (completed 2026-07-05: 178,238 rows un-swapped)
+allow_embedding_backfill = false  # non-dry-run backfill-embeddings (completed 2026-07-05: 36 rows embedded, 0 NULL remain)
+allow_legacy_archival    = false  # non-dry-run archive-legacy (completed 2026-07-05: 2,014,173 rows → cold archive)
+# ── PRD-020 / ADR-040 D10: v2 hygiene-op gates (all default-off; enable only the non-dry-run path) ──
+allow_embedding_m3_backfill = false  # W-D/D7: non-dry-run backfill-embedding-m3 into the parallel 1024-dim column (RESERVED)
+allow_legacy_mining_import  = false  # W-E/D8: non-dry-run import of mined candidates into legacy-mined-candidates (RESERVED)
+allow_pattern_graduation    = false  # W-E/D8: non-dry-run graduation of corroborated candidates into patterns (RESERVED)
+
+[integrations.comfyui_external]
+enabled = false
+url = "http://comfyui:8188"
+ws_url = "ws://comfyui:8188/ws"
+
+# ── solid-pod-rs (first-class; ADR-010) ─────────────────────────────────────────
+# First-party Rust Solid Protocol 0.11 server from github.com/DreamLab-AI.
+# Used by the pods adapter when adapters.pods = "local-solid-rs" (the default).
+# See docs/developer/licensing.md for the AGPL-3.0-only aggregation analysis.
+[integrations.solid_pod_rs]
+port                   = 8484
+bind                   = "0.0.0.0"
+storage                = "fs"                    # fs | memory | s3
+storage_root           = "/var/lib/solid"
+# Public base URL — the Cloudflare Tunnel hostname when the native pod mesh
+# is active. Baked into the image as the SOLID_POD_PUBLIC_URL env default at
+# nix build time; setting SOLID_POD_PUBLIC_URL in the root .env overrides it
+# at runtime (compose env_file → supervisord %(ENV_…)s → JSS_BASE_URL).
+base_url               = "https://pods-native.dreamlab-ai.com"
+enable_oidc            = false
+enable_schnorr_verify  = true
+enable_dpop_cache      = false
+notifications          = "websocket"             # websocket | webhook | off
+log_level              = "info"
+
+# MCP server (JSS 0.0.204 re-sync, solid-pod-rs b81ce9f). Exposes the pod as a
+# Model Context Protocol 2025-03-26 tool surface at POST /mcp (16 tools, same
+# NIP-98 + WAC treatment as REST). Always compiled; off unless enabled here.
+enable_mcp             = false    # → JSS_MCP=1 on the [program:solid-pod] env
+
+# Sprint 5-9 features absorbed from upstream main — all on by default because
+# they either sharpen sovereign-stack invariants (did_nostr) or close P0
+# hardening gaps (rate_limit, quota, webhook_signing).
+# Pod adapter originates a signed NIP-98 Authorization header per request so an
+# autonomous agent authenticates to a default-deny pod under its OWN did:nostr
+# (PRD-014 Seam C / C2). Default OFF: unsigned requests are byte-identical to
+# prior behaviour. When on, the signing key is the active stack's nostr.key.enc
+# (resolved from AGENTBOX_STACK / integrations.solid_pod_rs.sign_stack); load
+# failures fail open (adapter goes out unsigned, pod still fails closed).
+sign_requests          = true     # originate signed NIP-98 from the pods adapter
+enable_did_nostr       = true     # did:nostr:<pubkey> → Solid WebID resolver (ADR-013)
+enable_webhook_signing = true     # RFC 9421 Ed25519 outbound notification signing
+enable_rate_limit      = true     # sliding-window LRU per-connection guard
+enable_quota           = true     # per-pod storage quota via .quota.json sidecar
+jss_v04_compat         = true     # preserve JavaScriptSolidServer v0.4 semantics
+rate_limit_per_sec     = 20       # per-connection ceiling when enable_rate_limit
+quota_default_bytes    = 10737418240  # 10 GiB per pod when enable_quota
+
+# Native pod mesh (alpha.15) — CORS allowlist + PSK admin provisioning.
+# allowed_origins: comma-separated list; empty = wildcard (dev only).
+# admin_key: must match NATIVE_POD_ADMIN_KEY CF Worker secret. Set via
+#            SOLID_ADMIN_KEY env var — never hardcode here.
+allowed_origins        = "https://dreamlab-ai.com"
+admin_key_env          = "SOLID_ADMIN_KEY"       # env var name; value from .env.solid-pods
+
+[skills.spatial_and_3d]
+qgis = true
+blender = true
+gaussian_splatting = false
+
+[skills.data_science]
+pytorch = true
+jupyter = true
+
+[skills.docs]
+latex = true
+report_builder = true
+mermaid = true
+
+[skills.design]
+# open-design: structured intake pipeline, 129 brand specs, 5-dimensional critique gate,
+# P0/P1/P2 checklists, layout libraries (web/mobile/dashboard/deck). Default off.
+# NOT a replacement for the setup wizard SPA (PRD-012 / ADR-024).
+open_design = true
+
+[skills.research]
+# web-researcher-mcp (Go binary, v1.36.4). Provides ~26 MCP research tools
+# (search incl. domain/clinical/legal/econ/SEC, citation integrity, grounded answer, lenses).
+# Headless-browser scrape tier is force-disabled at runtime; JS-rendered
+# pages route to the external browsercontainer sidecar (`browser` skill).
+web_researcher = true
+
+# ── Code-as-Harness integration (PRD-008) ────────────────────────────────────
+# Phase 1 (build-now): code-interpreter MCP + ExpeL extractor + ACI MCP
+# Phase 2 (build-next): CodeAct skill + Voyager skill library + tree-search
+# All gates default to safe minima. See PRD-008 §6 for phasing semantics.
+
+[skills.code_interpreter]
+# Persistent Python kernel as an MCP. Six tools: kernel.exec, list_vars,
+# inspect, reset, interrupt, install_pkg. One kernel per Claude session,
+# lazy spawn, idle watchdog. Wheelhouse-only package install (no PyPI).
+enabled = true
+idle_timeout_s = 1800          # 30 min; W044 warns if <300
+max_memory_mb = 512            # RLIMIT_AS in MB
+allow_pip_install = false      # if true, kernel.install_pkg works against pip_allowlist
+# Wheels MUST be present in /var/lib/agentbox/code-interpreter-wheelhouse/.
+# The Nix derivation bakes this list into the wheelhouse at image build.
+pip_allowlist = [
+  "numpy", "pandas", "scipy", "sympy", "matplotlib",
+  "scikit-learn", "requests", "beautifulsoup4", "lxml",
+  "networkx", "pydantic"
+]
+
+[skills.codeact]
+# CodeAct skill — orchestrates the code-interpreter MCP for plan-execute-
+# reflect loops. Depends on skills.code_interpreter.
+enabled = true
+
+[features.expel_lesson_extraction]
+# Post-task experiential learning. Distils 0-N rules per completed
+# trajectory into RuVector namespace code-harness-lessons as
+# ex:DistilledLesson (memory_type=semantic, durable).
+# See skills/expel-lesson-extractor/SKILL.md + ADR-019 §Mechanism 1.
+enabled = true
+max_lessons_per_task = 5       # cap on lessons extracted per trajectory; prevents noise flood
+min_confidence = 0.6           # minimum confidence to store a lesson
+confidence_floor = 0.3         # below this, lesson is auto-archived (ADR-019 §Garbage collection)
+archive_after_days = 30        # lessons below floor demoted to *-archive after this many days
+contradiction_sample_rate = 0.1  # 1/10 retrievals sampled for LLM-judge contradiction check
+
+[skills.voyager_skill_library]
+# Verified executable skill library. ex:VerifiedSkill records in
+# code-harness-skills (memory_type=procedural). Three-gate VerificationGate.
+# Phase 2 — depends on skills.code_interpreter + features.expel_lesson_extraction.
+# See skills/voyager-skill-library/SKILL.md + ADR-019 §Mechanism 2.
+# Validator: E044 (requires skills.code_interpreter.enabled = true).
+enabled = true
+max_skill_body_lines = 80      # reject candidates exceeding this line count
+max_evidence_age_s = 3600      # verified_by trace URN must be younger than this
+archive_after_days = 30        # non-max-version skills demoted to *-archive after N days
+
+[skills.aci_shell]
+# SWE-agent-style Agent-Computer Interface MCP. 5 tools (view/edit/
+# search/test/submit). Phase 2 — off by default; opt-in only.
+enabled = true
+max_view_lines = 150           # hard cap per aci.view_file call
+max_edit_context = 10          # max diff context lines in aci.edit_file response
+test_command_allowlist = ["pytest", "cargo test", "npm test", "go test"]
+
+[skills.ruvnet_brain]
+# RuvNet Brain: source-grounded knowledge corpus for the RuvNet ecosystem
+# (21+ repos: ruflo, ruvector, safla, agentdb, agentic-flow, sparc, etc).
+# ~90k source chunks INGESTED INTO THE SHARED ruvector-postgres SIDECAR under
+# the namespace below — embedded client-side via Xinference bge-small-en-v1.5
+# (384-dim, ADR-015), the same embedding space and memory_entries table as all
+# other agent memory. We deliberately do NOT run the upstream retrieval stack
+# (@ruvector/rvf file stores + @xenova/transformers in-process embedder): the
+# corpus is the value, the substrate is ours.
+#
+# Surfaces:
+#  - search_ruvnet MCP tool (thin wrapper, mcp/ruvnet-brain/server.js):
+#    namespace-scoped pgvector search + repo filter + passage formatting.
+#  - mcp__claude-flow__memory_search({namespace: "ruvnet-kb"}): same data,
+#    generic tool — no wrapper needed.
+#  - Grounding hook on UserPromptSubmit: detects RuvNet mentions and
+#    classical-substitute anti-patterns (pgvector-as-a-product, Pinecone,
+#    LangChain, ...) and injects a search-first directive.
+#
+# Ingest playbook: scripts/ruvnet-brain-ingest.mjs — auto-runs at boot
+# (backgrounded, after Xinference readiness) when auto_ingest = true; every
+# boot reconciles against the latest upstream GitHub release (content-
+# addressed chunks: only new/changed text is re-embedded, vanished chunks are
+# pruned). Manual: ./agentbox.sh ruvnet-brain <ingest|status>.
+# The namespace is appended to RUVECTOR_PROTECTED_NAMESPACES so agents cannot
+# overwrite reference corpus rows through memory_store.
+enabled = true
+namespace = "ruvnet-kb"
+auto_ingest = true                  # reconcile corpus at boot (backgrounded)
+grounding_hook = true               # register UserPromptSubmit grounding hook
+kb_release_url = "https://github.com/stuinfla/ruvnet-brain/releases/latest/download/ruvnet-brain.zip"
+staging_path = "/var/lib/agentbox/ruvnet-brain"   # download/extract scratch (named volume)
+embed_batch = 32                    # passages per Xinference /v1/embeddings call
+
+[skills.tree_search_coder]
+# Execution-gated tree-search. Generates N candidates, executes each
+# in fresh kernel, scores by assertion pass. Slow path — explicitly
+# invoked, never auto-routed. Phase 2 — off by default.
+enabled = true
+max_candidates = 5
+per_branch_timeout_s = 60
+spend_cap_usd = 0.50
+
+[skills.ontology]
+enabled = true
+visionclaw_api_url = "http://visionclaw-server:4000"
+# PRD-014 Seam D / D2: personal-KG concepts reach the shared ontology only
+# through VisionClaw's GOVERNED path (ontology_propose → Whelk consistency →
+# human approval → PR). The legacy ungoverned ontology_axiom_add backdoor
+# (`POST /api/ontology/load`) is disabled by default; set true only for
+# admin/bootstrap. Default off = ontology_axiom_add refuses + redirects.
+direct_axiom_load = false
+
+# Offline ontology condensation (PRD-020 WS-2 / ADR-113). A cheap LOCAL LLM
+# summarises every KG class into one retrieval sentence + a synonym list, which
+# enriches the PUSH Class-Summary cache (search optimisation) and RuVector
+# ns:ontology-classes. Replaces the old Haiku mesh with an operator-supplied
+# endpoint. OpenAI-compatible (/chat/completions) or ollama (/api/chat).
+# Vanilla agentbox ships this OFF — it is operator infrastructure. The model
+# runs behind the Ontology Loom façade (model-swap door) — concurrency can
+# be raised if the KV budget allows.
+[skills.ontology.condense]
+enabled = true
+endpoint = "http://192.168.2.132:8084/v1"   # Ontology Loom façade (model-swap door; DNAT via ml). Was the dead .48 host.
+model = "qwen3.8-27B"
+style = "openai"                            # openai | ollama
+max_concurrency = 2                         # llama.cpp serves multiple KV slots
+# C7 / ADR-113: the condensation index has no natural trigger — nothing re-runs
+# it when GitHubSync/elevation rewrites the logseq corpus, so the class index
+# silently goes stale. This wires a manifest-gated staleness scheduler
+# (scripts/ontology-condense-scheduler.mjs) that re-runs ontology-condense-refresh.sh
+# when the corpus is newer than the last condense output, or on a max-age safety
+# floor. Idempotent, flock-serialised, fail-open. Runs as an operator-started
+# detached loop today (no image rebuild) and is durably staged as a supervisord
+# program for the next image (mirrors the ruvector-aggregate-sweep pattern).
+schedule_enabled = true                     # run the periodic staleness scheduler
+schedule_interval_mins = 60                 # tick cadence (jittered ±20%)
+schedule_max_age_hours = 24                 # rebuild even without corpus change past this age
+
+# ── [vault] — the authored corpus (ADR-2028 / ADR-2029) ──────────────────────
+# TOP-LEVEL section, parked next to [skills.ontology] because the ontology
+# surfaces are its heaviest consumer. This is the SINGLE path authority for the
+# authored knowledge corpus: the entrypoint resolves it into VAULT_ROOT /
+# VAULT_PAGES / VAULT_FORMAT / VAULT_TUI for every supervised program, every
+# tmux window and every MCP server, and ONTOLOGY_PAGES_DIR is derived from it.
+# No consumer hard-codes a corpus path (VAULT-corpus-format Invariant 3) — one
+# edit here relocates the corpus for every agent surface. Absent [vault] is
+# FAIL-LOUD, not fail-quiet: the boot prints "[vault] disabled" and the corpus
+# consumers switch themselves off rather than index a stale tree.
+# format: "obsidian" is the one format writers emit (YAML frontmatter, V2);
+# "logseq-legacy" is READ-tolerance only for an unconverted graph.
+# tui: "rune" bakes the Rune markdown TUI into the image and opens tmux
+# window 9 "Notes" at the root (ADR-2029). REBUILD-class — the binary is in the
+# Nix package set only when this is "rune".
+[vault]
+root   = "/home/devuser/workspace/visionGraph/knowledge"   # Obsidian vault root = the visionGraph corpus repo (knowledge/ vault); bind-mounted
+pages  = "pages"                            # authored pages, relative to root
+format = "obsidian"                         # obsidian | logseq-legacy (read-tolerance only)
+tui    = "rune"                             # rune | none — see ADR-2029
+# Second vault root (the working graph): pages at <working>/pages. Exported as
+# VAULT_WORKING_ROOT / VAULT_WORKING_PAGES. A layout with more than one vault
+# root cannot be expressed by `root` alone (ADR-2028 amendment, 2026-09-02).
+working     = "/home/devuser/workspace/visionGraph/working"
+# Podcast transcript store (<slug>.md + .enrichment/<slug>.json) read and
+# extended by podcast-knowledge-ingest. OUTSIDE both vaults so Obsidian does
+# not index it. Exported as VAULT_TRANSCRIPTS.
+transcripts = "/home/devuser/workspace/visionGraph/transcripts"
+
+[skills.harness]
+# Harness Engineering MCP bridge (ADR-004). Agents inspect harness templates
+# to understand guide-sensor pairings for their active topology. Four tools:
+# harness_list, harness_inspect, harness_validate, harness_audit.
+# Templates live in VisionFlow docs/engineering/templates/.
+enabled = true
+template_dir = "/home/devuser/workspace/VisionFlow/docs/engineering/templates"
+
+[skills.precedent]
+# Precedent system for governance decisions (PRD-harness-engineering M6).
+# Stores promoted governance decisions and auto-applies them to matching
+# future ActionRequests. Four tools: precedent_match, precedent_list,
+# precedent_promote, precedent_retire.
+enabled = true
+namespace = "governance-precedents"
+similarity_threshold = 0.85
+
+[skills.email_search]
+# Private Email Search MCP gateway (DreamLab-AI/email-mcp-gateway). Now runs as the
+# `email-mcp-gateway` container on the shared `visionclaw_network`, so it is reached
+# by its docker service name (robust against IP reassignment) rather than a LAN IP.
+# It holds the mail archive + index; all reading/reasoning is local and every response
+# is privacy-sanitised before it reaches an agent. When enabled + reachable, the
+# entrypoint patches .mcp.json with a streamable-HTTP server carrying the bearer token
+# from AGENTBOX_EMAIL_GATEWAY_TOKEN (never committed).
+enabled = true
+gateway_url = "http://email-mcp-gateway:8765"
+# MCP client resilience. The gateway reasons locally with an LLM (30s+ per call)
+# and holds SSE streams open; Claude Code disables an MCP server for the whole
+# session if its startup handshake exceeds MCP_TIMEOUT and never retries HTTP
+# servers after boot. These raise the startup + tool-call ceilings (ms) so a
+# slow-but-healthy gateway is not marked dead at session start. Consumed by
+# flake.nix → container env MCP_TIMEOUT / MCP_TOOL_TIMEOUT.
+mcp_startup_timeout_ms = 60000
+mcp_tool_timeout_ms = 180000
+
+# ── Action authority axis (REC-6 / ADR-037 D2 / PRD-019) ────────────────────────
+# A NEW axis, ORTHOGONAL to the WAC ACL resource modes in lib/mandate.js
+# (Read/Write/Append/Control — "which pod container"). This one answers "is this
+# action reversible": recoverable actions proceed freely; zero-tolerance actions
+# block until a signed ACSP 31402 response approves them (lib/authority.js consumes
+# the nostr-rust-forum decision loop — COM-16 — it does not reimplement it).
+#
+# ESCALATION BY DEFAULT: an action class NOT in [skills.authority.classes] is
+# escalation-required (blocks pending review), never permissive. The cost of
+# forgetting to classify is a prompt, not an unreviewed irreversible action.
+#
+# The classification is THIS TABLE, not code — the action surface is classified
+# declaratively and the table grows without a code change.
+[skills.authority]
+enabled = true
+default = "escalation"        # unclassified action classes are escalation-required
+
+# The classification table for the existing action surface. Keys are action-class
+# labels lib/authority.js resolves; a per-skill SKILL.md `authority_class:`
+# frontmatter override takes precedence over the entry here.
+[skills.authority.classes]
+# ── zero-tolerance: irreversible / high-blast-radius; block on a signed 31402 ──
+ontology_axiom_load     = "zero-tolerance"   # ungoverned KG write backdoor (skills.ontology.direct_axiom_load)
+memory_namespace_repair = "zero-tolerance"   # destructive namespace-repair hygiene op
+memory_legacy_archival  = "zero-tolerance"   # bulk archival of memory rows to cold store
+memory_embedding_backfill = "zero-tolerance" # rewrites embeddings in place
+payment_settlement      = "zero-tolerance"   # irreversible above-threshold sats spend
+pod_delete              = "zero-tolerance"   # pod resource deletion
+pod_git_push            = "zero-tolerance"    # publishes to a remote — not locally reversible
+mandate_revoke          = "zero-tolerance"   # revokes a granted agent mandate
+broker_enrichment_writeback = "zero-tolerance" # broker approve/promote commits an irreversible KG derived write-back (ADR-037 D2, routes/broker-bridge.js)
+# ── recoverable: read-only / reversible / sandboxed; proceed without a wait ──
+broker_enrichment_review = "recoverable"     # broker reject/amend/delegate/precedent — no KG write, reversible review action
+skill_browser           = "recoverable"      # browser automation (read/inspect)
+research                = "recoverable"      # web-researcher read-only search
+memory_read             = "recoverable"      # memory_search / memory_retrieve
+memory_store            = "recoverable"      # additive; a mis-store is editable
+ontology_query          = "recoverable"      # class lookup / SPARQL read
+code_interpreter_exec   = "recoverable"      # sandboxed kernel, reset-able
+aci_view                = "recoverable"      # read a file through the ACI surface
+docs_render             = "recoverable"      # latex / mermaid / report render
+
+[providers.anthropic]
+enabled = true
+env_var = "ANTHROPIC_API_KEY"
+optional_env_vars = []
+auth_mode = "oauth"
+
+[providers.openai]
+enabled = true
+env_var = "OPENAI_API_KEY"
+optional_env_vars = ["OPENAI_BASE_URL"]
+auth_mode = "api_key"
+
+[providers.gemini]
+enabled = true
+env_var = "GOOGLE_API_KEY"
+optional_env_vars = ["GOOGLE_GEMINI_API_KEY"]
+auth_mode = "web_login"
+
+[providers.deepseek]
+enabled = true
+env_var = "DEEPSEEK_API_KEY"
+optional_env_vars = ["DEEPSEEK_BASE_URL"]
+auth_mode = "api_key"
+
+[providers.perplexity]
+enabled = true
+env_var = "PERPLEXITY_API_KEY"
+optional_env_vars = []
+auth_mode = "api_key"
+
+[providers.openrouter]
+enabled = true
+env_var = "OPENROUTER_API_KEY"
+optional_env_vars = []
+auth_mode = "api_key"
+
+[providers.context7]
+enabled = true
+env_var = "CONTEXT7_API_KEY"
+optional_env_vars = []
+auth_mode = "api_key"
+
+[providers.brave]
+enabled = true
+env_var = "BRAVE_API_KEY"
+optional_env_vars = []
+auth_mode = "api_key"
+
+[providers.github]
+enabled = true
+env_var = "GITHUB_TOKEN"
+optional_env_vars = []
+auth_mode = "api_key"
+
+[providers.zai]
+enabled = true
+env_var = "ZAI_API_KEY"
+optional_env_vars = ["ZAI_ANTHROPIC_API_KEY", "ZAI_URL"]
+auth_mode = "api_key"
+
+[providers.ollama]
+# Local LLM endpoint reached by Claude / consultants when OPENAI_API_KEY=ollama.
+# `enabled` keeps OPENAI_BASE_URL pointed at the host's ollama by default
+# (http://host.docker.internal:11434). `sidecar = true` brings up an ollama
+# container alongside agentbox instead — useful when no host ollama exists.
+# Default is OFF so GPU-enabled deployments don't unintentionally clash with
+# a host-level ollama already on port 11434.
+enabled = true
+sidecar = false
+
+[gpu]
+backend = "local-cuda"
+
+# ── Consultant tier (PRD-005 / ADR-011) ────────────────────────────────────────
+# Five MCP servers that expose external LLM providers as named consultants
+# the Claude / ruflo coordinator can invoke explicitly. Each maps to its
+# matching [providers.*] auth block; enabling a consultant requires the
+# matching provider be enabled and its env_var set (validator E035).
+#
+# Manual call from chat: /consult <name> "<question>" (skill-router skill).
+# Automatic dispatch: subagent_type="auto-consultant" (agent template).
+#
+# Logs: /var/lib/agentbox/consultations/<name>-YYYY-MM-DD.jsonl
+# Optional ADR-043 quality signals: /workspace/profiles/<stack>/intelligence/data/
+[consultants]
+enabled = true                                  # master gate (E036)
+log_dir = "/var/lib/agentbox/consultations"
+intelligence_signal = true                      # write ADR-043 QualitySignal files
+
+[consultants.codex]
+enabled = true
+model   = "gpt-5.5"
+home    = "/home/devuser/.codex"
+timeout_ms = 180000
+
+[consultants.antigravity]
+enabled = true
+model   = "gemini-3.5-flash"
+home    = "/home/devuser/.antigravity"
+timeout_ms = 180000
+
+[consultants.zai]
+enabled = true
+model   = "glm-5.3"
+reasoning_effort = "high"   # deep thinking: maps to Claude Code MAX_THINKING_TOKENS → GLM reasoning_effort
+home    = "/home/devuser/.zai"
+timeout_ms = 180000
+
+[consultants.perplexity]
+enabled = true
+model   = "sonar-pro"
+timeout_ms = 60000
+
+[consultants.deepseek]
+enabled = true
+model   = "deepseek-v4-flash" # currently serves DeepSeek-V4-Flash-0731
+timeout_ms = 120000
+
+# ── Model routing (ADR-041) ────────────────────────────────────────────────────
+# One per-activity Claude/Codex routing policy, many projections (pattern
+# adapted from pacphi/agentic-kit ADR-0001; the mechanism itself is upstream:
+# agentic-qe ≥3.13.1 agentOverrides (#568) + @claude-flow/codex dual-mode).
+# The entrypoint reconciles the enabled projections every boot (apply: boot):
+#   1. agentOverrides → workspace .agentic-qe/llm-config.json (sanitised by
+#      aqe's own loader; never carries API keys)
+#   2. AQE_LLM_PROVIDER + AQE_LLM_FALLBACK_CHAIN on the agentic-qe MCP env
+#   3. dual_run: claude-flow-codex collaboration swarms — EXPERIMENTAL, off:
+#      upstream pins CLAUDE_FLOW_DB_PATH to local SQLite (ruflo #2766), which
+#      conflicts with the ADR-015 postgres memory mandate.
+# Hosts are subscription-tier ($0 marginal): claude → claude-code provider,
+# codex → codex provider (`codex exec`, [consultants.codex] auth home).
+# Escalation rungs prefer the CROSS-VENDOR hop (same principle as the ADR-011
+# model-diversity "anti-fox" seam / aqe qe-court vendor diversity).
+[model_routing]
+enabled = true
+primary_host = "claude"           # which host leads; absence of the primary is a failure, of the alternate a warning
+aqe_agent_overrides = true        # projection 1+2: materialise routes + provider env for the QE fleet
+dual_run = false                  # projection 3: EXPERIMENTAL (ruflo #2766) — leave off until upstream unpins local sqlite
+aqe_llm_provider = "claude-code"  # AQE_LLM_PROVIDER default for unrouted fleet work (subscription, $0)
+aqe_fallback_chain = "claude-code,codex"  # ordered AQE_LLM_FALLBACK_CHAIN — cross-vendor before local
+
+# activity = "host:model" with an optional " -> host:model" escalation rung.
+# Defaults grounded in upstream @claude-flow/codex CollaborationTemplates
+# (Claude: reasoning/review; Codex: execution); packaging/release are
+# kit-originated gap-fills (agentic-kit ADR-0002), flagged as such.
+# Models are SOFT defaults (last verified 2026-09-01) — tune per activity.
+[model_routing.routes]
+specification     = "claude:claude-sonnet-5"
+architecture      = "claude:claude-fable-5-1"
+design            = "claude:claude-opus-5"
+implementation    = "codex:gpt-5.5 -> claude:claude-fable-5-1"
+testing           = "codex:gpt-5.5 -> claude:claude-opus-5"
+review            = "claude:claude-sonnet-5"
+security-scan     = "codex:gpt-5.5"
+security-analysis = "claude:claude-fable-5-1"
+documentation     = "codex:gpt-5.5"
+debugging         = "claude:claude-fable-5-1"
+packaging         = "codex:gpt-5.5"          # kit-originated activity (no upstream template)
+release           = "claude:claude-sonnet-5" # kit-originated activity (no upstream template)
+
+# ── Privacy filter ──────────────────────────────────────────────────────────────
+# Local PII redaction sidecar using openai/privacy-filter (1.5B MoE, Apache-2.0).
+# See docs/reference/adr/ADR-008-privacy-filter-routing.md for the routing layer
+# contract. Gated: the wizard only offers this when a GPU is detected or the
+# host has ≥4 cores and ≥6 GB free RAM (CPU path needs all experts resident).
+#
+# mode: off            → sidecar disabled; adapter dispatch is a pass-through.
+#       local-gpu      → HF transformers pipeline, BF16 on CUDA/ROCm.
+#       local-cpu      → HF transformers pipeline on CPU (~3 GB BF16 weights).
+#       local-clinical → route the clinical/PHI slots to the OpenMed sidecar
+#                        (see [privacy_filter.openmed]); PII slots still use the
+#                        base model above. Only honoured when the openmed block
+#                        is enabled AND its prerequisites are acknowledged.
+#
+# Per-slot policy values:
+#   "strict" → redact-before-persist; fail-closed if router unreachable.
+#   "soft"   → redact best-effort; fail-open with counter.
+#   "off"    → pass-through.
+[privacy_filter]
+enabled = true
+mode = "local-cpu"
+port = 9092
+dtype = "bf16"
+model = "openai/privacy-filter"
+# openai/privacy-filter ships a custom architecture (model_type
+# "openai_privacy_filter") that stock Transformers rejects with
+# "does not recognize this architecture", leaving the PII filter unavailable
+# (fail-open). The model carries its own modelling code on the Hub, so it must
+# be loaded with trust_remote_code. Keep true while `model` is this checkpoint;
+# set false only if you pin a Transformers-native token-classification model.
+trust_remote_code = true
+
+[privacy_filter.policy]
+pods         = "strict"
+memory       = "strict"
+events       = "soft"
+beads        = "soft"
+orchestrator = "off"
+inbound      = "soft"
+outbound     = "soft"
+
+[privacy_filter.entities]
+# Empty list = redact all eight classes. Populate to restrict the set.
+# Allowed: account_number, private_address, private_email, private_person,
+#          private_phone, private_url, private_date, secret.
+enabled = []
+
+# ── OpenMed clinical-PHI redaction sidecar (optional, gated, DEFAULT OFF) ──────
+# Layers a clinical/PHI redactor onto the ADR-008 privacy-filter seam, as the
+# `local-clinical` backend above. OpenMed is an ONNX PHI-detection model
+# (ruvnet/helix `helix-openmed` Rust policy + `helix-wasm` unicode-safe gates +
+# an ONNX runtime). Runs as its own sidecar (docker-compose.openmed.yml /
+# `./agentbox.sh openmed <up|down|health>`); the privacy filter calls it over
+# the port below and applies redaction before persistence, reusing the existing
+# `wrapWithPrivacyFilter` middleware — no new adapter slot, no new MCP tool.
+#
+# THREE PREREQUISITES gate activation (fail-closed — the boot probe refuses to
+# start the sidecar unless all three are satisfied, mirroring the mainnet guard):
+#   1. license_acknowledged  — helix is pre-release (v0.1.0) with an unresolved
+#      LICENSE. Set true only after the operator has verified the licence permits
+#      this use. Vendoring the model/code is blocked until then.
+#   2. onnx_runtime_present   — no ONNX runtime is packaged in the image yet
+#      (the same gap PRD-016 deferred for "Kompress ML"). The sidecar Dockerfile
+#      provisions it; this flag records that it is available.
+#   3. governance_acknowledged — a passing gate is NOT HIPAA Safe Harbor / Expert
+#      Determination (OpenMed's own docs disclaim this). Set true only after the
+#      operator has decided the compliance posture being claimed.
+# The HMAC key OpenMed requires is derived via the existing ADR-029 child-key
+# scheme (HMAC-SHA256(operator_sk, key_tag)) — no new secret store.
+[privacy_filter.openmed]
+enabled                 = false
+port                    = 9093
+# Content-addressed model artifact + SHA-256 lock, provisioned into the sidecar
+# (never committed to this repo). Empty until the operator provisions them.
+model_artifact          = ""
+artifact_lock_sha256    = ""
+hmac_key_tag            = "agentbox-openmed-v1"   # ADR-029 child-key derivation tag
+# Fail-closed prerequisite gates (see comment above) — all must be true to run.
+license_acknowledged    = false
+onnx_runtime_present    = false
+governance_acknowledged = false
+# Which privacy-filter slots route to the clinical redactor when active.
+[privacy_filter.openmed.policy]
+pods    = "strict"
+memory  = "strict"
+inbound = "soft"
+outbound = "soft"
+
+# ── Linked-Data interchange (PRD-006 / ADR-012 / DDD-004) ──────────────────────
+# Master gate for the eleven JSON-LD federation surfaces. Default off — a
+# clone+up build sees zero behavioural change. Each per-surface gate accepts
+# on | emit | off; rules E040–E049 enforce coherence.
+#
+# Phase 1 (mechanism only): architecture_docs, skill_metadata.
+# Phase 2 (sovereign-stack): pods, events, did_documents, provenance.
+# Phase 3 (credentials):     credentials, payments, capability_descriptors,
+#                            memory_catalogue, http_meta.
+[linked_data]
+enabled                = true
+pods                   = "on"    # S1  Solid pod resource representations
+events                 = "on"    # S2  Nostr envelope payloads
+credentials            = "emit"  # S3  W3C Verifiable Credentials
+did_documents          = "emit"  # S4  DID Documents at /.well-known/did.json
+provenance             = "emit"  # S5  PROV-O receipts (parallel to events)
+capability_descriptors = "emit"  # S6  W3C WoT Thing Descriptions for MCP
+skill_metadata         = "emit"  # S7  Schema.org HowTo (build-time)
+payments               = "on"    # S8  Mandates + receipts (VC + ODRL)
+memory_catalogue       = "emit"  # S9  DCAT-3 namespace catalogue
+architecture_docs      = "emit"  # S10 ADR/PRD/DDD frame frontmatter (build-time)
+http_meta              = "emit"  # S11 Content-negotiated /v1/meta + /v1/agent-events
+default_form           = "compacted"
+context_catalogue      = "/opt/agentbox/contexts"
+context_cache_mode     = "image"        # image | bind | off (E046)
+unknown_context_policy = "fail-closed"  # fail-closed | fail-open (W047)
+canonicalisation       = "jcs"          # jcs required for credentials/payments (E043)
+round_trip_in_dispatch = true           # CI canary; turn off for hot paths
+
+[linked_data.contexts]
+# Operator overrides for context IRIs. Each value MUST resolve to a pinned
+# ContextDocument in lib/linked-data-contexts.nix (E045). Leave empty for
+# the catalogue defaults.
+
+[linked_data.did]
+method                = "nostr"
+service_endpoints     = ["pod", "relay"]
+publish_to_well_known = true
+
+# ── Payment System ────────────────────────────────────────────────────────────
+# HTTP 402 Web Ledger integration via solid-pod-rs.
+# All costs in satoshis. Token operations use DREAM at configurable rate.
+[payments]
+enabled = true
+backend = "solid-pod-rs"                    # proxy to local pod on :8484
+base_cost_sats = 10
+dream_per_sat = 10
+hold_buffer_ratio = 1.2
+
+[payments.tiers]
+inference = 10        # text LLM: 10x base
+image_gen = 100       # diffusion: 100x base
+analytics = 5         # embeddings: 5x base
+
+[payments.token]
+ticker = "DREAM"
+rate = 10             # DREAM per sat
+supply = 1000000
+issuer = ""           # populated from OPERATOR_NOSTR_PUBKEY at runtime
+
+# PRD-015 Phase 1 — consumer & broadcast economy
+[payments.consumer]
+enabled                 = false          # opt-in; enable to allow governed outbound spends
+max_sats_per_call       = 100
+daily_budget_sats       = 1000
+approval_threshold_sats = 50             # above this, spend parks pending ACSP approval
+allow_origins           = []             # empty = mesh-only (pods + peer nodes)
+deny_origins            = []
+external_router         = "off"          # "off" | "cinderwright" (C9; custody warning)
+
+[payments.broadcast]
+enabled       = false
+well_known    = false                    # serve /.well-known/x402.json (B1)
+accepts_block = true                     # emit accepts[] in 402 challenges (B2)
+health_signals = false
+index_submit  = "off"
+
+[skills.payment_router]
+enabled = false                          # C5 — enable with [payments.consumer].enabled = true
+
+[linked_data.privacy_handoff]
+order = "after"   # documentation only — the order is fixed in code (E048)
+
+# Linked-Object Viewer slot (S12 — PRD-006 §15 / ADR-013).
+# A JSON-LD-aware browser at /lo/* that renders every PRD-006 surface.
+# Default off — turning it on materialises linkedobjects/browser into
+# the image at /opt/agentbox/browser/. Pane manifest at /lo/manifest.json.
+# Validation rules: E050-E054, W053.
+[linked_data.viewer]
+mode                 = "local-linkedobjects"     # off | local-linkedobjects | external
+mount_path           = "/lo"
+bundle_path          = "/opt/agentbox/browser"
+external_url         = ""
+sri_hash             = ""
+expose_port          = true
+extra_panes          = []
+upstream_panes_visible = true
+source_code_header   = ""        # default = upstream repo URL (AGPL §13)
+
+# ── Project tracking (PRD-017 / ADR-035 / DDD-015) ────────────────────────────
+# Helm-grade project tracking (status grid, 30-day commit activity, AI
+# primers/synopses, GitHub + local repo sync) re-expressed on the sovereign
+# substrate. Every tracked workspace/host-mount git repo becomes a first-class
+# `urn:agentbox:thing:<pubkey>:project-<sha>` (minted via management-api/lib/uris.js,
+# no new URN kind); each scan is observable on the existing port-bound /metrics as
+# the agentbox_project_* gauges (no new port — ADR-035 §D2); and, when nostr_publish
+# is on, per-project status is signed as an addressable kind-30841 digest to the
+# operator's did:nostr (sibling of the kind-30840 session summary — ADR-035 §D3).
+#
+# Disabled by default: when enabled=false the /v1/projects route returns 503 and
+# no scan, metric, or nostr publish runs. Durable state rides the EXISTING adapter
+# slots (memory for primers, events for scans) — never a new slot (ADR-035 §D4).
+# Primers and github_enrichment are the only external hops and are independently
+# gated (a Z.AI/GLM key and GITHUB_TOKEN respectively).
+[project_tracking]
+enabled             = true                                           # master gate; /v1/projects → 503 when off
+scan_dirs           = ["/projects", "/home/devuser/workspace/project"]  # one-level-deep git-repo discovery roots
+scan_interval_hours = 6                                              # periodic re-scan; 0 = on-demand only (no scheduler)
+github_enrichment   = true                                          # pull open issues + stars via GITHUB_TOKEN (one external hop) — enabled 2026-07-22: token validated live (HTTP 200) and present in runtime env + .env (0600); E-2 cleared. Boot apply-class (ADR-039).
+primer_model        = "glm-5.3"                                     # Z.AI/GLM model for primers/synopses (→ consultant, ADR-011)
+primer_on_scan      = false                                         # auto-generate primers for new projects during a scan
+nostr_publish       = true                                          # publish kind-30841 digests to the operator's did:nostr
+metrics             = true                                          # emit the agentbox_project_* gauges on the port-bound /metrics
+
+# ── Interaction plane — Agent of Empires (PRD-021 / ADR-042/043/044) ──────────
+# AoE is the canonical interaction plane: `aoe serve` creates, monitors, attaches,
+# and reviews interactive agent sessions, superseding the hand-rolled MAD tmux
+# harness (PRD-013 / ADR-025). Adopted as an OVERLAY — a pinned flake input
+# (flake.nix inputs.aoe), a supervised daemon, a NIP-98 reverse proxy, and the
+# declarative session seeds below — with ZERO patches to the AoE crate (ADR-042 D2).
+#
+# The daemon binary is REBUILD-class (flake input → Nix image composition); the
+# daemon + config + session seeds are BOOT-class (reconciled by the entrypoint every
+# boot). With enabled = false the daemon never starts and no seeds are provisioned.
+#
+# Identity binding (ADR-043): each session seed derives a distinct did:nostr
+# (AGENTBOX_PROFILE=<slug> → agent-identity.js loadOrMint), a session URN
+# (urn:agentbox:activity:<scope>:session-<sha256-12> via uris.js), a beads epic,
+# and a scoped memory namespace user:<pubkey>:proj:<repo>:<ns> at create time.
+[interaction_plane]
+enabled     = true                  # master gate; false ⇒ no daemon, no seeds (apply-class boot)
+port        = 9095                  # aoe serve bind (127.0.0.1, --auth token behind proxy); NOT 8080 (code-server) / 7777 (relay)
+dashboard   = "on"                  # aoe serve web dashboard (absorbs the never-deployed PRD-012 setup/ops dashboard)
+proxy_auth  = "nip98"               # sole-ingress reverse proxy verifies NIP-98 → session pubkey (WS4 / ADR-043 D4.6)
+proxy_port  = 9096                  # nip98-proxy listen port — the sole IDENTITY ingress to :9095 (N-05); free (adjacent to mgmt-api 9090)
+# N-05 (revised): loopback is NO LONGER the boundary for :9095. aoe serve runs
+# `--auth token`, so every request to :9095 must carry the daemon's shared-secret
+# token (minted at launch into ~/.config/agent-of-empires/serve.url). The nip98-proxy
+# (:9096) is still the only IDENTITY ingress — it verifies NIP-98 then injects the
+# token upstream; the break-glass nostr-gateway reads the same token file. A
+# co-resident process that cannot read that owner-only (0700) file can no longer
+# drive the daemon merely because the port is loopback-reachable. Residual limit:
+# processes running as the SAME devuser can still read the token file — the token
+# raises the bar (no free loopback access) but does not isolate same-uid peers;
+# per-process isolation remains future work.
+
+# ── Unified operator auth (ADR-069: dreamlab-ai auth adoption) ──────────────
+# The nip98-proxy is the ONE authenticator for every operator surface on the
+# :8444 console origin. Projected every boot into
+# workspace/.agentbox/nip98-proxy-config.json (boot apply class, no rebuild).
+# allowed_pubkeys activates the npub gate (ADR-045 D2) — the dreamlab identity
+# roster's operator key. Empty list = any validly-signed key (NOT recommended).
+[interaction_plane.proxy]
+allowed_pubkeys = [
+  "c32b71bc1d4ab9d25cd0bd2a457ede15e6538d0d6311fc3c0543f9e8ca1bc13c",  # agentbox-core on HP-Desktop — peer node (added 2026-09-02, HP mesh bring-up)
+  "6407eed80e2a8646e41a5ddba0ae6619425fc54af40e2b30482b9623c682425a",  # operator-jjohare (dreamlab roster)
+  "b41654017f6850b13857d19d8ae0e3f88f1365600cab0321e8101c9e92682f7a",  # visionclaw-server governance publisher / active NIP-07 signer
+  "11ed64225dd5e2c5e18f61ad43d5ad9272d08739d3a20dd25886197b0738663c",  # agentbox sovereign / house key (browsercontainer Podkey vault)
+]
+
+# Routes beyond the default AoE upstream. bearer_env names an env var whose
+# value replaces the browser credential upstream (credential exchange at the
+# trust boundary — the browser NEVER holds BRIDGE_TOKEN).
+[[interaction_plane.proxy.routes]]
+prefix = "/approvals"
+target = "http://127.0.0.1:9090"
+bearer_env = "MANAGEMENT_API_KEY"   # session-cookie reads; signed NIP-98 passes through (governance gates need the signature)
+
+[[interaction_plane.proxy.routes]]
+prefix = "/bridge"
+target = "http://127.0.0.1:8971"
+bearer_env = "BRIDGE_TOKEN"
+
+[[interaction_plane.proxy.routes]]
+prefix = "/dream"
+target = "http://127.0.0.1:9090"
+strip  = false
+bearer_env = "MANAGEMENT_API_KEY"
+
+[[interaction_plane.proxy.routes]]
+prefix = "/mgmt"
+target = "http://127.0.0.1:9090"
+bearer_env = "MANAGEMENT_API_KEY"
+
+[[interaction_plane.proxy.routes]]
+prefix = "/feed"
+target = "http://127.0.0.1:8971"
+strip  = false
+bearer_env = "BRIDGE_TOKEN"
+
+# Declarative sessions replacing tmux-autostart harness windows 8–14 (WS2). Each
+# seed becomes an AoE session under SESSION_PREFIX aoe_. eager_mandate defaults
+# false (mandates are lazy, minted on first pod write — ADR-043 D4.5); flip true
+# only for known pod-writers. Perplexity has NO seed — retired to MCP (F2-6).
+[[interaction_plane.session_seeds]]
+slug          = "codex"               # native ACP agent (was tab 14)
+tool          = "codex"
+worktree      = true
+eager_mandate = false
+
+[[interaction_plane.session_seeds]]
+slug          = "antigravity"         # native AoE antigravity agent (was tab 10); model aligned to gemini-3.5-flash (F2-8)
+tool          = "antigravity"         # @google/gemini-cli is SUNSET (2026-06-18); flake pins the Antigravity CLI (binary agy, lib/antigravity-cli.nix — NOT nixpkgs antigravity, which is the IDE); agy state lives in ~/.gemini (tmpfs)
+worktree      = true
+eager_mandate = false
+
+[[interaction_plane.session_seeds]]
+slug          = "openrouter"          # claude binary redirected (was tab 8) — env_allowlist is load-bearing (F2-4, N-01)
+tool          = "claude"
+worktree      = false
+env_allowlist = ["ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN"]
+eager_mandate = false
+
+[[interaction_plane.session_seeds]]
+slug          = "zai"                 # claude → api.z.ai/api/anthropic (was tab 9); same allowlist guard
+tool          = "claude"
+worktree      = false
+env_allowlist = ["ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN"]
+eager_mandate = false
+
+[[interaction_plane.session_seeds]]
+slug          = "deepseek"            # AoE first-class OpenCode connector → DeepSeek Responses API
+tool          = "opencode"
+model         = "deepseek-agent/deepseek-chat"
+worktree      = true
+eager_mandate = false
+
+[[interaction_plane.session_seeds]]
+slug          = "loom"                # AoE first-class OpenCode connector → Loom façade (scaffolded, for knowledge work)
+tool          = "opencode"
+model         = "loom-lan/qwen3.8-27B"
+worktree      = true
+eager_mandate = false
+
+[[interaction_plane.session_seeds]]
+slug          = "loom-raw"            # Raw Qwen via :8085 — no Loom scaffold, for coding tasks
+tool          = "opencode"
+model         = "loom-raw/qwen3.8-27B"
+worktree      = true
+eager_mandate = false
+
+# tab-0 coordinator: named, special, TERMINAL VIEW. AoE's default ACP structured
+# view has no tmux pane, so POST /send returns 400 acp_mode_unsupported (F5-3);
+# terminal view is required for the voice send-keys / /send path (ADR-044).
+[interaction_plane.coordinator]
+slug          = "tab0"
+tool          = "claude"
+view          = "terminal"
+eager_mandate = false
+
+# ── Voice + AoE operator console (ADR-044) ───────────────────────────────────
+# Documentation-as-data for the voice plane. This is a SIDECAR with its own
+# lifecycle (./agentbox.sh voice up|down|...), NOT part of ./agentbox.sh up —
+# so `enabled` here is descriptive state for /v1/system, not a boot gate. The
+# caddy console (docker-compose.voice.yml) plus the external Kyutai Unmute
+# speech stack (voice-stack/unmute clone, layered via voice/unmute-override.yml)
+# give one same-origin operator cockpit unifying the voice loop and the AoE
+# session board. See agentbox/voice/README.md.
+[voice]
+enabled              = false            # sidecar state (apply-class: sidecar — its own lifecycle, not `agentbox up`)
+console_port         = 8444             # operator cockpit origin (self-signed TLS; mic secure-context)
+debug_port           = 8443             # stock Unmute demo UI (diagnostics only)
+unmute_build_context = "../voice-stack/unmute"  # external Kyutai fork clone (26 GB, not vendored); override VOICE_UNMUTE_DIR
+
+[toolchains]
+claude = true
+claude_code = true
+ruflo = true
+claude_flow = true  # legacy alias gate: claude-flow IS ruflo (upstream rename, github.com/ruvnet/ruflo) — either gate bakes the ONE consolidated closure, which ships `ruflo` + `claude-flow` + `claude-flow-mcp` bins
+agentic_qe = true
+metaharness = true  # ADR-064: bakes metaharness@0.3.2 + @metaharness/darwin@0.8.3 CLIs (the versions the ruflo-metaharness plugin pins); pin discipline per ADR-067
+nagual_qe = false  # disabled: upstream sqlx 0.9 SqlSafeStr compilation error
+codebase_memory = true  # MCP-2 (2026-07-22): binary IS baked (codebase-memory-mcp on PATH); the boot MCP-registry projector now registers it, so the CLAUDE.md "USE FIRST" mandate is truthful next rebuild — gate kept ON (not flipped)
+rust = true
+antigravity_cli = true
+codex = true
+opencode = true
+code_server = true
+cuda = true
+
+# ── Plugins (ruflo/claude-flow plugin system) ────────────────────────────────
+# Plugins are installed into $HOME/.claude-flow/plugins/ at container boot
+# (entrypoint Phase 7) and loaded by the MCP server at runtime.
+# The Nix-packaged claude-flow/ruflo binaries provide the plugin CLI;
+# npx @latest aliases are no longer needed.
+#
+# Plugin provenance legend (best-guess — please clarify where marked ??):
+#   first-party (ruflo upstream, github.com/ruvnet/ruflo/plugins/):
+#     ruflo-core, ruflo-intelligence, ruflo-swarm, ruflo-workflows,
+#     ruflo-autopilot, ruflo-loop-workers, ruflo-agentdb, ruflo-ruvector,
+#     ruflo-rag-memory, ruflo-knowledge-graph, ruflo-sparc, ruflo-testgen,
+#     ruflo-goals, ruflo-docs, ruflo-adr, ruflo-ddd, ruflo-security-audit,
+#     ruflo-aidefence, ruflo-observability, ruflo-browser, ruflo-wasm,
+#     ruflo-federation, ruflo-migrations, ruflo-ruvllm, ruflo-plugin-creator,
+#     ruflo-jujutsu (disabled — beads adapter is off), ruflo-cost-tracker
+#   speculative / unconfirmed (not in any ADR or PRD; please clarify):
+#     ruflo-daa    -- ?? purpose unknown; enabled by default
+#     ruflo-rvf    -- ?? purpose unknown; enabled by default
+#   disabled (domain-specific, opt-in):
+#     ruflo-neural-trader, ruflo-market-data, ruflo-iot-cognitum
+#   third-party registry (IPFS, source = "registry"):
+#     @claude-flow/embeddings, @claude-flow/security, @claude-flow/neural
+[plugins]
+auto_update = false                     # off by default — set true for @latest
+install_dir = "/home/devuser/.claude-flow/plugins"
+
+# Memory backend for plugins that need persistence.
+# Points to the same external ruvector-postgres used by integrations.ruvector_external.
+# Password sourced from RUVECTOR_PG_PASSWORD env var (Q6) and substituted
+# by the entrypoint when it materialises the claude-flow config.
+[plugins.memory]
+backend = "postgres"
+conninfo = "postgresql://ruvector:@@RUVECTOR_PG_PASSWORD@@@ruvector-postgres:5432/ruvector"
+fallback = "sqlite"
+enable_hnsw = true
+
+# Declared plugins — installed at boot, gated by enabled flag.
+# source = "ruflo-git" (default): cloned from github.com/ruvnet/ruflo/plugins/
+# source = "registry": installed from IPFS registry via `ruflo plugins install`
+
+# --- Core orchestration ---
+[[plugins.packages]]
+name = "ruflo-core"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-intelligence"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-swarm"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-workflows"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-autopilot"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-loop-workers"
+enabled = true
+
+# --- Memory and data ---
+[[plugins.packages]]
+name = "ruflo-agentdb"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-ruvector"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-rag-memory"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-knowledge-graph"
+enabled = true
+
+# --- Development and quality ---
+[[plugins.packages]]
+name = "ruflo-sparc"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-testgen"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-goals"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-docs"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-adr"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-ddd"
+enabled = true
+
+# --- Security and observability ---
+[[plugins.packages]]
+name = "ruflo-security-audit"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-aidefence"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-observability"
+enabled = true
+
+# --- Specialised ---
+[[plugins.packages]]
+name = "ruflo-browser"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-wasm"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-neural-trader"
+enabled = false
+
+[[plugins.packages]]
+name = "ruflo-market-data"
+enabled = false
+
+[[plugins.packages]]
+name = "ruflo-iot-cognitum"
+enabled = false
+
+[[plugins.packages]]
+name = "ruflo-federation"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-migrations"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-daa"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-rvf"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-ruvllm"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-plugin-creator"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-jujutsu"
+enabled = false
+
+[[plugins.packages]]
+name = "ruflo-cost-tracker"
+enabled = true
+
+# --- MetaHarness integration (ADR-062/063) ---
+# Read/audit skills work from the git tree alone; score/genome/evolve/
+# security-bench need the toolchains.metaharness baked binaries (ADR-064).
+# Darwin invocations MUST pass --sandbox mock|agent (ADR-065); darwin is
+# proposer-only, promotion via the ADR-061 draft-PR chokepoint (ADR-066).
+[[plugins.packages]]
+name = "ruflo-metaharness"
+enabled = true
+
+# --- IPFS registry plugins (non-git) ---
+[[plugins.packages]]
+name = "@claude-flow/embeddings"
+source = "registry"
+enabled = true
+
+[[plugins.packages]]
+name = "@claude-flow/security"
+source = "registry"
+enabled = true
+
+[[plugins.packages]]
+name = "@claude-flow/neural"
+source = "registry"
+enabled = true
+
+# ── Context compression (PRD-016, ADR-034) ─────────────────────────────
+# Content-aware compression for agent context windows and storage.
+# Uses in-process Rust N-API bindings (headroom-napi crate).
+# Gate: compression.enabled = true adds the headroom-napi package to the
+# image and activates the compression middleware in management-api.
+[compression]
+enabled = true                     # headroom-napi crate built; compression active
+backend = "sqlite"                 # sqlite | memory (redis deferred)
+ttl_minutes = 30                   # CCR cache TTL
+max_entries = 1000                 # CCR store capacity (LRU eviction)
+target_ratio = 0.15                # aggressive default (keep ~15%)
+
+[compression.slots]
+memory = true                      # compress memory search results
+pods = true                        # compress pod writes
+events = false                     # NEVER compress audit trail
+beads = true                       # compress bead payloads
+orchestrator = false               # skip orchestrator coordination
+
+[compression.algorithms]
+smart_crusher = true               # JSON array compression
+log_compressor = true              # template-based log compression
+diff_compressor = true             # unified diff compression
+
+[observability]
+metrics_port = 9091
+otlp_endpoint = ""
+log_level = "info"
+
+[security]
+# ADR-007 W021: when one or more feature exceptions widen the attack surface
+# beyond the hardened baseline (cap_add or security_opt_override), the
+# operator must explicitly acknowledge the residual risk. The flake fails
+# closed at compose-eval time when this is missing while exceptions are
+# active. Currently SYS_ADMIN (chromium sandbox) and NET_ADMIN (tailscale
+# userspace tun) are widening caps; review docs/user/configuration.md for
+# the residual attack surface analysis before flipping this to true.
+audit_acknowledged = true
+
+# Feature-specific exceptions to the hardened baseline.
+# Each key must match an enabled feature gate (validator rule E020).
+# Add the exception block when you enable the corresponding feature.
+# Reference table of all known exceptions is in docs/reference/adr/ADR-007-runtime-contract-and-container-hardening.md.
+#
+# Currently enabled feature exceptions (mirrors active feature gates above):
+
+# Required because adapters.pods = "local-solid-rs" is the only supported
+# implementation (ADR-010; the legacy local-jss Python stub was removed
+# 2026-04-25). solid-pod-rs needs a writable path under read_only:true
+# for its filesystem backend — .meta and .acl sidecars plus atomic-rename
+# temp files.
+[security.exceptions.solid-pod-rs]
+writable_volumes = ["solid-data:/var/lib/solid"]
+reason = "solid-pod-rs fs-backend requires atomic-rename writable storage under /var/lib/solid"
+
+# [security.exceptions.playwright] intentionally absent — playwright is
+# superseded by the external browsercontainer sidecar (no local chromium).
+
+[security.exceptions.desktop]
+# X11 abstract socket dir (mode 1777 sticky — the canonical X11 perm) and
+# devuser's runtime dir (XDG_RUNTIME_DIR convention: 0700, owned by uid).
+# Without explicit mode/uid, Docker creates these root-owned at default
+# tmpfs perms, so devuser-side X clients fail to bind/connect.
+tmpfs = ["/tmp/.X11-unix:mode=1777", "/run/user/1000:mode=700,uid=1000,gid=1000"]
+
+[security.exceptions.code-server]
+writable_volumes = ["codeserver-config:/home/devuser/.local/share/code-server"]
+
+[security.exceptions.gpu-cuda]
+writable_volumes = []
+reason = "CUDA runtime requires device access; no additional writable volumes needed"
+
+[security.exceptions.tailscale]
+writable_volumes = ["tailscale-state:/var/lib/tailscale"]
+cap_add = ["NET_ADMIN"]
+reason = "tailscaled needs persistent state dir and NET_ADMIN for userspace networking socket"
+
+# ── Dream Machine HP annexe (ADR-052/053) ─────────────────────────────────────
+# Overnight evidence-gated evolution against nominated repos, dispatched to HP
+# (10.10.10.1, 25G rail) using the self-hosted Loom/Qwen model exclusively.
+# Off by default (byte-identical-when-off). Enable to start nightly cycles.
+[dream_machine]
+enabled                = true
+hp_host                = "john@10.10.10.1"
+hp_annexe_dir          = "/home/john/dream-annexe"
+loom_url               = "http://192.168.2.132:8084/v1"
+loom_model             = "qwen3.8-27B"
+# Token budgets must cover reasoning + content: glm-5.3 burned ~16k tokens of
+# thinking on hard nights (2026-09-01) and hit the old 16384 cap with empty
+# content twice. Env overrides: ZAI_MAX_TOKENS / LOOM_MAX_TOKENS.
+loom_max_tokens        = 32768
+# LLM provider: "zai" (GLM via Z.AI, Anthropic Messages API — the default) or
+# "loom" (self-hosted Loom façade, OpenAI chat-completions). Override at runtime
+# with DREAM_LLM_PROVIDER. The Z.AI credential ZAI_ANTHROPIC_API_KEY is a SECRET
+# inherited from the container environment — it is never written into agentbox.toml
+# or the generated supervisor block.
+llm_provider           = "zai"
+zai_model              = "glm-5.3"
+zai_max_tokens         = 32768
+# Evaluator-liveness discipline (darwin lesson, ADR-099 upstream): target repos
+# declare their own evaluators in their dream.config.json evaluatorEntrypoints.
+# Any @metaharness/darwin entrypoint MUST pass `--sandbox mock` (or `--sandbox
+# agent`) — the default 'real' sandbox is documented surface-independent, so it
+# emits the same output regardless of the code under test and the night silently
+# no-ops. Every entrypoint must provably produce surface-dependent output.
+# UTC hours: nightly window (only runs inside this range in --loop mode)
+window_start           = 1
+window_end             = 5
+# RuVector namespace for dream-cycle memories
+memory_namespace       = "dream-cycle"
+# Recall gate band (ADR-052 §2.4, re-frozen 2026-08-14 post-v4.0.36)
+recall_band_self_min   = 175
+recall_band_true_min   = 102
+# Roster: every eligible nominated repo dreams each night (serial), capped.
+max_repos_per_night    = 5
+# Standby pruning: a repo whose last N ledger rows are ALL INCONCLUSIVE is
+# skipped in nightly mode (REJECT counts as learning and resets the streak;
+# revive via --target or a harness fix that yields a decisive verdict).
+prune_dry_streak       = 5
+
+[security.exceptions.nostr-relay]
+writable_volumes = ["nostr-relay-data:/var/lib/nostr-relay"]
+reason = "nostr-rs-relay SQLite journal and WAL require a writable durable path"
+
+[security.exceptions.consultants]
+writable_volumes = ["consultations-data:/var/lib/agentbox/consultations"]
+reason = "consultant tier writes JSONL audit log per call"

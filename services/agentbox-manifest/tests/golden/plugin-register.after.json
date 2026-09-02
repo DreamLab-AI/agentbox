@@ -1,0 +1,14 @@
+{
+  "plugins": {
+    "other@mp": [],
+    "skill-creator@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "/ip",
+        "version": "marketplace",
+        "installedAt": "FROZEN",
+        "lastUpdated": "FROZEN"
+      }
+    ]
+  }
+}

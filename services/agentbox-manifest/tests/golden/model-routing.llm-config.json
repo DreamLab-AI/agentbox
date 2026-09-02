@@ -1,0 +1,81 @@
+{
+  "_managedBy": "agentbox entrypoint (ADR-041) \u2014 edit [model_routing] in agentbox.toml, not this file",
+  "defaultProvider": "claude-code",
+  "agentOverrides": {
+    "qe-security-scanner": {
+      "provider": "codex",
+      "model": "gpt-5.5"
+    },
+    "qe-security-auditor": {
+      "provider": "codex",
+      "model": "gpt-5.5"
+    },
+    "qe-pentest-validator": {
+      "provider": "codex",
+      "model": "gpt-5.5"
+    },
+    "qe-security-reviewer": {
+      "provider": "claude-code",
+      "model": "claude-fable-5-1"
+    },
+    "qe-test-architect": {
+      "provider": "codex",
+      "model": "gpt-5.5"
+    },
+    "qe-test-generator": {
+      "provider": "codex",
+      "model": "gpt-5.5"
+    },
+    "qe-coverage-specialist": {
+      "provider": "codex",
+      "model": "gpt-5.5"
+    },
+    "qe-mutation-tester": {
+      "provider": "codex",
+      "model": "gpt-5.5"
+    },
+    "qe-code-reviewer": {
+      "provider": "claude-code",
+      "model": "claude-sonnet-5"
+    },
+    "qe-integration-reviewer": {
+      "provider": "claude-code",
+      "model": "claude-sonnet-5"
+    },
+    "qe-performance-reviewer": {
+      "provider": "claude-code",
+      "model": "claude-sonnet-5"
+    },
+    "qe-requirements-validator": {
+      "provider": "claude-code",
+      "model": "claude-sonnet-5"
+    }
+  },
+  "fallbackChain": {
+    "id": "agentbox-adr041",
+    "entries": [
+      {
+        "provider": "claude-code",
+        "models": [
+          "claude-fable-5-1",
+          "claude-opus-5",
+          "claude-sonnet-5"
+        ],
+        "enabled": true,
+        "priority": 2
+      },
+      {
+        "provider": "codex",
+        "models": [
+          "gpt-5.5"
+        ],
+        "enabled": true,
+        "priority": 1
+      }
+    ],
+    "maxRetries": 2,
+    "retryDelayMs": 1000,
+    "backoffMultiplier": 2,
+    "maxDelayMs": 15000
+  }
+}
