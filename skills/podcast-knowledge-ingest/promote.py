@@ -1084,9 +1084,9 @@ def main() -> int:
     ap.add_argument("--loom-model", default=DEFAULT_LOOM_MODEL)
     ap.add_argument("--dry-run", action="store_true", help="only run candidacy detection, no Loom/judge calls, no writes")
     ap.add_argument("--limit", type=int, default=None, help="process at most N candidates this run")
-    ap.add_argument("--working-graph-dir", default=None,
+    ap.add_argument("--working-graph-dir", default=os.environ.get("VAULT_WORKING_PAGES") or None,
                     help="if set, rejected candidates also land their processed news as a "
-                         "vault page here (default: $VAULT_ROOT/workingGraph/pages)")
+                         "vault page here (default: $VAULT_WORKING_PAGES from agentbox.toml [vault].working)")
     ap.add_argument("--max-dossier-assertions", type=int, default=12,
                     help="cap assertions handed to draft/completeness, strongest first "
                          "(confidence desc, then recency); 0 = uncapped (default 12)")

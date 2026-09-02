@@ -1,10 +1,11 @@
 ---
 title: Agentbox Container Baseline
 doc_id: AB-BASELINE
-version: 0.2.0
+version: 0.2.1
 status: draft-for-ratification
 verified_commit: 73540faa0
 changelog:
+  - 0.2.1 (2026-09-02) — ADR-2028 amendment: `[vault].working` (second vault root, exported as VAULT_WORKING_ROOT/VAULT_WORKING_PAGES) and `[vault].transcripts` (podcast transcript store outside both vaults, VAULT_TRANSCRIPTS) for the sibling-vault corpus layout of jjohare/visionGraph; podcast-knowledge-ingest reads only these.
   - 0.2.0 (2026-09-02) — ADR-2028/2029: [vault] manifest section is the single corpus path authority (entrypoint exports VAULT_ROOT/VAULT_PAGES/VAULT_FORMAT/VAULT_TUI; system-manifest reports the resolved vault as two entries, vault=boot and vault-tui=rebuild); tmux window 9 "Notes" row added.
   - 0.1.1 (2026-08-31) — correct AoE :9095 to --auth token (live at 73540faa0, was mis-stated as --auth none/staged); boot-probe non-orchestrator failure sets health 'degraded' (impl→off), not 'off'.
 sources:

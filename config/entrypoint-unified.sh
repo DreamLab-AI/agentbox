@@ -55,7 +55,7 @@ _ab_toml_int() { # _ab_toml_int <section> <key> <default>
 _ab_vault_resolve() {
   VAULT_ROOT="$(_ab_toml_val vault root)"
   if [ -z "$VAULT_ROOT" ]; then
-    unset VAULT_ROOT VAULT_PAGES VAULT_FORMAT VAULT_TUI
+    unset VAULT_ROOT VAULT_PAGES VAULT_FORMAT VAULT_TUI VAULT_WORKING_ROOT VAULT_WORKING_PAGES VAULT_TRANSCRIPTS
     AGENTBOX_VAULT_ENABLED=0
     export AGENTBOX_VAULT_ENABLED
     echo "[vault] disabled — no [vault] in agentbox.toml"
@@ -66,11 +66,18 @@ _ab_vault_resolve() {
   case "$VAULT_PAGES" in */) VAULT_PAGES="${VAULT_PAGES}pages" ;; esac
   VAULT_FORMAT="$(_ab_toml_val vault format)"; VAULT_FORMAT="${VAULT_FORMAT:-obsidian}"
   VAULT_TUI="$(_ab_toml_val vault tui)";       VAULT_TUI="${VAULT_TUI:-none}"
+  # ADR-2028 amendment (2026-09-02): sibling vault roots. `working` is the second
+  # vault (pages at <working>/pages); `transcripts` is the podcast transcript
+  # store outside both vaults. Optional — absent keys export nothing, and the
+  # consumers that need them (podcast-knowledge-ingest) fail loud on their own.
+  VAULT_WORKING_ROOT="$(_ab_toml_val vault working)"
+  VAULT_TRANSCRIPTS="$(_ab_toml_val vault transcripts)"
+  if [ -n "$VAULT_WORKING_ROOT" ]; then VAULT_WORKING_PAGES="${VAULT_WORKING_ROOT%/}/pages"; else VAULT_WORKING_PAGES=""; fi
   AGENTBOX_VAULT_ENABLED=1
-  export VAULT_ROOT VAULT_PAGES VAULT_FORMAT VAULT_TUI AGENTBOX_VAULT_ENABLED
+  export VAULT_ROOT VAULT_PAGES VAULT_FORMAT VAULT_TUI VAULT_WORKING_ROOT VAULT_WORKING_PAGES VAULT_TRANSCRIPTS AGENTBOX_VAULT_ENABLED
   # ADR-2028 D2: the pre-vault variable survives one release as an override.
   export ONTOLOGY_PAGES_DIR="${ONTOLOGY_PAGES_DIR:-$VAULT_PAGES}"
-  echo "[vault] root=$VAULT_ROOT pages=$VAULT_PAGES format=$VAULT_FORMAT tui=$VAULT_TUI"
+  echo "[vault] root=$VAULT_ROOT pages=$VAULT_PAGES format=$VAULT_FORMAT tui=$VAULT_TUI working=${VAULT_WORKING_ROOT:-—} transcripts=${VAULT_TRANSCRIPTS:-—}"
 }
 
 # ADR-2029 D4: until the image bakes Rune, the bind-mounted cargo bin dir is
@@ -1997,6 +2004,9 @@ export VAULT_ROOT="${VAULT_ROOT:-}"
 export VAULT_PAGES="${VAULT_PAGES:-}"
 export VAULT_FORMAT="${VAULT_FORMAT:-}"
 export VAULT_TUI="${VAULT_TUI:-}"
+export VAULT_WORKING_ROOT="${VAULT_WORKING_ROOT:-}"
+export VAULT_WORKING_PAGES="${VAULT_WORKING_PAGES:-}"
+export VAULT_TRANSCRIPTS="${VAULT_TRANSCRIPTS:-}"
 export ONTOLOGY_PAGES_DIR="${ONTOLOGY_PAGES_DIR:-}"
 # ADR-2029 D4: cargo-installed binaries (rune) before the image bakes them.
 if [ -d "/home/devuser/workspace/.cargo/bin" ]; then

@@ -683,6 +683,14 @@ root   = "/home/devuser/workspace/visionGraph/knowledge"   # Obsidian vault root
 pages  = "pages"                            # authored pages, relative to root
 format = "obsidian"                         # obsidian | logseq-legacy (read-tolerance only)
 tui    = "rune"                             # rune | none — see ADR-2029
+# Second vault root (the working graph): pages at <working>/pages. Exported as
+# VAULT_WORKING_ROOT / VAULT_WORKING_PAGES. A layout with more than one vault
+# root cannot be expressed by `root` alone (ADR-2028 amendment, 2026-09-02).
+working     = "/home/devuser/workspace/visionGraph/working"
+# Podcast transcript store (<slug>.md + .enrichment/<slug>.json) read and
+# extended by podcast-knowledge-ingest. OUTSIDE both vaults so Obsidian does
+# not index it. Exported as VAULT_TRANSCRIPTS.
+transcripts = "/home/devuser/workspace/visionGraph/transcripts"
 
 [skills.harness]
 # Harness Engineering MCP bridge (ADR-004). Agents inspect harness templates

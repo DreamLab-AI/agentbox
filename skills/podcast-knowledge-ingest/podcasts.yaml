@@ -5,7 +5,7 @@ podcasts:
     # ADR-2028: paths derive from the [vault] path authority. ingest.py expands
     # these with os.path.expandvars, so relocating [vault].root in agentbox.toml
     # relocates this skill's output with no edit here.
-    output_dir: "${VAULT_ROOT}/ai-daily-brief-transcripts"
+    output_dir: "${VAULT_TRANSCRIPTS}"
     ontology_dir: "${VAULT_PAGES}"
 
 settings:

@@ -39,9 +39,18 @@ against a stale tree.
    pages  = "pages"                            # authored pages, relative to root
    format = "obsidian"                         # obsidian | logseq-legacy (read-tolerance only)
    tui    = "rune"                             # rune | none — see ADR-2029
+   working     = "/home/devuser/workspace/visionGraph/working"      # second vault root (pages at <working>/pages)
+   transcripts = "/home/devuser/workspace/visionGraph/transcripts"  # podcast transcript store, outside both vaults
    ```
 
-2. The entrypoint exports `VAULT_ROOT`, `VAULT_PAGES` (= `root/pages`) and
+   The corpus repo is `jjohare/visionGraph` (owner decision 2026-09-02, a
+   history-preserving split of the archived `jjohare/logseq`): two sibling
+   Obsidian vaults, `knowledge/` and `working/`, plus `transcripts/`. A
+   layout with more than one vault root cannot be expressed by `root`
+   alone, hence the two extra keys.
+
+2. The entrypoint exports `VAULT_ROOT`, `VAULT_PAGES` (= `root/pages`),
+   `VAULT_WORKING_ROOT`, `VAULT_WORKING_PAGES`, `VAULT_TRANSCRIPTS` and
    `VAULT_FORMAT` from the manifest for every supervised program and every
    tmux window, and derives `ONTOLOGY_PAGES_DIR` from `VAULT_PAGES` (the old
    variable stays as an override for one release).

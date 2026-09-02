@@ -304,6 +304,12 @@ function buildSystemView(manifest, adapters) {
     pages: vaultRoot ? `${vaultRoot.replace(/\/+$/, '')}/${vaultPagesRel}` : null,
     format: (vaultSection && vaultSection.format) || (vaultRoot ? 'obsidian' : null),
     tui: (vaultSection && vaultSection.tui) || (vaultRoot ? 'none' : null),
+    // ADR-2028 amendment (2026-09-02): sibling vault roots + transcript store.
+    working_root: (vaultSection && typeof vaultSection.working === 'string') ? vaultSection.working : null,
+    working_pages: (vaultSection && typeof vaultSection.working === 'string') ? `${vaultSection.working.replace(/\/+$/, '')}/pages` : null,
+    transcripts: (vaultSection && typeof vaultSection.transcripts === 'string') ? vaultSection.transcripts : null,
+    env_working_pages: process.env.VAULT_WORKING_PAGES || null,
+    env_transcripts: process.env.VAULT_TRANSCRIPTS || null,
     env_root: process.env.VAULT_ROOT || null,
     env_pages: process.env.VAULT_PAGES || null,
     drift: Boolean(vaultRoot) && Boolean(process.env.VAULT_ROOT) && process.env.VAULT_ROOT !== vaultRoot,

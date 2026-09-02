@@ -11,15 +11,15 @@ PATH=/nix/store/cp7wjv1pl4wapfk48svvizxd089v9h0a-coreutils-9.11/bin:/nix/store/i
 # pages are never edited; assertions land on podcast-evidence___* ledger pages
 # with [[Topic]] wikilinks (sandbox e2e verified: 0 curated pages modified,
 # pipeline.validate clean, idempotent). First runs capped in podcasts.yaml.
-17 6 * * 1 /home/devuser/workspace/project/agentbox/skills/podcast-knowledge-ingest/run-ingest.sh /home/devuser/workspace/project/agentbox/skills/podcast-knowledge-ingest/podcasts.yaml 2>&1 | tee -a ${VAULT_ROOT}/ai-daily-brief-transcripts/.ingest-log.txt
+17 6 * * 1 /home/devuser/workspace/project/agentbox/skills/podcast-knowledge-ingest/run-ingest.sh /home/devuser/workspace/project/agentbox/skills/podcast-knowledge-ingest/podcasts.yaml 2>&1 | tee -a ${VAULT_TRANSCRIPTS}/.ingest-log.txt
 
 # Promotion stage 2h after ingest (Monday 08:17 UTC): survivors -> proposal
 # dossiers for the governed queue; rejects -> vault workingGraph news pages.
 # Idempotent (fingerprint-banked), capped at 15/week; judge-unavailable
 # candidates defer cleanly and retry next week.
-17 8 * * 1 /home/devuser/workspace/project/agentbox/skills/podcast-knowledge-ingest/run-promote.sh 2>&1 | tee -a ${VAULT_ROOT}/ai-daily-brief-transcripts/.promote-log.txt
+17 8 * * 1 /home/devuser/workspace/project/agentbox/skills/podcast-knowledge-ingest/run-promote.sh 2>&1 | tee -a ${VAULT_TRANSCRIPTS}/.promote-log.txt
 
 # Stage 3 (Monday 08:47): submit survivor dossiers to the governed ontology
 # proposal queue (Whelk gate -> ACSP human approval). Idempotent per
 # fingerprint set; unresolvable targets are skipped, never guessed.
-47 8 * * 1 cd /home/devuser/workspace/project/agentbox/skills/podcast-knowledge-ingest && node submit-proposals.mjs 2>&1 | tee -a ${VAULT_ROOT}/ai-daily-brief-transcripts/.promote-log.txt
+47 8 * * 1 cd /home/devuser/workspace/project/agentbox/skills/podcast-knowledge-ingest && node submit-proposals.mjs 2>&1 | tee -a ${VAULT_TRANSCRIPTS}/.promote-log.txt

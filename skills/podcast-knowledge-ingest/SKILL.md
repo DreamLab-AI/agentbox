@@ -85,9 +85,9 @@ podcasts:
     name: "AI Daily Brief"
     focus: "AI industry news, policy, models, companies"
     # Paths derive from the vault path authority (ADR-2028). ingest.py expands
-    # ${VAULT_ROOT} / ${VAULT_PAGES} — the values agentbox.toml's [vault]
+    # ${VAULT_TRANSCRIPTS} / ${VAULT_PAGES} / ${VAULT_WORKING_PAGES} — the values agentbox.toml's [vault]
     # section resolves to — so relocating the vault relocates this output.
-    output_dir: "${VAULT_ROOT}/ai-daily-brief-transcripts"
+    output_dir: "${VAULT_TRANSCRIPTS}"
     ontology_dir: "${VAULT_PAGES}"
 
 settings:
@@ -251,7 +251,7 @@ python3 promote.py --pages-dir <graph pages dir> --proposals-dir promotions/prop
 
 # Canonical full run — rejects land as readable news pages in the working graph:
 python3 promote.py --pages-dir "$VAULT_PAGES" --proposals-dir promotions/proposals \
-  --working-graph-dir "$VAULT_ROOT/workingGraph/pages" --limit 15
+  --working-graph-dir "$VAULT_WORKING_PAGES" --limit 15
 ```
 
 Rejected-from-ontology is not discarded: with `--working-graph-dir`, every

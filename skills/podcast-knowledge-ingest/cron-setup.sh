@@ -10,7 +10,7 @@ SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RUNNER="${SKILL_DIR}/run-ingest.sh"
 CONFIG="${SKILL_DIR}/podcasts.yaml"
 # ADR-2028: log beside the transcripts under the vault path authority.
-LOG="${VAULT_ROOT:-/home/devuser/workspace/vault}/ai-daily-brief-transcripts/.ingest-log.txt"
+LOG="${VAULT_TRANSCRIPTS:?[vault].transcripts unset in agentbox.toml}/.ingest-log.txt"
 
 # Monday 06:17 UTC, off-minute to avoid thundering herd
 CRON_LINE="17 6 * * 1 ${RUNNER} ${CONFIG} >> ${LOG} 2>&1"

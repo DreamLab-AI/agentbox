@@ -1100,7 +1100,7 @@ def phase_mark_complete(files: list[Path], assertions_by_file: dict[str, list[di
 # ---------------------------------------------------------------------------
 
 def _expand_paths(config: dict) -> dict:
-    """Expand ${VAULT_ROOT} / ${VAULT_PAGES} in configured directories.
+    """Expand ${VAULT_TRANSCRIPTS} / ${VAULT_PAGES} / ${VAULT_WORKING_PAGES} in configured directories.
 
     ADR-2028: podcasts.yaml carries vault-relative placeholders rather than
     absolute corpus paths, so relocating the vault in agentbox.toml relocates

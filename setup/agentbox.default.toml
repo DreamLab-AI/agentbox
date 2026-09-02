@@ -699,6 +699,14 @@ format = "obsidian"                         # obsidian | logseq-legacy (read-tol
 # inline comments with /#[^"]*$/, so a quoted word in a trailing comment leaks
 # into the parsed value (management-api/adapters/manifest-loader.js:35).
 tui    = "none"                             # rune | none — see ADR-2029
+# Second vault root (the working graph): pages at <working>/pages. Exported as
+# VAULT_WORKING_ROOT / VAULT_WORKING_PAGES. A layout with more than one vault
+# root cannot be expressed by `root` alone (ADR-2028 amendment, 2026-09-02).
+working     = "/home/devuser/workspace/vault-working"
+# Podcast transcript store (<slug>.md + .enrichment/<slug>.json) read and
+# extended by podcast-knowledge-ingest. OUTSIDE both vaults so Obsidian does
+# not index it. Exported as VAULT_TRANSCRIPTS.
+transcripts = "/home/devuser/workspace/vault-transcripts"
 
 [skills.harness]
 # Harness Engineering MCP bridge (ADR-004). Agents inspect harness templates

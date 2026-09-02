@@ -247,6 +247,16 @@
           "default": "obsidian",
           "description": "On-disk corpus dialect. \"obsidian\" is the one format writers emit \u2014 YAML frontmatter pages (VAULT-corpus-format V2/V5). \"logseq-legacy\" is READ-tolerance only, for an unconverted Logseq graph during the bounded transition window; no writer ever emits key:: value lines."
         },
+        "working": {
+          "type": "string",
+          "description": "ADR-2028 (amended 2026-09-02): absolute path of the second vault root (the working graph); pages live at <working>/pages. Exported as VAULT_WORKING_ROOT and VAULT_WORKING_PAGES. Needed because a corpus with sibling vault roots (jjohare/visionGraph: knowledge/ + working/) cannot be expressed by `root` alone.",
+          "examples": ["/home/devuser/workspace/visionGraph/working"]
+        },
+        "transcripts": {
+          "type": "string",
+          "description": "ADR-2028 (amended 2026-09-02): absolute path of the podcast transcript store (<slug>.md + .enrichment/<slug>.json) that podcast-knowledge-ingest reads and extends. Sits OUTSIDE both vaults so Obsidian does not index it. Exported as VAULT_TRANSCRIPTS.",
+          "examples": ["/home/devuser/workspace/visionGraph/transcripts"]
+        },
         "tui": {
           "type": "string",
           "enum": [
