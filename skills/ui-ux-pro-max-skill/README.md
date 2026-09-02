@@ -4,7 +4,7 @@
   <a href="https://github.com/nextlevelbuilder/ui-ux-pro-max-skill/releases"><img src="https://img.shields.io/github/v/release/nextlevelbuilder/ui-ux-pro-max-skill?style=for-the-badge&color=blue" alt="GitHub Release"></a>
   <img src="https://img.shields.io/badge/reasoning_rules-100-green?style=for-the-badge" alt="100 Reasoning Rules">
   <img src="https://img.shields.io/badge/UI_styles-67-purple?style=for-the-badge" alt="67 UI Styles">
-  <img src="https://img.shields.io/badge/python-3.x-yellow?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.x">
+  <img src="https://img.shields.io/badge/rust-search_engine-orange?style=for-the-badge&logo=rust&logoColor=white" alt="Rust search engine">
   <a href="https://github.com/nextlevelbuilder/ui-ux-pro-max-skill/blob/main/LICENSE"><img src="https://img.shields.io/github/license/nextlevelbuilder/ui-ux-pro-max-skill?style=for-the-badge&color=green" alt="License"></a>
 </p>
 
@@ -291,20 +291,11 @@ uipro init --offline        # Skip GitHub download, use bundled assets
 
 ## Prerequisites
 
-Python 3.x is required for the search script.
+`uiux-search` is a compiled Rust binary (no Python, no runtime dependencies). Check
+it's on `PATH`:
 
 ```bash
-# Check if Python is installed
-python3 --version
-
-# macOS
-brew install python3
-
-# Ubuntu/Debian
-sudo apt update && sudo apt install python3
-
-# Windows
-winget install Python.Python.3.12
+uiux-search --help
 ```
 
 ## Usage
@@ -453,19 +444,19 @@ For direct access to the design system generator:
 
 ```bash
 # Generate design system with ASCII output
-python3 .claude/skills/ui-ux-pro-max/scripts/search.py "beauty spa wellness" --design-system -p "Serenity Spa"
+uiux-search "beauty spa wellness" --design-system -p "Serenity Spa"
 
 # Generate with Markdown output
-python3 .claude/skills/ui-ux-pro-max/scripts/search.py "fintech banking" --design-system -f markdown
+uiux-search "fintech banking" --design-system -f markdown
 
 # Domain-specific search
-python3 .claude/skills/ui-ux-pro-max/scripts/search.py "glassmorphism" --domain style
-python3 .claude/skills/ui-ux-pro-max/scripts/search.py "elegant serif" --domain typography
-python3 .claude/skills/ui-ux-pro-max/scripts/search.py "dashboard" --domain chart
+uiux-search "glassmorphism" --domain style
+uiux-search "elegant serif" --domain typography
+uiux-search "dashboard" --domain chart
 
 # Stack-specific guidelines
-python3 .claude/skills/ui-ux-pro-max/scripts/search.py "form validation" --stack react
-python3 .claude/skills/ui-ux-pro-max/scripts/search.py "responsive layout" --stack html-tailwind
+uiux-search "form validation" --stack react
+uiux-search "responsive layout" --stack html-tailwind
 ```
 
 ### Persist Design System (Master + Overrides Pattern)
@@ -474,10 +465,10 @@ Save your design system to files for **hierarchical retrieval across sessions**:
 
 ```bash
 # Generate and persist to design-system/MASTER.md
-python3 .claude/skills/ui-ux-pro-max/scripts/search.py "SaaS dashboard" --design-system --persist -p "MyApp"
+uiux-search "SaaS dashboard" --design-system --persist -p "MyApp"
 
 # Also create a page-specific override file
-python3 .claude/skills/ui-ux-pro-max/scripts/search.py "SaaS dashboard" --design-system --persist -p "MyApp" --page "dashboard"
+uiux-search "SaaS dashboard" --design-system --persist -p "MyApp" --page "dashboard"
 ```
 
 This creates a `design-system/` folder structure:

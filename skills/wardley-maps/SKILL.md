@@ -13,7 +13,7 @@ Transform ANY input into a strategic Wardley map for understanding competitive p
 |------|---------|------|
 | **Mermaid `wardley-beta`** *(default)* | `mmdc` 11.15.0+ from the `mermaid-diagrams` skill | Plain `.mmd` files, GitHub-native preview, embed in markdown/LaTeX, version-control friendly |
 | OnlineWardleyMaps (`.owm`) | https://onlinewardleymaps.com or tractorjuice converter | Editing in the canonical web tool, exporting CC-BY-SA assets |
-| Custom HTML/SVG | `tools/generate_wardley_map.py` here | Bespoke interactivity / report-builder dark-theme dashboards |
+| Custom HTML/SVG | `wardley-generate` / `wardley-mapper` (Rust, `services/skill-tools`) | Bespoke interactivity / report-builder dark-theme dashboards |
 
 Mermaid 11.15.0 (2026-05-11) finalised `wardley-beta` grammar -- hyphenated
 names render unquoted, label sanitisation no longer mangles parentheses,
@@ -161,11 +161,20 @@ block inheritance, not a converter bug).
 
 ### Custom HTML/SVG (bespoke interactivity)
 
-```python
-# tools/generate_wardley_map.py -- retained for report-builder
-from tools.generate_wardley_map import WardleyMapGenerator
-generator = WardleyMapGenerator()
-map_html = generator.create_map(components, dependencies)
+`generate_wardley_map.py` was ported to Rust and now ships as two `services/skill-tools`
+binaries -- retained for report-builder use:
+
+```bash
+# Standalone demo binary: writes wardley_map.html for a hardcoded example map.
+wardley-generate
+
+# Programmatic use: send create_map over the wardley-mapper stdin/stdout JSON
+# protocol (see "Module 5: MCP Tool" in IMPLEMENTATION_GUIDE.md) instead of
+# importing a WardleyMapGenerator class -- Rust binaries aren't importable
+# like Python modules.
+echo '{"method":"create_map","params":{"components":COMPONENTS,"dependencies":DEPENDENCIES}}' \
+  | wardley-mapper
+# -> {"result": {"success": true, "map_html": "...", "components": [...], ...}}
 ```
 
 ### Text-Based Sketch
@@ -213,9 +222,11 @@ See [references/strategic-patterns.md](references/strategic-patterns.md)
 ## Quick Command
 
 For instant mapping:
-```python
-# Read the input and generate map immediately
-exec(open('tools/quick_map.py').read())
+```bash
+# Runs the same 3-choice menu (interactive / parse-from-file / quick-example)
+# quick_map.py used to offer via exec(open(...)) -- that has no Rust
+# equivalent, so this is a plain subprocess invocation instead.
+wardley-quick-map
 ```
 
 ## LaTeX Integration

@@ -1,0 +1,81 @@
+[workspace]
+
+[package]
+name = "skill-tools"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+license = "MIT OR Apache-2.0"
+description = "Rust ports of agentbox skill tooling: UI/UX Pro Max BM25 search & design-system generation, Wardley Map generation/analysis/heuristics, and docs-alignment validators (links, mermaid, ASCII diagrams, reports)."
+
+[lib]
+name = "skill_tools"
+path = "src/lib.rs"
+
+# ---- ui-ux-pro-max-skill (Part A) ----
+[[bin]]
+name = "uiux-search"
+path = "src/bin/uiux_search.rs"
+
+# ---- wardley-maps (Part B) ----
+[[bin]]
+name = "wardley-generate"
+path = "src/bin/wardley_generate.rs"
+
+[[bin]]
+name = "wardley-heuristics"
+path = "src/bin/wardley_heuristics.rs"
+
+[[bin]]
+name = "wardley-interactive"
+path = "src/bin/wardley_interactive.rs"
+
+[[bin]]
+name = "wardley-quick-map"
+path = "src/bin/wardley_quick_map.rs"
+
+[[bin]]
+name = "wardley-strategic-analyzer"
+path = "src/bin/wardley_strategic_analyzer.rs"
+
+[[bin]]
+name = "wardley-mapper"
+path = "src/bin/wardley_mapper.rs"
+
+# ---- docs-alignment (Part C) ----
+[[bin]]
+name = "docs-alignment"
+path = "src/bin/docs_alignment_bin.rs"
+
+[[bin]]
+name = "docs-validate-links"
+path = "src/bin/docs_validate_links.rs"
+
+[[bin]]
+name = "docs-check-mermaid"
+path = "src/bin/docs_check_mermaid.rs"
+
+[[bin]]
+name = "docs-detect-ascii"
+path = "src/bin/docs_detect_ascii.rs"
+
+[[bin]]
+name = "docs-generate-report"
+path = "src/bin/docs_generate_report.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+csv = "1"
+regex = "1"
+walkdir = "2"
+chrono = { version = "0.4", features = ["serde"] }
+thiserror = "2"
+urlencoding = "2"
+pulldown-cmark = "0.12"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "process", "time"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+
+[dev-dependencies]
+tempfile = "3"

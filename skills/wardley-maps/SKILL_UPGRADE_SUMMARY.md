@@ -31,18 +31,25 @@ components, dependencies = parser.parse(
 # Assigns: React(0.7, 0.8), ML(0.35, 0.4), AWS(0.95, 0.1)
 ```
 
-#### 1.2: Programmatic Heuristics Engine (`tools/heuristics_engine.py`)
-- **Lines of Code**: 680
-- **Rule Count**: 15+ core heuristics
-- **Pattern Database**: 25+ known component patterns
+#### 1.2: Programmatic Heuristics Engine (Rust: `services/skill-tools/src/wardley/heuristics.rs` + `heuristics_patterns.rs`; was `tools/heuristics_engine.py`)
+- **Lines of Code**: 409 (`heuristics.rs`, algorithmic logic) + 215
+  (`heuristics_patterns.rs`, the pattern/rule data tables) = 624 total, ported from 626
+  lines of Python
+- **Rule Count**: 17 core heuristics (technical: 5, business: 4, competitive: 3,
+  financial: 5)
+- **Pattern Database**: 12 exact-match keys (each with 2-3 fuzzy-match examples)
 - **Key Features**:
-  - `HeuristicsEngine` singleton factory
+  - `HeuristicsEngine::new()` (no singleton caching in the Python original either —
+    `get_heuristics_engine()` just constructs a fresh instance every call, faithfully
+    reproduced)
   - Wardley evolution characteristics database
   - Domain-specific rules (technical, business, competitive, financial)
-  - 40+ recognized technology patterns
+  - 12 recognized technology patterns with fuzzy-match examples
   - Fuzzy matching with Levenshtein similarity
   - Confidence-scored positioning
   - Rationale generation for each placement
+  - The Python original's `import yaml` was confirmed dead (grep shows no other use
+    anywhere in the file) and dropped — no yaml crate dependency needed
 
 **Known Patterns**:
 - Databases: PostgreSQL, MySQL, MongoDB
@@ -59,24 +66,32 @@ components, dependencies = parser.parse(
 - Competitive: Market position, disruption identification
 - Financial: Margin-based evolution inference
 
-**Usage Example**:
-```python
-engine = get_heuristics_engine()
-evo, vis = engine.score_component(
-    'PostgreSQL',
-    {'is_infrastructure': True}
-)
-# Returns: (0.9, 0.15) with 90% confidence
-rationale = engine.get_component_rationale('PostgreSQL', 0.9, 0.15)
-# "Matches known Database pattern (commodity)"
+**Usage Example** (via the `wardley-heuristics` demo binary, or `wardley-mapper`'s
+`create_map` for exact pattern matches -- there is no importable library any more):
+```bash
+$ wardley-heuristics
+PostgreSQL Database:
+  Evolution: 0.90 (Commodity)
+  Visibility: 0.15 (Low (Infrastructure/Internal))
+  Rationale: Infrastructure component typically at commodity stage
 ```
 
 ### Phase 2: Feature Expansion ✅ COMPLETE
 
-#### 2.1: Strategic Analysis Module (`tools/strategic_analyzer.py`)
-- **Lines of Code**: 580
+#### 2.1: Strategic Analysis Module (Rust: `services/skill-tools/src/wardley/strategic_analyzer.rs` + `strategic_analyzer_insights.rs`; was `tools/strategic_analyzer.py`)
+- **Lines of Code**: 314 (`strategic_analyzer.rs`, orchestration + markdown export) +
+  423 (`strategic_analyzer_insights.rs`, the eight `identify_*`/`assess_*`/
+  `generate_recommendations` analyzers + graph helpers) = 737 total, ported from 579
+  lines of Python
 - **Insight Types**: 6 categories
-- **Analysis Methods**: 9 specialized analyzers
+- **Analysis Methods**: 8 specialized analyzers + graph/path helpers
+- **Bug fixed, not merely ported**: the Python original's `analyze` method annotated
+  its return type as `-> StrategicAnalysis`, a name that is never defined anywhere in
+  the file (only `MapAnalysis` is). Python evaluates annotations at `def` time, so this
+  raised `NameError` unconditionally at import -- the module, and everything that
+  imported it (`wardley_mapper.py`, at its own top level), could never actually run.
+  The Rust port returns `MapAnalysis` as evidently intended and is otherwise a
+  straight, working port of every other line.
 - **Key Features**:
   - Automatic SWOT generation
   - Competitive advantage identification
@@ -124,11 +139,10 @@ rationale = engine.get_component_rationale('PostgreSQL', 0.9, 0.15)
 - New revenue stream identification
 - Evolutionary planning
 
-**Usage Example**:
-```python
-analysis = analyze_wardley_map(components, dependencies)
-
-print(analysis.strategic_recommendations)
+**Usage Example** (via `wardley-mapper`'s `analyze_map`):
+```bash
+echo '{"method":"analyze_map","params":{"components":[...],"dependencies":[...]}}' \
+  | wardley-mapper | jq '.result.analysis.strategic_recommendations'
 # [
 #   "INNOVATION LEADERSHIP: Accelerate genesis-stage innovations...",
 #   "COMPETITIVE MOAT: Protect custom differentiators...",
@@ -136,14 +150,22 @@ print(analysis.strategic_recommendations)
 #   "NEW REVENUE STREAMS: Evaluate productizing mature components...",
 #   "EVOLUTIONARY PLANNING: Begin preparation for evolution...",
 # ]
-
-# Export as markdown report
-markdown = StrategicAnalyzer.export_analysis_to_markdown(analysis)
 ```
+The same response's `.result.markdown_report` field carries the markdown export
+(`StrategicAnalyzer::export_analysis_to_markdown` in Rust).
 
-#### 2.2: MCP Tool Exposure (`tools/wardley_mapper.py`)
-- **Updated Methods**: 5 MCP endpoints
-- **Lines of Code**: 210 (enhanced from 64)
+#### 2.2: MCP Tool Exposure (Rust: `services/skill-tools/src/wardley/mapper.rs` + `src/bin/wardley_mapper.rs`; was `tools/wardley_mapper.py`)
+- **Endpoints**: 4 MCP methods (`parse_text`, `create_map`, `analyze_map`,
+  `create_interactive_map` -- `wardley_mapper.py`'s own module docstring called this
+  "5 MCP endpoints" while listing `parse_text` twice; the actual dispatch table in
+  `main()` has 4 distinct methods)
+- **Lines of Code**: 419 (`mapper.rs`) + 10 (`src/bin/wardley_mapper.rs`) = 429 total,
+  ported from 207 lines of Python
+- **Bug fixed, not merely ported**: as committed, `wardley_mapper.py` could never
+  actually start -- it imports `strategic_analyzer` at its own module scope, and that
+  module's `NameError` (see 2.1) aborted the import before `main()` was reachable.
+  `wardley-mapper` fixes that; the stdin/stdout JSON-line protocol and every response
+  shape below are otherwise unchanged.
 - **Tool Integration**: Seamless Claude AI integration
 
 **Available MCP Methods**:
@@ -205,8 +227,15 @@ markdown = StrategicAnalyzer.export_analysis_to_markdown(analysis)
 
 ### Phase 4: User Experience ✅ COMPLETE
 
-#### 4.1: Interactive Maps (`tools/interactive_map_generator.py`)
-- **Lines of Code**: 650
+#### 4.1: Interactive Maps (Rust: `services/skill-tools/src/wardley/interactive.rs` + `interactive_template.rs` + `interactive_template_script.rs`; was `tools/interactive_map_generator.py`)
+- **Lines of Code**: 255 (`interactive.rs`, logic) + 366 (`interactive_template.rs`,
+  embedded CSS/HTML head) + 238 (`interactive_template_script.rs`, embedded D3.js
+  script) = 859 total, ported from 736 lines of Python
+- **Critical bug fixed, not merely ported**: the Python original's `const data =
+  {{{json.dumps(...)}}};` double-brace f-string escaping produced **invalid
+  JavaScript** (`SyntaxError: Unexpected token '{'`, confirmed with `node -e`) --
+  every interactive map this tool has ever generated failed to render anything in a
+  real browser, full stop. The Rust port emits a single valid JSON object.
 - **Visualization Library**: D3.js v7
 - **Interactive Features**: 12+
 - **Key Capabilities**:
@@ -360,20 +389,53 @@ python -m spacy download en_core_web_sm
 
 ## 📋 File Structure
 
+Five of the six original `tools/*.py` files were ported to Rust (`services/skill-tools`,
+shared with the `ui-ux-pro-max` and `docs-alignment` skill ports) and deleted from
+this skill's `tools/` directory; `advanced_nlp_parser.py` (spaCy-based) stays Python
+and untouched, reached via a `python3` subprocess shell-out (`nlp_bridge.rs`) rather
+than a direct import. Line counts below are the real, current `wc -l` output for each
+file.
+
 ```
 <agentbox>/skills/wardley-maps/
 ├── tools/
-│   ├── wardley_mapper.py              # MCP main entry (210 lines)
-│   ├── advanced_nlp_parser.py         # NLP engine (545 lines)
-│   ├── heuristics_engine.py           # Heuristics KB (680 lines)
-│   ├── strategic_analyzer.py          # Analysis engine (580 lines)
-│   ├── interactive_map_generator.py   # D3.js maps (650 lines)
-│   ├── generate_wardley_map.py        # Original SVG generator
-│   └── quick_map.py                   # CLI interface
-├── README.md                           # Feature documentation
-├── SKILL_UPGRADE_SUMMARY.md           # This file
-└── assets/, examples/, references/    # Supporting materials
+│   └── advanced_nlp_parser.py                    # NLP engine, unchanged (480 lines)
+├── README.md                                      # Feature documentation
+├── SKILL_UPGRADE_SUMMARY.md                       # This file
+└── assets/, examples/, references/                # Supporting materials
+
+<agentbox>/services/skill-tools/src/wardley/        # Rust port (this crate also
+│                                                    # hosts the uiux/ and
+│                                                    # docs_alignment/ skill ports)
+├── mod.rs                                          # shared types + helpers (135 lines)
+├── generator.rs                                    # WardleyMapGenerator (391 lines)
+├── generator_template.rs                           # embedded HTML/CSS (116 lines)
+├── heuristics.rs                                    # HeuristicsEngine logic (409 lines)
+├── heuristics_patterns.rs                          # pattern/rule data tables (215 lines)
+├── interactive.rs                                  # InteractiveMapGenerator (255 lines)
+├── interactive_template.rs                         # embedded HTML/CSS head (366 lines)
+├── interactive_template_script.rs                  # embedded D3.js script (238 lines)
+├── quick_map.rs                                    # quick_parse_input etc. (475 lines)
+├── strategic_analyzer.rs                           # StrategicAnalyzer core (314 lines)
+├── strategic_analyzer_insights.rs                  # identify_* analyzers (423 lines)
+├── mapper.rs                                       # wardley-mapper dispatch (419 lines)
+└── nlp_bridge.rs                                   # python3 subprocess shell-out (197 lines)
+
+<agentbox>/services/skill-tools/src/bin/            # one binary per tool
+├── wardley_generate.rs             -> wardley-generate             (35 lines)
+├── wardley_heuristics.rs           -> wardley-heuristics           (41 lines)
+├── wardley_interactive.rs          -> wardley-interactive          (32 lines)
+├── wardley_quick_map.rs            -> wardley-quick-map            (109 lines)
+├── wardley_strategic_analyzer.rs   -> wardley-strategic-analyzer   (40 lines)
+└── wardley_mapper.rs               -> wardley-mapper               (10 lines)
 ```
+
+Rust total: 3,953 lines across 13 `src/wardley/` modules + 267 lines across 6 `src/bin/`
+binaries (4,220 lines), ported from 2,812 lines of Python across the six retired files
+(`wardley_mapper.py` 207, `generate_wardley_map.py` 358, `heuristics_engine.py` 626,
+`interactive_map_generator.py` 736, `quick_map.py` 306, `strategic_analyzer.py` 579).
+The line-count growth is mostly doc comments recording every bug found/fixed/replicated
+and Rust's more explicit type/error-handling syntax, not new functionality.
 
 ## 🎓 Learning Outcomes
 

@@ -56,8 +56,9 @@ Whether you have structured data, unstructured text, business descriptions, tech
 
 ### Method 2: Interactive CLI Mode
 ```bash
-cd <agentbox>/skills/wardley-maps/tools
-python3 quick_map.py
+# quick_map.py was ported to Rust -- same 3-choice menu (interactive / parse-from-file
+# / quick-example), same prompts, now a compiled binary instead of a Python script.
+wardley-quick-map
 # Follow the prompts to create your map
 ```
 
@@ -82,100 +83,78 @@ components, dependencies = parse_components_text(text, use_advanced_nlp=True)
 ```
 
 ### Method 4: Intelligent Heuristics-Based Positioning
-```python
-from tools.heuristics_engine import get_heuristics_engine
 
-engine = get_heuristics_engine()
-
-# Score components with domain knowledge
-evolution, visibility = engine.score_component(
-    'PostgreSQL',
-    {'is_infrastructure': True}
-)
-# Returns: (0.9, 0.15) - correctly identified as commodity infrastructure
-
-# Get positioning rationale
-rationale = engine.get_component_rationale('PostgreSQL', 0.9, 0.15)
-# Returns: "Matches known Database pattern (commodity)"
+`heuristics_engine.py` was ported to Rust; there is no importable
+`get_heuristics_engine()` any more. Heuristics are applied automatically inside
+`create_map` (Method 1, exact pattern-name matches only), or explored directly with
+the `wardley-heuristics` demo binary:
+```bash
+$ wardley-heuristics
+PostgreSQL Database:
+  Evolution: 0.90 (Commodity)
+  Visibility: 0.15 (Low (Infrastructure/Internal))
+  Rationale: Infrastructure component typically at commodity stage
 ```
 
 ### Method 5: Strategic Analysis
-```python
-from tools.strategic_analyzer import analyze_wardley_map
 
-components = [...]
-dependencies = [...]
+`strategic_analyzer.py` was ported to Rust; use `wardley-mapper`'s `analyze_map`
+method (Method 1) instead of importing `analyze_wardley_map`:
+```bash
+echo '{"method":"analyze_map","params":{"components":COMPONENTS,"dependencies":DEPENDENCIES}}' \
+  | wardley-mapper | jq '.result.analysis'
+# -> {"competitive_advantages": [...], "vulnerabilities": [...],
+#     "opportunities": [...], "threats": [...], ...}
 
-analysis = analyze_wardley_map(components, dependencies)
-
-# Access strategic insights
-print(f"Strengths: {analysis.competitive_advantages}")
-print(f"Risks: {analysis.vulnerabilities}")
-print(f"Opportunities: {analysis.opportunities}")
-print(f"Threats: {analysis.threats}")
-
-# Export as markdown report
-markdown_report = analysis.__class__.export_analysis_to_markdown(analysis)
+# The markdown report is included in the same response:
+echo '{"method":"analyze_map","params":{"components":COMPONENTS,"dependencies":DEPENDENCIES}}' \
+  | wardley-mapper | jq -r '.result.markdown_report'
 ```
 
 ### Method 6: Interactive Visualization
-```python
-from tools.interactive_map_generator import create_interactive_wardley_map
 
-html = create_interactive_wardley_map(
-    components=components,
-    dependencies=dependencies,
-    insights={
-        'competitive_advantages': ['Custom ML Model'],
-        'vulnerabilities': ['PostgreSQL dependency'],
-        'opportunities': ['Expand ML services'],
-        'threats': ['Competitive ML platforms']
-    }
-)
-
-with open('interactive_map.html', 'w') as f:
-    f.write(html)
+`interactive_map_generator.py` was ported to Rust; use `wardley-mapper`'s
+`create_interactive_map` method:
+```bash
+echo '{"method":"create_interactive_map","params":{
+  "components": COMPONENTS,
+  "dependencies": DEPENDENCIES,
+  "insights": {
+    "competitive_advantages": ["Custom ML Model"],
+    "vulnerabilities": ["PostgreSQL dependency"],
+    "opportunities": ["Expand ML services"],
+    "threats": ["Competitive ML platforms"]
+  }
+}}' | wardley-mapper | jq -r '.result.interactive_map_html' > interactive_map.html
 ```
 
 ### Method 7: From Structured Data
-```python
-from tools.generate_wardley_map import WardleyMapGenerator
 
-# Define components with visibility and evolution
-components = [
+`generate_wardley_map.py` was ported to Rust; use `wardley-mapper`'s `create_map`
+method:
+```bash
+echo '{"method":"create_map","params":{
+  "components": [
     {"name": "User Interface", "visibility": 0.9, "evolution": 0.7},
     {"name": "Backend API", "visibility": 0.6, "evolution": 0.5},
     {"name": "Database", "visibility": 0.3, "evolution": 0.8}
-]
-
-# Define relationships
-dependencies = [
-    ("User Interface", "Backend API"),
-    ("Backend API", "Database")
-]
-
-# Generate map
-generator = WardleyMapGenerator()
-html = generator.create_map(components, dependencies)
+  ],
+  "dependencies": [["User Interface", "Backend API"], ["Backend API", "Database"]]
+}}' | wardley-mapper | jq -r '.result.map_html' > map.html
 ```
+Or the standalone `wardley-generate` demo binary for the fixed example map.
 
 ### Method 8: Use Pre-built Templates
-```python
-import json
-from tools.generate_wardley_map import WardleyMapGenerator
+```bash
+# Load a template's components/dependencies from assets/templates.json and pipe them
+# straight into wardley-mapper's create_map (templates.json itself doesn't invoke any
+# ported script -- it's plain data, unaffected by the Rust port).
+components=$(jq '.templates["e-commerce"].components' assets/templates.json)
+dependencies=$(jq '.templates["e-commerce"].dependencies' assets/templates.json)
 
-# Load templates
-with open('assets/templates.json') as f:
-    templates = json.load(f)
-
-# Get e-commerce template
-ecommerce = templates['templates']['e-commerce']
-components = ecommerce['components']
-dependencies = ecommerce['dependencies']
-
-# Generate map
-generator = WardleyMapGenerator()
-html = generator.create_map(components, dependencies)
+jq -n --argjson c "$components" --argjson d "$dependencies" \
+  '{method:"create_map", params:{components:$c, dependencies:$d}}' \
+  | wardley-mapper | jq -r '.result.map_html' > map.html
 ```
 
 ## 🎨 Key Features
@@ -196,23 +175,23 @@ text = "Our platform uses React frontend with a custom ML engine..."
 components, dependencies = parse_components_text(text, use_advanced_nlp=True)
 ```
 
-#### Programmatic Heuristics Engine (`heuristics_engine.py`)
+#### Programmatic Heuristics Engine (Rust: `services/skill-tools/src/wardley/heuristics.rs`; was `heuristics_engine.py`)
 - **Knowledge Base**: Machine-readable heuristics from Wardley theory
-- **Pattern Matching**: 40+ component patterns (PostgreSQL, React, Kubernetes, etc.)
+- **Pattern Matching**: 12 exact-match component patterns (PostgreSQL, React,
+  Kubernetes, etc.), each with 2-3 fuzzy-match examples
 - **Domain-Specific Rules**: Technical, business, competitive, financial scoring
 - **Confidence Scoring**: Rationale for each component positioning
 
-```python
-from tools.heuristics_engine import get_heuristics_engine
-
-engine = get_heuristics_engine()
-evolution, visibility = engine.score_component('PostgreSQL', context)
-rationale = engine.get_component_rationale('PostgreSQL', evolution, visibility)
+Applied automatically inside `create_map` (exact pattern-name matches only), or
+explored directly:
+```bash
+$ wardley-heuristics   # runs score_component + get_component_rationale over a fixed
+                        # set of test components, then prints the JSON knowledge base
 ```
 
 ### Phase 2: Automated Strategic Analysis
 
-#### Strategic Analyzer (`strategic_analyzer.py`)
+#### Strategic Analyzer (Rust: `services/skill-tools/src/wardley/strategic_analyzer.rs`; was `strategic_analyzer.py`)
 Automatically generates strategic insights:
 - **Competitive Advantages**: Custom differentiators in Genesis/Custom stages
 - **Vulnerabilities**: High-value components dependent on unstable infrastructure
@@ -221,13 +200,9 @@ Automatically generates strategic insights:
 - **Evolution Readiness**: Components approaching next evolution stage
 - **Critical Path**: Longest dependency chains indicating execution complexity
 
-```python
-from tools.strategic_analyzer import analyze_wardley_map
-
-analysis = analyze_wardley_map(components, dependencies)
-print(analysis.strategic_recommendations)  # AI-generated strategy advice
-print(analysis.vulnerabilities)  # Risk identification
-print(analysis.opportunities)  # Growth opportunities
+```bash
+echo '{"method":"analyze_map","params":{"components":COMPONENTS,"dependencies":DEPENDENCIES}}' \
+  | wardley-mapper | jq '.result.analysis | {strategic_recommendations, vulnerabilities, opportunities}'
 ```
 
 #### Markdown Report Generation
@@ -251,7 +226,7 @@ Export strategic analysis as formatted markdown:
 
 ### Phase 3: Interactive Visualization
 
-#### D3.js-Powered Interactive Maps (`interactive_map_generator.py`)
+#### D3.js-Powered Interactive Maps (Rust: `services/skill-tools/src/wardley/interactive.rs`; was `interactive_map_generator.py`)
 - **Pan & Zoom**: Explore large maps
 - **Component Filtering**: Filter by evolution stage or insight type
 - **Hover Tooltips**: Detailed component information on hover
@@ -340,10 +315,12 @@ Edit `references/business-mapper.md` evolution keywords
 Add to `assets/templates.json`
 
 ### Enhance NLP Processing
-Modify `tools/quick_map.py` parsing functions
+Modify `services/skill-tools/src/wardley/quick_map.rs` (`quick_parse_input`,
+`advanced_nlp_parse`) and rebuild -- was `tools/quick_map.py`.
 
 ### Style Customization
-Edit HTML/CSS in `tools/generate_wardley_map.py`
+Edit the embedded HTML/CSS in `services/skill-tools/src/wardley/generator_template.rs`
+and rebuild -- was `tools/generate_wardley_map.py`.
 
 ## 📈 Strategic Patterns Included
 
@@ -385,7 +362,7 @@ Based on Simon Wardley's pioneering work in strategic mapping:
 
 1. **Open the example**: `examples/visionclaw_wardley_map.html`
 2. **Read the analysis**: `examples/visionclaw_analysis.md`
-3. **Try the interactive tool**: Run `tools/quick_map.py`
+3. **Try the interactive tool**: Run `wardley-quick-map`
 4. **Create your own map**: Use any input method above
 
 ## 🎯 This Skill Enables You To

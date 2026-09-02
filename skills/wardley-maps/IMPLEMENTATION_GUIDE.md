@@ -10,12 +10,23 @@ python -m spacy download en_core_web_sm
 ```
 
 ### 2. Verify Installation
+
+Modules 2-5 below (`heuristics_engine.py`, `strategic_analyzer.py`,
+`interactive_map_generator.py`, `wardley_mapper.py`) were ported to Rust and now ship
+as `services/skill-tools` binaries -- there is no Python module to import for them any
+more, so the smoke test is running the binary instead. Module 1
+(`advanced_nlp_parser.py`, spaCy-based) stays Python and unchanged; its smoke test is
+unchanged too.
+
 ```bash
 cd <agentbox>/skills/wardley-maps/tools
 python3 -c "from advanced_nlp_parser import AdvancedNLPParser; print('✓ NLP Parser ready')"
-python3 -c "from heuristics_engine import get_heuristics_engine; print('✓ Heuristics Engine ready')"
-python3 -c "from strategic_analyzer import StrategicAnalyzer; print('✓ Strategic Analyzer ready')"
-python3 -c "from interactive_map_generator import InteractiveMapGenerator; print('✓ Interactive Maps ready')"
+
+# Rust binaries (built once from services/skill-tools with `cargo build --release`):
+wardley-heuristics >/dev/null && echo "✓ Heuristics Engine ready"
+echo '{"method":"analyze_map","params":{"components":[{"name":"A","visibility":0.5,"evolution":0.5}],"dependencies":[]}}' \
+  | wardley-mapper >/dev/null && echo "✓ Strategic Analyzer ready"
+wardley-interactive >/dev/null && echo "✓ Interactive Maps ready"
 ```
 
 ### 3. Register with Claude Code
@@ -85,62 +96,72 @@ components, deps = parser.parse(text)
 ```
 
 ### Module 2: Heuristics Engine
-**File**: `tools/heuristics_engine.py`
+**File**: `services/skill-tools/src/wardley/heuristics.rs` (Rust port; was
+`tools/heuristics_engine.py`)
 
-**Main Class**: `HeuristicsEngine`
+**Main type**: `skill_tools::wardley::heuristics::HeuristicsEngine`. There is no
+importable Python module any more -- `HeuristicsEngine` is not a library end users
+call directly. Two ways to reach it:
 
-**Methods**:
-```python
-engine = get_heuristics_engine()
+- **`wardley-heuristics`**: a standalone demo binary that runs a fixed set of test
+  components through `score_component`/`get_component_rationale` and prints the same
+  format the old `python3 heuristics_engine.py` demo did, plus the JSON knowledge-base
+  export (`export_rules_to_json`). Good for exploring how a given component name
+  scores.
+- **`wardley-mapper`'s `create_map` method**: applies heuristics automatically to
+  every component whose `name` is an *exact* match against a known pattern (see
+  "Known Patterns" below) -- this is the production code path, not a library call.
 
-# Score a component
-evolution, visibility = engine.score_component(name, context)
+**Known Patterns** (12 exact-match keys, each with fuzzy-match examples):
+- Databases: PostgreSQL (commodity, 0.15 visibility), MySQL (commodity), MongoDB
+  (product)
+- Frontend: React (product, 0.8 visibility), Vue (product)
+- Cloud: AWS (commodity, 0.1 visibility), Kubernetes (commodity, 0.05 visibility)
+- ML: TensorFlow (product), PyTorch (product), "ML Model" (custom)
+- API/Auth: REST API (commodity), OAuth2 (commodity)
 
-# Get rationale
-rationale = engine.get_component_rationale(name, evolution, visibility)
+**Example** -- `wardley-heuristics` output for two of its built-in test components:
+```
+$ wardley-heuristics
+=== Heuristics Engine Testing ===
 
-# Export knowledge base
-json_kb = engine.export_rules_to_json()
+PostgreSQL Database:
+  Evolution: 0.90 (Commodity)
+  Visibility: 0.15 (Low (Infrastructure/Internal))
+  Rationale: Infrastructure component typically at commodity stage
+...
 ```
 
-**Known Patterns** (40+):
-- Databases: PostgreSQL (0.9 commodity), MongoDB (0.7 product), etc.
-- Frontend: React (0.7 product), Vue (0.7 product)
-- Cloud: AWS (0.95 commodity), Kubernetes (0.9 commodity)
-- ML: TensorFlow (0.7 product), Custom Model (0.4 custom)
-
-**Example**:
-```python
-engine = get_heuristics_engine()
-
-# Known pattern - perfect accuracy
-evo, vis = engine.score_component('PostgreSQL', {'is_database': True})
-# Returns: (0.9, 0.15) - commodity infrastructure
-
-# Unknown component - heuristic scoring
-evo, vis = engine.score_component('CustomAuth', {'is_proprietary': True})
-# Returns: (0.4, 0.3) - custom component with internal visibility
-
-# Get rationale
-engine.get_component_rationale('PostgreSQL', 0.9, 0.15)
-# "Matches known Database pattern (commodity)"
+**Example** -- applying heuristics via `wardley-mapper`'s `create_map` (only an
+*exact* pattern-name match gets its `evolution`/`visibility` overwritten; a fuzzy
+match like `"PostgreSQL Database"` is scored internally but the score is discarded --
+see the Wardley port report for why this is a faithful reproduction of the Python
+original, not a simplification):
+```bash
+echo '{"method":"create_map","params":{"components":[{"name":"PostgreSQL","visibility":0.5,"evolution":0.5}]}}' \
+  | wardley-mapper
+# -> components[0].visibility becomes 0.15 (exact pattern match, overwritten)
 ```
 
 ### Module 3: Strategic Analyzer
-**File**: `tools/strategic_analyzer.py`
+**File**: `services/skill-tools/src/wardley/strategic_analyzer.rs` (Rust port; was
+`tools/strategic_analyzer.py`)
 
-**Main Class**: `StrategicAnalyzer`
+> **Note**: the Python original could never actually run this module -- its `analyze`
+> method's return-type annotation referenced an undefined name (`StrategicAnalysis`
+> instead of the `MapAnalysis` class actually defined and returned), which raises
+> `NameError` at import time, unconditionally, every time. `wardley_mapper.py` imports
+> this module at its own top level, so the entire MCP tool was dead on arrival. The
+> Rust port fixes this one dangling annotation and is otherwise a straight port -- see
+> the Wardley port report for the full writeup and verification.
 
-**Methods**:
-```python
-analyzer = StrategicAnalyzer()
+**Main type**: `skill_tools::wardley::strategic_analyzer::StrategicAnalyzer`. Reached
+via:
 
-# Analyze a map
-analysis = analyzer.analyze(components, dependencies)
-
-# Export as markdown
-markdown = StrategicAnalyzer.export_analysis_to_markdown(analysis)
-```
+- **`wardley-strategic-analyzer`**: standalone demo binary, same test data and
+  markdown output as the (never-actually-runnable) Python `__main__` demo.
+- **`wardley-mapper`'s `analyze_map` method**: the production JSON entry point (see
+  Module 5 below).
 
 **Analysis Output** (`MapAnalysis` dataclass):
 - `total_components`: Count
@@ -162,83 +183,91 @@ markdown = StrategicAnalyzer.export_analysis_to_markdown(analysis)
 - `BOTTLENECK`: System constraints
 - `EVOLUTION_READINESS`: Maturation signals
 
-**Example**:
-```python
-analyzer = StrategicAnalyzer()
-
-analysis = analyzer.analyze(
-    components=[
-        {'name': 'Frontend', 'visibility': 0.95, 'evolution': 0.7},
-        {'name': 'Custom Engine', 'visibility': 0.4, 'evolution': 0.35},
-        {'name': 'Database', 'visibility': 0.1, 'evolution': 0.9},
-    ],
-    dependencies=[
-        ('Frontend', 'Custom Engine'),
-        ('Custom Engine', 'Database')
+**Example** -- via `wardley-mapper`'s `analyze_map` (see Module 5 for the full JSON
+contract):
+```bash
+echo '{"method":"analyze_map","params":{
+  "components":[
+    {"name":"Frontend","visibility":0.95,"evolution":0.7},
+    {"name":"Custom Engine","visibility":0.4,"evolution":0.35},
+    {"name":"Database","visibility":0.1,"evolution":0.9}
+  ],
+  "dependencies":[["Frontend","Custom Engine"],["Custom Engine","Database"]]
+}}' | wardley-mapper
+```
+```json
+{"result": {
+  "success": true,
+  "analysis": {
+    "competitive_advantages": ["Custom Engine"],
+    "vulnerabilities": ["Custom Engine → Database"],
+    "strategic_recommendations": [
+      "COMPETITIVE MOAT: Protect your custom differentiators (Custom Engine) ...",
+      "..."
     ]
-)
-
-print(analysis.competitive_advantages)
-# ['Custom Engine'] - custom differentiator
-
-print(analysis.strategic_recommendations)
-# [
-#   'INNOVATION LEADERSHIP: Accelerate development...',
-#   'COMPETITIVE MOAT: Protect custom differentiators...',
-#   ...
-# ]
-
-print(analysis.vulnerabilities)
-# ['Custom Engine → Database (infrastructure risk)']
+  },
+  "markdown_report": "# Wardley Map Strategic Analysis Report\n..."
+}}
 ```
 
 ### Module 4: Interactive Map Generator
-**File**: `tools/interactive_map_generator.py`
+**File**: `services/skill-tools/src/wardley/interactive.rs` (Rust port; was
+`tools/interactive_map_generator.py`)
 
-**Main Class**: `InteractiveMapGenerator`
+> **Critical bug fixed, not merely replicated**: the Python original's embedded
+> `const data = {{{json.dumps(...)}}};` double-brace f-string escaping produced
+> **invalid JavaScript** (`SyntaxError: Unexpected token '{'`, verified with `node -e`)
+> -- every interactive map this tool ever generated failed to render anything in a
+> real browser. The Rust port emits a single, valid `const data = {...};` JSON object.
+> See the Wardley port report for the full before/after evidence.
 
-**Methods**:
-```python
-gen = InteractiveMapGenerator(width=1200, height=800)
+**Main type**: `skill_tools::wardley::interactive::InteractiveMapGenerator`. Reached
+via:
 
-# Create interactive map with insights
-html = gen.create_interactive_map(
-    components=components,
-    dependencies=dependencies,
-    strategic_insights=insights_dict
-)
-```
+- **`wardley-interactive`**: standalone demo binary, writes
+  `interactive_wardley_map.html` from the same fixed test data the Python demo used.
+- **`wardley-mapper`'s `create_interactive_map` method**: the production JSON entry
+  point.
 
-**Insights Format**:
-```python
-insights = {
-    'competitive_advantages': ['Custom ML Model'],
-    'vulnerabilities': ['High-value component dependent on commodity'],
-    'opportunities': ['Expand ML services'],
-    'threats': ['Competitive ML platforms']
+**Insights Format** (unchanged JSON shape, still passed as the `insights` param):
+```json
+{
+  "competitive_advantages": ["Custom ML Model"],
+  "vulnerabilities": ["High-value component dependent on commodity"],
+  "opportunities": ["Expand ML services"],
+  "threats": ["Competitive ML platforms"]
 }
 ```
 
 **Example**:
-```python
-from interactive_map_generator import create_interactive_wardley_map
+```bash
+echo '{"method":"create_interactive_map","params":{
+  "components":[{"name":"Custom ML Model","visibility":0.4,"evolution":0.35}],
+  "dependencies":[],
+  "insights":{"competitive_advantages":["Custom ML Model"]}
+}}' | wardley-mapper > response.json
 
-html = create_interactive_wardley_map(
-    components=[...],
-    dependencies=[...],
-    insights={...}
-)
-
-# Save to file
-with open('map.html', 'w') as f:
-    f.write(html)
-
-# Open in browser - full D3.js interactive experience
-# Features: zoom, pan, filter, tooltips, insights highlighting
+# Extract the HTML and open it in a browser -- full D3.js interactive experience.
+# Features: zoom, pan, filter, tooltips, insights highlighting.
+python3 -c "import json,sys; print(json.load(open('response.json'))['result']['interactive_map_html'])" > map.html
 ```
 
-### Module 5: MCP Tool (wardley_mapper.py)
-**File**: `tools/wardley_mapper.py`
+### Module 5: MCP Tool (wardley-mapper)
+**File**: `services/skill-tools/src/wardley/mapper.rs` + `src/bin/wardley_mapper.rs`
+(Rust port; was `tools/wardley_mapper.py`)
+
+> **Note**: as committed, the Python original could never actually start -- it imports
+> `strategic_analyzer` at module scope, and that module's `NameError` (see Module 3)
+> aborted the import before `main()` was ever reachable. `wardley-mapper` fixes that
+> and is otherwise the same protocol: read one `{"method": ..., "params": {...}}` JSON
+> object per line from stdin, dispatch to `create_map` / `analyze_map` / `parse_text` /
+> `create_interactive_map`, write one `{"result": ...}` (or `{"error": ...}`) JSON
+> response per line to stdout, flushing after each. Field names, nesting, and
+> conditional presence in every response below are unchanged from the Python
+> original's dict shapes (JSON object *key order* may differ -- this crate's
+> `serde_json` has no `preserve_order` feature, so keys serialise alphabetically
+> rather than in Python's insertion order; this has no effect on any spec-compliant
+> JSON consumer).
 
 **Available Methods**:
 
@@ -342,102 +371,92 @@ with open('map.html', 'w') as f:
 
 ## Usage Examples
 
+All four examples below now go through `wardley-mapper`'s stdin/stdout JSON-line
+protocol (Module 5) instead of Python function imports -- there is no importable
+library for any of these any more. `jq` builds/reads the JSON; any language able to
+spawn a subprocess and speak line-delimited JSON works equally well.
+
 ### Example 1: Simple Business Description
-```python
-from tools.wardley_mapper import parse_text, create_map, analyze_map
+```bash
+text="We're a SaaS company with a React frontend, Node backend, and PostgreSQL database"
 
 # Parse business description
-text = "We're a SaaS company with a React frontend, Node backend, and PostgreSQL database"
-
-result = parse_text(text)
-components = result['components']
-dependencies = result['dependencies']
+parsed=$(jq -n --arg t "$text" '{method:"parse_text", params:{text:$t}}' | wardley-mapper)
+components=$(echo "$parsed" | jq '.result.components')
+dependencies=$(echo "$parsed" | jq '.result.dependencies')
 
 # Create visualization
-map_result = create_map({'components': components, 'dependencies': dependencies})
+map_result=$(jq -n --argjson c "$components" --argjson d "$dependencies" \
+  '{method:"create_map", params:{components:$c, dependencies:$d}}' | wardley-mapper)
 
 # Analyze strategy
-analysis = analyze_map({'components': components, 'dependencies': dependencies})
+analysis=$(jq -n --argjson c "$components" --argjson d "$dependencies" \
+  '{method:"analyze_map", params:{components:$c, dependencies:$d}}' | wardley-mapper)
 
-print(f"Competitive Advantages: {analysis['competitive_advantages']}")
-print(f"Vulnerabilities: {analysis['vulnerabilities']}")
-print(f"Recommendations: {analysis['strategic_recommendations']}")
+echo "$analysis" | jq '.result.analysis.competitive_advantages'
+echo "$analysis" | jq '.result.analysis.vulnerabilities'
+echo "$analysis" | jq '.result.analysis.strategic_recommendations'
 ```
 
 ### Example 2: Technical Architecture
-```python
-# Complex architecture
-architecture = """
-We use a microservices architecture:
+```bash
+architecture="We use a microservices architecture:
 - Angular frontend for user experience
 - Multiple Node.js APIs for business logic
 - Message queue (RabbitMQ) for async processing
 - MongoDB for document storage
 - Redis for caching
 - Elasticsearch for search
-- Deployed on Kubernetes on AWS
-"""
+- Deployed on Kubernetes on AWS"
 
-components, deps = parse_components_text(architecture)
-analysis = analyze_wardley_map(components, deps)
+parsed=$(jq -n --arg t "$architecture" '{method:"parse_text", params:{text:$t}}' | wardley-mapper)
+analysis=$(jq -n --argjson c "$(echo "$parsed" | jq '.result.components')" \
+                  --argjson d "$(echo "$parsed" | jq '.result.dependencies')" \
+  '{method:"analyze_map", params:{components:$c, dependencies:$d}}' | wardley-mapper)
 
-# Get recommendations
-print("Strategic Recommendations:")
-for rec in analysis.strategic_recommendations:
-    print(f"  - {rec}")
+echo "Strategic Recommendations:"
+echo "$analysis" | jq -r '.result.analysis.strategic_recommendations[] | "  - " + .'
 ```
 
 ### Example 3: Competitive Analysis
-```python
-competition = """
-We compete with Competitor A who uses standard AWS + SalesForce.
+```bash
+competition="We compete with Competitor A who uses standard AWS + SalesForce.
 Our advantage is our custom ML recommendation engine built in-house.
 We also developed a proprietary database indexing technique.
-Our weakness is our reliance on off-the-shelf payment processor.
-"""
+Our weakness is our reliance on off-the-shelf payment processor."
 
-components, deps = parse_components_text(competition)
-analysis = analyze_wardley_map(components, deps)
+parsed=$(jq -n --arg t "$competition" '{method:"parse_text", params:{text:$t}}' | wardley-mapper)
+analysis=$(jq -n --argjson c "$(echo "$parsed" | jq '.result.components')" \
+                  --argjson d "$(echo "$parsed" | jq '.result.dependencies')" \
+  '{method:"analyze_map", params:{components:$c, dependencies:$d}}' | wardley-mapper)
 
-print("Our Strengths:")
-for strength in analysis.competitive_advantages:
-    print(f"  + {strength}")
-
-print("Our Vulnerabilities:")
-for vuln in analysis.vulnerabilities:
-    print(f"  - {vuln}")
-
-print("Market Threats:")
-for threat in analysis.threats:
-    print(f"  ⚠️  {threat}")
+echo "Our Strengths:"
+echo "$analysis" | jq -r '.result.analysis.competitive_advantages[] | "  + " + .'
+echo "Our Vulnerabilities:"
+echo "$analysis" | jq -r '.result.analysis.vulnerabilities[] | "  - " + .'
+echo "Market Threats:"
+echo "$analysis" | jq -r '.result.analysis.threats[] | "  ⚠️  " + .'
 ```
 
 ### Example 4: Interactive Visualization with Insights
-```python
-from interactive_map_generator import create_interactive_wardley_map
-from strategic_analyzer import analyze_wardley_map
+```bash
+# Given $components / $dependencies from a prior parse_text / analyze_map step:
+analysis=$(jq -n --argjson c "$components" --argjson d "$dependencies" \
+  '{method:"analyze_map", params:{components:$c, dependencies:$d}}' | wardley-mapper)
 
-# Get analysis
-analysis = analyze_wardley_map(components, deps)
+insights=$(echo "$analysis" | jq '{
+  competitive_advantages: .result.analysis.competitive_advantages,
+  vulnerabilities: .result.analysis.vulnerabilities,
+  opportunities: .result.analysis.opportunities,
+  threats: .result.analysis.threats
+}')
 
-# Create interactive map with insights
-html = create_interactive_wardley_map(
-    components=components,
-    dependencies=deps,
-    insights={
-        'competitive_advantages': analysis.competitive_advantages,
-        'vulnerabilities': [v for v in analysis.vulnerabilities],
-        'opportunities': analysis.opportunities,
-        'threats': analysis.threats
-    }
-)
+jq -n --argjson c "$components" --argjson d "$dependencies" --argjson i "$insights" \
+  '{method:"create_interactive_map", params:{components:$c, dependencies:$d, insights:$i}}' \
+  | wardley-mapper | jq -r '.result.interactive_map_html' > strategic_map.html
 
-# Save and open
-with open('strategic_map.html', 'w') as f:
-    f.write(html)
-
-print("Open strategic_map.html in browser")
-print("Features: Filter by stage/insight, hover for details, click for analysis")
+echo "Open strategic_map.html in browser"
+echo "Features: Filter by stage/insight, hover for details, click for analysis"
 ```
 
 ## Troubleshooting
@@ -461,14 +480,12 @@ parser = AdvancedNLPParser(use_spacy=False)  # Uses regex fallback
 
 ### Issue: Components positioned inaccurately
 **Solution**: Check heuristics engine patterns
-```python
-from heuristics_engine import get_heuristics_engine
-engine = get_heuristics_engine()
+```bash
+# View known patterns (prints the JSON knowledge-base export as its last block)
+wardley-heuristics
 
-# View known patterns
-patterns_json = engine.export_rules_to_json()
-
-# Add custom pattern if needed (manual for now)
+# Add custom pattern if needed: edit the `init_patterns` table in
+# services/skill-tools/src/wardley/heuristics.rs and rebuild (manual for now)
 # Future: extend patterns database
 ```
 
@@ -511,32 +528,47 @@ components = [{
 ## Testing
 
 ### Unit Test Example
+
+The Heuristics Engine / Strategic Analyzer / Interactive Map Generator / MCP tool
+modules are now Rust, and their unit + integration tests live in the crate itself --
+run them with `cargo test --lib wardley::` from `services/skill-tools/` (32 tests
+covering scoring buckets, HTML/JSON structural assertions, the two intentionally-
+replicated `quick_map` bugs, the `wardley-mapper` binary over stdio, and more). The
+NLP parser (Module 1) is unchanged Python:
 ```python
 from advanced_nlp_parser import AdvancedNLPParser
-from heuristics_engine import get_heuristics_engine
 
 # Test NLP
 parser = AdvancedNLPParser()
 comps, deps = parser.parse("React frontend with PostgreSQL backend")
 assert len(comps) >= 2, "Failed to extract components"
 
-# Test Heuristics
-engine = get_heuristics_engine()
-evo, vis = engine.score_component('PostgreSQL', {})
-assert evo > 0.8, "PostgreSQL should be commodity"
+print("✓ NLP test passed")
+```
+```bash
+# Test Heuristics (Rust): PostgreSQL should score as commodity (visibility 0.15).
+echo '{"method":"create_map","params":{"components":[{"name":"PostgreSQL","visibility":0.5,"evolution":0.5}]}}' \
+  | wardley-mapper | jq '.result.components[0].visibility'
+# -> 0.15
 
-print("✓ All tests passed")
+echo "✓ All tests passed"
 ```
 
 ## API Documentation
 
-Complete API reference in docstrings:
+Complete API reference in docstrings for the one module that stayed Python; the four
+Rust modules have no `help()` equivalent (Rust binaries aren't importable like Python
+modules) -- read their doc comments (`cargo doc --open -p skill-tools`, or just the
+`.rs` source, which documents every ported function, bug found, and deviation inline):
 ```bash
 # View module docstrings
 python3 -c "import tools.advanced_nlp_parser; help(tools.advanced_nlp_parser.AdvancedNLPParser)"
-python3 -c "import tools.heuristics_engine; help(tools.heuristics_engine.HeuristicsEngine)"
-python3 -c "import tools.strategic_analyzer; help(tools.strategic_analyzer.StrategicAnalyzer)"
-python3 -c "import tools.interactive_map_generator; help(tools.interactive_map_generator.InteractiveMapGenerator)"
+
+# Rust equivalents: generated rustdoc, or read the source directly.
+cargo doc --open -p skill-tools   # from services/skill-tools/
+# services/skill-tools/src/wardley/heuristics.rs
+# services/skill-tools/src/wardley/strategic_analyzer.rs
+# services/skill-tools/src/wardley/interactive.rs
 ```
 
 ---

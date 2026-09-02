@@ -110,27 +110,11 @@ Search specific domains using the CLI tool below.
 
 ## Prerequisites
 
-Check if Python is installed:
+`uiux-search` is a compiled Rust binary (no Python, no install step) built from
+`services/skill-tools` in the agentbox repo. Check it's on `PATH`:
 
 ```bash
-python3 --version || python --version
-```
-
-If Python is not installed, install it based on user's OS:
-
-**macOS:**
-```bash
-brew install python3
-```
-
-**Ubuntu/Debian:**
-```bash
-sudo apt update && sudo apt install python3
-```
-
-**Windows:**
-```powershell
-winget install Python.Python.3.12
+uiux-search --help
 ```
 
 ---
@@ -152,7 +136,7 @@ Extract key information from user request:
 **Always start with `--design-system`** to get comprehensive recommendations with reasoning:
 
 ```bash
-python3 src/ui-ux-pro-max/scripts/search.py "<product_type> <industry> <keywords>" --design-system [-p "Project Name"]
+uiux-search "<product_type> <industry> <keywords>" --design-system [-p "Project Name"]
 ```
 
 This command:
@@ -163,7 +147,7 @@ This command:
 
 **Example:**
 ```bash
-python3 src/ui-ux-pro-max/scripts/search.py "beauty spa wellness service" --design-system -p "Serenity Spa"
+uiux-search "beauty spa wellness service" --design-system -p "Serenity Spa"
 ```
 
 ### Step 2b: Persist Design System (Master + Overrides Pattern)
@@ -171,7 +155,7 @@ python3 src/ui-ux-pro-max/scripts/search.py "beauty spa wellness service" --desi
 To save the design system for **hierarchical retrieval across sessions**, add `--persist`:
 
 ```bash
-python3 src/ui-ux-pro-max/scripts/search.py "<query>" --design-system --persist -p "Project Name"
+uiux-search "<query>" --design-system --persist -p "Project Name"
 ```
 
 This creates:
@@ -180,7 +164,7 @@ This creates:
 
 **With page-specific override:**
 ```bash
-python3 src/ui-ux-pro-max/scripts/search.py "<query>" --design-system --persist -p "Project Name" --page "dashboard"
+uiux-search "<query>" --design-system --persist -p "Project Name" --page "dashboard"
 ```
 
 This also creates:
@@ -205,7 +189,7 @@ Now, generate the code...
 After getting the design system, use domain searches to get additional details:
 
 ```bash
-python3 src/ui-ux-pro-max/scripts/search.py "<keyword>" --domain <domain> [-n <max_results>]
+uiux-search "<keyword>" --domain <domain> [-n <max_results>]
 ```
 
 **When to use detailed searches:**
@@ -223,7 +207,7 @@ python3 src/ui-ux-pro-max/scripts/search.py "<keyword>" --domain <domain> [-n <m
 Get implementation-specific best practices. If user doesn't specify a stack, **default to `html-tailwind`**.
 
 ```bash
-python3 src/ui-ux-pro-max/scripts/search.py "<keyword>" --stack html-tailwind
+uiux-search "<keyword>" --stack html-tailwind
 ```
 
 Available stacks: `html-tailwind`, `react`, `nextjs`, `vue`, `svelte`, `swiftui`, `react-native`, `flutter`, `shadcn`, `jetpack-compose`

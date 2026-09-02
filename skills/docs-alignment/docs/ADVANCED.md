@@ -99,18 +99,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install dependencies
-        run: |
-          pip install -r <agentbox>/skills/docs-alignment/scripts/requirements.txt
-
       - name: Run documentation alignment
         run: |
-          python <agentbox>/skills/docs-alignment/scripts/docs_alignment.py \
+          docs-alignment \
             --project-root . \
             --output-dir ./doc-reports
 
@@ -126,10 +117,8 @@ jobs:
 ```yaml
 documentation-check:
   stage: test
-  image: python:3.11
   script:
-    - pip install -r <agentbox>/skills/docs-alignment/scripts/requirements.txt
-    - python <agentbox>/skills/docs-alignment/scripts/docs_alignment.py --project-root .
+    - docs-alignment --project-root .
   artifacts:
     paths:
       - docs/DOCUMENTATION_ISSUES.md
@@ -185,10 +174,10 @@ Generated: {{timestamp}}
 {{/each}}
 ```
 
-2. Use with generate_report.py:
+2. Use with `docs-generate-report`:
 
 ```bash
-python generate_report.py \
+docs-generate-report \
   --template resources/templates/custom.md.hbs \
   --output custom-report.md
 ```
@@ -201,7 +190,7 @@ For codebases with 10,000+ files:
 
 ```bash
 # Run with parallel processing
-python docs_alignment.py \
+docs-alignment \
   --project-root . \
   --parallel-workers 8 \
   --batch-size 100
@@ -218,9 +207,9 @@ npx claude-flow@alpha swarm init \
 For memory-constrained environments:
 
 ```bash
-# Run scripts individually with streaming output
-python validate_links.py --root . --streaming
-python check_mermaid.py --root docs --streaming
+# Run validators individually with streaming output
+docs-validate-links --root . --streaming
+docs-check-mermaid --root docs --streaming
 ```
 
 ## Troubleshooting
@@ -231,7 +220,7 @@ If scripts timeout on large codebases:
 
 ```bash
 # Increase timeout (in seconds)
-python docs_alignment.py --timeout 600
+docs-alignment --timeout 600
 ```
 
 ### Memory Errors
@@ -240,7 +229,7 @@ For memory errors with large files:
 
 ```bash
 # Process files in smaller batches
-python validate_links.py --batch-size 50
+docs-validate-links --batch-size 50
 ```
 
 ### Encoding Issues
@@ -249,5 +238,5 @@ For files with non-UTF-8 encoding:
 
 ```bash
 # Force encoding detection
-python validate_links.py --detect-encoding
+docs-validate-links --detect-encoding
 ```
