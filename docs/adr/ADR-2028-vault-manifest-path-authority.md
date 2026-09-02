@@ -35,7 +35,7 @@ against a stale tree.
 
    ```toml
    [vault]
-   root   = "/home/devuser/workspace/vault"   # Obsidian vault root (bind-mounted)
+   root   = "/home/devuser/workspace/logseq/mainKnowledgeGraph"   # vault root = the corpus repo checkout (bind-mounted)
    pages  = "pages"                            # authored pages, relative to root
    format = "obsidian"                         # obsidian | logseq-legacy (read-tolerance only)
    tui    = "rune"                             # rune | none — see ADR-2029
