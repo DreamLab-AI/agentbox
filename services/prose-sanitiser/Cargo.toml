@@ -27,6 +27,7 @@ tempfile = "3"
 libc = "0.2"
 axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal"] }
+quick-xml = "0.37"
 ureq = { version = "2", default-features = false, features = ["tls", "gzip"] }
 
 [dev-dependencies]
