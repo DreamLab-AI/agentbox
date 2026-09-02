@@ -89,17 +89,14 @@ grep -n "&\|(\|)" output/ontology.ttl | grep -v "rdfs:comment\|rdfs:label"
 ### 4. Enrich with Perplexity (Optional)
 
 ```bash
-# Use perplexity-research skill for stub pages
-# Query format for UK English context:
-python -c "
-from perplexity_client import query
-result = query('''
-Context: UK-based AI/Blockchain ontology documentation.
-Task: Define {TERM} with technical accuracy.
-Include: key components, relationships, UK context.
-Output: 2-3 sentence definition suitable for ontology.
-''')
-"
+# Requires PERPLEXITY_API_KEY in the environment (see repo-root .env.example
+# for the full ONTOLOGY_ENRICH_* key set). UK English context is on by
+# default (ONTOLOGY_ENRICH_UK_ENGLISH).
+cd services/ontology-tools
+cargo run -- enrich "$VAULT_PAGES"/SmartContract.md --field definition
+
+# Batch, rate-limited (ONTOLOGY_ENRICH_RATE_LIMIT, default 10/min):
+cargo run -- batch-enrich "$VAULT_PAGES"/StubPage1.md "$VAULT_PAGES"/StubPage2.md --field definition
 ```
 
 ## Common Issues and Fixes
@@ -200,6 +197,7 @@ head -1 output/ontology.ttl | grep -q "@prefix" && \
 
 ## References
 
+- Enrichment/validation/link-check binary: `services/ontology-tools` (Rust crate; `cd services/ontology-tools && cargo run -- --help`)
 - Converter: `Ontology-Tools/tools/converters/convert-to-turtle.py`
 - Workflow: `.github/workflows/publish.yml`
 - TTL Output: `output/ontology.ttl`

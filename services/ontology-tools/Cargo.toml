@@ -1,0 +1,31 @@
+[workspace]
+
+[package]
+name = "ontology-tools"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+license = "MIT OR Apache-2.0"
+description = "Vault OntologyBlock markdown parsing, OWL2 functional-syntax axiom validation, field-preserving edits, wiki-link validation and Perplexity-backed enrichment for agentbox."
+
+[[bin]]
+name = "ontology-tools"
+path = "src/main.rs"
+
+[lib]
+name = "ontology_tools"
+path = "src/lib.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+regex = "1"
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "process"] }
+chrono = { version = "0.4", features = ["clock"] }
+thiserror = "2"
+anyhow = "1"
+
+[dev-dependencies]
+tempfile = "3"

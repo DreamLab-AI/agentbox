@@ -7,73 +7,77 @@ Layer 1 skill for in-place validation, enrichment, and maintenance of ontology f
 - **OWL2 Validation**: Pre-modification validation with automatic rollback
 - **Perplexity API Integration**: Content enrichment with UK English focus
 - **Link Validation**: Detect and fix broken wiki-link references
-- **Full Field Preservation**: Imports ontology-core for immutable modifications
+- **Full Field Preservation**: Uses ontology-core's OntologyBlock parser/writer for immutable modifications
 - **Batch Processing**: Rate-limited bulk enrichment
 
 ## Quick Start
 
+The Python implementation has been ported to a single Rust binary,
+`services/ontology-tools` (crate `ontology-tools`), which covers both this
+skill and `ontology-core`.
+
 ```bash
-# Install dependencies
-pip install -r requirements.txt
+cd services/ontology-tools
+cargo build --release
 
 # Configure API key
-cp .env.example .env
-# Edit .env and add your PERPLEXITY_API_KEY
+export PERPLEXITY_API_KEY=...
+# See ../../.env.example (repo root) for the full ONTOLOGY_ENRICH_* key set.
 
 # Validate a file
-python -m ontology_enrich.validate --file "$VAULT_PAGES"/AI_Agent.md
+cargo run -- validate "$VAULT_PAGES"/AI_Agent.md
 
 # Enrich definition
-python -m ontology_enrich.enrich \
-  --file "$VAULT_PAGES"/AI_Agent.md \
-  --field definition
+cargo run -- enrich "$VAULT_PAGES"/AI_Agent.md --field definition
 
 # Fix broken links
-python -m ontology_enrich.fix_links \
-  --file "$VAULT_PAGES"/Machine_Learning.md \
-  --auto-fix
+cargo run -- links "$VAULT_PAGES"/Machine_Learning.md --auto-fix
 ```
 
 ## Architecture
 
-**Layer 1 Skill**: Imports ontology-core (Layer 0) for all parsing/modification operations.
+**Layer 1 Skill**: Uses `ontology-core`'s (Layer 0) parsing/modification code —
+both skills are now implemented by the one `ontology-tools` crate.
 
 ```
-ontology-enrich/
+services/ontology-tools/
 ├── src/
-│   ├── enrichment_workflow.py  # Main orchestration
-│   ├── perplexity_client.py    # API integration
-│   └── link_validator.py       # Link validation
-├── config/
-│   └── enrichment_config.yaml  # Configuration
-├── skill.md                    # Full documentation
-└── requirements.txt            # Dependencies
+│   ├── enrichment.rs      # Main orchestration (this skill)
+│   ├── perplexity.rs      # API integration (this skill)
+│   ├── link_validator.rs  # Link validation (this skill)
+│   ├── block.rs           # OntologyBlock (ontology-core)
+│   ├── parser.rs          # Parsing (ontology-core)
+│   ├── writer.rs          # Writing (ontology-core)
+│   ├── modifier.rs        # Field-preserving edits (ontology-core)
+│   └── validator.rs       # OWL2 axiom validation (ontology-core)
+├── tests/                 # Ported round-trip / field-preservation tests
+└── Cargo.toml
 ```
+
+`skills/ontology-enrich/config/enrichment_config.yaml` documents the same
+settings, expressed as `ONTOLOGY_ENRICH_*` environment variables (see below).
 
 ## Documentation
 
-See `skill.md` for complete usage guide, API reference, and examples.
+See [SKILL.md](SKILL.md) for the full usage guide and workflows.
 
 ## Integration with Ontology-Core
 
-All parsing and modification delegates to ontology-core:
+All parsing and modification delegates to `ontology-core`'s real API
+(`OntologyParser`, `OntologyModifier`, `OWL2Validator` — the crate-internal
+equivalent of a Rust `use`, since both skills share one crate):
 
-```python
-from ontology_core.src.ontology_parser import parse_ontology_block, write_ontology_block
-from ontology_core.src.ontology_modifier import modify_field, validate_modification
-from ontology_core.src.owl2_validator import validate_ontology
+```rust
+use ontology_tools::{OntologyParser, OWL2Validator, write_ontology_block};
 
-# Parse with full field preservation
-ontology = parse_ontology_block(file_path)
+let parser = OntologyParser::new();
+let block = parser.parse_ontology_block(&content, Some(&file_path)); // full field preservation
 
-# Validate OWL2 compliance
-validation = validate_ontology(ontology)
+let validation = OWL2Validator::new().validate_file(&file_path.display().to_string(), Some(&content));
 
-# Immutable modification
-modified = modify_field(ontology, 'definition', new_content)
+let modified = parser.update_field(&block, "definition", &new_content)?; // immutable update
 
-# Write back
-write_ontology_block(file_path, modified)
+let markdown = write_ontology_block(&modified);
 ```
 
 ## Environment Variables
