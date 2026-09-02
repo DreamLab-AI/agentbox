@@ -1,0 +1,76 @@
+[workspace]
+
+[package]
+name = "agentbox-ops"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+license = "MIT OR Apache-2.0"
+description = "Operational CLI tools for agentbox: scheduler daemon, daemon reaper, token audit, ExpeL lesson distillation, Voyager verification gate, and assorted skill helpers. Replaces the Python originals retired by the 2026-09-02 legacy audit."
+
+[lib]
+name = "agentbox_ops"
+path = "src/lib.rs"
+
+[[bin]]
+name = "hermes-scheduler"
+path = "src/bin/hermes-scheduler.rs"
+
+[[bin]]
+name = "ruflo-daemon-gc"
+path = "src/bin/ruflo-daemon-gc.rs"
+
+[[bin]]
+name = "token-audit"
+path = "src/bin/token-audit.rs"
+
+[[bin]]
+name = "expel-distil"
+path = "src/bin/expel-distil.rs"
+
+[[bin]]
+name = "voyager-gate"
+path = "src/bin/voyager-gate.rs"
+
+[[bin]]
+name = "pvgis-fetch"
+path = "src/bin/pvgis-fetch.rs"
+
+[[bin]]
+name = "solar-optimize"
+path = "src/bin/solar-optimize.rs"
+
+[[bin]]
+name = "comfyui-generate"
+path = "src/bin/comfyui-generate.rs"
+
+[[bin]]
+name = "yt-transcript-archive"
+path = "src/bin/yt-transcript-archive.rs"
+
+[[bin]]
+name = "report-preflight"
+path = "src/bin/report-preflight.rs"
+
+[[bin]]
+name = "mcp-call"
+path = "src/bin/mcp-call.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+reqwest = { version = "0.12", features = ["json", "blocking", "rustls-tls"], default-features = false }
+chrono = { version = "0.4", features = ["serde", "clock"] }
+croner = "2"
+sysinfo = "0.33"
+sha2 = "0.10"
+hex = "0.4"
+regex = "1"
+uuid = { version = "1", features = ["v4"] }
+rustix = { version = "0.38", features = ["fs", "process"] }
+glob = "0.3"
+urlencoding = "2"
+
+[dev-dependencies]
+tempfile = "3"
