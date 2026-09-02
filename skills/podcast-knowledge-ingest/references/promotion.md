@@ -1,5 +1,24 @@
 # Ledger promotion: candidacy detector + dossier assembly
 
+> **Rust port note:** `promote.py` was ported to the `podcast-promote` binary
+> in [`services/podcast-ingest`](../../../services/podcast-ingest) (crate
+> `podcast-ingest`, module `promote::*`). The CLI flags, dossier JSON/MD
+> shape, and every threshold/algorithm described below carried over
+> unchanged — only the implementation language changed. Function-name
+> references below (`promote.py::foo`, `ingest.py::bar`) are the Python
+> originals this document was written against; their Rust equivalents live
+> at, respectively: `parse_ledger_page`/`episode_slug_from_ledger` →
+> `promote::ledger_parse`; `_build_ledger_bullet`/`write_assertion_ledger`/
+> `_ledger_page_path` → `ingest::ledger`; `extract_splice_json`/
+> `apply_splice` → `promote::splice`; `write_dossier_json`/`write_dossier_md`/
+> `load_processed_fingerprint_sets`/`clear_slug_outputs` → `promote::dossier`;
+> `write_working_page` → `promote::working_page`; `judge_before_after`/
+> `_judge_windows`/`_item_seed`/`extract_judge_json` → `promote::judge`;
+> `run_gemini_judge`/the rubric prompts → `promote::gemini`;
+> `completeness_score`/`matches_gold` → `promote::completeness`; `Candidate`/
+> `find_candidates` → `promote::candidate`; the `run(args)` pipeline →
+> `promote::run`.
+
 `promote.py` implements the dashed-box stage of the promotion lifecycle
 described in "From instrument to pipeline" (`loom/docs/research/paper-v4/main.tex`,
 § lifecycle, Figure 8 / `\label{fig:lifecycle}`):
@@ -23,13 +42,13 @@ graph.
 ## Usage
 
 ```bash
-python3 promote.py --pages-dir <ledger+graph pages dir> --proposals-dir <output dir> [options]
+podcast-promote --pages-dir <ledger+graph pages dir> --proposals-dir <output dir> [options]
 
 # Candidacy scan only, no Loom/judge calls, no writes:
-python3 promote.py --pages-dir .sandbox/pages --proposals-dir .sandbox/proposals --dry-run
+podcast-promote --pages-dir .sandbox/pages --proposals-dir .sandbox/proposals --dry-run
 
 # Full run, at most 3 candidates this invocation:
-python3 promote.py --pages-dir .sandbox/pages --proposals-dir .sandbox/proposals --limit 3
+podcast-promote --pages-dir .sandbox/pages --proposals-dir .sandbox/proposals --limit 3
 ```
 
 ### CLI flags

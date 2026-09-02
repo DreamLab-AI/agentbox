@@ -7,7 +7,7 @@ description: >
   one-off historical backfill — for ongoing weekly ingest, see podcast-knowledge-ingest.
   When the podcast covers a domain not yet in the ontology, guides the user
   through OntoCast-based ontology bootstrapping.
-version: 1.1.0
+version: 2.0.0
 triggers:
   - /podcast-bulk-ingest
   - bulk ingest podcast
@@ -20,6 +20,13 @@ triggers:
 One-off backfill of a YouTube podcast series into structured markdown files
 with extracted source tables. Produces the raw material that the weekly
 `podcast-knowledge-ingest` skill processes into ontology entries.
+
+Implemented as the `podcast-bulk-ingest` Rust binary — one of three binaries
+in [`services/podcast-ingest`](../../services/podcast-ingest) (crate
+`podcast-ingest`, module `bulk::*`), porting the retired `bulk_ingest.py`.
+CLI flags mirror the original `argparse` definition exactly; on-disk file
+formats (`.ingest-state.json`, `.enrichment/*.json`, the markdown transcript
+shape) are unchanged.
 
 ## New domain detection + OntoCast bootstrapping
 
@@ -114,7 +121,7 @@ and produces private candidate Logseq pages.
 ## Usage
 
 ```bash
-python bulk_ingest.py <channel> [options]
+podcast-bulk-ingest <channel> [options]
 ```
 
 ### Arguments
@@ -135,13 +142,13 @@ python bulk_ingest.py <channel> [options]
 
 ```bash
 # Backfill 9 months of AI Daily Brief with enrichment
-python bulk_ingest.py @TheAIDailyBrief --months 9 --output-dir "$VAULT_TRANSCRIPTS" --enrich --assets
+podcast-bulk-ingest @TheAIDailyBrief --months 9 --output-dir "$VAULT_TRANSCRIPTS" --enrich --assets
 
 # Just transcripts for a different podcast, last 3 months
-python bulk_ingest.py @lexfridman --months 3 --output-dir lexfridman
+podcast-bulk-ingest @lexfridman --months 3 --output-dir lexfridman
 
 # Specific date window
-python bulk_ingest.py @TheAIDailyBrief --date-start 20251118 --date-end 20260818 --enrich
+podcast-bulk-ingest @TheAIDailyBrief --date-start 20251118 --date-end 20260818 --enrich
 ```
 
 ## Output structure
@@ -212,7 +219,8 @@ ingest-status:: downloaded
 
 ## Prerequisites
 
-- `yt-dlp` — `pip install --target=/home/devuser/.local/lib/python3.12/site-packages yt-dlp`
-- `PYTHONPATH` must include the above target directory
+- `podcast-bulk-ingest` (services/podcast-ingest) and `yt-dlp` resolvable on
+  PATH — the binary shells out to the `yt-dlp` console script directly (no
+  Python interpreter or `PYTHONPATH` involved on this binary's side any more)
 - For enrichment: Perplexity MCP tools (`perplexity_search`)
 - For asset downloads: `curl` or `wget`

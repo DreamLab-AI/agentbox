@@ -1,0 +1,45 @@
+[workspace]
+
+[package]
+name = "podcast-ingest"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+license = "MIT OR Apache-2.0"
+description = "Rust port of the podcast-knowledge-ingest and podcast-bulk-ingest skills: weekly evidence-backed podcast knowledge extraction into the ontology, ledger-promotion pre-filter, and one-off historical backfill."
+
+[lib]
+name = "podcast_ingest_core"
+path = "src/lib.rs"
+
+[[bin]]
+name = "podcast-ingest"
+path = "src/bin/podcast_ingest.rs"
+
+[[bin]]
+name = "podcast-promote"
+path = "src/bin/podcast_promote.rs"
+
+[[bin]]
+name = "podcast-bulk-ingest"
+path = "src/bin/podcast_bulk_ingest.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive", "env"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+serde_yaml = "0.9"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "process", "fs", "time", "signal"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+sha2 = "0.10"
+hex = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
+regex = "1"
+thiserror = "2"
+rand = "0.8"
+indexmap = { version = "2", features = ["serde"] }
+percent-encoding = "2"
+anyhow = "1"
+
+[dev-dependencies]
+tempfile = "3"

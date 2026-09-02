@@ -1,5 +1,19 @@
 # Supervised Live Ingest Run — Runbook
 
+> **Rust port note (post-2026-09-02):** `ingest.py` and `promote.py` were
+> ported to the `podcast-ingest` and `podcast-promote` binaries in
+> [`services/podcast-ingest`](../../services/podcast-ingest) — same CLI
+> flags, same byte-compatible ledger/dossier formats, same thresholds and
+> algorithms, only the implementation language changed (see that crate's
+> module docs for the Python-function → Rust-module mapping). Everything
+> below this line is the **historical record** of the live supervised
+> Python-era ingest run that shaped the current extraction prompt, ledger
+> format, and quality gates (PC-1 through PC-11 etc.) — it correctly
+> describes `ingest.py`/`promote.py` because that is what actually ran at
+> the time. Read it for the *why* behind the pipeline's current behaviour;
+> for how to run the pipeline today, use `podcast-ingest`/`podcast-promote`
+> per `SKILL.md`.
+
 Started 2026-08-24 ~05:00 UTC, supervised by Fable (team lead) with Opus reviewers.
 Cron `podcast-cron` PAUSED for the duration (restart with `supervisorctl start podcast-cron`).
 

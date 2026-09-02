@@ -1,28 +1,17 @@
 #!/bin/bash
 # Entry point for the podcast-knowledge-ingest cron.
-# The agentbox image is Nix-based: there is no /usr/bin/python3, and the first
-# python3 on PATH is the bare interpreter without pyyaml/requests/yt-dlp.
-# Resolve the first python3 on PATH that can import the pipeline's deps, so the
-# job survives Nix store-path churn across image rebuilds.
+# Rust port (services/podcast-ingest, binary: podcast-ingest): the pipeline
+# no longer needs a python3-capability probe — the binary is self-contained
+# (no interpreter, no site-packages) and just needs to be on PATH.
 
 set -u
 SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG="${1:-${SKILL_DIR}/podcasts.yaml}"
 
-PY=""
-IFS=: read -ra DIRS <<< "$PATH"
-for d in "${DIRS[@]}"; do
-    cand="$d/python3"
-    if [ -x "$cand" ] && "$cand" -c 'import yaml, requests' 2>/dev/null; then
-        PY="$cand"
-        break
-    fi
-done
-
-if [ -z "$PY" ]; then
-    echo "run-ingest.sh: no python3 on PATH with yaml+requests — aborting" >&2
+BIN="$(command -v podcast-ingest || true)"
+if [ -z "$BIN" ]; then
+    echo "run-ingest.sh: podcast-ingest not found on PATH — aborting" >&2
     exit 1
 fi
 
-unset PYTHONPATH
-exec "$PY" "${SKILL_DIR}/ingest.py" --config "$CONFIG" "${@:2}"
+exec "$BIN" --config "$CONFIG" "${@:2}"

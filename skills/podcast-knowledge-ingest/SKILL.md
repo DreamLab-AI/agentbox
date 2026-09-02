@@ -7,11 +7,11 @@ description: >
   extracts evidence-backed assertions via the Ontology Loom (Qwen 3.8), verifies
   them with Perplexity, and lands them on podcast-evidence ledger pages. Also
   trigger on "promote podcast evidence", "ledger promotion", or "podcast
-  candidate dossiers" — the promote.py stage that pre-filters accumulated
-  ledger evidence into scored proposal dossiers. NOT for one-off historical
-  backfill (use podcast-bulk-ingest), interactive on-demand transcript
+  candidate dossiers" — the podcast-promote binary stage that pre-filters
+  accumulated ledger evidence into scored proposal dossiers. NOT for one-off
+  historical backfill (use podcast-bulk-ingest), interactive on-demand transcript
   fetching (use youtube-transcript-archiver), or non-podcast KG enrichment.
-version: 1.2.0
+version: 2.0.0
 triggers:
   - /podcast-ingest
   - weekly podcast ingest
@@ -27,6 +27,15 @@ cron:
 Automated weekly extraction of evidence-backed knowledge from podcast transcripts
 into the ontology. Downloads new episodes, extracts assertions, verifies them,
 and integrates into existing ontology pages.
+
+Implemented as three Rust binaries in [`services/podcast-ingest`](../../services/podcast-ingest)
+(crate `podcast-ingest`, workspace-standalone like `services/dream-engine`):
+`podcast-ingest` (this skill's weekly cron, ports `ingest.py`), `podcast-promote`
+(the promotion stage below, ports `promote.py`), and `podcast-bulk-ingest`
+(the sibling `podcast-bulk-ingest` skill, ports `bulk_ingest.py`). CLI flags
+mirror the original Python `argparse` definitions exactly. On-disk JSON/ledger
+formats are byte-compatible with the prior Python implementation — see the
+crate's ledger round-trip tests.
 
 ## Architecture
 
@@ -56,7 +65,8 @@ Every page this skill writes is a vault page: V2 YAML frontmatter, then the
 body (`project/docs/VAULT-corpus-format.md` §V2/§V5, ADR-2028 D4). No writer
 emits `key:: value` Logseq property lines.
 
-New ontology page (`NEW_PAGE_TEMPLATE` in `ingest.py`):
+New ontology page (`new_page_content` in `services/podcast-ingest/src/ingest/newpage.rs`,
+porting `NEW_PAGE_TEMPLATE` from the retired `ingest.py`):
 
 ```markdown
 ---
@@ -69,11 +79,12 @@ public: true
 ```
 ```
 
-Assertion-ledger page (`_build_ledger_header`) carries the episode metadata as
-frontmatter keys — `public: true` (a real YAML boolean, never the string
-`"true"`), `title`, `source`, `episode-url`, `episode-date`, `ingest-date`.
-Working-graph reject pages (`write_working_page` in `promote.py`) carry
-`public: false`, keeping them outside the KG gate (Invariant 2, fail-closed).
+Assertion-ledger page (`build_ledger_header` in `ingest/ledger.rs`) carries the
+episode metadata as frontmatter keys — `public: true` (a real YAML boolean,
+never the string `"true"`), `title`, `source`, `episode-url`, `episode-date`,
+`ingest-date`. Working-graph reject pages (`write_working_page` in
+`promote/working_page.rs`) carry `public: false`, keeping them outside the KG
+gate (Invariant 2, fail-closed).
 
 ## Configuration
 
@@ -84,9 +95,10 @@ podcasts:
   - channel: "@TheAIDailyBrief"
     name: "AI Daily Brief"
     focus: "AI industry news, policy, models, companies"
-    # Paths derive from the vault path authority (ADR-2028). ingest.py expands
-    # ${VAULT_TRANSCRIPTS} / ${VAULT_PAGES} / ${VAULT_WORKING_PAGES} — the values agentbox.toml's [vault]
-    # section resolves to — so relocating the vault relocates this output.
+    # Paths derive from the vault path authority (ADR-2028). podcast-ingest
+    # (ingest::config::expandvars) expands ${VAULT_TRANSCRIPTS} / ${VAULT_PAGES} /
+    # ${VAULT_WORKING_PAGES} — the values agentbox.toml's [vault] section
+    # resolves to — so relocating the vault relocates this output.
     output_dir: "${VAULT_TRANSCRIPTS}"
     ontology_dir: "${VAULT_PAGES}"
 
@@ -172,15 +184,18 @@ For each verified assertion:
 ## Cron setup
 
 The schedule lives in this skill directory, not in a `pipeline` package — there is
-no `--register-cron` flag on `ingest.py`. Two registration paths exist:
+no `--register-cron` flag on `podcast-ingest`. Two registration paths exist:
 
 **Canonical (agentbox): supervisord + supercronic.** The image runs a
 `[program:podcast-cron]` supervisor block (`supervisord-podcast-cron.conf`) that
 launches `supercronic` against the sibling `crontab` file. That crontab invokes
-`run-ingest.sh`, which resolves a Nix `python3` capable of importing the deps and
-runs `ingest.py --config podcasts.yaml`. To deploy, add the block to
-`/etc/supervisord.conf` at Docker build (see the conf header for the supercronic
-`ADD`/`chmod` lines) — no host crond required. Schedule: Monday 06:17 UTC.
+`run-ingest.sh`, which resolves the `podcast-ingest` binary on PATH and runs
+`podcast-ingest --config podcasts.yaml`. No interpreter/capability probe is
+needed any more — the binary is self-contained (statically linked, no
+site-packages) — so `run-ingest.sh` just needs `podcast-ingest` on PATH. To
+deploy, add the block to `/etc/supervisord.conf` at Docker build (see the conf
+header for the supercronic `ADD`/`chmod` lines) — no host crond required.
+Schedule: Monday 06:17 UTC.
 
 **Legacy (classic crond host only): `cron-setup.sh`.** Installs the same weekly
 line into the user crontab. Do NOT run it inside agentbox — supervisord already
@@ -198,35 +213,31 @@ Files: `supervisord-podcast-cron.conf`, `crontab`, `run-ingest.sh`, `cron-setup.
 
 ```bash
 # Process all unprocessed episodes
-python ingest.py --config podcasts.yaml
+podcast-ingest --config podcasts.yaml
 
 # Dry run (extract + verify, don't write to ontology)
-python ingest.py --config podcasts.yaml --dry-run
+podcast-ingest --config podcasts.yaml --dry-run
 
 # Process a specific episode
-python ingest.py --config podcasts.yaml --file the-right-way-to-worry-about-ai.md
+podcast-ingest --config podcasts.yaml --file the-right-way-to-worry-about-ai.md
 
 # Force reprocess already-processed files
-python ingest.py --config podcasts.yaml --reprocess
+podcast-ingest --config podcasts.yaml --reprocess
 ```
 
-## Operational lessons (2026-08-21 eval)
+## Operational lessons (carried forward from the 2026-08-21 Python eval)
 
 Hard-won facts baked into the current code — do not regress them:
 
-- **No `/usr/bin/python3` in the agentbox image.** The image is Nix-composed;
-  the first `python3` on a bare PATH lacks pyyaml. `run-ingest.sh` resolves the
-  interpreter *by capability* (`import yaml, requests`), and the flake's
-  `[program:podcast-cron]` puts `${pythonRuntimeEnv}/bin` first on PATH.
-  Never hardcode an interpreter path or a `~/.local` PYTHONPATH.
 - **Loom timeout must be generous.** Qwen3.8-27B reasoning over a full episode
-  transcript regularly exceeds 3 minutes; `call_loom` uses `timeout=600`.
-  A 180s timeout produced spurious "Read timed out" failures.
+  transcript regularly exceeds 3 minutes; `ingest::loom::call_loom` uses a
+  600s `reqwest` timeout. A 180s timeout produced spurious read-timeout
+  failures.
 - **Reasoning tokens count against `max_tokens`.** At 4096 the model's
   `reasoning_content` starved the answer and truncated the JSON array
   mid-object (`finish_reason=length`). Extraction uses `max_tokens=12288`,
-  and the parser salvages complete top-level objects from a truncated array
-  as a backstop.
+  and `ingest::extract::salvage_top_level_objects` recovers complete
+  top-level assertions from a truncated array as a backstop.
 - **Zero assertions ≠ broken pipeline.** Loom connection errors degrade
   gracefully to "No assertions met threshold" per file. If a whole run yields
   nothing, check Loom reachability first (`curl <loom>/health`), then the
@@ -234,8 +245,12 @@ Hard-won facts baked into the current code — do not regress them:
   failures — see agentbox email-search skill for the fingerprint).
 - **Supercronic reads the crontab only at start.** After editing `crontab`,
   `supervisorctl restart podcast-cron`.
+- **No interpreter/PATH-capability probe needed post-Rust-port.** The prior
+  Python-era lesson here ("no `/usr/bin/python3` in the agentbox image; resolve
+  the interpreter by capability") no longer applies — `run-ingest.sh` and
+  `run-promote.sh` now just `command -v` the statically-linked binary.
 
-## Promotion stage (`promote.py`)
+## Promotion stage (`podcast-promote`)
 
 Downstream of ingest: topics whose ledger accumulates enough evidence
 (≥5 assertions across ≥2 episodes by default) become *candidates*; each is
@@ -247,10 +262,10 @@ ontology-bridge governed proposal queue; nothing edits curated pages directly.
 
 ```bash
 # Candidacy scan only (no network, no writes):
-python3 promote.py --pages-dir <graph pages dir> --proposals-dir promotions/proposals --dry-run
+podcast-promote --pages-dir <graph pages dir> --proposals-dir promotions/proposals --dry-run
 
 # Canonical full run — rejects land as readable news pages in the working graph:
-python3 promote.py --pages-dir "$VAULT_PAGES" --proposals-dir promotions/proposals \
+podcast-promote --pages-dir "$VAULT_PAGES" --proposals-dir promotions/proposals \
   --working-graph-dir "$VAULT_WORKING_PAGES" --limit 15
 ```
 
