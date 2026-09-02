@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import subprocess
 import sys
@@ -599,17 +600,48 @@ def _ledger_page_path(ontology_dir: Path, episode_slug: str) -> Path:
     return ontology_dir / f"podcast-evidence___{episode_slug}.md"
 
 
+def _yaml_scalar(value: str) -> str:
+    """Quote a frontmatter scalar when a bare one would change its YAML type.
+
+    VAULT-corpus-format V2: wikilinks are quoted strings, dates and
+    boolean-looking words must not be re-typed by the YAML reader.
+    """
+    v = str(value)
+    if v == "" or v[0] in "|>&*!%@`[{" or v.strip() != v:
+        return f'"{v}"'
+    if re.match(r"^(true|false|null|yes|no|on|off|~)$", v, re.I):
+        return f'"{v}"'
+    if re.match(r"^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$", v):
+        return f'"{v}"'
+    if re.match(r"^\d{4}-\d{2}-\d{2}", v):
+        return f'"{v}"'
+    if re.search(r'[:#\[\]{},"\']', v):
+        return '"' + v.replace("\\", "\\\\").replace('"', '\\"') + '"'
+    return v
+
+
 def _build_ledger_header(episode_slug: str, meta: dict, today: str) -> str:
-    lines = ["public:: true", ""]
-    lines.append(f"# AI Daily Brief — {meta['title']}")
-    lines.append("")
-    lines.append(f"title:: AI Daily Brief — {meta['title']}")
-    lines.append("source:: AI Daily Brief")
+    """Ledger page head — V2 YAML frontmatter (VAULT-corpus-format §V2/§V5).
+
+    ADR-2028 D4: writers emit frontmatter, never `key:: value` lines. `public`
+    is a real YAML boolean; every other property that used to be a Logseq
+    property line is now a frontmatter key.
+    """
+    props: list[tuple[str, str]] = [
+        ("public", "true"),
+        ("title", _yaml_scalar(f"AI Daily Brief — {meta['title']}")),
+        ("source", _yaml_scalar("AI Daily Brief")),
+    ]
     if meta.get("url"):
-        lines.append(f"episode-url:: {meta['url']}")
+        props.append(("episode-url", _yaml_scalar(meta["url"])))
     if meta.get("episode_date"):
-        lines.append(f"episode-date:: {meta['episode_date']}")
-    lines.append(f"ingest-date:: {today}")
+        props.append(("episode-date", _yaml_scalar(meta["episode_date"])))
+    props.append(("ingest-date", _yaml_scalar(today)))
+
+    lines = ["---"]
+    lines += [f"{k}: {v}" for k, v in props]
+    lines += ["---", ""]
+    lines.append(f"# AI Daily Brief — {meta['title']}")
     lines.append("")
     return "\n".join(lines) + "\n"
 
@@ -881,7 +913,12 @@ def _phase_integrate_inline_legacy(verified: dict[str, list[dict]], ontology_dir
         _propose_new_pages(unmatched, ontology_dir, settings, state, today)
 
 
-NEW_PAGE_TEMPLATE = '''public:: true
+# VAULT-corpus-format §V2/§V5 (ADR-2028 D4): new pages open with YAML
+# frontmatter, not a Logseq `public:: true` property block. `public` is a real
+# boolean; the JSON-LD fences below are format-neutral and carry over unchanged.
+NEW_PAGE_TEMPLATE = '''---
+public: true
+---
 
 # {title}
 ```json-ld
@@ -1062,9 +1099,25 @@ def phase_mark_complete(files: list[Path], assertions_by_file: dict[str, list[di
 # Main
 # ---------------------------------------------------------------------------
 
+def _expand_paths(config: dict) -> dict:
+    """Expand ${VAULT_ROOT} / ${VAULT_PAGES} in configured directories.
+
+    ADR-2028: podcasts.yaml carries vault-relative placeholders rather than
+    absolute corpus paths, so relocating the vault in agentbox.toml relocates
+    this skill's output with no edit here. An unset variable expands to nothing,
+    leaving an obviously-broken relative path that the caller reports rather
+    than silently writing into the wrong tree.
+    """
+    for podcast in config.get("podcasts", []) or []:
+        for key in ("output_dir", "ontology_dir", "working_graph_dir"):
+            if podcast.get(key):
+                podcast[key] = os.path.expandvars(str(podcast[key]))
+    return config
+
+
 def load_config(config_path: Path) -> dict:
     if config_path.exists():
-        return yaml.safe_load(config_path.read_text())
+        return _expand_paths(yaml.safe_load(config_path.read_text()))
     # Default config for AI Daily Brief
     return {
         "podcasts": [{
@@ -1072,7 +1125,10 @@ def load_config(config_path: Path) -> dict:
             "name": "AI Daily Brief",
             "focus": "AI industry news, policy, models, companies",
             "output_dir": str(config_path.parent),
-            "ontology_dir": str(config_path.parent.parent / "mainKnowledgeGraph" / "pages"),
+            # ADR-2028: the corpus lives under the vault path authority, never a
+            # hard-coded graph directory. Empty when no vault is configured, in
+            # which case phase_integrate skips the ontology write entirely.
+            "ontology_dir": os.environ.get("VAULT_PAGES", ""),
         }],
         "settings": {
             "loom_url": DEFAULT_LOOM_URL,

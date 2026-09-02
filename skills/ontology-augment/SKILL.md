@@ -16,7 +16,7 @@ corpus; this one *consumes* it at inference time.
 - **Yes** — grounding a claim/design in the ontology, "what does our KG say about X",
   finding related classes, navigating subclass/neighbour structure, checking domain
   maturity before asserting something, or proposing a new fact back into the graph.
-- **No** — authoring/exporting the Logseq corpus (use `ontology-core`), validating or
+- **No** — authoring/exporting the vault corpus (use `ontology-core`), validating or
   enriching source markdown (use `ontology-enrich`), or generic RDF unrelated to our
   KG (use plain SPARQL tools).
 
@@ -90,7 +90,7 @@ derived facts are fenced to the `:summary` graph and may not touch `:assert`/`:i
 
 When the VisionClaw/Oxigraph service is unreachable (`ontology_health` →
 `ontology_unavailable`), the bridge falls back to a **local backend** that indexes
-the raw Logseq markdown corpus on disk and serves the same read tools plus a real
+the authored vault markdown corpus on disk and serves the same read tools plus a real
 **write** path. No production round-trip, no long loop — it reads the JSON-LD
 `Class` block of every page directly.
 
@@ -98,8 +98,14 @@ the raw Logseq markdown corpus on disk and serves the same read tools plus a rea
   error transparently retries against the local corpus (`_route: "local-fallback"`).
 - **Force local**: set `AGENTBOX_ONTOLOGY_LOCAL=1` to use the local route
   unconditionally (offline dev).
-- **Corpus path**: `AGENTBOX_ONTOLOGY_LOCAL_PATH` (default the logseq working tree
-  `mainKnowledgeGraph/pages`) — reflects uncommitted edits immediately.
+- **Corpus path**: `VAULT_PAGES` — the `[vault]` path authority in `agentbox.toml`
+  that the entrypoint resolves (ADR-2028). `AGENTBOX_ONTOLOGY_LOCAL_PATH` overrides
+  it for a scratch corpus. Reflects uncommitted edits immediately. With neither
+  set the backend serves an empty index and says so, rather than reading a stale
+  tree.
+- **Writes**: the local write path edits the JSON-LD fence in place and leaves the
+  page in vault format — V2 YAML frontmatter, converting a legacy leading
+  `key:: value` block if it finds one (`project/docs/VAULT-corpus-format.md` §V5).
 
 ### Use it now from the shell (bypasses the MCP entirely)
 

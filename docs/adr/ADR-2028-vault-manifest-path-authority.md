@@ -3,8 +3,8 @@ id: ADR-2028
 title: "`[vault]` in agentbox.toml is the single path authority for the authored corpus; no consumer hard-codes a Logseq path"
 date: 2026-09-02
 decision_status: proposed
-implementation_status: none
-activation_status: inactive
+implementation_status: complete
+activation_status: staged
 supersedes: []
 superseded_by: []
 verified_commit:
@@ -69,8 +69,20 @@ against a stale tree.
 
 ## Verification
 
-`node scripts/system-manifest.mjs` (or the doctor) prints the resolved
-`vault.root`; `bash -n config/entrypoint-unified.sh`; a grep gate in
-`.github/workflows/invariants.yml` fails on `workspace/logseq` outside
-`docs/archive/`. `implementation_status: complete` when the grep gate is
-green on the branch.
+2026-09-02 on the `obsidian` branch: `bash -n config/entrypoint-unified.sh`
+clean; the `_ab_toml_*` manifest readers were hoisted above the Stage A/B
+dispatch and `_ab_vault_resolve` exports `VAULT_ROOT`/`VAULT_PAGES`/
+`VAULT_FORMAT`/`VAULT_TUI` before `exec supervisord` and appends them to
+`/run/agentbox/runtime-env.sh` (the channel bash/fish shells and tmux windows
+already source); verified against the live manifest (`tui=rune`), the
+vanilla default (`tui=none`), a manifest without `[vault]` (one
+`[vault] disabled` line, `VAULT_ROOT` unset) and an unreadable manifest
+(same, fail-open). `npm run test:vault` — 20/20 for
+`mcp/servers/lib/vault-frontmatter.js`. Schema validator: both manifests
+valid. `scripts/ci/check-no-logseq-paths.sh` (wired into
+`.github/workflows/invariants.yml`) passes and was shown to fail on a
+planted literal. `management-api/lib/system-manifest.js` carries the
+`vault` catalogue entry (`apply_class: boot`; the Rune package is
+`rebuild`-class under ADR-2029) and reports the resolved root/pages/format.
+`implementation_status: complete`; `activation_status: staged` until the
+next container boot runs the new entrypoint.

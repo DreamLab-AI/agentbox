@@ -39,7 +39,7 @@ class OntologyBlock:
     """
 
     # Core identification (CRITICAL)
-    id: Optional[str] = None                          # Logseq node identifier
+    id: Optional[str] = None                          # legacy Logseq block id (read-tolerance)
     term_id: Optional[str] = None                     # Ontology term ID (e.g., BC-0478)
     preferred_term: Optional[str] = None              # Canonical term name
 
@@ -62,7 +62,7 @@ class OntologyBlock:
     source: Optional[str] = None                      # Citation source
 
     # UI state (IMPORTANT)
-    collapsed: Optional[bool] = None                  # Logseq UI state
+    collapsed: Optional[bool] = None                  # legacy Logseq outliner state; dropped on write
 
     # OWL2 properties (IMPORTANT)
     owl_class: Optional[str] = None                   # OWL class (e.g., bc:SmartContract)

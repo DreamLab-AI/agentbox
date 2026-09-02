@@ -1,10 +1,11 @@
 ---
 title: Agentbox Capability Governance
 doc_id: AB-GOVERNANCE
-version: 0.1.1
+version: 0.2.0
 status: draft-for-ratification
 verified_commit: cdc18cf53
 changelog:
+  - "0.2.0 (2026-09-02): ADR-2028 — skills read and write the authored corpus through VAULT_ROOT/VAULT_PAGES and emit V2 frontmatter; no skill hard-codes a corpus path."
   - "0.1.1 (2026-08-31): fix wrong verified_commit (was outer-repo hash), correct agentbox.toml citations (loom_url 1564, loom_model 1565, session-seed models 1231/1238), and update N-05 to the revised token-auth boundary."
 sources:
   - agentbox.toml (loom façade 650/1564, loom_model 1565, session-seed models 1231/1238, N-05 1137-1146, skill gates 539/554/582/585/621-624, direct_axiom_load 638)
@@ -91,6 +92,20 @@ guarded the same way; a post-hook can still rewrite what an earlier guard approv
   declares its own `manifest_gate` (e.g. tree-search-coder → `[skills.tree_search_coder]
   enabled = true`). "Byte-identical-when-off" is the discipline: a disabled skill leaves no
   runtime trace.
+- **Corpus access** — a skill that reads or writes authored markdown reaches the corpus
+  through the `[vault]` path authority, never a literal path (ADR-2028): `$VAULT_ROOT` for
+  the vault root, `$VAULT_PAGES` for the authored pages, exported by the entrypoint into
+  every supervised program, tmux window and shell. Config files carry `${VAULT_ROOT}` /
+  `${VAULT_PAGES}` placeholders that the reading skill expands, so relocating the vault in
+  `agentbox.toml` relocates every skill's input and output with no edit to the skill. Every
+  skill that writes pages — `podcast-knowledge-ingest`, `web-summary`'s note-link mode, the
+  `ontology-*` write paths — emits **V2 YAML frontmatter**
+  (`project/docs/VAULT-corpus-format.md` §V2/§V5): `public` is a real YAML boolean, wikilink
+  values are quoted, and a legacy `key:: value` leading block is converted on write. Emitting
+  a `key:: value` line is a violation (Invariant 1). With no `[vault]` configured a corpus
+  skill disables itself with one clear line rather than writing into a stale tree; the shared
+  helper is `mcp/servers/lib/vault-frontmatter.js` and the CI gate is
+  `scripts/ci/check-no-logseq-paths.sh`.
 
 ### Dream-machine programme (legacy ADR-052, ADR-055–072) — mostly paper
 

@@ -21,16 +21,16 @@ cp .env.example .env
 # Edit .env and add your PERPLEXITY_API_KEY
 
 # Validate a file
-python -m ontology_enrich.validate --file mainKnowledgeGraph/pages/AI_Agent.md
+python -m ontology_enrich.validate --file "$VAULT_PAGES"/AI_Agent.md
 
 # Enrich definition
 python -m ontology_enrich.enrich \
-  --file mainKnowledgeGraph/pages/AI_Agent.md \
+  --file "$VAULT_PAGES"/AI_Agent.md \
   --field definition
 
 # Fix broken links
 python -m ontology_enrich.fix_links \
-  --file mainKnowledgeGraph/pages/Machine_Learning.md \
+  --file "$VAULT_PAGES"/Machine_Learning.md \
   --auto-fix
 ```
 

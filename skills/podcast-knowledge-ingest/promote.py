@@ -1008,24 +1008,47 @@ def run(args: argparse.Namespace) -> int:
     return 0
 
 
+def _yaml_scalar(value) -> str:
+    """Quote a frontmatter scalar when a bare one would change its YAML type
+    (VAULT-corpus-format §V2)."""
+    v = str(value)
+    if v == "" or v[0] in "|>&*!%@`[{" or v.strip() != v:
+        return f'"{v}"'
+    if re.match(r"^(true|false|null|yes|no|on|off|~)$", v, re.I):
+        return f'"{v}"'
+    if re.match(r"^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$", v):
+        return f'"{v}"'
+    if re.match(r"^\d{4}-\d{2}-\d{2}", v):
+        return f'"{v}"'
+    if re.search(r"""[:#\[\]{},"']""", v):
+        return '"' + v.replace("\\", "\\\\").replace('"', '\\"') + '"'
+    return v
+
+
 def write_working_page(working_dir: Path, data: dict) -> Path:
     """Rejected-from-ontology != worthless: land the processed news as a
-    Logseq page in the working graph. Overwritten on each refresh of the
+    vault page in the working graph. Overwritten on each refresh of the
     topic's dossier (same idempotency cycle as the dossier itself); the
-    curated main graph is never touched by this path."""
+    curated main graph is never touched by this path.
+
+    ADR-2028 D4 / VAULT-corpus-format §V5: the page head is V2 YAML
+    frontmatter. `public` is a real boolean and stays FALSE here — a working
+    page is deliberately outside the KG gate (Invariant 2, fail-closed)."""
     working_dir.mkdir(parents=True, exist_ok=True)
     topic = data["topic"]
     draft_content = ""
     if data.get("draft", {}).get("ok") and data["draft"].get("edit"):
         draft_content = textwrap.dedent(data["draft"]["edit"].get("content", "")).strip()
     lines = [
-        "public:: false",
-        "type:: podcast-news",
-        f"topic:: {topic}",
-        "source:: AI Daily Brief (podcast-knowledge-ingest promotion stage)",
-        f"promotion-status:: {data['status']}",
-        f"episodes:: {len(data.get('episodes', []))}",
-        f"assertions:: {data.get('n_assertions', 0)}",
+        "---",
+        "public: false",
+        "type: podcast-news",
+        f"topic: {_yaml_scalar(topic)}",
+        f"source: {_yaml_scalar('AI Daily Brief (podcast-knowledge-ingest promotion stage)')}",
+        f"promotion-status: {_yaml_scalar(data['status'])}",
+        f"episodes: {len(data.get('episodes', []))}",
+        f"assertions: {data.get('n_assertions', 0)}",
+        "---",
         "",
         f"# {topic} — processed news",
         "",
@@ -1063,7 +1086,7 @@ def main() -> int:
     ap.add_argument("--limit", type=int, default=None, help="process at most N candidates this run")
     ap.add_argument("--working-graph-dir", default=None,
                     help="if set, rejected candidates also land their processed news as a "
-                         "Logseq page here (e.g. ~/workspace/logseq/workingGraph/pages)")
+                         "vault page here (default: $VAULT_ROOT/workingGraph/pages)")
     ap.add_argument("--max-dossier-assertions", type=int, default=12,
                     help="cap assertions handed to draft/completeness, strongest first "
                          "(confidence desc, then recency); 0 = uncapped (default 12)")

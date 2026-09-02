@@ -19,9 +19,17 @@ if [ -z "$PY" ]; then
     exit 1
 fi
 
+# ADR-2028: the corpus paths come from the [vault] path authority the entrypoint
+# exported. No hard-coded graph path — with no vault configured this aborts
+# loudly rather than promoting into a stale or non-existent tree (D3).
+if [ -z "${VAULT_ROOT:-}" ] || [ -z "${VAULT_PAGES:-}" ]; then
+    echo "run-promote.sh: [vault] disabled — VAULT_ROOT/VAULT_PAGES unset; set [vault].root in agentbox.toml. Aborting." >&2
+    exit 1
+fi
+
 unset PYTHONPATH
 exec "$PY" "${SKILL_DIR}/promote.py" \
-    --pages-dir /home/devuser/workspace/logseq/mainKnowledgeGraph/pages \
+    --pages-dir "${VAULT_PAGES}" \
     --proposals-dir "${SKILL_DIR}/promotions/proposals" \
-    --working-graph-dir /home/devuser/workspace/logseq/workingGraph/pages \
+    --working-graph-dir "${VAULT_ROOT}/workingGraph/pages" \
     --limit 15 "$@"

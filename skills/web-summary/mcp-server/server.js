@@ -138,9 +138,9 @@ class WebSummaryMCPServer {
                         },
                         format: {
                             type: 'string',
-                            enum: ['logseq', 'obsidian', 'plain'],
-                            description: 'Output format for topic links',
-                            default: 'logseq'
+                            enum: ['obsidian', 'plain', 'logseq'],
+                            description: 'Output format for topic links. obsidian is the default (ADR-2028 D4); logseq is a legacy synonym emitting identical [[wikilink]] syntax.',
+                            default: 'obsidian'
                         }
                     },
                     required: ['text']

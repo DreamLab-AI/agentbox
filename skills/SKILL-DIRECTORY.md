@@ -148,7 +148,7 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 | `perplexity-research` | No | **SECONDARY web search.** Closed engine, synthesized answer. Three-API client: Search API (/search) structured results with domain/date filters, Agent API (/v1/agent) multi-step deep research, Chat Completions (sonar). Academic/UK-ecology presets | **Second choice** after ceramic-search; authoritative primary sources (gov/academic), synthesized answers, domain-filtered research. For complex/important queries, run alongside ceramic + Claude WebSearch |
 | `web-researcher` | Yes | **You pick the engine + trusted-domain LENSES; real, verifiable citations.** v1.33.0, ~26 tools: web/image/news/academic/patent/structured search, search_and_scrape, sequential; domain search (clinical/legal-CourtListener/econ-WorldBank+FRED/filing-SEC EDGAR); full scrape (PDF/DOCX/PPTX/YouTube/HN); **citation integrity** (verify_citation, audit_bibliography, citation_graph, archive_source/Wayback, format_bibliography); grounded `answer`; session memory+export. Backends Google PSE/Brave/Serper/SearXNG/SearchAPI/Exa; browser tier OFF → delegates to `browser` sidecar | **Reputation-attached** research needing verifiable citations: client work, filings, publications, legal/medical/finance; restrict to trusted sources via lenses; verify/audit citations |
 | `gemini-url-context` | Yes | Gemini 2.5 Flash URL expansion, up to 20 URLs per request, grounding metadata | Analysing or summarising specific known URLs |
-| `web-summary` | Yes | URL summarisation, YouTube transcript extraction, Logseq/Obsidian topic links | Summarising articles, YouTube videos, generating note links |
+| `web-summary` | Yes | URL summarisation, YouTube transcript extraction, Obsidian vault topic links | Summarising articles, YouTube videos, generating note links |
 | `notebooklm` | Yes | Google NotebookLM SDK: notebooks, sources, chat, audio/video/slides/quiz/report generation | Research automation, podcast generation, study material creation, knowledge management |
 | `linkedin` | Yes | LinkedIn profile/job/company scraping, messaging, people search via browser automation | LinkedIn research, recruitment, networking, company analysis |
 | `reddit` | Yes | Reddit browsing, search, user analysis, post details with comment threads | Reddit research, community analysis, content discovery |
@@ -248,7 +248,7 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
-| `ontology-core` | No | Logseq ontology parsing, OWL2 DL TTL export, WebVOWL compatibility | Creating new ontology schemas from Logseq data |
+| `ontology-core` | No | Vault ontology parsing, OWL2 DL TTL export, WebVOWL compatibility | Creating new ontology schemas from the vault corpus |
 | `ontology-enrich` | No | Validation, enrichment, TTL generation for existing ontology data | Enriching or validating existing ontology datasets |
 | `ontology-augment` | Yes (`ontology-bridge`) | **Consume** the formal KG at inference time — budget-bounded provenance-scoped subgraphs (`ontology_ask`), read-only SPARQL, neighbours/pathfind, governed writeback (PRD-020/ADR-112) | Grounding reasoning/claims in the ontology; "what does our KG say about X"; proposing a governed enrichment |
 
@@ -759,7 +759,7 @@ Q3: Which domain?
     +-- Geospatial analysis, GIS, maps
     |   --> qgis
     |
-    +-- Ontology creation (Logseq -> OWL2 TTL)
+    +-- Ontology creation (vault -> OWL2 TTL)
     |   --> ontology-core
     |
     +-- Ontology validation and enrichment

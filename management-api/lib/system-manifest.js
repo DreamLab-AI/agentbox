@@ -203,6 +203,9 @@ const CATALOGUE = [
   { id: 'ontology', name: 'Ontology bridge', layer: 'module',
     gate: 'skills.ontology', apply_class: 'boot',
     summary: 'ontology_ask / governed writeback MCP bridge (PRD-020 binding).' },
+  { id: 'vault', name: 'Authored corpus (vault)', layer: 'module',
+    gate: 'vault.format', apply_class: 'boot',
+    summary: 'ADR-2028: [vault] is the single path authority for the authored corpus. The entrypoint exports VAULT_ROOT/VAULT_PAGES/VAULT_FORMAT/VAULT_TUI to every supervised program and tmux window; resolved values are in the top-level `vault` block of this view.' },
   { id: 'aci-shell', name: 'ACI shell', layer: 'module',
     gate: 'skills.aci_shell', apply_class: 'rebuild',
     summary: 'Code-as-harness ACI sessions; npm closure baked via makeNpmService.' },
@@ -275,6 +278,25 @@ function buildSystemView(manifest, adapters) {
     });
   }
 
+  // ADR-2028 D5: report the RESOLVED vault so the management API and the doctor
+  // can show drift between the manifest and what the running container is
+  // actually indexing. `env_*` is what the entrypoint exported into this
+  // process; a mismatch with `root`/`pages` means the manifest changed since
+  // boot and the container needs a restart to pick it up.
+  const vaultSection = manifest && typeof manifest.vault === 'object' ? manifest.vault : null;
+  const vaultRoot = vaultSection && typeof vaultSection.root === 'string' ? vaultSection.root : null;
+  const vaultPagesRel = vaultSection && typeof vaultSection.pages === 'string' ? vaultSection.pages : 'pages';
+  const vault = {
+    enabled: Boolean(vaultRoot),
+    root: vaultRoot,
+    pages: vaultRoot ? `${vaultRoot.replace(/\/+$/, '')}/${vaultPagesRel}` : null,
+    format: (vaultSection && vaultSection.format) || (vaultRoot ? 'obsidian' : null),
+    tui: (vaultSection && vaultSection.tui) || (vaultRoot ? 'none' : null),
+    env_root: process.env.VAULT_ROOT || null,
+    env_pages: process.env.VAULT_PAGES || null,
+    drift: Boolean(vaultRoot) && Boolean(process.env.VAULT_ROOT) && process.env.VAULT_ROOT !== vaultRoot,
+  };
+
   const surfaces = [];
   const modules = [];
   for (const entry of CATALOGUE) {
@@ -295,6 +317,7 @@ function buildSystemView(manifest, adapters) {
   return {
     apply_classes: APPLY_CLASSES,
     core,
+    vault,
     surfaces,
     modules,
     counts: {

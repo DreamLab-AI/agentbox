@@ -96,9 +96,12 @@ function intGate(name, def) {
 }
 
 // ── path resolution (kept in lock-step with ontology-condense-refresh.sh) ───────
+// ADR-2028: the corpus comes from the [vault] path authority the entrypoint
+// resolved (VAULT_PAGES); ONTOLOGY_PAGES_DIR remains the explicit override for
+// one release. No hard-coded fallback — an unconfigured vault returns '' and
+// the tick below disables itself loudly rather than watching a stale tree.
 function pagesDir() {
-  return process.env.ONTOLOGY_PAGES_DIR
-    || '/home/devuser/workspace/logseq/mainKnowledgeGraph/pages';
+  return process.env.ONTOLOGY_PAGES_DIR || process.env.VAULT_PAGES || '';
 }
 function condensedOut() {
   return process.env.ONTOLOGY_CONDENSED_OUT
@@ -181,6 +184,13 @@ function runRefresh() {
 // Returns a small status object; NEVER throws (fail-open).
 async function tick({ dryRun = false } = {}) {
   try {
+    // ADR-2028 D3: with no [vault] there is no corpus to watch. Disable loudly
+    // rather than firing a long LLM condensation pass over an empty directory
+    // and overwriting good outputs with nothing.
+    if (!pagesDir()) {
+      log('INFO', '[vault] disabled — no corpus path (set [vault].root in agentbox.toml, or ONTOLOGY_PAGES_DIR); scheduler is a no-op.');
+      return { status: 'skipped', reason: 'vault-disabled' };
+    }
     const s = staleness();
     if (!s.stale) {
       log('INFO', `index fresh (age ${s.ageHours != null ? s.ageHours.toFixed(1) : '?'}h, ${s.pages ?? '?'} pages) — skipping.`);

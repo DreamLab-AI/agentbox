@@ -16,6 +16,70 @@
 
 set -euo pipefail
 
+# ---------------------------------------------------------------------------
+# Manifest readers (hoisted above the stage dispatch)
+# ---------------------------------------------------------------------------
+# Anchored-awk section parse of $AGENTBOX_CONFIG, same style as
+# scripts/ruvector-sidecar-update.sh (toml_pin / toml_hygiene_flag). Defined
+# here — before the Stage A/B split — because both stages read the manifest:
+# Stage A resolves [vault] for the root boot phase, Stage B resolves the
+# RuVector/interaction-plane gates. Definitions only; nothing is evaluated
+# until AGENTBOX_CONFIG is exported in Phase 1. Fail-open: an unreadable
+# manifest yields empty values, i.e. every gate off / every default.
+_ab_toml_val() { # _ab_toml_val <section> <key>
+  [ -r "${AGENTBOX_CONFIG:-/etc/agentbox.toml}" ] || return 0
+  awk -v sec="[$1]" -v key="$2" '
+    $0==sec {f=1;next} /^\[/{f=0}
+    f && index($0,key)==1 && $0 ~ ("^" key "[[:space:]]*=") {
+      sub(/^[^=]*=[[:space:]]*/,""); sub(/[[:space:]]*(#.*)?$/,""); gsub(/"/,"");
+      print; exit }' "${AGENTBOX_CONFIG:-/etc/agentbox.toml}"
+}
+_ab_toml_bool() { # _ab_toml_bool <section> <key> → 1|0
+  case "$(_ab_toml_val "$1" "$2")" in 1|true|TRUE|True|yes|on) echo 1 ;; *) echo 0 ;; esac
+}
+_ab_toml_int() { # _ab_toml_int <section> <key> <default>
+  local v; v="$(_ab_toml_val "$1" "$2")"
+  case "$v" in ''|*[!0-9]*) echo "$3" ;; *) echo "$v" ;; esac
+}
+
+# ---------------------------------------------------------------------------
+# [vault] — the single path authority for the authored corpus (ADR-2028)
+# ---------------------------------------------------------------------------
+# Resolves agentbox.toml [vault] into VAULT_ROOT / VAULT_PAGES / VAULT_FORMAT /
+# VAULT_TUI once, for every supervised program (they inherit PID 1's env) and,
+# via the Phase-8 runtime-env file, every tmux window and interactive shell.
+# No consumer hard-codes a corpus path any more (ADR-2028 D3, VAULT-corpus-format
+# Invariant 3). Fail-loud: a manifest with no [vault].root leaves VAULT_ROOT
+# empty, prints one line, and every vault consumer disables itself rather than
+# indexing a stale or empty tree.
+_ab_vault_resolve() {
+  VAULT_ROOT="$(_ab_toml_val vault root)"
+  if [ -z "$VAULT_ROOT" ]; then
+    unset VAULT_ROOT VAULT_PAGES VAULT_FORMAT VAULT_TUI
+    AGENTBOX_VAULT_ENABLED=0
+    export AGENTBOX_VAULT_ENABLED
+    echo "[vault] disabled — no [vault] in agentbox.toml"
+    return 0
+  fi
+  VAULT_PAGES="$VAULT_ROOT/$(_ab_toml_val vault pages)"
+  # A [vault] with root but no pages key still means "root/pages" (schema default).
+  case "$VAULT_PAGES" in */) VAULT_PAGES="${VAULT_PAGES}pages" ;; esac
+  VAULT_FORMAT="$(_ab_toml_val vault format)"; VAULT_FORMAT="${VAULT_FORMAT:-obsidian}"
+  VAULT_TUI="$(_ab_toml_val vault tui)";       VAULT_TUI="${VAULT_TUI:-none}"
+  AGENTBOX_VAULT_ENABLED=1
+  export VAULT_ROOT VAULT_PAGES VAULT_FORMAT VAULT_TUI AGENTBOX_VAULT_ENABLED
+  # ADR-2028 D2: the pre-vault variable survives one release as an override.
+  export ONTOLOGY_PAGES_DIR="${ONTOLOGY_PAGES_DIR:-$VAULT_PAGES}"
+  echo "[vault] root=$VAULT_ROOT pages=$VAULT_PAGES format=$VAULT_FORMAT tui=$VAULT_TUI"
+}
+
+# ADR-2029 D4: until the image bakes Rune, the bind-mounted cargo bin dir is
+# where `rune` lives. One line, fail-open — absent dir changes nothing.
+_ab_cargo_bin_on_path() {
+  [ -d "/home/devuser/workspace/.cargo/bin" ] && case ":$PATH:" in *":/home/devuser/workspace/.cargo/bin:"*) :;; *) PATH="/home/devuser/workspace/.cargo/bin:$PATH"; export PATH;; esac
+  return 0
+}
+
 # Stage dispatch — when running as the supervisord bootstrap program, skip to B.
 if [ "${AGENTBOX_BOOTSTRAP_STAGE:-A}" = "B" ]; then
   echo "[bootstrap] Stage B — installing runtime dependencies"
@@ -80,6 +144,11 @@ export SOLID_POD_PORT="${SOLID_POD_PORT:-8484}"
 export SHARED_PROJECTS_ROOT="${SHARED_PROJECTS_ROOT:-/projects}"
 export CODEX_HOME="${CODEX_HOME:-/home/devuser/.codex}"
 export GIT_CONFIG_GLOBAL="${GIT_CONFIG_GLOBAL:-/home/devuser/.config/git/config}"
+# ADR-2028: [vault] is resolved here, before any consumer runs, so every
+# supervised program inherits VAULT_ROOT/VAULT_PAGES/VAULT_FORMAT/VAULT_TUI
+# from PID 1. ADR-2029 D4 puts the bind-mounted cargo bin dir on PATH.
+_ab_vault_resolve
+_ab_cargo_bin_on_path
 
 echo "[1/8] Preparing runtime directories..."
 mkdir -p \
@@ -497,11 +566,13 @@ fi
 # devuser (user=devuser) and never re-acquire root.
 # Phase 5d — Rebuild the ontology PUSH-channel Class-Summary cache (PRD-020 WS-2).
 # ~/.claude-flow/data is ephemeral (wiped on every rebuild), so without this the
-# [ONTOLOGY] per-turn breadcrumb silently no-ops. Parses the logseq corpus →
+# [ONTOLOGY] per-turn breadcrumb silently no-ops. Parses the vault corpus →
 # RuVector-free local cache. Runs as devuser (so the cache is devuser-owned for
 # the hook), fail-open, never blocks boot. Set ONTOLOGY_ALIASES to a durable
 # {iri:[alias]} file to fold in the condensation-mesh synonyms.
-ONTO_PAGES="${ONTOLOGY_PAGES_DIR:-/home/devuser/workspace/logseq/mainKnowledgeGraph/pages}"
+# ADR-2028 D3: with no [vault] in the manifest there is no corpus to index, so
+# the refresh is skipped outright rather than pointed at a stale tree.
+ONTO_PAGES="${ONTOLOGY_PAGES_DIR:-${VAULT_PAGES:-}}"
 ONTO_BUILDER="/opt/agentbox/mcp/servers/lib/ontology-index-build.js"
 # Durable {iri:[alias]} file produced by the ontology-condense refresh
 # (ontology-condense.js). Lives on the workspace bind mount so condensation
@@ -513,8 +584,10 @@ export ONTOLOGY_ALIASES="${ONTOLOGY_ALIASES:-/home/devuser/workspace/.agentbox-d
 # condense refresh (run as devuser) can write the aliases the cache folds in.
 mkdir -p "$(dirname "$ONTOLOGY_ALIASES")" 2>/dev/null || true
 chown devuser:devuser "$(dirname "$ONTOLOGY_ALIASES")" 2>/dev/null || true
-if [ -d "$ONTO_PAGES" ] && [ -f "$ONTO_BUILDER" ]; then
-  echo "[5c/8] Refreshing ontology PUSH cache (WS-2)..."
+if [ -z "$ONTO_PAGES" ]; then
+  echo "[5c/8] ontology PUSH cache refresh skipped ([vault] disabled — no corpus path)"
+elif [ -d "$ONTO_PAGES" ] && [ -f "$ONTO_BUILDER" ]; then
+  echo "[5c/8] Refreshing ontology PUSH cache (WS-2) from $ONTO_PAGES..."
   runuser -u devuser -- env ONTOLOGY_ALIASES="$ONTOLOGY_ALIASES" node "$ONTO_BUILDER" >/dev/null 2>&1 \
     && echo "[5c/8] ontology PUSH cache refreshed" \
     || echo "[5c/8] ontology PUSH cache refresh skipped (non-fatal)"
@@ -568,6 +641,10 @@ export SOLID_POD_ROOT="${SOLID_POD_ROOT:-/var/lib/solid}"
 export RUVECTOR_PORT="${RUVECTOR_PORT:-9700}"
 export AGENTBOX_CONFIG="${AGENTBOX_CONFIG:-/etc/agentbox.toml}"
 export SHARED_PROJECTS_ROOT="${SHARED_PROJECTS_ROOT:-/projects}"
+# ADR-2028: normally inherited from PID 1 (Stage A resolved it before exec
+# supervisord); this only fires if Stage B is ever invoked standalone.
+[ -n "${AGENTBOX_VAULT_ENABLED:-}" ] || _ab_vault_resolve
+_ab_cargo_bin_on_path
 
 # ---------------------------------------------------------------------------
 # Phase 6 — Service closure probes (PRD-002 §9 Phase 1)
@@ -724,21 +801,8 @@ fi
 # their documented defaults (20 / 14). An absent key or section → off / default.
 # All-false manifest ⇒ every gate "0"/default ⇒ runtime byte-identical to today
 # (PRD-018 metric 1). Fail-open: unreadable manifest → all gates off.
-_ab_toml_val() { # _ab_toml_val <section> <key>
-  [ -r "$AGENTBOX_CONFIG" ] || return 0
-  awk -v sec="[$1]" -v key="$2" '
-    $0==sec {f=1;next} /^\[/{f=0}
-    f && index($0,key)==1 && $0 ~ ("^" key "[[:space:]]*=") {
-      sub(/^[^=]*=[[:space:]]*/,""); sub(/[[:space:]]*(#.*)?$/,""); gsub(/"/,"");
-      print; exit }' "$AGENTBOX_CONFIG"
-}
-_ab_toml_bool() { # _ab_toml_bool <section> <key> → 1|0
-  case "$(_ab_toml_val "$1" "$2")" in 1|true|TRUE|True|yes|on) echo 1 ;; *) echo 0 ;; esac
-}
-_ab_toml_int() { # _ab_toml_int <section> <key> <default>
-  local v; v="$(_ab_toml_val "$1" "$2")"
-  case "$v" in ''|*[!0-9]*) echo "$3" ;; *) echo "$v" ;; esac
-}
+# (_ab_toml_val / _ab_toml_bool / _ab_toml_int are defined once near the top of
+#  this file so BOTH stages can read the manifest — see the hoisted block there.)
 _RV_TYPED_METADATA=$(_ab_toml_bool integrations.ruvector_external typed_metadata)
 _RV_HYBRID_SEARCH=$(_ab_toml_bool integrations.ruvector_external hybrid_search)
 _RV_METADATA_GIN=$(_ab_toml_bool integrations.ruvector_external metadata_gin)
@@ -1924,6 +1988,22 @@ export RUFLO_DAEMON_AI_WORKERS="${RUFLO_DAEMON_AI_WORKERS:-0}"
 export AGENTBOX_INTERACTION_PLANE_ENABLED="$_IP_ENABLED"
 export AGENTBOX_INTERACTION_PLANE_PORT="$_IP_PORT"
 export AGENTBOX_INTERACTION_PLANE_PROXY_PORT="$_IP_PROXY_PORT"
+# ADR-2028: the vault path authority. Sourced by every tmux window and
+# interactive shell (bash via /etc/profile.d, fish via conf.d) so the Notes
+# window, the skills and the MCP servers all agree on one corpus root. Empty
+# when the manifest carries no [vault] — consumers then fail loud, not silent.
+export AGENTBOX_VAULT_ENABLED="${AGENTBOX_VAULT_ENABLED:-0}"
+export VAULT_ROOT="${VAULT_ROOT:-}"
+export VAULT_PAGES="${VAULT_PAGES:-}"
+export VAULT_FORMAT="${VAULT_FORMAT:-}"
+export VAULT_TUI="${VAULT_TUI:-}"
+export ONTOLOGY_PAGES_DIR="${ONTOLOGY_PAGES_DIR:-}"
+# ADR-2029 D4: cargo-installed binaries (rune) before the image bakes them.
+if [ -d "/home/devuser/workspace/.cargo/bin" ]; then
+  case ":\$PATH:" in *":/home/devuser/workspace/.cargo/bin:"*) : ;;
+    *) PATH="/home/devuser/workspace/.cargo/bin:\$PATH"; export PATH ;;
+  esac
+fi
 EOF
 mkdir -p "/home/devuser/workspace/.cargo" "/home/devuser/workspace/.tmp" 2>/dev/null || true
 chown devuser:devuser "/home/devuser/workspace/.cargo" "/home/devuser/workspace/.tmp" 2>/dev/null || true

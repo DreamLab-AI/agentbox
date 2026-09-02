@@ -674,6 +674,29 @@ schedule_enabled = true                     # run the periodic staleness schedul
 schedule_interval_mins = 60                 # tick cadence (jittered ±20%)
 schedule_max_age_hours = 24                 # rebuild even without corpus change past this age
 
+# ── [vault] — the authored corpus (ADR-2028 / ADR-2029) ──────────────────────
+# TOP-LEVEL section, parked next to [skills.ontology] because the ontology
+# surfaces are its heaviest consumer. This is the SINGLE path authority for the
+# authored knowledge corpus: the entrypoint resolves it into VAULT_ROOT /
+# VAULT_PAGES / VAULT_FORMAT / VAULT_TUI for every supervised program, every
+# tmux window and every MCP server, and ONTOLOGY_PAGES_DIR is derived from it.
+# No consumer hard-codes a corpus path (VAULT-corpus-format Invariant 3) — one
+# edit here relocates the corpus for every agent surface. Absent [vault] is
+# FAIL-LOUD, not fail-quiet: the boot prints "[vault] disabled" and the corpus
+# consumers switch themselves off rather than index a stale tree.
+# format: "obsidian" is the one format writers emit (YAML frontmatter, V2);
+# "logseq-legacy" is READ-tolerance only for an unconverted graph.
+# tui: "rune" bakes the Rune markdown TUI into the image and opens tmux
+# window 9 "Notes" at the root (ADR-2029). REBUILD-class — the binary is in the
+# Nix package set only when this is "rune".
+[vault]
+root   = "/home/devuser/workspace/vault"   # Obsidian vault root (bind-mounted)
+pages  = "pages"                            # authored pages, relative to root
+format = "obsidian"                         # obsidian | logseq-legacy (read-tolerance only)
+tui    = "none"                             # rune | none — vanilla ships none: "rune" is a
+                                            # REBUILD-class Rust package (~80 MB) the operator
+                                            # opts into in their live agentbox.toml (ADR-2029).
+
 [skills.harness]
 # Harness Engineering MCP bridge (ADR-004). Agents inspect harness templates
 # to understand guide-sensor pairings for their active topology. Four tools:

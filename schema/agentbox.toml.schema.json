@@ -215,6 +215,49 @@
         }
       }
     },
+    "vault": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "ADR-2028: the SINGLE path authority for the authored knowledge corpus (an Obsidian vault). The entrypoint resolves this section into VAULT_ROOT / VAULT_PAGES / VAULT_FORMAT / VAULT_TUI for every supervised program, tmux window and MCP server, and derives ONTOLOGY_PAGES_DIR from it. No consumer may hard-code a corpus path (project/docs/VAULT-corpus-format.md Invariant 3). Omitting the section is fail-loud: the boot prints \"[vault] disabled\" and every corpus consumer switches itself off rather than indexing a stale tree.",
+      "required": [
+        "root"
+      ],
+      "properties": {
+        "root": {
+          "type": "string",
+          "description": "Absolute path to the Obsidian vault root (bind-mounted). ADR-2028 D1; exported as VAULT_ROOT. Every sub-path in every consumer derives from this one value.",
+          "examples": [
+            "/home/devuser/workspace/vault"
+          ]
+        },
+        "pages": {
+          "type": "string",
+          "default": "pages",
+          "description": "Authored-pages directory, relative to root (VAULT-corpus-format V1 layout; the GitHub-sync base path stays \"pages\"). Exported as VAULT_PAGES = root/pages.",
+          "examples": [
+            "pages"
+          ]
+        },
+        "format": {
+          "type": "string",
+          "enum": [
+            "obsidian",
+            "logseq-legacy"
+          ],
+          "default": "obsidian",
+          "description": "On-disk corpus dialect. \"obsidian\" is the one format writers emit \u2014 YAML frontmatter pages (VAULT-corpus-format V2/V5). \"logseq-legacy\" is READ-tolerance only, for an unconverted Logseq graph during the bounded transition window; no writer ever emits key:: value lines."
+        },
+        "tui": {
+          "type": "string",
+          "enum": [
+            "rune",
+            "none"
+          ],
+          "default": "none",
+          "description": "ADR-2029: terminal surface for the vault. \"rune\" puts the Rune markdown TUI (aka-rider/rune, MIT, Rust/ratatui) in the Nix package set and opens tmux window 9 \"Notes\" at the vault root; \"none\" ships neither. REBUILD-class \u2014 the package set is resolved at image composition, so a change only takes effect after ./agentbox.sh rebuild (ADR-039)."
+        }
+      }
+    },
     "skills": {
       "type": "object",
       "description": "Feature flags for manifest-gated skills.",

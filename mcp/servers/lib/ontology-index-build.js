@@ -1,18 +1,24 @@
 'use strict';
 // ontology-index-build.js — WS-2 corpus parser (PRD-020 / ADR-113/114).
 // Deterministically extracts the v2 `@type:Class` JSON-LD block from every
-// logseq page into a compact class record. Fast, complete, no LLM. The Haiku
-// condensation mesh + RuVector storage run as a separate parallel pass over
+// vault page into a compact class record. Fast, complete, no LLM. The
+// condensation pass + RuVector storage run as a separate parallel pass over
 // this output; this script is also the refresh-on-GitHubSync entry point.
 //
 // Usage: node ontology-index-build.js [pagesDir] [outFile]
+//
+// Corpus path (ADR-2028): argv[1], else ONTOLOGY_PAGES_DIR (the pre-vault
+// override, kept for one release), else VAULT_PAGES — the manifest [vault] path
+// authority. No hard-coded fallback: with none of the three set there is no
+// corpus, so the run writes an empty index and says so (fail-loud, D3).
 
 const fs = require('fs');
 const path = require('path');
 
 const PAGES_DIR = process.argv[2]
   || process.env.ONTOLOGY_PAGES_DIR
-  || '/home/devuser/workspace/logseq/mainKnowledgeGraph/pages';
+  || process.env.VAULT_PAGES
+  || '';
 const OUT = process.argv[3] || '/tmp/onto-classes.json';
 
 function extractJsonLdBlocks(md) {
@@ -48,8 +54,31 @@ function terms(label, rels, domain, definition) {
   return Array.from(bag).slice(0, 24);
 }
 
+// ADR-2028 D3: an unset or unreadable corpus yields an empty index and one
+// clear line — never a stack trace, and never a stale hard-coded path.
+function corpusFiles() {
+  if (!PAGES_DIR) {
+    console.error('[ontology-index-build] no corpus path — set [vault].root in agentbox.toml (VAULT_PAGES), ONTOLOGY_PAGES_DIR, or pass a pagesDir argument; leaving the existing index and PUSH cache untouched');
+    return [];
+  }
+  try {
+    return fs.readdirSync(PAGES_DIR).filter((f) => f.endsWith('.md'));
+  } catch (err) {
+    console.error(`[ontology-index-build] corpus unreadable at ${PAGES_DIR} (${err.code || err.message}); leaving the existing index and PUSH cache untouched`);
+    return [];
+  }
+}
+
 function main() {
-  const files = fs.readdirSync(PAGES_DIR).filter((f) => f.endsWith('.md'));
+  const files = corpusFiles();
+  // No corpus ⇒ nothing to index, and — critically — nothing to WRITE. Writing
+  // an empty index here would clobber a good PUSH cache with zero classes and
+  // silently kill the per-turn [ONTOLOGY] breadcrumb, which is precisely the
+  // silent degradation ADR-2028 exists to stop. Leave both outputs untouched.
+  if (files.length === 0) {
+    console.log(JSON.stringify({ pages: 0, classes: 0, pages_dir: PAGES_DIR || null, wrote: false }, null, 2));
+    return;
+  }
   const records = [];
   let noClass = 0;
   for (const f of files) {
@@ -104,6 +133,8 @@ function main() {
     classes: records.length,
     no_class_block: noClass,
     with_substantial_definition: withDef,
+    pages_dir: PAGES_DIR,
+    wrote: true,
     out: OUT,
     push_cache: CACHE,
     aliases_merged: Object.keys(aliases).length,
