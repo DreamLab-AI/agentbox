@@ -358,6 +358,34 @@ app.register(require('./routes/agent-events'), {
   metrics
 });
 
+// ADR-059 §4 (host side): forward every published agent action to the
+// integrating host's /wss/agent-events ingest so the embodiment render
+// (0x23 AGENT_ACTION beams) has a source. The utility existed but nothing
+// started it. URL precedence: AGENTBOX_HOST_WS_URL, else derived from the
+// manifest's [skills.ontology].visionclaw_api_url (the host is referenced by
+// its configured URL, never a literal container name). No URL → disabled.
+app.addHook('onReady', async () => {
+  try {
+    let hostWsUrl = process.env.AGENTBOX_HOST_WS_URL || '';
+    if (!hostWsUrl) {
+      try {
+        const m = loadManifest();
+        const api = m && m.skills && m.skills.ontology && m.skills.ontology.visionclaw_api_url;
+        if (typeof api === 'string' && /^https?:\/\//.test(api)) {
+          hostWsUrl = api.replace(/^http/, 'ws').replace(/\/+$/, '') + '/wss/agent-events';
+        }
+      } catch (e) {
+        logger.warn({ err: e && e.message }, '[agent-events-ws] manifest unreadable; forwarder stays disabled unless AGENTBOX_HOST_WS_URL is set');
+      }
+    }
+    const { initializeAgentEventWsSubscriber } = require('./utils/agent-event-ws-subscriber');
+    await initializeAgentEventWsSubscriber({ url: hostWsUrl || undefined, logger });
+    logger.info({ hostWsUrl: hostWsUrl || null }, '[agent-events-ws] forwarder initialised');
+  } catch (e) {
+    logger.warn({ err: e && e.message }, '[agent-events-ws] forwarder failed to start (fail-open)');
+  }
+});
+
 // Memory routes — write/read agent memory entries to the operator's Solid pod.
 // Requires adapters.pods = "local-solid-rs"; gracefully returns 503 when off.
 app.register(require('./routes/memory'), { prefix: '', logger });

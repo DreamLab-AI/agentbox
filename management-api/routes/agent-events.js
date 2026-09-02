@@ -252,11 +252,11 @@ async function agentEventsRoutes(fastify, options) {
         required: ['source_agent_id', 'target_node_id', 'action_type'],
         properties: {
           source_agent_id: {
-            oneOf: [{ type: 'integer' }, { type: 'string' }],
+            anyOf: [{ type: 'integer' }, { type: 'string' }],
             description: 'Agent ID (numeric or string hash)'
           },
           target_node_id: {
-            oneOf: [{ type: 'integer' }, { type: 'string' }],
+            anyOf: [{ type: 'integer' }, { type: 'string' }],
             description: 'Target node ID (numeric or string hash)'
           },
           action_type: {
@@ -370,9 +370,9 @@ async function agentEventsRoutes(fastify, options) {
               type: 'object',
               required: ['source_agent_id', 'target_node_id', 'action_type'],
               properties: {
-                source_agent_id: { oneOf: [{ type: 'integer' }, { type: 'string' }] },
-                target_node_id: { oneOf: [{ type: 'integer' }, { type: 'string' }] },
-                action_type: { oneOf: [{ type: 'integer' }, { type: 'string' }] },
+                source_agent_id: { anyOf: [{ type: 'integer' }, { type: 'string' }] },
+                target_node_id: { anyOf: [{ type: 'integer' }, { type: 'string' }] },
+                action_type: { anyOf: [{ type: 'integer' }, { type: 'string' }] },
                 duration_ms: { type: 'integer' },
                 metadata: { type: 'object' }
               }
