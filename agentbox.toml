@@ -679,7 +679,7 @@ schedule_max_age_hours = 24                 # rebuild even without corpus change
 # window 9 "Notes" at the root (ADR-2029). REBUILD-class — the binary is in the
 # Nix package set only when this is "rune".
 [vault]
-root   = "/home/devuser/workspace/logseq/mainKnowledgeGraph"   # Obsidian vault root = the corpus repo (branch obsidian); bind-mounted
+root   = "/home/devuser/workspace/visionGraph/knowledge"   # Obsidian vault root = the visionGraph corpus repo (knowledge/ vault); bind-mounted
 pages  = "pages"                            # authored pages, relative to root
 format = "obsidian"                         # obsidian | logseq-legacy (read-tolerance only)
 tui    = "rune"                             # rune | none — see ADR-2029
