@@ -193,7 +193,7 @@ flowchart LR
 - **Profile** — an isolated agent workspace under
   `workspace/profiles/<stack>/` with its own HOME directory, per-profile
   config files, and symlinks to the shared `/home/devuser/workspace` and `/projects`
-  mounts. Each profile is provisioned by `scripts/provision-agent-stacks.py`.
+  mounts. Each profile is provisioned by `agentbox-manifest provision-stacks`.
   Profiles share the same image; isolation is filesystem-level, not
   container-level.
 - **Prometheus metric** — a time-series counter, gauge or histogram scraped
@@ -260,7 +260,7 @@ flowchart LR
 - **Sovereign mesh** — the optional Nostr-based identity and event layer.
   Sovereign because each container owns its own cryptographic keypair.
 - **Stack** — a named agent configuration (e.g. `claude`, `antigravity`,
-  `deepseek`) provisioned by `scripts/provision-agent-stacks.py`. Each stack
+  `deepseek`) provisioned by `agentbox-manifest provision-stacks`. Each stack
   maps to one profile directory under `workspace/profiles/<stack>/`. Stacks
   are declared in `agentbox.toml` under `[agents.*]`; the provisioner creates
   the directory tree, writes per-stack config, and symlinks shared paths.

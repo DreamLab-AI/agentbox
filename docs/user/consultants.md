@@ -62,7 +62,7 @@ timeout_ms       = 180000
 ### `zai` deep thinking — `reasoning_effort`
 
 `[consultants.zai].reasoning_effort` (`low` | `medium` | `high`) plumbs
-through `provision-agent-stacks.py` to the `AGENTBOX_ZAI_REASONING_EFFORT`
+through `agentbox-manifest provision-stacks` to the `AGENTBOX_ZAI_REASONING_EFFORT`
 env var, passed to the `consultant-zai` MCP, which maps it in `zai/server.js`
 to Claude Code's `MAX_THINKING_TOKENS` (`low` = 4096, `medium` = 10000,
 `high` = 31999). The Z.AI Anthropic-compatible endpoint

@@ -19,8 +19,7 @@ on:
       - 'agentbox.toml'
       - 'schema/**'
       - 'scripts/agentbox-config-validate.*'
-      - 'scripts/tui-read-manifest.py'
-      - 'scripts/tui-write-manifest.py'
+      - 'services/agentbox-manifest/**'
       - 'tests/config/**'
       - 'tests/tui/**'
       - '.github/workflows/manifest-validate.yml'
@@ -31,8 +30,7 @@ on:
       - 'agentbox.toml'
       - 'schema/**'
       - 'scripts/agentbox-config-validate.*'
-      - 'scripts/tui-read-manifest.py'
-      - 'scripts/tui-write-manifest.py'
+      - 'services/agentbox-manifest/**'
       - 'tests/tui/**'
       - '.github/workflows/manifest-validate.yml'
 
@@ -62,6 +60,17 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry and build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: services/agentbox-manifest
+
+      - name: Build agentbox-manifest
+        run: cargo build --release --manifest-path services/agentbox-manifest/Cargo.toml
+
       - name: Install Node deps
         run: npm ci
 
@@ -71,13 +80,14 @@ jobs:
       - name: Round-trip every test fixture through read+write+validate
         run: |
           set -euo pipefail
+          MANIFEST_BIN=services/agentbox-manifest/target/release/agentbox-manifest
           for fixture in tests/tui/fixtures/valid-*.toml; do
             [ -f "$fixture" ] || continue
             echo "== round-trip $fixture =="
             state=$(mktemp --suffix=.json)
             out=$(mktemp --suffix=.toml)
-            python3 scripts/tui-read-manifest.py "$fixture"  "$state"
-            python3 scripts/tui-write-manifest.py "$state"    "$out"
+            "$MANIFEST_BIN" tui-read  "$fixture" "$state"
+            "$MANIFEST_BIN" tui-write "$state"   "$out"
             node scripts/agentbox-config-validate.js "$out"
             rm -f "$state" "$out"
           done

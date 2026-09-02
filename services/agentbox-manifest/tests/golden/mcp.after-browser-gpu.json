@@ -1,0 +1,26 @@
+{
+  "mcpServers": {
+    "claude-flow": {
+      "command": "node",
+      "args": [
+        "/opt/agentbox/mcp/servers/ruvector-mcp.cjs"
+      ],
+      "type": "stdio",
+      "env": {
+        "RUVECTOR_PG_CONNINFO": "host=x",
+        "NODE_PATH": "/np"
+      }
+    },
+    "ruvector": {
+      "command": "node",
+      "args": [
+        "/home/devuser/.claude/ruvector-mcp.cjs"
+      ],
+      "type": "stdio"
+    },
+    "browser-gpu": {
+      "type": "sse",
+      "url": "http://browsercontainer:8931/sse"
+    }
+  }
+}

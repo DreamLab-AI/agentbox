@@ -678,8 +678,11 @@
         # in `allPackages` only puts them on $PATH and leaves
         # `import ecdsa` failing with ModuleNotFoundError at bootstrap time
         # (which crash-loops the container on first start).
-        # sovereign-bootstrap.py imports ecdsa directly; provision-agent-stacks.py
-        # imports yaml, requests, etc. — all must resolve via this interpreter.
+        # sovereign-bootstrap.py imports ecdsa directly; the supervised Python
+        # services (opf-router -> torch, code-interpreter -> jupyter_client)
+        # import theirs — all must resolve via this interpreter. Boot-path
+        # config munging no longer does: provision-agent-stacks.py and its three
+        # siblings are now the `agentbox-manifest` Rust binary above.
         # R-005/SEC-001/ADR-027: the setuid sudo wrapper has been removed.
         # With no-new-privileges:true (always emitted) the kernel ignores the
         # setuid bit, and SETUID/SETGID are no longer in the capability
@@ -1176,6 +1179,14 @@
         headroomPackages = lib.optionals compressionEnabled [ headroomNapiPkg ];
 
         # ---------------------------------------------------------------------------
+        # agentbox-manifest — boot-time TOML/JSON projector (replaces the inline
+        # python3 in config/entrypoint-unified.sh and the four manifest scripts).
+        # UNGATED and unconditional: the entrypoint cannot boot without it, so
+        # there is no meaningful "off" state to gate. See lib/agentbox-manifest.nix.
+        # ---------------------------------------------------------------------------
+        agentboxManifestPkg = import ./lib/agentbox-manifest.nix { inherit lib pkgs; };
+
+        # ---------------------------------------------------------------------------
         # dream-engine — nightly evidence-gated repo evolution (ADR-052 HP annexe).
         # Gate: dream_machine.enabled = true (default off keeps the image
         # byte-identical). Built from source via lib/dream-engine.nix
@@ -1332,6 +1343,7 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           ++ relayPackages
           ++ solidPodRsPackages
           ++ headroomPackages
+          ++ [ agentboxManifestPkg ]
           ++ dreamEnginePackages
           ++ nagualQePackages
           # rune markdown TUI — gated on [vault].tui = "rune" (ADR-2029)

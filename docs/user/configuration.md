@@ -307,7 +307,7 @@ home             = "/home/devuser/.zai"
 timeout_ms       = 180000
 ```
 
-`reasoning_effort` plumbs through `provision-agent-stacks.py` to
+`reasoning_effort` plumbs through `agentbox-manifest provision-stacks` to
 `AGENTBOX_ZAI_REASONING_EFFORT`, passed as an env var to the `consultant-zai`
 MCP, which maps it in `zai/server.js` to Claude Code's `MAX_THINKING_TOKENS`
 (`low` = 4096, `medium` = 10000, `high` = 31999). The Z.AI subscription

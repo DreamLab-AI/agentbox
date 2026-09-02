@@ -1,0 +1,1 @@
+  [mcp] De-registered ungoverned ruvector fork: ruvector (ADR-036 D2)

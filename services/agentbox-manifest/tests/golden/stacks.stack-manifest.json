@@ -1,0 +1,255 @@
+{
+  "generated_from": "/home/devuser/workspace/wt-manifest/agentbox/services/agentbox-manifest/tests/golden/live-agentbox.toml",
+  "skills_tree": "/opt/agentbox/skills",
+  "shared_projects_root": "/projects",
+  "stacks": {
+    "claude-core": {
+      "tools": [
+        "claude",
+        "openai-codex",
+        "codex-companion",
+        "skill-router",
+        "lazy-fetch"
+      ],
+      "skills": [
+        "skill-router",
+        "lazy-fetch",
+        "codebase-memory",
+        "openai-codex",
+        "codex-companion"
+      ],
+      "env": [
+        "ANTHROPIC_API_KEY",
+        "OPENAI_API_KEY",
+        "OPENAI_DEFAULT_MODEL"
+      ]
+    },
+    "ruflo-orchestrator": {
+      "tools": [
+        "ruflo",
+        "@claude-flow/cli",
+        "ruvector"
+      ],
+      "skills": [
+        "build-with-quality",
+        "swarm-advanced",
+        "lazy-fetch",
+        "bhil-methodology",
+        "codebase-memory"
+      ],
+      "env": [
+        "RUVECTOR_PORT",
+        "RUVECTOR_DATA_DIR",
+        "NOSTR_RELAYS"
+      ]
+    },
+    "qe-fleet": {
+      "tools": [
+        "agentic-qe",
+        "aqe",
+        "playwright",
+        "chromium"
+      ],
+      "skills": [
+        "build-with-quality",
+        "browser-automation",
+        "playwright",
+        "chrome-cdp"
+      ],
+      "env": [
+        "PLAYWRIGHT_TIMEOUT",
+        "DISPLAY",
+        "SCREENSHOT_DIR"
+      ]
+    },
+    "nagual-qe": {
+      "tools": [
+        "nagual-qe",
+        "agentic-qe",
+        "aqe"
+      ],
+      "skills": [
+        "browser-automation",
+        "build-with-quality"
+      ],
+      "env": [
+        "NAGUAL_API_KEY",
+        "NAGUAL_BASE_URL"
+      ]
+    },
+    "rust-builder": {
+      "tools": [
+        "cargo",
+        "rustc",
+        "clippy",
+        "rustfmt",
+        "wasm-pack"
+      ],
+      "skills": [
+        "rust-development",
+        "wasm-js",
+        "agentic-jujutsu",
+        "codebase-memory"
+      ],
+      "env": [
+        "RUST_BACKTRACE",
+        "CARGO_HOME",
+        "RUSTUP_HOME"
+      ]
+    },
+    "docs-latex": {
+      "tools": [
+        "pdflatex",
+        "xelatex",
+        "lualatex",
+        "biber",
+        "latexmk",
+        "pandoc"
+      ],
+      "skills": [
+        "latex-documents",
+        "report-builder",
+        "mermaid-diagrams",
+        "paperbanana",
+        "wardley-maps"
+      ],
+      "env": [
+        "PERPLEXITY_API_KEY",
+        "GOOGLE_API_KEY",
+        "OPENAI_API_KEY"
+      ]
+    },
+    "zai": {
+      "tools": [
+        "claude"
+      ],
+      "skills": [
+        "skill-router",
+        "lazy-fetch",
+        "codebase-memory"
+      ],
+      "env": [
+        "ZAI_API_KEY",
+        "ZAI_URL"
+      ]
+    },
+    "openrouter": {
+      "tools": [
+        "claude"
+      ],
+      "skills": [
+        "skill-router",
+        "lazy-fetch",
+        "codebase-memory"
+      ],
+      "env": [
+        "OPENROUTER_API_KEY"
+      ]
+    },
+    "antigravity": {
+      "tools": [
+        "gemini"
+      ],
+      "skills": [
+        "skill-router",
+        "lazy-fetch",
+        "codebase-memory"
+      ],
+      "env": [
+        "GOOGLE_API_KEY",
+        "GOOGLE_GEMINI_API_KEY"
+      ],
+      "no_claude_settings": true,
+      "extra_dirs": [
+        ".antigravity"
+      ]
+    },
+    "deepseek": {
+      "tools": [
+        "opencode",
+        "deepseek"
+      ],
+      "skills": [
+        "skill-router",
+        "lazy-fetch",
+        "codebase-memory"
+      ],
+      "env": [
+        "DEEPSEEK_API_KEY",
+        "DEEPSEEK_BASE_URL"
+      ],
+      "no_claude_settings": true,
+      "extra_dirs": [
+        ".config/opencode"
+      ]
+    },
+    "perplexity": {
+      "tools": [
+        "perplexity"
+      ],
+      "skills": [
+        "perplexity-research",
+        "web-researcher",
+        "lazy-fetch"
+      ],
+      "env": [
+        "PERPLEXITY_API_KEY"
+      ],
+      "no_claude_settings": true
+    },
+    "gemma": {
+      "tools": [
+        "opencode",
+        "gemma"
+      ],
+      "skills": [
+        "skill-router",
+        "lazy-fetch",
+        "codebase-memory"
+      ],
+      "env": [
+        "GEMMA_BASE_URL",
+        "GEMMA_MODEL"
+      ],
+      "no_claude_settings": true,
+      "extra_dirs": [
+        ".config/opencode"
+      ]
+    },
+    "codex": {
+      "tools": [
+        "openai-codex",
+        "codex"
+      ],
+      "skills": [
+        "skill-router",
+        "lazy-fetch",
+        "codebase-memory",
+        "openai-codex"
+      ],
+      "env": [
+        "OPENAI_API_KEY"
+      ],
+      "no_claude_settings": true,
+      "extra_dirs": [
+        ".codex"
+      ]
+    }
+  },
+  "toolchains": {
+    "claude": true,
+    "claude_code": true,
+    "ruflo": true,
+    "claude_flow": true,
+    "agentic_qe": true,
+    "metaharness": true,
+    "nagual_qe": false,
+    "codebase_memory": true,
+    "rust": true,
+    "antigravity_cli": true,
+    "codex": true,
+    "opencode": true,
+    "code_server": true,
+    "cuda": true
+  }
+}

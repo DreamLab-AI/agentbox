@@ -1,0 +1,22 @@
+{
+  "enabled": true,
+  "primary_host": "claude",
+  "aqe_agent_overrides": true,
+  "dual_run": false,
+  "aqe_llm_provider": "claude-code",
+  "aqe_fallback_chain": "claude-code,codex",
+  "routes": {
+    "specification": "claude:claude-sonnet-5",
+    "architecture": "claude:claude-fable-5-1",
+    "design": "claude:claude-opus-5",
+    "implementation": "codex:gpt-5.5 -> claude:claude-fable-5-1",
+    "testing": "codex:gpt-5.5 -> claude:claude-opus-5",
+    "review": "claude:claude-sonnet-5",
+    "security-scan": "codex:gpt-5.5",
+    "security-analysis": "claude:claude-fable-5-1",
+    "documentation": "codex:gpt-5.5",
+    "debugging": "claude:claude-fable-5-1",
+    "packaging": "codex:gpt-5.5",
+    "release": "claude:claude-sonnet-5"
+  }
+}

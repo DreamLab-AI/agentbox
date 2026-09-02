@@ -1,0 +1,930 @@
+
+[core]
+orchestration = "ruflo-v3"
+vector_db = "ruvector-embedded"
+
+[adapters]
+beads = "local-sqlite"
+pods = "local-solid-rs"
+memory = "external-pg"
+events = "local-jsonl"
+orchestrator = "local-process-manager"
+
+[sovereign_mesh]
+enabled = true
+solid_pod = true
+nostr_bridge = true
+https_bridge = true
+publish_agent_events = true
+voice_intent = false
+kg_elevation = true
+junkiejarvis = false
+per_user_agents = false
+
+[sovereign_mesh.mobile_bridge]
+enabled = false
+summary_model = "glm-5.3"
+
+[sovereign_mesh.operator]
+pubkey_hex = "b41654017f6850b13857d19d8ae0e3f88f1365600cab0321e8101c9e92682f7a"
+npub = ""
+display_name = ""
+relay_urls = []
+
+[sovereign_mesh.relay]
+enabled = true
+implementation = "nostr-rs-relay"
+port = 7777
+bind = "127.0.0.1"
+expose = false
+data_dir = "/var/lib/nostr-relay"
+ingress_policy = "allowlist"
+allowed_pubkeys = []
+allowed_kinds = [1, 1059, 30078, 27235, 38000, 38100]
+pod_bridge = true
+external_fanout = "bidirectional"
+intent_command = ""
+intent_args = ""
+agent_event_auth = "nip98"
+forum_relay_url = "wss://dreamlab-nostr-relay.solitary-paper-764d.workers.dev"
+max_event_bytes = 131072
+messages_per_sec = 5
+retention_days = 30
+allow_nip04 = false
+info_description = "Agentbox sovereign relay"
+info_contact = ""
+
+[sovereign_mesh.git]
+enabled = true
+auto_init = true
+default_branch = "main"
+http_backend = "git-http-backend"
+http_route_prefix = "/pods"
+max_push_mb = 100
+auth_mode = "nip98"
+read_public = false
+
+[sovereign_mesh.multi_user]
+enabled = false
+provisioning_policy = "closed"
+invite_kind = 30910
+invite_validity_seconds = 86400
+max_users = 100
+suspend_inactive_after_days = 90
+admin_pubkeys = []
+
+[ontology_monitor]
+enabled = true
+mode = "publish"
+
+[mesh]
+mode = "standalone"
+peer_relays = []
+federated_kinds = [1, 1059, 30001, 30050, 30078, 30910, 31400, 31401, 31402, 31403, 31404, 31405, 38000, 38100, 38300, 38301, 38302, 38304]
+allowed_remote_dids = []
+subscribed_kinds = []
+honor_remote_moderation = false
+
+[networking]
+tailscale = true
+hostname = "agentbox"
+host_gateway = false
+
+[llm_marketplace]
+enabled = true
+auto_advertise = true
+max_grant_ttl = 86400
+max_tokens_per_grant = 0
+pricing_mode = "operator"
+
+[desktop]
+enabled = true
+stack = "x11-openbox"
+resolution = "1920x1080"
+webgpu = true
+
+[skills]
+
+[skills.browser]
+agent_browser = true
+playwright = false
+qe_browser = true
+sidecar_mcp_url = "http://browsercontainer:8931/sse"
+sidecar_cdp_host = "browsercontainer"
+sidecar_cdp_port = 9222
+
+[skills.media]
+ffmpeg = true
+imagemagick = true
+comfyui_builtin = false
+
+[skills.spatial_and_3d]
+qgis = true
+blender = true
+gaussian_splatting = false
+
+[skills.data_science]
+pytorch = true
+jupyter = true
+
+[skills.docs]
+latex = true
+report_builder = true
+mermaid = true
+
+[skills.design]
+open_design = true
+
+[skills.research]
+web_researcher = true
+
+[skills.code_interpreter]
+enabled = true
+idle_timeout_s = 1800
+max_memory_mb = 512
+allow_pip_install = false
+pip_allowlist = ["numpy", "pandas", "scipy", "sympy", "matplotlib", "scikit-learn", "requests", "beautifulsoup4", "lxml", "networkx", "pydantic"]
+
+[skills.codeact]
+enabled = true
+
+[skills.voyager_skill_library]
+enabled = true
+max_skill_body_lines = 80
+max_evidence_age_s = 3600
+archive_after_days = 30
+
+[skills.aci_shell]
+enabled = true
+max_view_lines = 150
+max_edit_context = 10
+test_command_allowlist = ["pytest", "cargo test", "npm test", "go test"]
+
+[skills.ruvnet_brain]
+enabled = true
+namespace = "ruvnet-kb"
+auto_ingest = true
+grounding_hook = true
+kb_release_url = "https://github.com/stuinfla/ruvnet-brain/releases/latest/download/ruvnet-brain.zip"
+staging_path = "/var/lib/agentbox/ruvnet-brain"
+embed_batch = 32
+
+[skills.tree_search_coder]
+enabled = true
+max_candidates = 5
+per_branch_timeout_s = 60
+spend_cap_usd = 0.5
+
+[skills.ontology]
+enabled = true
+visionclaw_api_url = "http://visionclaw-server:4000"
+direct_axiom_load = false
+
+[skills.ontology.condense]
+enabled = true
+endpoint = "http://192.168.2.132:8084/v1"
+model = "qwen3.8-27B"
+style = "openai"
+max_concurrency = 2
+schedule_enabled = true
+schedule_interval_mins = 60
+schedule_max_age_hours = 24
+
+[skills.harness]
+enabled = true
+template_dir = "/home/devuser/workspace/VisionFlow/docs/engineering/templates"
+
+[skills.precedent]
+enabled = true
+namespace = "governance-precedents"
+similarity_threshold = 0.85
+
+[skills.email_search]
+enabled = true
+gateway_url = "http://email-mcp-gateway:8765"
+mcp_startup_timeout_ms = 60000
+mcp_tool_timeout_ms = 180000
+
+[skills.authority]
+enabled = true
+default = "escalation"
+
+[skills.authority.classes]
+ontology_axiom_load = "zero-tolerance"
+memory_namespace_repair = "zero-tolerance"
+memory_legacy_archival = "zero-tolerance"
+memory_embedding_backfill = "zero-tolerance"
+payment_settlement = "zero-tolerance"
+pod_delete = "zero-tolerance"
+pod_git_push = "zero-tolerance"
+mandate_revoke = "zero-tolerance"
+broker_enrichment_writeback = "zero-tolerance"
+broker_enrichment_review = "recoverable"
+skill_browser = "recoverable"
+research = "recoverable"
+memory_read = "recoverable"
+memory_store = "recoverable"
+ontology_query = "recoverable"
+code_interpreter_exec = "recoverable"
+aci_view = "recoverable"
+docs_render = "recoverable"
+
+[skills.payment_router]
+enabled = false
+
+[memory]
+admin_access_mode = "scoped"
+
+[integrations]
+
+[integrations.ruvector_external]
+enabled = true
+conninfo = "postgresql://ruvector:@@RUVECTOR_PG_PASSWORD@@@ruvector-postgres:5432/ruvector"
+manage_sidecar = true
+image = "ruvnet/ruvector-postgres:2.0.5@sha256:7fb09d439d82fccbe6e0035d09f91c9dce456bb2d70cb2e8d6afb12a6afa2051"
+data_volume = "ruvector_postgres_data_v2"
+hybrid_search = true
+typed_metadata = true
+metadata_gin = true
+health_tool = true
+episodic_ttl_sweep = true
+memory_orient = true
+embedding_dual_write = false
+embedding_active_column = "embedding"
+graph_backbone = false
+
+[integrations.comfyui_external]
+enabled = false
+url = "http://comfyui:8188"
+ws_url = "ws://comfyui:8188/ws"
+
+[integrations.solid_pod_rs]
+port = 8484
+bind = "0.0.0.0"
+storage = "fs"
+storage_root = "/var/lib/solid"
+base_url = "https://pods-native.dreamlab-ai.com"
+enable_oidc = false
+enable_schnorr_verify = true
+enable_dpop_cache = false
+notifications = "websocket"
+log_level = "info"
+enable_mcp = false
+sign_requests = true
+enable_did_nostr = true
+enable_webhook_signing = true
+enable_rate_limit = true
+enable_quota = true
+jss_v04_compat = true
+rate_limit_per_sec = 20
+quota_default_bytes = 10737418240
+allowed_origins = "https://dreamlab-ai.com"
+admin_key_env = "SOLID_ADMIN_KEY"
+
+[memory_learning]
+enabled = true
+record_trajectories = true
+aggregate_min_samples = 20
+recency_half_life_days = 14
+feed_retrieval = true
+feed_routing = false
+sona_enabled = false
+relevance_feedback = false
+aggregate_sweep = true
+aggregate_sweep_interval_mins = 30
+pattern_distillation = true
+attention_rerank = false
+sona_learn_enabled = false
+sona_apply_enabled = false
+param_tuning_enabled = false
+
+[memory_hygiene]
+allow_namespace_repair = false
+allow_embedding_backfill = false
+allow_legacy_archival = false
+allow_embedding_m3_backfill = false
+allow_legacy_mining_import = false
+allow_pattern_graduation = false
+
+[features]
+
+[features.expel_lesson_extraction]
+enabled = true
+max_lessons_per_task = 5
+min_confidence = 0.6
+confidence_floor = 0.3
+archive_after_days = 30
+contradiction_sample_rate = 0.1
+
+[vault]
+root = "/home/devuser/workspace/visionGraph/knowledge"
+pages = "pages"
+format = "obsidian"
+tui = "rune"
+working = "/home/devuser/workspace/visionGraph/working"
+transcripts = "/home/devuser/workspace/visionGraph/transcripts"
+
+[providers]
+
+[providers.anthropic]
+enabled = true
+env_var = "ANTHROPIC_API_KEY"
+optional_env_vars = []
+auth_mode = "oauth"
+
+[providers.openai]
+enabled = true
+env_var = "OPENAI_API_KEY"
+optional_env_vars = ["OPENAI_BASE_URL"]
+auth_mode = "api_key"
+
+[providers.gemini]
+enabled = true
+env_var = "GOOGLE_API_KEY"
+optional_env_vars = []
+auth_mode = "api_key"
+
+[providers.deepseek]
+enabled = true
+env_var = "DEEPSEEK_API_KEY"
+optional_env_vars = ["DEEPSEEK_BASE_URL"]
+auth_mode = "api_key"
+
+[providers.perplexity]
+enabled = true
+env_var = "PERPLEXITY_API_KEY"
+optional_env_vars = []
+auth_mode = "api_key"
+
+[providers.openrouter]
+enabled = true
+env_var = "OPENROUTER_API_KEY"
+optional_env_vars = []
+auth_mode = "api_key"
+
+[providers.context7]
+enabled = true
+env_var = "CONTEXT7_API_KEY"
+optional_env_vars = []
+auth_mode = "api_key"
+
+[providers.brave]
+enabled = true
+env_var = "BRAVE_API_KEY"
+optional_env_vars = []
+auth_mode = "api_key"
+
+[providers.github]
+enabled = true
+env_var = "GITHUB_TOKEN"
+optional_env_vars = []
+auth_mode = "api_key"
+
+[providers.zai]
+enabled = true
+env_var = "ZAI_API_KEY"
+optional_env_vars = ["ZAI_ANTHROPIC_API_KEY", "ZAI_URL"]
+auth_mode = "api_key"
+
+[providers.ollama]
+enabled = true
+sidecar = false
+
+[providers.ceramic]
+enabled = false
+env_var = "CERAMIC_API_KEY"
+optional_env_vars = []
+auth_mode = "api_key"
+
+[gpu]
+backend = "local-cuda"
+
+[consultants]
+enabled = true
+log_dir = "/var/lib/agentbox/consultations"
+intelligence_signal = true
+
+[consultants.codex]
+enabled = true
+model = "gpt-5.4"
+home = "/home/devuser/.codex"
+timeout_ms = 180000
+
+[consultants.antigravity]
+enabled = true
+model = "gemini-2.5-pro"
+home = "/home/devuser/.antigravity"
+timeout_ms = 180000
+
+[consultants.zai]
+enabled = true
+model = "glm-5.3"
+reasoning_effort = "high"
+home = "/home/zai-user"
+timeout_ms = 180000
+
+[consultants.perplexity]
+enabled = true
+model = "sonar-pro"
+timeout_ms = 60000
+
+[consultants.deepseek]
+enabled = true
+model = "deepseek-v4-flash"
+timeout_ms = 120000
+
+[model_routing]
+enabled = true
+primary_host = "claude"
+aqe_agent_overrides = true
+dual_run = false
+aqe_llm_provider = "claude-code"
+aqe_fallback_chain = "claude-code,codex"
+
+[model_routing.routes]
+specification = "claude:claude-sonnet-5"
+architecture = "claude:claude-fable-5-1"
+design = "claude:claude-opus-5"
+implementation = "codex:gpt-5.5 -> claude:claude-fable-5-1"
+testing = "codex:gpt-5.5 -> claude:claude-opus-5"
+review = "claude:claude-sonnet-5"
+security-scan = "codex:gpt-5.5"
+security-analysis = "claude:claude-fable-5-1"
+documentation = "codex:gpt-5.5"
+debugging = "claude:claude-fable-5-1"
+packaging = "codex:gpt-5.5"
+release = "claude:claude-sonnet-5"
+
+[privacy_filter]
+enabled = true
+mode = "local-cpu"
+port = 9092
+dtype = "bf16"
+model = "openai/privacy-filter"
+trust_remote_code = true
+
+[privacy_filter.policy]
+pods = "strict"
+memory = "strict"
+events = "soft"
+beads = "soft"
+orchestrator = "off"
+inbound = "soft"
+outbound = "soft"
+
+[privacy_filter.entities]
+enabled = []
+
+[privacy_filter.openmed]
+enabled = false
+port = 9093
+model_artifact = ""
+artifact_lock_sha256 = ""
+hmac_key_tag = "agentbox-openmed-v1"
+license_acknowledged = false
+onnx_runtime_present = false
+governance_acknowledged = false
+
+[privacy_filter.openmed.policy]
+pods = "strict"
+memory = "strict"
+inbound = "soft"
+outbound = "soft"
+
+[linked_data]
+enabled = true
+pods = "on"
+events = "on"
+credentials = "emit"
+did_documents = "emit"
+provenance = "emit"
+capability_descriptors = "emit"
+skill_metadata = "emit"
+payments = "on"
+memory_catalogue = "emit"
+architecture_docs = "emit"
+http_meta = "emit"
+default_form = "compacted"
+context_catalogue = "/opt/agentbox/contexts"
+context_cache_mode = "image"
+unknown_context_policy = "fail-closed"
+canonicalisation = "jcs"
+round_trip_in_dispatch = true
+
+[linked_data.contexts]
+
+
+[linked_data.did]
+method = "nostr"
+service_endpoints = ["pod", "relay"]
+publish_to_well_known = true
+
+[linked_data.privacy_handoff]
+order = "after"
+
+[linked_data.viewer]
+mode = "local-linkedobjects"
+mount_path = "/lo"
+bundle_path = "/opt/agentbox/browser"
+external_url = ""
+sri_hash = ""
+expose_port = true
+extra_panes = []
+upstream_panes_visible = true
+source_code_header = ""
+
+[payments]
+enabled = true
+backend = "solid-pod-rs"
+base_cost_sats = 10
+dream_per_sat = 10
+hold_buffer_ratio = 1.2
+
+[payments.tiers]
+inference = 10
+image_gen = 100
+analytics = 5
+
+[payments.token]
+ticker = "DREAM"
+rate = 10
+supply = 1000000
+issuer = ""
+
+[payments.consumer]
+enabled = false
+max_sats_per_call = 100
+daily_budget_sats = 1000
+approval_threshold_sats = 50
+allow_origins = []
+deny_origins = []
+external_router = "off"
+
+[payments.broadcast]
+enabled = false
+well_known = false
+accepts_block = true
+health_signals = false
+index_submit = "off"
+
+[project_tracking]
+enabled = true
+scan_dirs = ["/projects", "/home/devuser/workspace/project"]
+scan_interval_hours = 6
+github_enrichment = true
+primer_model = "glm-5.3"
+primer_on_scan = false
+nostr_publish = true
+metrics = true
+
+[interaction_plane]
+enabled = true
+port = 9095
+dashboard = "on"
+proxy_auth = "nip98"
+proxy_port = 9096
+
+[interaction_plane.proxy]
+allowed_pubkeys = ["c32b71bc1d4ab9d25cd0bd2a457ede15e6538d0d6311fc3c0543f9e8ca1bc13c", "6407eed80e2a8646e41a5ddba0ae6619425fc54af40e2b30482b9623c682425a", "b41654017f6850b13857d19d8ae0e3f88f1365600cab0321e8101c9e92682f7a", "11ed64225dd5e2c5e18f61ad43d5ad9272d08739d3a20dd25886197b0738663c"]
+
+[[interaction_plane.proxy.routes]]
+prefix = "/approvals"
+target = "http://127.0.0.1:9090"
+bearer_env = "MANAGEMENT_API_KEY"
+
+[[interaction_plane.proxy.routes]]
+prefix = "/bridge"
+target = "http://127.0.0.1:8971"
+bearer_env = "BRIDGE_TOKEN"
+
+[[interaction_plane.proxy.routes]]
+prefix = "/dream"
+target = "http://127.0.0.1:9090"
+strip = false
+bearer_env = "MANAGEMENT_API_KEY"
+
+[[interaction_plane.proxy.routes]]
+prefix = "/mgmt"
+target = "http://127.0.0.1:9090"
+bearer_env = "MANAGEMENT_API_KEY"
+
+[[interaction_plane.proxy.routes]]
+prefix = "/feed"
+target = "http://127.0.0.1:8971"
+strip = false
+bearer_env = "BRIDGE_TOKEN"
+
+[interaction_plane.coordinator]
+slug = "tab0"
+tool = "claude"
+view = "terminal"
+eager_mandate = false
+
+[[interaction_plane.session_seeds]]
+slug = "codex"
+tool = "codex"
+worktree = true
+eager_mandate = false
+
+[[interaction_plane.session_seeds]]
+slug = "antigravity"
+tool = "antigravity"
+worktree = true
+eager_mandate = false
+
+[[interaction_plane.session_seeds]]
+slug = "openrouter"
+tool = "claude"
+worktree = false
+env_allowlist = ["ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN"]
+eager_mandate = false
+
+[[interaction_plane.session_seeds]]
+slug = "zai"
+tool = "claude"
+worktree = false
+env_allowlist = ["ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN"]
+eager_mandate = false
+
+[[interaction_plane.session_seeds]]
+slug = "deepseek"
+tool = "opencode"
+model = "deepseek-agent/deepseek-chat"
+worktree = true
+eager_mandate = false
+
+[[interaction_plane.session_seeds]]
+slug = "loom"
+tool = "opencode"
+model = "loom-lan/qwen3.8-27B"
+worktree = true
+eager_mandate = false
+
+[[interaction_plane.session_seeds]]
+slug = "loom-raw"
+tool = "opencode"
+model = "loom-raw/qwen3.8-27B"
+worktree = true
+eager_mandate = false
+
+[voice]
+enabled = false
+console_port = 8444
+debug_port = 8443
+unmute_build_context = "../voice-stack/unmute"
+
+[toolchains]
+claude = true
+claude_code = true
+ruflo = true
+claude_flow = true
+agentic_qe = true
+metaharness = true
+nagual_qe = false
+codebase_memory = true
+rust = true
+antigravity_cli = true
+codex = true
+opencode = true
+code_server = true
+cuda = true
+
+[plugins]
+auto_update = false
+install_dir = "/home/devuser/.claude-flow/plugins"
+
+[plugins.memory]
+backend = "postgres"
+conninfo = "postgresql://ruvector:@@RUVECTOR_PG_PASSWORD@@@ruvector-postgres:5432/ruvector"
+fallback = "sqlite"
+enable_hnsw = true
+
+[[plugins.packages]]
+name = "ruflo-core"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-intelligence"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-swarm"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-workflows"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-autopilot"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-loop-workers"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-agentdb"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-ruvector"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-rag-memory"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-knowledge-graph"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-sparc"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-testgen"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-goals"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-docs"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-adr"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-ddd"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-security-audit"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-aidefence"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-observability"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-browser"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-wasm"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-neural-trader"
+enabled = false
+
+[[plugins.packages]]
+name = "ruflo-market-data"
+enabled = false
+
+[[plugins.packages]]
+name = "ruflo-iot-cognitum"
+enabled = false
+
+[[plugins.packages]]
+name = "ruflo-federation"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-migrations"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-daa"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-rvf"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-ruvllm"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-plugin-creator"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-jujutsu"
+enabled = false
+
+[[plugins.packages]]
+name = "ruflo-cost-tracker"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-metaharness"
+enabled = true
+
+[[plugins.packages]]
+name = "@claude-flow/embeddings"
+source = "registry"
+enabled = true
+
+[[plugins.packages]]
+name = "@claude-flow/security"
+source = "registry"
+enabled = true
+
+[[plugins.packages]]
+name = "@claude-flow/neural"
+source = "registry"
+enabled = true
+
+[compression]
+enabled = true
+backend = "sqlite"
+ttl_minutes = 30
+max_entries = 1000
+target_ratio = 0.15
+
+[compression.slots]
+memory = true
+pods = true
+events = false
+beads = true
+orchestrator = false
+
+[compression.algorithms]
+smart_crusher = true
+log_compressor = true
+diff_compressor = true
+
+[observability]
+metrics_port = 9091
+otlp_endpoint = ""
+log_level = "info"
+
+[security]
+audit_acknowledged = true
+
+[security.exceptions]
+
+[security.exceptions.solid-pod-rs]
+writable_volumes = ["solid-data:/var/lib/solid"]
+reason = "solid-pod-rs fs-backend requires atomic-rename writable storage under /var/lib/solid"
+
+[security.exceptions.desktop]
+tmpfs = ["/tmp/.X11-unix", "/run/user/1000"]
+
+[security.exceptions.code-server]
+writable_volumes = ["codeserver-config:/home/devuser/.local/share/code-server"]
+
+[security.exceptions.gpu-cuda]
+writable_volumes = []
+reason = "CUDA runtime requires device access; no additional writable volumes needed"
+runtime = "nvidia"
+
+[[security.exceptions.gpu-cuda.device_requests]]
+driver = "nvidia"
+count = -1
+capabilities = [["gpu"]]
+
+[security.exceptions.tailscale]
+writable_volumes = ["tailscale-state:/var/lib/tailscale"]
+cap_add = ["NET_ADMIN"]
+reason = "tailscaled needs persistent state dir and NET_ADMIN for userspace networking socket"
+
+[security.exceptions.nostr-relay]
+writable_volumes = ["nostr-relay-data:/var/lib/nostr-relay"]
+reason = "nostr-rs-relay SQLite journal and WAL require a writable durable path"
+
+[security.exceptions.consultants]
+writable_volumes = ["consultations-data:/var/lib/agentbox/consultations"]
+reason = "consultant tier writes JSONL audit log per call"
+
+[dream_machine]
+enabled = true
+hp_host = "john@10.10.10.1"
+hp_annexe_dir = "/home/john/dream-annexe"
+loom_url = "http://192.168.2.132:8084/v1"
+loom_model = "qwen3.8-27B"
+loom_max_tokens = 32768
+llm_provider = "zai"
+zai_model = "glm-5.3"
+zai_max_tokens = 32768
+window_start = 1
+window_end = 5
+memory_namespace = "dream-cycle"
+recall_band_self_min = 175
+recall_band_true_min = 102
+max_repos_per_night = 5
+prune_dry_streak = 5
+
+[federation]
+mode = "standalone"

@@ -353,29 +353,12 @@ SKILL_CREATOR_DIR="/home/devuser/.claude/plugins/marketplaces/claude-plugins-off
 INSTALLED_JSON="/home/devuser/.claude/plugins/installed_plugins.json"
 if [ -d "$SKILL_CREATOR_DIR" ] && [ -f "$INSTALLED_JSON" ]; then
   if ! grep -q '"skill-creator@claude-plugins-official"' "$INSTALLED_JSON" 2>/dev/null; then
-    python3 - <<PY 2>/dev/null || true
-import json, datetime, sys
-path = "$INSTALLED_JSON"
-try:
-    with open(path) as f:
-        data = json.load(f)
-except Exception:
-    sys.exit(0)
-data.setdefault("plugins", {})
-key = "skill-creator@claude-plugins-official"
-if key not in data["plugins"]:
-    now = datetime.datetime.utcnow().isoformat() + "Z"
-    data["plugins"][key] = [{
-        "scope": "user",
-        "installPath": "$SKILL_CREATOR_DIR",
-        "version": "marketplace",
-        "installedAt": now,
-        "lastUpdated": now,
-    }]
-    with open(path, "w") as f:
-        json.dump(data, f, indent=2)
-    print("[bootstrap] Pre-installed skill-creator from claude-plugins-official")
-PY
+    agentbox-manifest plugin-register \\
+      --file "$INSTALLED_JSON" \\
+      --key "skill-creator@claude-plugins-official" \\
+      --install-path "$SKILL_CREATOR_DIR" \\
+      --message "[bootstrap] Pre-installed skill-creator from claude-plugins-official" \\
+      2>/dev/null || true
   fi
 fi
 
@@ -395,29 +378,12 @@ if [ -d "$CODEX_MP_SRC/.claude-plugin" ] && [ -f "$INSTALLED_JSON" ]; then
   mkdir -p "$(dirname "$CODEX_MP_DIR")"
   [ -e "$CODEX_MP_DIR" ] || ln -sfn "$CODEX_MP_SRC" "$CODEX_MP_DIR"
   if [ -d "$CODEX_MP_DIR/plugins/codex" ] && ! grep -q '"codex@openai-codex"' "$INSTALLED_JSON" 2>/dev/null; then
-    python3 - <<PY 2>/dev/null || true
-import json, datetime, sys
-path = "$INSTALLED_JSON"
-try:
-    with open(path) as f:
-        data = json.load(f)
-except Exception:
-    sys.exit(0)
-data.setdefault("plugins", {})
-key = "codex@openai-codex"
-if key not in data["plugins"]:
-    now = datetime.datetime.utcnow().isoformat() + "Z"
-    data["plugins"][key] = [{
-        "scope": "user",
-        "installPath": "$CODEX_MP_DIR/plugins/codex",
-        "version": "marketplace",
-        "installedAt": now,
-        "lastUpdated": now,
-    }]
-    with open(path, "w") as f:
-        json.dump(data, f, indent=2)
-    print("[bootstrap] Registered codex@openai-codex (Nix-baked codex-plugin-cc)")
-PY
+    agentbox-manifest plugin-register \\
+      --file "$INSTALLED_JSON" \\
+      --key "codex@openai-codex" \\
+      --install-path "$CODEX_MP_DIR/plugins/codex" \\
+      --message "[bootstrap] Registered codex@openai-codex (Nix-baked codex-plugin-cc)" \\
+      2>/dev/null || true
   fi
 fi
 
@@ -469,9 +435,9 @@ fi
 # Phase 5 — Agent stack provisioning, then hand off to supervisord
 # ---------------------------------------------------------------------------
 echo "[4/8] Provisioning agent stacks..."
-python3 /opt/agentbox/scripts/provision-agent-stacks.py
+agentbox-manifest provision-stacks
 
-# provision-agent-stacks.py runs as root so the profile dirs land under
+# `agentbox-manifest provision-stacks` runs as root so the profile dirs land under
 # root:root with mode 755 — fine for static files (.env, README, settings.json)
 # but starship/atuin/etc. need to write per-profile cache and state. The
 # previous fix in tmux-autostart.sh tried `sudo chown` from devuser, which is
@@ -990,24 +956,7 @@ fi
 # left on disk (deprecated). Idempotent; failure never blocks boot.
 _USER_CLAUDE_JSON="/home/devuser/.claude/.claude.json"
 if [ -f "$_USER_CLAUDE_JSON" ]; then
-  python3 - "$_USER_CLAUDE_JSON" <<'PYEOF' || true
-import json, sys
-path = sys.argv[1]
-try:
-    cfg = json.load(open(path))
-except Exception:
-    sys.exit(0)
-servers = cfg.get("mcpServers") or {}
-doomed = [k for k, v in servers.items()
-          if isinstance(v, dict)
-          and any("ruvector-mcp" in str(a) and "/opt/agentbox/" not in str(a)
-                  for a in (v.get("args") or []) + [v.get("command") or ""])]
-for k in doomed:
-    del servers[k]
-if doomed:
-    json.dump(cfg, open(path, "w"), indent=2)
-    print("  [mcp] De-registered ungoverned ruvector fork: " + ", ".join(doomed) + " (ADR-036 D2)")
-PYEOF
+  agentbox-manifest mcp-deregister-fork --file "$_USER_CLAUDE_JSON" || true
   # MCP-3 (audit P1, security): Claude Code caches the resolved MCP config —
   # including the literal Perplexity key and email-gateway bearer token — into
   # this per-user state file. It is world-readable by default on the shared
@@ -1287,13 +1236,10 @@ fi
 _BROWSER_MCP_URL="http://browsercontainer:8931/sse"
 if [ -f "$_MCP_JSON" ] && ! grep -q "browser-gpu" "$_MCP_JSON" 2>/dev/null; then
   if curl -fsS --max-time 3 "http://browsercontainer:8931/health" >/dev/null 2>&1; then
-    # Patch browser-gpu SSE server into existing .mcp.json using python3 (always available)
-    python3 -c "
-import json, sys
-with open('$_MCP_JSON') as f: cfg = json.load(f)
-cfg.setdefault('mcpServers', {})['browser-gpu'] = {'type': 'sse', 'url': '$_BROWSER_MCP_URL'}
-with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
-" 2>/dev/null && echo "  [mcp] Added browser-gpu → $_BROWSER_MCP_URL" || true
+    # Patch the browser-gpu SSE server into the existing .mcp.json.
+    agentbox-manifest mcp-set-server --file "$_MCP_JSON" --name browser-gpu <<JSON 2>/dev/null && echo "  [mcp] Added browser-gpu → $_BROWSER_MCP_URL" || true
+{"type": "sse", "url": "$_BROWSER_MCP_URL"}
+JSON
     chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
     chmod 600 "$_MCP_JSON" 2>/dev/null || true   # MCP-3: baked API key / bearer token — owner-only on shared volume
   else
@@ -1309,19 +1255,12 @@ fi
 if [ "${ENABLE_AGENTIC_QE:-false}" = "true" ] && command -v aqe >/dev/null 2>&1 && [ -f "$_MCP_JSON" ]; then
   _MR_ENABLED=$(_ab_toml_bool model_routing enabled)
   _MR_AQE_PROVIDER="$(_ab_toml_val model_routing aqe_llm_provider)"
-  python3 -c "
-import json
-with open('$_MCP_JSON') as f: cfg = json.load(f)
-srv = cfg.setdefault('mcpServers', {}).setdefault('agentic-qe', {
-  'command': 'aqe', 'args': ['mcp'], 'type': 'stdio'})
-env = srv.setdefault('env', {})
-env.update({'AQE_MEMORY_BACKEND': 'memory', 'AQE_VERBOSE': 'false', 'NODE_NO_WARNINGS': '1'})
-if '$_MR_ENABLED' == '1' and '$_MR_AQE_PROVIDER':
-    env['AQE_LLM_PROVIDER'] = '$_MR_AQE_PROVIDER'
-else:
-    env.pop('AQE_LLM_PROVIDER', None)
-with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
-" 2>/dev/null && echo "  [mcp] Reconciled agentic-qe → aqe mcp (routing env: ${_MR_ENABLED})" || true
+  # An empty --provider removes AQE_LLM_PROVIDER rather than blanking it, so
+  # turning ADR-041 routing back off leaves no stale key behind.
+  _MR_PROVIDER_ARG=""
+  [ "$_MR_ENABLED" = "1" ] && _MR_PROVIDER_ARG="$_MR_AQE_PROVIDER"
+  agentbox-manifest mcp-reconcile-aqe --file "$_MCP_JSON" --provider "$_MR_PROVIDER_ARG" \
+    2>/dev/null && echo "  [mcp] Reconciled agentic-qe → aqe mcp (routing env: ${_MR_ENABLED})" || true
   chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
   chmod 600 "$_MCP_JSON" 2>/dev/null || true   # MCP-3: baked API key / bearer token — owner-only on shared volume
 
@@ -1332,7 +1271,7 @@ with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
   # written files stay workspace-owned.
   if [ "$_MR_ENABLED" = "1" ]; then
     runuser -u devuser -- env WORKSPACE="$WORKSPACE" \
-      python3 /opt/agentbox/scripts/model-routing-project.py \
+      agentbox-manifest model-routing-project \
         --manifest "$AGENTBOX_CONFIG" --workspace "$WORKSPACE" 2>&1 \
       | sed 's/^/  /' || true
   fi
@@ -1344,26 +1283,9 @@ fi
 # closed on malformed content. Reconciled every boot; absent section ⇒ file
 # removed (proxy then runs on baked env alone).
 _NIP98_CFG="/home/devuser/workspace/.agentbox/nip98-proxy-config.json"
-if [ -f "$AGENTBOX_CONFIG" ] && command -v python3 >/dev/null 2>&1; then
-  python3 - "$AGENTBOX_CONFIG" "$_NIP98_CFG" <<'PYEOF' 2>&1 | sed 's/^/  /' || true
-import json, os, sys, tomllib
-cfg_path, out_path = sys.argv[1], sys.argv[2]
-with open(cfg_path, 'rb') as f:
-    cfg = tomllib.load(f)
-proxy = (cfg.get('interaction_plane') or {}).get('proxy') or {}
-routes = proxy.get('routes') or []
-allowed = proxy.get('allowed_pubkeys') or []
-if not routes and not allowed:
-    if os.path.exists(out_path):
-        os.unlink(out_path)
-        print('[nip98-proxy] config section absent — removed stale config file')
-    sys.exit(0)
-out = {'routes': routes, 'allowedPubkeys': allowed}
-os.makedirs(os.path.dirname(out_path), exist_ok=True)
-with open(out_path, 'w') as f:
-    json.dump(out, f, indent=2)
-print(f'[nip98-proxy] projected {len(routes)} route(s), {len(allowed)} allowlisted pubkey(s)')
-PYEOF
+if [ -f "$AGENTBOX_CONFIG" ] && command -v agentbox-manifest >/dev/null 2>&1; then
+  agentbox-manifest nip98-config --manifest "$AGENTBOX_CONFIG" --out "$_NIP98_CFG" 2>&1 \
+    | sed 's/^/  /' || true
   chown 1000:1000 "$_NIP98_CFG" 2>/dev/null || true
   chmod 600 "$_NIP98_CFG" 2>/dev/null || true
 fi
@@ -1376,23 +1298,20 @@ _MCP_SERVERS_NODE_PATH="/opt/agentbox/mcp/servers/node_modules"
 # propagate on every boot instead of being frozen at first registration.
 _ONTOLOGY_BRIDGE="/opt/agentbox/mcp/servers/ontology-bridge.js"
 if [ "${ENABLE_ONTOLOGY:-false}" = "true" ] && [ -f "$_ONTOLOGY_BRIDGE" ] && [ -f "$_MCP_JSON" ]; then
-    python3 -c "
-import json
-with open('$_MCP_JSON') as f: cfg = json.load(f)
-cfg.setdefault('mcpServers', {})['ontology-bridge'] = {
-  'command': 'node',
-  'args': ['$_ONTOLOGY_BRIDGE'],
-  'type': 'stdio',
-  'env': {
-    'VISIONCLAW_API_URL': '${VISIONCLAW_API_URL:-http://visionclaw-server:4000}',
-    'VISIONCLAW_DEV_TOKEN': '${VISIONCLAW_DEV_TOKEN:-}',
-    'AGENTBOX_PUBKEY': '${AGENTBOX_PUBKEY:-}',
-    'AGENTBOX_ONTOLOGY_DIRECT_LOAD': '${AGENTBOX_ONTOLOGY_DIRECT_LOAD:-false}',
-    'NODE_PATH': '$_MCP_SERVERS_NODE_PATH',
+    agentbox-manifest mcp-set-server --file "$_MCP_JSON" --name ontology-bridge <<JSON 2>/dev/null && echo "  [mcp] Upserted ontology-bridge → ${VISIONCLAW_API_URL:-http://visionclaw-server:4000}" || true
+{
+  "command": "node",
+  "args": ["$_ONTOLOGY_BRIDGE"],
+  "type": "stdio",
+  "env": {
+    "VISIONCLAW_API_URL": "${VISIONCLAW_API_URL:-http://visionclaw-server:4000}",
+    "VISIONCLAW_DEV_TOKEN": "\${VISIONCLAW_DEV_TOKEN}",
+    "AGENTBOX_PUBKEY": "${AGENTBOX_PUBKEY:-}",
+    "AGENTBOX_ONTOLOGY_DIRECT_LOAD": "${AGENTBOX_ONTOLOGY_DIRECT_LOAD:-false}",
+    "NODE_PATH": "$_MCP_SERVERS_NODE_PATH"
   }
 }
-with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
-" 2>/dev/null && echo "  [mcp] Upserted ontology-bridge → ${VISIONCLAW_API_URL:-http://visionclaw-server:4000}" || true
+JSON
     chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
     chmod 600 "$_MCP_JSON" 2>/dev/null || true   # MCP-3: baked API key / bearer token — owner-only on shared volume
 fi
@@ -1401,20 +1320,17 @@ fi
 _PRECEDENT_BRIDGE="/opt/agentbox/mcp/servers/precedent-bridge.js"
 if [ -f "$_PRECEDENT_BRIDGE" ] && [ -f "$_MCP_JSON" ]; then
   if ! grep -q "precedent-bridge" "$_MCP_JSON" 2>/dev/null; then
-    python3 -c "
-import json
-with open('$_MCP_JSON') as f: cfg = json.load(f)
-cfg.setdefault('mcpServers', {})['precedent-bridge'] = {
-  'command': 'node',
-  'args': ['$_PRECEDENT_BRIDGE'],
-  'type': 'stdio',
-  'env': {
-    'AGENTBOX_POD_ROOT': '/var/lib/agentbox',
-    'NODE_PATH': '$_MCP_SERVERS_NODE_PATH',
+    agentbox-manifest mcp-set-server --file "$_MCP_JSON" --name precedent-bridge <<JSON 2>/dev/null && echo "  [mcp] Added precedent-bridge" || true
+{
+  "command": "node",
+  "args": ["$_PRECEDENT_BRIDGE"],
+  "type": "stdio",
+  "env": {
+    "AGENTBOX_POD_ROOT": "/var/lib/agentbox",
+    "NODE_PATH": "$_MCP_SERVERS_NODE_PATH"
   }
 }
-with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
-" 2>/dev/null && echo "  [mcp] Added precedent-bridge" || true
+JSON
     chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
     chmod 600 "$_MCP_JSON" 2>/dev/null || true   # MCP-3: baked API key / bearer token — owner-only on shared volume
   fi
@@ -1424,19 +1340,16 @@ fi
 _HARNESS_BRIDGE="/opt/agentbox/mcp/servers/harness-bridge.js"
 if [ -f "$_HARNESS_BRIDGE" ] && [ -f "$_MCP_JSON" ]; then
   if ! grep -q "harness-bridge" "$_MCP_JSON" 2>/dev/null; then
-    python3 -c "
-import json
-with open('$_MCP_JSON') as f: cfg = json.load(f)
-cfg.setdefault('mcpServers', {})['harness-bridge'] = {
-  'command': 'node',
-  'args': ['$_HARNESS_BRIDGE'],
-  'type': 'stdio',
-  'env': {
-    'NODE_PATH': '$_MCP_SERVERS_NODE_PATH',
+    agentbox-manifest mcp-set-server --file "$_MCP_JSON" --name harness-bridge <<JSON 2>/dev/null && echo "  [mcp] Added harness-bridge" || true
+{
+  "command": "node",
+  "args": ["$_HARNESS_BRIDGE"],
+  "type": "stdio",
+  "env": {
+    "NODE_PATH": "$_MCP_SERVERS_NODE_PATH"
   }
 }
-with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
-" 2>/dev/null && echo "  [mcp] Added harness-bridge" || true
+JSON
     chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
     chmod 600 "$_MCP_JSON" 2>/dev/null || true   # MCP-3: baked API key / bearer token — owner-only on shared volume
   fi
@@ -1447,8 +1360,9 @@ fi
 #    server — the `email-mcp-gateway` container on the shared visionclaw_network
 #    (DreamLab-AI/email-mcp-gateway) — that searches the owner's personal mail
 #    locally and returns only privacy-sanitised results.
-#    The bearer token is read from the env inside python3 (never interpolated onto
-#    the command line). GET /health is auth-exempt; we gate registration on it.
+#    The bearer token is read from the env inside the projector (never
+#    interpolated onto the command line). GET /health is auth-exempt; we gate
+#    registration on it.
 #    Sanitised because compose env_file overrides the flake-baked value verbatim —
 #    Docker's env-file parser keeps inline `# comments` as part of the value, so a
 #    placeholder line in .env arrives here as garbage and must not win over the
@@ -1465,42 +1379,32 @@ if [ "${ENABLE_EMAIL_SEARCH:-false}" = "true" ] \
    && [ -f "$_MCP_JSON" ] \
    && ! grep -q "email-gateway" "$_MCP_JSON" 2>/dev/null; then
   if curl -fsS --max-time 3 "$_EMAIL_GW_URL/health" >/dev/null 2>&1; then
-    python3 -c "
-import json, os
-url = '$_EMAIL_GW_URL'.rstrip('/')
-token = os.environ['AGENTBOX_EMAIL_GATEWAY_TOKEN']
-with open('$_MCP_JSON') as f: cfg = json.load(f)
-cfg.setdefault('mcpServers', {})['email-gateway'] = {
-  'type': 'http',
-  'url': url + '/mcp',
-  'headers': {'Authorization': 'Bearer ' + token},
+    # \${AGENTBOX_EMAIL_GATEWAY_TOKEN} is escaped from the shell on purpose: the
+    # binary expands and JSON-escapes it from its own environment, so the token
+    # never reaches argv — the property the Python had by reading os.environ.
+    agentbox-manifest mcp-set-server --file "$_MCP_JSON" --name email-gateway <<JSON 2>/dev/null && echo "  [mcp] Added email-gateway → $_EMAIL_GW_URL/mcp" || true
+{
+  "type": "http",
+  "url": "${_EMAIL_GW_URL%/}/mcp",
+  "headers": {"Authorization": "Bearer \${AGENTBOX_EMAIL_GATEWAY_TOKEN}"}
 }
-with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
-" 2>/dev/null && echo "  [mcp] Added email-gateway → $_EMAIL_GW_URL/mcp" || true
+JSON
     chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
     chmod 600 "$_MCP_JSON" 2>/dev/null || true   # MCP-3: baked API key / bearer token — owner-only on shared volume
     # Warm-up (best-effort, detached): prime the gateway's local LLM backend and
     # open a session NOW, so the first Claude Code session's MCP `initialize`
     # handshake is fast instead of paying the cold-start latency that used to trip
-    # the session-start timeout (see MCP_TIMEOUT in flake.nix). Token is read from
-    # env inside python3 — never placed on the command line / process list. Never
-    # blocks boot: fully backgrounded, all errors swallowed.
-    ( AGENTBOX_EMAIL_GATEWAY_URL="$_EMAIL_GW_URL" python3 - <<'WARMPY'
-import os, json, urllib.request
-base = os.environ.get('AGENTBOX_EMAIL_GATEWAY_URL', '').rstrip('/')
-tok = os.environ.get('AGENTBOX_EMAIL_GATEWAY_TOKEN', '')
-if base and tok:
-    body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "initialize",
-        "params": {"protocolVersion": "2025-06-18", "capabilities": {},
-                   "clientInfo": {"name": "boot-warmup", "version": "1.0"}}}).encode()
-    req = urllib.request.Request(base + '/mcp', data=body, method='POST', headers={
-        'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json',
-        'Accept': 'application/json, text/event-stream'})
-    try:
-        urllib.request.urlopen(req, timeout=45).read(1)
-    except Exception:
-        pass
-WARMPY
+    # the session-start timeout (see MCP_TIMEOUT in flake.nix). Never blocks
+    # boot: fully backgrounded, all errors swallowed. This is a plain POST with
+    # no config munging, so it is curl rather than an agentbox-manifest
+    # subcommand; `curl -K -` reads the Authorization header from stdin, which
+    # keeps the token off the command line / process list exactly as the
+    # previous python3 heredoc did.
+    ( printf 'header = "Authorization: Bearer %s"\n' "${AGENTBOX_EMAIL_GATEWAY_TOKEN:-}" \
+        | curl -fsS -K - --max-time 45 -o /dev/null -X POST "${_EMAIL_GW_URL%/}/mcp" \
+            -H 'Content-Type: application/json' \
+            -H 'Accept: application/json, text/event-stream' \
+            -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"boot-warmup","version":"1.0"}}}'
     ) >/dev/null 2>&1 &
   else
     echo "  [mcp] email gateway not reachable at $_EMAIL_GW_URL — skipping email-search MCP"
@@ -1513,19 +1417,16 @@ fi
 _PERPLEXITY_ENTRY="/opt/agentbox/mcp/perplexity/node_modules/@perplexity-ai/mcp-server/dist/index.js"
 if [ -n "${PERPLEXITY_API_KEY:-}" ] && [ -f "$_MCP_JSON" ]; then
   if ! grep -q "\"perplexity\"" "$_MCP_JSON" 2>/dev/null; then
-    python3 -c "
-import json
-with open('$_MCP_JSON') as f: cfg = json.load(f)
-cfg.setdefault('mcpServers', {})['perplexity'] = {
-  'command': 'node',
-  'args': ['$_PERPLEXITY_ENTRY'],
-  'type': 'stdio',
-  'env': {
-    'PERPLEXITY_API_KEY': '${PERPLEXITY_API_KEY}',
+    agentbox-manifest mcp-set-server --file "$_MCP_JSON" --name perplexity <<JSON 2>/dev/null && echo "  [mcp] Added perplexity → $_PERPLEXITY_ENTRY" || true
+{
+  "command": "node",
+  "args": ["$_PERPLEXITY_ENTRY"],
+  "type": "stdio",
+  "env": {
+    "PERPLEXITY_API_KEY": "\${PERPLEXITY_API_KEY}"
   }
 }
-with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
-" 2>/dev/null && echo "  [mcp] Added perplexity → $_PERPLEXITY_ENTRY" || true
+JSON
     chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
     chmod 600 "$_MCP_JSON" 2>/dev/null || true   # MCP-3: baked API key / bearer token — owner-only on shared volume
   fi
@@ -1547,24 +1448,21 @@ if [ "${ENABLE_RUVNET_BRAIN:-false}" = "true" ] && [ -d "$_RB_MCP_DIR" ]; then
   # Phase 1: Register the thin MCP wrapper. Conninfo mirrors the claude-flow
   # entry (libpq key=value form, password resolved at write time).
   if [ -f "$_MCP_JSON" ] && ! grep -q "ruvnet-brain" "$_MCP_JSON" 2>/dev/null; then
-    python3 -c "
-import json, os
-with open('$_MCP_JSON') as f: cfg = json.load(f)
-cfg.setdefault('mcpServers', {})['ruvnet-brain'] = {
-  'command': 'node',
-  'args': ['$_RB_MCP_DIR/server.js'],
-  'type': 'stdio',
-  'env': {
-    'RUVECTOR_PG_CONNINFO': 'host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=' + os.environ.get('RUVECTOR_PG_PASSWORD', 'ruvector'),
-    'XINFERENCE_ENDPOINT': os.environ.get('XINFERENCE_ENDPOINT', 'http://xinference:9997'),
-    'EMBEDDING_MODEL': os.environ.get('EMBEDDING_MODEL', 'bge-small-en-v1.5'),
-    'RUVNET_BRAIN_NAMESPACE': '$_RB_NS',
-    'NODE_PATH': '$_RB_MCP_DIR/node_modules',
-    'NODE_NO_WARNINGS': '1',
+    agentbox-manifest mcp-set-server --file "$_MCP_JSON" --name ruvnet-brain <<JSON 2>/dev/null && echo "  [mcp] Added ruvnet-brain → $_RB_MCP_DIR/server.js (namespace: $_RB_NS)" || true
+{
+  "command": "node",
+  "args": ["$_RB_MCP_DIR/server.js"],
+  "type": "stdio",
+  "env": {
+    "RUVECTOR_PG_CONNINFO": "host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=\${RUVECTOR_PG_PASSWORD}",
+    "XINFERENCE_ENDPOINT": "${XINFERENCE_ENDPOINT:-http://xinference:9997}",
+    "EMBEDDING_MODEL": "${EMBEDDING_MODEL:-bge-small-en-v1.5}",
+    "RUVNET_BRAIN_NAMESPACE": "$_RB_NS",
+    "NODE_PATH": "$_RB_MCP_DIR/node_modules",
+    "NODE_NO_WARNINGS": "1"
   }
 }
-with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
-" 2>/dev/null && echo "  [mcp] Added ruvnet-brain → $_RB_MCP_DIR/server.js (namespace: $_RB_NS)" || true
+JSON
     chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
     chmod 600 "$_MCP_JSON" 2>/dev/null || true   # MCP-3: baked API key / bearer token — owner-only on shared volume
   fi
@@ -1574,19 +1472,8 @@ with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
   # existing default (governance-precedents) and any operator additions
   # survive. Idempotent.
   if [ -f "$_MCP_JSON" ]; then
-    python3 -c "
-import json
-with open('$_MCP_JSON') as f: cfg = json.load(f)
-cf = cfg.get('mcpServers', {}).get('claude-flow')
-if cf is not None:
-    env = cf.setdefault('env', {})
-    cur = [s.strip() for s in env.get('RUVECTOR_PROTECTED_NAMESPACES', 'governance-precedents').split(',') if s.strip()]
-    if '$_RB_NS' not in cur:
-        cur.append('$_RB_NS')
-        env['RUVECTOR_PROTECTED_NAMESPACES'] = ','.join(cur)
-        with open('$_MCP_JSON', 'w') as f: json.dump(cfg, f, indent=2)
-        print('  [ruvnet-brain] protected namespace $_RB_NS in claude-flow env')
-" 2>/dev/null || true
+    agentbox-manifest mcp-protect-namespace --file "$_MCP_JSON" --namespace "$_RB_NS" \
+      2>/dev/null || true
     chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
     chmod 600 "$_MCP_JSON" 2>/dev/null || true   # MCP-3: baked API key / bearer token — owner-only on shared volume
   fi
@@ -1641,16 +1528,9 @@ if [ -f "$_MCP_PROJECTOR" ] && [ -f "$_MCP_REGISTRY" ] && [ -f "$_MCP_JSON" ] &&
   # it, so derive it from the manifest here (best-effort; default off). Per-provider
   # bin/key requires in the registry then gate each consultant individually.
   _CONSULTANTS_ON=0
-  if [ -f "${AGENTBOX_CONFIG:-}" ] && command -v python3 >/dev/null 2>&1; then
-    _CONSULTANTS_ON=$(python3 - "$AGENTBOX_CONFIG" <<'PYEOF' 2>/dev/null || echo 0
-import sys, tomllib
-try:
-    c = tomllib.load(open(sys.argv[1], "rb"))
-    print(1 if c.get("consultants", {}).get("enabled", False) else 0)
-except Exception:
-    print(0)
-PYEOF
-)
+  if [ -f "${AGENTBOX_CONFIG:-}" ] && command -v agentbox-manifest >/dev/null 2>&1; then
+    _CONSULTANTS_ON=$(agentbox-manifest toml-bool \
+      --manifest "$AGENTBOX_CONFIG" --path consultants.enabled 2>/dev/null || echo 0)
   fi
   AGENTBOX_CONSULTANTS_ENABLED="$_CONSULTANTS_ON" \
   MCP_REGISTRY="$_MCP_REGISTRY" MCP_JSON="$_MCP_JSON" \
@@ -1718,7 +1598,7 @@ if [ "$_xinference_ok" = "true" ]; then
       -H 'Content-Type: application/json' \
       -d "{\"model\":\"${EMBEDDING_MODEL}\",\"input\":\"startup probe\"}" 2>/dev/null || echo '{}')
     if echo "$_emb_test" | grep -q '"embedding"'; then
-      _emb_dim=$(echo "$_emb_test" | python3 -c "import sys,json; print(len(json.load(sys.stdin)['data'][0]['embedding']))" 2>/dev/null || echo "?")
+      _emb_dim=$(echo "$_emb_test" | agentbox-manifest embedding-dim 2>/dev/null || echo "?")
       echo "  [xinference] Embedding verified after ${_ewait}s (model=${EMBEDDING_MODEL}, dim=${_emb_dim})"
       export XINFERENCE_READY=true
       break
@@ -1839,37 +1719,14 @@ if command -v ruflo >/dev/null 2>&1; then
   # source = "ruflo-git" (default): symlink from cache into plugin dir.
   # source = "registry": install via `ruflo plugins install -n`.
   #
-  # Q27: parse via Python's tomllib (3.11+) instead of a hand-rolled
-  # case/sed loop. The previous implementation interpolated $_plugin_name
-  # directly into a `su -c '...'` shell command — a latent shell-injection
-  # vector if a plugin name ever contained a single quote. tomllib also
-  # handles multi-line values, comment placements, and string escapes the
-  # case/sed loop quietly mishandled.
-  if [ -f "$AGENTBOX_CONFIG" ] && command -v python3 >/dev/null 2>&1; then
-    # Parse [[plugins.packages]] via tomllib and emit `name<TAB>source\n`
-    # lines for enabled, validated entries. The validation regex catches
-    # any name that could break out of shell-quoting, which collapses the
-    # injection vector documented in Q27.
-    _PLUGIN_LIST=$(python3 - "$AGENTBOX_CONFIG" <<'PYEOF'
-import re, sys, tomllib
-with open(sys.argv[1], "rb") as f:
-    cfg = tomllib.load(f)
-pkgs = cfg.get("plugins", {}).get("packages", []) or []
-name_re = re.compile(r"^[a-zA-Z0-9@/_.+-]+$")
-for entry in pkgs:
-    if not entry.get("enabled", False):
-        continue
-    name = entry.get("name", "")
-    source = entry.get("source", "ruflo-git")
-    if not name_re.match(name):
-        sys.stderr.write(f"[plugin] skipping suspicious name: {name!r}\n")
-        continue
-    if source not in ("ruflo-git", "registry"):
-        sys.stderr.write(f"[plugin] skipping unknown source: {source!r} for {name}\n")
-        continue
-    print(f"{name}\t{source}")
-PYEOF
-)
+  # Q27: parse the manifest properly instead of a hand-rolled case/sed loop.
+  # The pre-Q27 implementation interpolated $_plugin_name directly into a
+  # `su -c '...'` shell command — a latent shell-injection vector if a plugin
+  # name ever contained a single quote. `plugin-list` emits `name<TAB>source`
+  # for enabled entries only, and rejects any name that could break out of the
+  # shell quoting downstream, which is what collapses that vector.
+  if [ -f "$AGENTBOX_CONFIG" ] && command -v agentbox-manifest >/dev/null 2>&1; then
+    _PLUGIN_LIST=$(agentbox-manifest plugin-list --manifest "$AGENTBOX_CONFIG")
     while IFS=$'\t' read -r _plugin_name _plugin_source; do
       [ -z "$_plugin_name" ] && continue
       if [ "$_plugin_source" = "registry" ]; then

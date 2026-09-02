@@ -1,0 +1,1 @@
+[bootstrap] Pre-installed skill-creator from claude-plugins-official

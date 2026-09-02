@@ -3,33 +3,38 @@ name: TUI helper tests
 on:
   pull_request:
     paths:
-      - 'scripts/tui-read-manifest.py'
-      - 'scripts/tui-write-manifest.py'
+      - 'services/agentbox-manifest/**'
       - 'tests/tui/**'
       - '.github/workflows/tui-tests.yml'
   push:
     branches:
       - main
     paths:
-      - 'scripts/tui-read-manifest.py'
-      - 'scripts/tui-write-manifest.py'
+      - 'services/agentbox-manifest/**'
       - 'tests/tui/**'
 
 jobs:
-  tui-pytest:
-    name: pytest — TUI helper scripts
+  manifest-tests:
+    name: cargo test — agentbox-manifest
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
         with:
-          python-version: '3.11'
-          cache: 'pip'
-          cache-dependency-path: tests/tui/requirements.txt
+          components: clippy
 
+      - name: Cache cargo registry and build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: services/agentbox-manifest
+
+      # The schema-compatibility group shells out to
+      # scripts/agentbox-config-validate.js. Without its npm deps the suite
+      # detects the missing module and skips those assertions, so `npm ci` is
+      # what keeps them live rather than silently green.
       - name: Set up Node 20 LTS
         uses: actions/setup-node@v4
         with:
@@ -37,11 +42,13 @@ jobs:
           cache: 'npm'
           cache-dependency-path: package-lock.json
 
-      - name: Install Python deps
-        run: pip install -r tests/tui/requirements.txt
-
       - name: Install Node deps (for agentbox-config-validate.js)
         run: npm ci
 
-      - name: Run TUI pytest suite
-        run: pytest tests/tui/test_tui_helpers.py -v --tb=short
+      - name: Clippy
+        run: cargo clippy --manifest-path services/agentbox-manifest/Cargo.toml --all-targets -- -D warnings
+
+      # Covers the ported pytest suite (tests/tui_helpers.rs) plus the
+      # byte-for-byte golden suites that pin parity with the retired Python.
+      - name: Test
+        run: cargo test --manifest-path services/agentbox-manifest/Cargo.toml

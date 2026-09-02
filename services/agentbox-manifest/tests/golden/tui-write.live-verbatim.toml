@@ -1,0 +1,284 @@
+[core]
+orchestration = "ruflo-v3"
+vector_db = "ruvector-embedded"
+
+[federation]
+mode = "standalone"
+
+[adapters]
+beads        = "local-sqlite"
+pods         = "local-solid-rs"
+memory       = "external-pg"
+events       = "local-jsonl"
+orchestrator = "local-process-manager"
+
+[gpu]
+backend = "local-cuda"
+
+[desktop]
+enabled    = true
+stack      = "x11-openbox"
+resolution = "1920x1080"
+
+[sovereign_mesh]
+enabled              = true
+solid_pod            = true
+nostr_bridge         = true
+https_bridge         = true
+publish_agent_events = true
+
+[observability]
+metrics_port  = 9091
+log_level     = "info"
+
+[consultants]
+enabled              = true
+intelligence_signal  = true
+log_dir              = "/var/lib/agentbox/consultations"
+
+[consultants.codex]
+enabled = true
+model      = "gpt-5.4"
+home       = "/home/devuser/.codex"
+timeout_ms = 180000
+
+[consultants.antigravity]
+enabled = true
+model      = "gemini-2.5-pro"
+home       = "/home/devuser/.antigravity"
+timeout_ms = 180000
+
+[consultants.zai]
+enabled = true
+model      = "glm-5.3"
+home       = "/home/zai-user"
+timeout_ms = 180000
+
+[consultants.perplexity]
+enabled = true
+model      = "sonar-pro"
+timeout_ms = 60000
+
+[consultants.deepseek]
+enabled = true
+model      = "deepseek-v4-flash"
+timeout_ms = 120000
+
+[model_routing]
+enabled             = true
+primary_host        = "claude"
+aqe_agent_overrides = true
+dual_run            = false
+aqe_llm_provider    = "claude-code"
+aqe_fallback_chain  = "claude-code,codex"
+
+[model_routing.routes]
+specification     = "claude:claude-sonnet-5"
+architecture      = "claude:claude-fable-5-1"
+design            = "claude:claude-opus-5"
+implementation    = "codex:gpt-5.5 -> claude:claude-fable-5-1"
+testing           = "codex:gpt-5.5 -> claude:claude-opus-5"
+review            = "claude:claude-sonnet-5"
+security-scan     = "codex:gpt-5.5"
+security-analysis = "claude:claude-fable-5-1"
+documentation     = "codex:gpt-5.5"
+debugging         = "claude:claude-fable-5-1"
+packaging         = "codex:gpt-5.5"
+release           = "claude:claude-sonnet-5"
+
+[privacy_filter]
+enabled = true
+mode    = "local-cpu"
+port    = 9092
+dtype   = "bf16"
+model   = "openai/privacy-filter"
+
+[privacy_filter.policy]
+pods         = "strict"
+memory       = "strict"
+events       = "soft"
+beads        = "soft"
+orchestrator = "off"
+inbound      = "soft"
+outbound     = "soft"
+
+[privacy_filter.entities]
+enabled = []
+
+[providers.anthropic]
+enabled  = true
+env_var  = "ANTHROPIC_API_KEY"
+optional_env_vars = []
+auth_mode = "oauth"
+
+[providers.openai]
+enabled  = true
+env_var  = "OPENAI_API_KEY"
+optional_env_vars = ["OPENAI_BASE_URL"]
+auth_mode = "api_key"
+
+[providers.gemini]
+enabled  = true
+env_var  = "GOOGLE_API_KEY"
+optional_env_vars = []
+auth_mode = "api_key"
+
+[providers.deepseek]
+enabled  = true
+env_var  = "DEEPSEEK_API_KEY"
+optional_env_vars = ["DEEPSEEK_BASE_URL"]
+auth_mode = "api_key"
+
+[providers.perplexity]
+enabled  = true
+env_var  = "PERPLEXITY_API_KEY"
+optional_env_vars = []
+auth_mode = "api_key"
+
+[providers.openrouter]
+enabled  = true
+env_var  = "OPENROUTER_API_KEY"
+optional_env_vars = []
+auth_mode = "api_key"
+
+[providers.context7]
+enabled  = true
+env_var  = "CONTEXT7_API_KEY"
+optional_env_vars = []
+auth_mode = "api_key"
+
+[providers.brave]
+enabled  = true
+env_var  = "BRAVE_API_KEY"
+optional_env_vars = []
+auth_mode = "api_key"
+
+[providers.ceramic]
+enabled  = false
+env_var  = "CERAMIC_API_KEY"
+optional_env_vars = []
+auth_mode = "api_key"
+
+[providers.github]
+enabled  = true
+env_var  = "GITHUB_TOKEN"
+optional_env_vars = []
+auth_mode = "api_key"
+
+[providers.zai]
+enabled  = true
+env_var  = "ZAI_API_KEY"
+optional_env_vars = ["ZAI_ANTHROPIC_API_KEY", "ZAI_URL"]
+auth_mode = "api_key"
+
+[toolchains]
+claude          = true
+claude_code     = true
+ruflo           = true
+claude_flow     = true
+agentic_qe      = true
+nagual_qe       = false
+antigravity_cli = true
+codex           = true
+opencode        = true
+code_server     = true
+codebase_memory = true
+rust            = true
+cuda            = true
+
+[skills.browser]
+agent_browser = true
+playwright    = false
+qe_browser    = true
+
+[skills.media]
+ffmpeg           = true
+imagemagick      = true
+comfyui_builtin  = false
+
+[skills.spatial_and_3d]
+blender            = true
+qgis               = true
+gaussian_splatting = false
+
+[skills.data_science]
+pytorch = true
+jupyter = true
+
+[skills.docs]
+latex          = true
+mermaid        = true
+report_builder = true
+
+[skills.ontology]
+enabled = true
+
+[sovereign_mesh.relay]
+enabled          = true
+implementation   = "nostr-rs-relay"
+port             = 7777
+bind             = "127.0.0.1"
+expose           = false
+data_dir         = "/var/lib/nostr-relay"
+ingress_policy   = "allowlist"
+allowed_pubkeys  = []
+allowed_kinds    = [1, 1059, 30078, 27235, 38000, 38100]
+pod_bridge       = true
+external_fanout  = "bidirectional"
+max_event_bytes  = 131072
+messages_per_sec = 5
+retention_days   = 30
+allow_nip04      = false
+info_description = "Agentbox sovereign relay"
+info_contact     = ""
+
+[integrations.comfyui_external]
+enabled = false
+url    = "http://comfyui:8188"
+ws_url = "ws://comfyui:8188/ws"
+
+[integrations.solid_pod_rs]
+port                  = 8484
+bind                  = "0.0.0.0"
+storage               = "fs"
+storage_root          = "/var/lib/solid"
+base_url              = "https://pods-native.dreamlab-ai.com"
+enable_oidc           = false
+enable_schnorr_verify = true
+enable_dpop_cache     = false
+notifications          = "websocket"
+log_level              = "info"
+enable_did_nostr       = true
+enable_webhook_signing = true
+enable_rate_limit      = true
+enable_quota           = true
+jss_v04_compat         = true
+rate_limit_per_sec     = 20
+quota_default_bytes    = 10737418240
+
+[integrations.ruvector_external]
+enabled = true
+conninfo = "postgresql://ruvector:@@RUVECTOR_PG_PASSWORD@@@ruvector-postgres:5432/ruvector"
+
+[security.exceptions.desktop]
+tmpfs = ["/tmp/.X11-unix", "/run/user/1000"]
+
+[security.exceptions.gpu-cuda]
+runtime = "nvidia"
+device_requests = [{driver = "nvidia", count = -1, capabilities = [["gpu"]]}]
+
+[security.exceptions.code-server]
+writable_volumes = ["codeserver-config:/home/devuser/.local/share/code-server"]
+
+[security.exceptions.nostr-relay]
+writable_volumes = ["nostr-relay-data:/var/lib/nostr-relay"]
+reason = "nostr-rs-relay SQLite journal and WAL require a writable durable path"
+
+[security.exceptions.consultants]
+writable_volumes = ["consultations-data:/var/lib/agentbox/consultations"]
+reason = "consultant tier writes JSONL audit log per call"
+
+[security.exceptions.solid-pod-rs]
+writable_volumes = ["solid-data:/var/lib/solid"]
+reason = "solid-pod-rs fs-backend requires atomic-rename writable storage under /var/lib/solid"
+

@@ -1,0 +1,120 @@
+{
+  "stack": "claude-core",
+  "skillsDirectory": "/opt/agentbox/skills",
+  "progressiveDisclosureIndex": "/opt/agentbox/skills/SKILL-DIRECTORY.md",
+  "sharedProjectsRoot": "/projects",
+  "zellijLayout": "/tmp/abm-golden-stacks-ws/.config/zellij/layouts/claude-core.kdl",
+  "recommendedSkills": [
+    "skill-router",
+    "lazy-fetch",
+    "codebase-memory",
+    "openai-codex",
+    "codex-companion"
+  ],
+  "tooling": [
+    "claude",
+    "openai-codex",
+    "codex-companion",
+    "skill-router",
+    "lazy-fetch"
+  ],
+  "agentUrn": "urn:agentbox:agent:claude-core",
+  "didTemplate": "did:nostr:{AGENTBOX_PUBKEY_HEX}",
+  "env": {
+    "CLAUDE_FLOW_HOOKS_ENABLED": "true",
+    "CLAUDE_FLOW_V3_ENABLED": "true",
+    "TRANSFORMERS_CACHE": "/home/devuser/.cache/huggingface",
+    "HF_HOME": "/home/devuser/.cache/huggingface",
+    "AGENTBOX_ONTOLOGY_MONITOR": "1",
+    "AGENTBOX_ONTOLOGY_MONITOR_MODE": "publish",
+    "AGENTBOX_ZAI_REASONING_EFFORT": "high"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /opt/agentbox/config/hooks/claude-flow-hook-adapter.cjs pre-command || true",
+            "timeout": 5000
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /opt/agentbox/config/hooks/claude-flow-hook-adapter.cjs pre-edit || true",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /opt/agentbox/config/hooks/claude-flow-hook-adapter.cjs post-edit || true",
+            "timeout": 10000
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /opt/agentbox/config/hooks/claude-flow-hook-adapter.cjs post-command || true",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /opt/agentbox/config/hooks/claude-flow-hook-adapter.cjs route || true",
+            "timeout": 12000
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /opt/agentbox/config/hooks/claude-flow-hook-adapter.cjs session-restore || true",
+            "timeout": 15000
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /opt/agentbox/config/hooks/claude-flow-hook-adapter.cjs session-end || true",
+            "timeout": 10000
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /opt/agentbox/config/hooks/ontology-monitor.cjs || true",
+            "timeout": 200000
+          }
+        ]
+      }
+    ]
+  }
+}

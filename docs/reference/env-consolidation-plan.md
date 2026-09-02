@@ -1,5 +1,12 @@
 # Env + Setup Consolidation Plan — 2026-07-15
 
+> **2026-09-02 — naming note.** The Python helpers named throughout this plan
+> (`tui-write-manifest.py`, `provision-agent-stacks.py`) were retired when the
+> boot-path config munging moved to the `agentbox-manifest` Rust binary
+> (`services/agentbox-manifest`, subcommands `tui-write` and
+> `provision-stacks`). The plan below is kept as the historical record of the
+> consolidation; read the script names as those subcommands.
+
 > **EXECUTED 2026-07-22** (PRD-024 C-8, final-mile sprint Tick 1). Status against
 > this plan's own verdicts:
 > - `.env.example` is now the canonical merge target: all 58 keys enumerated in
