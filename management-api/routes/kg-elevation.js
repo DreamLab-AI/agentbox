@@ -80,7 +80,7 @@ module.exports = async function kgElevationRoutes(fastify, options) {
             description:
               'Memory namespace to scan. Use "personal-context" for the personal KG, ' +
               'or "code-harness-lessons" to elevate experiential DistilledLesson records ' +
-              '(mcp/expel/distil.py) into the SAME governed memory→concept pipeline.',
+              '(the expel-distil binary) into the SAME governed memory→concept pipeline.',
           },
           query: { type: 'string', description: 'Optional text filter; omit to list the namespace' },
           min_score: { type: 'number', minimum: 0, maximum: 1, default: 0.6 },

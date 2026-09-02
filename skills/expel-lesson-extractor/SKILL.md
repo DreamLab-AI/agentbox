@@ -54,7 +54,7 @@ invocation threshold.
 
 ## Mechanism at a glance
 
-Post-task, the runtime calls `mcp/expel/distil.py` with the trajectory. It
+Post-task, the runtime calls the `expel-distil` binary with the trajectory. It
 privacy-filters the evidence, runs a templated extraction prompt to emit 0-N
 IF/THEN rules, validates them against a write gate, and writes surviving
 lessons to the `code-harness-lessons` RuVector namespace as
@@ -84,7 +84,7 @@ ADR-015).
 
 ## Related Files
 
-- `mcp/expel/distil.py` — post-task handler implementation.
+- `expel-distil` (crate `services/agentbox-ops`) — post-task handler implementation.
 - `skills/voyager-skill-library/SKILL.md` — Phase 2 verified skill library.
 - `skills/agentdb-memory-patterns/SKILL.md` — memory_type discriminator details.
 - `ontology/code-harness.ttl` — OWL2 class declarations.

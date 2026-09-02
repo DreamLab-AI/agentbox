@@ -143,14 +143,14 @@ describe('extractProposals + wire envelope', () => {
 });
 
 /**
- * Task B: code-as-harness DistilledLesson records (mcp/expel/distil.py, written
+ * Task B: code-as-harness DistilledLesson records (the expel-distil binary, written
  * to the `code-harness-lessons` namespace) FEED the SAME governed memory→concept
  * elevation pipeline. The lesson's own minted urn:agentbox:memory:lesson-* URN
  * is preserved as provenance — the experiential learning → governed ontology link.
  */
 describe('code-as-harness lessons feed the governed pipeline', () => {
   const LESSON_URN = `urn:agentbox:memory:${PUBKEY}:lesson-deadbeefcafe`;
-  // A lesson record exactly as distil.py writes its JSON value.
+  // A lesson record exactly as expel-distil writes its JSON value.
   const LESSON_JSON = {
     lesson_urn: LESSON_URN,
     ontology_type: 'ex:DistilledLesson',

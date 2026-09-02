@@ -1,56 +1,50 @@
 # Hermes Scheduler — Command Reference
 
-All commands run via the baked scheduler script at
-`/opt/agentbox/skills/hermes-scheduler/scripts/scheduler.py`.
-
-For brevity below, set:
-
-```bash
-SCHED=/opt/agentbox/skills/hermes-scheduler/scripts/scheduler.py
-```
+All commands run via the baked scheduler binary
+`hermes-scheduler` (on PATH from the `agentbox-ops` crate).
 
 ```bash
 # Start the scheduler daemon (background, 60-second tick)
-python3 "$SCHED" start
+hermes-scheduler start
 
 # Stop the scheduler
-python3 "$SCHED" stop
+hermes-scheduler stop
 
 # Check status
-python3 "$SCHED" status
+hermes-scheduler status
 
 # Create a job
-python3 "$SCHED" add \
+hermes-scheduler add \
   --prompt "check disk usage and alert if over 80%" \
   --schedule "every 30m" \
   --name "disk-monitor"
 
 # Create a one-shot job
-python3 "$SCHED" add \
+hermes-scheduler add \
   --prompt "generate a weekly project status summary" \
   --schedule "30m"
 
 # Create a cron job
-python3 "$SCHED" add \
+hermes-scheduler add \
   --prompt "pull latest from all repos and run tests" \
   --schedule "0 9 * * *" \
   --name "morning-ci"
 
 # List jobs
-python3 "$SCHED" list
+hermes-scheduler list
 
 # Remove a job
-python3 "$SCHED" remove --id <job_id>
+hermes-scheduler remove --id <job_id>
 
 # Pause / resume
-python3 "$SCHED" pause --id <job_id>
-python3 "$SCHED" resume --id <job_id>
+hermes-scheduler pause --id <job_id>
+hermes-scheduler resume --id <job_id>
 
 # Trigger a job immediately
-python3 "$SCHED" trigger --id <job_id>
+hermes-scheduler trigger --id <job_id>
 
 # View recent output for a job
-python3 "$SCHED" output --id <job_id>
+hermes-scheduler output --id <job_id>
 ```
 
 ## Schedule Formats

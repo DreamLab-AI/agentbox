@@ -24,22 +24,23 @@ Validator rules:
 
 The lesson extractor is invoked via the post-task hook mechanism defined in
 `/home/devuser/.claude/CLAUDE.md` §Auto-Learning Protocol. The hook calls
-`python3 mcp/expel/distil.py` with the following arguments:
+the `expel-distil` binary with the following arguments:
 
 ```bash
-python3 /opt/agentbox/mcp/expel/distil.py \
+expel-distil \
   --trajectory-id "$TASK_ID" \
   --outcome "$TASK_SUCCESS" \
   --trace-urns "$TRACE_URNS_COMMA_SEPARATED"
 ```
 
 The hook fires only when `[features.expel_lesson_extraction].enabled = true`.
-The `distil.py` script exits 0 on success (lessons written or cleanly skipped),
+`expel-distil` exits 0 on success (lessons written or cleanly skipped),
 exits 1 on unrecoverable error (LessonRedactionFailed, write failure).
 
 ## Implementation Notes
 
-- The implementation lives at `mcp/expel/distil.py`. See that file for the
+- The implementation lives in `services/agentbox-ops/src/distil.rs` plus
+  `src/bin/expel-distil.rs`. See those for the
   full handler including privacy-filter integration, LLM call, and RuVector
   write logic.
 - Lessons are written to RuVector using `mcp__claude-flow__memory_store` only.

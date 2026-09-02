@@ -28,9 +28,9 @@ Cross-references (read before making changes):
 | Namespace | OWL2 Class | memory_type | TTL | Owner |
 |---|---|---|---|---|
 | `code-harness-traces` | `ex:ExecutionTrace` | `episodic` | 90 days | code-interpreter MCP (WP-A, ADR-018) |
-| `code-harness-lessons` | `ex:DistilledLesson` | `semantic` | none (durable) | expel-lesson-extractor (mcp/expel/distil.py) |
-| `code-harness-skills` | `ex:VerifiedSkill` | `procedural` | none (durable, current version) | voyager-skill-library (mcp/voyager/verify-and-store.py) |
-| `code-harness-skills-archive` | `ex:VerifiedSkill` | `procedural` | 365 days | archive-old-versions.py (cron) |
+| `code-harness-lessons` | `ex:DistilledLesson` | `semantic` | none (durable) | expel-lesson-extractor (`expel-distil`) |
+| `code-harness-skills` | `ex:VerifiedSkill` | `procedural` | none (durable, current version) | voyager-skill-library (`voyager-gate`) |
+| `code-harness-skills-archive` | `ex:VerifiedSkill` | `procedural` | 365 days | _(archival job not yet implemented)_ |
 | `code-harness-skills-rejected` | `ex:VerifiedSkillRejected` | `episodic` | 30 days | voyager-skill-library (VerificationGate rejection path) |
 | `code-harness-activities` | `ex:Activity` | `episodic` | 365 days | every WP (kernel, expel, voyager) |
 
@@ -124,10 +124,9 @@ Emitters:
 
 | Verb | Emitted by | Trigger |
 |---|---|---|
-| `distil` | mcp/expel/distil.py | Every post-task distillation run (even skip/error) |
-| `verify` | mcp/voyager/verify-and-store.py | Every VerificationGate run |
-| `store` | mcp/voyager/verify-and-store.py | Every successful skill write |
-| `archive` | mcp/voyager/archive-old-versions.py | Every archived skill version |
+| `distil` | `expel-distil` | Every post-task distillation run (even skip/error) |
+| `verify` | `voyager-gate` | Every VerificationGate run |
+| `store` | `voyager-gate` | Every successful skill write |
 | `exec` | code-interpreter MCP (WP-A) | Every kernel.exec call |
 
 ---

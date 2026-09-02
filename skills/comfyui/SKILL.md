@@ -53,7 +53,7 @@ curl -s http://comfyui:8188/system_stats | jq '.devices[0].name'
 Generate a FLUX 2 image end-to-end with the bundled runnable script:
 
 ```bash
-python /home/devuser/workspace/project/agentbox/skills/comfyui/generate.py \
+comfyui-generate \
   "A stunning landscape at golden hour, cinematic lighting" output.png
 ```
 
@@ -103,9 +103,10 @@ Detail lives in `references/` — pull the file that matches the task:
   recipe catalog (image/video/LLM), hardware recommendations, benchmarks, performance notes.
 
 Bundled runnable assets in this directory:
-- `generate.py` — FLUX 2 one-shot generator (quick path above).
-- `generate_anima.py` + `anima_workflow.json` / `anima_import_workflow.json` — working
-  sample animation workflow and driver.
+- `comfyui-generate` — FLUX 2 one-shot generator (quick path above), on PATH
+  from the `agentbox-ops` crate.
+- `anima_workflow.json` / `anima_import_workflow.json` — working sample animation
+  workflow graphs, kept as reference structures for `generate.py`.
 - `mcp-server/` — ComfyUI MCP server surface.
 
 ## Integration with other skills

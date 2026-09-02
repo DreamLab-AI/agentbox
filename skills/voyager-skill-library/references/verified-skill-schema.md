@@ -72,7 +72,7 @@ scope = `"local"`.
 
 ## Activity Record Emission (addendum)
 
-For every VerificationGate run (pass or fail), `verify-and-store.py` emits
+For every VerificationGate run (pass or fail), `voyager-gate` emits
 an Activity record to `code-harness-activities`:
 
 ```json

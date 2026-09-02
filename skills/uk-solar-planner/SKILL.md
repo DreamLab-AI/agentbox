@@ -15,7 +15,7 @@ capacity, yield, layout, and grid-feasibility picture.
 | # | Stage | Tool / skill | Status here |
 |---|-------|--------------|-------------|
 | 1 | **Site suitability** — slope/aspect, ALC land grade, flood zone, grid proximity | **qgis** skill + `references/grid-and-planning.md` | works (qgis sidecar) |
-| 2 | **Tilt + spacing + capacity + yield** — the engineering core | `tools/solar_optimize.py` (+ `pvgis_fetch.py`) | **works now** (stdlib + live PVGIS) |
+| 2 | **Tilt + spacing + capacity + yield** — the engineering core | `solar-optimize` (+ `pvgis-fetch`) | **works now** (stdlib + live PVGIS) |
 | 3 | **3D layout + shadow review** — array on terrain, inter-row winter shadows | `tools/blender_solar_array.py` (**blender** skill) | works (blender / gui-tools sidecar) |
 | 4 | **Generation forecast** — 0–48h UK-tuned generation curve | `tools/sidecar_run.sh forecast …` (quartz) | needs sidecar rebuild¹ |
 | 5 | **DNO grid feasibility** — voltage rise, thermal, hosting capacity | OpenDSS MCP (register on demand) | needs sidecar rebuild¹ |
@@ -28,7 +28,7 @@ Stages 1–3 need no rebuild.
 ## Stage 2 — the engineering core (start here for any sizing question)
 
 ```bash
-python3 tools/solar_optimize.py --lat 52.2 --lon -1.5 --area-ha 20 --tilt land
+solar-optimize --lat 52.2 --lon -1.5 --area-ha 20 --tilt land
 ```
 Computes, from first principles (see `references/siting-engineering.md` for the cited
 formulas): the winter-solstice no-shade **row pitch** and **GCR**, the **tilt** (either the
@@ -38,7 +38,7 @@ the **module count** and **DC capacity**, the **annual yield** (live PVGIS `PVca
 warnings when a result falls outside real-world bounds (e.g. GCR too dense) rather than
 silently returning an optimistic number.
 
-`tools/pvgis_fetch.py` is the standalone PVGIS client (annual/monthly yield + PVGIS's own
+`pvgis-fetch` is the standalone PVGIS client (annual/monthly yield + PVGIS's own
 optimal tilt/azimuth) — stdlib, no deps.
 
 ## Stage 3 — 3D layout + shadow review (leverages the blender skill)

@@ -1201,6 +1201,11 @@
           else null;
         dreamEnginePackages = lib.optionals dreamEngineEnabled [ dreamEnginePkg ];
 
+        # agentbox-ops — operational CLI suite (Rust port of the Python scripts
+        # retired by the 2026-09-02 legacy audit). Ungated: it replaces baseline
+        # tooling that was always present. See lib/agentbox-ops.nix.
+        agentboxOpsPackages = [ (import ./lib/agentbox-ops.nix { inherit lib pkgs; }) ];
+
         # Render a config.toml for nostr-rs-relay from manifest fields.
         # Consumed by the supervisor block at /etc/agentbox/nostr-relay.toml.
         # (Unused on the pod_bridge path — the bridge is env-configured.)
@@ -1345,6 +1350,7 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           ++ headroomPackages
           ++ [ agentboxManifestPkg ]
           ++ dreamEnginePackages
+          ++ agentboxOpsPackages
           ++ nagualQePackages
           # rune markdown TUI — gated on [vault].tui = "rune" (ADR-2029)
           ++ runePackages

@@ -11,7 +11,7 @@ The skill auto-detects and reports on available tools. Run the preflight check:
 
 ```bash
 # The skill runs this automatically — or invoke manually:
-python3 scripts/preflight.py   # from the report-builder skill directory
+report-preflight   # on PATH from the agentbox-ops crate
 ```
 
 ### Required
@@ -140,7 +140,7 @@ See `/home/devuser/workspace/waterworks/report/` for the complete example.
 
 | Script | Purpose |
 |--------|---------|
-| `scripts/preflight.py` | Check all prerequisites and API keys |
+| `report-preflight` | Check all prerequisites and API keys |
 | `scripts/generate_figures.py` | Template for Python chart generation |
 | `scripts/nano_banana_pipeline.py` | TikZ/Mermaid → infographic pipeline |
 | `scripts/compile_report.sh` | Full LaTeX build pipeline with verification |

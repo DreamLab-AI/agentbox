@@ -28,6 +28,6 @@ tool_calls:
 {{tool_calls_json}}
 ```
 
-The agent runtime calls `mcp/expel/distil.py` with the trajectory data;
-`distil.py` formats this prompt, calls the LLM, validates the JSON response,
+The agent runtime calls the `expel-distil` binary with the trajectory data;
+it formats this prompt, calls the LLM, validates the JSON response,
 applies privacy filtering, and writes the lessons.

@@ -95,8 +95,7 @@ Uses separate loaders for UNET, CLIP, and VAE with `SamplerCustomAdvanced`:
 ```
 
 Two working sample workflows also ship alongside this skill:
-`../anima_workflow.json` and `../anima_import_workflow.json`
-(driven by `../generate_anima.py`).
+`../anima_workflow.json` and `../anima_import_workflow.json`.
 
 ## Supported models
 
