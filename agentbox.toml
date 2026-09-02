@@ -220,7 +220,9 @@ admin_pubkeys               = []                     # operator pubkey auto-adde
 #
 # mode values:
 #   "standalone"  — no federation; relay is loopback-only (default)
-#   "federated"   — relay exposed externally; accepts peer connections
+#   "federated"   — relay exposed externally; accepts peer connections (documented
+#                   only: schema/agentbox.toml.schema.json currently accepts
+#                   standalone | client, so "federated" fails validation E016)
 #   "client"      — subscribes to peers but does not accept inbound
 [mesh]
 mode = "standalone"
@@ -1182,6 +1184,7 @@ proxy_port  = 9096                  # nip98-proxy listen port — the sole IDENT
 # roster's operator key. Empty list = any validly-signed key (NOT recommended).
 [interaction_plane.proxy]
 allowed_pubkeys = [
+  "c32b71bc1d4ab9d25cd0bd2a457ede15e6538d0d6311fc3c0543f9e8ca1bc13c",  # agentbox-core on HP-Desktop — peer node (added 2026-09-02, HP mesh bring-up)
   "6407eed80e2a8646e41a5ddba0ae6619425fc54af40e2b30482b9623c682425a",  # operator-jjohare (dreamlab roster)
   "b41654017f6850b13857d19d8ae0e3f88f1365600cab0321e8101c9e92682f7a",  # visionclaw-server governance publisher / active NIP-07 signer
   "11ed64225dd5e2c5e18f61ad43d5ad9272d08739d3a20dd25886197b0738663c",  # agentbox sovereign / house key (browsercontainer Podkey vault)
