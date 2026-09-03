@@ -17,6 +17,13 @@
 //! paragraphs the language filter does not read as English, rules the
 //! configuration disables, and findings below the severity floor.
 //!
+//! # Delegation
+//!
+//! The UK-English rules (`us-spelling` and `uk-sense`) are not implemented here.
+//! They come from `prose-sanitiser-uk`, which runs over the whole document
+//! because sense disambiguation and the organisation gazetteer both need more
+//! context than one line. See [`crate::rules::uk`].
+//!
 //! # Examples
 //!
 //! ```
@@ -38,7 +45,7 @@
 use prose_sanitiser_core::{Check, Config, Finding, Span, Suppressions};
 use regex::Regex;
 
-use crate::rules::{Rule, IGNORE_MARK, RULES};
+use crate::rules::{uk, Rule, IGNORE_MARK, RULES};
 use crate::structural::StructuralMetrics;
 
 /// Every rule in the table, compiled once.
@@ -76,6 +83,11 @@ impl SlopChecker {
             })
             .collect();
         let mut ids: Vec<&'static str> = RULES.iter().map(|rule| rule.id).collect();
+        for meta in uk::rule_meta() {
+            if !ids.contains(&meta.id) {
+                ids.push(meta.id);
+            }
+        }
         ids.push("agg");
         Self {
             compiled,
@@ -141,6 +153,11 @@ impl Check for SlopChecker {
                 if !config.rule_enabled(rule.id) || !config.severity_reportable(rule.severity) {
                     continue;
                 }
+                // A delegated rule has no pattern of its own; the whole-document
+                // pass below reports it.
+                if rule.is_delegated() {
+                    continue;
+                }
                 // The first matching pattern in a rule reports once, matching
                 // the scanner's long-standing behaviour.
                 let Some(matched) = patterns.iter().find_map(|pattern| pattern.find(line)) else {
@@ -160,6 +177,21 @@ impl Check for SlopChecker {
                     advice: rule.fix.to_string(),
                     replacement: None,
                 });
+            }
+        }
+
+        // The UK-English rules are owned by `prose-sanitiser-uk` and run over
+        // the whole document, because sense disambiguation and the gazetteer
+        // both need more context than one line.
+        if RULES.iter().any(|rule| rule.is_delegated()) {
+            for finding in uk::checker().check(document, config) {
+                if !suppressions.suppresses(&finding.rule_id, finding.span)
+                    && config
+                        .language
+                        .offset_is_english(&english, finding.span.start)
+                {
+                    findings.push(finding);
+                }
             }
         }
 

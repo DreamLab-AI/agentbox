@@ -247,10 +247,10 @@ pub const RULES: &[Rule] = &[
         reviewed: REVIEWED,
         sources: &[HOUSE_STYLE],
     },
-    // The UK-English rule's data lives in `prose-sanitiser-uk`. The bridge in
-    // `super::uk` builds the alternation from that crate's VarCon table at
-    // first use, filtered to the unconditional entries, so the slop crate
-    // carries no spelling list of its own.
+    // A positional marker, not a pattern rule. The UK-English check is owned
+    // entirely by `prose-sanitiser-uk`; the entry exists so the report lists
+    // rules in the order it always has, and the scanner consults that crate's
+    // checker when it reaches this position. See `super::uk`.
     Rule {
         id: uk::US_SPELLING_ID,
         label: uk::US_SPELLING_LABEL,
@@ -258,7 +258,7 @@ pub const RULES: &[Rule] = &[
         confidence: uk::US_SPELLING_CONFIDENCE,
         fix: uk::US_SPELLING_FIX,
         patterns: &[],
-        dynamic: Some(uk::us_spelling_patterns),
+        dynamic: None,
         cased: false,
         since: V1,
         reviewed: REVIEWED,

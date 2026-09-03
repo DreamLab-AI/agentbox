@@ -85,6 +85,7 @@ pub const CHANGELOG: &[ChangelogEntry] = &[
             "Added inflections the flat alternations missed: delves/delved/delving, showcase family, boast family. The 2026.01.14 pattern matched only the bare stem, so the most-cited marker of all was being missed in its commonest form.",
             "Added markers with a published excess-frequency measurement and no prior entry: pivotal, garner, encompass, commendable, invaluable, adept, bolster, unravel, navigate, spearhead, myriad, tackle.",
             "Dropped nothing. Pangram reports delve declining; Pew tracking of a fixed 27-word list over roughly 490,000 Common Crawl pages found the category more than doubled between January 2023 and January 2026. The class is the signal, not any single word, so a vendor's claim about one word is not grounds to remove it.",
+            "The UK-English rule is no longer implemented here at all. `us-spelling` is a positional marker in the table and the check is delegated to prose-sanitiser-uk's VarCon-backed checker, which adds the sense-dependent `uk-sense` rule alongside it. The old flat alternation flagged `meter`, `licence`, `program`, `dialog` and `World Health Organization`; none of them now produce a mechanical replacement.",
             "Added the structural measures with a published per-10,000-word rate (em-dash density, Oxford-comma density, negative-parallelism density) at high-confidence-stylistic, and the ones without (tricolon, sentence-length variance, uniform paragraph length) at low-confidence-judgement. The research brief marks the latter three as practitioner heuristics with no measurement study, so they are reported at the tier the evidence supports.",
             "Every structural measure is opt-in behind --structural, so the default report is unchanged in shape and in which rules can fire.",
             "Measured every rule against 3,500 human and 3,500 machine documents from RAID and MAGE. Two calibrations changed as a result. `the-opener` fires on 41.1 per cent of human documents and 38.0 per cent of machine ones, so it points very slightly the wrong way as an authorship signal: demoted from high-confidence-stylistic to low-confidence-judgement and kept as a house-style rule only.",
@@ -119,13 +120,14 @@ pub struct Rule {
     pub fix: &'static str,
     /// The alternations, matched case-insensitively unless `cased`.
     ///
-    /// Empty when the rule sources its patterns from `dynamic` instead.
+    /// Empty for a rule the scanner delegates rather than matches. One rule is
+    /// like that: `us-spelling` is a positional marker for the UK-English
+    /// check, which `prose-sanitiser-uk` owns in full. See [`uk`].
     pub patterns: &'static [&'static str],
     /// A pattern set built at first use rather than written in the table.
     ///
-    /// One rule needs this: `us-spelling` derives its alternation from the
-    /// VarCon table `prose-sanitiser-uk` ships, so the slop crate holds no
-    /// spelling list of its own and the two can never drift.
+    /// Unused today. It exists because a rule whose data lives in another crate
+    /// should not have to be transcribed into this one to be matchable.
     pub dynamic: Option<fn() -> &'static [String]>,
     /// Case-sensitive rules opt out of the default IGNORECASE.
     pub cased: bool,
@@ -139,11 +141,18 @@ pub struct Rule {
 
 impl Rule {
     /// Every pattern source this rule matches on, static or built at first use.
+    ///
+    /// Empty means the scanner delegates this rule rather than matching it.
     pub fn pattern_sources(&self) -> Vec<&str> {
         match self.dynamic {
             Some(build) => build().iter().map(String::as_str).collect(),
             None => self.patterns.to_vec(),
         }
+    }
+
+    /// Whether the scanner delegates this rule to another crate's checker.
+    pub fn is_delegated(&self) -> bool {
+        self.patterns.is_empty() && self.dynamic.is_none()
     }
 
     /// Render as the SARIF-ready [`RuleMeta`].
@@ -188,7 +197,14 @@ pub fn rule_meta() -> &'static [RuleMeta] {
     use std::sync::OnceLock;
     static META: OnceLock<Vec<RuleMeta>> = OnceLock::new();
     META.get_or_init(|| {
-        let mut meta: Vec<RuleMeta> = RULES.iter().map(Rule::to_meta).collect();
+        // The UK rules are documented by the crate that owns them, so its
+        // entries replace the slop table's positional marker.
+        let mut meta: Vec<RuleMeta> = RULES
+            .iter()
+            .filter(|rule| !rule.is_delegated())
+            .map(Rule::to_meta)
+            .collect();
+        meta.extend(uk::rule_meta().iter().copied());
         meta.extend(crate::structural::STRUCTURAL_RULES.iter().copied());
         meta.extend(AGGREGATE_RULES.iter().copied());
         meta

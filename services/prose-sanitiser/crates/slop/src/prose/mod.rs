@@ -5,10 +5,11 @@
 
 use std::path::{Path, PathBuf};
 
-use prose_sanitiser_core::{ConfidenceTier, ReportEntry, RuleMeta};
+use prose_sanitiser_core::{Check, ConfidenceTier, ReportEntry, RuleMeta};
 use regex::Regex;
 use serde_json::{json, Value};
 
+use super::rules::uk;
 use super::rules::{
     rule_meta, Rule, Severity, EMDASH, EMDASH_PER_WINDOW, EXTS, IGNORE_MARK, RULES, SKIP_DIRS,
     TIER2, TRANSITIONS, TRANS_PER_WINDOW, WORDS_PER_PAGE,
@@ -181,6 +182,13 @@ pub fn scan_file(path: &Path, rules: &[CompiledRule], floor: Severity) -> Vec<Fi
     let tier2 =
         Regex::new(&format!(r"(?i)\b({})\b", TIER2.join("|"))).expect("static regex compiles");
 
+    // The UK-English rules run over the whole document, because sense
+    // disambiguation and the organisation gazetteer both need more context than
+    // one line. Their findings are indexed by line and emitted at the position
+    // the `us-spelling` marker holds in the table, so the report keeps its
+    // long-standing rule order.
+    let uk_by_line = uk_findings_by_line(&text, floor);
+
     let mut findings = Vec::new();
     let mut in_fence = false;
     let mut line_offset = 0usize;
@@ -234,6 +242,25 @@ pub fn scan_file(path: &Path, rules: &[CompiledRule], floor: Severity) -> Vec<Fi
 
         // Per-line rules: the first matching pattern in a rule reports once.
         for compiled in rules {
+            if compiled.rule.is_delegated() {
+                for (rule_id, label, column, start, end) in
+                    uk_by_line.get(&number).into_iter().flatten()
+                {
+                    findings.push(Finding {
+                        rule: rule_id.clone(),
+                        label: label.clone(),
+                        severity: compiled.rule.severity,
+                        fix: compiled.rule.fix.to_string(),
+                        file: file.clone(),
+                        line: number,
+                        snippet: clip(stripped, 160),
+                        column: *column,
+                        byte_start: *start,
+                        byte_end: *end,
+                    });
+                }
+                continue;
+            }
             let Some(found) = compiled
                 .patterns
                 .iter()
@@ -325,6 +352,48 @@ pub fn scan_file(path: &Path, rules: &[CompiledRule], floor: Severity) -> Vec<Fi
     }
 
     findings
+}
+
+/// The UK-English findings for a document, indexed by 1-based line.
+///
+/// At most one finding per rule per line, matching the one-report-per-rule-line
+/// shape every other rule in the table has.
+#[allow(clippy::type_complexity)]
+fn uk_findings_by_line(
+    text: &str,
+    floor: Severity,
+) -> std::collections::HashMap<usize, Vec<(String, String, usize, usize, usize)>> {
+    use std::collections::HashMap;
+
+    let config = prose_sanitiser_core::Config::new().with_min_severity(floor);
+    let mut line_starts = vec![0usize];
+    for (index, byte) in text.bytes().enumerate() {
+        if byte == b'\n' {
+            line_starts.push(index + 1);
+        }
+    }
+
+    let mut out: HashMap<usize, Vec<(String, String, usize, usize, usize)>> = HashMap::new();
+    for finding in uk::checker().check(text, &config) {
+        let line = match line_starts.binary_search(&finding.span.start) {
+            Ok(index) => index,
+            Err(index) => index - 1,
+        };
+        let start = line_starts[line];
+        let column = text[start..finding.span.start].chars().count() + 1;
+        let bucket = out.entry(line + 1).or_default();
+        if bucket.iter().any(|(rule, ..)| *rule == finding.rule_id) {
+            continue;
+        }
+        bucket.push((
+            finding.rule_id,
+            finding.label,
+            column,
+            finding.span.start,
+            finding.span.end,
+        ));
+    }
+    out
 }
 
 /// The overall verdict from the severity counts and weighted score.
