@@ -104,6 +104,16 @@ Landed on `rust/prose-sanitiser-hardening` during the same pass:
   `--explain-rules` to print the rule table with its tiers, dates and sources so
   a decayed lexical rule is visible rather than silent.
 
+- **Detection and mutation are separate switches on every rule.** `report_spaces`
+  had been doing double duty, deciding both whether a whitespace finding existed
+  *and* whether it carried a rewrite, so "tell me about the non-breaking space
+  but do not touch it" was not a position the policy could express. For `U+202F`,
+  the one whitespace character that is a documented GPT-4o-class provenance tell,
+  that was backwards. `report_spaces` is now detection only and unconditional; a
+  separate `normalize_spaces` gates the replacement, the way `fold_homoglyphs`
+  already gated the fold. No default behaviour changed. It is the same shape of
+  bug as the three cross-surface divergences: two things that must vary
+  independently, tied to one switch.
 - **`check_text` is now a truthful preview of `clean_text`.** The two surfaces
   disagreed three times over: bidi controls that the check declined to offer but
   the cleaner stripped anyway; homoglyphs the check offered to fold, at default

@@ -23,6 +23,31 @@ One correction the tables carry deliberately: **`U+180E` was reclassified from
 whitespace to a plain letter-class character in Unicode 6.3** and is no longer
 invisible whitespace. Tables that still treat it as a space are out of date.
 
+## X1a. The two-switch law, and the defaults
+
+**Detection is unconditional; mutation is gated separately.** Every rule has two
+switches: whether the finding exists, and whether it carries a repair.
+Contraband is always reported. Whether the tool then rewrites it is a policy
+question with its own default, so "tell me but do not touch it" is always a
+position you can take.
+
+| Carrier | Reported | Rewritten by default | Switch |
+|---|---|---|---|
+| Zero-width family, tag block, variation selectors, Hangul fillers | Always | Yes. Contraband with no legitimate reading | |
+| Exotic whitespace (`U+00A0`, `U+202F`, the rest) | Always | Yes, to `U+0020`. `U+202F` is a documented GPT-4o-class artefact, so surfacing it is the point | `--no-normalize-spaces` |
+| Homoglyphs and mixed script | Always, and the advice names the ASCII it is confusable with | **No.** Folding rewrites letters inside words, and would destroy a security note quoting an attack string verbatim | `--aggressive-homoglyphs` |
+| `U+00AD` soft hyphen | Always | **No.** A typesetter's hyphenation hint as often as a carrier, and nothing in the codepoint says which | `strip_soft_hyphen` |
+| Load-bearing invisibles: emoji ZWJ glue, Indic and Persian joiners, flag tags | **No.** They are not contraband | Never | `--strip-emoji-glue`, for auditing a document you already distrust |
+
+`TextPolicy` mirrors `CleanOptions` field for field, defaults included, so
+`check_text` is a truthful preview of `clean_text`: applying the edits the check
+offers reproduces the clean's output exactly. That is asserted as an invariant
+rather than left to convention, because the two surfaces drifted apart three
+separate times before it was: bidi controls the check declined to offer that the
+cleaner stripped anyway, homoglyphs the check offered to fold that the cleaner
+refused to touch, and non-breaking spaces the cleaner rewrote while the check
+stayed silent.
+
 ## X2. Must-preserve rules
 
 This is the precise legitimate-against-suspicious test. Getting it wrong

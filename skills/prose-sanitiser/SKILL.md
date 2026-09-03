@@ -58,14 +58,16 @@ Claim nothing outside this table. The evidence for each row is in
 |---|---|
 | Statistical watermark "removal" by paraphrase (`rewrite-text`) | Paraphrase changes tokens, which degrades any sampling watermark as a side effect. It is lossy, cannot be verified without the vendor key, and is not removal. No lossless removal exists anywhere in the literature |
 
-One principle governs the Unicode layer, and it is worth reading before the
-rows above: **detection is unconditional, mutation is conservative.** Everything
-is reported; a repair that depends on a judgement is withheld until you ask.
-Folding honest Cyrillic or Greek prose into Latin is far worse than leaving a
-homoglyph in place, and removing a typesetter's hyphenation is worse than
-leaving a soft hyphen, so neither happens by default. Exotic whitespace is the
-exception: it *is* rewritten to `U+0020` by default, with
-`--no-normalize-spaces` to stop it.
+One law governs the Unicode layer, and it is worth reading before the rows
+above: **detection is unconditional; mutation is gated separately.** Every rule
+has two switches, not one: whether the finding exists, and whether it carries a
+repair. Contraband is always reported, and whether the tool then rewrites it is
+a policy question with its own default, so "tell me but do not touch it" is
+always a position you can take.
+
+The defaults differ per carrier, and the ones that surprise people are that
+homoglyphs and soft hyphens are reported but **not** rewritten, while exotic
+whitespace **is**. The full table is in [unicode.md](references/unicode.md).
 
 **Never touches**
 

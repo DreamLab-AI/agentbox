@@ -46,14 +46,21 @@ literature.
 
 ### The principle behind the rows
 
-**Detection is unconditional; mutation is conservative.** Everything is
-reported; a repair that depends on a judgement is withheld until asked. Folding
-honest Cyrillic or Greek prose into Latin is worse than leaving a homoglyph in
-place, and removing a typesetter's hyphenation is worse than leaving a soft
-hyphen, so neither happens by default. `--aggressive-homoglyphs` and
-`CleanOptions::strip_soft_hyphen` are the opt-ins. Exotic whitespace is the one
-exception: it *is* rewritten to `U+0020` by default, with
-`--no-normalize-spaces` to stop it.
+**Detection is unconditional; mutation is gated separately.** Every rule has two
+switches, not one: whether the finding exists, and whether it carries a repair.
+Contraband is always reported. Whether the tool then rewrites it is a policy
+question with its own default, so "tell me but do not touch it" is always a
+position you can take.
+
+Which mutations are on by default:
+
+| Carrier | Reported | Rewritten by default | Switch |
+|---|---|---|---|
+| Zero-width family, tag block, variation selectors, Hangul fillers | Always | Yes. They are contraband with no legitimate reading | |
+| Exotic whitespace (`U+00A0`, `U+202F`, the rest) | Always | Yes, to `U+0020`. `U+202F` is a documented GPT-4o-class artefact, so surfacing it is the point | `--no-normalize-spaces` |
+| Homoglyphs and mixed script | Always, and the advice names the ASCII it is confusable with | **No.** Folding rewrites letters inside words, and would destroy a security note quoting an attack string verbatim | `--aggressive-homoglyphs` |
+| `U+00AD` soft hyphen | Always | **No.** A typesetter's hyphenation hint as often as a carrier, and nothing in the codepoint says which | `strip_soft_hyphen` |
+| Load-bearing invisibles: emoji ZWJ glue, Indic and Persian joiners, flag tags | **No.** They are not contraband | Never | `--strip-emoji-glue`, for auditing a document you already distrust |
 
 `TextPolicy` mirrors `CleanOptions` field for field, defaults included, so
 `check_text` is a truthful preview of `clean_text`: applying the edits the check
