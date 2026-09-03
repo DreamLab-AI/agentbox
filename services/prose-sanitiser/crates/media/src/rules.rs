@@ -5,11 +5,11 @@
 //!
 //! # How the tiers were chosen
 //!
-//! [`ConfidenceTier`] answers one question: may a consumer act on this finding
-//! without a human reading it? Container metadata is the workspace's strongest
-//! case for yes — a chunk or part either is an Exif block or is not, and the
-//! removal is verifiable by diffing the output — so most of this table is
-//! [`ConfidenceTier::CertainMechanical`]. Three rules are deliberately not:
+//! [`ConfidenceTier`] answers one question and one question only: how far can
+//! this detection be trusted? Container metadata is the workspace's strongest
+//! case — a chunk or part either is an Exif block or is not, and the removal is
+//! verifiable by diffing the output — so most of this table is
+//! [`ConfidenceTier::CertainMechanical`]. Two rules are not:
 //!
 //! * `media-ooxml-revisions` is [`ConfidenceTier::HighConfidenceStylistic`].
 //!   Resolving tracked changes and dropping comments is deterministic, but it
@@ -18,12 +18,23 @@
 //! * `media-byte-scan` is [`ConfidenceTier::LowConfidenceJudgement`], because a
 //!   whole-file byte scan collides with compressed image and stream data by
 //!   chance. It is a signal to look, never a verdict.
-//! * `media-c2pa-soft-binding` is also
-//!   [`ConfidenceTier::LowConfidenceJudgement`], for the opposite reason: the
-//!   detection is certain, but **there is no fix**. A soft binding is a
-//!   fingerprint or invisible watermark in the pixels, out of reach of
-//!   container surgery, so the only correct response is a human reading the
-//!   report. The tier records "never auto-fix", not "weak evidence".
+//!
+//! `media-c2pa-soft-binding` used to be a third, and it was the one place in
+//! this table where the tier lied. Its detection is exact — the assertion is
+//! either in the manifest or it is not — but **no repair exists**: a soft
+//! binding is a fingerprint or invisible watermark in the pixels, out of reach
+//! of container surgery. With only a confidence axis to work with, the sole way
+//! to stop a consumer offering a fix was to file the crate's most reliable
+//! detection under its least reliable label.
+//!
+//! `prose_sanitiser_core::Fixability` is the axis that resolves it: whether a
+//! finding can be repaired is orthogonal to how much the detection is worth,
+//! in the same way severity and confidence are orthogonal to each other. The
+//! rule now carries the tier its evidence earns, and the CLI's fixability table
+//! marks it `NoFixExists`, so it yields no edit under any configuration and
+//! its SARIF entry carries no `fixes[]` and an explicit explanation of why.
+//! "We decline to repair this" and "this cannot be repaired" are different
+//! messages, and a reader is now told which one applies.
 //!
 //! `since` and `reviewed` are honest dates, not decoration. A rule whose
 //! `reviewed` date has gone stale is a rule whose sources nobody has
@@ -93,11 +104,15 @@ pub const RULES: &[RuleMeta] = &[
              Durable Content Credential: a fingerprint or invisible watermark in the pixels lets \
              a validator rediscover the original signed manifest from a cloud repository even \
              after the container is stripped. Adobe runs a live implementation of the Soft \
-             Binding Resolution API. Report only — this crate does lossless container surgery \
-             and cannot detect, identify or remove a pixel-domain watermark, so there is no fix \
-             to offer. Absence of the assertion is not evidence that no watermark is present.",
+             Binding Resolution API. No fix exists: this crate does lossless container surgery \
+             and cannot detect, identify or remove a pixel-domain watermark, so the finding is \
+             reported and never repaired. Absence of the assertion is not evidence that no \
+             watermark is present.",
         severity: Severity::High,
-        confidence: ConfidenceTier::LowConfidenceJudgement,
+        // Certain, because the assertion either is in the manifest or is not.
+        // That no repair exists is a separate fact, carried on the fixability
+        // axis rather than smuggled in here as doubt about the detection.
+        confidence: ConfidenceTier::CertainMechanical,
         since: "2026-09-03",
         reviewed: "2026-09-03",
         help_uri: Some(SOFT_BINDING),
@@ -359,29 +374,46 @@ mod tests {
     }
 
     #[test]
-    fn only_the_report_only_rules_are_outside_the_mechanical_tier() {
-        let report_only: Vec<&str> = RULES
+    fn only_the_two_uncertain_rules_are_outside_the_mechanical_tier() {
+        let uncertain: Vec<&str> = RULES
             .iter()
             .filter(|rule| rule.confidence != ConfidenceTier::CertainMechanical)
             .map(|rule| rule.id)
             .collect();
-        assert_eq!(
-            report_only,
-            vec![
-                "media-c2pa-soft-binding",
-                "media-ooxml-revisions",
-                "media-byte-scan",
-            ]
+        assert_eq!(uncertain, vec!["media-ooxml-revisions", "media-byte-scan"]);
+    }
+
+    #[test]
+    fn the_soft_binding_rule_states_certain_detection_and_no_repair() {
+        // The rule this table got wrong until `Fixability` existed. Its
+        // detection is exact, so it belongs in the mechanical tier; that no
+        // repair is possible is a separate fact carried on the fixability axis,
+        // not doubt about the evidence smuggled into the confidence label.
+        let rule = rule("media-c2pa-soft-binding").expect("the rule is published");
+        assert_eq!(rule.confidence, ConfidenceTier::CertainMechanical);
+        assert_eq!(rule.severity, Severity::High);
+        assert!(
+            rule.description.contains("No fix exists"),
+            "the description must say so in words, for a reader who sees only the text"
         );
     }
 
     #[test]
-    fn the_soft_binding_rule_never_offers_a_fix() {
-        // It is the one finding this crate raises that it cannot act on: the
-        // watermark is in the pixels, which container surgery never touches.
-        let rule = rule("media-c2pa-soft-binding").expect("the rule is published");
-        assert_eq!(rule.confidence, ConfidenceTier::LowConfidenceJudgement);
-        assert!(rule.description.contains("no fix"));
+    fn no_media_rule_claims_certainty_it_cannot_verify() {
+        // The mechanical tier is a promise that the finding is verifiable by
+        // diffing the output, or — for the soft binding — by reading a field
+        // that is either present or absent. A rule resting on a heuristic scan
+        // must not sit there.
+        for rule in RULES {
+            if rule.confidence != ConfidenceTier::CertainMechanical {
+                continue;
+            }
+            assert!(
+                !rule.description.contains("by chance"),
+                "{} rests on a collision-prone scan and cannot be mechanical",
+                rule.id
+            );
+        }
     }
 
     /// The finding strings the scanners actually emit, mapped to their rules.
