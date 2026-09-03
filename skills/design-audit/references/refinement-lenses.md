@@ -15,7 +15,7 @@ asks for one specific kind of change.
    decisions from RuVector (`memory_search namespace:project-state "design <lens>"`).
 3. **Apply** only the transformation that lens owns — do not silently widen scope.
 4. **Gate** the result through `../../open-design/references/anti-slop-rules.md` and
-   `scripts/slop-detect.py` (in open-design) before presenting.
+   the `slop-detect` binary before presenting.
 5. **Persist** the decision: `memory_store namespace:project-state` with the lens,
    the change, and the rationale — so the next session inherits the intent.
 
@@ -57,4 +57,4 @@ distill → clarify → typeset → layout → quieter → harden → animate
 
 Apply one at a time, gate each, persist each. Stop when the five-dimensional
 critique (`../../open-design/references/critique-dimensions.md`) holds ≥7 across the
-board and `slop-detect.py` reports clean.
+board and `slop-detect` reports clean.

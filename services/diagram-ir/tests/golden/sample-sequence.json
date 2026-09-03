@@ -1,0 +1,306 @@
+{
+  "source": "tests/fixtures/sample-sequence.mmd",
+  "diagrams_total": 1,
+  "diagrams": [
+    {
+      "index": 0,
+      "kind": "sequenceDiagram",
+      "source_line": 1,
+      "direction": "LR",
+      "analysis": {
+        "nodes_total": 3,
+        "nodes_drawable": 3,
+        "containers": 0,
+        "leaves": 3,
+        "edges_total": 14,
+        "edges_labeled": 14,
+        "edges_dangling": 0,
+        "max_depth": 0,
+        "shapes": {
+          "lifeline": 2,
+          "actor": 1
+        },
+        "has_cycle": true,
+        "hubs": [
+          {
+            "id": "A",
+            "label": "Alice Smith",
+            "degree": 14
+          },
+          {
+            "id": "B",
+            "label": "Bob",
+            "degree": 12
+          },
+          {
+            "id": "C",
+            "label": "C",
+            "degree": 2
+          }
+        ],
+        "entry_points": [],
+        "terminals": [
+          "C"
+        ],
+        "orphans": [],
+        "type_candidates": [
+          "sequence"
+        ],
+        "collapsible_groups": [],
+        "over_node_budget": false,
+        "over_edge_budget": true
+      },
+      "discarded": {
+        "style_directives": 0,
+        "click_handlers": 0
+      },
+      "fragments": [
+        {
+          "kind": "alt",
+          "label": "is sick",
+          "line": 14,
+          "depth": 0,
+          "regions": [
+            "is well"
+          ]
+        },
+        {
+          "kind": "opt",
+          "label": "Extra response",
+          "line": 19,
+          "depth": 0,
+          "regions": []
+        },
+        {
+          "kind": "loop",
+          "label": "Every minute",
+          "line": 22,
+          "depth": 0,
+          "regions": []
+        },
+        {
+          "kind": "par",
+          "label": "one",
+          "line": 25,
+          "depth": 0,
+          "regions": [
+            "two"
+          ]
+        },
+        {
+          "kind": "critical",
+          "label": "connect",
+          "line": 30,
+          "depth": 0,
+          "regions": [
+            "timeout"
+          ]
+        },
+        {
+          "kind": "break",
+          "label": "oops",
+          "line": 35,
+          "depth": 0,
+          "regions": []
+        }
+      ],
+      "notes": [
+        "A note with \"quotes\""
+      ],
+      "nodes": [
+        {
+          "id": "A",
+          "label": "Alice Smith",
+          "shape": "lifeline",
+          "parent": null,
+          "depth": 0,
+          "container": false,
+          "children": [],
+          "fields": [],
+          "in_degree": 5,
+          "out_degree": 9
+        },
+        {
+          "id": "B",
+          "label": "Bob",
+          "shape": "actor",
+          "parent": null,
+          "depth": 0,
+          "container": false,
+          "children": [],
+          "fields": [],
+          "in_degree": 7,
+          "out_degree": 5
+        },
+        {
+          "id": "C",
+          "label": "C",
+          "shape": "lifeline",
+          "parent": null,
+          "depth": 0,
+          "container": false,
+          "children": [],
+          "fields": [],
+          "in_degree": 2,
+          "out_degree": 0
+        }
+      ],
+      "edges": [
+        {
+          "id": "e1",
+          "source": "A",
+          "target": "B",
+          "label": "Hello Bob, how are you?",
+          "style": "solid",
+          "arrowhead": "arrow",
+          "bidirectional": false,
+          "undirected": false,
+          "order": 1
+        },
+        {
+          "id": "e2",
+          "source": "B",
+          "target": "A",
+          "label": "Fine\nthanks",
+          "style": "dashed",
+          "arrowhead": "arrow",
+          "bidirectional": false,
+          "undirected": false,
+          "order": 2
+        },
+        {
+          "id": "e3",
+          "source": "A",
+          "target": "C",
+          "label": "async ping",
+          "style": "solid",
+          "arrowhead": "async",
+          "bidirectional": false,
+          "undirected": false,
+          "order": 3
+        },
+        {
+          "id": "e4",
+          "source": "B",
+          "target": "A",
+          "label": "cancelled",
+          "style": "dashed",
+          "arrowhead": "cross",
+          "bidirectional": false,
+          "undirected": false,
+          "order": 4
+        },
+        {
+          "id": "e5",
+          "source": "A",
+          "target": "B",
+          "label": "sync both ways",
+          "style": "solid",
+          "arrowhead": "arrow",
+          "bidirectional": true,
+          "undirected": false,
+          "order": 5
+        },
+        {
+          "id": "e6",
+          "source": "B",
+          "target": "A",
+          "label": "Not so good :(",
+          "style": "solid",
+          "arrowhead": "arrow",
+          "bidirectional": false,
+          "undirected": false,
+          "order": 6
+        },
+        {
+          "id": "e7",
+          "source": "B",
+          "target": "A",
+          "label": "Feeling fresh like a daisy",
+          "style": "solid",
+          "arrowhead": "arrow",
+          "bidirectional": false,
+          "undirected": false,
+          "order": 7
+        },
+        {
+          "id": "e8",
+          "source": "B",
+          "target": "A",
+          "label": "Thanks for asking",
+          "style": "solid",
+          "arrowhead": "arrow",
+          "bidirectional": false,
+          "undirected": false,
+          "order": 8
+        },
+        {
+          "id": "e9",
+          "source": "A",
+          "target": "B",
+          "label": "ping",
+          "style": "solid",
+          "arrowhead": "arrow",
+          "bidirectional": false,
+          "undirected": false,
+          "order": 9
+        },
+        {
+          "id": "e10",
+          "source": "A",
+          "target": "B",
+          "label": "p1",
+          "style": "solid",
+          "arrowhead": "arrow",
+          "bidirectional": false,
+          "undirected": false,
+          "order": 10
+        },
+        {
+          "id": "e11",
+          "source": "A",
+          "target": "C",
+          "label": "p2",
+          "style": "solid",
+          "arrowhead": "arrow",
+          "bidirectional": false,
+          "undirected": false,
+          "order": 11
+        },
+        {
+          "id": "e12",
+          "source": "A",
+          "target": "B",
+          "label": "c",
+          "style": "solid",
+          "arrowhead": "arrow",
+          "bidirectional": false,
+          "undirected": false,
+          "order": 12
+        },
+        {
+          "id": "e13",
+          "source": "A",
+          "target": "B",
+          "label": "t",
+          "style": "solid",
+          "arrowhead": "arrow",
+          "bidirectional": false,
+          "undirected": false,
+          "order": 13
+        },
+        {
+          "id": "e14",
+          "source": "A",
+          "target": "B",
+          "label": "b",
+          "style": "solid",
+          "arrowhead": "arrow",
+          "bidirectional": false,
+          "undirected": false,
+          "order": 14
+        }
+      ]
+    }
+  ]
+}

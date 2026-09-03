@@ -32,7 +32,7 @@ Score 1 point per match. If ≥3 points, the output is slop — redo Phase 3.
 | 20 | **Everything centered** | Reflex center-alignment flattening hierarchy |
 
 > Signals 1–20 are the fast judgment checklist. The deterministic scanner
-> `scripts/slop-detect.py` decides the code-detectable subset automatically, and
+> The `slop-detect` binary decides the code-detectable subset automatically, and
 > the full three-layer (CLI / browser / LLM) catalogue lives in
 > `slop-rules-catalog.md`. Run the scanner first; use this checklist for the rest.
 

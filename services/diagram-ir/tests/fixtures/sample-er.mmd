@@ -1,0 +1,14 @@
+erDiagram
+  direction LR
+  CUSTOMER ||--o{ ORDER : places
+  ORDER ||--|{ LINE_ITEM : contains
+  CUSTOMER }|..|{ DELIVERY_ADDRESS : uses
+  CUSTOMER {
+    string name
+    string custNumber PK
+    int age
+  }
+  ORDER {
+    int orderNumber
+    string deliveryAddress
+  }

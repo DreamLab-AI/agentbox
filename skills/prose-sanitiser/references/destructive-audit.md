@@ -239,9 +239,9 @@ simplification pass is often more effective than paraphrasing. The `simplify`
 and `declaudish` rewrite strengths target this directly:
 
 ```bash
-python3 rewrite_text.py <path> --strength simplify      # plain English, short sentences
-python3 rewrite_text.py <path> --strength declaudish     # targets Claude-specific tells
-python3 rewrite_text.py <path> --strength simplify --context "What does our auth system do?"
+rewrite-text <path> --strength simplify      # plain English, short sentences
+rewrite-text <path> --strength declaudish     # targets Claude-specific tells
+rewrite-text <path> --strength simplify --context "What does our auth system do?"
 ```
 
 The `--context` flag injects the original question or prompt (truncated to 800

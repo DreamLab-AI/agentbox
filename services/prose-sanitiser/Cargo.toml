@@ -1,0 +1,89 @@
+[workspace]
+
+[package]
+name = "prose-sanitiser"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+# Every binary is declared explicitly below; without this, cargo would also
+# auto-discover src/bin/*.rs and ship duplicate snake_case names.
+autobins = false
+license = "MIT OR Apache-2.0"
+description = "Deterministic AI-provenance sanitiser for agentbox: invisible-Unicode and homoglyph surgery, PNG/JPEG/WebP metadata stripping, container (SVG/PDF/DOCX/ODT/HTML/Markdown) scrubbing, slop scanning and UK-English enforcement, as CLIs and an HTTP service."
+
+[[bin]]
+name = "inspect-text"
+path = "src/bin/inspect_text.rs"
+
+[[bin]]
+name = "clean-text"
+path = "src/bin/clean_text.rs"
+
+[[bin]]
+name = "inspect-image"
+path = "src/bin/inspect_image.rs"
+
+[[bin]]
+name = "clean-image"
+path = "src/bin/clean_image.rs"
+
+[[bin]]
+name = "inspect-file"
+path = "src/bin/inspect_file.rs"
+
+[[bin]]
+name = "clean-file"
+path = "src/bin/clean_file.rs"
+
+[[bin]]
+name = "audit-dir"
+path = "src/bin/audit_dir.rs"
+
+[[bin]]
+name = "audit-website"
+path = "src/bin/audit_website.rs"
+
+[[bin]]
+name = "rewrite-text"
+path = "src/bin/rewrite_text.rs"
+
+[[bin]]
+name = "slop-scan"
+path = "src/bin/slop_scan.rs"
+
+[[bin]]
+name = "slop-detect"
+path = "src/bin/slop_detect.rs"
+
+[[bin]]
+name = "prose-sanitiser-server"
+path = "src/bin/server.rs"
+
+[lib]
+name = "prose_sanitiser"
+path = "src/lib.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+regex = "1"
+unicode-normalization = "0.1"
+unicode-general-category = "1"
+unicode_names2 = "1"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+flate2 = "1"
+base64 = "0.22"
+tempfile = "3"
+libc = "0.2"
+axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal"] }
+quick-xml = "0.37"
+ureq = { version = "2", default-features = false, features = ["tls", "gzip", "json"] }
+
+[dev-dependencies]
+sha2 = "0.10"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "time"] }
+
+[profile.release]
+opt-level = 2
