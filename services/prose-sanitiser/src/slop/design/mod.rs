@@ -247,7 +247,19 @@ pub fn scan_file(path: &Path, filter: &RuleFilter) -> Vec<Finding> {
     findings
 }
 
-/// Expand the given paths into scannable files.
+/// Expand the given paths into scannable files, in a deterministic order.
+///
+/// Directories are recursed depth-first with both files and subdirectories
+/// sorted by name, and the skip list (`node_modules`, `.git`, `dist`, `build`,
+/// `.next`, `vendor`, `__pycache__`) is pruned exactly as the Python pruned it.
+///
+/// Intentional divergence from the Python: `os.walk` yielded raw `scandir`
+/// order, so the Python's `--json` `findings` array came out in whatever order
+/// the filesystem happened to return — different across machines and after a
+/// re-checkout, for the same tree. The set of findings was always the same;
+/// only their order moved. Sorting makes the JSON reproducible, which matters
+/// because this runs as a CI gate and its output gets diffed. Per-file
+/// behaviour, counts, severities and exit codes are unchanged.
 pub fn walk(paths: &[PathBuf]) -> Vec<PathBuf> {
     let mut out = Vec::new();
     for root in paths {
@@ -302,7 +314,11 @@ pub fn scan(paths: &[PathBuf], filter: &RuleFilter, floor: Severity) -> Vec<Find
         .collect()
 }
 
-/// Findings grouped by rule, in descending count order.
+/// Findings grouped by rule, in first-seen (scan) order.
+///
+/// This is the order the JSON `by_rule` object must use: the Python builds it
+/// by inserting into a plain `dict`, which preserves insertion order, and only
+/// re-orders for the human-readable summary. See [`by_rule_ranked`].
 pub fn by_rule(findings: &[Finding]) -> Vec<(String, usize)> {
     let mut counts: Vec<(String, usize)> = Vec::new();
     for finding in findings {
@@ -311,6 +327,15 @@ pub fn by_rule(findings: &[Finding]) -> Vec<(String, usize)> {
             None => counts.push((finding.rule.clone(), 1)),
         }
     }
+    counts
+}
+
+/// Findings grouped by rule, in descending count order, for the text summary.
+///
+/// Ties keep first-seen order: the sort is stable, matching Python's stable
+/// `sorted(..., key=lambda kv: -kv[1])` over an insertion-ordered dict.
+pub fn by_rule_ranked(findings: &[Finding]) -> Vec<(String, usize)> {
+    let mut counts = by_rule(findings);
     counts.sort_by_key(|(_, count)| std::cmp::Reverse(*count));
     counts
 }

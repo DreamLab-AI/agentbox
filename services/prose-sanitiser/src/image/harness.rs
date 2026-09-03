@@ -15,7 +15,7 @@ use std::time::Duration;
 use serde_json::{json, Value};
 
 use crate::common::proc::{run_capture, Rlimits, RunError};
-use crate::common::{env_nonempty, which};
+use crate::common::{env_nonempty, py_str_float as format_float, which};
 
 /// Where the Python harness scripts live.
 ///
@@ -342,15 +342,6 @@ pub fn run_markdiffusion_purify(
             }
             error
         }
-    }
-}
-
-/// Render a float the way Python's `str(float)` does for these flags.
-fn format_float(value: f64) -> String {
-    if value == value.trunc() && value.abs() < 1e15 {
-        format!("{value:.1}")
-    } else {
-        format!("{value}")
     }
 }
 

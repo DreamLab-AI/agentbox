@@ -18,7 +18,7 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use prose_sanitiser::common::{run_cli, to_pretty_json_ascii, CliError};
-use prose_sanitiser::slop::design::{by_rule, scan, RuleFilter, Severity};
+use prose_sanitiser::slop::design::{by_rule, by_rule_ranked, scan, RuleFilter, Severity};
 use serde_json::{json, Map, Value};
 
 const RESET: &str = "\x1b[0m";
@@ -115,7 +115,7 @@ fn body() -> Result<i32, CliError> {
         }
     }
 
-    let grouped = by_rule(&shown);
+    let grouped = by_rule_ranked(&shown);
     println!(
         "\n{} finding(s) across {} rule(s):",
         shown.len(),

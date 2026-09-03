@@ -274,12 +274,27 @@ fn the_walk_covers_the_scannable_extensions_and_skips_noise() {
 }
 
 #[test]
+fn the_json_by_rule_grouping_keeps_first_seen_order() {
+    // The Python inserts into a plain dict for the JSON payload, so the object
+    // is in scan order, NOT count order. Sorting here would silently diverge.
+    let findings = scan_source(
+        "a.css",
+        ".a { text-align: justify; }\n.b { color: #000; }\n.c { color: #fff; }\n",
+    );
+    let grouped = by_rule(&findings);
+    assert_eq!(grouped[0].0, "justified-text");
+    assert_eq!(grouped[0].1, 1);
+    assert_eq!(grouped[1].0, "pure-black-white");
+    assert_eq!(grouped[1].1, 2);
+}
+
+#[test]
 fn findings_group_by_rule_in_descending_count_order() {
     let findings = scan_source(
         "a.css",
         ".a { color: #000; }\n.b { color: #fff; }\n.c { text-align: justify; }\n",
     );
-    let grouped = by_rule(&findings);
+    let grouped = by_rule_ranked(&findings);
     assert_eq!(grouped[0].0, "pure-black-white");
     assert_eq!(grouped[0].1, 2);
 }

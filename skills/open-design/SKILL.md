@@ -151,7 +151,7 @@ others rarely should be. If you ship below the bar, say why in the one-line summ
 source before judging it by eye:
 
 ```bash
-python3 skills/open-design/scripts/slop-detect.py path/to/artifact.html --min-severity warn
+slop-detect path/to/artifact.html --min-severity warn
 ```
 
 It flags the CLI-layer signals in `references/slop-rules-catalog.md`
@@ -274,7 +274,7 @@ This skill composes with the existing design skill suite:
 - `references/brand-index.md` — Complete catalog of the brand specifications (count in Design System Library above)
 - `references/anti-slop-rules.md` — Fast 12-signal slop checklist + remediation
 - `references/slop-rules-catalog.md` — Full 3-layer (CLI/browser/LLM) anti-pattern catalogue, adapted from impeccable
-- `scripts/slop-detect.py` — Zero-dependency deterministic slop scanner (the CLI layer)
+- `slop-detect` — Deterministic slop scanner (the CLI layer); a baked binary on `PATH`, no runtime needed
 
 ## Memory (not flat config files)
 

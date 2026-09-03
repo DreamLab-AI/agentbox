@@ -180,7 +180,10 @@ pub fn rule_tight_leading(line: &str) -> Option<(Severity, String)> {
     (value > 0.0 && value < 1.3).then(|| {
         (
             Severity::Info,
-            format!("line-height {value} is tight for body copy (aim 1.5–1.75)."),
+            format!(
+                "line-height {} is tight for body copy (aim 1.5–1.75).",
+                crate::common::py_str_float(value)
+            ),
         )
     })
 }

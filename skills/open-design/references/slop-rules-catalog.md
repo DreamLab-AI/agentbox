@@ -4,14 +4,14 @@ The complete design anti-pattern ("slop") catalogue, adapted from
 [pbakaus/impeccable](https://github.com/pbakaus/impeccable) (Apache-2.0) into the
 agentbox idiom. Impeccable surfaces these through 23 explicit `/impeccable …`
 slash commands; here they are a **quality gate reached by inferred intent** — the
-agent runs the deterministic layer via `scripts/slop-detect.py` and applies the
+agent runs the deterministic layer via the `slop-detect` binary and applies the
 remaining two layers by judgment during open-design Phase 6 and design-audit.
 
 Three layers, by *how* a signal is decided:
 
 | Layer | Decided by | Tooling |
 |-------|-----------|---------|
-| **CLI** | Static regex/heuristic on source | `scripts/slop-detect.py` (no LLM, no network) |
+| **CLI** | Static regex/heuristic on source | `slop-detect` (no LLM, no network) |
 | **Browser** | Computed layout / rendered DOM | `browser` sidecar + judgment (run page, measure) |
 | **LLM** | Aesthetic/semantic judgment | The agent, reading the artifact against this catalogue |
 
@@ -21,7 +21,7 @@ Each rule: `id` · layer · category · what it detects · the fix. Categories:
 
 ---
 
-## Layer 1 — CLI (deterministic, implemented in `slop-detect.py`)
+## Layer 1 — CLI (deterministic, implemented in `slop-detect`)
 
 | id | category | Detects | Fix |
 |----|----------|---------|-----|
@@ -46,7 +46,7 @@ Each rule: `id` · layer · category · what it detects · the fix. Categories:
 | `skipped-heading` | accessibility | Heading level jumps (h1→h3) | Keep the outline sequential |
 | `everything-centered` | slop | ≥5 center-aligned blocks | Left-align body; centre sparingly |
 
-`slop-detect.py` also recognises inline suppression, mirroring impeccable's
+`slop-detect` also recognises inline suppression, mirroring impeccable's
 `impeccable-disable`:
 
 ```css

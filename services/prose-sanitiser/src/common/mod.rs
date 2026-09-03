@@ -4,6 +4,7 @@ pub mod binary;
 pub mod confidence;
 pub mod io;
 pub mod proc;
+pub mod pyfloat;
 pub mod surrogate;
 
 pub use binary::{looks_binary, ROUTER_ADVICE, TEXT_TOOL_ADVICE};
@@ -13,6 +14,7 @@ pub use io::{
     safe_write_text, write_text_output,
 };
 pub use proc::{safe_arg, which};
+pub use pyfloat::py_str_float;
 pub use surrogate::Unit;
 
 /// A failure that maps directly onto a process exit code.
