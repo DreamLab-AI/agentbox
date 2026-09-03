@@ -170,22 +170,36 @@ pub fn category_code(character: char) -> &'static str {
     }
 }
 
-/// Non-ASCII letter/mark — the neighbour that makes a joiner orthographic.
+/// A letter or mark in a script where ZWJ/ZWNJ is orthographic.
+///
+/// Joiners are meaningful in Arabic, Indic, Mongolian, CJK and most other
+/// complex scripts. They are *not* meaningful in Latin: a ZWJ next to é, ñ
+/// or ü is suspicious, not orthographic, so Latin letters (both basic ASCII
+/// and Extended A/B/Additional) are excluded. Greek and Cyrillic are excluded
+/// for the same reason — they use no joiners.
 fn is_joining_letter(unit: Unit) -> bool {
     match unit.as_char() {
-        Some(character) => {
-            (character as u32) > 0x7F
-                && matches!(
-                    category(character),
-                    GeneralCategory::UppercaseLetter
-                        | GeneralCategory::LowercaseLetter
-                        | GeneralCategory::TitlecaseLetter
-                        | GeneralCategory::ModifierLetter
-                        | GeneralCategory::OtherLetter
-                        | GeneralCategory::NonspacingMark
-                        | GeneralCategory::SpacingMark
-                        | GeneralCategory::EnclosingMark
-                )
+        Some(ch) => {
+            let cp = ch as u32;
+            // Exclude ASCII, Latin-1 Supplement, Latin Extended A/B, IPA,
+            // Latin Extended Additional, and Greek/Cyrillic.
+            if cp <= 0x02AF || (0x1E00..=0x1EFF).contains(&cp) {
+                return false;
+            }
+            if (0x0370..=0x03FF).contains(&cp) || (0x0400..=0x04FF).contains(&cp) {
+                return false;
+            }
+            matches!(
+                category(ch),
+                GeneralCategory::UppercaseLetter
+                    | GeneralCategory::LowercaseLetter
+                    | GeneralCategory::TitlecaseLetter
+                    | GeneralCategory::ModifierLetter
+                    | GeneralCategory::OtherLetter
+                    | GeneralCategory::NonspacingMark
+                    | GeneralCategory::SpacingMark
+                    | GeneralCategory::EnclosingMark
+            )
         }
         None => false,
     }

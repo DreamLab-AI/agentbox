@@ -19,7 +19,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
 
 use axum::body::Bytes;
-use axum::extract::State;
+use axum::extract::{DefaultBodyLimit, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
@@ -188,13 +188,18 @@ fn authorised(state: &ServerState, headers: &HeaderMap) -> bool {
 /// A name like `../../x` would otherwise let a write escape the request temp
 /// dir. Windows separators are folded too, and `.`/`..`/empty fall back to a
 /// neutral name.
-pub fn safe_name(name: &str) -> String {
+pub fn safe_name(name: &str) -> Result<String, String> {
+    // NUL bytes cannot appear in filesystem paths; reject them as a client error
+    // rather than letting the write fail with an internal error.
+    if name.contains('\0') {
+        return Err("filename contains NUL".to_string());
+    }
     let normalised = name.replace('\\', "/");
     let base = normalised.rsplit('/').next().unwrap_or("");
     if base.is_empty() || base == "." || base == ".." {
-        return "input".to_string();
+        return Ok("input".to_string());
     }
-    base.to_string()
+    Ok(base.to_string())
 }
 
 /// Join `part` under `dir`, refusing anything that escapes it.
@@ -223,7 +228,17 @@ fn decode_input(body: &Value) -> Result<(Vec<u8>, String), String> {
     let data = base64::engine::general_purpose::STANDARD
         .decode(raw)
         .map_err(|_| "'file' is not valid base64".to_string())?;
-    Ok((data, safe_name(&name)))
+    // Check the DECODED length against the input cap. The base64 envelope is
+    // larger, but the per-format cap applies to the file itself.
+    let cap = max_input_bytes() as usize;
+    if data.len() > cap {
+        return Err(format!(
+            "decoded file is {} bytes, exceeding the {} byte limit",
+            data.len(),
+            cap
+        ));
+    }
+    Ok((data, safe_name(&name)?))
 }
 
 fn suffix_of(name: &str) -> Option<String> {
@@ -581,6 +596,7 @@ pub fn app(state: ServerState) -> Router {
         .route("/inspect", post(inspect_route))
         .route("/clean", post(clean_route))
         .fallback(not_found)
+        .layer(DefaultBodyLimit::max(max_body_bytes()))
         .with_state(Arc::new(state))
 }
 

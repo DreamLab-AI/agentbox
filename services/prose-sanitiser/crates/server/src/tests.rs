@@ -8,13 +8,19 @@ fn encode(data: &[u8]) -> String {
 
 #[test]
 fn filenames_are_reduced_to_a_safe_basename() {
-    assert_eq!(safe_name("notes.md"), "notes.md");
-    assert_eq!(safe_name("../../etc/passwd"), "passwd");
-    assert_eq!(safe_name("..\\..\\windows\\system32"), "system32");
-    assert_eq!(safe_name(""), "input");
-    assert_eq!(safe_name("."), "input");
-    assert_eq!(safe_name(".."), "input");
-    assert_eq!(safe_name("a/b/"), "input");
+    assert_eq!(safe_name("notes.md").unwrap(), "notes.md");
+    assert_eq!(safe_name("../../etc/passwd").unwrap(), "passwd");
+    assert_eq!(safe_name("..\\..\\windows\\system32").unwrap(), "system32");
+    assert_eq!(safe_name("").unwrap(), "input");
+    assert_eq!(safe_name(".").unwrap(), "input");
+    assert_eq!(safe_name("..").unwrap(), "input");
+    assert_eq!(safe_name("a/b/").unwrap(), "input");
+}
+
+#[test]
+fn filenames_with_nul_bytes_are_rejected() {
+    assert!(safe_name("bad\0name.txt").is_err());
+    assert!(safe_name("\0").is_err());
 }
 
 #[test]

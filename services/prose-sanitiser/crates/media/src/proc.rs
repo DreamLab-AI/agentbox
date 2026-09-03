@@ -94,11 +94,19 @@ pub fn safe_arg(path: &str) -> String {
     }
 }
 
+/// Hard cap on captured stdout and stderr individually, to stop a malicious
+/// child from exhausting host memory through pipe output.
+const MAX_OUTPUT_BYTES: usize = 64 << 20; // 64 MiB
+
 /// Why a child run did not produce output.
 #[derive(Debug)]
 pub enum RunError {
     Spawn(io::Error),
     TimedOut(Duration),
+    /// `setrlimit` failed in the child pre-exec hook.
+    RlimitFailed(io::Error),
+    /// Captured output exceeded [`MAX_OUTPUT_BYTES`].
+    OutputTooLarge,
 }
 
 impl std::fmt::Display for RunError {
@@ -106,11 +114,20 @@ impl std::fmt::Display for RunError {
         match self {
             RunError::Spawn(error) => write!(f, "{error}"),
             RunError::TimedOut(limit) => write!(f, "timed out after {}s", limit.as_secs()),
+            RunError::RlimitFailed(error) => write!(f, "setrlimit failed: {error}"),
+            RunError::OutputTooLarge => {
+                write!(f, "child output exceeded {} bytes", MAX_OUTPUT_BYTES)
+            }
         }
     }
 }
 
 /// Run a command under `limits`, with a wall-clock `timeout` and optional stdin.
+///
+/// Stdout and stderr are drained concurrently on dedicated threads, so a child
+/// that fills one pipe buffer cannot deadlock. The timeout covers the whole
+/// operation including any stdin write, and on expiry the entire process group
+/// is killed so grandchildren do not linger.
 pub fn run_capture(
     program: &std::path::Path,
     args: &[String],
@@ -131,51 +148,115 @@ pub fn run_capture(
         } else {
             Stdio::null()
         });
+
+    // Start a new process group so we can kill the child and all its
+    // descendants with one signal.
+    // SAFETY: `setpgid(0, 0)` and `setrlimit` are async-signal-safe.
     unsafe {
         command.pre_exec(move || {
-            set_rlimit(libc::RLIMIT_AS, limits.address_space);
-            set_rlimit(libc::RLIMIT_FSIZE, limits.file_size);
+            // New process group (pgid = own pid).
+            if libc::setpgid(0, 0) != 0 {
+                // Not fatal: the kill will just target the child alone.
+            }
+            set_rlimit(libc::RLIMIT_AS, limits.address_space)?;
+            set_rlimit(libc::RLIMIT_FSIZE, limits.file_size)?;
             Ok(())
         });
     }
+
+    let started = Instant::now();
     let mut child = command.spawn().map_err(RunError::Spawn)?;
+
+    // Feed stdin on this thread (bounded by the data the caller provided).
     if let Some(data) = stdin_data {
         if let Some(mut stdin) = child.stdin.take() {
             // A child that exits before reading everything is not an error here;
             // its exit status and output are what the caller inspects.
             let _ = stdin.write_all(data);
         }
+        // Drop stdin so the child sees EOF.
     }
 
-    let started = Instant::now();
-    loop {
+    // Drain stdout and stderr concurrently on separate threads, each capped.
+    let stdout_pipe = child.stdout.take();
+    let stderr_pipe = child.stderr.take();
+
+    let stdout_handle = std::thread::spawn(move || drain_capped(stdout_pipe, MAX_OUTPUT_BYTES));
+    let stderr_handle = std::thread::spawn(move || drain_capped(stderr_pipe, MAX_OUTPUT_BYTES));
+
+    // Wait for exit with a timeout.
+    let status = loop {
         match child.try_wait().map_err(RunError::Spawn)? {
-            Some(_) => {
-                return child.wait_with_output().map_err(RunError::Spawn);
-            }
+            Some(status) => break status,
             None => {
                 if started.elapsed() >= timeout {
-                    let _ = child.kill();
+                    kill_group(&child);
                     let _ = child.wait();
                     return Err(RunError::TimedOut(timeout));
                 }
                 std::thread::sleep(Duration::from_millis(25));
             }
         }
+    };
+
+    let stdout = stdout_handle.join().map_err(|_| {
+        RunError::Spawn(io::Error::other("stdout reader panicked"))
+    })??;
+    let stderr = stderr_handle.join().map_err(|_| {
+        RunError::Spawn(io::Error::other("stderr reader panicked"))
+    })??;
+
+    Ok(Output {
+        status,
+        stdout,
+        stderr,
+    })
+}
+
+/// Read up to `cap` bytes from a pipe, returning an error if exceeded.
+fn drain_capped(
+    pipe: Option<impl io::Read>,
+    cap: usize,
+) -> Result<Vec<u8>, RunError> {
+    let Some(mut reader) = pipe else {
+        return Ok(Vec::new());
+    };
+    let mut buffer = Vec::new();
+    let mut chunk = [0u8; 8192];
+    loop {
+        let read = reader.read(&mut chunk).map_err(RunError::Spawn)?;
+        if read == 0 {
+            break;
+        }
+        buffer.extend_from_slice(&chunk[..read]);
+        if buffer.len() > cap {
+            return Err(RunError::OutputTooLarge);
+        }
+    }
+    Ok(buffer)
+}
+
+/// Kill the child's entire process group (child + any grandchildren).
+fn kill_group(child: &std::process::Child) {
+    let pid = child.id() as libc::pid_t;
+    // SAFETY: `kill(-pid, SIGKILL)` sends SIGKILL to the process group.
+    unsafe {
+        libc::kill(-pid, libc::SIGKILL);
     }
 }
 
-/// Best-effort `setrlimit`; a platform that refuses simply runs unlimited, as
-/// the Python's `except (ImportError, OSError, ValueError): pass` did.
-fn set_rlimit(resource: u32, value: u64) {
+/// `setrlimit` with error propagation. Returns `Err` if the kernel refuses.
+fn set_rlimit(resource: u32, value: u64) -> io::Result<()> {
     let limit = libc::rlimit {
         rlim_cur: value as libc::rlim_t,
         rlim_max: value as libc::rlim_t,
     };
     // SAFETY: `limit` is a fully initialised, correctly typed rlimit.
-    unsafe {
-        libc::setrlimit(resource, &limit);
+    let result = unsafe { libc::setrlimit(resource, &limit) };
+    if result != 0 {
+        return Err(io::Error::last_os_error());
     }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -215,6 +296,39 @@ mod tests {
         let error = run_capture(
             &sh,
             &["-c".into(), "sleep 30".into()],
+            Rlimits::default_child(),
+            Duration::from_millis(200),
+            None,
+        )
+        .unwrap_err();
+        assert!(matches!(error, RunError::TimedOut(_)));
+    }
+
+    #[test]
+    fn run_capture_does_not_deadlock_on_large_stdout() {
+        // Produce more than the default 64 KiB pipe buffer on stdout.
+        let sh = which("sh").unwrap();
+        let output = run_capture(
+            &sh,
+            &[
+                "-c".into(),
+                "dd if=/dev/zero bs=1024 count=256 2>/dev/null".into(),
+            ],
+            Rlimits::default_child(),
+            Duration::from_secs(10),
+            None,
+        )
+        .unwrap();
+        assert_eq!(output.stdout.len(), 256 * 1024);
+    }
+
+    #[test]
+    fn run_capture_kills_grandchildren_on_timeout() {
+        // The shell spawns a sub-shell; the timeout must kill the whole group.
+        let sh = which("sh").unwrap();
+        let error = run_capture(
+            &sh,
+            &["-c".into(), "(sleep 60)".into()],
             Rlimits::default_child(),
             Duration::from_millis(200),
             None,

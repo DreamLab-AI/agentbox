@@ -272,3 +272,30 @@ fn a_slash_in_prose_is_not_a_path() {
     assert_eq!(matches("The color/center split is arbitrary."), ["color", "center"]);
     assert_eq!(matches("Use color and/or center as you like."), ["color", "center"]);
 }
+
+#[test]
+fn a_four_space_line_after_a_blank_line_is_indented_code() {
+    // Codex finding 6: `    color: red` preceded by a blank line is an indented
+    // code block under CommonMark §4.4, not a lazy continuation. The parser
+    // correctly classifies it as code and the spelling check skips it.
+    let document = "Set the property:\n\n    color: red\n";
+    assert!(
+        check(document).is_empty(),
+        "4-space indented line after blank line must be treated as code: {:?}",
+        matches(document)
+    );
+    unchanged_under_write(document);
+}
+
+#[test]
+fn a_four_space_line_without_a_blank_line_is_lazy_continuation() {
+    // The counterpart: without the blank line, the 4-space text is a lazy
+    // continuation of the paragraph (CommonMark §5.1) and IS prose, so US
+    // spellings in it must be flagged.
+    let document = "Set the property:\n    color: red\n";
+    assert_eq!(
+        matches(document),
+        ["color"],
+        "4-space line without a blank separator is paragraph continuation, not code"
+    );
+}

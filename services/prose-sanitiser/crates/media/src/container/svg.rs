@@ -97,15 +97,14 @@ pub fn clean_svg(data: &[u8]) -> (Vec<u8>, Vec<String>) {
     out.extend_from_slice(&text[last..]);
     text = out;
 
-    if actions.is_empty() {
-        // Still strip a generator-like attribute on the root if present.
-        let count = generator_attr_re().find_iter(&text).count();
-        if count > 0 {
-            actions.push(format!("drop generator-like attrs x{count}"));
-            text = generator_attr_re()
-                .replace_all(&text, &b""[..])
-                .into_owned();
-        }
+    // Always strip generator-like attributes, not only as a fallback. An SVG
+    // with both a metadata block and inkscape:version attributes must lose both.
+    let gen_count = generator_attr_re().find_iter(&text).count();
+    if gen_count > 0 {
+        actions.push(format!("drop generator-like attrs x{gen_count}"));
+        text = generator_attr_re()
+            .replace_all(&text, &b""[..])
+            .into_owned();
     }
     if actions.is_empty() {
         actions.push("no SVG metadata removed".to_string());
@@ -161,13 +160,31 @@ mod tests {
     }
 
     #[test]
-    fn generator_attributes_are_the_fallback_when_nothing_else_matched() {
+    fn generator_attributes_are_always_removed() {
         let svg = br#"<svg inkscape:version="1.1" sodipodi:docname="a.svg"><rect/></svg>"#;
         let (cleaned, actions) = clean_svg(svg);
         assert!(actions.contains(&"drop generator-like attrs x2".to_string()));
         let cleaned = text(cleaned);
         assert!(!cleaned.contains("inkscape:version"));
         assert!(cleaned.starts_with("<svg>"));
+    }
+
+    #[test]
+    fn generator_attributes_are_removed_alongside_metadata() {
+        // An SVG with both a metadata block and generator attributes must lose both.
+        let svg = br#"<svg inkscape:version="1.1"><metadata><rdf:RDF>x</rdf:RDF></metadata><rect/></svg>"#;
+        let (cleaned, actions) = clean_svg(svg);
+        assert!(
+            actions.contains(&"drop <metadata> x1".to_string()),
+            "metadata block must be removed"
+        );
+        assert!(
+            actions.contains(&"drop generator-like attrs x1".to_string()),
+            "generator attributes must also be removed even when metadata was stripped"
+        );
+        let cleaned = text(cleaned);
+        assert!(!cleaned.contains("inkscape:version"));
+        assert!(!cleaned.contains("rdf:RDF"));
     }
 
     #[test]

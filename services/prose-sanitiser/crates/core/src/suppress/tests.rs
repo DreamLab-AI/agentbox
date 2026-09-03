@@ -125,3 +125,64 @@ fn an_unclosed_comment_does_not_loop_or_panic() {
     let suppressions = Suppressions::parse("text <!-- prose-sanitiser-disable ");
     assert!(suppressions.is_empty());
 }
+
+#[test]
+fn a_directive_inside_a_fenced_code_block_is_ignored() {
+    let document = "\
+```html
+<!-- prose-sanitiser-disable -->
+```
+
+We delve into a tapestry of insights.
+";
+    let suppressions = Suppressions::parse(document);
+    // The directive is inside a fenced block, so prose after it is NOT suppressed.
+    assert!(
+        suppressions.is_empty(),
+        "a directive inside a fenced code block must not produce a suppression region"
+    );
+}
+
+#[test]
+fn a_directive_inside_a_tilde_fence_is_ignored() {
+    let document = "\
+~~~
+<!-- prose-sanitiser-disable tier1-vocab -->
+~~~
+
+prose here
+";
+    let suppressions = Suppressions::parse(document);
+    assert!(suppressions.is_empty());
+}
+
+#[test]
+fn a_directive_after_a_fenced_block_still_works() {
+    let document = "\
+```
+example
+```
+<!-- prose-sanitiser-disable -->
+tail
+";
+    let suppressions = Suppressions::parse(document);
+    let tail_offset = document.find("tail").unwrap();
+    assert!(
+        suppressions.is_suppressed("any-rule", tail_offset),
+        "a directive after a fenced block must still take effect"
+    );
+}
+
+#[test]
+fn an_unterminated_fence_suppresses_all_directives_inside_it() {
+    let document = "\
+```
+<!-- prose-sanitiser-disable -->
+text inside a never-closed fence
+";
+    let suppressions = Suppressions::parse(document);
+    assert!(
+        suppressions.is_empty(),
+        "a directive inside an unterminated fence must be ignored"
+    );
+}

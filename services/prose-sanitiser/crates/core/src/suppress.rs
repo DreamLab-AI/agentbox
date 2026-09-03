@@ -211,8 +211,14 @@ struct Comment<'a> {
     end: usize,
 }
 
-/// Every `<!-- ... -->` in `document`, in source order.
+/// Every `<!-- ... -->` in `document` that is NOT inside a fenced code block,
+/// in source order.
+///
+/// A directive inside a fenced code block is an example or generated code, not
+/// a policy instruction. Recognising it would let a code sample's commentary
+/// silence findings in the prose that follows it.
 fn comments(document: &str) -> Vec<Comment<'_>> {
+    let fenced = fenced_code_ranges(document);
     let mut out = Vec::new();
     let bytes = document.as_bytes();
     let mut cursor = 0usize;
@@ -227,14 +233,52 @@ fn comments(document: &str) -> Vec<Comment<'_>> {
         };
         let body_end = body_start + close;
         let end = body_end + 3;
-        out.push(Comment {
-            body: &document[body_start..body_end],
-            start,
-            end,
-        });
+        if !inside_fenced(&fenced, start) {
+            out.push(Comment {
+                body: &document[body_start..body_end],
+                start,
+                end,
+            });
+        }
         cursor = end;
     }
     out
+}
+
+/// Byte ranges of fenced code blocks (` ``` ` or `~~~`), fence lines included.
+fn fenced_code_ranges(document: &str) -> Vec<(usize, usize)> {
+    let mut ranges = Vec::new();
+    let mut open: Option<(usize, &str)> = None;
+    let mut offset = 0usize;
+    for line in document.split_inclusive('\n') {
+        let stripped = line.trim_end_matches(['\n', '\r']).trim_start();
+        if let Some((start, marker)) = &open {
+            // A closing fence is the same marker (possibly with trailing spaces)
+            // and nothing else on the line.
+            if stripped.starts_with(marker)
+                && stripped[marker.len()..].chars().all(char::is_whitespace)
+            {
+                ranges.push((*start, offset + line.len()));
+                open = None;
+            }
+        } else if stripped.starts_with("```") {
+            open = Some((offset, "```"));
+        } else if stripped.starts_with("~~~") {
+            open = Some((offset, "~~~"));
+        }
+        offset += line.len();
+    }
+    if let Some((start, _)) = open {
+        ranges.push((start, document.len()));
+    }
+    ranges
+}
+
+/// Whether `offset` falls inside any fenced code range.
+fn inside_fenced(ranges: &[(usize, usize)], offset: usize) -> bool {
+    ranges
+        .iter()
+        .any(|(start, end)| offset >= *start && offset < *end)
 }
 
 /// What a directive asks for.

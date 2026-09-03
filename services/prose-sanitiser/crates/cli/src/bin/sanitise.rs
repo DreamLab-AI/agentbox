@@ -18,8 +18,8 @@ use prose_sanitiser::dispatch::Kind;
 use prose_sanitiser::exit;
 use prose_sanitiser::output::{render, text_line, OutputFormat};
 use prose_sanitiser::sanitise::{
-    all_rule_meta, configure, is_prose, kind_of, media_finding, read_text, FileOutcome,
-    RULE_MEDIA_PROVENANCE,
+    all_rule_meta, configure, fixability_table, is_prose, kind_of, media_finding, read_text,
+    FileOutcome, RULE_MEDIA_PROVENANCE,
 };
 use prose_sanitiser::settings::Settings;
 use prose_sanitiser::slop::rules::RULESET_VERSION;
@@ -303,6 +303,7 @@ fn body() -> Result<i32, CliError> {
         all_rule_meta(),
     )
     .with_ruleset_version(RULESET_VERSION)
+    .with_fixability_table(fixability_table())
     .with_entries(entries);
 
     if let Some(rendered) = render(&report, args.format) {

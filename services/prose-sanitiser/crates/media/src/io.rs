@@ -121,19 +121,16 @@ fn read_stdin_capped(allow_binary: bool, advice: &[&str]) -> Result<Vec<Unit>, C
 }
 
 /// Write cleaned text to `path`, or stdout for `-`/`None`.
+///
+/// The output is written verbatim — no trailing newline is appended. Adding
+/// one would silently corrupt files that do not end with a newline and break
+/// round-trip fidelity (`clean → clean` must be idempotent on bytes).
 pub fn write_text_output(units: &[Unit], path: Option<&str>) -> Result<(), CliError> {
     let bytes = surrogate::encode(units);
     match path {
         None | Some("-") => {
             let mut out = std::io::stdout().lock();
             out.write_all(&bytes)
-                .and_then(|()| {
-                    if !bytes.is_empty() && !bytes.ends_with(b"\n") {
-                        out.write_all(b"\n")
-                    } else {
-                        Ok(())
-                    }
-                })
                 .map_err(|e| CliError::new(1, format!("cannot write stdout: {e}")))
         }
         Some(path) => {
@@ -189,13 +186,16 @@ pub fn read_capped(path: &Path, cap: u64) -> std::io::Result<Vec<u8>> {
     Ok(buffer)
 }
 
-/// `0o666 & ~umask` — the mode a plain `open()` would produce.
-fn default_file_mode() -> u32 {
-    // SAFETY: umask is always available and has no failure mode; the pair of
-    // calls restores the process umask before anything else can observe it.
-    let mask = unsafe { libc::umask(0) };
-    unsafe { libc::umask(mask) };
-    0o666 & !(mask as u32)
+/// The file mode to apply to a newly written output file.
+///
+/// When the target already exists, its mode is preserved (the caller is
+/// replacing it in place). For new files, `0o644` is used — a safe default
+/// that avoids the TOCTOU race the previous `umask(0); umask(mask)` pair
+/// had: another thread could observe the zeroed umask between the two calls.
+fn file_mode_for(path: &Path) -> u32 {
+    std::fs::metadata(path)
+        .map(|meta| meta.permissions().mode() & 0o7777)
+        .unwrap_or(0o644)
 }
 
 /// Atomically write bytes to `path` without following symlinks.
@@ -231,10 +231,10 @@ pub fn safe_write_bytes(path: &Path, data: &[u8]) -> std::io::Result<()> {
         .prefix(&format!(".{name}."))
         .suffix(".tmp")
         .tempfile_in(&parent)?;
-    // The temp file is 0600; restore the umask-default mode so outputs keep
-    // normal permissions.
+    // The temp file is 0600; match the target's existing mode (or 0o644 for
+    // new files) so outputs keep normal permissions without a umask race.
     temp.as_file()
-        .set_permissions(fs::Permissions::from_mode(default_file_mode()))?;
+        .set_permissions(fs::Permissions::from_mode(file_mode_for(path)))?;
     {
         let mut handle = temp.as_file();
         handle.write_all(data)?;
@@ -386,5 +386,37 @@ mod tests {
         assert_eq!(error.code, 2);
         assert!(error.message.contains("a PDF"));
         assert!(guard_binary(b"%PDF-1.7", "x.pdf", true, TEXT_TOOL_ADVICE).is_ok());
+    }
+
+    #[test]
+    fn file_mode_for_preserves_an_existing_files_mode() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("strict.txt");
+        fs::write(&path, b"data").unwrap();
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).unwrap();
+        assert_eq!(file_mode_for(&path), 0o600);
+    }
+
+    #[test]
+    fn file_mode_for_returns_a_safe_default_for_new_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("nonexistent.txt");
+        assert_eq!(file_mode_for(&path), 0o644);
+    }
+
+    #[test]
+    fn write_text_output_does_not_append_a_trailing_newline() {
+        use prose_sanitiser_core::surrogate;
+
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("out.txt");
+        let path_str = path.to_str().unwrap();
+
+        // Write text that does NOT end with a newline.
+        let units = surrogate::decode(b"no trailing newline");
+        write_text_output(&units, Some(path_str)).unwrap();
+
+        let written = fs::read(&path).unwrap();
+        assert_eq!(written, b"no trailing newline", "must not append \\n");
     }
 }
