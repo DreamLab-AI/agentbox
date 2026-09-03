@@ -18,7 +18,8 @@ use prose_sanitiser::dispatch::Kind;
 use prose_sanitiser::exit;
 use prose_sanitiser::output::{render, text_line, OutputFormat};
 use prose_sanitiser::sanitise::{
-    all_rule_meta, is_prose, kind_of, media_finding, read_text, FileOutcome, RULE_MEDIA_PROVENANCE,
+    all_rule_meta, configure, is_prose, kind_of, media_finding, read_text, FileOutcome,
+    RULE_MEDIA_PROVENANCE,
 };
 use prose_sanitiser::settings::Settings;
 use prose_sanitiser::slop::rules::RULESET_VERSION;
@@ -70,6 +71,13 @@ struct Args {
     /// ones the mixed-script rules flag. Flags honest Greek and Cyrillic prose.
     #[arg(long)]
     aggressive: bool,
+    /// Offer to rewrite exotic spaces (U+00A0, U+202F and the rest) to U+0020.
+    ///
+    /// Off by default, mirroring `clean-text`. Exotic whitespace is always
+    /// *reported* either way; this decides only whether a fix is offered, so
+    /// the preview and the cleaner cannot disagree.
+    #[arg(long = "normalize-spaces")]
+    normalize_spaces: bool,
     /// Scan every span, whatever language it reads as
     #[arg(long = "no-language-filter")]
     no_language_filter: bool,
@@ -96,7 +104,7 @@ fn main() -> std::process::ExitCode {
 /// Built from `TextPolicy::default()` rather than field by field, so a field
 /// added to the policy arrives here at its safe default instead of failing the
 /// build or, worse, being set to whatever happened to be typed first.
-fn policy_for(path: &Path, aggressive: bool) -> TextPolicy {
+fn policy_for(path: &Path, aggressive: bool, normalize_spaces: bool) -> TextPolicy {
     let code = path
         .extension()
         .map(|ext| ext.to_string_lossy().to_lowercase())
@@ -108,6 +116,10 @@ fn policy_for(path: &Path, aggressive: bool) -> TextPolicy {
             BidiContext::Prose
         },
         context_free_homoglyphs: aggressive,
+        // Paired with `CleanOptions::normalize_spaces`, per the policy table
+        // `prose-sanitiser-unicode` documents. Setting one without the other
+        // makes this pass a preview that lies about what a clean would do.
+        normalize_spaces,
         ..TextPolicy::default()
     }
 }
@@ -148,11 +160,12 @@ fn sanitise_one(
     config: &Config,
     checker: &SlopChecker,
     aggressive: bool,
+    normalize_spaces: bool,
 ) -> Result<FileOutcome, CliError> {
     let kind = kind_of(path)?;
     if is_prose(path, kind) || kind == Kind::Text {
         let text = read_text(path)?;
-        let mut findings = check_text(&text, &policy_for(path, aggressive));
+        let mut findings = check_text(&text, &policy_for(path, aggressive, normalize_spaces));
         findings.retain(|finding| config.rule_enabled(&finding.rule_id));
         // The UK rule reaches this pass through the slop table's `us-spelling`
         // entry, which sources its alternation from the VarCon table in
@@ -223,12 +236,20 @@ fn body() -> Result<i32, CliError> {
         },
         &args.disable,
     );
-    let config = settings.config;
+    // Apply the declared fixability overrides before anything builds a patch,
+    // so a finding with no possible repair can never become an edit.
+    let config = configure(settings.config);
     let checker = SlopChecker::new().with_structural(args.structural);
 
     let mut outcomes = Vec::new();
     for path in files(&args.path) {
-        match sanitise_one(&path, &config, &checker, args.aggressive) {
+        match sanitise_one(
+            &path,
+            &config,
+            &checker,
+            args.aggressive,
+            args.normalize_spaces,
+        ) {
             Ok(outcome) => outcomes.push(outcome),
             // One unreadable file in a tree must not abort the sweep; a single
             // named file that cannot be read still fails the run.

@@ -12,9 +12,11 @@
 //!
 //! From the capability matrix (section B of the design brief), this crate
 //! itself detects nothing and strips nothing. It defines how a finding is
-//! *described*: severity rates impact, confidence rates whether the pattern is
-//! right, and only [`ConfidenceTier::CertainMechanical`] findings — invisible
-//! Unicode, container metadata, homoglyphs — may ever be auto-fixed.
+//! *described*, on three orthogonal axes: [`Severity`] rates impact,
+//! [`ConfidenceTier`] rates whether the pattern is right, and [`Fixability`]
+//! rates whether a repair exists at all. Only findings that are fixable
+//! [`Fixability::Mechanical`] — invisible Unicode, container metadata,
+//! homoglyphs — may ever be auto-fixed.
 //! Sense-dependent spelling, slop phrasing and organisation-adjacent tokens are
 //! report-only by construction.
 //!
@@ -33,6 +35,7 @@ pub mod binary;
 pub mod confidence;
 pub mod config;
 pub mod finding;
+pub mod fixability;
 pub mod language;
 pub mod pyfloat;
 pub mod report;
@@ -43,7 +46,10 @@ pub mod traits;
 pub use binary::{looks_binary, ROUTER_ADVICE, TEXT_TOOL_ADVICE};
 pub use confidence::{classify_finding_confidence, CONFIDENCE_LEVELS};
 pub use config::{ConfigError, ConfigFile, CONFIG_FILE_NAMES};
-pub use finding::{ConfidenceTier, Config, Edit, Finding, Patch, Severity, Span};
+pub use finding::{
+    ConfidenceTier, Config, Edit, Finding, FindingFixability, Patch, Severity, Span,
+};
+pub use fixability::Fixability;
 pub use language::{paragraphs, LanguageFilter, MIN_CLASSIFIABLE_CHARS};
 pub use pyfloat::py_str_float;
 pub use report::{

@@ -11,6 +11,7 @@
 //! Conflating the two is how a linter ends up "correcting" *a driving licence*
 //! or *the gas meter*: a rule can be high-impact and still be a guess.
 
+use crate::fixability::Fixability;
 use crate::language::LanguageFilter;
 
 /// How strongly a tell signals AI authorship.
@@ -179,16 +180,48 @@ pub struct Finding {
     pub replacement: Option<String>,
 }
 
+/// A finding plus its fixability, for the rules that need to say more than the
+/// tier implies.
+///
+/// [`Finding`] keeps its exact field set so every existing struct literal in
+/// the workspace still compiles, and fixability is carried alongside rather
+/// than inside it. The overwhelming majority of rules never touch this: the
+/// tier implies the answer, and [`Finding::fixability`] derives it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FindingFixability {
+    /// The rule this override applies to.
+    pub rule_id: String,
+    /// What the rule says about repairability.
+    pub fixability: Fixability,
+}
+
 impl Finding {
+    /// What this finding says about repairability.
+    ///
+    /// Derived from the confidence tier unless `config` carries an override for
+    /// the rule. Most rules never need one; see [`crate::Fixability`] for the
+    /// case that does.
+    pub fn fixability(&self, config: &Config) -> Fixability {
+        config
+            .fixability_for(&self.rule_id)
+            .unwrap_or_else(|| Fixability::default_for(self.confidence))
+    }
+
     /// Whether this finding can be turned into an [`Edit`] under `config`.
+    ///
+    /// Consults fixability, not the tier directly. For every rule that does not
+    /// declare one the two agree by construction, so this is the same answer it
+    /// has always given; for a rule that declares `NoFixExists` it is the only
+    /// answer that is true.
     pub fn is_fixable(&self, config: &Config) -> bool {
         if self.replacement.is_none() {
             return false;
         }
-        if self.confidence.auto_fixable() {
+        let fixability = self.fixability(config);
+        if fixability.auto_fixable() {
             return true;
         }
-        config.write && self.confidence.fixable_with_opt_in()
+        config.write && fixability.fixable_with_opt_in()
     }
 
     /// The edit this finding implies, if it is fixable under `config`.
@@ -315,6 +348,12 @@ pub struct Config {
     /// On by default. Turning it off is how a CI job audits what a repository
     /// has been suppressing. See [`crate::Suppressions`].
     pub suppressions: bool,
+    /// Per-rule fixability overrides, for rules whose repairability does not
+    /// follow from their confidence tier.
+    ///
+    /// Populated from the rule tables rather than by a user: it is a property
+    /// of the rule, not a preference. See [`crate::Fixability`].
+    pub fixability_overrides: Vec<FindingFixability>,
 }
 
 impl Default for Config {
@@ -326,6 +365,7 @@ impl Default for Config {
             disabled_rules: Vec::new(),
             language: LanguageFilter::default(),
             suppressions: true,
+            fixability_overrides: Vec::new(),
         }
     }
 }
@@ -376,6 +416,43 @@ impl Config {
     pub fn with_suppressions(mut self, suppressions: bool) -> Self {
         self.suppressions = suppressions;
         self
+    }
+
+    /// Declare that `rule_id`'s repairability does not follow from its tier.
+    pub fn with_fixability(mut self, rule_id: impl Into<String>, fixability: Fixability) -> Self {
+        let rule_id = rule_id.into();
+        self.fixability_overrides
+            .retain(|entry| entry.rule_id != rule_id);
+        self.fixability_overrides.push(FindingFixability {
+            rule_id,
+            fixability,
+        });
+        self
+    }
+
+    /// Load a table of declared overrides.
+    ///
+    /// Called once with the rules whose repairability does not follow from
+    /// their tier, so no individual caller has to know which those are.
+    ///
+    /// `RuleMeta` deliberately does not carry the field itself. It is built as
+    /// a `const` array literal in four separate crates, and Rust has no default
+    /// field values, so adding one would break every one of those literals —
+    /// the opposite of an additive change. A side table costs one indirection
+    /// and breaks nothing.
+    pub fn with_fixability_table(mut self, overrides: &[(&str, Fixability)]) -> Self {
+        for (rule_id, fixability) in overrides {
+            self = self.with_fixability(*rule_id, *fixability);
+        }
+        self
+    }
+
+    /// The declared fixability for `rule_id`, if it differs from its tier's.
+    pub fn fixability_for(&self, rule_id: &str) -> Option<Fixability> {
+        self.fixability_overrides
+            .iter()
+            .find(|entry| entry.rule_id == rule_id)
+            .map(|entry| entry.fixability)
     }
 
     /// Whether `rule_id` should run at all.

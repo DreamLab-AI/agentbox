@@ -163,9 +163,58 @@ fn is_list_line(line: &str) -> bool {
         .is_match(line)
 }
 
+/// The snippet width a report shows for one finding.
+pub const SNIPPET_CHARS: usize = 160;
+
 /// Truncate to `limit` characters, as Python's `text[:limit]` does.
+///
+/// Used only where there is no match to centre on: the whole-file aggregates,
+/// whose snippet is a summary rather than a quotation.
 fn clip(text: &str, limit: usize) -> String {
     text.chars().take(limit).collect()
+}
+
+/// A `limit`-character window of `text` centred on the matched span.
+///
+/// Taking the first 160 characters of the line, which is what this did before,
+/// silently hides the match on any long line: a baseline run over the
+/// documentation corpus found 75 of 120 findings quoting a snippet that did not
+/// contain the thing being reported. A snippet that omits the match is worse
+/// than no snippet, because the reader trusts it and goes looking in the wrong
+/// place.
+///
+/// `start` and `end` are character offsets into `text`. Clipped ends are marked
+/// with an ASCII ellipsis so the reader can see the line continues.
+fn snippet_around(text: &str, start: usize, end: usize, limit: usize) -> String {
+    let chars: Vec<char> = text.chars().collect();
+    if chars.len() <= limit {
+        return text.to_string();
+    }
+
+    const MARK: &str = "...";
+    let start = start.min(chars.len());
+    let end = end.clamp(start, chars.len());
+
+    // Centre on the match, then slide the window back inside the line. A match
+    // longer than the window keeps its own start rather than being centred on
+    // its middle, which would show neither end of it.
+    let matched = end - start;
+    let padding = limit.saturating_sub(matched) / 2;
+    let mut from = start.saturating_sub(padding);
+    if from + limit > chars.len() {
+        from = chars.len() - limit;
+    }
+    let to = (from + limit).min(chars.len());
+
+    let mut out = String::with_capacity(limit + 2 * MARK.len());
+    if from > 0 {
+        out.push_str(MARK);
+    }
+    out.extend(&chars[from..to]);
+    if to < chars.len() {
+        out.push_str(MARK);
+    }
+    out
 }
 
 /// Scan one file, returning its per-line and whole-file findings.
@@ -246,6 +295,13 @@ pub fn scan_file(path: &Path, rules: &[CompiledRule], floor: Severity) -> Vec<Fi
                 for (rule_id, label, column, start, end) in
                     uk_by_line.get(&number).into_iter().flatten()
                 {
+                    let lead = line.len() - line.trim_start().len();
+                    let within = start.saturating_sub(line_start).max(lead);
+                    let from = line[lead..within.min(line.len())].chars().count();
+                    let span = line
+                        [within.min(line.len())..end.saturating_sub(line_start).min(line.len())]
+                        .chars()
+                        .count();
                     findings.push(Finding {
                         rule: rule_id.clone(),
                         label: label.clone(),
@@ -253,7 +309,7 @@ pub fn scan_file(path: &Path, rules: &[CompiledRule], floor: Severity) -> Vec<Fi
                         fix: compiled.rule.fix.to_string(),
                         file: file.clone(),
                         line: number,
-                        snippet: clip(stripped, 160),
+                        snippet: snippet_around(stripped, from, from + span, SNIPPET_CHARS),
                         column: *column,
                         byte_start: *start,
                         byte_end: *end,
@@ -268,6 +324,13 @@ pub fn scan_file(path: &Path, rules: &[CompiledRule], floor: Severity) -> Vec<Fi
             else {
                 continue;
             };
+            // Offsets are into `line`; the snippet quotes `stripped`, so shift
+            // them by the leading whitespace `trim` removed.
+            let lead = line.len() - line.trim_start().len();
+            let from = line[lead..found.start().max(lead)].chars().count();
+            let span = line[found.start().max(lead)..found.end().max(lead)]
+                .chars()
+                .count();
             findings.push(Finding {
                 rule: compiled.rule.id.to_string(),
                 label: compiled.rule.label.to_string(),
@@ -275,7 +338,7 @@ pub fn scan_file(path: &Path, rules: &[CompiledRule], floor: Severity) -> Vec<Fi
                 fix: compiled.rule.fix.to_string(),
                 file: file.clone(),
                 line: number,
-                snippet: clip(stripped, 160),
+                snippet: snippet_around(stripped, from, from + span, SNIPPET_CHARS),
                 column: line[..found.start()].chars().count() + 1,
                 byte_start: line_start + found.start(),
                 byte_end: line_start + found.end(),

@@ -9,8 +9,9 @@ depend on from a library or an editor's hot path.
 
 - `Finding`, `Span`, `Edit` and `Patch`: a scanner result, and an *applyable*
   description of the repair rather than pre-applied text.
-- `Severity` (how strongly a tell signals AI authorship) and `ConfidenceTier`
-  (whether the rule is right), kept orthogonal on purpose.
+- Three orthogonal axes, kept apart on purpose: `Severity` (how much it
+  matters), `ConfidenceTier` (whether the rule is right) and `Fixability`
+  (whether a repair exists at all).
 - `Check` and `Fix` traits. `check() -> Vec<Finding>` never mutates and
   `fix() -> Patch` returns a diff the caller chooses to apply.
 - `Config` and `ConfigFile`: the run configuration, and a parser for the
@@ -30,6 +31,39 @@ depend on from a library or an editor's hot path.
   unrelated edit does not re-open closed alerts.
 - The process-shaped helpers the binaries share: `CliError`, `run_cli`, the JSON
   emitters, and the size-cap environment reads.
+
+## Why three axes
+
+Severity and confidence were split because conflating them is how a linter ends
+up "correcting" *a driving licence*. Fixability was split for the mirror-image
+reason.
+
+The case that forced it: a C2PA soft-binding assertion is either in the manifest
+or it is not, so the detection is as certain as anything in the workspace — but
+**no repair exists**, because the watermark it points at lives in the pixels,
+out of reach of container surgery. The only way to stop that being auto-fixed
+used to be filing it as a low-confidence judgement call, which made the most
+reliable detection in the crate wear its least reliable label. `properties.
+confidence` is exactly the field a reader uses to decide how far to trust a
+detection, so that was actively misleading.
+
+`Fixability::default_for(tier)` derives the obvious answer, so a rule states one
+explicitly only when it differs:
+
+| Tier | Default fixability |
+|---|---|
+| `CertainMechanical` | `Mechanical` — applied with no opt-in |
+| `HighConfidenceStylistic` | `OptIn` — applied only under `--write` |
+| `LowConfidenceJudgement` | `ReportOnly` — never applied |
+
+The fourth variant, `NoFixExists`, has no tier that implies it. It says the
+repair is impossible rather than unwise, and `Finding::to_edit` refuses it under
+every configuration.
+
+`RuleMeta` deliberately does not carry the field. It is built as a `const` array
+literal in four separate crates and Rust has no default field values, so adding
+one would break every literal — the opposite of an additive change. Declared
+overrides ride in a side table instead: `Config::with_fixability_table`.
 
 ## Capability row
 
@@ -90,6 +124,20 @@ assert!(!ConfidenceTier::LowConfidenceJudgement.fixable_with_opt_in());
 
 // Severity is a separate axis: it rates impact, not correctness.
 assert_eq!(Severity::High.weight(), 3);
+```
+
+Fixability is the third axis, and defaults to whatever the tier implies:
+
+```rust
+use prose_sanitiser_core::{ConfidenceTier, Fixability};
+
+assert_eq!(
+    Fixability::default_for(ConfidenceTier::CertainMechanical),
+    Fixability::Mechanical
+);
+
+// Certain detection, no possible repair: never applied, under any setting.
+assert!(!Fixability::NoFixExists.fixable_with_opt_in());
 ```
 
 A suppression directive is read out of the document itself, not configured:

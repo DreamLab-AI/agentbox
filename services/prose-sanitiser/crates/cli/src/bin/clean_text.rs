@@ -37,8 +37,20 @@ struct Args {
     /// than preserving balanced ones (Trojan Source, CVE-2021-42574)
     #[arg(long)]
     code: bool,
-    /// Do not rewrite exotic spaces to U+0020
-    #[arg(long = "no-normalize-spaces")]
+    /// Rewrite exotic spaces (U+00A0, U+202F and the rest) to U+0020.
+    ///
+    /// Off by default. A no-break space is load-bearing typography as often as
+    /// it is a carrier: it holds "10 km" and "Figure 3" together, and French
+    /// orthography requires one before ; : ! and ?. It is also the one rewrite
+    /// in this layer a diff cannot show, because both characters render as a
+    /// space.
+    #[arg(long = "normalize-spaces")]
+    normalize_spaces: bool,
+    /// Deprecated no-op, accepted so existing invocations keep running.
+    ///
+    /// Space normalisation is off by default now, so asking for it to be off
+    /// changes nothing. Use `--normalize-spaces` to turn it on.
+    #[arg(long = "no-normalize-spaces", hide = true)]
     no_normalize_spaces: bool,
     /// Paranoid: strip all load-bearing invisibles too
     #[arg(long = "strip-emoji-glue")]
@@ -66,6 +78,12 @@ fn main() -> std::process::ExitCode {
 
 fn body() -> Result<i32, CliError> {
     let args = Args::parse();
+    if args.no_normalize_spaces {
+        eprint_line(
+            "note: --no-normalize-spaces is a no-op and will be removed. Space normalisation \
+             is off by default; pass --normalize-spaces to turn it on.",
+        );
+    }
     let units = read_text_input(Some(&args.path), args.force_text, None)?;
     // The struct spread is deliberate and clippy's `needless_update` is wrong
     // here. Every field happens to be set today, but `CleanOptions` is owned by
@@ -79,7 +97,7 @@ fn body() -> Result<i32, CliError> {
         nfkc: args.nfkc,
         aggressive_homoglyphs: args.aggressive_homoglyphs,
         mixed_script_only: !args.fold_all_confusables,
-        normalize_spaces: !args.no_normalize_spaces,
+        normalize_spaces: args.normalize_spaces,
         strip_emoji_glue: args.strip_emoji_glue,
         strip_soft_hyphen: args.strip_soft_hyphen,
         bidi_context: if args.code {

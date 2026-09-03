@@ -63,7 +63,8 @@
 use serde_json::{json, Map, Value};
 use sha2::{Digest, Sha256};
 
-use crate::finding::{ConfidenceTier, Finding, Severity};
+use crate::finding::{ConfidenceTier, Config, Finding, Severity};
+use crate::fixability::Fixability;
 
 /// The SARIF version GitHub code scanning accepts. It accepts no other.
 pub const SARIF_VERSION: &str = "2.1.0";
@@ -123,6 +124,7 @@ impl RuleMeta {
             "properties".into(),
             json!({
                 "confidence": self.confidence.as_str(),
+                "fixability": Fixability::default_for(self.confidence).as_str(),
                 "severity": self.severity.as_str(),
                 "since": self.since,
                 "reviewed": self.reviewed,
@@ -176,6 +178,11 @@ pub struct ReportEntry {
     /// The source line, when the caller has it: SARIF snippets and the
     /// `primaryLocationLineHash` fingerprint both want it.
     pub snippet: Option<String>,
+    /// Whether a repair exists, resolved against the run's configuration.
+    ///
+    /// Defaults to the value the confidence tier implies, which is right for
+    /// every rule that has not said otherwise. See [`Fixability`].
+    pub fixability: Fixability,
 }
 
 impl ReportEntry {
@@ -185,9 +192,22 @@ impl ReportEntry {
             path: path.into(),
             line,
             column,
+            fixability: Fixability::default_for(finding.confidence),
             finding,
             snippet: None,
         }
+    }
+
+    /// Resolve fixability against `config`, honouring any declared override.
+    pub fn with_config(mut self, config: &Config) -> Self {
+        self.fixability = self.finding.fixability(config);
+        self
+    }
+
+    /// State the fixability explicitly.
+    pub fn with_fixability(mut self, fixability: Fixability) -> Self {
+        self.fixability = fixability;
+        self
     }
 
     /// Attach the source line.
@@ -241,10 +261,17 @@ impl ReportEntry {
         properties.insert("severity".into(), json!(self.finding.severity.as_str()));
         properties.insert("rulesetVersion".into(), json!(ruleset_version));
         properties.insert("advice".into(), json!(self.finding.advice));
-        properties.insert(
-            "autoFixable".into(),
-            json!(self.finding.confidence.auto_fixable()),
-        );
+        properties.insert("fixability".into(), json!(self.fixability.as_str()));
+        properties.insert("autoFixable".into(), json!(self.fixability.auto_fixable()));
+        if self.fixability.is_impossible() {
+            // Worth saying out loud: "we will not repair this for you" and
+            // "this cannot be repaired by anyone" are different messages, and
+            // only the tier used to be visible.
+            properties.insert(
+                "noFixExplanation".into(),
+                json!("Detection is reliable, but no repair exists for this finding."),
+            );
+        }
         if let Some(replacement) = &self.finding.replacement {
             properties.insert("replacement".into(), json!(replacement));
         }
@@ -266,9 +293,9 @@ impl ReportEntry {
         );
         result.insert("properties".into(), Value::Object(properties));
 
-        // A replacement is a SARIF fix only when the tier permits applying it.
+        // A replacement is a SARIF fix only when it may actually be applied.
         if let Some(replacement) = &self.finding.replacement {
-            if self.finding.confidence.fixable_with_opt_in() {
+            if self.fixability.fixable_with_opt_in() {
                 result.insert(
                     "fixes".into(),
                     json!([{
@@ -303,7 +330,8 @@ impl ReportEntry {
             "label": self.finding.label,
             "severity": self.finding.severity.as_str(),
             "confidence": self.finding.confidence.as_str(),
-            "auto_fixable": self.finding.confidence.auto_fixable(),
+            "fixability": self.fixability.as_str(),
+            "auto_fixable": self.fixability.auto_fixable(),
             "matched": self.finding.matched,
             "advice": self.finding.advice,
             "replacement": self.finding.replacement,

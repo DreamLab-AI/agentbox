@@ -30,8 +30,8 @@
 use std::path::{Path, PathBuf};
 
 use prose_sanitiser_core::{
-    classify_finding_confidence, ConfidenceTier, Config, Finding, Patch, ReportEntry, RuleMeta,
-    Severity, Span,
+    classify_finding_confidence, ConfidenceTier, Config, Finding, Fixability, Patch, ReportEntry,
+    RuleMeta, Severity, Span,
 };
 
 use crate::dispatch::{classify, Kind};
@@ -39,6 +39,30 @@ use crate::exit;
 
 /// Rule identifier for provenance metadata found in an image or container.
 pub const RULE_MEDIA_PROVENANCE: &str = "media-provenance";
+
+/// Rules whose repairability does not follow from their confidence tier.
+///
+/// Exactly one so far. `media-c2pa-soft-binding` detects a C2PA soft-binding
+/// assertion, and the detection is as certain as any in the workspace: the
+/// assertion is in the manifest or it is not. But **no repair exists** — the
+/// watermark it points at lives in the pixels, out of reach of the container
+/// surgery this tool does, and stripping the manifest does not remove a durable
+/// Content Credential because the cloud repository still resolves it.
+///
+/// Before [`Fixability`] existed, the only way to stop that being auto-fixed
+/// was to file it as a low-confidence judgement call, which made the crate's
+/// most reliable detection wear its least reliable label. This is the table
+/// that lets the tier tell the truth and the fix still never happen.
+pub const FIXABILITY_OVERRIDES: &[(&str, Fixability)] =
+    &[("media-c2pa-soft-binding", Fixability::NoFixExists)];
+
+/// A configuration with every declared fixability override applied.
+///
+/// Every entry point that builds findings from more than one crate should start
+/// here, so a rule that says no repair exists is honoured wherever it surfaces.
+pub fn configure(base: Config) -> Config {
+    base.with_fixability_table(FIXABILITY_OVERRIDES)
+}
 
 /// File extensions the text layers read, beyond what `dispatch` calls text.
 ///
@@ -78,7 +102,7 @@ impl FileOutcome {
                     Some(text) => line_and_column(text, finding.span.start),
                     None => (0, 0),
                 };
-                ReportEntry::new(label.clone(), line, column, finding.clone())
+                ReportEntry::new(label.clone(), line, column, finding.clone()).with_config(config)
             })
             .collect()
     }

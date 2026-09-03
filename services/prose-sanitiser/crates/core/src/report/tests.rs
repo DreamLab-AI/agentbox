@@ -1,5 +1,6 @@
 use super::*;
-use crate::finding::Span;
+use crate::finding::{Config, Span};
+use crate::fixability::Fixability;
 
 const RULES: &[RuleMeta] = &[
     RuleMeta {
@@ -185,4 +186,75 @@ fn an_empty_run_still_produces_a_valid_log() {
         0
     );
     assert!(report.to_jsonl().is_empty());
+}
+
+// ---- fixability -------------------------------------------------------
+
+#[test]
+fn fixability_defaults_from_the_tier_in_sarif() {
+    let sarif = sample_report().to_sarif();
+    let result = &sarif["runs"][0]["results"][0];
+    // The sample finding is a judgement call, so report-only.
+    assert_eq!(result["properties"]["fixability"], "report-only");
+    assert_eq!(result["properties"]["autoFixable"], false);
+    assert!(result["properties"]["noFixExplanation"].is_null());
+    // The rule table carries the tier's default too.
+    let rule = &sarif["runs"][0]["tool"]["driver"]["rules"][0];
+    assert_eq!(rule["properties"]["fixability"], "report-only");
+}
+
+#[test]
+fn a_no_fix_exists_finding_says_so_and_offers_no_fix() {
+    let mut finding = sample_finding();
+    finding.confidence = ConfidenceTier::CertainMechanical;
+    finding.replacement = Some("x".to_string());
+    let entry = ReportEntry::new("post.md", 1, 1, finding).with_fixability(Fixability::NoFixExists);
+    let report = Report::new(ToolMeta::new("sanitise", "0.1.0"), RULES).with_entries(vec![entry]);
+
+    let result = &report.to_sarif()["runs"][0]["results"][0];
+    assert_eq!(result["properties"]["fixability"], "no-fix-exists");
+    assert_eq!(result["properties"]["autoFixable"], false);
+    assert!(result["properties"]["noFixExplanation"].is_string());
+    // Certain detection, but no `fixes[]`: the whole point of the axis.
+    assert!(result["fixes"].is_null());
+    assert_eq!(result["properties"]["confidence"], "certain-mechanical");
+}
+
+#[test]
+fn a_no_fix_exists_finding_never_yields_an_edit_even_under_write() {
+    let mut finding = sample_finding();
+    finding.rule_id = "media-c2pa-soft-binding".to_string();
+    finding.confidence = ConfidenceTier::CertainMechanical;
+    finding.replacement = Some("x".to_string());
+
+    // Without the override the tier would make it auto-fixable.
+    assert!(finding.is_fixable(&Config::new()));
+
+    let config = Config::new()
+        .with_fixability_table(&[("media-c2pa-soft-binding", Fixability::NoFixExists)]);
+    assert!(!finding.is_fixable(&config));
+    assert!(finding.to_edit(&config).is_none());
+    assert!(finding.to_edit(&config.clone().with_write(true)).is_none());
+}
+
+#[test]
+fn resolving_against_a_config_picks_up_the_override() {
+    let mut finding = sample_finding();
+    finding.rule_id = "media-c2pa-soft-binding".to_string();
+    finding.confidence = ConfidenceTier::CertainMechanical;
+    let config = Config::new()
+        .with_fixability_table(&[("media-c2pa-soft-binding", Fixability::NoFixExists)]);
+
+    let derived = ReportEntry::new("a.png", 0, 0, finding.clone());
+    assert_eq!(derived.fixability, Fixability::Mechanical);
+    let resolved = derived.with_config(&config);
+    assert_eq!(resolved.fixability, Fixability::NoFixExists);
+}
+
+#[test]
+fn jsonl_carries_the_fixability() {
+    let rendered = sample_report().to_jsonl();
+    let value: serde_json::Value = serde_json::from_str(rendered.lines().next().unwrap()).unwrap();
+    assert_eq!(value["fixability"], "report-only");
+    assert_eq!(value["auto_fixable"], false);
 }

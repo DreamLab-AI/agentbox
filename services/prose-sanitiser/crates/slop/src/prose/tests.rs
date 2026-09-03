@@ -243,3 +243,92 @@ fn undecodable_bytes_do_not_derail_the_scan() {
     let result = scan(&path, Severity::Low);
     assert_eq!(result.high(), 1);
 }
+
+// ---- snippet windowing -------------------------------------------------
+
+#[test]
+fn a_short_line_is_quoted_whole() {
+    let line = "We delve into it.";
+    assert_eq!(snippet_around(line, 3, 8, SNIPPET_CHARS), line);
+}
+
+#[test]
+fn a_long_line_centres_the_window_on_the_match() {
+    // The match sits far past the old fixed 160-character prefix.
+    let filler = "word ".repeat(120);
+    let line = format!("{filler}delve{filler}");
+    let start = line.chars().count() / 2;
+    let snippet = snippet_around(&line, start, start + 5, SNIPPET_CHARS);
+
+    assert!(
+        snippet.contains("delve"),
+        "snippet lost the match: {snippet}"
+    );
+    assert!(snippet.starts_with("..."));
+    assert!(snippet.ends_with("..."));
+    // The window itself is the budget; the markers sit outside it.
+    assert_eq!(snippet.chars().count(), SNIPPET_CHARS + 6);
+}
+
+#[test]
+fn a_match_near_the_start_does_not_pad_off_the_front() {
+    let line = format!("delve{}", "word ".repeat(120));
+    let snippet = snippet_around(&line, 0, 5, SNIPPET_CHARS);
+    assert!(snippet.starts_with("delve"), "{snippet}");
+    assert!(snippet.ends_with("..."));
+}
+
+#[test]
+fn a_match_near_the_end_does_not_pad_off_the_back() {
+    let line = format!("{}delve", "word ".repeat(120));
+    let count = line.chars().count();
+    let snippet = snippet_around(&line, count - 5, count, SNIPPET_CHARS);
+    assert!(snippet.ends_with("delve"), "{snippet}");
+    assert!(snippet.starts_with("..."));
+}
+
+#[test]
+fn a_match_longer_than_the_window_keeps_its_own_start() {
+    let line = "x".repeat(500);
+    let snippet = snippet_around(&line, 100, 400, SNIPPET_CHARS);
+    assert_eq!(snippet.chars().count(), SNIPPET_CHARS + 6);
+}
+
+#[test]
+fn windowing_counts_characters_not_bytes() {
+    // Every character is multi-byte, so a byte-based window would split one.
+    let line = "é".repeat(400);
+    let snippet = snippet_around(&line, 200, 201, SNIPPET_CHARS);
+    assert_eq!(snippet.chars().filter(|c| *c == 'é').count(), SNIPPET_CHARS);
+}
+
+#[test]
+fn every_reported_snippet_contains_its_match() {
+    // The regression the baseline found: 75 of 120 findings quoted a snippet
+    // that did not contain the thing being reported.
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("long.md");
+    // Spaces around each marker: the rules are word-boundary anchored, so
+    // "basically" glued to the next word is genuinely not a hedge word.
+    let filler = "ordinary words here ".repeat(40);
+    std::fs::write(
+        &path,
+        format!("{filler}we delve into it {filler}\n{filler}basically {filler}\n"),
+    )
+    .unwrap();
+
+    let findings = scan(&path, Severity::Low);
+    assert!(findings.findings.len() >= 2);
+    for finding in &findings.findings {
+        if finding.line == 0 {
+            continue; // whole-file aggregate: a summary, not a quotation
+        }
+        let matched = &finding.snippet;
+        assert!(
+            matched.contains("delve") || matched.contains("basically"),
+            "{} at line {} quoted a snippet without its match: {matched}",
+            finding.rule,
+            finding.line
+        );
+    }
+}

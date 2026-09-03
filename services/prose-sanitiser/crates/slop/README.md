@@ -175,8 +175,8 @@ near-zero true-positive rate at the only thresholds a deployment would use.
 | Corpus | Human / machine docs | Score | Threshold (1% FPR) | **TPR@1%FPR** | Realised FPR |
 |---|---|---|---|---|---|
 | RAID, unattacked | 2,000 / 2,000 | raw `slop_score` | 30.0 | **2.8%** | 1.0% |
-| RAID, unattacked | 2,000 / 2,000 | per 1,000 words | 105.7 | **3.3%** | 1.0% |
-| MAGE | 1,500 / 1,500 | raw `slop_score` | 8.0 | **0.7%** | 0.5% |
+| RAID, unattacked | 2,000 / 2,000 | per 1,000 words | 103.1 | **3.4%** | 1.0% |
+| MAGE | 1,500 / 1,500 | raw `slop_score` | 8.0 | **0.9%** | 0.9% |
 | MAGE | 1,500 / 1,500 | per 1,000 words | 61.2 | **1.7%** | 0.9% |
 | LLM-DetectAIve, human vs machine-humanised | 20 / 20 | per 1,000 words | 28.2 | **50.0%** | 0.0% |
 
@@ -213,24 +213,57 @@ only. That demotion is what the dated, versioned table is for.
 
 `us-spelling` at 30.35 per cent is not a false-positive rate: both corpora are
 predominantly American English, and the rule is correctly identifying American
-spelling. **The UK-English false-positive rate is the number that matters, and it
-is not yet measured** — the UK human corpus was still empty when this was run.
+spelling. For the rate that *is* a false-positive rate, see below.
 
-What *is* verified is that the sense-dependent traps no longer produce a
-mechanical correction. The rule is no longer implemented in this crate at all:
-`us-spelling` is a positional marker and the check is delegated to
-`prose-sanitiser-uk`'s VarCon-backed checker, which reports genuinely ambiguous
-cases under the separate report-only id `us-spelling-sense`. On this document
+### False positives on British English
 
-> The gas meter read 12 metres of pipe. A driving licence was issued to license
-> a doctor. The computer program handles sulfur dioxide levels, and the dialog
-> box appeared. World Health Organization guidance says the colour of the center
-> panel matters.
+The research brief records that **no published study measures detector or linter
+false positives on British English**. This is that measurement, over 2,000
+British-English documents totalling 1.2 million words, run 2026-09-03 against
+ruleset 2026.09.03:
 
-the scanner produces exactly one finding: *center*. Every one of *meter*,
-*licence*, *license*, *program*, *sulfur*, *dialog* and *World Health
-Organization* is correctly silent, and *colour* is correctly left alone. The old
-flat alternation flagged all of them.
+| Source | Documents |
+|---|---|
+| Hansard (House of Commons debates), via TheyWorkForYou bulk XML | 964 |
+| GOV.UK publications | 436 |
+| Project Gutenberg (British literature) | 600 |
+
+Every finding on this corpus is a false positive by construction: the text is
+human-written British English, so nothing in it should be reported as an
+Americanism or as an AI tell.
+
+| Rule | Documents flagged | Findings per 1,000 words | Auto-fixed |
+|---|---|---|---|
+| `the-opener` | 21.90% | 0.798 | 0 |
+| `tier1-vocab` | 17.75% | 0.429 | 0 |
+| `agg` (density checks) | 16.90% | 0.286 | 0 |
+| `negative-parallelism` | 10.00% | 0.183 | 0 |
+| `us-spelling-sense` | 8.15% | 0.181 | 0 |
+| `hedge-words` | 8.10% | 0.158 | 0 |
+| **`us-spelling`** | **5.60%** | **0.097** | **0** |
+| `throat-clearing` | 2.50% | 0.045 | 0 |
+| `copula-substitution` | 1.95% | 0.034 | 0 |
+| `preamble-label` | 1.70% | 0.028 | 0 |
+| `claudish-structure` | 1.20% | 0.020 | 0 |
+| `passive-tell` | 1.15% | 0.019 | 0 |
+| `insider-voice` | 0.30% | 0.005 | 0 |
+| `claudish-filler` | 0.15% | 0.002 | 0 |
+
+**The number that matters is the last column.** Across 2,000 British documents
+and 1.2 million words, **not one finding was auto-fixed**. The UK rules split
+their output between `us-spelling`, which carries a replacement and is gated
+behind `--write`, and `us-spelling-sense`, which carries none and cannot be
+applied under any configuration; the sense-dependent traps that made the
+original single regex unsafe now land in the second bucket. So the crate's
+worst case on British prose is noise in a report, never a corrupted document.
+
+For context on the 5.60 per cent: a Hansard debate quoting an American witness,
+a GOV.UK page naming *World Health Organization*, or a Gutenberg text with an
+American publisher's imprint all contain genuine American spellings that the
+rule is right to notice. The figure is an upper bound on false positives, not a
+count of them, and it is roughly one flagged document in eighteen against the
+**61.3 per cent** false-positive rate seven commercial detectors showed on TOEFL
+essays (Liang et al. 2023, *Patterns*).
 
 ### Structural measures
 

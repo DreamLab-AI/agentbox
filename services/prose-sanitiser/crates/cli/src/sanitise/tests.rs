@@ -1,4 +1,5 @@
 use super::*;
+use prose_sanitiser_core::Fixability;
 
 fn finding(rule: &str, tier: ConfidenceTier, start: usize, end: usize) -> Finding {
     Finding {
@@ -240,4 +241,92 @@ fn reading_a_missing_file_is_a_tool_error() {
     assert_eq!(error.code, exit::ERROR);
     let error = kind_of(Path::new("/nonexistent/file.md")).unwrap_err();
     assert_eq!(error.code, exit::ERROR);
+}
+
+// ---- fixability -------------------------------------------------------
+
+#[test]
+fn the_soft_binding_rule_declares_that_no_fix_exists() {
+    let declared = FIXABILITY_OVERRIDES
+        .iter()
+        .find(|(id, _)| *id == "media-c2pa-soft-binding")
+        .map(|(_, fixability)| *fixability);
+    assert_eq!(declared, Some(Fixability::NoFixExists));
+}
+
+#[test]
+fn configure_applies_every_declared_override() {
+    let config = configure(Config::new());
+    for (rule_id, fixability) in FIXABILITY_OVERRIDES {
+        assert_eq!(
+            config.fixability_for(rule_id),
+            Some(*fixability),
+            "{rule_id}"
+        );
+    }
+}
+
+#[test]
+fn a_no_fix_finding_is_never_patched_even_with_a_replacement_and_write() {
+    // The hazard the axis exists to close: certain detection would otherwise
+    // make this auto-fixable straight through `to_edit`.
+    let mut finding = finding(
+        "media-c2pa-soft-binding",
+        ConfidenceTier::CertainMechanical,
+        0,
+        4,
+    );
+    finding.replacement = Some(String::new());
+    let outcome = FileOutcome {
+        path: PathBuf::from("a.md"),
+        kind: Kind::Text,
+        findings: vec![finding],
+        text: Some("abcd".to_string()),
+    };
+
+    // Unconfigured, the tier alone would allow it.
+    assert_eq!(outcome.patch(&Config::new()).len(), 1);
+    // Configured, it never applies, with or without --write.
+    let config = configure(Config::new());
+    assert!(outcome.patch(&config).is_empty());
+    assert!(outcome.patch(&config.clone().with_write(true)).is_empty());
+}
+
+#[test]
+fn entries_resolve_fixability_against_the_configuration() {
+    let outcome = FileOutcome {
+        path: PathBuf::from("a.png"),
+        kind: Kind::Image,
+        findings: vec![finding(
+            "media-c2pa-soft-binding",
+            ConfidenceTier::CertainMechanical,
+            0,
+            0,
+        )],
+        text: None,
+    };
+    let entries = outcome.entries(&configure(Config::new()));
+    assert_eq!(entries[0].fixability, Fixability::NoFixExists);
+    // The tier still tells the truth about the detection.
+    assert_eq!(
+        entries[0].finding.confidence,
+        ConfidenceTier::CertainMechanical
+    );
+}
+
+#[test]
+fn an_ordinary_finding_still_takes_its_tiers_default() {
+    let outcome = FileOutcome {
+        path: PathBuf::from("a.md"),
+        kind: Kind::Text,
+        findings: vec![finding(
+            "unicode-invisible",
+            ConfidenceTier::CertainMechanical,
+            0,
+            1,
+        )],
+        text: Some("ab".to_string()),
+    };
+    let entries = outcome.entries(&configure(Config::new()));
+    assert_eq!(entries[0].fixability, Fixability::Mechanical);
 }
