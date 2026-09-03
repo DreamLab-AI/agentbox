@@ -40,12 +40,22 @@ position you can take.
 | Load-bearing invisibles: emoji ZWJ glue, Indic and Persian joiners, flag tags | **No.** They are not contraband | Never | `--strip-emoji-glue`, for auditing a document you already distrust |
 
 
-**Back-compatibility note.** The default reversed: exotic whitespace used to be
-folded unless you passed `--no-normalize-spaces`, and is now preserved unless you
-pass `--normalize-spaces`. The old flag survives as a hidden no-op that prints a
-pointer to the new one, so an existing script keeps running rather than dying on
-an unknown argument. It also, quietly, stops doing what it used to: if a pipeline
-depended on the fold, it now needs the positive flag.
+**The default reversed, and the affected invocation is the bare one.** Exotic
+whitespace used to be folded unless you passed `--no-normalize-spaces`; it is now
+preserved unless you pass `--normalize-spaces`.
+
+| Invocation | Before | Now |
+|---|---|---|
+| `clean-text` (no flags) | **folded** | **preserved.** Behaviour reversed, silently |
+| `clean-text --no-normalize-spaces` | preserved | preserved. Unchanged; the flag is now a hidden no-op that points at the new one |
+
+So the population whose output actually changed is the one that passed no flags
+and relied on the default fold. **A pipeline that piped text through bare
+`clean-text` and depended on non-breaking spaces being folded now keeps them, and
+needs `--normalize-spaces` to restore the old output.** Nothing at runtime says
+so, and nothing should: warning on the bare invocation would pollute every
+pipeline using the tool correctly, so a reversed default is a release-note
+problem rather than a runtime one.
 
 **Conservatism belongs in the default, never in the tier.** Downgrading a
 mechanical classification to buy safe behaviour would make the tier lie about

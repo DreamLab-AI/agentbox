@@ -153,6 +153,11 @@ Landed on `rust/prose-sanitiser-hardening` during the same pass:
   the old `--no-normalize-spaces` kept as a hidden no-op that prints a note. The
   library, the binaries and `sanitise` now agree that exotic whitespace is
   preserved by default; for a while they did not.
+  - **Breaking, for the bare invocation.** `clean-text` with no flags used to
+    fold `U+00A0` to a space and now preserves it. Anything that piped text
+    through bare `clean-text` and depended on the fold needs `--normalize-spaces`
+    to restore the old output. Passing `--no-normalize-spaces` always meant
+    preserve, so those invocations are unaffected.
 - **Fixability travels with the finding.** `Config::with_fixability_table`
   applies a side table of rules whose repairability does not follow their tier;
   `sanitise::FIXABILITY_OVERRIDES` holds the one entry. SARIF results carry
