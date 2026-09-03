@@ -17,6 +17,8 @@ Every input to the build is pinned to an exact version or content hash so a rebu
 | Ecosystem | Pin lives in | Updated by |
 |---|---|---|
 | Nix inputs (nixpkgs, flake-utils, nix2container, rust-overlay, skills) | `flake.lock` | `nix-flake-update.yml` weekly workflow |
+| Rust compiler for the shell **and** every baked `lib/` crate (`rustPlatformFleet`) | `rust-overlay` in `flake.lock` (`rust-bin.stable.latest`) | `nix flake update rust-overlay`, then rebuild; nixpkgs' own rustc is not used for agentbox crates |
+| Extracted crates `prose-sanitiser`, `diagram-ir` | `lib/prose-sanitiser.nix`, `lib/diagram-ir.nix` (`rev` tag + SRI hash) and `lib/lockfiles/*.Cargo.lock` | Manual: bump `version`, refresh hash, copy the tag's `Cargo.lock` (procedure in each file's header) |
 | npm packages in `management-api/`, `mcp/`, `aisp/`, skills | `package.json` / `package-lock.json` | Renovate |
 | Rust/Cargo (if any lands) | `Cargo.lock` | Renovate |
 | GitHub Actions versions | `.github/workflows/*.yml` | Renovate (grouped PRs) |

@@ -500,7 +500,7 @@
 
         boolEnv = value: if value then "true" else "false";
 
-        systemscapePkg = import ./lib/systemscape.nix { inherit lib pkgs; };
+        systemscapePkg = import ./lib/systemscape.nix { inherit lib; pkgs = rustPkgs; };
 
         # ---------------------------------------------------------------------------
         # rune — first-class markdown TUI for the Obsidian vault (ADR-2029).
@@ -513,7 +513,7 @@
         vaultCfg = agentboxConfig.vault or {};
         vaultTui = vaultCfg.tui or "none";
         runeActive = vaultTui == "rune";
-        runePkg = import ./lib/rune.nix { inherit lib pkgs; };
+        runePkg = import ./lib/rune.nix { inherit lib; pkgs = rustPkgs; };
         runePackages = lib.optionals runeActive [ runePkg ];
 
         # Supercronic drives the podcast ingestion schedule.  Keep it in the
@@ -753,6 +753,22 @@
             "x86_64-unknown-linux-musl"
           ];
         };
+
+        # Every baked Rust service compiles with the same toolchain the
+        # interactive shell gets: rust-overlay's stable, pinned by flake.lock.
+        # Without this the lib/ derivations fall back to nixpkgs' own rustc,
+        # which trails the overlay by one or two releases (the June 2026 nixpkgs
+        # pin ships 1.95 against the overlay's 1.97) and once compiled a crate
+        # differently from the shell it was written in. Scoped to the lib/
+        # derivations on purpose: overriding pkgs.rustPlatform globally would
+        # rebuild every Rust package in nixpkgs from source and forfeit the
+        # binary cache. Bring the fleet's compiler forward with
+        # `nix flake update rust-overlay`, then rebuild.
+        rustPlatformFleet = pkgs.makeRustPlatform {
+          cargo = rustToolchain;
+          rustc = rustToolchain;
+        };
+        rustPkgs = pkgs // { rustPlatform = rustPlatformFleet; };
 
         # Nightly toolchain for nvptx64 GPU kernel compilation (Tier 3 target)
         rustNightlyToolchain = pkgs.rust-bin.nightly.latest.minimal.override {
@@ -1048,7 +1064,7 @@
         # module in lib/solid-pod-rs.nix uses fakeHash placeholders that surface
         # prefetch commands at realisation.
         # ---------------------------------------------------------------------------
-        solidPodRsLib = import ./lib/solid-pod-rs.nix { inherit lib pkgs; };
+        solidPodRsLib = import ./lib/solid-pod-rs.nix { inherit lib; pkgs = rustPkgs; };
         # Opt-in features layered on top of defaultFeatures in lib/solid-pod-rs.nix.
         # did-nostr / webhook-signing / rate-limit / quota / jss-v04 are in the
         # default set; opting out requires a source-level edit of that file.
@@ -1076,7 +1092,7 @@
         # solid-pod-rs because both are first-party Rust source builds via
         # buildRustPackage with a hash-verified Cargo vendor FOD.
         # ---------------------------------------------------------------------------
-        nagualQeLib = import ./lib/nagual-qe.nix { inherit lib pkgs; };
+        nagualQeLib = import ./lib/nagual-qe.nix { inherit lib; pkgs = rustPkgs; };
         nagualQePkg =
           if (toolchainCfg.nagual_qe or false)
           then nagualQeLib.makeNagualQe { }
@@ -1159,7 +1175,7 @@
         nostrPodBridgeNeeded = podBridgeEnabled || (sovereignCfg.enabled or false);
         nostrPodBridgePkg =
           if nostrPodBridgeNeeded
-          then (import ./lib/nostr-pod-bridge.nix { inherit lib pkgs; })
+          then (import ./lib/nostr-pod-bridge.nix { inherit lib; pkgs = rustPkgs; })
           else null;
 
         relayPackages =
@@ -1177,7 +1193,7 @@
         compressionEnabled = (compressionCfg.enabled or false) == true;
         headroomNapiPkg =
           if compressionEnabled
-          then (import ./lib/headroom-compress.nix { inherit lib pkgs; })
+          then (import ./lib/headroom-compress.nix { inherit lib; pkgs = rustPkgs; })
           else null;
         headroomPackages = lib.optionals compressionEnabled [ headroomNapiPkg ];
 
@@ -1187,7 +1203,7 @@
         # UNGATED and unconditional: the entrypoint cannot boot without it, so
         # there is no meaningful "off" state to gate. See lib/agentbox-manifest.nix.
         # ---------------------------------------------------------------------------
-        agentboxManifestPkg = import ./lib/agentbox-manifest.nix { inherit lib pkgs; };
+        agentboxManifestPkg = import ./lib/agentbox-manifest.nix { inherit lib; pkgs = rustPkgs; };
 
         # ---------------------------------------------------------------------------
         # dream-engine — nightly evidence-gated repo evolution (ADR-052 HP annexe).
@@ -1200,14 +1216,14 @@
         dreamEngineEnabled = (dreamMachineCfg.enabled or false) == true;
         dreamEnginePkg =
           if dreamEngineEnabled
-          then (import ./lib/dream-engine.nix { inherit lib pkgs; })
+          then (import ./lib/dream-engine.nix { inherit lib; pkgs = rustPkgs; })
           else null;
         dreamEnginePackages = lib.optionals dreamEngineEnabled [ dreamEnginePkg ];
 
         # agentbox-ops — operational CLI suite (Rust port of the Python scripts
         # retired by the 2026-09-02 legacy audit). Ungated: it replaces baseline
         # tooling that was always present. See lib/agentbox-ops.nix.
-        agentboxOpsPackages = [ (import ./lib/agentbox-ops.nix { inherit lib pkgs; }) ];
+        agentboxOpsPackages = [ (import ./lib/agentbox-ops.nix { inherit lib; pkgs = rustPkgs; }) ];
         # ---------------------------------------------------------------------------
         # Knowledge-tool binaries — the Rust replacements for the skill Python
         # retired by the 2026-09-02 Python-legacy audit (sections 2b/2c).
@@ -1224,12 +1240,12 @@
         # Each crate is a self-contained [workspace] on crates.io deps with
         # reqwest pinned to rustls-tls, so none of them add an openssl closure.
         # ---------------------------------------------------------------------------
-        ontologyToolsPkg = import ./lib/ontology-tools.nix { inherit lib pkgs; };
-        podcastIngestPkg = import ./lib/podcast-ingest.nix { inherit lib pkgs; };
+        ontologyToolsPkg = import ./lib/ontology-tools.nix { inherit lib; pkgs = rustPkgs; };
+        podcastIngestPkg = import ./lib/podcast-ingest.nix { inherit lib; pkgs = rustPkgs; };
         # Bound by name as well as listed: the supervised [program:imagemagick-mcp]
         # block below runs this same derivation's binary.
-        agentboxMcpPkg   = import ./lib/agentbox-mcp.nix   { inherit lib pkgs; };
-        skillToolsPkg    = import ./lib/skill-tools.nix    { inherit lib pkgs; };
+        agentboxMcpPkg   = import ./lib/agentbox-mcp.nix   { inherit lib; pkgs = rustPkgs; };
+        skillToolsPkg    = import ./lib/skill-tools.nix    { inherit lib; pkgs = rustPkgs; };
         knowledgeToolPackages = [
           ontologyToolsPkg
           podcastIngestPkg
@@ -1245,8 +1261,8 @@
         # slop-detect.py. The four torch harnesses stay Python (see the header
         # of lib/prose-sanitiser.nix).
         # ---------------------------------------------------------------------------
-        diagramIrPkg = import ./lib/diagram-ir.nix { inherit lib pkgs; };
-        proseSanitiserPkg = import ./lib/prose-sanitiser.nix { inherit lib pkgs; };
+        diagramIrPkg = import ./lib/diagram-ir.nix { inherit lib; pkgs = rustPkgs; };
+        proseSanitiserPkg = import ./lib/prose-sanitiser.nix { inherit lib; pkgs = rustPkgs; };
         skillToolPackages = [ diagramIrPkg proseSanitiserPkg ];
 
         # Render a config.toml for nostr-rs-relay from manifest fields.
