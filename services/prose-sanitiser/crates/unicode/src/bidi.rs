@@ -186,6 +186,22 @@ impl BidiFault {
     }
 }
 
+impl BidiFault {
+    /// Whether deleting the control is the correct repair.
+    ///
+    /// True for every fault whose character is mechanically junk: a pop with no
+    /// open, a control with no RTL script to reorder, an implicitly terminated
+    /// embedding, and anything at all in source code.
+    ///
+    /// False for [`BidiFault::UnclosedOpen`] alone, because there the author
+    /// may have meant to add the matching pop rather than drop the open, and
+    /// deleting it silently changes how the rest of the paragraph renders. That
+    /// is a judgement about intent, so the finding carries no replacement.
+    pub fn strippable(self) -> bool {
+        !matches!(self, BidiFault::UnclosedOpen)
+    }
+}
+
 /// One reported bidi control.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BidiHit {

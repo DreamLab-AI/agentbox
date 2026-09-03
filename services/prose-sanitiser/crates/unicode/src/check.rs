@@ -136,12 +136,12 @@ fn bidi_findings(units: &[Unit], offsets: &[usize], context: BidiContext) -> Vec
             severity: Severity::High,
             confidence: ConfidenceTier::CertainMechanical,
             advice: hit.fault.advice().to_string(),
-            // In prose, an unbalanced control may be a genuine authoring bug in
-            // right-to-left text; the fix is the author's call, not ours.
-            replacement: match context {
-                BidiContext::Code => Some(String::new()),
-                BidiContext::Prose => None,
-            },
+            // Strippability follows the fault, not the context. An unclosed
+            // open may want the missing pop added rather than the open dropped,
+            // so it carries no replacement in either context; everything else
+            // is mechanically junk and `clean_text` removes it, which is what
+            // the two surfaces must agree on.
+            replacement: hit.fault.strippable().then(String::new),
         })
         .collect()
 }

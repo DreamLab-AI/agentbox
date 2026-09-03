@@ -123,13 +123,55 @@ fn bidi_is_rejected_in_code_and_preserved_in_rtl_prose() {
 }
 
 #[test]
-fn an_unbalanced_control_in_prose_is_reported_but_never_auto_fixed() {
-    // The right repair may be to add the missing pop, so the fix is the
-    // author's call and the finding carries no replacement.
-    let findings = check("\u{05E9}\u{05DC}\u{2069}");
-    let bidi: Vec<&Finding> = findings.iter().filter(|f| f.rule_id == RULE_BIDI).collect();
+fn bidi_strippability_follows_the_fault_not_the_context() {
+    // A pop with no open is mechanically junk, and `clean_text` removes it, so
+    // the Finding surface must offer the same repair rather than disagreeing
+    // with the cleaner about the same character.
+    let stray_pop = check("\u{05E9}\u{05DC}\u{2069}");
+    let bidi: Vec<&Finding> = stray_pop
+        .iter()
+        .filter(|f| f.rule_id == RULE_BIDI)
+        .collect();
+    assert_eq!(bidi.len(), 1);
+    assert_eq!(bidi[0].replacement.as_deref(), Some(""));
+
+    // An unclosed open is the one exception: the author may have meant to add
+    // the matching pop, and dropping the open changes how the rest renders.
+    let unclosed = check("\u{2067}\u{05E9}\u{05DC}");
+    let bidi: Vec<&Finding> = unclosed.iter().filter(|f| f.rule_id == RULE_BIDI).collect();
     assert_eq!(bidi.len(), 1);
     assert_eq!(bidi[0].replacement, None);
+}
+
+#[test]
+fn check_and_clean_agree_on_every_bidi_fault() {
+    use crate::{clean_text, CleanOptions};
+    use prose_sanitiser_core::surrogate;
+
+    // Whatever `check_text` offers to delete, `clean_text` must actually
+    // delete, and whatever it declines to touch must survive a default clean.
+    for source in [
+        "\u{05E9}\u{05DC}\u{2069}",    // unmatched pop
+        "\u{2067}hello\u{2069}",       // no RTL context
+        "\u{05E9}\u{05DC}\u{200F} 12", // load-bearing mark
+    ] {
+        let findings = check(source);
+        let (cleaned, _) = clean_text(
+            &surrogate::decode(source.as_bytes()),
+            CleanOptions::default(),
+        );
+        let cleaned = String::from_utf8(surrogate::encode(&cleaned)).unwrap();
+        for finding in findings.iter().filter(|f| f.rule_id == RULE_BIDI) {
+            let character = finding.matched.chars().next().expect("one control");
+            if finding.replacement.is_some() {
+                assert!(
+                    !cleaned.contains(character),
+                    "{source:?}: check offers to strip U+{:04X} but clean kept it",
+                    character as u32
+                );
+            }
+        }
+    }
 }
 
 #[test]
