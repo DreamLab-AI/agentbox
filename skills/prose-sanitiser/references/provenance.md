@@ -182,8 +182,21 @@ Two structural traps the implementation handles, and you should know about:
 **Pixel data is never re-encoded.** A metadata strip must leave the decoded
 image pixel-exact. If pixels changed, that is a bug, not a feature.
 
-`c2patool`, `exiftool` and `qpdf` are used as an optional cross-check when
-present on `PATH`. They are not the implementation.
+**No subprocesses on the implementation path.** The container work is all
+in-process: `img-parts` for JPEG segments and PNG/RIFF chunks, `lopdf` for the
+PDF object graph (its full rewrite on save is what the old `qpdf --linearize`
+pass provided), `zip` and `quick-xml` for OOXML and ODF, and the official `c2pa`
+SDK for reading and validating manifests only. `qpdf` is gone entirely;
+`c2patool` and `exiftool` survive as an advisory cross-check behind a
+non-default `external-verify` feature, so on a default build nothing is
+executed and both report as unavailable.
+
+The C2PA SDK is read-only here by necessity, not choice: `c2pa-rs` exposes
+removal only through internal trait methods on its largely private `jumbf_io`
+machinery, there is no top-level `remove_manifest`, and `c2patool` has no
+`--remove` flag. Stripping is therefore the container surgery above, deleting
+the PNG `caBX` chunk, the JPEG `APP11` JUMBF segments and the WebP `C2PA` chunk
+outright.
 
 ## P6. Durable Content Credentials: stripping is not unlinking
 

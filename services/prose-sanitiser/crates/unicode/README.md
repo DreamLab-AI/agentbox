@@ -75,9 +75,8 @@ Decoding a smuggled payload, which is the capability worth having over a plain
 strip:
 
 ```rust
-use prose_sanitiser_unicode::stego::{
-    byte_to_variation_selector, decode_payloads, PayloadKind,
-};
+use prose_sanitiser_core::surrogate::decode;
+use prose_sanitiser_unicode::stego::{byte_to_variation_selector, scan, PayloadKind};
 
 // A base character trailing a Butler variation-selector chain carrying "hi".
 // The chain renders as nothing and survives copy and paste.
@@ -86,7 +85,7 @@ for byte in b"hi" {
     smuggled.push(byte_to_variation_selector(*byte));
 }
 
-let payloads = decode_payloads(&smuggled);
+let payloads = scan(&decode(smuggled.as_bytes()));
 assert_eq!(payloads.len(), 1);
 assert_eq!(payloads[0].kind, PayloadKind::VariationSelector);
 assert_eq!(payloads[0].base, Some('a'));

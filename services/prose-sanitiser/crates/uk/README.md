@@ -1,93 +1,143 @@
 # prose-sanitiser-uk
 
-Sense-aware UK-English spelling for
-[prose-sanitiser](https://github.com/DreamLab-AI/agentbox), backed by
-[VarCon](https://wordlist.aspell.net/varcon-readme/) rather than a hand-written
-regex.
+Sense-aware UK-English spelling enforcement for Rust.
 
-The design in one sentence: **span exclusion runs first, then sense
-disambiguation, then confidence-tiered fixes.** Only unconditional dialect pairs
-with no organisation-name collision may ever be auto-fixed.
+British English is not American English with a lookup table applied. Roughly
+half of the interesting cases are not dialect questions at all, and a flat
+find-and-replace gets every one of them wrong:
 
-## Capability row
-
-| Class | Contents |
+| Correct British English | Why a naive rule breaks it |
 |---|---|
-| **Detects and strips losslessly** | Nothing. Spelling is not a codepoint classification and no diff can prove a replacement right, so nothing here is ever `certain-mechanical` |
-| **Detects, with a replacement offered** | VarCon-certified unconditional pairs outside every excluded span, with no gazetteer collision. Tier `high-confidence-stylistic`, applied only under an explicit `--write` |
-| **Detects and reports only** | Sense-dependent pairs, `-our` derivative irregularities, the double-L asymmetries, organisation names and quotations. Tier `low-confidence-judgement`, never auto-fixed |
-| **Never touches** | Code fences, inline code, HTML attributes, front matter, URLs, file paths, package names, direct quotations, and non-English spans |
+| a driving **licence**, to **license** a doctor | Noun/verb split *inside* British English |
+| the gas **meter**, twelve **metres** | The instrument keeps `-er`; only the SI unit takes `-re` |
+| the computer **program**, the television **programme** | Computing keeps the short form |
+| **sulfur** dioxide | RSC adopted the IUPAC spelling in 1992; BSI followed in 1993 |
+| the **fetus** | Standard in UK biomedical usage (92.5% of UK-indexed papers) |
+| the **dialog** box | A widget, not a conversation |
+| World Health **Organization** | That is its name |
 
-## The data
+This crate is built so it cannot make those mistakes.
 
-VarCon (Kevin Atkinson, part of the SCOWL project) encodes region and variant
-per spelling: `A` American, `B` British `-ise`, `Z` British `-ize` (Oxford), `C`
-Canadian, `D` Australian, with variant-status tags. The property that matters is
-that it carries the Oxford/Cambridge split as **two distinct British categories
-in one table**, which is precisely the primitive an `--oxford` flag needs.
+## How it works
 
-The licence is Atkinson's own permissive notice, MIT/BSD-equivalent with no
-copyleft. The vendored copy, its upstream provenance, a SHA-256 and the
-reproduced notice are in `data/`.
-
-Do not substitute LibreOffice's en_GB Hunspell dictionaries: they are
-GPL/LGPL/MPL tri-licensed, which would contaminate this crate.
-
-## Example
-
-```rust
-use prose_sanitiser_uk::{table, Dialect};
-
-// An unconditional pair: safe to offer a replacement.
-let organize = table::lookup("organize").expect("in the table");
-assert!(organize.is_unconditional());
-assert_eq!(organize.target(Dialect::Ise), Some("organise"));
-// Under Oxford spelling the American form is already correct.
-assert_eq!(organize.target(Dialect::Oxford), None);
-
-// Correct British English regardless of dialect, so absent entirely.
-assert!(table::lookup("sulfur").is_none());
-assert!(table::lookup("fetus").is_none());
-assert!(table::lookup("dialog").is_none());
+```text
+document
+   -> span exclusion      code, links, front matter, quotations, names, non-English
+   -> VarCon lookup       is this really an American spelling?
+   -> sense resolution    which meaning, and is it already correct?
+   -> Finding             with a confidence tier that gates any fix
 ```
 
-A sense-dependent word carries its senses rather than a single target, so a
-report can say *which* reading it is unsure about instead of guessing.
+```rust
+use prose_sanitiser_core::{Check, Config};
+use prose_sanitiser_uk::UkEnglish;
 
-## The traps this exists to avoid
+let checker = UkEnglish::new();
+let config = Config::new();
 
-The rule this replaced was one flat regex including `license`, `meter`,
-`catalog` and `fulfill`. It flagged "a driving licence issued to license a
-doctor", "gas meter", "dialog box" and "World Health Organization", so it
-produced wrong advice roughly half the time on technical prose.
+let findings = checker.check("We optimize the color scheme.", &config);
+let fixes: Vec<_> = findings.iter().filter_map(|f| f.replacement.as_deref()).collect();
+assert_eq!(fixes, ["optimise", "colour"]);
 
-- `licence`/`license` and `practice`/`practise` are a noun-verb split *inside*
-  British English, not a dialect swap.
-- `meter` is correct British English for an instrument. Only the SI unit is
-  *metre*.
-- `fulfil` is UK, but *fulfilment* takes one `l` where US *fulfillment* takes
-  two. The `-ment` rule inverts the doubling rule.
-- `program` stays *program* for software.
-- `sulfur` is correct in a technical register, per RSC 1992 and BSI 1993.
-- The `-yse` set (*analyse*, *paralyse*, *catalyse*) is unconditional in both
-  Oxford and general British, because the root is Greek *lysis*. That falls
-  straight out of the data: those VarCon lines carry no `Z` tag.
-- The always-ise set (*advertise*, *comprise*, *surprise*, *televise* and the
-  rest of the `-cise`, `-mise`, `-vise`, `-prise`, `-guise` roots) is untouched
-  by `--oxford`.
+// Oxford spelling keeps -ize, but never -yse.
+let oxford = Config::new().with_oxford(true);
+assert!(checker.check("We optimize it.", &oxford).is_empty());
+assert_eq!(checker.check("We analyze it.", &oxford).len(), 1);
 
-## Honest limitation
+// None of the traps fire.
+assert!(checker.check("The gas meter read 12 metres.", &config).is_empty());
+assert!(checker.check("A permit to license a doctor.", &config).is_empty());
+assert!(checker.check("Set `color: red` in the stylesheet.", &config).is_empty());
+```
 
-No published study measures detector or linter false positives on British
-English specifically. Until a UK human-prose corpus exists and a per-rule
-false-positive rate is published against it, the sense-dependent half of this
-crate is advice, not correction. The tier system encodes that in the types
-rather than relying on anyone remembering it.
+## Confidence, and what may be changed automatically
+
+| Finding | Tier | Auto-fix |
+|---|---|---|
+| Unconditional pair (`color` -> `colour`) | `HighConfidenceStylistic` | Only behind `Config::write` |
+| Sense-dependent pair (`license`, `meter`, `program`) | `LowConfidenceJudgement` | **Never** |
+
+Nothing this crate produces is `CertainMechanical`. Spelling is a style
+question, and a style question is never certain. `check()` never mutates;
+`fix()` returns a `Patch` that describes the change and leaves applying it to
+the caller.
+
+## Data provenance
+
+The dialect data is [VarCon](https://wordlist.aspell.net/varcon-readme/)
+2020.12.07 by Kevin Atkinson and Benjamin Titze, part of the SCOWL project,
+vendored verbatim at `data/varcon.txt`. Provenance, upstream URL, SHA-256 and
+the full licence are in [`data/LICENSE-VarCon`](data/LICENSE-VarCon). The notice
+is permissive and MIT/BSD-equivalent with no copyleft, which is what allows it
+inside a crate published as `MIT OR Apache-2.0`.
+
+Deliberately **not** used: en_GB Hunspell dictionaries as shipped by
+LibreOffice (GPL-2.0 / LGPL-2.1 / MPL-1.1 tri-licensed) and LanguageTool's rule
+set (LGPL). SCOWL/VarCon is the clean-licence source, and is the same route
+Mozilla took in 2007 when it re-derived its dictionaries.
+
+### The generator
+
+[`build.rs`](build.rs) compiles `varcon.txt` into a sorted, binary-searchable
+table in `$OUT_DIR`. The data file is never read at run time. Three things fall
+out of VarCon's own structure rather than out of a hand-written exception list:
+
+- **The Oxford split.** VarCon tags British `-ise` as category `B` and British
+  `-ize` (Oxford) as `Z`. `A Z: organize / B: organise` says Oxford keeps
+  *organize*. `A C: analyze / B Cv: analyse` carries no `Z` tag at all, and the
+  format's rule that "`B` implies `Z` when the line has no `Z`" makes *analyse*
+  correct in both modes. That is the `-yse` rule, derived.
+- **The sense-dependent set.** VarCon splits a cluster into groups when spelling
+  depends on usage, tagging them `<N>`/`<V>` or with a gloss. A word whose
+  groups disagree is marked ambiguous and can never be auto-fixed. All eight
+  named pairs come from this, plus draft/draught, analog/analogue and
+  micrometer/micrometre.
+- **The technical-register traps.** `A Bv: sulfur / B: sulphur` marks *sulfur*
+  an accepted British variant, so it produces no table entry and cannot be
+  "corrected".
+
+The generator drops entries that would cause more harm than good: American
+*variant* spellings such as *dialog* (tagged `AV`, seldom used), proper nouns
+and taxonomic names, replacement targets that are proper nouns, and short words
+outside the common-word levels, where VarCon's tail holds unverified morpheme
+fragments (`A: et / B: aet`) that would fire on "et al.".
+
+The hand-verified always-`ise` and always-`yse` lists in `src/overrides.rs`
+duplicate what the data already says. They are kept as a guarantee rather than a
+mechanism: cross-check tests fail the build if a future data revision ever
+disagrees with them.
+
+## Measuring it
+
+The only interesting number for a linter is how often it is wrong. Run the
+report over a corpus of known-good British prose and every finding is, by
+construction, a false positive:
+
+```sh
+cargo run -p prose-sanitiser-uk --example uk-report -- [--oxford] [--verbose] <path>...
+```
+
+```text
+documents: 128
+words: 91043
+findings: 12 (3 fixable)
+
+rule                      findings  fixable   per 10k words
+us-spelling                      3        3            0.33
+us-spelling-sense                9        0            0.99
+```
+
+## Scope
+
+This crate enforces a house style. It does not detect authorship, and a
+document that passes it is not thereby proved to be anything. It does not
+attempt grammar either: [`harper-core`](https://lib.rs/crates/harper-core)
+already does that well.
 
 ## Licence
 
-MIT OR Apache-2.0, at your option. The vendored VarCon data keeps its own
-permissive notice, reproduced in `data/LICENSE-VarCon`.
+`MIT OR Apache-2.0`. Vendored VarCon data under its own permissive notice; see
+[`data/LICENSE-VarCon`](data/LICENSE-VarCon).
 
 ## Publishing checklist
 
@@ -95,17 +145,15 @@ Publication candidate. Before `cargo publish`:
 
 - [x] `license = "MIT OR Apache-2.0"`, with both licence files present
 - [x] `description`, `repository`, `keywords`, `categories`, `readme` set
-- [x] Vendored data licence-cleared, attributed, and hash-pinned in `data/`
+- [x] Vendored data licence-cleared, attributed and hash-pinned in `data/`
 - [x] Pure Rust: no C dependencies, no subprocesses, no network
-- [x] Packaging keeps `data/` in the published `.crate`, so VarCon and its
-      notice ship with it. `Cargo.toml` uses `exclude` (dropping `corpora/`)
-      rather than an `include` allowlist, so `data/` is carried by default
+- [x] Packaging keeps `data/` in the published `.crate`, since `Cargo.toml` uses
+      `exclude` (dropping `corpora/`) rather than an `include` allowlist
+- [x] Crate-level `//!` docs stating the honest scope
 - [ ] `cargo package --list` confirms `data/varcon.txt` and
       `data/LICENSE-VarCon` are present, and that `corpora/` is not
-- [ ] Crate-level `//!` docs carrying the capability matrix rows
-- [ ] Every public item documented, with examples that compile
 - [ ] `cargo doc --no-deps` clean, with no warnings
-- [ ] Trap fixtures green: "World Health Organization", "a driving licence", "to
-      license a doctor", "the gas meter read 12 metres", "the computer program",
-      "sulfur dioxide", "the dialog box". Assert zero auto-fixes
+- [ ] Trap fixtures green, asserting zero auto-fixes on "World Health
+      Organization", "a driving licence", "to license a doctor", "the gas meter
+      read 12 metres", "the computer program", "sulfur dioxide", "the dialog box"
 - [ ] `cargo publish --dry-run` clean

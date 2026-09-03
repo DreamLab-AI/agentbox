@@ -47,32 +47,63 @@ variation-selector chain, and the UK-English rule was a single unsafe regex.
 - Workspace `README.md` and this changelog.
 - Per-crate publishing checklists for the four publication candidates.
 
-### In progress
+### Added
 
-Landing on `rust/prose-sanitiser-hardening` as of 2026-09-03. Documented ahead of
-the code where the design is settled; the docs are marked where the
-implementation has not yet caught up.
+Landed on `rust/prose-sanitiser-hardening` during the 2026-09-03 hardening pass.
 
-- **UK English as a real subsystem.** VarCon vendored (32,523 lines, licence
-  cleared, hash-pinned, attributed in `crates/uk/data/`), with the `B` against
-  `Z` tags driving an `--oxford` flag. Span exclusion first, then sense
-  disambiguation, then confidence-tiered fixes. Sense pairs, the `-our`
-  derivative table, the four-way double-L asymmetry, the always-ise and
-  always-yse sets, and an organisation gazetteer. A `whatlang` language
-  pre-filter so UK rules never fire on non-English spans.
-- **UTS #39 properly, replacing the 40-entry hand-written confusables table**,
-  and a bidi policy split by context: reject in source code (Trojan Source),
-  preserve balanced controls in RTL prose.
-- **Variation-selector and tag-block payload decoding**, so a finding reports
-  what was hidden rather than silently deleting it. This is the live
-  steganography vector, used in the real *os-info-checker-es6* npm
-  supply-chain attack.
-- **`img-parts` replacing roughly 888 lines of hand-rolled PNG, JPEG and WebP
-  parsing**, and the removal of the `exiftool`, `c2patool` and `qpdf`
-  subprocesses in favour of `little_exif`, `quick-xml` and `lopdf`. The `c2pa`
-  crate stays for read and validate only, because its removal API is internal.
-- **SARIF 2.1.0 and JSON Lines output, and standardised exit codes** 0 clean,
-  1 findings, 2 tool error. Vale-style HTML-comment suppression.
+- **UK English rebuilt as a real subsystem.** VarCon 2020.12.07 vendored
+  (licence cleared, hash-pinned and attributed in `crates/uk/data/`), with the
+  `B` against `Z` tags driving an Oxford `-ize` mode. Span exclusion runs first
+  (code, links, front matter, quotations, names, non-English via a `whatlang`
+  pre-filter), then VarCon lookup, then sense resolution, then a `Finding` whose
+  confidence tier gates any fix. Two rule ids, because the tiers are genuinely
+  different findings: `us-spelling` (unconditional, fixable under `--write`) and
+  `us-spelling-sense` (report-only, forever). `check_and_fix` fixes *the color*
+  to *the colour* while leaving *the gas meter* alone, which is the whole design
+  in one assertion.
+- **UTS #39 properly**, via `unicode-security`, replacing the 40-entry
+  hand-written confusables table; and a bidi policy split by context, rejecting
+  every control in source code (Trojan Source, CVE-2021-42574) while preserving
+  balanced controls in genuine RTL prose.
+- **Variation-selector, tag-block and zero-width payload decoding**, so a
+  finding reports what was hidden rather than silently deleting it. This is the
+  live steganography vector, used in the real *os-info-checker-es6* npm
+  supply-chain attack. `stego::scan` returns the recovered bytes with the base
+  character and a note on why the run was judged a payload.
+- **Two views of the Layer A surface**: `inspect_text`/`clean_text` count
+  codepoints for an audit sweep, `check_text`/`check_prose` return `Finding`s
+  with byte spans for a SARIF exporter, an LSP or a `fix()` pass.
+- **Hand-rolled container parsing replaced by maintained crates**, and every
+  subprocess removed from the implementation path: `img-parts` for JPEG segments
+  and PNG/RIFF chunks, `lopdf` for the PDF object graph (its full rewrite on
+  save is what `qpdf --linearize` used to provide), `zip` and `quick-xml` for
+  OOXML and ODF. The `c2pa` SDK stays read-and-validate only, because its
+  removal API is internal; stripping is container surgery. `qpdf` is gone
+  entirely, and `exiftool`/`c2patool` survive only as an advisory cross-check
+  behind a non-default `external-verify` feature.
+- **Lossless surgery now asserted, not asserted-to**: SHA-256 byte-exact round
+  trips, pixel-exact image comparison after a metadata strip (with the
+  compressed `IDAT` and entropy-coded scan checked as carried across verbatim),
+  OOXML compression-method and entry-order preservation, and a PDF incremental
+  update leaving no recoverable original `/Info` in the byte stream. Fixtures
+  are generated in-process, so the suite is hermetic.
+- **One output flag**, `--format {text,json,jsonl,sarif}`, with `--json` kept as
+  an alias; SARIF 2.1.0 for GitHub code scanning; and the exit-code contract
+  0 clean, 1 findings reported, 2 tool error, printed in every binary's `--help`
+  epilogue.
+- **Vale-style suppression** (`<!-- prose-sanitiser off -->` / `on`, and
+  `<!-- prose-sanitiser:ignore RULE -->`), a committed `.prose-sanitiser.toml`
+  discovered by walking up from the target, `--disable RULE`, and
+  `--explain-rules` to print the rule table with its tiers, dates and sources so
+  a decayed lexical rule is visible rather than silent.
+
+### Still open
+
+- The `sanitise` umbrella pass is declared in `crates/cli/src/lib.rs` but has no
+  module file yet.
+- No published false-positive rate on British English. Until the UK human-prose
+  corpus exists, the sense-dependent half of the UK layer is advice, not
+  correction, and the tier system is what enforces that.
 
 ## [0.1.0] - 2026-09-03
 
