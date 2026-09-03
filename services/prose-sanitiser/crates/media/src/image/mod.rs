@@ -1,5 +1,11 @@
 //! Detect and strip C2PA / AI-related metadata from PNG, JPEG and WebP.
+//!
+//! Parsing and re-encoding is `img-parts`' job throughout; this layer holds the
+//! policy and the report shape. Nothing here shells out: the implementation
+//! path is pure Rust, and the external tools survive only as the advisory
+//! cross-check in [`tools`], behind the non-default `external-verify` feature.
 
+pub mod c2pa_read;
 pub mod harness;
 pub mod jpeg;
 pub mod markers;
@@ -12,8 +18,6 @@ use std::path::{Path, PathBuf};
 use serde_json::{json, Map, Value};
 
 use crate::io::safe_write_bytes;
-use crate::proc::{run_capture, Rlimits};
-use crate::proc::{safe_arg, which};
 use prose_sanitiser_core::classify_finding_confidence;
 
 pub use jpeg::JPEG_SOI;
@@ -30,6 +34,10 @@ pub struct ImageInspectReport {
     pub has_ai_metadata: bool,
     pub findings: Vec<String>,
     pub tools: Value,
+    /// What the official `c2pa` SDK read out of the manifest store, including
+    /// whether the asset declares a soft binding. Read-only: see
+    /// [`c2pa_read`] for why removal is never done through the SDK.
+    pub c2pa: Value,
     pub synthid: Option<Value>,
     pub notes: Vec<String>,
 }
@@ -46,6 +54,7 @@ impl ImageInspectReport {
                 .map(|finding| classify_finding_confidence(finding))
                 .collect::<Vec<_>>(),
             "tools": self.tools,
+            "c2pa": self.c2pa,
             "synthid": self.synthid.clone().unwrap_or(Value::Null),
             "notes": self.notes,
         })
@@ -95,8 +104,29 @@ pub fn inspect_image(
         notes.push("format not fully inspected; only PNG/JPEG are supported".to_string());
     }
 
+    // The official SDK's read-and-validate pass. It parses the JUMBF store
+    // properly, so it catches a manifest the marker tables would miss, and it
+    // is the only source for whether a durable credential was declared.
+    let c2pa = c2pa_read::read_c2pa(&data, &format);
+    if c2pa.present {
+        has_c2pa = true;
+        findings.push(match c2pa.claim_generator.as_deref() {
+            Some(generator) => {
+                format!("C2PA manifest store present (claim generator: {generator})")
+            }
+            None => "C2PA manifest store present".to_string(),
+        });
+        if c2pa.declares_soft_binding {
+            findings.push(
+                "C2PA soft binding declared: this is a durable Content Credential and \
+                 stripping the container will not unlink it"
+                    .to_string(),
+            );
+        }
+    }
+
     let tools = tools::run_optional_tools(path);
-    // Elevate flags from tools.
+    // Elevate flags from the optional cross-check.
     if tools
         .get("c2patool")
         .and_then(|entry| entry.get("has_manifest"))
@@ -111,9 +141,10 @@ pub fn inspect_image(
         path: path.display().to_string(),
         format,
         has_c2pa,
-        has_ai_metadata: has_ai,
+        has_ai_metadata: has_ai || has_c2pa,
         findings,
         tools,
+        c2pa: c2pa.to_json(),
         synthid: harness::run_synthid_score(path, synthid_dir),
         notes,
     })
@@ -179,27 +210,6 @@ pub fn clean_image(path: &Path, dest: &Path, options: &CleanImageOptions) -> Res
 
     safe_write_bytes(dest, &cleaned)
         .map_err(|e| format!("cannot write {}: {e}", dest.display()))?;
-
-    // Optional exiftool pass for residual tags.
-    if options.strip_all_metadata {
-        if let Some(exiftool) = which("exiftool") {
-            let args = vec![
-                "-all=".to_string(),
-                "-overwrite_original".to_string(),
-                safe_arg(&dest.display().to_string()),
-            ];
-            match run_capture(
-                &exiftool,
-                &args,
-                Rlimits::default_child(),
-                std::time::Duration::from_secs(60),
-                None,
-            ) {
-                Ok(_) => actions.push("exiftool -all= pass".to_string()),
-                Err(error) => actions.push(format!("exiftool failed: {error}")),
-            }
-        }
-    }
 
     let mut pixel_removal: Option<Value> = None;
     if let Some(remover) = options.remove_pixel {

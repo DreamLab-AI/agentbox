@@ -1,7 +1,9 @@
 //! Inspect/clean AI provenance metadata in non-raster containers.
 //!
-//! Formats: SVG, PDF (best-effort), DOCX, ODT, HTML, Markdown frontmatter.
-//! Parser-first; PDF prefers the optional exiftool/c2patool/qpdf when present.
+//! Formats: SVG, PDF, DOCX, ODT, HTML, Markdown frontmatter.
+//!
+//! Everything runs in-process: `lopdf` owns the PDF object graph, `zip` plus
+//! `quick-xml` own the OOXML and ODF packages. Nothing shells out.
 
 pub mod html;
 pub mod markdown;
@@ -151,7 +153,9 @@ pub fn inspect_container(path: &Path) -> std::io::Result<ContainerInspectReport>
     let mut notes: Vec<String> = Vec::new();
     if format == "pdf" {
         notes.push(
-            "PDF inspection is best-effort; exiftool/c2patool give more reliable metadata detection"
+            "PDF cleaning is a full lopdf object-graph rewrite, so a superseded incremental \
+             revision cannot survive; a file lopdf cannot parse falls back to a byte-level XMP \
+             strip, which is reported as degraded"
                 .to_string(),
         );
     } else if format == "docx" {

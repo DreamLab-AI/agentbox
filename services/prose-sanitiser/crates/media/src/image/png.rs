@@ -1,7 +1,17 @@
 //! PNG chunk-level inspection and metadata surgery.
+//!
+//! Every chunk read and write goes through [`img_parts::png`], which owns the
+//! length/type/CRC framing and re-emits untouched chunks byte for byte. This
+//! module holds only the *policy*: which chunk types carry provenance, and
+//! which are structural and must survive whatever their payload happens to
+//! contain.
+
+use img_parts::png::{Png, PngChunk};
+use img_parts::Bytes;
 
 use super::markers::{ai_and_c2pa_markers, contains_any, hits_name_c2pa, join_hits, C2PA_MARKERS};
 
+/// The eight-byte PNG signature.
 pub const PNG_SIG: &[u8] = b"\x89PNG\r\n\x1a\n";
 
 /// Chunks that carry image data or rendering intent and are never dropped.
@@ -9,41 +19,45 @@ const STRUCTURAL_CHUNKS: &[&[u8]] = &[
     b"IHDR", b"IDAT", b"IEND", b"PLTE", b"tRNS", b"gAMA", b"pHYs", b"sRGB", b"cHRM", b"iCCP",
 ];
 
-/// One parsed chunk: type, payload and the original CRC bytes.
-struct Chunk<'a> {
-    kind: &'a [u8],
-    payload: &'a [u8],
-    crc: &'a [u8],
-    /// Offset just past this chunk's CRC.
-    next: usize,
-}
+/// The `iTXt` keyword Adobe uses for an embedded XMP packet, NUL-terminated as
+/// it appears at the head of the chunk payload.
+const XMP_ITXT_KEYWORD: &[u8] = b"XML:com.adobe.xmp\0";
 
-/// Read the chunk starting at `pos`, or `None` when it is truncated.
-fn read_chunk(data: &[u8], pos: usize) -> Option<Chunk<'_>> {
-    if pos + 8 > data.len() {
-        return None;
-    }
-    let length = u32::from_be_bytes(data[pos..pos + 4].try_into().ok()?) as usize;
-    let kind = &data[pos + 4..pos + 8];
-    let start = pos + 8;
-    let end = start.checked_add(length)?;
-    if end.checked_add(4)? > data.len() {
-        return None;
-    }
-    Some(Chunk {
-        kind,
-        payload: &data[start..end],
-        crc: &data[end..end + 4],
-        next: end + 4,
-    })
-}
+/// Textual chunk types, all of which may carry provenance strings.
+const TEXT_CHUNKS: &[&[u8]] = &[b"tEXt", b"zTXt", b"iTXt"];
 
+/// Chunk types removed unconditionally: they exist only to carry metadata.
+///
+/// `eXIf` is the PNG Exif container, `caBX` the C2PA JUMBF box recommended
+/// before `IDAT`, and `tIME` the last-modification timestamp, which is a
+/// behavioural fingerprint rather than rendering information.
+const ALWAYS_DROP_CHUNKS: &[&[u8]] = &[b"eXIf", b"caBX", b"tIME"];
+
+/// Render a chunk type as its four Latin-1 characters.
 fn chunk_name(kind: &[u8]) -> String {
-    // latin-1 with replacement, as the Python decoded it.
     kind.iter().map(|byte| *byte as char).collect()
 }
 
+/// True when this chunk type is one of the JUMBF/C2PA container conventions.
+fn is_c2pa_container(kind: &[u8]) -> bool {
+    matches!(kind, b"caBX" | b"juMB" | b"jumb") || kind.starts_with(b"c2")
+}
+
+/// True when an `iTXt` payload is an Adobe XMP packet.
+fn is_xmp_itxt(kind: &[u8], payload: &[u8]) -> bool {
+    kind == b"iTXt" && payload.starts_with(XMP_ITXT_KEYWORD)
+}
+
+/// Parse a PNG, or explain why it could not be parsed.
+fn parse(data: &[u8]) -> Result<Png, String> {
+    Png::from_bytes(Bytes::copy_from_slice(data)).map_err(|error| error.to_string())
+}
+
 /// Inspect a PNG. Returns `(has_c2pa, has_ai_metadata, findings)`.
+///
+/// A PNG that fails to parse still gets the whole-file marker scan, so a
+/// truncated or CRC-damaged file carrying a manifest is reported rather than
+/// silently passed.
 pub fn inspect_png(data: &[u8]) -> (bool, bool, Vec<String>) {
     let mut findings = Vec::new();
     let mut has_c2pa = false;
@@ -52,38 +66,36 @@ pub fn inspect_png(data: &[u8]) -> (bool, bool, Vec<String>) {
         return (false, false, vec!["not a PNG".to_string()]);
     }
     let combined = ai_and_c2pa_markers();
-    let mut pos = PNG_SIG.len();
-    while pos + 8 <= data.len() {
-        let Some(chunk) = read_chunk(data, pos) else {
-            // Mirror Python's `f"truncated chunk {ctype!r}"` byte-string repr.
-            let kind = &data[pos + 4..(pos + 8).min(data.len())];
-            findings.push(format!("truncated chunk {}", byte_repr(kind)));
-            break;
-        };
-        let name = chunk_name(chunk.kind);
 
-        // Private/ancillary chunks sometimes used for JUMBF/C2PA.
-        if matches!(chunk.kind, b"caBX" | b"juMB" | b"jumb") || chunk.kind.starts_with(b"c2") {
-            has_c2pa = true;
-            findings.push(format!("PNG chunk {name} (possible C2PA container)"));
-        }
-        if matches!(chunk.kind, b"tEXt" | b"zTXt" | b"iTXt" | b"eXIf") {
-            let hits = contains_any(chunk.payload, &combined);
-            if !hits.is_empty() {
-                has_ai = true;
-                if hits_name_c2pa(&hits, false) {
+    match parse(data) {
+        Ok(png) => {
+            for chunk in png.chunks() {
+                let kind = chunk.kind();
+                let name = chunk_name(&kind);
+                if is_c2pa_container(&kind) {
                     has_c2pa = true;
+                    findings.push(format!("PNG chunk {name} (possible C2PA container)"));
                 }
-                findings.push(format!("PNG {name}: {}", join_hits(&hits, 8)));
+                if is_xmp_itxt(&kind, chunk.contents()) {
+                    findings.push("PNG iTXt XMP packet (XML:com.adobe.xmp)".to_string());
+                }
+                if TEXT_CHUNKS.contains(&&kind[..]) || kind == *b"eXIf" {
+                    let hits = contains_any(chunk.contents(), &combined);
+                    if !hits.is_empty() {
+                        has_ai = true;
+                        if hits_name_c2pa(&hits, false) {
+                            has_c2pa = true;
+                        }
+                        findings.push(format!("PNG {name}: {}", join_hits(&hits, 8)));
+                    }
+                }
             }
         }
-        if chunk.kind == b"IEND" {
-            break;
-        }
-        pos = chunk.next;
+        Err(error) => findings.push(format!("malformed PNG: {error}")),
     }
 
-    // Whole-file scan fallback.
+    // Whole-file scan fallback, which also covers anything the chunk walk could
+    // not reach.
     let whole = contains_any(data, C2PA_MARKERS);
     if !whole.is_empty() && !has_c2pa {
         has_c2pa = true;
@@ -92,109 +104,97 @@ pub fn inspect_png(data: &[u8]) -> (bool, bool, Vec<String>) {
     (has_c2pa, has_ai || has_c2pa, findings)
 }
 
-/// Python's `repr()` of a short bytes object, for the truncated-chunk finding.
-fn byte_repr(bytes: &[u8]) -> String {
-    let mut out = String::from("b'");
-    for byte in bytes {
-        match byte {
-            b'\\' => out.push_str("\\\\"),
-            b'\'' => out.push_str("\\'"),
-            0x20..=0x7E => out.push(*byte as char),
-            b'\n' => out.push_str("\\n"),
-            b'\r' => out.push_str("\\r"),
-            b'\t' => out.push_str("\\t"),
-            _ => out.push_str(&format!("\\x{byte:02x}")),
-        }
+/// Decide whether one chunk is dropped, and say why.
+fn drop_reason(chunk: &PngChunk, strip_all_text: bool, combined: &[&[u8]]) -> Option<String> {
+    let kind = chunk.kind();
+    let name = chunk_name(&kind);
+    let payload = chunk.contents();
+
+    if ALWAYS_DROP_CHUNKS.contains(&&kind[..]) || is_c2pa_container(&kind) {
+        return Some(format!("drop chunk {name}"));
     }
-    out.push('\'');
-    out
+    if TEXT_CHUNKS.contains(&&kind[..]) {
+        if strip_all_text || is_xmp_itxt(&kind, payload) {
+            return Some(format!("drop chunk {name}"));
+        }
+        if !contains_any(payload, combined).is_empty() {
+            return Some(format!("drop chunk {name}"));
+        }
+        return None;
+    }
+    if STRUCTURAL_CHUNKS.contains(&&kind[..]) {
+        return None;
+    }
+    // An unknown ancillary chunk whose type or payload names a C2PA structure.
+    let mut probe = kind.to_vec();
+    probe.extend_from_slice(payload);
+    if contains_any(&probe, C2PA_MARKERS).is_empty() {
+        return None;
+    }
+    Some(format!("drop chunk {name} (C2PA marker in payload)"))
 }
 
 /// Strip metadata chunks from a PNG, returning the new bytes and an action log.
+///
+/// When nothing matches, the input bytes are returned verbatim: a clean file is
+/// byte-identical after a strip, not merely equivalent.
+///
+/// # Errors
+///
+/// Returns `Err` when the input is not a PNG or its chunk structure cannot be
+/// parsed. Rewriting a file whose framing is not understood risks truncating
+/// image data, so a malformed container is refused rather than rebuilt.
 pub fn strip_png(data: &[u8], strip_all_text: bool) -> Result<(Vec<u8>, Vec<String>), String> {
     if !data.starts_with(PNG_SIG) {
         return Err("not PNG".to_string());
     }
+    let mut png = parse(data).map_err(|error| format!("malformed PNG: {error}"))?;
     let combined = ai_and_c2pa_markers();
+
     let mut actions: Vec<String> = Vec::new();
-    let mut out = PNG_SIG.to_vec();
-    let mut pos = PNG_SIG.len();
-
-    while pos + 8 <= data.len() {
-        let Some(chunk) = read_chunk(data, pos) else {
-            break;
-        };
-        let name = chunk_name(chunk.kind);
-        pos = chunk.next;
-
-        let mut drop = false;
-        if matches!(chunk.kind, b"eXIf" | b"caBX") || chunk.kind.starts_with(b"c2") {
-            drop = true;
-            actions.push(format!("drop chunk {name}"));
-        } else if matches!(chunk.kind, b"tEXt" | b"zTXt" | b"iTXt") {
-            if strip_all_text || !contains_any(chunk.payload, &combined).is_empty() {
-                drop = true;
-                actions.push(format!("drop chunk {name}"));
+    png.chunks_mut().retain(
+        |chunk| match drop_reason(chunk, strip_all_text, &combined) {
+            Some(action) => {
+                actions.push(action);
+                false
             }
-        } else {
-            let mut probe = chunk.kind.to_vec();
-            probe.extend_from_slice(chunk.payload);
-            if !contains_any(&probe, C2PA_MARKERS).is_empty()
-                && !STRUCTURAL_CHUNKS.contains(&chunk.kind)
-            {
-                drop = true;
-                actions.push(format!("drop chunk {name} (C2PA marker in payload)"));
-            }
-        }
+            None => true,
+        },
+    );
 
-        if !drop {
-            out.extend_from_slice(&(chunk.payload.len() as u32).to_be_bytes());
-            out.extend_from_slice(chunk.kind);
-            out.extend_from_slice(chunk.payload);
-            out.extend_from_slice(chunk.crc);
-        }
-        if chunk.kind == b"IEND" {
-            break;
-        }
-    }
     if actions.is_empty() {
-        actions.push("no PNG metadata chunks removed (already clean or none matched)".to_string());
+        return Ok((
+            data.to_vec(),
+            vec!["no PNG metadata chunks removed (already clean or none matched)".to_string()],
+        ));
     }
-    Ok((out, actions))
+    Ok((png.encoder().bytes().to_vec(), actions))
 }
 
-/// Build a PNG chunk with a correct CRC — used by the tests and by any caller
-/// that needs to synthesise one.
+/// Build a PNG chunk with a correct CRC.
+///
+/// Used by the tests and by any caller that needs to synthesise one.
+///
+/// # Panics
+///
+/// Panics when `kind` is not exactly four bytes: a PNG chunk type is a
+/// fixed-width field, and a caller passing anything else has a bug.
 pub fn build_chunk(kind: &[u8], payload: &[u8]) -> Vec<u8> {
-    let mut out = Vec::with_capacity(12 + payload.len());
-    out.extend_from_slice(&(payload.len() as u32).to_be_bytes());
-    out.extend_from_slice(kind);
-    out.extend_from_slice(payload);
-    let mut crc_input = kind.to_vec();
-    crc_input.extend_from_slice(payload);
-    out.extend_from_slice(&crc32(&crc_input).to_be_bytes());
-    out
+    let kind: [u8; 4] = kind.try_into().expect("a PNG chunk type is four bytes");
+    PngChunk::new(kind, Bytes::copy_from_slice(payload))
+        .encoder()
+        .bytes()
+        .to_vec()
 }
 
 /// The PNG/zlib CRC-32, so synthesised chunks are byte-valid.
+///
+/// Delegates to `crc32fast`, the same implementation `img-parts` verifies
+/// against, rather than carrying a second table.
 pub fn crc32(data: &[u8]) -> u32 {
-    let mut table = [0u32; 256];
-    for (index, entry) in table.iter_mut().enumerate() {
-        let mut value = index as u32;
-        for _ in 0..8 {
-            value = if value & 1 != 0 {
-                0xEDB8_8320 ^ (value >> 1)
-            } else {
-                value >> 1
-            };
-        }
-        *entry = value;
-    }
-    let mut crc = 0xFFFF_FFFFu32;
-    for byte in data {
-        crc = table[((crc ^ *byte as u32) & 0xFF) as usize] ^ (crc >> 8);
-    }
-    crc ^ 0xFFFF_FFFF
+    let mut hasher = crc32fast::Hasher::new();
+    hasher.update(data);
+    hasher.finalize()
 }
 
 #[cfg(test)]
@@ -202,7 +202,7 @@ mod tests {
     use super::*;
 
     /// A minimal but structurally valid PNG carrying the given extra chunks.
-    fn png_with(extra: &[(&[u8], &[u8])]) -> Vec<u8> {
+    pub(super) fn png_with(extra: &[(&[u8], &[u8])]) -> Vec<u8> {
         let mut out = PNG_SIG.to_vec();
         // 1x1 greyscale IHDR.
         out.extend_from_slice(&build_chunk(
@@ -229,6 +229,13 @@ mod tests {
         let (c2pa, ai, findings) = inspect_png(&png);
         assert!(!c2pa && !ai);
         assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn parsing_and_re_encoding_is_byte_identical() {
+        let png = png_with(&[(b"tEXt", b"Title\x00A photo of a hill")]);
+        let parsed = parse(&png).unwrap();
+        assert_eq!(parsed.encoder().bytes().to_vec(), png);
     }
 
     #[test]
@@ -291,6 +298,30 @@ mod tests {
     }
 
     #[test]
+    fn an_xmp_itxt_chunk_goes_even_when_text_is_otherwise_kept() {
+        let mut payload = XMP_ITXT_KEYWORD.to_vec();
+        payload.extend_from_slice(b"\x00\x00\x00\x00<x:xmpmeta>ordinary</x:xmpmeta>");
+        let png = png_with(&[(b"iTXt", &payload)]);
+
+        let (_, _, findings) = inspect_png(&png);
+        assert!(findings.contains(&"PNG iTXt XMP packet (XML:com.adobe.xmp)".to_string()));
+
+        // Even with `strip_all_text` off, an XMP packet is metadata by
+        // definition and is removed.
+        let (cleaned, actions) = strip_png(&png, false).unwrap();
+        assert!(actions.contains(&"drop chunk iTXt".to_string()));
+        assert!(!cleaned.windows(9).any(|w| w == b"xmpmeta>o"));
+    }
+
+    #[test]
+    fn a_time_chunk_is_a_behavioural_fingerprint_and_goes() {
+        let png = png_with(&[(b"tIME", &[0x07, 0xE9, 1, 2, 3, 4, 5])]);
+        let (cleaned, actions) = strip_png(&png, true).unwrap();
+        assert!(actions.contains(&"drop chunk tIME".to_string()));
+        assert!(!cleaned.windows(4).any(|w| w == b"tIME"));
+    }
+
+    #[test]
     fn structural_chunks_are_never_dropped_for_a_payload_collision() {
         // An iCCP profile whose bytes happen to contain "c2pa" must survive.
         let png = png_with(&[(b"iCCP", b"prof\x00\x00c2pa-colliding-bytes")]);
@@ -299,18 +330,28 @@ mod tests {
     }
 
     #[test]
-    fn a_truncated_chunk_is_reported_not_panicked_on() {
-        // Nine bytes of IEND survive: the header parses, the CRC does not.
-        let mut png = png_with(&[]);
+    fn a_malformed_png_is_still_scanned_for_markers() {
+        // Truncating the final chunk makes the container unparseable. The walk
+        // cannot run, so the finding names the structural problem and the
+        // whole-file scan carries the detection.
+        //
+        // This replaces the previous per-chunk `truncated chunk b'IEND'`
+        // assertion: `img-parts` reports one truncation error for the file
+        // rather than naming the chunk, and reproducing the old string would
+        // mean re-deriving the hand-rolled walk this module exists to delete.
+        let mut png = png_with(&[(b"zzZz", b"contentcredentials")]);
         png.truncate(png.len() - 3);
-        let (_, _, findings) = inspect_png(&png);
-        assert_eq!(findings, vec!["truncated chunk b'IEND'".to_string()]);
+        let (c2pa, _, findings) = inspect_png(&png);
+        assert!(findings.iter().any(|f| f.starts_with("malformed PNG: ")));
+        assert!(c2pa, "the byte scan still finds the marker");
+        assert!(findings
+            .iter()
+            .any(|f| f.starts_with("byte-scan C2PA markers: ")));
 
-        // A chunk cut before its 8-byte header simply ends the walk, with no
-        // finding — the loop guard never admits it. Matches the Python.
-        let mut shorter = png_with(&[]);
-        shorter.truncate(shorter.len() - 6);
-        assert!(inspect_png(&shorter).2.is_empty());
+        // And a rewrite is refused rather than attempted.
+        assert!(strip_png(&png, true)
+            .unwrap_err()
+            .starts_with("malformed PNG"));
     }
 
     #[test]

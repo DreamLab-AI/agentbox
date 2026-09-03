@@ -1,4 +1,13 @@
-//! Locating and running the optional external tools, under resource limits.
+//! Locating and running child processes, under resource limits.
+//!
+//! Nothing on the implementation path uses this any more: `img-parts`, `lopdf`,
+//! `zip` and `quick-xml` do the container work in-process. What is left needs a
+//! subprocess for a real reason:
+//!
+//! * the pixel-domain torch harnesses in [`crate::image::harness`], which are
+//!   model stacks rather than parsers;
+//! * the advisory `exiftool` and `c2patool` cross-check in
+//!   [`crate::image::tools`], behind the non-default `external-verify` feature.
 
 use std::io;
 use std::path::PathBuf;
@@ -8,8 +17,7 @@ use std::time::{Duration, Instant};
 use prose_sanitiser_core::env_usize;
 
 /// Child-process resource limits (address space / output file size). A crafted
-/// file must not make exiftool/c2patool/qpdf exhaust host memory or fill the
-/// disk.
+/// file must not make a child exhaust host memory or fill the disk.
 fn child_rlimit_as() -> u64 {
     env_usize("WATERMARKS_CHILD_RLIMIT_AS", 4 << 30) as u64
 }
@@ -36,7 +44,8 @@ pub struct Rlimits {
 }
 
 impl Rlimits {
-    /// The conservative defaults used for exiftool/c2patool/qpdf/SynthID.
+    /// The conservative defaults used for the SynthID scorer and the optional
+    /// `exiftool`/`c2patool` cross-check.
     pub fn default_child() -> Self {
         Self {
             address_space: child_rlimit_as(),

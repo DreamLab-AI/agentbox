@@ -1,70 +1,99 @@
 //! WebP RIFF-chunk inspection and metadata surgery.
+//!
+//! RIFF framing — chunk ids, little-endian sizes, the odd-length pad byte and
+//! the enclosing `RIFF`/`WEBP` list — is [`img_parts::riff`]'s job. This module
+//! holds the policy: which chunks carry provenance, and the VP8X feature-flag
+//! bookkeeping that keeps a file self-consistent after one is removed.
+
+use img_parts::riff::{RiffChunk, RiffContent};
+use img_parts::webp::WebP;
+use img_parts::{Bytes, Error as ImgError};
 
 use super::markers::{ai_and_c2pa_markers, contains_any, hits_name_c2pa, join_hits};
 
+/// The RIFF container magic.
 pub const WEBP_RIFF: &[u8] = b"RIFF";
+/// The WebP form type, at offset 8.
 pub const WEBP_SIG: &[u8] = b"WEBP";
 
 /// VP8X feature-flag bits for the metadata chunks, so a removed chunk also
 /// clears its advertised flag and the file stays self-consistent.
 const METADATA_FLAGS: &[(&[u8], u8)] = &[(b"ICCP", 0x20), (b"EXIF", 0x08), (b"XMP ", 0x04)];
 
-/// One RIFF chunk: fourcc, payload and any odd-length pad byte.
+/// The VP8X chunk id, whose first payload byte holds the feature flags.
+const VP8X: [u8; 4] = *b"VP8X";
+
+/// One RIFF chunk, as a flat view for inspection and reporting.
+///
+/// The pad byte is reconstructed rather than carried through: RIFF specifies it
+/// as a single zero, and `img-parts` re-emits it as one when re-encoding.
 pub struct WebpChunk {
+    /// The four-character chunk id.
     pub fourcc: [u8; 4],
+    /// The chunk payload, pad byte excluded.
     pub payload: Vec<u8>,
+    /// The pad byte, present only when the payload length is odd.
     pub padding: Vec<u8>,
 }
 
-fn is_webp(data: &[u8]) -> bool {
-    data.len() >= 12 && &data[..4] == WEBP_RIFF && &data[8..12] == WEBP_SIG
-}
-
+/// Render a chunk id as its four Latin-1 characters.
 fn chunk_name(fourcc: &[u8]) -> String {
     fourcc.iter().map(|byte| *byte as char).collect()
 }
 
+/// Parse a WebP, mapping the container errors onto the note strings callers
+/// and tests match on.
+fn parse(data: &[u8]) -> Result<WebP, String> {
+    if data.len() < 12 || &data[..4] != WEBP_RIFF || &data[8..12] != WEBP_SIG {
+        return Err("not a WebP".to_string());
+    }
+    WebP::from_bytes(Bytes::copy_from_slice(data)).map_err(|error| match error {
+        ImgError::WrongSignature => "not a WebP".to_string(),
+        other => format!("malformed RIFF: {other}"),
+    })
+}
+
+/// Flatten one parsed chunk into the reporting view.
+fn flatten(chunk: &RiffChunk) -> WebpChunk {
+    let payload = match chunk.content() {
+        RiffContent::Data(data) => data.to_vec(),
+        // A nested list (LIST/seqt) is re-encoded so its bytes are still
+        // scanned; the surgery below works on the parsed tree, not on this.
+        list => list.clone().encoder().bytes().to_vec(),
+    };
+    let padding = if payload.len() % 2 == 1 {
+        vec![0]
+    } else {
+        Vec::new()
+    };
+    WebpChunk {
+        fourcc: chunk.id(),
+        payload,
+        padding,
+    }
+}
+
+/// Note when a parse-and-re-encode of the untouched container is not
+/// byte-identical, which means the file carried bytes outside the RIFF tree.
+fn fidelity_note(data: &[u8], webp: &WebP) -> Option<String> {
+    let round_trip = webp.clone().encoder().bytes();
+    if round_trip.as_ref() == data {
+        return None;
+    }
+    Some(format!(
+        "trailing WebP bytes: {}",
+        data.len().abs_diff(round_trip.len())
+    ))
+}
+
 /// Walk the RIFF chunks. Returns the chunks plus any structural notes.
 pub fn webp_chunks(data: &[u8]) -> (Vec<WebpChunk>, Vec<String>) {
-    if !is_webp(data) {
-        return (Vec::new(), vec!["not a WebP".to_string()]);
-    }
-    let mut notes = Vec::new();
-    let declared = u32::from_le_bytes(data[4..8].try_into().expect("checked length")) as usize;
-    if declared + 8 != data.len() {
-        notes.push(format!(
-            "RIFF size mismatch: header={} actual={}",
-            declared + 8,
-            data.len()
-        ));
-    }
-
-    let mut chunks = Vec::new();
-    let mut pos = 12usize;
-    while pos + 8 <= data.len() {
-        let fourcc: [u8; 4] = data[pos..pos + 4].try_into().expect("checked length");
-        let length =
-            u32::from_le_bytes(data[pos + 4..pos + 8].try_into().expect("checked length")) as usize;
-        let payload_start = pos + 8;
-        let Some(payload_end) = payload_start.checked_add(length) else {
-            notes.push(format!("truncated WebP chunk {}", chunk_name(&fourcc)));
-            break;
-        };
-        let padded_end = payload_end + (length & 1);
-        if padded_end > data.len() {
-            notes.push(format!("truncated WebP chunk {}", chunk_name(&fourcc)));
-            break;
-        }
-        chunks.push(WebpChunk {
-            fourcc,
-            payload: data[payload_start..payload_end].to_vec(),
-            padding: data[payload_end..padded_end].to_vec(),
-        });
-        pos = padded_end;
-    }
-    if pos != data.len() && !notes.iter().any(|note| note.contains("truncated")) {
-        notes.push(format!("trailing WebP bytes: {}", data.len() - pos));
-    }
+    let webp = match parse(data) {
+        Ok(webp) => webp,
+        Err(note) => return (Vec::new(), vec![note]),
+    };
+    let chunks: Vec<WebpChunk> = webp.chunks().iter().map(flatten).collect();
+    let notes = fidelity_note(data, &webp).into_iter().collect();
     (chunks, notes)
 }
 
@@ -100,63 +129,80 @@ pub fn inspect_webp(data: &[u8]) -> (bool, bool, Vec<String>) {
     (has_c2pa, has_ai || has_c2pa, findings)
 }
 
+/// Decide whether one chunk is dropped, returning its metadata flag bit.
+fn drop_flag(chunk: &RiffChunk, strip_all_metadata: bool, combined: &[&[u8]]) -> Option<u8> {
+    let fourcc = chunk.id();
+    if let Some((_, flag)) = METADATA_FLAGS
+        .iter()
+        .find(|(candidate, _)| *candidate == fourcc)
+    {
+        let payload = chunk.content().data().cloned().unwrap_or_default();
+        let drop = strip_all_metadata || !contains_any(&payload, combined).is_empty();
+        return drop.then_some(*flag);
+    }
+    (fourcc.to_ascii_uppercase() == *b"C2PA").then_some(0)
+}
+
+/// Clear the feature-flag bits of the metadata chunks that were removed.
+fn clear_vp8x_flags(webp: &mut WebP, removed_flags: u8) {
+    if removed_flags == 0 {
+        return;
+    }
+    let Some(chunk) = webp
+        .chunks_mut()
+        .iter_mut()
+        .find(|chunk| chunk.id() == VP8X)
+    else {
+        return;
+    };
+    let RiffContent::Data(data) = chunk.content() else {
+        return;
+    };
+    if data.is_empty() {
+        return;
+    }
+    let mut payload = data.to_vec();
+    payload[0] &= !removed_flags;
+    *chunk.content_mut() = RiffContent::Data(Bytes::from(payload));
+}
+
 /// Strip metadata chunks from a WebP, rewriting the RIFF size and VP8X flags.
+///
+/// # Errors
 ///
 /// A malformed container is refused rather than rebuilt: re-serialising from a
 /// partial chunk walk would silently truncate image data.
 pub fn strip_webp(data: &[u8], strip_all_metadata: bool) -> Result<(Vec<u8>, Vec<String>), String> {
-    let (chunks, notes) = webp_chunks(data);
-    if chunks.is_empty() && notes == vec!["not a WebP".to_string()] {
-        return Err("not WebP".to_string());
-    }
-    if !notes.is_empty() {
-        return Err(format!("malformed WebP: {}", notes.join("; ")));
+    let mut webp = parse(data).map_err(|note| match note.as_str() {
+        "not a WebP" => "not WebP".to_string(),
+        other => format!("malformed WebP: {other}"),
+    })?;
+    if let Some(note) = fidelity_note(data, &webp) {
+        return Err(format!("malformed WebP: {note}"));
     }
 
     let combined = ai_and_c2pa_markers();
     let mut actions: Vec<String> = Vec::new();
-    let mut kept: Vec<WebpChunk> = Vec::new();
     let mut removed_flags: u8 = 0;
-
-    for chunk in chunks {
-        let metadata_flag = METADATA_FLAGS
-            .iter()
-            .find(|(fourcc, _)| *fourcc == chunk.fourcc)
-            .map(|(_, flag)| *flag);
-        let mut drop = chunk.fourcc.to_ascii_uppercase() == *b"C2PA";
-        if metadata_flag.is_some() {
-            drop = strip_all_metadata || !contains_any(&chunk.payload, &combined).is_empty();
-        }
-        if drop {
-            actions.push(format!("drop WebP chunk {}", chunk_name(&chunk.fourcc)));
-            removed_flags |= metadata_flag.unwrap_or(0);
-        } else {
-            kept.push(chunk);
-        }
-    }
-
-    let mut body = WEBP_SIG.to_vec();
-    for chunk in kept {
-        let mut payload = chunk.payload;
-        if &chunk.fourcc == b"VP8X" && !payload.is_empty() && removed_flags != 0 {
-            payload[0] &= !removed_flags;
-        }
-        body.extend_from_slice(&chunk.fourcc);
-        body.extend_from_slice(&(payload.len() as u32).to_le_bytes());
-        let odd = payload.len() & 1;
-        body.extend_from_slice(&payload);
-        if odd == 1 {
-            body.extend_from_slice(&chunk.padding);
-        }
-    }
+    webp.chunks_mut().retain(
+        |chunk| match drop_flag(chunk, strip_all_metadata, &combined) {
+            Some(flag) => {
+                actions.push(format!("drop WebP chunk {}", chunk_name(&chunk.id())));
+                removed_flags |= flag;
+                false
+            }
+            None => true,
+        },
+    );
 
     if actions.is_empty() {
-        actions.push("no WebP metadata chunks removed (already clean or none matched)".to_string());
+        return Ok((
+            data.to_vec(),
+            vec!["no WebP metadata chunks removed (already clean or none matched)".to_string()],
+        ));
     }
-    let mut out = WEBP_RIFF.to_vec();
-    out.extend_from_slice(&(body.len() as u32).to_le_bytes());
-    out.extend_from_slice(&body);
-    Ok((out, actions))
+    clear_vp8x_flags(&mut webp, removed_flags);
+    Ok((webp.encoder().bytes().to_vec(), actions))
 }
 
 #[cfg(test)]
@@ -174,7 +220,7 @@ mod tests {
     }
 
     /// An extended (VP8X) WebP carrying the given chunks after the header.
-    fn webp_with(vp8x_flags: u8, chunks: &[(&[u8; 4], &[u8])]) -> Vec<u8> {
+    pub(super) fn webp_with(vp8x_flags: u8, chunks: &[(&[u8; 4], &[u8])]) -> Vec<u8> {
         let mut body = WEBP_SIG.to_vec();
         let mut vp8x = vec![vp8x_flags, 0, 0, 0];
         vp8x.extend_from_slice(&[0, 0, 0, 0, 0, 0]); // canvas size fields
@@ -194,6 +240,13 @@ mod tests {
         assert_eq!(webp_chunks(b"nope").1, vec!["not a WebP".to_string()]);
         assert_eq!(inspect_webp(b"nope").2, vec!["not a WebP".to_string()]);
         assert!(strip_webp(b"nope", true).is_err());
+    }
+
+    #[test]
+    fn parsing_and_re_encoding_is_byte_identical() {
+        let webp = webp_with(0x08, &[(b"EXIF", b"odd")]);
+        let parsed = parse(&webp).unwrap();
+        assert_eq!(parsed.encoder().bytes().to_vec(), webp);
     }
 
     #[test]
@@ -252,7 +305,7 @@ mod tests {
             actions,
             vec!["no WebP metadata chunks removed (already clean or none matched)".to_string()]
         );
-        assert!(cleaned.windows(20).any(|w| w == b"ordinary camera tags"));
+        assert_eq!(cleaned, webp, "a clean file comes back byte-identical");
     }
 
     #[test]
@@ -260,6 +313,6 @@ mod tests {
         let mut webp = webp_with(0, &[(b"EXIF", b"tags")]);
         webp.truncate(webp.len() - 4); // now the RIFF size lies
         let error = strip_webp(&webp, true).unwrap_err();
-        assert!(error.starts_with("malformed WebP: "));
+        assert!(error.starts_with("malformed WebP: "), "error was {error}");
     }
 }

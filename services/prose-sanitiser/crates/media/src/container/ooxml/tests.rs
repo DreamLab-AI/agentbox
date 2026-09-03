@@ -265,3 +265,184 @@ fn a_zip_bomb_is_refused_before_decompression() {
     assert!(error.contains("zip decompressed size exceeds cap"));
     assert_eq!(inspect_docx(&bomb).2, vec![budget_error()]);
 }
+
+// ---------------------------------------------------------------------------
+// Body fingerprints: rsids, tracked changes, comments, TotalTime
+// ---------------------------------------------------------------------------
+
+/// A DOCX shaped like one Word actually writes: editing-session ids on every
+/// paragraph and run, a tracked insertion and deletion, a comment with its
+/// anchors and parts, `TotalTime` in `app.xml`, and the relationships and
+/// content-type overrides that tie the comment parts into the package.
+fn docx_with_body_fingerprints() -> Vec<u8> {
+    zip_with(&[
+        (
+            "[Content_Types].xml",
+            br#"<Types><Override PartName="/word/document.xml" ContentType="doc"/><Override PartName="/word/comments.xml" ContentType="cmt"/><Override PartName="/docProps/app.xml" ContentType="app"/></Types>"#,
+            false,
+        ),
+        (
+            "_rels/.rels",
+            br#"<Relationships><Relationship Id="rId1" Target="word/document.xml"/></Relationships>"#,
+            false,
+        ),
+        (
+            "word/_rels/document.xml.rels",
+            br#"<Relationships><Relationship Id="rId1" Target="comments.xml"/><Relationship Id="rId2" Target="styles.xml"/></Relationships>"#,
+            false,
+        ),
+        (
+            "word/document.xml",
+            concat!(
+                r#"<w:document><w:body>"#,
+                r#"<w:p w:rsidR="00AA11" w:rsidRDefault="00AA11">"#,
+                r#"<w:commentRangeStart w:id="0"/>"#,
+                r#"<w:r w:rsidRPr="00BB22"><w:t>The hills are green.</w:t></w:r>"#,
+                r#"<w:commentRangeEnd w:id="0"/>"#,
+                r#"<w:ins w:id="1" w:author="Jo Bloggs" w:date="2026-09-01T09:00:00Z">"#,
+                r#"<w:r><w:t> Very green.</w:t></w:r></w:ins>"#,
+                r#"<w:del w:id="2" w:author="Jo Bloggs" w:date="2026-09-01T09:05:00Z">"#,
+                r#"<w:r><w:delText> Possibly too green.</w:delText></w:r></w:del>"#,
+                r#"</w:p></w:body></w:document>"#
+            )
+            .as_bytes(),
+            false,
+        ),
+        (
+            "word/comments.xml",
+            br#"<w:comments><w:comment w:id="0" w:author="Jo Bloggs"><w:p><w:r><w:t>Check this</w:t></w:r></w:p></w:comment></w:comments>"#,
+            false,
+        ),
+        (
+            "word/settings.xml",
+            br#"<w:settings><w:rsids><w:rsidRoot w:val="00AA11"/><w:rsid w:val="00BB22"/></w:rsids><w:zoom w:percent="100"/></w:settings>"#,
+            false,
+        ),
+        ("word/styles.xml", b"<w:styles/>", false),
+        (
+            "docProps/app.xml",
+            br#"<Properties><Application>Microsoft Office Word</Application><TotalTime>412</TotalTime><Company>Acme Ltd</Company><Pages>1</Pages></Properties>"#,
+            false,
+        ),
+    ])
+}
+
+#[test]
+fn docx_clean_removes_every_body_fingerprint() {
+    let docx = docx_with_body_fingerprints();
+    let (cleaned, actions) = clean_docx(&docx).unwrap();
+    let joined = actions.join("\n");
+
+    // Editing-session ids, in the body and in the settings table.
+    assert!(
+        actions
+            .iter()
+            .any(|a| a.contains("w:rsid editing-session attributes from word/document.xml")),
+        "actions were {joined}"
+    );
+    let document = String::from_utf8(part_of(&cleaned, "word/document.xml").unwrap()).unwrap();
+    assert!(!document.contains("rsid"));
+    let settings = String::from_utf8(part_of(&cleaned, "word/settings.xml").unwrap()).unwrap();
+    assert!(!settings.contains("rsid"));
+    assert!(settings.contains("w:zoom"), "the rest of settings survives");
+
+    // Tracked changes: the insertion's text stays, the deletion's goes, and
+    // neither author name survives.
+    assert!(actions
+        .iter()
+        .any(|a| a.contains("accept 1 tracked insertions")));
+    assert!(actions
+        .iter()
+        .any(|a| a.contains("accept 1 tracked deletions")));
+    assert!(document.contains("The hills are green."));
+    assert!(document.contains("Very green."));
+    assert!(!document.contains("Possibly too green."));
+    assert!(!document.contains("Jo Bloggs"));
+
+    // Comments: parts dropped, anchors removed, package references cleaned up.
+    assert!(actions.contains(&"drop part word/comments.xml".to_string()));
+    assert!(actions
+        .iter()
+        .any(|a| a.contains("comment and move anchors")));
+    assert!(!document.contains("comment"));
+    assert!(part_of(&cleaned, "word/comments.xml").is_none());
+    let types = String::from_utf8(part_of(&cleaned, "[Content_Types].xml").unwrap()).unwrap();
+    assert!(!types.contains("comments.xml"));
+    assert!(types.contains("/word/document.xml"));
+    let rels =
+        String::from_utf8(part_of(&cleaned, "word/_rels/document.xml.rels").unwrap()).unwrap();
+    assert!(!rels.contains("comments.xml"));
+    assert!(rels.contains("styles.xml"), "other relationships survive");
+
+    // Editing telemetry in app.xml.
+    assert!(actions.contains(&"scrub docProps/app.xml field TotalTime".to_string()));
+    assert!(actions.contains(&"scrub docProps/app.xml field Company".to_string()));
+    let app = String::from_utf8(part_of(&cleaned, "docProps/app.xml").unwrap()).unwrap();
+    assert!(!app.contains("412"));
+    assert!(!app.contains("Acme Ltd"));
+    assert!(app.contains("<Pages>1</Pages>"), "real properties survive");
+    assert!(
+        app.contains("Microsoft Office Word"),
+        "a non-AI application name is not provenance"
+    );
+}
+
+#[test]
+fn docx_clean_preserves_entry_order_and_compression_method() {
+    let docx = docx_with_body_fingerprints();
+    let before = read_entries(&docx).unwrap();
+    let (cleaned, _) = clean_docx(&docx).unwrap();
+    let after = read_entries(&cleaned).unwrap();
+
+    let dropped = "word/comments.xml";
+    let expected: Vec<&String> = before
+        .iter()
+        .map(|entry| &entry.name)
+        .filter(|name| name.as_str() != dropped)
+        .collect();
+    let actual: Vec<&String> = after.iter().map(|entry| &entry.name).collect();
+    assert_eq!(actual, expected, "untouched entries keep their order");
+
+    for entry in &after {
+        let source = before
+            .iter()
+            .find(|candidate| candidate.name == entry.name)
+            .expect("every kept entry came from the source");
+        assert_eq!(
+            entry.compression, source.compression,
+            "{} changed compression method",
+            entry.name
+        );
+    }
+}
+
+#[test]
+fn docx_clean_output_is_a_valid_zip_of_well_formed_xml() {
+    let (cleaned, _) = clean_docx(&docx_with_body_fingerprints()).unwrap();
+    for entry in read_entries(&cleaned).unwrap() {
+        if !entry.name.ends_with(".xml") && !entry.name.ends_with(".rels") {
+            continue;
+        }
+        let mut reader = quick_xml::Reader::from_reader(entry.data.as_slice());
+        reader.config_mut().check_end_names = true;
+        loop {
+            match reader.read_event() {
+                Ok(quick_xml::events::Event::Eof) => break,
+                Ok(_) => {}
+                Err(error) => panic!("{} is not well-formed XML: {error}", entry.name),
+            }
+        }
+    }
+}
+
+#[test]
+fn docx_clean_is_idempotent() {
+    let (once, _) = clean_docx(&docx_with_body_fingerprints()).unwrap();
+    let (twice, actions) = clean_docx(&once).unwrap();
+    assert_eq!(
+        actions,
+        vec!["no DOCX metadata parts removed".to_string()],
+        "a cleaned package has nothing left to clean"
+    );
+    assert_eq!(once, twice);
+}
