@@ -64,27 +64,60 @@ pub const NEGATIVE_PARALLELISM_RATE_2026: f64 = 2.36;
 
 /// House budget for tricolons per 10,000 words. No published rate exists.
 ///
-/// Measured 2026-09-03 over 1,252 human and 1,207 machine documents from RAID
-/// and MAGE: at every threshold tried, the tricolon rate flagged *more* human
-/// documents than machine ones (39.2 per cent against 30.2 per cent at a budget
-/// of 6, 10.2 against 10.6 at 40). **It does not discriminate.** It is kept as a
-/// house-style budget, set where its false-positive cost is tolerable, and it
-/// must not be read as an authorship signal.
+/// **This is not a tell, and the measurement is unambiguous.** Swept 2026-09-03
+/// by the `ps-eval` harness at the shipped budget of 40 per 10,000 words, the
+/// tricolon rate scores 11.6 per cent TPR against a **12.4 per cent** false
+/// positive rate on RAID: it fires *more often on human text than on machine
+/// text*. MAGE agrees in direction (8.2 against 6.2). A measure whose
+/// false-positive rate exceeds its true-positive rate is not a weak signal; it
+/// is not a signal.
+///
+/// It is kept only as a house-style budget — three-item lists genuinely do pile
+/// up in slack prose — and it must never be presented as evidence of
+/// authorship.
 pub const TRICOLON_BUDGET: f64 = 40.0;
 /// Below this coefficient of variation, sentence lengths read as uniform.
 ///
-/// Measured 2026-09-03 over 1,252 human and 1,207 machine documents from RAID
-/// and MAGE. The floor was 0.35 when first written, which flagged 36.7 per cent
-/// of human documents for 48.1 per cent of machine ones: far too loose to put
-/// in front of a writer. At 0.20 it flags 6.9 per cent of human documents and
-/// 14.8 per cent of machine ones, which is a real if modest separation at a
-/// tolerable cost. Human median CV is 0.39, machine 0.35.
+/// **This is a house budget, not a one-per-cent operating point, and the
+/// difference matters.** Swept 2026-09-03 by the `ps-eval` harness at a fixed
+/// 1 per cent false-positive budget, the floor lands in two different places
+/// depending on the corpus: **0.100 on RAID** (9.4 per cent TPR) and **0.270 on
+/// MAGE** (4.6 per cent TPR). Medians differ too — 0.34/0.30 on RAID against
+/// 0.53/0.47 on MAGE.
+///
+/// The shipped 0.20 sits between them and satisfies neither budget: it costs
+/// roughly **7 per cent** false positives, seven times over. It is kept because
+/// this is a writing aid rather than a detector, and 0.20 catches about 15 per
+/// cent of machine text where 0.10 catches 9 — but a reader comparing it to the
+/// 1 per cent figures elsewhere in the documentation would be misled, so the
+/// operating point is stated rather than implied.
+///
+/// The honest finding is that **the floor is corpus-dependent** and no single
+/// number is right for both. It was 0.35 originally, which flagged 36.7 per
+/// cent of human documents; that was simply wrong rather than a trade-off.
 pub const SENTENCE_CV_FLOOR: f64 = 0.20;
 /// Below this coefficient of variation, paragraph lengths read as uniform.
+///
+/// **Unvalidated: this measure did not fire once on either evaluation corpus.**
+/// Swept 2026-09-03, the median paragraph-length CV is 0.000 for both classes
+/// on both corpora, so TPR and FPR are both 0.00 per cent. The cause is the
+/// corpora rather than the threshold: most documents long enough to clear the
+/// 250-word guard are still one or two paragraphs, and a CV over one paragraph
+/// is zero by definition.
+///
+/// [`MIN_PARAGRAPHS_FOR_UNIFORMITY`] keeps it from reporting nonsense on those,
+/// which is why it is silent rather than wrong. But silent is not the same as
+/// correct, and nothing here has been shown to work on the long-form prose it
+/// was written for. Treat it as unproven until it is measured on documents that
+/// actually have paragraphs.
 pub const PARAGRAPH_CV_FLOOR: f64 = 0.22;
 /// Fewer sentences than this and the variance figures mean nothing.
 pub const MIN_SENTENCES_FOR_VARIANCE: usize = 8;
 /// Fewer paragraphs than this and the uniformity figure means nothing.
+///
+/// A coefficient of variation over one or two samples is zero or noise. This
+/// guard is why [`PARAGRAPH_CV_FLOOR`] is silent on short web text rather than
+/// flagging all of it — but see that constant: silence is not validation.
 pub const MIN_PARAGRAPHS_FOR_UNIFORMITY: usize = 5;
 /// Fewer words than this and no rate is stable enough to report.
 pub const MIN_WORDS_FOR_RATES: usize = 250;
@@ -105,7 +138,7 @@ pub const STRUCTURAL_RULES: &[RuleMeta] = &[
     RuleMeta {
         id: "structural-oxford-comma-density",
         name: "Oxford-comma density above the 2026 population rate",
-        description: "Serial commas per 10,000 words, against the Pew Common Crawl tracking: 34.04 in January 2023, 55.51 in January 2026. The Oxford comma is correct English; only the rate carries signal.",
+        description: "Serial commas per 10,000 words, against the Pew Common Crawl tracking: 34.04 in January 2023, 55.51 in January 2026. The best single signal in the crate on RAID (12.6 per cent TPR at 1 per cent FPR), but the direction reverses on MAGE, where human text carries more serial commas than machine text. The Oxford comma is correct English; only the rate carries signal, and which way it points depends on the corpus.",
         severity: Severity::Low,
         confidence: ConfidenceTier::HighConfidenceStylistic,
         since: "2026-09-03",
@@ -127,7 +160,7 @@ pub const STRUCTURAL_RULES: &[RuleMeta] = &[
     RuleMeta {
         id: "structural-tricolon-density",
         name: "Tricolon (list-of-three) density above the house budget",
-        description: "Three-item parallel lists per 10,000 words. A widely observed practitioner heuristic with no measurement study behind it. Tested here against RAID and MAGE, it flagged more human documents than machine ones at every threshold, so it is a house-style budget and not an authorship signal.",
+        description: "Three-item parallel lists per 10,000 words. Measured at 11.6 per cent TPR against a 12.4 per cent false-positive rate on RAID, so it fires more often on human text than on machine text. A house-style budget only; it is not an authorship signal.",
         severity: Severity::Low,
         confidence: ConfidenceTier::LowConfidenceJudgement,
         since: "2026-09-03",
@@ -138,7 +171,7 @@ pub const STRUCTURAL_RULES: &[RuleMeta] = &[
     RuleMeta {
         id: "structural-sentence-variance",
         name: "Uniform sentence length (low burstiness)",
-        description: "Coefficient of variation of sentence length. Well grounded as a detector input, but with no isolated peer-reviewed effect size, so it is reported as a judgement call. Measured here at 6.9 per cent of human documents against 14.8 per cent of machine ones.",
+        description: "Coefficient of variation of sentence length. Well grounded as a detector input but with no isolated peer-reviewed effect size. The shipped floor of 0.20 is a house budget costing roughly 7 per cent false positives, not a 1 per cent operating point; at a 1 per cent budget the floor is corpus-dependent, landing at 0.10 on RAID and 0.27 on MAGE.",
         severity: Severity::Low,
         confidence: ConfidenceTier::LowConfidenceJudgement,
         since: "2026-09-03",
@@ -149,7 +182,7 @@ pub const STRUCTURAL_RULES: &[RuleMeta] = &[
     RuleMeta {
         id: "structural-paragraph-uniformity",
         name: "Uniform paragraph length",
-        description: "Coefficient of variation of paragraph length. A practitioner heuristic with no measurement study behind it.",
+        description: "Coefficient of variation of paragraph length. A practitioner heuristic with no measurement study behind it, and unvalidated here: it did not fire once on either evaluation corpus, because most documents long enough to measure are still one or two paragraphs.",
         severity: Severity::Low,
         confidence: ConfidenceTier::LowConfidenceJudgement,
         since: "2026-09-03",

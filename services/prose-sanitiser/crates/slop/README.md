@@ -103,8 +103,15 @@ The bottom three are widely observed practitioner heuristics with no measurement
 study behind them, and are reported at the tier the evidence supports rather
 than the tier the intuition suggests.
 
+**The Pew figures are population statistics, not tuned thresholds**, and the
+crate uses them as house-style ceilings rather than as detector operating
+points. See *Measured performance* below for what each actually costs: two of
+these six measures do not work, and one works on one corpus and inverts on the
+other.
+
 Rates are suppressed entirely below 250 words, because a rate over a paragraph
-is noise. The serial-comma detector requires two commas in one clause, not one:
+is noise. That guard excludes most of both evaluation corpora, which is the
+first thing to know about any number measured on them. The serial-comma detector requires two commas in one clause, not one:
 counting every `, and` would score a comma splice as a list and inflate the rate
 on any prose that punctuates normally.
 
@@ -320,20 +327,60 @@ case for measuring composition rather than counts.
 Over 1,252 human and 1,207 machine documents long enough for a rate to mean
 anything:
 
-| Measure | Threshold | Human | Machine | Ratio |
-|---|---|---|---|---|
-| Oxford-comma density | 55.51 per 10k (Pew, Jan 2026) | 5.99% | 19.22% | **3.2** |
-| Em-dash density | 11.19 per 10k (Pew, Jan 2026) | 1.76% | 3.40% | 1.9 |
-| Sentence-length CV | < 0.20 | 6.87% | 14.75% | 2.1 |
-| Tricolon density | 40 per 10k | 10.22% | 10.60% | **1.0** |
+Swept at a fixed 1 per cent false-positive budget, the same discipline as the
+slop numbers above. **The 250-word guard excludes most of both corpora** — 2,329
+of 4,000 RAID documents and 2,212 of 3,000 MAGE documents — so effective n is
+816/855 on RAID and 436/352 on MAGE, and the MAGE figures are thin.
 
-The Oxford-comma rate at the published Pew threshold is the single best
-discriminator in the crate, which is a mildly embarrassing result for a rule
-about punctuation nobody objects to. The tricolon measure does **not** separate
-the two classes at any threshold tried; it is retained as a house-style budget
-and is documented in the rule table as not being an authorship signal. The
-sentence-length floor was retuned from 0.35 to 0.20 on this data, which cut its
-human firing rate from 36.7 per cent to 6.9 per cent.
+| Measure | Corpus | Threshold at 1% FPR | TPR | Realised FPR |
+|---|---|---|---|---|
+| Oxford-comma density | RAID | 77.52 per 10k | **12.6%** | 0.98% |
+| Sentence-length CV | RAID | < 0.100 | 9.4% | 0.86% |
+| Sentence-length CV | MAGE | < 0.270 | 4.6% | 0.92% |
+| Tricolon density | RAID | 40 per 10k (shipped) | 11.6% | **12.4%** |
+| Paragraph-length CV | both | — | 0.0% | 0.0% |
+
+Four things that table says, none of them flattering:
+
+**The Oxford comma is the best single signal in the crate on RAID, and the
+direction reverses on MAGE.** There, the median serial-comma rate is 13.12 for
+human documents and 0.00 for machine ones — humans use *more* of them — and TPR
+collapses to 2.0 per cent. So "best discriminator" is a statement about one
+corpus with a one-line counter-example, not a property of the measure.
+
+**The tricolon rate fires more often on human text than on machine text**: 11.6
+per cent TPR against 12.4 per cent FPR on RAID, and the same direction on MAGE.
+A measure whose false-positive rate exceeds its true-positive rate is not a weak
+tell, it is not a tell. It is kept as a house-style budget and the rule table
+says so.
+
+**The sentence-length floor cannot be one number.** At a 1 per cent budget it
+wants 0.100 on RAID and 0.270 on MAGE. The shipped 0.20 sits between them and
+costs roughly **7 per cent** false positives — seven times the budget the other
+figures on this page are quoted at. It is kept because this is a writing aid and
+0.20 catches about 15 per cent of machine text where 0.10 catches 9, but it is a
+house budget, not a 1 per cent operating point, and mixing the two would be the
+kind of comparison this section exists to prevent.
+
+**Paragraph-length uniformity does not work.** Median CV is 0.000 for both
+classes on both corpora, so it never fires: most documents long enough to clear
+the word guard are still one or two paragraphs. It is unvalidated rather than
+disproven — nothing here tests it on the long-form prose it was written for —
+and the rule table now says that.
+
+### The Pew rates are not thresholds
+
+The em-dash, Oxford-comma and negative-parallelism defaults come from Pew's
+population statistics, and using a population statistic as a detector threshold
+buys a false-positive rate three to twelve times a 1 per cent budget: on RAID,
+em-dash 2.70 per cent, Oxford comma 3.31 per cent, negative parallelism 3.06 per
+cent, tricolon 12.38 per cent. They are kept as defaults because they are
+*sourced* and a house-style ceiling is the honest framing for them, but they are
+not tuned operating points and should not be read as any.
+
+(Em-dash rate is 0.000 for both classes on MAGE at every percentile — em-dashes
+are effectively absent from that corpus, so the measure is untestable there
+rather than failing.)
 
 ### Reproducing it
 
