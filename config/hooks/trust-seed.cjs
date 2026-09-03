@@ -28,7 +28,7 @@ const CONFIG = path.join(HOME, '.claude.json');
 const SKIP = new Set(['node_modules', 'target', '.tmp', '.cache', '.venv', 'venv', '.git', 'dist', 'build']);
 
 function parseArgs(argv) {
-  const out = { depth: 3, dryRun: false, extra: [] };
+  const out = { depth: 5, dryRun: false, extra: [] };
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
     if (a === '--depth') { out.depth = Number(argv[i + 1]) || 3; i += 1; }
@@ -45,6 +45,15 @@ function isGitRoot(dir) {
   } catch { return false; }
 }
 
+// A "project" for the trust dialog is the session's cwd, not the git root, so
+// any directory a nested worker may start in must be trusted too: git roots
+// and worktrees, plus crate / package / python-project directories under them.
+const PROJECT_MARKERS = ['Cargo.toml', 'package.json', 'pyproject.toml', 'flake.nix', 'justfile'];
+function isProjectDir(dir) {
+  if (isGitRoot(dir)) return true;
+  return PROJECT_MARKERS.some((m) => { try { return fs.statSync(path.join(dir, m)).isFile(); } catch { return false; } });
+}
+
 function findRepos(root, depth, acc) {
   if (depth < 0) return acc;
   let entries;
@@ -52,7 +61,7 @@ function findRepos(root, depth, acc) {
   for (const e of entries) {
     if (!e.isDirectory() || SKIP.has(e.name) || e.name.startsWith('.')) continue;
     const p = path.join(root, e.name);
-    if (isGitRoot(p)) acc.push(p);
+    if (isProjectDir(p)) acc.push(p);
     findRepos(p, depth - 1, acc);
   }
   return acc;
