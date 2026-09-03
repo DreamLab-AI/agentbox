@@ -45,6 +45,11 @@ base64 = "0.22"
 clap = { version = "4", features = ["derive"] }
 flate2 = "1"
 libc = "0.2"
+# CommonMark event parser, MIT. Used by `uk` to locate code spans, code blocks
+# and link destinations exactly as a renderer would, rather than by regex.
+# `default-features = false` drops the `html` renderer and the `getopts` binary
+# dependency; only the parser is wanted.
+pulldown-cmark = { version = "0.13", default-features = false }
 # 0.41 is the first release fixing RUSTSEC-2026-0194 (quadratic duplicate-attribute
 # check) and RUSTSEC-2026-0195 (unbounded namespace allocation), both reachable
 # from hostile OOXML and HTML input.

@@ -9,9 +9,9 @@
 //!
 //! | Region | Why |
 //! |---|---|
-//! | Fenced code blocks, inline code | `color`, `initialize` and `--no-color` are identifiers and flags. Renaming one breaks the program. |
+//! | Code spans and code blocks, fenced *and* indented | `color`, `initialize` and `--no-color` are identifiers and flags. Renaming one breaks the program. |
 //! | YAML `---` and TOML `+++` front matter | Keys are part of a schema, not prose. |
-//! | URLs, `mailto:` targets, e-mail addresses | A path is a path. |
+//! | Link destinations, URLs, `mailto:` targets, e-mail addresses, file paths | A path is a path, whether or not it carries a scheme. |
 //! | Quoted text and blockquote lines | Changing a quotation misrepresents its author. |
 //! | Capitalised words away from a sentence start | The cheap, effective proper-noun test. |
 //! | Gazetteer names | *World Health Organization* is spelled that way by charter. |
@@ -21,17 +21,43 @@
 //! [`Config`](prose_sanitiser_core::Config), applied by the checker, so every
 //! crate in the workspace makes the same call.
 //!
-//! # What is deliberately not excluded
+//! # Code and links come from a CommonMark parse
 //!
-//! Indent-style code blocks (four leading spaces) are left alone: in ordinary
-//! prose documents that pattern is far more often a wrapped line or a nested
-//! list than code, and excluding it would silence real findings. Single quotes
-//! are not treated as quotation marks either, because in English they are
-//! apostrophes far more often than they are quotes.
+//! Code spans, code blocks and link destinations are located by
+//! [`pulldown_cmark`], not by regex. That was a correctness fix rather than a
+//! tidy-up. The regex pass this replaced paired backticks by run length within
+//! a line, which is close enough for inline code but says nothing about
+//! four-space indented blocks, and it recognised a link only by its scheme, so
+//! `[color](relative/path/color)` had its destination rewritten. A parser knows
+//! the difference between an indented code block and a wrapped list item —
+//! which is why indented code can now be excluded safely, where a naive
+//! four-space rule would have silenced half the findings in any document with a
+//! nested list — and it knows a destination is a destination however it is
+//! spelled.
+//!
+//! Link *text* is still checked. It is prose the author wrote and a reader
+//! reads; only the target is off limits.
+//!
+//! # Quotation marks
+//!
+//! Curly quotes are directional, so they pair directly: `“ ”`, `« »` and
+//! `‘ ’`. Straight quotes carry no direction and are paired in order within one
+//! paragraph, so an unbalanced quote costs at most a paragraph rather than the
+//! rest of the document.
+//!
+//! Straight *single* quotes are the hard case, because in English an ASCII
+//! apostrophe is far more often a contraction or a possessive than a quotation
+//! mark. They are classified by what surrounds them: a `'` with a letter after
+//! it and none before it can open a quotation, and a `'` with a letter before
+//! it and none after it can close one. That leaves `don't` and `dogs'` alone —
+//! neither position qualifies — while `'The color is red.'` is protected. Only
+//! a matched opener/closer pair inside one paragraph excludes anything.
 
+use std::ops::Range;
 use std::sync::OnceLock;
 
 use prose_sanitiser_core::Span;
+use pulldown_cmark::{Event, Options, Parser, Tag, TagEnd};
 use regex::Regex;
 
 use crate::options::UkOptions;
@@ -52,13 +78,16 @@ impl Exclusions {
         if options.exclude_front_matter {
             raw.extend(front_matter(document));
         }
-        let fences = code_fences(document);
-        if options.exclude_code {
-            raw.extend(fences.iter().copied());
-            raw.extend(inline_code(document, &fences));
+        if options.exclude_code || options.exclude_links {
+            raw.extend(markdown(
+                document,
+                options.exclude_code,
+                options.exclude_links,
+            ));
         }
         if options.exclude_links {
             raw.extend(links(document));
+            raw.extend(paths(document));
         }
         if options.exclude_quotations {
             raw.extend(quotations(document));
@@ -129,100 +158,90 @@ fn front_matter(document: &str) -> Option<(usize, usize)> {
     None
 }
 
-/// Fenced code blocks, from the opening fence line to the closing fence line.
-fn code_fences(document: &str) -> Vec<(usize, usize)> {
-    let mut spans = Vec::new();
-    let mut open: Option<(usize, char, usize)> = None;
-    let mut offset = 0usize;
+/// Code and link-destination spans, taken from a CommonMark parse.
+///
+/// `code` and `links` are the caller's switches, honoured independently so a
+/// caller that has already stripped one kind of structure is not forced to take
+/// the other as well.
+///
+/// The link handling is the part worth reading. `pulldown_cmark`'s offset
+/// iterator reports the byte range of the whole link, `[text](destination)`,
+/// and the range of each inner text run. Excluding the link range *minus* its
+/// text runs leaves exactly the syntax and the destination: `[`, `](…)`, or the
+/// `][ref]` of a reference link, or the whole of an autolink. That is target
+/// independent of scheme, which is the property a regex could not have.
+fn markdown(document: &str, code: bool, links: bool) -> Vec<(usize, usize)> {
+    /// One open link or image, and the text runs seen inside it so far.
+    struct OpenLink {
+        range: Range<usize>,
+        text: Vec<(usize, usize)>,
+    }
 
-    for line in document.split_inclusive('\n') {
-        let trimmed = line.trim_start();
-        let indent = line.len() - trimmed.len();
-        let fence = fence_marker(trimmed);
+    let mut spans: Vec<(usize, usize)> = Vec::new();
+    let mut open: Vec<OpenLink> = Vec::new();
 
-        match (&open, fence) {
-            (None, Some((marker, width))) => open = Some((offset, marker, width)),
-            (Some((start, marker, width)), Some((closing, closing_width)))
-                if closing == *marker && closing_width >= *width =>
-            {
-                spans.push((*start, offset + line.trim_end().len()));
-                open = None;
+    // Tables are enabled so a pipe row parses as a table rather than as a
+    // paragraph of stray punctuation; nothing else changes what is excluded.
+    let parser = Parser::new_ext(document, Options::ENABLE_TABLES).into_offset_iter();
+
+    for (event, range) in parser {
+        match event {
+            Event::Start(Tag::Link { .. } | Tag::Image { .. }) if links => open.push(OpenLink {
+                range,
+                text: Vec::new(),
+            }),
+            Event::End(TagEnd::Link | TagEnd::Image) if links => {
+                if let Some(link) = open.pop() {
+                    spans.extend(outside(&link.range, &link.text));
+                    // An image inside a link is itself a text run of the outer
+                    // link, so its whole range counts as covered.
+                    if let Some(parent) = open.last_mut() {
+                        parent.text.push((link.range.start, link.range.end));
+                    }
+                }
+            }
+            Event::Code(_) if code => spans.push((range.start, range.end)),
+            Event::Start(Tag::CodeBlock(_)) if code => spans.push((range.start, range.end)),
+            Event::Text(_) | Event::Code(_) => {
+                if let Some(link) = open.last_mut() {
+                    link.text.push((range.start, range.end));
+                }
             }
             _ => {}
         }
-        let _ = indent;
-        offset += line.len();
     }
-    // An unclosed fence swallows the rest of the document, which is what a
-    // Markdown renderer does too.
-    if let Some((start, _, _)) = open {
-        spans.push((start, document.len()));
-    }
-    spans
-}
 
-/// The fence character and run length, if `line` opens or closes a fence.
-fn fence_marker(line: &str) -> Option<(char, usize)> {
-    let marker = line.chars().next().filter(|c| *c == '`' || *c == '~')?;
-    let width = line.chars().take_while(|c| *c == marker).count();
-    (width >= 3).then_some((marker, width))
-}
-
-/// Inline code spans, paired by backtick-run length within a single line.
-///
-/// Confining a span to one line stops a stray backtick from swallowing the rest
-/// of the document, which matters because a document containing an odd number
-/// of backticks is common and a silently disabled linter is not acceptable.
-fn inline_code(document: &str, fences: &[(usize, usize)]) -> Vec<(usize, usize)> {
-    let mut spans = Vec::new();
-    let mut offset = 0usize;
-
-    for line in document.split_inclusive('\n') {
-        let line_start = offset;
-        offset += line.len();
-        if fences
-            .iter()
-            .any(|(start, end)| line_start >= *start && line_start < *end)
-        {
-            continue;
-        }
-        let runs = backtick_runs(line);
-        let mut index = 0usize;
-        while index < runs.len() {
-            let (start, width) = runs[index];
-            match runs[index + 1..].iter().position(|(_, w)| *w == width) {
-                Some(relative) => {
-                    let (close_start, close_width) = runs[index + 1 + relative];
-                    spans.push((line_start + start, line_start + close_start + close_width));
-                    index += relative + 2;
-                }
-                None => index += 1,
-            }
-        }
+    // An unclosed link tag cannot happen in a well-formed parse, but a stack
+    // left non-empty must not silently drop its destinations.
+    for link in open {
+        spans.extend(outside(&link.range, &link.text));
     }
     spans
 }
 
-/// Byte offset and length of every run of backticks in `line`.
-fn backtick_runs(line: &str) -> Vec<(usize, usize)> {
-    let bytes = line.as_bytes();
-    let mut runs = Vec::new();
-    let mut index = 0usize;
-    while index < bytes.len() {
-        if bytes[index] == b'`' {
-            let start = index;
-            while index < bytes.len() && bytes[index] == b'`' {
-                index += 1;
-            }
-            runs.push((start, index - start));
-        } else {
-            index += 1;
+/// The parts of `range` that `covered` does not account for.
+fn outside(range: &Range<usize>, covered: &[(usize, usize)]) -> Vec<(usize, usize)> {
+    let mut gaps = Vec::new();
+    let mut cursor = range.start;
+    let mut sorted: Vec<(usize, usize)> = covered.to_vec();
+    sorted.sort_unstable();
+    for (start, end) in sorted {
+        if start > cursor {
+            gaps.push((cursor, start));
         }
+        cursor = cursor.max(end);
     }
-    runs
+    if cursor < range.end {
+        gaps.push((cursor, range.end));
+    }
+    gaps
 }
 
 /// URLs, `mailto:` targets and bare e-mail addresses.
+///
+/// Kept alongside the CommonMark pass rather than replaced by it: a bare URL in
+/// running text is not a Markdown link, and neither is anything in a document
+/// that is not Markdown at all.
 fn links(document: &str) -> Vec<(usize, usize)> {
     static RE: OnceLock<Regex> = OnceLock::new();
     let re = RE.get_or_init(|| {
@@ -238,41 +257,169 @@ fn links(document: &str) -> Vec<(usize, usize)> {
         .collect()
 }
 
+/// Bare file paths: `./docs/color/theater.md`, `/etc/default/color`, `src/x.rs`.
+///
+/// Whitespace-delimited tokens are tested one at a time rather than matched by
+/// one large pattern, because the test is a shape rather than a syntax and
+/// reads far better written out. See [`is_path_like`] for what the shape is and
+/// which near misses it deliberately lets through.
+fn paths(document: &str) -> Vec<(usize, usize)> {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    let re = RE.get_or_init(|| Regex::new(r"\S+").expect("the token pattern is a constant"));
+    re.find_iter(document)
+        .filter_map(|hit| {
+            // Opening brackets are trimmed from the front and sentence
+            // punctuation from the end. A leading dot is left alone, because
+            // `./docs` starts with one and losing it would lose the strongest
+            // signal the token has.
+            let token = hit.as_str();
+            let lead = token.len() - token.trim_start_matches(['(', '[', '{', '<', '"', '\'']).len();
+            let trimmed = token[lead..].trim_end_matches([
+                '.', ',', ';', ':', '!', '?', ')', ']', '}', '>', '"', '\'',
+            ]);
+            is_path_like(trimmed)
+                .then(|| (hit.start() + lead, hit.start() + lead + trimmed.len()))
+        })
+        .collect()
+}
+
+/// Whether `token` reads as a filesystem path rather than as prose.
+///
+/// A path either says so at the front — `./`, `../`, `~/` or a leading `/` —
+/// or ends in a file extension after at least one slash. Requiring one of those
+/// two is what keeps `color/center` and `and/or` checked: a slash alone is
+/// punctuation in English, and treating every slashed pair as a path would
+/// silence a real class of finding to catch a rare one.
+fn is_path_like(token: &str) -> bool {
+    if !token.contains('/') || token.contains("://") {
+        return false;
+    }
+    if token.starts_with("./")
+        || token.starts_with("../")
+        || token.starts_with("~/")
+        || token.starts_with('/')
+    {
+        return true;
+    }
+    let last = token.rsplit('/').next().unwrap_or_default();
+    match last.rsplit_once('.') {
+        Some((stem, extension)) => {
+            !stem.is_empty()
+                && (1..=8).contains(&extension.len())
+                && extension.chars().all(|c| c.is_ascii_alphanumeric())
+        }
+        None => false,
+    }
+}
+
 /// Quoted regions: curly pairs, straight pairs, and blockquote lines.
 fn quotations(document: &str) -> Vec<(usize, usize)> {
     let mut spans = blockquote_lines(document);
+    spans.extend(curly_pairs(document, '\u{201C}', '\u{201D}'));
+    spans.extend(curly_pairs(document, '\u{00AB}', '\u{00BB}'));
+    spans.extend(curly_pairs(document, '\u{2018}', '\u{2019}'));
+    spans.extend(straight_pairs(document));
+    spans
+}
 
-    // Curly quotes are unambiguous, so pair them directly.
-    let mut open: Option<usize> = None;
-    for (index, character) in document.char_indices() {
-        match character {
-            '\u{201C}' | '\u{00AB}' => open = Some(index),
-            '\u{201D}' | '\u{00BB}' => {
-                if let Some(start) = open.take() {
-                    spans.push((start, index + character.len_utf8()));
-                }
-            }
-            _ => {}
-        }
-    }
-
-    // Straight quotes carry no direction, so pair them in order and only within
-    // one paragraph: an unbalanced quote then costs at most a paragraph.
+/// Directional quote pairs, matched open-to-close within one paragraph.
+///
+/// The paragraph bound matters most for `‘ ’`, because U+2019 is also the
+/// typographic apostrophe: without it, one apostrophe after an unclosed opening
+/// quote would swallow whatever followed. Pairing only after an opener is what
+/// keeps *Hart's* — an apostrophe with no opener in sight — from excluding
+/// anything at all.
+fn curly_pairs(document: &str, open_mark: char, close_mark: char) -> Vec<(usize, usize)> {
+    let mut spans = Vec::new();
     let mut paragraph_start = 0usize;
     for paragraph in document.split_inclusive("\n\n") {
-        let mut pending: Option<usize> = None;
+        let mut open: Option<usize> = None;
         for (index, character) in paragraph.char_indices() {
-            if character != '"' {
-                continue;
-            }
-            match pending.take() {
-                Some(start) => spans.push((paragraph_start + start, paragraph_start + index + 1)),
-                None => pending = Some(index),
+            if character == open_mark && open.is_none() {
+                open = Some(index);
+            } else if character == close_mark {
+                if let Some(start) = open.take() {
+                    spans.push((
+                        paragraph_start + start,
+                        paragraph_start + index + character.len_utf8(),
+                    ));
+                }
             }
         }
         paragraph_start += paragraph.len();
     }
     spans
+}
+
+/// Straight quote pairs, `"` and `'`, matched within one paragraph.
+///
+/// Double quotes pair in order: they carry no direction, so the first opens and
+/// the second closes. Single quotes are filtered first by
+/// [`opens_single`] and [`closes_single`], because most ASCII apostrophes in
+/// English prose are not quotation marks at all.
+fn straight_pairs(document: &str) -> Vec<(usize, usize)> {
+    let mut spans = Vec::new();
+    let mut paragraph_start = 0usize;
+
+    for paragraph in document.split_inclusive("\n\n") {
+        let mut double: Option<usize> = None;
+        let mut single: Option<usize> = None;
+
+        for (index, character) in paragraph.char_indices() {
+            match character {
+                '"' => match double.take() {
+                    Some(start) => {
+                        spans.push((paragraph_start + start, paragraph_start + index + 1))
+                    }
+                    None => double = Some(index),
+                },
+                '\'' => {
+                    if single.is_some() && closes_single(paragraph, index) {
+                        let start = single.take().expect("checked by the guard above");
+                        spans.push((paragraph_start + start, paragraph_start + index + 1));
+                    } else if single.is_none() && opens_single(paragraph, index) {
+                        single = Some(index);
+                    }
+                }
+                _ => {}
+            }
+        }
+        paragraph_start += paragraph.len();
+    }
+    spans
+}
+
+/// Whether the `'` at `index` can open a quotation: a letter after, none before.
+fn opens_single(text: &str, index: usize) -> bool {
+    !preceded_by_alphanumeric(text, index) && followed_by_alphanumeric(text, index)
+}
+
+/// Whether the `'` at `index` can close one: a letter before, none after.
+///
+/// Terminal punctuation counts as "before", because a quotation that ends in a
+/// full stop puts it inside the quote: `'The color is red.'`.
+fn closes_single(text: &str, index: usize) -> bool {
+    let before = text[..index]
+        .chars()
+        .next_back()
+        .is_some_and(|c| c.is_alphanumeric() || ".,!?;:".contains(c));
+    before && !followed_by_alphanumeric(text, index)
+}
+
+/// Whether the character before `index` is alphanumeric.
+fn preceded_by_alphanumeric(text: &str, index: usize) -> bool {
+    text[..index]
+        .chars()
+        .next_back()
+        .is_some_and(char::is_alphanumeric)
+}
+
+/// Whether the character after the one at `index` is alphanumeric.
+fn followed_by_alphanumeric(text: &str, index: usize) -> bool {
+    text[index..]
+        .chars()
+        .nth(1)
+        .is_some_and(char::is_alphanumeric)
 }
 
 /// Whole lines that begin with a Markdown blockquote marker.

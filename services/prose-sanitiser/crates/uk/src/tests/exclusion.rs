@@ -1,9 +1,33 @@
 //! Span exclusion: the regions no rule may look at.
 
-use prose_sanitiser_core::{Check, Config, Span};
+use prose_sanitiser_core::{Check, Config, Fix, Span};
 
 use super::{check, check_with, matches};
 use crate::{UkEnglish, UkOptions};
+
+/// The text `--write` would leave behind: every fix the stylistic tier allows.
+///
+/// This is the assertion Codex asked for and the crate did not have. Detection
+/// tests prove a finding was not raised; only a fix-level test proves the bytes
+/// survive, and the two can disagree — a rule can raise nothing while a
+/// neighbouring rule's replacement still lands inside a protected span.
+fn rewritten(document: &str) -> String {
+    let checker = UkEnglish::new();
+    let config = Config::new().with_write(true);
+    checker
+        .fix_document(document, &config)
+        .apply(document)
+        .expect("a patch built from this document applies to it")
+}
+
+/// Assert that `document` is returned byte for byte by a `--write` pass.
+fn unchanged_under_write(document: &str) {
+    assert_eq!(
+        rewritten(document),
+        document,
+        "a --write pass rewrote a protected span"
+    );
+}
 
 #[test]
 fn fenced_code_blocks_are_skipped() {
@@ -159,4 +183,92 @@ fn exclusions_are_merged_and_ordered() {
     }
     let colour = document.rfind("color").unwrap();
     assert!(exclusions.blocks(Span::new(colour, colour + 5)));
+}
+
+// ---- the spans Codex found unprotected ------------------------------------
+//
+// Every case below produced a `us-spelling` finding before 2026-09-03, and
+// `--write` would have applied it: to someone else's words, to code, or to a
+// link target. Each is asserted twice, once for detection and once for the
+// bytes, because those are different guarantees.
+
+#[test]
+fn single_quotation_marks_protect_their_contents() {
+    for document in [
+        "He said 'The color is red.' and sat down.",
+        "He said \u{2018}The color is red.\u{2019} and sat down.",
+    ] {
+        assert!(check(document).is_empty(), "fired on {document:?}");
+        unchanged_under_write(document);
+    }
+}
+
+#[test]
+fn an_apostrophe_is_not_a_quotation_mark() {
+    // The reason straight singles were skipped entirely before. A contraction
+    // and a plural possessive must not open a span, or one apostrophe would
+    // silence everything to the next one.
+    assert_eq!(matches("It doesn't change the color at all."), ["color"]);
+    assert_eq!(matches("The doctors' color chart is wrong."), ["color"]);
+    // Hart's is an apostrophe; the curly quote after it must not close a span
+    // that no opener began.
+    assert_eq!(
+        matches("Hart\u{2019}s rules and the color of the page."),
+        ["color"]
+    );
+}
+
+#[test]
+fn indented_code_blocks_are_skipped() {
+    let document = "Set the property:\n\n    color: red\n    theater: none\n\nThe colour is fine.";
+    assert!(check(document).is_empty(), "{:?}", matches(document));
+    unchanged_under_write(document);
+}
+
+#[test]
+fn a_wrapped_list_item_is_not_mistaken_for_indented_code() {
+    // The reason the old implementation refused to touch four-space indents at
+    // all. A parser knows the difference; a column count does not.
+    let document = "- A bullet that wraps\n    onto a second line about color.\n";
+    assert_eq!(matches(document), ["color"]);
+}
+
+#[test]
+fn link_destinations_are_protected_whatever_their_scheme() {
+    for document in [
+        "See [the guide](relative/path/color) for detail.",
+        "See [the guide](./docs/color/theater.md) for detail.",
+        "See [the guide][ref] for detail.\n\n[ref]: ../color/center.html\n",
+        "An image: ![alt text](img/color-chart.png) here.",
+    ] {
+        assert!(check(document).is_empty(), "fired on {document:?}");
+        unchanged_under_write(document);
+    }
+}
+
+#[test]
+fn link_text_is_prose_and_stays_checked() {
+    // The target is off limits; the words a reader sees are not.
+    assert_eq!(matches("Read [the color guide](docs/style.md)."), ["color"]);
+}
+
+#[test]
+fn bare_file_paths_are_protected() {
+    for document in [
+        "See ./docs/color/theater.md for detail.",
+        "It lives in /etc/default/color on the host.",
+        "Open src/color/center.rs and read it.",
+        "Check ~/config/color.toml first.",
+    ] {
+        assert!(check(document).is_empty(), "fired on {document:?}");
+        unchanged_under_write(document);
+    }
+}
+
+#[test]
+fn a_slash_in_prose_is_not_a_path() {
+    // The line the path test walks. Two words joined by a slash are English,
+    // not a filename, and excluding them would silence a real class of finding.
+    assert_eq!(matches("The color/center split is arbitrary."), ["color", "center"]);
+    assert_eq!(matches("Use color and/or center as you like."), ["color", "center"]);
 }
