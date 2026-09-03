@@ -1,7 +1,7 @@
 //! The bridge to `prose-sanitiser-uk`.
 //!
 //! The UK-English rules appear in the slop report under the ids `us-spelling`
-//! and `uk-sense`, but this crate implements neither. Both are owned by
+//! and `us-spelling-sense`, but this crate implements neither. Both are owned by
 //! `prose-sanitiser-uk`, whose [`UkEnglish`](prose_sanitiser_uk::UkEnglish)
 //! checker holds the VarCon table, the sense disambiguation, the organisation
 //! gazetteer and the span exclusions. The scanners here call it; they do not

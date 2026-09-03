@@ -201,24 +201,36 @@ default flags:
 | `tier1-vocab` | 11.80% | 21.70% | 1.8 |
 | `preamble-label` | 0.15% | 0.25% | 1.7 |
 | `copula-substitution` | 1.15% | 1.60% | 1.4 |
-| `us-spelling` | 31.75% | 42.20% | 1.3 |
+| `us-spelling` | 30.35% | 40.80% | 1.3 |
 | `hedge-words` | 2.80% | 2.70% | 1.0 |
 | `the-opener` | 41.10% | 38.00% | **0.9** |
+| `us-spelling-sense` | 5.15% | 3.45% | 0.7 |
 
 `the-opener` fires on two documents in five of human prose and *slightly less*
 often on machine prose. It was demoted from `high-confidence-stylistic` to
 `low-confidence-judgement` on this measurement and is now a house-style rule
 only. That demotion is what the dated, versioned table is for.
 
-`us-spelling` at 31.75 per cent is not a false-positive rate: both corpora are
+`us-spelling` at 30.35 per cent is not a false-positive rate: both corpora are
 predominantly American English, and the rule is correctly identifying American
 spelling. **The UK-English false-positive rate is the number that matters, and it
 is not yet measured** — the UK human corpus was still empty when this was run.
-What is verified is that the sense-dependent traps no longer fire at all: the
-rule now builds from ps-uk's VarCon table filtered to unconditional entries, and
-a unit test asserts zero matches on *the gas meter read 12 metres*, *a driving
-licence issued to license a doctor*, *the computer program*, *sulfur dioxide*,
-*the dialog box* and *the fetus*.
+
+What *is* verified is that the sense-dependent traps no longer produce a
+mechanical correction. The rule is no longer implemented in this crate at all:
+`us-spelling` is a positional marker and the check is delegated to
+`prose-sanitiser-uk`'s VarCon-backed checker, which reports genuinely ambiguous
+cases under the separate report-only id `us-spelling-sense`. On this document
+
+> The gas meter read 12 metres of pipe. A driving licence was issued to license
+> a doctor. The computer program handles sulfur dioxide levels, and the dialog
+> box appeared. World Health Organization guidance says the colour of the center
+> panel matters.
+
+the scanner produces exactly one finding: *center*. Every one of *meter*,
+*licence*, *license*, *program*, *sulfur*, *dialog* and *World Health
+Organization* is correctly silent, and *colour* is correctly left alone. The old
+flat alternation flagged all of them.
 
 ### Structural measures
 

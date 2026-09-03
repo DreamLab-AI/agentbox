@@ -19,7 +19,7 @@
 //!
 //! # Delegation
 //!
-//! The UK-English rules (`us-spelling` and `uk-sense`) are not implemented here.
+//! The UK-English rules (`us-spelling` and `us-spelling-sense`) are not implemented here.
 //! They come from `prose-sanitiser-uk`, which runs over the whole document
 //! because sense disambiguation and the organisation gazetteer both need more
 //! context than one line. See [`crate::rules::uk`].
