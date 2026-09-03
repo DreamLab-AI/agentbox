@@ -14,6 +14,28 @@ fn vs_chain(base: &str, payload: &[u8]) -> String {
 }
 
 #[test]
+fn a_soft_hyphen_is_reported_but_never_fixable() {
+    use prose_sanitiser_core::Config;
+
+    let findings = check("co\u{00AD}operate");
+    assert_eq!(findings.len(), 1);
+    assert_eq!(findings[0].rule_id, RULE_SOFT_HYPHEN);
+    assert_eq!(
+        findings[0].confidence,
+        ConfidenceTier::LowConfidenceJudgement
+    );
+    // No replacement, so it can never be turned into an edit — not even with
+    // --write, because a judgement call is never auto-applied.
+    assert_eq!(findings[0].replacement, None);
+    let write = Config {
+        write: true,
+        ..Config::default()
+    };
+    assert!(!findings[0].is_fixable(&write));
+    assert_eq!(findings[0].to_edit(&write), None);
+}
+
+#[test]
 fn every_finding_is_certain_mechanical() {
     // The tier is the auto-fix gate, and Layer A is the only layer that earns
     // it. A rule that drifts out of this set must do so deliberately.
@@ -31,8 +53,11 @@ fn every_finding_is_certain_mechanical() {
         },
     );
     assert!(!findings.is_empty());
+    // Every rule but the soft hyphen, which is a judgement about the author's
+    // intent rather than a fact about the codepoint.
     assert!(findings
         .iter()
+        .filter(|finding| finding.rule_id != RULE_SOFT_HYPHEN)
         .all(|finding| finding.confidence == ConfidenceTier::CertainMechanical));
 }
 

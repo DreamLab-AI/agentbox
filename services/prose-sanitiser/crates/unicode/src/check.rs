@@ -31,6 +31,8 @@ pub const RULE_TAG_PAYLOAD: &str = "unicode-tag-payload";
 pub const RULE_ZW_PAYLOAD: &str = "unicode-zw-payload";
 /// Rule identifier for a bidi control the context policy rejects.
 pub const RULE_BIDI: &str = "unicode-bidi";
+/// Rule identifier for a soft hyphen. Report-only: see [`RULE_SOFT_HYPHEN`].
+pub const RULE_SOFT_HYPHEN: &str = "unicode-soft-hyphen";
 
 /// How a [`check_text`] pass should read its input.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -205,6 +207,27 @@ fn invisible_findings(units: &[Unit], offsets: &[usize], policy: &TextPolicy) ->
         // U+FEFF at offset 0 is a byte-order mark, which is document framing
         // rather than a carrier. Anywhere else it is a stray ZWNBSP.
         if crate::decide::is_bom_at_start(offset, unit) {
+            previous_kept = Some(unit);
+            continue;
+        }
+        // A soft hyphen is reported but never fixed: it is a legitimate
+        // hyphenation hint as often as it is a carrier, and only the author
+        // knows which. `CleanOptions::strip_soft_hyphen` is the opt-in.
+        if crate::decide::is_soft_hyphen(unit) {
+            findings.push(Finding {
+                rule_id: RULE_SOFT_HYPHEN.to_string(),
+                label: "soft hyphen".to_string(),
+                span: span_of(offsets, offset, offset + 1),
+                matched: crate::decide::SOFT_HYPHEN.to_string(),
+                severity: Severity::Low,
+                confidence: ConfidenceTier::LowConfidenceJudgement,
+                advice: "U+00AD SOFT HYPHEN is invisible unless a line break falls on it. \
+                         That makes it a legitimate hyphenation hint and a known invisible \
+                         carrier, and only the author can say which this is. Review it; \
+                         clean with --strip-soft-hyphen if it is not wanted."
+                    .to_string(),
+                replacement: None,
+            });
             previous_kept = Some(unit);
             continue;
         }

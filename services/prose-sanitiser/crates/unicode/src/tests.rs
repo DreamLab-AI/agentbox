@@ -81,6 +81,42 @@ fn nfkc_is_opt_in_and_counted_once_per_change() {
 }
 
 #[test]
+fn a_soft_hyphen_survives_a_default_clean() {
+    // A hyphenation hint in a real compound word. Removing it is a judgement
+    // about the author's intent, so the default must not make it.
+    let hyphenated = "co\u{00AD}operate";
+    assert_eq!(cleaned(hyphenated, CleanOptions::default()), hyphenated);
+}
+
+#[test]
+fn a_soft_hyphen_is_stripped_only_when_asked() {
+    let hyphenated = "co\u{00AD}operate";
+    let options = CleanOptions {
+        strip_soft_hyphen: true,
+        ..CleanOptions::default()
+    };
+    assert_eq!(cleaned(hyphenated, options), "cooperate");
+
+    // Paranoid mode strips every load-bearing invisible, this one included.
+    let paranoid = CleanOptions {
+        strip_emoji_glue: true,
+        ..CleanOptions::default()
+    };
+    assert_eq!(cleaned(hyphenated, paranoid), "cooperate");
+}
+
+#[test]
+fn a_soft_hyphen_is_reported_under_its_own_kind() {
+    // Preserved is not the same as unreported: a reader still wants to know.
+    let report = inspect_text(&units("co\u{00AD}operate"), false, false);
+    assert_eq!(report.suspicious_total, 1);
+    assert_eq!(report.hits[0].kind, "soft_hyphen");
+    assert_eq!(report.hits[0].codepoint, 0x00AD);
+    let json = report.to_json();
+    assert_eq!(json["hits"][0]["confidence"], "informational");
+}
+
+#[test]
 fn stats_report_labels_counts_and_lengths() {
     let (_, stats) = clean_text(
         &units("a\u{200b}\u{200b}b\u{00a0}c"),

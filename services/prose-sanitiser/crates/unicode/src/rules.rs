@@ -1,9 +1,14 @@
 //! The published rule table, for the SARIF driver and `--explain` output.
 //!
 //! Every rule Layer A can emit appears here exactly once, with the evidence it
-//! rests on. All six are [`ConfidenceTier::CertainMechanical`]: each is a
+//! rests on. All but one are [`ConfidenceTier::CertainMechanical`]: each is a
 //! deterministic classification of a codepoint and its context, verifiable by
 //! diffing the output, which is what earns them a SARIF `fixes[]` entry.
+//!
+//! The exception is `unicode-soft-hyphen`, which is
+//! [`ConfidenceTier::LowConfidenceJudgement`] and therefore report-only. A soft
+//! hyphen is a legitimate hyphenation hint as often as it is a carrier, and
+//! nothing in the codepoint tells you which, so it never carries a fix.
 //!
 //! `since` and `reviewed` are honest dates, not decoration. A rule whose
 //! `reviewed` date has gone stale is a rule whose sources nobody has re-checked.
@@ -22,10 +27,15 @@ const TR51: &str = "https://www.unicode.org/reports/tr51/";
 /// use prose_sanitiser_core::ConfidenceTier;
 /// use prose_sanitiser_unicode::RULES;
 ///
-/// // Layer A is the workspace's only genuinely mechanical layer.
-/// assert!(RULES
-///     .iter()
-///     .all(|rule| rule.confidence == ConfidenceTier::CertainMechanical));
+/// // Every rule is mechanical except the soft hyphen, which is a judgement.
+/// for rule in RULES {
+///     let expected = if rule.id == "unicode-soft-hyphen" {
+///         ConfidenceTier::LowConfidenceJudgement
+///     } else {
+///         ConfidenceTier::CertainMechanical
+///     };
+///     assert_eq!(rule.confidence, expected, "{}", rule.id);
+/// }
 /// ```
 pub const RULES: &[RuleMeta] = &[
     RuleMeta {
@@ -110,6 +120,24 @@ pub const RULES: &[RuleMeta] = &[
         sources: &["Unicode 17.0 core specification, chapter 23"],
     },
     RuleMeta {
+        id: "unicode-soft-hyphen",
+        name: "Soft hyphen",
+        description:
+            "U+00AD SOFT HYPHEN, which is invisible unless a line break falls on it. That is \
+             exactly what makes it useful to a typesetter and to an attacker, so it is \
+             reported but never fixed automatically: whether a given one is a hyphenation \
+             hint or a carrier is a judgement only the author can make. Removing it is \
+             opt-in through CleanOptions::strip_soft_hyphen.",
+        severity: Severity::Low,
+        confidence: ConfidenceTier::LowConfidenceJudgement,
+        since: "2026-09-03",
+        reviewed: "2026-09-03",
+        help_uri: None,
+        sources: &[
+            "Unicode 17.0 core specification, chapter 23 (reclassified Pd to Cf in Unicode 4.0)",
+        ],
+    },
+    RuleMeta {
         id: "unicode-bidi",
         name: "Bidi control rejected by the context policy",
         description:
@@ -135,10 +163,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn every_rule_is_certain_mechanical() {
-        assert!(RULES
-            .iter()
-            .all(|rule| rule.confidence == ConfidenceTier::CertainMechanical));
+    fn only_the_soft_hyphen_is_a_judgement_call() {
+        // The tier is the auto-fix gate, so a rule drifting into
+        // CertainMechanical silently earns the right to rewrite someone's text.
+        for rule in RULES {
+            let expected = if rule.id == "unicode-soft-hyphen" {
+                ConfidenceTier::LowConfidenceJudgement
+            } else {
+                ConfidenceTier::CertainMechanical
+            };
+            assert_eq!(rule.confidence, expected, "{}", rule.id);
+        }
     }
 
     #[test]
@@ -171,7 +206,7 @@ mod tests {
         for rule in RULES {
             let sarif = rule.to_sarif();
             assert_eq!(sarif["id"], rule.id);
-            assert_eq!(sarif["properties"]["confidence"], "certain-mechanical");
+            assert_eq!(sarif["properties"]["confidence"], rule.confidence.as_str());
         }
     }
 }

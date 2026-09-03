@@ -48,6 +48,19 @@ pub struct Decision {
     pub kind: Option<&'static str>,
 }
 
+/// `U+00AD` SOFT HYPHEN: a legitimate hyphenation hint and a known carrier.
+///
+/// It is invisible unless a line break falls on it, which is exactly what makes
+/// it useful to a typesetter and to an attacker. Because a strip is a judgement
+/// about the author's intent rather than a mechanical fact, it is preserved by
+/// default and only removed when a caller asks.
+pub const SOFT_HYPHEN: char = '\u{00AD}';
+
+/// Whether this unit is a soft hyphen.
+pub fn is_soft_hyphen(unit: Unit) -> bool {
+    unit.as_char() == Some(SOFT_HYPHEN)
+}
+
 /// Whether this unit is a byte-order mark in the one position where `U+FEFF`
 /// means "byte-order mark" rather than "stray zero-width no-break space".
 ///
@@ -341,7 +354,7 @@ pub fn char_label(unit: Unit) -> String {
 
 /// Layer A hits are edit-based carriers; space homoglyphs are weaker context.
 pub fn hit_confidence(kind: &str) -> &'static str {
-    if kind == "space" {
+    if kind == "space" || kind == "soft_hyphen" {
         "informational"
     } else {
         "probable"

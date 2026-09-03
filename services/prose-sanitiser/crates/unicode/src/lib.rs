@@ -49,7 +49,7 @@
 //!
 //! | Capability | Basis |
 //! |---|---|
-//! | Invisible Cf-class controls in text: zero-width family, tag block, variation selectors, bidi controls, exotic whitespace, soft hyphen, Hangul fillers | Deterministic codepoint classification with context rules |
+//! | Invisible Cf-class controls in text: zero-width family, tag block, variation selectors, bidi controls, exotic whitespace, Hangul fillers | Deterministic codepoint classification with context rules |
 //! | Variation-selector, tag-block and zero-width payloads, **including decoding them** | The Butler byte mapping and the tag block are fully specified |
 //! | Homoglyph and mixed-script substitution | UTS #39 skeleton, Identifier_Status and restriction levels |
 //!
@@ -62,6 +62,7 @@
 //! | ZWNJ/ZWJ after an Indic virama, or between Persian morphemes | Orthographically load-bearing |
 //! | Balanced bidi controls in genuine RTL prose | Only reject them in source-code contexts (Trojan Source) |
 //! | `U+FEFF` at byte offset 0 | It is a BOM there and only there |
+//! | `U+00AD` SOFT HYPHEN, unless asked | A hyphenation hint as often as a carrier; reported, never fixed, stripped only via `CleanOptions::strip_soft_hyphen` |
 //! | Regional-indicator pairs and RGI emoji tag sequences | Well-formed flags, not carriers |
 //! | NFKC normalisation of user-facing prose | Lossy by design (UAX #15); NFC only, and only when asked |
 //!
@@ -141,6 +142,13 @@ pub struct CleanOptions {
     pub strip_emoji_glue: bool,
     /// Whether the text is prose or source code, for the bidi policy.
     pub bidi_context: BidiContext,
+    /// Remove `U+00AD` SOFT HYPHEN.
+    ///
+    /// Off by default. A soft hyphen is a legitimate hyphenation hint as often
+    /// as it is a carrier, so removing it is a judgement about the author's
+    /// intent rather than a mechanical fact. `inspect_text` and `check_text`
+    /// always report it; only this makes a clean act on it.
+    pub strip_soft_hyphen: bool,
 }
 
 impl Default for CleanOptions {
@@ -152,6 +160,7 @@ impl Default for CleanOptions {
             normalize_spaces: true,
             strip_emoji_glue: false,
             bidi_context: BidiContext::Prose,
+            strip_soft_hyphen: false,
         }
     }
 }
@@ -263,6 +272,14 @@ pub fn inspect_text_with(units: &[Unit], options: InspectOptions) -> TextInspect
             previous_kept = Some(unit);
             continue;
         }
+        // A soft hyphen is reported under its own kind: it is worth a reader's
+        // attention, but it is a hyphenation hint as often as a carrier, so it
+        // is never counted alongside the mechanical certainties.
+        if decide::is_soft_hyphen(unit) {
+            push(codepoint, "soft_hyphen", offset);
+            previous_kept = Some(unit);
+            continue;
+        }
         let decision = decide(unit, previous_kept, true, false, options.strip_emoji_glue);
         let Some(kind) = decision.kind else {
             // Kept; glue (emoji/script joiner/tag) does not advance the
@@ -330,6 +347,13 @@ pub fn clean_text(units: &[Unit], options: CleanOptions) -> (Vec<Unit>, CleanSta
             // Load-bearing: a preserved bidi control, or the document's own
             // byte-order mark at offset 0.
             output.push(unit);
+            continue;
+        }
+        if decide::is_soft_hyphen(unit) && !options.strip_soft_hyphen && !options.strip_emoji_glue {
+            // Preserved by default: removing a hyphenation hint is a judgement
+            // about the author's intent, not a mechanical fact.
+            output.push(unit);
+            previous_kept = Some(unit);
             continue;
         }
         if options.aggressive_homoglyphs {
