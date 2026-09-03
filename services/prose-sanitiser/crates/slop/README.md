@@ -182,7 +182,9 @@ near-zero true-positive rate at the only thresholds a deployment would use.
 
 **Read that honestly.** On general-domain corpora the aggregate slop score
 separates human from machine text barely better than chance at a usable
-operating point. The LLM-DetectAIve row looks strong, but n is 20 per class and
+operating point. On MAGE it is worse than that: the median raw score is 2.00 for
+human documents and 0.00 for machine ones, so the raw score points the *wrong
+way* on that corpus and the 0.9 per cent TPR is measuring noise. The LLM-DetectAIve row looks strong, but n is 20 per class and
 that corpus is deliberately composed of heavily-marked machine text, so it is an
 illustration and not a result. This crate is a **style linter with an evidence
 base**, not a detector, and these numbers are the reason the whole thing is
@@ -195,6 +197,7 @@ default flags:
 
 | Rule | Human | Machine | Ratio |
 |---|---|---|---|
+| `claudish-structure` | 0.05% | 0.25% | 5.0 |
 | `passive-tell` | 0.30% | 1.25% | 4.2 |
 | `throat-clearing` | 0.55% | 1.15% | 2.1 |
 | `negative-parallelism` | 1.40% | 2.70% | 1.9 |
@@ -202,9 +205,30 @@ default flags:
 | `preamble-label` | 0.15% | 0.25% | 1.7 |
 | `copula-substitution` | 1.15% | 1.60% | 1.4 |
 | `us-spelling` | 30.35% | 40.80% | 1.3 |
-| `hedge-words` | 2.80% | 2.70% | 1.0 |
+| `agg` (density checks) | 1.05% | 1.05% | **1.0** |
+| `hedge-words` | 2.80% | 2.70% | **1.0** |
 | `the-opener` | 41.10% | 38.00% | **0.9** |
-| `us-spelling-sense` | 5.15% | 3.45% | 0.7 |
+| `us-spelling-sense` | 5.15% | 3.45% | **0.7** |
+| `insider-voice` | 0.10% | 0.05% | **0.5** |
+
+**Five rules do not discriminate on this corpus at all**, and two of them point
+the wrong way. That is a finding about the rules, not a defect in the run.
+
+`agg` is a special case and its 1.0 should not be read as "the density checks do
+not work". It is a single rule id covering four unrelated whole-file checks —
+em-dash density, em-dashes in list items, transition-word density and the Tier-2
+cluster — so the ratio averages four different signals into one uninterpretable
+number. The id predates the versioned table and is kept for output
+compatibility; the `structural-*` rules measure the same territory one signal at
+a time, which is why their ratios mean something and this one does not.
+
+**And the ranking does not transfer between corpora.** On MAGE, `hedge-words`
+scores 0.69, `claudish-structure` 0.56, `preamble-label` 0.54, and
+`claudish-filler` and `insider-voice` fire on nothing at all — so
+`claudish-structure`, the best discriminator on RAID at 5.0, is among the worst
+on MAGE. A rule's ratio is a property of the rule *and the corpus*, and any
+single-corpus ranking of these rules, including the one above, should be read
+with that in mind.
 
 `the-opener` fires on two documents in five of human prose and *slightly less*
 often on machine prose. It was demoted from `high-confidence-stylistic` to
@@ -257,13 +281,39 @@ applied under any configuration; the sense-dependent traps that made the
 original single regex unsafe now land in the second bucket. So the crate's
 worst case on British prose is noise in a report, never a corrupted document.
 
-For context on the 5.60 per cent: a Hansard debate quoting an American witness,
-a GOV.UK page naming *World Health Organization*, or a Gutenberg text with an
-American publisher's imprint all contain genuine American spellings that the
-rule is right to notice. The figure is an upper bound on false positives, not a
+**What it actually matched**, read from the reported byte offsets rather than
+inferred. `us-spelling`: *gray* x10, *honor* x5, *recognize* x3, *afterward* x2,
+*agonized* x2, *baptized* x2, *behavior* x2, *characterized* x2, *colored* x2,
+*fulfill* x2, *honors* x2, *labeling* x2. Spot-checked, those are genuine
+Americanisms, mostly in nineteenth-century Gutenberg text and quoted American
+sources. So 5.60 per cent is an upper bound on false positives rather than a
 count of them, and it is roughly one flagged document in eighteen against the
 **61.3 per cent** false-positive rate seven commercial detectors showed on TOEFL
 essays (Liang et al. 2023, *Patterns*).
+
+`us-spelling-sense` is dominated by a single token: *practice* and *practices*
+are 67 per cent of its output on British prose (146 of 218 findings), then
+*prize* x14, *onward* x8, *bark* x7, *program* x6. A rule that is two-thirds one
+word is a rule to watch, and it is exactly why that one is report-only.
+
+### The composition changed, not the count
+
+The interesting comparison is against the previous build on the same 2,000
+documents. The old flat alternation produced 120 `us-spelling` findings; the
+VarCon rebuild produces 117. Almost the same headline number, and almost
+nothing in common:
+
+| | Old regex | VarCon rebuild |
+|---|---|---|
+| Findings | 120 | 117 |
+| Sense-dependent, reported as plain misspellings | 37 (*licensed* x26, *license* x5, *licenses* x3, *meter* x3) | 0 — split into report-only `us-spelling-sense` |
+| **Findings on correct British spellings** | **26** (*fulfilled*, *fulfilling*) | **0** |
+| Auto-fixable | — | 0 |
+
+Twenty-six of the old build's findings were on *fulfilled* and *fulfilling*,
+which are correct British English. The rule was reporting good spelling as bad,
+and a reader looking only at the total would never have seen it. That is the
+case for measuring composition rather than counts.
 
 ### Structural measures
 
@@ -287,10 +337,21 @@ human firing rate from 36.7 per cent to 6.9 per cent.
 
 ### Reproducing it
 
+Every figure above comes from the `ps-eval` harness, which computes TPR at 1 per
+cent FPR by taking the threshold at the 99th percentile of the human score
+distribution. There is deliberately no second implementation in this crate: a
+duplicate sweep would only produce a number to reconcile.
+
 ```
 cargo build --workspace --release
 PS_BIN_DIR=$PWD/target/release ps-eval --root <corpora> run --out report.json
 ```
+
+Corpus provenance and licences are in the harness's `MANIFEST.md`: RAID (MIT),
+MAGE (Apache-2.0), LLM-DetectAIve (CC BY-SA 4.0), and for the British set,
+Hansard via TheyWorkForYou (OPL v3.0), GOV.UK (OGL v3.0) and Project Gutenberg
+(public domain). Every British document predates 2022, so none of it can contain
+model output.
 
 ## Licence
 

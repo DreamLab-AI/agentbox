@@ -185,3 +185,31 @@ fn the_load_bearing_sample_rows_match_one_by_one() {
         );
     }
 }
+
+/// A `clean-file` failure is a tool error, never a finding.
+///
+/// `clean_pdf` fails closed: a document `lopdf` cannot parse returns `Err` and
+/// writes nothing, rather than falling back to a byte-level copy that leaves
+/// `/Info` in place and the cross-reference offsets stale. That has to surface
+/// as exit 2, because exit 1 would tell CI "we cleaned it and something
+/// remained" when in fact nothing was cleaned and no file exists.
+#[test]
+fn an_unparseable_pdf_is_a_tool_error_and_writes_nothing() {
+    let binary = env!("CARGO_BIN_EXE_clean-file");
+    let dir = tempfile::tempdir().unwrap();
+    let source = dir.path().join("broken.pdf");
+    let dest = dir.path().join("out.pdf");
+    std::fs::write(&source, b"%PDF-1.7\nnot a parseable object graph\n").unwrap();
+
+    let output = std::process::Command::new(binary)
+        .arg(&source)
+        .arg("-o")
+        .arg(&dest)
+        .output()
+        .expect("clean-file runs");
+
+    assert_eq!(output.status.code(), Some(2), "should be a tool error");
+    assert!(!dest.exists(), "a failed clean must leave no output file");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("refusing to clean"), "{stderr}");
+}

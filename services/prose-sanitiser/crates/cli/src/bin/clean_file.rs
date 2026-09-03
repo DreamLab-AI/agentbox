@@ -205,7 +205,6 @@ fn body() -> Result<i32, CliError> {
                 .map_err(|error| CliError::new(exit::ERROR, format!("error: {error}")))?;
             let residual = result["still_has_c2pa"].as_bool().unwrap_or(false)
                 || result["still_has_ai_metadata"].as_bool().unwrap_or(false);
-            let degraded = result["meta"]["degraded"].as_bool().unwrap_or(false);
             let result = merge_kind("container", result);
             if args.json {
                 println!("{}", to_pretty_json(&result));
@@ -229,8 +228,11 @@ fn body() -> Result<i32, CliError> {
                     }
                 }
             }
-            // A degraded (best-effort) PDF copy warns but is not a hard failure.
-            Ok(exit::from_flag(residual && !degraded))
+            // There is no longer a degraded outcome to forgive. `clean_pdf`
+            // fails closed: an unparseable document returns `Err` and writes
+            // nothing, so reaching here means the clean succeeded and the only
+            // question left is whether anything survived it.
+            Ok(exit::from_flag(residual))
         }
     }
 }
