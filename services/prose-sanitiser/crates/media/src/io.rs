@@ -12,12 +12,34 @@ use prose_sanitiser_core::{env_usize, CliError};
 /// Hard caps on attacker-influenced input sizes. Whole-file in-memory
 /// processing means a 1 GiB default is a host-memory DoS; keep defaults low.
 /// The env overrides remain as an explicit escape hatch.
+///
+/// Every read of an attacker-controlled file goes through [`read_capped`], so
+/// these are enforced rather than advisory. The budgets are per format because
+/// the memory each one costs differs: an image is parsed in place, whereas a
+/// ZIP container expands.
 pub fn max_input_bytes() -> u64 {
     env_usize("WATERMARKS_MAX_INPUT_BYTES", 256 << 20) as u64
 }
 
 pub fn max_stdin_bytes() -> u64 {
     env_usize("WATERMARKS_MAX_STDIN_BYTES", 64 << 20) as u64
+}
+
+/// Compressed-input budget for PNG, JPEG and WebP.
+///
+/// Image cleaning holds up to three copies at once — the file, the parsed
+/// container's shared buffer and the re-encoded output — so peak memory is
+/// bounded at roughly three times this figure.
+pub fn max_image_bytes() -> u64 {
+    env_usize("WATERMARKS_MAX_IMAGE_BYTES", 64 << 20) as u64
+}
+
+/// Compressed-input budget for PDF, OOXML, ODF, SVG, HTML and Markdown.
+///
+/// The *expanded* budget for a ZIP container is separate and smaller in
+/// practice; see `container::ooxml::MAX_ZIP_DECOMPRESSED_BYTES`.
+pub fn max_container_bytes() -> u64 {
+    env_usize("WATERMARKS_MAX_CONTAINER_BYTES", 128 << 20) as u64
 }
 
 /// Refuse binary input for the text-only tools unless explicitly overridden.
@@ -118,6 +140,53 @@ pub fn write_text_output(units: &[Unit], path: Option<&str>) -> Result<(), CliEr
             safe_write_bytes(Path::new(path), &bytes).map_err(|e| CliError::new(1, format!("{e}")))
         }
     }
+}
+
+/// Read a whole file, refusing anything over `cap`.
+///
+/// This is the only way this crate reads an attacker-controlled file. Three
+/// properties matter, and a bare [`std::fs::read`] has none of them:
+///
+/// * The file is opened `O_NOFOLLOW`, so a final symlink is refused rather
+///   than followed.
+/// * The size is checked on the **opened handle**, not by a separate `stat`,
+///   which closes the race where a small file is swapped for a large one
+///   between the check and the read.
+/// * The read itself is bounded by `take(cap + 1)`, so a file that grows after
+///   the size check — or reports a misleading size — still cannot exceed the
+///   budget. The extra byte is what distinguishes "exactly at the cap" from
+///   "over it".
+///
+/// # Errors
+///
+/// Returns `Err` when the path cannot be opened, is not a regular file, or
+/// holds more than `cap` bytes.
+pub fn read_capped(path: &Path, cap: u64) -> std::io::Result<Vec<u8>> {
+    let file = open_nofollow(path)?;
+    let metadata = file.metadata()?;
+    if !metadata.is_file() {
+        return Err(std::io::Error::other(format!(
+            "refusing to read {}: not a regular file",
+            path.display()
+        )));
+    }
+    let too_large = |size: u64| {
+        std::io::Error::other(format!(
+            "refusing input larger than {cap} bytes: {} is {size} bytes",
+            path.display()
+        ))
+    };
+    if metadata.len() > cap {
+        return Err(too_large(metadata.len()));
+    }
+
+    let mut buffer = Vec::with_capacity(metadata.len().min(cap) as usize);
+    let mut reader = file.take(cap + 1);
+    reader.read_to_end(&mut buffer)?;
+    if buffer.len() as u64 > cap {
+        return Err(too_large(buffer.len() as u64));
+    }
+    Ok(buffer)
 }
 
 /// `0o666 & ~umask` — the mode a plain `open()` would produce.
@@ -261,6 +330,54 @@ mod tests {
         assert_eq!(backup, dir.path().join("doc.txt.bak"));
         assert_eq!(fs::read(&backup).unwrap(), b"body");
         assert_eq!(fs::read(&source).unwrap(), b"body");
+    }
+
+    #[test]
+    fn read_capped_refuses_a_file_over_the_budget() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("big.bin");
+        fs::write(&path, vec![b'x'; 1024]).unwrap();
+
+        let error = read_capped(&path, 512).unwrap_err();
+        assert!(
+            error.to_string().contains("refusing input larger than 512"),
+            "error was {error}"
+        );
+
+        // Exactly at the cap is allowed; the `take(cap + 1)` is what tells the
+        // two apart.
+        assert_eq!(read_capped(&path, 1024).unwrap().len(), 1024);
+        assert_eq!(read_capped(&path, 4096).unwrap().len(), 1024);
+    }
+
+    #[test]
+    fn read_capped_bounds_the_read_itself_not_just_the_declared_size() {
+        // /proc files report a length of zero and then produce content, which
+        // is the same shape as a file whose size cannot be trusted: the bound
+        // has to come from the read, not from the metadata.
+        let path = Path::new("/proc/self/cmdline");
+        if !path.exists() {
+            return;
+        }
+        assert_eq!(fs::metadata(path).map(|m| m.len()).unwrap_or(0), 0);
+        // Whatever it yields, the reader never returns more than the cap, and
+        // it errors rather than truncating silently.
+        match read_capped(path, 4) {
+            Ok(data) => assert!(data.len() <= 4),
+            Err(error) => assert!(error.to_string().contains("refusing input larger than 4")),
+        }
+    }
+
+    #[test]
+    fn read_capped_refuses_a_symlink_and_a_directory() {
+        let dir = tempfile::tempdir().unwrap();
+        let victim = dir.path().join("victim");
+        fs::write(&victim, b"secret").unwrap();
+        let link = dir.path().join("link");
+        std::os::unix::fs::symlink(&victim, &link).unwrap();
+
+        assert!(read_capped(&link, 1 << 20).is_err());
+        assert!(read_capped(dir.path(), 1 << 20).is_err());
     }
 
     #[test]

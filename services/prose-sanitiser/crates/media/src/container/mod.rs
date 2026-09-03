@@ -17,7 +17,7 @@ use std::path::Path;
 use serde_json::{json, Map, Value};
 
 use crate::image::tools::run_optional_tools;
-use crate::io::safe_write_bytes;
+use crate::io::{max_container_bytes, read_capped, safe_write_bytes};
 use prose_sanitiser_core::classify_finding_confidence;
 use prose_sanitiser_core::surrogate;
 use prose_sanitiser_unicode::{clean_text, CleanOptions};
@@ -106,7 +106,7 @@ pub fn detect_container_format(path: &Path, data: Option<&[u8]>) -> String {
 
 /// Inspect a container file.
 pub fn inspect_container(path: &Path) -> std::io::Result<ContainerInspectReport> {
-    let data = std::fs::read(path)?;
+    let data = read_capped(path, max_container_bytes())?;
     let format = detect_container_format(path, Some(&data));
     let mut tools = Value::Object(Map::new());
     let mut details;
@@ -153,9 +153,9 @@ pub fn inspect_container(path: &Path) -> std::io::Result<ContainerInspectReport>
     let mut notes: Vec<String> = Vec::new();
     if format == "pdf" {
         notes.push(
-            "PDF cleaning is a full lopdf object-graph rewrite, so a superseded incremental \
-             revision cannot survive; a file lopdf cannot parse falls back to a byte-level XMP \
-             strip, which is reported as degraded"
+            "PDF cleaning is a full lopdf object-graph rewrite, verified before it is written, \
+             so a superseded incremental revision cannot survive. There is no degraded mode: a \
+             file lopdf cannot parse is refused and no output is produced"
                 .to_string(),
         );
     } else if format == "docx" {
@@ -187,7 +187,8 @@ pub fn inspect_container(path: &Path) -> std::io::Result<ContainerInspectReport>
 
 /// Clean container metadata; optionally Layer-A scrub text bodies for md/html.
 pub fn clean_container(path: &Path, dest: &Path, also_layer_a_text: bool) -> Result<Value, String> {
-    let data = std::fs::read(path).map_err(|e| format!("cannot read {}: {e}", path.display()))?;
+    let data = read_capped(path, max_container_bytes())
+        .map_err(|e| format!("cannot read {}: {e}", path.display()))?;
     let format = detect_container_format(path, Some(&data));
     if let Some(parent) = dest.parent().filter(|p| !p.as_os_str().is_empty()) {
         std::fs::create_dir_all(parent)

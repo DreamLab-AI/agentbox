@@ -8,6 +8,7 @@
 pub mod c2pa_read;
 pub mod harness;
 pub mod jpeg;
+mod jumbf;
 pub mod markers;
 pub mod png;
 pub mod tools;
@@ -17,7 +18,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::{json, Map, Value};
 
-use crate::io::safe_write_bytes;
+use crate::io::{max_image_bytes, read_capped, safe_write_bytes};
 use prose_sanitiser_core::classify_finding_confidence;
 
 pub use jpeg::JPEG_SOI;
@@ -96,7 +97,7 @@ pub fn inspect_image(
     path: &Path,
     synthid_dir: Option<&str>,
 ) -> std::io::Result<ImageInspectReport> {
-    let data = std::fs::read(path)?;
+    let data = read_capped(path, max_image_bytes())?;
     let (format, mut has_c2pa, has_ai, mut findings) = inspect_bytes(&data);
 
     let mut notes = Vec::new();
@@ -197,9 +198,24 @@ impl Default for CleanImageOptions {
 }
 
 /// Strip metadata from `path` into `dest`, optionally running a pixel remover.
+///
+/// # When "never re-encodes" holds
+///
+/// The container surgery is lossless and leaves pixel data bit-for-bit
+/// identical. That guarantee is scoped to
+/// [`CleanImageOptions::remove_pixel`] being `None`, which is the default.
+/// Setting it runs [`harness`]'s CtrlRegen or diffusion-purification backend
+/// over the destination, which regenerates the image and **deliberately
+/// changes every pixel**; the result is reported under `pixel_removal` in the
+/// returned JSON, and is not lossless container surgery in any sense.
+///
+/// The post-strip inspection in the result is evidence about the carriers this
+/// crate knows how to read. It is not proof of anonymity: see
+/// [`c2pa_read`] on soft bindings.
 pub fn clean_image(path: &Path, dest: &Path, options: &CleanImageOptions) -> Result<Value, String> {
     let synthid_before = harness::run_synthid_score(path, options.synthid_dir.as_deref());
-    let data = std::fs::read(path).map_err(|e| format!("cannot read {}: {e}", path.display()))?;
+    let data = read_capped(path, max_image_bytes())
+        .map_err(|e| format!("cannot read {}: {e}", path.display()))?;
     let format = detect_format(&data);
     let (cleaned, mut actions) = match format {
         "png" => png::strip_png(&data, options.strip_all_metadata)?,

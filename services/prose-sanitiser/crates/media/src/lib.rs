@@ -46,7 +46,7 @@
 //! |---|---|
 //! | C2PA JUMBF manifests embedded in JPEG APP11, PNG `caBX`, WebP `C2PA`, PDF embedded-file, SVG `c2pa:manifest` | Container structure is normatively specified; deletion is byte-level |
 //! | EXIF, XMP (including Extended XMP), IPTC/Photoshop IRB, PNG text chunks, `tIME`, GIF comment extension | Well-delimited container structures |
-//! | PDF `/Info` and `/Metadata`, with full object-graph rewrite so prior incremental revisions do not survive | `lopdf` re-serialises from the merged object graph, so a superseded incremental revision never reaches the output |
+//! | PDF `/Info`, `/Metadata` and C2PA embedded-file specifications, with a full object-graph rewrite so prior incremental revisions do not survive | `lopdf` re-serialises from the merged object graph, so a superseded incremental revision never reaches the output. Verified by reparsing before the write, and refused outright when the input cannot be parsed |
 //! | OOXML `docProps/core.xml`, `app.xml` (including `TotalTime` and `Company`), `custom.xml`, `word/comments.xml`, `w:ins`/`w:del`, `w:rsid*`; ODF `meta.xml` | ZIP part deletion with preserved compression and ordering, plus event-driven XML rewriting |
 //!
 //! **Can detect and report, but must not claim to strip**
@@ -77,6 +77,9 @@
 //!
 //! * A file carrying no provenance marks comes out **byte-identical** — the
 //!   SHA-256 before and after a strip are equal.
+//!
+//! Both are scoped to container surgery with pixel removal disabled, which is
+//! the default; see [`image::clean_image`] for what changes when it is not.
 //! * After a strip that did remove marks, both files decode to **bit-identical
 //!   pixel buffers**, and the compressed image data (PNG `IDAT`, the JPEG
 //!   entropy-coded scan) is carried across verbatim.

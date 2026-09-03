@@ -30,6 +30,20 @@ use quick_xml::events::attributes::Attribute;
 use quick_xml::events::{BytesStart, Event};
 use quick_xml::{Reader, Writer};
 
+/// Attribute budget for a single element.
+///
+/// Independent of any parser fix: `quick-xml` before 0.41 checked for duplicate
+/// attributes in quadratic time, and a dependency upgrade should not be the only
+/// thing standing between a hostile part and the CPU. No WordprocessingML
+/// element legitimately carries anything near this many.
+pub const MAX_ATTRIBUTES_PER_ELEMENT: usize = 512;
+
+/// Element-nesting budget.
+///
+/// Deeply nested tables nest tens of levels, not hundreds. The cap bounds the
+/// skip bookkeeping a hostile part can force.
+pub const MAX_ELEMENT_DEPTH: usize = 256;
+
 /// Elements dropped together with everything inside them.
 ///
 /// `w:del` and `w:moveFrom` hold text that was removed; accepting the revision
@@ -153,16 +167,18 @@ fn without_rsids(start: &BytesStart<'_>) -> Result<Option<(BytesStart<'static>, 
     // Every attribute must parse. Skipping the ones that do not would silently
     // drop them from the rewritten tag, which is data loss disguised as a
     // clean.
-    let attributes: Vec<(Vec<u8>, Vec<u8>)> = start
-        .attributes()
-        .map(|attribute| {
-            attribute
-                .map(|attribute: Attribute<'_>| {
-                    (attribute.key.as_ref().to_vec(), attribute.value.to_vec())
-                })
-                .map_err(|error| format!("malformed WordprocessingML attribute: {error}"))
-        })
-        .collect::<Result<_, _>>()?;
+    let mut attributes: Vec<(Vec<u8>, Vec<u8>)> = Vec::new();
+    for attribute in start.attributes() {
+        if attributes.len() >= MAX_ATTRIBUTES_PER_ELEMENT {
+            return Err(format!(
+                "refusing WordprocessingML element with more than \
+                 {MAX_ATTRIBUTES_PER_ELEMENT} attributes"
+            ));
+        }
+        let attribute: Attribute<'_> =
+            attribute.map_err(|error| format!("malformed WordprocessingML attribute: {error}"))?;
+        attributes.push((attribute.key.as_ref().to_vec(), attribute.value.to_vec()));
+    }
     let removed = attributes
         .iter()
         .filter(|(key, _)| is_rsid_attribute(key))
@@ -201,12 +217,17 @@ fn without_rsids(start: &BytesStart<'_>) -> Result<Option<(BytesStart<'static>, 
 pub fn scrub_wordml(data: &[u8]) -> Result<(Vec<u8>, WordmlEdits), String> {
     let mut reader = Reader::from_reader(data);
     reader.config_mut().trim_text(false);
-    reader.config_mut().check_end_names = false;
+    // Mismatched or unclosed tags are a hard error. A part that does not close
+    // its elements is not a document this crate may claim to have cleaned.
+    reader.config_mut().check_end_names = true;
 
     let mut writer = Writer::new(Cursor::new(Vec::new()));
     let mut edits = WordmlEdits::default();
     // Depth counter for the element currently being skipped, if any.
     let mut skipping: Option<(Vec<u8>, usize)> = None;
+    // Depth of the elements written through, so an unbalanced part is caught at
+    // end of input rather than emitted as a successful rewrite.
+    let mut depth = 0usize;
 
     loop {
         let event = reader
@@ -233,16 +254,28 @@ pub fn scrub_wordml(data: &[u8]) -> Result<(Vec<u8>, WordmlEdits), String> {
             Event::Eof => break,
             Event::Start(start) => {
                 let name = start.name().as_ref().to_vec();
+                depth += 1;
+                if depth > MAX_ELEMENT_DEPTH {
+                    return Err(format!(
+                        "refusing WordprocessingML nested deeper than {MAX_ELEMENT_DEPTH} elements"
+                    ));
+                }
                 if DROP_WITH_CONTENTS.contains(&name.as_slice()) {
                     if is_format_change(&name) {
                         edits.format_changes_removed += 1;
                     } else {
                         edits.deletions_removed += 1;
                     }
+                    // The subtree is tracked by `skipping` from here, so this
+                    // element leaves the written-through depth alone.
+                    depth -= 1;
                     skipping = Some((name, 1));
                     continue;
                 }
                 if UNWRAP.contains(&name.as_slice()) {
+                    // The tag goes but its children stay, so the wrapper does
+                    // not contribute to the written-through depth either.
+                    depth -= 1;
                     edits.insertions_accepted += 1;
                     continue;
                 }
@@ -259,6 +292,12 @@ pub fn scrub_wordml(data: &[u8]) -> Result<(Vec<u8>, WordmlEdits), String> {
                 if UNWRAP.contains(&name.as_slice()) {
                     continue;
                 }
+                depth = depth.checked_sub(1).ok_or_else(|| {
+                    format!(
+                        "malformed WordprocessingML: unmatched </{}>",
+                        String::from_utf8_lossy(&name)
+                    )
+                })?;
                 writer.write_event(Event::End(end))
             }
             Event::Empty(start) => {
@@ -288,6 +327,21 @@ pub fn scrub_wordml(data: &[u8]) -> Result<(Vec<u8>, WordmlEdits), String> {
         .map_err(|error| format!("cannot rewrite WordprocessingML: {error}"))?;
     }
 
+    // End of input is only legitimate with every element closed and no skip in
+    // progress. Otherwise the tail was silently discarded, and returning the
+    // truncated result as a successful clean would be a lie.
+    if let Some((name, _)) = skipping {
+        return Err(format!(
+            "malformed WordprocessingML: input ended inside <{}>",
+            String::from_utf8_lossy(&name)
+        ));
+    }
+    if depth != 0 {
+        return Err(format!(
+            "malformed WordprocessingML: input ended with {depth} element(s) still open"
+        ));
+    }
+
     if edits.is_empty() {
         return Ok((data.to_vec(), edits));
     }
@@ -295,126 +349,4 @@ pub fn scrub_wordml(data: &[u8]) -> Result<(Vec<u8>, WordmlEdits), String> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn scrub(xml: &str) -> (String, WordmlEdits) {
-        let (out, edits) = scrub_wordml(xml.as_bytes()).unwrap();
-        (String::from_utf8(out).unwrap(), edits)
-    }
-
-    #[test]
-    fn a_clean_part_comes_back_byte_identical() {
-        let xml =
-            r#"<w:document><w:body><w:p><w:r><w:t>Hello</w:t></w:r></w:p></w:body></w:document>"#;
-        let (out, edits) = scrub(xml);
-        assert_eq!(out, xml);
-        assert!(edits.is_empty());
-    }
-
-    #[test]
-    fn editing_session_ids_are_stripped_from_every_element() {
-        let xml = r#"<w:p w:rsidR="00A1" w:rsidRDefault="00A1" w14:paraId="1"><w:r w:rsidRPr="00B2"><w:t>Text</w:t></w:r></w:p>"#;
-        let (out, edits) = scrub(xml);
-        assert_eq!(edits.rsid_attributes, 3);
-        assert!(!out.contains("rsid"), "output was {out}");
-        // Non-rsid attributes survive.
-        assert!(out.contains(r#"w14:paraId="1""#));
-        assert!(out.contains("<w:t>Text</w:t>"));
-    }
-
-    #[test]
-    fn an_insertion_is_accepted_and_its_text_kept() {
-        let xml = r#"<w:p><w:ins w:id="1" w:author="Jo" w:date="2026-09-03T00:00:00Z"><w:r><w:t>added</w:t></w:r></w:ins></w:p>"#;
-        let (out, edits) = scrub(xml);
-        assert_eq!(edits.insertions_accepted, 1);
-        assert!(!out.contains("w:ins"));
-        assert!(!out.contains("Jo"));
-        assert!(out.contains("<w:t>added</w:t>"));
-    }
-
-    #[test]
-    fn a_deletion_is_accepted_and_its_text_removed() {
-        let xml = r#"<w:p><w:del w:id="2" w:author="Jo"><w:r><w:delText>gone</w:delText></w:r></w:del><w:r><w:t>kept</w:t></w:r></w:p>"#;
-        let (out, edits) = scrub(xml);
-        assert_eq!(edits.deletions_removed, 1);
-        assert!(!out.contains("gone"));
-        assert!(!out.contains("Jo"));
-        assert!(out.contains("kept"));
-    }
-
-    #[test]
-    fn nested_revisions_do_not_confuse_the_skip() {
-        // An insertion inside a deletion: the whole deletion goes, and the
-        // paragraph after it is untouched. A regex would stop at the first
-        // </w:del> and leave the tail behind.
-        let xml = concat!(
-            r#"<w:body><w:del w:id="1"><w:ins w:id="2"><w:r><w:delText>x</w:delText></w:r>"#,
-            r#"</w:ins><w:del w:id="3"><w:r><w:delText>y</w:delText></w:r></w:del></w:del>"#,
-            r#"<w:p><w:r><w:t>tail</w:t></w:r></w:p></w:body>"#
-        );
-        let (out, edits) = scrub(xml);
-        assert_eq!(edits.deletions_removed, 1, "the outer w:del is one removal");
-        assert!(!out.contains("delText"));
-        assert!(!out.contains("w:ins"));
-        assert!(out.contains("<w:t>tail</w:t>"));
-        assert!(out.starts_with("<w:body>") && out.ends_with("</w:body>"));
-    }
-
-    #[test]
-    fn formatting_change_records_are_counted_separately() {
-        let xml = r#"<w:p><w:pPr><w:pPrChange w:id="4" w:author="Jo"><w:pPr/></w:pPrChange></w:pPr><w:r><w:rPr><w:rPrChange w:id="5"><w:rPr/></w:rPrChange></w:rPr></w:r></w:p>"#;
-        let (out, edits) = scrub(xml);
-        assert_eq!(edits.format_changes_removed, 2);
-        assert_eq!(edits.deletions_removed, 0);
-        assert!(!out.contains("Change"));
-    }
-
-    #[test]
-    fn comment_anchors_are_removed() {
-        let xml = r#"<w:p><w:commentRangeStart w:id="0"/><w:r><w:t>text</w:t></w:r><w:commentRangeEnd w:id="0"/><w:r><w:commentReference w:id="0"/></w:r></w:p>"#;
-        let (out, edits) = scrub(xml);
-        assert_eq!(edits.anchors_removed, 3);
-        assert!(!out.contains("comment"));
-        assert!(out.contains("<w:t>text</w:t>"));
-    }
-
-    #[test]
-    fn the_settings_rsid_table_goes_with_its_contents() {
-        let xml = r#"<w:settings><w:rsids><w:rsidRoot w:val="00A1"/><w:rsid w:val="00B2"/></w:rsids><w:zoom w:percent="100"/></w:settings>"#;
-        let (out, edits) = scrub(xml);
-        assert_eq!(edits.deletions_removed, 1);
-        assert!(!out.contains("rsid"));
-        assert!(out.contains("w:zoom"));
-    }
-
-    #[test]
-    fn a_malformed_attribute_is_an_error_rather_than_a_silent_drop() {
-        // The tag has an rsid, so it must be rebuilt — and rebuilding a tag
-        // whose attributes cannot all be read would lose the unreadable ones.
-        let error = scrub_wordml(br#"<w:p w:rsidR="00A1" broken=unquoted/>"#).unwrap_err();
-        assert!(error.contains("attribute"), "error was {error}");
-    }
-
-    #[test]
-    fn an_unclosed_tag_at_end_of_input_is_tolerated() {
-        // `check_end_names` is off: a fragment is a legitimate input here, and
-        // the reader must not reject one.
-        assert!(scrub_wordml(b"<w:p><w:r>").is_ok());
-    }
-
-    #[test]
-    fn the_action_log_names_each_kind_of_edit() {
-        let edits = WordmlEdits {
-            rsid_attributes: 4,
-            insertions_accepted: 1,
-            deletions_removed: 2,
-            format_changes_removed: 0,
-            anchors_removed: 3,
-        };
-        let actions = edits.actions("word/document.xml");
-        assert_eq!(actions.len(), 4);
-        assert!(actions[0].contains("4 w:rsid"));
-        assert!(actions.iter().all(|a| a.contains("word/document.xml")));
-    }
-}
+mod tests;

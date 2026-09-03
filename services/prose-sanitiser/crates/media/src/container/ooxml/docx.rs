@@ -25,7 +25,7 @@ use quick_xml::{Reader, Writer};
 use regex::bytes::Regex as ByteRegex;
 use serde_json::{json, Value};
 
-use super::wordml::scrub_wordml;
+use super::wordml::{scrub_wordml, MAX_ATTRIBUTES_PER_ELEMENT, MAX_ELEMENT_DEPTH};
 use super::{entry_names, read_entries, write_entries, Entry};
 use crate::container::patterns::{ai_meta_name_re_bytes, blob_hits};
 use crate::image::markers::join_hits;
@@ -253,6 +253,9 @@ fn remove_elements_by_attribute(
         }
         start
             .attributes()
+            // Bounded independently of the parser: a hostile part must not be
+            // able to make attribute iteration the expensive step.
+            .take(MAX_ATTRIBUTES_PER_ELEMENT)
             .filter_map(std::result::Result::ok)
             .filter(|found: &Attribute<'_>| found.key.as_ref() == attribute)
             .map(|found| String::from_utf8_lossy(&found.value).into_owned())
@@ -261,7 +264,7 @@ fn remove_elements_by_attribute(
 
     let mut reader = Reader::from_reader(data);
     reader.config_mut().trim_text(false);
-    reader.config_mut().check_end_names = false;
+    reader.config_mut().check_end_names = true;
     let mut writer = Writer::new(Cursor::new(Vec::new()));
     let mut removed: Vec<String> = Vec::new();
     let mut skip_depth = 0usize;
@@ -363,12 +366,56 @@ fn clean_rels(
     Ok(out)
 }
 
+/// Reparse a part this crate rewrote, and refuse it unless it is well-formed.
+///
+/// The rewriters are event-driven and each one is tested, but a part is only
+/// safe to put back in the package if it survives an independent parse: a
+/// truncated or unbalanced result must fail the clean rather than be shipped
+/// inside an archive that opens to a repair dialogue.
+pub(super) fn revalidate(name: &str, data: &[u8]) -> Result<(), String> {
+    let mut reader = Reader::from_reader(data);
+    reader.config_mut().trim_text(false);
+    reader.config_mut().check_end_names = true;
+    let mut depth = 0usize;
+    loop {
+        match reader
+            .read_event()
+            .map_err(|error| format!("rewritten {name} is not well-formed XML: {error}"))?
+        {
+            Event::Eof => break,
+            Event::Start(_) => {
+                depth += 1;
+                if depth > MAX_ELEMENT_DEPTH {
+                    return Err(format!("rewritten {name} nests too deeply"));
+                }
+            }
+            Event::End(_) => {
+                depth = depth.checked_sub(1).ok_or_else(|| {
+                    format!("rewritten {name} is not well-formed XML: unmatched end tag")
+                })?;
+            }
+            _ => {}
+        }
+    }
+    if depth != 0 {
+        return Err(format!(
+            "rewritten {name} is not well-formed XML: {depth} element(s) left open"
+        ));
+    }
+    Ok(())
+}
+
 /// Strip provenance from a DOCX.
+///
+/// Every part this rewrites is reparsed before the archive is assembled, so a
+/// rewrite that damaged a part fails the clean instead of producing a package
+/// that opens to a repair dialogue.
 ///
 /// # Errors
 ///
-/// Returns `Err` for a non-zip input, an archive over the decompression budget,
-/// or a part that is not well-formed XML.
+/// Returns `Err` for a non-zip input, an archive over any of its budgets, a
+/// part that is not well-formed XML on the way in, or a rewritten part that is
+/// not well-formed on the way out.
 pub fn clean_docx(data: &[u8]) -> Result<(Vec<u8>, Vec<String>), String> {
     let entries = read_entries(data)?;
     let doomed = doomed_parts(&entries);
@@ -380,6 +427,7 @@ pub fn clean_docx(data: &[u8]) -> Result<(Vec<u8>, Vec<String>), String> {
             actions.push(format!("drop part {}", entry.name));
             continue;
         }
+        let mut rewritten = false;
         if entry.name.starts_with("docProps/") {
             let mut scrubbed = entry.data.clone();
             for (pattern, label, policy) in docprops_field_res() {
@@ -392,15 +440,24 @@ pub fn clean_docx(data: &[u8]) -> Result<(Vec<u8>, Vec<String>), String> {
                     &mut actions,
                 );
             }
+            rewritten = scrubbed != entry.data;
             entry.data = scrubbed;
         } else if entry.name == "[Content_Types].xml" {
-            entry.data = clean_content_types(&entry.data, &doomed, &mut actions)?;
+            let scrubbed = clean_content_types(&entry.data, &doomed, &mut actions)?;
+            rewritten = scrubbed != entry.data;
+            entry.data = scrubbed;
         } else if entry.name.ends_with(".rels") {
-            entry.data = clean_rels(&entry.name, &entry.data, &doomed, &mut actions)?;
+            let scrubbed = clean_rels(&entry.name, &entry.data, &doomed, &mut actions)?;
+            rewritten = scrubbed != entry.data;
+            entry.data = scrubbed;
         } else if is_wordml_part(&entry.name) {
             let (scrubbed, edits) = scrub_wordml(&entry.data)?;
             actions.extend(edits.actions(&entry.name));
+            rewritten = !edits.is_empty();
             entry.data = scrubbed;
+        }
+        if rewritten {
+            revalidate(&entry.name, &entry.data)?;
         }
         kept.push(entry);
     }
@@ -412,49 +469,4 @@ pub fn clean_docx(data: &[u8]) -> Result<(Vec<u8>, Vec<String>), String> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn relationship_targets_resolve_against_the_rels_directory() {
-        assert_eq!(
-            resolve_target("word/_rels/document.xml.rels", "comments.xml"),
-            "word/comments.xml"
-        );
-        assert_eq!(
-            resolve_target("word/_rels/document.xml.rels", "../customXml/item1.xml"),
-            "customXml/item1.xml"
-        );
-        assert_eq!(
-            resolve_target("_rels/.rels", "docProps/core.xml"),
-            "docProps/core.xml"
-        );
-        assert_eq!(
-            resolve_target("word/_rels/document.xml.rels", "/word/styles.xml"),
-            "word/styles.xml"
-        );
-    }
-
-    #[test]
-    fn only_the_named_elements_are_removed() {
-        let xml = br#"<Types><Override PartName="/a.xml" ContentType="x"/><Override PartName="/b.xml" ContentType="y"/><Default Extension="rels"/></Types>"#;
-        let doomed = |value: &str| value == "/a.xml";
-        let (out, removed) =
-            remove_elements_by_attribute(xml, b"Override", b"PartName", &doomed).unwrap();
-        assert_eq!(removed, vec!["/a.xml".to_string()]);
-        let out = String::from_utf8(out).unwrap();
-        assert!(!out.contains("a.xml"));
-        assert!(out.contains("b.xml"));
-        assert!(out.contains("<Default"));
-    }
-
-    #[test]
-    fn an_untouched_part_is_returned_byte_identical() {
-        let xml = br#"<Types><Override PartName="/b.xml"/></Types>"#;
-        let doomed = |_: &str| false;
-        let (out, removed) =
-            remove_elements_by_attribute(xml, b"Override", b"PartName", &doomed).unwrap();
-        assert!(removed.is_empty());
-        assert_eq!(out, xml.to_vec());
-    }
-}
+mod tests;

@@ -39,6 +39,13 @@ lopdf = { version = "0.44", default-features = false }
 # C2PA read and validate only. `default-features = false` drops the OpenSSL C
 # dependency and every HTTP backend, so no remote manifest can be fetched and
 # nothing leaves the machine.
+#
+# Tracked advisory: this pulls `rsa` 0.9.10, which carries RUSTSEC-2023-0071
+# (Marvin, a timing side channel in PKCS#1 v1.5 decryption). No fixed release
+# exists. It is not reachable from anything this crate does: the only use is
+# verifying a signature over a manifest that is about to be deleted — no private
+# key, no decryption, and no attacker-observable timing channel. Revisit when
+# `rsa` ships a fix, or if this crate ever signs.
 c2pa = { version = "0.90", default-features = false, features = ["rust_native_crypto"], optional = true }
 
 [dev-dependencies]

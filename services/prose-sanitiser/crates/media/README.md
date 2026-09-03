@@ -9,6 +9,29 @@ written back otherwise unchanged. **Pixel data is never re-encoded**, and the
 whole implementation path runs in-process: no `exiftool`, no `c2patool`, no
 `qpdf`.
 
+## Input budgets
+
+Every read of an attacker-controlled file goes through `io::read_capped`, which
+opens `O_NOFOLLOW`, checks the size on the *opened handle* rather than by a
+separate `stat`, and bounds the read itself with `take(cap + 1)` so a file that
+lies about its size or grows after the check still cannot exceed the budget.
+
+| Budget | Default | Override |
+|---|---|---|
+| Image input (PNG/JPEG/WebP) | 64 MiB | `WATERMARKS_MAX_IMAGE_BYTES` |
+| Container input (PDF/OOXML/ODF/SVG/HTML/Markdown) | 128 MiB | `WATERMARKS_MAX_CONTAINER_BYTES` |
+| Zip, decompressed total | 128 MiB | `MAX_ZIP_DECOMPRESSED_BYTES` |
+| Zip, decompressed per entry | 64 MiB | `MAX_ZIP_ENTRY_BYTES` |
+| Zip entry count | 4096 | `MAX_ZIP_ENTRIES` |
+| XML attributes per element | 512 | `MAX_ATTRIBUTES_PER_ELEMENT` |
+| XML nesting depth | 256 | `MAX_ELEMENT_DEPTH` |
+
+The zip budgets bound the bytes actually *produced*, not the sizes the central
+directory declares: an archive can understate an entry, so every entry is read
+through `take(budget + 1)` and the declared figure is only an early-exit hint.
+The XML budgets are deliberately independent of the parser, so a dependency fix
+is never the only thing between a hostile part and the CPU.
+
 ## Container libraries
 
 Nothing here hand-parses a format that a maintained crate already covers.
@@ -18,7 +41,7 @@ Nothing here hand-parses a format that a maintained crate already covers.
 | JPEG segments, PNG chunks, RIFF/WebP chunks | [`img-parts`](https://lib.rs/crates/img-parts) 0.4 | MIT OR Apache-2.0 |
 | PDF object graph, full rewrite on save | [`lopdf`](https://github.com/J-F-Liu/lopdf) 0.44 | MIT |
 | OOXML and ODF zip containers | [`zip`](https://lib.rs/crates/zip) | MIT |
-| WordprocessingML, `[Content_Types]`, `_rels` | [`quick-xml`](https://docs.rs/quick-xml) | MIT |
+| WordprocessingML, `[Content_Types]`, `_rels` | [`quick-xml`](https://docs.rs/quick-xml) 0.41 | MIT |
 | C2PA manifests, **read and validate only** | [`c2pa`](https://docs.rs/c2pa) 0.90 | MIT OR Apache-2.0 |
 
 GPL and AGPL alternatives are deliberately excluded: no `rexiv2` (GPL-3.0), no
@@ -49,7 +72,7 @@ is the container-level surgery above: delete the PNG `caBX` chunk, the JPEG
 |---|---|
 | **Detects and strips losslessly**, verifiable by diff | C2PA JUMBF manifests in JPEG `APP11` (including a box split across several segments), PNG `caBX`, WebP `C2PA`, PDF embedded-file specifications and SVG `c2pa:manifest`. EXIF, XMP (`iTXt XML:com.adobe.xmp` and Extended XMP), IPTC/Photoshop IRB, PNG text chunks and `tIME`. PDF `/Info` and `/Metadata`, with a full object-graph rewrite so earlier incremental revisions do not survive in the byte stream. OOXML `docProps/core.xml`, `app.xml` (`Application`, `Company`, `TotalTime`), `custom.xml`, `customXml/`, the `word/comments*.xml` parts with their `[Content_Types]` overrides and `_rels` entries, `w:ins`/`w:del` tracked changes and the whole `w:rsid*` editing-session family; ODF `meta.xml` including `meta:generator`, `meta:editing-cycles` and `meta:editing-duration`, with compression method and entry order preserved for untouched parts |
 | **Detects and reports only** | Pixel-domain image watermarks (SynthID-Image, Stable Signature, Tree-Ring, TrustMark, StegaStamp, DwtDct). Each needs a proprietary trained decoder or diffusion inversion. Durable Content Credentials, because the crate cannot know whether a soft binding exists |
-| **Never touches** | The pixel data of any image. Container surgery only, never a re-encode |
+| **Never touches** | The pixel data of any image. Container surgery only, never a re-encode. Scoped to `CleanImageOptions::remove_pixel` being `None`, the default: setting it runs an external regeneration backend that changes every pixel by design |
 
 ## Stripping is not unlinking
 
@@ -67,7 +90,16 @@ one. **A clean container is not an anonymous file.**
 
 - **PDF incremental updates append rather than rewrite.** A naive metadata edit
   leaves the original `/Info` and `/Metadata` objects fully recoverable earlier
-  in the byte stream. Only a full object-graph rewrite removes them.
+  in the byte stream. Only a full object-graph rewrite removes them, which is
+  why there is no degraded PDF mode: a file `lopdf` cannot parse is refused and
+  no output is written, and every rewrite is reparsed and checked for residual
+  `/Info`, `/Metadata`, XMP packets and C2PA manifests *before* it reaches the
+  disk. A clean that cannot be verified is a failed clean.
+- **An APP11 segment is not proof of C2PA.** APP11 is a general JPEG XT and
+  JUMBF carrier; HDR data, JPEG 360 metadata and privacy boxes live there too.
+  The reassembled box's `jumd` type UUID and label decide whether it is a
+  manifest store, and a non-C2PA box is preserved unless a full metadata strip
+  was requested.
 - **A ZIP round trip is itself a fingerprint.** Every untouched entry keeps its
   original compression method and relative order. A re-zip that reorders
   alphabetically or recompresses is a detectable "repacked by a non-Office tool"

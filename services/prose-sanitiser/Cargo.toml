@@ -45,7 +45,10 @@ base64 = "0.22"
 clap = { version = "4", features = ["derive"] }
 flate2 = "1"
 libc = "0.2"
-quick-xml = "0.37"
+# 0.41 is the first release fixing RUSTSEC-2026-0194 (quadratic duplicate-attribute
+# check) and RUSTSEC-2026-0195 (unbounded namespace allocation), both reachable
+# from hostile OOXML and HTML input.
+quick-xml = "0.41"
 regex = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }

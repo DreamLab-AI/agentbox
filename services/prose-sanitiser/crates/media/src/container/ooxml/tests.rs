@@ -254,16 +254,20 @@ fn odt_flags_generator_like_meta_fields() {
 }
 
 #[test]
-fn a_zip_bomb_is_refused_before_decompression() {
-    // One entry whose declared uncompressed size blows the budget. A run of
-    // zeroes compresses to almost nothing, so the archive stays small.
-    let payload = vec![0u8; (MAX_ZIP_DECOMPRESSED_BYTES + 1) as usize];
-    let bomb = zip_with(&[("word/document.xml", &payload, false)]);
-    assert!(bomb.len() < 1 << 20, "the bomb must be small on disk");
-
-    let error = clean_docx(&bomb).unwrap_err();
-    assert!(error.contains("zip decompressed size exceeds cap"));
-    assert_eq!(inspect_docx(&bomb).2, vec![budget_error()]);
+fn a_rewritten_part_that_is_not_well_formed_fails_the_clean() {
+    // The revalidation gate: a package part this crate rewrote must reparse, or
+    // the whole clean fails rather than shipping an archive that opens to a
+    // repair dialogue.
+    let docx = docx_with(&[(
+        "word/document.xml",
+        b"<w:document><w:p w:rsidR=\"00A1\"><w:r><w:t>text</w:t></w:r></w:p>",
+        false,
+    )]);
+    let error = clean_docx(&docx).unwrap_err();
+    assert!(
+        error.contains("malformed WordprocessingML"),
+        "error was {error}"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -446,3 +450,5 @@ fn docx_clean_is_idempotent() {
     );
     assert_eq!(once, twice);
 }
+
+mod zip;

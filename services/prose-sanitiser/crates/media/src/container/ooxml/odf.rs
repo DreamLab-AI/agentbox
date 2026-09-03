@@ -11,6 +11,7 @@ use std::sync::OnceLock;
 use regex::bytes::Regex as ByteRegex;
 use serde_json::{json, Value};
 
+use super::docx::revalidate;
 use super::{read_entries, write_entries, Entry};
 use crate::container::patterns::{ai_meta_name_re_bytes, blob_hits};
 use crate::image::markers::join_hits;
@@ -118,10 +119,13 @@ fn scrub_meta(data: &[u8], actions: &mut Vec<String>) -> Vec<u8> {
 
 /// Strip provenance from an ODT.
 ///
+/// A rewritten `meta.xml` is reparsed before the archive is assembled, so a
+/// rewrite that damaged the part fails the clean rather than shipping.
+///
 /// # Errors
 ///
-/// Returns `Err` for a non-zip input or an archive over the decompression
-/// budget.
+/// Returns `Err` for a non-zip input, an archive over any of its budgets, or a
+/// rewritten `meta.xml` that is not well-formed.
 pub fn clean_odt(data: &[u8]) -> Result<(Vec<u8>, Vec<String>), String> {
     let entries = read_entries(data)?;
     let mut actions: Vec<String> = Vec::new();
@@ -129,7 +133,13 @@ pub fn clean_odt(data: &[u8]) -> Result<(Vec<u8>, Vec<String>), String> {
 
     for mut entry in entries {
         if entry.name == "meta.xml" {
-            entry.data = scrub_meta(&entry.data, &mut actions);
+            let scrubbed = scrub_meta(&entry.data, &mut actions);
+            if scrubbed != entry.data {
+                // Same gate as the DOCX parts: a rewritten part is only safe to
+                // put back in the package if it survives an independent parse.
+                revalidate(&entry.name, &scrubbed)?;
+            }
+            entry.data = scrubbed;
         } else {
             let (c2pa, ai, _) = blob_hits(&entry.data);
             if (c2pa || ai) && !ODT_KEEP_PARTS.contains(&entry.name.as_str()) {
