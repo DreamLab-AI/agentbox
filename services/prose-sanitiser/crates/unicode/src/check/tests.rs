@@ -49,6 +49,7 @@ fn every_finding_is_certain_mechanical() {
             context: BidiContext::Code,
             report_spaces: true,
             context_free_homoglyphs: true,
+            fold_homoglyphs: true,
             strip_emoji_glue: false,
         },
     );
@@ -143,6 +144,74 @@ fn bidi_strippability_follows_the_fault_not_the_context() {
     assert_eq!(bidi[0].replacement, None);
 }
 
+/// Applying what `check_text` offers must reproduce what `clean_text` does.
+///
+/// This is the invariant that catches a whole class of bug: the two surfaces
+/// silently disagreeing about the same character. It has bitten twice, once in
+/// each direction (`check` declining a repair `clean` performed on bidi, and
+/// `check` offering a fold `clean` refused on homoglyphs), so it is asserted
+/// directly rather than reasoned about.
+#[test]
+fn applying_the_offered_edits_reproduces_a_clean() {
+    use crate::{clean_text, CleanOptions};
+    use prose_sanitiser_core::{surrogate, Config, Patch};
+
+    let samples = [
+        "in\u{200B}vis\u{200D}ible text",
+        "a\u{00A0}b\u{2009}c\u{3000}d",
+        "p\u{0430}ypal and h\u{0435}llo",
+        "\u{05E9}\u{05DC}\u{2069} stray pop",
+        "\u{FEFF}bom then co\u{00AD}operate",
+        "\u{2764}\u{FE0F}\u{200D}\u{1F525} emoji",
+        "\u{1F3F4}\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F} flag",
+        "ordinary British prose, nothing to do",
+    ];
+    // Each policy paired with the CleanOptions it claims to mirror.
+    let pairings = [
+        (TextPolicy::default(), CleanOptions::default()),
+        (
+            TextPolicy {
+                fold_homoglyphs: true,
+                ..TextPolicy::default()
+            },
+            CleanOptions {
+                aggressive_homoglyphs: true,
+                ..CleanOptions::default()
+            },
+        ),
+        (
+            TextPolicy {
+                report_spaces: false,
+                ..TextPolicy::default()
+            },
+            CleanOptions {
+                normalize_spaces: false,
+                ..CleanOptions::default()
+            },
+        ),
+    ];
+
+    for (policy, options) in pairings {
+        for source in samples {
+            let findings = check_text(source, &policy);
+            let patch = Patch::from_edits(
+                findings
+                    .iter()
+                    .filter_map(|finding| finding.to_edit(&Config::default())),
+            );
+            let previewed = patch.apply(source).expect("patch applies to its source");
+
+            let (cleaned, _) = clean_text(&surrogate::decode(source.as_bytes()), options);
+            let cleaned = String::from_utf8(surrogate::encode(&cleaned)).unwrap();
+
+            assert_eq!(
+                previewed, cleaned,
+                "check/clean disagree on {source:?} under {policy:?}"
+            );
+        }
+    }
+}
+
 #[test]
 fn check_and_clean_agree_on_every_bidi_fault() {
     use crate::{clean_text, CleanOptions};
@@ -175,29 +244,52 @@ fn check_and_clean_agree_on_every_bidi_fault() {
 }
 
 #[test]
-fn homoglyphs_report_the_ascii_they_fold_to() {
+fn homoglyphs_are_always_reported_but_folded_only_on_request() {
+    // Detection is unconditional; the fold is not. A default clean leaves the
+    // character alone, so a default check must not offer to rewrite it.
     let findings = check("p\u{0430}ypal");
     let homoglyphs: Vec<&Finding> = findings
         .iter()
         .filter(|f| f.rule_id == RULE_HOMOGLYPH)
         .collect();
     assert_eq!(homoglyphs.len(), 1);
+    assert_eq!(homoglyphs[0].replacement, None);
+    // The advice still names the ASCII it is confusable with, so nothing is
+    // hidden from a reader; only the mechanical edit is withheld.
+    assert!(homoglyphs[0].advice.contains("'a'"));
+
+    let folding = check_text(
+        "p\u{0430}ypal",
+        &TextPolicy {
+            fold_homoglyphs: true,
+            ..TextPolicy::default()
+        },
+    );
+    let homoglyphs: Vec<&Finding> = folding
+        .iter()
+        .filter(|f| f.rule_id == RULE_HOMOGLYPH)
+        .collect();
     assert_eq!(homoglyphs[0].replacement.as_deref(), Some("a"));
 }
 
 #[test]
-fn space_homoglyphs_are_reported_only_when_asked() {
+fn space_homoglyphs_are_reported_by_default_because_a_clean_rewrites_them() {
+    // `CleanOptions::normalize_spaces` defaults on, so a pass that stayed
+    // silent here would be lying about what a default clean does.
     let source = "a\u{00A0}b";
-    assert!(check(source).is_empty());
-    let findings = check_text(
+    let findings = check(source);
+    assert_eq!(findings.len(), 1);
+    assert_eq!(findings[0].replacement.as_deref(), Some(" "));
+
+    // Turning it off is possible, and mirrors normalize_spaces: false.
+    let quiet = check_text(
         source,
         &TextPolicy {
-            report_spaces: true,
+            report_spaces: false,
             ..TextPolicy::default()
         },
     );
-    assert_eq!(findings.len(), 1);
-    assert_eq!(findings[0].replacement.as_deref(), Some(" "));
+    assert!(quiet.is_empty());
 }
 
 #[test]
@@ -231,9 +323,12 @@ fn the_default_policy_is_the_safe_one() {
     // must be prose context, no space reporting and nothing paranoid.
     let policy = TextPolicy::default();
     assert_eq!(policy.context, BidiContext::Prose);
-    assert!(!policy.report_spaces);
     assert!(!policy.context_free_homoglyphs);
     assert!(!policy.strip_emoji_glue);
+    // These two mirror CleanOptions, so a preview matches what a clean does.
+    let clean = crate::CleanOptions::default();
+    assert_eq!(policy.report_spaces, clean.normalize_spaces);
+    assert_eq!(policy.fold_homoglyphs, clean.aggressive_homoglyphs);
 }
 
 #[test]

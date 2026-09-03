@@ -35,18 +35,41 @@ pub const RULE_BIDI: &str = "unicode-bidi";
 pub const RULE_SOFT_HYPHEN: &str = "unicode-soft-hyphen";
 
 /// How a [`check_text`] pass should read its input.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+///
+/// # The preview invariant
+///
+/// Every field here mirrors one on [`CleanOptions`](crate::CleanOptions), and
+/// the defaults are chosen to match. That is deliberate and load-bearing:
+/// applying the edits `check_text` offers must produce exactly what
+/// `clean_text` produces under the corresponding options, so a SARIF consumer,
+/// an LSP code action and the CLI never disagree about the same character. A
+/// test asserts the equivalence directly.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TextPolicy {
     /// Whether the text is prose or source code. Governs the bidi policy.
     pub context: BidiContext,
-    /// Report space homoglyphs (`U+00A0`, `U+202F` and the rest). They are
-    /// genuine typographic characters, so this is off by default.
+    /// Report space homoglyphs (`U+00A0`, `U+202F` and the rest).
+    ///
+    /// **On by default**, mirroring [`normalize_spaces`](crate::CleanOptions::normalize_spaces), which
+    /// also defaults on. Turning it off here without turning that off too
+    /// leaves `clean_text` silently rewriting characters this pass never
+    /// mentioned.
     pub report_spaces: bool,
     /// Report every character with an ASCII confusable prototype, not only
     /// those the mixed-script and restricted-identifier rules catch. Finds
     /// same-script confusables such as Latin `ı` for `i`, at the cost of
     /// flagging honest Greek and Cyrillic prose.
     pub context_free_homoglyphs: bool,
+    /// Offer the ASCII fold as a mechanical `replacement` on homoglyph
+    /// findings.
+    ///
+    /// **Off by default**, mirroring [`aggressive_homoglyphs`](crate::CleanOptions::aggressive_homoglyphs).
+    /// Detection is unconditional either way: a homoglyph is always reported,
+    /// and the advice always names the character it is confusable with. This
+    /// governs only whether the finding carries a fix, because folding rewrites
+    /// letters inside words and would destroy, for example, a security note
+    /// quoting an attack string verbatim.
+    pub fold_homoglyphs: bool,
     /// Paranoid mode: report load-bearing invisibles too — emoji ZWJ glue,
     /// script joiners, flag tag sequences and same-script fillers.
     ///
@@ -54,6 +77,20 @@ pub struct TextPolicy {
     /// acting on these findings corrupts genuine emoji, Indic and Persian
     /// text. It exists for auditing a document you already distrust.
     pub strip_emoji_glue: bool,
+}
+
+impl Default for TextPolicy {
+    fn default() -> Self {
+        Self {
+            context: BidiContext::Prose,
+            // Mirrors CleanOptions::normalize_spaces, which defaults on.
+            report_spaces: true,
+            context_free_homoglyphs: false,
+            // Mirrors CleanOptions::aggressive_homoglyphs, which defaults off.
+            fold_homoglyphs: false,
+            strip_emoji_glue: false,
+        }
+    }
 }
 
 /// Byte offset of every character in `source`, plus the total length.
@@ -158,10 +195,11 @@ fn homoglyph_findings(units: &[Unit], offsets: &[usize], policy: &TextPolicy) ->
             confidence: ConfidenceTier::CertainMechanical,
             advice: format!(
                 "U+{:04X} is confusable with ASCII {:?} in {:?}; UTS #39 skeleton folding \
-                 restores the intended text.",
+                 restores the intended text. Folding is opt-in, because it rewrites letters \
+                 inside words.",
                 hit.character as u32, hit.prototype, hit.word
             ),
-            replacement: Some(hit.prototype.to_string()),
+            replacement: policy.fold_homoglyphs.then(|| hit.prototype.to_string()),
         })
         .collect();
 
@@ -193,7 +231,7 @@ fn homoglyph_findings(units: &[Unit], offsets: &[usize], policy: &TextPolicy) ->
                      script.",
                     character as u32
                 ),
-                replacement: Some(prototype.to_string()),
+                replacement: policy.fold_homoglyphs.then(|| prototype.to_string()),
             });
         }
     }
