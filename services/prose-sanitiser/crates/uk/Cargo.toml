@@ -15,7 +15,3 @@ exclude = ["corpora/"]
 [dependencies]
 prose-sanitiser-core = { workspace = true }
 regex = { workspace = true }
-# Declared here rather than in [workspace.dependencies] because this is the only
-# crate in the workspace that detects language. MIT, no C dependencies, no
-# transitive tree of note, which keeps the `MIT OR Apache-2.0` position clean.
-whatlang = "0.18"

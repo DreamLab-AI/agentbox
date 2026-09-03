@@ -2,7 +2,7 @@
 
 use prose_sanitiser_core::{Check, Config, Span};
 
-use super::{check, matches};
+use super::{check, check_with, matches};
 use crate::{UkEnglish, UkOptions};
 
 #[test]
@@ -121,10 +121,26 @@ fn non_english_paragraphs_are_skipped() {
 
 #[test]
 fn the_language_filter_can_be_turned_off() {
-    let checker = UkEnglish::with_options(UkOptions::new().with_language_filter(false));
+    // The switch lives on the shared Config, not on UkOptions, so one setting
+    // governs every checker in the workspace.
     let text = "Ceci est un texte francais avec le mot color dedans, ecrit pour le test \
                 de detection de langue automatique.";
-    assert_eq!(checker.check(text, &Config::new()).len(), 1);
+    assert!(check(text).is_empty(), "the filter should skip French");
+    assert_eq!(
+        check_with(text, &Config::new().without_language_filter()).len(),
+        1
+    );
+}
+
+#[test]
+fn a_suppression_directive_silences_a_finding() {
+    let document = "<!-- prose-sanitiser-disable us-spelling -->\nThe color is wrong.";
+    assert!(check(document).is_empty());
+    // And an audit can switch suppressions off to see what was hidden.
+    assert_eq!(
+        check_with(document, &Config::new().with_suppressions(false)).len(),
+        1
+    );
 }
 
 #[test]

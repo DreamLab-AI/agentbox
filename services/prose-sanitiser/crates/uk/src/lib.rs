@@ -20,9 +20,11 @@
 //!
 //! ```text
 //! document
-//!    -> span exclusion      code, links, front matter, quotations, names, non-English
+//!    -> span exclusion      code, links, front matter, quotations, names
+//!    -> language filter     Config::language, shared with every other checker
 //!    -> VarCon lookup       is this really an American spelling?
 //!    -> sense resolution    which meaning, and is it already correct?
+//!    -> suppressions        Config::suppressions, Vale-style HTML comments
 //!    -> Finding             with a confidence tier that gates any fix
 //! ```
 //!
@@ -35,6 +37,13 @@
 //! [`Dialect::Oxford`] a first-class mode rather than a bolted-on flag, and it
 //! splits clusters by part of speech and usage, which is where the
 //! sense-dependent set comes from. Neither is hand-curated.
+//!
+//! Both the language pre-filter and the suppression directives live on the
+//! shared [`Config`] rather than here, so one
+//! setting governs every checker in the workspace and a document is judged
+//! English exactly once. The filter fails open: text too short, too unreliable
+//! or too ambiguous to classify counts as English, because a false negative
+//! costs a dismissible finding while a false positive silently drops real ones.
 //!
 //! # Confidence, and what may be changed automatically
 //!
@@ -98,7 +107,6 @@ pub mod checker;
 pub mod cues;
 pub mod exclude;
 pub mod gazetteer;
-pub mod lang;
 pub mod legacy;
 pub mod options;
 pub mod overrides;

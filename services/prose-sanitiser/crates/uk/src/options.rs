@@ -47,8 +47,6 @@ pub struct UkOptions {
     pub exclude_quotations: bool,
     /// Skip capitalised words that are not at the start of a sentence.
     pub exclude_proper_nouns: bool,
-    /// Skip paragraphs a language detector confidently reads as non-English.
-    pub language_filter: bool,
 }
 
 impl Default for UkOptions {
@@ -62,7 +60,6 @@ impl Default for UkOptions {
             exclude_front_matter: true,
             exclude_quotations: true,
             exclude_proper_nouns: true,
-            language_filter: true,
         }
     }
 }
@@ -136,12 +133,6 @@ impl UkOptions {
         let mut words: Vec<&str> = self.allowed_words.iter().map(String::as_str).collect();
         words.sort_unstable();
         words
-    }
-
-    /// Turn the language pre-filter on or off.
-    pub fn with_language_filter(mut self, enabled: bool) -> Self {
-        self.language_filter = enabled;
-        self
     }
 
     /// Turn quotation exclusion on or off.

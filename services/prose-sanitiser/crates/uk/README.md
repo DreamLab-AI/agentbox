@@ -22,9 +22,11 @@ This crate is built so it cannot make those mistakes.
 
 ```text
 document
-   -> span exclusion      code, links, front matter, quotations, names, non-English
+   -> span exclusion      code, links, front matter, quotations, names
+   -> language filter     Config::language, shared with every other checker
    -> VarCon lookup       is this really an American spelling?
    -> sense resolution    which meaning, and is it already correct?
+   -> suppressions        Config::suppressions, Vale-style HTML comments
    -> Finding             with a confidence tier that gates any fix
 ```
 
@@ -81,9 +83,14 @@ let checker = UkEnglish::with_options(
 
 The gazetteer is matched case-sensitively and whole, so it protects the name
 without protecting the word elsewhere. The word allowlist is case-insensitive
-and silences both rules. Exclusions for code, links, front matter, quotations,
-proper nouns and non-English text can each be switched off individually, though
-the defaults exist because each one stops a specific class of wrong finding.
+and silences both rules. Exclusions for code, links, front matter, quotations
+and proper nouns can each be switched off individually, though the defaults
+exist because each one stops a specific class of wrong finding.
+
+The language pre-filter and the Vale-style suppression comments
+(`<!-- prose-sanitiser-disable us-spelling -->`) are not options here: they live
+on the shared `Config` (`without_language_filter()`, `with_suppressions(false)`)
+so one setting governs every checker in the workspace.
 
 ## Data provenance
 

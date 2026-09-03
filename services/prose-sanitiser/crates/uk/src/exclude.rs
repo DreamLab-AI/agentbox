@@ -15,7 +15,11 @@
 //! | Quoted text and blockquote lines | Changing a quotation misrepresents its author. |
 //! | Capitalised words away from a sentence start | The cheap, effective proper-noun test. |
 //! | Gazetteer names | *World Health Organization* is spelled that way by charter. |
-//! | Paragraphs detected as non-English | See [`crate::lang`]. |
+//!
+//! Non-English paragraphs are skipped too, but that is not done here: it is
+//! [`LanguageFilter`](prose_sanitiser_core::LanguageFilter) on the shared
+//! [`Config`](prose_sanitiser_core::Config), applied by the checker, so every
+//! crate in the workspace makes the same call.
 //!
 //! # What is deliberately not excluded
 //!
@@ -30,7 +34,6 @@ use std::sync::OnceLock;
 use prose_sanitiser_core::Span;
 use regex::Regex;
 
-use crate::lang;
 use crate::options::UkOptions;
 
 /// The merged set of regions rules must skip.
@@ -64,13 +67,6 @@ impl Exclusions {
             raw.extend(proper_nouns(document));
         }
         raw.extend(options.gazetteer().spans(document));
-        if options.language_filter {
-            raw.extend(
-                lang::non_english_spans(document)
-                    .into_iter()
-                    .map(|span| (span.start, span.end)),
-            );
-        }
 
         Self { spans: merge(raw) }
     }

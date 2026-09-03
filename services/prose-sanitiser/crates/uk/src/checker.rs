@@ -6,7 +6,9 @@
 //! American; and nothing is offered as an applyable replacement unless VarCon
 //! records exactly one answer regardless of sense.
 
-use prose_sanitiser_core::{Check, ConfidenceTier, Config, Finding, Fix, Severity, Span};
+use prose_sanitiser_core::{
+    Check, ConfidenceTier, Config, Finding, Fix, RuleMeta, Severity, Span, Suppressions,
+};
 
 use crate::exclude::{word_re, Exclusions};
 use crate::options::UkOptions;
@@ -28,6 +30,51 @@ pub const UK_SENSE_SEVERITY: Severity = Severity::Low;
 
 /// Severity of an unconditional dialect finding.
 pub const UK_SPELLING_SEVERITY: Severity = Severity::Medium;
+
+/// Catalogue entry for the unconditional dialect rule.
+///
+/// Exposed so a SARIF exporter can build `runs[].tool.driver.rules[]` without
+/// hard-coding this crate's rules, per the report shape in
+/// [`prose_sanitiser_core::report`].
+pub const US_SPELLING: RuleMeta = RuleMeta {
+    id: US_SPELLING_ID,
+    name: US_SPELLING_LABEL,
+    description: "An American spelling with exactly one British form, whatever the sense. \
+                  Derived from VarCon's A/B/Z dialect categories, so the Oxford -ize mode \
+                  is the data's own distinction rather than a second word list.",
+    severity: UK_SPELLING_SEVERITY,
+    confidence: ConfidenceTier::HighConfidenceStylistic,
+    since: "2026-09-03",
+    reviewed: "2026-09-03",
+    help_uri: None,
+    sources: &[
+        "VarCon 2020.12.07 (Kevin Atkinson, Benjamin Titze; SCOWL), vendored at data/varcon.txt",
+        "https://wordlist.aspell.net/varcon-readme/",
+        "Oxford spelling (en-GB-oxendict): Hart's Rules",
+    ],
+};
+
+/// Catalogue entry for the sense-dependent rule.
+pub const UK_SENSE: RuleMeta = RuleMeta {
+    id: UK_SENSE_ID,
+    name: UK_SENSE_LABEL,
+    description: "A word whose British spelling depends on meaning rather than dialect: \
+                  licence/license, practice/practise, program/programme, meter/metre, \
+                  check/cheque, tyre/tire, storey/story, kerb/curb. Reported for a human \
+                  and never given a replacement.",
+    severity: UK_SENSE_SEVERITY,
+    confidence: ConfidenceTier::LowConfidenceJudgement,
+    since: "2026-09-03",
+    reviewed: "2026-09-03",
+    help_uri: None,
+    sources: &[
+        "VarCon 2020.12.07 cluster groups: <N>/<V> part-of-speech tags and usage glosses",
+        "https://wordlist.aspell.net/varcon-readme/",
+    ],
+};
+
+/// Every rule this crate can emit, for a report's driver table.
+pub const RULES: &[RuleMeta] = &[US_SPELLING, UK_SENSE];
 
 /// The UK-English checker.
 ///
@@ -97,11 +144,15 @@ impl Check for UkEnglish {
 
         let dialect = Dialect::from_config(config);
         let exclusions = Exclusions::compute(document, &self.options);
+        // Shared with every other crate in the workspace, so a document is
+        // judged English once and identically. The filter fails open: short,
+        // unreliable or undetectable text counts as English.
+        let english = config.language.english_spans(document);
         let mut findings = Vec::new();
 
         for hit in word_re().find_iter(document) {
             let span = Span::new(hit.start(), hit.end());
-            if exclusions.blocks(span) {
+            if exclusions.blocks(span) || !config.language.offset_is_english(&english, span.start) {
                 continue;
             }
             let word = hit.as_str();
@@ -125,6 +176,12 @@ impl Check for UkEnglish {
                     findings.push(finding);
                 }
             }
+        }
+
+        // Vale-style HTML-comment directives, honoured the same way every other
+        // checker in the workspace honours them.
+        if config.suppressions {
+            return Suppressions::parse(document).filter(findings);
         }
         findings
     }
