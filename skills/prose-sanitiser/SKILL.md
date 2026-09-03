@@ -20,11 +20,9 @@ Two jobs, one workflow. Make prose read as though a competent human with
 opinions decided every word of it. Make the files that carry it clean of the
 provenance metadata and invisible-Unicode contraband a machine can read.
 
-UK English throughout.
-
-Everything below is a baked binary on `PATH`. No Python, no virtualenv, no
-`pip install`, except the four optional torch harnesses described in
-[provenance.md](references/provenance.md).
+UK English throughout. Every command below is a baked binary on `PATH`: no
+Python, no virtualenv, no `pip install`, except the four optional torch
+harnesses in [provenance.md](references/provenance.md).
 
 ## What this tool can and cannot do
 
@@ -36,9 +34,8 @@ Claim nothing outside this table. The evidence for each row is in
 | Capability | Basis |
 |---|---|
 | Invisible `Cf`-class controls in text: zero-width family, tag block, variation selectors, bidi controls, Hangul fillers | Deterministic codepoint classification with context rules |
-| Exotic whitespace (`U+00A0`, `U+202F`). **Detected always; the fold to `U+0020` is opt-in** | Orthographically load-bearing, so reported rather than rewritten |
 | Variation-selector and tag-block smuggled payloads, including decoding the hidden bytes | The byte mapping is fully specified |
-| Homoglyph and mixed-script substitution. **Detected always; the fold to ASCII is opt-in** (`--aggressive-homoglyphs`) | UTS #39 skeleton and restriction levels |
+| Exotic whitespace (`U+00A0`, `U+202F`) and homoglyph/mixed-script substitution. **Detected always; the fold is opt-in for both** | Orthographically load-bearing, and UTS #39 skeleton respectively, so reported rather than rewritten |
 | C2PA JUMBF manifests in JPEG `APP11`, PNG `caBX`, WebP `C2PA`, PDF embedded files, SVG `c2pa:manifest` | Container structure is normatively specified; deletion is byte-level |
 | EXIF, XMP (including Extended XMP), IPTC/Photoshop IRB, PNG text chunks, `tIME`, GIF comments | Well-delimited container structures |
 | PDF `/Info` and `/Metadata`, with a structural rewrite so earlier incremental revisions do not survive in the byte stream | Full object-graph rewrite |
@@ -84,11 +81,17 @@ quotations; sense-dependent pairs such as `program`, `meter`, `disk`, `sulfur`,
 `fetus` and `dialog box`; the pixel data of any image, on the default path;
 NFKC normalisation of user-facing prose, which is lossy by design.
 
-**Scope of "lossless" and "never touches pixels".** Both describe the default
-path: a container-only operation that succeeds, with pixel removal disabled.
+**Scope of "lossless" and "never touches pixels".** Both describe a
+container-only operation **that succeeds**, with pixel removal disabled.
 `clean-image --remove-pixel ctrlregen|diffusion` is outside it by design: it
 hands the file to a diffusion harness that rewrites pixels deliberately, lossily
 and unverifiably.
+
+There is no degraded mode: an unparseable file is refused with nothing written,
+and every rewrite is verified before it reaches disk. **A clean that cannot be
+verified is a failed clean**, not a partial one. And a payload the inspector
+reports is a payload the cleaner removes. Detail in
+[provenance.md](references/provenance.md) P5.
 
 **What a clean report means.** A clean `inspect-*` is evidence that no known
 embedded carrier remains. It is not proof of anonymity or of complete provenance
@@ -98,29 +101,28 @@ cloud repository after the local one is gone.
 
 ## Confidence tiers and the write policy
 
-Severity rates impact. Confidence rates whether the rule is right. They are
-orthogonal on purpose, because a rule can be high-impact and still be a guess.
-Only confidence gates an automatic fix.
+Three orthogonal axes, because conflating any two produces a specific bug.
+**Severity** rates impact, **confidence** rates whether the pattern is right,
+**fixability** rates whether a repair exists at all. Fixability gates the fix and
+follows confidence by default, so most rules never mention it; the case that
+forced it apart is the C2PA soft binding, where detection is certain and no fix
+exists because the watermark is in the pixels.
 
-| Tier | Contents | Auto-fix |
+| Tier | Contents | Fix |
 |---|---|---|
-| `certain-mechanical` | Invisible Unicode, container metadata, homoglyphs, exotic whitespace | Yes, and verifiable by diff. The tier rates the *classification*, so a conservative default can still withhold the edit behind a flag |
-| `high-confidence-stylistic` | Unconditional dialect pairs, always-ise and always-yse sets | Only behind an explicit `--write` |
-| `low-confidence-judgement` | Sense-dependent pairs, slop phrasing, organisation-adjacent tokens | Never. Report only |
+| `certain-mechanical` | Invisible Unicode, container metadata, homoglyphs, exotic whitespace | Applied by `--fix`, unless the rule declares `no-fix-exists` |
+| `high-confidence-stylistic` | Unconditional dialect pairs, always-ise and always-yse sets | Only under `--write` |
+| `low-confidence-judgement` | Sense-dependent pairs, slop phrasing, organisation-adjacent tokens | **Never**, whatever the flags |
 
-Default behaviour is report-only, and there are two opt-ins rather than one:
+`--fix` applies the mechanical tier, `--write` adds the stylistic one and implies
+`--fix`, `--diff` previews without writing, and the default is report-only. The
+dedicated cleaners (`clean-text`, `clean-file`, `clean-image`) strip
+unconditionally, since everything they touch is mechanical.
 
-| Flag | Applies |
-|---|---|
-| (none) | Nothing. Reports only |
-| `--fix` | `certain-mechanical` |
-| `--write` | `certain-mechanical` and `high-confidence-stylistic`. Implies `--fix` |
-| `--diff` | Previews what would change, writing nothing |
-
-**Nothing applies a `low-confidence-judgement` finding**, so an ambiguous case
-stays ambiguous no matter which flags are passed. The dedicated cleaners
-(`clean-text`, `clean-file`, `clean-image`) strip unconditionally, because
-everything they touch is `certain-mechanical`.
+A conservative *default* can still withhold a mechanical edit behind a flag, as
+whitespace and homoglyph folding both do. That is a policy choice, never a tier
+downgrade, and the two must not be confused: see
+[unicode.md](references/unicode.md) X1a.
 
 Exit codes: 0 clean, 1 findings reported, 2 tool error. Output format is one
 flag, `--format {text,json,jsonl,sarif}`, with `--json` kept as an alias for
@@ -130,8 +132,8 @@ flag, `--format {text,json,jsonl,sarif}`, with `--json` kept as an alias for
 
 0. **Triage substance before style.** If a piece reads hollow rather than merely
    slopped, start at [editorial-method.md](references/editorial-method.md), or
-   [review-and-cowrite.md](references/review-and-cowrite.md) to review or
-   interview. The steps below remove tells; they cannot supply a missing point.
+   [review-and-cowrite.md](references/review-and-cowrite.md). The steps below
+   remove tells; they cannot supply a missing point.
 1. **Strip invisible marks.** `inspect-text` then `clean-text`. Lossless,
    deterministic, always safe, always first.
 2. **Scan for stylistic tells.** `slop-scan` catches what a regex can see.
@@ -196,11 +198,10 @@ machine-confident. An editor clocks a de-slopped-by-AI draft as fast as a
 slopped one. The replacement vocabulary, applied mechanically, is itself a tell.
 
 So the rules in the references are a detector, not a target. The replace-with
-column is a prompt to make a choice, not a lookup table to apply on autopilot.
-The only durable property is the one a default can never have: a wording you
-chose for this sentence and can say why. Vary the repair. Sometimes "leverage"
-wants "use", sometimes "lean on", sometimes the clause should be cut. A fix that
-introduces a new uniform default is not a fix.
+column is a prompt to make a choice, not a lookup table. The only durable
+property is one a default can never have: a wording you chose for this sentence
+and can say why. Vary the repair. A fix that introduces a new uniform default is
+not a fix.
 
 ## Ethics and framing
 
@@ -223,26 +224,24 @@ Load one on demand. Do not hold all of them in context at once.
   Tier 2 vocabulary, throat-clearing, hedges, structural tells, transitions,
   passive voice, Claudish patterns, insider voice, preamble labels. Read when
   auditing existing text.
-- [UK English](references/uk-english.md): the VarCon-backed subsystem. Span
-  exclusion, the Oxford flag, the always-ise and always-yse sets, sense pairs,
-  the organisation gazetteer, and what stays judgement-only forever.
+- [UK English](references/uk-english.md): the VarCon subsystem. Span exclusion,
+  the Oxford flag, always-ise and always-yse, sense pairs, the gazetteer, the
+  measured false-positive rate, and what stays judgement-only.
 - [Unicode](references/unicode.md): carrier classes, the two-switch law and the
   per-carrier defaults (X1a), protected sets, payload decoding, the split bidi
   policy, and why NFC and never NFKC.
 - [Provenance](references/provenance.md): the 2026 threat model. Vendor
-  watermarks stated honestly, container metadata surgery, durable Content
-  Credentials, pixel-domain watermarks, what the torch harnesses actually prove,
-  the ethics position (P11), aggregate auditing and the HTTP service.
+  watermarks stated honestly, container surgery and its no-degraded-mode rule
+  (P5), durable Content Credentials, pixel watermarks, what the torch harnesses
+  prove, the ethics position (P11), auditing and the HTTP service.
 - [Narrative tells](references/narrative-tells.md): structural defaults in
-  fiction. Thematic over-explanation, embodied emotion, single-track plots, tidy
-  resolutions, per-model fingerprints. Read when sanitising stories.
-- [Output and checklist](references/output-and-checklist.md): the pre-publish
-  checklist, report format, output formats and exit codes, when not to sanitise,
-  and the `slop-ignore` marker.
+  fiction. Thematic over-explanation, embodied emotion, tidy resolutions,
+  per-model fingerprints. Read when sanitising stories.
+- [Output and checklist](references/output-and-checklist.md): pre-publish
+  checklist, report format, output formats, exit codes, when not to sanitise.
 - [Editorial method](references/editorial-method.md): substance before style.
   Truth and ownership safeguards, the job of the piece, the order of work, the
-  high-value diagnoses, putting craft back, per-medium routing. Read when a
-  piece is hollow, or before any substantial rewrite.
+  high-value diagnoses, per-medium routing. Read when a piece is hollow.
 - [Review and co-write](references/review-and-cowrite.md): critique without
   rewriting (keep, revise, ask-author, cut) and the perspective interview for
   building a draft from the author's own material, with provenance notes and

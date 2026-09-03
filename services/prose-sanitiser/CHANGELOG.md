@@ -129,6 +129,26 @@ Landed on `rust/prose-sanitiser-hardening` during the same pass:
   It reports image and container provenance but never rewrites those bytes,
   which stays with `clean-image` and `clean-file`.
 
+- **A third axis, `Fixability`** (`Mechanical`, `OptIn`, `ReportOnly`,
+  `NoFixExists`), orthogonal to severity and confidence. It derives from the
+  tier by default, so a rule declares it only when it differs. The case that
+  forced it: `media-c2pa-soft-binding` is a certain detection with no possible
+  fix, because the watermark is in the pixels. Filing it as a low-confidence
+  judgement to keep it from being auto-fixed made the crate's strongest evidence
+  wear its weakest label, in the field a reader uses to decide how far to trust
+  a detection. It now reads as what it is: certain, and unfixable.
+- **No degraded PDF mode.** A file `lopdf` cannot parse is refused with nothing
+  written, rather than falling back to raw-byte surgery that leaves offsets
+  broken or copies the metadata through intact. Every rewrite is reparsed and
+  checked for residual `/Info`, `/Metadata`, XMP packets and C2PA manifests
+  before it reaches the disk. A clean that cannot be verified is a failed clean.
+- **A reported payload is a removed payload.** Detection and cleaning were
+  independent passes, so a carrier the inspector named could survive the
+  cleaner. They are now tied by the preview invariant.
+- **An APP11 segment is no longer assumed to be C2PA.** It is a general JPEG XT
+  and JUMBF carrier, so the reassembled box's `jumd` type UUID and label decide,
+  and a non-C2PA box survives unless a full strip was requested.
+
 ### Measured
 
 The capability matrix stopped being a claim and started being a number.

@@ -14,7 +14,7 @@ depend on from a library or an editor's hot path.
 - `Check` and `Fix` traits. `check() -> Vec<Finding>` never mutates and
   `fix() -> Patch` returns a diff the caller chooses to apply.
 - `Config` and `ConfigFile`: the run configuration, and a parser for the
-  committed `.prose-sanitiser.toml`. Parsing only — the CLI reads the file, so
+  committed `.prose-sanitiser.toml`. Parsing only: the CLI reads the file, so
   this crate keeps its no-I/O invariant.
 - `Suppressions`: Vale-style HTML-comment directives
   (`<!-- prose-sanitiser-disable RULE -->`, `-enable`, `-disable-line`,
@@ -40,10 +40,40 @@ depend on from a library or an editor's hot path.
 | Never touches | Everything. It performs no I/O |
 
 This crate detects nothing and strips nothing. It defines how a finding is
-*described*. Only `ConfidenceTier::CertainMechanical` findings, meaning
-invisible Unicode, container metadata and homoglyphs, may ever be auto-fixed.
-Sense-dependent spelling, slop phrasing and organisation-adjacent tokens are
-report-only by construction, and the type system is where that is enforced.
+*described*, on **three orthogonal axes**, and the type system is where the
+separation is enforced.
+
+| Axis | Answers | Values |
+|---|---|---|
+| `Severity` | How much does it matter? | `High`, `Medium`, `Low` |
+| `ConfidenceTier` | Is the pattern right? | `CertainMechanical`, `HighConfidenceStylistic`, `LowConfidenceJudgement` |
+| `Fixability` | Can it be repaired at all? | `Mechanical`, `OptIn`, `ReportOnly`, `NoFixExists` |
+
+Fixability derives from the tier by default, so most rules never state it. A
+rule declares one only when it differs, and one case forced the axis into
+existence: `media-c2pa-soft-binding`. That detection is *certain*, since a
+soft-binding assertion is in the manifest or it is not, but **no fix exists**,
+because the watermark is in the pixels and out of reach of container surgery.
+Filing it as `LowConfidenceJudgement` to stop it being auto-fixed made the
+crate's strongest-evidence finding wear its weakest-evidence label, in exactly
+the field a reader consults to decide how far to trust a detection. It now reads
+as what it is: certain, and unfixable.
+
+### Conservatism belongs in the default, never in the tier
+
+The rule that axis protects, and it is a property of this crate, so it governs
+the `uk` and `slop` layers as much as `unicode`.
+
+Downgrading a mechanical classification to buy safe behaviour is tempting and
+wrong twice over. It makes the tier lie about the evidence. And it strands a
+caller who explicitly asked for the mutation, because `fixable_with_opt_in()`
+returns false for `LowConfidenceJudgement`: their `to_edit` returns `None`, and
+the patch silently stops matching what the cleaner does.
+
+So conservatism lives in the *default*, expressed as a policy flag the caller
+can turn on. Exotic whitespace and homoglyph folding are both `CertainMechanical`
+and both withheld by default, which is coherent precisely because the two
+questions are answered separately.
 
 ## Example
 

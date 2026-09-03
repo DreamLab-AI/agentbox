@@ -179,7 +179,27 @@ Two structural traps the implementation handles, and you should know about:
   signal. `docProps/app.xml` in particular carries `Application`, `Company` and
   `TotalTime`, which is a strong behavioural fingerprint.
 
-**Pixel data is never re-encoded.** A metadata strip must leave the decoded
+**Pixel data is never re-encoded.**
+
+**There is no degraded mode, and that is deliberate.** A PDF that `lopdf`
+cannot parse is refused outright with nothing written, rather than falling back
+to raw-byte surgery that leaves offsets broken or copies the metadata through
+intact. Every rewrite is reparsed and checked for residual `/Info`,
+`/Metadata`, XMP packets and C2PA manifests *before* it reaches the disk. A
+clean that cannot be verified is a failed clean, not a partial one, and it exits
+non-zero rather than reporting success.
+
+**A reported payload is a removed payload.** Detection and cleaning were once
+independent passes over the text, so a carrier the inspector named could be left
+intact by the cleaner. They are now tied by an invariant: applying what
+`check_text` offers reproduces `clean_text`'s output exactly. Reporting a
+payload and then leaving it in place is the failure mode that invariant exists
+to make impossible.
+
+**An APP11 segment is not proof of C2PA.** APP11 is a general JPEG XT and JUMBF
+carrier, so HDR data, JPEG 360 metadata and privacy boxes live there too. The
+reassembled box's `jumd` type UUID and label decide whether it is a manifest
+store; a non-C2PA box survives unless a full metadata strip was asked for. A metadata strip must leave the decoded
 image pixel-exact. If pixels changed, that is a bug, not a feature.
 
 **No subprocesses on the implementation path.** The container work is all

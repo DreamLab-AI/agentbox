@@ -105,21 +105,38 @@ statistical sampling watermark in the text, a pixel-domain watermark in the
 image, or a C2PA soft binding that lets a validator retrieve the original signed
 manifest from a cloud repository after the local one is gone.
 
-## Confidence tiers
+## Three axes
 
-Severity rates impact. Confidence rates whether the rule is right. They are
-orthogonal, and only confidence gates a fix.
+Conflating any two of these produces a specific bug, so they are kept separate
+and `prose-sanitiser-core` enforces the separation in the type system.
 
-| Tier | Contents | Auto-fix |
+| Axis | Answers | Values |
 |---|---|---|
-| `certain-mechanical` | Invisible Unicode, container metadata, homoglyphs, exotic whitespace | Yes, and verifiable by diff. The tier rates the *classification*, so a conservative default can still withhold the edit behind a flag |
+| `Severity` | How much does it matter? | `High`, `Medium`, `Low` |
+| `ConfidenceTier` | Is the pattern right? | `CertainMechanical`, `HighConfidenceStylistic`, `LowConfidenceJudgement` |
+| `Fixability` | Can it be repaired at all? | `Mechanical`, `OptIn`, `ReportOnly`, `NoFixExists` |
+
+Fixability derives from the tier by default, so a rule states it only when it
+differs. One case forced the axis into existence: `media-c2pa-soft-binding` is a
+*certain* detection with **no possible fix**, because the watermark is in the
+pixels and out of reach of container surgery. Filing that as a low-confidence
+judgement to stop it being auto-fixed put the crate's strongest evidence behind
+its weakest label, in the very field a reader consults to decide how far to
+trust a detection.
+
+| Tier | Contents | Fix |
+|---|---|---|
+| `certain-mechanical` | Invisible Unicode, container metadata, homoglyphs, exotic whitespace | Applied by `--fix`, unless the rule declares `NoFixExists`. The tier rates the *classification*, so a conservative default can still withhold the edit behind a flag |
 | `high-confidence-stylistic` | Unconditional dialect pairs, always-ise and always-yse sets | Only behind an explicit `--write` |
 | `low-confidence-judgement` | Sense-dependent pairs, slop phrasing, organisation-adjacent tokens | Never. Report only |
 
 **Conservatism belongs in the default, never in the tier.** Downgrading a
 mechanical classification to buy safe behaviour would make the tier lie about
 the evidence, and would break the fix path for a caller who explicitly asked to
-apply it, since a judgement-tier finding is never fixable even under `--write`.
+apply it, since a judgement-tier finding is never fixable even under `--write`:
+their `to_edit` returns `None` and the patch silently stops matching what the
+cleaner does. Conservatism lives in the default, as a flag the caller can turn
+on. Full reasoning in [crates/core/README.md](crates/core/README.md).
 
 ## Workspace layout
 
