@@ -17,8 +17,18 @@ pub fn golden_dir() -> PathBuf {
 }
 
 pub fn golden(name: &str) -> Vec<u8> {
-    let p = golden_dir().join(name);
-    std::fs::read(&p).unwrap_or_else(|e| panic!("missing golden {}: {e}", p.display()))
+    let raw =
+        std::fs::read(golden_dir().join(name)).unwrap_or_else(|e| panic!("golden {name}: {e}"));
+    // Goldens that record the manifest path they were generated from carry the
+    // placeholder `<MANIFEST>` instead of an absolute path, so the fixture is
+    // valid in every checkout and worktree; substitute the real path here.
+    if raw.windows(10).any(|w| w == b"<MANIFEST>") {
+        String::from_utf8_lossy(&raw)
+            .replace("<MANIFEST>", &manifest().display().to_string())
+            .into_bytes()
+    } else {
+        raw
+    }
 }
 
 pub fn golden_str(name: &str) -> String {
@@ -95,19 +105,6 @@ pub fn manifest() -> PathBuf {
 }
 
 /// Compare a produced file against its golden by name.
-///
-/// Goldens that record the manifest path they were generated from carry the
-/// placeholder `<MANIFEST>` instead of an absolute path, so the fixture is
-/// valid in every checkout and worktree; it is substituted here.
 pub fn check(f: &Path, name: &str) {
-    let expected = golden(name);
-    let placeholder = b"<MANIFEST>";
-    let expected = if expected.windows(placeholder.len()).any(|w| w == placeholder) {
-        let text = String::from_utf8_lossy(&expected).into_owned();
-        text.replace("<MANIFEST>", &manifest().display().to_string())
-            .into_bytes()
-    } else {
-        expected
-    };
-    assert_same_bytes(name, &std::fs::read(f).unwrap(), &expected);
+    assert_same_bytes(name, &std::fs::read(f).unwrap(), &golden(name));
 }
