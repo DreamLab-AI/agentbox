@@ -1,0 +1,11 @@
+{
+  "id": "roundtrip-plain-text",
+  "group": "round-trip",
+  "tool": "clean-text",
+  "input": "input.txt",
+  "args": [],
+  "description": "Provenance-free British prose. A clean run must return the bytes it was given.",
+  "expect": {
+    "kind": "byte-identical"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "id": "legit-devanagari",
+  "group": "legitimate",
+  "tool": "clean-text",
+  "input": "input.txt",
+  "args": [],
+  "description": "Hindi with ZWNJ and ZWJ after a virama, where the joiners select the half-form and are orthographically load-bearing.",
+  "expect": {
+    "kind": "must-preserve",
+    "codepoints": [
+      8204,
+      8205
+    ]
+  }
+}

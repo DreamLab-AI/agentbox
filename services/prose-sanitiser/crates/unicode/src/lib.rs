@@ -1,9 +1,45 @@
-//! Layer A: invisible Unicode / homoglyph space detection and cleaning.
+//! Layer A: invisible-Unicode, steganographic-payload and homoglyph surgery on
+//! plain text.
 //!
-//! Deterministic codepoint surgery on plain text. What it removes is
-//! contraband; what it keeps is load-bearing. Every decision is a
-//! classification of the codepoint and its context, so a strip is verifiable by
-//! diffing the output — no model, no heuristics, no network.
+//! Deterministic codepoint surgery. What it removes is contraband; what it
+//! keeps is load-bearing. Every decision is a classification of a codepoint and
+//! its context, so a strip is verifiable by diffing the output — no model, no
+//! heuristics, no network.
+//!
+//! # The four things this crate does
+//!
+//! 1. **Classifies invisible and format-class carriers** ([`inspect_text`],
+//!    [`clean_text`]): the zero-width family, the tag block, variation
+//!    selectors, bidi controls, exotic whitespace, soft hyphen, Hangul fillers.
+//! 2. **Decodes smuggled payloads rather than only stripping them**
+//!    ([`stego`]): variation-selector chains in Paul Butler's byte encoding,
+//!    tag-block ASCII, and zero-width binary. A finding carries the recovered
+//!    bytes as hex and as printable text.
+//! 3. **Detects homoglyph and mixed-script substitution** ([`confusables`])
+//!    using UTS #39 `confusables.txt` skeletons, Identifier_Status and
+//!    mixed-script detection by way of the `unicode-security` crate.
+//! 4. **Applies a bidi policy that depends on context** ([`bidi`]): every
+//!    control is contraband in source code (Trojan Source, CVE-2021-42574);
+//!    balanced controls are preserved in prose that genuinely contains
+//!    right-to-left script.
+//!
+//! # Two views of the same surface
+//!
+//! [`inspect_text`] and [`clean_text`] count codepoints, which is what an audit
+//! sweep wants. [`check::check_text`] reports the same surface as
+//! [`Finding`](prose_sanitiser_core::Finding)s with byte spans, which is what a
+//! SARIF exporter, an LSP server or a patch-building `fix()` pass wants.
+//! Neither view mutates its input; [`clean_text`] returns a new buffer.
+//!
+//! ```
+//! use prose_sanitiser_core::surrogate;
+//! use prose_sanitiser_unicode::{clean_text, CleanOptions};
+//!
+//! let dirty = surrogate::decode("in\u{200B}vis\u{200D}ible".as_bytes());
+//! let (clean, stats) = clean_text(&dirty, CleanOptions::default());
+//! assert_eq!(surrogate::to_lossy_string(&clean), "invisible");
+//! assert_eq!(stats.removed_count, 2);
+//! ```
 //!
 //! # Honest scope
 //!
@@ -14,91 +50,220 @@
 //! | Capability | Basis |
 //! |---|---|
 //! | Invisible Cf-class controls in text: zero-width family, tag block, variation selectors, bidi controls, exotic whitespace, soft hyphen, Hangul fillers | Deterministic codepoint classification with context rules |
-//! | Homoglyph and mixed-script substitution | UTS #39 skeleton and restriction levels |
+//! | Variation-selector, tag-block and zero-width payloads, **including decoding them** | The Butler byte mapping and the tag block are fully specified |
+//! | Homoglyph and mixed-script substitution | UTS #39 skeleton, Identifier_Status and restriction levels |
 //!
 //! **Must never touch**
 //!
 //! | Never modify | Rule |
 //! |---|---|
-//! | U+200D inside a well-formed RGI emoji ZWJ sequence | UTS #51 ED-16 |
-//! | Mn/Mc combining marks | Never blanket-strip; only Cf-class controls are candidates |
+//! | `U+200D` inside a well-formed emoji ZWJ sequence | UTS #51 ED-16 |
+//! | `Mn`/`Mc` combining marks | Never blanket-strip; only `Cf`-class controls are candidates |
 //! | ZWNJ/ZWJ after an Indic virama, or between Persian morphemes | Orthographically load-bearing |
 //! | Balanced bidi controls in genuine RTL prose | Only reject them in source-code contexts (Trojan Source) |
-//! | U+FEFF at byte offset 0 | It is a BOM there and only there |
-//! | NFKC normalisation of user-facing prose | Lossy by design (UAX #15); NFC only |
+//! | `U+FEFF` at byte offset 0 | It is a BOM there and only there |
+//! | Regional-indicator pairs and RGI emoji tag sequences | Well-formed flags, not carriers |
+//! | NFKC normalisation of user-facing prose | Lossy by design (UAX #15); NFC only, and only when asked |
 //!
 //! This crate does **not** detect statistical sampling watermarks. Those are
 //! defined by which tokens a model selected, are undetectable without the
 //! vendor key, and no amount of codepoint inspection can see them.
 
+#![deny(missing_docs)]
+
+pub mod bidi;
+pub mod check;
+pub mod confusables;
 pub mod decide;
+pub mod report;
+pub mod rules;
+pub mod stego;
 pub mod tables;
 
-use serde_json::{json, Value};
 use unicode_normalization::UnicodeNormalization;
 
-use decide::{char_label, decide, hit_confidence, is_glue, Action};
+use bidi::BidiContext;
+pub use check::check_text;
+use check::TextPolicy;
+use decide::{char_label, decide, is_glue, Action};
 use prose_sanitiser_core::Unit;
+pub use report::{human_report, payload_json, CharHit, CleanStats, LabelCounts, TextInspectReport};
+pub use rules::RULES;
 
-/// One flagged codepoint, with a sample of the offsets it was seen at.
-#[derive(Debug, Clone)]
-pub struct CharHit {
-    pub codepoint: u32,
-    pub label: String,
-    pub count: usize,
-    /// strip | bidi | tag_chars | variation_selector | zwj_family | private_use
-    /// | space | confusable | other_cf
-    pub kind: &'static str,
-    /// Character offsets, capped at ten.
-    pub samples: Vec<usize>,
-}
-
-/// The Layer A inspect result for one text.
-#[derive(Debug, Clone)]
-pub struct TextInspectReport {
-    pub length: usize,
-    pub suspicious_total: usize,
-    pub hits: Vec<CharHit>,
-    pub notes: Vec<String>,
-}
-
-impl TextInspectReport {
-    pub fn to_json(&self) -> Value {
-        json!({
-            "length": self.length,
-            "suspicious_total": self.suspicious_total,
-            "hits": self.hits.iter().map(|hit| json!({
-                "codepoint": format!("U+{:04X}", hit.codepoint),
-                "label": hit.label,
-                "count": hit.count,
-                "kind": hit.kind,
-                "confidence": hit_confidence(hit.kind),
-                "sample_offsets": hit.samples,
-            })).collect::<Vec<_>>(),
-            "notes": self.notes,
-        })
-    }
-}
-
-const BASE_NOTES: [&str; 4] = [
-    "Layer A only: invisible/format Unicode and space homoglyphs (edit-based carriers).",
+const BASE_NOTES: [&str; 5] = [
+    "Layer A only: invisible/format Unicode, smuggled payloads and homoglyphs (edit-based carriers).",
     "Statistical (token-sampling) watermarks are not detectable here; use Layer B rewrite.",
     "Inspect kinds: strip, bidi, tag_chars, variation_selector, zwj_family, private_use, space, confusable, other_cf.",
-    "Load-bearing invisibles are preserved by default: emoji glue (ZWJ/VS after an emoji base), script joiners (ZWNJ/ZWJ inside complex scripts), flag tag chars, same-script fillers/selectors (Mongolian FVS, Khmer inherent vowels, Hangul jamo fillers), and orthographic Arabic/Syriac Cf marks. Use --strip-emoji-glue for paranoid mode (strips them all).",
+    "Load-bearing invisibles are preserved by default: emoji glue (ZWJ/VS after an emoji base), script joiners (ZWNJ/ZWJ inside complex scripts), RGI flag tag sequences, same-script fillers/selectors (Mongolian FVS, Khmer inherent vowels, Hangul jamo fillers), orthographic Arabic/Syriac Cf marks, and balanced bidi controls in text that contains RTL script. Use --strip-emoji-glue for paranoid mode (strips them all).",
+    "Homoglyphs are judged by UTS #39 skeleton plus mixed-script and Identifier_Status context, not by a hand-written table; see the `confusables` module for the one documented gap.",
 ];
 
 const CLEAN_NOTE: &str = "No deterministic Layer A (invisible Unicode/format) carriers detected; \
 statistical and pixel-domain marks are out of scope here.";
 
-/// Scan `units` for invisible carriers and space homoglyphs.
+/// How an [`inspect_text_with`] pass should read its input.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct InspectOptions {
+    /// Also report every character with an ASCII confusable prototype, not only
+    /// those the mixed-script and restricted-identifier rules catch.
+    pub aggressive_homoglyphs: bool,
+    /// Treat emoji glue, script joiners and flag tags as contraband too.
+    pub strip_emoji_glue: bool,
+    /// Whether the text is prose or source code, for the bidi policy.
+    pub bidi_context: BidiContext,
+}
+
+impl Default for InspectOptions {
+    fn default() -> Self {
+        Self {
+            aggressive_homoglyphs: false,
+            strip_emoji_glue: false,
+            bidi_context: BidiContext::Prose,
+        }
+    }
+}
+
+/// Options for [`clean_text`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CleanOptions {
+    /// Apply NFKC. Off by default and it should stay off for prose: NFKC is
+    /// lossy by design (UAX #15). NFC is the form for storage and display.
+    pub nfkc: bool,
+    /// Fold characters confusable with ASCII to their prototype.
+    pub aggressive_homoglyphs: bool,
+    /// Restrict that fold to characters the mixed-script and
+    /// restricted-identifier rules actually flag, so honest Greek, Cyrillic or
+    /// Turkish prose is never folded into Latin. On by default.
+    pub mixed_script_only: bool,
+    /// Replace exotic whitespace with `U+0020`.
+    pub normalize_spaces: bool,
+    /// Strip emoji glue, script joiners and flag tags as well.
+    pub strip_emoji_glue: bool,
+    /// Whether the text is prose or source code, for the bidi policy.
+    pub bidi_context: BidiContext,
+}
+
+impl Default for CleanOptions {
+    fn default() -> Self {
+        Self {
+            nfkc: false,
+            aggressive_homoglyphs: false,
+            mixed_script_only: true,
+            normalize_spaces: true,
+            strip_emoji_glue: false,
+            bidi_context: BidiContext::Prose,
+        }
+    }
+}
+
+const NFKC_LABEL: &str = "NFKC_normalize";
+
+/// Offsets whose character the context-aware passes have already ruled on.
+struct Context {
+    /// Bidi controls the policy preserves; `decide` would otherwise strip them.
+    preserved_bidi: Vec<usize>,
+    /// Confusables the run-level UTS #39 rules flagged, and their prototypes.
+    confusables: Vec<(usize, char)>,
+    /// Whether the input opens with a byte-order mark, which is framing rather
+    /// than a carrier and must survive.
+    preserve_bom: bool,
+}
+
+impl Context {
+    fn build(units: &[Unit], bidi_context: BidiContext, strip_emoji_glue: bool) -> Self {
+        let preserved_bidi = if strip_emoji_glue {
+            Vec::new()
+        } else {
+            bidi::analyse(units, bidi_context).preserved
+        };
+        let confusables = confusables::scan(units)
+            .into_iter()
+            .map(|hit| (hit.offset, hit.prototype))
+            .collect();
+        let preserve_bom = !strip_emoji_glue
+            && units
+                .first()
+                .copied()
+                .is_some_and(|unit| decide::is_bom_at_start(0, unit));
+        Self {
+            preserved_bidi,
+            confusables,
+            preserve_bom,
+        }
+    }
+
+    /// Whether the character at `offset` is the document's byte-order mark.
+    fn keeps_bom(&self, offset: usize) -> bool {
+        self.preserve_bom && offset == 0
+    }
+
+    fn keeps_bidi(&self, offset: usize) -> bool {
+        self.preserved_bidi.binary_search(&offset).is_ok()
+    }
+
+    fn confusable_at(&self, offset: usize) -> Option<char> {
+        self.confusables
+            .iter()
+            .find(|(at, _)| *at == offset)
+            .map(|(_, prototype)| *prototype)
+    }
+}
+
+/// Scan `units` for invisible carriers, smuggled payloads and homoglyphs.
+///
+/// `aggressive` widens homoglyph reporting from the context-aware UTS #39 rules
+/// to every character with an ASCII prototype; `strip_emoji_glue` treats
+/// load-bearing invisibles as contraband too.
 pub fn inspect_text(units: &[Unit], aggressive: bool, strip_emoji_glue: bool) -> TextInspectReport {
+    inspect_text_with(
+        units,
+        InspectOptions {
+            aggressive_homoglyphs: aggressive,
+            strip_emoji_glue,
+            ..InspectOptions::default()
+        },
+    )
+}
+
+/// Scan `units` under explicit [`InspectOptions`].
+pub fn inspect_text_with(units: &[Unit], options: InspectOptions) -> TextInspectReport {
+    let context = Context::build(units, options.bidi_context, options.strip_emoji_glue);
+    let payloads = stego::scan(units);
     // Insertion-ordered buckets keyed by (codepoint, kind), matching the
     // Python dict so equal-count hits keep first-seen order after sorting.
     let mut buckets: Vec<((u32, &'static str), Vec<usize>)> = Vec::new();
+    let mut push = |codepoint: u32, kind: &'static str, offset: usize| {
+        let key = (codepoint, kind);
+        match buckets.iter_mut().find(|(existing, _)| *existing == key) {
+            Some((_, offsets)) => offsets.push(offset),
+            None => buckets.push((key, vec![offset])),
+        }
+    };
     let mut previous_kept: Option<Unit> = None;
 
     for (offset, unit) in units.iter().copied().enumerate() {
-        let decision = decide(unit, previous_kept, true, aggressive, strip_emoji_glue);
+        let codepoint = unit.as_char().map(|c| c as u32).unwrap_or(0);
+        if context.keeps_bidi(offset) || context.keeps_bom(offset) {
+            // A preserved bidi control is an invisible mark, not a base: it
+            // must not break a joiner's binding to the letter before it. A
+            // byte-order mark at offset 0 is framing, not a carrier.
+            continue;
+        }
+        let confusable = context
+            .confusable_at(offset)
+            .or_else(|| {
+                options
+                    .aggressive_homoglyphs
+                    .then(|| unit.as_char().and_then(confusables::prototype))
+                    .flatten()
+            })
+            .is_some();
+        if confusable {
+            push(codepoint, "confusable", offset);
+            previous_kept = Some(unit);
+            continue;
+        }
+        let decision = decide(unit, previous_kept, true, false, options.strip_emoji_glue);
         let Some(kind) = decision.kind else {
             // Kept; glue (emoji/script joiner/tag) does not advance the
             // "previous kept" base so ZWJ chains and flag runs stay bound.
@@ -107,12 +272,7 @@ pub fn inspect_text(units: &[Unit], aggressive: bool, strip_emoji_glue: bool) ->
             }
             continue;
         };
-        let codepoint = unit.as_char().map(|c| c as u32).unwrap_or(0);
-        let key = (codepoint, kind);
-        match buckets.iter_mut().find(|(existing, _)| *existing == key) {
-            Some((_, offsets)) => offsets.push(offset),
-            None => buckets.push((key, vec![offset])),
-        }
+        push(codepoint, kind, offset);
         if decision.action == Action::Replace {
             previous_kept = decision.output;
         }
@@ -139,110 +299,59 @@ pub fn inspect_text(units: &[Unit], aggressive: bool, strip_emoji_glue: bool) ->
     }
 
     let mut notes: Vec<String> = BASE_NOTES.iter().map(|note| note.to_string()).collect();
-    if hits.is_empty() {
+    if hits.is_empty() && payloads.is_empty() {
         notes.push(CLEAN_NOTE.to_string());
     }
     TextInspectReport {
         length: units.len(),
         suspicious_total: total,
         hits,
+        payloads,
         notes,
     }
 }
 
-/// Counts keyed by character label, in first-seen order.
-#[derive(Debug, Clone, Default)]
-pub struct LabelCounts(Vec<(String, u64)>);
-
-impl LabelCounts {
-    fn bump(&mut self, label: String, by: u64) {
-        match self.0.iter_mut().find(|(existing, _)| *existing == label) {
-            Some((_, count)) => *count += by,
-            None => self.0.push((label, by)),
-        }
-    }
-
-    fn total(&self) -> u64 {
-        self.0.iter().map(|(_, count)| count).sum()
-    }
-
-    fn total_excluding(&self, skip: &str) -> u64 {
-        self.0
-            .iter()
-            .filter(|(label, _)| label != skip)
-            .map(|(_, count)| count)
-            .sum()
-    }
-
-    fn to_json(&self) -> Value {
-        let mut map = serde_json::Map::new();
-        for (label, count) in &self.0 {
-            map.insert(label.clone(), json!(count));
-        }
-        Value::Object(map)
-    }
-}
-
-/// What a clean run removed and replaced.
-#[derive(Debug, Clone)]
-pub struct CleanStats {
-    pub input_length: usize,
-    pub output_length: usize,
-    pub removed: LabelCounts,
-    pub replaced: LabelCounts,
-    pub removed_count: u64,
-    pub replaced_count: u64,
-}
-
-impl CleanStats {
-    pub fn to_json(&self) -> Value {
-        json!({
-            "input_length": self.input_length,
-            "output_length": self.output_length,
-            "removed": self.removed.to_json(),
-            "replaced": self.replaced.to_json(),
-            "removed_count": self.removed_count,
-            "replaced_count": self.replaced_count,
-        })
-    }
-}
-
-/// Options for [`clean_text`].
-#[derive(Debug, Clone, Copy)]
-pub struct CleanOptions {
-    pub nfkc: bool,
-    pub aggressive_homoglyphs: bool,
-    pub normalize_spaces: bool,
-    pub strip_emoji_glue: bool,
-}
-
-impl Default for CleanOptions {
-    fn default() -> Self {
-        Self {
-            nfkc: false,
-            aggressive_homoglyphs: false,
-            normalize_spaces: true,
-            strip_emoji_glue: false,
-        }
-    }
-}
-
-const NFKC_LABEL: &str = "NFKC_normalize";
-
 /// Strip invisible carriers and normalise homoglyphs, returning the cleaned
 /// units and a stats block.
+///
+/// The input is never mutated. Bidi controls the [`CleanOptions::bidi_context`]
+/// policy preserves survive; smuggled payloads are decoded into
+/// [`CleanStats::payloads`] before their carriers are removed.
 pub fn clean_text(units: &[Unit], options: CleanOptions) -> (Vec<Unit>, CleanStats) {
+    let context = Context::build(units, options.bidi_context, options.strip_emoji_glue);
+    let payloads = stego::scan(units);
     let mut removed = LabelCounts::default();
     let mut replaced = LabelCounts::default();
     let mut output: Vec<Unit> = Vec::with_capacity(units.len());
     let mut previous_kept: Option<Unit> = None;
 
-    for unit in units.iter().copied() {
+    for (offset, unit) in units.iter().copied().enumerate() {
+        if context.keeps_bidi(offset) || context.keeps_bom(offset) {
+            // Load-bearing: a preserved bidi control, or the document's own
+            // byte-order mark at offset 0.
+            output.push(unit);
+            continue;
+        }
+        if options.aggressive_homoglyphs {
+            let prototype = if options.mixed_script_only {
+                context.confusable_at(offset)
+            } else {
+                context
+                    .confusable_at(offset)
+                    .or_else(|| unit.as_char().and_then(confusables::prototype))
+            };
+            if let Some(prototype) = prototype {
+                output.push(Unit::Char(prototype));
+                replaced.bump(char_label(unit), 1);
+                previous_kept = Some(Unit::Char(prototype));
+                continue;
+            }
+        }
         let decision = decide(
             unit,
             previous_kept,
             options.normalize_spaces,
-            options.aggressive_homoglyphs,
+            false,
             options.strip_emoji_glue,
         );
         match decision.action {
@@ -288,6 +397,7 @@ pub fn clean_text(units: &[Unit], options: CleanOptions) -> (Vec<Unit>, CleanSta
         replaced_count: replaced.total_excluding(NFKC_LABEL),
         removed,
         replaced,
+        payloads,
     };
     (output, stats)
 }
@@ -311,35 +421,12 @@ fn normalize_nfkc(units: &[Unit]) -> Vec<Unit> {
     output
 }
 
-/// The plain-text rendering of an inspect report.
-pub fn human_report(report: &TextInspectReport) -> String {
-    let mut lines = vec![
-        format!("Length: {} chars", report.length),
-        format!("Suspicious: {}", report.suspicious_total),
-    ];
-    if !report.hits.is_empty() {
-        lines.push("Hits:".to_string());
-        for hit in &report.hits {
-            let samples: Vec<String> = hit
-                .samples
-                .iter()
-                .take(5)
-                .map(|offset| offset.to_string())
-                .collect();
-            lines.push(format!(
-                "  [{}/{}] {} x{} @ [{}]",
-                hit.kind,
-                hit_confidence(hit.kind),
-                hit.label,
-                hit.count,
-                samples.join(", ")
-            ));
-        }
-    }
-    for note in &report.notes {
-        lines.push(format!("Note: {note}"));
-    }
-    lines.join("\n")
+/// Check `source` for every Layer A carrier under the default prose policy.
+///
+/// A convenience over [`check::check_text`] for callers that do not need to
+/// choose a context.
+pub fn check_prose(source: &str) -> Vec<prose_sanitiser_core::Finding> {
+    check_text(source, &TextPolicy::default())
 }
 
 #[cfg(test)]

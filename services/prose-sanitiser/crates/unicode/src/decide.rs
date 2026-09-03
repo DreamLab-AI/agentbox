@@ -1,11 +1,24 @@
 //! Per-character classification shared by Layer A inspect and clean.
+//!
+//! This is the context-free half of Layer A: one codepoint, its immediately
+//! preceding kept neighbour, and a verdict. Everything that needs wider context
+//! — which word a character sits in, whether a bidi structure balances, what a
+//! variation-selector chain decodes to — lives in [`crate::confusables`],
+//! [`crate::bidi`] and [`crate::stego`], and reaches a caller through
+//! [`crate::check::check_text`].
+//!
+//! The `treat_confusables` argument no longer consults a hand-written lookalike
+//! table. It asks [`crate::confusables::prototype`] instead, which is UTS #39
+//! `confusables.txt` data plus one documented fullwidth override, so it covers
+//! several hundred codepoints where the old table covered seventy-one.
 
 use unicode_general_category::{get_general_category, GeneralCategory};
 
 use super::tables::{
-    self, BIDI_CPS, EMOJI_GLUE_CODEPOINTS, HANGUL_FILLERS, KHMER_VOWELS, LATIN_CONFUSABLES,
-    MONGOLIAN_FVS, ORTHOGRAPHIC_CF, SCRIPT_JOINERS, SPACE_HOMOGLYPHS, STRIP_CODEPOINTS, ZW_FAMILY,
+    self, BIDI_CPS, EMOJI_GLUE_CODEPOINTS, HANGUL_FILLERS, KHMER_VOWELS, MONGOLIAN_FVS,
+    ORTHOGRAPHIC_CF, SCRIPT_JOINERS, SPACE_HOMOGLYPHS, STRIP_CODEPOINTS, ZW_FAMILY,
 };
+use crate::confusables;
 use prose_sanitiser_core::Unit;
 
 /// Variation selectors beyond FE0x (VS17–VS256 in Supplementary Special-purpose).
@@ -16,19 +29,34 @@ const TAG_RANGE: std::ops::Range<u32> = 0xE0020..0xE0080;
 /// What to do with one input character.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Action {
+    /// Pass the character through untouched.
     Keep,
+    /// Remove the character entirely.
     Strip,
+    /// Substitute a different character for it.
     Replace,
 }
 
 /// The outcome of classifying one character.
 #[derive(Debug, Clone, Copy)]
 pub struct Decision {
+    /// What to do with the character.
     pub action: Action,
     /// The surviving character for keep/replace; `None` for strip.
     pub output: Option<Unit>,
     /// The inspect classification, or `None` when the character is unremarkable.
     pub kind: Option<&'static str>,
+}
+
+/// Whether this unit is a byte-order mark in the one position where `U+FEFF`
+/// means "byte-order mark" rather than "stray zero-width no-break space".
+///
+/// Unicode gives `U+FEFF` two jobs. At offset 0 it is a BOM and is part of the
+/// document's framing; anywhere else it is a zero-width no-break space and a
+/// known steganographic carrier. Only the second is contraband, so the offset
+/// is load-bearing information and callers must pass it.
+pub fn is_bom_at_start(offset: usize, unit: Unit) -> bool {
+    offset == 0 && unit.as_char() == Some('\u{FEFF}')
 }
 
 /// BMP and supplementary private-use planes (Co: no portable meaning).
@@ -269,7 +297,7 @@ pub fn decide(
         }
     }
     if treat_confusables {
-        if let Some(replacement) = tables::lookup(LATIN_CONFUSABLES, codepoint) {
+        if let Some(replacement) = confusables::prototype(character) {
             return Decision {
                 action: Action::Replace,
                 output: Some(Unit::Char(replacement)),

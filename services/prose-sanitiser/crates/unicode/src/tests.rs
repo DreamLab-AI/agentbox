@@ -126,11 +126,11 @@ fn inspect_caps_samples_at_ten() {
 fn a_clean_text_gains_the_reassurance_note() {
     let report = inspect_text(&units("ordinary prose"), false, false);
     assert_eq!(report.suspicious_total, 0);
-    assert_eq!(report.notes.len(), 5);
+    assert_eq!(report.notes.len(), 6);
     assert!(report.notes.last().unwrap().starts_with("No deterministic"));
 
     let dirty = inspect_text(&units("x\u{200b}"), false, false);
-    assert_eq!(dirty.notes.len(), 4);
+    assert_eq!(dirty.notes.len(), 5);
 }
 
 #[test]

@@ -1,0 +1,21 @@
+{
+  "id": "homoglyph-5pct",
+  "group": "adversarial",
+  "tool": "clean-text",
+  "input": "input.txt",
+  "args": [
+    "--aggressive-homoglyphs"
+  ],
+  "description": "British prose with 5 per cent of its Latin letters replaced by Cyrillic lookalikes, the substitution rate used in the SilverSpeak evaluation.",
+  "expect": {
+    "kind": "must-strip",
+    "codepoints": [
+      1058,
+      1091,
+      1077,
+      1110,
+      1086,
+      1072
+    ]
+  }
+}

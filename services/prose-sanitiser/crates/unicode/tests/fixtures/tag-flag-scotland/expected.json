@@ -1,0 +1,20 @@
+{
+  "id": "tag-flag-scotland",
+  "group": "legitimate",
+  "tool": "clean-text",
+  "input": "input.txt",
+  "args": [],
+  "description": "The scotland flag is a base plus tag characters plus a cancel tag. It uses the same block as the injection fixture and must survive untouched.",
+  "expect": {
+    "kind": "must-preserve",
+    "codepoints": [
+      127988,
+      917607,
+      917602,
+      917619,
+      917603,
+      917620,
+      917631
+    ]
+  }
+}
