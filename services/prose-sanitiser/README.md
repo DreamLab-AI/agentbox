@@ -63,12 +63,6 @@ Which mutations are on by default:
 | `U+00AD` soft hyphen | Always | **No.** A typesetter's hyphenation hint as often as a carrier, and nothing in the codepoint says which | `strip_soft_hyphen` |
 | Load-bearing invisibles: emoji ZWJ glue, Indic and Persian joiners, flag tags | **No.** They are not contraband | Never | `--strip-emoji-glue`, for auditing a document you already distrust |
 
-> **One caveat, as of 2026-09-03.** The library preserves whitespace by default
-> (`CleanOptions::normalize_spaces` is `false`), but the `clean-text` binary
-> still carries only a negative `--no-normalize-spaces` flag and therefore
-> normalises unless you pass it. The two surfaces disagree while the flag is
-> being inverted to a positive opt-in. Treat the library default as the intended
-> contract.
 
 `TextPolicy` mirrors `CleanOptions` field for field, defaults included, so
 `check_text` is a truthful preview of `clean_text`: applying the edits the check
@@ -117,7 +111,11 @@ and `prose-sanitiser-core` enforces the separation in the type system.
 | `Fixability` | Can it be repaired at all? | `Mechanical`, `OptIn`, `ReportOnly`, `NoFixExists` |
 
 Fixability derives from the tier by default, so a rule states it only when it
-differs. One case forced the axis into existence: `media-c2pa-soft-binding` is a
+differs, and it says so in a side table (`Config::with_fixability_table`, fed by
+`sanitise::FIXABILITY_OVERRIDES`) rather than by bending its tier. SARIF carries
+all three axes per result, plus `properties.noFixExplanation` where no repair is
+possible, because "we will not repair this" and "this cannot be repaired" are
+different messages. One case forced the axis into existence: `media-c2pa-soft-binding` is a
 *certain* detection with **no possible fix**, because the watermark is in the
 pixels and out of reach of container surgery. Filing that as a low-confidence
 judgement to stop it being auto-fixed put the crate's strongest evidence behind
@@ -174,11 +172,22 @@ A capability matrix is a claim until someone counts. Measured September 2026:
 | Container surgery, PNG/JPEG/WebP with no provenance marks | SHA-256 byte-identical; images pixel-exact, with the compressed `IDAT` and entropy-coded scan carried across verbatim |
 | PDF metadata written by an incremental update | No recoverable original `/Info` anywhere in the output byte stream |
 | UK English, the trap set (*gas meter*, *to license a doctor*, *World Health Organization*, *sulfur dioxide*, *dialog box*) | Zero findings, in both `-ise` and Oxford mode |
-| UK English, 413,746 words of British technical prose | 64 fixable findings, all hand-inspected, **false-positive rate 0 of 64** |
+| UK English, 2,000 British documents and 1.2M words (Hansard, GOV.UK, Gutenberg) | `us-spelling` flags 5.60% of documents (0.097 per 1,000 words), `us-spelling-sense` 8.15%. **Not one finding was auto-fixed** |
 
-The last row is the one worth having. No published study measured detector or
-linter false positives on British English before this, which is why the crate
-went and produced the number rather than citing one.
+The last row is the one worth having, and the column that matters in it is the
+last one. Every finding on that corpus is a false positive by construction, since
+the text is human-written British English, and across 1.2 million words **nothing
+was auto-fixed**. The worst case on British prose is noise in a report, never a
+corrupted document.
+
+The 5.60 per cent is an upper bound rather than a count: a Hansard debate quoting
+an American witness, a GOV.UK page naming *World Health Organization*, or a
+Gutenberg text with an American imprint all contain genuine American spellings
+the rule is right to notice. Roughly one flagged document in eighteen, against
+the **61.3 per cent** false-positive rate seven commercial detectors showed on
+TOEFL essays (Liang et al. 2023, *Patterns*). No published study measured
+detector or linter false positives on British English before this, which is why
+the crate produced the number rather than citing one.
 
 Two things are deliberately *not* claimed. A clean scan is not evidence of human
 authorship. And the slop rules report TPR at 1 per cent FPR rather than AUROC,

@@ -1,9 +1,8 @@
 # UK English
 
 The rules, the data behind them, and the far longer list of things that look
-like UK-English rules but are traps. As of 2026-09-03; the VarCon-backed
-subsystem is landing on `rust/prose-sanitiser-hardening` and this file describes
-the design it implements.
+like UK-English rules but are traps. The VarCon-backed subsystem described here
+has shipped, and the measured false-positive figures in U9 come from it.
 
 The one-sentence summary: **span exclusion runs first, then sense
 disambiguation, then confidence-tiered fixes.** Only unconditional dialect pairs
@@ -198,19 +197,30 @@ Measured September 2026, on this implementation:
 | Corpus | Result |
 |---|---|
 | The trap set: *World Health Organization*, *a driving licence*, *to license a doctor*, *the gas meter read 12 metres*, *the computer program*, *sulfur dioxide*, *the dialog box* | **Zero findings**, in both `-ise` and Oxford mode. Not merely zero auto-fixes: silence |
-| 413,746 words of British technical documentation, 242 documents, three house terms declared | 118 findings, 64 of them fixable. All 64 hand-inspected and every one a genuine Americanism (*behavior*, *math*, *initialize*, *defense*, *catalog*, *neighbors*, *modeled*, *dialing*): a **false-positive rate of 0 out of 64**. The other 54 are judgement calls on *program* and *license* in a technical register, reported at low confidence and never fixed |
+| 2,000 British documents, 1.2 million words: Hansard, GOV.UK publications, Project Gutenberg British literature | `us-spelling` flags 5.60 per cent of documents (0.097 findings per 1,000 words); `us-spelling-sense` 8.15 per cent (0.181). **Auto-fixed: zero, in both** |
 
-Rates, per 10,000 words: `us-spelling` 1.55, `us-spelling-sense` 1.31.
+**The column that matters is the last one.** Across 1.2 million words of
+human-written British English, not one finding was applied. The output splits
+between `us-spelling`, which carries a replacement and is gated behind `--write`,
+and `us-spelling-sense`, which carries none and cannot be applied under any
+configuration. The sense-dependent traps that made the original single regex
+unsafe all land in the second bucket, so the worst case on British prose is noise
+in a report rather than a corrupted document.
 
-That is worth putting beside the wider evidence. The best-known false-positive
-study of AI-text detectors,
-[Liang et al. 2023 (*Patterns*)](https://arxiv.org/abs/2304.02819), found a 61.3
-per cent average false-positive rate on TOEFL essays across seven detectors, all
-human-written, which is what a vocabulary-driven rule does to a writer it was not
-tuned for. Nothing comparable had been published for British English, which is
-why the number above was worth producing.
+The 5.60 per cent is an **upper bound on false positives, not a count of them**.
+A Hansard debate quoting an American witness, a GOV.UK page naming *World Health
+Organization*, and a Gutenberg text with an American imprint all contain genuine
+American spellings the rule is right to notice.
 
-It does not, however, promote the sense-dependent half of the layer. Those 54
+Put beside the wider evidence: the best-known false-positive study of AI-text
+detectors, [Liang et al. 2023 (*Patterns*)](https://arxiv.org/abs/2304.02819),
+found a **61.3 per cent** average false-positive rate on TOEFL essays across
+seven detectors, all human-written, which is what a vocabulary-driven rule does
+to a writer it was not tuned for. Roughly one flagged document in eighteen
+against three in five. Nothing comparable had been published for British English,
+which is why the number above was worth producing.
+
+It does not, however, promote the sense-dependent half of the layer. Those
 findings are correct *as reports* and would have been wrong as corrections. The
 tier system is what keeps them reports, and it does so structurally rather than
 by anyone remembering to be careful.

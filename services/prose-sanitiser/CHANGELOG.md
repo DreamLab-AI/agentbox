@@ -149,6 +149,18 @@ Landed on `rust/prose-sanitiser-hardening` during the same pass:
   and JUMBF carrier, so the reassembled box's `jumd` type UUID and label decide,
   and a non-C2PA box survives unless a full strip was requested.
 
+- **`--normalize-spaces` is the opt-in**, on `clean-text` and `sanitise`, with
+  the old `--no-normalize-spaces` kept as a hidden no-op that prints a note. The
+  library, the binaries and `sanitise` now agree that exotic whitespace is
+  preserved by default; for a while they did not.
+- **Fixability travels with the finding.** `Config::with_fixability_table`
+  applies a side table of rules whose repairability does not follow their tier;
+  `sanitise::FIXABILITY_OVERRIDES` holds the one entry. SARIF results carry
+  `properties.fixability` and `properties.autoFixable`, and a finding with no
+  possible repair also carries `properties.noFixExplanation`, because "we will
+  not repair this for you" and "this cannot be repaired by anyone" are different
+  messages and only the tier used to be visible.
+
 ### Measured
 
 The capability matrix stopped being a claim and started being a number.
@@ -161,10 +173,17 @@ The capability matrix stopped being a claim and started being a number.
   the compressed `IDAT` and entropy-coded scan carried across verbatim, OOXML
   compression and entry order preserved, and no recoverable `/Info` left by a
   PDF incremental update.
-- UK English on 413,746 words of British technical prose: 64 fixable findings,
-  all hand-inspected, **false-positive rate 0 of 64**; and zero findings on the
-  trap set in both `-ise` and Oxford mode. No published study measured detector
-  or linter false positives on British English before this.
+- UK English on 2,000 British documents and 1.2 million words (Hansard, GOV.UK,
+  Project Gutenberg): `us-spelling` flags 5.60 per cent of documents (0.097 per
+  1,000 words) and `us-spelling-sense` 8.15 per cent, with **zero auto-fixed in
+  both**. Every finding on that corpus is a false positive by construction, so
+  the worst case on British prose is noise in a report rather than a corrupted
+  document. The 5.60 per cent is an upper bound, since a Hansard debate quoting
+  an American witness contains genuine American spellings. Roughly one flagged
+  document in eighteen, against the 61.3 per cent false-positive rate seven
+  commercial detectors showed on TOEFL essays (Liang et al. 2023, *Patterns*).
+  No published study measured detector or linter false positives on British
+  English before this.
 
 ### Still open
 

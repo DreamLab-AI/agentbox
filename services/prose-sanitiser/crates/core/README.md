@@ -39,7 +39,7 @@ up "correcting" *a driving licence*. Fixability was split for the mirror-image
 reason.
 
 The case that forced it: a C2PA soft-binding assertion is either in the manifest
-or it is not, so the detection is as certain as anything in the workspace — but
+or it is not, so the detection is as certain as anything in the workspace, but
 **no repair exists**, because the watermark it points at lives in the pixels,
 out of reach of container surgery. The only way to stop that being auto-fixed
 used to be filing it as a low-confidence judgement call, which made the most
@@ -52,9 +52,9 @@ explicitly only when it differs:
 
 | Tier | Default fixability |
 |---|---|
-| `CertainMechanical` | `Mechanical` — applied with no opt-in |
-| `HighConfidenceStylistic` | `OptIn` — applied only under `--write` |
-| `LowConfidenceJudgement` | `ReportOnly` — never applied |
+| `CertainMechanical` | `Mechanical`: applied with no opt-in |
+| `HighConfidenceStylistic` | `OptIn`: applied only under `--write` |
+| `LowConfidenceJudgement` | `ReportOnly`: never applied |
 
 The fourth variant, `NoFixExists`, has no tier that implies it. It says the
 repair is impossible rather than unwise, and `Finding::to_edit` refuses it under
@@ -62,7 +62,7 @@ every configuration.
 
 `RuleMeta` deliberately does not carry the field. It is built as a `const` array
 literal in four separate crates and Rust has no default field values, so adding
-one would break every literal — the opposite of an additive change. Declared
+one would break every literal, the opposite of an additive change. Declared
 overrides ride in a side table instead: `Config::with_fixability_table`.
 
 ## Capability row
@@ -92,6 +92,27 @@ Filing it as `LowConfidenceJudgement` to stop it being auto-fixed made the
 crate's strongest-evidence finding wear its weakest-evidence label, in exactly
 the field a reader consults to decide how far to trust a detection. It now reads
 as what it is: certain, and unfixable.
+
+### Declaring a fixability that does not follow the tier
+
+A rule whose repairability differs from its tier says so in a side table rather
+than by bending its tier, and `Config::with_fixability_table` applies it. There
+is exactly one entry, `sanitise::FIXABILITY_OVERRIDES`:
+
+```rust
+pub const FIXABILITY_OVERRIDES: &[(&str, Fixability)] =
+    &[("media-c2pa-soft-binding", Fixability::NoFixExists)];
+```
+
+Every entry point that assembles findings from more than one crate runs
+`sanitise::configure` first, so a rule that says no repair exists is honoured
+wherever it surfaces.
+
+SARIF carries all three axes on each result: `properties.confidence`,
+`properties.severity` and `properties.fixability`, plus `properties.autoFixable`.
+A finding with no possible repair also gets `properties.noFixExplanation`,
+because **"we will not repair this for you" and "this cannot be repaired by
+anyone" are different messages**, and only the tier used to be visible.
 
 ### Conservatism belongs in the default, never in the tier
 

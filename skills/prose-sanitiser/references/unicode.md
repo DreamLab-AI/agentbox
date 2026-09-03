@@ -39,12 +39,6 @@ position you can take.
 | `U+00AD` soft hyphen | Always | **No.** A typesetter's hyphenation hint as often as a carrier, and nothing in the codepoint says which | `strip_soft_hyphen` |
 | Load-bearing invisibles: emoji ZWJ glue, Indic and Persian joiners, flag tags | **No.** They are not contraband | Never | `--strip-emoji-glue`, for auditing a document you already distrust |
 
-> **One caveat, as of 2026-09-03.** The library preserves whitespace by default
-> (`CleanOptions::normalize_spaces` is `false`), but the `clean-text` binary
-> still carries only a negative `--no-normalize-spaces` flag and therefore
-> normalises unless you pass it. The two surfaces disagree while the flag is
-> being inverted to a positive opt-in. Treat the library default as the intended
-> contract.
 
 **Conservatism belongs in the default, never in the tier.** Downgrading a
 mechanical classification to buy safe behaviour would make the tier lie about
