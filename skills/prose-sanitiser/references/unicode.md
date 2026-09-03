@@ -16,7 +16,7 @@ rule is contextual rather than a blocklist.
 | Variation selectors | `U+FE00`–`U+FE0F`, `U+E0100`–`U+E01EF` | Glyph-variant and emoji-presentation selection |
 | Bidi controls | `U+202A`–`U+202E`, `U+2066`–`U+2069`, `U+200E`/`U+200F` | The [UAX #9](https://unicode.org/reports/tr9/) bidirectional algorithm |
 | Exotic whitespace | `U+00A0`, `U+202F`, `U+2000`–`U+200A`, `U+205F`, `U+3000`, `U+1680` | Genuine typographic spacing with distinct widths |
-| Soft hyphen | `U+00AD` | Reclassified `Pd` to `Cf` in Unicode 4.0. Invisible unless a break occurs |
+| Soft hyphen | `U+00AD` | Reclassified `Pd` to `Cf` in Unicode 4.0. Invisible unless a line break falls on it, which is what makes it both a legitimate hyphenation hint and a known carrier. **Preserved by default and report-only**; stripped only on request |
 | Hangul fillers | `U+3164`, `U+FFA0` | Default-ignorable but **non-zero width**, and used to bypass empty-string validation |
 
 One correction the tables carry deliberately: **`U+180E` was reclassified from
@@ -39,6 +39,15 @@ failure mode this tool has.
 | `U+FEFF` | Byte offset 0 only, where it is a BOM | Anywhere else. Strip as a stray ZWNBSP |
 | Regional indicators | Well-formed pairs | Singleton |
 | `U+FE0F` | Directly after a character with the `Emoji` property | Chained after an arbitrary base, which is the smuggling signature |
+| `U+00AD` soft hyphen | Always, by default. Nothing in the codepoint says whether it is a typesetter's hyphenation hint or a carrier | Reported either way, and stripped only when explicitly asked |
+
+The soft hyphen deserves its own note, because it is the one carrier where the
+honest answer is "cannot tell". Stripping it unconditionally is wrong in both
+directions: it silently removes legitimate hyphenation from compound words, and
+it dresses a judgement about the author's intent as a mechanical certainty. So
+it is preserved by default, reported as `unicode-soft-hyphen` at
+`low-confidence-judgement`, and never carries a fix. It is the only rule in the
+Unicode layer that is not `certain-mechanical`.
 
 `--strip-emoji-glue` overrides the preservation rules and removes the
 load-bearing invisibles too. It is a paranoid mode for adversarial input, not a

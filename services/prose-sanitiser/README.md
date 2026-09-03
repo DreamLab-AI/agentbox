@@ -20,7 +20,7 @@ crate description, a README or a `--help`.
 
 | Capability | Basis |
 |---|---|
-| Invisible `Cf`-class controls: zero-width family, tag block, variation selectors, bidi controls, exotic whitespace, soft hyphen, Hangul fillers | Deterministic codepoint classification with context rules |
+| Invisible `Cf`-class controls: zero-width family, tag block, variation selectors, bidi controls, exotic whitespace, Hangul fillers | Deterministic codepoint classification with context rules |
 | Variation-selector and tag-block smuggled payloads, **including decoding the hidden bytes** | The byte mapping is fully specified |
 | Homoglyph and mixed-script substitution | UTS #39 skeleton and restriction levels |
 | C2PA JUMBF manifests in JPEG `APP11`, PNG `caBX`, WebP `C2PA`, PDF embedded files, SVG `c2pa:manifest` | Container structure is normatively specified; deletion is byte-level |
@@ -48,7 +48,9 @@ literature.
 
 `U+200D` inside a well-formed RGI emoji ZWJ sequence; `Mn`/`Mc` combining marks;
 ZWNJ/ZWJ after an Indic virama or between Persian morphemes; balanced bidi
-controls in genuine RTL prose; `U+FEFF` at byte offset 0; content inside code
+controls in genuine RTL prose; `U+FEFF` at byte offset 0; `U+00AD` soft hyphen,
+which is a hyphenation hint as often as a carrier, so it is reported and
+stripped only on request; content inside code
 fences, inline code, HTML attributes, URLs, file paths or front matter; US
 spelling in proper nouns, organisation names and direct quotations;
 sense-dependent pairs such as `program`, `meter`, `disk`, `sulfur`, `fetus` and
@@ -124,21 +126,25 @@ cargo doc --workspace --no-deps
 
 ## Licence
 
-> **Open decision, and a hard publication blocker.** Every crate here declares
-> `license = "MIT OR Apache-2.0"`, but **no `LICENSE-MIT` or `LICENSE-APACHE`
-> file exists anywhere in this workspace or the repository**, and
-> [ADR-016](../../docs/adr/) (2026-05-16, licence consolidation) records that all
-> first-party code is **AGPL-3.0-only**, having "eliminated remaining MIT
-> designations from sub-package manifests". The repository root `LICENSE` is
-> AGPL-3.0. Ten `services/*` crates currently declare `MIT OR Apache-2.0` against
-> that ADR, and `docs/developer/licensing.md` has no entry for any of them.
+> **Open decision, and a hard publication blocker.** The mechanical half is now
+> fixed: `LICENSE-MIT` and `LICENSE-APACHE` exist at this workspace root and are
+> linked into every crate, so a packaged tarball carries its licence texts.
 >
-> Relicensing is the copyright holder's call, not a detail to settle in a
+> The governing half is not. [ADR-016](../../docs/adr/) (2026-05-16, licence
+> consolidation) records that all first-party code is **AGPL-3.0-only**, having
+> "eliminated remaining MIT designations from sub-package manifests". The
+> repository root `LICENSE` is AGPL-3.0. Ten `services/*` crates declare
+> `MIT OR Apache-2.0` against that ADR, and `docs/developer/licensing.md` has no
+> entry for any of them. Adding the licence texts did not resolve that conflict;
+> if anything it sharpened it, because the repository now ships two contradictory
+> grants for the same code.
+>
+> Relicensing is the copyright holder's call, not something to settle in a
 > checklist. Nothing should be published to crates.io until this resolves one of
 > three ways: the crates become AGPL-3.0 per ADR-016 and the publication plan is
-> dropped; a new ADR carves these leaf crates out as `MIT OR Apache-2.0`, the two
-> licence files are added, and the matrix in `docs/developer/licensing.md` is
-> updated; or the crates move to their own repository under their own licence.
+> dropped; a new ADR supersedes ADR-016 to carve these leaf crates out as
+> `MIT OR Apache-2.0` and `docs/developer/licensing.md` is updated to match; or
+> the crates move to their own repository under their own licence.
 
 The rest of this section describes the position the crates *declare*, which is
 what the dependency choices were made to support.

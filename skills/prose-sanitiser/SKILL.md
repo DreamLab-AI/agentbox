@@ -35,7 +35,7 @@ Claim nothing outside this table. The evidence for each row is in
 
 | Capability | Basis |
 |---|---|
-| Invisible `Cf`-class controls in text: zero-width family, tag block, variation selectors, bidi controls, exotic whitespace, soft hyphen, Hangul fillers | Deterministic codepoint classification with context rules |
+| Invisible `Cf`-class controls in text: zero-width family, tag block, variation selectors, bidi controls, exotic whitespace, Hangul fillers | Deterministic codepoint classification with context rules |
 | Variation-selector and tag-block smuggled payloads, including decoding the hidden bytes | The byte mapping is fully specified |
 | Homoglyph and mixed-script substitution | UTS #39 skeleton and restriction levels |
 | C2PA JUMBF manifests in JPEG `APP11`, PNG `caBX`, WebP `C2PA`, PDF embedded files, SVG `c2pa:manifest` | Container structure is normatively specified; deletion is byte-level |
@@ -63,7 +63,8 @@ Claim nothing outside this table. The evidence for each row is in
 `U+200D` inside a well-formed RGI emoji ZWJ sequence; `Mn`/`Mc` combining marks;
 ZWNJ/ZWJ after an Indic virama or between Persian morphemes; balanced bidi
 controls in genuine RTL prose; `U+FEFF` at byte offset 0, where it is a BOM;
-content inside code fences, inline code, HTML attributes, URLs, file paths or
+`U+00AD` soft hyphen, which is a hyphenation hint as often as a carrier, so it
+is reported and stripped only on request; content inside code fences, inline code, HTML attributes, URLs, file paths or
 front matter; US spelling in proper nouns, organisation names and direct
 quotations; sense-dependent pairs such as `program`, `meter`, `disk`, `sulfur`,
 `fetus` and `dialog box`; the pixel data of any image; NFKC normalisation of

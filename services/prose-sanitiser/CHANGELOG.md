@@ -35,6 +35,15 @@ variation-selector chain, and the UK-English rule was a single unsafe regex.
   every crate-level `//!` doc, and the skill.
 - Split severity from confidence throughout. Severity rates impact; confidence
   rates whether the rule is right, and only confidence gates a fix.
+- **The soft hyphen moved out of the mechanical tier.** `U+00AD` was stripped
+  unconditionally, which was wrong in both directions: it silently removed
+  legitimate hyphenation from compound words, and it dressed a judgement about
+  the author's intent as a mechanical certainty. It is now preserved by default,
+  reported as `unicode-soft-hyphen` at `low-confidence-judgement`, and stripped
+  only through `CleanOptions::strip_soft_hyphen`. It is the only rule in the
+  Unicode layer that is not `certain-mechanical`, and the capability matrix in
+  the skill, the workspace README and `references/unicode.md` all moved it from
+  the strips-losslessly block to never-touch.
 
 ### Added
 
@@ -47,9 +56,7 @@ variation-selector chain, and the UK-English rule was a single unsafe regex.
 - Workspace `README.md` and this changelog.
 - Per-crate publishing checklists for the four publication candidates.
 
-### Added
-
-Landed on `rust/prose-sanitiser-hardening` during the 2026-09-03 hardening pass.
+Landed on `rust/prose-sanitiser-hardening` during the same pass:
 
 - **UK English rebuilt as a real subsystem.** VarCon 2020.12.07 vendored
   (licence cleared, hash-pinned and attributed in `crates/uk/data/`), with the
@@ -116,12 +123,15 @@ The capability matrix stopped being a claim and started being a number.
 
 ### Still open
 
-- **The licence position is unresolved, and it blocks publication.** Every crate
-  declares `MIT OR Apache-2.0`, no `LICENSE-MIT` or `LICENSE-APACHE` file exists
-  anywhere, the repository root is AGPL-3.0, and ADR-016 (2026-05-16) records
-  that all first-party code is AGPL-3.0-only with MIT designations eliminated
-  from sub-package manifests. Ten `services/*` crates contradict that ADR. This
-  is a copyright-holder decision. See the workspace README.
+- **The licence position is unresolved, and it blocks publication.** The
+  mechanical half is fixed: `LICENSE-MIT` and `LICENSE-APACHE` now exist at the
+  workspace root and are linked into every crate. The governing half is not.
+  ADR-016 (2026-05-16) records all first-party code as AGPL-3.0-only with MIT
+  designations eliminated from sub-package manifests, the repository root is
+  AGPL-3.0, and ten `services/*` crates declare `MIT OR Apache-2.0` against that
+  ADR. Adding the texts sharpened the conflict rather than settling it: the
+  repository now ships two contradictory grants for the same code. This is a
+  copyright-holder decision. See the workspace README.
 - The `sanitise` umbrella pass is declared in `crates/cli/src/lib.rs` but has no
   module file yet, so the CLI crate does not build.
 

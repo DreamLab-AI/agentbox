@@ -197,13 +197,14 @@ already does that well.
 
 Publication candidate. Before `cargo publish`:
 
-- [ ] **Licence position settled.** `Cargo.toml` declares
-      `MIT OR Apache-2.0`, but no `LICENSE-MIT` or `LICENSE-APACHE` file exists
-      anywhere in this workspace, and ADR-016 (2026-05-16, licence
-      consolidation) records that all first-party code is AGPL-3.0-only with
-      "remaining MIT designations eliminated from sub-package manifests". Ten
-      `services/*` crates currently contradict that ADR. This is an owner
-      decision and a hard publication blocker: see the workspace README
+- [x] `LICENSE-MIT` and `LICENSE-APACHE` present and linked into the crate
+- [ ] **Licence position settled with the copyright holder.** ADR-016
+      (2026-05-16, licence consolidation) records all first-party code as
+      AGPL-3.0-only, having "eliminated remaining MIT designations from
+      sub-package manifests", and the repository root is AGPL-3.0. Ten
+      `services/*` crates declare `MIT OR Apache-2.0` against that ADR. Adding
+      the licence texts did not resolve the conflict. A hard publication
+      blocker: see the workspace README
 - [x] `description`, `repository`, `keywords`, `categories`, `readme` set
 - [x] Vendored data licence-cleared, attributed and hash-pinned in `data/`
 - [x] Pure Rust: no C dependencies, no subprocesses, no network
