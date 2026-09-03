@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit:
+verified_commit: 169602a07511ee5f708a7b793545a2e095bce61e
 verified_paths: [services, docs/developer/licensing.md]
 owner: jjohare
 review_trigger: any new crate under services/, any services crate gaining an AGPL dependency, or first publication of a services crate to crates.io
