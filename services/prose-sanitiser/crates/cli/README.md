@@ -33,20 +33,35 @@ The HTTP service lives in the separate `prose-sanitiser-server` crate.
 
 ## Output and exit codes
 
-| Format | Flag |
+One flag selects the format: `--format {text,json,jsonl,sarif}`.
+
+| Format | What it is |
 |---|---|
-| Human, `file:line:col`, rustc style | default |
-| JSON Lines | `--json` |
-| SARIF 2.1.0, for GitHub code scanning | `--sarif` |
+| `text` | Human-readable, `file:line:col`, rustc and clippy style. The default |
+| `json` | The tool's own long-standing report shape, per binary. `--json` is kept as an alias |
+| `jsonl` | One JSON object per line, the ripgrep and typos convention |
+| `sarif` | SARIF 2.1.0, the exact version GitHub code scanning requires |
+
+Only `jsonl` and `sarif` are generic serialisations of the shared `Report`;
+`text` and `json` are laid out per binary, because those shapes predate the
+workspace and must not change. A machine format owns stdout completely.
 
 | Exit code | Meaning |
 |---|---|
-| 0 | Clean |
-| 1 | Findings at or above the gate severity |
-| 2 | Tool error |
+| 0 | Clean, nothing found |
+| 1 | Findings reported |
+| 2 | Tool error: bad arguments, unreadable input, failed write |
 
 This matches shellcheck and Vale. Note that `typos` inverts it and uses 2 for
-findings; that convention is deliberately not copied.
+findings; that convention is deliberately not copied. Every binary prints the
+contract in its `--help` epilogue.
+
+## Configuration
+
+`--config` points at a `.prose-sanitiser.toml`; without it, the nearest one is
+discovered by walking up from the target. `--disable RULE` is repeatable, and
+`slop-scan --explain-rules` prints the rule table with tiers, dates and sources
+so a decaying rule is visible rather than silent.
 
 ## The write policy
 

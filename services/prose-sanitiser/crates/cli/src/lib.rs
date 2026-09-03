@@ -26,16 +26,35 @@
 //! [`uk`] the UK-English rule, and the HTTP surface lives in the separate
 //! `prose-sanitiser-server` crate.
 //!
+//! [`sanitise`] is the umbrella pass over all of them: one walk, every layer,
+//! with the confidence tier deciding what may be changed.
+//!
+//! Three cross-cutting pieces the binaries share: [`exit`] is the exit-code
+//! contract (0 clean, 1 findings, 2 error) every binary now follows, [`output`]
+//! the format selection (text, json, jsonl, SARIF 2.1.0), and [`settings`] the
+//! discovery and loading of the committed `.prose-sanitiser.toml`.
+//!
 //! The heavy pixel- and token-domain backends (MarkLLM, MarkDiffusion,
 //! CtrlRegen, reverse-SynthID) stay behind a subprocess boundary in
 //! [`image::harness`]: they are torch programs, not parsers.
 //!
 //! # Output and exit codes
 //!
-//! Human output is `file:line:col`, rustc and clippy style, and is the primary
-//! format. `--json` emits JSON Lines (the ripgrep and typos convention) and
-//! `--sarif` emits SARIF 2.1.0, which is the exact version GitHub code scanning
-//! requires.
+//! One flag selects the format: `--format {text,json,jsonl,sarif}`, via
+//! [`output::OutputFormat`].
+//!
+//! | Format | What it is |
+//! |---|---|
+//! | `text` | Human-readable, `file:line:col`, rustc and clippy style. The default |
+//! | `json` | The tool's own long-standing report shape, per binary. `--json` is kept as an alias |
+//! | `jsonl` | One JSON object per line, the ripgrep and typos convention |
+//! | `sarif` | SARIF 2.1.0, the exact version GitHub code scanning requires |
+//!
+//! Only `jsonl` and `sarif` are generic serialisations of a
+//! [`Report`](prose_sanitiser_core::Report); `text` and `json` are laid out by
+//! each binary, because those shapes predate the workspace and must not change.
+//! Every machine format owns stdout completely, since a summary line
+//! interleaved with SARIF makes the document unparseable.
 //!
 //! | Exit code | Meaning |
 //! |---|---|
@@ -61,7 +80,11 @@
 
 pub mod audit;
 pub mod dispatch;
+pub mod exit;
+pub mod output;
 pub mod rewrite;
+pub mod sanitise;
+pub mod settings;
 
 pub use prose_sanitiser_media::{container, image};
 pub use prose_sanitiser_slop as slop;

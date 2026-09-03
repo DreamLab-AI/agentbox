@@ -8,13 +8,14 @@ explanatory comments.
 ```bash
 slop-scan <path>                   # human report plus slop score
 slop-scan <path> --severity high   # strongest signals only
-slop-scan <path> --json            # machine-readable
+slop-scan <path> --format sarif    # machine-readable, for GitHub code scanning
+slop-scan <path> --explain-rules   # the rule table, with tiers and sources
 ```
 
-Exit codes: **0** clean, **1** findings at or above the gate severity, **2**
-tool error. Machine output is JSON Lines, with SARIF 2.1.0 available for GitHub
-code scanning. Suppress a deliberate choice with `slop-ignore` on the line (an
-HTML comment works in Markdown).
+Exit codes: **0** clean, **1** findings reported, **2** tool error. Format is
+one flag, `--format {text,json,jsonl,sarif}`, with `--json` kept as an alias.
+Suppress a deliberate choice with `slop-ignore` on the line (an HTML comment
+works in Markdown).
 
 Every finding carries a severity **and** a confidence tier, and they are
 orthogonal. Severity says how strongly the tell signals AI authorship, so it

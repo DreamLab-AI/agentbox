@@ -86,8 +86,9 @@ never the third, so an ambiguous case stays ambiguous no matter what flags are
 passed. `clean-text`, `clean-file` and `clean-image` are the mechanical tier and
 strip unconditionally, because everything they touch is `certain-mechanical`.
 
-Exit codes: 0 clean, 1 findings at or above the gate severity, 2 tool error.
-Machine output is JSON Lines or SARIF 2.1.0 for CI.
+Exit codes: 0 clean, 1 findings reported, 2 tool error. Output format is one
+flag, `--format {text,json,jsonl,sarif}`, with `--json` kept as an alias for
+`--format json`. Use `jsonl` for pipelines and `sarif` for GitHub code scanning.
 
 ## Quick path
 
@@ -120,7 +121,10 @@ clean-text <path> --in-place       # overwrite, keeping a .bak
 # Stylistic tells
 slop-scan <path>                   # full report plus slop score
 slop-scan <path> --severity high   # strongest signals only
-slop-scan <path> --json            # machine-readable, for CI
+slop-scan <path> --format sarif    # for GitHub code scanning
+slop-scan <path> --structural      # add whole-document structural measures
+slop-scan <path> --explain-rules   # print the rule table with tiers and sources
+slop-scan <path> --disable RULE    # skip one rule; repeatable
 
 # File and container metadata
 inspect-file <path>                # report metadata found

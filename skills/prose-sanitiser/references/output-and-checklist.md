@@ -4,15 +4,22 @@ As of 2026-09-03.
 
 ## Output formats
 
-| Format | Flag | Use |
-|---|---|---|
-| Human | default | `file:line:col`, rustc and clippy style. Primary |
-| JSON Lines | `--json` | One finding per line. The ripgrep and typos convention |
-| SARIF 2.1.0 | `--sarif` | GitHub code scanning, which requires exactly 2.1.0, gzipped under 10 MB |
+One flag selects the format: `--format {text,json,jsonl,sarif}`.
 
+| Format | Use |
+|---|---|
+| `text` | `file:line:col`, rustc and clippy style. The default and the primary format |
+| `json` | The tool's own report shape, which differs per binary and predates the workspace. `--json` is kept as an alias for this |
+| `jsonl` | One JSON object per line. The ripgrep and typos convention, and the one to pipe |
+| `sarif` | GitHub code scanning, which requires exactly SARIF 2.1.0, gzipped under 10 MB |
+
+Only `jsonl` and `sarif` are generic serialisations of the shared report type.
 SARIF output separates `runs[].tool.driver.rules[]` from `runs[].results[]` and
-carries `partialFingerprints` so a CI run deduplicates findings across commits
+carries `partialFingerprints`, so a CI run deduplicates findings across commits
 rather than re-reporting a moved line.
+
+A machine format owns stdout completely: a progress line or a summary
+interleaved with SARIF makes the document unparseable.
 
 A fix is represented **as data**, never as pre-applied text: a finding carries a
 span and an edit the caller chooses to apply. That is what lets one core serve
@@ -23,15 +30,25 @@ knowing about the others.
 
 | Code | Meaning |
 |---|---|
-| 0 | Clean. No findings at or above the gate severity |
-| 1 | Findings at or above the gate severity |
-| 2 | Tool error: unreadable path, bad flag, missing dependency |
+| 0 | Clean, nothing found |
+| 1 | Findings reported |
+| 2 | Tool error: bad arguments, unreadable input, failed write |
 
 This matches shellcheck and Vale. Note that `typos` inverts it and uses 2 for
-findings; do not copy that convention here.
+findings; do not copy that convention here. Every binary prints the contract in
+its `--help` epilogue.
 
 Gate a docs build on `slop-scan --severity high`, which exits 1 only on
 high-severity tells.
+
+## Configuration
+
+`--config` points at a `.prose-sanitiser.toml`; without it the nearest one is
+discovered by walking up from the target, so the settings are committed
+alongside the prose rather than living in a CI invocation. `--disable RULE` is
+repeatable for a one-off, and `--explain-rules` prints the rule table with its
+tiers, dates and sources, which is how you check whether a lexical rule has
+decayed since it was written.
 
 ## The write policy
 
