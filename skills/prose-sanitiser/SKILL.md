@@ -35,7 +35,8 @@ Claim nothing outside this table. The evidence for each row is in
 
 | Capability | Basis |
 |---|---|
-| Invisible `Cf`-class controls in text: zero-width family, tag block, variation selectors, bidi controls, exotic whitespace, Hangul fillers | Deterministic codepoint classification with context rules |
+| Invisible `Cf`-class controls in text: zero-width family, tag block, variation selectors, bidi controls, Hangul fillers | Deterministic codepoint classification with context rules |
+| Exotic whitespace (`U+00A0`, `U+202F`). **Detected always; the fold to `U+0020` is opt-in** | Orthographically load-bearing, so reported rather than rewritten |
 | Variation-selector and tag-block smuggled payloads, including decoding the hidden bytes | The byte mapping is fully specified |
 | Homoglyph and mixed-script substitution. **Detected always; the fold to ASCII is opt-in** (`--aggressive-homoglyphs`) | UTS #39 skeleton and restriction levels |
 | C2PA JUMBF manifests in JPEG `APP11`, PNG `caBX`, WebP `C2PA`, PDF embedded files, SVG `c2pa:manifest` | Container structure is normatively specified; deletion is byte-level |
@@ -103,7 +104,7 @@ Only confidence gates an automatic fix.
 
 | Tier | Contents | Auto-fix |
 |---|---|---|
-| `certain-mechanical` | Invisible Unicode, container metadata, homoglyphs | Yes, and the result is verifiable by diff. The tier rates the *classification*, so a conservative default can still hold a fold back behind a flag |
+| `certain-mechanical` | Invisible Unicode, container metadata, homoglyphs, exotic whitespace | Yes, and verifiable by diff. The tier rates the *classification*, so a conservative default can still withhold the edit behind a flag |
 | `high-confidence-stylistic` | Unconditional dialect pairs, always-ise and always-yse sets | Only behind an explicit `--write` |
 | `low-confidence-judgement` | Sense-dependent pairs, slop phrasing, organisation-adjacent tokens | Never. Report only |
 

@@ -46,6 +46,11 @@ position you can take.
 > being inverted to a positive opt-in. Treat the library default as the intended
 > contract.
 
+**Conservatism belongs in the default, never in the tier.** Downgrading a
+mechanical classification to buy safe behaviour would make the tier lie about
+the evidence, and would break the fix path for a caller who explicitly asked to
+apply it, since a judgement-tier finding is never fixable even under `--write`.
+
 `TextPolicy` mirrors `CleanOptions` field for field, defaults included, so
 `check_text` is a truthful preview of `clean_text`: applying the edits the check
 offers reproduces the clean's output exactly. That is asserted as an invariant
