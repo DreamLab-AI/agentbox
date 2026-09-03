@@ -19,6 +19,7 @@ pub struct Env {
     pub agentbox_config: PathBuf,
     pub shared_projects_root: PathBuf,
     pub hook_adapter: String,
+    /// Full SessionEnd digest command, run as-is (with `|| true` appended).
     pub nostr_summary_hook: String,
     pub ontology_monitor_hook: String,
     pub hf_cache: String,
@@ -42,13 +43,14 @@ impl Env {
                 "AGENTBOX_HOOK_ADAPTER",
                 "/opt/agentbox/config/hooks/claude-flow-hook-adapter.cjs",
             ),
-            // Still a Python hook: `nostr-session-summary.py` is a runtime
-            // SessionEnd hook, not boot-path config munging, and is tracked
-            // separately in the estate audit. The command string is emitted
-            // verbatim so the wiring is unchanged by this port.
+            // `nostr-session-summary.py` is gone: the SessionEnd digest is now
+            // the `session-summary` subcommand of the nostr-pod-bridge binary,
+            // which already owned the signing half. The value is the full
+            // command (no `python3` prefix is added at the call site), so an
+            // override may name an absolute path or supply its own runner.
             nostr_summary_hook: env_or(
                 "AGENTBOX_NOSTR_SUMMARY_HOOK",
-                "/opt/agentbox/config/hooks/nostr-session-summary.py",
+                "nostr-pod-bridge session-summary",
             ),
             ontology_monitor_hook: env_or(
                 "AGENTBOX_ONTOLOGY_MONITOR_HOOK",

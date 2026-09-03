@@ -86,17 +86,13 @@
           ];
           config = {
             allowUnfree = true;
-            # python3.12-ecdsa is flagged insecure upstream (timing-side-channel
-            # class; CVE class, not a concrete CVE). scripts/sovereign-bootstrap.py
-            # uses it only for local secp256k1 keypair generation + bech32
-            # encoding, not on any remote-attacker-observable path. The signing
-            # hot path (NIP-98 verify, bridge signer) uses @noble/curves via
-            # nostr-tools in management-api, which is constant-time. Tracking
-            # upstream for an ecdsa bump or nixpkgs overlay replacement.
-            permittedInsecurePackages = [
-              "python3.12-ecdsa-0.19.1"
-              "python3.12-ecdsa-0.19.2"
-            ];
+            # No permittedInsecurePackages. The only entry here was
+            # python3.12-ecdsa (flagged upstream for a timing side-channel
+            # class), pinned solely so scripts/sovereign-bootstrap.py could
+            # derive the agent keypair in pure Python. That script is gone —
+            # `nostr-pod-bridge bootstrap` derives the same keys through
+            # RustCrypto k256 + nostr-bbs-core — so the exception is retired
+            # rather than carried.
           };
         };
 
@@ -672,17 +668,18 @@
           ((toolchainCfg.claude_code or false) && pkgs.stdenv.isLinux)
           [ (claudeCodeLib.makeClaudeCode system) ];
 
-        # Runtime Python environment for bootstrap scripts and local helpers.
-        # Use python.withPackages so every dep is on the interpreter's import
-        # path inside the container — listing them as standalone derivations
-        # in `allPackages` only puts them on $PATH and leaves
-        # `import ecdsa` failing with ModuleNotFoundError at bootstrap time
-        # (which crash-loops the container on first start).
-        # sovereign-bootstrap.py imports ecdsa directly; the supervised Python
-        # services (opf-router -> torch, code-interpreter -> jupyter_client)
-        # import theirs — all must resolve via this interpreter. Boot-path
-        # config munging no longer does: provision-agent-stacks.py and its three
-        # siblings are now the `agentbox-manifest` Rust binary above.
+        # Runtime Python environment for the supervised Python services and
+        # local helpers. Use python.withPackages so every dep is on the
+        # interpreter's import path inside the container — listing them as
+        # standalone derivations in `allPackages` only puts them on $PATH and
+        # leaves `import <dep>` failing with ModuleNotFoundError at start
+        # (which crash-loops the supervised program).
+        # The supervised Python services (opf-router -> torch, code-interpreter
+        # -> jupyter_client) import theirs via this interpreter. Nothing on the
+        # BOOT path does any more: provision-agent-stacks.py and its three
+        # siblings are the `agentbox-manifest` Rust binary above, and
+        # sovereign-bootstrap.py — the last `ecdsa` consumer — is now
+        # `nostr-pod-bridge bootstrap`.
         # R-005/SEC-001/ADR-027: the setuid sudo wrapper has been removed.
         # With no-new-privileges:true (always emitted) the kernel ignores the
         # setuid bit, and SETUID/SETGID are no longer in the capability
@@ -701,7 +698,6 @@
           pyyaml
           pydantic
           rich
-          ecdsa
           numpy
           pandas
           matplotlib
@@ -1150,18 +1146,27 @@
         # nostr-pod-bridge daemon (embedded relay + NIP-59 unwrap + pod write),
         # which replaces the standalone nostr-rs-relay binary in one process.
         # Gate on a local relay so an `implementation = "external"`/`"off"` slot
-        # never builds the Rust bridge.
+        # never runs the Rust bridge *as the relay*.
         podBridgeEnabled = relayLocal && (relayCfg.pod_bridge or false);
+
+        # The same binary also owns `nostr-pod-bridge bootstrap`, the sovereign
+        # identity bootstrap the entrypoint runs at phase [2/8] (it replaced
+        # scripts/sovereign-bootstrap.py). That is a property of the mesh, not of
+        # the relay slot, so the package must also be built — and land on PATH —
+        # whenever sovereign_mesh is enabled with the relay external or off.
+        # Without this an `implementation = "external"` profile would boot with
+        # no way to mint its own identity.
+        nostrPodBridgeNeeded = podBridgeEnabled || (sovereignCfg.enabled or false);
         nostrPodBridgePkg =
-          if podBridgeEnabled
+          if nostrPodBridgeNeeded
           then (import ./lib/nostr-pod-bridge.nix { inherit lib pkgs; })
           else null;
 
-        relayPackages = lib.optionals relayLocal (
-          if podBridgeEnabled
-          then lib.filter (p: p != null) [ nostrPodBridgePkg ]
-          else lib.filter (p: p != null) [ relayPkg ]
-        );
+        relayPackages =
+          lib.optionals (relayLocal && !podBridgeEnabled)
+            (lib.filter (p: p != null) [ relayPkg ])
+          ++ lib.optionals nostrPodBridgeNeeded
+            (lib.filter (p: p != null) [ nostrPodBridgePkg ]);
 
         # ---------------------------------------------------------------------------
         # headroom-napi — Rust N-API compression addon (crates/headroom-napi).
