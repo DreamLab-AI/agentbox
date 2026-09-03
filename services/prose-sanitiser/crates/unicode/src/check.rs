@@ -58,10 +58,10 @@ pub struct TextPolicy {
     /// Offer `U+0020` as a mechanical `replacement` on exotic-whitespace
     /// findings.
     ///
-    /// **On by default**, mirroring
-    /// [`normalize_spaces`](crate::CleanOptions::normalize_spaces). Set both to
-    /// false to be told about a non-breaking space without being offered a
-    /// rewrite that would cost the document its non-breaking property.
+    /// **Off by default**, mirroring
+    /// [`normalize_spaces`](crate::CleanOptions::normalize_spaces). A no-break
+    /// space is load-bearing typography rather than a carrier, so the default
+    /// is to report it and leave it alone.
     pub normalize_spaces: bool,
     /// Report every character with an ASCII confusable prototype, not only
     /// those the mixed-script and restricted-identifier rules catch. Finds
@@ -93,8 +93,8 @@ impl Default for TextPolicy {
             context: BidiContext::Prose,
             // Detection is unconditional; see the field docs.
             report_spaces: true,
-            // Mirrors CleanOptions::normalize_spaces, which defaults on.
-            normalize_spaces: true,
+            // Mirrors CleanOptions::normalize_spaces, which defaults off.
+            normalize_spaces: false,
             context_free_homoglyphs: false,
             // Mirrors CleanOptions::aggressive_homoglyphs, which defaults off.
             fold_homoglyphs: false,
@@ -323,10 +323,20 @@ fn invisible_findings(units: &[Unit], offsets: &[usize], policy: &TextPolicy) ->
             matched: character.to_string(),
             severity,
             confidence: ConfidenceTier::CertainMechanical,
-            advice: format!(
-                "{} carries no visible content here and is a known steganographic carrier.",
-                crate::decide::char_label(unit)
-            ),
+            advice: if kind == "space" {
+                format!(
+                    "{} is exotic whitespace. It may be load-bearing typography, holding \
+                     a quantity or a figure reference together, or required before French \
+                     punctuation; it may equally be a paste artefact. Normalising is opt-in \
+                     via --normalize-spaces.",
+                    crate::decide::char_label(unit)
+                )
+            } else {
+                format!(
+                    "{} carries no visible content here and is a known steganographic carrier.",
+                    crate::decide::char_label(unit)
+                )
+            },
             replacement,
         });
     }

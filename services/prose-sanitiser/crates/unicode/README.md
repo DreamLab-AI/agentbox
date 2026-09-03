@@ -35,8 +35,9 @@ source code (the Trojan Source attack,
 that genuinely contains right-to-left script, with unbalanced and nested-unbalanced
 nesting reported either way.
 
-**Classifies invisible and format-class carriers**: the zero-width family, exotic
-whitespace, Hangul fillers, private-use codepoints.
+**Classifies invisible and format-class carriers**: the zero-width family, Hangul
+fillers, private-use codepoints. Exotic whitespace is reported but not rewritten by
+default, for the reason below.
 
 ## Never touches
 
@@ -48,6 +49,11 @@ hard failure rather than a tuning question.
 - ZWNJ/ZWJ after an Indic virama, or between Persian morphemes.
 - Balanced bidi controls in genuine RTL prose.
 - `U+FEFF` at offset 0, where it is a BOM and only there.
+- Exotic whitespace, unless you ask. `U+00A0` and `U+202F` are load-bearing
+  typography: they hold "10 km" and "Figure 3" together, and French orthography
+  requires one before `;`, `:`, `!` and `?`. Folding them to `U+0020` costs the
+  document that property, and a diff cannot show it because both render as a space.
+  Always reported; `CleanOptions::normalize_spaces` is the opt-in.
 - `U+00AD` SOFT HYPHEN, unless you ask. It is invisible unless a line break falls on
   it, which makes it a legitimate hyphenation hint and a known carrier in equal
   measure. It is reported and never auto-fixed; `CleanOptions::strip_soft_hyphen`

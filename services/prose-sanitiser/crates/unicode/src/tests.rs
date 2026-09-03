@@ -17,15 +17,18 @@ fn clean_strips_zero_width_carriers_and_keeps_the_prose() {
 }
 
 #[test]
-fn clean_normalises_space_homoglyphs_by_default() {
+fn clean_preserves_exotic_whitespace_unless_asked() {
+    // A no-break space is load-bearing typography, not a carrier: it holds
+    // "10 km" together and French orthography requires one before a colon.
+    // Folding it is invisible in a diff, so it is never done by default.
     let dirty = "a\u{00a0}b\u{2009}c\u{3000}d";
-    assert_eq!(cleaned(dirty, CleanOptions::default()), "a b c d");
+    assert_eq!(cleaned(dirty, CleanOptions::default()), dirty);
 
-    let keep = CleanOptions {
-        normalize_spaces: false,
+    let normalise = CleanOptions {
+        normalize_spaces: true,
         ..CleanOptions::default()
     };
-    assert_eq!(cleaned(dirty, keep), dirty);
+    assert_eq!(cleaned(dirty, normalise), "a b c d");
 }
 
 #[test]
@@ -118,10 +121,11 @@ fn a_soft_hyphen_is_reported_under_its_own_kind() {
 
 #[test]
 fn stats_report_labels_counts_and_lengths() {
-    let (_, stats) = clean_text(
-        &units("a\u{200b}\u{200b}b\u{00a0}c"),
-        CleanOptions::default(),
-    );
+    let options = CleanOptions {
+        normalize_spaces: true,
+        ..CleanOptions::default()
+    };
+    let (_, stats) = clean_text(&units("a\u{200b}\u{200b}b\u{00a0}c"), options);
     let json = stats.to_json();
     assert_eq!(json["input_length"], 6);
     assert_eq!(json["output_length"], 4);

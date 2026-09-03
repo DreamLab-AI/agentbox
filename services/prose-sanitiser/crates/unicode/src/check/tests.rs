@@ -182,11 +182,11 @@ fn applying_the_offered_edits_reproduces_a_clean() {
         ),
         (
             TextPolicy {
-                normalize_spaces: false,
+                normalize_spaces: true,
                 ..TextPolicy::default()
             },
             CleanOptions {
-                normalize_spaces: false,
+                normalize_spaces: true,
                 ..CleanOptions::default()
             },
         ),
@@ -274,26 +274,26 @@ fn homoglyphs_are_always_reported_but_folded_only_on_request() {
 }
 
 #[test]
-fn space_homoglyphs_are_reported_by_default_because_a_clean_rewrites_them() {
-    // `CleanOptions::normalize_spaces` defaults on, so a pass that stayed
-    // silent here would be lying about what a default clean does.
+fn exotic_whitespace_is_reported_by_default_but_not_rewritten() {
+    // Told, not touched. U+202F is a documented GPT-4o-class artefact, so the
+    // finding must exist; a no-break space is load-bearing typography, so the
+    // rewrite must not be offered unless the caller asks for it.
     let source = "a\u{00A0}b";
     let findings = check(source);
     assert_eq!(findings.len(), 1);
-    assert_eq!(findings[0].replacement.as_deref(), Some(" "));
+    assert_eq!(findings[0].replacement, None);
+    assert!(findings[0].advice.contains("typography"));
 
-    // Detection survives turning the fold off: U+202F is a documented
-    // GPT-4o-class artefact, so being told without being rewritten is a
-    // position the policy has to be able to express.
-    let told_not_fixed = check_text(
+    // Asking for the fold produces it, and mirrors normalize_spaces: true.
+    let folding = check_text(
         source,
         &TextPolicy {
-            normalize_spaces: false,
+            normalize_spaces: true,
             ..TextPolicy::default()
         },
     );
-    assert_eq!(told_not_fixed.len(), 1);
-    assert_eq!(told_not_fixed[0].replacement, None);
+    assert_eq!(folding.len(), 1);
+    assert_eq!(folding[0].replacement.as_deref(), Some(" "));
 
     // Silencing detection entirely is still possible.
     let quiet = check_text(

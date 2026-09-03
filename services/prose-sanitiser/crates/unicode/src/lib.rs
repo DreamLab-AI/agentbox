@@ -11,6 +11,8 @@
 //! 1. **Classifies invisible and format-class carriers** ([`inspect_text`],
 //!    [`clean_text`]): the zero-width family, the tag block, variation
 //!    selectors, bidi controls, exotic whitespace, soft hyphen, Hangul fillers.
+//!    Whitespace and the soft hyphen are reported but not rewritten by default:
+//!    both are load-bearing typography as often as they are contraband.
 //! 2. **Decodes smuggled payloads rather than only stripping them**
 //!    ([`stego`]): variation-selector chains in Paul Butler's byte encoding,
 //!    tag-block ASCII, and zero-width binary. A finding carries the recovered
@@ -49,7 +51,7 @@
 //!
 //! | Capability | Basis |
 //! |---|---|
-//! | Invisible Cf-class controls in text: zero-width family, tag block, variation selectors, bidi controls, exotic whitespace, Hangul fillers | Deterministic codepoint classification with context rules |
+//! | Invisible Cf-class controls in text: zero-width family, tag block, variation selectors, bidi controls, Hangul fillers | Deterministic codepoint classification with context rules |
 //! | Variation-selector, tag-block and zero-width payloads, **including decoding them** | The Butler byte mapping and the tag block are fully specified |
 //! | Homoglyph and mixed-script substitution | UTS #39 skeleton, Identifier_Status and restriction levels |
 //!
@@ -63,6 +65,7 @@
 //! | Balanced bidi controls in genuine RTL prose | Only reject them in source-code contexts (Trojan Source) |
 //! | `U+FEFF` at byte offset 0 | It is a BOM there and only there |
 //! | `U+00AD` SOFT HYPHEN, unless asked | A hyphenation hint as often as a carrier; reported, never fixed, stripped only via `CleanOptions::strip_soft_hyphen` |
+//! | Exotic whitespace, unless asked | `U+00A0` and `U+202F` hold quantities and figure references together and are required before French punctuation; reported, rewritten only via `CleanOptions::normalize_spaces` |
 //! | Regional-indicator pairs and RGI emoji tag sequences | Well-formed flags, not carriers |
 //! | NFKC normalisation of user-facing prose | Lossy by design (UAX #15); NFC only, and only when asked |
 //!
@@ -137,6 +140,13 @@ pub struct CleanOptions {
     /// Turkish prose is never folded into Latin. On by default.
     pub mixed_script_only: bool,
     /// Replace exotic whitespace with `U+0020`.
+    ///
+    /// **Off by default.** A no-break space is load-bearing typography, not a
+    /// carrier: it holds "10 km" and "Figure 3" together, and French
+    /// orthography requires one before `;`, `:`, `!` and `?`. Folding it to
+    /// `U+0020` costs the document that property silently, and a diff cannot
+    /// show it, because both render as a space. Exotic whitespace is always
+    /// reported; this decides whether it is rewritten.
     pub normalize_spaces: bool,
     /// Strip emoji glue, script joiners and flag tags as well.
     pub strip_emoji_glue: bool,
@@ -157,7 +167,7 @@ impl Default for CleanOptions {
             nfkc: false,
             aggressive_homoglyphs: false,
             mixed_script_only: true,
-            normalize_spaces: true,
+            normalize_spaces: false,
             strip_emoji_glue: false,
             bidi_context: BidiContext::Prose,
             strip_soft_hyphen: false,
