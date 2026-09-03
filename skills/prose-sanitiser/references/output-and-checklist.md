@@ -55,11 +55,13 @@ decayed since it was written.
 Report-only is the default for every stylistic and spelling rule. Nothing is
 rewritten unless asked.
 
-| Tier | Under default | Under `--write` |
-|---|---|---|
-| `certain-mechanical` | Reported. Applied by the dedicated cleaners (`clean-text`, `clean-file`, `clean-image`) | Applied |
-| `high-confidence-stylistic` | Reported | Applied |
-| `low-confidence-judgement` | Reported | **Still only reported** |
+| Tier | Default | `--fix` | `--write` |
+|---|---|---|---|
+| `certain-mechanical` | Reported. Applied by the dedicated cleaners (`clean-text`, `clean-file`, `clean-image`) | Applied | Applied |
+| `high-confidence-stylistic` | Reported | Reported | Applied |
+| `low-confidence-judgement` | Reported | Reported | **Still only reported** |
+
+`--write` implies `--fix`.
 
 `--diff` previews what `--write` would do without touching the file. An
 ambiguous case stays ambiguous no matter which flags are passed, which is the

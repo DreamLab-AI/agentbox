@@ -104,6 +104,21 @@ Landed on `rust/prose-sanitiser-hardening` during the same pass:
   `--explain-rules` to print the rule table with its tiers, dates and sources so
   a decayed lexical rule is visible rather than silent.
 
+- **`check_text` is now a truthful preview of `clean_text`.** The two surfaces
+  disagreed three times over: bidi controls that the check declined to offer but
+  the cleaner stripped anyway; homoglyphs the check offered to fold, at default
+  settings, that the cleaner refused to touch; and non-breaking spaces the
+  cleaner rewrote by default while the check never mentioned them. `TextPolicy`
+  now mirrors `CleanOptions` field for field, defaults included, and a single
+  invariant asserts that applying the edits `check_text` offers reproduces
+  `clean_text`'s output exactly, over eight samples against three policy
+  pairings. Any future divergence in either direction fails immediately.
+- **`sanitise`**, the umbrella pass: every layer over a file or tree on one
+  confidence scale, with `--fix` for `certain-mechanical`, `--write` for that
+  plus `high-confidence-stylistic` (implying `--fix`), and `--diff` to preview.
+  It reports image and container provenance but never rewrites those bytes,
+  which stays with `clean-image` and `clean-file`.
+
 ### Measured
 
 The capability matrix stopped being a claim and started being a number.
@@ -132,8 +147,6 @@ The capability matrix stopped being a claim and started being a number.
   ADR. Adding the texts sharpened the conflict rather than settling it: the
   repository now ships two contradictory grants for the same code. This is a
   copyright-holder decision. See the workspace README.
-- The `sanitise` umbrella pass is declared in `crates/cli/src/lib.rs` but has no
-  module file yet, so the CLI crate does not build.
 
 ## [0.1.0] - 2026-09-03
 

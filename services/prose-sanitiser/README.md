@@ -46,12 +46,20 @@ literature.
 
 ### The principle behind the rows
 
-**Detection is unconditional; mutation is conservative.** Anything whose repair
-is a judgement is reported and not applied unless asked. Folding honest Cyrillic
-or Greek prose into Latin is worse than leaving a homoglyph in place, and
-removing a typesetter's hyphenation is worse than leaving a soft hyphen, so
-neither happens by default. `--aggressive-homoglyphs` and
-`CleanOptions::strip_soft_hyphen` are the opt-ins.
+**Detection is unconditional; mutation is conservative.** Everything is
+reported; a repair that depends on a judgement is withheld until asked. Folding
+honest Cyrillic or Greek prose into Latin is worse than leaving a homoglyph in
+place, and removing a typesetter's hyphenation is worse than leaving a soft
+hyphen, so neither happens by default. `--aggressive-homoglyphs` and
+`CleanOptions::strip_soft_hyphen` are the opt-ins. Exotic whitespace is the one
+exception: it *is* rewritten to `U+0020` by default, with
+`--no-normalize-spaces` to stop it.
+
+`TextPolicy` mirrors `CleanOptions` field for field, defaults included, so
+`check_text` is a truthful preview of `clean_text`: applying the edits the check
+offers reproduces the clean's output exactly. That is asserted as an invariant
+rather than left to convention, because the two surfaces drifted apart three
+times before it was.
 
 ### Never touches
 
@@ -85,7 +93,7 @@ orthogonal, and only confidence gates a fix.
 | [`prose-sanitiser-uk`](crates/uk) | VarCon-backed UK English with span exclusion and sense disambiguation | Candidate |
 | [`prose-sanitiser-slop`](crates/slop) | Versioned, confidence-tiered AI-tell rule tables | Candidate |
 | [`prose-sanitiser-media`](crates/media) | Image and container provenance surgery | Not first wave |
-| [`prose-sanitiser`](crates/cli) | The CLI binaries, audit sweeps and rewrite layer | Workspace |
+| [`prose-sanitiser`](crates/cli) | The `sanitise` umbrella, the CLI binaries, audit sweeps and rewrite layer | Workspace |
 | [`prose-sanitiser-server`](crates/server) | The HTTP service | No |
 
 The split is licence and dependency hygiene. `core`, `unicode`, `uk` and `slop`

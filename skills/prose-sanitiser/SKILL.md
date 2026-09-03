@@ -59,11 +59,13 @@ Claim nothing outside this table. The evidence for each row is in
 | Statistical watermark "removal" by paraphrase (`rewrite-text`) | Paraphrase changes tokens, which degrades any sampling watermark as a side effect. It is lossy, cannot be verified without the vendor key, and is not removal. No lossless removal exists anywhere in the literature |
 
 One principle governs the Unicode layer, and it is worth reading before the
-rows above: **detection is unconditional, mutation is conservative.** Anything
-whose repair is a judgement is reported and not applied unless you ask. Folding
-honest Cyrillic or Greek prose into Latin is far worse than leaving a homoglyph
-in place, and removing a typesetter's hyphenation is worse than leaving a soft
-hyphen, so neither happens by default.
+rows above: **detection is unconditional, mutation is conservative.** Everything
+is reported; a repair that depends on a judgement is withheld until you ask.
+Folding honest Cyrillic or Greek prose into Latin is far worse than leaving a
+homoglyph in place, and removing a typesetter's hyphenation is worse than
+leaving a soft hyphen, so neither happens by default. Exotic whitespace is the
+exception: it *is* rewritten to `U+0020` by default, with
+`--no-normalize-spaces` to stop it.
 
 **Never touches**
 
@@ -89,10 +91,19 @@ Only confidence gates an automatic fix.
 | `high-confidence-stylistic` | Unconditional dialect pairs, always-ise and always-yse sets | Only behind an explicit `--write` |
 | `low-confidence-judgement` | Sense-dependent pairs, slop phrasing, organisation-adjacent tokens | Never. Report only |
 
-Default behaviour is report-only. `--write` applies the first two tiers and
-never the third, so an ambiguous case stays ambiguous no matter what flags are
-passed. `clean-text`, `clean-file` and `clean-image` are the mechanical tier and
-strip unconditionally, because everything they touch is `certain-mechanical`.
+Default behaviour is report-only, and there are two opt-ins rather than one:
+
+| Flag | Applies |
+|---|---|
+| (none) | Nothing. Reports only |
+| `--fix` | `certain-mechanical` |
+| `--write` | `certain-mechanical` and `high-confidence-stylistic`. Implies `--fix` |
+| `--diff` | Previews what would change, writing nothing |
+
+**Nothing applies a `low-confidence-judgement` finding**, so an ambiguous case
+stays ambiguous no matter which flags are passed. The dedicated cleaners
+(`clean-text`, `clean-file`, `clean-image`) strip unconditionally, because
+everything they touch is `certain-mechanical`.
 
 Exit codes: 0 clean, 1 findings reported, 2 tool error. Output format is one
 flag, `--format {text,json,jsonl,sarif}`, with `--json` kept as an alias for
@@ -133,6 +144,10 @@ slop-scan <path> --format sarif    # for GitHub code scanning
 slop-scan <path> --structural      # add whole-document structural measures
 slop-scan <path> --explain-rules   # print the rule table with tiers and sources
 slop-scan <path> --disable RULE    # skip one rule; repeatable
+
+# Everything at once, on one confidence scale
+sanitise <path>                    # report; add --fix, --write or --diff
+sanitise <path> --format sarif --severity high
 
 # File and container metadata
 inspect-file <path>                # report metadata found
