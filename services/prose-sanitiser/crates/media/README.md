@@ -49,12 +49,12 @@ GPL and AGPL alternatives are deliberately excluded: no `rexiv2` (GPL-3.0), no
 
 ### Features
 
-- `c2pa-read` *(default)* — read and validate embedded C2PA manifests with the
+- `c2pa-read` *(default)*: read and validate embedded C2PA manifests with the
   official SDK, and report whether a durable credential is declared. The
   dependency is declared with `default-features = false`, which drops the
   OpenSSL C dependency in favour of pure-Rust crypto and removes every HTTP
   backend, so no remote manifest can be fetched and nothing leaves the machine.
-- `external-verify` *(off)* — advisory cross-check against installed `exiftool`
+- `external-verify` *(off)*: advisory cross-check against installed `exiftool`
   and `c2patool`. Never part of the implementation path.
 
 ### Why the C2PA SDK is read-only here
@@ -71,7 +71,7 @@ is the container-level surgery above: delete the PNG `caBX` chunk, the JPEG
 | Class | Contents |
 |---|---|
 | **Detects and strips losslessly**, verifiable by diff | C2PA JUMBF manifests in JPEG `APP11` (including a box split across several segments), PNG `caBX`, WebP `C2PA`, PDF embedded-file specifications and SVG `c2pa:manifest`. EXIF, XMP (`iTXt XML:com.adobe.xmp` and Extended XMP), IPTC/Photoshop IRB, PNG text chunks and `tIME`. PDF `/Info` and `/Metadata`, with a full object-graph rewrite so earlier incremental revisions do not survive in the byte stream. OOXML `docProps/core.xml`, `app.xml` (`Application`, `Company`, `TotalTime`), `custom.xml`, `customXml/`, the `word/comments*.xml` parts with their `[Content_Types]` overrides and `_rels` entries, `w:ins`/`w:del` tracked changes and the whole `w:rsid*` editing-session family; ODF `meta.xml` including `meta:generator`, `meta:editing-cycles` and `meta:editing-duration`, with compression method and entry order preserved for untouched parts |
-| **Detects and reports only** | Pixel-domain image watermarks (SynthID-Image, Stable Signature, Tree-Ring, TrustMark, StegaStamp, DwtDct). Each needs a proprietary trained decoder or diffusion inversion. Durable Content Credentials: a declared `c2pa.soft-binding` is detected exactly, but no repair exists, because the binding lives in the pixels. That rule carries the `certain-mechanical` confidence its evidence earns and the `no-fix-exists` fixability its nature demands — the two are separate axes, and conflating them used to make this the crate's most reliable detection wear its least reliable label |
+| **Detects and reports only** | Pixel-domain image watermarks (SynthID-Image, Stable Signature, Tree-Ring, TrustMark, StegaStamp, DwtDct). Each needs a proprietary trained decoder or diffusion inversion. Durable Content Credentials: a declared `c2pa.soft-binding` is detected exactly, but no repair exists, because the binding lives in the pixels. That rule carries the `certain-mechanical` confidence its evidence earns and the `no-fix-exists` fixability its nature demands. The two are separate axes, and conflating them used to make this the crate's most reliable detection wear its least reliable label |
 | **Never touches** | The pixel data of any image. Container surgery only, never a re-encode. Scoped to `CleanImageOptions::remove_pixel` being `None`, the default: setting it runs an external regeneration backend that changes every pixel by design |
 
 ## Stripping is not unlinking
@@ -97,7 +97,7 @@ one. **A clean container is not an anonymous file.**
   disk. A clean that cannot be verified is a failed clean.
 - **But the rewrite is not unconditional.** Re-serialising renumbers objects and
   rebuilds the cross-reference table, so rewriting a document that had nothing
-  to remove changes every byte offset for no gain — a gratuitous, and
+  to remove changes every byte offset for no gain: a gratuitous, and
   detectable, difference. `clean_pdf` decides first: with no `/Info` keys of
   interest, no `/Metadata`, no XMP packet, no C2PA embedded file **and no
   superseded revision**, the input is copied byte for byte and reported as
@@ -136,7 +136,7 @@ symlink-safe temporary file.
 ## Optional external tools
 
 `c2patool` and `exiftool` are an *advisory* cross-check behind the non-default
-`external-verify` feature. With the feature off — the default — nothing is
+`external-verify` feature. With the feature off, which is the default, nothing is
 executed and both report as unavailable. `qpdf` is gone entirely: `lopdf`'s full
 rewrite is what the `qpdf --linearize` pass used to provide.
 
@@ -164,7 +164,7 @@ Verification it must pass regardless, now asserted in the test suite:
       byte-identical. SHA-256 before and after, for PNG, JPEG and WebP
       (`tests/lossless.rs`)
 - [x] Pixel-exact images after a metadata strip. Both sides decoded with the
-      `image` crate and the buffers compared for equality — not PSNR, exact —
+      `image` crate and the buffers compared for equality (not PSNR, exact)
       plus a stronger check that the compressed `IDAT` and entropy-coded scan
       are carried across verbatim (`tests/lossless.rs`)
 - [x] OOXML zip integrity, XML well-formedness, and compression method and entry

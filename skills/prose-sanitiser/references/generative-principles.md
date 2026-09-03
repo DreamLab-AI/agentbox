@@ -35,11 +35,11 @@ Real writing names what is lost as well as gained. AI prose tends to claim
 
 Adjust the opening, the level of detail, and the takeaway:
 
-- **Developers** — lead with the code or concrete problem; show implementation;
+- **Developers:** lead with the code or concrete problem; show implementation;
   discuss alternatives; link to repos.
-- **QA / QE** — start with the testing challenge; show strategy not tools;
+- **QA / QE:** start with the testing challenge; show strategy not tools;
   include risk assessment; provide adaptable heuristics.
-- **Leadership** — open with business impact; metrics that matter; connect
+- **Leadership:** open with business impact; metrics that matter; connect
   technical decisions to outcomes; keep details concise.
 
 ## A5. Write from experience

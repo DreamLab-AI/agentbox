@@ -26,7 +26,7 @@ Top fixes:    the two or three changes with the largest expected gain, ranked
 ```
 
 For reference, procedural, academic, legal, or message-oriented prose, do not
-demand an authorial thesis — evaluate whether the text performs its actual job.
+demand an authorial thesis. Evaluate whether the text performs its actual job.
 If the substance is too thin to support a useful rewrite, say so plainly and
 offer the interview (below): surface edits cannot supply missing evidence or
 experience.
@@ -46,14 +46,14 @@ Safety check: whether the suggestion preserves facts, attribution, scope, and vo
 
 Verdicts:
 
-- `keep` — a pattern is present but earned, required by the medium, or better
+- `keep`: a pattern is present but earned, required by the medium, or better
   than the alternatives. State what earns it.
-- `revise` — the source already contains enough material for an honest
+- `revise`: the source already contains enough material for an honest
   improvement.
-- `ask-author` — improvement needs a fact, mechanism, example, opinion, or
+- `ask-author`: improvement needs a fact, mechanism, example, opinion, or
   experience the source does not supply. Ask exactly for that and offer a cut or
   plain fallback.
-- `cut` — the passage adds only repetition, ceremony, unsupported emphasis, or
+- `cut`: the passage adds only repetition, ceremony, unsupported emphasis, or
   closure.
 
 Do not invent the missing material in a suggested rewrite, and check your own
@@ -72,7 +72,7 @@ identified in the source.
 
 Use when drafting from scratch with an author, or when an authored draft has a
 real substance gap. The goal is to collect language and material the author
-actually supplies — not to simulate a human voice.
+actually supplies, not to simulate a human voice.
 
 ### Start here
 
@@ -96,7 +96,7 @@ Offer these as aids, not a questionnaire to complete:
   changed?
 - Where are you uncertain, or what have you changed your mind about?
 
-Also ask for prior writing on the topic — posts, notes, talks, definitions —
+Also ask for prior writing on the topic (posts, notes, talks, definitions)
 and treat it as source text with its attribution retained.
 
 ### If a draft already exists

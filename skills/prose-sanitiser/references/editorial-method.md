@@ -3,8 +3,8 @@
 Adapted from Addy Osmani's [clarity](https://github.com/addyosmani/clarity) (MIT).
 Use when a piece reads hollow rather than merely slopped: the [destructive audit](destructive-audit.md) can
 remove tells, but it cannot supply a missing point. Generic prose usually fails
-before style enters the picture — it has no specific source, judgement, mechanism,
-image, or experience behind it. Fix that first, then de-slop.
+before style enters the picture: it has no specific source, judgement,
+mechanism, image, or experience behind it. Fix that first, then de-slop.
 
 ## Safeguards (apply in every editing pass)
 
@@ -52,7 +52,7 @@ polish (see [review-and-cowrite.md](review-and-cowrite.md) for the interview).
 
 ## Order of work
 
-Fix problems in this order — later stages cannot repair earlier ones:
+Fix problems in this order, because later stages cannot repair earlier ones:
 
 1. **Truth and scope.** Inventory claims, attribution, uncertainty, examples,
    citations, links, conditions, quotations, and required structure. Protected.
@@ -60,8 +60,8 @@ Fix problems in this order — later stages cannot repair earlier ones:
    only this author supplied. If absent, ask or label the limitation.
 3. **Development.** Make paragraphs depend on one another through cause,
    contrast, sequence, qualification, example, or consequence.
-4. **Sentences.** Remove inflated, repetitive, or formulaic machinery — this is
-   where the [destructive audit](destructive-audit.md) runs.
+4. **Sentences.** Remove inflated, repetitive, or formulaic machinery. This
+   is where the [destructive audit](destructive-audit.md) runs.
 5. **Craft.** Restore concrete material, stance, warmth, or rhythm if editing
    made the piece colder or flatter.
 
@@ -81,7 +81,7 @@ shift", "testament to", "plays a key role".
 **Test:** remove the emphasis. Does the remaining claim name an actor, mechanism,
 result, or limit? **Fix:** state the supported mechanism and let the reader judge
 its importance. Keep an evaluative word when the same passage supplies the
-evidence that earns it — "robust" belongs in a sentence that names the failure
+evidence that earns it: "robust" belongs in a sentence that names the failure
 handling, not in "a robust approach" with no mechanism.
 
 ### F2. Specific-looking vagueness
@@ -90,7 +90,7 @@ An anecdote can have the grammar of an example and the content of an abstraction
 "a package once caused a security problem". Ask which package, what happened, and
 how it was caught. If the source lacks the answer, use `[TK]` or cut the
 anecdote. Dates, names, and citations make claims verifiable; images make a
-reader present. Use the kind of concreteness the register needs — do not add
+reader present. Use the kind of concreteness the register needs, and do not add
 decorative facts to satisfy a density target.
 
 ### F3. Vague attribution and false precision
@@ -119,7 +119,7 @@ repeated use or unsupported performance, not the device itself.
 
 Decisions do not decide and data does not speak. Name the person, team, system,
 or documented process when that makes the action clearer. (Passive voice remains
-correct when the actor is unknown, irrelevant, or deliberately protected — see
+correct when the actor is unknown, irrelevant, or deliberately protected. See
 B11 for the mechanical sweep.)
 
 ### F6. Structural regularity (piece level)
@@ -136,7 +136,7 @@ Inspect the piece's dominant shape rather than hunting isolated words:
 Fix only the dominant problem: move or combine material, let one section carry
 more weight, name the relation at a weak join, or stop at the last concrete
 consequence. Do not add a random tangent or sentence-length wobble merely to
-look irregular — invented mess is as much a tell as uniformity.
+look irregular: invented mess is as much a tell as uniformity.
 
 ## Preserve human material
 
@@ -183,7 +183,7 @@ Predictability is a feature in documentation and reference prose: keep repeated
 entry structures, numbered procedures, and explicit transitions when they help
 retrieval or prevent mistakes. Test whether a reader can complete the task, not
 whether each paragraph looks different. In academic and high-stakes prose,
-"suggests" and "may indicate" can be the most accurate verbs — flag an
+"suggests" and "may indicate" can be the most accurate verbs. Flag an
 unsupported claim for the author instead of manufacturing a stronger conclusion.
 
 ## Rewrite check

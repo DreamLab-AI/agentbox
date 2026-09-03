@@ -64,8 +64,8 @@ has moved. Three pieces of machinery answer that.
 
 ### What changed in 2026.09.03
 
-The `tier1-vocab` alternation matched bare stems only, so *delves* — the most
-cited marker of all, in its commonest inflection — went unreported. That is
+The `tier1-vocab` alternation matched bare stems only, so *delves*, the most
+cited marker of all in its commonest inflection, went unreported. That is
 fixed, along with the *showcase* and *boast* families, and eleven markers with a
 published excess-frequency measurement were added (*pivotal*, *garner*,
 *encompass*, *commendable*, *invaluable*, *adept*, *bolster*, *unravel*,
@@ -215,16 +215,16 @@ default flags:
 the wrong way. That is a finding about the rules, not a defect in the run.
 
 `agg` is a special case and its 1.0 should not be read as "the density checks do
-not work". It is a single rule id covering four unrelated whole-file checks —
+not work". It is a single rule id covering four unrelated whole-file checks,
 em-dash density, em-dashes in list items, transition-word density and the Tier-2
-cluster — so the ratio averages four different signals into one uninterpretable
+cluster, so the ratio averages four different signals into one uninterpretable
 number. The id predates the versioned table and is kept for output
 compatibility; the `structural-*` rules measure the same territory one signal at
 a time, which is why their ratios mean something and this one does not.
 
 **And the ranking does not transfer between corpora.** On MAGE, `hedge-words`
 scores 0.69, `claudish-structure` 0.56, `preamble-label` 0.54, and
-`claudish-filler` and `insider-voice` fire on nothing at all — so
+`claudish-filler` and `insider-voice` fire on nothing at all, so
 `claudish-structure`, the best discriminator on RAID at 5.0, is among the worst
 on MAGE. A rule's ratio is a property of the rule *and the corpus*, and any
 single-corpus ranking of these rules, including the one above, should be read
@@ -306,9 +306,9 @@ nothing in common:
 | | Old regex | VarCon rebuild |
 |---|---|---|
 | Findings | 120 | 117 |
-| Sense-dependent, reported as plain misspellings | 37 (*licensed* x26, *license* x5, *licenses* x3, *meter* x3) | 0 — split into report-only `us-spelling-sense` |
+| Sense-dependent, reported as plain misspellings | 37 (*licensed* x26, *license* x5, *licenses* x3, *meter* x3) | 0, split into report-only `us-spelling-sense` |
 | **Findings on correct British spellings** | **26** (*fulfilled*, *fulfilling*) | **0** |
-| Auto-fixable | — | 0 |
+| Auto-fixable | n/a | 0 |
 
 Twenty-six of the old build's findings were on *fulfilled* and *fulfilling*,
 which are correct British English. The rule was reporting good spelling as bad,

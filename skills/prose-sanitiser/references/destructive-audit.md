@@ -54,11 +54,11 @@ pause in a presentation heading.
 | The VisionFlow Stack | VisionFlow Stack |
 | The 80/10 Gap | 80/10 Gap |
 
-**Rule (openers — HIGH):** Do not open a sentence, paragraph, list item, figure
+**Rule (openers, HIGH):** Do not open a sentence, paragraph, list item, figure
 caption or table cell with "The &lt;lowercase noun&gt;". It is the model's default
 definitional throat-clear ("The production-node paired study measures...", "The
 measured design choices follow...", "The system is a served node...") and it
-stacks — dozens per document, all in the same cadence, none in a human's voice.
+stacks: dozens per document, all in the same cadence, none in a human's voice.
 Recast so the real subject or action leads. A capitalised proper noun after "The"
 (The Loom, The Guardian) is fine and is left alone.
 
@@ -70,7 +70,7 @@ Recast so the real subject or action leads. A capitalised proper noun after "The
 | The system is a served node operating over a corpus. | A served node operates over the corpus. |
 
 The scanner flags line-initial `The` + a lowercase word (`the-opener`, HIGH). It
-cannot see mid-paragraph sentence openers — those need the human read.
+cannot see mid-paragraph sentence openers; those need the human read.
 
 ## B3. Negative Parallelism
 
@@ -86,7 +86,7 @@ Invert: lead with the positive claim. Or just delete the negative half.
 
 ## B4. Tier 1 Banned Vocabulary
 
-> `honest` / `honestly` / `honesty` is Tier 1 at HIGH weight: prose that keeps telling the reader it is honest is a hallmark AI tell — transparent work shows its receipts and never says the word. Repair by deleting the claim and letting the disclosed method carry it; at most one load-bearing use per document.
+> `honest` / `honestly` / `honesty` is Tier 1 at HIGH weight: prose that keeps telling the reader it is honest is a hallmark AI tell. Transparent work shows its receipts and never says the word. Repair by deleting the claim and letting the disclosed method carry it; at most one load-bearing use per document.
 
 Flag and replace every instance:
 
@@ -100,11 +100,11 @@ Flag and replace every instance:
 | cutting-edge | current, recent, new |
 | transformative | (delete or be specific about what changed) |
 | groundbreaking | new, first |
-| innovative | (delete — show don't tell) |
+| innovative | (delete: show don't tell) |
 | holistic | (delete or say "whole-system") |
 | testament | proof, evidence, sign |
-| tapestry | (delete — almost always slop) |
-| vibrant | (be specific — what colour, what energy?) |
+| tapestry | (delete: almost always slop) |
+| vibrant | (be specific: what colour, what energy?) |
 | utilize | use |
 | harness | use |
 | unlock | enable, open |
@@ -260,11 +260,11 @@ Beyond B6's throat-clearing, Claude favours these mid-text fillers:
 
 | Kill | Replace with |
 |------|-------------|
-| Let's break this down | (delete — just start explaining) |
-| There are several key aspects/considerations | (delete — list the aspects directly) |
-| This is particularly important/relevant | (delete — if it's important, show why) |
-| It's also worth mentioning/highlighting | (delete — just mention it) |
-| Here is where things get interesting | (delete — the reader will decide) |
+| Let's break this down | (delete: just start explaining) |
+| There are several key aspects/considerations | (delete: list the aspects directly) |
+| This is particularly important/relevant | (delete: if it's important, show why) |
+| It's also worth mentioning/highlighting | (delete: just mention it) |
+| Here is where things get interesting | (delete: the reader will decide) |
 
 ### B13.2 False Dichotomy Framing
 
@@ -274,11 +274,11 @@ of what was just said.
 
 | Kill | Replace with |
 |------|-------------|
-| Whether you're a beginner or an expert | (delete — write for your actual audience) |
-| Think of it as... | (delete — just describe the thing) |
-| In other words | (delete — rewrite the original to be clear the first time) |
-| Put simply / Put differently | (delete — say it clearly once) |
-| To put it in perspective | (delete — the perspective should be self-evident) |
+| Whether you're a beginner or an expert | (delete: write for your actual audience) |
+| Think of it as... | (delete: just describe the thing) |
+| In other words | (delete: rewrite the original to be clear the first time) |
+| Put simply / Put differently | (delete: say it clearly once) |
+| To put it in perspective | (delete: the perspective should be self-evident) |
 
 ### B13.3 Simplification as a Rewrite Strategy
 
@@ -297,11 +297,11 @@ chars) into the rewrite prompt, helping the model make better simplification
 choices by understanding what the prose is trying to answer. Works with any
 strength, most useful with `simplify` and `declaudish`.
 
-## B14 — Insider voice in external documents (audience leakage)
+## B14. Insider voice in external documents (audience leakage)
 
 A class of tell specific to documents that cross an organisational boundary: client
 deliverables, partner correspondence, published specs. The text narrates the *author's
-side* of a relationship instead of the shared subject — negotiation stance, critique of
+side* of a relationship instead of the shared subject: negotiation stance, critique of
 the counterparty's drafting, strategic framing that only makes sense to the sending
 team.
 
@@ -316,7 +316,7 @@ Symptoms:
 - Internal risk vocabulary escaping: "landmine", "scope creep", "the trap", "smuggled
   in".
 
-The fix is not softening — it is re-aiming. Describe the decision, mechanism or rule
+The fix is not softening; it is re-aiming. Describe the decision, mechanism or rule
 neutrally, as a property of the shared system rather than a move in a negotiation:
 "a decision the wording leaves to X" → "an interpretation for X's approval"; "do not
 silently become the baseline" → "take effect only through change control, so the
@@ -325,20 +325,20 @@ baseline and the document set stay aligned".
 Audience judgement is required: these phrases are often *correct* in internal memos and
 risk registers. The scanner flags them at medium severity; keep or kill by asking who
 the reader is. When one document family has both internal and external variants, sweep
-the external one after every edit pass — insider lines migrate in during rewrites.
+the external one after every edit pass, because insider lines migrate in during rewrites.
 
-## B15 — Preamble setup labels (announcing the explanation)
+## B15. Preamble setup labels (announcing the explanation)
 
 Headings and openers that promise clarity instead of delivering it: "In plain terms",
 "Put simply", "Simply put", "In essence", "In a nutshell", "At a high level", "In other
 words", "To put it another way". As a heading, the label frames the following paragraph
-as a translation of something harder — which either insults the surrounding prose (why
+as a translation of something harder, which either insults the surrounding prose (why
 wasn't *it* plain?) or pads the structure. As a sentence opener, it is throat-clearing
 before the actual claim.
 
 The fix is deletion, not substitution: the plain statement should simply be the text,
 placed where the label was. If a section genuinely needs a lay summary and a formal
-treatment, name the content, not the register — "Rule" and "Behaviour" beat "In plain
+treatment, name the content, not the register: "Rule" and "Behaviour" beat "In plain
 terms" and "The maths". The one legitimate use is contrast a reader needs flagged
 (e.g. translating a quoted legal clause immediately after quoting it); even then,
 prefer a colon after the quote to a labelled sub-heading.
