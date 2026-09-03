@@ -13,8 +13,23 @@ depend on from a library or an editor's hot path.
   (whether the rule is right), kept orthogonal on purpose.
 - `Check` and `Fix` traits. `check() -> Vec<Finding>` never mutates and
   `fix() -> Patch` returns a diff the caller chooses to apply.
-- `Config`, plus the process-shaped helpers the binaries share: `CliError`,
-  `run_cli`, the JSON emitters, and the size-cap environment reads.
+- `Config` and `ConfigFile`: the run configuration, and a parser for the
+  committed `.prose-sanitiser.toml`. Parsing only — the CLI reads the file, so
+  this crate keeps its no-I/O invariant.
+- `Suppressions`: Vale-style HTML-comment directives
+  (`<!-- prose-sanitiser-disable RULE -->`, `-enable`, `-disable-line`,
+  `-disable-next-line`, plus Vale's `off` / `on` / `:ignore` spellings), inert in
+  every Markdown renderer.
+- `LanguageFilter`: a `whatlang` pre-filter so English-only rules never fire on
+  other languages. Uncertainty means English, so it can never silently disable a
+  rule.
+- `Report`, `ReportEntry`, `RuleMeta` and `ToolMeta`: SARIF 2.1.0 (the only
+  version GitHub code scanning accepts) and JSON Lines, with the rule table in
+  `runs[].tool.driver.rules[]` carrying each rule's confidence tier, `since` and
+  `reviewed` dates and sources, and `partialFingerprints` on every result so an
+  unrelated edit does not re-open closed alerts.
+- The process-shaped helpers the binaries share: `CliError`, `run_cli`, the JSON
+  emitters, and the size-cap environment reads.
 
 ## Capability row
 
@@ -47,6 +62,17 @@ assert!(!ConfidenceTier::LowConfidenceJudgement.fixable_with_opt_in());
 assert_eq!(Severity::High.weight(), 3);
 ```
 
+A suppression directive is read out of the document itself, not configured:
+
+```rust
+use prose_sanitiser_core::Suppressions;
+
+let document = "<!-- prose-sanitiser-disable tier1-vocab -->\nWe delve, deliberately.\n";
+let suppressions = Suppressions::parse(document);
+assert!(suppressions.is_suppressed("tier1-vocab", document.len() - 2));
+assert!(!suppressions.is_suppressed("hedge-words", document.len() - 2));
+```
+
 Implementing a rule means implementing `Check`; see the trait's own rustdoc for
 a complete worked example.
 
@@ -71,8 +97,8 @@ Publication candidate. Before `cargo publish`:
 - [x] `description`, `repository`, `keywords`, `categories`, `readme` set
 - [x] Pure Rust: no C dependencies, no subprocesses, no network
 - [x] Crate-level `//!` docs stating the honest capability scope
-- [ ] Every public item documented, with examples that compile
-- [ ] `cargo doc --no-deps` clean, with no warnings
+- [x] Every public item documented, with examples that compile
+- [x] `cargo doc --no-deps` clean, with no warnings
 - [ ] `cargo publish --dry-run` clean
 - [ ] Version bumped and `CHANGELOG.md` entry written
 

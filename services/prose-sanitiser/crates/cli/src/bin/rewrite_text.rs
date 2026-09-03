@@ -14,12 +14,15 @@ use prose_sanitiser::common::{
     cleaned_path, env_flag, env_nonempty, eprint_line, read_text_input, run_cli, to_pretty_json,
     write_text_output, CliError,
 };
+use prose_sanitiser::exit;
 use prose_sanitiser::rewrite::{
     rewrite, Backend, MarkllmOptions, RewriteOptions, DEFAULT_MARKLLM_MODEL,
 };
 
 #[derive(Parser)]
-#[command(about = "Layer B optional rewrite hook for statistical watermarks.")]
+#[command(about = "Layer B optional rewrite hook for statistical watermarks.",
+    after_help = prose_sanitiser::exit::HELP_EPILOGUE
+)]
 struct Args {
     /// Input text file, or - for stdin
     #[arg(default_value = "-")]
@@ -97,7 +100,7 @@ fn body() -> Result<i32, CliError> {
         .or_else(|| env_nonempty("WATERMARKS_REWRITE_BACKEND"))
         .unwrap_or_else(|| "print-prompt".to_string());
     let backend = Backend::parse(&backend_name)
-        .ok_or_else(|| CliError::new(1, format!("unknown backend: {backend_name}")))?;
+        .ok_or_else(|| CliError::new(exit::ERROR, format!("unknown backend: {backend_name}")))?;
     let reasoning = args
         .reasoning_effort
         .clone()
@@ -185,5 +188,5 @@ fn body() -> Result<i32, CliError> {
             output_chars
         ));
     }
-    Ok(0)
+    Ok(exit::CLEAN)
 }

@@ -22,7 +22,7 @@ crate description, a README or a `--help`.
 |---|---|
 | Invisible `Cf`-class controls: zero-width family, tag block, variation selectors, bidi controls, exotic whitespace, Hangul fillers | Deterministic codepoint classification with context rules |
 | Variation-selector and tag-block smuggled payloads, **including decoding the hidden bytes** | The byte mapping is fully specified |
-| Homoglyph and mixed-script substitution | UTS #39 skeleton and restriction levels |
+| Homoglyph and mixed-script substitution. **Detected always; the fold to ASCII is opt-in** (`--aggressive-homoglyphs`) | UTS #39 skeleton and restriction levels |
 | C2PA JUMBF manifests in JPEG `APP11`, PNG `caBX`, WebP `C2PA`, PDF embedded files, SVG `c2pa:manifest` | Container structure is normatively specified; deletion is byte-level |
 | EXIF, XMP (including Extended XMP), IPTC/Photoshop IRB, PNG text chunks, `tIME`, GIF comments | Well-delimited container structures |
 | PDF `/Info` and `/Metadata`, with a full object-graph rewrite so prior incremental revisions do not survive | Structural rewrite |
@@ -44,14 +44,22 @@ effect. It is lossy, cannot be verified without the vendor key, and is not
 removal. No lossless, token-preserving removal exists anywhere in the
 literature.
 
+### The principle behind the rows
+
+**Detection is unconditional; mutation is conservative.** Anything whose repair
+is a judgement is reported and not applied unless asked. Folding honest Cyrillic
+or Greek prose into Latin is worse than leaving a homoglyph in place, and
+removing a typesetter's hyphenation is worse than leaving a soft hyphen, so
+neither happens by default. `--aggressive-homoglyphs` and
+`CleanOptions::strip_soft_hyphen` are the opt-ins.
+
 ### Never touches
 
 `U+200D` inside a well-formed RGI emoji ZWJ sequence; `Mn`/`Mc` combining marks;
 ZWNJ/ZWJ after an Indic virama or between Persian morphemes; balanced bidi
 controls in genuine RTL prose; `U+FEFF` at byte offset 0; `U+00AD` soft hyphen,
 which is a hyphenation hint as often as a carrier, so it is reported and
-stripped only on request; content inside code
-fences, inline code, HTML attributes, URLs, file paths or front matter; US
+stripped only on request; content inside code fences, inline code, HTML attributes, URLs, file paths or front matter; US
 spelling in proper nouns, organisation names and direct quotations;
 sense-dependent pairs such as `program`, `meter`, `disk`, `sulfur`, `fetus` and
 `dialog box`; the pixel data of any image; NFKC normalisation of user-facing
@@ -64,7 +72,7 @@ orthogonal, and only confidence gates a fix.
 
 | Tier | Contents | Auto-fix |
 |---|---|---|
-| `certain-mechanical` | Invisible Unicode, container metadata, homoglyphs | Yes, always. Verifiable by diff |
+| `certain-mechanical` | Invisible Unicode, container metadata, homoglyphs | Yes, and the result is verifiable by diff. The tier rates the *classification*, so a conservative default can still hold a fold back behind a flag |
 | `high-confidence-stylistic` | Unconditional dialect pairs, always-ise and always-yse sets | Only behind an explicit `--write` |
 | `low-confidence-judgement` | Sense-dependent pairs, slop phrasing, organisation-adjacent tokens | Never. Report only |
 

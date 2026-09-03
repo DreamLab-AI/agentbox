@@ -11,6 +11,8 @@
 //! Conflating the two is how a linter ends up "correcting" *a driving licence*
 //! or *the gas meter*: a rule can be high-impact and still be a guess.
 
+use crate::language::LanguageFilter;
+
 /// How strongly a tell signals AI authorship.
 ///
 /// Severity follows the Tier-1/Tier-2 weighting in the prose-sanitiser skill,
@@ -302,6 +304,17 @@ pub struct Config {
     pub oxford: bool,
     /// Rule identifiers to skip entirely.
     pub disabled_rules: Vec<String>,
+    /// Whether English-only rules should be held back on non-English spans.
+    ///
+    /// Enabled by default, and safe by construction: the filter treats anything
+    /// it cannot classify confidently as English, so it never silently disables
+    /// a rule. See [`crate::LanguageFilter`].
+    pub language: LanguageFilter,
+    /// Whether the HTML-comment suppression directives are honoured.
+    ///
+    /// On by default. Turning it off is how a CI job audits what a repository
+    /// has been suppressing. See [`crate::Suppressions`].
+    pub suppressions: bool,
 }
 
 impl Default for Config {
@@ -311,6 +324,8 @@ impl Default for Config {
             min_severity: Severity::Low,
             oxford: false,
             disabled_rules: Vec::new(),
+            language: LanguageFilter::default(),
+            suppressions: true,
         }
     }
 }
@@ -342,6 +357,24 @@ impl Config {
     /// Disable one rule by identifier.
     pub fn without_rule(mut self, rule_id: impl Into<String>) -> Self {
         self.disabled_rules.push(rule_id.into());
+        self
+    }
+
+    /// Set the language pre-filter.
+    pub fn with_language(mut self, language: LanguageFilter) -> Self {
+        self.language = language;
+        self
+    }
+
+    /// Scan every span, whatever language it reads as.
+    pub fn without_language_filter(mut self) -> Self {
+        self.language = LanguageFilter::disabled();
+        self
+    }
+
+    /// Choose whether the HTML-comment suppression directives are honoured.
+    pub fn with_suppressions(mut self, suppressions: bool) -> Self {
+        self.suppressions = suppressions;
         self
     }
 

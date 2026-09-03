@@ -51,10 +51,12 @@ serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 sha2 = "0.10"
 tempfile = "3"
+toml = "0.8"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal"] }
 unicode-general-category = "1"
 unicode-normalization = "0.1"
 unicode_names2 = "1"
+whatlang = "0.16"
 ureq = { version = "2", default-features = false, features = ["tls", "gzip", "json"] }
 zip = { version = "2", default-features = false, features = ["deflate"] }
 

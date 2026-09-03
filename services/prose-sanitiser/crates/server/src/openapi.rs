@@ -153,6 +153,15 @@ pub fn openapi_spec(api_key_required: bool) -> Value {
     );
 
     paths.insert(
+        "/rules".into(),
+        json!({
+            "get": {
+                "summary": "The stylistic rule table: ids, tiers, dates, sources and the ruleset changelog.",
+                "responses": {"200": {"description": "Rule table"}},
+            }
+        }),
+    );
+    paths.insert(
         "/inspect".into(),
         json!({"post": operation(
             "Inspect a file for AI provenance marks (text / image / container auto-routed)",
@@ -213,6 +222,7 @@ mod tests {
             "/health",
             "/capabilities",
             "/openapi.json",
+            "/rules",
             "/inspect",
             "/clean",
         ] {

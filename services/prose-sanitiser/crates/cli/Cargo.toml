@@ -61,6 +61,10 @@ path = "src/bin/slop_scan.rs"
 name = "slop-detect"
 path = "src/bin/slop_detect.rs"
 
+[[bin]]
+name = "sanitise"
+path = "src/bin/sanitise.rs"
+
 [dependencies]
 prose-sanitiser-core = { workspace = true }
 prose-sanitiser-media = { workspace = true }

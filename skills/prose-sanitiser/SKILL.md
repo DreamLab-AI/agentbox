@@ -37,7 +37,7 @@ Claim nothing outside this table. The evidence for each row is in
 |---|---|
 | Invisible `Cf`-class controls in text: zero-width family, tag block, variation selectors, bidi controls, exotic whitespace, Hangul fillers | Deterministic codepoint classification with context rules |
 | Variation-selector and tag-block smuggled payloads, including decoding the hidden bytes | The byte mapping is fully specified |
-| Homoglyph and mixed-script substitution | UTS #39 skeleton and restriction levels |
+| Homoglyph and mixed-script substitution. **Detected always; the fold to ASCII is opt-in** (`--aggressive-homoglyphs`) | UTS #39 skeleton and restriction levels |
 | C2PA JUMBF manifests in JPEG `APP11`, PNG `caBX`, WebP `C2PA`, PDF embedded files, SVG `c2pa:manifest` | Container structure is normatively specified; deletion is byte-level |
 | EXIF, XMP (including Extended XMP), IPTC/Photoshop IRB, PNG text chunks, `tIME`, GIF comments | Well-delimited container structures |
 | PDF `/Info` and `/Metadata`, with a structural rewrite so earlier incremental revisions do not survive in the byte stream | Full object-graph rewrite |
@@ -57,6 +57,13 @@ Claim nothing outside this table. The evidence for each row is in
 | Capability | Honest wording |
 |---|---|
 | Statistical watermark "removal" by paraphrase (`rewrite-text`) | Paraphrase changes tokens, which degrades any sampling watermark as a side effect. It is lossy, cannot be verified without the vendor key, and is not removal. No lossless removal exists anywhere in the literature |
+
+One principle governs the Unicode layer, and it is worth reading before the
+rows above: **detection is unconditional, mutation is conservative.** Anything
+whose repair is a judgement is reported and not applied unless you ask. Folding
+honest Cyrillic or Greek prose into Latin is far worse than leaving a homoglyph
+in place, and removing a typesetter's hyphenation is worse than leaving a soft
+hyphen, so neither happens by default.
 
 **Never touches**
 
@@ -78,7 +85,7 @@ Only confidence gates an automatic fix.
 
 | Tier | Contents | Auto-fix |
 |---|---|---|
-| `certain-mechanical` | Invisible Unicode, container metadata, homoglyphs | Yes, always. The result is verifiable by diff |
+| `certain-mechanical` | Invisible Unicode, container metadata, homoglyphs | Yes, and the result is verifiable by diff. The tier rates the *classification*, so a conservative default can still hold a fold back behind a flag |
 | `high-confidence-stylistic` | Unconditional dialect pairs, always-ise and always-yse sets | Only behind an explicit `--write` |
 | `low-confidence-judgement` | Sense-dependent pairs, slop phrasing, organisation-adjacent tokens | Never. Report only |
 

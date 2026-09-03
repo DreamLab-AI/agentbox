@@ -4,11 +4,14 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use prose_sanitiser::common::{classify_finding_confidence, emit_json, run_cli, CliError};
+use prose_sanitiser::exit;
 use prose_sanitiser::image::inspect_image;
 use serde_json::Value;
 
 #[derive(Parser)]
-#[command(about = "Inspect PNG/JPEG/WebP for C2PA and AI-related metadata.")]
+#[command(about = "Inspect PNG/JPEG/WebP for C2PA and AI-related metadata.",
+    after_help = prose_sanitiser::exit::HELP_EPILOGUE
+)]
 struct Args {
     /// Image path (PNG, JPEG, or WebP)
     path: PathBuf,
@@ -32,7 +35,10 @@ fn body() -> Result<i32, CliError> {
         ));
     }
     let report = inspect_image(&args.path, args.synthid_dir.as_deref()).map_err(|error| {
-        CliError::new(2, format!("cannot read {}: {error}", args.path.display()))
+        CliError::new(
+            exit::ERROR,
+            format!("cannot read {}: {error}", args.path.display()),
+        )
     })?;
 
     if args.json {
@@ -84,7 +90,7 @@ fn body() -> Result<i32, CliError> {
             }
         }
     }
-    Ok(i32::from(report.has_c2pa || report.has_ai_metadata))
+    Ok(exit::from_flag(report.has_c2pa || report.has_ai_metadata))
 }
 
 /// Python prints booleans capitalised.

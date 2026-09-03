@@ -1,32 +1,33 @@
-//! The prose slop rule table, mirroring Section B of the prose-sanitiser
-//! SKILL.md (lexical, structural and spelling tells).
+//! The per-line rule table.
 //!
-//! Severity follows the Tier-1/Tier-2 weighting in the skill, so the report
-//! says where to spend effort. These are the MECHANICAL tells only; narrative
-//! defaults (Section C) and altitude/voice need a human read.
+//! Mirrors Section B of the prose-sanitiser SKILL.md (lexical, structural and
+//! spelling tells). These are the MECHANICAL tells only; narrative defaults
+//! (Section C) and altitude/voice need a human read.
+//!
+//! Every rule carries its dates, its tier and its sources. See
+//! [`super::CHANGELOG`] for what changed and why.
 
-/// How strongly a tell signals AI authorship.
-///
-/// Re-exported from `prose-sanitiser-core` so the slop tables, the UK rule and
-/// any future scanner all weigh findings on one scale.
-pub use prose_sanitiser_core::Severity;
+use prose_sanitiser_core::ConfidenceTier;
 
-/// One per-line rule.
-pub struct Rule {
-    pub id: &'static str,
-    pub label: &'static str,
-    pub severity: Severity,
-    pub fix: &'static str,
-    pub patterns: &'static [&'static str],
-    /// Case-sensitive rules opt out of the default IGNORECASE.
-    pub cased: bool,
-}
+use super::sources::{HOUSE_STYLE, JUZEK, KOBAK, PEW, WIKIPEDIA};
+use super::{uk, Rule, Severity};
+
+/// When the table was first written, ported from the Python skill.
+const V1: &str = "2026-01-14";
+/// When the tables were last checked against their sources in full.
+const REVIEWED: &str = "2026-09-03";
+
+/// Report only: no lexical marker is ever safe to act on unread.
+const JUDGEMENT: ConfidenceTier = ConfidenceTier::LowConfidenceJudgement;
+/// A structural tell strong enough to gate an opt-in fix, never an automatic one.
+const STYLISTIC: ConfidenceTier = ConfidenceTier::HighConfidenceStylistic;
 
 pub const RULES: &[Rule] = &[
     Rule {
         id: "preamble-label",
         label: "Preamble setup label (announcing the explanation)",
         severity: Severity::Medium,
+        confidence: JUDGEMENT,
         fix: "Delete the label and let the explanation stand on its own. A heading or opener like 'In plain terms' / 'Put simply' / 'In essence' announces that clarity is coming instead of delivering it - the plain statement should simply be the text. See references/destructive-audit.md B15.",
         patterns: &[
             r"\bin plain (?:terms|english|language)\b",
@@ -40,12 +41,17 @@ pub const RULES: &[Rule] = &[
             r"\bthe idea in brief\b",
             r"\blong story short\b",
         ],
+        dynamic: None,
         cased: false,
+        since: V1,
+        reviewed: REVIEWED,
+        sources: &[HOUSE_STYLE, WIKIPEDIA],
     },
     Rule {
         id: "insider-voice",
         label: "Insider voice in external document (audience leakage)",
         severity: Severity::Medium,
+        confidence: JUDGEMENT,
         fix: "Negotiation stance, critique of the counterparty's drafting, or strategy narration leaking into an externally facing document. Restate neutrally: describe the decision or mechanism, not your read of the other side. Only applies to client/public-facing text; internal memos are exempt - judge by audience. See references/destructive-audit.md B14.",
         patterns: &[
             r"\bthe wording leaves\b",
@@ -61,23 +67,40 @@ pub const RULES: &[Rule] = &[
             r"\blandmine[s]?\b",
             r"\bscope[- ]creep\b",
         ],
+        dynamic: None,
         cased: false,
+        since: V1,
+        reviewed: REVIEWED,
+        sources: &[HOUSE_STYLE],
     },
     // ---- HIGH: Tier-1 vocabulary and the strongest structural tells ----
     Rule {
         id: "tier1-vocab",
         label: "Tier-1 banned vocabulary",
         severity: Severity::High,
+        confidence: JUDGEMENT,
         fix: "Replace with a plain word (delve->look at, leverage->use, robust->solid, seamless->smooth, utilise->use). See SKILL.md B4.",
+        // Refreshed 2026-09-03. The 2026-01-14 alternation matched bare stems
+        // only, so `delves` - the single most-cited marker in its commonest
+        // inflection - went unreported. Additions are limited to markers with a
+        // published excess-frequency measurement; ordinary high-frequency verbs
+        // such as `navigate` and `tackle` appear in the excess sets but are left
+        // out, because their false-positive cost on human prose outweighs the
+        // signal.
         patterns: &[
-            r"\b(delve|leverage|leverages|leveraging|leveraged|robust|seamless|seamlessly|comprehensive|cutting-edge|transformative|groundbreaking|innovative|holistic|testament|tapestry|vibrant|utilize|utilise|utilizes|utilises|harness(?:es|ing|ed)?|unlock(?:s|ing|ed)?|unleash(?:es|ing|ed)?|streamline(?:s|d)?|streamlining|empower(?:s|ing|ed|ment)?|elevate(?:s|d)?|elevating|paradigm|unprecedented|synergy|synergies|foster(?:s|ing|ed)?|underscore(?:s|d)?|underscoring|game-changing|enterprise-scale|enterprise-grade|extraordinary|honest(?:ly)?|honesty)\b",
+            r"\b(delve(?:s|d)?|delving|leverage|leverages|leveraging|leveraged|robust|seamless|seamlessly|comprehensive|cutting-edge|transformative|groundbreaking|innovative|holistic|testament|tapestry|vibrant|showcase(?:s|d)?|showcasing|boast(?:s|ed)?|boasting|pivotal|garner(?:s|ed)?|garnering|encompass(?:es|ed)?|encompassing|commendable|invaluable|adept|bolster(?:s|ed)?|bolstering|unravel(?:s|led|ed)?|unravelling|spearhead(?:s|ed|ing)?|utilize|utilise|utilizes|utilises|harness(?:es|ing|ed)?|unlock(?:s|ing|ed)?|unleash(?:es|ing|ed)?|streamline(?:s|d)?|streamlining|empower(?:s|ing|ed|ment)?|elevate(?:s|d)?|elevating|paradigm|unprecedented|synergy|synergies|foster(?:s|ing|ed)?|underscore(?:s|d)?|underscoring|game-changing|enterprise-scale|enterprise-grade|extraordinary|honest(?:ly)?|honesty)\b",
         ],
+        dynamic: None,
         cased: false,
+        since: V1,
+        reviewed: REVIEWED,
+        sources: &[KOBAK, JUZEK, PEW],
     },
     Rule {
         id: "the-heading",
         label: "\"The X\" heading",
         severity: Severity::High,
+        confidence: STYLISTIC,
         fix: "Drop the leading 'The' unless it is a proper noun (The Guardian). See SKILL.md B2.",
         patterns: &[
             r"^#{1,6}\s+The\s+\S",
@@ -85,23 +108,37 @@ pub const RULES: &[Rule] = &[
             r"\\paragraph\*?\{The\s",
             r"\\caption\{The\s",
         ],
+        dynamic: None,
         cased: true,
+        since: V1,
+        reviewed: REVIEWED,
+        sources: &[WIKIPEDIA, HOUSE_STYLE],
     },
+    // Measured 2026-09-03 on RAID: fires on 41.1 per cent of human documents
+    // and 38.0 per cent of machine ones, so as an authorship signal it points
+    // very slightly the wrong way. It stays as a house-style rule, demoted to
+    // report-only, because that is what the measurement supports.
     Rule {
         id: "the-opener",
         label: "\"The X\" sentence/paragraph opener",
         severity: Severity::High,
+        confidence: JUDGEMENT,
         fix: "Don't open with 'The <lowercase noun>'. Recast so the subject leads, or name the thing directly ('The production-node paired study lifts...' -> 'Holding the model constant and varying only the serving path lifts...'). Proper nouns (The Loom) are fine. See SKILL.md B2.",
         // Line-initial "The" + a lowercase word = the definitional/throat-clearing
         // opener; a capitalised follower (The Loom, The Guardian) is a proper
         // noun and is left alone.
         patterns: &[r"^\s*The\s+[a-z]"],
+        dynamic: None,
         cased: true,
+        since: V1,
+        reviewed: REVIEWED,
+        sources: &[WIKIPEDIA, HOUSE_STYLE],
     },
     Rule {
         id: "negative-parallelism",
         label: "Negative parallelism (not X - Y / not just X but Y)",
         severity: Severity::High,
+        confidence: STYLISTIC,
         fix: "Lead with the positive claim, or delete the negative half. See SKILL.md B3.",
         patterns: &[
             r"\bnot\s+(just|only|merely|simply)\b[^.?!]{1,60}?(,?\s*but\b|\s+—)",
@@ -109,12 +146,17 @@ pub const RULES: &[Rule] = &[
             r"\bisn'?t\s+(just\s+)?about\b[^.?!]{1,60}?\bit'?s\s+about\b",
             r"\bthis\s+isn'?t\b[^.?!]{1,50}?\bit'?s\b",
         ],
+        dynamic: None,
         cased: false,
+        since: V1,
+        reviewed: REVIEWED,
+        sources: &[PEW, WIKIPEDIA],
     },
     Rule {
         id: "throat-clearing",
         label: "Throat-clearing opener",
         severity: Severity::High,
+        confidence: JUDGEMENT,
         fix: "Delete the warm-up. Lead with the value. See SKILL.md B6.",
         patterns: &[
             r"\bin\s+today'?s\s+(rapidly\s+)?(evolving|changing|fast-paced)\b",
@@ -128,12 +170,17 @@ pub const RULES: &[Rule] = &[
             r"\bat\s+the\s+end\s+of\s+the\s+day\b",
             r"\bwhen\s+it\s+comes\s+to\b",
         ],
+        dynamic: None,
         cased: false,
+        since: V1,
+        reviewed: REVIEWED,
+        sources: &[WIKIPEDIA, HOUSE_STYLE],
     },
     Rule {
         id: "sycophantic-filler",
         label: "Sycophantic filler",
         severity: Severity::High,
+        confidence: JUDGEMENT,
         fix: "Delete entirely. See SKILL.md B7.",
         patterns: &[
             r"\byou'?re\s+absolutely\s+right\b",
@@ -142,12 +189,17 @@ pub const RULES: &[Rule] = &[
             r"\b(certainly|absolutely)!\B",
             r"\bi'?d\s+be\s+happy\s+to\s+help\b",
         ],
+        dynamic: None,
         cased: false,
+        since: V1,
+        reviewed: REVIEWED,
+        sources: &[HOUSE_STYLE],
     },
     Rule {
         id: "claudish-filler",
         label: "Claudish filler phrase",
         severity: Severity::High,
+        confidence: JUDGEMENT,
         fix: "Cut the filler. Lead with the substance. See SKILL.md B13.",
         patterns: &[
             r"\blet'?s\s+break\s+(this|that|it)\s+down\b",
@@ -156,21 +208,31 @@ pub const RULES: &[Rule] = &[
             r"\bit'?s\s+also\s+worth\s+(mentioning|highlighting|emphasizing|emphasising)\b",
             r"\b(here|this)\s+is\s+where\s+(things|it)\s+(get|gets)\s+(interesting|tricky|complicated)\b",
         ],
+        dynamic: None,
         cased: false,
+        since: V1,
+        reviewed: REVIEWED,
+        sources: &[HOUSE_STYLE],
     },
     // ---- MEDIUM: hedge words, copula substitution, US spelling ----
     Rule {
         id: "hedge-words",
         label: "Hedge word",
         severity: Severity::Medium,
+        confidence: JUDGEMENT,
         fix: "Cut it, or replace with a specific qualifier (\"in staging\", \"for payloads <10KB\"). See SKILL.md B8.",
         patterns: &[r"\b(basically|actually|essentially|fundamentally|somewhat)\b"],
+        dynamic: None,
         cased: false,
+        since: V1,
+        reviewed: REVIEWED,
+        sources: &[HOUSE_STYLE],
     },
     Rule {
         id: "copula-substitution",
         label: "Copula substitution (serves as / marks the)",
         severity: Severity::Medium,
+        confidence: JUDGEMENT,
         fix: "Use 'is'. 'serves as a' -> 'is'; 'marks the' -> 'is'. See SKILL.md B9.",
         patterns: &[
             r"\bserves?\s+as\s+a\b",
@@ -179,23 +241,34 @@ pub const RULES: &[Rule] = &[
             r"\bacts?\s+as\s+a\b",
             r"\brepresents?\s+a\s+(key|major|significant)\b",
         ],
+        dynamic: None,
         cased: false,
+        since: V1,
+        reviewed: REVIEWED,
+        sources: &[HOUSE_STYLE],
     },
-    // The UK-English rule lives in `prose-sanitiser-uk`, which owns the
-    // pattern and its documented limitations. Referencing its constants here
-    // keeps the scanner and that crate's `check` API from ever drifting.
+    // The UK-English rule's data lives in `prose-sanitiser-uk`. The bridge in
+    // `super::uk` builds the alternation from that crate's VarCon table at
+    // first use, filtered to the unconditional entries, so the slop crate
+    // carries no spelling list of its own.
     Rule {
-        id: prose_sanitiser_uk::US_SPELLING_ID,
-        label: prose_sanitiser_uk::US_SPELLING_LABEL,
-        severity: prose_sanitiser_uk::US_SPELLING_SEVERITY,
-        fix: prose_sanitiser_uk::US_SPELLING_FIX,
-        patterns: &[prose_sanitiser_uk::US_SPELLING_PATTERN],
+        id: uk::US_SPELLING_ID,
+        label: uk::US_SPELLING_LABEL,
+        severity: uk::US_SPELLING_SEVERITY,
+        confidence: uk::US_SPELLING_CONFIDENCE,
+        fix: uk::US_SPELLING_FIX,
+        patterns: &[],
+        dynamic: Some(uk::us_spelling_patterns),
         cased: false,
+        since: V1,
+        reviewed: REVIEWED,
+        sources: &[HOUSE_STYLE],
     },
     Rule {
         id: "passive-tell",
         label: "Passive / agentless construction",
         severity: Severity::Medium,
+        confidence: JUDGEMENT,
         fix: "Make it active. 'can be seen that' -> 'this shows'; 'the decision was made to' -> 'we decided to'. See SKILL.md B11.",
         patterns: &[
             r"\bit\s+can\s+be\s+seen\s+that\b",
@@ -204,12 +277,17 @@ pub const RULES: &[Rule] = &[
             r"\bit\s+is\s+recommended\s+that\b",
             r"\bis\s+designed\s+to\b",
         ],
+        dynamic: None,
         cased: false,
+        since: V1,
+        reviewed: REVIEWED,
+        sources: &[HOUSE_STYLE],
     },
     Rule {
         id: "claudish-structure",
         label: "Claudish structural tell",
         severity: Severity::Medium,
+        confidence: JUDGEMENT,
         fix: "Simplify. 'Whether X or Y' is often a false dichotomy - pick one. 'Think of it as' is condescending. See SKILL.md B13.",
         patterns: &[
             r"\bwhether\s+you'?re\b[^.?!]{5,60}?\bor\b",
@@ -218,154 +296,27 @@ pub const RULES: &[Rule] = &[
             r"\bput\s+(simply|differently|another\s+way)\b",
             r"\bto\s+put\s+(it|this)\s+(simply|differently|another\s+way|in\s+perspective)\b",
         ],
+        dynamic: None,
         cased: false,
+        since: V1,
+        reviewed: REVIEWED,
+        sources: &[HOUSE_STYLE],
     },
     // ---- LOW: bold-label bullets (Tier-2 cluster is handled per file) ----
     Rule {
         id: "bold-label-bullet",
         label: "Bold-label bullet (**Term:** prefix)",
         severity: Severity::Low,
+        confidence: STYLISTIC,
         fix: "Reserve **Bold:** bullet prefixes for reference material; not every bullet needs one. See SKILL.md B9.",
         patterns: &[
             r"^\s*[-*+]\s+\*\*[^*]{1,40}\*\*\s*:",
             r"^\s*[-*+]\s+\*\*[^*]{1,40}:\s*\*\*",
         ],
+        dynamic: None,
         cased: true,
+        since: V1,
+        reviewed: REVIEWED,
+        sources: &[WIKIPEDIA, HOUSE_STYLE],
     },
 ];
-
-/// Tier-2 cluster words: not flagged singly, only when three or more distinct
-/// ones appear in a single file (B5).
-pub const TIER2: &[&str] = &[
-    "crucial",
-    "notable",
-    "noteworthy",
-    "remarkable",
-    "fascinating",
-    "profound",
-    "compelling",
-    "intriguing",
-    "elegant",
-    "meticulous",
-    "intricate",
-    "deliberate",
-    "thoughtful",
-    "sophisticated",
-    "sprawling",
-    "bustling",
-    "evocative",
-    "poignant",
-    "cornerstone",
-    "linchpin",
-    "bedrock",
-    "nexus",
-    "interplay",
-    "realm",
-    "arena",
-    "sphere",
-    "endeavour",
-    "myriad",
-    "plethora",
-];
-
-/// Transition words for the per-page density check (B10).
-pub const TRANSITIONS: &[&str] = &[
-    "furthermore",
-    "moreover",
-    "additionally",
-    "consequently",
-    "notably",
-    "crucially",
-    "importantly",
-    "ultimately",
-    "fundamentally",
-    "indeed",
-    "significantly",
-    "subsequently",
-    "accordingly",
-];
-
-/// File extensions the prose scanner reads.
-pub const EXTS: &[&str] = &["md", "markdown", "mdx", "txt", "rst", "text", "tex"];
-
-/// Directories the prose scanner never descends into.
-pub const SKIP_DIRS: &[&str] = &[
-    "node_modules",
-    ".git",
-    "dist",
-    "build",
-    ".next",
-    "out",
-    "vendor",
-    "coverage",
-    ".svelte-kit",
-    ".astro",
-    ".turbo",
-    ".cache",
-    "__pycache__",
-    "site-packages",
-];
-
-pub const EMDASH: char = '—';
-/// Density window for the em-dash and transition budgets (B1, B10).
-pub const WORDS_PER_PAGE: f64 = 500.0;
-pub const EMDASH_PER_WINDOW: f64 = 2.0;
-pub const TRANS_PER_WINDOW: f64 = 2.0;
-/// Any line containing this marker is skipped, so a deliberate stylistic
-/// choice does not nag the audit.
-pub const IGNORE_MARK: &str = "slop-ignore";
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn every_rule_pattern_compiles() {
-        for rule in RULES {
-            for pattern in rule.patterns {
-                let source = if rule.cased {
-                    (*pattern).to_string()
-                } else {
-                    format!("(?i){pattern}")
-                };
-                regex::Regex::new(&source)
-                    .unwrap_or_else(|error| panic!("{}: {pattern}: {error}", rule.id));
-            }
-        }
-    }
-
-    #[test]
-    fn rule_ids_are_unique() {
-        let mut ids: Vec<&str> = RULES.iter().map(|rule| rule.id).collect();
-        ids.sort_unstable();
-        let before = ids.len();
-        ids.dedup();
-        assert_eq!(ids.len(), before);
-    }
-
-    #[test]
-    fn the_table_keeps_its_shape() {
-        assert_eq!(RULES.len(), 15);
-        assert_eq!(
-            RULES
-                .iter()
-                .filter(|r| r.severity == Severity::High)
-                .count(),
-            7
-        );
-        assert_eq!(TIER2.len(), 29);
-        assert_eq!(TRANSITIONS.len(), 13);
-    }
-
-    #[test]
-    fn severity_ordering_and_weights_match_the_python() {
-        assert!(Severity::High < Severity::Medium);
-        assert_eq!(Severity::High.rank(), 0);
-        assert_eq!(Severity::Low.rank(), 2);
-        assert_eq!(Severity::High.weight(), 3);
-        assert_eq!(Severity::Medium.weight(), 2);
-        assert_eq!(Severity::Low.weight(), 1);
-        assert_eq!(Severity::parse("medium"), Some(Severity::Medium));
-        assert_eq!(Severity::parse("critical"), None);
-    }
-}

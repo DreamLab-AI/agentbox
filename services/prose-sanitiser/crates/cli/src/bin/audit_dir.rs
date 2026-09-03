@@ -9,10 +9,13 @@ use clap::Parser;
 use prose_sanitiser::audit::{aggregate, human_report, scan_file, walk_files, DEFAULT_SKIP_DIRS};
 use prose_sanitiser::common::io::max_input_bytes;
 use prose_sanitiser::common::{emit_json, run_cli, CliError};
+use prose_sanitiser::exit;
 use serde_json::{json, Value};
 
 #[derive(Parser)]
-#[command(about = "Aggregate AI-provenance audit over a directory tree.")]
+#[command(about = "Aggregate AI-provenance audit over a directory tree.",
+    after_help = prose_sanitiser::exit::HELP_EPILOGUE
+)]
 struct Args {
     /// Directory to audit recursively
     path: PathBuf,
@@ -85,5 +88,5 @@ fn body() -> Result<i32, CliError> {
         );
     }
 
-    Ok(i32::from(actionable > 0))
+    Ok(exit::from_flag(actionable > 0))
 }

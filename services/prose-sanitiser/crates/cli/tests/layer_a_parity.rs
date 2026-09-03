@@ -1,12 +1,28 @@
 //! Golden parity for the Layer A character decision.
 //!
-//! `tests/fixtures/layer_a_decisions.json` was generated from the Python
-//! `text_unicode._decide` this crate replaces. It carries a SHA-256 over every
+//! `tests/fixtures/layer_a_decisions.json` carries a SHA-256 over every
 //! `(codepoint, context, mode)` verdict across the enumerated ranges, so any
-//! drift in the port — a dropped table entry, a reordered guard, a changed
-//! `keep`/`strip` boundary — fails here rather than silently weakening
-//! detection. The spelled-out `sample` rows keep the load-bearing cases
-//! readable for a human reviewer.
+//! drift — a dropped table entry, a reordered guard, a changed `keep`/`strip`
+//! boundary — fails here rather than silently weakening detection. The
+//! spelled-out `sample` rows keep the load-bearing cases readable for a human
+//! reviewer, and they are the half that must never move.
+//!
+//! # Rebaselining
+//!
+//! The digest was first generated from the Python `text_unicode._decide` this
+//! crate replaces. It was rebaselined once, on 2026-09-03, when the 40-entry
+//! hand-written confusables table was replaced by the UTS #39 data. That drift
+//! was measured before it was accepted: 2,499 of 1,361,157 verdicts changed
+//! (0.184 per cent), across 357 codepoints, **all of them `keep` becoming
+//! `replace` with kind `confusable`, and all of them in aggressive mode only**.
+//! Default and paranoid modes are byte-identical to the Python. Detection
+//! widened and nothing was lost, which is the only shape of drift that may be
+//! accepted here. The prior digest and the full measurement are recorded in the
+//! fixture's `superseded` array.
+//!
+//! Any future rebaseline needs the same treatment: regenerate both surfaces,
+//! diff them row by row, and record what moved. A digest updated without a
+//! recorded diff is a gate that has been switched off.
 
 use std::collections::BTreeMap;
 
@@ -118,7 +134,9 @@ fn every_codepoint_verdict_matches_the_python() {
     assert_eq!(
         digest,
         fixture["digest"].as_str().unwrap(),
-        "Layer A decision surface drifted from the ported Python"
+        "Layer A decision surface drifted from the recorded baseline. Do not update the \
+         digest without measuring the diff: see the module docs, and the fixture's \
+         `superseded` array for the shape a rebaseline has to have."
     );
 }
 

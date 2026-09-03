@@ -18,13 +18,16 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use prose_sanitiser::common::{run_cli, to_pretty_json_ascii, CliError};
+use prose_sanitiser::exit;
 use prose_sanitiser::slop::design::{by_rule, by_rule_ranked, scan, RuleFilter, Severity};
 use serde_json::{json, Map, Value};
 
 const RESET: &str = "\x1b[0m";
 
 #[derive(Parser)]
-#[command(about = "Deterministic design anti-pattern (slop) detector.")]
+#[command(about = "Deterministic design anti-pattern (slop) detector.",
+    after_help = prose_sanitiser::exit::HELP_EPILOGUE
+)]
 struct Args {
     /// Files or directories to scan
     #[arg(required = true)]
@@ -71,7 +74,7 @@ fn body() -> Result<i32, CliError> {
                 "by_rule": Value::Object(counts),
             }))
         );
-        return Ok(shown.len().min(250) as i32);
+        return Ok(exit::from_findings(shown.len()));
     }
 
     if shown.is_empty() {
@@ -79,7 +82,7 @@ fn body() -> Result<i32, CliError> {
             "clean — no deterministic slop signals at or above '{}'.",
             args.min_severity
         );
-        return Ok(0);
+        return Ok(exit::CLEAN);
     }
 
     if !args.quiet {
@@ -126,5 +129,5 @@ fn body() -> Result<i32, CliError> {
     }
     println!("\nThese are deterministic CLI-layer signals only. Apply the browser- and");
     println!("LLM-only layers from references/slop-rules-catalog.md by judgment.");
-    Ok(shown.len().min(250) as i32)
+    Ok(exit::from_findings(shown.len()))
 }

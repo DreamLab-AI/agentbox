@@ -7,10 +7,13 @@ use prose_sanitiser::audit::website::{
 };
 use prose_sanitiser::audit::{aggregate, human_report};
 use prose_sanitiser::common::{emit_json, run_cli, CliError};
+use prose_sanitiser::exit;
 use serde_json::{json, Value};
 
 #[derive(Parser)]
-#[command(about = "Aggregate AI-provenance audit over the URLs listed in a sitemap.")]
+#[command(about = "Aggregate AI-provenance audit over the URLs listed in a sitemap.",
+    after_help = prose_sanitiser::exit::HELP_EPILOGUE
+)]
 struct Args {
     /// Sitemap URL to audit
     #[arg(long)]
@@ -35,7 +38,10 @@ fn main() -> std::process::ExitCode {
 fn body() -> Result<i32, CliError> {
     let args = Args::parse();
     if args.sitemap.is_none() && args.base.is_none() {
-        return Err(CliError::new(2, "provide --sitemap URL or --base URL"));
+        return Err(CliError::new(
+            exit::ERROR,
+            "provide --sitemap URL or --base URL",
+        ));
     }
 
     let sitemap_url = match &args.sitemap {
@@ -44,8 +50,18 @@ fn body() -> Result<i32, CliError> {
             let base = args.base.as_deref().expect("checked above");
             match discover_sitemap(base, args.timeout) {
                 Ok(Some(url)) => url,
-                Ok(None) => return Err(CliError::new(2, format!("no sitemap found for {base}"))),
-                Err(error) => return Err(CliError::new(2, format!("invalid base URL: {error}"))),
+                Ok(None) => {
+                    return Err(CliError::new(
+                        exit::ERROR,
+                        format!("no sitemap found for {base}"),
+                    ))
+                }
+                Err(error) => {
+                    return Err(CliError::new(
+                        exit::ERROR,
+                        format!("invalid base URL: {error}"),
+                    ))
+                }
             }
         }
     };
@@ -57,7 +73,7 @@ fn body() -> Result<i32, CliError> {
         )
     })?;
     if urls.is_empty() {
-        return Err(CliError::new(2, "no URLs collected from sitemap"));
+        return Err(CliError::new(exit::ERROR, "no URLs collected from sitemap"));
     }
 
     let mut files: Vec<Value> = Vec::new();
@@ -107,5 +123,5 @@ fn body() -> Result<i32, CliError> {
         }
     }
 
-    Ok(i32::from(actionable > 0))
+    Ok(exit::from_flag(actionable > 0))
 }

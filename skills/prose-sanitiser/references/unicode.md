@@ -116,9 +116,16 @@ That reframes this layer usefully. It is a **detector-hardening preprocessor**
 at least as much as it is a cleaner, and that is the framing to use when
 describing it.
 
-`--aggressive` flags Latin confusables and fullwidth lookalikes in `inspect-text`;
-`--aggressive-homoglyphs` maps them to ASCII Latin in `clean-text`. Both are
-opt-in because a document can legitimately mix scripts.
+**Detection is unconditional; the fold is not.** A default `clean-text` reports
+a homoglyph and leaves it in place. `--aggressive` flags Latin confusables and
+fullwidth lookalikes in `inspect-text`, and `--aggressive-homoglyphs` maps them
+to ASCII Latin in `clean-text`.
+
+That default is deliberate rather than timid. Folding honest Cyrillic or Greek
+prose into Latin corrupts a real document, which is a worse outcome than
+leaving a homoglyph in place for a human to judge. A document can legitimately
+mix scripts, and nothing in the codepoint distinguishes a Russian word from an
+impersonation of an English one.
 
 ## X6. Normalisation: NFC, never NFKC
 

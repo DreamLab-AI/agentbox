@@ -33,7 +33,9 @@ use prose_sanitiser::common::{env_nonempty, looks_binary, to_pretty_json, which}
 use prose_sanitiser::container::{clean_container, inspect_container};
 use prose_sanitiser::dispatch::{classify_bytes, Kind};
 use prose_sanitiser::image::{clean_image, inspect_image, CleanImageOptions, PixelRemover};
+use prose_sanitiser::slop::rules::{rule_meta, CHANGELOG, RULESET_REVIEWED, RULESET_VERSION};
 use prose_sanitiser::text::{clean_text, inspect_text, CleanOptions};
+use prose_sanitiser_core::{classify_finding_confidence, ConfidenceTier};
 
 /// The advertised version.
 pub fn version() -> &'static str {
@@ -75,6 +77,63 @@ pub struct ServerState {
     pub api_key: Option<String>,
 }
 
+/// The rule table behind every stylistic finding: version, dates and tiers.
+///
+/// A client that cannot see which ruleset produced a finding cannot tell a
+/// current report from one made by a build whose lexical markers went stale two
+/// years ago. Every response carries the version; this is the detail behind it.
+pub fn ruleset() -> Value {
+    let mut tiers = Map::new();
+    for tier in [
+        ConfidenceTier::CertainMechanical,
+        ConfidenceTier::HighConfidenceStylistic,
+        ConfidenceTier::LowConfidenceJudgement,
+    ] {
+        let count = rule_meta()
+            .iter()
+            .filter(|meta| meta.confidence == tier)
+            .count();
+        tiers.insert(tier.as_str().to_string(), json!(count));
+    }
+    json!({
+        "version": RULESET_VERSION,
+        "reviewed": RULESET_REVIEWED,
+        "rules": rule_meta().len(),
+        "tiers": Value::Object(tiers),
+        "note": "Stylistic rules are population-level signals, never forensic. No slop rule is certain-mechanical, so none is ever auto-fixed.",
+    })
+}
+
+/// Every rule the stylistic layer can emit, with its tier, dates and sources.
+pub fn rules_table() -> Value {
+    json!({
+        "ok": true,
+        "ruleset_version": RULESET_VERSION,
+        "rules": rule_meta()
+            .iter()
+            .map(|meta| json!({
+                "id": meta.id,
+                "name": meta.name,
+                "description": meta.description,
+                "severity": meta.severity.as_str(),
+                "confidence": meta.confidence.as_str(),
+                "auto_fixable": meta.confidence.auto_fixable(),
+                "since": meta.since,
+                "reviewed": meta.reviewed,
+                "sources": meta.sources,
+            }))
+            .collect::<Vec<_>>(),
+        "changelog": CHANGELOG
+            .iter()
+            .map(|entry| json!({
+                "version": entry.version,
+                "date": entry.date,
+                "notes": entry.notes,
+            }))
+            .collect::<Vec<_>>(),
+    })
+}
+
 /// Which optional tools and heavy backends are present.
 pub fn capabilities() -> Value {
     json!({
@@ -90,6 +149,7 @@ pub fn capabilities() -> Value {
         },
         "scorers": {"synthid": env_nonempty("REVERSE_SYNTHID_DIR").is_some()},
         "harnesses": {"markllm": env_nonempty("MARKLLM_DIR").is_some()},
+        "ruleset": ruleset(),
     })
 }
 
@@ -176,7 +236,14 @@ async fn health(State(state): State<Arc<ServerState>>, headers: HeaderMap) -> Re
     if !authorised(&state, &headers) {
         return error(StatusCode::UNAUTHORIZED, "unauthorized");
     }
-    respond(StatusCode::OK, json!({"ok": true, "version": version()}))
+    respond(
+        StatusCode::OK,
+        json!({
+            "ok": true,
+            "version": version(),
+            "ruleset_version": RULESET_VERSION,
+        }),
+    )
 }
 
 async fn capabilities_route(State(state): State<Arc<ServerState>>, headers: HeaderMap) -> Response {
@@ -191,6 +258,13 @@ async fn capabilities_route(State(state): State<Arc<ServerState>>, headers: Head
         }
     }
     respond(StatusCode::OK, Value::Object(payload))
+}
+
+async fn rules_route(State(state): State<Arc<ServerState>>, headers: HeaderMap) -> Response {
+    if !authorised(&state, &headers) {
+        return error(StatusCode::UNAUTHORIZED, "unauthorized");
+    }
+    respond(StatusCode::OK, rules_table())
 }
 
 async fn openapi_route(State(state): State<Arc<ServerState>>, headers: HeaderMap) -> Response {
@@ -322,12 +396,47 @@ pub fn handle_inspect(data: &[u8], name: &str) -> Result<Value, HandlerError> {
             .and_then(Value::as_bool)
             .unwrap_or(false);
 
+    let tiers = tier_counts(&report);
     Ok(json!({
         "ok": true,
         "kind": kind.as_str(),
         "report": report,
         "suspicious": suspicious,
+        // Additive: appended after every long-standing key, so a client that
+        // reads the document by key is unaffected and one that diffs it sees
+        // only new lines at the end.
+        "ruleset_version": RULESET_VERSION,
+        "tiers": tiers,
     }))
+}
+
+/// Bucket a report's finding strings by confidence tier.
+///
+/// The media scanners report prose strings rather than typed rules, so the
+/// tier comes from the same classifier the inspect binaries print. A parsed
+/// provenance structure is mechanical; a note about an unsupported format or a
+/// raw byte scan is a judgement call.
+fn tier_counts(report: &Value) -> Value {
+    let mut mechanical = 0usize;
+    let mut judgement = 0usize;
+    if let Some(findings) = report.get("findings").and_then(Value::as_array) {
+        for finding in findings.iter().filter_map(Value::as_str) {
+            match classify_finding_confidence(finding) {
+                "confirmed" | "probable" => mechanical += 1,
+                _ => judgement += 1,
+            }
+        }
+    }
+    // Layer A carriers are deterministic codepoint classifications, so every
+    // suspicious character is mechanical.
+    if let Some(total) = report.get("suspicious_total").and_then(Value::as_u64) {
+        mechanical += total as usize;
+    }
+    json!({
+        ConfidenceTier::CertainMechanical.as_str(): mechanical,
+        ConfidenceTier::HighConfidenceStylistic.as_str(): 0,
+        ConfidenceTier::LowConfidenceJudgement.as_str(): judgement,
+    })
 }
 
 /// Clean bytes, returning the cleaned bytes base64-encoded plus a report.
@@ -446,6 +555,7 @@ pub fn handle_clean(data: &[u8], name: &str, body: &Value) -> Result<Value, Hand
         "kind": kind.as_str(),
         "cleaned": base64::engine::general_purpose::STANDARD.encode(&cleaned_bytes),
         "report": report,
+        "ruleset_version": RULESET_VERSION,
     }))
 }
 
@@ -467,6 +577,7 @@ pub fn app(state: ServerState) -> Router {
         .route("/health", get(health))
         .route("/capabilities", get(capabilities_route))
         .route("/openapi.json", get(openapi_route))
+        .route("/rules", get(rules_route))
         .route("/inspect", post(inspect_route))
         .route("/clean", post(clean_route))
         .fallback(not_found)

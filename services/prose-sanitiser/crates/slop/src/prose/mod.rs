@@ -5,13 +5,15 @@
 
 use std::path::{Path, PathBuf};
 
+use prose_sanitiser_core::{ConfidenceTier, ReportEntry, RuleMeta};
 use regex::Regex;
 use serde_json::{json, Value};
 
 use super::rules::{
-    Rule, Severity, EMDASH, EMDASH_PER_WINDOW, EXTS, IGNORE_MARK, RULES, SKIP_DIRS, TIER2,
-    TRANSITIONS, TRANS_PER_WINDOW, WORDS_PER_PAGE,
+    rule_meta, Rule, Severity, EMDASH, EMDASH_PER_WINDOW, EXTS, IGNORE_MARK, RULES, SKIP_DIRS,
+    TIER2, TRANSITIONS, TRANS_PER_WINDOW, WORDS_PER_PAGE,
 };
+use super::structural::StructuralMetrics;
 
 /// One reported tell.
 #[derive(Debug, Clone)]
@@ -24,6 +26,16 @@ pub struct Finding {
     /// 1-based; zero for a whole-file aggregate.
     pub line: usize,
     pub snippet: String,
+    /// 1-based column of the match within the line; zero for an aggregate.
+    ///
+    /// Not serialised by [`Finding::to_json`]: the JSON report shape is fixed
+    /// by every consumer that already diffs it. The offsets exist so a SARIF
+    /// or JSON Lines report can point at the match rather than the line.
+    pub column: usize,
+    /// Byte offset of the match within the file; zero for an aggregate.
+    pub byte_start: usize,
+    /// Exclusive byte offset of the end of the match.
+    pub byte_end: usize,
 }
 
 impl Finding {
@@ -37,6 +49,41 @@ impl Finding {
             "line": self.line,
             "snippet": self.snippet,
         })
+    }
+
+    /// The rule metadata behind this finding, if the table documents it.
+    pub fn meta(&self) -> Option<&'static RuleMeta> {
+        rule_meta().iter().find(|entry| entry.id == self.rule)
+    }
+
+    /// The confidence tier, defaulting to report-only for an undocumented rule.
+    ///
+    /// Defaulting downward is the safe direction: an unknown rule is treated as
+    /// a judgement call, never as something a machine may act on.
+    pub fn confidence(&self) -> ConfidenceTier {
+        self.meta()
+            .map(|meta| meta.confidence)
+            .unwrap_or(ConfidenceTier::LowConfidenceJudgement)
+    }
+
+    /// Convert to the located-finding shape a SARIF or JSON Lines report needs.
+    pub fn to_report_entry(&self) -> ReportEntry {
+        ReportEntry::new(
+            self.file.clone(),
+            self.line,
+            self.column,
+            prose_sanitiser_core::Finding {
+                rule_id: self.rule.clone(),
+                label: self.label.clone(),
+                span: prose_sanitiser_core::Span::new(self.byte_start, self.byte_end),
+                matched: self.snippet.clone(),
+                severity: self.severity,
+                confidence: self.confidence(),
+                advice: self.fix.clone(),
+                replacement: None,
+            },
+        )
+        .with_snippet(self.snippet.clone())
     }
 }
 
@@ -54,7 +101,7 @@ fn compile_rules(floor: Severity) -> Vec<CompiledRule> {
         .map(|rule| CompiledRule {
             rule,
             patterns: rule
-                .patterns
+                .pattern_sources()
                 .iter()
                 .map(|pattern| {
                     let source = if rule.cased {
@@ -136,6 +183,7 @@ pub fn scan_file(path: &Path, rules: &[CompiledRule], floor: Severity) -> Vec<Fi
 
     let mut findings = Vec::new();
     let mut in_fence = false;
+    let mut line_offset = 0usize;
     let mut word_count = 0usize;
     let mut emdash_total = 0usize;
     let mut emdash_list_lines: Vec<(usize, String)> = Vec::new();
@@ -146,6 +194,9 @@ pub fn scan_file(path: &Path, rules: &[CompiledRule], floor: Severity) -> Vec<Fi
 
     for (index, raw_line) in text.split('\n').enumerate() {
         let number = index + 1;
+        let line_start = line_offset;
+        // `split` drops the separator, so the next line starts one byte later.
+        line_offset += raw_line.len() + 1;
         let line = raw_line.trim_end_matches('\r');
         let stripped = line.trim();
 
@@ -183,21 +234,25 @@ pub fn scan_file(path: &Path, rules: &[CompiledRule], floor: Severity) -> Vec<Fi
 
         // Per-line rules: the first matching pattern in a rule reports once.
         for compiled in rules {
-            if compiled
+            let Some(found) = compiled
                 .patterns
                 .iter()
-                .any(|pattern| pattern.is_match(line))
-            {
-                findings.push(Finding {
-                    rule: compiled.rule.id.to_string(),
-                    label: compiled.rule.label.to_string(),
-                    severity: compiled.rule.severity,
-                    fix: compiled.rule.fix.to_string(),
-                    file: file.clone(),
-                    line: number,
-                    snippet: clip(stripped, 160),
-                });
-            }
+                .find_map(|pattern| pattern.find(line))
+            else {
+                continue;
+            };
+            findings.push(Finding {
+                rule: compiled.rule.id.to_string(),
+                label: compiled.rule.label.to_string(),
+                severity: compiled.rule.severity,
+                fix: compiled.rule.fix.to_string(),
+                file: file.clone(),
+                line: number,
+                snippet: clip(stripped, 160),
+                column: line[..found.start()].chars().count() + 1,
+                byte_start: line_start + found.start(),
+                byte_end: line_start + found.end(),
+            });
         }
     }
 
@@ -213,6 +268,9 @@ pub fn scan_file(path: &Path, rules: &[CompiledRule], floor: Severity) -> Vec<Fi
                 file: file.clone(),
                 line,
                 snippet,
+                column: 0,
+                byte_start: 0,
+                byte_end: 0,
             });
         }
     };
@@ -287,6 +345,8 @@ pub fn verdict(high: u32, weighted: u32) -> &'static str {
 pub struct ScanResult {
     pub findings: Vec<Finding>,
     pub files_scanned: usize,
+    /// Per-file structural measures, empty unless the scan asked for them.
+    pub structural: Vec<(String, StructuralMetrics)>,
 }
 
 impl ScanResult {
@@ -323,16 +383,56 @@ impl ScanResult {
 }
 
 /// Scan `root`, honouring the minimum severity.
+///
+/// The structural measures are off: this is the long-standing default and its
+/// output shape is fixed by every consumer that diffs it.
 pub fn scan(root: &Path, floor: Severity) -> ScanResult {
+    scan_with(root, floor, false)
+}
+
+/// Scan `root`, optionally adding the whole-document structural measures.
+///
+/// Structural findings report under their own `structural-*` rule ids and never
+/// under `agg`, so a consumer of the default output sees nothing new.
+pub fn scan_with(root: &Path, floor: Severity, structural: bool) -> ScanResult {
     let rules = compile_rules(floor);
     let mut findings = Vec::new();
+    let mut measures = Vec::new();
     let files = iter_files(root);
     for path in &files {
         findings.extend(scan_file(path, &rules, floor));
+        if !structural {
+            continue;
+        }
+        let Ok(raw) = std::fs::read(path) else {
+            continue;
+        };
+        let text = prose_sanitiser_core::surrogate::decode_ignore(&raw);
+        let file = path.display().to_string();
+        let metrics = StructuralMetrics::measure(&text);
+        for finding in metrics.findings() {
+            if finding.severity.rank() > floor.rank() {
+                continue;
+            }
+            findings.push(Finding {
+                rule: finding.rule_id,
+                label: finding.label,
+                severity: finding.severity,
+                fix: finding.advice,
+                file: file.clone(),
+                line: 0,
+                snippet: finding.matched,
+                column: 0,
+                byte_start: 0,
+                byte_end: 0,
+            });
+        }
+        measures.push((file, metrics));
     }
     ScanResult {
         findings,
         files_scanned: files.len(),
+        structural: measures,
     }
 }
 

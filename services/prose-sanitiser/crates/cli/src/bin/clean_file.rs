@@ -11,12 +11,15 @@ use prose_sanitiser::common::{
 };
 use prose_sanitiser::container::clean_container;
 use prose_sanitiser::dispatch::{classify, Kind};
+use prose_sanitiser::exit;
 use prose_sanitiser::image::{clean_image, CleanImageOptions};
 use prose_sanitiser::text::{clean_text, CleanOptions};
 use serde_json::{json, Map, Value};
 
 #[derive(Parser)]
-#[command(about = "Unified clean: text Layer A, PNG/JPEG/WebP metadata, and containers.")]
+#[command(about = "Unified clean: text Layer A, PNG/JPEG/WebP metadata, and containers.",
+    after_help = prose_sanitiser::exit::HELP_EPILOGUE
+)]
 struct Args {
     path: PathBuf,
     #[arg(short, long)]
@@ -79,7 +82,10 @@ fn body() -> Result<i32, CliError> {
 
     let kind = if args.force_type == "auto" {
         classify(&args.path).map_err(|error| {
-            CliError::new(2, format!("cannot read {}: {error}", args.path.display()))
+            CliError::new(
+                exit::ERROR,
+                format!("cannot read {}: {error}", args.path.display()),
+            )
         })?
     } else {
         Kind::parse(&args.force_type).expect("clap restricts the value set")
@@ -91,7 +97,10 @@ fn body() -> Result<i32, CliError> {
     // .bak sidecar behind for a file this run never touches.
     let raw = if kind == Kind::Text {
         let data = std::fs::read(&args.path).map_err(|error| {
-            CliError::new(2, format!("cannot read {}: {error}", args.path.display()))
+            CliError::new(
+                exit::ERROR,
+                format!("cannot read {}: {error}", args.path.display()),
+            )
         })?;
         guard_binary(
             &data,
@@ -128,11 +137,17 @@ fn body() -> Result<i32, CliError> {
             );
             if let Some(parent) = dest.parent().filter(|p| !p.as_os_str().is_empty()) {
                 std::fs::create_dir_all(parent).map_err(|error| {
-                    CliError::new(1, format!("cannot create {}: {error}", parent.display()))
+                    CliError::new(
+                        exit::ERROR,
+                        format!("cannot create {}: {error}", parent.display()),
+                    )
                 })?;
             }
             safe_write_text(&dest, &cleaned).map_err(|error| {
-                CliError::new(1, format!("cannot write {}: {error}", dest.display()))
+                CliError::new(
+                    exit::ERROR,
+                    format!("cannot write {}: {error}", dest.display()),
+                )
             })?;
             let result = json!({
                 "kind": "text",
@@ -150,7 +165,7 @@ fn body() -> Result<i32, CliError> {
                     stats.replaced_count
                 ));
             }
-            Ok(0)
+            Ok(exit::CLEAN)
         }
         Kind::Image => {
             let result = clean_image(
@@ -161,7 +176,7 @@ fn body() -> Result<i32, CliError> {
                     ..CleanImageOptions::default()
                 },
             )
-            .map_err(|error| CliError::new(1, format!("error: {error}")))?;
+            .map_err(|error| CliError::new(exit::ERROR, format!("error: {error}")))?;
             let residual = result["still_has_c2pa"].as_bool().unwrap_or(false)
                 || result["still_has_ai_metadata"].as_bool().unwrap_or(false);
             let result = merge_kind("image", result);
@@ -183,11 +198,11 @@ fn body() -> Result<i32, CliError> {
                     eprint_line("warning: residual C2PA/AI signals may remain");
                 }
             }
-            Ok(i32::from(residual))
+            Ok(exit::from_flag(residual))
         }
         Kind::Container => {
             let result = clean_container(&source, &dest, true)
-                .map_err(|error| CliError::new(1, format!("error: {error}")))?;
+                .map_err(|error| CliError::new(exit::ERROR, format!("error: {error}")))?;
             let residual = result["still_has_c2pa"].as_bool().unwrap_or(false)
                 || result["still_has_ai_metadata"].as_bool().unwrap_or(false);
             let degraded = result["meta"]["degraded"].as_bool().unwrap_or(false);
@@ -215,7 +230,7 @@ fn body() -> Result<i32, CliError> {
                 }
             }
             // A degraded (best-effort) PDF copy warns but is not a hard failure.
-            Ok(i32::from(residual && !degraded))
+            Ok(exit::from_flag(residual && !degraded))
         }
     }
 }

@@ -18,21 +18,38 @@
 //! Sense-dependent spelling, slop phrasing and organisation-adjacent tokens are
 //! report-only by construction.
 //!
+//! Four things layer on top of that vocabulary, and all four are pure:
+//! [`Suppressions`] reads the Vale-style HTML-comment directives out of a
+//! document, [`LanguageFilter`] holds English-only rules back from non-English
+//! spans, [`ConfigFile`] parses the committed style file (the CLI reads the
+//! file; this crate only parses the text), and [`Report`] serialises located
+//! findings as SARIF 2.1.0 or JSON Lines.
+//!
 //! The filesystem and subprocess helpers live in `prose-sanitiser-media`; the
 //! detectors live in `prose-sanitiser-unicode`, `prose-sanitiser-uk` and
 //! `prose-sanitiser-slop`.
 
 pub mod binary;
 pub mod confidence;
+pub mod config;
 pub mod finding;
+pub mod language;
 pub mod pyfloat;
+pub mod report;
+pub mod suppress;
 pub mod surrogate;
 pub mod traits;
 
 pub use binary::{looks_binary, ROUTER_ADVICE, TEXT_TOOL_ADVICE};
 pub use confidence::{classify_finding_confidence, CONFIDENCE_LEVELS};
+pub use config::{ConfigError, ConfigFile, CONFIG_FILE_NAMES};
 pub use finding::{ConfidenceTier, Config, Edit, Finding, Patch, Severity, Span};
+pub use language::{paragraphs, LanguageFilter, MIN_CLASSIFIABLE_CHARS};
 pub use pyfloat::py_str_float;
+pub use report::{
+    sarif_level, Report, ReportEntry, RuleMeta, ToolMeta, SARIF_SCHEMA, SARIF_VERSION,
+};
+pub use suppress::Suppressions;
 pub use surrogate::Unit;
 pub use traits::{Check, Fix};
 

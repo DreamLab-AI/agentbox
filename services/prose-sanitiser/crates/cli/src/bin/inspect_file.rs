@@ -9,12 +9,15 @@ use prose_sanitiser::common::{
 };
 use prose_sanitiser::container::inspect_container;
 use prose_sanitiser::dispatch::{classify, Kind};
+use prose_sanitiser::exit;
 use prose_sanitiser::image::inspect_image;
 use prose_sanitiser::text::{human_report, inspect_text};
 use serde_json::{json, Map, Value};
 
 #[derive(Parser)]
-#[command(about = "Unified inspect: text, images (PNG/JPEG/WebP), and document containers.")]
+#[command(about = "Unified inspect: text, images (PNG/JPEG/WebP), and document containers.",
+    after_help = prose_sanitiser::exit::HELP_EPILOGUE
+)]
 struct Args {
     /// File to inspect
     path: PathBuf,
@@ -79,7 +82,10 @@ fn body() -> Result<i32, CliError> {
 
     let kind = if args.force_type == "auto" {
         classify(&args.path).map_err(|error| {
-            CliError::new(2, format!("cannot read {}: {error}", args.path.display()))
+            CliError::new(
+                exit::ERROR,
+                format!("cannot read {}: {error}", args.path.display()),
+            )
         })?
     } else {
         Kind::parse(&args.force_type).expect("clap restricts the value set")
@@ -104,11 +110,14 @@ fn body() -> Result<i32, CliError> {
                 println!("Kind: text");
                 println!("{}", human_report(&report));
             }
-            Ok(i32::from(report.suspicious_total != 0))
+            Ok(exit::from_flag(report.suspicious_total != 0))
         }
         Kind::Image => {
             let report = inspect_image(&args.path, None).map_err(|error| {
-                CliError::new(2, format!("cannot read {}: {error}", args.path.display()))
+                CliError::new(
+                    exit::ERROR,
+                    format!("cannot read {}: {error}", args.path.display()),
+                )
             })?;
             if args.json {
                 emit_json(&envelope("image", &label, report.to_json()));
@@ -123,11 +132,14 @@ fn body() -> Result<i32, CliError> {
                     println!("  - [{}] {finding}", classify_finding_confidence(finding));
                 }
             }
-            Ok(i32::from(report.has_c2pa || report.has_ai_metadata))
+            Ok(exit::from_flag(report.has_c2pa || report.has_ai_metadata))
         }
         Kind::Container => {
             let report = inspect_container(&args.path).map_err(|error| {
-                CliError::new(2, format!("cannot read {}: {error}", args.path.display()))
+                CliError::new(
+                    exit::ERROR,
+                    format!("cannot read {}: {error}", args.path.display()),
+                )
             })?;
             if args.json {
                 emit_json(&envelope("container", &label, report.to_json()));
@@ -142,7 +154,7 @@ fn body() -> Result<i32, CliError> {
                     println!("  - [{}] {finding}", classify_finding_confidence(finding));
                 }
             }
-            Ok(i32::from(report.has_c2pa || report.has_ai_metadata))
+            Ok(exit::from_flag(report.has_c2pa || report.has_ai_metadata))
         }
     }
 }

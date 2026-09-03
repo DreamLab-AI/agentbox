@@ -6,12 +6,15 @@ use clap::Parser;
 use prose_sanitiser::common::{
     backup_path, cleaned_path, eprint_line, run_cli, to_pretty_json, CliError,
 };
+use prose_sanitiser::exit;
 use prose_sanitiser::image::harness::{CtrlRegenOptions, MarkDiffusionOptions};
 use prose_sanitiser::image::{clean_image, engine_label, CleanImageOptions, PixelRemover};
 use serde_json::Value;
 
 #[derive(Parser)]
-#[command(about = "Strip C2PA and AI-related metadata from PNG/JPEG/WebP.")]
+#[command(about = "Strip C2PA and AI-related metadata from PNG/JPEG/WebP.",
+    after_help = prose_sanitiser::exit::HELP_EPILOGUE
+)]
 struct Args {
     /// Input PNG, JPEG, or WebP
     path: PathBuf,
@@ -125,7 +128,7 @@ fn body() -> Result<i32, CliError> {
     };
 
     let result = clean_image(&source, &dest, &options)
-        .map_err(|error| CliError::new(1, format!("error: {error}")))?;
+        .map_err(|error| CliError::new(exit::ERROR, format!("error: {error}")))?;
 
     let residual = result["still_has_c2pa"].as_bool().unwrap_or(false)
         || result["still_has_ai_metadata"].as_bool().unwrap_or(false);
@@ -173,7 +176,7 @@ fn body() -> Result<i32, CliError> {
             }
         }
     }
-    Ok(i32::from(residual || pixel_failed))
+    Ok(exit::from_flag(residual || pixel_failed))
 }
 
 fn report_synthid(value: &Value, phase: &str) {

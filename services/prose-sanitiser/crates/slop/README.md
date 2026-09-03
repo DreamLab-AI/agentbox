@@ -165,7 +165,87 @@ crate's VarCon table at first use, so the two cannot drift.
 
 ## Measured performance
 
-<!-- EVALUATION-PLACEHOLDER -->
+Measured 2026-09-03 against ruleset **2026.09.03**, using the `ps-eval` harness
+over RAID (MIT), MAGE (Apache-2.0) and LLM-DetectAIve (CC BY-SA 4.0). Reported as
+**TPR at 1 per cent FPR**, never AUROC: high AUROC routinely coexists with a
+near-zero true-positive rate at the only thresholds a deployment would use.
+
+### Overall discrimination
+
+| Corpus | Human / machine docs | Score | Threshold (1% FPR) | **TPR@1%FPR** | Realised FPR |
+|---|---|---|---|---|---|
+| RAID, unattacked | 2,000 / 2,000 | raw `slop_score` | 30.0 | **2.8%** | 1.0% |
+| RAID, unattacked | 2,000 / 2,000 | per 1,000 words | 105.7 | **3.3%** | 1.0% |
+| MAGE | 1,500 / 1,500 | raw `slop_score` | 8.0 | **0.7%** | 0.5% |
+| MAGE | 1,500 / 1,500 | per 1,000 words | 61.2 | **1.7%** | 0.9% |
+| LLM-DetectAIve, human vs machine-humanised | 20 / 20 | per 1,000 words | 28.2 | **50.0%** | 0.0% |
+
+**Read that honestly.** On general-domain corpora the aggregate slop score
+separates human from machine text barely better than chance at a usable
+operating point. The LLM-DetectAIve row looks strong, but n is 20 per class and
+that corpus is deliberately composed of heavily-marked machine text, so it is an
+illustration and not a result. This crate is a **style linter with an evidence
+base**, not a detector, and these numbers are the reason the whole thing is
+report-only.
+
+### Per-rule firing rates on human prose
+
+Share of documents each rule fires on, RAID (2,000 human, 2,000 machine),
+default flags:
+
+| Rule | Human | Machine | Ratio |
+|---|---|---|---|
+| `passive-tell` | 0.30% | 1.25% | 4.2 |
+| `throat-clearing` | 0.55% | 1.15% | 2.1 |
+| `negative-parallelism` | 1.40% | 2.70% | 1.9 |
+| `tier1-vocab` | 11.80% | 21.70% | 1.8 |
+| `preamble-label` | 0.15% | 0.25% | 1.7 |
+| `copula-substitution` | 1.15% | 1.60% | 1.4 |
+| `us-spelling` | 31.75% | 42.20% | 1.3 |
+| `hedge-words` | 2.80% | 2.70% | 1.0 |
+| `the-opener` | 41.10% | 38.00% | **0.9** |
+
+`the-opener` fires on two documents in five of human prose and *slightly less*
+often on machine prose. It was demoted from `high-confidence-stylistic` to
+`low-confidence-judgement` on this measurement and is now a house-style rule
+only. That demotion is what the dated, versioned table is for.
+
+`us-spelling` at 31.75 per cent is not a false-positive rate: both corpora are
+predominantly American English, and the rule is correctly identifying American
+spelling. **The UK-English false-positive rate is the number that matters, and it
+is not yet measured** — the UK human corpus was still empty when this was run.
+What is verified is that the sense-dependent traps no longer fire at all: the
+rule now builds from ps-uk's VarCon table filtered to unconditional entries, and
+a unit test asserts zero matches on *the gas meter read 12 metres*, *a driving
+licence issued to license a doctor*, *the computer program*, *sulfur dioxide*,
+*the dialog box* and *the fetus*.
+
+### Structural measures
+
+Over 1,252 human and 1,207 machine documents long enough for a rate to mean
+anything:
+
+| Measure | Threshold | Human | Machine | Ratio |
+|---|---|---|---|---|
+| Oxford-comma density | 55.51 per 10k (Pew, Jan 2026) | 5.99% | 19.22% | **3.2** |
+| Em-dash density | 11.19 per 10k (Pew, Jan 2026) | 1.76% | 3.40% | 1.9 |
+| Sentence-length CV | < 0.20 | 6.87% | 14.75% | 2.1 |
+| Tricolon density | 40 per 10k | 10.22% | 10.60% | **1.0** |
+
+The Oxford-comma rate at the published Pew threshold is the single best
+discriminator in the crate, which is a mildly embarrassing result for a rule
+about punctuation nobody objects to. The tricolon measure does **not** separate
+the two classes at any threshold tried; it is retained as a house-style budget
+and is documented in the rule table as not being an authorship signal. The
+sentence-length floor was retuned from 0.35 to 0.20 on this data, which cut its
+human firing rate from 36.7 per cent to 6.9 per cent.
+
+### Reproducing it
+
+```
+cargo build --workspace --release
+PS_BIN_DIR=$PWD/target/release ps-eval --root <corpora> run --out report.json
+```
 
 ## Licence
 

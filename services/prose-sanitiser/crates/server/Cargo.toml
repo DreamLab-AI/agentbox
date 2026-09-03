@@ -19,6 +19,7 @@ path = "src/bin/prose-sanitiser-server.rs"
 
 [dependencies]
 prose-sanitiser = { workspace = true }
+prose-sanitiser-core = { workspace = true }
 axum = { workspace = true }
 base64 = { workspace = true }
 clap = { workspace = true }

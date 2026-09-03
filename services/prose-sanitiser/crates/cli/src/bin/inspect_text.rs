@@ -2,10 +2,14 @@
 
 use clap::Parser;
 use prose_sanitiser::common::{emit_json, read_text_input, run_cli, CliError};
+use prose_sanitiser::exit;
 use prose_sanitiser::text::{human_report, inspect_text};
 
 #[derive(Parser)]
-#[command(about = "Inspect text for invisible Unicode / space homoglyphs (Layer A).")]
+#[command(
+    about = "Inspect text for invisible Unicode / space homoglyphs (Layer A).",
+    after_help = prose_sanitiser::exit::HELP_EPILOGUE
+)]
 struct Args {
     /// Text file path, or - for stdin
     #[arg(default_value = "-")]
@@ -38,5 +42,5 @@ fn body() -> Result<i32, CliError> {
     } else {
         println!("{}", human_report(&report));
     }
-    Ok(i32::from(report.suspicious_total != 0))
+    Ok(exit::from_flag(report.suspicious_total != 0))
 }
