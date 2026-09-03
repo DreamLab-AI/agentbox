@@ -84,7 +84,7 @@ set -gx GIT_CONFIG_GLOBAL /home/devuser/.config/git/config
 # ── Claude Code config dir: share the primary login everywhere ──
 # Default every interactive shell (ad-hoc panes, SSH, sub-project dirs, tabs
 # 2-7) to the primary config dir so the Anthropic credential persists instead
-# of prompting a per-directory login under --dangerously-skip-permissions.
+# of prompting a per-directory login under `dsp` (claude --permission-mode auto).
 # Guarded with `set -q`: tmux-autostart's profile tabs (Z.AI/OpenRouter/etc.)
 # and any explicit override still run AFTER this and win, so profile isolation
 # holds. NOT baked into image env on purpose — that leaked into the profile
@@ -93,7 +93,8 @@ set -gx GIT_CONFIG_GLOBAL /home/devuser/.config/git/config
 set -q CLAUDE_CONFIG_DIR; or set -gx CLAUDE_CONFIG_DIR /home/devuser/.claude
 
 # Claude Code quick aliases
-alias dsp="claude --dangerously-skip-permissions"
+alias dsp="claude --permission-mode auto"       # auto mode; dspb = legacy blanket bypass
+alias dspb="claude --permission-mode bypassPermissions"
 
 # ── User customizations from the persistent workspace volume ──
 # The rootfs is read-only and ~/.config is tmpfs, so ad-hoc shell tweaks

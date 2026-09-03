@@ -49,7 +49,7 @@
  * Lifecycle model: the C2 owns the whole session lifecycle, not just routing.
  * It can SPAWN a new agent tab anywhere under ~/workspace (tmux new-window at
  * that cwd, then a launcher typed into the fish shell: `dsp` → claude
- * --dangerously-skip-permissions (default), or `codex` / `zai`, optionally
+ * --permission-mode auto (default), or `codex` / `zai`, optionally
  * sending a first instruction once the prompt is up) and EXIT a tab's session
  * (types its exit verb — /exit, /quit for codex — at the prompt; the window
  * and shell stay for reuse). Spawn targets are confined to the ~/workspace
@@ -414,7 +414,7 @@ function watchTab(idx) {
 
 // ── lifecycle: spawn / exit agent sessions ──────────────────────────────────
 // Launchers the C2 may start in a fresh tab. 'dsp' is the fish alias for
-// claude --dangerously-skip-permissions; codex and zai are their own CLIs.
+// claude --permission-mode auto; codex and zai are their own CLIs.
 // exit is what to type at the agent's prompt to end its session; match tells
 // us (via pane_current_command) which exit verb a running tab needs.
 // aoeTool maps the launcher onto AoE's tool enum for POST /api/sessions: dsp/zai

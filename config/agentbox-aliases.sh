@@ -3,8 +3,12 @@
 # Source this file or add to your shell profile: source agentbox-aliases.sh
 
 # === CLAUDE CODE ===
-alias claude-hierarchical="claude --dangerously-skip-permissions"
-alias dsp="claude --dangerously-skip-permissions"
+# dsp = Claude Code in auto mode (classifier decides per action; the blanket
+# bypass flag stopped honouring .git/ and .claude/ writes in 2.1.78 and is
+# legacy). dspb = the old blanket bypass for isolated, throwaway containers only.
+alias claude-hierarchical="claude --permission-mode auto"
+alias dsp="claude --permission-mode auto"
+alias dspb="claude --permission-mode bypassPermissions"
 
 # === CLAUDE FLOW (orchestration — Nix-packaged binary, no npx) ===
 alias cf="claude-flow"
@@ -211,7 +215,7 @@ agentbox-help() {
             "| Command | Description |" \
             "|---------|-------------|" \
             "| claude | Start Claude Code |" \
-            "| dsp | Claude (skip permissions) |" \
+            "| dsp | Claude (auto mode) |" \
             "| cf-swarm | Claude Flow swarm mode |" \
             "| cf-hive | Spawn hive-mind agents |" \
             "| cf-doctor | System diagnostics |" \
@@ -237,7 +241,7 @@ agentbox-help() {
         echo "------------------------"
         printf "  %-16s %s\n" \
             "claude" "Start Claude Code" \
-            "dsp" "Claude (skip permissions)" \
+            "dsp" "Claude (auto mode)" \
             "cf-swarm" "Claude Flow swarm mode" \
             "cf-hive" "Spawn hive-mind agents" \
             "cf-doctor" "System diagnostics" \

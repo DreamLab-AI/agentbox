@@ -65,6 +65,7 @@ The image bakes `/opt/agentbox/skills` (118 skills). Skills are the JIT context 
 - `HOME=/home/devuser`; workspace at `/home/devuser/workspace` (`$WORKSPACE`). The literal path `/workspace` is retired and will break.
 - Supervisord runs as PID 1 root; every long-running program drops to `user=devuser`. No agent-facing process runs as root after bootstrap.
 - Older docs describing `gemini-user`/`openai-user`/etc pseudo-users are legacy, not the runtime path.
+- Permission mode is **auto** (classifier per action) since 2026-09-03: `dsp` = `claude --permission-mode auto`, `dspb` = the legacy blanket bypass for isolated throwaway containers only (Claude Code 2.1.78+ stopped honouring bypass for `.git/` and `.claude/` writes). The entrypoint seeds `permissions.defaultMode = "auto"` if unset, pre-accepts the auto-mode opt-in dialog, and seeds folder trust for every checkout and worktree (`config/hooks/trust-seed.cjs`), so unattended tmux teammate panes do not block on dialogs.
 - Claude Fable 5.1 uses always-on adaptive thinking. Keep multi-turn API histories append-only and replay thinking blocks exactly as returned; do not force tool choice. In agent prompts, request concise progress updates during long tool loops, permit batching independent tool calls, require completion without re-asking for already-authorised steps, and prefer targeted edits over whole-file rewrites.
 
 ## Subsystem references (load on demand)

@@ -125,4 +125,5 @@ if ! command -v starship &>/dev/null; then
 fi
 
 # Claude Code quick aliases
-alias dsp="claude --dangerously-skip-permissions"
+alias dsp="claude --permission-mode auto"       # auto mode; dspb = legacy blanket bypass
+alias dspb="claude --permission-mode bypassPermissions"

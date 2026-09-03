@@ -1,5 +1,18 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+- `dsp` now launches Claude Code in auto mode (`--permission-mode auto`); the
+  legacy blanket bypass is `dspb` and is for isolated throwaway containers only.
+  Claude Code 2.1.78+ stopped honouring bypass for `.git/` and `.claude/` writes
+  and its classifier-based auto mode is the supported replacement. The entrypoint
+  seeds `permissions.defaultMode = "auto"` (if unset) and pre-accepts the
+  auto-mode opt-in dialog, alongside the folder-trust seed, so unattended
+  tmux teammate panes stop blocking on prompts. Off switch: `AGENTBOX_AUTO_MODE=0`.
+- The Z.AI wrapper's `ZAI_DANGEROUS=true` escape hatch selects auto mode
+  instead of the legacy bypass flag.
+
 All notable changes to agentbox are documented here. Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Dates are ISO-8601.
 
 ## [Unreleased]

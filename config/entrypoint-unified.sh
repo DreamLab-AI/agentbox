@@ -1036,6 +1036,26 @@ else { console.log('  [trust] trust-seed hook already registered'); }
 TRUSTJS
 fi
 
+# ── Permission mode: auto by default, opt-in dialog pre-accepted ──
+# Claude Code 2.1.78+ stopped honouring blanket bypass for .git/ and .claude/
+# writes and 2.1.8x replaced it with a classifier-based auto mode; the one-time
+# auto-mode opt-in dialog is another prompt that blocks unattended panes. Seed
+# permissions.defaultMode = "auto" (only if the operator has not set one) and
+# accept the opt-in dialog in the user settings. Off: AGENTBOX_AUTO_MODE=0.
+if [ "${AGENTBOX_AUTO_MODE:-1}" != "0" ] && command -v node >/dev/null 2>&1; then
+  SETTINGS="$_CLAUDE_SETTINGS" node <<'AUTOJS' || true
+const fs = require('fs');
+const f = process.env.SETTINGS;
+let s = {}; try { s = JSON.parse(fs.readFileSync(f, 'utf8')); } catch {}
+let changed = false;
+s.permissions = s.permissions || {};
+if (!s.permissions.defaultMode) { s.permissions.defaultMode = 'auto'; changed = true; }
+if (s.skipAutoPermissionPrompt !== true) { s.skipAutoPermissionPrompt = true; changed = true; }
+if (changed) { fs.writeFileSync(f, JSON.stringify(s, null, 2)); console.log(`  [permissions] defaultMode=${s.permissions.defaultMode}, auto-mode opt-in pre-accepted`); }
+else { console.log(`  [permissions] defaultMode=${s.permissions.defaultMode} (unchanged)`); }
+AUTOJS
+fi
+
 # ── Voice plane: register the tab0-bridge turn-sink hooks ──
 # config/tab0-bridge/turn-sink.cjs forwards UserPromptSubmit/Stop turn text to
 # the tab0-bridge feed (the voice console's live transcript). The bridge itself

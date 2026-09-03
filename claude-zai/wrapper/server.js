@@ -140,12 +140,13 @@ class ClaudeWorkerPool {
         return new Promise((resolve, reject) => {
             // R-004: --dangerously-skip-permissions was removed. Tool access is
             // restricted to an explicit allowlist (ZAI_ALLOWED_TOOLS). The
-            // skip-permissions flag is only restored under the explicit
-            // ZAI_DANGEROUS=true escape hatch, with a loud warning.
+            // ZAI_DANGEROUS=true escape hatch now selects auto mode (classifier
+            // per action) rather than the legacy blanket bypass, which no longer
+            // honours .git/ and .claude/ writes anyway (Claude Code 2.1.78+).
             const claudeArgs = [];
             if (ZAI_DANGEROUS) {
-                console.warn('[ZAI][R-004][WARNING] ZAI_DANGEROUS=true — restoring --dangerously-skip-permissions. This bypasses the tool allowlist and is unsafe.');
-                claudeArgs.push('--dangerously-skip-permissions');
+                console.warn('[ZAI][R-004][WARNING] ZAI_DANGEROUS=true — running in auto mode (--permission-mode auto) instead of the tool allowlist. This bypasses the tool allowlist and is unsafe.');
+                claudeArgs.push('--permission-mode', 'auto');
             } else {
                 claudeArgs.push('--allowedTools', ZAI_ALLOWED_TOOLS);
             }
