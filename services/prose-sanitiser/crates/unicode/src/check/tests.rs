@@ -27,6 +27,7 @@ fn every_finding_is_certain_mechanical() {
             context: BidiContext::Code,
             report_spaces: true,
             context_free_homoglyphs: true,
+            strip_emoji_glue: false,
         },
     );
     assert!(!findings.is_empty());
@@ -155,6 +156,32 @@ fn legitimate_content_produces_no_findings() {
 fn a_bom_at_offset_zero_survives_but_a_stray_one_does_not() {
     assert!(check("\u{FEFF}hello").is_empty());
     assert_eq!(check("hello\u{FEFF}").len(), 1);
+}
+
+#[test]
+fn the_default_policy_is_the_safe_one() {
+    // `sanitise` and friends call this with no configuration, so the default
+    // must be prose context, no space reporting and nothing paranoid.
+    let policy = TextPolicy::default();
+    assert_eq!(policy.context, BidiContext::Prose);
+    assert!(!policy.report_spaces);
+    assert!(!policy.context_free_homoglyphs);
+    assert!(!policy.strip_emoji_glue);
+}
+
+#[test]
+fn paranoid_mode_reports_load_bearing_glue_that_the_default_keeps() {
+    // Heart-on-fire: every invisible in it is load-bearing.
+    let emoji = "\u{2764}\u{FE0F}\u{200D}\u{1F525}";
+    assert!(check(emoji).is_empty());
+    let paranoid = check_text(
+        emoji,
+        &TextPolicy {
+            strip_emoji_glue: true,
+            ..TextPolicy::default()
+        },
+    );
+    assert!(!paranoid.is_empty());
 }
 
 #[test]

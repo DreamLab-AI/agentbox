@@ -45,6 +45,13 @@ pub struct TextPolicy {
     /// same-script confusables such as Latin `ı` for `i`, at the cost of
     /// flagging honest Greek and Cyrillic prose.
     pub context_free_homoglyphs: bool,
+    /// Paranoid mode: report load-bearing invisibles too — emoji ZWJ glue,
+    /// script joiners, flag tag sequences and same-script fillers.
+    ///
+    /// Off by default, and it should stay off for anything user-facing:
+    /// acting on these findings corrupts genuine emoji, Indic and Persian
+    /// text. It exists for auditing a document you already distrust.
+    pub strip_emoji_glue: bool,
 }
 
 /// Byte offset of every character in `source`, plus the total length.
@@ -201,7 +208,13 @@ fn invisible_findings(units: &[Unit], offsets: &[usize], policy: &TextPolicy) ->
             previous_kept = Some(unit);
             continue;
         }
-        let decision = decide(unit, previous_kept, policy.report_spaces, false, false);
+        let decision = decide(
+            unit,
+            previous_kept,
+            policy.report_spaces,
+            false,
+            policy.strip_emoji_glue,
+        );
         let Some(kind) = decision.kind else {
             if !unit
                 .as_char()
