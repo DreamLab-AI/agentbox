@@ -95,6 +95,17 @@ one. **A clean container is not an anonymous file.**
   no output is written, and every rewrite is reparsed and checked for residual
   `/Info`, `/Metadata`, XMP packets and C2PA manifests *before* it reaches the
   disk. A clean that cannot be verified is a failed clean.
+- **But the rewrite is not unconditional.** Re-serialising renumbers objects and
+  rebuilds the cross-reference table, so rewriting a document that had nothing
+  to remove changes every byte offset for no gain — a gratuitous, and
+  detectable, difference. `clean_pdf` decides first: with no `/Info` keys of
+  interest, no `/Metadata`, no XMP packet, no C2PA embedded file **and no
+  superseded revision**, the input is copied byte for byte and reported as
+  `mode: "unchanged"`. The revision check is what stops that shortcut becoming a
+  hole: a document whose current trailer names no metadata can still be hiding
+  an earlier revision's `/Info` in the bytes, so trailer `/Prev`, or a second
+  `%%EOF` or `startxref`, forces the rewrite regardless of how clean the object
+  graph looks.
 - **An APP11 segment is not proof of C2PA.** APP11 is a general JPEG XT and
   JUMBF carrier; HDR data, JPEG 360 metadata and privacy boxes live there too.
   The reassembled box's `jumd` type UUID and label decide whether it is a

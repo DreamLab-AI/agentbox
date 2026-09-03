@@ -346,3 +346,107 @@ fn every_written_output_has_been_verified() {
     doc.save_to(&mut untouched).unwrap();
     assert!(verify(&untouched).is_err(), "an unscrubbed PDF must fail");
 }
+
+/// A one-page PDF with no `/Info`, no `/Metadata`, no XMP and a single revision.
+fn clean_pdf_fixture() -> Vec<u8> {
+    let mut doc = Document::with_version("1.7");
+    let pages_id = doc.new_object_id();
+    let page_id = doc.add_object(dictionary! {
+        "Type" => "Page",
+        "Parent" => pages_id,
+        "MediaBox" => vec![0.into(), 0.into(), 300.into(), 200.into()],
+    });
+    doc.set_object(
+        pages_id,
+        dictionary! { "Type" => "Pages", "Kids" => vec![page_id.into()], "Count" => 1 },
+    );
+    let catalog_id = doc.add_object(dictionary! { "Type" => "Catalog", "Pages" => pages_id });
+    doc.trailer.set("Root", catalog_id);
+
+    let mut out = Vec::new();
+    doc.save_to(&mut out).expect("the fixture serialises");
+    out
+}
+
+#[test]
+fn a_pdf_with_nothing_to_remove_comes_out_byte_identical() {
+    // `lopdf` re-serialises from the object graph, renumbering objects and
+    // rebuilding the cross-reference table, so an unconditional rewrite changes
+    // every byte offset in a document that had nothing to remove. That is a
+    // gratuitous and detectable difference, and it breaks the round-trip
+    // guarantee the crate makes for every other format.
+    let dir = tempfile::tempdir().unwrap();
+    let source = dir.path().join("clean.pdf");
+    let dest = dir.path().join("out.pdf");
+    let pdf = clean_pdf_fixture();
+    std::fs::write(&source, &pdf).unwrap();
+
+    let (actions, meta) = clean_pdf(&source, &dest).unwrap();
+    assert_eq!(meta["mode"], serde_json::json!("unchanged"));
+    assert_eq!(meta["structural_rewrite"], serde_json::json!(false));
+    assert!(actions.iter().any(|a| a.contains("copied byte for byte")));
+    assert_eq!(
+        std::fs::read(&dest).unwrap(),
+        pdf,
+        "a clean PDF must not change"
+    );
+}
+
+#[test]
+fn a_superseded_revision_forces_a_rewrite_even_when_the_document_looks_clean() {
+    // The case the byte-identical shortcut must not swallow: the current
+    // trailer names no metadata, but an earlier revision's bytes are still in
+    // the file. Detecting "nothing to remove" from the object graph alone would
+    // copy the hidden revision straight through.
+    let base = clean_pdf_fixture();
+    let parsed = Document::load_mem(&base).expect("the fixture parses");
+    let mut incremental = IncrementalDocument::create_from(base.clone(), parsed);
+    let page_id = incremental
+        .get_prev_documents()
+        .get_pages()
+        .values()
+        .copied()
+        .next()
+        .expect("the fixture has a page");
+    incremental
+        .opt_clone_object_to_new_document(page_id)
+        .unwrap();
+    let mut appended = Vec::new();
+    incremental.save_to(&mut appended).unwrap();
+
+    let dir = tempfile::tempdir().unwrap();
+    let source = dir.path().join("history.pdf");
+    let dest = dir.path().join("out.pdf");
+    std::fs::write(&source, &appended).unwrap();
+
+    let (actions, meta) = clean_pdf(&source, &dest).unwrap();
+    assert_eq!(
+        meta["mode"],
+        serde_json::json!("lopdf"),
+        "actions were {actions:?}"
+    );
+    assert!(
+        actions
+            .iter()
+            .any(|a| a.contains("earlier revision") || a.contains("/Prev")),
+        "the reason must name the hidden revision: {actions:?}"
+    );
+}
+
+#[test]
+fn the_rewrite_decision_names_what_it_found() {
+    let doc = Document::load_mem(&real_pdf("Ada Lovelace")).unwrap();
+    let data = real_pdf("Ada Lovelace");
+    let reasons = rewrite_reasons(&doc, &data);
+    assert!(reasons.iter().any(|r| r.starts_with("/Info keys")));
+    assert!(reasons.iter().any(|r| r.contains("/Metadata")));
+    assert!(reasons.iter().any(|r| r.contains("XMP packet")));
+
+    // And a genuinely clean document produces no reasons at all.
+    let clean = clean_pdf_fixture();
+    let doc = Document::load_mem(&clean).unwrap();
+    assert!(
+        rewrite_reasons(&doc, &clean).is_empty(),
+        "a clean PDF must give no reason to rewrite"
+    );
+}

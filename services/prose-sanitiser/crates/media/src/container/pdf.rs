@@ -234,6 +234,80 @@ fn residual_metadata(doc: &Document) -> Vec<String> {
     residue
 }
 
+/// Count non-overlapping occurrences of `needle` in `data`.
+fn count_occurrences(data: &[u8], needle: &[u8]) -> usize {
+    if needle.is_empty() || data.len() < needle.len() {
+        return 0;
+    }
+    data.windows(needle.len())
+        .filter(|window| *window == needle)
+        .count()
+}
+
+/// Whether the byte stream holds a superseded revision.
+///
+/// This is the reason a document that *looks* clean may still need rewriting: a
+/// PDF is appended to, so an earlier revision's `/Info` can sit in the bytes
+/// while the current trailer names none. `/Prev` in the trailer is the explicit
+/// signal; a second `%%EOF` or `startxref` is the structural one. Both are
+/// read conservatively — a `%%EOF` occurring inside a content stream costs an
+/// unnecessary rewrite, which is the harmless direction to be wrong in.
+fn incremental_history(doc: &Document, data: &[u8]) -> Option<String> {
+    if doc.trailer.get(b"Prev").is_ok() {
+        return Some("an incremental update chain (trailer /Prev)".to_string());
+    }
+    let eofs = count_occurrences(data, b"%%EOF");
+    let pointers = count_occurrences(data, b"startxref");
+    if eofs > 1 || pointers > 1 {
+        return Some(format!(
+            "{eofs} end-of-file marker(s) and {pointers} cross-reference pointer(s), so an \
+             earlier revision is present in the byte stream"
+        ));
+    }
+    None
+}
+
+/// Everything about this document that would justify a rewrite.
+///
+/// Empty means the input carries no metadata carrier and no hidden revision, so
+/// it can be copied byte for byte. Anything else and the object graph is
+/// re-serialised.
+///
+/// This is deliberately stricter than "does it have an `/Info` entry": an
+/// `/Info` dictionary holding none of the keys that carry provenance is not
+/// worth rewriting a file over, and rewriting a clean file is itself a
+/// detectable change.
+fn rewrite_reasons(doc: &Document, data: &[u8]) -> Vec<String> {
+    let mut reasons = Vec::new();
+    let info = info_keys_present(doc);
+    if !info.is_empty() {
+        reasons.push(format!("/Info keys ({})", info.join(", ")));
+    }
+    if doc
+        .catalog()
+        .map(|catalog| catalog.has(b"Metadata"))
+        .unwrap_or(false)
+    {
+        reasons.push("a catalogue /Metadata reference".to_string());
+    }
+    let streams = metadata_stream_ids(doc).len();
+    if streams > 0 {
+        reasons.push(format!("{streams} /Metadata stream(s)"));
+    }
+    let specs = c2pa_file_spec_ids(doc).len();
+    if specs > 0 {
+        reasons.push(format!("{specs} C2PA embedded-file specification(s)"));
+    }
+    if xmp_packet_re().is_match(data) {
+        reasons.push("an XMP packet".to_string());
+    }
+    if c2pa_read::read_c2pa(data, "pdf").present {
+        reasons.push("a C2PA manifest store".to_string());
+    }
+    reasons.extend(incremental_history(doc, data));
+    reasons
+}
+
 /// Rewrite a parsed PDF with every metadata carrier removed.
 ///
 /// Returns the serialised document. The write is a full rewrite from the object
@@ -313,6 +387,15 @@ fn verify(rewritten: &[u8]) -> Result<(), String> {
 /// reaches the disk has been reparsed and confirmed free of `/Info`,
 /// `/Metadata`, XMP packets and C2PA manifests.
 ///
+/// # Two success outcomes
+///
+/// * `mode: "unchanged"` — the document parsed and carries no metadata carrier
+///   and no superseded revision, so the input is copied byte for byte. This is
+///   not the old degraded "copy": the file was parsed and checked, and a clean
+///   file coming out byte-identical is the guarantee, not a shortcut.
+/// * `mode: "lopdf"` — something had to go, so the object graph was
+///   re-serialised and the result verified.
+///
 /// # Errors
 ///
 /// Returns `Err` when the input cannot be read, cannot be parsed, cannot be
@@ -321,6 +404,11 @@ fn verify(rewritten: &[u8]) -> Result<(), String> {
 pub fn clean_pdf(path: &Path, dest: &Path) -> Result<(Vec<String>, Value), String> {
     let data = read_capped(path, max_container_bytes())
         .map_err(|e| format!("cannot read {}: {e}", path.display()))?;
+
+    if let Some(parent) = dest.parent().filter(|p| !p.as_os_str().is_empty()) {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| format!("cannot create {}: {e}", parent.display()))?;
+    }
 
     let mut doc = Document::load_mem(&data).map_err(|error| {
         format!(
@@ -331,15 +419,32 @@ pub fn clean_pdf(path: &Path, dest: &Path) -> Result<(Vec<String>, Value), Strin
         )
     })?;
 
-    let mut actions: Vec<String> = Vec::new();
+    // A clean file must come out byte-identical. `lopdf` re-serialises from the
+    // object graph, which renumbers objects and rebuilds the cross-reference
+    // table, so an unconditional rewrite changes every byte offset in a
+    // document that had nothing to remove — a gratuitous, and detectable,
+    // difference. Decide first, rewrite second.
+    let reasons = rewrite_reasons(&doc, &data);
+    if reasons.is_empty() {
+        safe_write_bytes(dest, &data)
+            .map_err(|e| format!("cannot write {}: {e}", dest.display()))?;
+        return Ok((
+            vec![
+                "no PDF metadata carrier and no superseded revision; copied byte for byte"
+                    .to_string(),
+            ],
+            json!({"mode": "unchanged", "structural_rewrite": false, "verified": true}),
+        ));
+    }
+
+    let mut actions: Vec<String> = vec![format!(
+        "rewriting: the document carries {}",
+        reasons.join("; ")
+    )];
     let rewritten = rewrite(&mut doc, &mut actions)?;
     verify(&rewritten).map_err(|error| format!("refusing to write {}: {error}", dest.display()))?;
     actions.push("verified: the output reparses and carries no metadata carrier".to_string());
 
-    if let Some(parent) = dest.parent().filter(|p| !p.as_os_str().is_empty()) {
-        std::fs::create_dir_all(parent)
-            .map_err(|e| format!("cannot create {}: {e}", parent.display()))?;
-    }
     safe_write_bytes(dest, &rewritten)
         .map_err(|e| format!("cannot write {}: {e}", dest.display()))?;
 

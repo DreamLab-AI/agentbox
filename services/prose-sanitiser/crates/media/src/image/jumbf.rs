@@ -25,13 +25,29 @@ use img_parts::Bytes;
 /// The JPEG XT part 3 APP11 header length: `JP`, instance, sequence.
 pub(super) const APP11_HEADER_LEN: usize = 8;
 
-/// The JUMBF type UUID a C2PA manifest store declares, from C2PA 2.4.
+/// The trailing twelve bytes every C2PA JUMBF type UUID shares.
 ///
-/// The first four bytes are the ASCII "c2pa", which is a convenience, not the
-/// test: the whole UUID must match.
-pub(super) const C2PA_JUMBF_UUID: [u8; 16] = [
-    0x63, 0x32, 0x70, 0x61, 0x00, 0x11, 0x00, 0x10, 0x80, 0x00, 0x00, 0xAA, 0x00, 0x38, 0x9B, 0x71,
+/// C2PA 2.4 assigns its box types as `<four ASCII bytes>-0011-0010-8000-00AA00389B71`:
+/// `c2pa` for the manifest store, `c2ma` for a manifest, `c2as` for an
+/// assertion store, `c2cl` for a claim. Only the first four bytes vary, so the
+/// suffix is what identifies the family and the prefix says which member.
+const C2PA_UUID_SUFFIX: [u8; 12] = [
+    0x00, 0x11, 0x00, 0x10, 0x80, 0x00, 0x00, 0xAA, 0x00, 0x38, 0x9B, 0x71,
 ];
+
+/// Whether a description-box type UUID belongs to the C2PA family.
+///
+/// Matching the family rather than only the manifest-store UUID means a nested
+/// `c2ma` manifest, `c2as` assertion store or `c2cl` claim box is recognised
+/// too, which matters for an asset that embeds a bare manifest without the
+/// store wrapper. The twelve-byte suffix is the discriminator; a JPEG XT or
+/// JPEG 360 box has a different one and is not matched.
+fn is_c2pa_box_type(uuid: &[u8]) -> bool {
+    uuid.len() == 16
+        && uuid[4..] == C2PA_UUID_SUFFIX
+        && uuid.starts_with(b"c2")
+        && uuid[..4].iter().all(u8::is_ascii_alphanumeric)
+}
 
 /// The JUMBF description-box toggle bit meaning "a label follows the UUID".
 const JUMD_TOGGLE_LABEL: u8 = 0x02;
@@ -66,8 +82,8 @@ pub(super) fn read_box(data: &[u8]) -> Option<(&[u8], &[u8])> {
 ///
 /// The structure is specified: a `jumb` superbox whose first child is a `jumd`
 /// description box carrying a 16-byte type UUID, a toggle byte and an optional
-/// NUL-terminated label. A box is C2PA when that UUID is [`C2PA_JUMBF_UUID`],
-/// or when the label says `c2pa`.
+/// NUL-terminated label. A box is C2PA when that UUID is in the C2PA family
+/// (see [`is_c2pa_box_type`]), or when the label says `c2pa`.
 ///
 /// APP11 is a general JPEG XT and JUMBF carrier: JPEG XT HDR data, JPEG 360
 /// metadata and privacy-and-security boxes all live there. Treating the segment
@@ -85,7 +101,7 @@ pub(super) fn jumbf_is_c2pa(payload: &[u8]) -> bool {
     if description_tbox != b"jumd" || description.len() < 17 {
         return false;
     }
-    if description[..16] == C2PA_JUMBF_UUID {
+    if is_c2pa_box_type(&description[..16]) {
         return true;
     }
     if description[16] & JUMD_TOGGLE_LABEL == 0 {
@@ -207,7 +223,27 @@ impl App11Map {
 pub(crate) mod fixtures {
     //! Box builders shared with the JPEG tests.
 
-    use super::C2PA_JUMBF_UUID;
+    use super::C2PA_UUID_SUFFIX;
+
+    /// The JUMBF type UUID a C2PA manifest **store** declares: the box an APP11
+    /// segment carries at the top level, and the one real assets use.
+    ///
+    /// Test-only. Production recognises the whole family through
+    /// [`super::is_c2pa_box_type`], so hard-coding one member here would only
+    /// re-test the constant.
+    pub(crate) const C2PA_JUMBF_UUID: [u8; 16] = {
+        let mut uuid = [0u8; 16];
+        uuid[0] = b'c';
+        uuid[1] = b'2';
+        uuid[2] = b'p';
+        uuid[3] = b'a';
+        let mut index = 0;
+        while index < C2PA_UUID_SUFFIX.len() {
+            uuid[4 + index] = C2PA_UUID_SUFFIX[index];
+            index += 1;
+        }
+        uuid
+    };
 
     /// An ISO base-media box: `LBox`, `TBox`, payload.
     pub(crate) fn iso_box(tbox: &[u8; 4], payload: &[u8]) -> Vec<u8> {
@@ -237,8 +273,41 @@ pub(crate) mod fixtures {
 
 #[cfg(test)]
 mod tests {
-    use super::fixtures::{c2pa_jumbf, jumbf_box};
+    use super::fixtures::{c2pa_jumbf, jumbf_box, C2PA_JUMBF_UUID};
     use super::*;
+
+    #[test]
+    fn the_whole_c2pa_uuid_family_is_recognised() {
+        // C2PA assigns `c2pa` (manifest store), `c2ma` (manifest), `c2as`
+        // (assertion store) and `c2cl` (claim), all sharing one suffix. A box
+        // carrying a nested manifest without the store wrapper is still C2PA.
+        for prefix in [b"c2pa", b"c2ma", b"c2as", b"c2cl"] {
+            let mut uuid = [0u8; 16];
+            uuid[..4].copy_from_slice(prefix);
+            uuid[4..].copy_from_slice(&C2PA_UUID_SUFFIX);
+            assert!(
+                is_c2pa_box_type(&uuid),
+                "{} should be C2PA",
+                String::from_utf8_lossy(prefix)
+            );
+            assert!(jumbf_is_c2pa(&jumbf_box(&uuid, b"whatever", b"x")));
+        }
+
+        // The suffix is the discriminator: the same ASCII prefix with any other
+        // suffix is a different vendor's box.
+        let mut impostor = [0u8; 16];
+        impostor[..4].copy_from_slice(b"c2pa");
+        assert!(!is_c2pa_box_type(&impostor));
+
+        // And a JPEG 360-style box sharing the suffix but not the prefix is not
+        // C2PA either.
+        let mut other = [0u8; 16];
+        other[..4].copy_from_slice(b"jp36");
+        other[4..].copy_from_slice(&C2PA_UUID_SUFFIX);
+        assert!(!is_c2pa_box_type(&other));
+
+        assert!(!is_c2pa_box_type(&[0u8; 15]), "a short UUID is not a UUID");
+    }
 
     #[test]
     fn the_c2pa_box_is_recognised_by_uuid_and_by_label() {
