@@ -9,7 +9,7 @@ Antigravity Kit is an AI-powered design intelligence toolkit providing searchabl
 ## Search Command
 
 ```bash
-python3 src/ui-ux-pro-max/scripts/search.py "<query>" --domain <domain> [-n <max_results>]
+uiux-search "<query>" --domain <domain> [-n <max_results>]
 ```
 
 **Domain search:**
@@ -24,7 +24,7 @@ python3 src/ui-ux-pro-max/scripts/search.py "<query>" --domain <domain> [-n <max
 
 **Stack search:**
 ```bash
-python3 src/ui-ux-pro-max/scripts/search.py "<query>" --stack <stack>
+uiux-search "<query>" --stack <stack>
 ```
 Available stacks: `html-tailwind` (default), `react`, `nextjs`, `vue`, `svelte`, `swiftui`, `react-native`, `flutter`, `shadcn`, `jetpack-compose`
 
@@ -35,21 +35,23 @@ src/ui-ux-pro-max/                # Source of Truth
 ├── data/                         # Canonical CSV databases
 │   ├── products.csv, styles.csv, colors.csv, typography.csv, ...
 │   └── stacks/                   # Stack-specific guidelines
-├── scripts/
-│   ├── search.py                 # CLI entry point
-│   ├── core.py                   # BM25 + regex hybrid search engine
-│   └── design_system.py          # Design system generation
 └── templates/
     ├── base/                     # Base templates (skill-content.md, quick-reference.md)
     └── platforms/                # Platform configs (claude.json, cursor.json, ...)
+
+# The search engine itself is no longer Python: `uiux-search` is a compiled Rust
+# binary (services/skill-tools in the agentbox repo, `uiux` module) that embeds
+# these CSVs at compile time via `include_str!` — it is a BM25 + design-system-
+# generation port of the former scripts/{core,search,design_system}.py, byte-for-
+# byte verified against the original Python output. There is no scripts/ directory
+# under src/ui-ux-pro-max/ any more.
 
 cli/                              # CLI installer (uipro-cli on npm)
 ├── src/
 │   ├── commands/init.ts          # Install command with template generation
 │   └── utils/template.ts         # Template rendering engine
-└── assets/                       # Bundled assets (~564KB)
+└── assets/                       # Bundled assets
     ├── data/                     # Copy of src/ui-ux-pro-max/data/
-    ├── scripts/                  # Copy of src/ui-ux-pro-max/scripts/
     └── templates/                # Copy of src/ui-ux-pro-max/templates/
 
 .claude/skills/ui-ux-pro-max/     # Claude Code skill (symlinks to src/)
@@ -79,15 +81,23 @@ When modifying files:
 3. **CLI Assets** - Run sync before publishing:
    ```bash
    cp -r src/ui-ux-pro-max/data/* cli/assets/data/
-   cp -r src/ui-ux-pro-max/scripts/* cli/assets/scripts/
    cp -r src/ui-ux-pro-max/templates/* cli/assets/templates/
    ```
+   `src/ui-ux-pro-max/scripts/` no longer exists — the search engine is now the
+   `uiux-search` Rust binary, not a Python script the CLI installer copies into a
+   user's project. **Unresolved follow-up:** `cli/assets/scripts/` and the
+   `scriptPath` field in `src/ui-ux-pro-max/templates/platforms/*.json` still assume
+   the old Python-script install model (the installer literally copies whatever is
+   at `scriptPath` into the user's project — see `cli/src/utils/extract.ts`'s
+   `copyFolders`), so `cli/` needs a companion change to ship the compiled
+   `uiux-search` binary (per target platform/OS) instead before those can be
+   repointed safely.
 
 4. **Reference Folders** - No manual sync needed. The CLI generates these from templates during `uipro init`.
 
 ## Prerequisites
 
-Python 3.x (no external dependencies required)
+`uiux-search`, a compiled Rust binary (no Python, no external runtime dependencies).
 
 ## Git Workflow
 

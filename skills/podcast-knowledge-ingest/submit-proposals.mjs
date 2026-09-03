@@ -99,7 +99,7 @@ async function main() {
           scores: JSON.stringify(p.scores),
           provenance: JSON.stringify(p.provenance),
           dossier: `skills/podcast-knowledge-ingest/promotions/proposals/${f}`,
-          pipeline: 'podcast-knowledge-ingest/promote.py',
+          pipeline: 'podcast-knowledge-ingest/podcast-promote',
         },
       },
       agent_context: { pipeline: 'podcast-knowledge-ingest', stage: 'candidate_survivor' },

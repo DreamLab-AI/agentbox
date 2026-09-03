@@ -14,7 +14,8 @@ this file holds the diagram, LLM backend wiring, env vars, and troubleshooting.
                ▼
 ┌─────────────────────────────┐
 │  Web Summary MCP Server     │
-│  (FastMCP - Python only)    │
+│  (agentbox-mcp web-summary, │
+│   Rust rmcp)                │
 └──────────────┬──────────────┘
                │ HTTP · OpenAI /v1/chat/completions
                ▼

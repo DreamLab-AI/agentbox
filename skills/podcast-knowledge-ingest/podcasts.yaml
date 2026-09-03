@@ -2,9 +2,10 @@ podcasts:
   - channel: "@TheAIDailyBrief"
     name: "AI Daily Brief"
     focus: "AI industry news, policy, models, companies"
-    # ADR-2028: paths derive from the [vault] path authority. ingest.py expands
-    # these with os.path.expandvars, so relocating [vault].root in agentbox.toml
-    # relocates this skill's output with no edit here.
+    # ADR-2028: paths derive from the [vault] path authority. The podcast-ingest
+    # binary (services/podcast-ingest, ingest::config::expandvars) expands these,
+    # so relocating [vault].root in agentbox.toml relocates this skill's output
+    # with no edit here.
     output_dir: "${VAULT_TRANSCRIPTS}"
     ontology_dir: "${VAULT_PAGES}"
 

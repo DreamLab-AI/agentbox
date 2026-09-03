@@ -5,20 +5,25 @@ description: >
   Efficiently fetches, summarizes, and extracts information from up to 20 URLs
   per request with grounding metadata and source citations.
   Use when analysing or summarising specific URLs using Gemini's 1M-token context window.
-version: 1.0.0
+version: 1.1.0
 author: agentbox-claude
 mcp_server: true
-protocol: fastmcp
-entry_point: mcp-server/server.py
+protocol: rmcp
+entry_point: agentbox-mcp gemini-url-context
 dependencies:
-  - httpx
+  - agentbox-mcp
 env_vars:
-  - GOOGLE_GEMINI_API_KEY
+  - GOOGLE_API_KEY
 ---
 
 # Gemini URL Context Skill
 
-Leverage Google's Gemini 2.5 Flash model to expand, summarize, and analyze web content directly from URLs.
+Leverage Google's Gemini 2.5 Flash model to expand, summarize, and analyze web
+content directly from URLs, via the `gemini-url-context` subcommand of
+`agentbox-mcp` — a single Rust `rmcp` binary (`services/agentbox-mcp`) that
+also serves the `imagemagick` and `web-summary` skills. It replaces the former
+Python FastMCP server one-for-one: same tool names, parameters, and JSON
+response shapes.
 
 ## When to Use This Skill
 
@@ -46,7 +51,8 @@ Leverage Google's Gemini 2.5 Flash model to expand, summarize, and analyze web c
                ▼
 ┌─────────────────────────────────┐
 │  Gemini URL Context MCP Server  │
-│  (FastMCP - Python)             │
+│  (agentbox-mcp gemini-url-      │
+│   context, Rust rmcp)           │
 └──────────────┬──────────────────┘
                │ HTTPS REST API
                ▼
@@ -123,7 +129,9 @@ Responses include `urlContextMetadata` with:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `GOOGLE_GEMINI_API_KEY` | Yes | Gemini API key from https://aistudio.google.com/app/apikey |
+| `GOOGLE_API_KEY` | Yes | Gemini API key from https://aistudio.google.com/app/apikey — canonical variable, as registered in `skills/mcp.json` |
+| `GOOGLE_GEMINI_API_KEY` | No | Legacy fallback, read only if `GOOGLE_API_KEY` is unset |
+| `GEMINI_API_KEY` | No | Legacy fallback, read only if neither of the above is set |
 | `GEMINI_MODEL` | No | Model override (default: gemini-2.5-flash) |
 | `GEMINI_TIMEOUT` | No | Request timeout in seconds (default: 60) |
 
@@ -131,10 +139,10 @@ Responses include `urlContextMetadata` with:
 
 ```bash
 # Set API key (add to .env or export)
-export GOOGLE_GEMINI_API_KEY="your-api-key"
+export GOOGLE_API_KEY="your-api-key"
 
 # Or add to /home/devuser/.claude/skills/.env
-echo 'GOOGLE_GEMINI_API_KEY=your-key' >> /home/devuser/.claude/skills/.env
+echo 'GOOGLE_API_KEY=your-key' >> /home/devuser/.claude/skills/.env
 ```
 
 ## Troubleshooting
@@ -142,7 +150,7 @@ echo 'GOOGLE_GEMINI_API_KEY=your-key' >> /home/devuser/.claude/skills/.env
 **API Key Issues:**
 ```bash
 # Test API key
-curl -s "https://generativelanguage.googleapis.com/v1beta/models?key=$GOOGLE_GEMINI_API_KEY" | jq '.models[0].name'
+curl -s "https://generativelanguage.googleapis.com/v1beta/models?key=$GOOGLE_API_KEY" | jq '.models[0].name'
 ```
 
 **URL Not Retrieved:**

@@ -1,0 +1,102 @@
+{
+  "advertising": {
+    "fp": "68c07d35cd4efca2",
+    "proposal_id": "4b794fb6-345f-4eb8-8e67-e86d281e63c6",
+    "at": "2026-08-25T16:09:44.374Z"
+  },
+  "agentic-workflow": {
+    "fp": "c87720f426e1fa4b",
+    "proposal_id": "8bea4020-05b5-4dd1-a34a-77574b00236b",
+    "at": "2026-08-25T16:10:01.182Z"
+  },
+  "ai-agent-system": {
+    "fp": "b9875cb3090d9b68",
+    "proposal_id": "3992f8f8-d37e-4db3-9b19-871b28562578",
+    "at": "2026-08-25T16:10:12.493Z"
+  },
+  "ai-hardware": {
+    "fp": "e1803f3970ae7319",
+    "proposal_id": "d1fb4330-ea5e-4256-aa84-9083d7f3f873",
+    "at": "2026-08-25T16:10:50.168Z"
+  },
+  "ai-security": {
+    "fp": "1634c9881ca28c67",
+    "proposal_id": "457beff1-9c55-41f8-b533-41ea327f5171",
+    "at": "2026-08-25T16:11:43.366Z"
+  },
+  "autonomous-coding": {
+    "fp": "965519c4d5a10bf2",
+    "proposal_id": "0fed7b5e-65c3-42ce-9593-28f462876b47",
+    "at": "2026-08-25T16:11:54.797Z"
+  },
+  "autonomous-decision-making": {
+    "fp": "47e78c02eb988ad1",
+    "proposal_id": "8f61e7e7-1bb7-4b13-b210-ef25e428c627",
+    "at": "2026-08-25T16:12:06.248Z"
+  },
+  "change-management": {
+    "fp": "5255ec57aee17e73",
+    "proposal_id": "44db85fc-06a1-4954-aad2-1e9c29c66c17",
+    "at": "2026-08-25T16:12:17.688Z"
+  },
+  "claude-code": {
+    "fp": "56b3dc6e18ecd39b",
+    "proposal_id": "def0d054-5ded-4027-b5a0-1ac3cc00d363",
+    "at": "2026-08-25T16:12:34.549Z"
+  },
+  "cloud-infrastructure": {
+    "fp": "14bc3b9bd65d5235",
+    "proposal_id": "3b27c175-7eb7-47c2-98c6-a76aca59c89b",
+    "at": "2026-08-25T16:12:46.096Z"
+  },
+  "data-integration": {
+    "fp": "9a95c4b36e9cd642",
+    "proposal_id": "9de5ce7e-09e6-42d2-a983-acecd51d0cfa",
+    "at": "2026-08-25T16:13:02.836Z"
+  },
+  "enterprise-workflow": {
+    "fp": "edf3cb558ade11cc",
+    "proposal_id": "71008e10-6ef1-4077-be53-4c2fc8efa89e",
+    "at": "2026-08-25T16:13:14.369Z"
+  },
+  "future-of-work": {
+    "fp": "4a260fa9475da7a5",
+    "proposal_id": "d3d91ada-3546-45dc-9954-c1dddaeb7175",
+    "at": "2026-08-25T16:13:25.830Z"
+  },
+  "hardware": {
+    "fp": "d96f593c0647091a",
+    "proposal_id": "40cc1756-9176-4f0f-a13e-1a54dc3f7e0e",
+    "at": "2026-08-25T16:13:37.507Z"
+  },
+  "human-ai-collaboration": {
+    "fp": "9ec2079cd607ada4",
+    "proposal_id": "158db96a-134c-4592-bee3-c4366eb7bc43",
+    "at": "2026-08-25T16:13:48.887Z"
+  },
+  "large-language-model": {
+    "fp": "e22418515e43e690",
+    "proposal_id": "e1b5b0d8-2d51-4f2d-b7f4-9e3eea3aed6c",
+    "at": "2026-08-25T16:14:05.598Z"
+  },
+  "open-source-ai": {
+    "fp": "a5211e5a412b6899",
+    "proposal_id": "7904a228-546d-440d-ae73-166fd5e5441e",
+    "at": "2026-08-25T16:14:22.305Z"
+  },
+  "persona": {
+    "fp": "094d0b7423f51ca4",
+    "proposal_id": "4e2d21e8-ba40-4d52-92ce-cb603fd9de84",
+    "at": "2026-08-25T16:14:33.845Z"
+  },
+  "task-automation": {
+    "fp": "d0229167d3feb4be",
+    "proposal_id": "a72bb603-3bde-4691-8a28-9acd34dd6547",
+    "at": "2026-08-25T16:14:50.550Z"
+  },
+  "workforce-development": {
+    "fp": "8265f7c4a09bd5c3",
+    "proposal_id": "04de30e9-c19e-4643-bdd0-c2ec2be388ce",
+    "at": "2026-08-25T16:15:28.547Z"
+  }
+}

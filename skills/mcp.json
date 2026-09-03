@@ -88,18 +88,17 @@
       "x-agentbox-note": "npx network installer — not registrable on the read-only rootfs"
     },
     "imagemagick": {
-      "command": "python3",
+      "command": "agentbox-mcp",
       "args": [
-        "-u",
-        "/home/devuser/.claude/skills/imagemagick/mcp-server/server.py"
+        "imagemagick"
       ],
       "type": "stdio",
       "env": {
         "IMAGEMAGICK_TIMEOUT": "300"
       },
       "description": "Image processing with format conversion, resizing, cropping, batch operations",
-      "protocol": "fastmcp",
-      "version": "2.0.0",
+      "protocol": "rmcp",
+      "version": "2.1.0",
       "x-agentbox-managed-by": "reference",
       "x-agentbox-gate": "env:ENABLE_IMAGEMAGICK",
       "x-agentbox-note": "skill-local mcp-server under ~/.claude/skills/imagemagick — registered by the skill, not the boot projector"
@@ -132,10 +131,9 @@
       "x-agentbox-note": "entrypoint registers via a browsercontainer /health reachability probe"
     },
     "web-summary": {
-      "command": "python3",
+      "command": "agentbox-mcp",
       "args": [
-        "-u",
-        "/home/devuser/.claude/skills/web-summary/mcp-server/server.py"
+        "web-summary"
       ],
       "type": "stdio",
       "env": {
@@ -143,8 +141,8 @@
         "ZAI_TIMEOUT": "60"
       },
       "description": "URL summarization with YouTube transcripts and topic generation",
-      "protocol": "fastmcp",
-      "version": "2.0.0",
+      "protocol": "rmcp",
+      "version": "2.1.0",
       "x-agentbox-managed-by": "reference",
       "x-agentbox-note": "skill-local mcp-server (needs zai sidecar) — not boot-projected"
     },
@@ -186,10 +184,9 @@
       "x-agentbox-note": "GPU-sidecar tcp-proxy (gui-tools) — not boot-projected"
     },
     "gemini-url-context": {
-      "command": "python3",
+      "command": "agentbox-mcp",
       "args": [
-        "-u",
-        "/home/devuser/.claude/skills/gemini-url-context/mcp-server/server.py"
+        "gemini-url-context"
       ],
       "type": "stdio",
       "env": {
@@ -198,8 +195,8 @@
         "GEMINI_TIMEOUT": "60"
       },
       "description": "URL expansion and analysis using Gemini 2.5 Flash URL Context API",
-      "protocol": "fastmcp",
-      "version": "1.0.0",
+      "protocol": "rmcp",
+      "version": "1.1.0",
       "x-agentbox-managed-by": "reference",
       "x-agentbox-note": "skill-local mcp-server (needs GOOGLE_API_KEY) — not boot-projected"
     },

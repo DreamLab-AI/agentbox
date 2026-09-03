@@ -1,6 +1,7 @@
 # Search Reference
 
-Full domain and stack catalogue for `src/ui-ux-pro-max/scripts/search.py`.
+Full domain and stack catalogue for the `uiux-search` binary (a Rust port of the
+former `src/ui-ux-pro-max/scripts/search.py`).
 
 ## Available Domains
 
@@ -20,7 +21,7 @@ Full domain and stack catalogue for `src/ui-ux-pro-max/scripts/search.py`.
 Usage:
 
 ```bash
-python3 src/ui-ux-pro-max/scripts/search.py "<keyword>" --domain <domain> [-n <max_results>]
+uiux-search "<keyword>" --domain <domain> [-n <max_results>]
 ```
 
 ## Available Stacks
@@ -41,7 +42,7 @@ python3 src/ui-ux-pro-max/scripts/search.py "<keyword>" --domain <domain> [-n <m
 Usage:
 
 ```bash
-python3 src/ui-ux-pro-max/scripts/search.py "<keyword>" --stack <stack>
+uiux-search "<keyword>" --stack <stack>
 ```
 
 ## Output Formats
@@ -50,10 +51,10 @@ The `--design-system` flag supports two output formats:
 
 ```bash
 # ASCII box (default) - best for terminal display
-python3 src/ui-ux-pro-max/scripts/search.py "fintech crypto" --design-system
+uiux-search "fintech crypto" --design-system
 
 # Markdown - best for documentation
-python3 src/ui-ux-pro-max/scripts/search.py "fintech crypto" --design-system -f markdown
+uiux-search "fintech crypto" --design-system -f markdown
 ```
 
 ## Tips for Better Results

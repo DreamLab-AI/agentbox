@@ -1,21 +1,14 @@
 #!/bin/bash
-# Entry point for the weekly promotion cron (mirrors run-ingest.sh's
-# capability-probed interpreter resolution — no /usr/bin/python3 in the image).
+# Entry point for the weekly promotion cron.
+# Rust port (services/podcast-ingest, binary: podcast-promote): no longer
+# needs a python3-capability probe — the binary is self-contained and just
+# needs to be on PATH.
 set -u
 SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-PY=""
-IFS=: read -ra DIRS <<< "$PATH"
-for d in "${DIRS[@]}"; do
-    cand="$d/python3"
-    if [ -x "$cand" ] && "$cand" -c 'import requests' 2>/dev/null; then
-        PY="$cand"
-        break
-    fi
-done
-
-if [ -z "$PY" ]; then
-    echo "run-promote.sh: no python3 on PATH with requests — aborting" >&2
+BIN="$(command -v podcast-promote || true)"
+if [ -z "$BIN" ]; then
+    echo "run-promote.sh: podcast-promote not found on PATH — aborting" >&2
     exit 1
 fi
 
@@ -27,8 +20,7 @@ if [ -z "${VAULT_ROOT:-}" ] || [ -z "${VAULT_PAGES:-}" ] || [ -z "${VAULT_WORKIN
     exit 1
 fi
 
-unset PYTHONPATH
-exec "$PY" "${SKILL_DIR}/promote.py" \
+exec "$BIN" \
     --pages-dir "${VAULT_PAGES}" \
     --proposals-dir "${SKILL_DIR}/promotions/proposals" \
     --working-graph-dir "${VAULT_WORKING_PAGES}" \

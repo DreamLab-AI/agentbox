@@ -11,7 +11,7 @@
 ## Step 2: Generate Design System (REQUIRED)
 
 ```bash
-python3 src/ui-ux-pro-max/scripts/search.py "beauty spa wellness service elegant" --design-system -p "Serenity Spa"
+uiux-search "beauty spa wellness service elegant" --design-system -p "Serenity Spa"
 ```
 
 **Output:** Complete design system with pattern, style, colors, typography, effects, and anti-patterns.
@@ -20,16 +20,16 @@ python3 src/ui-ux-pro-max/scripts/search.py "beauty spa wellness service elegant
 
 ```bash
 # Get UX guidelines for animation and accessibility
-python3 src/ui-ux-pro-max/scripts/search.py "animation accessibility" --domain ux
+uiux-search "animation accessibility" --domain ux
 
 # Get alternative typography options if needed
-python3 src/ui-ux-pro-max/scripts/search.py "elegant luxury serif" --domain typography
+uiux-search "elegant luxury serif" --domain typography
 ```
 
 ## Step 4: Stack Guidelines
 
 ```bash
-python3 src/ui-ux-pro-max/scripts/search.py "layout responsive form" --stack html-tailwind
+uiux-search "layout responsive form" --stack html-tailwind
 ```
 
 **Then:** Synthesize design system + detailed searches and implement the design.

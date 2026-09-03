@@ -2,10 +2,16 @@
 # Managed by supervisord via supercronic. Edit this file to change schedule.
 # Channel list: podcasts.yaml (same directory, or --config path)
 
-# supercronic runs jobs via /bin/sh with only the supervisor PATH, which lacks
-# coreutils (tee/dirname) and node — all three jobs exited 127 on 2026-08-31
-# before this line existed. Pinned store paths, same convention as supervisord.conf.
-PATH=/nix/store/cp7wjv1pl4wapfk48svvizxd089v9h0a-coreutils-9.11/bin:/nix/store/iz3fzlgfvqac5cmw7w1wp0c6sw57hq9g-nodejs-22.23.1/bin:/nix/store/wl1y7g0gdy9zhhrjijcqjw0hq58px851-python3-3.12.13-env/bin:/usr/local/bin:/bin:/usr/bin
+# supercronic runs jobs via /bin/sh with only the supervisor PATH. All three
+# jobs need more than that: coreutils for `tee`, node for submit-proposals.mjs,
+# the python env for `yt-dlp` (which podcast-ingest still shells out to), and
+# the podcast-ingest/podcast-promote binaries themselves.
+#
+# There is deliberately NO `PATH=` line here any more. It used to pin Nix store
+# paths by hand — which went stale on every image rebuild, and silently
+# overrode whatever the supervisor exported. The PATH is now built by Nix in
+# flake.nix's [program:podcast-cron] environment= and inherited by these jobs,
+# so store paths can never drift out of sync with the image again.
 
 # LIVE with assertion-ledger integration (option 4) since 2026-08-23: curated
 # pages are never edited; assertions land on podcast-evidence___* ledger pages

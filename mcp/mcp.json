@@ -53,15 +53,15 @@
       "type": "stdio"
     },
     "imagemagick": {
-      "command": "python3",
-      "args": ["-u", "/home/devuser/.claude/skills/imagemagick/mcp-server/server.py"],
+      "command": "agentbox-mcp",
+      "args": ["imagemagick"],
       "type": "stdio",
       "env": {
         "IMAGEMAGICK_TIMEOUT": "300"
       },
       "description": "Image processing with format conversion, resizing, cropping, batch operations",
-      "protocol": "fastmcp",
-      "version": "2.0.0"
+      "protocol": "rmcp",
+      "version": "2.1.0"
     },
     "qgis": {
       "command": "python3",
@@ -83,16 +83,16 @@
       "version": "2.0.0"
     },
     "web-summary": {
-      "command": "python3",
-      "args": ["-u", "/home/devuser/.claude/skills/web-summary/mcp-server/server.py"],
+      "command": "agentbox-mcp",
+      "args": ["web-summary"],
       "type": "stdio",
       "env": {
         "ZAI_URL": "http://localhost:9600/chat",
         "ZAI_TIMEOUT": "60"
       },
       "description": "URL summarization with YouTube transcripts and topic generation",
-      "protocol": "fastmcp",
-      "version": "2.0.0"
+      "protocol": "rmcp",
+      "version": "2.1.0"
     },
     "web-researcher": {
       "command": "web-researcher-mcp",

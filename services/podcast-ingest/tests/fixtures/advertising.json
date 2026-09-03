@@ -1,0 +1,175 @@
+{
+  "topic": "Advertising",
+  "topic_slug": "advertising",
+  "status": "candidate_survivor",
+  "reasons": [],
+  "n_assertions": 6,
+  "episodes": [
+    "did-the-super-bowl-as-make-americans-like-ai-any-more",
+    "google-says-no-ads-planned-for-gemini",
+    "how-to-make-chatgpt-ads-not-suck"
+  ],
+  "assertion_fingerprints": [
+    "6e81385ff8a77386",
+    "784904c7c750731c",
+    "7d492cb500e7c2a0",
+    "88a52b90cebe4cb1",
+    "992a523298ef8797",
+    "ceeaf46cde950bfa"
+  ],
+  "target_page": "Advertising.md",
+  "assertions": [
+    {
+      "claim": "An iSpot survey of 500 viewers found that Anthropic's Super Bowl ad had a likeability score in the bottom 3% compared with Super Bowl ads over the past 5 years.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "iSpot / Adweek (cited by host)",
+      "episode": "did-the-super-bowl-as-make-americans-like-ai-any-more",
+      "claim_date": "2026-02-10",
+      "evidence": "The host reports that 'the ad's likeability score placed it in the bottom 3% compared with Super Bowl ads over the past 5 years' and that purchase intent was 24% below Super Bowl norms.",
+      "fp": "7d492cb500e7c2a0"
+    },
+    {
+      "claim": "Google DeepMind CEO Demis Hassabis stated that Google currently has no plans to bring advertising to the Gemini app.",
+      "tier": "1",
+      "confidence": "0.95",
+      "source": "Demis Hassabis (via Alex Heath of Sources)",
+      "episode": "google-says-no-ads-planned-for-gemini",
+      "claim_date": "2026-01-22",
+      "evidence": "Hassabis commented on ChatGPT ads, noting it is interesting they went for them so early, and explicitly stated Google does not have plans for ads in Gemini at the moment.",
+      "fp": "992a523298ef8797"
+    },
+    {
+      "claim": "Ad Week reported in December that Google told advertising clients that ad placements in Gemini were targeted for a 2026 rollout.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Ad Week",
+      "episode": "google-says-no-ads-planned-for-gemini",
+      "claim_date": "2026-01-22",
+      "evidence": "The report was sourced from at least two anonymous advertising clients who discussed meetings where Google indicated a 2026 target for Gemini ads, though no prototypes or specifications were shared.",
+      "fp": "784904c7c750731c"
+    },
+    {
+      "claim": "Google is already offering ads in AI search, including a new feature called 'direct offers' that presents personalized discounts in AI mode.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Dan Taylor (Google VP of Global Ads)",
+      "episode": "google-says-no-ads-planned-for-gemini",
+      "claim_date": "2026-01-22",
+      "evidence": "Taylor noted that while Gemini app ads are not planned, AI mode and search in Gemini are converging, and Google is actively testing ad features like direct offers in AI search.",
+      "fp": "88a52b90cebe4cb1"
+    },
+    {
+      "claim": "Google may see an opportunity to win margin against ChatGPT by holding out longer on ads, but it is unlikely that Gemini's free version will remain ad-free forever.",
+      "tier": "2",
+      "confidence": "0.7",
+      "source": "Host (AI Daily Brief)",
+      "episode": "google-says-no-ads-planned-for-gemini",
+      "claim_date": "2026-01-22",
+      "evidence": "The host interprets Google's denial of ad plans as a strategic move to differentiate from OpenAI, suggesting that a one-year delay could be enough to make a competitive difference based on consumer response to ChatGPT ads.",
+      "fp": "ceeaf46cde950bfa"
+    },
+    {
+      "claim": "OpenAI announced it will begin testing ads in the free and Go tiers of ChatGPT in the coming weeks, with ads clearly labeled and separate from responses.",
+      "tier": "1",
+      "confidence": "0.98",
+      "source": "OpenAI official announcement",
+      "episode": "how-to-make-chatgpt-ads-not-suck",
+      "claim_date": "2026-01-20",
+      "evidence": "The transcript cites the official OpenAI account tweet: 'In the coming weeks, we plan to start testing ads in chat GBT free and go tiers.' It also notes that Pro, Business, and Enterprise tiers will not have ads.",
+      "fp": "6e81385ff8a77386"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "Immersive advertising in extended reality environments and interactive connected TV (CTV) formats represent emerging channels with distinct creative and measurement paradigms.",
+      "content": "\n\n- ### Recent Developments\n  - The integration of advertising into generative AI interfaces has become a focal point of industry strategy. OpenAI announced it will begin testing ads in the free and Go tiers of ChatGPT in the coming weeks, with ads clearly labeled and separate from responses, while Pro, Business, and Enterprise tiers will remain ad-free. In response, Google DeepMind CEO Demis Hassabis stated that Google currently has no plans to bring advertising to the Gemini app, noting it is interesting that OpenAI went for them so early. However, Ad Week reported in December that Google told advertising clients that ad placements in Gemini were targeted for a 2026 rollout, based on discussions with at least two anonymous clients. Meanwhile, Google is already offering ads in AI search, including a new feature called 'direct offers' that presents personalized discounts in AI mode, as AI mode and search in Gemini converge. Analysts suggest Google may be holding out longer on ads to win margin against ChatGPT, though it is unlikely that Gemini's free version will remain ad-free forever.\n\n  - In traditional broadcast advertising, performance metrics continue to highlight the importance of creative resonance. An iSpot survey of 500 viewers found that Anthropic's Super Bowl ad had a likeability score in the bottom 3% compared with Super Bowl ads over the past 5 years, with purchase intent 24% below Super Bowl norms."
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 1.0,
+    "rubric_b_improvement": 1.0,
+    "raw_a": {
+      "factual_grounding": 4,
+      "relevance": 5,
+      "coherence": 5,
+      "better_version": "A",
+      "improvement": -1
+    },
+    "raw_b": {
+      "factual_grounding": 4,
+      "relevance": 4,
+      "coherence": 5,
+      "better_version": "A",
+      "improvement": -1
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "7d492cb500e7c2a0",
+        "claim": "An iSpot survey of 500 viewers found that Anthropic's Super Bowl ad had a likeability score in the bottom 3% compared wi",
+        "matched": true
+      },
+      {
+        "fp": "992a523298ef8797",
+        "claim": "Google DeepMind CEO Demis Hassabis stated that Google currently has no plans to bring advertising to the Gemini app.",
+        "matched": true
+      },
+      {
+        "fp": "784904c7c750731c",
+        "claim": "Ad Week reported in December that Google told advertising clients that ad placements in Gemini were targeted for a 2026 ",
+        "matched": true
+      },
+      {
+        "fp": "88a52b90cebe4cb1",
+        "claim": "Google is already offering ads in AI search, including a new feature called 'direct offers' that presents personalized d",
+        "matched": true
+      },
+      {
+        "fp": "ceeaf46cde950bfa",
+        "claim": "Google may see an opportunity to win margin against ChatGPT by holding out longer on ads, but it is unlikely that Gemini",
+        "matched": true
+      },
+      {
+        "fp": "6e81385ff8a77386",
+        "claim": "OpenAI announced it will begin testing ads in the free and Go tiers of ChatGPT in the coming weeks, with ads clearly lab",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": {
+    "target_page": "Advertising.md",
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "Immersive advertising in extended reality environments and interactive connected TV (CTV) formats represent emerging channels with distinct creative and measurement paradigms.",
+      "content": "\n\n- ### Recent Developments\n  - The integration of advertising into generative AI interfaces has become a focal point of industry strategy. OpenAI announced it will begin testing ads in the free and Go tiers of ChatGPT in the coming weeks, with ads clearly labeled and separate from responses, while Pro, Business, and Enterprise tiers will remain ad-free. In response, Google DeepMind CEO Demis Hassabis stated that Google currently has no plans to bring advertising to the Gemini app, noting it is interesting that OpenAI went for them so early. However, Ad Week reported in December that Google told advertising clients that ad placements in Gemini were targeted for a 2026 rollout, based on discussions with at least two anonymous clients. Meanwhile, Google is already offering ads in AI search, including a new feature called 'direct offers' that presents personalized discounts in AI mode, as AI mode and search in Gemini converge. Analysts suggest Google may be holding out longer on ads to win margin against ChatGPT, though it is unlikely that Gemini's free version will remain ad-free forever.\n\n  - In traditional broadcast advertising, performance metrics continue to highlight the importance of creative resonance. An iSpot survey of 500 viewers found that Anthropic's Super Bowl ad had a likeability score in the bottom 3% compared with Super Bowl ads over the past 5 years, with purchase intent 24% below Super Bowl norms."
+    },
+    "provenance": {
+      "assertion_fingerprints": [
+        "6e81385ff8a77386",
+        "784904c7c750731c",
+        "7d492cb500e7c2a0",
+        "88a52b90cebe4cb1",
+        "992a523298ef8797",
+        "ceeaf46cde950bfa"
+      ],
+      "source_episodes": [
+        "did-the-super-bowl-as-make-americans-like-ai-any-more",
+        "google-says-no-ads-planned-for-gemini",
+        "how-to-make-chatgpt-ads-not-suck"
+      ]
+    },
+    "scores": {
+      "rubric_a_improvement": 1.0,
+      "rubric_b_improvement": 1.0,
+      "completeness": 1.0
+    }
+  }
+}

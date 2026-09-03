@@ -30,14 +30,24 @@ during the bounded transition window (VAULT-corpus-format Invariant 6).
 
 ## Quick path
 
-1. Parse / edit blocks with the shipped Python in `src/`:
-   - `ontology_parser.py` — read OntologyBlock structures
-   - `ontology_modifier.py` — field-preserving edits
-   - `owl2_validator.py` — OWL2 DL validation
+1. Parse / edit blocks with the `ontology-tools` Rust binary
+   (`services/ontology-tools`, built from `agentbox.toml`'s Rust toolchain):
+   - `ontology-tools parse <file>` — read OntologyBlock structures, print as JSON
+   - `ontology-tools modify <file> --set field=value` — field-preserving
+     edits with automatic backup and OWL2-validated rollback
+   - `ontology-tools validate <file>` — OWL2 functional-syntax axiom validation
+   - `ontology-tools roundtrip <file>` — verify the zero-data-loss
+     parse/write/parse contract for a specific file
 2. Author blocks to the gold-standard shape and export to a single
    `output/ontology.ttl` (git handles versioning — no `-v14` filenames).
 3. Keep `@prefix` declarations at line 1 and `source-domain` to one of the 6
    valid prefixes below.
+
+Note: `ontology-tools` parses vault markdown `OntologyBlock` property blocks
+and validates OWL2 *functional-syntax* axioms embedded in ```clojure fences —
+it is not an OWL/DL parser or reasoner. TTL export/conversion is a separate
+concern, handled by the `Ontology-Tools/tools/converters/convert-to-turtle.py`
+converter referenced below.
 
 ## Valid source-domain prefixes
 
@@ -53,6 +63,7 @@ the error→fix catalog, and cross-cutting-domain rules live in
 ## References
 
 - Detailed authoring & TTL rules: [references/ttl-authoring.md](references/ttl-authoring.md)
+- OntologyBlock parser/validator/modifier binary: `services/ontology-tools` (standalone Rust crate; `cd services/ontology-tools && cargo run -- --help`)
 - Converter: `Ontology-Tools/tools/converters/convert-to-turtle.py`
 - Parser: `Ontology-Tools/tools/lib/ontology_block_parser.py`
 - Loader: `Ontology-Tools/tools/lib/ontology_loader.py`

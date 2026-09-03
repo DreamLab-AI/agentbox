@@ -1,5 +1,0 @@
-# Web Summary MCP Server Dependencies
-mcp>=1.0.0
-pydantic>=2.0.0
-httpx>=0.25.0
-youtube-transcript-api>=0.6.0

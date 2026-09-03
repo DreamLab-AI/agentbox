@@ -5,18 +5,22 @@ description: >
   resizing, cropping, filtering, batch operations, and image metadata extraction.
   Use for thumbnail generation, image optimisation, format conversion, watermarks,
   and bulk image processing tasks.
-version: 2.0.0
+version: 2.1.0
 author: agentbox-claude
 mcp_server: true
-protocol: fastmcp
-entry_point: mcp-server/server.py
+protocol: rmcp
+entry_point: agentbox-mcp imagemagick
 dependencies:
   - imagemagick
 ---
 
 # ImageMagick Skill
 
-Comprehensive image processing using ImageMagick via FastMCP protocol.
+Comprehensive image processing using ImageMagick via the `imagemagick` subcommand
+of `agentbox-mcp` — a single Rust `rmcp` binary (`services/agentbox-mcp`) that
+also serves the `web-summary` and `gemini-url-context` skills. It replaces the
+former Python FastMCP server one-for-one: same tool names, parameters, and JSON
+response shapes.
 
 ## When to Use This Skill
 

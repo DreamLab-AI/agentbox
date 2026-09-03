@@ -728,27 +728,25 @@
           pyhanko        # PDF digital signatures (PAdES B-B/B-T/B-LT/B-LTA, CAdES, LTV, PKCS#11)
           pillow         # visible signature appearance / image stamps
           fonttools      # opentype text rendering in the signature panel
-          # Podcast knowledge ingest pipeline (skills/podcast-knowledge-ingest,
-          # skills/podcast-bulk-ingest): yt-dlp downloads transcripts, rdflib
-          # validates/builds the ontology, and requests calls the Loom.
-          yt-dlp         # YouTube transcript/metadata downloader
-          rdflib         # RDF/OWL ontology pipeline — validate, build, query
+          # yt-dlp is still the transcript downloader the podcast pipeline
+          # shells out to (now from the Rust `podcast-ingest`, same binary and
+          # same arguments), and skills/youtube-transcript-archiver needs it too.
+          # rdflib no longer serves the podcast pipeline — that pipeline's
+          # Python is retired — but ontology/test_decision_layer.py still needs
+          # it for the TTL EL-profile guard, so it stays on that basis.
+          yt-dlp         # YouTube transcript/metadata downloader (podcast-ingest, archiver)
+          rdflib         # TTL EL-profile guard — ontology/test_decision_layer.py
         ]);
 
-        # Closed dependency env for the imagemagick-mcp service (Q14).
-        # Previously the supervisor block did `pip install --target=/tmp` at
-        # boot, downloading from PyPI on every container start — violates
-        # PRD-002 §9 (hermetic closure). Bake the deps in.
-        imagemagickMcpPythonEnv = pkgs.python312.withPackages (ps: with ps; [
-          pip
-          mcp
-          httpx
-          pydantic
-        ]);
+        # imagemagickMcpPythonEnv is gone. It existed only to give
+        # skills/imagemagick/mcp-server/server.py a hermetic mcp/httpx/pydantic
+        # closure (Q14, replacing a boot-time `pip install --target=/tmp` that
+        # violated PRD-002 §9). That server.py is now `agentbox-mcp imagemagick`
+        # — a Rust binary whose closure is its own — so the env has no consumer
+        # and the image sheds a whole Python dependency set from the boot path.
 
         pythonBasePackages = [
           pythonRuntimeEnv
-          imagemagickMcpPythonEnv
         ];
 
         # Stable toolchain for general Rust development + WASM + static musl binaries
@@ -1205,6 +1203,34 @@
         # retired by the 2026-09-02 legacy audit). Ungated: it replaces baseline
         # tooling that was always present. See lib/agentbox-ops.nix.
         agentboxOpsPackages = [ (import ./lib/agentbox-ops.nix { inherit lib pkgs; }) ];
+        # ---------------------------------------------------------------------------
+        # Knowledge-tool binaries — the Rust replacements for the skill Python
+        # retired by the 2026-09-02 Python-legacy audit (sections 2b/2c).
+        # Ungated on purpose: the Python these replace was unconditional, baked
+        # into every image alongside the skills themselves, so the faithful
+        # replacement is unconditional too. No new manifest gate, and therefore
+        # no system-manifest.js catalogue entry (ADR-039 applies to *optional*
+        # features).
+        #   ontology-tools  <- skills/ontology-core/src + skills/ontology-enrich/src
+        #   podcast-ingest  <- skills/podcast-{knowledge,bulk}-ingest (weekly cron)
+        #   agentbox-mcp    <- the imagemagick / web-summary / gemini-url-context
+        #                      Python MCP servers (one rmcp binary, 3 subcommands)
+        #   skill-tools     <- ui-ux-pro-max BM25, wardley-maps, docs-alignment
+        # Each crate is a self-contained [workspace] on crates.io deps with
+        # reqwest pinned to rustls-tls, so none of them add an openssl closure.
+        # ---------------------------------------------------------------------------
+        ontologyToolsPkg = import ./lib/ontology-tools.nix { inherit lib pkgs; };
+        podcastIngestPkg = import ./lib/podcast-ingest.nix { inherit lib pkgs; };
+        # Bound by name as well as listed: the supervised [program:imagemagick-mcp]
+        # block below runs this same derivation's binary.
+        agentboxMcpPkg   = import ./lib/agentbox-mcp.nix   { inherit lib pkgs; };
+        skillToolsPkg    = import ./lib/skill-tools.nix    { inherit lib pkgs; };
+        knowledgeToolPackages = [
+          ontologyToolsPkg
+          podcastIngestPkg
+          agentboxMcpPkg
+          skillToolsPkg
+        ];
 
         # Render a config.toml for nostr-rs-relay from manifest fields.
         # Consumed by the supervisor block at /etc/agentbox/nostr-relay.toml.
@@ -1351,6 +1377,7 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           ++ [ agentboxManifestPkg ]
           ++ dreamEnginePackages
           ++ agentboxOpsPackages
+          ++ knowledgeToolPackages
           ++ nagualQePackages
           # rune markdown TUI — gated on [vault].tui = "rune" (ADR-2029)
           ++ runePackages
@@ -1857,8 +1884,8 @@ stderr_logfile=/var/log/https-bridge.error.log
 ${lib.optionalString (mediaCfg.imagemagick or false) ''
 
 [program:imagemagick-mcp]
-command=${imagemagickMcpPythonEnv}/bin/python3 -u /opt/agentbox/skills/imagemagick/mcp-server/server.py
-directory=/opt/agentbox/skills/imagemagick/mcp-server
+command=${agentboxMcpPkg}/bin/agentbox-mcp imagemagick
+directory=/home/devuser/workspace
 user=devuser
 environment=HOME="/home/devuser"
 autostart=true
@@ -2086,7 +2113,7 @@ stderr_logfile=/var/log/tmux-autostart.error.log
 [program:podcast-cron]
 command=${supercronicPkg}/bin/supercronic -split-logs /home/devuser/workspace/project/agentbox/skills/podcast-knowledge-ingest/crontab
 user=devuser
-environment=HOME="/home/devuser",PATH="${pythonRuntimeEnv}/bin:/usr/local/bin:/bin:/usr/bin"
+environment=HOME="/home/devuser",PATH="${podcastIngestPkg}/bin:${pythonRuntimeEnv}/bin:${pkgs.coreutils}/bin:${pkgs.nodejs_22}/bin:/usr/local/bin:/bin:/usr/bin"
 autostart=true
 autorestart=true
 startsecs=0

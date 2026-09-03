@@ -24,19 +24,21 @@ Skip in favour of a more direct path when:
 
 ## Prerequisites
 
-- Python 3.10+ with pip; Node.js 18+ (Mermaid validation); Git.
+- `docs-alignment` and sibling `docs-*` binaries (Rust, built from
+  `services/skill-tools`) on `PATH`; Python 3.10+ (only for the
+  still-Python `archive_working_docs.py`/`scan_stubs.py` steps); Node.js
+  18+ (Mermaid validation); Git.
 - A git repo with docs in `/docs` and a codebase to validate against.
 - Claude Code Task tool (only for swarm orchestration).
 
 ## Quick start
 
-Script path — run the whole alignment in one command:
+Binary path — run the whole alignment in one command:
 
 ```bash
-pip install -r scripts/requirements.txt
 npm install -g @mermaid-js/mermaid-cli
 
-python scripts/docs_alignment.py \
+docs-alignment \
   --project-root /path/to/project \
   --docs-dir ./docs \
   --codebase-dir ./src \
@@ -59,7 +61,7 @@ Individual validators (each supports `--json`):
 Full flag set for a strict pass:
 
 ```bash
-python scripts/docs_alignment.py --project-root . --docs-dir ./docs \
+docs-alignment --project-root . --docs-dir ./docs \
   --codebase-dir ./src --output-dir ./docs/working \
   --full-validation --git-compliant --uk-english --diataxis-strict
 ```

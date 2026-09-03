@@ -6,12 +6,14 @@
 
 #### Python Dependencies Not Found
 
-**Symptoms**: `ModuleNotFoundError` when running scripts
+**Symptoms**: `ModuleNotFoundError` when running the still-Python
+`archive_working_docs.py` / `scan_stubs.py` steps (the other five
+validators are Rust binaries with no Python dependency)
 
 **Solution**:
 ```bash
 cd <agentbox>/skills/docs-alignment
-pip install -r scripts/requirements.txt
+pip install -r requirements.txt
 ```
 
 #### Mermaid CLI Not Available
@@ -40,7 +42,7 @@ mmdc --version  # Verify installation
 ls -la /path/to/project/docs
 
 # Run with explicit docs directory
-python validate_links.py --root /path/to/project --docs-dir docs
+docs-validate-links --root /path/to/project --docs-dir docs
 ```
 
 #### Mermaid Diagrams All Invalid
@@ -68,7 +70,7 @@ npm install -g @mermaid-js/mermaid-cli
 **Solution**:
 ```bash
 # Increase minimum lines threshold
-python detect_ascii.py --root docs --min-lines 5
+docs-detect-ascii --root docs --min-lines 5
 ```
 
 ### Permission Issues
@@ -112,14 +114,14 @@ chmod 644 docs/DOCUMENTATION_ISSUES.md
 **Solutions**:
 ```bash
 # Skip external URL checks
-python validate_links.py --no-external
+docs-validate-links --root .  # omit --check-external to skip external URL checks
 
 # Use exclusion patterns
-python validate_links.py --ignore node_modules target .git
+docs-validate-links --ignore node_modules target .git
 
 # Run individual scripts instead of full alignment
-python validate_links.py --root .
-python check_mermaid.py --root docs
+docs-validate-links --root .
+docs-check-mermaid --root docs
 ```
 
 #### Memory Errors
@@ -129,11 +131,11 @@ python check_mermaid.py --root docs
 **Solutions**:
 ```bash
 # Process in batches
-python validate_links.py --batch-size 100
+docs-validate-links --batch-size 100
 
 # Run scripts individually
-for script in validate_links.py check_mermaid.py detect_ascii.py; do
-  python "$script" --root . --output "${script%.py}.json"
+for bin in docs-validate-links docs-check-mermaid docs-detect-ascii; do
+  "$bin" --root . --output "${bin}.json"
 done
 ```
 
@@ -172,10 +174,10 @@ npx claude-flow@alpha memory get "test/key"
 
 ```bash
 # Python scripts
-python validate_links.py --root . --verbose
+docs-validate-links --root . --verbose
 
 # View detailed logs
-python docs_alignment.py --project-root . --debug
+docs-alignment --project-root . --debug
 ```
 
 ### Check Intermediate Reports
@@ -192,7 +194,7 @@ cat .doc-alignment-reports/link-report.json | jq .
 
 ```bash
 # Check if report is valid JSON
-python -m json.tool .doc-alignment-reports/link-report.json
+python3 -m json.tool .doc-alignment-reports/link-report.json
 
 # Pretty print
 jq . .doc-alignment-reports/link-report.json
