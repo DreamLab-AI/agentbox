@@ -65,9 +65,11 @@ repair. Contraband is always reported, and whether the tool then rewrites it is
 a policy question with its own default, so "tell me but do not touch it" is
 always a position you can take.
 
-The defaults differ per carrier, and the ones that surprise people are that
-homoglyphs and soft hyphens are reported but **not** rewritten, while exotic
-whitespace **is**. The full table is in [unicode.md](references/unicode.md).
+The defaults differ per carrier. A default clean rewrites **only** the
+zero-width, tag-block and variation-selector contraband; exotic whitespace,
+homoglyphs and soft hyphens are reported and left in place, because each has a
+legitimate reading that no codepoint inspection can rule out. The full table is
+in [unicode.md](references/unicode.md).
 
 **Never touches**
 
@@ -83,9 +85,9 @@ NFKC normalisation of user-facing prose, which is lossy by design.
 
 **Scope of "lossless" and "never touches pixels".** Both describe the default
 path: a container-only operation that succeeds, with pixel removal disabled.
-`clean-image --remove-pixel ctrlregen|diffusion` is outside it by design, since
-it hands the file to a diffusion harness that rewrites pixels deliberately. It
-is lossy, off by default, and not verifiable by diff.
+`clean-image --remove-pixel ctrlregen|diffusion` is outside it by design: it
+hands the file to a diffusion harness that rewrites pixels deliberately, lossily
+and unverifiably.
 
 **What a clean report means.** A clean `inspect-*` is evidence that no known
 embedded carrier remains. It is not proof of anonymity or of complete provenance
@@ -227,13 +229,13 @@ Load one on demand. Do not hold all of them in context at once.
 - [UK English](references/uk-english.md): the VarCon-backed subsystem. Span
   exclusion, the Oxford flag, the always-ise and always-yse sets, sense pairs,
   the organisation gazetteer, and what stays judgement-only forever.
-- [Unicode](references/unicode.md): carrier classes and what each is
-  legitimately for, the protected sets, payload decoding, the split bidi policy
-  for prose against source code, and why NFC and never NFKC.
+- [Unicode](references/unicode.md): carrier classes, the two-switch law and the
+  per-carrier defaults (X1a), protected sets, payload decoding, the split bidi
+  policy, and why NFC and never NFKC.
 - [Provenance](references/provenance.md): the 2026 threat model. Vendor
   watermarks stated honestly, container metadata surgery, durable Content
-  Credentials, pixel-domain watermarks, the torch harnesses and what they
-  actually prove, aggregate auditing, and the HTTP service.
+  Credentials, pixel-domain watermarks, what the torch harnesses actually prove,
+  the ethics position (P11), aggregate auditing and the HTTP service.
 - [Narrative tells](references/narrative-tells.md): structural defaults in
   fiction. Thematic over-explanation, embodied emotion, single-track plots, tidy
   resolutions, per-model fingerprints. Read when sanitising stories.

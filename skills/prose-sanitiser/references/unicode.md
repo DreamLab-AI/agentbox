@@ -34,10 +34,17 @@ position you can take.
 | Carrier | Reported | Rewritten by default | Switch |
 |---|---|---|---|
 | Zero-width family, tag block, variation selectors, Hangul fillers | Always | Yes. Contraband with no legitimate reading | |
-| Exotic whitespace (`U+00A0`, `U+202F`, the rest) | Always | Yes, to `U+0020`. `U+202F` is a documented GPT-4o-class artefact, so surfacing it is the point | `--no-normalize-spaces` |
+| Exotic whitespace (`U+00A0`, `U+202F`, the rest) | Always. `U+202F` is a documented GPT-4o-class artefact, so surfacing it is the point | **No.** A no-break space is load-bearing typography: it holds *10 km* and *Figure 3* together, and French orthography requires one before `;` `:` `!` `?`. Alone among the rewrites here, a diff cannot show the change, because both characters render as a space | `normalize_spaces` |
 | Homoglyphs and mixed script | Always, and the advice names the ASCII it is confusable with | **No.** Folding rewrites letters inside words, and would destroy a security note quoting an attack string verbatim | `--aggressive-homoglyphs` |
 | `U+00AD` soft hyphen | Always | **No.** A typesetter's hyphenation hint as often as a carrier, and nothing in the codepoint says which | `strip_soft_hyphen` |
 | Load-bearing invisibles: emoji ZWJ glue, Indic and Persian joiners, flag tags | **No.** They are not contraband | Never | `--strip-emoji-glue`, for auditing a document you already distrust |
+
+> **One caveat, as of 2026-09-03.** The library preserves whitespace by default
+> (`CleanOptions::normalize_spaces` is `false`), but the `clean-text` binary
+> still carries only a negative `--no-normalize-spaces` flag and therefore
+> normalises unless you pass it. The two surfaces disagree while the flag is
+> being inverted to a positive opt-in. Treat the library default as the intended
+> contract.
 
 `TextPolicy` mirrors `CleanOptions` field for field, defaults included, so
 `check_text` is a truthful preview of `clean_text`: applying the edits the check
@@ -170,8 +177,10 @@ So: never apply NFKC to user-facing prose. `clean-text --nfkc` exists for the
 canonicalisation case and is off by default. If you reach for it on prose, you
 are changing the author's characters, not cleaning them.
 
-Exotic spaces are rewritten to `U+0020` by default, which is a deliberate
-narrower choice than NFKC. `--no-normalize-spaces` turns even that off.
+Rewriting exotic spaces to `U+0020` is available as a deliberately narrower
+choice than NFKC, but it is **not** a default: see X1a. A no-break space is
+load-bearing typography, and folding it is the one rewrite in this layer a diff
+cannot show, since both characters render as a space.
 
 ## X7. What this layer cannot see
 
