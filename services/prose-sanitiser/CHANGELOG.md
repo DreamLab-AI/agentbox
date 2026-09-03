@@ -97,13 +97,33 @@ Landed on `rust/prose-sanitiser-hardening` during the 2026-09-03 hardening pass.
   `--explain-rules` to print the rule table with its tiers, dates and sources so
   a decayed lexical rule is visible rather than silent.
 
+### Measured
+
+The capability matrix stopped being a claim and started being a number.
+
+- Homoglyph detection on the SilverSpeak fixtures at 5, 10 and 20 per cent
+  substitution: precision 1.0000, recall 1.0000. Legitimate-Unicode controls
+  (emoji ZWJ, Devanagari, Persian, Hebrew-Latin, BOM, subdivision flags) produce
+  zero strips and round-trip byte-identical.
+- Container surgery: SHA-256 byte-identical round trips, pixel-exact images with
+  the compressed `IDAT` and entropy-coded scan carried across verbatim, OOXML
+  compression and entry order preserved, and no recoverable `/Info` left by a
+  PDF incremental update.
+- UK English on 413,746 words of British technical prose: 64 fixable findings,
+  all hand-inspected, **false-positive rate 0 of 64**; and zero findings on the
+  trap set in both `-ise` and Oxford mode. No published study measured detector
+  or linter false positives on British English before this.
+
 ### Still open
 
+- **The licence position is unresolved, and it blocks publication.** Every crate
+  declares `MIT OR Apache-2.0`, no `LICENSE-MIT` or `LICENSE-APACHE` file exists
+  anywhere, the repository root is AGPL-3.0, and ADR-016 (2026-05-16) records
+  that all first-party code is AGPL-3.0-only with MIT designations eliminated
+  from sub-package manifests. Ten `services/*` crates contradict that ADR. This
+  is a copyright-holder decision. See the workspace README.
 - The `sanitise` umbrella pass is declared in `crates/cli/src/lib.rs` but has no
-  module file yet.
-- No published false-positive rate on British English. Until the UK human-prose
-  corpus exists, the sense-dependent half of the UK layer is advice, not
-  correction, and the tier system is what enforces that.
+  module file yet, so the CLI crate does not build.
 
 ## [0.1.0] - 2026-09-03
 

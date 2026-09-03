@@ -187,17 +187,30 @@ A UK finding carries a tier and, only in the top two tiers, a replacement:
 Nothing in the UK layer is ever `certain-mechanical`. Spelling is not a
 codepoint classification and no diff can prove it right.
 
-## U9. What stays judgement-only forever
+## U9. What is measured, and what stays judgement-only
 
-There is a genuine evidence gap here worth stating plainly. No published study
-measures detector or linter false positives on British English specifically; the
-best-known false-positive study,
+The only interesting number for a linter is how often it is wrong. Run it over
+prose already known to be good British English and every finding is, by
+construction, a false positive.
+
+Measured September 2026, on this implementation:
+
+| Corpus | Result |
+|---|---|
+| The trap set: *World Health Organization*, *a driving licence*, *to license a doctor*, *the gas meter read 12 metres*, *the computer program*, *sulfur dioxide*, *the dialog box* | **Zero findings**, in both `-ise` and Oxford mode. Not merely zero auto-fixes: silence |
+| 413,746 words of British technical documentation, 242 documents, three house terms declared | 118 findings, 64 of them fixable. All 64 hand-inspected and every one a genuine Americanism (*behavior*, *math*, *initialize*, *defense*, *catalog*, *neighbors*, *modeled*, *dialing*): a **false-positive rate of 0 out of 64**. The other 54 are judgement calls on *program* and *license* in a technical register, reported at low confidence and never fixed |
+
+Rates, per 10,000 words: `us-spelling` 1.55, `us-spelling-sense` 1.31.
+
+That is worth putting beside the wider evidence. The best-known false-positive
+study of AI-text detectors,
 [Liang et al. 2023 (*Patterns*)](https://arxiv.org/abs/2304.02819), found a 61.3
 per cent average false-positive rate on TOEFL essays across seven detectors, all
-human-written, which is what a vocabulary-driven rule does to a writer it was
-not tuned for.
+human-written, which is what a vocabulary-driven rule does to a writer it was not
+tuned for. Nothing comparable had been published for British English, which is
+why the number above was worth producing.
 
-Until a UK human-prose corpus exists and a per-rule false-positive rate is
-published against it, the honest position is that the sense-dependent half of
-the UK layer is advice, not correction. The tier system encodes that rather than
-relying on anyone remembering it.
+It does not, however, promote the sense-dependent half of the layer. Those 54
+findings are correct *as reports* and would have been wrong as corrections. The
+tier system is what keeps them reports, and it does so structurally rather than
+by anyone remembering to be careful.

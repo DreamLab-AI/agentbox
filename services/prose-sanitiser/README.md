@@ -91,6 +91,28 @@ actions) and the SARIF exporter without any of them reimplementing a rule.
 
 A fix is represented as data, never as pre-applied text.
 
+## Measured
+
+A capability matrix is a claim until someone counts. Measured September 2026:
+
+| What | Result |
+|---|---|
+| Homoglyph detection, SilverSpeak fixtures at 5, 10 and 20 per cent substitution | Precision 1.0000, recall 1.0000 |
+| Legitimate-Unicode controls: emoji ZWJ, Devanagari, Persian, Hebrew-Latin, BOM, the three subdivision flags | Zero strips, byte-identical round trip |
+| Container surgery, PNG/JPEG/WebP with no provenance marks | SHA-256 byte-identical; images pixel-exact, with the compressed `IDAT` and entropy-coded scan carried across verbatim |
+| PDF metadata written by an incremental update | No recoverable original `/Info` anywhere in the output byte stream |
+| UK English, the trap set (*gas meter*, *to license a doctor*, *World Health Organization*, *sulfur dioxide*, *dialog box*) | Zero findings, in both `-ise` and Oxford mode |
+| UK English, 413,746 words of British technical prose | 64 fixable findings, all hand-inspected, **false-positive rate 0 of 64** |
+
+The last row is the one worth having. No published study measured detector or
+linter false positives on British English before this, which is why the crate
+went and produced the number rather than citing one.
+
+Two things are deliberately *not* claimed. A clean scan is not evidence of human
+authorship. And the slop rules report TPR at 1 per cent FPR rather than AUROC,
+because high AUROC routinely coexists with a near-zero true-positive rate at the
+thresholds any real deployment needs.
+
 ## Building and testing
 
 ```bash
@@ -102,7 +124,24 @@ cargo doc --workspace --no-deps
 
 ## Licence
 
-MIT OR Apache-2.0, at your option.
+> **Open decision, and a hard publication blocker.** Every crate here declares
+> `license = "MIT OR Apache-2.0"`, but **no `LICENSE-MIT` or `LICENSE-APACHE`
+> file exists anywhere in this workspace or the repository**, and
+> [ADR-016](../../docs/adr/) (2026-05-16, licence consolidation) records that all
+> first-party code is **AGPL-3.0-only**, having "eliminated remaining MIT
+> designations from sub-package manifests". The repository root `LICENSE` is
+> AGPL-3.0. Ten `services/*` crates currently declare `MIT OR Apache-2.0` against
+> that ADR, and `docs/developer/licensing.md` has no entry for any of them.
+>
+> Relicensing is the copyright holder's call, not a detail to settle in a
+> checklist. Nothing should be published to crates.io until this resolves one of
+> three ways: the crates become AGPL-3.0 per ADR-016 and the publication plan is
+> dropped; a new ADR carves these leaf crates out as `MIT OR Apache-2.0`, the two
+> licence files are added, and the matrix in `docs/developer/licensing.md` is
+> updated; or the crates move to their own repository under their own licence.
+
+The rest of this section describes the position the crates *declare*, which is
+what the dependency choices were made to support.
 
 Dependency licences are kept clean deliberately. Avoided: `rexiv2` (GPL-3.0),
 `mupdf-rs` (AGPL-3.0), LibreOffice en_GB Hunspell dictionaries (GPL/LGPL/MPL

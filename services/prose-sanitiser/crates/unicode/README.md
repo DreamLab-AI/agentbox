@@ -12,7 +12,7 @@ codepoint and its context, so a strip is verifiable by diffing the output.
 hidden* is the useful half.
 
 - **Variation-selector chains** in [Paul Butler's byte
-  encoding](https://paulbutler.org/2025/smuggling-arbitrary-data-through-an-emoji/) —
+  encoding](https://paulbutler.org/2025/smuggling-arbitrary-data-through-an-emoji/),
   the carrier used in the real *os-info-checker-es6* npm supply-chain attack. Chains
   after non-emoji bases are caught too.
 - **Tag-block ASCII** (`U+E0020..=U+E007E`), distinguished from the legitimate
@@ -24,8 +24,8 @@ base.** No well-formed sequence stacks two, so a chain of two or more is mechani
 certain, and a lone selector is deliberately left alone.
 
 **Detects homoglyph and mixed-script substitution** via [UTS
-#39](https://www.unicode.org/reports/tr39/) — `confusables.txt` skeletons,
-Identifier_Status and mixed-script detection — through the `unicode-security` crate,
+#39](https://www.unicode.org/reports/tr39/): `confusables.txt` skeletons,
+Identifier_Status and mixed-script detection, through the `unicode-security` crate,
 rather than a hand-written table.
 
 **Applies a bidi policy that depends on context.** Every control is contraband in
@@ -36,7 +36,7 @@ that genuinely contains right-to-left script, with unbalanced and nested-unbalan
 nesting reported either way.
 
 **Classifies invisible and format-class carriers**: the zero-width family, exotic
-whitespace, soft hyphen, Hangul fillers, private-use codepoints.
+whitespace, Hangul fillers, private-use codepoints.
 
 ## Never touches
 
@@ -44,10 +44,14 @@ A strip here corrupts a real document, so the fixture suite treats any of these 
 hard failure rather than a tuning question.
 
 - `U+200D` inside a well-formed emoji ZWJ sequence.
-- `Mn`/`Mc` combining marks — only `Cf`-class controls are ever candidates.
+- `Mn`/`Mc` combining marks. Only `Cf`-class controls are ever candidates.
 - ZWNJ/ZWJ after an Indic virama, or between Persian morphemes.
 - Balanced bidi controls in genuine RTL prose.
 - `U+FEFF` at offset 0, where it is a BOM and only there.
+- `U+00AD` SOFT HYPHEN, unless you ask. It is invisible unless a line break falls on
+  it, which makes it a legitimate hyphenation hint and a known carrier in equal
+  measure. It is reported and never auto-fixed; `CleanOptions::strip_soft_hyphen`
+  is the opt-in.
 - Regional-indicator pairs and RGI emoji tag sequences.
 - NFKC normalisation of user-facing prose. It is lossy by design ([UAX
   #15](https://www.unicode.org/standard/reports/tr15/tr15-21.html)); NFC only, and only
@@ -69,8 +73,11 @@ assert_eq!(surrogate::to_lossy_string(&clean), "invisible");
 assert_eq!(stats.removed_count, 2);
 ```
 
-Every rule this crate emits is `ConfidenceTier::CertainMechanical` and is published in
-`RULES` for the SARIF driver table.
+Every rule this crate emits is published in `RULES` for the SARIF driver table. All
+are `ConfidenceTier::CertainMechanical` except `unicode-soft-hyphen`, which is
+`LowConfidenceJudgement` and therefore report-only: nothing in the codepoint tells you
+whether a given soft hyphen is a hyphenation hint or a carrier, so it never carries a
+fix.
 
 ## Honest coverage
 
@@ -80,8 +87,8 @@ Every rule this crate emits is `ConfidenceTier::CertainMechanical` and is publis
 Measured against the 71-entry hand table it replaces: the skeleton reproduces **all 19
 Cyrillic entries exactly** and covers thousands of codepoints besides (Greek, Armenian,
 Cherokee, mathematical alphanumerics). But `confusables.txt` folds only **30 of 52
-fullwidth Latin letters** — width folding is NFKC's remit and the standard omits it
-deliberately — so one mechanical override (`codepoint - 0xFEE0`, applied only where
+fullwidth Latin letters**, because width folding is NFKC's remit and the standard
+omits it deliberately, so one mechanical override (`codepoint - 0xFEE0`, applied only where
 both ends are alphanumeric) closes that gap. That is the only override maintained;
 every other prototype comes from the standard's own data.
 
@@ -97,8 +104,8 @@ Two further limits, stated rather than hidden:
 ## Measured
 
 On the SilverSpeak homoglyph fixtures (5, 10 and 20 per cent substitution rates):
-**precision 1.0000, recall 1.0000**. The legitimate-content controls — emoji ZWJ,
-Devanagari, Persian, Hebrew-Latin, BOM, the three subdivision flags — produce **zero
+**precision 1.0000, recall 1.0000**. The legitimate-content controls (emoji ZWJ,
+Devanagari, Persian, Hebrew-Latin, BOM, the three subdivision flags) produce **zero
 strips** and round-trip byte-identical.
 
 ## What it cannot do
@@ -110,3 +117,31 @@ without the vendor key, and no amount of codepoint inspection can see them.
 ## Licence
 
 MIT OR Apache-2.0.
+
+## Publishing checklist
+
+Publication candidate. Before `cargo publish`:
+
+- [ ] **Licence position settled.** `Cargo.toml` declares `MIT OR Apache-2.0`,
+      but no `LICENSE-MIT` or `LICENSE-APACHE` file exists anywhere in this
+      workspace, and ADR-016 (2026-05-16, licence consolidation) records that all
+      first-party code is AGPL-3.0-only with "remaining MIT designations
+      eliminated from sub-package manifests". Ten `services/*` crates currently
+      contradict that ADR. This is an owner decision and a hard publication
+      blocker: see the workspace README
+- [x] `description`, `repository`, `keywords`, `categories`, `readme` set
+- [x] Pure Rust: no C dependencies, no subprocesses, no network
+- [x] Crate-level `//!` docs carrying the capability matrix rows
+- [x] Legitimate-Unicode fixture suite green: emoji ZWJ sequences, Indic virama
+      forms, Persian compounds, RTL prose, BOMs, regional-indicator pairs and the
+      three subdivision flags. Zero strips, byte-identical round trip. Any strip
+      there is a hard failure, not a tuning question
+- [x] Homoglyph detection measured on the SilverSpeak 5, 10 and 20 per cent
+      fixtures: precision 1.0000, recall 1.0000
+- [x] Partial UTS #39 coverage stated rather than hidden: `unicode-security`
+      0.1.2 ships Unicode 16.0.0 data against UTS #39 revision 32 (Unicode
+      17.0.0), and the one maintained override for fullwidth Latin folding is
+      documented
+- [ ] `cargo doc --no-deps` clean, with no warnings
+- [ ] `cargo publish --dry-run` clean (blocked until `prose-sanitiser-core` is
+      published, since the path dependency must resolve)
