@@ -129,10 +129,9 @@ flag, `--format {text,json,jsonl,sarif}`, with `--json` kept as an alias for
 ## Quick path
 
 0. **Triage substance before style.** If a piece reads hollow rather than merely
-   slopped, generic claims with no mechanism and nothing only this author could
-   say, start at [editorial-method.md](references/editorial-method.md), or
+   slopped, start at [editorial-method.md](references/editorial-method.md), or
    [review-and-cowrite.md](references/review-and-cowrite.md) to review or
-   interview. The steps below remove tells. They cannot supply a missing point.
+   interview. The steps below remove tells; they cannot supply a missing point.
 1. **Strip invisible marks.** `inspect-text` then `clean-text`. Lossless,
    deterministic, always safe, always first.
 2. **Scan for stylistic tells.** `slop-scan` catches what a regex can see.
@@ -140,9 +139,8 @@ flag, `--format {text,json,jsonl,sarif}`, with `--json` kept as an alias for
    [destructive-audit.md](references/destructive-audit.md).
 4. **Do the human read.** Narrative defaults, altitude, voice, and whether a
    sentence is actually true. The scanner is blind to all four.
-5. **Optional rewrite.** `rewrite-text` if you want a plain-English pass or you
-   accept a lossy paraphrase. Run it last, because it changes wording after
-   every deliberate editorial choice is made.
+5. **Optional rewrite.** `rewrite-text` for a plain-English pass, or a lossy
+   paraphrase. Run it last: it changes wording after every editorial choice.
 6. **Strip file metadata.** `clean-file` on the exported artefacts, before
    publication.
 
@@ -158,9 +156,7 @@ clean-text <path> --in-place       # overwrite, keeping a .bak
 slop-scan <path>                   # full report plus slop score
 slop-scan <path> --severity high   # strongest signals only
 slop-scan <path> --format sarif    # for GitHub code scanning
-slop-scan <path> --structural      # add whole-document structural measures
-slop-scan <path> --explain-rules   # print the rule table with tiers and sources
-slop-scan <path> --disable RULE    # skip one rule; repeatable
+# also --structural, --explain-rules, --disable RULE: see output-and-checklist.md
 
 # Everything at once, on one confidence scale
 sanitise <path>                    # report; add --fix, --write or --diff
@@ -182,13 +178,13 @@ rewrite-text <path> --strength paraphrase  # default
 ```
 
 `slop-scan` reads `.md .markdown .mdx .txt .rst`, skips fenced code and
-blockquotes, respects the `slop-ignore` marker, and reports each finding with
-`file:line` and the fix. It sees lexical and structural tells only.
+blockquotes, respects `slop-ignore`, and reports each finding with `file:line`
+and the fix. It sees lexical and structural tells only.
 
 The provenance binaries began as
-[watermarks-remover](https://github.com/guillaumemeyer/watermarks-remover) and
-were ported to Rust. The editorial and review sections are adapted from Addy
-Osmani's [clarity](https://github.com/addyosmani/clarity) (MIT).
+[watermarks-remover](https://github.com/guillaumemeyer/watermarks-remover), ported
+to Rust; the editorial and review sections are adapted from Addy Osmani's
+[clarity](https://github.com/addyosmani/clarity) (MIT).
 
 ## Do not launder slop into new slop
 
