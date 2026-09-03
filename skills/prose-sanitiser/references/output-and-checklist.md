@@ -20,7 +20,7 @@ Before publishing:
 - [ ] UK English consistent throughout
 - [ ] (Optional) Simplification pass applied (`--strength simplify` or `declaudish`)
 - [ ] No Claudish filler phrases (B13) <!-- slop-ignore -->
-- [ ] No invisible Unicode watermark carriers (`inspect_text.py` clean)
+- [ ] No invisible Unicode watermark carriers (`inspect-text` clean)
 - [ ] File metadata stripped — no C2PA, EXIF AI-provenance, or XMP tags
 - [ ] (If required) Statistical rewrite applied; meaning verified post-rewrite
 - [ ] (Fiction) at least one subplot doesn't tidily resolve

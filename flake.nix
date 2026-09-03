@@ -1194,10 +1194,14 @@
         # Skill tool binaries — Rust replacements for Python that used to ship
         # inside the skills. Ungated: the skills themselves are always baked, so
         # their tools must always be on PATH. diagram-ir supersedes
-        # diagram-design's three extractor/self-check scripts.
+        # diagram-design's three extractor/self-check scripts; prose-sanitiser
+        # supersedes the prose-sanitiser CLI layer and open-design's
+        # slop-detect.py. The four torch harnesses stay Python (see the header
+        # of lib/prose-sanitiser.nix).
         # ---------------------------------------------------------------------------
         diagramIrPkg = import ./lib/diagram-ir.nix { inherit lib pkgs; };
-        skillToolPackages = [ diagramIrPkg ];
+        proseSanitiserPkg = import ./lib/prose-sanitiser.nix { inherit lib pkgs; };
+        skillToolPackages = [ diagramIrPkg proseSanitiserPkg ];
 
         # Render a config.toml for nostr-rs-relay from manifest fields.
         # Consumed by the supervisor block at /etc/agentbox/nostr-relay.toml.

@@ -18,9 +18,9 @@ browser but trivially detectable by automated scanners.
 Layer A removals are verifiable — diff the before/after to confirm every carrier is gone.
 
 ```bash
-python3 inspect_text.py <path>           # report invisible characters found
-python3 clean_text.py <path>             # strip them in-place
-python3 clean_text.py <path> --stats     # strip + report character counts
+inspect-text <path>           # report invisible characters found
+clean-text <path>             # strip them in-place
+clean-text <path> --stats     # strip + report character counts
 ```
 
 Reads `.md`, `.html`, `.txt` and plain text. Refuses binary input by default
@@ -40,11 +40,11 @@ lossy — the output is a paraphrase, not the original text — and best-effort:
 can certify that vendor detectors will fail after rewriting.
 
 ```bash
-python3 rewrite_text.py <path>                          # default strength
-python3 rewrite_text.py <path> --strength minimal       # lightest touch
-python3 rewrite_text.py <path> --strength paraphrase    # mid-range
-python3 rewrite_text.py <path> --strength aggressive    # maximum divergence
-python3 rewrite_text.py <path> --candidates 3           # generate 3, pick most diverged
+rewrite-text <path>                          # default strength
+rewrite-text <path> --strength minimal       # lightest touch
+rewrite-text <path> --strength paraphrase    # mid-range
+rewrite-text <path> --strength aggressive    # maximum divergence
+rewrite-text <path> --candidates 3           # generate 3, pick most diverged
 ```
 
 Strength levels:
@@ -79,9 +79,9 @@ AI-generated files carry provenance metadata beyond the text content:
 | PDF structure | Linearisation, XRef | `qpdf` (structural rebuild) |
 
 ```bash
-python3 inspect_file.py <path>           # report all metadata found
-python3 clean_file.py <path>             # strip metadata in-place
-python3 clean_file.py <path> --stats     # strip + report what was removed
+inspect-file <path>           # report all metadata found
+clean-file <path>             # strip metadata in-place
+clean-file <path> --stats     # strip + report what was removed
 ```
 
 Unified file router — dispatches to the correct handler by MIME type. Supported
@@ -98,9 +98,9 @@ StableSignature) require neural regeneration backends. These are external, never
 bundled, and need GPU resources.
 
 ```bash
-python3 clean_image.py <path> --remove-pixel ctrlregen     # CtrlRegen backend
-python3 clean_image.py <path> --remove-pixel diffusion      # MarkDiffusion backend
-python3 inspect_image.py <path>                             # Reverse-SynthID confidence score
+clean-image <path> --remove-pixel ctrlregen     # CtrlRegen backend
+clean-image <path> --remove-pixel diffusion      # MarkDiffusion backend
+inspect-image <path>                             # Reverse-SynthID confidence score
 ```
 
 | Backend | Source | What it attacks |
@@ -134,8 +134,8 @@ when you need evidence that a specific watermarking scheme has been defeated.
 Scan entire directories or websites for provenance marks across all file types:
 
 ```bash
-python3 audit_dir.py <directory>         # recursive scan of a file tree
-python3 audit_website.py <url>           # crawl and scan a published site
+audit-dir <directory>         # recursive scan of a file tree
+audit-website --base <url>    # crawl and scan a published site
 ```
 
 Useful for pre-publication sweeps of documentation sites, blog repos, or asset
@@ -144,12 +144,12 @@ directories.
 ## E7. HTTP Service API
 
 For programmatic or CI integration, the watermarks-remover runs as a service.
-Published to GHCR (`ghcr.io/guillaumemeyer/watermarks-remover`); also runs standalone
-as `python3 server.py` without Docker.
+Published to GHCR (`ghcr.io/guillaumemeyer/watermarks-remover`); the baked
+`prose-sanitiser-server` binary serves the same API without Docker.
 
 ```bash
 docker run --rm -p 127.0.0.1:8765:8765 ghcr.io/guillaumemeyer/watermarks-remover
-python3 server.py                                    # no Docker alternative
+prose-sanitiser-server                               # no Docker alternative
 ```
 
 | Endpoint | Method | Purpose |
@@ -188,7 +188,7 @@ The recommended order when using all capabilities together:
 
 1. **Layer A** (Unicode) — lossless, run first, always
 2. **Stylistic audit** (Sections A–D) — editorial choices on wording and structure
-3. **slop_scan.py** — mechanical tell detection
+3. **`slop-scan`** — mechanical tell detection
 4. **Layer B** (statistical rewrite) — last, because it changes wording
 5. **File metadata strip** — after final export, before publication
 6. **Pixel removal** — only if images carry pixel-domain watermarks
