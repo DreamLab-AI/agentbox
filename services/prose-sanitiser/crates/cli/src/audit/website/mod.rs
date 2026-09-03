@@ -175,12 +175,22 @@ pub fn parse_sitemap(data: &[u8]) -> Result<(String, Vec<String>), String> {
                 }
             }
             Ok(Event::Text(text)) if in_loc => {
-                // quick-xml 0.41 replaced `unescape()` with a version-explicit
-                // pair. A sitemap is XML 1.0 by definition (the sitemaps.org
-                // schema declares no other version), so 1.0 entity rules apply.
-                let value = text
-                    .xml10_content()
-                    .map_err(|error| format!("malformed sitemap text: {error}"))?;
+                // Deliberately not `BytesText`'s inherent unescape method: it
+                // has been renamed twice across the quick-xml versions this
+                // workspace has resolved this sprint (`unescape` in 0.37,
+                // `xml10_content` in 0.41), and a security bump landing in the
+                // shared manifest should not red-line an unrelated file. The
+                // `Deref<Target = [u8]>` impl and the free `escape::unescape`
+                // are present and identical in both.
+                //
+                // `from_utf8` rather than a decoder: the sitemaps.org protocol
+                // requires UTF-8, so anything else is a malformed sitemap and
+                // should be reported as one. Entity unescaping does matter,
+                // because a `<loc>` routinely carries `&amp;` in a query string.
+                let raw = std::str::from_utf8(&text)
+                    .map_err(|error| format!("sitemap is not valid UTF-8: {error}"))?;
+                let value = quick_xml::escape::unescape(raw)
+                    .map_err(|error| format!("malformed sitemap entity: {error}"))?;
                 let value = value.trim();
                 if !value.is_empty() {
                     urls.push(value.to_string());
