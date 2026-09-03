@@ -1,6 +1,32 @@
-# Section B — Destructive Audit
+# Destructive audit
 
-Work through every item. Fix in-place. Do not add explanatory comments.
+The mechanical catalogue. Work through every item. Fix in place. Do not add
+explanatory comments.
+
+## How to run it
+
+```bash
+slop-scan <path>                   # human report plus slop score
+slop-scan <path> --severity high   # strongest signals only
+slop-scan <path> --json            # machine-readable
+```
+
+Exit codes: **0** clean, **1** findings at or above the gate severity, **2**
+tool error. Machine output is JSON Lines, with SARIF 2.1.0 available for GitHub
+code scanning. Suppress a deliberate choice with `slop-ignore` on the line (an
+HTML comment works in Markdown).
+
+Every finding carries a severity **and** a confidence tier, and they are
+orthogonal. Severity says how strongly the tell signals AI authorship, so it
+tells you where to spend effort. Confidence says whether the rule is right, and
+it is the only thing that gates a fix. Everything in this file is
+`low-confidence-judgement`: it is a prompt to look, never a verdict, and
+`--write` will not touch any of it. A rule can be high-severity and still be a
+guess.
+
+The catalogue is a detector, not a target. Read the "do not launder slop into
+new slop" section of SKILL.md before applying any replace-with column
+mechanically.
 
 ## B1. Em Dash (—) Density
 
@@ -184,7 +210,7 @@ irrelevant.
 
 ## B12. UK English Spelling
 
-Enforce throughout:
+Enforce throughout. The unconditional cases:
 
 | US | UK |
 |----|-----|
@@ -193,11 +219,32 @@ Enforce throughout:
 | color | colour |
 | behavior | behaviour |
 | center | centre |
-| license (noun) | licence |
 | defense | defence |
 | analyze | analyse |
-| catalog | catalogue |
-| fulfill | fulfil |
+| catalogue | catalogue (never *catalog*) |
+
+**Do not extend this table by pattern.** A short list of near-neighbours are
+traps, not rules:
+
+- `license` is a noun-verb split *inside* British English, not a dialect swap. A
+  driving *licence*, but to *license* a doctor. Same for *practice* and
+  *practise*.
+- `meter` is correct British English for an instrument. Only the SI unit is
+  *metre*, so a gas meter and a voltmeter stay as they are.
+- `fulfil` is UK, but *fulfilment* takes one `l` while US *fulfillment* takes
+  two. The `-ment` rule inverts the doubling rule.
+- `program` stays *program* for software; only a TV or event *programme* changes.
+- `sulfur` is correct in a technical register (RSC 1992, BSI 1993). Do not
+  "correct" it.
+- `dialog box` is a UI term of art and keeps the US form.
+- Organisation names carry their own spelling by charter: *World Health
+  Organization*, *International Labour Organization*, *Department of Defense*.
+
+Full data source, the `--oxford` flag, span exclusion, the always-ise and
+always-yse sets, and the complete sense-pair and gazetteer lists are in
+[uk-english.md](uk-english.md). The scanner reports every one of these as
+judgement-only and offers no automatic replacement, because roughly half of the
+naive matches would be wrong.
 
 ## B13. Claudish Structural Patterns
 

@@ -1,9 +1,9 @@
-# Section G — Review and Co-write Workflows
+# Review and co-write workflows
 
 Adapted from Addy Osmani's [clarity](https://github.com/addyosmani/clarity) (MIT).
 Two modes that sit alongside the audit: **review** critiques a piece without
 changing it; **co-write** builds a draft from material the author actually
-supplies. Use Section F to name patterns precisely in either mode.
+supplies. Use [editorial-method.md](editorial-method.md) to name patterns precisely in either mode.
 
 ## Review (critique without rewriting)
 
@@ -38,7 +38,7 @@ One block per material issue:
 ```txt
 Passage:      the shortest quote that locates the issue
 Verdict:      keep / revise / ask-author / cut
-Pattern:      a concise name from Section B or F
+Pattern:      a concise name from the destructive audit or the editorial method
 Why:          what the passage does instead of its intended job
 Suggestion:   a supported replacement, a precise author question, or the reason to cut
 Safety check: whether the suggestion preserves facts, attribution, scope, and voice

@@ -1,4 +1,4 @@
-# Section A — Generative Principles
+# Generative principles
 
 Use when writing fresh content. Following these means less to fix later.
 
@@ -54,6 +54,6 @@ Before drafting, name the reader, the outcome, the register, and the source
 material only this author can supply. The register decides what the piece owes
 (an argument owes a disputable thesis; a guide owes correct steps; a reference
 page may be neutral). Full framing and register table:
-[Section F — Editorial Method](editorial-method.md). For drafting with an
+[editorial-method.md](editorial-method.md). For drafting with an
 author's own material, use the perspective interview in
-[Section G](review-and-cowrite.md).
+[review-and-cowrite.md](review-and-cowrite.md).

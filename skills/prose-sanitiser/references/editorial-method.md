@@ -1,7 +1,7 @@
-# Section F — Editorial Method (Substance Before Style)
+# Editorial method: substance before style
 
 Adapted from Addy Osmani's [clarity](https://github.com/addyosmani/clarity) (MIT).
-Use when a piece reads hollow rather than merely slopped: the Section B audit can
+Use when a piece reads hollow rather than merely slopped: the [destructive audit](destructive-audit.md) can
 remove tells, but it cannot supply a missing point. Generic prose usually fails
 before style enters the picture — it has no specific source, judgement, mechanism,
 image, or experience behind it. Fix that first, then de-slop.
@@ -48,7 +48,7 @@ Only an argument owes a disputable thesis. A guide may need predictable headings
 A reference page may be neutral. For authored long-form work, ask one more
 question: what can this author say here that another competent writer could not?
 If the answer is nothing, report the substance gap instead of disguising it with
-polish (Section G offers the interview).
+polish (see [review-and-cowrite.md](review-and-cowrite.md) for the interview).
 
 ## Order of work
 
@@ -61,7 +61,7 @@ Fix problems in this order — later stages cannot repair earlier ones:
 3. **Development.** Make paragraphs depend on one another through cause,
    contrast, sequence, qualification, example, or consequence.
 4. **Sentences.** Remove inflated, repetitive, or formulaic machinery — this is
-   where the Section B audit runs.
+   where the [destructive audit](destructive-audit.md) runs.
 5. **Craft.** Restore concrete material, stance, warmth, or rhythm if editing
    made the piece colder or flatter.
 
@@ -70,7 +70,7 @@ once, then stop. Repeated convergence passes flatten the prose.
 
 ## High-value diagnoses
 
-These catch what the word-level catalogues in Section B cannot.
+These catch what the word-level catalogues in [destructive-audit.md](destructive-audit.md) cannot.
 
 ### F1. Importance without mechanism
 
@@ -103,7 +103,7 @@ confident sentence is not automatically a clearer one.
 
 ### F4. Formula carrying the argument
 
-Section B3/B9 catch the shapes ("not X but Y", balanced threes, punchline
+Rules B3 and B9 of the [destructive audit](destructive-audit.md) catch the shapes ("not X but Y", balanced threes, punchline
 paragraphs). These two tests decide whether a flagged shape is a real defect:
 
 1. **Flatten test:** state the claim without the cadence. If nothing specific
@@ -177,7 +177,7 @@ defaults. Read only the relevant row.
 | Email, memo, chat | The request, decision, owner, and next action | Social context, salutations where expected | Turning a short message into an essay; fake casual mess |
 | UI text | Task completion, brevity, consistent terminology | Labels, error recovery, localisation constraints | Personality that obscures the action |
 | Speech, talk, slides | Listening comprehension, oral rhythm | Repetition that helps an audience follow | Page-prose density; removing every rhetorical beat |
-| Fiction, narrative | Perspective, causality, scene, character choice | Deliberate ambiguity, voice, earned nonlinear structure | Adding disorder solely to evade a model pattern (see Section C) |
+| Fiction, narrative | Perspective, causality, scene, character choice | Deliberate ambiguity, voice, earned nonlinear structure | Adding disorder solely to evade a model pattern (see [narrative-tells.md](narrative-tells.md)) |
 
 Predictability is a feature in documentation and reference prose: keep repeated
 entry structures, numbered procedures, and explicit transitions when they help

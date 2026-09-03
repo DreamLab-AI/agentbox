@@ -1,4 +1,4 @@
-# Section C — Narrative Tells (Fiction)
+# Narrative tells (fiction)
 
 Apply when sanitising short stories, novel passages, character-driven scenes,
 or any narrative prose. Lexical fixes are not enough: AI fiction converges on a
