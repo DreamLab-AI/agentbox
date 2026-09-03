@@ -1,0 +1,22 @@
+{
+  "id": "vs-payload-split-chains",
+  "group": "adversarial",
+  "tool": "clean-text",
+  "input": "input.txt",
+  "args": [],
+  "description": "One payload split across two selector chains on different bases, which defeats any check that only inspects a single run.",
+  "expect": {
+    "kind": "must-strip",
+    "codepoints": [
+      917827,
+      917813,
+      917811,
+      917826,
+      917813,
+      917828,
+      917789,
+      917796,
+      917794
+    ]
+  }
+}

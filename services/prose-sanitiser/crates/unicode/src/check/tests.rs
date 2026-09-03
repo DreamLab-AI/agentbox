@@ -1,0 +1,382 @@
+use super::*;
+use crate::stego::byte_to_variation_selector;
+
+fn check(source: &str) -> Vec<Finding> {
+    check_text(source, &TextPolicy::default())
+}
+
+fn vs_chain(base: &str, payload: &[u8]) -> String {
+    let mut text = String::from(base);
+    for byte in payload {
+        text.push(byte_to_variation_selector(*byte));
+    }
+    text
+}
+
+#[test]
+fn a_soft_hyphen_is_reported_but_never_fixable() {
+    use prose_sanitiser_core::Config;
+
+    let findings = check("co\u{00AD}operate");
+    assert_eq!(findings.len(), 1);
+    assert_eq!(findings[0].rule_id, RULE_SOFT_HYPHEN);
+    assert_eq!(
+        findings[0].confidence,
+        ConfidenceTier::LowConfidenceJudgement
+    );
+    // No replacement, so it can never be turned into an edit — not even with
+    // --write, because a judgement call is never auto-applied.
+    assert_eq!(findings[0].replacement, None);
+    let write = Config {
+        write: true,
+        ..Config::default()
+    };
+    assert!(!findings[0].is_fixable(&write));
+    assert_eq!(findings[0].to_edit(&write), None);
+}
+
+#[test]
+fn every_finding_is_certain_mechanical() {
+    // The tier is the auto-fix gate, and Layer A is the only layer that earns
+    // it. A rule that drifts out of this set must do so deliberately.
+    let source = format!(
+        "in\u{200B}visible {} p\u{0430}ypal",
+        vs_chain("\u{1F600}", b"hi")
+    );
+    let findings = check_text(
+        &source,
+        &TextPolicy {
+            context: BidiContext::Code,
+            report_spaces: true,
+            context_free_homoglyphs: true,
+            fold_homoglyphs: true,
+            normalize_spaces: true,
+            strip_emoji_glue: false,
+        },
+    );
+    assert!(!findings.is_empty());
+    // Every rule but the soft hyphen, which is a judgement about the author's
+    // intent rather than a fact about the codepoint.
+    assert!(findings
+        .iter()
+        .filter(|finding| finding.rule_id != RULE_SOFT_HYPHEN)
+        .all(|finding| finding.confidence == ConfidenceTier::CertainMechanical));
+}
+
+#[test]
+fn findings_are_sorted_by_position() {
+    let findings = check("a\u{200B}b\u{200B}c\u{200B}");
+    let starts: Vec<usize> = findings.iter().map(|f| f.span.start).collect();
+    let mut sorted = starts.clone();
+    sorted.sort_unstable();
+    assert_eq!(starts, sorted);
+}
+
+#[test]
+fn spans_are_byte_offsets_that_slice_the_source() {
+    // Non-ASCII before the carrier, so a character index would be wrong here.
+    let source = "héllo\u{200B}world";
+    let findings = check(source);
+    assert_eq!(findings.len(), 1);
+    let span = findings[0].span;
+    assert_eq!(span.slice(source), Some("\u{200B}"));
+}
+
+#[test]
+fn a_payload_reports_its_decoded_bytes_in_the_advice() {
+    let findings = check(&vs_chain("\u{1F600}", b"hi"));
+    assert_eq!(findings.len(), 1);
+    assert_eq!(findings[0].rule_id, RULE_VS_PAYLOAD);
+    assert!(findings[0].advice.contains("\"hi\""));
+    assert!(findings[0].advice.contains("6869"));
+    assert_eq!(findings[0].replacement.as_deref(), Some(""));
+}
+
+#[test]
+fn a_payload_finding_replaces_exactly_the_carrier() {
+    let source = vs_chain("x", b"hi");
+    let findings = check(&source);
+    let span = findings[0].span;
+    let mut cleaned = source.clone();
+    cleaned.replace_range(span.start..span.end, "");
+    assert_eq!(cleaned, "x");
+}
+
+#[test]
+fn bidi_is_rejected_in_code_and_preserved_in_rtl_prose() {
+    let source = "\u{2067}\u{05E9}\u{05DC}\u{05D5}\u{05DD}\u{2069}";
+
+    let code = check_text(
+        source,
+        &TextPolicy {
+            context: BidiContext::Code,
+            ..TextPolicy::default()
+        },
+    );
+    let bidi_hits: Vec<&Finding> = code.iter().filter(|f| f.rule_id == RULE_BIDI).collect();
+    assert_eq!(bidi_hits.len(), 2);
+    // In code the remedy is mechanical: delete it.
+    assert!(bidi_hits
+        .iter()
+        .all(|f| f.replacement.as_deref() == Some("")));
+
+    let prose = check_text(source, &TextPolicy::default());
+    assert!(prose.iter().all(|f| f.rule_id != RULE_BIDI));
+}
+
+#[test]
+fn bidi_strippability_follows_the_fault_not_the_context() {
+    // A pop with no open is mechanically junk, and `clean_text` removes it, so
+    // the Finding surface must offer the same repair rather than disagreeing
+    // with the cleaner about the same character.
+    let stray_pop = check("\u{05E9}\u{05DC}\u{2069}");
+    let bidi: Vec<&Finding> = stray_pop
+        .iter()
+        .filter(|f| f.rule_id == RULE_BIDI)
+        .collect();
+    assert_eq!(bidi.len(), 1);
+    assert_eq!(bidi[0].replacement.as_deref(), Some(""));
+
+    // An unclosed open is the one exception: the author may have meant to add
+    // the matching pop, and dropping the open changes how the rest renders.
+    let unclosed = check("\u{2067}\u{05E9}\u{05DC}");
+    let bidi: Vec<&Finding> = unclosed.iter().filter(|f| f.rule_id == RULE_BIDI).collect();
+    assert_eq!(bidi.len(), 1);
+    assert_eq!(bidi[0].replacement, None);
+}
+
+/// Applying what `check_text` offers must reproduce what `clean_text` does.
+///
+/// This is the invariant that catches a whole class of bug: the two surfaces
+/// silently disagreeing about the same character. It has bitten twice, once in
+/// each direction (`check` declining a repair `clean` performed on bidi, and
+/// `check` offering a fold `clean` refused on homoglyphs), so it is asserted
+/// directly rather than reasoned about.
+#[test]
+fn applying_the_offered_edits_reproduces_a_clean() {
+    use crate::{clean_text, CleanOptions};
+    use prose_sanitiser_core::{surrogate, Config, Patch};
+
+    let samples = [
+        "in\u{200B}vis\u{200D}ible text",
+        "a\u{00A0}b\u{2009}c\u{3000}d",
+        "p\u{0430}ypal and h\u{0435}llo",
+        "\u{05E9}\u{05DC}\u{2069} stray pop",
+        "\u{FEFF}bom then co\u{00AD}operate",
+        "\u{2764}\u{FE0F}\u{200D}\u{1F525} emoji",
+        "\u{1F3F4}\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F} flag",
+        // Payload carriers that also look load-bearing: tag characters behind a
+        // flag base, and joiners behind an Arabic letter.
+        "\u{1F3F4}\u{E0075}\u{E0073}\u{E0073}\u{E0074}\u{E0061}\u{E007F}",
+        "\u{0628}\u{200C}\u{200C}\u{200C}\u{200C}\u{200C}\u{200C}\u{200C}\u{200C}",
+        "ordinary British prose, nothing to do",
+    ];
+    // Each policy paired with the CleanOptions it claims to mirror.
+    let pairings = [
+        (TextPolicy::default(), CleanOptions::default()),
+        (
+            TextPolicy {
+                fold_homoglyphs: true,
+                ..TextPolicy::default()
+            },
+            CleanOptions {
+                aggressive_homoglyphs: true,
+                ..CleanOptions::default()
+            },
+        ),
+        (
+            TextPolicy {
+                normalize_spaces: true,
+                ..TextPolicy::default()
+            },
+            CleanOptions {
+                normalize_spaces: true,
+                ..CleanOptions::default()
+            },
+        ),
+    ];
+
+    for (policy, options) in pairings {
+        for source in samples {
+            let findings = check_text(source, &policy);
+            let patch = Patch::from_edits(
+                findings
+                    .iter()
+                    .filter_map(|finding| finding.to_edit(&Config::default())),
+            );
+            let previewed = patch.apply(source).expect("patch applies to its source");
+
+            let (cleaned, _) = clean_text(&surrogate::decode(source.as_bytes()), options);
+            let cleaned = String::from_utf8(surrogate::encode(&cleaned)).unwrap();
+
+            assert_eq!(
+                previewed, cleaned,
+                "check/clean disagree on {source:?} under {policy:?}"
+            );
+        }
+    }
+}
+
+#[test]
+fn check_and_clean_agree_on_every_bidi_fault() {
+    use crate::{clean_text, CleanOptions};
+    use prose_sanitiser_core::surrogate;
+
+    // Whatever `check_text` offers to delete, `clean_text` must actually
+    // delete, and whatever it declines to touch must survive a default clean.
+    for source in [
+        "\u{05E9}\u{05DC}\u{2069}",    // unmatched pop
+        "\u{2067}hello\u{2069}",       // no RTL context
+        "\u{05E9}\u{05DC}\u{200F} 12", // load-bearing mark
+    ] {
+        let findings = check(source);
+        let (cleaned, _) = clean_text(
+            &surrogate::decode(source.as_bytes()),
+            CleanOptions::default(),
+        );
+        let cleaned = String::from_utf8(surrogate::encode(&cleaned)).unwrap();
+        for finding in findings.iter().filter(|f| f.rule_id == RULE_BIDI) {
+            let character = finding.matched.chars().next().expect("one control");
+            if finding.replacement.is_some() {
+                assert!(
+                    !cleaned.contains(character),
+                    "{source:?}: check offers to strip U+{:04X} but clean kept it",
+                    character as u32
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn homoglyphs_are_always_reported_but_folded_only_on_request() {
+    // Detection is unconditional; the fold is not. A default clean leaves the
+    // character alone, so a default check must not offer to rewrite it.
+    let findings = check("p\u{0430}ypal");
+    let homoglyphs: Vec<&Finding> = findings
+        .iter()
+        .filter(|f| f.rule_id == RULE_HOMOGLYPH)
+        .collect();
+    assert_eq!(homoglyphs.len(), 1);
+    assert_eq!(homoglyphs[0].replacement, None);
+    // The advice still names the ASCII it is confusable with, so nothing is
+    // hidden from a reader; only the mechanical edit is withheld.
+    assert!(homoglyphs[0].advice.contains("'a'"));
+
+    let folding = check_text(
+        "p\u{0430}ypal",
+        &TextPolicy {
+            fold_homoglyphs: true,
+            ..TextPolicy::default()
+        },
+    );
+    let homoglyphs: Vec<&Finding> = folding
+        .iter()
+        .filter(|f| f.rule_id == RULE_HOMOGLYPH)
+        .collect();
+    assert_eq!(homoglyphs[0].replacement.as_deref(), Some("a"));
+}
+
+#[test]
+fn exotic_whitespace_is_reported_by_default_but_not_rewritten() {
+    // Told, not touched. U+202F is a documented GPT-4o-class artefact, so the
+    // finding must exist; a no-break space is load-bearing typography, so the
+    // rewrite must not be offered unless the caller asks for it.
+    let source = "a\u{00A0}b";
+    let findings = check(source);
+    assert_eq!(findings.len(), 1);
+    assert_eq!(findings[0].replacement, None);
+    assert!(findings[0].advice.contains("typography"));
+
+    // Asking for the fold produces it, and mirrors normalize_spaces: true.
+    let folding = check_text(
+        source,
+        &TextPolicy {
+            normalize_spaces: true,
+            ..TextPolicy::default()
+        },
+    );
+    assert_eq!(folding.len(), 1);
+    assert_eq!(folding[0].replacement.as_deref(), Some(" "));
+
+    // Silencing detection entirely is still possible.
+    let quiet = check_text(
+        source,
+        &TextPolicy {
+            report_spaces: false,
+            ..TextPolicy::default()
+        },
+    );
+    assert!(quiet.is_empty());
+}
+
+#[test]
+fn legitimate_content_produces_no_findings() {
+    // The section D3 controls, through the Finding surface this time.
+    for sample in [
+        "\u{2764}\u{FE0F}\u{200D}\u{1F525}",
+        "देवनागरी हिन्दी",
+        "سلام فارسی",
+        "שלום world",
+        "Москва привет",
+        "café naïve",
+        "\u{1F3F4}\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F}",
+    ] {
+        assert!(
+            check(sample).is_empty(),
+            "{sample:?} must produce no findings"
+        );
+    }
+}
+
+#[test]
+fn a_bom_at_offset_zero_survives_but_a_stray_one_does_not() {
+    assert!(check("\u{FEFF}hello").is_empty());
+    assert_eq!(check("hello\u{FEFF}").len(), 1);
+}
+
+#[test]
+fn the_default_policy_is_the_safe_one() {
+    // `sanitise` and friends call this with no configuration, so the default
+    // must be prose context, no space reporting and nothing paranoid.
+    let policy = TextPolicy::default();
+    assert_eq!(policy.context, BidiContext::Prose);
+    assert!(!policy.context_free_homoglyphs);
+    assert!(!policy.strip_emoji_glue);
+    // These two mirror CleanOptions, so a preview matches what a clean does.
+    let clean = crate::CleanOptions::default();
+    assert!(policy.report_spaces, "detection is unconditional");
+    assert_eq!(policy.normalize_spaces, clean.normalize_spaces);
+    assert_eq!(policy.fold_homoglyphs, clean.aggressive_homoglyphs);
+}
+
+#[test]
+fn paranoid_mode_reports_load_bearing_glue_that_the_default_keeps() {
+    // Heart-on-fire: every invisible in it is load-bearing.
+    let emoji = "\u{2764}\u{FE0F}\u{200D}\u{1F525}";
+    assert!(check(emoji).is_empty());
+    let paranoid = check_text(
+        emoji,
+        &TextPolicy {
+            strip_emoji_glue: true,
+            ..TextPolicy::default()
+        },
+    );
+    assert!(!paranoid.is_empty());
+}
+
+#[test]
+fn every_rule_id_appears_in_the_published_rules_table() {
+    // The SARIF driver table must describe every rule the checker can emit.
+    let ids: Vec<&str> = crate::RULES.iter().map(|rule| rule.id).collect();
+    for rule_id in [
+        RULE_INVISIBLE,
+        RULE_HOMOGLYPH,
+        RULE_VS_PAYLOAD,
+        RULE_TAG_PAYLOAD,
+        RULE_ZW_PAYLOAD,
+        RULE_BIDI,
+    ] {
+        assert!(ids.contains(&rule_id), "{rule_id} missing from RULES");
+    }
+}

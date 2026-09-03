@@ -1,0 +1,14 @@
+{
+  "id": "legit-persian",
+  "group": "legitimate",
+  "tool": "clean-text",
+  "input": "input.txt",
+  "args": [],
+  "description": "Persian using ZWNJ between morphemes, where removing the joiner changes the word.",
+  "expect": {
+    "kind": "must-preserve",
+    "codepoints": [
+      8204
+    ]
+  }
+}

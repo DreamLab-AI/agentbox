@@ -1,4 +1,4 @@
-# Section C — Narrative Tells (Fiction)
+# Narrative tells (fiction)
 
 Apply when sanitising short stories, novel passages, character-driven scenes,
 or any narrative prose. Lexical fixes are not enough: AI fiction converges on a
@@ -20,7 +20,7 @@ either cut the statement or move it into ambiguous action.
 
 | Slop | Repair |
 |------|--------|
-| "She realised, then, that grief was simply love with nowhere to land." | (delete the line — show the realisation through what she does next) |
+| "She realised, then, that grief was simply love with nowhere to land." | (delete the line: show the realisation through what she does next) |
 | Narrator: "And so, in the end, he learned that..." | (cut entirely) |
 
 ## C2. Embodied Emotion Over Labels
@@ -118,4 +118,4 @@ If you know which model generated the draft, watch for:
 | GPT | Dream sequences; gossip/rumour as plot mechanism (64% vs. 44-55%); distant retrospective framing ("years later..."); ensemble casts. |
 | Gemini | External character description as the introduction; bleak/oppressive settings (88%); tidy denouements; extended endings. |
 | DeepSeek | Front-loaded context that humans would withhold. |
-| Kimi | The generic centre — few distinctive choices, blandly competent. |
+| Kimi | The generic centre: few distinctive choices, blandly competent. |

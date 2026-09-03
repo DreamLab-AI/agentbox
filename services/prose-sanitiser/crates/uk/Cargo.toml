@@ -1,0 +1,18 @@
+[package]
+name = "prose-sanitiser-uk"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Sense-aware UK-English spelling enforcement: VarCon-derived dialect pairs with a first-class Oxford -ize mode, span exclusion for code, URLs, front matter and quotations, an organisation gazetteer, and report-only handling of every sense-dependent pair."
+keywords = ["british", "english", "spelling", "linter", "prose"]
+categories = ["text-processing", "internationalization"]
+readme = "README.md"
+build = "build.rs"
+exclude = ["corpora/"]
+
+[dependencies]
+prose-sanitiser-core = { workspace = true }
+pulldown-cmark = { workspace = true }
+regex = { workspace = true }
