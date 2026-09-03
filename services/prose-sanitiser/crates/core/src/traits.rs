@@ -89,6 +89,53 @@ pub trait Fix: Check {
         )
     }
 
+    /// Check `document` and return the patch, discarding the findings.
+    ///
+    /// The one-call shape for a caller that only wants the repair. It is a
+    /// convenience over [`Fix::check_and_fix`], not a second implementation, so
+    /// a rule cannot behave differently depending on which entry point is used.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use prose_sanitiser_core::{
+    ///     Check, ConfidenceTier, Config, Finding, Fix, Severity, Span,
+    /// };
+    ///
+    /// struct StripTabs;
+    ///
+    /// impl Check for StripTabs {
+    ///     fn rule_ids(&self) -> &[&str] {
+    ///         &["tab"]
+    ///     }
+    ///
+    ///     fn check(&self, document: &str, _config: &Config) -> Vec<Finding> {
+    ///         document
+    ///             .match_indices('\t')
+    ///             .map(|(start, _)| Finding {
+    ///                 rule_id: "tab".to_string(),
+    ///                 label: "Tab character".to_string(),
+    ///                 span: Span::new(start, start + 1),
+    ///                 matched: "\t".to_string(),
+    ///                 severity: Severity::Low,
+    ///                 confidence: ConfidenceTier::CertainMechanical,
+    ///                 advice: "Use spaces.".to_string(),
+    ///                 replacement: Some("    ".to_string()),
+    ///             })
+    ///             .collect()
+    ///     }
+    /// }
+    ///
+    /// impl Fix for StripTabs {}
+    ///
+    /// let patch = StripTabs.fix_document("a\tb", &Config::new());
+    /// assert_eq!(patch.apply("a\tb").unwrap(), "a    b");
+    /// // The source is untouched: a patch is applyable, not applied.
+    /// ```
+    fn fix_document(&self, document: &str, config: &Config) -> Patch {
+        self.check_and_fix(document, config).1
+    }
+
     /// Check and fix in one pass, returning both halves.
     fn check_and_fix(&self, document: &str, config: &Config) -> (Vec<Finding>, Patch) {
         let findings = self.check(document, config);

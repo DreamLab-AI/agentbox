@@ -59,6 +59,15 @@ fn body() -> Result<i32, CliError> {
         only: args.rule.clone(),
         ignore: args.ignore.clone(),
     };
+    // A path that is not there is a tool error, not a clean scan. Reporting
+    // "clean" for a typo in a CI invocation is the worst possible answer: the
+    // gate passes and nothing was ever read.
+    if let Some(missing) = args.paths.iter().find(|path| !path.exists()) {
+        return Err(CliError::new(
+            exit::ERROR,
+            format!("path not found: {}", missing.display()),
+        ));
+    }
     let shown = scan(&args.paths, &filter, floor);
 
     if args.json {

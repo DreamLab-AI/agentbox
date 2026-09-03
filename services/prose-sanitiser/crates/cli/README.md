@@ -7,6 +7,7 @@ deterministic AI-provenance sanitiser and prose linter.
 
 | Binary | Does |
 |---|---|
+| `sanitise` | The umbrella: every layer over a file or tree, on one confidence scale |
 | `inspect-text` / `clean-text` | Invisible-Unicode and homoglyph surgery, with payload decoding |
 | `inspect-image` / `clean-image` | PNG/JPEG/WebP metadata stripping |
 | `inspect-file` / `clean-file` | SVG/PDF/DOCX/ODT/HTML/Markdown scrubbing, format detected by signature |
@@ -65,10 +66,15 @@ so a decaying rule is visible rather than silent.
 
 ## The write policy
 
-Report-only by default. `--write` applies `certain-mechanical` and
-`high-confidence-stylistic` findings and never `low-confidence-judgement` ones,
-so an ambiguous case stays ambiguous no matter which flags are passed. `--diff`
-previews what `--write` would do.
+Report-only by default. `--fix` applies the `certain-mechanical` findings;
+`--write` applies those **and** the `high-confidence-stylistic` ones, and implies
+`--fix`. Nothing applies a `low-confidence-judgement` finding, so an ambiguous
+case stays ambiguous no matter which flags are passed. `--diff` previews what
+would change without writing.
+
+`sanitise` reports image and container provenance but never rewrites those
+bytes: stripping a JUMBF manifest is byte surgery on a specific format, and
+`clean-image` and `clean-file` own it.
 
 The dedicated cleaners (`clean-text`, `clean-file`, `clean-image`) strip
 unconditionally, because everything they touch is `certain-mechanical` and the

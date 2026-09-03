@@ -2,6 +2,7 @@
 
 use clap::Parser;
 use prose_sanitiser::common::{env_nonempty, eprint_line, run_cli, CliError};
+use prose_sanitiser::exit;
 use prose_sanitiser_server::{app, version, ServerState};
 
 #[derive(Parser)]
@@ -27,7 +28,7 @@ fn body() -> Result<i32, CliError> {
     let args = Args::parse();
     if args.version {
         println!("{}", version());
-        return Ok(0);
+        return Ok(exit::CLEAN);
     }
 
     let host = args
@@ -61,12 +62,14 @@ fn body() -> Result<i32, CliError> {
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
-        .map_err(|error| CliError::new(1, format!("cannot start runtime: {error}")))?;
+        .map_err(|error| CliError::new(exit::ERROR, format!("cannot start runtime: {error}")))?;
 
     runtime.block_on(async move {
         let listener = tokio::net::TcpListener::bind((host.as_str(), port))
             .await
-            .map_err(|error| CliError::new(1, format!("cannot bind {host}:{port}: {error}")))?;
+            .map_err(|error| {
+                CliError::new(exit::ERROR, format!("cannot bind {host}:{port}: {error}"))
+            })?;
         eprint_line(&format!(
             "prose-sanitiser service {} on http://{host}:{port}",
             version()
@@ -78,7 +81,7 @@ fn body() -> Result<i32, CliError> {
         axum::serve(listener, app(ServerState { api_key }))
             .with_graceful_shutdown(shutdown)
             .await
-            .map_err(|error| CliError::new(1, format!("server error: {error}")))?;
-        Ok(0)
+            .map_err(|error| CliError::new(exit::ERROR, format!("server error: {error}")))?;
+        Ok(exit::CLEAN)
     })
 }
