@@ -85,3 +85,6 @@ pub mod container;
 pub mod image;
 pub mod io;
 pub mod proc;
+pub mod rules;
+
+pub use rules::{rule, rule_for_finding, RULES};
