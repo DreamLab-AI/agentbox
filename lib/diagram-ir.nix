@@ -39,10 +39,20 @@
 let
   version = "0.1.0";
 
-  # In-repo crate, minus the local build cache. The crate root IS the build root.
-  diagramIrSrc = lib.cleanSourceWith {
-    src    = ../services/diagram-ir;
-    filter = path: _type: baseNameOf (toString path) != "target";
+  # The crate lives in its own repository (extracted from services/ with full
+  # history on 2026-09-03) and is published to crates.io as `diagram-ir`.
+  # Agentbox consumes the tagged source so the three binaries are built and
+  # tested here. The canonical motion controller is compiled into the crate
+  # (assets/template-motion.html), so the self-check needs no skill checkout.
+  #
+  # To bump: move `rev` to the new tag, refresh `hash` (nix-prefetch-url
+  # --unpack on the tag tarball, then `nix hash convert --to sri`), and copy
+  # the tag's Cargo.lock to lib/lockfiles/diagram-ir-<version>.Cargo.lock.
+  diagramIrSrc = pkgs.fetchFromGitHub {
+    owner = "DreamLab-AI";
+    repo  = "diagram-ir";
+    rev   = "v${version}";
+    hash  = "sha256-GCWhD/o223quC2P8HVSSQNG2WiB/LztsRsebU26hGtg=";
   };
 
 in
@@ -51,8 +61,9 @@ pkgs.rustPlatform.buildRustPackage {
   inherit version;
   src = diagramIrSrc;
 
-  # Standalone [workspace]; the checked-in lockfile pins the full closure.
-  cargoLock.lockFile = ../services/diagram-ir/Cargo.lock;
+  # The tag's lockfile, vendored so evaluation never reads from the fetched
+  # tree (no import-from-derivation). Byte-identical to Cargo.lock at `rev`.
+  cargoLock.lockFile = ./lockfiles/diagram-ir-${version}.Cargo.lock;
 
   # No native deps: the closure is pure Rust (flate2 uses its rust_backend).
 
@@ -61,7 +72,7 @@ pkgs.rustPlatform.buildRustPackage {
 
   meta = with lib; {
     description = "Deterministic draw.io and Mermaid to normalised diagram IR extractors, plus the accessible-diagram self-check, for agentbox's diagram-design skill";
-    homepage    = "https://github.com/DreamLab-AI/agentbox";
+    homepage    = "https://github.com/DreamLab-AI/diagram-ir";
     license     = with licenses; [ mit asl20 ];
     mainProgram = "diagram-self-check";
     platforms   = platforms.linux;

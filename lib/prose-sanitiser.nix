@@ -22,7 +22,7 @@
 # detect_text_watermark.py (MarkLLM), plus the common.py they import. Those are
 # thin wrappers over torch/diffusers model stacks, not logic worth porting;
 # the Rust locates them, runs them under resource caps and parses their JSON
-# back (see services/prose-sanitiser/crates/media/src/image/harness.rs). They
+# back (see crates/media/src/image/harness.rs in the prose-sanitiser repo). They
 # are found via $PROSE_SANITISER_SCRIPTS_DIR, else
 # /opt/agentbox/skills/prose-sanitiser.
 #
@@ -36,8 +36,8 @@
 #   cli      the eleven CLI binaries (package name `prose-sanitiser`)
 #   server   the HTTP service and its binary
 #
-# The path-deps between them are all inside this src tree, so the whole
-# workspace still builds from one derivation with one lockfile and no workspace
+# The path-deps between them are all inside the fetched tree, so the whole
+# workspace builds from one derivation with one lockfile and no workspace
 # reassembly — every external dependency is on crates.io. ureq is pinned with
 # default-features = false plus the "tls" feature, which selects rustls — so
 # there is NO openssl link and no pkg-config probe, matching the dream-engine
@@ -55,12 +55,20 @@
 let
   version = "0.1.0";
 
-  # In-repo workspace, minus the local build caches. The workspace root IS the
-  # build root, so `buildRustPackage` builds every member and installs the
-  # twelve binaries between them.
-  proseSanitiserSrc = lib.cleanSourceWith {
-    src    = ../services/prose-sanitiser;
-    filter = path: _type: baseNameOf (toString path) != "target";
+  # The workspace lives in its own repository (extracted from services/ with
+  # full history on 2026-09-03) and is published to crates.io as six crates.
+  # Agentbox consumes the tagged source so the twelve binaries are built and
+  # tested here under the same toolchain as everything else. The workspace
+  # root IS the build root, so `buildRustPackage` builds every member.
+  #
+  # To bump: move `rev` to the new tag, refresh `hash` (nix-prefetch-url
+  # --unpack on the tag tarball, then `nix hash convert --to sri`), and copy
+  # the tag's Cargo.lock to lib/lockfiles/prose-sanitiser-<version>.Cargo.lock.
+  proseSanitiserSrc = pkgs.fetchFromGitHub {
+    owner = "DreamLab-AI";
+    repo  = "prose-sanitiser";
+    rev   = "v${version}";
+    hash  = "sha256-IImQLhd1Nzd+LhdKwU+cRCzDbU7Ou4UUlpqt9D31JpA=";
   };
 
 in
@@ -69,8 +77,9 @@ pkgs.rustPlatform.buildRustPackage {
   inherit version;
   src = proseSanitiserSrc;
 
-  # One workspace, one checked-in lockfile at its root, pinning the full closure.
-  cargoLock.lockFile = ../services/prose-sanitiser/Cargo.lock;
+  # The tag's lockfile, vendored so evaluation never reads from the fetched
+  # tree (no import-from-derivation). Byte-identical to Cargo.lock at `rev`.
+  cargoLock.lockFile = ./lockfiles/prose-sanitiser-${version}.Cargo.lock;
 
   # No native deps: ureq is rustls-backed (default-features = false), so there
   # is no openssl link and no pkg-config probe.
@@ -79,7 +88,7 @@ pkgs.rustPlatform.buildRustPackage {
 
   meta = with lib; {
     description = "Deterministic AI-provenance sanitiser for agentbox — invisible-Unicode and homoglyph surgery, image and container metadata stripping, slop scanning and UK-English enforcement, as CLIs and an HTTP service";
-    homepage    = "https://github.com/DreamLab-AI/agentbox";
+    homepage    = "https://github.com/DreamLab-AI/prose-sanitiser";
     license     = with licenses; [ mit asl20 ];
     mainProgram = "clean-text";
     platforms   = platforms.linux;

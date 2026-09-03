@@ -45,7 +45,7 @@ the primitive an `--oxford` flag needs. A line reads
 **Licence.** Atkinson's own permissive notice, functionally BSD/MIT-equivalent
 with no copyleft, so it is safe to vendor into an MIT OR Apache-2.0 crate. The
 vendored copy, its provenance and the reproduced notice live in
-`services/prose-sanitiser/crates/uk/data/`, with a `.sha256` beside it.
+`crates/uk/data/` in the [prose-sanitiser repository](https://github.com/DreamLab-AI/prose-sanitiser), with a `.sha256` beside it.
 
 **Licence trap worth knowing:** do not take en_GB Hunspell dictionaries from
 LibreOffice. They are

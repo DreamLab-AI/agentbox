@@ -12,7 +12,7 @@ Load this file for `.mmd`, `.mermaid`, or Markdown containing fenced `mermaid` b
 
 ## Step 1 — Extract the IR
 
-`mermaid-extract` is a baked binary on `PATH` (source at `services/diagram-ir/` in this repo), so there is no skill-relative path to locate:
+`mermaid-extract` is a baked binary on `PATH` (source: the [diagram-ir repository](https://github.com/DreamLab-AI/diagram-ir)), so there is no skill-relative path to locate:
 
 ```bash
 mermaid-extract <file> [--diagram N|all] [--json] [--max-rows N] [--out PATH]
@@ -78,7 +78,7 @@ Load the selected `type-*.md`. Override the grammar only when the content disagr
 
 ## Worked example
 
-[`assets/example-import-mermaid.html`](../assets/example-import-mermaid.html) redraws the `sample-flowchart.mmd` fixture (`services/diagram-ir/tests/fixtures/` in this repo) at `format=html`, `size=doc-inline`, `detail=balanced`, `audience=mixed`.
+[`assets/example-import-mermaid.html`](../assets/example-import-mermaid.html) redraws the `sample-flowchart.mmd` fixture (`tests/fixtures/` in the diagram-ir repository) at `format=html`, `size=doc-inline`, `detail=balanced`, `audience=mixed`.
 
 | Source | Output | Reason |
 |---|---|---|
