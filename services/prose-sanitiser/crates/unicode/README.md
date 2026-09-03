@@ -129,13 +129,11 @@ MIT OR Apache-2.0.
 Publication candidate. Before `cargo publish`:
 
 - [x] `LICENSE-MIT` and `LICENSE-APACHE` present and linked into the crate
-- [ ] **Licence position settled with the copyright holder.** ADR-016
-      (2026-05-16, licence consolidation) records all first-party code as
-      AGPL-3.0-only, having "eliminated remaining MIT designations from
-      sub-package manifests", and the repository root is AGPL-3.0. Ten
-      `services/*` crates declare `MIT OR Apache-2.0` against that ADR. Adding
-      the licence texts did not resolve the conflict. A hard publication
-      blocker: see the workspace README
+- [ ] **Licence position resolved by the operator.** The manifest declares
+      `MIT OR Apache-2.0`; ADR-016 (2026-05-16) records first-party code as
+      AGPL-3.0-only and the repository root is AGPL-3.0. Unresolved and not
+      settled in these docs; the adversarial review of 2026-09-03 records it as
+      release-blocking (finding 9). See the workspace README
 - [x] `description`, `repository`, `keywords`, `categories`, `readme` set
 - [x] Pure Rust: no C dependencies, no subprocesses, no network
 - [x] Crate-level `//!` docs carrying the capability matrix rows

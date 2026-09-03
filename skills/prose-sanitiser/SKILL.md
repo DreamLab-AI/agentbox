@@ -78,8 +78,20 @@ controls in genuine RTL prose; `U+FEFF` at byte offset 0, where it is a BOM;
 is reported and stripped only on request; content inside code fences, inline code, HTML attributes, URLs, file paths or
 front matter; US spelling in proper nouns, organisation names and direct
 quotations; sense-dependent pairs such as `program`, `meter`, `disk`, `sulfur`,
-`fetus` and `dialog box`; the pixel data of any image; NFKC normalisation of
-user-facing prose, which is lossy by design.
+`fetus` and `dialog box`; the pixel data of any image, on the default path;
+NFKC normalisation of user-facing prose, which is lossy by design.
+
+**Scope of "lossless" and "never touches pixels".** Both describe the default
+path: a container-only operation that succeeds, with pixel removal disabled.
+`clean-image --remove-pixel ctrlregen|diffusion` is outside it by design, since
+it hands the file to a diffusion harness that rewrites pixels deliberately. It
+is lossy, off by default, and not verifiable by diff.
+
+**What a clean report means.** A clean `inspect-*` is evidence that no known
+embedded carrier remains. It is not proof of anonymity or of complete provenance
+removal: it says nothing about a statistical sampling watermark, a pixel-domain
+watermark, or a C2PA soft binding that retrieves the original manifest from a
+cloud repository after the local one is gone.
 
 ## Confidence tiers and the write policy
 
@@ -196,15 +208,9 @@ introduces a new uniform default is not a fix.
 Legitimate editing improves a text and enforces a house style regardless of who
 or what drafted it. Evasion targets a specific detector's signature. This tool
 markets itself on the first and refuses to market itself on detector-defeat
-metrics.
-
-Two consequences worth knowing. Normalising Unicode and restricting the
-character set before scoring is the published mitigation against homoglyph
-evasion attacks, so the Layer A pass is a detector-hardening preprocessor as
-much as a cleaner. And under EU AI Act Article 50(4), AI-generated text that
-underwent genuine human editorial review, with a named person holding editorial
-responsibility, is exempt from the marking duty. Supporting that review is a
-lawful and disclosed workflow, and it is what this skill is for.
+metrics. The legal and evidential grounding for that position, including the EU
+AI Act Article 50(4) editorial-review exemption, is in
+[provenance.md](references/provenance.md) P11.
 
 ## Reference sections
 

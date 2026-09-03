@@ -77,8 +77,25 @@ which is a hyphenation hint as often as a carrier, so it is reported and
 stripped only on request; content inside code fences, inline code, HTML attributes, URLs, file paths or front matter; US
 spelling in proper nouns, organisation names and direct quotations;
 sense-dependent pairs such as `program`, `meter`, `disk`, `sulfur`, `fetus` and
-`dialog box`; the pixel data of any image; NFKC normalisation of user-facing
-prose.
+`dialog box`; the pixel data of any image, on the default path (see the scope note
+below); NFKC normalisation of user-facing prose.
+
+### What "lossless" and "never touches pixels" are scoped to
+
+Both claims describe **the default path: a container-only operation that
+succeeds, with pixel removal disabled.** They are not claims about every code
+path the tool can be asked to take. One path is outside the scope by design:
+
+- `clean-image --remove-pixel ctrlregen|diffusion` hands the file to a diffusion
+  harness that **rewrites pixels deliberately**. That is the point of the flag.
+  It is lossy, it is off by default, and nothing about it is verifiable by diff.
+
+A clean `inspect-text`, `inspect-file` or `inspect-image` report is **evidence
+that no known embedded carrier remains. It is not proof of anonymity, and not
+proof that provenance was completely removed.** It says nothing about a
+statistical sampling watermark in the text, a pixel-domain watermark in the
+image, or a C2PA soft binding that lets a validator retrieve the original signed
+manifest from a cloud repository after the local one is gone.
 
 ## Confidence tiers
 
@@ -149,25 +166,23 @@ cargo doc --workspace --no-deps
 
 ## Licence
 
-> **Open decision, and a hard publication blocker.** The mechanical half is now
-> fixed: `LICENSE-MIT` and `LICENSE-APACHE` exist at this workspace root and are
-> linked into every crate, so a packaged tarball carries its licence texts.
+> **Unresolved, and with the operator.** State of the licence position as of
+> 2026-09-03, recorded here as fact rather than as a recommendation:
 >
-> The governing half is not. [ADR-016](../../docs/adr/) (2026-05-16, licence
-> consolidation) records that all first-party code is **AGPL-3.0-only**, having
-> "eliminated remaining MIT designations from sub-package manifests". The
-> repository root `LICENSE` is AGPL-3.0. Ten `services/*` crates declare
-> `MIT OR Apache-2.0` against that ADR, and `docs/developer/licensing.md` has no
-> entry for any of them. Adding the licence texts did not resolve that conflict;
-> if anything it sharpened it, because the repository now ships two contradictory
-> grants for the same code.
+> - Every crate in this workspace declares `license = "MIT OR Apache-2.0"`.
+> - `LICENSE-MIT` and `LICENSE-APACHE` exist at this workspace root and are
+>   linked into every crate, so a packaged tarball carries its licence texts.
+> - The repository root `LICENSE` is AGPL-3.0.
+> - ADR-016 (2026-05-16, licence consolidation) records all first-party code as
+>   AGPL-3.0-only, having "eliminated remaining MIT designations from
+>   sub-package manifests".
+> - Ten `services/*` crates declare `MIT OR Apache-2.0`, and
+>   `docs/developer/licensing.md` has no entry for any of them.
 >
-> Relicensing is the copyright holder's call, not something to settle in a
-> checklist. Nothing should be published to crates.io until this resolves one of
-> three ways: the crates become AGPL-3.0 per ADR-016 and the publication plan is
-> dropped; a new ADR supersedes ADR-016 to carve these leaf crates out as
-> `MIT OR Apache-2.0` and `docs/developer/licensing.md` is updated to match; or
-> the crates move to their own repository under their own licence.
+> The adversarial review of 2026-09-03 records this as a release-blocking
+> provenance question (finding 9). It is a copyright-holder decision and is not
+> settled in this document. No crate should be published until the operator
+> resolves it.
 
 The rest of this section describes the position the crates *declare*, which is
 what the dependency choices were made to support.

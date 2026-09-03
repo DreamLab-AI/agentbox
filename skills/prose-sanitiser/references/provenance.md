@@ -317,6 +317,36 @@ pixel-domain mark, audio and video watermarks, and training-data backdoors. No
 tool can certify that vendor detectors will fail after processing, and this one
 does not try.
 
+## P11. Ethics, and why this is a defensible position
+
+The line that matters: **legitimate editing improves a text and enforces a house
+style regardless of who or what drafted it; evasion targets a specific
+detector's signature.** This tool is built on the first and refuses to market
+itself on detector-defeat metrics. Two things follow.
+
+**The Layer A pass is a detector-hardening preprocessor, not only a cleaner.**
+[SilverSpeak (ACL 2025)](https://aclanthology.org/2025.genaidetect-1.1.pdf)
+showed homoglyph substitution at 5 to 20 per cent collapses seven detectors from
+a mean MCC of 0.64 to -0.01, and the mitigation its authors propose is
+input-side Unicode normalisation and character-set restriction before scoring.
+That is exactly what this layer does, so the same code that could be misread as
+evasion is the published defence against it.
+
+**Human editorial review is a lawful, disclosed workflow.** The
+[EU AI Act Article 50](https://artificialintelligenceact.eu/article/50/)
+transparency duties apply generally from 2 August 2026, with a grace period to
+2 December 2026 for machine-readable marking. Article 50(4) exempts AI-generated
+text that underwent **genuine human editorial review with a named person holding
+editorial responsibility**. Supporting that review is what this skill is for.
+
+[COPE's position](https://publicationethics.org/guidance/cope-position/authorship-and-ai-tools)
+is compatible and worth knowing: AI tools cannot be authors, use must be
+disclosed in methods, and routine grammar and spelling assistance does not
+require disclosure.
+
+None of this licenses passing off. The exemption is for a named human taking
+responsibility for a text, not for hiding that a model drafted it.
+
 ## Claims withdrawn
 
 Three statements in the previous version of this file were wrong and have been

@@ -148,22 +148,20 @@ The capability matrix stopped being a claim and started being a number.
 
 ### Still open
 
-- **The licence position is unresolved, and it blocks publication.** The
-  mechanical half is fixed: `LICENSE-MIT` and `LICENSE-APACHE` now exist at the
-  workspace root and are linked into every crate. The governing half is not.
-  ADR-016 (2026-05-16) records all first-party code as AGPL-3.0-only with MIT
-  designations eliminated from sub-package manifests, the repository root is
-  AGPL-3.0, and ten `services/*` crates declare `MIT OR Apache-2.0` against that
-  ADR. Adding the texts sharpened the conflict rather than settling it: the
-  repository now ships two contradictory grants for the same code. This is a
-  copyright-holder decision. See the workspace README.
-
-## [0.1.0] - 2026-09-03
-
-The Rust port and the workspace split.
-
-### Added
-
+- **The licence position is unresolved and sits with the operator.** Every crate
+  declares `MIT OR Apache-2.0`; `LICENSE-MIT` and `LICENSE-APACHE` now exist at
+  the workspace root and are linked into every crate; the repository root is
+  AGPL-3.0; ADR-016 (2026-05-16) records first-party code as AGPL-3.0-only; ten
+  `services/*` crates declare `MIT OR Apache-2.0`. Recorded as fact, not as a
+  recommendation. The adversarial review of 2026-09-03 treats it as
+  release-blocking (finding 9). It is a copyright-holder decision.
+- **Documentation scope, from the same review (finding 10).** "Lossless" and
+  "never touches pixels" now name the path they describe: a container-only
+  operation that succeeds, with pixel removal disabled. `clean-image
+  --remove-pixel` hands the file to a diffusion harness that rewrites pixels by
+  design, so it sits outside both claims. A clean `inspect-*` is now stated as
+  evidence that no known embedded carrier remains, not as proof of anonymity or
+  of complete provenance removal.
 - **Ported the Python skill to Rust** across four commits: the crate skeleton
   and Layer A Unicode port, image and container metadata surgery, dispatch plus
   the audit sweeps and two slop scanners, then the Layer B rewrite, the HTTP
