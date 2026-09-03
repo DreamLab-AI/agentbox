@@ -50,19 +50,80 @@ fn prose_layers_run_on_text_and_on_markdown_containers() {
 }
 
 #[test]
-fn a_parsed_provenance_structure_is_mechanical() {
-    let finding = media_finding("JPEG APP11 segment (JUMBF/C2PA common)");
-    assert_eq!(finding.rule_id, RULE_MEDIA_PROVENANCE);
-    assert_eq!(finding.confidence, ConfidenceTier::CertainMechanical);
-    assert_eq!(finding.severity, Severity::High);
+fn a_named_media_rule_keeps_the_media_crates_own_identity() {
+    // The media crate owns the id, the tier and the severity; this crate must
+    // not paraphrase any of them.
+    let note = "PNG chunk caBX (possible C2PA container)";
+    let expected = prose_sanitiser_media::rule_for_finding(note).expect("a named rule");
+    let finding = media_finding(note);
+    assert_eq!(finding.rule_id, expected.id);
+    assert_eq!(finding.confidence, expected.confidence);
+    assert_eq!(finding.severity, expected.severity);
+    assert_ne!(finding.rule_id, RULE_MEDIA_PROVENANCE);
     assert!(finding.replacement.is_none());
 }
 
 #[test]
-fn a_raw_byte_scan_is_a_judgement_call() {
-    let finding = media_finding("byte-scan C2PA markers: c2pa");
+fn an_unnamed_observation_falls_back_and_stays_report_only() {
+    let finding = media_finding("format not fully inspected");
+    assert_eq!(finding.rule_id, RULE_MEDIA_PROVENANCE);
     assert_eq!(finding.confidence, ConfidenceTier::LowConfidenceJudgement);
     assert_eq!(finding.severity, Severity::Low);
+}
+
+#[test]
+fn no_media_finding_ever_carries_a_replacement() {
+    // Container surgery belongs to clean-image and clean-file. Whatever tier
+    // the media crate assigns, this pass must never offer to rewrite bytes.
+    for note in [
+        "PNG chunk caBX (possible C2PA container)",
+        "JPEG APP11 segment (JUMBF/C2PA common)",
+        "byte-scan C2PA markers: c2pa",
+        "format not fully inspected",
+    ] {
+        assert!(media_finding(note).replacement.is_none(), "{note}");
+    }
+}
+
+#[test]
+fn the_driver_table_covers_every_layer() {
+    let ids: Vec<&str> = all_rule_meta().iter().map(|meta| meta.id).collect();
+    // One rule from each crate that owns any, plus the local fallback.
+    assert!(ids.contains(&"tier1-vocab"), "slop missing");
+    assert!(ids.contains(&"unicode-invisible"), "unicode missing");
+    assert!(ids.contains(&"us-spelling"), "uk missing");
+    assert!(
+        ids.iter().any(|id| id.starts_with("media-")),
+        "media missing"
+    );
+    assert!(ids.contains(&RULE_MEDIA_PROVENANCE), "fallback missing");
+}
+
+#[test]
+fn the_driver_table_has_no_duplicate_ids() {
+    let mut ids: Vec<&str> = all_rule_meta().iter().map(|meta| meta.id).collect();
+    ids.sort_unstable();
+    let before = ids.len();
+    ids.dedup();
+    assert_eq!(ids.len(), before, "a rule id is documented twice");
+}
+
+#[test]
+fn every_unicode_rule_reaches_the_driver_table() {
+    // The Layer A rules are the only certain-mechanical ones in the pass, so a
+    // missing entry silently drops a SARIF `fixes[]` a consumer would offer.
+    for rule in prose_sanitiser_unicode::RULES {
+        assert!(
+            all_rule_meta().iter().any(|meta| meta.id == rule.id),
+            "{} missing from the driver table",
+            rule.id
+        );
+    }
+}
+
+#[test]
+fn the_driver_table_is_built_once() {
+    assert_eq!(all_rule_meta().as_ptr(), all_rule_meta().as_ptr());
 }
 
 #[test]

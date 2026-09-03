@@ -12,14 +12,16 @@
 //! flat alternation cannot see which sense is meant; the UK crate can, and it is
 //! the only place in the workspace that tries.
 //!
+//! Every constant this module exposes is re-exported from that crate, not
+//! redefined here. Two definitions of one rule's identity is exactly what the
+//! single-source arrangement exists to prevent.
+//!
 //! # Ordering
 //!
 //! The slop table keeps a positional entry for `us-spelling` so the report lists
 //! rules in the order it always has. When the scanner reaches that entry it
 //! consults the UK checker's findings for the line rather than matching a
 //! pattern, which is why the entry carries no patterns at all.
-
-use prose_sanitiser_core::{ConfidenceTier, Severity};
 
 /// Stable machine identifier for the sense-dependent rule.
 pub use prose_sanitiser_uk::UK_SENSE_ID;
@@ -28,21 +30,12 @@ pub use prose_sanitiser_uk::US_SPELLING_ID;
 /// One-line human label for it.
 pub use prose_sanitiser_uk::US_SPELLING_LABEL;
 
+/// Whether a hit may be acted on without a human reading it.
+pub use prose_sanitiser_uk::US_SPELLING_CONFIDENCE;
 /// Editorial advice attached to a UK-spelling finding.
-pub const US_SPELLING_FIX: &str =
-    "Use UK spelling: -ize->-ise, -or->-our, -er->-re, etc. See SKILL.md B12.";
-
+pub use prose_sanitiser_uk::US_SPELLING_FIX;
 /// How strongly a US-spelling hit signals AI authorship.
-pub const US_SPELLING_SEVERITY: Severity = prose_sanitiser_uk::UK_SPELLING_SEVERITY;
-
-/// Whether a hit may be acted on without a human reading it, as reported here.
-///
-/// The UK crate rates an unconditional VarCon pair
-/// [`HighConfidenceStylistic`](ConfidenceTier::HighConfidenceStylistic), and it
-/// is right to: it has the gazetteer and the exclusions to back that. The slop
-/// table's own entry stays report-only, because the slop report carries no
-/// replacement and offers no way to act on one.
-pub const US_SPELLING_CONFIDENCE: ConfidenceTier = ConfidenceTier::LowConfidenceJudgement;
+pub use prose_sanitiser_uk::US_SPELLING_SEVERITY;
 
 /// The UK checker every scanner in this crate delegates to.
 pub fn checker() -> &'static prose_sanitiser_uk::UkEnglish {

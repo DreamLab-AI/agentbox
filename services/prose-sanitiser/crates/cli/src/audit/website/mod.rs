@@ -175,8 +175,11 @@ pub fn parse_sitemap(data: &[u8]) -> Result<(String, Vec<String>), String> {
                 }
             }
             Ok(Event::Text(text)) if in_loc => {
+                // quick-xml 0.41 replaced `unescape()` with a version-explicit
+                // pair. A sitemap is XML 1.0 by definition (the sitemaps.org
+                // schema declares no other version), so 1.0 entity rules apply.
                 let value = text
-                    .unescape()
+                    .xml10_content()
                     .map_err(|error| format!("malformed sitemap text: {error}"))?;
                 let value = value.trim();
                 if !value.is_empty() {

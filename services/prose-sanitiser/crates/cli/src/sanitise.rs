@@ -30,8 +30,8 @@
 use std::path::{Path, PathBuf};
 
 use prose_sanitiser_core::{
-    classify_finding_confidence, ConfidenceTier, Config, Finding, Patch, ReportEntry, Severity,
-    Span,
+    classify_finding_confidence, ConfidenceTier, Config, Finding, Patch, ReportEntry, RuleMeta,
+    Severity, Span,
 };
 
 use crate::dispatch::{classify, Kind};
@@ -142,30 +142,96 @@ pub fn is_prose(path: &Path, kind: Kind) -> bool {
 
 /// Turn one media inspection string into a finding.
 ///
-/// The media scanners report prose strings rather than typed rules, so the
-/// confidence bucket is derived from the string with the same classifier the
-/// inspect binaries print. A parsed provenance structure is mechanical; a note
-/// about an unsupported format or a raw byte scan is a judgement call.
+/// The media scanners report prose strings rather than typed rules, so a SARIF
+/// consumer has no way to key a result to a `reportingDescriptor` on its own.
+/// `prose-sanitiser-media` publishes
+/// [`rule_for_finding`](prose_sanitiser_media::rule_for_finding) as that bridge:
+/// a substring match in specificity order, tested against the strings its
+/// scanners actually emit. It returns `None` for structural notes — a malformed
+/// container, an unsupported format, a part count — which are observations
+/// rather than rules, and those fall back to [`RULE_MEDIA_PROVENANCE`].
+///
+/// Where the media crate names a rule, its severity and tier are used verbatim.
+/// It owns those decisions, and one is worth knowing about:
+/// `media-c2pa-soft-binding` is `low-confidence-judgement` not because the
+/// detection is weak — the assertion is either in the manifest or it is not —
+/// but because **no fix exists**. The watermark is in the pixels, out of reach
+/// of container surgery. The tier is being used to mean "never auto-fix", which
+/// is the closest the three-tier vocabulary comes to saying so.
 pub fn media_finding(note: &str) -> Finding {
+    if let Some(meta) = prose_sanitiser_media::rule_for_finding(note) {
+        return Finding {
+            rule_id: meta.id.to_string(),
+            label: meta.name.to_string(),
+            span: Span::new(0, 0),
+            matched: note.to_string(),
+            severity: meta.severity,
+            confidence: meta.confidence,
+            advice: format!(
+                "{} Run clean-image or clean-file to strip it: this pass reports container \
+                 metadata and never rewrites image or container bytes.",
+                meta.description
+            ),
+            replacement: None,
+        };
+    }
+
+    // No named rule: a structural observation about the container. Bucket it
+    // with the classifier the inspect binaries print, and keep it report-only.
     let bucket = classify_finding_confidence(note);
-    let (severity, confidence) = match bucket {
-        "confirmed" => (Severity::High, ConfidenceTier::CertainMechanical),
-        "probable" => (Severity::Medium, ConfidenceTier::CertainMechanical),
-        _ => (Severity::Low, ConfidenceTier::LowConfidenceJudgement),
-    };
     Finding {
         rule_id: RULE_MEDIA_PROVENANCE.to_string(),
         label: format!("provenance metadata ({bucket})"),
         span: Span::new(0, 0),
         matched: note.to_string(),
-        severity,
-        confidence,
-        advice: "Run clean-image or clean-file to strip it. This pass reports container metadata; \
-             it never rewrites image or container bytes."
+        severity: Severity::Low,
+        confidence: ConfidenceTier::LowConfidenceJudgement,
+        advice: "An observation about the container rather than a named rule. This pass \
+             reports container metadata; it never rewrites image or container bytes."
             .to_string(),
         replacement: None,
     }
 }
+
+/// Every rule any layer of the umbrella pass can emit.
+///
+/// Built from the four crates that own rules, so a finding always reaches a
+/// SARIF `reportingDescriptor` carrying the tier, dates and sources its own
+/// crate documented rather than this crate's paraphrase of them. Leaked once per
+/// process, because a driver table is `&'static` by the time it reaches
+/// [`prose_sanitiser_core::Report`] and the process needs it until it exits.
+pub fn all_rule_meta() -> &'static [RuleMeta] {
+    use std::sync::OnceLock;
+    static META: OnceLock<Vec<RuleMeta>> = OnceLock::new();
+    META.get_or_init(|| {
+        let mut meta: Vec<RuleMeta> = prose_sanitiser_slop::rules::rule_meta().to_vec();
+        for table in [
+            prose_sanitiser_unicode::RULES,
+            prose_sanitiser_media::RULES,
+            MEDIA_FALLBACK_RULES,
+        ] {
+            for rule in table {
+                if !meta.iter().any(|seen| seen.id == rule.id) {
+                    meta.push(*rule);
+                }
+            }
+        }
+        meta
+    })
+}
+
+/// The catalogue entry for a media observation with no named rule.
+const MEDIA_FALLBACK_RULES: &[RuleMeta] = &[RuleMeta {
+    id: RULE_MEDIA_PROVENANCE,
+    name: "Container provenance observation",
+    description: "A note from an image or container scanner that maps to no named media rule: a malformed container, an unsupported format, a part count. An observation, not a rule.",
+    severity: Severity::Low,
+    confidence: ConfidenceTier::LowConfidenceJudgement,
+    since: "2026-09-03",
+    reviewed: "2026-09-03",
+    help_uri: None,
+    sources: &[],
+}];
 
 /// Read a file as text, or report why not.
 pub fn read_text(path: &Path) -> Result<String, crate::common::CliError> {

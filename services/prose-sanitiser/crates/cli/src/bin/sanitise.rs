@@ -18,10 +18,10 @@ use prose_sanitiser::dispatch::Kind;
 use prose_sanitiser::exit;
 use prose_sanitiser::output::{render, text_line, OutputFormat};
 use prose_sanitiser::sanitise::{
-    is_prose, kind_of, media_finding, read_text, FileOutcome, RULE_MEDIA_PROVENANCE,
+    all_rule_meta, is_prose, kind_of, media_finding, read_text, FileOutcome, RULE_MEDIA_PROVENANCE,
 };
 use prose_sanitiser::settings::Settings;
-use prose_sanitiser::slop::rules::{rule_meta, RULESET_VERSION};
+use prose_sanitiser::slop::rules::RULESET_VERSION;
 use prose_sanitiser::slop::SlopChecker;
 use prose_sanitiser::{container, image};
 use prose_sanitiser_core::{Check, Config, Report, Severity, ToolMeta};
@@ -279,7 +279,7 @@ fn body() -> Result<i32, CliError> {
 
     let report = Report::new(
         ToolMeta::new("sanitise", env!("CARGO_PKG_VERSION")),
-        rule_meta(),
+        all_rule_meta(),
     )
     .with_ruleset_version(RULESET_VERSION)
     .with_entries(entries);

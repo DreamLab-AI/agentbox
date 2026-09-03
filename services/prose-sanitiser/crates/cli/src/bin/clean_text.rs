@@ -43,6 +43,11 @@ struct Args {
     /// Paranoid: strip all load-bearing invisibles too
     #[arg(long = "strip-emoji-glue")]
     strip_emoji_glue: bool,
+    /// Remove U+00AD SOFT HYPHEN. Off by default: it is a legitimate
+    /// hyphenation hint as often as it is a steganographic carrier, so removing
+    /// it unconditionally damages correctly typeset text.
+    #[arg(long = "strip-soft-hyphen")]
+    strip_soft_hyphen: bool,
     /// Print stats JSON to stderr
     #[arg(long)]
     stats: bool,
@@ -62,22 +67,29 @@ fn main() -> std::process::ExitCode {
 fn body() -> Result<i32, CliError> {
     let args = Args::parse();
     let units = read_text_input(Some(&args.path), args.force_text, None)?;
-    let (cleaned, stats) = clean_text(
-        &units,
-        CleanOptions {
-            nfkc: args.nfkc,
-            aggressive_homoglyphs: args.aggressive_homoglyphs,
-            mixed_script_only: !args.fold_all_confusables,
-            normalize_spaces: !args.no_normalize_spaces,
-            strip_emoji_glue: args.strip_emoji_glue,
-            bidi_context: if args.code {
-                BidiContext::Code
-            } else {
-                BidiContext::Prose
-            },
-            ..CleanOptions::default()
+    // The struct spread is deliberate and clippy's `needless_update` is wrong
+    // here. Every field happens to be set today, but `CleanOptions` is owned by
+    // `prose-sanitiser-unicode` and has gained three fields this sprint alone
+    // (`mixed_script_only`, `bidi_context`, `strip_soft_hyphen`), each of which
+    // broke this literal in a shared worktree and reddened the build for every
+    // other worker. Keeping the spread means the next field arrives at its safe
+    // default instead of failing the build.
+    #[allow(clippy::needless_update)]
+    let options = CleanOptions {
+        nfkc: args.nfkc,
+        aggressive_homoglyphs: args.aggressive_homoglyphs,
+        mixed_script_only: !args.fold_all_confusables,
+        normalize_spaces: !args.no_normalize_spaces,
+        strip_emoji_glue: args.strip_emoji_glue,
+        strip_soft_hyphen: args.strip_soft_hyphen,
+        bidi_context: if args.code {
+            BidiContext::Code
+        } else {
+            BidiContext::Prose
         },
-    );
+        ..CleanOptions::default()
+    };
+    let (cleaned, stats) = clean_text(&units, options);
 
     let mut out = args.output.clone();
     if args.in_place {
