@@ -22,7 +22,7 @@ This crate is built so it cannot make those mistakes.
 
 ```text
 document
-   -> span exclusion      code, links, front matter, quotations, names
+   -> span exclusion      code, links, front matter, quotations, paths, names
    -> language filter     Config::language, shared with every other checker
    -> VarCon lookup       is this really an American spelling?
    -> sense resolution    which meaning, and is it already correct?
@@ -63,6 +63,11 @@ Nothing this crate produces is `CertainMechanical`. Spelling is a style
 question, and a style question is never certain. `check()` never mutates;
 `fix()` returns a `Patch` that describes the change and leaves applying it to
 the caller.
+
+`us-spelling` is the only rule in the workspace a `--write` run applies to
+prose. That is deliberate and it is the whole exposure: `us-spelling-sense`
+carries no replacement, and every other text rule in the workspace is
+report-only. See [Write exposure](#write-exposure) for the measurement.
 
 ## House style
 
@@ -180,6 +185,77 @@ technical register, reported at low confidence and never auto-fixed.
 
 For comparison, before the sense prior and the `--allow` list the same corpus
 produced 457 findings. The `verify` prior for *check* alone removed 210.
+
+### 2,000 documents of British human prose (2026-09-03)
+
+1,206,061 words of GOV.UK publications (436 documents), Hansard debates (964)
+and Project Gutenberg British literature (600), every one human-written and
+pre-2022. Measured with `ps-eval run`; the report is
+`uk-exclusions-2026-09-03.md` in the evaluation workspace. Every finding on this
+corpus is a false positive.
+
+| Rule | Documents flagged | Findings | Per 1k words | Before | Change |
+|---|---:|---:|---:|---:|---|
+| `us-spelling` | 111 (5.55%) | 116 | 0.10 | 117 | -1 |
+| `us-spelling-sense` | 71 (3.55%) | 79 | 0.07 | 218 | **-64%** |
+
+The `us-spelling-sense` fall is the *practice/practise* tuning. Before it,
+`practice` and `practices` were 146 of the 218 findings: two thirds of the
+rule's output on this corpus, and every one wrong, because British English
+spells the noun *practice* and the noun is what almost all of them were. The
+disambiguator now reads the token directly in front of the word before it reads
+the wider window, and assumes the noun for a `<N>`/`<V>` pair whose noun sense
+is already correct British English. `practice` fell from 111 findings to 7 and
+`practices` from 35 to none.
+
+What that gives up is a bare verb use with no marker in front of it, as in
+*doctors practice medicine*, which now passes silently. The rule is report-only either way, so
+the trade is 139 reports a reader must dismiss against one they will not see.
+A verb marker, a modal, an adverb, `to`, or the inflected *practiced* and
+*practicing* all still report; the last two are unconditional and carry a
+replacement.
+
+The `us-spelling` fall is small because Hansard and Gutenberg prose contains
+almost no Markdown. The exclusion work below is worth far more on documentation
+than it is here.
+
+### Write exposure
+
+What matters for a `--write` run is not how many findings there are but how
+many would change bytes. On the corpus above:
+
+```text
+write-eligible findings   116   (mechanical or opt-in)
+edits a --write applies   116   (write-eligible and carrying a replacement)
+rules involved            us-spelling
+```
+
+Before 2026-09-03 the same corpus reported **683 write-eligible findings**
+across `agg`, `negative-parallelism` and `us-spelling`. The 566 in the first two
+were mislabelled: neither rule can produce a replacement, so none of them could
+ever have been applied. They are declared `ReportOnly` now, and the two columns
+agree, which is the property worth having: a gap between them means a rule is
+claiming a repair it does not have.
+
+### Exclusions (2026-09-03)
+
+Code spans, code blocks and link destinations are located by a CommonMark parse
+(`pulldown-cmark`) rather than by regex. Five classes of span that the regex
+pass rewrote are now protected, each asserted twice. Once that no finding is
+raised, and once that a `--write` pass returns the bytes unchanged:
+
+| Span | Probe | Before |
+|---|---|---|
+| Straight single quotes | `He said 'The color is red.'` | rewritten |
+| Curly single quotes | `He said ‘The color is red.’` | rewritten |
+| Indented code blocks | four-space indented `color: red` | rewritten |
+| Relative link destinations | `[text](relative/path/color)` | rewritten |
+| Bare file paths | `./docs/color/theater.md` | rewritten |
+
+Two lines are held deliberately. Link *text* is prose and stays checked, because
+it is what a reader reads. And a slash alone does not make a path: `color/center`
+and `and/or` stay checked, because treating every slashed pair as a filename
+would silence a real class of finding to catch a rare one.
 
 ## Scope
 

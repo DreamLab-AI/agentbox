@@ -65,6 +65,49 @@ variation-selector chain, and the UK-English rule was a single unsafe regex.
   the skill, the workspace README and `references/unicode.md` all moved it from
   the strips-losslessly block to never-touch.
 
+- **UK exclusions are a CommonMark parse, not a regex.** `prose-sanitiser-uk`
+  now locates code spans, code blocks and link destinations with
+  `pulldown-cmark` (MIT). The regex pass it replaces paired backticks by run
+  length within a line, ignored four-space indented code entirely, and
+  recognised a link only by its scheme, so `[color](relative/path/color)` had
+  its destination rewritten by `--write`. Five classes of span are now
+  protected: straight and curly single quotations, indented code blocks,
+  relative and reference link destinations, and bare file paths. Link *text*
+  stays checked, because it is prose a reader reads, and a slash alone still
+  does not make a path — `color/center` and `and/or` are English, not
+  filenames. Each class is asserted twice: once that no finding is raised, and
+  once that a `--write` pass returns the bytes unchanged.
+- **The *practice/practise* noun reading is silent by default.** On 2,000
+  documents of British human prose, `practice` and `practices` were 146 of 218
+  `us-spelling-sense` findings, every one a false positive. The disambiguator
+  now reads the token directly in front of the word before the wider window —
+  a modifier in front outranks a copula three tokens back, which is what made
+  *this is standard practice* resolve as a verb — and assumes the noun for an
+  `<N>`/`<V>` pair whose noun sense is already correct British English. That
+  gate admits *practice*, *practices*, *draft* and *drafts* and nothing else, so
+  *licence* and *programme* keep reporting. `us-spelling-sense` fell from 218
+  findings to 79, and `practice` from 111 to 7. What it gives up is a bare verb
+  use with no marker in front of it, *doctors practice medicine*; the rule is
+  report-only either way.
+- **Fixability is declared by the crate that owns the rule.** `Fixability`
+  defaults to what the confidence tier implies, and for high-confidence
+  stylistic rules that default is `OptIn` — correct for a rule that can offer
+  a replacement, and no rule in `prose-sanitiser-slop` can. On the same 2,000
+  documents that mislabelled 566 findings as write-eligible across `agg` and
+  `negative-parallelism`, both of which are whole-document density observations
+  with a zero-length span at offset 0 and nothing to substitute into. Nothing
+  was ever rewritten, because a finding with no replacement yields no edit, but
+  the label was a promise the tables could not keep. Every rule table now
+  carries a `FIXABILITY` constant beside its `RULES`;
+  `sanitise::fixability_table()` concatenates them, `Report::with_fixability_table`
+  carries them into the SARIF driver rules, and a workspace test asserts the
+  invariant in both directions. Write exposure on that corpus is now 116 edits
+  from 116 write-eligible findings, all `us-spelling`, down from 683.
+- `slop-scan`'s JSON Lines and SARIF output carries the `replacement` the
+  delegated UK rule offers. It reported `replacement: null` on every finding
+  while labelling `us-spelling` opt-in, which told a consumer two different
+  things about the same finding.
+
 ### Added
 
 - `ConfidenceTier` with three levels, and the write policy built on it:

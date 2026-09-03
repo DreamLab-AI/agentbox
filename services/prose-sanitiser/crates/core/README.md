@@ -96,17 +96,39 @@ as what it is: certain, and unfixable.
 ### Declaring a fixability that does not follow the tier
 
 A rule whose repairability differs from its tier says so in a side table rather
-than by bending its tier, and `Config::with_fixability_table` applies it. There
-is exactly one entry, `sanitise::FIXABILITY_OVERRIDES`:
+than by bending its tier, and `Config::with_fixability_table` applies it. Each
+crate declares its own, as a `FIXABILITY` constant beside its `RULES`, so a
+library consumer that never links the CLI gets the same answer:
 
 ```rust
-pub const FIXABILITY_OVERRIDES: &[(&str, Fixability)] =
+// prose-sanitiser-media: certain detection, no possible repair.
+pub const FIXABILITY: &[(&str, Fixability)] =
     &[("media-c2pa-soft-binding", Fixability::NoFixExists)];
+
+// prose-sanitiser-slop: no rule in the crate emits a replacement, so none of
+// them may claim a repair exists, whatever their tier implies.
+pub const FIXABILITY: &[(&str, Fixability)] = &[
+    ("agg", Fixability::ReportOnly),
+    // ... and every other high-confidence structural rule
+];
 ```
 
-Every entry point that assembles findings from more than one crate runs
-`sanitise::configure` first, so a rule that says no repair exists is honoured
-wherever it surfaces.
+`sanitise::fixability_table()` concatenates them and `sanitise::configure`
+applies the result, so a rule's declaration is honoured wherever it surfaces.
+`Report::with_fixability_table` carries the same table into the SARIF driver
+rules, because a `properties.fixability` of `opt-in` on a rule beside
+`report-only` on every result for it invites a consumer to trust whichever it
+read first.
+
+Declaring goes in both directions, and the second direction is the one that
+bit. `NoFixExists` stops a certain detection being repaired; `ReportOnly` stops
+a confident *pattern* being mistaken for an available *repair*. Measured on
+2,000 documents of British human prose, 566 findings were marked opt-in by
+rules that can never produce a replacement — nothing was ever rewritten,
+because a finding with no replacement yields no edit, but the label was a
+promise the tables could not keep. A workspace test now asserts the invariant in
+both directions: a rule marked mechanical or opt-in must produce a replacement
+on at least one fixture, and a report-only rule must never produce one.
 
 SARIF carries all three axes on each result: `properties.confidence`,
 `properties.severity` and `properties.fixability`, plus `properties.autoFixable`.

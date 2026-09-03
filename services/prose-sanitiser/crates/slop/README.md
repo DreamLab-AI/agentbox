@@ -263,59 +263,79 @@ Every finding on this corpus is a false positive by construction: the text is
 human-written British English, so nothing in it should be reported as an
 Americanism or as an AI tell.
 
-| Rule | Documents flagged | Findings per 1,000 words | Auto-fixed |
-|---|---|---|---|
-| `the-opener` | 21.90% | 0.798 | 0 |
-| `tier1-vocab` | 17.75% | 0.429 | 0 |
-| `agg` (density checks) | 16.90% | 0.286 | 0 |
-| `negative-parallelism` | 10.00% | 0.183 | 0 |
-| `us-spelling-sense` | 8.15% | 0.181 | 0 |
-| `hedge-words` | 8.10% | 0.158 | 0 |
-| **`us-spelling`** | **5.60%** | **0.097** | **0** |
-| `throat-clearing` | 2.50% | 0.045 | 0 |
-| `copula-substitution` | 1.95% | 0.034 | 0 |
-| `preamble-label` | 1.70% | 0.028 | 0 |
-| `claudish-structure` | 1.20% | 0.020 | 0 |
-| `passive-tell` | 1.15% | 0.019 | 0 |
-| `insider-voice` | 0.30% | 0.005 | 0 |
-| `claudish-filler` | 0.15% | 0.002 | 0 |
+| Rule | Documents flagged | Findings per 1,000 words | Write-eligible | Edits applied |
+|---|---|---|---|---|
+| `the-opener` | 21.90% | 0.798 | 0 | 0 |
+| `tier1-vocab` | 17.75% | 0.429 | 0 | 0 |
+| `agg` (density checks) | 16.90% | 0.286 | 0 | 0 |
+| `negative-parallelism` | 10.00% | 0.183 | 0 | 0 |
+| `hedge-words` | 8.10% | 0.158 | 0 | 0 |
+| **`us-spelling`** | **5.55%** | **0.096** | **116** | **116** |
+| `us-spelling-sense` | 3.55% | 0.066 | 0 | 0 |
+| `throat-clearing` | 2.50% | 0.045 | 0 | 0 |
+| `copula-substitution` | 1.95% | 0.034 | 0 | 0 |
+| `preamble-label` | 1.70% | 0.028 | 0 | 0 |
+| `claudish-structure` | 1.20% | 0.020 | 0 | 0 |
+| `passive-tell` | 1.15% | 0.019 | 0 | 0 |
+| `insider-voice` | 0.30% | 0.005 | 0 | 0 |
+| `claudish-filler` | 0.15% | 0.002 | 0 | 0 |
 
-**The number that matters is the last column.** Across 2,000 British documents
-and 1.2 million words, **not one finding was auto-fixed**. The UK rules split
-their output between `us-spelling`, which carries a replacement and is gated
-behind `--write`, and `us-spelling-sense`, which carries none and cannot be
-applied under any configuration; the sense-dependent traps that made the
-original single regex unsafe now land in the second bucket. So the crate's
-worst case on British prose is noise in a report, never a corrupted document.
+**Write-eligible** counts findings marked `mechanical` or `opt-in`: what a
+write-enabled caller is entitled to apply. **Edits applied** counts the subset
+that also carries a `replacement`, which is what such a caller would change.
+Across 2,000 British documents and 1.2 million words, **no rule this crate owns
+is write-eligible, and the only edits a `--write` run makes are 116
+`us-spelling` substitutions**, a rule owned by `prose-sanitiser-uk`.
+
+Those two columns agreeing is the point. They did not agree before 2026-09-03,
+when the same corpus reported **683 write-eligible findings** across `agg`,
+`negative-parallelism` and `us-spelling`. The 566 in the first two were a
+labelling defect: `Fixability::default_for` maps high-confidence-stylistic onto
+opt-in, which is right for a rule that can offer a replacement, and no rule in
+this crate can. `agg` and the `structural-*` measures are whole-document density
+observations carrying a zero-length span at offset 0, so there is nothing there
+to substitute into. Nothing was ever rewritten, because a finding with no
+replacement yields no edit; but the label was a promise the crate could not
+keep, and an auditor reading it had to know that to discount it.
+
+Those rules now declare `Fixability::ReportOnly` in
+[`rules::FIXABILITY`](src/rules/mod.rs), which the SARIF driver table and every
+result agree on. The confidence tiers are untouched: how far to trust a pattern
+and whether a repair exists are separate questions, which is why they are
+separate axes. A workspace test asserts the invariant in both directions: a
+rule marked mechanical or opt-in must produce a replacement on at least one
+fixture, and a report-only rule must never produce one.
 
 **What it actually matched**, read from the reported byte offsets rather than
 inferred. `us-spelling`: *gray* x10, *honor* x5, *recognize* x3, *afterward* x2,
 *agonized* x2, *baptized* x2, *behavior* x2, *characterized* x2, *colored* x2,
 *fulfill* x2, *honors* x2, *labeling* x2. Spot-checked, those are genuine
 Americanisms, mostly in nineteenth-century Gutenberg text and quoted American
-sources. So 5.60 per cent is an upper bound on false positives rather than a
+sources. So 5.55 per cent is an upper bound on false positives rather than a
 count of them, and it is roughly one flagged document in eighteen against the
 **61.3 per cent** false-positive rate seven commercial detectors showed on TOEFL
 essays (Liang et al. 2023, *Patterns*).
 
-`us-spelling-sense` is dominated by a single token: *practice* and *practices*
-are 67 per cent of its output on British prose (146 of 218 findings), then
-*prize* x14, *onward* x8, *bark* x7, *program* x6. A rule that is two-thirds one
-word is a rule to watch, and it is exactly why that one is report-only.
+`us-spelling-sense` was dominated by a single token until 2026-09-03: *practice*
+and *practices* were 67 per cent of its output on British prose (146 of 218
+findings). A rule that is two-thirds one word is a rule to watch, and watching
+it is what produced the noun-reading tuning in `prose-sanitiser-uk`. The rule
+now reports 79 findings rather than 218, with no token above `prize` x14, and
+`practice` down to 7. It stays report-only.
 
 ### The composition changed, not the count
 
 The interesting comparison is against the previous build on the same 2,000
 documents. The old flat alternation produced 120 `us-spelling` findings; the
-VarCon rebuild produces 117. Almost the same headline number, and almost
+VarCon rebuild produces 116. Almost the same headline number, and almost
 nothing in common:
 
 | | Old regex | VarCon rebuild |
 |---|---|---|
-| Findings | 120 | 117 |
+| Findings | 120 | 116 |
 | Sense-dependent, reported as plain misspellings | 37 (*licensed* x26, *license* x5, *licenses* x3, *meter* x3) | 0, split into report-only `us-spelling-sense` |
 | **Findings on correct British spellings** | **26** (*fulfilled*, *fulfilling*) | **0** |
-| Auto-fixable | n/a | 0 |
+| Edits a `--write` run applies | n/a | 116 |
 
 Twenty-six of the old build's findings were on *fulfilled* and *fulfilling*,
 which are correct British English. The rule was reporting good spelling as bad,
