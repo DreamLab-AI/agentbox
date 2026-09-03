@@ -85,6 +85,31 @@ const PREPOSITIONS: &[&str] = &[
     "about", "against", "through", "during", "per",
 ];
 
+/// Adverbs that make the word after them a verb.
+///
+/// A closed list, not an `-ly` test. The suffix looks like a reliable adverb
+/// marker and is not: *family*, *supply*, *early*, *likely* and *holy* all end
+/// in it, and *family practice* is one of the commonest noun phrases the
+/// practice/practise pair appears in. A short list of real adverbs is worth
+/// more than a rule that misfires on the exact phrases it most needs to get
+/// right.
+const ADVERB_MARKERS: &[&str] = &[
+    "never", "always", "often", "sometimes", "rarely", "seldom", "still", "also", "then", "now",
+    "already", "again", "once", "actually", "actively", "routinely", "regularly", "widely",
+    "commonly", "generally", "currently", "openly", "freely", "legally", "lawfully", "properly",
+    "safely", "successfully", "duly", "merely", "simply", "only", "further",
+];
+
+/// Function words that say nothing about what follows them.
+///
+/// Conjunctions and subordinators join clauses without governing the next word,
+/// so *law and practice* must fall through to the wider window rather than be
+/// read as a noun phrase headed by a content word.
+const NEUTRAL_FUNCTION_WORDS: &[&str] = &[
+    "and", "or", "but", "nor", "so", "yet", "if", "than", "as", "because", "while", "when",
+    "where", "whether", "though", "although", "since", "unless", "until", "before", "after",
+];
+
 /// How many tokens either side of the occurrence to read for part of speech.
 const POS_WINDOW: usize = 3;
 
@@ -124,7 +149,10 @@ pub fn resolve(document: &str, span: Span, entry: &Entry, dialect: Dialect) -> V
     // purely because the unit sense carries an <N> and the instrument does not.
     let pos = pos_discriminates(senses)
         .then(|| detect_pos(document, span))
-        .flatten();
+        .flatten()
+        // Nothing local settled it. For a pair whose noun reading is already
+        // correct British English, assume the noun: see `noun_is_the_default`.
+        .or_else(|| noun_is_the_default(senses).then_some(Pos::Noun));
     let numeric = is_numeric_prefixed(document, span);
 
     // Score every sense, then let the *targets* decide whether the winner is
@@ -207,6 +235,14 @@ fn score_sense(sense: &Sense, context: &[String], pos: Option<Pos>, numeric: boo
 }
 
 /// Guess the part of speech from the words immediately around the occurrence.
+///
+/// The token directly in front is consulted first and, when it is decisive,
+/// alone. That ordering is the fix for the largest class of false positive the
+/// crate had: *this is standard practice*, *it is common practice* and *best
+/// practice suggests* all carry a copula two or three tokens back, which the
+/// windowed scoring counted as evidence of a verb and used to suggest
+/// *practise*. A modifier directly in front outranks a copula further away,
+/// because the word it modifies is the head of a noun phrase.
 fn detect_pos(document: &str, span: Span) -> Option<Pos> {
     // `regex::Matches` is forward-only, so collect before walking backwards.
     let preceding: Vec<&str> = word_re()
@@ -214,6 +250,11 @@ fn detect_pos(document: &str, span: Span) -> Option<Pos> {
         .map(|hit| hit.as_str())
         .collect();
     let before: Vec<&str> = preceding.iter().rev().take(POS_WINDOW).copied().collect();
+
+    if let Some(reading) = before.first().and_then(|word| immediate_reading(word)) {
+        return Some(reading);
+    }
+
     let after = word_re()
         .find_iter(document.get(span.end..).unwrap_or(""))
         .map(|hit| hit.as_str().to_lowercase())
@@ -225,15 +266,11 @@ fn detect_pos(document: &str, span: Span) -> Option<Pos> {
     for (distance, word) in before.iter().enumerate() {
         let lower = word.to_lowercase();
         let weight = (POS_WINDOW - distance) as i32;
-        if lower == "to" && distance == 0 {
-            verb += 5;
-        } else if VERB_MARKERS.contains(&lower.as_str()) {
+        if VERB_MARKERS.contains(&lower.as_str()) {
             verb += weight;
         }
         if DETERMINERS.contains(&lower.as_str()) {
             noun += weight;
-        } else if PREPOSITIONS.contains(&lower.as_str()) && distance == 0 {
-            noun += 2;
         }
     }
     if after.as_deref() == Some("of") {
@@ -245,6 +282,49 @@ fn detect_pos(document: &str, span: Span) -> Option<Pos> {
         std::cmp::Ordering::Less => Some(Pos::Verb),
         std::cmp::Ordering::Equal => None,
     }
+}
+
+/// What the word directly before the occurrence settles, if anything.
+///
+/// Four outcomes, in order. A verb marker or an adverb makes it a verb; a
+/// determiner or a preposition makes it a noun; a conjunction settles nothing
+/// and defers to the wider window; anything else is a content word, which in
+/// this position is an adjective or a noun modifier, and either way the
+/// occurrence heads the phrase.
+fn immediate_reading(word: &str) -> Option<Pos> {
+    let lower = word.to_lowercase();
+    if VERB_MARKERS.contains(&lower.as_str()) || ADVERB_MARKERS.contains(&lower.as_str()) {
+        return Some(Pos::Verb);
+    }
+    if DETERMINERS.contains(&lower.as_str()) || PREPOSITIONS.contains(&lower.as_str()) {
+        return Some(Pos::Noun);
+    }
+    if NEUTRAL_FUNCTION_WORDS.contains(&lower.as_str()) {
+        return None;
+    }
+    Some(Pos::Noun)
+}
+
+/// Whether the noun reading is assumed when nothing local decides.
+///
+/// Only for a pair VarCon splits `<N>`/`<V>` whose **noun** sense is already
+/// correct British English. That is a deliberately narrow gate, and the whole
+/// table satisfies it in four places: *practice*, *practices*, *draft* and
+/// *drafts*. It cannot touch *license* or *program*, whose noun senses are
+/// *licence* and *programme*, so those keep reporting exactly as before.
+///
+/// The gate is worth having because of what it costs and what it saves.
+/// Measured on 2,000 documents of British human prose, *practice* and
+/// *practices* were 146 of 218 `us-spelling-sense` findings — two thirds of the
+/// rule's output, on a corpus where every one is a false positive. What it
+/// gives up is a bare verb use with no marker in front of it, as in *doctors
+/// practice medicine*, which now passes silently. That is a report-only rule
+/// either way: the tool never rewrote it, and the trade is 146 reports a reader
+/// must dismiss against one they will not see.
+fn noun_is_the_default(senses: &[Sense]) -> bool {
+    senses
+        .iter()
+        .any(|sense| sense.part_of_speech() == Some("N") && sense.is_correct_as_written())
 }
 
 /// Whether the occurrence is directly preceded by a number, as in "12 meters".

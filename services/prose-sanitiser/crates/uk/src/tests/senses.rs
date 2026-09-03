@@ -208,3 +208,102 @@ fn senses_that_agree_on_the_answer_are_not_a_tie() {
         Verdict::CorrectAsWritten
     );
 }
+
+// ---- the practice/practise tuning -----------------------------------------
+//
+// Measured on 2,000 documents of British human prose, `practice` and
+// `practices` were 146 of 218 `us-spelling-sense` findings. Every one was a
+// false positive: British English spells the noun `practice`, and the noun is
+// what almost all of them were. The tuning reads the token directly in front
+// and, failing that, assumes the noun for a pair whose noun sense is already
+// correct.
+
+/// Sentences where `practice` is a noun and British English is already right.
+const NOUN_READINGS: &[&str] = &[
+    "In practice the scheme works well.",
+    "Best practice suggests otherwise.",
+    "The general practice takes new patients.",
+    "Their practices are well documented.",
+    "This is standard practice across the sector.",
+    "Good practice requires a written record.",
+    "The practice of medicine is regulated.",
+    "Community pharmacy practices vary widely.",
+    "It is common practice.",
+    "Clinical practice guidelines were issued.",
+    "Such practices should be discouraged.",
+    "Family practice is a recognised speciality.",
+    "The report reviews law and practice.",
+];
+
+/// Sentences where the verb reading is signalled and must still be reported.
+const VERB_READINGS: &[&str] = &[
+    "We must practice restraint.",
+    "They practice medicine here.",
+    "He wants to practice law.",
+    "Doctors routinely practice defensive medicine.",
+];
+
+#[test]
+fn the_noun_reading_of_practice_is_silent() {
+    for sentence in NOUN_READINGS {
+        assert_eq!(
+            verdict(sentence, if sentence.contains("practices") { "practices" } else { "practice" }),
+            Verdict::CorrectAsWritten,
+            "reported a noun reading: {sentence:?}"
+        );
+        assert!(
+            check(sentence).iter().all(|f| f.rule_id != UK_SENSE_ID),
+            "reported a noun reading end to end: {sentence:?}"
+        );
+    }
+}
+
+#[test]
+fn the_verb_reading_of_practice_is_still_reported() {
+    for sentence in VERB_READINGS {
+        assert!(
+            suggests(&verdict(sentence, "practice"), "practise"),
+            "missed a verb reading: {sentence:?}"
+        );
+    }
+}
+
+#[test]
+fn the_inflected_verb_forms_are_unconditional_and_untouched_by_the_tuning() {
+    // `practiced` and `practicing` have no noun reading at all, so they stay in
+    // the unconditional table with a mechanical replacement behind --write.
+    for (sentence, target) in [
+        ("He practiced law for thirty years.", "practised"),
+        ("She is practicing her scales.", "practising"),
+    ] {
+        let findings = check(sentence);
+        assert_eq!(findings.len(), 1, "{sentence:?}");
+        assert_eq!(findings[0].replacement.as_deref(), Some(target));
+    }
+}
+
+#[test]
+fn the_noun_default_cannot_reach_licence_or_programme() {
+    // The gate is "the noun sense is already correct British English", which
+    // licence and programme both fail. Without that gate this tuning would
+    // silence the two pairs it most needs to keep reporting.
+    assert!(suggests(
+        &verdict("She showed me a driving license.", "license"),
+        "licence"
+    ));
+    assert!(suggests(
+        &verdict("The training program was cancelled.", "program"),
+        "programme"
+    ));
+}
+
+#[test]
+fn a_determiner_still_outranks_a_content_word() {
+    // The immediate-token reading must not have cost the determiner rule its
+    // effect: "a licence" is a noun by determiner, "to license" a verb by "to".
+    assert!(suggests(&verdict("He has a license.", "license"), "licence"));
+    assert_eq!(
+        verdict("The board voted to license a doctor.", "license"),
+        Verdict::CorrectAsWritten
+    );
+}
