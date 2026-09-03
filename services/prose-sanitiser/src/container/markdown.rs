@@ -220,7 +220,10 @@ mod tests {
         let source = b"---\ntitle: A post\ndate: 2026-01-01\ntags:\n  - one\n  - two\n---\nBody.\n";
         let (cleaned, actions) = clean_markdown(source);
         assert_eq!(actions, vec!["no AI frontmatter keys removed".to_string()]);
-        assert_eq!(String::from_utf8(cleaned).unwrap(), String::from_utf8(source.to_vec()).unwrap());
+        assert_eq!(
+            String::from_utf8(cleaned).unwrap(),
+            String::from_utf8(source.to_vec()).unwrap()
+        );
     }
 
     #[test]
@@ -241,7 +244,8 @@ mod tests {
 
     #[test]
     fn comments_and_blank_lines_follow_the_block_they_sit_in() {
-        let source = b"---\ntitle: t\n\n# a note\ngenerator: g\n# dropped note\nauthor: a\n---\nBody.\n";
+        let source =
+            b"---\ntitle: t\n\n# a note\ngenerator: g\n# dropped note\nauthor: a\n---\nBody.\n";
         let (cleaned, _) = clean_markdown(source);
         let text = String::from_utf8(cleaned).unwrap();
         assert!(text.contains("# a note"));

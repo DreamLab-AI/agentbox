@@ -86,6 +86,14 @@ fn write_entries(entries: Vec<Entry>) -> Result<Vec<u8>, String> {
         let mut writer = ZipWriter::new(&mut buffer);
         for entry in entries {
             let mut options = SimpleFileOptions::default().compression_method(entry.compression);
+            // Match Python zipfile's deflate level. Only Deflated accepts a
+            // level: passing one for a Stored entry is rejected outright, and
+            // ODT's uncompressed `mimetype` is exactly that case. The deflate
+            // implementation still differs from zlib's, so the archive is
+            // byte-equivalent in content but not in compressed size.
+            if entry.compression == CompressionMethod::Deflated {
+                options = options.compression_level(Some(6));
+            }
             if let Some(timestamp) = entry.last_modified {
                 options = options.last_modified_time(timestamp);
             }
@@ -118,7 +126,12 @@ pub fn inspect_docx(data: &[u8]) -> (bool, bool, Vec<String>, Value) {
     let entries = match read_entries(data) {
         Ok(entries) => entries,
         Err(error) if error == "not a valid zip" => {
-            return (false, false, vec!["not a valid DOCX zip".to_string()], json!({}))
+            return (
+                false,
+                false,
+                vec!["not a valid DOCX zip".to_string()],
+                json!({}),
+            )
         }
         Err(error) => return (false, false, vec![error], json!({})),
     };
@@ -254,8 +267,8 @@ fn replace_field(
         let whole = captures.get(0).expect("group 0 always present");
         let inner = captures.get(2).expect("group 2 always present").as_bytes();
         out.extend_from_slice(&data[last..whole.start()]);
-        let name_hit =
-            ai_meta_name_re_bytes().is_match(inner) || ai_meta_name_re_bytes().is_match(label.as_bytes());
+        let name_hit = ai_meta_name_re_bytes().is_match(inner)
+            || ai_meta_name_re_bytes().is_match(label.as_bytes());
         // Application/AppVersion are additionally cleared on a vendor name.
         let vendor_hit =
             matches!(label, "Application" | "AppVersion") && vendor_re().is_match(inner);
@@ -281,7 +294,12 @@ pub fn inspect_odt(data: &[u8]) -> (bool, bool, Vec<String>, Value) {
     let entries = match read_entries(data) {
         Ok(entries) => entries,
         Err(error) if error == "not a valid zip" => {
-            return (false, false, vec!["not a valid ODT zip".to_string()], json!({}))
+            return (
+                false,
+                false,
+                vec!["not a valid ODT zip".to_string()],
+                json!({}),
+            )
         }
         Err(error) => return (false, false, vec![error], json!({})),
     };
@@ -362,7 +380,12 @@ pub fn zip_namelist(data: &[u8]) -> Result<Vec<String>, String> {
     let mut archive =
         ZipArchive::new(Cursor::new(data)).map_err(|_| "not a valid zip".to_string())?;
     Ok((0..archive.len())
-        .filter_map(|index| archive.by_index(index).ok().map(|file| file.name().to_string()))
+        .filter_map(|index| {
+            archive
+                .by_index(index)
+                .ok()
+                .map(|file| file.name().to_string())
+        })
         .collect())
 }
 

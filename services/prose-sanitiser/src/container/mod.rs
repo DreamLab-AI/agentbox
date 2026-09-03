@@ -82,9 +82,7 @@ pub fn detect_container_format(path: &Path, data: Option<&[u8]>) -> String {
             &head[start..]
         };
         let first_500 = &data[..data.len().min(500)].to_ascii_lowercase();
-        if trimmed.starts_with(b"<")
-            && first_500.windows(3).any(|window| window == b"svg")
-        {
+        if trimmed.starts_with(b"<") && first_500.windows(3).any(|window| window == b"svg") {
             return "svg".to_string();
         }
         if data.starts_with(b"PK") {
@@ -183,11 +181,7 @@ pub fn inspect_container(path: &Path) -> std::io::Result<ContainerInspectReport>
 }
 
 /// Clean container metadata; optionally Layer-A scrub text bodies for md/html.
-pub fn clean_container(
-    path: &Path,
-    dest: &Path,
-    also_layer_a_text: bool,
-) -> Result<Value, String> {
+pub fn clean_container(path: &Path, dest: &Path, also_layer_a_text: bool) -> Result<Value, String> {
     let data = std::fs::read(path).map_err(|e| format!("cannot read {}: {e}", path.display()))?;
     let format = detect_container_format(path, Some(&data));
     if let Some(parent) = dest.parent().filter(|p| !p.as_os_str().is_empty()) {

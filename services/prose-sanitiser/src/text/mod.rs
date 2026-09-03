@@ -71,11 +71,7 @@ pub fn inspect_text(units: &[Unit], aggressive: bool, strip_emoji_glue: bool) ->
         let Some(kind) = decision.kind else {
             // Kept; glue (emoji/script joiner/tag) does not advance the
             // "previous kept" base so ZWJ chains and flag runs stay bound.
-            if !unit
-                .as_char()
-                .map(|c| is_glue(c as u32))
-                .unwrap_or(false)
-            {
+            if !unit.as_char().map(|c| is_glue(c as u32)).unwrap_or(false) {
                 previous_kept = decision.output;
             }
             continue;

@@ -131,7 +131,7 @@ pub fn guess_kind(url: &str, data: &[u8], content_type: Option<&str>) -> String 
 /// Parse a (possibly gzip-compressed) sitemap into `(kind, urls)`.
 pub fn parse_sitemap(data: &[u8]) -> Result<(String, Vec<String>), String> {
     let body = if data.starts_with(&[0x1F, 0x8B]) {
-        let mut decoder = flate2::read::GzDecoder::new(data);
+        let decoder = flate2::read::GzDecoder::new(data);
         let mut out = Vec::new();
         // Read one byte past the cap so an over-large payload is detectable.
         decoder
@@ -310,11 +310,20 @@ pub fn discover_sitemap(base_url: &str, timeout: u64) -> Result<Option<String>, 
         }
     }
 
-    if let Ok((data, _)) = fetch(&format!("{base}/robots.txt"), timeout, 1 << 20, Some(&origin)) {
+    if let Ok((data, _)) = fetch(
+        &format!("{base}/robots.txt"),
+        timeout,
+        1 << 20,
+        Some(&origin),
+    ) {
         let text = String::from_utf8_lossy(&data);
         for line in text.lines() {
             if line.to_lowercase().starts_with("sitemap:") {
-                let candidate = line.split_once(':').map(|(_, rest)| rest).unwrap_or("").trim();
+                let candidate = line
+                    .split_once(':')
+                    .map(|(_, rest)| rest)
+                    .unwrap_or("")
+                    .trim();
                 let candidate_origin = url_origin(candidate)?;
                 if !net::origin_allowed(&candidate_origin, &origin) {
                     // A robots.txt pointing off-site is a redirect by another
@@ -329,12 +338,24 @@ pub fn discover_sitemap(base_url: &str, timeout: u64) -> Result<Option<String>, 
 }
 
 /// Collect same-site URLs, following nested sitemap indexes.
-pub fn collect_urls(sitemap_url: &str, timeout: u64, max_pages: usize) -> Result<Vec<String>, String> {
+pub fn collect_urls(
+    sitemap_url: &str,
+    timeout: u64,
+    max_pages: usize,
+) -> Result<Vec<String>, String> {
     let origin = url_origin(sitemap_url)?;
     let mut urls: Vec<String> = Vec::new();
     let mut seen: Vec<String> = Vec::new();
     let origin = Arc::new(origin);
-    recurse(sitemap_url, 0, timeout, max_pages, &origin, &mut urls, &mut seen)?;
+    recurse(
+        sitemap_url,
+        0,
+        timeout,
+        max_pages,
+        &origin,
+        &mut urls,
+        &mut seen,
+    )?;
     Ok(urls)
 }
 
@@ -356,7 +377,9 @@ fn recurse(
     for location in locations {
         let candidate = url_origin(&location)?;
         if !net::origin_allowed(&candidate, origin) {
-            return Err(format!("cross-origin sitemap URL is not allowed: {location}"));
+            return Err(format!(
+                "cross-origin sitemap URL is not allowed: {location}"
+            ));
         }
         if seen.contains(&location) {
             continue;

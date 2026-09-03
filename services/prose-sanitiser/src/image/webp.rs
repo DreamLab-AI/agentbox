@@ -43,8 +43,8 @@ pub fn webp_chunks(data: &[u8]) -> (Vec<WebpChunk>, Vec<String>) {
     let mut pos = 12usize;
     while pos + 8 <= data.len() {
         let fourcc: [u8; 4] = data[pos..pos + 4].try_into().expect("checked length");
-        let length = u32::from_le_bytes(data[pos + 4..pos + 8].try_into().expect("checked length"))
-            as usize;
+        let length =
+            u32::from_le_bytes(data[pos + 4..pos + 8].try_into().expect("checked length")) as usize;
         let payload_start = pos + 8;
         let Some(payload_end) = payload_start.checked_add(length) else {
             notes.push(format!("truncated WebP chunk {}", chunk_name(&fourcc)));

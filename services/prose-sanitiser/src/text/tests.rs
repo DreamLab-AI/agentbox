@@ -116,7 +116,7 @@ fn inspect_offsets_are_python_character_offsets() {
 
 #[test]
 fn inspect_caps_samples_at_ten() {
-    let text: String = std::iter::repeat('\u{200b}').take(25).collect();
+    let text: String = "\u{200b}".repeat(25);
     let report = inspect_text(&units(&text), false, false);
     assert_eq!(report.hits[0].count, 25);
     assert_eq!(report.hits[0].samples.len(), 10);

@@ -17,7 +17,8 @@ fn metadata_block_re() -> &'static ByteRegex {
 fn xmpmeta_re() -> &'static ByteRegex {
     static RE: OnceLock<ByteRegex> = OnceLock::new();
     RE.get_or_init(|| {
-        ByteRegex::new(r"(?is-u)<x:xmpmeta\b[^>]*>.*?</x:xmpmeta\s*>").expect("static regex compiles")
+        ByteRegex::new(r"(?is-u)<x:xmpmeta\b[^>]*>.*?</x:xmpmeta\s*>")
+            .expect("static regex compiles")
     })
 }
 
@@ -70,7 +71,9 @@ pub fn clean_svg(data: &[u8]) -> (Vec<u8>, Vec<String>) {
     let metadata_count = metadata_block_re().find_iter(&text).count();
     if metadata_count > 0 {
         actions.push(format!("drop <metadata> x{metadata_count}"));
-        text = metadata_block_re().replace_all(&text, &b""[..]).into_owned();
+        text = metadata_block_re()
+            .replace_all(&text, &b""[..])
+            .into_owned();
     }
 
     let xmp_count = xmpmeta_re().find_iter(&text).count();
@@ -99,7 +102,9 @@ pub fn clean_svg(data: &[u8]) -> (Vec<u8>, Vec<String>) {
         let count = generator_attr_re().find_iter(&text).count();
         if count > 0 {
             actions.push(format!("drop generator-like attrs x{count}"));
-            text = generator_attr_re().replace_all(&text, &b""[..]).into_owned();
+            text = generator_attr_re()
+                .replace_all(&text, &b""[..])
+                .into_owned();
         }
     }
     if actions.is_empty() {

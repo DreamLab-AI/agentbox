@@ -49,7 +49,10 @@ pub fn ai_meta_name_re_bytes() -> &'static ByteRegex {
 }
 
 fn contains_subslice(haystack: &[u8], needle: &[u8]) -> bool {
-    !needle.is_empty() && haystack.windows(needle.len()).any(|window| window == needle)
+    !needle.is_empty()
+        && haystack
+            .windows(needle.len())
+            .any(|window| window == needle)
 }
 
 /// Scan a blob for C2PA and AI markers.
@@ -76,7 +79,12 @@ pub fn blob_hits(blob: &[u8]) -> (bool, bool, Vec<String>) {
             // already recorded, so a marker reported once is not repeated.
             let already: Vec<&str> = findings
                 .iter()
-                .map(|finding| finding.split_once(':').map(|(_, tail)| tail).unwrap_or(finding))
+                .map(|finding| {
+                    finding
+                        .split_once(':')
+                        .map(|(_, tail)| tail)
+                        .unwrap_or(finding)
+                })
                 .collect();
             if !already.contains(&label.as_str()) {
                 findings.push(format!("ai:{label}"));

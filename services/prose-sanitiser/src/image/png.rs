@@ -1,8 +1,6 @@
 //! PNG chunk-level inspection and metadata surgery.
 
-use super::markers::{
-    ai_and_c2pa_markers, contains_any, hits_name_c2pa, join_hits, C2PA_MARKERS,
-};
+use super::markers::{ai_and_c2pa_markers, contains_any, hits_name_c2pa, join_hits, C2PA_MARKERS};
 
 pub const PNG_SIG: &[u8] = b"\x89PNG\r\n\x1a\n";
 

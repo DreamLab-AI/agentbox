@@ -133,6 +133,9 @@ mod tests {
 
     #[test]
     fn unrecognised_findings_default_to_informational() {
-        assert_eq!(classify_finding_confidence("something else"), "informational");
+        assert_eq!(
+            classify_finding_confidence("something else"),
+            "informational"
+        );
     }
 }

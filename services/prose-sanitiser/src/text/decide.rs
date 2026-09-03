@@ -341,7 +341,10 @@ mod tests {
         assert_eq!(zwsp.kind, Some("zwj_family"));
 
         assert_eq!(decide_char('\u{202E}', None).kind, Some("bidi"));
-        assert_eq!(decide_char('\u{E0101}', None).kind, Some("variation_selector"));
+        assert_eq!(
+            decide_char('\u{E0101}', None).kind,
+            Some("variation_selector")
+        );
         assert_eq!(decide_char('\u{E0041}', None).kind, Some("tag_chars"));
         assert_eq!(decide_char('\u{E000}', None).kind, Some("private_use"));
         assert_eq!(decide_char('\u{00AD}', None).kind, Some("strip"));
@@ -350,7 +353,10 @@ mod tests {
     #[test]
     fn keeps_emoji_glue_after_an_emoji_base() {
         // ZWJ after an emoji base is load-bearing.
-        assert_eq!(decide_char('\u{200D}', Some('\u{2764}')).action, Action::Keep);
+        assert_eq!(
+            decide_char('\u{200D}', Some('\u{2764}')).action,
+            Action::Keep
+        );
         // The same ZWJ free-floating after a letter is contraband.
         assert_eq!(decide_char('\u{200D}', Some('a')).action, Action::Strip);
     }
@@ -358,7 +364,10 @@ mod tests {
     #[test]
     fn keeps_script_joiners_inside_complex_scripts() {
         // ZWNJ after a Persian letter is orthographic.
-        assert_eq!(decide_char('\u{200C}', Some('\u{0645}')).action, Action::Keep);
+        assert_eq!(
+            decide_char('\u{200C}', Some('\u{0645}')).action,
+            Action::Keep
+        );
         assert_eq!(decide_char('\u{200C}', Some('a')).action, Action::Strip);
     }
 
@@ -366,10 +375,19 @@ mod tests {
     fn keeps_same_script_fillers_only_after_their_own_script() {
         // Mongolian FVS after a Mongolian letter, Khmer vowel after Khmer,
         // Hangul filler after a jamo.
-        assert_eq!(decide_char('\u{180B}', Some('\u{1820}')).action, Action::Keep);
+        assert_eq!(
+            decide_char('\u{180B}', Some('\u{1820}')).action,
+            Action::Keep
+        );
         assert_eq!(decide_char('\u{180B}', Some('a')).action, Action::Strip);
-        assert_eq!(decide_char('\u{17B4}', Some('\u{1780}')).action, Action::Keep);
-        assert_eq!(decide_char('\u{1160}', Some('\u{1100}')).action, Action::Keep);
+        assert_eq!(
+            decide_char('\u{17B4}', Some('\u{1780}')).action,
+            Action::Keep
+        );
+        assert_eq!(
+            decide_char('\u{1160}', Some('\u{1100}')).action,
+            Action::Keep
+        );
     }
 
     #[test]
@@ -424,7 +442,10 @@ mod tests {
             char_label(Unit::Char('\u{200B}')),
             "U+200B ZERO WIDTH SPACE (Cf)"
         );
-        assert_eq!(char_label(Unit::Char('a')), "U+0061 LATIN SMALL LETTER A (Ll)");
+        assert_eq!(
+            char_label(Unit::Char('a')),
+            "U+0061 LATIN SMALL LETTER A (Ll)"
+        );
     }
 
     #[test]

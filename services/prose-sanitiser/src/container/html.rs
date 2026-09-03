@@ -46,14 +46,16 @@ fn jsonld_re() -> &'static ByteRegex {
 fn data_ai_attr_re() -> &'static ByteRegex {
     static RE: OnceLock<ByteRegex> = OnceLock::new();
     RE.get_or_init(|| {
-        ByteRegex::new(r#"(?i-u)\bdata-ai[\w-]*\s*=\s*["'][^"']*["']"#).expect("static regex compiles")
+        ByteRegex::new(r#"(?i-u)\bdata-ai[\w-]*\s*=\s*["'][^"']*["']"#)
+            .expect("static regex compiles")
     })
 }
 
 fn data_ai_attr_with_space_re() -> &'static ByteRegex {
     static RE: OnceLock<ByteRegex> = OnceLock::new();
     RE.get_or_init(|| {
-        ByteRegex::new(r#"(?i-u)\sdata-ai[\w-]*\s*=\s*["'][^"']*["']"#).expect("static regex compiles")
+        ByteRegex::new(r#"(?i-u)\sdata-ai[\w-]*\s*=\s*["'][^"']*["']"#)
+            .expect("static regex compiles")
     })
 }
 
@@ -62,6 +64,13 @@ fn provenance_jsonld_re() -> &'static ByteRegex {
     RE.get_or_init(|| {
         ByteRegex::new(r"(?i-u)DigitalSourceType|trainedAlgorithmicMedia|SoftwareAgent")
             .expect("static regex compiles")
+    })
+}
+
+fn jsonld_c2pa_re() -> &'static ByteRegex {
+    static RE: OnceLock<ByteRegex> = OnceLock::new();
+    RE.get_or_init(|| {
+        ByteRegex::new(r"(?i-u)c2pa|contentcredential").expect("static regex compiles")
     })
 }
 
@@ -158,10 +167,7 @@ pub fn inspect_html(data: &[u8]) -> (bool, bool, Vec<String>, Value) {
         if ai_meta_name_re_bytes().is_match(blob) || provenance_jsonld_re().is_match(blob) {
             has_ai = true;
             findings.push("json-ld provenance-like block".to_string());
-            if ByteRegex::new(r"(?i-u)c2pa|contentcredential")
-                .expect("static regex compiles")
-                .is_match(blob)
-            {
+            if jsonld_c2pa_re().is_match(blob) {
                 has_c2pa = true;
             }
         }

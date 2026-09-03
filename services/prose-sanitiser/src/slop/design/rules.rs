@@ -350,7 +350,8 @@ mod tests {
         assert_eq!(severity, Severity::Warn);
         assert!(rule_layout_transition("transition: transform 200ms ease;").is_none());
         assert!(
-            rule_bounce_easing("transition-timing-function: cubic-bezier(.34,-0.4,.2,1);").is_some()
+            rule_bounce_easing("transition-timing-function: cubic-bezier(.34,-0.4,.2,1);")
+                .is_some()
         );
         assert!(rule_bounce_easing("animation: bounce 1s;").is_some());
         assert!(rule_bounce_easing("transition: opacity 200ms ease-out;").is_none());

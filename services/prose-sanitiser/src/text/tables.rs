@@ -164,33 +164,21 @@ pub const BIDI_CPS: &[u32] = &[
     0x061C, 0x200E, 0x200F, 0x202A, 0x202B, 0x202C, 0x202D, 0x202E, 0x2066, 0x2067, 0x2068, 0x2069,
 ];
 
-pub const ZW_FAMILY: &[u32] = &[
-    0x180E, 0x200B, 0x200C, 0x200D, 0x2060, 0xFEFF,
-];
+pub const ZW_FAMILY: &[u32] = &[0x180E, 0x200B, 0x200C, 0x200D, 0x2060, 0xFEFF];
 
-pub const EMOJI_GLUE_CODEPOINTS: &[u32] = &[
-    0x200D, 0xFE0E, 0xFE0F,
-];
+pub const EMOJI_GLUE_CODEPOINTS: &[u32] = &[0x200D, 0xFE0E, 0xFE0F];
 
-pub const SCRIPT_JOINERS: &[u32] = &[
-    0x200C, 0x200D,
-];
+pub const SCRIPT_JOINERS: &[u32] = &[0x200C, 0x200D];
 
 pub const ORTHOGRAPHIC_CF: &[u32] = &[
     0x0600, 0x0601, 0x0602, 0x0603, 0x0604, 0x0605, 0x06DD, 0x070F, 0x08E2, 0x110BD, 0x110CD,
 ];
 
-pub const MONGOLIAN_FVS: &[u32] = &[
-    0x180B, 0x180C, 0x180D,
-];
+pub const MONGOLIAN_FVS: &[u32] = &[0x180B, 0x180C, 0x180D];
 
-pub const KHMER_VOWELS: &[u32] = &[
-    0x17B4, 0x17B5,
-];
+pub const KHMER_VOWELS: &[u32] = &[0x17B4, 0x17B5];
 
-pub const HANGUL_FILLERS: &[u32] = &[
-    0x115F, 0x1160,
-];
+pub const HANGUL_FILLERS: &[u32] = &[0x115F, 0x1160];
 
 /// Look up a replacement in one of the homoglyph tables.
 pub fn lookup(table: &[(u32, char)], codepoint: u32) -> Option<char> {

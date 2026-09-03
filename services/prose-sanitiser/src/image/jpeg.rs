@@ -1,8 +1,6 @@
 //! JPEG segment-level inspection and metadata surgery.
 
-use super::markers::{
-    ai_and_c2pa_markers, contains_any, hits_name_c2pa, join_hits, C2PA_MARKERS,
-};
+use super::markers::{ai_and_c2pa_markers, contains_any, hits_name_c2pa, join_hits, C2PA_MARKERS};
 
 pub const JPEG_SOI: &[u8] = b"\xff\xd8";
 
@@ -196,7 +194,10 @@ mod tests {
     /// A minimal JPEG: SOI, the given segments, then a token scan and EOI.
     fn jpeg_with(segments: &[(u8, &[u8])]) -> Vec<u8> {
         let mut out = JPEG_SOI.to_vec();
-        out.extend_from_slice(&segment(0xE0, b"JFIF\x00\x01\x02\x00\x00\x01\x00\x01\x00\x00"));
+        out.extend_from_slice(&segment(
+            0xE0,
+            b"JFIF\x00\x01\x02\x00\x00\x01\x00\x01\x00\x00",
+        ));
         for (marker, payload) in segments {
             out.extend_from_slice(&segment(*marker, payload));
         }

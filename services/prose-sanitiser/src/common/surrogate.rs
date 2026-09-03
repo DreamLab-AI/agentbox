@@ -88,10 +88,7 @@ pub fn to_lossy_string(units: &[Unit]) -> String {
 
 /// Decode dropping undecodable bytes, matching Python's `errors="ignore"`.
 pub fn decode_ignore(data: &[u8]) -> String {
-    decode(data)
-        .into_iter()
-        .filter_map(Unit::as_char)
-        .collect()
+    decode(data).into_iter().filter_map(Unit::as_char).collect()
 }
 
 #[cfg(test)]

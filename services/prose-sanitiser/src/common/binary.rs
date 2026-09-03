@@ -7,7 +7,10 @@
 
 /// Container magic numbers that get mistaken for text on the command line.
 pub const BINARY_MAGIC: &[(&[u8], &str)] = &[
-    (b"PK\x03\x04", "a ZIP container (DOCX, ODT, XLSX, PPTX, EPUB, JAR)"),
+    (
+        b"PK\x03\x04",
+        "a ZIP container (DOCX, ODT, XLSX, PPTX, EPUB, JAR)",
+    ),
     (b"PK\x05\x06", "an empty ZIP container"),
     (b"PK\x07\x08", "a spanned ZIP container"),
     (b"%PDF-", "a PDF"),
@@ -111,7 +114,7 @@ mod tests {
 
     #[test]
     fn allowed_controls_do_not_trip_the_ratio() {
-        let text: Vec<u8> = std::iter::repeat(b'\n').take(64).collect();
+        let text: Vec<u8> = vec![b'\n'; 64];
         assert!(looks_binary(&text).is_none());
     }
 }

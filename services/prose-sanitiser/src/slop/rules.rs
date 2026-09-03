@@ -275,16 +275,51 @@ pub const RULES: &[Rule] = &[
 /// Tier-2 cluster words: not flagged singly, only when three or more distinct
 /// ones appear in a single file (B5).
 pub const TIER2: &[&str] = &[
-    "crucial", "notable", "noteworthy", "remarkable", "fascinating", "profound", "compelling",
-    "intriguing", "elegant", "meticulous", "intricate", "deliberate", "thoughtful",
-    "sophisticated", "sprawling", "bustling", "evocative", "poignant", "cornerstone", "linchpin",
-    "bedrock", "nexus", "interplay", "realm", "arena", "sphere", "endeavour", "myriad", "plethora",
+    "crucial",
+    "notable",
+    "noteworthy",
+    "remarkable",
+    "fascinating",
+    "profound",
+    "compelling",
+    "intriguing",
+    "elegant",
+    "meticulous",
+    "intricate",
+    "deliberate",
+    "thoughtful",
+    "sophisticated",
+    "sprawling",
+    "bustling",
+    "evocative",
+    "poignant",
+    "cornerstone",
+    "linchpin",
+    "bedrock",
+    "nexus",
+    "interplay",
+    "realm",
+    "arena",
+    "sphere",
+    "endeavour",
+    "myriad",
+    "plethora",
 ];
 
 /// Transition words for the per-page density check (B10).
 pub const TRANSITIONS: &[&str] = &[
-    "furthermore", "moreover", "additionally", "consequently", "notably", "crucially",
-    "importantly", "ultimately", "fundamentally", "indeed", "significantly", "subsequently",
+    "furthermore",
+    "moreover",
+    "additionally",
+    "consequently",
+    "notably",
+    "crucially",
+    "importantly",
+    "ultimately",
+    "fundamentally",
+    "indeed",
+    "significantly",
+    "subsequently",
     "accordingly",
 ];
 
@@ -293,8 +328,20 @@ pub const EXTS: &[&str] = &["md", "markdown", "mdx", "txt", "rst", "text", "tex"
 
 /// Directories the prose scanner never descends into.
 pub const SKIP_DIRS: &[&str] = &[
-    "node_modules", ".git", "dist", "build", ".next", "out", "vendor", "coverage",
-    ".svelte-kit", ".astro", ".turbo", ".cache", "__pycache__", "site-packages",
+    "node_modules",
+    ".git",
+    "dist",
+    "build",
+    ".next",
+    "out",
+    "vendor",
+    "coverage",
+    ".svelte-kit",
+    ".astro",
+    ".turbo",
+    ".cache",
+    "__pycache__",
+    "site-packages",
 ];
 
 pub const EMDASH: char = '—';
@@ -337,7 +384,13 @@ mod tests {
     #[test]
     fn the_table_keeps_its_shape() {
         assert_eq!(RULES.len(), 15);
-        assert_eq!(RULES.iter().filter(|r| r.severity == Severity::High).count(), 7);
+        assert_eq!(
+            RULES
+                .iter()
+                .filter(|r| r.severity == Severity::High)
+                .count(),
+            7
+        );
         assert_eq!(TIER2.len(), 29);
         assert_eq!(TRANSITIONS.len(), 13);
     }

@@ -152,7 +152,11 @@ fn docx_clean_drops_a_provenance_custom_xml_part_entirely() {
 
 #[test]
 fn a_clean_docx_reports_no_removals_and_round_trips() {
-    let docx = docx_with(&[("docProps/core.xml", b"<x><dc:creator>Jo</dc:creator></x>", false)]);
+    let docx = docx_with(&[(
+        "docProps/core.xml",
+        b"<x><dc:creator>Jo</dc:creator></x>",
+        false,
+    )]);
     let (cleaned, actions) = clean_docx(&docx).unwrap();
     assert_eq!(actions, vec!["no DOCX metadata parts removed".to_string()]);
     assert_eq!(
@@ -166,7 +170,11 @@ fn odt_keeps_its_stored_mimetype_first() {
     let odt = zip_with(&[
         ("mimetype", b"application/vnd.oasis.opendocument.text", true),
         ("content.xml", b"<office:document-content/>", false),
-        ("meta.xml", b"<office:meta><meta:generator>Claude/1.0</meta:generator></office:meta>", false),
+        (
+            "meta.xml",
+            b"<office:meta><meta:generator>Claude/1.0</meta:generator></office:meta>",
+            false,
+        ),
     ]);
     let (cleaned, actions) = clean_odt(&odt).unwrap();
     assert!(actions.contains(&"drop meta:generator".to_string()));
@@ -187,7 +195,11 @@ fn odt_drops_marked_side_parts_but_never_the_content() {
     let odt = zip_with(&[
         ("mimetype", b"application/vnd.oasis.opendocument.text", true),
         // The visible content mentions a vendor; it must survive regardless.
-        ("content.xml", b"<office:document-content>About Claude</office:document-content>", false),
+        (
+            "content.xml",
+            b"<office:document-content>About Claude</office:document-content>",
+            false,
+        ),
         ("Thumbnails/provenance.bin", b"c2pa manifest", false),
     ]);
     let (c2pa, _, _, _) = inspect_odt(&odt);
@@ -203,7 +215,11 @@ fn odt_drops_marked_side_parts_but_never_the_content() {
 fn odt_scrubs_an_ai_creator_but_keeps_a_human_one() {
     let odt = zip_with(&[
         ("mimetype", b"application/vnd.oasis.opendocument.text", true),
-        ("meta.xml", b"<m><dc:creator>Jo Bloggs</dc:creator></m>", false),
+        (
+            "meta.xml",
+            b"<m><dc:creator>Jo Bloggs</dc:creator></m>",
+            false,
+        ),
     ]);
     let (cleaned, actions) = clean_odt(&odt).unwrap();
     assert_eq!(actions, vec!["no ODT metadata removed".to_string()]);
@@ -226,7 +242,11 @@ fn odt_scrubs_an_ai_creator_but_keeps_a_human_one() {
 fn odt_flags_generator_like_meta_fields() {
     let odt = zip_with(&[
         ("mimetype", b"application/vnd.oasis.opendocument.text", true),
-        ("meta.xml", b"<m><meta:generator>LibreOffice</meta:generator></m>", false),
+        (
+            "meta.xml",
+            b"<m><meta:generator>LibreOffice</meta:generator></m>",
+            false,
+        ),
     ]);
     let (_, ai, findings, _) = inspect_odt(&odt);
     assert!(ai);

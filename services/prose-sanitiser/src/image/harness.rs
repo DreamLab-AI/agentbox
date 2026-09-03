@@ -14,7 +14,7 @@ use std::time::Duration;
 
 use serde_json::{json, Value};
 
-use crate::common::proc::{run_capture, RunError, Rlimits};
+use crate::common::proc::{run_capture, Rlimits, RunError};
 use crate::common::{env_nonempty, which};
 
 /// Where the Python harness scripts live.
@@ -89,10 +89,14 @@ fn parse_payload(
         }));
     }
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let text = if stdout.trim().is_empty() { "{}" } else { &stdout };
-    serde_json::from_str::<Value>(text).map_err(|error| {
-        json!({"available": false, "error": format!("bad {adapter} JSON: {error}")})
-    })
+    let text = if stdout.trim().is_empty() {
+        "{}"
+    } else {
+        &stdout
+    };
+    serde_json::from_str::<Value>(text).map_err(
+        |error| json!({"available": false, "error": format!("bad {adapter} JSON: {error}")}),
+    )
 }
 
 /// Run the optional reverse-SynthID scorer.
@@ -138,7 +142,11 @@ pub fn run_synthid_score(path: &Path, upstream_dir: Option<&str>) -> Option<Valu
         }));
     }
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let text = if stdout.trim().is_empty() { "{}" } else { &stdout };
+    let text = if stdout.trim().is_empty() {
+        "{}"
+    } else {
+        &stdout
+    };
     match serde_json::from_str::<Value>(text) {
         Ok(value) => Some(value),
         Err(error) => Some(json!({

@@ -77,7 +77,11 @@ pub fn parse_url(url: &str) -> Result<ParsedUrl, String> {
         scheme,
         host: host.trim_end_matches('.').to_lowercase(),
         port,
-        path: if path.is_empty() { "/".to_string() } else { path },
+        path: if path.is_empty() {
+            "/".to_string()
+        } else {
+            path
+        },
         query,
         has_credentials: credentials.is_some(),
     })
@@ -289,7 +293,8 @@ mod tests {
     fn rejects_unsafe_url_forms() {
         assert!(url_origin("file:///etc/passwd").is_err());
         assert!(url_origin("ftp://example.com/x").is_err());
-        assert!(url_origin("https://user:pass@example.com/").unwrap_err()
+        assert!(url_origin("https://user:pass@example.com/")
+            .unwrap_err()
             .contains("credentials"));
         assert!(url_origin("http://example.com:notaport/").is_err());
     }
@@ -347,7 +352,12 @@ mod tests {
 
     #[test]
     fn ordinary_public_addresses_are_global() {
-        for address in ["8.8.8.8", "1.1.1.1", "93.184.216.34", "2001:4860:4860::8888"] {
+        for address in [
+            "8.8.8.8",
+            "1.1.1.1",
+            "93.184.216.34",
+            "2001:4860:4860::8888",
+        ] {
             assert!(is_global(address.parse().unwrap()), "{address} is public");
         }
     }

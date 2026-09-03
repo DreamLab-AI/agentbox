@@ -24,7 +24,10 @@ fn clean_prose_produces_nothing() {
 
 #[test]
 fn tier1_vocabulary_is_a_high_severity_tell() {
-    let result = scan_text("We leverage a robust and seamless approach.\n", Severity::Low);
+    let result = scan_text(
+        "We leverage a robust and seamless approach.\n",
+        Severity::Low,
+    );
     assert_eq!(result.high(), 1);
     assert!(rule_ids(&result).contains(&"tier1-vocab".to_string()));
     // One finding per line, not one per matching word.
@@ -147,7 +150,10 @@ fn three_distinct_tier2_words_cluster_into_one_low_finding() {
 
 #[test]
 fn transition_overuse_is_a_medium_aggregate() {
-    let result = scan_text("Furthermore. Moreover. Additionally. Consequently.\n", Severity::Low);
+    let result = scan_text(
+        "Furthermore. Moreover. Additionally. Consequently.\n",
+        Severity::Low,
+    );
     let finding = result
         .findings
         .iter()
@@ -189,7 +195,10 @@ fn the_verdict_ladder_matches_the_python_thresholds() {
 #[test]
 fn the_weighted_score_uses_the_tier_weights() {
     // One high (3) + one medium (2).
-    let result = scan_text("We leverage things.\nIt is basically fine.\n", Severity::Low);
+    let result = scan_text(
+        "We leverage things.\nIt is basically fine.\n",
+        Severity::Low,
+    );
     assert_eq!(result.high(), 1);
     assert_eq!(result.weighted(), 5);
 }
@@ -201,7 +210,11 @@ fn a_directory_scan_walks_only_the_prose_extensions() {
     std::fs::write(dir.path().join("b.txt"), "Plain.\n").unwrap();
     std::fs::write(dir.path().join("c.rs"), "// we leverage things\n").unwrap();
     std::fs::create_dir(dir.path().join("node_modules")).unwrap();
-    std::fs::write(dir.path().join("node_modules/d.md"), "We leverage things.\n").unwrap();
+    std::fs::write(
+        dir.path().join("node_modules/d.md"),
+        "We leverage things.\n",
+    )
+    .unwrap();
 
     let result = scan(dir.path(), Severity::Low);
     assert_eq!(result.files_scanned, 2, "only .md and .txt");

@@ -60,9 +60,11 @@ pub fn inspect_pdf(path: &Path, data: &[u8]) -> (bool, bool, Vec<String>, Value)
         findings.push("XMP packet present".to_string());
         let blob = packets.join(&b'\n');
         has_ai = has_ai
-            || ByteRegex::new(r"(?i-u)digitalSourceType|trainedAlgorithmicMedia|SoftwareAgent|c2pa")
-                .expect("static regex compiles")
-                .is_match(&blob);
+            || ByteRegex::new(
+                r"(?i-u)digitalSourceType|trainedAlgorithmicMedia|SoftwareAgent|c2pa",
+            )
+            .expect("static regex compiles")
+            .is_match(&blob);
     }
 
     let tools = run_optional_tools(path);
@@ -131,11 +133,9 @@ fn pdf_structural_rewrite(dest: &Path, actions: &mut Vec<String>) -> bool {
     let wrote_output = std::fs::metadata(&temp)
         .map(|meta| meta.is_file() && meta.len() > 0)
         .unwrap_or(false);
-    if (code == 0 || code == 3) && wrote_output {
-        if std::fs::rename(&temp, dest).is_ok() {
-            actions.push(format!("qpdf --linearize structural rewrite (rc={code})"));
-            return true;
-        }
+    if (code == 0 || code == 3) && wrote_output && std::fs::rename(&temp, dest).is_ok() {
+        actions.push(format!("qpdf --linearize structural rewrite (rc={code})"));
+        return true;
     }
     let _ = std::fs::remove_file(&temp);
     actions.push(format!(
@@ -180,7 +180,8 @@ pub fn clean_pdf(path: &Path, dest: &Path) -> Result<(Vec<String>, Value), Strin
         // recoverable. A structural rewrite is what actually drops them.
         let rewritten = pdf_structural_rewrite(dest, &mut actions);
         if which("c2patool").is_some() {
-            actions.push("c2patool available for inspect; strip via exiftool/re-export".to_string());
+            actions
+                .push("c2patool available for inspect; strip via exiftool/re-export".to_string());
         }
         return Ok((
             actions,

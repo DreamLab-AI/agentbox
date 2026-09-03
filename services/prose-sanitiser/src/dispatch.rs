@@ -38,8 +38,9 @@ impl Kind {
 }
 
 pub const IMAGE_EXTS: &[&str] = &["png", "jpg", "jpeg", "webp"];
-pub const CONTAINER_EXTS: &[&str] =
-    &["svg", "pdf", "docx", "odt", "html", "htm", "md", "markdown", "mdx"];
+pub const CONTAINER_EXTS: &[&str] = &[
+    "svg", "pdf", "docx", "odt", "html", "htm", "md", "markdown", "mdx",
+];
 pub const TEXT_EXTS: &[&str] = &[
     "txt", "text", "css", "js", "py", "rs", "go", "json", "yaml", "yml", "toml", "csv",
 ];
@@ -54,10 +55,7 @@ pub const TEXT_EXTS: &[&str] = &[
 /// detected from their central directory, which sits at the end of the bytes.
 pub fn classify_bytes(data: &[u8], suffix: Option<&str>) -> Kind {
     // The Python received `path.suffix`, which includes the leading dot.
-    let extension = suffix
-        .unwrap_or("")
-        .trim_start_matches('.')
-        .to_lowercase();
+    let extension = suffix.unwrap_or("").trim_start_matches('.').to_lowercase();
     if IMAGE_EXTS.contains(&extension.as_str()) {
         return Kind::Image;
     }
@@ -86,7 +84,9 @@ pub fn classify_bytes(data: &[u8], suffix: Option<&str>) -> Kind {
 /// Classify a file on disk by extension, then by its bytes.
 pub fn classify(path: &Path) -> std::io::Result<Kind> {
     let data = std::fs::read(path)?;
-    let suffix = path.extension().map(|ext| ext.to_string_lossy().into_owned());
+    let suffix = path
+        .extension()
+        .map(|ext| ext.to_string_lossy().into_owned());
     Ok(classify_bytes(&data, suffix.as_deref()))
 }
 
@@ -97,7 +97,10 @@ mod tests {
     #[test]
     fn a_known_extension_wins_over_the_bytes() {
         // PNG magic, but a .md name: the extension is authoritative.
-        assert_eq!(classify_bytes(b"\x89PNG\r\n\x1a\n", Some("md")), Kind::Container);
+        assert_eq!(
+            classify_bytes(b"\x89PNG\r\n\x1a\n", Some("md")),
+            Kind::Container
+        );
         assert_eq!(classify_bytes(b"plain words", Some("png")), Kind::Image);
         assert_eq!(classify_bytes(b"%PDF-1.7", Some("txt")), Kind::Text);
     }
@@ -110,7 +113,10 @@ mod tests {
 
     #[test]
     fn unknown_extensions_fall_through_to_the_bytes() {
-        assert_eq!(classify_bytes(b"\x89PNG\r\n\x1a\n", Some("bin")), Kind::Image);
+        assert_eq!(
+            classify_bytes(b"\x89PNG\r\n\x1a\n", Some("bin")),
+            Kind::Image
+        );
         assert_eq!(classify_bytes(b"\xff\xd8\xff\xe0", None), Kind::Image);
         assert_eq!(classify_bytes(b"%PDF-1.7", Some("bin")), Kind::Container);
         assert_eq!(classify_bytes(b"<svg xmlns='x'>", None), Kind::Container);

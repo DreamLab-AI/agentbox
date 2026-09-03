@@ -40,7 +40,7 @@ pub fn run_optional_tools(path: &Path) -> Value {
         Some(binary) => {
             let entry = match run_capture(
                 &binary,
-                &[target.clone()],
+                std::slice::from_ref(&target),
                 Rlimits::default_child(),
                 TOOL_TIMEOUT,
                 None,
@@ -72,25 +72,20 @@ pub fn run_optional_tools(path: &Path) -> Value {
                 "-s".to_string(),
                 target,
             ];
-            let entry = match run_capture(
-                &binary,
-                &args,
-                Rlimits::default_child(),
-                TOOL_TIMEOUT,
-                None,
-            ) {
-                Ok(output) => {
-                    let stdout = String::from_utf8_lossy(&output.stdout);
-                    let pattern = interesting_line_regex();
-                    let interesting: Vec<&str> = stdout
-                        .lines()
-                        .filter(|line| pattern.is_match(line))
-                        .take(50)
-                        .collect();
-                    json!({"available": true, "interesting_lines": interesting})
-                }
-                Err(error) => json!({"available": true, "error": error.to_string()}),
-            };
+            let entry =
+                match run_capture(&binary, &args, Rlimits::default_child(), TOOL_TIMEOUT, None) {
+                    Ok(output) => {
+                        let stdout = String::from_utf8_lossy(&output.stdout);
+                        let pattern = interesting_line_regex();
+                        let interesting: Vec<&str> = stdout
+                            .lines()
+                            .filter(|line| pattern.is_match(line))
+                            .take(50)
+                            .collect();
+                        json!({"available": true, "interesting_lines": interesting})
+                    }
+                    Err(error) => json!({"available": true, "error": error.to_string()}),
+                };
             tools.insert("exiftool".into(), entry);
         }
         None => {
@@ -118,7 +113,9 @@ mod tests {
 
     #[test]
     fn a_real_manifest_is_recognised() {
-        assert!(c2patool_reports_manifest("{\"manifests\": {\"urn:c2pa:...\"}}"));
+        assert!(c2patool_reports_manifest(
+            "{\"manifests\": {\"urn:c2pa:...\"}}"
+        ));
         assert!(c2patool_reports_manifest("active_manifest: urn:uuid:1"));
     }
 

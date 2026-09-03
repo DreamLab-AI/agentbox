@@ -26,7 +26,10 @@ fn a_clean_stylesheet_produces_nothing() {
 
 #[test]
 fn the_overused_font_rule_fires_on_the_primary_face_only() {
-    let hit = scan_source("a.css", "body { font-family: Inter, 'Fraunces', sans-serif; }\n");
+    let hit = scan_source(
+        "a.css",
+        "body { font-family: Inter, 'Fraunces', sans-serif; }\n",
+    );
     assert!(rules_hit(&hit).contains(&"overused-font".to_string()));
     assert_eq!(hit[0].severity, Severity::Warn);
     assert_eq!(hit[0].line, 1);
@@ -42,7 +45,10 @@ fn a_single_named_family_is_flagged_once_for_the_whole_file() {
         "a.css",
         "body { font-family: 'Fraunces', serif; }\nh1 { font-family: 'Fraunces', serif; }\n",
     );
-    let single: Vec<&Finding> = findings.iter().filter(|f| f.rule == "single-font").collect();
+    let single: Vec<&Finding> = findings
+        .iter()
+        .filter(|f| f.rule == "single-font")
+        .collect();
     assert_eq!(single.len(), 1);
     assert_eq!(single[0].line, 0, "whole-file findings report line 0");
     assert_eq!(single[0].snippet, "fraunces");
@@ -70,10 +76,7 @@ fn the_blue_to_purple_gradient_is_the_canonical_tell() {
 
 #[test]
 fn grey_text_on_a_coloured_background_is_caught_without_lookbehind() {
-    let findings = scan_source(
-        "a.css",
-        ".badge { background: #c2410c; color: #808080; }\n",
-    );
+    let findings = scan_source("a.css", ".badge { background: #c2410c; color: #808080; }\n");
     assert!(rules_hit(&findings).contains(&"gray-on-color".to_string()));
 }
 
@@ -158,8 +161,14 @@ fn a_same_line_disable_suppresses_only_the_named_rule() {
     // The disable comment sits on its own line, so line 2 is still scanned.
     assert!(rules_hit(&findings).contains(&"tiny-text".to_string()));
 
-    let inline = scan_source("a.css", ".x { font-size: 9px; } /* slop-disable tiny-text */\n");
-    assert!(inline.is_empty(), "a line carrying the marker is skipped entirely");
+    let inline = scan_source(
+        "a.css",
+        ".x { font-size: 9px; } /* slop-disable tiny-text */\n",
+    );
+    assert!(
+        inline.is_empty(),
+        "a line carrying the marker is skipped entirely"
+    );
 }
 
 #[test]
@@ -259,7 +268,9 @@ fn the_walk_covers_the_scannable_extensions_and_skips_noise() {
 
     let found = walk(&[dir.path().to_path_buf()]);
     assert_eq!(found.len(), 2);
-    assert!(found.iter().all(|p| !p.to_string_lossy().contains("node_modules")));
+    assert!(found
+        .iter()
+        .all(|p| !p.to_string_lossy().contains("node_modules")));
 }
 
 #[test]

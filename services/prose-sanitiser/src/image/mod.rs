@@ -11,8 +11,8 @@ use std::path::{Path, PathBuf};
 
 use serde_json::{json, Map, Value};
 
-use crate::common::{classify_finding_confidence, safe_write_bytes, safe_arg, which};
 use crate::common::proc::{run_capture, Rlimits};
+use crate::common::{classify_finding_confidence, safe_arg, safe_write_bytes, which};
 
 pub use jpeg::JPEG_SOI;
 pub use png::PNG_SIG;
@@ -81,7 +81,10 @@ pub fn inspect_bytes(data: &[u8]) -> (String, bool, bool, Vec<String>) {
 }
 
 /// Full inspection: parsers, then the optional external tools and scorer.
-pub fn inspect_image(path: &Path, synthid_dir: Option<&str>) -> std::io::Result<ImageInspectReport> {
+pub fn inspect_image(
+    path: &Path,
+    synthid_dir: Option<&str>,
+) -> std::io::Result<ImageInspectReport> {
     let data = std::fs::read(path)?;
     let (format, mut has_c2pa, has_ai, mut findings) = inspect_bytes(&data);
 
@@ -161,11 +164,7 @@ impl Default for CleanImageOptions {
 }
 
 /// Strip metadata from `path` into `dest`, optionally running a pixel remover.
-pub fn clean_image(
-    path: &Path,
-    dest: &Path,
-    options: &CleanImageOptions,
-) -> Result<Value, String> {
+pub fn clean_image(path: &Path, dest: &Path, options: &CleanImageOptions) -> Result<Value, String> {
     let synthid_before = harness::run_synthid_score(path, options.synthid_dir.as_deref());
     let data = std::fs::read(path).map_err(|e| format!("cannot read {}: {e}", path.display()))?;
     let format = detect_format(&data);
@@ -176,7 +175,8 @@ pub fn clean_image(
         other => return Err(format!("unsupported format: {other}")),
     };
 
-    safe_write_bytes(dest, &cleaned).map_err(|e| format!("cannot write {}: {e}", dest.display()))?;
+    safe_write_bytes(dest, &cleaned)
+        .map_err(|e| format!("cannot write {}: {e}", dest.display()))?;
 
     // Optional exiftool pass for residual tags.
     if options.strip_all_metadata {
@@ -220,9 +220,9 @@ pub fn clean_image(
                 PixelRemover::CtrlRegen => {
                     format!("CtrlRegen pixel removal (strength {strength})")
                 }
-                PixelRemover::Diffusion => format!(
-                    "DiffusionPurification pixel removal (strength {strength})"
-                ),
+                PixelRemover::Diffusion => {
+                    format!("DiffusionPurification pixel removal (strength {strength})")
+                }
             });
         } else {
             let error = result
@@ -253,10 +253,7 @@ pub fn clean_image(
     result.insert("bytes_in".into(), json!(data.len()));
     result.insert("bytes_out".into(), json!(bytes_out));
     result.insert("still_has_c2pa".into(), json!(after.has_c2pa));
-    result.insert(
-        "still_has_ai_metadata".into(),
-        json!(after.has_ai_metadata),
-    );
+    result.insert("still_has_ai_metadata".into(), json!(after.has_ai_metadata));
     result.insert("post_findings".into(), json!(after.findings));
     result.insert(
         "synthid_before".into(),
@@ -295,8 +292,14 @@ mod tests {
 
     #[test]
     fn pixel_remover_parses_only_the_two_backends() {
-        assert_eq!(PixelRemover::parse("ctrlregen"), Some(PixelRemover::CtrlRegen));
-        assert_eq!(PixelRemover::parse("diffusion"), Some(PixelRemover::Diffusion));
+        assert_eq!(
+            PixelRemover::parse("ctrlregen"),
+            Some(PixelRemover::CtrlRegen)
+        );
+        assert_eq!(
+            PixelRemover::parse("diffusion"),
+            Some(PixelRemover::Diffusion)
+        );
         assert_eq!(PixelRemover::parse("magic"), None);
     }
 
@@ -305,6 +308,9 @@ mod tests {
         let (format, c2pa, ai, findings) = inspect_bytes(b"GIF89a...");
         assert_eq!(format, "unknown");
         assert!(!c2pa && !ai);
-        assert_eq!(findings, vec!["unsupported format (PNG/JPEG/WebP)".to_string()]);
+        assert_eq!(
+            findings,
+            vec!["unsupported format (PNG/JPEG/WebP)".to_string()]
+        );
     }
 }

@@ -36,7 +36,10 @@ fn verdict_line(codepoint: u32, context: &str, mode: &str, decision: Decision) -
             .map(String::from)
             .unwrap_or_default(),
     };
-    let kind = decision.kind.map(String::from).unwrap_or_else(|| "None".into());
+    let kind = decision
+        .kind
+        .map(String::from)
+        .unwrap_or_else(|| "None".into());
     format!("{codepoint}|{context}|{mode}|{action}|{output}|{kind}\n")
 }
 
@@ -129,7 +132,10 @@ fn the_load_bearing_sample_rows_match_one_by_one() {
         .collect();
 
     let rows = fixture["sample"].as_array().unwrap();
-    assert!(rows.len() > 100, "sample should cover the interesting cases");
+    assert!(
+        rows.len() > 100,
+        "sample should cover the interesting cases"
+    );
 
     for row in rows {
         let codepoint = row[0].as_u64().unwrap() as u32;

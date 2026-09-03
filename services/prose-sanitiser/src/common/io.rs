@@ -59,8 +59,8 @@ pub fn read_text_input(
                     format!("refusing input larger than {cap} bytes: {path}"),
                 ));
             }
-            let data = fs::read(path)
-                .map_err(|e| CliError::new(2, format!("cannot read {path}: {e}")))?;
+            let data =
+                fs::read(path).map_err(|e| CliError::new(2, format!("cannot read {path}: {e}")))?;
             guard_binary(&data, path, allow_binary, advice)?;
             Ok(surrogate::decode(&data))
         }
@@ -114,8 +114,9 @@ pub fn write_text_output(units: &[Unit], path: Option<&str>) -> Result<(), CliEr
                 })
                 .map_err(|e| CliError::new(1, format!("cannot write stdout: {e}")))
         }
-        Some(path) => safe_write_bytes(Path::new(path), &bytes)
-            .map_err(|e| CliError::new(1, format!("{e}"))),
+        Some(path) => {
+            safe_write_bytes(Path::new(path), &bytes).map_err(|e| CliError::new(1, format!("{e}")))
+        }
     }
 }
 

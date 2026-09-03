@@ -20,16 +20,31 @@ fn content_type_wins_over_suffix_and_bytes() {
 fn the_path_suffix_is_the_second_signal() {
     assert_eq!(guess_kind("https://x.example/a.png", b"", None), "png");
     assert_eq!(guess_kind("https://x.example/doc.PDF", b"", None), "pdf");
-    assert_eq!(guess_kind("https://x.example/n.md?v=2", b"", None), "markdown");
+    assert_eq!(
+        guess_kind("https://x.example/n.md?v=2", b"", None),
+        "markdown"
+    );
 }
 
 #[test]
 fn magic_bytes_are_the_last_resort() {
-    assert_eq!(guess_kind("https://x.example/a", b"\x89PNG\r\n", None), "png");
+    assert_eq!(
+        guess_kind("https://x.example/a", b"\x89PNG\r\n", None),
+        "png"
+    );
     assert_eq!(guess_kind("https://x.example/a", b"%PDF-1.7", None), "pdf");
-    assert_eq!(guess_kind("https://x.example/a", b"<svg xmlns='x'>", None), "svg");
-    assert_eq!(guess_kind("https://x.example/a", b"<html><body>", None), "html");
-    assert_eq!(guess_kind("https://x.example/a", b"plain words", None), "text");
+    assert_eq!(
+        guess_kind("https://x.example/a", b"<svg xmlns='x'>", None),
+        "svg"
+    );
+    assert_eq!(
+        guess_kind("https://x.example/a", b"<html><body>", None),
+        "html"
+    );
+    assert_eq!(
+        guess_kind("https://x.example/a", b"plain words", None),
+        "text"
+    );
 }
 
 #[test]
@@ -133,7 +148,11 @@ fn extensions_cover_every_kind_the_guesser_returns() {
     for kind in [
         "png", "jpeg", "svg", "pdf", "docx", "odt", "html", "markdown", "text",
     ] {
-        assert_ne!(extension_for_kind(kind), ".bin", "{kind} needs an extension");
+        assert_ne!(
+            extension_for_kind(kind),
+            ".bin",
+            "{kind} needs an extension"
+        );
     }
     assert_eq!(extension_for_kind("something-else"), ".bin");
 }

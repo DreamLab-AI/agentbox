@@ -39,6 +39,7 @@ pub fn text_findings(report: &TextInspectReport) -> (Vec<String>, Vec<String>, u
     (findings, confidences, report.suspicious_total)
 }
 
+#[allow(clippy::too_many_arguments)] // one field per audit-item column
 fn item(
     path: &str,
     kind: &str,
@@ -84,7 +85,14 @@ pub fn scan_file(path: &Path, display_name: Option<&str>) -> Value {
             let report = inspect_text(&surrogate::decode(&data), false, false);
             let (findings, confidence, suspicious) = text_findings(&report);
             item(
-                &name, "text", false, false, suspicious, findings, confidence, report.notes,
+                &name,
+                "text",
+                false,
+                false,
+                suspicious,
+                findings,
+                confidence,
+                report.notes,
             )
         }
         Kind::Image => match inspect_image(path, None) {
@@ -157,9 +165,9 @@ pub fn is_actionable(item: &Value) -> bool {
     item.get("confidence")
         .and_then(Value::as_array)
         .map(|levels| {
-            levels.iter().any(|level| {
-                matches!(level.as_str(), Some("confirmed") | Some("probable"))
-            })
+            levels
+                .iter()
+                .any(|level| matches!(level.as_str(), Some("confirmed") | Some("probable")))
         })
         .unwrap_or(false)
 }
@@ -180,13 +188,14 @@ pub fn aggregate(files: &[Value]) -> Value {
             .and_then(Value::as_str)
             .unwrap_or("error")
             .to_string();
-        let count = by_kind
-            .get(&kind)
-            .and_then(Value::as_u64)
-            .unwrap_or(0);
+        let count = by_kind.get(&kind).and_then(Value::as_u64).unwrap_or(0);
         by_kind.insert(kind, json!(count + 1));
 
-        if entry.get("has_c2pa").and_then(Value::as_bool).unwrap_or(false) {
+        if entry
+            .get("has_c2pa")
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
+        {
             with_c2pa += 1;
         }
         if entry
@@ -322,7 +331,7 @@ pub fn walk_files(root: &Path, skip_dirs: &[String]) -> Vec<std::path::PathBuf> 
             let name = entry.file_name().to_string_lossy().into_owned();
             let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
             if is_dir {
-                if skip_dirs.iter().any(|skip| *skip == name) || name.starts_with('.') {
+                if skip_dirs.contains(&name) || name.starts_with('.') {
                     continue;
                 }
                 dirs.push(path);

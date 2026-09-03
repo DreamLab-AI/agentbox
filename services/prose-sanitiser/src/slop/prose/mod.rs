@@ -41,7 +41,7 @@ impl Finding {
 }
 
 /// A rule with its patterns compiled.
-struct CompiledRule {
+pub struct CompiledRule {
     rule: &'static Rule,
     patterns: Vec<Regex>,
 }
@@ -131,8 +131,8 @@ pub fn scan_file(path: &Path, rules: &[CompiledRule], floor: Severity) -> Vec<Fi
 
     let transitions = Regex::new(&format!(r"(?i)\b({})\b", TRANSITIONS.join("|")))
         .expect("static regex compiles");
-    let tier2 = Regex::new(&format!(r"(?i)\b({})\b", TIER2.join("|")))
-        .expect("static regex compiles");
+    let tier2 =
+        Regex::new(&format!(r"(?i)\b({})\b", TIER2.join("|"))).expect("static regex compiles");
 
     let mut findings = Vec::new();
     let mut in_fence = false;
@@ -256,11 +256,7 @@ pub fn scan_file(path: &Path, rules: &[CompiledRule], floor: Severity) -> Vec<Fi
     if tier2_seen.len() >= 3 {
         let mut words: Vec<&str> = tier2_seen.iter().map(|(word, _)| word.as_str()).collect();
         words.sort_unstable();
-        let first_line = tier2_seen
-            .iter()
-            .map(|(_, line)| *line)
-            .min()
-            .unwrap_or(0);
+        let first_line = tier2_seen.iter().map(|(_, line)| *line).min().unwrap_or(0);
         emit(
             Severity::Low,
             "Tier-2 cluster words (3+ distinct in file)",

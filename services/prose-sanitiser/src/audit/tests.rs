@@ -18,7 +18,10 @@ fn a_text_file_is_scanned_by_layer_a() {
     assert_eq!(item["suspicious_total"], 1);
     assert_eq!(item["has_c2pa"], false);
     let findings: Vec<String> = serde_json::from_value(item["findings"].clone()).unwrap();
-    assert_eq!(findings[0], "layer-a [zwj_family] U+200B ZERO WIDTH SPACE (Cf) x1");
+    assert_eq!(
+        findings[0],
+        "layer-a [zwj_family] U+200B ZERO WIDTH SPACE (Cf) x1"
+    );
     assert_eq!(item["confidence"][0], "probable");
 }
 
@@ -47,10 +50,7 @@ fn a_text_bearing_container_gets_both_scans() {
     assert!(findings.iter().any(|f| f.starts_with("layer-a ")));
     assert_eq!(item["suspicious_total"], 1);
     // Confidence stays aligned with findings, one for one.
-    assert_eq!(
-        item["confidence"].as_array().unwrap().len(),
-        findings.len()
-    );
+    assert_eq!(item["confidence"].as_array().unwrap().len(), findings.len());
 }
 
 #[test]
@@ -70,7 +70,9 @@ fn an_image_is_scanned_as_its_own_format() {
 
 #[test]
 fn actionability_needs_a_strong_finding_or_c2pa() {
-    assert!(is_actionable(&serde_json::json!({"has_c2pa": true, "confidence": []})));
+    assert!(is_actionable(
+        &serde_json::json!({"has_c2pa": true, "confidence": []})
+    ));
     assert!(is_actionable(
         &serde_json::json!({"has_c2pa": false, "confidence": ["probable"]})
     ));
@@ -83,7 +85,9 @@ fn actionability_needs_a_strong_finding_or_c2pa() {
     assert!(!is_actionable(
         &serde_json::json!({"has_c2pa": false, "confidence": ["likely_false_positive"]})
     ));
-    assert!(!is_actionable(&serde_json::json!({"path": "x", "error": "boom"})));
+    assert!(!is_actionable(
+        &serde_json::json!({"path": "x", "error": "boom"})
+    ));
 }
 
 #[test]
@@ -107,7 +111,10 @@ fn the_summary_counts_every_dimension() {
     assert_eq!(summary["total"], 4);
     assert_eq!(summary["by_kind"]["text"], 2);
     assert_eq!(summary["by_kind"]["png"], 1);
-    assert_eq!(summary["by_kind"]["error"], 1, "an item with no kind counts as error");
+    assert_eq!(
+        summary["by_kind"]["error"], 1,
+        "an item with no kind counts as error"
+    );
     assert_eq!(summary["with_c2pa"], 1);
     assert_eq!(summary["with_ai_metadata"], 1);
     assert_eq!(summary["with_suspicious_text"], 1);
@@ -115,7 +122,10 @@ fn the_summary_counts_every_dimension() {
     assert_eq!(summary["findings_by_confidence"]["confirmed"], 1);
     assert_eq!(summary["findings_by_confidence"]["probable"], 1);
     assert_eq!(summary["findings_by_confidence"]["informational"], 1);
-    assert_eq!(summary["findings_by_confidence"]["likely_false_positive"], 0);
+    assert_eq!(
+        summary["findings_by_confidence"]["likely_false_positive"],
+        0
+    );
 }
 
 #[test]
@@ -124,7 +134,10 @@ fn an_empty_audit_summarises_cleanly() {
     assert_eq!(summary["total"], 0);
     assert_eq!(summary["actionable_files"], 0);
     // Every confidence level is still present, at zero.
-    assert_eq!(summary["findings_by_confidence"].as_object().unwrap().len(), 4);
+    assert_eq!(
+        summary["findings_by_confidence"].as_object().unwrap().len(),
+        4
+    );
 }
 
 #[test]

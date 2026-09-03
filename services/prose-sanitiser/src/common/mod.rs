@@ -98,6 +98,36 @@ pub fn to_pretty_json(value: &serde_json::Value) -> String {
     serde_json::to_string_pretty(value).expect("serde_json values always serialise")
 }
 
+/// Python's `json.dumps(value, indent=2)` — i.e. with the default
+/// `ensure_ascii=True`, which escapes every non-ASCII character as `\uXXXX`.
+///
+/// Two of the ported scanners emit JSON this way rather than through the shared
+/// `emit_json` helper, and CI consumers diff their output, so the escaping has
+/// to match. Only string content can carry non-ASCII in a JSON document, so
+/// escaping the whole rendering is safe.
+pub fn to_pretty_json_ascii(value: &serde_json::Value) -> String {
+    let mut out = String::new();
+    for character in to_pretty_json(value).chars() {
+        if character.is_ascii() {
+            out.push(character);
+            continue;
+        }
+        let codepoint = character as u32;
+        if codepoint > 0xFFFF {
+            // Outside the BMP, Python emits a UTF-16 surrogate pair.
+            let value = codepoint - 0x1_0000;
+            out.push_str(&format!(
+                "\\u{:04x}\\u{:04x}",
+                0xD800 + (value >> 10),
+                0xDC00 + (value & 0x3FF)
+            ));
+        } else {
+            out.push_str(&format!("\\u{codepoint:04x}"));
+        }
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -122,5 +152,19 @@ mod tests {
     fn pretty_json_keeps_non_ascii_unescaped() {
         let value = serde_json::json!({"label": "naïve — text"});
         assert!(to_pretty_json(&value).contains("naïve — text"));
+    }
+
+    #[test]
+    fn ascii_json_escapes_non_ascii_like_python() {
+        let value = serde_json::json!({"label": "naïve — text"});
+        let rendered = to_pretty_json_ascii(&value);
+        assert!(rendered.contains(r"na\u00efve \u2014 text"));
+        assert!(rendered.is_ascii());
+    }
+
+    #[test]
+    fn ascii_json_uses_surrogate_pairs_beyond_the_bmp() {
+        let value = serde_json::json!({"emoji": "\u{1F525}"});
+        assert!(to_pretty_json_ascii(&value).contains(r"\ud83d\udd25"));
     }
 }
