@@ -3,7 +3,7 @@ name = "nostr-pod-bridge"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.85"
-license = "MIT OR Apache-2.0"
+license = "AGPL-3.0-only"
 description = "Embedded Nostr relay + Solid-pod ingress bridge for agentbox. Consumes nostr-bbs-core crypto (NIP-44/26/59) and solid-pod-rs-nostr relay substrate (NIP-01/11/16) — no hand-rolled JS crypto."
 
 [[bin]]

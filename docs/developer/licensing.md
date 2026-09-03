@@ -18,9 +18,17 @@ licence compatible with it.
 | `openai/privacy-filter` weights | Apache-2.0 | Model weights loaded by opf-router | Hugging Face |
 | `codex` binary (OpenAI) | Apache-2.0 | Binary invoked as a subprocess | github.com/openai/codex |
 
-All permissive (MIT, Apache-2.0) components are compatible with AGPL-3.0. No
-aggregation analysis is required because the project is now uniformly AGPL-3.0
-on all first-party and copyleft-carrying components.
+All permissive (MIT, Apache-2.0) components are compatible with AGPL-3.0.
+
+## The `services/` subtree is permissive (ADR-2030)
+
+The Rust crates under `services/` are first-party but licensed
+`MIT OR Apache-2.0` by their own manifests (`LICENSE-MIT` / `LICENSE-APACHE`
+in each workspace, `services/LICENSING-NOTICE.md`), so they can be published
+to crates.io and reused outside the AGPL service. The one exception is a crate
+that links an AGPL library: `nostr-pod-bridge` links `solid-pod-rs-nostr` and
+declares `AGPL-3.0-only`. The aggregate hosted service remains AGPL-3.0; the
+permissive grant applies to each crate on its own.
 
 ## AGPL-3.0 obligations for operators
 
