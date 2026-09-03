@@ -40,6 +40,16 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+pub mod bootstrap;
+pub mod contract;
+pub mod envmap;
+pub mod identity;
+pub mod pyjson;
+pub mod session_summary;
+
+use crate::envmap::EnvMap;
+
+use anyhow::Context;
 use futures_util::{SinkExt, StreamExt};
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -83,6 +93,73 @@ pub struct BridgeConfig {
     /// verification. Dynamic onboarding (the former NIP-26 admin-delegation
     /// path) is deferred to the device-key registry model (ADR-099).
     pub allowed_pubkeys: Vec<String>,
+}
+
+impl BridgeConfig {
+    /// Assemble the bridge configuration from an environment snapshot.
+    ///
+    /// | Variable                           | Meaning                                |
+    /// |------------------------------------|----------------------------------------|
+    /// | `AGENTBOX_RELAY_BIND`              | bind addr (default `127.0.0.1:7777`)   |
+    /// | `AGENTBOX_POD_ROOT`                | pod filesystem root (required)         |
+    /// | `AGENTBOX_BRIDGE_RECIPIENT_PUBKEY` | agent x-only hex pubkey (required)     |
+    /// | `AGENTBOX_BRIDGE_SK_FILE`          | 64-hex key file (default               |
+    /// |                                    | `/run/secrets/nostr.key`); preferred   |
+    /// | `AGENTBOX_BRIDGE_SK`               | agent secret key hex (legacy fallback) |
+    /// | `AGENTBOX_ALLOWED_PUBKEYS`         | comma-separated hex allowlist          |
+    pub fn from_env(env: &EnvMap) -> anyhow::Result<Self> {
+        let required = |key: &str| -> anyhow::Result<String> {
+            env.non_empty(key)
+                .map(str::to_string)
+                .ok_or_else(|| anyhow::anyhow!("missing required env var {key}"))
+        };
+        Ok(Self {
+            bind_addr: env.or("AGENTBOX_RELAY_BIND", "127.0.0.1:7777"),
+            pod_root: PathBuf::from(required("AGENTBOX_POD_ROOT")?),
+            recipient_pubkey: required("AGENTBOX_BRIDGE_RECIPIENT_PUBKEY")?,
+            recipient_sk: load_agent_sk(env)?,
+            allowed_pubkeys: env
+                .get("AGENTBOX_ALLOWED_PUBKEYS")
+                .unwrap_or_default()
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect(),
+        })
+    }
+}
+
+/// Parse a 64-character hex secret key into its 32 raw bytes.
+fn parse_sk(hex_str: &str) -> anyhow::Result<[u8; 32]> {
+    let bytes = hex::decode(hex_str.trim()).context("bridge secret key is not valid hex")?;
+    bytes
+        .as_slice()
+        .try_into()
+        .map_err(|_| anyhow::anyhow!("bridge secret key must be exactly 32 bytes (64 hex chars)"))
+}
+
+/// SEC-003: load the agent secret key, preferring a file over an env var.
+///
+/// The agentbox launcher writes the decrypted key to a tmpfs file (0400 devuser)
+/// and exports its path as `AGENTBOX_BRIDGE_SK_FILE` (default
+/// `/run/secrets/nostr.key`), deliberately keeping the raw secret out of the
+/// process environment — env is world-readable via `/proc/<pid>/environ` for the
+/// same uid, and leaks into crash dumps. We read the file first; only when no
+/// file is present do we fall back to the legacy `AGENTBOX_BRIDGE_SK` variable.
+fn load_agent_sk(env: &EnvMap) -> anyhow::Result<[u8; 32]> {
+    let path = env.or("AGENTBOX_BRIDGE_SK_FILE", "/run/secrets/nostr.key");
+    if let Ok(mut contents) = std::fs::read_to_string(&path) {
+        let sk =
+            parse_sk(&contents).with_context(|| format!("parsing agent secret key from {path}"))?;
+        // Best-effort scrub of the heap-resident hex before the String drops.
+        // Safety: overwriting valid UTF-8 (NUL) in place; the length is unchanged.
+        unsafe { contents.as_bytes_mut().fill(0) };
+        return Ok(sk);
+    }
+    let raw = env
+        .non_empty("AGENTBOX_BRIDGE_SK")
+        .ok_or_else(|| anyhow::anyhow!("missing required env var AGENTBOX_BRIDGE_SK"))?;
+    parse_sk(raw).context("parsing agent secret key from AGENTBOX_BRIDGE_SK env")
 }
 
 /// Outcome of the authorization decision for an inbound event.

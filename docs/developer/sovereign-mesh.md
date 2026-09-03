@@ -229,7 +229,7 @@ npub's pod profile URI, giving the bridge a single resolvable identity
 surface across every stack layer.
 
 Practical consequence for the bridge: WAC policies written by
-`sovereign-bootstrap.py` can now reference `did:nostr:<pubkey>` directly
+`nostr-pod-bridge bootstrap` can now reference `did:nostr:<pubkey>` directly
 instead of the hex pubkey. When the bridge persists a verified inbound
 event, the WAC check inside `solid-pod-rs` resolves the agent DID to the
 same key the relay's NIP-42 AUTH accepted — no out-of-band identity

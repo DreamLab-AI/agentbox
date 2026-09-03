@@ -38,7 +38,7 @@ fn learning_hooks(env: &Env, gates: &Gates) -> Value {
     if gates.mobile_bridge {
         session_end.push(serde_json::json!({ "hooks": [{
             "type": "command",
-            "command": format!("python3 {} || true", env.nostr_summary_hook),
+            "command": format!("{} || true", env.nostr_summary_hook),
             "timeout": 200000,
         }] }));
     }
@@ -276,7 +276,7 @@ mod tests {
             agentbox_config: root.join("agentbox.toml"),
             shared_projects_root: "/projects".into(),
             hook_adapter: "/opt/agentbox/config/hooks/claude-flow-hook-adapter.cjs".into(),
-            nostr_summary_hook: "/opt/agentbox/config/hooks/nostr-session-summary.py".into(),
+            nostr_summary_hook: "nostr-pod-bridge session-summary".into(),
             ontology_monitor_hook: "/opt/agentbox/config/hooks/ontology-monitor.cjs".into(),
             hf_cache: "/home/devuser/.cache/huggingface".into(),
         }
@@ -343,7 +343,7 @@ mod tests {
         assert!(se[1]["hooks"][0]["command"]
             .as_str()
             .unwrap()
-            .contains("nostr-session-summary.py"));
+            .contains("nostr-pod-bridge session-summary"));
         assert!(se[2]["hooks"][0]["command"]
             .as_str()
             .unwrap()

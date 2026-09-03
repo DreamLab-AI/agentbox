@@ -313,7 +313,12 @@ fi
 # Phase 3 — Sovereign mesh identity bootstrap
 # ---------------------------------------------------------------------------
 echo "[2/8] Bootstrapping sovereign mesh identity..."
-python3 /opt/agentbox/scripts/sovereign-bootstrap.py
+# `nostr-pod-bridge bootstrap` replaced scripts/sovereign-bootstrap.py: same
+# artefacts, byte for byte (identity file, pod ACL/DID docs, gitmark/blocktrails
+# substrate, /run/agentbox/identity.env at 0600), with the keypair derived
+# through RustCrypto k256 + nostr-bbs-core instead of the pure-Python `ecdsa`
+# package. It self-gates on [sovereign_mesh].enabled and is silent on success.
+nostr-pod-bridge bootstrap
 
 # ---------------------------------------------------------------------------
 # Phase 4 — Workspace defaults (agents dir, tmux config, README)

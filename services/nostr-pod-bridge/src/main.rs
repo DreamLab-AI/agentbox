@@ -1,31 +1,38 @@
-//! `nostr-pod-bridge` daemon — drop-in replacement for the third-party
-//! `nostr-rs-relay` process in agentbox's relay slot.
+//! `nostr-pod-bridge` — agentbox's first-party Nostr relay, identity bootstrap,
+//! and Solid-pod bridge.
 //!
-//! Configuration is environment-driven so the agentbox launcher (which owns the
-//! encrypted `nostr.key.enc`) can decrypt the agent key and hand it over without
-//! this process ever touching the key-at-rest format.
-//!
-//! | Env var                              | Meaning                                   |
-//! |--------------------------------------|-------------------------------------------|
-//! | `AGENTBOX_RELAY_BIND`                | bind addr (default `127.0.0.1:7777`)      |
-//! | `AGENTBOX_POD_ROOT`                  | pod filesystem root (required)            |
-//! | `AGENTBOX_BRIDGE_RECIPIENT_PUBKEY`   | agent x-only hex pubkey (required)        |
-//! | `AGENTBOX_BRIDGE_SK_FILE`            | path to 64-char-hex key file (default     |
-//! |                                      | `/run/secrets/nostr.key`); preferred      |
-//! | `AGENTBOX_BRIDGE_SK`                 | agent secret key hex (legacy fallback)    |
-//! | `AGENTBOX_ADMIN_PUBKEY`              | admin delegator hex pubkey (required)     |
-//! | `AGENTBOX_ALLOWED_PUBKEYS`           | comma-separated hex allowlist (optional)  |
+//! One binary owns the whole sovereign-identity path: it mints and provisions
+//! the agent identity at boot, serves the embedded relay for the lifetime of the
+//! container, and publishes the curated digests that mirror to the operator's
+//! phone. It replaced the third-party `nostr-rs-relay` process, the hand-rolled
+//! JS crypto in `mcp/nostr-bridge/relay-consumer.js`, and — as of the identity
+//! port — `scripts/sovereign-bootstrap.py` and
+//! `config/hooks/nostr-session-summary.py`.
 //!
 //! ## Subcommands
 //!
-//! - (none) — run the daemon: bind the relay, serve WS, run the pod-ingress
-//!   consumer.
-//! - `summarise` — one-shot egress: read a curated [`SessionSummary`] as JSON on
-//!   stdin, sign a kind-30840, dual-write it to the pod, and publish it to the
-//!   running relay for the live phone mirror. Invoked by the SessionEnd hook
-//!   after the Z.AI consultant produces the digest.
+//! | argv              | Role                                                   |
+//! |-------------------|--------------------------------------------------------|
+//! | *(none)*          | Daemon: bind the relay, serve WS, run the pod consumer. |
+//! | `bootstrap`       | Boot phase `[2/8]`, as root: resolve or mint the agent  |
+//! |                   | identity, provision the pod, write `identity.env`.      |
+//! | `session-summary` | SessionEnd hook: distil the transcript via Z.AI and     |
+//! |                   | publish the kind-30840. Always exits 0.                 |
+//! | `summarise`       | One-shot egress for an externally curated digest        |
+//! |                   | ([`SessionSummary`] JSON on stdin) → kind-30840.        |
+//! | `track`           | One-shot egress for a project digest                    |
+//! |                   | ([`ProjectTrackingDigest`] JSON on stdin) → kind-30841. |
+//!
+//! Only the subcommands that actually publish need the bridge secrets, so
+//! `bootstrap` — which *creates* those secrets — resolves its own configuration
+//! and never touches [`BridgeConfig`].
+//!
+//! Configuration is environment-driven so the agentbox launcher (which owns the
+//! encrypted `nostr.key.enc`) can decrypt the agent key and hand it over without
+//! this process ever touching the key-at-rest format. See
+//! [`BridgeConfig::from_env`] for the variables the publishing paths read, and
+//! [`bootstrap::Roots`] for the filesystem roots `bootstrap` resolves.
 
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Context};
@@ -33,78 +40,11 @@ use solid_pod_rs_nostr::Relay;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 
+use nostr_pod_bridge::envmap::EnvMap;
 use nostr_pod_bridge::{
-    publish_project_tracking, publish_session_summary, serve, spawn_consumer, BridgeConfig,
-    ProjectTrackingDigest, SessionSummary,
+    bootstrap, publish_project_tracking, publish_session_summary, serve, session_summary,
+    spawn_consumer, BridgeConfig, ProjectTrackingDigest, SessionSummary,
 };
-
-fn env_required(key: &str) -> anyhow::Result<String> {
-    std::env::var(key).with_context(|| format!("missing required env var {key}"))
-}
-
-fn parse_sk(hex_str: &str) -> anyhow::Result<[u8; 32]> {
-    let bytes = hex::decode(hex_str.trim()).context("bridge secret key is not valid hex")?;
-    let arr: [u8; 32] = bytes
-        .as_slice()
-        .try_into()
-        .map_err(|_| anyhow!("bridge secret key must be exactly 32 bytes (64 hex chars)"))?;
-    Ok(arr)
-}
-
-/// SEC-003: Load the agent secret key, preferring a file over an env var.
-///
-/// The agentbox launcher writes the decrypted key to a tmpfs file (0400 devuser)
-/// and exports its path as `AGENTBOX_BRIDGE_SK_FILE` (default
-/// `/run/secrets/nostr.key`), deliberately keeping the raw secret out of the
-/// process environment (env is world-readable via `/proc/<pid>/environ` for the
-/// same uid and leaks into crash dumps). We read the file first; only if no file
-/// is present do we fall back to the legacy `AGENTBOX_BRIDGE_SK` env var for
-/// back-compat. The parsed key is a fixed-size array scoped to `BridgeConfig`,
-/// exactly as before.
-fn load_sk() -> anyhow::Result<[u8; 32]> {
-    let path = std::env::var("AGENTBOX_BRIDGE_SK_FILE")
-        .unwrap_or_else(|_| "/run/secrets/nostr.key".to_string());
-    if let Ok(mut contents) = std::fs::read_to_string(&path) {
-        let sk =
-            parse_sk(&contents).with_context(|| format!("parsing agent secret key from {path}"))?;
-        // Best-effort scrub of the heap-resident hex string before drop.
-        zeroize_string(&mut contents);
-        return Ok(sk);
-    }
-    // Fallback: legacy env var (kept for back-compat; the launcher no longer
-    // populates it for long-running processes).
-    parse_sk(&env_required("AGENTBOX_BRIDGE_SK")?)
-        .context("parsing agent secret key from AGENTBOX_BRIDGE_SK env")
-}
-
-/// Overwrite a `String`'s bytes in place so the decrypted hex does not linger in
-/// freed heap memory after the function returns.
-fn zeroize_string(s: &mut str) {
-    // Safety: we overwrite valid UTF-8 (ASCII '0') in place; length is unchanged.
-    unsafe {
-        for b in s.as_bytes_mut() {
-            *b = 0;
-        }
-    }
-}
-
-fn load_config() -> anyhow::Result<BridgeConfig> {
-    let allowed_pubkeys = std::env::var("AGENTBOX_ALLOWED_PUBKEYS")
-        .unwrap_or_default()
-        .split(',')
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
-        .collect();
-
-    Ok(BridgeConfig {
-        bind_addr: std::env::var("AGENTBOX_RELAY_BIND")
-            .unwrap_or_else(|_| "127.0.0.1:7777".to_string()),
-        pod_root: PathBuf::from(env_required("AGENTBOX_POD_ROOT")?),
-        recipient_pubkey: env_required("AGENTBOX_BRIDGE_RECIPIENT_PUBKEY")?,
-        recipient_sk: load_sk()?,
-        allowed_pubkeys,
-    })
-}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -114,37 +54,55 @@ async fn main() -> anyhow::Result<()> {
         )
         .init();
 
-    let cfg = load_config()?;
+    let env = EnvMap::from_process();
 
     match std::env::args().nth(1).as_deref() {
-        Some("summarise") => run_summarise(cfg).await,
-        Some("track") => run_track(cfg).await,
+        // Runs before any bridge secret exists — it is what writes them.
+        Some("bootstrap") => bootstrap::run(&env),
+        Some("session-summary") => run_session_summary(&env).await,
+        Some("summarise") => run_summarise(&BridgeConfig::from_env(&env)?).await,
+        Some("track") => run_track(&BridgeConfig::from_env(&env)?).await,
         Some(other) => Err(anyhow!(
-            "unknown subcommand '{other}'; expected 'summarise', 'track', or no argument (daemon mode)"
+            "unknown subcommand '{other}'; expected 'bootstrap', 'session-summary', \
+             'summarise', 'track', or no argument (daemon mode)"
         )),
-        None => run_daemon(cfg).await,
+        None => run_daemon(BridgeConfig::from_env(&env)?).await,
     }
 }
 
-/// One-shot egress: read a curated digest from stdin and publish the kind-30840.
-async fn run_summarise(cfg: BridgeConfig) -> anyhow::Result<()> {
-    let raw = std::io::read_to_string(std::io::stdin())
-        .context("reading session-summary JSON from stdin")?;
+/// Read the whole of stdin, naming the subcommand in any error.
+fn read_stdin(what: &str) -> anyhow::Result<String> {
+    std::io::read_to_string(std::io::stdin()).with_context(|| format!("reading {what} from stdin"))
+}
+
+/// SessionEnd hook: distil the transcript and publish the digest.
+///
+/// Best-effort by contract — [`session_summary::run`] logs and swallows every
+/// failure so a missing key or unreachable endpoint never blocks session
+/// teardown, which is why this always resolves to `Ok`.
+async fn run_session_summary(env: &EnvMap) -> anyhow::Result<()> {
+    // A SessionEnd hook with no payload on stdin has nothing to mirror; an
+    // unreadable stdin is treated the same way rather than failing the hook.
+    let payload = read_stdin("the SessionEnd hook payload").unwrap_or_default();
+    session_summary::run(env, &payload).await
+}
+
+/// One-shot egress: read an externally curated digest from stdin and publish the
+/// kind-30840.
+async fn run_summarise(cfg: &BridgeConfig) -> anyhow::Result<()> {
+    let raw = read_stdin("session-summary JSON")?;
     let summary: SessionSummary =
         serde_json::from_str(&raw).context("parsing SessionSummary JSON from stdin")?;
-    publish_session_summary(&cfg, &summary).await?;
-    Ok(())
+    publish_session_summary(cfg, &summary).await
 }
 
 /// One-shot egress: read a curated project digest from stdin and publish the
 /// kind-30841 (PRD-017 / ADR-035 §D3). Invoked by `project-tracking-publish.cjs`.
-async fn run_track(cfg: BridgeConfig) -> anyhow::Result<()> {
-    let raw = std::io::read_to_string(std::io::stdin())
-        .context("reading project-tracking JSON from stdin")?;
+async fn run_track(cfg: &BridgeConfig) -> anyhow::Result<()> {
+    let raw = read_stdin("project-tracking JSON")?;
     let digest: ProjectTrackingDigest =
         serde_json::from_str(&raw).context("parsing ProjectTrackingDigest JSON from stdin")?;
-    publish_project_tracking(&cfg, &digest).await?;
-    Ok(())
+    publish_project_tracking(cfg, &digest).await
 }
 
 /// Long-running daemon: bind the relay, serve WS, run the pod-ingress consumer.

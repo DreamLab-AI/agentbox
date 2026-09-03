@@ -7,7 +7,7 @@ documentation.
 
 Scope files examined:
 
-- `scripts/sovereign-bootstrap.py`
+- `services/nostr-pod-bridge` (`bootstrap` subcommand)
 - `management-api/lib/uris.js`
 - `management-api/lib/junkiejarvis-agent.js`
 - `management-api/lib/per-user-agent.js`

@@ -20,7 +20,7 @@ fan out.
 
 Until solid-pod-rs became first-class, the `pods` slot resolved to a 108-line
 Python stub that accepted every authenticated request. WAC policies written
-by `sovereign-bootstrap.py` were decorative. Container listing returned a
+by the identity bootstrap were decorative. Container listing returned a
 flat directory index instead of an LDP Basic Container. Atomic-rename
 durability (DDD-003 invariants I01 and I08) did not hold. **solid-pod-rs
 closes that gap.** It ships the full Solid 0.11 surface the existing
@@ -197,7 +197,7 @@ NIP-42. One identity surface across the whole sovereign data stack.
 ```mermaid
 flowchart LR
     subgraph identity["Identity layer"]
-        ID["sovereign-bootstrap.py<br/>secp256k1 keypair"]
+        ID["nostr-pod-bridge bootstrap<br/>secp256k1 keypair"]
     end
     subgraph pod["solid-pod-rs (:8484)"]
         POD["LDP + WAC + Notifications"]

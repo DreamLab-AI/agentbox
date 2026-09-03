@@ -349,6 +349,6 @@ The DreamLab-AI dependencies that make this surface implementable today:
 
 - **[`solid-pod-rs`](https://github.com/DreamLab-AI/solid-pod-rs)** — Solid Protocol 0.11 server with `did:nostr` resolver, JSON-LD content negotiation, and atomic-rename storage. Powers S1, S4, S9 dereferencing.
 - **`nostr-rs-relay`** — vendored at `lib/nostr-rs-relay.nix`. Powers S2.
-- **The agentbox sovereign-bootstrap layer** (`scripts/sovereign-bootstrap.py`) — keypair source for every DID, every signed credential, every payment receipt.
+- **The agentbox sovereign-bootstrap layer** (`nostr-pod-bridge bootstrap`) — keypair source for every DID, every signed credential, every payment receipt.
 
 Per-pane attribution is in each file's header comment under `management-api/middleware/linked-data/viewer/panes/`.

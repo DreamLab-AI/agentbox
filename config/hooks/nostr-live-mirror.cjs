@@ -3,7 +3,7 @@
 
 /**
  * Live Nostr session mirror — the live-chat complement to the SessionEnd digest
- * (config/hooks/nostr-session-summary.py, gated by [sovereign_mesh.mobile_bridge]).
+ * (`nostr-pod-bridge session-summary`, gated by [sovereign_mesh.mobile_bridge]).
  *
  * Where the digest mirror sends ONE curated kind-30840 summary at SessionEnd,
  * this hook mirrors the running task chat turn-by-turn to the operator's phone

@@ -4,16 +4,15 @@
 /**
  * Project-tracking publish hook — egress half of Sovereign Project Tracking
  * (ADR-035 §D3; PRD-017; DDD-015). The Node sibling of the SessionEnd digest
- * mirror config/hooks/nostr-session-summary.py: where that shells
- * `nostr-pod-bridge summarise` with a curated kind-30840 SessionSummary, this
- * shells `nostr-pod-bridge track` with one ProjectTrackingDigest per tracked
+ * mirror `nostr-pod-bridge session-summary`: where that publishes a curated
+ * kind-30840 SessionSummary in-process, this shells `nostr-pod-bridge track` with one ProjectTrackingDigest per tracked
  * project, and the bridge signs a kind-30841 addressable event (d-tag = project
  * slug), dual-writes it to the Solid pod inbox + projects/<id>.jsonld, and
  * publishes it to the embedded relay (see services/nostr-pod-bridge `track`).
  *
  * The crypto stays in Rust (the bridge); this hook only assembles digests and
- * pipes them as JSON on the bridge's stdin — exactly mirroring the Python
- * publish() contract. It never mints URNs of its own: the project URN is minted
+ * pipes them as JSON on the bridge's stdin — the same one-shot egress contract
+ * the `summarise` subcommand offers. It never mints URNs of its own: the project URN is minted
  * upstream via management-api/lib/uris.js and travels in the digest.
  *
  * Source of projects (in order):
@@ -40,7 +39,7 @@ const { spawnSync } = require('child_process');
 
 // Total wall-clock budget for the whole hook (API fetch + every bridge shell).
 const DEADLINE_MS = 30000;
-// Per-`track` invocation budget; matches nostr-session-summary's summarise cap.
+// Per-`track` invocation budget; matches the session-summary publish cap.
 const TRACK_TIMEOUT_MS = 30000;
 // Budget for the management-API list fetch.
 const API_TIMEOUT_MS = 8000;
