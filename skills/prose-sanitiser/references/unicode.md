@@ -34,11 +34,18 @@ position you can take.
 | Carrier | Reported | Rewritten by default | Switch |
 |---|---|---|---|
 | Zero-width family, tag block, variation selectors, Hangul fillers | Always | Yes. Contraband with no legitimate reading | |
-| Exotic whitespace (`U+00A0`, `U+202F`, the rest) | Always. `U+202F` is a documented GPT-4o-class artefact, so surfacing it is the point | **No.** A no-break space is load-bearing typography: it holds *10 km* and *Figure 3* together, and French orthography requires one before `;` `:` `!` `?`. Alone among the rewrites here, a diff cannot show the change, because both characters render as a space | `normalize_spaces` |
+| Exotic whitespace (`U+00A0`, `U+202F`, the rest) | Always. `U+202F` is a documented GPT-4o-class artefact, so surfacing it is the point | **No.** A no-break space is load-bearing typography: it holds *10 km* and *Figure 3* together, and French orthography requires one before `;` `:` `!` `?`. Alone among the rewrites here, a diff cannot show the change, because both characters render as a space | `--normalize-spaces` |
 | Homoglyphs and mixed script | Always, and the advice names the ASCII it is confusable with | **No.** Folding rewrites letters inside words, and would destroy a security note quoting an attack string verbatim | `--aggressive-homoglyphs` |
 | `U+00AD` soft hyphen | Always | **No.** A typesetter's hyphenation hint as often as a carrier, and nothing in the codepoint says which | `strip_soft_hyphen` |
 | Load-bearing invisibles: emoji ZWJ glue, Indic and Persian joiners, flag tags | **No.** They are not contraband | Never | `--strip-emoji-glue`, for auditing a document you already distrust |
 
+
+**Back-compatibility note.** The default reversed: exotic whitespace used to be
+folded unless you passed `--no-normalize-spaces`, and is now preserved unless you
+pass `--normalize-spaces`. The old flag survives as a hidden no-op that prints a
+pointer to the new one, so an existing script keeps running rather than dying on
+an unknown argument. It also, quietly, stops doing what it used to: if a pipeline
+depended on the fold, it now needs the positive flag.
 
 **Conservatism belongs in the default, never in the tier.** Downgrading a
 mechanical classification to buy safe behaviour would make the tier lie about
