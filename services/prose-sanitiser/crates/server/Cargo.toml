@@ -1,0 +1,30 @@
+[package]
+name = "prose-sanitiser-server"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "HTTP service exposing the prose-sanitiser cleaning pipeline."
+publish = false
+autobins = false
+
+[lib]
+name = "prose_sanitiser_server"
+path = "src/lib.rs"
+
+[[bin]]
+name = "prose-sanitiser-server"
+path = "src/bin/prose-sanitiser-server.rs"
+
+[dependencies]
+prose-sanitiser = { workspace = true }
+axum = { workspace = true }
+base64 = { workspace = true }
+clap = { workspace = true }
+serde_json = { workspace = true }
+tempfile = { workspace = true }
+tokio = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["time"] }

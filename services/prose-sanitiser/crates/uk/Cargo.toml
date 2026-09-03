@@ -1,0 +1,15 @@
+[package]
+name = "prose-sanitiser-uk"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "UK-English spelling enforcement for prose: report-only detection of US spellings, with the sense-dependent and proper-noun traps documented rather than silently corrected."
+keywords = ["british", "english", "spelling", "linter", "prose"]
+categories = ["text-processing", "internationalization"]
+readme = "README.md"
+
+[dependencies]
+prose-sanitiser-core = { workspace = true }
+regex = { workspace = true }

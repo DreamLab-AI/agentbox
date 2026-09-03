@@ -1,0 +1,18 @@
+[package]
+name = "prose-sanitiser-unicode"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Deterministic invisible-Unicode and homoglyph surgery for prose: zero-width, tag-block, variation-selector, bidi and exotic-whitespace carriers, detected and losslessly stripped."
+keywords = ["unicode", "homoglyph", "zero-width", "steganography", "sanitiser"]
+categories = ["text-processing", "internationalization"]
+readme = "README.md"
+
+[dependencies]
+prose-sanitiser-core = { workspace = true }
+serde_json = { workspace = true }
+unicode-general-category = { workspace = true }
+unicode-normalization = { workspace = true }
+unicode_names2 = { workspace = true }

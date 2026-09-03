@@ -22,14 +22,26 @@
 # detect_text_watermark.py (MarkLLM), plus the common.py they import. Those are
 # thin wrappers over torch/diffusers model stacks, not logic worth porting;
 # the Rust locates them, runs them under resource caps and parses their JSON
-# back (see services/prose-sanitiser/src/image/harness.rs). They are found via
-# $PROSE_SANITISER_SCRIPTS_DIR, else /opt/agentbox/skills/prose-sanitiser.
+# back (see services/prose-sanitiser/crates/media/src/image/harness.rs). They
+# are found via $PROSE_SANITISER_SCRIPTS_DIR, else
+# /opt/agentbox/skills/prose-sanitiser.
 #
-# Like lib/dream-engine.nix this is a self-contained [workspace] with all
-# dependencies on crates.io, so there are no sibling path-deps and no workspace
-# reassembly. ureq is pinned with default-features = false plus the "tls"
-# feature, which selects rustls — so there is NO openssl link and no
-# pkg-config probe, matching the dream-engine precedent.
+# The crate root is a Cargo workspace of seven members under crates/:
+#
+#   core     shared Finding/Patch/Config types; no I/O, no subprocesses
+#   unicode  Layer A invisible-Unicode and homoglyph surgery
+#   uk       UK-English spelling enforcement
+#   slop     AI writing-tell rule tables and scanners
+#   media    image and container provenance surgery, plus io/proc helpers
+#   cli      the eleven CLI binaries (package name `prose-sanitiser`)
+#   server   the HTTP service and its binary
+#
+# The path-deps between them are all inside this src tree, so the whole
+# workspace still builds from one derivation with one lockfile and no workspace
+# reassembly — every external dependency is on crates.io. ureq is pinned with
+# default-features = false plus the "tls" feature, which selects rustls — so
+# there is NO openssl link and no pkg-config probe, matching the dream-engine
+# precedent.
 #
 # Tests are hermetic: fixtures on disk, Layer A parity vectors, and the one
 # network-shaped test deliberately dials a closed loopback port to assert the
@@ -43,7 +55,9 @@
 let
   version = "0.1.0";
 
-  # In-repo crate, minus the local build cache. The crate root IS the build root.
+  # In-repo workspace, minus the local build caches. The workspace root IS the
+  # build root, so `buildRustPackage` builds every member and installs the
+  # twelve binaries between them.
   proseSanitiserSrc = lib.cleanSourceWith {
     src    = ../services/prose-sanitiser;
     filter = path: _type: baseNameOf (toString path) != "target";
@@ -55,7 +69,7 @@ pkgs.rustPlatform.buildRustPackage {
   inherit version;
   src = proseSanitiserSrc;
 
-  # Standalone [workspace]; the checked-in lockfile pins the full closure.
+  # One workspace, one checked-in lockfile at its root, pinning the full closure.
   cargoLock.lockFile = ../services/prose-sanitiser/Cargo.lock;
 
   # No native deps: ureq is rustls-backed (default-features = false), so there
