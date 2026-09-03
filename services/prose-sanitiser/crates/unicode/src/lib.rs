@@ -177,6 +177,19 @@ impl Default for CleanOptions {
 
 const NFKC_LABEL: &str = "NFKC_normalize";
 
+/// The inspect kind for a carrier inside a decoded payload.
+fn payload_kind_of(payloads: &[stego::Payload], offset: usize) -> &'static str {
+    payloads
+        .iter()
+        .find(|payload| (payload.start..payload.end).contains(&offset))
+        .map(|payload| match payload.kind {
+            stego::PayloadKind::VariationSelector => "variation_selector",
+            stego::PayloadKind::TagBlock => "tag_chars",
+            stego::PayloadKind::ZeroWidthBinary => "zwj_family",
+        })
+        .unwrap_or("strip")
+}
+
 /// Offsets whose character the context-aware passes have already ruled on.
 struct Context {
     /// Bidi controls the policy preserves; `decide` would otherwise strip them.
@@ -186,6 +199,13 @@ struct Context {
     /// Whether the input opens with a byte-order mark, which is framing rather
     /// than a carrier and must survive.
     preserve_bom: bool,
+    /// Character offsets covered by a decoded steganographic payload.
+    ///
+    /// These override every preservation rule. A carrier inside a payload is
+    /// contraband whatever else it looks like: tag characters after a flag base
+    /// and joiners after an Arabic letter are ordinarily load-bearing, and that
+    /// is exactly what a smuggler hides behind.
+    payload_carriers: Vec<usize>,
 }
 
 impl Context {
@@ -204,11 +224,25 @@ impl Context {
                 .first()
                 .copied()
                 .is_some_and(|unit| decide::is_bom_at_start(0, unit));
+        // `stego::scan` has already excluded the legitimate shapes: an RGI
+        // subdivision flag yields no payload, so anything it does return is
+        // contraband and every carrier in it must go.
+        let mut payload_carriers: Vec<usize> = stego::scan(units)
+            .iter()
+            .flat_map(|payload| payload.start..payload.end)
+            .collect();
+        payload_carriers.sort_unstable();
         Self {
             preserved_bidi,
             confusables,
             preserve_bom,
+            payload_carriers,
         }
+    }
+
+    /// Whether the character at `offset` is a carrier inside a decoded payload.
+    fn in_payload(&self, offset: usize) -> bool {
+        self.payload_carriers.binary_search(&offset).is_ok()
     }
 
     /// Whether the character at `offset` is the document's byte-order mark.
@@ -262,6 +296,10 @@ pub fn inspect_text_with(units: &[Unit], options: InspectOptions) -> TextInspect
 
     for (offset, unit) in units.iter().copied().enumerate() {
         let codepoint = unit.as_char().map(|c| c as u32).unwrap_or(0);
+        if context.in_payload(offset) {
+            push(codepoint, payload_kind_of(&payloads, offset), offset);
+            continue;
+        }
         if context.keeps_bidi(offset) || context.keeps_bom(offset) {
             // A preserved bidi control is an invisible mark, not a base: it
             // must not break a joiner's binding to the letter before it. A
@@ -353,6 +391,13 @@ pub fn clean_text(units: &[Unit], options: CleanOptions) -> (Vec<Unit>, CleanSta
     let mut previous_kept: Option<Unit> = None;
 
     for (offset, unit) in units.iter().copied().enumerate() {
+        if context.in_payload(offset) {
+            // A decoded payload outranks every preservation rule: reporting a
+            // hidden byte string and then leaving it in place is the one
+            // outcome worse than not detecting it.
+            removed.bump(char_label(unit), 1);
+            continue;
+        }
         if context.keeps_bidi(offset) || context.keeps_bom(offset) {
             // Load-bearing: a preserved bidi control, or the document's own
             // byte-order mark at offset 0.

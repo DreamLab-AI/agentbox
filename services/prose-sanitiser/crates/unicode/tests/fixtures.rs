@@ -219,11 +219,14 @@ fn homoglyph_precision_and_recall_meet_the_target() {
         .iter()
         .filter(|f| f.id.starts_with("homoglyph-"))
         .collect();
-    assert_eq!(
-        homoglyph.len(),
-        3,
-        "expected the 5, 10 and 20 per cent rates"
-    );
+    // The three SilverSpeak substitution rates must all be present; other
+    // homoglyph fixtures (single-codepoint regressions) also score.
+    for rate in ["homoglyph-5pct", "homoglyph-10pct", "homoglyph-20pct"] {
+        assert!(
+            homoglyph.iter().any(|f| f.id == rate),
+            "{rate} missing from the fixture suite"
+        );
+    }
 
     let mut true_positives = 0usize;
     let mut false_negatives = 0usize;

@@ -83,6 +83,94 @@ fn nfkc_is_opt_in_and_counted_once_per_change() {
     assert_eq!(json["replaced_count"], 0);
 }
 
+/// Builds a tag sequence: a base, tag characters spelling `ascii`, CANCEL TAG.
+fn tag_chain(base: char, ascii: &str, cancel: bool) -> String {
+    let mut text = String::new();
+    text.push(base);
+    for byte in ascii.bytes() {
+        text.push(char::from_u32(0xE0000 + u32::from(byte)).unwrap());
+    }
+    if cancel {
+        text.push('\u{E007F}');
+    }
+    text
+}
+
+/// Every payload the detector reports must be gone after a default clean.
+///
+/// Detection and cleaning were independent, so a carrier that also looked
+/// load-bearing survived: tag characters after a flag base, and joiners after
+/// an Arabic letter, are both ordinarily preserved, and that is exactly what a
+/// smuggler hides behind. Reporting a hidden byte string and then leaving it in
+/// place is the one outcome worse than not detecting it, so this is asserted
+/// over the shapes that actually broke.
+#[test]
+fn no_reported_payload_survives_a_clean() {
+    let mut vs_after_emoji = String::from("\u{1F600}");
+    for byte in b"hi" {
+        vs_after_emoji.push(crate::stego::byte_to_variation_selector(*byte));
+    }
+    let mut vs_after_letter = String::from("x");
+    for byte in b"secret" {
+        vs_after_letter.push(crate::stego::byte_to_variation_selector(*byte));
+    }
+    let samples = [
+        // Tag characters hiding behind a waving black flag base.
+        tag_chain('\u{1F3F4}', "ussta", true),
+        tag_chain('\u{1F3F4}', "rm -rf /", false),
+        // Joiners hiding behind an Arabic letter, where ZWNJ is orthographic.
+        format!("\u{0628}{}", "\u{200C}".repeat(8)),
+        // Persian word followed by a joiner run.
+        format!("\u{0645}\u{06CC}{}", "\u{200C}".repeat(16)),
+        vs_after_emoji,
+        vs_after_letter,
+        // Mixed carriers in one document.
+        {
+            let joiners = "\u{200D}".repeat(8);
+            format!(
+                "{} then \u{0628}{joiners}",
+                tag_chain('\u{1F3F4}', "one", false)
+            )
+        },
+    ];
+
+    for sample in samples {
+        let decoded = units(&sample);
+        let payloads = crate::stego::scan(&decoded);
+        assert!(!payloads.is_empty(), "{sample:?} should report a payload");
+
+        let (output, stats) = clean_text(&decoded, CleanOptions::default());
+        let survivors = output.len();
+
+        // Every carrier offset the detector named must be gone.
+        let carriers: usize = payloads.iter().map(|payload| payload.len()).sum();
+        assert_eq!(
+            survivors,
+            decoded.len() - carriers,
+            "{sample:?}: {carriers} carrier(s) reported, {} removed",
+            decoded.len() - survivors
+        );
+        assert!(stats.removed_count >= carriers as u64, "{sample:?}");
+
+        // And the cleaned text reports nothing further.
+        let (again, _) = clean_text(&output, CleanOptions::default());
+        assert!(
+            crate::stego::scan(&again).is_empty(),
+            "{sample:?}: a payload survived into the cleaned output"
+        );
+    }
+}
+
+#[test]
+fn the_three_subdivision_flags_still_survive_a_clean() {
+    // The exemption that makes the rule above safe: `stego::scan` returns no
+    // payload for an RGI sequence, so nothing marks its tags as carriers.
+    for code in crate::stego::RGI_SUBDIVISION_TAGS {
+        let flag = tag_chain('\u{1F3F4}', code, true);
+        assert_eq!(cleaned(&flag, CleanOptions::default()), flag, "{code}");
+    }
+}
+
 #[test]
 fn a_soft_hyphen_survives_a_default_clean() {
     // A hyphenation hint in a real compound word. Removing it is a judgement

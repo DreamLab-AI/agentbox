@@ -165,6 +165,10 @@ fn applying_the_offered_edits_reproduces_a_clean() {
         "\u{FEFF}bom then co\u{00AD}operate",
         "\u{2764}\u{FE0F}\u{200D}\u{1F525} emoji",
         "\u{1F3F4}\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F} flag",
+        // Payload carriers that also look load-bearing: tag characters behind a
+        // flag base, and joiners behind an Arabic letter.
+        "\u{1F3F4}\u{E0075}\u{E0073}\u{E0073}\u{E0074}\u{E0061}\u{E007F}",
+        "\u{0628}\u{200C}\u{200C}\u{200C}\u{200C}\u{200C}\u{200C}\u{200C}\u{200C}",
         "ordinary British prose, nothing to do",
     ];
     // Each policy paired with the CleanOptions it claims to mirror.

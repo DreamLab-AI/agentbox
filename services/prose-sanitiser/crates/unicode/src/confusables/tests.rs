@@ -70,6 +70,18 @@ fn prototype_folds_cross_script_lookalikes_to_ascii() {
 }
 
 #[test]
+fn cyrillic_dze_folds_to_latin_s() {
+    // U+0455 had no entry in the 71-character hand-written table, so it was
+    // invisible even in aggressive mode. UTS #39 knows it; this is the
+    // regression guard for the whole class of codepoint a hand table omits.
+    assert_eq!(prototype('\u{0455}'), Some('s'));
+    let found = hits("mi\u{0455}sion");
+    assert_eq!(found.len(), 1);
+    assert_eq!(found[0].prototype, 's');
+    assert_eq!(found[0].reason, ConfusableReason::MixedScriptRun);
+}
+
+#[test]
 fn prototype_declines_ascii_and_honest_letters() {
     // Already ASCII: nothing to fold, and folding would corrupt digits.
     assert_eq!(prototype('a'), None);
