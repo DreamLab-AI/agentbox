@@ -33,6 +33,26 @@ variation-selector chain, and the UK-English rule was a single unsafe regex.
   strips losslessly and verifiably; detects and reports only; degrades but never
   removes; never touches. It appears in the workspace README, every crate README,
   every crate-level `//!` doc, and the skill.
+- **Licence settled: `MIT OR Apache-2.0`.** ADR-2030 (2026-09-03, accepted)
+  records that crates under `services/` are permissive per crate while the
+  containing repository stays AGPL-3.0-only. That is not a contradiction: the
+  AGPL governs the aggregate hosted service, not the licence of each part, and
+  the grant travels with the crate to crates.io. ADR-2030 amends ADR-016's
+  uniformly-AGPL statement for `services/`, so the conflict three workers and
+  the adversarial review (finding 9) flagged is closed rather than worked
+  around. `LICENSE-MIT` and `LICENSE-APACHE` sit at the workspace root and are
+  linked into every crate. One condition rides with it: a `services/` crate that
+  links an AGPL library is not permissive in effect and must declare
+  `AGPL-3.0-only` instead of advertising a grant it cannot give. Nothing in this
+  workspace does, and adding such a dependency would be a licence change needing
+  ADR-2030 re-reviewed.
+- **Documentation scope, from the same review (finding 10).** "Lossless" and
+  "never touches pixels" now name the path they describe: a container-only
+  operation that succeeds, with pixel removal disabled. `clean-image
+  --remove-pixel` hands the file to a diffusion harness that rewrites pixels by
+  design, so it sits outside both claims. A clean `inspect-*` is now stated as
+  evidence that no known embedded carrier remains, not as proof of anonymity or
+  of complete provenance removal.
 - Split severity from confidence throughout. Severity rates impact; confidence
   rates whether the rule is right, and only confidence gates a fix.
 - **The soft hyphen moved out of the mechanical tier.** `U+00AD` was stripped
@@ -190,22 +210,12 @@ The capability matrix stopped being a claim and started being a number.
   No published study measured detector or linter false positives on British
   English before this.
 
-### Still open
+## [0.1.0] - 2026-09-03
 
-- **The licence position is unresolved and sits with the operator.** Every crate
-  declares `MIT OR Apache-2.0`; `LICENSE-MIT` and `LICENSE-APACHE` now exist at
-  the workspace root and are linked into every crate; the repository root is
-  AGPL-3.0; ADR-016 (2026-05-16) records first-party code as AGPL-3.0-only; ten
-  `services/*` crates declare `MIT OR Apache-2.0`. Recorded as fact, not as a
-  recommendation. The adversarial review of 2026-09-03 treats it as
-  release-blocking (finding 9). It is a copyright-holder decision.
-- **Documentation scope, from the same review (finding 10).** "Lossless" and
-  "never touches pixels" now name the path they describe: a container-only
-  operation that succeeds, with pixel removal disabled. `clean-image
-  --remove-pixel` hands the file to a diffusion harness that rewrites pixels by
-  design, so it sits outside both claims. A clean `inspect-*` is now stated as
-  evidence that no known embedded carrier remains, not as proof of anonymity or
-  of complete provenance removal.
+The Rust port and the workspace split.
+
+### Added
+
 - **Ported the Python skill to Rust** across four commits: the crate skeleton
   and Layer A Unicode port, image and container metadata surgery, dispatch plus
   the audit sweeps and two slop scanners, then the Layer B rewrite, the HTTP

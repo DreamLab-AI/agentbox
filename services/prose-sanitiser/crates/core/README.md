@@ -185,12 +185,10 @@ Detection lives in `prose-sanitiser-unicode`, `prose-sanitiser-uk` and
 
 Publication candidate. Before `cargo publish`:
 
-- [x] `LICENSE-MIT` and `LICENSE-APACHE` present and linked into the crate
-- [ ] **Licence position resolved by the operator.** The manifest declares
-      `MIT OR Apache-2.0`; ADR-016 (2026-05-16) records first-party code as
-      AGPL-3.0-only and the repository root is AGPL-3.0. Unresolved and not
-      settled in these docs; the adversarial review of 2026-09-03 records it as
-      release-blocking (finding 9). See the workspace README
+- [x] **Licence position settled.** `MIT OR Apache-2.0` per ADR-2030
+      (2026-09-03, accepted): `services/` crates are permissive per crate, the
+      containing repository stays AGPL-3.0-only, and the grant travels with the
+      crate. `LICENSE-MIT` and `LICENSE-APACHE` present and linked
 - [x] `description`, `repository`, `keywords`, `categories`, `readme` set
 - [x] Pure Rust: no C dependencies, no subprocesses, no network
 - [x] Crate-level `//!` docs stating the honest capability scope
@@ -201,4 +199,9 @@ Publication candidate. Before `cargo publish`:
 
 ## Licence
 
-MIT OR Apache-2.0, at your option.
+**MIT OR Apache-2.0**, at your option.
+
+Per [ADR-2030](../../../../docs/adr/ADR-2030-permissive-licensing-for-publishable-service-crates.md), crates under `services/` are
+permissive per crate while the containing repository stays AGPL-3.0-only.
+That is not a contradiction: the AGPL governs the aggregate hosted service,
+not the licence of each part, and this grant travels with the crate.

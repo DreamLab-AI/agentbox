@@ -205,26 +205,24 @@ cargo doc --workspace --no-deps
 
 ## Licence
 
-> **Unresolved, and with the operator.** State of the licence position as of
-> 2026-09-03, recorded here as fact rather than as a recommendation:
->
-> - Every crate in this workspace declares `license = "MIT OR Apache-2.0"`.
-> - `LICENSE-MIT` and `LICENSE-APACHE` exist at this workspace root and are
->   linked into every crate, so a packaged tarball carries its licence texts.
-> - The repository root `LICENSE` is AGPL-3.0.
-> - ADR-016 (2026-05-16, licence consolidation) records all first-party code as
->   AGPL-3.0-only, having "eliminated remaining MIT designations from
->   sub-package manifests".
-> - Ten `services/*` crates declare `MIT OR Apache-2.0`, and
->   `docs/developer/licensing.md` has no entry for any of them.
->
-> The adversarial review of 2026-09-03 records this as a release-blocking
-> provenance question (finding 9). It is a copyright-holder decision and is not
-> settled in this document. No crate should be published until the operator
-> resolves it.
+**MIT OR Apache-2.0**, at your option, per
+[ADR-2030](../../docs/adr/ADR-2030-permissive-licensing-for-publishable-service-crates.md)
+(2026-09-03, accepted). `LICENSE-MIT` and `LICENSE-APACHE` are at this workspace
+root and linked into every crate, so the grant travels with the crate on
+crates.io.
 
-The rest of this section describes the position the crates *declare*, which is
-what the dependency choices were made to support.
+The containing repository stays **AGPL-3.0-only** under its root `LICENSE`, and
+that is not a contradiction: an AGPL repository may hold permissively licensed
+subtrees, because the AGPL governs the aggregate hosted service rather than the
+licence of each part. The permissive grant here is per crate. ADR-2030 amends
+ADR-016's uniformly-AGPL statement for `services/` and supersedes the earlier
+note in this file that recorded the two grants as an open conflict.
+
+One condition rides with it: a `services/` crate that links an AGPL library is
+not permissive in effect and must declare `AGPL-3.0-only` rather than advertise a
+grant it cannot give. That applies to `nostr-pod-bridge` today, not to anything
+in this workspace, and adding an AGPL dependency to any crate here would be a
+licence change needing ADR-2030 re-reviewed.
 
 Dependency licences are kept clean deliberately. Avoided: `rexiv2` (GPL-3.0),
 `mupdf-rs` (AGPL-3.0), LibreOffice en_GB Hunspell dictionaries (GPL/LGPL/MPL

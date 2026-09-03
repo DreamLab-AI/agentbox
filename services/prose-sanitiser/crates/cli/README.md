@@ -95,4 +95,9 @@ and were ported to Rust.
 
 ## Licence
 
-MIT OR Apache-2.0, at your option.
+**MIT OR Apache-2.0**, at your option.
+
+Per [ADR-2030](../../../../docs/adr/ADR-2030-permissive-licensing-for-publishable-service-crates.md), crates under `services/` are
+permissive per crate while the containing repository stays AGPL-3.0-only.
+That is not a contradiction: the AGPL governs the aggregate hosted service,
+not the licence of each part, and this grant travels with the crate.

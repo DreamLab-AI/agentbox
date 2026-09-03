@@ -328,8 +328,8 @@ Over 1,252 human and 1,207 machine documents long enough for a rate to mean
 anything:
 
 Swept at a fixed 1 per cent false-positive budget, the same discipline as the
-slop numbers above. **The 250-word guard excludes most of both corpora** — 2,329
-of 4,000 RAID documents and 2,212 of 3,000 MAGE documents — so effective n is
+slop numbers above. **The 250-word guard excludes most of both corpora** (2,329
+of 4,000 RAID documents and 2,212 of 3,000 MAGE documents), so effective n is
 816/855 on RAID and 436/352 on MAGE, and the MAGE figures are thin.
 
 | Measure | Corpus | Threshold at 1% FPR | TPR | Realised FPR |
@@ -338,13 +338,13 @@ of 4,000 RAID documents and 2,212 of 3,000 MAGE documents — so effective n is
 | Sentence-length CV | RAID | < 0.100 | 9.4% | 0.86% |
 | Sentence-length CV | MAGE | < 0.270 | 4.6% | 0.92% |
 | Tricolon density | RAID | 40 per 10k (shipped) | 11.6% | **12.4%** |
-| Paragraph-length CV | both | — | 0.0% | 0.0% |
+| Paragraph-length CV | both | n/a | 0.0% | 0.0% |
 
 Four things that table says, none of them flattering:
 
 **The Oxford comma is the best single signal in the crate on RAID, and the
 direction reverses on MAGE.** There, the median serial-comma rate is 13.12 for
-human documents and 0.00 for machine ones — humans use *more* of them — and TPR
+human documents and 0.00 for machine ones, so humans use *more* of them, and TPR
 collapses to 2.0 per cent. So "best discriminator" is a statement about one
 corpus with a one-line counter-example, not a property of the measure.
 
@@ -356,7 +356,7 @@ says so.
 
 **The sentence-length floor cannot be one number.** At a 1 per cent budget it
 wants 0.100 on RAID and 0.270 on MAGE. The shipped 0.20 sits between them and
-costs roughly **7 per cent** false positives — seven times the budget the other
+costs roughly **7 per cent** false positives, seven times the budget the other
 figures on this page are quoted at. It is kept because this is a writing aid and
 0.20 catches about 15 per cent of machine text where 0.10 catches 9, but it is a
 house budget, not a 1 per cent operating point, and mixing the two would be the
@@ -365,7 +365,7 @@ kind of comparison this section exists to prevent.
 **Paragraph-length uniformity does not work.** Median CV is 0.000 for both
 classes on both corpora, so it never fires: most documents long enough to clear
 the word guard are still one or two paragraphs. It is unvalidated rather than
-disproven — nothing here tests it on the long-form prose it was written for —
+disproven, since nothing here tests it on the long-form prose it was written for,
 and the rule table now says that.
 
 ### The Pew rates are not thresholds
@@ -378,7 +378,7 @@ cent, tricolon 12.38 per cent. They are kept as defaults because they are
 *sourced* and a house-style ceiling is the honest framing for them, but they are
 not tuned operating points and should not be read as any.
 
-(Em-dash rate is 0.000 for both classes on MAGE at every percentile — em-dashes
+(Em-dash rate is 0.000 for both classes on MAGE at every percentile, because em-dashes
 are effectively absent from that corpus, so the measure is untestable there
 rather than failing.)
 
@@ -402,18 +402,20 @@ model output.
 
 ## Licence
 
-MIT OR Apache-2.0, at your option.
+**MIT OR Apache-2.0**, at your option.
 
+Per [ADR-2030](../../../../docs/adr/ADR-2030-permissive-licensing-for-publishable-service-crates.md), crates under `services/` are
+permissive per crate while the containing repository stays AGPL-3.0-only.
+That is not a contradiction: the AGPL governs the aggregate hosted service,
+not the licence of each part, and this grant travels with the crate.
 ## Publishing checklist
 
 Publication candidate. Before `cargo publish`:
 
-- [x] `LICENSE-MIT` and `LICENSE-APACHE` present and linked into the crate
-- [ ] **Licence position resolved by the operator.** The manifest declares
-      `MIT OR Apache-2.0`; ADR-016 (2026-05-16) records first-party code as
-      AGPL-3.0-only and the repository root is AGPL-3.0. Unresolved and not
-      settled in these docs; the adversarial review of 2026-09-03 records it as
-      release-blocking (finding 9). See the workspace README
+- [x] **Licence position settled.** `MIT OR Apache-2.0` per ADR-2030
+      (2026-09-03, accepted): `services/` crates are permissive per crate, the
+      containing repository stays AGPL-3.0-only, and the grant travels with the
+      crate. `LICENSE-MIT` and `LICENSE-APACHE` present and linked
 - [x] `description`, `repository`, `keywords`, `categories`, `readme` set
 - [x] Pure Rust: no C dependencies, no subprocesses, no network
 - [x] Every rule carries `since`, `reviewed` and its sources, and the tables
