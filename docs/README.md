@@ -114,6 +114,7 @@ You are adding a feature, implementing an adapter, or investigating a regression
 | [Testing](developer/testing.md) | Suite shape, running locally, CI wiring |
 | [Version tracking](developer/version-tracking.md) | Renovate + `nix flake update` workflow |
 | [Licensing](developer/licensing.md) | AGPL-3.0 component matrix and aggregation analysis for every bundled copyleft component |
+| [Published crates](developer/ecosystem.md#published-crates-extracted-from-services) | `prose-sanitiser` and `diagram-ir`: extracted to their own repos and crates.io, consumed via pinned Nix derivations |
 
 ---
 
