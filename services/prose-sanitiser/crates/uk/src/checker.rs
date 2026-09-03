@@ -7,7 +7,7 @@
 //! records exactly one answer regardless of sense.
 
 use prose_sanitiser_core::{
-    Check, ConfidenceTier, Config, Finding, Fix, RuleMeta, Severity, Span, Suppressions,
+    Check, ConfidenceTier, Config, Finding, Fix, Fixability, RuleMeta, Severity, Span, Suppressions,
 };
 
 use crate::exclude::{word_re, Exclusions};
@@ -75,6 +75,17 @@ pub const UK_SENSE: RuleMeta = RuleMeta {
 
 /// Every rule this crate can emit, for a report's driver table.
 pub const RULES: &[RuleMeta] = &[US_SPELLING, UK_SENSE];
+
+/// Rules whose repairability does not follow from their confidence tier.
+///
+/// Empty, and audited to be empty on 2026-09-03 rather than merely left so.
+/// The rule is that a rule a caller may act on must be able to hand them
+/// something to act with, and both rules here satisfy it in the direction their
+/// tier implies. [`US_SPELLING`] is high-confidence stylistic and every finding
+/// carries the British form as a replacement, so opt-in is a promise the crate
+/// keeps. [`UK_SENSE`] is a judgement call and never carries one, so
+/// report-only is what the default already gives it.
+pub const FIXABILITY: &[(&str, Fixability)] = &[];
 
 /// The UK-English checker.
 ///

@@ -117,6 +117,7 @@ pub mod table;
 pub use checker::{
     UkEnglish, UK_SENSE_ID, UK_SENSE_LABEL, UK_SENSE_SEVERITY, UK_SPELLING_SEVERITY,
 };
+pub use checker::FIXABILITY;
 pub use exclude::Exclusions;
 pub use gazetteer::Gazetteer;
 pub use legacy::{

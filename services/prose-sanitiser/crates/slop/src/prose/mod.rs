@@ -16,6 +16,12 @@ use super::rules::{
 };
 use super::structural::StructuralMetrics;
 
+/// One UK-English hit, bucketed by line: rule, label, column, span, replacement.
+///
+/// A tuple rather than a struct because it lives for the length of one function
+/// and naming it would say less than the alias does.
+type UkHit = (String, String, usize, usize, usize, Option<String>);
+
 /// One reported tell.
 #[derive(Debug, Clone)]
 pub struct Finding {
@@ -37,6 +43,18 @@ pub struct Finding {
     pub byte_start: usize,
     /// Exclusive byte offset of the end of the match.
     pub byte_end: usize,
+    /// The replacement the owning rule offered, when it offered one.
+    ///
+    /// `None` for every rule this crate implements: a stylistic tell is a
+    /// prompt for an editor, not a substitution. It is `Some` only for the
+    /// delegated UK-English rule, whose findings carry the British spelling.
+    ///
+    /// Not serialised by [`Finding::to_json`] — the compact JSON shape is fixed
+    /// by every consumer that already diffs it — but carried into
+    /// [`Finding::to_report_entry`], because a SARIF or JSON Lines report that
+    /// labels a rule `opt-in` and then hands over `replacement: null` has told
+    /// its reader two different things.
+    pub replacement: Option<String>,
 }
 
 impl Finding {
@@ -81,7 +99,7 @@ impl Finding {
                 severity: self.severity,
                 confidence: self.confidence(),
                 advice: self.fix.clone(),
-                replacement: None,
+                replacement: self.replacement.clone(),
             },
         )
         .with_snippet(self.snippet.clone())
@@ -292,7 +310,7 @@ pub fn scan_file(path: &Path, rules: &[CompiledRule], floor: Severity) -> Vec<Fi
         // Per-line rules: the first matching pattern in a rule reports once.
         for compiled in rules {
             if compiled.rule.is_delegated() {
-                for (rule_id, label, column, start, end) in
+                for (rule_id, label, column, start, end, replacement) in
                     uk_by_line.get(&number).into_iter().flatten()
                 {
                     let lead = line.len() - line.trim_start().len();
@@ -313,6 +331,7 @@ pub fn scan_file(path: &Path, rules: &[CompiledRule], floor: Severity) -> Vec<Fi
                         column: *column,
                         byte_start: *start,
                         byte_end: *end,
+                        replacement: replacement.clone(),
                     });
                 }
                 continue;
@@ -342,6 +361,7 @@ pub fn scan_file(path: &Path, rules: &[CompiledRule], floor: Severity) -> Vec<Fi
                 column: line[..found.start()].chars().count() + 1,
                 byte_start: line_start + found.start(),
                 byte_end: line_start + found.end(),
+                replacement: None,
             });
         }
     }
@@ -361,6 +381,7 @@ pub fn scan_file(path: &Path, rules: &[CompiledRule], floor: Severity) -> Vec<Fi
                 column: 0,
                 byte_start: 0,
                 byte_end: 0,
+                replacement: None,
             });
         }
     };
@@ -425,7 +446,7 @@ pub fn scan_file(path: &Path, rules: &[CompiledRule], floor: Severity) -> Vec<Fi
 fn uk_findings_by_line(
     text: &str,
     floor: Severity,
-) -> std::collections::HashMap<usize, Vec<(String, String, usize, usize, usize)>> {
+) -> std::collections::HashMap<usize, Vec<UkHit>> {
     use std::collections::HashMap;
 
     let config = prose_sanitiser_core::Config::new().with_min_severity(floor);
@@ -436,7 +457,7 @@ fn uk_findings_by_line(
         }
     }
 
-    let mut out: HashMap<usize, Vec<(String, String, usize, usize, usize)>> = HashMap::new();
+    let mut out: HashMap<usize, Vec<UkHit>> = HashMap::new();
     for finding in uk::checker().check(text, &config) {
         let line = match line_starts.binary_search(&finding.span.start) {
             Ok(index) => index,
@@ -454,6 +475,7 @@ fn uk_findings_by_line(
             column,
             finding.span.start,
             finding.span.end,
+            finding.replacement,
         ));
     }
     out
@@ -557,6 +579,7 @@ pub fn scan_with(root: &Path, floor: Severity, structural: bool) -> ScanResult {
                 column: 0,
                 byte_start: 0,
                 byte_end: 0,
+                replacement: None,
             });
         }
         measures.push((file, metrics));

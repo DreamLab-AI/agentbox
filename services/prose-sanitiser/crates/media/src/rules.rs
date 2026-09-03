@@ -40,7 +40,7 @@
 //! `reviewed` date has gone stale is a rule whose sources nobody has
 //! re-checked.
 
-use prose_sanitiser_core::{ConfidenceTier, RuleMeta, Severity};
+use prose_sanitiser_core::{ConfidenceTier, Fixability, RuleMeta, Severity};
 
 const C2PA_SPEC: &str =
     "https://spec.c2pa.org/specifications/specifications/2.4/specs/C2PA_Specification.html";
@@ -53,6 +53,22 @@ const PDF_SPEC: &str =
 const OOXML_SPEC: &str =
     "https://ecma-international.org/publications-and-standards/standards/ecma-376/";
 const ODF_SPEC: &str = "https://docs.oasis-open.org/office/OpenDocument/v1.3/";
+
+/// Rules whose repairability does not follow from their confidence tier.
+///
+/// One entry, and the one this axis was built for. `media-c2pa-soft-binding`
+/// is a certain detection with **no possible repair**: the watermark it points
+/// at is in the pixels, and this crate does lossless container surgery. See the
+/// module documentation above for why that could not be expressed as doubt
+/// about the detection.
+///
+/// Nothing else in this table needs an entry. Every other rule here is repaired
+/// by rewriting the container, which is a real fix even though it never travels
+/// as a [`Finding::replacement`](prose_sanitiser_core::Finding::replacement):
+/// this crate emits no text findings at all, so there is no replacement for one
+/// to carry. The fix is the cleaned file.
+pub const FIXABILITY: &[(&str, Fixability)] =
+    &[("media-c2pa-soft-binding", Fixability::NoFixExists)];
 
 /// Every rule this crate emits, in report order.
 ///

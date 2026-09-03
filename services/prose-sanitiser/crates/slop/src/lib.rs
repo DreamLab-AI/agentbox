@@ -56,5 +56,5 @@ pub mod rules;
 pub mod structural;
 
 pub use check::SlopChecker;
-pub use rules::{RULESET_REVIEWED, RULESET_VERSION};
+pub use rules::{FIXABILITY, RULESET_REVIEWED, RULESET_VERSION};
 pub use structural::StructuralMetrics;

@@ -103,8 +103,21 @@ pub struct RuleMeta {
 }
 
 impl RuleMeta {
-    /// Render as a SARIF `reportingDescriptor`.
+    /// Render as a SARIF `reportingDescriptor`, with fixability from the tier.
+    ///
+    /// Correct for every rule that has not declared otherwise. A report that
+    /// carries a declared table should use [`RuleMeta::to_sarif_with`] instead,
+    /// which [`Report`] does on its behalf.
     pub fn to_sarif(&self) -> Value {
+        self.to_sarif_with(Fixability::default_for(self.confidence))
+    }
+
+    /// Render as a SARIF `reportingDescriptor` with an explicit fixability.
+    ///
+    /// The driver table and the results must agree: a `properties.fixability`
+    /// of `opt-in` on the rule beside `report-only` on every result for it
+    /// invites a consumer to trust whichever it read first.
+    pub fn to_sarif_with(&self, fixability: Fixability) -> Value {
         let mut descriptor = Map::new();
         descriptor.insert("id".into(), json!(self.id));
         descriptor.insert("name".into(), json!(self.name));
@@ -124,7 +137,7 @@ impl RuleMeta {
             "properties".into(),
             json!({
                 "confidence": self.confidence.as_str(),
-                "fixability": Fixability::default_for(self.confidence).as_str(),
+                "fixability": fixability.as_str(),
                 "severity": self.severity.as_str(),
                 "since": self.since,
                 "reviewed": self.reviewed,
@@ -360,6 +373,7 @@ pub struct Report {
     rules: &'static [RuleMeta],
     entries: Vec<ReportEntry>,
     ruleset_version: String,
+    fixability: Vec<(String, Fixability)>,
 }
 
 impl Report {
@@ -370,7 +384,31 @@ impl Report {
             rules,
             entries: Vec::new(),
             ruleset_version: "unversioned".to_string(),
+            fixability: Vec::new(),
         }
+    }
+
+    /// Load the declared fixability table, so the driver rules match the results.
+    ///
+    /// Without it a rule renders the fixability its tier implies, which is
+    /// right until a rule declares otherwise; then the SARIF driver table and
+    /// the results disagree about the same rule. Pass the same table the run's
+    /// [`Config`] carries.
+    pub fn with_fixability_table(mut self, overrides: &[(&str, Fixability)]) -> Self {
+        self.fixability = overrides
+            .iter()
+            .map(|(rule_id, fixability)| ((*rule_id).to_string(), *fixability))
+            .collect();
+        self
+    }
+
+    /// The fixability declared for `rule_id`, or the one its tier implies.
+    fn fixability_of(&self, rule: &RuleMeta) -> Fixability {
+        self.fixability
+            .iter()
+            .find(|(id, _)| id == rule.id)
+            .map(|(_, fixability)| *fixability)
+            .unwrap_or_else(|| Fixability::default_for(rule.confidence))
     }
 
     /// Record which version of the rule table produced these findings.
@@ -430,7 +468,7 @@ impl Report {
                         "name": self.tool.name,
                         "version": self.tool.version,
                         "informationUri": self.tool.information_uri,
-                        "rules": fired.iter().map(|rule| rule.to_sarif()).collect::<Vec<_>>(),
+                        "rules": fired.iter().map(|rule| rule.to_sarif_with(self.fixability_of(rule))).collect::<Vec<_>>(),
                         "properties": { "rulesetVersion": self.ruleset_version },
                     }
                 },

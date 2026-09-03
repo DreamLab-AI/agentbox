@@ -35,7 +35,7 @@
 //! The table therefore keeps the flagship words and treats the class, not any
 //! single word, as the signal. See [`CHANGELOG`].
 
-use prose_sanitiser_core::{ConfidenceTier, RuleMeta};
+use prose_sanitiser_core::{ConfidenceTier, Fixability, RuleMeta};
 
 mod lexicon;
 mod table;
@@ -90,6 +90,7 @@ pub const CHANGELOG: &[ChangelogEntry] = &[
             "Every structural measure is opt-in behind --structural, so the default report is unchanged in shape and in which rules can fire.",
             "Measured every rule against 3,500 human and 3,500 machine documents from RAID and MAGE. Two calibrations changed as a result. `the-opener` fires on 41.1 per cent of human documents and 38.0 per cent of machine ones, so it points very slightly the wrong way as an authorship signal: demoted from high-confidence-stylistic to low-confidence-judgement and kept as a house-style rule only.",
             "The sentence-length variance floor was 0.35, which flagged 36.7 per cent of human documents. Retuned to 0.20: 6.9 per cent of human documents against 14.8 per cent of machine ones. The tricolon budget went from 6 to 40 per 10,000 words, and is now documented as non-discriminating: at every threshold tested it flagged more human documents than machine ones, so it is a style budget and not an AI tell.",
+            "Every rule in this crate is declared Fixability::ReportOnly. The tier a structural rule carries maps by default onto opt-in, which is right for a rule that can offer a replacement and wrong for every rule here, none of which emits one. Measured on 2,000 documents of British human prose that mislabelled 566 findings as write-eligible, across agg and negative-parallelism. No behaviour changed - a finding with no replacement was never applyable - but the reported fixability now matches what the crate can actually do. Confidence tiers are untouched.",
             "Swept every structural measure at a fixed 1 per cent false-positive budget and corrected three claims that were too strong. The sentence-length floor is corpus-dependent, wanting 0.10 on RAID and 0.27 on MAGE; the shipped 0.20 is a house budget costing roughly 7 per cent false positives, and is now labelled as such rather than quoted beside the 1 per cent figures. The Oxford-comma rate is the best single signal on RAID at 12.6 per cent TPR, but the direction reverses on MAGE, where human text carries more serial commas than machine text. Paragraph-length uniformity never fires on either corpus and is documented as unvalidated rather than working. The tricolon measure's false-positive rate exceeds its true-positive rate, so it is not a weak tell but no tell at all. Thresholds unchanged; only the claims made about them.",
         ],
     },
@@ -211,6 +212,38 @@ pub fn rule_meta() -> &'static [RuleMeta] {
         meta
     })
 }
+
+/// Rules whose repairability does not follow from their confidence tier.
+///
+/// [`Fixability::default_for`] maps [`ConfidenceTier::HighConfidenceStylistic`]
+/// onto [`Fixability::OptIn`], which is right for a rule that can offer a
+/// replacement. **No rule in this crate can.** Every scanner here emits
+/// `replacement: None`, because a stylistic tell is a prompt for an editor
+/// rather than a substitution, and the whole-file measures have nothing to
+/// substitute *into*: an `agg` or `structural-*` finding is a property of the
+/// document with a zero-length span at offset 0, and the advice is "use fewer
+/// em-dashes", not "replace these bytes with those".
+///
+/// Left on the default, those rules told a write-enabled caller it was entitled
+/// to apply them. Measured on 2,000 documents of British human prose that was
+/// 566 findings across `agg` and `negative-parallelism` marked opt-in, every
+/// one of them carrying no replacement to apply. Nothing was ever rewritten —
+/// [`Finding::is_fixable`](prose_sanitiser_core::Finding::is_fixable) checks
+/// for a replacement first — but the label was a promise the crate could not
+/// keep, and a reader auditing exposure had to know that to discount it.
+///
+/// The tier is untouched. How far to trust the pattern and whether a repair
+/// exists are separate questions, which is the whole reason
+/// [`Fixability`] is a separate axis.
+pub const FIXABILITY: &[(&str, Fixability)] = &[
+    ("agg", Fixability::ReportOnly),
+    ("the-heading", Fixability::ReportOnly),
+    ("negative-parallelism", Fixability::ReportOnly),
+    ("bold-label-bullet", Fixability::ReportOnly),
+    ("structural-emdash-density", Fixability::ReportOnly),
+    ("structural-oxford-comma-density", Fixability::ReportOnly),
+    ("structural-negative-parallelism-density", Fixability::ReportOnly),
+];
 
 /// The whole-file aggregate checks the default scan performs.
 ///

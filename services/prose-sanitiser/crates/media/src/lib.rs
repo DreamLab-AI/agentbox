@@ -90,4 +90,4 @@ pub mod io;
 pub mod proc;
 pub mod rules;
 
-pub use rules::{rule, rule_for_finding, RULES};
+pub use rules::{rule, rule_for_finding, FIXABILITY, RULES};

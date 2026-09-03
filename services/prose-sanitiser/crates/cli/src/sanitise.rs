@@ -40,28 +40,54 @@ use crate::exit;
 /// Rule identifier for provenance metadata found in an image or container.
 pub const RULE_MEDIA_PROVENANCE: &str = "media-provenance";
 
-/// Rules whose repairability does not follow from their confidence tier.
+/// Every declared fixability override, from the crate that owns each rule.
 ///
-/// Exactly one so far. `media-c2pa-soft-binding` detects a C2PA soft-binding
-/// assertion, and the detection is as certain as any in the workspace: the
-/// assertion is in the manifest or it is not. But **no repair exists** — the
-/// watermark it points at lives in the pixels, out of reach of the container
-/// surgery this tool does, and stripping the manifest does not remove a durable
-/// Content Credential because the cloud repository still resolves it.
+/// Fixability defaults to what the confidence tier implies, and for most rules
+/// that is right. A rule declares otherwise when the two come apart, and they
+/// come apart in both directions:
 ///
-/// Before [`Fixability`] existed, the only way to stop that being auto-fixed
-/// was to file it as a low-confidence judgement call, which made the crate's
-/// most reliable detection wear its least reliable label. This is the table
-/// that lets the tier tell the truth and the fix still never happen.
-pub const FIXABILITY_OVERRIDES: &[(&str, Fixability)] =
-    &[("media-c2pa-soft-binding", Fixability::NoFixExists)];
+/// * `media-c2pa-soft-binding` is a certain detection with **no possible
+///   repair**. The watermark it points at is in the pixels, out of reach of the
+///   container surgery this tool does, and stripping the manifest does not
+///   remove a durable Content Credential because the cloud repository still
+///   resolves it. Before [`Fixability`] existed, the only way to stop it being
+///   auto-fixed was to file it as a low-confidence judgement call, which made
+///   the workspace's most reliable detection wear its least reliable label.
+/// * Every high-confidence structural rule in `prose-sanitiser-slop` is
+///   report-only, because no scanner in that crate emits a replacement and the
+///   whole-file measures have nothing to substitute into. The tier says how far
+///   to trust the pattern; it was never a claim that a repair existed.
+///
+/// The tables live in the crates that own the rules, so a library consumer that
+/// never links this binary gets the same answer. Leaked once per process: a
+/// caller wants `&'static` and the process needs the table until it exits.
+pub fn fixability_table() -> &'static [(&'static str, Fixability)] {
+    use std::sync::OnceLock;
+    static TABLE: OnceLock<Vec<(&'static str, Fixability)>> = OnceLock::new();
+    TABLE.get_or_init(|| {
+        let mut table: Vec<(&'static str, Fixability)> = Vec::new();
+        for declared in [
+            prose_sanitiser_slop::FIXABILITY,
+            prose_sanitiser_uk::FIXABILITY,
+            prose_sanitiser_unicode::FIXABILITY,
+            prose_sanitiser_media::FIXABILITY,
+        ] {
+            for entry in declared {
+                if !table.iter().any(|(id, _)| *id == entry.0) {
+                    table.push(*entry);
+                }
+            }
+        }
+        table
+    })
+}
 
 /// A configuration with every declared fixability override applied.
 ///
 /// Every entry point that builds findings from more than one crate should start
 /// here, so a rule that says no repair exists is honoured wherever it surfaces.
 pub fn configure(base: Config) -> Config {
-    base.with_fixability_table(FIXABILITY_OVERRIDES)
+    base.with_fixability_table(fixability_table())
 }
 
 /// File extensions the text layers read, beyond what `dispatch` calls text.

@@ -23,10 +23,11 @@ use clap::Parser;
 use prose_sanitiser::common::{run_cli, to_pretty_json_ascii, CliError};
 use prose_sanitiser::exit;
 use prose_sanitiser::output::{render, OutputFormat};
+use prose_sanitiser::sanitise::{configure, fixability_table};
 use prose_sanitiser::settings::Settings;
 use prose_sanitiser::slop::prose::{scan_with, Finding};
 use prose_sanitiser::slop::rules::{rule_meta, Severity, CHANGELOG, RULESET_VERSION};
-use prose_sanitiser_core::{Report, ToolMeta};
+use prose_sanitiser_core::{Config, Report, ToolMeta};
 use serde_json::{json, Map, Value};
 
 #[derive(Parser)]
@@ -111,13 +112,27 @@ fn explain_rules() -> i32 {
 }
 
 /// Build the SARIF / JSON Lines report from a scan.
+///
+/// The declared fixability table is applied on both halves: to the results,
+/// through the configuration each entry resolves against, and to the driver
+/// rules. Without it every high-confidence structural rule in the crate would
+/// render as `opt-in` — the value its tier implies — while carrying no
+/// replacement for a caller to apply, which is what made this scanner's own
+/// output overstate its write exposure by 566 findings on the British corpus.
 fn build_report(findings: &[Finding]) -> Report {
+    let config = configure(Config::new());
     Report::new(
         ToolMeta::new("slop-scan", env!("CARGO_PKG_VERSION")),
         rule_meta(),
     )
     .with_ruleset_version(RULESET_VERSION)
-    .with_entries(findings.iter().map(Finding::to_report_entry).collect())
+    .with_fixability_table(fixability_table())
+    .with_entries(
+        findings
+            .iter()
+            .map(|finding| finding.to_report_entry().with_config(&config))
+            .collect(),
+    )
 }
 
 fn body() -> Result<i32, CliError> {

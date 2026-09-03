@@ -92,7 +92,7 @@ use check::TextPolicy;
 use decide::{char_label, decide, is_glue, Action};
 use prose_sanitiser_core::Unit;
 pub use report::{human_report, payload_json, CharHit, CleanStats, LabelCounts, TextInspectReport};
-pub use rules::RULES;
+pub use rules::{FIXABILITY, RULES};
 
 const BASE_NOTES: [&str; 5] = [
     "Layer A only: invisible/format Unicode, smuggled payloads and homoglyphs (edit-based carriers).",

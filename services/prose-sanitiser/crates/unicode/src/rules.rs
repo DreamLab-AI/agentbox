@@ -13,13 +13,30 @@
 //! `since` and `reviewed` are honest dates, not decoration. A rule whose
 //! `reviewed` date has gone stale is a rule whose sources nobody has re-checked.
 
-use prose_sanitiser_core::{ConfidenceTier, RuleMeta, Severity};
+use prose_sanitiser_core::{ConfidenceTier, Fixability, RuleMeta, Severity};
 
 const TR39: &str = "https://www.unicode.org/reports/tr39/";
 const TR55: &str = "https://www.unicode.org/reports/tr55/";
 const BUTLER: &str = "https://paulbutler.org/2025/smuggling-arbitrary-data-through-an-emoji/";
 const TROJAN: &str = "https://arxiv.org/abs/2111.00169";
 const TR51: &str = "https://www.unicode.org/reports/tr51/";
+
+/// Rules whose repairability does not follow from their confidence tier.
+///
+/// Empty, and audited to be empty on 2026-09-03. Four rules here emit findings
+/// and each can offer a replacement: `unicode-invisible` and `unicode-bidi`
+/// offer the empty string, `unicode-homoglyph` offers the ASCII fold, and
+/// `unicode-soft-hyphen` is a judgement call that offers nothing and is
+/// report-only by tier already.
+///
+/// The three payload rules — `unicode-vs-payload`, `unicode-tag-payload` and
+/// `unicode-zw-payload` — emit no [`Finding`](prose_sanitiser_core::Finding) at
+/// all. They are catalogue entries for the stego report, and the repair is the
+/// cleaned text rather than a substitution at a span, so there is no
+/// replacement for one to carry and nothing here to declare. That distinction
+/// is asserted in the workspace-wide fixability test, so a rule cannot quietly
+/// move from one group to the other.
+pub const FIXABILITY: &[(&str, Fixability)] = &[];
 
 /// Every rule this crate emits, in report order.
 ///
