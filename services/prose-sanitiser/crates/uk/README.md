@@ -97,8 +97,11 @@ Publication candidate. Before `cargo publish`:
 - [x] `description`, `repository`, `keywords`, `categories`, `readme` set
 - [x] Vendored data licence-cleared, attributed, and hash-pinned in `data/`
 - [x] Pure Rust: no C dependencies, no subprocesses, no network
-- [ ] `include` in `Cargo.toml` covers `data/`, so the published `.crate`
-      carries VarCon and its notice
+- [x] Packaging keeps `data/` in the published `.crate`, so VarCon and its
+      notice ship with it. `Cargo.toml` uses `exclude` (dropping `corpora/`)
+      rather than an `include` allowlist, so `data/` is carried by default
+- [ ] `cargo package --list` confirms `data/varcon.txt` and
+      `data/LICENSE-VarCon` are present, and that `corpora/` is not
 - [ ] Crate-level `//!` docs carrying the capability matrix rows
 - [ ] Every public item documented, with examples that compile
 - [ ] `cargo doc --no-deps` clean, with no warnings

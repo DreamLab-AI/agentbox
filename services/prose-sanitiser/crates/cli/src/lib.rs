@@ -29,6 +29,35 @@
 //! The heavy pixel- and token-domain backends (MarkLLM, MarkDiffusion,
 //! CtrlRegen, reverse-SynthID) stay behind a subprocess boundary in
 //! [`image::harness`]: they are torch programs, not parsers.
+//!
+//! # Output and exit codes
+//!
+//! Human output is `file:line:col`, rustc and clippy style, and is the primary
+//! format. `--json` emits JSON Lines (the ripgrep and typos convention) and
+//! `--sarif` emits SARIF 2.1.0, which is the exact version GitHub code scanning
+//! requires.
+//!
+//! | Exit code | Meaning |
+//! |---|---|
+//! | 0 | Clean |
+//! | 1 | Findings at or above the gate severity |
+//! | 2 | Tool error |
+//!
+//! This matches shellcheck and Vale. `typos` inverts it and uses 2 for
+//! findings; that convention is deliberately not copied.
+//!
+//! # The write policy
+//!
+//! Report-only by default. `--write` applies
+//! [`ConfidenceTier::CertainMechanical`](prose_sanitiser_core::ConfidenceTier)
+//! and `HighConfidenceStylistic` findings and never `LowConfidenceJudgement`
+//! ones, so an ambiguous case stays ambiguous whatever flags are passed. That
+//! is the property that stops a linter "correcting" *a driving licence* or *the
+//! gas meter*.
+//!
+//! The dedicated cleaners (`clean-text`, `clean-file`, `clean-image`) strip
+//! unconditionally, because everything they touch is `CertainMechanical` and
+//! the result is verifiable by diffing the output.
 
 pub mod audit;
 pub mod dispatch;
