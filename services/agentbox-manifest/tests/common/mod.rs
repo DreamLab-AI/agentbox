@@ -95,6 +95,19 @@ pub fn manifest() -> PathBuf {
 }
 
 /// Compare a produced file against its golden by name.
+///
+/// Goldens that record the manifest path they were generated from carry the
+/// placeholder `<MANIFEST>` instead of an absolute path, so the fixture is
+/// valid in every checkout and worktree; it is substituted here.
 pub fn check(f: &Path, name: &str) {
-    assert_same_bytes(name, &std::fs::read(f).unwrap(), &golden(name));
+    let expected = golden(name);
+    let placeholder = b"<MANIFEST>";
+    let expected = if expected.windows(placeholder.len()).any(|w| w == placeholder) {
+        let text = String::from_utf8_lossy(&expected).into_owned();
+        text.replace("<MANIFEST>", &manifest().display().to_string())
+            .into_bytes()
+    } else {
+        expected
+    };
+    assert_same_bytes(name, &std::fs::read(f).unwrap(), &expected);
 }

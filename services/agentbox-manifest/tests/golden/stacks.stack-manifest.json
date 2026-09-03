@@ -1,5 +1,5 @@
 {
-  "generated_from": "/home/devuser/workspace/wt-manifest/agentbox/services/agentbox-manifest/tests/golden/live-agentbox.toml",
+  "generated_from": "<MANIFEST>",
   "skills_tree": "/opt/agentbox/skills",
   "shared_projects_root": "/projects",
   "stacks": {
