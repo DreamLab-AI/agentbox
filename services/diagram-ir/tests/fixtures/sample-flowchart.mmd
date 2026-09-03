@@ -1,0 +1,27 @@
+---
+title: Request path
+---
+%%{init: {'theme':'dark'}}%%
+flowchart LR
+  subgraph Edge
+    Web[Web App]
+    Mobile[Mobile App]
+  end
+  subgraph Core Services
+    GW{{API Gateway}}
+    Auth([Auth])
+    Decide{Token valid?}
+  end
+  DB[(Postgres)]
+  Cache[(Redis)]
+  Web --> GW
+  Mobile --> GW
+  GW --> Decide
+  Decide--yes-->Auth
+  Decide-- no -->GW
+  Auth -.retry.-> GW
+  GW ==> DB & Cache
+  Legacy>Legacy note — unconnected]
+  click GW "https://example.invalid" _blank
+  style GW fill:#f9f
+  classDef hot fill:#f00

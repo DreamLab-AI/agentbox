@@ -112,7 +112,7 @@ Prerequisite: `browsercontainer` sidecar running.
 ## Converting between engines
 
 **Mermaid → diagram-design**: Use the import workflow in diagram-design
-(`references/import-mermaid.md`). The `mermaid_extract.py` script parses the `.mmd`
+(`references/import-mermaid.md`). The `mermaid-extract` binary parses the `.mmd`
 into a structural digest; diagram-design redraws it editorially.
 
 **diagram-design → Mermaid**: Not directly supported (editorial layout doesn't map

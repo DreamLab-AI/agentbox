@@ -1190,6 +1190,15 @@
           else null;
         dreamEnginePackages = lib.optionals dreamEngineEnabled [ dreamEnginePkg ];
 
+        # ---------------------------------------------------------------------------
+        # Skill tool binaries — Rust replacements for Python that used to ship
+        # inside the skills. Ungated: the skills themselves are always baked, so
+        # their tools must always be on PATH. diagram-ir supersedes
+        # diagram-design's three extractor/self-check scripts.
+        # ---------------------------------------------------------------------------
+        diagramIrPkg = import ./lib/diagram-ir.nix { inherit lib pkgs; };
+        skillToolPackages = [ diagramIrPkg ];
+
         # Render a config.toml for nostr-rs-relay from manifest fields.
         # Consumed by the supervisor block at /etc/agentbox/nostr-relay.toml.
         # (Unused on the pod_bridge path — the bridge is env-configured.)
@@ -1333,6 +1342,7 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           ++ solidPodRsPackages
           ++ headroomPackages
           ++ dreamEnginePackages
+          ++ skillToolPackages
           ++ nagualQePackages
           # rune markdown TUI — gated on [vault].tui = "rune" (ADR-2029)
           ++ runePackages

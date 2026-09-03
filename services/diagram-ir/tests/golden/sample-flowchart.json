@@ -1,0 +1,322 @@
+{
+  "source": "tests/fixtures/sample-flowchart.mmd",
+  "diagrams_total": 1,
+  "diagrams": [
+    {
+      "index": 0,
+      "kind": "flowchart",
+      "source_line": 1,
+      "direction": "LR",
+      "analysis": {
+        "nodes_total": 10,
+        "nodes_drawable": 8,
+        "containers": 2,
+        "leaves": 8,
+        "edges_total": 8,
+        "edges_labeled": 3,
+        "edges_dangling": 0,
+        "max_depth": 1,
+        "shapes": {
+          "container": 2,
+          "cylinder": 2,
+          "rect": 2,
+          "asymmetric": 1,
+          "hexagon": 1,
+          "rhombus": 1,
+          "stadium": 1
+        },
+        "has_cycle": true,
+        "hubs": [
+          {
+            "id": "GW",
+            "label": "API Gateway",
+            "degree": 7
+          },
+          {
+            "id": "Decide",
+            "label": "Token valid?",
+            "degree": 3
+          },
+          {
+            "id": "Auth",
+            "label": "Auth",
+            "degree": 2
+          },
+          {
+            "id": "Web",
+            "label": "Web App",
+            "degree": 1
+          },
+          {
+            "id": "Mobile",
+            "label": "Mobile App",
+            "degree": 1
+          }
+        ],
+        "entry_points": [
+          "Web App",
+          "Mobile App"
+        ],
+        "terminals": [
+          "Postgres",
+          "Redis"
+        ],
+        "orphans": [
+          "Legacy note — unconnected"
+        ],
+        "type_candidates": [
+          "flowchart",
+          "architecture"
+        ],
+        "collapsible_groups": [
+          {
+            "id": "subgraph-2",
+            "label": "Core Services",
+            "children": 3,
+            "child_labels": [
+              "API Gateway",
+              "Auth",
+              "Token valid?"
+            ]
+          },
+          {
+            "id": "Edge",
+            "label": "Edge",
+            "children": 2,
+            "child_labels": [
+              "Web App",
+              "Mobile App"
+            ]
+          }
+        ],
+        "over_node_budget": false,
+        "over_edge_budget": false
+      },
+      "discarded": {
+        "style_directives": 2,
+        "click_handlers": 1
+      },
+      "fragments": [],
+      "notes": [],
+      "nodes": [
+        {
+          "id": "Edge",
+          "label": "Edge",
+          "shape": "container",
+          "parent": null,
+          "depth": 0,
+          "container": true,
+          "children": [
+            "Web",
+            "Mobile"
+          ],
+          "fields": [],
+          "in_degree": 0,
+          "out_degree": 0
+        },
+        {
+          "id": "Web",
+          "label": "Web App",
+          "shape": "rect",
+          "parent": "Edge",
+          "depth": 1,
+          "container": false,
+          "children": [],
+          "fields": [],
+          "in_degree": 0,
+          "out_degree": 1
+        },
+        {
+          "id": "Mobile",
+          "label": "Mobile App",
+          "shape": "rect",
+          "parent": "Edge",
+          "depth": 1,
+          "container": false,
+          "children": [],
+          "fields": [],
+          "in_degree": 0,
+          "out_degree": 1
+        },
+        {
+          "id": "subgraph-2",
+          "label": "Core Services",
+          "shape": "container",
+          "parent": null,
+          "depth": 0,
+          "container": true,
+          "children": [
+            "GW",
+            "Auth",
+            "Decide"
+          ],
+          "fields": [],
+          "in_degree": 0,
+          "out_degree": 0
+        },
+        {
+          "id": "GW",
+          "label": "API Gateway",
+          "shape": "hexagon",
+          "parent": "subgraph-2",
+          "depth": 1,
+          "container": false,
+          "children": [],
+          "fields": [],
+          "in_degree": 4,
+          "out_degree": 3
+        },
+        {
+          "id": "Auth",
+          "label": "Auth",
+          "shape": "stadium",
+          "parent": "subgraph-2",
+          "depth": 1,
+          "container": false,
+          "children": [],
+          "fields": [],
+          "in_degree": 1,
+          "out_degree": 1
+        },
+        {
+          "id": "Decide",
+          "label": "Token valid?",
+          "shape": "rhombus",
+          "parent": "subgraph-2",
+          "depth": 1,
+          "container": false,
+          "children": [],
+          "fields": [],
+          "in_degree": 1,
+          "out_degree": 2
+        },
+        {
+          "id": "DB",
+          "label": "Postgres",
+          "shape": "cylinder",
+          "parent": null,
+          "depth": 0,
+          "container": false,
+          "children": [],
+          "fields": [],
+          "in_degree": 1,
+          "out_degree": 0
+        },
+        {
+          "id": "Cache",
+          "label": "Redis",
+          "shape": "cylinder",
+          "parent": null,
+          "depth": 0,
+          "container": false,
+          "children": [],
+          "fields": [],
+          "in_degree": 1,
+          "out_degree": 0
+        },
+        {
+          "id": "Legacy",
+          "label": "Legacy note — unconnected",
+          "shape": "asymmetric",
+          "parent": null,
+          "depth": 0,
+          "container": false,
+          "children": [],
+          "fields": [],
+          "in_degree": 0,
+          "out_degree": 0
+        }
+      ],
+      "edges": [
+        {
+          "id": "e1",
+          "source": "Web",
+          "target": "GW",
+          "label": "",
+          "style": "solid",
+          "arrowhead": "arrow",
+          "bidirectional": false,
+          "undirected": false,
+          "order": 1
+        },
+        {
+          "id": "e2",
+          "source": "Mobile",
+          "target": "GW",
+          "label": "",
+          "style": "solid",
+          "arrowhead": "arrow",
+          "bidirectional": false,
+          "undirected": false,
+          "order": 2
+        },
+        {
+          "id": "e3",
+          "source": "GW",
+          "target": "Decide",
+          "label": "",
+          "style": "solid",
+          "arrowhead": "arrow",
+          "bidirectional": false,
+          "undirected": false,
+          "order": 3
+        },
+        {
+          "id": "e4",
+          "source": "Decide",
+          "target": "Auth",
+          "label": "yes",
+          "style": "solid",
+          "arrowhead": "arrow",
+          "bidirectional": false,
+          "undirected": false,
+          "order": 4
+        },
+        {
+          "id": "e5",
+          "source": "Decide",
+          "target": "GW",
+          "label": "no",
+          "style": "solid",
+          "arrowhead": "arrow",
+          "bidirectional": false,
+          "undirected": false,
+          "order": 5
+        },
+        {
+          "id": "e6",
+          "source": "Auth",
+          "target": "GW",
+          "label": "retry",
+          "style": "dashed",
+          "arrowhead": "arrow",
+          "bidirectional": false,
+          "undirected": false,
+          "order": 6
+        },
+        {
+          "id": "e7",
+          "source": "GW",
+          "target": "DB",
+          "label": "",
+          "style": "thick",
+          "arrowhead": "arrow",
+          "bidirectional": false,
+          "undirected": false,
+          "order": 7
+        },
+        {
+          "id": "e8",
+          "source": "GW",
+          "target": "Cache",
+          "label": "",
+          "style": "thick",
+          "arrowhead": "arrow",
+          "bidirectional": false,
+          "undirected": false,
+          "order": 8
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+stateDiagram-v2
+  direction LR
+  [*] --> Idle
+  state "Waiting for input" as Idle
+  Idle --> Running : start
+  state Running {
+    direction TB
+    [*] --> Working
+    Working --> Paused: pause
+    Paused --> Working : resume
+    Working --> [*]
+  }
+  state fork_state <<fork>>
+  state join_state <<join>>
+  state pick <<choice>>
+  Running --> fork_state
+  fork_state --> join_state
+  Running --> [*]
+  Idle : the idle description
+  state Lonely

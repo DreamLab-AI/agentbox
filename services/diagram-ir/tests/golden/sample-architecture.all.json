@@ -1,0 +1,591 @@
+{
+  "source": "tests/fixtures/sample-architecture.drawio",
+  "pages_total": 2,
+  "pages": [
+    {
+      "id": "page-one",
+      "name": "Architecture",
+      "index": 0,
+      "bounds": {
+        "x0": 40.0,
+        "y0": 40.0,
+        "x1": 740.0,
+        "y1": 400.0
+      },
+      "analysis": {
+        "nodes_total": 12,
+        "nodes_drawable": 11,
+        "containers": 2,
+        "leaves": 10,
+        "edges_total": 8,
+        "edges_labeled": 1,
+        "edges_dangling": 1,
+        "max_depth": 1,
+        "shapes": {
+          "rect": 4,
+          "swimlane": 2,
+          "ellipse": 1,
+          "rhombus": 1,
+          "cylinder": 1,
+          "aws": 1,
+          "note": 1,
+          "text": 1
+        },
+        "has_cycle": true,
+        "hubs": [
+          {
+            "id": "gw",
+            "label": "API Gateway",
+            "degree": 6
+          },
+          {
+            "id": "auth",
+            "label": "Auth Service",
+            "degree": 2
+          },
+          {
+            "id": "decide",
+            "label": "Token valid?",
+            "degree": 2
+          },
+          {
+            "id": "pg",
+            "label": "Postgres",
+            "degree": 2
+          },
+          {
+            "id": "web",
+            "label": "Web App · browser",
+            "degree": 1
+          }
+        ],
+        "entry_points": [
+          "Web App · browser",
+          "Mobile App"
+        ],
+        "terminals": [
+          "Postgres",
+          "Object Store"
+        ],
+        "orphans": [
+          "Legacy path, to be retired",
+          "just a caption",
+          "Docs portal"
+        ],
+        "type_candidates": [
+          "swimlane",
+          "flowchart",
+          "architecture"
+        ],
+        "collapsible_groups": [
+          {
+            "id": "coreGroup",
+            "label": "Core Services",
+            "children": 3,
+            "child_labels": [
+              "API Gateway",
+              "Auth Service",
+              "Token valid?"
+            ]
+          },
+          {
+            "id": "edgeGroup",
+            "label": "Edge",
+            "children": 2,
+            "child_labels": [
+              "Web App · browser",
+              "Mobile App"
+            ]
+          }
+        ],
+        "over_node_budget": true,
+        "over_edge_budget": false
+      },
+      "nodes": [
+        {
+          "id": "edgeGroup",
+          "label": "Edge",
+          "shape": "swimlane",
+          "parent": "1",
+          "depth": 0,
+          "x": 40.0,
+          "y": 40.0,
+          "w": 240.0,
+          "h": 200.0,
+          "fill": "#dae8fc",
+          "stroke": "",
+          "font_color": "",
+          "dashed": false,
+          "rounded": false,
+          "container": true,
+          "children": [
+            "web",
+            "mobile"
+          ],
+          "link": "",
+          "attrs": {},
+          "in_degree": 0,
+          "out_degree": 0
+        },
+        {
+          "id": "web",
+          "label": "Web App\nbrowser",
+          "shape": "rect",
+          "parent": "edgeGroup",
+          "depth": 1,
+          "x": 60.0,
+          "y": 80.0,
+          "w": 120.0,
+          "h": 40.0,
+          "fill": "#d5e8d4",
+          "stroke": "",
+          "font_color": "",
+          "dashed": false,
+          "rounded": true,
+          "container": false,
+          "children": [],
+          "link": "",
+          "attrs": {},
+          "in_degree": 0,
+          "out_degree": 1
+        },
+        {
+          "id": "mobile",
+          "label": "Mobile App",
+          "shape": "rect",
+          "parent": "edgeGroup",
+          "depth": 1,
+          "x": 60.0,
+          "y": 140.0,
+          "w": 120.0,
+          "h": 40.0,
+          "fill": "",
+          "stroke": "",
+          "font_color": "",
+          "dashed": false,
+          "rounded": true,
+          "container": false,
+          "children": [],
+          "link": "",
+          "attrs": {},
+          "in_degree": 0,
+          "out_degree": 1
+        },
+        {
+          "id": "coreGroup",
+          "label": "Core Services",
+          "shape": "swimlane",
+          "parent": "1",
+          "depth": 0,
+          "x": 320.0,
+          "y": 40.0,
+          "w": 240.0,
+          "h": 200.0,
+          "fill": "",
+          "stroke": "",
+          "font_color": "",
+          "dashed": false,
+          "rounded": false,
+          "container": true,
+          "children": [
+            "gw",
+            "auth",
+            "decide"
+          ],
+          "link": "",
+          "attrs": {},
+          "in_degree": 0,
+          "out_degree": 0
+        },
+        {
+          "id": "gw",
+          "label": "API Gateway",
+          "shape": "rect",
+          "parent": "coreGroup",
+          "depth": 1,
+          "x": 340.0,
+          "y": 80.0,
+          "w": 120.0,
+          "h": 40.0,
+          "fill": "#ffe6cc",
+          "stroke": "",
+          "font_color": "",
+          "dashed": false,
+          "rounded": false,
+          "container": false,
+          "children": [],
+          "link": "",
+          "attrs": {},
+          "in_degree": 3,
+          "out_degree": 3
+        },
+        {
+          "id": "auth",
+          "label": "Auth Service",
+          "shape": "ellipse",
+          "parent": "coreGroup",
+          "depth": 1,
+          "x": 340.0,
+          "y": 140.0,
+          "w": 120.0,
+          "h": 40.0,
+          "fill": "",
+          "stroke": "",
+          "font_color": "",
+          "dashed": false,
+          "rounded": false,
+          "container": false,
+          "children": [],
+          "link": "",
+          "attrs": {},
+          "in_degree": 1,
+          "out_degree": 1
+        },
+        {
+          "id": "decide",
+          "label": "Token valid?",
+          "shape": "rhombus",
+          "parent": "coreGroup",
+          "depth": 1,
+          "x": 340.0,
+          "y": 190.0,
+          "w": 120.0,
+          "h": 40.0,
+          "fill": "",
+          "stroke": "",
+          "font_color": "",
+          "dashed": false,
+          "rounded": false,
+          "container": false,
+          "children": [],
+          "link": "",
+          "attrs": {},
+          "in_degree": 1,
+          "out_degree": 1
+        },
+        {
+          "id": "pg",
+          "label": "Postgres",
+          "shape": "cylinder",
+          "parent": "1",
+          "depth": 0,
+          "x": 620.0,
+          "y": 60.0,
+          "w": 80.0,
+          "h": 60.0,
+          "fill": "",
+          "stroke": "",
+          "font_color": "",
+          "dashed": false,
+          "rounded": false,
+          "container": false,
+          "children": [],
+          "link": "",
+          "attrs": {},
+          "in_degree": 2,
+          "out_degree": 0
+        },
+        {
+          "id": "s3",
+          "label": "Object Store",
+          "shape": "icon:aws",
+          "parent": "1",
+          "depth": 0,
+          "x": 620.0,
+          "y": 160.0,
+          "w": 80.0,
+          "h": 60.0,
+          "fill": "",
+          "stroke": "",
+          "font_color": "",
+          "dashed": false,
+          "rounded": false,
+          "container": false,
+          "children": [],
+          "link": "",
+          "attrs": {},
+          "in_degree": 1,
+          "out_degree": 0
+        },
+        {
+          "id": "note1",
+          "label": "Legacy path, to be retired",
+          "shape": "note",
+          "parent": "1",
+          "depth": 0,
+          "x": 620.0,
+          "y": 260.0,
+          "w": 120.0,
+          "h": 60.0,
+          "fill": "",
+          "stroke": "",
+          "font_color": "",
+          "dashed": false,
+          "rounded": false,
+          "container": false,
+          "children": [],
+          "link": "",
+          "attrs": {},
+          "in_degree": 0,
+          "out_degree": 0
+        },
+        {
+          "id": "floating",
+          "label": "just a caption",
+          "shape": "text",
+          "parent": "1",
+          "depth": 0,
+          "x": 40.0,
+          "y": 300.0,
+          "w": 100.0,
+          "h": 20.0,
+          "fill": "",
+          "stroke": "",
+          "font_color": "",
+          "dashed": false,
+          "rounded": false,
+          "container": false,
+          "children": [],
+          "link": "",
+          "attrs": {},
+          "in_degree": 0,
+          "out_degree": 0
+        },
+        {
+          "id": "linked",
+          "label": "Docs portal",
+          "shape": "rect",
+          "parent": "1",
+          "depth": 0,
+          "x": 40.0,
+          "y": 360.0,
+          "w": 120.0,
+          "h": 40.0,
+          "fill": "",
+          "stroke": "",
+          "font_color": "",
+          "dashed": false,
+          "rounded": true,
+          "container": false,
+          "children": [],
+          "link": "https://example.invalid/docs",
+          "attrs": {
+            "owner": "platform"
+          },
+          "in_degree": 0,
+          "out_degree": 0
+        }
+      ],
+      "edges": [
+        {
+          "id": "e1",
+          "source": "web",
+          "target": "gw",
+          "label": "",
+          "dashed": false,
+          "bidirectional": false,
+          "undirected": false,
+          "style_name": "orthogonal",
+          "waypoints": 2,
+          "stroke": ""
+        },
+        {
+          "id": "e2",
+          "source": "mobile",
+          "target": "gw",
+          "label": "login / via\nTLS",
+          "dashed": false,
+          "bidirectional": false,
+          "undirected": false,
+          "style_name": "",
+          "waypoints": 0,
+          "stroke": ""
+        },
+        {
+          "id": "e3",
+          "source": "gw",
+          "target": "decide",
+          "label": "",
+          "dashed": true,
+          "bidirectional": false,
+          "undirected": true,
+          "style_name": "",
+          "waypoints": 0,
+          "stroke": ""
+        },
+        {
+          "id": "e4",
+          "source": "decide",
+          "target": "auth",
+          "label": "",
+          "dashed": false,
+          "bidirectional": true,
+          "undirected": false,
+          "style_name": "",
+          "waypoints": 0,
+          "stroke": ""
+        },
+        {
+          "id": "e5",
+          "source": "gw",
+          "target": "pg",
+          "label": "",
+          "dashed": false,
+          "bidirectional": false,
+          "undirected": false,
+          "style_name": "",
+          "waypoints": 0,
+          "stroke": ""
+        },
+        {
+          "id": "e6",
+          "source": "gw",
+          "target": "s3",
+          "label": "",
+          "dashed": false,
+          "bidirectional": false,
+          "undirected": false,
+          "style_name": "",
+          "waypoints": 0,
+          "stroke": ""
+        },
+        {
+          "id": "e7",
+          "source": "auth",
+          "target": "gw",
+          "label": "",
+          "dashed": false,
+          "bidirectional": false,
+          "undirected": false,
+          "style_name": "",
+          "waypoints": 0,
+          "stroke": ""
+        },
+        {
+          "id": "e8",
+          "source": null,
+          "target": "pg",
+          "label": "",
+          "dashed": false,
+          "bidirectional": false,
+          "undirected": false,
+          "style_name": "",
+          "waypoints": 0,
+          "stroke": ""
+        }
+      ]
+    },
+    {
+      "id": "page-two",
+      "name": "Data Model",
+      "index": 1,
+      "bounds": {
+        "x0": 0.0,
+        "y0": 0.0,
+        "x1": 400.0,
+        "y1": 80.0
+      },
+      "analysis": {
+        "nodes_total": 2,
+        "nodes_drawable": 2,
+        "containers": 0,
+        "leaves": 2,
+        "edges_total": 1,
+        "edges_labeled": 1,
+        "edges_dangling": 0,
+        "max_depth": 0,
+        "shapes": {
+          "table": 2
+        },
+        "has_cycle": false,
+        "hubs": [
+          {
+            "id": "t1",
+            "label": "customers",
+            "degree": 1
+          },
+          {
+            "id": "t2",
+            "label": "orders",
+            "degree": 1
+          }
+        ],
+        "entry_points": [
+          "customers"
+        ],
+        "terminals": [
+          "orders"
+        ],
+        "orphans": [],
+        "type_candidates": [
+          "er",
+          "tree",
+          "architecture"
+        ],
+        "collapsible_groups": [],
+        "over_node_budget": false,
+        "over_edge_budget": false
+      },
+      "nodes": [
+        {
+          "id": "t1",
+          "label": "customers",
+          "shape": "table",
+          "parent": "1",
+          "depth": 0,
+          "x": 0.0,
+          "y": 0.0,
+          "w": 160.0,
+          "h": 80.0,
+          "fill": "",
+          "stroke": "",
+          "font_color": "",
+          "dashed": false,
+          "rounded": false,
+          "container": false,
+          "children": [],
+          "link": "",
+          "attrs": {},
+          "in_degree": 0,
+          "out_degree": 1
+        },
+        {
+          "id": "t2",
+          "label": "orders",
+          "shape": "table",
+          "parent": "1",
+          "depth": 0,
+          "x": 240.0,
+          "y": 0.0,
+          "w": 160.0,
+          "h": 80.0,
+          "fill": "",
+          "stroke": "",
+          "font_color": "",
+          "dashed": false,
+          "rounded": false,
+          "container": false,
+          "children": [],
+          "link": "",
+          "attrs": {},
+          "in_degree": 1,
+          "out_degree": 0
+        }
+      ],
+      "edges": [
+        {
+          "id": "r1",
+          "source": "t1",
+          "target": "t2",
+          "label": "places",
+          "dashed": false,
+          "bidirectional": false,
+          "undirected": false,
+          "style_name": "",
+          "waypoints": 0,
+          "stroke": ""
+        }
+      ]
+    }
+  ]
+}
