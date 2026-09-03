@@ -26,8 +26,23 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "sync",
 tokio-tungstenite = "0.24"
 futures-util = "0.3"
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+# `preserve_order` keeps JSON object key order on the Value path, which the
+# `bootstrap` subcommand needs to migrate legacy identity files without
+# reshuffling their keys (CPython dicts are insertion-ordered; `dict.update`
+# overwrites in place). See `pyjson` for the matching byte-shape work.
+serde_json = { version = "1", features = ["preserve_order"] }
 hex = "0.4"
+# SHA-256 for the urn:agentbox:activity content address (ADR-013 minter parity).
+sha2 = "0.10"
+# secp256k1 scalar/point arithmetic for the BIP-340 even-y normalisation and the
+# 64-byte SEC1 (X || Y) `public_key_hex` the identity file records. Signing and
+# every NIP-19 encoding still go through nostr-bbs-core; this is encoding only.
+k256 = "0.13"
+# /etc/agentbox.toml — the `[sovereign_mesh] enabled` gate for `bootstrap`.
+toml = "0.8"
+# Z.AI / GLM digest call on the `session-summary` path. Already in the lock graph
+# via solid-pod-rs; rustls so the binary carries no OpenSSL runtime dependency.
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
 thiserror = "1"
 anyhow = "1"
 tracing = "0.1"
@@ -35,6 +50,10 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "test-util"] }
+tempfile = "3"
+# Only to synthesise a pre-fix identity file (npub over the 64-byte SEC1 pubkey)
+# for the migration tests. Production encoding goes through nostr-bbs-core.
+bech32 = "0.11"
 
 # Unify solid-pod-rs to the single local source. nostr-bbs-core pulls it from
 # crates.io (0.4.0-alpha.15); solid-pod-rs-nostr path-deps the local copy. The
