@@ -122,7 +122,7 @@ Stage A — one-shot, exec-chained, ends with supervisord
   Phase 0.5: /opt/agentbox writable? emit ImmutableRootWritable, strict-mode fails
   Phase 1: mkdir -p writable roots ($WORKSPACE (/home/devuser/workspace), /var/lib/*, /tmp/screenshots)
   Phase 2: auto-generate MANAGEMENT_API_KEY if unset/sentinel
-  Phase 3: python3 sovereign-bootstrap.py (Nostr identity)
+  Phase 3: nostr-pod-bridge bootstrap (Nostr identity)
   Phase 4: workspace defaults (tmux, .config, README)
   Phase 5: agentbox-manifest provision-stacks; validate-artifacts.sh; exec supervisord
 
@@ -150,7 +150,7 @@ The bootstrap seal (the sentinel file written by `[program:bootstrap-seal]`) is 
 sequenceDiagram
     participant Kernel
     participant Entry as entrypoint-unified.sh
-    participant Boot as sovereign-bootstrap.py
+    participant Boot as nostr-pod-bridge bootstrap
     participant Sup as supervisord
     participant Seal as bootstrap-seal
     participant API as management-api

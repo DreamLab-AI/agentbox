@@ -21,7 +21,7 @@ Four locally-run services. One secp256k1 keypair. One DID.
 
 ```mermaid
 flowchart LR
-    subgraph identity["Identity (sovereign-bootstrap.py)"]
+    subgraph identity["Identity (nostr-pod-bridge bootstrap)"]
         KP["secp256k1 keypair<br/>nsec.enc · npub · did:nostr:&lt;npub&gt;"]
     end
     subgraph pod["solid-pod-rs :8484"]
@@ -112,7 +112,7 @@ Validate + rebuild:
 
 ### 1. Identity
 
-`sovereign-bootstrap.py` runs once on first boot. It generates the
+`nostr-pod-bridge bootstrap` runs once on first boot. It generates the
 keypair, writes the pod ACL against `did:nostr:<pubkey>`, and materialises
 the DID document that solid-pod-rs's resolver will serve.
 
@@ -276,7 +276,7 @@ If any of these services is off, the stack degrades gracefully:
   unavailable. Existing files readable via direct volume mount.
 - Privacy filter off → adapter writes pass through unredacted (strict
   policies throw, soft policies warn).
-- Identity missing → sovereign-bootstrap.py reruns on next start and
+- Identity missing → `nostr-pod-bridge bootstrap` reruns on next start and
   generates a fresh keypair (old one stays encrypted at rest).
 
 The stack is opt-in at every layer and first-class everywhere you enable

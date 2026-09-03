@@ -9,7 +9,7 @@
  * helm generates project primers by shelling the Claude CLI. We reject that
  * stack and re-express the capability on the sovereign substrate: the same
  * Z.AI / GLM endpoint the `zai` consultant and the kind-30840 session-summary
- * hook already use (anthropic-shaped `/v1/messages`, `x-api-key` +
+ * subcommand already use (anthropic-shaped `/v1/messages`, `x-api-key` +
  * `anthropic-version`), with the primer/synopsis persisted through the EXISTING
  * memory adapter slot (RuVector, namespace `project-tracking-primers`) under a
  * canonical `urn:agentbox:memory:<scope>:primer-<sha256-12>` minted via
@@ -17,7 +17,7 @@
  *
  * Invariants:
  *   - Consultant tier only (ADR-011): summarisation runs on the paid Z.AI model,
- *     one external hop, mirroring `config/hooks/nostr-session-summary.py`. The
+ *     one external hop, mirroring `nostr-pod-bridge session-summary`. The
  *     primer prompt carries project METADATA (name, language, remote, recent
  *     commit summary) — never source, never absolute host paths in the body.
  *   - 2-slot concurrency cap (the helm `withAISlot` pattern): no more than two
