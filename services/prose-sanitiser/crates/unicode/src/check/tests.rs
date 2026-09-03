@@ -50,6 +50,7 @@ fn every_finding_is_certain_mechanical() {
             report_spaces: true,
             context_free_homoglyphs: true,
             fold_homoglyphs: true,
+            normalize_spaces: true,
             strip_emoji_glue: false,
         },
     );
@@ -181,7 +182,7 @@ fn applying_the_offered_edits_reproduces_a_clean() {
         ),
         (
             TextPolicy {
-                report_spaces: false,
+                normalize_spaces: false,
                 ..TextPolicy::default()
             },
             CleanOptions {
@@ -281,7 +282,20 @@ fn space_homoglyphs_are_reported_by_default_because_a_clean_rewrites_them() {
     assert_eq!(findings.len(), 1);
     assert_eq!(findings[0].replacement.as_deref(), Some(" "));
 
-    // Turning it off is possible, and mirrors normalize_spaces: false.
+    // Detection survives turning the fold off: U+202F is a documented
+    // GPT-4o-class artefact, so being told without being rewritten is a
+    // position the policy has to be able to express.
+    let told_not_fixed = check_text(
+        source,
+        &TextPolicy {
+            normalize_spaces: false,
+            ..TextPolicy::default()
+        },
+    );
+    assert_eq!(told_not_fixed.len(), 1);
+    assert_eq!(told_not_fixed[0].replacement, None);
+
+    // Silencing detection entirely is still possible.
     let quiet = check_text(
         source,
         &TextPolicy {
@@ -327,7 +341,8 @@ fn the_default_policy_is_the_safe_one() {
     assert!(!policy.strip_emoji_glue);
     // These two mirror CleanOptions, so a preview matches what a clean does.
     let clean = crate::CleanOptions::default();
-    assert_eq!(policy.report_spaces, clean.normalize_spaces);
+    assert!(policy.report_spaces, "detection is unconditional");
+    assert_eq!(policy.normalize_spaces, clean.normalize_spaces);
     assert_eq!(policy.fold_homoglyphs, clean.aggressive_homoglyphs);
 }
 

@@ -48,13 +48,21 @@ pub const RULE_SOFT_HYPHEN: &str = "unicode-soft-hyphen";
 pub struct TextPolicy {
     /// Whether the text is prose or source code. Governs the bidi policy.
     pub context: BidiContext,
-    /// Report space homoglyphs (`U+00A0`, `U+202F` and the rest).
+    /// Report exotic whitespace (`U+00A0`, `U+202F` and the rest).
     ///
-    /// **On by default**, mirroring [`normalize_spaces`](crate::CleanOptions::normalize_spaces), which
-    /// also defaults on. Turning it off here without turning that off too
-    /// leaves `clean_text` silently rewriting characters this pass never
-    /// mentioned.
+    /// **On by default.** This is detection only: it governs whether the
+    /// finding exists, never whether it carries a fix. `U+202F` in particular
+    /// is a documented artefact of GPT-4o-class output, so a pass that stayed
+    /// silent about it would miss the provenance tell it exists to surface.
     pub report_spaces: bool,
+    /// Offer `U+0020` as a mechanical `replacement` on exotic-whitespace
+    /// findings.
+    ///
+    /// **On by default**, mirroring
+    /// [`normalize_spaces`](crate::CleanOptions::normalize_spaces). Set both to
+    /// false to be told about a non-breaking space without being offered a
+    /// rewrite that would cost the document its non-breaking property.
+    pub normalize_spaces: bool,
     /// Report every character with an ASCII confusable prototype, not only
     /// those the mixed-script and restricted-identifier rules catch. Finds
     /// same-script confusables such as Latin `ı` for `i`, at the cost of
@@ -83,8 +91,10 @@ impl Default for TextPolicy {
     fn default() -> Self {
         Self {
             context: BidiContext::Prose,
-            // Mirrors CleanOptions::normalize_spaces, which defaults on.
+            // Detection is unconditional; see the field docs.
             report_spaces: true,
+            // Mirrors CleanOptions::normalize_spaces, which defaults on.
+            normalize_spaces: true,
             context_free_homoglyphs: false,
             // Mirrors CleanOptions::aggressive_homoglyphs, which defaults off.
             fold_homoglyphs: false,
@@ -295,9 +305,14 @@ fn invisible_findings(units: &[Unit], offsets: &[usize], policy: &TextPolicy) ->
         }
         let character = unit.as_char().unwrap_or(char::REPLACEMENT_CHARACTER);
         let (severity, replacement) = match decision.action {
+            // A space rewrite is offered only when a clean would perform it,
+            // so the preview never promises an edit the cleaner declines.
             Action::Replace => (
                 Severity::Low,
-                decision.output.and_then(Unit::as_char).map(String::from),
+                policy
+                    .normalize_spaces
+                    .then(|| decision.output.and_then(Unit::as_char).map(String::from))
+                    .flatten(),
             ),
             _ => (Severity::Medium, Some(String::new())),
         };
