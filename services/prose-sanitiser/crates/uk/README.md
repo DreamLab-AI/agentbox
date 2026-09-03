@@ -62,6 +62,29 @@ question, and a style question is never certain. `check()` never mutates;
 `fix()` returns a `Patch` that describes the change and leaves applying it to
 the caller.
 
+## House style
+
+Two escape hatches, because every project has vocabulary a dictionary will not
+settle:
+
+```rust
+use prose_sanitiser_uk::{UkEnglish, UkOptions};
+
+let checker = UkEnglish::with_options(
+    UkOptions::new()
+        // Names that keep an American spelling because it is their name.
+        .with_organisations(["Wilson Color Labs"])
+        // Terms of art that are not really a dialect choice.
+        .with_allowed_words(["artifact", "rumor", "distill"]),
+);
+```
+
+The gazetteer is matched case-sensitively and whole, so it protects the name
+without protecting the word elsewhere. The word allowlist is case-insensitive
+and silences both rules. Exclusions for code, links, front matter, quotations,
+proper nouns and non-English text can each be switched off individually, though
+the defaults exist because each one stops a specific class of wrong finding.
+
 ## Data provenance
 
 The dialect data is [VarCon](https://wordlist.aspell.net/varcon-readme/)
@@ -114,18 +137,42 @@ report over a corpus of known-good British prose and every finding is, by
 construction, a false positive:
 
 ```sh
-cargo run -p prose-sanitiser-uk --example uk-report -- [--oxford] [--verbose] <path>...
+cargo run -p prose-sanitiser-uk --example uk-report -- \
+    [--oxford] [--verbose] [--write] [--allow WORD]... <path>...
 ```
+
+### Measured
+
+Two corpora, September 2026.
+
+**The D3 UK prose set** (the sentences that broke the previous implementation:
+*World Health Organization*, *a driving licence*, *to license a doctor*, *the
+gas meter read 12 metres*, *the computer program*, *sulfur dioxide*, *the
+dialog box*) produces **zero findings** in both `-ise` and Oxford mode. Not
+merely zero auto-fixes: complete silence.
+
+**413,746 words of British technical documentation**, with three house terms
+declared (`artifact`, `rumor`, `distill`, all domain vocabulary rather than
+dialect choices):
 
 ```text
-documents: 128
-words: 91043
-findings: 12 (3 fixable)
+documents: 242
+words: 413746
+findings: 118 (64 fixable)
 
 rule                      findings  fixable   per 10k words
-us-spelling                      3        3            0.33
-us-spelling-sense                9        0            0.99
+us-spelling                     64       64            1.55
+us-spelling-sense               54        0            1.31
 ```
+
+All 64 spelling findings were inspected by hand and every one is a genuine
+Americanism (*behavior*, *math*, *initialize*, *defense*, *catalog*,
+*neighbors*, *modeled*, *dialing*): a **false-positive rate of 0 out of 64**.
+The 54 sense findings are judgement calls on *program* and *license* in a
+technical register, reported at low confidence and never auto-fixed.
+
+For comparison, before the sense prior and the `--allow` list the same corpus
+produced 457 findings. The `verify` prior for *check* alone removed 210.
 
 ## Scope
 
@@ -143,17 +190,22 @@ already does that well.
 
 Publication candidate. Before `cargo publish`:
 
-- [x] `license = "MIT OR Apache-2.0"`, with both licence files present
+- [ ] `license = "MIT OR Apache-2.0"`, with both licence files present
+      (workspace-wide: no `LICENSE-MIT` / `LICENSE-APACHE` in any crate yet)
 - [x] `description`, `repository`, `keywords`, `categories`, `readme` set
 - [x] Vendored data licence-cleared, attributed and hash-pinned in `data/`
 - [x] Pure Rust: no C dependencies, no subprocesses, no network
 - [x] Packaging keeps `data/` in the published `.crate`, since `Cargo.toml` uses
       `exclude` (dropping `corpora/`) rather than an `include` allowlist
 - [x] Crate-level `//!` docs stating the honest scope
-- [ ] `cargo package --list` confirms `data/varcon.txt` and
-      `data/LICENSE-VarCon` are present, and that `corpora/` is not
-- [ ] `cargo doc --no-deps` clean, with no warnings
-- [ ] Trap fixtures green, asserting zero auto-fixes on "World Health
+- [x] `cargo package --list` confirms `data/varcon.txt`,
+      `data/varcon.txt.sha256` and `data/LICENSE-VarCon` are present (30 files),
+      and that `corpora/` is not
+- [x] `cargo doc --no-deps` clean, with no warnings
+- [x] Trap fixtures green, asserting zero auto-fixes on "World Health
       Organization", "a driving licence", "to license a doctor", "the gas meter
       read 12 metres", "the computer program", "sulfur dioxide", "the dialog box"
-- [ ] `cargo publish --dry-run` clean
+      (`src/tests/fixtures.rs`; in practice they produce zero *findings*)
+- [x] 69 unit tests, 13 doc tests, `clippy --all-targets -D warnings` clean
+- [ ] `cargo publish --dry-run` clean (blocked until the workspace's path
+      dependencies are published, `prose-sanitiser-core` first)

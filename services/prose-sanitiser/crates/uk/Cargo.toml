@@ -5,11 +5,17 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "UK-English spelling enforcement for prose: report-only detection of US spellings, with the sense-dependent and proper-noun traps documented rather than silently corrected."
+description = "Sense-aware UK-English spelling enforcement: VarCon-derived dialect pairs with a first-class Oxford -ize mode, span exclusion for code, URLs, front matter and quotations, an organisation gazetteer, and report-only handling of every sense-dependent pair."
 keywords = ["british", "english", "spelling", "linter", "prose"]
 categories = ["text-processing", "internationalization"]
 readme = "README.md"
+build = "build.rs"
+exclude = ["corpora/"]
 
 [dependencies]
 prose-sanitiser-core = { workspace = true }
 regex = { workspace = true }
+# Declared here rather than in [workspace.dependencies] because this is the only
+# crate in the workspace that detects language. MIT, no C dependencies, no
+# transitive tree of note, which keeps the `MIT OR Apache-2.0` position clean.
+whatlang = "0.18"
