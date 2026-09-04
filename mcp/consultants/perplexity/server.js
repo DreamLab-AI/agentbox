@@ -68,8 +68,9 @@ async function healthCheck() {
   if (!process.env.PERPLEXITY_API_KEY) {
     return { ok: false, model: MODEL, last_error: 'PERPLEXITY_API_KEY is not set' };
   }
-  // No metadata endpoint; ping with a 1-token throwaway. Counted, but
-  // cheap. Health checks should be infrequent.
+  // No metadata endpoint; ping with the smallest completion the API accepts
+  // (max_tokens floor is 16 — anything lower is HTTP 400 "max_tokens must be
+  // at least 16", which used to make this probe report a false outage).
   try {
     const res = await fetch(`${ENDPOINT}/chat/completions`, {
       method: 'POST',
@@ -80,7 +81,7 @@ async function healthCheck() {
       body: JSON.stringify({
         model: MODEL,
         messages: [{ role: 'user', content: 'ping' }],
-        max_tokens: 1,
+        max_tokens: 16,
       }),
     });
     if (!res.ok) {

@@ -14,6 +14,14 @@ const { spawn } = require('child_process');
 
 const DEFAULT_TIMEOUT_MS = 120_000;
 
+/** Non-secret env vars always forwarded to spawned CLIs (TLS trust, proxies). */
+const PASSTHROUGH_ENV = Object.freeze([
+  'SSL_CERT_FILE', 'SSL_CERT_DIR', 'NIX_SSL_CERT_FILE', 'CURL_CA_BUNDLE',
+  'REQUESTS_CA_BUNDLE', 'NODE_EXTRA_CA_CERTS',
+  'HTTP_PROXY', 'HTTPS_PROXY', 'NO_PROXY', 'http_proxy', 'https_proxy', 'no_proxy',
+  'TERM', 'LANG', 'LC_ALL', 'TMPDIR',
+]);
+
 /**
  * @param {object}             opts
  * @param {string}             opts.cmd            absolute path or command on PATH
@@ -31,6 +39,14 @@ function spawnCli(opts) {
     // Always include PATH; without it most CLIs blow up resolving node/python.
     if (!env.PATH) env.PATH = process.env.PATH || '';
     if (!env.HOME) env.HOME = process.env.HOME || '/tmp';
+    // TLS trust + proxy plumbing are not secrets and every HTTPS-speaking CLI
+    // needs them. Nix-built binaries (codex, agy) locate the CA bundle ONLY via
+    // SSL_CERT_FILE / NIX_SSL_CERT_FILE; scrubbing them yields
+    // "invalid peer certificate: UnknownIssuer" and an endless reconnect loop
+    // that runs into the timeout (observed 2026-09-04, codex 0.153.0).
+    for (const k of PASSTHROUGH_ENV) {
+      if (env[k] === undefined && process.env[k] !== undefined) env[k] = process.env[k];
+    }
 
     const child = spawn(opts.cmd, opts.args || [], {
       cwd: opts.cwd || '/tmp',

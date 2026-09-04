@@ -239,6 +239,11 @@ function callLoom(prompt) {
     top_p: 0.95,
     top_k: 20,
     chat_template_kwargs: { reasoning_effort: 'medium' },
+    // Profile-A façade runs LOOM_VERBATIM_MODE=1: a single-turn prompt whose
+    // wording lexically matches an ontology class title (score ≥ 8.0) is
+    // answered with the scaffold markdown VERBATIM and no model call. Dream
+    // prompts are generative, not lookups — force the delegate path.
+    loom_options: { verbatim: false },
   });
 
   try {

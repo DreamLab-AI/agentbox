@@ -25,6 +25,11 @@ exposes **three tools across two access tiers**:
 | `fetch_email_by_ref` | the full raw source message behind a `ref_id` | **bypassed** (break-glass) |
 | `refresh_inbox` | pull new mail **now** (don't wait for the ~4h crawl); returns newest messages | n/a (ingest) |
 
+The gateway crawls **two Proton accounts** through one in-container Proton Bridge — the primary
+(`IMAP_USER`) and a secondary (`IMAP_USER_2`); a third slot (`IMAP_USER_3`) exists but is empty.
+`refresh_inbox` crawls the primary first inside a time budget and reports per-account results in
+`accounts_crawled[]`; the scheduled crawl logs `IMAP ingest complete … across 2/2 account(s)`.
+
 Confirm capability at runtime: `GET <gateway_url>/health` reports
 `"tools": ["ask_email","fetch_email_raw","fetch_email_by_ref","refresh_inbox"]` and `"raw_access":"enabled"`
 when the allow-list is populated.
@@ -188,6 +193,14 @@ remains is **where the output goes**:
 ❌ Don't pass an `npub` to the raw tools — hex only.
 ❌ Don't bake the literal pubkey or bearer token into committed source.
 ❌ Don't use this for work mailboxes, calendar, or sending mail.
+❌ **Don't run `protonctl info` / `protonctl login` (or any `proton-bridge --cli`) while the gateway
+is serving.** They are not read-only: each starts a *second* Bridge, and Proton's launcher kills the
+running core instead of attaching (verified 2026-09-04 — listener on 1143 vanished, both accounts
+returned `Connection refused`). To inspect account state use `refresh_inbox` (per-account
+`accounts_crawled[]`) or `docker exec email-mcp-gateway printenv | grep IMAP_USER`. Recovery: remove
+`/data/bridge/cache/protonmail/bridge-v3/bridge-v3.lock`, then
+`docker exec -d email-mcp-gateway sh -c 'exec /usr/local/bin/protonctl run >>/proc/1/fd/1 2>>/proc/1/fd/2'`;
+the Bridge stays logged in, so no password/2FA is needed and the listener returns within ~1 min.
 
 ## Failure handling
 - Tool missing → enable `[skills.email_search]` + set token env, or register manually; confirm

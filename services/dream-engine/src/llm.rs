@@ -181,6 +181,17 @@ struct LoomRequest {
     temperature: f32,
     top_p: f32,
     top_k: u32,
+    /// Loom façade extension (ignored by plain OpenAI servers). Profile A runs
+    /// `LOOM_VERBATIM_MODE=1`: a single-turn prompt whose wording lexically
+    /// matches an ontology class title is answered with the scaffold markdown
+    /// verbatim and NO model call. Dream prompts are generative, so always
+    /// force the delegate path.
+    loom_options: LoomOptions,
+}
+
+#[derive(Serialize)]
+struct LoomOptions {
+    verbatim: bool,
 }
 
 #[derive(Serialize)]
@@ -221,6 +232,7 @@ async fn call_loom(cfg: &LlmConfig, prompt: &str) -> Result<String, LlmError> {
         temperature: 1.0,
         top_p: 0.95,
         top_k: 20,
+        loom_options: LoomOptions { verbatim: false },
     };
 
     let resp = client

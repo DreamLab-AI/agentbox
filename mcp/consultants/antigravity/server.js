@@ -32,7 +32,10 @@ async function callConsult({ question, context_excerpt }) {
   const prompt = combinedPrompt(question, context_excerpt);
   const result = await spawnCli({
     cmd: AGY_BIN,
-    args: ['--model', MODEL, '--prompt', prompt, '--no-input'],
+    // agy >= 1.1 : --prompt is an alias for --print (single non-interactive
+    // turn). The old --no-input flag no longer exists and made every consult
+    // exit 2 ("flag provided but not defined").
+    args: ['--model', MODEL, '--print', prompt, '--output-format', 'text', '--print-timeout', '170s'],
     env: {
       HOME:               AGY_HOME,
       GOOGLE_API_KEY:     process.env.GOOGLE_API_KEY || process.env.GOOGLE_GEMINI_API_KEY || '',
@@ -61,10 +64,12 @@ async function callConsult({ question, context_excerpt }) {
 }
 
 async function healthCheck() {
-  const key = process.env.GOOGLE_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
-  if (!key) {
-    return { ok: false, model: MODEL, last_error: 'GOOGLE_API_KEY is not set (or authenticate via agy auth login)' };
-  }
+  // agy authenticates with Google OAuth stored under $HOME (AGY_HOME), not an
+  // API key. `agy --version` succeeds even when logged out, so it is not a
+  // liveness signal; `agy models` fails fast ("Please sign in ...") when the
+  // credential is missing and lists models when it is present. An unauthenticated
+  // --print call would otherwise print an OAuth URL and block for 60 s.
+  const key = process.env.GOOGLE_API_KEY || process.env.GOOGLE_GEMINI_API_KEY || '';
   const v = await spawnCli({
     cmd: AGY_BIN,
     args: ['--version'],
@@ -73,6 +78,19 @@ async function healthCheck() {
   });
   if (v.code !== 0) {
     return { ok: false, model: MODEL, last_error: `agy --version exit ${v.code}: ${v.stderr.slice(0, 200)}` };
+  }
+  const m = await spawnCli({
+    cmd: AGY_BIN,
+    args: ['models'],
+    env: { HOME: AGY_HOME, GOOGLE_API_KEY: key },
+    timeout_ms: 25_000,
+  });
+  if (m.code !== 0) {
+    const why = (m.stderr || m.stdout).replace(/\s+/g, ' ').trim().slice(0, 200);
+    return {
+      ok: false, model: MODEL, version: v.stdout.trim(),
+      last_error: `agy not authenticated in ${AGY_HOME}: ${why} — run: HOME=${AGY_HOME} agy   (interactive OAuth, once)`,
+    };
   }
   return { ok: true, model: MODEL, last_error: null, version: v.stdout.trim() };
 }

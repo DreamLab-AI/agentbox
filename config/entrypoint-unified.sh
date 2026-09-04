@@ -233,6 +233,8 @@ for _vol_root in \
     "$RUVECTOR_DATA_DIR" \
     "$SOLID_POD_ROOT" \
     /var/lib/agentbox \
+    /var/lib/agentbox/events \
+    /var/lib/agentbox/consultations \
     /var/lib/agentbox/secrets \
     /var/lib/nostr-relay \
     /var/lib/https-bridge \

@@ -37,7 +37,7 @@ async function callConsult({ question, context_excerpt }) {
   const prompt = formatPrompt(question, context_excerpt);
   const result = await spawnCli({
     cmd: CODEX_BIN,
-    args: ['exec', '--json', '--skip-git-repo-check', '--', prompt],
+    args: ['exec', '--json', '--skip-git-repo-check', '--model', MODEL, '--', prompt],
     env: {
       CODEX_HOME,
       OPENAI_API_KEY:    process.env.OPENAI_API_KEY    || '',
@@ -55,23 +55,35 @@ async function callConsult({ question, context_excerpt }) {
     );
   }
 
-  // Codex --json emits a JSONL stream; the final {"type":"final","content":"..."}
-  // record carries the answer. Fall back to raw stdout if parsing fails.
+  // Codex --json emits a JSONL stream. codex-cli >= 0.150 shape:
+  //   {"type":"item.completed","item":{"type":"agent_message","text":"..."}}
+  //   {"type":"turn.completed","usage":{"input_tokens":N,"output_tokens":M,...}}
+  // Older builds emitted {"type":"final"|"message","content":"..."}. Handle
+  // both; fall back to raw stdout if nothing parses. Non-JSON lines (Code Mode
+  // warnings etc.) are skipped rather than aborting the whole parse.
   let response = result.stdout;
   let tokens = {};
-  try {
-    const lines = result.stdout.trim().split('\n').filter(Boolean);
-    for (const line of lines.reverse()) {
-      const obj = JSON.parse(line);
-      if (obj.type === 'final' || obj.type === 'message') {
-        response = obj.content || obj.message || response;
-        if (obj.usage) tokens = obj.usage;
-        break;
-      }
+  const messages = [];
+  for (const line of result.stdout.split('\n')) {
+    const t = line.trim();
+    if (!t.startsWith('{')) continue;
+    let obj;
+    try { obj = JSON.parse(t); } catch { continue; }
+    if (obj.type === 'item.completed' && obj.item && obj.item.type === 'agent_message' && obj.item.text) {
+      messages.push(obj.item.text);
+    } else if (obj.type === 'turn.completed' && obj.usage) {
+      tokens = {
+        prompt_tokens:     obj.usage.input_tokens,
+        completion_tokens: obj.usage.output_tokens,
+        cached_tokens:     obj.usage.cached_input_tokens,
+        reasoning_tokens:  obj.usage.reasoning_output_tokens,
+      };
+    } else if (obj.type === 'final' || obj.type === 'message') {
+      messages.push(obj.content || obj.message || '');
+      if (obj.usage) tokens = obj.usage;
     }
-  } catch {
-    // raw stdout already assigned
   }
+  if (messages.length) response = messages.join('\n\n');
 
   const cost_usd = tokens.prompt_tokens && tokens.completion_tokens
     ? (tokens.prompt_tokens     / 1000) * PRICE_PER_1K_PROMPT +
@@ -85,8 +97,9 @@ async function healthCheck() {
   if (!fs.existsSync(CODEX_BIN)) {
     return { ok: false, model: MODEL, last_error: `codex binary not found at ${CODEX_BIN}` };
   }
-  if (!process.env.OPENAI_API_KEY) {
-    return { ok: false, model: MODEL, last_error: 'OPENAI_API_KEY is not set' };
+  const hasAuthFile = fs.existsSync(`${CODEX_HOME}/auth.json`);
+  if (!process.env.OPENAI_API_KEY && !hasAuthFile) {
+    return { ok: false, model: MODEL, last_error: `no OPENAI_API_KEY and no ${CODEX_HOME}/auth.json (run \`codex login\`)` };
   }
   try {
     fs.accessSync(CODEX_HOME, fs.constants.R_OK);
