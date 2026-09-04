@@ -1,6 +1,6 @@
 # Skill Directory -- Comprehensive Inventory and Decision Tree
 
-> **124 active skills**. Estate-wide audit + progressive-discovery pass 2026-08-21 (Opus swarm, adversarially verified): 82 findings, 38 skills fixed/restructured (stale endpoints, retired `openai-user` pseudo-user references, dead links, monolith SKILL.md files split into `references/`); `dream-machine` gained a SKILL.md; deprecated bencium stubs stripped to redirects. House lint: `./lint-skills.sh` (banned stale strings, absolute `~/.claude/skills/` paths, retired `/workspace` path, >250-line monoliths without `references/`, frontmatter sanity) — run before every rebuild. <!-- lint-ok: third-party/meta fact, not a RuVector claim -->
+> **126 active skills**. Estate-wide audit + progressive-discovery pass 2026-08-21 (Opus swarm, adversarially verified): 82 findings, 38 skills fixed/restructured (stale endpoints, retired `openai-user` pseudo-user references, dead links, monolith SKILL.md files split into `references/`); `dream-machine` gained a SKILL.md; deprecated bencium stubs stripped to redirects. House lint: `./lint-skills.sh` (banned stale strings, absolute `~/.claude/skills/` paths, retired `/workspace` path, >250-line monoliths without `references/`, frontmatter sanity) — run before every rebuild. <!-- lint-ok: third-party/meta fact, not a RuVector claim -->
 > (`tree-search-coder` SKILL.md authored 2026-08-21 — ADR-020 Surface 2 execution-gated tree-search, previously enabled-in-manifest against a non-existent skill dir; `gcloud` added 2026-07-28 — Google Cloud CLI (gcloud/gsutil/bq) provisioned in the nix flake `basePackages`; operator-interactive auth, impersonation-over-keys, creds in the writable `~/.config/gcloud`; carries the canonical `campaignbuilder` VPS-behind-IAP deploy runbook; `token-audit` added 2026-07-24 — comprehensive Claude Code usage audit from local transcripts, adapted MIT from pacphi/agentic-kit, with `ruflo-daemon-gc` + `npx-stale-scan.sh` hygiene companions; `uk-solar-planner` added 2026-07-15 — UK ground-mounted solar farm planning, composing qgis + blender with PVGIS/quartz-solar-forecast/OpenDSS; `ruvnet-brain` added 2026-07-07 — RuvNet-ecosystem source corpus (~90k chunks, 21+ repos) in the ruvector-postgres sidecar, `search_ruvnet` MCP + grounding hook; `pdf-signing` added 2026-07-06 — open-source cryptographic PDF signing (pyHanko/PAdES), self-signed identity + visible panel + trust/eIDAS upgrade path; `leptos` added 2026-06-28 — Leptos full-stack Rust web playbook + 0.7/0.8 reference; `ceramic-search` added 2026-06-20 — Ceramic.ai keyword web search with rich page extracts; `ontology-augment` added 2026-06-14). 18 formerly deprecated/archived skills removed (see table below for history).
 > Updated 2026-07-22. Reference this file from CLAUDE.md for intelligent routing.
 
@@ -31,13 +31,13 @@
 
 ---
 
-## Artefact 1: Categorised Skill Inventory (124 Active Skills)
+## Artefact 1: Categorised Skill Inventory (126 Active Skills)
 
 ### Context, Discovery, and Session Management
 
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
-| `skill-router` | No | **Unified dispatcher** for 124 skills. `/route [task]` classifies intent and routes to optimal skill. Single entry point | Don't know which skill to use — describe your task and get routed |
+| `skill-router` | No | **Unified dispatcher** for 126 skills. `/route [task]` classifies intent and routes to optimal skill. Single entry point | Don't know which skill to use — describe your task and get routed |
 | `lazy-fetch` | Yes | 25 MCP tools: context hydration, plan tracking, blueprints, PRD-to-sprints, security scanning, persistent memory | Starting a new session, managing context across tasks, tracking phased plans, running autonomous PRD execution |
 | `skill-builder` | No | Create new Claude Code skills with YAML frontmatter and progressive disclosure | Building new custom skills for the skills directory |
 | `skill-tuning` | No | Empirically optimize an existing skill against a measurable reward via the SkillOpt loop + noise-robust held-out A/B (single-optimizer vs mesh arms). Live harness in skillopt-lab | Tuning a skill by evidence — raising an agent's success rate on a bounded scoreable task, not eyeballing prose |
@@ -68,6 +68,7 @@ Phase 1 surfaces require `[skills.code_interpreter] enabled = true` (kernel MCP)
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
 | `verification-quality` | No | Truth scoring (0.0-1.0), automatic rollback at 0.95 threshold, CI/CD export | Ensuring code correctness with truth-score verification and auto-rollback |
+| `explainer` | No | **Dual-audience explainer bundle from a codebase**: three audience documents (user / onward developer / executive) written by grounded forks with claim→file:line ledgers, a self-contained visual page, and an AI half (the repo's own tree in a RuVector `<repo>-kb` namespace with graded question sets), gated A–E before linking. Repo-Explainer's method, run locally on private code | Explaining, onboarding or handing over a repo or product to people who did not build it ("explain this to the CEO", "handover doc", "repo primer", "what does this actually do"); pairs with `docs-alignment` (corpus audit) and `design-audit` (visual polish) |
 | `docs-alignment` | No | 15-agent swarm for documentation validation, Diataxis framework, link coverage, Mermaid diagrams | Validating and modernising project documentation against codebase |
 | `security-testing` | No | OWASP Top 10 validation, auth/authorisation testing, API security, dependency CVE scanning, secrets detection, SAST/DAST | Application-layer security testing for web services and APIs (not Linux hardening — use `defense-security` for that) |
 | `prose-sanitiser` | No | Remove LLM writing fingerprints: em-dash overuse, "The X" headings, tier-1 slop vocabulary, sycophantic filler, structural tells. Substance-first editorial method, draft review (keep/revise/ask-author/cut), interview-driven co-writing. Enforces UK English. Deterministic layers run on the `sanitise` binaries from [DreamLab-AI/prose-sanitiser](https://github.com/DreamLab-AI/prose-sanitiser) | Cleaning public-facing content, docs, articles, or presentations that should read as human-authored; reviewing or co-writing drafts; fixing hollow or generic prose |
@@ -147,7 +148,7 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 | `ceramic-search` | No | **PRIMARY web search.** High-recall keyword engine, 10 results per query, up to 8k chars per description. Fast (sub-200ms). Best for LLM-augmented retrieval where you need dense source context. Multi-query strategies recommended | **Default first choice** for all web search; dense page extracts for LLM grounding; multi-query aggregation. For complex/important queries, run alongside perplexity + Claude WebSearch |
 | `perplexity-research` | No | **SECONDARY web search.** Closed engine, synthesized answer. Three-API client: Search API (/search) structured results with domain/date filters, Agent API (/v1/agent) multi-step deep research, Chat Completions (sonar). Academic/UK-ecology presets | **Second choice** after ceramic-search; authoritative primary sources (gov/academic), synthesized answers, domain-filtered research. For complex/important queries, run alongside ceramic + Claude WebSearch |
 | `web-researcher` | Yes | **You pick the engine + trusted-domain LENSES; real, verifiable citations.** v1.33.0, ~26 tools: web/image/news/academic/patent/structured search, search_and_scrape, sequential; domain search (clinical/legal-CourtListener/econ-WorldBank+FRED/filing-SEC EDGAR); full scrape (PDF/DOCX/PPTX/YouTube/HN); **citation integrity** (verify_citation, audit_bibliography, citation_graph, archive_source/Wayback, format_bibliography); grounded `answer`; session memory+export. Backends Google PSE/Brave/Serper/SearXNG/SearchAPI/Exa; browser tier OFF → delegates to `browser` sidecar | **Reputation-attached** research needing verifiable citations: client work, filings, publications, legal/medical/finance; restrict to trusted sources via lenses; verify/audit citations |
-| `gemini-url-context` | Yes | Gemini 2.5 Flash URL expansion, up to 20 URLs per request, grounding metadata | Analysing or summarising specific known URLs |
+| `gemini-url-context` | Yes | Gemini 3.8 Flash URL expansion, up to 20 URLs per request, grounding metadata | Analysing or summarising specific known URLs |
 | `web-summary` | Yes | URL summarisation, YouTube transcript extraction, Obsidian vault topic links | Summarising articles, YouTube videos, generating note links |
 | `notebooklm` | Yes | Google NotebookLM SDK: notebooks, sources, chat, audio/video/slides/quiz/report generation | Research automation, podcast generation, study material creation, knowledge management |
 | `linkedin` | Yes | LinkedIn profile/job/company scraping, messaging, people search via browser automation | LinkedIn research, recruitment, networking, company analysis |
@@ -230,6 +231,7 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 | `terracraft` | No | OSM + elevation + arnis pipeline: real-world locations to Minecraft Java worlds. QGIS/Blender/GDAL integration | Generating Minecraft worlds from real geography, geospatial-to-game conversion |
 | `blender` | Yes | Meta-skill for AI-driven Blender via BlenderMCP (`execute_code` + introspection loop, port 9876): box/hard-surface/boolean modelling, sculpting, PBR materials, lighting/rendering, scene assembly. 7 technique references + verified-anatomy playbook from 52 pro scenes. Headless GPU batch (`blender-batch.sh`) + interactive via the `gui-tools-service` GPU sidecar | Any 3D modelling, sculpting, texturing, lighting or rendering task in Blender; GPU renders |
 | `lichtfeld-studio` | Yes | 3D Gaussian Splatting training, visualisation, editing, export (70+ MCP tools), SplatReady COLMAP | 3DGS scene capture, splat editing, radiance field workflows |
+| `spark-scene` | No | Spark/Three.js splat rendering with registered data annotations and provenance | Capture scenes with semantic overlays, scene reconstruction viewers |
 | `meta-xr-sdk` | Yes | Meta VR/AR ecosystem: WebXR (IWER, RATK, @react-three/xr), Spatial SDK, hzdb CLI (40+ MCP tools), hand tracking, passthrough, plane/mesh detection, anchors | Quest WebXR apps, mixed reality, spatial computing, VR device management, agentic VR development |
 
 ### Geospatial
@@ -294,7 +296,7 @@ Answer these questions in order. Stop at the first match.
 
 ```
 Q0: Unsure which skill handles your task?
-    --> /route [describe task]  (skill-router — intelligent dispatcher for all 124 skills)
+    --> /route [describe task]  (skill-router — intelligent dispatcher for all 126 skills)
 
 Q1: Is the task about an EXISTING skill that is deprecated?
     YES --> Use its replacement (see Deprecated table above)
@@ -815,6 +817,7 @@ Q3: What 3D/game/spatial task?
     |
     +-- 3D Gaussian Splatting (training, editing, export, COLMAP)
     |   --> lichtfeld-studio
+    |   --> spark-scene
     |
     +-- Meta Quest VR/AR (WebXR, hand tracking, passthrough, spatial)
     |   --> meta-xr-sdk  (40+ MCP tools)

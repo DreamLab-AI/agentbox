@@ -1,0 +1,23 @@
+{
+  "skill_name": "explainer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "We just finished a build sprint on ~/workspace/co-created/campaignbuilder for a client. Before I hand it over I need it explained properly to three kinds of people: the marketing users, whoever picks up the code next, and their CTO who is not that technical. Can you set that up?",
+      "expected_output": "Scaffolds docs/explainer with the three audience documents grounded in code, ledgers per document, a kb/ and gates/ plan, measured (not quoted) gate numbers, and an honest built-vs-not-built section; states what is not gated yet.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "write me a repo primer for the agentbox management-api so an agent can actually answer questions about it from source, plus a short page for humans",
+      "expected_output": "Builds the AI half (passages within the scope boundary, ingest into a <repo>-kb namespace, question sets) and a human index following the seven questions; applies the index law after ingest.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "explain what this product does to my CEO in a page, she'll ask what it costs and what could go wrong",
+      "expected_output": "One for-executives document in board-memo register with the five trust properties, built/blocked/deferred table, costs only from documented sources, and a decisions checklist; no invented numbers.",
+      "files": []
+    }
+  ]
+}
