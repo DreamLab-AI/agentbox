@@ -235,6 +235,7 @@ for _vol_root in \
     /var/lib/agentbox \
     /var/lib/agentbox/events \
     /var/lib/agentbox/consultations \
+    /var/lib/agentbox/telemetry \
     /var/lib/agentbox/secrets \
     /var/lib/nostr-relay \
     /var/lib/https-bridge \
@@ -1578,6 +1579,13 @@ fi
 # /opt/agentbox/scripts). Perms: writeFileSync preserves the existing mode (600).
 _MCP_PROJECTOR="/opt/agentbox/scripts/project-mcp-servers.mjs"
 _MCP_REGISTRY="${SKILLS_TREE:-/opt/agentbox/skills}/mcp.json"
+# Explicit environment selection wins; otherwise project the manifest's model.
+# Missing/invalid values stay empty so the registry's default applies.
+if [ -z "${AGENTBOX_ANTIGRAVITY_MODEL:-}" ] && command -v agentbox-manifest >/dev/null 2>&1; then
+  export AGENTBOX_ANTIGRAVITY_MODEL="$(agentbox-manifest toml-string \
+    --manifest "${AGENTBOX_CONFIG:-/etc/agentbox.toml}" \
+    --path consultants.antigravity.model 2>/dev/null || true)"
+fi
 if [ -f "$_MCP_PROJECTOR" ] && [ -f "$_MCP_REGISTRY" ] && [ -f "$_MCP_JSON" ] && command -v node >/dev/null 2>&1; then
   # Master consultant gate ([consultants].enabled) — no ENABLE_ var is exported for
   # it, so derive it from the manifest here (best-effort; default off). Per-provider

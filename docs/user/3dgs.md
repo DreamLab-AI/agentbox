@@ -12,6 +12,10 @@
 
 **When to skip this**: if you are not doing photogrammetry or radiance-field capture, leave `gaussian_splatting = false`. The stack only builds on Linux x86_64 with NVIDIA CUDA; on aarch64 it degrades to empty derivations.
 
+## Browser scenes with data overlays
+
+Use the [spark-scene skill](../../skills/spark-scene/SKILL.md) to integrate a trained capture into an existing Three.js application, with registered annotations and evidence links. Spark handles presentation; this stack handles reconstruction. The skill is shipped by the builder, but the host viewer still needs implementation and GPU validation. See the [assessment](../reference/upgrades-spark-2026-09.md).
+
 ## Prerequisites
 
 Both conditions must be met before enabling this stack:

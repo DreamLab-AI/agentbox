@@ -24,15 +24,31 @@ pub fn run(
 ) -> Result<(), String> {
     let state_text = std::fs::read_to_string(state_path)
         .map_err(|e| format!("{}: {e}", state_path.display()))?;
-    let state: Value = serde_json::from_str(&state_text)
+    let mut state: Value = serde_json::from_str(&state_text)
         .map_err(|e| format!("{}: invalid JSON state: {e}", state_path.display()))?;
-
-    let wizard_text = render(&state);
 
     let existing = existing_path
         .filter(|p| p.exists())
         .map(tomlval::parse_file_lenient)
         .filter(|v| v.as_object().map(|o| !o.is_empty()).unwrap_or(false));
+
+    // This model is not exposed by the current wizard. Preserve an operator's
+    // choice unless a caller explicitly supplies it in the flat state.
+    if state.get("consultants.antigravity.model").is_none() {
+        if let Some(model) = existing
+            .as_ref()
+            .and_then(|v| tomlval::get(v, "consultants.antigravity.model"))
+            .and_then(Value::as_str)
+        {
+            if let Some(fields) = state.as_object_mut() {
+                fields.insert(
+                    "consultants.antigravity.model".into(),
+                    Value::String(model.into()),
+                );
+            }
+        }
+    }
+    let wizard_text = render(&state);
 
     let out = match existing {
         Some(existing) => {

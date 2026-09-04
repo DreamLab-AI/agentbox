@@ -18,27 +18,59 @@ pub struct DaemonProc {
     pub workspace: String,
 }
 
-/// The Python predicate: `"daemon start" in cmd and ("cli.js" in cmd or
-/// "ruflo" in cmd or "claude-flow" in cmd)`.
-pub fn is_daemon_cmdline(cmd: &str) -> bool {
-    cmd.contains("daemon start")
-        && (cmd.contains("cli.js") || cmd.contains("ruflo") || cmd.contains("claude-flow"))
+/// Match a daemon invocation using argv boundaries, never text embedded in a
+/// shell command, search query or prompt. Unknown launchers fail closed.
+fn is_daemon_argv(args: &[&str]) -> bool {
+    let Some(program) = args.first() else {
+        return false;
+    };
+    let basename = |path: &str| {
+        std::path::Path::new(path)
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("")
+            .to_string()
+    };
+    let daemon_args = match basename(program).as_str() {
+        "ruflo" | "claude-flow" => &args[1..],
+        "node" | "nodejs" => {
+            let Some(script) = args.get(1) else {
+                return false;
+            };
+            let named_launcher = matches!(basename(script).as_str(), "ruflo" | "claude-flow");
+            let package_script = basename(script) == "cli.js"
+                && std::path::Path::new(script).components().any(|part| {
+                    matches!(
+                        part.as_os_str().to_str(),
+                        Some("ruflo" | "claude-flow" | "@claude-flow")
+                    )
+                });
+            if !named_launcher && !package_script {
+                return false;
+            }
+            &args[2..]
+        }
+        _ => return false,
+    };
+    daemon_args.starts_with(&["daemon", "start"])
 }
 
-/// Extracts `--workspace <value>`, stopping at the next ` --` flag, matching
-/// `args.split("--workspace ", 1)[1].split(" --")[0].strip()`.
-pub fn extract_workspace(cmd: &str) -> String {
-    match cmd.split_once("--workspace ") {
-        Some((_, rest)) => {
-            let value = rest.split(" --").next().unwrap_or("").trim();
-            if value.is_empty() {
-                "?".to_string()
-            } else {
-                value.to_string()
-            }
+/// Read the workspace as one argument, preserving spaces and flag-like text
+/// within paths. Both common option spellings are supported.
+fn workspace_argv(args: &[&str]) -> String {
+    for (index, arg) in args.iter().enumerate() {
+        let value = if *arg == "--workspace" {
+            args.get(index + 1)
+                .copied()
+                .filter(|s| !s.starts_with("--"))
+        } else {
+            arg.strip_prefix("--workspace=")
+        };
+        if let Some(value) = value.filter(|s| !s.is_empty()) {
+            return value.to_string();
         }
-        None => "?".to_string(),
     }
+    "?".to_string()
 }
 
 fn snapshot() -> System {
@@ -54,20 +86,16 @@ pub fn sweep() -> Vec<DaemonProc> {
         .processes()
         .iter()
         .filter_map(|(pid, proc_)| {
-            let cmdline = proc_
-                .cmd()
-                .iter()
-                .map(|s| s.to_string_lossy())
-                .collect::<Vec<_>>()
-                .join(" ");
-            if !is_daemon_cmdline(&cmdline) {
+            let args: Vec<_> = proc_.cmd().iter().map(|s| s.to_string_lossy()).collect();
+            let argv: Vec<_> = args.iter().map(|s| s.as_ref()).collect();
+            if !is_daemon_argv(&argv) {
                 return None;
             }
             Some(DaemonProc {
                 pid: pid.as_u32(),
-                workspace: extract_workspace(&cmdline),
+                workspace: workspace_argv(&argv),
                 run_time_secs: proc_.run_time(),
-                cmdline,
+                cmdline: argv.join(" "),
             })
         })
         .collect();
@@ -80,13 +108,9 @@ pub fn sweep() -> Vec<DaemonProc> {
 pub fn confirm_daemon(pid: u32) -> Option<bool> {
     let sys = snapshot();
     let proc_ = sys.process(Pid::from_u32(pid))?;
-    let cmdline = proc_
-        .cmd()
-        .iter()
-        .map(|s| s.to_string_lossy())
-        .collect::<Vec<_>>()
-        .join(" ");
-    Some(is_daemon_cmdline(&cmdline))
+    let args: Vec<_> = proc_.cmd().iter().map(|s| s.to_string_lossy()).collect();
+    let argv: Vec<_> = args.iter().map(|s| s.as_ref()).collect();
+    Some(is_daemon_argv(&argv))
 }
 
 /// Seconds since the process started, or `None` if it is gone.
@@ -115,35 +139,61 @@ mod tests {
     use super::*;
 
     #[test]
-    fn daemon_predicate_needs_both_halves() {
-        assert!(is_daemon_cmdline("node cli.js daemon start --workspace /a"));
-        assert!(is_daemon_cmdline("ruflo daemon start"));
-        assert!(is_daemon_cmdline("claude-flow daemon start"));
-        // "daemon start" alone is not enough.
-        assert!(!is_daemon_cmdline("some-other daemon start"));
-        // The tool name alone is not enough either.
-        assert!(!is_daemon_cmdline("node cli.js serve"));
+    fn daemon_invocations_require_known_launcher_and_separate_arguments() {
+        for argv in [
+            vec!["ruflo", "daemon", "start"],
+            vec!["/opt/bin/claude-flow", "daemon", "start"],
+            vec![
+                "node",
+                "/opt/node_modules/ruflo/dist/cli.js",
+                "daemon",
+                "start",
+            ],
+            vec![
+                "node",
+                "/opt/node_modules/@claude-flow/cli/dist/cli.js",
+                "daemon",
+                "start",
+            ],
+            vec!["node", "/opt/bin/ruflo", "daemon", "start"],
+        ] {
+            assert!(is_daemon_argv(&argv), "{argv:?}");
+        }
+        for argv in [
+            vec![],
+            vec!["sh", "-c", "ruflo daemon start"],
+            vec!["rg", "ruflo daemon start"],
+            vec!["node", "unrelated/cli.js", "daemon", "start"],
+            vec!["node", "/tmp/not-ruflo/cli.js", "daemon", "start"],
+            vec!["ruflo", "agent", "--prompt", "daemon start"],
+            vec!["ruflo", "daemon start"],
+            vec!["node", "-e", "ruflo daemon start"],
+        ] {
+            assert!(!is_daemon_argv(&argv), "{argv:?}");
+        }
     }
 
     #[test]
-    fn workspace_stops_at_the_next_flag() {
+    fn workspace_preserves_argument_boundaries() {
         assert_eq!(
-            extract_workspace("node cli.js daemon start --workspace /home/a/b --port 9"),
-            "/home/a/b"
+            workspace_argv(&[
+                "ruflo",
+                "daemon",
+                "start",
+                "--workspace",
+                "/home/a -- b",
+                "--port",
+                "9"
+            ]),
+            "/home/a -- b"
         );
-    }
-
-    #[test]
-    fn workspace_reads_to_end_when_it_is_the_last_flag() {
         assert_eq!(
-            extract_workspace("node cli.js daemon start --workspace /home/a/b"),
-            "/home/a/b"
+            workspace_argv(&["ruflo", "daemon", "start", "--workspace=/home/a b"]),
+            "/home/a b"
         );
-    }
-
-    #[test]
-    fn workspace_absent_is_question_mark() {
-        assert_eq!(extract_workspace("node cli.js daemon start"), "?");
+        assert_eq!(workspace_argv(&["ruflo", "daemon", "start"]), "?");
+        assert_eq!(workspace_argv(&["--workspace", "--port", "9"]), "?");
+        assert_eq!(workspace_argv(&["--workspace="]), "?");
     }
 
     #[test]

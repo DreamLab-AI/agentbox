@@ -687,10 +687,10 @@
           (antigravityCliLib.makeAntigravityCli system)
         ];
 
-        # OpenAI Codex Rust-native CLI — pinned upstream release asset.
-        # See lib/codex-binary.nix for the per-arch sha256s and version bump
-        # procedure.  Binary is statically linked (musl) so no runtime deps
-        # are required beyond what the container already has.
+        # OpenAI Codex Rust-native CLI — content-addressed upstream package.
+        # The rolling updater refreshes the version and both architecture
+        # hashes in lib/codex-binary.nix. The musl executables are static, so
+        # no runtime dependencies are required beyond their bundled resources.
         codexLib = import ./lib/codex-binary.nix { inherit lib pkgs; };
         codexPackages = lib.optionals
           ((toolchainCfg.codex or false) && pkgs.stdenv.isLinux)
@@ -2770,6 +2770,7 @@ stderr_logfile_maxbytes=5MB
           "code-harness-data:/var/lib/agentbox/code-harness"
           "agentbox-events:/var/lib/agentbox/events"
           "consultations-data:/var/lib/agentbox/consultations"
+          "telemetry-data:/var/lib/agentbox/telemetry"
           # The privacy model is ~2.8 GiB. Keep it out of the deliberately
           # bounded XDG cache tmpfs and retain it across rolling rebuilds.
           "hf-cache:/home/devuser/.cache/huggingface"
@@ -2802,7 +2803,7 @@ stderr_logfile_maxbytes=5MB
         # are auto-derived so every volume referenced in the agentbox service's
         # volumes list has a matching top-level declaration. Without this,
         # docker compose rejects the file with "undefined volume <name>".
-        baselineTopLevelVolumeNames = [ "ruvector-data" "solid-data" "sovereign-identities" "agentbox-secrets" "code-harness-data" "agentbox-events" "consultations-data" "hf-cache" ];
+        baselineTopLevelVolumeNames = [ "ruvector-data" "solid-data" "sovereign-identities" "agentbox-secrets" "code-harness-data" "agentbox-events" "consultations-data" "telemetry-data" "hf-cache" ];
         exceptionVolumeNames = lib.unique (
           map (v: lib.head (lib.splitString ":" v)) exceptionWritableVolumes
         );

@@ -66,13 +66,18 @@ fn registry_daemons(cf_home: &Path) -> BTreeMap<u32, Discovered> {
             let Some(pid) = e.get("pid").and_then(Value::as_u64) else {
                 continue;
             };
+            // Linux signals accept positive signed PIDs. Never truncate a
+            // registry number into another process or a process-group ID.
+            let Some(pid) = registry_pid(pid) else {
+                continue;
+            };
             let workspace = ["workspace", "cwd", "repo"]
                 .iter()
                 .find_map(|k| e.get(*k).and_then(Value::as_str))
                 .unwrap_or("?")
                 .to_string();
             found.insert(
-                pid as u32,
+                pid,
                 Discovered {
                     workspace,
                     source: name.to_string(),
@@ -81,6 +86,24 @@ fn registry_daemons(cf_home: &Path) -> BTreeMap<u32, Discovered> {
         }
     }
     found
+}
+
+fn registry_pid(pid: u64) -> Option<u32> {
+    (pid > 0 && pid <= i32::MAX as u64).then_some(pid as u32)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::registry_pid;
+
+    #[test]
+    fn registry_pid_rejects_zero_negative_casts_and_truncation() {
+        assert_eq!(registry_pid(42), Some(42));
+        assert_eq!(registry_pid(i32::MAX as u64), Some(i32::MAX as u32));
+        for pid in [0, i32::MAX as u64 + 1, u32::MAX as u64 + 42, u64::MAX] {
+            assert_eq!(registry_pid(pid), None);
+        }
+    }
 }
 
 fn main() {

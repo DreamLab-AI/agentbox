@@ -192,10 +192,10 @@
       "type": "stdio",
       "env": {
         "GOOGLE_API_KEY": "${GOOGLE_API_KEY}",
-        "GEMINI_MODEL": "gemini-2.5-flash",
+        "GEMINI_MODEL": "${GEMINI_MODEL:-gemini-3.8-flash}",
         "GEMINI_TIMEOUT": "60"
       },
-      "description": "URL expansion and analysis using Gemini 2.5 Flash URL Context API",
+      "description": "URL expansion and analysis using Gemini 3.8 Flash URL Context API",
       "protocol": "rmcp",
       "version": "1.1.0",
       "x-agentbox-managed-by": "reference",
@@ -406,7 +406,7 @@
       ],
       "type": "stdio",
       "env": {
-        "AGENTBOX_ANTIGRAVITY_MODEL": "${AGENTBOX_ANTIGRAVITY_MODEL:-gemini-2.5-pro}"
+        "AGENTBOX_ANTIGRAVITY_MODEL": "${AGENTBOX_ANTIGRAVITY_MODEL:-gemini-3.8-flash}"
       },
       "description": "Antigravity consultant (PRD-005 / ADR-011): 1M-token context, long-document analysis via Google Antigravity CLI (agy). Tools: consult, health, cost_estimate. Inherits GOOGLE_API_KEY from session env or uses web-based Pro login.",
       "protocol": "stdio",

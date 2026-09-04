@@ -78,17 +78,28 @@ trap 'rm -rf -- "$asset_tmp"; [[ -z "$patched" ]] || rm -f -- "$patched"' EXIT
 
 fetch_asset() {
   local triple="$1"
-  local archive="${asset_tmp}/codex-${triple}.tar.gz"
-  local binary="codex-${triple}"
+  local asset="codex-package-${triple}.tar.gz"
+  local archive="${asset_tmp}/${asset}"
 
-  echo "  fetching ${binary}.tar.gz" >&2
+  echo "  fetching ${asset}" >&2
   curl -fsSL --retry 3 --retry-delay 2 \
-    -o "$archive" "${release_url}/${binary}.tar.gz"
+    -o "$archive" "${release_url}/${asset}"
 
-  if ! tar -tzf "$archive" | grep -qx "$binary"; then
-    echo "error: ${binary}.tar.gz does not contain the expected binary" >&2
-    exit 1
-  fi
+  local listing
+  listing=$(tar -tzf "$archive")
+  local required
+  for required in \
+    bin/codex \
+    bin/codex-code-mode-host \
+    codex-package.json \
+    codex-path/rg \
+    codex-resources/bwrap \
+    codex-resources/zsh/bin/zsh; do
+    if ! grep -qx "$required" <<<"$listing"; then
+      echo "error: ${asset} is missing ${required}" >&2
+      exit 1
+    fi
+  done
 
   sha256sum "$archive" | awk '{print $1}'
 }

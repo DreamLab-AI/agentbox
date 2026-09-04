@@ -1,10 +1,11 @@
 ---
 title: Agentbox Container Baseline
 doc_id: AB-BASELINE
-version: 0.2.1
+version: 0.2.2
 status: draft-for-ratification
 verified_commit: 73540faa0
 changelog:
+  - 0.2.2 (2026-09-04) — ADR-2032: process-signalling tools (ruflo-daemon-gc, token-audit) identify daemons by argv boundaries against a launcher allowlist, fail closed on unknown launchers, and reject out-of-range registry PIDs; telemetry-data volume backs /var/lib/agentbox/telemetry; Codex ships as the full codex-package archive so codex-code-mode-host sits beside codex.
   - 0.2.1 (2026-09-02) — ADR-2028 amendment: `[vault].working` (second vault root, exported as VAULT_WORKING_ROOT/VAULT_WORKING_PAGES) and `[vault].transcripts` (podcast transcript store outside both vaults, VAULT_TRANSCRIPTS) for the sibling-vault corpus layout of jjohare/visionGraph; podcast-knowledge-ingest reads only these.
   - 0.2.0 (2026-09-02) — ADR-2028/2029: [vault] manifest section is the single corpus path authority (entrypoint exports VAULT_ROOT/VAULT_PAGES/VAULT_FORMAT/VAULT_TUI; system-manifest reports the resolved vault as two entries, vault=boot and vault-tui=rebuild); tmux window 9 "Notes" row added.
   - 0.1.1 (2026-08-31) — correct AoE :9095 to --auth token (live at 73540faa0, was mis-stated as --auth none/staged); boot-probe non-orchestrator failure sets health 'degraded' (impl→off), not 'off'.
@@ -173,6 +174,7 @@ any re-introduced hard-coded corpus path outside `docs/archive/` and
 - GPU wrapping applies only when `gpu.backend == "local-cuda"`; `--suffix` (never `--prefix`) on `LD_LIBRARY_PATH`.
 - Manifest state is always introspected from `agentbox.toml`, never hard-coded in the catalogue (`system-manifest.js:11`).
 - Adding a gate means gating both the Nix package set and the supervisor block, plus a `system-manifest.js` catalogue entry with an honest apply-class.
+- Any tool that signals a process decides identity on argv elements against a known launcher allowlist and fails closed; joined-string matching is prohibited (ADR-2032, `services/agentbox-ops/src/procs.rs:23`).
 - `[vault].root` is the only default corpus path; no consumer hard-codes one, and an absent `[vault]` disables consumers loudly rather than falling back to a literal (ADR-2028, `project/docs/VAULT-corpus-format.md` Invariant 3, gated by `scripts/ci/check-no-logseq-paths.sh`).
 
 ## Change process

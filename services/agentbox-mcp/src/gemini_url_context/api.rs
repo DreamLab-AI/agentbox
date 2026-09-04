@@ -22,7 +22,7 @@ impl GeminiConfig {
             .into_iter()
             .find_map(|key| std::env::var(key).ok().filter(|v| !v.is_empty()))
             .unwrap_or_default();
-        let model = crate::common::env_or("GEMINI_MODEL", "gemini-2.5-flash");
+        let model = crate::common::env_or("GEMINI_MODEL", "gemini-3.8-flash");
         let timeout_secs = crate::common::env_or_u64("GEMINI_TIMEOUT", 60);
         Self {
             api_key,
@@ -202,7 +202,7 @@ mod tests {
         clear_env();
         let config = GeminiConfig::from_env();
         assert_eq!(config.api_key, "");
-        assert_eq!(config.model, "gemini-2.5-flash");
+        assert_eq!(config.model, "gemini-3.8-flash");
         assert_eq!(config.timeout, Duration::from_secs(60));
         clear_env();
     }
@@ -218,6 +218,17 @@ mod tests {
         }
         let config = GeminiConfig::from_env();
         assert_eq!(config.api_key, "canonical-key");
+        clear_env();
+    }
+
+    #[test]
+    fn from_env_preserves_model_override() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        clear_env();
+        unsafe {
+            std::env::set_var("GEMINI_MODEL", "gemini-2.5-flash");
+        }
+        assert_eq!(GeminiConfig::from_env().model, "gemini-2.5-flash");
         clear_env();
     }
 

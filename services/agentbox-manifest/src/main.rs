@@ -16,7 +16,7 @@
 //! * Sites the shell wraps as `... && echo "  [mcp] Added x" || true` must stay
 //!   silent and signal through the exit status; sites that printed from inside
 //!   Python keep their `println!`.
-//! * Fail-open sites (`model-routing-project`, `toml-bool`) always exit 0.
+//! * Fail-open sites (`model-routing-project`, `toml-bool`, `toml-string`) exit 0.
 //! * Secrets travel on stdin, never argv, so they stay off the process list.
 
 mod jsonio;
@@ -131,6 +131,13 @@ enum Command {
     },
     /// Print `1` or `0` for a dotted manifest path. Always exits 0.
     TomlBool {
+        #[arg(long)]
+        manifest: PathBuf,
+        #[arg(long)]
+        path: String,
+    },
+    /// Print a string at a dotted manifest path, or empty. Always exits 0.
+    TomlString {
         #[arg(long)]
         manifest: PathBuf,
         #[arg(long)]
@@ -251,6 +258,16 @@ fn run(cmd: Command) -> Result<(), String> {
         Command::TomlBool { manifest, path } => {
             let cfg = tomlval::parse_file_lenient(&manifest);
             println!("{}", u8::from(tomlval::get_bool(&cfg, &path, false)));
+            Ok(())
+        }
+        Command::TomlString { manifest, path } => {
+            let cfg = tomlval::parse_file_lenient(&manifest);
+            println!(
+                "{}",
+                tomlval::get(&cfg, &path)
+                    .and_then(Value::as_str)
+                    .unwrap_or("")
+            );
             Ok(())
         }
         Command::EmbeddingDim => {

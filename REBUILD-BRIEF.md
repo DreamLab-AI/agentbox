@@ -1,3 +1,5 @@
+> Current upgrade handoff: [September 2026 assessment and rebuild request](docs/reference/upgrades-2026-09.md). The June brief below is historical.
+
 # Rebuild Brief — Agentbox Hardening Sprint (PRD-REMEDIATION-001)
 
 **For:** the external rebuild agent (host shell)

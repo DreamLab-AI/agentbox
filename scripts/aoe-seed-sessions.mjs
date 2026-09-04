@@ -93,7 +93,7 @@ const DEFAULT_SEEDS = [
   // sunset (2026-06-18); the flake pins the Antigravity CLI (binary `agy`,
   // lib/antigravity-cli.nix — NOT nixpkgs `antigravity`, which is the IDE) —
   // verify AoE's expected binary name at the next image rebuild (ADR-045 note).
-  { slug: 'antigravity', tool: 'antigravity', worktree: true },
+  { slug: 'antigravity', tool: 'antigravity', model: 'gemini-3.8-flash', worktree: true },
   { slug: 'openrouter', tool: 'claude', worktree: false, env_allowlist: ['ANTHROPIC_BASE_URL', 'ANTHROPIC_AUTH_TOKEN'] },
   { slug: 'zai', tool: 'claude', worktree: false, env_allowlist: ['ANTHROPIC_BASE_URL', 'ANTHROPIC_AUTH_TOKEN'] },
   { slug: 'deepseek', tool: 'opencode', model: 'deepseek-agent/deepseek-chat', worktree: true },

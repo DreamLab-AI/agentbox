@@ -53,9 +53,12 @@ fi
 if command -v codex &>/dev/null; then
     check "codex --help"            codex --help
     check "codex --version"         codex --version
+    check "codex-code-mode-host present" command -v codex-code-mode-host
+    check "codex-code-mode-host --help"  codex-code-mode-host --help
 else
     echo "  SKIP  codex --help (toolchain not installed)"
     echo "  SKIP  codex --version (toolchain not installed)"
+    echo "  SKIP  codex-code-mode-host (toolchain not installed)"
 fi
 
 echo ""

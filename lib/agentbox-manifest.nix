@@ -32,7 +32,7 @@
 # directories, and touch neither the network nor a database, so doCheck runs
 # them in the sandbox. The one suite that would need Node
 # (agentbox-config-validate.js, for schema compatibility) detects its absence
-# and skips rather than failing, so no nativeCheckInputs are required.
+# and skips rather than failing. Bash runs the isolated boot projection test.
 #
 # Licence: MIT OR Apache-2.0 (the crate and its whole closure are permissive).
 
@@ -64,6 +64,9 @@ pkgs.rustPlatform.buildRustPackage {
   postPatch = ''
     mkdir -p tests/tui/fixtures
     cp -R ${tuiFixturesSrc}/. tests/tui/fixtures/
+    cp ${../config/entrypoint-unified.sh} tests/entrypoint-unified.sh
+    substituteInPlace tests/consultant_model.rs \
+      --replace-fail '../../../config/entrypoint-unified.sh' 'entrypoint-unified.sh'
     substituteInPlace tests/golden.rs \
       --replace-fail '../../tests/tui/fixtures' 'tests/tui/fixtures'
     substituteInPlace tests/tui_helpers.rs \
@@ -71,6 +74,7 @@ pkgs.rustPlatform.buildRustPackage {
   '';
 
   doCheck = true;
+  nativeCheckInputs = [ pkgs.bash ];
 
   meta = with lib; {
     description = "Boot-time TOML/JSON projection for agentbox — replaces the inline python3 in the entrypoint and the four manifest scripts (.mcp.json upserts, ADR-069 proxy config, ADR-041 model routing, profile provisioning, TUI manifest round-trip)";

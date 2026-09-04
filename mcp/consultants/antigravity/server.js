@@ -17,10 +17,15 @@ const { spawnCli } = require('../shared/spawn-cli');
 
 const AGY_BIN = process.env.AGENTBOX_ANTIGRAVITY_BIN || 'agy';
 const AGY_HOME = process.env.AGENTBOX_ANTIGRAVITY_HOME || '/home/devuser/.antigravity';
-const MODEL = process.env.AGENTBOX_ANTIGRAVITY_MODEL || 'gemini-2.5-pro';
+const MODEL = process.env.AGENTBOX_ANTIGRAVITY_MODEL || 'gemini-3.8-flash';
 
-const PRICE_PER_1K_PROMPT     = 0.00125;
-const PRICE_PER_1K_COMPLETION = 0.0050;
+// API-equivalent estimate, not an Antigravity subscription invoice. Published
+// introductory rates double on 2027-01-01; select by call time for long-lived MCPs.
+function rates(now = new Date()) {
+  if (MODEL !== 'gemini-3.8-flash') return null;
+  const multiplier = now >= new Date('2027-01-01T00:00:00Z') ? 2 : 1;
+  return { prompt: 0.00075 * multiplier, completion: 0.00375 * multiplier };
+}
 
 function combinedPrompt(question, context) {
   return context
@@ -56,9 +61,10 @@ async function callConsult({ question, context_excerpt }) {
     completion: Math.ceil(response.length   / 4),
   };
   tokens.total = tokens.prompt + tokens.completion;
-  const cost_usd =
-    (tokens.prompt     / 1000) * PRICE_PER_1K_PROMPT +
-    (tokens.completion / 1000) * PRICE_PER_1K_COMPLETION;
+  const price = rates();
+  const cost_usd = price ?
+    (tokens.prompt     / 1000) * price.prompt +
+    (tokens.completion / 1000) * price.completion : null;
 
   return { response, model: MODEL, tokens, cost_usd, citations: [] };
 }
@@ -96,11 +102,13 @@ async function healthCheck() {
 }
 
 async function estimateCost({ question_size, expected_response_size }) {
+  const price = rates();
+  if (!price) throw new Error(`No published tariff configured for ${MODEL}; consult remains available`);
   return {
     estimated_tokens: { prompt: question_size, completion: expected_response_size },
     estimated_usd:
-      (question_size           / 1000) * PRICE_PER_1K_PROMPT +
-      (expected_response_size  / 1000) * PRICE_PER_1K_COMPLETION,
+      (question_size           / 1000) * price.prompt +
+      (expected_response_size  / 1000) * price.completion,
   };
 }
 

@@ -6,6 +6,12 @@ labelled answer with provenance: model, token usage, cost, citations,
 latency. Specified by [PRD-005](../reference/prd/PRD-005-meta-router-consultants.md)
 and [ADR-011](../reference/adr/ADR-011-consultation-mcps.md).
 
+
+The Antigravity consultant defaults to `gemini-3.8-flash`. A non-empty
+`AGENTBOX_ANTIGRAVITY_MODEL` overrides `[consultants.antigravity].model` at boot.
+See [model selection and cost estimates](../reference/upgrades-2026-09.md#gemini-selection-and-limits)
+for override precedence, specialised endpoints and rebuild checks.
+
 ## Why this exists
 
 Agentbox runs many LLM frontends side-by-side. You want the coordinator

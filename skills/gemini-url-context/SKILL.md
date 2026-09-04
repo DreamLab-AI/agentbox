@@ -1,7 +1,7 @@
 ---
 name: gemini-url-context
 description: >
-  Expand and analyze URLs using Google Gemini 2.5 Flash URL Context API.
+  Expand and analyze URLs using Google Gemini 3.8 Flash URL Context API.
   Efficiently fetches, summarizes, and extracts information from up to 20 URLs
   per request with grounding metadata and source citations.
   Use when analysing or summarising specific URLs using Gemini's 1M-token context window.
@@ -18,7 +18,7 @@ env_vars:
 
 # Gemini URL Context Skill
 
-Leverage Google's Gemini 2.5 Flash model to expand, summarize, and analyze web
+Use Google's Gemini 3.8 Flash model to expand, summarize, and analyze web
 content directly from URLs, via the `gemini-url-context` subcommand of
 `agentbox-mcp` — a single Rust `rmcp` binary (`services/agentbox-mcp`) that
 also serves the `imagemagick` and `web-summary` skills. It replaces the former
@@ -57,7 +57,7 @@ response shapes.
                │ HTTPS REST API
                ▼
 ┌─────────────────────────────────┐
-│  Google Gemini 2.5 Flash API    │
+│  Google Gemini 3.8 Flash API    │
 │  (with url_context tool)        │
 └─────────────────────────────────┘
 ```
@@ -132,7 +132,7 @@ Responses include `urlContextMetadata` with:
 | `GOOGLE_API_KEY` | Yes | Gemini API key from https://aistudio.google.com/app/apikey — canonical variable, as registered in `skills/mcp.json` |
 | `GOOGLE_GEMINI_API_KEY` | No | Legacy fallback, read only if `GOOGLE_API_KEY` is unset |
 | `GEMINI_API_KEY` | No | Legacy fallback, read only if neither of the above is set |
-| `GEMINI_MODEL` | No | Model override (default: gemini-2.5-flash) |
+| `GEMINI_MODEL` | No | Model override (default: gemini-3.8-flash) |
 | `GEMINI_TIMEOUT` | No | Request timeout in seconds (default: 60) |
 
 ## Setup

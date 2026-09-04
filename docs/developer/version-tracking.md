@@ -67,8 +67,8 @@ Prints a colourised table comparing each pinned version to the latest upstream r
 
 Codex is part of the normal rolling-update sequence. The updater reads the current
 stable `@openai/codex` version, downloads both official Linux musl assets, checks
-their archive shape, computes SHA-256 values, and atomically patches the Nix
-derivation:
+their canonical package shape (CLI, code-mode host, and runtime resources),
+computes SHA-256 values, and atomically patches the Nix derivation:
 
 ```sh
 ./agentbox.sh update

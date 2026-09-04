@@ -29,12 +29,16 @@ pub struct RunOutcome {
 
 /// Runs a job through the `claude` CLI, returning its combined output.
 pub fn run_job(prompt: &str, workdir: Option<&str>) -> RunOutcome {
+    run_job_with_cli(prompt, workdir, Path::new("claude"))
+}
+
+fn run_job_with_cli(prompt: &str, workdir: Option<&str>, cli: &Path) -> RunOutcome {
     let home = std::env::var("HOME").unwrap_or_else(|_| "/home/devuser".into());
     let cwd = workdir
         .map(str::to_string)
         .unwrap_or_else(|| Path::new(&home).join("workspace").display().to_string());
 
-    let child = Command::new("claude")
+    let child = Command::new(cli)
         .arg("--print")
         .arg(prompt)
         .current_dir(&cwd)
@@ -385,10 +389,13 @@ mod tests {
 
     #[test]
     fn a_missing_claude_binary_is_reported_not_panicked_on() {
-        // The job runner must degrade to an error result, never unwind.
-        let outcome = run_job("noop", Some("/"));
-        if !outcome.success {
-            assert!(outcome.error.is_some());
-        }
+        // Never invoke an installed provider or mutate process-global PATH.
+        let tmp = tempfile::tempdir().unwrap();
+        let outcome = run_job_with_cli("noop", Some("/"), &tmp.path().join("missing-claude"));
+        assert!(!outcome.success);
+        assert_eq!(
+            outcome.error.as_deref(),
+            Some("claude CLI not found in PATH")
+        );
     }
 }

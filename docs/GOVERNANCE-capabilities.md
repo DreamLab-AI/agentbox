@@ -1,10 +1,11 @@
 ---
 title: Agentbox Capability Governance
 doc_id: AB-GOVERNANCE
-version: 0.2.0
+version: 0.3.0
 status: draft-for-ratification
 verified_commit: cdc18cf53
 changelog:
+  - "0.3.0 (2026-09-04): ADR-2031 — consultant model is projected from the manifest at boot (env override wins, TUI preserves the operator's choice); general-purpose Gemini default is gemini-3.8-flash with a dated tariff."
   - "0.2.0 (2026-09-02): ADR-2028 — skills read and write the authored corpus through VAULT_ROOT/VAULT_PAGES and emit V2 frontmatter; no skill hard-codes a corpus path."
   - "0.1.1 (2026-08-31): fix wrong verified_commit (was outer-repo hash), correct agentbox.toml citations (loom_url 1564, loom_model 1565, session-seed models 1231/1238), and update N-05 to the revised token-auth boundary."
 sources:
@@ -215,6 +216,10 @@ above, enabled but explicitly-invoke-only.
   entrypoint runs `--sandbox mock`/`agent`, never the no-op `real` default.
 - **Governed ontology writes only** — `direct_axiom_load = false` (`agentbox.toml`); the
   ungoverned `POST /api/ontology/load` backdoor stays disabled outside bootstrap.
+- **Consultant models come from the manifest** — `[consultants.<name>].model` is projected
+  into the consultant's environment at boot by `agentbox-manifest toml-string`; a non-empty
+  pre-boot environment override wins, a TUI save never resets an operator's model, and cost
+  figures are dated API-equivalent estimates or `null`, never a stale constant (ADR-2031).
 - **The Loom model swaps behind the façade** — changing the model must not touch a consumer;
   consumers hold `:8084`, never a raw model port, for scaffolded work.
 

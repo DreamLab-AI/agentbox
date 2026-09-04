@@ -126,7 +126,10 @@ pub fn render(s: &Value) -> String {
             String::new(),
             "[consultants.antigravity]".into(),
             format!("enabled = {}", b(s, "consultants.antigravity.enabled")),
-            "model      = \"gemini-2.5-pro\"".into(),
+            format!(
+                "model      = {}",
+                q(s, "consultants.antigravity.model", "gemini-3.8-flash")
+            ),
             "home       = \"/home/devuser/.antigravity\"".into(),
             "timeout_ms = 180000".into(),
             String::new(),

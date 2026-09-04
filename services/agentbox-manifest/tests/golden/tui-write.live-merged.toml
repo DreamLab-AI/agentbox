@@ -409,7 +409,7 @@ timeout_ms = 180000
 
 [consultants.antigravity]
 enabled = true
-model = "gemini-2.5-pro"
+model = "gemini-3.5-flash"
 home = "/home/devuser/.antigravity"
 timeout_ms = 180000
 

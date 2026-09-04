@@ -35,3 +35,6 @@ prose-sanitiser
 # Knowledge and shared-memory workflows
 ontology-augment
 ruvnet-brain
+
+# Captured 3D scenes and registered data overlays
+spark-scene

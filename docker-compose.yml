@@ -153,6 +153,7 @@ services:
       - hf-cache:/home/devuser/.cache/huggingface
       - codeserver-config:/home/devuser/.local/share/code-server
       - consultations-data:/var/lib/agentbox/consultations
+      - telemetry-data:/var/lib/agentbox/telemetry
       - nostr-relay-data:/var/lib/nostr-relay
       - tailscale-state:/var/lib/tailscale
 
@@ -181,6 +182,8 @@ volumes:
     name: agentbox-codeserver-config
   consultations-data:
     name: agentbox-consultations-data
+  telemetry-data:
+    name: agentbox-telemetry-data
   nostr-relay-data:
     name: agentbox-nostr-relay-data
   tailscale-state:

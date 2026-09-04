@@ -4,8 +4,26 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Changed (2026-09-04 upstream upgrade assessment)
+
+- Default general-purpose Gemini paths to `gemini-3.8-flash`; project consultant model selection from the manifest at boot and preserve operator choices through TUI saves. Align API-equivalent tariff estimates with the published introductory period.
+- Tighten Rust daemon identification to argv boundaries and reject invalid registry PIDs. Make the missing-provider scheduler test hermetic.
+- Register the Spark scene integration skill for Claude Code and Codex. Document Utopia/NEEDLE fit and defer TimesFM production integration pending rights and monitor-history evaluation.
+- Add the [assessment and rebuild handoff](docs/reference/upgrades-2026-09.md), ledger records ADR-2031 (consultant model projection and dated tariffs) and ADR-2032 (argv-boundary daemon identification), and the matching GOVERNANCE-capabilities / BASELINE-container invariants.
+
 ### Fixed (2026-09-04 post-rebuild check round)
 
+- **Codex Code Mode failed closed because its host executable was absent.** The
+  Nix derivation downloaded the legacy single-binary release archive, but Codex
+  0.153 resolves `codex-code-mode-host` beside its own executable. It now uses
+  OpenAI's canonical `codex-package-<target>` archive and preserves the complete
+  package layout (host, ripgrep, bubblewrap, zsh, and metadata). The updater
+  validates that layout for both Linux architectures, and the CLI smoke test
+  now fails if the host is missing or cannot start its help path.
+- **Ontology telemetry fell back to `/tmp` in the read-only runtime image.** A
+  dedicated persistent volume now backs `/var/lib/agentbox/telemetry`, and
+  bootstrap applies the same root ownership contract used by event and
+  consultation logs.
 - **All four consultant MCP servers failed to start after the rebuild** (`Cannot
   find module '../../../management-api/lib/uris.js'`). `consultant-base.js` used
   one relative path that only held in the repo layout; the image copies the

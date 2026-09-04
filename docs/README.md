@@ -2,6 +2,8 @@
 
 ![Agentbox](agentbox.png)
 
+[September upgrade assessment and rebuild handoff](reference/upgrades-2026-09.md) covers Gemini, daemon monitoring, Spark, Utopia and TimesFM.
+
 Audience-tiered navigation. Pick the path that matches what you are trying to do — then follow the cross-links. Every doc here is a relative hop from this index.
 
 ```mermaid

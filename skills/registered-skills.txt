@@ -44,3 +44,6 @@ leptos
 
 # --- domain planners ---
 uk-solar-planner
+
+# Captured 3D scenes and registered data overlays
+spark-scene
