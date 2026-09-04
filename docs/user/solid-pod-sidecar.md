@@ -28,7 +28,7 @@ Cloudflare Edge ──► cloudflared-pod (tunnel connector, compose overlay)
                           │  http://agentbox:8484   (visionclaw_network DNS)
                           ▼
                    agentbox container ── supervisord [program:solid-pod]
-                          │  solid-pod-rs-server, JSS_HOST=0.0.0.0:8484
+                          │  solid-pod-rs-server, native JSON config, :8484
                           ▼
                    solid-data (named Docker volume, /var/lib/solid)
 ```

@@ -10,6 +10,15 @@
 #     nodeModulesHash = "sha256-…";        # nix hash of the resolved node_modules tree
 #     bin             = "ruvector";        # binary name that ends up in $out/bin
 #     extraEnv        = { CHROME_PATH=…; }; # optional env-var wrapper (default {})
+#     extraFiles      = { "bin/foo" = "${fooBinary}/bin/foo"; }; # optional: store
+#                       paths planted into the package tree (package-relative
+#                       dest → source), for launchers whose postinstall would
+#                       otherwise download a binary at first run (default {})
+#     runtimeDependencies = { puppeteer = "25.10.0"; }; # optional exact
+#                       dependencies injected before resolution when upstream
+#                       declares a required runtime solely as a prunable peer
+#     extraArgs       = [ "--config" "/nix/store/..." ]; # optional wrapper
+#                       arguments inserted before user-supplied CLI arguments
 #   }
 #
 # Two-stage construction (the FOD-node_modules pattern):
@@ -121,6 +130,24 @@ in
     # node_modules FODs and their pinned hashes are untouched.
     extraBins ? {},
     extraEnv ? {},
+    extraArgs ? [],
+    # Files planted into the package tree after `npm install`: attrset of
+    # package-relative destination → store path. Use for npm "launcher"
+    # packages whose postinstall downloads a platform binary into their own
+    # tree on first run — impossible from the read-only store — so the
+    # prefetched artefact is baked where the launcher expects it. Stage 3
+    # only; the pinned tarball/node_modules hashes are untouched.
+    extraFiles ? {},
+    # Exact dependencies to promote into package.json before npm resolves the
+    # tree. This is intentionally distinct from peer resolution: npm marks a
+    # root package's peer as dev in package-lock.json, so production pruning can
+    # remove a CLI's required runtime even with --include=peer.
+    runtimeDependencies ? {},
+    # npm's legacy peer-dependency mode is required by most of the historical
+    # CLI graph, but packages such as Mermaid declare a required runtime only
+    # as a peer. Disable this per-package so npm resolves that peer into the
+    # immutable node_modules tree.
+    legacyPeerDeps ? true,
     # Strip devDependencies (and peerDependencies/peerDependenciesMeta)
     # from package.json before `npm install`. Required for upstream
     # packages whose published tarball references private monorepo deps
@@ -166,6 +193,8 @@ in
       # Build the env-var preamble for the wrapper script.
       envPreamble = lib.concatStringsSep "\n"
         (lib.mapAttrsToList (k: v: "export ${k}=${lib.escapeShellArg v}") extraEnv);
+      wrapperArgs = lib.optionalString (extraArgs != [])
+        (" " + lib.escapeShellArgs extraArgs);
 
       # ---- Stage 2: FOD that resolves node_modules. ------------------------
       # Network is permitted because outputHash is declared. The output is
@@ -213,13 +242,29 @@ in
             '
           ''}
 
+          ${lib.optionalString (runtimeDependencies != {}) ''
+            # Promote required runtime peers to ordinary, exact dependencies.
+            # Passing JSON as an argv value avoids shell interpolation of npm
+            # package names (including scoped names).
+            node -e '
+              const fs = require("fs");
+              const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+              const injected = JSON.parse(process.argv[1]);
+              pkg.dependencies = Object.assign(pkg.dependencies || {}, injected);
+              for (const name of Object.keys(injected)) {
+                if (pkg.devDependencies) delete pkg.devDependencies[name];
+              }
+              fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2));
+            ' ${lib.escapeShellArg (builtins.toJSON runtimeDependencies)}
+          ''}
+
           # Ensure deterministic timestamps inside node_modules so that
           # outputHashMode = "recursive" + content addressing yields a stable
           # hash. SOURCE_DATE_EPOCH defaults to 1 inside Nix builds.
           npm install \
-            --production \
+            ${if legacyPeerDeps then "--production" else "--omit=dev --include=peer"} \
             --ignore-scripts \
-            --legacy-peer-deps \
+            ${lib.optionalString legacyPeerDeps "--legacy-peer-deps"} \
             --no-fund \
             --no-audit \
             --no-progress 1>&2
@@ -389,7 +434,7 @@ in
         cat > $out/bin/${bin} <<WRAPPER
       #!/bin/sh
       ${envPreamble}
-      exec ${pkgs.nodejs_22}/bin/node $out/lib/${pname}/$entry "\$@"
+      exec ${pkgs.nodejs_22}/bin/node $out/lib/${pname}/$entry${wrapperArgs} "\$@"
       WRAPPER
         chmod +x $out/bin/${bin}
 
@@ -402,10 +447,17 @@ in
         cat > $out/bin/${aliasName} <<WRAPPER
       #!/bin/sh
       ${envPreamble}
-      exec ${pkgs.nodejs_22}/bin/node $out/lib/${pname}/${relEntry} "\$@"
+      exec ${pkgs.nodejs_22}/bin/node $out/lib/${pname}/${relEntry}${wrapperArgs} "\$@"
       WRAPPER
         chmod +x $out/bin/${aliasName}
         '') extraBins)}
+
+        # Extra files (see extraFiles docstring above).
+        ${lib.concatStringsSep "\n" (lib.mapAttrsToList (relDest: srcPath: ''
+        mkdir -p "$(dirname "$out/lib/${pname}/${relDest}")"
+        cp "${srcPath}" "$out/lib/${pname}/${relDest}"
+        chmod 755 "$out/lib/${pname}/${relDest}"
+        '') extraFiles)}
 
         # Prune dangling symlinks left by `npm install --production
         # --ignore-scripts` (optional platform-native deps like sharp create

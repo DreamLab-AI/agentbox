@@ -1,8 +1,51 @@
 # Changelog
 
+All notable changes to agentbox are documented here. Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Dates are ISO-8601.
+
 ## [Unreleased]
 
+### Fixed (2026-09-04 post-rebuild check round)
+
+- **All four consultant MCP servers failed to start after the rebuild** (`Cannot
+  find module '../../../management-api/lib/uris.js'`). `consultant-base.js` used
+  one relative path that only held in the repo layout; the image copies the
+  consultants npm closure one level deeper (`mcp/consultants/package/`). The
+  base now resolves `management-api/lib/uris.js` and
+  `mcp/servers/lib/ontology-retrieval.js` against the repo layout, the packaged
+  layout, then `AGENTBOX_APP_ROOT` (default `/opt/agentbox`).
+- **`code-interpreter` MCP died at startup** ("wheelhouse directory not found").
+  The wheelhouse is a Nix store path and nothing ever placed it under
+  `/var/lib/agentbox`. `AGENTBOX_KERNEL_WHEELHOUSE` now points at the store
+  path directly (only when `[skills.code_interpreter]` is enabled), and
+  `mcp.json` reads that variable instead of the never-set `KERNEL_WHEELHOUSE`.
+- **`codebase-memory-mcp` could not run**: since 0.7 the npm package is a
+  launcher whose postinstall downloads the Go binary into its own tree on first
+  run, which fails inside the read-only store. The flake now prefetches the
+  static `-portable` Linux release (sha256 from the upstream `checksums.txt`,
+  x86_64 + aarch64) and plants it via a new `extraFiles` hook in
+  `lib/npm-cli.nix`.
+- **`su` and `runuser` were both absent from the image**, so three boot steps
+  failed silently: the ontology PUSH cache refresh, the ADR-041 model-routing
+  projection, and every registry plugin install (`@claude-flow/security`,
+  `@claude-flow/neural` — hence `claude-flow doctor`'s "AIDefence not
+  loadable"). `util-linux` joins `basePackages` and the entrypoint routes all
+  privilege drops through one `run_as_devuser` helper (runuser → setpriv → su,
+  loud error otherwise). `gnutar` is added too — `tar` was missing from the
+  runtime PATH.
+- CHANGELOG: the previous entry had been prepended above the file preamble,
+  producing two `## [Unreleased]` headings; merged.
+
 ### Changed
+- Updated the pinned `prose-sanitiser` workspace to 0.1.1 and the container's
+  Rust toolchain from 1.97.0 to 1.98.1.
+- The in-container Solid service now boots `solid-pod-rs` from its native JSON
+  configuration and the `--mcp` CLI flag. Agentbox no longer injects `JSS_*`
+  variables or builds the `jss-v04` compatibility feature. The obsolete
+  `jss_v04_compat`, `rate_limit_per_sec`, and `quota_default_bytes` manifest
+  keys were removed; the latter two were not consumed by the pinned server.
+  The ontology publishing workflow now uses `SOLID_POD_PUBLIC_URL`, requires an
+  externally reachable origin, and targets port 8484. Archived migration records
+  and upstream licence attribution remain.
 - `dsp` now launches Claude Code in auto mode (`--permission-mode auto`); the
   legacy blanket bypass is `dspb` and is for isolated throwaway containers only.
   Claude Code 2.1.78+ stopped honouring bypass for `.git/` and `.claude/` writes
@@ -12,10 +55,6 @@
   tmux teammate panes stop blocking on prompts. Off switch: `AGENTBOX_AUTO_MODE=0`.
 - The Z.AI wrapper's `ZAI_DANGEROUS=true` escape hatch selects auto mode
   instead of the legacy bypass flag.
-
-All notable changes to agentbox are documented here. Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Dates are ISO-8601.
-
-## [Unreleased]
 
 ### Added
 
@@ -104,7 +143,7 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 - **`gui-tools-service` GPU sidecar + Blender/QGIS deconflation (2026-07-14).** New FHS (Arch) GPU sidecar (`gui-tools-sidecar/`, `docker-compose.gui-tools.yml`, `./agentbox.sh gui-tools <up|down|health|gpu|logs|status|rebuild|shell>`) that runs Blender (BlenderMCP addon on :9876, Siddharth Ahuja MIT) and QGIS (:9877) with real GPU acceleration via VirtualGL → GPU EGL. **Root cause it solves:** agentbox-main is nix-built and nix binaries do not search `/usr/lib`, where the nvidia-container-runtime injects the driver libs — so in-container Blender/QGIS get neither CUDA (`CUEW initialization failed` → silent CPU fallback) nor a GPU GL context. The FHS sidecar puts `/usr/lib` on the default loader path (the same reason the browser sidecar works). Deconflation: `scripts/qgis_mcp_standalone.py` changed from a local stub to a TCP proxy to the sidecar (mirrors `blender-mcp-proxy.js`, which already targeted `gui-tools-service:9876`); `flake.nix` QGIS/Blender supervisor blocks annotated accordingly. Interactive BlenderMCP now lives in the sidecar; agentbox-main keeps the **headless GPU batch** path via the new `skills/blender/tools/blender-batch.sh` (prepends `/usr/lib` so nix Blender finds `libcuda` — verified: Cycles then enumerates all 3 GPUs and renders on GPU). `blender` skill rebuilt as a meta-skill: `SKILL.md` router + 8 technique references (incl. `reference-scenes.md`, verified anatomy of 52 finished pro `.blend` files) + tools; SKILL-DIRECTORY entry and description updated for progressive discovery.
 
-- **RuvNet Brain corpus ingested into the sidecar (`[skills.ruvnet_brain]`).** The [ruvnet-brain](https://github.com/stuinfla/ruvnet-brain) knowledge base (~90k source chunks across 21+ RuvNet ecosystem repos: ruflo, ruvector, safla, agentdb, agentic-flow, sparc, …) is loaded INTO ruvector-postgres under the write-protected namespace `ruvnet-kb` — embedded client-side via Xinference `bge-small-en-v1.5` (384-dim, ADR-015), the same embedding space and `memory_entries` table as all other memory. The upstream retrieval stack (`@ruvector/rvf` file stores + `@xenova/transformers` in-process embedder) is deliberately NOT run — no second embedder, no second vector store. Pieces: `scripts/ruvnet-brain-ingest.mjs` (boot playbook, backgrounded after the Xinference readiness gate; reconciles against the latest upstream GitHub release every boot — content-addressed chunks mean only new/changed text is re-embedded, vanished chunks are pruned, and a `ruvnet/manifest` row stamps the corpus version + best-effort ADR-013 dataset URN); `mcp/ruvnet-brain` thin MCP wrapper (`makeNpmService` closure, deps: MCP SDK + `pg`; tools `search_ruvnet` with repo filter + ILIKE degradation, `ruvnet_brain_status`) — same data also reachable via `memory_search({namespace: "ruvnet-kb"})`; `config/hooks/ruvnet-brain-ground.cjs` UserPromptSubmit grounding hook (RuvNet-mention + classical-substitute anti-pattern detection); `skills/ruvnet-brain/SKILL.md`; the entrypoint appends `ruvnet-kb` to `RUVECTOR_PROTECTED_NAMESPACES` on the claude-flow env so agents cannot overwrite corpus rows via `memory_store`; operator playbook `./agentbox.sh ruvnet-brain <ingest [--force]|status|logs>`; named volume `ruvnet-brain-data` (download/extract scratch only). Enabled in the shipped manifest.
+- **RuvNet Brain corpus ingested into the sidecar (`[skills.ruvnet_brain]`).** The [ruvnet-brain](https://github.com/stuinfla/ruvnet-brain) knowledge base (~90k source chunks across 21+ RuvNet ecosystem repos: ruflo, ruvector, safla, agentdb, agentic-flow, sparc, …) is loaded INTO ruvector-postgres under the write-protected namespace `ruvnet-kb` — embedded client-side via Xinference `bge-small-en-v1.5` (384-dim, ADR-015), the same embedding space and `memory_entries` table as all other memory. The upstream retrieval stack (`@ruvector/rvf` file stores + `@xenova/transformers` in-process embedder) is deliberately NOT run — no second embedder, no second vector store. Pieces: `scripts/ruvnet-brain-ingest.mjs` (boot playbook, backgrounded after the Xinference readiness gate; reconciles against the latest upstream GitHub release every boot — content-addressed chunks mean only new/changed text is re-embedded, vanished chunks are pruned, and a `ruvnet/manifest` row stamps the corpus version + best-effort ADR-013 dataset URN); `mcp/ruvnet-brain` thin MCP wrapper (`makeNpmService` closure, deps: MCP SDK + `pg`; tools `search_ruvnet` with repo filter + ILIKE degradation, `ruvnet_brain_status`) — same data also reachable via `memory_search({namespace: "ruvnet-kb"})`; `config/hooks/ruvnet-brain-ground.cjs` UserPromptSubmit grounding hook (RuvNet-mention + classical-substitute anti-pattern detection); `skills/ruvnet-brain/SKILL.md`; the entrypoint appends `ruvnet-kb` to `RUVECTOR_PROTECTED_NAMESPACES` on the claude-flow env so agents cannot overwrite corpus rows via `memory_store`; operator playbook `./agentbox.sh ruvnet-brain <ingest [--force]|status|logs>`; workspace-backed transient staging. Enabled in the shipped manifest.
 - `/tmp` tmpfs raised 256M → 1G (routinely maxed out).
 
 - **RuVector-native memory + honest learning loop (PRD-018 / ADR-036 / DDD-016; amends ADR-015).** The governed memory MCP gains typed metadata (importance/tags/episodic-vs-semantic/TTL — the advertised-but-dropped `ttl` param finally honoured, `delete` finally implemented via the episodic sweep), DIY hybrid search (`ruvector_hybrid_score` + PG builtin FTS, namespace-scoped), a read-only `memory_health` diagnostic, and an OODA `memory_orient` cold-start bundle (`mcp/servers/lib/{ruvector-gates,memory-metadata,memory-hybrid,memory-health,aggregate-effectiveness}.js`). An honest learning loop records graded `(state, action, outcome, duration)` tuples into the previously-empty `trajectories`/`trajectory_steps` tables via `config/hooks/trajectory-recorder.cjs` (+ `lib/trajectory-util.cjs`; skip-on-undetermined outcomes, locally-measured durations, credential redaction hardened against URI-embedded/lowercase/concatenated secret forms) and distils Wilson-bounded, recency-decayed effectiveness aggregates that (gated) re-rank retrieval and surface as advisory routing hints. **All fifteen gates default OFF** under `[integrations.ruvector_external]` / `[memory_learning]` / `[memory_hygiene]` — the all-false manifest is verified byte-identical to prior behaviour (PRD-018 metric 1). The entrypoint injects the gate env into `.mcp.json` (reconciled every boot, connection fields included), registers the trajectory hook only when learning gates are on, and de-registers any ungoverned ruvector-mcp fork (ADR-036 D2). Validator gains advisory W066 (consumer-ahead-of-producer flag combos). ADR-015 amended: embeddings are `bge-small-en-v1.5` via Xinference (384-dim, client-side), not MiniLM/`generate_text_embedding()`.

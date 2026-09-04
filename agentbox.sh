@@ -44,7 +44,7 @@ Local lifecycle commands:
   ${GREEN}down${NC}             Stop the Docker stack [--volumes: also remove volumes (confirms)]
   ${GREEN}build${NC}            Build the Nix image [--variant runtime|desktop|full]
   ${GREEN}rebuild${NC}          Full dev-loop cycle: down + build + up --build
-  ${GREEN}update${NC}           Update flake inputs + npm CLI versions + resolve hashes [--check|--npm-only|--flake-only]
+  ${GREEN}update${NC}           Update flake inputs + CLI versions + resolve hashes [--check|--cli-only|--flake-only]
   ${GREEN}ruvector${NC}         Manage the ruvector-postgres memory sidecar [status|check|test|update|rollback|migrate-trajectories|repair-namespaces|backfill-embeddings|archive-legacy|aggregate-effectiveness|build-metadata-gin]
   ${GREEN}logs${NC}             Follow logs [service: supervisorctl tail, else compose logs]
   ${GREEN}shell${NC}            Open shell in container [profile: zellij layout in that profile]
@@ -80,7 +80,7 @@ Examples:
   $0 down --volumes         # Stop stack and remove volumes (destructive, confirms)
   $0 build --variant full   # Build the full image without loading it
   $0 rebuild                # down + build + up (dev-loop iteration)
-  $0 update                 # full update: flake inputs (nixpkgs etc.) + npm CLI versions + resolve hashes
+  $0 update                 # full update: flake inputs + Codex/npm CLI versions + resolve hashes
   $0 update --check         # report available updates without patching
   $0 ruvector check         # compare running sidecar + pinned image against Docker Hub
   $0 ruvector update        # gated sidecar update: dump + snapshot + candidate rehearsal + swap
@@ -95,7 +95,7 @@ Examples:
   $0 ruvnet-brain status    # corpus chunk count + ingest manifest (namespace ruvnet-kb)
   $0 ruvnet-brain logs      # follow the boot-time ingest log
   $0 update --flake-only    # only update flake inputs (nixpkgs, rust-overlay, etc.)
-  $0 update --npm-only      # only bump npm CLI versions in flake.nix
+  $0 update --cli-only      # only bump Codex + npm CLI versions and resolve hashes
   $0 logs                   # Follow all service logs
   $0 logs management-api    # Follow a specific service via supervisorctl
   $0 shell                  # bash in the agentbox container
@@ -690,6 +690,17 @@ _ensure_bridge_token() {
     return 0
 }
 
+_sha256_file() {
+    local target_file="$1"
+    if command -v sha256sum >/dev/null 2>&1; then
+        sha256sum "$target_file" | awk '{print $1}'
+    elif command -v shasum >/dev/null 2>&1; then
+        shasum -a 256 "$target_file" | awk '{print $1}'
+    else
+        return 1
+    fi
+}
+
 cmd_up() {
     local do_build=0
     local do_registry=0
@@ -738,6 +749,21 @@ cmd_up() {
                  || echo "runtime")
     local resolved_ref="${AGENTBOX_IMAGE_REF:-agentbox:runtime-${system_tag}}"
     echo -e "${CYAN}using image: ${resolved_ref}${NC}"
+
+    # Release correlation for rolling updates. Resolve these only after a
+    # requested build/load so the values describe the exact image Compose will
+    # start, then export them for compose interpolation and the management API.
+    local resolved_image_hash resolved_manifest_hash
+    resolved_image_hash=$(docker image inspect "$resolved_ref" --format '{{.Id}}' 2>/dev/null || true)
+    resolved_manifest_hash=$(_sha256_file "${SCRIPT_DIR}/agentbox.toml" 2>/dev/null || true)
+    if [[ -z "$resolved_image_hash" || -z "$resolved_manifest_hash" ]]; then
+        echo -e "${RED}ERROR: unable to resolve image/manifest hashes for ${resolved_ref}.${NC}"
+        exit 1
+    fi
+    export AGENTBOX_IMAGE_HASH="$resolved_image_hash"
+    export AGENTBOX_MANIFEST_CHECKSUM="sha256:${resolved_manifest_hash}"
+    echo -e "${CYAN}image hash: ${AGENTBOX_IMAGE_HASH}${NC}"
+    echo -e "${CYAN}manifest checksum: ${AGENTBOX_MANIFEST_CHECKSUM}${NC}"
 
     # Ensure the external network exists (standalone-first: no pre-existing
     # host deployment required). Silently succeeds if already present.
@@ -883,16 +909,17 @@ cmd_build() {
 }
 
 cmd_update() {
-    # Bump all dependencies: flake inputs (nixpkgs, rust-overlay, …) and npm
-    # CLI package versions in flake.nix, then resolve Nix hashes.
+    # Bump all dependencies: flake inputs (nixpkgs, rust-overlay, ...), Codex,
+    # and npm CLI package versions, then resolve Nix hashes.
     # This is intentionally a MANUAL step — auto-bumping on every build breaks
     # Nix reproducibility (same flake = same image). Call this from the
     # onboarding wizard or explicitly before a release rebuild.
     #
     # Usage:
-    #   ./agentbox.sh update                — full update: flake inputs + npm CLIs + hashes
+    #   ./agentbox.sh update                — full update: flake inputs + Codex/npm CLIs + hashes
     #   ./agentbox.sh update --check        — report available updates, do not patch
-    #   ./agentbox.sh update --npm-only     — skip flake input update, only bump npm CLIs
+    #   ./agentbox.sh update --cli-only     — skip flake inputs; bump Codex + npm CLIs
+    #   ./agentbox.sh update --npm-only     — compatibility alias for --cli-only
     #   ./agentbox.sh update --flake-only   — only update flake inputs (nixpkgs etc.)
 
     local check_only=0
@@ -901,9 +928,9 @@ cmd_update() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --check)      check_only=1 ;;
-            --npm-only)   skip_flake=1 ;;
+            --cli-only|--npm-only) skip_flake=1 ;;
             --flake-only) skip_npm=1 ;;
-            -h|--help)    echo "Usage: $0 update [--check] [--npm-only] [--flake-only]"; return 0 ;;
+            -h|--help)    echo "Usage: $0 update [--check] [--cli-only] [--flake-only]"; return 0 ;;
         esac
         shift
     done
@@ -928,7 +955,7 @@ cmd_update() {
         if nix flake update --flake "${SCRIPT_DIR}"; then
             echo -e "${GREEN}  flake.lock updated.${NC}"
         else
-            echo -e "${RED}  nix flake update failed — continuing with npm CLI bumps.${NC}"
+            echo -e "${RED}  nix flake update failed — continuing with CLI bumps.${NC}"
         fi
     fi
 
@@ -940,12 +967,17 @@ cmd_update() {
         return 0
     fi
 
-    # ── Phase 2: npm CLI version bumps ──
+    # ── Phase 2: Codex release + architecture hashes ──
+    echo ""
+    echo -e "${CYAN}Updating Codex CLI and resolving release hashes...${NC}"
+    bash "${SCRIPT_DIR}/scripts/bump-codex-version.sh"
+
+    # ── Phase 3: npm CLI version bumps ──
     echo ""
     echo -e "${CYAN}Bumping npm CLI versions in flake.nix...${NC}"
     bash "${SCRIPT_DIR}/scripts/bump-npm-cli-versions.sh"
 
-    # ── Phase 3: hash resolution ──
+    # ── Phase 4: npm/FOD hash resolution ──
     if grep -q 'lib\.fakeHash' "${SCRIPT_DIR}/flake.nix" 2>/dev/null; then
         echo ""
         echo -e "${CYAN}Resolving npm CLI hashes (iterative build + patch)...${NC}"
@@ -959,7 +991,7 @@ cmd_update() {
     echo ""
     echo -e "${GREEN}Done. Review changes and commit before next build.${NC}"
     echo "  git diff flake.lock flake.nix lib/"
-    echo "  git add flake.lock flake.nix lib/ && git commit -m 'chore(deps): update flake inputs + bump npm CLIs'"
+    echo "  git add flake.lock flake.nix lib/ && git commit -m 'chore(deps): update flake inputs + bump CLIs'"
 }
 
 cmd_ruvector() {

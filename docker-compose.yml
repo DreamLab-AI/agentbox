@@ -81,6 +81,8 @@ services:
       - VISIONCLAW_AGENT_KEY=${VISIONCLAW_AGENT_KEY:-}
       - NOSTR_RELAYS=${NOSTR_RELAYS:-wss://relay.damus.io,wss://relay.primal.net}
       - AGENTBOX_AGENT_ID=${AGENTBOX_AGENT_ID:-agentbox-core}
+      - AGENTBOX_IMAGE_HASH=${AGENTBOX_IMAGE_HASH:-}
+      - AGENTBOX_MANIFEST_CHECKSUM=${AGENTBOX_MANIFEST_CHECKSUM:-}
       - AGENTBOX_METRICS_PORT=9091
       - AGENTBOX_OTLP_ENDPOINT=
       - AGENTBOX_LOG_LEVEL=info
@@ -110,17 +112,20 @@ services:
       - SETGID
 
     tmpfs:
-      - /tmp:mode=1777,size=256M
+      # 1G: linker/rustc scratch during Rust builds filled the old 256M ceiling
+      # and caused Bus errors; 4× headroom aligns with the flake.nix baseline.
+      - /tmp:mode=1777,size=1G
       - /run:mode=755,size=64M,uid=1000,gid=1000
       - /var/run:mode=755,size=16M,uid=1000,gid=1000
       - /var/log:mode=755,size=128M,uid=1000,gid=1000
       - /var/log/supervisor:mode=755,size=64M,uid=1000,gid=1000
       - /var/lib/https-bridge:mode=755,size=8M,uid=1000,gid=1000
-      # 1G: opf-router's HF pull (openai/privacy-filter) filled the old 256M
-      # ceiling at boot and starved every other tool's cache (uv/pip/npm).
-      # NB the full BF16 weights are ~3G — local-cpu mode still needs HF_HOME
-      # on disk-backed storage to actually load; 1G just stops the collateral.
+      # General ephemeral XDG cache. The ~2.8G privacy model has its own
+      # persistent child volume at .cache/huggingface below.
       - /home/devuser/.cache:mode=755,size=1G,uid=1000,gid=1000
+      # Legacy native npm installers (notably sharp) still hard-code ~/.npm
+      # even when NPM_CONFIG_CACHE points at the writable workspace.
+      - /home/devuser/.npm:mode=755,size=256M,uid=1000,gid=1000
       - /home/devuser/.local:mode=755,size=128M,uid=1000,gid=1000
       - /home/devuser/.config:mode=755,size=64M,uid=1000,gid=1000
       - /home/devuser/.claude-flow:mode=755,size=64M,uid=1000,gid=1000
@@ -145,6 +150,7 @@ services:
       - agentbox-secrets:/var/lib/agentbox/secrets
       - code-harness-data:/var/lib/agentbox/code-harness
       - agentbox-events:/var/lib/agentbox/events
+      - hf-cache:/home/devuser/.cache/huggingface
       - codeserver-config:/home/devuser/.local/share/code-server
       - consultations-data:/var/lib/agentbox/consultations
       - nostr-relay-data:/var/lib/nostr-relay
@@ -169,6 +175,8 @@ volumes:
     name: agentbox-code-harness-data
   agentbox-events:
     name: agentbox-events
+  hf-cache:
+    name: agentbox-hf-cache
   codeserver-config:
     name: agentbox-codeserver-config
   consultations-data:

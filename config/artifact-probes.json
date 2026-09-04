@@ -45,7 +45,7 @@
     "capability_id": "native-sqlite-backend",
     "entrypoint_path": "@NIX_STORE_BIN@/claude-flow",
     "required_for_readiness": false,
-    "probe_command": "d=$(grep -oE '/nix/store/[^[:space:]]+/lib/claude-flow-cli' \"$(readlink -f \"$(command -v claude-flow)\")\" | head -1); [ -n \"$d\" ] && ! find \"$d\" -type d -name better-sqlite3 -exec sh -c 'test ! -e \"$1/build/Release/better_sqlite3.node\"' _ {} \\; -print | grep -q ."
+    "probe_command": "d=$(readlink -f \"$(command -v claude-flow)\" | sed -n 's#^\\(/nix/store/[^/]*\\)/.*#\\1#p'); [ -n \"$d\" ] && find \"$d\" -type f -path '*/better-sqlite3/build/Release/better_sqlite3.node' -print -quit | grep -q ."
   },
   {
     "capability_id": "self-learning-hook-adapter",
@@ -85,9 +85,9 @@
   },
   {
     "capability_id": "code-interpreter-wheelhouse",
-    "entrypoint_path": "/var/lib/agentbox/code-interpreter-wheelhouse",
+    "entrypoint_path": "${AGENTBOX_KERNEL_WHEELHOUSE:-/var/lib/agentbox/code-interpreter-wheelhouse}",
     "required_for_readiness": false,
-    "probe_command": "test -f /var/lib/agentbox/code-interpreter-wheelhouse/.agentbox-wheelhouse-version"
+    "probe_command": "test -f \"${AGENTBOX_KERNEL_WHEELHOUSE:-/var/lib/agentbox/code-interpreter-wheelhouse}/.agentbox-wheelhouse-version\""
   },
   {
     "capability_id": "aci-shell-mcp",

@@ -60,9 +60,9 @@ latest_github_tag() {
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
-section "Codex Rust CLI (github.com/openai/codex)"
+section "Codex Rust CLI (@openai/codex)"
 pinned=$(grep -oE 'codexVersion\s*=\s*"[^"]+"' lib/codex-binary.nix | head -1 | sed 's/.*"\(.*\)"/\1/')
-latest=$(latest_gh_release "openai/codex" "rust-v")
+latest=$(latest_npm "@openai/codex")
 print_row "openai/codex" "${pinned:-???}" "$latest"
 
 section "Antigravity CLI (google-antigravity/antigravity-cli)"

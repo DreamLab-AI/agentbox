@@ -1,5 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "_role": "CANONICAL BOOT-PROJECTION SOURCE — config/entrypoint-unified.sh projects managed entries from this registry into the workspace .mcp.json. Keep shared server wiring mirrored with mcp/mcp.json.",
   "version": "2.0.0",
   "description": "MCP Server Registry for Agentic Workstation - Modernized Skills",
   "mcpServers": {
@@ -41,7 +42,7 @@
         "KERNEL_IDLE_TIMEOUT_S": "${KERNEL_IDLE_TIMEOUT_S:-1800}",
         "KERNEL_MAX_MEMORY_MB": "${KERNEL_MAX_MEMORY_MB:-512}",
         "KERNEL_ALLOW_PIP_INSTALL": "${KERNEL_ALLOW_PIP_INSTALL:-false}",
-        "KERNEL_WHEELHOUSE": "${KERNEL_WHEELHOUSE:-/var/lib/agentbox/code-interpreter-wheelhouse}"
+        "KERNEL_WHEELHOUSE": "${AGENTBOX_KERNEL_WHEELHOUSE:-/var/lib/agentbox/code-interpreter-wheelhouse}"
       },
       "description": "Persistent Python code-interpreter MCP — 6 tools (kernel.exec/list_vars/inspect/reset/interrupt/install_pkg). One kernel per session, lazy spawn, idle watchdog. Wheelhouse-only package install (no PyPI). Trace-as-reward verification signal for ExpeL + Voyager.",
       "protocol": "stdio",
@@ -477,7 +478,7 @@
       "args": [],
       "type": "stdio",
       "env": {
-        "SEARCH_PROVIDER": "${SEARCH_PROVIDER:-google}",
+        "SEARCH_PROVIDER": "${SEARCH_PROVIDER:-duckduckgo}",
         "SEARCH_ROUTING": "${SEARCH_ROUTING:-}",
         "GOOGLE_CUSTOM_SEARCH_API_KEY": "${GOOGLE_CUSTOM_SEARCH_API_KEY:-}",
         "GOOGLE_CUSTOM_SEARCH_ID": "${GOOGLE_CUSTOM_SEARCH_ID:-}",

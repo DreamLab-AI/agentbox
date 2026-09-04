@@ -278,7 +278,7 @@ No manual hash editing is required.
 |---|---|---|---|
 | `SOLID_ADMIN_KEY` | `.env.solid-pods` / host env | `solid-pod-rs-server` (supervisord), `management-api` | PSK for `/_admin/provision` |
 | `SOLID_ALLOWED_ORIGINS` | `agentbox.toml` `allowed_origins` | `solid-pod-rs-server` | CORS allowlist |
-| `JSS_MCP` | `agentbox.toml` `enable_mcp` → supervisord env | `solid-pod-rs-server` | Enable the MCP tool surface at `POST /mcp` (off by default) |
+| `--mcp` | `agentbox.toml` `enable_mcp` → launcher argument | `solid-pod-rs-server` | Enable the MCP tool surface at `POST /mcp` (off by default) |
 | `SOLID_POD_BASE_URL` | supervisord env | `management-api` | Internal URL to solid-pod-rs |
 | `SOLID_POD_PUBLIC_URL` | `.env.solid-pods` | `management-api` (pod_url in responses) | Public tunnel URL |
 | `CLOUDFLARE_TUNNEL_TOKEN` | `.env.solid-pods` | `cloudflared-pod` container | CF Tunnel auth |
@@ -347,11 +347,11 @@ graph LR
 | `GET` | `/_git/{pk}/diff` | NIP-98 | Unstaged diff |
 | `GET` | `/.well-known/apps` | public | App manifest aggregation |
 
-### MCP tool surface (solid-pod-rs-server, JSS 0.0.204 re-sync)
+### MCP tool surface (solid-pod-rs-server)
 
 `POST /mcp` exposes the pod as a Model Context Protocol 2025-03-26 tool surface
 over Streamable HTTP (JSON-RPC 2.0; SSE upgrade for `subscribe`). Off by default;
-enable with `enable_mcp = true` (→ `JSS_MCP=1`). Identity reuses the pod's NIP-98
+enable with `enable_mcp = true` (→ `--mcp`). Identity reuses the pod's NIP-98
 verifier, so every tool call gets the same WAC treatment as the REST equivalent.
 
 | Method | Path | Auth | Purpose |
@@ -381,7 +381,7 @@ single NIP-98 token (`*`-method wildcard) injected as `http.extraHeader`. The
 |---|---|---|
 | `solid-pod-rs` | `b81ce9f` | alpha.15 + JSS 0.0.204 re-sync: MCP server (`/mcp`, 16 tools), `install` subcommand + NIP-98 minting, RDF content negotiation on GET, mime-types DB fallback (#533), symlink listing fix (#531), NIP-01 raw-event verify, GitLenient git-push match policy. (Earlier: `0c5fa42` = alpha.15 CORS allowlist, `/_admin/provision`, git control API) |
 | `nostr-rust-forum` | `8d31f3a` (rc11) | `NativePod` config schema, second pod card, admin tab, auth-worker relay. Pins published alpha.15 (`core` feature, crates.io) — unaffected by the re-sync (additive, server-side) |
-| `agentbox` | this PR | `lib/solid-pod-rs.nix` rev → `b81ce9f` + vendored Cargo.lock (`mime_guess`, `include_dir`), `install` in `defaultFeatures`, `JSS_MCP` flake env wiring, `enable_mcp` toml toggle |
+| `agentbox` | this PR | `lib/solid-pod-rs.nix` rev → `b81ce9f` + vendored Cargo.lock (`mime_guess`, `include_dir`), `install` in `defaultFeatures`, native config launcher, `enable_mcp` toml toggle |
 | `dreamlab-ai-website` | `forum-config` | `[native_pod]` block wired, `deploy.yml` `NATIVE_POD_URL` env |
 
 ### Related ADRs

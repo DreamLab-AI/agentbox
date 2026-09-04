@@ -252,9 +252,6 @@ enable_did_nostr       = true
 enable_webhook_signing = true
 enable_rate_limit      = true
 enable_quota           = true
-jss_v04_compat         = true
-rate_limit_per_sec     = 20
-quota_default_bytes    = 10737418240
 
 [integrations.ruvector_external]
 enabled = true

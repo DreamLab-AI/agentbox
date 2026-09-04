@@ -52,11 +52,12 @@ for i in "${!CAPABILITY_IDS[@]}"; do
   required="${REQUIRED_FLAGS[$i]}"
   probe_cmd="${PROBE_COMMANDS[$i]}"
 
-  # Skip probes that reference path templates not yet substituted by flake.nix
-  # (indicated by the @...@ placeholder pattern). These are optional pre-packaged
-  # CLIs whose store paths are injected at build time; if the placeholder survived
-  # into the runtime image it means the feature was disabled at build time.
-  if [[ "$probe_cmd" == *"@"*"@"* ]] || [[ "${ENTRYPOINTS[$i]}" == *"@"*"@"* ]]; then
+  # Only an unresolved placeholder in the executable probe itself makes the
+  # probe unrunnable. entrypoint_path is descriptive metadata and several CLI
+  # entries deliberately retain @NIX_STORE_BIN@ there while their PATH-based
+  # probe_command is fully executable. Skipping on the metadata field hid the
+  # broken codebase-memory launcher in the 2026-09-03 image.
+  if [[ "$probe_cmd" == *"@"*"@"* ]]; then
     if [ "$required" = "true" ]; then
       _log "error" "MissingArtifactDetected" \
         "capability=${cap_id}" \

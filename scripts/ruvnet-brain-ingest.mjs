@@ -48,10 +48,10 @@ const RELEASE_URL = process.env.RUVNET_BRAIN_RELEASE_URL
   || 'https://github.com/stuinfla/ruvnet-brain/releases/latest/download/ruvnet-brain.zip';
 // Transient download/extract staging only — the corpus itself is persisted in
 // ruvector-postgres, so this needs a writable path, not a persistent volume.
-// Default under the devuser cache root (always writable, same root as HF_HOME);
-// the prior /var/lib/agentbox/ruvnet-brain default was a read-only-rootfs path
-// whose named volume did not mount, hard-failing the ingest with EROFS/ENOENT.
-const STAGING     = process.env.RUVNET_BRAIN_STAGING || '/home/devuser/.cache/ruvnet-brain';
+// Default under the persistent workspace volume. The general cache root is a
+// bounded tmpfs and /var/lib/agentbox is read-only except for named submounts;
+// neither can safely hold the roughly 512 MiB zip plus extraction scratch.
+const STAGING     = process.env.RUVNET_BRAIN_STAGING || '/home/devuser/workspace/.tmp/ruvnet-brain-staging';
 const BATCH       = Math.max(8, Math.min(Number(process.env.RUVNET_BRAIN_EMBED_BATCH) || 32, 128));
 const EMBED_TRUNC = 2000; // chars fed to the embedder (full text kept in value)
 
@@ -192,6 +192,53 @@ function discoverVersion(url) {
   });
 }
 
+// GitHub can mark a release "latest" before its large corpus asset finishes
+// uploading (v4.3.1 was observed with zero assets). The convenience
+// /latest/download URL then returns 404 even though the previous complete
+// release remains usable. Resolve that URL through the releases API and pick
+// the newest release that actually contains the requested asset. This keeps
+// version reconciliation tied to downloadable bytes instead of a bare tag.
+async function resolveRelease(url) {
+  const pinned = url.match(/\/releases\/download\/([^/]+)\//);
+  if (pinned) return { url, version: decodeURIComponent(pinned[1]) };
+
+  const latest = url.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+)\/releases\/latest\/download\/([^/?#]+)(?:[?#].*)?$/);
+  if (latest) {
+    const [, owner, repo, encodedAsset] = latest;
+    const assetName = decodeURIComponent(encodedAsset);
+    try {
+      const releases = await httpJson(
+        `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/releases?per_page=20`,
+        {
+          timeout: 30000,
+          headers: {
+            Accept: 'application/vnd.github+json',
+            'User-Agent': 'agentbox-ruvnet-brain-ingest',
+            'X-GitHub-Api-Version': '2022-11-28',
+          },
+        },
+      );
+      for (const release of Array.isArray(releases) ? releases : []) {
+        if (release?.draft) continue;
+        const asset = Array.isArray(release?.assets)
+          ? release.assets.find((candidate) => candidate?.name === assetName)
+          : null;
+        if (!asset?.browser_download_url || !release?.tag_name) continue;
+        if (release.tag_name !== releases[0]?.tag_name) {
+          log(`WARN: latest GitHub release ${releases[0]?.tag_name || 'unknown'} has no ${assetName}; using newest complete release ${release.tag_name}`);
+        }
+        return { url: asset.browser_download_url, version: release.tag_name };
+      }
+      log(`WARN: no downloadable ${assetName} found in the 20 newest GitHub releases`);
+      return { url: null, version: null };
+    } catch (error) {
+      log(`WARN: GitHub release API lookup failed (${error.message}); falling back to the configured URL`);
+    }
+  }
+
+  return { url, version: await discoverVersion(url) };
+}
+
 // ── SQL helpers (mirror ruvector-mcp.cjs conventions) ────────────────────────
 const vecToSql = (arr) => '[' + arr.join(',') + ']';
 const entryId  = (key) => `${SOURCE_TYPE}:${NAMESPACE}:${key}`;
@@ -268,7 +315,8 @@ async function main() {
   // 1. Version reconciliation — the every-boot fast path. A manifest that
   //    recorded failures does NOT no-op: the incremental re-run only embeds
   //    the missing keys, healing the gap without a full --force re-embed.
-  const remoteVersion = await discoverVersion(RELEASE_URL);
+  const release = await resolveRelease(RELEASE_URL);
+  const remoteVersion = release.version;
   const manifest = await manifestRow();
   const existingCount = await corpusCount();
   const priorFailures = (manifest?.failed_chunks || 0) + (manifest?.failed_batches || 0);
@@ -280,9 +328,10 @@ async function main() {
     log(`corpus at ${remoteVersion} but manifest records ${priorFailures} failed batch(es)/chunk(s) — re-running incremental ingest to heal`);
   }
   if (!remoteVersion && !FORCE && existingCount > 0) {
-    log('release version undiscoverable (offline?) and corpus non-empty — keeping current corpus');
+    log('complete release undiscoverable (offline or upstream asset incomplete?) and corpus non-empty — keeping current corpus');
     await pool.end(); return;
   }
+  if (!release.url) die('no complete downloadable corpus release found');
   const version = remoteVersion || `unversioned-${new Date().toISOString().slice(0, 10)}`;
   log(`ingesting corpus version ${version} (have: ${manifest?.corpus_version || 'none'}, ${existingCount} chunks)${FORCE ? ' [--force]' : ''}`);
 
@@ -296,9 +345,9 @@ async function main() {
   const extractDir = join(STAGING, 'passages');
   rmSync(extractDir, { recursive: true, force: true });
   mkdirSync(extractDir, { recursive: true });
-  log(`downloading ${RELEASE_URL} → ${zipPath} (hundreds of MB, be patient)`);
-  execFileSync('curl', ['-fSL', '--retry', '3', '--max-time', '1800', '-o', zipPath, RELEASE_URL], { stdio: ['ignore', 'ignore', 'inherit'] });
-  verifyDigest(zipPath, RELEASE_URL);
+  log(`downloading ${release.url} → ${zipPath} (hundreds of MB, be patient)`);
+  execFileSync('curl', ['-fSL', '--retry', '3', '--max-time', '1800', '-o', zipPath, release.url], { stdio: ['ignore', 'ignore', 'inherit'] });
+  verifyDigest(zipPath, release.url);
   log('extracting *.passages.jsonl');
   try {
     // Exclude macOS AppleDouble junk (__MACOSX/, ._*) — upstream zips are built

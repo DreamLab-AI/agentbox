@@ -464,7 +464,7 @@ storage_root           = "/var/lib/solid"
 # Public base URL — the Cloudflare Tunnel hostname when the native pod mesh
 # is active. Baked into the image as the SOLID_POD_PUBLIC_URL env default at
 # nix build time; setting SOLID_POD_PUBLIC_URL in the root .env overrides it
-# at runtime (compose env_file → supervisord %(ENV_…)s → JSS_BASE_URL).
+# at runtime before the native solid-pod-rs config is loaded.
 base_url               = "https://pods-native.dreamlab-ai.com"
 enable_oidc            = false
 enable_schnorr_verify  = true
@@ -472,10 +472,10 @@ enable_dpop_cache      = false
 notifications          = "websocket"             # websocket | webhook | off
 log_level              = "info"
 
-# MCP server (JSS 0.0.204 re-sync, solid-pod-rs b81ce9f). Exposes the pod as a
+# MCP server supplied by solid-pod-rs. Exposes the pod as a
 # Model Context Protocol 2025-03-26 tool surface at POST /mcp (16 tools, same
 # NIP-98 + WAC treatment as REST). Always compiled; off unless enabled here.
-enable_mcp             = false    # → JSS_MCP=1 on the [program:solid-pod] env
+enable_mcp             = false    # → --mcp on the [program:solid-pod] command
 
 # Sprint 5-9 features absorbed from upstream main — all on by default because
 # they either sharpen sovereign-stack invariants (did_nostr) or close P0
@@ -491,9 +491,6 @@ enable_did_nostr       = true     # did:nostr:<pubkey> → Solid WebID resolver 
 enable_webhook_signing = true     # RFC 9421 Ed25519 outbound notification signing
 enable_rate_limit      = true     # sliding-window LRU per-connection guard
 enable_quota           = true     # per-pod storage quota via .quota.json sidecar
-jss_v04_compat         = true     # preserve JavaScriptSolidServer v0.4 semantics
-rate_limit_per_sec     = 20       # per-connection ceiling when enable_rate_limit
-quota_default_bytes    = 10737418240  # 10 GiB per pod when enable_quota
 
 # Native pod mesh (alpha.15) — CORS allowlist + PSK admin provisioning.
 # allowed_origins: comma-separated list; empty = wildcard (dev only).
@@ -617,7 +614,7 @@ namespace = "ruvnet-kb"
 auto_ingest = true                  # reconcile corpus at boot (backgrounded)
 grounding_hook = true               # register UserPromptSubmit grounding hook
 kb_release_url = "https://github.com/stuinfla/ruvnet-brain/releases/latest/download/ruvnet-brain.zip"
-staging_path = "/var/lib/agentbox/ruvnet-brain"   # download/extract scratch (named volume)
+staging_path = "/home/devuser/workspace/.tmp/ruvnet-brain-staging" # transient scratch on workspace volume
 embed_batch = 32                    # passages per Xinference /v1/embeddings call
 
 [skills.tree_search_coder]

@@ -145,13 +145,12 @@ fn minimal_state_survives_a_write_read_cycle() {
 
     // Every boolean must come back as a bool, never a string.
     //
-    // The state fixture inherited from the pytest suite carries two keys the
-    // reader no longer emits — `toolchains.gemini_cli` (renamed to
-    // `antigravity_cli`) and `adapters.pods = "local-jss"` (the slot was
-    // retired on 2026-04-25). The Python assertion indexed `recovered[field]`
-    // unconditionally and therefore raised `KeyError` on the first of them, so
-    // this test was already failing on main before the port. Skipping keys the
-    // reader does not produce is what the assertion always meant.
+    // The state fixture inherited from the pytest suite carries one key the
+    // reader no longer emits: `toolchains.gemini_cli` (renamed to
+    // `antigravity_cli`). The Python assertion indexed `recovered[field]`
+    // unconditionally and therefore raised `KeyError`, so this test was already
+    // failing on main before the port. Skipping keys the reader does not produce
+    // is what the assertion always meant.
     let mut checked = 0usize;
     for (field, expected) in state.as_object().unwrap() {
         if expected.is_boolean() && !recovered[field].is_null() {

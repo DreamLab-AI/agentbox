@@ -2,7 +2,7 @@
   "federation.mode": "standalone",
   "federation.external_url": "",
   "adapters.beads": "local-sqlite",
-  "adapters.pods": "local-jss",
+  "adapters.pods": "local-solid-rs",
   "adapters.memory": "embedded-ruvector",
   "adapters.events": "local-jsonl",
   "adapters.orchestrator": "local-process-manager",

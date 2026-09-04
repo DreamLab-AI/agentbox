@@ -33,6 +33,12 @@ let
     filter = path: _type: baseNameOf (toString path) != "target";
   };
 
+  # `skill-tools` embeds the canonical ui-ux-pro-max CSV corpus with
+  # include_str! paths that reach outside the crate when built from the repo.
+  # The clean crate source above is isolated in the Nix sandbox, so stage the
+  # same tracked corpus inside the build tree during patchPhase.
+  uiuxDataSrc = lib.cleanSource ../skills/ui-ux-pro-max-skill/src/ui-ux-pro-max/data;
+
 in
 pkgs.rustPlatform.buildRustPackage {
   pname = "skill-tools";
@@ -40,6 +46,20 @@ pkgs.rustPlatform.buildRustPackage {
   src = skillToolsSrc;
 
   cargoLock.lockFile = ../services/skill-tools/Cargo.lock;
+
+  postPatch = ''
+    mkdir -p uiux-data
+    cp -R ${uiuxDataSrc}/. uiux-data/
+    substituteInPlace src/uiux/data.rs \
+      --replace-fail \
+        '../../../../skills/ui-ux-pro-max-skill/src/ui-ux-pro-max/data/' \
+        '../../uiux-data/'
+  '';
+
+  # Two documented fallback paths still invoke Python scripts. Keep Python
+  # build-time-only so their process contract is tested without adding it to
+  # the skill-tools runtime closure.
+  nativeCheckInputs = [ pkgs.python3 ];
 
   # Tests are hermetic: BM25 ranking equivalence against a fixed corpus, map
   # generation, and the docs-alignment checkers over in-test fixtures. Link

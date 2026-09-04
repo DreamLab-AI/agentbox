@@ -321,7 +321,7 @@ Data feed: the report's §6 exporter (`LEDGER.md → ledger.json`, currently non
 Three defects of the exact species ADR-0002 names (documented capability, dead execution path), found by *using* the container's own capabilities:
 
 1. `agentbox.sh` argument-parser whitelist was missing `ruvnet-brain` — the command existed in the dispatcher and help text but was unreachable. Fixed (whitelist line).
-2. The baked image's `ruvnet-brain-ingest.mjs` stages to read-only `/var/lib` (its repo copy documents this trap but the image lags); wrapper now pins `RUVNET_BRAIN_STAGING`.
+2. RuvNet Brain staging is pinned to the writable workspace volume; neither read-only `/var/lib` nor the bounded general cache is used.
 3. The repo default staging (`~/.cache`) is a full 256 MB tmpfs in this deployment — can never hold the ~512 MB corpus. Staging re-pointed to the workspace volume (567 GB free).
 
 These strengthen the report's §4.4 position: the orchestrator's `controlPlaneProbes` per nominated project should include agentbox's own capability commands, so liveness rot is caught by the nightly cycle rather than by a human tripping over it.

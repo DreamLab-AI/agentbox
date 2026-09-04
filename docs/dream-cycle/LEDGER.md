@@ -13,3 +13,5 @@
 | 2026-09-01 | hooks-pipeline | Given the 2026-08-28 conversion of evaluator entrypoints to checked-in scripts ( | NONE | NONE | yes | ACCEPT |  | 36eaf8b908f7 |  |
 | 2026-09-01 | ledger-signals | fate reconciliation (operator): PR #3 was merged by human 2026-08-29T13:56Z (merge commit `55e96ea`), 16 minutes after opening — the annexe has no GitHub read so nights 08-30..09-01 carried the stale draft-open state forward; recording the terminal fate so the pending-merge queue clears | NONE | NONE | no | INCONCLUSIVE |  | operator | #3:MERGED |
 | 2026-09-02 | sovereign-mesh | Given the per-night clone at `~/dream-annexe/2026-09-02-agentbox-p303/agentbox`  | NONE | NONE | yes | ACCEPT |  | 5c6385435532 |  |
+| 2026-09-03 | ontology-monitor | Given the annexe clone of DreamLab-AI/agentbox at `ed45bfe` with the 2026-08-28  | NONE | NONE | yes | ACCEPT |  | d8ee927e87ae |  |
+| 2026-09-04 | dream-engine | Given the annexe clone of DreamLab-AI/agentbox at `e6e07da` with sibling repos a | NONE | NONE | yes | ACCEPT |  | 405e8d13da9f |  |

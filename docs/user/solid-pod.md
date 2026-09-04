@@ -26,12 +26,11 @@ durability (DDD-003 invariants I01 and I08) did not hold. **solid-pod-rs
 closes that gap.** It ships the full Solid 0.11 surface the existing
 client (`management-api/adapters/pods/local-solid-rs.js`) has expected since day one.
 
-solid-pod-rs is also the home of the JSS Rust crates the team built in
-earlier sprints (did:nostr, NIP-98 Schnorr, webhook signing, rate-limit,
-quota, JSS v0.4 wire compat). Those features are not a separate codebase
-to maintain — they ship as Cargo features on this single binary. The
-`JSS_*` env-var prefix you'll see in `docker exec agentbox env` is
-deliberate backwards compatibility for anyone who learned the older API.
+The did:nostr resolver, NIP-98 Schnorr verification, webhook signing,
+rate limiting and quota support are native Cargo features on this single
+Rust binary. Agentbox selects them at build time from the manifest and boots
+the server with its native JSON configuration; no legacy server environment
+surface is injected into the container.
 
 ## What you get
 
@@ -48,8 +47,8 @@ deliberate backwards compatibility for anyone who learned the older API.
 | Per-pod storage quota (Sprint 8) | `.quota.json` sidecar with atomic writes; 413 on overflow |
 | Solid-OIDC with DPoP | optional feature gate |
 | Solid Notifications 0.2 | WebSocket + Webhook channels |
-| MCP tool surface (JSS 0.0.204) | `POST /mcp` — 16 Model Context Protocol tools, NIP-98 + WAC gated; off unless `enable_mcp = true` |
-| `install` subcommand (JSS 0.0.204) | `solid-pod-rs-server install <app>` — push Solid apps into a pod over git, NIP-98-authenticated |
+| MCP tool surface | `POST /mcp` — 16 Model Context Protocol tools, NIP-98 + WAC gated; off unless `enable_mcp = true` |
+| `install` subcommand | `solid-pod-rs-server install <app>` — push Solid apps into a pod over git, NIP-98-authenticated |
 | `/.well-known/solid` + WebFinger JRD | standards-compliant discovery |
 | Storage backends | filesystem (atomic rename), memory (tests), S3/MinIO/R2/B2 |
 | Strong ETags | SHA-256; If-Match, If-None-Match, range requests |
@@ -104,10 +103,6 @@ enable_did_nostr       = true                # did:nostr:<npub> → WebID resolv
 enable_webhook_signing = true                # RFC 9421 Ed25519 on outbound webhooks
 enable_rate_limit      = true                # sliding-window LRU
 enable_quota           = true                # per-pod storage ceiling
-jss_v04_compat         = true                # JSS v0.4 config/behaviour compat
-rate_limit_per_sec     = 20                  # per-connection token-bucket ceiling
-quota_default_bytes    = 10737418240         # 10 GiB default quota per pod
-# JSS 0.0.204 re-sync (solid-pod-rs b81ce9f):
 enable_mcp             = false               # MCP tool surface at POST /mcp (16 tools)
 
 [security.exceptions.solid-pod-rs]

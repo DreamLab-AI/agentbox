@@ -81,9 +81,9 @@ adjust the band automatically; surface it.
 
 Deployment traps (all hit and fixed 2026-08-14 — do not regress):
 - `RUVNET_BRAIN_STAGING` must point at the **workspace volume**
-  (`/home/devuser/workspace/.tmp/ruvnet-brain-staging`, set by `agentbox.sh`):
-  the baked image's script default (`/var/lib/agentbox/...`) is read-only
-  rootfs, and `~/.cache` is a 256 MB tmpfs — both fail on the ~512 MB zip.
+  (`/home/devuser/workspace/.tmp/ruvnet-brain-staging`, set by the manifest
+  and `agentbox.sh`): `/var/lib/agentbox/...` is read-only rootfs and the
+  general `~/.cache` mount is bounded — neither is valid corpus scratch.
 - `ruvnet-brain` must be in `agentbox.sh`'s argument-parser whitelist as well
   as its dispatcher (it was dispatcher-only, i.e. unreachable, until 2026-08-14).
 - The rebuild is done via `docker exec ruvector-postgres psql` — the agentbox

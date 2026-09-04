@@ -80,7 +80,7 @@
 import http from 'node:http';
 import net from 'node:net';
 import crypto from 'node:crypto';
-import { readFileSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve as pathResolve } from 'node:path';
@@ -364,7 +364,10 @@ function loadNostrBridge() {
     // Baked image layout (Builder A bakes proxy to /opt/agentbox/nip98-proxy).
     '/opt/agentbox/mcp/servers/nostr-bridge.js',
     '/opt/agentbox/management-api/../mcp/servers/nostr-bridge.js',
-  ].filter(Boolean);
+  // In the immutable image __dirname sits below a Nix-store app root, so the
+  // source-layout relative candidate is expected not to exist. Skip absent
+  // candidates rather than logging a misleading module-load failure first.
+  ].filter((candidate) => candidate && existsSync(candidate));
 
   for (const candidate of candidates) {
     try {

@@ -82,6 +82,29 @@ _ab_vault_resolve() {
 
 # ADR-2029 D4: until the image bakes Rune, the bind-mounted cargo bin dir is
 # where `rune` lives. One line, fail-open — absent dir changes nothing.
+# Run a command as devuser from the root-owned boot path. The image ships
+# util-linux for `setpriv`; fall back to `runuser`, then `su`, and fail LOUDLY
+# when none exists — the 2026-09-03 image had neither runuser nor su and three
+# boot steps (ontology PUSH cache, model-routing projection, registry plugin
+# installs) died silently behind `|| true`. Arguments are exec'd verbatim: no
+# shell re-parsing, so a hostile plugin name cannot break out (Q27).
+run_as_devuser() {
+  # Prefer setpriv: runuser aborts in the minimal Nix image because its
+  # shadow/PAM runtime assumptions are not present, while setpriv only needs
+  # the passwd/group records that the image already provides.
+  if command -v setpriv >/dev/null 2>&1; then
+    setpriv --reuid=devuser --regid=devuser --init-groups -- \
+      env HOME=/home/devuser USER=devuser LOGNAME=devuser "$@"
+  elif command -v runuser >/dev/null 2>&1; then
+    runuser -u devuser -- "$@"
+  elif command -v su >/dev/null 2>&1; then
+    su -s /bin/bash devuser -c 'exec "$0" "$@"' -- "$@"
+  else
+    echo "[boot] ERROR: no runuser/setpriv/su in PATH — cannot run as devuser: $*" >&2
+    return 127
+  fi
+}
+
 _ab_cargo_bin_on_path() {
   [ -d "/home/devuser/workspace/.cargo/bin" ] && case ":$PATH:" in *":/home/devuser/workspace/.cargo/bin:"*) :;; *) PATH="/home/devuser/workspace/.cargo/bin:$PATH"; export PATH;; esac
   return 0
@@ -167,6 +190,8 @@ mkdir -p \
   /var/log/supervisor \
   /var/run \
   /run/secrets \
+  /home/devuser/.npm \
+  "$WORKSPACE/.cache/ruflo-npm" \
   /tmp/screenshots
 
 # SEC-003: /run/secrets is a tmpfs dir for runtime secret material (e.g. the
@@ -218,6 +243,8 @@ for _vol_root in \
     /home/devuser/.local/share/code-server \
     /home/devuser/.config \
     /home/devuser/.cache \
+    /home/devuser/.cache/huggingface \
+    /home/devuser/.npm \
     /home/devuser/.claude-flow \
     /home/devuser/.codex \
     /home/devuser/.gemini \
@@ -242,6 +269,7 @@ done
 # to avoid the full 157 GB walk.
 if [ -d "$WORKSPACE" ]; then
   chown 1000:1000 "$WORKSPACE" 2>/dev/null || true
+  chown 1000:1000 "$WORKSPACE/.cache/ruflo-npm" 2>/dev/null || true
 fi
 
 # Docker socket: make accessible to devuser (gid 965 on host, not mapped
@@ -566,7 +594,7 @@ if [ -z "$ONTO_PAGES" ]; then
   echo "[5c/8] ontology PUSH cache refresh skipped ([vault] disabled — no corpus path)"
 elif [ -d "$ONTO_PAGES" ] && [ -f "$ONTO_BUILDER" ]; then
   echo "[5c/8] Refreshing ontology PUSH cache (WS-2) from $ONTO_PAGES..."
-  runuser -u devuser -- env ONTOLOGY_ALIASES="$ONTOLOGY_ALIASES" node "$ONTO_BUILDER" >/dev/null 2>&1 \
+  run_as_devuser env ONTOLOGY_ALIASES="$ONTOLOGY_ALIASES" node "$ONTO_BUILDER" >/dev/null 2>&1 \
     && echo "[5c/8] ontology PUSH cache refreshed" \
     || echo "[5c/8] ontology PUSH cache refresh skipped (non-fatal)"
 fi
@@ -1295,7 +1323,7 @@ if [ "${ENABLE_AGENTIC_QE:-false}" = "true" ] && command -v aqe >/dev/null 2>&1 
   # boot — the fleet then keeps upstream defaults. Runs as devuser so the
   # written files stay workspace-owned.
   if [ "$_MR_ENABLED" = "1" ]; then
-    runuser -u devuser -- env WORKSPACE="$WORKSPACE" \
+    run_as_devuser env WORKSPACE="$WORKSPACE" \
       agentbox-manifest model-routing-project \
         --manifest "$AGENTBOX_CONFIG" --workspace "$WORKSPACE" 2>&1 \
       | sed 's/^/  /' || true
@@ -1652,13 +1680,17 @@ _RB_INGEST="/opt/agentbox/scripts/ruvnet-brain-ingest.mjs"
 if [ "${ENABLE_RUVNET_BRAIN:-false}" = "true" ] \
    && [ "${RUVNET_BRAIN_AUTO_INGEST:-true}" = "true" ] \
    && [ -f "$_RB_INGEST" ] && command -v node >/dev/null 2>&1; then
-  # Transient staging under the writable cache root (see flake RUVNET_BRAIN_STAGING).
-  mkdir -p "${RUVNET_BRAIN_STAGING:-/home/devuser/.cache/ruvnet-brain}" 2>/dev/null || true
-  chown -R 1000:1000 "${RUVNET_BRAIN_STAGING:-/home/devuser/.cache/ruvnet-brain}" 2>/dev/null || true
+  # Transient staging on the persistent workspace volume. The general cache
+  # root is a bounded tmpfs and cannot safely hold the zip plus extraction.
+  _RB_STAGING="${RUVNET_BRAIN_STAGING:-$WORKSPACE/.tmp/ruvnet-brain-staging}"
+  mkdir -p "$_RB_STAGING"
+  chown -R 1000:1000 "$_RB_STAGING"
   (
-    RUVECTOR_PG_CONNINFO="host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=${RUVECTOR_PG_PASSWORD:-ruvector}" \
-    node "$_RB_INGEST" >> /var/log/ruvnet-brain-ingest.log 2>&1
-  ) &
+    run_as_devuser env \
+      RUVNET_BRAIN_STAGING="$_RB_STAGING" \
+      RUVECTOR_PG_CONNINFO="host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=${RUVECTOR_PG_PASSWORD:-ruvector}" \
+      node "$_RB_INGEST"
+  ) >> /var/log/ruvnet-brain-ingest.log 2>&1 &
   echo "  [ruvnet-brain] corpus reconciliation launched (log: /var/log/ruvnet-brain-ingest.log)"
 fi
 
@@ -1755,11 +1787,30 @@ if command -v ruflo >/dev/null 2>&1; then
     while IFS=$'\t' read -r _plugin_name _plugin_source; do
       [ -z "$_plugin_name" ] && continue
       if [ "$_plugin_source" = "registry" ]; then
+        _registry_pkg="$_PLUGIN_DIR/node_modules/$_plugin_name/package.json"
+        # Ruflo 3.x currently records registry installs relative to its working
+        # directory even when CLAUDE_FLOW_PLUGIN_DIR points at the canonical
+        # home directory. Preserve that upstream state and recognise it on the
+        # next boot; otherwise an already-installed plugin costs a 120-second
+        # network invocation and is then misreported as a failed install.
+        _registry_workspace_pkg="$WORKSPACE/.claude-flow/plugins/node_modules/$_plugin_name/package.json"
+        if [ ! -f "$_registry_pkg" ] && [ -f "$_registry_workspace_pkg" ]; then
+          _registry_pkg="$_registry_workspace_pkg"
+        fi
+        if [ -f "$_registry_pkg" ]; then
+          _registry_version=$(node -p "require(process.argv[1]).version" "$_registry_pkg" 2>/dev/null || echo unknown)
+          echo "  [plugin] $_plugin_name already installed ($_registry_version)"
+          continue
+        fi
         echo "  [plugin] Installing $_plugin_name from IPFS registry..."
-        # Pass the plugin name via env var; no shell interpolation.
-        AGENTBOX_PLUGIN_NAME="$_plugin_name" su -s /bin/bash devuser \
-          -c 'ruflo plugins install -n "$AGENTBOX_PLUGIN_NAME"' \
-          2>&1 | tail -3 || true
+        # Exec'd argv, never a shell string: no interpolation surface.
+        if ! run_as_devuser env \
+          NPM_CONFIG_CACHE="$WORKSPACE/.cache/ruflo-npm" \
+          NPM_CONFIG_IGNORE_SCRIPTS=true \
+          timeout 120s ruflo plugins install -n "$_plugin_name" \
+          2>&1 | tail -3; then
+          echo "  [plugin] WARN: registry install failed or timed out: $_plugin_name"
+        fi
       else
         _src="$_RUFLO_PLUGINS_CACHE/plugins/$_plugin_name"
         _dst="$_PLUGIN_DIR/$_plugin_name"

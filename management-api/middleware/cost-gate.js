@@ -18,7 +18,7 @@
  *       otherwise                    -> fail-open (request proceeds)
  */
 
-const SOLID_POD_URL = `http://127.0.0.1:${process.env.SOLID_POD_PORT || 8484}`;
+const SOLID_POD_BASE_URL = `http://127.0.0.1:${process.env.SOLID_POD_PORT || 8484}`;
 
 function costGate(opts = {}) {
   const { logger } = opts;
@@ -39,7 +39,7 @@ function costGate(opts = {}) {
 
     // Check balance via solid-pod-rs
     try {
-      const res = await fetch(`${SOLID_POD_URL}/pay/.balance`, {
+      const res = await fetch(`${SOLID_POD_BASE_URL}/pay/.balance`, {
         headers: { 'X-Forwarded-Did': did },
       });
 

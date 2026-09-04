@@ -79,7 +79,7 @@ The [ruvnet-brain](https://github.com/stuinfla/ruvnet-brain) corpus (~90k source
 
 **Write protection**: the entrypoint appends `ruvnet-kb` to `RUVECTOR_PROTECTED_NAMESPACES` on the claude-flow MCP env, so agents cannot overwrite reference corpus rows through `memory_store`; only the ingest playbook (direct pg, `source_type = ruvnet-brain-ingest`) writes there.
 
-**Manifest gate**: `[skills.ruvnet_brain]` in `agentbox.toml` — `enabled`, `namespace`, `auto_ingest`, `grounding_hook`, `kb_release_url`, `staging_path` (named volume `ruvnet-brain-data`, download/extract scratch only), `embed_batch`.
+**Manifest gate**: `[skills.ruvnet_brain]` in `agentbox.toml` — `enabled`, `namespace`, `auto_ingest`, `grounding_hook`, `kb_release_url`, `staging_path` (workspace-backed transient download/extract scratch), `embed_batch`.
 
 **Grounding hook**: `config/hooks/ruvnet-brain-ground.cjs` on `UserPromptSubmit` — detects RuvNet ecosystem mentions and classical-substitute anti-patterns (Pinecone, LangChain, ChromaDB, hnswlib, etc), injects a search-first directive. **Skill file**: `skills/ruvnet-brain/SKILL.md` — grounding rules, covered repos, anti-pattern matrix.
 

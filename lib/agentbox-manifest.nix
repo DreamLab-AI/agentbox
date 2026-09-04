@@ -47,6 +47,8 @@ let
     filter = path: _type: baseNameOf (toString path) != "target";
   };
 
+  tuiFixturesSrc = lib.cleanSource ../tests/tui/fixtures;
+
 in
 pkgs.rustPlatform.buildRustPackage {
   pname = "agentbox-manifest";
@@ -55,6 +57,18 @@ pkgs.rustPlatform.buildRustPackage {
 
   # Standalone [workspace]; the checked-in lockfile pins the full closure.
   cargoLock.lockFile = ../services/agentbox-manifest/Cargo.lock;
+
+  # The parity suites consume the repository-level wizard fixtures. Stage the
+  # canonical files inside the isolated crate source and adjust only the Nix
+  # build copy's relative lookups.
+  postPatch = ''
+    mkdir -p tests/tui/fixtures
+    cp -R ${tuiFixturesSrc}/. tests/tui/fixtures/
+    substituteInPlace tests/golden.rs \
+      --replace-fail '../../tests/tui/fixtures' 'tests/tui/fixtures'
+    substituteInPlace tests/tui_helpers.rs \
+      --replace-fail '.join("../..")' '.join(".")'
+  '';
 
   doCheck = true;
 

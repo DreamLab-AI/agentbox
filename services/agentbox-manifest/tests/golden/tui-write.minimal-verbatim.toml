@@ -7,7 +7,7 @@ mode = "standalone"
 
 [adapters]
 beads        = "local-sqlite"
-pods         = "local-jss"
+pods         = "local-solid-rs"
 memory       = "embedded-ruvector"
 events       = "local-jsonl"
 orchestrator = "local-process-manager"
@@ -233,11 +233,12 @@ enable_did_nostr       = false
 enable_webhook_signing = false
 enable_rate_limit      = false
 enable_quota           = false
-jss_v04_compat         = false
-rate_limit_per_sec     = 20
-quota_default_bytes    = 10737418240
 
 [security.exceptions.playwright]
 cap_add = ["SYS_ADMIN"]
 reason = "chromium sandbox; SYS_ADMIN is the minimum privilege for Chromium user-ns sandbox inside a container"
+
+[security.exceptions.solid-pod-rs]
+writable_volumes = ["solid-data:/var/lib/solid"]
+reason = "solid-pod-rs fs-backend requires atomic-rename writable storage under /var/lib/solid"
 

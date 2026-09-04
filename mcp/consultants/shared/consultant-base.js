@@ -79,9 +79,32 @@ const { ListToolsRequestSchema, CallToolRequestSchema } =
 
 const { MemoryLogger } = require('./memory-logger');
 
-// Canonical URI minter (ADR-013). In the image, management-api sits next to
-// mcp/ under /opt/agentbox, matching this repo's layout.
-const uris = require('../../../management-api/lib/uris.js');
+const fs = require('fs');
+const path = require('path');
+
+// Modules that live outside this package tree (management-api, mcp/servers).
+// In the repo this file sits at mcp/consultants/shared/, three levels below
+// the root. In the image the consultants npm closure is copied one level
+// deeper (mcp/consultants/package/shared/), so a single relative path cannot
+// serve both layouts — that is exactly how every consultant died on boot
+// after the 2026-09-03 rebuild ("Cannot find module
+// '../../../management-api/lib/uris.js'"). Resolve against each candidate
+// and finally the baked app root.
+const APP_ROOT = process.env.AGENTBOX_APP_ROOT || '/opt/agentbox';
+function resolveAppModule(relFromRoot) {
+  const candidates = [
+    path.resolve(__dirname, '../../..', relFromRoot),     // repo layout
+    path.resolve(__dirname, '../../../..', relFromRoot),  // packaged layout (…/package/shared)
+    path.join(APP_ROOT, relFromRoot),                     // baked app root
+  ];
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  throw new Error(`consultant-base: cannot locate ${relFromRoot}; tried ${candidates.join(', ')}`);
+}
+
+// Canonical URI minter (ADR-013).
+const uris = require(resolveAppModule('management-api/lib/uris.js'));
 
 // Anti-fox cross-model verification seam (REC-8, ADR-037 D4). A thin wrapper
 // over these named consultants: when a consult carries the producer's model
@@ -114,7 +137,7 @@ let _ontoBrain = null;
 function ontoBrain() {
   if (_ontoBrain) return _ontoBrain;
   try {
-    const { createDefaultRetrieval } = require('../../servers/lib/ontology-retrieval.js');
+    const { createDefaultRetrieval } = require(resolveAppModule('mcp/servers/lib/ontology-retrieval.js'));
     _ontoBrain = createDefaultRetrieval();
   } catch {
     _ontoBrain = { ask: async () => ({ turtle: '', seed_iris: [], tokens_used: 0, degraded: true }) };

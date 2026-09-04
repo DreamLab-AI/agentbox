@@ -102,8 +102,26 @@ pkgs.rustPlatform.buildRustPackage {
   # cargoSetupPostPatchHook validates a Cargo.lock at the unpacked source root,
   # but the reassembled workspace keeps the crate's lockfile under
   # buildAndTestSubdir. Copy it to the root so the consistency check resolves
-  # (same pattern as lib/solid-pod-rs.nix). The build still runs in the subdir.
+  # (same pattern as lib/solid-pod-rs.nix). The pinned forum revision predates
+  # three error variants added by nostr 0.44.8, so extend its adapter mappings
+  # in the sandbox copy. The build still runs in the subdir.
   postPatch = ''
+    substituteInPlace nostr-rust-forum/crates/nostr-bbs-core/src/nip04.rs \
+      --replace-fail \
+        '        UpstreamError::WrongBlockMode => Nip04Error::DecryptionFailed,' \
+        '        UpstreamError::WrongBlockMode => Nip04Error::DecryptionFailed,
+        UpstreamError::InvalidIVLen => Nip04Error::UpstreamCryptoError("invalid IV length".into()),'
+
+    substituteInPlace nostr-rust-forum/crates/nostr-bbs-core/src/nip44.rs \
+      --replace-fail \
+        '        UpstreamError::VersionNotFound => Nip44Error::InvalidPayload("missing version byte"),' \
+        '        UpstreamError::VersionNotFound => Nip44Error::InvalidPayload("missing version byte"),
+        UpstreamError::MessageTooLong => Nip44Error::PlaintextTooLong,' \
+      --replace-fail \
+        '                ErrorV2::HkdfLength(_) => Nip44Error::DecryptionFailed,' \
+        '                ErrorV2::HkdfLength(_) => Nip44Error::DecryptionFailed,
+                ErrorV2::PayloadTooShort => Nip44Error::InvalidPayload("payload too short"),'
+
     cp ${../services/nostr-pod-bridge/Cargo.lock} Cargo.lock
   '';
 

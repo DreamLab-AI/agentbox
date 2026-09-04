@@ -195,7 +195,7 @@
           pkgName         = "ruvector";
           version         = "0.3.0";
           sha256          = "sha256-WJY5s7nvQaZBQJaJbSI8PVZh4PfYriGlTUME2mOcQEc=";
-          nodeModulesHash = "sha256-zLY6A17xMIpTslu4K2Y+KG19+3hIBvfr6PfJKt2IbAg=";
+          nodeModulesHash = "sha256-SRSLsu4OmGUwCKLtkHPr8gM2rFio/dZ+VU0maKVdIDE=";
           bin             = "ruvector";
         };
 
@@ -223,7 +223,7 @@
           pkgName         = "ruflo";
           version         = "3.38.20";
           sha256          = "sha256-secbxYLZ8uA0Vb7h8RYamkH4qhizG+4mO17ylQ2aYOM=";
-          nodeModulesHash = "sha256-rQEa1yfPuRPNqkXSNZLltBjU4J0P59l2gzm7VTk7Ms4=";
+          nodeModulesHash = "sha256-0bcqRddGbH9d/MgEC6yrqA6PsNaadQxakEbBqKgke7U=";
           bin             = "ruflo";
           extraBins = {
             "claude-flow"     = "node_modules/@claude-flow/cli/bin/cli.js";
@@ -245,7 +245,7 @@
           pkgName         = "metaharness";
           version         = "0.3.2";
           sha256          = "sha256-BJNgg/cM4D1G4Pj42/6wNcQ4rdTtdKpyTgYsC2KNR5I=";
-          nodeModulesHash = "sha256-IaSgl7/hCbfONamyYDWgQzHm+iYuhHXuH/wIkjbr9pM=";
+          nodeModulesHash = "sha256-2qRTIkXMaMHwDixqAcPDYuiIyF3xT5gcrjREvo8RYDM=";
           bin             = "metaharness";
           extraBins = {
             # own-package bin — path is package-root-relative (dependency bins
@@ -258,7 +258,7 @@
           pkgName         = "@metaharness/darwin";
           version         = "0.8.3";
           sha256          = "sha256-k/pb1mzN6Wzy+/7exSp1oSo5cbQfKn/6rcue3tq2kGI=";
-          nodeModulesHash = "sha256-sSETXmwHRcsJMPq413fMj0mlxXUNnR2/6Srof/Ds/nE=";
+          nodeModulesHash = "sha256-zt6pF/Zp4qxKrm6PL8aksrHSCyQXtwAV2jjmqdOwf9s=";
           bin             = "metaharness-darwin";
         };
 
@@ -281,7 +281,7 @@
           pkgName         = "agentic-qe";
           version         = "3.13.12";
           sha256          = "sha256-l1OKbvij0zWQFmkVh8tg5J/fWug3xpFem/s0WZtKqdo=";
-          nodeModulesHash = "sha256-ceqRqIu38eaA/OheM68uAmSilkN6AbteC4lZGV9qkSQ=";
+          nodeModulesHash = "sha256-P3+gOXR0UkiifJ5izmvSdPS+p1KtfhqxFSNGRePxY7A=";
           bin             = "aqe";
         };
 
@@ -292,13 +292,43 @@
         #    Rust-build pattern).
 
         # 6. codebase-memory-mcp — gated by toolchains.codebase_memory.
-        #    nix-prefetch-url https://registry.npmjs.org/codebase-memory-mcp/-/codebase-memory-mcp-0.6.0.tgz
+        #    nix-prefetch-url https://registry.npmjs.org/codebase-memory-mcp/-/codebase-memory-mcp-0.10.8.tgz
+        #    The npm package is a one-shot launcher: bin.js execs
+        #    lib/codebase-memory-mcp/bin/codebase-memory-mcp and, when that is
+        #    absent, runs install.js to download it from GitHub Releases INTO
+        #    the package tree — which cannot work from the read-only store
+        #    (verified 2026-09-04: "install failed — ENOENT … mkdir
+        #    /nix/store/…/bin"). Prefetch the fully-static "-portable" Linux
+        #    build install.js itself selects and plant it where bin.js looks.
+        #    sha256s are the hex digests from the release's checksums.txt.
+        #    Bump: update version + both digests together.
+        codebaseMemoryBinary =
+          let
+            version = "0.10.8";
+            assets = {
+              "x86_64-linux"  = { arch = "amd64"; sha256 = "6eef49652bc0c7820f43114125044d40bf7f4d97c11b2592f6b0f6a307702325"; };
+              "aarch64-linux" = { arch = "arm64"; sha256 = "5697d986d9716c913163b4bff7b3a294287f3b843e993bc1ff71e78dcdc21781"; };
+            };
+            asset = assets.${system} or (throw ''
+              codebase-memory-mcp: no portable release asset for system "${system}".
+              Add its arch + sha256 to the assets table in flake.nix.
+            '');
+            tarball = pkgs.fetchurl {
+              url = "https://github.com/DeusData/codebase-memory-mcp/releases/download/v${version}/codebase-memory-mcp-linux-${asset.arch}-portable.tar.gz";
+              inherit (asset) sha256;
+            };
+          in pkgs.runCommand "codebase-memory-mcp-binary-${version}" {} ''
+            mkdir -p $out/bin
+            tar -xzf ${tarball} -C $out/bin codebase-memory-mcp
+            chmod 755 $out/bin/codebase-memory-mcp
+          '';
         codebaseMemoryPkg = mkNpmCli {
           pkgName         = "codebase-memory-mcp";
           version         = "0.10.8";
           sha256          = "sha256-C68m1vT9SrZuIoL1t/K7oi1+CMV7tUhMNuESIoRFOZA=";
           nodeModulesHash = "sha256-1seDTzkcR6n0VQ/B7w29iSKMbtFz1s5a9kkoePWHYy4=";
           bin             = "codebase-memory-mcp";
+          extraFiles      = { "bin/codebase-memory-mcp" = "${codebaseMemoryBinary}/bin/codebase-memory-mcp"; };
         };
 
         # 7–8. agent-browser and playwright CLI removed — all browser
@@ -306,20 +336,27 @@
         #       (chrome-devtools-mcp at browsercontainer:8931/sse).
 
         # 9. @mermaid-js/mermaid-cli — gated by skills.docs.mermaid.
-        #    Binary name is mmdc (upstream convention).
-        #    Bumped 11.14.0 -> 11.15.0 (2026-05-11) for `wardley-beta` quality
-        #    fixes: hyphenated names (PR #7642) + de-sanitisation (PR #7726).
-        #    11.15.0 is what GitHub Markdown rendering ships today.
-        #    Re-fetch hashes:
-        #      nix-prefetch-url https://registry.npmjs.org/%40mermaid-js/mermaid-cli/-/mermaid-cli-11.15.0.tgz
-        #      then `nix build` once with the lib.fakeHash placeholder for
-        #      nodeModulesHash to harvest the real hash from the error.
+        #    Mermaid 11.16 declares Puppeteer as a peer dependency. Resolve it
+        #    for this package (rather than the helper's historical
+        #    --legacy-peer-deps mode) and point it at immutable Nix Chromium so
+        #    neither build nor runtime performs a browser download.
+        mermaidPuppeteerConfig = pkgs.writeText "agentbox-mermaid-puppeteer.json"
+          (builtins.toJSON {
+            # Docker drops the setuid bit from the immutable Nix Chromium
+            # sandbox helper. Keep this exception scoped to offline Mermaid
+            # document rendering; the browser sidecar remains unaffected.
+            args = [ "--no-sandbox" "--disable-setuid-sandbox" ];
+          });
         mermaidCliPkg = mkNpmCli {
           pkgName         = "@mermaid-js/mermaid-cli";
           version         = "11.16.0";
           sha256          = "sha256-ZdeVGRv5ymypCkCh6jA1SmpJHiBmdMr9TZ3mL+kHVDk=";
-          nodeModulesHash = "sha256-9rr9HapzW5Rpse8oHbF7g+oWPFv7FlwEhRe8hwYqbzk=";
+          nodeModulesHash = "sha256-sre+cioZS94WbD7KfRBoSQN28sHQJ0KCqJ3h198sjsM=";
           bin             = "mmdc";
+          legacyPeerDeps  = false;
+          runtimeDependencies.puppeteer = "25.10.0";
+          extraEnv.PUPPETEER_EXECUTABLE_PATH = "${pkgs.chromium}/bin/chromium";
+          extraArgs = [ "--puppeteerConfigFile" mermaidPuppeteerConfig ];
         };
 
         # wrangler — Cloudflare Workers/D1/secrets CLI. Always included for
@@ -339,7 +376,7 @@
           # outside the window. Bump forward at the next rebuild.
           version         = "4.125.0";
           sha256          = "sha256-/pM8fMq69B568wUTjx3p/Sv7HghMfi/VC6PQynekRQI=";
-          nodeModulesHash = "sha256-f4vsU6kn7/3wnL6u2D8YQdC3gK8wf8sCLv4t2twbWWA=";
+          nodeModulesHash = "sha256-IFzCLmNdoAG7ZiMitJzitWNzqRw9yIIXJ2q9Pn0LeDo=";
           bin             = "wrangler";
           # wrangler's devDependencies reference private @cloudflare/*
           # packages not on the public npm registry — strip them so npm
@@ -572,6 +609,10 @@
           ncdu
           ncurses         # provides clear, tput, reset, infocmp, tic — terminal handling
           procps
+          util-linux      # runuser/su/setpriv/flock — the entrypoint's devuser privilege drop.
+                          # Only util-linux-minimal (no su/runuser) reached the 2026-09-03 image
+                          # and three boot steps failed silently ("runuser: command not found").
+          gnutar          # tar — absent from the runtime PATH after the 2026-09-03 rebuild
           openssh
           inetutils       # hostname, telnet, ftp, traceroute — minimal network diagnostics
           iproute2        # ip, ss — modern network introspection
@@ -1065,14 +1106,19 @@
         # prefetch commands at realisation.
         # ---------------------------------------------------------------------------
         solidPodRsLib = import ./lib/solid-pod-rs.nix { inherit lib; pkgs = rustPkgs; };
-        # Opt-in features layered on top of defaultFeatures in lib/solid-pod-rs.nix.
-        # did-nostr / webhook-signing / rate-limit / quota / jss-v04 are in the
-        # default set; opting out requires a source-level edit of that file.
+        # Manifest-selected features layered on top of the native baseline in
+        # lib/solid-pod-rs.nix. Compatibility-only JSS features are deliberately
+        # absent from the agentbox build.
         # Library-crate features are addressed via the solid-pod-rs/<name>
         # dep-path so cargo enables them on the workspace member when the
         # server crate doesn't forward them.
         solidPodRsExtraFeatures =
-          lib.optionals (solidPodRsCfg.enable_oidc or false)       [ "solid-pod-rs/oidc" ]
+          lib.optionals (solidPodRsCfg.enable_schnorr_verify or true) [ "solid-pod-rs/nip98-schnorr" ]
+          ++ lib.optionals (solidPodRsCfg.enable_did_nostr or true) [ "did-nostr" ]
+          ++ lib.optionals (solidPodRsCfg.enable_rate_limit or true) [ "rate-limit" ]
+          ++ lib.optionals (solidPodRsCfg.enable_quota or true) [ "quota" ]
+          ++ lib.optionals (solidPodRsCfg.enable_webhook_signing or true) [ "solid-pod-rs/webhook-signing" ]
+          ++ lib.optionals (solidPodRsCfg.enable_oidc or false)       [ "solid-pod-rs/oidc" ]
           ++ lib.optionals (solidPodRsCfg.enable_dpop_cache or false) [ "solid-pod-rs/dpop-replay-cache" ]
           ++ lib.optionals ((solidPodRsCfg.storage or "fs") == "s3") [ "solid-pod-rs/s3-backend" ]
           ++ lib.optionals ((solidPodRsCfg.notifications or "websocket") == "webhook"
@@ -1083,6 +1129,43 @@
           if solidPodRsActive
           then solidPodRsLib.makeSolidPodRs { extraFeatures = solidPodRsExtraFeatures; }
           else null;
+        # Use solid-pod-rs's native nested config rather than its legacy
+        # compatibility environment. The launcher applies the one intentional
+        # runtime override (the public tunnel URL) before execing the server.
+        solidPodRsNativeConfig = pkgs.writeText "solid-pod-rs-config.json" (builtins.toJSON {
+          server = {
+            host = solidPodRsCfg.bind or "127.0.0.1";
+            port = solidPodRsCfg.port or 8484;
+            base_url = solidPodRsCfg.base_url or "http://127.0.0.1:8484";
+          };
+          storage =
+            if (solidPodRsCfg.storage or "fs") == "memory"
+            then { type = "memory"; }
+            else {
+              type = "fs";
+              root = solidPodRsCfg.storage_root or "/var/lib/solid";
+            };
+          auth = {
+            nip98_enabled = true;
+            oidc_enabled = solidPodRsCfg.enable_oidc or false;
+          };
+          notifications = {
+            ws2023_enabled = (solidPodRsCfg.notifications or "websocket") == "websocket";
+            webhook2023_enabled = (solidPodRsCfg.notifications or "websocket") == "webhook";
+            legacy_solid_01_enabled = false;
+          };
+        });
+        solidPodRsLauncher = pkgs.writeShellScript "start-solid-pod-rs" ''
+          set -eu
+          runtime_config="''${TMPDIR:-/tmp}/solid-pod-rs-config.json"
+          ${pkgs.jq}/bin/jq \
+            --arg base_url "$SOLID_POD_PUBLIC_URL" \
+            '.server.base_url = $base_url' \
+            ${solidPodRsNativeConfig} > "$runtime_config"
+          exec ${solidPodRsPkg}/bin/solid-pod-rs-server \
+            --config "$runtime_config" \
+            ${if (solidPodRsCfg.enable_mcp or false) then "--mcp" else "--no-mcp"}
+        '';
         solidPodRsPackages = lib.optionals solidPodRsActive [ solidPodRsPkg ];
 
         # ---------------------------------------------------------------------------
@@ -1565,6 +1648,14 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           ${lib.optionalString ((agentboxConfig.consultants or {}).enabled or false) ''
           mkdir -p $out/opt/agentbox/mcp
           cp -rL ${consultantsPkg}/package $out/opt/agentbox/mcp/consultants
+
+          # Validate the assembled layout, not merely the standalone npm
+          # derivation. Node resolves the copied consultant source through the
+          # package/ level in the immutable app tree; this is where relative
+          # app-root assumptions failed in the 2026-09-03 image.
+          AGENTBOX_APP_ROOT="$out/opt/agentbox" \
+            ${pkgs.nodejs_22}/bin/node \
+              -e "require('$out/opt/agentbox/mcp/consultants/package/shared/consultant-base.js')"
           ''}
           ${lib.optionalString ((skillsCfg.aci_shell or {}).enabled or false) ''
           rm -rf $out/opt/agentbox/mcp/aci-shell
@@ -1574,6 +1665,23 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           rm -rf $out/opt/agentbox/mcp/ruvnet-brain
           cp -rL ${ruvnetBrainMcpPkg}/package $out/opt/agentbox/mcp/ruvnet-brain
           ''}
+
+          # The entrypoint projects from skills/mcp.json, while infrastructure
+          # consumers also read mcp/mcp.json. Fail the image build if either
+          # registry regresses to the old mutable /var/lib wheelhouse default.
+          for registry in \
+            $out/opt/agentbox/skills/mcp.json \
+            $out/opt/agentbox/mcp/mcp.json
+          do
+            wheelhouse_ref="$(${pkgs.jq}/bin/jq -er '.mcpServers["code-interpreter"].env.KERNEL_WHEELHOUSE' "$registry")"
+            case "$wheelhouse_ref" in
+              *AGENTBOX_KERNEL_WHEELHOUSE*) ;;
+              *)
+                echo "ERROR: $registry does not project AGENTBOX_KERNEL_WHEELHOUSE" >&2
+                exit 1
+                ;;
+            esac
+          done
 
           ${lib.optionalString compressionEnabled ''
           mkdir -p $out/opt/agentbox/lib/headroom
@@ -1703,7 +1811,7 @@ stderr_logfile=/var/log/ontology-condense-scheduler.error.log
 
         jupyterServiceBlock = ''
 [program:jupyter-lab]
-command=${pkgs.python312Packages.jupyterlab}/bin/jupyter-lab --ip=0.0.0.0 --port=8888 --no-browser --ServerApp.token=
+command=${pkgs.python312Packages.jupyterlab}/bin/jupyter-lab --ip=0.0.0.0 --port=8888 --no-browser --IdentityProvider.token= --LabApp.app_dir=${pkgs.python312Packages.jupyterlab}/share/jupyter/lab
 directory=/home/devuser/workspace
 user=devuser
 environment=HOME="/home/devuser"
@@ -1735,6 +1843,34 @@ stderr_logfile=/var/log/jupyter-lab.error.log
         #   nodes (/dev/dri/renderD128+), and composites the result back to Xvnc.
         #   The playwright-mcp supervisor wraps chromium with vglrun when WebGPU
         #   is enabled.
+        i3Launcher = pkgs.writeShellScript "start-agentbox-i3" ''
+          set -eu
+          display="''${DISPLAY:-:1}"
+          display_num="''${display#:}"
+          display_num="''${display_num%%.*}"
+          case "$display_num" in
+            ""|*[!0-9]*)
+              echo "i3 launcher: invalid DISPLAY '$display'" >&2
+              exit 1
+              ;;
+          esac
+
+          socket="/tmp/.X11-unix/X$display_num"
+          attempt=0
+          until [ -S "$socket" ]; do
+            attempt=$((attempt + 1))
+            if [ "$attempt" -ge 300 ]; then
+              echo "i3 launcher: X socket $socket did not appear within 30 seconds" >&2
+              exit 1
+            fi
+            ${pkgs.coreutils}/bin/sleep 0.1
+          done
+
+          config="''${XDG_CONFIG_HOME:-/home/devuser/workspace/.config}/i3/config"
+          [ -f "$config" ] || config=/opt/agentbox/config/i3/config
+          exec ${pkgs.i3}/bin/i3 -c "$config"
+        '';
+
         desktopBlocks =
           if isWaylandStack then ''
 [program:hyprland]
@@ -1784,9 +1920,9 @@ stdout_logfile=/var/log/xorg-nvidia.log
 stderr_logfile=/var/log/xorg-nvidia.error.log
 
 [program:i3wm]
-command=${pkgs.i3}/bin/i3
+command=${i3Launcher}
 user=devuser
-environment=DISPLAY=":1",HOME="/home/devuser"
+environment=DISPLAY=":1",HOME="/home/devuser",XDG_CONFIG_HOME="/home/devuser/workspace/.config"
 autostart=true
 autorestart=true
 startsecs=3
@@ -1816,9 +1952,9 @@ stdout_logfile=/var/log/xvnc.log
 stderr_logfile=/var/log/xvnc.error.log
 
 [program:i3wm]
-command=${pkgs.i3}/bin/i3
+command=${i3Launcher}
 user=devuser
-environment=DISPLAY=":1",HOME="/home/devuser"
+environment=DISPLAY=":1",HOME="/home/devuser",XDG_CONFIG_HOME="/home/devuser/workspace/.config"
 autostart=true
 autorestart=true
 startsecs=3
@@ -1887,10 +2023,10 @@ stderr_logfile=/var/log/bootstrap-seal.error.log
 ${lib.optionalString ((sovereignCfg.enabled or false) && solidPodRsActive) ''
 
 [program:solid-pod]
-command=${solidPodRsPkg}/bin/solid-pod-rs-server
+command=${solidPodRsLauncher}
 directory=${solidPodRsCfg.storage_root or "/var/lib/solid"}
 user=devuser
-environment=HOME="/home/devuser",JSS_HOST="${solidPodRsCfg.bind or "127.0.0.1"}",JSS_PORT="${toString (solidPodRsCfg.port or 8484)}",JSS_BASE_URL="%(ENV_SOLID_POD_PUBLIC_URL)s",JSS_STORAGE_ROOT="${solidPodRsCfg.storage_root or "/var/lib/solid"}",JSS_LOG_LEVEL="${solidPodRsCfg.log_level or "info"}",RUST_LOG="${solidPodRsCfg.log_level or "info"}",JSS_ENABLE_DID_NOSTR="${boolEnv (solidPodRsCfg.enable_did_nostr or true)}",JSS_ENABLE_RATE_LIMIT="${boolEnv (solidPodRsCfg.enable_rate_limit or true)}",JSS_RATE_LIMIT_PER_SEC="${toString (solidPodRsCfg.rate_limit_per_sec or 20)}",JSS_ENABLE_QUOTA="${boolEnv (solidPodRsCfg.enable_quota or true)}",JSS_QUOTA_DEFAULT_BYTES="${toString (solidPodRsCfg.quota_default_bytes or 10737418240)}",JSS_ENABLE_WEBHOOK_SIGNING="${boolEnv (solidPodRsCfg.enable_webhook_signing or true)}",JSS_V04_COMPAT="${boolEnv (solidPodRsCfg.jss_v04_compat or true)}",SOLID_ALLOWED_ORIGINS="${solidPodRsCfg.allowed_origins or ""}",SOLID_ADMIN_KEY="%(ENV_SOLID_ADMIN_KEY)s",JSS_MCP="${boolEnv (solidPodRsCfg.enable_mcp or false)}",AGENTBOX_REQUIRED_FOR_READINESS="true"
+environment=HOME="/home/devuser",SOLID_POD_PUBLIC_URL="%(ENV_SOLID_POD_PUBLIC_URL)s",SOLID_ALLOWED_ORIGINS="${solidPodRsCfg.allowed_origins or ""}",SOLID_ADMIN_KEY="%(ENV_SOLID_ADMIN_KEY)s",RUST_LOG="${solidPodRsCfg.log_level or "info"}",AGENTBOX_REQUIRED_FOR_READINESS="true"
 autostart=true
 autorestart=true
 priority=30
@@ -1969,7 +2105,7 @@ ${lib.optionalString privacyFilterEnabled ''
 command=${privacyFilterPythonEnv}/bin/python3 -u /opt/agentbox/scripts/opf-router.py
 directory=/opt/agentbox/scripts
 user=devuser
-environment=HOME="/home/devuser",HF_HOME="/home/devuser/.cache/huggingface",TRANSFORMERS_CACHE="/home/devuser/.cache/huggingface",OPF_PORT="${toString (privacyFilterCfg.port or 9092)}",OPF_MODE="${privacyFilterCfg.mode or "off"}",OPF_DTYPE="${privacyFilterCfg.dtype or "bf16"}",OPF_MODEL="${privacyFilterCfg.model or "openai/privacy-filter"}",OPF_TRUST_REMOTE_CODE="${boolEnv (privacyFilterCfg.trust_remote_code or true)}"
+environment=HOME="/home/devuser",HF_HOME="/home/devuser/.cache/huggingface",TRANSFORMERS_CACHE="/home/devuser/.cache/huggingface",HF_HUB_DISABLE_XET="1",OPF_PORT="${toString (privacyFilterCfg.port or 9092)}",OPF_MODE="${privacyFilterCfg.mode or "off"}",OPF_DTYPE="${privacyFilterCfg.dtype or "bf16"}",OPF_MODEL="${privacyFilterCfg.model or "openai/privacy-filter"}",OPF_TRUST_REMOTE_CODE="${boolEnv (privacyFilterCfg.trust_remote_code or true)}"
 autostart=true
 autorestart=true
 priority=240
@@ -2161,11 +2297,12 @@ stderr_logfile_maxbytes=5MB
 ; The crontab and script live in the mounted website repo, so schedule and
 ; behaviour are editable without an image rebuild — only this stanza is baked.
 ; The script fails loud (exit 2) until CLOUDFLARE_API_TOKEN/ACCOUNT_ID land in
-; the agentbox .env; jq/curl/gzip come from the base PATH.
+; the agentbox .env. Pin every utility used by the script into PATH: the Nix
+; image has no conventional mutable /usr tool tree to fall back to.
 [program:forum-backup-cron]
 command=${supercronicPkg}/bin/supercronic -split-logs /home/devuser/workspace/dreamlab-ai-website/scripts/backup/crontab
 user=devuser
-environment=HOME="/home/devuser",PATH="/usr/local/bin:/bin:/usr/bin"
+environment=HOME="/home/devuser",PATH="${lib.makeBinPath [ pkgs.coreutils pkgs.gnugrep pkgs.findutils pkgs.curl pkgs.jq pkgs.gzip ]}:/usr/local/bin:/bin:/usr/bin"
 autostart=true
 autorestart=true
 startsecs=0
@@ -2508,9 +2645,12 @@ stderr_logfile_maxbytes=5MB
           # huggingface, etc. all expect a writable $HOME/.cache. Without
           # this tmpfs the path lives on the read-only rootfs and every
           # interactive shell prints "Os { code: 30, kind: ReadOnlyFilesystem }"
-          # at the starship init line. 256M is plenty for prompt + tool
-          # caches; persistent caches go to named volumes per-tool.
-          "/home/devuser/.cache:mode=755,size=256M,uid=1000,gid=1000"
+          # at the starship init line. Keep this aligned with docker-compose;
+          # persistent large caches still go to named volumes per-tool.
+          "/home/devuser/.cache:mode=755,size=1G,uid=1000,gid=1000"
+          # Some native npm installers (notably sharp) hard-code ~/.npm even
+          # when NPM_CONFIG_CACHE is redirected into the writable workspace.
+          "/home/devuser/.npm:mode=755,size=256M,uid=1000,gid=1000"
           # devuser's XDG_DATA_HOME. zoxide, fzf, atuin, npm globals,
           # pip --user, pipx, and a long tail of other XDG-aware CLIs
           # write here. Same Read-only-fs symptom as .cache without it.
@@ -2629,10 +2769,13 @@ stderr_logfile_maxbytes=5MB
           "agentbox-secrets:/var/lib/agentbox/secrets"
           "code-harness-data:/var/lib/agentbox/code-harness"
           "agentbox-events:/var/lib/agentbox/events"
+          # The privacy model is ~2.8 GiB. Keep it out of the deliberately
+          # bounded XDG cache tmpfs and retain it across rolling rebuilds.
+          "hf-cache:/home/devuser/.cache/huggingface"
         ];
         # NOTE: no ruvnet-brain-data volume. The corpus persists in
         # ruvector-postgres; the ingest only needs transient, writable staging,
-        # which now lives under the devuser cache root (RUVNET_BRAIN_STAGING).
+          # which now lives on the workspace volume (RUVNET_BRAIN_STAGING).
         # A persistent volume here previously mounted read-only / not at all,
         # hard-failing the boot ingest.
         # Drop entries from exceptionWritableVolumes whose container target
@@ -2658,7 +2801,7 @@ stderr_logfile_maxbytes=5MB
         # are auto-derived so every volume referenced in the agentbox service's
         # volumes list has a matching top-level declaration. Without this,
         # docker compose rejects the file with "undefined volume <name>".
-        baselineTopLevelVolumeNames = [ "ruvector-data" "solid-data" "sovereign-identities" "agentbox-secrets" "code-harness-data" "agentbox-events" ];
+        baselineTopLevelVolumeNames = [ "ruvector-data" "solid-data" "sovereign-identities" "agentbox-secrets" "code-harness-data" "agentbox-events" "hf-cache" ];
         exceptionVolumeNames = lib.unique (
           map (v: lib.head (lib.splitString ":" v)) exceptionWritableVolumes
         );
@@ -2672,6 +2815,7 @@ stderr_logfile_maxbytes=5MB
           + "  solid-data:\n    name: agentbox-solid-data\n"
           + "  sovereign-identities:\n    name: agentbox-sovereign-identities\n"
           + "  agentbox-secrets:\n    name: agentbox-secrets\n"
+          + "  hf-cache:\n    name: agentbox-hf-cache\n"
           + lib.concatMapStrings
               (n: "  ${n}:\n    name: agentbox-${n}\n")
               extraTopLevelVolumeNames;
@@ -2724,6 +2868,8 @@ ${agentboxPorts}
       - MANAGEMENT_API_AUTH_MODE=''${MANAGEMENT_API_AUTH_MODE:-hybrid}
       - NOSTR_RELAYS=''${NOSTR_RELAYS:-wss://relay.damus.io,wss://relay.primal.net}
       - AGENTBOX_AGENT_ID=''${AGENTBOX_AGENT_ID:-agentbox-core}
+      - AGENTBOX_IMAGE_HASH=''${AGENTBOX_IMAGE_HASH:-}
+      - AGENTBOX_MANIFEST_CHECKSUM=''${AGENTBOX_MANIFEST_CHECKSUM:-}
       - AGENTBOX_METRICS_PORT=${metricsPort}
       - AGENTBOX_OTLP_ENDPOINT=${observCfg.otlp_endpoint or ""}
       - AGENTBOX_LOG_LEVEL=${observCfg.log_level or "info"}
@@ -2753,7 +2899,12 @@ ${ragflowNetworkDecl}
 
         configFiles = pkgs.runCommand "agentbox-config" {} ''
           mkdir -p $out/etc/agentbox $out/bin
-          cp ${pkgs.writeText "supervisord.conf" supervisorText} $out/etc/supervisord.conf
+          cp ${pkgs.writeText "supervisord.conf" (
+            assert lib.assertMsg
+              (!(lib.hasInfix "JSS_" supervisorText))
+              "legacy JSS environment leaked into the agentbox supervisor config";
+            supervisorText
+          )} $out/etc/supervisord.conf
           cp ${./agentbox.toml} $out/etc/agentbox.toml
           cp ${pkgs.writeText "docker-compose.yml" composeText} $out/etc/agentbox/docker-compose.yml
           ${lib.optionalString relayLocal ''
@@ -3031,7 +3182,7 @@ ${ragflowNetworkDecl}
           "SOLID_POD_PORT=8484"
           # Public base URL default from the manifest. Root .env overrides at
           # runtime (compose env_file → PID-1 env → supervisord
-          # %(ENV_SOLID_POD_PUBLIC_URL)s → JSS_BASE_URL); management-api also
+          # native solid-pod-rs config); management-api also
           # reads it directly when building provisioning-response URLs.
           "SOLID_POD_PUBLIC_URL=${solidPodRsCfg.base_url or "http://127.0.0.1:8484"}"
           # Empty default so supervisord's %(ENV_SOLID_ADMIN_KEY)s expansion
@@ -3096,8 +3247,8 @@ ${ragflowNetworkDecl}
           "RUVNET_BRAIN_GROUNDING_HOOK=${boolEnv (ruvnetBrainCfg.grounding_hook or true)}"
           "RUVNET_BRAIN_RELEASE_URL=${ruvnetBrainCfg.kb_release_url or "https://github.com/stuinfla/ruvnet-brain/releases/latest/download/ruvnet-brain.zip"}"
           # Transient download/extract staging (corpus persists in ruvector-postgres).
-          # Default to the writable devuser cache root, not a read-only-rootfs path.
-          "RUVNET_BRAIN_STAGING=${ruvnetBrainCfg.staging_path or "/home/devuser/.cache/ruvnet-brain"}"
+          # Default to workspace-backed scratch, not bounded cache/read-only rootfs.
+          "RUVNET_BRAIN_STAGING=${ruvnetBrainCfg.staging_path or "/home/devuser/workspace/.tmp/ruvnet-brain-staging"}"
           "RUVNET_BRAIN_EMBED_BATCH=${toString (ruvnetBrainCfg.embed_batch or 32)}"
           "ENABLE_ONTOLOGY=${boolEnv ((skillsCfg.ontology or {}).enabled or false)}"
           "VISIONCLAW_API_URL=${(skillsCfg.ontology or {}).visionclaw_api_url or "http://visionclaw-server:4000"}"
@@ -3138,7 +3289,15 @@ ${ragflowNetworkDecl}
           "ONTOLOGY_CONDENSE_SCHEDULE=${boolEnv (((skillsCfg.ontology or {}).condense or {}).schedule_enabled or false)}"
           "ONTOLOGY_CONDENSE_SCHEDULE_INTERVAL_MINS=${toString (((skillsCfg.ontology or {}).condense or {}).schedule_interval_mins or 60)}"
           "ONTOLOGY_CONDENSE_SCHEDULE_MAX_AGE_HOURS=${toString (((skillsCfg.ontology or {}).condense or {}).schedule_max_age_hours or 24)}"
-          "AGENTBOX_KERNEL_WHEELHOUSE=/var/lib/agentbox/code-interpreter-wheelhouse"
+          # The wheelhouse is a store path (codeInterpreterWheelhousePkg) and
+          # nothing ever copied it under /var/lib/agentbox, so the kernel MCP's
+          # fail-closed startup check ("wheelhouse directory not found") killed
+          # code-interpreter on every boot. Point the kernel straight at the
+          # store path; only interpolate it when the interpreter is enabled so a
+          # disabled manifest does not pull the Python env into the closure.
+          "AGENTBOX_KERNEL_WHEELHOUSE=${if (codeInterpreterCfg.enabled or false)
+            then "${codeInterpreterWheelhousePkg}/wheelhouse"
+            else "/var/lib/agentbox/code-interpreter-wheelhouse"}"
           "AGENTBOX_CODE_HARNESS_DIR=/var/lib/agentbox/code-harness"
           # ─────────────────────────────────────────────────────────────────
           "ENABLE_CLAUDE=${boolEnv (toolchainCfg.claude or false)}"

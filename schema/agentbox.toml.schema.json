@@ -816,20 +816,6 @@
               "type": "boolean",
               "description": "Per-pod storage quota via .quota.json sidecar (Sprint 8 P0)."
             },
-            "jss_v04_compat": {
-              "type": "boolean",
-              "description": "JavaScriptSolidServer v0.4 configuration/behaviour compatibility (Sprint 6-9)."
-            },
-            "rate_limit_per_sec": {
-              "type": "integer",
-              "minimum": 1,
-              "description": "Per-connection token-bucket ceiling when enable_rate_limit=true."
-            },
-            "quota_default_bytes": {
-              "type": "integer",
-              "minimum": 0,
-              "description": "Default per-pod storage ceiling when enable_quota=true."
-            },
             "allowed_origins": {
               "type": "string",
               "description": "CORS allowlist for native pod mesh (comma-separated)."

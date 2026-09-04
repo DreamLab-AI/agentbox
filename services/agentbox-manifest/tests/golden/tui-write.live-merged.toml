@@ -166,7 +166,7 @@ namespace = "ruvnet-kb"
 auto_ingest = true
 grounding_hook = true
 kb_release_url = "https://github.com/stuinfla/ruvnet-brain/releases/latest/download/ruvnet-brain.zip"
-staging_path = "/var/lib/agentbox/ruvnet-brain"
+staging_path = "/home/devuser/workspace/.tmp/ruvnet-brain-staging"
 embed_batch = 32
 
 [skills.tree_search_coder]
@@ -275,9 +275,6 @@ enable_did_nostr = true
 enable_webhook_signing = true
 enable_rate_limit = true
 enable_quota = true
-jss_v04_compat = true
-rate_limit_per_sec = 20
-quota_default_bytes = 10737418240
 allowed_origins = "https://dreamlab-ai.com"
 admin_key_env = "SOLID_ADMIN_KEY"
 

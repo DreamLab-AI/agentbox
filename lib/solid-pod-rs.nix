@@ -83,10 +83,9 @@ let
     hash  = srcHash;
   };
 
-  # Default feature set after Sprint 5-9 absorption: every feature below
-  # ships ON because it sharpens the sovereign data stack (did-nostr),
-  # closes a P0 hardening gap (rate-limit, quota, webhook-signing), or
-  # preserves upstream config compatibility (config-loader, acl-origin).
+  # Baseline feature set shared by every agentbox build. Product features are
+  # selected from agentbox.toml in flake.nix and passed as extraFeatures, so a
+  # false manifest flag no longer leaves the feature silently compiled in.
   #
   # solid-pod-rs is a workspace where most of the protocol surface lives
   # on the LIBRARY crate (`solid-pod-rs`). The server crate
@@ -99,16 +98,10 @@ let
   defaultFeatures = [
     # ── Server-crate features (forwarded pass-throughs) ──────────────
     "security-primitives"
-    "did-nostr"
-    "rate-limit"
-    "quota"
     "git"               # git control API (/_git/* routes) + /.well-known/apps
     # ── Library-crate features via solid-pod-rs/<feature> ────────────
-    "solid-pod-rs/nip98-schnorr"
     "solid-pod-rs/config-loader"
     "solid-pod-rs/acl-origin"
-    "solid-pod-rs/webhook-signing"
-    "solid-pod-rs/jss-v04"
   ];
 
 in

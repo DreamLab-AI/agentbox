@@ -51,18 +51,6 @@
   "customManagers": [
     {
       "customType": "regex",
-      "description": "Track the OpenAI Codex Rust CLI version pinned in lib/codex-binary.nix.",
-      "fileMatch": ["^lib/codex-binary\\.nix$"],
-      "matchStrings": [
-        "codexVersion\\s*=\\s*\"(?<currentValue>[0-9.]+)\""
-      ],
-      "depNameTemplate": "openai/codex",
-      "datasourceTemplate": "github-releases",
-      "extractVersionTemplate": "^rust-v(?<version>.*)$",
-      "versioningTemplate": "semver"
-    },
-    {
-      "customType": "regex",
       "description": "Track ComfyUI upstream rev pinned in flake.nix.",
       "fileMatch": ["^flake\\.nix$"],
       "matchStrings": [

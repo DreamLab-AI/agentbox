@@ -255,8 +255,8 @@ Useful meters:
 | Outbox entries stuck at `status=pending` | `MANAGEMENT_API_KEY` unset (bridge cannot decrypt `nostr.key.enc`); or all configured relays refusing |
 | `opf_fail_closed_total` climbing on `memory` slot | `opf-router` is down or slow; inspect `/var/log/opf-router.log` |
 | `solid_pod_rs_wac_denied_total` climbing | ACL policy for the writer npub is missing or wrong; inspect `.acl.json` — remember to reference `did:nostr:<pubkey>`, not the raw npub |
-| Quota 413s | raise `integrations.solid_pod_rs.quota_default_bytes` or clean `pods/<npub>/` |
-| Rate-limit 429s on legitimate traffic | raise `rate_limit_per_sec` or move the client to a dedicated allowlist entry with higher ceiling |
+| Quota 413s | inspect the pod's `.quota.json` policy or clean `pods/<npub>/` |
+| Rate-limit 429s on legitimate traffic | inspect the native server policy and client retry behaviour |
 
 See also: [troubleshooting.md](troubleshooting.md) for agentbox-wide
 diagnostic recipes.

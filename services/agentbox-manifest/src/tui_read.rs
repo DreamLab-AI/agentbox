@@ -187,21 +187,6 @@ const FIELDS: &[F] = &[
         false,
     ),
     F("integrations.solid_pod_rs.enable_quota", D::B(true), false),
-    F(
-        "integrations.solid_pod_rs.jss_v04_compat",
-        D::B(true),
-        false,
-    ),
-    F(
-        "integrations.solid_pod_rs.rate_limit_per_sec",
-        D::S("20"),
-        true,
-    ),
-    F(
-        "integrations.solid_pod_rs.quota_default_bytes",
-        D::S("10737418240"),
-        true,
-    ),
     F("sovereign_mesh.relay.enabled", D::B(false), false),
     F(
         "sovereign_mesh.relay.implementation",
