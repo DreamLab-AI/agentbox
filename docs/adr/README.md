@@ -30,7 +30,7 @@ governing document **in the same change**, and regenerate this index
 supersession edges, and stale `verified_commit`+`verified_paths` claims all
 fail the build).
 
-_29 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
+_32 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 
 | ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|
@@ -63,3 +63,6 @@ _29 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2027](ADR-2027-secret-custody-rotation-break-glass.md) | Secret custody, rotation, and break-glass lifecycle | SECURITY-profiles | 2026-08-31 | proposed | none | inactive | — | — | jjohare | agentbox |
 | [ADR-2028](ADR-2028-vault-manifest-path-authority.md) | `[vault]` in agentbox.toml is the single path authority for the authored corpus; no consumer hard-codes a Logseq path | BASELINE-container | 2026-09-02 | proposed | complete | staged | — | — | jjohare | agentbox |
 | [ADR-2029](ADR-2029-rune-markdown-tui-notes-window.md) | Rune is the first-class markdown TUI; tmux window 9 \"Notes\" opens it at the vault root | BASELINE-container | 2026-09-02 | proposed | complete | staged | — | — | jjohare | agentbox |
+| [ADR-2030](ADR-2030-permissive-licensing-for-publishable-service-crates.md) | Publishable service crates are MIT OR Apache-2.0 inside the AGPL-3.0 repository | — | 2026-09-03 | accepted | complete | live | — | — | jjohare | agentbox |
+| [ADR-2031](ADR-2031-consultant-model-manifest-projection.md) | Consultant model selection is projected from the manifest at boot; environment wins, TUI preserves the operator's choice, and tariffs are dated | — | 2026-09-04 | accepted | complete | staged | — | — | jjohare | agentbox |
+| [ADR-2032](ADR-2032-daemon-identification-argv-boundaries.md) | Daemon reapers identify processes by argv boundaries against a launcher allowlist and fail closed on anything else | — | 2026-09-04 | accepted | complete | staged | — | — | jjohare | agentbox |
